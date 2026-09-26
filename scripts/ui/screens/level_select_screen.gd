@@ -64,14 +64,18 @@ func _build_zones() -> void:
 		child.queue_free()
 	tiles.clear()
 	var steps: Array[CampaignStep] = App.campaign.steps()
-	var coming := HFlowContainer.new()
+	# Zones still to be designed share one row of "coming soon" cards after the built ones (made only
+	# when there is one: a node never added to the tree would leak).
+	var coming: HFlowContainer = null
 	for zi: int in App.campaign.zones.size():
 		var zone: ZoneDef = App.campaign.zones[zi]
 		if zone.placeholder or zone.levels.is_empty():
+			if coming == null:
+				coming = HFlowContainer.new()
 			coming.add_child(_coming_soon_card(zone, zi))
 		else:
 			_zones.add_child(_zone_section(zone, zi, steps))
-	if coming.get_child_count() > 0:
+	if coming != null:
 		_zones.add_child(coming)
 	# Focus the next step to play (or the first open one).
 	var next: CampaignStep = App.next_unfinished_step(tier)

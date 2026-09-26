@@ -272,6 +272,25 @@ func _test_level_select() -> void:
 	UiTheme.touch_override = 0
 	App.profile = SampleProfiles.rich()
 
+	# Every shipped zone is built; a zone still to be designed would show as "coming soon".
+	var shipped: Campaign = App.campaign
+	var trial := Campaign.new()
+	var later := ZoneDef.new()
+	later.id = &"later"
+	later.display_name = "Later Zone"
+	later.placeholder = true
+	trial.zones.assign([shipped.zones[0], later])
+	App.campaign = trial
+	App.show_level_select()
+	await _frames(2)
+	var labels: PackedStringArray = []
+	for node: Node in App.screen.find_children("*", "Label", true, false):
+		labels.append((node as Label).text)
+	check(labels.has("Later Zone · coming soon") and labels.has("ZONE 2"), "a zone still to be designed shows as coming soon")
+	App.campaign = shipped
+	App.show_level_select()
+	await _frames(1)
+
 
 # --- Shop ------------------------------------------------------------------------
 
