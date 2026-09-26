@@ -70,6 +70,8 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 - **Safe landing zone:** wherever the player drops from a ceiling back to the floor, the floor is always safe to land on.
 - **Every zone has ceilings** (decided September 26, 2026). What forms them changes from zone to zone (see §5). The in-world reason for a ceiling is up to each zone's skin: anything that makes sense in that zone's fiction (ships, building undersides, bridges, elevated roads, floating ads, archways).
 - **Ceilings don't have to cover every lane** (decided September 26, 2026). The player can switch lanes only within the ceiling's width. A **one-lane ceiling** is simply ridden out, so it must be **very short and relatively safe**.
+- **The ceiling is never required:** the floor route under a ceiling is always survivable without taking the pad. The ceiling is the easier route (decided September 26, 2026).
+- **Ceiling hazards** (decided September 26, 2026): ceilings may carry hazards of their own, but none in zones 1–2 *(proposed; owner agreed)*. The owner is planning a **ceiling turret** that fires only at a player on the ceiling (design to come).
 
 ### Collision rules (core principle)
 - **Damage only on real contact.** Lanes determine movement, not hits. A bullet in your lane that doesn't touch you does not hurt you.
@@ -112,17 +114,16 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 ### Zone roster (decided September 26, 2026)
 **Every zone is set in the same future, vaguely cyberpunk world.** No zone looks historical: the Marketplace is not a medieval market. Zones may be dustier or dirtier than the Neon City, but they stay futuristic.
 
-**Seven zones** at launch. Six are described below, in their confirmed order; the seventh is *(open)*. Each zone has 1–3 levels (never more than 3); the count per zone is *(open)*.
+**Six zones** at launch, in the order below. Each zone has 1–3 levels, never more than 3; see the schedule at the end of this section.
 
 | # | Zone | Mood (reference) | Palette |
 |---|---|---|---|
 | 1 | **Neon City** | Blade Runner | Keep the current city skin |
 | 2 | **Gangland** | Mad Max, but in a cyberpunk setting | Browns and tans |
 | 3 | **Marketplace** | A bustling, happy market | Tan, with livelier colours: whites, blue awnings, splashes of colour in shop signs and visible products |
-| 4 | **Corporate** | A more oppressive Blade Runner, with corporate and military themes | *(open)* |
+| 4 | **Corporate** | A more oppressive Blade Runner, with corporate and military themes | Steel and gunmetal grey, military olive, cold and sterile white light, and one harsh brand colour (chosen by the art agent, away from the hazard colours) |
 | 5 | **Dead Zone** | Eerie, quiet, haunting | Dark black, dark grey and ash grey |
 | 6 | **Golden Zone** | Decadent opulence | A white and slightly creamy base with red and gold accents. There must be some gold to show the wealth, but it isn't the only colour. |
-| 7 | *(open)* | | |
 
 **Zone 1: Neon City.** Floor: roofs of trucks driving toward the player; gaps between trucks. Walls: building facades with signs. Ceilings: undersides of low-flying ships.
 
@@ -138,7 +139,7 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 
 **Zone 6: Golden Zone.** The city strictly for the elites and corporate bosses, and home of the final boss. The cult is felt everywhere, alongside an extravagant show of opulence and wealth. Floor: golden walkways over water *(proposed; owner agreed)*. Ceilings: undersides of golden bridges, golden archways and other decadent structures.
 - **Water:** flows off the sides of the ceilings as waterfalls or fountains. It is **scenery only**, kept sparse, and thinned out if it clutters the view.
-- **Final level:** the zone's final level is the **Golden Palace**.
+- **Final level: the Golden Palace.** The player runs **inside** the palace, which is so huge and grand that its interior is basically the size of a city. It plays like any other level; only the skin is an interior (floors, walls and ceilings are the palace's own halls, galleries and arches). The final boss follows it.
 
 **Colour rule for every zone** *(proposed)*: zones may use colours close to hazard colours (red and gold in the Golden Zone, blue awnings in the Marketplace, fire in the Dead Zone), but only as **non-glowing** materials or dim background elements. Only hazards glow in hazard colours, so pink, yellow and black, red, orange, green and cyan keep their meaning everywhere.
 
@@ -148,19 +149,30 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 - **Symbol and colour:** *(open)*. An art agent will draw up a few options for the owner to choose from.
 - *(Proposed)* **Hidden in plain sight:** the symbol is worked into logos, ads and corporate art in every zone, and is displayed openly only in the Golden Zone.
 
-### Enemy introduction by zone (decided September 26, 2026)
-**Every zone introduces at least one new enemy.** New enemies are preferred over new mechanics. Enemies introduced earlier keep appearing in later zones.
+### Level schedule and enemy introductions (decided September 26, 2026)
+**Every zone introduces at least one new enemy.** New enemies are preferred over new mechanics. Anything introduced earlier keeps appearing later. Each level introduces about one new thing.
 
-| Zone | Introduces |
-|---|---|
-| 1. Neon City | Cyborg and heli drone; the hover truck on the zone's last level |
-| 2. Gangland | Sewer screech |
-| 3. Marketplace | A new enemy, still to be designed by the owner |
-| 4. Corporate | A new enemy, still to be designed by the owner *(to confirm)* |
-| 5. Dead Zone | Cyborg's Bad Dream |
-| 6. Golden Zone | A new enemy, still to be designed by the owner |
+| Zone | Level | New in this level |
+|---|---|---|
+| 1. Neon City | 1 | The basics (gaps, fences, walls, signs), then basic cyborgs late in the level |
+| | 2 | Ceilings and anti-grav pads |
+| | 3 | Pulsing fences, window cyborgs and the **hover truck** |
+| 2. Gangland | 1 | **Sewer screech** (from manholes) and ramps |
+| | 2 | **Octodog** and speed pads |
+| | 3 | Fence generators and **heli drones** |
+| 3. Marketplace | 1 | A **new enemy** (owner to design) |
+| | 2 | Screeches from wall vents in the shopfronts, and a remix |
+| 4. Corporate | 1 | A **new enemy** (owner to design) |
+| | 2 | A harder remix with a heavier military presence |
+| 5. Dead Zone | 1 | Hosts and the **Cyborg's Bad Dream** |
+| | 2 | A quiet, eerie remix |
+| 6. Golden Zone | 1 | A **new enemy** (owner to design) |
+| | 2 | Peak difficulty |
+| | 3 | The **Golden Palace**, then the final boss |
 
-Not placed yet: the Octodog, and the level-by-level split within each zone.
+**15 levels plus 6 bosses.** A flawless run through every level takes about 35 minutes. With retries and bosses, a first playthrough is estimated at 60–90 minutes.
+
+The owner is also planning a **ceiling turret** (see §3). Which zone introduces it is *(open)*.
 
 **Rules:**
 - Identical gameplay behavior under every skin.
@@ -171,7 +183,7 @@ Not placed yet: the Octodog, and the level-by-level split within each zone.
 
 ## 6. Structure, Progression & Replay
 
-- **Zones:** 7 at launch, each with a distinct look (see §5).
+- **Zones:** 6 at launch, each with a distinct look (see §5).
 - **Levels:** 1–3 per zone, each 90–150 seconds.
 - **Bosses:** one at the end of each zone. Each boss is effectively a **standalone mini-game**, very different from the main runner (decided September 26, 2026). Designs come later; the build leaves a slot for each.
 - **Cinematics:** short, minor cinematics between levels and zones give a sense of progression (decided September 26, 2026). Content comes later; the build leaves slots for them.
@@ -293,7 +305,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Scaling:** fire rate, projectile speed, and health increase gradually across the campaign.
 - **Production note:** the first animated humanoid. Use one shared body and skeleton with swappable parts per zone.
 
-### 9.3 Hover Truck (mini-boss; rare early, more frequent later)
+### 9.3 Hover Truck (mini-boss; first appears in Neon City 3; rare early, more frequent later)
 - **Entrance:** bangs on a building wall (left or right) as a warning, then **bursts through** in fire and rubble.
   - A player on that wall section **takes damage** (the banging is the warning).
 - **Movement:**
@@ -312,7 +324,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Visual variants:** sleek city version; scavenger version (rusted bolted plates, spiked plow, barbed wire).
 - **Design principle it establishes:** safe things look safe, and the one deadly part looks deadly.
 
-### 9.4 Octodog (from about level 4–5; exact schedule open)
+### 9.4 Octodog (first appears in Gangland 2, the campaign's 5th level)
 - **Look:** a mass of green tentacles on robotic dog legs.
 - **Movement:** floor only.
 - **Attack sequence:**
@@ -330,7 +342,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Stomping without claws:** the tentacles grab the player, causing damage.
 - **Armor / shield:** blocks one lunge or grab.
 
-### 9.5 Sewer Screech (gangland zones onward; rare in city)
+### 9.5 Sewer Screech (first appears in Gangland 1; rare in city)
 - **Look:** slimy, diseased vermin with **rows of spines** on its back.
 - **Where it comes from:** manhole covers in the floor (street zones) or vents at the bottom of walls. In city zones, it's rare and wall vents only.
 - **Warning:** its cover or vent **shakes**, then bursts open.
@@ -343,7 +355,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Kill:** any weapon in **one hit**, claws, or the dash. Armor and the shield block its swipe.
 - **Reuse:** the **building block for the swarm boss**.
 
-### 9.6 Heli Drone
+### 9.6 Heli Drone (first appears in Gangland 3)
 - **Look:** a futuristic drone with a helicopter rotor on each side and a **gatling gun** underneath.
 - **Entrance:** swoops in from the distance as a warning.
 - **Movement:** hovers over the player's lane and **follows them between lanes**. It is **stationary while firing**.

@@ -5,17 +5,17 @@ Companion to `GDD_CHECKPOINT.md`. The design phase is complete when this list is
 ## A. Next design rounds (in recommended order)
 
 ### 1. Zones (highest cost driver: do next)
-- ~~Full list of 6+ zones: name, visual theme, and mood.~~ Answered: seven zones: City, Gangland, Marketplace, Corporate, Dead Zone, Golden Zone (in that order), plus a seventh (GDD §5). Still open: **what the seventh zone is**, and the Corporate palette.
+- ~~Full list of 6+ zones: name, visual theme, and mood.~~ Answered: six zones: City, Gangland, Marketplace, Corporate, Dead Zone, Golden Zone, in that order, with moods and palettes (GDD §5).
 - ~~Which zone is first (the demo zone)?~~ Answered: Neon City is Zone 1, Gangland is Zone 2 (GDD §5).
 - ~~The **floor skin** for each zone~~ Answered (GDD §5).
-- **Levels per zone** (1–3 each, never more).
+- ~~**Levels per zone**~~ Answered: 3 / 3 / 2 / 2 / 2 / 3, 15 in all (GDD §5).
 - ~~**What forms the ceiling in zones without spaceships?**~~ Answered: every zone has ceilings, made of different things per zone, and they may be narrower than the full floor (GDD §3, §5).
 - ~~**Narrow ceilings**~~ Answered: lane switching within the ceiling's width; a one-lane ceiling is short and relatively safe; the floor under any ceiling may be dangerous, with a safe landing zone (GDD §3).
 - **Wall skin** for each zone, and what "signs" look like there.
-- The **enemy introduction schedule**: answered per zone (GDD §5). Still open: where the **Octodog** goes, the level-by-level split, and whether the Corporate zone introduces a new enemy.
+- ~~The **enemy introduction schedule**~~ Answered level by level (GDD §5). Still open: which zone introduces the owner's planned **ceiling turret**.
 - ~~Whether each zone introduces a new mechanic or object~~ Answered: at least one new enemy per zone, preferred over new mechanics (GDD §5).
-- **Three new enemies** (Marketplace, Corporate, Golden Zone): the owner will design them.
-- **Golden Palace** (the Golden Zone's final level): inside the palace, or the approach to it?
+- **Three new enemies** (Marketplace, Corporate, Golden Zone), plus the ceiling turret: the owner is describing them next.
+- ~~**Golden Palace**~~ Answered: inside the city-sized palace; plays like any other level (GDD §5).
 
 ### 2. Bosses
 For each boss: arena, phases, attacks, weak points, what power-ups are granted before the fight, how it scales on 3 vs 5–6 lanes, and its length.
@@ -118,7 +118,7 @@ Placeholders the build needed to be playable end to end. Each is marked `DESIGN-
 numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, `data/levels/*.tres`).
 
 **Campaign and structure**
-1. **Introduction schedule** (superseded in part September 26, 2026: the owner's per-zone schedule in GDD §5 moves heli drones into the Neon City; the level-by-level split is still open) (one new thing per level): City 1 *Rooftop Rush*: gaps, fences, walls and
+1. **Introduction schedule** (superseded September 26, 2026 by the owner's level-by-level schedule in GDD §5: cyborgs move to City 1, pulsing fences and window cyborgs to City 3, and the Octodog stays in Gangland 2 with drones in Gangland 3) (one new thing per level): City 1 *Rooftop Rush*: gaps, fences, walls and
    signs. City 2 *Skyway*: ceilings (anti-grav pads) and pulsing fences. City 3 *Neon Crossfire*:
    cyborgs and a rare hover truck. Gangland 1 *Scrapyard Streets*: ramps, sewer screeches, fence
    generators. Gangland 2 *Dog Run*: Octodogs and speed pads. Gangland 3 *Rotor Wash*: heli drones
@@ -128,7 +128,7 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
    in Gangland because of the sewers. Which boss goes where?
 3. **Cinematic slots:** City has intro, pre-boss and outro slots; Gangland has intro and outro. Where
    do you want cinematics, and what should each show?
-4. **Difficulty curve:** 0.1 → 0.9 across the planned campaign (18 levels, counting 3 per undesigned
+4. **Difficulty curve** (the campaign is now 15 levels, GDD §5): 0.1 → 0.9 across the planned campaign (18 levels, counting 3 per undesigned
    zone), linear, plus a per-level bias; within a level +0.25 from start to end.
 5. **Difficulty tiers** (unlocked after the last campaign step): Normal / Hard / Insane with +0.15 /
    +0.3 difficulty and ×1.1 / ×1.2 run speed.
