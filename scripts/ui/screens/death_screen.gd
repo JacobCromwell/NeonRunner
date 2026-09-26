@@ -31,17 +31,9 @@ func _ready() -> void:
 	var run: LevelRun = App.run
 	var cause: String = run.death_cause if run != null else ""
 	column.add_child(ScreenBase.make_label(DeathScreen.cause_text(cause), UiTheme.HEADING, HORIZONTAL_ALIGNMENT_CENTER))
-	if run != null and run.world != null and run.context.mode != RunContext.Mode.ENDLESS:
-		var fraction: float = clampf(run.world.player.distance / maxf(run.world.layout.length, 1.0), 0.0, 1.0)
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override(&"separation", 12)
-		column.add_child(row)
-		var meter := ProgressMeter.new()
-		meter.value = fraction
-		meter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		meter.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		row.add_child(meter)
-		row.add_child(ScreenBase.make_label("%d%%" % floori(fraction * 100.0), UiTheme.VALUE))
+	var progress: Control = DeathScreen.progress_row(run)
+	if progress != null:
+		column.add_child(progress)
 
 	var gap := Control.new()
 	gap.custom_minimum_size.y = UiTheme.px(4)
@@ -62,6 +54,34 @@ func _ready() -> void:
 	initial_focus = buttons.get("item", buttons.get("ad"))
 	_set_enabled(false)
 	get_tree().create_timer(ARM_TIME, true, false, true).timeout.connect(_arm)
+
+
+## How far the run got, for the revive offer and the pause menu: a meter with the share of the level
+## run and its percentage, or in a boss fight the share of the boss's health taken, with a marker at
+## each phase's end and the phase reached (GDD §10). Null for endless runs (no end to measure).
+static func progress_row(run: LevelRun) -> Control:
+	if run == null or run.world == null or run.world.layout == null or run.context.mode == RunContext.Mode.ENDLESS:
+		return null
+	var meter := ProgressMeter.new()
+	var text: String
+	var encounter: BossEncounter = BossEncounter.of(run.world)
+	if encounter != null:
+		meter.value = 1.0 - encounter.health_ratio()
+		var marks := PackedFloat32Array()
+		for m: float in encounter.phase_marks():
+			marks.append(1.0 - m)
+		meter.markers = marks
+		text = "PHASE %d/%d" % [encounter.phase_index + 1, encounter.phase_count()]
+	else:
+		meter.value = clampf(run.world.player.distance / maxf(run.world.layout.length, 1.0), 0.0, 1.0)
+		text = "%d%%" % floori(meter.value * 100.0)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override(&"separation", 12)
+	meter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	meter.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(meter)
+	row.add_child(ScreenBase.make_label(text, UiTheme.VALUE))
+	return row
 
 
 ## "You fell", "Hit by Cyborg": the death cause as the player reads it.

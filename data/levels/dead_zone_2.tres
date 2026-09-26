@@ -10,3 +10,4 @@ level_seed = 502
 duration_seconds = 150.0
 difficulty_bias = 0.0
 features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "screech", "ramps", "octodog", "speed_pads", "generator", "drone", "barnacle_turret", "wall_fences", "buzz_overdrive", "wall_fences_partial", "host")
+guarantee_features = true

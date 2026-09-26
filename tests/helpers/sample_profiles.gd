@@ -41,6 +41,35 @@ static func complete_until(p: Profile, campaign: Campaign, step_id: String) -> v
 		p.record_run(s.id, 0, true, 5000 if s.is_level() else 0, 2 if s.is_level() else 3, 100.0)
 
 
+## A boss fight's result for the results screen: the City's boss beaten in 88 s, or a death in its
+## second phase.
+static func boss_result(won: bool) -> RunResult:
+	var ctx := RunContext.new()
+	ctx.mode = RunContext.Mode.CAMPAIGN
+	ctx.step = App.campaign.step("city/boss")
+	ctx.boss = ctx.step.boss
+	ctx.config = App.campaign.configure_boss(ctx.step, 5)
+	ctx.tuning = App.tuning
+	ctx.loadout = Loadout.new()
+	var r := RunResult.new()
+	r.context = ctx
+	r.completed = won
+	r.time = 88.0 if won else 41.5
+	r.stats = {"kills": 2, "stomps": 3, "blocked": 1, "weak_points": 3 if won else 1, "phase": 3 if won else 2,
+		"phases": 3, "time_bonus": ctx.boss.time_bonus(88.0) if won else 0}
+	if won:
+		r.score = 14100
+		r.completion_bonus = ctx.boss.payout_credits
+		r.credits_earned = r.completion_bonus
+		r.stars = ctx.boss.stars_for(true, r.time)
+		r.record = {"new_best": true, "stars_gained": r.stars, "first_clear": true}
+	else:
+		r.cause = "Test Core bolt"
+		r.score = 1750
+		r.record = {"new_best": false}
+	return r
+
+
 ## A campaign result for the results screen: a clear of city/2, or a death in it.
 static func result(completed: bool) -> RunResult:
 	var ctx := RunContext.new()
