@@ -327,6 +327,10 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
 **Platforms and presentation**
 95. **Store links** in the web demo point at the stores' front pages until the game has store pages.
 96. **App icon:** a placeholder neon "N" (`tools/asset_gen/icon_gen.gd`) until there's a title and brand.
+97. **Leaderboards view:** scores are already submitted (per level and difficulty tier, endless per lane
+  count and tier, net worth), but no screen opens the platform's leaderboard UI yet. The plan is a button on
+  the title and results screens once the platform plugins are chosen (the stub has no leaderboards).
+98. **Achievements:** the platform layer can unlock them, but none are designed. Which ones, if any?
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
