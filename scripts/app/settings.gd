@@ -11,6 +11,8 @@ const DEFAULTS: Dictionary = {
 	"volume_sfx": 0.9,
 	"screen_shake": true,
 	"reduced_flashing": false,
+	## DESIGN-TBD: first-encounter hints (the tutorial approach is open, OPEN_QUESTIONS §5).
+	"hints": true,
 	"bindings": {},
 }
 ## The actions a player can rebind, in menu order (CLAUDE.md principle 1: gameplay uses only these).

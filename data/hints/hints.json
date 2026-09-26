@@ -1,0 +1,22 @@
+{
+	"_note": "DESIGN-TBD: the first-time tutorial approach is open (OPEN_QUESTIONS §5). These are short first-encounter hints: each shows once per profile, just before the player first meets the thing. {action} is replaced by the player's key (PC) or gesture (touch).",
+	"hints": [
+		{ "id": "lanes", "trigger": "start", "text": "Switch lanes with {move_left} and {move_right}." },
+		{ "id": "gap", "trigger": "gap", "text": "Gaps: jump with {jump}, or switch lanes." },
+		{ "id": "fence", "trigger": "fence_full", "text": "Pink crackle means an electric fence. Jump it ({jump}) or change lanes." },
+		{ "id": "fence_gapped", "trigger": "fence_gapped", "text": "This fence is open at the bottom: slide under it with {slide}." },
+		{ "id": "pulsing", "trigger": "fence_pulsing", "text": "Some fences switch on and off. Watch the flicker and listen for the crackle." },
+		{ "id": "wall", "trigger": "sign", "text": "Keep moving past the outer lane to run along the wall. Signs block the wall and hurt." },
+		{ "id": "pad", "trigger": "pad", "text": "Step on the cyan pad to flip onto the ship's hull." },
+		{ "id": "ramp", "trigger": "ramp", "text": "Green ramps launch you high onto the wall." },
+		{ "id": "speed_pad", "trigger": "speed_pad", "text": "Speed pads give you a burst of speed." },
+		{ "id": "cyborg", "trigger": "enemy:cyborg", "text": "Cyborgs fire in bursts: watch the arm glow, then switch lanes. Stomp their heads!" },
+		{ "id": "window_cyborg", "trigger": "enemy:window_cyborg", "text": "Cyborgs in windows guard the wall. Time your wall run to pass above or below." },
+		{ "id": "hover_truck", "trigger": "enemy:hover_truck", "text": "Hover truck! Its sides are safe, its front is deadly. Stomp the red weak point on its roof." },
+		{ "id": "drone", "trigger": "enemy:drone", "text": "Heli drone! Weave through the barrage, then hit a cyan pad to smash it into the hull." },
+		{ "id": "octodog", "trigger": "enemy:octodog", "text": "Octodogs lunge in straight lines. Sidestep, jump, or bait them into a gap." },
+		{ "id": "screech", "trigger": "enemy:screech", "text": "A rattling cover means a sewer screech. Leave its lane or jump it." },
+		{ "id": "generator", "trigger": "enemy:generator", "text": "Destroy a generator to knock out the fences around it." },
+		{ "id": "host", "trigger": "enemy:host", "text": "Glitching cyborgs carry something worse. Think before you stomp one." }
+	]
+}

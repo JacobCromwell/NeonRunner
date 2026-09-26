@@ -16,6 +16,8 @@ var _message: Label
 var _progress: ProgressBar
 var _popups: VBoxContainer
 var _pause: Button
+var _hint: Label
+var _hint_tween: Tween
 
 
 func _ready() -> void:
@@ -49,6 +51,16 @@ func _ready() -> void:
 	_message.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_message.grow_vertical = Control.GROW_DIRECTION_BOTH
 
+	_hint = _label(self, 22, HORIZONTAL_ALIGNMENT_CENTER)
+	_hint.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	_hint.offset_top = -120.0
+	_hint.offset_bottom = -80.0
+	_hint.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_hint.custom_minimum_size.x = 760.0
+	_hint.position.x -= 380.0
+	_hint.add_theme_color_override(&"font_color", Color(0.75, 0.95, 1.0))
+
 	_pause = Button.new()
 	_pause.text = "II"
 	_pause.focus_mode = Control.FOCUS_NONE
@@ -69,6 +81,17 @@ func bind(p_world: RunWorld, p_context: RunContext) -> void:
 
 func set_message(text: String) -> void:
 	_message.text = text
+
+
+## A first-encounter hint near the bottom of the screen for a few seconds (HintDirector).
+func show_hint(text: String, seconds: float = 3.5) -> void:
+	_hint.text = text
+	_hint.modulate.a = 1.0
+	if _hint_tween != null:
+		_hint_tween.kill()
+	_hint_tween = _hint.create_tween()
+	_hint_tween.tween_interval(seconds)
+	_hint_tween.tween_property(_hint, "modulate:a", 0.0, 0.5)
 
 
 func _process(_delta: float) -> void:

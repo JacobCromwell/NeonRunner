@@ -28,9 +28,9 @@ func _ready() -> void:
 			Settings.set_value(App.profile, "volume_" + bus, v)
 			App.save())
 		r.add_child(slider)
-	for key: String in ["screen_shake", "reduced_flashing"]:
+	for key: String in ["screen_shake", "reduced_flashing", "hints"]:
 		var check := CheckButton.new()
-		check.text = {"screen_shake": "Screen shake", "reduced_flashing": "Reduced flashing"}[key]
+		check.text = {"screen_shake": "Screen shake", "reduced_flashing": "Reduced flashing", "hints": "Show hints"}[key]
 		check.button_pressed = bool(Settings.value(App.profile, key))
 		check.toggled.connect(func(on: bool) -> void:
 			Settings.set_value(App.profile, key, on)

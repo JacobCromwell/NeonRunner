@@ -39,6 +39,7 @@ var _timer: float = 0.0
 var _show_hitboxes: bool = false
 var _env: WorldEnvironment
 var _deaths_by_cause: Dictionary = {}
+var _hints: HintDirector
 
 
 func start(p_context: RunContext) -> void:
@@ -86,6 +87,14 @@ func _build() -> void:
 		add_child(hud)
 		hud.pause_pressed.connect(func() -> void: pause_requested.emit())
 	hud.bind(world, context)
+	if _hints != null:
+		_hints.queue_free()
+		_hints = null
+	if context.mode != RunContext.Mode.QUICK and bool(Settings.value(App.profile, "hints")):
+		_hints = HintDirector.new()
+		add_child(_hints)
+		_hints.setup(world, App.profile, App.mobile or DisplayServer.is_touchscreen_available())
+		_hints.hint_shown.connect(func(_id: String, text: String) -> void: hud.show_hint(text))
 	if OS.is_debug_build() and debug_hud == null:
 		_build_debug_tools()
 	state = State.RUNNING
