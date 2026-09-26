@@ -162,7 +162,7 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 | | 3 | Fence generators and **heli drones** |
 | 3. Marketplace | 1 | The **Barnacle Turret** (§9.8), the first ceiling hazard |
 | | 2 | Screeches from wall vents in the shopfronts, and a remix |
-| 4. Corporate | 1 | A **new enemy** (owner to design) |
+| 4. Corporate | 1 | **Buzz Overdrive** (§9.9) *(to confirm)* |
 | | 2 | A harder remix with a heavier military presence |
 | 5. Dead Zone | 1 | Hosts and the **Cyborg's Bad Dream** |
 | | 2 | A quiet, eerie remix |
@@ -410,6 +410,18 @@ Shared interaction rules apply unless stated otherwise:
 - **Armor and shield:** both block its shots.
 - **Scaling:** across the campaign it fires somewhat faster and takes slightly more damage to kill, but never by much.
 - **Limits:** never on a one-lane ceiling (no room to dodge); at most **2 per ceiling**. Only one fires at a time *(proposed)*.
+
+### 9.9 Buzz Overdrive (owner, September 26, 2026; proposed as the Corporate zone's new enemy)
+- **Look:** a **truck-sized buzzsaw tank** with a giant, **vertical** buzzsaw blade. Militaristic. If it can be seen at gameplay size, a **red, angry eye on each side**.
+- **Where:** floor lanes; it occupies one lane.
+- **Sequence:**
+  1. The player sees it **in the distance**, in its lane.
+  2. It **winds up**, with a spin-up noise, as its blade spins up.
+  3. It **charges forward along its lane** toward the player, **slicing the floor in half** as it goes. The floor it has cut **becomes a gap**.
+  4. It goes off the screen behind the player, and that's the end of it.
+- **Contact:** touching the buzzsaw hurts. The **shield and armor block it**, but the floor is cut immediately, so a player who was hit has only **about a second** to get off that floor before it becomes a gap.
+- **Toughness:** very tough: **20 shots** at laser tier 1.
+- *(Open)* which zone introduces it, the floor warning, whether killing it early saves the floor, the other kill methods, scaling and limits.
 
 ---
 

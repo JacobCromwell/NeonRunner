@@ -14,7 +14,7 @@ Companion to `GDD_CHECKPOINT.md`. The design phase is complete when this list is
 - **Wall skin** for each zone, and what "signs" look like there.
 - ~~The **enemy introduction schedule**~~ Answered level by level (GDD §5). The Barnacle Turret is the Marketplace's new enemy (GDD §9.8).
 - ~~Whether each zone introduces a new mechanic or object~~ Answered: at least one new enemy per zone, preferred over new mechanics (GDD §5).
-- **New enemies:** the Marketplace's is the Barnacle Turret (GDD §9.8). The Corporate and Golden Zone enemies are still to be described by the owner.
+- **New enemies:** the Marketplace's is the Barnacle Turret (GDD §9.8). Buzz Overdrive (GDD §9.9) is proposed for the Corporate zone. The Golden Zone enemy is still to be described by the owner.
 - ~~**Golden Palace**~~ Answered: inside the city-sized palace; plays like any other level (GDD §5).
 
 ### 2. Bosses
