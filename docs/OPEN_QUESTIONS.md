@@ -200,7 +200,7 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
 29. **Swarm bonus on splash:** the heavy missile's bonus also applies to its splash on swarm enemies.
 30. **No overkill:** auto-fire skips an enemy that shots already in flight will kill and moves on to
     the next nearest.
-31. ~~**Fence generators** are auto-fire targets (destroying one sets off its EMP). Should they be?~~ Answered September 26, 2026: no. Auto-fire never targets generators and missile splash never damages them (GDD §9.1). **Needs a build change.**
+31. ~~**Fence generators** are auto-fire targets (destroying one sets off its EMP). Should they be?~~ Answered September 26, 2026: no. Auto-fire never targets generators and missile splash never damages them (GDD §9.1). Built in task B9: generators are immune to all weapon damage; a stomp or the dash still sets one off.
 32. **Shots ignore level geometry** (hulls, walls), and the weapon fires from any surface.
 33. **Slow time** slows the player too; pausing suspends it (resuming continues); dying or finishing
     ends it. Audio isn't slowed.
@@ -289,8 +289,8 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
 72. **Window cyborgs:** a 0.8 m body band centred on the 2.2 m wall-entry height, reaching 0.55 m out
   from the wall. They can't be stomped.
 73. **Fence generators:** claws and running into one don't destroy it, and its body is solid (running
-  into it kills; armor doesn't help). EMP radius 16 m; 3 shots to destroy; placed 9 m before its fence
-  row.
+  into it kills; armor doesn't help). EMP radius 16 m; placed 9 m before its fence row. (Weapons no longer
+  destroy one: item 31.)
 74. **Scores and look:** cyborg and window cyborg 200, generator 150. LED faces are amber *(changed September 26, 2026: cold white, GDD §9.2)* so they read
   apart from the player's cyan visor.
 
