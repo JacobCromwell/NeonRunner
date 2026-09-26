@@ -21,6 +21,7 @@ func run() -> void:
 	if ct == null:
 		return
 	_test_hitbox_rules()
+	_test_charge_sound()
 	await _test_burst()
 	await _test_contact()
 	await _test_weapons()
@@ -85,6 +86,17 @@ func _test_hitbox_rules() -> void:
 		"the body ends below the stomp line, so dropping onto the head only touches the head")
 	check(Cyborg.HEAD_Y - Cyborg.HEAD_SIZE.y * 0.5 > tuning.hurtbox_size.y,
 		"a running player can't touch the stomp zone (only a jumping one)")
+
+
+## The audio half of the telegraph lasts the whole charge-up (both cyborg types) and ends as the first
+## bolt fires.
+func _test_charge_sound() -> void:
+	var library := load("res://data/audio/sfx_library.tres") as SfxLibrary
+	var sound: AudioStream = library.stream(&"cyborg_charge") if library != null else null
+	var length: float = sound.get_length() if sound != null else 0.0
+	for t: CyborgGunTuning in [ct, load("res://data/enemies/window_cyborg.tres") as CyborgGunTuning]:
+		check(length >= t.charge_time and length <= t.charge_time + 0.1,
+			"the charge sound (%.2f s) lasts the whole %.2f s charge-up" % [length, t.charge_time])
 
 
 func _test_burst() -> void:
