@@ -26,8 +26,9 @@ For each boss: arena, phases, attacks, weak points, what power-ups are granted b
 - ~~Sewer Swarm: full breakdown.~~ Answered (GDD §10, September 26, 2026).
 - ~~Marketplace boss~~ Answered: The House (GDD §10); revisit after playtesting.
 - ~~Dead Zone boss~~ Answered: Sleep Taker (GDD §10).
-- **Generators and auto-fire everywhere?** Sleep Taker's fight makes auto-fire skip generators. Should that be the rule in every level (with missile splash never setting one off, like hosts), so an EMP is always the player's choice? This also answers "Fence generators are auto-fire targets" in §D (item 31 under "From the full build").
-- Corporate boss: concept needed. The final villain's fight: full breakdown.
+- ~~**Generators and auto-fire everywhere?**~~ Answered: yes. Weapons never set off a generator, in any level (GDD §9.1).
+- ~~Corporate boss~~ Answered: Hostile Takeover (GDD §10).
+- The final villain's fight: full breakdown.
 - ~~Do bosses have their own leaderboards or star criteria?~~ Answered: yes (GDD §10).
 - ~~Does the longer final fight still restart from the beginning on death?~~ Answered: a checkpoint halfway, at a possible second stage (GDD §10).
 
@@ -195,7 +196,7 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
 29. **Swarm bonus on splash:** the heavy missile's bonus also applies to its splash on swarm enemies.
 30. **No overkill:** auto-fire skips an enemy that shots already in flight will kill and moves on to
     the next nearest.
-31. **Fence generators** are auto-fire targets (destroying one sets off its EMP). Should they be?
+31. ~~**Fence generators** are auto-fire targets (destroying one sets off its EMP). Should they be?~~ Answered September 26, 2026: no. Auto-fire never targets generators and missile splash never damages them (GDD §9.1). **Needs a build change.**
 32. **Shots ignore level geometry** (hulls, walls), and the weapon fires from any surface.
 33. **Slow time** slows the player too; pausing suspends it (resuming continues); dying or finishing
     ends it. Audio isn't slowed.
@@ -387,3 +388,5 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
 - Bosses are standalone mini-games; short cinematics sit between levels and zones. Both are designed later, and the build leaves slots (§6, §10, September 26, 2026).
 - The player is a human runner in a cyber suit, about 75% of the grey-box size (§11, September 26, 2026).
 - Music: code-generated placeholders for now (§11, September 26, 2026).
+- **Needs a build change:** weapons never set off a fence generator; auto-fire skips them and missile splash can't damage them (§9.1, September 26, 2026).
+- Boss designs added: Sewer Swarm, The House (Marketplace), Hostile Takeover (Corporate), Sleep Taker (Dead Zone) (§10, September 26, 2026). Only the final villain's fight is still open.

@@ -282,7 +282,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Passing through:** the shield, armor, and juggernaut get you through. Claws don't.
 - **Weapons:** cannot destroy fences, and auto-fire ignores them.
 - **Generators:** occasional; **most fences have none**.
-  - Destroyed by weapons, a **stomp**, or the **dash**.
+  - Destroyed by a **stomp** or the **dash**. **Weapons never set one off** (decided September 26, 2026): auto-fire never targets generators and missile splash never damages them, the same rule as for hosts, so an EMP is always the player's choice.
   - Sends out an **EMP** that disables fences within a short radius for the rest of the level *(assumed duration)*.
   - The EMP also dissolves the Cyborg's Bad Dream.
 - **Wall fences** (owner, September 26, 2026; first appear in Marketplace 2 *(proposed)*): electric fences that **span a side wall** and **turn off and on** from time to time, to make the walls less safe.
@@ -487,7 +487,7 @@ Shared interaction rules apply unless stated otherwise:
   | 1. Neon City | Floating Head |
   | 2. Gangland | Sewer Swarm |
   | 3. Marketplace | The House |
-  | 4. Corporate | *(open)* |
+  | 4. Corporate | Hostile Takeover |
   | 5. Dead Zone | Sleep Taker |
   | 6. Golden Zone | The final villain |
 
@@ -543,11 +543,21 @@ Shared interaction rules apply unless stated otherwise:
     - **Lights out:** after a deep inhale, it swallows much of the light. It gets **darker still, but not pitch black**, and the glowing hazards stay visible while hands and slashes keep coming.
   - **It can't reach the ceiling** (the Bad Dream rule), so anti-grav pads are the refuge from the big slashes.
   - **Hurting it:** glowing fence generators stand along the route. The player **lures it close** (it lunges toward them), then **destroys the generator with a stomp or the dash**; the EMP rips a chunk of the nightmare away.
-  - **Auto-fire never targets generators in this fight** (owner, September 26, 2026), so the weapon can't set off an EMP before the player wants it. *(Proposed: make this a rule everywhere; see §9.1.)*
+  - **Weapons never set off a generator** (the rule everywhere, §9.1), so the weapon can't trigger an EMP before the player wants it. Weapons have no effect in this fight at all.
   - **Three phases,** three EMP hits. It gets hungrier each phase (faster hands, more lights-out). A missed generator is followed by another (no time limit, no escalation).
   - **Defeat:** the last EMP bursts it into hundreds of wisps, each a faint face or figure that drifts upward and fades as the dreams are released. Then silence, and the first grey dawn light breaks over the Dead Zone, setting up the Golden Zone.
   - **Pickups:** the standard armor rule (15–17 seconds). EMP flashes honour Reduced flashing.
-- **Remaining bosses:** Corporate *(open)*, and the final villain's fight.
+- **Hostile Takeover** (Corporate). The design round's pitch, approved by the owner (September 26, 2026).
+  - **The idea:** corporations and the military are one and the same in this zone, so the boss is a merger, literally.
+  - **The arena is the boss:** the player lands on the rear roof of the **Chairman's armored maglev train**, a long luxury corporate express, and runs forward along it toward the locomotive. Carriage roofs are the floor and the gaps between carriages are the gaps, so it plays like a level. A **military gunship** paces the train overhead. The sense of speed comes from the scenery streaming past (the City's moving-road trick in reverse).
+  - **Tied to the villain directly:** the Chairman is one of the villain's inner circle. The player gets **a glimpse of him**: in the locomotive's window during the fight, and as the face on the "MERGER COMPLETE" screens.
+  - **Phase 1, The Board (corporate carriages):** security cyborgs guard the roofs, a Tithe Collector skims credits, and partial wall fences run along the track's sound barriers. Each **carriage coupling** glows red and sits in one lane above the gap between carriages. The player **stomps it by landing on it while jumping the gap**, and the carriages behind break away and tumble off the track. A small target in a gap is the right difficulty for zone 4 (owner).
+  - **Phase 2, The Contract (the military gunship):** the gunship strafes the lanes (a warning line and a rising whine) and drops a **Buzz Overdrive onto the roof ahead**, which cuts a carriage lane. An armored carriage with no roof access blocks the way, so the player takes an anti-grav pad and **rides the gunship's belly** over it (the gunship is the ceiling).
+  - **Phase 3, The Merger:** the gunship docks onto the locomotive with huge clamps, forming one monstrous war engine, and "MERGER COMPLETE" flashes on every screen. Its attacks combine both. The player stomps the **three glowing docking clamps** to tear the gunship loose.
+  - **Defeat:** the gunship spins away and explodes; the locomotive derails and ploughs through the lobby of a corporate tower, bringing down a giant, soulless logo sculpture.
+  - **Missed weak points** come around again (no time limit, no escalation). Weapons chip; stomps do the real damage.
+  - **Pickups:** the standard armor rule (15–17 seconds).
+- **Remaining boss:** the final villain's fight *(open)*.
 
 ---
 
