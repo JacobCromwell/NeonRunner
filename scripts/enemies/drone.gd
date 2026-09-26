@@ -468,7 +468,8 @@ func _aim_target(p: Player) -> Vector3:
 	return p.hurtbox_aabb().get_center()
 
 
-## The red aim line from the muzzle to the locked target, flickering faster as the wind-up ends.
+## The red aim line from the muzzle to the locked target, flickering faster as the wind-up ends
+## (with Reduced flashing it thickens steadily instead).
 func _update_aim_line(aim: Vector3) -> void:
 	var from: Vector3 = _muzzle.global_position
 	var d: Vector3 = aim - from
@@ -477,8 +478,11 @@ func _update_aim_line(aim: Vector3) -> void:
 		return
 	var flicker: float = 1.0
 	if state == State.WINDUP:
-		var rate: float = lerpf(6.0, 22.0, clampf(_state_time / tune.windup_at(_scaling), 0.0, 1.0))
-		flicker = 0.55 + 0.45 * absf(sin(_state_time * rate))
+		var progress: float = clampf(_state_time / tune.windup_at(_scaling), 0.0, 1.0)
+		if Settings.flashing_reduced:
+			flicker = lerpf(0.55, 1.0, progress)
+		else:
+			flicker = 0.55 + 0.45 * absf(sin(_state_time * lerpf(6.0, 22.0, progress)))
 	var up: Vector3 = Vector3.UP if absf(d.normalized().dot(Vector3.UP)) < 0.99 else Vector3.RIGHT
 	_aim_line.global_transform = Transform3D(
 		Basis.looking_at(d / length, up).scaled_local(Vector3(0.06 * flicker, 0.06 * flicker, length)),

@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="HumanoidAnimTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/characters/humanoid_anim_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+stride_length = 2.0
+max_cadence = 3.0
+full_stride_speed = 6.0
+idle_speed = 0.5
+thigh_swing = 44.0
+thigh_forward_bias = 10.0
+knee_lift = 100.0
+knee_stance = 30.0
+arm_swing = 30.0
+elbow_bend = 60.0
+arm_out = 14.0
+forward_lean = 16.0
+bob_height = 0.04
+hip_twist = 8.0
+shoulder_twist = 10.0
+breathe_rate = 0.35
+breathe_amount = 2.0

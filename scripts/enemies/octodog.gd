@@ -446,9 +446,10 @@ func _process(delta: float) -> void:
 	_model.position.y = y
 	_model.animate(delta)
 	if windup and _telegraph.visible:
-		# The line pulses and widens as the lunge nears.
+		# The line pulses and widens as the lunge nears (with Reduced flashing it only widens).
 		var k: float = clampf(_phase_time / maxf(_t.windup_time(_scaling), 0.05), 0.0, 1.0)
-		var pulse: float = (0.6 + 0.5 * k) * (0.9 + 0.15 * sin(_phase_time * 30.0))
+		var beat: float = 1.0 if Settings.flashing_reduced else 0.9 + 0.15 * sin(_phase_time * 30.0)
+		var pulse: float = (0.6 + 0.5 * k) * beat
 		_telegraph.global_transform = _telegraph_base * Transform3D(Basis.from_scale(Vector3(pulse, 1.0, 1.0)), Vector3.ZERO)
 
 

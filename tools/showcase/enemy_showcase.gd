@@ -5,8 +5,9 @@ extends Node3D
 ## Views: city, scavenger (pose rows), faces (visor close-ups), window, generator (in a real RunWorld),
 ## charge (a cyborg charging and firing at the camera), and play: a generated level with the enemies
 ## on, run by a god-mode player with grapples (so gaps don't end the run) through the real run camera
-## (options: --seed=N --lanes=N --difficulty=X --start=metres --variant=scavenger --features=a,b
-## --claws --skin=res://path/to/skin.tres).
+## (options: --seed=N --lanes=N --difficulty=X --start=metres --features=a,b --claws).
+## Every view takes --skin=res://path/to/skin.tres (default: the grey box) and --variant=city|scavenger
+## (the cyborgs' zone look; the scavenger view always shows the scavenger).
 
 const Kit = preload("res://scripts/enemies/cyborg_kit.gd")
 
@@ -23,6 +24,7 @@ func _ready() -> void:
 		_play()
 		return
 	_world = _build_world(view)
+	var variant: StringName = &"scavenger" if view == "scavenger" else StringName(_opt("variant", "city"))
 	_camera = Camera3D.new()
 	_camera.fov = 50.0
 	add_child(_camera)
@@ -37,11 +39,10 @@ func _ready() -> void:
 	add_child(env)
 	match view:
 		"scavenger":
-			_skin_variant(&"scavenger")
-			_pose_row(&"scavenger")
+			_pose_row(variant)
 			_look(Vector3(0.0, 1.3, 5.2), Vector3(0.0, 0.8, -1.0))
 		"faces":
-			_face_row()
+			_face_row(variant)
 			_look(Vector3(0.0, 1.5, 2.4), Vector3(0.0, 1.25, -1.0))
 		"window":
 			_window_scene()
@@ -53,8 +54,27 @@ func _ready() -> void:
 			_charge_scene()
 			_look(Vector3(0.6, 1.4, -2.0), Vector3(0.0, 1.0, -9.0))
 		_:
-			_pose_row(&"city")
+			_pose_row(variant)
 			_look(Vector3(0.0, 1.3, 5.2), Vector3(0.0, 0.8, -1.0))
+
+
+## The value of a --name=value argument, or `default`.
+static func _opt(opt_name: String, default: String) -> String:
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--%s=" % opt_name):
+			return arg.get_slice("=", 1)
+	return default
+
+
+## The skin from --skin (default: the grey box), dressed in the --variant enemy look.
+static func _skin(variant: StringName) -> ZoneSkin:
+	var path: String = _opt("skin", "res://data/skins/greybox_skin.tres")
+	var base: ZoneSkin = load(path) as ZoneSkin if ResourceLoader.exists(path) else null
+	if base == null:
+		base = load("res://data/skins/greybox_skin.tres") as ZoneSkin
+	var skin := base.duplicate() as ZoneSkin
+	skin.enemy_variant = variant
+	return skin
 
 
 func _play() -> void:
@@ -63,7 +83,6 @@ func _play() -> void:
 	config.lane_count = 5
 	config.difficulty = 0.6
 	var start: float = 0.0
-	var variant: StringName = &"city"
 	for arg: String in OS.get_cmdline_user_args():
 		var v: String = arg.get_slice("=", 1)
 		if arg.begins_with("--seed="):
@@ -74,15 +93,9 @@ func _play() -> void:
 			config.difficulty = float(v)
 		elif arg.begins_with("--start="):
 			start = float(v)
-		elif arg.begins_with("--variant="):
-			variant = StringName(v)
 		elif arg.begins_with("--features="):
 			config.features = PackedStringArray(v.split(",", false))
-		elif arg.begins_with("--skin=") and ResourceLoader.exists(v):
-			config.skin = load(v) as ZoneSkin
-	var skin := config.skin.duplicate() as ZoneSkin
-	skin.enemy_variant = variant
-	config.skin = skin
+	config.skin = _skin(StringName(_opt("variant", "city")))
 	var t := load("res://data/tuning/movement.tres") as MovementTuning
 	var layout: LevelLayout = LevelGenerator.new().generate(config, t, LevelGenerator.load_for(config))
 	for e: Dictionary in layout.enemies:
@@ -126,19 +139,13 @@ func _build_world(view: String) -> RunWorld:
 				"pulse_on": 1.0, "pulse_off": 1.0, "phase": 0.0})
 	var config := LevelConfig.new()
 	config.lane_count = 5
-	config.skin = load("res://data/skins/greybox_skin.tres") as ZoneSkin
+	config.skin = _skin(StringName(_opt("variant", "city")))
 	var world := RunWorld.new()
 	add_child(world)
 	world.build(config, layout, load("res://data/tuning/movement.tres") as MovementTuning,
 		load("res://data/tuning/game_rules.tres") as GameRules, load("res://data/tuning/powerups.tres") as PowerupTuning)
 	world.player.visible = view == "window" or view == "generator"
 	return world
-
-
-func _skin_variant(v: StringName) -> void:
-	var skin := _world.skin.duplicate() as ZoneSkin
-	skin.enemy_variant = v
-	_world.skin = skin
 
 
 func _look(from: Vector3, to: Vector3) -> void:
@@ -181,10 +188,10 @@ func _pose_row(v: StringName) -> void:
 	host.set_pose(CyborgBody.Pose.IDLE)
 
 
-func _face_row() -> void:
+func _face_row(v: StringName) -> void:
 	var faces: Array = [Kit.Face.NEUTRAL, Kit.Face.AIMING, Kit.Face.SHOCKED, Kit.Face.DEAD]
 	for i: int in faces.size():
-		var b := _body(&"city", false, Vector3(-0.9 + i * 0.6, 0.0, 0.0), 10 + i)
+		var b := _body(v, false, Vector3(-0.9 + i * 0.6, 0.0, 0.0), 10 + i)
 		b.set_expression(faces[i])
 	var s := _body(&"scavenger", false, Vector3(-0.6, 0.0, -0.9), 20)
 	s.set_expression(Kit.Face.NEUTRAL)
