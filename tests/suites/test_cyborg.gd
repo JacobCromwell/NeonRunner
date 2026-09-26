@@ -231,7 +231,10 @@ func _test_hosts() -> void:
 	check(r["alive"] and r["events"].has(&"stomp"), "a host can be stomped (%s)" % r["cause"])
 	check(int(w.score.bonuses.get(&"host", 0)) == ct.host_bonus, "killing a host pays the host bonus (%s)" % str(w.score.bonuses))
 	await physics_frames(2)
-	check(w.director.count_alive() == 0, "no Bad Dream appears until its script exists")
+	if ResourceLoader.exists(Cyborg.BAD_DREAM_SCRIPT):
+		check(w.director.count_alive(&"bad_dream") == 1, "the Bad Dream bursts out of the killed host")
+	else:
+		check(w.director.count_alive() == 0, "no Bad Dream appears until its script exists")
 	await sim.free_world(w)
 
 
