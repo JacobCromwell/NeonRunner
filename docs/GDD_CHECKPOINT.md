@@ -488,7 +488,7 @@ Shared interaction rules apply unless stated otherwise:
   | 2. Gangland | Sewer Swarm |
   | 3. Marketplace | The House |
   | 4. Corporate | *(open)* |
-  | 5. Dead Zone | *(open)* |
+  | 5. Dead Zone | Sleep Taker |
   | 6. Golden Zone | The final villain |
 
 - **Floating Head** (Neon City). Owner's design, with the design round's additions approved by the owner (September 26, 2026).
@@ -532,7 +532,22 @@ Shared interaction rules apply unless stated otherwise:
   - **Missed buttons:** it just spins again (no time limit, no escalation). Weapons chip away at it; stomps do the real damage.
   - **Defeat:** the reels spin wildly and jam, "TILT" flashes, and it collapses in an explosion of coins while the shops erupt in cheers.
   - **Pickups:** the standard armor rule (15–17 seconds).
-- **Remaining bosses:** Corporate and Dead Zone *(open)*, and the final villain's fight.
+- **Sleep Taker** (Dead Zone). The design round's pitch, approved by the owner (September 26, 2026).
+  - **What it is:** in the Dead Zone, when a cyborg dies, its Bad Dream doesn't dissolve. Over the years they drifted together through the ruins and fused into **one colossal nightmare** haunting the silent city: black with purple highlights like the Bad Dream, but vast, with dozens of circular maws and long clawed fingers.
+  - **Tied to the villain indirectly:** the nightmares are an unintended consequence of what the cult has done to people's minds.
+  - **Immune to weapons,** like every Bad Dream, so the fight is pure movement skill. **Only the EMP hurts it.** Fence generators are the Dead Zone's last working machines; blowing one near the nightmare tears part of it away.
+  - **Lighting:** the arena is **darker than normal lighting, but never pitch black**. Hazards keep glowing in their usual colours, so the fight stays readable.
+  - **Attacks** (each with a visual and audio warning):
+    - **Giant slash** across three lanes: the maw opens with a shriek (the Bad Dream's warning, bigger). Get out of those lanes, or up onto the ceiling.
+    - **Grasping hands** rising from the floor: purple mist pools in the lane, with whispering. Switch lanes.
+    - **Lights out:** after a deep inhale, it swallows much of the light. It gets **darker still, but not pitch black**, and the glowing hazards stay visible while hands and slashes keep coming.
+  - **It can't reach the ceiling** (the Bad Dream rule), so anti-grav pads are the refuge from the big slashes.
+  - **Hurting it:** glowing fence generators stand along the route. The player **lures it close** (it lunges toward them), then **destroys the generator with a stomp or the dash**; the EMP rips a chunk of the nightmare away.
+  - **Auto-fire never targets generators in this fight** (owner, September 26, 2026), so the weapon can't set off an EMP before the player wants it. *(Proposed: make this a rule everywhere; see §9.1.)*
+  - **Three phases,** three EMP hits. It gets hungrier each phase (faster hands, more lights-out). A missed generator is followed by another (no time limit, no escalation).
+  - **Defeat:** the last EMP bursts it into hundreds of wisps, each a faint face or figure that drifts upward and fades as the dreams are released. Then silence, and the first grey dawn light breaks over the Dead Zone, setting up the Golden Zone.
+  - **Pickups:** the standard armor rule (15–17 seconds). EMP flashes honour Reduced flashing.
+- **Remaining bosses:** Corporate *(open)*, and the final villain's fight.
 
 ---
 
