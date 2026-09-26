@@ -1,89 +1,241 @@
 class_name SettingsScreen
-extends Control
-## Settings (GDD §3): audio volumes, full key rebinding, and accessibility (screen shake, reduced
-## flashing). Works as a full screen or an overlay (from the pause menu). Placeholder look.
+extends ScreenBase
+## Settings (GDD §3): audio volumes, full key rebinding, and comfort options (screen shake, reduced
+## flashing, first-encounter hints; OPEN_QUESTIONS §10). Every change goes through Settings and
+## applies at once; the profile is saved on leaving. Works as a full screen (from the title) or as
+## an overlay over the paused game (from the pause menu); `on_close` says where leaving goes.
+## The keys section is left out on touch devices; slow time isn't offered on mobile (GDD §3).
+
+## [bus, label]: the Settings keys are "volume_" + bus.
+const VOLUMES: Array = [["master", "Master volume"], ["music", "Music"], ["sfx", "Sound effects"]]
+## [Settings key, label, explanation].
+const TOGGLES: Array = [
+	["screen_shake", "Screen shake", "The camera shakes on hits and hard landings."],
+	["reduced_flashing", "Reduced flashing", "Softer flashes: steady glows instead of blinking."],
+	["hints", "Show hints", "A short tip the first time something new appears."],
+]
 
 var on_close: Callable
-
-var _waiting_for: StringName = &""
-var _bind_buttons: Dictionary = {}
+## Bus ("master", "music", "sfx") -> its HSlider.
+var sliders: Dictionary = {}
+## Settings key -> its CheckButton.
+var toggles: Dictionary = {}
+## Action -> its KeyBindButton (empty on touch devices).
+var key_buttons: Dictionary = {}
+var reset_keys_button: NeonButton
+var _volume_labels: Dictionary = {}
+var _dirty: bool = false
 
 
 func _ready() -> void:
-	process_mode = Node.PROCESS_MODE_ALWAYS
-	ScreenKit.fill(self)
-	ScreenKit.backdrop(self, 0.85)
-	var col: VBoxContainer = ScreenKit.column(self, 640.0)
-	ScreenKit.title(col, "SETTINGS", 34)
-	for bus: String in ["master", "music", "sfx"]:
-		var r: HBoxContainer = ScreenKit.row(col)
-		ScreenKit.label(r, {"master": "Volume", "music": "Music", "sfx": "Sound effects"}[bus], 18).custom_minimum_size.x = 180.0
-		var slider := HSlider.new()
-		slider.min_value = 0.0
-		slider.max_value = 1.0
-		slider.step = 0.05
-		slider.value = float(Settings.value(App.profile, "volume_" + bus))
-		slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		slider.value_changed.connect(func(v: float) -> void:
-			Settings.set_value(App.profile, "volume_" + bus, v)
-			App.save())
-		r.add_child(slider)
-	for key: String in ["screen_shake", "reduced_flashing", "hints"]:
-		var check := CheckButton.new()
-		check.text = {"screen_shake": "Screen shake", "reduced_flashing": "Reduced flashing", "hints": "Show hints"}[key]
-		check.button_pressed = bool(Settings.value(App.profile, key))
-		check.toggled.connect(func(on: bool) -> void:
-			Settings.set_value(App.profile, key, on)
-			App.save())
-		col.add_child(check)
-	ScreenKit.label(col, "Keys (select one, then press the new key)", 16)
-	var grid := GridContainer.new()
-	grid.columns = 2
-	col.add_child(grid)
-	for action: StringName in Settings.REBINDABLE:
-		if action == &"slow_time" and App.mobile:
-			continue
-		ScreenKit.label(grid, Settings.ACTION_LABELS[action], 16).custom_minimum_size.x = 220.0
-		var b: Button = ScreenKit.button(grid, "", func() -> void: _start_rebind(action))
-		b.custom_minimum_size.x = 200.0
-		_bind_buttons[action] = b
-	_refresh_bindings()
-	var buttons: HBoxContainer = ScreenKit.row(col)
-	ScreenKit.button(buttons, "Reset keys", func() -> void:
-		Settings.reset_bindings(App.profile)
+	title = "SETTINGS"
+	back_requested.connect(_close)
+	if App.overlay == self:
+		# Over the paused run: dim the game rather than hide it.
+		backdrop = Backdrop.DIM
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.follow_focus = true
+	content.add_child(scroll)
+	var flow := HFlowContainer.new()
+	flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	flow.alignment = FlowContainer.ALIGNMENT_CENTER
+	flow.add_theme_constant_override(&"h_separation", roundi(UiTheme.px(16)))
+	flow.add_theme_constant_override(&"v_separation", roundi(UiTheme.px(16)))
+	scroll.add_child(flow)
+
+	# With the keys: audio and comfort share the left column. Without (touch): side by side.
+	var keys_shown: bool = not UiTheme.is_touch()
+	var left: VBoxContainer = _column(flow)
+	var audio: VBoxContainer = _card(left, "AUDIO", &"volume")
+	for v: Array in VOLUMES:
+		audio.add_child(_volume_row(v[0], v[1]))
+	var comfort: VBoxContainer = _card(left if keys_shown else _column(flow), "COMFORT", &"eye")
+	for t: Array in TOGGLES:
+		comfort.add_child(_toggle_row(t[0], t[1], t[2]))
+	if keys_shown:
+		var right: VBoxContainer = _column(flow)
+		var keys: VBoxContainer = _card(right, "KEYS", &"keyboard")
+		keys.add_child(ScreenBase.make_label("Select an action, then press its new key. Esc cancels.", UiTheme.CAPTION))
+		for action: StringName in Settings.REBINDABLE:
+			if action == &"slow_time" and App.mobile:
+				continue
+			keys.add_child(_key_row(action))
+		reset_keys_button = NeonButton.make("RESET KEYS", NeonButton.Kind.FLAT, &"restart")
+		reset_keys_button.size_flags_horizontal = Control.SIZE_SHRINK_END
+		reset_keys_button.pressed.connect(_ask_reset_keys)
+		keys.add_child(reset_keys_button)
+	initial_focus = sliders["master"]
+
+
+func _exit_tree() -> void:
+	if _dirty:
+		_dirty = false
 		App.save()
-		_refresh_bindings())
-	ScreenKit.button(buttons, "Back", _close)
-	ScreenKit.focus_first(self)
-
-
-func _start_rebind(action: StringName) -> void:
-	_waiting_for = action
-	(_bind_buttons[action] as Button).text = "Press a key..."
-
-
-func _refresh_bindings() -> void:
-	for action: StringName in _bind_buttons:
-		(_bind_buttons[action] as Button).text = ", ".join(Settings.key_names(action))
-
-
-func _input(event: InputEvent) -> void:
-	if _waiting_for == &"" or not (event is InputEventKey) or not event.pressed or event.is_echo():
-		return
-	get_viewport().set_input_as_handled()
-	if (event as InputEventKey).keycode != KEY_ESCAPE:
-		Settings.bind_key(App.profile, _waiting_for, event as InputEventKey)
-		App.save()
-	_waiting_for = &""
-	_refresh_bindings()
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	if _waiting_for == &"" and event.is_action_pressed(&"ui_cancel"):
-		get_viewport().set_input_as_handled()
-		_close()
 
 
 func _close() -> void:
+	if _dirty:
+		_dirty = false
+		App.save()
 	if on_close.is_valid():
 		on_close.call()
+	else:
+		App.show_title()
+
+
+func _column(parent: Control) -> VBoxContainer:
+	var column := VBoxContainer.new()
+	column.custom_minimum_size.x = UiTheme.px(480)
+	column.add_theme_constant_override(&"separation", roundi(UiTheme.px(16)))
+	parent.add_child(column)
+	return column
+
+
+func _card(parent: Control, heading: String, icon_name: StringName) -> VBoxContainer:
+	var panel := PanelContainer.new()
+	panel.theme_type_variation = UiTheme.CARD
+	parent.add_child(panel)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override(&"separation", roundi(UiTheme.px(6)))
+	panel.add_child(column)
+	column.add_child(ScreenBase.make_heading(heading, icon_name))
+	return column
+
+
+func _volume_row(bus: String, label_text: String) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override(&"separation", roundi(UiTheme.px(14)))
+	var label := ScreenBase.make_label(label_text)
+	label.custom_minimum_size.x = UiTheme.px(170)
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.size_flags_vertical = Control.SIZE_FILL
+	row.add_child(label)
+	var slider := HSlider.new()
+	slider.min_value = 0.0
+	slider.max_value = 1.0
+	slider.step = 0.05
+	slider.value = float(Settings.value(App.profile, "volume_" + bus))
+	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slider.size_flags_vertical = Control.SIZE_FILL
+	slider.custom_minimum_size.y = UiTheme.px(44)
+	slider.tooltip_text = label_text
+	slider.value_changed.connect(_on_volume.bind(bus))
+	row.add_child(slider)
+	sliders[bus] = slider
+	var value := ScreenBase.make_label("", UiTheme.VALUE, HORIZONTAL_ALIGNMENT_RIGHT)
+	value.custom_minimum_size.x = UiTheme.px(64)
+	value.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	value.size_flags_vertical = Control.SIZE_FILL
+	row.add_child(value)
+	_volume_labels[bus] = value
+	_show_volume(bus)
+	return row
+
+
+func _on_volume(v: float, bus: String) -> void:
+	Settings.set_value(App.profile, "volume_" + bus, v)
+	_dirty = true
+	_show_volume(bus)
+	if bus != "music":
+		# A tick at the new loudness.
+		UiSounds.play(UiSounds.MOVE)
+
+
+func _show_volume(bus: String) -> void:
+	var v: float = (sliders[bus] as HSlider).value
+	(_volume_labels[bus] as Label).text = "OFF" if v <= 0.001 else "%d%%" % roundi(v * 100.0)
+
+
+func _toggle_row(key: String, label_text: String, note: String) -> Control:
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override(&"separation", 0)
+	var check := CheckButton.new()
+	check.text = label_text
+	check.button_pressed = bool(Settings.value(App.profile, key))
+	check.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	check.toggled.connect(_on_toggle.bind(key))
+	UiSounds.bind(check)
+	column.add_child(check)
+	toggles[key] = check
+	var caption := ScreenBase.make_label(note, UiTheme.CAPTION)
+	caption.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	caption.add_theme_constant_override(&"line_spacing", 0)
+	var indent := MarginContainer.new()
+	indent.add_theme_constant_override(&"margin_left", roundi(UiTheme.px(8)))
+	indent.add_theme_constant_override(&"margin_right", roundi(UiTheme.px(70)))
+	indent.add_child(caption)
+	column.add_child(indent)
+	return column
+
+
+func _on_toggle(on: bool, key: String) -> void:
+	Settings.set_value(App.profile, key, on)
+	_dirty = true
+	App.apply_settings()
+
+
+func _key_row(action: StringName) -> Control:
+	var row := HBoxContainer.new()
+	var label := ScreenBase.make_label(String(Settings.ACTION_LABELS.get(action, action)))
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.size_flags_vertical = Control.SIZE_FILL
+	row.add_child(label)
+	# All of the action's keys show; a new key replaces them (Settings.bind_key).
+	var button := KeyBindButton.for_action(action, -1)
+	button.custom_minimum_size.x = UiTheme.px(200)
+	button.rebind_requested.connect(_on_rebind)
+	row.add_child(button)
+	key_buttons[action] = button
+	return row
+
+
+func _on_rebind(action: StringName, event: InputEvent) -> void:
+	var key := event as InputEventKey
+	if key == null:
+		return
+	var code: int = key.physical_keycode if key.physical_keycode != KEY_NONE else key.keycode
+	var had_it: Array[StringName] = []
+	for other: StringName in key_buttons:
+		if other != action and SettingsScreen.key_codes(other).has(code):
+			had_it.append(other)
+	Settings.bind_key(App.profile, action, key)
+	_dirty = true
+	_refresh_keys()
+	# One key never does two things: say where it was taken from.
+	for other: StringName in had_it:
+		var other_name: String = String(Settings.ACTION_LABELS.get(other, other))
+		if SettingsScreen.key_codes(other).is_empty():
+			Toast.show_message(self, "%s has no key now" % other_name, &"warning", Toast.Kind.WARNING, 3.0)
+		else:
+			Toast.show_message(self, "%s moved from %s" % [UiTheme.event_text(key).to_upper(), other_name], &"info")
+
+
+## The physical key codes bound to an action.
+static func key_codes(action: StringName) -> Array[int]:
+	var out: Array[int] = []
+	if InputMap.has_action(action):
+		for e: InputEvent in InputMap.action_get_events(action):
+			var k := e as InputEventKey
+			if k != null:
+				out.append(int(k.physical_keycode if k.physical_keycode != KEY_NONE else k.keycode))
+	return out
+
+
+func _ask_reset_keys() -> void:
+	var d := ConfirmDialog.ask(self, "RESET KEYS?", "Every action goes back to its default keys.", "RESET")
+	d.confirmed.connect(_reset_keys)
+
+
+func _reset_keys() -> void:
+	Settings.reset_bindings(App.profile)
+	_dirty = true
+	_refresh_keys()
+	Toast.show_message(self, "Keys reset", &"check")
+
+
+func _refresh_keys() -> void:
+	for action: StringName in key_buttons:
+		(key_buttons[action] as KeyBindButton).refresh()
