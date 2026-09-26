@@ -166,9 +166,9 @@ static func _bass(song: Song) -> void:
 	var note := func(n: Song.Note, _previous: Song.Note) -> PackedFloat32Array:
 		var steps: float = 1.0 if n.muted else n.steps - 0.3
 		return Inst.fm_bass(DSP.midi_hz(n.midi), song.steps_to_seconds(steps), 2.6)
-	# Eighths pumping between the root (an octave below the guitar) and its octave.
+	# Legato eighths pumping between the root (an octave below the guitar) and its octave.
 	var pumping := func(root: String) -> String:
-		return "L . L . H . L . L . L . H . L .".replace("L", _octave(root, -1)).replace("H", root)
+		return "L - L - H - L - L - L - H - L -".replace("L", _octave(root, -1)).replace("H", root)
 	var bars: Array = []
 	bars.append_array(BASS_RIFF + BASS_RIFF + BASS_RIFF + BASS_TURN)
 	for root: String in THEME_ROOTS:

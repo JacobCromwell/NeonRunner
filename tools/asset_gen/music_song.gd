@@ -37,6 +37,8 @@ var sections: Array = []
 var cache: Dictionary = {}
 ## The finished loop, set by mixdown().
 var master := PackedFloat32Array()
+## The gain mixdown() gave each stem, for the review.
+var stem_gains: Dictionary = {}
 
 
 func _init(p_bpm: float, p_bars: int, seed_value: int) -> void:
@@ -249,6 +251,7 @@ func mixdown(levels: Dictionary, target_rms_db: float) -> PackedFloat32Array:
 		if level <= 0.0:
 			continue
 		var gain: float = db_to_linear(float(levels[stem_name])) / level
+		stem_gains[stem_name] = gain
 		for i: int in length:
 			out[i] += b[i] * gain
 	for stem_name: String in stems:

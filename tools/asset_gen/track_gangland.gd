@@ -135,7 +135,7 @@ static func _bass(song: Song) -> void:
 	var bars: Array = []
 	bars.append_array(GROOVE + GROOVE_TURN)
 	for root: String in CHORUS_ROOTS:
-		bars.append("R . R . R . R . R . R . R . R .".replace("R", root))
+		bars.append("R - R - R - R - R - R - R - R -".replace("R", root))
 	bars.append_array(BREAKDOWN)
 	song.play("bass", Song.parse(0, bars), note)
 

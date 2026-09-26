@@ -11,6 +11,7 @@ extends SceneTree
 ## exported builds. Any track can be replaced by another file: see scripts/audio/music_library.gd.
 
 const Review = preload("res://tools/asset_gen/audio_review.gd")
+const DSP = preload("res://tools/asset_gen/sfx_dsp.gd")
 const OUT_DIR: String = "res://assets/music"
 const REVIEW_DIR: String = "res://build/music_review"
 const TRACKS: Dictionary = {
@@ -57,6 +58,7 @@ func _initialize() -> void:
 			print("          " + Review.band_balance(b))
 			for stem_name: String in song.stems:
 				print("          stem %-6s %s" % [stem_name, Review.band_balance(song.stems[stem_name])])
+			_print_stem_shares(song)
 			var png_err: Error = Review.music_sheet(b, song.step, song.sections).save_png(REVIEW_DIR.path_join(track + ".png"))
 			if png_err != OK:
 				push_error("Could not write the review image for %s: %s" % [track, error_string(png_err)])
@@ -105,6 +107,55 @@ static func write_loop_wav(path: String, b: PackedFloat32Array) -> Error:
 		f.store_32((chunk[1] as PackedByteArray).size())
 		f.store_buffer(chunk[1])
 	return OK
+
+
+## How loud each part is in the mix, per section, in dB against the whole mix: over the full band, and
+## in the 1–4 kHz presence band where a melody has to cut through (and where the sound effects' cues
+## sit). "  -" means the part is silent there.
+static func _print_stem_shares(song: RefCounted) -> void:
+	var mix := PackedFloat32Array()
+	mix.resize(song.length)
+	var scaled: Dictionary = {}
+	for stem_name: String in song.stem_gains:
+		var s: PackedFloat32Array = (song.stems[stem_name] as PackedFloat32Array).duplicate()
+		var gain: float = song.stem_gains[stem_name]
+		for i: int in s.size():
+			s[i] *= gain
+			mix[i] += s[i]
+		scaled[stem_name] = s
+	var presence: Dictionary = {}
+	for stem_name: String in scaled:
+		presence[stem_name] = _band(scaled[stem_name])
+	var mix_presence := _band(mix)
+	var header: String = "          %-16s" % "share (dB)"
+	for stem_name: String in scaled:
+		header += " %9s" % stem_name
+	print(header + "   (full band / 1-4 kHz)")
+	for k: int in song.sections.size():
+		var first: int = song.at(int(song.sections[k][0]))
+		var last: int = song.at(int(song.sections[k + 1][0])) if k + 1 < song.sections.size() else song.length
+		var line: String = "          %-16s" % song.sections[k][1]
+		var mix_rms: float = _rms(mix, first, last)
+		var mix_presence_rms: float = _rms(mix_presence, first, last)
+		for stem_name: String in scaled:
+			var full: float = _rms(scaled[stem_name], first, last) / mix_rms
+			var band: float = _rms(presence[stem_name], first, last) / mix_presence_rms
+			line += " %9s" % ("  -" if full < 0.003 else "%3.0f/%3.0f" % [linear_to_db(full), linear_to_db(band)])
+		print(line)
+
+
+static func _band(b: PackedFloat32Array) -> PackedFloat32Array:
+	var out := b.duplicate()
+	DSP.filter(out, &"highpass", 1000.0, 0.7)
+	DSP.filter(out, &"lowpass", 4000.0, 0.7)
+	return out
+
+
+static func _rms(b: PackedFloat32Array, first: int, last: int) -> float:
+	var sum: float = 0.0
+	for i: int in range(first, last):
+		sum += b[i] * b[i]
+	return sqrt(sum / maxi(last - first, 1))
 
 
 static func _to_s16(v: float) -> int:
