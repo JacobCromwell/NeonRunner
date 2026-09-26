@@ -101,8 +101,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 
 ## Tuning while you play (F6)
 
-F6 pauses the game and opens a panel with sections for movement, game rules, power-ups, the runner's animation
-and level pacing. Changes apply immediately; pacing, speed, jump and size changes also reshape the level, so press
+F6 pauses the game and opens a panel with sections for movement, game rules, power-ups, the runner's animation,
+level pacing and each enemy type in the level. Changes apply immediately; pacing, speed, jump and size changes also reshape the level, so press
 **Restart level** to rebuild it. **Save** writes the values back to their files in `data/`; **Reload files** undoes
 unsaved changes. Every other number is in `data/` too: enemy tunings in `data/enemies/`, prices in
 `data/shop/catalog.json`, patterns in `data/patterns/` (format: `data/patterns/README.md`), sound volumes in

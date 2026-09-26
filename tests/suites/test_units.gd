@@ -94,12 +94,14 @@ func _test_tuning_panel() -> void:
 	var t: MovementTuning = tuning.duplicate() as MovementTuning
 	var config: LevelConfig = (load(LEVEL_PATH) as LevelConfig).duplicate() as LevelConfig
 	var rules: GameRules = (load("res://data/tuning/game_rules.tres") as GameRules).duplicate() as GameRules
+	var octodog: Resource = load("res://data/enemies/octodog.tres").duplicate()
 	var panel := TuningPanel.new()
 	tree.root.add_child(panel)
 	var sections: Array[Dictionary] = [
 		{"title": "Movement", "resource": t, "path": TUNING_PATH},
 		{"title": "Game rules", "resource": rules, "path": "res://data/tuning/game_rules.tres"},
 		{"title": "Level pacing", "resource": config, "path": LEVEL_PATH},
+		{"title": "Enemy: Octodog", "resource": octodog, "path": "res://data/enemies/octodog.tres"},
 	]
 	panel.setup(sections)
 	check(panel.control_count() >= 55, "tuning panel has a control per tunable (%d)" % panel.control_count())
@@ -117,5 +119,12 @@ func _test_tuning_panel() -> void:
 	if lanes != null:
 		lanes.value = 6.0
 	check(lanes != null and rules.lanes_pc == 6 and typeof(rules.lanes_pc) == TYPE_INT, "integer tunables stay integers")
+	# Enemy tunings (the level's enemy types) are tunable too: base and per-type numbers.
+	var reach: HSlider = panel.find_slider("floor_reach_before")
+	var lead: HSlider = panel.find_slider("spawn_lead")
+	check(reach != null and lead != null, "enemy tunings show in the panel")
+	if lead != null:
+		lead.value = 150.0
+		check(is_equal_approx(float(octodog.get("spawn_lead")), 150.0), "enemy tunings are tunable live")
 	panel.queue_free()
 	await tree.process_frame
