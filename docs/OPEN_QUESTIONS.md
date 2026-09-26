@@ -396,6 +396,58 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
    Working the chosen mark into every zone skin (hidden in logos and ads, open in the Golden Zone) follows in
    the skin tasks. Keep it off tiny sizes where its three-fold silhouette could read like the radiation trefoil.
 
+**Campaign restructure** (from B1: six zones, 15 levels)
+2. **Where each new thing appears within its level** (GDD §5, §6; the schedule only says City 1's cyborgs come
+   "late in the level"). Placeholder (`feature_starts` in `data/levels/*.tres`): City 1's cyborgs at 60% of the
+   level; every other introduction at 10%, and a level bringing two or three things staggers them: City 3
+   pulsing fences 10%, window cyborgs 35%, hover truck 60%; Gangland 1 screeches 10%, ramps 40%; Gangland 2
+   Octodogs 10%, speed pads 45%; Gangland 3 generators 10%, drones 40%; Marketplace 2 wall fences 10%, vent
+   screeches 40%; Corporate 1 Buzz Overdrive 10%, partial wall fences 50%. The first pattern after a start
+   uses the feature, so it appears right after its hint. Is staggering right, and are these the places?
+3. **Sewer screeches outside street zones** (GDD §5, §9.5; manholes need a street). Placeholder: the
+   Marketplace, Corporate and Golden zones get wall-vent screeches only, from Marketplace 2's shopfront vents
+   on; the Dead Zone's rubble street gets manholes and vents. So Marketplace 1 has no screeches (the one level
+   where an earlier enemy doesn't appear). Marketplace 2 picks vent screeches 2.5× as often as the City's rare
+   rate; Corporate and Golden keep the rare rate. Is that the intent?
+4. **The Buzz Overdrive's "only two zones"** (GDD §9.9). Placeholder: Corporate and the Dead Zone; not the
+   Golden Zone.
+5. **Partial wall fences "from the Corporate zone"** (GDD §9.1). Placeholder: from Corporate 1, at 50% of the
+   level, after the Buzz Overdrive's introduction. Feature names: `wall_fences`, `wall_fences_partial`.
+6. **Corporate 2's heavier military presence** (GDD §5, proposed). Placeholder: drones, hover trucks and Buzz
+   Overdrives are picked 1.5× as often (`feature_weights` in `data/levels/corporate_2.tres`); their rules
+   still cap how many fit. Should it also (or instead) be the Corporate skin's military ships and props?
+7. **Dead Zone 2, "a quiet, eerie remix"** (GDD §5). Placeholder: Dead Zone 1's features, a little harder,
+   nothing new. What makes it a remix in play: fewer enemies, more hosts, something else?
+8. **The difficulty curve over 15 levels** (GDD §6; supersedes "From the full build" item 4). Placeholder
+   (`data/campaign/campaign.tres`): 0.1 → 0.9, linear, plus each level's bias: City 1 −0.05, Golden 2 +0.05
+   (the peak, GDD §5 proposed), Golden 3 −0.05 (below the peak, above Golden 1). Within a level difficulty
+   still rises by 0.25, so Golden levels reach 1.0 partway through.
+9. **Level lengths** (GDD §4, §5's "about 35 minutes" flawless). Placeholder: City 110/120/130 s, Gangland
+   135/140/145, Marketplace 140/145, Corporate 145/150, Dead Zone 145/150, Golden 145/150/150: 2,100 s, 35
+   minutes. The first six levels got 10–15 s longer, since a 140 s average needs it under the 150 s cap.
+10. **Level names** (GDD §5 names only the Golden Palace). Placeholders: Awning Alley, Shopfront Sparks, Maglev
+    Line, Checkpoint Plaza, Ashfall, The Hush, Gilded Canals, Sentinel Row; the City and Gangland keep theirs.
+11. **Slots for the new zones** (GDD §6, §10). Every new zone has intro and outro cinematic slots; only the City
+    has a boss intro. Should the final villain get one? The Golden Zone's outro is the ending. Open boss slots
+    are named "Marketplace boss", "Corporate boss", "Dead Zone boss" and "The final villain" (with the halfway
+    checkpoint and second stage in its notes).
+12. **Expected loadout per zone** (GDD §8). Still empty in every zone, and nothing reads it yet.
+13. **Earlier features in later levels** (GDD §5: "anything introduced earlier keeps appearing later"). As
+    levels list more features, each gets fewer pattern picks, and some enemies' rules drop what doesn't fit,
+    so on the shipped seeds some levels went without one (no Octodog in Gangland 3 at 3 or 6 lanes, nor in the
+    Dead Zone or Golden Zone at 5 lanes; no host in Dead Zone 2 at 5 or 6 lanes, nor in Golden 1; no vent
+    screech in Corporate 1). The GDD rule is decided, so the build is adding a guarantee that every level
+    places each of its features at least once (follow-up task after B1). Still open: how often each earlier
+    feature should appear beyond that.
+14. **Two new placeholder patterns** (`data/patterns/prototype_patterns.json`): a pulsing fence in one lane
+    (difficulty 0–0.6), since the other pulsing patterns start at 0.4, which City 3 barely reaches; and a speed
+    pad in one lane with four credits after it (no pattern placed speed pads before, so Gangland 2's never
+    appeared).
+15. **Music for the new zones until their tracks exist.** Zones name their track after their id; until the
+    music task adds them the game skips them quietly and the menu music keeps playing. Fine as a stopgap?
+16. **The economy over 15 levels** ("From the full build" items 10–11). Completion pays 100 + 25 per campaign
+    level, so Golden 3 pays 450; prices were set for a two-zone campaign. Needs a balancing pass.
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
