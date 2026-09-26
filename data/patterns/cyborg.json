@@ -1,0 +1,39 @@
+{
+	"version": 1,
+	"patterns": [
+		{
+			"id": "cyborg_single",
+			"min_difficulty": 0.0, "weight": 1.6, "requires": ["cyborg"],
+			"length": 34,
+			"elements": [
+				{ "kind": "enemy", "type": "cyborg", "at": 30, "lanes": { "mode": "random", "count": 1 } }
+			]
+		},
+		{
+			"id": "cyborg_pair",
+			"min_difficulty": 0.45, "weight": 0.7, "requires": ["cyborg"],
+			"length": 34,
+			"elements": [
+				{ "kind": "enemy", "type": "cyborg", "at": 30, "lanes": { "mode": "random", "count": 2 } }
+			]
+		},
+		{
+			"id": "cyborg_stagger",
+			"min_difficulty": 0.55, "weight": 0.6, "requires": ["cyborg"],
+			"length": 48,
+			"elements": [
+				{ "kind": "enemy", "type": "cyborg", "at": 30, "lanes": { "mode": "edge" } },
+				{ "kind": "enemy", "type": "cyborg", "at": 44, "lanes": { "mode": "center" } }
+			]
+		},
+		{
+			"id": "host_single",
+			"min_difficulty": 0.0, "weight": 0.8, "requires": ["host"],
+			"length": 34,
+			"elements": [
+				{ "kind": "enemy", "type": "cyborg", "at": 30, "lanes": { "mode": "random", "count": 1 },
+				  "params": { "host": true, "panic": false } }
+			]
+		}
+	]
+}
