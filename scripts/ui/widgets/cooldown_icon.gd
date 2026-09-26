@@ -82,14 +82,10 @@ func _on_ready() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_ENTER_TREE:
-		_ensure_theme.call_deferred()
+		UiTheme.ensure_later(self)
 	elif what == NOTIFICATION_THEME_CHANGED:
 		update_minimum_size()
 		queue_redraw()
-
-
-func _ensure_theme() -> void:
-	UiTheme.ensure(self)
 
 
 func _process(delta: float) -> void:
@@ -129,13 +125,18 @@ func _draw() -> void:
 	if cooling:
 		# The part still recharging is shaded; it clears clockwise.
 		var done: float = charge()
-		var pie := PackedVector2Array([center])
-		pie.append_array(IconFactory.arc_points(center, r, start + TAU * done, start + TAU, 48))
-		if pie.size() >= 3:
-			draw_colored_polygon(pie, get_theme_color(&"sweep", t))
+		var sweep: Color = get_theme_color(&"sweep", t)
+		if done < 0.001:
+			# A full pie would start and end on the same point, which the triangulator rejects.
+			draw_circle(center, r, sweep, true, -1.0, true)
+		elif done < 0.999:
+			var pie := PackedVector2Array([center])
+			pie.append_array(IconFactory.arc_points(center, r, start + TAU * done, start + TAU, maxi(2, ceili(48.0 * (1.0 - done)))))
+			draw_colored_polygon(pie, sweep)
 		draw_arc(center, r + ring_w * 0.5, 0.0, TAU, 64, get_theme_color(&"ring", t), ring_w, true)
-		if done > 0.0:
-			draw_arc(center, r + ring_w * 0.5, start, start + TAU * done, 64, get_theme_color(&"progress", t), ring_w, true)
+		if done > 0.001:
+			draw_arc(center, r + ring_w * 0.5, start, start + TAU * done, maxi(2, ceili(64.0 * done)),
+				get_theme_color(&"progress", t), ring_w, true)
 	else:
 		var ring_color: Color = get_theme_color(&"ring", t) if empty else get_theme_color(&"ready", t)
 		if not empty:

@@ -60,16 +60,22 @@ static func quiet(seconds: float = 0.15) -> void:
 	_quiet_until_ms = Time.get_ticks_msec() + int(seconds * 1000.0)
 
 
-## Wires a plain button: `move` on hover and keyboard focus, `select` on press. Kit widgets do
-## this themselves.
-static func bind(button: BaseButton, move: StringName = MOVE, select: StringName = SELECT) -> void:
+## Wires a button: ui_move on hover and on keyboard/controller focus (not on the focus a click
+## gives, which plays ui_select), ui_select on press. A button with `sound_move`/`sound_select`
+## properties (the kit's) uses those, read at play time; an empty name is silent.
+static func bind(button: BaseButton) -> void:
 	button.mouse_entered.connect(func() -> void:
 		if not button.disabled:
-			play(move))
+			play(_sound_of(button, &"sound_move", MOVE)))
 	button.focus_entered.connect(func() -> void:
 		if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-			play(move))
-	button.pressed.connect(func() -> void: play(select))
+			play(_sound_of(button, &"sound_move", MOVE)))
+	button.pressed.connect(func() -> void: play(_sound_of(button, &"sound_select", SELECT)))
+
+
+static func _sound_of(button: Object, property: StringName, fallback: StringName) -> StringName:
+	var value: Variant = button.get(property)
+	return value if value is StringName else fallback
 
 
 static func _player(sound: StringName) -> AudioStreamPlayer:

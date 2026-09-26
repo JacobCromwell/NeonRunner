@@ -81,6 +81,7 @@ var buy_button: NeonButton
 var _bottom: HBoxContainer
 var _heading: VBoxContainer
 var _refresh_queued: bool = false
+var _metrics_queued: bool = false
 
 
 func _init() -> void:
@@ -208,27 +209,31 @@ func _refresh_later() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_ENTER_TREE:
-		_ensure_theme.call_deferred()
-	elif what == NOTIFICATION_THEME_CHANGED:
-		custom_minimum_size.x = get_theme_constant(&"width", &"ItemCard")
-		# Same height in every state, even when the bottom row is empty (locked, maxed).
-		_bottom.custom_minimum_size.y = get_theme_constant(&"control_height", UiTheme.NEON)
-		var icon_px: float = get_theme_constant(&"icon_size", &"ItemCard")
-		icon.icon_size = icon_px
-		lock_icon.icon_size = roundf(icon_px * 0.45)
-		icon_frame.add_theme_stylebox_override(&"panel", get_theme_stylebox(&"icon_frame", &"ItemCard"))
-		# The heading keeps room for the pips and the status, so every card is the same height.
-		var title_h: float = title_label.get_theme_font(&"font").get_height(title_label.get_theme_font_size(&"font_size"))
-		var status_h: float = status_label.get_theme_font(&"font").get_height(status_label.get_theme_font_size(&"font_size"))
-		_heading.custom_minimum_size.y = ceilf(title_h + status_h + pips.get_combined_minimum_size().y + 8.0)
-		var font: Font = description_label.get_theme_font(&"font")
-		var font_size: int = description_label.get_theme_font_size(&"font_size")
-		var line: float = font.get_height(font_size) + description_label.get_theme_constant(&"line_spacing")
-		description_label.custom_minimum_size.y = ceilf(line * 3.0)
+		UiTheme.ensure_later(self)
+	elif what == NOTIFICATION_THEME_CHANGED and not _metrics_queued:
+		# Deferred: a parent hears about a theme change before its children get the new theme,
+		# and the sizes below come from the children's fonts.
+		_metrics_queued = true
+		_update_metrics.call_deferred()
 
 
-func _ensure_theme() -> void:
-	UiTheme.ensure(self)
+func _update_metrics() -> void:
+	_metrics_queued = false
+	custom_minimum_size.x = get_theme_constant(&"width", &"ItemCard")
+	# Same height in every state, even when the bottom row is empty (locked, maxed).
+	_bottom.custom_minimum_size.y = get_theme_constant(&"control_height", UiTheme.NEON)
+	var icon_px: float = get_theme_constant(&"icon_size", &"ItemCard")
+	icon.icon_size = icon_px
+	lock_icon.icon_size = roundf(icon_px * 0.45)
+	icon_frame.add_theme_stylebox_override(&"panel", get_theme_stylebox(&"icon_frame", &"ItemCard"))
+	# The heading keeps room for the pips and the status, so every card is the same height.
+	var title_h: float = title_label.get_theme_font(&"font").get_height(title_label.get_theme_font_size(&"font_size"))
+	var status_h: float = status_label.get_theme_font(&"font").get_height(status_label.get_theme_font_size(&"font_size"))
+	_heading.custom_minimum_size.y = ceilf(title_h + status_h + pips.get_combined_minimum_size().y + 8.0)
+	var font: Font = description_label.get_theme_font(&"font")
+	var font_size: int = description_label.get_theme_font_size(&"font_size")
+	var line: float = font.get_height(font_size) + description_label.get_theme_constant(&"line_spacing")
+	description_label.custom_minimum_size.y = ceilf(line * 3.0)
 
 
 func _on_equip_toggled(on: bool) -> void:

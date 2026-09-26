@@ -107,6 +107,14 @@ static func ensure(control: Control) -> void:
 		control.theme = get_theme()
 
 
+## ensure() at the end of the frame, when every parent has had its _ready (and set its theme).
+## Kit widgets call this when they enter the tree. Safe if the control is freed before then.
+static func ensure_later(control: Control) -> void:
+	(func() -> void:
+		if is_instance_valid(control):
+			ensure(control)).call_deferred()
+
+
 static func build(s: UiStyle, touch: bool = false, hud: bool = false) -> Theme:
 	var b := _Builder.new(s, touch)
 	b.build_all()
@@ -115,16 +123,12 @@ static func build(s: UiStyle, touch: bool = false, hud: bool = false) -> Theme:
 	return b.theme
 
 
-## The colour of a credit denomination (1, 5, 25, 100).
+## The colour of a credit denomination (1, 5, 25, 100; other values use the nearest lower one).
+## Same rule as the theme's Neon/credit_N colours, which widgets read.
 static func credit_color(denomination: int) -> Color:
+	var index: int = IconFactory.DENOMINATIONS.find(IconFactory.denomination_for(denomination))
 	var colors: PackedColorArray = style().credit_colors
-	if colors.is_empty():
-		return style().text
-	var index: int = 0
-	for i: int in IconFactory.DENOMINATIONS.size():
-		if denomination >= IconFactory.DENOMINATIONS[i]:
-			index = i
-	return colors[mini(index, colors.size() - 1)]
+	return colors[index] if index < colors.size() else style().text
 
 
 ## 12450 → "12,450".

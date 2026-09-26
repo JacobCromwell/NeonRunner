@@ -46,20 +46,14 @@ static func make(label: String, button_kind: Kind = Kind.NORMAL, icon_id: String
 
 func _init() -> void:
 	focus_mode = Control.FOCUS_ALL
-	mouse_entered.connect(_on_mouse_entered)
-	focus_entered.connect(_on_focus_entered)
-	pressed.connect(_on_pressed)
+	UiSounds.bind(self)
 
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_ENTER_TREE:
-		_ensure_theme.call_deferred()
+		UiTheme.ensure_later(self)
 	elif what == NOTIFICATION_THEME_CHANGED:
 		_update_icon()
-
-
-func _ensure_theme() -> void:
-	UiTheme.ensure(self)
 
 
 func _update_icon() -> void:
@@ -72,18 +66,3 @@ func _update_icon() -> void:
 		# Not under a UiTheme theme yet; the theme change on entering one updates it.
 		size_px = UiTheme.style().icon_size
 	icon = IconFactory.texture(icon_name, size_px, tint)
-
-
-func _on_mouse_entered() -> void:
-	if not disabled:
-		UiSounds.play(sound_move)
-
-
-func _on_focus_entered() -> void:
-	# A click also focuses the button; that press plays ui_select instead.
-	if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		UiSounds.play(sound_move)
-
-
-func _on_pressed() -> void:
-	UiSounds.play(sound_select)

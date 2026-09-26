@@ -215,7 +215,12 @@ func _hud_row(parent: Control) -> void:
 	shield.icon_name = &"shield"
 	shield.count = 0
 	hud.add_child(shield)
-	for c: CooldownIcon in [dash, slow, armor, shield]:
+	# Just used: a full cooldown ahead (the sweep covers the whole icon).
+	var magnet := CooldownIcon.new()
+	magnet.icon_name = &"magnet"
+	magnet.set_cooldown(6.0, 6.0)
+	hud.add_child(magnet)
+	for c: CooldownIcon in [dash, slow, armor, shield, magnet]:
 		c.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var pause := NeonButton.make("", NeonButton.Kind.HUD, &"pause")
 	pause.size_flags_vertical = Control.SIZE_SHRINK_CENTER

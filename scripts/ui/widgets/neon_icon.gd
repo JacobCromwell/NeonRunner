@@ -39,14 +39,10 @@ func _init() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_ENTER_TREE:
-		_ensure_theme.call_deferred()
+		UiTheme.ensure_later(self)
 	elif what == NOTIFICATION_THEME_CHANGED:
 		update_minimum_size()
 		queue_redraw()
-
-
-func _ensure_theme() -> void:
-	UiTheme.ensure(self)
 
 
 func _get_minimum_size() -> Vector2:

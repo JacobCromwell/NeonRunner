@@ -137,9 +137,11 @@ func _test_hud_theme() -> void:
 	check(hud.get_stylebox(&"normal", &"Button") == hud.get_stylebox(&"normal", UiTheme.HUD_BUTTON), "HUD buttons are the HUD kind")
 
 
-## UI accents must not look like hazards (GDD §5): compare hues with the game's own hazard colours.
+## UI accents must not look like hazards (GDD §5): compare the shipped style's hues
+## (data/ui/ui_style.tres, what UiTheme uses) with the game's own hazard colours.
 func _test_palette() -> void:
-	var s: UiStyle = UiStyle.new()
+	var s: UiStyle = UiTheme.style()
+	check(s.resource_path == UiTheme.STYLE_PATH, "the palette test checks the shipped style (%s)" % s.resource_path)
 	var skin := GreyboxSkin.new()
 	var reserved: Dictionary = {"fence pink": skin.fence_color, "gap orange": skin.gap_edge_color, "sign yellow": skin.sign_color}
 	var gameplay: Dictionary = {"pad cyan": skin.pad_color, "ramp green": skin.ramp_color}
@@ -211,6 +213,10 @@ func _test_text_helpers() -> void:
 	check(is_equal_approx(UiTheme.tabular_width(font, "1111", 20), UiTheme.tabular_width(font, "8888", 20)),
 		"tabular digits all take the same width")
 	check(UiTheme.credit_color(100) == UiTheme.style().credit_colors[3], "credit colours by denomination")
+	var theme: Theme = UiTheme.get_theme()
+	for amount: int in [1, 3, 5, 24, 25, 99, 100, 5000]:
+		check(UiTheme.credit_color(amount) == theme.get_color(IconFactory.credit_icon(amount), UiTheme.NEON),
+			"credit colour for %d matches the theme's" % amount)
 
 
 # --- Widgets ---------------------------------------------------------------------
@@ -281,6 +287,18 @@ func _test_widgets_lifecycle() -> void:
 	layer.add_child(lone)
 	await _frames(2)
 	check(lone.theme != null and lone.has_theme_constant(&"control_height", UiTheme.NEON), "a widget with no themed parent themes itself")
+	var lone_card := ItemCard.new()
+	lone_card.configure({"title": "Shield", "price": 400})
+	layer.add_child(lone_card)
+	var themed_card := ItemCard.new()
+	themed_card.configure({"title": "Shield", "price": 400})
+	_root.add_child(themed_card)
+	await _frames(3)
+	check(absf(lone_card.get_combined_minimum_size().y - themed_card.get_combined_minimum_size().y) < 1.0
+		and absf(lone_card.description_label.custom_minimum_size.y - themed_card.description_label.custom_minimum_size.y) < 0.5,
+		"a card that themes itself measures its text like a themed one (%s vs %s)"
+		% [lone_card.get_combined_minimum_size(), themed_card.get_combined_minimum_size()])
+	themed_card.queue_free()
 	# One under a HUD root keeps the HUD theme.
 	var hud := Control.new()
 	UiTheme.apply(hud, true)
@@ -323,6 +341,11 @@ func _test_focus_navigation() -> void:
 	await _frames(1)
 	check(presses[0] == 1, "ui_accept presses the focused button")
 	check(heard.has(UiSounds.MOVE) and heard.has(UiSounds.SELECT), "focus plays ui_move and pressing plays ui_select (%s)" % [heard])
+	heard.clear()
+	UiSounds._last_played.clear()
+	buttons[2].sound_select = &"ui_custom"
+	buttons[2].pressed.emit()
+	check(heard == [&"ui_custom"], "a button's own sound names are used (%s)" % [heard])
 	UiSounds.hook = Callable()
 	# A disabled button is skipped by ScreenBase's first-focus search.
 	buttons[0].disabled = true
@@ -396,6 +419,10 @@ func _test_credit_counter() -> void:
 	counter.set_value(40)
 	await _frames(70)
 	check(counter.displayed_value() == 40, "it counts down too")
+	counter.set_value(500, false)
+	var positive_w: float = counter.get_combined_minimum_size().x
+	counter.set_value(-500, false)
+	check(counter.get_combined_minimum_size().x > positive_w, "a negative count has room for its minus sign")
 	counter.set_value(99999)
 	counter.finish()
 	check(counter.displayed_value() == 99999 and not counter.is_counting(), "finish() jumps to the target")
@@ -493,6 +520,19 @@ func _test_confirm_dialog() -> void:
 	await _frames(20)
 	check(not is_instance_valid(d), "the dialog frees itself after closing")
 
+	var opener := NeonButton.make("OPENER")
+	_root.add_child(opener)
+	await _frames(1)
+	opener.grab_focus()
+	var again := ConfirmDialog.ask(_root, "SURE?", "", "YES", "NO")
+	await _frames(1)
+	check(again.is_ancestor_of(_focus_owner()), "the dialog takes the focus")
+	_action(&"ui_cancel")
+	await _frames(1)
+	check(_focus_owner() == opener, "closing gives the focus back to the control that had it")
+	opener.queue_free()
+	await _frames(20)
+
 	var yes := ConfirmDialog.ask(_root, "BUY?", "", "BUY", "CANCEL")
 	await _frames(2)
 	check(_focus_owner() == yes.confirm_button, "a normal question focuses confirm first")
@@ -540,6 +580,11 @@ func _test_key_bind_button() -> void:
 	tree.root.push_input(_key(KEY_ESCAPE))
 	await _frames(1)
 	check(not button.listening and requests.size() == 1, "Esc cancels")
+	button.start_listening()
+	tree.root.push_input(_key(KEY_SHIFT))
+	await _frames(1)
+	check(requests.size() == 2 and (requests[1][1] as InputEventKey).physical_keycode == KEY_SHIFT,
+		"a modifier alone is a binding (dash defaults to Shift)")
 	button.queue_free()
 	await _frames(1)
 

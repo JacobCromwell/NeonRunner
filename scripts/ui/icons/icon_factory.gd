@@ -32,13 +32,18 @@ static func has_icon(icon: StringName) -> bool:
 	return NAMES.has(icon)
 
 
-## The icon for a credit denomination (1, 5, 25 or 100; other values use the nearest lower one).
-static func credit_icon(denomination: int) -> StringName:
+## The denomination (1, 5, 25 or 100) for an amount: the nearest lower one.
+static func denomination_for(amount: int) -> int:
 	var best: int = DENOMINATIONS[0]
 	for d: int in DENOMINATIONS:
-		if denomination >= d:
+		if amount >= d:
 			best = d
-	return StringName("credit_%d" % best)
+	return best
+
+
+## The icon for a credit denomination (1, 5, 25 or 100; other values use the nearest lower one).
+static func credit_icon(denomination: int) -> StringName:
+	return StringName("credit_%d" % denomination_for(denomination))
 
 
 ## The weapon icon for a tier (1–4, GDD §8: laser, enhanced laser, missile, heavy missile).
@@ -49,6 +54,9 @@ static func weapon_icon(tier: int) -> StringName:
 ## Draws `icon` centred in `rect` (square, fitted to the shorter side). Call from a _draw().
 ## `soft` is the fill colour; transparent means `color` at 28% alpha.
 static func draw(ci: CanvasItem, icon: StringName, rect: Rect2, color: Color, soft: Color = Color(0, 0, 0, 0)) -> void:
+	# Below a pixel every shape collapses to a point, which the triangulator rejects.
+	if minf(rect.size.x, rect.size.y) < 1.0:
+		return
 	_emit(CanvasPen.new(ci, rect, color, _soft_or_default(color, soft)), icon)
 
 

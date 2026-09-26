@@ -63,14 +63,10 @@ func finish() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_ENTER_TREE:
-		_ensure_theme.call_deferred()
+		UiTheme.ensure_later(self)
 	elif what == NOTIFICATION_THEME_CHANGED:
 		update_minimum_size()
 		queue_redraw()
-
-
-func _ensure_theme() -> void:
-	UiTheme.ensure(self)
 
 
 func _process(delta: float) -> void:
@@ -127,6 +123,8 @@ func _draw() -> void:
 				continue
 		var k: float = clampf(age / POP_TIME, 0.0, 1.0)
 		var pop: float = _ease_out_back(k)
+		if pop < 0.02:
+			continue
 		# Halo behind the star.
 		for ring: int in 3:
 			draw_circle(center, s * (0.34 + ring * 0.1) * pop, Color(glow, glow.a * (0.35 - ring * 0.1)), true, -1.0, true)

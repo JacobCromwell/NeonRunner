@@ -24,13 +24,7 @@ func _init() -> void:
 	toggle_mode = true
 	focus_mode = Control.FOCUS_ALL
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	mouse_entered.connect(func() -> void:
-		if not disabled:
-			UiSounds.play(sound_move))
-	focus_entered.connect(func() -> void:
-		if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-			UiSounds.play(sound_move))
-	pressed.connect(func() -> void: UiSounds.play(sound_select))
+	UiSounds.bind(self)
 	button_down.connect(_set_holding.bind(true))
 	button_up.connect(_set_holding.bind(false))
 	set_process(false)
@@ -64,15 +58,11 @@ func _toggled(_on: bool) -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_ENTER_TREE:
-		_ensure_theme.call_deferred()
+		UiTheme.ensure_later(self)
 		_knob = 1.0 if button_pressed else 0.0
 	elif what == NOTIFICATION_THEME_CHANGED:
 		update_minimum_size()
 		queue_redraw()
-
-
-func _ensure_theme() -> void:
-	UiTheme.ensure(self)
 
 
 func _process(delta: float) -> void:

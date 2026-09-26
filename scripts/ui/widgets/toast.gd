@@ -86,17 +86,13 @@ func dismiss() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_ENTER_TREE:
-		_ensure_theme.call_deferred()
+		# Theme the stack too, so toasts under an unthemed CanvasLayer still look right.
+		var stack := get_parent() as Control
+		if stack != null:
+			UiTheme.ensure_later(stack)
+		UiTheme.ensure_later(self)
 	elif what == NOTIFICATION_THEME_CHANGED:
 		_tint_icon()
-
-
-func _ensure_theme() -> void:
-	# Theme the stack too, so a toast under an unthemed CanvasLayer still looks right.
-	var stack := get_parent() as Control
-	if stack != null:
-		UiTheme.ensure(stack)
-	UiTheme.ensure(self)
 
 
 func _tint_icon() -> void:

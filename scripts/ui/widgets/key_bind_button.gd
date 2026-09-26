@@ -1,8 +1,9 @@
 class_name KeyBindButton
 extends NeonButton
 ## Shows the key bound to an input action. Pressing it starts listening: the next key pressed is
-## emitted as rebind_requested(action, event), and Esc (or a click elsewhere) cancels. It doesn't
-## change the InputMap itself: the settings screen applies, checks for clashes and saves bindings.
+## emitted as rebind_requested(action, event), and Esc (or a click elsewhere) cancels. One key per
+## binding, like the defaults in project.godot: Shift, Ctrl and Alt count as keys (dash is Shift).
+## It doesn't change the InputMap itself: the settings screen applies, checks for clashes and saves.
 ##   var jump_key := KeyBindButton.for_action(&"jump")
 ##   jump_key.rebind_requested.connect(_on_rebind)
 
@@ -102,14 +103,8 @@ func _input(event: InputEvent) -> void:
 		if code == KEY_ESCAPE:
 			stop_listening()
 			return
-		# Bare modifier presses wait for the real key.
-		if code in [KEY_SHIFT, KEY_CTRL, KEY_ALT, KEY_META]:
-			return
 		var binding := InputEventKey.new()
 		binding.physical_keycode = code
-		binding.shift_pressed = key.shift_pressed
-		binding.ctrl_pressed = key.ctrl_pressed
-		binding.alt_pressed = key.alt_pressed
 		stop_listening()
 		rebind_requested.emit(action, binding)
 	elif event is InputEventMouseButton and (event as InputEventMouseButton).pressed:

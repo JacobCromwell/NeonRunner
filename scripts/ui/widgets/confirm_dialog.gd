@@ -47,6 +47,9 @@ var cancel_button: NeonButton
 var _fade: float = 0.0
 var _closing: bool = false
 var _accepted: bool = false
+## Had the focus before the dialog opened; gets it back on close.
+var _return_focus: Control
+var _return_focus_hidden: bool = false
 
 
 ## Adds a dialog to `host` and opens it.
@@ -122,6 +125,10 @@ func open() -> void:
 	confirm_button.focus_neighbor_left = confirm_button.get_path_to(cancel_button)
 	confirm_button.focus_neighbor_right = confirm_button.get_path_to(confirm_button)
 	if is_inside_tree():
+		var previous: Control = get_viewport().gui_get_focus_owner()
+		if previous != null and not is_ancestor_of(previous):
+			_return_focus = previous
+			_return_focus_hidden = not previous.has_focus(true)
 		UiSounds.quiet()
 		(cancel_button if dangerous else confirm_button).grab_focus(UiTheme.is_touch())
 		if not get_viewport().gui_focus_changed.is_connected(_on_focus_changed):
@@ -135,6 +142,7 @@ func close(accepted: bool) -> void:
 	_closing = true
 	_accepted = accepted
 	_release_focus_watch()
+	_restore_focus()
 	if accepted:
 		confirmed.emit()
 	else:
@@ -156,6 +164,22 @@ func _on_focus_changed(control: Control) -> void:
 		answer.grab_focus.call_deferred(UiTheme.is_touch())
 
 
+## Focus goes back where it was, or to the screen's first control, so keyboard and controller
+## navigation carry on after the dialog.
+func _restore_focus() -> void:
+	if not is_inside_tree():
+		return
+	get_viewport().gui_release_focus()
+	if is_instance_valid(_return_focus) and _return_focus.is_visible_in_tree() and _return_focus.focus_mode != Control.FOCUS_NONE:
+		_return_focus.grab_focus(_return_focus_hidden or UiTheme.is_touch())
+		return
+	var node: Node = get_parent()
+	while node != null and not node is ScreenBase:
+		node = node.get_parent()
+	if node != null:
+		(node as ScreenBase).focus_initial()
+
+
 func _release_focus_watch() -> void:
 	var viewport: Viewport = get_viewport()
 	if viewport != null and viewport.gui_focus_changed.is_connected(_on_focus_changed):
@@ -166,15 +190,11 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_EXIT_TREE:
 		_release_focus_watch()
 	elif what == NOTIFICATION_ENTER_TREE:
-		_ensure_theme.call_deferred()
+		UiTheme.ensure_later(self)
 	elif what == NOTIFICATION_THEME_CHANGED:
 		var w: float = get_theme_constant(&"control_height", UiTheme.NEON) * 9.5
 		panel.custom_minimum_size.x = w
 		message_label.custom_minimum_size.x = w - 80.0
-
-
-func _ensure_theme() -> void:
-	UiTheme.ensure(self)
 
 
 func _unhandled_input(event: InputEvent) -> void:

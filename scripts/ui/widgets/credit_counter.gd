@@ -86,14 +86,10 @@ func displayed_value() -> int:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_ENTER_TREE:
-		_ensure_theme.call_deferred()
+		UiTheme.ensure_later(self)
 	elif what == NOTIFICATION_THEME_CHANGED:
 		update_minimum_size()
 		queue_redraw()
-
-
-func _ensure_theme() -> void:
-	UiTheme.ensure(self)
 
 
 func _process(delta: float) -> void:
@@ -119,9 +115,11 @@ func _get_minimum_size() -> Vector2:
 	var font: Font = get_theme_font(&"font", t)
 	var font_size: int = get_theme_font_size(&"font_size", t)
 	var icon: float = get_theme_constant(&"icon_size", t)
-	# Room for the longer of the shown and target numbers, so the chip doesn't twitch.
-	var longest: String = _text_for(maxf(absf(shown), absf(_target)))
-	var w: float = icon + get_theme_constant(&"separation", t) + UiTheme.tabular_width(font, longest, font_size)
+	# Room for the wider of the shown and target numbers (a count between them is never wider), so
+	# the chip doesn't twitch while counting. Signs included.
+	var text_w: float = maxf(UiTheme.tabular_width(font, _text_for(shown), font_size),
+		UiTheme.tabular_width(font, _text_for(_target), font_size))
+	var w: float = icon + get_theme_constant(&"separation", t) + text_w
 	var h: float = maxf(icon, font.get_height(font_size))
 	var chip: StyleBox = get_theme_stylebox(&"chip", t)
 	if show_chip and chip != null:
