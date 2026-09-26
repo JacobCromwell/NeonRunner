@@ -208,7 +208,7 @@ func _window_scene() -> void:
 func _generator_scene() -> void:
 	_world.director.spawn({"type": "generator", "at": 11.0, "lane": 1, "side": 0, "seed": 1, "params": {}})
 	var dead: Enemy = _world.director.spawn({"type": "generator", "at": 60.0, "lane": 3, "side": 0, "seed": 2, "params": {}})
-	dead.defeat(&"weapon")
+	dead.defeat(&"dash")
 
 
 func _charge_scene() -> void:
