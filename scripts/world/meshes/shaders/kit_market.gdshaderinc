@@ -2,8 +2,10 @@
 // (MeshKit.PAT_CANVAS ...), in their own file so other zones' patterns don't collide with them.
 // Each function takes the fragment's world position `w`, world normal `n`, UV and pattern
 // parameter, and returns the albedo (sRGB, like COLOR). Glowing patterns also return a glow mask.
-// Brand marks are drawn by market_logo() alone, so one change puts the cult emblem into every logo
-// and ad (GDD §5: hidden in plain sight; task D7).
+// Pixel footprints (fwidth) are taken where every pixel of a 2x2 block runs the same code (at the top
+// of a pattern's function, whose pattern is the same over a whole face) and passed down: PAT_STALLS
+// picks each stall's roof per pixel, and a derivative taken inside a branch that differs between
+// neighbouring pixels is undefined (a NaN there becomes a white disc in the glow pass).
 
 // The pale stripes on striped awnings.
 uniform vec3 canvas_stripe : source_color = vec3(0.82, 0.8, 0.74);
@@ -90,13 +92,13 @@ float mk_tent(vec2 q) {
 }
 
 // A stall's frame drawn over its roof (q: 0-1 across the lane, along the stall; len: the stall's
-// length; fd: a pixel's footprint along the track): the pole across its start and the valleys along
-// the lane's edges.
-vec3 mk_frame(vec3 col, vec2 q, float len, float fd) {
+// length; fd: a pixel's footprint along the track, fq across the lane in q.x units): the pole across
+// its start and the valleys along the lane's edges.
+vec3 mk_frame(vec3 col, vec2 q, float len, float fd, float fq) {
 	float d = q.y * len;
 	float pole = 1.0 - smoothstep(0.08 - fd, 0.08 + fd, d);
 	float e = min(q.x, 1.0 - q.x);
-	float fe = max(fwidth(q.x), 1e-4);
+	float fe = max(fq, 1e-4);
 	float valley = 1.0 - smoothstep(0.009 - fe, 0.009 + fe, e);
 	return mix(col, canvas_pole, max(pole, valley));
 }
@@ -112,31 +114,35 @@ vec2 mk_hem(float d, float x, float fw) {
 	return vec2(hem, shadow);
 }
 
-// Canvas (PAT_CANVAS, below) with its stripes (`mode`) and the stall's length (`len`, 0: no hem or
-// frame) given.
-vec3 mk_canvas_at(vec3 base, vec3 w, vec2 uv, float mode, float len) {
+// A pixel's footprint for the roof patterns: fwidth of world x, world z and UV.x, taken by the
+// caller outside any per-pixel branch.
+vec3 mk_footprint(vec3 w, vec2 uv) {
+	return vec3(fwidth(w.x), fwidth(w.z), fwidth(uv.x));
+}
+
+// Canvas (PAT_CANVAS, below) with its stripes (`mode`), the stall's length (`len`, 0: no hem or
+// frame) and the pixel's footprint (`fp`, mk_footprint) given.
+vec3 mk_canvas_at(vec3 base, vec3 w, vec2 uv, float mode, float len, vec3 fp) {
 	vec2 p = w.xz;
-	float fw = max(fwidth(p.x), fwidth(p.y));
-	float fz = max(fwidth(w.z), 1e-4);
+	float fw = max(fp.x, fp.y);
+	float fz = max(fp.y, 1e-4);
 	float detail = 1.0 - smoothstep(0.02, 0.15, fw);
 	vec3 col = base;
 	vec3 stripe = mix(base, canvas_stripe, 0.42);
 	if (mode > 0.5 && mode < 1.5) {
-		float s = uv.x * 6.0;
-		col = mix(col, stripe, filtered_pulse(s, fwidth(s), 0.0, 0.5));
+		col = mix(col, stripe, filtered_pulse(uv.x * 6.0, fp.z * 6.0, 0.0, 0.5));
 	} else if (mode > 1.5) {
-		float s = w.z / 0.6;
-		col = mix(col, stripe, filtered_pulse(s, fwidth(s), 0.0, 0.5));
+		col = mix(col, stripe, filtered_pulse(w.z / 0.6, fp.y / 0.6, 0.0, 0.5));
 	}
 	col *= mk_tent(clamp(uv, 0.0, 1.0));
 	if (len > 0.0) {
 		vec2 hem = mk_hem(uv.y * len, uv.x, fz);
 		col = mix(col, mix(base, canvas_stripe, 0.55) * 0.95, hem.x);
 		col *= 1.0 - 0.22 * hem.y;
-		col = mk_frame(col, clamp(uv, 0.0, 1.0), len, fz);
+		col = mk_frame(col, clamp(uv, 0.0, 1.0), len, fz, fp.z);
 	}
 	// Sewn panels across the canvas, weathering and a faint weave.
-	col *= 1.0 - 0.08 * filtered_pulse(w.z / 1.3, fwidth(w.z) / 1.3, 0.0, 0.03);
+	col *= 1.0 - 0.08 * filtered_pulse(w.z / 1.3, fp.y / 1.3, 0.0, 0.03);
 	col *= 0.93 + 0.12 * value_noise(p * vec2(0.9, 0.35) + base.r * 7.0);
 	col *= 1.0 + 0.05 * detail * (hash12(floor(p * 36.0)) - 0.5);
 	return col;
@@ -147,14 +153,15 @@ vec3 mk_canvas_at(vec3 base, vec3 w, vec2 uv, float mode, float len) {
 // it) + 4 * the stall's length in decimetres (0: no hem). Stripes are soft (half-way to the stripe
 // colour), so an awning never reads as a road marking.
 vec3 mk_canvas(vec3 base, vec3 w, vec2 uv, float param) {
-	return mk_canvas_at(base, w, uv, mod(floor(param + 0.5), 4.0), floor((param + 0.5) / 4.0) * 0.1);
+	return mk_canvas_at(base, w, uv, mod(floor(param + 0.5), 4.0), floor((param + 0.5) / 4.0) * 0.1,
+		mk_footprint(w, uv));
 }
 
-// Tin (PAT_TIN, below) with its ribs (`mode`) and the stall's length (`len`, 0: no ridge cap or
-// frame) given.
-vec3 mk_tin_at(vec3 base, vec3 w, vec2 uv, float mode, float len) {
+// Tin (PAT_TIN, below) with its ribs (`mode`), the stall's length (`len`, 0: no ridge cap or
+// frame) and the pixel's footprint (`fp`, mk_footprint) given.
+vec3 mk_tin_at(vec3 base, vec3 w, vec2 uv, float mode, float len, vec3 fp) {
 	vec2 p = w.xz;
-	float fd = max(fwidth(w.z), 1e-4);
+	float fd = max(fp.y, 1e-4);
 	base *= mk_tent(clamp(uv, 0.0, 1.0));
 	if (len > 0.0) {
 		float d = uv.y * len;
@@ -162,15 +169,16 @@ vec3 mk_tin_at(vec3 base, vec3 w, vec2 uv, float mode, float len) {
 	}
 	float along = mode < 0.5 ? p.x : p.y;
 	float across = mode < 0.5 ? p.y : p.x;
-	float s = along / 0.14;
-	float rib = filtered_pulse(s, fwidth(s), 0.0, 0.45);
+	float f_along = mode < 0.5 ? fp.x : fp.y;
+	float f_across = mode < 0.5 ? fp.y : fp.x;
+	float rib = filtered_pulse(along / 0.14, f_along / 0.14, 0.0, 0.45);
 	vec3 col = base * (1.06 - 0.2 * rib);
 	col *= 0.9 + 0.16 * hash11(floor(across / 2.1) * 3.7 + floor(along / 2.4));
-	col *= 1.0 - 0.3 * filtered_pulse(across / 2.1, fwidth(across) / 2.1, 0.0, 0.02);
+	col *= 1.0 - 0.3 * filtered_pulse(across / 2.1, f_across / 2.1, 0.0, 0.02);
 	col = mix(col, vec3(0.42, 0.3, 0.22), smoothstep(0.55, 0.85, value_noise(p * vec2(1.4, 0.5) + 3.0)) * 0.45);
 	col = mix(col, vec3(0.62, 0.55, 0.46), smoothstep(0.5, 0.9, value_noise(p * 0.4 + 9.0)) * 0.35);
 	if (len > 0.0) {
-		col = mk_frame(col, clamp(uv, 0.0, 1.0), len, fd);
+		col = mk_frame(col, clamp(uv, 0.0, 1.0), len, fd, fp.z);
 	}
 	return col;
 }
@@ -179,7 +187,8 @@ vec3 mk_tin_at(vec3 base, vec3 w, vec2 uv, float mode, float len) {
 // UV as for canvas (the roof's shape); param = ribs (0 along the track, 1 across it) + 4 * the
 // stall's length in decimetres (for the ridge cap along its leading edge).
 vec3 mk_tin(vec3 base, vec3 w, vec2 uv, float param) {
-	return mk_tin_at(base, w, uv, mod(floor(param + 0.5), 4.0), floor((param + 0.5) / 4.0) * 0.1);
+	return mk_tin_at(base, w, uv, mod(floor(param + 0.5), 4.0), floor((param + 0.5) / 4.0) * 0.1,
+		mk_footprint(w, uv));
 }
 
 // Whether a stall starts at `slot` in the lane keyed `lane` (both offset to stay positive): every
@@ -191,8 +200,10 @@ bool mk_stall_starts(int lane, int slot) {
 // PAT_STALLS (28): a whole row of stall roofs along one lane, laid out here rather than as one quad
 // per stall: the stall under each point from its slot, then its roof (canvas, a blue awning or tin),
 // shape, hem and frame. UV.x runs 0-1 across the lane; param = the lane's key (offset, positive).
-// MarketStalls mirrors every choice, bit for bit, for the faces it builds at gap edges.
+// MarketStalls mirrors every choice, bit for bit, for the faces it builds at gap edges. The roof
+// differs from stall to stall, so the footprint is taken here, before choosing.
 vec3 mk_stalls(vec3 w, vec2 uv, float param) {
+	vec3 fp = mk_footprint(w, uv);
 	int lane = int(param + 0.5);
 	float dist = -w.z;
 	int si = int(floor(dist / stall_slot)) + 100000;
@@ -210,14 +221,14 @@ vec3 mk_stalls(vec3 w, vec2 uv, float param) {
 	float r = kit_hash01(lane, s0, 11);
 	uint k = kit_hash_u(lane, s0, 12);
 	if (r < stall_awning_share) {
-		return mk_canvas_at(stall_awning[k % 2u], w, q, (k >> 4u) % 5u < 3u ? 1.0 : 0.0, len);
+		return mk_canvas_at(stall_awning[k % 2u], w, q, (k >> 4u) % 5u < 3u ? 1.0 : 0.0, len, fp);
 	}
 	if (r < stall_awning_share + stall_tin_share) {
 		float tone = 0.92 + 0.12 * float((k >> 7u) % 64u) / 63.0;
-		return mk_tin_at(stall_tin * tone, w, q, float((k >> 3u) % 2u), len);
+		return mk_tin_at(stall_tin * tone, w, q, float((k >> 3u) % 2u), len, fp);
 	}
 	vec3 canvas = stall_canvas[kit_hash_u(lane, s0, 13) % 4u];
-	return mk_canvas_at(canvas, w, q, (k >> 5u) % 6u == 0u ? 2.0 : 0.0, len);
+	return mk_canvas_at(canvas, w, q, (k >> 5u) % 6u == 0u ? 2.0 : 0.0, len, fp);
 }
 
 // PAT_STALL (22): the faces of a stall below its roof (its front at a gap, its back, its sides), by
@@ -288,10 +299,11 @@ vec3 mk_stall(vec3 base, vec3 w, vec3 n, float param) {
 // stream past a player riding the ceiling).
 vec3 mk_tiles(vec3 base, vec3 w, float param) {
 	vec2 p = w.xz;
+	vec2 fwp = fwidth(p);
 	if (param > 0.5) {
 		float bq = p.y / 3.0;
 		float f = fract(bq);
-		float beam = filtered_pulse(bq, fwidth(bq), 0.0, 0.12);
+		float beam = filtered_pulse(bq, fwp.y / 3.0, 0.0, 0.12);
 		float bay = smoothstep(0.12, 0.3, f) * (1.0 - smoothstep(0.84, 1.0, f));
 		vec3 col = base * (0.95 + 0.08 * hash11(floor(bq) + 3.0)) * (0.86 + 0.14 * bay);
 		col = mix(col, base * 0.6, beam);
@@ -299,7 +311,7 @@ vec3 mk_tiles(vec3 base, vec3 w, float param) {
 	}
 	vec2 q = p / 0.55;
 	q.x += 0.5 * mod(floor(q.y), 2.0);
-	vec2 fq = fwidth(q);
+	vec2 fq = fwp / 0.55;
 	float grout = max(filtered_pulse(q.x, fq.x, 0.0, 0.07), filtered_pulse(q.y, fq.y, 0.0, 0.07));
 	return base * (0.85 + 0.25 * hash12(floor(q) + 1.0)) * (1.0 - 0.35 * grout) * (0.85 + 0.25 * value_noise(p * 0.25));
 }
@@ -315,7 +327,7 @@ vec3 mk_shopsign(vec3 base, vec2 uv, float param) {
 	code = mod(code, 10000.0);
 	float seed = mod(code, 100.0);
 	float height = max(floor(code / 100.0) * 0.1, 0.2);
-	vec2 fw = fwidth(uv);
+	vec2 fw = max(fwidth(uv), vec2(1e-4));
 	vec3 ink = mix(vec3(0.9, 0.88, 0.82), base * 0.3, step(0.62, dot(base, vec3(0.3, 0.5, 0.2))));
 	float r = min(height * 0.36, 0.6);
 	float unit = r * 2.0 + max(height * 2.2, 1.8);
@@ -349,7 +361,7 @@ vec3 mk_ad(vec3 base, vec2 uv, float param, float t, out float glow_mask) {
 	vec3 col = mix(base * 0.35, base * 0.75, uv.y);
 	glow_mask = 0.55;
 	vec2 lc = vec2(0.5, 0.5);
-	float fw = max(fwidth(uv.x), fwidth(uv.y));
+	float fw = max(max(fwidth(uv.x), fwidth(uv.y)), 1e-4);
 	float disc = 1.0 - smoothstep(0.36 - fw, 0.36 + fw, length(uv - lc));
 	float logo = market_logo((uv - lc) / 0.27, seed);
 	col = mix(col, vec3(0.92, 0.93, 0.97), disc);
@@ -364,7 +376,9 @@ vec3 mk_ad(vec3 base, vec2 uv, float param, float t, out float glow_mask) {
 	text = mix(text, 0.3 * line, smoothstep(0.02, 0.1, fw * 8.0));
 	col = mix(col, vec3(0.95, 0.95, 0.98), text * 0.85);
 	glow_mask = mix(glow_mask, 1.0, text);
-	float sweep = exp(-pow((uv.x - uv.y * 0.4 - mod(t * 0.35 + seed * 0.37, 6.0) + 1.0) * 3.0, 2.0));
+	// Squared by hand: pow() of a negative number is undefined (NaN on some GPUs).
+	float sx = (uv.x - uv.y * 0.4 - mod(t * 0.35 + seed * 0.37, 6.0) + 1.0) * 3.0;
+	float sweep = exp(-sx * sx);
 	return col + base * 0.25 * sweep;
 }
 
@@ -372,7 +386,7 @@ vec3 mk_ad(vec3 base, vec2 uv, float param, float t, out float glow_mask) {
 // 0.32 m glowing (COLOR.a). A slow wave of brightness runs along them, steady with Reduced flashing.
 vec3 mk_bulbs(vec3 base, vec2 uv, float t, float reduced, out float glow_mask) {
 	vec2 q = uv / 0.32;
-	float fw = max(fwidth(q.x), fwidth(q.y));
+	float fw = max(max(fwidth(q.x), fwidth(q.y)), 1e-4);
 	float bulb = 1.0 - smoothstep(0.18 - fw, 0.18 + fw, length(fract(q) - 0.5));
 	bulb = mix(bulb, 0.25, smoothstep(0.15, 0.5, fw));
 	glow_mask = bulb * mix(0.75 + 0.25 * sin(floor(q.x) * 0.9 - t * 2.2), 0.9, reduced);

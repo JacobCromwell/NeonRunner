@@ -94,7 +94,9 @@ void fragment() {
 	vec3 n = (INV_VIEW_MATRIX * vec4(nv, 0.0)).xyz;
 	vec3 world = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	vec2 uv = UV;
-	vec2 fw_m = fwidth(uv);
+	// Pixel footprints are taken here, before any branch, and passed down (docs/ARCHITECTURE.md, Zone
+	// skins: the kit's shader rules); never zero, so every smoothstep keeps two distinct edges.
+	vec2 fw_m = max(fwidth(uv), vec2(1e-4));
 	float fres = 1.0 - clamp(dot(nv, VIEW), 0.0, 1.0);
 	vec3 albedo = to_linear(COLOR.rgb);
 	// Faces toward the lanes take the shade of the street; faces toward the player a little more light.
@@ -110,7 +112,7 @@ void fragment() {
 		vec2 p = vec2(uv.x / cw, (uv.y - storey_base) / storey);
 		vec2 cell = floor(p);
 		vec2 fp = fract(p);
-		vec2 fw = fwidth(p);
+		vec2 fw = fw_m / vec2(cw, storey);
 		float k = hash12(cell * vec2(1.7, 2.3) + seed * 5.0);
 		float cy = cell.y * storey + storey_base;
 		// Storey cornices and the dust gathering under them.
