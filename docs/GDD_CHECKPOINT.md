@@ -148,6 +148,7 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 - **What makes it insidious:** people are completely subservient to its philosophy without realizing that they're in a cult.
 - **Symbol and colour** (owner, September 26, 2026): the **Convergent Triad**, option B of the options drawn in code (`tools/showcase/cult_emblem_sheet.tscn`): three notched arrows converging on a small centre point, with three-fold symmetry. At a glance it passes for a generic corporate "sync" or "alignment" mark ("every path leads to him"). In glowing ads it is a warm white, never a hazard colour; unlit it is brushed bronze; in the Golden Zone it is polished gold meeting at a small red centre stone.
 - *(Proposed)* **Hidden in plain sight:** the symbol is worked into logos, ads and corporate art in every zone, and is displayed openly only in the Golden Zone.
+- **Cyborg Viewing Devices** (decided September 26, 2026): the cult's philosophy reaches people **through their screens**. The more devoted someone is, the more of their face the device replaces, until the screen *is* the face: that's what the cyborg gangsters are. The order to attack the runner reaches them the same way, through the feed. Told purely through the environment and the cyborgs' look (no words): screen heads on the enemies, the same feed playing on billboards and in shop windows, and glitching screens on hosts, whose feed the Bad Dream has corrupted.
 
 ### Level schedule and enemy introductions (decided September 26, 2026)
 **Every zone introduces at least one new enemy.** New enemies are preferred over new mechanics. Anything introduced earlier keeps appearing later. Each level introduces about one new thing.
@@ -294,7 +295,20 @@ Shared interaction rules apply unless stated otherwise:
 ### 9.2 Cyborg (early; scales through the campaign)
 - **Look:** humanoid.
   - **Face:** an **LED visor/screen face** showing simple expressions.
-  - **Zone variants:** sleek citizen in city zones; patched-together scavenger in grimy/gang zones, with a cracked, flickering visor.
+  - **Base look** (redesigned September 26, 2026): a **ragged, strung-out gangster**, based on **Variant 1, the "Static TV Head" Infiltrator**, of the owner's concept sheet `docs/art/reference/cyborg_viewing_devices.jpg`. Build brief: `docs/art/BRIEF_CYBORG_GANGSTER.md`.
+    - **One body:** a worn leather vest over a hoodie, torn layers, patched cargo pants, boots, and a backpack cabled into the head, with a gaunt, twitchy posture. One scavenged cyber arm is the arm cannon.
+    - **The entire head is a beat-up CRT television** whose screen is the LED face, showing expressions readable on small screens. No hair, face or mask.
+    - **Colours:** grimy khaki, olive, brown and grey clothing; dull rusted steel and gunmetal (no gold or brass, which belong to the player). The only glows are the **cold white LED face**, the arm cannon's **red** charge-up, and on hosts only, **purple** (glitching screen and glowing veins). No hazard or "safe" colours anywhere else.
+  - **Used everywhere:** this base replaces the sleek city citizen and the patched scavenger in every zone, including the Neon City. It is also the model **every zone variant is derived from**.
+  - **Zone variants** (decided September 26, 2026). They are **the same unit**: identical behaviour, attacks and hitboxes, and looks that differ only enough for the player to tell they fit the zone. Build brief: `docs/art/BRIEF_CYBORG_GANGSTER.md`, "Zone variants".
+    - **Neon City:** the base (Static TV Head).
+    - **Gangland:** Variant 3, the **"Broadcast Brute" Enforcer** (a caged screen head with side monitors, scavenged armour).
+    - **Marketplace:** the **"Casino Mob Enforcer"** (`docs/art/reference/cyborg_casino_enforcer.jpg`: a gilded, card-suit screen head, a pinstripe suit with gold trim, gold armour plates).
+    - **Corporate:** Variant 2, the **"Wide-Aspect VR" Runner** (a wide VR visor, a sleek dark jacket, chrome hands).
+    - **Dead Zone:** the base, burned out (soot, ash, a flickering screen).
+    - **Golden Zone:** derived from the Casino Mob Enforcer by the art agent.
+    - Gold and brass may appear on variants as **unlit ornament**; the screen always glows cold white; nothing glows copper.
+    - **No variant is bigger than the base.** The concept sheets are references and jumping-off points, not specs to copy, since a bigger body would no longer match the hitboxes.
 - **Movement:** stands mostly on **truck roofs** and moves slowly toward the player, dropping behind quickly.
 - **Attack:** loosely aimed laser bolts in **bursts of 2–3**, then a pause to reload.
   - Each burst has a **visible charge-up** (arm cannon glow).
@@ -571,7 +585,19 @@ Shared interaction rules apply unless stated otherwise:
   - Plan one shared humanoid rig.
   - Possibly use a free animation library rather than hand-authored motion *(decide in the art round)*.
 - **LED visor faces:** a cheap, readable, on-theme way to show expressions for all cyborgs.
-- **Player character** (decided September 26, 2026): a **human runner in a cyber suit** (jacket, helmet with a glowing visor). The silhouette and visor must read clearly differently from the enemy cyborgs' LED faces. Name and customization are still open.
+- **Player character: Razor Echo** (redesigned September 26, 2026, replacing the cyber suit and helmet): based on the owner's concept sheet `docs/art/reference/player_echo.jpg`. Build brief: `docs/art/BRIEF_RAZOR_ECHO.md`. Keep:
+  - a **weathered dark-blue trench coat** with **glowing copper and brass conduits** running over it, including a distinctive pattern across the back
+  - a **gold/brass cybernetic left arm**
+  - a glowing **cybernetic ocular implant** over the left eye
+  - a **tactical utility vest**, harness straps and belts
+  - **reinforced combat cargo pants**, knee pads and **worn tactical boots** with a mechanical leg brace
+  - **spiky black hair** and a scarred face (no helmet)
+  
+  **Leave out:** the **sword** (the game has no sword), the **holstered pistol**, and the **symbols on the coat's lower half** (the graffiti and the skull emblem), which would be too small to appreciate at gameplay size. **Nothing on the base character may look like a power-up**, so it carries no weapons; owned power-ups are clearly added on top.
+  
+  **Glow colour:** the copper conduits and the ocular implant are the player's signature glow (replacing cyan), kept soft so bloom never pushes them into gap-edge orange. The enemies' LED faces change from amber to **cold white**, so the player and the enemies never share a glow colour.
+  
+  The gameplay camera sits behind the player, so the **back view matters most**: the coat's copper conduits and the gold arm must read from behind. The silhouette must still read clearly differently from the enemy cyborgs' screen heads. Customization is still open.
 - **Player scale** (owner feedback after the R1 grey box, September 26, 2026): the player looked too big next to the lanes, walls and ceiling. The player (with its hitbox, jump height and fence heights) is about 75% of the grey-box size; the lanes, walls and ceiling keep their size.
 - **Music** (decided September 26, 2026): code-generated placeholder loops in the same crunchy 16-bit / heavy-metal style as the sound effects, one per zone plus the menus. Any track can later be replaced file by file with commissioned or licensed music.
 - **Readability rules:**
