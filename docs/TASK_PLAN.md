@@ -69,7 +69,7 @@ These are also in `CLAUDE.md`.
 
 | ID | Task | Needs | Size | Tier |
 |---|---|---|---|---|
-| A1 | **Sub-agent definitions:** add `.claude/agents/` files for the roles in `docs/NEXT_STEPS.md` §5 (architect, gameplay engineer, skin artist, reviewer, helper), each with the model and effort from this plan's tiers. Follow the current Claude Code docs for the file format. | – | S | T3 |
+| A1 | **Sub-agent definitions:** add `.claude/agents/` files for the roles in `docs/NEXT_STEPS.md` §5 (architect, gameplay engineer, skin artist, reviewer, helper), each with the model and effort from this plan's tiers. Follow the current Claude Code docs for the file format. **Done:** `architect.md`, `gameplay-engineer.md`, `skin-artist.md`, `reviewer.md`, `helper.md`, and `tool-writer.md` (a sixth role added for T3 work, which had none) in `.claude/agents/`. | – | S | T3 |
 
 ### B. Core systems (the core lane)
 

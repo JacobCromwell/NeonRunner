@@ -7,6 +7,11 @@ script = ExtResource("1_level")
 id = &"city_3"
 display_name = "Neon Crossfire"
 level_seed = 103
-duration_seconds = 120.0
+duration_seconds = 130.0
 difficulty_bias = 0.0
-features = PackedStringArray("ceilings", "pulsing", "cyborg", "hover_truck")
+features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck")
+feature_starts = Dictionary[String, float]({
+"hover_truck": 0.6,
+"pulsing": 0.1,
+"window_cyborg": 0.35
+})

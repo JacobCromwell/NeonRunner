@@ -252,7 +252,44 @@ func _test_level_select() -> void:
 		await _frames(2)
 		check(App.screen is DemoEndScreen, "and leads to the demo's end screen")
 	BuildFlavor.set_override(-1)
+
+	# Deep into the six-zone campaign, the list opens on the next step, scrolled into view, at desktop
+	# and touch sizes.
+	for touch: int in [0, 1]:
+		UiTheme.touch_override = touch
+		App.profile = SampleProfiles.fresh()
+		SampleProfiles.complete_until(App.profile, App.campaign, "golden/2")
+		App.show_level_select()
+		await _frames(4)
+		levels = App.screen as LevelSelectScreen
+		var tile: TileButton = levels.tiles.get("golden/2")
+		var scroll: ScrollContainer = levels.find_children("*", "ScrollContainer", true, false)[0]
+		var tag: String = "touch" if touch == 1 else "desktop"
+		check(tile != null and _focus() == tile, "late in the campaign the next step has the focus (%s, %s)" % [_focus(), tag])
+		check(tile != null and scroll.get_global_rect().encloses(tile.get_global_rect()),
+			"and the list scrolls it into view (%s)" % tag)
+		check(levels.tiles.size() == App.campaign.steps().size(), "every step of the six zones has a tile (%s)" % tag)
+	UiTheme.touch_override = 0
 	App.profile = SampleProfiles.rich()
+
+	# Every shipped zone is built; a zone still to be designed would show as "coming soon".
+	var shipped: Campaign = App.campaign
+	var trial := Campaign.new()
+	var later := ZoneDef.new()
+	later.id = &"later"
+	later.display_name = "Later Zone"
+	later.placeholder = true
+	trial.zones.assign([shipped.zones[0], later])
+	App.campaign = trial
+	App.show_level_select()
+	await _frames(2)
+	var labels: PackedStringArray = []
+	for node: Node in App.screen.find_children("*", "Label", true, false):
+		labels.append((node as Label).text)
+	check(labels.has("Later Zone · coming soon") and labels.has("ZONE 2"), "a zone still to be designed shows as coming soon")
+	App.campaign = shipped
+	App.show_level_select()
+	await _frames(1)
 
 
 # --- Shop ------------------------------------------------------------------------

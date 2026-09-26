@@ -7,6 +7,9 @@ script = ExtResource("1_level")
 id = &"city_2"
 display_name = "Skyway"
 level_seed = 102
-duration_seconds = 110.0
+duration_seconds = 120.0
 difficulty_bias = 0.0
-features = PackedStringArray("ceilings", "pulsing")
+features = PackedStringArray("cyborg", "ceilings")
+feature_starts = Dictionary[String, float]({
+"ceilings": 0.1
+})

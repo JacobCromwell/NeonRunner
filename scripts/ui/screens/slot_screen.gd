@@ -26,8 +26,8 @@ func _ready() -> void:
 	column.add_child(heading)
 	column.add_child(_chip())
 
-	var text: String = "This boss is a standalone mini-game that is still being designed." if boss \
-		else "A short cinematic will play here."
+	# The notes say how far each boss is (the Floating Head is designed, others are still open).
+	var text: String = "A boss fight will play here." if boss else "A short cinematic will play here."
 	var body := ScreenBase.make_label(text, &"", HORIZONTAL_ALIGNMENT_CENTER)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(body)

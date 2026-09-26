@@ -6,4 +6,4 @@
 script = ExtResource("1_script")
 id = &"gangland_boss"
 display_name = "Sewer Swarm"
-notes = "DESIGN-TBD: a mutant horde rising from the sewers (GDD §10), built from sewer screech clusters rendered with MultiMesh. Which zone it belongs to is still open; it sits here because Gangland has the sewers."
+notes = "DESIGN-TBD: still being designed (GDD §10). A mutant horde rising from the sewers: it builds up on both sides and a mob attacks, and you fight it off while running as the horde shifts ahead of you and behind you. Only 4–5 swarm clusters are simulated, drawn so they look like hundreds of screech-like creatures. The heavy missile does bonus damage against it."

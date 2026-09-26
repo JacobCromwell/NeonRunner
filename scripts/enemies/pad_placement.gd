@@ -15,9 +15,12 @@ const TRUCK_LANE_AFTER_SECONDS: float = 40.0
 ## fences and speed pads on the floor it needs (GDD §3: the floor under a ceiling stays clear, and
 ## its landing too), floor enemies whose stretch it would cover (LevelGenerator.enemy_floor_span;
 ## drones and hover trucks don't use the floor), and other ceiling sections it would touch (with
-## their pads). The lane comes from `rng` (pad_lane). Returns false if it doesn't fit before the
+## their pads). The lane comes from `rng` (pad_lane). Returns false (clearing nothing) before the
+## `ceilings` feature's start (LevelConfig.feature_starts), and false if it doesn't fit before the
 ## level's end-clear stretch.
 static func place(gen: LevelGenerator, rng: RandomNumberGenerator, at: float, seconds: float) -> bool:
+	if not gen.feature_started("ceilings", at):
+		return false
 	var layout: LevelLayout = gen.layout
 	var start: float = at - gen.config.hull_lead_in
 	var end: float = at + seconds * gen.speed
