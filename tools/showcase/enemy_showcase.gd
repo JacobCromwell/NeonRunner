@@ -3,7 +3,10 @@ extends Node3D
 ## the game). Render it with the Compatibility renderer, e.g.
 ##   SCENE=res://tools/showcase/enemy_showcase.tscn render.sh . build/showcase 12 -- --view=city
 ## Views: city, scavenger (pose rows), faces (visor close-ups), window, generator (in a real RunWorld),
-## charge (a cyborg charging and firing at the camera).
+## charge (a cyborg charging and firing at the camera), and play: a generated level with the enemies
+## on, run by a god-mode player with grapples (so gaps don't end the run) through the real run camera
+## (options: --seed=N --lanes=N --difficulty=X --start=metres --variant=scavenger --features=a,b
+## --claws).
 
 const Kit = preload("res://scripts/enemies/cyborg_kit.gd")
 
@@ -16,6 +19,9 @@ func _ready() -> void:
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--view="):
 			view = arg.get_slice("=", 1)
+	if view == "play":
+		_play()
+		return
 	_world = _build_world(view)
 	_camera = Camera3D.new()
 	_camera.fov = 50.0
@@ -49,6 +55,59 @@ func _ready() -> void:
 		_:
 			_pose_row(&"city")
 			_look(Vector3(0.0, 1.3, 5.2), Vector3(0.0, 0.8, -1.0))
+
+
+func _play() -> void:
+	var config := (load("res://data/levels/prototype_level.tres") as LevelConfig).duplicate() as LevelConfig
+	config.features = PackedStringArray(["ceilings", "pulsing", "ramps", "cyborg", "window_cyborg", "generator"])
+	config.lane_count = 5
+	config.difficulty = 0.6
+	var start: float = 0.0
+	var variant: StringName = &"city"
+	for arg: String in OS.get_cmdline_user_args():
+		var v: String = arg.get_slice("=", 1)
+		if arg.begins_with("--seed="):
+			config.level_seed = int(v)
+		elif arg.begins_with("--lanes="):
+			config.lane_count = int(v)
+		elif arg.begins_with("--difficulty="):
+			config.difficulty = float(v)
+		elif arg.begins_with("--start="):
+			start = float(v)
+		elif arg.begins_with("--variant="):
+			variant = StringName(v)
+		elif arg.begins_with("--features="):
+			config.features = PackedStringArray(v.split(",", false))
+	var skin := config.skin.duplicate() as ZoneSkin
+	skin.enemy_variant = variant
+	config.skin = skin
+	var t := load("res://data/tuning/movement.tres") as MovementTuning
+	var layout: LevelLayout = LevelGenerator.new().generate(config, t, LevelGenerator.load_for(config))
+	for e: Dictionary in layout.enemies:
+		print("enemy %s at %.0f lane %d side %d %s" % [e["type"], e["at"], e["lane"], e["side"], str(e["params"])])
+	var loadout := Loadout.new()
+	loadout.charges[&"grapple"] = 999
+	if OS.get_cmdline_user_args().has("--claws"):
+		loadout.tiers[&"claws"] = 1
+	_world = RunWorld.new()
+	add_child(_world)
+	_world.build(config, layout, t, load("res://data/tuning/game_rules.tres") as GameRules,
+		load("res://data/tuning/powerups.tres") as PowerupTuning, loadout)
+	_world.player.god_mode = true
+	_world.player.distance = start
+	var sun := DirectionalLight3D.new()
+	sun.rotation_degrees = Vector3(-55.0, 25.0, 0.0)
+	sun.light_energy = 0.7
+	sun.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY
+	add_child(sun)
+	var env := WorldEnvironment.new()
+	env.environment = _world.skin.make_environment()
+	add_child(env)
+	var cam := RunCamera.new()
+	add_child(cam)
+	cam.make_current()
+	cam.follow(_world)
+	_world.start()
 
 
 func _build_world(view: String) -> RunWorld:

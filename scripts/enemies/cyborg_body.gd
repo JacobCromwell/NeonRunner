@@ -204,6 +204,12 @@ func die(cause: StringName) -> void:
 	if cause == &"stomp":
 		tween.tween_property(_root, "scale", Vector3(1.35, 0.3, 1.35), 0.1).set_trans(Tween.TRANS_QUAD)
 		tween.tween_interval(0.25)
+	elif cause == &"claws" or cause == &"dash":
+		# Knocked aside out of the lane at once, so the body doesn't block the view as the player
+		# runs through it.
+		var s: float = -1.0 if _vis_rng.randf() < 0.5 else 1.0
+		tween.tween_property(_root, "position", Vector3(s * 1.3, 0.35, -0.6), 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.parallel().tween_property(_root, "rotation", Vector3(-0.6, 0.0, -s * 1.4), 0.18)
 	else:
 		tween.tween_property(_root, "rotation", Vector3(-1.45, 0.0, 0.0), 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		tween.tween_interval(0.12)
