@@ -257,7 +257,9 @@ func _test_skins(campaign: Campaign) -> void:
 		if s.is_level():
 			var config: LevelConfig = campaign.configure(s, 3)
 			check(config.skin != null and config.skin == s.zone.skin, "%s takes its zone's skin" % s.id)
-	for id: String in ["marketplace", "corporate", "dead_zone", "golden"]:
+	var market: ZoneDef = _zone(campaign, "marketplace")
+	check(market != null and market.skin is MarketplaceSkin, "marketplace uses its own skin")
+	for id: String in ["corporate", "dead_zone", "golden"]:
 		var zone: ZoneDef = _zone(campaign, id)
 		check(zone != null and zone.skin is GreyboxSkin, "%s uses the grey-box skin until it has its own" % id)
 	var palace: CampaignStep = campaign.step("golden/3")
