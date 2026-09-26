@@ -22,7 +22,8 @@ extends RefCounted
 ##   is dropped. The Bad Dream and the drones' barrages never overlap at runtime either
 ##   (EnemyDirector.major_attack_blocked).
 ## - Pads need ceilings: without the `ceilings` feature a chase can't get its pads, so every host is
-##   dropped, with a warning.
+##   dropped, with a warning (DESIGN-TBD: the GDD doesn't say what forms the ceiling outside the
+##   city, OPEN_QUESTIONS §1).
 
 const RUN_AFTER: Array[String] = ["drone"]
 const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")

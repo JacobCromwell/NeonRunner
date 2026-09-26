@@ -59,14 +59,15 @@ extends EnemyTuning
 @export_range(0.03, 0.5, 0.01, "suffix:s") var slash_active: float = 0.12
 @export_range(0.1, 2.0, 0.05, "suffix:s") var recover_time: float = 0.7
 @export_range(0.5, 5.0, 0.1, "suffix:m") var lunge_ahead: float = 1.8
-## It lines up with the player's lane before a telegraph, but waits no longer than this for a
-## player who keeps moving (then telegraphs from where it is: the lanes are still the player's).
+## DESIGN-TBD: it lines up with the player's lane before a telegraph, but waits no longer than this
+## for a player who keeps moving (then telegraphs from where it is: the lanes are still the player's).
 @export_range(0.0, 5.0, 0.1, "suffix:s") var max_align_wait: float = 1.2
 @export_range(0.05, 2.0, 0.05, "suffix:m") var align_tolerance: float = 0.5
 ## The slash's damage box (GDD §3: slightly smaller than what the player sees): the covered lanes
 ## less side_margin at an edge next to a free lane, and less wall_clearance at an edge by a wall (a
 ## wall runner's body sticks out about 0.8 m from the wall, and the wall is an escape); from the
-## floor up to slash_height, above the top of a jump, so only leaving the lanes dodges it.
+## floor up to slash_height. DESIGN-TBD: that's above the top of a jump, so only leaving the lanes
+## dodges it (the GDD doesn't say whether a jump or a slide should).
 @export_range(0.5, 3.0, 0.05, "suffix:m") var slash_height: float = 1.75
 @export_range(0.0, 1.0, 0.05, "suffix:m") var side_margin: float = 0.15
 @export_range(0.0, 1.5, 0.05, "suffix:m") var wall_clearance: float = 0.9

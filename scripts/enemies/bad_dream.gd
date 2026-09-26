@@ -17,16 +17,21 @@ extends Enemy
 ##   the player as the lunge nears; the maw opens and it shrieks (bad_dream_shriek). Then it lunges
 ##   (bad_dream_slash) and its claws sweep the locked lanes; a player who has left them is safe.
 ##   It slashes every ~3–4 s (slash_interval, from one telegraph's start to the next) for its chase
-##   (20–30 s from the moment it bursts out), then it dissolves (bad_dream_dissolve) and a player who
-##   survived earns the survival bonus.
-## - Immune to weapons (auto-fire never targets it), stomping and claws. Its slash and its body are
-##   enemy attacks, so armor or the shield blocks one; the juggernaut dash passes through both
-##   safely and doesn't hurt it (DamageRules; declared properties only). A fence generator's EMP
-##   dissolves it early.
-## - Fairness: it only telegraphs with the player on the floor or a wall (not falling into a hole or
-##   dropping from a ceiling), never when the slash couldn't land before its chase ends, and never
-##   when no escape is left (a free floor lane, or a wall no sign blocks: on three lanes the band
-##   covers the whole floor).
+##   (20–30 s), then it dissolves (bad_dream_dissolve) and a player who survived earns the survival
+##   bonus. DESIGN-TBD: the chase clock runs from the moment it bursts out, also while it holds its
+##   slash (the player on a ceiling, another enemy's attack), so a chase never outlasts the pads the
+##   generator planned for it. DESIGN-TBD: the claws sweep higher than a jump reaches, so only
+##   leaving the lanes (to a lane, a wall or a ceiling) dodges the slash.
+## - Immune to weapons (auto-fire never targets it), stomping and claws. Its slash is an enemy
+##   attack, so armor or the shield blocks one; the juggernaut dash passes through it safely and
+##   doesn't hurt it (DamageRules; declared properties only). DESIGN-TBD: touching its body (it never
+##   comes within reach anyway) is an enemy attack too. A fence generator's EMP dissolves it early.
+## - Fairness (DESIGN-TBD, not in the GDD): it lines up with the player's lane before a telegraph
+##   (waiting at most max_align_wait for a player who keeps moving; a wall only once it has followed
+##   them there). It only telegraphs with the player on the floor or a wall (not falling into a hole
+##   or dropping from a ceiling), never when the slash couldn't land before its chase ends, and never
+##   when no escape is left (a free floor lane, or a wall no sign blocks: on three lanes the middle
+##   lane's slash covers the whole floor).
 ## - GDD §9.7 at runtime: its chase is an exclusive major attack (Enemy.exclusive_major_attack):
 ##   Octodogs and drones don't start a charge sequence or a barrage while it chases, and it holds its
 ##   slash while one of theirs is on (EnemyDirector.major_attack_blocked). The generator guarantees
@@ -135,6 +140,7 @@ func _build() -> void:
 	_build_visuals()
 	world.player.movement_event.connect(_on_player_event)
 	history.append(["emerge", world.level_time()])
+	# GDD §9.7: only one on screen at a time. DESIGN-TBD: a second one never appears.
 	for e: Enemy in world.director.active:
 		if e != self and is_instance_valid(e) and e.alive and e is BadDream:
 			_fizzle()
@@ -230,8 +236,8 @@ func _drift(p: Player, delta: float) -> void:
 	if chase_time < _next_slash or not _may_slash(p):
 		_align_wait = 0.0
 		return
-	# Line up with the player's lane first; a player who keeps moving is attacked anyway after
-	# max_align_wait, but one on a wall only once it has followed them there.
+	# DESIGN-TBD: line up with the player's lane first; a player who keeps moving is attacked anyway
+	# after max_align_wait, but one on a wall only once it has followed them there.
 	_align_wait += delta
 	var lined_up: bool = absf(rel_x - _target_x(p)) <= _t.align_tolerance
 	if not lined_up and (_align_wait < _t.max_align_wait or p.surface == Player.Surface.WALL):
@@ -436,9 +442,10 @@ func slash_box_for(b: Vector2i) -> AABB:
 	return AABB(Vector3(x0, 0.0, -_t.slash_depth * 0.5), Vector3(x1 - x0, top, _t.slash_depth))
 
 
-## Fairness: a slash over `b` must leave the player somewhere to go: a floor lane outside it that no
-## solid side fills (a hover truck), or a wall beside it that no sign blocks until the slash has
-## passed. With three lanes and the player in the middle, the band covers the whole floor.
+## DESIGN-TBD (fairness, not in the GDD): a slash over `b` must leave the player somewhere to go: a
+## floor lane outside it that no solid side fills (a hover truck), or a wall beside it that no sign
+## blocks until the slash has passed. With three lanes and the player in the middle, the band covers
+## the whole floor.
 func _escape_open(p: Player, b: Vector2i) -> bool:
 	var n: int = world.geo.lane_count
 	for lane: int in n:
