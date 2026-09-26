@@ -10,7 +10,10 @@ extends Resource
 @export_range(0.0, 1.0, 0.05) var difficulty_start: float = 0.1
 @export_range(0.0, 1.0, 0.05) var difficulty_end: float = 0.9
 ## Shapes the curve: 1 = linear, above 1 = gentle start and steeper end.
-@export_range(0.3, 3.0, 0.05) var difficulty_curve_exponent: float = 1.2
+@export_range(0.3, 3.0, 0.05) var difficulty_curve_exponent: float = 1.0
+## Levels each placeholder zone will have once designed (GDD §6: 1–3 per zone). The curve spans the
+## planned campaign, so the first zones don't jump to end-game difficulty while later zones are missing.
+@export_range(1, 3) var planned_levels_per_placeholder_zone: int = 3
 ## DESIGN-TBD: the harder difficulty tiers unlocked after finishing the game (GDD §6).
 ## Index 0 is the normal game.
 @export var tier_names: PackedStringArray = PackedStringArray(["Normal", "Hard", "Insane"])
@@ -55,10 +58,19 @@ func curve_difficulty(level_index: int) -> float:
 	return lerpf(difficulty_start, difficulty_end, pow(t, difficulty_curve_exponent))
 
 
-## 0 for the first level, 1 for the last.
+## 0 for the first level, 1 for the last level of the planned campaign.
 func level_progress(level_index: int) -> float:
-	var n: int = level_count()
+	var n: int = planned_level_count()
 	return 0.0 if n <= 1 else clampf(float(level_index) / float(n - 1), 0.0, 1.0)
+
+
+## Built levels plus the levels planned for placeholder zones.
+func planned_level_count() -> int:
+	var n: int = level_count()
+	for zone: ZoneDef in zones:
+		if zone.placeholder or zone.levels.is_empty():
+			n += planned_levels_per_placeholder_zone
+	return n
 
 
 func tier_count() -> int:

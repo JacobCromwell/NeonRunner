@@ -14,4 +14,5 @@ script = ExtResource("1_script")
 zones = Array[ExtResource("2_zonescript")]([ExtResource("z_city"), ExtResource("z_gangland"), ExtResource("z_zone_3"), ExtResource("z_zone_4"), ExtResource("z_zone_5"), ExtResource("z_zone_6")])
 difficulty_start = 0.1
 difficulty_end = 0.9
-difficulty_curve_exponent = 1.2
+difficulty_curve_exponent = 1.0
+planned_levels_per_placeholder_zone = 3

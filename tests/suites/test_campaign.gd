@@ -39,7 +39,9 @@ func run() -> void:
 	var c1: LevelConfig = campaign.configure(first_level, 5)
 	var c6: LevelConfig = campaign.configure(last_level, 3, 1)
 	check(c1.lane_count == 5 and c6.lane_count == 3, "configure sets the lane count")
-	check(is_equal_approx(c1.enemy_scaling, 0.0) and is_equal_approx(c6.enemy_scaling, 1.0), "enemy scaling spans the campaign")
+	check(is_equal_approx(c1.enemy_scaling, 0.0) and c6.enemy_scaling > 0.2 and c6.enemy_scaling < 0.5,
+		"enemy scaling spans the planned campaign (%.2f after two of six zones)" % c6.enemy_scaling)
+	check(campaign.planned_level_count() == 18, "the planned campaign has 18 levels (6 zones of 3)")
 	check(c6.difficulty > campaign.configure(last_level, 3, 0).difficulty, "harder tiers raise difficulty")
 	check(c1.skin != null, "levels take their zone's skin")
 	check(c1 != first_level.level, "configure returns a copy")
