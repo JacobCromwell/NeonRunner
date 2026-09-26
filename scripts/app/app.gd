@@ -336,6 +336,10 @@ func start_endless() -> void:
 	ctx.config.difficulty = 0.2
 	ctx.config.difficulty_ramp = 0.8
 	ctx.config.enemy_scaling = 1.0
+	# Everything the zone has, from the start: a campaign level's introductions (feature_starts)
+	# would hold features back for minutes in a 20-minute level. (A new dictionary: the copy shares
+	# the level's.)
+	ctx.config.feature_starts = {}
 	if ctx.config.skin == null and zone != null:
 		ctx.config.skin = zone.skin
 	ctx.tuning = tuning

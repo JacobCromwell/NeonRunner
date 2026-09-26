@@ -4,7 +4,7 @@ A neon 3D runner for PC (Steam), Android, iOS and a web demo. You run lanes, sid
 through zones full of enemies, and a single hit ends the run. Built with Godot 4.7.2 and GDScript only.
 
 **Status:** the game is built around everything designed so far:
-- a campaign of two zones with three levels each
+- the whole campaign structure: six zones and 15 levels, four of the zones still in the grey-box look
 - seven enemy types, plus fence generators
 - the shop, power-ups and economy
 - every screen and the HUD
@@ -36,7 +36,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 |---|---|
 | `--quick` | Quick play: the prototype level, restarting on death, with the debug keys and HUD |
 | `--seed=N --lanes=N --difficulty=X` | Quick play with that seed, lane count (3, 5 or 6) or difficulty (0–1) |
-| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`) |
+| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`). The full list is in `LevelConfig` |
 | `--god` | Hits don't kill (falls still do) |
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
@@ -65,14 +65,31 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 
 ## What's in the game
 
-- **Campaign:** Zone 1, the Neon City (the web demo's zone), and Zone 2, Gangland, with three levels each. Each
-  zone has boss and cinematic slots. Zones 3–6 are placeholders. Each level introduces one new thing:
-  1. City 1: gaps, fences, walls and signs.
-  2. City 2: ceilings and pulsing fences.
-  3. City 3: cyborgs and a rare hover truck.
-  4. Gangland 1: ramps, sewer screeches and fence generators.
-  5. Gangland 2: Octodogs and speed pads.
-  6. Gangland 3: heli drones and window cyborgs.
+- **Campaign:** 15 levels in six zones, about 35 minutes of flawless running: the Neon City (the web demo's
+  zone) and Gangland with three levels each, the Marketplace, Corporate and the Dead Zone with two, and the
+  Golden Zone with three.
+  Each zone has a boss slot and cinematic slots; the last four zones use the grey-box look until their skins
+  are made. Each level introduces about one new thing (GDD §5), where its data says (`feature_starts`):
+  1. City 1 *Rooftop Rush*: gaps, fences, walls and signs, then cyborgs late in the level.
+  2. City 2 *Skyway*: ceilings and anti-grav pads.
+  3. City 3 *Neon Crossfire*: pulsing fences, window cyborgs and the hover truck.
+  4. Gangland 1 *Scrapyard Streets*: sewer screeches and ramps.
+  5. Gangland 2 *Dog Run*: Octodogs and speed pads.
+  6. Gangland 3 *Rotor Wash*: fence generators and heli drones.
+  7. Marketplace 1 *Awning Alley*: the Barnacle Turret.
+  8. Marketplace 2 *Shopfront Sparks*: wall fences, and sewer screeches from the shopfronts' wall vents.
+  9. Corporate 1 *Maglev Line*: the Buzz Overdrive, then partial wall fences.
+  10. Corporate 2 *Checkpoint Plaza*: the Tithe Collector, and a heavier military presence (more drones,
+      hover trucks and Buzz Overdrives).
+  11. Dead Zone 1 *Ashfall*: hosts and the Cyborg's Bad Dream.
+  12. Dead Zone 2 *The Hush*: a quiet, eerie remix with nothing new.
+  13. Golden 1 *Gilded Canals*: the Resonator.
+  14. Golden 2 *Sentinel Row*: the Gilded Sentinels, and the hardest level.
+  15. Golden 3 *The Golden Palace*, then the final boss.
+
+  The Barnacle Turret, wall fences, Buzz Overdrive, Tithe Collector, Resonator and Gilded Sentinels aren't
+  built yet: their levels already list them, and they appear once their code exists. Level names are
+  placeholders, except the Golden Palace.
 - **Movement:** floor lanes, side-wall runs and wall jumps, anti-grav pads onto the ceiling, ramps, speed pads.
 - **Obstacles:** gaps, signs, and electric fences (full-height or gapped, always-on or pulsing), some with a
   generator that switches them off.
@@ -83,8 +100,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   - the Octodog
   - the sewer screech
   - the heli drone
-  - the Cyborg's Bad Dream, released by killing a host cyborg (built, but not yet in a campaign level:
-    the GDD saves it for late levels; try `--features=cyborg,host,ceilings`)
+  - the Cyborg's Bad Dream, released by killing a host cyborg (from Dead Zone 1; in quick play, try
+    `--features=cyborg,host,ceilings`)
 - **Economy:** credits in four denominations, level score and stars, and a shop. Items are five permanent
   power-ups (weapon line, claws, juggernaut dash, magnet, slow time) and three breakables (armor, shield,
   grapple hook). After a death you're offered a revive (an item, or a rewarded ad on mobile). Net worth
@@ -114,7 +131,7 @@ unsaved changes. Every other number is in `data/` too: enemy tunings in `data/en
 ```
 tools/godot.sh play [options]   play (what ./play.sh runs)
 tools/godot.sh edit             open the editor
-tools/godot.sh test             all tests, about a minute; exit code 0 = pass (--suite=name runs one)
+tools/godot.sh test             all tests, under two minutes; exit code 0 = pass (--suite=name runs one)
 tools/godot.sh smoke [options]  40 s of the real game, headless; prints only problems
 tools/godot.sh sfx [--review]   regenerate the sound effects (assets/sfx/) from tools/asset_gen/
 tools/godot.sh music [--review] regenerate the music (assets/music/)
@@ -130,14 +147,14 @@ family, the UI kit, every screen); each script's header lists its options.
 
 ## Tests
 
-`tools/godot.sh test` runs 26 suites with about 766,000 checks:
-- **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds.
+`tools/godot.sh test` runs 27 suites with about 1,025,000 checks:
+- **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds, and every campaign level.
 - **Movement:** scenarios on real physics.
 - **Enemies:** each type's attacks, dodges, kills and generation rules.
 - **Damage:** the shared damage rules.
 - **Power-ups:** each one's behaviour.
 - **Economy and saves:** the economy and save files.
-- **Game flow:** the campaign and app flow.
+- **Game flow:** the campaign (its zones, steps and level-by-level schedule) and app flow.
 - **Screens:** every screen at desktop and touch sizes.
 - **Zone skins:** both skins, including a check that neither adds collision.
 - **Sounds and music.**

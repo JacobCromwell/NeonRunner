@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="LevelConfig" format=3]
+
+[ext_resource type="Script" path="res://scripts/core/level_config.gd" id="1_level"]
+
+[resource]
+script = ExtResource("1_level")
+id = &"marketplace_2"
+display_name = "Shopfront Sparks"
+level_seed = 302
+duration_seconds = 145.0
+difficulty_bias = 0.0
+features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "ramps", "octodog", "speed_pads", "generator", "drone", "barnacle_turret", "wall_fences", "screech_vents")
+feature_starts = Dictionary[String, float]({
+"screech_vents": 0.4,
+"wall_fences": 0.1
+})
+feature_weights = Dictionary[String, float]({
+"screech_vents": 2.5
+})

@@ -6,8 +6,11 @@ extends RefCounted
 ##
 ## Passes, each with its own random stream so adding one never reshuffles the others:
 ## 1. Patterns (obstacles and enemies) from the pattern files, filtered by the level's features.
+##    A feature that starts partway into the level (LevelConfig.feature_starts) is left out before
+##    its start, and the first pattern picked from there uses it (its introduction).
 ## 2. Enemy rules: for every feature with a script at res://scripts/enemies/<feature>_rules.gd,
-##    its static `apply(gen: LevelGenerator)` runs (e.g. drone anti-grav pad schedules).
+##    its static `apply(gen: LevelGenerator)` runs (e.g. drone anti-grav pad schedules). Rules that
+##    add a feature's enemies or pieces keep them after its start (feature_active, feature_share_at).
 ## 3. Credits (GDD §7): trails in the clear stretches, rich credits in risky spots.
 ## Fairness rules (longest gap, hull lead-in and landing) come from LevelConfig, so they are data.
 
@@ -29,6 +32,9 @@ var _hull_spans: Array[Vector2] = []
 ## Clear stretches between patterns [start, end], filled with credit trails later.
 var _clear_stretches: Array[Vector2] = []
 var _enemy_count: int = 0
+## Features with a start of their own that no pattern has used yet, earliest first
+## (_pick_introduction).
+var _to_introduce: Array[String] = []
 
 
 static func load_patterns(path: String) -> Array:
@@ -70,13 +76,16 @@ func generate(p_config: LevelConfig, p_tuning: MovementTuning, patterns: Array) 
 	warnings.clear()
 	var accel: float = tuning.speed_gain_per_minute / 60.0
 	layout.length = speed * config.duration_seconds + 0.5 * accel * config.duration_seconds * config.duration_seconds
+	_to_introduce = _introductions()
 
 	_clear_stretches.append(Vector2(20.0, config.start_clear_distance))
 	var cursor: float = config.start_clear_distance
 	while cursor < layout.length - config.end_clear_distance:
 		var progress: float = cursor / layout.length
 		var difficulty: float = difficulty_at(progress)
-		var pattern: Dictionary = _pick_pattern(patterns, difficulty)
+		var pattern: Dictionary = _pick_introduction(patterns, difficulty, cursor)
+		if pattern.is_empty():
+			pattern = _pick_pattern(patterns, difficulty, cursor)
 		if pattern.is_empty():
 			break
 		var pattern_start_counts: Dictionary = _counts()
@@ -84,6 +93,8 @@ func generate(p_config: LevelConfig, p_tuning: MovementTuning, patterns: Array) 
 		if cursor + used > layout.length - config.end_clear_distance:
 			_rollback(pattern_start_counts)
 			break
+		for need: Variant in pattern.get("requires", []):
+			_to_introduce.erase(String(need))
 		var spacing_seconds: float = lerpf(config.spacing_seconds_easy, config.spacing_seconds_hard, difficulty)
 		var clear_end: float = cursor + used + spacing_seconds * speed
 		_clear_stretches.append(Vector2(cursor + used, minf(clear_end, layout.length - config.end_clear_distance)))
@@ -98,6 +109,34 @@ func generate(p_config: LevelConfig, p_tuning: MovementTuning, patterns: Array) 
 ## The difficulty at a point of the level (0–1 progress): the level's base plus its ramp.
 func difficulty_at(progress: float) -> float:
 	return clampf(config.difficulty + config.difficulty_ramp * progress, 0.0, 1.0)
+
+
+## Track distance from which `feature` may place anything: its share of the level from
+## LevelConfig.feature_starts, or 0 for features that are there from the start.
+func feature_start(feature: String) -> float:
+	return config.feature_start(feature) * layout.length
+
+
+## True if track distance `at` is at or past `feature`'s start (always, for a feature that starts
+## with the level), whether or not the level has the feature.
+func feature_started(feature: String, at: float) -> bool:
+	return at >= feature_start(feature) - 0.001
+
+
+## True if the level has `feature` and it has started by track distance `at`. Patterns are picked,
+## and rules scripts add a feature's enemies or pieces (a drone's anti-grav pads are the `ceilings`
+## feature's, a hover truck's ramp the `ramps` feature's), only where this holds.
+func feature_active(feature: String, at: float) -> bool:
+	return config.has_feature(feature) and feature_started(feature, at)
+
+
+## Track distance `share` (0–1) of the way through the stretch where `feature` is active, from its
+## start to the level's end: for rules that pick a spot as a share of the level (a guaranteed drone
+## wave or hover truck), so a late feature's spot still falls after its start. Without a start it's
+## simply `share` of the level.
+func feature_share_at(feature: String, share: float) -> float:
+	var from: float = feature_start(feature)
+	return from + (layout.length - from) * share
 
 
 ## A random stream for one rule set, independent of the others (enemy rules use this).
@@ -118,8 +157,11 @@ func add_enemy(type: String, at: float, lane: int, side: int = 0, params: Dictio
 
 ## Adds a ceiling section with an anti-grav pad at `at` (hull lead-in before it), lasting
 ## `length_seconds` at run speed. Returns false (adding nothing) if the floor there isn't clear
-## (floor_clear, which includes floor enemies' stretches) or it would touch another ceiling.
+## (floor_clear, which includes floor enemies' stretches), it would touch another ceiling, or the
+## level's ceilings haven't started by `at` (a late `ceilings` feature, feature_started).
 func add_hull_with_pad(lane: int, at: float, length_seconds: float) -> bool:
+	if not feature_started("ceilings", at):
+		return false
 	var hull_start: float = at - config.hull_lead_in
 	var hull_end: float = at + length_seconds * speed
 	var landing_end: float = hull_end + config.hull_landing_seconds * speed
@@ -175,31 +217,72 @@ static func enemy_uses_floor(entry: Dictionary) -> bool:
 	return t == null or t.uses_floor
 
 
-func _pick_pattern(patterns: Array, difficulty: float) -> Dictionary:
+## A weighted random pick among the patterns that fit at track distance `at`: in their difficulty
+## range and lane count, and with every required feature active there (feature_active). With
+## `only`, just the patterns that require that feature. Returns {} (without drawing a random
+## number) when none fits.
+func _pick_pattern(patterns: Array, difficulty: float, at: float, only: String = "") -> Dictionary:
 	var candidates: Array = []
+	var weights: Array[float] = []
 	var total: float = 0.0
 	for p: Dictionary in patterns:
 		if difficulty < float(p.get("min_difficulty", 0.0)) or difficulty > float(p.get("max_difficulty", 1.0)):
 			continue
 		if config.lane_count < int(p.get("min_lanes", 1)):
 			continue
+		var requires: Array = p.get("requires", [])
+		if only != "" and not requires.has(only):
+			continue
+		var weight: float = float(p.get("weight", 1.0))
 		var ok: bool = true
-		for need: Variant in p.get("requires", []):
-			if not config.has_feature(String(need)):
+		for need: Variant in requires:
+			if not feature_active(String(need), at):
 				ok = false
 				break
-		if not ok:
+			weight *= config.feature_weight(String(need))
+		if not ok or weight <= 0.0:
 			continue
 		candidates.append(p)
-		total += float(p.get("weight", 1.0))
+		weights.append(weight)
+		total += weight
 	if candidates.is_empty():
 		return {}
 	var roll: float = _rng.randf() * total
-	for p: Dictionary in candidates:
-		roll -= float(p.get("weight", 1.0))
+	for i: int in candidates.size():
+		roll -= weights[i]
 		if roll <= 0.0:
-			return p
+			return candidates[i]
 	return candidates[-1]
+
+
+## The features the level introduces at a start of their own (LevelConfig.feature_starts), earliest
+## first.
+func _introductions() -> Array[String]:
+	var out: Array[String] = []
+	for key: Variant in config.feature_starts:
+		var feature: String = String(key)
+		if config.has_feature(feature):
+			out.append(feature)
+	out.sort_custom(func(a: String, b: String) -> bool:
+		var sa: float = config.feature_start(a)
+		var sb: float = config.feature_start(b)
+		return sa < sb or (sa == sb and a < b))
+	return out
+
+
+## A feature's introduction: the first pattern picked once a feature with a start of its own has
+## started is one that uses it, so the player meets it right there, just after its first-encounter
+## hint (GDD §6: one new thing at a time), rather than whenever chance brings it. {} if no feature
+## is due, or none of the due ones has a pattern that fits here (it's then tried again at the next
+## pick, so a feature with no patterns yet changes nothing).
+func _pick_introduction(patterns: Array, difficulty: float, at: float) -> Dictionary:
+	for feature: String in _to_introduce:
+		if not feature_started(feature, at):
+			break
+		var pattern: Dictionary = _pick_pattern(patterns, difficulty, at, feature)
+		if not pattern.is_empty():
+			return pattern
+	return {}
 
 
 ## Places every element of a pattern starting at `origin`. Returns the track length it used.

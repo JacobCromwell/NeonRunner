@@ -43,13 +43,17 @@ func _ready() -> void:
 
 
 ## Crossfades to `track` over `fade` seconds (0 = cut). Does nothing if that track is already playing
-## or fading in. A track that is still fading out fades back in from where it is.
+## or fading in. A track that is still fading out fades back in from where it is. A track the
+## library doesn't list yet (a zone's music before it's made: zones name their track after their
+## id) is skipped quietly, and whatever is playing carries on.
 func play(track: StringName, fade: float = 1.0) -> void:
 	if track == _current:
 		return
 	var voice: Voice = _voice(track)
 	var started: bool = false
 	if voice == null:
+		if not library.has(track):
+			return
 		var stream: AudioStream = library.stream(track)
 		if stream == null:
 			return
