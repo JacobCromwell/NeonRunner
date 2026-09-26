@@ -600,21 +600,21 @@ func _test_emp() -> void:
 	check(not w.score.bonuses.has(&"chase"), "no survival bonus for an EMP'd chase")
 	await sim.free_world(w)
 
-	# Through a real fence generator destroyed by weapons.
+	# Through a real fence generator, destroyed by the dash (GDD §9.1: weapons never set one off,
+	# so a shot at it, unlike here before, would no longer do anything).
 	var l := RunSim.layout(3, 800.0)
-	l.fences.append(RunSim.fence(0, 70.0, "full"))
+	l.fences.append(RunSim.fence(1, 70.0, "full"))
 	made = await _world(3, 1, {"chase": 30.0}, null, l)
 	w = made[0]
 	dream = made[1]
 	id = dream.get_instance_id()
 	w.player.god_mode = true
-	var gen := w.director.spawn({"type": "generator", "at": 61.0, "lane": 0, "side": 0, "seed": 1, "params": {}}) as Enemy
-	for i: int in 6:
-		if gen == null or not gen.alive:
-			break
-		w.projectiles.fire_player(gen.aim_point() + Vector3(0.0, 0.0, 6.0), Vector3(0.0, 0.0, -90.0), 1.0)
-		await physics_frames(8)
-	check(gen != null and not gen.alive, "the generator was shot down")
+	var gen := w.director.spawn({"type": "generator", "at": 61.0, "lane": 1, "side": 0, "seed": 1, "params": {}}) as Enemy
+	check(not w.director.targets_ahead(gen.aim_point(), 200.0).has(gen), "auto-fire can't target it")
+	await _until(func() -> bool: return 61.0 - w.player.distance <= 5.0, 6.0)
+	w.player.start_dash(0.6, 0.0)
+	await _until(func() -> bool: return gen == null or not gen.alive, 2.0)
+	check(gen != null and not gen.alive, "the dash destroyed it")
 	await physics_frames(2)
 	check(_count(id, "emp") == 1 and (_gone(id) or dream.state == BadDream.State.DISSOLVE),
 		"its EMP dissolves the Bad Dream")
