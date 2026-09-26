@@ -27,11 +27,22 @@ const Kit = preload("res://scripts/enemies/cyborg_kit.gd")
 const Poses = preload("res://scripts/enemies/cyborg_poses.gd")
 ## Height of the hip joint (the rig's pelvis) above the soles.
 const HIP_Y: float = 0.7
+## A weapon hit's white flash. With Settings > Reduced flashing it's a softer tint held longer, so
+## rapid hits hold it steady instead of strobing.
 const FLASH_TIME: float = 0.08
+const SOFT_FLASH_TIME: float = 0.3
+## A host's corrupted faces: chance per second and how long each shows (s); rarer and held longer
+## with Reduced flashing, where its own face also shows for at least SOFT_GLITCH_TIME.x in between,
+## so the face never changes more than about twice a second.
+const GLITCH_RATE: float = 1.6
+const GLITCH_TIME := Vector2(0.12, 0.45)
+const SOFT_GLITCH_RATE: float = 0.6
+const SOFT_GLITCH_TIME := Vector2(0.6, 1.0)
 const BLEND_SPEED: float = 14.0
 ## The scavenger stands hunched (degrees).
 const HUNCH: float = 8.0
 const FLASH_TINT := Color(1.0, 0.95, 0.9, 0.75)
+const SOFT_FLASH_TINT := Color(1.0, 0.95, 0.9, 0.3)
 const DEAD_TINT := Color(0.03, 0.03, 0.035, 0.55)
 ## Leg joints, hidden for a window cyborg's upper body.
 const LEG_JOINTS: Array[int] = [HumanoidPose.THIGH_L, HumanoidPose.SHIN_L, HumanoidPose.FOOT_L,
@@ -63,6 +74,7 @@ var _t: float = 0.0
 var _phase: float = 0.0
 var _vis_rng := RandomNumberGenerator.new()
 var _glitch_left: float = 0.0
+var _glitch_rest: float = 0.0
 var _flash_left: float = 0.0
 var _dead: bool = false
 
@@ -135,12 +147,13 @@ func muzzle_position() -> Vector3:
 	return rig.joint(&"forearm_r").global_transform * CyborgSuit.MUZZLE
 
 
-## A short white flash when hit by a weapon.
+## A short white flash when hit by a weapon (softer and steady with Reduced flashing).
 func flash() -> void:
 	if _dead:
 		return
-	_flash_left = FLASH_TIME
-	material.set_shader_parameter(&"tint", FLASH_TINT)
+	var soft: bool = Settings.flashing_reduced
+	_flash_left = SOFT_FLASH_TIME if soft else FLASH_TIME
+	material.set_shader_parameter(&"tint", SOFT_FLASH_TINT if soft else FLASH_TINT)
 
 
 ## Draw calls of the visible body (one per segment mesh).
@@ -206,13 +219,19 @@ func _update_flash(delta: float) -> void:
 func _update_visor(delta: float) -> void:
 	if not host or _dead:
 		return
+	var soft: bool = Settings.flashing_reduced
 	if _glitch_left > 0.0:
 		_glitch_left -= delta
 		if _glitch_left <= 0.0:
 			material.set_shader_parameter(&"face", Kit.face_texture(face))
+			_glitch_rest = SOFT_GLITCH_TIME.x if soft else 0.0
 		return
-	if _vis_rng.randf() < delta * 1.6:
-		_glitch_left = _vis_rng.randf_range(0.12, 0.45)
+	if _glitch_rest > 0.0:
+		_glitch_rest -= delta
+		return
+	if _vis_rng.randf() < delta * (SOFT_GLITCH_RATE if soft else GLITCH_RATE):
+		var span: Vector2 = SOFT_GLITCH_TIME if soft else GLITCH_TIME
+		_glitch_left = _vis_rng.randf_range(span.x, span.y)
 		var corrupt: Kit.Face = Kit.Face.CORRUPT_GRIN if _vis_rng.randf() < 0.5 else Kit.Face.CORRUPT_BROKEN
 		material.set_shader_parameter(&"face", Kit.face_texture(corrupt))
 

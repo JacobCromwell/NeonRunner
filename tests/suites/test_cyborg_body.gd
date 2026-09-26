@@ -2,7 +2,8 @@ extends TestSuite
 ## The cyborgs' body on the shared HumanoidRig (GDD §9.2: one shared body and skeleton with
 ## swappable parts per zone): it uses the rig with CyborgSuit's parts and one zone attachment set;
 ## draw calls stay within budget; the hitboxes stay inside the visuals; the poses, faces, charge glow
-## and deaths work; and building cyborgs leaves the player's avatar untouched.
+## and deaths work; Settings > Reduced flashing calms the host's glitch and the hit flash; and
+## building cyborgs leaves the player's avatar untouched.
 
 const Kit = preload("res://scripts/enemies/cyborg_kit.gd")
 ## Draw calls: a whole cyborg (was 13, 14 while charging, before the rig) and a window cyborg's upper body.
@@ -23,6 +24,7 @@ func run() -> void:
 	await _test_poses()
 	await _test_faces_and_charge()
 	await _test_deaths()
+	await _test_reduced_flashing()
 	check(_meshes(avatar.rig) == avatar_meshes and avatar.draw_call_count() == avatar_calls,
 		"building cyborgs on the shared rig leaves the player's avatar as it was")
 	avatar.queue_free()
@@ -234,4 +236,53 @@ func _test_deaths() -> void:
 	var after_up: Vector3 = u.global_basis.inverse() * (chest.global_basis * Vector3.UP)
 	check(after_up.z > before_up.z + 0.4, "a window cyborg slumps forward over the sill (%.2f → %.2f)" % [before_up.z, after_up.z])
 	u.queue_free()
+	await tree.process_frame
+
+
+func _set_reduced_flashing(on: bool) -> void:
+	var profile := Profile.new()
+	Settings.set_value(profile, "reduced_flashing", on)
+	Settings.apply_visuals(profile)
+
+
+## Settings > Reduced flashing: the shader reads the global uniform (the host's static, the
+## scavenger's flicker and the full charge orb calm down); a host's corrupted faces and its own face
+## each show for at least half a second; rapid hits hold a soft tint steady instead of strobing.
+func _test_reduced_flashing() -> void:
+	check(CyborgSuit.SHADER.code.contains("kit_flash.gdshaderinc"), "the cyborg shader reads the Reduced flashing uniform")
+	var step: float = 1.0 / 60.0
+	for reduced: bool in [false, true]:
+		_set_reduced_flashing(reduced)
+		var b := _body(&"city", true)
+		b.set_process(false)
+		var shown: Texture2D = b.material.get_shader_parameter(&"face")
+		var since: float = 0.0
+		var changes: int = 0
+		var shortest: float = INF
+		for i: int in 1200:
+			b._update_visor(step)
+			since += step
+			var now: Texture2D = b.material.get_shader_parameter(&"face")
+			if now != shown:
+				if changes > 0:
+					shortest = minf(shortest, since)
+				changes += 1
+				shown = now
+				since = 0.0
+		var hits_steady: bool = true
+		for i: int in 60:
+			if i % 6 == 0:
+				b.flash()
+			b._update_flash(step)
+			if (b.material.get_shader_parameter(&"tint") as Color).a <= 0.0:
+				hits_steady = false
+		var tint: Color = b.material.get_shader_parameter(&"tint")
+		if reduced:
+			check(changes >= 4 and shortest >= 0.5, "reduced flashing: the host's faces each show for at least 0.5 s (%d changes, shortest %.2f s)" % [changes, shortest])
+			check(hits_steady and tint.a < CyborgBody.FLASH_TINT.a, "reduced flashing: rapid hits hold a soft tint steady")
+		else:
+			check(changes >= 4 and shortest < 0.5, "the host's visor glitches in quick bursts (shortest %.2f s)" % shortest)
+			check(not hits_steady, "each hit flashes")
+		b.queue_free()
+	_set_reduced_flashing(false)
 	await tree.process_frame

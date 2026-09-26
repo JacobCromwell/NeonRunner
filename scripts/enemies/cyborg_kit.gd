@@ -232,7 +232,8 @@ static func shader(code_key: String) -> Shader:
 	return _shaders[code_key]
 
 
-## The body material: vertex colours with glowing trim. `state`: &"normal", &"flash" (hit), &"dead".
+## The body material: vertex colours with glowing trim. `state`: &"normal", &"flash" (hit),
+## &"flash_soft" (hit, with Settings > Reduced flashing), &"dead".
 static func part_material(state: StringName = &"normal") -> ShaderMaterial:
 	var key: String = "part_" + String(state)
 	if not _materials.has(key):
@@ -243,6 +244,10 @@ static func part_material(state: StringName = &"normal") -> ShaderMaterial:
 				m.set_shader_parameter(&"tint", Color(1.0, 0.95, 0.9))
 				m.set_shader_parameter(&"tint_amount", 0.75)
 				m.set_shader_parameter(&"tint_glow", 1.2)
+			&"flash_soft":
+				m.set_shader_parameter(&"tint", Color(1.0, 0.95, 0.9))
+				m.set_shader_parameter(&"tint_amount", 0.3)
+				m.set_shader_parameter(&"tint_glow", 0.4)
 			&"dead":
 				m.set_shader_parameter(&"tint", Color(0.03, 0.03, 0.035))
 				m.set_shader_parameter(&"tint_amount", 0.55)

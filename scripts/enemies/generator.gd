@@ -90,8 +90,11 @@ func _on_defeated(_cause: StringName) -> void:
 
 func _on_hurt(_e: Enemy) -> void:
 	if alive:
-		_flash_left = 0.08
-		_body.material_override = Kit.part_material(&"flash")
+		# A short white flash; with Settings > Reduced flashing a softer tint held longer, so rapid
+		# hits hold it steady instead of strobing.
+		var soft: bool = Settings.flashing_reduced
+		_flash_left = 0.3 if soft else 0.08
+		_body.material_override = Kit.part_material(&"flash_soft" if soft else &"flash")
 
 
 func _process(delta: float) -> void:

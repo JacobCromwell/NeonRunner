@@ -8,7 +8,12 @@ shader_type spatial;
 //   glow 20  the arm cannon's emitter ring, brightening with `charge` (the attack telegraph);
 //   glow 30  the charge orb at the muzzle, grown from nothing by `charge` in the vertex stage.
 // Each cyborg has its own copy (its face, charge, hit flash and death are its own).
+// Settings > Reduced flashing (the global `reduced_flashing`): the host's static and row jumps change
+// at most 2.5 times a second, the scavenger's visor dims steadily instead of flickering, and the full
+// charge orb swells slowly instead of throbbing.
 // Plain spatial shading: works on Forward+, Mobile and Compatibility (web, low-end Android).
+
+#include "res://scripts/world/meshes/shaders/kit_flash.gdshaderinc"
 
 uniform float glow_energy = 2.6;
 // Multiplies all trim glow: 0 once dead.
@@ -52,7 +57,7 @@ void vertex() {
 		if (charge > 0.02) {
 			s = mix(0.3, 1.7, charge);
 			if (charge > 0.95) {
-				s += 0.25 * sin(TIME * 60.0);
+				s += mix(0.25 * sin(TIME * 60.0), 0.08 * sin(TIME * 10.0), reduced_flashing);
 			}
 		}
 		VERTEX = orb_center + (VERTEX - orb_center) * s;
@@ -73,7 +78,7 @@ void fragment() {
 		uv = clamp(uv, vec2(0.0), vec2(0.999));
 		float t = TIME + seed * 13.7;
 		vec2 cell = floor(uv * GRID);
-		float tick = floor(t * 12.0);
+		float tick = floor(t * mix(12.0, 2.5, reduced_flashing));
 		float jump = step(1.0 - 0.3 * glitch, hash(vec2(cell.y, tick)));
 		cell.x = mod(cell.x + jump * floor((hash(vec2(tick, cell.y + 3.0)) - 0.5) * 7.0), GRID.x);
 		float on = texture(face, (cell + 0.5) / GRID).r;
@@ -83,7 +88,7 @@ void fragment() {
 		float stat = step(0.8, hash(cell + vec2(tick * 1.7, tick))) * glitch;
 		col = mix(col, glitch_color.rgb * max(on, 0.7), clamp(stat + glitch * 0.5 * on, 0.0, 1.0));
 		float drop = step(0.72, hash(vec2(floor(t * 9.0), seed + 1.0)));
-		col *= 1.0 - flicker * drop * 0.8;
+		col *= 1.0 - flicker * mix(drop * 0.8, 0.2, reduced_flashing);
 		float crack_d = abs(uv.y - (1.05 - uv.x * 1.25) - 0.035 * sin(uv.x * 57.0));
 		float cracked = crack * (1.0 - smoothstep(0.025, 0.055, crack_d));
 		col *= 1.0 - cracked;
