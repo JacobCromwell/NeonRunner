@@ -8,9 +8,15 @@
 
 ## 1. Concept
 
-A 3D endless-runner-style action game set in a neon cyberpunk future. The player runs forward automatically down a corridor and can use **three kinds of surface**: multi-lane floors, single-lane side walls they can briefly run along, and multi-lane ceilings (the undersides of low-flying spaceships) reached via anti-grav pads. Short, handcrafted-feeling levels (built by a rule-based generator) are grouped into visually distinct zones, each ending in a unique boss encounter. A shop between levels sells permanent upgrades and breakable protective items.
+A 3D endless-runner-style action game set in a neon cyberpunk future. The player runs forward automatically down a corridor and can use **three kinds of surface**: multi-lane floors, single-lane side walls they can briefly run along, and multi-lane ceilings (the undersides of ships, bridges, overpasses and buildings, depending on the zone) reached via anti-grav pads. Short, handcrafted-feeling levels (built by a rule-based generator) are grouped into visually distinct zones, each ending in a unique boss encounter. A shop between levels sells permanent upgrades and breakable protective items.
 
 **Differentiator:** full use of floor, walls, and ceiling as play surfaces, each with its own rules and risks.
+
+### Story (decided September 26, 2026)
+- **A light story with little or no words.** It is told mostly through **environmental storytelling** in the zones, plus **5–15 second cinematics** between levels or between zones. The owner will describe the individual story beats later.
+- **The runner is a silent protagonist** who is going to defeat the big bad. The game tells the player little more than that for now.
+- **The final villain** is the all-powerful controller of this world. He is propped up by a **cult** that has grown in power over many years and controls a large share of the population and the companies. He is the final boss, in the Golden Zone (§5).
+- **Bosses:** some are connected to the villain; others, such as the Sewer Swarm, are unconnected monsters that simply live in their zone.
 
 ---
 
@@ -60,8 +66,12 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 - **Reached** by stepping on **anti-grav pads** in floor lanes, which flip gravity.
 - **Lanes:** the ceiling has lanes, but the hull must look like a ship: no large gaps between lanes.
 - **Duration:** the player stays on the ceiling until the ship's hull ends, then drops back down.
-- **Clear floor beneath:** ceilings never carry obstacles underneath. The floor below a ceiling section has no gaps or hazards.
-- **Other zones:** what forms the ceiling is *(open)*.
+- **The floor beneath may be dangerous** (changed September 26, 2026, replacing the September 25 rule that kept it clear). The ceiling is a way to **escape the danger on the floor**, so the floor under a ceiling may hold gaps, hazards and enemies.
+- **Safe landing zone:** wherever the player drops from a ceiling back to the floor, the floor is always safe to land on.
+- **Every zone has ceilings** (decided September 26, 2026). What forms them changes from zone to zone (see §5). The in-world reason for a ceiling is up to each zone's skin: anything that makes sense in that zone's fiction (ships, building undersides, bridges, elevated roads, floating ads, archways).
+- **Ceilings don't have to cover every lane** (decided September 26, 2026). The player can switch lanes only within the ceiling's width. A **one-lane ceiling** is simply ridden out, so it must be **very short and relatively safe**.
+- **The ceiling is never required:** the floor route under a ceiling is always survivable without taking the pad. The ceiling is the easier route (decided September 26, 2026).
+- **Ceiling hazards** (decided September 26, 2026): ceilings may carry hazards of their own, but none in zones 1–2 *(proposed; owner agreed)*. The first is the **Barnacle Turret** (§9.8), introduced in the Marketplace.
 
 ### Collision rules (core principle)
 - **Damage only on real contact.** Lanes determine movement, not hits. A bullet in your lane that doesn't touch you does not hurt you.
@@ -97,9 +107,70 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 | Gap | Space between trucks | Hole or crater in the road |
 | Obstacle mount point | Truck cab or mid-roof | Barricade, wreck, rubble |
 | Wall section | Building facade with signs | Bombed-out building face |
-| Ceiling section | Underside of a low-flying ship | *(open)* |
+| Ceiling section | Underside of a low-flying ship | Underside of decaying or bombed-out buildings, overpasses and similar |
 
 **Zone order** (decided September 26, 2026): **Zone 1 is the Neon City** (the web demo zone) and **Zone 2 is Gangland**. The remaining zones are still to be designed with the owner; the build keeps empty slots for them.
+
+### Zone roster (decided September 26, 2026)
+**Every zone is set in the same future, vaguely cyberpunk world.** No zone looks historical: the Marketplace is not a medieval market. Zones may be dustier or dirtier than the Neon City, but they stay futuristic.
+
+**Six zones** at launch, in the order below. Each zone has 1–3 levels, never more than 3; see the schedule at the end of this section.
+
+| # | Zone | Mood (reference) | Palette |
+|---|---|---|---|
+| 1 | **Neon City** | Blade Runner | Keep the current city skin |
+| 2 | **Gangland** | Mad Max, but in a cyberpunk setting | Browns and tans |
+| 3 | **Marketplace** | A bustling, happy market | Tan, with livelier colours: whites, blue awnings, splashes of colour in shop signs and visible products |
+| 4 | **Corporate** | A more oppressive Blade Runner, with corporate and military themes | Steel and gunmetal grey, military olive, cold and sterile white light, and one harsh brand colour (chosen by the art agent, away from the hazard colours) |
+| 5 | **Dead Zone** | Eerie, quiet, haunting | Dark black, dark grey and ash grey |
+| 6 | **Golden Zone** | Decadent opulence | A white and slightly creamy base with red and gold accents. There must be some gold to show the wealth, but it isn't the only colour. |
+
+**Zone 1: Neon City.** Floor: roofs of trucks driving toward the player; gaps between trucks. Walls: building facades with signs. Ceilings: undersides of low-flying ships.
+
+**Zone 2: Gangland.** Lived in: graffiti and plenty of signs of life. Gangs compete for power there, and some are directly funded by corporate and military interests. Floor: a street, with holes and craters as gaps. Walls: bombed-out building faces. Ceilings: undersides of decaying or bombed-out buildings, overpasses and similar.
+
+**Zone 3: Marketplace.** An open-air market, dustier and dirtier than the city: commercial buildings, lots of signs, casinos and shops. Floor: stall roofs and awnings, with gaps between the stalls *(proposed; owner agreed)*. Ceilings: undersides of buildings, bridges and overpasses, a few ships, and floating advertisements.
+- **Citizens:** interesting and funny citizens are **scenery only**, not real 3D characters or anything the player interacts with. They are seen inside the shops along the low part of the walls, as animations that play. They may react to the runner passing (startled, cheering, happy); the goal is to be funny or uplifting.
+- **Conditions:** they are added only if they don't noticeably cost performance on mid-range phones and don't add much code complexity.
+
+**Zone 4: Corporate.** Close to the Neon City, but plainly corporate. Corporations and the military are intertwined, so there is a visible military presence. Generic, soulless corporate art. Floor: roofs of maglev trains or plazas *(proposed; owner agreed)*. Ceilings: undersides of buildings, bridges and similar, and occasionally a military ship.
+
+**Zone 5: Dead Zone.** A blackened, bombed-out husk of the city: rubble, embers, smoke and silence, with not much life. Fires are kept minimal. Floor: a rubble street *(proposed; owner agreed)*. Ceilings: only the remains of the destroyed city, such as the undersides of dead buildings and crumbling, charred grey bridges. **The Cyborg's Bad Dream first appears here.**
+
+**Zone 6: Golden Zone.** The city strictly for the elites and corporate bosses, and home of the final boss. The cult is felt everywhere, alongside an extravagant show of opulence and wealth. Floor: golden walkways over water *(proposed; owner agreed)*. Ceilings: undersides of golden bridges, golden archways and other decadent structures.
+- **Water:** flows off the sides of the ceilings as waterfalls or fountains. It is **scenery only**, kept sparse, and thinned out if it clutters the view.
+- **Final level: the Golden Palace.** The player runs **inside** the palace, which is so huge and grand that its interior is basically the size of a city. It plays like any other level; only the skin is an interior (floors, walls and ceilings are the palace's own halls, galleries and arches). The final boss follows it.
+
+**Colour rule for every zone** *(proposed)*: zones may use colours close to hazard colours (red and gold in the Golden Zone, blue awnings in the Marketplace, fire in the Dead Zone), but only as **non-glowing** materials or dim background elements. Only hazards glow in hazard colours, so pink, yellow and black, red, orange, green and cyan keep their meaning everywhere.
+
+### The cult (decided September 26, 2026)
+- The cult is so widespread that it is **the reason the gangsters and cyborg gangsters attack the runner** in the first place.
+- **What makes it insidious:** people are completely subservient to its philosophy without realizing that they're in a cult.
+- **Symbol and colour:** *(open)*. An art agent will draw up a few options for the owner to choose from.
+- *(Proposed)* **Hidden in plain sight:** the symbol is worked into logos, ads and corporate art in every zone, and is displayed openly only in the Golden Zone.
+
+### Level schedule and enemy introductions (decided September 26, 2026)
+**Every zone introduces at least one new enemy.** New enemies are preferred over new mechanics. Anything introduced earlier keeps appearing later. Each level introduces about one new thing.
+
+| Zone | Level | New in this level |
+|---|---|---|
+| 1. Neon City | 1 | The basics (gaps, fences, walls, signs), then basic cyborgs late in the level |
+| | 2 | Ceilings and anti-grav pads |
+| | 3 | Pulsing fences, window cyborgs and the **hover truck** |
+| 2. Gangland | 1 | **Sewer screech** (from manholes) and ramps |
+| | 2 | **Octodog** and speed pads |
+| | 3 | Fence generators and **heli drones** |
+| 3. Marketplace | 1 | The **Barnacle Turret** (§9.8), the first ceiling hazard |
+| | 2 | **Wall fences** (§9.1), plus screeches from wall vents in the shopfronts *(proposed)* |
+| 4. Corporate | 1 | **Buzz Overdrive** (§9.9) |
+| | 2 | The **Tithe Collector** (§9.12), with a heavier military presence *(proposed)* |
+| 5. Dead Zone | 1 | Hosts and the **Cyborg's Bad Dream** |
+| | 2 | A quiet, eerie remix |
+| 6. Golden Zone | 1 | The **Resonator** (§9.10) |
+| | 2 | **Gilded Sentinels** (§9.11) and peak difficulty *(proposed)* |
+| | 3 | The **Golden Palace**, then the final boss |
+
+**15 levels plus 6 bosses.** A flawless run through every level takes about 35 minutes. With retries and bosses, a first playthrough is estimated at 60–90 minutes.
 
 **Rules:**
 - Identical gameplay behavior under every skin.
@@ -110,9 +181,9 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 
 ## 6. Structure, Progression & Replay
 
-- **Zones:** 6+ at launch, each with a distinct look.
+- **Zones:** 6 at launch, each with a distinct look (see §5).
 - **Levels:** 1–3 per zone, each 90–150 seconds.
-- **Bosses:** one at the end of each zone. Each boss is effectively a **standalone mini-game**, very different from the main runner (decided September 26, 2026). Designs come later; the build leaves a slot for each.
+- **Bosses:** one at the end of each zone. Each boss is its own scripted encounter and scene, but **plays as close to the main runner as possible** (refined September 26, 2026; see §10). The build leaves a slot for each.
 - **Cinematics:** short, minor cinematics between levels and zones give a sense of progression (decided September 26, 2026). Content comes later; the build leaves slots for them.
 - **Estimated first playthrough:** roughly 20–50 minutes. This is a known risk for a paid Steam game (Steam's refund window is 2 hours of play), so replay value is critical.
 - **Levels are built by a rule-based generator** from obstacle and enemy patterns plus a difficulty value, fitted to the device's lane count.
@@ -214,6 +285,11 @@ Shared interaction rules apply unless stated otherwise:
   - Destroyed by weapons, a **stomp**, or the **dash**.
   - Sends out an **EMP** that disables fences within a short radius for the rest of the level *(assumed duration)*.
   - The EMP also dissolves the Cyborg's Bad Dream.
+- **Wall fences** (owner, September 26, 2026; first appear in Marketplace 2 *(proposed)*): electric fences that **span a side wall** and **turn off and on** from time to time, to make the walls less safe.
+  - *(Proposed)* The same pink crackle, strung across the wall-run path between emitters on the facade, the way a floor fence crosses a lane. They follow the level clock with the same flicker and crackle before switching on.
+  - **Variants** (decided September 26, 2026): **full-height** wall fences, passed by timing, from Marketplace 2. From the Corporate zone, **partial** wall fences also cover only the low or the high part of the wall, and are passed by entering the wall high or low.
+  - The same rules as floor fences: armor, the shield and the dash get you through, claws don't, weapons can't destroy them, and a generator's EMP switches them off.
+  - *(Proposed)* Fairness: never where a ramp launches the player into one while it's on, and never on the same wall section as a sign or a window cyborg.
 
 ### 9.2 Cyborg (early; scales through the campaign)
 - **Look:** humanoid.
@@ -232,7 +308,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Scaling:** fire rate, projectile speed, and health increase gradually across the campaign.
 - **Production note:** the first animated humanoid. Use one shared body and skeleton with swappable parts per zone.
 
-### 9.3 Hover Truck (mini-boss; rare early, more frequent later)
+### 9.3 Hover Truck (mini-boss; first appears in Neon City 3; rare early, more frequent later)
 - **Entrance:** bangs on a building wall (left or right) as a warning, then **bursts through** in fire and rubble.
   - A player on that wall section **takes damage** (the banging is the warning).
 - **Movement:**
@@ -251,7 +327,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Visual variants:** sleek city version; scavenger version (rusted bolted plates, spiked plow, barbed wire).
 - **Design principle it establishes:** safe things look safe, and the one deadly part looks deadly.
 
-### 9.4 Octodog (from about level 4–5; exact schedule open)
+### 9.4 Octodog (first appears in Gangland 2, the campaign's 5th level)
 - **Look:** a mass of green tentacles on robotic dog legs.
 - **Movement:** floor only.
 - **Attack sequence:**
@@ -269,7 +345,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Stomping without claws:** the tentacles grab the player, causing damage.
 - **Armor / shield:** blocks one lunge or grab.
 
-### 9.5 Sewer Screech (gangland zones onward; rare in city)
+### 9.5 Sewer Screech (first appears in Gangland 1; rare in city)
 - **Look:** slimy, diseased vermin with **rows of spines** on its back.
 - **Where it comes from:** manhole covers in the floor (street zones) or vents at the bottom of walls. In city zones, it's rare and wall vents only.
 - **Warning:** its cover or vent **shakes**, then bursts open.
@@ -282,7 +358,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Kill:** any weapon in **one hit**, claws, or the dash. Armor and the shield block its swipe.
 - **Reuse:** the **building block for the swarm boss**.
 
-### 9.6 Heli Drone
+### 9.6 Heli Drone (first appears in Gangland 3)
 - **Look:** a futuristic drone with a helicopter rotor on each side and a **gatling gun** underneath.
 - **Entrance:** swoops in from the distance as a warning.
 - **Movement:** hovers over the player's lane and **follows them between lanes**. It is **stationary while firing**.
@@ -302,7 +378,7 @@ Shared interaction rules apply unless stated otherwise:
   - If the pad is missed, another appears 8–10 seconds later, repeating.
   - No drone spawns in the last ~15 seconds of a level.
 
-### 9.7 Cyborg's Bad Dream (late levels)
+### 9.7 Cyborg's Bad Dream (late levels; first appears in the Dead Zone)
 - **Look:** a ghostly apparition, black with purple highlights, a mix of vapor and liquid. A bulbous head with a **circular maw of spiked teeth**, long fingers ending in slashing claws, and no legs.
 - **Origin:**
   - Bursts out of a **host cyborg** when the host is killed.
@@ -326,23 +402,114 @@ Shared interaction rules apply unless stated otherwise:
   - Surviving the full chase earns a score bonus.
 - **Purpose:** a counter to late-game power creep that forces pure movement skill.
 
+### 9.8 Barnacle Turret (owner, September 26, 2026; first appears in Marketplace 1)
+- **Where:** a ceiling hazard, the Marketplace's new enemy. It **pops out of the ceiling's underside** (a ship's hull, or whatever forms the ceiling in that zone) and stays stationary.
+- **Fires only at a player on the ceiling** (the ceiling is otherwise too safe). It never shoots down at the floor.
+- **Look:** a round, dome-shaped body with a cannon or gun coming out of its chest.
+  - **Mechanical** in most zones.
+  - **Creature version in Gangland and the Marketplace:** more animalistic, as if alive, a bit cutesy and silly, like a furry creature. It keeps the same dome body and chest cannon, so it reads as the same enemy (readability rule). Since the turret arrives after Gangland, the Gangland look only matters if zones are ever mixed (e.g. endless mode).
+- **Attack:** fires at the player **the same way the cyborg does** (a visible charge-up with a sound, a short burst of bolts, then a pause), and is **slightly more accurate** than the cyborg. It should **not** be a difficult enemy.
+- **Dodge:** by dodging its shots.
+- **Kill:** claws, the dash, a stomp, or **5 shots** at laser tier 1.
+- **Body:** treated like the cyborg's body. Running into it is deadly unless the player has the shield or claws (or is dashing); armor doesn't help.
+- **Armor and shield:** both block its shots.
+- **Scaling:** across the campaign it fires somewhat faster and takes slightly more damage to kill, but never by much.
+- **Limits:** never on a one-lane ceiling (no room to dodge); at most **2 per ceiling**. Only one fires at a time *(proposed)*.
+
+### 9.9 Buzz Overdrive (owner, September 26, 2026; the Corporate zone's new enemy, first appears in Corporate 1)
+- **Look:** a **truck-sized buzzsaw tank** with a giant, **vertical** buzzsaw blade. Militaristic. If it can be seen at gameplay size, a **red, angry eye on each side**.
+- **Where:** floor lanes; it occupies one lane.
+- **Sequence:**
+  1. The player sees it **in the distance**, in its lane.
+  2. It **revs in view for a few seconds**, with a spin-up noise as its blade spins up. During the wind-up, **the lane it is about to cut lights up with a red warning line** on the floor (like the Octodog's lunge line).
+  3. It **charges forward along its lane** toward the player, **slicing the floor in half** as it goes. The floor it has cut **becomes a gap**, from where it started charging all the way back past the player. The cut edges glow the usual gap-edge orange.
+  4. It goes off the screen behind the player, and that's the end of it.
+- **Dodge:** leave its lane before it arrives. It only threatens **its own floor lane**: wall runners and ceiling runners are safe, even beside it.
+- **Contact:** touching the buzzsaw hurts. The **shield and armor block it**. After a block, the floor under the player **holds for about a second**, just enough to switch lanes (a jump would land back in the cut lane). Escaping after a block should be of **medium difficulty**.
+- **Kill:**
+  - **Weapons:** very tough, **20 shots** at laser tier 1. **Killing it before it charges saves the floor**; killing it mid-charge **stops the cut where it dies**. Tuned so laser tier 1 can't stop it in time, but the missile tiers usually can.
+  - **Claws don't work** (it's claw-immune).
+  - **The dash smashes it**, but that's a risky panic move: the player dashes straight into the cut lane, so it's only survivable with the grapple hook.
+  - **No stomp** (the player would land on the blade).
+- **Limits:** only one at a time. It never cuts a lane holding a ramp, a pad or the safe landing zone after a ceiling. On 3 lanes, two lanes always stay whole.
+- **Scaling:** the only change across the campaign is that its **rev time gets slightly shorter**. It appears in only two zones, so it never gets too fast. Its health stays at 20 shots.
+- **Implementation note:** the generator plans each cut in advance (lane, start and end), so levels stay fair and identical on every attempt; the saw is just the visible cause. This is the first floor that turns into a gap during play.
+
+### 9.10 Resonator (the owner's "Hymn Censer" reworked in a sci-fi form; the Golden Zone's new enemy, first appears in Golden 1)
+- **Direction:** leans heavily on sci-fi, and must not look like anything from a church. It reads as the cult's **broadcast technology**, not an object of worship.
+- **Look** *(proposed)*: a floating, slender golden spire ringed by 2–3 slowly turning halos around a red glowing core. Elegant luxury tech rather than religious.
+- **Sequence** *(proposed)*:
+  1. It hovers far ahead.
+  2. Before each pulse, its halos spin up and line up, and it plays the cult's signature **three-note chime**, pleasant like a public-address jingle. That's the audio warning, and its pleasantness is the creepy part.
+  3. It sends a **red shockwave ring rolling along the floor toward the player, across every lane**.
+  4. It leaves after a few pulses. Later in the zone it pulses faster or sends double waves.
+- **Dodge:** jump the wave, or be on a wall or the ceiling (waves only travel along the floor).
+- **Kill** *(proposed)*: weapons, or wait it out. It hovers too high to stomp. Armor and the shield block a wave.
+- *(Proposed)* Fairness: the generator never lets a wave arrive on top of a gap or a fence.
+
+### 9.11 Gilded Sentinels (owner, September 26, 2026; first appear in Golden 2 *(proposed)*)
+- **Look:** the Golden Zone's walls are lined with golden statues holding halberds, most of them decorative. A **live** one stands in a niche **at wall-run height** with **glowing red eyes**; decorative statues never stand at wall-run height (safe things look safe). They fit the Golden Palace as its guards.
+- **Attack:** as the player approaches, its eyes flare and stone grinds (visual and audio warning); then it **swings its halberd across its wall section and the outer floor lane**.
+- **Dodge:** on the wall, pass above or below the swing by timing the wall entry; on the floor, stay out of the outer lane. Later ones swing twice or come in pairs.
+- **Kill:** a stomp from a wall jump *(proposed)*, or weapons: **15 shots** at laser tier 1, with no special weapon rule (decided September 26, 2026). Armor blocks the halberd; the statue's body is solid *(proposed)*.
+
+### 9.12 Tithe Collector (owner, September 26, 2026; first appears in Corporate 2 *(proposed)*)
+- **Look:** a small, fast gold drone with a collection plate; smug and gaudy.
+- **Behaviour:** darts along the lanes ahead of the player and **sucks up the credits in its path** (a visible stream of credits flowing into it). It weaves through the most dangerous lanes, so chasing it is the risk.
+- **Catch it** (stomp, shoot or dash through it) and it bursts into **everything it took plus a jackpot**.
+- **Touching it isn't deadly:** it grabs **25% of the credits collected this run** (decided September 26, 2026) and flies off. This is the game's first non-lethal hit.
+- *(Proposed)* It is **not a heli drone**: anti-grav pads don't affect it, and it has no rotors, so it doesn't look like one.
+- **Where:** introduced earlier than the Golden Zone and appears there as well. *(Proposed)* Introduced in Corporate 2, skips the Dead Zone (there's no one left to collect from), and returns in the Golden Zone.
+- **Priority:** it is the first idea to drop if the budget tightens (owner, September 26, 2026).
+
 ---
 
 ## 10. Bosses (partial)
 
 - **General:**
   - One per zone.
-  - Each boss is a standalone mini-game with its own rules and scene, not a variant of a normal level (decided September 26, 2026).
+  - Each boss is its own scripted encounter with its own scene and rules, not a variant of a normal level (decided September 26, 2026).
+  - **Gameplay stays as close to the main runner as possible** (refined September 26, 2026): the same controls, camera and movement. A boss may get its own gimmick that makes it play differently, but none has been chosen yet.
   - Unique scripted encounters (handmade arenas are allowed within the generator system).
+  - **Length:** about the same as a level, **60–120 seconds**. The final boss may run a little longer, to be more challenging.
+  - **Death restarts the fight** (no checkpoints), like a level. **Exception: the final fight** has a checkpoint halfway, where the villain may change into a **second stage**.
+  - **Items:** players bring their current items into the fight. Some fights may also offer **pickups**, for example a section of floor that spawns an armor, shield or grapple pickup. Which fights do this is *(open)*.
+  - **Rewards:** beating a boss earns **credits and score points**.
+  - **Stars and leaderboards:** bosses have both, like levels (decided September 26, 2026). *(Proposed)* One star for winning; two and three stars for beating par times set per boss in data. The leaderboard ranks the boss score, which includes a time bonus.
+  - **No time limit, no escalation:** if the player doesn't land the hits, the fight keeps cycling its pattern until they win or die. It does **not** get harder while a player struggles.
   - Bosses ignore claw contact kills.
   - Every boss must be beatable using only the power-ups granted before the fight.
-- **Floating Head:** a monstrous floating head ahead of the player. The player dodges projectiles and **jumps on weak points** to defeat it.
+- **Roster** (decided September 26, 2026):
+
+  | Zone | Boss |
+  |---|---|
+  | 1. Neon City | Floating Head |
+  | 2. Gangland | Sewer Swarm |
+  | 3. Marketplace | *(open)* |
+  | 4. Corporate | *(open)* |
+  | 5. Dead Zone | *(open)* |
+  | 6. Golden Zone | The final villain |
+
+- **Floating Head** (Neon City). Owner's design, with the design round's additions approved by the owner (September 26, 2026).
+  - **What it is:** a **giant ship**. Its back is a **giant cybernetic propaganda face** that watches over the city and **shouts its propaganda**.
+  - **Bombing run:** the ship flies in overhead and **drops bombs toward the player** for about **15–20 seconds**. *(Proposed)* A searchlight sweeps the lanes and the bombs fall where it lingers, with a falling whistle, so the light is the visual warning.
+  - **The reveal:** the ship finishes its flyby **directly in front of the player**, and its back turns out to be the face.
+  - **Face-off attacks:** **eye lasers** while it looks at the player. *(Proposed)* The eyes glow and whine, then twin beams sweep across the lanes: jump a low sweep, slide under a high one, or switch lanes when a beam drags down a lane. **Cyborg drop** (kept): its mouth opens and drops 1–2 cyborgs onto the trucks ahead, who then fight like normal cyborgs.
+  - **Back to the sky:** once or twice during the fight it rises for another bombing run (shorter than the first).
+  - **Bringing it down** (the owner's idea of a building falling on it): marked, cracked towers stand ahead at the roadside. The player **baits the eye laser into a marked tower** by leading the beam to that side and dodging at the last moment, the way players bait an Octodog into a gap. The tower topples onto the ship and pins it low across the trucks. If the player doesn't manage it, the laser eventually clips a tower on its own, so a struggling player still gets a chance; baiting it is faster and scores more.
+  - **Weak points**: glowing **red** on top of the head, the same language as the hover truck's weak point. While it's pinned, the player **stomps** one. Each phase uses a different Zone 1 skill to get on top: (1) run up the fallen tower like a ramp; (2) wall-jump onto it; (3) ride a ship's underside via an anti-grav pad and drop onto it when the hull ends.
+  - **Three phases**, one stomp each. After a stomp it shakes free, shrieks and rises; the next phase is faster, with more cyborgs.
+  - **Damage:** stomps do the real damage (a third of its health each); weapons chip away slowly (tuned so even the best weapon saves at most one stomp over the whole fight).
+  - **Propaganda voice:** a heavily distorted announcement voice that isn't meant to be understood, plus a few short slogans shown as text on its face screen (so only those slogans need translating).
+  - **Armor pickups:** one appears at the start of the final phase. In addition, whenever the player's armor or shield breaks during the fight, another armor pickup appears **10–15 seconds later** to give them a chance (at most once per phase *(proposed)*).
+  - **Kept simple:** no bonus damage for shooting into its open mouth.
+  - **Defeat**: its face glitches, the propaganda cuts out mid-shout, and it crashes into the street ahead; the runner runs through the wreck. This leads into the zone's outro, and in the web demo into the "get the full game" screen.
 - **Sewer Swarm:** a mutant horde rising from the sewers.
   - It builds up on both sides, and a mob attacks. The player must dispatch the mob while moving forward, as the horde shifts **ahead of and behind** the player dynamically.
   - **Implementation:** 4–5 gameplay entities ("clusters"), each rendered as many screech-variant creatures using MultiMesh plus a shader for per-creature motion. It looks like hundreds, but only 4–5 are simulated.
   - The heavy missile gets bonus damage against it.
   - Needs early performance testing on mid-range phones.
-- **Remaining bosses:** *(open)*
+- **Remaining bosses:** Marketplace, Corporate and Dead Zone *(open; the owner is still thinking about them)*, and the final villain's fight.
 
 ---
 

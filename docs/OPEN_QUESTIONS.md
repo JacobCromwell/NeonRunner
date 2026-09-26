@@ -5,21 +5,28 @@ Companion to `GDD_CHECKPOINT.md`. The design phase is complete when this list is
 ## A. Next design rounds (in recommended order)
 
 ### 1. Zones (highest cost driver: do next)
-- Full list of 6+ zones: name, visual theme, color palette, and mood.
+- ~~Full list of 6+ zones: name, visual theme, and mood.~~ Answered: six zones: City, Gangland, Marketplace, Corporate, Dead Zone, Golden Zone, in that order, with moods and palettes (GDD §5).
 - ~~Which zone is first (the demo zone)?~~ Answered: Neon City is Zone 1, Gangland is Zone 2 (GDD §5).
-- The remaining zones (3–6+): the owner has ideas to discuss.
-- The **floor skin** for each zone (trucks, street, something else?).
-- **What forms the ceiling in zones without spaceships?** Anti-grav pads, drones, and the Bad Dream's escape route all depend on a ceiling existing.
+- ~~The **floor skin** for each zone~~ Answered (GDD §5).
+- ~~**Levels per zone**~~ Answered: 3 / 3 / 2 / 2 / 2 / 3, 15 in all (GDD §5).
+- ~~**What forms the ceiling in zones without spaceships?**~~ Answered: every zone has ceilings, made of different things per zone, and they may be narrower than the full floor (GDD §3, §5).
+- ~~**Narrow ceilings**~~ Answered: lane switching within the ceiling's width; a one-lane ceiling is short and relatively safe; the floor under any ceiling may be dangerous, with a safe landing zone (GDD §3).
 - **Wall skin** for each zone, and what "signs" look like there.
-- The **enemy introduction schedule**: which enemy first appears in which zone and level.
-- Whether each zone introduces a new mechanic or object (ramps, speed pads, etc.).
+- ~~The **enemy introduction schedule**~~ Answered level by level (GDD §5). The Barnacle Turret is the Marketplace's new enemy (GDD §9.8).
+- ~~Whether each zone introduces a new mechanic or object~~ Answered: at least one new enemy per zone, preferred over new mechanics (GDD §5).
+- **New enemies:** the Marketplace's is the Barnacle Turret (GDD §9.8). The Corporate zone's is Buzz Overdrive (GDD §9.9). The Golden Zone's is the Resonator (GDD §9.10, working name). Also added: wall fences (§9.1), Gilded Sentinels (§9.11) and the Tithe Collector (§9.12).
+- ~~**Names**~~ Answered: Resonator; Tithe Collector (GDD §9.10, §9.12).
+- **Numbers still open:** the Resonator's shots to kill (Sentinels: 15; Tithe Collector: takes 25%).
+- ~~**Golden Palace**~~ Answered: inside the city-sized palace; plays like any other level (GDD §5).
 
 ### 2. Bosses
 For each boss: arena, phases, attacks, weak points, what power-ups are granted before the fight, how it scales on 3 vs 5–6 lanes, and its length.
-- Floating Head: full breakdown.
+- ~~Roster, gameplay style, length, death, items, rewards~~ Answered (GDD §10, September 26, 2026).
+- ~~Floating Head: full breakdown.~~ Answered (GDD §10, September 26, 2026).
 - Sewer Swarm: full breakdown.
-- Remaining 4+ bosses: concepts needed.
-- Do bosses have their own leaderboards or star criteria?
+- Marketplace, Corporate and Dead Zone bosses: concepts needed (the owner is still thinking). The final villain's fight: full breakdown.
+- ~~Do bosses have their own leaderboards or star criteria?~~ Answered: yes (GDD §10).
+- ~~Does the longer final fight still restart from the beginning on death?~~ Answered: a checkpoint halfway, at a possible second stage (GDD §10).
 
 ### 3. Player character
 - ~~Who or what is the player?~~ Answered: a human runner in a cyber suit (GDD §11). Still open: name, customization.
@@ -66,7 +73,7 @@ For each boss: arena, phases, attacks, weak points, what power-ups are granted b
 - **Web demo:** portal-specific end screens if portals restrict store links.
 
 ### 9. Narrative
-- Is there a story? Who is the player running from or toward? Intro/outro scenes? Or pure arcade?
+- ~~Is there a story?~~ Answered: a light story with little or no words, a silent protagonist, a final villain backed by a cult (GDD §1). Still open: the individual story beats and cinematics (the owner will describe them), and the cult's name and visual identity.
 
 ### 10. Other
 - Working title.
@@ -101,7 +108,7 @@ Each item has a placeholder in code marked `DESIGN-TBD` and, where it's a number
 6. **Low wall run vs floor fences:** on a wall, the body sticks out sideways into the outer lane. If the player is low on the wall, they hit a fence in the outer lane. This isn't specified; it's just what the collision does. Intended?
 7. **Ceiling rules:** moving past the outer ceiling lane does nothing (no ceiling → wall). The ceiling has the same lane count and gravity as the floor. Jump and slide also work on the ceiling, mirrored (jump drops you away from the hull, then gravity pulls you back). Correct?
 8. **Air slide:** pressing slide in mid-air drops fast and slides on landing. It's not in the GDD and can be switched off with `air_slide_fast_fall`. Keep it?
-9. **Hull end landing:** the generator keeps ~1.2 s of floor clear of gaps after every ceiling section, so the drop never lands in a hole. Keep that rule, or allow risky landings?
+9. ~~**Hull end landing:**~~ Answered: keep a safe landing zone (GDD §3, September 26, 2026).
 10. **Ramps:** the placeholder launches onto the wall at 4.0 m, with no speed boost (`ramp_speed_boost = 0`). The ramp sits in the outer lane and launches the player when they run over it.
 11. **Pulsing fences:** on/off timings are placeholders (about 1.0–1.2 s each, with 0.35 s of flicker and an electric crackle before switching on).
 12. **Difficulty within a level:** the placeholder adds +0.25 difficulty linearly from start to end.
@@ -115,7 +122,7 @@ Placeholders the build needed to be playable end to end. Each is marked `DESIGN-
 numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, `data/levels/*.tres`).
 
 **Campaign and structure**
-1. **Introduction schedule** (one new thing per level): City 1 *Rooftop Rush*: gaps, fences, walls and
+1. **Introduction schedule** (superseded September 26, 2026 by the owner's level-by-level schedule in GDD §5: cyborgs move to City 1, pulsing fences and window cyborgs to City 3, and the Octodog stays in Gangland 2 with drones in Gangland 3) (one new thing per level): City 1 *Rooftop Rush*: gaps, fences, walls and
    signs. City 2 *Skyway*: ceilings (anti-grav pads) and pulsing fences. City 3 *Neon Crossfire*:
    cyborgs and a rare hover truck. Gangland 1 *Scrapyard Streets*: ramps, sewer screeches, fence
    generators. Gangland 2 *Dog Run*: Octodogs and speed pads. Gangland 3 *Rotor Wash*: heli drones
@@ -126,7 +133,7 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
    in Gangland because of the sewers. Which boss goes where?
 3. **Cinematic slots:** City has intro, pre-boss and outro slots; Gangland has intro and outro. Where
    do you want cinematics, and what should each show?
-4. **Difficulty curve:** 0.1 → 0.9 across the planned campaign (18 levels, counting 3 per undesigned
+4. **Difficulty curve** (the campaign is now 15 levels, GDD §5): 0.1 → 0.9 across the planned campaign (18 levels, counting 3 per undesigned
    zone), linear, plus a per-level bias; within a level +0.25 from start to end.
 5. **Difficulty tiers** (unlocked after the last campaign step): Normal / Hard / Insane with +0.15 /
    +0.3 difficulty and ×1.1 / ×1.2 run speed.
@@ -371,7 +378,7 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
-- Ceilings never carry obstacles underneath (§3, September 25, 2026).
+- ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
 - Mobile orientation is landscape (§2, September 26, 2026).
 - Zone 1 is the Neon City, Zone 2 is Gangland (§5, September 26, 2026).
 - Bosses are standalone mini-games; short cinematics sit between levels and zones. Both are designed later, and the build leaves slots (§6, §10, September 26, 2026).
