@@ -452,7 +452,7 @@ func _update_avatar(delta: float) -> void:
 		"alive": alive,
 		"dashing": false,  # No juggernaut dash yet.
 		"just_landed": _avatar_landed,
-		"stomping": _slide_on_land and not grounded,  # The air-slide fast fall slams down.
+		"stomping": _slide_on_land and not grounded,  # DESIGN-TBD: the air-slide fast fall shows the stomp.
 	}, delta)
 	_avatar_landed = false
 

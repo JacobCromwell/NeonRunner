@@ -71,7 +71,8 @@ static func shield_material() -> ShaderMaterial:
 	return _shield_material
 
 
-## A low-poly unit sphere, faceted like a force field.
+## DESIGN-TBD: shield look (GDD §8). Placeholder: a translucent bubble round the body, bright at the
+## rim; this is its mesh, a low-poly unit sphere faceted like a force field.
 static func shield_mesh() -> ArrayMesh:
 	if _shield_mesh == null:
 		var rings := PackedVector4Array()
