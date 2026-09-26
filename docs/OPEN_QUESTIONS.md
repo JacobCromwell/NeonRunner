@@ -119,8 +119,9 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
    signs. City 2 *Skyway*: ceilings (anti-grav pads) and pulsing fences. City 3 *Neon Crossfire*:
    cyborgs and a rare hover truck. Gangland 1 *Scrapyard Streets*: ramps, sewer screeches, fence
    generators. Gangland 2 *Dog Run*: Octodogs and speed pads. Gangland 3 *Rotor Wash*: heli drones
-   and window cyborgs. Hosts and the Bad Dream aren't placed yet ("late levels"). Level names and
-   lengths (100–140 s) are placeholders too.
+   and window cyborgs. Hosts and the Bad Dream are built but no level uses them yet (GDD: "late
+   levels"; quick play `--features=cyborg,host,ceilings` shows them). Which level introduces them? Level
+   names and lengths (100–140 s) are placeholders too.
 2. **Boss slots:** Zone 1's boss is unnamed (the Floating Head is a candidate); the Sewer Swarm sits
    in Gangland because of the sewers. Which boss goes where?
 3. **Cinematic slots:** City has intro, pre-boss and outro slots; Gangland has intro and outro. Where
@@ -175,7 +176,8 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
   Dream will wait for Octodog charges and drone barrages (GDD §9.7). Other types don't coordinate. In
   Gangland 3, attacks from two types overlap for 0.3–2.5 s of a 142 s run (measured at 3/5/6 lanes),
   mostly a drone barrage during a hover truck's rev or cannon charge. Should all major attacks take
-  turns?
+  turns? (The director already coordinates the Bad Dream this way; other types would only need to
+  opt in.)
 
 **Power-ups** (from the power-ups work)
 28. **Missiles home** on their target (turn rate 7 rad/s) and leave the launcher angled 0.35 away from the
@@ -330,13 +332,42 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
   ramps. City 3 has no ramps, so there only the lurch route and weapons reach the roof.
 95. **Scores:** drone 300, hover truck 800.
 
+**The Cyborg's Bad Dream** (from its work)
+96. **Where it floats:** 7.5 m ahead of the player, facing them, 1.3× scale (about 4.7 m tall); 7 m ahead
+  while it waits under a ceiling.
+97. **Chase timing:** 20–30 s from the burst (the clock runs while it holds a slash for another enemy's
+  attack); slashes 3–4 s apart; it emerges over 1.0 s and first telegraphs 0.8 s later.
+98. **Telegraph:** 1.2 s early in the campaign to 1.0 s late, then a 0.22 s lunge; the claws are live for
+  0.12 s and it recovers for 0.7 s. It lines up within 0.5 m of the player's lane first, waiting at most
+  1.2 s for a player who keeps moving.
+99. **Jumping doesn't dodge it:** the claws sweep 0–1.75 m, higher than a jump, so only leaving the lit
+  lanes (another lane, a wall, a pad) escapes. On a wall it slashes the wall (up to 4.8 m) and the outer
+  lane: a wall jump plus a lane switch escapes.
+100. **Escape rule added (not in the GDD):** it never telegraphs when no escape is open (on 3 lanes a
+  middle-lane slash covers the whole floor, so a wall without a sign must be free), or at a player
+  falling into a hole or dropping from a ceiling.
+101. **Touching its body** hurts like the slash (armor blocks it); in practice it never comes that close.
+102. **A second host killed mid-chase** pays the host bonus but releases no second Bad Dream.
+103. **EMP:** dissolves it wherever it is, in 0.7 s, with no survival bonus.
+104. **Survival bonus:** 1,000, paid only if the player is alive when the chase ends.
+105. **Pads during a chase:** at most 10 s apart (added ones 8–10 s after the last, with 3 s ceilings);
+  hosts are at least 7 s apart after a chase could end, so a level keeps 1–2 hosts. After a level's
+  first drone, the drone's pad schedule places every pad, and a host whose chase it doesn't cover is
+  left out. Levels without ceilings get no hosts.
+106. **Blocked attacks:** an Octodog kept from charging during a chase runs off ahead; a drone keeps
+  following without firing.
+107. **Look:** the GDD's purple leans violet (pink means "electric fence"); the throat and claws turn
+  enemy-red only while it attacks; below the neck it's translucent vapour; the three lanes it will slash
+  light up red. Hint: "The Bad Dream slashes the lanes it lights red. Get out of them: another lane, a
+  wall or a pad."
+
 **Platforms and presentation**
-96. **Store links** in the web demo point at the stores' front pages until the game has store pages.
-97. **App icon:** a placeholder neon "N" (`tools/asset_gen/icon_gen.gd`) until there's a title and brand.
-98. **Leaderboards view:** scores are already submitted (per level and difficulty tier, endless per lane
+108. **Store links** in the web demo point at the stores' front pages until the game has store pages.
+109. **App icon:** a placeholder neon "N" (`tools/asset_gen/icon_gen.gd`) until there's a title and brand.
+110. **Leaderboards view:** scores are already submitted (per level and difficulty tier, endless per lane
   count and tier, net worth), but no screen opens the platform's leaderboard UI yet. The plan is a button on
   the title and results screens once the platform plugins are chosen (the stub has no leaderboards).
-99. **Achievements:** the platform layer can unlock them, but none are designed. Which ones, if any?
+111. **Achievements:** the platform layer can unlock them, but none are designed. Which ones, if any?
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).

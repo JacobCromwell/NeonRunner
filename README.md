@@ -5,7 +5,7 @@ through zones full of enemies, and a single hit ends the run. Built with Godot 4
 
 **Status:** the game is built around everything designed so far:
 - a campaign of two zones with three levels each
-- seven enemy types
+- eight enemy types
 - the shop, power-ups and economy
 - every screen and the HUD
 - two zone looks, generated music and sound effects
@@ -83,7 +83,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   - the Octodog
   - the sewer screech
   - the heli drone
-  - The Cyborg's Bad Dream is being built.
+  - the Cyborg's Bad Dream, released by killing a host cyborg (built, but not yet in a campaign level:
+    the GDD saves it for late levels; try `--features=cyborg,host,ceilings`)
 - **Economy:** credits in four denominations, level score and stars, and a shop. Items are five permanent
   power-ups (weapon line, claws, juggernaut dash, magnet, slow time) and three breakables (armor, shield,
   grapple hook). After a death you're offered a revive (an item, or a rewarded ad on mobile). Net worth
@@ -129,7 +130,7 @@ family, the UI kit, every screen); each script's header lists its options.
 
 ## Tests
 
-`tools/godot.sh test` runs 24 suites with about 514,000 checks:
+`tools/godot.sh test` runs 26 suites with about 766,000 checks:
 - **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds.
 - **Movement:** scenarios on real physics.
 - **Enemies:** each type's attacks, dodges, kills and generation rules.

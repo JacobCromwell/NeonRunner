@@ -235,10 +235,16 @@ func _build_debug_tools() -> void:
 		sections.pop_back()
 	# The level's enemy types. Every enemy of a type shares its tuning resource, so changes reach the
 	# ones in play (numbers an enemy reads once, such as health, apply to the next ones spawned).
+	var types: PackedStringArray = []
 	for feature: String in context.config.features:
-		var enemy_tuning: Resource = EnemyDirector.tuning_for(feature)
+		# Hosts are cyborgs that release a Bad Dream.
+		for type: String in (["cyborg", "bad_dream"] if feature == "host" else [feature]):
+			if not types.has(type):
+				types.append(type)
+	for type: String in types:
+		var enemy_tuning: Resource = EnemyDirector.tuning_for(type)
 		if enemy_tuning != null and enemy_tuning.resource_path != "":
-			sections.append({"title": "Enemy: " + feature.capitalize(), "resource": enemy_tuning,
+			sections.append({"title": "Enemy: " + type.capitalize(), "resource": enemy_tuning,
 				"path": enemy_tuning.resource_path})
 	tuning_panel.setup(sections)
 	tuning_panel.restart_requested.connect(func() -> void: restart())
