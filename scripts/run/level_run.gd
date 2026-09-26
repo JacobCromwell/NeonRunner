@@ -64,6 +64,8 @@ func _build() -> void:
 	var arena: BossArena = null
 	if context.is_boss():
 		encounter = BossEncounter.create(context.boss)
+		if encounter == null:
+			push_error("LevelRun: boss %s has no fight to play (BossDef.scene)" % context.boss.id)
 		arena = encounter.plan_arena(context) if encounter != null else null
 	if arena != null:
 		layout = arena.layout

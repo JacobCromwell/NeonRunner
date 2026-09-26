@@ -67,6 +67,8 @@ func drain_value() -> float:
 
 
 func _process(delta: float) -> void:
+	if not is_visible_in_tree():
+		return
 	if encounter != null and is_instance_valid(encounter):
 		_refresh()
 	if _drain > value:

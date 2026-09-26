@@ -254,9 +254,10 @@ func advance_from(s: CampaignStep) -> void:
 
 
 ## Marks a boss or cinematic slot as done (placeholders complete when the player continues; a built
-## boss records its fight through the results instead). The campaign's last step is a cinematic.
+## boss records its fight through the results instead, so a boss slot passed as a placeholder earns
+## no stars that would show once the fight is built). The campaign's last step is a cinematic.
 func complete_step(s: CampaignStep, score: int = 0) -> void:
-	profile.record_run(s.id, 0, true, score, 3, 0.0)
+	profile.record_run(s.id, 0, true, score, 0 if s.kind == CampaignStep.Kind.BOSS else 3, 0.0)
 	_check_game_finished()
 	save()
 
@@ -677,7 +678,7 @@ func save() -> void:
 		SaveService.save_profile(profile, save_path)
 
 
-# --- Bosses and cinematics (slots until designed) ----------------------------------------
+# --- Bosses and cinematics (placeholder cards until built) --------------------------------
 
 ## A boss step: the fight (a run like a level's, start_boss), or its placeholder card until built.
 func _play_boss(s: CampaignStep, difficulty_tier: int) -> void:

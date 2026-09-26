@@ -707,7 +707,20 @@ func _test_app_flow() -> void:
 	var saved: Profile = App.profile
 	var step: CampaignStep = App.campaign.step("city/boss")
 	var slot: BossDef = step.boss
+	# A slot passed while still a placeholder earns no stars that would show once its boss is built.
+	App.profile = Profile.new()
+	SampleProfiles.complete_until(App.profile, App.campaign, "city/boss")
+	App.complete_step(step)
+	check(App.profile.is_completed("city/boss") and App.profile.stars("city/boss") == 0,
+		"a boss slot passed as a placeholder counts as done, with no stars")
 	step.boss = test_def
+	App.show_level_select()
+	await tree.process_frame
+	var passed: TileButton = (App.screen as LevelSelectScreen).tiles.get("city/boss")
+	var passed_labels: PackedStringArray = []
+	for node: Node in passed.find_children("*", "Label", true, false):
+		passed_labels.append((node as Label).text)
+	check(passed_labels.has("DONE") and not passed_labels.has("NEW"), "and its built boss's tile says so, without a best")
 	App.profile = Profile.new()
 	await _app_win(step)
 	App.profile = Profile.new()

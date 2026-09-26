@@ -252,9 +252,13 @@ func _fill_boss(tile: TileButton, s: CampaignStep, done: bool, locked: bool) -> 
 	tile.content.add_child(boss_name)
 	if locked:
 		return
-	if done:
+	var best_time: float = float(record.get("best_time", 0.0))
+	if done and best_time > 0.0:
 		tile.add_label("BEST %s · %s" % [UiTheme.format_int(int(record.get("best_score", 0))),
-			ResultsScreen.format_time(float(record.get("best_time", 0.0)))], UiTheme.CAPTION, HORIZONTAL_ALIGNMENT_LEFT)
+			ResultsScreen.format_time(best_time)], UiTheme.CAPTION, HORIZONTAL_ALIGNMENT_LEFT)
+	elif done:
+		# Passed while it was still a placeholder: no fight to show a best for.
+		tile.add_label("DONE", UiTheme.ACCENT_CAPTION, HORIZONTAL_ALIGNMENT_LEFT)
 	elif int(record.get("attempts", 0)) > 0:
 		tile.add_label("NOT BEATEN", UiTheme.CAPTION, HORIZONTAL_ALIGNMENT_LEFT)
 	else:
