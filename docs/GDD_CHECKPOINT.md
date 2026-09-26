@@ -282,7 +282,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Passing through:** the shield, armor, and juggernaut get you through. Claws don't.
 - **Weapons:** cannot destroy fences, and auto-fire ignores them.
 - **Generators:** occasional; **most fences have none**.
-  - Destroyed by weapons, a **stomp**, or the **dash**.
+  - Destroyed by a **stomp** or the **dash**. **Weapons never set one off** (decided September 26, 2026): auto-fire never targets generators and missile splash never damages them, the same rule as for hosts, so an EMP is always the player's choice.
   - Sends out an **EMP** that disables fences within a short radius for the rest of the level *(assumed duration)*.
   - The EMP also dissolves the Cyborg's Bad Dream.
 - **Wall fences** (owner, September 26, 2026; first appear in Marketplace 2 *(proposed)*): electric fences that **span a side wall** and **turn off and on** from time to time, to make the walls less safe.
@@ -473,7 +473,8 @@ Shared interaction rules apply unless stated otherwise:
   - Unique scripted encounters (handmade arenas are allowed within the generator system).
   - **Length:** about the same as a level, **60–120 seconds**. The final boss may run a little longer, to be more challenging.
   - **Death restarts the fight** (no checkpoints), like a level. **Exception: the final fight** has a checkpoint halfway, where the villain may change into a **second stage**.
-  - **Items:** players bring their current items into the fight. Some fights may also offer **pickups**, for example a section of floor that spawns an armor, shield or grapple pickup. Which fights do this is *(open)*.
+  - **Items:** players bring their current items into the fight. Some fights may also offer **pickups**, for example a section of floor that spawns an armor, shield or grapple pickup.
+  - **Standard armor rule** (decided September 26, 2026; used by the Floating Head and the Sewer Swarm, and the default for later bosses): one armor pickup appears at the start of the final phase. Whenever the player's armor or shield breaks during the fight, another armor pickup appears **15–17 seconds later**, at most once per phase *(proposed cap)*. The **Floating Head keeps 10–15 seconds**, so the first boss is a little gentler; the Sewer Swarm and later bosses use 15–17.
   - **Rewards:** beating a boss earns **credits and score points**.
   - **Stars and leaderboards:** bosses have both, like levels (decided September 26, 2026). *(Proposed)* One star for winning; two and three stars for beating par times set per boss in data. The leaderboard ranks the boss score, which includes a time bonus.
   - **No time limit, no escalation:** if the player doesn't land the hits, the fight keeps cycling its pattern until they win or die. It does **not** get harder while a player struggles.
@@ -485,9 +486,9 @@ Shared interaction rules apply unless stated otherwise:
   |---|---|
   | 1. Neon City | Floating Head |
   | 2. Gangland | Sewer Swarm |
-  | 3. Marketplace | *(open)* |
-  | 4. Corporate | *(open)* |
-  | 5. Dead Zone | *(open)* |
+  | 3. Marketplace | The House |
+  | 4. Corporate | Hostile Takeover |
+  | 5. Dead Zone | Sleep Taker |
   | 6. Golden Zone | The final villain |
 
 - **Floating Head** (Neon City). Owner's design, with the design round's additions approved by the owner (September 26, 2026).
@@ -504,12 +505,59 @@ Shared interaction rules apply unless stated otherwise:
   - **Armor pickups:** one appears at the start of the final phase. In addition, whenever the player's armor or shield breaks during the fight, another armor pickup appears **10–15 seconds later** to give them a chance (at most once per phase *(proposed)*).
   - **Kept simple:** no bonus damage for shooting into its open mouth.
   - **Defeat**: its face glitches, the propaganda cuts out mid-shout, and it crashes into the street ahead; the runner runs through the wreck. This leads into the zone's outro, and in the web demo into the "get the full game" screen.
-- **Sewer Swarm:** a mutant horde rising from the sewers.
-  - It builds up on both sides, and a mob attacks. The player must dispatch the mob while moving forward, as the horde shifts **ahead of and behind** the player dynamically.
-  - **Implementation:** 4–5 gameplay entities ("clusters"), each rendered as many screech-variant creatures using MultiMesh plus a shader for per-creature motion. It looks like hundreds, but only 4–5 are simulated.
-  - The heavy missile gets bonus damage against it.
-  - Needs early performance testing on mid-range phones.
-- **Remaining bosses:** Marketplace, Corporate and Dead Zone *(open; the owner is still thinking about them)*, and the final villain's fight.
+- **Sewer Swarm** (Gangland). Owner's design, with the design round's additions approved by the owner (September 26, 2026).
+  - **What it is:** a mutant horde of screeches rising from the sewers. It builds up on both sides of the street, and a mob attacks while the horde shifts **ahead of and behind** the player.
+  - **The Host** at the heart of the swarm: a **poor person with electronic components fused to their sickly body**, mostly hidden under the screeches latched onto them. An unconnected monster, not one of the villain's (§1).
+  - **The fight is Gangland's final exam** (screeches, ramps, baiting, fences) in three phases of about 30 seconds each:
+    1. **Rising:** manholes and wall vents shake all along both sides, and screeches pour out and merge into clusters at the roadside. A cluster **surges down a lane** ahead of the player, with a red lane line and a rising chitter as the warning.
+    2. **Surrounded:** clusters also strike **from behind**. The warning is a **chittering sound** plus a **visible rising wave of the swarm** on screen, curling like a breaking wave or a scorpion's stinger, about to strike its lane. The swarm also **climbs the walls**, taking them away as an escape route, but only **temporarily**, and the phase must stay engaging: **one wall at a time for a few seconds, alternating sides**, so one wall is always free.
+    3. **The Host:** the Host bursts out of a big sewer pipe ahead and flings the remaining clusters at the player.
+  - **Fighting the swarm:** the street is the weapon. The player **baits the swarm into attacking**, dodges in time, and the swarm **hits a live electric fence and is shocked**, which damages the boss. Baiting a cluster into a **hole** also works. Weapons thin clusters too, and the heavy missile gets bonus damage against them.
+  - **Phase ends:** phase 1 ends when two clusters are destroyed, phase 2 when the rest are. If the player doesn't manage it, the phase keeps cycling (no time limit, no escalation).
+  - **The Host's weak points:** its fused implants, glowing **red** (the same language as other bosses' weak points). The player reaches them by a ramp and a wall jump, Gangland's big new move. **Three stomps**, each knocking screeches off and revealing more of the person. Its lunge can also be baited into a fence.
+  - **Pickups:** the standard armor rule, with the 15–17 second delay.
+  - **Implementation:** 4–5 gameplay entities ("clusters"), each rendered as many screech-variant creatures using MultiMesh plus a shader for per-creature motion. It looks like hundreds, but only 4–5 are simulated. The Host is one more entity.
+  - Needs early performance testing on mid-range phones (risk test R4, before this boss is built).
+  - **Defeat: the Host is freed.** The screeches scatter, the implants short out, and the person slumps free.
+- **The House** (Marketplace). The design round's pitch, approved by the owner (September 26, 2026). The owner will playtest it once built and may revisit it.
+  - **What it is:** a **slot machine the size of a building**, rolling down the market street on treads, lights blazing and jingling. Loud, gaudy and a little ridiculous, to match the Marketplace's happy mood. The citizens in the shop windows cheer and duck throughout.
+  - **Tied to the villain:** the cult secretly owns the casino. Its symbol is hidden on the machine, and the jackpot money flows up to the Golden Zone. The owner is also open to making the tie direct.
+  - **The spin (the warning):** it paces ahead of the player and yanks its giant lever. Three huge reels on its chest spin and stop one at a time, each with a *ding*, over about 2 seconds. The symbols announce the attacks, in reel order:
+    - **Cherry:** cherry bombs lobbed into lanes, with target circles on the floor (the Floating Head's bomb warning).
+    - **Lightning:** a pink electric fence rolled across some lanes (normal fence rules).
+    - **BAR:** heavy gold blocks slammed down into lanes; switch around them.
+    - Two or three of a kind make a bigger version of that attack. Three symbols are enough for now.
+  - **Rigging the jackpot:** while the reels spin, big glowing **7 buttons** appear along the route. Running over one locks its reel on 7. With all three locked: **JACKPOT**. Sirens go off, the machine overloads and sprays a fountain of real credits to grab, and its **coin hopper bursts open on top** as a glowing red weak point while it sags low. The player **stomps** it.
+  - **Three phases,** with the buttons getting harder to reach, as the Marketplace's final exam: (1) all three on the floor; (2) one on a wall, with wall fences in play; (3) one on a ceiling reached by an anti-grav pad, guarded by Barnacle Turrets.
+  - **Missed buttons:** it just spins again (no time limit, no escalation). Weapons chip away at it; stomps do the real damage.
+  - **Defeat:** the reels spin wildly and jam, "TILT" flashes, and it collapses in an explosion of coins while the shops erupt in cheers.
+  - **Pickups:** the standard armor rule (15–17 seconds).
+- **Sleep Taker** (Dead Zone). The design round's pitch, approved by the owner (September 26, 2026).
+  - **What it is:** in the Dead Zone, when a cyborg dies, its Bad Dream doesn't dissolve. Over the years they drifted together through the ruins and fused into **one colossal nightmare** haunting the silent city: black with purple highlights like the Bad Dream, but vast, with dozens of circular maws and long clawed fingers.
+  - **Tied to the villain indirectly:** the nightmares are an unintended consequence of what the cult has done to people's minds.
+  - **Immune to weapons,** like every Bad Dream, so the fight is pure movement skill. **Only the EMP hurts it.** Fence generators are the Dead Zone's last working machines; blowing one near the nightmare tears part of it away.
+  - **Lighting:** the arena is **darker than normal lighting, but never pitch black**. Hazards keep glowing in their usual colours, so the fight stays readable.
+  - **Attacks** (each with a visual and audio warning):
+    - **Giant slash** across three lanes: the maw opens with a shriek (the Bad Dream's warning, bigger). Get out of those lanes, or up onto the ceiling.
+    - **Grasping hands** rising from the floor: purple mist pools in the lane, with whispering. Switch lanes.
+    - **Lights out:** after a deep inhale, it swallows much of the light. It gets **darker still, but not pitch black**, and the glowing hazards stay visible while hands and slashes keep coming.
+  - **It can't reach the ceiling** (the Bad Dream rule), so anti-grav pads are the refuge from the big slashes.
+  - **Hurting it:** glowing fence generators stand along the route. The player **lures it close** (it lunges toward them), then **destroys the generator with a stomp or the dash**; the EMP rips a chunk of the nightmare away.
+  - **Weapons never set off a generator** (the rule everywhere, §9.1), so the weapon can't trigger an EMP before the player wants it. Weapons have no effect in this fight at all.
+  - **Three phases,** three EMP hits. It gets hungrier each phase (faster hands, more lights-out). A missed generator is followed by another (no time limit, no escalation).
+  - **Defeat:** the last EMP bursts it into hundreds of wisps, each a faint face or figure that drifts upward and fades as the dreams are released. Then silence, and the first grey dawn light breaks over the Dead Zone, setting up the Golden Zone.
+  - **Pickups:** the standard armor rule (15–17 seconds). EMP flashes honour Reduced flashing.
+- **Hostile Takeover** (Corporate). The design round's pitch, approved by the owner (September 26, 2026).
+  - **The idea:** corporations and the military are one and the same in this zone, so the boss is a merger, literally.
+  - **The arena is the boss:** the player lands on the rear roof of the **Chairman's armored maglev train**, a long luxury corporate express, and runs forward along it toward the locomotive. Carriage roofs are the floor and the gaps between carriages are the gaps, so it plays like a level. A **military gunship** paces the train overhead. The sense of speed comes from the scenery streaming past (the City's moving-road trick in reverse).
+  - **Tied to the villain directly:** the Chairman is one of the villain's inner circle. The player gets **a glimpse of him**: in the locomotive's window during the fight, and as the face on the "MERGER COMPLETE" screens.
+  - **Phase 1, The Board (corporate carriages):** security cyborgs guard the roofs, a Tithe Collector skims credits, and partial wall fences run along the track's sound barriers. Each **carriage coupling** glows red and sits in one lane above the gap between carriages. The player **stomps it by landing on it while jumping the gap**, and the carriages behind break away and tumble off the track. A small target in a gap is the right difficulty for zone 4 (owner).
+  - **Phase 2, The Contract (the military gunship):** the gunship strafes the lanes (a warning line and a rising whine) and drops a **Buzz Overdrive onto the roof ahead**, which cuts a carriage lane. An armored carriage with no roof access blocks the way, so the player takes an anti-grav pad and **rides the gunship's belly** over it (the gunship is the ceiling).
+  - **Phase 3, The Merger:** the gunship docks onto the locomotive with huge clamps, forming one monstrous war engine, and "MERGER COMPLETE" flashes on every screen. Its attacks combine both. The player stomps the **three glowing docking clamps** to tear the gunship loose.
+  - **Defeat:** the gunship spins away and explodes; the locomotive derails and ploughs through the lobby of a corporate tower, bringing down a giant, soulless logo sculpture.
+  - **Missed weak points** come around again (no time limit, no escalation). Weapons chip; stomps do the real damage.
+  - **Pickups:** the standard armor rule (15–17 seconds).
+- **Remaining boss:** the final villain's fight *(open)*.
 
 ---
 

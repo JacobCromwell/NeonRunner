@@ -23,8 +23,12 @@ Companion to `GDD_CHECKPOINT.md`. The design phase is complete when this list is
 For each boss: arena, phases, attacks, weak points, what power-ups are granted before the fight, how it scales on 3 vs 5–6 lanes, and its length.
 - ~~Roster, gameplay style, length, death, items, rewards~~ Answered (GDD §10, September 26, 2026).
 - ~~Floating Head: full breakdown.~~ Answered (GDD §10, September 26, 2026).
-- Sewer Swarm: full breakdown.
-- Marketplace, Corporate and Dead Zone bosses: concepts needed (the owner is still thinking). The final villain's fight: full breakdown.
+- ~~Sewer Swarm: full breakdown.~~ Answered (GDD §10, September 26, 2026).
+- ~~Marketplace boss~~ Answered: The House (GDD §10); revisit after playtesting.
+- ~~Dead Zone boss~~ Answered: Sleep Taker (GDD §10).
+- ~~**Generators and auto-fire everywhere?**~~ Answered: yes. Weapons never set off a generator, in any level (GDD §9.1).
+- ~~Corporate boss~~ Answered: Hostile Takeover (GDD §10).
+- The final villain's fight: full breakdown.
 - ~~Do bosses have their own leaderboards or star criteria?~~ Answered: yes (GDD §10).
 - ~~Does the longer final fight still restart from the beginning on death?~~ Answered: a checkpoint halfway, at a possible second stage (GDD §10).
 
@@ -192,7 +196,7 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
 29. **Swarm bonus on splash:** the heavy missile's bonus also applies to its splash on swarm enemies.
 30. **No overkill:** auto-fire skips an enemy that shots already in flight will kill and moves on to
     the next nearest.
-31. **Fence generators** are auto-fire targets (destroying one sets off its EMP). Should they be?
+31. ~~**Fence generators** are auto-fire targets (destroying one sets off its EMP). Should they be?~~ Answered September 26, 2026: no. Auto-fire never targets generators and missile splash never damages them (GDD §9.1). **Needs a build change.**
 32. **Shots ignore level geometry** (hulls, walls), and the weapon fires from any surface.
 33. **Slow time** slows the player too; pausing suspends it (resuming continues); dying or finishing
     ends it. Audio isn't slowed.
