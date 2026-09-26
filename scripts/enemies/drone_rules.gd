@@ -20,10 +20,8 @@ extends RefCounted
 ##   pad schedule.
 
 const TYPE: String = "drone"
-## Around each hover truck's burst point, where drone pads keep out of its lane (metres before, and
-## seconds after as a fallback when its tuning can't be read).
-const TRUCK_LANE_BEFORE: float = 30.0
-const TRUCK_LANE_AFTER_SECONDS: float = 40.0
+## Scheduled pads are placed like every rule's guaranteed pad (shared with host_rules.gd).
+const PadPlacement = preload("res://scripts/enemies/pad_placement.gd")
 
 
 static func apply(gen: LevelGenerator) -> void:
@@ -138,48 +136,10 @@ static func last_pad_at(gen: LevelGenerator, t: DroneTuning) -> float:
 		- (t.pad_ceiling_seconds + gen.config.hull_landing_seconds) * gen.speed - 0.5
 
 
-## A ceiling with a pad at `at`, clearing whatever is in its way. Returns false if it didn't fit.
+## A ceiling with a pad at `at`, clearing whatever is in its way (a ceiling from another rule set
+## gives way to the schedule), in a lane no hover truck holds. Returns false if it didn't fit.
 static func _place_pad(gen: LevelGenerator, t: DroneTuning, rng: RandomNumberGenerator, at: float) -> bool:
-	var layout: LevelLayout = gen.layout
-	var start: float = at - gen.config.hull_lead_in
-	var end: float = at + t.pad_ceiling_seconds * gen.speed
-	var landing_end: float = end + gen.config.hull_landing_seconds * gen.speed
-	# The same stretch LevelGenerator.add_hull_with_pad requires clear.
-	var from: float = start - 6.0
-	_keep(layout.gaps, func(g: Dictionary) -> bool: return not (float(g["start"]) <= landing_end and float(g["end"]) >= from))
-	_keep(layout.fences, func(f: Dictionary) -> bool: return not (float(f["at"]) >= from and float(f["at"]) <= landing_end))
-	_keep(layout.speed_pads, func(s: Dictionary) -> bool:
-		return not (float(s["at"]) <= end and float(s["at"]) + gen.tuning.speed_pad_length >= start))
-	# Enemies whose floor stretch it would cover (drones and hover trucks don't use the floor).
-	_keep(layout.enemies, func(e: Dictionary) -> bool:
-		var span: Vector2 = LevelGenerator.enemy_floor_span(e)
-		return not (span.x <= landing_end and span.y >= from))
-	# A ceiling in the way (from another rule set) gives way to the schedule.
-	for h: Dictionary in layout.hulls.duplicate():
-		if start <= float(h["end"]) + 1.0 and end >= float(h["start"]) - 1.0:
-			_remove_hull(layout, h)
-	return gen.add_hull_with_pad(_pad_lane(gen, rng, at), at, t.pad_ceiling_seconds)
-
-
-## A random lane, keeping out of a hover truck's lane while one is around.
-static func _pad_lane(gen: LevelGenerator, rng: RandomNumberGenerator, at: float) -> int:
-	var after: float = TRUCK_LANE_AFTER_SECONDS * gen.speed
-	var truck: Resource = EnemyDirector.tuning_for("hover_truck")
-	if truck != null and truck.get("stay_max_seconds") != null:
-		after = (float(truck.get("stay_max_seconds")) + float(truck.get("leave_seconds"))) * gen.speed
-	var lanes: Array[int] = []
-	for lane: int in gen.layout.lane_count:
-		var free: bool = true
-		for e: Dictionary in gen.layout.enemies:
-			if String(e.get("type", "")) == "hover_truck" and int(e.get("lane", -1)) == lane \
-					and at >= float(e["at"]) - TRUCK_LANE_BEFORE and at <= float(e["at"]) + after:
-				free = false
-				break
-		if free:
-			lanes.append(lane)
-	if lanes.is_empty():
-		return rng.randi_range(0, gen.layout.lane_count - 1)
-	return lanes[rng.randi_range(0, lanes.size() - 1)]
+	return PadPlacement.place(gen, rng, at, t.pad_ceiling_seconds)
 
 
 ## Removes every ceiling with a pad at or after `d` (and its pads).
@@ -193,9 +153,7 @@ static func _remove_ceilings_from(layout: LevelLayout, d: float) -> void:
 
 
 static func _remove_hull(layout: LevelLayout, h: Dictionary) -> void:
-	_keep(layout.pads, func(p: Dictionary) -> bool:
-		return not (float(p["at"]) >= float(h["start"]) and float(p["at"]) <= float(h["end"])))
-	_keep(layout.hulls, func(x: Dictionary) -> bool: return not is_same(x, h))
+	PadPlacement.remove_hull(layout, h)
 
 
 static func _remove_entries(layout: LevelLayout, entries: Array[Dictionary]) -> void:

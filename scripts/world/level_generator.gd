@@ -403,14 +403,38 @@ func _sorted(values: Array[int]) -> Array[int]:
 
 # --- Enemy rules ---------------------------------------------------------------
 
+## Runs the rules scripts in the order of the level's features. A script may declare
+## `const RUN_AFTER: Array[String] = [...]`: it then runs after the rules of those features whenever
+## the level has them, whatever their order in the list (the host rules plan the Bad Dream's pads
+## around the drones' pad schedule).
 func _apply_enemy_rules() -> void:
+	var pending: Array[Array] = []
 	for feature: String in config.features:
 		var path: String = RULES_DIR.path_join("%s_rules.gd" % feature)
 		if not ResourceLoader.exists(path):
 			continue
 		var script := load(path) as GDScript
 		if script != null and script.has_method("apply"):
-			script.call("apply", self)
+			pending.append([feature, script])
+	while not pending.is_empty():
+		var next: int = 0
+		for i: int in pending.size():
+			if not _waits_for_others(pending, i):
+				next = i
+				break
+		var item: Array = pending.pop_at(next)
+		(item[1] as GDScript).call("apply", self)
+
+
+## True if the rules at `index` must wait: its RUN_AFTER names a feature whose rules are still to run.
+static func _waits_for_others(pending: Array[Array], index: int) -> bool:
+	var after: Variant = (pending[index][1] as GDScript).get_script_constant_map().get("RUN_AFTER", [])
+	if not (after is Array):
+		return false
+	for j: int in pending.size():
+		if j != index and (after as Array).has(pending[j][0]):
+			return true
+	return false
 
 
 # --- Credits (GDD §7) ------------------------------------------------------------
