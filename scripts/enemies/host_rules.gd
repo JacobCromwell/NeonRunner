@@ -24,6 +24,8 @@ extends RefCounted
 ## - Pads need ceilings: without the `ceilings` feature a chase can't get its pads, so every host is
 ##   dropped, with a warning (DESIGN-TBD: the GDD doesn't say what forms the ceiling outside the
 ##   city, OPEN_QUESTIONS §1).
+## - Late starts (LevelConfig.feature_starts): a host before the `host` feature's start is dropped,
+##   and so is one whose chase begins before the `ceilings` feature's start (its pads couldn't come).
 
 const RUN_AFTER: Array[String] = ["drone"]
 const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
@@ -48,6 +50,7 @@ static func apply(gen: LevelGenerator) -> void:
 	var last_ok: float = layout.length - gen.config.end_clear_distance \
 		- (t.pad_ceiling_seconds + gen.config.hull_landing_seconds) * speed
 	var pads_before: float = first_drone_at(layout) - 1.0
+	var earliest: float = maxf(gen.feature_start("host"), gen.feature_start("ceilings"))
 	var rng: RandomNumberGenerator = gen.rng_for("host_pads")
 	var free_from: float = -INF
 	var dropped: Array[Dictionary] = []
@@ -55,7 +58,7 @@ static func apply(gen: LevelGenerator) -> void:
 		if not _has_entry(layout.enemies, e):
 			continue  # cleared from under a pad added for an earlier host
 		var stretch: Vector2 = t.chase_stretch(float(e["at"]), speed)
-		if stretch.x < free_from or stretch.y > last_ok:
+		if stretch.x < free_from or stretch.x < earliest or stretch.y > last_ok:
 			dropped.append(e)
 			continue
 		var plan: Dictionary = plan_pads(gen, t, rng, stretch, pads_before)
