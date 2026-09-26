@@ -1,6 +1,7 @@
 class_name HazardVisual
 extends MeshInstance3D
-## Mirrors a Hazard's state: bright while ON, dim while OFF, flickering while WARNING.
+## Mirrors a Hazard's state: bright while ON, dim while OFF, flickering while WARNING (steady bright
+## with Reduced flashing: no strobe, and still clearly not OFF).
 ## This is the visual half of the telegraph; HazardTelegraph plays the sound.
 
 const FLICKER_HZ: float = 15.0
@@ -31,4 +32,4 @@ func _show(state: Hazard.State) -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
-	material_override = _on if int(_t * FLICKER_HZ * 2.0) % 2 == 0 else _off
+	material_override = _on if Settings.flashing_reduced or int(_t * FLICKER_HZ * 2.0) % 2 == 0 else _off

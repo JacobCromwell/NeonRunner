@@ -24,8 +24,8 @@ extends Resource
 ## Mechanics and enemies this level may use. A pattern is only picked when every entry of its
 ## `requires` list is here (GDD §6: introduce one new mechanic at a time). Core movement pieces
 ## (gaps, fences, signs, walls) need no feature. Known features: ramps, ceilings, pulsing,
-## speed_pads, and one per enemy type (cyborg, window_cyborg, host, hover_truck, octodog,
-## screech, drone, generator).
+## speed_pads, one per enemy type (cyborg, window_cyborg, host, hover_truck, octodog, screech,
+## drone, generator), and screech_vents (wall-vent screeches only, for city zones).
 @export var features: PackedStringArray = PackedStringArray(["ramps", "ceilings", "pulsing"])
 ## The core pattern file. Every other .json file in its folder is loaded too (LevelGenerator.load_for).
 @export_file("*.json") var patterns_path: String = "res://data/patterns/prototype_patterns.json"

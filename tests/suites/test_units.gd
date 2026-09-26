@@ -6,9 +6,41 @@ const TouchInputScript: GDScript = preload("res://scripts/input/touch_input.gd")
 
 func run() -> void:
 	_test_hazard_pulse()
+	_test_reduced_flashing()
 	_test_touch_gestures()
 	_test_sound_library()
 	await _test_tuning_panel()
+
+
+## Settings > Reduced flashing: a WARNING hazard glows steadily instead of strobing (GDD readability
+## rules still hold: it looks unlike OFF), and the setting reaches the shaders' global uniform.
+func _test_reduced_flashing() -> void:
+	var profile := Profile.new()
+	var on := StandardMaterial3D.new()
+	var off := StandardMaterial3D.new()
+	for reduced: bool in [false, true]:
+		Settings.set_value(profile, "reduced_flashing", reduced)
+		Settings.apply_visuals(profile)
+		check(Settings.flashing_reduced == reduced, "reduced flashing %s reaches the visuals" % reduced)
+		var hazard := Hazard.new()
+		var visual := HazardVisual.new()
+		visual.bind(hazard, on, off)
+		# On for 1 s, off for 1 s; the last 0.35 s off is the warning.
+		hazard.setup_pulsing(1.0, 1.0, 0.35, 0.0, 0.0)
+		hazard._physics_process(1.7)
+		check(hazard.state == Hazard.State.WARNING, "the hazard is warning")
+		var shown: Dictionary = {}
+		for i: int in 10:
+			visual._process(0.03)
+			shown[visual.material_override] = true
+		if reduced:
+			check(shown.size() == 1 and shown.has(on), "reduced: the warning glows steadily, not like OFF")
+		else:
+			check(shown.has(on) and shown.has(off), "the warning flickers")
+		visual.free()
+		hazard.free()
+	Settings.set_value(profile, "reduced_flashing", false)
+	Settings.apply_visuals(profile)
 
 
 func _test_hazard_pulse() -> void:
@@ -62,12 +94,14 @@ func _test_tuning_panel() -> void:
 	var t: MovementTuning = tuning.duplicate() as MovementTuning
 	var config: LevelConfig = (load(LEVEL_PATH) as LevelConfig).duplicate() as LevelConfig
 	var rules: GameRules = (load("res://data/tuning/game_rules.tres") as GameRules).duplicate() as GameRules
+	var octodog: Resource = load("res://data/enemies/octodog.tres").duplicate()
 	var panel := TuningPanel.new()
 	tree.root.add_child(panel)
 	var sections: Array[Dictionary] = [
 		{"title": "Movement", "resource": t, "path": TUNING_PATH},
 		{"title": "Game rules", "resource": rules, "path": "res://data/tuning/game_rules.tres"},
 		{"title": "Level pacing", "resource": config, "path": LEVEL_PATH},
+		{"title": "Enemy: Octodog", "resource": octodog, "path": "res://data/enemies/octodog.tres"},
 	]
 	panel.setup(sections)
 	check(panel.control_count() >= 55, "tuning panel has a control per tunable (%d)" % panel.control_count())
@@ -85,5 +119,12 @@ func _test_tuning_panel() -> void:
 	if lanes != null:
 		lanes.value = 6.0
 	check(lanes != null and rules.lanes_pc == 6 and typeof(rules.lanes_pc) == TYPE_INT, "integer tunables stay integers")
+	# Enemy tunings (the level's enemy types) are tunable too: base and per-type numbers.
+	var reach: HSlider = panel.find_slider("floor_reach_before")
+	var lead: HSlider = panel.find_slider("spawn_lead")
+	check(reach != null and lead != null, "enemy tunings show in the panel")
+	if lead != null:
+		lead.value = 150.0
+		check(is_equal_approx(float(octodog.get("spawn_lead")), 150.0), "enemy tunings are tunable live")
 	panel.queue_free()
 	await tree.process_frame

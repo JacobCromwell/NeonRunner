@@ -233,6 +233,13 @@ func _build_debug_tools() -> void:
 	]
 	if context.config.resource_path == "":
 		sections.pop_back()
+	# The level's enemy types. Every enemy of a type shares its tuning resource, so changes reach the
+	# ones in play (numbers an enemy reads once, such as health, apply to the next ones spawned).
+	for feature: String in context.config.features:
+		var enemy_tuning: Resource = EnemyDirector.tuning_for(feature)
+		if enemy_tuning != null and enemy_tuning.resource_path != "":
+			sections.append({"title": "Enemy: " + feature.capitalize(), "resource": enemy_tuning,
+				"path": enemy_tuning.resource_path})
 	tuning_panel.setup(sections)
 	tuning_panel.restart_requested.connect(func() -> void: restart())
 	tuning_panel.close_requested.connect(_toggle_tuning_panel)
