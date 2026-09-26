@@ -80,6 +80,8 @@ func _build() -> void:
 	tune = tuning_res as DroneTuning if tuning_res is DroneTuning else DroneTuning.new()
 	display_name = "heli drone"
 	claw_immune = true  # GDD §9.6: claws don't work.
+	# DESIGN-TBD: no contact hitbox (it flies out of reach; GDD §9.6 names only its bullets), so
+	# touching, stomping or dashing into it does nothing.
 	if not (tuning_res is EnemyTuning):
 		max_health = tune.health_early
 		score_value = tune.score_value
@@ -150,6 +152,7 @@ func hit_radius() -> float:
 
 ## In play and within sight of the player: an anti-grav pad hurls it into the hull.
 func on_screen() -> bool:
+	# DESIGN-TBD: "on screen" = swooped in, from 12 m behind the player to 120 m ahead.
 	return alive and state != State.WAITING and rel_ahead > -12.0 and rel_ahead < 120.0
 
 
@@ -246,6 +249,7 @@ func _can_attack(p: Player) -> bool:
 
 ## Only one drone winds up or fires at a time, so two barrages never cross.
 func _barrage_busy() -> bool:
+	# DESIGN-TBD: one barrage at a time when several drones are in play.
 	for e: Enemy in world.director.active:
 		if e == self or not is_instance_valid(e) or not e.alive or e.get_script() != get_script():
 			continue
@@ -274,6 +278,8 @@ func _live_target(p: Player) -> Vector3:
 
 ## Locks the barrage onto the player's position as firing starts; the stream stays there.
 func _lock_target(p: Player) -> void:
+	# DESIGN-TBD: the aim tracks the player through the wind-up and locks when firing starts, so a
+	# lane switch once it fires dodges the whole barrage (GDD §9.6 only asks for zigzag spacing).
 	var target: Vector3 = _live_target(p)
 	_lock = Vector2(target.x, target.y)
 	_lock_wall = p.wall_side if p.surface == Player.Surface.WALL else 0
@@ -345,7 +351,8 @@ func _fire_bullet(p: Player) -> void:
 func _target_point(p: Player, from: Vector3) -> Vector3:
 	var y: float = _lock.y
 	if _lock_wall != 0 and p.surface == Player.Surface.WALL and p.wall_side == _lock_wall:
-		# Lead the wall-run descent so a player who stays on the wall is still hit.
+		# DESIGN-TBD: it leads the wall-run descent so a player who stays on the wall is still hit
+		# (GDD §9.6: it keeps firing at a player on a wall).
 		var travel: float = from.distance_to(Vector3(_lock.x, p.h, p.position.z)) / _bullet_speed
 		y = clampf(_predict_wall_height(p, travel), world.tuning.wall_exit_height, world.tuning.wall_max_height)
 	return Vector3(_lock.x, y, p.position.z)
