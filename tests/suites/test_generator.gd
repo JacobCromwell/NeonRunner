@@ -2,7 +2,7 @@ extends TestSuite
 ## Generator fairness over many seeds, lane counts and difficulties, plus pattern-data checks;
 ## features that start partway into a level (introductions, and every rules script that adds a
 ## feature's enemies or pieces keeping to the start), per-level feature weights, and the guarantee
-## that every feature appears (LevelConfig.guarantee_features, and the host rules' own).
+## that every feature appears (LevelConfig.guarantee_features, and the host and Octodog rules' own).
 
 const HostRules := preload("res://scripts/enemies/host_rules.gd")
 
@@ -49,7 +49,7 @@ func run() -> void:
 	_test_feature_weights(base)
 	_test_pattern_features()
 	_test_guarantee(base)
-	_test_host_guarantee(base)
+	_test_rules_guarantees(base)
 
 
 ## Ceilings that enemy rules add later (drone pads, add_hull_with_pad) keep off the floor enemies
@@ -381,30 +381,47 @@ func _test_guarantee(base: LevelConfig) -> void:
 	check(said, "and the level reports it (%s)" % [gen.warnings])
 
 
-## The host rules' own guarantee (guarantee_features): a level left without a host (every one
-## dropped, or none placed) gets one where a host fits every rule, and its Bad Dream's chase keeps
-## off Octodog runs; drones, Octodogs and cyborgs keep theirs (LayoutChecks.check_rules).
-func _test_host_guarantee(base: LevelConfig) -> void:
-	var added: int = 0
-	for lanes: int in [3, 5, 6]:
-		for level_seed: int in range(1, 9):
-			var config: LevelConfig = base.duplicate() as LevelConfig
-			config.lane_count = lanes
-			config.level_seed = level_seed
-			config.difficulty = 0.6
-			config.enemy_scaling = 0.8
-			config.features = PackedStringArray(["cyborg", "ceilings", "octodog", "generator", "drone", "host"])
-			config.feature_weights = {"host": 0.0}
-			var tag: String = "lanes=%d seed=%d" % [lanes, level_seed]
-			check(LayoutChecks.feature_positions(LevelGenerator.new().generate(config, tuning, LevelGenerator.load_for(config)), "host").is_empty(),
-				"no host pattern is picked at weight 0 " + tag)
-			config.guarantee_features = true
-			var gen := LevelGenerator.new()
-			var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
-			var hosts: Array[float] = LayoutChecks.feature_positions(layout, "host")
-			check(hosts.size() == 1, "the host rules add one host where it fits (%d hosts) %s" % [hosts.size(), tag])
-			check(gen.warnings.is_empty(), "no warnings " + tag + " %s" % [gen.warnings])
-			LayoutChecks.check_layout(self, layout, config, tag)
-			LayoutChecks.check_rules(self, layout, config, tag)
-			added += hosts.size()
-	check(added == 24, "every level got its host (%d of 24)" % added)
+## The host and Octodog rules' own guarantees (guarantee_features): a level left without one (every
+## one dropped, or none placed: here its patterns' weight is 0) gets one where it fits every rule: a
+## host whose Bad Dream's chase gets its pads, a dog with at least two charges off ceilings and
+## chases. Drones, cyborgs and the rest keep their rules too (LayoutChecks.check_rules). A host fits
+## somewhere in every level below, and so does a dog among ceilings and a hover truck; but a dog needs
+## a long clear run, so in the busiest level (drone pads, hosts' chases) it may find none, and in a
+## campaign level the generator's next build then forces a dog pattern instead.
+func _test_rules_guarantees(base: LevelConfig) -> void:
+	var busy: Array = ["cyborg", "ceilings", "octodog", "generator", "drone", "host"]
+	var dogs_with_chases: int = 0
+	for c: Array in [["host", busy, true], ["octodog", ["ramps", "ceilings", "octodog", "hover_truck"], true],
+			["octodog", busy, false]]:
+		var feature: String = c[0]
+		var added: int = 0
+		for lanes: int in [3, 5, 6]:
+			for level_seed: int in range(1, 9):
+				var config: LevelConfig = base.duplicate() as LevelConfig
+				config.lane_count = lanes
+				config.level_seed = level_seed
+				config.difficulty = 0.6
+				config.enemy_scaling = 0.8
+				config.features = PackedStringArray(c[1])
+				config.feature_weights = {feature: 0.0}
+				var tag: String = "%s in %s lanes=%d seed=%d" % [feature, c[1], lanes, level_seed]
+				check(LayoutChecks.feature_positions(LevelGenerator.new().generate(config, tuning, LevelGenerator.load_for(config)), feature).is_empty(),
+					"no pattern places it at weight 0 " + tag)
+				config.guarantee_features = true
+				var gen := LevelGenerator.new()
+				var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+				var found: Array[float] = LayoutChecks.feature_positions(layout, feature)
+				check(found.size() <= 1, "its rules add at most one (%d) %s" % [found.size(), tag])
+				check(gen.warnings.is_empty(), "no warnings " + tag + " %s" % [gen.warnings])
+				LayoutChecks.check_layout(self, layout, config, tag)
+				LayoutChecks.check_rules(self, layout, config, tag)
+				for e: Dictionary in layout.enemies:
+					if String(e["type"]) == "octodog":
+						check(((e["params"] as Dictionary).get("charge_at", []) as Array).size() >= 2,
+							"a guaranteed dog gets at least two charges " + tag)
+				added += found.size()
+				if feature == "octodog" and not found.is_empty() and not LayoutChecks.feature_positions(layout, "host").is_empty():
+					dogs_with_chases += 1
+		if bool(c[2]):
+			check(added == 24, "every level got its %s (%d of 24) in %s" % [feature, added, c[1]])
+	check(dogs_with_chases > 0, "some guaranteed dogs share their level with a Bad Dream's chase (%d)" % dogs_with_chases)
