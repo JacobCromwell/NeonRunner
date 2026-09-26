@@ -140,7 +140,8 @@ func _script_truck(p: Player) -> void:
 	match _step:
 		0:
 			if truck.state == TruckScript.State.HOLD_BACK:
-				p.press(&"move_right")
+				for i: int in truck.lane - p.lane:
+					p.press(&"move_right")  # presses in one frame chain into one switch
 				_step = 1
 		1:
 			if truck.state == TruckScript.State.REV:
