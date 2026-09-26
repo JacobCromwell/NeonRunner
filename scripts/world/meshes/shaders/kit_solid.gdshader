@@ -36,6 +36,11 @@ uniform float scorch_amount = 0.0;
 // POSTER: the share of posters that are corporate ads (the logo and slogan bars on a brand-coloured panel).
 uniform float poster_ads = 0.0;
 uniform vec3 ad_color : source_color = vec3(0.55, 0.56, 0.6);
+// The cult's emblem, hidden in plain sight (GDD §5): CultEmblem's rasterised mark of the chosen
+// option in its unlit colours (sRGB, alpha = coverage), set by the skin. cult_emblem_share of the
+// corporate ads carry it small in a corner; stencils carry it where their parameter says so.
+uniform sampler2D cult_emblem : filter_linear_mipmap, repeat_disable;
+uniform float cult_emblem_share = 0.0;
 
 varying vec3 v_world;
 
@@ -55,6 +60,19 @@ float above(float y, float edge, float fw) {
 float thin_bar(float x, float half_width, float fw) {
 	fw = max(fw, 1e-4);
 	return 1.0 - smoothstep(half_width - fw, half_width + fw, abs(x));
+}
+
+// The cult emblem's paint (rgb, sRGB) and coverage (a) at p in emblem space (the mark's square spans
+// -1..1, +y up); `fw` is a pixel's footprint there, taken outside branches. The mip level comes from
+// it (no implicit derivatives, so this is safe inside any branch), and the mark fades out before it
+// spans fewer than about 24 pixels, where its three-fold silhouette could read like a radiation
+// trefoil.
+vec4 cult_mark(vec2 p, float fw) {
+	float size = float(textureSize(cult_emblem, 0).x);
+	float lod = log2(max(fw * 0.5 * size, 1.0));
+	vec4 t = textureLod(cult_emblem, vec2(p.x, -p.y) * 0.5 + 0.5, lod);
+	float inside = step(abs(p.x), 1.0) * step(abs(p.y), 1.0);
+	return vec4(t.rgb, t.a * inside * (1.0 - smoothstep(0.055, 0.085, fw)));
 }
 
 // Two coordinates in the plane of the face, picked by its dominant axis.
@@ -265,6 +283,11 @@ void fragment() {
 			float bars = band(m.x, 0.98, 1.74, mfw.x) * max(band(m.y, 0.7, 0.86, mfw.y),
 				band(m.y, 0.44, 0.52, mfw.y) * band(m.x, 0.9, 1.45, mfw.x));
 			vec3 ad = mix(mix(ad_color, vec3(0.86, 0.85, 0.8), logo), ad_color * 0.3, bars);
+			if (hash12(cell + 23.0) < cult_emblem_share) {
+				// The sponsor's mark in the corner: the cult's emblem, hidden in plain sight.
+				vec4 mark = cult_mark((m - vec2(1.58, 0.24)) / 0.19, max(mfw.x, mfw.y) / 0.19);
+				ad = mix(ad, mark.rgb, mark.a * 0.9);
+			}
 			float inside = filtered_pulse(f.x, fw.x, 0.03, 0.97) * filtered_pulse(f.y, fw.y, 0.04, 0.96);
 			poster = mix(poster * 0.6, ad * (0.85 + 0.15 * tint.g), inside);
 		}
@@ -300,14 +323,17 @@ void fragment() {
 	} else if (pattern == 15) {
 		// STENCIL: painted crates and container doors (UV in metres, centred on the face) with a
 		// stencilled marking in pale paint on dark colours and dark paint on light ones. UV2.y =
-		// kind + 4 * size + 16 * seed: kind 0 a military supply code, 1 the corporate logo, 2 and 3 the
-		// same on corrugated container doors (a centre seam and locking bars); the marking is 0.3 m
-		// tall per size step (size + 1).
+		// kind + 4 * size + 16 * seed + 256 * emblem: kind 0 a military supply code, 1 the corporate
+		// logo, 2 and 3 the same on corrugated container doors (a centre seam and locking bars); the
+		// marking is 0.3 m tall per size step (size + 1). With the emblem flag the cult's mark sits
+		// beside the code, in place of a crate's logo, or under a door's logo, small and unlit.
 		vec2 fwuv = fwidth(UV);
 		float fwm = max(fwuv.x, fwuv.y);
 		vec2 fwp = fwidth(face_coords(n));
 		int v = int(UV2.y + 0.5);
 		int kind = v % 4;
+		bool emblem = v >= 256;
+		float seed = float((v / 16) % 16);
 		float door = float(kind >= 2);
 		float scale = 0.3 * float(1 + (v / 4) % 4);
 		vec3 c = base * (0.88 + 0.2 * value_noise(UV * 1.3 + 2.0));
@@ -316,10 +342,25 @@ void fragment() {
 		c *= 1.0 - door * max(0.3 * grid_line(UV.x, 0.3, 0.05), 0.55 * bars);
 		vec3 paint = dot(base, vec3(0.3, 0.55, 0.15)) > 0.4 ? base * 0.2 : mix(base, vec3(0.8, 0.78, 0.7), 0.72);
 		float logo_size = scale * 0.55;
-		float mark = kind % 2 == 0 ? stencil_code(UV, scale, float(v / 16), fwm)
+		float wear = 0.55 + 0.45 * smoothstep(0.25, 0.6, value_noise(UV * 4.0 + 5.0));
+		float mark = kind % 2 == 0 ? stencil_code(UV, scale, seed, fwm)
 			: corp_logo((UV - vec2(0.0, door * 0.25)) / logo_size, fwm / logo_size);
-		mark *= 0.55 + 0.45 * smoothstep(0.25, 0.6, value_noise(UV * 4.0 + 5.0));
-		c = mix(c, paint, mark * 0.9);
+		if (emblem && kind == 1) {
+			mark = 0.0;
+		}
+		c = mix(c, paint, mark * wear * 0.9);
+		if (emblem) {
+			vec2 at = kind >= 2 ? vec2(0.0, -0.62) : vec2(0.0);
+			float r = kind >= 2 ? 0.26 : scale * 0.64;
+			if (kind == 0) {
+				// Beside the code (stencil_code's width).
+				float count = 3.0 + floor(hash11(seed * 3.7 + 0.5) * 3.0);
+				r = scale * 0.42;
+				at = vec2(count * scale * 0.42 * 0.72 * 0.5 + r + 0.04, 0.0);
+			}
+			vec4 cult = cult_mark((UV - at) / r, fwm / r);
+			c = mix(c, cult.rgb, cult.a * wear * 0.9);
+		}
 		if (graffiti_pieces > 0.0 && kind >= 2) {
 			c = paint_graffiti(c, face_coords(n), 29.0, graffiti_pieces * 0.6, max(fwp.x, fwp.y));
 		}

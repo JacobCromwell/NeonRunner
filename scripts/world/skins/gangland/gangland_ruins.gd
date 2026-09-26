@@ -273,9 +273,10 @@ func _crate_wall(solid: MeshLayer, side: int, face_x: float, a0: float, a1: floa
 				var k: int = MeshKit.hash_i(side, c, 71 + row)
 				var color: Color = skin.military_crate_colors[k % skin.military_crate_colors.size()]
 				var kind: int = MeshKit.STENCIL_LOGO if MeshKit.hash01(side, c, 80 + row) < 0.2 else MeshKit.STENCIL_CODE
+				var cult: bool = MeshKit.hash01(side, c, 90 + row) < skin.cult_emblem_share * 0.5
 				_wall_rect(solid, side, face_x - side * 0.004, c0, c1, float(row) * CRATE.y + 0.03,
 					float(row + 1) * CRATE.y - 0.03, color, MeshKit.PAT_STENCIL, (float(c) + 0.5) * CRATE.x + shift,
-					MeshKit.stencil_param(kind, 0, k), true)
+					MeshKit.stencil_param(kind, 0, k, cult), true)
 			c += 1
 	return float(rows) * CRATE.y
 
@@ -293,10 +294,11 @@ func _container_wall(solid: MeshLayer, side: int, face_x: float, a0: float, a1: 
 			if c1 > c0 + 0.05:
 				var k: int = MeshKit.hash_i(side, c, 73 + row)
 				var color: Color = skin.container_colors[k % skin.container_colors.size()]
+				var cult: bool = MeshKit.hash01(side, c, 95 + row) < skin.cult_emblem_share
 				_wall_rect(solid, side, face_x - side * 0.004, c0, c1, float(row) * CONTAINER.y + 0.04,
 					float(row + 1) * CONTAINER.y - 0.04, color, MeshKit.PAT_STENCIL,
 					(float(c) + 0.5) * CONTAINER.x + shift,
-					MeshKit.stencil_param(MeshKit.STENCIL_LOGO_CORRUGATED, 2, k), true)
+					MeshKit.stencil_param(MeshKit.STENCIL_LOGO_CORRUGATED, 2, k, cult), true)
 			c += 1
 	return float(rows) * CONTAINER.y
 
@@ -377,14 +379,15 @@ func _notice_board(solid: MeshLayer, r: Ruin, side: int, face_x: float, start: f
 		return
 	var u: float = lerpf(r.t0 + 1.5, r.b1 - 1.5, MeshKit.hash01(side, id, 111))
 	var y: float = skin.boarded_below + 1.2 + 1.2 * MeshKit.hash01(side, id, 112)
-	var w: float = 1.8
+	var w: float = 2.2
 	var h: float = 1.1
-	if u < start or u >= end or y + h > r.top(u) - 0.5:
+	if u < start or u >= end or u - w * 0.5 < r.t0 or u + w * 0.5 > r.b1 or y + h > r.top(u) - 0.5:
 		return
 	var color: Color = skin.military_crate_colors[MeshKit.hash_i(side, id, 113) % skin.military_crate_colors.size()]
+	var cult: bool = MeshKit.hash01(side, id, 115) < skin.cult_emblem_share
 	solid.box(Vector3(face_x - side * 0.04, y + h * 0.5, -u), Vector3(0.08, h + 0.1, w + 0.1), color.darkened(0.3))
 	_wall_rect(solid, side, face_x - side * 0.082, u - w * 0.5, u + w * 0.5, y, y + h, color, MeshKit.PAT_STENCIL, u,
-		MeshKit.stencil_param(MeshKit.STENCIL_CODE, 1, MeshKit.hash_i(side, id, 114)), true)
+		MeshKit.stencil_param(MeshKit.STENCIL_CODE, 1, MeshKit.hash_i(side, id, 114), cult), true)
 
 
 ## Life on a low building's roof: water tanks, antennas, dishes, crates, a washing line.
@@ -408,7 +411,8 @@ func _rooftop(solid: MeshLayer, r: Ruin, side: int, face_x: float, start: float,
 				GanglandClutter.dish(solid, foot, 0.7 + 0.3 * MeshKit.hash01(k, 3), Vector3(-side, 0, 0),
 					skin.scrap_metal_color.lightened(0.25))
 			3:
-				GanglandClutter.crate_stack(solid, foot, Vector3(-side, 0, 0), skin.military_crate_colors, k)
+				GanglandClutter.crate_stack(solid, foot, Vector3(-side, 0, 0), skin.military_crate_colors, k,
+					skin.cult_emblem_share)
 			_:
 				var a: Vector3 = foot + Vector3(0, 1.6, 1.6)
 				var b: Vector3 = foot + Vector3(0, 1.6, -1.6)

@@ -104,9 +104,11 @@ static func key(value: float) -> int:
 
 
 ## The PAT_STENCIL parameter: `kind` (STENCIL_*), a marking 0.3 m tall per `size` step (0-3, 0.3 to
-## 1.2 m) and a `seed` (0-15) that picks the code's glyphs.
-static func stencil_param(kind: int, size: int, seed: int) -> float:
-	return float(kind + 4 * clampi(size, 0, 3) + 16 * posmod(seed, 16))
+## 1.2 m), a `seed` (0-15) that picks the code's glyphs, and `emblem`: the cult's emblem, small and
+## unlit, beside the code or the logo (only where the material has the kit shader's cult_emblem
+## texture).
+static func stencil_param(kind: int, size: int, seed: int, emblem: bool = false) -> float:
+	return float(kind + 4 * clampi(size, 0, 3) + 16 * posmod(seed, 16) + (256 if emblem else 0))
 
 
 # --- Unit templates ------------------------------------------------------------

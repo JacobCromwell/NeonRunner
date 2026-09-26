@@ -335,7 +335,7 @@ func _life_and_funding(skin: GanglandSkin) -> void:
 	var track := TrackBuilder.new()
 	world.add_child(track)
 	track.set_layout(layout, tuning, skin)
-	var counts := {"cloth": 0, "code": 0, "logo": 0, "bulb": 0}
+	var counts := {"cloth": 0, "code": 0, "logo": 0, "bulb": 0, "cult": 0}
 	var lowest_line: float = INF
 	var d: float = 0.0
 	var solid: Material = skin.solid_material()
@@ -361,6 +361,7 @@ func _life_and_funding(skin: GanglandSkin) -> void:
 						var c: Color = colors[i]
 						if roundi(uv2[i].x) == MeshKit.PAT_STENCIL:
 							counts["logo" if roundi(uv2[i].y) % 2 == 1 else "code"] += 1
+							counts["cult"] += int(roundi(uv2[i].y) >= 256)
 						elif c.a == 0.0 and _in_palette(c, skin.cloth_colors):
 							counts["cloth"] += 1
 							# Over the street, from a wall batch (ceilings sit at their own height).
@@ -372,6 +373,8 @@ func _life_and_funding(skin: GanglandSkin) -> void:
 		d += TrackBuilder.CHUNK_LENGTH
 	world.queue_free()
 	await tree.process_frame
+	print("  gangland life (5 lanes): %d laundry pieces, %d bulbs, %d stencilled faces (%d logos, %d with the cult emblem)" % [
+		counts["cloth"], counts["bulb"], counts["code"] + counts["logo"], counts["logo"], counts["cult"]])
 	check(counts["cloth"] > 20 and counts["bulb"] > 10,
 		"the street is lived in: laundry (%d pieces) and bulbs over the side streets (%d)" % [counts["cloth"], counts["bulb"]])
 	check(counts["code"] > 10 and counts["logo"] > 5,
@@ -382,6 +385,39 @@ func _life_and_funding(skin: GanglandSkin) -> void:
 		"graffiti covers the lower storeys and barricades, and corporate ads are pasted among the posters")
 	check(lowest_line > tuning.ceiling_height + GanglandCeiling.ABOVE_LIMIT,
 		"laundry across the street hangs above every ceiling (lowest at %.2f m)" % lowest_line)
+	_cult_emblem(skin, counts["cult"], counts["code"] + counts["logo"])
+
+
+## The cult's emblem hides in plain sight (GDD §5): the owner's pick from its data file (never a
+## hardcoded option), rasterised by CultEmblem in its unlit colours, on the solid material for ads,
+## and on a minority of the stencilled crates, containers and boards.
+func _cult_emblem(skin: GanglandSkin, marked: int, stencils: int) -> void:
+	var choice := load(GanglandSkin.CULT_EMBLEM_CHOICE_PATH) as CultEmblemChoice
+	check(choice != null and GanglandSkin.cult_emblem_option() == choice.option,
+		"the skin draws the cult emblem the owner picked (option %s)" % (CultEmblem.option_letter(choice.option)
+			if choice != null else "?"))
+	var texture: ImageTexture = GanglandSkin.cult_emblem_texture()
+	var material: ShaderMaterial = skin.solid_material()
+	check(texture != null and material.get_shader_parameter("cult_emblem") == texture
+		and float(material.get_shader_parameter("cult_emblem_share")) > 0.0,
+		"the kit material carries the emblem for the corporate ads")
+	if texture == null or choice == null:
+		return
+	var scheme: Dictionary = CultEmblem.default_scheme(choice.option)
+	var expected: Image = CultEmblem.build_image(choice.option, GanglandSkin.CULT_EMBLEM_PIXELS, scheme["metal"],
+		scheme["metal_accent"], Color(scheme["metal"], 0.0))
+	var got: Image = texture.get_image()
+	var same: bool = got.get_width() == expected.get_width()
+	var opaque: int = 0
+	for y: int in range(0, expected.get_height(), 3):
+		for x: int in range(0, expected.get_width(), 3):
+			var e: Color = expected.get_pixel(x, y)
+			same = same and got.get_pixel(x, y).is_equal_approx(e)
+			opaque += int(e.a > 0.99)
+	check(same and opaque > 20, "the emblem is CultEmblem's own drawing of that option, in its unlit colours (%d opaque samples)" %
+		opaque)
+	check(marked > 0 and marked * 3 < stencils,
+		"the emblem hides on a minority of stencilled crates, containers and boards (%d of %d faces)" % [marked, stencils])
 
 
 # --- Helpers ----------------------------------------------------------------------------------

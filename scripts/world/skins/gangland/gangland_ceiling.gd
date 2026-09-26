@@ -171,7 +171,7 @@ func _overpass(s: MeshLayer, g: MeshLayer, xa: float, xb: float, zn: float, zf: 
 	for i: int in 2:
 		var cx: float = nest_x + 0.8 + 1.4 * float(i)
 		GanglandClutter.crate_stack(s, Vector3(cx, t + 0.14, zn - 1.2), Vector3(0, 0, 1), skin.military_crate_colors,
-			k + i * 13)
+			k + i * 13, skin.cult_emblem_share)
 	# A sign gantry over the deck, its boards salvaged billboards and corporate ads.
 	var gz: float = zn - 5.0 - 3.0 * MeshKit.hash01(k, 1)
 	var top: float = t + 5.4
@@ -288,4 +288,4 @@ func _building(facade: MeshLayer, s: MeshLayer, xa: float, xb: float, zn: float,
 				Vector3(0, 0, 1), skin.scrap_metal_color.lightened(0.2))
 		_:
 			GanglandClutter.crate_stack(s, Vector3(lerpf(x0 + 1.0, x1 - 1.0, MeshKit.hash01(k, 15)), roof_y, zn - 1.5),
-				Vector3(0, 0, 1), skin.military_crate_colors, k)
+				Vector3(0, 0, 1), skin.military_crate_colors, k, skin.cult_emblem_share)

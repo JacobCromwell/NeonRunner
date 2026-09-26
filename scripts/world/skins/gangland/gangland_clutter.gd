@@ -34,8 +34,10 @@ static func crate(s: MeshLayer, foot: Vector3, size: Vector3, color: Color, fron
 			MeshKit.PAT_STENCIL, uv0, uv1, stencil)
 
 
-## A little stack of crates (1-3) on `foot`, fronts facing `front`, picked by hashing `k`.
-static func crate_stack(s: MeshLayer, foot: Vector3, front: Vector3, colors: PackedColorArray, k: int) -> void:
+## A little stack of crates (1-3) on `foot`, fronts facing `front`, picked by hashing `k`. Up to
+## `emblem_share` of the wider crates carry the cult's emblem beside their marking.
+static func crate_stack(s: MeshLayer, foot: Vector3, front: Vector3, colors: PackedColorArray, k: int,
+		emblem_share: float = 0.0) -> void:
 	var count: int = 1 + MeshKit.hash_i(k, 1) % 3
 	var y: float = 0.0
 	for i: int in count:
@@ -46,7 +48,9 @@ static func crate_stack(s: MeshLayer, foot: Vector3, front: Vector3, colors: Pac
 		var shift := Vector3(0.12, 0, 0.1) * (MeshKit.hash01(k, i, 5) - 0.5)
 		var kind: int = MeshKit.STENCIL_LOGO if MeshKit.hash01(k, i, 6) < 0.3 else MeshKit.STENCIL_CODE
 		var color: Color = colors[MeshKit.hash_i(k, i, 7) % colors.size()]
-		crate(s, foot + shift + Vector3(0, y, 0), size, color, front, MeshKit.stencil_param(kind, 0, MeshKit.hash_i(k, i, 8)))
+		var cult: bool = w > 1.1 and MeshKit.hash01(k, i, 9) < emblem_share
+		crate(s, foot + shift + Vector3(0, y, 0), size, color, front,
+			MeshKit.stencil_param(kind, 0, MeshKit.hash_i(k, i, 8), cult))
 		y += h
 
 

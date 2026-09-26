@@ -11,7 +11,9 @@ extends ZoneSkin
 ## balconies, rooftop water tanks, antennas and dishes, lines strung across the street, bulbs over the
 ## side streets. Gangs compete for power, and some are funded by corporate and military interests,
 ## so their things carry hints of it: military supply crates with stencilled codes, corporate
-## containers used as barricades, notice boards, and corporate ads pasted among the posters.
+## containers used as barricades, notice boards, and corporate ads pasted among the posters. The
+## cult behind it all hides in plain sight (GDD §5): its emblem (CultEmblem, the owner's pick) sits
+## small and unlit beside some of those markings, never a centrepiece.
 ## The street stands still, unlike the city's trucks, so drifting dust, paper scraps and speed
 ## streaks carry the sense of speed (GDD §5, proposed; camera shake belongs to gameplay, not the skin).
 ## Colour rule (GDD §5): browns and tans stay desaturated and never glow; the only glowing decoration
@@ -95,7 +97,8 @@ extends ZoneSkin
 @export var graffiti_color_c: Color = Color(0.41, 0.37, 0.49)
 ## Share of wall slots (4.2 x 2.8 m) painted, up to a storey above the wall-run band.
 @export_range(0.0, 1.0, 0.01) var graffiti_amount: float = 0.6
-@export var window_lamp_color: Color = Color(0.9, 0.74, 0.52)
+## Lamplight in the windows: a warm white, not the orange of gap edges.
+@export var window_lamp_color: Color = Color(0.92, 0.82, 0.66)
 @export_range(0.0, 3.0, 0.05) var window_glow: float = 0.95
 ## Share of a building's upper windows that are lit (each building picks within this range).
 @export_range(0.0, 1.0, 0.01) var ruin_lit_min: float = 0.12
@@ -147,6 +150,10 @@ extends ZoneSkin
 @export var ad_color: Color = Color(0.56, 0.57, 0.6)
 ## Share of tall buildings with a military notice board (a stencilled code) above the wall-run band.
 @export_range(0.0, 1.0, 0.01) var notice_share: float = 0.35
+## The cult's emblem hidden in plain sight (GDD §5): the share of corporate ads, containers, notice
+## boards and larger crates carrying it, small, unlit and in its own colours beside their markings.
+## It is the owner's pick (CULT_EMBLEM_CHOICE_PATH), drawn by CultEmblem, never a hardcoded option.
+@export_range(0.0, 1.0, 0.01) var cult_emblem_share: float = 0.35
 
 @export_group("Motion")
 ## DESIGN-TBD: GDD §5 proposes motion effects for still streets. Per 40 m of track: dust flecks,
@@ -196,6 +203,15 @@ extends ZoneSkin
 @export var finish_color: Color = Color(1.0, 1.0, 1.0)
 ## Scavenged steel under pads, ramps and the finish gantry, and on rails, masts and gantries.
 @export var scrap_metal_color: Color = Color(0.2, 0.17, 0.145)
+
+## The cult emblem the owner picked (D7) and the texture it is rasterised into (CultEmblem): small
+## on screen by design (it fades out before it could read like a radiation trefoil), so a few dozen
+## pixels are plenty, and it costs one short rasterisation per session.
+const CULT_EMBLEM_CHOICE_PATH: String = "res://data/world/cult_emblem_choice.tres"
+const CULT_EMBLEM_PIXELS: int = 64
+
+## Emblem textures by option, shared by every skin instance.
+static var _emblem_textures: Dictionary = {}
 
 ## Built on first use and shared by every mesh (exports changed later don't reach them).
 var _materials: Dictionary = {}
@@ -274,8 +290,35 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 
 func solid_material() -> ShaderMaterial:
 	if not _materials.has(&"solid"):
-		_materials[&"solid"] = MeshKit.solid(_solid_params())
+		var m: ShaderMaterial = MeshKit.solid(_solid_params())
+		m.set_shader_parameter(&"cult_emblem", cult_emblem_texture())
+		_materials[&"solid"] = m
 	return _materials[&"solid"]
+
+
+## The option the owner picked for the cult's emblem (data/world/cult_emblem_choice.tres; the
+## choice's own default if the file is missing).
+static func cult_emblem_option() -> int:
+	var choice := load(CULT_EMBLEM_CHOICE_PATH) as CultEmblemChoice
+	if choice == null:
+		push_error("GanglandSkin: no cult emblem choice at %s" % CULT_EMBLEM_CHOICE_PATH)
+		choice = CultEmblemChoice.new()
+	return choice.option
+
+
+## The cult's emblem in its unlit colours (CultEmblem.default_scheme: "metal", with "metal_accent" for
+## its detail) over a transparent background of the same colour, with mipmaps (the kit shader picks
+## the level itself).
+static func cult_emblem_texture() -> ImageTexture:
+	var option: int = cult_emblem_option()
+	if not _emblem_textures.has(option):
+		var scheme: Dictionary = CultEmblem.default_scheme(option)
+		var metal: Color = scheme["metal"]
+		var img: Image = CultEmblem.build_image(option, CULT_EMBLEM_PIXELS, metal, scheme["metal_accent"],
+			Color(metal, 0.0))
+		img.generate_mipmaps()
+		_emblem_textures[option] = ImageTexture.create_from_image(img)
+	return _emblem_textures[option]
 
 
 func glow_material() -> ShaderMaterial:
@@ -322,7 +365,7 @@ func _solid_params() -> Dictionary:
 		"marking_color": lane_marking_color, "rust_color": rust_color, "graffiti_color": graffiti_color,
 		"graffiti_color_b": graffiti_color_b, "graffiti_color_c": graffiti_color_c, "graffiti_pieces": graffiti_amount,
 		"sand_color": sand_color, "sand_amount": sand_amount, "scorch_amount": scorch_amount, "poster_ads": poster_ads,
-		"ad_color": ad_color}
+		"ad_color": ad_color, "cult_emblem_share": cult_emblem_share}
 
 
 func street() -> GanglandStreet:

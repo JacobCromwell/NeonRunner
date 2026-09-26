@@ -1,9 +1,9 @@
-// The corporate logo on crates, containers and ads (Gangland's hints of corporate funding, GDD §5).
-// It lives in one place on purpose: the cult's symbol is to be hidden in logos and ads in every zone
-// (GDD §5, proposed; task D7 draws the options), so swapping it in means editing corp_logo() only.
-// DESIGN-TBD: a generic placeholder mark (a disc cut by three slots, a bite out of its top right)
-// until the owner picks the cult symbol. It avoids a bar across a ring (a "no" sign) and triangles
-// (warning signs).
+// A corporation's own logo on crates, containers and ads (Gangland's hints of corporate funding,
+// GDD §5), in one place so a later brand pass edits corp_logo() only. The cult's emblem is separate:
+// CultEmblem draws the owner's pick, and kit_solid.gdshader's cult_emblem texture hides it small
+// beside this logo on some of them.
+// DESIGN-TBD: a generic corporate mark (a disc cut by three slots, a bite out of its top right). It
+// avoids a bar across a ring (a "no" sign) and triangles (warning signs).
 
 // The mark's coverage (0-1, anti-aliased) at p in logo space: it fills the unit disc (|p| <= 1).
 // `fw` is a pixel's footprint in logo space (max of fwidth(p)), taken by the caller outside any
