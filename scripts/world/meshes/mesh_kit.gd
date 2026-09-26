@@ -4,6 +4,8 @@ extends RefCounted
 ## shaders and their materials, and the hazard parts every zone must draw the same way
 ## (pink crackling energy field = electric fence, yellow/black striped frame = sign).
 ## Build geometry into a MeshBatch (one surface per material) and commit it as one node.
+## New props follow the same recipe: frame() for windows, hatches and vents (PAT_GRILLE for slats),
+## prism() for discs and pipes, hazard parts here when every zone must share them.
 
 ## Box sides for MeshLayer.box(faces = ...). Skip sides nobody can see.
 const FACE_PX: int = 1
@@ -38,6 +40,8 @@ const SHAPE_STREAK: int = 4  ## Soft horizontal streak.
 
 const SHADER_DIR: String = "res://scripts/world/meshes/shaders/"
 
+static var _boxes: Dictionary = {}
+static var _prisms: Dictionary = {}
 static var _templates: Dictionary = {}
 static var _shaders: Dictionary = {}
 static var _materials: Dictionary = {}
@@ -75,9 +79,9 @@ static func key(value: float) -> int:
 
 ## A 1 m box centred on the origin with the sides in `faces`, UVs 0–1 per side.
 static func unit_box(faces: int = ALL_FACES) -> MeshLayer:
-	var id: String = "box_%d" % faces
-	if _templates.has(id):
-		return _templates[id]
+	var cached: MeshLayer = _boxes.get(faces)
+	if cached != null:
+		return cached
 	var t := MeshLayer.new()
 	var h: float = 0.5
 	if faces & FACE_PX:
@@ -92,15 +96,16 @@ static func unit_box(faces: int = ALL_FACES) -> MeshLayer:
 		t.rect(Vector3(-h, -h, h), Vector3(1, 0, 0), Vector3(0, 1, 0), Color.WHITE)
 	if faces & FACE_NZ:
 		t.rect(Vector3(h, -h, -h), Vector3(-1, 0, 0), Vector3(0, 1, 0), Color.WHITE)
-	_templates[id] = t
+	_boxes[faces] = t
 	return t
 
 
 ## An upright prism with corner radius 1 from y = 0 to y = 1, flat-shaded sides.
 static func unit_prism(sides: int, caps: bool = true) -> MeshLayer:
-	var id: String = "prism_%d_%s" % [sides, caps]
-	if _templates.has(id):
-		return _templates[id]
+	var id: int = sides * 2 + int(caps)
+	var cached: MeshLayer = _prisms.get(id)
+	if cached != null:
+		return cached
 	var t := MeshLayer.new()
 	var ring: Array[Vector3] = []
 	for i: int in sides:
@@ -116,7 +121,7 @@ static func unit_prism(sides: int, caps: bool = true) -> MeshLayer:
 			var p1: Vector3 = ring[(i + 1) % sides]
 			_triangle(t, Vector3.UP, p0 + Vector3.UP, p1 + Vector3.UP)
 			_triangle(t, Vector3.ZERO, p1, p0)
-	_templates[id] = t
+	_prisms[id] = t
 	return t
 
 

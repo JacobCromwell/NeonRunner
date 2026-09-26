@@ -1,8 +1,9 @@
 class_name CityTrucks
 extends RefCounted
 ## Hover-truck convoys for the city floor (CitySkin). A solid stretch of one lane between two gaps
-## is one road train driving toward the player: a cab at its near end (headlights, grille, amber
-## marker lights facing the player), trailers coupled behind it, and a rear at its far end.
+## is one road train driving toward the player: a cab at its near end (headlights, grille, orange
+## marker lights facing the player), trailers coupled behind it, and a rear at its far end. Both ends
+## carry an orange lip along the roof edge: the gap-edge language.
 ## Floor pieces arrive clipped to track chunks, so everything is placed by track distance:
 ## couplings sit on a per-lane grid and each trailer's paint comes from hashing its grid cell,
 ## which makes a trailer cut by a chunk boundary continue seamlessly in the next chunk.
@@ -96,7 +97,6 @@ func _unit(width: float, paint: int, roof_param: float) -> MeshBatch:
 	var s: MeshLayer = b.layer(skin.solid_material())
 	var color: Color = skin.container_colors[paint]
 	var hw: float = width * 0.5
-	var h: float = skin.truck_height
 	_roof(s, hw, 0.0, -1.0, skin.roof_color.lerp(color, 0.14), roof_param)
 	for side: float in [-1.0, 1.0]:
 		_side(s, side, hw, 0.0, -1.0, color)
@@ -117,8 +117,7 @@ func _seam(width: float) -> MeshBatch:
 	s.rect(Vector3(-hw, -0.05, SEAM_HALF), Vector3(width, 0, 0), Vector3(0, 0, -SEAM_HALF * 2.0), dark)
 	# The far trailer's front lip, facing the player: a crisp light edge across the roof.
 	s.rect(Vector3(-hw + CHAMFER, -0.05, -SEAM_HALF), Vector3(width - CHAMFER * 2.0, 0, 0), Vector3(0, 0.05, 0), plate)
-	s.box(Vector3(0, -0.025, 0), Vector3(0.9, 0.05, SEAM_HALF * 2.0), plate, 0.0, MeshKit.PAT_PLAIN,
-		MeshKit.FACE_PY | MeshKit.FACE_PZ)
+	s.box(Vector3(0, -0.025, 0), Vector3(0.9, 0.05, SEAM_HALF * 2.0), plate, 0.0, MeshKit.PAT_PLAIN, MeshKit.FACE_PY)
 	for side: float in [-1.0, 1.0]:
 		s.box(Vector3(side * (hw - 0.09), -skin.truck_height * 0.5, 0),
 			Vector3(0.02, skin.truck_height - 0.1, SEAM_HALF * 2.0), dark, 0.0, MeshKit.PAT_PLAIN,
@@ -145,10 +144,10 @@ func _cab(width: float, paint: int, roof_param: float) -> MeshBatch:
 	var light: Color = skin.headlight_color
 	var sides: int = MeshKit.FACE_PX | MeshKit.FACE_NX
 
-	# Roof: the amber lip at the gap edge, then plates.
+	# Roof: the orange lip at the gap edge, then plates.
 	s.rect(Vector3(-hw, 0, 0), Vector3(width, 0, 0), Vector3(0, 0, -EDGE_LIP), edge, 0.33)
 	_roof(s, hw, -EDGE_LIP, -d, skin.roof_color, roof_param)
-	# Upper band with the amber marker lights.
+	# Upper band with the orange marker lights.
 	s.box(Vector3(0, -0.16, -d * 0.5), Vector3(width, 0.32, d), color, 0.0, MeshKit.PAT_PLAIN, sides | MeshKit.FACE_PZ)
 	for i: int in 5:
 		var mx: float = (float(i) - 2.0) * minf(0.34, width * 0.15)

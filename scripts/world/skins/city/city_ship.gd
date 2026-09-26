@@ -4,6 +4,8 @@ extends RefCounted
 ## player. The hull spans every ceiling lane as one plated surface with subtle lane seams; its bow
 ## rises above the near end, and its stern carries an orange edge (the surface ends here, like a
 ## gap edge) under a row of glowing engines, so the drop back to the floor is readable.
+## DESIGN-TBD: the GDD doesn't say which way the ships fly; like the trucks, they come toward the
+## player, which puts the engines' glow at the far end where the player drops.
 ## Ship space: origin at the centre of the underside (the ceiling surface), z = -distance.
 
 ## Weak: the skin owns this builder, so a strong reference back would keep both alive forever.

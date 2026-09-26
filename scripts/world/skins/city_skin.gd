@@ -16,6 +16,10 @@ extends ZoneSkin
 @export var abyss_color: Color = Color(0.03, 0.02, 0.07)
 @export var skyline_color: Color = Color(0.06, 0.05, 0.12)
 @export var skyline_window_color: Color = Color(0.95, 0.78, 0.55)
+## A big moon low over the far end of the street, seen between the towers (sky direction, radius in radians).
+@export var moon_color: Color = Color(0.85, 0.8, 1.0)
+@export var moon_direction: Vector3 = Vector3(0.07, 0.3, -0.95)
+@export_range(0.0, 0.3, 0.005) var moon_radius: float = 0.075
 @export var ambient_color: Color = Color(0.5, 0.45, 0.7)
 ## Distant geometry fades into this colour between fog_begin and fog_end.
 @export var fog_color: Color = Color(0.14, 0.08, 0.26)
@@ -56,6 +60,7 @@ extends ZoneSkin
 @export_group("Road below")
 @export_range(4.0, 60.0, 0.5, "suffix:m") var road_depth: float = 14.0
 ## How fast the road streams toward the player: the trucks' speed over the ground.
+## DESIGN-TBD: the GDD says the trucks drive toward the player but not how fast.
 @export_range(0.0, 60.0, 0.5, "suffix:m/s") var road_scroll_speed: float = 14.0
 @export var road_color: Color = Color(0.04, 0.04, 0.06)
 @export var road_marking_color: Color = Color(0.45, 0.45, 0.55)
@@ -105,6 +110,7 @@ extends ZoneSkin
 @export var ramp_color: Color = Color(0.3, 1.0, 0.35)
 @export var finish_color: Color = Color(1.0, 1.0, 1.0)
 
+## Built on first use and shared by every mesh (exports changed later don't reach them).
 var _materials: Dictionary = {}
 var _trucks: CityTrucks
 var _towers: CityTowers
@@ -121,6 +127,9 @@ func make_environment() -> Environment:
 	sky_material.set_shader_parameter("abyss_color", abyss_color)
 	sky_material.set_shader_parameter("skyline_color", skyline_color)
 	sky_material.set_shader_parameter("window_color", skyline_window_color)
+	sky_material.set_shader_parameter("moon_color", moon_color)
+	sky_material.set_shader_parameter("moon_direction", moon_direction)
+	sky_material.set_shader_parameter("moon_radius", moon_radius)
 	var sky := Sky.new()
 	sky.sky_material = sky_material
 	sky.radiance_size = Sky.RADIANCE_SIZE_32
@@ -131,6 +140,7 @@ func make_environment() -> Environment:
 	env.ambient_light_color = ambient_color
 	env.ambient_light_energy = 0.8
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
+	# Filmic keeps the neon hues; ACES pushed the violets toward fence pink and AgX washed them out.
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.glow_enabled = true
 	env.glow_intensity = glow_intensity

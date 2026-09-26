@@ -20,6 +20,9 @@ func _init(p_skin: CitySkin) -> void:
 # GDD §9.1: a pink energy barrier built into the truck, powered from futuristic exhaust stacks.
 # Full fences: a glowing bar along the field's top (jump over it). Gapped fences: the field hangs
 # between tall stacks with a bar along its bottom edge and open roof below (slide under it).
+# Pulsing fences: ON crackles, WARNING sputters (with HazardTelegraph's sound), OFF shows no field
+# and only dim bars and nozzles.
+# DESIGN-TBD: the edge bars and the OFF look are proposals; the GDD fixes only the pink crackle.
 
 func fence(hazard: Hazard, size: Vector3, ground_y: float, gapped: bool) -> void:
 	# The visible field is a little larger than the hitbox (GDD §3: hitboxes err in the player's favour).
