@@ -21,10 +21,34 @@ var god_mode: bool = false
 var no_fall: bool = false
 ## Campaign position for the completion bonus (0-based level index), -1 outside the campaign.
 var level_index: int = -1
+## A boss fight (GDD §10): the boss, whose arena `config` describes (BossArena.base_config). Null for
+## a level.
+var boss: BossDef
+## Where the next attempt at a boss fight starts: {} from the beginning, or, once a checkpoint phase
+## was reached (GDD §10: the final fight's halfway checkpoint), {phase, time, score, weapon_damage}
+## carried from that attempt (BossEncounter). DESIGN-TBD (docs/questions/b8.md): retries keep it;
+## starting the step afresh from the map, or quitting the game, doesn't (it's never saved).
+var boss_resume: Dictionary = {}
 
 
 func is_campaign() -> bool:
 	return mode == Mode.CAMPAIGN and step != null
+
+
+func is_boss() -> bool:
+	return boss != null
+
+
+## The leaderboard a finished run counts for (GDD §6: per level and difficulty tier; GDD §10:
+## bosses have their own, ranking the boss score).
+func leaderboard_id() -> String:
+	if is_boss():
+		return "boss/%s/%d" % [boss.id, difficulty_tier]
+	if is_campaign():
+		return "level/%s/%d" % [step.id, difficulty_tier]
+	if mode == Mode.ENDLESS:
+		return "endless/%d/%d" % [config.lane_count, difficulty_tier]
+	return ""
 
 
 ## The id records and leaderboards use.
@@ -49,4 +73,6 @@ func retry() -> RunContext:
 	next.god_mode = god_mode
 	next.no_fall = no_fall
 	next.level_index = level_index
+	next.boss = boss
+	next.boss_resume = boss_resume.duplicate()
 	return next

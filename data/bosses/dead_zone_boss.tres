@@ -1,9 +1,33 @@
 [gd_resource type="Resource" script_class="BossDef" format=3]
 
 [ext_resource type="Script" path="res://scripts/campaign/boss_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/campaign/boss_phase.gd" id="2_phase"]
+
+[sub_resource type="Resource" id="phase_1"]
+script = ExtResource("2_phase")
+health_share = 1.0
+hits = 1
+intro_seconds = 2.0
+
+[sub_resource type="Resource" id="phase_2"]
+script = ExtResource("2_phase")
+health_share = 1.0
+hits = 1
+intro_seconds = 2.0
+
+[sub_resource type="Resource" id="phase_3"]
+script = ExtResource("2_phase")
+health_share = 1.0
+hits = 1
+intro_seconds = 2.0
 
 [resource]
 script = ExtResource("1_script")
 id = &"dead_zone_boss"
-display_name = "Dead Zone boss"
-notes = "DESIGN-TBD: not designed yet (GDD §10: the Dead Zone's boss is still open)."
+display_name = "Sleep Taker"
+notes = "Designed, not built yet (GDD §10): the Dead Zone's Bad Dreams fused into one colossal nightmare. Weapons can't touch it and it swallows the light, but it can't reach the ceiling. Lure it close to a glowing fence generator, then smash the generator with a stomp or the dash: its EMP tears a chunk of the nightmare away, three times."
+phases = Array[ExtResource("2_phase")]([SubResource("phase_1"), SubResource("phase_2"), SubResource("phase_3")])
+armor_rule = true
+armor_delay_min = 15.0
+armor_delay_max = 17.0
+armor_pickups_per_phase = 1

@@ -108,6 +108,7 @@ These are also in `CLAUDE.md`.
 - Pads sit under the ceiling.
 - Update the zone skin interface and the City, Gangland and grey-box skins.
 - Skins started before B3 lands add narrow ceilings in a small follow-up.
+- From the owner's review: a narrow Gangland ceiling is a slab broken off a building.
 
 **B4: floors that turn into gaps during play.**
 - The generator plans each cut in advance (lane, start, end), so levels stay fair and identical on every attempt. Nothing else is placed in a cut stretch.
@@ -228,6 +229,7 @@ Each skin covers:
 - Ceilings: occasional military ships.
 - Colours: steel and gunmetal, military olive, sterile white light, and one harsh brand colour.
 - Soulless corporate art.
+- From the owner's review: military ships and props are part of the zone's look (the military presence, and Corporate 2's heavier one), and Gangland's placeholder corporate logo changes to match this zone's brand once it exists (`kit_logo.gdshaderinc`).
 
 **D5: Dead Zone skin.**
 - Colours: black, dark grey and ash.
@@ -255,7 +257,7 @@ Each skin covers:
 - The Marketplace skin (D2) builds the feed as a shared piece: the same wordless broadcast on billboards, ads and shop-window screens in every zone. Skins built after it include the feed and the emblem from the start.
 - D9 adds the feed to the City and Gangland, and the hidden emblem to the City (Gangland already has it).
 
-**D8: Music for the four new zones.** Code-generated placeholder loops in the existing style, fitting each zone's mood:
+**D8: Music for the four new zones.** Also, from the owner's review (GDD §11): **the music dips when the player dies**, and **the level-complete riff plays in each zone's key**. Code-generated placeholder loops in the existing style, fitting each zone's mood:
 - Marketplace: happy and bustling
 - Corporate: oppressive
 - Dead Zone: eerie and quiet
@@ -276,6 +278,45 @@ Added September 26, 2026, from the owner's design round 4 (GDD §9.2 and §11). 
 - P1 and P2 may both touch the shared humanoid rig (`scripts/characters/humanoid_*`), so they run one after the other.
 - They run alongside the core lane.
 - P1 and P2 are finished before the web demo release (E2).
+
+### R. The owner's placeholder review
+
+Added September 26, 2026. The owner reviewed every build placeholder (`docs/OPEN_QUESTIONS.md` §D, "Owner's placeholder review"): approved ones now count as decided (GDD §12), and these tasks build the changes. **Collision stays physical on every surface** (GDD §3): what looks like a hit is a hit, and the wall-runner collision doesn't change.
+
+| ID | Task | Needs | Size | Tier |
+|---|---|---|---|---|
+| R1 | **Ramps' fading speed boost and the blocked-wall bump** (§3). **Core** (player, generator). | B2 | S–M | T2 |
+| R2 | **Small rule changes:** quitting keeps 20% (§4), hosts immune to all weapon damage (§9.7), no screeches in the Neon City (§9.5) | – | S | T3 |
+| R3 | **Big attacks of different enemy types take turns** (§9), behind a data switch | – | M | T1 |
+| R4 | **Endless mode** (§6). **Core** (track builder, run world). | B5 | M–L | T1 |
+| R5 | **Dead Zone 2's remix** (§5), **the newest features get the most picks**, and **Buzz Overdrive in the Golden Zone** (§9.9). **Core** (generator, level data). | R1 | M | T1 |
+| R6 | **Take the `DESIGN-TBD` markers off approved placeholders** (GDD §12) | a quiet moment | M | T3 |
+| R7 | **Balancing pass** over the 15 levels and the economy | the owner's playtest | M | T2 |
+
+**R1: ramps and the blocked wall.**
+- A ramp's speed boost fades away the same way a speed pad's does; the build's placeholder had none (`ramp_speed_boost` is 0). Every generator rule that predicts a ramp's wall run (the credits along it, B5's rule about wall fences after ramps) must include the boost.
+- A blocked wall entry plays the clank and a small sideways bump, so the player sees why they didn't get onto the wall.
+
+**R2: small rule changes.**
+- Quitting a level from the pause menu keeps 20% of the credits collected, like a death (the confirmation stays, with new wording).
+- Hosts are immune to all weapon damage, so a stray shot never releases a Bad Dream (the same declared property as B9's generators).
+- No screeches in the Neon City: remove what's left of the City's wall-vent screeches (docs, quick-play notes, the City skin's vents if it draws any).
+
+**R3: big attacks take turns.**
+- The major attacks of different enemy types never overlap: the Octodog's charges, the drone's wind-up and barrage, the hover truck's lurch and cannon, the Bad Dream's chase, and the new enemies' attacks as they arrive. `EnemyDirector.major_attack_blocked()` already does this for the Bad Dream; every type opts in.
+- **One data switch turns it off** (default on): the owner may revert it after playtesting, since early playtests felt not very challenging. With it off, the game behaves as before.
+- A waiting attack must never start its warning and then hold: it waits before its telegraph, and every attack keeps its visual and audio warning.
+
+**R4: endless mode.** It runs until the player dies, with no time limit, and its difficulty keeps climbing. Its scenery cycles through the zones the player has unlocked, changing every few minutes, and each zone brings its own features and rules (no screeches in the City). It pays 20% of the credits collected, like a death, plus a lump sum every 2 minutes survived. Not in the web demo. The track streams ahead like a boss arena's laps (B8), with fair joins between stretches.
+
+**R5: the campaign's shape.**
+- Dead Zone 2 (The Hush) has fewer enemies but more hosts and Bad Dream chases, darker lighting, and long silent stretches broken by sudden threats. The darker lighting is a level setting the skin's environment follows (the Dead Zone skin, D5, uses it).
+- Beyond the "every feature at least once" guarantee, a level's newest things get the most picks.
+- Buzz Overdrive also appears in the Golden Zone (a correction), so its feature is listed in Golden 1–3.
+
+**R6: approved placeholders.** Remove the `DESIGN-TBD` markers of every item approved as is. Items listed under "tune after playtesting" or "later design rounds" keep theirs. Run it when few tasks are in flight, or in batches that skip files other agents are changing.
+
+**R7: balancing pass.** After the owner's playtest. The owner's early playtest felt **not very challenging**, so start from a harder baseline: the difficulty curve (P2 8), enemy numbers and the economy (the "tune after playtesting" list).
 
 ### E. Bosses and the web demo
 
@@ -333,7 +374,7 @@ Added September 26, 2026, from the owner's design round 4 (GDD §9.2 and §11). 
 ## Order at a glance
 
 **Wave 1 (start now):**
-- **Core lane:** B1 → B2 → B3 → B4 → B5.
+- **Core lane:** B1 → B2 → R1 → R5 → B3 → B4 → B5 → R4.
 - **In parallel,** up to three at a time:
   - after B1: B8, then B7
   - D1, D2, D4, D5, D6a
@@ -356,13 +397,14 @@ Added September 26, 2026, from the owner's design round 4 (GDD §9.2 and §11). 
 | B9 generators and weapons | anytime |
 | D9 the cult's feed in the City and Gangland | D2 |
 | P2 cyborg base, then P3 variants | P1, then P2 |
+| R2 small rule changes, R3 big attacks take turns | anytime |
 | E5c Sleep Taker | B7, B8, B9 and D5 |
 
 **Wave 3:**
 - B6 → C5 (Tithe Collector)
 - E5a The House (after B5, C1, D2), E5b Hostile Takeover (after B4, B5, C2, C5, D4)
 - E2 (web demo release candidate), after E1, P1 and P2
-- applying the owner's answers from the placeholder review (T4 for numbers only, T2 if code changes)
+- R4 endless mode (after B5), R6 approved placeholders (at a quiet moment), R7 balancing (after the owner's playtest)
 
 **Blocked on design:** E5d (the final villain), F2 (cinematic content). **Blocked on the owner's phone:** E3, and so E4.
 

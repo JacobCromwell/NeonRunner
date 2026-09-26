@@ -41,6 +41,13 @@ const LEFT_OUT: Dictionary = {
 ## Levels that bring nothing new (GDD §5): Dead Zone 2 is "a quiet, eerie remix", Golden 3 the
 ## Golden Palace.
 const NOTHING_NEW: Array = ["dead_zone/2", "golden/3"]
+## The seed sweep: the levels with the most features, on this many seeds each at 3, 5 and 6 lanes.
+const SWEEP_LEVELS: Array = ["gangland/3", "corporate/2", "dead_zone/1", "golden/1", "golden/3"]
+const SWEEP_SEEDS: int = 8
+## How far past its start a new feature's first piece or enemy may be: the first pattern picked
+## from the start uses it, and the pick can wait for the longest pattern before it (an Octodog's
+## 120 m) and the widest spacing; the enemy then stands up to 45 m into its own pattern.
+const INTRODUCTION_REACH: float = 210.0
 ## Features that are enemies (for "every zone introduces at least one new enemy").
 const ENEMIES: Array = ["cyborg", "window_cyborg", "hover_truck", "screech", "octodog", "generator", "drone",
 	"barnacle_turret", "buzz_overdrive", "tithe_collector", "host", "resonator", "gilded_sentinel"]
@@ -118,8 +125,8 @@ func _test_steps(campaign: Campaign) -> void:
 ## A boss slot per zone from GDD §10's roster, and cinematic slots: every zone's intro and outro, and
 ## the City's boss intro. All stay unbuilt slots for now.
 func _test_slots(campaign: Campaign) -> void:
-	var bosses: Dictionary = {"city": "Floating Head", "gangland": "Sewer Swarm", "marketplace": "Marketplace boss",
-		"corporate": "Corporate boss", "dead_zone": "Dead Zone boss", "golden": "The final villain"}
+	var bosses: Dictionary = {"city": "Floating Head", "gangland": "Sewer Swarm", "marketplace": "The House",
+		"corporate": "Hostile Takeover", "dead_zone": "Sleep Taker", "golden": "The final villain"}
 	for zone: ZoneDef in campaign.zones:
 		var id: String = String(zone.id)
 		check(zone.boss != null and zone.boss.display_name == bosses.get(id, ""),
@@ -135,6 +142,13 @@ func _test_slots(campaign: Campaign) -> void:
 	var golden: ZoneDef = campaign.zones[-1]
 	check(golden.boss != null and golden.boss.notes.contains("checkpoint halfway"),
 		"the final villain's slot notes the halfway checkpoint (GDD §10)")
+	check(golden.boss != null and golden.boss.checkpoint_phase() == golden.boss.phase_count() - 1
+		and golden.boss.phase_count() == 2, "and its data has the checkpoint at the second of its two stages")
+	var head: BossDef = campaign.zones[0].boss
+	check(head.phase_count() == 3 and is_equal_approx(head.phase_ends()[0], 2.0 / 3.0) and head.phase_list()[0].hits == 1
+		and head.phase_list()[2].pace > head.phase_list()[0].pace,
+		"the Floating Head has three phases, a stomp taking a third each, the later ones faster (GDD §10)")
+	check(head.weapon_share_cap <= 1.0 / 3.0 + 0.01, "its weapons can save at most one of the three stomps (GDD §10)")
 	for s: CampaignStep in campaign.steps():
 		if s.kind == CampaignStep.Kind.BOSS:
 			check(s.boss != null and not s.boss.is_built(), "boss slot %s is still a placeholder" % s.id)
@@ -259,46 +273,78 @@ func _test_skins(campaign: Campaign) -> void:
 	check(palace.level.skin == null, "and the shipped level has none of its own yet")
 
 
-## Every campaign level generates cleanly and fairly for every lane count: no pattern warnings, the
-## shared fairness checks (LayoutChecks), nothing of a feature before its start, and each new
-## feature right after its start. An introduction can come later when a fairness rule clears the
-## introduced enemy away (a hover truck's lane), but that stays rare.
+## Every campaign level generates cleanly and fairly for every lane count, on its own seed and (for
+## the densest levels) on others: no warnings, the shared fairness checks (LayoutChecks), nothing
+## of a feature before its start, and every feature the level lists in the layout (GDD §5: anything
+## introduced earlier keeps appearing later), bar the planned ones nothing places yet. On the
+## levels' own seeds, each new feature also comes right after its start.
 func _test_levels_generate(campaign: Campaign) -> void:
-	var introductions: int = 0
-	var late: PackedStringArray = []
-	var reach: float = 210.0
+	var stats := {"introductions": 0, "late": [], "builds": 0, "levels": 0}
 	for s: CampaignStep in campaign.steps():
 		if not s.is_level():
 			continue
+		check(s.level.guarantee_features, "%s guarantees that every feature appears" % s.id)
 		for lanes: int in [3, 5, 6]:
-			var config: LevelConfig = campaign.configure(s, lanes)
-			var gen := LevelGenerator.new()
-			var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
-			var tag: String = "%s lanes=%d" % [s.id, lanes]
-			check(gen.warnings.is_empty(), "no pattern warnings %s %s" % [tag, gen.warnings])
-			check(layout.gaps.size() + layout.fences.size() > 8, "has content " + tag)
-			check(layout.credits.size() > 20, "has credits " + tag + " (%d)" % layout.credits.size())
-			for c: Dictionary in layout.credits:
-				if c["surface"] != "wall":
-					check(int(c["lane"]) >= 0 and int(c["lane"]) < lanes, "credit lane in range " + tag)
-			LayoutChecks.check_layout(self, layout, config, tag)
-			LayoutChecks.check_rules(self, layout, config, tag)
-			for f: String in ["ceilings", "ramps", "speed_pads", "pulsing"]:
-				if not config.has_feature(f):
-					check(LayoutChecks.feature_positions(layout, f).is_empty(), "no `%s` before they're introduced %s" % [f, tag])
-			for f: String in config.feature_starts:
-				if not LayoutChecks.can_locate(f):
-					continue  # a planned feature: nothing places it yet
-				var start: float = gen.feature_start(f)
-				var at: Array[float] = LayoutChecks.feature_positions(layout, f)
-				check(at.is_empty() or at[0] >= start - 0.01, "nothing of `%s` before its start (%.0f m) %s" % [f, start, tag])
-				check(not at.is_empty(), "%s shows `%s`, which it introduces %s" % [s.id, f, tag])
-				introductions += 1
-				if at.is_empty() or at[0] > start + reach:
-					late.append("%s %s (%s)" % [tag, f, "none" if at.is_empty() else "%.2f" % (at[0] / layout.length)])
+			_check_level(s, campaign.configure(s, lanes), "%s lanes=%d" % [s.id, lanes], stats)
 	# 13 introductions of built features, at 3 lane counts each; more as the planned enemies are built.
-	check(introductions >= 39, "introductions checked: %d" % introductions)
-	check(late.size() * 10 <= introductions, "introductions land right after their start: late ones %s of %d" % [late, introductions])
+	check(int(stats["introductions"]) >= 39, "introductions checked: %d" % stats["introductions"])
+	# A rule can clear an introduced piece or enemy away (a hover truck's lane, the drone's pads, a first
+	# chase that meets the first drone wave), and the feature then first shows a little later; that
+	# stays rare on the campaign's own seeds.
+	check((stats["late"] as Array).size() * 10 <= int(stats["introductions"]),
+		"introductions land right after their start: late ones %s of %d" % [stats["late"], stats["introductions"]])
+
+	# Any seed: the levels with the most features, on seeds other than their own, still have every
+	# feature and nothing before its start. Their introductions come late more often (over 100 seeds,
+	# 6% of all introductions, but Dead Zone 1's first host in 40% of levels: the first drone wave
+	# often comes during its chase), so the sweep only reports those.
+	var sweep := {"introductions": 0, "late": [], "builds": 0, "levels": 0}
+	for id: String in SWEEP_LEVELS:
+		for lanes: int in [3, 5, 6]:
+			for level_seed: int in range(1, SWEEP_SEEDS + 1):
+				var config: LevelConfig = campaign.configure(campaign.step(id), lanes)
+				config.level_seed = 9000 + level_seed
+				_check_level(campaign.step(id), config, "%s lanes=%d seed=%d" % [id, lanes, config.level_seed], sweep)
+	check(int(sweep["levels"]) == SWEEP_LEVELS.size() * 3 * SWEEP_SEEDS, "the seed sweep generated %d levels" % sweep["levels"])
+	print("  campaign levels: %.2f builds per level on their own seeds, %.2f in the seed sweep" % [
+		float(stats["builds"]) / float(stats["levels"]), float(sweep["builds"]) / float(sweep["levels"])])
+	print("  late introductions: %d of %d on the levels' own seeds, %d of %d in the seed sweep" % [
+		(stats["late"] as Array).size(), stats["introductions"], (sweep["late"] as Array).size(), sweep["introductions"]])
+
+
+## One campaign level, generated from `config` (see _test_levels_generate). Counts introductions and
+## late ones, builds and levels in `stats` (its "late" is an Array, so appending to it here sticks).
+func _check_level(s: CampaignStep, config: LevelConfig, tag: String, stats: Dictionary) -> void:
+	var patterns: Array = LevelGenerator.load_for(config)
+	var gen := LevelGenerator.new()
+	var layout: LevelLayout = gen.generate(config, tuning, patterns)
+	stats["builds"] = int(stats["builds"]) + gen.attempts
+	stats["levels"] = int(stats["levels"]) + 1
+	check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
+	check(layout.gaps.size() + layout.fences.size() > 8, "has content " + tag)
+	check(layout.credits.size() > 20, "has credits " + tag + " (%d)" % layout.credits.size())
+	for c: Dictionary in layout.credits:
+		if c["surface"] != "wall":
+			check(int(c["lane"]) >= 0 and int(c["lane"]) < config.lane_count, "credit lane in range " + tag)
+	LayoutChecks.check_layout(self, layout, config, tag)
+	LayoutChecks.check_rules(self, layout, config, tag)
+	for f: String in ["ceilings", "ramps", "speed_pads", "pulsing"]:
+		if not config.has_feature(f):
+			check(LayoutChecks.feature_positions(layout, f).is_empty(), "no `%s` before they're introduced %s" % [f, tag])
+	var placeable: PackedStringArray = gen.placeable_features(patterns)
+	for f: String in config.features:
+		if not LayoutChecks.can_locate(f):
+			check(not placeable.has(f), "`%s` is planned: nothing places it yet %s" % [f, tag])
+			continue
+		var at: Array[float] = LayoutChecks.feature_positions(layout, f)
+		check(not at.is_empty(), "%s has `%s` (GDD §5: earlier features keep appearing) %s" % [s.id, f, tag])
+		if not config.feature_starts.has(f) or at.is_empty():
+			continue
+		var start: float = gen.feature_start(f)
+		check(at[0] >= start - 0.01, "nothing of `%s` before its start (%.0f m) %s" % [f, start, tag])
+		stats["introductions"] = int(stats["introductions"]) + 1
+		if at[0] > start + INTRODUCTION_REACH:
+			(stats["late"] as Array).append("%s %s (%.2f)" % [tag, f, at[0] / layout.length])
 
 
 ## Unlocking follows the campaign order (with a fresh profile); the web demo covers Zone 1 only.

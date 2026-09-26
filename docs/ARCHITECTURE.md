@@ -23,13 +23,17 @@ Screens only call `App` methods; they never change state themselves.
 ## A run
 
 `App` builds a `RunContext` (level config ready to generate, tuning, loadout, attempt) and starts a
-`LevelRun` (`scripts/run/level_run.gd`), which generates the layout and builds a `RunWorld`:
+`LevelRun` (`scripts/run/level_run.gd`), which generates the layout and builds a `RunWorld`. A boss
+fight is a run too: its context carries the boss, and LevelRun builds the world on the boss's arena
+and hosts its `BossEncounter` (see Bosses).
 
 ```
 RunWorld (scripts/run/run_world.gd)       one run's gameplay world; everything shares it
   Track      TrackBuilder: floor/hull collision, obstacles (fences, signs), triggers (pads, ramps,
              speed pads), built in 40 m chunks around the player; the zone skin decorates it
   Player     movement on floor, walls and ceiling; protection; receive_hit()
+  Boss       BossEncounter, in a boss fight only: the fight and the boss's pattern (its parts are
+             enemies, under Enemies)
   Enemies    EnemyDirector: spawns layout enemies as the player approaches, retires them
   Projectiles ProjectilePool: every shot, pooled and swept
   Credits    CreditField: every credit as MultiMesh instances; pickup and magnet
@@ -43,11 +47,12 @@ RunWorld (scripts/run/run_world.gd)       one run's gameplay world; everything s
 the F6 tuning panel. Quick play (`--quick`, or any of `--god --seed=N --lanes=N --difficulty=X
 --features=a,b --full-loadout --nofall --skin=<name>`) restarts on death like the grey box did.
 `--level=<step id>` plays a campaign step with the full flow and takes `--lanes`, `--god`, `--nofall`
-and `--full-loadout` for reviews. Command-line starts work in debug builds only, so a release build
-can't skip progression or farm credits with them.
+and `--full-loadout` for reviews; `--boss=<boss id>` plays a boss fight (a zone's boss with the full
+flow, any other, such as the test boss, as quick play) and also takes `--phase=N`. Command-line starts
+work in debug builds only, so a release build can't skip progression or farm credits with them.
 
 Physics order each frame: RunWorld (builds chunks, spawns enemies) → Player (moves, checks hazards
-and triggers) → enemies → projectiles → credits → power-ups.
+and triggers) → the boss's pattern (a boss fight) → enemies → projectiles → credits → power-ups.
 
 ## Data (tunables live in data, CLAUDE.md principle 7)
 
@@ -59,7 +64,8 @@ and triggers) → enemies → projectiles → credits → power-ups.
 | `data/enemies/<type>.tres` (`EnemyTuning` subclasses) | per-enemy numbers, early/late pairs for campaign scaling |
 | `data/shop/catalog.json` | shop items, tiers and prices |
 | `data/campaign/campaign.tres` → `data/zones/*.tres` → `data/levels/*.tres` | the campaign |
-| `data/bosses/*.tres`, `data/cinematics/*.tres` | boss and cinematic slots |
+| `data/bosses/*.tres` | bosses (`BossDef`: slot, health, phases, arena, rewards, par times, armor rule), and a boss script's own tuning (`<id>_tuning.tres`) |
+| `data/cinematics/*.tres` | cinematic slots |
 | `data/patterns/*.json` | generator patterns (every file in the folder is loaded) |
 | `data/skins/*.tres` | zone looks |
 | `data/audio/*.tres` | sound and music libraries |
@@ -143,12 +149,14 @@ seconds)`, `floor_clear(from, to)`, `enemy_floor_span(entry)`, `enemy_uses_floor
 Rules scripts run in the order of the level's `features` list, except that a script declaring
 `const RUN_AFTER: Array[String]` runs after those features' rules (the host rules after the drone's;
 the cyborg rules, and the host rules that start with them, after the hover truck's, so cyborgs keep
-their margin from the ramp a truck adds).
+their margin from the ramp a truck adds; the Octodog rules after the drone's and the host's, so each
+dog is planned around the level's final ceilings and chases and nothing clears it afterwards).
 When a rule needs room for one of its guarantees, it removes what's in the way rather than moving it
 (taking content out never makes a level unfair). Guaranteed pads come from
 `scripts/enemies/pad_placement.gd`, shared by the drone and host rules: the drone's pad schedule
 (GDD §9.6) owns every pad after its first wave, pattern ceilings give way, and the host rules (which
 run after the drone's) cover each Bad Dream chase with pads at most 10 s apart or leave that host out.
+The Octodog rules keep each dog's charges off every stretch a chase can cover (GDD §9.7).
 
 **Late starts.** `LevelConfig.feature_starts` (feature → share of the level) holds a feature back
 until its start: patterns that require it aren't picked before, and the first pattern picked from
@@ -166,6 +174,30 @@ keeps its lane free), and the feature then first shows a little later.
 
 **Feature weights.** `LevelConfig.feature_weights` (feature → factor) scales the pick weight of the
 patterns that require a feature (0 leaves them out). Corporate 2's heavier military presence uses it.
+
+**Every feature appears.** In a level with `LevelConfig.guarantee_features` (every campaign level),
+each feature a pattern can place there is in the finished level, at any lane count and on any seed
+(GDD §5: an introduced feature keeps appearing). Rules drop or clear what doesn't fit fairly, so
+`generate()` checks the finished layout and builds the level again until nothing is missing:
+- `feature_positions(layout, feature)` finds a feature's pieces: enemies by type, hosts, wall-vent
+  screeches, and the mechanics by their ramps, pads, speed pads or pulsing fences. A rules script
+  that declares `static func positions(layout: LevelLayout) -> Array[float]` answers for its own
+  feature (a new kind of piece, such as wall fences).
+- Only the features some pattern can place in the level are required (`placeable_features()`: in its
+  lane count and difficulty, with pick weight), so a planned feature isn't, and a new enemy's
+  patterns bring it under the guarantee.
+- Each new build forces picks of every missing feature at a new share of the stretch where it's
+  active (`GUARANTEE_SHARES`): one more pick for each build that missed it, up to
+  `GUARANTEE_MAX_PICKS`. Features that appeared keep their spots. A forced pick is a due pick, like
+  an introduction: the first pattern picked once the cursor reaches its spot must use the feature.
+- Every build runs every pass and rule unchanged, so the guarantee never bends a fairness rule. After
+  `GUARANTEE_ATTEMPTS` builds the level keeps the build that missed the fewest, with a warning (the
+  campaign tests fail on any warning). `attempts` says how many builds a level took (about two on
+  average in the campaign).
+- Rules that hold the room for a feature themselves also add one where it fits when a level is left
+  without any, which saves a build: a drone wave and a hover truck in any level (their tunings'
+  `guarantee_one_wave` and `guarantee_one`), and a host and an Octodog in a level with
+  `guarantee_features`.
 
 ## Power-ups
 
@@ -330,14 +362,130 @@ come from manholes only in street zones and from wall vents, `screech_vents`, el
 Marketplace 1; the Buzz Overdrive appears in Corporate and the Dead Zone only; the Tithe Collector
 skips the Dead Zone). Each level introduces its new features at starts of their own
 (`feature_starts`, see Late starts under The generator; City 1's cyborgs come late in the level).
-`test_campaign` holds the schedule table and its exceptions. Features of enemies and mechanics still
+`test_campaign` holds the schedule table and its exceptions, and checks that every level has each
+of its features at 3, 5 and 6 lanes, on its own seed and over a seed sweep (Every feature appears,
+under The generator). Features of enemies and mechanics still
 to be built (`LevelConfig.PLANNED_FEATURES`, with the wall fences' `wall_fences` and
 `wall_fences_partial`) are listed already and do nothing until their code and patterns exist.
 
-Bosses and cinematics are slots for now (owner decision): a `BossDef` or `CinematicDef` with an
-empty `scene` shows a placeholder card. To build one, make a scene whose root extends
-`BossEncounter` (emit `finished(won, score, credits)`) or `Cinematic` (emit `finished`, support
-`skip()`), and set its path in the def.
+A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, which the player
+continues past. A cinematic is a scene whose root extends `Cinematic` (emit `finished`, support
+`skip()`); a boss is built on the boss framework (Bosses, below). Every boss slot is still a
+placeholder; the slots hold the phases GDD §10 gives each designed boss and its armor-rule delay.
+
+## Bosses
+
+A boss fight (GDD §10) is a run like a level's, so it plays like the runner: the same controls,
+camera, movement, HUD, power-ups, damage rules, pause, hints, death flow (revive offer → summary →
+shop → retry) and debug tools. `App.start_boss()` builds its `RunContext`: `boss` set, `config` the
+boss's arena (`Campaign.configure_boss`: the arena config with the lane count, the tier's difficulty
+bonus, the zone's enemy scaling and skin), a tuning that never speeds up, and the loadout plus
+`BossDef.granted_items` (`Loadout.grant`: granted charges never cost stock). LevelRun then:
+
+```
+BossEncounter.create(def)            the boss's scene (BossDef.scene; its root extends BossEncounter)
+  .plan_arena(context) → BossArena   the fight's track (+ the boss's _plan_lap on each lap)
+RunWorld.build(arena.layout)
+encounter.setup(world, context, arena)   joins the world between the player and the enemies
+```
+
+| File | What |
+|---|---|
+| `scripts/campaign/boss_def.gd`, `boss_phase.gd` | a boss's data: its slot, health, weapon cap, phases (share of health, big hits, pace, checkpoint, intro), arena, tuning, music, rewards, par times, the armor rule |
+| `scripts/bosses/boss_encounter.gd` | the fight: health and phases, damage, the checkpoint, the armor rule, the light; helpers and hooks for boss scripts |
+| `scripts/bosses/boss_part.gd` | a piece of the boss in the world: an Enemy the director runs (claw-immune, the dash passes, weak points, surfaces) |
+| `scripts/bosses/boss_arena.gd` | the fight's track: generator laps joined ahead for as long as the fight lasts; `add_pieces()`; track queries |
+| `scripts/bosses/boss_props.gd` | what a boss places within sight: fences, blocks, pads, ceilings, a wall taken away, floor warnings |
+| `scripts/ui/widgets/boss_bar.gd` | the HUD's boss bar, with a marker at each phase's end |
+| `scripts/bosses/test_boss*.gd`, `data/bosses/test_boss*.tres`, `scenes/bosses/test_boss.tscn` | the test boss, outside the campaign (`./play.sh --boss=test_boss`) |
+
+- **The arena** (`BossArena`): the generator plans `BossDef.arena_laps` laps from the boss's arena
+  config (one lap's seed, features, difficulty, pacing and skin; `duration_seconds` is the lap's
+  length), each from its own seed, and the boss script may shape each one (`_plan_lap`: set pieces,
+  a train's carriage gaps). The fight cycles through them, and the next lap joins the track a whole
+  lap ahead through `TrackBuilder.extend_layout()`, so the track keeps going for as long as the fight
+  lasts and is the same on every attempt. Nothing in it ramps up, and it carries no credits
+  (DESIGN-TBD). During the fight, `arena.add_pieces()` adds track pieces (holes, fences, pads with
+  ceilings, ramps, signs, enemies) past `stream_from()`, the end of the built track; they're built and
+  brought in like the rest. `floor_clear`, `hole_between`, `live_fence_between`, `ceiling_between` and
+  `pieces_between` answer questions about the track.
+- **Props** (`encounter.props`): things placed within sight, with the track's collision layers and the
+  zone's looks, freed once passed: `fence` (normal fence rules; it can flicker in first, and a boss
+  may move it), `block` (solid; the player can't switch into it), `pad` and `ceiling`, `block_wall`
+  (takes a stretch of wall away), and the red floor warnings `lane_warning` and `circle_warning`
+  (steady with Reduced flashing).
+- **Parts** (`BossPart`, made with `add_part()` through the director): a boss's body shares the fight's
+  health (weapon hits go to `BossEncounter.damage`, nothing else defeats it) and has weak points
+  (`add_weak_point`: a stomp from above is a big hit; `set_weak_points_enabled` for weak points that
+  are only live at times) and surfaces (`add_surface`: a top to land on, or a belly to ride as a
+  ceiling). A part with health of its own (`shares_health` off: a swarm cluster) falls like any
+  enemy, and the boss script hears of it (`_on_part_defeated`); an EMP reaching any part calls
+  `_on_part_emp`. Normal enemies come in through `spawn_enemy()`.
+- **Health and phases**: phases end at shares of the health; a big hit (a weak-point stomp, or
+  `damage(hit_damage(), cause)` for an EMP, a cluster shocked by a fence, ...) takes a phase's share
+  over its `hits`. Weapons chip up to `BossDef.weapon_share_cap` of the health over the whole fight;
+  splash never counts. A hit never takes the boss past the end of the next phase, so every phase gets
+  played. Each phase begins with its intro (`intro_seconds`: the boss can't be hurt and doesn't
+  attack), then its pattern.
+- **No escalation** (GDD §10): the run speed never rises in a fight, the arena doesn't ramp, and a
+  boss script times its pattern only from its phase (`pace()`), so a pattern the player can't beat
+  keeps cycling the same way; `test_bosses` checks it on the test boss.
+- **The checkpoint**: a phase marked `checkpoint` stores where a retry resumes
+  (`RunContext.boss_resume`: the phase, and the fight time, score and weapon damage so far);
+  `RunContext.retry()` keeps it, starting the step afresh doesn't. `--phase=N` starts there in reviews.
+- **The win**: the time bonus and the defeat score go to the ScoreKeeper, the parts are defeated, and
+  LevelRun ends the run after a short outro. `RunResult.from_boss` pays the collected credits plus
+  `payout_credits`, and gives the stars from the par times; the App records it as the step's record
+  (best score, best time, stars) and submits the boss leaderboard, `boss/<boss id>/<tier>` (none in
+  the web demo). Its results and level-select tile show the boss's stars and bests like a level's.
+- **Pickups** (task B7): `armor_pickup_due(reason)` follows GDD §10's standard armor rule, at the start
+  of the final phase and `armor_delay_min`–`max` seconds after the player's armor or shield breaks, at
+  most `armor_pickups_per_phase` per phase; `phase_started` and `protection_broken` are there for
+  other pickups.
+- **The light**: `set_light_level(level, seconds)` fades the environment's ambient and sky light and
+  the sun, never below `MIN_LIGHT_LEVEL`; glowing things keep their colours, and the light returns
+  with the fight.
+
+**To build a boss:** a script extending `BossEncounter` as the root of a scene in `scenes/bosses/`,
+parts extending `BossPart`, a tuning resource of its own in `data/bosses/<id>_tuning.tres`, and the
+slot's `BossDef` filled in (scene, phases, arena, numbers). Override the hooks it needs:
+`_plan_lap`, `_build_boss`, `_on_phase_started` / `_intro_tick`, `_on_pattern_started` /
+`_pattern_tick`, `_on_weak_point_hit`, `_on_part_defeated`, `_on_part_emp`, `_on_phase_ended`,
+`_on_defeated` / `_defeated_tick`. Every attack needs its visual and audio warning, random choices
+come from `rng`, and time from the physics step. The test boss (`TestBoss`) is a small example.
+
+**How the designed bosses fit** (GDD §10; each is a later task):
+- **Floating Head (E1):** the ship and face are the body part; the bombing run drops bombs under
+  `circle_warning`s where the searchlight lingers; eye-laser sweeps are attack hitboxes on the part;
+  the cyborg drop is `spawn_enemy("cyborg", ...)`. The marked towers are laid out on each lap
+  (`_plan_lap`), and the fallen tower is a surface (`add_surface`) or a ramp. The weak points are live
+  only while it's pinned; phase 3's pad and the ship's underside are `arena.add_pieces()` (or
+  `props.pad` and `props.ceiling` within sight); `weapon_share_cap` 0.34 keeps weapons to one stomp.
+- **Sewer Swarm (E4):** 4–5 clusters are parts with health of their own and `is_swarm` (MultiMesh
+  crowds drawn by the part), moving ahead of and behind the player (parts never retire); baiting one
+  into a live fence or a hole is the boss script's check (`arena.live_fence_between`,
+  `hole_between`) then `part.defeat(&"fence")`, and `_on_part_defeated` deals `hit_damage()`. The
+  swarm on a wall is `props.block_wall`, one side at a time. The Host is the body part with three
+  weak points.
+- **The House:** its reels are a telegraph; cherry bombs are `circle_warning`s and blast hitboxes,
+  the lightning a `props.fence` moved across the lanes, gold blocks `props.block`. The 7 buttons are
+  spots the boss script checks against the player's surface, lane and distance (a wall button needs
+  wall fences, B5; a ceiling button a pad and ceiling, and Barnacle Turrets through `spawn_enemy`,
+  C1). The jackpot's hopper is a weak point switched on after all three buttons; its credit fountain
+  needs credits placed during a run, which the credit field can't do yet (shared with the Tithe
+  Collector's burst, B6/C5).
+- **Hostile Takeover:** the train is the arena: an arena config whose patterns (a boss feature they
+  `require`) cut every lane at the carriage gaps, and a train skin on the arena config; couplings are
+  weak points on a part placed over each gap. Carriages breaking away behind the player are looks.
+  The gunship is a part whose belly is a ceiling (`add_surface(..., true)`); the Buzz Overdrive
+  (C2) is `spawn_enemy` with its planned cut, which needs B4's floors turning into gaps during play.
+  The docking clamps are phase 3's three hits.
+- **Sleep Taker:** a body part `immune_to_weapons`; fence generators come from the arena (the
+  `generator` feature) or `spawn_enemy("generator", ...)`; a destroyed one's EMP reaches the part
+  (`_on_part_emp`: `damage(hit_damage(), &"emp")`). Lights out is `set_light_level`; ceilings (pads)
+  are the refuge from the big slashes, which can't reach them.
+- **The final villain:** two stages, the second a `checkpoint` phase, so a death there restarts at the
+  second stage.
 
 ## Economy and saving
 
@@ -360,10 +508,13 @@ one. `RunSim` (`tests/helpers/run_sim.gd`) runs a Player over a hand-built layou
 full RunWorld (`build_world()` + `step_world()`). `SkinSuite` (`tests/helpers/skin_suite.gd`) holds
 the checks every zone skin must pass. `LayoutChecks` (`tests/helpers/layout_checks.gd`) holds the
 fairness checks for generated layouts (the generator suite runs them over many seeds, the campaign
-suite over every campaign level at 3, 5 and 6 lanes) and finds a feature's pieces in a layout; a task
-that adds a new kind of piece extends `feature_positions()`. The runner frees anything a suite leaves
-in the tree, gives suites a fresh, unsaved profile, reports a suite that fails to load, and ends a
-stuck run after 600 s of real time.
+suite over every campaign level at 3, 5 and 6 lanes) and finds a feature's pieces in a layout with the
+generator's own `LevelGenerator.feature_positions()`; a task that adds a new kind of piece extends
+it, or gives its rules script `positions()`. `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
+for framework tests, with `make_def()` for a BossDef from a list of phases; `test_bosses` runs fights
+in bare worlds and, with the test boss in the City's slot, through the App. The runner frees anything
+a suite leaves in the tree, gives suites a fresh, unsaved profile, reports a suite that fails to load,
+and ends a stuck run after 600 s of real time.
 
 ## Review tools
 

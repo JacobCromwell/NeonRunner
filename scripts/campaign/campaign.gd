@@ -93,6 +93,28 @@ func configure(s: CampaignStep, lane_count: int, difficulty_tier: int = 0) -> Le
 	return config
 
 
+## The boss step's arena, ready to plan (BossArena.base_config): lane count, the arena's own
+## difficulty plus the tier's bonus (bosses keep their own difficulty rather than the level curve),
+## enemy scaling as in the zone's last level (enemies a boss brings in fight like the zone's), and the
+## zone's skin unless the arena has its own.
+func configure_boss(s: CampaignStep, lane_count: int, difficulty_tier: int = 0) -> LevelConfig:
+	var config: LevelConfig = BossArena.base_config(s.boss)
+	config.lane_count = lane_count
+	var bonus: float = tier_difficulty_bonus[clampi(difficulty_tier, 0, tier_difficulty_bonus.size() - 1)] \
+		if not tier_difficulty_bonus.is_empty() else 0.0
+	config.difficulty = clampf(config.difficulty + bonus, 0.0, 1.0)
+	var last_level: int = 0
+	for other: CampaignStep in steps():
+		if other.index >= s.index:
+			break
+		if other.is_level():
+			last_level = other.level_index
+	config.enemy_scaling = level_progress(last_level)
+	if config.skin == null and s.zone != null and s.zone.skin != null:
+		config.skin = s.zone.skin
+	return config
+
+
 func speed_multiplier(difficulty_tier: int) -> float:
 	if tier_speed_multiplier.is_empty():
 		return 1.0

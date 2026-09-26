@@ -60,6 +60,14 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 ## The campaign introduces each new feature this way (DESIGN-TBD: where in each level).
 ## (duplicate() shares this dictionary with the original: give a copy a new one, never edit it.)
 @export var feature_starts: Dictionary[String, float] = {}
+## Every feature appears at least once (GDD §5: anything introduced earlier keeps appearing
+## later): each feature some pattern can place in the level is in the finished layout, whatever
+## the seed. When a build misses one (chance never picked it, or a rule dropped it or cleared it
+## away), the generator builds the level again with a pick of it forced elsewhere, and every rule
+## still applies (LevelGenerator.GUARANTEE_SHARES). Campaign levels set it; endless mode turns it
+## off on its copy (a 20-minute level brings every feature anyway), and quick play and tests that
+## build their own levels leave it off, so they generate as before.
+@export var guarantee_features: bool = false
 ## DESIGN-TBD: how often this level picks a feature's patterns, as a factor on their pick weight
 ## (feature name → factor; 1 when not listed, 0 leaves them out), e.g. Corporate 2's heavier
 ## military presence (GDD §5, proposed). A pattern requiring several listed features takes the

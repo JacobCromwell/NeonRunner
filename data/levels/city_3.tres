@@ -10,6 +10,7 @@ level_seed = 103
 duration_seconds = 130.0
 difficulty_bias = 0.0
 features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck")
+guarantee_features = true
 feature_starts = Dictionary[String, float]({
 "hover_truck": 0.6,
 "pulsing": 0.1,

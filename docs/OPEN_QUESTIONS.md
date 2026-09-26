@@ -105,6 +105,43 @@ For each boss: arena, phases, attacks, weak points, what power-ups are granted b
 
 ## D. Raised during build
 
+### Owner's placeholder review (September 26, 2026)
+The owner reviewed every placeholder below. **GB** means "From the R1 core-movement grey box", **FB** "From the full build", and **P2** "From build phase 2"; numbers are the items' own. Unless listed under changes, playtesting or later rounds, **an item is approved as is**: its placeholder now counts as decided (GDD §12), and its `DESIGN-TBD` marker can come off.
+
+**Changes (recorded in the GDD):**
+- GB 5: a blocked wall entry adds a small sideways bump to the clank (§3).
+- GB 6: **no change**. What looks like a hit is a hit on every surface, so a low wall runner can hit a fence in the outer lane (§3). Buzz Overdrive's "wall runners are safe" rule stands; its hitboxes stay inside its lane.
+- GB 10: ramps add a speed boost that fades like a speed pad's (§3).
+- FB 6: endless mode runs until death, climbs in difficulty, cycles through the unlocked zones' scenery, and pays 20% plus a lump sum every 2 minutes survived (§6).
+- FB 14: quitting from the pause menu keeps 20%, like a death (§4).
+- FB 27: big attacks of different enemy types take turns (§9). The owner may revert this after playtesting, since early playtests felt not very challenging.
+- FB 53: the music dips on death, and the level-complete riff plays in each zone's key (§11).
+- FB 71: hosts are immune to all weapon damage (§9.7).
+- FB 85: no screeches in the Neon City (§9.5).
+- P2 4: Buzz Overdrive also appears in the Golden Zone (§9.9; a recording error, corrected).
+- P2 7: Dead Zone 2 has fewer enemies but more hosts and Bad Dream chases, darker lighting, and long silent stretches broken by sudden threats (§5).
+- P2 10: the placeholder level names are approved (§5).
+- FB 46: every zone with a still floor gets the dust, scraps and speed-streak motion cues.
+- P2 6: the Corporate skin also shows military ships and props.
+- P2 13: beyond the "each feature at least once" guarantee, a level's newest things get the most picks.
+- P2 18: a narrow Gangland ceiling is a slab broken off a building.
+- P2 20: the Gangland corporate logo matches the Corporate zone's brand once it exists.
+
+**Tune after playtesting** (placeholders stay):
+- movement and pacing: GB 2, GB 3, GB 11, GB 12, GB 16 (5 PC lanes for now), FB 41
+- economy: FB 10, FB 11, P2 16 (needs a balancing pass over 15 levels)
+- audio mix: FB 52
+- enemy numbers: FB 68, FB 75, FB 80, FB 82, FB 87, FB 96–98, and the EMP radius in FB 73
+- difficulty curve: P2 8
+
+**Later design rounds:**
+- cinematics: FB 3, P2 11
+- audio: GB 15, FB 54
+- power-ups and balance: P2 12
+- mobile: FB 15
+- title and brand: FB 109
+- other: FB 111 (achievements)
+
 ### From the R1 core-movement grey box (September 25, 2026)
 Each item has a placeholder in code marked `DESIGN-TBD` and, where it's a number, a value in `data/tuning/movement.tres` or `data/levels/`. Answer them after playtesting the grey box.
 
@@ -137,7 +174,7 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
    and window cyborgs. Hosts and the Bad Dream are built but no level uses them yet (GDD: "late
    levels"; quick play `--features=cyborg,host,ceilings` shows them). Which level introduces them? Level
    names and lengths (100–140 s) are placeholders too.
-2. **Boss slots:** Zone 1's boss is unnamed (the Floating Head is a candidate); the Sewer Swarm sits
+2. (Answered: GDD §10's roster; the slots carry each boss's name and phases since B8.) **Boss slots:** Zone 1's boss is unnamed (the Floating Head is a candidate); the Sewer Swarm sits
    in Gangland because of the sewers. Which boss goes where?
 3. **Cinematic slots:** City has intro, pre-boss and outro slots; Gangland has intro and outro. Where
    do you want cinematics, and what should each show?
@@ -446,7 +483,8 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
     Dead Zone or Golden Zone at 5 lanes; no host in Dead Zone 2 at 5 or 6 lanes, nor in Golden 1; no vent
     screech in Corporate 1). The GDD rule is decided, so the build is adding a guarantee that every level
     places each of its features at least once (follow-up task after B1). Still open: how often each earlier
-    feature should appear beyond that.
+    feature should appear beyond that. (Built: every campaign level now places each of its features at least once, on
+    any seed and lane count; see items 25–26.)
 14. **Two new placeholder patterns** (`data/patterns/prototype_patterns.json`): a pulsing fence in one lane
     (difficulty 0–0.6), since the other pulsing patterns start at 0.4, which City 3 barely reaches; and a speed
     pad in one lane with four credits after it (no pattern placed speed pads before, so Gangland 2's never
@@ -455,6 +493,62 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
     music task adds them the game skips them quietly and the menu music keeps playing. Fine as a stopgap?
 16. **The economy over 15 levels** ("From the full build" items 10–11). Completion pays 100 + 25 per campaign
     level, so Golden 3 pays 450; prices were set for a two-zone campaign. Needs a balancing pass.
+
+**Every feature appears** (from the B1 follow-up; see item 13, now built)
+25. **Where a guaranteed enemy goes** (GDD §5). When a level's rules drop every host or every Octodog, those
+    rules add one where it fits every rule; otherwise the generator rebuilds the level with a pick of the
+    missing feature forced at a new spot. Placeholder: a random spot among those that fit (`host_rules.gd`,
+    `octodog_rules.gd`); forced picks go to fixed shares of the level (`GUARANTEE_SHARES`). Should a
+    guaranteed one go somewhere in particular (early, late, spread out)?
+26. **Introductions that come late** (GDD §5, §6; item 2). An older feature's rules can clear away a level's
+    new feature, which then first appears later. On the shipped seeds none do; over 100 random seeds 6% came
+    more than 210 m late, almost all Dead Zone 1's first host (the first drone wave arrives during its chase,
+    and the drones own every pad from then on, GDD §9.6) and Marketplace 2's first vent screech. Should the
+    older feature make way for the new one (e.g. no drone wave during an introduced host's chase), or is "a
+    little later" fine? Placeholder: the older feature's rules win.
+
+**Boss framework** (from B8; defaults in `scripts/campaign/boss_def.gd`)
+27. **Boss numbers** (GDD §10): health, payout, defeat score, score per weak point and the time bonus. Placeholder
+    (every boss slot for now): 300 laser tier 1 shots, 500 credits, 5,000 points for the win and 500 per weak
+    point, and 50 points for every second under 200 s.
+28. **Par times** (GDD §10, proposed): placeholder 150 s for two stars and 100 s for three, the same on every lane
+    count. Should they differ between 3 and 5–6 lanes?
+29. **No credits on a boss's track:** a fight has no time limit, so credits along it would pay for stalling. The
+    arena's laps carry none; the boss's payout replaces them. (The House's jackpot fountain will need credits
+    placed during a fight, which the credit field can't do yet.)
+30. **How long the final fight's checkpoint lasts** (GDD §10): placeholder: for every retry of that run (death →
+    summary → shop → retry, and Restart fight in the pause menu); starting the fight again from the map or
+    quitting starts it from the beginning. Never saved.
+31. **Time and score after a checkpoint:** a win after resuming counts the fight time and score from the attempt
+    that reached the checkpoint plus this one's, so par times, the time bonus and the leaderboard compare whole
+    fights.
+32. **Granted items** (GDD §8): a granted breakable is one charge whether or not the player owns it, and using it
+    never costs stock; a granted permanent item is at least tier 1 (`"weapon:2"` for a tier); granted items ignore
+    the equip toggle; the revive can't be granted. The intended generosity?
+33. **The standard armor rule's timing** (GDD §10): the delay after a break is drawn from the boss's range (15–17 s;
+    the Floating Head 10–15 s) by a seeded stream; a break counts against the cap of the phase it happened in even
+    if its pickup comes in the next; the final-phase pickup also comes when a retry resumes in the final phase.
+34. **Weapons against bosses** (GDD §10: even the best weapon saves at most one stomp): with no time limit only a cap
+    can promise that. Placeholder: `BossDef.weapon_share_cap`, the most of a boss's health weapons can take over
+    the whole fight (the Floating Head 0.34); auto-fire stops aiming at the boss once it's reached; splash never
+    hurts a boss's body.
+35. **Damage carried between phases:** a hit bigger than what's left of a phase carries into the next (so chip
+    damage can save a stomp), but never past the end of the next phase: every phase gets played.
+36. **Harder difficulty tiers and bosses** (GDD §6): placeholder: a tier's run speed and difficulty bonus apply to
+    the boss's arena; the boss's own pattern doesn't change. What should a harder tier do to a boss fight?
+37. **Phase data for the designed bosses** (GDD §10): the slots carry the phases the design gives. Placeholders: the
+    Sewer Swarm's second phase as three clusters (five in all), one big hit in each of Hostile Takeover's first two
+    phases, and every phase's pace and intro length.
+38. **After the win:** the runner keeps running for two seconds while the boss's defeat plays out, safe from
+    anything still in the air; then the results, the shop and the next step (the outro; in the web demo the outro,
+    then the store-link screen). Is a shop wanted between a boss and its zone's outro? Placeholder: yes.
+39. **The first boss hint:** "A boss! Only its glowing red weak points and your weapons can hurt it." Sleep Taker,
+    which weapons can't hurt, will need its own hint.
+40. **Boss HUD and results** (§A.5): a bar top centre in enemy-health red with the boss's name, its phase and a marker
+    at each phase's end, grey while it can't be hurt; a "Checkpoint!" hint; results with time, phase reached, weak
+    points hit, kills, hits blocked, the time bonus and the par times.
+41. **Boss leaderboards** (GDD §10): one board per boss and difficulty tier (`boss/<boss id>/<tier>`); none in the web
+    demo.
 
 **Gangland update** (from D1; numbers are F6-tunable exports on `GanglandSkin`)
 17. **Gangland's ceilings** (GDD §3, §5; replaces "From the full build" item 45, the scavenger barge). Placeholder:

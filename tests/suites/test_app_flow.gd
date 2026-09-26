@@ -166,6 +166,9 @@ func _test_endless() -> void:
 		check(ctx.config.features == city_3.features and ctx.config.feature_starts.is_empty(),
 			"endless plays the furthest zone's features from the start (%s)" % [ctx.config.feature_starts])
 	check(city_3.feature_starts.size() == 3, "and the campaign level keeps its own starts")
+	if ctx != null:
+		check(not ctx.config.guarantee_features and city_3.guarantee_features,
+			"endless skips the campaign's every-feature guarantee (a 20-minute level needs no rebuilds)")
 	App.show_title()
 
 

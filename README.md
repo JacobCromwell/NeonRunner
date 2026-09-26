@@ -11,8 +11,10 @@ through zones full of enemies, and a single hit ends the run. Built with Godot 4
 - three zone looks (the Neon City, Gangland and the Marketplace), generated music and sound effects
 - all three build flavors
 
-Bosses and the short cinematics between levels are placeholder slots until they're designed. Every
-placeholder decision is listed in `docs/OPEN_QUESTIONS.md`.
+Boss fights have their framework (they play in the runner, with phases, a health bar, checkpoints,
+stars and payouts), but each zone's boss is still a placeholder slot until it's built on it; a test
+boss shows the framework at work. The short cinematics between levels are placeholder slots too.
+Every placeholder decision is listed in `docs/OPEN_QUESTIONS.md`.
 
 Docs: `docs/GDD_CHECKPOINT.md` (the design, the authority), `docs/OPEN_QUESTIONS.md` (open decisions and
 placeholders), `docs/ARCHITECTURE.md` (how the code fits together), `docs/NEXT_STEPS.md` (risk tests and the
@@ -42,9 +44,11 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--full-loadout` | Every power-up |
 | `--skin=gangland` | Quick play in another zone's look: `city`, `gangland` or `marketplace` |
 | `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`) |
+| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`, ...) with the full game flow once it's built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
 
-Example: `./play.sh --lanes=6 --features=octodog,ceilings --god`.
+Example: `./play.sh --lanes=6 --features=octodog,ceilings --god`, or the test boss's last phase:
+`./play.sh --boss=test_boss --phase=3 --god --nofall`.
 
 ## Controls
 
@@ -102,6 +106,13 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   - the heli drone
   - the Cyborg's Bad Dream, released by killing a host cyborg (from Dead Zone 1; in quick play, try
     `--features=cyborg,host,ceilings`)
+- **Bosses:** a framework for runner-style boss fights (GDD §10): the fight plays in the normal run on
+  an arena track that keeps going for as long as it lasts, with the boss's health bar and phase
+  markers on the HUD, weak points to stomp and weapon chip damage, a checkpoint for the final fight,
+  no time limit and no escalation, stars from par times, a payout, records and a leaderboard per
+  boss, and the standard armor rule's pickup timing. The test boss (`--boss=test_boss`), a hovering
+  core that blasts the lane it lights up red and drops dazed into the player's lane to be stomped,
+  shows it all; the six zone bosses are still to be built on it.
 - **Economy:** credits in four denominations, level score and stars, and a shop. Items are five permanent
   power-ups (weapon line, claws, juggernaut dash, magnet, slow time) and three breakables (armor, shield,
   grapple hook). After a death you're offered a revive (an item, or a rewarded ad on mobile). Net worth
@@ -148,14 +159,17 @@ lists its options.
 
 ## Tests
 
-`tools/godot.sh test` runs 29 suites with about 1,025,000 checks:
-- **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds, and every campaign level.
+`tools/godot.sh test` runs 30 suites with about 1,285,000 checks:
+- **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds, and every campaign level
+  (each with every feature it lists, on its own seed and on others).
 - **Movement:** scenarios on real physics.
 - **Enemies:** each type's attacks, dodges, kills and generation rules.
 - **Damage:** the shared damage rules.
 - **Power-ups:** each one's behaviour.
 - **Economy and saves:** the economy and save files.
 - **Game flow:** the campaign (its zones, steps and level-by-level schedule) and app flow.
+- **Bosses:** the boss framework with the test boss: phases, the checkpoint, no escalation, the arena,
+  the damage rules on a boss, and the flow around a fight.
 - **Screens:** every screen at desktop and touch sizes.
 - **Zone skins:** all three skins, including a check that none adds collision, and the build budget; for
   Gangland and the Marketplace the colour rule (only hazards glow in hazard colours) and ceilings a runner
@@ -171,7 +185,8 @@ Headless runs skip sounds, because the dummy audio driver never finishes a playb
 ```
 play.sh, play.cmd       play the current version
 tools/                  godot.sh (play/edit/test/smoke/sfx/music), asset generators, showcase scenes
-scenes/main.tscn        the one scene: world, screens and overlays
+scenes/main.tscn        the main scene: world, screens and overlays
+scenes/bosses/          boss fight scenes (the test boss so far)
 scripts/app/            App (state and flow), Profile, SaveService, Settings, BuildFlavor
 scripts/run/            a run: LevelRun, RunWorld, camera, projectiles, credits, score, effects, hints
 scripts/player/         the Player controller and its avatar
@@ -179,7 +194,8 @@ scripts/characters/     the procedural humanoid rig
 scripts/enemies/        one script (plus tuning and generator rules) per enemy type, EnemyDirector
 scripts/powerups/       the permanent power-ups
 scripts/world/          level layout, generator, track builder, hazards; zone skins and the mesh kit
-scripts/campaign/       campaign, zones, bosses and cinematic slots
+scripts/campaign/       campaign, zones, bosses (BossDef, BossPhase) and cinematic slots
+scripts/bosses/         the boss framework (BossEncounter, BossPart, BossArena, BossProps) and the test boss
 scripts/economy/        the shop catalog
 scripts/ui/             theme, icons, widgets, screens, HUD, debug tools
 scripts/audio/          sound library, music player, hazard warning sounds

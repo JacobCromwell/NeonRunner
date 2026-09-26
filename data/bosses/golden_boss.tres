@@ -1,9 +1,30 @@
 [gd_resource type="Resource" script_class="BossDef" format=3]
 
 [ext_resource type="Script" path="res://scripts/campaign/boss_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/campaign/boss_phase.gd" id="2_phase"]
+
+[sub_resource type="Resource" id="stage_1"]
+script = ExtResource("2_phase")
+display_name = "Stage 1"
+health_share = 1.0
+hits = 1
+intro_seconds = 2.0
+
+[sub_resource type="Resource" id="stage_2"]
+script = ExtResource("2_phase")
+display_name = "Stage 2"
+health_share = 1.0
+hits = 1
+checkpoint = true
+intro_seconds = 2.0
 
 [resource]
 script = ExtResource("1_script")
 id = &"golden_boss"
 display_name = "The final villain"
 notes = "DESIGN-TBD: the fight is still to be designed (GDD §10). The all-powerful controller of this world, propped up by the cult (GDD §1). Unlike the other bosses, the final fight has a checkpoint halfway, where the villain may change into a second stage, and it may run a little longer than the others."
+phases = Array[ExtResource("2_phase")]([SubResource("stage_1"), SubResource("stage_2")])
+armor_rule = true
+armor_delay_min = 15.0
+armor_delay_max = 17.0
+armor_pickups_per_phase = 1

@@ -55,11 +55,11 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 - **A single lane** on each side.
 - **Free entry:** move past the outermost floor lane to jump onto the wall, unless a **sign** blocks that section.
 - **Entry grace:** wall entry follows the same grace rule as jumping. It still works just after running off an edge (the jump grace window), but not once the player is already falling into a gap.
-- **Ramps:** a boosted entry. Hitting one launches the player higher on the wall and adds speed and a score multiplier.
+- **Ramps:** a boosted entry. Hitting one launches the player higher on the wall and adds speed and a score multiplier. The speed boost fades away the same way a speed pad's does (decided September 26, 2026; the build's placeholder had no boost).
 - **Slide:** the player slides downward over **2 seconds**, then drops to the floor.
 - **Height:** matters for collision. Timing of entry decides whether you pass above or below a hazard.
 - **Wall jump:** pressing jump while on a wall leaps back out toward the lanes.
-- **Signs:** block wall entry, and colliding with one causes damage.
+- **Signs:** block wall entry, and colliding with one causes damage. A blocked entry plays a metallic clank **and a small sideways bump**, so the player sees why they didn't get onto the wall (decided September 26, 2026).
 - **Vents** exist **only at the bottom of walls**, which punishes lingering (see Sewer Screech).
 
 ### Ceiling (city: undersides of low-flying spaceships)
@@ -75,6 +75,7 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 
 ### Collision rules (core principle)
 - **Damage only on real contact.** Lanes determine movement, not hits. A bullet in your lane that doesn't touch you does not hurt you.
+- **What looks like a hit is a hit, on every surface** (decided September 26, 2026): if the character's body takes up the same space as a hazard or enemy, the player is hit, even on a wall. For example, a player low on a wall whose body reaches into the outer lane can hit a fence there. Enemies whose rules say a wall runner is safe (such as Buzz Overdrive) keep their hitboxes inside their own lane, so they never touch one.
 - **Forgiving hitboxes:** damage hitboxes are slightly **smaller** than visuals, erring in the player's favor.
 
 ### Other inputs
@@ -91,7 +92,7 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 - **Falls:** into gaps between trucks or holes in the street, within a lane. Switching lanes into a lane that has a gap under you = fall. Lane switching itself is safe.
 - **Invulnerability:** after armor or a shield breaks, the player gets about **1 second of invulnerability** (character flashes).
 - **No checkpoints.** Levels are short (**90–150 seconds**). Death restarts the level.
-- **On death, the player keeps 20%** of credits collected during that attempt. Completing a level always pays far more, so deliberate dying is never profitable.
+- **On death, and when quitting a level from the pause menu, the player keeps 20%** of credits collected during that attempt (quitting decided September 26, 2026, so deliberately dying never pays better than quitting). Completing a level always pays far more, so deliberate dying is never profitable.
 
 **Death flow:** Death → revive offer (mobile: rewarded ad or revive item; PC: revive item) → run summary → shop → retry.
 
@@ -153,23 +154,25 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 ### Level schedule and enemy introductions (decided September 26, 2026)
 **Every zone introduces at least one new enemy.** New enemies are preferred over new mechanics. Anything introduced earlier keeps appearing later. Each level introduces about one new thing.
 
-| Zone | Level | New in this level |
+| Zone | Level (name) | New in this level |
 |---|---|---|
-| 1. Neon City | 1 | The basics (gaps, fences, walls, signs), then basic cyborgs late in the level |
-| | 2 | Ceilings and anti-grav pads |
-| | 3 | Pulsing fences, window cyborgs and the **hover truck** |
-| 2. Gangland | 1 | **Sewer screech** (from manholes) and ramps |
-| | 2 | **Octodog** and speed pads |
-| | 3 | Fence generators and **heli drones** |
-| 3. Marketplace | 1 | The **Barnacle Turret** (§9.8), the first ceiling hazard |
-| | 2 | **Wall fences** (§9.1), plus screeches from wall vents in the shopfronts *(proposed)* |
-| 4. Corporate | 1 | **Buzz Overdrive** (§9.9) |
-| | 2 | The **Tithe Collector** (§9.12), with a heavier military presence *(proposed)* |
-| 5. Dead Zone | 1 | Hosts and the **Cyborg's Bad Dream** |
-| | 2 | A quiet, eerie remix |
-| 6. Golden Zone | 1 | The **Resonator** (§9.10) |
-| | 2 | **Gilded Sentinels** (§9.11) and peak difficulty *(proposed)* |
-| | 3 | The **Golden Palace**, then the final boss |
+| 1. Neon City | 1 · Rooftop Rush | The basics (gaps, fences, walls, signs), then basic cyborgs late in the level |
+| | 2 · Skyway | Ceilings and anti-grav pads |
+| | 3 · Neon Crossfire | Pulsing fences, window cyborgs and the **hover truck** |
+| 2. Gangland | 1 · Scrapyard Streets | **Sewer screech** (from manholes) and ramps |
+| | 2 · Dog Run | **Octodog** and speed pads |
+| | 3 · Rotor Wash | Fence generators and **heli drones** |
+| 3. Marketplace | 1 · Awning Alley | The **Barnacle Turret** (§9.8), the first ceiling hazard |
+| | 2 · Shopfront Sparks | **Wall fences** (§9.1), plus screeches from wall vents in the shopfronts *(proposed)* |
+| 4. Corporate | 1 · Maglev Line | **Buzz Overdrive** (§9.9) |
+| | 2 · Checkpoint Plaza | The **Tithe Collector** (§9.12), with a heavier military presence *(proposed)* |
+| 5. Dead Zone | 1 · Ashfall | Hosts and the **Cyborg's Bad Dream** |
+| | 2 · The Hush | A quiet, eerie remix: **fewer enemies but more hosts and Bad Dream chases, darker lighting, and long silent stretches broken by sudden threats** (decided September 26, 2026) |
+| 6. Golden Zone | 1 · Gilded Canals | The **Resonator** (§9.10) |
+| | 2 · Sentinel Row | **Gilded Sentinels** (§9.11) and peak difficulty *(proposed)* |
+| | 3 · Golden Palace | The **Golden Palace**, then the final boss |
+
+Level names approved by the owner (September 26, 2026).
 
 **15 levels plus 6 bosses.** A flawless run through every level takes about 35 minutes. With retries and bosses, a first playthrough is estimated at 60–90 minutes.
 
@@ -196,7 +199,11 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 - **Replay features:**
   - Star ratings or grades per level
   - Harder difficulty tiers after completing the game
-  - **Endless mode**
+  - **Endless mode** (decided September 26, 2026):
+    - It runs **until the player dies**, with no time limit, and its difficulty keeps climbing.
+    - Its scenery **cycles through the zones the player has unlocked**, changing every few minutes.
+    - It pays **20% of credits collected, like a death, plus a lump sum every 2 minutes survived**, so lasting longer pays off.
+    - Not in the web demo.
   - Leaderboards
 - **Leaderboards:** separate per platform (Steam, Game Center, Google Play Games), per level and per difficulty tier.
   - Plus a **net worth** leaderboard: credits earned in play and never spent. Purchased credits are tracked separately and never count.
@@ -265,6 +272,8 @@ The shop appears between levels and after every death.
 ---
 
 ## 9. Enemies & Obstacles
+
+**Big attacks take turns** (decided September 26, 2026): the major attacks of different enemy types never overlap (for example, a drone barrage never lands during a hover truck's lurch or cannon shot), so the player never has to dodge two big attacks at once. The owner found early playtests not very challenging, so this may be reverted after playtesting.
 
 Shared interaction rules apply unless stated otherwise:
 - Armor blocks enemy attacks and electrical hazards.
@@ -359,9 +368,9 @@ Shared interaction rules apply unless stated otherwise:
 - **Stomping without claws:** the tentacles grab the player, causing damage.
 - **Armor / shield:** blocks one lunge or grab.
 
-### 9.5 Sewer Screech (first appears in Gangland 1; rare in city)
+### 9.5 Sewer Screech (first appears in Gangland 1)
 - **Look:** slimy, diseased vermin with **rows of spines** on its back.
-- **Where it comes from:** manhole covers in the floor (street zones) or vents at the bottom of walls. In city zones, it's rare and wall vents only.
+- **Where it comes from:** manhole covers in the floor (street zones) or vents at the bottom of walls. **None in the Neon City** (decided September 26, 2026), since the schedule introduces screeches in Gangland 1. Zones without streets get wall-vent screeches only.
 - **Warning:** its cover or vent **shakes**, then bursts open.
 - **Trigger:** comes out only if the player is **in its lane**. Otherwise it stays hidden.
 - **Attack:** a short dash straight along its lane and **one swipe**, then it falls behind.
@@ -397,7 +406,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Origin:**
   - Bursts out of a **host cyborg** when the host is killed.
   - Hosts are **visibly marked**: their LED visor glitches with purple static and corrupted expressions.
-  - **Auto-fire never targets hosts**, and missile splash never damages them. Killing a host is always a deliberate choice (stomp, claws, or dash) and earns a big score bonus.
+  - **Auto-fire never targets hosts**, and missile splash never damages them. **Hosts are immune to all weapon damage** (decided September 26, 2026), so a stray shot can never release a Bad Dream by accident. Killing a host is always a deliberate choice (stomp, claws, or dash) and earns a big score bonus.
 - **Movement:**
   - **Passes through fences and physical barriers.**
   - Drifts toward the player's lane at a limited sideways speed.
@@ -446,7 +455,7 @@ Shared interaction rules apply unless stated otherwise:
   - **The dash smashes it**, but that's a risky panic move: the player dashes straight into the cut lane, so it's only survivable with the grapple hook.
   - **No stomp** (the player would land on the blade).
 - **Limits:** only one at a time. It never cuts a lane holding a ramp, a pad or the safe landing zone after a ceiling. On 3 lanes, two lanes always stay whole.
-- **Scaling:** the only change across the campaign is that its **rev time gets slightly shorter**. It appears in only two zones, so it never gets too fast. Its health stays at 20 shots.
+- **Scaling:** the only change across the campaign is that its **rev time gets slightly shorter**. It appears in the Corporate zone and the **two zones after it (the Dead Zone and the Golden Zone)**, so the speed-up is spread over few levels and it never gets too fast (corrected September 26, 2026). Its health stays at 20 shots.
 - **Implementation note:** the generator plans each cut in advance (lane, start and end), so levels stay fair and identical on every attempt; the saw is just the visible cause. This is the first floor that turns into a gap during play.
 
 ### 9.10 Resonator (the owner's "Hymn Censer" reworked in a sci-fi form; the Golden Zone's new enemy, first appears in Golden 1)
@@ -599,7 +608,7 @@ Shared interaction rules apply unless stated otherwise:
   
   The gameplay camera sits behind the player, so the **back view matters most**: the coat's copper conduits and the gold arm must read from behind. The silhouette must still read clearly differently from the enemy cyborgs' screen heads. Customization is still open.
 - **Player scale** (owner feedback after the R1 grey box, September 26, 2026): the player looked too big next to the lanes, walls and ceiling. The player (with its hitbox, jump height and fence heights) is about 75% of the grey-box size; the lanes, walls and ceiling keep their size.
-- **Music** (decided September 26, 2026): code-generated placeholder loops in the same crunchy 16-bit / heavy-metal style as the sound effects, one per zone plus the menus. Any track can later be replaced file by file with commissioned or licensed music.
+- **Music** (decided September 26, 2026): code-generated placeholder loops in the same crunchy 16-bit / heavy-metal style as the sound effects, one per zone plus the menus. Any track can later be replaced file by file with commissioned or licensed music. **The music dips when the player dies**, and the level-complete riff plays in each zone's key.
 - **Readability rules:**
   - Hazards keep a consistent color and shape language across zones.
   - Safe things look safe; deadly parts look deadly.
@@ -607,7 +616,13 @@ Shared interaction rules apply unless stated otherwise:
 
 ---
 
-## 12. Glossary
+## 12. Approved build defaults
+
+On September 26, 2026 the owner reviewed the builders' placeholders (`OPEN_QUESTIONS.md` §D, "Owner's placeholder review"). Those marked **keep** now count as decided design. Their numbers stay tunable in data, and those marked **tune after playtesting** stay placeholders until the owner has played. The changes the review made are recorded in the sections above.
+
+---
+
+## 13. Glossary
 
 | Term | Meaning |
 |---|---|
