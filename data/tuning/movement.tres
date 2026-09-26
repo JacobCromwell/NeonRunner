@@ -1,0 +1,57 @@
+[gd_resource type="Resource" script_class="MovementTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/movement_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+run_speed = 18.0
+speed_gain_per_minute = 0.0
+lane_width = 2.4
+lane_switch_time = 0.14
+jump_height = 2.1
+jump_time_to_apex = 0.36
+fall_gravity_multiplier = 1.35
+coyote_time = 0.08
+jump_buffer_time = 0.14
+slide_duration = 0.7
+air_slide_fast_fall = true
+fast_fall_speed = 22.0
+wall_slide_time = 2.0
+wall_entry_time = 0.16
+wall_entry_height = 2.2
+wall_air_entry_factor = 0.6
+wall_max_height = 4.5
+wall_descent_exponent = 1.6
+wall_exit_height = 0.4
+wall_jump_velocity = 6.0
+wall_margin = 0.3
+ramp_entry_height = 4.0
+ramp_speed_boost = 0.0
+ramp_boost_decay_per_second = 4.0
+ceiling_height = 6.0
+antigrav_launch_velocity = 6.0
+foot_half_width = 0.3
+foot_half_depth = 0.25
+hurtbox_size = Vector3(0.6, 1.45, 0.5)
+hurtbox_slide_height = 0.6
+visual_size = Vector3(0.8, 1.7, 0.7)
+pit_depth = 0.35
+fall_death_depth = 4.0
+fence_full_top = 1.4
+fence_gapped_bottom = 1.0
+fence_gapped_top = 2.8
+fence_depth = 0.3
+fence_pulse_warning = 0.35
+sign_depth = 0.9
+pad_length = 2.0
+ramp_length = 4.0
+camera_distance = 7.5
+camera_height = 4.2
+camera_look_ahead = 14.0
+camera_fov = 70.0
+camera_follow_x = 0.55
+camera_follow_y = 0.45
+camera_ceiling_height = 2.4
+camera_smoothing = 8.0
+swipe_min_distance = 0.05
+tap_max_time = 0.22

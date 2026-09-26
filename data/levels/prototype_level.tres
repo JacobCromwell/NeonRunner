@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="LevelConfig" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/level_config.gd" id="1_level"]
+[ext_resource type="Resource" path="res://data/skins/greybox_skin.tres" id="2_skin"]
+
+[resource]
+script = ExtResource("1_level")
+level_seed = 1
+lane_count = 3
+duration_seconds = 120.0
+difficulty = 0.3
+difficulty_ramp = 0.25
+ramps_enabled = true
+ceilings_enabled = true
+patterns_path = "res://data/patterns/prototype_patterns.json"
+skin = ExtResource("2_skin")
+start_clear_distance = 60.0
+end_clear_distance = 40.0
+spacing_seconds_easy = 1.5
+spacing_seconds_hard = 0.7
+max_gap_jump_fraction = 0.8
+hull_lead_in = 3.0
+hull_landing_seconds = 1.2
