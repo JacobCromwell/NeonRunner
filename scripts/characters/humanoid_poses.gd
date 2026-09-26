@@ -82,8 +82,8 @@ const SLIDE := {
 	CHEST: Vector3(-4, 0, 0), NECK: Vector3(-8, 0, 0),
 	THIGH_R: Vector3(22, 0, 4), SHIN_R: Vector3(-4, 0, 0), FOOT_R: Vector3(16, 0, 0),
 	THIGH_L: Vector3(24, 0, 16), SHIN_L: Vector3(-8, 0, 0), FOOT_L: Vector3(10, 0, 0),
-	UPPER_ARM_L: Vector3(-125, 0, 30), FOREARM_L: Vector3(25, 0, 0), HAND_L: Vector3(20, 0, 0),
-	UPPER_ARM_R: Vector3(38, 10, 34), FOREARM_R: Vector3(14, 0, 0),
+	UPPER_ARM_L: Vector3(-125, 0, 16), FOREARM_L: Vector3(25, 0, 0), HAND_L: Vector3(20, 0, 0),
+	UPPER_ARM_R: Vector3(40, 14, 18), FOREARM_R: Vector3(20, 0, 0),
 }
 
 ## Juggernaut dash, upper body: a shoulder charge with the right shoulder leading, the right
