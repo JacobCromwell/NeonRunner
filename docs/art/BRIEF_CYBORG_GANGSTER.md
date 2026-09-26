@@ -22,7 +22,7 @@ Replace the cyborgs' looks with **one ragged, strung-out gangster**. It is the *
 
 ## Colour rules
 - **Clothing:** grimy khaki, olive, brown and faded grey. Nothing on it glows.
-- **Metal:** rusted steel and gunmetal, dull and unlit. **No gold or brass,** which is now the player's signature (Razor Echo's gold arm and copper conduits). The sheet's brass arm becomes rusted steel.
+- **Metal:** rusted steel and gunmetal, dull and unlit, on the base. The sheet's brass arm becomes rusted steel. Gold and brass may appear on zone variants **only as unlit ornament** (see "Zone variants"). **Nothing on a cyborg glows copper,** since that glow is Razor Echo's signature.
 - **The only glows on a cyborg:**
   - the **white LED face**
   - the arm cannon's **charge-up in enemy-fire red** (unchanged)
@@ -41,3 +41,41 @@ Replace the cyborgs' looks with **one ragged, strung-out gangster**. It is the *
 
 ## Running it alongside P1
 Both tasks may need new part shapes in the shared humanoid rig (`scripts/characters/humanoid_*`). Run P1 and P2 one after the other, or have P2 leave the shared rig files untouched.
+
+---
+
+# Zone variants (task P3)
+
+**Task ID:** P3. **Tier:** T2. **Size:** L. **Needs:** P2, since every variant is a tweak of the base. The zone skins don't need to exist yet: use `--skin=` and the grey box for checks.
+**Decision source:** GDD §9.2, "Zone variants" (owner, September 26, 2026).
+
+**They are the same unit.** Every variant has the same behaviour, timings, attacks, hitboxes, face expressions and colour rules as the base. A variant changes **only the look**: different enough that the player can tell it fits the zone, never so different that it reads as a new enemy. Variants are selected by `world.skin.enemy_variant`.
+
+| Zone | Variant | Reference |
+|---|---|---|
+| 1. Neon City | **The base** (Static TV Head) | `cyborg_viewing_devices.jpg`, Variant 1 |
+| 2. Gangland | **"Broadcast Brute" Enforcer:** a caged screen head with two small side monitors and an antenna; heavy, scavenged armour plates over a work jumpsuit | `cyborg_viewing_devices.jpg`, Variant 3 |
+| 3. Marketplace | **"Casino Mob Enforcer":** a gilded screen head engraved with card suits; a pinstripe suit with gold trim; gold armour plates on the shoulders and knees; a backpack cabled into the head | `cyborg_casino_enforcer.jpg` |
+| 4. Corporate | **"Wide-Aspect VR" Runner:** a wide VR headset visor as the screen (the lower face is hidden or covered); a sleek dark jacket; chrome hands; a tablet in the off hand | `cyborg_viewing_devices.jpg`, Variant 2 |
+| 5. Dead Zone | *(Proposed)* **The base, burned out:** soot, ash and scorch marks, torn further, with a flickering screen. The art agent derives it from the base. | – |
+| 6. Golden Zone | **Derived from the Casino Mob Enforcer by the art agent:** more opulent and ceremonial, in the zone's white, cream, red and gold, with the cult's Convergent Triad worn openly | `cyborg_casino_enforcer.jpg` |
+
+## Rules for every variant
+- **The screen is always the face.** It glows **cold white** and shows the shared expressions, the panic "O" and host purple. Zone-flavoured glyphs are welcome in cold white, for example dice and card suits on the Casino Mob Enforcer's screen.
+- **Recolour the sheets' glows:** the cyan visor and trim, the orange X screens, and the red and orange dice all become cold white or unlit.
+- **Gold and brass only as unlit ornament** (Casino Mob Enforcer, Golden Zone, the Brute's armour). Nothing glows copper.
+- **One visible weapon, one attack.** The shot and its **red charge-up** look the same in every zone (hazard shapes and colours never change); only the weapon's model fits the zone. *(Proposed)*:
+  - Base and Dead Zone: the scavenged arm cannon.
+  - Brute: the pipe on the sheet becomes a crude **pipe gun**.
+  - Casino Mob Enforcer: its **drum-fed gun** is the weapon, and the separate "SPADE" arm cannon is dropped, so only one thing shoots.
+  - VR Runner: a sleek chrome arm cannon, with the tablet in the other hand (unlit, not cyan).
+  - Golden Zone: an ornate version of the Casino Mob Enforcer's gun.
+- **Bulk stays inside the hitboxes' intent.** The Brute may look a little bulkier, but its hitboxes are the base's. Hitboxes may be slightly smaller than the visuals, never larger (CLAUDE.md principle 4).
+- **Window cyborgs and hosts** use their zone's variant.
+
+## Done when
+- The enemy showcase can switch between all six zone variants.
+- Rendered frames show each variant beside the base, on Forward+ and on the Compatibility renderer, including a far view at gameplay distance.
+- The cyborg tests pass with hitboxes unchanged, and the full `tools/godot.sh test` and `tools/godot.sh smoke` pass.
+- Questions go in `docs/questions/p3.md`.
+

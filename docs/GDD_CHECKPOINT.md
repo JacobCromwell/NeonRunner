@@ -298,7 +298,15 @@ Shared interaction rules apply unless stated otherwise:
     - **One body:** a worn leather vest over a hoodie, torn layers, patched cargo pants, boots, and a backpack cabled into the head, with a gaunt, twitchy posture. One scavenged cyber arm is the arm cannon.
     - **The entire head is a beat-up CRT television** whose screen is the LED face, showing expressions readable on small screens. No hair, face or mask.
     - **Colours:** grimy khaki, olive, brown and grey clothing; dull rusted steel and gunmetal (no gold or brass, which belong to the player). The only glows are the **cold white LED face**, the arm cannon's **red** charge-up, and on hosts only, **purple** (glitching screen and glowing veins). No hazard or "safe" colours anywhere else.
-  - **Used everywhere:** this base replaces the sleek city citizen and the patched scavenger in every zone, including the Neon City. It is also the model **every future zone variant is derived from**. The same sheet's Variant 2 ("Wide-Aspect VR" Runner: a wide VR headset over a sleeker jacket) and Variant 3 ("Broadcast Brute" Enforcer: a caged screen head with side monitors and heavy armour) are candidates for zone variants *(open: which zones)*.
+  - **Used everywhere:** this base replaces the sleek city citizen and the patched scavenger in every zone, including the Neon City. It is also the model **every zone variant is derived from**.
+  - **Zone variants** (decided September 26, 2026). They are **the same unit**: identical behaviour, attacks and hitboxes, and looks that differ only enough for the player to tell they fit the zone. Build brief: `docs/art/BRIEF_CYBORG_GANGSTER.md`, "Zone variants".
+    - **Neon City:** the base (Static TV Head).
+    - **Gangland:** Variant 3, the **"Broadcast Brute" Enforcer** (a caged screen head with side monitors, scavenged armour).
+    - **Marketplace:** the **"Casino Mob Enforcer"** (`docs/art/reference/cyborg_casino_enforcer.jpg`: a gilded, card-suit screen head, a pinstripe suit with gold trim, gold armour plates).
+    - **Corporate:** Variant 2, the **"Wide-Aspect VR" Runner** (a wide VR visor, a sleek dark jacket, chrome hands).
+    - **Dead Zone:** *(proposed)* the base, burned out (soot, ash, a flickering screen).
+    - **Golden Zone:** derived from the Casino Mob Enforcer by the art agent.
+    - Gold and brass may appear on variants as **unlit ornament**; the screen always glows cold white; nothing glows copper.
 - **Movement:** stands mostly on **truck roofs** and moves slowly toward the player, dropping behind quickly.
 - **Attack:** loosely aimed laser bolts in **bursts of 2–3**, then a pause to reload.
   - Each burst has a **visible charge-up** (arm cannon glow).
