@@ -17,6 +17,8 @@ extends RefCounted
 ## narrow ceilings (task B3) only have to say which sides reach a wall.
 ## Everything above the slab stays below ABOVE_LIMIT, so lines strung across the street higher up
 ## (GanglandRuins.CROSS_LINE_MIN) never cut through a ceiling.
+## DESIGN-TBD: GDD §5 names the structures, not their looks: the two kinds, the lamps marking the
+## lane seams and a free side's plain edge face (for narrow ceilings, B3) are proposals.
 ## Ceiling space: origin at the centre of the underside (the ceiling surface), z = -distance.
 
 enum Kind { OVERPASS, BUILDING }

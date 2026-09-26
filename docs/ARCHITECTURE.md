@@ -164,13 +164,36 @@ geometry. The shaders in `scripts/world/meshes/shaders/` are procedural. `Hazard
 hazard's ON / WARNING / OFF materials. A skin's `enemy_variant` (`&"city"` or `&"scavenger"`) picks
 the enemies' look.
 
+The kit's solid shader (`kit_solid.gdshader`) draws surface patterns chosen per vertex (`MeshKit.PAT_*`):
+panels, glass, glyphs and chevrons for the City; worn asphalt (with sand drifts and scorch around holes),
+road strata, salvaged plating, posters (with corporate ads), cast concrete and stencilled crates and
+container doors for Gangland. Features a zone opts into are uniforms that default to off, so one zone's
+additions never change another's look. Painted marks shared between shaders live in includes:
+`kit_marks.gdshaderinc` (graffiti pieces and tags, stencil codes) and `kit_logo.gdshaderinc` (the
+corporations' placeholder logo). Two shader rules: take derivatives (`fwidth`, implicit texture LODs)
+outside any branch that can differ between neighbouring pixels and pass them in, and use
+`filtered_pulse()` only for ranges within 0–1 (`band()` for any other). Breaking either can put a NaN in a
+pixel, and the glow pass blows it up into a white disc.
+
+**Gangland's ceilings** (`GanglandCeiling`) take their width from the lanes they cover (the collision
+box), never from the track, and draw each side as anchored (running into the building face) or free
+(an edge face), so narrow ceilings (B3) only need to tell the builder which sides reach a wall. Whatever
+the structure above (an overpass or a bombed-out building), the running surface is a flat slab with lamps
+on every lane seam, nothing hangs below it, and its far end carries the orange band
+(`MeshKit.ceiling_end`, as in every zone).
+
 **The cult emblem** (D7, GDD §5 "The cult"): `CultEmblem` (`scripts/world/meshes/cult_emblem.gd`)
 builds each option's 2D vector geometry as a flat mesh (mesh kit conventions: emissive for a neon
 ad, lit for paint or the Golden Zone's gold) or a rasterised texture, at any size. The owner chose
 option B, the Convergent Triad (GDD §5); the choice lives in `data/world/cult_emblem_choice.tres`
 (`CultEmblemChoice`). A skin reads `choice.option` and `CultEmblem.default_scheme(option)` rather
 than hardcoding an option: hidden in logos and ads in every zone, shown openly in the Golden Zone
-(GDD §5, proposed). `tools/showcase/cult_emblem_sheet.tscn` is the comparison sheet.
+(GDD §5, proposed). `tools/showcase/cult_emblem_sheet.tscn` is the comparison sheet. Gangland hides it
+through the kit shader: the skin sets the `cult_emblem` texture (the option rasterised in its unlit
+colours, `GanglandSkin.cult_emblem_texture()`), `cult_emblem_share` puts it on some corporate ads, and
+`MeshKit.stencil_param(..., emblem)` on some crates, container doors and notice boards. The shader picks
+its mip level itself and fades it out before it spans fewer than about 24 pixels, where the three-fold
+mark could read like a radiation trefoil.
 
 **Reduced flashing** (Settings): `Settings.apply_visuals()` sets the global shader uniform
 `reduced_flashing` (declared in `project.godot`) and `Settings.flashing_reduced`. Hazard shaders

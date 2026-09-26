@@ -25,6 +25,8 @@ extends ZoneSkin
 
 @export_group("Environment")
 ## A dusty dusk: brown overhead, tan dust over the horizon.
+## DESIGN-TBD: the GDD gives Gangland's palette (browns and tans), not its time of day or weather;
+## a dusty dusk keeps the scene dark enough for the hazards' glow to pop.
 @export var sky_zenith_color: Color = Color(0.17, 0.13, 0.095)
 @export var sky_horizon_color: Color = Color(0.36, 0.275, 0.19)
 ## Dust lit by the low sun and the fires of the city, over the horizon.
@@ -135,8 +137,10 @@ extends ZoneSkin
 
 @export_group("Funding hints")
 ## Military supply crates (olive, stencilled codes) and corporate containers (the logo on their
-## doors) among the gangs' things. DESIGN-TBD: the corporate brand colour should match the Corporate
-## zone's (task D4); until then the containers and ads stay off-white and grey.
+## doors) among the gangs' things.
+## DESIGN-TBD: the owner asked for hints of corporate and military funding; these forms and shares
+## are proposals. The corporate brand colour and logo should match the Corporate zone's (task D4);
+## until then the containers and ads stay off-white and grey with a generic mark (kit_logo).
 @export var military_crate_colors: PackedColorArray = PackedColorArray([
 	Color(0.27, 0.28, 0.19), Color(0.3, 0.3, 0.21), Color(0.24, 0.25, 0.18)])
 @export var container_colors: PackedColorArray = PackedColorArray([
@@ -153,6 +157,7 @@ extends ZoneSkin
 ## The cult's emblem hidden in plain sight (GDD §5): the share of corporate ads, containers, notice
 ## boards and larger crates carrying it, small, unlit and in its own colours beside their markings.
 ## It is the owner's pick (CULT_EMBLEM_CHOICE_PATH), drawn by CultEmblem, never a hardcoded option.
+## DESIGN-TBD: GDD §5 proposes hiding it in logos and ads; where and how often is a proposal.
 @export_range(0.0, 1.0, 0.01) var cult_emblem_share: float = 0.35
 
 @export_group("Motion")
@@ -181,6 +186,8 @@ extends ZoneSkin
 
 @export_group("Ceilings")
 ## Share of ceilings formed by a bombed-out building bridging the street (the rest are overpasses).
+## DESIGN-TBD: the GDD names the undersides of decaying or bombed-out buildings and overpasses; the
+## two structures, their share and their looks are proposals.
 @export_range(0.0, 1.0, 0.01) var ceiling_building_share: float = 0.45
 ## The overpass deck's cast concrete, and a building's bare floor slab.
 @export var ceiling_concrete_color: Color = Color(0.37, 0.33, 0.28)
