@@ -169,7 +169,8 @@ family, the UI kit, every screen); each script's header lists its options.
 - **Bosses:** the boss framework with the test boss: phases, the checkpoint, no escalation, the arena,
   the damage rules on a boss, and the flow around a fight.
 - **Screens:** every screen at desktop and touch sizes.
-- **Zone skins:** both skins, including a check that neither adds collision.
+- **Zone skins:** both skins, including a check that neither adds collision, and for Gangland the colour
+  rule (only hazards glow in hazard colours) and ceilings a runner can read upside down.
 - **Sounds and music.**
 - **Boot:** the real game scene.
 
