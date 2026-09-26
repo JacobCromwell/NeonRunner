@@ -62,9 +62,11 @@ func _enemy_death() -> PackedFloat32Array:
 
 
 ## Cyborg arm cannon charging (warning): a bright FM whine that climbs from 320 Hz to 2.2 kHz with a
-## fifth above it, pulsing faster and faster (10 → 42 Hz) as it swells, like a charge shot.
+## fifth above it, pulsing faster and faster (10 → 42 Hz) as it swells, like a charge shot. It lasts
+## the whole charge-up (charge_time in data/enemies/cyborg.tres and window_cyborg.tres: 0.75 s) and
+## runs 30 ms into the first bolt's sound, so the warning never goes quiet before the shot.
 func _cyborg_charge() -> PackedFloat32Array:
-	var d: float = 0.55
+	var d: float = 0.75 + 0.03
 	var b := DSP.fm(d, func(u: float) -> float: return DSP.sweep(320.0, 2200.0, u), 2.0,
 		func(u: float) -> float: return 0.8 + 1.4 * u)
 	var fifth := DSP.fm(d, func(u: float) -> float: return DSP.sweep(480.0, 3300.0, u), 2.0,
