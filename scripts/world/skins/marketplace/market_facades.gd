@@ -32,11 +32,13 @@ const STOREY: float = 3.2
 const DEPTH: float = 22.0
 const SETBACKS: Array[float] = [0.0, 0.0, 0.0, 3.0, 5.0]
 const LOW_SHARE: float = 0.2
+## Added to a PAT_SHOPSIGN parameter: lettering only, without the shop's own mark.
+const LETTERING_ONLY: int = 10000
 ## Shop windows come in this many looks per width (interior colour and goods), picked by hash.
 const WINDOW_VARIANTS: int = 6
 ## Interior wall colours of the shop displays (lit, never glowing).
-const INTERIORS: Array[Color] = [Color(0.72, 0.62, 0.48), Color(0.5, 0.58, 0.6), Color(0.68, 0.52, 0.42),
-	Color(0.6, 0.55, 0.64), Color(0.74, 0.7, 0.6)]
+const INTERIORS: Array[Color] = [Color(0.66, 0.6, 0.5), Color(0.5, 0.56, 0.58), Color(0.64, 0.55, 0.47),
+	Color(0.58, 0.55, 0.6), Color(0.7, 0.67, 0.6)]
 
 
 ## One building's layout, computed from its lot run alone.
@@ -66,8 +68,10 @@ var skin: MarketplaceSkin:
 		return _skin.get_ref() as MarketplaceSkin
 var _skin: WeakRef
 var _buildings: Dictionary = {}
-## Shop windows built once per (kind, width in cm, variant) and placed with one bulk append.
+## Shop windows built once per (kind, width in cm, variant, side) and placed with one bulk append,
+## and the same for the upper floors' awnings and balconies.
 var _window_templates: Dictionary = {}
+var _templates: Dictionary = {}
 
 
 func _init(p_skin: MarketplaceSkin) -> void:
@@ -179,12 +183,12 @@ func _building(batch: MeshBatch, b: Building, face_x: float, start: float, end: 
 	# whole to the chunk holding its centre, so the wall stays seamless across chunk cuts.
 	var cursor: float = b.b0
 	for w: Vector2 in b.windows:
-		_pier(facade, side, face_x, maxf(cursor, u0), minf(w.x, u1), b)
+		_pier(facade, side, face_x, cursor, w.x, u0, u1, b)
 		var at: float = (w.x + w.y) * 0.5
 		if at >= start and at < end:
 			_shop_window(batch, b, w, face_x)
 		cursor = w.y
-	_pier(facade, side, face_x, maxf(cursor, u0), minf(b.b1, u1), b)
+	_pier(facade, side, face_x, cursor, b.b1, u0, u1, b)
 	# The face above the windows: flush up to the base, or all the way up.
 	var flush_top: float = b.base_top + 0.9 if b.setback > 0.0 else b.height
 	_face(facade, side, face_x, u0, u1, g1, flush_top, b.wall, b.lit, upper_style, b.seed, b.grid_start)
@@ -215,35 +219,42 @@ func _building(batch: MeshBatch, b: Building, face_x: float, start: float, end: 
 		_far_row(facade, b, face_x, start, end)
 
 
-## Plain stucco between shop windows, from the plinth to the lintel.
-func _pier(facade: MeshLayer, side: int, face_x: float, a: float, c: float, b: Building) -> void:
+## Plain stucco between shop windows (from p0 to p1, clipped to [u0, u1]), from the plinth to the
+## lintel. Its UV starts at p0 and its width rides in COLOR.a (/ 8 m), so the shader draws the
+## windows' jambs along both its edges.
+func _pier(facade: MeshLayer, side: int, face_x: float, p0: float, p1: float, u0: float, u1: float, b: Building) -> void:
+	var a: float = maxf(p0, u0)
+	var c: float = minf(p1, u1)
 	if c > a + 0.001:
-		_face(facade, side, face_x, a, c, skin.gallery_bottom, skin.gallery_top, b.wall, 0.0, STYLE_PIER, b.seed, 0.0)
+		_face(facade, side, face_x, a, c, skin.gallery_bottom, skin.gallery_top, b.wall, clampf((p1 - p0) / 8.0, 0.0, 1.0),
+			STYLE_PIER, b.seed, p0)
 
 
-## Shop window w (start and end distances) of building b: a cached template placed on the wall,
-## mirrored for the right-hand side.
+## Shop window w (start and end distances) of building b: a cached template placed on the wall.
 func _shop_window(batch: MeshBatch, b: Building, w: Vector2, face_x: float) -> void:
 	var variant: int = MeshKit.hash_i(b.side, MeshKit.key(w.x), 41) % WINDOW_VARIANTS
-	var template: MeshBatch = _window_template(b.kind, w.y - w.x, variant)
-	var basis: Basis = Basis.IDENTITY if b.side < 0 else Basis.from_scale(Vector3(-1.0, 1.0, 1.0))
-	batch.append(template, Transform3D(basis, Vector3(face_x, 0.0, -w.x)))
+	batch.append(_window_template(b.kind, w.y - w.x, variant, b.side), Transform3D(Basis.IDENTITY,
+		Vector3(face_x, 0.0, -w.x)))
 
 
-## A shop window `width` long, built for the left wall (face at x = 0, the shop toward -x, the
-## window from z = 0 to -width): the display behind the opening (a back wall of goods, its floor,
-## top and sides), a frame just proud of the wall, and a faint sheen of glass.
-func _window_template(kind: int, width: float, variant: int) -> MeshBatch:
-	var key := Vector3i(kind, roundi(width * 100.0), variant)
+## A shop window `width` long on the wall on `side` (face at x = 0, the window from z = 0 to
+## -width): the display behind the opening (a back wall of goods, its floor, top and sides). The
+## frame around it is painted by the facade shader on the piers, sill and lintel. Built for the left
+## wall and mirrored once for the right.
+func _window_template(kind: int, width: float, variant: int, side: int) -> MeshBatch:
+	var key := Vector4i(kind, roundi(width * 100.0), variant, side)
 	var found: MeshBatch = _window_templates.get(key)
 	if found != null:
 		return found
 	if _window_templates.size() > 512:
 		_window_templates.clear()
 	var t := MeshBatch.new()
+	if side > 0:
+		t.append(_window_template(kind, width, variant, -1), Transform3D(Basis.from_scale(Vector3(-1.0, 1.0, 1.0)),
+			Vector3.ZERO))
+		_window_templates[key] = t
+		return t
 	var facade: MeshLayer = t.layer(skin.facade_material())
-	var solid: MeshLayer = t.layer(skin.solid_material())
-	var glow: MeshLayer = t.layer(skin.glow_material())
 	var g0: float = skin.gallery_bottom
 	var g1: float = skin.gallery_top
 	var h: float = g1 - g0
@@ -260,17 +271,6 @@ func _window_template(kind: int, width: float, variant: int) -> MeshBatch:
 		Vector2(0.0, g0), Vector2(depth, g1), float(seed))
 	facade.rect(Vector3(0.0, g0, 0.0), Vector3(-depth, 0, 0), Vector3(0, h, 0), inside, 0.0, STYLE_REVEAL,
 		Vector2(0.0, g0), Vector2(depth, g1), float(seed))
-	# The frame: sill, head, jambs, and a mullion in wide windows.
-	var frame: Color = skin.trim_color if kind != Kind.CASINO else Color(0.2, 0.19, 0.2)
-	var fx: float = 0.015
-	_panel(solid, -1, fx, 0.0, width, g0 - 0.02, g0 + 0.07, frame)
-	_panel(solid, -1, fx, 0.0, width, g1 - 0.08, g1 + 0.02, frame)
-	_panel(solid, -1, fx, 0.0, 0.07, g0, g1, frame)
-	_panel(solid, -1, fx, width - 0.07, width, g0, g1, frame)
-	if width > 2.4:
-		_panel(solid, -1, fx, width * 0.5 - 0.03, width * 0.5 + 0.03, g0, g1, frame)
-	glow.rect(Vector3(0.03, g0, 0.0), Vector3(0, 0, -width), Vector3(0, h, 0), Color(0.85, 0.88, 0.95), 0.03,
-		MeshKit.SHAPE_FLAT)
 	_window_templates[key] = t
 	return t
 
@@ -293,9 +293,10 @@ func _shop_extras(solid: MeshLayer, glow: MeshLayer, b: Building, x: float, u0: 
 				continue
 			var h: float = MeshKit.hash01(b.seed, k * 16 + storey, 5)
 			if h < 0.22:
-				_awning(solid, side, x, cx, win_top, b.seed + k)
+				solid.append(_awning(side, (b.seed + k) % skin.awning_colors.size()),
+					Transform3D(Basis.IDENTITY, Vector3(x, win_top, -cx)))
 			elif h < 0.32 and storey < top_storey:
-				_balcony(solid, side, x, cx, floor_y, b.seed + k)
+				solid.append(_balcony(side, (b.seed + k) % 2), Transform3D(Basis.IDENTITY, Vector3(x, floor_y, -cx)))
 	# Blade signs sticking out over the street, high up.
 	var signs: int = MeshKit.hash_i(side, b.id, 50) % 3
 	for i: int in signs:
@@ -320,48 +321,61 @@ func _shop_extras(solid: MeshLayer, glow: MeshLayer, b: Building, x: float, u0: 
 				solid.box(Vector3(tx + leg, b.height + 0.7, -tz), Vector3(0.12, 1.4, 0.12), Color(0.3, 0.28, 0.26))
 
 
-## A blue awning over an upper window centred at distance d: its striped canvas sloping out from
-## the wall (both faces: from mid-street its top shows, from close by its underside) and its valance.
-func _awning(solid: MeshLayer, side: int, x: float, d: float, y: float, seed: int) -> void:
-	var color: Color = skin.awning_colors[seed % skin.awning_colors.size()]
+## A blue awning over an upper window (the window's top centre at the origin, on the wall on
+## `side`): its striped canvas sloping out from the wall (both faces: from mid-street its top shows,
+## from close by its underside) and its valance. Cached per side and colour.
+func _awning(side: int, color_index: int) -> MeshLayer:
+	var key := Vector3i(0, side, color_index)
+	var found: MeshLayer = _templates.get(key)
+	if found != null:
+		return found
+	var solid := MeshLayer.new()
+	var color: Color = skin.awning_colors[color_index]
 	var hw: float = 0.8
-	var reach: float = 0.75
-	var out: float = x - side * reach
-	var wall_y: float = y + 0.3
-	var hem_y: float = y - 0.35
+	var out: float = -side * 0.75
+	var hem_y: float = -0.35
 	# Corners at the wall and the hem, near (toward the player) and far.
-	var wall_n := Vector3(x, wall_y, -d + hw)
-	var wall_f := Vector3(x, wall_y, -d - hw)
-	var hem_n := Vector3(out, hem_y, -d + hw)
-	var hem_f := Vector3(out, hem_y, -d - hw)
+	var wall_n := Vector3(0.0, 0.3, hw)
+	var wall_f := Vector3(0.0, 0.3, -hw)
+	var hem_n := Vector3(out, hem_y, hw)
+	var hem_f := Vector3(out, hem_y, -hw)
 	var under: Color = color * Color(0.78, 0.78, 0.78)
 	if side < 0:
 		solid.quad(wall_n, hem_n, hem_f, wall_f, under, 0.0, MeshKit.PAT_CANVAS, 1.0)
 		solid.quad(wall_f, hem_f, hem_n, wall_n, color, 0.0, MeshKit.PAT_CANVAS, 1.0)
-		solid.rect(Vector3(out, hem_y - 0.25, -d + hw), Vector3(0, 0, -hw * 2.0), Vector3(0, 0.25, 0), color, 0.0,
+		solid.rect(Vector3(out, hem_y - 0.25, hw), Vector3(0, 0, -hw * 2.0), Vector3(0, 0.25, 0), color, 0.0,
 			MeshKit.PAT_CANVAS, Vector2.ZERO, Vector2.ONE, 1.0)
 	else:
 		solid.quad(wall_f, hem_f, hem_n, wall_n, under, 0.0, MeshKit.PAT_CANVAS, 1.0)
 		solid.quad(wall_n, hem_n, hem_f, wall_f, color, 0.0, MeshKit.PAT_CANVAS, 1.0)
-		solid.rect(Vector3(out, hem_y - 0.25, -d - hw), Vector3(0, 0, hw * 2.0), Vector3(0, 0.25, 0), color, 0.0,
+		solid.rect(Vector3(out, hem_y - 0.25, -hw), Vector3(0, 0, hw * 2.0), Vector3(0, 0.25, 0), color, 0.0,
 			MeshKit.PAT_CANVAS, Vector2.ZERO, Vector2.ONE, 1.0)
+	_templates[key] = solid
+	return solid
 
 
-## A small balcony under an upper window: a slab and a railing, with a pot or two.
-func _balcony(solid: MeshLayer, side: int, x: float, d: float, floor_y: float, seed: int) -> void:
+## A small balcony under an upper window (its floor's centre on the wall at the origin, on `side`):
+## a slab, a balustrade (one panel, its balusters the grooves of the ribbed pattern) under a rail,
+## and one or two potted plants. Cached per side and pot count.
+func _balcony(side: int, pots: int) -> MeshLayer:
+	var key := Vector3i(1, side, pots)
+	var found: MeshLayer = _templates.get(key)
+	if found != null:
+		return found
+	var solid := MeshLayer.new()
 	var reach: float = 0.8
 	var hw: float = 1.0
-	var bx: float = x - side * reach * 0.5
-	solid.box(Vector3(bx, floor_y + 0.05, -d), Vector3(reach, 0.14, hw * 2.0), skin.trim_color, 0.0, MeshKit.PAT_STUCCO)
-	# A balustrade: one panel, its balusters the grooves of the ribbed pattern, under a rail.
-	var rx: float = x - side * (reach - 0.03)
-	solid.box(Vector3(rx, floor_y + 1.0, -d), Vector3(0.06, 0.06, hw * 2.0), skin.trim_color.darkened(0.1))
-	_panel(solid, side, rx, d - hw, d + hw, floor_y + 0.12, floor_y + 0.97, skin.trim_color.darkened(0.05), 0.0,
-		MeshKit.PAT_RIBS)
-	for i: int in 1 + seed % 2:
-		var pz: float = -d + (float(i) - 0.5) * 0.9
-		solid.prism(Vector3(bx, floor_y + 0.12, pz), 0.16, 0.3, 6, Color(0.6, 0.38, 0.28))
-		solid.prism(Vector3(bx, floor_y + 0.42, pz), 0.24, 0.32, 6, Color(0.3, 0.42, 0.24))
+	var bx: float = -side * reach * 0.5
+	solid.box(Vector3(bx, 0.05, 0.0), Vector3(reach, 0.14, hw * 2.0), skin.trim_color, 0.0, MeshKit.PAT_STUCCO)
+	var rx: float = -side * (reach - 0.03)
+	solid.box(Vector3(rx, 1.0, 0.0), Vector3(0.06, 0.06, hw * 2.0), skin.trim_color.darkened(0.1))
+	_panel(solid, side, rx, -hw, hw, 0.12, 0.97, skin.trim_color.darkened(0.05), 0.0, MeshKit.PAT_RIBS)
+	for i: int in 1 + pots:
+		var pz: float = (float(i) - 0.5) * 0.9
+		solid.prism(Vector3(bx, 0.12, pz), 0.16, 0.3, 6, Color(0.6, 0.38, 0.28))
+		solid.prism(Vector3(bx, 0.42, pz), 0.24, 0.32, 6, Color(0.3, 0.42, 0.24))
+	_templates[key] = solid
+	return solid
 
 
 ## A decorative blade sign sticking out of the wall at distance d, bottom at y: a painted board or a
@@ -390,15 +404,24 @@ func _blade_sign(solid: MeshLayer, glow: MeshLayer, side: int, x: float, d: floa
 		# A tall board reads top to bottom: lay the shop sign's rows along its height.
 		solid.quad(Vector3(x_min, y, -d + 0.001), Vector3(x_min, y + h, -d + 0.001), Vector3(x_min + reach, y + h, -d + 0.001),
 			Vector3(x_min + reach, y, -d + 0.001), color, 0.0, MeshKit.PAT_PLAIN)
-		# Its lettering runs down the board (UV.x along u, from the top), a mark at the top.
+		# Its lettering runs down the board (UV.x along u, from the top), a mark at the top: the shop's
+		# own, or on some boards the cult's emblem in unlit bronze (GDD §5: hidden in plain sight).
 		var band: float = minf(reach * 0.8, 0.9)
-		solid.rect(Vector3(x_min + (reach - band) * 0.5, y + h - 0.15, -d + 0.004), Vector3(0, -(h - 0.3), 0),
-			Vector3(band, 0, 0), color, 0.0, MeshKit.PAT_SHOPSIGN, Vector2.ZERO, Vector2(h - 0.3, band),
-			float((k % 100) + 100 * roundi(band * 10.0)))
+		var top: float = y + h - 0.15
+		var code: int = (k % 100) + 100 * roundi(band * 10.0)
+		if skin.carries_emblem(k, 58):
+			var e: float = maxf(minf(reach * 0.78, 1.0), skin.emblem_min_size)
+			skin.add_cult_emblem(solid, Vector3(x_min + reach * 0.5, top + 0.03 - e * 0.5, -d + 0.012), Vector3.BACK, e,
+				false)
+			top -= e + 0.1
+			code += MarketFacades.LETTERING_ONLY
+		if top - (y + 0.15) > 0.8:
+			solid.rect(Vector3(x_min + (reach - band) * 0.5, top, -d + 0.004), Vector3(0, -(top - y - 0.15), 0),
+				Vector3(band, 0, 0), color, 0.0, MeshKit.PAT_SHOPSIGN, Vector2.ZERO, Vector2(top - y - 0.15, band), float(code))
 
 
-## A board of ads on a low building's roof, facing the approaching player (MeshKit.PAT_AD: its brand
-## mark comes from market_logo(), the hook for the cult symbol).
+## A board of ads on a low building's roof, turned to the street (MeshKit.PAT_AD), some with the
+## cult's emblem as a corner badge.
 func _roof_board(solid: MeshLayer, side: int, x: float, mid: float, roof_y: float, length: float, seed: int) -> void:
 	var h: float = 4.0
 	var y0: float = roof_y + 1.3
@@ -416,10 +439,12 @@ func _roof_board(solid: MeshLayer, side: int, x: float, mid: float, roof_y: floa
 	else:
 		solid.rect(Vector3(px, y0, -d0 - length), Vector3(0, 0, length), Vector3(0, h, 0), color, 0.5, MeshKit.PAT_AD,
 			Vector2.ZERO, Vector2(length / h, 1.0), float(seed % 97))
+	if skin.carries_emblem(seed, 59):
+		_corner_emblem(solid, side, px, d0, length, y0, h)
 
 
 ## Casino dressing: a marquee of bulbs along the base, bulb strips up the corners and a big sign
-## near the top with its brand mark (all above decor_min_height).
+## near the top with its brand mark, some with the cult's emblem (all above decor_min_height).
 func _casino(solid: MeshLayer, glow: MeshLayer, b: Building, face_x: float, u0: float, u1: float, start: float,
 		end: float) -> void:
 	var side: int = b.side
@@ -446,8 +471,21 @@ func _casino(solid: MeshLayer, glow: MeshLayer, b: Building, face_x: float, u0: 
 			else:
 				solid.rect(Vector3(sx, sy, -d0 - length), Vector3(0, 0, length), Vector3(0, h, 0), color, 0.55, MeshKit.PAT_AD,
 					Vector2.ZERO, Vector2(length / h, 1.0), float(b.seed % 97))
+			if skin.carries_emblem(b.seed, 60):
+				_corner_emblem(solid, side, sx, d0, length, sy, h)
 			glow.rect(Vector3(sx - side * 0.4, sy - 1.0, -d0 + 1.0), Vector3(0, 0, -(length + 2.0)), Vector3(0, h + 2.0, 0),
 				color, 0.1, MeshKit.SHAPE_FLAT)
+
+
+## The cult's emblem as a small badge in the lower corner where an ad's text ends (the far end on
+## the left wall, the near end on the right, as seen from the street), in its warm-white neon. Only
+## on ads tall enough that it stays small beside the ad's own mark (GDD §5: never a centrepiece).
+func _corner_emblem(solid: MeshLayer, side: int, x: float, d0: float, length: float, y0: float, h: float) -> void:
+	var e: float = maxf(h * 0.28, skin.emblem_min_size)
+	if e > h * 0.36 or length < e * 4.0:
+		return
+	var d: float = d0 + length - e * 0.75 if side < 0 else d0 + e * 0.75
+	skin.add_cult_emblem(solid, Vector3(x - side * 0.012, y0 + e * 0.72, -d), Vector3(-side, 0.0, 0.0), e, true)
 
 
 ## A market hall: a painted name board over the middle, high up.

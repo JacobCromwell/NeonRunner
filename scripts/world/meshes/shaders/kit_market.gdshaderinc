@@ -11,6 +11,30 @@ uniform vec3 canvas_stripe : source_color = vec3(0.82, 0.8, 0.74);
 uniform vec3 goods_light : source_color = vec3(1.0, 0.88, 0.7);
 // The stalls' frame: the pole across each stall's start and the valleys along the lanes' edges.
 uniform vec3 canvas_pole : source_color = vec3(0.4, 0.34, 0.27);
+// The stall rows (PAT_STALLS), laid out exactly as MarketStalls lays them out: slots along each lane,
+// a stall covering 1-3 of them, its roof picked from these (sRGB, like COLOR).
+uniform float stall_slot = 2.0;
+uniform float stall_awning_share = 0.22;
+uniform float stall_tin_share = 0.2;
+uniform vec3 stall_canvas[4];
+uniform vec3 stall_awning[2];
+uniform vec3 stall_tin = vec3(0.47, 0.46, 0.44);
+
+// MeshKit.hash_i, bit for bit (32-bit integer mixing), so the shader and the scripts pick the same
+// stall for the same slot. Inputs must not be negative (callers add an offset).
+uint kit_hash_u(int a, int b, int c) {
+	uint h = uint(a) * 0x27d4eb2du;
+	h ^= uint(b) * 0x165667b1u + 0x3c6ef372u;
+	h ^= uint(c) * 0x1b873593u + 0x68e31da4u;
+	h = (h ^ (h >> 15u)) * 0x2c1b3c6du;
+	h = (h ^ (h >> 12u)) * 0x297a2d39u;
+	return h ^ (h >> 15u);
+}
+
+// MeshKit.hash01, bit for bit.
+float kit_hash01(int a, int b, int c) {
+	return float(kit_hash_u(a, b, c) & 0xFFFFFFu) / 16777216.0;
+}
 
 // Goods on display: splashes of colour, always lit, never glowing (GDD §5 colour rule).
 vec3 mk_goods_color(float r) {
@@ -24,10 +48,9 @@ vec3 mk_goods_color(float r) {
 	return vec3(0.46, 0.3, 0.2);                  // nuts, leather
 }
 
-// Placeholder brand marks for logos and ads: generic geometric marks, never the cult's symbol.
-// `p` runs from -1 to 1 across the mark; returns coverage 0-1.
-// DESIGN-TBD (task D7): the owner's chosen cult emblem goes here, worked into the marks (GDD §5:
-// hidden in plain sight in logos and ads).
+// The market's ordinary brands: generic geometric marks for shop signs and ads. `p` runs from -1 to
+// 1 across the mark; returns coverage 0-1. None has the cult emblem's three-fold symmetry: the
+// emblem itself is real geometry (CultEmblem), added on top of some ads and signs by the skin.
 float market_logo(vec2 p, float seed) {
 	int kind = int(mod(seed, 4.0));
 	vec2 a = abs(p);
@@ -40,8 +63,9 @@ float market_logo(vec2 p, float seed) {
 		float hex = max(a.x * 0.866 + a.y * 0.5, a.y);
 		d = min(abs(hex - 0.74) - 0.12, length(p) - 0.22);
 	} else if (kind == 2) {
-		// Three dots in a triangle.
-		d = min(length(p - vec2(0.0, 0.5)), min(length(p - vec2(-0.48, -0.32)), length(p - vec2(0.48, -0.32)))) - 0.3;
+		// An arch over a bar, like a market hall's gate.
+		float arch = p.y > -0.1 ? abs(length(p - vec2(0.0, -0.1)) - 0.62) - 0.13 : abs(a.x - 0.62) - 0.13;
+		d = min(max(arch, -0.55 - p.y), max(abs(p.y + 0.72) - 0.12, a.x - 0.9));
 	} else {
 		// Three stacked bars, each shorter than the one above.
 		vec2 b0 = abs(p - vec2(0.0, 0.5)) - vec2(0.85, 0.13);
@@ -66,10 +90,10 @@ float mk_tent(vec2 q) {
 }
 
 // A stall's frame drawn over its roof (q: 0-1 across the lane, along the stall; len: the stall's
-// length): the pole across its start and the valleys along the lane's edges.
-vec3 mk_frame(vec3 col, vec2 q, float len) {
+// length; fd: a pixel's footprint along the track): the pole across its start and the valleys along
+// the lane's edges.
+vec3 mk_frame(vec3 col, vec2 q, float len, float fd) {
 	float d = q.y * len;
-	float fd = max(fwidth(d), 1e-4);
 	float pole = 1.0 - smoothstep(0.08 - fd, 0.08 + fd, d);
 	float e = min(q.x, 1.0 - q.x);
 	float fe = max(fwidth(q.x), 1e-4);
@@ -78,26 +102,23 @@ vec3 mk_frame(vec3 col, vec2 q, float len) {
 }
 
 // The scalloped hem of a stall's canvas along its leading edge (toward the player), just past the
-// frame pole: `d` metres from the stall's start, `x` 0-1 across. Returns (hem, shadow).
-vec2 mk_hem(float d, float x) {
+// frame pole: `d` metres from the stall's start, `x` 0-1 across, fw a pixel's footprint along the
+// track. Returns (hem, shadow).
+vec2 mk_hem(float d, float x, float fw) {
 	float sc = abs(sin(x * 3.14159 * 5.0));
 	float edge = 0.18 + 0.11 * sc;
-	float fw = max(fwidth(d), 1e-4);
 	float hem = 1.0 - smoothstep(edge - fw, edge + fw, d);
 	float shadow = (1.0 - smoothstep(edge + 0.02, edge + 0.09, d)) * (1.0 - hem);
 	return vec2(hem, shadow);
 }
 
-// PAT_CANVAS (20): canvas roofs and awnings stretched over a stall's frame. UV runs 0-1 across the
-// panel (x) and along the whole stall (y). param = stripes (0 plain, 1 along the track, 2 across
-// it) + 4 * the stall's length in decimetres (0: no hem). Stripes are soft (half-way to the stripe
-// colour), so an awning never reads as a road marking.
-vec3 mk_canvas(vec3 base, vec3 w, vec2 uv, float param) {
+// Canvas (PAT_CANVAS, below) with its stripes (`mode`) and the stall's length (`len`, 0: no hem or
+// frame) given.
+vec3 mk_canvas_at(vec3 base, vec3 w, vec2 uv, float mode, float len) {
 	vec2 p = w.xz;
 	float fw = max(fwidth(p.x), fwidth(p.y));
+	float fz = max(fwidth(w.z), 1e-4);
 	float detail = 1.0 - smoothstep(0.02, 0.15, fw);
-	float mode = mod(floor(param + 0.5), 4.0);
-	float len = floor((param + 0.5) / 4.0) * 0.1;
 	vec3 col = base;
 	vec3 stripe = mix(base, canvas_stripe, 0.42);
 	if (mode > 0.5 && mode < 1.5) {
@@ -109,10 +130,10 @@ vec3 mk_canvas(vec3 base, vec3 w, vec2 uv, float param) {
 	}
 	col *= mk_tent(clamp(uv, 0.0, 1.0));
 	if (len > 0.0) {
-		vec2 hem = mk_hem(uv.y * len, uv.x);
+		vec2 hem = mk_hem(uv.y * len, uv.x, fz);
 		col = mix(col, mix(base, canvas_stripe, 0.55) * 0.95, hem.x);
 		col *= 1.0 - 0.22 * hem.y;
-		col = mk_frame(col, clamp(uv, 0.0, 1.0), len);
+		col = mk_frame(col, clamp(uv, 0.0, 1.0), len, fz);
 	}
 	// Sewn panels across the canvas, weathering and a faint weave.
 	col *= 1.0 - 0.08 * filtered_pulse(w.z / 1.3, fwidth(w.z) / 1.3, 0.0, 0.03);
@@ -121,17 +142,22 @@ vec3 mk_canvas(vec3 base, vec3 w, vec2 uv, float param) {
 	return col;
 }
 
-// PAT_TIN (21): corrugated sheet metal on stall roofs, with overlapping sheets, dust and rust.
-// UV as for canvas (the roof's shape); param = ribs (0 along the track, 1 across it) + 4 * the
-// stall's length in decimetres (for the ridge cap along its leading edge).
-vec3 mk_tin(vec3 base, vec3 w, vec2 uv, float param) {
+// PAT_CANVAS (20): canvas roofs and awnings stretched over a stall's frame. UV runs 0-1 across the
+// panel (x) and along the whole stall (y). param = stripes (0 plain, 1 along the track, 2 across
+// it) + 4 * the stall's length in decimetres (0: no hem). Stripes are soft (half-way to the stripe
+// colour), so an awning never reads as a road marking.
+vec3 mk_canvas(vec3 base, vec3 w, vec2 uv, float param) {
+	return mk_canvas_at(base, w, uv, mod(floor(param + 0.5), 4.0), floor((param + 0.5) / 4.0) * 0.1);
+}
+
+// Tin (PAT_TIN, below) with its ribs (`mode`) and the stall's length (`len`, 0: no ridge cap or
+// frame) given.
+vec3 mk_tin_at(vec3 base, vec3 w, vec2 uv, float mode, float len) {
 	vec2 p = w.xz;
-	float mode = mod(floor(param + 0.5), 4.0);
-	float len = floor((param + 0.5) / 4.0) * 0.1;
+	float fd = max(fwidth(w.z), 1e-4);
 	base *= mk_tent(clamp(uv, 0.0, 1.0));
 	if (len > 0.0) {
 		float d = uv.y * len;
-		float fd = max(fwidth(d), 1e-4);
 		base *= 1.0 + 0.12 * (1.0 - smoothstep(0.16 - fd, 0.16 + fd, d)) - 0.15 * (smoothstep(0.16, 0.2, d) - smoothstep(0.2, 0.3, d));
 	}
 	float along = mode < 0.5 ? p.x : p.y;
@@ -144,9 +170,54 @@ vec3 mk_tin(vec3 base, vec3 w, vec2 uv, float param) {
 	col = mix(col, vec3(0.42, 0.3, 0.22), smoothstep(0.55, 0.85, value_noise(p * vec2(1.4, 0.5) + 3.0)) * 0.45);
 	col = mix(col, vec3(0.62, 0.55, 0.46), smoothstep(0.5, 0.9, value_noise(p * 0.4 + 9.0)) * 0.35);
 	if (len > 0.0) {
-		col = mk_frame(col, clamp(uv, 0.0, 1.0), len);
+		col = mk_frame(col, clamp(uv, 0.0, 1.0), len, fd);
 	}
 	return col;
+}
+
+// PAT_TIN (21): corrugated sheet metal on stall roofs, with overlapping sheets, dust and rust.
+// UV as for canvas (the roof's shape); param = ribs (0 along the track, 1 across it) + 4 * the
+// stall's length in decimetres (for the ridge cap along its leading edge).
+vec3 mk_tin(vec3 base, vec3 w, vec2 uv, float param) {
+	return mk_tin_at(base, w, uv, mod(floor(param + 0.5), 4.0), floor((param + 0.5) / 4.0) * 0.1);
+}
+
+// Whether a stall starts at `slot` in the lane keyed `lane` (both offset to stay positive): every
+// third slot, and by hash 45% of the others (MarketStalls.starts()).
+bool mk_stall_starts(int lane, int slot) {
+	return slot % 3 == 0 || kit_hash01(lane, slot, 7) < 0.45;
+}
+
+// PAT_STALLS (28): a whole row of stall roofs along one lane, laid out here rather than as one quad
+// per stall: the stall under each point from its slot, then its roof (canvas, a blue awning or tin),
+// shape, hem and frame. UV.x runs 0-1 across the lane; param = the lane's key (offset, positive).
+// MarketStalls mirrors every choice, bit for bit, for the faces it builds at gap edges.
+vec3 mk_stalls(vec3 w, vec2 uv, float param) {
+	int lane = int(param + 0.5);
+	float dist = -w.z;
+	int si = int(floor(dist / stall_slot)) + 100000;
+	int s0 = si;
+	for (int j = 0; j < 2 && !mk_stall_starts(lane, s0); j++) {
+		s0 -= 1;
+	}
+	int s1 = si + 1;
+	for (int j = 0; j < 2 && !mk_stall_starts(lane, s1); j++) {
+		s1 += 1;
+	}
+	float d0 = float(s0 - 100000) * stall_slot;
+	float len = float(s1 - s0) * stall_slot;
+	vec2 q = vec2(uv.x, (dist - d0) / len);
+	float r = kit_hash01(lane, s0, 11);
+	uint k = kit_hash_u(lane, s0, 12);
+	if (r < stall_awning_share) {
+		return mk_canvas_at(stall_awning[k % 2u], w, q, (k >> 4u) % 5u < 3u ? 1.0 : 0.0, len);
+	}
+	if (r < stall_awning_share + stall_tin_share) {
+		float tone = 0.92 + 0.12 * float((k >> 7u) % 64u) / 63.0;
+		return mk_tin_at(stall_tin * tone, w, q, float((k >> 3u) % 2u), len);
+	}
+	vec3 canvas = stall_canvas[kit_hash_u(lane, s0, 13) % 4u];
+	return mk_canvas_at(canvas, w, q, (k >> 5u) % 6u == 0u ? 2.0 : 0.0, len);
 }
 
 // PAT_STALL (22): the faces of a stall below its roof (its front at a gap, its back, its sides), by
@@ -232,12 +303,15 @@ vec3 mk_tiles(vec3 base, vec3 w, float param) {
 	return base * (0.85 + 0.25 * hash12(floor(q) + 1.0)) * (1.0 - 0.35 * grout) * (0.85 + 0.25 * value_noise(p * 0.25));
 }
 
-// PAT_SHOPSIGN (24): a shop sign's painted face (the content inside a hazard sign's frame): a disc
-// with a brand mark, then a word in chunky letters, repeating along the panel. UV in metres on the
-// panel; param = seed (0-99) + 100 * the panel's height in decimetres. The frame around it is the
-// hazard; this part is only decoration.
+// PAT_SHOPSIGN (24): a shop sign's painted face (the content inside a hazard sign's frame, or a
+// decorative board): a disc with a brand mark, then a word in chunky letters, repeating along the
+// panel. UV in metres on the panel; param = seed (0-99) + 100 * the panel's height in decimetres,
+// + 10000 for lettering only (no disc). Inside a hazard sign, the frame is the hazard; this part is
+// only decoration.
 vec3 mk_shopsign(vec3 base, vec2 uv, float param) {
 	float code = floor(param + 0.5);
+	float no_disc = step(10000.0, code);
+	code = mod(code, 10000.0);
 	float seed = mod(code, 100.0);
 	float height = max(floor(code / 100.0) * 0.1, 0.2);
 	vec2 fw = fwidth(uv);
@@ -247,7 +321,7 @@ vec3 mk_shopsign(vec3 base, vec2 uv, float param) {
 	float k = floor(uv.x / unit);
 	float ux = uv.x - k * unit;
 	vec2 d = vec2(ux - r - 0.12, uv.y - height * 0.5);
-	float disc = 1.0 - smoothstep(r - fw.x, r + fw.x, length(d));
+	float disc = (1.0 - smoothstep(r - fw.x, r + fw.x, length(d))) * (1.0 - no_disc);
 	float logo = market_logo(d / (r * 0.7), seed + k);
 	vec3 col = mix(base, ink, disc);
 	col = mix(col, base * 0.85, logo * disc);
@@ -335,6 +409,8 @@ vec3 market_surface(int pattern, float param, vec3 base, vec3 w, vec3 n, vec2 uv
 		return c;
 	} else if (pattern == 27) {
 		return mk_stucco(base, w, n);
+	} else if (pattern == 28) {
+		return mk_stalls(w, uv, param);
 	}
 	return base;
 }

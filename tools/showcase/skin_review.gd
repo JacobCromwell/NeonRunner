@@ -15,7 +15,7 @@ extends Node3D
 ##   --view=shot     still cameras, one after another every --hold frames (default 3): 0 the street,
 ##                   1 into a gap, 2 a ceiling's near end, 3 under a ceiling looking up, 4 the right
 ##                   wall close up, 5 the left wall close up, 6 the fences and signs, 7 a ceiling's far end,
-##                   8 the sky.
+##                   8 the sky, 9-12 each ceiling's near end from the floor.
 ##                   --shot=N shows only that one.
 ## The level's ceilings: for the Marketplace skin, one of each kind (building bridge, overpass,
 ## ship, floating ad), found by asking the skin which kind a spot gets.
@@ -217,7 +217,7 @@ func _shot_list() -> Array:
 	var w: float = geo.wall_x()
 	var s0: float = _hull_starts()[0]
 	var h: float = tuning.ceiling_height
-	return [
+	var out: Array = [
 		[40.0, Vector3(0.0, tuning.camera_height, -40.0), Vector3(0.0, 1.0, -70.0)],
 		[70.0, Vector3(geo.lane_x(lanes / 2), 3.2, -78.0), Vector3(geo.lane_x(lanes / 2), -2.5, -90.0)],
 		[s0 - 20.0, Vector3(0.0, tuning.camera_height, -(s0 - 16.0)), Vector3(0.0, 4.5, -(s0 + 4.0))],
@@ -229,6 +229,11 @@ func _shot_list() -> Array:
 			Vector3(0.0, h - 0.6, -(s0 + HULLS[0].y + 6.0))],
 		[40.0, Vector3(0.0, 30.0, -40.0), Vector3(0.0, 40.0, -60.0)],
 	]
+	# 9-12: each ceiling's near end, from the floor as the player comes up to it.
+	var starts: Array[float] = _hull_starts()
+	for s: float in starts:
+		out.append([s - 24.0, Vector3(0.0, tuning.camera_height, -(s - 18.0)), Vector3(0.0, 5.5, -(s + 2.0))])
+	return out
 
 
 func _show_shot(index: int) -> void:

@@ -13,6 +13,9 @@ extends ZoneSkin
 ## along it, a few merchant ships and floating advertisements, each built from the lanes it covers.
 ## The stall roofs stand still, so dust, paper scraps and speed streaks, the seams between stalls and
 ## the bunting overhead carry the sense of speed (GDD §5, proposed).
+## The cult's emblem (GDD §5: the owner's choice, drawn by CultEmblem) hides in plain sight: small
+## and incidental on some floating ads, ad boards, casino signs and painted shop signs, never their
+## main mark, in its warm-white neon or unlit bronze.
 ## Colour rule (GDD §5, proposed): blue awnings, red and orange goods and the like are lit, never
 ## glowing, and decorative lights keep to warm white, blue and violet, so the hazard colours (pink,
 ## yellow and black, red, orange, green, cyan) keep their meaning. Hazards stay the most saturated
@@ -56,7 +59,7 @@ extends ZoneSkin
 
 @export_group("Stalls")
 ## Stall roofs sit on a grid of slots along each lane; a stall covers 1–3 slots.
-@export_range(1.0, 4.0, 0.1, "suffix:m") var stall_slot: float = 1.8
+@export_range(1.0, 4.0, 0.1, "suffix:m") var stall_slot: float = 2.0
 ## How far below the stall roofs the market floor lies (deeper than a fall is survivable).
 @export_range(4.5, 15.0, 0.1, "suffix:m") var market_depth: float = 6.5
 ## Canvas roofs: tan, sand, cream and off-white.
@@ -176,6 +179,15 @@ extends ZoneSkin
 	Color(0.5, 0.4, 0.95), Color(0.3, 0.5, 0.95), Color(0.85, 0.88, 1.0)])
 @export var ceiling_lamp_color: Color = Color(1.0, 0.9, 0.74)
 
+@export_group("Cult emblem")
+## Never smaller than this: tiny, its three-fold silhouette could read like the radiation trefoil.
+@export_range(0.5, 3.0, 0.05, "suffix:m") var emblem_min_size: float = 0.9
+## DESIGN-TBD: how often it hides in the market (GDD §5 proposes it in logos and ads in every zone).
+## Share of floating ads, ad boards, casino signs and painted blade signs that carry it.
+@export_range(0.0, 1.0, 0.01) var emblem_share: float = 0.4
+## Glow of its warm-white neon on lit ads and signs.
+@export_range(0.0, 1.5, 0.05) var emblem_glow: float = 0.6
+
 @export_group("Pads, ramps, finish")
 @export var pad_color: Color = Color(0.1, 1.0, 0.95)
 ## Height of the anti-grav pad's light column.
@@ -187,8 +199,11 @@ extends ZoneSkin
 ## Painted steel under pads, ramps and the finish gantry.
 @export var market_metal_color: Color = Color(0.3, 0.28, 0.26)
 
+const CULT_EMBLEM_CHOICE_PATH: String = "res://data/world/cult_emblem_choice.tres"
+
 ## Built on first use and shared by every mesh (exports changed later don't reach them).
 var _materials: Dictionary = {}
+var _emblems: Dictionary = {}
 var _stalls: MarketStalls
 var _facades: MarketFacades
 var _ceilings: MarketCeilings
@@ -279,6 +294,42 @@ func shop_windows(side: int, face_x: float, start: float, end: float) -> Array[D
 	return facades().windows(side, face_x, start, end)
 
 
+# --- The cult's emblem ----------------------------------------------------------------------
+
+## The cult's emblem 1 m across, centred on the origin and facing +Z, as a mesh-kit template for the
+## solid material: `neon` in its warm-white neon (for lit ads and signs), otherwise unlit bronze.
+## The option and colours come from the owner's choice (data/world/cult_emblem_choice.tres) and
+## CultEmblem.default_scheme(), never hardcoded here. Empty if the choice can't be loaded.
+func cult_emblem(neon: bool) -> MeshLayer:
+	if _emblems.has(neon):
+		return _emblems[neon]
+	var t := MeshLayer.new()
+	var choice := load(CULT_EMBLEM_CHOICE_PATH) as CultEmblemChoice
+	if choice != null:
+		var scheme: Dictionary = CultEmblem.default_scheme(choice.option)
+		var mesh: ArrayMesh = CultEmblem.build_mesh(choice.option, 1.0, scheme["neon" if neon else "metal"],
+			scheme["neon_accent" if neon else "metal_accent"], emblem_glow if neon else 0.0, solid_material())
+		var arrays: Array = mesh.surface_get_arrays(0)
+		t.verts = arrays[Mesh.ARRAY_VERTEX]
+		t.colors = arrays[Mesh.ARRAY_COLOR]
+		t.uvs = arrays[Mesh.ARRAY_TEX_UV]
+		t.uv2s = arrays[Mesh.ARRAY_TEX_UV2]
+	_emblems[neon] = t
+	return t
+
+
+## Adds the cult's emblem `size` metres across (never below emblem_min_size) to a solid-material
+## layer, centred at `at` and facing `facing` (+Z toward the approaching player, ±X toward the track).
+func add_cult_emblem(layer: MeshLayer, at: Vector3, facing: Vector3, size: float, neon: bool) -> void:
+	var e: float = maxf(size, emblem_min_size)
+	layer.append(cult_emblem(neon), Transform3D(Basis(Vector3.UP, atan2(facing.x, facing.z)).scaled(Vector3.ONE * e), at))
+
+
+## Whether the ad, sign or logo keyed by (a, b) carries the cult's emblem (emblem_share of them).
+func carries_emblem(a: int, b: int) -> bool:
+	return MeshKit.hash01(a, b, 97) < emblem_share
+
+
 # --- Shared materials (built once per skin, shared by every mesh) ------------------------
 
 func solid_material() -> ShaderMaterial:
@@ -330,8 +381,19 @@ func fence_field_materials() -> Array[Material]:
 
 
 func _solid_params() -> Dictionary:
+	# The stall rows' layout and palette (PAT_STALLS), exactly as MarketStalls reads them.
+	var canvas := PackedVector3Array()
+	for i: int in 4:
+		var c: Color = canvas_colors[i % canvas_colors.size()]
+		canvas.append(Vector3(c.r, c.g, c.b))
+	var awnings := PackedVector3Array()
+	for i: int in 2:
+		var c: Color = awning_colors[i % awning_colors.size()]
+		awnings.append(Vector3(c.r, c.g, c.b))
 	return {"glow_scale": emissive_scale, "sheen_color": sheen_color, "sheen_strength": sheen_strength,
-		"canvas_stripe": awning_stripe_color, "goods_light": lamp_color, "canvas_pole": seam_color}
+		"canvas_stripe": awning_stripe_color, "goods_light": lamp_color, "canvas_pole": seam_color,
+		"stall_slot": stall_slot, "stall_awning_share": awning_share, "stall_tin_share": tin_share,
+		"stall_canvas": canvas, "stall_awning": awnings, "stall_tin": Vector3(tin_color.r, tin_color.g, tin_color.b)}
 
 
 func stalls() -> MarketStalls:

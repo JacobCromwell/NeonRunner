@@ -2,12 +2,13 @@ class_name MarketStalls
 extends RefCounted
 ## Market stalls for the Marketplace floor (MarketplaceSkin). A floor segment is a row of stall
 ## roofs along its lane: canvas in tans and creams, blue awnings (some striped), corrugated tin.
-## Stalls sit on a grid of slots per lane (MeshKit.lot_run: a stall covers 1–3 slots), so a stall cut
-## by a chunk boundary continues seamlessly in the next chunk. The roof's shape, its scalloped hem,
-## the frame pole across each stall's start (the still floor's own motion cue, GDD §5) and the
-## valleys along the lanes are all drawn by the kit shader (PAT_CANVAS, PAT_TIN), so a stall is one
-## quad. The running surface is flat (y = 0) and nothing stands on it, so nothing looks like an
-## obstacle.
+## Stalls sit on a grid of slots per lane (a stall covers 1–3 slots) laid out by the kit shader
+## itself (PAT_STALLS): a lane's roofs are one quad, and the shader works out, from world position,
+## which stall a point belongs to, its roof, shape, scalloped hem, the frame pole across its start
+## (the still floor's own motion cue, GDD §5) and the valleys along the lanes. The layout depends on
+## track position alone, so stalls continue seamlessly across chunk cuts; the functions below mirror
+## the shader's choices bit for bit (MeshKit.hash_i) for the faces built at gap edges. The running
+## surface is flat (y = 0) and nothing stands on it, so nothing looks like an obstacle.
 ## Where a gap borders the segment, the roof ends in the orange edge glow right on the collision
 ## edge; below it the stall's face drops to the market floor far below: the scalloped valance, an
 ## upper storey of boards or curtains, a counter heaped with goods under a warm lamp (PAT_STALL).
@@ -17,6 +18,10 @@ extends RefCounted
 ## Chunk space: x across, y up (roofs at y = 0), z = -distance.
 
 const EDGE_LIP: float = 0.18
+## Added to lane keys and slot indices before hashing, as the shader does, so they stay positive.
+const KEY_OFFSET: int = 100000
+## A stall starts at every third slot and at this share of the others.
+const START_SHARE: float = 0.45
 
 enum Roof { CANVAS, AWNING, TIN }
 
@@ -50,22 +55,13 @@ func build(batch: MeshBatch, center: Vector3, size: Vector3, lane_x: float, edge
 	var lip_f: float = minf(EDGE_LIP, size.z * 0.4) if edge_end else 0.0
 	var a: float = near_d + lip_n
 	var b: float = far_d - lip_f
-	var lane_key: int = MeshKit.key(lane_x)
+	var lane: int = lane_key(lane_x)
 
-	# The stalls' roofs, one quad each.
-	var slot: float = skin.stall_slot
-	var span: Vector2i = stall_at(lane_key, floori(a / slot))
-	while span.x * slot < b:
-		var s0: float = span.x * slot
-		var s1: float = (span.y + 1) * slot
-		var d0: float = maxf(s0, a)
-		var d1: float = minf(s1, b)
-		if d1 > d0 + 0.001:
-			_roof(s, lane_key, span.x, l0, l1, s0, s1, d0, d1)
-		span = stall_at(lane_key, span.y + 1)
-
-	# The stone ledge along the building faces.
+	# The row of stall roofs, laid out by the shader.
 	if b > a:
+		s.rect(Vector3(l0, 0, -a), Vector3(l1 - l0, 0, 0), Vector3(0, 0, -(b - a)), Color.WHITE, 0.0, MeshKit.PAT_STALLS,
+			Vector2.ZERO, Vector2.ONE, float(lane))
+		# The stone ledge along the building faces.
 		if left_ledge:
 			s.rect(Vector3(x0, 0, -a), Vector3(l0 - x0, 0, 0), Vector3(0, 0, -(b - a)), skin.ledge_color, 0.0,
 				MeshKit.PAT_STUCCO)
@@ -75,72 +71,75 @@ func build(batch: MeshBatch, center: Vector3, size: Vector3, lane_x: float, edge
 
 	# Stall sides along the lane edges: seen only where the neighbouring lane has a gap.
 	var depth: float = skin.market_depth
-	var side_param: float = 1.0 + 4.0 * float(MeshKit.hash_i(lane_key, 3) % 97)
+	var side_param: float = 1.0 + 4.0 * float(MeshKit.hash_i(lane, 3) % 97)
+	var curtain: Color = skin.canvas_colors[MeshKit.hash_i(lane, 4) % skin.canvas_colors.size()]
 	if not left_ledge:
-		s.rect(Vector3(x0, -depth, -far_d), Vector3(0, 0, far_d - near_d), Vector3(0, depth, 0),
-			_canvas(lane_key, floori(near_d / slot)), 0.0, MeshKit.PAT_STALL, Vector2.ZERO, Vector2.ONE, side_param)
+		s.rect(Vector3(x0, -depth, -far_d), Vector3(0, 0, far_d - near_d), Vector3(0, depth, 0), curtain, 0.0,
+			MeshKit.PAT_STALL, Vector2.ZERO, Vector2.ONE, side_param)
 	if not right_ledge:
-		s.rect(Vector3(x1, -depth, -near_d), Vector3(0, 0, -(far_d - near_d)), Vector3(0, depth, 0),
-			_canvas(lane_key, floori(near_d / slot) + 1), 0.0, MeshKit.PAT_STALL, Vector2.ZERO, Vector2.ONE, side_param)
+		s.rect(Vector3(x1, -depth, -near_d), Vector3(0, 0, -(far_d - near_d)), Vector3(0, depth, 0), curtain, 0.0,
+			MeshKit.PAT_STALL, Vector2.ZERO, Vector2.ONE, side_param)
 
 	if edge_start:
-		_edge(s, x0, x1, near_d, lip_n, 1.0, lane_key)
+		_edge(s, x0, x1, near_d, lip_n, 1.0, lane)
 	if edge_end:
-		_edge(s, x0, x1, far_d, lip_f, -1.0, lane_key)
+		_edge(s, x0, x1, far_d, lip_f, -1.0, lane)
 
 
-## The first and last slot of the stall covering `slot_index` in the lane keyed `lane_key`.
-func stall_at(lane_key: int, slot_index: int) -> Vector2i:
-	return MeshKit.lot_run(lane_key, slot_index, 0.45, 3, 7)
+## The key of the lane centred on lane_x for the stall layout (offset, as the shader gets it).
+static func lane_key(lane_x: float) -> int:
+	return MeshKit.key(lane_x) + KEY_OFFSET
 
 
-## Which roof a stall has and its colour and pattern parameter.
-func roof_of(lane_key: int, first_slot: int) -> Array:
-	var r: float = MeshKit.hash01(lane_key, first_slot, 11)
-	var k: int = MeshKit.hash_i(lane_key, first_slot, 12)
+## Whether a stall starts at `slot` (offset) in the lane keyed `lane`: every third slot, and by hash
+## a share of the others (kit_market.gdshaderinc, mk_stall_starts()).
+static func starts(lane: int, slot: int) -> bool:
+	return posmod(slot, 3) == 0 or MeshKit.hash01(lane, slot, 7) < START_SHARE
+
+
+## The first and last slot (offset) of the stall under the point `dist` metres along the lane.
+func stall_at(lane: int, dist: float) -> Vector2i:
+	var si: int = floori(dist / skin.stall_slot) + KEY_OFFSET
+	var s0: int = si
+	for j: int in 2:
+		if starts(lane, s0):
+			break
+		s0 -= 1
+	var s1: int = si + 1
+	for j: int in 2:
+		if starts(lane, s1):
+			break
+		s1 += 1
+	return Vector2i(s0, s1 - 1)
+
+
+## A stall's roof, as the shader draws it: its kind, colour and pattern (the skin passes the same
+## palette to the shader: see MarketplaceSkin._solid_params()).
+func roof_of(lane: int, first_slot: int) -> Array:
+	var r: float = MeshKit.hash01(lane, first_slot, 11)
+	var k: int = MeshKit.hash_i(lane, first_slot, 12)
 	if r < skin.awning_share:
 		var striped: bool = (k >> 4) % 5 < 3
-		return [Roof.AWNING, skin.awning_colors[k % skin.awning_colors.size()], 1.0 if striped else 0.0]
+		return [Roof.AWNING, skin.awning_colors[(k % 2) % skin.awning_colors.size()], 1.0 if striped else 0.0]
 	if r < skin.awning_share + skin.tin_share:
-		return [Roof.TIN, skin.tin_color * Color(0.92 + 0.12 * MeshKit.hash01(k, 1), 0.92 + 0.12 * MeshKit.hash01(k, 1),
-			0.92 + 0.12 * MeshKit.hash01(k, 1)), float((k >> 3) % 2)]
+		var tone: float = 0.92 + 0.12 * float((k >> 7) % 64) / 63.0
+		return [Roof.TIN, skin.tin_color * Color(tone, tone, tone), float((k >> 3) % 2)]
 	var striped_across: bool = (k >> 5) % 6 == 0
-	return [Roof.CANVAS, _canvas(lane_key, first_slot), 2.0 if striped_across else 0.0]
-
-
-func _canvas(lane_key: int, first_slot: int) -> Color:
-	return skin.canvas_colors[MeshKit.hash_i(lane_key, first_slot, 13) % skin.canvas_colors.size()]
-
-
-## One stall's roof between d0 and d1 (clipped from the stall [s0, s1]), across [r0, r1].
-func _roof(s: MeshLayer, lane_key: int, first_slot: int, r0: float, r1: float, s0: float, s1: float,
-		d0: float, d1: float) -> void:
-	var roof: Array = roof_of(lane_key, first_slot)
-	var kind: int = roof[0]
-	var color: Color = roof[1]
-	var param: float = roof[2]
-	var length: float = s1 - s0
-	var uv0 := Vector2(0.0, (d0 - s0) / length)
-	var uv1 := Vector2(1.0, (d1 - s0) / length)
-	var pattern: int = MeshKit.PAT_TIN if kind == Roof.TIN else MeshKit.PAT_CANVAS
-	# The stall's length rides along in the parameter, for the hem along its leading edge.
-	param += 4.0 * roundf(length * 10.0)
-	s.rect(Vector3(r0, 0, -d0), Vector3(r1 - r0, 0, 0), Vector3(0, 0, -(d1 - d0)), color, 0.0, pattern, uv0, uv1, param)
+	var canvas: Color = skin.canvas_colors[(MeshKit.hash_i(lane, first_slot, 13) % 4) % skin.canvas_colors.size()]
+	return [Roof.CANVAS, canvas, 2.0 if striped_across else 0.0]
 
 
 ## Where the stalls end at distance d (facing the player when facing = 1, away when -1): the orange
 ## edge glow on the roof's edge and down the face, then the stall's face (front or back) dropping
 ## to the market floor, and a warm lamp over a front's counter.
-func _edge(s: MeshLayer, x0: float, x1: float, d: float, lip: float, facing: float, lane_key: int) -> void:
+func _edge(s: MeshLayer, x0: float, x1: float, d: float, lip: float, facing: float, lane: int) -> void:
 	var z: float = -d
 	var w: float = x1 - x0
 	var edge: Color = skin.gap_edge_color
 	var depth: float = skin.market_depth
-	var slot: float = skin.stall_slot
-	var slot_index: int = floori((d + 0.01 * facing) / slot)
-	var first: int = stall_at(lane_key, slot_index).x
-	var canvas: Color = roof_of(lane_key, first)[1]
-	var seed: int = MeshKit.hash_i(lane_key, first, 17) % 997
+	var first: int = stall_at(lane, d + 0.01 * facing).x
+	var canvas: Color = roof_of(lane, first)[1]
+	var seed: int = MeshKit.hash_i(lane, first, 17) % 997
 	if facing > 0.0:
 		s.rect(Vector3(x0, 0, z), Vector3(w, 0, 0), Vector3(0, 0, -lip), edge, 0.33)
 		s.rect(Vector3(x0, -depth, z), Vector3(w, 0, 0), Vector3(0, depth, 0), canvas, 0.0, MeshKit.PAT_STALL,

@@ -73,6 +73,9 @@ const PAT_AD: int = 25
 const PAT_BULBS: int = 26
 ## Sun-bleached plaster.
 const PAT_STUCCO: int = 27
+## A whole row of market-stall roofs along one lane, laid out by the shader from world position
+## (UV.x 0-1 across the lane; param the lane's key, see MarketStalls).
+const PAT_STALLS: int = 28
 
 const SHADER_DIR: String = "res://scripts/world/meshes/shaders/"
 

@@ -11,7 +11,8 @@
 //   3 LOWER     from the market floor (street_y) up to the shop windows' sills: arcades far below the
 //               stall roofs, plain plaster, then a tiled plinth. No vents: in the Marketplace, vents at
 //               the foot of a wall are sewer-screech lairs (GDD §5, §9.5), drawn by the Screech.
-//   4 PIER      plain stucco between and around the shop windows.
+//   4 PIER      plain stucco between the shop windows (UV.x from the pier's start, its width / 8 m
+//               in COLOR.a): the windows' trim jambs along both edges.
 //   5 INTERIOR  a shop window's display: shelves of goods under a warm lamp (UV.x from the window's
 //               start). Lit, never glowing: red and orange goods stay dim (GDD §5 colour rule).
 //   6 REVEAL    the display's sides, floor and top.
@@ -218,6 +219,9 @@ void fragment() {
 		}
 		lit_by_sun = 0.0;
 	} else if (style == 4) {
+		float pw = COLOR.a * 8.0;
+		float e = min(uv.x, pw - uv.x);
+		col = mix(col, to_linear(trim_color) * plaster, 1.0 - smoothstep(0.075 - fw_m.x, 0.075 + fw_m.x, e));
 		lit_by_sun = 0.0;
 	} else if (style == 5) {
 		// A shop's display: shelves of goods under a warm lamp. UV.x from the window's start.
@@ -231,17 +235,17 @@ void fragment() {
 		float h = 0.35 + 0.45 * hash12(slot + seed + 3.0);
 		float item = step(0.3, hash12(slot + seed)) * step(0.1, rise) * step(rise, 0.1 + h * 0.85)
 			* filtered_pulse(g.x, fw_m.x / 0.21, 0.12, 0.88);
-		vec3 goods = to_linear(goods_color(hash12(vec2(floor(slot.x / 3.0), slot.y) + seed * 1.3)));
+		vec3 goods = to_linear(mix(goods_color(hash12(vec2(floor(slot.x / 3.0), slot.y) + seed * 1.3)), vec3(0.55), 0.2));
 		col = mix(back, goods * (0.85 + 0.3 * hash12(slot * 1.9 + seed)), item * step(plinth_top + 0.1, uv.y));
 		col = mix(col, to_linear(vec3(0.4, 0.3, 0.21)), shelf);
 		// Some shops hang their wares from the ceiling instead (cloth, lanterns, baskets).
 		if (r > 0.6) {
 			float hang = step(uv.y, 2.75) * step(2.75 - 0.5 - 0.5 * hash11(floor(uv.x / 0.35) + seed), uv.y)
 				* filtered_pulse(uv.x / 0.35, fw_m.x / 0.35, 0.2, 0.8);
-			col = mix(col, to_linear(goods_color(hash11(floor(uv.x / 0.35) * 1.7 + seed))) * 0.9, hang);
+			col = mix(col, to_linear(mix(goods_color(hash11(floor(uv.x / 0.35) * 1.7 + seed)), vec3(0.55), 0.25)) * 0.85, hang);
 		}
 		// Lit warm from a lamp at the top; darker toward the display's floor.
-		col *= to_linear(window_warm) * (0.42 + 0.4 * smoothstep(plinth_top, 2.8, uv.y));
+		col *= to_linear(window_warm) * (0.36 + 0.32 * smoothstep(plinth_top, 2.8, uv.y));
 		lit_by_sun = 0.0;
 		shade = 1.0;
 	} else {
@@ -250,6 +254,11 @@ void fragment() {
 		shade = 1.0;
 	}
 
+	// The lintel over the shop windows: a trim band along the bottom of the faces above them.
+	if (style <= 2) {
+		float lintel = 1.0 - smoothstep(storey_base - 0.1 - fw_m.y, storey_base - 0.1 + fw_m.y, uv.y);
+		col = mix(col, to_linear(trim_color) * plaster, lintel);
+	}
 	col *= shade;
 	// The street lies in the evening shade; the light grows up the faces.
 	if (style <= 4) {

@@ -187,9 +187,9 @@ func _overpass(batch: MeshBatch, size: Vector3, edges: Array[float], hw: float, 
 
 # --- A merchant ship ----------------------------------------------------------------------
 
-## A merchant freighter heading toward the player: a sun-bleached hull with a blunt, rounded bow,
-## portholes along its sloped sides, cargo under tarps on deck, and its engines at the far end over
-## the orange band.
+## A merchant freighter heading toward the player: a sun-bleached hull with a pointed prow, a painted
+## band and portholes along its sloped sides, a wheelhouse with lit windows and a mast up front,
+## cargo under tarps on deck, and its engines at the far end over the orange band.
 func _ship(batch: MeshBatch, size: Vector3, edges: Array[float], hw: float, variant: int) -> void:
 	var s: MeshLayer = batch.layer(skin.solid_material())
 	var g: MeshLayer = batch.layer(skin.glow_material())
@@ -213,9 +213,9 @@ func _ship(batch: MeshBatch, size: Vector3, edges: Array[float], hw: float, vari
 		while pz < zn - 1.5:
 			s.box(Vector3(x - side * slope * 0.55, rise * 0.55, pz), Vector3(0.26, 0.26, 0.26), lamp, 0.35)
 			pz += 2.8
-	# Blunt bow over the near end, with a bumper beam.
-	var bow_z: float = zn + 3.0
-	var tip: float = hw - slope * 1.6
+	# A pointed prow rising over the near end, a band of colour along its edges, a light at its tip.
+	var bow_z: float = zn + 5.5
+	var tip: float = maxf(hw * 0.3, 0.45)
 	var bl := Vector3(-hw, 0, zn)
 	var br := Vector3(hw, 0, zn)
 	var tl := Vector3(-tip, rise, bow_z)
@@ -223,26 +223,42 @@ func _ship(batch: MeshBatch, size: Vector3, edges: Array[float], hw: float, vari
 	s.quad(bl, tl, tr, br, hull, 0.0, MeshKit.PAT_HULL)
 	s.quad(br, tr, br + Vector3(-slope, rise, 0), br + Vector3(-slope, rise, 0), hull.lightened(0.06))
 	s.quad(bl, bl + Vector3(slope, rise, 0), tl, tl, hull.lightened(0.06))
-	s.box(Vector3(0, 0.14, zn + 0.16), Vector3(hw * 2.0 - 0.3, 0.26, 0.3), hull.darkened(0.4), 0.0, MeshKit.PAT_PLAIN,
-		MeshKit.ALL_FACES & ~MeshKit.FACE_NY)
+	# The band sits just proud of the prow (along its normal), so the two never fight for depth.
+	var lift: Vector3 = (br - bl).cross(tl - bl).normalized() * 0.02
 	for side: float in [-1.0, 1.0]:
-		var at := Vector3(side * (tip - 0.5), rise - 0.35, bow_z - 0.15)
-		s.box(at, Vector3(0.36, 0.2, 0.2), lamp, 0.8)
-		g.rect(at + Vector3(-0.9, -0.9, 0.12), Vector3(1.8, 0, 0), Vector3(0, 1.8, 0), lamp, 0.22, MeshKit.SHAPE_RADIAL)
-	# Deck: a cabin at the stern, cargo under tarps, a silhouette as the ship comes over.
+		var foot := Vector3(side * hw, 0, zn) + lift
+		var head := Vector3(side * tip, rise, bow_z) + lift
+		var along: Vector3 = (head - foot).normalized()
+		var across := Vector3(-side * 0.35, 0.0, 0.0)
+		if side > 0.0:
+			s.quad(foot + across, head + across * 0.5, head, foot, band)
+		else:
+			s.quad(foot, head, head + across * 0.5, foot + across, band)
+		var at := Vector3(side * (tip + 0.2), rise - 0.3, bow_z - 0.35) - along * 0.2
+		s.box(at, Vector3(0.3, 0.2, 0.2), lamp, 0.8)
+		g.rect(at + Vector3(-0.8, -0.8, 0.12), Vector3(1.6, 0, 0), Vector3(0, 1.6, 0), lamp, 0.2, MeshKit.SHAPE_RADIAL)
+	# Deck: a wheelhouse with lit windows and a mast up front, cargo under tarps behind it.
 	var deck_hw: float = hw - slope
-	var crates: int = clampi(floori((zn - zf - 8.0) / 5.0), 1, 6)
+	var cab_w: float = minf(deck_hw * 1.1, 5.0)
+	var cab_z: float = zn - 2.2
+	s.box(Vector3(0, rise + 1.3, cab_z), Vector3(cab_w, 2.6, 3.4), hull.lightened(0.12), 0.0, MeshKit.PAT_HULL,
+		MeshKit.NO_BOTTOM)
+	s.box(Vector3(0, rise + 1.9, cab_z + 1.71), Vector3(cab_w - 0.5, 0.55, 0.02), lamp, 0.45, MeshKit.PAT_PLAIN,
+		MeshKit.FACE_PZ)
+	s.box(Vector3(0, rise + 2.7 + 1.9, cab_z - 0.8), Vector3(0.12, 3.8, 0.12), Color(0.24, 0.23, 0.22))
+	s.box(Vector3(0, rise + 2.7 + 3.85, cab_z - 0.8), Vector3(0.22, 0.22, 0.22), lamp, 0.9)
+	s.quad(Vector3(0, rise + 6.2, cab_z - 0.86), Vector3(0, rise + 6.2, cab_z - 0.86), Vector3(0, rise + 5.6, cab_z - 0.86),
+		Vector3(0.06, rise + 5.9, cab_z - 2.2), band)
+	s.quad(Vector3(0, rise + 6.2, cab_z - 0.74), Vector3(0, rise + 6.2, cab_z - 0.74), Vector3(0.06, rise + 5.9, cab_z - 2.2),
+		Vector3(0, rise + 5.6, cab_z - 0.74), band)
+	var crates: int = clampi(floori((zn - zf - 9.0) / 5.0), 1, 6)
 	for i: int in crates:
-		var cz: float = lerpf(zn - 3.0, zf + 7.0, (float(i) + 0.5) / crates)
+		var cz: float = lerpf(cab_z - 3.5, zf + 3.0, (float(i) + 0.5) / crates)
 		var k: int = MeshKit.hash_i(i, variant, 5)
 		var ch: float = 1.0 + 0.9 * MeshKit.hash01(k, 1)
 		var cw: float = deck_hw * (0.55 + 0.35 * MeshKit.hash01(k, 2))
 		s.box(Vector3((MeshKit.hash01(k, 3) - 0.5) * deck_hw * 0.4, rise + ch * 0.5, cz), Vector3(cw * 2.0, ch, 3.4),
 			skin.cargo_colors[k % skin.cargo_colors.size()], 0.0, MeshKit.PAT_CANVAS, MeshKit.NO_BOTTOM, 0.0)
-	s.box(Vector3(0, rise + 1.2, zf + 3.0), Vector3(deck_hw * 1.2, 2.4, 3.6), hull.lightened(0.1), 0.0, MeshKit.PAT_HULL,
-		MeshKit.NO_BOTTOM)
-	s.box(Vector3(0, rise + 1.6, zf + 4.81), Vector3(deck_hw * 1.0, 0.5, 0.02), Color(0.1, 0.12, 0.16), 0.0,
-		MeshKit.PAT_GLASS, MeshKit.FACE_PZ)
 	# Stern: engines above the orange band, their glow dropping below the hull.
 	s.rect(Vector3(-hw, 0, zf), Vector3(0, rise, 0), Vector3(hw * 2.0, 0, 0), hull.darkened(0.3))
 	var engines: int = clampi(roundi(hw * 2.0 / 4.0), 1, 4)
@@ -304,5 +320,10 @@ func _ad(batch: MeshBatch, size: Vector3, edges: Array[float], hw: float, varian
 	var color: Color = skin.ad_colors[variant % skin.ad_colors.size()]
 	s.rect(Vector3(-sw * 0.5, y0, sz + 0.001), Vector3(sw, 0, 0), Vector3(0, sh, 0), color, 0.55, MeshKit.PAT_AD,
 		Vector2.ZERO, Vector2(sw / sh, 1.0), float(variant * 17 + 7))
+	# The cult's emblem in a corner, like a sponsor's badge: small next to the ad's own mark, and only
+	# on screens big enough to keep it that way (GDD §5: hidden in plain sight).
+	var e: float = maxf(sh * 0.28, skin.emblem_min_size)
+	if skin.carries_emblem(variant, 25) and e <= sh * 0.36:
+		skin.add_cult_emblem(s, Vector3(sw * 0.5 - e * 0.75, y0 + e * 0.72, sz + 0.012), Vector3.BACK, e, true)
 	g.rect(Vector3(-sw * 0.5 - 1.0, y0 - 1.0, sz + 0.3), Vector3(sw + 2.0, 0, 0), Vector3(0, sh + 2.0, 0), color, 0.1,
 		MeshKit.SHAPE_FLAT)

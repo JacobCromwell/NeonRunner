@@ -12,6 +12,8 @@ extends SkinSuite
 ## - the shop windows for the citizens (task D3) are where shop_windows() says, above the vent zone;
 ## - every kind of ceiling builds from the lanes it covers, full width or narrow (task B3): a flat
 ##   underside over exactly its lanes, the orange end band, the lane seams;
+## - the cult's emblem is the owner's choice (data/world/cult_emblem_choice.tres) in its own colours,
+##   hidden here and there in ads and shop signs, never smaller than emblem_min_size;
 ## - the still floor carries drifting dust and speed streaks.
 
 const MARKET_SKIN_PATH: String = "res://data/skins/marketplace_skin.tres"
@@ -46,6 +48,8 @@ func run() -> void:
 	await _clear_play_space(skin)
 	await _shop_windows(skin)
 	_ceilings(skin)
+	_cult_emblem(skin)
+	_stall_layout(skin)
 	await determinism(skin, LEVEL_PATH)
 	stop_error_count("building marketplace levels")
 
@@ -299,6 +303,111 @@ func _ceilings(skin: MarketplaceSkin) -> void:
 			narrow_bridged += 1
 	check(bridged > 20 and narrow_bridged == 0, "only full-width ceilings become bridging buildings (%d of 200 full, %d narrow)" % [
 		bridged, narrow_bridged])
+
+
+## The cult's emblem (GDD §5): the owner's choice, never hardcoded, in its scheme's warm-white neon
+## or unlit bronze; over a long street it turns up both ways, each at least emblem_min_size across
+## (smaller, its three-fold shape could read like the radiation trefoil) and small beside its ad.
+func _cult_emblem(skin: MarketplaceSkin) -> void:
+	var choice := load(MarketplaceSkin.CULT_EMBLEM_CHOICE_PATH) as CultEmblemChoice
+	check(choice != null, "the cult emblem choice loads")
+	if choice == null:
+		return
+	var scheme: Dictionary = CultEmblem.default_scheme(choice.option)
+	var reference: ArrayMesh = CultEmblem.build_mesh(choice.option, 1.0, Color.WHITE, Color.WHITE, 0.0,
+		skin.solid_material())
+	var count: int = reference.surface_get_array_len(0)
+	var neon: MeshLayer = skin.cult_emblem(true)
+	var bronze: MeshLayer = skin.cult_emblem(false)
+	check(neon.size() == count and bronze.size() == count and neon.verts == reference.surface_get_arrays(0)[Mesh.ARRAY_VERTEX],
+		"the skin draws the chosen emblem's geometry (option %s)" % CultEmblem.option_letter(choice.option))
+	var colours_ok: bool = true
+	for i: int in count:
+		colours_ok = colours_ok and (_same_rgb(neon.colors[i], scheme["neon"]) or _same_rgb(neon.colors[i], scheme["neon_accent"]))
+		colours_ok = colours_ok and is_equal_approx(neon.colors[i].a, skin.emblem_glow) and bronze.colors[i].a == 0.0
+		colours_ok = colours_ok and (_same_rgb(bronze.colors[i], scheme["metal"]) or _same_rgb(bronze.colors[i], scheme["metal_accent"]))
+	check(colours_ok, "the emblem glows only in its warm-white neon, or is unlit bronze")
+	# Find every emblem over 3 km of both walls and on every floating ad's screen.
+	var unit: float = maxf(reference.get_aabb().size.x, reference.get_aabb().size.y)
+	var sizes: Array[float] = []
+	var lit: int = 0
+	var unlit: int = 0
+	var layers: Array[MeshLayer] = []
+	for side: int in [-1, 1]:
+		var d: float = 0.0
+		while d < 3000.0:
+			var batch := MeshBatch.new()
+			skin.facades().build(batch, side, side * 6.3, d, d + 40.0)
+			layers.append(batch.layer(skin.solid_material()))
+			d += 40.0
+	for variant: int in 4:
+		var mesh: ArrayMesh = skin.ceilings().mesh_for(MarketCeilings.Kind.AD, variant, Vector3(12.0, 0.8, 40.0), [], 0.0,
+			6.3, 6.0)
+		var ad := MeshLayer.new()
+		for s: int in mesh.get_surface_count():
+			if mesh.surface_get_material(s) == skin.solid_material():
+				var arrays: Array = mesh.surface_get_arrays(s)
+				ad.verts = arrays[Mesh.ARRAY_VERTEX]
+				ad.colors = arrays[Mesh.ARRAY_COLOR]
+		layers.append(ad)
+	for layer: MeshLayer in layers:
+		var i: int = 0
+		while i + count <= layer.size():
+			var c: Color = layer.colors[i]
+			var is_neon: bool = _same_rgb(c, scheme["neon"]) or _same_rgb(c, scheme["neon_accent"])
+			var is_bronze: bool = _same_rgb(c, scheme["metal"]) or _same_rgb(c, scheme["metal_accent"])
+			if not is_neon and not is_bronze:
+				i += 1
+				continue
+			var box := AABB(layer.verts[i], Vector3.ZERO)
+			for j: int in count:
+				box = box.expand(layer.verts[i + j])
+			sizes.append(maxf(box.size.y, maxf(box.size.x, box.size.z)) / unit)
+			if is_neon:
+				lit += 1
+			else:
+				unlit += 1
+			i += count
+	check(lit > 0 and unlit > 0, "the emblem hides in the market: %d lit and %d unlit over 3 km and the floating ads" % [lit, unlit])
+	var smallest: float = INF
+	var largest: float = 0.0
+	for size: float in sizes:
+		smallest = minf(smallest, size)
+		largest = maxf(largest, size)
+	check(sizes.is_empty() or (smallest >= skin.emblem_min_size - 0.01 and largest <= 1.6),
+		"each emblem is %.2f-%.2f m across: never below %.2f m, never a centrepiece" % [smallest, largest, skin.emblem_min_size])
+
+
+## The stall layout the shader draws (PAT_STALLS) is the one the scripts compute: every slot belongs
+## to exactly one stall of 1-3 slots, stalls tile each lane, and roofs keep to the skin's palette.
+func _stall_layout(skin: MarketplaceSkin) -> void:
+	var stalls: MarketStalls = skin.stalls()
+	var ok: bool = true
+	var kinds: Dictionary = {}
+	for lane_x: float in [-4.8, -2.4, 0.0, 2.4, 4.8, 1.2]:
+		var lane: int = MarketStalls.lane_key(lane_x)
+		var d: float = -40.0
+		var last := Vector2i(-1, -1)
+		while d < 600.0:
+			var span: Vector2i = stalls.stall_at(lane, d)
+			var slot: int = floori(d / skin.stall_slot) + MarketStalls.KEY_OFFSET
+			ok = ok and span.x <= slot and slot <= span.y and span.y - span.x <= 2
+			ok = ok and MarketStalls.starts(lane, span.x) and MarketStalls.starts(lane, span.y + 1)
+			ok = ok and (span == last or span.x == last.y + 1 or last.x < 0)
+			for k: int in range(span.x + 1, span.y + 1):
+				ok = ok and not MarketStalls.starts(lane, k)
+			var roof: Array = stalls.roof_of(lane, span.x)
+			kinds[roof[0]] = true
+			last = span
+			d += skin.stall_slot * 0.5
+	check(ok, "stalls tile every lane in runs of 1-3 slots, as the shader lays them out")
+	check(kinds.size() == 3, "stall rows mix canvas, blue awnings and tin (%d kinds)" % kinds.size())
+	# The shader gets the same layout and palette.
+	var solid: ShaderMaterial = skin.solid_material()
+	check(is_equal_approx(float(solid.get_shader_parameter("stall_slot")), skin.stall_slot)
+		and is_equal_approx(float(solid.get_shader_parameter("stall_awning_share")), skin.awning_share)
+		and (solid.get_shader_parameter("stall_canvas") as PackedVector3Array).size() == 4,
+		"the shader lays stalls out with the skin's slots, shares and palette")
 
 
 func _has_seam(mesh: ArrayMesh, x: float, skin: MarketplaceSkin) -> bool:
