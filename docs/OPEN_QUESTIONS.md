@@ -388,5 +388,3 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
 - Bosses are standalone mini-games; short cinematics sit between levels and zones. Both are designed later, and the build leaves slots (§6, §10, September 26, 2026).
 - The player is a human runner in a cyber suit, about 75% of the grey-box size (§11, September 26, 2026).
 - Music: code-generated placeholders for now (§11, September 26, 2026).
-- **Needs a build change:** weapons never set off a fence generator; auto-fire skips them and missile splash can't damage them (§9.1, September 26, 2026).
-- Boss designs added: Sewer Swarm, The House (Marketplace), Hostile Takeover (Corporate), Sleep Taker (Dead Zone) (§10, September 26, 2026). Only the final villain's fight is still open.
