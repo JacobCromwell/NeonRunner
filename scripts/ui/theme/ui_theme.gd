@@ -261,6 +261,7 @@ class _Builder:
 	var f_title: FontVariation
 	var f_display: FontVariation
 	var f_display_wide: FontVariation
+	var f_value: FontVariation
 	var f_body: FontVariation
 	var f_strong: FontVariation
 	var f_button: FontVariation
@@ -298,6 +299,7 @@ class _Builder:
 		f_title = variation(s.display_font, s.title_weight, 2)
 		f_display = variation(s.display_font, s.display_weight, 1)
 		f_display_wide = variation(s.display_font, maxi(s.display_weight - 100, 400), 3)
+		f_value = variation(s.body_font, s.value_weight, 1, true)
 		var fallback: Array[Font] = [f_body]
 		for f: FontVariation in [f_title, f_display, f_display_wide]:
 			f.fallbacks = fallback
@@ -401,13 +403,13 @@ class _Builder:
 		label_type(UiTheme.CARD_TITLE, f_display, s.heading_size - 5, s.text)
 		label_type(UiTheme.ACCENT_TEXT, f_strong, s.body_size, s.accent)
 		label_type(UiTheme.DANGER_TEXT, f_strong, s.body_size, s.danger)
-		label_type(UiTheme.VALUE, f_display, s.value_size, s.text)
+		label_type(UiTheme.VALUE, f_value, s.value_size, s.text)
 		label_type(UiTheme.KEY_CAP, f_button, s.caption_size - 2, s.text)
 		theme.set_stylebox(&"normal", UiTheme.KEY_CAP,
 			box(Color(s.accent, 0.08), Color(s.text_dim, 0.7), s.border_width, px(4), px(8), px(2)))
 		# HUD text sits over the 3D scene: outlined, no panels.
 		label_type(UiTheme.HUD_TEXT, f_strong, s.hud_text_size, s.text)
-		label_type(UiTheme.HUD_VALUE, f_display, s.hud_value_size, s.text)
+		label_type(UiTheme.HUD_VALUE, f_value, s.hud_value_size, s.text)
 		label_type(UiTheme.HUD_CAPTION, f_strong, s.caption_size - 1, s.text_dim)
 		for t: StringName in [UiTheme.HUD_TEXT, UiTheme.HUD_VALUE, UiTheme.HUD_CAPTION]:
 			theme.set_constant(&"outline_size", t, px(5))
@@ -806,7 +808,7 @@ class _Builder:
 
 		var t: StringName = &"CreditCounter"
 		theme.set_type_variation(t, &"Control")
-		theme.set_font(&"font", t, f_display)
+		theme.set_font(&"font", t, f_value)
 		theme.set_font_size(&"font_size", t, px(s.value_size))
 		theme.set_color(&"font_color", t, s.text)
 		theme.set_color(&"font_gain_color", t, a.lerp(Color.WHITE, 0.35))

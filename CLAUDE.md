@@ -57,13 +57,20 @@ This file is for Claude Code and all sub-agents working on this project. Read it
 - Keep commits small and descriptive. One task per branch or commit series.
 - End every task with a short summary: what changed, what was verified, any `DESIGN-TBD` items, and any risks noticed.
 
-## Commands (current prototype)
+## Commands
 `tools/godot.sh` finds the pinned Godot (via `$GODOT`, PATH, or the Windows user folders under WSL) and re-imports
 resources automatically when files changed. Use it rather than calling Godot directly.
-- Tests: `tools/godot.sh test` (exit code 0 = pass). It also boots the real game scene.
-- Smoke run: `tools/godot.sh smoke [game args]` (prints only problems; exit code 1 if any).
-- Play: `./play.sh [--lanes=6 --seed=4 --difficulty=0.6 --god]`. Opens a game window on the user's desktop.
-- Sound effects: `tools/godot.sh sfx [--review]` regenerates `assets/sfx/*.wav` (review images go to `build/sfx_review/`).
+- Tests: `tools/godot.sh test [--suite=name]` (exit code 0 = pass). It also boots the real game scene.
+- Smoke run: `tools/godot.sh smoke [game args]` (prints only problems; exit code 1 if any). Without args it runs quick play.
+- Play: `./play.sh` opens the title screen in a game window on the user's desktop. Quick play and review options
+  (debug builds only): `--quick --lanes=6 --seed=4 --difficulty=0.6 --god --nofall --full-loadout
+  --features=cyborg,drone --skin=gangland`, a campaign level with `--level=city/2` (takes `--lanes --god --nofall
+  --full-loadout`), another build flavor with `--flavor=web_demo`. The full list is in `README.md`.
+- Sound effects and music: `tools/godot.sh sfx [--only=a,b] [--review]` regenerates `assets/sfx/*.wav`, and
+  `tools/godot.sh music [--review]` `assets/music/*.wav` (review images go to `build/sfx_review/`, `build/music_review/`).
 - Rendered frames for a visual check: `godot --resolution 960x540 --fixed-fps 10 --write-movie build/f.png --quit-after 120 -- --god`
-  (add `--rendering-method gl_compatibility` to check the web/low-end renderer). `build/` is git-ignored and ignored by Godot.
+  (add `--rendering-method gl_compatibility` to check the web/low-end renderer, and a scene path such as
+  `res://tools/showcase/enemy_showcase.tscn` before `--` for a close-up). `build/` is git-ignored and ignored by Godot.
+- Web demo: export the "Web (demo)" preset to `exports/web/` (git-ignored) with `godot --headless --export-release`.
 - Live tuning: F6 in-game. Tunables need an `@export_range` hint to appear in the panel.
+- Anything that flickers or flashes must honour Settings > Reduced flashing (see `docs/ARCHITECTURE.md`, Zone skins).

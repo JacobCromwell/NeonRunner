@@ -16,7 +16,7 @@ that enemy on (GDD §6: introduce one new mechanic at a time).
 | `min_difficulty` / `max_difficulty` | The pattern can be picked only while the current difficulty (0–1) is in this range |
 | `weight` | Relative pick chance among the patterns that qualify |
 | `min_lanes` | Optional. Skip on devices with fewer lanes |
-| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, or an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`) |
+| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`), or `screech_vents` (wall-vent screeches only: rare in city zones, GDD §9.5) |
 | `length` | Metres of track the pattern takes (the generator extends it for long gaps and hulls) |
 | `elements` | The pieces to place (see below) |
 
@@ -33,7 +33,7 @@ so pieces keep their timing against a hull when run speed changes.
 | `ramp` | `side`. The ramp sits in the outermost lane on that side and launches the player onto the wall |
 | `hull` | `lanes` (where the anti-grav pad goes), `length_seconds` (how long the ceiling lasts at run speed). The floor under a ceiling always stays clear (GDD §3): the generator drops any gap, fence or floor enemy a pattern places there and reports it as a warning |
 | `speed_pad` | `lanes`. A speed pad in each lane (DESIGN-TBD: GDD §6 only names speed pads) |
-| `enemy` | `type` (the enemy type name), `lanes` (floor enemies; one per lane) **or** `side` (wall enemies, e.g. window cyborgs: `left`/`right`/`random`/`same`), `params` (passed to the enemy as `spawn.params`), `allow_under_hull` (optional, for flying enemies) |
+| `enemy` | `type` (the enemy type name), `lanes` (floor enemies; one per lane) **or** `side` (wall enemies, e.g. window cyborgs: `left`/`right`/`random`/`same`), `params` (passed to the enemy as `spawn.params`), `allow_under_hull` (optional). An enemy whose type uses the floor (its tuning's `uses_floor`, wall vents included) is dropped from under a ceiling; fliers and wall-only enemies may be there |
 | `credits` | `surface` (`floor`/`ceiling`/`wall`), `lanes` or `side`, `count`, `spacing` (m), `value` (1, 5, 25 or 100), `height` (m from the surface, or the height on the wall) |
 
 Credits are also placed automatically after the patterns (trails in clear stretches; rich credits at gap
@@ -55,4 +55,6 @@ edges, by fences, along wall runs and on ceilings), tuned in the level's Credits
 
 Rules that patterns can't express (e.g. "an anti-grav pad at least 10 s after a drone appears, then every
 8–10 s", GDD §9.6) go in `scripts/enemies/<type>_rules.gd` as `static func apply(gen: LevelGenerator)`.
-They run after the patterns for every feature the level has. See `docs/ARCHITECTURE.md`.
+They run after the patterns, in the order of the level's `features` list. A ceiling a rule adds
+(`add_hull_with_pad`) keeps off the floor that enemies use (`LevelGenerator.enemy_floor_span`). See
+`docs/ARCHITECTURE.md`.

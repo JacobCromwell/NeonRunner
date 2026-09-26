@@ -47,17 +47,7 @@ func build(batch: MeshBatch, side: int, face_x: float, start: float, end: float)
 
 ## The first and last lot of the building covering `lot_index` on this side.
 func building_at(side: int, lot_index: int) -> Vector2i:
-	var first: int = lot_index
-	while not _starts_building(side, first):
-		first -= 1
-	var last: int = lot_index
-	while not _starts_building(side, last + 1):
-		last += 1
-	return Vector2i(first, last)
-
-
-func _starts_building(side: int, lot_index: int) -> bool:
-	return posmod(lot_index, 3) == 0 or MeshKit.hash01(side, lot_index, 1) < 0.45
+	return MeshKit.lot_run(side, lot_index, 0.45)
 
 
 func _building(facade: MeshLayer, solid: MeshLayer, glow: MeshLayer, side: int, face_x: float,
@@ -179,12 +169,7 @@ func _low_building(facade: MeshLayer, solid: MeshLayer, glow: MeshLayer, side: i
 ## A facade quad on the wall plane at x, facing the track, from distance u0 to u1 and height y0 to y1.
 func _facade(facade: MeshLayer, side: int, x: float, u0: float, u1: float, y0: float, y1: float,
 		wall: Color, lit: float, style: int, seed: float) -> void:
-	if side < 0:
-		facade.rect(Vector3(x, y0, -u0), Vector3(0, 0, -(u1 - u0)), Vector3(0, y1 - y0, 0), wall, lit, style,
-			Vector2(u0, y0), Vector2(u1, y1), seed)
-	else:
-		facade.rect(Vector3(x, y0, -u1), Vector3(0, 0, u1 - u0), Vector3(0, y1 - y0, 0), wall, lit, style,
-			Vector2(u1, y0), Vector2(u0, y1), seed)
+	MeshKit.facade_quad(facade, side, x, u0, u1, y0, y1, y1, wall, lit, style, seed)
 
 
 func _banner(solid: MeshLayer, glow: MeshLayer, side: int, x: float, d: float, y: float, color: Color) -> void:
