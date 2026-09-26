@@ -1,7 +1,9 @@
 class_name MarketplaceSkin
 extends ZoneSkin
-## Zone 3, the Marketplace (GDD §5, §11): a bustling, happy open-air market at dusk, dustier than the
-## Neon City but just as futuristic. Floor segments are rows of market-stall roofs and awnings
+## Zone 3, the Marketplace (GDD §5, §11): a bustling, happy open-air market at dusk, dustier and
+## dirtier than the Neon City but in the same future (never historical: composite cladding, smart
+## glass, roller shutters, air-conditioning units, dishes, antennas, drone racks, cables across the
+## street, and the cult's feed on screens). Floor segments are rows of market-stall roofs and awnings
 ## (canvas, blue awnings, corrugated tin) with the market floor far below; gaps are the drops between
 ## the stalls, with the orange edge glow right on the collision edge. Walls are shopfronts and
 ## casinos: sun-bleached stucco with a row of lit shop windows at the low part of the wall (where the
@@ -30,7 +32,7 @@ extends ZoneSkin
 @export var sky_horizon_color: Color = Color(0.86, 0.66, 0.5)
 ## Dust in the air near the horizon, lit by the setting sun.
 @export var haze_color: Color = Color(0.9, 0.62, 0.42)
-@export_range(0.0, 2.0, 0.05) var haze_strength: float = 0.45
+@export_range(0.0, 2.0, 0.05) var haze_strength: float = 0.6
 @export var abyss_color: Color = Color(0.3, 0.24, 0.2)
 @export var skyline_color: Color = Color(0.5, 0.43, 0.44)
 @export var skyline_window_color: Color = Color(0.62, 0.52, 0.47)
@@ -40,9 +42,9 @@ extends ZoneSkin
 @export_range(0.0, 0.3, 0.005) var moon_radius: float = 0.03
 @export_range(0.0, 1.0, 0.01) var moon_clarity: float = 0.45
 @export var ambient_color: Color = Color(0.85, 0.75, 0.66)
-## Distant geometry fades into dusty air between fog_begin and fog_end.
-@export var fog_color: Color = Color(0.68, 0.56, 0.47)
-@export_range(0.0, 150.0, 1.0, "suffix:m") var fog_begin: float = 20.0
+## Distant geometry fades into dusty air between fog_begin and fog_end (a light dust haze).
+@export var fog_color: Color = Color(0.7, 0.58, 0.47)
+@export_range(0.0, 150.0, 1.0, "suffix:m") var fog_begin: float = 14.0
 @export_range(50.0, 400.0, 5.0, "suffix:m") var fog_end: float = 190.0
 @export_range(0.0, 1.0, 0.01) var fog_max: float = 1.0
 @export_range(0.0, 2.0, 0.05) var glow_intensity: float = 0.7
@@ -77,6 +79,10 @@ extends ZoneSkin
 @export_range(0.0, 1.0, 0.01) var tin_share: float = 0.2
 ## The frame poles across the stalls and the valleys along the lanes.
 @export var seam_color: Color = Color(0.4, 0.34, 0.27)
+## Dust and wear (GDD §5: dustier and dirtier than the Neon City): the sand settling on roofs,
+## awnings and ledges, and how worn the whole market looks (0 fresh paint, 1 as designed).
+@export var dust_tint: Color = Color(0.74, 0.67, 0.56)
+@export_range(0.0, 1.5, 0.05) var wear: float = 1.0
 ## The ledge between the outer lanes and the building faces.
 @export var ledge_color: Color = Color(0.5, 0.45, 0.38)
 ## Everything under the stall roofs (stall faces, building faces, the market floor), seen only
@@ -92,7 +98,7 @@ extends ZoneSkin
 @export_group("Motion")
 ## DESIGN-TBD: GDD §5 proposes motion effects for still floors. Per 40 m of track: dust motes, paper
 ## scraps and speed streaks drifting toward the player (a = opacity).
-@export_range(0, 200, 1) var dust_count: int = 50
+@export_range(0, 200, 1) var dust_count: int = 80
 @export_range(0, 60, 1) var scrap_count: int = 5
 @export_range(0, 60, 1) var streak_count: int = 12
 @export var dust_color: Color = Color(0.78, 0.7, 0.58, 0.32)
@@ -117,11 +123,17 @@ extends ZoneSkin
 	Color(0.62, 0.53, 0.42), Color(0.68, 0.62, 0.52), Color(0.72, 0.7, 0.65), Color(0.6, 0.5, 0.39),
 	Color(0.54, 0.56, 0.57), Color(0.62, 0.48, 0.4)])
 @export var trim_color: Color = Color(0.8, 0.77, 0.71)
-## Window shutters: blue, dusty teal, weathered wood, grey. Lit, never glowing.
+## Window frames, piers, caps and conduits: pale anodised aluminium.
+@export var window_metal_color: Color = Color(0.7, 0.72, 0.74)
+## Frosted smart glass (windows in privacy mode).
+@export var frost_color: Color = Color(0.62, 0.66, 0.7)
+## Grime at the foot of the faces and in the streaks under the windows.
+@export var grime_color: Color = Color(0.3, 0.26, 0.22)
+## Roller shutters' paint (brushed metal, tinted): blue, dusty teal, bronze, grey. Lit, never glowing.
 @export var shutter_colors: PackedColorArray = PackedColorArray([
 	Color(0.3, 0.42, 0.6), Color(0.38, 0.5, 0.5), Color(0.52, 0.41, 0.31), Color(0.6, 0.58, 0.54)])
-## The tiles of the plinth under the shop windows.
-@export var plinth_color: Color = Color(0.38, 0.44, 0.52)
+## The composite skirting panels of the plinth under the shop windows.
+@export var plinth_color: Color = Color(0.46, 0.51, 0.57)
 @export var plinth_light_color: Color = Color(0.74, 0.71, 0.64)
 ## DESIGN-TBD: the shop windows at the low part of the walls (GDD §5: citizens play there, task D3).
 ## The sill stays above the wall vents at the foot of the walls (sewer screeches, GDD §9.5).
@@ -388,7 +400,8 @@ func facade_material() -> ShaderMaterial:
 			"shutter_c": shutter_colors[2], "shutter_d": shutter_colors[3], "window_warm": window_warm_color,
 			"window_glow": window_glow, "sheen_color": sheen_color, "sheen_strength": sheen_strength,
 			"sun_color": sun_color, "sun_strength": sun_strength, "sun_line": sun_line, "plinth_color": plinth_color,
-			"plinth_light": plinth_light_color, "plinth_top": gallery_bottom,
+			"plinth_light": plinth_light_color, "plinth_top": gallery_bottom, "metal_color": window_metal_color,
+			"frost_color": frost_color, "grime_color": grime_color, "grime": wear,
 			"bulb_color": bulb_color, "neon_a": neon_colors[0], "neon_b": neon_colors[1],
 			"storey_base": gallery_top + 0.2, "storey": MarketFacades.STOREY, "calm_top": decor_min_height - 1.0,
 			"decor_top": decor_min_height})
@@ -429,7 +442,8 @@ func _solid_params() -> Dictionary:
 	return {"glow_scale": emissive_scale, "sheen_color": sheen_color, "sheen_strength": sheen_strength,
 		"canvas_stripe": awning_stripe_color, "canvas_pole": seam_color,
 		"stall_slot": stall_slot, "stall_awning_share": awning_share, "stall_tin_share": tin_share,
-		"stall_canvas": canvas, "stall_awning": awnings, "stall_tin": Vector3(tin_color.r, tin_color.g, tin_color.b)}
+		"stall_canvas": canvas, "stall_awning": awnings, "stall_tin": Vector3(tin_color.r, tin_color.g, tin_color.b),
+		"market_dust": dust_tint, "market_dust_amount": wear}
 
 
 func stalls() -> MarketStalls:

@@ -89,6 +89,9 @@ const PAT_STUCCO: int = 27
 ## A whole row of market-stall roofs along one lane, laid out by the shader from world position
 ## (UV.x 0-1 across the lane; param the lane's key, see MarketStalls).
 const PAT_STALLS: int = 28
+## Building machinery (UV in metres): param 0 a solar panel, 1 an air-conditioning unit's front,
+## 2 brushed metal with seams.
+const PAT_TECH: int = 29
 
 const SHADER_DIR: String = "res://scripts/world/meshes/shaders/"
 

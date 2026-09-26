@@ -19,6 +19,10 @@ uniform float stall_tin_share = 0.2;
 uniform vec3 stall_canvas[4];
 uniform vec3 stall_awning[2];
 uniform vec3 stall_tin = vec3(0.47, 0.46, 0.44);
+// Dust and wear (GDD §5: dustier and dirtier than the Neon City): the sand that settles on roofs
+// and ledges (sRGB), and how much of it.
+uniform vec3 market_dust : source_color = vec3(0.74, 0.67, 0.56);
+uniform float market_dust_amount = 1.0;
 
 // MeshKit.hash_i, bit for bit (32-bit integer mixing), so the shader and the scripts pick the same
 // stall for the same slot. Inputs must not be negative (callers add an offset).
@@ -106,6 +110,18 @@ vec3 mk_footprint(vec3 w, vec2 uv) {
 	return vec3(fwidth(w.x), fwidth(w.z), fwidth(uv.x));
 }
 
+// Dust and wear on a roof (col in sRGB, p its world xz, x 0-1 across it): sand settled in drifts,
+// patches bleached by the sun, grime along the valleys at its edges. Dust only pales a roof (the
+// edge grime is a thin line), so no roof darkens toward a gap's shade.
+vec3 mk_roof_dust(vec3 col, vec2 p, float x) {
+	float dust = smoothstep(0.35, 0.85, value_noise(p * vec2(0.5, 0.2) + 17.0)) * market_dust_amount;
+	col = mix(col, mix(col, market_dust, 0.6), dust * 0.8);
+	float grey = dot(col, vec3(0.3, 0.55, 0.15));
+	col = mix(col, vec3(grey) * 1.08, smoothstep(0.5, 0.9, value_noise(p * 0.11 + 5.0)) * 0.45 * market_dust_amount);
+	float e = min(x, 1.0 - x);
+	return col * (1.0 - 0.12 * market_dust_amount * (1.0 - smoothstep(0.0, 0.07, e)) * (0.5 + 0.5 * value_noise(p * 3.0)));
+}
+
 // Canvas (PAT_CANVAS, below) with its stripes (`mode`), the stall's length (`len`, 0: no hem or
 // frame) and the pixel's footprint (`fp`, mk_footprint) given.
 vec3 mk_canvas_at(vec3 base, vec3 w, vec2 uv, float mode, float len, vec3 fp) {
@@ -131,7 +147,7 @@ vec3 mk_canvas_at(vec3 base, vec3 w, vec2 uv, float mode, float len, vec3 fp) {
 	col *= 1.0 - 0.08 * filtered_pulse(w.z / 1.3, fp.y / 1.3, 0.0, 0.03);
 	col *= 0.93 + 0.12 * value_noise(p * vec2(0.9, 0.35) + base.r * 7.0);
 	col *= 1.0 + 0.05 * detail * (hash12(floor(p * 36.0)) - 0.5);
-	return col;
+	return mk_roof_dust(col, p, uv.x);
 }
 
 // PAT_CANVAS (20): canvas roofs and awnings stretched over a stall's frame. UV runs 0-1 across the
@@ -163,10 +179,12 @@ vec3 mk_tin_at(vec3 base, vec3 w, vec2 uv, float mode, float len, vec3 fp) {
 	col *= 1.0 - 0.3 * filtered_pulse(across / 2.1, f_across / 2.1, 0.0, 0.02);
 	col = mix(col, vec3(0.42, 0.3, 0.22), smoothstep(0.55, 0.85, value_noise(p * vec2(1.4, 0.5) + 3.0)) * 0.45);
 	col = mix(col, vec3(0.62, 0.55, 0.46), smoothstep(0.5, 0.9, value_noise(p * 0.4 + 9.0)) * 0.35);
+	// Sand caught in the corrugations' valleys.
+	col = mix(col, market_dust * 0.92, rib * smoothstep(0.35, 0.75, value_noise(p * vec2(0.8, 0.3) + 21.0)) * 0.4 * market_dust_amount);
 	if (len > 0.0) {
 		col = mk_frame(col, clamp(uv, 0.0, 1.0), len, fd, fp.z);
 	}
-	return col;
+	return mk_roof_dust(col, p, uv.x);
 }
 
 // PAT_TIN (21): corrugated sheet metal on stall roofs, with overlapping sheets, dust and rust.
@@ -340,7 +358,39 @@ vec3 mk_bulbs(vec3 base, vec2 uv, float t, float reduced, out float glow_mask) {
 vec3 mk_stucco(vec3 base, vec3 w, vec3 n) {
 	vec2 p = abs(n.y) > 0.5 ? w.xz : (abs(n.x) > 0.5 ? w.zy : w.xy);
 	vec3 col = base * (0.9 + 0.14 * value_noise(p * vec2(0.8, 0.5)));
-	return col * (1.0 - 0.12 * smoothstep(0.55, 0.8, value_noise(p * 0.12 + 4.0)));
+	col *= 1.0 - 0.12 * smoothstep(0.55, 0.8, value_noise(p * 0.12 + 4.0));
+	// Dust settled on its tops, grime running down its upright faces.
+	float up = step(0.5, n.y);
+	float dust = smoothstep(0.3, 0.8, value_noise(p * 0.9 + 3.0)) * market_dust_amount;
+	col = mix(col, mix(col, market_dust, 0.6), up * dust * 0.75);
+	float streak = (1.0 - up) * smoothstep(0.55, 0.9, value_noise(vec2(p.x * 2.4, p.y * 0.3) + 7.0));
+	return col * (1.0 - 0.2 * streak * market_dust_amount);
+}
+
+// PAT_TECH (29): the market's machinery on its roofs and walls (UV in metres on the face). param:
+// 0 a solar panel, dark blue cells in a silver grid; 1 an air-conditioning unit's front, a fan
+// behind a round guard beside a bank of fins; 2 brushed metal with seams (racks, masts, cabinets).
+vec3 mk_tech(vec3 base, vec2 uv, float param) {
+	vec2 fw = max(fwidth(uv), vec2(1e-4));
+	float aa = max(fw.x, fw.y);
+	float mode = floor(param + 0.5);
+	if (mode < 0.5) {
+		vec2 c = uv / 0.17;
+		float grid = max(filtered_pulse(c.x, fw.x / 0.17, 0.0, 0.08), filtered_pulse(c.y, fw.y / 0.17, 0.0, 0.08));
+		vec3 cells = vec3(0.1, 0.14, 0.26) * (0.85 + 0.2 * hash12(floor(c)));
+		return mix(cells, vec3(0.62, 0.64, 0.66), grid * 0.8);
+	} else if (mode < 1.5) {
+		vec2 f = uv - vec2(0.3, 0.29);
+		float r = length(f);
+		float guard = 1.0 - smoothstep(0.2 - aa, 0.2 + aa, r);
+		float rings = filtered_pulse(r / 0.04, aa / 0.04, 0.0, 0.3) * guard;
+		float fins = filtered_pulse(uv.y / 0.05, fw.y / 0.05, 0.0, 0.35) * step(0.56, uv.x);
+		vec3 col = base * (1.0 - 0.25 * fins);
+		col = mix(col, vec3(0.12, 0.12, 0.13), guard * 0.85);
+		return mix(col, base * 0.8, rings);
+	}
+	float seam = filtered_pulse(uv.x / 0.6, fw.x / 0.6, 0.0, 0.03);
+	return base * (0.9 + 0.1 * value_noise(vec2(uv.x * 14.0, uv.y * 0.8))) * (1.0 - 0.3 * seam);
 }
 
 // Dispatches the Marketplace patterns (ids 20-29) for kit_solid.gdshader.
@@ -369,6 +419,8 @@ vec3 market_surface(int pattern, float param, vec3 base, vec3 w, vec3 n, vec2 uv
 		return mk_stucco(base, w, n);
 	} else if (pattern == 28) {
 		return mk_stalls(w, uv, param);
+	} else if (pattern == 29) {
+		return mk_tech(base, uv, param);
 	}
 	return base;
 }

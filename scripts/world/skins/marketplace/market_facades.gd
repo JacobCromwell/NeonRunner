@@ -7,9 +7,12 @@ extends RefCounted
 ## runs a row of shop windows: real openings with a display of goods behind them under a warm lamp,
 ## where the Marketplace citizens will play (task D3: windows() lists them). Above them the band
 ## stays calm (shutters closed, no signs, no lights), and nothing but a hazard sign ever sticks out
-## of the wall below `decor_min_height`. Higher up the market gets busy: open and lit windows, blue
-## awnings and balconies, painted and neon blade signs, casino bulbs and big ad boards on the roofs:
-## all unframed, so they never read as hazard signs (which wear the yellow/black frame).
+## of the wall below `decor_min_height`. Higher up the market gets busy and plainly futuristic (GDD
+## §5: the same future as every zone): lit and frosted smart-glass windows, blue awnings on slim
+## cassettes, glass balconies, air-conditioning units, delivery-drone racks, cable trays, painted and
+## neon blade signs, casino bulbs, big ad boards and the cult's feed on screens, and dishes and
+## antenna masts against the sky: all unframed, so they never read as hazard signs (which wear the
+## yellow/black frame).
 ## Nothing vent-like sits at the foot of the walls: in the Marketplace, wall vents are sewer-screech
 ## lairs (GDD §5, §9.5), drawn by the Screech itself.
 ## Windows and plaster come from shopfront.gdshader, so a face is a handful of quads. All variety
@@ -36,6 +39,8 @@ const LOW_SHARE: float = 0.2
 const LETTERING_ONLY: int = 10000
 ## Shop windows come in this many looks per width (interior colour and goods), picked by hash.
 const WINDOW_VARIANTS: int = 6
+## Cables across the street: one slot per this many metres (some slots stay empty).
+const CABLE_SPACING: float = 11.0
 ## A shop-window TV (MarketplaceSkin.feed_window_share): its stand's height, its gap from the
 ## display's back wall and its bezel.
 const TV_STAND: float = 0.34
@@ -363,6 +368,20 @@ func _shop_extras(batch: MeshBatch, solid: MeshLayer, glow: MeshLayer, b: Buildi
 					Transform3D(Basis.IDENTITY, Vector3(x, floor_y + 0.74 * STOREY, -cx)))
 			elif bits == 2 and storey < top_storey:
 				solid.append(_balcony(side, (b.seed + k) % 2), Transform3D(Basis.IDENTITY, Vector3(x, floor_y, -cx)))
+			elif bits >= 6 and floor_y + 0.25 >= skin.decor_min_height:
+				# An air-conditioning unit under the window, beside its middle.
+				solid.append(_ac_unit(side), Transform3D(Basis.IDENTITY, Vector3(x, floor_y + 0.25,
+					-(cx + (0.35 if bits == 6 else -0.35)))))
+	# A rack of delivery drones between two windows on some shops.
+	if MeshKit.hash01(side, b.id, 70) < 0.3 and cells > 1:
+		var rd: float = b.grid_start + float(1 + MeshKit.hash_i(side, b.id, 71) % (cells - 1)) * b.cell
+		var ry: float = skin.decor_min_height + 0.6
+		if rd >= start and rd < end and ry + 1.6 < b.height:
+			_drone_rack(solid, side, x, rd, ry)
+	# A cable tray under the cornice, the building's wiring.
+	var tray_y: float = b.base_top - 0.32
+	if b.setback == 0.0 and tray_y > skin.decor_min_height - 1.0:
+		solid.box(Vector3(x - side * 0.07, tray_y, -(u0 + u1) * 0.5), Vector3(0.1, 0.07, u1 - u0), Color(0.2, 0.2, 0.21))
 	# Blade signs sticking out over the street, high up.
 	var signs: int = MeshKit.hash_i(side, b.id, 50) % 3
 	for i: int in signs:
@@ -377,14 +396,13 @@ func _shop_extras(batch: MeshBatch, solid: MeshLayer, glow: MeshLayer, b: Buildi
 		var mid: float = (b.b0 + b.b1) * 0.5
 		if mid >= start and mid < end:
 			_roof_board(batch, solid, b, x)
-	elif MeshKit.hash01(side, b.id, 60) < 0.5:
-		# A water tank on the roof, a silhouette against the sky.
+	elif MeshKit.hash01(side, b.id, 60) < 0.6:
+		# A dish and an antenna mast on the roof, silhouettes against the sky.
 		var tz: float = lerpf(b.b0 + 2.0, b.b1 - 2.0, MeshKit.hash01(side, b.id, 61))
 		if tz >= start and tz < end:
-			var tx: float = x + side * (3.0 + 4.0 * MeshKit.hash01(side, b.id, 62))
-			solid.prism(Vector3(tx, b.height + 1.4, -tz), 1.1, 2.0, 8, Color(0.5, 0.48, 0.45), 0.0, MeshKit.PAT_TIN)
-			for leg: float in [-0.7, 0.7]:
-				solid.box(Vector3(tx + leg, b.height + 0.7, -tz), Vector3(0.12, 1.4, 0.12), Color(0.3, 0.28, 0.26))
+			var tx: float = x + side * (1.2 + 2.5 * MeshKit.hash01(side, b.id, 62))
+			solid.append(_roof_tech(side, MeshKit.hash_i(side, b.id, 63) % 3), Transform3D(Basis.IDENTITY,
+				Vector3(tx, b.height, -tz)))
 
 
 ## A blue awning over an upper window (the window's top centre at the origin, on the wall on
@@ -406,6 +424,8 @@ func _awning(side: int, color_index: int) -> MeshLayer:
 	var hem_n := Vector3(out, hem_y, hw)
 	var hem_f := Vector3(out, hem_y, -hw)
 	var under: Color = color * Color(0.78, 0.78, 0.78)
+	# The slim cassette it rolls out of.
+	solid.box(Vector3(-side * 0.08, 0.36, 0.0), Vector3(0.16, 0.14, hw * 2.0 + 0.1), skin.window_metal_color * Color(0.85, 0.85, 0.85))
 	if side < 0:
 		solid.quad(wall_n, hem_n, hem_f, wall_f, under, 0.0, MeshKit.PAT_CANVAS, 1.0)
 		solid.quad(wall_f, hem_f, hem_n, wall_n, color, 0.0, MeshKit.PAT_CANVAS, 1.0)
@@ -421,8 +441,8 @@ func _awning(side: int, color_index: int) -> MeshLayer:
 
 
 ## A small balcony under an upper window (its floor's centre on the wall at the origin, on `side`):
-## a slab, a balustrade (one panel, its balusters the grooves of the ribbed pattern) under a rail,
-## and one or two potted plants. Cached per side and pot count.
+## a slab, a glass balustrade under a slim metal rail, and one or two potted plants. Cached per side
+## and pot count.
 func _balcony(side: int, pots: int) -> MeshLayer:
 	var key := Vector3i(1, side, pots)
 	var found: MeshLayer = _templates.get(key)
@@ -434,12 +454,96 @@ func _balcony(side: int, pots: int) -> MeshLayer:
 	var bx: float = -side * reach * 0.5
 	solid.box(Vector3(bx, 0.05, 0.0), Vector3(reach, 0.14, hw * 2.0), skin.trim_color, 0.0, MeshKit.PAT_STUCCO)
 	var rx: float = -side * (reach - 0.03)
-	solid.box(Vector3(rx, 1.0, 0.0), Vector3(0.06, 0.06, hw * 2.0), skin.trim_color.darkened(0.1))
-	_panel(solid, side, rx, -hw, hw, 0.12, 0.97, skin.trim_color.darkened(0.05), 0.0, MeshKit.PAT_RIBS)
+	solid.box(Vector3(rx, 1.0, 0.0), Vector3(0.05, 0.05, hw * 2.0), skin.window_metal_color)
+	_panel(solid, side, rx, -hw, hw, 0.12, 0.97, Color(0.16, 0.19, 0.22), 0.0, MeshKit.PAT_GLASS)
 	for i: int in 1 + pots:
 		var pz: float = (float(i) - 0.5) * 0.9
 		solid.prism(Vector3(bx, 0.12, pz), 0.16, 0.3, 6, Color(0.6, 0.38, 0.28))
 		solid.prism(Vector3(bx, 0.42, pz), 0.24, 0.32, 6, Color(0.3, 0.42, 0.24))
+	_templates[key] = solid
+	return solid
+
+
+## An air-conditioning unit on the wall on `side` (its bottom centre at the origin): a casing on two
+## brackets, its front a fan behind a round guard beside a bank of fins (MeshKit.PAT_TECH), and the
+## dirty streak its drip leaves on the wall below. Cached per side.
+func _ac_unit(side: int) -> MeshLayer:
+	var key := Vector3i(2, side, 0)
+	var found: MeshLayer = _templates.get(key)
+	if found != null:
+		return found
+	var solid := MeshLayer.new()
+	var w: float = 0.9
+	var h: float = 0.6
+	var d: float = 0.42
+	var casing := Color(0.8, 0.8, 0.78)
+	solid.box(Vector3(-side * d * 0.5, h * 0.5, 0.0), Vector3(d, h, w), casing, 0.0, MeshKit.PAT_PLAIN,
+		MeshKit.ALL_FACES & ~(MeshKit.FACE_PX if side > 0 else MeshKit.FACE_NX))
+	var fx: float = -side * (d + 0.002)
+	var face: Array = _wall_screen(side, fx, -w * 0.5, w, 0.0, h)
+	solid.rect(face[0], face[1], face[2], casing, 0.0, MeshKit.PAT_TECH, Vector2.ZERO, Vector2(w, h), 1.0)
+	for bz: float in [-w * 0.35, w * 0.35]:
+		solid.box(Vector3(-side * 0.25, -0.03, bz), Vector3(0.5, 0.05, 0.05), Color(0.25, 0.25, 0.26))
+	var streak: Array = _wall_screen(side, -side * 0.004, -0.06, 0.05, -1.3, 1.25)
+	solid.rect(streak[0], streak[1], streak[2], skin.grime_color, 0.0)
+	_templates[key] = solid
+	return solid
+
+
+## A rack of delivery drones on the wall on `side` at distance d, bottom at y: a slim frame with three
+## shelves, a drone docked on each (a body, four rotors) with a steady blue light (decorative blue,
+## far from every hazard hue).
+func _drone_rack(solid: MeshLayer, side: int, x: float, d: float, y: float) -> void:
+	solid.append(_drone_rack_template(side), Transform3D(Basis.IDENTITY, Vector3(x, y, -d)))
+
+
+func _drone_rack_template(side: int) -> MeshLayer:
+	var key := Vector3i(3, side, 0)
+	var found: MeshLayer = _templates.get(key)
+	if found != null:
+		return found
+	var solid := MeshLayer.new()
+	var metal: Color = skin.window_metal_color * Color(0.7, 0.7, 0.7)
+	var reach: float = 0.6
+	solid.box(Vector3(-side * 0.03, 0.8, 0.0), Vector3(0.06, 1.6, 0.9), metal, 0.0, MeshKit.PAT_TECH, MeshKit.ALL_FACES, 2.0)
+	for i: int in 3:
+		var sy: float = 0.1 + 0.5 * i
+		solid.box(Vector3(-side * reach * 0.5, sy, 0.0), Vector3(reach, 0.04, 0.9), metal)
+		var c := Vector3(-side * reach * 0.52, sy + 0.1, 0.0)
+		solid.box(c, Vector3(0.3, 0.12, 0.3), Color(0.18, 0.19, 0.21))
+		for r: Vector2 in [Vector2(-0.19, -0.19), Vector2(0.19, -0.19), Vector2(-0.19, 0.19), Vector2(0.19, 0.19)]:
+			solid.box(c + Vector3(r.x, 0.075, r.y), Vector3(0.2, 0.015, 0.2), Color(0.3, 0.31, 0.33))
+		solid.box(c + Vector3(-side * 0.151, 0.0, 0.0), Vector3(0.01, 0.03, 0.08), skin.engine_color, 0.9)
+	_templates[key] = solid
+	return solid
+
+
+## Rooftop machinery (the roof at the origin, the face on `side` at x = 0 below it): a dish tilted
+## to the sky and the street on a post, and an antenna mast with crossbars and a steady white light
+## on top; `variant` 0 both, 1 a second dish, 2 a taller mast. Cached per side and variant.
+func _roof_tech(side: int, variant: int) -> MeshLayer:
+	var key := Vector3i(4, side, variant)
+	var found: MeshLayer = _templates.get(key)
+	if found != null:
+		return found
+	var solid := MeshLayer.new()
+	var steel := Color(0.34, 0.35, 0.37)
+	var dish := Color(0.82, 0.82, 0.8)
+	var dishes: Array[Vector3] = [Vector3(0.0, 1.3, 0.0)]
+	if variant == 1:
+		dishes.append(Vector3(side * 1.4, 1.0, 1.6))
+	for at: Vector3 in dishes:
+		solid.box(Vector3(at.x, at.y * 0.5, at.z), Vector3(0.1, at.y, 0.1), steel)
+		var tilt := Basis(Vector3(0, 0, 1), side * 0.85)
+		solid.prism_xform(Transform3D(tilt.scaled_local(Vector3(0.62, 0.07, 0.62)), at), 12, dish)
+		solid.box_xform(Transform3D(tilt.scaled_local(Vector3(0.04, 0.55, 0.04)), at + tilt * Vector3(0, 0.3, 0)), steel)
+	var mh: float = 3.2 if variant != 2 else 5.0
+	var mz: float = -1.8
+	solid.box(Vector3(side * 0.6, mh * 0.5, mz), Vector3(0.08, mh, 0.08), steel)
+	for i: int in 3:
+		var cy: float = mh * (0.45 + 0.18 * i)
+		solid.box(Vector3(side * 0.6, cy, mz), Vector3(0.05, 0.05, 0.9 - 0.2 * i), steel)
+	solid.box(Vector3(side * 0.6, mh + 0.06, mz), Vector3(0.1, 0.1, 0.1), Color(0.92, 0.94, 1.0), 0.7)
 	_templates[key] = solid
 	return solid
 
@@ -653,11 +757,23 @@ func _panel(layer: MeshLayer, side: int, x: float, u0: float, u1: float, y0: flo
 			Vector2.ZERO, uv1, param)
 
 
-## Strings of pennants and festoon lights across the street, high above the ceilings, between two
-## track distances. Built with the left wall; anchored where both buildings are tall enough.
+## Strings of pennants and festoon lights across the street, high above the ceilings, and higher
+## still, power and data cables slung from wall to wall, some with a junction box hanging off them;
+## between two track distances. Built with the left wall; anchored where both buildings are tall
+## enough.
 func overhead(batch: MeshBatch, half_width: float, start: float, end: float) -> void:
 	var solid: MeshLayer = batch.layer(skin.solid_material())
 	var glow: MeshLayer = batch.layer(skin.glow_material())
+	var c: int = ceili(start / CABLE_SPACING)
+	while c * CABLE_SPACING < end:
+		var cd: float = (float(c) + MeshKit.hash01(c, 80)) * CABLE_SPACING
+		c += 1
+		if cd < start or cd >= end or MeshKit.hash01(c, 81) > 0.6:
+			continue
+		var cy: float = 15.5 + 3.0 * MeshKit.hash01(c, 82)
+		if _height_at(-1, cd) < cy + 0.5 or _height_at(1, cd) < cy + 0.5:
+			continue
+		_cable(solid, half_width + 0.3, cd, cy, 0.4 + 0.7 * MeshKit.hash01(c, 83), MeshKit.hash01(c, 84) < 0.35)
 	var spacing: float = skin.bunting_spacing
 	var k: int = ceili(start / spacing - 0.5)
 	while (float(k) + 0.5) * spacing < end + spacing:
@@ -670,6 +786,26 @@ func overhead(batch: MeshBatch, half_width: float, start: float, end: float) -> 
 			continue
 		var lights: bool = MeshKit.hash01(k, 72) < 0.4
 		_string(solid, glow, half_width, d, y, 1.2 + 0.8 * MeshKit.hash01(k, 73), lights, k)
+
+
+## A cable slung across the street at distance d from wall to wall (half_width either side), height
+## y at the walls, sagging `sag` in the middle, with a junction box hanging off it or not.
+func _cable(solid: MeshLayer, half_width: float, d: float, y: float, sag: float, box: bool) -> void:
+	var z: float = -d
+	var n: int = 10
+	var cord := Color(0.12, 0.12, 0.13)
+	var prev := Vector3(-half_width, y, z)
+	for i: int in range(1, n + 1):
+		var t: float = float(i) / n
+		var p := Vector3(lerpf(-half_width, half_width, t), y - sag * 4.0 * t * (1.0 - t), z)
+		solid.quad(prev + Vector3(0, -0.018, 0), prev + Vector3(0, 0.018, 0), p + Vector3(0, 0.018, 0), p + Vector3(0, -0.018, 0),
+			cord)
+		prev = p
+	if box:
+		var t: float = 0.3 + 0.4 * MeshKit.hash01(roundi(d), 85)
+		var p := Vector3(lerpf(-half_width, half_width, t), y - sag * 4.0 * t * (1.0 - t), z)
+		solid.box(p + Vector3(0, -0.22, 0), Vector3(0.3, 0.36, 0.22), Color(0.24, 0.25, 0.27), 0.0, MeshKit.PAT_TECH,
+			MeshKit.ALL_FACES, 2.0)
 
 
 ## The top of the face at distance d on `side` (the setback tower's top counts: it's still anchored).

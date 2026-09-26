@@ -7,7 +7,8 @@ extends SkinSuite
 ## - the colour rule (GDD §5): nothing but hazards glows in a hazard hue (pink, red, orange, yellow,
 ##   green, cyan), and lit surfaces stay well below the hazards' saturation;
 ## - the play space stays clear: between the floor and the ceiling over the lanes there is nothing
-##   but hazards and triggers, so no decoration looks like an obstacle;
+##   but hazards and triggers, so no decoration looks like an obstacle; and nothing sticks out of the
+##   walls through the wall-run band (the market's machinery, awnings and signs stay above it);
 ## - decorative signs, ads and lights are unframed and never below decor_min_height, and only
 ##   hazard signs wear the striped frame;
 ## - nothing vent-like is drawn (in the Marketplace, wall vents are sewer-screech lairs);
@@ -284,8 +285,9 @@ func _clear_play_space(skin: MarketplaceSkin) -> void:
 		var track := TrackBuilder.new()
 		world.add_child(track)
 		track.set_layout(layout, tuning, skin)
-		var half: float = TrackGeometry.new(lanes, tuning).half_width()
+		var geo := TrackGeometry.new(lanes, tuning)
 		var intruders: PackedStringArray = []
+		var sticking: PackedStringArray = []
 		var seen: Dictionary = {}
 		var d: float = 0.0
 		while d <= layout.length + TrackBuilder.RUN_OUT + TrackBuilder.CHUNK_LENGTH:
@@ -293,17 +295,27 @@ func _clear_play_space(skin: MarketplaceSkin) -> void:
 			for chunk: Node in track.get_children():
 				if not seen.has(chunk):
 					seen[chunk] = true
-					_find_intruders(chunk, skin, half, intruders)
+					_find_intruders(chunk, skin, geo, layout.length, intruders, sticking)
 			d += TrackBuilder.CHUNK_LENGTH
 		check(intruders.is_empty(), "nothing decorative stands in the play space (%d lanes, %d chunks): %s" % [lanes,
 			seen.size(), ", ".join(intruders)])
+		check(sticking.is_empty(), "nothing sticks out of the walls through the wall-run band (%d lanes): %s" % [lanes,
+			", ".join(sticking)])
 		world.queue_free()
 		await tree.process_frame
 
 
 ## Solid vertices of the skin's meshes in `chunk` that lie over the lanes between the floor and the
-## ceiling (up to four, appended to `out`).
-func _find_intruders(chunk: Node, skin: MarketplaceSkin, half: float, out: PackedStringArray) -> void:
+## ceiling (up to four, appended to `out`), and those sticking out of a wall face by more than 5 cm
+## below the calm band's top (decor_min_height - 1 m, and below the ceilings), up to four in
+## `sticking`; the finish gantry's posts (at `finish`, shared by every zone) stand on the ledges and
+## don't count.
+func _find_intruders(chunk: Node, skin: MarketplaceSkin, geo: TrackGeometry, finish: float, out: PackedStringArray,
+		sticking: PackedStringArray) -> void:
+	var half: float = geo.half_width()
+	var wall: float = geo.wall_x()
+	# The calm band's top, below the ceilings (which reach from wall to wall by design).
+	var band_top: float = minf(skin.decor_min_height - 1.0, tuning.ceiling_height - 0.1)
 	for node: Node in nodes_of(chunk, func(n: Node) -> bool: return n is MeshInstance3D):
 		var m := node as MeshInstance3D
 		if m.mesh == null or m.is_in_group(&"debug_hitbox") or _under(m, func(n: Node) -> bool: return n is Area3D):
@@ -318,6 +330,10 @@ func _find_intruders(chunk: Node, skin: MarketplaceSkin, half: float, out: Packe
 				var p: Vector3 = m.global_transform * v
 				if absf(p.x) < half - 0.01 and p.y > 0.06 and p.y < tuning.ceiling_height - 0.1 and out.size() < 4:
 					out.append(str(p))
+				elif absf(p.x) >= half - 0.01 and absf(p.x) < wall - 0.05 and p.y > 0.06 and p.y < band_top \
+						and absf(-p.z - finish) > 1.0 and not _under(m, func(n: Node) -> bool: return n is Hazard) \
+						and sticking.size() < 4:
+					sticking.append(str(p))
 
 
 ## The citizens' windows (task D3): where shop_windows() says, the same every time, above the wall

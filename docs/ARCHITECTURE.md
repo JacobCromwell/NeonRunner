@@ -206,9 +206,9 @@ pass them in, and use `filtered_pulse()` only for ranges within 0–1 (`band()` 
 either can put a NaN in a pixel, and the glow pass blows it up into a white disc.
 
 **Pattern ids.** Ids up to 19 are the City's and Gangland's, in `kit_solid.gdshader` itself; ids 20-29
-are the Marketplace's, in `kit_market.gdshaderinc` (one include and one dispatch line in `kit_solid`).
-A new zone takes the next free block of ten in its own include, so zones built in parallel never
-collide on an id.
+are the Marketplace's (all in use), in `kit_market.gdshaderinc` (one include and one dispatch line in
+`kit_solid`). A new zone takes the next free block of ten (30-39 next) in its own include, so zones
+built in parallel never collide on an id.
 
 **Gangland's ceilings** (`GanglandCeiling`) take their width from the lanes they cover (the collision
 box), never from the track, and draw each side as anchored (running into the building face) or free
@@ -241,6 +241,12 @@ on every lane seam, nothing hangs below it, and its far end carries the orange b
   building bridging the street. `mesh_for(kind, ...)` builds a given kind directly.
 - *Decorative signs* (neon, painted blade signs, ad boards, casino bulbs) never sit below
   `decor_min_height` (8 m) and never wear the striped frame, which is reserved for hazard signs.
+- *Futuristic and worn* (GDD §5): `shopfront.gdshader` draws cladding, rounded smart-glass windows,
+  roller shutters and grime; `MarketFacades` adds air-conditioning units, drone racks, cable trays,
+  glass balconies, rooftop dishes and masts, and cables across the street (the machinery's faces
+  use `PAT_TECH`), all above the wall-run band, which the suite checks stays flush. Dust on roofs,
+  awnings and ledges comes from `kit_market.gdshaderinc` (`market_dust`, scaled by the skin's
+  `wear`).
 
 **The cult emblem** (D7, GDD §5 "The cult"): `CultEmblem` (`scripts/world/meshes/cult_emblem.gd`)
 builds each option's 2D vector geometry as a flat mesh (mesh kit conventions: emissive for a neon
