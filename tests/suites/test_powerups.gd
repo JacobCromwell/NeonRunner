@@ -17,6 +17,7 @@ func run() -> void:
 	await _test_nothing_without_items()
 	await _test_each_item_alone()
 	await _test_targeting()
+	await _test_muzzle()
 	await _test_shot_counts()
 	await _test_splash()
 	await _test_health_bars()
@@ -167,6 +168,33 @@ func _test_targeting() -> void:
 	check(is_equal_approx(host.health, 3.0) and is_equal_approx(immune.health, 3.0), "and never hurt")
 	check(not tiers.is_empty() and tiers.count(1) == tiers.size(), "fired(tier) reports the weapon tier")
 	check(w.player.alive and w.score.kills >= 1, "kills count (%d)" % w.score.kills)
+	await sim.free_world(w)
+
+
+## Shots leave the player's shoulder, turned with the player onto a wall or the ceiling.
+func _test_muzzle() -> void:
+	var w: RunWorld = sim.build_world(RunSim.layout(3), _loadout({"weapon": 1}))
+	var c: PowerupController = _controller(w)
+	await _run_to(w, 5.0)
+	var p: Player = w.player
+	var m: Vector3 = c.weapon.muzzle_point() - p.global_position
+	check(p.surface == Player.Surface.FLOOR and m.y > 0.6 and m.x > 0.1 and m.z < 0.0,
+		"on the floor, shots leave the right shoulder, in front (%s)" % m)
+	await sim.step_world(w, 1.0, [[6.0, &"move_right"], [10.0, &"move_right"]])
+	m = c.weapon.muzzle_point() - p.global_position
+	check(p.surface == Player.Surface.WALL and p.wall_side == 1 and m.x < -0.6,
+		"on the right wall, from the body sticking out toward the lanes (%s)" % m)
+	await sim.free_world(w)
+
+	var ceiling := RunSim.layout(3)
+	ceiling.pads.append({"lane": 1, "at": 20.0})
+	ceiling.hulls.append({"start": 17.0, "end": 120.0})
+	w = sim.build_world(ceiling, _loadout({"weapon": 1}))
+	c = _controller(w)
+	await sim.step_world(w, 2.5)
+	p = w.player
+	m = c.weapon.muzzle_point() - p.global_position
+	check(p.surface == Player.Surface.CEILING and m.y < -0.6, "on the ceiling, from the body hanging below the hull (%s)" % m)
 	await sim.free_world(w)
 
 
