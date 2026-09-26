@@ -105,6 +105,43 @@ For each boss: arena, phases, attacks, weak points, what power-ups are granted b
 
 ## D. Raised during build
 
+### Owner's placeholder review (September 26, 2026)
+The owner reviewed every placeholder below. **GB** means "From the R1 core-movement grey box", **FB** "From the full build", and **P2** "From build phase 2"; numbers are the items' own. Unless listed under changes, playtesting or later rounds, **an item is approved as is**: its placeholder now counts as decided (GDD §12), and its `DESIGN-TBD` marker can come off.
+
+**Changes (recorded in the GDD):**
+- GB 5: a blocked wall entry adds a small sideways bump to the clank (§3).
+- GB 6: **no change**. What looks like a hit is a hit on every surface, so a low wall runner can hit a fence in the outer lane (§3). Buzz Overdrive's "wall runners are safe" rule stands; its hitboxes stay inside its lane.
+- GB 10: ramps add a speed boost that fades like a speed pad's (§3).
+- FB 6: endless mode runs until death, climbs in difficulty, cycles through the unlocked zones' scenery, and pays 20% plus a lump sum every 2 minutes survived (§6).
+- FB 14: quitting from the pause menu keeps 20%, like a death (§4).
+- FB 27: big attacks of different enemy types take turns (§9). The owner may revert this after playtesting, since early playtests felt not very challenging.
+- FB 53: the music dips on death, and the level-complete riff plays in each zone's key (§11).
+- FB 71: hosts are immune to all weapon damage (§9.7).
+- FB 85: no screeches in the Neon City (§9.5).
+- P2 4: Buzz Overdrive also appears in the Golden Zone (§9.9; a recording error, corrected).
+- P2 7: Dead Zone 2 has fewer enemies but more hosts and Bad Dream chases, darker lighting, and long silent stretches broken by sudden threats (§5).
+- P2 10: the placeholder level names are approved (§5).
+- FB 46: every zone with a still floor gets the dust, scraps and speed-streak motion cues.
+- P2 6: the Corporate skin also shows military ships and props.
+- P2 13: beyond the "each feature at least once" guarantee, a level's newest things get the most picks.
+- P2 18: a narrow Gangland ceiling is a slab broken off a building.
+- P2 20: the Gangland corporate logo matches the Corporate zone's brand once it exists.
+
+**Tune after playtesting** (placeholders stay):
+- movement and pacing: GB 2, GB 3, GB 11, GB 12, GB 16 (5 PC lanes for now), FB 41
+- economy: FB 10, FB 11, P2 16 (needs a balancing pass over 15 levels)
+- audio mix: FB 52
+- enemy numbers: FB 68, FB 75, FB 80, FB 82, FB 87, FB 96–98, and the EMP radius in FB 73
+- difficulty curve: P2 8
+
+**Later design rounds:**
+- cinematics: FB 3, P2 11
+- audio: GB 15, FB 54
+- power-ups and balance: P2 12
+- mobile: FB 15
+- title and brand: FB 109
+- other: FB 111 (achievements)
+
 ### From the R1 core-movement grey box (September 25, 2026)
 Each item has a placeholder in code marked `DESIGN-TBD` and, where it's a number, a value in `data/tuning/movement.tres` or `data/levels/`. Answer them after playtesting the grey box.
 
