@@ -5,5 +5,5 @@
 [resource]
 script = ExtResource("1_script")
 id = &"city_boss"
-display_name = "Zone 1 boss"
-notes = "DESIGN-TBD: not designed yet. The GDD lists the Floating Head (a monstrous head that fires projectiles; jump on its weak points) among the boss ideas."
+display_name = "Floating Head"
+notes = "Designed, not built yet (GDD §10): a giant ship whose back is a cybernetic propaganda face shouting over the city. It bombs the lanes where its searchlight lingers, then turns to face you: eye-laser sweeps, and cyborgs dropped from its mouth. Bait a laser into a marked tower to pin it, then stomp the red weak point on its head, once per phase: up the fallen tower, by a wall jump, then dropping from a ceiling. Armor pickups help in the last phase."

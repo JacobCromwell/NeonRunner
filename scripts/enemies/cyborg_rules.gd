@@ -7,7 +7,11 @@ extends RefCounted
 ##   section in any lane: standing there it could block the lane a player needs at that obstacle
 ##   (GDD §9 fairness). A cyborg keeps the same margin while it moves (Cyborg clamps its walk and its
 ##   panic run with obstacle_spans()).
+## These rules run after the hover truck's, which add a ramp for its wall route, so cyborgs keep
+## their margin from that ramp too. Pads that later rules add (drones, hosts) clear the floor
+## enemies around them themselves (PadPlacement).
 
+const RUN_AFTER: Array[String] = ["hover_truck"]
 const TUNING_PATH: String = "res://data/enemies/cyborg.tres"
 
 

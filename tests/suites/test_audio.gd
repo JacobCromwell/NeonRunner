@@ -167,6 +167,35 @@ func _test_music_api() -> void:
 	music.stop(0.0)
 	check(_players(music).is_empty(), "stop(0) cuts at once")
 
+	# Zones name their track after their id, and a zone's track may not be made yet: play() skips it
+	# quietly (no warning) and whatever plays carries on.
+	var warnings := WarningCounter.new()
+	OS.add_logger(warnings)
+	music.play(&"menu", 0.0)
+	music.play(&"no_such_zone", 0.0)
+	OS.remove_logger(warnings)
+	check(music.current() == &"menu" and _players(music).size() == 1 and warnings.count == 0,
+		"a track the library doesn't have yet is skipped quietly; the music carries on (%d warnings)" % warnings.count)
+	var campaign := load("res://data/campaign/campaign.tres") as Campaign
+	var library := load(MUSIC_LIBRARY_PATH) as MusicLibrary
+	for zone: ZoneDef in campaign.zones:
+		check(library.has(zone.music) or zone.music == zone.id,
+			"zone %s's music is a track or its own id, for the music task to fill (%s)" % [zone.id, zone.music])
+	music.stop(0.0)
+
+
+## Counts warnings (push_warning and engine warnings) while it's registered with OS.add_logger().
+class WarningCounter extends Logger:
+	var count: int = 0
+
+	func _log_error(_function: String, _file: String, _line: int, _code: String, _rationale: String,
+			_editor_notify: bool, error_type: int, _script_backtraces: Array[ScriptBacktrace]) -> void:
+		if error_type == ERROR_TYPE_WARNING:
+			count += 1
+
+	func _log_message(_message: String, _error: bool) -> void:
+		pass
+
 
 func _test_sound_effects() -> void:
 	var library := load(SFX_LIBRARY_PATH) as SfxLibrary

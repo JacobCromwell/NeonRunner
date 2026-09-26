@@ -1,7 +1,7 @@
 extends TestSuite
 ## The game's flow through the App on the real main scene: title, campaign levels, the death flow
 ## (revive offer → summary → shop → retry, GDD §4), completion and records, pause, boss and
-## cinematic slots, the web demo's end screen, and rewarded-ad revives on mobile.
+## cinematic slots, the web demo's end screen, rewarded-ad revives on mobile, and endless mode.
 
 var main: Node
 
@@ -20,6 +20,7 @@ func run() -> void:
 	await _test_pause()
 	await _test_slots_and_demo()
 	await _test_ad_revive()
+	await _test_endless()
 
 	App.show_title()
 	await tree.process_frame
@@ -148,6 +149,24 @@ func _test_ad_revive() -> void:
 	check(App.run != null and App.run.world.player.alive, "watching the ad revives the player")
 	Platform.configure_for(BuildFlavor.current())
 	check(not Platform.ads_available(), "no ads on PC")
+
+
+## Endless mode plays the furthest zone's last level (here City 3, which introduces its new things
+## at starts of their own) with every feature there from the start; the campaign level keeps its
+## starts.
+func _test_endless() -> void:
+	for id: String in ["city/intro", "city/1", "city/2"]:
+		App.profile.record_run(id, 0, true, 100, 3, 10.0)
+	var city_3: LevelConfig = App.campaign.step("city/3").level
+	App.start_endless()
+	await physics_frames(3)
+	var ctx: RunContext = App.run.context if App.run != null else null
+	check(ctx != null and ctx.mode == RunContext.Mode.ENDLESS, "endless mode starts")
+	if ctx != null:
+		check(ctx.config.features == city_3.features and ctx.config.feature_starts.is_empty(),
+			"endless plays the furthest zone's features from the start (%s)" % [ctx.config.feature_starts])
+	check(city_3.feature_starts.size() == 3, "and the campaign level keeps its own starts")
+	App.show_title()
 
 
 func get_tree_paused() -> bool:

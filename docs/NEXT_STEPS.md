@@ -70,6 +70,13 @@ Claude Code lets each sub-agent use a different model (`opus`, `sonnet`, `haiku`
 | **Tester / reviewer** | Mid | Runs builds headless, writes tests, checks tasks against the design document |
 | **Routine helper** | Cheapest (Haiku-class) | File searches, data-file entry (prices, tuning tables), docs updates, renaming, simple refactors |
 
+These roles (Architect and Complex gameplay engineer merged into one, since both are the strongest
+tier; plus a **Tool writer** role for T3 work — small tools, process docs, option sheets — that
+this table never gave a row) are now ready-to-delegate Claude Code sub-agents in
+`.claude/agents/`: `architect.md`, `gameplay-engineer.md`, `skin-artist.md`, `reviewer.md`,
+`helper.md`, `tool-writer.md`, each pinned to its tier's model and effort from
+`docs/TASK_PLAN.md` (task A1).
+
 ### Keeping you from being interrupted constantly
 - Pre-approve routine permissions in Claude Code's settings (editing project files, running Godot headless, running tests, git commits on feature branches) so sub-agents don't ask minute by minute.
 - Keep approval-required actions few: installing new software, adding paid services or plugins, changing the design document, anything touching store accounts, and deleting work.

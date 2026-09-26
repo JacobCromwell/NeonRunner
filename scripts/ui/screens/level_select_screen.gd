@@ -14,6 +14,7 @@ var tier: int = 0
 var tiles: Dictionary = {}
 var tier_buttons: Array[NeonButton] = []
 var _zones: VBoxContainer
+var _scroll: ScrollContainer
 
 
 func _ready() -> void:
@@ -22,15 +23,15 @@ func _ready() -> void:
 	tier = clampi(chosen_tier, 0, App.profile.unlocked_tier)
 	if App.profile.unlocked_tier > 0:
 		_build_tier_selector()
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.follow_focus = true
-	content.add_child(scroll)
+	_scroll = ScrollContainer.new()
+	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.follow_focus = true
+	content.add_child(_scroll)
 	_zones = VBoxContainer.new()
 	_zones.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_zones.add_theme_constant_override(&"separation", roundi(UiTheme.px(14)))
-	scroll.add_child(_zones)
+	_scroll.add_child(_zones)
 	_build_zones()
 
 
@@ -63,14 +64,18 @@ func _build_zones() -> void:
 		child.queue_free()
 	tiles.clear()
 	var steps: Array[CampaignStep] = App.campaign.steps()
-	var coming := HFlowContainer.new()
+	# Zones still to be designed share one row of "coming soon" cards after the built ones (made only
+	# when there is one: a node never added to the tree would leak).
+	var coming: HFlowContainer = null
 	for zi: int in App.campaign.zones.size():
 		var zone: ZoneDef = App.campaign.zones[zi]
 		if zone.placeholder or zone.levels.is_empty():
+			if coming == null:
+				coming = HFlowContainer.new()
 			coming.add_child(_coming_soon_card(zone, zi))
 		else:
 			_zones.add_child(_zone_section(zone, zi, steps))
-	if coming.get_child_count() > 0:
+	if coming != null:
 		_zones.add_child(coming)
 	# Focus the next step to play (or the first open one).
 	var next: CampaignStep = App.next_unfinished_step(tier)
@@ -84,6 +89,21 @@ func _build_zones() -> void:
 	initial_focus = target
 	if is_node_ready():
 		focus_initial.call_deferred()
+	_scroll_into_view(target)
+
+
+## Scrolls the list to `target` once the tiles have their layout, `frames` frames from now:
+## follow_focus can't scroll to controls laid out in the same frame, and six zones make a list
+## several screens long, so a player deep in the campaign would otherwise open it at the top with the
+## focused step out of sight. (A one-shot connection rather than an await: it simply drops if the
+## screen is freed first.)
+func _scroll_into_view(target: Control, frames: int = 2) -> void:
+	if target == null or not is_inside_tree():
+		return
+	if frames > 0:
+		get_tree().process_frame.connect(_scroll_into_view.bind(target, frames - 1), CONNECT_ONE_SHOT)
+	elif is_instance_valid(target) and target.is_inside_tree():
+		_scroll.ensure_control_visible(target)
 
 
 func _zone_section(zone: ZoneDef, zi: int, steps: Array[CampaignStep]) -> Control:

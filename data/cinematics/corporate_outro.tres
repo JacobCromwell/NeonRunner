@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="CinematicDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/campaign/cinematic_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"corporate_outro"
+title = "Beyond the towers"
+placeholder_text = "DESIGN-TBD: a short scene after the Corporate boss, heading for the Dead Zone."

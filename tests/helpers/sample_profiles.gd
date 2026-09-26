@@ -30,6 +30,17 @@ static func rich() -> Profile:
 	return p
 
 
+## Completes every campaign step before `step_id` on the normal tier (levels with two stars), so
+## the profile's next step is that one. Nothing happens for an unknown id.
+static func complete_until(p: Profile, campaign: Campaign, step_id: String) -> void:
+	if campaign.step(step_id) == null:
+		return
+	for s: CampaignStep in campaign.steps():
+		if s.id == step_id:
+			return
+		p.record_run(s.id, 0, true, 5000 if s.is_level() else 0, 2 if s.is_level() else 3, 100.0)
+
+
 ## A campaign result for the results screen: a clear of city/2, or a death in it.
 static func result(completed: bool) -> RunResult:
 	var ctx := RunContext.new()

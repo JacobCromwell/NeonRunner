@@ -18,6 +18,9 @@ extends RefCounted
 ##   under it, and the landing after it stays clear), and its pad avoids a hover truck's lane.
 ## - Pads need ceilings: a level with drones but without the `ceilings` feature gets a warning and no
 ##   pad schedule.
+## - Late starts (LevelConfig.feature_starts): no drone before the `drone` feature's start, and none
+##   so early that its first pad would come before the `ceilings` feature's start; the guaranteed
+##   wave falls in the same share of the stretch where drones may appear.
 
 const TYPE: String = "drone"
 ## Scheduled pads are placed like every rule's guaranteed pad (shared with host_rules.gd).
@@ -36,14 +39,16 @@ static func apply(gen: LevelGenerator) -> void:
 	var has_ceilings: bool = gen.config.has_feature("ceilings")
 	var last_pad: float = last_pad_at(gen, t)
 	var latest: float = layout.length - t.no_spawn_last_seconds * speed
+	var earliest: float = gen.feature_start(TYPE)
 	if has_ceilings:
 		latest = minf(latest, last_pad - t.first_pad_seconds * speed)
+		earliest = maxf(earliest, gen.feature_start("ceilings") - t.first_pad_seconds * speed)
 	if t.guarantee_one_wave:
 		var kept_any: bool = false
 		for e: Dictionary in drones:
-			kept_any = kept_any or float(e["at"]) <= latest
+			kept_any = kept_any or (float(e["at"]) <= latest and float(e["at"]) >= earliest)
 		if not kept_any:
-			var added: Dictionary = _add_guaranteed(gen, t, latest)
+			var added: Dictionary = _add_guaranteed(gen, t, earliest, latest)
 			if not added.is_empty():
 				drones.push_front(added)
 	if drones.is_empty():
@@ -53,7 +58,7 @@ static func apply(gen: LevelGenerator) -> void:
 	var waves: Array = []
 	for e: Dictionary in drones:
 		var at: float = e["at"]
-		if at > latest:
+		if at > latest or at < earliest:
 			removed.append(e)
 			continue
 		if not waves.is_empty():
@@ -112,12 +117,15 @@ static func apply(gen: LevelGenerator) -> void:
 	_remove_entries(layout, removed)
 
 
-## One drone somewhere in the first half of the level (between the tuning's shares, never before the
-## run-up ends or after `latest`). Returns its entry, or {} if the level has no room for it.
-static func _add_guaranteed(gen: LevelGenerator, t: DroneTuning, latest: float) -> Dictionary:
+## One drone somewhere in the first half of the stretch where drones may appear, from `earliest` to
+## the level's end (between the tuning's shares of it; never before the run-up ends or after
+## `latest`). Returns its entry, or {} if the level has no room for it.
+static func _add_guaranteed(gen: LevelGenerator, t: DroneTuning, earliest: float, latest: float) -> Dictionary:
 	var rng: RandomNumberGenerator = gen.rng_for("drone_wave")
-	var lo: float = maxf(gen.layout.length * t.guaranteed_wave_from, gen.config.start_clear_distance)
-	var hi: float = minf(gen.layout.length * t.guaranteed_wave_to, latest)
+	var from: float = maxf(earliest, 0.0)
+	var stretch: float = gen.layout.length - from
+	var lo: float = maxf(from + stretch * t.guaranteed_wave_from, gen.config.start_clear_distance)
+	var hi: float = minf(from + stretch * t.guaranteed_wave_to, latest)
 	if hi < lo:
 		return {}
 	var lane: int = rng.randi_range(0, gen.layout.lane_count - 1)

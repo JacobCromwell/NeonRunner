@@ -5,7 +5,8 @@ extends Node
 ##   godot --path . res://tools/showcase/screens_showcase.tscn -- --screen=shop
 ## Screens: title, levels, shop, shop_next, settings, pause, pause_settings, death, results,
 ## failed, slot, cinematic, demo_end, hud.
-## Options: --fresh (a new profile), --touch (phone/tablet sizing), --mobile (a mobile build:
+## Options: --fresh (a new profile), --progress=<step id> (every campaign step before that one
+## completed, e.g. --progress=golden/1), --touch (phone/tablet sizing), --mobile (a mobile build:
 ## 3 lanes, credit packs, rewarded ads), --flavor=web_demo (read by App), --scroll-end (scrolls the
 ## screen's list to its end), --wait=N (frames before a shot), --shot=<png> (saves a screenshot and
 ## quits: any window size, unlike --write-movie).
@@ -25,6 +26,9 @@ func _ready() -> void:
 	App.profile = SampleProfiles.fresh() if args.has("--fresh") else SampleProfiles.rich()
 	if args.has("--mobile") and not args.has("--fresh"):
 		App.profile.add_purchased(1000)
+	for arg: String in args:
+		if arg.begins_with("--progress="):
+			SampleProfiles.complete_until(App.profile, App.campaign, arg.get_slice("=", 1))
 	InputMap.load_from_project_settings()
 	Settings.apply(App.profile)
 	main = (load("res://scenes/main.tscn") as PackedScene).instantiate()

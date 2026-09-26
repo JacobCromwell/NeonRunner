@@ -69,7 +69,7 @@ These are also in `CLAUDE.md`.
 
 | ID | Task | Needs | Size | Tier |
 |---|---|---|---|---|
-| A1 | **Sub-agent definitions:** add `.claude/agents/` files for the roles in `docs/NEXT_STEPS.md` §5 (architect, gameplay engineer, skin artist, reviewer, helper), each with the model and effort from this plan's tiers. Follow the current Claude Code docs for the file format. | – | S | T3 |
+| A1 | **Sub-agent definitions:** add `.claude/agents/` files for the roles in `docs/NEXT_STEPS.md` §5 (architect, gameplay engineer, skin artist, reviewer, helper), each with the model and effort from this plan's tiers. Follow the current Claude Code docs for the file format. **Done:** `architect.md`, `gameplay-engineer.md`, `skin-artist.md`, `reviewer.md`, `helper.md`, and `tool-writer.md` (a sixth role added for T3 work, which had none) in `.claude/agents/`. | – | S | T3 |
 
 ### B. Core systems (the core lane)
 
@@ -85,6 +85,11 @@ These are also in `CLAUDE.md`.
 | B6 | **Non-lethal "robbed" hit and credit theft** (for the Tithe Collector, GDD §9.12). **Core** (damage rules, score). | B1 | M | T2 |
 | B7 | **In-run pickups** (GDD §10). **Core** (run world). | B1 | M | T2 |
 | B8 | **Runner-style boss framework** (GDD §10). **Core** (campaign, HUD). | B1 | L | T1 |
+| B9 | **Weapons never set off fence generators** (GDD §9.1, decided September 26, 2026). | – | S | T3 |
+
+**B9: weapons never set off fence generators** (added September 26, 2026, from the owner's design round).
+- Auto-fire never targets a generator, and no weapon damage (direct hit or missile splash) sets one off; a stomp or the dash still does. The same rule as for hosts, so an EMP is always the player's choice.
+- Sleep Taker (E5c) relies on it.
 
 **B1: campaign restructure.**
 - Needs a way to start a feature partway into a level: cyborgs appear only late in City 1.
@@ -259,8 +264,11 @@ The owner reviews them.
 | E1 | **Floating Head** (GDD §10). XL, split into steps. | B7, B8 | XL | T1 |
 | E2 | **Web demo release candidate** (GDD §2) | E1 | M | T2 |
 | E3 | **Swarm rendering risk test (R4)** | owner's phone | M | T2 |
-| E4 | **Sewer Swarm** | design, E3, B8 | XL | T1 |
-| E5 | **Marketplace, Corporate and Dead Zone bosses; the final villain** | design | – | T1 |
+| E4 | **Sewer Swarm** | E3, B7, B8 | XL | T1 |
+| E5a | **The House** (Marketplace boss) | B5, B7, B8, C1, D2 (D3 for the cheering citizens) | XL | T1 |
+| E5b | **Hostile Takeover** (Corporate boss) | B4, B5, B7, B8, C2, C5, D4 | XL | T1 |
+| E5c | **Sleep Taker** (Dead Zone boss) | B7, B8, B9, D5 | XL | T1 |
+| E5d | **The final villain** | design | – | T1 |
 
 **E1: Floating Head steps.**
 1. Ship and face models.
@@ -282,9 +290,9 @@ The owner reviews them.
 - MultiMesh clusters of hundreds of screeches on a mid-range Android phone.
 - Needs an Android export and the owner's device.
 
-**E4: Sewer Swarm.** Blocked: the design is still in progress (§10).
+**E4: Sewer Swarm.** Designed (GDD §10, September 26, 2026). Waits for the phone test R4 (E3), which must come before this boss is built, and the boss framework.
 
-**E5: remaining bosses.** Blocked until the owner designs them.
+**E5: the other bosses.** The House, Hostile Takeover and Sleep Taker are designed (GDD §10, September 26, 2026); each is XL, split into steps like E1, and waits for the enemies, mechanics and skin its fight uses. The final villain (E5d) still needs its design.
 
 ### F. Cinematics
 
@@ -324,13 +332,16 @@ The owner reviews them.
 | D3 Marketplace citizens | D2 |
 | D6b Golden Palace | D6a |
 | D8 music | anytime |
+| B9 generators and weapons | anytime |
+| E5c Sleep Taker | B7, B8, B9 and D5 |
 
 **Wave 3:**
 - B6 → C5 (Tithe Collector)
+- E5a The House (after B5, C1, D2), E5b Hostile Takeover (after B4, B5, C2, C5, D4)
 - E2 (web demo release candidate)
 - applying the owner's answers from the placeholder review (T4 for numbers only, T2 if code changes)
 
-**Blocked on design:** E4 and E5 (bosses), F2 (cinematic content).
+**Blocked on design:** E5d (the final villain), F2 (cinematic content). **Blocked on the owner's phone:** E3, and so E4.
 
 **The critical path to the web demo:** B1 → B8 and B7 → E1 → E2. The demo depends on the Floating Head more than on anything else, so keep that path moving first.
 
@@ -338,7 +349,7 @@ The owner reviews them.
 
 ## Still to design with the owner
 
-- **Bosses:** Sewer Swarm (in progress), the Marketplace, Corporate and Dead Zone bosses, and the final villain with its second stage.
+- **Bosses:** the final villain with its second stage (the other five are designed, GDD §10).
 - **Cinematics:** story beats for each slot.
 - **Placeholder review:** a keep-or-change pass over the numbered items in `docs/OPEN_QUESTIONS.md` §D.
 - **Remaining rounds:** player and power-up numbers, screens and stars, audio, mobile and ads, title, accessibility, languages, age rating, budget and check-ins.

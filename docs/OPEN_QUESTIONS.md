@@ -23,8 +23,12 @@ Companion to `GDD_CHECKPOINT.md`. The design phase is complete when this list is
 For each boss: arena, phases, attacks, weak points, what power-ups are granted before the fight, how it scales on 3 vs 5–6 lanes, and its length.
 - ~~Roster, gameplay style, length, death, items, rewards~~ Answered (GDD §10, September 26, 2026).
 - ~~Floating Head: full breakdown.~~ Answered (GDD §10, September 26, 2026).
-- Sewer Swarm: full breakdown.
-- Marketplace, Corporate and Dead Zone bosses: concepts needed (the owner is still thinking). The final villain's fight: full breakdown.
+- ~~Sewer Swarm: full breakdown.~~ Answered (GDD §10, September 26, 2026).
+- ~~Marketplace boss~~ Answered: The House (GDD §10); revisit after playtesting.
+- ~~Dead Zone boss~~ Answered: Sleep Taker (GDD §10).
+- ~~**Generators and auto-fire everywhere?**~~ Answered: yes. Weapons never set off a generator, in any level (GDD §9.1).
+- ~~Corporate boss~~ Answered: Hostile Takeover (GDD §10).
+- The final villain's fight: full breakdown.
 - ~~Do bosses have their own leaderboards or star criteria?~~ Answered: yes (GDD §10).
 - ~~Does the longer final fight still restart from the beginning on death?~~ Answered: a checkpoint halfway, at a possible second stage (GDD §10).
 
@@ -192,7 +196,7 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
 29. **Swarm bonus on splash:** the heavy missile's bonus also applies to its splash on swarm enemies.
 30. **No overkill:** auto-fire skips an enemy that shots already in flight will kill and moves on to
     the next nearest.
-31. **Fence generators** are auto-fire targets (destroying one sets off its EMP). Should they be?
+31. ~~**Fence generators** are auto-fire targets (destroying one sets off its EMP). Should they be?~~ Answered September 26, 2026: no. Auto-fire never targets generators and missile splash never damages them (GDD §9.1). **Needs a build change.**
 32. **Shots ignore level geometry** (hulls, walls), and the weapon fires from any surface.
 33. **Slow time** slows the player too; pausing suspends it (resuming continues); dying or finishing
     ends it. Audio isn't slowed.
@@ -220,7 +224,7 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
    are kept on the facades. Keep them?
 
 **Gangland look** (from the Gangland skin work)
-45. **Ceiling:** a scavenger cargo barge (patched plates, a blunt bow with a bumper beam, cargo on deck,
+45. (Superseded by the Gangland update: see "From build phase 2" item 17.) **Ceiling:** a scavenger cargo barge (patched plates, a blunt bow with a bumper beam, cargo on deck,
   the orange end band, dim engines). GDD §3 leaves other zones' ceilings open. Keep it?
 46. **Motion on a still street:** drifting ash, paper scraps and speed streaks give a sense of speed
   where nothing streams by (the City has its moving road). Keep them? Should other still zones get
@@ -395,6 +399,87 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
 
    Working the chosen mark into every zone skin (hidden in logos and ads, open in the Golden Zone) follows in
    the skin tasks. Keep it off tiny sizes where its three-fold silhouette could read like the radiation trefoil.
+
+**Campaign restructure** (from B1: six zones, 15 levels)
+2. **Where each new thing appears within its level** (GDD §5, §6; the schedule only says City 1's cyborgs come
+   "late in the level"). Placeholder (`feature_starts` in `data/levels/*.tres`): City 1's cyborgs at 60% of the
+   level; every other introduction at 10%, and a level bringing two or three things staggers them: City 3
+   pulsing fences 10%, window cyborgs 35%, hover truck 60%; Gangland 1 screeches 10%, ramps 40%; Gangland 2
+   Octodogs 10%, speed pads 45%; Gangland 3 generators 10%, drones 40%; Marketplace 2 wall fences 10%, vent
+   screeches 40%; Corporate 1 Buzz Overdrive 10%, partial wall fences 50%. The first pattern after a start
+   uses the feature, so it appears right after its hint. Is staggering right, and are these the places?
+3. **Sewer screeches outside street zones** (GDD §5, §9.5; manholes need a street). Placeholder: the
+   Marketplace, Corporate and Golden zones get wall-vent screeches only, from Marketplace 2's shopfront vents
+   on; the Dead Zone's rubble street gets manholes and vents. So Marketplace 1 has no screeches (the one level
+   where an earlier enemy doesn't appear). Marketplace 2 picks vent screeches 2.5× as often as the City's rare
+   rate; Corporate and Golden keep the rare rate. Is that the intent?
+4. **The Buzz Overdrive's "only two zones"** (GDD §9.9). Placeholder: Corporate and the Dead Zone; not the
+   Golden Zone.
+5. **Partial wall fences "from the Corporate zone"** (GDD §9.1). Placeholder: from Corporate 1, at 50% of the
+   level, after the Buzz Overdrive's introduction. Feature names: `wall_fences`, `wall_fences_partial`.
+6. **Corporate 2's heavier military presence** (GDD §5, proposed). Placeholder: drones, hover trucks and Buzz
+   Overdrives are picked 1.5× as often (`feature_weights` in `data/levels/corporate_2.tres`); their rules
+   still cap how many fit. Should it also (or instead) be the Corporate skin's military ships and props?
+7. **Dead Zone 2, "a quiet, eerie remix"** (GDD §5). Placeholder: Dead Zone 1's features, a little harder,
+   nothing new. What makes it a remix in play: fewer enemies, more hosts, something else?
+8. **The difficulty curve over 15 levels** (GDD §6; supersedes "From the full build" item 4). Placeholder
+   (`data/campaign/campaign.tres`): 0.1 → 0.9, linear, plus each level's bias: City 1 −0.05, Golden 2 +0.05
+   (the peak, GDD §5 proposed), Golden 3 −0.05 (below the peak, above Golden 1). Within a level difficulty
+   still rises by 0.25, so Golden levels reach 1.0 partway through.
+9. **Level lengths** (GDD §4, §5's "about 35 minutes" flawless). Placeholder: City 110/120/130 s, Gangland
+   135/140/145, Marketplace 140/145, Corporate 145/150, Dead Zone 145/150, Golden 145/150/150: 2,100 s, 35
+   minutes. The first six levels got 10–15 s longer, since a 140 s average needs it under the 150 s cap.
+10. **Level names** (GDD §5 names only the Golden Palace). Placeholders: Awning Alley, Shopfront Sparks, Maglev
+    Line, Checkpoint Plaza, Ashfall, The Hush, Gilded Canals, Sentinel Row; the City and Gangland keep theirs.
+11. **Slots for the new zones** (GDD §6, §10). Every new zone has intro and outro cinematic slots; only the City
+    has a boss intro. Should the final villain get one? The Golden Zone's outro is the ending. Open boss slots
+    are named "Marketplace boss", "Corporate boss", "Dead Zone boss" and "The final villain" (with the halfway
+    checkpoint and second stage in its notes).
+12. **Expected loadout per zone** (GDD §8). Still empty in every zone, and nothing reads it yet.
+13. **Earlier features in later levels** (GDD §5: "anything introduced earlier keeps appearing later"). As
+    levels list more features, each gets fewer pattern picks, and some enemies' rules drop what doesn't fit,
+    so on the shipped seeds some levels went without one (no Octodog in Gangland 3 at 3 or 6 lanes, nor in the
+    Dead Zone or Golden Zone at 5 lanes; no host in Dead Zone 2 at 5 or 6 lanes, nor in Golden 1; no vent
+    screech in Corporate 1). The GDD rule is decided, so the build is adding a guarantee that every level
+    places each of its features at least once (follow-up task after B1). Still open: how often each earlier
+    feature should appear beyond that.
+14. **Two new placeholder patterns** (`data/patterns/prototype_patterns.json`): a pulsing fence in one lane
+    (difficulty 0–0.6), since the other pulsing patterns start at 0.4, which City 3 barely reaches; and a speed
+    pad in one lane with four credits after it (no pattern placed speed pads before, so Gangland 2's never
+    appeared).
+15. **Music for the new zones until their tracks exist.** Zones name their track after their id; until the
+    music task adds them the game skips them quietly and the menu music keeps playing. Fine as a stopgap?
+16. **The economy over 15 levels** ("From the full build" items 10–11). Completion pays 100 + 25 per campaign
+    level, so Golden 3 pays 450; prices were set for a two-zone campaign. Needs a balancing pass.
+
+**Gangland update** (from D1; numbers are F6-tunable exports on `GanglandSkin`)
+17. **Gangland's ceilings** (GDD §3, §5; replaces "From the full build" item 45, the scavenger barge). Placeholder:
+    two structures, picked per ceiling (45% buildings): an overpass (tagged concrete fascia, crash barrier and
+    railing, a sign gantry with billboards and corporate ads, a dead lamp post, a gang lookout of sandbags and
+    military crates) and the upper storeys of a bombed-out building bridging the street (lit and curtained
+    windows, laundry, a broken roof). Both run on one flat concrete slab, a beam per lane, with dark joints, small
+    warm-white work lamps on every lane seam and the orange end band. Right structures, and is the lamp-lit seam
+    a good lane read?
+18. **Narrow ceilings in Gangland** (GDD §3, task B3): a side in mid-street ends in a plain edge face. What should
+    a narrow ceiling be here: a slab broken off a building, a pedestrian bridge, something else?
+19. **Time of day** (GDD §5, §11 give the palette, not the hour). Placeholder: a dusty dusk (brown sky, tan dust on
+    the horizon, a veiled pale sun, smoke columns, brown dust fog), dark enough for hazards to pop. Keep it, or a
+    harsher daylight?
+20. **Hints of corporate and military funding** (GDD §5). Placeholder: side streets barricaded with stencilled
+    olive military crates (30%) or corporate containers with a logo (30%); olive military notice boards above the
+    wall-run band; corporate ads among the posters (30%); sandbags as a fence mount. The corporate logo and colour
+    are a generic grey mark (`kit_logo.gdshaderinc`): should they match the Corporate zone's brand (task D4)?
+21. **The cult emblem, hidden in plain sight** (GDD §5, proposed): unlit bronze, small, beside the logo on some
+    container doors, as the sponsor's mark in the corner of some ads, and on some crates and notice boards (35%
+    of each); it fades out below about 24 px on screen. The right amount of "hidden"?
+22. **Signs of life** (GDD §5): graffiti pieces and tags over the lower storeys (dusty blue, steel grey, violet
+    grey, cream; no hazard hues), 12–32% of upper windows lit, laundry, rooftop clutter, bulbs over side streets,
+    washing lines across the street at 15.4 m and up. Too busy, or not enough?
+23. **Holes as craters** ("From the full build" item 47): the asphalt is scorched toward each hole and sand
+    drifts along the street; holes stay one lane wide and square-cut, with the orange edge on the collision edge.
+    Enough of a crater read?
+24. **Motion on the still street** ("From the full build" item 46): dust-coloured flecks, paper scraps and pale
+    speed streaks, as before.
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).

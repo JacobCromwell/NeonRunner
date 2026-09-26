@@ -1,5 +1,7 @@
 extends TestSuite
-## Generator fairness over many seeds, lane counts and difficulties, plus pattern-data checks.
+## Generator fairness over many seeds, lane counts and difficulties, plus pattern-data checks;
+## features that start partway into a level (introductions, and every rules script that adds a
+## feature's enemies or pieces keeping to the start), and per-level feature weights.
 
 
 func run() -> void:
@@ -21,7 +23,7 @@ func run() -> void:
 				var b: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
 				check(JSON.stringify(a.to_dict()) == JSON.stringify(b.to_dict()), "deterministic " + tag)
 				check(a.fences.size() + a.gaps.size() > 10, "level has content " + tag)
-				_check_layout(a, config, tag)
+				LayoutChecks.check_layout(self, a, config, tag)
 				levels += 1
 
 	# A pattern that tries to put floor pieces under its own ceiling gets them dropped (GDD §3).
@@ -38,6 +40,11 @@ func run() -> void:
 	check(bad_generator.warnings.size() == 1, "and reports the bad pattern once (%d)" % bad_generator.warnings.size())
 
 	_test_rule_ceilings_keep_off_floor_enemies(base)
+	_test_feature_starts(base)
+	_test_rules_keep_to_starts(base)
+	_test_rules_share_levels(base)
+	_test_feature_weights(base)
+	_test_pattern_features()
 
 
 ## Ceilings that enemy rules add later (drone pads, add_hull_with_pad) keep off the floor enemies
@@ -133,79 +140,186 @@ func _floor_clear_ignoring_enemies(layout: LevelLayout, pad_at: float, config: L
 	return true
 
 
-func _check_layout(layout: LevelLayout, config: LevelConfig, tag: String) -> void:
-	var n: int = layout.lane_count
-	var max_gap: float = tuning.jump_distance(tuning.run_speed) * config.max_gap_jump_fraction + 0.001
-	var finish_buffer: float = layout.length - config.end_clear_distance + 0.001
-	var landing: float = config.hull_landing_seconds * tuning.run_speed
-	for g: Dictionary in layout.gaps:
-		check(g["lane"] >= 0 and g["lane"] < n, "gap lane in range " + tag)
-		check(g["end"] - g["start"] <= max_gap, "gap jumpable (%.1f m) %s" % [g["end"] - g["start"], tag])
-		check(g["end"] <= finish_buffer, "gap before the end-clear stretch " + tag)
-	for f: Dictionary in layout.fences:
-		check(f["lane"] >= 0 and f["lane"] < n, "fence lane in range " + tag)
-		check(not _gapped_at(layout, f["lane"], f["at"]), "fence not over a gap at %.1f %s" % [f["at"], tag])
-		check(f["at"] <= finish_buffer, "fence before the end-clear stretch " + tag)
-	check(_longest_all_lane_hole(layout) <= max_gap, "every all-lane hole is jumpable " + tag)
-	for p: Dictionary in layout.pads:
-		var covered: bool = false
-		for h: Dictionary in layout.hulls:
-			if h["start"] <= p["at"] - 1.0 and h["end"] >= p["at"] + 10.0:
-				covered = true
-		check(covered, "pad at %.1f has a hull above %s" % [p["at"], tag])
-		check(not _gapped_between(layout, p["lane"], p["at"] - 6.0, p["at"] + tuning.pad_length),
-			"pad at %.1f is reachable on solid floor %s" % [p["at"], tag])
-	for h: Dictionary in layout.hulls:
-		check(h["end"] + landing <= finish_buffer, "hull and its landing end before the finish " + tag)
-		for f: Dictionary in layout.fences:
-			check(f["at"] < h["start"] or f["at"] > h["end"], "no fence under the ceiling at %.1f %s" % [f["at"], tag])
-		for lane: int in n:
-			check(not _gapped_between(layout, lane, h["start"], h["end"]), "no gap under the ceiling at %.1f %s" % [h["start"], tag])
-		for lane: int in n:
-			check(not _gapped_between(layout, lane, h["end"] - 2.0, h["end"] + landing * 0.8),
-				"hull landing clear at %.1f %s" % [h["end"], tag])
-	for r: Dictionary in layout.ramps:
-		var lane: int = layout.outer_lane(r["side"])
-		check(not _gapped_between(layout, lane, r["at"], r["at"] + tuning.ramp_length), "ramp on solid floor " + tag)
-		for s: Dictionary in layout.signs:
-			if s["side"] == r["side"]:
-				check(s["end"] < r["at"] - 2.0 or s["start"] > r["at"] + tuning.ramp_length + 2.0,
-					"ramp entry not blocked by a sign " + tag)
-	for s: Dictionary in layout.signs:
-		check(s["end"] <= finish_buffer, "sign before the end-clear stretch " + tag)
+## Features that start partway into a level (LevelConfig.feature_starts): nothing of the feature
+## comes before its start, and the first pattern picked from there uses it (its introduction), so it
+## shows up right after the start. The rest of the level stays fair and deterministic.
+func _test_feature_starts(base: LevelConfig) -> void:
+	var starts: Dictionary[String, float] = {"ramps": 0.3, "ceilings": 0.55, "pulsing": 0.75}
+	# From a start to the first pick at or after it: the longest pattern (a ceiling with its landing)
+	# plus the widest spacing between patterns.
+	var reach: float = (4.0 + base.hull_landing_seconds + base.spacing_seconds_easy) * tuning.run_speed + 1.0
+	var late: int = 0
+	for lanes: int in [3, 5, 6]:
+		for difficulty: float in [0.0, 0.4, 0.8]:
+			for level_seed: int in range(1, 13):
+				var config: LevelConfig = base.duplicate() as LevelConfig
+				config.lane_count = lanes
+				config.difficulty = difficulty
+				config.level_seed = level_seed
+				config.feature_starts = starts
+				var tag: String = "lanes=%d diff=%.1f seed=%d" % [lanes, difficulty, level_seed]
+				var gen := LevelGenerator.new()
+				var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+				check(gen.warnings.is_empty(), "late features generate without warnings " + tag)
+				LayoutChecks.check_layout(self, layout, config, tag)
+				var again: LevelLayout = LevelGenerator.new().generate(config, tuning, LevelGenerator.load_for(config))
+				check(JSON.stringify(layout.to_dict()) == JSON.stringify(again.to_dict()), "deterministic with late features " + tag)
+				for feature: String in starts:
+					var start: float = starts[feature] * layout.length
+					var at: Array[float] = LayoutChecks.feature_positions(layout, feature)
+					check(not at.is_empty() and at[0] >= start - 0.01,
+						"nothing of `%s` before its start (%.0f m, first %s) %s" % [feature, start, at.slice(0, 1), tag])
+					check(not at.is_empty() and at[0] <= start + reach,
+						"`%s` is introduced right after its start (%.0f m, first %s) %s" % [feature, start, at.slice(0, 1), tag])
+				for h: Dictionary in layout.hulls:
+					check(float(h["start"]) >= starts["ceilings"] * layout.length - config.hull_lead_in - 0.01,
+						"no ceiling before the ceilings' start " + tag)
+				late += 1
+	check(late == 108, "late starts checked over %d levels" % late)
+
+	# A feature listed with start 0 is introduced by the first pattern of the level.
+	var config: LevelConfig = base.duplicate() as LevelConfig
+	config.feature_starts = {"ceilings": 0.0}
+	var first: LevelLayout = LevelGenerator.new().generate(config, tuning, LevelGenerator.load_for(config))
+	check(not first.pads.is_empty() and is_equal_approx(float(first.pads[0]["at"]), config.start_clear_distance),
+		"a start of 0 introduces the feature with the level's first pattern (%s)" % [first.pads.slice(0, 1)])
+	# A start for a feature the level doesn't have changes nothing.
+	var plain: LevelConfig = base.duplicate() as LevelConfig
+	var odd: LevelConfig = base.duplicate() as LevelConfig
+	odd.feature_starts = {"octodog": 0.5}
+	check(JSON.stringify(LevelGenerator.new().generate(plain, tuning, LevelGenerator.load_for(plain)).to_dict())
+		== JSON.stringify(LevelGenerator.new().generate(odd, tuning, LevelGenerator.load_for(odd)).to_dict()),
+		"a start for a feature the level doesn't have changes nothing")
+	check(base.feature_starts.is_empty(), "copies never write into the level resource's starts")
 
 
-func _gapped_at(layout: LevelLayout, lane: int, d: float) -> bool:
-	return _gapped_between(layout, lane, d, d)
+## Rules scripts that add a feature's enemies or pieces keep to its start: drones and their pads
+## (the pads are the `ceilings` feature's), hover trucks and the ramp they add (a `ramps` piece),
+## hosts and the pads of their chases. The guaranteed drone wave and hover truck still come.
+func _test_rules_keep_to_starts(base: LevelConfig) -> void:
+	var speed: float = tuning.run_speed
+	var dt := EnemyDirector.tuning_for("drone") as DroneTuning
+	var cases: Array = [
+		# [features, starts, what to check, fewest enemies over the 24 levels (drones and trucks are
+		# guaranteed one per level; hosts are only placed by patterns)]
+		[["ceilings", "pulsing", "drone"], {"drone": 0.5}, "drone", 24],
+		[["ceilings", "pulsing", "drone"], {"ceilings": 0.6}, "drone_pads", 24],
+		[["ceilings", "pulsing", "hover_truck"], {"hover_truck": 0.5}, "hover_truck", 24],
+		[["ramps", "ceilings", "hover_truck"], {"ramps": 0.8}, "truck_ramp", 24],
+		[["ceilings", "cyborg", "host"], {"host": 0.4}, "host", 3],
+		[["ceilings", "cyborg", "host"], {"ceilings": 0.5}, "host_pads", 3],
+	]
+	var counts: Dictionary = {}
+	var fewest: Dictionary = {}
+	for c: Array in cases:
+		var what: String = c[2]
+		counts[what] = 0
+		fewest[what] = c[3]
+		for lanes: int in [3, 5, 6]:
+			for level_seed: int in range(1, 9):
+				var config: LevelConfig = base.duplicate() as LevelConfig
+				config.lane_count = lanes
+				config.difficulty = 0.5
+				config.enemy_scaling = 0.5
+				config.level_seed = level_seed
+				config.features = PackedStringArray(c[0])
+				var starts: Dictionary[String, float] = {}
+				starts.assign(c[1])
+				config.feature_starts = starts
+				var tag: String = "%s lanes=%d seed=%d" % [what, lanes, level_seed]
+				var gen := LevelGenerator.new()
+				var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+				check(gen.warnings.is_empty(), "no warnings " + tag)
+				LayoutChecks.check_layout(self, layout, config, tag)
+				LayoutChecks.check_rules(self, layout, config, tag)
+				var length: float = layout.length
+				match what:
+					"drone":
+						var drones: Array[float] = LayoutChecks.feature_positions(layout, "drone")
+						check(not drones.is_empty() and drones[0] >= 0.5 * length - 0.01,
+							"drones only after their start, the guaranteed wave included (%s) %s" % [drones.slice(0, 1), tag])
+						counts[what] += drones.size()
+					"drone_pads":
+						var pads: Array[float] = LayoutChecks.feature_positions(layout, "ceilings")
+						var drones: Array[float] = LayoutChecks.feature_positions(layout, "drone")
+						check(pads.is_empty() or pads[0] >= 0.6 * length - 0.01,
+							"a drone's pads only after the ceilings' start (%s) %s" % [pads.slice(0, 1), tag])
+						check(drones.is_empty() or drones[0] >= 0.6 * length - dt.first_pad_seconds * speed - 0.01,
+							"no drone so early that its first pad would come before the ceilings' start " + tag)
+						counts[what] += drones.size()
+					"hover_truck":
+						var trucks: Array[float] = LayoutChecks.feature_positions(layout, "hover_truck")
+						check(not trucks.is_empty() and trucks[0] >= 0.5 * length - 0.01,
+							"hover trucks only after their start, the guaranteed one included (%s) %s" % [trucks.slice(0, 1), tag])
+						counts[what] += trucks.size()
+					"truck_ramp":
+						var ramps: Array[float] = LayoutChecks.feature_positions(layout, "ramps")
+						check(ramps.is_empty() or ramps[0] >= 0.8 * length - 0.01,
+							"a hover truck's ramp only after the ramps' start (%s) %s" % [ramps.slice(0, 1), tag])
+						counts[what] += LayoutChecks.feature_positions(layout, "hover_truck").size()
+					"host":
+						var hosts: Array[float] = LayoutChecks.feature_positions(layout, "host")
+						check(hosts.is_empty() or hosts[0] >= 0.4 * length - 0.01, "hosts only after their start " + tag)
+						counts[what] += hosts.size()
+					"host_pads":
+						var hosts: Array[float] = LayoutChecks.feature_positions(layout, "host")
+						var pads: Array[float] = LayoutChecks.feature_positions(layout, "ceilings")
+						check(hosts.is_empty() or hosts[0] >= 0.5 * length - 0.01,
+							"no host whose chase would need pads before the ceilings' start " + tag)
+						check(pads.is_empty() or pads[0] >= 0.5 * length - 0.01, "a chase's pads only after the ceilings' start " + tag)
+						counts[what] += hosts.size()
+	for what: String in counts:
+		check(int(counts[what]) >= int(fewest[what]),
+			"the late-start cases still place their enemies (%s: %d, at least %d)" % [what, counts[what], fewest[what]])
 
 
-func _gapped_between(layout: LevelLayout, lane: int, from: float, to: float) -> bool:
-	for g: Dictionary in layout.gaps:
-		if g["lane"] == lane and g["start"] <= to and g["end"] >= from:
-			return true
-	return false
+## Enemy rules still hold when enemy types share a level: the cyborg rules run after the hover
+## truck's (the ramp it adds keeps the cyborgs' margin), and drone, host, Octodog and generator
+## rules keep theirs.
+func _test_rules_share_levels(base: LevelConfig) -> void:
+	for features: Array in [["ramps", "ceilings", "pulsing", "cyborg", "hover_truck"],
+			["cyborg", "ceilings", "ramps", "hover_truck", "octodog", "generator", "drone", "host"]]:
+		for lanes: int in [3, 5, 6]:
+			for difficulty: float in [0.3, 0.7]:
+				for level_seed: int in range(1, 9):
+					var config: LevelConfig = base.duplicate() as LevelConfig
+					config.lane_count = lanes
+					config.difficulty = difficulty
+					config.enemy_scaling = difficulty
+					config.level_seed = level_seed
+					config.features = PackedStringArray(features)
+					var tag: String = "%d features lanes=%d diff=%.1f seed=%d" % [features.size(), lanes, difficulty, level_seed]
+					var gen := LevelGenerator.new()
+					var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+					check(gen.warnings.is_empty(), "shared levels generate without warnings " + tag)
+					LayoutChecks.check_rules(self, layout, config, tag)
 
 
-## Longest stretch where every lane is a hole at once (intersection of the lanes' gap intervals).
-func _longest_all_lane_hole(layout: LevelLayout) -> float:
-	var common: Array[Vector2] = []
-	for lane: int in layout.lane_count:
-		var mine: Array[Vector2] = []
-		for g: Dictionary in layout.gaps:
-			if g["lane"] == lane:
-				mine.append(Vector2(g["start"], g["end"]))
-		if lane == 0:
-			common = mine
-			continue
-		var next: Array[Vector2] = []
-		for a: Vector2 in common:
-			for b: Vector2 in mine:
-				var lo: float = maxf(a.x, b.x)
-				var hi: float = minf(a.y, b.y)
-				if hi > lo:
-					next.append(Vector2(lo, hi))
-		common = next
-	var longest: float = 0.0
-	for v: Vector2 in common:
-		longest = maxf(longest, v.y - v.x)
-	return longest
+## LevelConfig.feature_weights scales how often a feature's patterns are picked: 0 leaves them out,
+## a higher factor picks them more often.
+func _test_feature_weights(base: LevelConfig) -> void:
+	var plain: int = 0
+	var heavy: int = 0
+	var none: int = 0
+	for lanes: int in [3, 5, 6]:
+		for level_seed: int in range(1, 13):
+			var config: LevelConfig = base.duplicate() as LevelConfig
+			config.lane_count = lanes
+			config.level_seed = level_seed
+			plain += LevelGenerator.new().generate(config, tuning, LevelGenerator.load_for(config)).ramps.size()
+			config.feature_weights = {"ramps": 3.0}
+			heavy += LevelGenerator.new().generate(config, tuning, LevelGenerator.load_for(config)).ramps.size()
+			config.feature_weights = {"ramps": 0.0}
+			none += LevelGenerator.new().generate(config, tuning, LevelGenerator.load_for(config)).ramps.size()
+	check(none == 0, "a weight of 0 leaves the feature's patterns out (%d ramps)" % none)
+	check(heavy > plain * 2, "a weight of 3 picks them far more often (%d ramps against %d)" % [heavy, plain])
+	check(base.feature_weights.is_empty(), "copies never write into the level resource's weights")
+
+
+## Every feature a pattern requires is one the game knows: a mechanic, an enemy type, or a planned
+## feature (LevelConfig.PLANNED_FEATURES), so a typo can't hide a pattern for good.
+func _test_pattern_features() -> void:
+	var base: LevelConfig = load(LEVEL_PATH) as LevelConfig
+	for p: Dictionary in LevelGenerator.load_for(base):
+		for need: Variant in p.get("requires", []):
+			check(LayoutChecks.known_feature(String(need)), "pattern %s requires a known feature (%s)" % [p.get("id", "?"), need])
