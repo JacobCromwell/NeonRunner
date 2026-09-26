@@ -33,16 +33,18 @@ static func saws(seconds: float, freqs: Array, gain: float, rng: RandomNumberGen
 	return b
 
 
-## A band-limited pulse wave with duty cycle `duty` (0.5 = square, 0.125 = thin and nasal).
+## A band-limited pulse wave with duty cycle `duty` (0.5 = square, 0.125 = thin and nasal), centred
+## on zero: a narrow pulse otherwise carries a DC offset that thumps when the note is enveloped.
 static func pulse(seconds: float, hz: float, duty: float) -> PackedFloat32Array:
 	var b := DSP.buffer(seconds)
 	var p: float = 0.0
 	var dt: float = hz / RATE
+	var offset: float = 2.0 * duty - 1.0
 	for i: int in b.size():
 		p += dt
 		if p >= 1.0:
 			p -= 1.0
-		b[i] = (1.0 if p < duty else -1.0) + _blep(p, dt) - _blep(fmod(p + 1.0 - duty, 1.0), dt)
+		b[i] = (1.0 if p < duty else -1.0) + _blep(p, dt) - _blep(fmod(p + 1.0 - duty, 1.0), dt) - offset
 	return b
 
 
@@ -72,6 +74,7 @@ static func dirty_bass(hz: float, seconds: float, rng: RandomNumberGenerator) ->
 	DSP.filter(b, &"lowpass", 900.0, 1.2)
 	DSP.drive(b, 5.0, 0.15)
 	DSP.filter(b, &"lowpass", 2200.0, 0.7)
+	DSP.filter(b, &"highpass", 25.0)  # the lopsided drive leaves a DC offset
 	DSP.adsr(b, 0.003, 0.3, 0.75, 0.02)
 	DSP.crush(b, 6, 12000.0)
 	return b
@@ -126,7 +129,7 @@ static func fm_lead(hz: float, seconds: float, from_hz: float, vibrato: float) -
 		b[i] = 0.65 * sin(TAU * pc + index * sin(TAU * pm)) + 0.35 * sin(TAU * pc2 + index * 0.8 * sin(TAU * pm2))
 	DSP.adsr(b, 0.008, 0.25, 0.8, 0.06)
 	DSP.drive(b, 1.6)
-	DSP.crush(b, 11, 22000.0)
+	DSP.crush(b, 11, 24000.0)
 	return b
 
 
@@ -161,6 +164,7 @@ static func dirty_lead(hz: float, seconds: float, from_hz: float, vibrato: float
 	DSP.filter(b, &"lowpass", 2200.0, 1.6)
 	DSP.drive(b, 4.0, 0.1)
 	DSP.filter(b, &"lowpass", 3500.0, 0.7)
+	DSP.filter(b, &"highpass", 40.0)  # the lopsided drive leaves a DC offset
 	DSP.adsr(b, 0.012, 0.3, 0.85, 0.08)
 	DSP.crush(b, 7, 16000.0)
 	return b

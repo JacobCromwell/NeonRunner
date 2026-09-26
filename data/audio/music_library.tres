@@ -10,9 +10,9 @@ files = {
 "menu": "res://assets/music/menu.wav"
 }
 volume_db = {
-"city": -9.0,
-"gangland": -9.0,
-"menu": -10.0
+"city": -10.5,
+"gangland": -10.0,
+"menu": -11.0
 }
 bpm = {
 "city": 160.0,
