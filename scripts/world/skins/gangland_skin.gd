@@ -144,7 +144,7 @@ extends ZoneSkin
 @export var military_crate_colors: PackedColorArray = PackedColorArray([
 	Color(0.27, 0.28, 0.19), Color(0.3, 0.3, 0.21), Color(0.24, 0.25, 0.18)])
 @export var container_colors: PackedColorArray = PackedColorArray([
-	Color(0.52, 0.51, 0.48), Color(0.44, 0.45, 0.46), Color(0.4, 0.38, 0.35)])
+	Color(0.43, 0.42, 0.4), Color(0.37, 0.38, 0.39), Color(0.34, 0.32, 0.3)])
 ## Share of side streets barricaded with stacked military crates, and with corporate containers
 ## (the rest use rusty sheets).
 @export_range(0.0, 1.0, 0.01) var crate_barricade_share: float = 0.3
