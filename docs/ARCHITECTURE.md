@@ -157,12 +157,38 @@ A `ZoneSkin` (`scripts/world/skins/zone_skin.gd`) decorates abstract pieces thro
 `finish_line`, `make_environment`). Skins add visuals only, never collision or gameplay. Hazards keep
 one colour and shape language in every zone (pink crackle = electric fence).
 
-Skins so far: `CitySkin` (Zone 1, the Neon City) and `GanglandSkin` (Zone 2). `GreyboxSkin` is the
-fallback for undesigned zones. Both real skins build on the mesh kit (`scripts/world/meshes/`):
-`MeshKit` has shared builders for hazards, triggers and environments, and `MeshLayer` batches a chunk's
-geometry. The shaders in `scripts/world/meshes/shaders/` are procedural. `HazardStateVisual` swaps a
-hazard's ON / WARNING / OFF materials. A skin's `enemy_variant` (`&"city"` or `&"scavenger"`) picks
-the enemies' look.
+Skins so far: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2) and `MarketplaceSkin`
+(Zone 3). `GreyboxSkin` is the fallback for undesigned zones. The real skins build on the mesh kit
+(`scripts/world/meshes/`): `MeshKit` has shared builders for hazards, triggers and environments, and
+`MeshLayer` batches a chunk's geometry. The shaders in `scripts/world/meshes/shaders/` are procedural.
+`HazardStateVisual` swaps a hazard's ON / WARNING / OFF materials. A skin's `enemy_variant`
+(`&"city"` or `&"scavenger"`) picks the enemies' look.
+
+**Pattern ids.** `kit_solid.gdshader` draws surface patterns by id (`MeshKit.PAT_*`, UV2.x). Ids up
+to 19 are the City's and Gangland's, in `kit_solid.gdshader` itself; ids 20-29 are the Marketplace's,
+in `kit_market.gdshaderinc` (one include and one dispatch line in `kit_solid`). A new zone takes the
+next free block of ten in its own include, so zones built in parallel never collide on an id.
+
+**The Marketplace** (`scripts/world/skins/marketplace/`): `MarketStalls` (the floor), `MarketFacades`
+(the walls, and the pennants and festoon lights across the street), `MarketCeilings` and `MarketProps`
+(fences and signs); its building faces use their own shader, `shopfront.gdshader`.
+- *The stall floor is laid out on the GPU.* A lane piece's roofs are one quad with `PAT_STALLS`: the
+  shader finds each point's stall from its track position (slots along the lane, runs of 1-3 slots)
+  and draws its roof, hem and frame pole. `kit_hash_u()` in the include is `MeshKit.hash_i` bit for
+  bit, so `MarketStalls.stall_at()` and `roof_of()` reproduce the shader's choices for the faces
+  built at gap edges. Anything that must match the shader's layout goes through those two.
+- *Shop windows for the citizens (task D3).* Every shopfront has a row of real window openings with
+  lit displays at the low part of the wall (0.85-2.8 m above the floor, above the wall vents' zone).
+  `MarketplaceSkin.shop_windows(side, face_x, start, end)` lists the windows whose centres lie
+  between two track distances (position on the glass, width, bottom, top, depth into the building,
+  kind), computed from track positions alone, so it can be asked before or after a chunk exists.
+  Citizens stand inside, between the glass plane and `face_x + side * depth`.
+- *Ceilings from their lanes (task B3).* `MarketCeilings` builds every kind (a building bridging the
+  street, an overpass, a merchant ship, a floating ad) from the ceiling's collision box and lane
+  seams, so a ceiling over fewer lanes just builds narrower; only a full-width ceiling becomes a
+  building bridging the street. `mesh_for(kind, ...)` builds a given kind directly.
+- *Decorative signs* (neon, painted blade signs, ad boards, casino bulbs) never sit below
+  `decor_min_height` (8 m) and never wear the striped frame, which is reserved for hazard signs.
 
 **The cult emblem** (D7, GDD §5 "The cult"): `CultEmblem` (`scripts/world/meshes/cult_emblem.gd`)
 builds each option's 2D vector geometry as a flat mesh (mesh kit conventions: emissive for a neon
@@ -170,7 +196,10 @@ ad, lit for paint or the Golden Zone's gold) or a rasterised texture, at any siz
 option B, the Convergent Triad (GDD §5); the choice lives in `data/world/cult_emblem_choice.tres`
 (`CultEmblemChoice`). A skin reads `choice.option` and `CultEmblem.default_scheme(option)` rather
 than hardcoding an option: hidden in logos and ads in every zone, shown openly in the Golden Zone
-(GDD §5, proposed). `tools/showcase/cult_emblem_sheet.tscn` is the comparison sheet.
+(GDD §5, proposed). `tools/showcase/cult_emblem_sheet.tscn` is the comparison sheet. The Marketplace
+turns the emblem into a mesh-kit template once (`MarketplaceSkin.cult_emblem()`), then appends it
+where it hides: a small warm-white badge on some ads, an unlit bronze mark on some shop signs, never
+smaller than `emblem_min_size` (tiny, its three-fold shape could read like the radiation trefoil).
 
 **Reduced flashing** (Settings): `Settings.apply_visuals()` sets the global shader uniform
 `reduced_flashing` (declared in `project.godot`) and `Settings.flashing_reduced`. Hazard shaders
@@ -231,7 +260,8 @@ suites a fresh, unsaved profile, reports a suite that fails to load, and ends a 
 
 Scenes in `tools/showcase/` show one part of the game up close for visual review (not part of the
 game): the avatar, the enemies (`enemy_showcase` for the cyborg family, `octodog_screech`,
-`drone_truck_showcase`, `bad_dream_showcase`), the UI kit, the screens, and comparison sheets for an
-open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
+`drone_truck_showcase`, `bad_dream_showcase`), the UI kit, the screens, a zone skin (`skin_review`:
+any skin from fixed spots, or a scripted run with a ceiling ride and a wall run), and comparison
+sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
 `CLAUDE.md`.

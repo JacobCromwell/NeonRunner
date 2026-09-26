@@ -255,7 +255,8 @@ vec3 mk_stall(vec3 base, vec3 w, vec3 n, float param) {
 		} else if (r1 < 0.72) {
 			col = base * 0.85 * (0.75 + 0.25 * sin(h * 9.0 + seed));
 		} else {
-			vec3 field = mk_goods_color(r2) * 0.9 + 0.08;
+			// Painted in the goods' cooler colours only: a yellow board would echo a hazard sign.
+			vec3 field = mk_goods_color(0.44 + r2 * 0.46) * 0.9 + 0.08;
 			float lx = h / 0.34;
 			float row = step(-1.9, y) * step(y, -1.2);
 			float letter = step(0.35, hash11(floor(lx) + seed * 5.0)) * filtered_pulse(lx, fh / 0.34, 0.15, 0.85);

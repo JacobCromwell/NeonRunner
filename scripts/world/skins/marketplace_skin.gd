@@ -60,7 +60,8 @@ extends ZoneSkin
 @export_group("Stalls")
 ## Stall roofs sit on a grid of slots along each lane; a stall covers 1–3 slots.
 @export_range(1.0, 4.0, 0.1, "suffix:m") var stall_slot: float = 2.0
-## How far below the stall roofs the market floor lies (deeper than a fall is survivable).
+## DESIGN-TBD: how far below the stall roofs the market floor lies (deeper than the fall that ends a
+## run, so a fall never visibly lands).
 @export_range(4.5, 15.0, 0.1, "suffix:m") var market_depth: float = 6.5
 ## Canvas roofs: tan, sand, cream and off-white.
 @export var canvas_colors: PackedColorArray = PackedColorArray([
@@ -97,7 +98,7 @@ extends ZoneSkin
 @export var streak_color: Color = Color(0.9, 0.86, 0.78, 0.22)
 @export_range(0.0, 30.0, 0.5, "suffix:m/s") var dust_speed: float = 5.0
 @export_range(0.0, 80.0, 0.5, "suffix:m/s") var streak_speed: float = 24.0
-## Strings of pennants and festoon lights across the street, high above the ceilings.
+## DESIGN-TBD: strings of pennants and festoon lights across the street, high above the ceilings.
 @export_range(10.0, 120.0, 1.0, "suffix:m") var bunting_spacing: float = 34.0
 @export_range(8.0, 30.0, 0.5, "suffix:m") var bunting_height: float = 13.5
 @export var pennant_colors: PackedColorArray = PackedColorArray([
@@ -120,15 +121,15 @@ extends ZoneSkin
 ## The tiles of the plinth under the shop windows.
 @export var plinth_color: Color = Color(0.38, 0.44, 0.52)
 @export var plinth_light_color: Color = Color(0.74, 0.71, 0.64)
-## The shop windows at the low part of the walls (GDD §5: citizens play there, task D3). The sill
-## stays above the wall vents at the foot of the walls (sewer screeches, GDD §9.5).
+## DESIGN-TBD: the shop windows at the low part of the walls (GDD §5: citizens play there, task D3).
+## The sill stays above the wall vents at the foot of the walls (sewer screeches, GDD §9.5).
 @export_range(0.5, 1.5, 0.05, "suffix:m") var gallery_bottom: float = 0.85
 @export_range(2.0, 3.5, 0.05, "suffix:m") var gallery_top: float = 2.8
 ## How deep the shop windows' displays reach into the buildings.
 @export_range(0.3, 2.0, 0.05, "suffix:m") var shop_depth: float = 0.9
 @export var window_warm_color: Color = Color(1.0, 0.9, 0.76)
 @export_range(0.0, 3.0, 0.05) var window_glow: float = 0.75
-## Decorative signs, neon and lights never sit lower than this (GDD §5 and the task plan: decorative
+## DESIGN-TBD: decorative signs, neon and lights never sit lower than this (the task plan: decorative
 ## signs stay unframed and high, above the wall-run band).
 @export_range(6.0, 16.0, 0.25, "suffix:m") var decor_min_height: float = 8.0
 ## Decorative neon: kept away from the hazard colours (pink, yellow, orange, red, green, cyan).
@@ -144,6 +145,7 @@ extends ZoneSkin
 @export_range(0.0, 1.0, 0.01) var hall_share: float = 0.15
 ## Faint lines on the facades at these heights, to read how high a wall run is.
 @export var wall_height_marks: PackedFloat32Array = PackedFloat32Array([2.0, 4.0])
+## DESIGN-TBD: dark, unlit paint on the Marketplace's light walls (the other zones' marks glow).
 @export var wall_mark_color: Color = Color(0.36, 0.31, 0.26)
 
 @export_group("Hazards")

@@ -162,13 +162,14 @@ func _script() -> Array:
 		[127.5, &"jump"],
 		[starts[0] + 22.0, &"move_right"],
 		[starts[0] + 40.0, &"move_left"],
-		[284.0, &"move_right"],
-		[288.0, &"move_right"],
-		[292.0, &"move_right"],
-		[340.0, &"move_left"],
-		[346.0, &"move_left"],
-		[352.0, &"move_left"],
 	]
+	# Over to the outer right lane and on up the right wall (past its shop windows), then back to the
+	# middle lane once the wall run ends.
+	var to_outer: int = lanes - 1 - lanes / 2
+	for i: int in to_outer + 1:
+		out.append([284.0 + 4.0 * i, &"move_right"])
+	for i: int in to_outer:
+		out.append([340.0 + 6.0 * i, &"move_left"])
 	for i: int in range(1, starts.size()):
 		out.append([starts[i] + 14.0, &"move_left" if i % 2 == 0 else &"move_right"])
 		out.append([starts[i] + 26.0, &"move_right" if i % 2 == 0 else &"move_left"])

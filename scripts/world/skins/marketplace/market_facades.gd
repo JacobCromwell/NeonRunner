@@ -286,16 +286,18 @@ func _shop_extras(solid: MeshLayer, glow: MeshLayer, b: Building, x: float, u0: 
 		var cx: float = b.grid_start + (float(k) + 0.5) * b.cell
 		if cx < start or cx >= end:
 			continue
+		# One hash per column of windows, three bits of it per storey: 1 in 4 windows gets an awning,
+		# 1 in 8 a balcony.
+		var column: int = MeshKit.hash_i(b.seed, k, 5)
 		for storey: int in range(1, top_storey + 1):
 			var floor_y: float = skin.gallery_top + 0.2 + storey * STOREY
-			var win_top: float = floor_y + 0.74 * STOREY
 			if floor_y + 0.26 * STOREY < skin.decor_min_height - 0.5:
 				continue
-			var h: float = MeshKit.hash01(b.seed, k * 16 + storey, 5)
-			if h < 0.22:
+			var bits: int = (column >> ((storey * 3) % 30)) & 7
+			if bits < 2:
 				solid.append(_awning(side, (b.seed + k) % skin.awning_colors.size()),
-					Transform3D(Basis.IDENTITY, Vector3(x, win_top, -cx)))
-			elif h < 0.32 and storey < top_storey:
+					Transform3D(Basis.IDENTITY, Vector3(x, floor_y + 0.74 * STOREY, -cx)))
+			elif bits == 2 and storey < top_storey:
 				solid.append(_balcony(side, (b.seed + k) % 2), Transform3D(Basis.IDENTITY, Vector3(x, floor_y, -cx)))
 	# Blade signs sticking out over the street, high up.
 	var signs: int = MeshKit.hash_i(side, b.id, 50) % 3
