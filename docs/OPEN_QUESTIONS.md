@@ -170,167 +170,173 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
 25. **Slow time:** 0.5× for 3 s (real time), 20 s cooldown.
 26. **Weapon tiers 2–3:** damage 1.4 and 2.0 (tier 1 = 1, tier 4 = 3); fire intervals 0.32 / 0.3 /
     0.55 / 0.65 s; heavy-missile splash 3.5 m at half damage, ×2 against swarms.
+27. **Attacks of different enemy types don't take turns.** Each type spaces its own attacks (one cyborg
+  burst at a time, one drone barrage at a time, Octodog charges only on clear stretches), and the Bad
+  Dream will wait for Octodog charges and drone barrages (GDD §9.7). Other types don't coordinate. In
+  Gangland 3, attacks from two types overlap for 0.3–2.5 s of a 142 s run (measured at 3/5/6 lanes),
+  mostly a drone barrage during a hover truck's rev or cannon charge. Should all major attacks take
+  turns?
 
 **Power-ups** (from the power-ups work)
-27. **Missiles home** on their target (turn rate 7 rad/s) and leave the launcher angled 0.35 away from the
+28. **Missiles home** on their target (turn rate 7 rad/s) and leave the launcher angled 0.35 away from the
     surface. The GDD doesn't say missiles home.
-28. **Swarm bonus on splash:** the heavy missile's bonus also applies to its splash on swarm enemies.
-29. **No overkill:** auto-fire skips an enemy that shots already in flight will kill and moves on to
+29. **Swarm bonus on splash:** the heavy missile's bonus also applies to its splash on swarm enemies.
+30. **No overkill:** auto-fire skips an enemy that shots already in flight will kill and moves on to
     the next nearest.
-30. **Fence generators** are auto-fire targets (destroying one sets off its EMP). Should they be?
-31. **Shots ignore level geometry** (hulls, walls), and the weapon fires from any surface.
-32. **Slow time** slows the player too; pausing suspends it (resuming continues); dying or finishing
+31. **Fence generators** are auto-fire targets (destroying one sets off its EMP). Should they be?
+32. **Shots ignore level geometry** (hulls, walls), and the weapon fires from any surface.
+33. **Slow time** slows the player too; pausing suspends it (resuming continues); dying or finishing
     ends it. Audio isn't slowed.
-33. **Enemy health bars** appear after the first hit: red, draining to dark red, with a white segment
+34. **Enemy health bars** appear after the first hit: red, draining to dark red, with a white segment
     for recent damage (yellow and orange stay hazard colours). The magnet's pull glows azure.
 
 **Player model** (from the player-model work)
-34. How each power-up looks: claws on the gloves, armor plates, a shield bubble, a shoulder weapon that
+35. How each power-up looks: claws on the gloves, armor plates, a shield bubble, a shoulder weapon that
     grows by tier (tier colours are made up), a magnet coil.
-35. Invulnerability: a bright tint that flickers (held steady with Reduced flashing), not a blink.
-36. Death: a red flash while the suit's glow powers down (the grey box turned red). Keep?
-37. The stomp pose also plays during the air-slide fast fall.
-38. The player's glow is cyan, the same as the anti-grav pads. OK, or should the player have its own
+36. Invulnerability: a bright tint that flickers (held steady with Reduced flashing), not a blink.
+37. Death: a red flash while the suit's glow powers down (the grey box turned red). Keep?
+38. The stomp pose also plays during the air-slide fast fall.
+39. The player's glow is cyan, the same as the anti-grav pads. OK, or should the player have its own
     colour?
 
 **Neon City look** (from the City skin work)
-39. **Sign language for every zone:** a yellow/black striped frame around neon content (the frame is
+40. **Sign language for every zone:** a yellow/black striped frame around neon content (the frame is
    the hazard; the content can be anything).
-40. **Truck speed:** the road below streams toward the player at a placeholder 14 m/s.
-41. **Ships** fly toward the player: bow over the near end, engines at the far end where the player
+41. **Truck speed:** the road below streams toward the player at a placeholder 14 m/s.
+42. **Ships** fly toward the player: bow over the near end, engines at the far end where the player
    drops; the far end also carries the gap-edge orange.
-42. **Fences:** glowing edge bars (top for full fences, bottom for gapped); an off fence shows no field.
-43. **City neon avoids hazard colours:** no red traffic lights (red plus bloom reads as fence pink);
+43. **Fences:** glowing edge bars (top for full fences, bottom for gapped); an off fence shows no field.
+44. **City neon avoids hazard colours:** no red traffic lights (red plus bloom reads as fence pink);
    decorative neon is unframed and sits above 9 m. The grey box's faint 2 m / 4 m wall-run height lines
    are kept on the facades. Keep them?
 
 **Gangland look** (from the Gangland skin work)
-44. **Ceiling:** a scavenger cargo barge (patched plates, a blunt bow with a bumper beam, cargo on deck,
+45. **Ceiling:** a scavenger cargo barge (patched plates, a blunt bow with a bumper beam, cargo on deck,
   the orange end band, dim engines). GDD §3 leaves other zones' ceilings open. Keep it?
-45. **Motion on a still street:** drifting ash, paper scraps and speed streaks give a sense of speed
+46. **Motion on a still street:** drifting ash, paper scraps and speed streaks give a sense of speed
   where nothing streams by (the City has its moving road). Keep them? Should other still zones get
   them too?
-46. **Holes:** a dark pit showing the road's layers, with the orange edge glow on the front and back
+47. **Holes:** a dark pit showing the road's layers, with the orange edge glow on the front and back
   edges only (as in the City). Is that enough?
-47. **Side streets** are barricaded flush with the wall up to about 7–8 m, so every wall can be run.
-48. **Speed pads** are green arrow strips in every zone (the City's were invisible before).
-49. **Worn dashed lane lines** on the street as a speed cue.
-50. **Hints** now say "ceiling" rather than "the ship's hull", since the Gangland ceiling is a barge.
+48. **Side streets** are barricaded flush with the wall up to about 7–8 m, so every wall can be run.
+49. **Speed pads** are green arrow strips in every zone (the City's were invisible before).
+50. **Worn dashed lane lines** on the street as a speed cue.
+51. **Hints** now say "ceiling" rather than "the ship's hull", since the Gangland ceiling is a barge.
 
 **Audio** (from the audio work)
-51. **Mix balance:** music sits about 10 dB under the attack warnings; the pause menu ducks music by
+52. **Mix balance:** music sits about 10 dB under the attack warnings; the pause menu ducks music by
   8 dB. Needs a listen on real speakers and phones.
-52. **Music on death and level complete:** the zone track keeps playing under the death screen; the
+53. **Music on death and level complete:** the zone track keeps playing under the death screen; the
   `level_complete` riff is in E (fits City, clashes with Gangland). Stop, duck, or play on?
-53. **Music style per zone** (OPEN_QUESTIONS §6): City is 160 BPM galloping synth-metal in E minor,
+54. **Music style per zone** (OPEN_QUESTIONS §6): City is 160 BPM galloping synth-metal in E minor,
   Gangland 120 BPM drop-D industrial groove, menus 100 BPM synthwave.
 
 **UI** (from the UI kit work)
-54. **Palette:** an azure main accent and a violet second accent; red only for warnings and "can't
+55. **Palette:** an azure main accent and a violet second accent; red only for warnings and "can't
     afford". Pink, orange and yellow are never UI colours (they're hazard colours).
-55. **Stars** are white with an azure glow rather than gold (yellow is the sign colour). OK?
-56. **Fonts and sizes:** Orbitron (titles) and Exo 2 (text, and heavy for numbers: Orbitron's slashed
+56. **Stars** are white with an azure glow rather than gold (yellow is the sign colour). OK?
+57. **Fonts and sizes:** Orbitron (titles) and Exo 2 (text, and heavy for numbers: Orbitron's slashed
     zero read like a "no" sign in a score of 0); touch devices get 76 px controls
     and 1.2× text. Worth checking on a real phone (`data/ui/ui_style.tres`).
-57. **HUD progress bar:** shown, with no markers yet; what markers should stand for is open. Endless runs
+58. **HUD progress bar:** shown, with no markers yet; what markers should stand for is open. Endless runs
     show no progress.
-58. **Key rebinding:** single keys only (no Ctrl+ combinations); Esc cancels a rebind, so Esc itself
+59. **Key rebinding:** single keys only (no Ctrl+ combinations); Esc cancels a rebind, so Esc itself
     can't be bound.
-59. **Level-complete stats:** time, distance, kills, stomps, ramps, longest wall run and hits blocked.
-60. **Revive offer:** waits for a choice (no countdown). Its buttons ignore input for 0.5 s so a jump
+60. **Level-complete stats:** time, distance, kills, stomps, ramps, longest wall run and hits blocked.
+61. **Revive offer:** waits for a choice (no countdown). Its buttons ignore input for 0.5 s so a jump
   press from the run can't spend a revive.
-61. **Quitting from the pause menu** asks first, since the run's credits are lost. Keep the question?
-62. **Breakable stock** shows as x/max in the shop. The level select's difficulty tier is remembered for
+62. **Quitting from the pause menu** asks first, since the run's credits are lost. Keep the question?
+63. **Breakable stock** shows as x/max in the shop. The level select's difficulty tier is remembered for
   the session only, not saved.
-63. **Shop order:** breakable items first. Esc in the between-runs shop carries on like the main button.
-64. **Keys on touch devices:** the key-binding section is hidden, so a tablet with a keyboard can't
+64. **Shop order:** breakable items first. Esc in the between-runs shop carries on like the main button.
+65. **Keys on touch devices:** the key-binding section is hidden, so a tablet with a keyboard can't
   rebind keys.
-65. **Boss and cinematic slots** show their planning notes on screen ("PLANNED"). Useful for playtests;
+66. **Boss and cinematic slots** show their planning notes on screen ("PLANNED"). Useful for playtests;
   remove before release.
 
 **Cyborgs and fence generators** (from the cyborg work)
-66. **Cyborg shots to kill** (GDD §8 leaves it open): 3 laser tier 1 shots early in the campaign, 5 late.
-67. **Cyborg attack:** engages from 72 m; 0.75 s charge-up; bursts of 2–3 bolts 0.18 s apart; reload
+67. **Cyborg shots to kill** (GDD §8 leaves it open): 3 laser tier 1 shots early in the campaign, 5 late.
+68. **Cyborg attack:** engages from 72 m; 0.75 s charge-up; bursts of 2–3 bolts 0.18 s apart; reload
   2.2 s early to 1.3 s late; bolts 10 to 15 m/s. The aim locks when the charge-up ends, so switching
   lanes after it dodges the whole burst. At these numbers a normal cyborg usually fires once before
   the player reaches it.
-68. **Cyborg movement:** walks toward the player at 1.4 m/s for up to 8 m and drops back at 8 m/s once
+69. **Cyborg movement:** walks toward the player at 1.4 m/s for up to 8 m and drops back at 8 m/s once
   passed. The panic variant (1 in 3) notices the player at 58 m, runs at 8.5 m/s for up to 45 m, then
   cowers. The GDD doesn't say what a fleeing cyborg does when it runs out of room.
-69. **Fairness rules added (not in the GDD):** no cyborg bolt arrives within 12 m before or 8 m after a
+70. **Fairness rules added (not in the GDD):** no cyborg bolt arrives within 12 m before or 8 m after a
   fence or gap; only one cyborg bursts at a time; cyborgs hold fire at a player on the ceiling, and
   window cyborgs at a player on their own wall; cyborgs stand at least 10 m from gaps, fences, ramps
   and pads.
-70. **Hosts:** never panic; the kill bonus is 1,500. It's paid, and the Bad Dream released, on any
+71. **Hosts:** never panic; the kill bonus is 1,500. It's paid, and the Bad Dream released, on any
   kill, even a stray direct weapon hit (auto-fire never aims at hosts).
-71. **Window cyborgs:** a 0.8 m body band centred on the 2.2 m wall-entry height, reaching 0.55 m out
+72. **Window cyborgs:** a 0.8 m body band centred on the 2.2 m wall-entry height, reaching 0.55 m out
   from the wall. They can't be stomped.
-72. **Fence generators:** claws and running into one don't destroy it, and its body is solid (running
+73. **Fence generators:** claws and running into one don't destroy it, and its body is solid (running
   into it kills; armor doesn't help). EMP radius 16 m; 3 shots to destroy; placed 9 m before its fence
   row.
-73. **Scores and look:** cyborg and window cyborg 200, generator 150. LED faces are amber so they read
+74. **Scores and look:** cyborg and window cyborg 200, generator 150. LED faces are amber so they read
   apart from the player's cyan visor.
 
 **Octodog and Sewer Screech** (from their work)
-74. **Octodog timing:** wind-up 0.95 s early to 0.8 s late; lunges from 15 m at 9 to 11 m/s with a 3 m
+75. **Octodog timing:** wind-up 0.95 s early to 0.8 s late; lunges from 15 m at 9 to 11 m/s with a 3 m
   overshoot. A red floor line shows the lunge path, added to the GDD's "visual cue".
-75. **Octodog aim:** it locks on the player's lane when the wind-up starts; 40% of repeat charges come
+76. **Octodog aim:** it locks on the player's lane when the wind-up starts; 40% of repeat charges come
   from the lane beside the player. The first charge aims at the player from wherever the dog stands,
   so on 5–6 lanes it can cut across several lanes.
-76. **Between charges** it passes in another lane and is harmless until 3 m ahead (no attack from
+77. **Between charges** it passes in another lane and is harmless until 3 m ahead (no attack from
   behind). After its last charge it sits and is left behind; if no clear moment comes within 40 m, it
   runs off ahead.
-77. **Charge planning:** charges only happen on clear stretches (no fence, pad, ceiling or other enemy),
+78. **Charge planning:** charges only happen on clear stretches (no fence, pad, ceiling or other enemy),
   and a dog is left out if fewer than 2 charges fit.
-78. **Doghouse:** the player's first 3 Octodogs ever hide in a doghouse in their lane and burst out at
+79. **Doghouse:** the player's first 3 Octodogs ever hide in a doghouse in their lane and burst out at
   55 m.
-79. **Octodog numbers:** score 250; gap-bait bonus 300; 5 shots to kill early and late (late scaling is
+80. **Octodog numbers:** score 250; gap-bait bonus 300; 5 shots to kill early and late (late scaling is
   open).
-80. **Octodog contact:** is running into a standing Octodog also a "grab"? It's currently an attack, so
+81. **Octodog contact:** is running into a standing Octodog also a "grab"? It's currently an attack, so
   armor blocks it.
-81. **Screech timing:** it decides 1.6 s out (at least 1.15 s of warning); shakes 0.6 s early to 0.5 s
+82. **Screech timing:** it decides 1.6 s out (at least 1.15 s of warning); shakes 0.6 s early to 0.5 s
   late; emerges in 0.22 s; dashes at 6 to 8 m/s for up to 4 m; the swipe winds up for 0.14 s and is
   live for 0.16 s, reaching 1.3 m at 1.0 m high (1.6 m from a vent). Score 100.
-82. **Screech spines:** landing on or running into them is a body collision, so armor doesn't block it
+83. **Screech spines:** landing on or running into them is a body collision, so armor doesn't block it
   (the shield does). With claws, even touching its swipe kills it.
-83. **Screech and holes:** it stops at a hole's edge rather than dashing in.
-84. **City screeches** come from wall vents only (a `screech_vents` level feature, rare). A manhole cover
+84. **Screech and holes:** it stops at a hole's edge rather than dashing in.
+85. **City screeches** come from wall vents only (a `screech_vents` level feature, rare). A manhole cover
   lands back over its hole, so no open hole looks like a gap.
 
 **Heli drone and hover truck** (from their work)
-85. **Drone contact:** it has no body hitbox, so touching, stomping or dashing into it does nothing.
-86. **Drone attack:** it swoops in, hovers 11 m ahead and 3.2 m up, winds up for 1.15 s early to 0.95 s
+86. **Drone contact:** it has no body hitbox, so touching, stomping or dashing into it does nothing.
+87. **Drone attack:** it swoops in, hovers 11 m ahead and 3.2 m up, winds up for 1.15 s early to 0.95 s
   late (glowing eye and an aim line), then fires 6 to 7 bullets 0.18 to 0.15 s apart. The aim locks
   when firing starts. A barrage fits inside the invulnerability window, so armor or a shield protects
   through all of it. It leads a wall runner's slide down the wall. Only one barrage at a time.
-87. **"Every drone on screen"** (for the anti-grav pad) means swooped in, and between 12 m behind and
+88. **"Every drone on screen"** (for the anti-grav pad) means swooped in, and between 12 m behind and
   120 m ahead of the player.
-88. **Drone waves:** a level's first wave is a single drone; a second drone joins only from mid-campaign;
+89. **Drone waves:** a level's first wave is a single drone; a second drone joins only from mid-campaign;
   waves come at least 20 s apart; a level with drones always gets at least one.
-89. **Drone pads:** the first comes 10 s after a wave appears plus some slack; each pad's ceiling lasts
+90. **Drone pads:** the first comes 10 s after a wave appears plus some slack; each pad's ceiling lasts
   3 s. After the first wave the drone's pad schedule owns every pad: pattern ceilings give way, and
   floor pieces and enemies under a pad's ceiling are removed. Pads avoid a hover truck's lane.
-90. **Hover truck lane and pacing:** it holds the outer lane on its side and never changes lanes. The
+91. **Hover truck lane and pacing:** it holds the outer lane on its side and never changes lanes. The
   pacing cycle (ahead, lurch back, rev, lurch forward alongside the player) and its timings are
   placeholders. Blocked by a player behind it, it leaves by speeding off ahead.
-91. **Hover truck warnings:** a new "rev" sound and flashing spikes warn of the forward lurch. The
+92. **Hover truck warnings:** a new "rev" sound and flashing spikes warn of the forward lurch. The
   cannon fires only while the truck paces ahead, and holds fire at a player on the ceiling or riding
   the roof. Window shooters (0 early, 2 late, 1 mid-campaign) fire with the cannon.
-92. **Hover truck kill rules:** the weak point is on the lower cab roof, and riders drift toward it.
+93. **Hover truck kill rules:** the weak point is on the lower cab roof, and riders drift toward it.
   Claws and the dash defeat it on contact with its live spikes (the shared rules). Its burst through
   the wall counts as an enemy attack, so armor blocks it.
-93. **Trucks per level:** 1 early to 3 late, at least one guaranteed, one at a time. Its lane is kept
+94. **Trucks per level:** 1 early to 3 late, at least one guaranteed, one at a time. Its lane is kept
   clear while it's around, and a ramp is added for the wall route onto the roof when the level has
   ramps. City 3 has no ramps, so there only the lurch route and weapons reach the roof.
-94. **Scores:** drone 300, hover truck 800.
+95. **Scores:** drone 300, hover truck 800.
 
 **Platforms and presentation**
-95. **Store links** in the web demo point at the stores' front pages until the game has store pages.
-96. **App icon:** a placeholder neon "N" (`tools/asset_gen/icon_gen.gd`) until there's a title and brand.
-97. **Leaderboards view:** scores are already submitted (per level and difficulty tier, endless per lane
+96. **Store links** in the web demo point at the stores' front pages until the game has store pages.
+97. **App icon:** a placeholder neon "N" (`tools/asset_gen/icon_gen.gd`) until there's a title and brand.
+98. **Leaderboards view:** scores are already submitted (per level and difficulty tier, endless per lane
   count and tier, net worth), but no screen opens the platform's leaderboard UI yet. The plan is a button on
   the title and results screens once the platform plugins are chosen (the stub has no leaderboards).
-98. **Achievements:** the platform layer can unlock them, but none are designed. Which ones, if any?
+99. **Achievements:** the platform layer can unlock them, but none are designed. Which ones, if any?
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
