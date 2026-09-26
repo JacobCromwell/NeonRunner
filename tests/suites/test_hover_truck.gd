@@ -427,6 +427,7 @@ func _test_rules() -> void:
 					var config: LevelConfig = base.duplicate() as LevelConfig
 					config.lane_count = lanes
 					config.difficulty = difficulty
+					config.enemy_scaling = difficulty
 					config.level_seed = level_seed
 					config.features = PackedStringArray(["ceilings", "pulsing", "hover_truck"])
 					if with_ramps:
@@ -439,12 +440,14 @@ func _test_rules() -> void:
 					check(JSON.stringify(a.to_dict()) == JSON.stringify(b.to_dict()), "same seed, same trucks " + tag)
 					var n: int = _check_rules(a, config, t, tag)
 					check(n >= 1, "every truck level has a truck " + tag)
+					check(n <= t.max_per_level_at(config.enemy_scaling), "no more trucks than the level's scaling allows " + tag)
 					per_difficulty[difficulty] = int(per_difficulty.get(difficulty, 0)) + n
 					levels += 1
 	check(per_difficulty[0.2] < per_difficulty[1.0],
 		"rare early, more frequent later (%d trucks at difficulty 0.2, %d at 1.0)" % [per_difficulty[0.2], per_difficulty[1.0]])
 
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
+	var totals: Dictionary = {}
 	for id: String in ["city/3", "gangland/1", "gangland/2", "gangland/3"]:
 		for lanes: int in [3, 5, 6]:
 			var config: LevelConfig = campaign.configure(campaign.step(id), lanes)
@@ -452,6 +455,9 @@ func _test_rules() -> void:
 			var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
 			var n: int = _check_rules(layout, config, t, "%s lanes=%d" % [id, lanes])
 			check(gen.warnings.is_empty() and n >= 1, "%s has trucks and follows the rules (%d, %d lanes)" % [id, n, lanes])
+			totals[id] = int(totals.get(id, 0)) + n
+	check(totals["city/3"] == 3, "city/3 introduces the truck: one per level (%d over 3 lane counts)" % totals["city/3"])
+	check(totals["gangland/3"] > totals["city/3"], "later levels bring more (%d vs %d)" % [totals["gangland/3"], totals["city/3"]])
 
 
 ## Checks one layout against the truck rules. Returns the number of trucks.

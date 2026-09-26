@@ -109,6 +109,10 @@ extends EnemyTuning
 @export_range(0.0, 60.0, 1.0, "suffix:m") var clear_before: float = 20.0
 ## A new truck comes at least this long after the previous one's lane is free again.
 @export_range(0.0, 60.0, 1.0, "suffix:s") var min_gap_seconds: float = 6.0
+## GDD §9.3: rare early, more frequent later. At most this many trucks in a level, scaled with the
+## level's enemy_scaling (rounded down): 1 early, up to 3 by the last levels.
+@export_range(1.0, 5.0, 0.1) var max_per_level_early: float = 1.0
+@export_range(1.0, 5.0, 0.1) var max_per_level_late: float = 3.0
 ## When the level has ramps, route (a) gets a ramp on the truck's side this long after the burst.
 @export_range(2.0, 30.0, 0.5, "suffix:s") var ramp_after_seconds: float = 7.0
 ## A level with the hover_truck feature always gets at least one truck (the patterns may pick
@@ -132,6 +136,11 @@ func shell_speed_at(t: float) -> float:
 
 func bolt_speed_at(t: float) -> float:
 	return scaled(bolt_speed_early, bolt_speed_late, t)
+
+
+## Trucks allowed in one level at scaling `t`.
+func max_per_level_at(t: float) -> int:
+	return maxi(1, int(floor(scaled(max_per_level_early, max_per_level_late, t) + 0.001)))
 
 
 ## Window shooters at scaling `t`: 0 early, up to 2 by the last levels.

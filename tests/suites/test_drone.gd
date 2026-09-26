@@ -322,6 +322,7 @@ func _test_rules() -> void:
 				var config: LevelConfig = base.duplicate() as LevelConfig
 				config.lane_count = lanes
 				config.difficulty = difficulty
+				config.enemy_scaling = difficulty
 				config.level_seed = level_seed
 				config.features = PackedStringArray(["ceilings", "pulsing", "ramps", "drone"])
 				var tag: String = "lanes=%d diff=%.1f seed=%d" % [lanes, difficulty, level_seed]
@@ -380,6 +381,13 @@ func _check_rules(layout: LevelLayout, config: LevelConfig, t: DroneTuning, tag:
 		if not pads.has(float(p["at"])):
 			pads.append(float(p["at"]))
 	pads.sort()
+	# One new thing at a time: a level's first drone comes alone; pairs only later in the campaign.
+	if not drones.is_empty():
+		var together: int = drones.count(drones[0])
+		check(together == 1, "a level's first wave is a single drone %s" % tag)
+		for d: float in drones:
+			if drones.count(d) > 1:
+				check(config.enemy_scaling >= t.pair_min_scaling, "pairs of drones only from scaling %.2f %s" % [t.pair_min_scaling, tag])
 	for d: float in drones:
 		check(d <= layout.length - t.no_spawn_last_seconds * speed + 0.01,
 			"no drone in the last %d s (at %.0f of %.0f m) %s" % [t.no_spawn_last_seconds, d, layout.length, tag])

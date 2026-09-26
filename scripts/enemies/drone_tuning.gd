@@ -69,6 +69,9 @@ extends EnemyTuning
 @export_range(0.0, 60.0, 1.0, "suffix:s") var no_spawn_last_seconds: float = 15.0
 ## DESIGN-TBD: how long the ceiling above each scheduled pad lasts.
 @export_range(1.0, 8.0, 0.5, "suffix:s") var pad_ceiling_seconds: float = 3.0
+## DESIGN-TBD: a wave can bring a second drone (extra attackers, GDD §6) only from this
+## enemy_scaling on, and never as a level's first wave (one new thing at a time).
+@export_range(0.0, 1.0, 0.05) var pair_min_scaling: float = 0.5
 ## DESIGN-TBD: a new wave of drones comes at least this long after the previous one.
 @export_range(0.0, 120.0, 1.0, "suffix:s") var min_wave_gap_seconds: float = 20.0
 ## DESIGN-TBD: a level with the drone feature always gets at least one drone (the patterns may pick

@@ -4,6 +4,8 @@ extends RefCounted
 ## (data/enemies/hover_truck.tres).
 ## - One at a time: a truck placed while another's lane is still reserved is dropped (with
 ##   min_gap_seconds between them), and so is one too close to the end for its shortest stay.
+## - Rare early, more frequent later: at most max_per_level_at(enemy_scaling) trucks in a level
+##   (DESIGN-TBD: 1 early, up to 3 by the last levels); the earliest are kept.
 ## - Its lane (the outer lane on its side) is kept free while it's around: no gaps, fences or other
 ##   floor enemies there from just before its burst point until it has left (stay_max + leave).
 ##   It hovers over such things anyway, and the player needs that lane for route (b).
@@ -31,9 +33,10 @@ static func apply(gen: LevelGenerator) -> void:
 	var kept: Array[Dictionary] = []
 	var removed: Array[Dictionary] = []
 	var free_from: float = -INF
+	var most: int = t.max_per_level_at(gen.config.enemy_scaling)
 	for e: Dictionary in trucks:
 		var at: float = e["at"]
-		if at > latest or at - t.burst_lead - t.clear_before < free_from:
+		if at > latest or at - t.burst_lead - t.clear_before < free_from or kept.size() >= most:
 			removed.append(e)
 			continue
 		kept.append(e)

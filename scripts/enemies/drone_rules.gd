@@ -3,7 +3,9 @@ extends RefCounted
 ## levels with the `drone` feature. Numbers come from DroneTuning (data/enemies/drone.tres).
 ## - No drone appears in the last ~15 s of a level (no_spawn_last_seconds), nor so late that its
 ##   first pad wouldn't fit before the finish.
-## - Drones placed at the same spot form a wave. The first anti-grav pad comes at least
+## - Drones placed at the same spot form a wave; a level's first wave is a single drone, and a
+##   second drone joins later waves only from pair_min_scaling on (DESIGN-TBD).
+## - The first anti-grav pad comes at least
 ##   first_pad_seconds (10 s) after a wave appears; after each pad another follows 8–10 s later
 ##   (pad_repeat_*), until the level ends. The schedule is pre-placed: the generator can't know when
 ##   the player destroys the drone, and pads left after it dies are just ordinary ceilings.
@@ -67,6 +69,13 @@ static func apply(gen: LevelGenerator) -> void:
 				removed.append(e)
 				continue
 		waves.append([e])
+	# Extra drones in a wave: never in the first wave of a level, and only later in the campaign.
+	for w: int in waves.size():
+		var wave: Array = waves[w]
+		if wave.size() > 1 and (w == 0 or gen.config.enemy_scaling < t.pair_min_scaling):
+			for k: int in range(wave.size() - 1, 0, -1):
+				removed.append(wave[k])
+				wave.remove_at(k)
 	if not has_ceilings:
 		_remove_entries(layout, removed)
 		gen.warnings.append("drone: the level has drones but not the `ceilings` feature, so no anti-grav pad can destroy them (pad schedule skipped)")
