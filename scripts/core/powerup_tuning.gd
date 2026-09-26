@@ -21,6 +21,11 @@ extends Resource
 @export_range(0.0, 1.0, 0.05) var splash_damage_share: float = 0.5
 ## DESIGN-TBD: the heavy missile's bonus damage multiplier against the swarm boss (GDD §8).
 @export_range(1.0, 5.0, 0.1) var swarm_bonus_multiplier: float = 2.0
+## Missiles (tiers 3–4) home on their target: how fast they turn (radians per second).
+@export_range(0.0, 20.0, 0.25, "suffix:rad/s") var missile_turn_rate: float = 7.0
+## Missiles leave the launcher angled this much away from the surface, then curve onto the target
+## (0 = straight at it). Only the look: homing brings them back.
+@export_range(0.0, 1.0, 0.05) var missile_launch_lift: float = 0.35
 
 @export_group("Claws")
 ## DESIGN-TBD: how much longer wall runs last with claws (OPEN_QUESTIONS §4).
