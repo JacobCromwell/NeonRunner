@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="ZoneDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/campaign/zone_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/core/level_config.gd" id="2_levelscript"]
+[ext_resource type="Resource" path="res://data/levels/city_1.tres" id="lvl_city_1"]
+[ext_resource type="Resource" path="res://data/levels/city_2.tres" id="lvl_city_2"]
+[ext_resource type="Resource" path="res://data/levels/city_3.tres" id="lvl_city_3"]
+[ext_resource type="Resource" path="res://data/skins/greybox_skin.tres" id="skin"]
+[ext_resource type="Resource" path="res://data/cinematics/city_intro.tres" id="c_intro"]
+[ext_resource type="Resource" path="res://data/cinematics/city_boss_intro.tres" id="c_bintro"]
+[ext_resource type="Resource" path="res://data/cinematics/city_outro.tres" id="c_outro"]
+[ext_resource type="Resource" path="res://data/bosses/city_boss.tres" id="boss"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"city"
+display_name = "Neon City"
+tagline = "Run the roofs of hover-truck convoys under the ships."
+music = &"city"
+skin = ExtResource("skin")
+levels = Array[ExtResource("2_levelscript")]([ExtResource("lvl_city_1"), ExtResource("lvl_city_2"), ExtResource("lvl_city_3")])
+intro = ExtResource("c_intro")
+boss_intro = ExtResource("c_bintro")
+outro = ExtResource("c_outro")
+boss = ExtResource("boss")
+in_demo = true
+placeholder = false

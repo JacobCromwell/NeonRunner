@@ -5,7 +5,7 @@
 #   tools/godot.sh edit               open the Godot editor on this project
 #   tools/godot.sh test [--suite=x]   run the headless tests (exit code 0 = pass); --suite=x runs only
 #                                     the suites whose file name contains x
-#   tools/godot.sh smoke [game args]  40 s headless run; prints only problems (exit code 1 if any)
+#   tools/godot.sh smoke [game args]  40 s headless quick play; prints only problems (exit code 1 if any)
 #   tools/godot.sh sfx                regenerate assets/sfx/*.wav from tools/asset_gen/sfx_gen.gd
 #   tools/godot.sh import             force a resource import
 #
@@ -117,6 +117,8 @@ case "$command" in
 		;;
 	smoke)
 		import_if_stale
+		# Quick play (the prototype level, restarting on death) unless other game args are given.
+		[[ $# -eq 0 ]] && set -- --quick
 		out="$("$GODOT_BIN" --headless --path "$PROJECT" --fixed-fps 60 --quit-after 2400 -- "$@" 2>&1 | quiet)"
 		if [[ -n "$out" ]]; then echo "$out"; exit 1; fi
 		echo "Smoke run clean."

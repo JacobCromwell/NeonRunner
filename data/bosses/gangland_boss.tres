@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="BossDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/campaign/boss_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"gangland_boss"
+display_name = "Sewer Swarm"
+notes = "DESIGN-TBD: a mutant horde rising from the sewers (GDD §10), built from sewer screech clusters rendered with MultiMesh. Which zone it belongs to is still open; it sits here because Gangland has the sewers."

@@ -1,0 +1,71 @@
+{
+	"version": 1,
+	"_note": "DESIGN-TBD: every price and most tier counts are placeholders (OPEN_QUESTIONS §4). GDD §8 fixes the weapon's four tiers.",
+	"items": [
+		{
+			"id": "weapon", "kind": "permanent", "icon": "weapon",
+			"name": "Weapon",
+			"description": "Fires automatically at the nearest enemy.",
+			"tiers": [
+				{ "name": "Laser", "price": 900, "description": "Fires automatically at the nearest valid target. Enemies show health bars." },
+				{ "name": "Enhanced laser", "price": 2200, "description": "A thicker beam in a new colour. More damage." },
+				{ "name": "Missile", "price": 4800, "description": "Slower shots, much more damage." },
+				{ "name": "Heavy missile", "price": 9500, "description": "Huge damage with splash, and bonus damage against swarms." }
+			]
+		},
+		{
+			"id": "claws", "kind": "permanent", "icon": "claws",
+			"name": "Claws",
+			"description": "Longer wall runs. Kill any enemy on contact, anywhere. Beat spines and tentacles.",
+			"tiers": [
+				{ "name": "Claws", "price": 2600 }
+			]
+		},
+		{
+			"id": "dash", "kind": "permanent", "icon": "dash",
+			"name": "Juggernaut dash",
+			"description": "Tap to barrel through enemies and obstacles. Recharges after use.",
+			"tiers": [
+				{ "name": "Juggernaut dash", "price": 1800 }
+			]
+		},
+		{
+			"id": "magnet", "kind": "permanent", "icon": "magnet",
+			"name": "Magnet",
+			"description": "Pulls in nearby credits on your surface, up to the lanes next to yours.",
+			"tiers": [
+				{ "name": "Magnet", "price": 700, "description": "Pulls in credits close to you." },
+				{ "name": "Magnet II", "price": 1600, "description": "A wider pull." },
+				{ "name": "Magnet III", "price": 3200, "description": "Reaches the lanes on both sides." }
+			]
+		},
+		{
+			"id": "slow_time", "kind": "permanent", "icon": "slow_time", "platforms": ["pc"],
+			"name": "Slow time",
+			"description": "Press E to slow the world for a few seconds. Recharges after use.",
+			"tiers": [
+				{ "name": "Slow time", "price": 2400 }
+			]
+		},
+		{
+			"id": "armor", "kind": "breakable", "icon": "armor",
+			"name": "Armor", "price": 150, "max_stock": 5,
+			"description": "Blocks one enemy attack or electrical hazard. Doesn't stop solid hits or falls."
+		},
+		{
+			"id": "shield", "kind": "breakable", "icon": "shield",
+			"name": "Shield", "price": 400, "max_stock": 5,
+			"description": "Blocks one hit of anything except a fall."
+		},
+		{
+			"id": "grapple", "kind": "breakable", "icon": "grapple",
+			"name": "Grapple hook", "price": 250, "max_stock": 5,
+			"description": "Saves you from one fall."
+		},
+		{
+			"id": "revive", "kind": "breakable", "icon": "revive",
+			"name": "Revive", "price": 600, "max_stock": 3,
+			"description": "Revives you on the spot after a death."
+		}
+	]
+}

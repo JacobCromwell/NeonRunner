@@ -18,6 +18,12 @@ func _run() -> void:
 		if arg.begins_with("--suite="):
 			only = arg.get_slice("=", 1)
 	var tuning := load(TestSuite.TUNING_PATH) as MovementTuning
+	# Never touch the player's real save: suites get a fresh profile and saving goes to a test file.
+	var app: Node = root.get_node_or_null(^"App")
+	if app != null:
+		app.set(&"autosave", false)
+		app.set(&"save_path", "user://test_profile.json")
+		app.set(&"profile", Profile.new())
 	var failures: PackedStringArray = []
 	var checks: int = 0
 	var files: PackedStringArray = DirAccess.get_files_at(SUITES_DIR)
@@ -36,7 +42,19 @@ func _run() -> void:
 		suite.tree = self
 		suite.tuning = tuning
 		var suite_started: int = Time.get_ticks_msec()
+		var before: Array[Node] = root.get_children()
 		await suite.run()
+		# Whatever a suite leaves in the tree (e.g. after a failed check) must not leak into the next
+		# suite's physics space.
+		var leaked: int = 0
+		for child: Node in root.get_children():
+			if not before.has(child):
+				child.queue_free()
+				leaked += 1
+		if leaked > 0:
+			suite.failures.append("left %d node(s) in the tree" % leaked)
+			await process_frame
+		paused = false
 		ran += 1
 		checks += suite.checks
 		for f: String in suite.failures:

@@ -5,15 +5,13 @@
 
 [resource]
 script = ExtResource("1_level")
+id = &"prototype"
+display_name = "Prototype"
 level_seed = 1
-lane_count = 3
-lanes_pc = 5
-lanes_mobile = 3
 duration_seconds = 120.0
 difficulty = 0.3
 difficulty_ramp = 0.25
-ramps_enabled = true
-ceilings_enabled = true
+features = PackedStringArray("ramps", "ceilings", "pulsing")
 patterns_path = "res://data/patterns/prototype_patterns.json"
 skin = ExtResource("2_skin")
 start_clear_distance = 60.0

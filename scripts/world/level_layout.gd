@@ -18,6 +18,13 @@ var hulls: Array[Dictionary] = []
 var pads: Array[Dictionary] = []
 ## {side, at}: ramp in the outermost lane on that side, launching onto the wall.
 var ramps: Array[Dictionary] = []
+## {lane, at}: speed pad in a floor lane (DESIGN-TBD: GDD §6 only names them).
+var speed_pads: Array[Dictionary] = []
+## {at, surface ("floor" | "wall" | "ceiling"), lane (floor/ceiling), side (wall), height, value}.
+## `height` is the distance from the surface (floor/ceiling) or the height on the wall.
+var credits: Array[Dictionary] = []
+## {type, at, lane, side, seed, params}: an enemy (or destructible) for EnemyDirector.
+var enemies: Array[Dictionary] = []
 
 
 func to_dict() -> Dictionary:
@@ -30,6 +37,9 @@ func to_dict() -> Dictionary:
 		"hulls": hulls,
 		"pads": pads,
 		"ramps": ramps,
+		"speed_pads": speed_pads,
+		"credits": credits,
+		"enemies": enemies,
 	}
 
 
@@ -43,8 +53,35 @@ func copy() -> LevelLayout:
 	out.hulls = hulls.duplicate(true)
 	out.pads = pads.duplicate(true)
 	out.ramps = ramps.duplicate(true)
+	out.speed_pads = speed_pads.duplicate(true)
+	out.credits = credits.duplicate(true)
+	out.enemies = enemies.duplicate(true)
 	return out
 
 
 func outer_lane(side: int) -> int:
 	return 0 if side < 0 else lane_count - 1
+
+
+## Total value of every credit: the best possible credit score, used for stars.
+func total_credit_value() -> int:
+	var total: int = 0
+	for c: Dictionary in credits:
+		total += int(c["value"])
+	return total
+
+
+## True if `lane` has a hole anywhere in [from, to].
+func gapped_between(lane: int, from: float, to: float) -> bool:
+	for g: Dictionary in gaps:
+		if g["lane"] == lane and g["start"] <= to and g["end"] >= from:
+			return true
+	return false
+
+
+## True if a ceiling section covers the track distance `d`.
+func under_hull(d: float) -> bool:
+	for h: Dictionary in hulls:
+		if d >= h["start"] and d <= h["end"]:
+			return true
+	return false

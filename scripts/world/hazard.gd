@@ -1,18 +1,31 @@
 class_name Hazard
 extends Area3D
-## Anything that can hurt the player on contact. Hazards declare properties; DamageRules
-## decides what a contact does, so hazards never apply damage themselves. Visuals and
-## sounds follow `state_changed` and never change gameplay.
+## Anything that can hurt the player on contact: obstacles (fences, signs), enemy hitboxes and
+## enemy projectiles. Hazards declare properties; DamageRules decides what a contact does, so
+## hazards never apply damage themselves. Visuals and sounds follow `state_changed` and never
+## change gameplay. After the Player resolves a contact it emits `contacted` with the outcome
+## (a DamageRules.Outcome), so projectiles can despawn and enemies can react.
 
 signal state_changed(new_state: State)
+signal contacted(outcome: int)
 
 enum State { ON, WARNING, OFF }
 
 var hazard_name: String = "hazard"
 ## Blocked by armor (GDD §8). Fences are electrical.
 var is_electrical: bool = false
-## A solid collision (signs, trucks, walls). Armor does not block these.
+## An enemy attack (shots, lunges, swipes, slashes). Blocked by armor (GDD §8).
+var is_enemy_attack: bool = false
+## A solid collision (signs, trucks, walls, enemy bodies). Armor does not block these.
 var is_solid: bool = false
+## DESIGN-TBD: the juggernaut dash passes through every hazard except falls unless this is false.
+var dash_passes: bool = true
+## The enemy this hitbox belongs to, or null for obstacles and projectiles.
+var enemy: Enemy = null
+## Which part of an enemy this is: &"body", &"top" (stomp zone), &"weak_point", &"attack".
+var part: StringName = &""
+## The hitbox size (box shape), used for stomp checks and debug drawing.
+var size: Vector3 = Vector3.ONE
 var state: State = State.ON
 
 var _pulse_on: float = 0.0
@@ -28,6 +41,21 @@ func _ready() -> void:
 ## Hurts only while ON. WARNING is the telegraph before switching on, and is still safe.
 func is_active() -> bool:
 	return state == State.ON
+
+
+## Switches the hazard on or off for good (e.g. fences disabled by an EMP, a defeated enemy).
+func set_enabled(on: bool) -> void:
+	_pulse_on = 0.0
+	set_physics_process(false)
+	var next: State = State.ON if on else State.OFF
+	if next != state:
+		state = next
+		state_changed.emit(state)
+
+
+## World-space height of the top of the hitbox.
+func top_y() -> float:
+	return global_position.y + size.y * 0.5
 
 
 ## Makes the hazard switch on and off, driven by the level clock so every attempt

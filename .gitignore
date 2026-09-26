@@ -13,3 +13,6 @@ Thumbs.db
 # Local Godot location found by tools/godot.sh
 .godot-path
 .godot-path-windows
+
+# Agent worktrees (Claude Code)
+.claude/worktrees/

@@ -50,11 +50,15 @@ extends Resource
 ## Gap between the outer lane edge and the wall face.
 @export_range(0.0, 1.0, 0.05, "suffix:m") var wall_margin: float = 0.3
 
-@export_group("Ramps")
+@export_group("Ramps & speed pads")
 ## DESIGN-TBD: ramp values are open (OPEN_QUESTIONS §4).
 @export_range(1.0, 6.0, 0.1, "suffix:m") var ramp_entry_height: float = 4.0
 @export_range(0.0, 15.0, 0.5, "suffix:m/s") var ramp_speed_boost: float = 0.0
 @export_range(0.5, 20.0, 0.5, "suffix:m/s per s") var ramp_boost_decay_per_second: float = 4.0
+## DESIGN-TBD: speed pads are only named in the GDD (§6: they arrive a few levels in). A pad in a
+## floor lane adds this much speed, which then decays like the ramp boost.
+@export_range(0.0, 20.0, 0.5, "suffix:m/s") var speed_pad_boost: float = 6.0
+@export_range(0.5, 5.0, 0.1, "suffix:m") var speed_pad_length: float = 2.5
 
 @export_group("Ceiling")
 @export_range(3.5, 10.0, 0.1, "suffix:m") var ceiling_height: float = 6.0

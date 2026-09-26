@@ -1,5 +1,6 @@
 extends TestSuite
-## Boots the real game scene for two seconds: catches errors in scripts only the game loads.
+## Boots the real main scene and plays two seconds of quick play: catches errors in scripts only the
+## game loads.
 
 
 func run() -> void:
@@ -7,11 +8,18 @@ func run() -> void:
 	check(scene != null, "main scene loads")
 	if scene == null:
 		return
-	var game: Node = scene.instantiate()
-	tree.root.add_child(game)
+	var main: Node = scene.instantiate()
+	tree.root.add_child(main)
+	await tree.process_frame
+	check(App.screen is TitleScreen, "the game boots to the title screen")
+	App.start_quick()
 	await physics_frames(120)
-	var player := game.get_node_or_null("Player") as Player
-	check(player != null and player.distance > 20.0, "the game runs: the player moves forward")
-	check(player != null and player.geo.lane_count == 5, "PC runs default to 5 lanes (%d)" % (player.geo.lane_count if player else -1))
-	game.queue_free()
+	var level_run: LevelRun = App.run
+	check(level_run != null and level_run.world.player.distance > 20.0, "quick play runs: the player moves forward")
+	check(level_run != null and level_run.world.geo.lane_count == 5,
+		"PC runs default to 5 lanes (%d)" % (level_run.world.geo.lane_count if level_run else -1))
+	App.show_title()
+	await tree.process_frame
+	main.queue_free()
+	App.main = null
 	await tree.process_frame

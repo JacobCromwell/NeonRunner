@@ -5,11 +5,19 @@ extends Node3D
 ## bodies. Hazard and trigger contact comes from shape queries on the current frame, swept
 ## over the distance run this frame so nothing is skipped at speed. DamageRules resolves hits.
 ## Input arrives only as named actions (keyboard via the InputMap, touch via TouchInput).
+## Every contact goes through receive_hit(), which asks DamageRules what happens; the player's
+## protection (armor, shield, grapple, claws, the invulnerability window, the dash) lives here.
 
 signal died(cause: String)
 ## Something happened that feedback (sound, HUD) may react to: jump, land, slide, wall_enter,
-## wall_jump, wall_exit, wall_blocked, ramp, pad, hull_end, died.
+## wall_jump, wall_exit, wall_blocked, ramp, pad, hull_end, died, stomp, lane_blocked, speed_pad,
+## grapple, armor_break, shield_break, revive, dash, dash_end.
 signal movement_event(kind: StringName)
+## A protective item was used up: &"armor", &"shield" or &"grapple".
+signal item_used(item: StringName)
+## The player's contact defeated an enemy (cause: &"stomp", &"claws" or &"dash").
+signal enemy_contact(enemy: Enemy, cause: StringName)
+signal revived
 
 enum Surface { FLOOR, CEILING, WALL }
 
@@ -18,8 +26,21 @@ const SENSOR_SIZE := Vector3(0.4, 0.3, 0.4)
 
 var tuning: MovementTuning
 var geo: TrackGeometry
+## Game-wide rules (stomp bounce, invulnerability windows, ...). A default copy if none is set.
+var rules: GameRules
 var god_mode: bool = false
 var running: bool = false
+
+# Protection, set from the run's loadout (GDD §8). Breakable items are single charges.
+var armor: int = 0
+var shield: int = 0
+var grapples: int = 0
+var claws: bool = false
+## Wall-run time multiplier (claws give longer wall runs, GDD §8).
+var wall_time_multiplier: float = 1.0
+## Seconds of invulnerability left (after a block or a revive; the character flashes).
+var invulnerable_left: float = 0.0
+var dashing: bool = false
 
 var distance: float = 0.0
 var speed: float = 0.0
@@ -52,6 +73,13 @@ var _wall_entry_x: float = 0.0
 var _wall_entry_h: float = 0.0
 var _roll: float = 0.0
 var _queued: Array[StringName] = []
+var _bumping: bool = false
+var _dash_left: float = 0.0
+var _dash_bonus: float = 0.0
+var _last_speed_pad: int = 0
+var _death_cause: String = ""
+var _blocker_shape := BoxShape3D.new()
+var _blocker_query := PhysicsShapeQueryParameters3D.new()
 
 var _pivot: Node3D
 var _body: MeshInstance3D
@@ -75,11 +103,17 @@ func _ready() -> void:
 	_trigger_query.collide_with_areas = true
 	_trigger_query.collide_with_bodies = false
 	_trigger_query.collision_mask = TrackBuilder.LAYER_TRIGGER
+	_blocker_query.shape = _blocker_shape
+	_blocker_query.collide_with_areas = true
+	_blocker_query.collide_with_bodies = false
+	_blocker_query.collision_mask = TrackBuilder.LAYER_LANE_BLOCKER
 
 
 func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> void:
 	tuning = p_tuning
 	geo = p_geo
+	if rules == null:
+		rules = GameRules.new()
 	distance = 0.0
 	elapsed = 0.0
 	speed = tuning.run_speed
@@ -100,9 +134,117 @@ func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> v
 	_slide_on_land = false
 	_roll = 0.0
 	_queued.clear()
+	_bumping = false
+	invulnerable_left = 0.0
+	dashing = false
+	_dash_left = 0.0
+	_dash_bonus = 0.0
+	_last_speed_pad = 0
+	_death_cause = ""
 	last_event = ""
-	_body.material_override = GreyboxMaterials.flat(GreyboxMaterials.PLAYER)
+	_show_dead(false)
 	_apply_transform(1.0)
+
+
+## Protection for this run (GDD §8): breakable items are single charges that break when used.
+func apply_loadout(p_armor: int, p_shield: int, p_grapples: int, p_claws: bool, p_wall_time_multiplier: float = 1.0) -> void:
+	armor = p_armor
+	shield = p_shield
+	grapples = p_grapples
+	claws = p_claws
+	wall_time_multiplier = p_wall_time_multiplier
+
+
+func is_invulnerable() -> bool:
+	return invulnerable_left > 0.0
+
+
+## What protects the player right now, for DamageRules.
+func defense() -> DamageRules.Defense:
+	var d := DamageRules.Defense.new()
+	d.armor = armor > 0
+	d.shield = shield > 0
+	d.invulnerable = invulnerable_left > 0.0
+	d.claws = claws
+	d.dashing = dashing
+	d.god_mode = god_mode
+	return d
+
+
+## Resolves one contact with a hazard (obstacle, enemy hitbox or projectile) and applies the
+## outcome. `stomping`: the player is dropping onto it from above. Returns the outcome.
+func receive_hit(hazard: Hazard, stomping: bool = false) -> DamageRules.Outcome:
+	if not alive:
+		return DamageRules.Outcome.IGNORE
+	var d: DamageRules.Defense = defense()
+	var outcome: DamageRules.Outcome = DamageRules.resolve(hazard, d, stomping)
+	match outcome:
+		DamageRules.Outcome.BLOCKED_ARMOR:
+			armor -= 1
+			invulnerable_left = rules.hit_invulnerability
+			item_used.emit(&"armor")
+			_event(&"armor_break")
+		DamageRules.Outcome.BLOCKED_SHIELD:
+			shield -= 1
+			invulnerable_left = rules.hit_invulnerability
+			item_used.emit(&"shield")
+			_event(&"shield_break")
+		DamageRules.Outcome.STOMP, DamageRules.Outcome.DEFEAT_ENEMY:
+			var cause: StringName = DamageRules.defeat_cause(outcome, d)
+			if outcome == DamageRules.Outcome.STOMP:
+				vh = rules.stomp_bounce_velocity
+				grounded = false
+				_slide_left = 0.0
+				_event(&"stomp")
+			hazard.enemy.defeat(cause)
+			enemy_contact.emit(hazard.enemy, cause)
+		DamageRules.Outcome.KILL:
+			_die(hazard.hazard_name)
+	if outcome != DamageRules.Outcome.IGNORE:
+		hazard.contacted.emit(outcome)
+	return outcome
+
+
+## Brings the player back where they died (GDD §4: revive item or rewarded ad), invulnerable for
+## a moment. A player who fell is pulled back up like the grapple hook.
+func revive() -> void:
+	if alive:
+		return
+	alive = true
+	_show_dead(false)
+	invulnerable_left = rules.revive_invulnerability
+	if _death_cause == "fell" or in_pit:
+		in_pit = false
+		h = maxf(h, -tuning.pit_depth)
+		vh = rules.grapple_pull_velocity
+		grounded = false
+	_event(&"revive")
+	revived.emit()
+
+
+## The juggernaut dash (GDD §8): passes through hazards for `duration` seconds, `speed_bonus` faster.
+## Cooldowns belong to the power-up that calls this.
+func start_dash(duration: float, speed_bonus: float) -> void:
+	if not alive:
+		return
+	dashing = true
+	_dash_left = duration
+	_dash_bonus = speed_bonus
+	_event(&"dash")
+
+
+## The damage hitbox in world space, as it is now (projectiles test against it).
+func hurtbox_aabb() -> AABB:
+	var height: float = _hurtbox_height()
+	var hx: float = tuning.hurtbox_size.x * 0.5
+	var hz: float = tuning.hurtbox_size.z * 0.5
+	match surface:
+		Surface.CEILING:
+			return AABB(position + Vector3(-hx, -height, -hz), Vector3(hx * 2.0, height, hz * 2.0))
+		Surface.WALL:
+			var x0: float = position.x - height if wall_side > 0 else position.x
+			return AABB(Vector3(x0, position.y - hx, position.z - hz), Vector3(height, hx * 2.0, hz * 2.0))
+	return AABB(position + Vector3(-hx, 0.0, -hz), Vector3(hx * 2.0, height, hz * 2.0))
 
 
 func is_sliding() -> bool:
@@ -136,8 +278,15 @@ func _physics_process(delta: float) -> void:
 	_jump_buffer -= delta
 	_coyote -= delta
 	_slide_left -= delta
+	invulnerable_left = maxf(invulnerable_left - delta, 0.0)
+	if dashing:
+		_dash_left -= delta
+		if _dash_left <= 0.0:
+			dashing = false
+			_dash_bonus = 0.0
+			_event(&"dash_end")
 	_boost = move_toward(_boost, 0.0, tuning.ramp_boost_decay_per_second * delta)
-	speed = tuning.run_speed + tuning.speed_gain_per_minute * elapsed / 60.0 + _boost
+	speed = tuning.run_speed + tuning.speed_gain_per_minute * elapsed / 60.0 + _boost + _dash_bonus
 	var motion: float = speed * delta
 	distance += motion
 
@@ -211,6 +360,15 @@ func _event(kind: StringName) -> void:
 # --- Lanes -----------------------------------------------------------------
 
 func _start_switch(target: int) -> void:
+	if target != lane and _lane_blocked(target):
+		# GDD §9.3: a solid side (the hover truck's) bumps the player back.
+		_bumping = true
+		_switch_from = geo.lane_x(lane)
+		_switch_to = geo.lane_x(target)
+		_switch_t = 0.0
+		_event(&"lane_blocked")
+		return
+	_bumping = false
 	lane = target
 	_switch_from = _x
 	_switch_to = geo.lane_x(target)
@@ -221,8 +379,27 @@ func _update_lane_switch(delta: float) -> void:
 	if _switch_t >= 1.0:
 		return
 	_switch_t = minf(1.0, _switch_t + delta / tuning.lane_switch_time)
+	if _bumping:
+		# Out toward the blocked lane and back again.
+		var reach: float = rules.lane_bump_fraction * (1.0 - absf(2.0 * _switch_t - 1.0))
+		_x = lerpf(_switch_from, _switch_to, reach)
+		if _switch_t >= 1.0:
+			_bumping = false
+			_x = _switch_from
+		return
 	var k: float = 1.0 - (1.0 - _switch_t) * (1.0 - _switch_t)
 	_x = lerpf(_switch_from, _switch_to, k)
+
+
+## True if a solid side (a lane blocker) fills `target` lane beside the player right now.
+func _lane_blocked(target: int) -> bool:
+	if target < 0 or target >= geo.lane_count:
+		return false
+	var height: float = _hurtbox_height()
+	var y: float = position.y + height * 0.5 if surface != Surface.CEILING else position.y - height * 0.5
+	_blocker_shape.size = Vector3(geo.lane_width * 0.5, height, tuning.hurtbox_size.z + 0.6)
+	_blocker_query.transform = Transform3D(Basis.IDENTITY, Vector3(geo.lane_x(target), y, TrackGeometry.world_z(distance)))
+	return not get_world_3d().direct_space_state.intersect_shape(_blocker_query, 1).is_empty()
 
 
 # --- Floor & ceiling -------------------------------------------------------
@@ -256,10 +433,23 @@ func _update_vertical(delta: float) -> void:
 		_flip(Surface.FLOOR, 0.0)
 		_event(&"hull_end")
 	else:
-		if h < -tuning.pit_depth:
+		if h < -tuning.pit_depth and not in_pit:
+			if grapples > 0:
+				_use_grapple()
+				return
 			in_pit = true
 		if h < -tuning.fall_death_depth:
 			_die("fell")
+
+
+## GDD §8: the grapple hook saves the player from one fall, then breaks.
+func _use_grapple() -> void:
+	grapples -= 1
+	h = -tuning.pit_depth
+	vh = rules.grapple_pull_velocity
+	grounded = false
+	item_used.emit(&"grapple")
+	_event(&"grapple")
 
 
 func _land() -> void:
@@ -350,7 +540,7 @@ func _update_wall(delta: float) -> void:
 		h = lerpf(_wall_entry_h, _wall_h0, k)
 	else:
 		_x = wall_x
-		var s: float = clampf((_wall_t - tuning.wall_entry_time) / tuning.wall_slide_time, 0.0, 1.0)
+		var s: float = clampf((_wall_t - tuning.wall_entry_time) / (tuning.wall_slide_time * wall_time_multiplier), 0.0, 1.0)
 		h = tuning.wall_exit_height + (_wall_h0 - tuning.wall_exit_height) * (1.0 - pow(s, tuning.wall_descent_exponent))
 		if s >= 1.0:
 			_leave_wall(0.0, &"wall_exit")
@@ -386,6 +576,11 @@ func _check_triggers(motion: float) -> void:
 			&"ramp":
 				if _try_enter_wall(int(area.get_meta(&"side")), true):
 					return
+			&"speed_pad":
+				if area.get_instance_id() != _last_speed_pad:
+					_last_speed_pad = area.get_instance_id()
+					_boost += tuning.speed_pad_boost
+					_event(&"speed_pad")
 
 
 ## The damage hitbox as it is now, stretched back over this frame's motion: any hazard
@@ -397,9 +592,17 @@ func _check_hazards(motion: float) -> void:
 	_hazard_query.transform = Transform3D(basis, position + basis * Vector3(0.0, height * 0.5, motion * 0.5))
 	for hit: Dictionary in get_world_3d().direct_space_state.intersect_shape(_hazard_query, 8):
 		var hazard := hit["collider"] as Hazard
-		if hazard != null and DamageRules.resolve(hazard, god_mode) == DamageRules.Outcome.KILL:
-			_die(hazard.hazard_name)
+		if hazard == null:
+			continue
+		receive_hit(hazard, _is_stomping(hazard))
+		if not alive:
 			return
+
+
+## Dropping onto the hazard from above: on the floor, descending, feet near its top.
+func _is_stomping(hazard: Hazard) -> bool:
+	return surface == Surface.FLOOR and not grounded and vh <= 0.0 \
+		and position.y >= hazard.top_y() - rules.stomp_tolerance
 
 
 func _hurtbox_height() -> float:
@@ -408,10 +611,22 @@ func _hurtbox_height() -> float:
 
 func _die(cause: String) -> void:
 	alive = false
-	_body.material_override = GreyboxMaterials.flat(GreyboxMaterials.PLAYER_DEAD)
+	dashing = false
+	_dash_bonus = 0.0
+	_death_cause = cause
+	_show_dead(true)
 	_event(&"died")
 	last_event = "died: " + cause
 	died.emit(cause)
+
+
+func _show_dead(on: bool) -> void:
+	_body.material_override = GreyboxMaterials.flat(GreyboxMaterials.PLAYER_DEAD if on else GreyboxMaterials.PLAYER)
+
+
+## The invulnerability window flicker (GDD §4: the character flashes).
+func _set_flash(visible_now: bool) -> void:
+	_pivot.visible = visible_now
 
 
 # --- Presentation ----------------------------------------------------------
@@ -428,6 +643,7 @@ func _apply_transform(delta: float) -> void:
 	position = Vector3(_x, y, TrackGeometry.world_z(distance))
 	_roll = lerp_angle(_roll, roll_target, 1.0 - exp(-22.0 * delta))
 	_pivot.rotation.z = _roll
+	_set_flash(invulnerable_left <= 0.0 or int(invulnerable_left * 16.0) % 2 == 0)
 
 	var height: float = _hurtbox_height()
 	_hurt_debug.scale = Vector3(tuning.hurtbox_size.x, height, tuning.hurtbox_size.z)

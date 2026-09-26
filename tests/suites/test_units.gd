@@ -61,10 +61,12 @@ func _test_sound_library() -> void:
 func _test_tuning_panel() -> void:
 	var t: MovementTuning = tuning.duplicate() as MovementTuning
 	var config: LevelConfig = (load(LEVEL_PATH) as LevelConfig).duplicate() as LevelConfig
+	var rules: GameRules = (load("res://data/tuning/game_rules.tres") as GameRules).duplicate() as GameRules
 	var panel := TuningPanel.new()
 	tree.root.add_child(panel)
 	var sections: Array[Dictionary] = [
 		{"title": "Movement", "resource": t, "path": TUNING_PATH},
+		{"title": "Game rules", "resource": rules, "path": "res://data/tuning/game_rules.tres"},
 		{"title": "Level pacing", "resource": config, "path": LEVEL_PATH},
 	]
 	panel.setup(sections)
@@ -82,6 +84,6 @@ func _test_tuning_panel() -> void:
 	var lanes: HSlider = panel.find_slider("lanes_pc")
 	if lanes != null:
 		lanes.value = 6.0
-	check(lanes != null and config.lanes_pc == 6 and typeof(config.lanes_pc) == TYPE_INT, "integer tunables stay integers")
+	check(lanes != null and rules.lanes_pc == 6 and typeof(rules.lanes_pc) == TYPE_INT, "integer tunables stay integers")
 	panel.queue_free()
 	await tree.process_frame

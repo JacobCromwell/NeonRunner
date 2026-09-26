@@ -5,6 +5,11 @@ extends RefCounted
 ##   var r: Dictionary = await sim.run(layout, start_lane, seconds, [[distance, &"jump"]], [probe_distance])
 ## `actions`: [distance, action] pairs, each fired once when the player reaches that distance.
 ## `probes`: distances at which to record the player's state in result["at"][distance].
+##
+## Full worlds (enemies, projectiles, credits, score) for interaction tests:
+##   var world: RunWorld = sim.build_world(layout, loadout)
+##   var r: Dictionary = await sim.step_world(world, seconds, [[distance, &"jump"]])
+##   ... inspect world ... ; sim.free_world(world)
 
 var tree: SceneTree
 var tuning: MovementTuning
@@ -70,3 +75,56 @@ func run(p_layout: LevelLayout, start_lane: int, seconds: float, actions: Array,
 	world.queue_free()
 	await tree.process_frame
 	return result
+
+
+## A full RunWorld (track, player, enemies, projectiles, credits, score) under the tree root.
+## `config` defaults to a bare level config; the layout is used as given.
+func build_world(p_layout: LevelLayout, loadout: Loadout = null, p_tuning: MovementTuning = null,
+		config: LevelConfig = null) -> RunWorld:
+	var t: MovementTuning = p_tuning if p_tuning != null else tuning
+	var c: LevelConfig = config if config != null else LevelConfig.new()
+	c.lane_count = p_layout.lane_count
+	var world := RunWorld.new()
+	tree.root.add_child(world)
+	world.build(c, p_layout, t, load("res://data/tuning/game_rules.tres") as GameRules,
+		load("res://data/tuning/powerups.tres") as PowerupTuning, loadout)
+	return world
+
+
+## Runs a built world for `seconds` of physics time (see run() for `actions` and `probes`).
+## Stops early when the player dies, unless `until_dead` is false.
+func step_world(world: RunWorld, seconds: float, actions: Array = [], probes: Array = [],
+		until_dead: bool = true) -> Dictionary:
+	var player: Player = world.player
+	var result := {"cause": "", "events": [], "at": {}}
+	var on_died := func(cause: String) -> void: result["cause"] = cause
+	var on_event := func(kind: StringName) -> void: result["events"].append(kind)
+	player.died.connect(on_died)
+	player.movement_event.connect(on_event)
+	if not player.running:
+		await tree.physics_frame
+		player.running = true
+	var pending: Array = actions.duplicate()
+	var pending_probes: Array = probes.duplicate()
+	var frames: int = int(seconds * Engine.physics_ticks_per_second)
+	for i: int in frames:
+		while not pending.is_empty() and player.distance >= float(pending[0][0]):
+			player.press(pending.pop_front()[1])
+		await tree.physics_frame
+		while not pending_probes.is_empty() and player.distance >= float(pending_probes[0]):
+			result["at"][pending_probes.pop_front()] = {"surface": player.surface_name(), "lane": player.lane,
+				"h": player.h, "alive": player.alive, "speed": player.speed}
+		if until_dead and not player.alive:
+			break
+	player.died.disconnect(on_died)
+	player.movement_event.disconnect(on_event)
+	result["alive"] = player.alive
+	result["distance"] = player.distance
+	result["lane"] = player.lane
+	result["surface"] = player.surface_name()
+	return result
+
+
+func free_world(world: RunWorld) -> void:
+	world.queue_free()
+	await tree.process_frame

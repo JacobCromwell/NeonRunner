@@ -52,5 +52,10 @@ func ramp(_trigger: Area3D, _size: Vector3, _side: int) -> void:
 	pass
 
 
+## A speed pad, the size of its trigger volume and centred on it. The floor is at -size.y / 2.
+func speed_pad(_trigger: Area3D, _size: Vector3) -> void:
+	pass
+
+
 func finish_line(_parent: Node3D, _width: float, _distance: float) -> void:
 	pass

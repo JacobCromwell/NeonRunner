@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ZoneDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/campaign/zone_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/core/level_config.gd" id="2_levelscript"]
+[ext_resource type="Resource" path="res://data/levels/gangland_1.tres" id="lvl_gangland_1"]
+[ext_resource type="Resource" path="res://data/levels/gangland_2.tres" id="lvl_gangland_2"]
+[ext_resource type="Resource" path="res://data/levels/gangland_3.tres" id="lvl_gangland_3"]
+[ext_resource type="Resource" path="res://data/skins/greybox_skin.tres" id="skin"]
+[ext_resource type="Resource" path="res://data/cinematics/gangland_intro.tres" id="c_intro"]
+[ext_resource type="Resource" path="res://data/cinematics/gangland_outro.tres" id="c_outro"]
+[ext_resource type="Resource" path="res://data/bosses/gangland_boss.tres" id="boss"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"gangland"
+display_name = "Gangland"
+tagline = "Bombed-out streets, craters and things in the sewers."
+music = &"gangland"
+skin = ExtResource("skin")
+levels = Array[ExtResource("2_levelscript")]([ExtResource("lvl_gangland_1"), ExtResource("lvl_gangland_2"), ExtResource("lvl_gangland_3")])
+intro = ExtResource("c_intro")
+outro = ExtResource("c_outro")
+boss = ExtResource("boss")
+in_demo = false
+placeholder = false
