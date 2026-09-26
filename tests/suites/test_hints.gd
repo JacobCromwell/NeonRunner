@@ -1,6 +1,7 @@
 extends TestSuite
 ## First-encounter hints: shown once per profile, just before the first matching piece, with the
-## player's own keys or touch gestures in the text.
+## player's own keys or touch gestures in the text; for a feature that starts late in a level (City
+## 1's cyborgs), just before the player first meets it rather than at the level's start.
 
 
 func run() -> void:
@@ -38,3 +39,41 @@ func run() -> void:
 	check(shown2.is_empty(), "hints show only once per profile (%s)" % [shown2])
 	check(again.format_text("Jump with {jump}") == "Jump with swipe up", "touch players read gestures")
 	await sim.free_world(world2)
+	await _test_late_feature(sim)
+
+
+## City 1 brings its cyborgs late in the level (GDD §5, LevelConfig.feature_starts). Walking the
+## level's enemy director along the track, the cyborg hint shows as the first cyborg comes into play,
+## a few seconds before the player reaches it, and nothing of the kind comes earlier.
+func _test_late_feature(sim: RunSim) -> void:
+	var campaign := load("res://data/campaign/campaign.tres") as Campaign
+	var lead: float = EnemyDirector.lead_for("cyborg")
+	for lanes: int in [3, 5, 6]:
+		var config: LevelConfig = campaign.configure(campaign.step("city/1"), lanes)
+		var layout: LevelLayout = LevelGenerator.new().generate(config, tuning, LevelGenerator.load_for(config))
+		var cyborgs: Array[float] = LayoutChecks.feature_positions(layout, "cyborg")
+		var start: float = config.feature_start("cyborg") * layout.length
+		var tag: String = "(%d lanes)" % lanes
+		check(not cyborgs.is_empty() and cyborgs[0] >= start, "City 1's first cyborg comes after the start of its feature " + tag)
+		if cyborgs.is_empty():
+			continue
+		var world: RunWorld = sim.build_world(layout, null, null, config)
+		var hints := HintDirector.new()
+		world.add_child(hints)
+		hints.setup(world, Profile.new(), false)
+		var state := {"d": 0.0, "at": -1.0}
+		hints.hint_shown.connect(func(id: String, _text: String) -> void:
+			if id == "cyborg" and float(state["at"]) < 0.0:
+				state["at"] = state["d"])
+		var d: float = 0.0
+		while d <= layout.length and float(state["at"]) < 0.0:
+			state["d"] = d
+			world.director.update(d)
+			d += 1.0
+		var shown: float = state["at"]
+		check(shown >= start - lead and shown <= cyborgs[0],
+			"the cyborg hint shows as the first cyborg comes into play (%.0f m; first cyborg %.0f m, start %.0f m) %s" % [
+				shown, cyborgs[0], start, tag])
+		check(cyborgs[0] - shown <= lead + 1.0 and (cyborgs[0] - shown) / tuning.run_speed >= 3.0,
+			"a few seconds before the player meets it (%.1f s) %s" % [(cyborgs[0] - shown) / tuning.run_speed, tag])
+		await sim.free_world(world)

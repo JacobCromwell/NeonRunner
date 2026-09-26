@@ -4,6 +4,6 @@
 
 [resource]
 script = ExtResource("1_script")
-id = &"city_boss_intro"
-title = "Something big is coming"
-placeholder_text = "DESIGN-TBD: a short scene before the Floating Head."
+id = &"corporate_intro"
+title = "Corporate"
+placeholder_text = "DESIGN-TBD: a short scene arriving in the corporate district, under its military presence."

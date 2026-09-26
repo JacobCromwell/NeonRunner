@@ -4,13 +4,12 @@
 
 [resource]
 script = ExtResource("1_level")
-id = &"gangland_2"
-display_name = "Dog Run"
-level_seed = 202
+id = &"marketplace_1"
+display_name = "Awning Alley"
+level_seed = 301
 duration_seconds = 140.0
 difficulty_bias = 0.0
-features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "screech", "ramps", "octodog", "speed_pads")
+features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "ramps", "octodog", "speed_pads", "generator", "drone", "barnacle_turret")
 feature_starts = Dictionary[String, float]({
-"octodog": 0.1,
-"speed_pads": 0.45
+"barnacle_turret": 0.1
 })

@@ -6,4 +6,4 @@
 script = ExtResource("1_script")
 id = &"gangland_outro"
 title = "Beyond Gangland"
-placeholder_text = "DESIGN-TBD: a short scene after the Sewer Swarm."
+placeholder_text = "DESIGN-TBD: a short scene after the Sewer Swarm, heading for the Marketplace."

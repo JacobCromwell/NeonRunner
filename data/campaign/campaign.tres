@@ -4,14 +4,14 @@
 [ext_resource type="Script" path="res://scripts/campaign/zone_def.gd" id="2_zonescript"]
 [ext_resource type="Resource" path="res://data/zones/city.tres" id="z_city"]
 [ext_resource type="Resource" path="res://data/zones/gangland.tres" id="z_gangland"]
-[ext_resource type="Resource" path="res://data/zones/zone_3.tres" id="z_zone_3"]
-[ext_resource type="Resource" path="res://data/zones/zone_4.tres" id="z_zone_4"]
-[ext_resource type="Resource" path="res://data/zones/zone_5.tres" id="z_zone_5"]
-[ext_resource type="Resource" path="res://data/zones/zone_6.tres" id="z_zone_6"]
+[ext_resource type="Resource" path="res://data/zones/marketplace.tres" id="z_marketplace"]
+[ext_resource type="Resource" path="res://data/zones/corporate.tres" id="z_corporate"]
+[ext_resource type="Resource" path="res://data/zones/dead_zone.tres" id="z_dead_zone"]
+[ext_resource type="Resource" path="res://data/zones/golden.tres" id="z_golden"]
 
 [resource]
 script = ExtResource("1_script")
-zones = Array[ExtResource("2_zonescript")]([ExtResource("z_city"), ExtResource("z_gangland"), ExtResource("z_zone_3"), ExtResource("z_zone_4"), ExtResource("z_zone_5"), ExtResource("z_zone_6")])
+zones = Array[ExtResource("2_zonescript")]([ExtResource("z_city"), ExtResource("z_gangland"), ExtResource("z_marketplace"), ExtResource("z_corporate"), ExtResource("z_dead_zone"), ExtResource("z_golden")])
 difficulty_start = 0.1
 difficulty_end = 0.9
 difficulty_curve_exponent = 1.0
