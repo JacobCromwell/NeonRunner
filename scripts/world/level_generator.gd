@@ -13,9 +13,32 @@ extends RefCounted
 ##    add a feature's enemies or pieces keep them after its start (feature_active, feature_share_at).
 ## 3. Credits (GDD §7): trails in the clear stretches, rich credits in risky spots.
 ## Fairness rules (longest gap, hull lead-in and landing) come from LevelConfig, so they are data.
+##
+## Every feature appears (LevelConfig.guarantee_features; GDD §5: anything introduced earlier keeps
+## appearing later): after the passes, the generator checks that each feature a pattern can place
+## in the level is in the finished layout (feature_positions). Rules may have dropped what didn't
+## fit or cleared it for a guarantee of their own, so for each one missing it builds the level again
+## with picks of that feature forced somewhere else (GUARANTEE_SHARES; more of them each time it's
+## missed, GUARANTEE_MAX_PICKS), until none is missing. Each build runs every pass and rule
+## unchanged, so the guarantee never bends a fairness rule. Rules that hold the room for their
+## feature themselves may add one where it fits when none is left (the host and Octodog rules),
+## which saves a build.
 
 const DENOMINATIONS: Array[int] = [1, 5, 25, 100]
 const RULES_DIR: String = "res://scripts/enemies"
+## The most builds generate() makes to have every feature appear (guarantee_features). Past it the
+## level keeps the build that missed the fewest, with a warning.
+const GUARANTEE_ATTEMPTS: int = 16
+## Where a new build forces a pick of a feature the last one missed: a share of the stretch where
+## the feature is active (from its start to the level's end), a new one each time it's missed. The
+## early shares come before most drone waves, whose pad schedule clears the floor after them; none
+## is so late that a long pattern couldn't fit before the end.
+const GUARANTEE_SHARES: Array[float] = [0.3, 0.0, 0.55, 0.12, 0.4, 0.05, 0.7, 0.2, 0.02, 0.48, 0.08,
+	0.62, 0.25, 0.15, 0.35, 0.78]
+## A feature missed again gets more forced picks in the next build (one per miss, up to this many),
+## spread over its stretch, so one that rarely survives (a floor enemy where the drone's pads clear
+## the floor) gets several chances in a build.
+const GUARANTEE_MAX_PICKS: int = 3
 
 var layout: LevelLayout
 var config: LevelConfig
@@ -25,6 +48,9 @@ var speed: float
 var jump_distance: float
 ## Problems found in the pattern data during the last generate(), one line per pattern.
 var warnings: PackedStringArray = []
+## How many builds the last generate() made: 1, unless guarantee_features had to force a missing
+## feature somewhere.
+var attempts: int = 0
 
 var _rng := RandomNumberGenerator.new()
 ## Track ranges covered by ceiling sections. GDD §3: the floor beneath a ceiling stays clear.
@@ -32,9 +58,10 @@ var _hull_spans: Array[Vector2] = []
 ## Clear stretches between patterns [start, end], filled with credit trails later.
 var _clear_stretches: Array[Vector2] = []
 var _enemy_count: int = 0
-## Features with a start of their own that no pattern has used yet, earliest first
-## (_pick_introduction).
-var _to_introduce: Array[String] = []
+## Picks that must use a feature once the cursor reaches their spot, earliest first: {feature, at}.
+## A feature's introduction at its start (LevelConfig.feature_starts), and the guarantee's forced
+## picks (_pick_due).
+var _due: Array[Dictionary] = []
 
 
 static func load_patterns(path: String) -> Array:
@@ -63,11 +90,42 @@ static func load_for(p_config: LevelConfig) -> Array:
 
 
 func generate(p_config: LevelConfig, p_tuning: MovementTuning, patterns: Array) -> LevelLayout:
-	_rng.seed = p_config.level_seed
 	config = p_config
 	tuning = p_tuning
 	speed = tuning.run_speed
 	jump_distance = tuning.jump_distance(speed)
+	attempts = 1
+	if not config.guarantee_features:
+		return _build(patterns, {})
+	# Each feature missing from a build gets a pick forced at a new spot in the next one
+	# (GUARANTEE_SHARES); a feature that appeared keeps the spot that worked.
+	var needed: PackedStringArray = []
+	var forced: Dictionary = {}
+	var best: Dictionary = {}
+	var best_missing: PackedStringArray = []
+	for attempt: int in GUARANTEE_ATTEMPTS:
+		attempts = attempt + 1
+		_build(patterns, forced)
+		if attempt == 0:
+			needed = placeable_features(patterns)
+		var missing: PackedStringArray = missing_features(needed)
+		if missing.is_empty():
+			return layout
+		if attempt == 0 or missing.size() < best_missing.size():
+			best = forced.duplicate()
+			best_missing = missing
+		for feature: String in missing:
+			forced[feature] = int(forced.get(feature, 0)) + 1
+	_build(patterns, best)
+	warnings.append("guarantee: after %d builds the level still has no %s (every feature should appear, GDD §5)"
+		% [GUARANTEE_ATTEMPTS, ", ".join(best_missing)])
+	return layout
+
+
+## One build of the level: the pattern pass (with the introductions and the guarantee's forced
+## picks, `forced`: feature → how many builds missed it), the rules, the credits.
+func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
+	_rng.seed = config.level_seed
 	layout = LevelLayout.new()
 	layout.lane_count = config.lane_count
 	_hull_spans.clear()
@@ -76,14 +134,14 @@ func generate(p_config: LevelConfig, p_tuning: MovementTuning, patterns: Array) 
 	warnings.clear()
 	var accel: float = tuning.speed_gain_per_minute / 60.0
 	layout.length = speed * config.duration_seconds + 0.5 * accel * config.duration_seconds * config.duration_seconds
-	_to_introduce = _introductions()
+	_due = _due_picks(forced)
 
 	_clear_stretches.append(Vector2(20.0, config.start_clear_distance))
 	var cursor: float = config.start_clear_distance
 	while cursor < layout.length - config.end_clear_distance:
 		var progress: float = cursor / layout.length
 		var difficulty: float = difficulty_at(progress)
-		var pattern: Dictionary = _pick_introduction(patterns, difficulty, cursor)
+		var pattern: Dictionary = _pick_due(patterns, difficulty, cursor)
 		if pattern.is_empty():
 			pattern = _pick_pattern(patterns, difficulty, cursor)
 		if pattern.is_empty():
@@ -93,8 +151,7 @@ func generate(p_config: LevelConfig, p_tuning: MovementTuning, patterns: Array) 
 		if cursor + used > layout.length - config.end_clear_distance:
 			_rollback(pattern_start_counts)
 			break
-		for need: Variant in pattern.get("requires", []):
-			_to_introduce.erase(String(need))
+		_settle_due(pattern, cursor)
 		var spacing_seconds: float = lerpf(config.spacing_seconds_easy, config.spacing_seconds_hard, difficulty)
 		var clear_end: float = cursor + used + spacing_seconds * speed
 		_clear_stretches.append(Vector2(cursor + used, minf(clear_end, layout.length - config.end_clear_distance)))
@@ -255,34 +312,141 @@ func _pick_pattern(patterns: Array, difficulty: float, at: float, only: String =
 	return candidates[-1]
 
 
-## The features the level introduces at a start of their own (LevelConfig.feature_starts), earliest
-## first.
-func _introductions() -> Array[String]:
-	var out: Array[String] = []
+## The picks this build must give a feature, earliest first: each feature's introduction at its
+## start (LevelConfig.feature_starts), and forced picks for each feature an earlier build missed
+## (`forced`: feature → how many builds missed it; that many picks, up to GUARANTEE_MAX_PICKS, at
+## spots from GUARANTEE_SHARES, the first one moving on with each miss).
+func _due_picks(forced: Dictionary) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
 	for key: Variant in config.feature_starts:
 		var feature: String = String(key)
 		if config.has_feature(feature):
-			out.append(feature)
-	out.sort_custom(func(a: String, b: String) -> bool:
-		var sa: float = config.feature_start(a)
-		var sb: float = config.feature_start(b)
-		return sa < sb or (sa == sb and a < b))
+			out.append({"feature": feature, "at": feature_start(feature)})
+	var n: int = GUARANTEE_SHARES.size()
+	for key: Variant in forced:
+		var feature: String = String(key)
+		var misses: int = int(forced[key])
+		for k: int in mini(misses, GUARANTEE_MAX_PICKS):
+			var share: float = GUARANTEE_SHARES[(misses - 1 + k * 5) % n]
+			out.append({"feature": feature, "at": feature_share_at(feature, share)})
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return float(a["at"]) < float(b["at"]) or (float(a["at"]) == float(b["at"]) and String(a["feature"]) < String(b["feature"])))
 	return out
 
 
-## A feature's introduction: the first pattern picked once a feature with a start of its own has
-## started is one that uses it, so the player meets it right there, just after its first-encounter
-## hint (GDD §6: one new thing at a time), rather than whenever chance brings it. {} if no feature
-## is due, or none of the due ones has a pattern that fits here (it's then tried again at the next
-## pick, so a feature with no patterns yet changes nothing).
-func _pick_introduction(patterns: Array, difficulty: float, at: float) -> Dictionary:
-	for feature: String in _to_introduce:
-		if not feature_started(feature, at):
+## A due pick: once the cursor reaches a due pick's spot, the next pattern picked is one that uses its
+## feature. That's how a feature is introduced right after its start and its first-encounter hint
+## (GDD §6: one new thing at a time) rather than whenever chance brings it, and how the guarantee
+## places a feature a build missed. {} if nothing is due, or no due feature has a pattern that fits
+## here (it's then tried again at the next pick, so a feature with no patterns yet changes nothing).
+func _pick_due(patterns: Array, difficulty: float, at: float) -> Dictionary:
+	for due: Dictionary in _due:
+		if float(due["at"]) > at + 0.001:
 			break
-		var pattern: Dictionary = _pick_pattern(patterns, difficulty, at, feature)
+		var pattern: Dictionary = _pick_pattern(patterns, difficulty, at, String(due["feature"]))
 		if not pattern.is_empty():
 			return pattern
 	return {}
+
+
+## A pattern placed at `at` settles the due pick of each feature it uses whose spot the cursor has
+## reached (the earliest one, if a feature has several).
+func _settle_due(pattern: Dictionary, at: float) -> void:
+	for need: Variant in pattern.get("requires", []):
+		for i: int in _due.size():
+			if float(_due[i]["at"]) > at + 0.001:
+				break
+			if String(_due[i]["feature"]) == String(need):
+				_due.remove_at(i)
+				break
+
+
+## The level's features that some pattern can place: a pattern that requires the feature, needs
+## only the level's features, fits its lane count, has pick weight (feature_weights) and a
+## difficulty range the level reaches between the pattern's features' starts and the end-clear
+## stretch. The guarantee (guarantee_features) covers these; a feature with no such pattern (one
+## still to be built) can't appear. Needs the layout's length (generate() has set it).
+func placeable_features(patterns: Array) -> PackedStringArray:
+	var out: PackedStringArray = []
+	var last: float = layout.length - config.end_clear_distance
+	for feature: String in config.features:
+		for p: Dictionary in patterns:
+			var requires: Array = p.get("requires", [])
+			if not requires.has(feature) or config.lane_count < int(p.get("min_lanes", 1)):
+				continue
+			var weight: float = float(p.get("weight", 1.0))
+			var first: float = config.start_clear_distance
+			var ok: bool = true
+			for need: Variant in requires:
+				ok = ok and config.has_feature(String(need))
+				weight *= config.feature_weight(String(need))
+				first = maxf(first, feature_start(String(need)))
+			if not ok or weight <= 0.0 or first >= last:
+				continue
+			if float(p.get("min_difficulty", 0.0)) <= difficulty_at(last / layout.length) \
+					and float(p.get("max_difficulty", 1.0)) >= difficulty_at(first / layout.length):
+				out.append(feature)
+				break
+	return out
+
+
+## The features of `needed` that the current layout has nothing of (feature_positions).
+func missing_features(needed: PackedStringArray) -> PackedStringArray:
+	var out: PackedStringArray = []
+	for feature: String in needed:
+		if feature_positions(layout, feature).is_empty():
+			out.append(feature)
+	return out
+
+
+## Track distances of everything `feature` placed in `layout`, in order: ramps (ramps), anti-grav
+## pads (ceilings), speed pads (speed_pads), pulsing fences (pulsing), host cyborgs (host), cyborgs
+## that aren't hosts (cyborg), screeches from wall vents (screech_vents), and otherwise the enemies
+## of that type, which covers every enemy type. A feature whose rules script declares
+## `static func positions(layout: LevelLayout) -> Array[float]` answers for itself (a new kind of
+## piece, such as wall fences).
+static func feature_positions(p_layout: LevelLayout, feature: String) -> Array[float]:
+	var out: Array[float] = []
+	var path: String = RULES_DIR.path_join("%s_rules.gd" % feature)
+	if ResourceLoader.exists(path):
+		var script := load(path) as GDScript
+		if script != null and script.has_method("positions"):
+			out.assign(script.call("positions", p_layout))
+			out.sort()
+			return out
+	match feature:
+		"ramps":
+			for r: Dictionary in p_layout.ramps:
+				out.append(float(r["at"]))
+		"ceilings":
+			for p: Dictionary in p_layout.pads:
+				out.append(float(p["at"]))
+		"speed_pads":
+			for p: Dictionary in p_layout.speed_pads:
+				out.append(float(p["at"]))
+		"pulsing":
+			for f: Dictionary in p_layout.fences:
+				if bool(f["pulsing"]):
+					out.append(float(f["at"]))
+		_:
+			for e: Dictionary in p_layout.enemies:
+				var type: String = String(e.get("type", ""))
+				var params: Dictionary = e.get("params", {})
+				var host: bool = type == "cyborg" and bool(params.get("host", false))
+				var hit: bool = false
+				match feature:
+					"cyborg":
+						hit = type == "cyborg" and not host
+					"host":
+						hit = host
+					"screech_vents":
+						hit = type == "screech" and String(params.get("source", "")) == "vent"
+					_:
+						hit = type == feature
+				if hit:
+					out.append(float(e["at"]))
+	out.sort()
+	return out
 
 
 ## Places every element of a pattern starting at `origin`. Returns the track length it used.

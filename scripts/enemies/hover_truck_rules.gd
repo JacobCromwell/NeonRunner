@@ -77,6 +77,23 @@ static func window_end(t: HoverTruckTuning, at: float, speed: float) -> float:
 	return at + (t.stay_max_seconds + t.leave_seconds) * speed
 
 
+## The lanes at track distance `at` that no hover truck keeps free (its lane, from window_start to
+## window_end): where another rule may still add a floor enemy (the host and Octodog guarantees).
+static func open_lanes(gen: LevelGenerator, at: float) -> Array[int]:
+	var t: HoverTruckTuning = tuning()
+	var out: Array[int] = []
+	for lane: int in gen.layout.lane_count:
+		var free: bool = true
+		for e: Dictionary in gen.layout.enemies:
+			if String(e.get("type", "")) == TYPE and int(e.get("lane", -1)) == lane \
+					and at >= window_start(t, float(e["at"])) and at <= window_end(t, float(e["at"]), gen.speed):
+				free = false
+				break
+		if free:
+			out.append(lane)
+	return out
+
+
 ## The wall section it bursts through (track distances), with some room around it.
 static func burst_section(t: HoverTruckTuning, at: float) -> Vector2:
 	return Vector2(at - t.length * 0.5 - t.burst_section_before - 6.0, at + t.length * 0.5 + t.burst_section_after + 3.0)
