@@ -188,10 +188,12 @@ func _hit_enemies(p: Projectile, from: Vector3, to: Vector3) -> void:
 
 func _splash(p: Projectile, direct: Enemy) -> void:
 	for e: Enemy in world.director.active:
-		if e == direct or not is_instance_valid(e) or not e.alive:
+		# Splash never hurts hosts (GDD §9.7) or weapon-immune enemies, so it doesn't report them either.
+		if e == direct or not is_instance_valid(e) or not e.alive or e.is_host or e.immune_to_weapons:
 			continue
 		if e.aim_point().distance_to(p.position) <= p.splash_radius:
-			var dmg: float = p.damage * p.splash_share
+			# DESIGN-TBD: the heavy missile's swarm bonus (GDD §8) applies to its splash as well.
+			var dmg: float = p.damage * p.splash_share * (p.swarm_multiplier if e.is_swarm else 1.0)
 			e.take_damage(dmg, &"weapon", true)
 			enemy_hit.emit(e, dmg, true)
 
