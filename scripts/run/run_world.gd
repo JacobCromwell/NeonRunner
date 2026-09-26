@@ -100,6 +100,20 @@ func lane_point(lane: int, at: float, height: float = 0.0) -> Vector3:
 	return Vector3(geo.lane_x(lane), height, TrackGeometry.world_z(at))
 
 
+## An EMP at `center` (GDD §9.1: a destroyed fence generator): fences within `radius` go dark for the
+## rest of the level, and every enemy hears it (Enemy.on_emp: the Bad Dream dissolves). Returns the
+## number of fences switched off.
+func emp(center: Vector3, radius: float) -> int:
+	var count: int = track.disable_fences_near(center, radius)
+	for e: Enemy in director.active.duplicate():
+		if is_instance_valid(e) and e.alive:
+			e.on_emp(center, radius)
+	effects.burst(center, Color(0.55, 0.85, 1.0), 40, 1.5)
+	effects.shake(0.25, 0.3)
+	play_sfx_at(&"emp", center)
+	return count
+
+
 ## A non-positional sound from the library (UI-like: pickups, the player's own actions).
 func play_sfx(sound: StringName) -> void:
 	if sounds != null:

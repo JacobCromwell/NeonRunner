@@ -138,6 +138,12 @@ func defeat(cause: StringName) -> void:
 	_on_defeated(cause)
 
 
+## An EMP went off (a fence generator was destroyed, GDD §9.1). Override to react: the Cyborg's Bad
+## Dream dissolves (GDD §9.7). `center` and `radius` are in world space.
+func on_emp(_center: Vector3, _radius: float) -> void:
+	pass
+
+
 ## Removes the enemy from play without a defeat.
 func retire() -> void:
 	if not alive and not is_queued_for_deletion():
