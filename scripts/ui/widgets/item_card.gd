@@ -39,6 +39,9 @@ const FIELDS: Array[String] = ["item_id", "icon_name", "title", "description", "
 		price = v
 		_refresh_later()
 ## Tiers owned: 0 = not owned. Single items use max_tier = 1.
+## DESIGN-TBD: whether a breakable item (armor, shield, grapple hook, revive) can be held more than
+## once is open. Placeholder: a held breakable reads as OWNED (tier 1) until it breaks and the shop
+## sets tier back to 0. A stock count would need a field here (CooldownIcon can already show one).
 @export var tier: int = 0:
 	set(v):
 		tier = v

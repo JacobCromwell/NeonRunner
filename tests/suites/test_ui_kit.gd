@@ -386,6 +386,22 @@ func _test_screen_base() -> void:
 	check(_focus_owner() == dialog.confirm_button, "the screen doesn't take focus from its open dialog")
 	dialog.close(false)
 	screen.queue_free()
+	# A screen made as a .tscn: its children move into the content area.
+	var design := ScreenBase.new()
+	var from_scene := NeonButton.make("FROM SCENE")
+	design.add_child(from_scene)
+	from_scene.owner = design
+	var packed := PackedScene.new()
+	check(packed.pack(design) == OK, "a screen packs as a scene")
+	design.free()
+	var instance := packed.instantiate() as ScreenBase
+	_root.add_child(instance)
+	await _frames(2)
+	var moved := instance.content.get_child(0) as Button if instance.content.get_child_count() > 0 else null
+	check(moved != null and moved.text == "FROM SCENE", "a .tscn screen's children go into its content")
+	check(instance.get_child_count() == 2, "and the screen's own layout isn't duplicated (%d children)" % instance.get_child_count())
+	instance.queue_free()
+	await _frames(1)
 	# Without initial_focus, the first focusable control in the content gets it.
 	var plain := ScreenBase.new()
 	var only := NeonButton.make("ONLY")
