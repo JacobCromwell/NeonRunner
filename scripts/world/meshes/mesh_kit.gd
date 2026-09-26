@@ -1,11 +1,12 @@
 class_name MeshKit
 extends RefCounted
 ## Shared building blocks for zone skins: deterministic hashing, cached unit templates, the kit
-## shaders and their materials, and the hazard parts every zone must draw the same way
-## (pink crackling energy field = electric fence, yellow/black striped frame = sign).
+## shaders and their materials, the night environment, and the parts every zone must draw the same
+## way: hazards (pink crackling energy field = electric fence, yellow/black striped frame = sign),
+## triggers (cyan anti-grav pad, green ramp and speed pad) and the finish line.
 ## Build geometry into a MeshBatch (one surface per material) and commit it as one node.
 ## New props follow the same recipe: frame() for windows, hatches and vents (PAT_GRILLE for slats),
-## prism() for discs and pipes, hazard parts here when every zone must share them.
+## prism() for discs and pipes, shared parts here when every zone must draw them alike.
 
 ## Box sides for MeshLayer.box(faces = ...). Skip sides nobody can see.
 const FACE_PX: int = 1
@@ -30,6 +31,16 @@ const PAT_CHECKER: int = 6   ## Finish-line checkers; the light squares glow.
 const PAT_GRILLE: int = 7    ## Horizontal slats.
 const PAT_GLYPHS: int = 8    ## Neon glyph rows on a dark panel (param: scroll speed in m/s).
 const PAT_CHEVRON: int = 9   ## Scrolling arrows along UV.x (0–1 over the face), param ±1 = direction.
+## Worn street: repair patches, cracks, scraps. UV.x runs -1 to 1 across the lane; param flags worn
+## dashed lane lines on its left (1) and right (2) edge.
+const PAT_ASPHALT: int = 10
+## The cut through a broken road (crater walls): layers by world height, darkening into the depths.
+## COLOR is the earth.
+const PAT_STRATA: int = 11
+## Salvaged plating: mismatched plates, seams, rust (param > 0: corrugation period in metres).
+const PAT_RUST: int = 12
+## Salvaged billboard content: faded, torn posters and graffiti (UV in metres, param a whole-number seed).
+const PAT_POSTER: int = 13
 
 ## Shapes of the additive glow shader (UV2.x); UV runs 0–1 over the card.
 const SHAPE_FLAT: int = 0    ## Even glow with soft edges.
@@ -37,6 +48,11 @@ const SHAPE_RADIAL: int = 1  ## Round halo.
 const SHAPE_BEAM: int = 2    ## Bright at v = 0, fading to v = 1, soft sides.
 const SHAPE_RISE: int = 3    ## Light column: bright at the base, bands rising.
 const SHAPE_STREAK: int = 4  ## Soft horizontal streak.
+
+## Kinds of drifting particles (drift.gdshader, UV2.x).
+const DRIFT_ASH: int = 0
+const DRIFT_SCRAP: int = 1
+const DRIFT_STREAK: int = 2
 
 const SHADER_DIR: String = "res://scripts/world/meshes/shaders/"
 
@@ -155,6 +171,47 @@ static func shader(file_name: String) -> Shader:
 	return _shaders[file_name]
 
 
+## A night Environment for a zone: the night sky shader with `sky_params` (night_sky.gdshader
+## uniforms), flat ambient light, filmic tonemapping (it keeps neon hues: ACES pushed violets toward
+## fence pink and AgX washed them out), glow for emissive parts, depth fog, and height fog below the
+## track when low_fog_density > 0.
+static func night_environment(sky_params: Dictionary, ambient: Color, fog_color: Color, fog_begin: float,
+		fog_end: float, fog_max: float, low_fog_density: float, glow_intensity: float, glow_threshold: float) -> Environment:
+	var sky_material := ShaderMaterial.new()
+	sky_material.shader = shader("night_sky.gdshader")
+	for p: String in sky_params:
+		sky_material.set_shader_parameter(p, sky_params[p])
+	var sky := Sky.new()
+	sky.sky_material = sky_material
+	sky.radiance_size = Sky.RADIANCE_SIZE_32
+	var env := Environment.new()
+	env.background_mode = Environment.BG_SKY
+	env.sky = sky
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = ambient
+	env.ambient_light_energy = 0.8
+	env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
+	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.glow_enabled = true
+	env.glow_intensity = glow_intensity
+	env.glow_strength = 1.0
+	env.glow_bloom = 0.0
+	env.glow_hdr_threshold = glow_threshold
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
+	env.fog_enabled = true
+	env.fog_mode = Environment.FOG_MODE_DEPTH
+	env.fog_light_color = fog_color
+	env.fog_light_energy = 1.0
+	env.fog_depth_begin = fog_begin
+	env.fog_depth_end = fog_end
+	env.fog_depth_curve = 1.3
+	env.fog_density = fog_max
+	env.fog_sky_affect = 0.0
+	env.fog_height = -3.0
+	env.fog_height_density = low_fog_density
+	return env
+
+
 ## A shared ShaderMaterial for `file_name` with these uniform values, cached by value.
 static func material(file_name: String, params: Dictionary = {}) -> ShaderMaterial:
 	var id: String = file_name + var_to_str(params)
@@ -188,9 +245,97 @@ static func state_materials(file_name: String, on: Dictionary, warning: Dictiona
 	return [material(file_name, on), material(file_name, w), material(file_name, o)]
 
 
+## ON, WARNING and OFF materials for a fence's energy field: it crackles, sputters (while
+## HazardTelegraph plays the warning), or shows nothing.
+static func fence_field_materials(color: Color, fade_begin: float, fade_end: float) -> Array[Material]:
+	var on := {"color": color, "intensity": 1.0, "fade_begin": fade_begin, "fade_end": fade_end}
+	return state_materials("energy_field.gdshader", on, {"flicker_hz": 16.0, "intensity": 0.75}, {"intensity": 0.0})
+
+
+## ON, WARNING and OFF materials for a hazard's glowing solid parts (a fence's bars and emitters):
+## the solid kit shader with `solid_params`, flickering in WARNING and dim when OFF. The ON material
+## is its own instance (not the zone's plain solid one), so these parts stay a separate surface.
+static func hazard_part_materials(solid_params: Dictionary) -> Array[Material]:
+	var on: Dictionary = solid_params.duplicate()
+	on["state_glow"] = 1.0
+	return state_materials("kit_solid.gdshader", on, {"flicker_hz": 12.0}, {"state_glow": 0.12})
+
+
 # --- Shared hazard parts ---------------------------------------------------------
 # Hazards keep one colour and shape language in every zone (GDD §5). These builders are the
 # common part; zones add their own mounts (exhaust stacks, rubble, ...) around them.
+
+## Dresses an electric fence: the energy field, a little larger than the hitbox (GDD §3: hitboxes err
+## in the player's favour), and the zone's `mounts` mesh, whose glowing parts use part_materials[0].
+## Field and glowing parts follow the hazard's state (HazardStateVisual).
+static func dress_fence(hazard: Hazard, size: Vector3, mounts: ArrayMesh, field_materials: Array[Material],
+		part_materials: Array[Material]) -> void:
+	var field: MeshInstance3D = MeshBatch.add_instance(hazard, energy_field_mesh(size + Vector3(0.06, 0.08, 0.0)))
+	var parts: MeshInstance3D = MeshBatch.add_instance(hazard, mounts)
+	var visual := HazardStateVisual.new()
+	hazard.add_child(visual)
+	visual.add_target(field, -1, field_materials)
+	for s: int in mounts.get_surface_count():
+		if mounts.surface_get_material(s) == part_materials[0]:
+			visual.add_target(parts, s, part_materials)
+	visual.bind(hazard)
+
+
+## The glowing parts every electric fence shares, on the `hot` layer (hazard-local, ground_y = the
+## floor): the bar you jump over (full) or slide under (gapped, with a thinner bar along its top),
+## and emitters where the field meets its posts at x = ±post_x.
+static func fence_bars(hot: MeshLayer, size: Vector3, ground_y: float, gapped: bool, post_x: float, color: Color) -> void:
+	var top: float = size.y * 0.5
+	var bottom: float = -size.y * 0.5
+	for side: float in [-1.0, 1.0]:
+		for y: float in [top, bottom]:
+			if y > ground_y + 0.05:
+				hot.box(Vector3(side * (post_x - 0.02), y, 0), Vector3(0.12, 0.06, 0.12), color, 1.0)
+	hot.box(Vector3(0, bottom if gapped else top, 0), Vector3(size.x + 0.1, 0.045, 0.045), color, 0.9)
+	if gapped:
+		hot.box(Vector3(0, top, 0), Vector3(size.x + 0.1, 0.035, 0.035), color, 0.7)
+
+
+## A sign jutting out of the wall on `side`, the size of its hitbox (hazard-local): the yellow/black
+## hazard frame around a content panel facing the track, drawn with `content_pattern` (PAT_GLYPHS
+## neon, PAT_POSTER billboards, ...). `halo` > 0 adds a soft glow card in front of the panel.
+## DESIGN-TBD: the yellow/black hazard frame is the proposed sign language for every zone.
+static func hazard_sign(size: Vector3, side: int, frame_color: Color, content_color: Color, content_glow: float,
+		content_pattern: int, content_param: float, halo: float, solid_material: Material, glow_material: Material) -> ArrayMesh:
+	var id: String = "sign_%s_%d_%s_%s_%s_%d_%s_%s_%d_%d" % [size, side, frame_color, content_color, content_glow,
+		content_pattern, content_param, halo, solid_material.get_instance_id(), glow_material.get_instance_id()]
+	if _templates.has(id):
+		return _templates[id]
+	var batch := MeshBatch.new()
+	var s: MeshLayer = batch.layer(solid_material)
+	var g: MeshLayer = batch.layer(glow_material)
+	# Grow toward the track and along its length, never into the wall.
+	var grow := Vector3(0.08, 0.1, 0.12)
+	var vis: Vector3 = size + grow
+	var center := Vector3(-side * grow.x * 0.5, 0, 0)
+	var rail: float = clampf(vis.y * 0.14, 0.12, 0.26)
+	hazard_frame(s, center, vis, rail, frame_color, 0.35)
+	var inner := Vector3(vis.x - 0.12, vis.y - rail * 2.0, vis.z - rail * 2.0)
+	if inner.y > 0.05 and inner.z > 0.05:
+		s.box(center + Vector3(side * 0.06, 0, 0), inner, Color(0.03, 0.03, 0.05), 0.0, PAT_PLAIN,
+			FACE_PX if side < 0 else FACE_NX)
+		var face_x: float = center.x - side * (vis.x * 0.5 - 0.06)
+		var y0: float = -inner.y * 0.5
+		var zh: float = inner.z * 0.5
+		# The panel faces the track; its content reads (and scrolls) left to right as seen from the lanes.
+		if side > 0:
+			s.rect(Vector3(face_x, y0, -zh), Vector3(0, 0, inner.z), Vector3(0, inner.y, 0), content_color, content_glow,
+				content_pattern, Vector2(0, 0), Vector2(inner.z, inner.y), content_param)
+		else:
+			s.rect(Vector3(face_x, y0, zh), Vector3(0, 0, -inner.z), Vector3(0, inner.y, 0), content_color, content_glow,
+				content_pattern, Vector2(0, 0), Vector2(inner.z, inner.y), content_param)
+		if halo > 0.0:
+			g.rect(Vector3(face_x - side * 0.25, y0 - 0.3, -zh - 0.3), Vector3(0, 0, inner.z + 0.6),
+				Vector3(0, inner.y + 0.6, 0), content_color, halo, SHAPE_FLAT)
+	var mesh: ArrayMesh = batch.to_mesh()
+	_templates[id] = mesh
+	return mesh
+
 
 ## The energy field of an electric fence: three cards through the depth of `size` (hazard-local,
 ## centred), each with its own crackle. Use it with an energy_field.gdshader material (one per state,
@@ -240,3 +385,260 @@ static func frame(layer: MeshLayer, center: Vector3, width: float, height: float
 	var side: Vector3 = dir * bar + Vector3(0, height - bar * 2.0, 0) + d
 	layer.box(center + dir * (width - bar) * 0.5, side, color, glow_amount)
 	layer.box(center - dir * (width - bar) * 0.5, side, color, glow_amount)
+
+
+# --- Shared trigger and marker looks ---------------------------------------------------------
+# Triggers look the same in every zone, like hazards: a cyan anti-grav pad with a light column, green
+# arrows for ramps and speed pads, the checkered finish. Zones only pick the metal around them.
+# Meshes are cached by their arguments and shared by every instance.
+
+## An anti-grav pad, the size of its trigger volume and centred on it (the floor at -size.y / 2):
+## a flush lift plate of glowing rings with a light column rising toward the ceiling.
+static func lift_pad(size: Vector3, color: Color, plate_color: Color, beam_height: float, solid_material: Material,
+		glow_material: Material) -> ArrayMesh:
+	var id: String = "pad_%s_%s_%s_%s_%d_%d" % [size, color, plate_color, beam_height, solid_material.get_instance_id(),
+		glow_material.get_instance_id()]
+	if _templates.has(id):
+		return _templates[id]
+	var batch := MeshBatch.new()
+	var s: MeshLayer = batch.layer(solid_material)
+	var g: MeshLayer = batch.layer(glow_material)
+	var y0: float = -size.y * 0.5
+	s.box(Vector3(0, y0 + 0.02, 0), Vector3(size.x + 0.2, 0.04, size.z + 0.2), plate_color, 0.0, PAT_PLAIN, NO_BOTTOM)
+	for inset: float in [0.0, 0.28, 0.52]:
+		_ring(s, Vector3(0, y0 + 0.045, 0), size.x - inset * 2.0, size.z - inset * 2.0, 0.07, color, 0.9 - inset)
+	s.box(Vector3(0, y0 + 0.05, 0), Vector3(0.3, 0.02, 0.3), color, 1.0)
+	g.rect(Vector3(-size.x * 0.9, y0 + 0.06, size.z * 0.9), Vector3(size.x * 1.8, 0, 0), Vector3(0, 0, -size.z * 1.8),
+		color, 0.5, SHAPE_RADIAL)
+	var bx: float = size.x * 0.5
+	var bz: float = size.z * 0.5
+	# Two crossed cards through the pad's centre: a soft column from any angle.
+	g.rect(Vector3(-bx, y0, 0), Vector3(bx * 2.0, 0, 0), Vector3(0, beam_height, 0), color, 0.5, SHAPE_RISE)
+	g.rect(Vector3(0, y0, bz), Vector3(0, 0, -bz * 2.0), Vector3(0, beam_height, 0), color, 0.5, SHAPE_RISE)
+	var mesh: ArrayMesh = batch.to_mesh()
+	_templates[id] = mesh
+	return mesh
+
+
+## A ramp onto the wall on `side`, the size of its trigger volume and centred on it: a kicker plate
+## banked up toward the wall, with arrows streaming toward the wall.
+static func kicker_ramp(size: Vector3, side: int, color: Color, metal: Color, solid_material: Material,
+		glow_material: Material) -> ArrayMesh:
+	var id: String = "ramp_%s_%d_%s_%s_%d_%d" % [size, side, color, metal, solid_material.get_instance_id(),
+		glow_material.get_instance_id()]
+	if _templates.has(id):
+		return _templates[id]
+	var batch := MeshBatch.new()
+	var s: MeshLayer = batch.layer(solid_material)
+	var g: MeshLayer = batch.layer(glow_material)
+	var y0: float = -size.y * 0.5
+	var hx: float = size.x * 0.5
+	var hz: float = size.z * 0.5
+	var low: float = y0 + 0.05
+	var high: float = y0 + 0.45
+	var sd: float = float(side)
+	# Corners: inner edge low, wall-side edge high.
+	var in_n := Vector3(-sd * hx, low, hz)
+	var in_f := Vector3(-sd * hx, low, -hz)
+	var out_n := Vector3(sd * hx, high, hz)
+	var out_f := Vector3(sd * hx, high, -hz)
+	var base_n := Vector3(sd * hx, y0, hz)
+	var base_f := Vector3(sd * hx, y0, -hz)
+	var in_bn := Vector3(-sd * hx, y0, hz)
+	var in_bf := Vector3(-sd * hx, y0, -hz)
+	# The top's UV.x runs from its first corner across; the chevron direction (param) points at the wall.
+	if side > 0:
+		s.quad(in_n, in_f, out_f, out_n, color, 0.8, PAT_CHEVRON, 1.0)
+		s.quad(in_bn, in_n, out_n, base_n, metal)
+		s.quad(base_n, out_n, out_f, base_f, metal)
+		s.quad(in_bf, in_f, in_n, in_bn, metal)
+	else:
+		s.quad(out_n, out_f, in_f, in_n, color, 0.8, PAT_CHEVRON, -1.0)
+		s.quad(base_n, out_n, in_n, in_bn, metal)
+		s.quad(base_f, out_f, out_n, base_n, metal)
+		s.quad(in_bn, in_n, in_f, in_bf, metal)
+	# Glowing rails along the high edge and the sloped front edge.
+	s.box((out_n + out_f) * 0.5 + Vector3(0, 0.02, 0), Vector3(0.06, 0.05, size.z), color, 1.0)
+	var rise: float = high - low
+	var front := Basis(Vector3.BACK, sd * atan2(rise, size.x)).scaled_local(
+		Vector3(sqrt(size.x * size.x + rise * rise), 0.05, 0.05))
+	s.box_xform(Transform3D(front, (in_n + out_n) * 0.5 + Vector3(0, 0.02, 0.02)), color, 0.8)
+	g.rect(Vector3(-hx * 1.4, y0 + 0.08, hz * 1.3), Vector3(hx * 2.8, 0, 0), Vector3(0, 0, -hz * 2.6), color, 0.35,
+		SHAPE_RADIAL)
+	var mesh: ArrayMesh = batch.to_mesh()
+	_templates[id] = mesh
+	return mesh
+
+
+## A speed pad, the size of its trigger volume and centred on it (the floor at -size.y / 2): a flush
+## plate of arrows streaming down the track between two glowing rails.
+## DESIGN-TBD: the GDD doesn't describe speed pads; green arrows put them in the ramps' "safe boost"
+## family (like the grey box).
+static func speed_strip(size: Vector3, color: Color, plate_color: Color, solid_material: Material,
+		glow_material: Material) -> ArrayMesh:
+	var id: String = "speed_%s_%s_%s_%d_%d" % [size, color, plate_color, solid_material.get_instance_id(),
+		glow_material.get_instance_id()]
+	if _templates.has(id):
+		return _templates[id]
+	var batch := MeshBatch.new()
+	var s: MeshLayer = batch.layer(solid_material)
+	var g: MeshLayer = batch.layer(glow_material)
+	var y0: float = -size.y * 0.5
+	var hx: float = size.x * 0.5
+	var hz: float = size.z * 0.5
+	s.box(Vector3(0, y0 + 0.02, 0), Vector3(size.x + 0.16, 0.04, size.z + 0.16), plate_color, 0.0, PAT_PLAIN, NO_BOTTOM)
+	# UV.x runs down the track (u = -z), so the arrows point and stream forward.
+	s.rect(Vector3(hx - 0.1, y0 + 0.042, hz), Vector3(0, 0, -size.z), Vector3(-(size.x - 0.2), 0, 0), color, 0.8,
+		PAT_CHEVRON, Vector2.ZERO, Vector2.ONE, 1.0)
+	for side: float in [-1.0, 1.0]:
+		s.box(Vector3(side * (hx - 0.03), y0 + 0.055, 0), Vector3(0.06, 0.03, size.z + 0.1), color, 1.0, PAT_PLAIN, NO_BOTTOM)
+	g.rect(Vector3(-hx * 1.4, y0 + 0.07, hz * 1.2), Vector3(hx * 2.8, 0, 0), Vector3(0, 0, -hz * 2.4), color, 0.3,
+		SHAPE_RADIAL)
+	var mesh: ArrayMesh = batch.to_mesh()
+	_templates[id] = mesh
+	return mesh
+
+
+## The finish line across the track (`width`) at `distance`: a glowing checkered strip and a gantry
+## with a checkered banner.
+static func finish_gate(batch: MeshBatch, solid_material: Material, glow_material: Material, width: float,
+		distance: float, color: Color, metal: Color) -> void:
+	var s: MeshLayer = batch.layer(solid_material)
+	var g: MeshLayer = batch.layer(glow_material)
+	var z: float = -distance
+	s.box(Vector3(0, 0.03, z), Vector3(width, 0.04, 1.2), color, 0.6, PAT_CHECKER, NO_BOTTOM)
+	var px: float = width * 0.5 + 0.2
+	for side: float in [-1.0, 1.0]:
+		s.box(Vector3(side * px, 4.5, z), Vector3(0.5, 13.0, 0.5), metal)
+		s.box(Vector3(side * (px - 0.26), 4.5, z + 0.1), Vector3(0.04, 12.5, 0.08), color, 0.7)
+	s.box(Vector3(0, 10.4, z), Vector3(width + 0.9, 1.3, 0.6), metal)
+	s.box(Vector3(0, 10.4, z + 0.32), Vector3(width, 0.9, 0.04), color, 0.8, PAT_CHECKER)
+	g.rect(Vector3(-width * 0.6, 8.8, z + 0.4), Vector3(width * 1.2, 0, 0), Vector3(0, 3.2, 0), color, 0.18, SHAPE_FLAT)
+	g.rect(Vector3(-width * 0.5, 0.06, z + 1.5), Vector3(width, 0, 0), Vector3(0, 0, -3.0), color, 0.2, SHAPE_STREAK)
+
+
+## The far end of a ceiling (hull-local: underside at y = 0, the end at z = zf, `band` deep): a band
+## of the orange edge glow with amber lights along it and a glow below, so the drop back to the floor
+## reads like a gap edge in every zone.
+static func ceiling_end(s: MeshLayer, g: MeshLayer, half_width: float, zf: float, band: float, color: Color) -> void:
+	s.rect(Vector3(-half_width, 0, zf), Vector3(half_width * 2.0, 0, 0), Vector3(0, 0, band), color, 0.33)
+	var lx: float = -half_width + 0.6
+	while lx < half_width - 0.3:
+		s.box(Vector3(lx, -0.025, zf + 0.25), Vector3(0.35, 0.05, 0.2), color, 0.6, PAT_PLAIN, ALL_FACES & ~FACE_PY)
+		lx += 1.2
+	g.rect(Vector3(-half_width, -0.05, zf + band + 1.5), Vector3(half_width * 2.0, 0, 0), Vector3(0, 0, -(band + 3.0)),
+		color, 0.35, SHAPE_RADIAL)
+
+
+static func _ring(s: MeshLayer, center: Vector3, w: float, d: float, t: float, color: Color, glow_amount: float) -> void:
+	s.box(center + Vector3(0, 0, d * 0.5 - t * 0.5), Vector3(w, 0.02, t), color, glow_amount, PAT_PLAIN, FACE_PY)
+	s.box(center - Vector3(0, 0, d * 0.5 - t * 0.5), Vector3(w, 0.02, t), color, glow_amount, PAT_PLAIN, FACE_PY)
+	s.box(center + Vector3(w * 0.5 - t * 0.5, 0, 0), Vector3(t, 0.02, d - t * 2.0), color, glow_amount, PAT_PLAIN, FACE_PY)
+	s.box(center - Vector3(w * 0.5 - t * 0.5, 0, 0), Vector3(t, 0.02, d - t * 2.0), color, glow_amount, PAT_PLAIN, FACE_PY)
+
+
+# --- Walls -------------------------------------------------------------------------------
+
+## Splits a wall side into runs of lots (one building each): the first and last lot of the run
+## covering `lot_index`. A run starts at every `period`-th lot and, by hash, at a `share` of the
+## others, so finding one never looks back more than period - 1 lots.
+static func lot_run(side: int, lot_index: int, share: float, period: int = 3, salt: int = 1) -> Vector2i:
+	var first: int = lot_index
+	while not _starts_run(side, first, share, period, salt):
+		first -= 1
+	var last: int = lot_index
+	while not _starts_run(side, last + 1, share, period, salt):
+		last += 1
+	return Vector2i(first, last)
+
+
+static func _starts_run(side: int, lot_index: int, share: float, period: int, salt: int) -> bool:
+	return posmod(lot_index, period) == 0 or hash01(side, lot_index, salt) < share
+
+
+## A facade piece (facade.gdshader) in the wall plane at x, facing the track (side -1 = the left
+## wall), from track distance u0 to u1 and from height y0 up to a top edge running from top0 (at u0)
+## to top1 (at u1). UV is (distance, height) in metres, so windows line up across pieces.
+static func facade_quad(layer: MeshLayer, side: int, x: float, u0: float, u1: float, y0: float, top0: float,
+		top1: float, color: Color, lit: float, style: int, seed: float) -> void:
+	if side < 0:
+		layer.quad_uv(Vector3(x, y0, -u0), Vector3(x, top0, -u0), Vector3(x, top1, -u1), Vector3(x, y0, -u1),
+			Vector2(u0, y0), Vector2(u0, top0), Vector2(u1, top1), Vector2(u1, y0), color, lit, style, seed)
+	else:
+		layer.quad_uv(Vector3(x, y0, -u1), Vector3(x, top1, -u1), Vector3(x, top0, -u0), Vector3(x, y0, -u0),
+			Vector2(u1, y0), Vector2(u1, top1), Vector2(u0, top0), Vector2(u0, y0), color, lit, style, seed)
+
+
+## A run of facade pieces in the wall plane at x (see facade_quad): piece k spans track distances
+## us[k] to us[k + 1], from y0 up to a top edge running from tops[k] to tops[k + 1]. Built in bulk,
+## for broken silhouettes made of many pieces.
+static func facade_strip(layer: MeshLayer, side: int, x: float, us: PackedFloat32Array, tops: PackedFloat32Array,
+		y0: float, color: Color, lit: float, style: int, seed: float) -> void:
+	var n: int = us.size() - 1
+	if n <= 0:
+		return
+	var at: int = layer.verts.size()
+	layer.verts.resize(at + n * 6)
+	layer.uvs.resize(at + n * 6)
+	layer.colors.append_array(filled_colors(Color(color, lit), n * 6))
+	layer.uv2s.append_array(filled_uv2(Vector2(style, seed), n * 6))
+	for k: int in n:
+		# Corners a, b, c, d as in facade_quad: bottom and top at the piece's first edge, then its second.
+		var near: int = k if side < 0 else k + 1
+		var far: int = k + 1 if side < 0 else k
+		var a := Vector3(x, y0, -us[near])
+		var b := Vector3(x, tops[near], -us[near])
+		var c := Vector3(x, tops[far], -us[far])
+		var d := Vector3(x, y0, -us[far])
+		var ua := Vector2(us[near], y0)
+		var uc := Vector2(us[far], tops[far])
+		var i: int = at + k * 6
+		layer.verts[i] = a
+		layer.verts[i + 1] = b
+		layer.verts[i + 2] = c
+		layer.verts[i + 3] = a
+		layer.verts[i + 4] = c
+		layer.verts[i + 5] = d
+		layer.uvs[i] = ua
+		layer.uvs[i + 1] = Vector2(us[near], tops[near])
+		layer.uvs[i + 2] = uc
+		layer.uvs[i + 3] = ua
+		layer.uvs[i + 4] = uc
+		layer.uvs[i + 5] = Vector2(us[far], y0)
+
+
+# --- Drifting particles ------------------------------------------------------------------------
+
+## Drifting ash, paper scraps and speed streaks over the track between two distances, for a
+## drift.gdshader material whose slice_length is `slice`. Every slice of the track gets the same
+## cached set (it can't be seen repeating: particles fade out long before the next slice), so a
+## chunk costs a few bulk appends. Particles stay within ±half_width, from 0.4 m up to top_y.
+## `colors` holds the ash, scrap and streak colours (alpha = opacity).
+static func drift_particles(layer: MeshLayer, start: float, end: float, slice: float, half_width: float, top_y: float,
+		ash: int, scraps: int, streaks: int, colors: PackedColorArray) -> void:
+	var id: String = "drift_%s_%s_%s_%d_%d_%d_%s" % [slice, half_width, top_y, ash, scraps, streaks, colors]
+	var template: MeshLayer = _templates.get(id)
+	if template == null:
+		template = MeshLayer.new()
+		var counts: Array[int] = [ash, scraps, streaks]
+		var n: int = 0
+		for kind: int in [DRIFT_ASH, DRIFT_SCRAP, DRIFT_STREAK]:
+			var y_max: float = top_y if kind != DRIFT_STREAK else minf(top_y, 4.5)
+			for i: int in counts[kind]:
+				var at := Vector3(lerpf(-half_width, half_width, hash01(n, kind, 71)), lerpf(0.4, y_max, hash01(n, kind, 72)), 0)
+				_billboard(template, at, colors[kind], kind, hash01(n, kind, 73))
+				n += 1
+		_templates[id] = template
+	var index: int = ceili(start / slice - 0.001)
+	while (index + 1) * slice <= end + 0.001:
+		layer.append(template, Transform3D(Basis.IDENTITY, Vector3(0, 0, -(index + 1) * slice)))
+		index += 1
+
+
+static func _billboard(layer: MeshLayer, anchor: Vector3, color: Color, kind: int, phase: float) -> void:
+	layer.verts.append_array(PackedVector3Array([anchor, anchor, anchor, anchor, anchor, anchor]))
+	layer.colors.append_array(PackedColorArray([color, color, color, color, color, color]))
+	layer.uvs.append_array(PackedVector2Array([Vector2(-1, -1), Vector2(-1, 1), Vector2(1, 1), Vector2(-1, -1),
+		Vector2(1, 1), Vector2(1, -1)]))
+	var k := Vector2(kind, phase)
+	layer.uv2s.append_array(PackedVector2Array([k, k, k, k, k, k]))
