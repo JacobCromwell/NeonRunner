@@ -6,6 +6,7 @@ extends AudioStreamPlayer3D
 
 func bind(hazard: Hazard, sound: AudioStream, level_db: float, full_volume_distance: float, silent_distance: float) -> void:
 	stream = sound
+	bus = SfxLibrary.BUS
 	volume_db = level_db
 	unit_size = full_volume_distance
 	max_distance = silent_distance

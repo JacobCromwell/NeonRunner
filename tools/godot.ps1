@@ -3,13 +3,15 @@
 #   godot.ps1 play [game args]   start the game (e.g. play --lanes=6 --god)
 #   godot.ps1 edit               open the Godot editor on this project
 #   godot.ps1 where              show which Godot and project folder would be used
+#   godot.ps1 sfx [--review]     regenerate assets/sfx/*.wav (tools/asset_gen/sfx_gen.gd)
+#   godot.ps1 music [--review]   regenerate assets/music/*.wav (tools/asset_gen/music_gen.gd)
 # Godot is found via $env:GODOT, then godot4/godot on PATH, then the usual user folders.
 # The path found is remembered in .godot-path-windows (git-ignored).
 # No param block on purpose: game arguments such as --lanes=6 must reach Godot untouched.
 $ErrorActionPreference = "Stop"
 $Command = "play"
 $GameArgs = @($args)
-if ($GameArgs.Count -gt 0 -and $GameArgs[0] -in @("play", "edit", "where")) {
+if ($GameArgs.Count -gt 0 -and $GameArgs[0] -in @("play", "edit", "where", "sfx", "music")) {
 	$Command = $GameArgs[0]
 	$GameArgs = @($GameArgs | Select-Object -Skip 1)
 }
@@ -64,13 +66,27 @@ function Import-IfStale([string]$Godot) {
 			Select-Object -First 1
 		$stale = [bool]$changed
 	}
-	if ($stale) {
-		Write-Host "Importing project resources..."
-		$log = & (Get-ConsoleBuild $Godot) --headless --path $Root --import 2>&1 | Out-String
-		$log -split "`n" | Where-Object { $_ -match 'ERROR|Parse Error' } | ForEach-Object { Write-Host $_ }
-		New-Item -ItemType Directory -Force -Path (Join-Path $Root ".godot") | Out-Null
-		New-Item -ItemType File -Force -Path $Stamp | Out-Null
-	}
+	if ($stale) { Import-Resources $Godot }
+}
+
+function Import-Resources([string]$Godot) {
+	Write-Host "Importing project resources..."
+	$log = & (Get-ConsoleBuild $Godot) --headless --path $Root --import 2>&1 | Out-String
+	$log -split "`n" | Where-Object { $_ -match 'ERROR|Parse Error' } | ForEach-Object { Write-Host $_ }
+	New-Item -ItemType Directory -Force -Path (Join-Path $Root ".godot") | Out-Null
+	New-Item -ItemType File -Force -Path $Stamp | Out-Null
+}
+
+# Runs an asset generator headless with the console build (so its report shows here), then imports
+# what it wrote. --review also writes images to build\sfx_review or build\music_review.
+function Invoke-Generator([string]$Godot, [string]$Script) {
+	Import-IfStale $Godot
+	# Windows PowerShell turns a native program's stderr into errors; show them instead of stopping.
+	$ErrorActionPreference = "Continue"
+	& (Get-ConsoleBuild $Godot) --headless --path $Root -s $Script -- @GameArgs 2>&1 | ForEach-Object { "$_" } |
+		Where-Object { $_ -notmatch '^Godot Engine v|^\s*$|^\[ *[0-9]+% \]|^\[ DONE \]' } |
+		ForEach-Object { Write-Host $_ }
+	Import-Resources $Godot
 }
 
 $godot = Get-Godot
@@ -88,5 +104,7 @@ switch ($Command) {
 	"edit" {
 		Start-Process -FilePath $godot -ArgumentList @("--editor", "--path", "`"$Root`"")
 	}
-	default { throw "Unknown command '$Command'. Use play, edit or where." }
+	"sfx" { Invoke-Generator $godot "res://tools/asset_gen/sfx_gen.gd" }
+	"music" { Invoke-Generator $godot "res://tools/asset_gen/music_gen.gd" }
+	default { throw "Unknown command '$Command'. Use play, edit, where, sfx or music." }
 }

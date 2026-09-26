@@ -3,11 +3,17 @@ extends Resource
 ## Which sound plays for each game event, and how loud. Each sound is `folder/<name>.wav`, so any
 ## of them can be replaced by dropping in a file with the same name. The current files are made
 ## by tools/asset_gen/sfx_gen.gd. Hazard warning sounds are shared by every zone (hazard language).
+## Every sound effect plays on the SFX bus (default_bus_layout.tres), which feeds Master.
+
+## The bus every sound effect player uses. Settings set its volume by this name.
+const BUS: StringName = &"SFX"
 
 @export_dir var folder: String = "res://assets/sfx"
-## Mix level per sound in dB. Also the list of sounds the game knows about.
+## Mix level per sound in dB. Also the list of sounds the game knows about. The levels come from the
+## loudness report of tools/godot.sh sfx: attack warnings sit loudest, frequent sounds lowest.
 @export var volume_db: Dictionary = {}
-## Random pitch spread per sound (0.05 = up to ±5%) so frequent sounds don't machine-gun.
+## Random pitch spread per sound (0.05 = up to ±5%) so frequent sounds don't machine-gun. Warnings
+## have none: they must sound the same every time.
 @export var pitch_variation: Dictionary = {}
 ## Hazard warnings come from the hazard's position. Within this distance they play at full volume,
 ## then fade with distance, going silent at warning_max_distance.

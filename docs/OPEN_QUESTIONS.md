@@ -193,6 +193,14 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
 38. The player's glow is cyan, the same as the anti-grav pads. OK, or should the player have its own
     colour?
 
+**Audio** (from the audio work)
+- **Mix balance:** music sits about 10 dB under the attack warnings; the pause menu ducks music by
+  8 dB. Needs a listen on real speakers and phones.
+- **Music on death and level complete:** the zone track keeps playing under the death screen; the
+  `level_complete` riff is in E (fits City, clashes with Gangland). Stop, duck, or play on?
+- **Music style per zone** (OPEN_QUESTIONS §6): City is 160 BPM galloping synth-metal in E minor,
+  Gangland 120 BPM drop-D industrial groove, menus 100 BPM synthwave.
+
 **UI** (from the UI kit work)
 39. **Palette:** an azure main accent and a violet second accent; red only for warnings and "can't
     afford". Pink, orange and yellow are never UI colours (they're hazard colours).

@@ -15,6 +15,7 @@ config/icon="res://assets/icon/icon.png"
 
 TouchInput="*res://scripts/input/touch_input.gd"
 Platform="*res://scripts/platform/platform_services.gd"
+Music="*res://scripts/audio/music_director.gd"
 App="*res://scripts/app/app.gd"
 
 [display]
