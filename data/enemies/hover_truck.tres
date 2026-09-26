@@ -1,0 +1,67 @@
+[gd_resource type="Resource" script_class="HoverTruckTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/hover_truck_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+spawn_lead = 70.0
+score_value = 800
+health_early = 15.0
+health_late = 15.0
+length = 8.0
+width = 2.0
+roof_height = 2.2
+cab_roof_height = 1.85
+cab_length = 2.4
+nose_length = 1.2
+hover_clearance = 0.62
+bob_height = 0.05
+bang_seconds = 2.0
+bang_interval = 0.55
+min_warning_seconds = 1.4
+burst_lead = 10.0
+burst_hazard_seconds = 0.45
+burst_section_before = 3.0
+burst_section_after = 1.0
+emerge_seconds = 0.55
+pace_offset = 10.0
+back_offset = -7.0
+alongside_offset = -2.8
+pace_seconds_early = 3.5
+pace_seconds_late = 4.5
+hold_back_seconds = 1.6
+rev_seconds = 1.0
+alongside_seconds = 1.8
+lurch_back_speed = 13.0
+lurch_forward_speed = 12.0
+lurch_accel = 60.0
+drift_speed = 5.0
+drift_accel = 10.0
+lurch_back_timeout = 2.5
+rear_gap = 1.0
+front_gap = 1.0
+escape_margin = 0.6
+roof_drift_speed = 2.5
+stay_min_seconds = 20.0
+stay_max_seconds = 30.0
+leave_speed = 7.0
+leave_seconds = 6.0
+cannon_interval_early = 4.5
+cannon_interval_late = 3.0
+cannon_charge_seconds = 1.2
+shell_speed_early = 10.0
+shell_speed_late = 13.0
+first_shot_delay = 0.6
+shooters_early = 0.0
+shooters_late = 2.0
+shooter_delay = 0.35
+bolt_speed_early = 12.0
+bolt_speed_late = 15.0
+wreck_seconds = 1.2
+wreck_drift = 6.0
+clear_before = 20.0
+min_gap_seconds = 6.0
+ramp_after_seconds = 7.0
+guarantee_one = true
+guaranteed_from = 0.2
+guaranteed_to = 0.5
