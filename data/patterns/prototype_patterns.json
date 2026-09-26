@@ -77,7 +77,7 @@
 		},
 		{
 			"id": "fence_pulsing_most",
-			"min_difficulty": 0.4, "weight": 1.5,
+			"min_difficulty": 0.4, "weight": 1.5, "requires": ["pulsing"],
 			"length": 4,
 			"elements": [
 				{ "kind": "fence", "at": 0, "variant": "full", "lanes": { "mode": "all_but", "count": 1 },
@@ -86,7 +86,7 @@
 		},
 		{
 			"id": "fence_pulsing_all",
-			"min_difficulty": 0.6, "weight": 1,
+			"min_difficulty": 0.6, "weight": 1, "requires": ["pulsing"],
 			"length": 4,
 			"elements": [
 				{ "kind": "fence", "at": 0, "variant": "full", "lanes": { "mode": "all" },

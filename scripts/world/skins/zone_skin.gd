@@ -9,6 +9,12 @@ extends Resource
 ## y = up, z = -distance. Hooks that receive a gameplay node work in that node's local space.
 
 
+## Which zone variant enemies dress in (GDD §9: e.g. the sleek "city" cyborg and hover truck, or the
+## patched-together "scavenger" versions in grimy zones). Enemies read it to pick their look; their
+## hazard colours and shapes stay the same everywhere.
+@export var enemy_variant: StringName = &"city"
+
+
 func make_environment() -> Environment:
 	return Environment.new()
 
@@ -49,6 +55,11 @@ func pad(_trigger: Area3D, _size: Vector3) -> void:
 
 ## A ramp onto the wall on `side`, the size of its trigger volume and centred on it.
 func ramp(_trigger: Area3D, _size: Vector3, _side: int) -> void:
+	pass
+
+
+## A speed pad, the size of its trigger volume and centred on it. The floor is at -size.y / 2.
+func speed_pad(_trigger: Area3D, _size: Vector3) -> void:
 	pass
 
 

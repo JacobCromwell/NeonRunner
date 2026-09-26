@@ -17,6 +17,8 @@ const LAYER_HULL: int = 2
 const LAYER_HAZARD: int = 4
 const LAYER_WALL_BLOCKER: int = 8
 const LAYER_TRIGGER: int = 16
+## Solid sides the player can't switch lanes into (GDD §9.3: the hover truck's sides).
+const LAYER_LANE_BLOCKER: int = 64
 
 var layout: LevelLayout
 var tuning: MovementTuning
@@ -32,6 +34,8 @@ var _chunks: Dictionary = {}
 var _next_chunk: int = 0
 var _last_chunk: int = 0
 var _level_time: float = 0.0
+## Built fence hazards by their index in layout.fences, so an EMP can switch them off.
+var _fence_nodes: Dictionary = {}
 
 
 func set_layout(p_layout: LevelLayout, p_tuning: MovementTuning, p_skin: ZoneSkin = null) -> void:
@@ -44,6 +48,7 @@ func set_layout(p_layout: LevelLayout, p_tuning: MovementTuning, p_skin: ZoneSki
 	geo = TrackGeometry.new(layout.lane_count, tuning)
 	_chunks.clear()
 	_buckets.clear()
+	_fence_nodes.clear()
 	_next_chunk = 0
 	_last_chunk = int(ceil((layout.length + RUN_OUT) / CHUNK_LENGTH))
 
@@ -55,11 +60,14 @@ func set_layout(p_layout: LevelLayout, p_tuning: MovementTuning, p_skin: ZoneSki
 	for list: Array in _lane_gaps:
 		list.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["start"] < b["start"])
 
+	for i: int in layout.fences.size():
+		layout.fences[i]["index"] = i
 	_bucket("fences", layout.fences, "at", tuning.fence_depth)
 	_bucket("signs", layout.signs, "start", 0.0, "end")
 	_bucket("hulls", layout.hulls, "start", 0.0, "end")
 	_bucket("pads", layout.pads, "at", tuning.pad_length)
 	_bucket("ramps", layout.ramps, "at", tuning.ramp_length)
+	_bucket("speed_pads", layout.speed_pads, "at", tuning.speed_pad_length)
 
 
 ## Builds chunks ahead of `player_distance` and frees chunks that are fully behind it.
@@ -74,6 +82,33 @@ func update(player_distance: float, level_time: float) -> void:
 		if chunk["max_end"] < player_distance - KEEP_BEHIND:
 			(chunk["node"] as Node3D).queue_free()
 			_chunks.erase(index)
+
+
+## Switches off, for the rest of the level, every fence within `radius` of `center` (world space),
+## including fences not built yet (GDD §9.1: a destroyed generator's EMP). Returns how many.
+func disable_fences_near(center: Vector3, radius: float) -> int:
+	var count: int = 0
+	for f: Dictionary in layout.fences:
+		if f.get("disabled", false):
+			continue
+		var pos := Vector3(geo.lane_x(f["lane"]), center.y, TrackGeometry.world_z(f["at"]))
+		if pos.distance_to(center) > radius:
+			continue
+		f["disabled"] = true
+		count += 1
+		var node: Variant = _fence_nodes.get(f["index"])
+		if node != null and is_instance_valid(node):
+			(node as Hazard).set_enabled(false)
+	return count
+
+
+## Built fence hazards (for tests and effects).
+func fence_hazards() -> Array[Hazard]:
+	var out: Array[Hazard] = []
+	for h: Variant in _fence_nodes.values():
+		if is_instance_valid(h):
+			out.append(h)
+	return out
 
 
 func set_hitboxes_visible(on: bool) -> void:
@@ -128,6 +163,8 @@ func _build_chunk(index: int) -> void:
 		_build_pad(root, p)
 	for r: Dictionary in bucket.get("ramps", []):
 		_build_ramp(root, r)
+	for sp: Dictionary in bucket.get("speed_pads", []):
+		_build_speed_pad(root, sp)
 
 
 ## Returns the [start, end] distance ranges of solid floor for one lane within [c0, c1).
@@ -173,6 +210,9 @@ func _build_fence(root: Node3D, f: Dictionary) -> void:
 			telegraph.bind(hazard, sfx.stream(&"fence_warning"), sfx.volume(&"fence_warning"),
 				sfx.warning_full_volume_distance, sfx.warning_max_distance)
 	skin.fence(hazard, size, -(bottom + top) * 0.5, gapped)
+	_fence_nodes[f["index"]] = hazard
+	if f.get("disabled", false):
+		hazard.set_enabled(false)
 
 
 func _build_sign(root: Node3D, s: Dictionary) -> void:
@@ -210,8 +250,15 @@ func _build_ramp(root: Node3D, r: Dictionary) -> void:
 	skin.ramp(area, size, side)
 
 
+func _build_speed_pad(root: Node3D, p: Dictionary) -> void:
+	var size := Vector3(geo.lane_width * 0.7, 0.5, tuning.speed_pad_length)
+	var area := _trigger(root, &"speed_pad", Vector3(geo.lane_x(p["lane"]), size.y * 0.5, -float(p["at"]) - size.z * 0.5), size)
+	skin.speed_pad(area, size)
+
+
 func _hazard(root: Node3D, center: Vector3, size: Vector3, layers: int) -> Hazard:
 	var hazard := Hazard.new()
+	hazard.size = size
 	hazard.collision_layer = layers
 	hazard.collision_mask = 0
 	hazard.monitoring = false

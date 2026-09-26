@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="MusicLibrary" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/audio/music_library.gd" id="1_music"]
+
+[resource]
+script = ExtResource("1_music")
+files = {
+"city": "res://assets/music/city.wav",
+"gangland": "res://assets/music/gangland.wav",
+"menu": "res://assets/music/menu.wav"
+}
+volume_db = {
+"city": -10.5,
+"gangland": -10.0,
+"menu": -11.0
+}
+bpm = {
+"city": 160.0,
+"gangland": 120.0,
+"menu": 100.0
+}
+duck_db = -8.0
+duck_time = 0.3

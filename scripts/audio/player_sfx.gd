@@ -1,7 +1,7 @@
 class_name PlayerSfx
 extends Node
 ## Plays the sound for each Player.movement_event, plus game-level sounds by name.
-## Gameplay never waits on audio.
+## Gameplay never waits on audio. Every sound goes to the SFX bus (settings set its volume).
 
 var _players: Dictionary = {}
 
@@ -15,6 +15,7 @@ func setup(library: SfxLibrary) -> void:
 		p.stream = stream
 		p.volume_db = library.volume(sound)
 		p.max_polyphony = 3
+		p.bus = SfxLibrary.BUS
 		add_child(p)
 		_players[sound] = p
 

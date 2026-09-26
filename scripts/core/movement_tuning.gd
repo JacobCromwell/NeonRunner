@@ -17,7 +17,7 @@ extends Resource
 @export_range(0.05, 0.4, 0.01, "suffix:s") var lane_switch_time: float = 0.14
 
 @export_group("Jump & gravity")
-@export_range(0.5, 4.0, 0.05, "suffix:m") var jump_height: float = 2.1
+@export_range(0.5, 4.0, 0.05, "suffix:m") var jump_height: float = 1.6
 @export_range(0.15, 0.8, 0.01, "suffix:s") var jump_time_to_apex: float = 0.36
 ## Gravity multiplier while descending (above 1 = snappier landings).
 @export_range(1.0, 3.0, 0.05) var fall_gravity_multiplier: float = 1.35
@@ -50,11 +50,15 @@ extends Resource
 ## Gap between the outer lane edge and the wall face.
 @export_range(0.0, 1.0, 0.05, "suffix:m") var wall_margin: float = 0.3
 
-@export_group("Ramps")
+@export_group("Ramps & speed pads")
 ## DESIGN-TBD: ramp values are open (OPEN_QUESTIONS §4).
 @export_range(1.0, 6.0, 0.1, "suffix:m") var ramp_entry_height: float = 4.0
 @export_range(0.0, 15.0, 0.5, "suffix:m/s") var ramp_speed_boost: float = 0.0
 @export_range(0.5, 20.0, 0.5, "suffix:m/s per s") var ramp_boost_decay_per_second: float = 4.0
+## DESIGN-TBD: speed pads are only named in the GDD (§6: they arrive a few levels in). A pad in a
+## floor lane adds this much speed, which then decays like the ramp boost.
+@export_range(0.0, 20.0, 0.5, "suffix:m/s") var speed_pad_boost: float = 6.0
+@export_range(0.5, 5.0, 0.1, "suffix:m") var speed_pad_length: float = 2.5
 
 @export_group("Ceiling")
 @export_range(3.5, 10.0, 0.1, "suffix:m") var ceiling_height: float = 6.0
@@ -66,9 +70,9 @@ extends Resource
 @export_range(0.0, 0.6, 0.01, "suffix:m") var foot_half_width: float = 0.3
 @export_range(0.0, 0.6, 0.01, "suffix:m") var foot_half_depth: float = 0.25
 ## Damage hitbox (smaller than the visual body, per GDD §3).
-@export var hurtbox_size: Vector3 = Vector3(0.6, 1.45, 0.5)
-@export_range(0.3, 1.2, 0.05, "suffix:m") var hurtbox_slide_height: float = 0.6
-@export var visual_size: Vector3 = Vector3(0.8, 1.7, 0.7)
+@export var hurtbox_size: Vector3 = Vector3(0.45, 1.09, 0.38)
+@export_range(0.3, 1.2, 0.05, "suffix:m") var hurtbox_slide_height: float = 0.45
+@export var visual_size: Vector3 = Vector3(0.6, 1.28, 0.52)
 ## Once this far below the floor without support, the player is falling into the gap:
 ## no more lane switches, jumps or wall entries.
 @export_range(0.05, 1.0, 0.05, "suffix:m") var pit_depth: float = 0.35
@@ -77,10 +81,10 @@ extends Resource
 
 @export_group("Piece sizes")
 ## Full-height fence: jump over it or switch lanes.
-@export_range(0.5, 3.0, 0.05, "suffix:m") var fence_full_top: float = 1.4
+@export_range(0.5, 3.0, 0.05, "suffix:m") var fence_full_top: float = 1.05
 ## Gapped fence: open underneath, slide under it.
-@export_range(0.5, 2.0, 0.05, "suffix:m") var fence_gapped_bottom: float = 1.0
-@export_range(1.5, 5.0, 0.05, "suffix:m") var fence_gapped_top: float = 2.8
+@export_range(0.5, 2.0, 0.05, "suffix:m") var fence_gapped_bottom: float = 0.75
+@export_range(1.5, 5.0, 0.05, "suffix:m") var fence_gapped_top: float = 2.1
 @export_range(0.1, 1.0, 0.05, "suffix:m") var fence_depth: float = 0.3
 ## Seconds of warning (flicker + buzz) before a pulsing fence switches on.
 @export_range(0.1, 1.0, 0.05, "suffix:s") var fence_pulse_warning: float = 0.35

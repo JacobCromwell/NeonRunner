@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="Campaign" format=3]
+
+[ext_resource type="Script" path="res://scripts/campaign/campaign.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/campaign/zone_def.gd" id="2_zonescript"]
+[ext_resource type="Resource" path="res://data/zones/city.tres" id="z_city"]
+[ext_resource type="Resource" path="res://data/zones/gangland.tres" id="z_gangland"]
+[ext_resource type="Resource" path="res://data/zones/zone_3.tres" id="z_zone_3"]
+[ext_resource type="Resource" path="res://data/zones/zone_4.tres" id="z_zone_4"]
+[ext_resource type="Resource" path="res://data/zones/zone_5.tres" id="z_zone_5"]
+[ext_resource type="Resource" path="res://data/zones/zone_6.tres" id="z_zone_6"]
+
+[resource]
+script = ExtResource("1_script")
+zones = Array[ExtResource("2_zonescript")]([ExtResource("z_city"), ExtResource("z_gangland"), ExtResource("z_zone_3"), ExtResource("z_zone_4"), ExtResource("z_zone_5"), ExtResource("z_zone_6")])
+difficulty_start = 0.1
+difficulty_end = 0.9
+difficulty_curve_exponent = 1.0
+planned_levels_per_placeholder_zone = 3

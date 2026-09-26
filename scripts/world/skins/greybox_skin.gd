@@ -26,6 +26,8 @@ extends ZoneSkin
 @export var hull_seam_color: Color = Color(0.7, 0.4, 1.0)
 @export var pad_color: Color = Color(0.1, 1.0, 0.95)
 @export var ramp_color: Color = Color(0.3, 1.0, 0.35)
+## DESIGN-TBD: speed pads share the ramps' green "safe boost" family, drawn as chevrons.
+@export var speed_pad_color: Color = Color(0.45, 1.0, 0.55)
 @export var finish_color: Color = Color(1.0, 1.0, 1.0)
 
 @export_group("Readability")
@@ -141,6 +143,16 @@ func ramp(trigger: Area3D, size: Vector3, side: int) -> void:
 	var slab := GreyboxMaterials.add_box(trigger, Vector3(0.0, -size.y * 0.5 + 0.3, 0.0), Vector3(size.x, 0.15, size.z),
 		GreyboxMaterials.glow(ramp_color, 2.0))
 	slab.rotation.z = side * 0.3
+
+
+func speed_pad(trigger: Area3D, size: Vector3) -> void:
+	var mat: Material = GreyboxMaterials.glow(speed_pad_color, 2.5)
+	var floor_y: float = -size.y * 0.5 + 0.03
+	for i: int in 3:
+		var z: float = size.z * 0.5 - (i + 0.5) * size.z / 3.0
+		for s: float in [-1.0, 1.0]:
+			var bar := GreyboxMaterials.add_box(trigger, Vector3(s * size.x * 0.2, floor_y, z), Vector3(size.x * 0.45, 0.05, 0.12), mat)
+			bar.rotation.y = s * 0.6
 
 
 func finish_line(parent: Node3D, width: float, distance: float) -> void:

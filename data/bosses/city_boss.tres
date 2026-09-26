@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="BossDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/campaign/boss_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"city_boss"
+display_name = "Zone 1 boss"
+notes = "DESIGN-TBD: not designed yet. The GDD lists the Floating Head (a monstrous head that fires projectiles; jump on its weak points) among the boss ideas."

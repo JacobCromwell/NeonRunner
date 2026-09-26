@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="GameRules" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/game_rules.gd" id="1_rules"]
+
+[resource]
+script = ExtResource("1_rules")
+lanes_pc = 5
+lanes_mobile = 3
+death_credit_keep_fraction = 0.2
+hit_invulnerability = 1.0
+revive_invulnerability = 2.0
+max_revives_per_attempt = 1
+death_screen_delay = 1.0
+stomp_bounce_velocity = 7.5
+stomp_tolerance = 0.45
+grapple_pull_velocity = 10.0
+lane_bump_fraction = 0.3
+ramp_score_multiplier = 2.0
+stomp_bonus = 50
+wall_run_score_per_metre = 0
+completion_bonus_base = 100
+completion_bonus_per_level = 25
+two_star_share = 0.45
+three_star_share = 0.75

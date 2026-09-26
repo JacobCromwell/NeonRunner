@@ -3,9 +3,12 @@
 #
 #   tools/godot.sh play [game args]   play the current working tree (e.g. play --lanes=6 --god)
 #   tools/godot.sh edit               open the Godot editor on this project
-#   tools/godot.sh test               run the headless test suite (exit code 0 = pass)
-#   tools/godot.sh smoke [game args]  40 s headless run; prints only problems (exit code 1 if any)
-#   tools/godot.sh sfx                regenerate assets/sfx/*.wav from tools/asset_gen/sfx_gen.gd
+#   tools/godot.sh test [--suite=x]   run the headless tests (exit code 0 = pass); --suite=x runs only
+#                                     the suites whose file name contains x
+#   tools/godot.sh smoke [game args]  40 s headless quick play; prints only problems (exit code 1 if any)
+#   tools/godot.sh sfx [--review]     regenerate assets/sfx/*.wav from tools/asset_gen/sfx_gen.gd
+#   tools/godot.sh music [--review]   regenerate assets/music/*.wav from tools/asset_gen/music_gen.gd
+#                                     (--review writes images to build/sfx_review/, build/music_review/)
 #   tools/godot.sh import             force a resource import
 #
 # Godot is found via $GODOT, then godot4/godot on PATH, then (under WSL) the Windows user
@@ -110,12 +113,14 @@ case "$command" in
 	test)
 		import_if_stale
 		set +e
-		"$GODOT_BIN" --headless --path "$PROJECT" --fixed-fps 60 -s res://tests/run_tests.gd 2>&1 | quiet
+		"$GODOT_BIN" --headless --path "$PROJECT" --fixed-fps 60 -s res://tests/run_tests.gd -- "$@" 2>&1 | quiet
 		status=${PIPESTATUS[0]}
 		exit "$status"
 		;;
 	smoke)
 		import_if_stale
+		# Quick play (the prototype level, restarting on death) unless other game args are given.
+		[[ $# -eq 0 ]] && set -- --quick
 		out="$("$GODOT_BIN" --headless --path "$PROJECT" --fixed-fps 60 --quit-after 2400 -- "$@" 2>&1 | quiet)"
 		if [[ -n "$out" ]]; then echo "$out"; exit 1; fi
 		echo "Smoke run clean."
@@ -125,11 +130,16 @@ case "$command" in
 		"$GODOT_BIN" --headless --path "$PROJECT" -s res://tools/asset_gen/sfx_gen.gd -- "$@" 2>&1 | quiet
 		run_import
 		;;
+	music)
+		import_if_stale
+		"$GODOT_BIN" --headless --path "$PROJECT" -s res://tools/asset_gen/music_gen.gd -- "$@" 2>&1 | quiet
+		run_import
+		;;
 	import)
 		run_import
 		;;
 	*)
-		sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+		sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
 		exit 2
 		;;
 esac

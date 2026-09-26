@@ -2,7 +2,7 @@
 
 **Working title:** TBD (placeholder: "Neon Runner")
 **Status:** Design in progress. Everything below is DECIDED unless marked *(proposed)* or *(open)*. Open items are tracked in `OPEN_QUESTIONS.md`.
-**Last updated:** September 25, 2026
+**Last updated:** September 26, 2026
 
 ---
 
@@ -28,6 +28,7 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 - **Approximate fees (verify at signup):** Apple Developer ~$99/yr; Google Play ~$25 one-time; Steam Direct ~$100 per app (recoupable).
 - **Web and low-end Android use Godot's Compatibility renderer.** The neon look must hold up there (see §10).
 - **Mobile monetization intent:** rewarded (player-chosen) ads such as revive or double rewards; avoid forced interstitials between levels *(proposed; see open questions)*.
+- **Mobile orientation: landscape** (decided September 26, 2026). HUD, menus and the shop are laid out for landscape on every platform.
 
 ---
 
@@ -98,6 +99,8 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 | Wall section | Building facade with signs | Bombed-out building face |
 | Ceiling section | Underside of a low-flying ship | *(open)* |
 
+**Zone order** (decided September 26, 2026): **Zone 1 is the Neon City** (the web demo zone) and **Zone 2 is Gangland**. The remaining zones are still to be designed with the owner; the build keeps empty slots for them.
+
 **Rules:**
 - Identical gameplay behavior under every skin.
 - **Obstacles and enemies must be recognizable across zones by color and shape.** For example, pink crackling energy always means electric fence.
@@ -109,7 +112,8 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 
 - **Zones:** 6+ at launch, each with a distinct look.
 - **Levels:** 1–3 per zone, each 90–150 seconds.
-- **Bosses:** one at the end of each zone.
+- **Bosses:** one at the end of each zone. Each boss is effectively a **standalone mini-game**, very different from the main runner (decided September 26, 2026). Designs come later; the build leaves a slot for each.
+- **Cinematics:** short, minor cinematics between levels and zones give a sense of progression (decided September 26, 2026). Content comes later; the build leaves slots for them.
 - **Estimated first playthrough:** roughly 20–50 minutes. This is a known risk for a paid Steam game (Steam's refund window is 2 hours of play), so replay value is critical.
 - **Levels are built by a rule-based generator** from obstacle and enemy patterns plus a difficulty value, fitted to the device's lane count.
   - **Campaign:** fixed seeds (same layout every attempt).
@@ -328,6 +332,7 @@ Shared interaction rules apply unless stated otherwise:
 
 - **General:**
   - One per zone.
+  - Each boss is a standalone mini-game with its own rules and scene, not a variant of a normal level (decided September 26, 2026).
   - Unique scripted encounters (handmade arenas are allowed within the generator system).
   - Bosses ignore claw contact kills.
   - Every boss must be beatable using only the power-ups granted before the fight.
@@ -351,6 +356,9 @@ Shared interaction rules apply unless stated otherwise:
   - Plan one shared humanoid rig.
   - Possibly use a free animation library rather than hand-authored motion *(decide in the art round)*.
 - **LED visor faces:** a cheap, readable, on-theme way to show expressions for all cyborgs.
+- **Player character** (decided September 26, 2026): a **human runner in a cyber suit** (jacket, helmet with a glowing visor). The silhouette and visor must read clearly differently from the enemy cyborgs' LED faces. Name and customization are still open.
+- **Player scale** (owner feedback after the R1 grey box, September 26, 2026): the player looked too big next to the lanes, walls and ceiling. The player (with its hitbox, jump height and fence heights) is about 75% of the grey-box size; the lanes, walls and ceiling keep their size.
+- **Music** (decided September 26, 2026): code-generated placeholder loops in the same crunchy 16-bit / heavy-metal style as the sound effects, one per zone plus the menus. Any track can later be replaced file by file with commissioned or licensed music.
 - **Readability rules:**
   - Hazards keep a consistent color and shape language across zones.
   - Safe things look safe; deadly parts look deadly.

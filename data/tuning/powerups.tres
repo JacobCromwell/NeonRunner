@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="PowerupTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/powerup_tuning.gd" id="1_powerups"]
+
+[resource]
+script = ExtResource("1_powerups")
+weapon_damage = PackedFloat32Array(1, 1.4, 2, 3)
+weapon_fire_interval = PackedFloat32Array(0.32, 0.3, 0.55, 0.65)
+weapon_shot_speed = PackedFloat32Array(90, 95, 55, 50)
+weapon_range = 70.0
+splash_radius = 3.5
+splash_damage_share = 0.5
+swarm_bonus_multiplier = 2.0
+missile_turn_rate = 7.0
+missile_launch_lift = 0.35
+claws_wall_time_multiplier = 1.5
+dash_duration = 0.6
+dash_cooldown = 8.0
+dash_speed_bonus = 8.0
+magnet_radius = PackedFloat32Array(1.6, 2.6, 3.6)
+magnet_pull_speed = 30.0
+slow_time_scale = 0.5
+slow_time_duration = 3.0
+slow_time_cooldown = 20.0

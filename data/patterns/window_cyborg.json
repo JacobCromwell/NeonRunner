@@ -1,0 +1,31 @@
+{
+	"version": 1,
+	"patterns": [
+		{
+			"id": "window_cyborg_single",
+			"min_difficulty": 0.0, "weight": 1.3, "requires": ["window_cyborg"],
+			"length": 26,
+			"elements": [
+				{ "kind": "enemy", "type": "window_cyborg", "at": 22, "side": "random" }
+			]
+		},
+		{
+			"id": "window_cyborg_pair",
+			"min_difficulty": 0.45, "weight": 0.6, "requires": ["window_cyborg"],
+			"length": 44,
+			"elements": [
+				{ "kind": "enemy", "type": "window_cyborg", "at": 22, "side": "random" },
+				{ "kind": "enemy", "type": "window_cyborg", "at": 40, "side": "random" }
+			]
+		},
+		{
+			"id": "window_cyborg_over_ramp",
+			"min_difficulty": 0.3, "weight": 0.5, "requires": ["window_cyborg", "ramps"],
+			"length": 30,
+			"elements": [
+				{ "kind": "ramp", "at": 0, "side": "random" },
+				{ "kind": "enemy", "type": "window_cyborg", "at": 14, "side": "same" }
+			]
+		}
+	]
+}

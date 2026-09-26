@@ -1,0 +1,50 @@
+class_name CyborgGunTuning
+extends EnemyTuning
+## The arm-cannon numbers shared by floor and window cyborgs (GDD §9.2): a visible charge-up with a
+## sound, then a burst of 2–3 loosely aimed laser bolts slow enough to dodge by switching lanes, then
+## a pause to reload. Fire rate and bolt speed scale across the campaign (early/late pairs; the
+## level's enemy_scaling picks between them, GDD §6). DESIGN-TBD: every number here is a prototype
+## value until playtested.
+
+@export_group("Attack")
+## Starts charging a burst once the player is this close (and the shot would be fair, see Fairness).
+@export_range(10.0, 150.0, 1.0, "suffix:m") var engage_distance: float = 72.0
+## The telegraph: the arm cannon glows up, with the cyborg_charge sound, for this long before a burst.
+@export_range(0.3, 2.0, 0.05, "suffix:s") var charge_time: float = 0.75
+## GDD §9.2: bursts of 2–3 bolts.
+@export_range(1, 5) var burst_min: int = 2
+@export_range(1, 5) var burst_max: int = 3
+@export_range(0.05, 0.6, 0.01, "suffix:s") var shot_interval: float = 0.18
+## Pause between bursts (reloading). Shorter late in the campaign: a higher fire rate.
+@export_range(0.3, 6.0, 0.05, "suffix:s") var reload_early: float = 2.2
+@export_range(0.3, 6.0, 0.05, "suffix:s") var reload_late: float = 1.3
+## Bolt speed over the ground; the running player closes in at run speed on top of it.
+@export_range(3.0, 40.0, 0.5, "suffix:m/s") var bolt_speed_early: float = 10.0
+@export_range(3.0, 40.0, 0.5, "suffix:m/s") var bolt_speed_late: float = 15.0
+## Loose aim: a burst lands up to this far sideways from where it aimed, each bolt up to
+## shot_jitter more. Keep the sum under about 0.3 m (half the player's hitbox width plus the bolt's
+## radius) so a burst still hits a player who stays in its path.
+@export_range(0.0, 1.0, 0.01, "suffix:m") var aim_error: float = 0.14
+@export_range(0.0, 1.0, 0.01, "suffix:m") var shot_jitter: float = 0.1
+## How long a bolt stays in flight before the pool takes it back.
+@export_range(1.0, 6.0, 0.1, "suffix:s") var bolt_life: float = 3.5
+
+@export_group("Fairness")
+## A burst only starts (and each bolt only fires) if the bolt needs at least this long to reach the
+## player, on top of the charge-up.
+@export_range(0.2, 2.0, 0.05, "suffix:s") var min_warning_time: float = 0.75
+## The player's path from this far before a bolt arrives to clear_after_impact after it must be free
+## of fences and gaps in every lane, so a dodge never has to happen during a jump or into a lane the
+## player can't use (a burst is never timed onto a full-lane fence).
+@export_range(0.0, 30.0, 0.5, "suffix:m") var clear_before_impact: float = 12.0
+@export_range(0.0, 30.0, 0.5, "suffix:m") var clear_after_impact: float = 8.0
+## Only one cyborg bursts at a time; the next may start charging this long after a burst's last bolt.
+@export_range(0.0, 3.0, 0.05, "suffix:s") var burst_gap: float = 0.5
+
+
+func reload_at(t: float) -> float:
+	return scaled(reload_early, reload_late, t)
+
+
+func bolt_speed_at(t: float) -> float:
+	return scaled(bolt_speed_early, bolt_speed_late, t)
