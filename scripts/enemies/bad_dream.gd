@@ -190,7 +190,7 @@ func _tick(delta: float) -> void:
 		State.DRIFT:
 			_drift(p, delta)
 		State.TELEGRAPH:
-			_telegraph(p, delta)
+			_telegraph(delta)
 		State.LUNGE:
 			_lunge(p)
 		State.RECOVER:
@@ -265,7 +265,7 @@ func _start_telegraph(b: Vector2i) -> void:
 	_show_marks(b)
 
 
-func _telegraph(p: Player, delta: float) -> void:
+func _telegraph(delta: float) -> void:
 	# It squares up over the lanes it's about to slash and rears back a little.
 	rel_x = move_toward(rel_x, _band_center_x(band), _t.drift_speed * delta)
 	rel_ahead = move_toward(rel_ahead, _t.hover_ahead + 0.6, _t.approach_speed * delta)
