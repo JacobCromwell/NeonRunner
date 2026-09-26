@@ -68,6 +68,11 @@ extends EnemyTuning
 @export_range(1.0, 8.0, 0.5, "suffix:s") var pad_ceiling_seconds: float = 3.0
 ## DESIGN-TBD: a new wave of drones comes at least this long after the previous one.
 @export_range(0.0, 120.0, 1.0, "suffix:s") var min_wave_gap_seconds: float = 20.0
+## DESIGN-TBD: a level with the drone feature always gets at least one drone (the patterns may pick
+## none); it's placed between these shares of the level.
+@export var guarantee_one_wave: bool = true
+@export_range(0.0, 1.0, 0.05) var guaranteed_wave_from: float = 0.2
+@export_range(0.0, 1.0, 0.05) var guaranteed_wave_to: float = 0.45
 
 
 func follow_time_at(t: float) -> float:

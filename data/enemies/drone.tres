@@ -40,3 +40,6 @@ pad_repeat_max_seconds = 10.0
 no_spawn_last_seconds = 15.0
 pad_ceiling_seconds = 3.0
 min_wave_gap_seconds = 20.0
+guarantee_one_wave = true
+guaranteed_wave_from = 0.2
+guaranteed_wave_to = 0.45

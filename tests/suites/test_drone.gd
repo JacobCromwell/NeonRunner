@@ -16,6 +16,7 @@ func run() -> void:
 	await _test_pad()
 	await _test_weapons()
 	_test_barrage_numbers()
+	_test_rules()
 
 
 # --- Helpers -------------------------------------------------------------------------------------
@@ -305,3 +306,123 @@ func _test_barrage_numbers() -> void:
 		var busy: float = (tuning.hurtbox_size.z + 0.12) / t.bullet_speed_at(s)
 		check(interval - busy > 0.08, "scaling %.2f: %.2f s gaps between bullets to zigzag through" % [s, interval - busy])
 		check(t.windup_at(s) >= 0.8, "scaling %.2f: the wind-up is a readable warning (%.2f s)" % [s, t.windup_at(s)])
+
+
+## Generator rules (GDD §9.6) over many seeds, difficulties and lane counts, and in the campaign
+## level that introduces the drone.
+func _test_rules() -> void:
+	var t := load("res://data/enemies/drone.tres") as DroneTuning
+	var base: LevelConfig = load(LEVEL_PATH) as LevelConfig
+	var patterns: Array = LevelGenerator.load_for(base)
+	var drones: int = 0
+	var levels: int = 0
+	for lanes: int in [3, 5, 6]:
+		for difficulty: float in [0.2, 0.6, 1.0]:
+			for level_seed: int in range(1, 16):
+				var config: LevelConfig = base.duplicate() as LevelConfig
+				config.lane_count = lanes
+				config.difficulty = difficulty
+				config.level_seed = level_seed
+				config.features = PackedStringArray(["ceilings", "pulsing", "ramps", "drone"])
+				var tag: String = "lanes=%d diff=%.1f seed=%d" % [lanes, difficulty, level_seed]
+				var gen := LevelGenerator.new()
+				var a: LevelLayout = gen.generate(config, tuning, patterns)
+				check(gen.warnings.is_empty(), "drone levels generate without warnings %s %s" % [tag, gen.warnings])
+				var b: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
+				check(JSON.stringify(a.to_dict()) == JSON.stringify(b.to_dict()), "same seed, same drones and pads " + tag)
+				drones += _check_rules(a, config, t, tag)
+				levels += 1
+	check(drones >= levels, "the patterns place drones (%d in %d levels)" % [drones, levels])
+
+	# The campaign level that introduces drones.
+	var campaign := load("res://data/campaign/campaign.tres") as Campaign
+	for lanes: int in [3, 5, 6]:
+		var config: LevelConfig = campaign.configure(campaign.step("gangland/3"), lanes)
+		var gen := LevelGenerator.new()
+		var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+		var n: int = _check_rules(layout, config, t, "gangland/3 lanes=%d" % lanes)
+		check(gen.warnings.is_empty() and n > 0, "gangland/3 has drones and follows the rules (%d drones, %d lanes)" % [n, lanes])
+
+	# Without ceilings there are no pads: the rules warn and place none.
+	var warned: bool = false
+	for level_seed: int in range(1, 40):
+		var config: LevelConfig = base.duplicate() as LevelConfig
+		config.level_seed = level_seed
+		config.difficulty = 0.6
+		config.features = PackedStringArray(["drone"])
+		var gen := LevelGenerator.new()
+		var layout: LevelLayout = gen.generate(config, tuning, patterns)
+		if _count(layout, "drone") == 0:
+			continue
+		warned = gen.warnings.size() == 1 and gen.warnings[0].contains("ceilings") and layout.pads.is_empty()
+		break
+	check(warned, "drones without the ceilings feature: the rules warn and skip the pad schedule")
+
+
+func _count(layout: LevelLayout, type: String) -> int:
+	var n: int = 0
+	for e: Dictionary in layout.enemies:
+		if String(e["type"]) == type:
+			n += 1
+	return n
+
+
+## Checks one layout against the drone rules. Returns the number of drones.
+func _check_rules(layout: LevelLayout, config: LevelConfig, t: DroneTuning, tag: String) -> int:
+	var speed: float = tuning.run_speed
+	var drones: Array[float] = []
+	for e: Dictionary in layout.enemies:
+		if String(e["type"]) == "drone":
+			drones.append(float(e["at"]))
+	drones.sort()
+	var pads: Array[float] = []
+	for p: Dictionary in layout.pads:
+		if not pads.has(float(p["at"])):
+			pads.append(float(p["at"]))
+	pads.sort()
+	for d: float in drones:
+		check(d <= layout.length - t.no_spawn_last_seconds * speed + 0.01,
+			"no drone in the last %d s (at %.0f of %.0f m) %s" % [t.no_spawn_last_seconds, d, layout.length, tag])
+		var first: float = INF
+		for p: float in pads:
+			if p > d + 0.01:
+				first = p
+				break
+		check(first < INF and (first - d) / speed >= t.first_pad_seconds - 0.001,
+			"at least %d s of dodging before the first pad (%.2f s) %s" % [t.first_pad_seconds, (first - d) / speed, tag])
+	if drones.is_empty():
+		return 0
+	var schedule_start: float = INF
+	for p: float in pads:
+		if p > drones[0] + 0.01:
+			schedule_start = p
+			break
+	for i: int in pads.size() - 1:
+		if pads[i] < schedule_start - 0.01:
+			continue
+		var gap: float = (pads[i + 1] - pads[i]) / speed
+		check(gap >= t.pad_repeat_min_seconds - 0.001 and gap <= t.pad_repeat_max_seconds + 0.001,
+			"a missed pad is followed by another 8–10 s later (%.2f s at %.0f m) %s" % [gap, pads[i], tag])
+	var last_possible: float = layout.length - config.end_clear_distance \
+		- (t.pad_ceiling_seconds + config.hull_landing_seconds) * speed
+	check(pads[-1] >= last_possible - t.pad_repeat_max_seconds * speed - 1.0,
+		"the pad schedule repeats to the end of the level (last at %.0f m) %s" % [pads[-1], tag])
+	# GDD §3: nothing on the floor under a ceiling; every pad is under one and on solid floor.
+	for h: Dictionary in layout.hulls:
+		for g: Dictionary in layout.gaps:
+			check(float(g["start"]) > float(h["end"]) or float(g["end"]) < float(h["start"]), "no gap under a ceiling " + tag)
+		for f: Dictionary in layout.fences:
+			check(float(f["at"]) < float(h["start"]) or float(f["at"]) > float(h["end"]), "no fence under a ceiling " + tag)
+		for e: Dictionary in layout.enemies:
+			if int(e.get("side", 0)) == 0 and not ["drone", "hover_truck"].has(String(e["type"])):
+				check(float(e["at"]) < float(h["start"]) or float(e["at"]) > float(h["end"]),
+					"no floor enemy under a ceiling (%s) %s" % [e["type"], tag])
+	for p: Dictionary in layout.pads:
+		var covered: bool = false
+		for h: Dictionary in layout.hulls:
+			if float(h["start"]) <= float(p["at"]) - 1.0 and float(h["end"]) >= float(p["at"]) + 10.0:
+				covered = true
+		check(covered, "pad at %.0f has a ceiling above %s" % [p["at"], tag])
+		check(not layout.gapped_between(int(p["lane"]), float(p["at"]) - 6.0, float(p["at"]) + tuning.pad_length),
+			"pad at %.0f is on solid floor %s" % [p["at"], tag])
+	return drones.size()
