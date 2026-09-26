@@ -32,17 +32,17 @@ void vertex() {
 	vec3 p = VERTEX + vec3(0.0, 0.0, t * slice_length);
 	vec3 view;
 	if (kind > 1.5) {
-		// A streak: a thin line along the track, about a pixel and a half wide at any distance.
-		float len = 1.5 + 2.5 * fract(s);
+		// A streak: a thin line along the track, about two pixels wide at any distance.
+		float len = 2.0 + 4.0 * fract(s);
 		vec3 a = (MODELVIEW_MATRIX * vec4(p, 1.0)).xyz;
 		vec3 b = (MODELVIEW_MATRIX * vec4(p + vec3(0.0, 0.0, len), 1.0)).xyz;
-		vec3 side = normalize(cross(b - a, a)) * max(0.01, 0.0016 * length(a));
+		vec3 side = normalize(cross(b - a, a)) * max(0.012, 0.002 * length(a));
 		view = mix(a, b, UV.y * 0.5 + 0.5) + side * UV.x;
 	} else {
 		// Ash and scraps tumble, sway across the street and settle slowly.
 		p.x += sin(TIME * 0.9 + s) * 0.6;
 		p.y += sin(TIME * 1.3 + s * 1.7) * 0.25 - t * 1.5;
-		float size = kind > 0.5 ? 0.09 : 0.035;
+		float size = kind > 0.5 ? 0.1 : 0.05;
 		float spin = TIME * (1.5 + fract(s * 3.0) * 3.0) + s;
 		vec2 c = UV * size * vec2(1.0, kind > 0.5 ? 0.6 : 1.0);
 		c = vec2(c.x * cos(spin) - c.y * sin(spin), c.x * sin(spin) + c.y * cos(spin));

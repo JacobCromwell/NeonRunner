@@ -45,8 +45,10 @@ vec4 skyline(float az, float el, float count, float lo, float hi, float seed, ve
 		* (1.0 - skyline_ruin);
 	float inside = max(step(w0, fx) * step(fx, w1) * step(el, h), spire);
 	vec2 wc = vec2(floor(fx * 9.0), floor(el * 260.0));
-	float lit = step(1.0 - lit_share * (1.0 - 0.7 * skyline_ruin), hash12(wc + id * 3.1 + seed));
-	float wmask = step(0.35, fract(fx * 9.0)) * step(0.45, fract(el * 260.0)) * step(el, h - 0.004);
+	float lit = step(1.0 - lit_share * (1.0 - 0.9 * skyline_ruin), hash12(wc + id * 3.1 + seed));
+	// A ruined city shows no lights below the horizon (the intact one is a sea of them).
+	float wmask = step(0.35, fract(fx * 9.0)) * step(0.45, fract(el * 260.0)) * step(el, h - 0.004)
+		* (1.0 - skyline_ruin * step(el, 0.0));
 	return vec4(mix(body, win, lit * wmask), inside);
 }
 

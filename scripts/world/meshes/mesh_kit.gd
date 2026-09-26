@@ -517,6 +517,19 @@ static func finish_gate(batch: MeshBatch, solid_material: Material, glow_materia
 	g.rect(Vector3(-width * 0.5, 0.06, z + 1.5), Vector3(width, 0, 0), Vector3(0, 0, -3.0), color, 0.2, SHAPE_STREAK)
 
 
+## The far end of a ceiling (hull-local: underside at y = 0, the end at z = zf, `band` deep): a band
+## of the orange edge glow with amber lights along it and a glow below, so the drop back to the floor
+## reads like a gap edge in every zone.
+static func ceiling_end(s: MeshLayer, g: MeshLayer, half_width: float, zf: float, band: float, color: Color) -> void:
+	s.rect(Vector3(-half_width, 0, zf), Vector3(half_width * 2.0, 0, 0), Vector3(0, 0, band), color, 0.33)
+	var lx: float = -half_width + 0.6
+	while lx < half_width - 0.3:
+		s.box(Vector3(lx, -0.025, zf + 0.25), Vector3(0.35, 0.05, 0.2), color, 0.6, PAT_PLAIN, ALL_FACES & ~FACE_PY)
+		lx += 1.2
+	g.rect(Vector3(-half_width, -0.05, zf + band + 1.5), Vector3(half_width * 2.0, 0, 0), Vector3(0, 0, -(band + 3.0)),
+		color, 0.35, SHAPE_RADIAL)
+
+
 static func _ring(s: MeshLayer, center: Vector3, w: float, d: float, t: float, color: Color, glow_amount: float) -> void:
 	s.box(center + Vector3(0, 0, d * 0.5 - t * 0.5), Vector3(w, 0.02, t), color, glow_amount, PAT_PLAIN, FACE_PY)
 	s.box(center - Vector3(0, 0, d * 0.5 - t * 0.5), Vector3(w, 0.02, t), color, glow_amount, PAT_PLAIN, FACE_PY)
@@ -554,6 +567,44 @@ static func facade_quad(layer: MeshLayer, side: int, x: float, u0: float, u1: fl
 	else:
 		layer.quad_uv(Vector3(x, y0, -u1), Vector3(x, top1, -u1), Vector3(x, top0, -u0), Vector3(x, y0, -u0),
 			Vector2(u1, y0), Vector2(u1, top1), Vector2(u0, top0), Vector2(u0, y0), color, lit, style, seed)
+
+
+## A run of facade pieces in the wall plane at x (see facade_quad): piece k spans track distances
+## us[k] to us[k + 1], from y0 up to a top edge running from tops[k] to tops[k + 1]. Built in bulk,
+## for broken silhouettes made of many pieces.
+static func facade_strip(layer: MeshLayer, side: int, x: float, us: PackedFloat32Array, tops: PackedFloat32Array,
+		y0: float, color: Color, lit: float, style: int, seed: float) -> void:
+	var n: int = us.size() - 1
+	if n <= 0:
+		return
+	var at: int = layer.verts.size()
+	layer.verts.resize(at + n * 6)
+	layer.uvs.resize(at + n * 6)
+	layer.colors.append_array(filled_colors(Color(color, lit), n * 6))
+	layer.uv2s.append_array(filled_uv2(Vector2(style, seed), n * 6))
+	for k: int in n:
+		# Corners a, b, c, d as in facade_quad: bottom and top at the piece's first edge, then its second.
+		var near: int = k if side < 0 else k + 1
+		var far: int = k + 1 if side < 0 else k
+		var a := Vector3(x, y0, -us[near])
+		var b := Vector3(x, tops[near], -us[near])
+		var c := Vector3(x, tops[far], -us[far])
+		var d := Vector3(x, y0, -us[far])
+		var ua := Vector2(us[near], y0)
+		var uc := Vector2(us[far], tops[far])
+		var i: int = at + k * 6
+		layer.verts[i] = a
+		layer.verts[i + 1] = b
+		layer.verts[i + 2] = c
+		layer.verts[i + 3] = a
+		layer.verts[i + 4] = c
+		layer.verts[i + 5] = d
+		layer.uvs[i] = ua
+		layer.uvs[i + 1] = Vector2(us[near], tops[near])
+		layer.uvs[i + 2] = uc
+		layer.uvs[i + 3] = ua
+		layer.uvs[i + 4] = uc
+		layer.uvs[i + 5] = Vector2(us[far], y0)
 
 
 # --- Drifting particles ------------------------------------------------------------------------

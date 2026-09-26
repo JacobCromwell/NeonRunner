@@ -117,26 +117,41 @@ void fragment() {
 		// ASPHALT: a worn street of repair patches and cracks with scattered scraps. UV.x runs from -1
 		// to 1 across the lane; UV2.y flags worn dashed lane lines on its left (1) and right (2) edge.
 		vec2 p = v_world.xz;
+		vec2 cp = p / vec2(1.7, 2.3);
+		vec2 cfw = fwidth(cp);
 		float detail = 1.0 - smoothstep(0.03, 0.2, max(fwidth(p.x), fwidth(p.y)));
 		float row = floor(p.y / 4.3);
 		float patch_tone = hash12(vec2(floor(p.x / 3.1 + hash11(row) * 0.7), row));
 		base *= (0.88 + 0.2 * patch_tone) * (0.88 + 0.24 * value_noise(p * 0.3));
-		base *= 1.0 + 0.16 * detail * (hash12(floor(p * 7.0)) - 0.5);
-		float cn = value_noise(p * vec2(0.8, 0.5) + 17.0);
-		float crack = 1.0 - smoothstep(0.0, fwidth(cn) * 1.5 + 0.008, abs(cn - 0.5));
-		base *= 1.0 - 0.5 * crack * detail * step(0.5, value_noise(p * 0.21 + 5.0));
-		vec2 lc = floor(p / 0.9);
-		vec2 lf = abs(fract(p / 0.9) - 0.5);
-		float scrap = step(0.95, hash12(lc + 91.0)) * step(lf.x, 0.08 + 0.1 * hash12(lc + 7.0))
-			* step(lf.y, 0.06 + 0.1 * hash12(lc + 13.0));
-		base = mix(base, vec3(0.42, 0.41, 0.38), scrap * detail * 0.8);
+		if (detail > 0.0) {
+			// Fine detail only where a pixel is small enough to show it: grain, block cracking in worn
+			// stretches (kinked segments along a jittered grid) and scattered scraps.
+			base *= 1.0 + 0.14 * detail * (value_noise(p * 5.0) - 0.5);
+			float worn = smoothstep(0.45, 0.6, value_noise(p * 0.15 + 5.0));
+			if (worn > 0.0) {
+				vec2 k = floor(cp + 0.5);
+				vec2 seg = floor(cp * 2.0);
+				float cx = filtered_pulse(cp.x - 0.3 * (hash12(vec2(k.x, seg.y)) - 0.5) + 0.5, cfw.x, 0.492, 0.508)
+					* step(0.5, hash12(vec2(k.x, seg.y) + 3.0));
+				float cy = filtered_pulse(cp.y - 0.3 * (hash12(vec2(seg.x, k.y) + 7.0) - 0.5) + 0.5, cfw.y, 0.494, 0.506)
+					* step(0.5, hash12(vec2(seg.x, k.y) + 5.0));
+				base *= 1.0 - 0.45 * max(cx, cy) * detail * worn;
+			}
+			vec2 lc = floor(p / 0.9);
+			vec2 lf = abs(fract(p / 0.9) - 0.5);
+			float scrap = step(0.965, hash12(lc + 91.0)) * step(lf.x, 0.08 + 0.1 * hash12(lc + 7.0))
+				* step(lf.y, 0.06 + 0.1 * hash12(lc + 13.0));
+			base = mix(base, vec3(0.32, 0.31, 0.29), scrap * detail * 0.8);
+		}
 		int flags = int(UV2.y + 0.5);
 		float lw = fwidth(UV.x);
-		float on_edge = smoothstep(0.945 - lw, 0.945 + lw, abs(UV.x));
-		float wanted = UV.x < 0.0 ? float(flags & 1) : float((flags >> 1) & 1);
 		float dash = filtered_pulse(v_world.z / 9.0, fwidth(v_world.z) / 9.0, 0.0, 0.4);
-		float worn = 0.45 + 0.55 * smoothstep(0.25, 0.6, value_noise(p * vec2(3.0, 0.6) + 3.0));
-		base = mix(base, marking_color, on_edge * wanted * dash * worn);
+		float on_edge = smoothstep(0.945 - lw, 0.945 + lw, abs(UV.x));
+		float line = on_edge * dash * (UV.x < 0.0 ? float(flags & 1) : float((flags >> 1) & 1));
+		if (line > 0.0) {
+			float paint = 0.45 + 0.55 * smoothstep(0.25, 0.6, value_noise(p * vec2(3.0, 0.6) + 3.0));
+			base = mix(base, marking_color, line * paint);
+		}
 	} else if (pattern == 11) {
 		// STRATA: the cut through a broken road (crater walls): asphalt, gravel, an old concrete slab,
 		// then earth darkening into the depths. COLOR is the earth; the layers follow world height.
@@ -168,7 +183,10 @@ void fragment() {
 		float streak = value_noise(vec2(p.x * 5.0, p.y * 0.35 + cell.x)) * (1.0 - fract(p.y / cs.y));
 		paint = mix(paint, rust_color, max(bloom, smoothstep(0.55, 0.85, streak) * 0.6) * 0.8);
 		if (UV2.y > 0.0) {
+			// Corrugated sheets, tagged by the gangs.
 			paint *= 1.0 - 0.3 * grid_line(p.x, UV2.y, UV2.y * 0.18);
+			vec2 tag = graffiti(p, 7.0);
+			paint = mix(paint, mix(graffiti_color, vec3(0.5, 0.49, 0.46), step(0.6, tag.y)), tag.x * 0.7);
 		}
 		base = paint * (1.0 - 0.55 * max(grid_line(p.y, cs.y, 0.02), grid_line(p.x + shift, cs.x, 0.02)));
 	} else if (pattern == 13) {
@@ -179,7 +197,9 @@ void fragment() {
 		vec2 cell = floor(q);
 		vec2 f = fract(q);
 		vec2 fw = fwidth(q);
-		vec3 tint = 0.72 + 0.45 * vec3(hash12(cell + 1.0), hash12(cell + 2.0), hash12(cell + 3.0));
+		// Faded to near-greys: warmer or cooler, lighter or darker, never a hazard hue.
+		float warmth = hash12(cell + 1.0) * 2.0 - 1.0;
+		vec3 tint = vec3(1.0 + 0.12 * warmth, 1.0, 1.0 - 0.12 * warmth) * (0.75 + 0.45 * hash12(cell + 2.0));
 		float block = filtered_pulse(f.x, fw.x, 0.14, 0.86) * filtered_pulse(f.y, fw.y, 0.48, 0.86)
 			* step(0.4, hash12(cell + 9.0));
 		float lines = filtered_pulse(f.x, fw.x, 0.12, 0.88) * filtered_pulse(f.y, fw.y, 0.1, 0.38)
@@ -188,11 +208,8 @@ void fragment() {
 		float t = 0.2 + 0.35 * step(0.7, hash12(cell + 4.0));
 		float torn = 1.0 - smoothstep(t - 0.03, t + 0.03, value_noise(q * vec2(3.0, 2.0) + cell * 5.0));
 		vec3 panel = mix(poster, base * 0.4, torn);
-		float gy = 0.45 + 0.22 * sin(UV.x * 1.4 + seed * 2.1) + 0.08 * sin(UV.x * 4.1 + seed);
-		float gw = fwidth(UV.y);
-		float stroke = (1.0 - smoothstep(0.07 - gw, 0.07 + gw, abs(UV.y - gy)))
-			* step(0.35, fract(UV.x * 0.13 + seed * 0.37));
-		panel = mix(panel, graffiti_color, stroke * 0.85);
+		vec2 tag = graffiti(UV * 1.3, seed);
+		panel = mix(panel, mix(graffiti_color, vec3(0.08, 0.08, 0.08), step(0.5, tag.y)), tag.x * 0.85);
 		base = panel * (0.6 + 0.4 * smoothstep(0.0, 1.0, UV.y)) * (0.8 + 0.3 * value_noise(vec2(UV.x * 3.0, UV.y * 0.3)));
 	}
 

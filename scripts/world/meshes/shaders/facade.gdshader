@@ -30,6 +30,23 @@ uniform vec3 soot_color : source_color = vec3(0.025, 0.022, 0.02);
 uniform vec3 graffiti_color : source_color = vec3(0.35, 0.5, 0.52);
 uniform vec3 fire_color : source_color = vec3(0.9, 0.42, 0.14);
 
+// Planks nailed over an opening (fp: position in its cell, fw: the cell footprint of a pixel).
+vec3 ruin_planks(vec2 cell, vec2 fp, vec2 fw, float seed) {
+	float y = fp.y * 7.0;
+	return to_linear(board_color) * (0.7 + 0.45 * hash12(vec2(cell.x * 3.1 + floor(y), cell.y + seed)))
+		* (1.0 - 0.6 * filtered_pulse(y, fw.y * 7.0, 0.0, 0.14));
+}
+
+// Breeze blocks with staggered joints, so a bricked-up opening never reads as louvres (uv and the
+// pixel footprint fw_m in metres).
+vec3 ruin_blocks(vec3 wall_color, vec2 uv, vec2 fw_m, float seed) {
+	vec2 bq = uv / vec2(0.4, 0.2);
+	float shift = 0.5 * mod(floor(bq.y), 2.0);
+	vec2 bfw = fw_m / vec2(0.4, 0.2);
+	float joints = max(filtered_pulse(bq.y, bfw.y, 0.0, 0.1), filtered_pulse(bq.x + shift, bfw.x, 0.0, 0.06));
+	return wall_color * (0.75 + 0.2 * hash12(floor(vec2(bq.x + shift, bq.y)) + seed)) * (1.0 - 0.35 * joints);
+}
+
 void fragment() {
 	int style = int(UV2.x + 0.5);
 	// Interpolated attributes aren't bit-exact across a triangle, and hashes amplify any difference:
@@ -68,11 +85,6 @@ void fragment() {
 		vec3 soot = to_linear(soot_color);
 		float k = hash12(cell * vec2(1.7, 2.3) + seed * 5.0);
 		float cy = (cell.y + 0.5) * cs.y;
-		float plank_y = fp.y * 7.0;
-		vec3 planks = to_linear(board_color) * (0.7 + 0.45 * hash12(vec2(cell.x * 3.1 + floor(plank_y), cell.y + seed)))
-			* (1.0 - 0.6 * filtered_pulse(plank_y, fw.y * 7.0, 0.0, 0.14));
-		vec3 bricks = to_linear(COLOR.rgb) * 0.85
-			* (1.0 - 0.3 * filtered_pulse(UV.y / 0.24, fw.y * cs.y / 0.24, 0.0, 0.12));
 		vec3 fill = wall;
 		float opening = in_win;
 		if (cell.y < -0.5) {
@@ -87,20 +99,20 @@ void fragment() {
 			wall = mix(wall, soot * 2.5, filtered_pulse(sx, sfw, 0.04, 0.96) * filtered_pulse(fp.y, fw.y, 0.84, 0.96));
 			vec3 shutter = to_linear(shutter_color) * (0.8 + 0.3 * sk)
 				* (1.0 - 0.35 * filtered_pulse(UV.y / 0.12, fw.y * cs.y / 0.12, 0.0, 0.3));
-			fill = sk < 0.55 ? shutter : (sk < 0.85 ? planks : bricks);
-			float gy = 0.9 + 0.35 * sin(UV.x * 1.1 + seed) + 0.12 * sin(UV.x * 3.3);
-			float stroke = (1.0 - smoothstep(0.08, 0.08 + fw.y * cs.y * 2.0, abs(UV.y - gy)))
-				* step(0.45, fract(UV.x * 0.09 + sk));
-			fill = mix(fill, to_linear(graffiti_color), stroke * 0.8);
+			fill = sk < 0.55 ? shutter : (sk < 0.85 ? ruin_planks(cell, fp, fw, seed)
+				: ruin_blocks(to_linear(COLOR.rgb), UV, fw * cs, seed));
+			vec2 tag = graffiti(UV, seed);
+			vec3 paint = mix(to_linear(graffiti_color), to_linear(vec3(0.5, 0.49, 0.46)), step(0.6, tag.y));
+			fill = mix(fill, paint, tag.x * 0.7);
 		} else if (cy < band_top) {
-			fill = k < 0.65 ? planks : bricks;
+			fill = k < 0.65 ? ruin_planks(cell, fp, fw, seed) : ruin_blocks(to_linear(COLOR.rgb), UV, fw * cs, seed);
 		} else {
 			vec3 dark = soot * (0.5 + 0.7 * fp.y);
 			float lamp = step(hash12(cell * 3.3 + seed), COLOR.a);
 			vec3 lamp_col = to_linear(window_warm) * (window_glow * 0.45 * (0.5 + 0.5 * fp.y));
 			float flick = 0.65 + 0.35 * sin(TIME * 9.0 + cell.x * 3.0) * sin(TIME * 5.3 + cell.y * 1.7);
 			vec3 fire = to_linear(fire_color) * (flick * (1.3 - fp.y));
-			fill = k < 0.6 ? dark : (k < 0.75 ? planks : mix(dark * 1.5, lamp_col, lamp));
+			fill = k < 0.6 ? dark : (k < 0.75 ? ruin_planks(cell, fp, fw, seed) : mix(dark * 1.5, lamp_col, lamp));
 			fill = mix(fill, fire, step(0.975, k) * step(12.0, cy));
 			// Soot rising from burnt-out windows.
 			float plume = step(k, 0.3) * step(win.w, fp.y) * (1.0 - smoothstep(win.w, 1.0, fp.y))
@@ -108,12 +120,13 @@ void fragment() {
 			wall = mix(wall, soot, plume * 0.8);
 		}
 		vec3 col = mix(wall, fill, opening);
-		// Blast holes above the play space: dark interiors behind a rim of broken concrete.
-		float hn = value_noise(UV * vec2(0.14, 0.18) + seed * 3.3) + step(UV.y, band_top + 2.0);
-		float hole = 1.0 - smoothstep(0.16, 0.19, hn);
-		float rim = 1.0 - smoothstep(0.19, 0.24, hn) - hole;
-		col = mix(col, to_linear(COLOR.rgb) * 1.5, rim * 0.7);
-		col = mix(col, soot * 0.5, hole);
+		if (UV.y > band_top + 1.0) {
+			// Blown-out panels above the play space: ragged clusters of cells open onto gutted floors.
+			vec2 jag = (vec2(value_noise(UV * 1.9 + seed), value_noise(UV * 1.9 + seed + 7.1)) - 0.5) * 0.3;
+			vec2 bc = floor(p + jag);
+			float blown = step(value_noise(bc * vec2(0.45, 0.6) + seed * 1.3), 0.25) * step(band_top + 1.5, bc.y * cs.y);
+			col = mix(col, soot * (0.4 + 2.0 * filtered_pulse(p.y, fw.y, 0.0, 0.06)), blown);
+		}
 		// Far away, the openings blur into the facade's average.
 		col = mix(col, mix(wall, soot * 1.5, 0.3), smoothstep(0.1, 0.4, max(fw.x, fw.y)));
 		ALBEDO = col;
