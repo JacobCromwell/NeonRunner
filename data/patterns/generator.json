@@ -1,0 +1,42 @@
+{
+	"version": 1,
+	"patterns": [
+		{
+			"id": "generator_fence_most",
+			"min_difficulty": 0.15, "weight": 0.35, "requires": ["generator"],
+			"length": 12,
+			"elements": [
+				{ "kind": "enemy", "type": "generator", "at": 0, "lanes": { "mode": "random", "count": 1 } },
+				{ "kind": "fence", "at": 9, "variant": "full", "lanes": { "mode": "all_but", "count": 1 } }
+			]
+		},
+		{
+			"id": "generator_fence_all",
+			"min_difficulty": 0.3, "weight": 0.35, "requires": ["generator"],
+			"length": 12,
+			"elements": [
+				{ "kind": "enemy", "type": "generator", "at": 0, "lanes": { "mode": "random", "count": 1 } },
+				{ "kind": "fence", "at": 9, "variant": "full", "lanes": { "mode": "all" } }
+			]
+		},
+		{
+			"id": "generator_gapped_all",
+			"min_difficulty": 0.2, "weight": 0.25, "requires": ["generator"],
+			"length": 12,
+			"elements": [
+				{ "kind": "enemy", "type": "generator", "at": 0, "lanes": { "mode": "random", "count": 1 } },
+				{ "kind": "fence", "at": 9, "variant": "gapped", "lanes": { "mode": "all" } }
+			]
+		},
+		{
+			"id": "generator_pulsing_all",
+			"min_difficulty": 0.5, "weight": 0.25, "requires": ["generator", "pulsing"],
+			"length": 12,
+			"elements": [
+				{ "kind": "enemy", "type": "generator", "at": 0, "lanes": { "mode": "random", "count": 1 } },
+				{ "kind": "fence", "at": 9, "variant": "full", "lanes": { "mode": "all" },
+				  "pulse_chance": 1.0, "pulse_on": 1.2, "pulse_off": 1.0 }
+			]
+		}
+	]
+}
