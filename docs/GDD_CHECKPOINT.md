@@ -71,7 +71,7 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 - **Every zone has ceilings** (decided September 26, 2026). What forms them changes from zone to zone (see §5). The in-world reason for a ceiling is up to each zone's skin: anything that makes sense in that zone's fiction (ships, building undersides, bridges, elevated roads, floating ads, archways).
 - **Ceilings don't have to cover every lane** (decided September 26, 2026). The player can switch lanes only within the ceiling's width. A **one-lane ceiling** is simply ridden out, so it must be **very short and relatively safe**.
 - **The ceiling is never required:** the floor route under a ceiling is always survivable without taking the pad. The ceiling is the easier route (decided September 26, 2026).
-- **Ceiling hazards** (decided September 26, 2026): ceilings may carry hazards of their own, but none in zones 1–2 *(proposed; owner agreed)*. The owner is planning a **ceiling turret** that fires only at a player on the ceiling (design to come).
+- **Ceiling hazards** (decided September 26, 2026): ceilings may carry hazards of their own, but none in zones 1–2 *(proposed; owner agreed)*. The first is the **Barnacle Turret** (§9.8), introduced in the Marketplace.
 
 ### Collision rules (core principle)
 - **Damage only on real contact.** Lanes determine movement, not hits. A bullet in your lane that doesn't touch you does not hurt you.
@@ -160,7 +160,7 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 | 2. Gangland | 1 | **Sewer screech** (from manholes) and ramps |
 | | 2 | **Octodog** and speed pads |
 | | 3 | Fence generators and **heli drones** |
-| 3. Marketplace | 1 | A **new enemy** (owner to design) |
+| 3. Marketplace | 1 | The **Barnacle Turret** (§9.8), the first ceiling hazard |
 | | 2 | Screeches from wall vents in the shopfronts, and a remix |
 | 4. Corporate | 1 | A **new enemy** (owner to design) |
 | | 2 | A harder remix with a heavier military presence |
@@ -171,8 +171,6 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 | | 3 | The **Golden Palace**, then the final boss |
 
 **15 levels plus 6 bosses.** A flawless run through every level takes about 35 minutes. With retries and bosses, a first playthrough is estimated at 60–90 minutes.
-
-The owner is also planning a **ceiling turret** (see §3). Which zone introduces it is *(open)*.
 
 **Rules:**
 - Identical gameplay behavior under every skin.
@@ -399,17 +397,19 @@ Shared interaction rules apply unless stated otherwise:
   - Surviving the full chase earns a score bonus.
 - **Purpose:** a counter to late-game power creep that forces pure movement skill.
 
-### 9.8 Ceiling Turret (owner, September 26, 2026; name and first zone open)
-- **Where:** a ceiling hazard. It **pops out of the ceiling's underside** (a ship's hull, or whatever forms the ceiling in that zone) and stays stationary.
+### 9.8 Barnacle Turret (owner, September 26, 2026; first appears in Marketplace 1)
+- **Where:** a ceiling hazard, the Marketplace's new enemy. It **pops out of the ceiling's underside** (a ship's hull, or whatever forms the ceiling in that zone) and stays stationary.
+- **Fires only at a player on the ceiling** (the ceiling is otherwise too safe). It never shoots down at the floor.
 - **Look:** a round, dome-shaped body with a cannon or gun coming out of its chest.
   - **Mechanical** in most zones.
-  - **Creature version in Gangland and the Marketplace:** more animalistic, as if alive, a bit cutesy and silly, like a furry creature. It keeps the same dome body and chest cannon, so it reads as the same enemy (readability rule).
+  - **Creature version in Gangland and the Marketplace:** more animalistic, as if alive, a bit cutesy and silly, like a furry creature. It keeps the same dome body and chest cannon, so it reads as the same enemy (readability rule). Since the turret arrives after Gangland, the Gangland look only matters if zones are ever mixed (e.g. endless mode).
 - **Attack:** fires at the player **the same way the cyborg does** (a visible charge-up with a sound, a short burst of bolts, then a pause), and is **slightly more accurate** than the cyborg. It should **not** be a difficult enemy.
 - **Dodge:** by dodging its shots.
 - **Kill:** claws, the dash, a stomp, or **5 shots** at laser tier 1.
+- **Body:** treated like the cyborg's body. Running into it is deadly unless the player has the shield or claws (or is dashing); armor doesn't help.
 - **Armor and shield:** both block its shots.
 - **Scaling:** across the campaign it fires somewhat faster and takes slightly more damage to kill, but never by much.
-- *(Open)* whether it fires only at a player on the ceiling, what touching its body does, how many can share a ceiling, which zone introduces it, and its name.
+- **Limits:** never on a one-lane ceiling (no room to dodge); at most **2 per ceiling**. Only one fires at a time *(proposed)*.
 
 ---
 

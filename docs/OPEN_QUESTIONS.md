@@ -12,9 +12,9 @@ Companion to `GDD_CHECKPOINT.md`. The design phase is complete when this list is
 - ~~**What forms the ceiling in zones without spaceships?**~~ Answered: every zone has ceilings, made of different things per zone, and they may be narrower than the full floor (GDD §3, §5).
 - ~~**Narrow ceilings**~~ Answered: lane switching within the ceiling's width; a one-lane ceiling is short and relatively safe; the floor under any ceiling may be dangerous, with a safe landing zone (GDD §3).
 - **Wall skin** for each zone, and what "signs" look like there.
-- ~~The **enemy introduction schedule**~~ Answered level by level (GDD §5). Still open: which zone introduces the owner's planned **ceiling turret**.
+- ~~The **enemy introduction schedule**~~ Answered level by level (GDD §5). The Barnacle Turret is the Marketplace's new enemy (GDD §9.8).
 - ~~Whether each zone introduces a new mechanic or object~~ Answered: at least one new enemy per zone, preferred over new mechanics (GDD §5).
-- **Three new enemies** (Marketplace, Corporate, Golden Zone), plus the ceiling turret: the owner is describing them next.
+- **New enemies:** the Marketplace's is the Barnacle Turret (GDD §9.8). The Corporate and Golden Zone enemies are still to be described by the owner.
 - ~~**Golden Palace**~~ Answered: inside the city-sized palace; plays like any other level (GDD §5).
 
 ### 2. Bosses
