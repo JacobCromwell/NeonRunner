@@ -148,6 +148,7 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 - **What makes it insidious:** people are completely subservient to its philosophy without realizing that they're in a cult.
 - **Symbol and colour:** *(open)*. An art agent will draw up a few options for the owner to choose from.
 - *(Proposed)* **Hidden in plain sight:** the symbol is worked into logos, ads and corporate art in every zone, and is displayed openly only in the Golden Zone.
+- **Cyborg Viewing Devices** (decided September 26, 2026): the cult's philosophy reaches people **through their screens**. The more devoted someone is, the more of their face the device replaces, until the screen *is* the face: that's what the cyborg gangsters are. The order to attack the runner reaches them the same way, through the feed. Told purely through the environment and the cyborgs' look (no words): screen heads on the enemies, the same feed playing on billboards and in shop windows, and glitching screens on hosts, whose feed the Bad Dream has corrupted.
 
 ### Level schedule and enemy introductions (decided September 26, 2026)
 **Every zone introduces at least one new enemy.** New enemies are preferred over new mechanics. Anything introduced earlier keeps appearing later. Each level introduces about one new thing.
@@ -304,9 +305,10 @@ Shared interaction rules apply unless stated otherwise:
     - **Gangland:** Variant 3, the **"Broadcast Brute" Enforcer** (a caged screen head with side monitors, scavenged armour).
     - **Marketplace:** the **"Casino Mob Enforcer"** (`docs/art/reference/cyborg_casino_enforcer.jpg`: a gilded, card-suit screen head, a pinstripe suit with gold trim, gold armour plates).
     - **Corporate:** Variant 2, the **"Wide-Aspect VR" Runner** (a wide VR visor, a sleek dark jacket, chrome hands).
-    - **Dead Zone:** *(proposed)* the base, burned out (soot, ash, a flickering screen).
+    - **Dead Zone:** the base, burned out (soot, ash, a flickering screen).
     - **Golden Zone:** derived from the Casino Mob Enforcer by the art agent.
     - Gold and brass may appear on variants as **unlit ornament**; the screen always glows cold white; nothing glows copper.
+    - **No variant is bigger than the base.** The concept sheets are references and jumping-off points, not specs to copy, since a bigger body would no longer match the hitboxes.
 - **Movement:** stands mostly on **truck roofs** and moves slowly toward the player, dropping behind quickly.
 - **Attack:** loosely aimed laser bolts in **bursts of 2–3**, then a pause to reload.
   - Each burst has a **visible charge-up** (arm cannon glow).
