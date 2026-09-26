@@ -24,6 +24,19 @@ uniform vec4 rim_color : source_color = vec4(0.62, 0.7, 0.86, 1.0);
 uniform float rim_strength = 0.0;
 uniform float rim_power = 2.5;
 
+// HumanoidMeshBuilder stores vertex colours in linear space, which Forward+ and Mobile light in. The
+// Compatibility renderer (web, low-end Android) works in sRGB space and shows values as they are
+// (kit_common.gdshaderinc handles the same difference for the mesh kit), so there the colour goes
+// back to sRGB; without this every colour shows far too dark and too saturated on the web.
+vec3 humanoid_base_color(vec3 linear_color) {
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+	return mix(12.92 * linear_color, 1.055 * pow(linear_color, vec3(1.0 / 2.4)) - 0.055,
+		step(vec3(0.0031308), linear_color));
+#else
+	return linear_color;
+#endif
+}
+
 void vertex() {
 	vec3 v = VERTEX;
 	vec3 n = NORMAL;
@@ -34,7 +47,7 @@ void vertex() {
 
 void fragment() {
 	float glow = UV.x;
-	vec3 base = COLOR.rgb;
+	vec3 base = humanoid_base_color(COLOR.rgb);
 	ALBEDO = mix(base * mix(1.0, glow_albedo, step(0.001, glow)), tint.rgb, tint.a);
 	ROUGHNESS = roughness;
 	float edge = max(1.0 - clamp(dot(normalize(NORMAL), normalize(VIEW)), 0.0, 1.0), 0.0001);
