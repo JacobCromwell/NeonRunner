@@ -340,6 +340,9 @@ func start_endless() -> void:
 	# would hold features back for minutes in a 20-minute level. (A new dictionary: the copy shares
 	# the level's.)
 	ctx.config.feature_starts = {}
+	# A 20-minute random level brings every feature many times over, so the campaign's guarantee
+	# (every feature at least once, which may rebuild the level) would only cost load time.
+	ctx.config.guarantee_features = false
 	if ctx.config.skin == null and zone != null:
 		ctx.config.skin = zone.skin
 	ctx.tuning = tuning
