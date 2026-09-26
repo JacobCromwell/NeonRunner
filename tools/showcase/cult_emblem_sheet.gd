@@ -1,5 +1,5 @@
 extends Node3D
-## D7: comparison sheet for the cult emblem options (CultEmblem, docs/questions/d7.md), for visual
+## D7: comparison sheet for the cult emblem options (CultEmblem; the owner chose B), for visual
 ## review only (not part of the game). One row per option (A-D), one column per context: the
 ## emblem large, small-size silhouettes, inside a neon city ad, worked into a corporate logo, and as
 ## a gold relief on the Golden Zone's white and cream. A static orthogonal camera frames the whole
