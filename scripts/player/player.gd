@@ -405,9 +405,13 @@ func _lane_blocked(target: int) -> bool:
 # --- Floor & ceiling -------------------------------------------------------
 
 func _update_vertical(delta: float) -> void:
-	if grounded and not _has_support():
-		grounded = false
-		_coyote = tuning.coyote_time
+	if grounded:
+		var ground: float = _support_top()
+		if is_nan(ground):
+			grounded = false
+			_coyote = tuning.coyote_time
+		else:
+			h = ground  # Follows moving platforms (a hover truck's roof).
 
 	if _jump_buffer > 0.0 and (grounded or _coyote > 0.0) and not in_pit:
 		vh = tuning.jump_velocity()
@@ -418,18 +422,23 @@ func _update_vertical(delta: float) -> void:
 		_event(&"jump")
 
 	if grounded:
-		h = 0.0
 		vh = 0.0
 		return
 
 	var gravity: float = tuning.gravity() * (tuning.fall_gravity_multiplier if vh < 0.0 else 1.0)
 	vh -= gravity * delta
 	h += vh * delta
-	if vh > 0.0 or h > 0.0:
+	if vh > 0.0:
 		return
-	if not in_pit and h > -tuning.pit_depth and _has_support():
-		_land()
-	elif surface == Surface.CEILING:
+	# Land on whatever surface is under the feet (the track, or a raised one like a truck roof), but
+	# never climb back out of a pit.
+	var top: float = _support_top()
+	if not in_pit and not is_nan(top) and h <= top and h > top - tuning.pit_depth:
+		_land(top)
+		return
+	if h > 0.0:
+		return
+	if surface == Surface.CEILING:
 		_flip(Surface.FLOOR, 0.0)
 		_event(&"hull_end")
 	else:
@@ -452,8 +461,8 @@ func _use_grapple() -> void:
 	_event(&"grapple")
 
 
-func _land() -> void:
-	h = 0.0
+func _land(top: float = 0.0) -> void:
+	h = top
 	vh = 0.0
 	grounded = true
 	_event(&"land")
@@ -472,20 +481,29 @@ func _flip(to: Surface, extra_velocity: float) -> void:
 	_slide_on_land = false
 
 
-func _has_support() -> bool:
+## The height (away from the current surface, like `h`) of the highest supporting surface under the
+## player's footprint, from 0.6 m above the feet to 0.3 m below; NAN if there is none. On the floor
+## that's the track (0) or a raised surface such as a hover truck's roof; on the ceiling, the hull.
+func _support_top() -> float:
 	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
 	var on_floor: bool = surface == Surface.FLOOR
-	var plane_y: float = 0.0 if on_floor else tuning.ceiling_height
-	var toward: float = -1.0 if on_floor else 1.0
 	_ray.collision_mask = TrackBuilder.LAYER_FLOOR if on_floor else TrackBuilder.LAYER_HULL
 	var z: float = TrackGeometry.world_z(distance)
+	var best: float = NAN
 	for ox: float in [-tuning.foot_half_width, tuning.foot_half_width]:
 		for oz: float in [-tuning.foot_half_depth, tuning.foot_half_depth]:
-			_ray.from = Vector3(_x + ox, plane_y - toward * 0.6, z + oz)
-			_ray.to = Vector3(_x + ox, plane_y + toward * 0.3, z + oz)
-			if not space.intersect_ray(_ray).is_empty():
-				return true
-	return false
+			_ray.from = Vector3(_x + ox, _surface_y(h + 0.6), z + oz)
+			_ray.to = Vector3(_x + ox, _surface_y(h - 0.3), z + oz)
+			var hit: Dictionary = space.intersect_ray(_ray)
+			if not hit.is_empty():
+				var top: float = (hit["position"] as Vector3).y if on_floor else tuning.ceiling_height - (hit["position"] as Vector3).y
+				best = top if is_nan(best) else maxf(best, top)
+	return best
+
+
+## World y of a point `height` away from the current surface (floor or ceiling).
+func _surface_y(height: float) -> float:
+	return height if surface != Surface.CEILING else tuning.ceiling_height - height
 
 
 # --- Walls -----------------------------------------------------------------

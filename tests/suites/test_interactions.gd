@@ -15,6 +15,7 @@ func run() -> void:
 	await _test_projectiles()
 	await _test_credits()
 	await _test_speed_pad_and_emp()
+	await _test_raised_platform()
 
 
 func _loadout(items: Dictionary) -> Loadout:
@@ -276,4 +277,29 @@ func _test_speed_pad_and_emp() -> void:
 	check(n == 1 and n_far == 1, "an EMP disables fences near it, built or not yet built")
 	r = await sim.step_world(w, 2.5)
 	check(r["alive"], "a disabled fence is harmless")
+	await sim.free_world(w)
+
+
+## A raised floor surface (like a hover truck's roof): land on it, ride it as it moves, drop off its end.
+func _test_raised_platform() -> void:
+	var w: RunWorld = sim.build_world(RunSim.layout(3))
+	var body := StaticBody3D.new()
+	body.collision_layer = TrackBuilder.LAYER_FLOOR
+	body.collision_mask = 0
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(2.0, 1.0, 30.0)
+	shape.shape = box
+	body.add_child(shape)
+	body.position = Vector3(w.geo.lane_x(1), 0.5, -45.0)  # top at 1.0 m, from 30 m to 60 m
+	w.add_child(body)
+	var r: Dictionary = await sim.step_world(w, 2.2, [[24.0, &"jump"]], [36.0])
+	check(r["at"][36.0]["alive"] and absf(float(r["at"][36.0]["h"]) - 1.0) < 0.05,
+		"the player lands on a raised surface and runs on it (h %.2f)" % float(r["at"][36.0]["h"]))
+	body.position.y += 0.3
+	await sim.step_world(w, 0.1)
+	check(absf(w.player.h - 1.3) < 0.05 and w.player.grounded, "and follows it when it moves (h %.2f)" % w.player.h)
+	r = await sim.step_world(w, 1.5)
+	check(r["alive"] and w.player.grounded and absf(w.player.h) < 0.01 and r["distance"] > 62.0,
+		"then drops back to the track past its end")
 	await sim.free_world(w)

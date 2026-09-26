@@ -9,6 +9,12 @@ extends Resource
 ## y = up, z = -distance. Hooks that receive a gameplay node work in that node's local space.
 
 
+## Which zone variant enemies dress in (GDD §9: e.g. the sleek "city" cyborg and hover truck, or the
+## patched-together "scavenger" versions in grimy zones). Enemies read it to pick their look; their
+## hazard colours and shapes stay the same everywhere.
+@export var enemy_variant: StringName = &"city"
+
+
 func make_environment() -> Environment:
 	return Environment.new()
 
