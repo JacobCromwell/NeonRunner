@@ -154,11 +154,27 @@ static func check_rules(suite: TestSuite, layout: LevelLayout, config: LevelConf
 
 
 ## A feature the game knows (LevelConfig.features): one feature_positions() can find, an enemy type
-## with generator rules, or a planned feature (LevelConfig.PLANNED_FEATURES). Catches typos in level
-## and pattern data.
+## with generator rules, a planned feature (LevelConfig.PLANNED_FEATURES), or one a boss's arena
+## lists. Catches typos in level and pattern data.
 static func known_feature(feature: String) -> bool:
 	return can_locate(feature) or LevelConfig.PLANNED_FEATURES.has(feature) \
-		or ResourceLoader.exists("res://scripts/enemies/%s_rules.gd" % feature)
+		or ResourceLoader.exists("res://scripts/enemies/%s_rules.gd" % feature) \
+		or boss_arena_features().has(feature)
+
+
+## The features the bosses' arena configs list (data/bosses/*.tres, BossDef.arena): a pattern for one
+## boss's arena alone requires a feature only that arena lists.
+static func boss_arena_features() -> PackedStringArray:
+	var out := PackedStringArray()
+	for file: String in DirAccess.get_files_at("res://data/bosses"):
+		if not file.ends_with(".tres"):
+			continue
+		var def := load("res://data/bosses".path_join(file)) as BossDef
+		if def != null and def.arena != null:
+			for f: String in def.arena.features:
+				if not out.has(f):
+					out.append(f)
+	return out
 
 
 ## True if feature_positions() can find `feature`'s pieces or enemies: the mechanics, hosts, vent

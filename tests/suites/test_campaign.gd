@@ -125,8 +125,8 @@ func _test_steps(campaign: Campaign) -> void:
 ## A boss slot per zone from GDD §10's roster, and cinematic slots: every zone's intro and outro, and
 ## the City's boss intro. All stay unbuilt slots for now.
 func _test_slots(campaign: Campaign) -> void:
-	var bosses: Dictionary = {"city": "Floating Head", "gangland": "Sewer Swarm", "marketplace": "Marketplace boss",
-		"corporate": "Corporate boss", "dead_zone": "Dead Zone boss", "golden": "The final villain"}
+	var bosses: Dictionary = {"city": "Floating Head", "gangland": "Sewer Swarm", "marketplace": "The House",
+		"corporate": "Hostile Takeover", "dead_zone": "Sleep Taker", "golden": "The final villain"}
 	for zone: ZoneDef in campaign.zones:
 		var id: String = String(zone.id)
 		check(zone.boss != null and zone.boss.display_name == bosses.get(id, ""),
@@ -142,6 +142,13 @@ func _test_slots(campaign: Campaign) -> void:
 	var golden: ZoneDef = campaign.zones[-1]
 	check(golden.boss != null and golden.boss.notes.contains("checkpoint halfway"),
 		"the final villain's slot notes the halfway checkpoint (GDD §10)")
+	check(golden.boss != null and golden.boss.checkpoint_phase() == golden.boss.phase_count() - 1
+		and golden.boss.phase_count() == 2, "and its data has the checkpoint at the second of its two stages")
+	var head: BossDef = campaign.zones[0].boss
+	check(head.phase_count() == 3 and is_equal_approx(head.phase_ends()[0], 2.0 / 3.0) and head.phase_list()[0].hits == 1
+		and head.phase_list()[2].pace > head.phase_list()[0].pace,
+		"the Floating Head has three phases, a stomp taking a third each, the later ones faster (GDD §10)")
+	check(head.weapon_share_cap <= 1.0 / 3.0 + 0.01, "its weapons can save at most one of the three stomps (GDD §10)")
 	for s: CampaignStep in campaign.steps():
 		if s.kind == CampaignStep.Kind.BOSS:
 			check(s.boss != null and not s.boss.is_built(), "boss slot %s is still a placeholder" % s.id)

@@ -2,9 +2,9 @@ class_name RunHud
 extends CanvasLayer
 ## The in-game display on the kit's HUD theme (OPEN_QUESTIONS §5 leaves its contents open): the
 ## score and the run's credits top right, with bonus pop-ups and the ramp multiplier beside them;
-## level progress top centre; the protection the player carries and the power-ups bottom left; a
-## centre message; first-encounter hints under the progress meter; and a pause button on touch
-## screens.
+## level progress top centre, or in a boss fight the boss's health bar with its phase markers
+## (BossBar, GDD §10); the protection the player carries and the power-ups bottom left; a centre
+## message; first-encounter hints under the progress meter; and a pause button on touch screens.
 ## Everything stays inside the screen's safe area. In quick play, where the debug HUD fills the
 ## top left, the progress meter moves into the right column and the icons sit above the debug help.
 ## Power-ups report themselves: if world.powerups has hud_state(), each entry
@@ -22,6 +22,8 @@ const PROTECTIONS: Array = [[&"armor", &"armor", &"armor"], [&"shield", &"shield
 	[&"grapple", &"grapple", &"grapples"]]
 ## Power-ups the player triggers with a key: the key shows on the icon (keyboard devices).
 const POWERUP_ACTIONS: Dictionary = {&"dash": &"dash", &"slow_time": &"slow_time"}
+## Shown when a boss fight reaches its checkpoint (GDD §10).
+const CHECKPOINT_TEXT: String = "Checkpoint! A retry starts here."
 
 var world: RunWorld
 var context: RunContext
@@ -30,6 +32,8 @@ var root: Control
 var score_counter: CreditCounter
 var credits_counter: CreditCounter
 var progress: ProgressMeter
+## The boss's health in a boss fight (in the progress meter's place).
+var boss_bar: BossBar
 var pause_button: NeonButton
 ## Id (armor, shield, grapple, or a power-up's id) -> its CooldownIcon.
 var item_icons: Dictionary = {}
@@ -122,6 +126,11 @@ func _ready() -> void:
 	# DESIGN-TBD: what progress markers stand for (OPEN_QUESTIONS §5); none are shown yet.
 	progress.custom_minimum_size.x = UiTheme.px(420)
 	_top_center.add_child(progress)
+	boss_bar = BossBar.new()
+	boss_bar.name = "BossBar"
+	boss_bar.custom_minimum_size.x = UiTheme.px(460)
+	boss_bar.visible = false
+	_top_center.add_child(boss_bar)
 
 	# Bottom left: protection and power-ups.
 	_items = HBoxContainer.new()
@@ -180,6 +189,7 @@ func bind(p_world: RunWorld, p_context: RunContext) -> void:
 	for child: Node in _popups.get_children():
 		child.queue_free()
 	_place_progress()
+	_bind_boss(BossEncounter.of(world))
 	_build_items()
 	set_message("")
 	_fit_frame()
@@ -221,7 +231,8 @@ func _process(_delta: float) -> void:
 	if world == null or not is_instance_valid(world) or world.player == null:
 		return
 	var p: Player = world.player
-	progress.value = clampf(p.distance / maxf(world.layout.length, 1.0), 0.0, 1.0)
+	if not boss_bar.visible:
+		progress.value = clampf(p.distance / maxf(world.layout.length, 1.0), 0.0, 1.0)
 	var mult: float = world.score.multiplier
 	_multiplier.visible = mult > 1.0
 	if _multiplier.visible:
@@ -295,6 +306,32 @@ func _place_progress() -> void:
 		progress.custom_minimum_size.x = UiTheme.px(420)
 
 
+## A boss fight shows the boss's bar in the progress meter's place (a fight has no distance to
+## measure; in quick play it joins the score column, clear of the debug HUD), and says when a
+## checkpoint is reached.
+func _bind_boss(encounter: BossEncounter) -> void:
+	boss_bar.visible = encounter != null
+	var in_column: bool = boss_bar.get_parent() == _right
+	if _quick and not in_column:
+		_top_center.remove_child(boss_bar)
+		_right.add_child(boss_bar)
+		_right.move_child(boss_bar, 2)
+		boss_bar.custom_minimum_size.x = UiTheme.px(300)
+		boss_bar.size_flags_horizontal = Control.SIZE_SHRINK_END
+	elif not _quick and in_column:
+		_right.remove_child(boss_bar)
+		_top_center.add_child(boss_bar)
+		boss_bar.custom_minimum_size.x = UiTheme.px(460)
+		boss_bar.size_flags_horizontal = Control.SIZE_FILL
+	if encounter == null:
+		boss_bar.encounter = null
+		return
+	progress.visible = false
+	boss_bar.bind(encounter)
+	if not _quick:
+		encounter.checkpoint_reached.connect(func(_index: int) -> void: show_hint(CHECKPOINT_TEXT))
+
+
 ## Keeps everything inside the safe area plus a margin; in quick play it clears the debug HUD.
 func _fit_frame() -> void:
 	if _frame == null or not root.is_inside_tree():
@@ -317,7 +354,8 @@ func _fit_frame() -> void:
 func _place_hint() -> void:
 	_hint.offset_left = 0.0
 	_hint.offset_right = 0.0
-	_hint.offset_top = UiTheme.px(44)
+	# Under the boss bar, which is taller than the progress meter.
+	_hint.offset_top = UiTheme.px(66 if boss_bar != null and boss_bar.visible and not _quick else 44)
 	_hint.offset_bottom = _hint.offset_top
 
 

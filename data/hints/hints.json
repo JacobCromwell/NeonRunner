@@ -18,6 +18,7 @@
 		{ "id": "screech", "trigger": "enemy:screech", "text": "A rattling cover means a sewer screech. Leave its lane or jump it." },
 		{ "id": "generator", "trigger": "enemy:generator", "text": "Weapons won't touch a generator. Stomp it or dash through it to knock out the fences around it." },
 		{ "id": "host", "trigger": "enemy:host", "text": "Glitching cyborgs carry something worse. Think before you stomp one." },
-		{ "id": "bad_dream", "trigger": "enemy:bad_dream", "text": "The Bad Dream slashes the lanes it lights red. Get out of them: another lane, a wall or a pad." }
+		{ "id": "bad_dream", "trigger": "enemy:bad_dream", "text": "The Bad Dream slashes the lanes it lights red. Get out of them: another lane, a wall or a pad." },
+		{ "id": "boss", "trigger": "enemy:boss", "text": "A boss! Only its glowing red weak points and your weapons can hurt it." }
 	]
 }
