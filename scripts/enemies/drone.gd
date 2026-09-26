@@ -238,6 +238,8 @@ func _update_follow(p: Player, delta: float) -> void:
 	_follow_left -= delta
 	if _follow_left > 0.0 or not _can_attack(p) or _barrage_busy():
 		return
+	if world.director.major_attack_blocked(self):
+		return  # GDD §9.7: no barrage starts while the Cyborg's Bad Dream chases
 	# Settle over the lane first (it waits no more than 1.5 s for a player who keeps moving).
 	if absf(rel_x - tx) < 0.35 or _follow_left < -1.5:
 		_start_windup(p)
@@ -245,6 +247,12 @@ func _update_follow(p: Player, delta: float) -> void:
 
 func _can_attack(p: Player) -> bool:
 	return p.alive and p.running and p.surface != Player.Surface.CEILING
+
+
+## GDD §9.7: a wind-up and its barrage are a major attack: the Cyborg's Bad Dream never slashes
+## during one (EnemyDirector.major_attack_blocked).
+func is_major_attack_active() -> bool:
+	return alive and (state == State.WINDUP or state == State.FIRE)
 
 
 ## Only one drone winds up or fires at a time, so two barrages never cross.

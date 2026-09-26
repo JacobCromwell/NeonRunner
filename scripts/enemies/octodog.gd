@@ -197,8 +197,18 @@ func _can_wind_up(v: float) -> bool:
 		return false
 	if world.layout.gapped_between(_lane_at(_x), _d - 0.6, _d + 0.6):
 		return false  # never winds up standing over a hole
+	if charges_done == 0 and world.director.major_attack_blocked(self):
+		return false  # GDD §9.7: no new charge sequence while the Cyborg's Bad Dream chases
 	var from: float = player.distance
 	return window_clear(world.layout, from, from + _t.window_length(v, _scaling))
+
+
+## GDD §9.7: its charge sequence, from its first wind-up until it gives up, is a major attack: the
+## Cyborg's Bad Dream never slashes during one (EnemyDirector.major_attack_blocked).
+func is_major_attack_active() -> bool:
+	if not alive or phase in [Phase.IDLE, Phase.GIVE_UP, Phase.LEAVE, Phase.FALLING]:
+		return false
+	return charges_done > 0 or phase == Phase.WINDUP or phase == Phase.LUNGE
 
 
 func _start_windup() -> void:
