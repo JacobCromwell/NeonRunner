@@ -669,12 +669,13 @@ func _animate(delta: float) -> void:
 	_prev_speed = offset_speed
 	_pitch = lerpf(_pitch, clampf(accel * 0.003, -0.09, 0.09), 1.0 - exp(-6.0 * delta))
 	_model.rotation.x = _pitch
-	# The weak point pulses; the spikes flash through the rev and blaze during the forward lurch.
+	# The weak point pulses; the spikes flash through the rev and blaze during the forward lurch
+	# (with Reduced flashing they glow steadily through the rev instead of flashing).
 	var pulse: float = 1.0 + 0.1 * sin(_bob_t * 7.0)
 	_weak_mesh.scale = Vector3(pulse, 1.0 + 0.2 * (pulse - 1.0), pulse)
 	var revving: bool = state == State.REV
 	var lurching: bool = state == State.LURCH_FWD
-	var flash_on: bool = lurching or (revving and int(_state_time * 10.0) % 2 == 0)
+	var flash_on: bool = lurching or (revving and (Settings.flashing_reduced or int(_state_time * 10.0) % 2 == 0))
 	_spikes_mesh.material_override = _mats["flash"] if flash_on else null
 	_nose_light.light_energy = (4.0 if flash_on else 1.0) if (revving or lurching) else 0.0
 	_thrust.material_override = _mats["hot"] if revving or lurching else null
@@ -703,7 +704,7 @@ func _animate(delta: float) -> void:
 		if _burst_left <= 0.0:
 			_burst_hazard.set_enabled(false)
 	if _hole.visible:
-		_hole_fire.visible = int(_bob_t * 12.0) % 3 != 0
+		_hole_fire.visible = Settings.flashing_reduced or int(_bob_t * 12.0) % 3 != 0
 	if _rubble_left > 0.0:
 		_rubble_left -= delta
 		for i: int in _rubble.size():
