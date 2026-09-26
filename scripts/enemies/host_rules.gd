@@ -26,8 +26,9 @@ extends RefCounted
 ##   city, OPEN_QUESTIONS §1).
 ## - Late starts (LevelConfig.feature_starts): a host before the `host` feature's start is dropped,
 ##   and so is one whose chase begins before the `ceilings` feature's start (its pads couldn't come).
+## Like the cyborg rules they start with, these run after the hover truck's (its route ramp).
 
-const RUN_AFTER: Array[String] = ["drone"]
+const RUN_AFTER: Array[String] = ["drone", "hover_truck"]
 const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
 const PadPlacement = preload("res://scripts/enemies/pad_placement.gd")
 const DREAM_TYPE: String = "bad_dream"

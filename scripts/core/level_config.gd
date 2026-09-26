@@ -20,17 +20,20 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 	"buzz_overdrive", "tithe_collector", "resonator", "gilded_sentinel"]
 
 @export var id: StringName = &"prototype"
+## DESIGN-TBD: campaign level names are placeholders (GDD §5 names only the Golden Palace).
 @export var display_name: String = "Prototype"
 @export var level_seed: int = 1
 ## Lane count on floor and ceiling used by the generator. The game sets it from the device when a
 ## run starts (GameRules.lanes_pc / lanes_mobile); tests and the F1 debug key set it directly.
 @export_range(3, 8) var lane_count: int = 3
-## GDD §4: levels last 90–150 seconds.
+## GDD §4: levels last 90–150 seconds. DESIGN-TBD: each campaign level's length (together they make
+## GDD §5's "a flawless run through every level takes about 35 minutes").
 @export_range(30.0, 150.0, 1.0, "suffix:s") var duration_seconds: float = 120.0
 ## 0 = easiest, 1 = hardest. In the campaign this is the campaign curve plus difficulty_bias.
 @export_range(0.0, 1.0, 0.05) var difficulty: float = 0.3
 ## Added to the campaign's automatic difficulty curve for this level (GDD §6: each level can be
-## tuned individually on top of the curve).
+## tuned individually on top of the curve). DESIGN-TBD: City 1 −0.05; Golden 2 +0.05, the peak
+## (GDD §5, proposed); Golden 3 −0.05.
 @export_range(-0.5, 0.5, 0.05) var difficulty_bias: float = 0.0
 ## DESIGN-TBD: how difficulty rises within one level. Added linearly from start to end.
 @export_range(0.0, 1.0, 0.05) var difficulty_ramp: float = 0.25
@@ -51,14 +54,16 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 @export var features: PackedStringArray = PackedStringArray(["ramps", "ceilings", "pulsing"])
 ## Features that start partway into the level (GDD §5: City 1 meets its cyborgs late in the level):
 ## feature name → share of the level (0–1). Nothing of that feature is placed before its start,
-## by patterns or by rules scripts, and the first pattern picked from there uses it, so the player
-## meets it right after its first-encounter hint. Features not listed are there from the start.
+## by patterns or by rules scripts, and the first pattern picked from there uses it (as soon as one
+## of its patterns fits), so the player meets it right after its first-encounter hint. Features not
+## listed are there from the start.
 ## The campaign introduces each new feature this way (DESIGN-TBD: where in each level).
 ## (duplicate() shares this dictionary with the original: give a copy a new one, never edit it.)
 @export var feature_starts: Dictionary[String, float] = {}
 ## DESIGN-TBD: how often this level picks a feature's patterns, as a factor on their pick weight
-## (feature name → factor; 1 when not listed), e.g. Corporate 2's heavier military presence
-## (GDD §5, proposed). A pattern requiring several listed features takes the product.
+## (feature name → factor; 1 when not listed, 0 leaves them out), e.g. Corporate 2's heavier
+## military presence (GDD §5, proposed). A pattern requiring several listed features takes the
+## product.
 @export var feature_weights: Dictionary[String, float] = {}
 ## The core pattern file. Every other .json file in its folder is loaded too (LevelGenerator.load_for).
 @export_file("*.json") var patterns_path: String = "res://data/patterns/prototype_patterns.json"
