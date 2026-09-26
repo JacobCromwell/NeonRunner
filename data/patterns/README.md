@@ -6,7 +6,15 @@ Every pattern uses abstract gameplay pieces only, and no pattern assumes a lane 
 
 A level only picks patterns whose `requires` entries are all in its `features` list
 (`LevelConfig.features`), so a pattern file for a new enemy type changes nothing until a level turns
-that enemy on (GDD §6: introduce one new mechanic at a time).
+that enemy on (GDD §6: introduce one new mechanic at a time). The campaign's levels already list the
+enemies and mechanics still to be built, under the names their patterns must require (see
+`LevelConfig.PLANNED_FEATURES`).
+
+A level can start a feature partway in (`LevelConfig.feature_starts`: feature → share of the level).
+Patterns that require it aren't picked before its start, and the first pattern picked from there is one
+that requires it, so the level introduces it right there. Give each feature at least one pattern that
+fits low difficulties, or its introduction waits until one fits. `LevelConfig.feature_weights` (feature
+→ factor) scales the pick weight of every pattern that requires the feature.
 
 ## Pattern fields
 
@@ -16,7 +24,7 @@ that enemy on (GDD §6: introduce one new mechanic at a time).
 | `min_difficulty` / `max_difficulty` | The pattern can be picked only while the current difficulty (0–1) is in this range |
 | `weight` | Relative pick chance among the patterns that qualify |
 | `min_lanes` | Optional. Skip on devices with fewer lanes |
-| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`), or `screech_vents` (wall-vent screeches only: rare in city zones, GDD §9.5) |
+| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`), `screech_vents` (wall-vent screeches only, rare, for zones whose floor has no manholes, GDD §9.5), or a planned one: `barnacle_turret`, `wall_fences`, `wall_fences_partial` (with `wall_fences`: low or high wall fences), `buzz_overdrive`, `tithe_collector`, `resonator`, `gilded_sentinel` |
 | `length` | Metres of track the pattern takes (the generator extends it for long gaps and hulls) |
 | `elements` | The pieces to place (see below) |
 
@@ -60,4 +68,5 @@ They run after the patterns, in the order of the level's `features` list; a scri
 rules plan the Bad Dream's pads around the drones' pad schedule). A ceiling a rule adds
 (`add_hull_with_pad`) keeps off the floor that enemies use (`LevelGenerator.enemy_floor_span`); a pad a
 rule guarantees at a spot, clearing the floor it needs, comes from `scripts/enemies/pad_placement.gd`.
-See `docs/ARCHITECTURE.md`.
+Anything a rule adds keeps to its feature's start (`LevelGenerator.feature_active`). See
+`docs/ARCHITECTURE.md`.

@@ -103,10 +103,15 @@ before it can hurt (CLAUDE.md readability rules). Enemy fire uses the pool's red
 every zone. `world.skin.enemy_variant` (`&"city"` or `&"scavenger"`) picks the zone look.
 
 A level uses an enemy only if its `features` list has the type's name (GDD §6: one new thing at a
-time). Quick play can add features: `./play.sh --features=cyborg,drone`.
+time), from the feature's start if the level gives it one (The generator). Quick play can add
+features: `./play.sh --features=cyborg,drone`. The campaign already lists the enemies still to be
+built under the names their tasks must use (`LevelConfig.PLANNED_FEATURES`: `barnacle_turret`,
+`buzz_overdrive`, `tithe_collector`, `resonator`, `gilded_sentinel`), so a new enemy's own files are
+all it takes to bring it into its levels.
 
 Built so far: cyborg (with its panic variant and hosts), window cyborg, fence generator, hover
-truck, Octodog, sewer screech (manholes, and wall vents with the `screech_vents` feature in the City),
+truck, Octodog, sewer screech (manholes, and wall vents; `screech_vents` is wall vents only, for zones
+whose floor has no manholes),
 heli drone, and the Cyborg's Bad Dream (released by a killed host, spawned by the director at run
 time rather than placed by the generator). `scripts/enemies/mesh_batch.gd` merges an enemy's low-poly
 parts into one mesh per material to keep draw calls down.
@@ -131,16 +136,36 @@ patterns, a difficulty value and a seed, for any lane count. Passes, each with i
 patterns (filtered by the level's features) → enemy rules scripts → credits. Helpers for rules
 scripts: `rng_for(name)`, `add_enemy(type, at, lane, side, params)`, `add_hull_with_pad(lane, at,
 seconds)`, `floor_clear(from, to)`, `enemy_floor_span(entry)`, `enemy_uses_floor(entry)`,
-`difficulty_at(progress)`, plus `layout`, `config`, `tuning`, `speed`, `jump_distance`. Pattern
-format: `data/patterns/README.md`.
+`difficulty_at(progress)`, `feature_start(feature)`, `feature_started(feature, at)`,
+`feature_active(feature, at)`, `feature_share_at(feature, share)`, plus `layout`, `config`,
+`tuning`, `speed`, `jump_distance`. Pattern format: `data/patterns/README.md`.
 
 Rules scripts run in the order of the level's `features` list, except that a script declaring
-`const RUN_AFTER: Array[String]` runs after those features' rules. When a rule needs room for one of
-its guarantees, it removes what's in the way rather than moving it (taking content out never makes a
-level unfair). Guaranteed pads come from `scripts/enemies/pad_placement.gd`, shared by the drone and
-host rules: the drone's pad schedule (GDD §9.6) owns every pad after its first wave, pattern ceilings
-give way, and the host rules (which run after the drone's) cover each Bad Dream chase with pads at most
-10 s apart or leave that host out.
+`const RUN_AFTER: Array[String]` runs after those features' rules (the host rules after the drone's;
+the cyborg rules, and the host rules that start with them, after the hover truck's, so cyborgs keep
+their margin from the ramp a truck adds).
+When a rule needs room for one of its guarantees, it removes what's in the way rather than moving it
+(taking content out never makes a level unfair). Guaranteed pads come from
+`scripts/enemies/pad_placement.gd`, shared by the drone and host rules: the drone's pad schedule
+(GDD §9.6) owns every pad after its first wave, pattern ceilings give way, and the host rules (which
+run after the drone's) cover each Bad Dream chase with pads at most 10 s apart or leave that host out.
+
+**Late starts.** `LevelConfig.feature_starts` (feature → share of the level) holds a feature back
+until its start: patterns that require it aren't picked before, and the first pattern picked from
+there must use it (its introduction), so the player meets it right after its first-encounter hint
+rather than whenever chance brings it. A rules script that adds a feature's enemies or pieces keeps
+to that feature's start (`feature_active`, `feature_started`), including pieces that belong to
+another feature: the drone rules place drones after the `drone` start and their pads after the
+`ceilings` start, the hover truck rules place its route ramp after the `ramps` start, and the host
+rules drop a host whose chase would need pads before the ceilings start. `add_hull_with_pad` and
+`PadPlacement.place` refuse a pad before the ceilings start. Guaranteed spots given as a share of the
+level (the drone's first wave, the guaranteed hover truck) are shares of the stretch where the feature
+may appear (`feature_share_at`). A new rules script that adds things must do the same. Endless mode
+drops the starts. An introduced enemy can still be cleared by a later fairness rule (a hover truck
+keeps its lane free), and the feature then first shows a little later.
+
+**Feature weights.** `LevelConfig.feature_weights` (feature → factor) scales the pick weight of the
+patterns that require a feature (0 leaves them out). Corporate 2's heavier military presence uses it.
 
 ## Power-ups
 
@@ -158,7 +183,10 @@ A `ZoneSkin` (`scripts/world/skins/zone_skin.gd`) decorates abstract pieces thro
 one colour and shape language in every zone (pink crackle = electric fence).
 
 Skins so far: `CitySkin` (Zone 1, the Neon City) and `GanglandSkin` (Zone 2). `GreyboxSkin` is the
-fallback for undesigned zones. Both real skins build on the mesh kit (`scripts/world/meshes/`):
+fallback for zones without their own look yet (the Marketplace, Corporate, the Dead Zone and the
+Golden Zone for now). A zone's skin lives at `data/skins/<zone id>_skin.tres` (`--skin=<zone id>` in
+quick play) and is set in its `data/zones/<zone id>.tres`; a level's own `skin` wins over its zone's
+(the Golden Palace, Golden 3, may get its own). Both real skins build on the mesh kit (`scripts/world/meshes/`):
 `MeshKit` has shared builders for hazards, triggers and environments, and `MeshLayer` batches a chunk's
 geometry. The shaders in `scripts/world/meshes/shaders/` are procedural. `HazardStateVisual` swaps a
 hazard's ON / WARNING / OFF materials. A skin's `enemy_variant` (`&"city"` or `&"scavenger"`) picks
@@ -188,8 +216,26 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
 
 `Campaign` lists `ZoneDef`s; each built zone contributes steps: optional intro cinematic, its
 levels, optional boss-intro cinematic, the boss, optional outro cinematic. Step ids (`city/1`,
-`city/boss`, ...) key the save file. Difficulty comes from a campaign-wide curve plus each level's
-`difficulty_bias`; `enemy_scaling` runs 0 → 1 across the campaign.
+`city/boss`, ...) key the save file, so they never change. Difficulty comes from a campaign-wide curve
+plus each level's `difficulty_bias`; `enemy_scaling` runs 0 → 1 across the campaign.
+
+The campaign (GDD §5) has six zones, with ids other tasks rely on: `city`, `gangland`, `marketplace`,
+`corporate`, `dead_zone` and `golden`, with 3, 3, 2, 2, 2 and 3 levels in `data/levels/<zone id>_<n>.tres`
+(Golden 3 is the Golden Palace). Every zone has intro and outro cinematic slots (the City also a boss
+intro) and a boss slot from GDD §10's roster. A zone's music track is named after its id; a track the
+music library doesn't have yet is skipped quietly and the menu music carries on. Only the City is in
+the web demo. Placeholders (all DESIGN-TBD): the curve runs 0.1 → 0.9 over the 15 levels, with Golden 2
+the peak and Golden 3 a little below it; level lengths run 110–150 s and add up to 35 minutes.
+
+**The schedule** (GDD §5) is each level's `features` list, in the order the campaign introduces them:
+a feature once introduced stays in every later level, bar the exceptions the design gives (screeches
+come from manholes only in street zones and from wall vents, `screech_vents`, elsewhere, with none in
+Marketplace 1; the Buzz Overdrive appears in Corporate and the Dead Zone only; the Tithe Collector
+skips the Dead Zone). Each level introduces its new features at starts of their own (`feature_starts`,
+The generator: City 1's cyborgs come late in the level). `test_campaign` holds the schedule table and
+its exceptions. Features of enemies and mechanics still to be built (`LevelConfig.PLANNED_FEATURES`,
+with the wall fences' `wall_fences` and `wall_fences_partial`) are listed already and do nothing until
+their code and patterns exist.
 
 Bosses and cinematics are slots for now (owner decision): a `BossDef` or `CinematicDef` with an
 empty `scene` shows a placeholder card. To build one, make a scene whose root extends
@@ -215,7 +261,10 @@ the web demo until the real plugins are chosen (risk test R3).
 `tools/godot.sh test` runs every `tests/suites/test_*.gd` (a `TestSuite`); `--suite=<name>` runs
 one. `RunSim` (`tests/helpers/run_sim.gd`) runs a Player over a hand-built layout (`run()`), or a
 full RunWorld (`build_world()` + `step_world()`). `SkinSuite` (`tests/helpers/skin_suite.gd`) holds
-the checks every zone skin must pass. The runner frees anything a suite leaves in the tree, gives
+the checks every zone skin must pass. `LayoutChecks` (`tests/helpers/layout_checks.gd`) holds the
+fairness checks for generated layouts (the generator suite runs them over many seeds, the campaign
+suite over every campaign level at 3, 5 and 6 lanes) and finds a feature's pieces in a layout; a task
+that adds a new kind of piece extends `feature_positions()`. The runner frees anything a suite leaves in the tree, gives
 suites a fresh, unsaved profile, reports a suite that fails to load, and ends a stuck run after
 600 s of real time.
 
