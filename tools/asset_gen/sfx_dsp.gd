@@ -1,6 +1,7 @@
 extends RefCounted
-## A small offline DSP toolkit for tools/asset_gen/sfx_gen.gd. Buffers are mono floats at RATE.
-## The game never uses this at runtime; it only plays the .wav files the generator writes.
+## A small offline DSP toolkit for the sound-effect and music generators (tools/asset_gen/sfx_gen.gd,
+## music_gen.gd). Buffers are mono floats at RATE.
+## The game never uses this at runtime; it only plays the .wav files the generators write.
 
 ## 32 kHz: the SNES sample rate, which suits the crunchy 16-bit character.
 const RATE: int = 32000
@@ -211,6 +212,98 @@ static func crash(seconds: float, rng: RandomNumberGenerator) -> PackedFloat32Ar
 	return b
 
 
+## MIDI note number to Hz (69 = A4 = 440 Hz; 40 = E2, the low guitar string).
+static func midi_hz(note: float) -> float:
+	return 440.0 * pow(2.0, (note - 69.0) / 12.0)
+
+
+## Amplitude: linear attack, exponential decay (time constant `decay`) towards `sustain`, and a
+## linear release over the last `release` seconds.
+static func adsr(b: PackedFloat32Array, attack: float, decay: float, sustain: float, release: float) -> void:
+	var n: int = b.size()
+	for i: int in n:
+		var t: float = float(i) / RATE
+		var a: float = minf(1.0, t / maxf(attack, 0.0001))
+		a *= sustain + (1.0 - sustain) * exp(-maxf(0.0, t - attack) / maxf(decay, 0.0001))
+		var left: float = float(n - i) / RATE
+		if left < release:
+			a *= left / release
+		b[i] *= a
+
+
+## Bit-depth reduction without sample-and-hold: grit with no memory, so it is safe on a music loop.
+static func quantize(b: PackedFloat32Array, bits: float) -> void:
+	var step: float = 2.0 / pow(2.0, bits)
+	for i: int in b.size():
+		b[i] = roundf(b[i] / step) * step
+
+
+## A snare drum: a triangle-wave body that drops to `tone_hz`, plus bright wire rattle.
+## `snappy` (0–1) trades body for rattle and lengthens the rattle.
+static func snare(seconds: float, tone_hz: float, snappy: float, rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var b := buffer(seconds)
+	var phase: float = 0.0
+	for i: int in b.size():
+		var t: float = float(i) / RATE
+		phase = fmod(phase + tone_hz * (1.0 + 0.7 * exp(-t / 0.01)) / RATE, 1.0)
+		b[i] = (1.0 - absf(phase * 4.0 - 2.0)) * exp(-t / 0.05) * (1.0 - 0.5 * snappy)
+	var rattle := noise(seconds, rng)
+	filter(rattle, &"highpass", 1100.0)
+	filter(rattle, &"peaking", 4200.0, 0.8, 6.0)
+	envelope(rattle, 0.0005, 0.06 + 0.12 * snappy, 0.005)
+	mix(b, rattle, 0.0, 0.45 + 0.6 * snappy)
+	drive(b, 2.2)
+	return b
+
+
+## A hi-hat or ride: six clashing square waves (the drum-machine cymbal) and noise, high-passed.
+## `decay` is the time constant: about 0.03 s closed, 0.2 s open.
+static func hat(seconds: float, decay: float, rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var b := noise(seconds, rng)
+	var n: int = b.size()
+	for i: int in n:
+		b[i] *= 0.6
+	for hz: float in [205.3, 304.4, 369.6, 522.7, 540.0, 800.0]:
+		var phase: float = rng.randf()
+		var inc: float = hz * 1.9 / RATE
+		for i: int in n:
+			phase = fmod(phase + inc, 1.0)
+			b[i] += 0.25 if phase < 0.5 else -0.25
+	filter(b, &"highpass", 6500.0, 0.8)
+	filter(b, &"highpass", 6500.0, 0.8)
+	filter(b, &"peaking", 10000.0, 1.0, 4.0)
+	envelope(b, 0.0005, decay, 0.004)
+	return b
+
+
+## A tom drum: a sine that settles on `hz` after a short pitch drop, with a stick click.
+static func tom(seconds: float, hz: float, rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var b := buffer(seconds)
+	var phase: float = 0.0
+	for i: int in b.size():
+		var t: float = float(i) / RATE
+		phase = fmod(phase + hz * (1.0 + 0.5 * exp(-t / 0.04)) / RATE, 1.0)
+		b[i] = sin(phase * TAU) * exp(-t / 0.22) + rng.randf_range(-1.0, 1.0) * exp(-t / 0.003) * 0.35
+	drive(b, 2.0)
+	return b
+
+
+## A struck piece of metal (girder, pipe, plate, manhole cover): inharmonic FM partials and a noisy
+## strike. A low `hz` sounds heavy; `ring` is the decay time constant in seconds.
+static func metal_hit(seconds: float, hz: float, ring: float, rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var b := fm(seconds, func(_u: float) -> float: return hz, 1.414,
+		func(u: float) -> float: return 5.0 * exp(-u * seconds / (ring * 0.5)) + 0.8)
+	var upper := fm(seconds, func(_u: float) -> float: return hz * 2.76, 1.73,
+		func(u: float) -> float: return 3.0 * exp(-u * seconds / (ring * 0.3)))
+	mix(b, upper, 0.0, 0.45)
+	envelope(b, 0.0005, ring)
+	var strike := noise(minf(seconds, 0.04), rng)
+	filter(strike, &"bandpass", minf(hz * 4.0, 12000.0), 1.2)
+	envelope(strike, 0.0003, 0.006)
+	mix(b, strike, 0.0, 1.2)
+	return b
+
+
 ## A distorted guitar power chord (root, fifth, octave) through a scooped, cabinet-filtered amp.
 ## `palm_mute` damps it into a chug. `bend` maps normalized time to a pitch multiplier (dive bombs).
 static func power_chord(seconds: float, root_hz: float, palm_mute: bool, rng: RandomNumberGenerator,
@@ -256,6 +349,13 @@ static func finish(b: PackedFloat32Array, target_rms_db: float = -16.0, knee: fl
 		b[i] *= float(i) / fade_in
 	for i: int in mini(fade_out, n):
 		b[n - 1 - i] *= float(i) / fade_out
+	normalize(b, target_rms_db, knee, ceiling)
+
+
+## The loudness half of finish(): brings the buffer to `target_rms_db`, soft-limiting peaks above
+## `knee` so they never pass `ceiling`. No fades, so a music loop stays seamless.
+static func normalize(b: PackedFloat32Array, target_rms_db: float, knee: float, ceiling: float) -> void:
+	var n: int = b.size()
 	var range_above: float = ceiling - knee
 	# Two passes: the limiter takes a little loudness off, so the second pass tops it back up.
 	for pass_index: int in 2:

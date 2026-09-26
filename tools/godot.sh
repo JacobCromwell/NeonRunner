@@ -6,7 +6,9 @@
 #   tools/godot.sh test [--suite=x]   run the headless tests (exit code 0 = pass); --suite=x runs only
 #                                     the suites whose file name contains x
 #   tools/godot.sh smoke [game args]  40 s headless run; prints only problems (exit code 1 if any)
-#   tools/godot.sh sfx                regenerate assets/sfx/*.wav from tools/asset_gen/sfx_gen.gd
+#   tools/godot.sh sfx [--review]     regenerate assets/sfx/*.wav from tools/asset_gen/sfx_gen.gd
+#   tools/godot.sh music [--review]   regenerate assets/music/*.wav from tools/asset_gen/music_gen.gd
+#                                     (--review writes images to build/sfx_review/, build/music_review/)
 #   tools/godot.sh import             force a resource import
 #
 # Godot is found via $GODOT, then godot4/godot on PATH, then (under WSL) the Windows user
@@ -126,11 +128,16 @@ case "$command" in
 		"$GODOT_BIN" --headless --path "$PROJECT" -s res://tools/asset_gen/sfx_gen.gd -- "$@" 2>&1 | quiet
 		run_import
 		;;
+	music)
+		import_if_stale
+		"$GODOT_BIN" --headless --path "$PROJECT" -s res://tools/asset_gen/music_gen.gd -- "$@" 2>&1 | quiet
+		run_import
+		;;
 	import)
 		run_import
 		;;
 	*)
-		sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
+		sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'
 		exit 2
 		;;
 esac
