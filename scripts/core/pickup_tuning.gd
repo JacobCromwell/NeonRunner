@@ -46,8 +46,8 @@ extends Resource
 @export_group("Look")
 ## The badge: its radius and the height of its centre above the floor. It is much bigger than the
 ## biggest credit, so the two never read alike.
-@export_range(0.2, 1.2, 0.01, "suffix:m") var badge_radius: float = 0.52
-@export_range(0.5, 2.5, 0.05, "suffix:m") var float_height: float = 1.1
+@export_range(0.2, 1.2, 0.01, "suffix:m") var badge_radius: float = 0.66
+@export_range(0.5, 2.5, 0.05, "suffix:m") var float_height: float = 1.25
 ## A gentle bob and sway (it never spins like a credit). Speeds in cycles per second.
 @export_range(0.0, 0.5, 0.01, "suffix:m") var bob_height: float = 0.08
 @export_range(0.0, 3.0, 0.05, "suffix:Hz") var bob_speed: float = 0.7
@@ -58,4 +58,4 @@ extends Resource
 ## Brightness of the icon and the ring (above 1 blooms), and of the soft halo and floor glow.
 @export_range(0.5, 8.0, 0.1) var icon_energy: float = 2.4
 @export_range(0.5, 8.0, 0.1) var ring_energy: float = 2.6
-@export_range(0.0, 3.0, 0.05) var halo_energy: float = 0.8
+@export_range(0.0, 3.0, 0.05) var halo_energy: float = 1.1

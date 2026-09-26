@@ -40,6 +40,11 @@ const TUNING_PATH: String = "res://data/tuning/pickups.tres"
 const ITEMS: Array[StringName] = [&"armor", &"shield", &"grapple"]
 ## Quick play's review aid (--pickups): seconds between pickups.
 const REVIEW_SECONDS: float = 5.0
+## How far past its `at` a pad, ramp or speed pad may reach (more than any of their lengths), for
+## local_layout().
+const PIECE_REACH: float = 10.0
+## The check for things in play covers the stretch this much less at each end (see _in_play_near).
+const EDGE: float = 0.25
 
 var world: RunWorld
 var tuning: PickupTuning
@@ -114,6 +119,7 @@ func waiting() -> int:
 
 
 ## The first fair spot for a pickup (see the header): {lane, at}, or {} if none is fair right now.
+## Nearer spots come first, and at each distance the nearer lanes (reachable_lanes).
 func find_spot(at: float = -1.0, lane: int = -1) -> Dictionary:
 	var player: Player = world.player
 	var first: float = player.distance + tuning.lead_distance
@@ -121,11 +127,15 @@ func find_spot(at: float = -1.0, lane: int = -1) -> Dictionary:
 		first = maxf(first, at)
 	var last: float = minf(first + tuning.search_window,
 		minf(world.track.built_until(), world.layout.length) - tuning.clear_after)
+	if last < first:
+		return {}
+	# Only the pieces around the stretch searched: a boss arena's layout grows lap after lap.
+	var near: LevelLayout = local_layout(world.layout, first - tuning.clear_before, last + tuning.clear_after)
 	var lanes: Array[int] = reachable_lanes(lane)
 	var d: float = first
 	while d <= last + 0.001:
 		for l: int in lanes:
-			if spot_fair(l, d):
+			if layout_fair(near, l, d, tuning, world.tuning) and not _in_play_near(l, d) and not _telegraphed(l, d):
 				return {"lane": l, "at": d}
 		d += maxf(tuning.search_step, 0.1)
 	return {}
@@ -197,6 +207,38 @@ static func layout_fair(layout: LevelLayout, lane: int, at: float, t: PickupTuni
 		if span.x <= to and span.y >= from:
 			return false
 	return true
+
+
+## The pieces of `layout` that reach into the stretch [from, to] (enemies by the floor they use), with
+## its lane count and length: enough to check every spot in that stretch with layout_fair.
+static func local_layout(layout: LevelLayout, from: float, to: float) -> LevelLayout:
+	var out := LevelLayout.new()
+	out.lane_count = layout.lane_count
+	out.length = layout.length
+	for g: Dictionary in layout.gaps:
+		if float(g["start"]) <= to and float(g["end"]) >= from:
+			out.gaps.append(g)
+	for f: Dictionary in layout.fences:
+		if float(f["at"]) >= from and float(f["at"]) <= to:
+			out.fences.append(f)
+	for h: Dictionary in layout.hulls:
+		if float(h["start"]) <= to and float(h["end"]) >= from:
+			out.hulls.append(h)
+	# Pads, ramps and speed pads reach a few metres past their `at`.
+	for p: Dictionary in layout.pads:
+		if float(p["at"]) <= to and float(p["at"]) + PIECE_REACH >= from:
+			out.pads.append(p)
+	for p: Dictionary in layout.speed_pads:
+		if float(p["at"]) <= to and float(p["at"]) + PIECE_REACH >= from:
+			out.speed_pads.append(p)
+	for r: Dictionary in layout.ramps:
+		if float(r["at"]) <= to and float(r["at"]) + PIECE_REACH >= from:
+			out.ramps.append(r)
+	for e: Dictionary in layout.enemies:
+		var span: Vector2 = LevelGenerator.enemy_floor_span(e)
+		if span.x <= to and span.y >= from:
+			out.enemies.append(e)
+	return out
 
 
 ## True if a piece of `list` ({lane, at}, `length` long from `at`) in `lane` reaches into [from, to].
@@ -285,17 +327,23 @@ func _on_vanished(p: Pickup) -> void:
 
 ## True if something in play would be in the way of a pickup at the spot: an enemy's hitbox, a fence
 ## (of the track or a boss's, whatever its state), a block, or a solid side, from the floor up to
-## clear_height over the lane from clear_before before the spot to clear_after after it.
+## clear_height over the lane from clear_before before the spot to clear_after after it. Signs are
+## wall pieces (a floor runner never touches one) and don't count.
 func _in_play_near(lane: int, at: float) -> bool:
 	if not is_inside_tree():
 		return false
-	var from: float = at - tuning.clear_before
-	var to: float = at + tuning.clear_after
+	# A hair inside the stretch the layout checks, so a track fence just outside it (its hitbox has
+	# some depth) doesn't count here when it doesn't there.
+	var from: float = at - tuning.clear_before + EDGE
+	var to: float = at + tuning.clear_after - EDGE
 	_box.size = Vector3(world.geo.lane_width * 0.9, tuning.clear_height, to - from)
 	_query.transform = Transform3D(Basis.IDENTITY,
 		Vector3(world.geo.lane_x(lane), tuning.clear_height * 0.5, TrackGeometry.world_z((from + to) * 0.5)))
 	for hit: Dictionary in get_world_3d().direct_space_state.intersect_shape(_query, 16):
-		var hazard := hit["collider"] as Hazard
+		var area := hit["collider"] as Area3D
+		if area == null or area.collision_layer & TrackBuilder.LAYER_WALL_BLOCKER:
+			continue
+		var hazard := area as Hazard
 		if hazard == null:
 			return true  # a lane blocker (a solid side)
 		if hazard.is_electrical or hazard.state != Hazard.State.OFF:

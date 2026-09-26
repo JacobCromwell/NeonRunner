@@ -27,8 +27,8 @@ const ICON_PIXELS: float = 128.0
 ## Sizes on a badge of radius 1 (the node is scaled by PickupTuning.badge_radius).
 const RING_INNER: float = 0.93
 const RING_OUTER: float = 1.13
-const ICON_SIZE: float = 1.3
-const HALO_SIZE: float = 3.4
+const ICON_SIZE: float = 1.55
+const HALO_SIZE: float = 3.6
 ## The floor glow's size in metres (it doesn't scale with the badge).
 const FLOOR_GLOW_SIZE: float = 2.0
 

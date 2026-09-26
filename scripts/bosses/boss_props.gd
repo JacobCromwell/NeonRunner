@@ -188,11 +188,12 @@ func remove(node: Node) -> void:
 		node.queue_free()
 
 
-## True while a floor warning (lane_warning, circle_warning) still shown reaches into `lane` somewhere
+## True while a floor warning (lane_warning, circle_warning) still shown reaches the middle of `lane`
+## (where a runner in that lane is: a circle that only grazes the lane's edge doesn't count) somewhere
 ## between track distances `from` and `to`: an attack is telegraphed there.
 func warned(lane: int, from: float, to: float) -> bool:
-	var x0: float = world.geo.lane_x(lane) - world.geo.lane_width * 0.5
-	var x1: float = world.geo.lane_x(lane) + world.geo.lane_width * 0.5
+	var x0: float = world.geo.lane_x(lane) - world.geo.lane_width * 0.25
+	var x1: float = world.geo.lane_x(lane) + world.geo.lane_width * 0.25
 	for i: int in range(_warned.size() - 1, -1, -1):
 		var w: Dictionary = _warned[i]
 		if not is_instance_valid(w["node"]) or (w["node"] as Node).is_queued_for_deletion():
@@ -268,9 +269,12 @@ func _add_warning_sound(hazard: Hazard) -> void:
 func _warn_then_arm(hazard: Hazard, seconds: float) -> void:
 	hazard.state = Hazard.State.WARNING
 	hazard.state_changed.emit(Hazard.State.WARNING)
+	# By id: a boss may remove the fence while it's still flickering in.
+	var id: int = hazard.get_instance_id()
 	get_tree().create_timer(seconds, false, true).timeout.connect(func() -> void:
-		if is_instance_valid(hazard) and hazard.state == Hazard.State.WARNING:
-			hazard.set_enabled(true))
+		var h := instance_from_id(id) as Hazard
+		if h != null and h.state == Hazard.State.WARNING:
+			h.set_enabled(true))
 
 
 static func _add_shape(owner_node: CollisionObject3D, size: Vector3) -> void:
