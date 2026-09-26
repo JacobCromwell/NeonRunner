@@ -3,7 +3,8 @@
 #
 #   tools/godot.sh play [game args]   play the current working tree (e.g. play --lanes=6 --god)
 #   tools/godot.sh edit               open the Godot editor on this project
-#   tools/godot.sh test               run the headless test suite (exit code 0 = pass)
+#   tools/godot.sh test [--suite=x]   run the headless tests (exit code 0 = pass); --suite=x runs only
+#                                     the suites whose file name contains x
 #   tools/godot.sh smoke [game args]  40 s headless run; prints only problems (exit code 1 if any)
 #   tools/godot.sh sfx                regenerate assets/sfx/*.wav from tools/asset_gen/sfx_gen.gd
 #   tools/godot.sh import             force a resource import
@@ -110,7 +111,7 @@ case "$command" in
 	test)
 		import_if_stale
 		set +e
-		"$GODOT_BIN" --headless --path "$PROJECT" --fixed-fps 60 -s res://tests/run_tests.gd 2>&1 | quiet
+		"$GODOT_BIN" --headless --path "$PROJECT" --fixed-fps 60 -s res://tests/run_tests.gd -- "$@" 2>&1 | quiet
 		status=${PIPESTATUS[0]}
 		exit "$status"
 		;;
@@ -129,7 +130,7 @@ case "$command" in
 		run_import
 		;;
 	*)
-		sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+		sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
 		exit 2
 		;;
 esac
