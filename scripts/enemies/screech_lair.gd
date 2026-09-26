@@ -30,6 +30,9 @@ var _burst_t: float = -1.0
 var _rng := RandomNumberGenerator.new()
 var _glow_dim: Material
 var _glow_bright: Material
+## Parts that light up red while it shakes (the manhole's rim, the vent's frame), and their rest look.
+var _warn: Array[MeshInstance3D] = []
+var _warn_rest: Array[Material] = []
 
 
 ## `side`: 0 for a manhole, -1 / +1 for a vent on the left / right wall.
@@ -46,45 +49,37 @@ func build(p_kind: Kind, variant: StringName, side: int, p_seed: int) -> void:
 	_lid.name = "Lid"
 	add_child(_lid)
 	if kind == Kind.MANHOLE:
-		_add_mesh(self, _disc(0.52, 0.008), Vector3(0.0, 0.004, 0.0), GreyboxMaterials.flat(Color(0.05, 0.05, 0.06)))
+		_warn.append(_add_mesh(self, _disc(0.52, 0.008), Vector3(0.0, 0.004, 0.0), GreyboxMaterials.flat(Color(0.05, 0.05, 0.06))))
 		_add_mesh(self, _disc(0.44, 0.004), Vector3(0.0, 0.01, 0.0), dark)
 		_lid.position = Vector3(0.0, 0.035, 0.0)
-		_add_mesh(_lid, _disc(0.43, 0.045), Vector3.ZERO, metal)
-		# Raised cross and four slots, with red eyes glowing through them.
-		GreyboxMaterials.add_box(_lid, Vector3(0.0, 0.026, 0.0), Vector3(0.72, 0.012, 0.05), metal)
-		GreyboxMaterials.add_box(_lid, Vector3(0.0, 0.026, 0.0), Vector3(0.05, 0.012, 0.72), metal)
-		for i: int in 4:
-			var a: float = TAU * (float(i) + 0.5) / 4.0
-			var slot := GreyboxMaterials.add_box(_lid, Vector3(sin(a) * 0.22, 0.024, cos(a) * 0.22),
-				Vector3(0.16, 0.006, 0.045), _glow_dim)
-			slot.rotation.y = a
-			_glow.append(slot)
+		# The cover with its raised cross, and four slots with red eyes glowing through them.
+		_add_mesh(_lid, _manhole_cover_mesh(), Vector3.ZERO, metal)
+		_glow.append(_add_mesh(_lid, _manhole_slots_mesh(), Vector3.ZERO, _glow_dim))
 	else:
 		# Built for the right wall (face at local x = 0, the track toward -x); turned for the left.
 		rotation.y = 0.0 if side > 0 else PI
-		GreyboxMaterials.add_box(self, Vector3(-0.03, 0.35, 0.0), Vector3(0.06, 0.68, 1.16), metal)
+		_warn.append(GreyboxMaterials.add_box(self, Vector3(-0.03, 0.35, 0.0), Vector3(0.06, 0.68, 1.16), metal))
 		GreyboxMaterials.add_box(self, Vector3(-0.064, 0.35, 0.0), Vector3(0.012, 0.54, 1.0), dark)
-		for sz: float in [-0.13, 0.13]:
-			_glow.append(GreyboxMaterials.add_box(self, Vector3(-0.072, 0.3, sz), Vector3(0.006, 0.05, 0.09), _glow_dim))
+		_glow.append(_add_mesh(self, _vent_eyes_mesh(), Vector3.ZERO, _glow_dim))
 		_lid.position = Vector3(-0.09, 0.35, 0.0)
-		for i: int in 5:
-			GreyboxMaterials.add_box(_lid, Vector3(0.0, -0.2 + i * 0.1, 0.0), Vector3(0.025, 0.045, 1.0), metal)
-		for sz: float in [-0.35, 0.0, 0.35]:
-			GreyboxMaterials.add_box(_lid, Vector3(0.012, 0.0, sz), Vector3(0.02, 0.5, 0.035), metal)
+		_add_mesh(_lid, _vent_grille_mesh(), Vector3.ZERO, metal)
 	_lid_rest = _lid.transform
+	for w: MeshInstance3D in _warn:
+		_warn_rest.append(w.material_override)
 	_mist = CPUParticles3D.new()
 	_mist.emitting = false
-	_mist.amount = 14
-	_mist.lifetime = 0.7
+	_mist.amount = 24
+	_mist.lifetime = 0.9
 	_mist.mesh = _puff_mesh()
-	_mist.material_override = GreyboxMaterials.glow(MIST, 1.2, 0.45)
+	_mist.material_override = _puff_material()
+	_mist.color_ramp = _puff_ramp()
 	_mist.direction = Vector3.UP if kind == Kind.MANHOLE else Vector3(-1.0, 0.6, 0.0)
 	_mist.spread = 30.0
-	_mist.gravity = Vector3(0.0, 0.6, 0.0)
-	_mist.initial_velocity_min = 0.6
-	_mist.initial_velocity_max = 1.6
-	_mist.scale_amount_min = 0.8
-	_mist.scale_amount_max = 2.0
+	_mist.gravity = Vector3(0.0, 0.4, 0.0)
+	_mist.initial_velocity_min = 1.0
+	_mist.initial_velocity_max = 2.4
+	_mist.scale_amount_min = 0.9
+	_mist.scale_amount_max = 2.4
 	_mist.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
 	_mist.emission_sphere_radius = 0.3
 	_mist.position = Vector3(0.0, 0.08, 0.0) if kind == Kind.MANHOLE else Vector3(-0.12, 0.3, 0.0)
@@ -97,6 +92,8 @@ func set_shaking(on: bool) -> void:
 	_mist.emitting = on
 	for g: MeshInstance3D in _glow:
 		g.material_override = _glow_bright if on else _glow_dim
+	for i: int in _warn.size():
+		_warn[i].material_override = GreyboxMaterials.glow(EYE_GLOW, 2.6) if on else _warn_rest[i]
 
 
 ## Bursts open: the lid flies.
@@ -116,9 +113,9 @@ func _process(delta: float) -> void:
 		return
 	if shaking > 0.0:
 		var j: float = shaking
-		var t := Transform3D(Basis.from_euler(Vector3(_rng.randf_range(-0.12, 0.12) * j, 0.0,
-			_rng.randf_range(-0.12, 0.12) * j)), Vector3(_rng.randf_range(-0.01, 0.01), _rng.randf() * 0.05 * j,
-			_rng.randf_range(-0.01, 0.01)))
+		var t := Transform3D(Basis.from_euler(Vector3(_rng.randf_range(-0.16, 0.16) * j, 0.0,
+			_rng.randf_range(-0.16, 0.16) * j)), Vector3(_rng.randf_range(-0.015, 0.015), _rng.randf() * 0.09 * j,
+			_rng.randf_range(-0.015, 0.015)))
 		if kind == Kind.VENT:
 			t.origin = Vector3(_rng.randf() * -0.04 * j, _rng.randf_range(-0.015, 0.015), _rng.randf_range(-0.02, 0.02))
 		_lid.transform = _lid_rest * t
@@ -170,6 +167,49 @@ func _add_mesh(parent: Node3D, mesh: Mesh, pos: Vector3, mat: Material) -> MeshI
 	return mi
 
 
+## Merges primitive parts ([mesh, transform] pairs) into one cached mesh: one draw call each.
+static func _merged(key: String, parts: Array) -> ArrayMesh:
+	if not _meshes.has(key):
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		for part: Array in parts:
+			st.append_from(part[0] as Mesh, 0, part[1] as Transform3D)
+		_meshes[key] = st.commit()
+	return _meshes[key]
+
+
+static func _box(center: Vector3, size: Vector3, yaw: float = 0.0) -> Array:
+	return [GreyboxMaterials.unit_box(), Transform3D(Basis(Vector3.UP, yaw) * Basis.from_scale(size), center)]
+
+
+static func _manhole_cover_mesh() -> ArrayMesh:
+	return _merged("cover", [[_disc(0.43, 0.045), Transform3D.IDENTITY],
+		_box(Vector3(0.0, 0.026, 0.0), Vector3(0.72, 0.012, 0.05)),
+		_box(Vector3(0.0, 0.026, 0.0), Vector3(0.05, 0.012, 0.72))])
+
+
+static func _manhole_slots_mesh() -> ArrayMesh:
+	var parts: Array = []
+	for i: int in 4:
+		var a: float = TAU * (float(i) + 0.5) / 4.0
+		parts.append(_box(Vector3(sin(a) * 0.22, 0.024, cos(a) * 0.22), Vector3(0.16, 0.006, 0.045), a))
+	return _merged("slots", parts)
+
+
+static func _vent_eyes_mesh() -> ArrayMesh:
+	return _merged("vent_eyes", [_box(Vector3(-0.072, 0.3, -0.13), Vector3(0.006, 0.05, 0.09)),
+		_box(Vector3(-0.072, 0.3, 0.13), Vector3(0.006, 0.05, 0.09))])
+
+
+static func _vent_grille_mesh() -> ArrayMesh:
+	var parts: Array = []
+	for i: int in 5:
+		parts.append(_box(Vector3(0.0, -0.2 + i * 0.1, 0.0), Vector3(0.025, 0.045, 1.0)))
+	for sz: float in [-0.35, 0.0, 0.35]:
+		parts.append(_box(Vector3(0.012, 0.0, sz), Vector3(0.02, 0.5, 0.035)))
+	return _merged("grille", parts)
+
+
 static func _disc(radius: float, height: float) -> CylinderMesh:
 	var key: String = "disc_%s_%s" % [radius, height]
 	if not _meshes.has(key):
@@ -192,6 +232,27 @@ static func _puff_mesh() -> SphereMesh:
 		m.rings = 3
 		_meshes["puff"] = m
 	return _meshes["puff"]
+
+
+## Sewer mist: glowing green puffs that fade out (vertex colour from the particles' colour ramp).
+static func _puff_material() -> StandardMaterial3D:
+	if not _materials.has("puff"):
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.vertex_color_use_as_albedo = true
+		m.albedo_color = Color(1.4, 1.6, 1.3)
+		_materials["puff"] = m
+	return _materials["puff"]
+
+
+static func _puff_ramp() -> Gradient:
+	if not _materials.has("puff_ramp"):
+		var g := Gradient.new()
+		g.set_color(0, Color(MIST, 0.55))
+		g.set_color(1, Color(MIST.darkened(0.3), 0.0))
+		_materials["puff_ramp"] = g
+	return _materials["puff_ramp"]
 
 
 ## Cover and frame metal: clean steel in the city, rust in scavenger zones (weathering only).

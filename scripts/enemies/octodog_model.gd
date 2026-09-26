@@ -44,8 +44,8 @@ void fragment() {
 const HIP_HEIGHT: float = 0.56
 const THIGH: float = 0.3
 const SHIN: float = 0.3
-const TENTACLE_GREEN_BASE := Color(0.05, 0.32, 0.08)
-const TENTACLE_GREEN_TIP := Color(0.45, 1.0, 0.25)
+const TENTACLE_GREEN_BASE := Color(0.08, 0.42, 0.1)
+const TENTACLE_GREEN_TIP := Color(0.55, 1.0, 0.3)
 const EYE_RED := Color(1.0, 0.12, 0.06)
 const JOINT_GREEN := Color(0.35, 1.0, 0.3)
 
@@ -81,8 +81,11 @@ func build(variant: StringName, p_seed: float) -> void:
 	_body = Node3D.new()
 	add_child(_body)
 	var metal: Material = metal_material(variant)
-	var chassis := GreyboxMaterials.add_box(_body, Vector3(0.0, 0.6, 0.0), Vector3(0.48, 0.15, 0.8), metal)
+	var chassis := GreyboxMaterials.add_box(_body, Vector3(0.0, 0.6, 0.0), Vector3(0.5, 0.17, 0.84), metal)
 	chassis.name = "Chassis"
+	for sx: float in [-1.0, 1.0]:
+		GreyboxMaterials.add_box(_body, Vector3(sx * 0.255, 0.6, 0.0), Vector3(0.02, 0.05, 0.7),
+			GreyboxMaterials.glow(JOINT_GREEN, 2.0))
 	_mass = MeshInstance3D.new()
 	_mass.name = "Tentacles"
 	_mass.mesh = mass_mesh()
@@ -97,7 +100,7 @@ func build(variant: StringName, p_seed: float) -> void:
 		var hip := Node3D.new()
 		hip.position = Vector3(side * 0.25, HIP_HEIGHT, -0.3 if front else 0.3)
 		_body.add_child(hip)
-		GreyboxMaterials.add_box(hip, Vector3(0.0, -THIGH * 0.5, 0.0), Vector3(0.08, THIGH, 0.09), metal)
+		GreyboxMaterials.add_box(hip, Vector3(0.0, -THIGH * 0.5, 0.0), Vector3(0.11, THIGH, 0.12), metal)
 		var knee := Node3D.new()
 		knee.position = Vector3(0.0, -THIGH, 0.0)
 		hip.add_child(knee)
@@ -107,7 +110,7 @@ func build(variant: StringName, p_seed: float) -> void:
 		joint.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		knee.add_child(joint)
 		# Shin with a flat foot plate at its end.
-		GreyboxMaterials.add_box(knee, Vector3(0.0, -SHIN * 0.5, 0.0), Vector3(0.06, SHIN, 0.07), metal)
+		GreyboxMaterials.add_box(knee, Vector3(0.0, -SHIN * 0.5, 0.0), Vector3(0.08, SHIN, 0.09), metal)
 		_legs.append({"hip": hip, "knee": knee, "front": front, "phase": [0.0, 0.45, PI, PI + 0.45][i]})
 	animate(0.0)
 
@@ -166,12 +169,12 @@ static func metal_material(variant: StringName) -> StandardMaterial3D:
 	if not _materials.has(key):
 		var m := StandardMaterial3D.new()
 		if variant == &"scavenger":
-			m.albedo_color = Color(0.34, 0.22, 0.14)
+			m.albedo_color = Color(0.46, 0.3, 0.19)
 			m.metallic = 0.45
 			m.roughness = 0.8
 		else:
-			m.albedo_color = Color(0.3, 0.33, 0.4)
-			m.metallic = 0.85
+			m.albedo_color = Color(0.5, 0.55, 0.64)
+			m.metallic = 0.75
 			m.roughness = 0.3
 		_materials[key] = m
 	return _materials[key]
@@ -204,26 +207,26 @@ static func mass_mesh() -> ArrayMesh:
 		return _mass_mesh
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	_ellipsoid(st, Vector3(0.0, 0.78, 0.02), Vector3(0.3, 0.2, 0.38), 8, 5, Color(0.04, 0.22, 0.06, 0.12))
-	for e: Vector3 in [Vector3(-0.1, 0.85, -0.34), Vector3(0.1, 0.85, -0.34), Vector3(0.0, 0.94, -0.3)]:
-		_octahedron(st, e, 0.05, Color(EYE_RED, 1.0))
+	_ellipsoid(st, Vector3(0.0, 0.8, 0.02), Vector3(0.34, 0.24, 0.42), 9, 5, Color(0.08, 0.36, 0.1, 0.3))
+	for e: Vector3 in [Vector3(-0.12, 0.86, -0.38), Vector3(0.12, 0.86, -0.38), Vector3(0.0, 0.97, -0.34)]:
+		_octahedron(st, e, 0.065, Color(EYE_RED, 1.0))
 	# Upper ring: bases on top of the blob, leaning out and curling back in at the tips.
-	var ring: int = 6
+	var ring: int = 8
 	for i: int in ring:
 		var a: float = TAU * (float(i) + 0.5) / ring
 		var out := Vector3(sin(a), 0.0, cos(a))
-		var base := Vector3(0.0, 0.8, 0.02) + Vector3(out.x * 0.2, 0.12, out.z * 0.26)
-		var dir: Vector3 = (out * 0.55 + Vector3.UP).normalized()
-		_tentacle(st, base, dir, out.cross(Vector3.UP).normalized(), 0.55 + 0.1 * float(i % 2), 2.2,
-			0.07, 0.012, float(i) / 12.0)
+		var base := Vector3(0.0, 0.82, 0.02) + Vector3(out.x * 0.22, 0.13, out.z * 0.28)
+		var dir: Vector3 = (out * 0.6 + Vector3.UP).normalized()
+		_tentacle(st, base, dir, out.cross(Vector3.UP).normalized(), 0.62 + 0.14 * float(i % 2), 2.3,
+			0.095, 0.016, float(i) / 12.0)
 	# Two grabbers reaching forward (-Z), curling up at the tips.
 	for sx: float in [-1.0, 1.0]:
-		var base := Vector3(sx * 0.16, 0.72, -0.3)
-		_tentacle(st, base, Vector3(sx * 0.25, -0.15, -1.0).normalized(), Vector3(1.0, 0.0, 0.0), 0.6,
-			-1.8, 0.065, 0.012, (7.0 + sx) / 12.0)
+		var base := Vector3(sx * 0.17, 0.72, -0.32)
+		_tentacle(st, base, Vector3(sx * 0.25, -0.15, -1.0).normalized(), Vector3(1.0, 0.0, 0.0), 0.68,
+			-1.9, 0.085, 0.016, (9.0 + sx) / 12.0)
 	# Tail.
-	_tentacle(st, Vector3(0.0, 0.74, 0.36), Vector3(0.0, 0.5, 1.0).normalized(), Vector3(1.0, 0.0, 0.0),
-		0.5, 1.6, 0.05, 0.01, 10.0 / 12.0)
+	_tentacle(st, Vector3(0.0, 0.76, 0.38), Vector3(0.0, 0.5, 1.0).normalized(), Vector3(1.0, 0.0, 0.0),
+		0.55, 1.6, 0.065, 0.012, 11.5 / 12.0)
 	_mass_mesh = st.commit()
 	return _mass_mesh
 
@@ -280,7 +283,7 @@ static func _tube(st: SurfaceTool, points: PackedVector3Array, radii: PackedFloa
 
 static func _tentacle_color(s: float) -> Color:
 	var c: Color = TENTACLE_GREEN_BASE.lerp(TENTACLE_GREEN_TIP, s * s)
-	c.a = lerpf(0.18, 0.95, s)
+	c.a = lerpf(0.3, 1.0, s)
 	return c
 
 

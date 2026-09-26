@@ -89,13 +89,15 @@ void fragment() {
 }
 """
 
-const SKIN := Color(0.2, 0.22, 0.16)
-const BELLY := Color(0.32, 0.3, 0.22)
-const SPINE_BASE := Color(0.18, 0.08, 0.07)
+## Vertex colours: rgb albedo, alpha = how much it glows (skin doesn't).
+const SKIN := Color(0.2, 0.22, 0.16, 0.0)
+const BELLY := Color(0.32, 0.3, 0.22, 0.0)
+const SPINE_BASE := Color(0.22, 0.09, 0.07, 0.12)
 ## The spines and claws are the deadly parts: hot red-orange in every zone.
-const SPINE_TIP := Color(1.0, 0.28, 0.08)
-const EYE := Color(1.0, 0.85, 0.1)
-const TALON := Color(0.95, 0.9, 0.8)
+const SPINE_TIP := Color(1.0, 0.28, 0.08, 0.9)
+const EYE := Color(1.0, 0.85, 0.1, 1.0)
+const TALON := Color(0.85, 0.8, 0.7, 0.0)
+const EAR := Color(0.45, 0.2, 0.25, 0.0)
 
 enum Part { TORSO, HEAD, SPINE, SWIPE_ARM, OTHER_ARM, LEG_FL, LEG_FR, LEG_BL, LEG_BR, TAIL }
 
@@ -150,7 +152,7 @@ static func mesh() -> ArrayMesh:
 		_cone(st, Vector3(sx * 0.03, 0.2, -0.55), Vector3(sx * 0.03, 0.12, -0.56), 0.014, 3,
 			TALON, TALON, Part.HEAD, 0.0)
 		_cone(st, Vector3(sx * 0.08, 0.33, -0.3), Vector3(sx * 0.12, 0.43, -0.26), 0.035, 3,
-			SKIN, Color(0.45, 0.2, 0.25), Part.HEAD, 0.0)
+			SKIN, EAR, Part.HEAD, 0.0)
 	# Rows of spines along the back (GDD §9.5), tallest down the middle.
 	for row: int in 3:
 		var x: float = (row - 1) * 0.09
