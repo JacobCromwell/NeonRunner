@@ -65,8 +65,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 
 ## What's in the game
 
-- **Campaign:** six zones, the Neon City (the web demo's zone), Gangland, the Marketplace, Corporate, the Dead
-  Zone and the Golden Zone, with 3, 3, 2, 2, 2 and 3 levels: 15 levels, about 35 minutes of flawless running.
+- **Campaign:** 15 levels in six zones, about 35 minutes of flawless running: the Neon City (the web demo's
+  zone) and Gangland with three levels each, the Marketplace, Corporate and the Dead Zone with two, and the
+  Golden Zone with three.
   Each zone has a boss slot and cinematic slots; the last four zones use the grey-box look until their skins
   are made. Each level introduces about one new thing (GDD §5), where its data says (`feature_starts`):
   1. City 1 *Rooftop Rush*: gaps, fences, walls and signs, then cyborgs late in the level.
@@ -88,7 +89,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 
   The Barnacle Turret, wall fences, Buzz Overdrive, Tithe Collector, Resonator and Gilded Sentinels aren't
   built yet: their levels already list them, and they appear once their code exists. Level names are
-  placeholders.
+  placeholders, except the Golden Palace.
 - **Movement:** floor lanes, side-wall runs and wall jumps, anti-grav pads onto the ceiling, ramps, speed pads.
 - **Obstacles:** gaps, signs, and electric fences (full-height or gapped, always-on or pulsing), some with a
   generator that switches them off.
@@ -130,7 +131,7 @@ unsaved changes. Every other number is in `data/` too: enemy tunings in `data/en
 ```
 tools/godot.sh play [options]   play (what ./play.sh runs)
 tools/godot.sh edit             open the editor
-tools/godot.sh test             all tests, about a minute; exit code 0 = pass (--suite=name runs one)
+tools/godot.sh test             all tests, under two minutes; exit code 0 = pass (--suite=name runs one)
 tools/godot.sh smoke [options]  40 s of the real game, headless; prints only problems
 tools/godot.sh sfx [--review]   regenerate the sound effects (assets/sfx/) from tools/asset_gen/
 tools/godot.sh music [--review] regenerate the music (assets/music/)
@@ -146,14 +147,14 @@ family, the UI kit, every screen); each script's header lists its options.
 
 ## Tests
 
-`tools/godot.sh test` runs 26 suites with about 766,000 checks:
-- **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds.
+`tools/godot.sh test` runs 27 suites with about 1,025,000 checks:
+- **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds, and every campaign level.
 - **Movement:** scenarios on real physics.
 - **Enemies:** each type's attacks, dodges, kills and generation rules.
 - **Damage:** the shared damage rules.
 - **Power-ups:** each one's behaviour.
 - **Economy and saves:** the economy and save files.
-- **Game flow:** the campaign and app flow.
+- **Game flow:** the campaign (its zones, steps and level-by-level schedule) and app flow.
 - **Screens:** every screen at desktop and touch sizes.
 - **Zone skins:** both skins, including a check that neither adds collision.
 - **Sounds and music.**

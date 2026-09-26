@@ -186,11 +186,11 @@ Skins so far: `CitySkin` (Zone 1, the Neon City) and `GanglandSkin` (Zone 2). `G
 fallback for zones without their own look yet (the Marketplace, Corporate, the Dead Zone and the
 Golden Zone for now). A zone's skin lives at `data/skins/<zone id>_skin.tres` (`--skin=<zone id>` in
 quick play) and is set in its `data/zones/<zone id>.tres`; a level's own `skin` wins over its zone's
-(the Golden Palace, Golden 3, may get its own). Both real skins build on the mesh kit (`scripts/world/meshes/`):
-`MeshKit` has shared builders for hazards, triggers and environments, and `MeshLayer` batches a chunk's
-geometry. The shaders in `scripts/world/meshes/shaders/` are procedural. `HazardStateVisual` swaps a
-hazard's ON / WARNING / OFF materials. A skin's `enemy_variant` (`&"city"` or `&"scavenger"`) picks
-the enemies' look.
+(the Golden Palace, Golden 3, may get its own). Both real skins build on the mesh kit
+(`scripts/world/meshes/`): `MeshKit` has shared builders for hazards, triggers and environments, and
+`MeshLayer` batches a chunk's geometry. The shaders in `scripts/world/meshes/shaders/` are
+procedural. `HazardStateVisual` swaps a hazard's ON / WARNING / OFF materials. A skin's
+`enemy_variant` (`&"city"` or `&"scavenger"`) picks the enemies' look.
 
 **The cult emblem** (D7, GDD §5 "The cult"): `CultEmblem` (`scripts/world/meshes/cult_emblem.gd`)
 builds each option's 2D vector geometry as a flat mesh (mesh kit conventions: emissive for a neon
@@ -228,23 +228,24 @@ levels, optional boss-intro cinematic, the boss, optional outro cinematic. Step 
 `city/boss`, ...) key the save file, so they never change. Difficulty comes from a campaign-wide curve
 plus each level's `difficulty_bias`; `enemy_scaling` runs 0 → 1 across the campaign.
 
-The campaign (GDD §5) has six zones, with ids other tasks rely on: `city`, `gangland`, `marketplace`,
-`corporate`, `dead_zone` and `golden`, with 3, 3, 2, 2, 2 and 3 levels in `data/levels/<zone id>_<n>.tres`
-(Golden 3 is the Golden Palace). Every zone has intro and outro cinematic slots (the City also a boss
-intro) and a boss slot from GDD §10's roster. A zone's music track is named after its id; a track the
-music library doesn't have yet is skipped quietly and the menu music carries on. Only the City is in
-the web demo. Placeholders (all DESIGN-TBD): the curve runs 0.1 → 0.9 over the 15 levels, with Golden 2
-the peak and Golden 3 a little below it; level lengths run 110–150 s and add up to 35 minutes.
+The campaign (GDD §5) has six zones, with ids other tasks rely on: `city`, `gangland`,
+`marketplace`, `corporate`, `dead_zone` and `golden`, with 3, 3, 2, 2, 2 and 3 levels in
+`data/levels/<zone id>_<n>.tres` (Golden 3 is the Golden Palace). Every zone has intro and outro
+cinematic slots (the City also a boss intro) and a boss slot from GDD §10's roster. A zone's music
+track is named after its id; a track the music library doesn't have yet is skipped quietly and the
+menu music carries on. Only the City is in the web demo. Placeholders (all DESIGN-TBD): the curve
+runs 0.1 → 0.9 over the 15 levels, with Golden 2 the peak and Golden 3 a little below it; level
+lengths run 110–150 s and add up to 35 minutes.
 
 **The schedule** (GDD §5) is each level's `features` list, in the order the campaign introduces them:
 a feature once introduced stays in every later level, bar the exceptions the design gives (screeches
 come from manholes only in street zones and from wall vents, `screech_vents`, elsewhere, with none in
 Marketplace 1; the Buzz Overdrive appears in Corporate and the Dead Zone only; the Tithe Collector
-skips the Dead Zone). Each level introduces its new features at starts of their own (`feature_starts`,
-The generator: City 1's cyborgs come late in the level). `test_campaign` holds the schedule table and
-its exceptions. Features of enemies and mechanics still to be built (`LevelConfig.PLANNED_FEATURES`,
-with the wall fences' `wall_fences` and `wall_fences_partial`) are listed already and do nothing until
-their code and patterns exist.
+skips the Dead Zone). Each level introduces its new features at starts of their own
+(`feature_starts`, see Late starts under The generator; City 1's cyborgs come late in the level).
+`test_campaign` holds the schedule table and its exceptions. Features of enemies and mechanics still
+to be built (`LevelConfig.PLANNED_FEATURES`, with the wall fences' `wall_fences` and
+`wall_fences_partial`) are listed already and do nothing until their code and patterns exist.
 
 Bosses and cinematics are slots for now (owner decision): a `BossDef` or `CinematicDef` with an
 empty `scene` shows a placeholder card. To build one, make a scene whose root extends
@@ -273,9 +274,9 @@ full RunWorld (`build_world()` + `step_world()`). `SkinSuite` (`tests/helpers/sk
 the checks every zone skin must pass. `LayoutChecks` (`tests/helpers/layout_checks.gd`) holds the
 fairness checks for generated layouts (the generator suite runs them over many seeds, the campaign
 suite over every campaign level at 3, 5 and 6 lanes) and finds a feature's pieces in a layout; a task
-that adds a new kind of piece extends `feature_positions()`. The runner frees anything a suite leaves in the tree, gives
-suites a fresh, unsaved profile, reports a suite that fails to load, and ends a stuck run after
-600 s of real time.
+that adds a new kind of piece extends `feature_positions()`. The runner frees anything a suite leaves
+in the tree, gives suites a fresh, unsaved profile, reports a suite that fails to load, and ends a
+stuck run after 600 s of real time.
 
 ## Review tools
 
