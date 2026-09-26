@@ -14,8 +14,9 @@ extends RefCounted
 ## - Anti-grav pads are guaranteed during the chase: across the whole stretch, never more than
 ##   pad_gap_seconds without a pad. Pads already there count (pattern ceilings, the drone schedule);
 ##   the missing ones are added pad_slack_seconds or less before the gap would run out, where their
-##   ceiling touches no other ceiling (PadPlacement clears the floor under it and picks a lane no
-##   hover truck holds).
+##   ceiling touches no other ceiling (PadPlacement keeps the pad's spot and the landing zone clear,
+##   picks a lane no hover truck holds, and leaves the floor under the ceiling as it is: GDD §3, the
+##   ceiling is the escape from it).
 ## - Drones own every pad from a level's first drone on (drone_rules.gd: GDD §9.6's 10 s before the
 ##   first pad, then one every 8–10 s), so these rules run after the drone rules whatever the order
 ##   of the features (RUN_AFTER) and add no pad from there on: a chase their schedule doesn't cover
@@ -29,8 +30,9 @@ extends RefCounted
 ## - In a level that guarantees its features (LevelConfig.guarantee_features), if no host is left
 ##   (every one placed was dropped, or none was placed), one is added where a host fits all of the
 ##   above: its chase fits and gets its pads, and, like any cyborg, it stands clear of floor obstacles
-##   (CyborgRules), of other enemies and of a hover truck's lane while the truck is about
-##   (HoverTruckRules.open_lanes). DESIGN-TBD: the spot is picked at random among those that fit.
+##   and ceilings' landing zones (CyborgRules), of other enemies and of a hover truck's lane while the
+##   truck is about (HoverTruckRules.open_lanes). DESIGN-TBD: the spot is picked at random among
+##   those that fit.
 ## Like the cyborg rules they start with, these run after the hover truck's (its route ramp). The
 ## Octodog's rules run after these and plan each dog's charges off the chases (octodog_rules.gd;
 ## GDD §9.7: a Bad Dream is never on during an Octodog charge sequence).
@@ -119,7 +121,7 @@ static func _add_guaranteed(gen: LevelGenerator, t: BadDreamTuning, rng: RandomN
 	var speed: float = gen.speed
 	var ct := load(CyborgRules.TUNING_PATH) as CyborgTuning
 	var margin: float = ct.obstacle_margin if ct != null else 10.0
-	var spans: Array[Vector2] = CyborgRules.obstacle_spans(layout, gen.tuning)
+	var spans: Array[Vector2] = CyborgRules.obstacle_spans(layout, gen.tuning, gen.zones)
 	var clearance: float = gen.config.spacing_seconds_hard * speed
 	var spots: Array[float] = []
 	var at: float = maxf(earliest, gen.config.start_clear_distance)

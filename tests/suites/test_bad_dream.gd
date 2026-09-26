@@ -919,6 +919,6 @@ func _check_dogs(layout: LevelLayout, config: LevelConfig, ot: OctodogTuning, ta
 		for a: Variant in at:
 			check(Octodog.window_clear(layout, float(a), float(a) + window), "an Octodog charge stays clear of ceilings " + tag)
 		if not at.is_empty():
-			check(not Octodog.ceiling_between(layout, float(at[0]) - 6.0, float(at[-1]) + stop + 2.0),
-				"its whole run stays off ceiling sections " + tag)
+			check(not Octodog.pad_or_landing_between(layout, float(at[0]) - 6.0, float(at[-1]) + stop + 2.0),
+				"its whole run stays off pads and ceiling landings " + tag)
 	return n

@@ -1,18 +1,22 @@
 extends RefCounted
 ## Generator rules for the Octodog (GDD §9.4) that patterns can't express. LevelGenerator runs
-## apply() after the patterns for every level with the "octodog" feature, and after the drone and
-## host rules (RUN_AFTER): the pads and ceilings those add are all in place by then, so each dog is
-## planned around the level's final ceilings and chases, and no later rule clears it away.
+## apply() after the patterns for every level with the "octodog" feature, and after the drone, host
+## and hover truck rules (RUN_AFTER): the pads and ceilings those add and the lanes the trucks keep
+## free are all in place by then, so each dog is planned around the level's final ceilings, chases
+## and trucks, and no later rule clears it away.
 ##
 ## - Bait: a dog placed with the param "bait" is moved to stand `bait_distance` past the hole in its
 ##   lane just before it, so a head-on lunge falls in (GDD §9.4: the generator sometimes places
 ##   Octodogs near gaps; baiting one in is a skill bonus).
 ## - Charges: each dog gets its number of charges (2–3 early, up to 4 at the maximum, from
 ##   data/enemies/octodog.tres and the level's enemy_scaling) and the player distances where each
-##   wind-up may start ("charge_at"). Each is at a stretch with no fence, anti-grav pad, other enemy,
-##   or holes in more than one lane, so a charge never stacks with an unavoidable obstacle; and the
-##   dog never runs under a ceiling section (GDD §3). Charges that don't fit are left out (it gives
-##   up sooner). The whole run is stored as "floor_span", so ceilings added later keep off it.
+##   wind-up may start ("charge_at"). Each is at a stretch with no fence, other enemy, or holes in
+##   more than one lane, so a charge never stacks with an unavoidable obstacle; and neither a charge
+##   nor the dog's run between charges comes near an anti-grav pad or where the player lands after a
+##   ceiling (Octodog.pad_or_landing_between). Under a ceiling it may run and charge (GDD §3: the
+##   floor there may be dangerous, and the ceiling is the escape: it never winds up at a player
+##   riding it). Charges that don't fit are left out (it gives up sooner). The stretch its charges
+##   use is stored as "floor_span", so ceilings added later keep their pads and landing off it.
 ## - Chases: a dog's run keeps off every stretch a Bad Dream's chase can cover (HostRules; GDD §9.7:
 ##   the Bad Dream is never on during an Octodog charge sequence, and the director would hold the
 ##   dog back), so a charge that would reach one is left out like one that doesn't fit.
@@ -24,7 +28,7 @@ extends RefCounted
 ##   has floor under it and that no hover truck keeps free (HoverTruckRules.open_lanes).
 ##   DESIGN-TBD: the spot is picked at random among those that fit.
 
-const RUN_AFTER: Array[String] = ["drone", "host"]
+const RUN_AFTER: Array[String] = ["drone", "host", "hover_truck"]
 const HostRules = preload("res://scripts/enemies/host_rules.gd")
 const HoverTruckRules = preload("res://scripts/enemies/hover_truck_rules.gd")
 const TYPE: String = "octodog"
@@ -81,14 +85,14 @@ static func dogs_in(layout: LevelLayout) -> Array[Dictionary]:
 
 
 ## True if a dog standing at `at` can make its first charge fairly, whatever its lane: the wind-up
-## starts (the player `stop` metres before it) after the level's start, with no ceiling from there to
-## the dog, a clear stretch for the charge, and its run so far off every chase.
+## starts (the player `stop` metres before it) after the level's start, with no pad or ceiling
+## landing from there to the dog, a clear stretch for the charge, and its run so far off every chase.
 static func _first_charge_fits(gen: LevelGenerator, t: OctodogTuning, at: float, chases: Array[Vector2]) -> bool:
 	var scaling: float = gen.config.enemy_scaling
 	var stop: float = t.stop_distance(gen.speed, scaling)
 	var window: float = t.window_length(gen.speed, scaling)
 	var a0: float = at - stop
-	return a0 > 0.0 and not Octodog.ceiling_between(gen.layout, a0 - 6.0, at + 2.0) \
+	return a0 > 0.0 and not Octodog.pad_or_landing_between(gen.layout, a0 - 6.0, at + 2.0) \
 		and _window_ok(gen.layout, a0, window) \
 		and _off_chases(chases, _run_start(gen, a0), a0 + window + stop)
 
@@ -101,8 +105,9 @@ static func _roll_charges(gen: LevelGenerator, t: OctodogTuning, rng: RandomNumb
 
 ## The player distances where a dog's wind-ups start, from its first at `a0` (which must fit already,
 ## _first_charge_fits): each next one a cycle after the last, or up to charge_slack later where its
-## stretch is clear, with no ceiling in between, before the end-clear stretch and off every chase.
-## Stops at `wanted`, or where the next one doesn't fit.
+## stretch is clear, with no pad or ceiling landing in between (the player could leave the floor or
+## drop back onto it there), before the end-clear stretch and off every chase. Stops at `wanted`, or
+## where the next one doesn't fit.
 static func _plan_charges(gen: LevelGenerator, t: OctodogTuning, a0: float, wanted: int,
 		chases: Array[Vector2]) -> Array[float]:
 	var layout: LevelLayout = gen.layout
@@ -118,7 +123,7 @@ static func _plan_charges(gen: LevelGenerator, t: OctodogTuning, a0: float, want
 		var found: float = -1.0
 		var a: float = prev + cycle
 		while a <= prev + cycle + t.charge_slack:
-			if a + window > last_ok or Octodog.ceiling_between(layout, prev, a + stop + 2.0) \
+			if a + window > last_ok or Octodog.pad_or_landing_between(layout, prev, a + stop + 2.0) \
 					or not _off_chases(chases, run_start, a + window + stop):
 				break
 			if _window_ok(layout, a, window):
@@ -132,24 +137,35 @@ static func _plan_charges(gen: LevelGenerator, t: OctodogTuning, a0: float, want
 	return anchors
 
 
-## Stores a dog's plan in its params (charges, charge_at, floor_span) and returns where its run ends.
+## Stores a dog's plan in its params (charges, charge_at, floor_span) and returns where it's busy
+## until: the next dog's first charge comes after that.
 static func _commit(gen: LevelGenerator, t: OctodogTuning, dog: Dictionary, anchors: Array[float]) -> float:
 	var scaling: float = gen.config.enemy_scaling
-	var busy_until: float = anchors[-1] + t.window_length(gen.speed, scaling) + t.stop_distance(gen.speed, scaling)
+	var window: float = t.window_length(gen.speed, scaling)
+	var busy_until: float = anchors[-1] + window + t.stop_distance(gen.speed, scaling)
 	var params: Dictionary = dog.get("params", {})
 	params["charges"] = anchors.size()
 	params["charge_at"] = anchors
-	params["floor_span"] = Vector2(_run_start(gen, anchors[0]), busy_until)
+	params["floor_span"] = Vector2(_run_start(gen, anchors[0]), _run_end(anchors[-1], window))
 	dog["params"] = params
 	return busy_until
 
 
-## Where a dog's run starts, for a first wind-up at `a0`: the floor its charges use begins a
-## ceiling's lead and landing before it. add_hull_with_pad already keeps its lead-in (6 m) and
-## landing stretch clear, so only the rest of the dog's landing margin is added.
+## Where the floor a dog's charges use starts, for a first wind-up at `a0`: as early as the pads and
+## ceiling landings its own rules let near it allow (a pad no closer than CEILING_LEAD to the stretch
+## from a0 - CEILING_LEAD, a ceiling's end no closer than CEILING_LANDING), so every pad's spot and
+## landing zone in the level stays off it (CeilingZones), and a ceiling a later rule adds
+## (add_hull_with_pad keeps both off every floor enemy's stretch) never lands a player in a charge.
 static func _run_start(gen: LevelGenerator, a0: float) -> float:
-	var landing: float = gen.config.hull_landing_seconds * gen.speed
-	return a0 - Octodog.CEILING_LEAD - maxf(0.0, Octodog.CEILING_LANDING - landing)
+	var zones: CeilingZones = gen.zones
+	return a0 - Octodog.CEILING_LEAD - minf(Octodog.CEILING_LEAD - zones.pad_length,
+		Octodog.CEILING_LANDING - zones.landing) + 0.001
+
+
+## Where the floor a dog's charges use ends, for a last wind-up at `last`: the end of the player's
+## stretch through that charge, after which it gives up behind them.
+static func _run_end(last: float, window: float) -> float:
+	return last + window - 0.001
 
 
 ## True if the stretch [from, to] touches none of the chase stretches.

@@ -14,6 +14,14 @@ extends RefCounted
 ## 3. Credits (GDD §7): trails in the clear stretches, rich credits in risky spots.
 ## Fairness rules (longest gap, hull lead-in and landing) come from LevelConfig, so they are data.
 ##
+## Ceilings (GDD §3, changed September 26, 2026): the floor under a ceiling may be dangerous, since the
+## ceiling is the way to escape it: a pattern may put gaps, fences and enemies under its own ceiling
+## (a gauntlet), and a ceiling a rule adds (add_hull_with_pad, PadPlacement) lies over whatever the
+## floor holds there. Two stretches stay safe around every ceiling (CeilingZones, `zones`): its
+## landing zone, and the spot of each of its pads. The ceiling is never required: the floor under it
+## holds only what patterns put there, with their usual fairness and spacing, and the pad can always
+## be passed by.
+##
 ## Every feature appears (LevelConfig.guarantee_features; GDD §5: anything introduced earlier keeps
 ## appearing later): after the passes, the generator checks that each feature a pattern can place
 ## in the level is in the finished layout (feature_positions). Rules may have dropped what didn't
@@ -51,10 +59,11 @@ var warnings: PackedStringArray = []
 ## How many builds the last generate() made: 1, unless guarantee_features had to force a missing
 ## feature somewhere.
 var attempts: int = 0
+## The floor every ceiling keeps safe (GDD §3): its landing zone and its pads' spots, for this level's
+## pacing and run speed. Rules that add ceilings or floor enemies keep to it.
+var zones: CeilingZones
 
 var _rng := RandomNumberGenerator.new()
-## Track ranges covered by ceiling sections. GDD §3: the floor beneath a ceiling stays clear.
-var _hull_spans: Array[Vector2] = []
 ## Clear stretches between patterns [start, end], filled with credit trails later.
 var _clear_stretches: Array[Vector2] = []
 var _enemy_count: int = 0
@@ -94,6 +103,7 @@ func generate(p_config: LevelConfig, p_tuning: MovementTuning, patterns: Array) 
 	tuning = p_tuning
 	speed = tuning.run_speed
 	jump_distance = tuning.jump_distance(speed)
+	zones = CeilingZones.make(config, tuning, speed)
 	attempts = 1
 	if not config.guarantee_features:
 		return _build(patterns, {})
@@ -128,7 +138,6 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	_rng.seed = config.level_seed
 	layout = LevelLayout.new()
 	layout.lane_count = config.lane_count
-	_hull_spans.clear()
 	_clear_stretches.clear()
 	_enemy_count = 0
 	warnings.clear()
@@ -151,6 +160,8 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 		if cursor + used > layout.length - config.end_clear_distance:
 			_rollback(pattern_start_counts)
 			break
+		if layout.hulls.size() > int(pattern_start_counts["hulls"]):
+			_secure_ceilings(pattern, pattern_start_counts)
 		_settle_due(pattern, cursor)
 		var spacing_seconds: float = lerpf(config.spacing_seconds_easy, config.spacing_seconds_hard, difficulty)
 		var clear_end: float = cursor + used + spacing_seconds * speed
@@ -212,26 +223,27 @@ func add_enemy(type: String, at: float, lane: int, side: int = 0, params: Dictio
 	return entry
 
 
-## Adds a ceiling section with an anti-grav pad at `at` (hull lead-in before it), lasting
-## `length_seconds` at run speed. Returns false (adding nothing) if the floor there isn't clear
-## (floor_clear, which includes floor enemies' stretches), it would touch another ceiling, or the
-## level's ceilings haven't started by `at` (a late `ceilings` feature, feature_started).
+## Adds a ceiling section with an anti-grav pad at `at` in `lane` (hull lead-in before it), lasting
+## `length_seconds` at run speed, over whatever the floor holds there (GDD §3: the floor under a
+## ceiling may be dangerous). Returns false (adding nothing) if the pad can't be stepped on or its
+## landing zone isn't safe to land on (CeilingZones: pad_clear, landing_clear, which include floor
+## enemies' stretches), it would touch another ceiling, its landing doesn't end before the level's
+## end-clear stretch, or the level's ceilings haven't started by `at` (a late `ceilings` feature,
+## feature_started). PadPlacement clears the way first.
 func add_hull_with_pad(lane: int, at: float, length_seconds: float) -> bool:
 	if not feature_started("ceilings", at):
 		return false
-	var hull_start: float = at - config.hull_lead_in
-	var hull_end: float = at + length_seconds * speed
-	var landing_end: float = hull_end + config.hull_landing_seconds * speed
-	if landing_end > layout.length - config.end_clear_distance:
+	var hull := {"start": at - config.hull_lead_in, "end": at + length_seconds * speed}
+	var landing: Vector2 = zones.landing_zone(hull)
+	if landing.y > layout.length - config.end_clear_distance:
 		return false
-	if not floor_clear(hull_start - 6.0, landing_end):
+	if not zones.pad_clear(layout, lane, at) or not zones.landing_clear(layout, landing):
 		return false
 	for h: Dictionary in layout.hulls:
-		if hull_start <= h["end"] + 1.0 and hull_end >= h["start"] - 1.0:
+		if float(hull["start"]) <= float(h["end"]) + 1.0 and float(hull["end"]) >= float(h["start"]) - 1.0:
 			return false
 	layout.pads.append({"lane": lane, "at": at})
-	layout.hulls.append({"start": hull_start, "end": hull_end})
-	_hull_spans.append(Vector2(hull_start, hull_end))
+	layout.hulls.append(hull)
 	return true
 
 
@@ -251,9 +263,10 @@ func floor_clear(from: float, to: float) -> bool:
 	return true
 
 
-## The stretch of floor [start, end] an enemy entry uses, which ceilings keep off: its
-## params.floor_span if its rules planned one, else its tuning's reach around its position.
-## Vector2(INF, -INF) (overlapping nothing) for types whose tuning says they don't use the floor.
+## The stretch of floor [start, end] an enemy entry uses, which a ceiling's landing zone and the
+## spots of its pads keep off (CeilingZones): its params.floor_span if its rules planned one, else
+## its tuning's reach around its position. Vector2(INF, -INF) (overlapping nothing) for types whose
+## tuning says they don't use the floor.
 static func enemy_floor_span(entry: Dictionary) -> Vector2:
 	var params: Dictionary = entry.get("params", {})
 	if params.get("floor_span") is Vector2:
@@ -269,6 +282,7 @@ static func enemy_floor_span(entry: Dictionary) -> Vector2:
 
 ## False for enemy types whose tuning says they never come down to the floor lanes (fliers such as
 ## drones and hover trucks, wall-only enemies such as window cyborgs). Unknown types use the floor.
+## A hover truck keeps its lane free of the others (HoverTruckRules).
 static func enemy_uses_floor(entry: Dictionary) -> bool:
 	var t := EnemyDirector.tuning_for(String(entry.get("type", ""))) as EnemyTuning
 	return t == null or t.uses_floor
@@ -449,7 +463,10 @@ static func feature_positions(p_layout: LevelLayout, feature: String) -> Array[f
 	return out
 
 
-## Places every element of a pattern starting at `origin`. Returns the track length it used.
+## Places every element of a pattern starting at `origin`. Returns the track length it used (a
+## ceiling's includes its landing zone, so the next pattern starts past it). GDD §3: floor pieces
+## and floor enemies may lie under a ceiling (the pattern's own: a gauntlet the ceiling escapes);
+## _secure_ceilings keeps its landing zone and pads' spots safe afterwards.
 func _place_pattern(pattern: Dictionary, origin: float) -> float:
 	var used: float = float(pattern.get("length", 8.0))
 	var prev_lanes: Array[int] = []
@@ -462,16 +479,12 @@ func _place_pattern(pattern: Dictionary, origin: float) -> float:
 				var lanes: Array[int] = _pick_lanes(element.get("lanes", {}), prev_lanes)
 				var frac: float = minf(float(element.get("jump_frac", 0.5)), config.max_gap_jump_fraction)
 				var gap_len: float = frac * jump_distance
-				if _under_hull(at, at + gap_len, pattern):
-					continue
 				for lane: int in lanes:
 					layout.gaps.append({"lane": lane, "start": at, "end": at + gap_len})
 				used = maxf(used, at - origin + gap_len)
 				prev_lanes = lanes
 			"fence":
 				var lanes: Array[int] = _pick_lanes(element.get("lanes", {}), prev_lanes)
-				if _under_hull(at, at, pattern):
-					continue
 				var pulsing: bool = _rng.randf() < float(element.get("pulse_chance", 0.0))
 				for lane: int in lanes:
 					layout.fences.append({
@@ -510,33 +523,22 @@ func _place_pattern(pattern: Dictionary, origin: float) -> float:
 				for lane: int in lanes:
 					layout.pads.append({"lane": lane, "at": at})
 				layout.hulls.append({"start": at - config.hull_lead_in, "end": at + hull_len})
-				_hull_spans.append(Vector2(at - config.hull_lead_in, at + hull_len))
-				used = maxf(used, at - origin + hull_len + config.hull_landing_seconds * speed)
+				used = maxf(used, at - origin + hull_len + zones.landing)
 				prev_lanes = lanes
 			"speed_pad":
 				var lanes: Array[int] = _pick_lanes(element.get("lanes", {"mode": "random", "count": 1}), prev_lanes)
-				if _under_hull(at, at + tuning.speed_pad_length, pattern):
-					continue
 				for lane: int in lanes:
 					layout.speed_pads.append({"lane": lane, "at": at})
 				prev_lanes = lanes
 			"enemy":
 				var type: String = String(element.get("type", ""))
 				var params: Dictionary = element.get("params", {})
-				# GDD §3: enemies that come down to the floor lanes (wall vents too) stay out from
-				# under a ceiling; fliers and wall-only enemies may be there.
-				var keep_off_hulls: bool = not bool(element.get("allow_under_hull", false)) \
-					and enemy_uses_floor({"type": type})
 				if element.has("side"):
 					var side: int = _pick_side(String(element.get("side", "random")), prev_side)
-					if keep_off_hulls and _under_hull(at, at, pattern):
-						continue
 					add_enemy(type, at, layout.outer_lane(side), side, params.duplicate(true))
 					prev_side = side
 				else:
 					var lanes: Array[int] = _pick_lanes(element.get("lanes", {"mode": "random", "count": 1}), prev_lanes)
-					if keep_off_hulls and _under_hull(at, at, pattern):
-						continue
 					for lane: int in lanes:
 						add_enemy(type, at, lane, 0, params.duplicate(true))
 					prev_lanes = lanes
@@ -547,15 +549,35 @@ func _place_pattern(pattern: Dictionary, origin: float) -> float:
 	return used
 
 
-## True (noting a warning about the pattern data) if a floor piece would sit under a ceiling.
-func _under_hull(start: float, end: float, pattern: Dictionary) -> bool:
-	for span: Vector2 in _hull_spans:
-		if start <= span.y and end >= span.x:
-			var line: String = "pattern '%s' puts a floor piece under a ceiling; skipped" % pattern.get("id", "?")
+## GDD §3: the ceilings a pattern just placed (the pieces after `counts`) keep their landing zone
+## and their pads' spots safe (CeilingZones). A piece of the pattern's own there is a mistake in the
+## pattern data: it's dropped, with a warning. Anything an earlier pattern left there (possible only
+## with pacing tighter than a pad's run-up) is taken out quietly, which never makes a level unfair.
+func _secure_ceilings(pattern: Dictionary, counts: Dictionary) -> void:
+	var own: Array[Dictionary] = []
+	var lists: Dictionary = layout.to_dict()
+	for key: String in ["gaps", "fences", "ramps", "enemies"]:
+		own.append_array((lists[key] as Array).slice(int(counts[key])))
+	for i: int in range(int(counts["hulls"]), layout.hulls.size()):
+		zones.clear_landing(layout, zones.landing_zone(layout.hulls[i]))
+	for i: int in range(int(counts["pads"]), layout.pads.size()):
+		zones.clear_pad(layout, int(layout.pads[i]["lane"]), float(layout.pads[i]["at"]))
+	lists = layout.to_dict()
+	for item: Dictionary in own:
+		var kept: bool = false
+		for key: String in ["gaps", "fences", "ramps", "enemies"]:
+			for other: Dictionary in lists[key]:
+				if is_same(other, item):
+					kept = true
+					break
+			if kept:
+				break
+		if not kept:
+			var line: String = "pattern '%s' puts a floor piece in a ceiling's landing zone or at its pad (GDD §3); skipped" \
+				% pattern.get("id", "?")
 			if not warnings.has(line):
 				warnings.append(line)
-			return true
-	return false
+			return
 
 
 ## Size of every piece list, so a pattern that doesn't fit can be taken back out.
@@ -563,7 +585,7 @@ func _counts() -> Dictionary:
 	return {"gaps": layout.gaps.size(), "fences": layout.fences.size(), "signs": layout.signs.size(),
 		"hulls": layout.hulls.size(), "pads": layout.pads.size(), "ramps": layout.ramps.size(),
 		"speed_pads": layout.speed_pads.size(), "enemies": layout.enemies.size(),
-		"credits": layout.credits.size(), "hull_spans": _hull_spans.size()}
+		"credits": layout.credits.size()}
 
 
 func _rollback(counts: Dictionary) -> void:
@@ -576,7 +598,6 @@ func _rollback(counts: Dictionary) -> void:
 	layout.speed_pads.resize(counts["speed_pads"])
 	layout.enemies.resize(counts["enemies"])
 	layout.credits.resize(counts["credits"])
-	_hull_spans.resize(counts["hull_spans"])
 
 
 ## Lane selector modes: all, all_but (count|frac), random (count|frac), edge, center, same, others.

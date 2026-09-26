@@ -29,19 +29,7 @@ func run() -> void:
 				LayoutChecks.check_layout(self, a, config, tag)
 				levels += 1
 
-	# A pattern that tries to put floor pieces under its own ceiling gets them dropped (GDD §3).
-	var bad_pattern := [{"id": "bad_hull", "length": 10, "elements": [
-		{"kind": "hull", "at": 0, "lanes": {"mode": "center"}, "length_seconds": 3.0},
-		{"kind": "fence", "at": 20, "variant": "full", "lanes": {"mode": "all"}},
-		{"kind": "gap", "at": 30, "lanes": {"mode": "all"}, "jump_frac": 0.4}]}]
-	var config: LevelConfig = base.duplicate() as LevelConfig
-	config.duration_seconds = 30.0
-	var bad_generator := LevelGenerator.new()
-	var bad: LevelLayout = bad_generator.generate(config, tuning, bad_pattern)
-	check(bad.hulls.size() > 0 and bad.fences.is_empty() and bad.gaps.is_empty(),
-		"generator drops floor pieces a pattern places under a ceiling")
-	check(bad_generator.warnings.size() == 1, "and reports the bad pattern once (%d)" % bad_generator.warnings.size())
-
+	_test_pattern_ceilings(base)
 	_test_rule_ceilings_keep_off_floor_enemies(base)
 	_test_feature_starts(base)
 	_test_rules_keep_to_starts(base)
@@ -52,18 +40,69 @@ func run() -> void:
 	_test_rules_guarantees(base)
 
 
-## Ceilings that enemy rules add later (drone pads, add_hull_with_pad) keep off the floor enemies
-## use (GDD §3: the floor beneath a ceiling stays clear): a tuning's reach around the enemy, a run
-## its rules planned (params.floor_span), and nothing for enemies that don't use the floor.
+## GDD §3 (changed September 26, 2026): a pattern may put gaps, fences and floor enemies under its
+## own ceiling, a gauntlet the ceiling lets the player escape; they're kept, with no warning, and the
+## floor route under it is checked like every ceiling's (LayoutChecks). What a pattern puts in its
+## ceiling's landing zone, or in its pad's lane around the pad, is dropped with a warning.
+func _test_pattern_ceilings(base: LevelConfig) -> void:
+	var gauntlet := [{"id": "test_gauntlet", "length": 10, "elements": [
+		{"kind": "hull", "at": 0, "lanes": {"mode": "edge"}, "length_seconds": 4.0},
+		{"kind": "fence", "at_seconds": 1.2, "variant": "full", "lanes": {"mode": "all_but", "count": 1}},
+		{"kind": "gap", "at_seconds": 2.4, "lanes": {"mode": "all_but", "count": 1}, "jump_frac": 0.4}]}]
+	var bad := [{"id": "bad_hull", "length": 10, "elements": [
+		{"kind": "hull", "at": 0, "lanes": {"mode": "center"}, "length_seconds": 3.0},
+		{"kind": "gap", "at": 3, "lanes": {"mode": "all"}, "jump_frac": 0.4},
+		{"kind": "fence", "at_seconds": 3.3, "variant": "full", "lanes": {"mode": "all"}}]}]
+	for lanes: int in [3, 5, 6]:
+		var config: LevelConfig = base.duplicate() as LevelConfig
+		config.duration_seconds = 40.0
+		config.lane_count = lanes
+		var tag: String = "lanes=%d" % lanes
+		var zones := CeilingZones.make(config, tuning)
+		var gen := LevelGenerator.new()
+		var layout: LevelLayout = gen.generate(config, tuning, gauntlet)
+		check(gen.warnings.is_empty(), "a gauntlet under its own ceiling is fine pattern data %s %s" % [tag, gen.warnings])
+		var under: int = 0
+		for h: Dictionary in layout.hulls:
+			for f: Dictionary in layout.fences:
+				under += 1 if float(f["at"]) > float(h["start"]) and float(f["at"]) < float(h["end"]) else 0
+			for g: Dictionary in layout.gaps:
+				under += 1 if float(g["start"]) > float(h["start"]) and float(g["end"]) < float(h["end"]) else 0
+		check(layout.hulls.size() >= 3 and under == layout.hulls.size() * 2 * (lanes - 1),
+			"its fences and gaps stay under the ceiling (%d pieces under %d ceilings) %s" % [under, layout.hulls.size(), tag])
+		LayoutChecks.check_layout(self, layout, config, tag)
+
+		var bad_generator := LevelGenerator.new()
+		var dropped: LevelLayout = bad_generator.generate(config, tuning, bad)
+		check(bad_generator.warnings.size() == 1 and bad_generator.warnings[0].contains("bad_hull"),
+			"a pattern's pieces in its landing zone or at its pad are reported once %s %s" % [tag, bad_generator.warnings])
+		check(dropped.fences.is_empty(), "and its fences in the landing zone are dropped %s" % tag)
+		var pad_lane_gaps: int = 0
+		for g: Dictionary in dropped.gaps:
+			pad_lane_gaps += 1 if int(g["lane"]) == lanes / 2 else 0
+		check(pad_lane_gaps == 0 and dropped.gaps.size() == dropped.hulls.size() * (lanes - 1),
+			"and its gap in the pad's lane, while the gaps in the other lanes stay under the ceiling %s" % tag)
+		LayoutChecks.check_layout(self, dropped, config, tag)
+		check(zones.landing > 0.0 and zones.run_up > 0.0 and zones.rise > 0.0, "the zones have a size " + tag)
+
+
+## Ceilings that enemy rules add later (drone pads, add_hull_with_pad) lie over whatever the floor
+## holds, floor enemies included (GDD §3: the floor under a ceiling may be dangerous), but keep their
+## pad's spot and their landing zone off the floor enemies use (CeilingZones): a tuning's reach around
+## the enemy, a run its rules planned (params.floor_span), and nothing for enemies that don't use the
+## floor.
 func _test_rule_ceilings_keep_off_floor_enemies(base: LevelConfig) -> void:
 	var config: LevelConfig = base.duplicate() as LevelConfig
 	config.duration_seconds = 60.0
 	config.features = PackedStringArray()
 	var speed: float = tuning.run_speed
+	var zones := CeilingZones.make(config, tuning)
 	var at: float = 400.0
+	var cyborg := EnemyDirector.tuning_for("cyborg") as EnemyTuning
+	var screech := EnemyDirector.tuning_for("screech") as EnemyTuning
 	var cases: Array = [
-		["cyborg", {}, Vector2(at - 10.0, at + 10.0)],
-		["screech", {"source": "vent"}, Vector2(at - 10.0, at + 10.0)],
+		["cyborg", {}, Vector2(at - cyborg.floor_reach_before, at + cyborg.floor_reach_after)],
+		["screech", {"source": "vent"}, Vector2(at - screech.floor_reach_before, at + screech.floor_reach_after)],
 		["cyborg", {"floor_span": Vector2(at - 150.0, at + 60.0)}, Vector2(at - 150.0, at + 60.0)],
 		["window_cyborg", {}, Vector2(INF, -INF)],
 	]
@@ -73,19 +112,28 @@ func _test_rule_ceilings_keep_off_floor_enemies(base: LevelConfig) -> void:
 		check(LevelGenerator.enemy_floor_span({"type": c[0], "at": at, "params": c[1]}) == span,
 			"floor span of " + tag)
 		var mismatches: int = 0
+		var over: int = 0
+		var seconds: float = 3.0
 		for pad_at: float in range(int(at) - 240, int(at) + 160, 1):
 			# Nothing but the enemy under test: a level generated from no patterns is empty.
 			var gen := LevelGenerator.new()
 			gen.generate(config, tuning, [])
 			gen.add_enemy(String(c[0]), at, 1, 0, (c[1] as Dictionary).duplicate())
-			var added: bool = gen.add_hull_with_pad(0, pad_at, 2.0)
-			var from: float = pad_at - config.hull_lead_in - 6.0
-			var to: float = pad_at + (2.0 + config.hull_landing_seconds) * speed
-			if added == (span.x <= to and span.y >= from):
+			var added: bool = gen.add_hull_with_pad(0, pad_at, seconds)
+			var spot: Vector2 = zones.pad_spot(pad_at)
+			var landing: Vector2 = zones.landing_zone({"end": pad_at + seconds * speed})
+			var touches: bool = (span.x <= spot.y and span.y >= spot.x) or (span.x <= landing.y and span.y >= landing.x)
+			if added == touches:
 				mismatches += 1
-		check(mismatches == 0, "a rule's ceiling keeps off exactly the floor of %s (%d wrong)" % [tag, mismatches])
+			if added and at > pad_at - config.hull_lead_in and at < pad_at + seconds * speed:
+				over += 1
+		check(mismatches == 0, "a rule's ceiling keeps its pad and landing off exactly the floor of %s (%d wrong)" % [tag, mismatches])
+		# A ceiling may lie over an enemy whose stretch fits between its pad and its end.
+		if span.y - span.x < seconds * speed - tuning.pad_length - 1.0:
+			check(over > 0, "and may lie over it (%d ceilings over %s)" % [over, tag])
 
-	# Octodogs: however many ceilings later rules squeeze in, none reaches a planned charge run.
+	# Octodogs: however many ceilings later rules squeeze in, their pads and landings keep off every
+	# dog's planned run, and no planned charge meets a player dropping off a ceiling.
 	var squeezed: int = 0
 	var refused_by_dogs: int = 0
 	for lanes: int in [3, 5, 6]:
@@ -98,6 +146,8 @@ func _test_rule_ceilings_keep_off_floor_enemies(base: LevelConfig) -> void:
 			var tag: String = "lanes=%d seed=%d" % [lanes, level_seed]
 			var gen := LevelGenerator.new()
 			var layout: LevelLayout = gen.generate(dog_config, tuning, LevelGenerator.load_for(dog_config))
+			var ot := EnemyDirector.tuning_for("octodog") as OctodogTuning
+			var window: float = ot.window_length(speed, dog_config.enemy_scaling)
 			var dogs: Array[Dictionary] = []
 			for e: Dictionary in layout.enemies:
 				if String(e["type"]) == "octodog":
@@ -108,39 +158,51 @@ func _test_rule_ceilings_keep_off_floor_enemies(base: LevelConfig) -> void:
 						and fs.y > float(anchors[-1]) and fs.y > float(e["at"]), "dog's floor span covers its run " + tag)
 			var first_new: int = layout.hulls.size()
 			for pad_at: float in range(60, int(layout.length), 9):
-				var clear_without_dogs: bool = _floor_clear_ignoring_enemies(layout, pad_at, dog_config, speed)
+				var clear_without_dogs: bool = _pad_and_landing_clear_ignoring_enemies(layout, pad_at, dog_config, zones)
 				if gen.add_hull_with_pad(0, pad_at, 1.5):
 					squeezed += 1
 				elif clear_without_dogs:
 					refused_by_dogs += 1
 			for i: int in range(first_new, layout.hulls.size()):
 				var h: Dictionary = layout.hulls[i]
+				var landing: Vector2 = zones.landing_zone(h)
+				var pad: Vector2 = zones.pad_spot(float(h["start"]) + dog_config.hull_lead_in)
 				for dog: Dictionary in dogs:
-					var a0: float = float(dog["params"]["charge_at"][0])
-					var run_end: float = (dog["params"]["floor_span"] as Vector2).y
-					check(not (float(h["start"]) - Octodog.CEILING_LEAD <= run_end
-						and float(h["end"]) + Octodog.CEILING_LANDING >= a0 - Octodog.CEILING_LEAD),
-						"a later ceiling (%.0f–%.0f) keeps off a dog's run (%.0f–%.0f) %s" % [h["start"], h["end"], a0, run_end, tag])
+					var run: Vector2 = dog["params"]["floor_span"]
+					check((run.y < landing.x or run.x > landing.y) and (run.y < pad.x or run.x > pad.y),
+						"a later ceiling (%.0f–%.0f) keeps its pad and landing off a dog's run (%.0f–%.0f) %s"
+						% [h["start"], h["end"], run.x, run.y, tag])
+					for a: Variant in dog["params"]["charge_at"]:
+						check(float(h["end"]) + Octodog.CEILING_LANDING < float(a) or float(h["end"]) > float(a) + window - 0.01,
+							"no planned charge meets a player dropping off a later ceiling %s" % tag)
 	check(squeezed > 50, "later ceilings still fit around the dogs (%d)" % squeezed)
 	check(refused_by_dogs > 10, "and some are refused because of them (%d)" % refused_by_dogs)
 
 
-## add_hull_with_pad's test for a pad at `pad_at` (1.5 s ceiling) counting only gaps, fences and
-## other ceilings.
-func _floor_clear_ignoring_enemies(layout: LevelLayout, pad_at: float, config: LevelConfig, speed: float) -> bool:
+## add_hull_with_pad's test for a pad at `pad_at` in lane 0 (1.5 s ceiling) counting only the floor
+## pieces in its pad's lane and on its landing zone, and other ceilings.
+func _pad_and_landing_clear_ignoring_enemies(layout: LevelLayout, pad_at: float, config: LevelConfig,
+		zones: CeilingZones) -> bool:
 	var start: float = pad_at - config.hull_lead_in
-	var end: float = pad_at + 1.5 * speed
-	var landing_end: float = end + config.hull_landing_seconds * speed
-	if landing_end > layout.length - config.end_clear_distance:
+	var end: float = pad_at + 1.5 * tuning.run_speed
+	var landing: Vector2 = zones.landing_zone({"end": end})
+	if landing.y > layout.length - config.end_clear_distance:
 		return false
+	var zone: Vector2 = zones.pad_zone(pad_at)
 	for g: Dictionary in layout.gaps:
-		if g["start"] <= landing_end and g["end"] >= start - 6.0:
+		if (float(g["start"]) <= landing.y and float(g["end"]) >= landing.x) \
+				or (int(g["lane"]) == 0 and float(g["start"]) <= zone.y and float(g["end"]) >= zone.x):
 			return false
 	for f: Dictionary in layout.fences:
-		if f["at"] >= start - 6.0 and f["at"] <= landing_end:
+		if (float(f["at"]) >= landing.x - 0.2 and float(f["at"]) <= landing.y + 0.2) \
+				or (int(f["lane"]) == 0 and float(f["at"]) >= zone.x - 0.2 and float(f["at"]) <= zone.y + 0.2):
+			return false
+	for r: Dictionary in layout.ramps:
+		if layout.outer_lane(int(r["side"])) == 0 and float(r["at"]) <= pad_at + tuning.pad_length \
+				and float(r["at"]) + tuning.ramp_length >= zone.x:
 			return false
 	for h: Dictionary in layout.hulls:
-		if start <= h["end"] + 1.0 and end >= h["start"] - 1.0:
+		if start <= float(h["end"]) + 1.0 and end >= float(h["start"]) - 1.0:
 			return false
 	return true
 
