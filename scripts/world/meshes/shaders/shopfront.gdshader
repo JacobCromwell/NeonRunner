@@ -8,9 +8,10 @@
 //               the wall-run band (below calm_top) stay shuttered, so the band stays calm.
 //   1 CASINO    panels of dark glass framed by rows of bulbs, only above decor_top; plain below.
 //   2 HALL      a market hall: rusticated stone, tall arched windows above the wall-run band.
-//   3 LOWER     from the market floor (street_y) up to the shop windows' sills: arcades far below the
-//               stall roofs, plain plaster, then a tiled plinth. No vents: in the Marketplace, vents at
-//               the foot of a wall are sewer-screech lairs (GDD §5, §9.5), drawn by the Screech.
+//   3 LOWER     the plinth, from the stall roofs up to the shop windows' sills (below the roofs the
+//               walls are in the stalls' deep shade, drawn with the kit's PAT_UNDER). No vents: in the
+//               Marketplace, vents at the foot of a wall are sewer-screech lairs (GDD §5, §9.5), drawn
+//               by the Screech.
 //   4 PIER      plain stucco between the shop windows (UV.x from the pier's start, its width / 8 m
 //               in COLOR.a): the windows' trim jambs along both edges.
 //   5 INTERIOR  a shop window's display: shelves of goods under a warm lamp (UV.x from the window's
@@ -42,7 +43,6 @@ uniform float sun_line = 11.0;
 uniform vec3 plinth_color : source_color = vec3(0.27, 0.4, 0.6);
 uniform vec3 plinth_light : source_color = vec3(0.84, 0.82, 0.76);
 uniform float plinth_top = 0.85;
-uniform float street_y = -6.5;
 uniform float storey_base = 3.0;
 uniform float storey = 3.2;
 // Below this height windows stay shuttered (the wall-run band); decorative lights start at decor_top.
@@ -62,7 +62,7 @@ vec3 shutter_color(float r) {
 	return r < 0.25 ? shutter_a : (r < 0.5 ? shutter_b : (r < 0.75 ? shutter_c : shutter_d));
 }
 
-// Goods on the shelves: the same splashes of colour as the stalls' (kit_market.gdshaderinc).
+// Goods on the shelves: splashes of colour, lit, never glowing.
 vec3 goods_color(float r) {
 	if (r < 0.16) return vec3(0.66, 0.2, 0.14);
 	if (r < 0.3) return vec3(0.8, 0.46, 0.14);
@@ -203,22 +203,7 @@ void fragment() {
 			lit_by_sun = 1.0 - in_arch;
 		}
 	} else if (style == 3) {
-		if (uv.y >= 0.0) {
-			col = plinth(uv, fw_m, seed);
-		} else if (uv.y < street_y + 3.9) {
-			// Arcades at the market floor, lit warm inside.
-			vec2 lp = vec2((fract(uv.x / 3.4) - 0.5) * 3.4, uv.y - street_y);
-			float d = lp.y < 2.2 ? abs(lp.x) - 1.2 : length(vec2(lp.x, lp.y - 2.2)) - 1.2;
-			float fwd = max(fw_m.x, fw_m.y);
-			float in_arch = 1.0 - smoothstep(-fwd, fwd, d);
-			vec3 inside = to_linear(window_warm) * 0.55 * (0.5 + 0.5 * clamp(lp.y / 3.0, 0.0, 1.0));
-			vec2 cell = floor(vec2(uv.x / 0.3, lp.y / 0.3));
-			float goods = step(lp.y, 1.1) * step(0.35, hash12(cell + seed));
-			inside = mix(inside, to_linear(goods_color(hash12(cell * 0.37 + seed))) * 0.6, goods);
-			col = mix(wall * 0.8, inside, in_arch);
-		} else {
-			col = wall * 0.85;
-		}
+		col = plinth(uv, fw_m, seed);
 		lit_by_sun = 0.0;
 	} else if (style == 4) {
 		float pw = COLOR.a * 8.0;
@@ -271,7 +256,5 @@ void fragment() {
 	float line = sun_line + 2.5 * (value_noise(vec2(world.z * 0.04, sign(n.x) * 7.0)) - 0.5) * 2.0;
 	float sunlit = sun_face * smoothstep(line - 0.4, line + 0.8, uv.y) * lit_by_sun;
 	col += albedo * plaster * to_linear(sun_color) * (sun_strength * sunlit);
-	// Toward the market floor far below, the stalls' shade.
-	col *= mix(0.4, 1.0, smoothstep(street_y, street_y + 8.0, uv.y));
 	ALBEDO = col;
 }

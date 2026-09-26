@@ -1,7 +1,9 @@
 extends SkinSuite
 ## The Marketplace skin (MarketplaceSkin, Zone 3), which the Marketplace zone uses. The shared skin
 ## checks (SkinSuite) over the whole of Marketplace 2 for 3, 5 and 6 lanes, then the Marketplace's own:
-## - gaps keep the orange edge glow right on the collision edge;
+## - gaps keep the orange edge glow right on the collision edge, and read as holes: everything under
+##   the stall roofs is in deep shade, far darker than any roof, nothing in there glows but the
+##   orange edge, and no roof is drawn in the edge's colour;
 ## - the colour rule (GDD §5): nothing but hazards glows in a hazard hue (pink, red, orange, yellow,
 ##   green, cyan), and lit surfaces stay well below the hazards' saturation;
 ## - the play space stays clear: between the floor and the ceiling over the lanes there is nothing
@@ -25,6 +27,12 @@ const MARKET_LEVEL_PATH: String = "res://data/levels/marketplace_2.tres"
 const MAX_SURFACE_CHROMA: float = 0.45
 ## A glowing colour this saturated (HSV) must keep to the decorative hues (blue to violet).
 const GLOW_SATURATION_LIMIT: float = 0.35
+## Gaps: the roof shading's lowest broad factor (a stall's eaves and the shaded half of its tent;
+## kit_market.gdshaderinc, mk_tent), PAT_UNDER's brightest factor (the top of a face, at the lip),
+## and how much darker than the darkest roof a gap's inside must stay (linear luminance).
+const ROOF_SHADE_MIN: float = 0.7
+const UNDER_MAX_FACTOR: float = 0.9
+const GAP_CONTRAST: float = 0.35
 
 
 func run() -> void:
@@ -46,6 +54,7 @@ func run() -> void:
 		await whole_level(skin, "marketplace", MARKET_LEVEL_PATH, lanes)
 	await hazards_and_triggers(skin)
 	await _surfaces(skin)
+	await _gaps(skin)
 	await _clear_play_space(skin)
 	await _shop_windows(skin)
 	_ceilings(skin)
@@ -153,6 +162,112 @@ func _surfaces(skin: MarketplaceSkin) -> void:
 			lights.append("%s %s" % [u, c])
 	check(lights.is_empty(), "the facades' lights keep off the hazard hues: %s" % ", ".join(lights))
 	await free_track(track)
+
+
+## Gaps read as holes at a glance, as in every zone (CLAUDE.md readability rules): whatever a gap
+## shows is in deep shade, far darker than any roof can be drawn, and nothing in it glows but the
+## orange strip along the edge; no roof is drawn in (or near) the edge's colour; and the far edge of
+## the showcase gap carries the full orange edge: the lip on the roof and the strip below it. Checked
+## over a whole level: below the roofs there is nothing but the shade and the strips.
+func _gaps(skin: MarketplaceSkin) -> void:
+	var roofs: Array[Color] = [skin.tin_color * Color(0.92, 0.92, 0.92), skin.awning_stripe_color, skin.seam_color,
+		skin.ledge_color]
+	roofs.append_array(Array(skin.canvas_colors))
+	roofs.append_array(Array(skin.awning_colors))
+	var darkest: float = INF
+	var like_edge: PackedStringArray = []
+	for c: Color in roofs:
+		darkest = minf(darkest, _linear_luminance(c * Color(ROOF_SHADE_MIN, ROOF_SHADE_MIN, ROOF_SHADE_MIN)))
+		if _near_colour(c, skin.gap_edge_color):
+			like_edge.append(str(c))
+	var inside: float = _linear_luminance(skin.gap_inside_color * Color(UNDER_MAX_FACTOR, UNDER_MAX_FACTOR, UNDER_MAX_FACTOR))
+	check(inside < darkest * GAP_CONTRAST, "a gap's inside stays far darker than the darkest roof: %.4f vs %.4f" % [
+		inside, darkest])
+	check(like_edge.is_empty(), "no roof is drawn in the gap edge's colour: %s" % ", ".join(like_edge))
+	# The showcase gap (lane 3, 50-57 m): its far edge, facing the player, has the lip and the strip.
+	var track: TrackBuilder = showcase_track(skin)
+	var strip := Vector2(INF, -INF)
+	var lip := Vector2(INF, -INF)
+	for node: Node in nodes_of(track, func(n: Node) -> bool: return n is MeshInstance3D):
+		var m := node as MeshInstance3D
+		for s: int in m.mesh.get_surface_count() if m.mesh != null else 0:
+			if m.mesh.surface_get_material(s) != skin.solid_material():
+				continue
+			var arrays: Array = m.mesh.surface_get_arrays(s)
+			var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+			var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			for i: int in verts.size():
+				var p: Vector3 = m.global_transform * verts[i]
+				if not _same_rgb(colors[i], skin.gap_edge_color) or p.x < 1.2 or p.x > 3.6 or absf(-p.z - 57.0) > 0.3:
+					continue
+				if p.y < -0.001 and colors[i].a >= MarketStalls.STRIP_GLOW - 0.001:
+					strip = Vector2(minf(strip.x, p.y), maxf(strip.y, p.y))
+				elif absf(p.y) < 0.001 and colors[i].a >= MarketStalls.LIP_GLOW - 0.001:
+					lip = Vector2(minf(lip.x, -p.z), maxf(lip.y, -p.z))
+	check(strip.y - strip.x >= MarketStalls.STRIP_HEIGHT - 0.001 and strip.y > -0.05,
+		"the far edge's orange strip runs along the top of its face: %s" % strip)
+	check(lip.x > 56.99 and lip.y - lip.x >= MarketStalls.EDGE_LIP - 0.001,
+		"the far edge's orange lip lies on the roof right at the collision edge: %s" % lip)
+	await free_track(track)
+	# A whole level, chunk by chunk: below the roofs only the shade (PAT_UNDER, no brighter than the
+	# skin's gap_inside_color, unlit) and the orange strips.
+	var layout: LevelLayout = level(MARKET_LEVEL_PATH, 5, 0.6, 9)
+	var world := Node3D.new()
+	tree.root.add_child(world)
+	var built := TrackBuilder.new()
+	world.add_child(built)
+	built.set_layout(layout, tuning, skin)
+	var bad: PackedStringArray = []
+	var seen: Dictionary = {}
+	var under: int = 0
+	var d: float = 0.0
+	while d <= layout.length + TrackBuilder.RUN_OUT + TrackBuilder.CHUNK_LENGTH:
+		built.update(d, d / tuning.run_speed)
+		for chunk: Node in built.get_children():
+			if not seen.has(chunk):
+				seen[chunk] = true
+				under += _check_under_roofs(chunk, skin, layout.length, bad)
+		d += TrackBuilder.CHUNK_LENGTH
+	check(bad.is_empty() and under > 0, "below the stall roofs there is only deep shade and the orange strips (%d vertices): %s" % [
+		under, ", ".join(bad)])
+	world.queue_free()
+	await tree.process_frame
+
+
+## Checks every vertex of the skin's meshes in `chunk` below the roofs (hazards and triggers aside,
+## and the finish gantry's posts at `finish`, which stand on the ledges where no gap ever is): the
+## shade or an orange strip. Returns how many there were; problems (up to four) go to `bad`.
+func _check_under_roofs(chunk: Node, skin: MarketplaceSkin, finish: float, bad: PackedStringArray) -> int:
+	var count: int = 0
+	var shade: float = _linear_luminance(skin.gap_inside_color) + 0.0001
+	for node: Node in nodes_of(chunk, func(n: Node) -> bool: return n is MeshInstance3D):
+		var m := node as MeshInstance3D
+		if m.mesh == null or m.is_in_group(&"debug_hitbox") or _under(m, func(n: Node) -> bool: return n is Hazard) \
+				or _under(m, func(n: Node) -> bool: return n is Area3D):
+			continue
+		for s: int in m.mesh.get_surface_count():
+			var material: Material = m.mesh.surface_get_material(s)
+			var arrays: Array = m.mesh.surface_get_arrays(s)
+			var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+			var uv2: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV2] if arrays[Mesh.ARRAY_TEX_UV2] != null else PackedVector2Array()
+			for i: int in verts.size():
+				var p: Vector3 = m.global_transform * verts[i]
+				if p.y >= -0.01 or absf(-p.z - finish) < 1.0:
+					continue
+				count += 1
+				var what: String = ""
+				if material == skin.solid_material():
+					var c: Color = colors[i]
+					var strip: bool = _same_rgb(c, skin.gap_edge_color) and c.a >= MarketStalls.STRIP_GLOW - 0.001
+					var dark: bool = roundi(uv2[i].x) == MeshKit.PAT_UNDER and c.a == 0.0 and _linear_luminance(c) <= shade
+					if not strip and not dark:
+						what = "%s pattern %d" % [c, roundi(uv2[i].x)]
+				elif material != skin.drift_material():
+					what = "material %s" % material.resource_path.get_file() if material != null else "no material"
+				if what != "" and bad.size() < 4:
+					bad.append("%s at %s" % [what, p])
+	return count
 
 
 ## Between the floor and the ceiling, over the lanes, the skin builds nothing solid but hazards and
@@ -454,3 +569,21 @@ static func _hazard_hue(c: Color) -> bool:
 
 static func _same_rgb(a: Color, b: Color) -> bool:
 	return absf(a.r - b.r) < 0.01 and absf(a.g - b.g) < 0.01 and absf(a.b - b.b) < 0.01
+
+
+## Relative luminance of an sRGB colour, in linear light.
+static func _linear_luminance(c: Color) -> float:
+	var l: Color = c.srgb_to_linear()
+	return 0.2126 * l.r + 0.7152 * l.g + 0.0722 * l.b
+
+
+## Whether `c` could pass for `target` (a saturated hazard colour): close in RGB, or as saturated and
+## within 25 degrees of its hue.
+static func _near_colour(c: Color, target: Color) -> bool:
+	var dr: float = c.r - target.r
+	var dg: float = c.g - target.g
+	var db: float = c.b - target.b
+	if sqrt(dr * dr + dg * dg + db * db) < 0.35:
+		return true
+	var dh: float = absf(c.h - target.h)
+	return c.s > 0.5 and minf(dh, 1.0 - dh) < 25.0 / 360.0

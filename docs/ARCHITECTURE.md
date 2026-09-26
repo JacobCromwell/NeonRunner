@@ -223,8 +223,12 @@ on every lane seam, nothing hangs below it, and its far end carries the orange b
 - *The stall floor is laid out on the GPU.* A lane piece's roofs are one quad with `PAT_STALLS`: the
   shader finds each point's stall from its track position (slots along the lane, runs of 1-3 slots)
   and draws its roof, hem and frame pole. `kit_hash_u()` in the include is `MeshKit.hash_i` bit for
-  bit, so `MarketStalls.stall_at()` and `roof_of()` reproduce the shader's choices for the faces
-  built at gap edges. Anything that must match the shader's layout goes through those two.
+  bit, so `MarketStalls.stall_at()` and `roof_of()` reproduce the shader's choices. Anything that
+  must match the shader's layout goes through those two.
+- *Gaps read as holes.* Everything under the roofs (stall faces, building faces, the market floor)
+  is drawn with `PAT_UNDER` in the skin's `gap_inside_color`, a deep shade that only darkens with
+  depth, and nothing under the roofs is lit or glows but the orange edge strip. The suite pins it
+  (far darker than any roof, no roof in the edge colour).
 - *Shop windows for the citizens (task D3).* Every shopfront has a row of real window openings with
   lit displays at the low part of the wall (0.85-2.8 m above the floor, above the wall vents' zone).
   `MarketplaceSkin.shop_windows(side, face_x, start, end)` lists the windows whose centres lie

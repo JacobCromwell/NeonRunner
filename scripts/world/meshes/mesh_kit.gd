@@ -73,9 +73,10 @@ const PAT_CANVAS: int = 20
 ## Corrugated tin: UV as for canvas; param = ribs (0 along the track, 1 across it) + 4 * the stall's
 ## length in decimetres.
 const PAT_TIN: int = 21
-## A stall's faces below its roof, by world height: param = mode (0 front, 1 side, 2 back) + 4 * seed.
-const PAT_STALL: int = 22
-## Stone flags (param 0, the market floor) or coffered soffit panels (param 1).
+## Everything under the stall roofs, seen only through gaps, in deep shade (darkens COLOR): param 0
+## a face across the lane, 1 a face along it, 2 the market floor.
+const PAT_UNDER: int = 22
+## Stone flags (param 0, an overpass's walkway) or coffered soffit panels (param 1).
 const PAT_TILES: int = 23
 ## A painted shop sign (UV in metres; param = seed 0-99 + 100 * the panel's height in decimetres).
 const PAT_SHOPSIGN: int = 24

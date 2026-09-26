@@ -10,14 +10,22 @@ extends RefCounted
 ## the shader's choices bit for bit (MeshKit.hash_i) for the faces built at gap edges. The running
 ## surface is flat (y = 0) and nothing stands on it, so nothing looks like an obstacle.
 ## Where a gap borders the segment, the roof ends in the orange edge glow right on the collision
-## edge; below it the stall's face drops to the market floor far below: the scalloped valance, an
-## upper storey of boards or curtains, a counter heaped with goods under a warm lamp (PAT_STALL).
-## Every segment also carries stall sides along its lane edges, hidden under the neighbouring lane
-## unless that lane has a gap. Nothing round or grated sits on the roofs: in other zones, manholes
-## are sewer-screech lairs (GDD §9.5).
+## edge, as in every zone, and below it everything is in deep shade (PAT_UNDER): the stall's face
+## drops into the dark toward the market floor far below, so a gap reads as a hole at a glance and
+## nothing inside it is lit or looks like a roof. Every segment also carries stall sides along its
+## lane edges, in the same shade, hidden under the neighbouring lane unless that lane has a gap.
+## Nothing round or grated sits on the roofs: in other zones, manholes are sewer-screech lairs
+## (GDD §9.5).
 ## Chunk space: x across, y up (roofs at y = 0), z = -distance.
 
+## The orange edge language: a lip on the roof's last 0.18 m and a strip along the top of the face
+## below it. The strip is taller and brighter than on the other zones' dark streets: against light
+## roofs the glow's halo shows less, and from afar the strip is what shows of an edge.
 const EDGE_LIP: float = 0.18
+const LIP_GLOW: float = 0.4
+const STRIP_TOP: float = 0.02
+const STRIP_HEIGHT: float = 0.1
+const STRIP_GLOW: float = 0.6
 ## Added to lane keys and slot indices before hashing, as the shader does, so they stay positive.
 const KEY_OFFSET: int = 100000
 ## A stall starts at every third slot and at this share of the others.
@@ -69,21 +77,21 @@ func build(batch: MeshBatch, center: Vector3, size: Vector3, lane_x: float, edge
 			s.rect(Vector3(l1, 0, -a), Vector3(x1 - l1, 0, 0), Vector3(0, 0, -(b - a)), skin.ledge_color, 0.0,
 				MeshKit.PAT_STUCCO)
 
-	# Stall sides along the lane edges: seen only where the neighbouring lane has a gap.
+	# Stall sides along the lane edges, in the shade under the roofs: seen only where the neighbouring
+	# lane has a gap.
 	var depth: float = skin.market_depth
-	var side_param: float = 1.0 + 4.0 * float(MeshKit.hash_i(lane, 3) % 97)
-	var curtain: Color = skin.canvas_colors[MeshKit.hash_i(lane, 4) % skin.canvas_colors.size()]
+	var shade: Color = skin.gap_inside_color
 	if not left_ledge:
-		s.rect(Vector3(x0, -depth, -far_d), Vector3(0, 0, far_d - near_d), Vector3(0, depth, 0), curtain, 0.0,
-			MeshKit.PAT_STALL, Vector2.ZERO, Vector2.ONE, side_param)
+		s.rect(Vector3(x0, -depth, -far_d), Vector3(0, 0, far_d - near_d), Vector3(0, depth, 0), shade, 0.0,
+			MeshKit.PAT_UNDER, Vector2.ZERO, Vector2.ONE, 1.0)
 	if not right_ledge:
-		s.rect(Vector3(x1, -depth, -near_d), Vector3(0, 0, -(far_d - near_d)), Vector3(0, depth, 0), curtain, 0.0,
-			MeshKit.PAT_STALL, Vector2.ZERO, Vector2.ONE, side_param)
+		s.rect(Vector3(x1, -depth, -near_d), Vector3(0, 0, -(far_d - near_d)), Vector3(0, depth, 0), shade, 0.0,
+			MeshKit.PAT_UNDER, Vector2.ZERO, Vector2.ONE, 1.0)
 
 	if edge_start:
-		_edge(s, x0, x1, near_d, lip_n, 1.0, lane)
+		_edge(s, x0, x1, near_d, lip_n, 1.0)
 	if edge_end:
-		_edge(s, x0, x1, far_d, lip_f, -1.0, lane)
+		_edge(s, x0, x1, far_d, lip_f, -1.0)
 
 
 ## The key of the lane centred on lane_x for the stall layout (offset, as the shader gets it).
@@ -130,38 +138,31 @@ func roof_of(lane: int, first_slot: int) -> Array:
 
 
 ## Where the stalls end at distance d (facing the player when facing = 1, away when -1): the orange
-## edge glow on the roof's edge and down the face, then the stall's face (front or back) dropping
-## to the market floor, and a warm lamp over a front's counter.
-func _edge(s: MeshLayer, x0: float, x1: float, d: float, lip: float, facing: float, lane: int) -> void:
+## edge glow on the roof's edge and along the top of the face, then the stall's face dropping into
+## the dark.
+func _edge(s: MeshLayer, x0: float, x1: float, d: float, lip: float, facing: float) -> void:
 	var z: float = -d
 	var w: float = x1 - x0
 	var edge: Color = skin.gap_edge_color
 	var depth: float = skin.market_depth
-	var first: int = stall_at(lane, d + 0.01 * facing).x
-	var canvas: Color = roof_of(lane, first)[1]
-	var seed: int = MeshKit.hash_i(lane, first, 17) % 997
+	var shade: Color = skin.gap_inside_color
+	var strip_y: float = -STRIP_TOP - STRIP_HEIGHT
 	if facing > 0.0:
-		s.rect(Vector3(x0, 0, z), Vector3(w, 0, 0), Vector3(0, 0, -lip), edge, 0.33)
-		s.rect(Vector3(x0, -depth, z), Vector3(w, 0, 0), Vector3(0, depth, 0), canvas, 0.0, MeshKit.PAT_STALL,
-			Vector2.ZERO, Vector2.ONE, 4.0 * float(seed))
-		s.rect(Vector3(x0, -0.075, z + 0.004), Vector3(w, 0, 0), Vector3(0, 0.045, 0), edge, 0.45)
-		# The stall's lamp, hanging over its counter (its glow is the bloom: a halo card would cost the
-		# piece a second surface).
-		var lx: float = x0 + w * (0.3 + 0.4 * MeshKit.hash01(seed, 2))
-		s.box(Vector3(lx, -2.95, z + 0.25), Vector3(0.18, 0.14, 0.18), skin.lamp_color, 1.0)
+		s.rect(Vector3(x0, 0, z), Vector3(w, 0, 0), Vector3(0, 0, -lip), edge, LIP_GLOW)
+		s.rect(Vector3(x0, -depth, z), Vector3(w, 0, 0), Vector3(0, depth, 0), shade, 0.0, MeshKit.PAT_UNDER)
+		s.rect(Vector3(x0, strip_y, z + 0.004), Vector3(w, 0, 0), Vector3(0, STRIP_HEIGHT, 0), edge, STRIP_GLOW)
 	else:
-		s.rect(Vector3(x0, 0, z + lip), Vector3(w, 0, 0), Vector3(0, 0, -lip), edge, 0.33)
-		s.rect(Vector3(x1, -depth, z), Vector3(-w, 0, 0), Vector3(0, depth, 0), canvas, 0.0, MeshKit.PAT_STALL,
-			Vector2.ZERO, Vector2.ONE, 2.0 + 4.0 * float(seed))
-		s.rect(Vector3(x1, -0.075, z - 0.004), Vector3(-w, 0, 0), Vector3(0, 0.045, 0), edge, 0.45)
+		s.rect(Vector3(x0, 0, z + lip), Vector3(w, 0, 0), Vector3(0, 0, -lip), edge, LIP_GLOW)
+		s.rect(Vector3(x1, -depth, z), Vector3(-w, 0, 0), Vector3(0, depth, 0), shade, 0.0, MeshKit.PAT_UNDER)
+		s.rect(Vector3(x1, strip_y, z - 0.004), Vector3(-w, 0, 0), Vector3(0, STRIP_HEIGHT, 0), edge, STRIP_GLOW)
 
 
-## The market floor far below the stalls, and the dust, paper scraps and speed streaks drifting over
-## the roofs (GDD §5 motion effects), for one chunk. Neither belongs to a lane, so the skin adds them
-## to the left wall's mesh.
+## The market floor far below the stalls, lost in their shade, and the dust, paper scraps and speed
+## streaks drifting over the roofs (GDD §5 motion effects), for one chunk. Neither belongs to a lane,
+## so the skin adds them to the left wall's mesh.
 func below(batch: MeshBatch, half_width: float, start: float, end: float) -> void:
 	batch.layer(skin.solid_material()).rect(Vector3(-half_width, -skin.market_depth, -start), Vector3(half_width * 2.0, 0, 0),
-		Vector3(0, 0, -(end - start)), skin.ground_color, 0.0, MeshKit.PAT_TILES)
+		Vector3(0, 0, -(end - start)), skin.gap_inside_color, 0.0, MeshKit.PAT_UNDER, Vector2.ZERO, Vector2.ONE, 2.0)
 	MeshKit.drift_particles(batch.layer(skin.drift_material()), start, end, TrackBuilder.CHUNK_LENGTH, half_width - 0.7,
 		7.0, skin.dust_count, skin.scrap_count, skin.streak_count,
 		PackedColorArray([skin.dust_color, skin.scrap_color, skin.streak_color]))

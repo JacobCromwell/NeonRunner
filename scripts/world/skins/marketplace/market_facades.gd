@@ -177,8 +177,10 @@ func _building(batch: MeshBatch, b: Building, face_x: float, start: float, end: 
 	var g1: float = skin.gallery_top
 	var upper_style: int = [STYLE_UPPER, STYLE_CASINO, STYLE_HALL][b.kind]
 
-	# The low part: arcades far below, plaster, the tiled plinth.
-	_face(facade, side, face_x, u0, u1, bottom, g0, b.wall, b.lit, STYLE_LOWER, b.seed, 0.0)
+	# Below the stall roofs the face is in their deep shade (seen only through gaps, which must read
+	# as holes); above them, the plinth.
+	_panel(solid, side, face_x, u0, u1, bottom, 0.0, skin.gap_inside_color, 0.0, MeshKit.PAT_UNDER, 1.0)
+	_face(facade, side, face_x, u0, u1, 0.0, g0, b.wall, b.lit, STYLE_LOWER, b.seed, 0.0)
 	# The shop windows and the piers between them. Piers are clipped to the chunk; a window belongs
 	# whole to the chunk holding its centre, so the wall stays seamless across chunk cuts.
 	var cursor: float = b.b0

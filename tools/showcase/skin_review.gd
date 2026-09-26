@@ -15,13 +15,18 @@ extends Node3D
 ##   --view=shot     still cameras, one after another every --hold frames (default 3): 0 the street,
 ##                   1 into a gap, 2 a ceiling's near end, 3 under a ceiling looking up, 4 the right
 ##                   wall close up, 5 the left wall close up, 6 the fences and signs, 7 a ceiling's far end,
-##                   8 the sky, 9-12 each ceiling's near end from the floor.
+##                   8 the sky, 9-12 each ceiling's near end from the floor, 13-16 a gap coming up from
+##                   150, 100, 60 and 30 m away, from the game camera (a gap first shows about 180 m
+##                   ahead, when its chunk is built).
 ##                   --shot=N shows only that one.
 ## The level's ceilings: for the Marketplace skin, one of each kind (building bridge, overpass,
 ## ship, floating ad), found by asking the skin which kind a spot gets.
 
 const TUNING_PATH: String = "res://data/tuning/movement.tres"
-const LENGTH: float = 760.0
+const LENGTH: float = 900.0
+## A gap in the middle lane seen from afar (shots 13-16), and how far ahead of the camera it is.
+const FAR_GAP: float = 830.0
+const FAR_GAP_AHEAD: Array[float] = [150.0, 100.0, 60.0, 30.0]
 ## Where the ceilings start and how long they are (moved a little to get each Marketplace kind).
 const HULLS: Array[Vector2] = [Vector2(196.0, 60.0), Vector2(372.0, 44.0), Vector2(476.0, 40.0), Vector2(576.0, 48.0)]
 
@@ -123,6 +128,10 @@ func _layout() -> LevelLayout:
 	out.ramps.append({"side": 1, "at": 300.0})
 	out.gaps.append({"lane": 0, "start": 690.0, "end": 697.0})
 	out.gaps.append({"lane": lanes - 1, "start": 700.0, "end": 707.0})
+	# Gaps coming up in open street, for the distance shots.
+	out.gaps.append({"lane": mid, "start": FAR_GAP, "end": FAR_GAP + 7.0})
+	out.gaps.append({"lane": maxi(mid - 1, 0), "start": FAR_GAP + 20.0, "end": FAR_GAP + 27.0})
+	out.gaps.append({"lane": mini(mid + 1, lanes - 1), "start": FAR_GAP + 38.0, "end": FAR_GAP + 45.0})
 	return out
 
 
@@ -234,6 +243,11 @@ func _shot_list() -> Array:
 	var starts: Array[float] = _hull_starts()
 	for s: float in starts:
 		out.append([s - 24.0, Vector3(0.0, tuning.camera_height, -(s - 18.0)), Vector3(0.0, 5.5, -(s + 2.0))])
+	# 13-16: a gap coming up, from where the game camera would be with the player in the middle lane.
+	for ahead: float in FAR_GAP_AHEAD:
+		var p: float = FAR_GAP - ahead
+		out.append([p, Vector3(0.0, tuning.camera_height, -(p - tuning.camera_distance)),
+			Vector3(0.0, 1.0, -(p + tuning.camera_look_ahead))])
 	return out
 
 

@@ -9,8 +9,6 @@
 
 // The pale stripes on striped awnings.
 uniform vec3 canvas_stripe : source_color = vec3(0.82, 0.8, 0.74);
-// The lamps inside the stalls, lighting the goods on their counters.
-uniform vec3 goods_light : source_color = vec3(1.0, 0.88, 0.7);
 // The stalls' frame: the pole across each stall's start and the valleys along the lanes' edges.
 uniform vec3 canvas_pole : source_color = vec3(0.4, 0.34, 0.27);
 // The stall rows (PAT_STALLS), laid out exactly as MarketStalls lays them out: slots along each lane,
@@ -36,18 +34,6 @@ uint kit_hash_u(int a, int b, int c) {
 // MeshKit.hash01, bit for bit.
 float kit_hash01(int a, int b, int c) {
 	return float(kit_hash_u(a, b, c) & 0xFFFFFFu) / 16777216.0;
-}
-
-// Goods on display: splashes of colour, always lit, never glowing (GDD §5 colour rule).
-vec3 mk_goods_color(float r) {
-	if (r < 0.16) return vec3(0.66, 0.2, 0.14);   // tomatoes, peppers
-	if (r < 0.3) return vec3(0.8, 0.46, 0.14);    // oranges, spices
-	if (r < 0.44) return vec3(0.74, 0.64, 0.2);   // lemons, bananas
-	if (r < 0.56) return vec3(0.3, 0.5, 0.22);    // greens
-	if (r < 0.68) return vec3(0.44, 0.24, 0.46);  // aubergines, silk
-	if (r < 0.8) return vec3(0.22, 0.38, 0.62);   // blue cloth, pottery
-	if (r < 0.9) return vec3(0.82, 0.78, 0.68);   // bread, rice, linen
-	return vec3(0.46, 0.3, 0.2);                  // nuts, leather
 }
 
 // The market's ordinary brands: generic geometric marks for shop signs and ads. `p` runs from -1 to
@@ -231,70 +217,27 @@ vec3 mk_stalls(vec3 w, vec2 uv, float param) {
 	return mk_canvas_at(canvas, w, q, (k >> 5u) % 6u == 0u ? 2.0 : 0.0, len, fp);
 }
 
-// PAT_STALL (22): the faces of a stall below its roof (its front at a gap, its back, its sides), by
-// world height: the scalloped valance of the roof's canvas, an upper storey of boards, a curtain or
-// a painted board, then a counter heaped with goods, dimming toward the market floor far below.
-// param = mode (0 front, 1 side, 2 back) + 4 * seed (whole numbers).
-vec3 mk_stall(vec3 base, vec3 w, vec3 n, float param) {
-	float mode = mod(param, 4.0);
-	float seed = floor(param / 4.0);
+// PAT_UNDER (22): everything under the stall roofs, seen only through the gaps between stalls: the
+// stalls' faces, the building faces and the market floor far below, all in deep shade, so a gap
+// reads as a hole at a glance, as in every zone (nothing lit or roof-like inside it). COLOR is the
+// shade at the roofs' level, and this only darkens it: faint poles and boards near the top, fading
+// to near black with depth. param: 0 a face across the lane (a stall's front or back), 1 a face
+// along the lane (a stall's side, a building's face), 2 the market floor.
+vec3 mk_under(vec3 base, vec3 w, vec3 n, float param) {
+	float mode = floor(param + 0.5);
 	float h = abs(n.x) > 0.5 ? w.z : w.x;
-	float y = w.y;
 	float fh = fwidth(h);
-	float fy = fwidth(y);
-	float r1 = hash11(seed * 1.31 + 0.7);
-	float r2 = hash11(seed * 2.17 + 3.1);
-	vec3 wood = vec3(0.4, 0.3, 0.21) * (0.85 + 0.3 * r2);
-	vec3 col;
 	if (mode > 1.5) {
-		// Back: plain boards.
-		col = wood * (1.0 - 0.35 * filtered_pulse(h / 0.24, fh / 0.24, 0.0, 0.08))
-			* (0.85 + 0.2 * hash11(floor(h / 0.24) + seed));
-	} else if (mode > 0.5) {
-		// Side: canvas curtains in deep folds, crates and sacks stacked below them.
-		col = base * 0.9 * (0.72 + 0.28 * sin(h * 7.0 + seed));
-		if (y < -3.1) {
-			vec2 cell = floor(vec2(h / 0.7, (y + 3.1) / 0.55));
-			col = mix(wood, mk_goods_color(hash12(cell + seed)) * 0.8, step(0.55, hash12(cell * 1.7 + seed)))
-				* (0.8 + 0.25 * hash12(cell + 7.0));
-		}
-	} else if (y > -2.8) {
-		// Front, upper storey: boards, a curtain or a painted board with a band of chunky letters.
-		if (r1 < 0.4) {
-			col = wood * (1.0 - 0.3 * filtered_pulse(h / 0.2, fh / 0.2, 0.0, 0.1))
-				* (0.85 + 0.25 * hash11(floor(h / 0.2) + seed * 3.0));
-		} else if (r1 < 0.72) {
-			col = base * 0.85 * (0.75 + 0.25 * sin(h * 9.0 + seed));
-		} else {
-			// Painted in the goods' cooler colours only: a yellow board would echo a hazard sign.
-			vec3 field = mk_goods_color(0.44 + r2 * 0.46) * 0.9 + 0.08;
-			float lx = h / 0.34;
-			float row = step(-1.9, y) * step(y, -1.2);
-			float letter = step(0.35, hash11(floor(lx) + seed * 5.0)) * filtered_pulse(lx, fh / 0.34, 0.15, 0.85);
-			col = mix(field, vec3(0.9, 0.87, 0.8), letter * row);
-		}
-	} else if (y > -4.3) {
-		// Front, the counter: goods in heaps, lit warm by the stall's lamp.
-		vec2 g = vec2(h / 0.26, (y + 4.3) / 0.22);
-		vec2 cell = floor(g);
-		float r = hash12(cell + seed * 3.3);
-		vec3 goods = mk_goods_color(fract(hash12(vec2(floor(h / 0.8), seed)) * 0.7 + r * 0.3));
-		float heap = 1.0 - smoothstep(0.25, 0.5, length(fract(g) - 0.5));
-		col = mix(goods * 0.7, goods, heap) * (0.85 + 0.3 * r);
-		col = mix(col, wood * 0.7, step(y, -4.05));
-		col *= mix(vec3(1.0), goods_light * 1.5, smoothstep(-4.3, -3.0, y));
-	} else {
-		col = wood * 0.8 * (1.0 - 0.3 * filtered_pulse(h / 0.3, fh / 0.3, 0.0, 0.08));
+		// The floor, lost in the dark: litter and grime, barely there.
+		return base * (0.2 + 0.15 * value_noise(w.xz * 0.6));
 	}
-	// The valance: the roof's canvas hanging over the top of every face, scalloped along its hem.
-	float sc = fract(h / 0.32);
-	float hem = -0.3 - 0.12 * sin(sc * 3.14159);
-	col = mix(col, base * (1.0 - 0.1 * sin(sc * 3.14159)), clamp((y - hem) / max(fy, 1e-4) + 0.5, 0.0, 1.0));
-	// Deeper is dimmer: the stalls stand in the shade of their neighbours' roofs.
-	return col * mix(1.0, 0.3, smoothstep(-0.6, -6.5, y));
+	float pole = filtered_pulse(h / 1.7, fh / 1.7, 0.0, 0.07);
+	float boards = filtered_pulse(h / 0.26, fh / 0.26, 0.0, 0.12);
+	float depth = mix(1.0, 0.18, smoothstep(-0.12, -2.6, w.y));
+	return base * (0.9 - 0.25 * boards - 0.35 * pole) * depth;
 }
 
-// PAT_TILES (23): param 0: the market floor's worn stone flags (world xz); 1: the plastered soffit
+// PAT_TILES (23): param 0: worn stone flags (an overpass's walkway; world xz); 1: the plastered soffit
 // under buildings and overpasses, crossed by beams every 3 m (world xz, seen from below; the beams
 // stream past a player riding the ceiling).
 vec3 mk_tiles(vec3 base, vec3 w, float param) {
@@ -407,7 +350,7 @@ vec3 market_surface(int pattern, float param, vec3 base, vec3 w, vec3 n, vec2 uv
 	} else if (pattern == 21) {
 		return mk_tin(base, w, uv, param);
 	} else if (pattern == 22) {
-		return mk_stall(base, w, n, param);
+		return mk_under(base, w, n, param);
 	} else if (pattern == 23) {
 		return mk_tiles(base, w, param);
 	} else if (pattern == 24) {

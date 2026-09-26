@@ -72,7 +72,6 @@ extends ZoneSkin
 ## The pale stripes on striped awnings.
 @export var awning_stripe_color: Color = Color(0.74, 0.72, 0.66)
 @export var tin_color: Color = Color(0.47, 0.46, 0.44)
-@export var wood_color: Color = Color(0.42, 0.31, 0.22)
 ## Share of stalls under a blue awning and under corrugated tin (the rest are canvas).
 @export_range(0.0, 1.0, 0.01) var awning_share: float = 0.22
 @export_range(0.0, 1.0, 0.01) var tin_share: float = 0.2
@@ -80,8 +79,11 @@ extends ZoneSkin
 @export var seam_color: Color = Color(0.4, 0.34, 0.27)
 ## The ledge between the outer lanes and the building faces.
 @export var ledge_color: Color = Color(0.5, 0.45, 0.38)
-@export var ground_color: Color = Color(0.33, 0.28, 0.23)
-## Lamps hanging inside the stalls: warm white, well away from the orange of gap edges.
+## Everything under the stall roofs (stall faces, building faces, the market floor), seen only
+## through gaps: deep shade at the roofs' level, darker below, so a gap reads as a hole at a glance.
+## Kept far darker than any roof (tests/suites/test_marketplace_skin.gd).
+@export var gap_inside_color: Color = Color(0.11, 0.095, 0.08)
+## The festoon bulbs strung across the street: warm white, well away from the orange of gap edges.
 @export var lamp_color: Color = Color(1.0, 0.88, 0.7)
 ## Gap edges: the orange edge language of every zone. Redder than it looks: the glow and the
 ## tonemapper lift the green, and it must stay orange, not sign yellow.
@@ -354,7 +356,7 @@ func facade_material() -> ShaderMaterial:
 			"shutter_c": shutter_colors[2], "shutter_d": shutter_colors[3], "window_warm": window_warm_color,
 			"window_glow": window_glow, "sheen_color": sheen_color, "sheen_strength": sheen_strength,
 			"sun_color": sun_color, "sun_strength": sun_strength, "sun_line": sun_line, "plinth_color": plinth_color,
-			"plinth_light": plinth_light_color, "plinth_top": gallery_bottom, "street_y": -market_depth,
+			"plinth_light": plinth_light_color, "plinth_top": gallery_bottom,
 			"bulb_color": bulb_color, "neon_a": neon_colors[0], "neon_b": neon_colors[1],
 			"storey_base": gallery_top + 0.2, "storey": MarketFacades.STOREY, "calm_top": decor_min_height - 1.0,
 			"decor_top": decor_min_height})
@@ -393,7 +395,7 @@ func _solid_params() -> Dictionary:
 		var c: Color = awning_colors[i % awning_colors.size()]
 		awnings.append(Vector3(c.r, c.g, c.b))
 	return {"glow_scale": emissive_scale, "sheen_color": sheen_color, "sheen_strength": sheen_strength,
-		"canvas_stripe": awning_stripe_color, "goods_light": lamp_color, "canvas_pole": seam_color,
+		"canvas_stripe": awning_stripe_color, "canvas_pole": seam_color,
 		"stall_slot": stall_slot, "stall_awning_share": awning_share, "stall_tin_share": tin_share,
 		"stall_canvas": canvas, "stall_awning": awnings, "stall_tin": Vector3(tin_color.r, tin_color.g, tin_color.b)}
 
