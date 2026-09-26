@@ -162,7 +162,8 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
 ## Characters, UI and audio
 
 - **Characters:** `HumanoidRig` (`scripts/characters/`) is the procedural rig and pose set behind the
-  player model (`PlayerAvatar`, a human in a cyber suit) and, next, the cyborgs.
+  player model (`PlayerAvatar`, a human in a cyber suit) and the cyborgs (`CyborgBody` with
+  `CyborgSuit`: one skeleton, a part set per zone look, one material per cyborg).
 - **UI:** a theme built in code (`scripts/ui/theme/`: `UiStyle` in `data/ui/ui_style.tres`,
   `UiTheme`), code-drawn icons (`scripts/ui/icons/`) and a widget kit (`scripts/ui/widgets/`). Screens
   (`scripts/ui/screens/`) extend `ScreenBase`; the HUD is `RunHud`. Orbitron is for titles and Exo 2
