@@ -70,6 +70,10 @@ func _notification(what: int) -> void:
 
 
 func _process(delta: float) -> void:
+	if _timer < 0.0:
+		# Godot turns processing on when the node is ready; only a reveal needs it.
+		set_process(false)
+		return
 	_timer += delta
 	while _announced < stars and _timer >= reveal_interval * _announced:
 		star_revealed.emit(_announced)

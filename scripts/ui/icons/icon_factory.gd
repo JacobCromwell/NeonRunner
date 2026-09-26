@@ -21,6 +21,7 @@ const NAMES: Array[StringName] = [
 	&"star", &"lock", &"pause", &"play", &"settings", &"back",
 	&"trophy", &"leaderboard", &"store",
 	&"check", &"close", &"plus", &"chevron_left", &"chevron_right", &"chevron_down", &"warning", &"info",
+	&"restart", &"home", &"power", &"infinity", &"map", &"film", &"boss", &"ad", &"volume", &"keyboard", &"eye",
 ]
 ## Credit denominations, in the order of UiStyle.credit_colors.
 const DENOMINATIONS: Array[int] = [1, 5, 25, 100]
@@ -331,6 +332,31 @@ static func _emit(p: Pen, icon: StringName) -> void:
 			p.ring(Vector2(12, 12), 9.5, 2.0)
 			p.circle(Vector2(12, 7.4), 1.3)
 			p.stroke(pts([12, 10.5, 12, 17]), false, 2.2)
+		&"restart": _restart(p)
+		&"home":
+			p.shape(pts([6, 11, 12, 5.5, 18, 11, 18, 20, 13.8, 20, 13.8, 15, 10.2, 15, 10.2, 20, 6, 20]), 1.8)
+			p.stroke(pts([3, 12.5, 12, 4, 21, 12.5]), false, 2.0)
+		&"power":
+			p.arc(Vector2(12, 12.5), 7.8, -PI * 0.3, PI * 1.3, 2.2)
+			p.stroke(pts([12, 3, 12, 11.5]), false, 2.2)
+		&"infinity": _infinity(p)
+		&"map":
+			p.shape(pts([3, 5.5, 9, 3.5, 15, 5.5, 21, 3.5, 21, 18.5, 15, 20.5, 9, 18.5, 3, 20.5]), 1.8)
+			p.stroke(pts([9, 3.5, 9, 18.5]), false, 1.4)
+			p.stroke(pts([15, 5.5, 15, 20.5]), false, 1.4)
+		&"film": _film(p)
+		&"boss": _boss(p)
+		&"ad":
+			p.shape(pts([3, 4.5, 21, 4.5, 21, 16.5, 3, 16.5]), 1.8)
+			p.stroke(pts([12, 16.5, 12, 20]), false, 1.6)
+			p.stroke(pts([8, 20.2, 16, 20.2]), false, 1.8)
+			p.fill(pts([10, 7.8, 15.2, 10.5, 10, 13.2]))
+		&"volume":
+			p.shape(pts([3, 9, 7, 9, 12, 4.5, 12, 19.5, 7, 15, 3, 15]), 1.8)
+			p.arc(Vector2(12, 12), 4.2, -0.8, 0.8, 1.7)
+			p.arc(Vector2(12, 12), 7.8, -0.75, 0.75, 1.7)
+		&"keyboard": _keyboard(p)
+		&"eye": _eye(p)
 		_:
 			# Unknown name: a crossed box, visible but obviously wrong.
 			p.stroke(pts([4, 4, 20, 4, 20, 20, 4, 20]), true, 1.5)
@@ -519,6 +545,69 @@ static func _leaderboard(p: Pen) -> void:
 	p.shape(pts([15, 14, 21, 14, 21, 21, 15, 21]), 1.7)
 	p.shape(pts([9, 6, 15, 6, 15, 21, 9, 21]), 1.7)
 	p.fill(star_points(Vector2(12, 11.6), 2.6, 1.1))
+
+
+## A circular "again" arrow: most of a circle, with an arrowhead at its end.
+static func _restart(p: Pen) -> void:
+	var start: float = -PI * 0.3
+	var end: float = start + PI * 1.62
+	var c := Vector2(12, 12.5)
+	var r: float = 7.6
+	p.arc(c, r, start, end, 2.2)
+	var tip: Vector2 = c + Vector2.from_angle(end) * r
+	var along := Vector2(-sin(end), cos(end))
+	var out := Vector2.from_angle(end)
+	p.fill(PackedVector2Array([tip + along * 3.4, tip + out * 3.0, tip - out * 3.0]))
+
+
+static func _infinity(p: Pen) -> void:
+	var loop := PackedVector2Array()
+	for i: int in 48:
+		var t: float = TAU * i / 48.0
+		var d: float = 1.0 + sin(t) * sin(t)
+		loop.append(Vector2(12.0 + 9.2 * cos(t) / d, 12.0 + 9.2 * sin(t) * cos(t) / d))
+	p.stroke(loop, true, 2.2)
+
+
+## A film frame with sprocket holes and a play mark: the cinematic slots.
+static func _film(p: Pen) -> void:
+	p.stroke(pts([3.5, 3.5, 20.5, 3.5, 20.5, 20.5, 3.5, 20.5]), true, 1.8)
+	p.fill(pts([7.2, 6.5, 16.8, 6.5, 16.8, 17.5, 7.2, 17.5]), true)
+	for y: float in [6.2, 10.1, 13.9, 17.8]:
+		p.circle(Vector2(5.35, y), 0.85)
+		p.circle(Vector2(18.65, y), 0.85)
+	p.fill(pts([10.4, 9.2, 14.6, 12, 10.4, 14.8]))
+
+
+## A horned mask with angry eyes: the boss slots.
+static func _boss(p: Pen) -> void:
+	var horn := pts([8.2, 9.2, 5.6, 6.8, 4.4, 2.8])
+	p.stroke(horn, false, 1.9)
+	p.stroke(_mirror_x(horn), false, 1.9)
+	p.shape(pts([6.2, 8.6, 17.8, 8.6, 18.8, 13.8, 15.6, 20, 8.4, 20, 5.2, 13.8]), 1.8)
+	var eye := pts([7.8, 12, 11, 13.2, 8.2, 14.6])
+	p.fill(eye)
+	p.fill(_mirror_x(eye))
+	p.stroke(pts([9.4, 17.2, 10.7, 16.2, 12, 17.2, 13.3, 16.2, 14.6, 17.2]), false, 1.3)
+
+
+static func _keyboard(p: Pen) -> void:
+	p.shape(pts([2.5, 6, 21.5, 6, 21.5, 18, 2.5, 18]), 1.8)
+	for row: int in 2:
+		for col: int in 5:
+			p.circle(Vector2(5.8 + col * 3.1, 9.2 + row * 2.9), 0.85)
+	p.stroke(pts([8, 15.2, 16, 15.2]), false, 1.6)
+
+
+## Two lid arcs from circles above and below, meeting at the eye's corners.
+static func _eye(p: Pen) -> void:
+	var r: float = 13.0
+	var d: float = 9.5
+	var a: float = atan2(d, sqrt(r * r - d * d))
+	var almond := arc_points(Vector2(12, 12 + d), r, -PI + a, -a, 14)
+	almond.append_array(arc_points(Vector2(12, 12 - d), r, a, PI - a, 14).slice(1, 14))
+	p.shape(almond, 1.8)
+	p.circle(Vector2(12, 12), 3.2)
 
 
 static func _store(p: Pen) -> void:

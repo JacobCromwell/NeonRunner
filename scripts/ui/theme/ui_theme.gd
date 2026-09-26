@@ -87,6 +87,11 @@ static func is_touch() -> bool:
 	return DeviceProfile.is_mobile()
 
 
+## A size in desktop pixels, scaled like the theme's sizes on touch devices (fixed widths in screens).
+static func px(v: float) -> float:
+	return roundf(v * (style().touch_scale if is_touch() else 1.0))
+
+
 ## The shared Theme for this device (built once). `hud` = the lighter in-game flavour.
 static func get_theme(hud: bool = false) -> Theme:
 	var key: String = "%s/%s" % [is_touch(), hud]
@@ -110,9 +115,28 @@ static func ensure(control: Control) -> void:
 ## ensure() at the end of the frame, when every parent has had its _ready (and set its theme).
 ## Kit widgets call this when they enter the tree. Safe if the control is freed before then.
 static func ensure_later(control: Control) -> void:
+	# The id, not the node: a lambda whose captured node is freed first reports an error when called.
+	var id: int = control.get_instance_id()
 	(func() -> void:
-		if is_instance_valid(control):
-			ensure(control)).call_deferred()
+		var c := instance_from_id(id) as Control
+		if c != null:
+			ensure(c)).call_deferred()
+
+
+## Draws `label` smaller (down to min_scale of `base_size`) when its text is wider than the label,
+## instead of cutting the end off. Call when the label's text or width changes.
+static func fit_font(label: Label, font: Font, base_size: int, min_scale: float = 0.7) -> void:
+	var fitted: int = base_size
+	var room: float = label.size.x
+	if font != null and room > 1.0 and label.text != "":
+		var width: float = font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, base_size).x
+		if width > room:
+			fitted = maxi(floori(base_size * room / width), roundi(base_size * min_scale))
+	if fitted == base_size:
+		if label.has_theme_font_size_override(&"font_size"):
+			label.remove_theme_font_size_override(&"font_size")
+	elif not label.has_theme_font_size_override(&"font_size") or label.get_theme_font_size(&"font_size") != fitted:
+		label.add_theme_font_size_override(&"font_size", fitted)
 
 
 static func build(s: UiStyle, touch: bool = false, hud: bool = false) -> Theme:
@@ -781,6 +805,7 @@ class _Builder:
 		theme.set_stylebox(&"focus", n, focus_box(px(s.corner_cut)))
 
 		var t: StringName = &"CreditCounter"
+		theme.set_type_variation(t, &"Control")
 		theme.set_font(&"font", t, f_display)
 		theme.set_font_size(&"font_size", t, px(s.value_size))
 		theme.set_color(&"font_color", t, s.text)
@@ -823,6 +848,7 @@ class _Builder:
 		theme.set_color(&"badge_text", t, s.backdrop_bottom)
 		theme.set_color(&"hint", t, s.text)
 		theme.set_color(&"hint_outline", t, s.outline)
+		theme.set_color(&"active", t, s.accent_2.lerp(Color.WHITE, 0.2))
 		theme.set_font(&"font", t, f_digits)
 		theme.set_font_size(&"font_size", t, px(15))
 		theme.set_constant(&"size", t, px(60))

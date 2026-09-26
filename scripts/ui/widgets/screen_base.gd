@@ -43,6 +43,12 @@ enum Backdrop { FULL, DIM, NONE }
 	set(v):
 		show_footer = v
 		_update_hints()
+## Off for screens with their own heading (the title screen, overlays). ui_cancel still means back
+## while show_back is on.
+@export var show_title_bar: bool = true:
+	set(v):
+		show_title_bar = v
+		title_bar.visible = v
 ## Gets focus when the screen opens; unset = the first focusable control in `content`.
 @export var initial_focus: Control
 
@@ -181,6 +187,49 @@ func focus_initial() -> void:
 ## Called by the back button and ui_cancel. Override to intercept; the default emits back_requested.
 func go_back() -> void:
 	back_requested.emit()
+
+
+## A centred panel in the content area (overlays, results, slot cards); returns its column.
+## `min_width` is in desktop pixels (scaled on touch devices).
+func add_panel(variation: StringName = UiTheme.DIALOG, min_width: float = 0.0) -> VBoxContainer:
+	var center := CenterContainer.new()
+	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content.add_child(center)
+	var panel := PanelContainer.new()
+	panel.theme_type_variation = variation
+	panel.custom_minimum_size.x = UiTheme.px(min_width)
+	center.add_child(panel)
+	var column := VBoxContainer.new()
+	panel.add_child(column)
+	return column
+
+
+## A label in one of the theme's text styles (UiTheme.CAPTION, UiTheme.HEADING, ...).
+static func make_label(text: String, variation: StringName = &"",
+		align: HorizontalAlignment = HORIZONTAL_ALIGNMENT_LEFT) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.theme_type_variation = variation
+	l.horizontal_alignment = align
+	return l
+
+
+## A section heading: an optional icon, the spaced sub-heading text and a thin line to the right.
+static func make_heading(text: String, icon_name: StringName = &"") -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override(&"separation", 10)
+	if icon_name != &"":
+		var icon := NeonIcon.make(icon_name, UiTheme.px(20))
+		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		icon.color = UiTheme.style().accent
+		row.add_child(icon)
+	row.add_child(make_label(text, UiTheme.SUBHEADING))
+	var line := HSeparator.new()
+	line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(line)
+	return row
 
 
 ## The first visible, enabled control under `root` that takes keyboard focus (depth first).

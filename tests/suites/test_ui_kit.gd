@@ -30,6 +30,7 @@ func run() -> void:
 	await _test_key_bind_button()
 	await _test_star_row()
 	_test_cooldown_icon()
+	await _test_screen_additions()
 	_test_sounds()
 	_root.queue_free()
 	await tree.process_frame
@@ -253,6 +254,11 @@ func _test_widgets_lifecycle() -> void:
 				"description": "Blocks one hit of anything."})
 			return card,
 		"KeyBindButton": func() -> Control: return KeyBindButton.for_action(&"jump"),
+		"TileButton": func() -> Control:
+			var tile := TileButton.new()
+			tile.content.add_child(NeonIcon.make(&"film", 28))
+			tile.add_label("INTRO", UiTheme.CAPTION)
+			return tile,
 		"ConfirmDialog": func() -> Control:
 			var d := ConfirmDialog.new()
 			d.title = "SURE?"
@@ -635,6 +641,8 @@ func _test_cooldown_icon() -> void:
 	icon.start_cooldown(0.5)
 	icon._process(0.6)
 	check(icon.is_ready() and readies[0] == 2, "a self-timed cooldown ends on its own")
+	icon.active = true
+	check(icon.active and icon.is_processing(), "an active power-up animates its ring")
 	icon.free()
 
 
@@ -653,3 +661,94 @@ func _test_sounds() -> void:
 	check(heard.size() == 1, "quiet() silences UI sounds")
 	UiSounds._quiet_until_ms = 0
 	UiSounds.hook = Callable()
+
+
+## What the game screens added to the kit: tile buttons, stocked cards, fitted card titles,
+## plain counters, the all-keys binding button, idle widgets that stay idle, screen helpers.
+func _test_screen_additions() -> void:
+	var tile := TileButton.new()
+	var icon := NeonIcon.make(&"boss", 36)
+	tile.content.add_child(icon)
+	var label: Label = tile.add_label("BOSS", UiTheme.SUBHEADING)
+	_root.add_child(tile)
+	await _frames(2)
+	check(icon.mouse_filter == Control.MOUSE_FILTER_IGNORE and label.focus_mode == Control.FOCUS_NONE,
+		"a tile's content never takes clicks or focus from it")
+	var inner: Vector2 = tile.content.get_combined_minimum_size()
+	check(tile.get_combined_minimum_size().x >= inner.x and tile.get_combined_minimum_size().y >= inner.y,
+		"a tile grows to fit its content")
+	var presses: Array[int] = [0]
+	tile.pressed.connect(func() -> void: presses[0] += 1)
+	tile.grab_focus()
+	_tap(&"ui_accept")
+	await _frames(1)
+	check(presses[0] == 1, "a tile presses like any button")
+	tile.queue_free()
+
+	var card := ItemCard.new()
+	_root.add_child(card)
+	card.configure({"item_id": &"armor", "title": "Armor", "icon_name": &"armor", "price": 150, "credits": 1000,
+		"stock": 2, "max_stock": 5})
+	await _frames(2)
+	check(card.state == ItemCard.State.AVAILABLE and card.status_label.text == "STOCK 2/5" and card.pips.tiers == 5
+		and card.pips.owned == 2 and card.equip_switch.visible, "a stocked item shows its stock as pips and x/max")
+	card.configure({"stock": 5})
+	check(card.state == ItemCard.State.MAXED and card.status_label.text == "FULL 5/5" and not card.buy_button.visible,
+		"a full stock can't be bought")
+	card.configure({"stock": 0})
+	check(card.state == ItemCard.State.AVAILABLE and not card.equip_switch.visible, "none in stock: nothing to switch")
+	var width: float = card.get_theme_constant(&"width", &"ItemCard")
+	card.configure({"stock": -1, "title": "Juggernaut dash of the far-away future", "price": 128500, "tier": 1, "max_tier": 4})
+	await _frames(2)
+	var base_size: int = card.get_theme_font_size(&"font_size", UiTheme.CARD_TITLE)
+	check(card.title_label.get_theme_font_size(&"font_size") < base_size, "a long title is drawn smaller to fit")
+	check(card.get_combined_minimum_size().x <= width + 0.5, "a long title or price never widens the card (%.0f)" % card.get_combined_minimum_size().x)
+	card.queue_free()
+
+	var plain := CreditCounter.new()
+	var with_icon := CreditCounter.new()
+	plain.show_icon = false
+	plain.show_chip = false
+	for c: CreditCounter in [plain, with_icon]:
+		c.set_value(12345, false)
+		_root.add_child(c)
+	await _frames(1)
+	check(plain.get_combined_minimum_size().x < with_icon.get_combined_minimum_size().x, "a counter without icon or chip is a plain number")
+	plain.add_theme_font_size_override(&"font_size", 60)
+	check(plain.get_combined_minimum_size().y > with_icon.get_combined_minimum_size().y, "and takes a font size override")
+	plain.queue_free()
+	with_icon.queue_free()
+
+	var all_keys := KeyBindButton.for_action(&"jump", -1)
+	var still := StarRow.new()
+	still.stars = 2
+	_root.add_child(all_keys)
+	_root.add_child(still)
+	var revealed: Array[int] = []
+	still.star_revealed.connect(func(i: int) -> void: revealed.append(i))
+	await _frames(90)
+	var names := PackedStringArray()
+	for e: InputEvent in all_keys.key_events():
+		names.append(UiTheme.event_text(e).to_upper())
+	check(names.size() > 1 and all_keys.text == " / ".join(names), "binding_index -1 shows all of the action's keys (%s)" % all_keys.text)
+	check(not all_keys.is_processing() and not still.is_processing(), "idle widgets stop processing")
+	check(revealed.is_empty() and not still.is_revealing() and still.stars == 2, "stars set directly never play a reveal")
+	all_keys.queue_free()
+	still.queue_free()
+
+	var screen := ScreenBase.new()
+	var column: VBoxContainer = screen.add_panel(UiTheme.DIALOG, 400.0)
+	column.add_child(ScreenBase.make_label("HELLO", UiTheme.HEADING))
+	column.add_child(ScreenBase.make_heading("SECTION", &"star"))
+	screen.show_title_bar = false
+	_root.add_child(screen)
+	await _frames(2)
+	var panel := column.get_parent() as PanelContainer
+	check(panel != null and panel.size.x >= 399.5 and panel.theme_type_variation == UiTheme.DIALOG, "add_panel() makes a centred panel")
+	check(not screen.title_bar.visible, "show_title_bar hides the title bar")
+	screen.queue_free()
+	# A widget freed before its deferred theming runs is skipped quietly.
+	var gone := NeonButton.make("GONE")
+	_root.add_child(gone)
+	gone.free()
+	await _frames(2)

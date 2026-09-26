@@ -24,6 +24,16 @@ signal became_ready
 	set(v):
 		key_hint = v
 		queue_redraw()
+## The power-up is working right now (a dash in progress, slow time on): a pulsing ring.
+@export var active: bool = false:
+	set(v):
+		if v == active:
+			return
+		active = v
+		_pulse = 0.0
+		if v:
+			set_process(true)
+		queue_redraw()
 
 ## Length of the ready flash.
 const FLASH_TIME: float = 0.45
@@ -32,6 +42,7 @@ var remaining: float = 0.0
 var total: float = 0.0
 var _self_timed: bool = false
 var _flash: float = 0.0
+var _pulse: float = 0.0
 
 
 func _init() -> void:
@@ -94,7 +105,9 @@ func _process(delta: float) -> void:
 		if remaining <= 0.0:
 			_on_ready()
 	_flash = maxf(0.0, _flash - delta)
-	if (not _self_timed or remaining <= 0.0) and _flash <= 0.0:
+	if active:
+		_pulse += delta
+	elif (not _self_timed or remaining <= 0.0) and _flash <= 0.0:
 		set_process(false)
 	queue_redraw()
 
@@ -142,6 +155,10 @@ func _draw() -> void:
 		if not empty:
 			draw_arc(center, r + ring_w * 0.5, 0.0, TAU, 64, Color(ring_color, 0.3), ring_w * 3.0, true)
 		draw_arc(center, r + ring_w * 0.5, 0.0, TAU, 64, ring_color, ring_w, true)
+	if active:
+		var beat: float = 0.5 + 0.5 * sin(_pulse * TAU * 2.0)
+		var ring: Color = get_theme_color(&"active", t)
+		draw_arc(center, r + ring_w * 1.5, 0.0, TAU, 64, Color(ring, 0.35 + 0.45 * beat), ring_w * (1.2 + beat), true)
 	if f > 0.0:
 		var k: float = 1.0 - f
 		draw_arc(center, (r + ring_w) * (1.0 + 0.35 * k), 0.0, TAU, 64,
