@@ -117,8 +117,8 @@ static func check_rules(suite: TestSuite, layout: LevelLayout, config: LevelConf
 		worst = maxf(worst, s.y - cursor)
 		suite.check(worst <= bt.pad_gap_seconds * speed + 0.01,
 			"anti-grav pads through a whole chase, at most %.0f s apart (%.1f s) %s" % [bt.pad_gap_seconds, worst / speed, tag])
-		# The Bad Dream's chase and an Octodog's charges never overlap (GDD §9.7): the host rules keep
-		# chases off planned dog runs.
+		# The Bad Dream's chase and an Octodog's charges never overlap (GDD §9.7): the Octodog rules,
+		# which run after the host rules, plan each dog's run off the chases.
 		for e: Dictionary in layout.enemies:
 			if String(e["type"]) == "octodog":
 				var run: Vector2 = LevelGenerator.enemy_floor_span(e)
