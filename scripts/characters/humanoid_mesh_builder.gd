@@ -19,7 +19,7 @@ var _glow: float = 0.0
 
 
 func triangle_count() -> int:
-	return vertices.size() / 3
+	return int(vertices.size() / 3.0)
 
 
 func is_empty() -> bool:

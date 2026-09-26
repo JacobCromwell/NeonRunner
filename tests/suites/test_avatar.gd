@@ -23,6 +23,7 @@ func run() -> void:
 	_test_fit_follows_retune()
 	_test_flash_death_and_reset()
 	_test_cost()
+	await _test_tuning_panel()
 	await _test_self_drive()
 	await _test_in_player()
 
@@ -372,6 +373,22 @@ func _test_cost() -> void:
 	var per_call: float = (Time.get_ticks_usec() - start) / 600.0
 	check(per_call < 500.0, "animate() costs %.0f µs per frame" % per_call)
 	avatar.free()
+
+
+## The pose parameters are ranged tunables, so the F6 panel can edit them live once registered.
+func _test_tuning_panel() -> void:
+	var anim := (load(PlayerAvatar.ANIM_TUNING_PATH) as HumanoidAnimTuning).duplicate() as HumanoidAnimTuning
+	var panel := TuningPanel.new()
+	tree.root.add_child(panel)
+	var sections: Array[Dictionary] = [{"title": "Avatar", "resource": anim, "path": PlayerAvatar.ANIM_TUNING_PATH}]
+	panel.setup(sections)
+	check(panel.control_count() >= 30, "every pose parameter has an F6 panel control (%d)" % panel.control_count())
+	var slider: HSlider = panel.find_slider("forward_lean")
+	if slider != null:
+		slider.value = 25.0
+	check(slider != null and is_equal_approx(anim.forward_lean, 25.0), "the panel edits pose parameters live")
+	panel.queue_free()
+	await tree.process_frame
 
 
 ## Nobody calls animate() after death (the Player stops updating): the collapse carries on alone.

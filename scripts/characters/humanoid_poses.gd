@@ -177,8 +177,8 @@ static func run(p: HumanoidPose, phase: float, amount: float, t: HumanoidAnimTun
 ## How planted a leg is at its cycle phase `ph`: 1 from contact to toe-off, easing in and out.
 static func stance_weight(ph: float) -> float:
 	var d: float = fposmod(ph - GAIT_CONTACT + 0.5, 1.0) - 0.5
-	var len: float = GAIT_TOE_OFF - GAIT_CONTACT
-	return smoothstep(-0.05, 0.02, d) * (1.0 - smoothstep(len - 0.02, len + 0.05, d))
+	var span: float = GAIT_TOE_OFF - GAIT_CONTACT
+	return smoothstep(-0.05, 0.02, d) * (1.0 - smoothstep(span - 0.02, span + 0.05, d))
 
 
 ## The leg that is further forward at this cycle phase: -1 left, 1 right (drives a jump).

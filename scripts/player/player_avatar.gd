@@ -84,6 +84,7 @@ func _init() -> void:
 	_shield.visible = false
 	add_child(_shield)
 	fit_to(PlayerSuit.parts().design_size)
+	rig.animate({}, 0.0)  # Stand idle until driven, never in the raw rest pose.
 	reset()
 
 

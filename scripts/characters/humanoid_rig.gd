@@ -75,14 +75,14 @@ func build(p_parts: HumanoidParts, p_material: Material, p_tuning: HumanoidAnimT
 	_support.clear()
 	_xf.clear()
 	for i: int in JOINT_NAMES.size():
-		var joint := Node3D.new()
-		joint.name = JOINT_NAMES[i]
-		joint.position = _rest[i]
-		(_body if PARENT[i] < 0 else _joints[PARENT[i]]).add_child(joint)
-		_joints.append(joint)
+		var node := Node3D.new()
+		node.name = JOINT_NAMES[i]
+		node.position = _rest[i]
+		(_body if PARENT[i] < 0 else _joints[PARENT[i]]).add_child(node)
+		_joints.append(node)
 		var part := MeshInstance3D.new()
 		part.name = "Part"
-		joint.add_child(part)
+		node.add_child(part)
 		_meshes.append(part)
 		_support.append(parts.support_points(SEGMENT[i], LIMB_SIDE[i]))
 		_xf.append(Transform3D.IDENTITY)
