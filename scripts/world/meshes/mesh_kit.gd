@@ -41,6 +41,18 @@ const PAT_STRATA: int = 11
 const PAT_RUST: int = 12
 ## Salvaged billboard content: faded, torn posters and graffiti (UV in metres, param a whole-number seed).
 const PAT_POSTER: int = 13
+## Cast concrete (decks, slabs, fascias): form-board lines, joints, stains and streaks; param > 0 paints
+## graffiti over it (the share of slots painted, with the material's graffiti_pieces colours).
+const PAT_CONCRETE: int = 14
+## Painted crates and container doors with a stencilled marking (UV in metres, centred on the face);
+## param = stencil_param(kind, size, seed).
+const PAT_STENCIL: int = 15
+## PAT_STENCIL kinds: a military supply code, the corporate logo (kit_logo.gdshaderinc), and both on
+## corrugated container doors.
+const STENCIL_CODE: int = 0
+const STENCIL_LOGO: int = 1
+const STENCIL_CODE_CORRUGATED: int = 2
+const STENCIL_LOGO_CORRUGATED: int = 3
 
 ## Shapes of the additive glow shader (UV2.x); UV runs 0–1 over the card.
 const SHAPE_FLAT: int = 0    ## Even glow with soft edges.
@@ -89,6 +101,14 @@ static func pick(values: Array, a: int, b: int = 0, c: int = 0) -> Variant:
 ## A stable integer key for a track distance or a position (to hash on), at centimetre precision.
 static func key(value: float) -> int:
 	return roundi(value * 100.0)
+
+
+## The PAT_STENCIL parameter: `kind` (STENCIL_*), a marking 0.3 m tall per `size` step (0-3, 0.3 to
+## 1.2 m), a `seed` (0-15) that picks the code's glyphs, and `emblem`: the cult's emblem, small and
+## unlit, beside the code or the logo (only where the material has the kit shader's cult_emblem
+## texture).
+static func stencil_param(kind: int, size: int, seed: int, emblem: bool = false) -> float:
+	return float(kind + 4 * clampi(size, 0, 3) + 16 * posmod(seed, 16) + (256 if emblem else 0))
 
 
 # --- Unit templates ------------------------------------------------------------
@@ -519,14 +539,16 @@ static func finish_gate(batch: MeshBatch, solid_material: Material, glow_materia
 
 ## The far end of a ceiling (hull-local: underside at y = 0, the end at z = zf, `band` deep): a band
 ## of the orange edge glow with amber lights along it and a glow below, so the drop back to the floor
-## reads like a gap edge in every zone.
-static func ceiling_end(s: MeshLayer, g: MeshLayer, half_width: float, zf: float, band: float, color: Color) -> void:
-	s.rect(Vector3(-half_width, 0, zf), Vector3(half_width * 2.0, 0, 0), Vector3(0, 0, band), color, 0.33)
-	var lx: float = -half_width + 0.6
-	while lx < half_width - 0.3:
+## reads like a gap edge in every zone. The band spans half_width to each side of center_x.
+static func ceiling_end(s: MeshLayer, g: MeshLayer, half_width: float, zf: float, band: float, color: Color,
+		center_x: float = 0.0) -> void:
+	var x0: float = center_x - half_width
+	s.rect(Vector3(x0, 0, zf), Vector3(half_width * 2.0, 0, 0), Vector3(0, 0, band), color, 0.33)
+	var lx: float = x0 + 0.6
+	while lx < center_x + half_width - 0.3:
 		s.box(Vector3(lx, -0.025, zf + 0.25), Vector3(0.35, 0.05, 0.2), color, 0.6, PAT_PLAIN, ALL_FACES & ~FACE_PY)
 		lx += 1.2
-	g.rect(Vector3(-half_width, -0.05, zf + band + 1.5), Vector3(half_width * 2.0, 0, 0), Vector3(0, 0, -(band + 3.0)),
+	g.rect(Vector3(x0, -0.05, zf + band + 1.5), Vector3(half_width * 2.0, 0, 0), Vector3(0, 0, -(band + 3.0)),
 		color, 0.35, SHAPE_RADIAL)
 
 

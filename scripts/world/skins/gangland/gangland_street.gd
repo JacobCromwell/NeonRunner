@@ -1,12 +1,13 @@
 class_name GanglandStreet
 extends RefCounted
 ## Gangland streets (GanglandSkin). A floor segment is a stretch of cracked asphalt (a world-space
-## pattern, so lanes, pieces and chunk cuts join seamlessly) with worn dashed lines between lanes and
-## a gutter strip along the building faces. Where a gap borders the segment, the road ends in the
-## orange edge glow right on the collision edge, and the cut shows the road's strata falling away
-## into darkness, with broken slabs and rebar hanging below the rim (never at or above it, so the edge
-## stays exactly where the collision ends). Every segment also carries strata along its lane sides,
-## hidden under the neighbouring lane unless that lane has a hole.
+## pattern, so lanes, pieces and chunk cuts join seamlessly) with worn dashed lines between lanes,
+## sand blown over it in long drifts and a sandy gutter strip along the building faces. Where a gap
+## borders the segment, the asphalt is scorched black toward the hole (a blast crater), the road
+## ends in the orange edge glow right on the collision edge, and the cut shows the road's strata
+## falling away into darkness, with broken slabs and rebar hanging below the rim (never at or above
+## it, so the edge stays exactly where the collision ends). Every segment also carries strata along
+## its lane sides, hidden under the neighbouring lane unless that lane has a hole.
 ## Chunk space: x across, y up (street at y = 0), z = -distance.
 
 const EDGE_LIP: float = 0.18
@@ -42,16 +43,20 @@ func build(batch: MeshBatch, center: Vector3, size: Vector3, lane_x: float, edge
 	var top_n: float = zn - lip_n
 	var top_f: float = zf + lip_f
 
-	# The street: asphalt across the lane (UV.x -1..1), lane lines on the sides that have neighbours.
-	var flags: int = (0 if left_gutter else 1) | (0 if right_gutter else 2)
+	# The street: asphalt across the lane (UV.x -1..1, UV.y metres from the near end), lane lines on
+	# the sides that have neighbours; the higher PAT_ASPHALT flags mark bordering holes and carry the
+	# piece's length, for the scorch toward them.
+	var length: float = top_n - top_f
+	var edges: int = (4 if edge_start else 0) | (8 if edge_end else 0) | (roundi(length * 8.0) << 4)
+	var flags: int = (0 if left_gutter else 1) | (0 if right_gutter else 2) | edges
 	s.rect(Vector3(l0, 0, top_n), Vector3(l1 - l0, 0, 0), Vector3(0, 0, top_f - top_n), skin.asphalt_color, 0.0,
-		MeshKit.PAT_ASPHALT, Vector2(-1, 0), Vector2(1, top_n - top_f), float(flags))
+		MeshKit.PAT_ASPHALT, Vector2(-1, 0), Vector2(1, length), float(flags))
 	if left_gutter:
 		s.rect(Vector3(x0, 0, top_n), Vector3(l0 - x0, 0, 0), Vector3(0, 0, top_f - top_n), skin.gutter_color, 0.0,
-			MeshKit.PAT_ASPHALT, Vector2(-1, 0), Vector2(1, 1), 0.0)
+			MeshKit.PAT_ASPHALT, Vector2(-1, 0), Vector2(1, length), float(edges))
 	if right_gutter:
 		s.rect(Vector3(l1, 0, top_n), Vector3(x1 - l1, 0, 0), Vector3(0, 0, top_f - top_n), skin.gutter_color, 0.0,
-			MeshKit.PAT_ASPHALT, Vector2(-1, 0), Vector2(1, 1), 0.0)
+			MeshKit.PAT_ASPHALT, Vector2(-1, 0), Vector2(1, length), float(edges))
 
 	# Strata along the lane sides: seen only where the neighbouring lane has a hole.
 	var depth: float = skin.crater_depth

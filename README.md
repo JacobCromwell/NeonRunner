@@ -156,7 +156,8 @@ family, the UI kit, every screen); each script's header lists its options.
 - **Economy and saves:** the economy and save files.
 - **Game flow:** the campaign (its zones, steps and level-by-level schedule) and app flow.
 - **Screens:** every screen at desktop and touch sizes.
-- **Zone skins:** both skins, including a check that neither adds collision.
+- **Zone skins:** both skins, including a check that neither adds collision, and for Gangland the colour
+  rule (only hazards glow in hazard colours) and ceilings a runner can read upside down.
 - **Sounds and music.**
 - **Boot:** the real game scene.
 
