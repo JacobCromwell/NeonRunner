@@ -132,7 +132,11 @@ func _draw() -> void:
 		icon_color = Color(icon_color, icon_color.a * 0.45)
 	icon_color = icon_color.lerp(get_theme_color(&"flash", t), f)
 	var icon_r: float = r * 0.62
-	IconFactory.draw(self, icon_name, Rect2(center - Vector2(icon_r, icon_r), Vector2(icon_r, icon_r) * 2.0), icon_color)
+	# One cached white texture per icon and size, tinted here: a single draw call, where drawing the
+	# shapes costs one per stroke (the HUD redraws these icons every frame while they cool or pulse).
+	var icon_rect := Rect2(center - Vector2(icon_r, icon_r), Vector2(icon_r, icon_r) * 2.0)
+	if icon_rect.size.x >= 1.0:
+		draw_texture_rect(IconFactory.texture(icon_name, ceilf(icon_r * 2.0)), icon_rect, false, icon_color)
 
 	var start: float = -PI / 2.0
 	if cooling:

@@ -1,9 +1,10 @@
 extends RefCounted
 ## Shared art kit for the cyborg family and fence generators (procedural low-poly with emissive trim,
-## CLAUDE.md Assets): flat-shaded tapered boxes and prisms with vertex colours, merged into one surface
-## per body part so each part is a single draw call; the part, LED visor, energy and cable shaders;
-## and the visor's pixel faces. Meshes, materials and textures are cached, so every instance shares
-## them. Visual only: nothing here touches collision or gameplay.
+## CLAUDE.md Assets): flat-shaded tapered boxes and prisms with vertex colours merged into one surface
+## (the generator, the window frame), the part, energy and cable shaders, the cyborgs' colours, and the
+## LED visor's pixel faces (drawn by cyborg_body.gdshader on the shared humanoid rig, see CyborgSuit).
+## Meshes, materials and textures are cached, so every instance shares them. Visual only: nothing here
+## touches collision or gameplay.
 ##
 ## Vertex colour alpha is the glow strength (0 = plain surface, 1 = full emissive trim).
 
@@ -92,48 +93,6 @@ void fragment() {
 	ROUGHNESS = roughness;
 	METALLIC = metallic;
 	EMISSION = COLOR.rgb * COLOR.a * glow_energy * (1.0 - tint_amount) + tint.rgb * tint_glow;
-}
-"""
-
-## An LED matrix: round dots sampled from a pixel face. `glitch` adds purple static and rows jumping
-## sideways (hosts); `flicker` drops the brightness now and then and `crack` draws a dead crack line
-## (the scavenger's damaged visor).
-const VISOR_SHADER: String = """
-shader_type spatial;
-render_mode unshaded, cull_back, shadows_disabled;
-uniform sampler2D face : filter_nearest;
-uniform vec4 led_color : source_color = vec4(1.0, 0.62, 0.14, 1.0);
-uniform vec4 glitch_color : source_color = vec4(0.72, 0.25, 1.0, 1.0);
-uniform float energy = 3.0;
-uniform float glitch = 0.0;
-uniform float flicker = 0.0;
-uniform float crack = 0.0;
-uniform float seed = 0.0;
-const vec2 GRID = vec2(13.0, 7.0);
-
-float hash(vec2 p) {
-	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-}
-
-void fragment() {
-	float t = TIME + seed * 13.7;
-	vec2 cell = floor(UV * GRID);
-	float tick = floor(t * 12.0);
-	float jump = step(1.0 - 0.3 * glitch, hash(vec2(cell.y, tick)));
-	cell.x = mod(cell.x + jump * floor((hash(vec2(tick, cell.y + 3.0)) - 0.5) * 7.0), GRID.x);
-	float on = texture(face, (cell + 0.5) / GRID).r;
-	vec2 f = fract(UV * GRID) - 0.5;
-	float dot_mask = smoothstep(0.5, 0.28, length(f));
-	vec3 col = led_color.rgb * on;
-	float stat = step(0.8, hash(cell + vec2(tick * 1.7, tick))) * glitch;
-	col = mix(col, glitch_color.rgb * max(on, 0.7), clamp(stat + glitch * 0.5 * on, 0.0, 1.0));
-	float drop = step(0.72, hash(vec2(floor(t * 9.0), seed + 1.0)));
-	col *= 1.0 - flicker * drop * 0.8;
-	float crack_d = abs(UV.y - (1.05 - UV.x * 1.25) - 0.035 * sin(UV.x * 57.0));
-	float cracked = crack * (1.0 - smoothstep(0.025, 0.055, crack_d));
-	col *= 1.0 - cracked;
-	vec3 glass = vec3(0.015, 0.012, 0.02) + vec3(0.35, 0.33, 0.3) * cracked * 0.5;
-	ALBEDO = mix(glass, col * energy, dot_mask * (1.0 - cracked));
 }
 """
 
@@ -265,8 +224,6 @@ static func shader(code_key: String) -> Shader:
 		match code_key:
 			"part":
 				s.code = PART_SHADER
-			"visor":
-				s.code = VISOR_SHADER
 			"energy":
 				s.code = ENERGY_SHADER
 			"cable":
@@ -275,7 +232,8 @@ static func shader(code_key: String) -> Shader:
 	return _shaders[code_key]
 
 
-## The body material: vertex colours with glowing trim. `state`: &"normal", &"flash" (hit), &"dead".
+## The body material: vertex colours with glowing trim. `state`: &"normal", &"flash" (hit),
+## &"flash_soft" (hit, with Settings > Reduced flashing), &"dead".
 static func part_material(state: StringName = &"normal") -> ShaderMaterial:
 	var key: String = "part_" + String(state)
 	if not _materials.has(key):
@@ -286,20 +244,13 @@ static func part_material(state: StringName = &"normal") -> ShaderMaterial:
 				m.set_shader_parameter(&"tint", Color(1.0, 0.95, 0.9))
 				m.set_shader_parameter(&"tint_amount", 0.75)
 				m.set_shader_parameter(&"tint_glow", 1.2)
+			&"flash_soft":
+				m.set_shader_parameter(&"tint", Color(1.0, 0.95, 0.9))
+				m.set_shader_parameter(&"tint_amount", 0.3)
+				m.set_shader_parameter(&"tint_glow", 0.4)
 			&"dead":
 				m.set_shader_parameter(&"tint", Color(0.03, 0.03, 0.035))
 				m.set_shader_parameter(&"tint_amount", 0.55)
-		_materials[key] = m
-	return _materials[key]
-
-
-## A glowing, unshaded colour (charge orb, cannon emitter), cached per colour and strength.
-static func glow_material(color: Color, energy: float) -> StandardMaterial3D:
-	var key: String = "glow_%s_%.2f" % [color.to_html(), energy]
-	if not _materials.has(key):
-		var m := StandardMaterial3D.new()
-		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		m.albedo_color = color * energy
 		_materials[key] = m
 	return _materials[key]
 
@@ -313,20 +264,6 @@ static func energy_material(color: Color) -> ShaderMaterial:
 		m.set_shader_parameter(&"color", color)
 		_materials[key] = m
 	return _materials[key]
-
-
-## A new visor material (one per cyborg: each face changes on its own).
-static func new_visor_material(led: Color, glitch: float, flicker: float, crack: float, seed_value: float) -> ShaderMaterial:
-	var m := ShaderMaterial.new()
-	m.shader = shader("visor")
-	m.set_shader_parameter(&"led_color", led)
-	m.set_shader_parameter(&"glitch_color", GLITCH_COLOR)
-	m.set_shader_parameter(&"glitch", glitch)
-	m.set_shader_parameter(&"flicker", flicker)
-	m.set_shader_parameter(&"crack", crack)
-	m.set_shader_parameter(&"seed", seed_value)
-	m.set_shader_parameter(&"face", face_texture(Face.NEUTRAL))
-	return m
 
 
 ## The pixel image of a face (white = LED on), cached.
