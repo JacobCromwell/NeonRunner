@@ -5,11 +5,11 @@ Companion to `GDD_CHECKPOINT.md`. The design phase is complete when this list is
 ## A. Next design rounds (in recommended order)
 
 ### 1. Zones (highest cost driver: do next)
-- Full list of 6+ zones: name, visual theme, color palette, and mood.
+- ~~Full list of 6+ zones: name, visual theme, and mood.~~ Answered: City, Gangland, Marketplace, Corporate, Dead Zone, Golden Zone (GDD §5). Still open: the order of zones 3–6, "Golden Zone" or "Golden Palace", and each zone's color palette.
 - ~~Which zone is first (the demo zone)?~~ Answered: Neon City is Zone 1, Gangland is Zone 2 (GDD §5).
-- The remaining zones (3–6+): the owner has ideas to discuss.
 - The **floor skin** for each zone (trucks, street, something else?).
-- **What forms the ceiling in zones without spaceships?** Anti-grav pads, drones, and the Bad Dream's escape route all depend on a ceiling existing.
+- ~~**What forms the ceiling in zones without spaceships?**~~ Answered: every zone has ceilings, made of different things per zone, and they may be narrower than the full floor (GDD §3, §5).
+- **Narrow ceilings** (new): can the player switch lanes on one? May the floor lanes beside a narrow ceiling hold hazards, or does the whole floor stay clear? Does a pad still destroy every drone on screen?
 - **Wall skin** for each zone, and what "signs" look like there.
 - The **enemy introduction schedule**: which enemy first appears in which zone and level.
 - Whether each zone introduces a new mechanic or object (ramps, speed pads, etc.).
@@ -66,7 +66,7 @@ For each boss: arena, phases, attacks, weak points, what power-ups are granted b
 - **Web demo:** portal-specific end screens if portals restrict store links.
 
 ### 9. Narrative
-- Is there a story? Who is the player running from or toward? Intro/outro scenes? Or pure arcade?
+- ~~Is there a story?~~ Answered: a light story with little or no words, a silent protagonist, a final villain backed by a cult (GDD §1). Still open: the individual story beats and cinematics (the owner will describe them), and the cult's name and visual identity.
 
 ### 10. Other
 - Working title.

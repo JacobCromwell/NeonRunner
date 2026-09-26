@@ -8,9 +8,15 @@
 
 ## 1. Concept
 
-A 3D endless-runner-style action game set in a neon cyberpunk future. The player runs forward automatically down a corridor and can use **three kinds of surface**: multi-lane floors, single-lane side walls they can briefly run along, and multi-lane ceilings (the undersides of low-flying spaceships) reached via anti-grav pads. Short, handcrafted-feeling levels (built by a rule-based generator) are grouped into visually distinct zones, each ending in a unique boss encounter. A shop between levels sells permanent upgrades and breakable protective items.
+A 3D endless-runner-style action game set in a neon cyberpunk future. The player runs forward automatically down a corridor and can use **three kinds of surface**: multi-lane floors, single-lane side walls they can briefly run along, and multi-lane ceilings (the undersides of ships, bridges, overpasses and buildings, depending on the zone) reached via anti-grav pads. Short, handcrafted-feeling levels (built by a rule-based generator) are grouped into visually distinct zones, each ending in a unique boss encounter. A shop between levels sells permanent upgrades and breakable protective items.
 
 **Differentiator:** full use of floor, walls, and ceiling as play surfaces, each with its own rules and risks.
+
+### Story (decided September 26, 2026)
+- **A light story with little or no words.** It is told mostly through **environmental storytelling** in the zones, plus **5–15 second cinematics** between levels or between zones. The owner will describe the individual story beats later.
+- **The runner is a silent protagonist** who is going to defeat the big bad. The game tells the player little more than that for now.
+- **The final villain** is the all-powerful controller of this world. He is propped up by a **cult** that has grown in power over many years and controls a large share of the population and the companies. He is the final boss, in the Golden Zone (§5).
+- **Bosses:** some are connected to the villain; others, such as the Sewer Swarm, are unconnected monsters that simply live in their zone.
 
 ---
 
@@ -61,7 +67,8 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 - **Lanes:** the ceiling has lanes, but the hull must look like a ship: no large gaps between lanes.
 - **Duration:** the player stays on the ceiling until the ship's hull ends, then drops back down.
 - **Clear floor beneath:** ceilings never carry obstacles underneath. The floor below a ceiling section has no gaps or hazards.
-- **Other zones:** what forms the ceiling is *(open)*.
+- **Every zone has ceilings** (decided September 26, 2026). What forms them changes from zone to zone (see §5).
+- **Ceilings don't have to cover every lane** (decided September 26, 2026). For example, an overpass may be only one lane wide. The rules for narrow ceilings (lane switching up there, what the floor beside them may hold, drones) are *(open)*.
 
 ### Collision rules (core principle)
 - **Damage only on real contact.** Lanes determine movement, not hits. A bullet in your lane that doesn't touch you does not hurt you.
@@ -97,9 +104,23 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 | Gap | Space between trucks | Hole or crater in the road |
 | Obstacle mount point | Truck cab or mid-roof | Barricade, wreck, rubble |
 | Wall section | Building facade with signs | Bombed-out building face |
-| Ceiling section | Underside of a low-flying ship | *(open)* |
+| Ceiling section | Underside of a low-flying ship | Underside of decaying or bombed-out buildings, overpasses and similar |
 
 **Zone order** (decided September 26, 2026): **Zone 1 is the Neon City** (the web demo zone) and **Zone 2 is Gangland**. The remaining zones are still to be designed with the owner; the build keeps empty slots for them.
+
+### Zone roster (decided September 26, 2026)
+**Every zone is set in the same future, vaguely cyberpunk world.** No zone looks historical: the Marketplace is not a medieval market. Zones may be dustier or dirtier than the Neon City, but they stay futuristic.
+
+| # | Zone | Look and mood | Ceilings |
+|---|---|---|---|
+| 1 | **Neon City** | Clean neon cyberpunk city | Undersides of low-flying ships |
+| 2 | **Gangland** | Grimy, apocalyptic gang territory; bombed-out building faces, holes in the road | Undersides of decaying or bombed-out buildings, overpasses and similar |
+| 3? | **Marketplace** | An open-air market, dustier and dirtier than the city: commercial buildings, lots of signs, casinos and shops. The backgrounds are full of interesting and funny citizens hanging out. | Undersides of buildings, bridges and overpasses; a few ships; floating advertisements |
+| 4? | **Corporate** | Close to the Neon City, but plainly corporate. Corporations and the military are intertwined, so there is a visible military presence. Generic, soulless corporate art. | Undersides of buildings, bridges and similar; occasionally a military ship |
+| 5? | **Dead Zone** | A blackened, bombed-out husk of the city: rubble, smouldering and dying fires, a general sense of unease and impending doom | Only the remains of the destroyed city: undersides of dead buildings and crumbling, charred grey bridges |
+| 6? | **Golden Zone** | The city strictly for the elites and corporate bosses, and home of the final boss. The cult that controls everything is felt everywhere, alongside an extravagant show of opulence and wealth. | Undersides of golden bridges, golden archways and other decadent structures, with water flowing off the sides as waterfalls or fountains |
+
+Zones 3–6 are listed in the order the owner gave them; the order is *(to confirm)*. Their floors, gaps, walls and colour palettes are *(open)*.
 
 **Rules:**
 - Identical gameplay behavior under every skin.
