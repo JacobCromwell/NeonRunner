@@ -241,8 +241,8 @@ var _wall_x: float = 0.0
 
 
 func _init() -> void:
-	# DESIGN-TBD: the GDD doesn't say whether Marketplace cyborgs are sleek citizens or scavengers
-	# (§9.2); the market is a commercial district, so they dress as citizens for now.
+	# DESIGN-TBD: GDD §9.2 gives the Marketplace's cyborgs their own variant, the Casino Mob Enforcer
+	# (task P3, not built yet); until then they wear the city look, and P3 sets this.
 	enemy_variant = &"city"
 
 
