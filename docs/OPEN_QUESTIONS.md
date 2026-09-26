@@ -194,26 +194,26 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
     colour?
 
 **Audio** (from the audio work)
-- **Mix balance:** music sits about 10 dB under the attack warnings; the pause menu ducks music by
+39. **Mix balance:** music sits about 10 dB under the attack warnings; the pause menu ducks music by
   8 dB. Needs a listen on real speakers and phones.
-- **Music on death and level complete:** the zone track keeps playing under the death screen; the
+40. **Music on death and level complete:** the zone track keeps playing under the death screen; the
   `level_complete` riff is in E (fits City, clashes with Gangland). Stop, duck, or play on?
-- **Music style per zone** (OPEN_QUESTIONS §6): City is 160 BPM galloping synth-metal in E minor,
+41. **Music style per zone** (OPEN_QUESTIONS §6): City is 160 BPM galloping synth-metal in E minor,
   Gangland 120 BPM drop-D industrial groove, menus 100 BPM synthwave.
 
 **UI** (from the UI kit work)
-39. **Palette:** an azure main accent and a violet second accent; red only for warnings and "can't
+42. **Palette:** an azure main accent and a violet second accent; red only for warnings and "can't
     afford". Pink, orange and yellow are never UI colours (they're hazard colours).
-40. **Stars** are white with an azure glow rather than gold (yellow is the sign colour). OK?
-41. **Fonts and sizes:** Orbitron (titles, numbers) and Exo 2 (text); touch devices get 76 px controls
+43. **Stars** are white with an azure glow rather than gold (yellow is the sign colour). OK?
+44. **Fonts and sizes:** Orbitron (titles, numbers) and Exo 2 (text); touch devices get 76 px controls
     and 1.2× text. Worth checking on a real phone (`data/ui/ui_style.tres`).
-42. **HUD progress bar:** shown; what its markers should stand for is open.
-43. **Key rebinding:** single keys only (no Ctrl+ combinations); Esc cancels a rebind, so Esc itself
+45. **HUD progress bar:** shown; what its markers should stand for is open.
+46. **Key rebinding:** single keys only (no Ctrl+ combinations); Esc cancels a rebind, so Esc itself
     can't be bound.
 
 **Platforms and presentation**
-44. **Store links** in the web demo point at the stores' front pages until the game has store pages.
-45. **App icon:** a placeholder neon "N" (`tools/asset_gen/icon_gen.gd`) until there's a title and brand.
+47. **Store links** in the web demo point at the stores' front pages until the game has store pages.
+48. **App icon:** a placeholder neon "N" (`tools/asset_gen/icon_gen.gd`) until there's a title and brand.
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
