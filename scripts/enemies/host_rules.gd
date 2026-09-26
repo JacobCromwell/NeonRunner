@@ -35,9 +35,10 @@ extends RefCounted
 ##   the level's new thing doesn't make way for an older one, so its pads clear the dog as before.
 ## - In a level that guarantees its features (LevelConfig.guarantee_features), if no host is left
 ##   (every one placed was dropped, or none was placed), one is added where a host fits all of the
-##   above: its chase fits and gets its pads, it keeps off Octodog runs, and, like any cyborg, it
-##   stands clear of floor obstacles (CyborgRules), of other enemies and of a hover truck's lane while
-##   the truck is about. DESIGN-TBD: the spot is picked at random among those that fit.
+##   above: its chase fits and gets its pads, and, like any cyborg, it stands clear of floor obstacles
+##   (CyborgRules), of other enemies and of a hover truck's lane while the truck is about. Its chase
+##   may take the run of an Octodog only while another dog is left standing (that dog is removed), so
+##   both features still appear. DESIGN-TBD: the spot is picked at random among those that fit.
 ## Like the cyborg rules they start with, these run after the hover truck's (its route ramp), and
 ## after the Octodog's (its planned runs).
 
@@ -131,12 +132,17 @@ static func _add_guaranteed(gen: LevelGenerator, t: BadDreamTuning, rng: RandomN
 	var spans: Array[Vector2] = CyborgRules.obstacle_spans(layout, gen.tuning)
 	var clearance: float = gen.config.spacing_seconds_hard * speed
 	var after: float = (t.pad_ceiling_seconds + gen.config.hull_landing_seconds) * speed
+	var dogs: int = 0
+	for e: Dictionary in layout.enemies:
+		if String(e.get("type", "")) == "octodog":
+			dogs += 1
 	var spots: Array[float] = []
 	var at: float = maxf(earliest, gen.config.start_clear_distance)
 	while t.chase_stretch(at, speed).y <= last_ok:
 		var stretch: Vector2 = t.chase_stretch(at, speed)
 		if not CyborgRules.near_any(spans, at, margin) and not _enemy_near(layout, at, clearance) \
-				and not dog_run_between(layout, stretch.x, stretch.y + after) and not _lanes_clear_of_trucks(gen, at).is_empty():
+				and (dogs == 0 or _dogs_between(layout, stretch.x, stretch.y + after) < dogs) \
+				and not _lanes_clear_of_trucks(gen, at).is_empty():
 			spots.append(at)
 		at += GUARANTEE_STEP
 	var pick: RandomNumberGenerator = gen.rng_for("host_guarantee")
@@ -146,6 +152,8 @@ static func _add_guaranteed(gen: LevelGenerator, t: BadDreamTuning, rng: RandomN
 		if not bool(plan["ok"]):
 			continue
 		var lanes: Array[int] = _lanes_clear_of_trucks(gen, spot)
+		var stretch: Vector2 = t.chase_stretch(spot, speed)
+		_remove_dogs_between(layout, stretch.x, stretch.y + after)
 		var host: Dictionary = gen.add_enemy("cyborg", spot, lanes[pick.randi_range(0, lanes.size() - 1)], 0,
 			{"host": true, "panic": false})
 		for pad_at: float in plan["pads"]:
@@ -179,8 +187,19 @@ static func _lanes_clear_of_trucks(gen: LevelGenerator, at: float) -> Array[int]
 	return out
 
 
-## Removes every Octodog whose planned run touches [from, to] (for the host that introduces the
-## feature, whose chase takes precedence).
+## How many Octodogs have a planned run touching [from, to].
+static func _dogs_between(layout: LevelLayout, from: float, to: float) -> int:
+	var n: int = 0
+	for e: Dictionary in layout.enemies:
+		if String(e.get("type", "")) == "octodog":
+			var span: Vector2 = LevelGenerator.enemy_floor_span(e)
+			if span.x <= to and span.y >= from:
+				n += 1
+	return n
+
+
+## Removes every Octodog whose planned run touches [from, to] (for a host whose chase takes
+## precedence: the one that introduces the feature, or a guaranteed one that leaves a dog standing).
 static func _remove_dogs_between(layout: LevelLayout, from: float, to: float) -> void:
 	var kept: Array[Dictionary] = []
 	for e: Dictionary in layout.enemies:

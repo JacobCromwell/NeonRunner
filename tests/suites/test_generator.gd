@@ -1,7 +1,10 @@
 extends TestSuite
 ## Generator fairness over many seeds, lane counts and difficulties, plus pattern-data checks;
 ## features that start partway into a level (introductions, and every rules script that adds a
-## feature's enemies or pieces keeping to the start), and per-level feature weights.
+## feature's enemies or pieces keeping to the start), per-level feature weights, and the guarantee
+## that every feature appears (LevelConfig.guarantee_features, and the host rules' own).
+
+const HostRules := preload("res://scripts/enemies/host_rules.gd")
 
 
 func run() -> void:
@@ -45,6 +48,8 @@ func run() -> void:
 	_test_rules_share_levels(base)
 	_test_feature_weights(base)
 	_test_pattern_features()
+	_test_guarantee(base)
+	_test_host_guarantee(base)
 
 
 ## Ceilings that enemy rules add later (drone pads, add_hull_with_pad) keep off the floor enemies
@@ -323,3 +328,83 @@ func _test_pattern_features() -> void:
 	for p: Dictionary in LevelGenerator.load_for(base):
 		for need: Variant in p.get("requires", []):
 			check(LayoutChecks.known_feature(String(need)), "pattern %s requires a known feature (%s)" % [p.get("id", "?"), need])
+
+
+## LevelConfig.guarantee_features: every feature a pattern can place appears, whatever the seed. A
+## feature chance rarely picks (weight 0.02) shows up in every level with it and in far from every
+## level without it; the result stays fair and deterministic. A feature no pattern can place (one
+## still to be built) isn't required, and one that can't appear at all ends in a warning after the
+## most builds, not in an endless search.
+func _test_guarantee(base: LevelConfig) -> void:
+	var without: int = 0
+	var retried: int = 0
+	for lanes: int in [3, 5, 6]:
+		for level_seed: int in range(1, 11):
+			var config: LevelConfig = base.duplicate() as LevelConfig
+			config.lane_count = lanes
+			config.level_seed = level_seed
+			config.features = PackedStringArray(["ramps", "ceilings", "pulsing", "speed_pads", "resonator"])
+			config.feature_weights = {"speed_pads": 0.02}
+			var tag: String = "lanes=%d seed=%d" % [lanes, level_seed]
+			var plain := LevelGenerator.new()
+			var natural: LevelLayout = plain.generate(config, tuning, LevelGenerator.load_for(config))
+			check(plain.attempts == 1, "without the guarantee a level is built once " + tag)
+			if natural.speed_pads.is_empty():
+				without += 1
+			config.guarantee_features = true
+			var gen := LevelGenerator.new()
+			var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+			check(not layout.speed_pads.is_empty(), "with it, the rare feature appears " + tag)
+			check(gen.warnings.is_empty(), "and nothing is reported missing " + tag + " %s" % [gen.warnings])
+			check(not gen.placeable_features(LevelGenerator.load_for(config)).has("resonator"),
+				"a feature no pattern places yet isn't required " + tag)
+			LayoutChecks.check_layout(self, layout, config, tag)
+			var again := LevelGenerator.new()
+			check(JSON.stringify(again.generate(config, tuning, LevelGenerator.load_for(config)).to_dict()) == JSON.stringify(layout.to_dict())
+				and again.attempts == gen.attempts, "the guarantee is deterministic " + tag)
+			if gen.attempts > 1:
+				retried += 1
+	check(without >= 15, "chance alone leaves the rare feature out of most levels (%d of 30)" % without)
+	check(retried >= 15, "and the guarantee builds those again (%d of 30)" % retried)
+
+	# Hosts without ceilings can never keep their Bad Dream's pads: the search gives up with a warning.
+	var stuck: LevelConfig = base.duplicate() as LevelConfig
+	stuck.features = PackedStringArray(["cyborg", "host"])
+	stuck.guarantee_features = true
+	var gen := LevelGenerator.new()
+	var layout: LevelLayout = gen.generate(stuck, tuning, LevelGenerator.load_for(stuck))
+	check(gen.attempts == LevelGenerator.GUARANTEE_ATTEMPTS and HostRules.hosts_in(layout).is_empty(),
+		"a feature that can't appear stops the search after %d builds (%d)" % [LevelGenerator.GUARANTEE_ATTEMPTS, gen.attempts])
+	var said: bool = false
+	for w: String in gen.warnings:
+		said = said or (w.begins_with("guarantee:") and w.contains("host"))
+	check(said, "and the level reports it (%s)" % [gen.warnings])
+
+
+## The host rules' own guarantee (guarantee_features): a level left without a host (every one
+## dropped, or none placed) gets one where a host fits every rule, and its Bad Dream's chase keeps
+## off Octodog runs; drones, Octodogs and cyborgs keep theirs (LayoutChecks.check_rules).
+func _test_host_guarantee(base: LevelConfig) -> void:
+	var added: int = 0
+	for lanes: int in [3, 5, 6]:
+		for level_seed: int in range(1, 9):
+			var config: LevelConfig = base.duplicate() as LevelConfig
+			config.lane_count = lanes
+			config.level_seed = level_seed
+			config.difficulty = 0.6
+			config.enemy_scaling = 0.8
+			config.features = PackedStringArray(["cyborg", "ceilings", "octodog", "generator", "drone", "host"])
+			config.feature_weights = {"host": 0.0}
+			var tag: String = "lanes=%d seed=%d" % [lanes, level_seed]
+			check(LayoutChecks.feature_positions(LevelGenerator.new().generate(config, tuning, LevelGenerator.load_for(config)), "host").is_empty(),
+				"no host pattern is picked at weight 0 " + tag)
+			config.guarantee_features = true
+			var gen := LevelGenerator.new()
+			var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+			var hosts: Array[float] = LayoutChecks.feature_positions(layout, "host")
+			check(hosts.size() == 1, "the host rules add one host where it fits (%d hosts) %s" % [hosts.size(), tag])
+			check(gen.warnings.is_empty(), "no warnings " + tag + " %s" % [gen.warnings])
+			LayoutChecks.check_layout(self, layout, config, tag)
+			LayoutChecks.check_rules(self, layout, config, tag)
+			added += hosts.size()
+	check(added == 24, "every level got its host (%d of 24)" % added)

@@ -32,6 +32,10 @@ const GUARANTEE_ATTEMPTS: int = 16
 ## is so late that a long pattern couldn't fit before the end.
 const GUARANTEE_SHARES: Array[float] = [0.3, 0.0, 0.55, 0.12, 0.4, 0.05, 0.7, 0.2, 0.02, 0.48, 0.08,
 	0.62, 0.25, 0.15, 0.35, 0.78]
+## A feature missed again gets more forced picks in the next build (one per miss, up to this many),
+## spread over its stretch, so one that rarely survives (a floor enemy where the drone's pads clear
+## the floor) gets several chances in a build.
+const GUARANTEE_MAX_PICKS: int = 3
 
 var layout: LevelLayout
 var config: LevelConfig
@@ -306,18 +310,22 @@ func _pick_pattern(patterns: Array, difficulty: float, at: float, only: String =
 
 
 ## The picks this build must give a feature, earliest first: each feature's introduction at its
-## start (LevelConfig.feature_starts), and a forced pick for each feature an earlier build missed
-## (`forced`: feature → how many builds missed it, which picks its spot from GUARANTEE_SHARES).
+## start (LevelConfig.feature_starts), and forced picks for each feature an earlier build missed
+## (`forced`: feature → how many builds missed it; that many picks, up to GUARANTEE_MAX_PICKS, at
+## spots from GUARANTEE_SHARES, the first one moving on with each miss).
 func _due_picks(forced: Dictionary) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for key: Variant in config.feature_starts:
 		var feature: String = String(key)
 		if config.has_feature(feature):
 			out.append({"feature": feature, "at": feature_start(feature)})
+	var n: int = GUARANTEE_SHARES.size()
 	for key: Variant in forced:
 		var feature: String = String(key)
-		var share: float = GUARANTEE_SHARES[(int(forced[key]) - 1) % GUARANTEE_SHARES.size()]
-		out.append({"feature": feature, "at": feature_share_at(feature, share)})
+		var misses: int = int(forced[key])
+		for k: int in mini(misses, GUARANTEE_MAX_PICKS):
+			var share: float = GUARANTEE_SHARES[(misses - 1 + k * 5) % n]
+			out.append({"feature": feature, "at": feature_share_at(feature, share)})
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return float(a["at"]) < float(b["at"]) or (float(a["at"]) == float(b["at"]) and String(a["feature"]) < String(b["feature"])))
 	return out
