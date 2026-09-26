@@ -180,9 +180,19 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
 31. The player's glow is cyan, the same as the anti-grav pads. OK, or should the player have its own
     colour?
 
+**UI** (from the UI kit work)
+32. **Palette:** an azure main accent and a violet second accent; red only for warnings and "can't
+    afford". Pink, orange and yellow are never UI colours (they're hazard colours).
+33. **Stars** are white with an azure glow rather than gold (yellow is the sign colour). OK?
+34. **Fonts and sizes:** Orbitron (titles, numbers) and Exo 2 (text); touch devices get 76 px controls
+    and 1.2× text. Worth checking on a real phone (`data/ui/ui_style.tres`).
+35. **HUD progress bar:** shown; what its markers should stand for is open.
+36. **Key rebinding:** single keys only (no Ctrl+ combinations); Esc cancels a rebind, so Esc itself
+    can't be bound.
+
 **Platforms and presentation**
-32. **Store links** in the web demo point at the stores' front pages until the game has store pages.
-33. **App icon:** a placeholder neon "N" (`tools/asset_gen/icon_gen.gd`) until there's a title and brand.
+37. **Store links** in the web demo point at the stores' front pages until the game has store pages.
+38. **App icon:** a placeholder neon "N" (`tools/asset_gen/icon_gen.gd`) until there's a title and brand.
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
