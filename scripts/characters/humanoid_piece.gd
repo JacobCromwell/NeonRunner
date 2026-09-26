@@ -19,6 +19,10 @@ enum Shape {
 	BAND,
 	## Ring: diameter size.x, tube diameter size.y, `sides` segments, axis along y.
 	TORUS,
+	## Like BAND (the faces within `arc`, swept through `profile`), but a solid sheet `thickness`
+	## thick: outside, inside, the top and bottom rims and the two cut edges are all closed, so it
+	## reads from both sides (coat panels, an open collar).
+	SHELL,
 }
 
 ## Which rig segments get this piece. Limb segments exist twice (left and right).
@@ -45,11 +49,17 @@ enum Placement {
 ## BOX: size of the corner cut as a fraction of the smaller half-size (0 = square corners).
 @export_range(0.0, 0.5, 0.01) var chamfer: float = 0.0
 @export_range(3, 24, 1) var sides: int = 6
-## LATHE / BAND rings, bottom to top: (height, x scale, z scale, z shift).
+## PRISM / LATHE / BAND / SHELL: turns the section's corners round its outline (degrees) without
+## turning the outline itself. 0 puts a flat face at the front and back; half a side's angle puts
+## a corner there instead.
+@export_range(-180.0, 180.0, 0.5) var section_phase: float = 0.0
+## LATHE / BAND / SHELL rings, in order: (height, x scale, z scale, z shift).
 @export var profile: PackedVector4Array = PackedVector4Array()
-## BAND: keeps the faces whose direction lies between these angles (degrees; 0 = front,
+## BAND / SHELL: keeps the faces whose direction lies between these angles (degrees; 0 = front,
 ## 90 = the right side, ±180 = the back).
 @export var arc: Vector2 = Vector2(-180.0, 180.0)
+## SHELL: the sheet's thickness (metres at design scale), measured inward from the outline.
+@export_range(0.001, 0.1, 0.001) var thickness: float = 0.012
 @export var offset: Vector3 = Vector3.ZERO
 @export var rotation_degrees: Vector3 = Vector3.ZERO
 ## Albedo (sRGB). Glowing pieces use their glow colour here.

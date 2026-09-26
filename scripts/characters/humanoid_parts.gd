@@ -41,6 +41,10 @@ const SEGMENTS: Array[StringName] = [&"pelvis", &"chest", &"neck", &"head", &"up
 ## Name → Array of HumanoidPiece. Merged into the segment meshes while switched on.
 @export var attachments: Dictionary = {}
 
+@export_group("Panels")
+## Stiff flaps hinged at the waist (a coat's skirt), swung by HumanoidRig. Empty for most looks.
+@export var panels: Array[HumanoidPanel] = []
+
 static var _mesh_cache: Dictionary = {}
 static var _support_cache: Dictionary = {}
 
@@ -64,6 +68,35 @@ func segment_mesh(segment: StringName, limb_side: int, active: Array[StringName]
 		for set_name: String in names:
 			sets.append(attachments[StringName(set_name)])
 		_mesh_cache[key] = _build_mesh(segment, limb_side, sets)
+	return _mesh_cache[key]
+
+
+## Every panel merged into one mesh in the pelvis joint's space (one surface, drawn with the body
+## material; UV.y = panel index + 1). Its metadata: "points" (every vertex), "point_panels" (the
+## panel of each point), "triangles" and "body_surface" (0). Null without panels.
+func panel_mesh() -> ArrayMesh:
+	if panels.is_empty():
+		return null
+	var key: String = "%s|panels" % _key()
+	if not _mesh_cache.has(key):
+		var builder := HumanoidMeshBuilder.new()
+		var owners := PackedInt32Array()
+		for i: int in panels.size():
+			var panel: HumanoidPanel = panels[i]
+			var before: int = builder.vertices.size()
+			for piece: HumanoidPiece in panel.pieces:
+				builder.add_piece(piece, panel.side < 0, i + 1)
+			for v: int in builder.vertices.size() - before:
+				owners.append(i)
+		var mesh: ArrayMesh = null
+		if not builder.is_empty():
+			mesh = ArrayMesh.new()
+			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, builder.arrays())
+			mesh.set_meta(&"body_surface", 0)
+			mesh.set_meta(&"triangles", builder.triangle_count())
+			mesh.set_meta(&"points", builder.vertices)
+			mesh.set_meta(&"point_panels", owners)
+		_mesh_cache[key] = mesh
 	return _mesh_cache[key]
 
 
