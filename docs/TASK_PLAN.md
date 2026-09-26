@@ -85,6 +85,11 @@ These are also in `CLAUDE.md`.
 | B6 | **Non-lethal "robbed" hit and credit theft** (for the Tithe Collector, GDD §9.12). **Core** (damage rules, score). | B1 | M | T2 |
 | B7 | **In-run pickups** (GDD §10). **Core** (run world). | B1 | M | T2 |
 | B8 | **Runner-style boss framework** (GDD §10). **Core** (campaign, HUD). | B1 | L | T1 |
+| B9 | **Weapons never set off fence generators** (GDD §9.1, decided September 26, 2026). | – | S | T3 |
+
+**B9: weapons never set off fence generators** (added September 26, 2026, from the owner's design round).
+- Auto-fire never targets a generator, and no weapon damage (direct hit or missile splash) sets one off; a stomp or the dash still does. The same rule as for hosts, so an EMP is always the player's choice.
+- Sleep Taker (E5c) relies on it.
 
 **B1: campaign restructure.**
 - Needs a way to start a feature partway into a level: cyborgs appear only late in City 1.
@@ -189,6 +194,7 @@ Each skin covers:
 - motion cues on still floors
 - a Compatibility-renderer check with rendered frames
 - the build budget test that the City skin has
+- the cult (GDD §5): its emblem hidden in logos and ads (shown openly in the Golden Zone), and **its feed playing on billboards and in shop windows** (the Cyborg Viewing Devices story, decided September 26, 2026)
 
 | ID | Task | Needs | Size | Tier |
 |---|---|---|---|---|
@@ -201,6 +207,7 @@ Each skin covers:
 | D6b | **Golden Palace interior skin** | D6a | L | T2 |
 | D7 | **Cult symbol options** | – | S | T3 |
 | D8 | **Music for the four new zones** | – | M | T2 |
+| D9 | **The cult's feed and emblem in the City and Gangland skins** | D2 | S–M | T2 |
 
 **D1: Gangland update.** The owner's direction is browns and tans, lived in, graffiti and plenty of signs of life, with hints that corporate and military interests fund the gangs. Ceilings are the undersides of decaying or bombed-out buildings and overpasses, instead of today's scavenger barge.
 
@@ -244,6 +251,10 @@ Each skin covers:
 - Render a comparison sheet for the owner, who picks one.
 - The chosen symbol then goes into each skin: hidden in logos and ads, and open in the Golden Zone.
 
+**D9: the cult's feed and emblem in the City and Gangland skins** (added September 26, 2026, from GDD §5, "Cyborg Viewing Devices").
+- The Marketplace skin (D2) builds the feed as a shared piece: the same wordless broadcast on billboards, ads and shop-window screens in every zone. Skins built after it include the feed and the emblem from the start.
+- D9 adds the feed to the City and Gangland, and the hidden emblem to the City (Gangland already has it).
+
 **D8: Music for the four new zones.** Code-generated placeholder loops in the existing style, fitting each zone's mood:
 - Marketplace: happy and bustling
 - Corporate: oppressive
@@ -252,15 +263,32 @@ Each skin covers:
 
 The owner reviews them.
 
+### P. Player and cyborg looks
+
+Added September 26, 2026, from the owner's design round 4 (GDD §9.2 and §11). All three change **looks only**, never gameplay or hitboxes.
+
+| ID | Task | Needs | Size | Tier |
+|---|---|---|---|---|
+| P1 | **Razor Echo, the new player model** (GDD §11). Brief: `docs/art/BRIEF_RAZOR_ECHO.md` | – | L | T2 |
+| P2 | **The ragged screen-head cyborg base** (GDD §9.2). Brief: `docs/art/BRIEF_CYBORG_GANGSTER.md` | P1 | M–L | T2 |
+| P3 | **The cyborg zone variants** (GDD §9.2). Brief: the "Zone variants" section of `docs/art/BRIEF_CYBORG_GANGSTER.md` | P2 | L | T2 |
+
+- P1 and P2 may both touch the shared humanoid rig (`scripts/characters/humanoid_*`), so they run one after the other.
+- They run alongside the core lane.
+- P1 and P2 are finished before the web demo release (E2).
+
 ### E. Bosses and the web demo
 
 | ID | Task | Needs | Size | Tier |
 |---|---|---|---|---|
 | E1 | **Floating Head** (GDD §10). XL, split into steps. | B7, B8 | XL | T1 |
-| E2 | **Web demo release candidate** (GDD §2) | E1 | M | T2 |
+| E2 | **Web demo release candidate** (GDD §2) | E1, P1, P2 | M | T2 |
 | E3 | **Swarm rendering risk test (R4)** | owner's phone | M | T2 |
-| E4 | **Sewer Swarm** | design, E3, B8 | XL | T1 |
-| E5 | **Marketplace, Corporate and Dead Zone bosses; the final villain** | design | – | T1 |
+| E4 | **Sewer Swarm** | E3, B7, B8 | XL | T1 |
+| E5a | **The House** (Marketplace boss) | B5, B7, B8, C1, D2 (D3 for the cheering citizens) | XL | T1 |
+| E5b | **Hostile Takeover** (Corporate boss) | B4, B5, B7, B8, C2, C5, D4 | XL | T1 |
+| E5c | **Sleep Taker** (Dead Zone boss) | B7, B8, B9, D5 | XL | T1 |
+| E5d | **The final villain** | design | – | T1 |
 
 **E1: Floating Head steps.**
 1. Ship and face models.
@@ -282,9 +310,9 @@ The owner reviews them.
 - MultiMesh clusters of hundreds of screeches on a mid-range Android phone.
 - Needs an Android export and the owner's device.
 
-**E4: Sewer Swarm.** Blocked: the design is still in progress (§10).
+**E4: Sewer Swarm.** Designed (GDD §10, September 26, 2026). Waits for the phone test R4 (E3), which must come before this boss is built, and the boss framework.
 
-**E5: remaining bosses.** Blocked until the owner designs them.
+**E5: the other bosses.** The House, Hostile Takeover and Sleep Taker are designed (GDD §10, September 26, 2026); each is XL, split into steps like E1, and waits for the enemies, mechanics and skin its fight uses. The final villain (E5d) still needs its design.
 
 ### F. Cinematics
 
@@ -310,6 +338,7 @@ The owner reviews them.
   - after B1: B8, then B7
   - D1, D2, D4, D5, D6a
   - D7, F1, A1
+  - P1 → P2 → P3, one after another (alongside the core lane; P1 and P2 before E2)
   - E3, when the owner can test on a phone
 
 **Wave 2 (as dependencies merge):**
@@ -324,21 +353,26 @@ The owner reviews them.
 | D3 Marketplace citizens | D2 |
 | D6b Golden Palace | D6a |
 | D8 music | anytime |
+| B9 generators and weapons | anytime |
+| D9 the cult's feed in the City and Gangland | D2 |
+| P2 cyborg base, then P3 variants | P1, then P2 |
+| E5c Sleep Taker | B7, B8, B9 and D5 |
 
 **Wave 3:**
 - B6 → C5 (Tithe Collector)
-- E2 (web demo release candidate)
+- E5a The House (after B5, C1, D2), E5b Hostile Takeover (after B4, B5, C2, C5, D4)
+- E2 (web demo release candidate), after E1, P1 and P2
 - applying the owner's answers from the placeholder review (T4 for numbers only, T2 if code changes)
 
-**Blocked on design:** E4 and E5 (bosses), F2 (cinematic content).
+**Blocked on design:** E5d (the final villain), F2 (cinematic content). **Blocked on the owner's phone:** E3, and so E4.
 
-**The critical path to the web demo:** B1 → B8 and B7 → E1 → E2. The demo depends on the Floating Head more than on anything else, so keep that path moving first.
+**The critical path to the web demo:** B1 → B8 and B7 → E1 → E2. The demo depends on the Floating Head more than on anything else, so keep that path moving first. P1 → P2 (the new player and cyborg looks) must also be done before E2.
 
 ---
 
 ## Still to design with the owner
 
-- **Bosses:** Sewer Swarm (in progress), the Marketplace, Corporate and Dead Zone bosses, and the final villain with its second stage.
+- **Bosses:** the final villain with its second stage (the other five are designed, GDD §10).
 - **Cinematics:** story beats for each slot.
 - **Placeholder review:** a keep-or-change pass over the numbered items in `docs/OPEN_QUESTIONS.md` §D.
 - **Remaining rounds:** player and power-up numbers, screens and stars, audio, mobile and ads, title, accessibility, languages, age rating, budget and check-ins.

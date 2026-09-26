@@ -7,10 +7,14 @@
 // ruin = 1 turns the facade into a bombed-out building face (Gangland): stained concrete, shuttered
 // or boarded storefronts, boarded or bricked-up windows in the wall-run band (the wall must look
 // solid there), broken, lit and burning windows higher up, and blast holes above the play space.
+// Lived in (graffiti_amount, curtain_share > 0): pieces and tags over the lower storeys, and
+// curtains in lit windows. Burning windows flicker gently, steady with Reduced flashing.
 shader_type spatial;
 render_mode unshaded, cull_back;
 
 #include "res://scripts/world/meshes/shaders/kit_common.gdshaderinc"
+#include "res://scripts/world/meshes/shaders/kit_flash.gdshaderinc"
+#include "res://scripts/world/meshes/shaders/kit_marks.gdshaderinc"
 
 uniform vec3 window_warm : source_color = vec3(1.0, 0.9, 0.76);
 uniform vec3 window_cool : source_color = vec3(0.7, 0.84, 1.0);
@@ -29,6 +33,16 @@ uniform vec3 shutter_color : source_color = vec3(0.3, 0.3, 0.3);
 uniform vec3 soot_color : source_color = vec3(0.025, 0.022, 0.02);
 uniform vec3 graffiti_color : source_color = vec3(0.35, 0.5, 0.52);
 uniform vec3 fire_color : source_color = vec3(0.9, 0.42, 0.14);
+// Lived in (ruin mode). graffiti_amount > 0 replaces the storefront tags with pieces and tags
+// (graffiti_marks) over everything up to a storey above the band, this share of slots painted, in
+// graffiti_color and the two colours below.
+uniform float graffiti_amount = 0.0;
+uniform vec3 graffiti_color_b : source_color = vec3(0.35, 0.5, 0.52);
+uniform vec3 graffiti_color_c : source_color = vec3(0.5, 0.49, 0.46);
+// The share of lit windows with curtains drawn half across, glowing with the lamp behind them.
+uniform float curtain_share = 0.0;
+uniform vec3 curtain_color : source_color = vec3(0.5, 0.42, 0.36);
+uniform vec3 curtain_color_b : source_color = vec3(0.36, 0.4, 0.44);
 
 // Planks nailed over an opening (fp: position in its cell, fw: the cell footprint of a pixel).
 vec3 ruin_planks(vec2 cell, vec2 fp, vec2 fw, float seed) {
@@ -101,9 +115,11 @@ void fragment() {
 				* (1.0 - 0.35 * filtered_pulse(UV.y / 0.12, fw.y * cs.y / 0.12, 0.0, 0.3));
 			fill = sk < 0.55 ? shutter : (sk < 0.85 ? ruin_planks(cell, fp, fw, seed)
 				: ruin_blocks(to_linear(COLOR.rgb), UV, fw * cs, seed));
-			vec2 tag = graffiti(UV, seed);
-			vec3 paint = mix(to_linear(graffiti_color), to_linear(vec3(0.5, 0.49, 0.46)), step(0.6, tag.y));
-			fill = mix(fill, paint, tag.x * 0.7);
+			if (graffiti_amount <= 0.0) {
+				vec2 tag = graffiti(UV, seed);
+				vec3 paint = mix(to_linear(graffiti_color), to_linear(vec3(0.5, 0.49, 0.46)), step(0.6, tag.y));
+				fill = mix(fill, paint, tag.x * 0.7);
+			}
 		} else if (cy < band_top) {
 			fill = k < 0.65 ? ruin_planks(cell, fp, fw, seed) : ruin_blocks(to_linear(COLOR.rgb), UV, fw * cs, seed);
 		} else {
@@ -111,8 +127,18 @@ void fragment() {
 			float lamp = step(hash12(cell * 3.3 + seed), COLOR.a);
 			vec3 lamp_col = to_linear(window_warm) * (window_glow * 0.45 * (0.5 + 0.5 * fp.y));
 			float flick = 0.65 + 0.35 * sin(TIME * 9.0 + cell.x * 3.0) * sin(TIME * 5.3 + cell.y * 1.7);
+			flick = mix(flick, 0.8, reduced_flashing);
 			vec3 fire = to_linear(fire_color) * (flick * (1.3 - fp.y));
 			fill = k < 0.6 ? dark : (k < 0.75 ? ruin_planks(cell, fp, fw, seed) : mix(dark * 1.5, lamp_col, lamp));
+			if (k >= 0.75 && hash12(cell * 5.1 + seed + 3.0) < curtain_share) {
+				// Curtains drawn half across, glowing faintly with the lamp behind them.
+				float wx = (fp.x - win.x) / (win.z - win.x);
+				float open_w = 0.1 + 0.28 * hash12(cell * 2.3 + seed);
+				float panel = 1.0 - filtered_pulse(wx, fw.x / (win.z - win.x), 0.5 - open_w, 0.5 + open_w);
+				vec3 cloth = to_linear(hash12(cell * 1.9 + seed) < 0.5 ? curtain_color : curtain_color_b);
+				cloth *= (lamp > 0.5 ? window_glow * 0.55 : 0.3) * (0.82 + 0.18 * sin(wx * 26.0));
+				fill = mix(fill, cloth, panel);
+			}
 			fill = mix(fill, fire, step(0.975, k) * step(12.0, cy));
 			// Soot rising from burnt-out windows.
 			float plume = step(k, 0.3) * step(win.w, fp.y) * (1.0 - smoothstep(win.w, 1.0, fp.y))
@@ -120,6 +146,16 @@ void fragment() {
 			wall = mix(wall, soot, plume * 0.8);
 		}
 		vec3 col = mix(wall, fill, opening);
+		if (graffiti_amount > 0.0) {
+			// Pieces and tags over the lower storeys: walls, shutters, boards and bricks alike.
+			vec4 g = graffiti_marks(UV, seed, graffiti_amount, max(fw.x * cs.x, fw.y * cs.y));
+			float reach = 1.0 - smoothstep(band_top + 0.5, band_top + 1.5, UV.y);
+			vec3 gc = g.z < 0.3 ? graffiti_color : (g.z < 0.55 ? graffiti_color_b : (g.z < 0.8 ? graffiti_color_c
+				: vec3(0.78, 0.75, 0.68)));
+			float lit_paint = (0.75 + 0.2 * max(n.z, 0.0)) * (0.55 + 0.45 * smoothstep(-0.5, 2.2, UV.y));
+			col = mix(col, to_linear(vec3(0.05, 0.045, 0.04)), g.y * 0.9 * reach);
+			col = mix(col, to_linear(gc) * lit_paint, g.x * 0.85 * reach);
+		}
 		if (UV.y > band_top + 1.0) {
 			// Blown-out panels above the play space: ragged clusters of cells open onto gutted floors.
 			vec2 jag = (vec2(value_noise(UV * 1.9 + seed), value_noise(UV * 1.9 + seed + 7.1)) - 0.5) * 0.3;

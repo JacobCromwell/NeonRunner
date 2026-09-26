@@ -4,8 +4,12 @@ extends Enemy
 ## electric fences just ahead of it (most fences have none; patterns place it with its fences). It
 ## shows what it powers with the fence hazard language: pink energy coils and pulsing pink conduits
 ## running to each of its fences.
-## - Destroyed by weapons, a stomp or the dash. DESIGN-TBD: claws and plain contact don't destroy
-##   it; its body is solid, so running into it hurts like any solid obstacle (armor doesn't help).
+## - Destroyed by a **stomp** or the **dash** only. **Weapons never set it off** (GDD §9.1, decided
+##   September 26, 2026): immune_to_weapons keeps it off auto-fire's target list and blocks all
+##   weapon damage (a direct hit, a stray shot aimed elsewhere, a homing missile, or splash); the
+##   same rule as for hosts, whom auto-fire never targets (GDD §9.7), so an EMP is always the
+##   player's choice. DESIGN-TBD: claws and plain contact don't destroy it; its body is solid, so
+##   running into it hurts like any solid obstacle (armor doesn't help).
 ## - Destroying it sets off an EMP (RunWorld.emp): every fence within emp_radius (DESIGN-TBD, in
 ##   data/enemies/generator.tres) switches off for the rest of the level, and every enemy hears it
 ##   (the Cyborg's Bad Dream dissolves, GDD §9.7).
@@ -30,7 +34,6 @@ var _body: MeshInstance3D
 var _energy: MeshInstance3D
 var _cable_core: MeshInstance3D
 var _husk: bool = false
-var _flash_left: float = 0.0
 
 
 func _build() -> void:
@@ -42,9 +45,7 @@ func _build() -> void:
 	claw_immune = true
 	stompable = true
 	dash_kills = true
-	var p: Dictionary = spawn.get("params", {})
-	if p.has("health"):
-		max_health = float(p["health"])
+	immune_to_weapons = true
 	lane = clampi(int(spawn.get("lane", 0)), 0, world.geo.lane_count - 1)
 	var at: float = float(spawn.get("at", 0.0))
 	position = world.lane_point(lane, at)
@@ -52,7 +53,6 @@ func _build() -> void:
 	add_hitbox(&"top", TOP_SIZE, Vector3(0.0, TOP_Y, 0.0))
 	powered = fences_in_reach(world.layout, world.geo, at, lane, tuning.emp_radius)
 	_build_visuals()
-	health_changed.connect(_on_hurt)
 
 
 func aim_point() -> Vector3:
@@ -88,20 +88,7 @@ func _on_defeated(_cause: StringName) -> void:
 		_cable_core.visible = false
 
 
-func _on_hurt(_e: Enemy) -> void:
-	if alive:
-		# A short white flash; with Settings > Reduced flashing a softer tint held longer, so rapid
-		# hits hold it steady instead of strobing.
-		var soft: bool = Settings.flashing_reduced
-		_flash_left = 0.3 if soft else 0.08
-		_body.material_override = Kit.part_material(&"flash_soft" if soft else &"flash")
-
-
-func _process(delta: float) -> void:
-	if _flash_left > 0.0:
-		_flash_left -= delta
-		if _flash_left <= 0.0 and not _husk:
-			_body.material_override = Kit.part_material(&"normal")
+func _process(_delta: float) -> void:
 	if _husk and world != null and world.player != null \
 			and world.player_distance() - track_distance() > HUSK_KEEP:
 		queue_free()

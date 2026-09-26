@@ -33,9 +33,13 @@ For each boss: arena, phases, attacks, weak points, what power-ups are granted b
 - ~~Does the longer final fight still restart from the beginning on death?~~ Answered: a checkpoint halfway, at a possible second stage (GDD §10).
 
 ### 3. Player character
-- ~~Who or what is the player?~~ Answered: a human runner in a cyber suit (GDD §11). Still open: name, customization.
+- ~~Who or what is the player?~~ Answered: redesigned September 26, 2026 after the owner's "Echo" concept sheet (GDD §11). Still open: customization.
 - Cosmetic skins as a mobile purchase item?
-- How it looks when using each power-up (claws, dash, shield, armor).
+- How it looks when using each power-up (claws, dash, shield, armor), redone for the new design.
+- ~~**Player redesign**~~ Answered: Razor Echo, soft copper glow, no pistol (GDD §11; brief `docs/art/BRIEF_RAZOR_ECHO.md`).
+- ~~**Cyborg redesign**~~ Answered: one blended body, a screen head, non-hazard colours, the base for every zone variant (GDD §9.2; brief `docs/art/BRIEF_CYBORG_GANGSTER.md`).
+- ~~**Cyborg zone variants**~~ Answered: Brute in Gangland, Casino Mob Enforcer in the Marketplace, VR Runner in Corporate, the base burned out in the Dead Zone, a Golden Zone version derived from the Casino Mob Enforcer; all the same unit, none bigger than the base (GDD §9.2).
+- ~~**Story idea: Cyborg Viewing Devices**~~ Answered: yes (GDD §5, "The cult").
 
 ### 4. Remaining power-up details
 - **Claws:** how much extra wall time? Upgrade tiers?
@@ -196,7 +200,7 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
 29. **Swarm bonus on splash:** the heavy missile's bonus also applies to its splash on swarm enemies.
 30. **No overkill:** auto-fire skips an enemy that shots already in flight will kill and moves on to
     the next nearest.
-31. ~~**Fence generators** are auto-fire targets (destroying one sets off its EMP). Should they be?~~ Answered September 26, 2026: no. Auto-fire never targets generators and missile splash never damages them (GDD §9.1). **Needs a build change.**
+31. ~~**Fence generators** are auto-fire targets (destroying one sets off its EMP). Should they be?~~ Answered September 26, 2026: no. Auto-fire never targets generators and missile splash never damages them (GDD §9.1). Built in task B9: generators are immune to all weapon damage; a stomp or the dash still sets one off.
 32. **Shots ignore level geometry** (hulls, walls), and the weapon fires from any surface.
 33. **Slow time** slows the player too; pausing suspends it (resuming continues); dying or finishing
     ends it. Audio isn't slowed.
@@ -204,12 +208,12 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
     for recent damage (yellow and orange stay hazard colours). The magnet's pull glows azure.
 
 **Player model** (from the player-model work)
-35. How each power-up looks: claws on the gloves, armor plates, a shield bubble, a shoulder weapon that
+35. *(Superseded September 26, 2026: redo for Razor Echo, see `docs/art/BRIEF_RAZOR_ECHO.md`.)* How each power-up looks: claws on the gloves, armor plates, a shield bubble, a shoulder weapon that
     grows by tier (tier colours are made up), a magnet coil.
 36. Invulnerability: a bright tint that flickers (held steady with Reduced flashing), not a blink.
 37. Death: a red flash while the suit's glow powers down (the grey box turned red). Keep?
 38. The stomp pose also plays during the air-slide fast fall.
-39. The player's glow is cyan, the same as the anti-grav pads. OK, or should the player have its own
+39. *(Answered September 26, 2026: the player's glow is now soft copper, GDD §11.)* The player's glow is cyan, the same as the anti-grav pads. OK, or should the player have its own
     colour?
 
 **Neon City look** (from the City skin work)
@@ -224,7 +228,7 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
    are kept on the facades. Keep them?
 
 **Gangland look** (from the Gangland skin work)
-45. **Ceiling:** a scavenger cargo barge (patched plates, a blunt bow with a bumper beam, cargo on deck,
+45. (Superseded by the Gangland update: see "From build phase 2" item 17.) **Ceiling:** a scavenger cargo barge (patched plates, a blunt bow with a bumper beam, cargo on deck,
   the orange end band, dim engines). GDD §3 leaves other zones' ceilings open. Keep it?
 46. **Motion on a still street:** drifting ash, paper scraps and speed streaks give a sense of speed
   where nothing streams by (the City has its moving road). Keep them? Should other still zones get
@@ -285,9 +289,9 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
 72. **Window cyborgs:** a 0.8 m body band centred on the 2.2 m wall-entry height, reaching 0.55 m out
   from the wall. They can't be stomped.
 73. **Fence generators:** claws and running into one don't destroy it, and its body is solid (running
-  into it kills; armor doesn't help). EMP radius 16 m; 3 shots to destroy; placed 9 m before its fence
-  row.
-74. **Scores and look:** cyborg and window cyborg 200, generator 150. LED faces are amber so they read
+  into it kills; armor doesn't help). EMP radius 16 m; placed 9 m before its fence row. (Weapons no longer
+  destroy one: item 31.)
+74. **Scores and look:** cyborg and window cyborg 200, generator 150. LED faces are amber *(changed September 26, 2026: cold white, GDD §9.2)* so they read
   apart from the player's cyan visor.
 
 **Octodog and Sewer Screech** (from their work)
@@ -451,6 +455,35 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
     music task adds them the game skips them quietly and the menu music keeps playing. Fine as a stopgap?
 16. **The economy over 15 levels** ("From the full build" items 10–11). Completion pays 100 + 25 per campaign
     level, so Golden 3 pays 450; prices were set for a two-zone campaign. Needs a balancing pass.
+
+**Gangland update** (from D1; numbers are F6-tunable exports on `GanglandSkin`)
+17. **Gangland's ceilings** (GDD §3, §5; replaces "From the full build" item 45, the scavenger barge). Placeholder:
+    two structures, picked per ceiling (45% buildings): an overpass (tagged concrete fascia, crash barrier and
+    railing, a sign gantry with billboards and corporate ads, a dead lamp post, a gang lookout of sandbags and
+    military crates) and the upper storeys of a bombed-out building bridging the street (lit and curtained
+    windows, laundry, a broken roof). Both run on one flat concrete slab, a beam per lane, with dark joints, small
+    warm-white work lamps on every lane seam and the orange end band. Right structures, and is the lamp-lit seam
+    a good lane read?
+18. **Narrow ceilings in Gangland** (GDD §3, task B3): a side in mid-street ends in a plain edge face. What should
+    a narrow ceiling be here: a slab broken off a building, a pedestrian bridge, something else?
+19. **Time of day** (GDD §5, §11 give the palette, not the hour). Placeholder: a dusty dusk (brown sky, tan dust on
+    the horizon, a veiled pale sun, smoke columns, brown dust fog), dark enough for hazards to pop. Keep it, or a
+    harsher daylight?
+20. **Hints of corporate and military funding** (GDD §5). Placeholder: side streets barricaded with stencilled
+    olive military crates (30%) or corporate containers with a logo (30%); olive military notice boards above the
+    wall-run band; corporate ads among the posters (30%); sandbags as a fence mount. The corporate logo and colour
+    are a generic grey mark (`kit_logo.gdshaderinc`): should they match the Corporate zone's brand (task D4)?
+21. **The cult emblem, hidden in plain sight** (GDD §5, proposed): unlit bronze, small, beside the logo on some
+    container doors, as the sponsor's mark in the corner of some ads, and on some crates and notice boards (35%
+    of each); it fades out below about 24 px on screen. The right amount of "hidden"?
+22. **Signs of life** (GDD §5): graffiti pieces and tags over the lower storeys (dusty blue, steel grey, violet
+    grey, cream; no hazard hues), 12–32% of upper windows lit, laundry, rooftop clutter, bulbs over side streets,
+    washing lines across the street at 15.4 m and up. Too busy, or not enough?
+23. **Holes as craters** ("From the full build" item 47): the asphalt is scorched toward each hole and sand
+    drifts along the street; holes stay one lane wide and square-cut, with the orange edge on the collision edge.
+    Enough of a crater read?
+24. **Motion on the still street** ("From the full build" item 46): dust-coloured flecks, paper scraps and pale
+    speed streaks, as before.
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).

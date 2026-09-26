@@ -2,14 +2,16 @@ class_name GanglandProps
 extends RefCounted
 ## Gangland visuals for electric fences and signs (GanglandSkin). Hazards keep the cross-zone
 ## language from MeshKit: the same pink crackling field and glowing bars for electric fences, here
-## strung between scrap poles set in rubble or lashed to oil drums, and the yellow/black striped
-## frame for signs, here around grimy salvaged billboards. Mounts sit on the lane edges and reach at
+## strung between scrap poles set in rubble, lashed inside oil drums or braced by military sandbags,
+## and the yellow/black striped frame for signs, here around grimy salvaged billboards (some with
+## corporate ads pasted on, the kit shader's poster_ads). Mounts sit on the lane edges and reach at
 ## most a few decimetres into the neighbouring lane. Meshes are cached and shared by every instance.
 ## DESIGN-TBD: the edge bars and the OFF look are proposals (as in the city); the GDD fixes only the
 ## pink crackle.
 
 const RUBBLE: int = 0
 const DRUM: int = 1
+const SANDBAGS: int = 2
 
 ## Weak: the skin owns this builder, so a strong reference back would keep both alive forever.
 var skin: GanglandSkin:
@@ -28,12 +30,12 @@ func _init(p_skin: GanglandSkin) -> void:
 func fence(hazard: Hazard, size: Vector3, ground_y: float, gapped: bool) -> void:
 	var a: int = MeshKit.key(hazard.position.x)
 	var b: int = MeshKit.key(hazard.position.z)
-	var mounts: ArrayMesh = _mounts(size, ground_y, gapped, MeshKit.hash_i(a, b, 3) % 2, MeshKit.hash_i(a, b, 4) % 2)
+	var mounts: ArrayMesh = _mounts(size, ground_y, gapped, MeshKit.hash_i(a, b, 3) % 3, MeshKit.hash_i(a, b, 4) % 3)
 	MeshKit.dress_fence(hazard, size, mounts, skin.fence_field_materials(), skin.fence_part_materials())
 
 
-## Scrap poles with glowing insulator caps on both ends of the field, each set in a rubble mound or
-## lashed inside an oil drum, plus the shared bars and emitters.
+## Scrap poles with glowing insulator caps on both ends of the field, each set in a rubble mound,
+## lashed inside an oil drum or braced by a ring of sandbags, plus the shared bars and emitters.
 func _mounts(size: Vector3, ground_y: float, gapped: bool, left: int, right: int) -> ArrayMesh:
 	var id: String = "mounts_%s_%s_%s_%d_%d" % [size, ground_y, gapped, left, right]
 	if _meshes.has(id):
@@ -48,10 +50,13 @@ func _mounts(size: Vector3, ground_y: float, gapped: bool, left: int, right: int
 		solid.box(Vector3(x, (ground_y + pole_top) * 0.5, 0), Vector3(0.1, pole_top - ground_y, 0.1), skin.fence_pole_color,
 			0.0, MeshKit.PAT_RUST, MeshKit.NO_BOTTOM)
 		hot.box(Vector3(x, pole_top + 0.04, 0), Vector3(0.17, 0.08, 0.17), skin.fence_color, 0.9)
-		if (left if side < 0.0 else right) == RUBBLE:
-			_rubble(solid, Vector3(x, ground_y, 0), side)
-		else:
-			_drum(solid, Vector3(x + side * 0.08, ground_y, 0))
+		match left if side < 0.0 else right:
+			RUBBLE:
+				_rubble(solid, Vector3(x, ground_y, 0), side)
+			DRUM:
+				_drum(solid, Vector3(x + side * 0.08, ground_y, 0))
+			_:
+				GanglandClutter.sandbag_ring(solid, Vector3(x, ground_y, 0), 0.17, 2, 5, skin.sandbag_color)
 	MeshKit.fence_bars(hot, size, ground_y, gapped, post_x, skin.fence_color)
 	var mesh: ArrayMesh = batch.to_mesh()
 	_meshes[id] = mesh

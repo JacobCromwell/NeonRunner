@@ -79,24 +79,72 @@ func _test_hitboxes() -> void:
 		"its body ends at the stomp line, so dropping onto it only touches its top")
 
 
+## GDD §9.1 (decided September 26, 2026): weapons never set off a generator, by any path. Only a
+## stomp or the dash does (see _test_stomp, _test_dash_claws_contact).
 func _test_weapons() -> void:
+	var pt: PowerupTuning = load("res://data/tuning/powerups.tres") as PowerupTuning
+	var looks: Array[StringName] = [&"laser", &"laser_2", &"missile", &"heavy_missile"]
 	var w: RunWorld = sim.build_world(_layout())
 	var g: FenceGenerator = _spawn(w, 0)
 	check(g.powered.size() == 3, "it powers the fence group just ahead (%d fences)" % g.powered.size())
-	check(g.is_obstacle and g.claw_immune and g.stompable and g.dash_kills, "declared: an obstacle, stompable, dash-breakable, not by claws")
-	check(w.director.targets_ahead(Vector3(0.0, 0.8, 0.0), 80.0).has(g), "auto-fire can target it (weapons destroy it)")
-	var needed: int = ceili(gt.health_at(0.0) - 0.001)
-	for i: int in needed:
-		w.projectiles.fire_player(g.aim_point() + Vector3(0.0, 0.0, 6.0), Vector3(0.0, 0.0, -90.0), 1.0)
-		await physics_frames(10)
-		if i < needed - 1:
-			check(g.alive, "still running after %d of %d shots" % [i + 1, needed])
-	check(not g.alive, "weapons destroy it (%d laser shots)" % needed)
-	check(_disabled_at(w.layout, FENCE_AT) == 3, "its EMP switches its fences off")
-	check(_disabled_at(w.layout, FAR_FENCE_AT) == 0, "fences out of the EMP's reach stay on")
-	check(w.score.kills == 0 and w.score.score >= gt.score_value, "it scores as an obstacle, not a kill (%d)" % w.score.score)
-	var r: Dictionary = await sim.step_world(w, 4.0)
-	check(r["alive"] and float(r["distance"]) > FENCE_AT + 5.0, "a player then runs through its fences safely (%s)" % r["cause"])
+	check(g.is_obstacle and g.claw_immune and g.stompable and g.dash_kills and g.immune_to_weapons,
+		"declared: an obstacle, stompable, dash-breakable, not by claws, immune to weapons")
+	await sim.free_world(w)
+
+	# Every weapon tier: not targeted (even as the only enemy in range), and no damage from a direct
+	# hit (a stray shot aimed elsewhere, or a homing missile actually locked onto it).
+	for tier: int in [1, 2, 3, 4]:
+		w = sim.build_world(_layout())
+		g = _spawn(w, 0)
+		check(not g.targetable(), "tier %d: it isn't targetable" % tier)
+		check(w.director.targets_ahead(g.aim_point(), 200.0).is_empty(),
+			"tier %d: auto-fire finds nothing, even with the generator its only enemy in range" % tier)
+		var dmg: float = PowerupTuning.at_tier(pt.weapon_damage, tier)
+		var heavy: bool = tier >= 4
+		var splash_r: float = pt.splash_radius if heavy else 0.0
+		var splash_s: float = pt.splash_damage_share if heavy else 0.0
+		for i: int in 20:
+			w.projectiles.fire_player(g.aim_point() + Vector3(0.0, 0.0, 6.0), Vector3(0.0, 0.0, -90.0),
+				dmg, looks[tier - 1], null, 0.0, splash_r, splash_s)
+			await physics_frames(6)
+		check(g.alive and is_equal_approx(g.health, g.max_health),
+			"tier %d: 20 stray direct hits leave it undamaged" % tier)
+		if tier >= 3:
+			# A homing missile explicitly locked onto it (auto-fire would never pick it, but the
+			# damage path itself must refuse it too).
+			w.projectiles.fire_player(g.aim_point() + Vector3(1.0, 0.5, 10.0), Vector3(0.0, 0.0, -60.0),
+				dmg, looks[tier - 1], g, pt.missile_turn_rate, splash_r, splash_s)
+			await physics_frames(120)
+			check(g.alive and is_equal_approx(g.health, g.max_health),
+				"tier %d: a homing missile locked onto it never lands a hit" % tier)
+		await sim.free_world(w)
+
+	# The heavy missile's splash, exploding right next to it from a direct hit on a neighbour.
+	w = sim.build_world(_layout())
+	g = _spawn(w, 0)
+	var near: Enemy = w.director.spawn({"type": "dummy", "script": "res://tests/helpers/dummy_enemy.gd",
+		"at": GEN_AT, "lane": 1, "seed": 2, "params": {"health": 30.0}})
+	var dmg4: float = PowerupTuning.at_tier(pt.weapon_damage, 4)
+	w.projectiles.fire_player(near.aim_point() + Vector3(0.0, 0.0, 6.0), Vector3(0.0, 0.0, -90.0),
+		dmg4, &"heavy_missile", null, 0.0, pt.splash_radius, pt.splash_damage_share)
+	await physics_frames(10)
+	check(near.health < 30.0, "sanity: the heavy missile hit its direct target")
+	check(g.alive and is_equal_approx(g.health, g.max_health),
+		"its splash, exploding right next to the generator, doesn't damage it")
+	await sim.free_world(w)
+
+	# Equipped for real, with the generator its only enemy in range: auto-fire never fires at all,
+	# and it never shows a health bar (it's never damaged to trigger one, but check the declared
+	# property directly too, the same rule health bars use for hosts).
+	w = sim.build_world(_layout(), _loadout({"weapon": 4}))
+	g = _spawn(w, 0)
+	var health_bars: EnemyHealthBars = (w.powerups as PowerupController).weapon.health_bars
+	var shots: Array[int] = [0]
+	(w.powerups as PowerupController).fired.connect(func(_t: int) -> void: shots[0] += 1)
+	var r: Dictionary = await sim.step_world(w, 2.0)
+	check(r["alive"] and shots[0] == 0 and g.alive,
+		"equipped and running, auto-fire never fires with only a generator ahead (%s)" % r["cause"])
+	check(not EnemyHealthBars.wants_bar(g) and not health_bars.is_shown(g), "and it never shows a health bar")
 	await sim.free_world(w)
 
 	# The same fences kill without the EMP (the control case).
