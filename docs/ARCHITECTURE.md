@@ -143,12 +143,14 @@ seconds)`, `floor_clear(from, to)`, `enemy_floor_span(entry)`, `enemy_uses_floor
 Rules scripts run in the order of the level's `features` list, except that a script declaring
 `const RUN_AFTER: Array[String]` runs after those features' rules (the host rules after the drone's;
 the cyborg rules, and the host rules that start with them, after the hover truck's, so cyborgs keep
-their margin from the ramp a truck adds).
+their margin from the ramp a truck adds; the Octodog rules after the drone's and the host's, so each
+dog is planned around the level's final ceilings and chases and nothing clears it afterwards).
 When a rule needs room for one of its guarantees, it removes what's in the way rather than moving it
 (taking content out never makes a level unfair). Guaranteed pads come from
 `scripts/enemies/pad_placement.gd`, shared by the drone and host rules: the drone's pad schedule
 (GDD §9.6) owns every pad after its first wave, pattern ceilings give way, and the host rules (which
 run after the drone's) cover each Bad Dream chase with pads at most 10 s apart or leave that host out.
+The Octodog rules keep each dog's charges off every stretch a chase can cover (GDD §9.7).
 
 **Late starts.** `LevelConfig.feature_starts` (feature → share of the level) holds a feature back
 until its start: patterns that require it aren't picked before, and the first pattern picked from
@@ -166,6 +168,30 @@ keeps its lane free), and the feature then first shows a little later.
 
 **Feature weights.** `LevelConfig.feature_weights` (feature → factor) scales the pick weight of the
 patterns that require a feature (0 leaves them out). Corporate 2's heavier military presence uses it.
+
+**Every feature appears.** In a level with `LevelConfig.guarantee_features` (every campaign level),
+each feature a pattern can place there is in the finished level, at any lane count and on any seed
+(GDD §5: an introduced feature keeps appearing). Rules drop or clear what doesn't fit fairly, so
+`generate()` checks the finished layout and builds the level again until nothing is missing:
+- `feature_positions(layout, feature)` finds a feature's pieces: enemies by type, hosts, wall-vent
+  screeches, and the mechanics by their ramps, pads, speed pads or pulsing fences. A rules script
+  that declares `static func positions(layout: LevelLayout) -> Array[float]` answers for its own
+  feature (a new kind of piece, such as wall fences).
+- Only the features some pattern can place in the level are required (`placeable_features()`: in its
+  lane count and difficulty, with pick weight), so a planned feature isn't, and a new enemy's
+  patterns bring it under the guarantee.
+- Each new build forces picks of every missing feature at a new share of the stretch where it's
+  active (`GUARANTEE_SHARES`): one more pick for each build that missed it, up to
+  `GUARANTEE_MAX_PICKS`. Features that appeared keep their spots. A forced pick is a due pick, like
+  an introduction: the first pattern picked once the cursor reaches its spot must use the feature.
+- Every build runs every pass and rule unchanged, so the guarantee never bends a fairness rule. After
+  `GUARANTEE_ATTEMPTS` builds the level keeps the build that missed the fewest, with a warning (the
+  campaign tests fail on any warning). `attempts` says how many builds a level took (about two on
+  average in the campaign).
+- Rules that hold the room for a feature themselves also add one where it fits when a level is left
+  without any, which saves a build: a drone wave and a hover truck in any level (their tunings'
+  `guarantee_one_wave` and `guarantee_one`), and a host and an Octodog in a level with
+  `guarantee_features`.
 
 ## Power-ups
 
@@ -242,7 +268,9 @@ come from manholes only in street zones and from wall vents, `screech_vents`, el
 Marketplace 1; the Buzz Overdrive appears in Corporate and the Dead Zone only; the Tithe Collector
 skips the Dead Zone). Each level introduces its new features at starts of their own
 (`feature_starts`, see Late starts under The generator; City 1's cyborgs come late in the level).
-`test_campaign` holds the schedule table and its exceptions. Features of enemies and mechanics still
+`test_campaign` holds the schedule table and its exceptions, and checks that every level has each
+of its features at 3, 5 and 6 lanes, on its own seed and over a seed sweep (Every feature appears,
+under The generator). Features of enemies and mechanics still
 to be built (`LevelConfig.PLANNED_FEATURES`, with the wall fences' `wall_fences` and
 `wall_fences_partial`) are listed already and do nothing until their code and patterns exist.
 
@@ -272,8 +300,9 @@ one. `RunSim` (`tests/helpers/run_sim.gd`) runs a Player over a hand-built layou
 full RunWorld (`build_world()` + `step_world()`). `SkinSuite` (`tests/helpers/skin_suite.gd`) holds
 the checks every zone skin must pass. `LayoutChecks` (`tests/helpers/layout_checks.gd`) holds the
 fairness checks for generated layouts (the generator suite runs them over many seeds, the campaign
-suite over every campaign level at 3, 5 and 6 lanes) and finds a feature's pieces in a layout; a task
-that adds a new kind of piece extends `feature_positions()`. The runner frees anything a suite leaves
+suite over every campaign level at 3, 5 and 6 lanes) and finds a feature's pieces in a layout with the
+generator's own `LevelGenerator.feature_positions()`; a task that adds a new kind of piece extends
+it, or gives its rules script `positions()`. The runner frees anything a suite leaves
 in the tree, gives suites a fresh, unsaved profile, reports a suite that fails to load, and ends a
 stuck run after 600 s of real time.
 

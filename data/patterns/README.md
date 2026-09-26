@@ -16,6 +16,23 @@ that requires it, so the level introduces it right there. Give each feature at l
 fits low difficulties, or its introduction waits until one fits. `LevelConfig.feature_weights` (feature
 → factor) scales the pick weight of every pattern that requires the feature.
 
+Every feature a level lists appears in it (`LevelConfig.guarantee_features`, set on every campaign
+level; GDD §5: an introduced feature keeps appearing), at any lane count and on any seed. Features
+appear through their patterns, and the enemy rules drop or clear what doesn't fit fairly, so the
+generator checks the finished level and builds it again with picks of any missing feature forced at
+new spots, changing no rule (`docs/ARCHITECTURE.md`, Every feature appears). What that means for
+patterns:
+- A feature is required only where one of its patterns can be picked: in the level's lane count
+  (`min_lanes`) and difficulty range, with every feature it `requires` in the level. So a planned
+  feature isn't required until its patterns exist, and then every level that lists it gets it.
+- Give each feature patterns across the difficulty range of the levels that list it: a forced pick
+  (like an introduction) waits until one of the feature's patterns fits the difficulty there.
+- The check finds a feature by its pieces (`LevelGenerator.feature_positions`): an enemy type by its
+  enemies, `ramps`, `ceilings`, `speed_pads` and `pulsing` by their ramps, pads, speed pads and
+  pulsing fences. A feature with a new kind of piece (e.g. wall fences) needs its rules script to
+  declare `static func positions(layout: LevelLayout) -> Array[float]` (the track distances of its
+  pieces), or an entry in `feature_positions`.
+
 ## Pattern fields
 
 | Field | Meaning |
@@ -65,8 +82,11 @@ Rules that patterns can't express (e.g. "an anti-grav pad at least 10 s after a 
 8–10 s", GDD §9.6) go in `scripts/enemies/<type>_rules.gd` as `static func apply(gen: LevelGenerator)`.
 They run after the patterns, in the order of the level's `features` list; a script that declares
 `const RUN_AFTER: Array[String] = [...]` runs after those features' rules whatever the order (the host
-rules plan the Bad Dream's pads around the drones' pad schedule). A ceiling a rule adds
+rules plan the Bad Dream's pads around the drones' pad schedule, and the Octodog rules plan each dog
+around both). A ceiling a rule adds
 (`add_hull_with_pad`) keeps off the floor that enemies use (`LevelGenerator.enemy_floor_span`); a pad a
 rule guarantees at a spot, clearing the floor it needs, comes from `scripts/enemies/pad_placement.gd`.
-Anything a rule adds keeps to its feature's start (`LevelGenerator.feature_active`). See
-`docs/ARCHITECTURE.md`.
+Anything a rule adds keeps to its feature's start (`LevelGenerator.feature_active`). A rule that drops
+its feature's enemies where they don't fit may also add one where it does when a level that guarantees
+its features (`gen.config.guarantee_features`) is left without any (the host and Octodog rules do),
+which saves the generator another build. See `docs/ARCHITECTURE.md`.

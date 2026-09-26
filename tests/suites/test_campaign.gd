@@ -281,7 +281,7 @@ func _test_levels_generate(campaign: Campaign) -> void:
 	check(int(stats["introductions"]) >= 39, "introductions checked: %d" % stats["introductions"])
 	# A rule can clear an introduced piece or enemy away (a hover truck's lane, the drone's pads, a first
 	# chase that meets the first drone wave), and the feature then first shows a little later; that
-	# stays rare (measured over 100 seeds: about 6% of introductions, as before the guarantee).
+	# stays rare (measured over 100 seeds: 6% of introductions come late, none are missing).
 	check((stats["late"] as PackedStringArray).size() * 10 <= int(stats["introductions"]),
 		"introductions land right after their start: late ones %s of %d" % [stats["late"], stats["introductions"]])
 
