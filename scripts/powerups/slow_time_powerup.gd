@@ -104,7 +104,7 @@ func stop() -> void:
 
 func hud_entry() -> Dictionary:
 	var ready: float = 0.0 if active else 1.0 - cooldown_left / maxf(world.powerup_tuning.slow_time_cooldown, 0.001)
-	return controller.make_hud_entry(id, tier, ready, active, 0)
+	return controller.make_hud_entry(id, tier, ready, active, -1)
 
 
 func visual_tick(delta: float) -> void:

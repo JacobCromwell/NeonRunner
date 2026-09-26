@@ -167,7 +167,8 @@ func _draw() -> void:
 	var font: Font = get_theme_font(&"font", t)
 	var font_size: int = get_theme_font_size(&"font_size", t)
 	if count >= 0:
-		var text: String = str(count)
+		# Stocks stay small: a huge count is an unlimited supply (the --nofall review mode's grapples).
+		var text: String = str(count) if count <= 999 else "∞"
 		var br: float = maxf(r * 0.34, font.get_height(font_size) * 0.55)
 		var bc: Vector2 = center + Vector2(r, r) * 0.72
 		var badge_w: float = maxf(0.0, font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x - br)

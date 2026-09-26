@@ -66,7 +66,7 @@ func physics_tick(delta: float) -> void:
 
 func hud_entry() -> Dictionary:
 	var ready: float = 1.0 - cooldown_left / maxf(world.powerup_tuning.dash_cooldown, 0.001)
-	return controller.make_hud_entry(id, tier, ready, world.player.dashing, 0)
+	return controller.make_hud_entry(id, tier, ready, world.player.dashing, -1)
 
 
 func visual_tick(delta: float) -> void:

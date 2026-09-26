@@ -98,7 +98,7 @@ func stop() -> void:
 
 
 func hud_entry() -> Dictionary:
-	return controller.make_hud_entry(id, tier, 1.0 - _cooldown / fire_interval(), engaged, 0)
+	return controller.make_hud_entry(id, tier, 1.0 - _cooldown / fire_interval(), engaged, -1)
 
 
 ## The nearest valid target in range that the shots already in flight won't destroy, or null.

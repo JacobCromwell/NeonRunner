@@ -116,7 +116,8 @@ func equipment() -> Dictionary:
 	}
 
 
-## One hud_state() entry.
+## One hud_state() entry. `charges`: uses left for a breakable item, -1 for a permanent power-up
+## (the HUD shows no count, and 0 reads as used up).
 func make_hud_entry(item: StringName, item_tier: int, ready: float, active: bool, charges: int) -> Dictionary:
 	return {"id": item, "icon": _icons.get(item, item), "tier": item_tier, "ready": clampf(ready, 0.0, 1.0),
 		"active": active, "charges": charges}
