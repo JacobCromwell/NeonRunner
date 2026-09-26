@@ -5,9 +5,10 @@ extends Node3D
 ## in slashing claws, and no legs: the body thins into a vapour tail.
 ##
 ## Procedural and low-poly (CLAUDE.md Assets), built once and shared: ONE opaque mesh for the liquid
-## body (head, teeth, throat, torso, arms, drips) and ONE translucent mesh for the vapour (tail and a
-## glowing shroud around the head), each with one shader that animates it in its vertex stage, plus
-## a CPUParticles3D drip: three draw calls, fine on the Compatibility renderer (web, low-end Android).
+## parts (head, teeth, throat, neck, arms, drips) and ONE translucent mesh for the vapour (the body
+## thinning into its tail, and a glowing shroud around the head; the lanes stay visible through it),
+## each with one shader that animates it in its vertex stage, plus a CPUParticles3D drip: three draw
+## calls, fine on the Compatibility renderer (web, low-end Android).
 ## Only one Bad Dream is ever in play, so each gets its own copy of the two materials and is driven
 ## through plain uniforms.
 ##
@@ -16,13 +17,14 @@ extends Node3D
 ## Reduced flashing (the global shader uniform, kit_flash.gdshaderinc): no glitch flicker in its
 ## glow, and the telegraph's lane marks keep a steady light.
 ## Visual only: nothing here touches collision or gameplay. The mesh faces +Z (toward the player it
-## floats ahead of), with the tail's tip at y = 0 and the top of the head about 3.35 m up.
+## floats ahead of), with the tail's tip at y = 0 and the top of the head about 3.35 m up (the Bad
+## Dream scales it by its tuning's model_scale).
 ##
 ## Vertex data: COLOR.rgb albedo, COLOR.a glow (liquid) or opacity (vapour); UV.x part id, UV.y
 ## weight along the part (0 at its root, 1 at its tip).
 
-## The Bad Dream's purple (the hosts' visor glitch, cyborg_kit.gd GLITCH_COLOR).
-const PURPLE := Color(0.72, 0.25, 1.0)
+## The Bad Dream's purple, leaning violet: pink is the electric fences' colour (GDD §9.1).
+const PURPLE := Color(0.58, 0.28, 1.0)
 ## Enemy-attack red (ProjectilePool's enemy fire).
 const ATTACK_RED := Color(1.0, 0.12, 0.08)
 
@@ -50,12 +52,13 @@ uniform float attack = 0.0;    // throat and claws heat up to enemy-attack red
 uniform float lunge = 0.0;     // the upper body thrusts toward the player
 uniform float fade = 0.0;      // 0 = solid, 1 = dissolved (it also materializes through it)
 uniform float seed = 0.0;
-uniform vec4 rim_color : source_color = vec4(0.72, 0.25, 1.0, 1.0);
+uniform vec4 rim_color : source_color = vec4(0.58, 0.28, 1.0, 1.0);
 uniform vec4 attack_color : source_color = vec4(1.0, 0.12, 0.08, 1.0);
 uniform float rim_energy = 2.2;
 uniform float glow_energy = 3.0;
 varying vec3 v_rest;
 varying float v_hot;
+varying float v_throat;
 
 vec3 rot_x(vec3 p, float a) { return vec3(p.x, p.y * cos(a) - p.z * sin(a), p.y * sin(a) + p.z * cos(a)); }
 vec3 rot_y(vec3 p, float a) { return vec3(p.x * cos(a) + p.z * sin(a), p.y, -p.x * sin(a) + p.z * cos(a)); }
@@ -69,6 +72,7 @@ void vertex() {
 	vec3 v = VERTEX;
 	v_rest = v;
 	v_hot = 0.0;
+	v_throat = part > 1.5 && part < 2.5 ? 1.0 : 0.0;
 	// A slow liquid wobble over the whole body.
 	v += vec3(sin(t * 2.1 + v.y * 3.1), 0.5 * sin(t * 1.7 + v.x * 4.3), cos(t * 1.9 + v.y * 2.6)) * 0.018;
 	if (part > 0.5 && part < 2.5) {
@@ -118,6 +122,8 @@ void fragment() {
 	// A rare glitch in its glow; none with Reduced flashing.
 	float glitch = (1.0 - reduced_flashing) * step(0.94, hash(vec3(floor(TIME * 13.0), seed, 1.0)));
 	vec3 glow = mix(COLOR.rgb, attack_color.rgb, clamp(attack * v_hot * 1.3, 0.0, 1.0));
+	// The throat only lights up as the maw opens.
+	glow *= 1.0 - v_throat * (1.0 - clamp(0.2 + maw, 0.0, 1.0));
 	ALBEDO = COLOR.rgb * 0.35;
 	ROUGHNESS = 0.1;
 	SPECULAR = 0.9;
@@ -133,7 +139,7 @@ uniform float lunge = 0.0;
 uniform float fade = 0.0;
 uniform float attack = 0.0;
 uniform float seed = 0.0;
-uniform vec4 rim_color : source_color = vec4(0.72, 0.25, 1.0, 1.0);
+uniform vec4 rim_color : source_color = vec4(0.58, 0.28, 1.0, 1.0);
 varying float v_shroud;
 
 void vertex() {
@@ -143,9 +149,9 @@ void vertex() {
 	vec3 v = VERTEX;
 	v_shroud = part > 7.5 ? 1.0 : 0.0;
 	if (v_shroud < 0.5) {
-		// The tail writhes and streams back as it goes.
-		v.x += sin(t * 2.2 + v.y * 2.4) * 0.16 * w;
-		v.z += 0.3 * w * w + sin(t * 1.6 + v.y * 3.1) * 0.08 * w;
+		// The body thins into a tail that writhes and streams back as it goes.
+		v.x += sin(t * 2.2 + v.y * 2.4) * 0.18 * w * w;
+		v.z += 0.35 * w * w * w + sin(t * 1.6 + v.y * 3.1) * 0.08 * w;
 	} else {
 		// The shroud breathes and flares when it attacks.
 		vec3 c = vec3(0.0, 2.78, 0.0);
@@ -202,7 +208,9 @@ void fragment() {
 	float shown = step(u, sweep);
 	float head = (1.0 - smoothstep(0.0, 0.3, sweep - u)) * shown;
 	float core = 1.0 - smoothstep(0.1, 0.5, abs(UV.y - 0.5));
-	ALBEDO = color.rgb * (1.6 + 3.0 * head * (1.0 - 0.6 * reduced_flashing)) * core;
+	// A white-hot core, so the streaks read over the red lane marks.
+	float hot = smoothstep(0.55, 0.95, core);
+	ALBEDO = mix(color.rgb, vec3(1.0, 0.92, 0.85), hot) * (1.8 + 3.0 * head * (1.0 - 0.6 * reduced_flashing)) * core;
 	ALPHA = clamp(shown * core * fade, 0.0, 1.0);
 }
 """
@@ -368,7 +376,7 @@ static func arc_mesh() -> ArrayMesh:
 				var x: float = u - 0.5
 				var y: float = y0 + 0.35 * sin(PI * u) - 0.25 * u
 				var z: float = 0.35 * sin(PI * u)
-				var half: float = 0.07 * sin(PI * clampf(u * 1.1, 0.0, 1.0)) + 0.012
+				var half: float = 0.1 * sin(PI * clampf(u * 1.1, 0.0, 1.0)) + 0.015
 				pts.append([Vector3(x, y - half, z), Vector3(x, y + half, z)])
 			_quad(st, [pts[0][0], pts[1][0], pts[1][1], pts[0][1]],
 				[Vector2(a, 0.0), Vector2(b, 0.0), Vector2(b, 1.0), Vector2(a, 1.0)])
@@ -380,12 +388,12 @@ static func arc_mesh() -> ArrayMesh:
 
 const BLACK := Color(0.012, 0.007, 0.02, 0.0)
 const SHEEN := Color(0.06, 0.018, 0.1, 0.06)
-const HIGHLIGHT := Color(0.5, 0.14, 0.9, 1.0)
+const HIGHLIGHT := Color(0.34, 0.2, 1.0, 1.0)
 const BONE := Color(0.72, 0.66, 0.82, 0.12)
-const CLAW := Color(0.78, 0.62, 1.0, 0.75)
-const THROAT := Color(0.42, 0.04, 0.2, 1.0)
-const VAPOR := Color(0.1, 0.025, 0.17, 0.85)
-const SHROUD := Color(0.3, 0.08, 0.5, 0.75)
+const CLAW := Color(0.8, 0.7, 1.0, 0.75)
+const THROAT := Color(0.2, 0.08, 0.72, 1.0)
+const VAPOR := Color(0.06, 0.02, 0.12, 0.95)
+const SHROUD := Color(0.24, 0.1, 0.5, 0.75)
 
 
 ## The liquid body, built once.
@@ -426,8 +434,8 @@ static func liquid_mesh() -> ArrayMesh:
 		var center: Vector3 = (b1 + b2 + b3 + tip) * 0.25
 		for f: Array in [[b1, b2, tip], [b2, b3, tip], [b3, b1, tip], [b1, b3, b2]]:
 			_tri(st, f, [BONE, BONE, BONE], Part.TEETH, [0.0, 0.0, 1.0], center)
-	# The neck and torso, thinning into the vapour tail.
-	_cone(st, Vector3(0.0, 2.36, 0.0), Vector3(0.0, 1.3, 0.03), 0.3, 0.17, 8, BLACK, BLACK, Part.TORSO, 0.0, 1.0)
+	# A short liquid neck; the body below it is vapour.
+	_cone(st, Vector3(0.0, 2.4, 0.0), Vector3(0.0, 2.05, 0.02), 0.26, 0.2, 8, BLACK, BLACK, Part.TORSO, 0.0, 0.2)
 	# Long arms, long fingers, slashing claws.
 	for sx: float in [-1.0, 1.0]:
 		var part: int = Part.ARM_L if sx < 0.0 else Part.ARM_R
@@ -463,14 +471,15 @@ static func vapor_mesh() -> ArrayMesh:
 		return _vapor_mesh
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var rings: Array = [[1.62, 0.34], [1.25, 0.31], [0.9, 0.25], [0.55, 0.17], [0.25, 0.09], [0.0, 0.02]]
+	# The body, from under the head down to the tail's tip.
+	var rings: Array = [[2.3, 0.3], [1.9, 0.36], [1.45, 0.32], [1.0, 0.24], [0.6, 0.16], [0.25, 0.08], [0.0, 0.02]]
 	for i: int in rings.size() - 1:
 		var y0: float = rings[i][0]
 		var y1: float = rings[i + 1][0]
-		var w0: float = 1.0 - y0 / 1.62
-		var w1: float = 1.0 - y1 / 1.62
-		var c0 := Color(VAPOR, VAPOR.a * (1.0 - w0 * 0.85))
-		var c1 := Color(VAPOR, VAPOR.a * (1.0 - w1 * 0.85))
+		var w0: float = 1.0 - y0 / 2.3
+		var w1: float = 1.0 - y1 / 2.3
+		var c0 := Color(VAPOR, VAPOR.a * (1.0 - w0 * 0.9))
+		var c1 := Color(VAPOR, VAPOR.a * (1.0 - w1 * 0.9))
 		_cone(st, Vector3(0.0, y0, 0.0), Vector3(0.0, y1, 0.0), float(rings[i][1]), float(rings[i + 1][1]), 8,
 			c0, c1, Part.TAIL, w0, w1)
 	_ellipsoid(st, HEAD_CENTER + Vector3(0.0, -0.05, -0.02), HEAD_RADII * 1.22, 10, 6, Part.SHROUD, SHROUD, SHROUD)

@@ -27,10 +27,13 @@ extends EnemyTuning
 @export_range(0.1, 4.0, 0.05, "suffix:s") var emp_dissolve_time: float = 0.7
 
 @export_group("Floating")
+## Size of the model (1 = about 3.35 m from the tail's tip to the top of the head). Its body's
+## damage box scales with it.
+@export_range(0.5, 2.0, 0.05) var model_scale: float = 1.3
 ## DESIGN-TBD: it floats this far ahead of the player, facing them and keeping pace (inside the
-## camera's view), with the tip of its tail this high.
-@export_range(3.0, 20.0, 0.5, "suffix:m") var hover_ahead: float = 9.0
-@export_range(0.0, 2.5, 0.05, "suffix:m") var hover_height: float = 0.7
+## camera's view), with the tip of its tail this high. Its head stays hull_clearance under a ceiling.
+@export_range(3.0, 20.0, 0.5, "suffix:m") var hover_ahead: float = 7.5
+@export_range(0.0, 2.5, 0.05, "suffix:m") var hover_height: float = 0.35
 ## How fast it closes in on (or backs off to) that distance outside a lunge.
 @export_range(2.0, 40.0, 0.5, "suffix:m/s") var approach_speed: float = 14.0
 ## GDD §9.7: it drifts toward the player's lane at a limited sideways speed ...
@@ -41,7 +44,7 @@ extends EnemyTuning
 @export_range(0.3, 3.0, 0.05, "suffix:m") var wall_inset: float = 1.0
 ## GDD §9.7: it can't reach a ship's hull. While the player rides a ceiling it waits below, this far
 ## ahead (DESIGN-TBD), reaching up but never closer to the hull than hull_clearance.
-@export_range(3.0, 20.0, 0.5, "suffix:m") var wait_ahead: float = 8.0
+@export_range(3.0, 20.0, 0.5, "suffix:m") var wait_ahead: float = 7.0
 @export_range(0.5, 3.0, 0.1, "suffix:m") var hull_clearance: float = 1.2
 
 @export_group("Slash")

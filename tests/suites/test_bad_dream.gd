@@ -434,7 +434,7 @@ func _test_waits_below_ceiling() -> void:
 	var waited: bool = false
 	while w.player.surface == Player.Surface.CEILING:
 		await tree.physics_frame
-		highest = maxf(highest, dream.head_point().y + BadDreamModel.HEAD_RADII.y)
+		highest = maxf(highest, dream.top_height())
 		nearest = minf(nearest, dream.rel_ahead)
 		waited = waited or dream.is_waiting()
 	check(waited and _count(id, "wait") >= 1, "it waits below while the player is on the ceiling")

@@ -39,10 +39,10 @@ extends Enemy
 enum State { EMERGE, DRIFT, TELEGRAPH, LUNGE, RECOVER, DISSOLVE }
 
 const STATE_NAMES: PackedStringArray = ["emerge", "drift", "telegraph", "lunge", "recover", "dissolve"]
-## Its body's damage box: the head and torso, slimmer than the model (GDD §3), well above a running
-## player (it never comes closer than lunge_ahead anyway).
-const BODY_SIZE := Vector3(0.8, 1.9, 0.7)
-const BODY_CENTER := Vector3(0.0, 2.3, 0.0)
+## Its body's damage box, in the model's space (scaled with it): the head and neck, slimmer than the
+## model (GDD §3); the vapour below is harmless. It never comes closer than lunge_ahead anyway.
+const BODY_SIZE := Vector3(0.8, 1.5, 0.7)
+const BODY_CENTER := Vector3(0.0, 2.45, 0.0)
 ## The lane marks start this far behind the player and reach this far past where it floats.
 const MARKS_BEHIND: float = 1.2
 const MARKS_BEYOND: float = 1.5
@@ -116,7 +116,7 @@ func _build() -> void:
 	rel_x = geo.lane_x(lane)
 	rel_y = -1.4
 	rel_ahead = float(spawn.get("at", world.player.distance)) - world.player.distance
-	_body = add_hitbox(&"body", BODY_SIZE, BODY_CENTER, true)
+	_body = add_hitbox(&"body", BODY_SIZE * _t.model_scale, BODY_CENTER * _t.model_scale, true)
 	_body.hazard_name = display_name
 	_slash_root = Node3D.new()
 	_slash_root.name = "SlashBox"
@@ -154,6 +154,7 @@ func _build_visuals() -> void:
 	_model.name = "Model"
 	add_child(_model)
 	_model.build(rng.randf() * 10.0)
+	_model.scale = Vector3.ONE * _t.model_scale
 	_model.fade = 1.0
 	_model.animate()
 	_marks_material = BadDreamModel.mark_material()
@@ -507,7 +508,12 @@ func should_retire() -> bool:
 
 
 func head_point() -> Vector3:
-	return global_position + BadDreamModel.HEAD_CENTER
+	return global_position + BadDreamModel.HEAD_CENTER * _t.model_scale
+
+
+## World height of the top of its head (GDD §9.7: it never reaches a ship's hull).
+func top_height() -> float:
+	return global_position.y + (BadDreamModel.HEAD_CENTER.y + BadDreamModel.HEAD_RADII.y) * _t.model_scale
 
 
 func aim_point() -> Vector3:
@@ -593,7 +599,7 @@ func _process(delta: float) -> void:
 ## How far the arms stretch to reach over the band's outer lanes.
 func _band_reach() -> float:
 	var half_width: float = absf(_extended_lane_x(band.y) - _extended_lane_x(band.x)) * 0.5
-	return clampf(0.85 + half_width / 2.6, 1.0, 1.9)
+	return clampf(0.85 + half_width / (2.6 * _t.model_scale), 1.0, 1.9)
 
 
 func _show_marks(b: Vector2i) -> void:
@@ -624,8 +630,11 @@ func _update_marks() -> void:
 	if state == State.TELEGRAPH:
 		progress = clampf(_state_time / _t.telegraph_time(_scaling), 0.0, 1.0)
 		fade = clampf(_state_time / 0.12, 0.0, 1.0)
+	elif state == State.LUNGE:
+		# Dimmer as the claws sweep, so the streaks stand out.
+		fade = lerpf(1.0, 0.45, clampf(_state_time / maxf(_t.lunge_time, 0.01), 0.0, 1.0))
 	elif state == State.RECOVER:
-		fade = 1.0 - _state_time / 0.25
+		fade = 0.45 * (1.0 - _state_time / 0.25)
 	_marks_material.set_shader_parameter(&"progress", progress)
 	_marks_material.set_shader_parameter(&"fade", fade)
 	_marks.global_position = Vector3(0.0, 0.035, world.player.position.z)
