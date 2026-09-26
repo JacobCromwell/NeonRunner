@@ -192,6 +192,15 @@ geometry. The shaders in `scripts/world/meshes/shaders/` are procedural. `Hazard
 hazard's ON / WARNING / OFF materials. A skin's `enemy_variant` (`&"city"` or `&"scavenger"`) picks
 the enemies' look.
 
+**The cult emblem** (D7, GDD §5 "The cult"): `CultEmblem` (`scripts/world/meshes/cult_emblem.gd`)
+builds each option's 2D vector geometry as a flat mesh (mesh kit conventions: emissive for a neon
+ad, lit for paint or the Golden Zone's gold) or a rasterised texture, at any size. The owner's pick
+lives in `data/world/cult_emblem_choice.tres` (`CultEmblemChoice`), currently `DESIGN-TBD`
+(`docs/questions/d7.md`); a skin reads `choice.option` and `CultEmblem.default_scheme(option)`
+rather than hardcoding a choice, so working the mark into logos, ads and the Golden Zone is a
+follow-up task, not a change to this file. `tools/showcase/cult_emblem_sheet.tscn` is the
+comparison sheet.
+
 **Reduced flashing** (Settings): `Settings.apply_visuals()` sets the global shader uniform
 `reduced_flashing` (declared in `project.godot`) and `Settings.flashing_reduced`. Hazard shaders
 include `kit_flash.gdshaderinc` and use `warning_flicker()`, so a warning becomes a steady glow
@@ -272,6 +281,7 @@ suites a fresh, unsaved profile, reports a suite that fails to load, and ends a 
 
 Scenes in `tools/showcase/` show one part of the game up close for visual review (not part of the
 game): the avatar, the enemies (`enemy_showcase` for the cyborg family, `octodog_screech`,
-`drone_truck_showcase`, `bad_dream_showcase`), the UI kit and the screens. Each script's header lists its options. Render
+`drone_truck_showcase`, `bad_dream_showcase`), the UI kit, the screens, and comparison sheets for an
+open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
 `CLAUDE.md`.

@@ -376,6 +376,29 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
   the title and results screens once the platform plugins are chosen (the stub has no leaderboards).
 111. **Achievements:** the platform layer can unlock them, but none are designed. Which ones, if any?
 
+### From build phase 2 (September 26, 2026)
+Questions the phase 2 build tasks raised (`docs/TASK_PLAN.md`), folded in from `docs/questions/<task-id>.md`
+as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
+
+**Cult symbol** (from D7, cult symbol options)
+1. **Which emblem and colour for the cult?** (GDD §5, "The cult": open.) Four original options are drawn in
+   code (`CultEmblem`) and compared on the sheet `tools/showcase/cult_emblem_sheet.tscn` (the emblem large, at
+   small sizes, in a neon city ad, inside a corporate logo, and as a gold relief in the Golden Zone):
+   - **A, Broadcast Halo:** three broken rings around a core, echoing the Resonator's halos; glows a cool white,
+     brushed platinum when unlit, a gold medallion with a red core stone in the Golden Zone.
+   - **B, Convergent Triad:** three notched arrows converging on a point ("every path leads to him"); glows a
+     warm white, brushed bronze when unlit.
+   - **C, Aperture Mark:** seven aperture blades around a lens ring ("always watching"); glows a deep indigo,
+     gunmetal when unlit.
+   - **D, Signal Spire:** a slim spire with three one-sided bars, like the Resonator plus a signal-strength
+     glyph; glows plum, dark metal when unlit.
+
+   The placeholder is **A** (the art agent's recommendation) in `data/world/cult_emblem_choice.tres`; changing
+   the pick is that one value. Review notes: D's plum glow reads close to the fence pink in a neon ad, and B's
+   three-fold silhouette is the nearest of the four to a real-world symbol (the radiation trefoil) at small
+   sizes. Working the chosen mark into every zone skin (hidden in logos and ads, open in the Golden Zone) is a
+   follow-up task once you pick.
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
