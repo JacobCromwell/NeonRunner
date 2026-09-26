@@ -73,7 +73,7 @@ For each boss: arena, phases, attacks, weak points, what power-ups are granted b
 - **Web demo:** portal-specific end screens if portals restrict store links.
 
 ### 9. Narrative
-- ~~Is there a story?~~ Answered: a light story with little or no words, a silent protagonist, a final villain backed by a cult (GDD §1). Still open: the individual story beats and cinematics (the owner will describe them), and the cult's name and visual identity.
+- ~~Is there a story?~~ Answered: a light story with little or no words, a silent protagonist, a final villain backed by a cult (GDD §1). Still open: the individual story beats and cinematics (the owner will describe them), and the cult's name. The cult's symbol and colour are answered (GDD §5, September 26, 2026).
 
 ### 10. Other
 - Working title.
@@ -381,9 +381,9 @@ Questions the phase 2 build tasks raised (`docs/TASK_PLAN.md`), folded in from `
 as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
 
 **Cult symbol** (from D7, cult symbol options)
-1. **Which emblem and colour for the cult?** (GDD §5, "The cult": open.) Four original options are drawn in
-   code (`CultEmblem`) and compared on the sheet `tools/showcase/cult_emblem_sheet.tscn` (the emblem large, at
-   small sizes, in a neon city ad, inside a corporate logo, and as a gold relief in the Golden Zone):
+1. ~~**Which emblem and colour for the cult?** (GDD §5, "The cult")~~ **Answered: B, the Convergent Triad**
+   (owner, September 26, 2026; recorded in GDD §5 and set in `data/world/cult_emblem_choice.tres`). The four
+   options, drawn in code (`CultEmblem`) and compared on `tools/showcase/cult_emblem_sheet.tscn`:
    - **A, Broadcast Halo:** three broken rings around a core, echoing the Resonator's halos; glows a cool white,
      brushed platinum when unlit, a gold medallion with a red core stone in the Golden Zone.
    - **B, Convergent Triad:** three notched arrows converging on a point ("every path leads to him"); glows a
@@ -393,11 +393,8 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
    - **D, Signal Spire:** a slim spire with three one-sided bars, like the Resonator plus a signal-strength
      glyph; glows plum, dark metal when unlit.
 
-   The placeholder is **A** (the art agent's recommendation) in `data/world/cult_emblem_choice.tres`; changing
-   the pick is that one value. Review notes: D's plum glow reads close to the fence pink in a neon ad, and B's
-   three-fold silhouette is the nearest of the four to a real-world symbol (the radiation trefoil) at small
-   sizes. Working the chosen mark into every zone skin (hidden in logos and ads, open in the Golden Zone) is a
-   follow-up task once you pick.
+   Working the chosen mark into every zone skin (hidden in logos and ads, open in the Golden Zone) follows in
+   the skin tasks. Keep it off tiny sizes where its three-fold silhouette could read like the radiation trefoil.
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
@@ -407,3 +404,4 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
 - Bosses are standalone mini-games; short cinematics sit between levels and zones. Both are designed later, and the build leaves slots (§6, §10, September 26, 2026).
 - The player is a human runner in a cyber suit, about 75% of the grey-box size (§11, September 26, 2026).
 - Music: code-generated placeholders for now (§11, September 26, 2026).
+- The cult's symbol and colour: the Convergent Triad, option B of the D7 sheet (§5, September 26, 2026).

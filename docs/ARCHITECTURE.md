@@ -194,12 +194,11 @@ procedural. `HazardStateVisual` swaps a hazard's ON / WARNING / OFF materials. A
 
 **The cult emblem** (D7, GDD §5 "The cult"): `CultEmblem` (`scripts/world/meshes/cult_emblem.gd`)
 builds each option's 2D vector geometry as a flat mesh (mesh kit conventions: emissive for a neon
-ad, lit for paint or the Golden Zone's gold) or a rasterised texture, at any size. The owner's pick
-lives in `data/world/cult_emblem_choice.tres` (`CultEmblemChoice`), currently `DESIGN-TBD`
-(`docs/questions/d7.md`); a skin reads `choice.option` and `CultEmblem.default_scheme(option)`
-rather than hardcoding a choice, so working the mark into logos, ads and the Golden Zone is a
-follow-up task, not a change to this file. `tools/showcase/cult_emblem_sheet.tscn` is the
-comparison sheet.
+ad, lit for paint or the Golden Zone's gold) or a rasterised texture, at any size. The owner chose
+option B, the Convergent Triad (GDD §5); the choice lives in `data/world/cult_emblem_choice.tres`
+(`CultEmblemChoice`). A skin reads `choice.option` and `CultEmblem.default_scheme(option)` rather
+than hardcoding an option: hidden in logos and ads in every zone, shown openly in the Golden Zone
+(GDD §5, proposed). `tools/showcase/cult_emblem_sheet.tscn` is the comparison sheet.
 
 **Reduced flashing** (Settings): `Settings.apply_visuals()` sets the global shader uniform
 `reduced_flashing` (declared in `project.godot`) and `Settings.flashing_reduced`. Hazard shaders

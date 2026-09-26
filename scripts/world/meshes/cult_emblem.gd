@@ -1,6 +1,6 @@
 class_name CultEmblem
 extends RefCounted
-## D7: cult emblem and colour options (GDD §5 "The cult", §9.10 Resonator; docs/questions/d7.md).
+## D7: cult emblem and colour options (GDD §5 "The cult", §9.10 Resonator).
 ## Four options (A-D), each hand-authored as 2D vector geometry — thick strokes (bars, rings, discs)
 ## and small filled convex polygons — in a unit square from (-0.5, -0.5) to (0.5, 0.5), facing +Z.
 ## Deterministic: no RNG, no external assets. One geometry, two builders:
@@ -15,9 +15,9 @@ extends RefCounted
 ## GOLD_ACCENT_COLOR are shared by every option: in the Golden Zone gold is reflective metal, never
 ## a glow (GDD §5, §11), so every option reads the same there and only the shape is compared.
 ##
-## The owner's pick lives in data/world/cult_emblem_choice.tres (CultEmblemChoice) so it is a
-## one-value change; the comparison sheet is tools/showcase/cult_emblem_sheet.tscn.
-## DESIGN-TBD: no option is chosen yet (docs/questions/d7.md). Recommended: A, "Broadcast Halo".
+## The chosen option lives in data/world/cult_emblem_choice.tres (CultEmblemChoice): the owner chose
+## B, the Convergent Triad (September 26, 2026; GDD §5). The comparison sheet is
+## tools/showcase/cult_emblem_sheet.tscn.
 
 enum Option { A, B, C, D }
 
