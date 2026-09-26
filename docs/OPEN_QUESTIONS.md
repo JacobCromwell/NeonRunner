@@ -38,7 +38,7 @@ For each boss: arena, phases, attacks, weak points, what power-ups are granted b
 - How it looks when using each power-up (claws, dash, shield, armor), redone for the new design.
 - ~~**Player redesign**~~ Answered: Razor Echo, soft copper glow, no pistol (GDD §11; brief `docs/art/BRIEF_RAZOR_ECHO.md`).
 - ~~**Cyborg redesign**~~ Answered: one blended body, a screen head, non-hazard colours, the base for every zone variant (GDD §9.2; brief `docs/art/BRIEF_CYBORG_GANGSTER.md`).
-- **Cyborg zone variants:** the owner has concept images to share.
+- **Cyborg zone variants:** which zones get Variant 2 ("Wide-Aspect VR" Runner) and Variant 3 ("Broadcast Brute" Enforcer) from `docs/art/reference/cyborg_viewing_devices.jpg`? Is the Brute the same enemy with a new look, or a tougher enemy of its own?
 
 ### 4. Remaining power-up details
 - **Claws:** how much extra wall time? Upgrade tiers?

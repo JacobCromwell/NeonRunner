@@ -294,11 +294,11 @@ Shared interaction rules apply unless stated otherwise:
 ### 9.2 Cyborg (early; scales through the campaign)
 - **Look:** humanoid.
   - **Face:** an **LED visor/screen face** showing simple expressions.
-  - **Base look** (redesigned September 26, 2026): a **ragged, strung-out gangster**, based on the owner's concept sheet `docs/art/reference/cyborg_gangster_default.jpg`. Build brief: `docs/art/BRIEF_CYBORG_GANGSTER.md`.
-    - **One body** (to keep things simple) that blends traits from the sheet's three looks: the Scavenged Runner's outfit and silhouette, the Chem-Junky's gaunt frame and torn layers, and the Wired-Out's bulky piston arm as the arm cannon. If blending is too hard, the Scavenged Runner alone.
-    - **The entire head is an LED screen** showing the expressions, readable on small screens. No hair, face or mask.
+  - **Base look** (redesigned September 26, 2026): a **ragged, strung-out gangster**, based on **Variant 1, the "Static TV Head" Infiltrator**, of the owner's concept sheet `docs/art/reference/cyborg_viewing_devices.jpg`. Build brief: `docs/art/BRIEF_CYBORG_GANGSTER.md`.
+    - **One body:** a worn leather vest over a hoodie, torn layers, patched cargo pants, boots, and a backpack cabled into the head, with a gaunt, twitchy posture. One scavenged cyber arm is the arm cannon.
+    - **The entire head is a beat-up CRT television** whose screen is the LED face, showing expressions readable on small screens. No hair, face or mask.
     - **Colours:** grimy khaki, olive, brown and grey clothing; dull rusted steel and gunmetal (no gold or brass, which belong to the player). The only glows are the **cold white LED face**, the arm cannon's **red** charge-up, and on hosts only, **purple** (glitching screen and glowing veins). No hazard or "safe" colours anywhere else.
-  - **Used everywhere:** this base replaces the sleek city citizen and the patched scavenger in every zone, including the Neon City. It is also the model **every future zone variant is derived from**; the owner has concept images for those, to come.
+  - **Used everywhere:** this base replaces the sleek city citizen and the patched scavenger in every zone, including the Neon City. It is also the model **every future zone variant is derived from**. The same sheet's Variant 2 ("Wide-Aspect VR" Runner: a wide VR headset over a sleeker jacket) and Variant 3 ("Broadcast Brute" Enforcer: a caged screen head with side monitors and heavy armour) are candidates for zone variants *(open: which zones)*.
 - **Movement:** stands mostly on **truck roofs** and moves slowly toward the player, dropping behind quickly.
 - **Attack:** loosely aimed laser bolts in **bursts of 2–3**, then a pause to reload.
   - Each burst has a **visible charge-up** (arm cannon glow).
