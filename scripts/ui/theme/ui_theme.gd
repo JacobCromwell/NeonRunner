@@ -624,7 +624,8 @@ class _Builder:
 			theme.set_stylebox(&"slider", type, box(track_bg, Color(a, 0.3), s.border_width, 0, mh, mv))
 			theme.set_stylebox(&"grabber_area", type, glow(box(Color(a, 0.85), Color(0, 0, 0, 0), 0, 0, mh, mv), Color(a, 0.25), px(4)))
 			theme.set_stylebox(&"grabber_area_highlight", type, glow(box(a, Color(0, 0, 0, 0), 0, 0, mh, mv), Color(a, 0.4), px(7)))
-			theme.set_stylebox(&"focus", type, empty())
+		# Sliders have no focus style: a focused (or hovered) slider shows grabber_highlight, the
+		# bright glowing diamond below.
 		var g: float = px(26)
 		var diamond: String = '<path d="M13 3 L23 13 L13 23 L3 13 Z" fill="%s" stroke="%s" stroke-width="2"/><circle cx="13" cy="13" r="2.6" fill="%s"/>'
 		var scale: String = '<g transform="scale(%s)">%%s</g>' % (g / 26.0)
@@ -706,6 +707,7 @@ class _Builder:
 		for icon_name: String in ["checked", "unchecked", "radio_checked", "radio_unchecked"]:
 			theme.set_icon(icon_name, &"PopupMenu", theme.get_icon(icon_name, &"CheckBox"))
 		theme.set_icon(&"submenu", &"PopupMenu", IconFactory.texture(&"chevron_right", px(16), s.text))
+		theme.set_icon(&"submenu_mirrored", &"PopupMenu", IconFactory.texture(&"chevron_left", px(16), s.text))
 		var arrow: Texture2D = IconFactory.texture(&"chevron_down", px(18), Color.WHITE)
 		theme.set_icon(&"arrow", &"OptionButton", arrow)
 		theme.set_constant(&"arrow_margin", &"OptionButton", px(12))
@@ -729,8 +731,13 @@ class _Builder:
 			theme.set_stylebox(&"tab_hovered", type, hovered)
 			theme.set_stylebox(&"tab_disabled", type, unselected)
 			theme.set_stylebox(&"tab_focus", type, focus_box(0))
-			theme.set_font(&"font", type, f_display_wide)
+			theme.set_font(&"font", type, f_display)
 			theme.set_font_size(&"font_size", type, px(s.subheading_size))
+			# Scroll arrows when the tabs don't fit.
+			theme.set_icon(&"increment", type, IconFactory.texture(&"chevron_right", px(18), s.text_dim))
+			theme.set_icon(&"increment_highlight", type, IconFactory.texture(&"chevron_right", px(18), s.accent))
+			theme.set_icon(&"decrement", type, IconFactory.texture(&"chevron_left", px(18), s.text_dim))
+			theme.set_icon(&"decrement_highlight", type, IconFactory.texture(&"chevron_left", px(18), s.accent))
 			theme.set_color(&"font_selected_color", type, Color.WHITE)
 			theme.set_color(&"font_hovered_color", type, s.text)
 			theme.set_color(&"font_unselected_color", type, s.text_dim)

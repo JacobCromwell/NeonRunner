@@ -158,9 +158,13 @@ func set_hints(hints: Array) -> void:
 	_update_hints()
 
 
-## Moves focus to `initial_focus` or the first focusable control in the content.
+## Moves focus to `initial_focus` or the first focusable control in the content, unless a visible
+## control inside the screen (a dialog's button, the last one used) already has it.
 func focus_initial() -> void:
 	if not is_visible_in_tree():
+		return
+	var current: Control = get_viewport().gui_get_focus_owner()
+	if current != null and current.is_visible_in_tree() and is_ancestor_of(current):
 		return
 	var target: Control = null
 	if is_instance_valid(initial_focus) and initial_focus.is_visible_in_tree():

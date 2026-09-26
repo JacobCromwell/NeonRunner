@@ -22,7 +22,7 @@ signal count_finished
 		queue_redraw()
 ## Longest count, in seconds; small changes count faster.
 @export_range(0.1, 3.0, 0.05, "suffix:s") var count_time: float = 0.9
-## The rounded background chip.
+## The background chip (the theme's CreditCounter/chip style).
 @export var show_chip: bool = true:
 	set(v):
 		show_chip = v

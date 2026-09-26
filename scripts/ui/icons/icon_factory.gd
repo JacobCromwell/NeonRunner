@@ -20,7 +20,7 @@ const NAMES: Array[StringName] = [
 	&"claws", &"dash", &"magnet", &"slow_time",
 	&"star", &"lock", &"pause", &"play", &"settings", &"back",
 	&"trophy", &"leaderboard", &"store",
-	&"check", &"close", &"plus", &"chevron_right", &"chevron_down", &"warning", &"info",
+	&"check", &"close", &"plus", &"chevron_left", &"chevron_right", &"chevron_down", &"warning", &"info",
 ]
 ## Credit denominations, in the order of UiStyle.credit_colors.
 const DENOMINATIONS: Array[int] = [1, 5, 25, 100]
@@ -295,6 +295,7 @@ static func _emit(p: Pen, icon: StringName) -> void:
 		&"plus":
 			p.stroke(pts([12, 5, 12, 19]), false, 2.4)
 			p.stroke(pts([5, 12, 19, 12]), false, 2.4)
+		&"chevron_left": p.stroke(pts([15, 5, 8, 12, 15, 19]), false, 2.4)
 		&"chevron_right": p.stroke(pts([9, 5, 16, 12, 9, 19]), false, 2.4)
 		&"chevron_down": p.stroke(pts([5, 9, 12, 16, 19, 9]), false, 2.4)
 		&"warning":
@@ -359,15 +360,16 @@ static func _shield(p: Pen) -> void:
 	p.stroke(inner, true, 1.3)
 
 
-## Claws up (as when it catches a ledge) with a trailing rope, so it doesn't read as an anchor.
+## Hooks on top of the shaft curving back down, and a rope trailing from the bottom: not a
+## trident (prongs pointing up) and not an anchor (crossbar, flukes at the bottom).
 static func _grapple(p: Pen) -> void:
-	var claw := pts([12, 9.6, 9.2, 10.6, 6.6, 9.6, 5.2, 7.2, 5.4, 4.2, 7.2, 6.0])
-	p.stroke(claw, false, 1.9)
-	p.stroke(_mirror_x(claw), false, 1.9)
-	p.stroke(pts([12, 16.2, 12, 2.6]), false, 2.0)
-	p.stroke(pts([10.4, 4.6, 12, 2.6, 13.6, 4.6]), false, 1.6)
-	p.ring(Vector2(12, 17.9), 1.7, 1.5)
-	p.stroke(pts([11.0, 19.3, 9.6, 21.2, 7.6, 21.8, 5.8, 20.8, 3.8, 21.4, 2.6, 22.6]), false, 1.4)
+	var hook := pts([12, 5.4, 9.4, 3.6, 6.6, 3.8, 4.8, 5.8, 4.6, 8.6, 6.0, 10.8])
+	p.stroke(hook, false, 1.9)
+	p.stroke(_mirror_x(hook), false, 1.9)
+	p.stroke(pts([12, 5.4, 10.4, 8.0, 10.0, 11.2]), false, 1.7)
+	p.stroke(pts([12, 17.6, 12, 4.4]), false, 2.1)
+	p.ring(Vector2(12, 19.2), 1.6, 1.4)
+	p.stroke(pts([10.9, 20.4, 9.4, 21.9, 7.4, 21.6, 5.6, 22.5, 3.2, 21.8]), false, 1.4)
 
 
 ## A heart with a pulse line: the revive item.

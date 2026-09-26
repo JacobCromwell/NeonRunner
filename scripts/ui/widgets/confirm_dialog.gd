@@ -124,6 +124,8 @@ func open() -> void:
 	if is_inside_tree():
 		UiSounds.quiet()
 		(cancel_button if dangerous else confirm_button).grab_focus(UiTheme.is_touch())
+		if not get_viewport().gui_focus_changed.is_connected(_on_focus_changed):
+			get_viewport().gui_focus_changed.connect(_on_focus_changed)
 
 
 ## Answers the dialog (true = confirm) and closes it.
@@ -132,6 +134,7 @@ func close(accepted: bool) -> void:
 		return
 	_closing = true
 	_accepted = accepted
+	_release_focus_watch()
 	if accepted:
 		confirmed.emit()
 	else:
@@ -144,8 +147,25 @@ func is_open() -> bool:
 	return visible and not _closing
 
 
+## The dialog is modal: if anything outside it takes the focus while it's open, take it back.
+func _on_focus_changed(control: Control) -> void:
+	if not is_open():
+		_release_focus_watch()
+	elif control != null and not is_ancestor_of(control):
+		var answer: NeonButton = cancel_button if dangerous else confirm_button
+		answer.grab_focus.call_deferred(UiTheme.is_touch())
+
+
+func _release_focus_watch() -> void:
+	var viewport: Viewport = get_viewport()
+	if viewport != null and viewport.gui_focus_changed.is_connected(_on_focus_changed):
+		viewport.gui_focus_changed.disconnect(_on_focus_changed)
+
+
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_ENTER_TREE:
+	if what == NOTIFICATION_EXIT_TREE:
+		_release_focus_watch()
+	elif what == NOTIFICATION_ENTER_TREE:
 		_ensure_theme.call_deferred()
 	elif what == NOTIFICATION_THEME_CHANGED:
 		var w: float = get_theme_constant(&"control_height", UiTheme.NEON) * 9.5
