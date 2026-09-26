@@ -146,7 +146,7 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 ### The cult (decided September 26, 2026)
 - The cult is so widespread that it is **the reason the gangsters and cyborg gangsters attack the runner** in the first place.
 - **What makes it insidious:** people are completely subservient to its philosophy without realizing that they're in a cult.
-- **Symbol and colour:** *(open)*. An art agent will draw up a few options for the owner to choose from.
+- **Symbol and colour** (owner, September 26, 2026): the **Convergent Triad**, option B of the options drawn in code (`tools/showcase/cult_emblem_sheet.tscn`): three notched arrows converging on a small centre point, with three-fold symmetry. At a glance it passes for a generic corporate "sync" or "alignment" mark ("every path leads to him"). In glowing ads it is a warm white, never a hazard colour; unlit it is brushed bronze; in the Golden Zone it is polished gold meeting at a small red centre stone.
 - *(Proposed)* **Hidden in plain sight:** the symbol is worked into logos, ads and corporate art in every zone, and is displayed openly only in the Golden Zone.
 
 ### Level schedule and enemy introductions (decided September 26, 2026)
