@@ -473,7 +473,8 @@ Shared interaction rules apply unless stated otherwise:
   - Unique scripted encounters (handmade arenas are allowed within the generator system).
   - **Length:** about the same as a level, **60–120 seconds**. The final boss may run a little longer, to be more challenging.
   - **Death restarts the fight** (no checkpoints), like a level. **Exception: the final fight** has a checkpoint halfway, where the villain may change into a **second stage**.
-  - **Items:** players bring their current items into the fight. Some fights may also offer **pickups**, for example a section of floor that spawns an armor, shield or grapple pickup. Which fights do this is *(open)*.
+  - **Items:** players bring their current items into the fight. Some fights may also offer **pickups**, for example a section of floor that spawns an armor, shield or grapple pickup.
+  - **Standard armor rule** (decided September 26, 2026; used by the Floating Head and the Sewer Swarm, and the default for later bosses): one armor pickup appears at the start of the final phase. Whenever the player's armor or shield breaks during the fight, another armor pickup appears **15–17 seconds later**, at most once per phase *(proposed cap)*. The Floating Head's delay is 10–15 seconds *(to confirm: keep the first boss gentler, or use 15–17 there too)*.
   - **Rewards:** beating a boss earns **credits and score points**.
   - **Stars and leaderboards:** bosses have both, like levels (decided September 26, 2026). *(Proposed)* One star for winning; two and three stars for beating par times set per boss in data. The leaderboard ranks the boss score, which includes a time bonus.
   - **No time limit, no escalation:** if the player doesn't land the hits, the fight keeps cycling its pattern until they win or die. It does **not** get harder while a player struggles.
@@ -504,11 +505,20 @@ Shared interaction rules apply unless stated otherwise:
   - **Armor pickups:** one appears at the start of the final phase. In addition, whenever the player's armor or shield breaks during the fight, another armor pickup appears **10–15 seconds later** to give them a chance (at most once per phase *(proposed)*).
   - **Kept simple:** no bonus damage for shooting into its open mouth.
   - **Defeat**: its face glitches, the propaganda cuts out mid-shout, and it crashes into the street ahead; the runner runs through the wreck. This leads into the zone's outro, and in the web demo into the "get the full game" screen.
-- **Sewer Swarm:** a mutant horde rising from the sewers.
-  - It builds up on both sides, and a mob attacks. The player must dispatch the mob while moving forward, as the horde shifts **ahead of and behind** the player dynamically.
-  - **Implementation:** 4–5 gameplay entities ("clusters"), each rendered as many screech-variant creatures using MultiMesh plus a shader for per-creature motion. It looks like hundreds, but only 4–5 are simulated.
-  - The heavy missile gets bonus damage against it.
-  - Needs early performance testing on mid-range phones.
+- **Sewer Swarm** (Gangland). Owner's design, September 26, 2026; parts marked *(proposed)* await the owner's approval.
+  - **What it is:** a mutant horde of screeches rising from the sewers. It builds up on both sides of the street, and a mob attacks while the horde shifts **ahead of and behind** the player.
+  - **The Host** at the heart of the swarm: a **poor person with electronic components fused to their sickly body**, mostly hidden under the screeches latched onto them. An unconnected monster, not one of the villain's (§1).
+  - **The fight is Gangland's final exam** (screeches, ramps, baiting, fences) in three phases of about 30 seconds each:
+    1. **Rising:** manholes and wall vents shake all along both sides, and screeches pour out and merge into clusters at the roadside. A cluster **surges down a lane** ahead of the player, with a red lane line and a rising chitter as the warning.
+    2. **Surrounded:** clusters also strike **from behind**. The warning is a **chittering sound** plus a **visible rising wave of the swarm** on screen, curling like a breaking wave or a scorpion's stinger, about to strike its lane. The swarm also **climbs the walls**, taking them away as an escape route, but only **temporarily**, and the phase must stay engaging. *(Proposed: one wall at a time for a few seconds, alternating sides.)*
+    3. **The Host:** the Host bursts out of a big sewer pipe ahead and flings the remaining clusters at the player.
+  - **Fighting the swarm:** the street is the weapon. The player **baits the swarm into attacking**, dodges in time, and the swarm **hits a live electric fence and is shocked**, which damages the boss. Baiting a cluster into a **hole** also works. Weapons thin clusters too, and the heavy missile gets bonus damage against them.
+  - *(Proposed)* **Phase ends:** phase 1 ends when two clusters are destroyed, phase 2 when the rest are. If the player doesn't manage it, the phase keeps cycling (no time limit, no escalation).
+  - *(Proposed)* **The Host's weak points:** its fused implants, glowing **red** (the same language as other bosses' weak points). The player reaches them by a ramp and a wall jump, Gangland's big new move. **Three stomps**, each knocking screeches off and revealing more of the person. Its lunge can also be baited into a fence.
+  - **Pickups:** the standard armor rule, with the 15–17 second delay.
+  - **Implementation:** 4–5 gameplay entities ("clusters"), each rendered as many screech-variant creatures using MultiMesh plus a shader for per-creature motion. It looks like hundreds, but only 4–5 are simulated. The Host is one more entity.
+  - Needs early performance testing on mid-range phones (risk test R4, before this boss is built).
+  - *(Open)* what happens to the Host at the end.
 - **Remaining bosses:** Marketplace, Corporate and Dead Zone *(open; the owner is still thinking about them)*, and the final villain's fight.
 
 ---
