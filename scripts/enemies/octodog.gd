@@ -28,6 +28,10 @@ enum Phase { IDLE, WINDUP, LUNGE, TURN, SPRINT, PACE, GIVE_UP, LEAVE, FALLING }
 const BODY_SIZE := Vector3(0.78, 0.72, 0.9)
 const TOP_SIZE := Vector3(0.84, 0.24, 0.96)
 const PHASE_NAMES: PackedStringArray = ["idle", "windup", "lunge", "turn", "sprint", "pace", "give_up", "leave", "falling"]
+## ceiling_between(): metres kept clear before a ceiling section (and around a pad), and after one
+## for a player dropping off it to land.
+const CEILING_LEAD: float = 6.0
+const CEILING_LANDING: float = 25.0
 
 var phase: Phase = Phase.IDLE
 ## Charges planned for this dog, and lunges made so far.
@@ -510,9 +514,9 @@ static func window_clear(layout: LevelLayout, from: float, to: float) -> bool:
 ## True if a ceiling section (with its lead-in and landing) or an anti-grav pad touches [from, to].
 static func ceiling_between(layout: LevelLayout, from: float, to: float) -> bool:
 	for h: Dictionary in layout.hulls:
-		if float(h["start"]) - 6.0 <= to and float(h["end"]) + 25.0 >= from:
+		if float(h["start"]) - CEILING_LEAD <= to and float(h["end"]) + CEILING_LANDING >= from:
 			return true
 	for p: Dictionary in layout.pads:
-		if float(p["at"]) >= from - 6.0 and float(p["at"]) <= to + 6.0:
+		if float(p["at"]) >= from - CEILING_LEAD and float(p["at"]) <= to + CEILING_LEAD:
 			return true
 	return false

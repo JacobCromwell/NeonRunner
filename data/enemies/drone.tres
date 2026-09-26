@@ -1,0 +1,48 @@
+[gd_resource type="Resource" script_class="DroneTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/drone_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+spawn_lead = 10.0
+score_value = 300
+health_early = 15.0
+health_late = 15.0
+uses_floor = false
+hover_ahead = 11.0
+hover_height = 3.2
+model_scale = 1.35
+wave_spacing = 5.0
+wave_rise = 0.55
+follow_speed = 8.0
+wall_inset = 1.2
+swoop_time = 1.5
+swoop_distance = 65.0
+swoop_height = 5.4
+swoop_side = 7.0
+first_follow_time = 1.2
+follow_time_early = 3.0
+follow_time_late = 2.0
+windup_early = 1.15
+windup_late = 0.95
+bullets_early = 6
+bullets_late = 7
+bullet_interval_early = 0.18
+bullet_interval_late = 0.15
+bullet_speed_early = 16.0
+bullet_speed_late = 21.0
+invulnerability_share = 0.9
+cooldown = 0.5
+bullet_overshoot = 0.35
+hurl_speed = 9.0
+first_pad_seconds = 10.0
+first_pad_slack_seconds = 1.0
+pad_repeat_min_seconds = 8.0
+pad_repeat_max_seconds = 10.0
+no_spawn_last_seconds = 15.0
+pad_ceiling_seconds = 3.0
+pair_min_scaling = 0.5
+min_wave_gap_seconds = 20.0
+guarantee_one_wave = true
+guaranteed_wave_from = 0.2
+guaranteed_wave_to = 0.45

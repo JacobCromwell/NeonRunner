@@ -117,7 +117,8 @@ func add_enemy(type: String, at: float, lane: int, side: int = 0, params: Dictio
 
 
 ## Adds a ceiling section with an anti-grav pad at `at` (hull lead-in before it), lasting
-## `length_seconds` at run speed. Returns false (adding nothing) if the floor there isn't clear.
+## `length_seconds` at run speed. Returns false (adding nothing) if the floor there isn't clear
+## (floor_clear, which includes floor enemies' stretches) or it would touch another ceiling.
 func add_hull_with_pad(lane: int, at: float, length_seconds: float) -> bool:
 	var hull_start: float = at - config.hull_lead_in
 	var hull_end: float = at + length_seconds * speed
@@ -135,7 +136,8 @@ func add_hull_with_pad(lane: int, at: float, length_seconds: float) -> bool:
 	return true
 
 
-## True if no gap or fence touches any lane between two track distances.
+## True if nothing on the floor touches any lane between two track distances: no gap, no fence,
+## and no floor enemy's stretch (enemy_floor_span).
 func floor_clear(from: float, to: float) -> bool:
 	for g: Dictionary in layout.gaps:
 		if g["start"] <= to and g["end"] >= from:
@@ -143,7 +145,34 @@ func floor_clear(from: float, to: float) -> bool:
 	for f: Dictionary in layout.fences:
 		if f["at"] >= from and f["at"] <= to:
 			return false
+	for e: Dictionary in layout.enemies:
+		var span: Vector2 = enemy_floor_span(e)
+		if span.x <= to and span.y >= from:
+			return false
 	return true
+
+
+## The stretch of floor [start, end] an enemy entry uses, which ceilings keep off: its
+## params.floor_span if its rules planned one, else its tuning's reach around its position.
+## Vector2(INF, -INF) (overlapping nothing) for types whose tuning says they don't use the floor.
+static func enemy_floor_span(entry: Dictionary) -> Vector2:
+	var params: Dictionary = entry.get("params", {})
+	if params.get("floor_span") is Vector2:
+		return params["floor_span"]
+	var at: float = float(entry["at"])
+	var t := EnemyDirector.tuning_for(String(entry.get("type", ""))) as EnemyTuning
+	if t == null:
+		return Vector2(at - 10.0, at + 10.0)
+	if not t.uses_floor:
+		return Vector2(INF, -INF)
+	return Vector2(at - t.floor_reach_before, at + t.floor_reach_after)
+
+
+## False for enemy types whose tuning says they never come down to the floor lanes (fliers such as
+## drones and hover trucks, wall-only enemies such as window cyborgs). Unknown types use the floor.
+static func enemy_uses_floor(entry: Dictionary) -> bool:
+	var t := EnemyDirector.tuning_for(String(entry.get("type", ""))) as EnemyTuning
+	return t == null or t.uses_floor
 
 
 func _pick_pattern(patterns: Array, difficulty: float) -> Dictionary:
@@ -247,13 +276,19 @@ func _place_pattern(pattern: Dictionary, origin: float) -> float:
 			"enemy":
 				var type: String = String(element.get("type", ""))
 				var params: Dictionary = element.get("params", {})
+				# GDD §3: enemies that come down to the floor lanes (wall vents too) stay out from
+				# under a ceiling; fliers and wall-only enemies may be there.
+				var keep_off_hulls: bool = not bool(element.get("allow_under_hull", false)) \
+					and enemy_uses_floor({"type": type})
 				if element.has("side"):
 					var side: int = _pick_side(String(element.get("side", "random")), prev_side)
+					if keep_off_hulls and _under_hull(at, at, pattern):
+						continue
 					add_enemy(type, at, layout.outer_lane(side), side, params.duplicate(true))
 					prev_side = side
 				else:
 					var lanes: Array[int] = _pick_lanes(element.get("lanes", {"mode": "random", "count": 1}), prev_lanes)
-					if not bool(element.get("allow_under_hull", false)) and _under_hull(at, at, pattern):
+					if keep_off_hulls and _under_hull(at, at, pattern):
 						continue
 					for lane: int in lanes:
 						add_enemy(type, at, lane, 0, params.duplicate(true))

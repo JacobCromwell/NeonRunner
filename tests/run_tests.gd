@@ -5,10 +5,24 @@ extends SceneTree
 ## suites whose file name contains <text>. Exits with code 0 on success and 1 on any failure.
 
 const SUITES_DIR: String = "res://tests/suites"
+## A run that takes longer than this (real time) is stuck, e.g. a suite awaiting something that
+## never comes or a script error that stopped the runner: it fails instead of hanging. Timers
+## can't measure this: --fixed-fps runs game time far faster than real time.
+const WATCHDOG_SECONDS: int = 600
+
+var _deadline_msec: int = 0
 
 
 func _initialize() -> void:
+	_deadline_msec = Time.get_ticks_msec() + WATCHDOG_SECONDS * 1000
 	_run.call_deferred()
+
+
+func _process(_delta: float) -> bool:
+	if Time.get_ticks_msec() > _deadline_msec:
+		print("TEST RUN STUCK: no result after %d s of real time (see the errors above)" % WATCHDOG_SECONDS)
+		quit(1)
+	return false
 
 
 func _run() -> void:
@@ -35,10 +49,13 @@ func _run() -> void:
 		if only != "" and not file.contains(only):
 			continue
 		var script := load(SUITES_DIR.path_join(file)) as GDScript
-		if script == null:
-			failures.append("%s: could not load the suite" % file)
+		if script == null or not script.can_instantiate():
+			failures.append("%s: could not load the suite (a parse error?)" % file)
 			continue
 		var suite := script.new() as TestSuite
+		if suite == null:
+			failures.append("%s: is not a TestSuite" % file)
+			continue
 		suite.tree = self
 		suite.tuning = tuning
 		var suite_started: int = Time.get_ticks_msec()
@@ -62,7 +79,7 @@ func _run() -> void:
 		print("%-28s %6d checks  %5.1f s  %s" % [file.get_basename(), suite.checks,
 			(Time.get_ticks_msec() - suite_started) / 1000.0, "ok" if suite.failures.is_empty() else "%d FAILED" % suite.failures.size()])
 	print("")
-	if ran == 0:
+	if ran == 0 and failures.is_empty():
 		print("No test suites matched '%s'." % only)
 		quit(1)
 	elif failures.is_empty():

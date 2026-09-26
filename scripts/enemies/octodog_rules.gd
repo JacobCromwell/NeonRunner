@@ -10,7 +10,7 @@ extends RefCounted
 ##   wind-up may start ("charge_at"). Each is at a stretch with no fence, anti-grav pad, other enemy,
 ##   or holes in more than one lane, so a charge never stacks with an unavoidable obstacle; and the
 ##   dog never runs under a ceiling section (GDD §3). Charges that don't fit are left out (it gives
-##   up sooner).
+##   up sooner). The whole run is stored as "floor_span", so ceilings added later keep off it.
 ## - One at a time: a dog whose first charge overlaps another dog's charges, or can't be made fair,
 ##   is dropped.
 
@@ -76,8 +76,15 @@ static func apply(gen: LevelGenerator) -> void:
 			continue
 		params["charges"] = anchors.size()
 		params["charge_at"] = anchors
-		e["params"] = params
 		busy_until = anchors[-1] + window + stop
+		# The floor its charges use, through its last charge. Ceilings that later rules add keep off
+		# it, so none lands where ceiling_between() would stop a charge. add_hull_with_pad already
+		# keeps its lead-in (6 m) and landing stretch clear, so only the rest of the dog's landing
+		# margin is added.
+		var landing: float = gen.config.hull_landing_seconds * speed
+		params["floor_span"] = Vector2(a0 - Octodog.CEILING_LEAD - maxf(0.0, Octodog.CEILING_LANDING - landing),
+			busy_until)
+		e["params"] = params
 	for e: Dictionary in dropped:
 		layout.enemies.erase(e)
 
