@@ -266,6 +266,12 @@ func _animate(delta: float, k: float) -> void:
 	if variant == &"scavenger":
 		torso.x += 0.14  # hunched
 		head.x -= 0.1
+	if upper_body_only:
+		# In a window: forearms resting on the sill.
+		sh_l = Vector3(-0.75, 0.0, 0.2)
+		sh_r = Vector3(-0.75, 0.0, -0.2)
+		el_l = Vector3(-0.85, 0.0, 0.0)
+		el_r = Vector3(-0.85, 0.0, 0.0)
 	match pose:
 		Pose.WALK:
 			_gait += delta * (2.0 + move_speed * 3.4)

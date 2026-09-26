@@ -48,9 +48,9 @@ var track_velocity: float = 0.0
 ## Returns whether the shooter may attack right now (the enemy's own rules).
 var may_attack: Callable
 var state: State = State.READY
-## Every charge, shot and cancelled burst (for tests and debugging):
-## {"t", "event": &"charge" | &"shot" | &"cancel", "impact" (track distance), "arrive" (level time),
-##  "from", "velocity"}.
+## Every charge, shot and cancelled burst (for tests and debugging): {"t" (level time),
+## "event": &"charge" | &"shot" | &"cancel", "player_d" and "shooter_d" (track distances); charges
+## add "shots"; shots add "impact" (track distance), "arrive" (level time), "from", "velocity"}.
 var events: Array[Dictionary] = []
 
 var _timer: float = 0.0
@@ -158,7 +158,8 @@ func _start_charge() -> void:
 		+ (_burst - 1) * tuning.shot_interval + tuning.burst_gap)
 	var at: Vector3 = _muzzle_base()
 	world.play_sfx_at(&"cyborg_charge", at)
-	events.append({"t": world.level_time(), "event": &"charge", "from": at})
+	events.append({"t": world.level_time(), "event": &"charge", "shots": _burst,
+		"player_d": world.player.distance, "shooter_d": shooter.track_distance(), "from": at})
 
 
 func _cancel() -> void:
@@ -167,7 +168,8 @@ func _cancel() -> void:
 	_release_airspace()
 	body.set_charge(0.0)
 	body.clear_aim()
-	events.append({"t": world.level_time(), "event": &"cancel"})
+	events.append({"t": world.level_time(), "event": &"cancel", "player_d": world.player.distance,
+		"shooter_d": shooter.track_distance()})
 
 
 func _fire_step(delta: float) -> void:
@@ -220,7 +222,8 @@ func _fire(player: Player) -> void:
 	world.projectiles.fire_enemy(from, velocity, LOOK, SHOT_NAME, tuning.bolt_life)
 	world.play_sfx_at(&"cyborg_shot", from)
 	events.append({"t": world.level_time(), "event": &"shot", "impact": player.distance + v * t,
-		"arrive": world.level_time() + t, "from": from, "velocity": velocity})
+		"arrive": world.level_time() + t, "from": from, "velocity": velocity,
+		"player_d": player.distance, "shooter_d": shooter.track_distance()})
 
 
 ## Whether a burst of `shots` bolts, the first fired `lead` seconds from now, would be fair: the first

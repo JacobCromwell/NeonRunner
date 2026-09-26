@@ -13,9 +13,10 @@ extends Enemy
 ## The wreck stays, dark and harmless, until the player is far past.
 
 const Kit = preload("res://scripts/enemies/cyborg_kit.gd")
-const BODY_SIZE := Vector3(0.9, 0.7, 0.9)
+## Hitboxes stay inside the machine's silhouette (its core is 0.88 m wide at the foot).
+const BODY_SIZE := Vector3(0.8, 0.7, 0.8)
 ## The stomp zone: its bottom sits at the stomp line (top - stomp tolerance), where the body ends.
-const TOP_SIZE := Vector3(1.0, 0.45, 1.0)
+const TOP_SIZE := Vector3(0.8, 0.45, 0.8)
 const TOP_Y: float = 0.925
 const HUSK_KEEP: float = 40.0
 const CABLE_Y: float = 0.02

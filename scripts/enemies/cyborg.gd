@@ -23,9 +23,13 @@ enum Mode { WAIT, WALK, STARTLED, FLEE, COWER, PASSED }
 const Kit = preload("res://scripts/enemies/cyborg_kit.gd")
 const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
 const BAD_DREAM_SCRIPT: String = "res://scripts/enemies/bad_dream.gd"
-const BODY_SIZE := Vector3(0.5, 1.0, 0.42)
-const HEAD_SIZE := Vector3(0.78, 0.5, 0.78)
-const HEAD_Y: float = 1.2
+## The solid body: slimmer than the visual torso and legs (arms included), and ending at 1.0 m, below
+## the stomp line (the head's top minus GameRules.stomp_tolerance).
+const BODY_SIZE := Vector3(0.4, 1.0, 0.28)
+## The stompable head and shoulders (1.12–1.5 m). It starts above a standing player's hurtbox
+## (1.09 m), so only a jumping player can touch it: wider than the head for a forgiving stomp.
+const HEAD_SIZE := Vector3(0.7, 0.38, 0.6)
+const HEAD_Y: float = 1.31
 
 var tuning: CyborgTuning
 var body: CyborgBody
@@ -108,10 +112,8 @@ func _tick(delta: float) -> void:
 		Mode.PASSED:
 			_speed = -tuning.drop_back_speed
 	var next: float = d + _speed * delta
-	if mode == Mode.WALK:
-		next = maxf(next, minf(walk_limit, d))
-	elif mode == Mode.FLEE:
-		next = minf(next, maxf(run_limit, d))
+	if mode != Mode.PASSED:
+		next = clampf(next, minf(walk_limit, d), maxf(run_limit, d))
 	position.z = TrackGeometry.world_z(next)
 	gun.track_velocity = _speed
 	if mode != Mode.PASSED:
