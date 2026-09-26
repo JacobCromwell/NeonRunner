@@ -345,6 +345,14 @@ func _test_settings() -> void:
 		"a key moves from the action that had it")
 	settings.call(&"_reset_keys")
 	check(SettingsScreen.key_codes(&"jump").has(KEY_SPACE) and jump.text.contains("SPACE"), "Reset keys brings the defaults back")
+	# The fonts' license (SIL OFL) is one button away.
+	settings.licenses_button.pressed.emit()
+	await _frames(1)
+	var licenses: String = settings.licenses_label.text if settings.licenses_label != null else ""
+	check(licenses.contains("ORBITRON") and licenses.contains("EXO 2") and licenses.count("SIL Open Font License") >= 2
+		and not licenses.contains("missing"), "the About card shows both fonts' licenses")
+	settings.licenses_button.pressed.emit()
+	check(not settings.licenses_label.visible, "and hides them again")
 	settings.go_back()
 	await _frames(1)
 	check(App.screen is TitleScreen, "back leaves the settings (to the title by default)")
