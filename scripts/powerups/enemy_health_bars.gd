@@ -18,10 +18,10 @@ const FULL_COLOR := Color(1.0, 0.78, 0.18)
 const LOW_COLOR := Color(1.0, 0.16, 0.12)
 ## Bar width grows with distance so far bars stay readable: metres per metre of camera distance,
 ## clamped to [MIN_WIDTH, MAX_WIDTH].
-const WIDTH_PER_METRE: float = 0.03
-const MIN_WIDTH: float = 0.8
-const MAX_WIDTH: float = 2.6
-const HEIGHT_RATIO: float = 0.14
+const WIDTH_PER_METRE: float = 0.045
+const MIN_WIDTH: float = 1.0
+const MAX_WIDTH: float = 3.4
+const HEIGHT_RATIO: float = 0.15
 ## Seconds the recent-damage segment waits before draining, and its drain speed (share per second).
 const DRAIN_DELAY: float = 0.25
 const DRAIN_SPEED: float = 1.4
@@ -96,7 +96,7 @@ func update_bars(delta: float) -> void:
 		var ratio: float = e.health_ratio()
 		var drain: float = _drain_share(e.get_instance_id(), ratio, delta)
 		live[e.get_instance_id()] = true
-		var top: Vector3 = e.aim_point() + Vector3.UP * (e.hit_radius() + 0.35)
+		var top: Vector3 = e.aim_point() + Vector3.UP * (e.hit_radius() + 0.15)
 		var width: float = clampf(eye.distance_to(top) * WIDTH_PER_METRE, MIN_WIDTH, MAX_WIDTH)
 		var height: float = width * HEIGHT_RATIO
 		var center: Vector3 = top + Vector3.UP * height

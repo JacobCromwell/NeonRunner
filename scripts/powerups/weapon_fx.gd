@@ -1,29 +1,36 @@
 class_name WeaponFx
 extends Node3D
 ## The weapon's own visuals on top of the pooled shots (the pool already draws the shots and a hit
-## burst): a muzzle flash at the shoulder, a trail behind each missile, and the heavy missile's
-## blast, a glowing shell that grows to the splash radius so the player sees what it reaches.
-## Player fire stays cool (cyan/white/violet) so it never reads like red enemy fire. Everything is
-## pooled, unshaded and CPU-driven, so it works on the Compatibility renderer.
+## burst): a muzzle flash at the shoulder, a tapered streak behind each shot (a beam for the lasers,
+## a trail for the missiles, so shots flying away from the camera still read), and the heavy
+## missile's blast, a thin shockwave ring facing the camera that grows to the splash radius, so the
+## player sees what it reaches without it hiding the track. Player fire stays cool
+## (cyan/white/violet) so it never reads like red enemy fire. Everything is pooled, unshaded and
+## CPU-driven, so it works on the Compatibility renderer.
 
 const FLASH_POOL: int = 3
 const BLAST_POOL: int = 3
-const TRAIL_POOL: int = 10
+const TRAIL_POOL: int = 12
 const FLASH_TIME: float = 0.07
-const BLAST_TIME: float = 0.3
-## Missile trail length (m) for tier 3 and tier 4.
-const TRAIL_LENGTH: Array[float] = [1.8, 2.6]
-const TRAIL_COLOR := Color(0.55, 0.9, 1.0)
+const BLAST_TIME: float = 0.26
+## Per tier: streak length (m) and radius at the shot's end. The enhanced laser is thicker.
+const TRAIL_LENGTH: Array[float] = [3.2, 3.6, 1.8, 2.6]
+const TRAIL_RADIUS: Array[float] = [0.035, 0.06, 0.06, 0.09]
+const MISSILE_TRAIL_COLOR := Color(0.55, 0.9, 1.0)
 
 const BLAST_SHADER: String = """
 shader_type spatial;
-render_mode unshaded, blend_add, depth_draw_never, cull_back, shadows_disabled;
+render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled;
 uniform vec4 color : source_color = vec4(0.6, 0.95, 1.0, 1.0);
 uniform float fade = 1.0;
+// Ring width as a share of the radius.
+uniform float thickness = 0.09;
 void fragment() {
-	float rim = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
-	ALBEDO = color.rgb * 1.6;
-	ALPHA = clamp((0.08 + pow(rim, 2.5) * 1.4) * fade, 0.0, 1.0);
+	float r = length(UV * 2.0 - 1.0);
+	float ring = smoothstep(1.0, 1.0 - thickness, r) * smoothstep(1.0 - thickness * 3.0, 1.0 - thickness, r);
+	float glow = (1.0 - smoothstep(0.0, 1.0, r)) * 0.06;
+	ALBEDO = color.rgb * 1.5;
+	ALPHA = clamp((ring + glow) * fade, 0.0, 1.0);
 }
 """
 const TRAIL_SHADER: String = """
@@ -50,6 +57,7 @@ var _next_flash: int = 0
 var _blasts: Array[MeshInstance3D] = []
 var _blast_life: PackedFloat32Array = PackedFloat32Array()
 var _blast_radius: PackedFloat32Array = PackedFloat32Array()
+var _blast_pos: Array[Vector3] = []
 var _next_blast: int = 0
 var _trails: Array[MeshInstance3D] = []
 
@@ -68,28 +76,25 @@ func setup(p_world: RunWorld, p_weapon: WeaponPowerup) -> void:
 		_flash_life.append(0.0)
 		_flash_dir.append(Vector3.FORWARD)
 	if weapon.is_heavy():
-		var shell := SphereMesh.new()
-		shell.radius = 1.0
-		shell.height = 2.0
-		shell.radial_segments = 20
-		shell.rings = 10
+		var quad := QuadMesh.new()
+		quad.size = Vector2(2.0, 2.0)  # UV edge = radius 1
 		for i: int in BLAST_POOL:
 			var mat := _shader_material(BLAST_SHADER)
-			mat.set_shader_parameter(&"color", color)
-			_blasts.append(_mesh_instance(shell, mat))
+			mat.set_shader_parameter(&"color", color.lerp(Color.WHITE, 0.3))
+			_blasts.append(_mesh_instance(quad, mat))
 			_blast_life.append(0.0)
 			_blast_radius.append(1.0)
-	if weapon.is_missile():
-		var cone := CylinderMesh.new()
-		cone.height = 1.0
-		cone.top_radius = 0.09 if weapon.is_heavy() else 0.06
-		cone.bottom_radius = 0.005
-		cone.radial_segments = 6
-		cone.rings = 1
-		var mat := _shader_material(TRAIL_SHADER)
-		mat.set_shader_parameter(&"color", TRAIL_COLOR)
-		for i: int in TRAIL_POOL:
-			_trails.append(_mesh_instance(cone, mat))
+			_blast_pos.append(Vector3.ZERO)
+	var cone := CylinderMesh.new()
+	cone.height = 1.0
+	cone.top_radius = TRAIL_RADIUS[weapon.tier - 1]
+	cone.bottom_radius = 0.005
+	cone.radial_segments = 6
+	cone.rings = 1
+	var trail_mat := _shader_material(TRAIL_SHADER)
+	trail_mat.set_shader_parameter(&"color", MISSILE_TRAIL_COLOR if weapon.is_missile() else color)
+	for i: int in TRAIL_POOL:
+		_trails.append(_mesh_instance(cone, trail_mat))
 
 
 ## A flash at the shoulder as a shot leaves, aimed along `dir`.
@@ -112,8 +117,8 @@ func blast(pos: Vector3, radius: float) -> void:
 	_next_blast = (_next_blast + 1) % _blasts.size()
 	_blast_life[i] = BLAST_TIME
 	_blast_radius[i] = radius
-	_blasts[i].global_position = pos
-	_blasts[i].scale = Vector3.ONE * 0.3
+	_blast_pos[i] = pos
+	_place_blast(i, 0.0)
 	_blasts[i].visible = true
 	world.effects.shake(0.14, 0.18)
 
@@ -134,11 +139,20 @@ func update(delta: float) -> void:
 		if _blast_life[i] <= 0.0:
 			_blasts[i].visible = false
 			continue
-		var k: float = 1.0 - _blast_life[i] / BLAST_TIME
-		_blasts[i].scale = Vector3.ONE * lerpf(0.3, _blast_radius[i], 1.0 - pow(1.0 - k, 3.0))
-		(_blasts[i].material_override as ShaderMaterial).set_shader_parameter(&"fade", 1.0 - k * k)
+		_place_blast(i, 1.0 - _blast_life[i] / BLAST_TIME)
 	if not _trails.is_empty():
 		_update_trails()
+
+
+## Sizes blast `i` for progress `k` (0–1): it grows fast to the splash radius and fades, always
+## facing the camera.
+func _place_blast(i: int, k: float) -> void:
+	var camera: Camera3D = get_viewport().get_camera_3d() if is_inside_tree() else null
+	var cam_basis: Basis = camera.global_basis if camera != null else Basis.IDENTITY
+	var size: float = lerpf(0.3, _blast_radius[i], 1.0 - pow(1.0 - k, 3.0))
+	_blasts[i].global_transform = Transform3D(
+		Basis(cam_basis.x * size, cam_basis.y * size, cam_basis.z), _blast_pos[i])
+	(_blasts[i].material_override as ShaderMaterial).set_shader_parameter(&"fade", 1.0 - k * k)
 
 
 func _place_flash(i: int) -> void:
@@ -149,17 +163,21 @@ func _place_flash(i: int) -> void:
 		weapon.muzzle_point() + _flash_dir[i] * 0.2)
 
 
-## A trail behind each player missile in flight, pointing back along its path.
+## A streak behind each of the weapon's shots in flight, pointing back along its path.
 func _update_trails() -> void:
-	var length: float = TRAIL_LENGTH[1] if weapon.is_heavy() else TRAIL_LENGTH[0]
+	var full_length: float = TRAIL_LENGTH[weapon.tier - 1]
+	var look: StringName = weapon.look()
+	var muzzle: Vector3 = weapon.muzzle_point()
 	var used: int = 0
 	for p: Projectile in world.projectiles.live_shots():
 		if used >= _trails.size():
 			break
-		if not p.friendly or (p.look != &"missile" and p.look != &"heavy_missile"):
+		if not p.friendly or p.look != look:
 			continue
 		var speed: float = p.velocity.length()
-		if speed < 0.01:
+		# Never reach back past the shoulder the shot left from.
+		var length: float = minf(full_length, p.global_position.distance_to(muzzle))
+		if speed < 0.01 or length < 0.05:
 			continue
 		var dir: Vector3 = p.velocity / speed
 		var trail: MeshInstance3D = _trails[used]

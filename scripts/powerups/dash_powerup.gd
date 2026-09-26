@@ -6,8 +6,9 @@ extends PowerupModule
 ## DESIGN-TBD (OPEN_QUESTIONS §4): duration, cooldown and speed are placeholders in PowerupTuning,
 ## and the cooldown runs from the moment the dash starts. It works on any surface.
 ##
-## The look, while dashing: an energy shell around the player, afterimages left behind and speed
-## lines streaming past; a camera kick when it starts and a bigger hit when it smashes an enemy.
+## The look, while dashing: an energy shell around the player and speed lines streaming past; a
+## camera kick when it starts and a bigger hit when it smashes an enemy. (No afterimages: seen from
+## the chase camera they all line up behind the player and add up to a glare.)
 
 const COLOR := Color(0.45, 0.95, 1.0)
 
@@ -31,7 +32,6 @@ var cooldown_left: float = 0.0
 var _fx: float = 0.0
 var _shell: MeshInstance3D
 var _shell_material: ShaderMaterial
-var _afterimages: CPUParticles3D
 var _speed_lines: CPUParticles3D
 
 
@@ -85,10 +85,7 @@ func visual_tick(delta: float) -> void:
 		var grow: float = 1.0 + 0.25 * (1.0 - _fx)
 		_shell.global_transform = Transform3D(basis * Basis.from_scale(Vector3(v.x * 1.9, height * 1.25, v.z * 2.6) * grow), center)
 		_shell_material.set_shader_parameter(&"strength", _fx)
-	_afterimages.global_transform = Transform3D(basis * Basis.from_scale(Vector3(1.0, height / 1.2, 1.0)), center)
 	_speed_lines.global_transform = Transform3D(Basis.IDENTITY, center)
-	if _afterimages.emitting != on:
-		_afterimages.emitting = on
 	if _speed_lines.emitting != on:
 		_speed_lines.emitting = on
 
@@ -113,15 +110,6 @@ func _build_visuals() -> void:
 	_shell.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_shell.visible = false
 	add_child(_shell)
-
-	# Afterimages: body-shaped ghosts left in the world as the player rushes on.
-	var ghost := CapsuleMesh.new()
-	ghost.radius = 0.3
-	ghost.height = 1.2
-	ghost.radial_segments = 8
-	ghost.rings = 2
-	_afterimages = _particles(ghost, 14, 0.24, _fade_ramp(Color(COLOR, 0.45)))
-	add_child(_afterimages)
 
 	# Speed lines: thin streaks around the player that stay behind in the world, so they stream past.
 	var streak := BoxMesh.new()

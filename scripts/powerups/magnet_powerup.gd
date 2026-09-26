@@ -15,7 +15,7 @@ const FIELD_SHADER: String = """
 shader_type spatial;
 render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled;
 uniform vec4 color : source_color = vec4(1.0, 0.8, 0.32, 1.0);
-uniform float strength = 0.16;
+uniform float strength = 0.11;
 uniform float pulse = 0.0;
 // Where the player stands along the field (UV.y: 0 = far end, 1 = near end).
 uniform float player_v = 0.8;
