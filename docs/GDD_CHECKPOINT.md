@@ -399,6 +399,18 @@ Shared interaction rules apply unless stated otherwise:
   - Surviving the full chase earns a score bonus.
 - **Purpose:** a counter to late-game power creep that forces pure movement skill.
 
+### 9.8 Ceiling Turret (owner, September 26, 2026; name and first zone open)
+- **Where:** a ceiling hazard. It **pops out of the ceiling's underside** (a ship's hull, or whatever forms the ceiling in that zone) and stays stationary.
+- **Look:** a round, dome-shaped body with a cannon or gun coming out of its chest.
+  - **Mechanical** in most zones.
+  - **Creature version in Gangland and the Marketplace:** more animalistic, as if alive, a bit cutesy and silly, like a furry creature. It keeps the same dome body and chest cannon, so it reads as the same enemy (readability rule).
+- **Attack:** fires at the player **the same way the cyborg does** (a visible charge-up with a sound, a short burst of bolts, then a pause), and is **slightly more accurate** than the cyborg. It should **not** be a difficult enemy.
+- **Dodge:** by dodging its shots.
+- **Kill:** claws, the dash, a stomp, or **5 shots** at laser tier 1.
+- **Armor and shield:** both block its shots.
+- **Scaling:** across the campaign it fires somewhat faster and takes slightly more damage to kill, but never by much.
+- *(Open)* whether it fires only at a player on the ceiling, what touching its body does, how many can share a ceiling, which zone introduces it, and its name.
+
 ---
 
 ## 10. Bosses (partial)
