@@ -19,6 +19,7 @@ func run() -> void:
 	await _test_cannon()
 	await _test_leaving()
 	await _test_weapons()
+	_test_rules()
 
 
 # --- Helpers -------------------------------------------------------------------------------------
@@ -409,3 +410,98 @@ func _test_weapons() -> void:
 	t.take_damage(heavy, &"weapon")
 	check(not t.alive and t.state == S.WRECKED, "5 heavy missiles (tier 4) do: it spins out")
 	await sim.free_world(w)
+
+
+## Generator rules (GDD §9.3) over many seeds, difficulties and lane counts, and in the campaign
+## levels that use the truck (city/3 introduces it).
+func _test_rules() -> void:
+	var t := load("res://data/enemies/hover_truck.tres") as HoverTruckTuning
+	var base: LevelConfig = load(LEVEL_PATH) as LevelConfig
+	var patterns: Array = LevelGenerator.load_for(base)
+	var per_difficulty: Dictionary = {}
+	var levels: int = 0
+	for lanes: int in [3, 5, 6]:
+		for difficulty: float in [0.2, 0.6, 1.0]:
+			for level_seed: int in range(1, 13):
+				for with_ramps: bool in [false, true]:
+					var config: LevelConfig = base.duplicate() as LevelConfig
+					config.lane_count = lanes
+					config.difficulty = difficulty
+					config.level_seed = level_seed
+					config.features = PackedStringArray(["ceilings", "pulsing", "hover_truck"])
+					if with_ramps:
+						config.features.append("ramps")
+					var tag: String = "lanes=%d diff=%.1f seed=%d ramps=%s" % [lanes, difficulty, level_seed, with_ramps]
+					var gen := LevelGenerator.new()
+					var a: LevelLayout = gen.generate(config, tuning, patterns)
+					check(gen.warnings.is_empty(), "truck levels generate without warnings %s %s" % [tag, gen.warnings])
+					var b: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
+					check(JSON.stringify(a.to_dict()) == JSON.stringify(b.to_dict()), "same seed, same trucks " + tag)
+					var n: int = _check_rules(a, config, t, tag)
+					check(n >= 1, "every truck level has a truck " + tag)
+					per_difficulty[difficulty] = int(per_difficulty.get(difficulty, 0)) + n
+					levels += 1
+	check(per_difficulty[0.2] < per_difficulty[1.0],
+		"rare early, more frequent later (%d trucks at difficulty 0.2, %d at 1.0)" % [per_difficulty[0.2], per_difficulty[1.0]])
+
+	var campaign := load("res://data/campaign/campaign.tres") as Campaign
+	for id: String in ["city/3", "gangland/1", "gangland/2", "gangland/3"]:
+		for lanes: int in [3, 5, 6]:
+			var config: LevelConfig = campaign.configure(campaign.step(id), lanes)
+			var gen := LevelGenerator.new()
+			var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+			var n: int = _check_rules(layout, config, t, "%s lanes=%d" % [id, lanes])
+			check(gen.warnings.is_empty() and n >= 1, "%s has trucks and follows the rules (%d, %d lanes)" % [id, n, lanes])
+
+
+## Checks one layout against the truck rules. Returns the number of trucks.
+func _check_rules(layout: LevelLayout, config: LevelConfig, t: HoverTruckTuning, tag: String) -> int:
+	var speed: float = tuning.run_speed
+	var rules := load("res://scripts/enemies/hover_truck_rules.gd")
+	var trucks: Array[Dictionary] = []
+	for e: Dictionary in layout.enemies:
+		if String(e["type"]) == "hover_truck":
+			trucks.append(e)
+	var prev_end: float = -INF
+	for e: Dictionary in trucks:
+		var at: float = e["at"]
+		var side: int = e["side"]
+		var lane: int = e["lane"]
+		check(side != 0 and lane == layout.outer_lane(side), "a truck holds the outer lane on its side " + tag)
+		check(at + t.stay_min_seconds * speed <= layout.length - config.end_clear_distance + 0.01,
+			"room for its shortest stay before the finish (at %.0f) %s" % [at, tag])
+		var from: float = rules.window_start(t, at)
+		var to: float = rules.window_end(t, at, speed)
+		check(from >= prev_end, "one truck at a time %s" % tag)
+		prev_end = to
+		for g: Dictionary in layout.gaps:
+			check(not (int(g["lane"]) == lane and float(g["start"]) <= to and float(g["end"]) >= from),
+				"no gap in its lane while it's around (%.0f) %s" % [g["start"], tag])
+		for f: Dictionary in layout.fences:
+			check(not (int(f["lane"]) == lane and float(f["at"]) >= from and float(f["at"]) <= to),
+				"no fence in its lane while it's around (%.0f) %s" % [f["at"], tag])
+		for o: Dictionary in layout.enemies:
+			if int(o.get("side", 0)) == 0 and not ["drone", "hover_truck"].has(String(o["type"])) and int(o["lane"]) == lane:
+				check(float(o["at"]) < from or float(o["at"]) > to, "its lane is free of other enemies (%s) %s" % [o["type"], tag])
+		var section: Vector2 = rules.burst_section(t, at)
+		for s: Dictionary in layout.signs:
+			check(not (int(s["side"]) == side and float(s["start"]) <= section.y and float(s["end"]) >= section.x),
+				"no sign where it bursts through the wall %s" % tag)
+		if config.has_feature("ramps"):
+			var ramp: bool = false
+			for r: Dictionary in layout.ramps:
+				if int(r["side"]) == side and float(r["at"]) >= at + t.ramp_after_seconds * speed - 0.01 \
+						and float(r["at"]) <= at + t.stay_min_seconds * speed:
+					ramp = true
+			check(ramp, "route (a) has a ramp on its side while it's around (at %.0f) %s" % [at, tag])
+		else:
+			check(layout.ramps.is_empty(), "no ramps in a level without the ramps feature " + tag)
+	# The ramps it adds follow the usual ramp fairness.
+	for r: Dictionary in layout.ramps:
+		var rl: int = layout.outer_lane(int(r["side"]))
+		check(not layout.gapped_between(rl, float(r["at"]), float(r["at"]) + tuning.ramp_length), "ramp on solid floor " + tag)
+		for s: Dictionary in layout.signs:
+			if int(s["side"]) == int(r["side"]):
+				check(float(s["end"]) < float(r["at"]) - 2.0 or float(s["start"]) > float(r["at"]) + tuning.ramp_length + 2.0,
+					"ramp entry not blocked by a sign " + tag)
+	return trucks.size()
