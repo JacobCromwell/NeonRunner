@@ -52,13 +52,13 @@ func _ready() -> void:
 	_message.grow_vertical = Control.GROW_DIRECTION_BOTH
 
 	_hint = _label(self, 22, HORIZONTAL_ALIGNMENT_CENTER)
-	_hint.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
-	_hint.offset_top = -120.0
-	_hint.offset_bottom = -80.0
-	_hint.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_hint.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	_hint.offset_left = 160.0
+	_hint.offset_right = -160.0
+	_hint.offset_top = -140.0
+	_hint.offset_bottom = -70.0
+	_hint.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_hint.custom_minimum_size.x = 760.0
-	_hint.position.x -= 380.0
 	_hint.add_theme_color_override(&"font_color", Color(0.75, 0.95, 1.0))
 
 	_pause = Button.new()
