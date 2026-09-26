@@ -472,9 +472,11 @@ Shared interaction rules apply unless stated otherwise:
   - **Gameplay stays as close to the main runner as possible** (refined September 26, 2026): the same controls, camera and movement. A boss may get its own gimmick that makes it play differently, but none has been chosen yet.
   - Unique scripted encounters (handmade arenas are allowed within the generator system).
   - **Length:** about the same as a level, **60–120 seconds**. The final boss may run a little longer, to be more challenging.
-  - **Death restarts the fight** (no checkpoints), like a level.
+  - **Death restarts the fight** (no checkpoints), like a level. **Exception: the final fight** has a checkpoint halfway, where the villain may change into a **second stage**.
   - **Items:** players bring their current items into the fight. Some fights may also offer **pickups**, for example a section of floor that spawns an armor, shield or grapple pickup. Which fights do this is *(open)*.
   - **Rewards:** beating a boss earns **credits and score points**.
+  - **Stars and leaderboards:** bosses have both, like levels (decided September 26, 2026). *(Proposed)* One star for winning; two and three stars for beating par times set per boss in data. The leaderboard ranks the boss score, which includes a time bonus.
+  - **No time limit, no escalation:** if the player doesn't land the hits, the fight keeps cycling its pattern until they win or die. It does **not** get harder while a player struggles.
   - Bosses ignore claw contact kills.
   - Every boss must be beatable using only the power-ups granted before the fight.
 - **Roster** (decided September 26, 2026):
@@ -488,7 +490,17 @@ Shared interaction rules apply unless stated otherwise:
   | 5. Dead Zone | *(open)* |
   | 6. Golden Zone | The final villain |
 
-- **Floating Head:** a monstrous floating head ahead of the player. The player dodges projectiles and **jumps on weak points** to defeat it.
+- **Floating Head** (Neon City). Owner's design, September 26, 2026; the parts marked *(proposed)* are the design round's recommendation, awaiting the owner's approval.
+  - **What it is:** a **giant ship**. Its back is a **giant cybernetic propaganda face** that watches over the city and **shouts its propaganda**.
+  - **Bombing run:** the ship flies in overhead and **drops bombs toward the player** for about **15–20 seconds**. *(Proposed)* A searchlight sweeps the lanes and the bombs fall where it lingers, with a falling whistle, so the light is the visual warning.
+  - **The reveal:** the ship finishes its flyby **directly in front of the player**, and its back turns out to be the face.
+  - **Face-off attacks:** **eye lasers** while it looks at the player. *(Proposed)* The eyes glow and whine, then twin beams sweep across the lanes: jump a low sweep, slide under a high one, or switch lanes when a beam drags down a lane. **Cyborg drop** *(proposed to keep)*: its mouth opens and drops 1–2 cyborgs onto the trucks ahead, who then fight like normal cyborgs.
+  - **Back to the sky:** once or twice during the fight it rises for another bombing run (shorter than the first).
+  - **Bringing it down** (the owner's idea of a building falling on it) *(proposed)*: marked, cracked towers stand ahead at the roadside. The player **baits the eye laser into a marked tower** by leading the beam to that side and dodging at the last moment, the way players bait an Octodog into a gap. The tower topples onto the ship and pins it low across the trucks. If the player doesn't manage it, the laser eventually clips a tower on its own, so a struggling player still gets a chance; baiting it is faster and scores more.
+  - **Weak points** *(proposed)*: glowing **red** on top of the head, the same language as the hover truck's weak point. While it's pinned, the player **stomps** one. Each phase uses a different Zone 1 skill to get on top: (1) run up the fallen tower like a ramp; (2) wall-jump onto it; (3) ride a ship's underside via an anti-grav pad and drop onto it when the hull ends.
+  - **Three phases**, one stomp each. After a stomp it shakes free, shrieks and rises; the next phase is faster, with more cyborgs.
+  - **Damage:** stomps do the real damage *(proposed: a third of its health each)*; weapons chip away slowly *(proposed: tuned so even the best weapon saves at most one stomp over the whole fight)*.
+  - **Defeat** *(proposed)*: its face glitches, the propaganda cuts out mid-shout, and it crashes into the street ahead; the runner runs through the wreck. This leads into the zone's outro, and in the web demo into the "get the full game" screen.
 - **Sewer Swarm:** a mutant horde rising from the sewers.
   - It builds up on both sides, and a mob attacks. The player must dispatch the mob while moving forward, as the horde shifts **ahead of and behind** the player dynamically.
   - **Implementation:** 4–5 gameplay entities ("clusters"), each rendered as many screech-variant creatures using MultiMesh plus a shader for per-creature motion. It looks like hundreds, but only 4–5 are simulated.
