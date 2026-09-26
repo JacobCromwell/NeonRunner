@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="PickupTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/pickup_tuning.gd" id="1_pickups"]
+
+[resource]
+script = ExtResource("1_pickups")
+lead_distance = 42.0
+search_window = 30.0
+search_step = 1.0
+reach_lanes = 2
+clear_before = 12.0
+clear_after = 6.0
+enemy_lane_margin = 1
+clear_height = 3.0
+max_charges = 1
+take_width = 1.3
+take_height = 2.4
+take_depth = 1.0
+miss_distance = 1.5
+badge_radius = 0.52
+float_height = 1.1
+bob_height = 0.08
+bob_speed = 0.7
+sway_degrees = 18.0
+appear_seconds = 0.35
+vanish_seconds = 0.2
+icon_energy = 2.4
+ring_energy = 2.6
+halo_energy = 0.8

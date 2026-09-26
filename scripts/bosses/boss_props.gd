@@ -14,7 +14,7 @@ extends Node3D
 ##   wall at a time); the boss script draws what took it;
 ## - lane_warning(lane, from, to) and circle_warning(at, lane, radius): the red floor warnings of an
 ##   attack (a lane about to be struck, a bomb's target circle), pulsing, or glowing steadily with
-##   Reduced flashing (Settings);
+##   Reduced flashing (Settings); warned() says where they are (pickups keep off them);
 ## - keep(node, until): anything else, freed once the player is past `until`.
 ## The node sits at the world origin whatever its parent does (top_level).
 
@@ -28,6 +28,8 @@ var world: RunWorld
 var _placed: Array[Dictionary] = []
 ## Warnings that pulse: {node, base: Transform3D, t}.
 var _pulsing: Array[Dictionary] = []
+## Floor warnings, for warned(): {node, from, to, x0, x1} (track distances, world x).
+var _warned: Array[Dictionary] = []
 
 
 func setup(p_world: RunWorld) -> void:
@@ -141,6 +143,8 @@ func lane_warning(lane: int, from: float, to: float) -> MeshInstance3D:
 	mesh.transform = base
 	add_child(mesh)
 	_pulsing.append({"node": mesh, "base": base, "t": 0.0})
+	_warned.append({"node": mesh, "from": minf(from, to), "to": maxf(from, to),
+		"x0": world.geo.lane_x(lane) - world.geo.lane_width * 0.5, "x1": world.geo.lane_x(lane) + world.geo.lane_width * 0.5})
 	keep(mesh, maxf(from, to))
 	return mesh
 
@@ -162,6 +166,8 @@ func circle_warning(at: float, lane: int, radius: float = 1.0, x: float = 0.0) -
 	mesh.transform = base
 	add_child(mesh)
 	_pulsing.append({"node": mesh, "base": base, "t": 0.0})
+	var cx: float = world.geo.lane_x(lane) + x
+	_warned.append({"node": mesh, "from": at - radius, "to": at + radius, "x0": cx - radius, "x1": cx + radius})
 	keep(mesh, at + radius)
 	return mesh
 
@@ -180,6 +186,21 @@ func remove(node: Node) -> void:
 		if node is Hazard:
 			(node as Hazard).set_enabled(false)
 		node.queue_free()
+
+
+## True while a floor warning (lane_warning, circle_warning) still shown reaches into `lane` somewhere
+## between track distances `from` and `to`: an attack is telegraphed there.
+func warned(lane: int, from: float, to: float) -> bool:
+	var x0: float = world.geo.lane_x(lane) - world.geo.lane_width * 0.5
+	var x1: float = world.geo.lane_x(lane) + world.geo.lane_width * 0.5
+	for i: int in range(_warned.size() - 1, -1, -1):
+		var w: Dictionary = _warned[i]
+		if not is_instance_valid(w["node"]) or (w["node"] as Node).is_queued_for_deletion():
+			_warned.remove_at(i)
+			continue
+		if float(w["from"]) <= to and float(w["to"]) >= from and float(w["x0"]) < x1 and float(w["x1"]) > x0:
+			return true
+	return false
 
 
 ## Props placed so far and still in the arena.

@@ -110,7 +110,7 @@ func boot(p_main: Node) -> void:
 	for arg: String in args:
 		if arg == "--quick" or arg == "--god" or arg.begins_with("--seed=") or arg.begins_with("--lanes=") \
 				or arg.begins_with("--difficulty=") or arg.begins_with("--features=") or arg == "--full-loadout" \
-				or arg == "--nofall" or arg.begins_with("--skin="):
+				or arg == "--nofall" or arg.begins_with("--skin=") or arg.begins_with("--pickups"):
 			start_quick(args)
 			return
 	show_title()
@@ -405,6 +405,9 @@ func start_quick(args: PackedStringArray = PackedStringArray()) -> void:
 					ctx.config.features.append(f)
 		elif arg == "--full-loadout":
 			ctx.loadout = Loadout.full(catalog)
+		elif arg == "--pickups" or arg.begins_with("--pickups="):
+			# Review aid: pickups in turn (all three, or the ones listed), though levels have none.
+			ctx.review_pickups = v.split(",", false) if arg.contains("=") else PackedStringArray(PickupField.ITEMS)
 	_start_run(ctx, &"city")
 
 
@@ -505,9 +508,10 @@ func _end_run() -> void:
 
 
 ## A breakable item broke during a run: it leaves the stock at once (GDD §8), so quitting can't
-## save it. An item a boss fight granted was the fight's, not the player's.
+## save it. An item a boss fight granted, or one picked up during the fight, was the fight's, not the
+## player's (Loadout.costs_stock).
 func _on_item_used(item: StringName) -> void:
-	if run != null and run.context.loadout != null and run.context.loadout.is_granted(item):
+	if run != null and run.context.loadout != null and not run.context.loadout.costs_stock(item):
 		return
 	profile.use_stock(item)
 	save()
