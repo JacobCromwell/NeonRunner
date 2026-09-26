@@ -47,6 +47,7 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 ### Side walls (building faces)
 - **A single lane** on each side.
 - **Free entry:** move past the outermost floor lane to jump onto the wall, unless a **sign** blocks that section.
+- **Entry grace:** wall entry follows the same grace rule as jumping. It still works just after running off an edge (the jump grace window), but not once the player is already falling into a gap.
 - **Ramps:** a boosted entry. Hitting one launches the player higher on the wall and adds speed and a score multiplier.
 - **Slide:** the player slides downward over **2 seconds**, then drops to the floor.
 - **Height:** matters for collision. Timing of entry decides whether you pass above or below a hazard.
@@ -58,6 +59,7 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 - **Reached** by stepping on **anti-grav pads** in floor lanes, which flip gravity.
 - **Lanes:** the ceiling has lanes, but the hull must look like a ship: no large gaps between lanes.
 - **Duration:** the player stays on the ceiling until the ship's hull ends, then drops back down.
+- **Clear floor beneath:** ceilings never carry obstacles underneath. The floor below a ceiling section has no gaps or hazards.
 - **Other zones:** what forms the ceiling is *(open)*.
 
 ### Collision rules (core principle)

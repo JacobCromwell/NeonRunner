@@ -4,13 +4,14 @@ extends AudioStreamPlayer3D
 ## telegraph that CLAUDE.md requires before anything can hurt the player.
 
 
-func bind(hazard: Hazard, sound: StringName) -> void:
-	stream = PlaceholderSfx.get_stream(sound)
-	max_distance = 70.0
-	unit_size = 8.0
+func bind(hazard: Hazard, sound: AudioStream, level_db: float, full_volume_distance: float, silent_distance: float) -> void:
+	stream = sound
+	volume_db = level_db
+	unit_size = full_volume_distance
+	max_distance = silent_distance
 	hazard.state_changed.connect(_on_state_changed)
 
 
 func _on_state_changed(state: Hazard.State) -> void:
-	if state == Hazard.State.WARNING and PlaceholderSfx.audible():
+	if state == Hazard.State.WARNING and SfxLibrary.audible():
 		play()

@@ -12,6 +12,10 @@ var _config: LevelConfig
 var _tuning: MovementTuning
 var _speed: float
 var _jump_distance: float
+## Track ranges covered by ceiling sections. GDD §3: the floor beneath a ceiling stays clear.
+var _hull_spans: Array[Vector2] = []
+## Problems found in the pattern data during the last generate(), one line per pattern.
+var warnings: PackedStringArray = []
 
 
 static func load_patterns(path: String) -> Array:
@@ -31,6 +35,8 @@ func generate(config: LevelConfig, tuning: MovementTuning, patterns: Array) -> L
 	_jump_distance = tuning.jump_distance(_speed)
 	_layout = LevelLayout.new()
 	_layout.lane_count = config.lane_count
+	_hull_spans.clear()
+	warnings.clear()
 	var accel: float = tuning.speed_gain_per_minute / 60.0
 	_layout.length = _speed * config.duration_seconds + 0.5 * accel * config.duration_seconds * config.duration_seconds
 
@@ -89,12 +95,16 @@ func _place_pattern(pattern: Dictionary, origin: float) -> float:
 				var lanes: Array[int] = _pick_lanes(element.get("lanes", {}), prev_lanes)
 				var frac: float = minf(float(element.get("jump_frac", 0.5)), _config.max_gap_jump_fraction)
 				var gap_len: float = frac * _jump_distance
+				if _under_hull(at, at + gap_len, pattern):
+					continue
 				for lane: int in lanes:
 					_layout.gaps.append({"lane": lane, "start": at, "end": at + gap_len})
 				used = maxf(used, at - origin + gap_len)
 				prev_lanes = lanes
 			"fence":
 				var lanes: Array[int] = _pick_lanes(element.get("lanes", {}), prev_lanes)
+				if _under_hull(at, at, pattern):
+					continue
 				var pulsing: bool = _rng.randf() < float(element.get("pulse_chance", 0.0))
 				for lane: int in lanes:
 					_layout.fences.append({
@@ -133,11 +143,23 @@ func _place_pattern(pattern: Dictionary, origin: float) -> float:
 				for lane: int in lanes:
 					_layout.pads.append({"lane": lane, "at": at})
 				_layout.hulls.append({"start": at - _config.hull_lead_in, "end": at + hull_len})
+				_hull_spans.append(Vector2(at - _config.hull_lead_in, at + hull_len))
 				used = maxf(used, at - origin + hull_len + _config.hull_landing_seconds * _speed)
 				prev_lanes = lanes
 			_:
 				push_warning("LevelGenerator: unknown element kind in pattern %s" % pattern.get("id", "?"))
 	return used
+
+
+## True (noting a warning about the pattern data) if a floor piece would sit under a ceiling.
+func _under_hull(start: float, end: float, pattern: Dictionary) -> bool:
+	for span: Vector2 in _hull_spans:
+		if start <= span.y and end >= span.x:
+			var line: String = "pattern '%s' puts a floor piece under a ceiling; skipped" % pattern.get("id", "?")
+			if not warnings.has(line):
+				warnings.append(line)
+			return true
+	return false
 
 
 ## Size of every piece list, so a pattern that doesn't fit can be taken back out.

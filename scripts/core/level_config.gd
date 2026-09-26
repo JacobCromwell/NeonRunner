@@ -3,8 +3,12 @@ extends Resource
 ## Per-level generator settings. Campaign levels use fixed seeds.
 
 @export var level_seed: int = 1
-## Lane count on floor and ceiling. 3 on mobile, 5–6 on PC (exact PC count open).
+## Lane count on floor and ceiling used by the generator. The game sets it from the device at
+## startup (lanes_pc / lanes_mobile); tests and the F1 debug key set it directly.
 @export_range(3, 8) var lane_count: int = 3
+## GDD §3: 3 lanes on mobile, 5–6 on PC. DESIGN-TBD: the exact PC count is open (OPEN_QUESTIONS §8).
+@export_range(3, 8) var lanes_pc: int = 5
+@export_range(3, 8) var lanes_mobile: int = 3
 ## GDD §4: levels last 90–150 seconds.
 @export_range(30.0, 150.0, 1.0, "suffix:s") var duration_seconds: float = 120.0
 ## 0 = easiest, 1 = hardest.
@@ -24,8 +28,8 @@ extends Resource
 ## Clear track kept before the finish line.
 @export_range(0.0, 200.0, 1.0, "suffix:m") var end_clear_distance: float = 40.0
 ## Seconds of clear track between patterns at difficulty 0 and 1.
-@export_range(0.2, 4.0, 0.05, "suffix:s") var spacing_seconds_easy: float = 1.5
-@export_range(0.2, 4.0, 0.05, "suffix:s") var spacing_seconds_hard: float = 0.7
+@export_range(0.2, 4.0, 0.05, "suffix:s") var spacing_seconds_easy: float = 1.8
+@export_range(0.2, 4.0, 0.05, "suffix:s") var spacing_seconds_hard: float = 0.9
 
 @export_group("Fairness rules")
 ## Longest gap the generator will place, as a fraction of a full jump's distance.
@@ -34,3 +38,7 @@ extends Resource
 @export_range(0.0, 10.0, 0.5, "suffix:m") var hull_lead_in: float = 3.0
 ## DESIGN-TBD: seconds of gap-free floor after a ceiling section ends, so the drop never lands in a hole.
 @export_range(0.0, 3.0, 0.1, "suffix:s") var hull_landing_seconds: float = 1.2
+
+
+func lanes_for_device(mobile: bool) -> int:
+	return lanes_mobile if mobile else lanes_pc

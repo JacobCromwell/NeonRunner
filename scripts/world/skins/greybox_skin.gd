@@ -4,9 +4,13 @@ extends ZoneSkin
 ## (pink crackle = electric fence, yellow = sign, orange edge = gap).
 
 @export_group("Environment")
-@export var background_color: Color = Color(0.02, 0.015, 0.05)
+## Sky gradient: dark overhead, a neon glow at the horizon so the corridor reads as open city, not a tunnel.
+@export var sky_top_color: Color = Color(0.03, 0.02, 0.09)
+@export var sky_horizon_color: Color = Color(0.42, 0.12, 0.45)
+@export var ground_color: Color = Color(0.02, 0.015, 0.04)
 @export var ambient_color: Color = Color(0.45, 0.45, 0.6)
-@export_range(0.0, 0.05, 0.001) var fog_density: float = 0.01
+## Distant geometry fades into the horizon colour.
+@export_range(0.0, 0.05, 0.001) var fog_density: float = 0.006
 @export_range(0.0, 2.0, 0.05) var glow_intensity: float = 0.9
 
 @export_group("Colours")
@@ -33,20 +37,32 @@ extends ZoneSkin
 
 
 func make_environment() -> Environment:
+	var sky_material := ProceduralSkyMaterial.new()
+	sky_material.sky_top_color = sky_top_color
+	sky_material.sky_horizon_color = sky_horizon_color
+	sky_material.sky_curve = 0.12
+	sky_material.ground_bottom_color = ground_color
+	sky_material.ground_horizon_color = sky_horizon_color
+	sky_material.ground_curve = 0.05
+	sky_material.sun_angle_max = 0.0
+	var sky := Sky.new()
+	sky.sky_material = sky_material
 	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = background_color
+	env.background_mode = Environment.BG_SKY
+	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = ambient_color
 	env.ambient_light_energy = 0.7
+	env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.glow_enabled = true
 	env.glow_intensity = glow_intensity
 	env.glow_bloom = 0.05
 	env.glow_hdr_threshold = 0.9
 	env.fog_enabled = fog_density > 0.0
-	env.fog_light_color = background_color.lightened(0.05)
+	env.fog_light_color = sky_horizon_color.darkened(0.55)
 	env.fog_density = fog_density
+	env.fog_sky_affect = 0.0
 	return env
 
 

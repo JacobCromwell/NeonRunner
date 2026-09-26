@@ -9,3 +9,7 @@ export_presets.cfg.local
 .DS_Store
 Thumbs.db
 *.tmp
+
+# Local Godot location found by tools/godot.sh
+.godot-path
+.godot-path-windows

@@ -22,6 +22,8 @@ var layout: LevelLayout
 var tuning: MovementTuning
 var geo: TrackGeometry
 var skin: ZoneSkin
+## Optional: hazard warning sounds. Tests leave it empty.
+var sfx: SfxLibrary
 var show_hitboxes: bool = false
 
 var _lane_gaps: Array = []
@@ -165,9 +167,11 @@ func _build_fence(root: Node3D, f: Dictionary) -> void:
 	hazard.is_electrical = true
 	if f["pulsing"]:
 		hazard.setup_pulsing(f["pulse_on"], f["pulse_off"], tuning.fence_pulse_warning, f["phase"], _level_time)
-		var telegraph := HazardTelegraph.new()
-		hazard.add_child(telegraph)
-		telegraph.bind(hazard, &"fence_warning")
+		if sfx != null and sfx.stream(&"fence_warning") != null:
+			var telegraph := HazardTelegraph.new()
+			hazard.add_child(telegraph)
+			telegraph.bind(hazard, sfx.stream(&"fence_warning"), sfx.volume(&"fence_warning"),
+				sfx.warning_full_volume_distance, sfx.warning_max_distance)
 	skin.fence(hazard, size, -(bottom + top) * 0.5, gapped)
 
 

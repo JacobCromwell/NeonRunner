@@ -22,8 +22,9 @@ func _run() -> void:
 	_test_generator()
 	_test_hazard_pulse()
 	_test_touch_gestures()
-	_test_placeholder_audio()
+	_test_sound_library()
 	await _test_tuning_panel()
+	await _test_main_scene()
 	await _test_movement()
 	print("")
 	if _failures.is_empty():
@@ -57,14 +58,29 @@ func _test_generator() -> void:
 				config.lane_count = lanes
 				config.difficulty = difficulty
 				config.level_seed = level_seed
-				var a: LevelLayout = LevelGenerator.new().generate(config, _tuning, patterns)
-				var b: LevelLayout = LevelGenerator.new().generate(config, _tuning, patterns)
 				var tag: String = "lanes=%d diff=%.1f seed=%d" % [lanes, difficulty, level_seed]
+				var gen := LevelGenerator.new()
+				var a: LevelLayout = gen.generate(config, _tuning, patterns)
+				_check(gen.warnings.is_empty(), "shipped patterns produce no warnings " + tag)
+				var b: LevelLayout = LevelGenerator.new().generate(config, _tuning, patterns)
 				_check(JSON.stringify(a.to_dict()) == JSON.stringify(b.to_dict()), "deterministic " + tag)
 				_check(a.fences.size() + a.gaps.size() > 10, "level has content " + tag)
 				_check_layout(a, config, tag)
 				levels += 1
 	print("generator: checked %d levels" % levels)
+
+	# A pattern that tries to put floor pieces under its own ceiling gets them dropped (GDD §3).
+	var bad_pattern := [{"id": "bad_hull", "length": 10, "elements": [
+		{"kind": "hull", "at": 0, "lanes": {"mode": "center"}, "length_seconds": 3.0},
+		{"kind": "fence", "at": 20, "variant": "full", "lanes": {"mode": "all"}},
+		{"kind": "gap", "at": 30, "lanes": {"mode": "all"}, "jump_frac": 0.4}]}]
+	var config: LevelConfig = base.duplicate() as LevelConfig
+	config.duration_seconds = 30.0
+	var bad_generator := LevelGenerator.new()
+	var bad: LevelLayout = bad_generator.generate(config, _tuning, bad_pattern)
+	_check(bad.hulls.size() > 0 and bad.fences.is_empty() and bad.gaps.is_empty(),
+		"generator drops floor pieces a pattern places under a ceiling")
+	_check(bad_generator.warnings.size() == 1, "and reports the bad pattern once (%d)" % bad_generator.warnings.size())
 
 
 func _check_layout(layout: LevelLayout, config: LevelConfig, tag: String) -> void:
@@ -91,6 +107,10 @@ func _check_layout(layout: LevelLayout, config: LevelConfig, tag: String) -> voi
 			"pad at %.1f is reachable on solid floor %s" % [p["at"], tag])
 	for h: Dictionary in layout.hulls:
 		_check(h["end"] + landing <= finish_buffer, "hull and its landing end before the finish " + tag)
+		for f: Dictionary in layout.fences:
+			_check(f["at"] < h["start"] or f["at"] > h["end"], "no fence under the ceiling at %.1f %s" % [f["at"], tag])
+		for lane: int in n:
+			_check(not _gapped_between(layout, lane, h["start"], h["end"]), "no gap under the ceiling at %.1f %s" % [h["start"], tag])
 		for lane: int in n:
 			_check(not _gapped_between(layout, lane, h["end"] - 2.0, h["end"] + landing * 0.8),
 				"hull landing clear at %.1f %s" % [h["end"], tag])
@@ -176,25 +196,63 @@ func _test_touch_gestures() -> void:
 	_check(not TouchInputScript.is_tap(30.0, 0.1, t, 0.22), "moving touch is not a tap")
 
 
-func _test_placeholder_audio() -> void:
-	for sound: StringName in PlaceholderSfx.names():
-		var stream: AudioStreamWAV = PlaceholderSfx.get_stream(sound)
-		_check(stream != null and stream.data.size() > 1000, "placeholder sound '%s' generated" % sound)
+func _test_sound_library() -> void:
+	var library := load("res://data/audio/sfx_library.tres") as SfxLibrary
+	_check(library != null and library.names().size() >= 12, "sound library lists the game's sounds")
+	for event: StringName in [&"jump", &"land", &"slide", &"wall_enter", &"wall_jump", &"wall_blocked",
+			&"ramp", &"pad", &"hull_end", &"died", &"fence_warning", &"level_complete"]:
+		_check(library.names().has(String(event)), "sound library covers '%s'" % event)
+	for sound: String in library.names():
+		var stream: AudioStream = library.stream(sound)
+		var length: float = stream.get_length() if stream != null else 0.0
+		if stream is AudioStreamRandomizer:
+			length = (stream as AudioStreamRandomizer).get_stream(0).get_length()
+		_check(length > 0.1 and length < 2.5, "sound '%s' loads with a sensible length (%.2f s)" % [sound, length])
 
 
 func _test_tuning_panel() -> void:
 	var tuning: MovementTuning = _tuning.duplicate() as MovementTuning
+	var config: LevelConfig = (load(LEVEL_PATH) as LevelConfig).duplicate() as LevelConfig
 	var panel := TuningPanel.new()
 	root.add_child(panel)
-	panel.setup(tuning)
-	_check(panel.control_count() >= 40, "tuning panel has a control per tunable (%d)" % panel.control_count())
+	var sections: Array[Dictionary] = [
+		{"title": "Movement", "resource": tuning, "path": TUNING_PATH},
+		{"title": "Level pacing", "resource": config, "path": LEVEL_PATH},
+	]
+	panel.setup(sections)
+	_check(panel.control_count() >= 55, "tuning panel has a control per tunable (%d)" % panel.control_count())
 	panel.open()
-	var slider: HSlider = panel._sliders.get("run_speed")
+	var slider: HSlider = panel.find_slider("run_speed")
 	_check(slider != null and is_equal_approx(slider.value, tuning.run_speed), "tuning panel shows current values")
 	if slider != null:
 		slider.value = 25.0
 		_check(is_equal_approx(tuning.run_speed, 25.0), "moving a slider edits the tuning live")
+	var spacing: HSlider = panel.find_slider("spacing_seconds_easy")
+	if spacing != null:
+		spacing.value = 2.5
+	_check(spacing != null and is_equal_approx(config.spacing_seconds_easy, 2.5), "level pacing is tunable live")
+	var lanes: HSlider = panel.find_slider("lanes_pc")
+	if lanes != null:
+		lanes.value = 6.0
+	_check(lanes != null and config.lanes_pc == 6 and typeof(config.lanes_pc) == TYPE_INT, "integer tunables stay integers")
 	panel.queue_free()
+	await process_frame
+
+
+## Boots the real game scene for two seconds: catches errors in scripts only the game loads.
+func _test_main_scene() -> void:
+	var scene := load("res://scenes/main.tscn") as PackedScene
+	_check(scene != null, "main scene loads")
+	if scene == null:
+		return
+	var game: Node = scene.instantiate()
+	root.add_child(game)
+	for i: int in 120:
+		await physics_frame
+	var player := game.get_node_or_null("Player") as Player
+	_check(player != null and player.distance > 20.0, "the game runs: the player moves forward")
+	_check(player != null and player.geo.lane_count == 5, "PC runs default to 5 lanes (%d)" % (player.geo.lane_count if player else -1))
+	game.queue_free()
 	await process_frame
 
 

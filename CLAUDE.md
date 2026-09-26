@@ -58,8 +58,12 @@ This file is for Claude Code and all sub-agents working on this project. Read it
 - End every task with a short summary: what changed, what was verified, any `DESIGN-TBD` items, and any risks noticed.
 
 ## Commands (current prototype)
-- Tests: `godot --headless --fixed-fps 60 -s res://tests/run_tests.gd` (exit code 0 = pass).
-- Smoke run: `godot --headless --fixed-fps 60 --quit-after 2400 -- --lanes=5` (should print nothing but the version line).
+`tools/godot.sh` finds the pinned Godot (via `$GODOT`, PATH, or the Windows user folders under WSL) and re-imports
+resources automatically when files changed. Use it rather than calling Godot directly.
+- Tests: `tools/godot.sh test` (exit code 0 = pass). It also boots the real game scene.
+- Smoke run: `tools/godot.sh smoke [game args]` (prints only problems; exit code 1 if any).
+- Play: `./play.sh [--lanes=6 --seed=4 --difficulty=0.6 --god]`. Opens a game window on the user's desktop.
+- Sound effects: `tools/godot.sh sfx [--review]` regenerates `assets/sfx/*.wav` (review images go to `build/sfx_review/`).
 - Rendered frames for a visual check: `godot --resolution 960x540 --fixed-fps 10 --write-movie build/f.png --quit-after 120 -- --god`
-  (add `--rendering-method gl_compatibility` to check the web/low-end renderer). `build/` is git-ignored.
+  (add `--rendering-method gl_compatibility` to check the web/low-end renderer). `build/` is git-ignored and ignored by Godot.
 - Live tuning: F6 in-game. Tunables need an `@export_range` hint to appear in the panel.

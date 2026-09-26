@@ -27,7 +27,7 @@ so pieces keep their timing against a hull when run speed changes.
 | `fence` | `lanes`, `variant` (`full` = jump or switch lanes; `gapped` = slide under), `pulse_chance`, `pulse_on`, `pulse_off` (seconds) |
 | `sign` | `side` (`left`/`right`/`random`/`both`/`same`), `length`, `bottom`, `top` (height band on the wall, in metres) |
 | `ramp` | `side`. The ramp sits in the outermost lane on that side and launches the player onto the wall |
-| `hull` | `lanes` (where the anti-grav pad goes), `length_seconds` (how long the ceiling lasts at run speed) |
+| `hull` | `lanes` (where the anti-grav pad goes), `length_seconds` (how long the ceiling lasts at run speed). The floor under a ceiling always stays clear (GDD §3): the generator drops any gap or fence a pattern places there and reports it as a warning |
 
 ## Lane selectors
 

@@ -4,6 +4,7 @@ extends Node3D
 
 const TUNING_PATH: String = "res://data/tuning/movement.tres"
 const LEVEL_PATH: String = "res://data/levels/prototype_level.tres"
+const SFX_PATH: String = "res://data/audio/sfx_library.tres"
 const LANE_OPTIONS: Array[int] = [3, 5, 6]
 const DIFFICULTY_OPTIONS: Array[float] = [0.0, 0.3, 0.6, 0.9]
 const DEATH_PAUSE: float = 1.2
@@ -20,6 +21,7 @@ var player: Player
 var camera: Camera3D
 var hud: DebugHud
 var tuning_panel: TuningPanel
+var sfx: PlayerSfx
 
 var state: State = State.RUNNING
 var attempts: int = 0
@@ -36,6 +38,7 @@ func _ready() -> void:
 	config = (load(LEVEL_PATH) as LevelConfig).duplicate() as LevelConfig
 	if config.skin == null:
 		config.skin = GreyboxSkin.new()
+	config.lane_count = config.lanes_for_device(DeviceProfile.is_mobile())
 	patterns = LevelGenerator.load_patterns(config.patterns_path)
 
 	var world_env := WorldEnvironment.new()
@@ -44,6 +47,7 @@ func _ready() -> void:
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-55.0, 25.0, 0.0)
 	sun.light_energy = 0.7
+	sun.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY
 	add_child(sun)
 
 	track = TrackBuilder.new()
@@ -55,8 +59,11 @@ func _ready() -> void:
 	player.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(player)
 	player.died.connect(_on_player_died)
-	var sfx := PlayerSfx.new()
+	var library := load(SFX_PATH) as SfxLibrary
+	track.sfx = library
+	sfx = PlayerSfx.new()
 	add_child(sfx)
+	sfx.setup(library)
 	sfx.bind(player)
 	camera = Camera3D.new()
 	camera.far = 400.0
@@ -66,7 +73,11 @@ func _ready() -> void:
 	add_child(hud)
 	tuning_panel = TuningPanel.new()
 	add_child(tuning_panel)
-	tuning_panel.setup(tuning)
+	var sections: Array[Dictionary] = [
+		{"title": "Movement", "resource": tuning, "path": TUNING_PATH},
+		{"title": "Level pacing", "resource": config, "path": LEVEL_PATH},
+	]
+	tuning_panel.setup(sections)
 	tuning_panel.restart_requested.connect(_restart_same_seed)
 	tuning_panel.close_requested.connect(_toggle_tuning_panel)
 	_apply_command_line()
@@ -90,7 +101,10 @@ func _apply_command_line() -> void:
 func start_level() -> void:
 	_set_paused(false, "")
 	tuning_panel.close()
-	layout = LevelGenerator.new().generate(config, tuning, patterns)
+	var generator := LevelGenerator.new()
+	layout = generator.generate(config, tuning, patterns)
+	for line: String in generator.warnings:
+		push_warning("LevelGenerator: " + line)
 	track.set_layout(layout, tuning, config.skin)
 	player.setup(tuning, TrackGeometry.new(config.lane_count, tuning), config.lane_count / 2)
 	player.running = true
@@ -113,6 +127,7 @@ func _physics_process(_delta: float) -> void:
 		player.running = false
 		_restart_in = COMPLETE_PAUSE
 		hud.set_message("LEVEL COMPLETE\n%d attempt(s)" % attempts)
+		sfx.play(&"level_complete")
 
 
 func _process(delta: float) -> void:

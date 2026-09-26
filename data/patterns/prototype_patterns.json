@@ -137,17 +137,6 @@
 			]
 		},
 		{
-			"id": "hull_over_fences",
-			"min_difficulty": 0.25, "weight": 1.2,
-			"requires": ["ceilings"],
-			"length": 10,
-			"elements": [
-				{ "kind": "hull", "at": 0, "lanes": { "mode": "random", "count": 1 }, "length_seconds": 4.0 },
-				{ "kind": "fence", "at_seconds": 1.3, "variant": "full", "lanes": { "mode": "all_but", "count": 1 } },
-				{ "kind": "fence", "at_seconds": 2.6, "variant": "gapped", "lanes": { "mode": "all" } }
-			]
-		},
-		{
 			"id": "ramp_plain",
 			"min_difficulty": 0.0, "weight": 1,
 			"requires": ["ramps"],
