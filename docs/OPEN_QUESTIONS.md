@@ -137,7 +137,7 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
    and window cyborgs. Hosts and the Bad Dream are built but no level uses them yet (GDD: "late
    levels"; quick play `--features=cyborg,host,ceilings` shows them). Which level introduces them? Level
    names and lengths (100–140 s) are placeholders too.
-2. **Boss slots:** Zone 1's boss is unnamed (the Floating Head is a candidate); the Sewer Swarm sits
+2. (Answered: GDD §10's roster; the slots carry each boss's name and phases since B8.) **Boss slots:** Zone 1's boss is unnamed (the Floating Head is a candidate); the Sewer Swarm sits
    in Gangland because of the sewers. Which boss goes where?
 3. **Cinematic slots:** City has intro, pre-boss and outro slots; Gangland has intro and outro. Where
    do you want cinematics, and what should each show?
@@ -469,6 +469,49 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
     and the drones own every pad from then on, GDD §9.6) and Marketplace 2's first vent screech. Should the
     older feature make way for the new one (e.g. no drone wave during an introduced host's chase), or is "a
     little later" fine? Placeholder: the older feature's rules win.
+
+**Boss framework** (from B8; defaults in `scripts/campaign/boss_def.gd`)
+27. **Boss numbers** (GDD §10): health, payout, defeat score, score per weak point and the time bonus. Placeholder
+    (every boss slot for now): 300 laser tier 1 shots, 500 credits, 5,000 points for the win and 500 per weak
+    point, and 50 points for every second under 200 s.
+28. **Par times** (GDD §10, proposed): placeholder 150 s for two stars and 100 s for three, the same on every lane
+    count. Should they differ between 3 and 5–6 lanes?
+29. **No credits on a boss's track:** a fight has no time limit, so credits along it would pay for stalling. The
+    arena's laps carry none; the boss's payout replaces them. (The House's jackpot fountain will need credits
+    placed during a fight, which the credit field can't do yet.)
+30. **How long the final fight's checkpoint lasts** (GDD §10): placeholder: for every retry of that run (death →
+    summary → shop → retry, and Restart fight in the pause menu); starting the fight again from the map or
+    quitting starts it from the beginning. Never saved.
+31. **Time and score after a checkpoint:** a win after resuming counts the fight time and score from the attempt
+    that reached the checkpoint plus this one's, so par times, the time bonus and the leaderboard compare whole
+    fights.
+32. **Granted items** (GDD §8): a granted breakable is one charge whether or not the player owns it, and using it
+    never costs stock; a granted permanent item is at least tier 1 (`"weapon:2"` for a tier); granted items ignore
+    the equip toggle; the revive can't be granted. The intended generosity?
+33. **The standard armor rule's timing** (GDD §10): the delay after a break is drawn from the boss's range (15–17 s;
+    the Floating Head 10–15 s) by a seeded stream; a break counts against the cap of the phase it happened in even
+    if its pickup comes in the next; the final-phase pickup also comes when a retry resumes in the final phase.
+34. **Weapons against bosses** (GDD §10: even the best weapon saves at most one stomp): with no time limit only a cap
+    can promise that. Placeholder: `BossDef.weapon_share_cap`, the most of a boss's health weapons can take over
+    the whole fight (the Floating Head 0.34); auto-fire stops aiming at the boss once it's reached; splash never
+    hurts a boss's body.
+35. **Damage carried between phases:** a hit bigger than what's left of a phase carries into the next (so chip
+    damage can save a stomp), but never past the end of the next phase: every phase gets played.
+36. **Harder difficulty tiers and bosses** (GDD §6): placeholder: a tier's run speed and difficulty bonus apply to
+    the boss's arena; the boss's own pattern doesn't change. What should a harder tier do to a boss fight?
+37. **Phase data for the designed bosses** (GDD §10): the slots carry the phases the design gives. Placeholders: the
+    Sewer Swarm's second phase as three clusters (five in all), one big hit in each of Hostile Takeover's first two
+    phases, and every phase's pace and intro length.
+38. **After the win:** the runner keeps running for two seconds while the boss's defeat plays out, safe from
+    anything still in the air; then the results, the shop and the next step (the outro; in the web demo the outro,
+    then the store-link screen). Is a shop wanted between a boss and its zone's outro? Placeholder: yes.
+39. **The first boss hint:** "A boss! Only its glowing red weak points and your weapons can hurt it." Sleep Taker,
+    which weapons can't hurt, will need its own hint.
+40. **Boss HUD and results** (§A.5): a bar top centre in enemy-health red with the boss's name, its phase and a marker
+    at each phase's end, grey while it can't be hurt; a "Checkpoint!" hint; results with time, phase reached, weak
+    points hit, kills, hits blocked, the time bonus and the par times.
+41. **Boss leaderboards** (GDD §10): one board per boss and difficulty tier (`boss/<boss id>/<tier>`); none in the web
+    demo.
 
 **Gangland update** (from D1; numbers are F6-tunable exports on `GanglandSkin`)
 17. **Gangland's ceilings** (GDD §3, §5; replaces "From the full build" item 45, the scavenger barge). Placeholder:
