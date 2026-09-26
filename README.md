@@ -147,7 +147,7 @@ family, the UI kit, every screen); each script's header lists its options.
 
 ## Tests
 
-`tools/godot.sh test` runs 27 suites with about 1,025,000 checks:
+`tools/godot.sh test` runs 27 suites with about 1,280,000 checks:
 - **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds, and every campaign level
   (each with every feature it lists, on its own seed and on others).
 - **Movement:** scenarios on real physics.
