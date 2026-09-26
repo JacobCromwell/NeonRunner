@@ -73,6 +73,18 @@ func quad(a: Vector3, b: Vector3, c: Vector3, d: Vector3, color: Color, glow: fl
 	uv2s.append_array(PackedVector2Array([p, p, p, p, p, p]))
 
 
+## A four-cornered patch like quad() with a UV for each corner, for facade pieces whose windows must
+## line up with their neighbours' (UV in metres).
+func quad_uv(a: Vector3, b: Vector3, c: Vector3, d: Vector3, uv_a: Vector2, uv_b: Vector2, uv_c: Vector2,
+		uv_d: Vector2, color: Color, glow: float = 0.0, pattern: int = 0, param: float = 0.0) -> void:
+	verts.append_array(PackedVector3Array([a, b, c, a, c, d]))
+	var col := Color(color, glow)
+	colors.append_array(PackedColorArray([col, col, col, col, col, col]))
+	uvs.append_array(PackedVector2Array([uv_a, uv_b, uv_c, uv_a, uv_c, uv_d]))
+	var p := Vector2(pattern, param)
+	uv2s.append_array(PackedVector2Array([p, p, p, p, p, p]))
+
+
 ## An upright prism (radius to the corners, `sides` faces) standing on `base`. `caps` adds top and bottom.
 func prism(base: Vector3, radius: float, height: float, sides: int, color: Color, glow: float = 0.0,
 		pattern: int = 0, caps: bool = true) -> void:

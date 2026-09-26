@@ -108,6 +108,8 @@ extends ZoneSkin
 ## Height of the anti-grav pad's light column.
 @export_range(1.0, 10.0, 0.1, "suffix:m") var pad_beam_height: float = 5.8
 @export var ramp_color: Color = Color(0.3, 1.0, 0.35)
+## DESIGN-TBD: speed pads share the ramps' green "safe boost" family (MeshKit.speed_strip).
+@export var speed_pad_color: Color = Color(0.45, 1.0, 0.55)
 @export var finish_color: Color = Color(1.0, 1.0, 1.0)
 
 ## Built on first use and shared by every mesh (exports changed later don't reach them).
@@ -119,47 +121,11 @@ var _props: CityProps
 
 
 func make_environment() -> Environment:
-	var sky_material := ShaderMaterial.new()
-	sky_material.shader = MeshKit.shader("night_sky.gdshader")
-	sky_material.set_shader_parameter("zenith_color", sky_zenith_color)
-	sky_material.set_shader_parameter("horizon_color", sky_horizon_color)
-	sky_material.set_shader_parameter("haze_color", haze_color)
-	sky_material.set_shader_parameter("abyss_color", abyss_color)
-	sky_material.set_shader_parameter("skyline_color", skyline_color)
-	sky_material.set_shader_parameter("window_color", skyline_window_color)
-	sky_material.set_shader_parameter("moon_color", moon_color)
-	sky_material.set_shader_parameter("moon_direction", moon_direction)
-	sky_material.set_shader_parameter("moon_radius", moon_radius)
-	var sky := Sky.new()
-	sky.sky_material = sky_material
-	sky.radiance_size = Sky.RADIANCE_SIZE_32
-	var env := Environment.new()
-	env.background_mode = Environment.BG_SKY
-	env.sky = sky
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = ambient_color
-	env.ambient_light_energy = 0.8
-	env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
-	# Filmic keeps the neon hues; ACES pushed the violets toward fence pink and AgX washed them out.
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.glow_enabled = true
-	env.glow_intensity = glow_intensity
-	env.glow_strength = 1.0
-	env.glow_bloom = 0.0
-	env.glow_hdr_threshold = glow_threshold
-	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
-	env.fog_enabled = true
-	env.fog_mode = Environment.FOG_MODE_DEPTH
-	env.fog_light_color = fog_color
-	env.fog_light_energy = 1.0
-	env.fog_depth_begin = fog_begin
-	env.fog_depth_end = fog_end
-	env.fog_depth_curve = 1.3
-	env.fog_density = fog_max
-	env.fog_sky_affect = 0.0
-	env.fog_height = -3.0
-	env.fog_height_density = abyss_fog_density
-	return env
+	var sky := {"zenith_color": sky_zenith_color, "horizon_color": sky_horizon_color, "haze_color": haze_color,
+		"abyss_color": abyss_color, "skyline_color": skyline_color, "window_color": skyline_window_color,
+		"moon_color": moon_color, "moon_direction": moon_direction, "moon_radius": moon_radius}
+	return MeshKit.night_environment(sky, ambient_color, fog_color, fog_begin, fog_end, fog_max, abyss_fog_density,
+		glow_intensity, glow_threshold)
 
 
 func floor_segment(parent: Node3D, center: Vector3, size: Vector3, lane_x: float,
@@ -199,6 +165,10 @@ func ramp(trigger: Area3D, size: Vector3, side: int) -> void:
 	props().ramp(trigger, size, side)
 
 
+func speed_pad(trigger: Area3D, size: Vector3) -> void:
+	props().speed_pad(trigger, size)
+
+
 func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	props().finish_line(parent, width, distance)
 
@@ -234,23 +204,17 @@ func road_material() -> ShaderMaterial:
 	return _materials[&"road"]
 
 
-## ON, WARNING and OFF materials for a fence's emissive parts (bars, nozzles). The ON material is
-## its own instance (not the shared solid one), so these parts stay a separate surface to swap.
+## ON, WARNING and OFF materials for a fence's emissive parts (bars, nozzles).
 func fence_part_materials() -> Array[Material]:
 	if not _materials.has(&"fence_parts"):
-		var on: Dictionary = _solid_params()
-		on["state_glow"] = 1.0
-		_materials[&"fence_parts"] = MeshKit.state_materials("kit_solid.gdshader", on, {"flicker_hz": 12.0},
-			{"state_glow": 0.12})
+		_materials[&"fence_parts"] = MeshKit.hazard_part_materials(_solid_params())
 	return _materials[&"fence_parts"]
 
 
 ## ON, WARNING and OFF materials for a fence's energy field.
 func fence_field_materials() -> Array[Material]:
 	if not _materials.has(&"fence_field"):
-		var on := {"color": fence_color, "intensity": 1.0, "fade_begin": fog_begin + 40.0, "fade_end": fog_end + 20.0}
-		_materials[&"fence_field"] = MeshKit.state_materials("energy_field.gdshader", on,
-			{"flicker_hz": 16.0, "intensity": 0.75}, {"intensity": 0.0})
+		_materials[&"fence_field"] = MeshKit.fence_field_materials(fence_color, fog_begin + 40.0, fog_end + 20.0)
 	return _materials[&"fence_field"]
 
 
