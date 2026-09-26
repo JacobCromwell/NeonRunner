@@ -43,6 +43,11 @@ var is_boss: bool = false
 var is_obstacle: bool = false
 ## Part of a swarm (the swarm boss's clusters): heavy missiles deal bonus damage (GDD §8).
 var is_swarm: bool = false
+## Its major attack (is_major_attack_active) never overlaps another enemy's: while it's on, others
+## hold off starting theirs, and it holds its own while another's is on (the Bad Dream, GDD §9.7:
+## never at the same time as an Octodog charge sequence or a drone barrage). See
+## EnemyDirector.major_attack_blocked().
+var exclusive_major_attack: bool = false
 
 # --- State ---------------------------------------------------------------------------------
 var alive: bool = true
@@ -104,6 +109,13 @@ func aim_point() -> Vector3:
 ## Radius used by weapon projectiles to decide whether they hit this enemy.
 func hit_radius() -> float:
 	return 0.7
+
+
+## True while this enemy is in its "major attack": an Octodog's charge sequence, a drone's wind-up
+## and barrage, the Bad Dream's chase. Enemies coordinate them through the director
+## (exclusive_major_attack, EnemyDirector.major_attack_blocked). The default: never.
+func is_major_attack_active() -> bool:
+	return false
 
 
 ## Auto-fire can pick this enemy (GDD §8: the weapon fires at the nearest valid target).

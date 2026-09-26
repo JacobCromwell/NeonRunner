@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="BadDreamTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/bad_dream_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+spawn_lead = 110.0
+score_value = 0
+health_early = 1.0
+health_late = 1.0
+uses_floor = false
+chase_min_seconds = 20.0
+chase_max_seconds = 30.0
+slash_interval_min = 3.0
+slash_interval_max = 4.0
+survival_bonus = 1000
+emerge_time = 1.0
+first_slash_delay = 0.8
+dissolve_time = 1.4
+emp_dissolve_time = 0.7
+model_scale = 1.3
+hover_ahead = 7.5
+hover_height = 0.35
+approach_speed = 14.0
+drift_speed = 5.0
+wall_follow_speed = 1.5
+wall_inset = 1.0
+wait_ahead = 7.0
+hull_clearance = 1.2
+telegraph_early = 1.2
+telegraph_late = 1.0
+lunge_time = 0.22
+slash_active = 0.12
+recover_time = 0.7
+lunge_ahead = 1.8
+max_align_wait = 1.2
+align_tolerance = 0.5
+slash_height = 1.75
+side_margin = 0.15
+wall_clearance = 0.9
+slash_depth = 1.6
+wall_slash_top = 4.8
+pad_gap_seconds = 10.0
+pad_slack_seconds = 2.0
+pad_ceiling_seconds = 3.0
+chase_margin_seconds = 1.0
+host_gap_seconds = 7.0
