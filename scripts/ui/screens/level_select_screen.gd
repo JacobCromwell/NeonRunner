@@ -14,6 +14,7 @@ var tier: int = 0
 var tiles: Dictionary = {}
 var tier_buttons: Array[NeonButton] = []
 var _zones: VBoxContainer
+var _scroll: ScrollContainer
 
 
 func _ready() -> void:
@@ -22,15 +23,15 @@ func _ready() -> void:
 	tier = clampi(chosen_tier, 0, App.profile.unlocked_tier)
 	if App.profile.unlocked_tier > 0:
 		_build_tier_selector()
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.follow_focus = true
-	content.add_child(scroll)
+	_scroll = ScrollContainer.new()
+	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.follow_focus = true
+	content.add_child(_scroll)
 	_zones = VBoxContainer.new()
 	_zones.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_zones.add_theme_constant_override(&"separation", roundi(UiTheme.px(14)))
-	scroll.add_child(_zones)
+	_scroll.add_child(_zones)
 	_build_zones()
 
 
@@ -84,6 +85,21 @@ func _build_zones() -> void:
 	initial_focus = target
 	if is_node_ready():
 		focus_initial.call_deferred()
+	_scroll_into_view(target)
+
+
+## Scrolls the list to `target` once the tiles have their layout, `frames` frames from now:
+## follow_focus can't scroll to controls laid out in the same frame, and six zones make a list
+## several screens long, so a player deep in the campaign would otherwise open it at the top with the
+## focused step out of sight. (A one-shot connection rather than an await: it simply drops if the
+## screen is freed first.)
+func _scroll_into_view(target: Control, frames: int = 2) -> void:
+	if target == null or not is_inside_tree():
+		return
+	if frames > 0:
+		get_tree().process_frame.connect(_scroll_into_view.bind(target, frames - 1), CONNECT_ONE_SHOT)
+	elif is_instance_valid(target) and target.is_inside_tree():
+		_scroll.ensure_control_visible(target)
 
 
 func _zone_section(zone: ZoneDef, zi: int, steps: Array[CampaignStep]) -> Control:
