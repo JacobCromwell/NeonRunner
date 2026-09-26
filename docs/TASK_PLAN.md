@@ -18,7 +18,7 @@ Paste this into the main build session:
 | Tier | Model and effort | Use for |
 |---|---|---|
 | **T1** | Opus 5.5, **max** effort | Level generator fairness, runtime track changes, boss fights, anything where a subtle bug makes the game unfair |
-| **T2** | Opus 5.5, **high** effort | New enemies, zone skins (art built in code needs taste), UI features, tools that need judgment |
+| **T2** | Opus 5.5, **max** effort (raised from high by the owner, September 26, 2026) | New enemies, zone skins (art built in code needs taste), UI features, tools that need judgment |
 | **T3** | Sonnet 5, **high** effort | Well-specified, self-contained work: small tools, process docs, option sheets |
 | **T4** | Haiku 4.5 | Pure data entry (numbers in `.tres`/`.json` files), renames, doc touch-ups |
 
