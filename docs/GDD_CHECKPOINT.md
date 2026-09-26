@@ -66,9 +66,10 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 - **Reached** by stepping on **anti-grav pads** in floor lanes, which flip gravity.
 - **Lanes:** the ceiling has lanes, but the hull must look like a ship: no large gaps between lanes.
 - **Duration:** the player stays on the ceiling until the ship's hull ends, then drops back down.
-- **Clear floor beneath:** ceilings never carry obstacles underneath. The floor below a ceiling section has no gaps or hazards.
-- **Every zone has ceilings** (decided September 26, 2026). What forms them changes from zone to zone (see §5).
-- **Ceilings don't have to cover every lane** (decided September 26, 2026). For example, an overpass may be only one lane wide. The rules for narrow ceilings (lane switching up there, what the floor beside them may hold, drones) are *(open)*.
+- **The floor beneath may be dangerous** (changed September 26, 2026, replacing the September 25 rule that kept it clear). The ceiling is a way to **escape the danger on the floor**, so the floor under a ceiling may hold gaps, hazards and enemies.
+- **Safe landing zone:** wherever the player drops from a ceiling back to the floor, the floor is always safe to land on.
+- **Every zone has ceilings** (decided September 26, 2026). What forms them changes from zone to zone (see §5). The in-world reason for a ceiling is up to each zone's skin: anything that makes sense in that zone's fiction (ships, building undersides, bridges, elevated roads, floating ads, archways).
+- **Ceilings don't have to cover every lane** (decided September 26, 2026). The player can switch lanes only within the ceiling's width. A **one-lane ceiling** is simply ridden out, so it must be **very short and relatively safe**.
 
 ### Collision rules (core principle)
 - **Damage only on real contact.** Lanes determine movement, not hits. A bullet in your lane that doesn't touch you does not hurt you.
@@ -111,16 +112,55 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 ### Zone roster (decided September 26, 2026)
 **Every zone is set in the same future, vaguely cyberpunk world.** No zone looks historical: the Marketplace is not a medieval market. Zones may be dustier or dirtier than the Neon City, but they stay futuristic.
 
-| # | Zone | Look and mood | Ceilings |
-|---|---|---|---|
-| 1 | **Neon City** | Clean neon cyberpunk city | Undersides of low-flying ships |
-| 2 | **Gangland** | Grimy, apocalyptic gang territory; bombed-out building faces, holes in the road | Undersides of decaying or bombed-out buildings, overpasses and similar |
-| 3? | **Marketplace** | An open-air market, dustier and dirtier than the city: commercial buildings, lots of signs, casinos and shops. The backgrounds are full of interesting and funny citizens hanging out. | Undersides of buildings, bridges and overpasses; a few ships; floating advertisements |
-| 4? | **Corporate** | Close to the Neon City, but plainly corporate. Corporations and the military are intertwined, so there is a visible military presence. Generic, soulless corporate art. | Undersides of buildings, bridges and similar; occasionally a military ship |
-| 5? | **Dead Zone** | A blackened, bombed-out husk of the city: rubble, smouldering and dying fires, a general sense of unease and impending doom | Only the remains of the destroyed city: undersides of dead buildings and crumbling, charred grey bridges |
-| 6? | **Golden Zone** | The city strictly for the elites and corporate bosses, and home of the final boss. The cult that controls everything is felt everywhere, alongside an extravagant show of opulence and wealth. | Undersides of golden bridges, golden archways and other decadent structures, with water flowing off the sides as waterfalls or fountains |
+**Seven zones** at launch. Six are described below, in their confirmed order; the seventh is *(open)*. Each zone has 1–3 levels (never more than 3); the count per zone is *(open)*.
 
-Zones 3–6 are listed in the order the owner gave them; the order is *(to confirm)*. Their floors, gaps, walls and colour palettes are *(open)*.
+| # | Zone | Mood (reference) | Palette |
+|---|---|---|---|
+| 1 | **Neon City** | Blade Runner | Keep the current city skin |
+| 2 | **Gangland** | Mad Max, but in a cyberpunk setting | Browns and tans |
+| 3 | **Marketplace** | A bustling, happy market | Tan, with livelier colours: whites, blue awnings, splashes of colour in shop signs and visible products |
+| 4 | **Corporate** | A more oppressive Blade Runner, with corporate and military themes | *(open)* |
+| 5 | **Dead Zone** | Eerie, quiet, haunting | Dark black, dark grey and ash grey |
+| 6 | **Golden Zone** | Decadent opulence | A white and slightly creamy base with red and gold accents. There must be some gold to show the wealth, but it isn't the only colour. |
+| 7 | *(open)* | | |
+
+**Zone 1: Neon City.** Floor: roofs of trucks driving toward the player; gaps between trucks. Walls: building facades with signs. Ceilings: undersides of low-flying ships.
+
+**Zone 2: Gangland.** Lived in: graffiti and plenty of signs of life. Gangs compete for power there, and some are directly funded by corporate and military interests. Floor: a street, with holes and craters as gaps. Walls: bombed-out building faces. Ceilings: undersides of decaying or bombed-out buildings, overpasses and similar.
+
+**Zone 3: Marketplace.** An open-air market, dustier and dirtier than the city: commercial buildings, lots of signs, casinos and shops. Floor: stall roofs and awnings, with gaps between the stalls *(proposed; owner agreed)*. Ceilings: undersides of buildings, bridges and overpasses, a few ships, and floating advertisements.
+- **Citizens:** interesting and funny citizens are **scenery only**, not real 3D characters or anything the player interacts with. They are seen inside the shops along the low part of the walls, as animations that play. They may react to the runner passing (startled, cheering, happy); the goal is to be funny or uplifting.
+- **Conditions:** they are added only if they don't noticeably cost performance on mid-range phones and don't add much code complexity.
+
+**Zone 4: Corporate.** Close to the Neon City, but plainly corporate. Corporations and the military are intertwined, so there is a visible military presence. Generic, soulless corporate art. Floor: roofs of maglev trains or plazas *(proposed; owner agreed)*. Ceilings: undersides of buildings, bridges and similar, and occasionally a military ship.
+
+**Zone 5: Dead Zone.** A blackened, bombed-out husk of the city: rubble, embers, smoke and silence, with not much life. Fires are kept minimal. Floor: a rubble street *(proposed; owner agreed)*. Ceilings: only the remains of the destroyed city, such as the undersides of dead buildings and crumbling, charred grey bridges. **The Cyborg's Bad Dream first appears here.**
+
+**Zone 6: Golden Zone.** The city strictly for the elites and corporate bosses, and home of the final boss. The cult is felt everywhere, alongside an extravagant show of opulence and wealth. Floor: golden walkways over water *(proposed; owner agreed)*. Ceilings: undersides of golden bridges, golden archways and other decadent structures.
+- **Water:** flows off the sides of the ceilings as waterfalls or fountains. It is **scenery only**, kept sparse, and thinned out if it clutters the view.
+- **Final level:** the zone's final level is the **Golden Palace**.
+
+**Colour rule for every zone** *(proposed)*: zones may use colours close to hazard colours (red and gold in the Golden Zone, blue awnings in the Marketplace, fire in the Dead Zone), but only as **non-glowing** materials or dim background elements. Only hazards glow in hazard colours, so pink, yellow and black, red, orange, green and cyan keep their meaning everywhere.
+
+### The cult (decided September 26, 2026)
+- The cult is so widespread that it is **the reason the gangsters and cyborg gangsters attack the runner** in the first place.
+- **What makes it insidious:** people are completely subservient to its philosophy without realizing that they're in a cult.
+- **Symbol and colour:** *(open)*. An art agent will draw up a few options for the owner to choose from.
+- *(Proposed)* **Hidden in plain sight:** the symbol is worked into logos, ads and corporate art in every zone, and is displayed openly only in the Golden Zone.
+
+### Enemy introduction by zone (decided September 26, 2026)
+**Every zone introduces at least one new enemy.** New enemies are preferred over new mechanics. Enemies introduced earlier keep appearing in later zones.
+
+| Zone | Introduces |
+|---|---|
+| 1. Neon City | Cyborg and heli drone; the hover truck on the zone's last level |
+| 2. Gangland | Sewer screech |
+| 3. Marketplace | A new enemy, still to be designed by the owner |
+| 4. Corporate | A new enemy, still to be designed by the owner *(to confirm)* |
+| 5. Dead Zone | Cyborg's Bad Dream |
+| 6. Golden Zone | A new enemy, still to be designed by the owner |
+
+Not placed yet: the Octodog, and the level-by-level split within each zone.
 
 **Rules:**
 - Identical gameplay behavior under every skin.
@@ -131,7 +171,7 @@ Zones 3–6 are listed in the order the owner gave them; the order is *(to confi
 
 ## 6. Structure, Progression & Replay
 
-- **Zones:** 6+ at launch, each with a distinct look.
+- **Zones:** 7 at launch, each with a distinct look (see §5).
 - **Levels:** 1–3 per zone, each 90–150 seconds.
 - **Bosses:** one at the end of each zone. Each boss is effectively a **standalone mini-game**, very different from the main runner (decided September 26, 2026). Designs come later; the build leaves a slot for each.
 - **Cinematics:** short, minor cinematics between levels and zones give a sense of progression (decided September 26, 2026). Content comes later; the build leaves slots for them.
@@ -323,7 +363,7 @@ Shared interaction rules apply unless stated otherwise:
   - If the pad is missed, another appears 8–10 seconds later, repeating.
   - No drone spawns in the last ~15 seconds of a level.
 
-### 9.7 Cyborg's Bad Dream (late levels)
+### 9.7 Cyborg's Bad Dream (late levels; first appears in the Dead Zone)
 - **Look:** a ghostly apparition, black with purple highlights, a mix of vapor and liquid. A bulbous head with a **circular maw of spiked teeth**, long fingers ending in slashing claws, and no legs.
 - **Origin:**
   - Bursts out of a **host cyborg** when the host is killed.
