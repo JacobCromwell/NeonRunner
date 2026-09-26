@@ -120,7 +120,7 @@ var _props: CityProps
 
 func make_environment() -> Environment:
 	var sky_material := ShaderMaterial.new()
-	sky_material.shader = MeshKit.shader("city_sky.gdshader")
+	sky_material.shader = MeshKit.shader("night_sky.gdshader")
 	sky_material.set_shader_parameter("zenith_color", sky_zenith_color)
 	sky_material.set_shader_parameter("horizon_color", sky_horizon_color)
 	sky_material.set_shader_parameter("haze_color", haze_color)
