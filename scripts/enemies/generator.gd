@@ -6,8 +6,8 @@ extends Enemy
 ## running to each of its fences.
 ## - Destroyed by a **stomp** or the **dash** only. **Weapons never set it off** (GDD §9.1, decided
 ##   September 26, 2026): immune_to_weapons keeps it off auto-fire's target list and blocks all
-##   weapon damage (a direct hit, a stray shot aimed elsewhere, a homing missile, or splash), the
-##   same declared property the Cyborg's Bad Dream's host uses (GDD §9.7), so an EMP is always the
+##   weapon damage (a direct hit, a stray shot aimed elsewhere, a homing missile, or splash); the
+##   same rule as for hosts, whom auto-fire never targets (GDD §9.7), so an EMP is always the
 ##   player's choice. DESIGN-TBD: claws and plain contact don't destroy it; its body is solid, so
 ##   running into it hurts like any solid obstacle (armor doesn't help).
 ## - Destroying it sets off an EMP (RunWorld.emp): every fence within emp_radius (DESIGN-TBD, in
