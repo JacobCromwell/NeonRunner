@@ -67,6 +67,7 @@ func _build() -> void:
 	world.player.item_used.connect(func(item: StringName) -> void: item_used.emit(item))
 	world.player.set_hitbox_visible(_show_hitboxes)
 	world.effects.shake_scale = Settings.shake_scale(App.profile)
+	world.player.steady_flash = Settings.reduced_flashing(App.profile)
 
 	if _env == null:
 		_env = WorldEnvironment.new()
@@ -225,6 +226,7 @@ func _build_debug_tools() -> void:
 		{"title": "Movement", "resource": context.tuning, "path": App.TUNING_PATH},
 		{"title": "Game rules", "resource": rules, "path": App.RULES_PATH},
 		{"title": "Power-ups", "resource": App.powerup_tuning, "path": App.POWERUPS_PATH},
+		{"title": "Runner animation", "resource": load(PlayerAvatar.ANIM_TUNING_PATH), "path": PlayerAvatar.ANIM_TUNING_PATH},
 		{"title": "Level pacing", "resource": context.config, "path": context.config.resource_path},
 	]
 	if context.config.resource_path == "":

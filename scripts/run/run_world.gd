@@ -60,6 +60,7 @@ func build(p_config: LevelConfig, p_layout: LevelLayout, p_tuning: MovementTunin
 	player.apply_loadout(loadout.charge(&"armor"), loadout.charge(&"shield"), loadout.charge(&"grapple"),
 		loadout.tier(&"claws") > 0,
 		powerup_tuning.claws_wall_time_multiplier if loadout.tier(&"claws") > 0 else 1.0)
+	player.set_equipment_look({"weapon_tier": loadout.tier(&"weapon"), "magnet": loadout.tier(&"magnet") > 0})
 	director = _add(EnemyDirector.new(), "Enemies") as EnemyDirector
 	projectiles = _add(ProjectilePool.new(), "Projectiles") as ProjectilePool
 	credits = _add(CreditField.new(), "Credits") as CreditField

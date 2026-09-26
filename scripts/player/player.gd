@@ -41,6 +41,8 @@ var wall_time_multiplier: float = 1.0
 ## Seconds of invulnerability left (after a block or a revive; the character flashes).
 var invulnerable_left: float = 0.0
 var dashing: bool = false
+## Accessibility (reduced flashing): the invulnerability tint holds steady instead of flickering.
+var steady_flash: bool = false
 
 var distance: float = 0.0
 var speed: float = 0.0
@@ -82,8 +84,8 @@ var _blocker_shape := BoxShape3D.new()
 var _blocker_query := PhysicsShapeQueryParameters3D.new()
 
 var _pivot: Node3D
-var _body: MeshInstance3D
-var _visor: MeshInstance3D
+var _avatar: PlayerAvatar  # Avatar
+var _avatar_landed: bool = false  # Avatar: a "land" event since the last avatar update
 var _hurt_debug: MeshInstance3D
 var _shadow: MeshInstance3D
 var _hazard_shape := BoxShape3D.new()
@@ -142,7 +144,7 @@ func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> v
 	_last_speed_pad = 0
 	_death_cause = ""
 	last_event = ""
-	_show_dead(false)
+	_avatar.reset()  # Avatar
 	_apply_transform(1.0)
 
 
@@ -153,6 +155,7 @@ func apply_loadout(p_armor: int, p_shield: int, p_grapples: int, p_claws: bool, 
 	grapples = p_grapples
 	claws = p_claws
 	wall_time_multiplier = p_wall_time_multiplier
+	_avatar.set_equipment({"armor": armor > 0, "shield": shield > 0, "claws": claws})
 
 
 func is_invulnerable() -> bool:
@@ -182,11 +185,13 @@ func receive_hit(hazard: Hazard, stomping: bool = false) -> DamageRules.Outcome:
 		DamageRules.Outcome.BLOCKED_ARMOR:
 			armor -= 1
 			invulnerable_left = rules.hit_invulnerability
+			_avatar.set_equipment({"armor": armor > 0})
 			item_used.emit(&"armor")
 			_event(&"armor_break")
 		DamageRules.Outcome.BLOCKED_SHIELD:
 			shield -= 1
 			invulnerable_left = rules.hit_invulnerability
+			_avatar.set_equipment({"shield": shield > 0})
 			item_used.emit(&"shield")
 			_event(&"shield_break")
 		DamageRules.Outcome.STOMP, DamageRules.Outcome.DEFEAT_ENEMY:
@@ -632,19 +637,29 @@ func _die(cause: String) -> void:
 	dashing = false
 	_dash_bonus = 0.0
 	_death_cause = cause
-	_show_dead(true)
+	_update_avatar(0.0)  # Avatar: starts the collapse (the avatar finishes it on its own).
 	_event(&"died")
 	last_event = "died: " + cause
 	died.emit(cause)
 
 
+## Revive: the model stands back up (the avatar plays the collapse itself on death).
 func _show_dead(on: bool) -> void:
-	_body.material_override = GreyboxMaterials.flat(GreyboxMaterials.PLAYER_DEAD if on else GreyboxMaterials.PLAYER)
+	if not on:
+		_avatar.reset()
 
 
-## The invulnerability window flicker (GDD §4: the character flashes).
-func _set_flash(visible_now: bool) -> void:
-	_pivot.visible = visible_now
+## The invulnerability window flicker (GDD §4: the character flashes): a bright tint on the suit,
+## flickering, or held steady with the reduced-flashing setting.
+func _update_flash() -> void:
+	var on: bool = invulnerable_left > 0.0 and (steady_flash or int(invulnerable_left * 16.0) % 2 == 1)
+	_avatar.set_flash(on)
+
+
+## What the player model shows the player carrying (PlayerAvatar.set_equipment): claws, armor,
+## shield, weapon_tier, magnet. RunWorld sets it from the loadout; broken items update it.
+func set_equipment_look(eq: Dictionary) -> void:
+	_avatar.set_equipment(eq)
 
 
 # --- Presentation ----------------------------------------------------------
@@ -661,17 +676,34 @@ func _apply_transform(delta: float) -> void:
 	position = Vector3(_x, y, TrackGeometry.world_z(distance))
 	_roll = lerp_angle(_roll, roll_target, 1.0 - exp(-22.0 * delta))
 	_pivot.rotation.z = _roll
-	_set_flash(invulnerable_left <= 0.0 or int(invulnerable_left * 16.0) % 2 == 0)
+	_update_flash()
 
 	var height: float = _hurtbox_height()
 	_hurt_debug.scale = Vector3(tuning.hurtbox_size.x, height, tuning.hurtbox_size.z)
 	_hurt_debug.position.y = height * 0.5
-	var vis: Vector3 = tuning.visual_size
-	var vis_h: float = vis.y * (height / tuning.hurtbox_size.y)
-	_body.scale = Vector3(vis.x, vis_h, vis.z)
-	_body.position.y = vis_h * 0.5
-	_visor.position = Vector3(0.0, vis_h * 0.8, -vis.z * 0.5)
+	_update_avatar(delta)  # Avatar: sliding is a pose now, not a squashed box.
 	_update_shadow()
+
+
+## Avatar: hands the runner model this frame's movement state (see PlayerAvatar.animate).
+func _update_avatar(delta: float) -> void:
+	var switch_dir: int = int(signf(_switch_to - _switch_from)) if _switch_t < 1.0 else 0
+	_avatar.fit_to(tuning.visual_size)
+	_avatar.animate({
+		"surface": surface_name(),
+		"grounded": grounded,
+		"vh": vh,
+		"sliding": is_sliding(),
+		"distance": distance,
+		"speed": speed,
+		"wall_side": wall_side,
+		"switch_dir": switch_dir,
+		"alive": alive,
+		"dashing": dashing,
+		"just_landed": _avatar_landed,
+		"stomping": _slide_on_land and not grounded,  # DESIGN-TBD: the air-slide fast fall shows the stomp.
+	}, delta)
+	_avatar_landed = false
 
 
 ## A blob shadow on the surface below (or above, on the ceiling) to read height and gaps.
@@ -700,12 +732,10 @@ func _build_nodes() -> void:
 	_pivot = Node3D.new()
 	add_child(_pivot)
 
-	_body = MeshInstance3D.new()
-	_body.mesh = GreyboxMaterials.unit_box()
-	_body.material_override = GreyboxMaterials.flat(GreyboxMaterials.PLAYER)
-	_pivot.add_child(_body)
-
-	_visor = GreyboxMaterials.add_box(_pivot, Vector3.ZERO, Vector3(0.6, 0.15, 0.05), GreyboxMaterials.glow(GreyboxMaterials.VISOR, 3.0))
+	# Avatar: the runner model replaces the grey-box body and visor.
+	_avatar = PlayerAvatar.new()
+	_pivot.add_child(_avatar)
+	movement_event.connect(func(kind: StringName) -> void: _avatar_landed = _avatar_landed or kind == &"land")
 
 	_hurt_debug = MeshInstance3D.new()
 	_hurt_debug.mesh = GreyboxMaterials.unit_box()
