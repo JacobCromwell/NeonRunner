@@ -50,24 +50,30 @@ func set_layout(p_layout: LevelLayout, p_tuning: MovementTuning, p_skin: ZoneSki
 	_buckets.clear()
 	_fence_nodes.clear()
 	_next_chunk = 0
-	_last_chunk = int(ceil((layout.length + RUN_OUT) / CHUNK_LENGTH))
-
 	_lane_gaps.clear()
 	for lane: int in layout.lane_count:
 		_lane_gaps.append([])
-	for g: Dictionary in layout.gaps:
-		_lane_gaps[g["lane"]].append(g)
-	for list: Array in _lane_gaps:
-		list.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["start"] < b["start"])
+	_add_pieces(layout, 0)
 
-	for i: int in layout.fences.size():
-		layout.fences[i]["index"] = i
-	_bucket("fences", layout.fences, "at", tuning.fence_depth)
-	_bucket("signs", layout.signs, "start", 0.0, "end")
-	_bucket("hulls", layout.hulls, "start", 0.0, "end")
-	_bucket("pads", layout.pads, "at", tuning.pad_length)
-	_bucket("ramps", layout.ramps, "at", tuning.ramp_length)
-	_bucket("speed_pads", layout.speed_pads, "at", tuning.speed_pad_length)
+
+## Lengthens the track while it runs (a boss arena's next lap, BossArena): appends every list of
+## `extra` to the layout and moves its end to extra.length. The pieces must lie past built_until():
+## chunks already built don't change. Credits and enemies only join the layout's lists; the credit
+## field and the enemy director don't pick them up.
+func extend_layout(extra: LevelLayout) -> void:
+	var first_fence: int = layout.fences.size()
+	var lists: Dictionary = layout.to_dict()
+	var more: Dictionary = extra.to_dict()
+	for key: String in more:
+		if more[key] is Array and lists.get(key) is Array:
+			(lists[key] as Array).append_array(more[key])
+	layout.length = maxf(layout.length, extra.length)
+	_add_pieces(extra, first_fence)
+
+
+## Track distance up to which chunks are built.
+func built_until() -> float:
+	return _next_chunk * CHUNK_LENGTH
 
 
 ## Builds chunks ahead of `player_distance` and frees chunks that are fully behind it.
@@ -116,6 +122,24 @@ func set_hitboxes_visible(on: bool) -> void:
 	for node: Node in get_tree().get_nodes_in_group(&"debug_hitbox"):
 		if is_ancestor_of(node):
 			(node as Node3D).visible = on
+
+
+## Sorts the track pieces of `pieces` (the whole layout, or an extension of it) into the chunks that
+## build them. `first_fence` is the layout index of its first fence.
+func _add_pieces(pieces: LevelLayout, first_fence: int) -> void:
+	_last_chunk = int(ceil((layout.length + RUN_OUT) / CHUNK_LENGTH))
+	for g: Dictionary in pieces.gaps:
+		_lane_gaps[g["lane"]].append(g)
+	for list: Array in _lane_gaps:
+		list.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["start"] < b["start"])
+	for i: int in pieces.fences.size():
+		pieces.fences[i]["index"] = first_fence + i
+	_bucket("fences", pieces.fences, "at", tuning.fence_depth)
+	_bucket("signs", pieces.signs, "start", 0.0, "end")
+	_bucket("hulls", pieces.hulls, "start", 0.0, "end")
+	_bucket("pads", pieces.pads, "at", tuning.pad_length)
+	_bucket("ramps", pieces.ramps, "at", tuning.ramp_length)
+	_bucket("speed_pads", pieces.speed_pads, "at", tuning.speed_pad_length)
 
 
 ## Groups items by the chunk they start in. An item spanning several chunks keeps its
