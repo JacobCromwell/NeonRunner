@@ -1,18 +1,31 @@
 extends TestSuite
-## The player avatar (PlayerAvatar) and the shared humanoid rig (HumanoidRig): it builds, every pose
-## runs cleanly, the run pose fits MovementTuning.visual_size, the budgets hold, equipment toggles,
-## the collapse finishes on its own, and a real Player drives it through its moves.
+## The player avatar (PlayerAvatar, Razor Echo) and the shared humanoid rig (HumanoidRig): it builds,
+## every pose runs cleanly, the run pose fits MovementTuning.visual_size, the budgets hold, equipment
+## toggles (the weapon over the gold arm's shoulder, the armor shattering when it breaks), the coat's
+## skirt panels swing in every pose without going through the legs or the surface, the copper glow
+## stays clear of every hazard colour, the collapse finishes on its own, and a real Player drives it
+## through its moves.
 
 const TRIANGLE_BUDGET: int = 2000
 const DRAW_CALL_BUDGET: int = 20
 const DT: float = 1.0 / 60.0
 const RUN_SPEED: float = 18.0
 const Activity := HumanoidRig.Activity
+## The copper glow's least distance from any hazard colour on the HSV colour wheel (hue and
+## saturation together). The two gap-edge oranges (grey box, City and Gangland) are 0.18 apart, so a
+## colour 0.3 away can't pass for another zone's gap edge.
+const MIN_HAZARD_DISTANCE: float = 0.3
+## The copper stays soft: less saturated than this, and its brightest emission (a conduit while
+## dashing) at most this multiple of its colour, about the glow threshold, so bloom can't push it
+## toward the gap edges' orange.
+const MAX_GLOW_SATURATION: float = 0.65
+const MAX_GLOW_EMISSION: float = 1.25
 
 
 func run() -> void:
 	_test_build()
 	_test_other_parts()
+	_test_shell_shape()
 	_test_poses()
 	_test_transitions()
 	_test_run_fits_visual_size()
@@ -20,6 +33,10 @@ func run() -> void:
 	_test_no_skating_at_jog()
 	_test_budget()
 	_test_equipment()
+	_test_weapon_muzzle()
+	_test_armor_shatters()
+	_test_coat_panels()
+	_test_glow_colours()
 	_test_fit_follows_retune()
 	_test_flash_death_and_reset()
 	_test_cost()
@@ -80,6 +97,58 @@ static func _joint_z(avatar: PlayerAvatar, joint_name: StringName) -> float:
 		xf = node.transform * xf
 		node = node.get_parent() as Node3D
 	return xf.origin.z
+
+
+## The pitch of the knee on panel `index`'s side as seen from its hinge (pelvis frame; + = behind).
+static func _knee_angle(rig: HumanoidRig, index: int) -> float:
+	var panel: HumanoidPanel = rig.parts.panels[index]
+	var thigh: Node3D = rig.joint(&"thigh_r" if panel.side > 0 else &"thigh_l")
+	var shin: Node3D = rig.joint(&"shin_r" if panel.side > 0 else &"shin_l")
+	var v: Vector3 = (thigh.transform * shin.position) - panel.placed_hinge()
+	return atan2(v.z, -v.y)
+
+
+## Where the panels' hems hang from their hinges, on average (the rig's parent space), after
+## settling into `state`.
+func _mean_hem(avatar: PlayerAvatar, state: Dictionary) -> Vector3:
+	avatar.reset()
+	_drive(avatar, state, 90, "hem in %s" % state.get("surface", "floor"))
+	var sum := Vector3.ZERO
+	for i: int in avatar.rig.panel_count():
+		sum += avatar.rig.panel_hem(i) - avatar.rig.panel_hinge(i)
+	return sum / avatar.rig.panel_count()
+
+
+## Every hazard colour the game uses, by name: each skin's gap edges, fences, signs, ramps and speed
+## pads, and enemy fire.
+static func _hazard_colors() -> Dictionary:
+	var out: Dictionary = {}
+	for file: String in DirAccess.get_files_at("res://data/skins/"):
+		if not file.ends_with(".tres"):
+			continue
+		var skin: Resource = load("res://data/skins/" + file)
+		for property: String in ["gap_edge_color", "fence_color", "sign_color", "sign_frame_color", "ramp_color",
+				"speed_pad_color"]:
+			if property in skin:
+				out["%s %s" % [file.get_basename(), property.trim_suffix("_color")]] = skin.get(property)
+	for look: StringName in [&"enemy_bolt", &"enemy_shell", &"enemy_bullet"]:
+		out[String(look)] = (ProjectilePool.LOOKS[look] as Dictionary)["color"]
+	out["cyborg charge"] = preload("res://scripts/enemies/cyborg_kit.gd").CHARGE_COLOR
+	return out
+
+
+## Distance between two colours on the HSV colour wheel (hue as the angle, saturation as the
+## radius): how different they look in hue and saturation together, brightness left out.
+static func _chroma_distance(a: Color, b: Color) -> float:
+	return (Vector2(cos(TAU * a.h), sin(TAU * a.h)) * a.s).distance_to(Vector2(cos(TAU * b.h), sin(TAU * b.h)) * b.s)
+
+
+## The signed volume a builder's triangles enclose (its sign follows the winding).
+static func _signed_volume(built: HumanoidMeshBuilder) -> float:
+	var volume: float = 0.0
+	for i: int in range(0, built.vertices.size(), 3):
+		volume += built.vertices[i].dot(built.vertices[i + 1].cross(built.vertices[i + 2])) / 6.0
+	return volume
 
 
 # --- Tests ---------------------------------------------------------------------
@@ -323,6 +392,221 @@ func _test_equipment() -> void:
 	check(avatar.get_equipment() == {"claws": false, "armor": false, "shield": false, "weapon_tier": 0, "magnet": false},
 		"get_equipment reports the current items")
 	avatar.free()
+
+
+## HumanoidPiece.SHELL: a closed sheet cut to its arc (the coat's panels and collar), facing outward
+## like every other shape, and section_phase turning the section's corners.
+func _test_shell_shape() -> void:
+	var shell := HumanoidPiece.new()
+	shell.shape = HumanoidPiece.Shape.SHELL
+	shell.size = Vector3(0.3, 0.0, 0.24)
+	shell.sides = 12
+	shell.section_phase = 15.0
+	shell.arc = Vector2(91.0, 179.0)
+	shell.thickness = 0.02
+	shell.profile = PackedVector4Array([Vector4(0.0, 1.0, 1.0, 0.0), Vector4(-0.4, 1.2, 1.2, 0.0)])
+	var built := HumanoidMeshBuilder.new()
+	built.add_piece(shell, false)
+	# Three faces of the 12-sided section, each with an outside, an inside and two rims, plus the
+	# two cut edges: two triangles apiece.
+	check(built.triangle_count() == 28, "a SHELL over three faces is a closed sheet (%d triangles)" % built.triangle_count())
+	var inside: bool = true
+	for v: Vector3 in built.vertices:
+		inside = inside and v.x > -0.001 and v.z > -0.001
+	check(inside, "section_phase 15° and the arc (91°, 179°) keep it to the back-right quarter")
+	var box := HumanoidPiece.new()
+	box.size = Vector3(0.1, 0.1, 0.1)
+	var reference := HumanoidMeshBuilder.new()
+	reference.add_piece(box, false)
+	var shell_volume: float = _signed_volume(built)
+	var box_volume: float = _signed_volume(reference)
+	check(signf(shell_volume) == signf(box_volume) and absf(shell_volume) > 0.0005,
+		"its faces point outward like a box's (signed volumes %.5f, %.5f)" % [shell_volume, box_volume])
+
+
+## The weapon power-up unfolds over the gold left arm's shoulder (brief), so shots leave from there.
+func _test_weapon_muzzle() -> void:
+	var avatar := PlayerAvatar.new()
+	tree.root.add_child(avatar)
+	avatar.fit_to(tuning.visual_size)
+	avatar.set_equipment({"weapon_tier": 1})
+	avatar.animate(_state(), DT)
+	var muzzle: Vector3 = avatar.to_local(avatar.weapon_muzzle())
+	var shoulder: Vector3 = avatar.to_local(avatar.rig.joint(&"upper_arm_l").global_position)
+	check(muzzle.x < -0.1 and muzzle.y > shoulder.y and muzzle.z < shoulder.z,
+		"the weapon's muzzle is over the left (gold) shoulder, above and in front of it (%s)" % muzzle)
+	var weapon_x: float = INF
+	for piece: HumanoidPiece in PlayerSuit.parts().attachments[&"weapon_1"]:
+		weapon_x = minf(weapon_x, -piece.offset.x if piece.side == HumanoidPiece.Placement.LEFT else piece.offset.x)
+	check(weapon_x < -0.1, "every piece of the weapon sits on the left side (%.2f m)" % weapon_x)
+	avatar.queue_free()
+
+
+## Armor that breaks in play shatters (brief: "they shatter visibly when they break"); the run's
+## loadout, set right after reset(), never does.
+func _test_armor_shatters() -> void:
+	var avatar := PlayerAvatar.new()
+	tree.root.add_child(avatar)
+	avatar.reset()
+	avatar.set_equipment({"armor": true})
+	avatar.set_equipment({"armor": false})
+	check(not avatar.shattering(), "setting up the loadout after reset() doesn't shatter anything")
+	avatar.set_equipment({"armor": true})
+	avatar.animate(_state(), DT)
+	var calls: int = avatar.draw_call_count()
+	avatar.set_equipment({"armor": false})
+	check(avatar.shattering() and not avatar.rig.attachments().has(&"armor"),
+		"armor switched off in play shatters: the plates go and shards fly")
+	check(avatar.draw_call_count() == calls + 1 and avatar.draw_call_count() <= DRAW_CALL_BUDGET,
+		"the shards cost one draw call while they fly (%d)" % avatar.draw_call_count())
+	avatar.set_equipment({"armor": false})
+	avatar.reset()
+	check(not avatar.shattering(), "reset() clears the shards")
+	avatar.queue_free()
+
+
+## The coat's skirt: four stiff panels hinged at the waist, one mesh (one draw call) that the rig
+## swings. They follow the thighs through a spring, trail when sliding, flare when falling, hang
+## toward the feet on the ceiling, sag toward real gravity on a wall, and never go through the legs
+## or the surface.
+func _test_coat_panels() -> void:
+	var avatar := PlayerAvatar.new()
+	var rig: HumanoidRig = avatar.rig
+	var mesh_node: MeshInstance3D = rig.panel_instance()
+	check(rig.panel_count() == 4 and mesh_node != null and mesh_node.get_parent() == rig.joint(&"pelvis")
+		and mesh_node.mesh.get_surface_count() == 1, "the skirt is four panels in one mesh on the pelvis")
+	var back: Array[int] = []
+	var front: Array[int] = []
+	for i: int in rig.panel_count():
+		(back if rig.parts.panels[i].behind else front).append(i)
+	check(back.size() == 2 and front.size() == 2, "two panels behind the legs (split by the vent), two in front")
+
+	# Running: every panel swings with the stride, and a knee never passes through a back panel.
+	avatar.reset()
+	_drive(avatar, _state(), 60, "coat warm-up")
+	var low := PackedFloat32Array([INF, INF, INF, INF])
+	var high := PackedFloat32Array([-INF, -INF, -INF, -INF])
+	var through: float = 0.0
+	var s: Dictionary = _state({"distance": 30.0})
+	for f: int in 90:
+		s["distance"] = float(s["distance"]) + RUN_SPEED * DT
+		avatar.animate(s, DT)
+		for i: int in rig.panel_count():
+			var pitch: float = rig.panel_angles(i).x
+			low[i] = minf(low[i], pitch)
+			high[i] = maxf(high[i], pitch)
+		for i: int in back:
+			through = maxf(through, _knee_angle(rig, i) - rig.panel_angles(i).x)
+	var swing: float = INF
+	for i: int in rig.panel_count():
+		swing = minf(swing, rad_to_deg(high[i] - low[i]))
+	check(swing > 12.0, "running, every panel swings with the stride (at least %.0f°)" % swing)
+	check(through < 0.01, "running, a knee never passes through a back panel (%.3f rad at worst)" % through)
+
+	# Stopping: the panels keep swinging a moment (the spring), then settle hanging.
+	var still: Dictionary = _state({"distance": float(s["distance"]), "speed": 0.0})
+	var moved: float = 0.0
+	for f: int in 12:
+		var before: float = rig.panel_angles(back[0]).x
+		avatar.animate(still, DT)
+		moved += absf(rig.panel_angles(back[0]).x - before)
+	_drive(avatar, still, 120, "coat settling")
+	var last: PackedFloat32Array = []
+	for i: int in rig.panel_count():
+		last.append(rig.panel_angles(i).x)
+	avatar.animate(still, DT)
+	var settled: bool = true
+	for i: int in rig.panel_count():
+		settled = settled and absf(rig.panel_angles(i).x - last[i]) < deg_to_rad(0.2) \
+			and absf(rig.panel_angles(i).x) < deg_to_rad(10.0)
+	check(moved > deg_to_rad(3.0) and settled,
+		"after a stop the panels swing on for a moment (%.1f°), then hang still" % rad_to_deg(moved))
+	var hanging := PackedFloat32Array(last)
+
+	# Sliding feet first: the back panels trail behind along the ground.
+	avatar.reset()
+	_drive(avatar, _state({"sliding": true}), 40, "coat slide")
+	var trail: bool = true
+	var pelvis_z: float = _joint_z(avatar, &"pelvis")
+	for i: int in back:
+		trail = trail and rig.panel_angles(i).x > deg_to_rad(60.0) and rig.panel_hem(i).z > pelvis_z + 0.15
+	check(trail, "sliding, the back panels trail behind")
+
+	# Falling fast (the stomp): the panels flare, back and front ones spreading apart and out.
+	avatar.reset()
+	_drive(avatar, _state({"grounded": false, "vh": -22.0, "stomping": true}), 30, "coat stomp")
+	var spread: float = INF
+	var roll: float = INF
+	for side_panels: Array in [[back[0], front[0]], [back[1], front[1]]]:
+		var now: float = rig.panel_angles(side_panels[0]).x - rig.panel_angles(side_panels[1]).x
+		var standing: float = hanging[side_panels[0]] - hanging[side_panels[1]]
+		spread = minf(spread, now - standing)
+	for i: int in rig.panel_count():
+		roll = minf(roll, rig.panel_angles(i).y)
+	check(spread > deg_to_rad(45.0) and roll > deg_to_rad(10.0),
+		"falling fast, the panels flare: back and front spread %.0f° further apart and turn out %.0f°"
+		% [rad_to_deg(spread), rad_to_deg(roll)])
+
+	# On the ceiling the panels hang toward the feet, as on the floor; on a wall they sag toward real
+	# gravity (sideways in the runner's frame: -x on the right wall).
+	var hem_floor: Vector3 = _mean_hem(avatar, _state({"speed": 0.0}))
+	var hem_ceiling: Vector3 = _mean_hem(avatar, _state({"speed": 0.0, "surface": "ceiling"}))
+	var hem_wall: Vector3 = _mean_hem(avatar, _state({"speed": 0.0, "surface": "wall", "grounded": false, "wall_side": 1}))
+	check(hem_ceiling.distance_to(hem_floor) < 0.01, "on the ceiling the panels hang toward the feet, as on the floor")
+	check(hem_wall.x < hem_floor.x - 0.02, "on the right wall they sag toward real gravity (%.3f m)" % (hem_wall.x - hem_floor.x))
+	avatar.free()
+
+
+## Razor Echo's glow (GDD §11, the brief's colour rules): soft copper is the only thing that glows
+## on the base model, it keeps clear of every hazard colour in hue and saturation, and it stays soft.
+## Power-up looks never use it (they read as added on top) and glow in no hazard colour either.
+func _test_glow_colours() -> void:
+	var hazards: Dictionary = _hazard_colors()
+	check(hazards.size() >= 12, "the check covers every skin's hazard colours and enemy fire (%d)" % hazards.size())
+	var pad := (load("res://data/skins/greybox_skin.tres") as GreyboxSkin).pad_color
+	for named: Array in [["copper glow", PlayerSuit.GLOW], ["pale copper (dash)", PlayerSuit.GLOW_PALE],
+			["invulnerability tint", PlayerAvatar.FLASH_COLOR], ["rim light", PlayerSuit.RIM_COLOR]]:
+		var nearest: String = ""
+		var least: float = INF
+		for hazard: String in hazards:
+			var d: float = _chroma_distance(named[1], hazards[hazard])
+			if d < least:
+				least = d
+				nearest = hazard
+		check(least >= MIN_HAZARD_DISTANCE, "the %s keeps clear of every hazard colour (%.2f from the %s)" % [named[0], least, nearest])
+	check(_chroma_distance(PlayerSuit.GLOW, pad) >= MIN_HAZARD_DISTANCE, "the copper is nothing like the anti-grav pads' cyan")
+	check(PlayerSuit.GLOW.s <= MAX_GLOW_SATURATION, "the copper is soft: saturation %.2f" % PlayerSuit.GLOW.s)
+	var energy: float = PlayerSuit.body_material().get_shader_parameter(&"glow_energy")
+	var brightest: float = PlayerSuit.CONDUIT_GLOW * energy * PlayerAvatar.DASH_GLOW
+	check(energy > 0.0 and brightest <= MAX_GLOW_EMISSION,
+		"its brightest emission (a conduit while dashing) is %.2f× its colour, at the glow threshold" % brightest)
+	# The base model: every glowing piece is the copper.
+	var base: Array = PlayerSuit.parts().pieces.duplicate()
+	for panel: HumanoidPanel in PlayerSuit.parts().panels:
+		base.append_array(panel.pieces)
+	var others: PackedStringArray = []
+	var glowing: int = 0
+	for piece: HumanoidPiece in base:
+		if piece.glow > 0.0:
+			glowing += 1
+			if piece.color != PlayerSuit.GLOW:
+				others.append("%s %s" % [piece.segment, piece.color])
+	check(glowing >= 20 and others.is_empty(),
+		"on the base model only the copper glows (%d glowing pieces; others: %s)" % [glowing, ", ".join(others)])
+	# Power-ups: never the copper, never a hazard colour (the weapon's lights are the shots' own
+	# cyan, violet and white).
+	var wrong: PackedStringArray = []
+	var attachments: Dictionary = PlayerSuit.parts().attachments
+	for set_name: StringName in attachments:
+		for piece: HumanoidPiece in attachments[set_name]:
+			if piece.glow <= 0.0:
+				continue
+			var clear: bool = piece.color != PlayerSuit.GLOW
+			for hazard: String in hazards:
+				clear = clear and _chroma_distance(piece.color, hazards[hazard]) >= MIN_HAZARD_DISTANCE
+			if not clear:
+				wrong.append("%s %s" % [set_name, piece.color])
+	check(wrong.is_empty(), "power-up looks glow in neither the copper nor a hazard colour (%s)" % ", ".join(wrong))
 
 
 func _test_fit_follows_retune() -> void:

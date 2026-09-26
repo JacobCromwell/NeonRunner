@@ -36,13 +36,17 @@ extends RefCounted
 const CACHE_KEY: String = "player_razor_echo_v1"
 
 ## The signature glow: soft copper (conduits, the ocular implant, the vest's lights).
-const GLOW := Color(0.96, 0.6, 0.4)
+const GLOW := Color(0.96, 0.64, 0.46)
+## The copper thinned toward white, for effects laid over the runner (the dash's shell and lines).
+const GLOW_PALE := Color(1.0, 0.8, 0.66)
 ## Glow amounts (HumanoidPiece.glow): conduits, small lights, the implant's lens. With GLOW_ALBEDO the
 ## trim shines by its own light at about the bloom threshold: soft, and the same lit or in the dark.
 const CONDUIT_GLOW: float = 0.34
 const LIGHT_GLOW: float = 0.42
 const EYE_GLOW: float = 0.6
 const GLOW_ALBEDO: float = 0.35
+## Emission of a glow-1 piece (humanoid_body.gdshader's glow_energy).
+const GLOW_ENERGY: float = 2.6
 
 const COAT := Color(0.19, 0.22, 0.33)
 const COAT_SHADE := Color(0.13, 0.15, 0.24)
@@ -128,6 +132,7 @@ static func body_material() -> ShaderMaterial:
 		_body_material.set_shader_parameter(&"rim_strength", RIM_STRENGTH)
 		_body_material.set_shader_parameter(&"rim_power", RIM_POWER)
 		_body_material.set_shader_parameter(&"glow_albedo", GLOW_ALBEDO)
+		_body_material.set_shader_parameter(&"glow_energy", GLOW_ENERGY)
 	return _body_material
 
 

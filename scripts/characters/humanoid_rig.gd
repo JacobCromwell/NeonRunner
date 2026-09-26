@@ -28,11 +28,15 @@ enum Activity { IDLE, RUN, WALL, AIR, SLIDE, DASH, STOMP, DEAD }
 const ACTIVITY_COUNT: int = 8
 ## Panels a rig can swing (the size of the shader's panel arrays).
 const MAX_PANELS: int = 8
-## Pitch range of a panel behind the leg and of one in front of it (radians; + = swung backward).
+## Pitch range of a panel behind the leg and of one in front of it (radians; + = swung backward):
+## a back panel may trail straight back along the ground (a slide), a front one flips up at most
+## past level (a tucked jump), never over onto the body.
 const BACK_PANEL_RANGE := Vector2(-1.92, 2.97)
-const FRONT_PANEL_RANGE := Vector2(-2.97, 1.92)
+const FRONT_PANEL_RANGE := Vector2(-2.0, 1.92)
 ## Roll range (radians; + = out to the side).
 const PANEL_ROLL_RANGE := Vector2(-0.14, 1.22)
+## Above this speed (m/s) a panel pushed by the ground trails backward (the ground drags it).
+const MOVING_SPEED: float = 2.0
 
 const JOINT_NAMES: Array[StringName] = [&"pelvis", &"chest", &"neck", &"head",
 	&"upper_arm_l", &"forearm_l", &"hand_l", &"upper_arm_r", &"forearm_r", &"hand_r",
@@ -355,6 +359,11 @@ func panel_hem(index: int) -> Vector3:
 	return pelvis * _panel_point(index, _panel_hinges[index] + Vector3(0.0, -panel.length, 0.0))
 
 
+## Panel `index`'s hinge (the middle of its top edge), in the rig's parent space.
+func panel_hinge(index: int) -> Vector3:
+	return transform * _body.transform * _joints[HumanoidPose.PELVIS].transform * _panel_hinges[index]
+
+
 ## Swings the panels for this frame (see "Panels" above). animate() calls it; a user that poses the
 ## rig itself with apply_pose() calls it afterwards. `motion` keys (all optional): speed (m/s, the
 ## wind of the run), vh (m/s away from the surface; falling flares the panels), dashing (bool, a
@@ -371,7 +380,9 @@ func update_panels(delta: float, motion: Dictionary = {}) -> void:
 	# The height above the surface (rig frame) of a vector in the pelvis frame, scale included.
 	var pb: Basis = pelvis_xf.basis
 	var height_of := Vector3(pb.x.y, pb.y.y, pb.z.y)
-	var drag: float = t.panel_drag * clampf(float(motion.get("speed", 0.0)) / t.panel_drag_speed, 0.0, 1.0)
+	var speed: float = float(motion.get("speed", 0.0))
+	var moving: bool = speed > MOVING_SPEED
+	var drag: float = t.panel_drag * clampf(speed / t.panel_drag_speed, 0.0, 1.0)
 	if bool(motion.get("dashing", false)):
 		drag = minf(drag * t.panel_dash_drag, 0.9)
 	var fall: float = clampf(-float(motion.get("vh", 0.0)) / t.panel_flare_speed, 0.0, 1.0)
@@ -416,9 +427,9 @@ func update_panels(delta: float, motion: Dictionary = {}) -> void:
 		elif not panel.behind and s > limit:
 			s = limit
 			sv = minf(sv, 0.0)
-		# The surface pushes it too: swing on (back panels backward, front ones forward) until it
-		# clears it.
-		var pushed: float = _ground_limit(pelvis_xf, height_of, i, panel, s, side * r, t.panel_ground_clearance)
+		# The surface pushes it too.
+		var pushed: float = _ground_limit(pelvis_xf, height_of, i, panel, s, side * r, t.panel_ground_clearance,
+			wind_pitch if moving else NAN)
 		if not is_equal_approx(pushed, s):
 			s = pushed
 			sv = 0.0
@@ -564,7 +575,8 @@ func _panel_point(index: int, point: Vector3) -> Vector3:
 
 
 ## The pitch the leg on a panel's side lets it reach: the least for a panel behind the leg, the most
-## for one in front, so the hip, knee, ankle, heel and toe keep `clearance` from it.
+## for one in front, so the middle of the thigh, the knee, ankle, heel and toe keep `clearance` from
+## it. (Not the hip: that's under the belt, where the panel hangs from.)
 func _leg_limit(index: int, side: int, panel: HumanoidPanel, clearance: float) -> float:
 	var thigh_xf: Transform3D = _joints[HumanoidPose.limb(HumanoidPose.THIGH_R, side)].transform
 	var shin_xf: Transform3D = thigh_xf * _joints[HumanoidPose.limb(HumanoidPose.SHIN_R, side)].transform
@@ -572,7 +584,8 @@ func _leg_limit(index: int, side: int, panel: HumanoidPanel, clearance: float) -
 	var heel_toe: PackedVector3Array = _heel_toe[0 if side < 0 else 1]
 	var hinge: Vector3 = _panel_hinges[index]
 	var limit: float = -INF if panel.behind else INF
-	for p: Vector3 in [thigh_xf.origin, shin_xf.origin, foot_xf.origin, foot_xf * heel_toe[0], foot_xf * heel_toe[1]]:
+	var mid_thigh: Vector3 = (thigh_xf.origin + shin_xf.origin) * 0.5
+	for p: Vector3 in [mid_thigh, shin_xf.origin, foot_xf.origin, foot_xf * heel_toe[0], foot_xf * heel_toe[1]]:
 		var v: Vector3 = p - hinge
 		var reach: float = Vector2(v.y, v.z).length()
 		if reach < 0.001 or reach > panel.length + clearance:
@@ -583,14 +596,26 @@ func _leg_limit(index: int, side: int, panel: HumanoidPanel, clearance: float) -
 	return limit
 
 
-## The pitch that keeps panel `index` `clearance` above the surface (y = 0 in the rig's frame),
-## reached by swinging on from `pitch` (a back panel backward, a front one forward): `pitch` itself
-## when it already clears. Checks the panel's extreme points; `roll` is its signed outward turn (the
-## Euler z angle).
+## The pitch that keeps panel `index` `clearance` above the surface (y = 0 in the rig's frame), or
+## `pitch` itself when it already clears. The panel swings until every extreme point clears: toward
+## `trail` (the pitch pointing straight back) while the runner moves, as the ground rushing past drags
+## the hem back (the coat trails behind a slide); otherwise the way its hem already leans from the
+## point under the hinge (the front panels fold along the legs when the body falls on them). `roll`
+## is the panel's signed outward turn (the Euler z angle).
 func _ground_limit(pelvis_xf: Transform3D, height_of: Vector3, index: int, panel: HumanoidPanel,
-		pitch: float, roll: float, clearance: float) -> float:
+		pitch: float, roll: float, clearance: float, trail: float) -> float:
 	var h0: float = (pelvis_xf * _panel_hinges[index]).y
 	var turn := Basis(Vector3.BACK, roll)
+	var way: float = 0.0
+	if not is_nan(trail):
+		way = signf(angle_difference(pitch, trail))
+	else:
+		# The pitch that drops the hem lowest (straight down), and which side of it the panel is on.
+		var hem: Vector3 = turn * Vector3(0.0, -panel.length, 0.0)
+		var lowest: float = atan2(height_of.y * hem.z - height_of.z * hem.y, height_of.y * hem.y + height_of.z * hem.z) + PI
+		way = signf(angle_difference(lowest, pitch))
+	if way == 0.0:
+		way = 1.0 if panel.behind else -1.0
 	var s: float = pitch
 	for attempt: int in 4:
 		var moved: bool = false
@@ -608,7 +633,7 @@ func _ground_limit(pelvis_xf: Transform3D, height_of: Vector3, index: int, panel
 			var w: float = acos(c / rr)
 			if absf(angle_difference(top, s)) <= w:
 				continue
-			s = s + fposmod(top - w - s, TAU) if panel.behind else s - fposmod(s - (top + w), TAU)
+			s = s + fposmod(top - w - s, TAU) if way > 0.0 else s - fposmod(s - (top + w), TAU)
 			moved = true
 		if not moved:
 			break
