@@ -21,4 +21,5 @@
    Should the older feature make way for the level's new one (for example, no drone wave during an
    introduced host's chase), or is "a little later in the level" fine?
    - Placeholder: the older feature's rules win, as before. The campaign tests allow up to 10% of
-     introductions to come late (`tests/suites/test_campaign.gd`).
+     introductions to come late on the levels' own seeds (none do now), and only report them on
+     other seeds (`tests/suites/test_campaign.gd`).
