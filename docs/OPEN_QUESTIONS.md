@@ -446,7 +446,8 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
     Dead Zone or Golden Zone at 5 lanes; no host in Dead Zone 2 at 5 or 6 lanes, nor in Golden 1; no vent
     screech in Corporate 1). The GDD rule is decided, so the build is adding a guarantee that every level
     places each of its features at least once (follow-up task after B1). Still open: how often each earlier
-    feature should appear beyond that.
+    feature should appear beyond that. (Built: every campaign level now places each of its features at least once, on
+    any seed and lane count; see items 25–26.)
 14. **Two new placeholder patterns** (`data/patterns/prototype_patterns.json`): a pulsing fence in one lane
     (difficulty 0–0.6), since the other pulsing patterns start at 0.4, which City 3 barely reaches; and a speed
     pad in one lane with four credits after it (no pattern placed speed pads before, so Gangland 2's never
@@ -455,6 +456,19 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
     music task adds them the game skips them quietly and the menu music keeps playing. Fine as a stopgap?
 16. **The economy over 15 levels** ("From the full build" items 10–11). Completion pays 100 + 25 per campaign
     level, so Golden 3 pays 450; prices were set for a two-zone campaign. Needs a balancing pass.
+
+**Every feature appears** (from the B1 follow-up; see item 13, now built)
+25. **Where a guaranteed enemy goes** (GDD §5). When a level's rules drop every host or every Octodog, those
+    rules add one where it fits every rule; otherwise the generator rebuilds the level with a pick of the
+    missing feature forced at a new spot. Placeholder: a random spot among those that fit (`host_rules.gd`,
+    `octodog_rules.gd`); forced picks go to fixed shares of the level (`GUARANTEE_SHARES`). Should a
+    guaranteed one go somewhere in particular (early, late, spread out)?
+26. **Introductions that come late** (GDD §5, §6; item 2). An older feature's rules can clear away a level's
+    new feature, which then first appears later. On the shipped seeds none do; over 100 random seeds 6% came
+    more than 210 m late, almost all Dead Zone 1's first host (the first drone wave arrives during its chase,
+    and the drones own every pad from then on, GDD §9.6) and Marketplace 2's first vent screech. Should the
+    older feature make way for the new one (e.g. no drone wave during an introduced host's chase), or is "a
+    little later" fine? Placeholder: the older feature's rules win.
 
 **Gangland update** (from D1; numbers are F6-tunable exports on `GanglandSkin`)
 17. **Gangland's ceilings** (GDD §3, §5; replaces "From the full build" item 45, the scavenger barge). Placeholder:
