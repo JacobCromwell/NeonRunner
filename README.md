@@ -1,9 +1,22 @@
 # Neon Runner (working title)
 
-Right now this is the **R1 core-movement grey box** from `docs/NEXT_STEPS.md`. It's plain boxes
-and glow materials with no art, built to answer one question: *do lanes, walls, ceiling, jump and slide feel good?*
+A neon 3D runner for PC (Steam), Android, iOS and a web demo. You run lanes, side walls and ceilings
+through zones full of enemies, and a single hit ends the run. Built with Godot 4.7.2 and GDScript only.
 
-Design docs: `docs/GDD_CHECKPOINT.md`, `docs/OPEN_QUESTIONS.md`, `docs/NEXT_STEPS.md`. Agent rules: `CLAUDE.md`.
+**Status:** the game is built around everything designed so far:
+- a campaign of two zones with three levels each
+- seven enemy types
+- the shop, power-ups and economy
+- every screen and the HUD
+- two zone looks, generated music and sound effects
+- all three build flavors
+
+Bosses and the short cinematics between levels are placeholder slots until they're designed. Every
+placeholder decision is listed in `docs/OPEN_QUESTIONS.md`.
+
+Docs: `docs/GDD_CHECKPOINT.md` (the design, the authority), `docs/OPEN_QUESTIONS.md` (open decisions and
+placeholders), `docs/ARCHITECTURE.md` (how the code fits together), `docs/NEXT_STEPS.md` (risk tests and the
+original build plan), `CLAUDE.md` (rules for agents).
 
 ## Play it
 
@@ -12,124 +25,149 @@ Engine: **Godot 4.7.2-stable** (standard build, not .NET). You don't need to imp
 - **From a terminal (WSL, Linux or macOS):** `./play.sh`
 - **From Windows:** double-click `play.cmd`, or run it from a terminal.
 
-Either one plays whatever is in this folder right now. The first run finds Godot and remembers where it is.
-After that, resources are re-imported automatically whenever a file has changed (a few seconds).
-If Godot is somewhere unusual, set the `GODOT` environment variable to its executable.
+Either one plays whatever is in this folder right now and opens on the title screen. The first run finds Godot and
+remembers where it is; after that, resources are re-imported automatically whenever a file changed. If Godot is
+somewhere unusual, set the `GODOT` environment variable to its executable. Open the editor with
+`tools/godot.sh edit` or `play.cmd edit`.
 
-Options: `./play.sh --lanes=6 --seed=23 --difficulty=0.6 --god` (the same with `play.cmd`).
-Open the editor directly on the project: `tools/godot.sh edit` or `play.cmd edit`.
+Options for testing (debug builds only, the same with `play.cmd`):
 
-PC runs use 5 lanes and mobile runs use 3 (the exact PC count is still open: 5 or 6). F1 switches between 3, 5 and 6.
+| Option | What it does |
+|---|---|
+| `--quick` | Quick play: the prototype level, restarting on death, with the debug keys and HUD |
+| `--seed=N --lanes=N --difficulty=X` | Quick play with that seed, lane count (3, 5 or 6) or difficulty (0–1) |
+| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`) |
+| `--god` | Hits don't kill (falls still do) |
+| `--nofall` | The grapple never runs out, so falls never end the run |
+| `--full-loadout` | Every power-up |
+| `--skin=gangland` | Quick play in another zone's look |
+| `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`) |
+| `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
+
+Example: `./play.sh --lanes=6 --features=octodog,ceilings --god`.
 
 ## Controls
 
-| Action | Keyboard | Touch (mouse drag also works) |
+| Action | Keyboard | Touch (a mouse drag works too) |
 |---|---|---|
 | Change lane / enter a wall from the outer lane | Left / Right arrows | Swipe left / right |
-| Jump (wall jump while on a wall) | Up arrow or Space *(placeholder)* | Swipe up |
+| Jump (wall jump while on a wall) | Up arrow or Space | Swipe up |
 | Slide (fast drop in the air) | Down arrow | Swipe down |
-| Pause | Esc / P | – |
+| Juggernaut dash (power-up) | Shift | Tap |
+| Slow time (power-up, PC only) | E | – |
+| Pause | Esc / P | Pause button |
 
-Debug keys: **R** restart, **F1** lane count 3 → 5 → 6, **F2** next seed, **F3** difficulty,
-**F4** god mode (hazards ignored; falls still kill), **F5** show hitboxes, **F6** tuning panel, **M** mute.
+Every key can be rebound in Settings. PC runs use 5 lanes and mobile runs use 3 (the exact PC count is still
+open: 5 or 6).
+
+Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2** next seed, **F3** difficulty,
+**F4** god mode, **F5** show hitboxes, **F6** tuning panel, **M** mute.
+
+## What's in the game
+
+- **Campaign:** Zone 1, the Neon City (the web demo's zone), and Zone 2, Gangland, with three levels each. Each
+  zone has boss and cinematic slots. Zones 3–6 are placeholders. Each level introduces one new thing:
+  1. City 1: gaps, fences, walls and signs.
+  2. City 2: ceilings and pulsing fences.
+  3. City 3: cyborgs and a rare hover truck.
+  4. Gangland 1: ramps, sewer screeches and fence generators.
+  5. Gangland 2: Octodogs and speed pads.
+  6. Gangland 3: heli drones and window cyborgs.
+- **Movement:** floor lanes, side-wall runs and wall jumps, anti-grav pads onto the ceiling, ramps, speed pads.
+- **Obstacles:** gaps, signs, and electric fences (full-height or gapped, always-on or pulsing), some with a
+  generator that switches them off.
+- **Enemies:**
+  - cyborgs, with the panic variant and hosts
+  - window cyborgs
+  - the hover truck mini-boss
+  - the Octodog
+  - the sewer screech
+  - the heli drone
+  - The Cyborg's Bad Dream is being built.
+- **Economy:** credits in four denominations, level score and stars, and a shop. Items are five permanent
+  power-ups (weapon line, claws, juggernaut dash, magnet, slow time) and three breakables (armor, shield,
+  grapple hook). After a death you're offered a revive (an item, or a rewarded ad on mobile). Net worth
+  has its own leaderboard.
+- **Modes:** the campaign, endless mode, and harder difficulty tiers after the last level.
+- **Look and sound:**
+  - a human runner in a cyber suit
+  - the City and Gangland zone looks
+  - neon UI screens and HUD
+  - generated music (menu, City, Gangland) and 63 sound effects
+  - first-encounter hints
+- **Settings:** volumes, key rebinding, screen shake, reduced flashing, hints.
+- **Platforms:** export presets for Windows, Android, iOS and the web demo. Ads, purchases and
+  leaderboards go through one platform layer, which is a stub until the real plugins are chosen.
 
 ## Tuning while you play (F6)
 
-F6 pauses the game and opens a panel with two sections:
+F6 pauses the game and opens a panel with sections for movement, game rules, power-ups, the runner's animation
+and level pacing. Changes apply immediately; pacing, speed, jump and size changes also reshape the level, so press
+**Restart level** to rebuild it. **Save** writes the values back to their files in `data/`; **Reload files** undoes
+unsaved changes. Every other number is in `data/` too: enemy tunings in `data/enemies/`, prices in
+`data/shop/catalog.json`, patterns in `data/patterns/` (format: `data/patterns/README.md`), sound volumes in
+`data/audio/sfx_library.tres`, and UI colours and sizes in `data/ui/ui_style.tres`.
 
-- **Movement:** run speed, jump height, lane switch time, wall-run heights, camera, and so on.
-- **Level pacing:** spacing between obstacles, difficulty, level length, lane counts, and the fairness rules.
-  If the level feels too busy or too sparse, start with the spacing values.
+## Tools
 
-Changes apply immediately, and play resumes when you close the panel. Pacing, speed, jump and size changes also
-reshape the level, so press **Restart level** to rebuild it. **Save** writes the values back to
-`data/tuning/movement.tres` and `data/levels/prototype_level.tres`. **Reload files** undoes unsaved changes.
+```
+tools/godot.sh play [options]   play (what ./play.sh runs)
+tools/godot.sh edit             open the editor
+tools/godot.sh test             all tests, about a minute; exit code 0 = pass (--suite=name runs one)
+tools/godot.sh smoke [options]  40 s of the real game, headless; prints only problems
+tools/godot.sh sfx [--review]   regenerate the sound effects (assets/sfx/) from tools/asset_gen/
+tools/godot.sh music [--review] regenerate the music (assets/music/)
+tools/godot.sh import           force a resource import
+```
 
-The same values are also in the Godot inspector. Generator patterns are in `data/patterns/prototype_patterns.json`
-(format: `data/patterns/README.md`). The grey-box colours and sky are in `data/skins/greybox_skin.tres`.
-Sound volumes are in `data/audio/sfx_library.tres`.
+`--review` also writes waveform and spectrogram images to `build/`. Every model, texture, sound and track is
+generated by code (`tools/asset_gen/`, and procedural meshes and shaders under `scripts/`). The two fonts are
+OFL-licensed; licenses are in `assets/LICENSES.md`.
 
-## Sound effects
-
-Each sound is a file in `assets/sfx/`, generated by code in a crunchy 16-bit / heavy-metal style:
-
-| Event | Sound |
-|---|---|
-| Jump | 16-bit FM "boing" (Mega Drive style) |
-| Land | Distorted metal kick drum |
-| Slide | Metal grinding on metal, with sparks |
-| Wall run | Guitar pick scrape |
-| Wall jump | Distorted power-chord stab |
-| Wall entry blocked | Metallic clank |
-| Ramp | V-twin motorbike rev |
-| Anti-grav pad | Rising futuristic FM sweep |
-| Ceiling ends | Bit-crushed power-down |
-| Death | Guitar dive bomb, kick and crash |
-| Pulsing fence about to switch on | Crunchy electric crackle, positional, getting louder as you approach |
-| Level complete | Power-chord riff: E5 chug, chug, G5, A5 |
-
-To change a sound, edit its function in `tools/asset_gen/sfx_gen.gd` and run `tools/godot.sh sfx`
-(add `--review` to also write waveform and spectrogram images to `build/sfx_review/`).
-To use a recorded sample instead, drop a `.wav` with the same name into `assets/sfx/` and record its source in
-`assets/LICENSES.md`. The master bus has a limiter, so sounds that stack up can't clip.
-
-## What's in the grey box
-
-- Floor lanes (any count), animated lane switches, gaps you fall through
-- Jump with coyote time and jump buffering; slide with a smaller hitbox; a blob shadow to read height
-- Side-wall runs: free entry past the outer lane (with the same grace rule as jumping), a 2-second slide down,
-  wall jump; signs block entry and hurt
-- Ramps: a boosted, higher wall entry
-- Anti-grav pads, then the ceiling (hull) with its own lanes, dropping back down when the hull ends.
-  The floor under a ceiling is always clear (GDD §3)
-- Electric fences: full-height (jump) and gapped (slide), always-on and pulsing. Pulsing fences flicker
-  and crackle before switching on, and follow the level clock, so every attempt at a seed has the same timing
-- A seeded, data-driven level generator for any lane count; death restarts the same seed; finishing moves to the next
-
-It has none of the enemies, credits, shop, power-ups, music, art or menus. Those come in later milestones.
+The scenes in `tools/showcase/` show one part of the game up close for visual review (the runner, each enemy
+family, the UI kit, every screen); each script's header lists its options.
 
 ## Tests
 
-```
-tools/godot.sh test     # the test suite, about 5 seconds; exit code 0 = pass
-tools/godot.sh smoke    # 40 seconds of the real game, headless; prints only problems
-```
+`tools/godot.sh test` runs 24 suites with about 514,000 checks:
+- **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds.
+- **Movement:** scenarios on real physics.
+- **Enemies:** each type's attacks, dodges, kills and generation rules.
+- **Damage:** the shared damage rules.
+- **Power-ups:** each one's behaviour.
+- **Economy and saves:** the economy and save files.
+- **Game flow:** the campaign and app flow.
+- **Screens:** every screen at desktop and touch sizes.
+- **Zone skins:** both skins, including a check that neither adds collision.
+- **Sounds and music.**
+- **Boot:** the real game scene.
 
-The suite covers:
-
-- **Generator fairness** over 360 levels (3/5/6 lanes × 4 difficulties × 30 seeds): same seed gives the same level,
-  every gap and all-lane hole is jumpable, pads have a hull above and solid floor before them, the floor under a
-  ceiling is clear, hull landings are clear, ramps aren't blocked, and nothing spills into the clear stretch before
-  the finish.
-- **Movement scenarios on real physics:** gaps, coyote time, jump buffering, fences, slides, pulsing timing,
-  no tunnelling at 90 m/s, wall runs and the wall grace rule, wall jumps, signs, ramps, pads and ceiling, and 6 lanes.
-- **The real game scene** boots and runs, with 5 lanes on PC.
-- **Units:** pulsing hazard states, touch gesture classification, every sound file, and the tuning panel.
-
-Sounds are skipped in headless runs, because the dummy audio driver never finishes a playback and Godot would
-report every played sound as leaked at exit.
+Headless runs skip sounds, because the dummy audio driver never finishes a playback.
 
 ## Layout
 
 ```
-play.sh, play.cmd      play the current version (see "Play it")
-tools/godot.sh         find Godot, import when needed, then play / edit / test / smoke / sfx
-tools/godot.ps1        the Windows side of play.cmd
-tools/asset_gen/       sfx_gen.gd + sfx_dsp.gd: the sound effect generator
-scripts/core/          tuning + level config resources, DamageRules (the single damage/interaction rule set),
-                       DeviceProfile (PC or mobile)
-scripts/input/         TouchInput autoload (swipes/taps → named input actions)
-scripts/player/        Player controller
-scripts/world/         LevelLayout (data), LevelGenerator, TrackBuilder (gameplay nodes), Hazard, TrackGeometry
-scripts/world/skins/   ZoneSkin (visual hooks per abstract piece), GreyboxSkin, HazardVisual
-scripts/audio/         SfxLibrary (event → sound), player sounds, hazard warning sounds
-scripts/game/          grey-box game loop + camera
-scripts/ui/            debug HUD, tuning panel
-assets/sfx/            generated sound effects (licenses: assets/LICENSES.md)
-data/                  tuning, level configs, skins, sound library, generator patterns
-tests/                 headless tests
+play.sh, play.cmd       play the current version
+tools/                  godot.sh (play/edit/test/smoke/sfx/music), asset generators, showcase scenes
+scenes/main.tscn        the one scene: world, screens and overlays
+scripts/app/            App (state and flow), Profile, SaveService, Settings, BuildFlavor
+scripts/run/            a run: LevelRun, RunWorld, camera, projectiles, credits, score, effects, hints
+scripts/player/         the Player controller and its avatar
+scripts/characters/     the procedural humanoid rig
+scripts/enemies/        one script (plus tuning and generator rules) per enemy type, EnemyDirector
+scripts/powerups/       the permanent power-ups
+scripts/world/          level layout, generator, track builder, hazards; zone skins and the mesh kit
+scripts/campaign/       campaign, zones, bosses and cinematic slots
+scripts/economy/        the shop catalog
+scripts/ui/             theme, icons, widgets, screens, HUD, debug tools
+scripts/audio/          sound library, music player, hazard warning sounds
+scripts/platform/       the platform services layer and its stub
+scripts/core/           tunable resources and DamageRules (the single damage/interaction rule set)
+scripts/input/          TouchInput (swipes/taps → named input actions)
+data/                   every tunable number, level, zone, pattern, skin, catalog and library
+assets/                 generated sounds and music, fonts, icon (licenses: assets/LICENSES.md)
+tests/                  headless tests
 ```
 
-Gameplay and visuals are separate. `TrackBuilder` creates every collision shape from abstract pieces
-(floor segments, gaps, fences, signs, hulls, pads, ramps) and asks the level's `ZoneSkin` to decorate them.
-A zone skin replaces the look without touching collision.
+Gameplay and visuals are separate: the generator and gameplay code only know abstract pieces (floor segments,
+gaps, fences, walls, ceilings), and each zone's skin decorates them without touching collision.

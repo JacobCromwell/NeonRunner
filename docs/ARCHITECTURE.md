@@ -12,7 +12,7 @@ scenes/main.tscn (scripts/app/main.gd)
   Overlays (CanvasLayer) pause menu, revive offer, settings from pause
 
 Autoloads: TouchInput (swipes/taps → input actions), Platform (ads, purchases, leaderboards,
-store links, cloud save), App (state and flow), Music (music playback, from the audio work)
+store links, cloud save), Music (music playback), App (state and flow)
 ```
 
 `App` (`scripts/app/app.gd`) holds the data and moves the player between screens and runs:
@@ -41,7 +41,10 @@ RunWorld (scripts/run/run_world.gd)       one run's gameplay world; everything s
 
 `LevelRun` adds the camera (`RunCamera`), the HUD (`RunHud`) and, in debug builds, the debug HUD and
 the F6 tuning panel. Quick play (`--quick`, or any of `--god --seed=N --lanes=N --difficulty=X
---features=a,b --full-loadout`) restarts on death like the grey box did.
+--features=a,b --full-loadout --nofall --skin=<name>`) restarts on death like the grey box did.
+`--level=<step id>` plays a campaign step with the full flow and takes `--lanes`, `--god`, `--nofall`
+and `--full-loadout` for reviews. Command-line starts work in debug builds only, so a release build
+can't skip progression or farm credits with them.
 
 Physics order each frame: RunWorld (builds chunks, spawns enemies) → Player (moves, checks hazards
 and triggers) → enemies → projectiles → credits → power-ups.
@@ -83,7 +86,8 @@ An enemy type needs only files of its own; nothing shared is edited:
 | File | Purpose |
 |---|---|
 | `scripts/enemies/<type>.gd` | the `Enemy` subclass (found by name) |
-| `data/enemies/<type>.tres` | its `EnemyTuning` (spawn lead, score, health early/late, and its own numbers) |
+| `scripts/enemies/<type>_tuning.gd` | its tuning class, extending `EnemyTuning` |
+| `data/enemies/<type>.tres` | its tuning values (spawn lead, score, health early/late, floor use, and its own numbers) |
 | `data/patterns/<type>.json` | patterns that place it, each with `"requires": ["<type>"]` |
 | `scripts/enemies/<type>_rules.gd` | optional generator rules: `static func apply(gen: LevelGenerator)` |
 | `tests/suites/test_<type>.gd` | its tests |
@@ -101,14 +105,40 @@ every zone. `world.skin.enemy_variant` (`&"city"` or `&"scavenger"`) picks the z
 A level uses an enemy only if its `features` list has the type's name (GDD §6: one new thing at a
 time). Quick play can add features: `./play.sh --features=cyborg,drone`.
 
+Built so far: cyborg (with its panic variant and hosts), window cyborg, fence generator, hover
+truck, Octodog, sewer screech (manholes, and wall vents with the `screech_vents` feature in the City)
+and heli drone. `scripts/enemies/mesh_batch.gd` merges an enemy's low-poly parts into one mesh per
+material to keep draw calls down.
+
+**Floor use.** GDD §3 keeps the floor under a ceiling clear, and that includes enemies. A type's
+tuning says whether it uses the floor (`uses_floor`: false for fliers like drones and hover trucks,
+and wall-only enemies like window cyborgs) and how much of it around its spot
+(`floor_reach_before`/`_after`). Rules that plan a longer run for one enemy store it in
+`params.floor_span` (the Octodog's charges). `LevelGenerator.enemy_floor_span(entry)` and
+`enemy_uses_floor(entry)` read all of this, and `floor_clear` / `add_hull_with_pad` respect it.
+
 ## The generator
 
 `LevelGenerator` (`scripts/world/level_generator.gd`) builds a `LevelLayout` (pure data) from
 patterns, a difficulty value and a seed, for any lane count. Passes, each with its own random stream:
 patterns (filtered by the level's features) → enemy rules scripts → credits. Helpers for rules
 scripts: `rng_for(name)`, `add_enemy(type, at, lane, side, params)`, `add_hull_with_pad(lane, at,
-seconds)`, `floor_clear(from, to)`, `difficulty_at(progress)`, plus `layout`, `config`, `tuning`,
-`speed`, `jump_distance`. Pattern format: `data/patterns/README.md`.
+seconds)`, `floor_clear(from, to)`, `enemy_floor_span(entry)`, `enemy_uses_floor(entry)`,
+`difficulty_at(progress)`, plus `layout`, `config`, `tuning`, `speed`, `jump_distance`. Pattern
+format: `data/patterns/README.md`.
+
+Rules scripts run in the order of the level's `features` list. When a rule needs room for one of its
+guarantees, it removes what's in the way rather than moving it (taking content out never makes a
+level unfair). The drone's pad schedule (GDD §9.6) owns every pad after its first wave: it clears the
+floor under each pad's ceiling, and pattern ceilings give way.
+
+## Power-ups
+
+`PowerupController` (`scripts/powerups/powerup_controller.gd`) runs one `PowerupModule` per owned,
+switched-on permanent item: `WeaponPowerup` (auto-fire, tiers 1–4, enemy health bars), `ClawsPowerup`,
+`DashPowerup`, `MagnetPowerup` and `SlowTimePowerup`. Breakables (armor, shield, grapple) are charges
+on the Player. The controller's header documents its API: `hud_state()` for the HUD (`charges` -1 for
+permanent items), `equipment()` for the player model, and `try_dash()` / `try_slow_time()`.
 
 ## Zone skins
 
@@ -116,6 +146,30 @@ A `ZoneSkin` (`scripts/world/skins/zone_skin.gd`) decorates abstract pieces thro
 (`floor_segment`, `wall_section`, `fence`, `wall_sign`, `hull`, `pad`, `ramp`, `speed_pad`,
 `finish_line`, `make_environment`). Skins add visuals only, never collision or gameplay. Hazards keep
 one colour and shape language in every zone (pink crackle = electric fence).
+
+Skins so far: `CitySkin` (Zone 1, the Neon City) and `GanglandSkin` (Zone 2). `GreyboxSkin` is the
+fallback for undesigned zones. Both real skins build on the mesh kit (`scripts/world/meshes/`):
+`MeshKit` has shared builders for hazards, triggers and environments, and `MeshLayer` batches a chunk's
+geometry. The shaders in `scripts/world/meshes/shaders/` are procedural. `HazardStateVisual` swaps a
+hazard's ON / WARNING / OFF materials. A skin's `enemy_variant` (`&"city"` or `&"scavenger"`) picks
+the enemies' look.
+
+**Reduced flashing** (Settings): `Settings.apply_visuals()` sets the global shader uniform
+`reduced_flashing` (declared in `project.godot`) and `Settings.flashing_reduced`. Hazard shaders
+include `kit_flash.gdshaderinc` and use `warning_flicker()`, so a warning becomes a steady glow
+instead of a strobe. Anything new that flickers or flashes must honour it too.
+
+## Characters, UI and audio
+
+- **Characters:** `HumanoidRig` (`scripts/characters/`) is the procedural rig and pose set behind the
+  player model (`PlayerAvatar`, a human in a cyber suit) and, next, the cyborgs.
+- **UI:** a theme built in code (`scripts/ui/theme/`: `UiStyle` in `data/ui/ui_style.tres`,
+  `UiTheme`), code-drawn icons (`scripts/ui/icons/`) and a widget kit (`scripts/ui/widgets/`). Screens
+  (`scripts/ui/screens/`) extend `ScreenBase`; the HUD is `RunHud`. Orbitron is for titles and Exo 2
+  for text and numbers.
+- **Audio:** `SfxLibrary` maps sound names to `assets/sfx/*.wav` (volumes in
+  `data/audio/sfx_library.tres`); `Music` plays `assets/music/`. Both are generated by code in
+  `tools/asset_gen/` (`tools/godot.sh sfx` / `music`).
 
 ## Campaign, bosses and cinematics
 
@@ -147,5 +201,15 @@ the web demo until the real plugins are chosen (risk test R3).
 
 `tools/godot.sh test` runs every `tests/suites/test_*.gd` (a `TestSuite`); `--suite=<name>` runs
 one. `RunSim` (`tests/helpers/run_sim.gd`) runs a Player over a hand-built layout (`run()`), or a
-full RunWorld (`build_world()` + `step_world()`). The runner frees anything a suite leaves in the
-tree and gives suites a fresh, unsaved profile.
+full RunWorld (`build_world()` + `step_world()`). `SkinSuite` (`tests/helpers/skin_suite.gd`) holds
+the checks every zone skin must pass. The runner frees anything a suite leaves in the tree, gives
+suites a fresh, unsaved profile, reports a suite that fails to load, and ends a stuck run after
+600 s of real time.
+
+## Review tools
+
+Scenes in `tools/showcase/` show one part of the game up close for visual review (not part of the
+game): the avatar, the enemies (`enemy_showcase` for the cyborg family, `octodog_screech`,
+`drone_truck_showcase`), the UI kit and the screens. Each script's header lists its options. Render
+frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
+`CLAUDE.md`.

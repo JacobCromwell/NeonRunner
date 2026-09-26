@@ -18,7 +18,8 @@ extends Node
 ## - hud_state() -> Array[Dictionary]: one entry per item the run carries, in shop order
 ##   (weapon, claws, dash, magnet, slow_time, then armor, shield, grapple):
 ##     {id: StringName, icon: StringName (the catalog's icon name), tier: int (0 for breakables),
-##      ready: float 0–1 (cooldown progress; 1 = ready), active: bool, charges: int}
+##      ready: float 0–1 (cooldown progress; 1 = ready), active: bool, charges: int (-1 for the
+##      permanent power-ups: the HUD shows no count)}
 ##   The weapon is `active` while it has a target and `ready` shows its fire cycle; the dash and slow
 ##   time are `active` while running and `ready` 0 → 1 over their cooldown; claws and the magnet are
 ##   always active and ready. Armor, shield and grapple carry the player's charges (0 = used up; they
