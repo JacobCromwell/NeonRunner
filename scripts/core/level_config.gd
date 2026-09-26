@@ -64,8 +64,9 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 ## later): each feature some pattern can place in the level is in the finished layout, whatever
 ## the seed. When a build misses one (chance never picked it, or a rule dropped it or cleared it
 ## away), the generator builds the level again with a pick of it forced elsewhere, and every rule
-## still applies (LevelGenerator.GUARANTEE_SHARES). Campaign levels set it; quick play and tests
-## that build their own levels leave it off, so they generate as before.
+## still applies (LevelGenerator.GUARANTEE_SHARES). Campaign levels set it (and endless mode, which
+## starts from a copy of one); quick play and tests that build their own levels leave it off, so
+## they generate as before.
 @export var guarantee_features: bool = false
 ## DESIGN-TBD: how often this level picks a feature's patterns, as a factor on their pick weight
 ## (feature name → factor; 1 when not listed, 0 leaves them out), e.g. Corporate 2's heavier

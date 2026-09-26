@@ -18,8 +18,11 @@ extends RefCounted
 ## appearing later): after the passes, the generator checks that each feature a pattern can place
 ## in the level is in the finished layout (feature_positions). Rules may have dropped what didn't
 ## fit or cleared it for a guarantee of their own, so for each one missing it builds the level again
-## with a pick of that feature forced somewhere else (GUARANTEE_SHARES), until none is missing. Each
-## build runs every pass and rule unchanged, so the guarantee never bends a fairness rule.
+## with picks of that feature forced somewhere else (GUARANTEE_SHARES; more of them each time it's
+## missed, GUARANTEE_MAX_PICKS), until none is missing. Each build runs every pass and rule
+## unchanged, so the guarantee never bends a fairness rule. Rules that hold the room for their
+## feature themselves may add one where it fits when none is left (the host and Octodog rules),
+## which saves a build.
 
 const DENOMINATIONS: Array[int] = [1, 5, 25, 100]
 const RULES_DIR: String = "res://scripts/enemies"
