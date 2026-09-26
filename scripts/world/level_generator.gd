@@ -168,6 +168,13 @@ static func enemy_floor_span(entry: Dictionary) -> Vector2:
 	return Vector2(at - t.floor_reach_before, at + t.floor_reach_after)
 
 
+## False for enemy types whose tuning says they never come down to the floor lanes (fliers such as
+## drones and hover trucks, wall-only enemies such as window cyborgs). Unknown types use the floor.
+static func enemy_uses_floor(entry: Dictionary) -> bool:
+	var t := EnemyDirector.tuning_for(String(entry.get("type", ""))) as EnemyTuning
+	return t == null or t.uses_floor
+
+
 func _pick_pattern(patterns: Array, difficulty: float) -> Dictionary:
 	var candidates: Array = []
 	var total: float = 0.0
@@ -269,13 +276,19 @@ func _place_pattern(pattern: Dictionary, origin: float) -> float:
 			"enemy":
 				var type: String = String(element.get("type", ""))
 				var params: Dictionary = element.get("params", {})
+				# GDD §3: enemies that come down to the floor lanes (wall vents too) stay out from
+				# under a ceiling; fliers and wall-only enemies may be there.
+				var keep_off_hulls: bool = not bool(element.get("allow_under_hull", false)) \
+					and enemy_uses_floor({"type": type})
 				if element.has("side"):
 					var side: int = _pick_side(String(element.get("side", "random")), prev_side)
+					if keep_off_hulls and _under_hull(at, at, pattern):
+						continue
 					add_enemy(type, at, layout.outer_lane(side), side, params.duplicate(true))
 					prev_side = side
 				else:
 					var lanes: Array[int] = _pick_lanes(element.get("lanes", {"mode": "random", "count": 1}), prev_lanes)
-					if not bool(element.get("allow_under_hull", false)) and _under_hull(at, at, pattern):
+					if keep_off_hulls and _under_hull(at, at, pattern):
 						continue
 					for lane: int in lanes:
 						add_enemy(type, at, lane, 0, params.duplicate(true))

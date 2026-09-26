@@ -4,6 +4,7 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##   cyborg_charge        a bright, smooth FM whine climbing and pulsing faster (high, tonal)
 ##   truck_bang           three muffled, booming knocks through a wall (low, slow, rhythmic)
 ##   truck_cannon_charge  a shell clunks in, then a deep hum throbs faster and rises (low, throbbing)
+##   truck_rev            an engine blips once, then revs up hard to its redline (low-mid, growling)
 ##   octodog_windup       a wet, rough animal growl over a servo (low-mid, organic)
 ##   screech_shake        an iron cover rattling in a fast, irregular clatter (metallic, jittery)
 ##   drone_swoop          helicopter-rotor chop approaching with a Doppler dip (chopped noise)
@@ -23,6 +24,7 @@ func sounds() -> Dictionary:
 		"truck_burst": _truck_burst,
 		"truck_cannon_charge": _truck_cannon_charge,
 		"truck_cannon": _truck_cannon,
+		"truck_rev": _truck_rev,
 		"truck_explode": _truck_explode,
 		"octodog_windup": _octodog_windup,
 		"octodog_lunge": _octodog_lunge,
@@ -199,6 +201,45 @@ func _truck_cannon() -> PackedFloat32Array:
 	DSP.drive(b, 3.5)
 	DSP.crush(b, 9, 16000.0)
 	return b
+
+
+## The hover truck revs before it lurches forward: a quick blip, then a hard climb to the redline,
+## each firing stroke barking through an exhaust roar. It lasts the rev (HoverTruckTuning.rev_seconds,
+## 1 s), so it ends as the lurch starts.
+func _truck_rev() -> PackedFloat32Array:
+	var rng := _rng(309)
+	var d: float = 1.0
+	var b := DSP.buffer(d)
+	var n: int = b.size()
+	var phase: float = 0.0
+	for i: int in n:
+		var rpm: float = _rev_rpm(float(i) / n)
+		phase += lerpf(34.0, 125.0, rpm) / RATE
+		var p: float = fmod(phase, 1.0)
+		# One bark per firing stroke, dying away within the cycle (longer as the engine speeds up).
+		var bark: float = exp(-p * lerpf(7.0, 3.0, rpm))
+		var tone: float = (p * 2.0 - 1.0) * 0.6 + (0.25 if fmod(phase * 0.5, 1.0) < 0.5 else -0.25) \
+			+ sin(TAU * phase * 6.0) * 0.15 * rpm
+		b[i] = (tone * (0.45 + 0.55 * bark) + rng.randf_range(-1.0, 1.0) * bark * 0.35) * (0.45 + 0.55 * rpm)
+	DSP.drive(b, 3.0, 0.1)
+	DSP.filter(b, &"lowpass", 2600.0)
+	# The exhaust roar grows with the revs; its band is what phone speakers carry.
+	var roar := DSP.noise(d, rng)
+	DSP.filter(roar, &"bandpass", 900.0, 0.8)
+	for i: int in n:
+		var r: float = _rev_rpm(float(i) / n)
+		roar[i] *= r * r
+	DSP.mix(b, roar, 0.0, 0.5)
+	DSP.shape(b, 0.01, 0.03)
+	DSP.crush(b, 9, 16000.0)
+	return b
+
+
+## Engine speed (0–1) through the rev: a blip up and back, then a long climb held at the redline.
+static func _rev_rpm(u: float) -> float:
+	if u < 0.3:
+		return 0.15 + 0.45 * sin(PI * u / 0.3)
+	return lerpf(0.15, 1.0, smoothstep(0.34, 0.95, u))
 
 
 ## The hover truck explodes: two big blasts, burning debris and metal raining down, while everything

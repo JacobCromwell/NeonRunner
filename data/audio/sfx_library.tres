@@ -57,6 +57,7 @@ volume_db = {
 "truck_burst": -2.5,
 "truck_cannon": 0.0,
 "truck_cannon_charge": -0.5,
+"truck_rev": -1.0,
 "truck_explode": 0.0,
 "ui_back": -8.0,
 "ui_buy": -6.5,
