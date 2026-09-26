@@ -55,6 +55,9 @@ edges, by fences, along wall runs and on ceilings), tuned in the level's Credits
 
 Rules that patterns can't express (e.g. "an anti-grav pad at least 10 s after a drone appears, then every
 8–10 s", GDD §9.6) go in `scripts/enemies/<type>_rules.gd` as `static func apply(gen: LevelGenerator)`.
-They run after the patterns, in the order of the level's `features` list. A ceiling a rule adds
-(`add_hull_with_pad`) keeps off the floor that enemies use (`LevelGenerator.enemy_floor_span`). See
-`docs/ARCHITECTURE.md`.
+They run after the patterns, in the order of the level's `features` list; a script that declares
+`const RUN_AFTER: Array[String] = [...]` runs after those features' rules whatever the order (the host
+rules plan the Bad Dream's pads around the drones' pad schedule). A ceiling a rule adds
+(`add_hull_with_pad`) keeps off the floor that enemies use (`LevelGenerator.enemy_floor_span`); a pad a
+rule guarantees at a spot, clearing the floor it needs, comes from `scripts/enemies/pad_placement.gd`.
+See `docs/ARCHITECTURE.md`.

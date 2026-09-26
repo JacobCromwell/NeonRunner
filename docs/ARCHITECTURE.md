@@ -106,9 +106,16 @@ A level uses an enemy only if its `features` list has the type's name (GDD §6: 
 time). Quick play can add features: `./play.sh --features=cyborg,drone`.
 
 Built so far: cyborg (with its panic variant and hosts), window cyborg, fence generator, hover
-truck, Octodog, sewer screech (manholes, and wall vents with the `screech_vents` feature in the City)
-and heli drone. `scripts/enemies/mesh_batch.gd` merges an enemy's low-poly parts into one mesh per
-material to keep draw calls down.
+truck, Octodog, sewer screech (manholes, and wall vents with the `screech_vents` feature in the City),
+heli drone, and the Cyborg's Bad Dream (released by a killed host, spawned by the director at run
+time rather than placed by the generator). `scripts/enemies/mesh_batch.gd` merges an enemy's low-poly
+parts into one mesh per material to keep draw calls down.
+
+**Major attacks take turns through the director.** An enemy reports `is_major_attack_active()`
+(the Octodog through its charge sequence, the drone through wind-up and barrage, the Bad Dream through
+its chase), and before starting one asks `EnemyDirector.major_attack_blocked(self)`, which is true
+while another enemy's major attack is on and either of the two is `exclusive_major_attack` (the Bad
+Dream is: GDD §9.7). Other types can opt in the same way.
 
 **Floor use.** GDD §3 keeps the floor under a ceiling clear, and that includes enemies. A type's
 tuning says whether it uses the floor (`uses_floor`: false for fliers like drones and hover trucks,
@@ -127,10 +134,13 @@ seconds)`, `floor_clear(from, to)`, `enemy_floor_span(entry)`, `enemy_uses_floor
 `difficulty_at(progress)`, plus `layout`, `config`, `tuning`, `speed`, `jump_distance`. Pattern
 format: `data/patterns/README.md`.
 
-Rules scripts run in the order of the level's `features` list. When a rule needs room for one of its
-guarantees, it removes what's in the way rather than moving it (taking content out never makes a
-level unfair). The drone's pad schedule (GDD §9.6) owns every pad after its first wave: it clears the
-floor under each pad's ceiling, and pattern ceilings give way.
+Rules scripts run in the order of the level's `features` list, except that a script declaring
+`const RUN_AFTER: Array[String]` runs after those features' rules. When a rule needs room for one of
+its guarantees, it removes what's in the way rather than moving it (taking content out never makes a
+level unfair). Guaranteed pads come from `scripts/enemies/pad_placement.gd`, shared by the drone and
+host rules: the drone's pad schedule (GDD §9.6) owns every pad after its first wave, pattern ceilings
+give way, and the host rules (which run after the drone's) cover each Bad Dream chase with pads at most
+10 s apart or leave that host out.
 
 ## Power-ups
 
@@ -213,6 +223,6 @@ suites a fresh, unsaved profile, reports a suite that fails to load, and ends a 
 
 Scenes in `tools/showcase/` show one part of the game up close for visual review (not part of the
 game): the avatar, the enemies (`enemy_showcase` for the cyborg family, `octodog_screech`,
-`drone_truck_showcase`), the UI kit and the screens. Each script's header lists its options. Render
+`drone_truck_showcase`, `bad_dream_showcase`), the UI kit and the screens. Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
 `CLAUDE.md`.

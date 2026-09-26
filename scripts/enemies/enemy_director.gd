@@ -94,6 +94,19 @@ func targets_ahead(from: Vector3, max_distance: float) -> Array[Enemy]:
 	return out
 
 
+## True if `enemy` must hold off its major attack right now: another living enemy's major attack is
+## on (Enemy.is_major_attack_active) and one of the two must never overlap another's
+## (Enemy.exclusive_major_attack). GDD §9.7: the Bad Dream is never at the same time as an Octodog
+## charge sequence or a drone barrage (those two may still overlap each other).
+func major_attack_blocked(enemy: Enemy) -> bool:
+	for e: Enemy in active:
+		if e == enemy or not is_instance_valid(e) or not e.alive or not e.is_major_attack_active():
+			continue
+		if enemy.exclusive_major_attack or e.exclusive_major_attack:
+			return true
+	return false
+
+
 func count_alive(type: StringName = &"") -> int:
 	var n: int = 0
 	for e: Enemy in active:
