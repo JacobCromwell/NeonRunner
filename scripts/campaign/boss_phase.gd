@@ -1,7 +1,8 @@
 class_name BossPhase
 extends Resource
 ## One phase of a boss fight (GDD §10), listed in its BossDef. Phases run in order; each covers a
-## share of the boss's health and ends when weak-point stomps or weapon chip damage take that share.
+## share of the boss's health and ends when its big hits (weak-point stomps, EMPs, ...) or weapon
+## chip damage take that share.
 ## The boss script reads its phase's numbers to run its pattern, which cycles until the phase ends:
 ## nothing in a phase changes while the player struggles (GDD §10: no escalation), and only a later
 ## phase may be faster (`pace`). A boss with numbers of its own per phase extends this class, the way
@@ -11,10 +12,11 @@ extends Resource
 @export var display_name: String = ""
 ## Share of the boss's health this phase covers. The shares of all phases are scaled to add up to 1.
 @export_range(0.05, 1.0, 0.01) var health_share: float = 1.0
-## Weak-point stomps that clear this phase on their own; each takes an equal part of its health
-## (GDD §10: one stomp per phase for the Floating Head). Weapon damage counts too, so chip damage can
-## save a stomp.
-@export_range(1, 10) var stomps: int = 1
+## The big hits that clear this phase on their own, each taking an equal part of its health
+## (BossEncounter.hit_damage): weak-point stomps (GDD §10: one per phase for the Floating Head, three
+## on the Sewer Swarm's Host), EMPs (Sleep Taker), clusters destroyed (the Sewer Swarm: two, then the
+## rest). Weapon damage counts too, so chip damage can save a hit.
+@export_range(1, 10) var hits: int = 1
 ## How fast the boss runs its pattern (1 = its base timing). Boss scripts divide their timings by it.
 ## GDD §10: a later phase may be faster; nothing else changes with time.
 @export_range(0.5, 3.0, 0.05) var pace: float = 1.0

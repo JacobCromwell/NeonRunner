@@ -21,8 +21,12 @@ extends Resource
 
 @export_group("Fight")
 ## DESIGN-TBD: the boss's health, in laser tier 1 shots (the GDD §8 damage reference). Weapons chip
-## it; a weak-point stomp takes its part of the phase's share (BossPhase.stomps).
+## it; a big hit (a weak-point stomp, an EMP, ...) takes its part of the phase's share (BossPhase.hits).
 @export_range(1.0, 5000.0, 1.0) var health: float = 300.0
+## The most of the boss's health weapons can take over the whole fight, as a share (1 = no limit).
+## GDD §10: the Floating Head's weapons chip slowly, so even the best weapon saves at most one of its
+## three stomps (a third). DESIGN-TBD for the other bosses.
+@export_range(0.0, 1.0, 0.01) var weapon_share_cap: float = 1.0
 ## The phases, in order (GDD §10). Empty = one phase.
 @export var phases: Array[BossPhase] = []
 ## One lap of the fight's track, which the level generator plans like a level (seed, features,
@@ -52,6 +56,18 @@ extends Resource
 ## fight takes less than time_bonus_seconds.
 @export_range(0, 1000, 5) var time_bonus_per_second: int = 50
 @export_range(10.0, 900.0, 1.0, "suffix:s") var time_bonus_seconds: float = 200.0
+
+@export_group("Armor pickups")
+## GDD §10's standard armor rule: an armor pickup at the start of the final phase, and another some
+## seconds after the player's armor or shield breaks, at most once per phase (proposed cap). The fight
+## schedules them (BossEncounter.armor_pickup_due); the pickups themselves are task B7's.
+@export var armor_rule: bool = true
+## Seconds from a break to its pickup, somewhere in [min, max] (seeded): 15–17 by the standard rule,
+## 10–15 for the Floating Head, the gentler first boss.
+@export_range(0.0, 60.0, 0.5, "suffix:s") var armor_delay_min: float = 15.0
+@export_range(0.0, 60.0, 0.5, "suffix:s") var armor_delay_max: float = 17.0
+## Pickups after breaks per phase (GDD §10, proposed: at most one).
+@export_range(0, 5) var armor_pickups_per_phase: int = 1
 
 
 func is_built() -> bool:

@@ -3,8 +3,9 @@ extends Node
 ## First-encounter hints (DESIGN-TBD: the tutorial approach is open, OPEN_QUESTIONS §5). Each hint in
 ## data/hints/hints.json shows once per profile, a moment before the player first meets its trigger:
 ## "start" (level start), a piece ("gap", "fence_full", "fence_gapped", "fence_pulsing", "sign",
-## "pad", "ramp", "speed_pad") or an enemy ("enemy:<type>", when one spawns). "{action}" in the text
-## becomes the player's key on PC or the gesture on touch screens.
+## "pad", "ramp", "speed_pad") or an enemy ("enemy:<type>", when one spawns; "enemy:boss" for any
+## boss without a hint of its own). "{action}" in the text becomes the player's key on PC or the
+## gesture on touch screens.
 
 signal hint_shown(id: String, text: String)
 
@@ -79,6 +80,9 @@ func _process(_delta: float) -> void:
 
 func _on_enemy_spawned(enemy: Enemy) -> void:
 	var key: String = "host" if enemy.is_host else String(enemy.type_id)
+	# A boss's own hint ("enemy:<boss id>") if it has one, else the one every boss shares.
+	if enemy.is_boss and not _enemy_hints.has(key):
+		key = "boss"
 	if _enemy_hints.has(key):
 		_show(_enemy_hints[key])
 		_enemy_hints.erase(key)

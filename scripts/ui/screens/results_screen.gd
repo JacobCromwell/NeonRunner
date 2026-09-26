@@ -2,8 +2,10 @@ class_name ResultsScreen
 extends ScreenBase
 ## After a run: level complete (the stars pop in, the score and the credits count up: collected
 ## plus the completion bonus makes what's earned, then the stats and NEW BEST) or the run summary
-## after a death (what hit the player, the credits kept). Then on to the shop and the next level
-## or a retry (GDD §4, §8), a retry now, or the menu.
+## after a death (what hit the player, the credits kept). A boss fight (GDD §10) shows BOSS DEFEATED,
+## its stars against the par times (listed under them), the boss's payout, and the fight's own stats
+## (time, weak points, the phase reached, the time bonus). Then on to the shop and the next step or
+## a retry (GDD §4, §8), a retry now, or the menu.
 ## DESIGN-TBD: which stats the level-complete screen shows (OPEN_QUESTIONS §5); these are the
 ## ScoreKeeper's.
 
@@ -30,8 +32,9 @@ func _ready() -> void:
 	var names: PackedStringArray = ResultsScreen.run_names(ctx)
 	var kicker: String = names[0] if names[1] == "" else "%s · %s" % [names[0], names[1].to_upper()]
 	column.add_child(ScreenBase.make_label(kicker, UiTheme.SUBHEADING, HORIZONTAL_ALIGNMENT_CENTER))
-	var heading := ScreenBase.make_label("LEVEL COMPLETE" if result.completed else "RUN OVER", UiTheme.TITLE,
-		HORIZONTAL_ALIGNMENT_CENTER)
+	var boss: bool = ctx.is_boss()
+	var heading := ScreenBase.make_label(("BOSS DEFEATED" if boss else "LEVEL COMPLETE") if result.completed else "RUN OVER",
+		UiTheme.TITLE, HORIZONTAL_ALIGNMENT_CENTER)
 	if not result.completed:
 		heading.add_theme_color_override(&"font_color", UiTheme.style().danger)
 	column.add_child(heading)
@@ -50,6 +53,9 @@ func _ready() -> void:
 		stars.star_size = UiTheme.px(56)
 		stars.star_revealed.connect(_on_star)
 		left.add_child(stars)
+		if boss:
+			left.add_child(ScreenBase.make_label(ResultsScreen.par_text(ctx.boss), UiTheme.CAPTION,
+				HORIZONTAL_ALIGNMENT_CENTER))
 	left.add_child(_score_row())
 	left.add_child(HSeparator.new())
 	left.add_child(_credit_table())
@@ -116,6 +122,17 @@ static func format_time(seconds: float) -> String:
 	return "%d:%02d.%d" % [whole / 60, whole % 60, floori((seconds - whole) * 10.0)]
 
 
+## A boss's par times for its stars (GDD §10, proposed): "2 stars under 1:15 · 3 stars under 0:50".
+static func par_text(def: BossDef) -> String:
+	return "2 stars under %s · 3 stars under %s" % [_clock(def.two_star_seconds), _clock(def.three_star_seconds)]
+
+
+## m:ss
+static func _clock(seconds: float) -> String:
+	var whole: int = floori(seconds)
+	return "%d:%02d" % [whole / 60, whole % 60]
+
+
 func _score_row() -> Control:
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -160,7 +177,8 @@ func _credit_table() -> Control:
 	_table_row(grid, "Credits collected", UiTheme.format_int(result.credits_collected))
 	if result.completed:
 		if result.completion_bonus > 0:
-			_table_row(grid, "Completion bonus", "+" + UiTheme.format_int(result.completion_bonus), UiTheme.ACCENT_TEXT)
+			_table_row(grid, "Boss payout" if result.context.is_boss() else "Completion bonus",
+				"+" + UiTheme.format_int(result.completion_bonus), UiTheme.ACCENT_TEXT)
 		_table_label(grid, "Credits earned")
 	else:
 		var share: float = App.rules.death_credit_keep_fraction if App.rules != null else 0.0
@@ -201,6 +219,16 @@ func _stats_table() -> Control:
 		["Longest wall run", "%d m" % roundi(float(st.get("longest_wall_run", 0.0)))],
 		["Hits blocked", UiTheme.format_int(int(st.get("blocked", 0)))],
 	]
+	if result.context.is_boss():
+		# A fight's own numbers (GDD §10): the time counts for stars and the time bonus.
+		rows = [
+			["Time", ResultsScreen.format_time(result.time)],
+			["Phase reached", "%d / %d" % [int(st.get("phase", 1)), int(st.get("phases", 1))]],
+			["Weak points hit", UiTheme.format_int(int(st.get("weak_points", 0)))],
+			["Kills", UiTheme.format_int(int(st.get("kills", 0)))],
+			["Hits blocked", UiTheme.format_int(int(st.get("blocked", 0)))],
+			["Time bonus", UiTheme.format_int(int(st.get("time_bonus", 0)))],
+		]
 	for r: Array in rows:
 		_table_label(grid, r[0])
 		var v := ScreenBase.make_label(r[1], &"", HORIZONTAL_ALIGNMENT_RIGHT)

@@ -5,16 +5,21 @@ extends Node3D
 ## The root of a boss's scene (BossDef.scene) extends this class and runs the boss's own pattern
 ## through the hooks below; the framework does the rest:
 ## - the arena: the run's track, planned lap after lap by the generator (BossArena), so it keeps going
-##   for as long as the fight lasts and is the same on every attempt;
-## - health and phases from BossDef: a phase ends when weapons or weak-point stomps take its share of
-##   the health; a single hit never skips a phase; the next phase begins with its intro (the boss can't
-##   be hurt and doesn't attack) and then its pattern;
+##   for as long as the fight lasts and is the same on every attempt; the boss adds track pieces
+##   (arena.add_pieces) and props within sight (props: fences, blocks, pads, ceilings, a wall taken
+##   away, floor warnings);
+## - health and phases from BossDef: a phase ends when weapons or big hits (weak-point stomps, EMPs,
+##   parts destroyed: hit_damage) take its share; a single hit never skips a phase; the next phase
+##   begins with its intro (the boss can't be hurt and doesn't attack) and then its pattern; weapons
+##   stop counting at the boss's weapon cap;
 ## - the checkpoint: reaching a phase marked `checkpoint` stores where a retry resumes
-##   (RunContext.boss_resume, with the fight time and score so far);
+##   (RunContext.boss_resume, with the fight time, score and weapon damage so far);
+## - the standard armor rule (GDD §10): armor_pickup_due at the start of the final phase and a while
+##   after the player's armor or shield breaks, at most once per phase (task B7 spawns the pickups);
 ## - the win: the time bonus and the defeat score go to the ScoreKeeper, the boss's parts are
 ##   defeated, and LevelRun ends the run (results, payout, stars from par times, the leaderboard);
-## - events for other systems: phase_started / phase_ended, protection_broken (the player's armor or
-##   shield broke; task B7's pickups use both), weak_point_hit, checkpoint_reached, defeated.
+## - events for other systems: phase_started / phase_ended, protection_broken, armor_pickup_due,
+##   weak_point_hit, checkpoint_reached, health_changed, defeated.
 ##
 ## Rules a boss script keeps (CLAUDE.md, GDD §10): input only through the player's named actions (the
 ## boss never reads input), hits only through hitboxes and projectiles (DamageRules decides), a visual
@@ -22,13 +27,16 @@ extends Node3D
 ## (pace() and the phase's own numbers), never on how long the fight or the attempt has lasted, so it
 ## keeps cycling the same way until the player lands the hits. Random choices use `rng`, seeded from
 ## the boss and the arena, and time comes from the physics step, so every attempt plays out the same
-## way for the same inputs.
+## way for the same inputs. The encounter node stays at the world origin; its parts move.
 ##
-## Hooks, all optional: _build_boss() (make parts with add_part, visuals), _on_phase_started(i) and
-## _intro_tick(delta) (entrance and transitions), _on_pattern_started(i) and _pattern_tick(delta) (the
-## pattern), _on_weak_point_hit(part, hazard), _on_phase_ended(i), _on_defeated() and
-## _defeated_tick(delta). Helpers: add_part(), spawn_enemy() (normal enemies, e.g. a cyborg drop),
-## arena.floor_clear(), pace(), phase(), is_final_phase(), player_distance(), log_event().
+## Hooks, all optional: _plan_lap(lap, index, arena) (the boss's own pieces on each lap, before the
+## fight), _build_boss() (make parts with add_part, visuals), _on_phase_started(i) and _intro_tick(delta)
+## (entrance and transitions), _on_pattern_started(i) and _pattern_tick(delta) (the pattern),
+## _on_weak_point_hit(part, hazard), _on_part_defeated(part, cause), _on_part_emp(part, center, radius),
+## _on_phase_ended(i), _on_defeated() and _defeated_tick(delta). Helpers: add_part(), spawn_enemy()
+## (normal enemies: a cyborg drop, a Buzz Overdrive onto the roof), damage() (a boss's own causes: a
+## cluster shocked by a fence, an EMP), hit_damage(), set_light_level(), arena queries (floor_clear,
+## live_fence_between, hole_between), pace(), phase(), is_final_phase(), player_distance(), log_event().
 
 ## A phase begins: its intro starts (the entrance for the first phase, the transition for later ones).
 signal phase_started(index: int)
@@ -39,9 +47,12 @@ signal health_changed(health: float, max_health: float)
 signal weak_point_hit(part: BossPart, damage: float)
 ## A checkpoint phase began: a death from now on restarts the fight at that phase.
 signal checkpoint_reached(index: int)
-## The player's armor or shield broke during the fight (GDD §10: the Floating Head then drops an
-## armor pickup 10–15 s later, at most once per phase; task B7).
+## The player's armor or shield broke during the fight.
 signal protection_broken(item: StringName)
+## GDD §10's standard armor rule says an armor pickup appears now: `reason` is &"final_phase" (the
+## final phase began) or &"protection_broken" (BossDef.armor_delay_min–max seconds after a break, at
+## most armor_pickups_per_phase per phase). Task B7 spawns the pickup ahead of the player.
+signal armor_pickup_due(reason: StringName)
 signal defeated
 
 ## INTRO: a phase's intro (the boss can't be hurt). FIGHT: its pattern. DEFEATED: the boss is beaten.
@@ -51,12 +62,15 @@ enum State { INTRO, FIGHT, DEFEATED }
 const META: StringName = &"boss_encounter"
 ## Health shares closer than this count as equal.
 const EPSILON: float = 0.0001
+## GDD §10 (Sleep Taker): the arena gets darker, but never pitch black.
+const MIN_LIGHT_LEVEL: float = 0.3
 
 var def: BossDef
 var world: RunWorld
 var context: RunContext
 var arena: BossArena
-## Seeded from the boss and the arena: use it for every random choice.
+var props: BossProps
+## Seeded from the boss and the arena: use it for every random choice of the pattern.
 var rng := RandomNumberGenerator.new()
 var max_health: float = 1.0
 var health: float = 1.0
@@ -64,9 +78,11 @@ var phase_index: int = 0
 var state: State = State.INTRO
 ## Seconds in the current state (the intro, the pattern, or since the defeat).
 var state_time: float = 0.0
-## The boss's bodies (add_part), the first one being its main body.
+## The boss's parts (add_part), the first one being its body.
 var parts: Array[BossPart] = []
 var weak_points_hit: int = 0
+## Weapon damage dealt over the fight (with what a checkpoint carried), against BossDef.weapon_share_cap.
+var weapon_damage: float = 0.0
 ## Fight time carried over from the attempt that reached the checkpoint this one resumes at.
 var carried_time: float = 0.0
 ## What happened, for tests and debugging: {t (fight time), event, phase, ...}.
@@ -75,6 +91,16 @@ var events: Array[Dictionary] = []
 var _ends: PackedFloat32Array = PackedFloat32Array()
 var _defeat_time: float = -1.0
 var _spawned: int = 0
+## Armor pickups waiting for their moment: {at (fight time), phase}; breaks answered per phase.
+var _armor_rng := RandomNumberGenerator.new()
+var _armor_due: Array[Dictionary] = []
+var _armor_breaks: Dictionary = {}
+## The arena's light (set_light_level): the level now, the target, the fade speed, and the lights'
+## own values to scale.
+var _light: float = 1.0
+var _light_target: float = 1.0
+var _light_speed: float = 0.0
+var _light_base: Dictionary = {}
 
 
 ## A new encounter from a built boss's scene, or null (with an error) if its root isn't one.
@@ -99,8 +125,16 @@ static func of(p_world: Node) -> BossEncounter:
 	return value as BossEncounter
 
 
-## Starts the fight in a built world: joins it (as its last child), runs the arena, builds the boss
-## and begins its first phase, or the checkpoint phase a retry resumes at (context.boss_resume).
+## Plans the fight's arena for `p_context` (its boss, its config with the lane count and difficulty,
+## its tuning), shaped by this boss's _plan_lap. LevelRun builds the world from arena.layout.
+func plan_arena(p_context: RunContext) -> BossArena:
+	def = p_context.boss
+	return BossArena.plan(def, p_context.config, p_context.tuning, self)
+
+
+## Starts the fight in a built world: joins it (after the player, before the enemies, so the pattern
+## moves the boss's parts before they act), runs the arena, builds the boss and begins its first
+## phase, or the checkpoint phase a retry resumes at (context.boss_resume).
 func setup(p_world: RunWorld, p_context: RunContext, p_arena: BossArena) -> void:
 	world = p_world
 	context = p_context
@@ -108,13 +142,19 @@ func setup(p_world: RunWorld, p_context: RunContext, p_arena: BossArena) -> void
 	arena = p_arena
 	name = "Boss"
 	rng.seed = hash([String(def.id), context.config.level_seed if context.config != null else 0])
+	_armor_rng.seed = hash([String(def.id), "armor"])
 	max_health = maxf(def.health, 1.0)
 	health = max_health
 	_ends = def.phase_ends()
 	world.add_child(self)
+	world.move_child(self, world.director.get_index())
 	world.set_meta(META, self)
 	if arena != null:
 		arena.attach(world)
+	props = BossProps.new()
+	props.name = "Props"
+	add_child(props)
+	props.setup(world)
 	world.player.item_used.connect(_on_item_used)
 	var start: int = 0
 	var resume: Dictionary = context.boss_resume
@@ -122,6 +162,7 @@ func setup(p_world: RunWorld, p_context: RunContext, p_arena: BossArena) -> void
 		start = clampi(int(resume.get("phase", 0)), 0, phase_count() - 1)
 		health = phase_start_health(start)
 		carried_time = maxf(float(resume.get("time", 0.0)), 0.0)
+		weapon_damage = maxf(float(resume.get("weapon_damage", 0.0)), 0.0)
 		var carried_score: int = int(resume.get("score", 0))
 		if carried_score > 0:
 			world.score.add_bonus(&"checkpoint", carried_score, "Checkpoint")
@@ -159,6 +200,11 @@ func is_defeated() -> bool:
 	return state == State.DEFEATED
 
 
+## True while weapon hits still count (below BossDef.weapon_share_cap).
+func weapons_can_hurt() -> bool:
+	return weapon_damage < max_health * def.weapon_share_cap - EPSILON * max_health
+
+
 func health_ratio() -> float:
 	return clampf(health / max_health, 0.0, 1.0)
 
@@ -193,10 +239,11 @@ func lane_count() -> int:
 	return world.geo.lane_count
 
 
-## The damage one weak-point stomp deals in the current phase.
-func stomp_damage() -> float:
+## The damage one big hit deals in the current phase (a weak-point stomp, an EMP, a cluster destroyed):
+## the phase's share of health over its BossPhase.hits.
+func hit_damage() -> float:
 	var share: float = (1.0 if phase_index == 0 else _ends[phase_index - 1]) - _ends[phase_index]
-	return max_health * share / maxf(phase().stomps, 1)
+	return max_health * share / maxf(phase().hits, 1)
 
 
 ## Numbers for the results screen: weak points hit, the phase reached, the time bonus.
@@ -211,18 +258,24 @@ func stats() -> Dictionary:
 
 # --- Damage ---------------------------------------------------------------------------
 
-## Hurts the boss by `amount` (weapons through BossPart.take_damage, stomps through weak points, or a
-## boss script's own causes). Only counts while its pattern runs (is_vulnerable). A single hit ends at
-## most the current phase: it never carries the boss past the end of the next one. Returns the damage
-## dealt.
+## Hurts the boss by `amount`: weapons (BossPart.take_damage, cause &"weapon", up to the boss's weapon
+## cap), stomps (stomp_weak_point), or a boss script's own causes (&"emp", &"fence", &"gap", ...). Only
+## counts while its pattern runs (is_vulnerable). A single hit ends at most the current phase: it never
+## takes the boss past the end of the next one. Returns the damage dealt.
 func damage(amount: float, cause: StringName) -> float:
 	if state != State.FIGHT or amount <= 0.0:
 		return 0.0
+	if cause == &"weapon":
+		amount = minf(amount, max_health * def.weapon_share_cap - weapon_damage)
+		if amount <= 0.0:
+			return 0.0
 	var before: float = health
 	health = maxf(health - amount, _lowest_after_hit())
 	var dealt: float = before - health
 	if dealt <= 0.0:
 		return 0.0
+	if cause == &"weapon":
+		weapon_damage += dealt
 	health_changed.emit(health, max_health)
 	_sync_parts()
 	if health <= max_health * EPSILON:
@@ -234,11 +287,11 @@ func damage(amount: float, cause: StringName) -> float:
 
 
 ## A stomp landed on one of `part`'s weak points (BossPart). It scores, switches that part's weak
-## points off until the boss script shows them again, and deals the phase's stomp damage.
+## points off until the boss script shows them again, and deals the phase's hit damage.
 func stomp_weak_point(part: BossPart, hazard: Hazard) -> void:
 	if state != State.FIGHT:
 		return
-	var amount: float = stomp_damage()
+	var amount: float = hit_damage()
 	weak_points_hit += 1
 	world.score.stomps += 1
 	world.score.add_bonus(&"weak_point", def.weak_point_score, "Weak point")
@@ -249,12 +302,26 @@ func stomp_weak_point(part: BossPart, hazard: Hazard) -> void:
 	damage(amount, &"stomp")
 
 
+## A part with health of its own was defeated (BossPart; a swarm cluster). The boss script decides
+## what it means (_on_part_defeated: hurt the boss by hit_damage(), move the phase on).
+func part_defeated(part: BossPart, cause: StringName) -> void:
+	log_event(&"part_defeated", {"cause": cause})
+	_on_part_defeated(part, cause)
+
+
+## An EMP reached one of the boss's parts (a fence generator destroyed nearby, RunWorld.emp). The boss
+## script decides what it does (_on_part_emp: Sleep Taker loses a chunk).
+func part_hit_by_emp(part: BossPart, center: Vector3, radius: float) -> void:
+	log_event(&"emp")
+	_on_part_emp(part, center, radius)
+
+
 # --- Helpers for boss scripts ----------------------------------------------------------
 
-## Adds one of the boss's bodies: a BossPart subclass (its script), spawned through the enemy
-## director so weapons and the damage rules treat it like any enemy. `params` reach it as
-## spawn.params (with `encounter` set); it starts a little ahead of the player in the middle lane,
-## and the boss script moves it from there.
+## Adds one of the boss's parts: a BossPart subclass (its script), spawned through the enemy director
+## so weapons and the damage rules treat it like any enemy. `params` reach it as spawn.params (with
+## `encounter` set); it starts a little ahead of the player in the middle lane, and the boss script
+## moves it from there.
 func add_part(script: Script, params: Dictionary = {}) -> BossPart:
 	var p: Dictionary = params.duplicate()
 	p["encounter"] = self
@@ -271,8 +338,8 @@ func add_part(script: Script, params: Dictionary = {}) -> BossPart:
 	return part
 
 
-## Brings a normal enemy into play now (the Floating Head's cyborg drop, GDD §10): a layout entry
-## for the director, with a seed from the fight's random stream so every attempt matches.
+## Brings a normal enemy into play now (the Floating Head's cyborg drop, GDD §10): a layout entry for
+## the director, with a seed from the fight's own count so every attempt matches.
 func spawn_enemy(type: String, at: float, lane: int, side: int = 0, params: Dictionary = {}) -> Enemy:
 	_spawned += 1
 	return world.director.spawn({"type": type, "at": at, "lane": lane, "side": side,
@@ -286,6 +353,23 @@ func set_weak_points_enabled(on: bool) -> void:
 			part.set_weak_points_enabled(on)
 
 
+## Dims the arena's light to `level` (1 = the zone's normal light) over `seconds`, or brings it back:
+## a smooth fade, never a flash, and never below MIN_LIGHT_LEVEL (GDD §10, Sleep Taker: darker, but
+## never pitch black). It scales the environment's ambient and sky light and the directional light;
+## glowing things (hazards, credits, the HUD) keep their colours. The light returns with the fight.
+func set_light_level(level: float, seconds: float = 1.0) -> void:
+	_capture_light()
+	_light_target = clampf(level, MIN_LIGHT_LEVEL, 1.0)
+	_light_speed = absf(_light_target - _light) / maxf(seconds, 0.001)
+	if seconds <= 0.0:
+		_light = _light_target
+		_apply_light()
+
+
+func light_level() -> float:
+	return _light
+
+
 ## Adds an entry to `events` (for tests and the debug readout).
 func log_event(event: StringName, extra: Dictionary = {}) -> void:
 	var entry := {"t": fight_time(), "event": event, "phase": phase_index}
@@ -294,6 +378,13 @@ func log_event(event: StringName, extra: Dictionary = {}) -> void:
 
 
 # --- Hooks (override in a boss script) --------------------------------------------------
+
+## Before the fight, once per distinct lap of the arena (`lap` starts at 0; the fight repeats the laps
+## in turn): add the boss's own set pieces, or clear room for them. Runs before _build_boss, from the
+## boss and the arena seed only, so every attempt gets the same laps.
+func _plan_lap(_lap: LevelLayout, _index: int, _arena: BossArena) -> void:
+	pass
+
 
 ## Once, before the first phase: make the parts (add_part) and anything else the boss needs.
 func _build_boss() -> void:
@@ -325,6 +416,17 @@ func _on_weak_point_hit(_part: BossPart, _hazard: Hazard) -> void:
 	pass
 
 
+## A part with health of its own was defeated (a swarm cluster shot down, or defeated by the boss
+## script after being baited into a fence or a hole).
+func _on_part_defeated(_part: BossPart, _cause: StringName) -> void:
+	pass
+
+
+## An EMP reached a part (`center` and `radius` in world space).
+func _on_part_emp(_part: BossPart, _center: Vector3, _radius: float) -> void:
+	pass
+
+
 ## A phase's health is gone; the next phase's intro follows at once.
 func _on_phase_ended(_index: int) -> void:
 	pass
@@ -347,6 +449,9 @@ func _physics_process(delta: float) -> void:
 		return
 	if arena != null:
 		arena.update(world.player.distance)
+	if _light != _light_target:
+		_light = move_toward(_light, _light_target, _light_speed * delta)
+		_apply_light()
 	if state == State.DEFEATED:
 		state_time += delta
 		_defeated_tick(delta)
@@ -355,15 +460,23 @@ func _physics_process(delta: float) -> void:
 	if not player.alive or not player.running:
 		return
 	state_time += delta
+	_update_armor_rule()
 	if state == State.INTRO:
 		_intro_tick(delta)
-		if state_time >= phase().intro_seconds:
+		if state == State.INTRO and state_time >= phase().intro_seconds:
 			state = State.FIGHT
 			state_time = 0.0
 			log_event(&"pattern")
 			_on_pattern_started(phase_index)
 	else:
 		_pattern_tick(delta)
+
+
+func _exit_tree() -> void:
+	# The lights are the run's: give them back as they were.
+	if not _light_base.is_empty():
+		_light = 1.0
+		_apply_light()
 
 
 func _begin_phase(index: int) -> void:
@@ -374,11 +487,15 @@ func _begin_phase(index: int) -> void:
 	var p: BossPhase = phase()
 	var resume: Dictionary = context.boss_resume
 	if p.checkpoint and (resume.is_empty() or int(resume.get("phase", -1)) < index):
-		context.boss_resume = {"phase": index, "time": fight_time(), "score": world.score.score}
+		context.boss_resume = {"phase": index, "time": fight_time(), "score": world.score.score,
+			"weapon_damage": weapon_damage}
 		log_event(&"checkpoint")
 		checkpoint_reached.emit(index)
 	log_event(&"phase")
 	phase_started.emit(index)
+	if def.armor_rule and is_final_phase():
+		log_event(&"armor_pickup", {"reason": &"final_phase"})
+		armor_pickup_due.emit(&"final_phase")
 	_on_phase_started(index)
 
 
@@ -394,6 +511,7 @@ func _defeat(cause: StringName) -> void:
 	state = State.DEFEATED
 	state_time = 0.0
 	_defeat_time = carried_time + world.player.elapsed
+	_armor_due.clear()
 	set_weak_points_enabled(false)
 	log_event(&"defeated", {"cause": cause})
 	var bonus: int = def.time_bonus(_defeat_time)
@@ -422,6 +540,51 @@ func _sync_parts() -> void:
 
 
 func _on_item_used(item: StringName) -> void:
-	if item == &"armor" or item == &"shield":
-		log_event(&"protection_broken", {"item": item})
-		protection_broken.emit(item)
+	if (item != &"armor" and item != &"shield") or state == State.DEFEATED:
+		return
+	log_event(&"protection_broken", {"item": item})
+	protection_broken.emit(item)
+	if not def.armor_rule:
+		return
+	var used: int = int(_armor_breaks.get(phase_index, 0))
+	if used >= def.armor_pickups_per_phase:
+		return
+	_armor_breaks[phase_index] = used + 1
+	var delay: float = _armor_rng.randf_range(def.armor_delay_min, maxf(def.armor_delay_max, def.armor_delay_min))
+	_armor_due.append({"at": fight_time() + delay, "phase": phase_index})
+
+
+## Pickups after breaks, when their delay is up (the fight's clock stops while the player is down).
+func _update_armor_rule() -> void:
+	for i: int in range(_armor_due.size() - 1, -1, -1):
+		if fight_time() >= float(_armor_due[i]["at"]):
+			_armor_due.remove_at(i)
+			log_event(&"armor_pickup", {"reason": &"protection_broken"})
+			armor_pickup_due.emit(&"protection_broken")
+
+
+## The environment and the directional lights of the run, as they are before any dimming.
+func _capture_light() -> void:
+	if not _light_base.is_empty() or not is_inside_tree():
+		return
+	# The run's WorldEnvironment sets its world's environment.
+	var env: Environment = get_world_3d().environment
+	var lights: Array = []
+	var holder: Node = world.get_parent() if world != null and world.get_parent() != null else world
+	for node: Node in holder.find_children("*", "DirectionalLight3D", true, false):
+		lights.append([node, (node as DirectionalLight3D).light_energy])
+	_light_base = {"env": env, "lights": lights,
+		"ambient": env.ambient_light_energy if env != null else 1.0,
+		"sky": env.background_energy_multiplier if env != null else 1.0}
+
+
+func _apply_light() -> void:
+	if _light_base.is_empty():
+		return
+	var env: Environment = _light_base["env"]
+	if env != null:
+		env.ambient_light_energy = float(_light_base["ambient"]) * _light
+		env.background_energy_multiplier = float(_light_base["sky"]) * _light
+	for entry: Array in _light_base["lights"]:
+		if is_instance_valid(entry[0]):
+			(entry[0] as DirectionalLight3D).light_energy = float(entry[1]) * _light

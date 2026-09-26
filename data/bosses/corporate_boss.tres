@@ -1,9 +1,36 @@
 [gd_resource type="Resource" script_class="BossDef" format=3]
 
 [ext_resource type="Script" path="res://scripts/campaign/boss_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/campaign/boss_phase.gd" id="2_phase"]
+
+[sub_resource type="Resource" id="phase_1"]
+script = ExtResource("2_phase")
+display_name = "The Board"
+health_share = 1.0
+hits = 1
+intro_seconds = 2.0
+
+[sub_resource type="Resource" id="phase_2"]
+script = ExtResource("2_phase")
+display_name = "The Contract"
+health_share = 1.0
+hits = 1
+intro_seconds = 2.0
+
+[sub_resource type="Resource" id="phase_3"]
+script = ExtResource("2_phase")
+display_name = "The Merger"
+health_share = 1.0
+hits = 3
+intro_seconds = 2.0
 
 [resource]
 script = ExtResource("1_script")
 id = &"corporate_boss"
-display_name = "Corporate boss"
-notes = "DESIGN-TBD: not designed yet (GDD §10: the Corporate zone's boss is still open)."
+display_name = "Hostile Takeover"
+notes = "Designed, not built yet (GDD §10): the Chairman's armored maglev train, run from the rear roof toward the locomotive while a military gunship paces it. Stomp the glowing couplings while jumping the gaps between carriages, ride the gunship's belly over an armored carriage, then stomp the three docking clamps when the gunship merges with the locomotive."
+phases = Array[ExtResource("2_phase")]([SubResource("phase_1"), SubResource("phase_2"), SubResource("phase_3")])
+armor_rule = true
+armor_delay_min = 15.0
+armor_delay_max = 17.0
+armor_pickups_per_phase = 1

@@ -1,15 +1,18 @@
 class_name LevelRun
 extends Node3D
-## One level being played. Generates the layout for a RunContext, builds the RunWorld, and runs the
-## camera, HUD, music and debug tools. The App owns the flow around a run (death screen, revive,
-## results, shop, retry); LevelRun only plays and reports:
+## One level or boss fight being played. Generates the layout for a RunContext (a boss fight's arena
+## comes from its BossEncounter, GDD §10), builds the RunWorld, and runs the camera, HUD, music and
+## debug tools. The App owns the flow around a run (death screen, revive, results, shop, retry);
+## LevelRun only plays and reports:
 ## - `died` when the player dies (after a short pause so the death reads). The App answers with
 ##   revive() or give_up().
-## - `finished` with the RunResult when the level is completed or the player gives up.
+## - `finished` with the RunResult when the level is completed (a boss fight: the boss is beaten) or
+##   the player gives up.
 ## - `pause_requested` when the pause action is pressed.
 ##
 ## Quick play (RunContext.Mode.QUICK, the grey-box workflow) restarts by itself after a death and
-## moves to the next seed after a finish, and keeps the debug keys (F1–F6, R, M).
+## moves to the next seed after a finish (a boss fight starts over), and keeps the debug keys
+## (F1–F6, R, M).
 
 signal died(run: LevelRun)
 signal finished(result: RunResult)
@@ -27,6 +30,8 @@ const QUICK_DEATH_PAUSE: float = 1.2
 var context: RunContext
 var rules: GameRules
 var world: RunWorld
+## The boss fight in this run, or null for a level.
+var encounter: BossEncounter
 var camera: RunCamera
 var hud: RunHud
 var state: State = State.RUNNING
@@ -54,10 +59,19 @@ func _build() -> void:
 	if world != null:
 		world.queue_free()
 		remove_child(world)
-	var gen := LevelGenerator.new()
-	var layout: LevelLayout = gen.generate(context.config, context.tuning, LevelGenerator.load_for(context.config))
-	for line: String in gen.warnings:
-		push_warning("LevelGenerator: " + line)
+	encounter = null
+	var layout: LevelLayout
+	var arena: BossArena = null
+	if context.is_boss():
+		encounter = BossEncounter.create(context.boss)
+		arena = encounter.plan_arena(context) if encounter != null else null
+	if arena != null:
+		layout = arena.layout
+	else:
+		var gen := LevelGenerator.new()
+		layout = gen.generate(context.config, context.tuning, LevelGenerator.load_for(context.config))
+		for line: String in gen.warnings:
+			push_warning("LevelGenerator: " + line)
 	world = RunWorld.new()
 	world.name = "World"
 	add_child(world)
@@ -70,6 +84,9 @@ func _build() -> void:
 	world.player.set_hitbox_visible(_show_hitboxes)
 	world.effects.shake_scale = Settings.shake_scale(App.profile)
 	world.player.steady_flash = Settings.reduced_flashing(App.profile)
+	if encounter != null:
+		encounter.setup(world, context, arena)
+		encounter.defeated.connect(_on_boss_defeated)
 
 	if _env == null:
 		_env = WorldEnvironment.new()
@@ -120,7 +137,14 @@ func give_up() -> void:
 	if state != State.DEAD:
 		return
 	state = State.COMPLETE
-	finished.emit(RunResult.from_world(world, context, false, death_cause, rules))
+	finished.emit(_result(false))
+
+
+## The run's result: a level's, or a boss fight's (GDD §10).
+func _result(completed: bool) -> RunResult:
+	if context.is_boss():
+		return RunResult.from_boss(world, encounter, context, completed, "" if completed else death_cause, rules)
+	return RunResult.from_world(world, context, completed, "" if completed else death_cause, rules)
 
 
 ## Starts the same level again in place (debug restart and quick play).
@@ -132,7 +156,8 @@ func restart(next_context: RunContext = null) -> void:
 func _physics_process(_delta: float) -> void:
 	if state != State.RUNNING or world == null:
 		return
-	if world.player.distance >= world.layout.length:
+	# A boss fight ends with the boss (_on_boss_defeated); its arena never runs out.
+	if encounter == null and world.player.distance >= world.layout.length:
 		state = State.COMPLETE
 		world.player.running = false
 		_timer = COMPLETE_PAUSE
@@ -152,10 +177,11 @@ func _process(delta: float) -> void:
 		return
 	if state == State.COMPLETE:
 		if context.mode == RunContext.Mode.QUICK:
-			context.config.level_seed += 1
+			if not context.is_boss():
+				context.config.level_seed += 1
 			_restart_fresh()
 		else:
-			finished.emit(RunResult.from_world(world, context, true, "", rules))
+			finished.emit(_result(true))
 	elif state == State.DEAD:
 		if context.mode == RunContext.Mode.QUICK:
 			restart()
@@ -163,7 +189,22 @@ func _process(delta: float) -> void:
 			died.emit(self)
 
 
+## The boss is beaten (GDD §10): the run is won. The runner keeps running while the defeat plays out
+## (the Floating Head crashes into the street ahead and the runner runs through the wreck), safe from
+## anything still in the air, then the results follow.
+func _on_boss_defeated() -> void:
+	if state != State.RUNNING:
+		return
+	state = State.COMPLETE
+	_timer = COMPLETE_PAUSE
+	world.player.god_mode = true
+	hud.set_message("BOSS DEFEATED")
+	world.play_sfx(&"level_complete")
+
+
 func _on_player_died(cause: String) -> void:
+	if state == State.COMPLETE:
+		return  # Nothing after the finish counts (a shot still in the air, a fall past a boss's wreck).
 	state = State.DEAD
 	death_cause = cause
 	_deaths_by_cause[cause] = int(_deaths_by_cause.get(cause, 0)) + 1
@@ -208,10 +249,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		AudioServer.set_bus_mute(0, not AudioServer.is_bus_mute(0))
 
 
-## A different level (seed, lanes or difficulty; debug keys and quick play): counts start over.
+## A different level (seed, lanes or difficulty; debug keys and quick play): counts start over, and a
+## boss fight starts from its beginning.
 func _restart_fresh() -> void:
 	var next: RunContext = context.retry()
 	next.attempt = 1
+	next.boss_resume = {}
 	_deaths_by_cause.clear()
 	restart(next)
 
@@ -233,6 +276,13 @@ func _build_debug_tools() -> void:
 	]
 	if context.config.resource_path == "":
 		sections.pop_back()
+	if context.is_boss():
+		# The boss's numbers (health, rewards, par times) and its script's own tuning.
+		var def: BossDef = context.boss
+		if def.resource_path != "":
+			sections.append({"title": "Boss: " + def.display_name, "resource": def, "path": def.resource_path})
+		if def.tuning != null and def.tuning.resource_path != "":
+			sections.append({"title": "Boss tuning", "resource": def.tuning, "path": def.tuning.resource_path})
 	# The level's enemy types. Every enemy of a type shares its tuning resource, so changes reach the
 	# ones in play (numbers an enemy reads once, such as health, apply to the next ones spawned).
 	var types: PackedStringArray = []
@@ -276,7 +326,16 @@ func _update_debug_hud() -> void:
 		p.elapsed, p.distance, world.layout.length, p.speed, world.director.active.size()]
 	text += "Surface: %s   Lane %d   %s%s\n" % [p.surface_name(), p.lane, "sliding  " if p.is_sliding() else "",
 		"airborne" if not p.grounded and p.surface != Player.Surface.WALL else ""]
+	if encounter != null and is_instance_valid(encounter):
+		text += "Boss: phase %d/%d %s   health %.0f / %.0f   weapons %.0f / %.0f   fight %.1fs   lap %d\n" % [
+			encounter.phase_index + 1, encounter.phase_count(), BossEncounter.State.keys()[encounter.state],
+			encounter.health, encounter.max_health, encounter.weapon_damage,
+			encounter.max_health * encounter.def.weapon_share_cap, encounter.fight_time(),
+			encounter.arena.lap_at(p.distance) if encounter.arena != null else 0]
 	text += "Loadout: %s\nLast: %s\n" % [context.loadout.describe() if context.loadout != null else "-", p.last_event]
 	if not deaths.is_empty():
 		text += "Deaths: %s" % ", ".join(deaths)
-	debug_hud.set_info(text, clampf(p.distance / world.layout.length, 0.0, 1.0))
+	# A boss fight's progress is the boss's health taken.
+	var progress: float = 1.0 - encounter.health_ratio() if encounter != null and is_instance_valid(encounter) \
+		else p.distance / world.layout.length
+	debug_hud.set_info(text, clampf(progress, 0.0, 1.0))
