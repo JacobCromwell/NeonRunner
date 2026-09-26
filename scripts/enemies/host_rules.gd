@@ -30,7 +30,9 @@ extends RefCounted
 ##   planned run (params.floor_span) is dropped, rather than its pads clearing the dog away. A Bad
 ##   Dream's chase and an Octodog's charges never happen at once anyway (GDD §9.7: the director holds
 ##   the dog, which runs off ahead), and a dog has far fewer places it fits than a host does, so the
-##   host is the one that goes (and every feature still appears: guarantee_features).
+##   host is the one that goes (and every feature still appears: guarantee_features). Except the
+##   host that introduces the feature (the first one from a `host` start, LevelConfig.feature_starts):
+##   the level's new thing doesn't make way for an older one, so its pads clear the dog as before.
 ## - In a level that guarantees its features (LevelConfig.guarantee_features), if no host is left
 ##   (every one placed was dropped, or none was placed), one is added where a host fits all of the
 ##   above: its chase fits and gets its pads, it keeps off Octodog runs, and, like any cyborg, it
@@ -70,6 +72,12 @@ static func apply(gen: LevelGenerator) -> void:
 	var rng: RandomNumberGenerator = gen.rng_for("host_pads")
 	var free_from: float = -INF
 	var dropped: Array[Dictionary] = []
+	var introduction: Dictionary = {}
+	if gen.config.feature_starts.has("host"):
+		for e: Dictionary in hosts:
+			if float(e["at"]) >= earliest - 0.01:
+				introduction = e
+				break
 	for e: Dictionary in hosts:
 		if not _has_entry(layout.enemies, e):
 			continue  # cleared from under a pad added for an earlier host
@@ -77,13 +85,17 @@ static func apply(gen: LevelGenerator) -> void:
 		if stretch.x < free_from or stretch.x < earliest or stretch.y > last_ok:
 			dropped.append(e)
 			continue
-		if dog_run_between(layout, stretch.x, stretch.y + (t.pad_ceiling_seconds + gen.config.hull_landing_seconds) * speed):
+		var reach_end: float = stretch.y + (t.pad_ceiling_seconds + gen.config.hull_landing_seconds) * speed
+		var over_dog: bool = dog_run_between(layout, stretch.x, reach_end)
+		if over_dog and not is_same(e, introduction):
 			dropped.append(e)
 			continue
 		var plan: Dictionary = plan_pads(gen, t, rng, stretch, pads_before)
 		if not bool(plan["ok"]):
 			dropped.append(e)
 			continue
+		if over_dog:
+			_remove_dogs_between(layout, stretch.x, reach_end)
 		for at: float in plan["pads"]:
 			PadPlacement.place(gen, rng, at, t.pad_ceiling_seconds)
 		free_from = stretch.y + t.host_gap_seconds * speed
@@ -165,6 +177,17 @@ static func _lanes_clear_of_trucks(gen: LevelGenerator, at: float) -> Array[int]
 		if free:
 			out.append(lane)
 	return out
+
+
+## Removes every Octodog whose planned run touches [from, to] (for the host that introduces the
+## feature, whose chase takes precedence).
+static func _remove_dogs_between(layout: LevelLayout, from: float, to: float) -> void:
+	var kept: Array[Dictionary] = []
+	for e: Dictionary in layout.enemies:
+		var span: Vector2 = LevelGenerator.enemy_floor_span(e)
+		if not (String(e.get("type", "")) == "octodog" and span.x <= to and span.y >= from):
+			kept.append(e)
+	layout.enemies.assign(kept)
 
 
 ## True if an Octodog's planned run (its floor span: LevelGenerator.enemy_floor_span) touches the
