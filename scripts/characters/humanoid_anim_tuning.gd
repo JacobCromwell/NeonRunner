@@ -7,12 +7,12 @@ extends Resource
 @export_group("Run cycle")
 ## Distance covered by one full cycle (two steps) at low speed. With the default the planted foot
 ## stays put on the ground (no skating) up to max_cadence × stride_length m/s.
-@export_range(0.5, 4.0, 0.05, "suffix:m") var stride_length: float = 1.95
+@export_range(0.5, 4.0, 0.05, "suffix:m") var stride_length: float = 2.1
 ## Leg cycles per second at most. Above max_cadence × stride_length the stride lengthens instead,
 ## so the legs stay readable at run speed (a planted foot at 18 m/s would need ~12 cycles/s).
 @export_range(1.0, 6.0, 0.1, "suffix:cycles/s") var max_cadence: float = 3.3
 ## Speed at which the stride reaches full amplitude; slower is a jog.
-@export_range(1.0, 20.0, 0.5, "suffix:m/s") var full_stride_speed: float = 7.0
+@export_range(1.0, 20.0, 0.5, "suffix:m/s") var full_stride_speed: float = 6.0
 ## Below this speed the rig stands (idle).
 @export_range(0.0, 3.0, 0.05, "suffix:m/s") var idle_speed: float = 0.5
 @export_range(0.0, 80.0, 1.0, "suffix:°") var thigh_swing: float = 40.0
@@ -37,7 +37,7 @@ extends Resource
 ## How fast poses blend into each other (1/s; higher = snappier).
 @export_range(1.0, 60.0, 0.5, "suffix:1/s") var blend_speed: float = 14.0
 ## Blend speed into slide, stomp and death, which must read instantly.
-@export_range(1.0, 80.0, 0.5, "suffix:1/s") var fast_blend_speed: float = 30.0
+@export_range(1.0, 80.0, 0.5, "suffix:1/s") var fast_blend_speed: float = 40.0
 
 @export_group("Lane switch")
 ## Sideways lean into a lane switch.

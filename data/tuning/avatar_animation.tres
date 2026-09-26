@@ -4,9 +4,9 @@
 
 [resource]
 script = ExtResource("1_anim")
-stride_length = 1.95
+stride_length = 2.1
 max_cadence = 3.3
-full_stride_speed = 7.0
+full_stride_speed = 6.0
 idle_speed = 0.5
 thigh_swing = 40.0
 thigh_forward_bias = 12.0
@@ -20,7 +20,7 @@ bob_height = 0.035
 hip_twist = 7.0
 shoulder_twist = 11.0
 blend_speed = 14.0
-fast_blend_speed = 30.0
+fast_blend_speed = 40.0
 switch_lean = 16.0
 switch_lean_speed = 22.0
 jump_pose_speed = 7.0
