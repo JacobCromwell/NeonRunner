@@ -30,7 +30,7 @@ const FREE_LIP: float = 0.15
 ## Lamps along each seam, this far apart.
 const LAMP_SPACING: float = 9.0
 ## Nothing of a ceiling rises higher than this above its underside.
-const ABOVE_LIMIT: float = 8.5
+const ABOVE_LIMIT: float = 7.9
 
 ## Weak: the skin owns this builder, so a strong reference back would keep both alive forever.
 var skin: GanglandSkin:

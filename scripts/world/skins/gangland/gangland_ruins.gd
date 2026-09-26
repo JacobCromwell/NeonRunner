@@ -28,9 +28,11 @@ const BAND_MARGIN: float = 1.5
 const STOREYS: Array[float] = [3.3, 3.0, 3.3, 3.3]
 const CELL_WIDTHS: Array[float] = [1.3, 2.2, 4.0, 1.6]
 const STYLES: Array[int] = [1, 3, 1, 2]
-## Washing lines across the street hang at least this high (above every ceiling:
-## GanglandCeiling.ABOVE_LIMIT over the ceiling height), 30 m apart at most.
-const CROSS_LINE_MIN: float = 16.0
+## Washing lines across the street are strung at least this high and sag CROSS_LINE_SAG, so their
+## laundry (under a metre) hangs above every ceiling (GanglandCeiling.ABOVE_LIMIT over the ceiling
+## height); at most one per CROSS_LINE_SLOT metres.
+const CROSS_LINE_MIN: float = 15.4
+const CROSS_LINE_SAG: float = 0.5
 const CROSS_LINE_SLOT: float = 30.0
 ## Container doors, and military crates as seen from the front.
 const CONTAINER := Vector2(2.44, 2.59)
@@ -442,11 +444,15 @@ func across(batch: MeshBatch, half_width: float, start: float, end: float) -> vo
 	var solid: MeshLayer = batch.layer(skin.solid_material())
 	var slot: int = floori(start / CROSS_LINE_SLOT)
 	while float(slot) * CROSS_LINE_SLOT < end:
-		var u: float = (float(slot) + 0.2 + 0.6 * MeshKit.hash01(slot, 131)) * CROSS_LINE_SLOT
-		if u >= start and u < end and MeshKit.hash01(slot, 132) < skin.cross_line_share:
-			var y: float = CROSS_LINE_MIN + 0.6 + 3.0 * MeshKit.hash01(slot, 133)
-			var skew: float = (MeshKit.hash01(slot, 134) - 0.5) * 4.0
-			if top_at(-1, u) > y + 1.0 and top_at(1, u + skew) > y + 1.0:
-				GanglandClutter.laundry_line(solid, Vector3(-half_width + 0.05, y, -u), Vector3(half_width - 0.05, y,
-					-u - skew), 0.6, skin.cloth_colors, slot, skin.line_color)
+		if MeshKit.hash01(slot, 132) < skin.cross_line_share:
+			# Two tries per slot for a spot where both facades stand tall enough.
+			for attempt: int in 2:
+				var u: float = (float(slot) + 0.1 + 0.8 * MeshKit.hash01(slot, 131 + attempt * 10)) * CROSS_LINE_SLOT
+				var y: float = CROSS_LINE_MIN + 2.0 * MeshKit.hash01(slot, 133 + attempt * 10)
+				var skew: float = (MeshKit.hash01(slot, 134 + attempt * 10) - 0.5) * 4.0
+				if top_at(-1, u) > y + 0.3 and top_at(1, u + skew) > y + 0.3:
+					if u >= start and u < end:
+						GanglandClutter.laundry_line(solid, Vector3(-half_width + 0.05, y, -u), Vector3(half_width - 0.05,
+							y, -u - skew), CROSS_LINE_SAG, skin.cloth_colors, slot, skin.line_color)
+					break
 		slot += 1

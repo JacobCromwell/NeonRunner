@@ -23,11 +23,11 @@ extends ZoneSkin
 
 @export_group("Environment")
 ## A dusty dusk: brown overhead, tan dust over the horizon.
-@export var sky_zenith_color: Color = Color(0.13, 0.1, 0.075)
-@export var sky_horizon_color: Color = Color(0.31, 0.235, 0.165)
+@export var sky_zenith_color: Color = Color(0.17, 0.13, 0.095)
+@export var sky_horizon_color: Color = Color(0.36, 0.275, 0.19)
 ## Dust lit by the low sun and the fires of the city, over the horizon.
-@export var haze_color: Color = Color(0.46, 0.35, 0.23)
-@export_range(0.0, 2.0, 0.05) var haze_strength: float = 0.8
+@export var haze_color: Color = Color(0.5, 0.38, 0.25)
+@export_range(0.0, 2.0, 0.05) var haze_strength: float = 0.9
 @export var abyss_color: Color = Color(0.035, 0.028, 0.022)
 @export var skyline_color: Color = Color(0.14, 0.11, 0.085)
 @export var skyline_window_color: Color = Color(0.55, 0.42, 0.28)
@@ -123,8 +123,9 @@ extends ZoneSkin
 @export_range(0.0, 1.0, 0.01) var balcony_share: float = 0.55
 ## Share of rooftops (low stumps and the far row) with water tanks, antennas, dishes or shacks.
 @export_range(0.0, 1.0, 0.01) var rooftop_share: float = 0.75
-## Share of 30 m stretches with a washing line strung across the street, high above the play space.
-@export_range(0.0, 1.0, 0.01) var cross_line_share: float = 0.45
+## Share of 30 m stretches with a washing line strung across the street, high above the play space
+## (where both facades are tall enough to hold it).
+@export_range(0.0, 1.0, 0.01) var cross_line_share: float = 0.8
 ## Bulbs strung over the side streets (warm white, never a hazard hue).
 @export var bulb_color: Color = Color(0.95, 0.88, 0.74)
 @export_range(0.0, 1.0, 0.01) var bulb_share: float = 0.6
