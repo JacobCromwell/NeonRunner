@@ -162,7 +162,7 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 | | 3 | Fence generators and **heli drones** |
 | 3. Marketplace | 1 | The **Barnacle Turret** (§9.8), the first ceiling hazard |
 | | 2 | Screeches from wall vents in the shopfronts, and a remix |
-| 4. Corporate | 1 | **Buzz Overdrive** (§9.9) *(to confirm)* |
+| 4. Corporate | 1 | **Buzz Overdrive** (§9.9) |
 | | 2 | A harder remix with a heavier military presence |
 | 5. Dead Zone | 1 | Hosts and the **Cyborg's Bad Dream** |
 | | 2 | A quiet, eerie remix |
@@ -411,17 +411,24 @@ Shared interaction rules apply unless stated otherwise:
 - **Scaling:** across the campaign it fires somewhat faster and takes slightly more damage to kill, but never by much.
 - **Limits:** never on a one-lane ceiling (no room to dodge); at most **2 per ceiling**. Only one fires at a time *(proposed)*.
 
-### 9.9 Buzz Overdrive (owner, September 26, 2026; proposed as the Corporate zone's new enemy)
+### 9.9 Buzz Overdrive (owner, September 26, 2026; the Corporate zone's new enemy, first appears in Corporate 1)
 - **Look:** a **truck-sized buzzsaw tank** with a giant, **vertical** buzzsaw blade. Militaristic. If it can be seen at gameplay size, a **red, angry eye on each side**.
 - **Where:** floor lanes; it occupies one lane.
 - **Sequence:**
   1. The player sees it **in the distance**, in its lane.
-  2. It **winds up**, with a spin-up noise, as its blade spins up.
-  3. It **charges forward along its lane** toward the player, **slicing the floor in half** as it goes. The floor it has cut **becomes a gap**.
+  2. It **revs in view for a few seconds**, with a spin-up noise as its blade spins up. During the wind-up, **the lane it is about to cut lights up with a red warning line** on the floor (like the Octodog's lunge line).
+  3. It **charges forward along its lane** toward the player, **slicing the floor in half** as it goes. The floor it has cut **becomes a gap**, from where it started charging all the way back past the player. The cut edges glow the usual gap-edge orange.
   4. It goes off the screen behind the player, and that's the end of it.
-- **Contact:** touching the buzzsaw hurts. The **shield and armor block it**, but the floor is cut immediately, so a player who was hit has only **about a second** to get off that floor before it becomes a gap.
-- **Toughness:** very tough: **20 shots** at laser tier 1.
-- *(Open)* which zone introduces it, the floor warning, whether killing it early saves the floor, the other kill methods, scaling and limits.
+- **Dodge:** leave its lane before it arrives. It only threatens **its own floor lane**: wall runners and ceiling runners are safe, even beside it.
+- **Contact:** touching the buzzsaw hurts. The **shield and armor block it**. After a block, the floor under the player **holds for about a second**, just enough to switch lanes (a jump would land back in the cut lane). Escaping after a block should be of **medium difficulty**.
+- **Kill:**
+  - **Weapons:** very tough, **20 shots** at laser tier 1. **Killing it before it charges saves the floor**; killing it mid-charge **stops the cut where it dies**. Tuned so laser tier 1 can't stop it in time, but the missile tiers usually can.
+  - **Claws don't work** (it's claw-immune).
+  - **The dash smashes it**, but that's a risky panic move: the player dashes straight into the cut lane, so it's only survivable with the grapple hook.
+  - **No stomp** (the player would land on the blade).
+- **Limits:** only one at a time. It never cuts a lane holding a ramp, a pad or the safe landing zone after a ceiling. On 3 lanes, two lanes always stay whole.
+- **Scaling:** the only change across the campaign is that its **rev time gets slightly shorter**. It appears in only two zones, so it never gets too fast. Its health stays at 20 shots.
+- **Implementation note:** the generator plans each cut in advance (lane, start and end), so levels stay fair and identical on every attempt; the saw is just the visible cause. This is the first floor that turns into a gap during play.
 
 ---
 
