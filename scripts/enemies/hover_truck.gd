@@ -43,7 +43,7 @@ const WEAK := Color(1.0, 0.08, 0.1)
 const SAFE := Color(0.25, 0.85, 1.0)
 const HOVER := Color(0.3, 0.6, 1.0)
 const AMBER := Color(1.0, 0.6, 0.12)
-const FACADE := Color(0.15, 0.13, 0.2)
+const FACADE := Color(0.24, 0.2, 0.3)
 
 ## Models per zone variant and shape, built once.
 static var _models: Dictionary = {}
@@ -98,6 +98,9 @@ var _smoke_left: float = 0.0
 var _rubble: Array[MeshInstance3D] = []
 var _rubble_v: Array[Vector3] = []
 var _rubble_left: float = 0.0
+var _boom: MeshInstance3D
+var _boom_mat: StandardMaterial3D
+var _boom_t: float = 0.0
 
 var _model: Node3D
 var _spikes_mesh: MeshInstance3D
@@ -116,6 +119,8 @@ var _spikes: Hazard
 var _weak: Hazard
 var _wall_fx: Node3D
 var _bulge: Node3D
+var _bang_frame: MeshInstance3D
+var _frame_flash: float = 0.0
 var _cracks: Array[MeshInstance3D] = []
 var _hole: Node3D
 var _hole_fire: MeshInstance3D
@@ -267,9 +272,10 @@ func _update_banging(delta: float) -> void:
 func _bang() -> void:
 	bangs += 1
 	_bulge_push = 1.0
+	_frame_flash = 0.18
 	var pt: Vector3 = _wall_point(rng.randf_range(-tune.length * 0.4, tune.length * 0.4), rng.randf_range(0.6, 2.2))
 	world.play_sfx_at(&"truck_bang", pt)
-	world.effects.burst(pt, Color(1.0, 0.62, 0.2), 12, 0.45)
+	world.effects.burst(pt, Color(1.0, 0.62, 0.2), 24, 0.8)
 	world.effects.shake(0.06, 0.12)
 	if bangs <= _cracks.size():
 		_cracks[bangs - 1].visible = true
@@ -553,7 +559,8 @@ func _shoot(from: Vector3, target: Vector3, speed: float, look: StringName, shot
 
 # --- Destroyed -----------------------------------------------------------------------------------
 
-## Stomped or shot down: it loses its roof and spins out, then explodes.
+## Stomped or shot down: it loses its roof and spins out, skidding ahead into its wall (clear of the
+## player's lane and in view), then explodes.
 func _on_defeated(_cause: StringName) -> void:
 	state = State.WRECKED
 	_state_time = 0.0
@@ -562,7 +569,7 @@ func _on_defeated(_cause: StringName) -> void:
 	_burst_hazard.set_enabled(false)
 	_charge_left = -1.0
 	_volley.clear()
-	_wreck_spin = side * rng.randf_range(4.5, 6.5)
+	_wreck_spin = -side * rng.randf_range(0.5, 0.8)
 	_nose_light.light_energy = 0.0
 	world.effects.burst(_weak_mesh.global_position + Vector3(0.0, 0.3, 0.0), WEAK, 28, 0.9)
 	world.effects.shake(0.25, 0.3)
@@ -570,10 +577,13 @@ func _on_defeated(_cause: StringName) -> void:
 
 func _update_wreck(delta: float) -> void:
 	_state_time += delta
-	offset -= tune.wreck_drift * delta
-	_x = move_toward(_x, side * (world.geo.wall_x() - tune.width * 0.3), 3.5 * delta)
+	offset += tune.wreck_skid_speed * (1.0 - clampf(_state_time / tune.wreck_seconds, 0.0, 1.0)) * delta
+	if _boom != null:
+		_update_boom(delta)
+		return
+	_x = move_toward(_x, side * (world.geo.wall_x() - tune.width * 0.5 - 0.1), 3.0 * delta)
 	_yaw += _wreck_spin * delta
-	_model.rotation.z = move_toward(_model.rotation.z, side * 0.3, delta)
+	_model.rotation.z = move_toward(_model.rotation.z, -side * 0.3, delta)
 	_smoke_left -= delta
 	if _smoke_left <= 0.0:
 		_smoke_left = 0.15
@@ -591,7 +601,33 @@ func _explode() -> void:
 	world.effects.burst(at + Vector3(0.0, 0.8, 0.0), Color(1.0, 0.85, 0.3), 30, 1.1)
 	world.effects.burst(at, Color(0.45, 0.42, 0.4), 24, 1.0)
 	world.effects.shake(0.5, 0.5)
-	queue_free()
+	# A fireball swells and fades where the truck was, then it's gone.
+	_model.visible = false
+	var ball := SphereMesh.new()
+	ball.radius = 0.5
+	ball.height = 1.0
+	ball.radial_segments = 12
+	ball.rings = 6
+	_boom_mat = StandardMaterial3D.new()
+	_boom_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_boom_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_boom_mat.albedo_color = Color(1.0, 0.55, 0.15, 0.9)
+	_boom_mat.emission_enabled = true
+	_boom_mat.emission = Color(1.0, 0.5, 0.1)
+	_boom_mat.emission_energy_multiplier = 4.0
+	_boom = _mesh_node(self, ball, Vector3(0.0, 1.2, 0.0))
+	_boom.material_override = _boom_mat
+	_boom_t = 0.0
+
+
+func _update_boom(delta: float) -> void:
+	_boom_t += delta
+	var k: float = clampf(_boom_t / 0.45, 0.0, 1.0)
+	_boom.scale = Vector3.ONE * lerpf(1.2, 5.0, 1.0 - pow(1.0 - k, 2.0))
+	_boom_mat.albedo_color.a = 0.9 * (1.0 - k)
+	_place()
+	if k >= 1.0:
+		queue_free()
 
 
 # --- Presentation --------------------------------------------------------------------------------
@@ -649,7 +685,10 @@ func _animate(delta: float) -> void:
 			_cannon.look_at(aim, Vector3.UP)
 	# The wall: bulging with each bang, then the burst's hazard window and debris.
 	_bulge_push = move_toward(_bulge_push, 0.0, 4.0 * delta)
-	_bulge.position.x = -side * (0.1 + 0.32 * _bulge_push)
+	_bulge.position.x = -side * (0.1 + 0.45 * _bulge_push)
+	_frame_flash -= delta
+	_bang_frame.visible = state == State.BANGING
+	_bang_frame.material_override = _mats["flash"] if _frame_flash > 0.0 else null
 	if _burst_left > 0.0:
 		_burst_left -= delta
 		if _burst_left <= 0.0:
@@ -665,18 +704,21 @@ func _animate(delta: float) -> void:
 			if _rubble[i].position.y < 0.15:
 				_rubble[i].position.y = 0.15
 				_rubble_v[i] = _rubble_v[i] * 0.4
+			if _rubble_left < 0.5:
+				_rubble[i].scale = _rubble[i].scale * maxf(0.0, 1.0 - 6.0 * delta)
 		if _rubble_left <= 0.0:
 			for r: MeshInstance3D in _rubble:
 				r.visible = false
 
 
 func _launch_rubble() -> void:
-	_rubble_left = 1.6
+	_rubble_left = 1.3
 	for i: int in _rubble.size():
 		var r: MeshInstance3D = _rubble[i]
 		r.visible = true
 		r.position = Vector3(-side * 0.3, rng.randf_range(0.6, 2.4), rng.randf_range(-tune.length * 0.45, tune.length * 0.45))
-		_rubble_v[i] = Vector3(-side * rng.randf_range(3.0, 7.0), rng.randf_range(2.0, 6.0), rng.randf_range(-2.0, 2.0))
+		# Rubble stays by the wall: harmless debris must not look like an obstacle in the lanes.
+		_rubble_v[i] = Vector3(-side * rng.randf_range(1.0, 2.5), rng.randf_range(2.0, 5.0), rng.randf_range(-2.0, 2.0))
 
 
 func _build_hitboxes() -> void:
@@ -766,14 +808,16 @@ func _build_wall_fx() -> void:
 	_wall_fx.top_level = true
 	add_child(_wall_fx)
 	_wall_fx.global_position = Vector3(side * world.geo.wall_x(), 0.0, TrackGeometry.world_z(_at))
-	# The facade panel it bangs on: bulges toward the track with each bang and cracks open.
+	# The facade panel it bangs on, framed in warning glow: bulges toward the track with each bang
+	# (the frame flashes) and cracks open.
 	_bulge = Node3D.new()
 	_wall_fx.add_child(_bulge)
 	GreyboxMaterials.add_box(_bulge, Vector3(0.0, 1.45, 0.0), Vector3(0.3, 2.7, t.length + 0.4), GreyboxMaterials.flat(FACADE))
-	for i: int in 4:
-		var crack := GreyboxMaterials.add_box(_bulge, Vector3(-side * 0.17, rng.randf_range(0.7, 2.2),
-			rng.randf_range(-t.length * 0.4, t.length * 0.4)), Vector3(0.03, 0.05, rng.randf_range(0.8, 1.6)),
-			GreyboxMaterials.glow(HOT, 3.0))
+	_bang_frame = _mesh_node(_bulge, meshes["bang_frame"], Vector3(-side * 0.17, 0.0, 0.0))
+	for i: int in 5:
+		var crack := GreyboxMaterials.add_box(_bulge, Vector3(-side * 0.17, rng.randf_range(0.6, 2.3),
+			rng.randf_range(-t.length * 0.42, t.length * 0.42)), Vector3(0.03, 0.07, rng.randf_range(1.0, 2.0)),
+			GreyboxMaterials.glow(HOT, 4.5))
 		crack.rotation.x = rng.randf_range(-1.0, 1.0)
 		crack.visible = false
 		_cracks.append(crack)
@@ -833,7 +877,7 @@ static func _meshes(variant: StringName, t: HoverTruckTuning) -> Dictionary:
 	var metal_m: Material = GreyboxMaterials.flat(Color(0.5, 0.47, 0.44) if scav else Color(0.74, 0.78, 0.86))
 	var safe_m: Material = GreyboxMaterials.glow(SAFE, 2.2)
 	var hover_m: Material = GreyboxMaterials.glow(HOVER, 2.5)
-	var glass_m: Material = GreyboxMaterials.glow(Color(0.08, 0.3, 0.36), 0.7, 0.6)
+	var glass_m: Material = GreyboxMaterials.glow(Color(0.08, 0.3, 0.36), 0.6, 0.35)
 	var visor_m: Material = GreyboxMaterials.glow(Color(1.0, 0.2, 0.15), 3.0)
 	var hot_m: Material = GreyboxMaterials.glow(HOT, 3.2)
 
@@ -860,12 +904,12 @@ static func _meshes(variant: StringName, t: HoverTruckTuning) -> Dictionary:
 		for sz: float in [-1.0, 1.0]:
 			b.box(panel_m, Vector3(sx * (W * 0.5 - 0.05), (glass_bottom + C) * 0.5, cab_z + sz * (CL * 0.5 - 0.05)),
 				Vector3(0.1, C - glass_bottom, 0.1))
-	var head := Vector3(W * 0.22, glass_bottom + 0.2, cab_z + 0.3)
+	var head := Vector3(0.0, glass_bottom + 0.2, cab_z + 0.3)
 	b.box(dark_m, head + Vector3(0.0, -0.3, 0.05), Vector3(0.6, 0.3, 0.36))
-	b.box(GreyboxMaterials.flat(Color(0.4, 0.41, 0.46)), head, Vector3(0.28, 0.3, 0.28))
-	b.box(visor_m, head + Vector3(0.0, 0.03, -0.145), Vector3(0.24, 0.08, 0.02))
+	b.box(GreyboxMaterials.flat(Color(0.62, 0.64, 0.7)), head, Vector3(0.3, 0.32, 0.3))
+	b.box(visor_m, head + Vector3(0.0, 0.03, -0.155), Vector3(0.26, 0.1, 0.02))
 	for sx: float in [-1.0, 1.0]:
-		b.box(visor_m, head + Vector3(sx * 0.145, 0.03, 0.0), Vector3(0.02, 0.08, 0.22))
+		b.box(visor_m, head + Vector3(sx * 0.155, 0.03, 0.0), Vector3(0.02, 0.1, 0.24))
 	# Tail: cannon mount, thruster nozzles, and the gunners' windows.
 	b.box(dark_m, Vector3(0.0, R - 0.42, L * 0.5 + 0.08), Vector3(0.78, 0.46, 0.18))
 	for sx: float in [-1.0, 1.0]:
@@ -910,12 +954,15 @@ static func _meshes(variant: StringName, t: HoverTruckTuning) -> Dictionary:
 			for k: int in 3 - row:
 				var x: float = (k - (2 - row) * 0.5) * W * (0.36 if row == 0 else 0.44)
 				var y: float = deck + 0.18 + row * plow_h2 * 0.42
-				s.spike(hot_m, Vector3(x, y, -L * 0.5 - N * 0.55 - 0.05 + row * 0.2), N * 0.6, 0.2, Vector3(-PI * 0.5, 0.0, 0.0))
+				s.spike(hot_m, Vector3(x, y, -L * 0.5 - N * 0.55 - 0.05 + row * 0.2), N * 0.8, 0.26, Vector3(-PI * 0.5, 0.0, 0.0))
 	else:
+		# A hot blade over the silver nose, a spike past its point, and two at its sides.
 		var nose_h2: float = C - deck - 0.12
-		s.wedge(hot_m, Vector3(0.0, deck + nose_h2 * 0.5, -L * 0.5 - N + N * 0.2), Vector3(W * 0.36, N * 0.4, nose_h2 * 0.96), Vector3(-PI * 0.5, 0.0, 0.0))
+		var tip_z: float = -L * 0.5 - N + 0.02
+		s.wedge(hot_m, Vector3(0.0, deck + nose_h2 + 0.02, tip_z + N * 0.375), Vector3(W * 0.7, N * 0.75, 0.05), Vector3(-PI * 0.5, 0.0, 0.0))
+		s.spike(hot_m, Vector3(0.0, deck + nose_h2 * 0.5, tip_z + 0.12), 0.6, 0.26, Vector3(-PI * 0.5, 0.0, 0.0))
 		for sx: float in [-1.0, 1.0]:
-			s.spike(hot_m, Vector3(sx * W * 0.36, deck + 0.14, -L * 0.5), N * 0.85, 0.2, Vector3(-PI * 0.5, 0.0, 0.0))
+			s.spike(hot_m, Vector3(sx * W * 0.38, deck + 0.14, -L * 0.5), N * 0.85, 0.22, Vector3(-PI * 0.5, 0.0, 0.0))
 	var spikes: ArrayMesh = s.commit()
 
 	var w := MeshBatch.new()
@@ -965,11 +1012,20 @@ static func _meshes(variant: StringName, t: HoverTruckTuning) -> Dictionary:
 	for sz: float in [-1.0, 1.0]:
 		h.box(rim_m, Vector3(0.0, hole_h * 0.5 + 0.1, sz * (L * 0.5 + 0.16)), Vector3(0.08, hole_h, 0.12))
 	var hole: ArrayMesh = h.commit()
+	# The warning frame around the panel it bangs on (drawn only while banging).
+	var fr := MeshBatch.new()
+	var frame_m: Material = GreyboxMaterials.glow(HOT, 2.2)
+	for y: float in [0.16, 2.74]:
+		fr.box(frame_m, Vector3(0.0, y, 0.0), Vector3(0.05, 0.14, L + 0.4))
+	for sz: float in [-1.0, 1.0]:
+		fr.box(frame_m, Vector3(0.0, 1.45, sz * (L * 0.5 + 0.13)), Vector3(0.05, 2.72, 0.14))
+	var bang_frame: ArrayMesh = fr.commit()
 	var hf := MeshBatch.new()
 	hf.box(GreyboxMaterials.glow(Color(1.0, 0.55, 0.15), 3.5, 0.7), Vector3(0.0, 0.45, 0.0), Vector3(0.05, 0.5, L * 0.8))
 	var hole_fire: ArrayMesh = hf.commit()
 
 	var out := {"body": body, "spikes": spikes, "weak": weak, "thrust": thrust, "brake": brake, "barrel": barrel,
-		"charge": ch, "gunner": gunner, "gunner_gun": gunner_gun, "hole": hole, "hole_fire": hole_fire}
+		"charge": ch, "gunner": gunner, "gunner_gun": gunner_gun, "hole": hole, "hole_fire": hole_fire,
+		"bang_frame": bang_frame}
 	_models[key] = out
 	return out

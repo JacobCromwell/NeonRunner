@@ -6,9 +6,12 @@ extends EnemyTuning
 ## the shots to kill (health 15 = laser tier 1 shots).
 
 @export_group("Hovering")
-## DESIGN-TBD: how far ahead of the player the drone hovers, and how high (below the 6 m ceiling).
-@export_range(6.0, 30.0, 0.5, "suffix:m") var hover_ahead: float = 13.0
-@export_range(2.5, 5.5, 0.1, "suffix:m") var hover_height: float = 4.2
+## DESIGN-TBD: how far ahead of the player the drone hovers, and how high (below the 6 m ceiling,
+## and below the camera's eye level so it stands out from the vanishing point).
+@export_range(6.0, 30.0, 0.5, "suffix:m") var hover_ahead: float = 11.0
+@export_range(2.5, 5.5, 0.1, "suffix:m") var hover_height: float = 3.2
+## Size of the model (1 = about 2.3 m from rotor tip to rotor tip).
+@export_range(0.5, 2.0, 0.05) var model_scale: float = 1.35
 ## A second drone of the same wave hovers this much further ahead and higher.
 @export_range(0.0, 15.0, 0.5, "suffix:m") var wave_spacing: float = 5.0
 @export_range(0.0, 1.5, 0.05, "suffix:m") var wave_rise: float = 0.55

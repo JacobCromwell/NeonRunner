@@ -98,9 +98,11 @@ extends EnemyTuning
 @export_range(4.0, 30.0, 0.5, "suffix:m/s") var bolt_speed_late: float = 15.0
 
 @export_group("Wreck")
-## Stomped or shot down, it spins out for this long, then explodes (truck_explode).
-@export_range(0.3, 3.0, 0.05, "suffix:s") var wreck_seconds: float = 1.2
-@export_range(0.0, 20.0, 0.5, "suffix:m/s") var wreck_drift: float = 6.0
+## Stomped or shot down, it spins out for this long, then explodes (truck_explode). It skids on
+## ahead of the player (starting this much faster than them, slowing to their pace) so the
+## explosion happens in view.
+@export_range(0.3, 3.0, 0.05, "suffix:s") var wreck_seconds: float = 1.1
+@export_range(0.0, 20.0, 0.5, "suffix:m/s") var wreck_skid_speed: float = 9.0
 
 @export_group("Generator rules")
 ## Metres of its lane kept clear before the burst point.

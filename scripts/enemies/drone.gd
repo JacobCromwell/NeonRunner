@@ -145,7 +145,7 @@ func aim_point() -> Vector3:
 
 
 func hit_radius() -> float:
-	return 0.85
+	return 0.85 * tune.model_scale
 
 
 ## In play and within sight of the player: an anti-grav pad hurls it into the hull.
@@ -466,13 +466,14 @@ func _update_aim_line(aim: Vector3) -> void:
 		flicker = 0.55 + 0.45 * absf(sin(_state_time * rate))
 	var up: Vector3 = Vector3.UP if absf(d.normalized().dot(Vector3.UP)) < 0.99 else Vector3.RIGHT
 	_aim_line.global_transform = Transform3D(
-		Basis.looking_at(d / length, up).scaled_local(Vector3(0.04 * flicker, 0.04 * flicker, length)),
+		Basis.looking_at(d / length, up).scaled_local(Vector3(0.06 * flicker, 0.06 * flicker, length)),
 		from + d * 0.5)
 
 
 func _build_model() -> void:
 	var model: Dictionary = _model(world.skin.enemy_variant if world.skin != null else &"city")
 	_pivot = Node3D.new()
+	_pivot.scale = Vector3.ONE * tune.model_scale
 	add_child(_pivot)
 	var body := MeshInstance3D.new()
 	body.mesh = model["body"]
@@ -514,7 +515,7 @@ static func _model(variant: StringName) -> Dictionary:
 	if _models.has(variant):
 		return _models[variant]
 	var scav: bool = variant == &"scavenger"
-	var hull: Material = GreyboxMaterials.flat(Color(0.44, 0.28, 0.17) if scav else Color(0.32, 0.35, 0.45))
+	var hull: Material = GreyboxMaterials.flat(Color(0.55, 0.36, 0.22) if scav else Color(0.46, 0.5, 0.62))
 	var dark: Material = GreyboxMaterials.flat(Color(0.11, 0.11, 0.14))
 	var trim: Material = GreyboxMaterials.flat(Color(0.3, 0.26, 0.22) if scav else Color(0.55, 0.6, 0.7))
 	var eye: Material = GreyboxMaterials.glow(EYE_COLOR, 4.0)
@@ -525,6 +526,8 @@ static func _model(variant: StringName) -> Dictionary:
 	b.box(hull, Vector3(0.0, 0.0, 0.0), Vector3(1.0, 0.4, 0.9))
 	b.wedge(hull, Vector3(0.0, -0.03, 0.6), Vector3(0.9, 0.32, 0.34), Vector3(PI * 0.5, 0.0, 0.0))
 	b.box(eye, Vector3(0.0, 0.12, 0.455), Vector3(0.6, 0.08, 0.03))
+	# A red band around the hull: the hostile read from any side.
+	b.box(eye, Vector3(0.0, -0.1, 0.0), Vector3(1.02, 0.05, 0.92))
 	b.box(dark, Vector3(0.0, 0.26, -0.06), Vector3(0.62, 0.14, 0.58))
 	b.box(trim, Vector3(0.0, 0.35, -0.4), Vector3(0.08, 0.26, 0.26))
 	for sx: float in [-1.0, 1.0]:
@@ -544,7 +547,7 @@ static func _model(variant: StringName) -> Dictionary:
 	r.box(blade, Vector3.ZERO, Vector3(1.3, 0.025, 0.1))
 	r.box(blade, Vector3.ZERO, Vector3(0.1, 0.025, 1.3))
 	r.cylinder(dark, Vector3(0.0, 0.02, 0.0), Vector3(0.14, 0.07, 0.14))
-	r.cylinder(GreyboxMaterials.glow(Color(0.85, 0.9, 1.0), 0.6, 0.14), Vector3(0.0, -0.005, 0.0), Vector3(1.36, 0.01, 1.36))
+	r.cylinder(GreyboxMaterials.glow(Color(0.85, 0.9, 1.0), 1.0, 0.22), Vector3(0.0, -0.005, 0.0), Vector3(1.36, 0.01, 1.36))
 	var rotor: ArrayMesh = r.commit()
 
 	# The gatling points along -z (look_at aims -z at the target) and spins about z.
