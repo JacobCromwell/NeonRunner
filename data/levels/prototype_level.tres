@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="LevelConfig" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/core/level_config.gd" id="1_level"]
-[ext_resource type="Resource" path="res://data/skins/greybox_skin.tres" id="2_skin"]
+[ext_resource type="Resource" path="res://data/skins/city_skin.tres" id="2_skin"]
 
 [resource]
 script = ExtResource("1_level")
