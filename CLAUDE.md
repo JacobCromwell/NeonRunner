@@ -6,10 +6,11 @@ This file is for Claude Code and all sub-agents working on this project. Read it
 ## Source of truth
 - `docs/GDD_CHECKPOINT.md` (later `docs/GDD.md`) is the authority on game design. **Do not invent design.**
 - If a task needs a design decision that isn't in the design document, **do not guess**:
-  1. Add the question to `docs/OPEN_QUESTIONS.md` under a "Raised during build" heading.
+  1. Add the question to `docs/questions/<task-id>.md` (see "Parallel work"). The orchestrator folds it into `docs/OPEN_QUESTIONS.md` under "Raised during build" when the task merges.
   2. Implement the smallest reasonable placeholder, clearly marked `# DESIGN-TBD:` in code.
   3. Report it in your task summary.
-- Record any decision the owner makes in the design document, not only in code.
+- Record any decision the owner makes in the design document, not only in code. The design document is edited in design sessions with the owner; build agents don't change its design sections.
+- `docs/TASK_PLAN.md` lists the build tasks, their order, and the model and effort level for each.
 
 ## Tech stack
 - **Engine:** Godot 4 (pin the exact version in `project.godot`; do not upgrade without approval).
@@ -56,6 +57,13 @@ This file is for Claude Code and all sub-agents working on this project. Read it
 - Run the project headless and any tests before reporting a task complete. Report what you verified and how.
 - Keep commits small and descriptive. One task per branch or commit series.
 - End every task with a short summary: what changed, what was verified, any `DESIGN-TBD` items, and any risks noticed.
+
+## Parallel work
+- **One task, one branch,** named after its ID in `docs/TASK_PLAN.md`, started from the latest `main`.
+- **Merge one at a time:** merge the latest `main` into the task branch, run the tests and the smoke run, then merge.
+- **Questions go in `docs/questions/<task-id>.md`,** never straight into `docs/OPEN_QUESTIONS.md`, so parallel tasks don't collide on the shared list.
+- **Core files change one task at a time:** `scripts/world/level_generator.gd`, `scripts/world/track_builder.gd`, `scripts/core/damage_rules.gd`, `scripts/run/run_world.gd`, `scripts/player/player.gd`, and the campaign, zone and level data. The task plan marks which tasks are core.
+- **New enemies stay in their own files** (`docs/ARCHITECTURE.md`, Enemies). A shared change an enemy needs belongs to a core task.
 
 ## Commands
 `tools/godot.sh` finds the pinned Godot (via `$GODOT`, PATH, or the Windows user folders under WSL) and re-imports

@@ -55,6 +55,9 @@ Each test is small, answers one risky question, and is thrown away or folded in 
 
 ## 5. Provisional orchestration plan (to finalize after the budget question)
 
+**Build phase 2 (from September 26, 2026) runs from `docs/TASK_PLAN.md`,** which assigns a model and effort level to every task.
+
+
 Claude Code lets each sub-agent use a different model (`opus`, `sonnet`, `haiku`, or `inherit` from the main session). The principle is to **spend on judgment and pay less for routine work.**
 
 | Role | Model tier | Typical tasks |
