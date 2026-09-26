@@ -80,6 +80,9 @@ func build(p_config: LevelConfig, p_layout: LevelLayout, p_tuning: MovementTunin
 		powerups.name = "Powerups"
 		add_child(powerups)
 		powerups.call(&"setup", self)
+		# The player model shows what the power-ups carry and drops broken armor/shields.
+		player.set_equipment_look(powerups.call(&"equipment"))
+		powerups.connect(&"equipment_changed", player.set_equipment_look)
 	track.update(0.0, 0.0)
 
 

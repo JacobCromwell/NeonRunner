@@ -34,6 +34,8 @@ extends Node3D
 ##       top of the helmet in the run pose), depth. Cheap to call every frame.
 ##   reset()
 ##       Back to the start-of-run look: no death, no flash; the next animate() snaps to its pose.
+##   weapon_muzzle() -> Vector3
+##       World position of the shoulder weapon's muzzle (shots start here).
 ##   rig: the HumanoidRig (joint(&"hand_r") etc. for attaching effects), anim_tuning: its tuning.
 
 const ANIM_TUNING_PATH: String = "res://data/tuning/avatar_animation.tres"
@@ -52,6 +54,9 @@ const SHIELD_RADII := Vector3(0.4, 0.53, 0.4)
 const SHIELD_RADII_SLIDE := Vector3(0.48, 0.34, 0.62)
 const SHIELD_CENTER: float = 0.51
 const SHIELD_CENTER_SLIDE: float = 0.27
+
+## Where the shoulder weapon's emitter sits, in the chest joint's space (see PlayerSuit._weapon).
+const WEAPON_MUZZLE := Vector3(0.2, 0.33, -0.18)
 
 var rig: HumanoidRig
 var anim_tuning: HumanoidAnimTuning
@@ -133,6 +138,12 @@ func fit_to(size: Vector3) -> void:
 	var design: Vector3 = rig.parts.design_size
 	rig.scale = Vector3(size.x / design.x, size.y / design.y, size.z / design.z)
 	_update_shield()
+
+
+## World position of the shoulder weapon's muzzle, following the pose, the size fit and the roll
+## onto walls and the ceiling. The weapon power-up fires from here.
+func weapon_muzzle() -> Vector3:
+	return rig.joint(&"chest").global_transform * WEAPON_MUZZLE
 
 
 func reset() -> void:

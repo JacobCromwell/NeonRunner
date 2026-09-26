@@ -158,6 +158,9 @@ func fire_at(target: Enemy) -> bool:
 ## ceiling, lower while sliding.
 func muzzle_point() -> Vector3:
 	var p: Player = world.player
+	if p.is_inside_tree():
+		# The player model's shoulder weapon (it follows the pose and the roll onto walls/ceiling).
+		return p.weapon_muzzle()
 	var v: Vector3 = p.tuning.visual_size
 	var local := Vector3(v.x * MOUNT.x, body_height(p) * MOUNT.y, v.z * MOUNT.z)
 	return p.global_position + surface_basis(p) * local

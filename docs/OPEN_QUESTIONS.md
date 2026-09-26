@@ -171,28 +171,41 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
 26. **Weapon tiers 2–3:** damage 1.4 and 2.0 (tier 1 = 1, tier 4 = 3); fire intervals 0.32 / 0.3 /
     0.55 / 0.65 s; heavy-missile splash 3.5 m at half damage, ×2 against swarms.
 
+**Power-ups** (from the power-ups work)
+27. **Missiles home** on their target (turn rate 7 rad/s) and leave the launcher angled 0.35 away from the
+    surface. The GDD doesn't say missiles home.
+28. **Swarm bonus on splash:** the heavy missile's bonus also applies to its splash on swarm enemies.
+29. **No overkill:** auto-fire skips an enemy that shots already in flight will kill and moves on to
+    the next nearest.
+30. **Fence generators** are auto-fire targets (destroying one sets off its EMP). Should they be?
+31. **Shots ignore level geometry** (hulls, walls), and the weapon fires from any surface.
+32. **Slow time** slows the player too; pausing suspends it (resuming continues); dying or finishing
+    ends it. Audio isn't slowed.
+33. **Enemy health bars** appear after the first hit: red, draining to dark red, with a white segment
+    for recent damage (yellow and orange stay hazard colours). The magnet's pull glows azure.
+
 **Player model** (from the player-model work)
-27. How each power-up looks: claws on the gloves, armor plates, a shield bubble, a shoulder weapon that
+34. How each power-up looks: claws on the gloves, armor plates, a shield bubble, a shoulder weapon that
     grows by tier (tier colours are made up), a magnet coil.
-28. Invulnerability: a bright tint that flickers (held steady with Reduced flashing), not a blink.
-29. Death: a red flash while the suit's glow powers down (the grey box turned red). Keep?
-30. The stomp pose also plays during the air-slide fast fall.
-31. The player's glow is cyan, the same as the anti-grav pads. OK, or should the player have its own
+35. Invulnerability: a bright tint that flickers (held steady with Reduced flashing), not a blink.
+36. Death: a red flash while the suit's glow powers down (the grey box turned red). Keep?
+37. The stomp pose also plays during the air-slide fast fall.
+38. The player's glow is cyan, the same as the anti-grav pads. OK, or should the player have its own
     colour?
 
 **UI** (from the UI kit work)
-32. **Palette:** an azure main accent and a violet second accent; red only for warnings and "can't
+39. **Palette:** an azure main accent and a violet second accent; red only for warnings and "can't
     afford". Pink, orange and yellow are never UI colours (they're hazard colours).
-33. **Stars** are white with an azure glow rather than gold (yellow is the sign colour). OK?
-34. **Fonts and sizes:** Orbitron (titles, numbers) and Exo 2 (text); touch devices get 76 px controls
+40. **Stars** are white with an azure glow rather than gold (yellow is the sign colour). OK?
+41. **Fonts and sizes:** Orbitron (titles, numbers) and Exo 2 (text); touch devices get 76 px controls
     and 1.2× text. Worth checking on a real phone (`data/ui/ui_style.tres`).
-35. **HUD progress bar:** shown; what its markers should stand for is open.
-36. **Key rebinding:** single keys only (no Ctrl+ combinations); Esc cancels a rebind, so Esc itself
+42. **HUD progress bar:** shown; what its markers should stand for is open.
+43. **Key rebinding:** single keys only (no Ctrl+ combinations); Esc cancels a rebind, so Esc itself
     can't be bound.
 
 **Platforms and presentation**
-37. **Store links** in the web demo point at the stores' front pages until the game has store pages.
-38. **App icon:** a placeholder neon "N" (`tools/asset_gen/icon_gen.gd`) until there's a title and brand.
+44. **Store links** in the web demo point at the stores' front pages until the game has store pages.
+45. **App icon:** a placeholder neon "N" (`tools/asset_gen/icon_gen.gd`) until there's a title and brand.
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).

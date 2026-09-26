@@ -662,6 +662,11 @@ func set_equipment_look(eq: Dictionary) -> void:
 	_avatar.set_equipment(eq)
 
 
+## World position the shoulder weapon fires from (the model's emitter).
+func weapon_muzzle() -> Vector3:
+	return _avatar.weapon_muzzle()
+
+
 # --- Presentation ----------------------------------------------------------
 
 func _apply_transform(delta: float) -> void:

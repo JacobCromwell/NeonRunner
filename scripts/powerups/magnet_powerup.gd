@@ -7,7 +7,8 @@ extends PowerupModule
 ## The look: a faint field in the credits' gold on the player's surface, covering roughly what the
 ## magnet reaches, with rings flowing in toward the player; it brightens for a moment on a pickup.
 
-const COLOR := Color(1.0, 0.8, 0.32)
+## The pull's colour: the credits' azure (never the signs' yellow: hazard colours are reserved).
+const COLOR := Color(0.3, 0.68, 1.0)
 ## Metres behind the player the field reaches (the credit field pulls from 1 m behind).
 const BEHIND: float = 1.0
 
