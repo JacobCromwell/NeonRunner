@@ -3,6 +3,10 @@ extends Resource
 ## Which sound plays for each game event, and how loud. Each sound is `folder/<name>.wav`, so any
 ## of them can be replaced by dropping in a file with the same name. The current files are made
 ## by tools/asset_gen/sfx_gen.gd. Hazard warning sounds are shared by every zone (hazard language).
+## Every sound effect plays on the SFX bus (default_bus_layout.tres), which feeds Master.
+
+## The bus every sound effect player uses. Settings set its volume by this name.
+const BUS: StringName = &"SFX"
 
 @export_dir var folder: String = "res://assets/sfx"
 ## Mix level per sound in dB. Also the list of sounds the game knows about.
