@@ -166,7 +166,7 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 | | 2 | The **Tithe Collector** (§9.12), with a heavier military presence *(proposed)* |
 | 5. Dead Zone | 1 | Hosts and the **Cyborg's Bad Dream** |
 | | 2 | A quiet, eerie remix |
-| 6. Golden Zone | 1 | The **Resonator** (§9.10, working name) |
+| 6. Golden Zone | 1 | The **Resonator** (§9.10) |
 | | 2 | **Gilded Sentinels** (§9.11) and peak difficulty *(proposed)* |
 | | 3 | The **Golden Palace**, then the final boss |
 
@@ -286,7 +286,8 @@ Shared interaction rules apply unless stated otherwise:
   - Sends out an **EMP** that disables fences within a short radius for the rest of the level *(assumed duration)*.
   - The EMP also dissolves the Cyborg's Bad Dream.
 - **Wall fences** (owner, September 26, 2026; first appear in Marketplace 2 *(proposed)*): electric fences that **span a side wall** and **turn off and on** from time to time, to make the walls less safe.
-  - *(Proposed)* The same pink crackle, strung across the wall-run path between emitters on the facade, the way a floor fence crosses a lane. They follow the level clock with the same flicker and crackle before switching on, and start as full-height fences that are passed by timing.
+  - *(Proposed)* The same pink crackle, strung across the wall-run path between emitters on the facade, the way a floor fence crosses a lane. They follow the level clock with the same flicker and crackle before switching on.
+  - **Variants** (decided September 26, 2026): **full-height** wall fences, passed by timing, from Marketplace 2. From the Corporate zone, **partial** wall fences also cover only the low or the high part of the wall, and are passed by entering the wall high or low.
   - The same rules as floor fences: armor, the shield and the dash get you through, claws don't, weapons can't destroy them, and a generator's EMP switches them off.
   - *(Proposed)* Fairness: never where a ramp launches the player into one while it's on, and never on the same wall section as a sign or a window cyborg.
 
@@ -434,7 +435,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Scaling:** the only change across the campaign is that its **rev time gets slightly shorter**. It appears in only two zones, so it never gets too fast. Its health stays at 20 shots.
 - **Implementation note:** the generator plans each cut in advance (lane, start and end), so levels stay fair and identical on every attempt; the saw is just the visible cause. This is the first floor that turns into a gap during play.
 
-### 9.10 Resonator (working name; the owner's "Hymn Censer" in a sci-fi form; the Golden Zone's new enemy, first appears in Golden 1)
+### 9.10 Resonator (the owner's "Hymn Censer" reworked in a sci-fi form; the Golden Zone's new enemy, first appears in Golden 1)
 - **Direction:** leans heavily on sci-fi, and must not look like anything from a church. It reads as the cult's **broadcast technology**, not an object of worship.
 - **Look** *(proposed)*: a floating, slender golden spire ringed by 2–3 slowly turning halos around a red glowing core. Elegant luxury tech rather than religious.
 - **Sequence** *(proposed)*:
@@ -450,13 +451,14 @@ Shared interaction rules apply unless stated otherwise:
 - **Look:** the Golden Zone's walls are lined with golden statues holding halberds, most of them decorative. A **live** one stands in a niche **at wall-run height** with **glowing red eyes**; decorative statues never stand at wall-run height (safe things look safe). They fit the Golden Palace as its guards.
 - **Attack:** as the player approaches, its eyes flare and stone grinds (visual and audio warning); then it **swings its halberd across its wall section and the outer floor lane**.
 - **Dodge:** on the wall, pass above or below the swing by timing the wall entry; on the floor, stay out of the outer lane. Later ones swing twice or come in pairs.
-- **Kill** *(proposed)*: a stomp from a wall jump, or weapons (tough). Armor blocks the halberd; the statue's body is solid.
+- **Kill:** a stomp from a wall jump *(proposed)*, or weapons: **15 shots** at laser tier 1, with no special weapon rule (decided September 26, 2026). Armor blocks the halberd; the statue's body is solid *(proposed)*.
 
 ### 9.12 Tithe Collector (owner, September 26, 2026; first appears in Corporate 2 *(proposed)*)
 - **Look:** a small, fast gold drone with a collection plate; smug and gaudy.
 - **Behaviour:** darts along the lanes ahead of the player and **sucks up the credits in its path** (a visible stream of credits flowing into it). It weaves through the most dangerous lanes, so chasing it is the risk.
 - **Catch it** (stomp, shoot or dash through it) and it bursts into **everything it took plus a jackpot**.
-- **Touching it isn't deadly:** it grabs a share of the credits collected this run and flies off. This is the game's first non-lethal hit.
+- **Touching it isn't deadly:** it grabs **25% of the credits collected this run** (decided September 26, 2026) and flies off. This is the game's first non-lethal hit.
+- *(Proposed)* It is **not a heli drone**: anti-grav pads don't affect it, and it has no rotors, so it doesn't look like one.
 - **Where:** introduced earlier than the Golden Zone and appears there as well. *(Proposed)* Introduced in Corporate 2, skips the Dead Zone (there's no one left to collect from), and returns in the Golden Zone.
 - **Priority:** it is the first idea to drop if the budget tightens (owner, September 26, 2026).
 
