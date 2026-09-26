@@ -26,7 +26,8 @@ var level_index: int = -1
 var boss: BossDef
 ## Where the next attempt at a boss fight starts: {} from the beginning, or, once a checkpoint phase
 ## was reached (GDD §10: the final fight's halfway checkpoint), {phase, time, score, weapon_damage}
-## carried from that attempt (BossEncounter). Retries keep it; starting the step afresh doesn't.
+## carried from that attempt (BossEncounter). DESIGN-TBD (docs/questions/b8.md): retries keep it;
+## starting the step afresh from the map, or quitting the game, doesn't (it's never saved).
 var boss_resume: Dictionary = {}
 
 

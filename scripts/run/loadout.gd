@@ -58,6 +58,7 @@ static func full(catalog: ShopCatalog) -> Loadout:
 ## tier given as "id:tier"; one charge of a breakable item (never more than one: a player bringing
 ## their own keeps it in stock instead). Items the platform doesn't sell (slow time on mobile) and
 ## unknown ids are left out, and so is the revive, which is used from stock on the death screen.
+## DESIGN-TBD (docs/questions/b8.md): how generous a grant is, and that it ignores the equip toggle.
 func grant(items: PackedStringArray, catalog: ShopCatalog, mobile: bool) -> void:
 	for spec: String in items:
 		var id := StringName(spec.get_slice(":", 0).strip_edges())

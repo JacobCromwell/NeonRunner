@@ -7,7 +7,7 @@ extends ScreenBase
 ## (time, weak points, the phase reached, the time bonus). Then on to the shop and the next step or
 ## a retry (GDD §4, §8), a retry now, or the menu.
 ## DESIGN-TBD: which stats the level-complete screen shows (OPEN_QUESTIONS §5); these are the
-## ScoreKeeper's.
+## ScoreKeeper's, and a boss fight's own (docs/questions/b8.md).
 
 ## Wait before the reveal starts, so the screen has settled.
 const REVEAL_DELAY: float = 0.25

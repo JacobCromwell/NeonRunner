@@ -487,6 +487,8 @@ func _begin_phase(index: int) -> void:
 	var p: BossPhase = phase()
 	var resume: Dictionary = context.boss_resume
 	if p.checkpoint and (resume.is_empty() or int(resume.get("phase", -1)) < index):
+		# DESIGN-TBD (docs/questions/b8.md): a retry from here carries the fight time and score so far,
+		# so stars, the time bonus and the leaderboard compare whole fights.
 		context.boss_resume = {"phase": index, "time": fight_time(), "score": world.score.score,
 			"weapon_damage": weapon_damage}
 		log_event(&"checkpoint")
@@ -527,6 +529,7 @@ func _defeat(cause: StringName) -> void:
 
 ## The lowest health one hit may leave: the end of the phase after the current one (just short of
 ## it), so a hit ends at most the current phase and every phase gets played; 0 in the last phase.
+## DESIGN-TBD (docs/questions/b8.md): damage beyond a phase carries into the next one.
 func _lowest_after_hit() -> float:
 	if phase_index >= phase_count() - 1:
 		return 0.0
@@ -546,6 +549,8 @@ func _on_item_used(item: StringName) -> void:
 	protection_broken.emit(item)
 	if not def.armor_rule:
 		return
+	# DESIGN-TBD (docs/questions/b8.md): a break counts against its own phase's cap, and its delay is
+	# picked in [min, max] from the fight's own seeded stream.
 	var used: int = int(_armor_breaks.get(phase_index, 0))
 	if used >= def.armor_pickups_per_phase:
 		return

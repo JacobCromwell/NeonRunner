@@ -193,7 +193,7 @@ func _process(delta: float) -> void:
 
 ## The boss is beaten (GDD §10): the run is won. The runner keeps running while the defeat plays out
 ## (the Floating Head crashes into the street ahead and the runner runs through the wreck), safe from
-## anything still in the air, then the results follow.
+## anything still in the air, then the results follow (DESIGN-TBD: then the shop, as after a level).
 func _on_boss_defeated() -> void:
 	if state != State.RUNNING:
 		return

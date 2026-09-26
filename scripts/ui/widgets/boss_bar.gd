@@ -4,6 +4,7 @@ extends VBoxContainer
 ## with a marker where each phase ends (a marker dims once its phase is over), and a white segment
 ## that drains after each hit, like the enemy health bars. While the boss can't be hurt (its entrance
 ## or a phase change) the fill turns grey. Nothing in it blinks (Reduced flashing).
+## DESIGN-TBD (OPEN_QUESTIONS §5, docs/questions/b8.md): the boss HUD's look and place.
 ##   bar.bind(encounter)        # follows the fight from then on
 ##   bar.set_state(0.6, [0.667, 0.333], true, "PHASE 2/3")   # or drive it by hand (tests, showcases)
 
