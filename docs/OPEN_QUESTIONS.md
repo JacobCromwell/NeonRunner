@@ -26,7 +26,7 @@ For each boss: arena, phases, attacks, weak points, what power-ups are granted b
 - ~~Sewer Swarm: full breakdown.~~ Answered (GDD §10, September 26, 2026).
 - ~~Marketplace boss~~ Answered: The House (GDD §10); revisit after playtesting.
 - ~~Dead Zone boss~~ Answered: Sleep Taker (GDD §10).
-- **Generators and auto-fire everywhere?** Sleep Taker's fight makes auto-fire skip generators. Should that be the rule in every level (with missile splash never setting one off, like hosts), so an EMP is always the player's choice? This also answers item 30 below.
+- **Generators and auto-fire everywhere?** Sleep Taker's fight makes auto-fire skip generators. Should that be the rule in every level (with missile splash never setting one off, like hosts), so an EMP is always the player's choice? This also answers "Fence generators are auto-fire targets" in §D (item 31 under "From the full build").
 - Corporate boss: concept needed. The final villain's fight: full breakdown.
 - ~~Do bosses have their own leaderboards or star criteria?~~ Answered: yes (GDD §10).
 - ~~Does the longer final fight still restart from the beginning on death?~~ Answered: a checkpoint halfway, at a possible second stage (GDD §10).
