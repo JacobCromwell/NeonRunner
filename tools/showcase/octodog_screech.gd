@@ -1,6 +1,8 @@
 extends Node3D
 ## Close-up showcase of the Octodog and the Sewer Screech in their key poses, for visual review:
-##   SCENE=res://tools/showcase/octodog_screech.tscn render.sh . build/showcase 40 [-- city|scavenger]
+##   SCENE=res://tools/showcase/octodog_screech.tscn render.sh . build/showcase 40 [-- close|left|right] [scavenger]
+## (render.sh is the Compatibility-renderer frame dump; views: the whole group by default, a close-up,
+## or the left / right wall's vent; "scavenger" shows the weathered zone variant.)
 ## Builds a real RunWorld (grey-box skin) with the player standing still, spawns the enemies through
 ## the EnemyDirector and freezes each in one phase (their physics is paused; their animation runs).
 

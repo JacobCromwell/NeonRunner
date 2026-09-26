@@ -140,9 +140,10 @@ func _test_lunge_hits_and_dodges() -> void:
 ## GDD §9.4: jumping over it dodges too (the leap is low), timed like any jump; jumping too early
 ## lands in front of it.
 func _test_jump_dodge() -> void:
-	for lanes: int in [3, 6]:
-		for dog_offset: int in [0, 1]:
-			var made: Array = await _world(lanes, 0, dog_offset)
+	for lanes: int in [3, 5, 6]:
+		for case: Vector2i in [Vector2i(0, 0), Vector2i(0, 1), Vector2i(lanes / 2, 0), Vector2i(lanes - 1, -1)]:
+			var dog_offset: int = case.y
+			var made: Array = await _world(lanes, case.x, case.x + dog_offset)
 			var w: RunWorld = made[0]
 			var dog: Octodog = made[1]
 			await _until(_phase_is.bind(dog.get_instance_id(), Octodog.Phase.LUNGE), 4.0)
@@ -150,8 +151,8 @@ func _test_jump_dodge() -> void:
 			await _until(func() -> bool: return _rel(w, dog_id) < 8.0, 2.0)
 			w.player.press(&"jump")
 			await _until(_lunge_over.bind(w, dog.get_instance_id()), 3.0)
-			check(w.player.alive, "jumping over a lunge dodges it (lanes=%d dog offset %d, %s)" % [lanes, dog_offset,
-				w.player.last_event])
+			check(w.player.alive, "jumping over a lunge dodges it (lanes=%d player %d dog offset %d, %s)" % [lanes,
+				case.x, dog_offset, w.player.last_event])
 			await sim.free_world(w)
 	var made2: Array = await _world(5, 2, 2)
 	var w2: RunWorld = made2[0]
