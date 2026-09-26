@@ -10,6 +10,7 @@ level_seed = 102
 duration_seconds = 120.0
 difficulty_bias = 0.0
 features = PackedStringArray("cyborg", "ceilings")
+guarantee_features = true
 feature_starts = Dictionary[String, float]({
 "ceilings": 0.1
 })

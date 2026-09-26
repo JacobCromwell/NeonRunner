@@ -26,25 +26,36 @@ extends RefCounted
 ##   city, OPEN_QUESTIONS §1).
 ## - Late starts (LevelConfig.feature_starts): a host before the `host` feature's start is dropped,
 ##   and so is one whose chase begins before the `ceilings` feature's start (its pads couldn't come).
-## Like the cyborg rules they start with, these run after the hover truck's (its route ramp).
+## - In a level that guarantees its features (LevelConfig.guarantee_features), if no host is left
+##   (every one placed was dropped, or none was placed), one is added where a host fits all of the
+##   above: its chase fits and gets its pads, and, like any cyborg, it stands clear of floor obstacles
+##   (CyborgRules), of other enemies and of a hover truck's lane while the truck is about
+##   (HoverTruckRules.open_lanes). DESIGN-TBD: the spot is picked at random among those that fit.
+## Like the cyborg rules they start with, these run after the hover truck's (its route ramp). The
+## Octodog's rules run after these and plan each dog's charges off the chases (octodog_rules.gd;
+## GDD §9.7: a Bad Dream is never on during an Octodog charge sequence).
 
 const RUN_AFTER: Array[String] = ["drone", "hover_truck"]
 const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
+const HoverTruckRules = preload("res://scripts/enemies/hover_truck_rules.gd")
 const PadPlacement = preload("res://scripts/enemies/pad_placement.gd")
 const DREAM_TYPE: String = "bad_dream"
 ## Metres between the spots tried for an added pad, from the latest allowed spot back.
 const PAD_SEARCH_STEP: float = 3.0
+## Metres between the spots tried for a guaranteed host.
+const GUARANTEE_STEP: float = 6.0
 
 
 static func apply(gen: LevelGenerator) -> void:
 	CyborgRules.apply(gen)
 	var layout: LevelLayout = gen.layout
 	var hosts: Array[Dictionary] = hosts_in(layout)
-	if hosts.is_empty():
+	if hosts.is_empty() and not gen.config.guarantee_features:
 		return
 	if not gen.config.has_feature("ceilings"):
-		_remove_entries(layout, hosts)
-		gen.warnings.append("host: the level has hosts but not the `ceilings` feature, so a Bad Dream's chase can't get its anti-grav pads (hosts dropped)")
+		if not hosts.is_empty():
+			_remove_entries(layout, hosts)
+			gen.warnings.append("host: the level has hosts but not the `ceilings` feature, so a Bad Dream's chase can't get its anti-grav pads (hosts dropped)")
 		return
 	var t: BadDreamTuning = tuning()
 	var speed: float = gen.speed
@@ -70,6 +81,8 @@ static func apply(gen: LevelGenerator) -> void:
 			PadPlacement.place(gen, rng, at, t.pad_ceiling_seconds)
 		free_from = stretch.y + t.host_gap_seconds * speed
 	_remove_entries(layout, dropped)
+	if gen.config.guarantee_features and hosts_in(layout).is_empty():
+		_add_guaranteed(gen, t, rng, earliest, last_ok, pads_before)
 
 
 static func tuning() -> BadDreamTuning:
@@ -85,6 +98,57 @@ static func hosts_in(layout: LevelLayout) -> Array[Dictionary]:
 			out.append(e)
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["at"]) < float(b["at"]))
 	return out
+
+
+## The stretch each host's chase can cover (BadDreamTuning.chase_stretch), along the track: where
+## later rules keep an Octodog's charges off (octodog_rules.gd).
+static func chase_stretches(gen: LevelGenerator) -> Array[Vector2]:
+	var t: BadDreamTuning = tuning()
+	var out: Array[Vector2] = []
+	for e: Dictionary in hosts_in(gen.layout):
+		out.append(t.chase_stretch(float(e["at"]), gen.speed))
+	return out
+
+
+## One host where a host fits every rule (see the header), in a level left without one. The
+## spots that pass the quick checks are tried in random order until one's pads can be planned; its
+## pads are placed with it. Returns the host, or {} if no spot fits.
+static func _add_guaranteed(gen: LevelGenerator, t: BadDreamTuning, rng: RandomNumberGenerator, earliest: float,
+		last_ok: float, pads_before: float) -> Dictionary:
+	var layout: LevelLayout = gen.layout
+	var speed: float = gen.speed
+	var ct := load(CyborgRules.TUNING_PATH) as CyborgTuning
+	var margin: float = ct.obstacle_margin if ct != null else 10.0
+	var spans: Array[Vector2] = CyborgRules.obstacle_spans(layout, gen.tuning)
+	var clearance: float = gen.config.spacing_seconds_hard * speed
+	var spots: Array[float] = []
+	var at: float = maxf(earliest, gen.config.start_clear_distance)
+	while t.chase_stretch(at, speed).y <= last_ok:
+		if not CyborgRules.near_any(spans, at, margin) and not _enemy_near(layout, at, clearance) \
+				and not HoverTruckRules.open_lanes(gen, at).is_empty():
+			spots.append(at)
+		at += GUARANTEE_STEP
+	var pick: RandomNumberGenerator = gen.rng_for("host_guarantee")
+	while not spots.is_empty():
+		var spot: float = spots.pop_at(pick.randi_range(0, spots.size() - 1))
+		var plan: Dictionary = plan_pads(gen, t, rng, t.chase_stretch(spot, speed), pads_before)
+		if not bool(plan["ok"]):
+			continue
+		var lanes: Array[int] = HoverTruckRules.open_lanes(gen, spot)
+		var host: Dictionary = gen.add_enemy("cyborg", spot, lanes[pick.randi_range(0, lanes.size() - 1)], 0,
+			{"host": true, "panic": false})
+		for pad_at: float in plan["pads"]:
+			PadPlacement.place(gen, rng, pad_at, t.pad_ceiling_seconds)
+		return host
+	return {}
+
+
+## True if an enemy of any kind stands within `clearance` of the track distance `at`.
+static func _enemy_near(layout: LevelLayout, at: float, clearance: float) -> bool:
+	for e: Dictionary in layout.enemies:
+		if absf(float(e["at"]) - at) < clearance:
+			return true
+	return false
 
 
 ## Where the level's first drone appears (INF without drones): the drone rules own every pad from

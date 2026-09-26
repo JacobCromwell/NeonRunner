@@ -8,8 +8,8 @@ extends RefCounted
 ##   no sign at their wall entry, and nothing lies in the end-clear stretch.
 ## - check_rules: the enemy rules still hold when many features share a level: drones get 10 s before
 ##   their first pad and then pads 8–10 s apart (GDD §9.6), a Bad Dream's chase has pads at most
-##   10 s apart (GDD §9.7), Octodog runs stay off ceilings (GDD §3), cyborgs keep their margin from
-##   floor obstacles, and every fence generator powers a fence.
+##   10 s apart and keeps off Octodog runs (GDD §9.7), Octodog runs stay off ceilings (GDD §3),
+##   cyborgs keep their margin from floor obstacles, and every fence generator powers a fence.
 ## Each check goes through `suite.check()`, so failures are reported by the suite that called.
 
 const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
@@ -117,6 +117,13 @@ static func check_rules(suite: TestSuite, layout: LevelLayout, config: LevelConf
 		worst = maxf(worst, s.y - cursor)
 		suite.check(worst <= bt.pad_gap_seconds * speed + 0.01,
 			"anti-grav pads through a whole chase, at most %.0f s apart (%.1f s) %s" % [bt.pad_gap_seconds, worst / speed, tag])
+		# The Bad Dream's chase and an Octodog's charges never overlap (GDD §9.7): the Octodog rules,
+		# which run after the host rules, plan each dog's run off the chases.
+		for e: Dictionary in layout.enemies:
+			if String(e["type"]) == "octodog":
+				var run: Vector2 = LevelGenerator.enemy_floor_span(e)
+				suite.check(run.y < s.x or run.x > s.y,
+					"a Bad Dream's chase (%.0f–%.0f) keeps off an Octodog's run (%.0f–%.0f) %s" % [s.x, s.y, run.x, run.y, tag])
 	# Octodog runs stay off ceilings (GDD §3).
 	var ot := EnemyDirector.tuning_for("octodog") as OctodogTuning
 	var window: float = ot.window_length(speed, config.enemy_scaling)
@@ -155,52 +162,21 @@ static func known_feature(feature: String) -> bool:
 
 
 ## True if feature_positions() can find `feature`'s pieces or enemies: the mechanics, hosts, vent
-## screeches, and any enemy type with a script (a planned feature once its enemy is built). A task
-## that adds a new kind of piece (e.g. wall fences) adds it to feature_positions().
+## screeches, any enemy type with a script (a planned feature once its enemy is built), and a
+## feature whose rules script answers for itself (`positions`, e.g. wall fences once B5 adds them).
 static func can_locate(feature: String) -> bool:
 	if feature in ["ramps", "ceilings", "speed_pads", "pulsing", "host", "screech_vents"]:
+		return true
+	var rules: String = "res://scripts/enemies/%s_rules.gd" % feature
+	if ResourceLoader.exists(rules) and (load(rules) as GDScript).has_method("positions"):
 		return true
 	return ResourceLoader.exists("res://scripts/enemies/%s.gd" % feature)
 
 
-## Track distances of everything `feature` placed: ramps, anti-grav pads (ceilings), speed pads,
-## pulsing fences, or the enemies of that type (hosts are cyborgs with params.host; screech_vents
-## are screeches from wall vents).
+## Track distances of everything `feature` placed (the generator's own check,
+## LevelGenerator.feature_positions).
 static func feature_positions(layout: LevelLayout, feature: String) -> Array[float]:
-	var out: Array[float] = []
-	match feature:
-		"ramps":
-			for r: Dictionary in layout.ramps:
-				out.append(float(r["at"]))
-		"ceilings":
-			for p: Dictionary in layout.pads:
-				out.append(float(p["at"]))
-		"speed_pads":
-			for p: Dictionary in layout.speed_pads:
-				out.append(float(p["at"]))
-		"pulsing":
-			for f: Dictionary in layout.fences:
-				if bool(f["pulsing"]):
-					out.append(float(f["at"]))
-		_:
-			for e: Dictionary in layout.enemies:
-				var type: String = String(e["type"])
-				var params: Dictionary = e.get("params", {})
-				var host: bool = type == "cyborg" and bool(params.get("host", false))
-				var hit: bool = false
-				match feature:
-					"cyborg":
-						hit = type == "cyborg" and not host
-					"host":
-						hit = host
-					"screech_vents":
-						hit = type == "screech" and String(params.get("source", "")) == "vent"
-					_:
-						hit = type == feature
-				if hit:
-					out.append(float(e["at"]))
-	out.sort()
-	return out
+	return LevelGenerator.feature_positions(layout, feature)
 
 
 static func gapped_between(layout: LevelLayout, lane: int, from: float, to: float) -> bool:
