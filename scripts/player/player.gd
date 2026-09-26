@@ -54,8 +54,8 @@ var _roll: float = 0.0
 var _queued: Array[StringName] = []
 
 var _pivot: Node3D
-var _body: MeshInstance3D
-var _visor: MeshInstance3D
+var _avatar: PlayerAvatar  # Avatar
+var _avatar_landed: bool = false  # Avatar: a "land" event since the last avatar update
 var _hurt_debug: MeshInstance3D
 var _shadow: MeshInstance3D
 var _hazard_shape := BoxShape3D.new()
@@ -101,7 +101,7 @@ func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> v
 	_roll = 0.0
 	_queued.clear()
 	last_event = ""
-	_body.material_override = GreyboxMaterials.flat(GreyboxMaterials.PLAYER)
+	_avatar.reset()  # Avatar
 	_apply_transform(1.0)
 
 
@@ -408,7 +408,7 @@ func _hurtbox_height() -> float:
 
 func _die(cause: String) -> void:
 	alive = false
-	_body.material_override = GreyboxMaterials.flat(GreyboxMaterials.PLAYER_DEAD)
+	_update_avatar(0.0)  # Avatar: starts the collapse (the avatar finishes it on its own).
 	_event(&"died")
 	last_event = "died: " + cause
 	died.emit(cause)
@@ -432,12 +432,29 @@ func _apply_transform(delta: float) -> void:
 	var height: float = _hurtbox_height()
 	_hurt_debug.scale = Vector3(tuning.hurtbox_size.x, height, tuning.hurtbox_size.z)
 	_hurt_debug.position.y = height * 0.5
-	var vis: Vector3 = tuning.visual_size
-	var vis_h: float = vis.y * (height / tuning.hurtbox_size.y)
-	_body.scale = Vector3(vis.x, vis_h, vis.z)
-	_body.position.y = vis_h * 0.5
-	_visor.position = Vector3(0.0, vis_h * 0.8, -vis.z * 0.5)
+	_update_avatar(delta)  # Avatar: sliding is a pose now, not a squashed box.
 	_update_shadow()
+
+
+## Avatar: hands the runner model this frame's movement state (see PlayerAvatar.animate).
+func _update_avatar(delta: float) -> void:
+	var switch_dir: int = int(signf(_switch_to - _switch_from)) if _switch_t < 1.0 else 0
+	_avatar.fit_to(tuning.visual_size)
+	_avatar.animate({
+		"surface": surface_name(),
+		"grounded": grounded,
+		"vh": vh,
+		"sliding": is_sliding(),
+		"distance": distance,
+		"speed": speed,
+		"wall_side": wall_side,
+		"switch_dir": switch_dir,
+		"alive": alive,
+		"dashing": false,  # No juggernaut dash yet.
+		"just_landed": _avatar_landed,
+		"stomping": _slide_on_land and not grounded,  # The air-slide fast fall slams down.
+	}, delta)
+	_avatar_landed = false
 
 
 ## A blob shadow on the surface below (or above, on the ceiling) to read height and gaps.
@@ -466,12 +483,10 @@ func _build_nodes() -> void:
 	_pivot = Node3D.new()
 	add_child(_pivot)
 
-	_body = MeshInstance3D.new()
-	_body.mesh = GreyboxMaterials.unit_box()
-	_body.material_override = GreyboxMaterials.flat(GreyboxMaterials.PLAYER)
-	_pivot.add_child(_body)
-
-	_visor = GreyboxMaterials.add_box(_pivot, Vector3.ZERO, Vector3(0.6, 0.15, 0.05), GreyboxMaterials.glow(GreyboxMaterials.VISOR, 3.0))
+	# Avatar: the runner model replaces the grey-box body and visor.
+	_avatar = PlayerAvatar.new()
+	_pivot.add_child(_avatar)
+	movement_event.connect(func(kind: StringName) -> void: _avatar_landed = _avatar_landed or kind == &"land")
 
 	_hurt_debug = MeshInstance3D.new()
 	_hurt_debug.mesh = GreyboxMaterials.unit_box()
