@@ -183,7 +183,7 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 
 - **Zones:** 6 at launch, each with a distinct look (see §5).
 - **Levels:** 1–3 per zone, each 90–150 seconds.
-- **Bosses:** one at the end of each zone. Each boss is effectively a **standalone mini-game**, very different from the main runner (decided September 26, 2026). Designs come later; the build leaves a slot for each.
+- **Bosses:** one at the end of each zone. Each boss is its own scripted encounter and scene, but **plays as close to the main runner as possible** (refined September 26, 2026; see §10). The build leaves a slot for each.
 - **Cinematics:** short, minor cinematics between levels and zones give a sense of progression (decided September 26, 2026). Content comes later; the build leaves slots for them.
 - **Estimated first playthrough:** roughly 20–50 minutes. This is a known risk for a paid Steam game (Steam's refund window is 2 hours of play), so replay value is critical.
 - **Levels are built by a rule-based generator** from obstacle and enemy patterns plus a difficulty value, fitted to the device's lane count.
@@ -468,17 +468,33 @@ Shared interaction rules apply unless stated otherwise:
 
 - **General:**
   - One per zone.
-  - Each boss is a standalone mini-game with its own rules and scene, not a variant of a normal level (decided September 26, 2026).
+  - Each boss is its own scripted encounter with its own scene and rules, not a variant of a normal level (decided September 26, 2026).
+  - **Gameplay stays as close to the main runner as possible** (refined September 26, 2026): the same controls, camera and movement. A boss may get its own gimmick that makes it play differently, but none has been chosen yet.
   - Unique scripted encounters (handmade arenas are allowed within the generator system).
+  - **Length:** about the same as a level, **60–120 seconds**. The final boss may run a little longer, to be more challenging.
+  - **Death restarts the fight** (no checkpoints), like a level.
+  - **Items:** players bring their current items into the fight. Some fights may also offer **pickups**, for example a section of floor that spawns an armor, shield or grapple pickup. Which fights do this is *(open)*.
+  - **Rewards:** beating a boss earns **credits and score points**.
   - Bosses ignore claw contact kills.
   - Every boss must be beatable using only the power-ups granted before the fight.
+- **Roster** (decided September 26, 2026):
+
+  | Zone | Boss |
+  |---|---|
+  | 1. Neon City | Floating Head |
+  | 2. Gangland | Sewer Swarm |
+  | 3. Marketplace | *(open)* |
+  | 4. Corporate | *(open)* |
+  | 5. Dead Zone | *(open)* |
+  | 6. Golden Zone | The final villain |
+
 - **Floating Head:** a monstrous floating head ahead of the player. The player dodges projectiles and **jumps on weak points** to defeat it.
 - **Sewer Swarm:** a mutant horde rising from the sewers.
   - It builds up on both sides, and a mob attacks. The player must dispatch the mob while moving forward, as the horde shifts **ahead of and behind** the player dynamically.
   - **Implementation:** 4–5 gameplay entities ("clusters"), each rendered as many screech-variant creatures using MultiMesh plus a shader for per-creature motion. It looks like hundreds, but only 4–5 are simulated.
   - The heavy missile gets bonus damage against it.
   - Needs early performance testing on mid-range phones.
-- **Remaining bosses:** *(open)*
+- **Remaining bosses:** Marketplace, Corporate and Dead Zone *(open; the owner is still thinking about them)*, and the final villain's fight.
 
 ---
 
