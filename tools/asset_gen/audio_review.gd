@@ -27,6 +27,21 @@ static func stats(b: PackedFloat32Array) -> String:
 		100.0 * clipped / b.size()]
 
 
+## Loudest 400 ms after a listening weighting, in dB: &"k" approximates ITU-R BS.1770 K-weighting
+## (headphones, PC speakers: +4 dB presence shelf, rumble cut), &"phone" a small phone speaker
+## (little below ~450 Hz). Compares how loud sounds seem, not just their RMS.
+static func weighted_loudness_db(b: PackedFloat32Array, weighting: StringName) -> float:
+	var w := b.duplicate()
+	if weighting == &"phone":
+		DSP.filter(w, &"highpass", 450.0, 0.7)
+		DSP.filter(w, &"highpass", 450.0, 0.7)
+		DSP.filter(w, &"lowpass", 12000.0, 0.7)
+	else:
+		DSP.filter(w, &"peaking", 4000.0, 0.4, 4.0)
+		DSP.filter(w, &"highpass", 38.0, 0.5)
+	return peak_loudness_db(w)
+
+
 ## Loudest 400 ms RMS in dB: how loud a sound is at its peak moment, for comparing short and long sounds.
 static func peak_loudness_db(b: PackedFloat32Array) -> float:
 	var window: int = mini(b.size(), int(0.4 * RATE))

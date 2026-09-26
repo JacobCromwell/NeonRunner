@@ -1,19 +1,36 @@
 extends TestSuite
 ## Audio: the buses, the music files (they load, loop seamlessly, have the expected length and fit the
-## size budget), and the Music autoload's API. Headless, so nothing is heard: the checks use the
-## players' state and mix the streams directly.
+## size budget), the Music autoload's API, and every sound effect the game calls by name. Headless, so
+## nothing is heard: the checks use the players' state and mix the streams directly.
+## (tests/suites/test_units.gd checks every library sound's length.)
 
 const MUSIC_LIBRARY_PATH: String = "res://data/audio/music_library.tres"
 const SFX_LIBRARY_PATH: String = "res://data/audio/sfx_library.tres"
 const TRACKS: Array[StringName] = [&"menu", &"city", &"gangland"]
 ## All music together must stay under this in the repo (task budget).
 const MUSIC_BUDGET_BYTES: int = 9 * 1024 * 1024
+## Sounds other code plays by name: UI, credits, protection, power-ups and weapons, enemies.
+const SOUNDS: Array[StringName] = [
+	&"ui_move", &"ui_select", &"ui_back", &"ui_buy", &"ui_error", &"ui_equip", &"ui_unlock", &"star", &"countdown", &"go",
+	&"credit_1", &"credit_5", &"credit_25", &"credit_100", &"bonus",
+	&"armor_break", &"shield_break", &"grapple", &"revive",
+	&"dash", &"dash_ready", &"slow_time_on", &"slow_time_off", &"laser_fire", &"missile_fire", &"missile_explode",
+	&"enemy_hit", &"stomp",
+	&"enemy_death", &"cyborg_charge", &"cyborg_shot", &"truck_bang", &"truck_burst", &"truck_cannon_charge",
+	&"truck_cannon", &"truck_explode", &"octodog_windup", &"octodog_lunge", &"screech_shake", &"screech_burst",
+	&"screech_swipe", &"drone_swoop", &"drone_windup", &"drone_fire", &"drone_crash", &"emp", &"bad_dream_emerge",
+	&"bad_dream_shriek", &"bad_dream_slash", &"bad_dream_dissolve",
+]
+## Attack warnings (CLAUDE.md readability rules): each must sound exactly the same every time.
+const WARNINGS: Array[StringName] = [&"fence_warning", &"cyborg_charge", &"truck_bang", &"truck_cannon_charge",
+	&"octodog_windup", &"screech_shake", &"drone_swoop", &"drone_windup", &"bad_dream_shriek"]
 
 
 func run() -> void:
 	_test_buses()
 	_test_music_files()
 	await _test_music_api()
+	_test_sound_effects()
 
 
 func _test_buses() -> void:
@@ -149,6 +166,24 @@ func _test_music_api() -> void:
 	music.play(&"city", 0.0)
 	music.stop(0.0)
 	check(_players(music).is_empty(), "stop(0) cuts at once")
+
+
+func _test_sound_effects() -> void:
+	var library := load(SFX_LIBRARY_PATH) as SfxLibrary
+	var names: PackedStringArray = library.names()
+	for sound: StringName in SOUNDS:
+		check(names.has(String(sound)), "sound library has '%s'" % sound)
+		check(library.stream(sound) != null, "'%s' loads" % sound)
+	var same_format: bool = true
+	for sound: String in names:
+		var raw := AudioStreamWAV.load_from_file(library.folder.path_join(sound + ".wav"), {"compress/mode": 0})
+		if raw == null or raw.mix_rate != 32000 or raw.stereo or raw.format != AudioStreamWAV.FORMAT_16_BITS:
+			same_format = false
+			failures.append("'%s' is not 32 kHz mono 16-bit" % sound)
+	check(same_format, "every sound file is 32 kHz mono 16-bit")
+	for sound: StringName in WARNINGS:
+		check(names.has(String(sound)) and float(library.pitch_variation.get(String(sound), 0.0)) == 0.0,
+			"warning '%s' is in the library with no pitch variation" % sound)
 
 
 func _players(music: MusicDirector) -> Array[AudioStreamPlayer]:

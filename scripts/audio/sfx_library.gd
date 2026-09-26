@@ -9,9 +9,11 @@ extends Resource
 const BUS: StringName = &"SFX"
 
 @export_dir var folder: String = "res://assets/sfx"
-## Mix level per sound in dB. Also the list of sounds the game knows about.
+## Mix level per sound in dB. Also the list of sounds the game knows about. The levels come from the
+## loudness report of tools/godot.sh sfx: attack warnings sit loudest, frequent sounds lowest.
 @export var volume_db: Dictionary = {}
-## Random pitch spread per sound (0.05 = up to ±5%) so frequent sounds don't machine-gun.
+## Random pitch spread per sound (0.05 = up to ±5%) so frequent sounds don't machine-gun. Warnings
+## have none: they must sound the same every time.
 @export var pitch_variation: Dictionary = {}
 ## Hazard warnings come from the hazard's position. Within this distance they play at full volume,
 ## then fade with distance, going silent at warning_max_distance.
