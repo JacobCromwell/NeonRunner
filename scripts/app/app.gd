@@ -69,6 +69,17 @@ func _ready() -> void:
 	_ui_sounds.setup(sfx_library)
 
 
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED:
+			# A phone call, the home button or another window: never keep running unattended.
+			if run != null and run.state == LevelRun.State.RUNNING and run.context.mode != RunContext.Mode.QUICK:
+				pause_game()
+			save()
+		NOTIFICATION_WM_CLOSE_REQUEST:
+			save()
+
+
 ## Main calls this once its layers exist. Starts wherever the command line says.
 func boot(p_main: Node) -> void:
 	main = p_main

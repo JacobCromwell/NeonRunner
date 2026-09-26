@@ -14,7 +14,9 @@ func _ready() -> void:
 	var play_text: String = "Play" if next == null or next.index == 0 else "Continue: %s" % next.title()
 	ScreenKit.button(col, play_text, App.continue_campaign)
 	ScreenKit.button(col, "Level select", App.show_level_select)
-	ScreenKit.button(col, "Endless", App.start_endless)
+	if not BuildFlavor.is_demo():
+		# DESIGN-TBD: endless mode isn't part of the web demo (GDD §2: the demo is Zone 1 and its boss).
+		ScreenKit.button(col, "Endless", App.start_endless)
 	ScreenKit.button(col, "Shop", func() -> void: App.show_shop())
 	ScreenKit.button(col, "Settings", func() -> void: App.show_settings())
 	if not OS.has_feature("web") and not App.mobile:
