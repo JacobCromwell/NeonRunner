@@ -294,7 +294,8 @@ Shared interaction rules apply unless stated otherwise:
 ### 9.2 Cyborg (early; scales through the campaign)
 - **Look:** humanoid.
   - **Face:** an **LED visor/screen face** showing simple expressions.
-  - **Zone variants:** sleek citizen in city zones; patched-together scavenger in grimy/gang zones, with a cracked, flickering visor.
+  - **Default look** (redesigned September 26, 2026): a **more ragged, strung-out gangster**, based on the owner's concept sheet `docs/art/reference/cyborg_gangster_default.jpg`: grimy, patched clothes, scavenged brass or rusted cyber arms, cargo pants, knee pads and boots. The sheet shows three looks (Chem-Junky, Scavenged Runner, Wired-Out). **The LED-screen face stays**, with expressions the player can identify on small screens; the body is overhauled.
+  - **Zone variants:** the owner has concept images for variants in other zones, to come. *(The earlier split, a sleek citizen in city zones and a patched scavenger in gang zones, is under review; see "Cyborg redesign" in `OPEN_QUESTIONS.md`.)*
 - **Movement:** stands mostly on **truck roofs** and moves slowly toward the player, dropping behind quickly.
 - **Attack:** loosely aimed laser bolts in **bursts of 2–3**, then a pause to reload.
   - Each burst has a **visible charge-up** (arm cannon glow).
@@ -571,7 +572,17 @@ Shared interaction rules apply unless stated otherwise:
   - Plan one shared humanoid rig.
   - Possibly use a free animation library rather than hand-authored motion *(decide in the art round)*.
 - **LED visor faces:** a cheap, readable, on-theme way to show expressions for all cyborgs.
-- **Player character** (decided September 26, 2026): a **human runner in a cyber suit** (jacket, helmet with a glowing visor). The silhouette and visor must read clearly differently from the enemy cyborgs' LED faces. Name and customization are still open.
+- **Player character** (redesigned September 26, 2026, replacing the cyber suit and helmet): based on the owner's concept sheet `docs/art/reference/player_echo.jpg` (titled "Echo"). Keep:
+  - a **weathered dark-blue trench coat** with **glowing copper and brass conduits** running over it, including a distinctive pattern across the back
+  - a **gold/brass cybernetic left arm**
+  - a glowing **cybernetic ocular implant** over the left eye
+  - a **tactical utility vest**, harness straps and belts
+  - **reinforced combat cargo pants**, knee pads and **worn tactical boots** with a mechanical leg brace
+  - **spiky black hair** and a scarred face (no helmet)
+  
+  **Leave out:** the **sword** (the game has no sword) and the **symbols on the coat's lower half** (the graffiti and the skull emblem), which would be too small to appreciate at gameplay size.
+  
+  The gameplay camera sits behind the player, so the **back view matters most**: the coat's copper conduits and the gold arm must read from behind. The silhouette must still read clearly differently from the enemy cyborgs' LED faces. Open: the name, customization, and the points under "Player redesign" in `OPEN_QUESTIONS.md`.
 - **Player scale** (owner feedback after the R1 grey box, September 26, 2026): the player looked too big next to the lanes, walls and ceiling. The player (with its hitbox, jump height and fence heights) is about 75% of the grey-box size; the lanes, walls and ceiling keep their size.
 - **Music** (decided September 26, 2026): code-generated placeholder loops in the same crunchy 16-bit / heavy-metal style as the sound effects, one per zone plus the menus. Any track can later be replaced file by file with commissioned or licensed music.
 - **Readability rules:**

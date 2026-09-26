@@ -33,9 +33,17 @@ For each boss: arena, phases, attacks, weak points, what power-ups are granted b
 - ~~Does the longer final fight still restart from the beginning on death?~~ Answered: a checkpoint halfway, at a possible second stage (GDD §10).
 
 ### 3. Player character
-- ~~Who or what is the player?~~ Answered: a human runner in a cyber suit (GDD §11). Still open: name, customization.
+- ~~Who or what is the player?~~ Answered: redesigned September 26, 2026 after the owner's "Echo" concept sheet (GDD §11). Still open: customization.
 - Cosmetic skins as a mobile purchase item?
-- How it looks when using each power-up (claws, dash, shield, armor).
+- How it looks when using each power-up (claws, dash, shield, armor), redone for the new design.
+- **Player redesign** (September 26, 2026):
+  - Is the runner's name **Echo**?
+  - **Glow colours:** the copper conduits and orange eye are close to the hazard orange of gap edges and to the enemies' amber LED faces.
+  - **The holstered pistol:** keep, drop, or tie it to the auto-fire weapon?
+- **Cyborg redesign** (September 26, 2026):
+  - Do the sheet's three looks all serve as body variants of the default cyborg?
+  - Does the ragged default replace the sleek city citizen in the Neon City too?
+  - **Glow colours on the sheet:** the chem tubes are cyan and green (the "safe" colours), the Wired-Out's veins are purple (the host marker), and the goggle eye is red (enemy fire and weak points).
 
 ### 4. Remaining power-up details
 - **Claws:** how much extra wall time? Upgrade tiers?
