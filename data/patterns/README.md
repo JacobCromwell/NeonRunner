@@ -16,6 +16,12 @@ that requires it, so the level introduces it right there. Give each feature at l
 fits low difficulties, or its introduction waits until one fits. `LevelConfig.feature_weights` (feature
 → factor) scales the pick weight of every pattern that requires the feature.
 
+A boss fight's arena (`BossArena`, `docs/ARCHITECTURE.md` Bosses) plans its laps from these files too,
+with the features of the boss's arena config (`BossDef.arena`), no ramp within a lap and no credits.
+Patterns meant only for one boss's arena (a train's carriage gaps, say) require a feature of its own
+that only that arena config lists, so no level ever picks them (the tests accept a feature a boss's
+arena lists as a known one).
+
 ## Pattern fields
 
 | Field | Meaning |
