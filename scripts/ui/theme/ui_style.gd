@@ -39,7 +39,7 @@ extends Resource
 	Color(0.72, 0.78, 0.88), Color(0.3, 0.68, 1.0), Color(0.64, 0.5, 1.0), Color(0.86, 0.95, 1.0)])
 
 @export_group("Fonts")
-## Headings, titles and big numbers. Orbitron (OFL, assets/fonts/orbitron).
+## Headings and titles. Orbitron (OFL, assets/fonts/orbitron).
 @export var display_font: Font = preload("res://assets/fonts/orbitron/Orbitron[wght].ttf")
 ## Body text, buttons and prices. Exo 2 (OFL, assets/fonts/exo2); has tabular figures.
 @export var body_font: Font = preload("res://assets/fonts/exo2/Exo2[wght].ttf")
@@ -47,6 +47,9 @@ extends Resource
 @export_range(400, 900, 50) var title_weight: int = 800
 @export_range(100, 900, 50) var body_weight: int = 500
 @export_range(100, 900, 50) var strong_weight: int = 700
+## Numbers (scores, credits, HUD values) use the body font at this weight, with tabular figures.
+## Not the display font: Orbitron's zero is slashed, so a score of 0 reads like a "no" sign (⊘).
+@export_range(400, 900, 50) var value_weight: int = 800
 
 @export_group("Type sizes")
 @export_range(16, 96, 1) var title_size: int = 40
