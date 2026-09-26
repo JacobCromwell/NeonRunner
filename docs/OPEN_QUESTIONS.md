@@ -224,7 +224,7 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
    are kept on the facades. Keep them?
 
 **Gangland look** (from the Gangland skin work)
-45. **Ceiling:** a scavenger cargo barge (patched plates, a blunt bow with a bumper beam, cargo on deck,
+45. (Superseded by the Gangland update: see "From build phase 2" item 17.) **Ceiling:** a scavenger cargo barge (patched plates, a blunt bow with a bumper beam, cargo on deck,
   the orange end band, dim engines). GDD §3 leaves other zones' ceilings open. Keep it?
 46. **Motion on a still street:** drifting ash, paper scraps and speed streaks give a sense of speed
   where nothing streams by (the City has its moving road). Keep them? Should other still zones get
@@ -451,6 +451,35 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
     music task adds them the game skips them quietly and the menu music keeps playing. Fine as a stopgap?
 16. **The economy over 15 levels** ("From the full build" items 10–11). Completion pays 100 + 25 per campaign
     level, so Golden 3 pays 450; prices were set for a two-zone campaign. Needs a balancing pass.
+
+**Gangland update** (from D1; numbers are F6-tunable exports on `GanglandSkin`)
+17. **Gangland's ceilings** (GDD §3, §5; replaces "From the full build" item 45, the scavenger barge). Placeholder:
+    two structures, picked per ceiling (45% buildings): an overpass (tagged concrete fascia, crash barrier and
+    railing, a sign gantry with billboards and corporate ads, a dead lamp post, a gang lookout of sandbags and
+    military crates) and the upper storeys of a bombed-out building bridging the street (lit and curtained
+    windows, laundry, a broken roof). Both run on one flat concrete slab, a beam per lane, with dark joints, small
+    warm-white work lamps on every lane seam and the orange end band. Right structures, and is the lamp-lit seam
+    a good lane read?
+18. **Narrow ceilings in Gangland** (GDD §3, task B3): a side in mid-street ends in a plain edge face. What should
+    a narrow ceiling be here: a slab broken off a building, a pedestrian bridge, something else?
+19. **Time of day** (GDD §5, §11 give the palette, not the hour). Placeholder: a dusty dusk (brown sky, tan dust on
+    the horizon, a veiled pale sun, smoke columns, brown dust fog), dark enough for hazards to pop. Keep it, or a
+    harsher daylight?
+20. **Hints of corporate and military funding** (GDD §5). Placeholder: side streets barricaded with stencilled
+    olive military crates (30%) or corporate containers with a logo (30%); olive military notice boards above the
+    wall-run band; corporate ads among the posters (30%); sandbags as a fence mount. The corporate logo and colour
+    are a generic grey mark (`kit_logo.gdshaderinc`): should they match the Corporate zone's brand (task D4)?
+21. **The cult emblem, hidden in plain sight** (GDD §5, proposed): unlit bronze, small, beside the logo on some
+    container doors, as the sponsor's mark in the corner of some ads, and on some crates and notice boards (35%
+    of each); it fades out below about 24 px on screen. The right amount of "hidden"?
+22. **Signs of life** (GDD §5): graffiti pieces and tags over the lower storeys (dusty blue, steel grey, violet
+    grey, cream; no hazard hues), 12–32% of upper windows lit, laundry, rooftop clutter, bulbs over side streets,
+    washing lines across the street at 15.4 m and up. Too busy, or not enough?
+23. **Holes as craters** ("From the full build" item 47): the asphalt is scorched toward each hole and sand
+    drifts along the street; holes stay one lane wide and square-cut, with the orange edge on the collision edge.
+    Enough of a crater read?
+24. **Motion on the still street** ("From the full build" item 46): dust-coloured flecks, paper scraps and pale
+    speed streaks, as before.
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
