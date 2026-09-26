@@ -95,7 +95,7 @@ void fragment() {
 		float stroke = r < 0.4 ? step(abs(sf.y - 0.5), 0.17) : (r < 0.75 ? step(abs(sf.x - 0.5), 0.22) : 0.0);
 		float on = inside * stroke * step(0.18, hash12(cell.yx * 3.7 + 1.3));
 		float fw = max(fwidth(uv.x), fwidth(uv.y));
-		on = mix(on, 0.25, clamp(fw * 14.0 - 0.4, 0.0, 1.0));
+		on = mix(on, 0.25, clamp((fw - 0.05) * 10.0, 0.0, 1.0));
 		base = mix(panel_dark, base, on);
 		glow *= on;
 	} else if (pattern == 9) {

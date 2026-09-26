@@ -26,9 +26,10 @@ void fragment() {
 		float v = 1.0 - uv.y;
 		a = v * v * smoothstep(0.0, 0.4, uv.x) * smoothstep(1.0, 0.6, uv.x);
 	} else if (shape == 3) {
-		// RISE: a light column, bright at the base, bands drifting up.
-		float band = 0.55 + 0.45 * sin((uv.y * 4.0 - TIME * 0.9 + UV2.y) * 6.2832);
-		a = pow(1.0 - uv.y, 1.3) * band * smoothstep(0.0, 0.3, uv.x) * smoothstep(1.0, 0.7, uv.x);
+		// RISE: a light column, bright at the base, soft bands drifting up.
+		float band = 0.8 + 0.2 * sin((uv.y * 3.0 - TIME * 0.9 + UV2.y) * 6.2832);
+		float across = 1.0 - abs(uv.x * 2.0 - 1.0);
+		a = pow(1.0 - uv.y, 1.6) * band * across * across;
 	} else if (shape == 4) {
 		// STREAK: a soft horizontal line.
 		float cy = abs(uv.y - 0.5) * 2.0;

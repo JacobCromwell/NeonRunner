@@ -11,7 +11,7 @@ uniform vec3 asphalt : source_color = vec3(0.04, 0.04, 0.06);
 uniform vec3 marking : source_color = vec3(0.45, 0.45, 0.55);
 uniform vec3 head_color : source_color = vec3(0.85, 0.9, 1.0);
 uniform vec3 tail_color : source_color = vec3(0.5, 0.45, 1.0);
-uniform float streak_glow = 2.5;
+uniform float streak_glow = 3.5;
 
 varying vec3 v_world;
 
@@ -28,7 +28,7 @@ void fragment() {
 	// Dashed lane lines streaming toward the player.
 	float zs = v_world.z - TIME * scroll_speed;
 	float line = filtered_pulse(lanef + 0.5, fwidth(lanef), 0.48, 0.52) * step(fract(zs / 8.0), 0.45);
-	col += to_linear(marking) * (line * 0.5);
+	col += to_linear(marking) * (line * 0.8);
 
 	// Traffic: head-light streaks rush toward the player, others drift slower.
 	bool oncoming = mod(lane, 2.0) < 0.5;

@@ -146,13 +146,13 @@ func _cab(width: float, paint: int, roof_param: float) -> MeshBatch:
 	var sides: int = MeshKit.FACE_PX | MeshKit.FACE_NX
 
 	# Roof: the amber lip at the gap edge, then plates.
-	s.rect(Vector3(-hw, 0, 0), Vector3(width, 0, 0), Vector3(0, 0, -EDGE_LIP), edge, 0.5)
+	s.rect(Vector3(-hw, 0, 0), Vector3(width, 0, 0), Vector3(0, 0, -EDGE_LIP), edge, 0.33)
 	_roof(s, hw, -EDGE_LIP, -d, skin.roof_color, roof_param)
 	# Upper band with the amber marker lights.
 	s.box(Vector3(0, -0.16, -d * 0.5), Vector3(width, 0.32, d), color, 0.0, MeshKit.PAT_PLAIN, sides | MeshKit.FACE_PZ)
 	for i: int in 5:
 		var mx: float = (float(i) - 2.0) * minf(0.34, width * 0.15)
-		s.box(Vector3(mx, -0.15, 0.012), Vector3(0.13, 0.07, 0.03), edge, 0.9)
+		s.box(Vector3(mx, -0.15, 0.012), Vector3(0.13, 0.07, 0.03), edge, 0.6)
 		g.rect(Vector3(mx - 0.22, -0.37, 0.03), Vector3(0.44, 0, 0), Vector3(0, 0.44, 0), edge, 0.3, MeshKit.SHAPE_RADIAL)
 	# Windscreen between two pillars, set back under the band.
 	for side: float in [-1.0, 1.0]:
@@ -196,7 +196,7 @@ func _rear(width: float, roof_param: float) -> MeshBatch:
 	var h: float = skin.truck_height
 	var d: float = REAR_DEPTH
 	var doors := Color(0.14, 0.14, 0.17)
-	s.rect(Vector3(-hw, 0, EDGE_LIP), Vector3(width, 0, 0), Vector3(0, 0, -EDGE_LIP), skin.gap_edge_color, 0.5)
+	s.rect(Vector3(-hw, 0, EDGE_LIP), Vector3(width, 0, 0), Vector3(0, 0, -EDGE_LIP), skin.gap_edge_color, 0.33)
 	_roof(s, hw, d, EDGE_LIP, skin.roof_color, roof_param)
 	for side: float in [-1.0, 1.0]:
 		_side(s, side, hw, d, 0.0, doors)

@@ -38,7 +38,7 @@ func build(batch: MeshBatch, side: int, face_x: float, start: float, end: float)
 		span = building_at(side, span.y + 1)
 	var mark_x: float = face_x - side * 0.02
 	for h: float in skin.wall_height_marks:
-		solid.box(Vector3(mark_x, h, -(start + end) * 0.5), Vector3(0.03, 0.05, end - start), skin.wall_mark_color, 0.28)
+		solid.box(Vector3(mark_x, h, -(start + end) * 0.5), Vector3(0.03, 0.05, end - start), skin.wall_mark_color, 0.22)
 	if side < 0:
 		var w: float = absf(face_x)
 		batch.layer(skin.road_material()).rect(Vector3(-w, -skin.road_depth, -start), Vector3(w * 2.0, 0, 0),

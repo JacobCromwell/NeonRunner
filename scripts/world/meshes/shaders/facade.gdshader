@@ -76,6 +76,6 @@ void fragment() {
 
 	// Where single windows blur together, use the facade's average window instead.
 	vec3 avg_win = mix(glass, to_linear(mix(window_warm, window_cool, 0.6)) * (window_glow * 0.55), share * seen);
-	win_col = mix(win_col, avg_win, smoothstep(0.15, 0.6, max(fw.x, fw.y)));
+	win_col = mix(win_col, avg_win, smoothstep(0.1, 0.4, max(fw.x, fw.y)));
 	ALBEDO = mix(wall, win_col, in_win);
 }

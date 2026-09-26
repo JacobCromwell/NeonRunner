@@ -23,7 +23,7 @@ extends ZoneSkin
 @export_range(50.0, 400.0, 5.0, "suffix:m") var fog_end: float = 190.0
 @export_range(0.0, 1.0, 0.01) var fog_max: float = 1.0
 ## Extra fog below the track, so the street far below sits in glowing haze.
-@export_range(0.0, 0.5, 0.005) var abyss_fog_density: float = 0.06
+@export_range(0.0, 0.5, 0.005) var abyss_fog_density: float = 0.035
 @export_range(0.0, 2.0, 0.05) var glow_intensity: float = 0.8
 @export_range(0.5, 4.0, 0.05) var glow_threshold: float = 1.1
 ## Brightness of emissive kit parts (vertex glow 1.0 = this many times the albedo).
@@ -49,8 +49,9 @@ extends ZoneSkin
 @export var headlight_color: Color = Color(0.85, 0.92, 1.0)
 @export var truck_light_color: Color = Color(0.55, 0.7, 1.0)
 @export var thruster_color: Color = Color(0.42, 0.36, 1.0)
-## Gap edges: cab and rear roof lips and marker lights (the orange edge language).
-@export var gap_edge_color: Color = Color(1.0, 0.45, 0.1)
+## Gap edges: cab and rear roof lips and marker lights (the orange edge language). Redder than it
+## looks: the glow and the tonemapper lift the green, and it must stay orange, not sign yellow.
+@export var gap_edge_color: Color = Color(1.0, 0.25, 0.04)
 
 @export_group("Road below")
 @export_range(4.0, 60.0, 0.5, "suffix:m") var road_depth: float = 14.0
@@ -76,7 +77,7 @@ extends ZoneSkin
 ## Building trims and decorative signs. Kept away from the hazard colours (pink, yellow, orange,
 ## cyan, green) so hazards stay the most readable things on screen.
 @export var neon_colors: PackedColorArray = PackedColorArray([
-	Color(0.55, 0.35, 1.0), Color(0.25, 0.5, 1.0), Color(0.8, 0.85, 1.0), Color(0.45, 0.3, 0.95)])
+	Color(0.55, 0.35, 1.0), Color(0.22, 0.34, 1.0), Color(0.8, 0.85, 1.0), Color(0.45, 0.3, 0.95)])
 ## Faint lines on the facades at these heights, to read how high a wall run is.
 @export var wall_height_marks: PackedFloat32Array = PackedFloat32Array([2.0, 4.0])
 @export var wall_mark_color: Color = Color(0.45, 0.35, 1.0)

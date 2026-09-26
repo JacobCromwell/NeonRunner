@@ -61,13 +61,13 @@ func _ship_mesh(size: Vector3, lane_edges_x: Array[float], offset_x: float) -> A
 		# Flush anti-grav emitters down each lane.
 		var ez: float = zf + 9.0
 		while ez < zn - 4.0:
-			s.prism(Vector3((edges[i] + edges[i + 1]) * 0.5, -0.03, ez), 0.42, 0.03, 8, light, 0.3)
+			s.prism(Vector3((edges[i] + edges[i + 1]) * 0.5, -0.03, ez), 0.3, 0.03, 8, light, 0.18)
 			ez += 15.0
 	# The stern edge: a wide orange band with amber lights, the ceiling ends here (like a gap edge).
-	s.rect(Vector3(-hw, 0, zf), Vector3(hw * 2.0, 0, 0), Vector3(0, 0, stern_lip), skin.gap_edge_color, 0.5)
+	s.rect(Vector3(-hw, 0, zf), Vector3(hw * 2.0, 0, 0), Vector3(0, 0, stern_lip), skin.gap_edge_color, 0.33)
 	var lx: float = -hw + 0.6
 	while lx < hw - 0.3:
-		s.box(Vector3(lx, -0.025, zf + 0.25), Vector3(0.35, 0.05, 0.2), skin.gap_edge_color, 1.0, MeshKit.PAT_PLAIN,
+		s.box(Vector3(lx, -0.025, zf + 0.25), Vector3(0.35, 0.05, 0.2), skin.gap_edge_color, 0.6, MeshKit.PAT_PLAIN,
 			MeshKit.ALL_FACES & ~MeshKit.FACE_PY)
 		lx += 1.2
 	g.rect(Vector3(-hw, -0.05, zf + stern_lip + 1.5), Vector3(hw * 2.0, 0, 0), Vector3(0, 0, -(stern_lip + 3.0)),

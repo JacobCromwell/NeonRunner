@@ -133,12 +133,11 @@ func pad(trigger: Area3D, size: Vector3) -> void:
 		g.rect(Vector3(-size.x * 0.9, y0 + 0.06, size.z * 0.9), Vector3(size.x * 1.8, 0, 0), Vector3(0, 0, -size.z * 1.8),
 			c, 0.5, MeshKit.SHAPE_RADIAL)
 		var h: float = skin.pad_beam_height
-		var bx: float = size.x * 0.42
-		var bz: float = size.z * 0.42
-		g.rect(Vector3(-bx, y0, bz), Vector3(bx * 2.0, 0, 0), Vector3(0, h, 0), c, 0.45, MeshKit.SHAPE_RISE)
-		g.rect(Vector3(-bx, y0, -bz), Vector3(bx * 2.0, 0, 0), Vector3(0, h, 0), c, 0.45, MeshKit.SHAPE_RISE)
-		g.rect(Vector3(-bx, y0, -bz), Vector3(0, 0, bz * 2.0), Vector3(0, h, 0), c, 0.45, MeshKit.SHAPE_RISE)
-		g.rect(Vector3(bx, y0, -bz), Vector3(0, 0, bz * 2.0), Vector3(0, h, 0), c, 0.45, MeshKit.SHAPE_RISE)
+		var bx: float = size.x * 0.5
+		var bz: float = size.z * 0.5
+		# Two crossed cards through the pad's centre: a soft column from any angle.
+		g.rect(Vector3(-bx, y0, 0), Vector3(bx * 2.0, 0, 0), Vector3(0, h, 0), c, 0.5, MeshKit.SHAPE_RISE)
+		g.rect(Vector3(0, y0, bz), Vector3(0, 0, -bz * 2.0), Vector3(0, h, 0), c, 0.5, MeshKit.SHAPE_RISE)
 		_meshes[id] = batch.to_mesh()
 	MeshBatch.add_instance(trigger, _meshes[id])
 
