@@ -16,7 +16,8 @@ const WAITING_TEXT: String = "PRESS A KEY"
 	set(v):
 		action = v
 		refresh()
-## Which of the action's key bindings this button shows and replaces (0 = the first).
+## Which of the action's key bindings this button shows (0 = the first); -1 shows them all
+## ("UP / SPACE"), for settings where a new key replaces all of an action's keys.
 @export var binding_index: int = 0:
 	set(v):
 		binding_index = v
@@ -39,15 +40,21 @@ func _init() -> void:
 	set_process(false)
 
 
-## The event this button shows, or null.
-func current_event() -> InputEvent:
-	if not InputMap.has_action(action):
-		return null
+## The action's keyboard events.
+func key_events() -> Array[InputEvent]:
 	var keys: Array[InputEvent] = []
-	for e: InputEvent in InputMap.action_get_events(action):
-		if e is InputEventKey:
-			keys.append(e)
-	return keys[binding_index] if binding_index < keys.size() else null
+	if InputMap.has_action(action):
+		for e: InputEvent in InputMap.action_get_events(action):
+			if e is InputEventKey:
+				keys.append(e)
+	return keys
+
+
+## The event this button shows (the first one when it shows them all), or null.
+func current_event() -> InputEvent:
+	var keys: Array[InputEvent] = key_events()
+	var i: int = maxi(binding_index, 0)
+	return keys[i] if i < keys.size() else null
 
 
 ## Re-reads the binding (call after the InputMap changes).
@@ -55,8 +62,15 @@ func refresh() -> void:
 	if listening:
 		text = WAITING_TEXT
 		return
-	var e: InputEvent = current_event()
-	text = UiTheme.event_text(e).to_upper() if e != null else "—"
+	var names := PackedStringArray()
+	if binding_index < 0:
+		for e: InputEvent in key_events():
+			names.append(UiTheme.event_text(e).to_upper())
+	else:
+		var e: InputEvent = current_event()
+		if e != null:
+			names.append(UiTheme.event_text(e).to_upper())
+	text = " / ".join(names) if not names.is_empty() else "—"
 
 
 func start_listening() -> void:
@@ -113,6 +127,10 @@ func _input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
+	if not listening:
+		# Godot turns processing on when the node is ready; only listening needs it.
+		set_process(false)
+		return
 	_pulse += delta
 	queue_redraw()
 

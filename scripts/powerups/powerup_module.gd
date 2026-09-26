@@ -50,7 +50,7 @@ func stop() -> void:
 
 ## This module's entry for PowerupController.hud_state().
 func hud_entry() -> Dictionary:
-	return controller.make_hud_entry(id, tier, 1.0, true, 0)
+	return controller.make_hud_entry(id, tier, 1.0, true, -1)
 
 
 ## Rotation from the player's floor-standing pose to how they stand on their current surface

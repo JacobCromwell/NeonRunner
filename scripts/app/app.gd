@@ -14,7 +14,8 @@ extends Node
 ##   --full-loadout          quick play with every power-up
 ##   --nofall                quick play where falls never end the run (for reviewing levels and art)
 ##   --skin=gangland         quick play in another zone's look (data/skins/<name>_skin.tres)
-##   --level=city/2          a campaign level, with the full flow
+##   --level=city/2          a campaign level, with the full flow (also takes --lanes=N, --god,
+##                           --nofall and --full-loadout, for reviews)
 ##   --flavor=web_demo       pretend to be another build flavor (full_pc, full_mobile, web_demo)
 
 signal profile_changed
@@ -47,7 +48,8 @@ var run: LevelRun
 var screen: Control
 var overlay: Control
 var _boss_node: Node
-var _ui_sounds: PlayerSfx
+## Command-line review aids for --level= runs (see _apply_review_args).
+var _review_args: PackedStringArray = []
 
 
 func _ready() -> void:
@@ -66,9 +68,6 @@ func _ready() -> void:
 				Platform.configure_for(BuildFlavor.current())
 	profile = SaveService.load_profile(save_path)
 	Settings.apply(profile)
-	_ui_sounds = PlayerSfx.new()
-	add_child(_ui_sounds)
-	_ui_sounds.setup(sfx_library)
 
 
 func _notification(what: int) -> void:
@@ -85,11 +84,14 @@ func _notification(what: int) -> void:
 ## Main calls this once its layers exist. Starts wherever the command line says.
 func boot(p_main: Node) -> void:
 	main = p_main
-	var args: PackedStringArray = OS.get_cmdline_user_args()
+	# The command-line starts are development aids: release builds always open on the title screen,
+	# so they can't skip progression or farm credits and leaderboard scores with --god.
+	var args: PackedStringArray = OS.get_cmdline_user_args() if OS.is_debug_build() else PackedStringArray()
 	for arg: String in args:
 		if arg.begins_with("--level="):
 			var s: CampaignStep = campaign.step(arg.get_slice("=", 1))
 			if s != null:
+				_review_args = args
 				play_step(s)
 				return
 	for arg: String in args:
@@ -132,6 +134,14 @@ func show_settings(on_close: Callable = Callable()) -> void:
 	show_screen(s)
 
 
+## After a settings change: volumes and keys are live already (Settings.set_value applies them);
+## a run paused under the settings overlay picks up the comfort options too.
+func apply_settings() -> void:
+	if run != null and run.world != null:
+		run.world.effects.shake_scale = Settings.shake_scale(profile)
+		run.world.player.steady_flash = Settings.reduced_flashing(profile)
+
+
 func show_demo_end() -> void:
 	_end_run()
 	_play_music(&"menu")
@@ -162,8 +172,10 @@ func close_overlay() -> void:
 	overlay = null
 
 
+## UI sounds (ui_buy, ui_error, star, ...) share one path with the widgets' ui_move/ui_select:
+## UiSounds, on the SFX bus when it exists; a sound the library doesn't have yet stays silent.
 func play_ui_sound(sound: StringName) -> void:
-	_ui_sounds.play(sound)
+	UiSounds.play(sound)
 
 
 func quit() -> void:
@@ -253,7 +265,22 @@ func start_level(s: CampaignStep, difficulty_tier: int = 0) -> void:
 	ctx.tuning = _tuning_for_tier(difficulty_tier)
 	ctx.loadout = make_loadout()
 	ctx.level_index = s.level_index
+	_apply_review_args(ctx)
 	_start_run(ctx, s.zone.music)
+
+
+## Review aids for campaign levels started with --level= (debug builds): the lane count, god mode,
+## no falls and a full loadout, for every level the session plays.
+func _apply_review_args(ctx: RunContext) -> void:
+	for arg: String in _review_args:
+		if arg.begins_with("--lanes="):
+			ctx.config.lane_count = int(arg.get_slice("=", 1))
+		elif arg == "--god":
+			ctx.god_mode = true
+		elif arg == "--nofall":
+			ctx.no_fall = true
+		elif arg == "--full-loadout":
+			ctx.loadout = Loadout.full(catalog)
 
 
 ## The grey-box workflow: the prototype level with command-line overrides, restarting on death.

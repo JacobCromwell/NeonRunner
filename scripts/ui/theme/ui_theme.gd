@@ -87,6 +87,11 @@ static func is_touch() -> bool:
 	return DeviceProfile.is_mobile()
 
 
+## A size in desktop pixels, scaled like the theme's sizes on touch devices (fixed widths in screens).
+static func px(v: float) -> float:
+	return roundf(v * (style().touch_scale if is_touch() else 1.0))
+
+
 ## The shared Theme for this device (built once). `hud` = the lighter in-game flavour.
 static func get_theme(hud: bool = false) -> Theme:
 	var key: String = "%s/%s" % [is_touch(), hud]
@@ -110,9 +115,28 @@ static func ensure(control: Control) -> void:
 ## ensure() at the end of the frame, when every parent has had its _ready (and set its theme).
 ## Kit widgets call this when they enter the tree. Safe if the control is freed before then.
 static func ensure_later(control: Control) -> void:
+	# The id, not the node: a lambda whose captured node is freed first reports an error when called.
+	var id: int = control.get_instance_id()
 	(func() -> void:
-		if is_instance_valid(control):
-			ensure(control)).call_deferred()
+		var c := instance_from_id(id) as Control
+		if c != null:
+			ensure(c)).call_deferred()
+
+
+## Draws `label` smaller (down to min_scale of `base_size`) when its text is wider than the label,
+## instead of cutting the end off. Call when the label's text or width changes.
+static func fit_font(label: Label, font: Font, base_size: int, min_scale: float = 0.7) -> void:
+	var fitted: int = base_size
+	var room: float = label.size.x
+	if font != null and room > 1.0 and label.text != "":
+		var width: float = font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, base_size).x
+		if width > room:
+			fitted = maxi(floori(base_size * room / width), roundi(base_size * min_scale))
+	if fitted == base_size:
+		if label.has_theme_font_size_override(&"font_size"):
+			label.remove_theme_font_size_override(&"font_size")
+	elif not label.has_theme_font_size_override(&"font_size") or label.get_theme_font_size(&"font_size") != fitted:
+		label.add_theme_font_size_override(&"font_size", fitted)
 
 
 static func build(s: UiStyle, touch: bool = false, hud: bool = false) -> Theme:
@@ -237,6 +261,7 @@ class _Builder:
 	var f_title: FontVariation
 	var f_display: FontVariation
 	var f_display_wide: FontVariation
+	var f_value: FontVariation
 	var f_body: FontVariation
 	var f_strong: FontVariation
 	var f_button: FontVariation
@@ -274,6 +299,7 @@ class _Builder:
 		f_title = variation(s.display_font, s.title_weight, 2)
 		f_display = variation(s.display_font, s.display_weight, 1)
 		f_display_wide = variation(s.display_font, maxi(s.display_weight - 100, 400), 3)
+		f_value = variation(s.body_font, s.value_weight, 1, true)
 		var fallback: Array[Font] = [f_body]
 		for f: FontVariation in [f_title, f_display, f_display_wide]:
 			f.fallbacks = fallback
@@ -377,13 +403,13 @@ class _Builder:
 		label_type(UiTheme.CARD_TITLE, f_display, s.heading_size - 5, s.text)
 		label_type(UiTheme.ACCENT_TEXT, f_strong, s.body_size, s.accent)
 		label_type(UiTheme.DANGER_TEXT, f_strong, s.body_size, s.danger)
-		label_type(UiTheme.VALUE, f_display, s.value_size, s.text)
+		label_type(UiTheme.VALUE, f_value, s.value_size, s.text)
 		label_type(UiTheme.KEY_CAP, f_button, s.caption_size - 2, s.text)
 		theme.set_stylebox(&"normal", UiTheme.KEY_CAP,
 			box(Color(s.accent, 0.08), Color(s.text_dim, 0.7), s.border_width, px(4), px(8), px(2)))
 		# HUD text sits over the 3D scene: outlined, no panels.
 		label_type(UiTheme.HUD_TEXT, f_strong, s.hud_text_size, s.text)
-		label_type(UiTheme.HUD_VALUE, f_display, s.hud_value_size, s.text)
+		label_type(UiTheme.HUD_VALUE, f_value, s.hud_value_size, s.text)
 		label_type(UiTheme.HUD_CAPTION, f_strong, s.caption_size - 1, s.text_dim)
 		for t: StringName in [UiTheme.HUD_TEXT, UiTheme.HUD_VALUE, UiTheme.HUD_CAPTION]:
 			theme.set_constant(&"outline_size", t, px(5))
@@ -781,7 +807,8 @@ class _Builder:
 		theme.set_stylebox(&"focus", n, focus_box(px(s.corner_cut)))
 
 		var t: StringName = &"CreditCounter"
-		theme.set_font(&"font", t, f_display)
+		theme.set_type_variation(t, &"Control")
+		theme.set_font(&"font", t, f_value)
 		theme.set_font_size(&"font_size", t, px(s.value_size))
 		theme.set_color(&"font_color", t, s.text)
 		theme.set_color(&"font_gain_color", t, a.lerp(Color.WHITE, 0.35))
@@ -823,6 +850,7 @@ class _Builder:
 		theme.set_color(&"badge_text", t, s.backdrop_bottom)
 		theme.set_color(&"hint", t, s.text)
 		theme.set_color(&"hint_outline", t, s.outline)
+		theme.set_color(&"active", t, s.accent_2.lerp(Color.WHITE, 0.2))
 		theme.set_font(&"font", t, f_digits)
 		theme.set_font_size(&"font_size", t, px(15))
 		theme.set_constant(&"size", t, px(60))

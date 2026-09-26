@@ -6,4 +6,4 @@ extends PowerupModule
 
 
 func hud_entry() -> Dictionary:
-	return controller.make_hud_entry(id, tier, 1.0, world.player.claws, 0)
+	return controller.make_hud_entry(id, tier, 1.0, world.player.claws, -1)

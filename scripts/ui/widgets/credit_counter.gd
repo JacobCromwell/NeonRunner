@@ -5,7 +5,9 @@ extends Control
 ##   counter.set_value(1250)          # counts from the number shown now
 ##   counter.add(30)                  # counts up by 30
 ##   counter.set_value(0, false)      # jumps
-## Under the HUD theme it draws a lighter chip and outlined digits.
+## Under the HUD theme it draws a lighter chip and outlined digits. With show_icon and show_chip off
+## it is a plain counting number (scores); theme overrides on the node work as usual, e.g.
+## add_theme_font_size_override(&"font_size", 56).
 
 signal count_finished
 
@@ -28,6 +30,13 @@ signal count_finished
 		show_chip = v
 		update_minimum_size()
 		queue_redraw()
+@export var show_icon: bool = true:
+	set(v):
+		show_icon = v
+		update_minimum_size()
+		queue_redraw()
+## Flash and pop when the value goes up.
+@export var pop_on_gain: bool = true
 
 ## The number on screen right now (moves towards `value`).
 var shown: float = 0.0
@@ -39,6 +48,8 @@ var _pop: float = 0.0
 
 
 func _init() -> void:
+	# Theme items come from the CreditCounter type, and node overrides apply to them.
+	theme_type_variation = &"CreditCounter"
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_process(false)
 
@@ -55,7 +66,7 @@ func set_value(target: int, animate: bool = true) -> void:
 		_from = shown
 		_progress = 0.0
 		_duration = clampf(0.25 + absf(target - shown) / 600.0, 0.25, count_time)
-		if gain:
+		if gain and pop_on_gain:
 			_pop = 1.0
 		set_process(true)
 	update_minimum_size()
@@ -110,18 +121,21 @@ func _text_for(v: float) -> String:
 	return UiTheme.format_int(roundi(v))
 
 
+func _icon_size() -> float:
+	return float(get_theme_constant(&"icon_size")) if show_icon else 0.0
+
+
 func _get_minimum_size() -> Vector2:
-	var t: StringName = &"CreditCounter"
-	var font: Font = get_theme_font(&"font", t)
-	var font_size: int = get_theme_font_size(&"font_size", t)
-	var icon: float = get_theme_constant(&"icon_size", t)
+	var font: Font = get_theme_font(&"font")
+	var font_size: int = get_theme_font_size(&"font_size")
+	var icon: float = _icon_size()
 	# Room for the wider of the shown and target numbers (a count between them is never wider), so
 	# the chip doesn't twitch while counting. Signs included.
 	var text_w: float = maxf(UiTheme.tabular_width(font, _text_for(shown), font_size),
 		UiTheme.tabular_width(font, _text_for(_target), font_size))
-	var w: float = icon + get_theme_constant(&"separation", t) + text_w
+	var w: float = icon + (get_theme_constant(&"separation") if show_icon else 0.0) + text_w
 	var h: float = maxf(icon, font.get_height(font_size))
-	var chip: StyleBox = get_theme_stylebox(&"chip", t)
+	var chip: StyleBox = get_theme_stylebox(&"chip")
 	if show_chip and chip != null:
 		w += chip.get_margin(SIDE_LEFT) + chip.get_margin(SIDE_RIGHT)
 		h += chip.get_margin(SIDE_TOP) + chip.get_margin(SIDE_BOTTOM)
@@ -129,23 +143,25 @@ func _get_minimum_size() -> Vector2:
 
 
 func _draw() -> void:
-	var t: StringName = &"CreditCounter"
 	var rect := Rect2(Vector2.ZERO, size)
-	var chip: StyleBox = get_theme_stylebox(&"chip", t)
+	var chip: StyleBox = get_theme_stylebox(&"chip")
 	if show_chip and chip != null:
 		draw_style_box(chip, rect)
 		rect = Rect2(rect.position + Vector2(chip.get_margin(SIDE_LEFT), chip.get_margin(SIDE_TOP)),
 			rect.size - chip.get_minimum_size())
-	var icon: float = get_theme_constant(&"icon_size", t)
-	var pop: float = sin(_pop * PI) * 0.22
-	var icon_rect := Rect2(rect.position.x, rect.get_center().y - icon * 0.5, icon, icon)
-	# The icon name doubles as the theme's colour name for that denomination (Neon/credit_25).
-	var icon_id: StringName = IconFactory.credit_icon(denomination)
-	var c: Color = get_theme_color(icon_id, UiTheme.NEON)
-	IconFactory.draw(self, icon_id, icon_rect.grow(icon * pop * 0.5), c.lerp(Color.WHITE, _pop * 0.5))
-	var font: Font = get_theme_font(&"font", t)
-	var font_size: int = get_theme_font_size(&"font_size", t)
+	var icon: float = _icon_size()
+	var text_x: float = rect.position.x
+	if show_icon:
+		var pop: float = sin(_pop * PI) * 0.22
+		var icon_rect := Rect2(rect.position.x, rect.get_center().y - icon * 0.5, icon, icon)
+		# The icon name doubles as the theme's colour name for that denomination (Neon/credit_25).
+		var icon_id: StringName = IconFactory.credit_icon(denomination)
+		var c: Color = get_theme_color(icon_id, UiTheme.NEON)
+		IconFactory.draw(self, icon_id, icon_rect.grow(icon * pop * 0.5), c.lerp(Color.WHITE, _pop * 0.5))
+		text_x = icon_rect.end.x + get_theme_constant(&"separation")
+	var font: Font = get_theme_font(&"font")
+	var font_size: int = get_theme_font_size(&"font_size")
 	var baseline: float = rect.get_center().y + (font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5
-	var color: Color = get_theme_color(&"font_color", t).lerp(get_theme_color(&"font_gain_color", t), _pop)
-	UiTheme.draw_tabular(self, font, Vector2(icon_rect.end.x + get_theme_constant(&"separation", t), baseline),
-		_text_for(shown), font_size, color, get_theme_constant(&"outline_size", t), get_theme_color(&"font_outline_color", t))
+	var color: Color = get_theme_color(&"font_color").lerp(get_theme_color(&"font_gain_color"), _pop)
+	UiTheme.draw_tabular(self, font, Vector2(text_x, baseline), _text_for(shown), font_size, color,
+		get_theme_constant(&"outline_size"), get_theme_color(&"font_outline_color"))

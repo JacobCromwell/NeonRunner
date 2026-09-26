@@ -219,7 +219,8 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
 47. **Palette:** an azure main accent and a violet second accent; red only for warnings and "can't
     afford". Pink, orange and yellow are never UI colours (they're hazard colours).
 48. **Stars** are white with an azure glow rather than gold (yellow is the sign colour). OK?
-49. **Fonts and sizes:** Orbitron (titles, numbers) and Exo 2 (text); touch devices get 76 px controls
+49. **Fonts and sizes:** Orbitron (titles) and Exo 2 (text, and heavy for numbers: Orbitron's slashed
+    zero read like a "no" sign in a score of 0); touch devices get 76 px controls
     and 1.2× text. Worth checking on a real phone (`data/ui/ui_style.tres`).
 50. **HUD progress bar:** shown; what its markers should stand for is open.
 51. **Key rebinding:** single keys only (no Ctrl+ combinations); Esc cancels a rebind, so Esc itself
