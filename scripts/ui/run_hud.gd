@@ -22,6 +22,8 @@ const PROTECTIONS: Array = [[&"armor", &"armor", &"armor"], [&"shield", &"shield
 	[&"grapple", &"grapple", &"grapples"]]
 ## Power-ups the player triggers with a key: the key shows on the icon (keyboard devices).
 const POWERUP_ACTIONS: Dictionary = {&"dash": &"dash", &"slow_time": &"slow_time"}
+## Shown when a boss fight reaches its checkpoint (GDD §10).
+const CHECKPOINT_TEXT: String = "Checkpoint! A retry starts here."
 
 var world: RunWorld
 var context: RunContext
@@ -305,16 +307,29 @@ func _place_progress() -> void:
 
 
 ## A boss fight shows the boss's bar in the progress meter's place (a fight has no distance to
-## measure), and says when a checkpoint is reached.
+## measure; in quick play it joins the score column, clear of the debug HUD), and says when a
+## checkpoint is reached.
 func _bind_boss(encounter: BossEncounter) -> void:
 	boss_bar.visible = encounter != null
+	var in_column: bool = boss_bar.get_parent() == _right
+	if _quick and not in_column:
+		_top_center.remove_child(boss_bar)
+		_right.add_child(boss_bar)
+		_right.move_child(boss_bar, 2)
+		boss_bar.custom_minimum_size.x = UiTheme.px(300)
+		boss_bar.size_flags_horizontal = Control.SIZE_SHRINK_END
+	elif not _quick and in_column:
+		_right.remove_child(boss_bar)
+		_top_center.add_child(boss_bar)
+		boss_bar.custom_minimum_size.x = UiTheme.px(460)
+		boss_bar.size_flags_horizontal = Control.SIZE_FILL
 	if encounter == null:
 		boss_bar.encounter = null
 		return
 	progress.visible = false
 	boss_bar.bind(encounter)
-	encounter.checkpoint_reached.connect(func(_index: int) -> void:
-		show_hint("Checkpoint! If you go down now, the fight restarts from here."))
+	if not _quick:
+		encounter.checkpoint_reached.connect(func(_index: int) -> void: show_hint(CHECKPOINT_TEXT))
 
 
 ## Keeps everything inside the safe area plus a margin; in quick play it clears the debug HUD.
@@ -340,7 +355,7 @@ func _place_hint() -> void:
 	_hint.offset_left = 0.0
 	_hint.offset_right = 0.0
 	# Under the boss bar, which is taller than the progress meter.
-	_hint.offset_top = UiTheme.px(66 if boss_bar != null and boss_bar.visible else 44)
+	_hint.offset_top = UiTheme.px(66 if boss_bar != null and boss_bar.visible and not _quick else 44)
 	_hint.offset_bottom = _hint.offset_top
 
 

@@ -1,9 +1,9 @@
 extends TestSuite
-## The game's screens and HUD on the real main scene. Every screen and overlay builds and frees
-## cleanly for a fresh and a rich profile, at desktop and touch sizes; fits the smallest screen
-## (1280×720 after stretching) without clipping; and gives keyboard focus that moves. Then each
-## screen's own behaviour: the title menu, level select (locks, tiers, the demo's limit), the
-## shop (buying, stock, equip, the way out, credit packs), settings (volumes, toggles, keys), the
+## The game's screens and HUD on the real main scene. Every screen and overlay (a boss fight's results
+## too) builds and frees cleanly for a fresh and a rich profile, at desktop and touch sizes; fits the
+## smallest screen (1280×720 after stretching) without clipping; and gives keyboard focus that moves.
+## Then each screen's own behaviour: the title menu, level select (locks, tiers, the demo's limit),
+## the shop (buying, stock, equip, the way out, credit packs), settings (volumes, toggles, keys), the
 ## pause, death and results overlays, the slot and demo-end screens, and the HUD following a
 ## RunWorld's score, credits, charges and power-ups.
 
@@ -81,6 +81,13 @@ func _show_result(completed: bool) -> ResultsScreen:
 	return s
 
 
+func _show_boss_result(won: bool) -> ResultsScreen:
+	var s := ResultsScreen.new()
+	s.result = SampleProfiles.boss_result(won)
+	App.show_screen(s)
+	return s
+
+
 func _start_level(id: String) -> void:
 	App.start_level(App.campaign.step(id))
 	await physics_frames(10)
@@ -138,6 +145,8 @@ func _test_every_screen(tag: String) -> void:
 		["settings", func() -> void: App.show_settings(), SettingsScreen],
 		["results", func() -> void: _show_result(true), ResultsScreen],
 		["run summary", func() -> void: _show_result(false), ResultsScreen],
+		["boss results", func() -> void: _show_boss_result(true), ResultsScreen],
+		["boss run summary", func() -> void: _show_boss_result(false), ResultsScreen],
 		["boss slot", func() -> void: App.play_step(App.campaign.step("city/boss")), SlotScreen],
 		["cinematic slot", func() -> void: App.play_step(App.campaign.step("city/intro")), SlotScreen],
 		["demo end", func() -> void: App.show_demo_end(), DemoEndScreen],

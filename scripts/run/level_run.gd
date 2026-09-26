@@ -327,11 +327,12 @@ func _update_debug_hud() -> void:
 	text += "Surface: %s   Lane %d   %s%s\n" % [p.surface_name(), p.lane, "sliding  " if p.is_sliding() else "",
 		"airborne" if not p.grounded and p.surface != Player.Surface.WALL else ""]
 	if encounter != null and is_instance_valid(encounter):
-		text += "Boss: phase %d/%d %s   health %.0f / %.0f   weapons %.0f / %.0f   fight %.1fs   lap %d\n" % [
+		text += "Boss: phase %d/%d %s   health %.0f / %.0f   weapons %.0f / %.0f   fight %.1fs   lap %d%s\n" % [
 			encounter.phase_index + 1, encounter.phase_count(), BossEncounter.State.keys()[encounter.state],
 			encounter.health, encounter.max_health, encounter.weapon_damage,
 			encounter.max_health * encounter.def.weapon_share_cap, encounter.fight_time(),
-			encounter.arena.lap_at(p.distance) if encounter.arena != null else 0]
+			encounter.arena.lap_at(p.distance) if encounter.arena != null else 0,
+			"   [checkpoint: phase %d]" % (int(context.boss_resume["phase"]) + 1) if context.boss_resume.has("phase") else ""]
 	text += "Loadout: %s\nLast: %s\n" % [context.loadout.describe() if context.loadout != null else "-", p.last_event]
 	if not deaths.is_empty():
 		text += "Deaths: %s" % ", ".join(deaths)
