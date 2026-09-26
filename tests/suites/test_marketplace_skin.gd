@@ -1,6 +1,6 @@
 extends SkinSuite
-## The Marketplace skin (MarketplaceSkin, Zone 3). The shared skin checks (SkinSuite) over whole
-## levels for 3, 5 and 6 lanes, then the Marketplace's own:
+## The Marketplace skin (MarketplaceSkin, Zone 3), which the Marketplace zone uses. The shared skin
+## checks (SkinSuite) over the whole of Marketplace 2 for 3, 5 and 6 lanes, then the Marketplace's own:
 ## - gaps keep the orange edge glow right on the collision edge;
 ## - the colour rule (GDD §5): nothing but hazards glows in a hazard hue (pink, red, orange, yellow,
 ##   green, cyan), and lit surfaces stay well below the hazards' saturation;
@@ -18,6 +18,8 @@ extends SkinSuite
 
 const MARKET_SKIN_PATH: String = "res://data/skins/marketplace_skin.tres"
 const MARKET_ZONE_PATH: String = "res://data/zones/marketplace.tres"
+## The Marketplace's campaign level with the most in it (Marketplace 2 adds wall vents and wall fences).
+const MARKET_LEVEL_PATH: String = "res://data/levels/marketplace_2.tres"
 ## Lit (non-glowing) surfaces stay below this chroma (brightest minus darkest channel); the fence
 ## pink is about 0.8.
 const MAX_SURFACE_CHROMA: float = 0.45
@@ -33,16 +35,15 @@ func run() -> void:
 	# DESIGN-TBD placeholder (docs/questions/d2.md): Marketplace cyborgs dress as citizens.
 	check(skin.enemy_variant == &"city" and MarketplaceSkin.new().enemy_variant == &"city",
 		"marketplace enemies wear the city look (placeholder)")
-	if ResourceLoader.exists(MARKET_ZONE_PATH):
-		var zone := load(MARKET_ZONE_PATH) as ZoneDef
-		check(zone != null and zone.skin is MarketplaceSkin, "the Marketplace zone uses the marketplace skin")
+	var zone := load(MARKET_ZONE_PATH) as ZoneDef
+	check(zone != null and zone.skin is MarketplaceSkin, "the Marketplace zone uses the marketplace skin")
 	start_error_count()
 	var env: Environment = skin.make_environment()
 	check(env != null and env.sky != null and env.glow_enabled and env.fog_enabled,
 		"the marketplace environment has a sky, glow and fog")
 	_palette(skin)
 	for lanes: int in [3, 5, 6]:
-		await whole_level(skin, "marketplace", LEVEL_PATH, lanes)
+		await whole_level(skin, "marketplace", MARKET_LEVEL_PATH, lanes)
 	await hazards_and_triggers(skin)
 	await _surfaces(skin)
 	await _clear_play_space(skin)
@@ -50,7 +51,7 @@ func run() -> void:
 	_ceilings(skin)
 	_cult_emblem(skin)
 	_stall_layout(skin)
-	await determinism(skin, LEVEL_PATH)
+	await determinism(skin, MARKET_LEVEL_PATH)
 	stop_error_count("building marketplace levels")
 
 
@@ -155,11 +156,11 @@ func _surfaces(skin: MarketplaceSkin) -> void:
 
 
 ## Between the floor and the ceiling, over the lanes, the skin builds nothing solid but hazards and
-## triggers: stall roofs are flat, gap faces hang below the roofs, ceilings keep above their
-## undersides, and walls, signs and awnings stay outside the lanes or up high.
+## triggers, anywhere in a whole level: stall roofs are flat, gap faces hang below the roofs,
+## ceilings keep above their undersides, and walls, signs and awnings stay outside the lanes or up high.
 func _clear_play_space(skin: MarketplaceSkin) -> void:
 	for lanes: int in [3, 6]:
-		var layout: LevelLayout = level(LEVEL_PATH, lanes, 0.6, 5)
+		var layout: LevelLayout = level(MARKET_LEVEL_PATH, lanes, 0.6, 5)
 		var world := Node3D.new()
 		tree.root.add_child(world)
 		var track := TrackBuilder.new()
@@ -167,28 +168,38 @@ func _clear_play_space(skin: MarketplaceSkin) -> void:
 		track.set_layout(layout, tuning, skin)
 		var half: float = TrackGeometry.new(lanes, tuning).half_width()
 		var intruders: PackedStringArray = []
+		var seen: Dictionary = {}
 		var d: float = 0.0
-		while d < 400.0:
-			track.update(d, 0.0)
+		while d <= layout.length + TrackBuilder.RUN_OUT + TrackBuilder.CHUNK_LENGTH:
+			track.update(d, d / tuning.run_speed)
+			for chunk: Node in track.get_children():
+				if not seen.has(chunk):
+					seen[chunk] = true
+					_find_intruders(chunk, skin, half, intruders)
 			d += TrackBuilder.CHUNK_LENGTH
-		for node: Node in nodes_of(track, func(n: Node) -> bool: return n is MeshInstance3D):
-			var m := node as MeshInstance3D
-			if m.mesh == null or m.is_in_group(&"debug_hitbox") or _under(m, func(n: Node) -> bool: return n is Area3D):
-				continue
-			for s: int in m.mesh.get_surface_count():
-				# Drifting dust and additive light (lamp halos, engine glow) aren't objects.
-				var material: Material = m.mesh.surface_get_material(s)
-				if material == skin.drift_material() or material == skin.glow_material():
-					continue
-				var verts: PackedVector3Array = m.mesh.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]
-				for v: Vector3 in verts:
-					var p: Vector3 = m.global_transform * v
-					if absf(p.x) < half - 0.01 and p.y > 0.06 and p.y < tuning.ceiling_height - 0.1 and intruders.size() < 4:
-						intruders.append(str(p))
-		check(intruders.is_empty(), "nothing decorative stands in the play space (%d lanes): %s" % [lanes,
-			", ".join(intruders)])
+		check(intruders.is_empty(), "nothing decorative stands in the play space (%d lanes, %d chunks): %s" % [lanes,
+			seen.size(), ", ".join(intruders)])
 		world.queue_free()
 		await tree.process_frame
+
+
+## Solid vertices of the skin's meshes in `chunk` that lie over the lanes between the floor and the
+## ceiling (up to four, appended to `out`).
+func _find_intruders(chunk: Node, skin: MarketplaceSkin, half: float, out: PackedStringArray) -> void:
+	for node: Node in nodes_of(chunk, func(n: Node) -> bool: return n is MeshInstance3D):
+		var m := node as MeshInstance3D
+		if m.mesh == null or m.is_in_group(&"debug_hitbox") or _under(m, func(n: Node) -> bool: return n is Area3D):
+			continue
+		for s: int in m.mesh.get_surface_count():
+			# Drifting dust and additive light (lamp halos, engine glow) aren't objects.
+			var material: Material = m.mesh.surface_get_material(s)
+			if material == skin.drift_material() or material == skin.glow_material():
+				continue
+			var verts: PackedVector3Array = m.mesh.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]
+			for v: Vector3 in verts:
+				var p: Vector3 = m.global_transform * v
+				if absf(p.x) < half - 0.01 and p.y > 0.06 and p.y < tuning.ceiling_height - 0.1 and out.size() < 4:
+					out.append(str(p))
 
 
 ## The citizens' windows (task D3): where shop_windows() says, the same every time, above the wall
