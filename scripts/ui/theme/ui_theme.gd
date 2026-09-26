@@ -209,9 +209,9 @@ static func draw_tabular(ci: CanvasItem, font: Font, position: Vector2, text: St
 
 
 ## Insets (left, top, right, bottom) in canvas units that keep content clear of notches and rounded
-## corners. Zero except on touch devices.
+## corners. Zero except on phones and tablets (a desktop's "safe area" is just the taskbar's gap).
 static func safe_area_margins(control: Control) -> Vector4:
-	if not is_touch() or not control.is_inside_tree():
+	if not DeviceProfile.is_mobile() or not control.is_inside_tree():
 		return Vector4.ZERO
 	var screen := Vector2(DisplayServer.screen_get_size())
 	var safe := Rect2(DisplayServer.get_display_safe_area())
@@ -562,9 +562,9 @@ class _Builder:
 			knob = s.text_disabled
 		var cx: float = (w - r) if knob_right else r
 		return svg_texture(
-			('<rect x="1" y="1" width="%s" height="%s" rx="%s" fill="%s" stroke="%s" stroke-width="1.5"/>'
+			('<rect x="1" y="1" width="%s" height="%s" rx="%s" fill="%s" fill-opacity="%.2f" stroke="%s" stroke-width="1.5"/>'
 			+ '<circle cx="%s" cy="%s" r="%s" fill="%s"/>')
-			% [w - 2, h - 2, r - 1, hex(track), hex(border), cx, r, r - px(5), hex(knob)], w, h)
+			% [w - 2, h - 2, r - 1, hex(track), track.a, hex(border), cx, r, r - px(5), hex(knob)], w, h)
 
 	# --- Panels ----------------------------------------------------------------------
 
@@ -628,12 +628,12 @@ class _Builder:
 		# bright glowing diamond below.
 		var g: float = px(26)
 		var diamond: String = '<path d="M13 3 L23 13 L13 23 L3 13 Z" fill="%s" stroke="%s" stroke-width="2"/><circle cx="13" cy="13" r="2.6" fill="%s"/>'
-		var scale: String = '<g transform="scale(%s)">%%s</g>' % (g / 26.0)
-		var grabber: Texture2D = svg_texture(scale % (diamond % [hex(s.outline), hex(a), hex(a)]), g, g)
-		var grabber_hl: Texture2D = svg_texture(scale % (
+		var scaled: String = '<g transform="scale(%s)">%%s</g>' % (g / 26.0)
+		var grabber: Texture2D = svg_texture(scaled % (diamond % [hex(s.outline), hex(a), hex(a)]), g, g)
+		var grabber_hl: Texture2D = svg_texture(scaled % (
 			'<path d="M13 0.8 L25.2 13 L13 25.2 L0.8 13 Z" fill="%s" fill-opacity="0.3"/>' % hex(a)
 			+ diamond % [hex(s.surface.lerp(a, 0.3)), "#ffffff", "#ffffff"]), g, g)
-		var grabber_off: Texture2D = svg_texture(scale % (diamond % [hex(s.outline), hex(s.text_disabled), hex(s.text_disabled)]), g, g)
+		var grabber_off: Texture2D = svg_texture(scaled % (diamond % [hex(s.outline), hex(s.text_disabled), hex(s.text_disabled)]), g, g)
 		for type: StringName in [&"HSlider", &"VSlider"]:
 			theme.set_icon(&"grabber", type, grabber)
 			theme.set_icon(&"grabber_highlight", type, grabber_hl)
@@ -842,7 +842,6 @@ class _Builder:
 		theme.set_color(&"pip_on", t, a)
 		theme.set_color(&"pip_next", t, Color(a, 0.5))
 		theme.set_color(&"pip_off", t, Color(s.text_disabled, 0.7))
-		theme.set_color(&"locked_tint", t, Color(0.0, 0.0, 0.02, 0.55))
 		theme.set_stylebox(&"icon_frame", t, box(Color(s.outline, 0.65), Color(a, 0.35), s.border_width, px(8), px(8), px(8)))
 
 		t = &"KeyBindButton"

@@ -15,6 +15,9 @@ const SLIDE_TIME: float = 0.12
 
 ## 0 = off, 1 = on; follows button_pressed with a short slide.
 var _knob: float = 0.0
+## Held down right now (the knob squeezes a little). Not get_draw_mode(): for a toggle button that
+## reports PRESSED whenever the switch is on.
+var _holding: bool = false
 
 
 func _init() -> void:
@@ -28,6 +31,8 @@ func _init() -> void:
 		if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 			UiSounds.play(sound_move))
 	pressed.connect(func() -> void: UiSounds.play(sound_select))
+	button_down.connect(_set_holding.bind(true))
+	button_up.connect(_set_holding.bind(false))
 	set_process(false)
 
 
@@ -46,6 +51,11 @@ func set_on(on: bool, animate: bool = true, notify: bool = false) -> void:
 
 func is_on() -> bool:
 	return button_pressed
+
+
+func _set_holding(on: bool) -> void:
+	_holding = on
+	queue_redraw()
 
 
 func _toggled(_on: bool) -> void:
@@ -103,33 +113,17 @@ func _draw() -> void:
 	_draw_pill_outline(pill, border, 1.5)
 	var knob_r: float = r - maxf(4.0, h * 0.16)
 	var cx: float = lerpf(pill.position.x + r, pill.end.x - r, k)
-	var pressing: bool = get_draw_mode() == DRAW_PRESSED or get_draw_mode() == DRAW_HOVER_PRESSED
-	draw_circle(Vector2(cx, pill.get_center().y), knob_r * (0.9 if pressing else 1.0), knob, true, -1.0, true)
+	draw_circle(Vector2(cx, pill.get_center().y), knob_r * (0.88 if _holding else 1.0), knob, true, -1.0, true)
 	if has_focus(true):
 		draw_style_box(get_theme_stylebox(&"focus", UiTheme.NEON), pill)
 
 
 ## One polygon (not a rect plus circles), so translucent colours don't double up where they overlap.
-static func pill_points(rect: Rect2, inset: float = 0.0) -> PackedVector2Array:
-	var r: float = minf(rect.size.x, rect.size.y) * 0.5
-	var arcs := IconFactory.arc_points(Vector2(rect.end.x - r, rect.position.y + rect.size.y * 0.5), r - inset, -PI / 2.0, PI / 2.0, 16)
-	arcs.append_array(IconFactory.arc_points(Vector2(rect.position.x + r, rect.position.y + rect.size.y * 0.5), r - inset, PI / 2.0, PI * 1.5, 16))
-	# A pill as wide as it is tall is a circle: its two arcs meet, so drop the doubled points
-	# (the triangulator rejects them).
-	var points := PackedVector2Array()
-	for p: Vector2 in arcs:
-		if points.is_empty() or points[points.size() - 1].distance_to(p) > 0.01:
-			points.append(p)
-	if points.size() > 1 and points[0].distance_to(points[points.size() - 1]) <= 0.01:
-		points.remove_at(points.size() - 1)
-	return points
-
-
 func _draw_pill(rect: Rect2, color: Color) -> void:
-	draw_colored_polygon(pill_points(rect), color)
+	draw_colored_polygon(IconFactory.pill_points(rect), color)
 
 
 func _draw_pill_outline(rect: Rect2, color: Color, width: float) -> void:
-	var points := pill_points(rect, width * 0.5)
+	var points := IconFactory.pill_points(rect, width * 0.5)
 	points.append(points[0])
 	draw_polyline(points, color, width, true)

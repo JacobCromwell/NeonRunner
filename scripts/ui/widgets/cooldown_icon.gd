@@ -155,7 +155,7 @@ func _draw() -> void:
 		var badge_w: float = maxf(0.0, font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x - br)
 		var badge := Rect2(bc - Vector2(br + badge_w * 0.5, br), Vector2(br * 2.0 + badge_w, br * 2.0))
 		var badge_color: Color = get_theme_color(&"ring", t) if empty else get_theme_color(&"badge", t)
-		draw_colored_polygon(ToggleSwitch.pill_points(badge), badge_color)
+		draw_colored_polygon(IconFactory.pill_points(badge), badge_color)
 		draw_string(font, Vector2(badge.position.x, bc.y + (font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5),
 			text, HORIZONTAL_ALIGNMENT_CENTER, badge.size.x, font_size, get_theme_color(&"badge_text", t))
 	if key_hint != "" and not UiTheme.is_touch():

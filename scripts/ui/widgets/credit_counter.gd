@@ -141,8 +141,10 @@ func _draw() -> void:
 	var icon: float = get_theme_constant(&"icon_size", t)
 	var pop: float = sin(_pop * PI) * 0.22
 	var icon_rect := Rect2(rect.position.x, rect.get_center().y - icon * 0.5, icon, icon)
-	var c: Color = UiTheme.credit_color(denomination)
-	IconFactory.draw(self, IconFactory.credit_icon(denomination), icon_rect.grow(icon * pop * 0.5), c.lerp(Color.WHITE, _pop * 0.5))
+	# The icon name doubles as the theme's colour name for that denomination (Neon/credit_25).
+	var icon_id: StringName = IconFactory.credit_icon(denomination)
+	var c: Color = get_theme_color(icon_id, UiTheme.NEON)
+	IconFactory.draw(self, icon_id, icon_rect.grow(icon * pop * 0.5), c.lerp(Color.WHITE, _pop * 0.5))
 	var font: Font = get_theme_font(&"font", t)
 	var font_size: int = get_theme_font_size(&"font_size", t)
 	var baseline: float = rect.get_center().y + (font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5

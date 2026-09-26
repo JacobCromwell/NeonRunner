@@ -224,6 +224,23 @@ static func star_points(center: Vector2, outer: float, inner: float, points: int
 	return out
 
 
+## A pill (a rectangle with fully rounded ends) as one polygon, in any coordinate space.
+static func pill_points(rect: Rect2, inset: float = 0.0) -> PackedVector2Array:
+	var r: float = minf(rect.size.x, rect.size.y) * 0.5
+	var cy: float = rect.position.y + rect.size.y * 0.5
+	var arcs := arc_points(Vector2(rect.end.x - r, cy), r - inset, -PI / 2.0, PI / 2.0, 16)
+	arcs.append_array(arc_points(Vector2(rect.position.x + r, cy), r - inset, PI / 2.0, PI * 1.5, 16))
+	# A pill as wide as it is tall is a circle: its two arcs meet, so drop the doubled points
+	# (the triangulator rejects them).
+	var points := PackedVector2Array()
+	for p: Vector2 in arcs:
+		if points.is_empty() or points[points.size() - 1].distance_to(p) > 0.01:
+			points.append(p)
+	if points.size() > 1 and points[0].distance_to(points[points.size() - 1]) <= 0.01:
+		points.remove_at(points.size() - 1)
+	return points
+
+
 static func _mirror_x(points: PackedVector2Array) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	for p: Vector2 in points:
