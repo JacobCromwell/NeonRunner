@@ -193,27 +193,38 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
 38. The player's glow is cyan, the same as the anti-grav pads. OK, or should the player have its own
     colour?
 
+**Neon City look** (from the City skin work)
+39. **Sign language for every zone:** a yellow/black striped frame around neon content (the frame is
+   the hazard; the content can be anything).
+40. **Truck speed:** the road below streams toward the player at a placeholder 14 m/s.
+41. **Ships** fly toward the player: bow over the near end, engines at the far end where the player
+   drops; the far end also carries the gap-edge orange.
+42. **Fences:** glowing edge bars (top for full fences, bottom for gapped); an off fence shows no field.
+43. **City neon avoids hazard colours:** no red traffic lights (red plus bloom reads as fence pink);
+   decorative neon is unframed and sits above 9 m. The grey box's faint 2 m / 4 m wall-run height lines
+   are kept on the facades. Keep them?
+
 **Audio** (from the audio work)
-39. **Mix balance:** music sits about 10 dB under the attack warnings; the pause menu ducks music by
+44. **Mix balance:** music sits about 10 dB under the attack warnings; the pause menu ducks music by
   8 dB. Needs a listen on real speakers and phones.
-40. **Music on death and level complete:** the zone track keeps playing under the death screen; the
+45. **Music on death and level complete:** the zone track keeps playing under the death screen; the
   `level_complete` riff is in E (fits City, clashes with Gangland). Stop, duck, or play on?
-41. **Music style per zone** (OPEN_QUESTIONS §6): City is 160 BPM galloping synth-metal in E minor,
+46. **Music style per zone** (OPEN_QUESTIONS §6): City is 160 BPM galloping synth-metal in E minor,
   Gangland 120 BPM drop-D industrial groove, menus 100 BPM synthwave.
 
 **UI** (from the UI kit work)
-42. **Palette:** an azure main accent and a violet second accent; red only for warnings and "can't
+47. **Palette:** an azure main accent and a violet second accent; red only for warnings and "can't
     afford". Pink, orange and yellow are never UI colours (they're hazard colours).
-43. **Stars** are white with an azure glow rather than gold (yellow is the sign colour). OK?
-44. **Fonts and sizes:** Orbitron (titles, numbers) and Exo 2 (text); touch devices get 76 px controls
+48. **Stars** are white with an azure glow rather than gold (yellow is the sign colour). OK?
+49. **Fonts and sizes:** Orbitron (titles, numbers) and Exo 2 (text); touch devices get 76 px controls
     and 1.2× text. Worth checking on a real phone (`data/ui/ui_style.tres`).
-45. **HUD progress bar:** shown; what its markers should stand for is open.
-46. **Key rebinding:** single keys only (no Ctrl+ combinations); Esc cancels a rebind, so Esc itself
+50. **HUD progress bar:** shown; what its markers should stand for is open.
+51. **Key rebinding:** single keys only (no Ctrl+ combinations); Esc cancels a rebind, so Esc itself
     can't be bound.
 
 **Platforms and presentation**
-47. **Store links** in the web demo point at the stores' front pages until the game has store pages.
-48. **App icon:** a placeholder neon "N" (`tools/asset_gen/icon_gen.gd`) until there's a title and brand.
+52. **Store links** in the web demo point at the stores' front pages until the game has store pages.
+53. **App icon:** a placeholder neon "N" (`tools/asset_gen/icon_gen.gd`) until there's a title and brand.
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).

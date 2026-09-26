@@ -12,6 +12,7 @@ extends Node
 ##   --seed=N --lanes=N --difficulty=X --god   quick play with overrides (any of these implies --quick)
 ##   --features=cyborg,drone  quick play with extra level features (enemy types, ramps, ...)
 ##   --full-loadout          quick play with every power-up
+##   --nofall                quick play where falls never end the run (for reviewing levels and art)
 ##   --level=city/2          a campaign level, with the full flow
 ##   --flavor=web_demo       pretend to be another build flavor (full_pc, full_mobile, web_demo)
 
@@ -92,7 +93,8 @@ func boot(p_main: Node) -> void:
 				return
 	for arg: String in args:
 		if arg == "--quick" or arg == "--god" or arg.begins_with("--seed=") or arg.begins_with("--lanes=") \
-				or arg.begins_with("--difficulty=") or arg.begins_with("--features=") or arg == "--full-loadout":
+				or arg.begins_with("--difficulty=") or arg.begins_with("--features=") or arg == "--full-loadout" \
+				or arg == "--nofall":
 			start_quick(args)
 			return
 	show_title()
@@ -271,6 +273,8 @@ func start_quick(args: PackedStringArray = PackedStringArray()) -> void:
 			ctx.config.difficulty = float(v)
 		elif arg == "--god":
 			ctx.god_mode = true
+		elif arg == "--nofall":
+			ctx.no_fall = true
 		elif arg.begins_with("--features="):
 			for f: String in v.split(",", false):
 				if not ctx.config.features.has(f):

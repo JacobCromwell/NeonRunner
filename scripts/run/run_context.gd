@@ -17,6 +17,8 @@ var loadout: Loadout
 var attempt: int = 1
 var revives_used: int = 0
 var god_mode: bool = false
+## Quick play review aid (--nofall): the grapple never runs out, so falls never end the run.
+var no_fall: bool = false
 ## Campaign position for the completion bonus (0-based level index), -1 outside the campaign.
 var level_index: int = -1
 
@@ -45,5 +47,6 @@ func retry() -> RunContext:
 	next.loadout = loadout
 	next.attempt = attempt + 1
 	next.god_mode = god_mode
+	next.no_fall = no_fall
 	next.level_index = level_index
 	return next

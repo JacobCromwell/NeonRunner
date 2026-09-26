@@ -63,6 +63,8 @@ func _build() -> void:
 	add_child(world)
 	world.build(context.config, layout, context.tuning, rules, App.powerup_tuning, context.loadout, App.sfx_library)
 	world.player.god_mode = context.god_mode
+	if context.no_fall:
+		world.player.grapples = 1_000_000
 	world.player.died.connect(_on_player_died)
 	world.player.item_used.connect(func(item: StringName) -> void: item_used.emit(item))
 	world.player.set_hitbox_visible(_show_hitboxes)
@@ -198,6 +200,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed(&"debug_god_mode"):
 		context.god_mode = not context.god_mode
 		world.player.god_mode = context.god_mode
+	if context.no_fall:
+		world.player.grapples = 1_000_000
 	elif event.is_action_pressed(&"debug_toggle_hitboxes"):
 		_show_hitboxes = not _show_hitboxes
 		world.track.set_hitboxes_visible(_show_hitboxes)
