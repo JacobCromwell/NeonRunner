@@ -117,7 +117,8 @@ func add_enemy(type: String, at: float, lane: int, side: int = 0, params: Dictio
 
 
 ## Adds a ceiling section with an anti-grav pad at `at` (hull lead-in before it), lasting
-## `length_seconds` at run speed. Returns false (adding nothing) if the floor there isn't clear.
+## `length_seconds` at run speed. Returns false (adding nothing) if the floor there isn't clear
+## (floor_clear, which includes floor enemies' stretches) or it would touch another ceiling.
 func add_hull_with_pad(lane: int, at: float, length_seconds: float) -> bool:
 	var hull_start: float = at - config.hull_lead_in
 	var hull_end: float = at + length_seconds * speed
@@ -135,7 +136,8 @@ func add_hull_with_pad(lane: int, at: float, length_seconds: float) -> bool:
 	return true
 
 
-## True if no gap or fence touches any lane between two track distances.
+## True if nothing on the floor touches any lane between two track distances: no gap, no fence,
+## and no floor enemy's stretch (enemy_floor_span).
 func floor_clear(from: float, to: float) -> bool:
 	for g: Dictionary in layout.gaps:
 		if g["start"] <= to and g["end"] >= from:
@@ -143,7 +145,27 @@ func floor_clear(from: float, to: float) -> bool:
 	for f: Dictionary in layout.fences:
 		if f["at"] >= from and f["at"] <= to:
 			return false
+	for e: Dictionary in layout.enemies:
+		var span: Vector2 = enemy_floor_span(e)
+		if span.x <= to and span.y >= from:
+			return false
 	return true
+
+
+## The stretch of floor [start, end] an enemy entry uses, which ceilings keep off: its
+## params.floor_span if its rules planned one, else its tuning's reach around its position.
+## Vector2(INF, -INF) (overlapping nothing) for types whose tuning says they don't use the floor.
+static func enemy_floor_span(entry: Dictionary) -> Vector2:
+	var params: Dictionary = entry.get("params", {})
+	if params.get("floor_span") is Vector2:
+		return params["floor_span"]
+	var at: float = float(entry["at"])
+	var t := EnemyDirector.tuning_for(String(entry.get("type", ""))) as EnemyTuning
+	if t == null:
+		return Vector2(at - 10.0, at + 10.0)
+	if not t.uses_floor:
+		return Vector2(INF, -INF)
+	return Vector2(at - t.floor_reach_before, at + t.floor_reach_after)
 
 
 func _pick_pattern(patterns: Array, difficulty: float) -> Dictionary:

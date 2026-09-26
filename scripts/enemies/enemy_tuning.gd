@@ -17,6 +17,16 @@ extends Resource
 @export_range(0.1, 100.0, 0.1) var health_early: float = 1.0
 @export_range(0.1, 100.0, 0.1) var health_late: float = 1.0
 
+@export_group("Generator")
+## False for enemies that never come down to the floor lanes (fliers such as drones, wall-only
+## enemies such as window cyborgs). The generator keeps ceiling sections off the floor the others
+## use (GDD §3: the floor beneath a ceiling stays clear); see LevelGenerator.enemy_floor_span().
+@export var uses_floor: bool = true
+## The floor it uses before (toward the player) and after its layout position. Rules that plan a
+## longer run for one enemy (the Octodog's charges) set params.floor_span on it instead.
+@export_range(0.0, 100.0, 0.5, "suffix:m") var floor_reach_before: float = 10.0
+@export_range(0.0, 100.0, 0.5, "suffix:m") var floor_reach_after: float = 10.0
+
 
 ## The value between `early` and `late` for a level's enemy_scaling `t` (0–1).
 static func scaled(early: float, late: float, t: float) -> float:
