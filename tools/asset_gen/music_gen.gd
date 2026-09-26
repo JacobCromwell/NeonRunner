@@ -14,6 +14,9 @@ const Review = preload("res://tools/asset_gen/audio_review.gd")
 const DSP = preload("res://tools/asset_gen/sfx_dsp.gd")
 const OUT_DIR: String = "res://assets/music"
 const REVIEW_DIR: String = "res://build/music_review"
+# DESIGN-TBD: the music style per zone is still open (OPEN_QUESTIONS §6, Audio). These placeholders
+# follow the build brief: moody neon synthwave for the menus, driving synth-metal for the City,
+# heavier industrial metal for Gangland.
 const TRACKS: Dictionary = {
 	"menu": preload("res://tools/asset_gen/track_menu.gd"),
 	"city": preload("res://tools/asset_gen/track_city.gd"),
