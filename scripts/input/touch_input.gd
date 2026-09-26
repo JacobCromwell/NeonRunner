@@ -6,6 +6,9 @@ extends Node
 
 const TUNING_PATH: String = "res://data/tuning/movement.tres"
 
+## Off in menus (App switches it on only during runs), so taps on buttons never fire gameplay actions.
+var enabled: bool = true
+
 var _tuning: MovementTuning
 var _finger: int = -1
 var _start_pos: Vector2 = Vector2.ZERO
@@ -33,6 +36,9 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if not enabled:
+		_finger = -1
+		return
 	if event is InputEventScreenTouch:
 		var touch := event as InputEventScreenTouch
 		if touch.pressed and _finger == -1:

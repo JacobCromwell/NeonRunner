@@ -136,8 +136,10 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
    (`data/hints/hints.json`).
 
 **Economy**
-8. **Credit denominations and look:** 1 (gold coin), 5 (silver hex coin), 25 (blue gem), 100 (large
-   gold gem), shaped differently so colour isn't needed to tell them apart.
+8. **Credit denominations and look:** 1 (silver chip), 5 (azure ringed chip), 25 (violet diamond), 100
+   (ice-white gem), shaped differently so colour isn't needed to tell them apart, and never in a
+   hazard colour (gold would read like the yellow signs). The world and the UI share the colours
+   (`data/ui/ui_style.tres`).
 9. **Credit placement:** trails of 1s in clear stretches, a 5 at gap edges with an arc of 1s over the
    jump, a 5 above full fences / under gapped fences, a line along each ramp's wall run ending in a 25,
    a line along each ceiling with a 25 in the far lane.

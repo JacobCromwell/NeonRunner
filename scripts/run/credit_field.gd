@@ -2,7 +2,9 @@ class_name CreditField
 extends Node3D
 ## Every credit in the level (GDD §7). Credits keep one look in every zone (like hazards, they're
 ## part of the game's language): four denominations told apart by shape and colour, so they don't
-## rely on colour alone. Each denomination is one MultiMesh (a few draw calls for the whole level)
+## rely on colour alone. Their colours come from the UI style (data/ui/ui_style.tres, credit_colors),
+## so the credits in the world and the icons in the HUD and shop always match; none of them uses a
+## hazard colour (yellow signs, orange gap edges, pink fences). Each denomination is one MultiMesh (a few draw calls for the whole level)
 ## spinning in a shader, so idle credits cost no CPU. Collected credits are hidden, never freed.
 ##
 ## A credit is collected when the player's hitbox, grown by a pickup margin and swept over this
@@ -13,12 +15,13 @@ signal collected(value: int, position: Vector3)
 
 ## Pickup reach beyond the damage hitbox (generous: credits should feel easy to grab).
 const PICKUP_MARGIN := Vector3(0.45, 0.35, 0.35)
-## DESIGN-TBD: the credit look per denomination: mesh kind, size, colour.
+## DESIGN-TBD: the credit look per denomination (shape and size here, colour in the UI style):
+## a silver chip, an azure ringed chip, a violet diamond and an ice-white gem.
 const LOOKS: Dictionary = {
-	1: {"shape": "coin", "radius": 0.2, "color": Color(1.0, 0.78, 0.25)},
-	5: {"shape": "hex", "radius": 0.28, "color": Color(0.92, 0.95, 1.0)},
-	25: {"shape": "gem", "radius": 0.3, "color": Color(0.35, 0.6, 1.0)},
-	100: {"shape": "big_gem", "radius": 0.42, "color": Color(1.0, 0.9, 0.55)},
+	1: {"shape": "coin", "radius": 0.2},
+	5: {"shape": "hex", "radius": 0.28},
+	25: {"shape": "gem", "radius": 0.3},
+	100: {"shape": "big_gem", "radius": 0.42},
 }
 const SPIN_SHADER: String = """
 shader_type spatial;
@@ -171,7 +174,7 @@ func _collect(e: Dictionary) -> void:
 	var value: int = e["value"]
 	world.score.add_credit(value)
 	world.play_sfx(StringName("credit_%d" % value))
-	world.effects.burst(pos, LOOKS[value]["color"], 6 if value < 25 else 14, 0.25 if value < 25 else 0.5)
+	world.effects.burst(pos, color_of(value), 6 if value < 25 else 14, 0.25 if value < 25 else 0.5)
 	collected.emit(value, pos)
 
 
@@ -196,13 +199,18 @@ static func _denomination(value: int) -> int:
 	return best
 
 
+## The denomination's colour, shared with the UI's credit icons.
+static func color_of(value: int) -> Color:
+	return UiTheme.credit_color(value)
+
+
 static func _material_for(value: int) -> Material:
 	if not _materials.has(value):
 		var shader := Shader.new()
 		shader.code = SPIN_SHADER
 		var m := ShaderMaterial.new()
 		m.shader = shader
-		m.set_shader_parameter(&"color", LOOKS[value]["color"])
+		m.set_shader_parameter(&"color", color_of(value))
 		m.set_shader_parameter(&"energy", 2.0 if value < 25 else 3.0)
 		m.set_shader_parameter(&"spin_speed", 3.0 if value < 100 else 1.8)
 		_materials[value] = m

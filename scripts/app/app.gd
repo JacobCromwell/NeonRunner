@@ -352,11 +352,13 @@ func _start_run(ctx: RunContext, music: StringName) -> void:
 	run.pause_requested.connect(pause_game)
 	run.item_used.connect(_on_item_used)
 	run.start(ctx)
+	TouchInput.enabled = true
 	_play_music(music)
 
 
 func _end_run() -> void:
 	get_tree().paused = false
+	TouchInput.enabled = false
 	if run != null and is_instance_valid(run):
 		run.queue_free()
 	run = null
