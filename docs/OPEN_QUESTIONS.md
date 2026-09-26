@@ -14,7 +14,9 @@ Companion to `GDD_CHECKPOINT.md`. The design phase is complete when this list is
 - **Wall skin** for each zone, and what "signs" look like there.
 - ~~The **enemy introduction schedule**~~ Answered level by level (GDD §5). The Barnacle Turret is the Marketplace's new enemy (GDD §9.8).
 - ~~Whether each zone introduces a new mechanic or object~~ Answered: at least one new enemy per zone, preferred over new mechanics (GDD §5).
-- **New enemies:** the Marketplace's is the Barnacle Turret (GDD §9.8). The Corporate zone's is Buzz Overdrive (GDD §9.9). The Golden Zone enemy is still to be described by the owner.
+- **New enemies:** the Marketplace's is the Barnacle Turret (GDD §9.8). The Corporate zone's is Buzz Overdrive (GDD §9.9). The Golden Zone's is the Resonator (GDD §9.10, working name). Also added: wall fences (§9.1), Gilded Sentinels (§9.11) and the Tithe Collector (§9.12).
+- **Names:** the Resonator needs a final name. "Tithe" is also a church word: keep it, or rename (e.g. Levy Collector, Toll Drone)?
+- **Numbers still open** for the new enemies: shots to kill for the Resonator and Sentinels, and the share of credits the Tithe Collector takes.
 - ~~**Golden Palace**~~ Answered: inside the city-sized palace; plays like any other level (GDD §5).
 
 ### 2. Bosses
