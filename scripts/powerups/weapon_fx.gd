@@ -79,7 +79,7 @@ func setup(p_world: RunWorld, p_weapon: WeaponPowerup) -> void:
 		var quad := QuadMesh.new()
 		quad.size = Vector2(2.0, 2.0)  # UV edge = radius 1
 		for i: int in BLAST_POOL:
-			var mat := _shader_material(BLAST_SHADER)
+			var mat := PowerupModule.shader_material(BLAST_SHADER)
 			mat.set_shader_parameter(&"color", color.lerp(Color.WHITE, 0.3))
 			_blasts.append(_mesh_instance(quad, mat))
 			_blast_life.append(0.0)
@@ -91,7 +91,7 @@ func setup(p_world: RunWorld, p_weapon: WeaponPowerup) -> void:
 	cone.bottom_radius = 0.005
 	cone.radial_segments = 6
 	cone.rings = 1
-	var trail_mat := _shader_material(TRAIL_SHADER)
+	var trail_mat := PowerupModule.shader_material(TRAIL_SHADER)
 	trail_mat.set_shader_parameter(&"color", MISSILE_TRAIL_COLOR if weapon.is_missile() else color)
 	for i: int in TRAIL_POOL:
 		_trails.append(_mesh_instance(cone, trail_mat))
@@ -202,14 +202,6 @@ func _mesh_instance(mesh: Mesh, material: Material) -> MeshInstance3D:
 	inst.visible = false
 	add_child(inst)
 	return inst
-
-
-static func _shader_material(code: String) -> ShaderMaterial:
-	var shader := Shader.new()
-	shader.code = code
-	var mat := ShaderMaterial.new()
-	mat.shader = shader
-	return mat
 
 
 static func _up_for(dir: Vector3) -> Vector3:

@@ -53,17 +53,14 @@ func trigger() -> bool:
 	return true
 
 
-func is_ready() -> bool:
-	return cooldown_left <= 0.0
-
-
 func physics_tick(delta: float) -> void:
 	if cooldown_left <= 0.0:
 		return
 	cooldown_left -= delta
 	if cooldown_left <= 0.0:
 		cooldown_left = 0.0
-		world.play_sfx(&"dash_ready")
+		if world.player.alive:
+			world.play_sfx(&"dash_ready")
 		controller.dash_ready.emit()
 
 
@@ -102,7 +99,7 @@ func _build_visuals() -> void:
 	capsule.height = 1.0
 	capsule.radial_segments = 16
 	capsule.rings = 6
-	_shell_material = WeaponFx._shader_material(SHELL_SHADER)
+	_shell_material = shader_material(SHELL_SHADER)
 	_shell_material.set_shader_parameter(&"color", COLOR)
 	_shell = MeshInstance3D.new()
 	_shell.mesh = capsule

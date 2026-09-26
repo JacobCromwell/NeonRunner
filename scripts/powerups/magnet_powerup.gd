@@ -41,7 +41,7 @@ func _build() -> void:
 	_apply()
 	var quad := QuadMesh.new()
 	quad.size = Vector2.ONE
-	_material = WeaponFx._shader_material(FIELD_SHADER)
+	_material = shader_material(FIELD_SHADER)
 	_material.set_shader_parameter(&"color", COLOR)
 	_field = MeshInstance3D.new()
 	_field.mesh = quad

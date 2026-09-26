@@ -51,7 +51,7 @@ func _build() -> void:
 	var rect := ColorRect.new()
 	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_material = WeaponFx._shader_material(TINT_SHADER)
+	_material = shader_material(TINT_SHADER)
 	_material.set_shader_parameter(&"tint", TINT_COLOR)
 	rect.material = _material
 	_layer.add_child(rect)
@@ -81,10 +81,6 @@ func end() -> void:
 	cooldown_left = world.powerup_tuning.slow_time_cooldown
 	world.play_sfx(&"slow_time_off")
 	controller.slow_time_changed.emit(false)
-
-
-func is_ready() -> bool:
-	return not active and cooldown_left <= 0.0
 
 
 func physics_tick(delta: float) -> void:

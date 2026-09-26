@@ -92,13 +92,6 @@ func try_slow_time() -> bool:
 	return slow_time != null and slow_time.trigger()
 
 
-func has_item(item: StringName) -> bool:
-	for m: PowerupModule in modules:
-		if m.id == item:
-			return true
-	return false
-
-
 func hud_state() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	if world == null or world.player == null:

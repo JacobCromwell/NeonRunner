@@ -9,6 +9,9 @@ extends Node3D
 ## player dies, the run ends or the controller goes away. Numbers are read from
 ## world.powerup_tuning every time, so live tuning (F6) applies at once.
 
+## Shader code -> Shader, so every material using the same code shares one compiled shader.
+static var _shaders: Dictionary = {}
+
 var controller: PowerupController
 var world: RunWorld
 ## Shop item id (&"weapon", &"dash", ...), which is also its icon name in the catalog.
@@ -60,6 +63,17 @@ static func surface_basis(player: Player) -> Basis:
 		Player.Surface.WALL:
 			return Basis(Vector3.BACK, player.wall_side * PI * 0.5)
 	return Basis.IDENTITY
+
+
+## A new material for a power-up visual's shader code (the shader itself is shared).
+static func shader_material(code: String) -> ShaderMaterial:
+	if not _shaders.has(code):
+		var shader := Shader.new()
+		shader.code = code
+		_shaders[code] = shader
+	var mat := ShaderMaterial.new()
+	mat.shader = _shaders[code]
+	return mat
 
 
 ## The player's visible body height right now (lower while sliding).
