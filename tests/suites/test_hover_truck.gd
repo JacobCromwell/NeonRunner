@@ -168,6 +168,15 @@ func _test_front() -> void:
 		"the forward lurch kills a player in front of it (%s)" % cause[0])
 	await sim.free_world(w)
 
+	# A player in its lane ahead of it while it paces: it can't pace past them, so it holds, revs and
+	# lurches (the telegraphed threat) rather than idling behind them.
+	w = sim.build_world(RunSim.layout(3, 600.0))
+	w.player.setup(tuning, w.geo, 2)
+	t = _truck(w, 0.0, {"skip_entrance": true, "phase": "pace", "offset": t_back() - 1.0, "guns": false})
+	var warned: bool = await _run_until(w, 5.0, func() -> bool: return t.state == S.REV or not w.player.alive)
+	check(warned and w.player.alive, "pacing behind a player in its lane, it holds and revs before any lurch")
+	await sim.free_world(w)
+
 	# Armor doesn't stop the spikes (solid); a shield does.
 	w = sim.build_world(RunSim.layout(3, 600.0), _loadout({"armor": 1}))
 	w.player.setup(tuning, w.geo, 2)

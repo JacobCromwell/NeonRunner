@@ -151,10 +151,7 @@ func _build() -> void:
 	_mats = {
 		"hot": GreyboxMaterials.glow(HOT, 3.2),
 		"flash": GreyboxMaterials.glow(FLASH, 6.0),
-		"thrust": GreyboxMaterials.glow(HOVER, 2.5),
-		"brake_dim": GreyboxMaterials.glow(AMBER, 1.2),
 		"brake_on": GreyboxMaterials.glow(AMBER, 5.0),
-		"gun": GreyboxMaterials.flat(Color(0.12, 0.12, 0.14)),
 	}
 	_build_body()
 	_build_hitboxes()
@@ -351,7 +348,11 @@ func _update_cycle(delta: float) -> void:
 			if absf(offset - tune.pace_offset) < 1.0:
 				_pace_clock += delta
 			_update_guns(delta)
-			if (_pace_clock >= _pace_time or due) and _charge_left < 0.0 and _volley.is_empty():
+			if player_in_lane() and offset + tune.length * 0.5 < 0.0 and _charge_left < 0.0:
+				# The player is in its lane ahead of it (it can't pace past them): the threat there is
+				# the forward lurch, after its warning.
+				_enter(State.LEAVING if due else State.HOLD_BACK)
+			elif (_pace_clock >= _pace_time or due) and _charge_left < 0.0 and _volley.is_empty():
 				_enter(State.LEAVING if due else State.LURCH_BACK)
 		State.LURCH_BACK:
 			_aim_for(tune.back_offset, tune.lurch_back_speed, tune.lurch_accel)
