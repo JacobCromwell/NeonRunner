@@ -318,12 +318,18 @@ func _ad(batch: MeshBatch, size: Vector3, edges: Array[float], hw: float, varian
 	for leg: float in [-sw * 0.3, sw * 0.3]:
 		s.box(Vector3(leg, (base_h + y0) * 0.5, sz - 0.12), Vector3(0.25, y0 - base_h, 0.25), frame)
 	var color: Color = skin.ad_colors[variant % skin.ad_colors.size()]
-	s.rect(Vector3(-sw * 0.5, y0, sz + 0.001), Vector3(sw, 0, 0), Vector3(0, sh, 0), color, 0.55, MeshKit.PAT_AD,
-		Vector2.ZERO, Vector2(sw / sh, 1.0), float(variant * 17 + 7))
-	# The cult's emblem in a corner, like a sponsor's badge: small next to the ad's own mark, and only
-	# on screens big enough to keep it that way (GDD §5: hidden in plain sight).
-	var e: float = maxf(sh * 0.28, skin.emblem_min_size)
-	if skin.carries_emblem(variant, 25) and e <= sh * 0.36:
-		skin.add_cult_emblem(s, Vector3(sw * 0.5 - e * 0.75, y0 + e * 0.72, sz + 0.012), Vector3.BACK, e, true)
+	if skin.shows_feed(variant, 63):
+		# The cult's feed instead of an ad: the same broadcast as on every screen (CultFeed).
+		CultFeed.screen(batch.layer(skin.feed_material()), Vector3(-sw * 0.5, y0, sz + 0.001), Vector3(sw, 0, 0),
+			Vector3(0, sh, 0), skin.feed_board_brightness, variant)
+		color = CultFeed.FEED_COLOR
+	else:
+		s.rect(Vector3(-sw * 0.5, y0, sz + 0.001), Vector3(sw, 0, 0), Vector3(0, sh, 0), color, 0.55, MeshKit.PAT_AD,
+			Vector2.ZERO, Vector2(sw / sh, 1.0), float(variant * 17 + 7))
+		# The cult's emblem in a corner, like a sponsor's badge: small next to the ad's own mark, and
+		# only on screens big enough to keep it that way (GDD §5: hidden in plain sight).
+		var e: float = maxf(sh * 0.28, skin.emblem_min_size)
+		if skin.carries_emblem(variant, 25) and e <= sh * 0.36:
+			skin.add_cult_emblem(s, Vector3(sw * 0.5 - e * 0.75, y0 + e * 0.72, sz + 0.012), Vector3.BACK, e, true)
 	g.rect(Vector3(-sw * 0.5 - 1.0, y0 - 1.0, sz + 0.3), Vector3(sw + 2.0, 0, 0), Vector3(0, sh + 2.0, 0), color, 0.1,
 		MeshKit.SHAPE_FLAT)

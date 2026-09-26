@@ -258,6 +258,30 @@ into a mesh-kit template once (`MarketplaceSkin.cult_emblem()`), then appends it
 small warm-white badge on some ads, an unlit bronze mark on some shop signs, never smaller than
 `emblem_min_size` (0.9 m, for the same reason).
 
+**The cult's feed** (GDD §5, "Cyborg Viewing Devices"): the same wordless broadcast plays on screens
+in every zone, in sync, alongside the ordinary ads. It is one shared piece, `CultFeed`
+(`scripts/world/meshes/cult_feed.gd`): a glowing, shader-driven material (`cult_feed.gdshader`, the
+picture in `cult_feed.gdshaderinc`) that works on the Compatibility renderer, and a helper that adds
+a screen to a mesh layer:
+
+```gdscript
+var feed: MeshLayer = batch.layer(CultFeed.material())    # shared; one mesh surface per chunk
+CultFeed.screen(feed, lower_left, right, up, brightness)  # a rectangle facing right × up, as seen
+```
+
+`right` and `up` span the screen as its viewer sees it (the picture is never mirrored, so don't put a
+screen in a template that gets mirrored); `brightness` (0-1) dims small or low screens. The material
+draws only the picture: give each screen a bezel, frame or TV set of its own. What it shows is a
+placeholder (DESIGN-TBD, `docs/questions/d2.md`): a CRT picture in cold white, like the cyborgs' screen
+heads (task P2), with scanlines, soft static and a slow rolling bar, looping through a screen-head
+face, the chosen emblem (`CultEmblem`, faded out below about 24 pixels) and rings converging on a
+point, one at a time. Rules for every skin: keep it the same broadcast (vary only how many screens
+play it and where), keep other glows off it, and never tint it (only cold white and the emblem's
+warm white; purple glitching belongs to hosts). It honours Reduced flashing (the static and the
+rolling bar hold still). The Marketplace plays it on some billboards, casino signs and floating ads
+(`feed_share`) and on old TVs in some shop windows (`feed_window_share`; `shop_windows()` marks
+them with `screen`). `tools/showcase/cult_feed_showcase.tscn` shows a whole loop on three screens.
+
 **Reduced flashing** (Settings): `Settings.apply_visuals()` sets the global shader uniform
 `reduced_flashing` (declared in `project.godot`) and `Settings.flashing_reduced`. Hazard shaders
 include `kit_flash.gdshaderinc` and use `warning_flicker()`, so a warning becomes a steady glow

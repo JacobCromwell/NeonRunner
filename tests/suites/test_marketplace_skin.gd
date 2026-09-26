@@ -16,6 +16,8 @@ extends SkinSuite
 ##   underside over exactly its lanes, the orange end band, the lane seams;
 ## - the cult's emblem is the owner's choice (data/world/cult_emblem_choice.tres) in its own colours,
 ##   hidden here and there in ads and shop signs, never smaller than emblem_min_size;
+## - the cult's feed (CultFeed) plays on billboards and ads high up and on TVs in some shop windows,
+##   and nowhere else;
 ## - the still floor carries drifting dust and speed streaks.
 
 const MARKET_SKIN_PATH: String = "res://data/skins/marketplace_skin.tres"
@@ -59,6 +61,7 @@ func run() -> void:
 	await _shop_windows(skin)
 	_ceilings(skin)
 	_cult_emblem(skin)
+	await _cult_feed(skin)
 	_stall_layout(skin)
 	await determinism(skin, MARKET_LEVEL_PATH)
 	stop_error_count("building marketplace levels")
@@ -502,6 +505,61 @@ func _cult_emblem(skin: MarketplaceSkin) -> void:
 		largest = maxf(largest, size)
 	check(sizes.is_empty() or (smallest >= skin.emblem_min_size - 0.01 and largest <= 1.6),
 		"each emblem is %.2f-%.2f m across: never below %.2f m, never a centrepiece" % [smallest, largest, skin.emblem_min_size])
+
+
+## The cult's feed (CultFeed, GDD §5 "Cyborg Viewing Devices") plays in the market alongside the
+## ordinary ads: on billboards, casino signs and floating ads high up, and on TVs inside some shop
+## windows, all with the one shared feed material, and nowhere else (never on the wall-run band's
+## faces, never over the lanes below the ceilings). Checked over a whole level.
+func _cult_feed(skin: MarketplaceSkin) -> void:
+	check(skin.feed_material() == CultFeed.material(), "the market plays the shared feed")
+	var geo := TrackGeometry.new(5, tuning)
+	var wall: float = geo.wall_x()
+	var boards: int = 0
+	var tvs: int = 0
+	for side: int in [-1, 1]:
+		boards += skin.feed_boards(side, side * wall, 0.0, 3000.0).size()
+		for w: Dictionary in skin.shop_windows(side, side * wall, 0.0, 3000.0):
+			if w["screen"]:
+				tvs += 1
+	check(boards > 0 and tvs > 0, "over 3 km the feed plays on %d billboards and %d shop-window TVs" % [boards, tvs])
+	var layout: LevelLayout = level(MARKET_LEVEL_PATH, 5, 0.6, 5)
+	var world := Node3D.new()
+	tree.root.add_child(world)
+	var track := TrackBuilder.new()
+	world.add_child(track)
+	track.set_layout(layout, tuning, skin)
+	var seen: Dictionary = {}
+	var shown := {"display": 0, "high": 0}
+	var bad: PackedStringArray = []
+	var d: float = 0.0
+	while d <= layout.length:
+		track.update(d, d / tuning.run_speed)
+		for chunk: Node in track.get_children():
+			if seen.has(chunk):
+				continue
+			seen[chunk] = true
+			for node: Node in nodes_of(chunk, func(n: Node) -> bool: return n is MeshInstance3D):
+				var m := node as MeshInstance3D
+				for s: int in m.mesh.get_surface_count() if m.mesh != null else 0:
+					if m.mesh.surface_get_material(s) != skin.feed_material():
+						continue
+					var verts: PackedVector3Array = m.mesh.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]
+					for i: int in range(0, verts.size(), 6):
+						var p: Vector3 = m.global_transform * ((verts[i] + verts[i + 2]) * 0.5)
+						var inside: float = absf(p.x) - wall
+						if inside > 0.05 and inside < skin.shop_depth and p.y > skin.gallery_bottom and p.y < skin.gallery_top:
+							shown["display"] += 1
+						elif p.y >= skin.decor_min_height:
+							shown["high"] += 1
+						elif bad.size() < 4:
+							bad.append(str(p))
+		d += TrackBuilder.CHUNK_LENGTH
+	check(bad.is_empty() and shown["display"] > 0 and shown["high"] > 0,
+		"the feed plays only high up (%d screens) and inside shop windows (%d TVs): %s" % [shown["high"], shown["display"],
+		", ".join(bad)])
+	world.queue_free()
+	await tree.process_frame
 
 
 ## The stall layout the shader draws (PAT_STALLS) is the one the scripts compute: every slot belongs

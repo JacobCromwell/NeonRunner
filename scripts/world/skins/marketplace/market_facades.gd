@@ -36,6 +36,11 @@ const LOW_SHARE: float = 0.2
 const LETTERING_ONLY: int = 10000
 ## Shop windows come in this many looks per width (interior colour and goods), picked by hash.
 const WINDOW_VARIANTS: int = 6
+## A shop-window TV (MarketplaceSkin.feed_window_share): its stand's height, its gap from the
+## display's back wall and its bezel.
+const TV_STAND: float = 0.34
+const TV_BACK: float = 0.06
+const TV_BEZEL: float = 0.07
 ## Interior wall colours of the shop displays (lit, never glowing).
 const INTERIORS: Array[Color] = [Color(0.66, 0.6, 0.5), Color(0.5, 0.56, 0.58), Color(0.64, 0.55, 0.47),
 	Color(0.58, 0.55, 0.6), Color(0.7, 0.67, 0.6)]
@@ -145,6 +150,30 @@ func building(side: int, span: Vector2i) -> Building:
 	return b
 
 
+## The billboards playing the cult's feed (MarketplaceSkin.feed_boards()) with middles in [start, end).
+func feed_boards(side: int, face_x: float, start: float, end: float) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var lot: float = skin.lot_length
+	var span: Vector2i = MeshKit.lot_run(side, floori(start / lot), 0.45, 3, 3)
+	while span.x * lot < end:
+		var b: Building = building(side, span)
+		var mid: float = (b.b0 + b.b1) * 0.5
+		if mid >= start and mid < end:
+			var spec: Dictionary = {}
+			var kind: StringName = &""
+			if b.kind == Kind.CASINO and skin.shows_feed(b.seed, 62):
+				spec = _casino_sign(b, face_x)
+				kind = &"casino"
+			elif b.kind == Kind.SHOPS and b.low and skin.shows_feed(b.seed, 61):
+				spec = _roof_board_spec(b, face_x)
+				kind = &"roof_board"
+			if not spec.is_empty():
+				out.append({"side": side, "at": mid, "kind": kind, "width": spec["length"], "height": spec["h"],
+					"center": Vector3(spec["x"], float(spec["y0"]) + float(spec["h"]) * 0.5, -mid)})
+		span = MeshKit.lot_run(side, span.y + 1, 0.45, 3, 3)
+	return out
+
+
 ## The shop windows (MarketplaceSkin.shop_windows()) whose centres lie in [start, end).
 func windows(side: int, face_x: float, start: float, end: float) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
@@ -158,7 +187,7 @@ func windows(side: int, face_x: float, start: float, end: float) -> Array[Dictio
 				out.append({"side": side, "at": at,
 					"center": Vector3(face_x, (skin.gallery_bottom + skin.gallery_top) * 0.5, -at),
 					"width": w.y - w.x, "bottom": skin.gallery_bottom, "top": skin.gallery_top, "depth": skin.shop_depth,
-					"kind": [&"shop", &"casino", &"hall"][b.kind]})
+					"kind": [&"shop", &"casino", &"hall"][b.kind], "screen": _has_tv(b, w)})
 		span = MeshKit.lot_run(side, span.y + 1, 0.45, 3, 3)
 	return out
 
@@ -212,11 +241,11 @@ func _building(batch: MeshBatch, b: Building, face_x: float, start: float, end: 
 
 	match b.kind:
 		Kind.CASINO:
-			_casino(solid, glow, b, face_x, u0, u1, start, end)
+			_casino(batch, solid, glow, b, face_x, u0, u1, start, end)
 		Kind.HALL:
 			_hall(solid, b, face_x, start, end)
 		_:
-			_shop_extras(solid, glow, b, top_x, u0, u1, start, end)
+			_shop_extras(batch, solid, glow, b, top_x, u0, u1, start, end)
 	if b.low:
 		_far_row(facade, b, face_x, start, end)
 
@@ -232,19 +261,42 @@ func _pier(facade: MeshLayer, side: int, face_x: float, p0: float, p1: float, u0
 			STYLE_PIER, b.seed, p0)
 
 
-## Shop window w (start and end distances) of building b: a cached template placed on the wall.
+## Shop window w (start and end distances) of building b: a cached template placed on the wall, and
+## in some a TV playing the cult's feed (its screen is added here, facing the street the right way
+## round on either wall; the template's mirror would flip the picture).
 func _shop_window(batch: MeshBatch, b: Building, w: Vector2, face_x: float) -> void:
 	var variant: int = MeshKit.hash_i(b.side, MeshKit.key(w.x), 41) % WINDOW_VARIANTS
-	batch.append(_window_template(b.kind, w.y - w.x, variant, b.side), Transform3D(Basis.IDENTITY,
+	var tv: bool = _has_tv(b, w)
+	batch.append(_window_template(b.kind, w.y - w.x, variant, b.side, tv), Transform3D(Basis.IDENTITY,
 		Vector3(face_x, 0.0, -w.x)))
+	if tv:
+		var size: Vector3 = _tv_size(w.y - w.x)
+		# The TV's front, inside the building (the wall face is at face_x, the display runs back from it).
+		var x: float = face_x + b.side * (skin.shop_depth - TV_BACK - size.x - 0.003)
+		var at: float = (w.x + w.y) * 0.5
+		var screen: Array = _wall_screen(b.side, x, at - size.z * 0.5 + TV_BEZEL, size.z - TV_BEZEL * 2.0,
+			skin.gallery_bottom + TV_STAND + TV_BEZEL, size.y - TV_BEZEL * 2.0)
+		CultFeed.screen(batch.layer(skin.feed_material()), screen[0], screen[1], screen[2], skin.feed_window_brightness,
+			MeshKit.key(w.x))
+
+
+## Whether shop window w of building b has a TV playing the cult's feed (feed_window_share of them).
+func _has_tv(b: Building, w: Vector2) -> bool:
+	return MeshKit.hash01(b.side, MeshKit.key(w.x), 43) < skin.feed_window_share
+
+
+## A shop-window TV's size (depth, height, width) for a window `width` long: a boxy old CRT set.
+static func _tv_size(width: float) -> Vector3:
+	var tw: float = clampf(width * 0.36, 0.72, 1.05)
+	return Vector3(0.36, tw * 0.78, tw)
 
 
 ## A shop window `width` long on the wall on `side` (face at x = 0, the window from z = 0 to
 ## -width): the display behind the opening (a back wall of goods, its floor, top and sides). The
 ## frame around it is painted by the facade shader on the piers, sill and lintel. Built for the left
 ## wall and mirrored once for the right.
-func _window_template(kind: int, width: float, variant: int, side: int) -> MeshBatch:
-	var key := Vector4i(kind, roundi(width * 100.0), variant, side)
+func _window_template(kind: int, width: float, variant: int, side: int, tv: bool) -> MeshBatch:
+	var key := Vector4i(kind, roundi(width * 100.0), variant * 2 + (1 if tv else 0), side)
 	var found: MeshBatch = _window_templates.get(key)
 	if found != null:
 		return found
@@ -252,7 +304,7 @@ func _window_template(kind: int, width: float, variant: int, side: int) -> MeshB
 		_window_templates.clear()
 	var t := MeshBatch.new()
 	if side > 0:
-		t.append(_window_template(kind, width, variant, -1), Transform3D(Basis.from_scale(Vector3(-1.0, 1.0, 1.0)),
+		t.append(_window_template(kind, width, variant, -1, tv), Transform3D(Basis.from_scale(Vector3(-1.0, 1.0, 1.0)),
 			Vector3.ZERO))
 		_window_templates[key] = t
 		return t
@@ -273,14 +325,24 @@ func _window_template(kind: int, width: float, variant: int, side: int) -> MeshB
 		Vector2(0.0, g0), Vector2(depth, g1), float(seed))
 	facade.rect(Vector3(0.0, g0, 0.0), Vector3(-depth, 0, 0), Vector3(0, h, 0), inside, 0.0, STYLE_REVEAL,
 		Vector2(0.0, g0), Vector2(depth, g1), float(seed))
+	if tv:
+		# An old CRT set on a low stand at the back of the display, facing the street (its screen is
+		# added per window, see _shop_window()).
+		var solid: MeshLayer = t.layer(skin.solid_material())
+		var size: Vector3 = _tv_size(width)
+		var zc: float = -width * 0.5
+		solid.box(Vector3(-depth + 0.28, g0 + TV_STAND * 0.5, zc), Vector3(0.5, TV_STAND, size.z + 0.16),
+			Color(0.24, 0.21, 0.18), 0.0, MeshKit.PAT_PLAIN, MeshKit.ALL_FACES & ~MeshKit.FACE_NY)
+		solid.box(Vector3(-depth + TV_BACK + size.x * 0.5, g0 + TV_STAND + size.y * 0.5, zc), size,
+			Color(0.1, 0.1, 0.11), 0.0, MeshKit.PAT_PLAIN, MeshKit.ALL_FACES & ~MeshKit.FACE_NY)
 	_window_templates[key] = t
 	return t
 
 
 ## Shops' upper floors: blue awnings over some windows, a balcony or two, painted and neon blade
 ## signs, and on low buildings an ad board on the roof. Everything at or above decor_min_height.
-func _shop_extras(solid: MeshLayer, glow: MeshLayer, b: Building, x: float, u0: float, u1: float, start: float,
-		end: float) -> void:
+func _shop_extras(batch: MeshBatch, solid: MeshLayer, glow: MeshLayer, b: Building, x: float, u0: float, u1: float,
+		start: float, end: float) -> void:
 	var side: int = b.side
 	var top_storey: int = floori((b.height - 1.0 - skin.gallery_top - 0.2) / STOREY)
 	var cells: int = floori((b.b1 - b.b0) / b.cell)
@@ -313,8 +375,8 @@ func _shop_extras(solid: MeshLayer, glow: MeshLayer, b: Building, x: float, u0: 
 		_blade_sign(solid, glow, side, x, d, y, MeshKit.hash_i(side, b.id, 58 + i))
 	if b.low:
 		var mid: float = (b.b0 + b.b1) * 0.5
-		if mid >= start and mid < end and b.b1 - b.b0 > 10.0:
-			_roof_board(solid, side, x, mid, b.height, minf(b.b1 - b.b0 - 4.0, 12.0), b.seed)
+		if mid >= start and mid < end:
+			_roof_board(batch, solid, b, x)
 	elif MeshKit.hash01(side, b.id, 60) < 0.5:
 		# A water tank on the roof, a silhouette against the sky.
 		var tz: float = lerpf(b.b0 + 2.0, b.b1 - 2.0, MeshKit.hash01(side, b.id, 61))
@@ -424,33 +486,56 @@ func _blade_sign(solid: MeshLayer, glow: MeshLayer, side: int, x: float, d: floa
 				Vector3(band, 0, 0), color, 0.0, MeshKit.PAT_SHOPSIGN, Vector2.ZERO, Vector2(top - y - 0.15, band), float(code))
 
 
-## A board of ads on a low building's roof, turned to the street (MeshKit.PAT_AD), some with the
-## cult's emblem as a corner badge.
-func _roof_board(solid: MeshLayer, side: int, x: float, mid: float, roof_y: float, length: float, seed: int) -> void:
-	var h: float = 4.0
-	var y0: float = roof_y + 1.3
-	var bx: float = x + side * 1.8
+## A board of ads on a low building's roof (`x` its face), turned to the street: an ad
+## (MeshKit.PAT_AD), some with the cult's emblem as a corner badge, or the cult's feed.
+func _roof_board(batch: MeshBatch, solid: MeshLayer, b: Building, x: float) -> void:
+	var spec: Dictionary = _roof_board_spec(b, x)
+	if spec.is_empty():
+		return
+	var side: int = b.side
+	var mid: float = (b.b0 + b.b1) * 0.5
+	var h: float = spec["h"]
+	var y0: float = spec["y0"]
+	var length: float = spec["length"]
+	var px: float = spec["x"]
 	var d0: float = mid - length * 0.5
+	var bx: float = px + side * 0.03
 	var dark := Color(0.12, 0.11, 0.11)
 	solid.box(Vector3(bx + side * 0.2, y0 + h * 0.5, -mid), Vector3(0.3, h + 0.4, length + 0.4), dark)
 	for leg: float in [d0 + 1.0, d0 + length - 1.0]:
-		solid.box(Vector3(bx + side * 0.2, roof_y + 0.65, -leg), Vector3(0.2, 1.3, 0.2), dark)
-	var color: Color = skin.ad_colors[seed % skin.ad_colors.size()]
-	var px: float = bx - side * 0.03
-	if side < 0:
-		solid.rect(Vector3(px, y0, -d0), Vector3(0, 0, -length), Vector3(0, h, 0), color, 0.5, MeshKit.PAT_AD,
-			Vector2.ZERO, Vector2(length / h, 1.0), float(seed % 97))
-	else:
-		solid.rect(Vector3(px, y0, -d0 - length), Vector3(0, 0, length), Vector3(0, h, 0), color, 0.5, MeshKit.PAT_AD,
-			Vector2.ZERO, Vector2(length / h, 1.0), float(seed % 97))
-	if skin.carries_emblem(seed, 59):
+		solid.box(Vector3(bx + side * 0.2, b.height + 0.65, -leg), Vector3(0.2, 1.3, 0.2), dark)
+	var screen: Array = _wall_screen(side, px, d0, length, y0, h)
+	if skin.shows_feed(b.seed, 61):
+		CultFeed.screen(batch.layer(skin.feed_material()), screen[0], screen[1], screen[2], skin.feed_board_brightness,
+			b.seed)
+		return
+	var color: Color = skin.ad_colors[b.seed % skin.ad_colors.size()]
+	solid.rect(screen[0], screen[1], screen[2], color, 0.5, MeshKit.PAT_AD, Vector2.ZERO, Vector2(length / h, 1.0),
+		float(b.seed % 97))
+	if skin.carries_emblem(b.seed, 59):
 		_corner_emblem(solid, side, px, d0, length, y0, h)
+
+
+## Where a low building's roof board goes (`x` the building's face): the screen's plane (x), bottom
+## (y0), height (h) and length; empty if the building is too short for one.
+func _roof_board_spec(b: Building, x: float) -> Dictionary:
+	if b.b1 - b.b0 <= 10.0:
+		return {}
+	return {"x": x + b.side * 1.8 - b.side * 0.03, "y0": b.height + 1.3, "h": 4.0, "length": minf(b.b1 - b.b0 - 4.0, 12.0)}
+
+
+## A screen in a wall-parallel plane at x facing the street, from distance d0 over `length`, from
+## height y0 over h: [origin, u, v] for MeshLayer.rect() or CultFeed.screen(), u to the viewer's right.
+static func _wall_screen(side: int, x: float, d0: float, length: float, y0: float, h: float) -> Array:
+	if side < 0:
+		return [Vector3(x, y0, -d0), Vector3(0, 0, -length), Vector3(0, h, 0)]
+	return [Vector3(x, y0, -d0 - length), Vector3(0, 0, length), Vector3(0, h, 0)]
 
 
 ## Casino dressing: a marquee of bulbs along the base, bulb strips up the corners and a big sign
 ## near the top with its brand mark, some with the cult's emblem (all above decor_min_height).
-func _casino(solid: MeshLayer, glow: MeshLayer, b: Building, face_x: float, u0: float, u1: float, start: float,
-		end: float) -> void:
+func _casino(batch: MeshBatch, solid: MeshLayer, glow: MeshLayer, b: Building, face_x: float, u0: float, u1: float,
+		start: float, end: float) -> void:
 	var side: int = b.side
 	var y0: float = maxf(b.base_top + 0.3, skin.decor_min_height)
 	var mx: float = face_x - side * 0.03
@@ -460,25 +545,39 @@ func _casino(solid: MeshLayer, glow: MeshLayer, b: Building, face_x: float, u0: 
 			_panel(solid, side, mx, maxf(e, u0), minf(e + 0.35, u1), y0 + 0.64, b.height - 0.3, skin.bulb_color, 0.8,
 				MeshKit.PAT_BULBS)
 	var mid: float = (b.b0 + b.b1) * 0.5
+	var spec: Dictionary = _casino_sign(b, face_x)
+	if mid < start or mid >= end or spec.is_empty():
+		return
+	var h: float = spec["h"]
+	var sy: float = spec["y0"]
+	var length: float = spec["length"]
+	var sx: float = spec["x"]
+	var d0: float = mid - length * 0.5
+	solid.box(Vector3(face_x - side * 0.03, sy + h * 0.5, -mid), Vector3(0.06, h + 0.3, length + 0.3), Color(0.08, 0.07, 0.08))
+	var screen: Array = _wall_screen(side, sx, d0, length, sy, h)
+	var color: Color = skin.neon_colors[b.seed % skin.neon_colors.size()]
+	if skin.shows_feed(b.seed, 62):
+		CultFeed.screen(batch.layer(skin.feed_material()), screen[0], screen[1], screen[2], skin.feed_board_brightness,
+			b.seed)
+		color = CultFeed.FEED_COLOR
+	else:
+		solid.rect(screen[0], screen[1], screen[2], color, 0.55, MeshKit.PAT_AD, Vector2.ZERO, Vector2(length / h, 1.0),
+			float(b.seed % 97))
+		if skin.carries_emblem(b.seed, 60):
+			_corner_emblem(solid, side, sx, d0, length, sy, h)
+	glow.rect(Vector3(sx - side * 0.4, sy - 1.0, -d0 + 1.0), Vector3(0, 0, -(length + 2.0)), Vector3(0, h + 2.0, 0),
+		color, 0.1, MeshKit.SHAPE_FLAT)
+
+
+## Where a casino's big sign goes: the screen's plane (x), bottom (y0), height (h) and length near
+## the top of its face; empty if the casino is too small for one.
+func _casino_sign(b: Building, face_x: float) -> Dictionary:
+	var y0: float = maxf(b.base_top + 0.3, skin.decor_min_height)
 	var length: float = minf(b.b1 - b.b0 - 3.0, 14.0)
-	if mid >= start and mid < end and length > 5.0:
-		var h: float = minf(4.5, b.height - y0 - 4.0)
-		if h > 2.0:
-			var sy: float = b.height - h - 1.5
-			var color: Color = skin.neon_colors[b.seed % skin.neon_colors.size()]
-			var d0: float = mid - length * 0.5
-			var sx: float = face_x - side * 0.075
-			solid.box(Vector3(face_x - side * 0.03, sy + h * 0.5, -mid), Vector3(0.06, h + 0.3, length + 0.3), Color(0.08, 0.07, 0.08))
-			if side < 0:
-				solid.rect(Vector3(sx, sy, -d0), Vector3(0, 0, -length), Vector3(0, h, 0), color, 0.55, MeshKit.PAT_AD,
-					Vector2.ZERO, Vector2(length / h, 1.0), float(b.seed % 97))
-			else:
-				solid.rect(Vector3(sx, sy, -d0 - length), Vector3(0, 0, length), Vector3(0, h, 0), color, 0.55, MeshKit.PAT_AD,
-					Vector2.ZERO, Vector2(length / h, 1.0), float(b.seed % 97))
-			if skin.carries_emblem(b.seed, 60):
-				_corner_emblem(solid, side, sx, d0, length, sy, h)
-			glow.rect(Vector3(sx - side * 0.4, sy - 1.0, -d0 + 1.0), Vector3(0, 0, -(length + 2.0)), Vector3(0, h + 2.0, 0),
-				color, 0.1, MeshKit.SHAPE_FLAT)
+	var h: float = minf(4.5, b.height - y0 - 4.0)
+	if length <= 5.0 or h <= 2.0:
+		return {}
+	return {"x": face_x - b.side * 0.075, "y0": b.height - h - 1.5, "h": h, "length": length}
 
 
 ## The cult's emblem as a small badge in the lower corner where an ad's text ends (the far end on

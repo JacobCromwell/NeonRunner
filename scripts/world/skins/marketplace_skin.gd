@@ -192,6 +192,17 @@ extends ZoneSkin
 ## Glow of its warm-white neon on lit ads and signs.
 @export_range(0.0, 1.5, 0.05) var emblem_glow: float = 0.6
 
+@export_group("Cult feed")
+## DESIGN-TBD: how often the cult's feed (CultFeed, GDD §5 "Cyborg Viewing Devices") plays in the
+## market, alongside the ordinary ads: the share of billboards, casino signs and floating ad screens
+## showing it, and of shop windows with a TV showing it.
+@export_range(0.0, 1.0, 0.01) var feed_share: float = 0.35
+@export_range(0.0, 1.0, 0.01) var feed_window_share: float = 0.22
+## Brightness of the feed (0-1): full on billboards, dimmer on the TVs in shop windows, low on the
+## walls where the player runs.
+@export_range(0.0, 1.0, 0.05) var feed_board_brightness: float = 1.0
+@export_range(0.0, 1.0, 0.05) var feed_window_brightness: float = 0.45
+
 @export_group("Pads, ramps, finish")
 @export var pad_color: Color = Color(0.1, 1.0, 0.95)
 ## Height of the anti-grav pad's light column.
@@ -292,10 +303,31 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 ##   width     along the track; height: from `bottom` to `top` (world y)
 ##   depth     how far the display reaches into the building (inside is face_x + side * depth)
 ##   kind      &"shop", &"casino" or &"hall"
+##   screen    true if a TV in the display plays the cult's feed (CultFeed): it stands at the back,
+##             in the middle, about 1 m wide, so citizens may gather beside it
 ## Anything standing inside faces the lanes (toward -side on x). Hazards on the wall (signs, window
 ## cyborgs, wall fences, vents) are the layout's business: the skin doesn't know where they are.
 func shop_windows(side: int, face_x: float, start: float, end: float) -> Array[Dictionary]:
 	return facades().windows(side, face_x, start, end)
+
+
+# --- The cult's feed ------------------------------------------------------------------------
+
+## The shared feed material (CultFeed): the same broadcast as in every zone.
+func feed_material() -> ShaderMaterial:
+	return CultFeed.material()
+
+
+## Whether the screen keyed by (a, b) plays the cult's feed instead of an ad (feed_share of them).
+func shows_feed(a: int, b: int) -> bool:
+	return MeshKit.hash01(a, b, 131) < feed_share
+
+
+## The billboards on the walls playing the feed (roof boards and casino signs) whose middles lie
+## between two track distances, for reviews and tests: side, at, center (the screen's middle), width,
+## height, kind (&"roof_board" or &"casino"). The same ones wall_section() builds.
+func feed_boards(side: int, face_x: float, start: float, end: float) -> Array[Dictionary]:
+	return facades().feed_boards(side, face_x, start, end)
 
 
 # --- The cult's emblem ----------------------------------------------------------------------
