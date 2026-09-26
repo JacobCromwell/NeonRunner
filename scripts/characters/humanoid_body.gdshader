@@ -11,6 +11,9 @@ shader_type spatial;
 uniform float glow_energy = 2.6;
 // Multiplies all trim glow: raised while dashing, dimmed after death.
 uniform float glow_boost = 1.0;
+// Albedo of glowing trim relative to its colour. Below 1 the trim's look comes from its own light
+// rather than the scene's, so a soft glow keeps its hue and reads the same lit or in the dark.
+uniform float glow_albedo = 1.0;
 // Tint over the whole body (invulnerability flash, death flash). Alpha = strength.
 uniform vec4 tint : source_color = vec4(1.0, 1.0, 1.0, 0.0);
 uniform float roughness : hint_range(0.0, 1.0) = 0.55;
@@ -32,9 +35,9 @@ void vertex() {
 void fragment() {
 	float glow = UV.x;
 	vec3 base = COLOR.rgb;
-	ALBEDO = mix(base, tint.rgb, tint.a);
+	ALBEDO = mix(base * mix(1.0, glow_albedo, step(0.001, glow)), tint.rgb, tint.a);
 	ROUGHNESS = roughness;
-	float edge = 1.0 - clamp(dot(normalize(NORMAL), normalize(VIEW)), 0.0, 1.0);
+	float edge = max(1.0 - clamp(dot(normalize(NORMAL), normalize(VIEW)), 0.0, 1.0), 0.0001);
 	EMISSION = base * glow * glow_energy * glow_boost + tint.rgb * (tint.a * 0.6)
 		+ rim_color.rgb * rim_strength * pow(edge, rim_power);
 }

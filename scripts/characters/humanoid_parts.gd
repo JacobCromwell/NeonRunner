@@ -109,7 +109,7 @@ func support_points(segment: StringName, limb_side: int) -> PackedVector3Array:
 		var points := PackedVector3Array()
 		if mesh != null:
 			var all: PackedVector3Array = mesh.get_meta(&"points")
-			for dir: Vector3 in _support_directions():
+			for dir: Vector3 in support_directions():
 				var best: Vector3 = all[0]
 				for p: Vector3 in all:
 					if p.dot(dir) > best.dot(dir):
@@ -174,7 +174,8 @@ func _build_mesh(segment: StringName, limb_side: int, sets: Array) -> ArrayMesh:
 	return mesh
 
 
-static func _support_directions() -> Array[Vector3]:
+## The directions support points are picked along: the six axes and the eight diagonals.
+static func support_directions() -> Array[Vector3]:
 	var dirs: Array[Vector3] = [Vector3.UP, Vector3.DOWN, Vector3.LEFT, Vector3.RIGHT, Vector3.FORWARD, Vector3.BACK]
 	for x: float in [-1.0, 1.0]:
 		for y: float in [-1.0, 1.0]:

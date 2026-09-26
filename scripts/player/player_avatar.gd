@@ -1,9 +1,9 @@
 class_name PlayerAvatar
 extends Node3D
-## The player's runner model: a human in a cyber suit (GDD §11, look in PlayerSuit) on the shared
-## HumanoidRig, animated procedurally from the Player's movement state. Visual only: it never affects
-## movement or collision. Put it under the Player's pivot (which rolls onto walls and the ceiling);
-## its feet are at the origin and it faces -z.
+## The player's runner model: Razor Echo (GDD §11, look in PlayerSuit) on the shared HumanoidRig,
+## animated procedurally from the Player's movement state; the rig also swings the coat's skirt
+## panels. Visual only: it never affects movement or collision. Put it under the Player's pivot
+## (which rolls onto walls and the ceiling); its feet are at the origin and it faces -z.
 ##
 ## API
 ##   animate(state: Dictionary, delta: float)
@@ -26,43 +26,53 @@ extends Node3D
 ##   set_equipment(eq: Dictionary)
 ##       claws: bool, armor: bool, shield: bool, weapon_tier: int 0–4, magnet: bool.
 ##       Missing keys keep their current value. The looks are DESIGN-TBD placeholders (PlayerSuit).
+##       Armor switched off while running (it broke) shatters: its plates burst off in shards.
 ##   get_equipment() -> Dictionary
 ##   set_flash(on: bool)
-##       The invulnerability flicker: the Player toggles it; while on, the whole suit is tinted bright.
+##       The invulnerability flicker: the Player toggles it; while on, the whole body is tinted a
+##       bright pale copper.
 ##   fit_to(size: Vector3)
 ##       Scales the model to a visual size (MovementTuning.visual_size): width, height (feet to the
-##       top of the helmet in the run pose), depth. Cheap to call every frame.
+##       tips of the hair in the run pose), depth. Cheap to call every frame.
 ##   reset()
 ##       Back to the start-of-run look: no death, no flash; the next animate() snaps to its pose.
 ##   weapon_muzzle() -> Vector3
-##       World position of the shoulder weapon's muzzle (shots start here).
+##       World position of the shoulder weapon's muzzle (shots start here): over the gold left arm.
 ##   rig: the HumanoidRig (joint(&"hand_r") etc. for attaching effects), anim_tuning: its tuning.
 
 const ANIM_TUNING_PATH: String = "res://data/tuning/avatar_animation.tres"
-# DESIGN-TBD: the invulnerability flash is a bright tint over the suit (not a blink on and off).
-const FLASH_COLOR := Color(0.8, 0.97, 1.0)
+# DESIGN-TBD: the invulnerability flash is a bright tint over the body (not a blink on and off), in
+# a pale copper white so it belongs to the player's glow.
+const FLASH_COLOR := Color(1.0, 0.88, 0.77)
 const FLASH_STRENGTH: float = 0.55
-# DESIGN-TBD: death feedback: a red flash (as the grey box turned red) that fades while the suit's
-# glow powers down.
+# DESIGN-TBD: death feedback: a red flash (as the grey box turned red) that fades while the copper
+# conduits and the implant power down and go dark.
 const DEATH_COLOR := Color(1.0, 0.15, 0.1)
 const DEATH_FLASH_TIME: float = 0.6
-const DEAD_GLOW: float = 0.2
-const DASH_GLOW: float = 1.8
+const DEAD_GLOW: float = 0.06
+## While dashing the copper brightens, but stays soft (no gap-edge orange under bloom).
+const DASH_GLOW: float = 1.35
 const GLOW_SPEED: float = 10.0
 ## Shield bubble radii and centre height, per metre of visual height; standing and sliding.
 const SHIELD_RADII := Vector3(0.4, 0.53, 0.4)
 const SHIELD_RADII_SLIDE := Vector3(0.48, 0.34, 0.62)
 const SHIELD_CENTER: float = 0.51
 const SHIELD_CENTER_SLIDE: float = 0.27
+## The armor's shards (metres, seconds): how many, how long they fly, where they burst from (per
+## metre of visual height: the shoulders and chest).
+const SHARD_COUNT: int = 16
+const SHARD_LIFETIME: float = 0.75
+const SHARD_ORIGIN: float = 0.74
 
 ## Where the shoulder weapon's emitter sits, in the chest joint's space (see PlayerSuit._weapon).
-const WEAPON_MUZZLE := Vector3(0.2, 0.33, -0.18)
+const WEAPON_MUZZLE := PlayerSuit.WEAPON_MUZZLE
 
 var rig: HumanoidRig
 var anim_tuning: HumanoidAnimTuning
 
 var _material: ShaderMaterial
 var _shield: MeshInstance3D
+var _shards: CPUParticles3D
 var _equipment: Dictionary = {"claws": false, "armor": false, "shield": false, "weapon_tier": 0, "magnet": false}
 var _size := Vector3.ZERO
 var _last_state: Dictionary = {}
@@ -71,6 +81,8 @@ var _flash: bool = false
 var _glow: float = 1.0
 var _death_flash: float = 0.0
 var _was_alive: bool = true
+## True from reset() until the next animate(): equipment set then is the run's loadout, not a break.
+var _fresh: bool = true
 
 
 func _init() -> void:
@@ -90,6 +102,7 @@ func _init() -> void:
 	_shield.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_shield.visible = false
 	add_child(_shield)
+	_build_shards()
 	fit_to(PlayerSuit.parts().design_size)
 	rig.animate({}, 0.0)  # Stand idle until driven, never in the raw rest pose.
 	reset()
@@ -98,13 +111,17 @@ func _init() -> void:
 func animate(state: Dictionary, delta: float) -> void:
 	_unfed_ticks = 0
 	_last_state = state
+	_fresh = false
 	_step(state, delta)
 
 
 func set_equipment(eq: Dictionary) -> void:
+	var had_armor: bool = _equipment["armor"]
 	for key: String in eq:
 		if _equipment.has(key):
 			_equipment[key] = int(eq[key]) if key == "weapon_tier" else bool(eq[key])
+	if had_armor and not _equipment["armor"] and not _fresh:
+		_shatter()
 	var names: Array[StringName] = []
 	if _equipment["claws"]:
 		names.append(&"claws")
@@ -138,6 +155,9 @@ func fit_to(size: Vector3) -> void:
 	var design: Vector3 = rig.parts.design_size
 	rig.scale = Vector3(size.x / design.x, size.y / design.y, size.z / design.z)
 	_update_shield()
+	_shards.position = Vector3(0.0, SHARD_ORIGIN * size.y, 0.0)
+	_shards.emission_box_extents = Vector3(0.27, 0.07, 0.07) * size.y
+	(_shards.mesh as BoxMesh).size = Vector3(0.055, 0.04, 0.01) * size.y
 
 
 ## World position of the shoulder weapon's muzzle, following the pose, the size fit and the roll
@@ -154,19 +174,29 @@ func reset() -> void:
 	_was_alive = true
 	_last_state = {}
 	_unfed_ticks = 0
+	_fresh = true
+	_shards.visible = false
+	_shards.emitting = false
 	_update_material()
 
 
-## Triangles currently drawn (body, equipment and the shield bubble).
+## Triangles currently drawn (body, coat panels, equipment, the shield bubble, flying shards).
 func triangle_count() -> int:
 	var n: int = rig.triangle_count()
 	if _shield.visible:
 		n += int(_shield.mesh.get_meta(&"triangles", 0))
+	if shattering():
+		n += 12 * SHARD_COUNT
 	return n
 
 
 func draw_call_count() -> int:
-	return rig.draw_call_count() + (1 if _shield.visible else 0)
+	return rig.draw_call_count() + (1 if _shield.visible else 0) + (1 if shattering() else 0)
+
+
+## True while the broken armor's shards are flying.
+func shattering() -> bool:
+	return _shards.visible and _shards.emitting
 
 
 func _physics_process(delta: float) -> void:
@@ -205,6 +235,57 @@ func _update_material() -> void:
 	elif _flash:
 		tint = Color(FLASH_COLOR, FLASH_STRENGTH)
 	_material.set_shader_parameter(&"tint", tint)
+
+
+## The broken armor bursts off the shoulders and chest in steel shards that tumble away and fade.
+## Nothing flashes, so Reduced flashing has nothing to calm here.
+func _shatter() -> void:
+	_shards.visible = true
+	_shards.restart()
+
+
+func _build_shards() -> void:
+	var shard := BoxMesh.new()
+	shard.size = Vector3(0.055, 0.04, 0.01)
+	var material := StandardMaterial3D.new()
+	material.vertex_color_use_as_albedo = true
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.roughness = 0.35
+	material.metallic = 0.4
+	material.emission_enabled = true
+	material.emission = PlayerSuit.ARMOR_EDGE * 0.35
+	var fade := Gradient.new()
+	fade.offsets = PackedFloat32Array([0.0, 0.7, 1.0])
+	fade.colors = PackedColorArray([Color(1.0, 1.0, 1.0, 1.0), Color(1.0, 1.0, 1.0, 0.9), Color(1.0, 1.0, 1.0, 0.0)])
+	_shards = CPUParticles3D.new()
+	_shards.name = "ArmorShards"
+	_shards.mesh = shard
+	_shards.material_override = material
+	_shards.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_shards.amount = SHARD_COUNT
+	_shards.lifetime = SHARD_LIFETIME
+	_shards.one_shot = true
+	_shards.explosiveness = 1.0
+	_shards.local_coords = true
+	_shards.emitting = false
+	_shards.visible = false
+	_shards.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	# Up and out, drifting back in the wind of the run, then falling toward the feet.
+	_shards.direction = Vector3(0.0, 1.0, 0.45)
+	_shards.spread = 70.0
+	_shards.initial_velocity_min = 1.6
+	_shards.initial_velocity_max = 3.2
+	_shards.gravity = Vector3(0.0, -9.8, 0.0)
+	_shards.particle_flag_rotate_y = true
+	_shards.angle_min = -180.0
+	_shards.angle_max = 180.0
+	_shards.angular_velocity_min = -540.0
+	_shards.angular_velocity_max = 540.0
+	_shards.scale_amount_min = 0.6
+	_shards.scale_amount_max = 1.2
+	_shards.color = PlayerSuit.ARMOR
+	_shards.color_ramp = fade
+	add_child(_shards)
 
 
 ## The bubble hugs the body: tall while running, low and long while sliding.

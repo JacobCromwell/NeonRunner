@@ -84,6 +84,8 @@ var _panel_roll_v := PackedFloat32Array()
 var _panel_q: Array[Quaternion] = []
 var _panel_rot := PackedVector4Array()
 var _panel_snap: bool = true
+## Each panel's extreme points relative to its hinge (as built): what must stay off the surface.
+var _panel_support: Array[PackedVector3Array] = []
 ## Heel and toe of each foot in its joint's space (left, right): points the panels keep clear of.
 var _heel_toe: Array[PackedVector3Array] = []
 
@@ -414,10 +416,9 @@ func update_panels(delta: float, motion: Dictionary = {}) -> void:
 		elif not panel.behind and s > limit:
 			s = limit
 			sv = minf(sv, 0.0)
-		# The surface pushes it too: swing on (back panels backward, front ones forward) until the
-		# hem clears it.
-		var pushed: float = _ground_limit(pelvis_xf, height_of, _panel_hinges[i], panel, s, side * r,
-			t.panel_ground_clearance)
+		# The surface pushes it too: swing on (back panels backward, front ones forward) until it
+		# clears it.
+		var pushed: float = _ground_limit(pelvis_xf, height_of, i, panel, s, side * r, t.panel_ground_clearance)
 		if not is_equal_approx(pushed, s):
 			s = pushed
 			sv = 0.0
@@ -512,12 +513,29 @@ func _build_panels() -> void:
 		_panel_hinges[i] = parts.panels[i].placed_hinge()
 		hinges[i] = Vector4(_panel_hinges[i].x, _panel_hinges[i].y, _panel_hinges[i].z, 0.0)
 		reach = maxf(reach, _panel_hinges[i].length() + parts.panels[i].length + 0.1)
+	# Each panel's extreme points (the corners of its sheet), relative to its hinge.
+	var points: PackedVector3Array = mesh.get_meta(&"points")
+	var owners: PackedInt32Array = mesh.get_meta(&"point_panels")
+	_panel_support.clear()
+	for i: int in _panel_count:
+		var own := PackedVector3Array()
+		for k: int in points.size():
+			if owners[k] == i:
+				own.append(points[k] - _panel_hinges[i])
+		var support := PackedVector3Array()
+		for dir: Vector3 in HumanoidParts.support_directions():
+			var best: Vector3 = own[0]
+			for p: Vector3 in own:
+				if p.dot(dir) > best.dot(dir):
+					best = p
+			if not support.has(best):
+				support.append(best)
+		_panel_support.append(support)
 	_heel_toe.clear()
 	for side: int in [-1, 1]:
-		var points: PackedVector3Array = parts.support_points(&"foot", side)
 		var heel := Vector3.ZERO
 		var toe := Vector3.ZERO
-		for p: Vector3 in points:
+		for p: Vector3 in parts.support_points(&"foot", side):
 			heel = p if p.z > heel.z else heel
 			toe = p if p.z < toe.z else toe
 		_heel_toe.append(PackedVector3Array([heel, toe]))
@@ -565,29 +583,36 @@ func _leg_limit(index: int, side: int, panel: HumanoidPanel, clearance: float) -
 	return limit
 
 
-## The pitch that keeps a panel's hem `clearance` above the surface (y = 0 in the rig's frame),
+## The pitch that keeps panel `index` `clearance` above the surface (y = 0 in the rig's frame),
 ## reached by swinging on from `pitch` (a back panel backward, a front one forward): `pitch` itself
-## when the hem already clears. `roll` is the panel's signed outward turn (the Euler z angle).
-func _ground_limit(pelvis_xf: Transform3D, height_of: Vector3, hinge: Vector3, panel: HumanoidPanel,
+## when it already clears. Checks the panel's extreme points; `roll` is its signed outward turn (the
+## Euler z angle).
+func _ground_limit(pelvis_xf: Transform3D, height_of: Vector3, index: int, panel: HumanoidPanel,
 		pitch: float, roll: float, clearance: float) -> float:
-	# The panel points along d = (sin roll, -cos roll·cos pitch, cos roll·sin pitch) in the pelvis
-	# frame, so the hem is h0 + length·(height_of · d) high: clear while A·cos + B·sin ≥ C.
-	var h0: float = (pelvis_xf * hinge).y
-	var a: float = -height_of.y * cos(roll)
-	var b: float = height_of.z * cos(roll)
-	var c: float = (clearance - h0) / panel.length - height_of.x * sin(roll)
-	var rr: float = sqrt(a * a + b * b)
-	if rr < 1e-5 or c / rr <= -1.0:
-		return pitch
-	var top: float = atan2(b, a)  # the pitch that lifts the hem highest
-	if c / rr >= 1.0:
-		return pitch + fposmod(top - pitch, TAU) if panel.behind else pitch - fposmod(pitch - top, TAU)
-	var w: float = acos(c / rr)
-	if absf(angle_difference(top, pitch)) <= w:
-		return pitch
-	if panel.behind:
-		return pitch + fposmod(top - w - pitch, TAU)
-	return pitch - fposmod(pitch - (top + w), TAU)
+	var h0: float = (pelvis_xf * _panel_hinges[index]).y
+	var turn := Basis(Vector3.BACK, roll)
+	var s: float = pitch
+	for attempt: int in 4:
+		var moved: bool = false
+		for v: Vector3 in _panel_support[index]:
+			# The point (hinge-relative u after the roll) turned by the pitch is h0 + A·cos + B·sin
+			# (+ a constant) high; it clears while A·cos(pitch) + B·sin(pitch) ≥ C.
+			var u: Vector3 = turn * v
+			var a: float = height_of.y * u.y + height_of.z * u.z
+			var b: float = height_of.y * u.z - height_of.z * u.y
+			var c: float = clearance - h0 - height_of.x * u.x
+			var rr: float = sqrt(a * a + b * b)
+			if rr < 1e-6 or absf(c / rr) >= 1.0:
+				continue  # Always clear, or can't clear at any pitch: nothing to gain.
+			var top: float = atan2(b, a)  # the pitch that lifts this point highest
+			var w: float = acos(c / rr)
+			if absf(angle_difference(top, s)) <= w:
+				continue
+			s = s + fposmod(top - w - s, TAU) if panel.behind else s - fposmod(s - (top + w), TAU)
+			moved = true
+		if not moved:
+			break
+	return s
 
 
 func _rest_positions() -> PackedVector3Array:
