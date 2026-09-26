@@ -5,7 +5,7 @@ through zones full of enemies, and a single hit ends the run. Built with Godot 4
 
 **Status:** the game is built around everything designed so far:
 - a campaign of two zones with three levels each
-- eight enemy types
+- seven enemy types, plus fence generators
 - the shop, power-ups and economy
 - every screen and the HUD
 - two zone looks, generated music and sound effects
