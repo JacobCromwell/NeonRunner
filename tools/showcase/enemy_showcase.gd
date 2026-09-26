@@ -6,7 +6,7 @@ extends Node3D
 ## charge (a cyborg charging and firing at the camera), and play: a generated level with the enemies
 ## on, run by a god-mode player with grapples (so gaps don't end the run) through the real run camera
 ## (options: --seed=N --lanes=N --difficulty=X --start=metres --variant=scavenger --features=a,b
-## --claws).
+## --claws --skin=res://path/to/skin.tres).
 
 const Kit = preload("res://scripts/enemies/cyborg_kit.gd")
 
@@ -78,6 +78,8 @@ func _play() -> void:
 			variant = StringName(v)
 		elif arg.begins_with("--features="):
 			config.features = PackedStringArray(v.split(",", false))
+		elif arg.begins_with("--skin=") and ResourceLoader.exists(v):
+			config.skin = load(v) as ZoneSkin
 	var skin := config.skin.duplicate() as ZoneSkin
 	skin.enemy_variant = variant
 	config.skin = skin
