@@ -54,6 +54,26 @@ const DRIFT_ASH: int = 0
 const DRIFT_SCRAP: int = 1
 const DRIFT_STREAK: int = 2
 
+## Marketplace surface patterns of the solid kit shader (kit_market.gdshaderinc), ids 20-29.
+## Canvas roofs and awnings: UV 0-1 across the panel and along the stall; param = stripes (0 plain,
+## 1 along the track, 2 across it) + 4 * the stall's length in decimetres (0: no hem along its start).
+const PAT_CANVAS: int = 20
+## Corrugated tin: UV as for canvas; param = ribs (0 along the track, 1 across it) + 4 * the stall's
+## length in decimetres.
+const PAT_TIN: int = 21
+## A stall's faces below its roof, by world height: param = mode (0 front, 1 side, 2 back) + 4 * seed.
+const PAT_STALL: int = 22
+## Stone flags (param 0, the market floor) or coffered soffit panels (param 1).
+const PAT_TILES: int = 23
+## A painted shop sign (UV in metres; param = seed 0-99 + 100 * the panel's height in decimetres).
+const PAT_SHOPSIGN: int = 24
+## An ad screen, glowing (UV.y 0-1 up the screen, UV.x in the same units; param a whole-number seed).
+const PAT_AD: int = 25
+## Rows of light bulbs on a dark panel, glowing (UV in metres).
+const PAT_BULBS: int = 26
+## Sun-bleached plaster.
+const PAT_STUCCO: int = 27
+
 const SHADER_DIR: String = "res://scripts/world/meshes/shaders/"
 
 static var _boxes: Dictionary = {}
