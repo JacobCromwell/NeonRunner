@@ -24,7 +24,8 @@ For each boss: arena, phases, attacks, weak points, what power-ups are granted b
 - ~~Roster, gameplay style, length, death, items, rewards~~ Answered (GDD §10, September 26, 2026).
 - ~~Floating Head: full breakdown.~~ Answered (GDD §10, September 26, 2026).
 - ~~Sewer Swarm: full breakdown.~~ Answered (GDD §10, September 26, 2026).
-- Marketplace, Corporate and Dead Zone bosses: concepts needed (the owner is still thinking). The final villain's fight: full breakdown.
+- ~~Marketplace boss~~ Answered: The House (GDD §10); revisit after playtesting.
+- Corporate and Dead Zone bosses: concepts needed. The final villain's fight: full breakdown.
 - ~~Do bosses have their own leaderboards or star criteria?~~ Answered: yes (GDD §10).
 - ~~Does the longer final fight still restart from the beginning on death?~~ Answered: a checkpoint halfway, at a possible second stage (GDD §10).
 
