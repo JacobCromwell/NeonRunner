@@ -1,0 +1,25 @@
+{
+	"version": 1,
+	"patterns": [
+		{
+			"id": "octodog_head_on",
+			"min_difficulty": 0.0, "weight": 0.8,
+			"requires": ["octodog"],
+			"length": 120,
+			"elements": [
+				{ "kind": "enemy", "type": "octodog", "at": 45, "lanes": { "mode": "random", "count": 1 } },
+				{ "kind": "credits", "surface": "floor", "at": 17, "lanes": { "mode": "same" }, "count": 4, "spacing": 3, "value": 5 }
+			]
+		},
+		{
+			"id": "octodog_gap_bait",
+			"min_difficulty": 0.0, "weight": 0.6,
+			"requires": ["octodog"],
+			"length": 120,
+			"elements": [
+				{ "kind": "gap", "at": 37, "lanes": { "mode": "random", "count": 1 }, "jump_frac": 0.4 },
+				{ "kind": "enemy", "type": "octodog", "at": 45, "lanes": { "mode": "same" }, "params": { "bait": true } }
+			]
+		}
+	]
+}

@@ -37,6 +37,8 @@ static func play(sound: StringName) -> void:
 		return
 	var player: AudioStreamPlayer = _player(sound)
 	if player != null:
+		# UI sounds follow the sound-effects volume whenever the SFX bus exists.
+		player.bus = &"SFX" if AudioServer.get_bus_index(&"SFX") >= 0 else &"Master"
 		# Deferred: on the first sound the players' host is still being added to the tree.
 		player.play.call_deferred()
 

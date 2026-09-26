@@ -47,7 +47,6 @@ var run: LevelRun
 var screen: Control
 var overlay: Control
 var _boss_node: Node
-var _ui_sounds: PlayerSfx
 
 
 func _ready() -> void:
@@ -66,9 +65,6 @@ func _ready() -> void:
 				Platform.configure_for(BuildFlavor.current())
 	profile = SaveService.load_profile(save_path)
 	Settings.apply(profile)
-	_ui_sounds = PlayerSfx.new()
-	add_child(_ui_sounds)
-	_ui_sounds.setup(sfx_library)
 
 
 func _notification(what: int) -> void:
@@ -132,6 +128,14 @@ func show_settings(on_close: Callable = Callable()) -> void:
 	show_screen(s)
 
 
+## After a settings change: volumes and keys are live already (Settings.set_value applies them);
+## a run paused under the settings overlay picks up the comfort options too.
+func apply_settings() -> void:
+	if run != null and run.world != null:
+		run.world.effects.shake_scale = Settings.shake_scale(profile)
+		run.world.player.steady_flash = Settings.reduced_flashing(profile)
+
+
 func show_demo_end() -> void:
 	_end_run()
 	_play_music(&"menu")
@@ -162,8 +166,10 @@ func close_overlay() -> void:
 	overlay = null
 
 
+## UI sounds (ui_buy, ui_error, star, ...) share one path with the widgets' ui_move/ui_select:
+## UiSounds, on the SFX bus when it exists; a sound the library doesn't have yet stays silent.
 func play_ui_sound(sound: StringName) -> void:
-	_ui_sounds.play(sound)
+	UiSounds.play(sound)
 
 
 func quit() -> void:

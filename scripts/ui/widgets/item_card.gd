@@ -1,9 +1,12 @@
 class_name ItemCard
 extends PanelContainer
 ## A shop item: icon, name, short description, tier pips, price with a buy button, and an
-## equip toggle once owned. Its state follows from the fields:
+## equip toggle once owned. Permanent items have tiers; breakable items (armor, shield, grapple,
+## revive) have a stock the player can fill up to max_stock (pips and "STOCK x/max").
+## Its state follows from the fields:
 ##   LOCKED       locked (reason shown instead of a price)
-##   OWNED/MAXED  tier >= max_tier (single items: owned; tiered items: all tiers bought)
+##   OWNED/MAXED  tier >= max_tier (single items: owned; tiered items: all tiers bought), or the
+##                stock is full
 ##   AVAILABLE    price <= credits (tiered items already owned show UPGRADE)
 ##   CANT_AFFORD  price > credits (the price shows in red, the button is disabled)
 ## The shop fills cards from its catalog and wallet (the contract is the orchestrator's):
@@ -18,7 +21,7 @@ enum State { AVAILABLE, CANT_AFFORD, OWNED, MAXED, LOCKED }
 
 ## Keys configure() accepts.
 const FIELDS: Array[String] = ["item_id", "icon_name", "title", "description", "price", "tier",
-	"max_tier", "equipped", "locked", "locked_reason", "credits"]
+	"max_tier", "stock", "max_stock", "equipped", "locked", "locked_reason", "credits"]
 
 @export var item_id: StringName = &""
 @export var icon_name: StringName = &"shield":
@@ -39,9 +42,6 @@ const FIELDS: Array[String] = ["item_id", "icon_name", "title", "description", "
 		price = v
 		_refresh_later()
 ## Tiers owned: 0 = not owned. Single items use max_tier = 1.
-## DESIGN-TBD: whether a breakable item (armor, shield, grapple hook, revive) can be held more than
-## once is open. Placeholder: a held breakable reads as OWNED (tier 1) until it breaks and the shop
-## sets tier back to 0. A stock count would need a field here (CooldownIcon can already show one).
 @export var tier: int = 0:
 	set(v):
 		tier = v
@@ -50,6 +50,15 @@ const FIELDS: Array[String] = ["item_id", "icon_name", "title", "description", "
 @export_range(1, 8, 1) var max_tier: int = 1:
 	set(v):
 		max_tier = v
+		_refresh_later()
+## Breakable items: how many the player holds (-1 = not a stocked item) and the most they can hold.
+@export var stock: int = -1:
+	set(v):
+		stock = v
+		_refresh_later()
+@export_range(1, 20, 1) var max_stock: int = 1:
+	set(v):
+		max_stock = v
 		_refresh_later()
 ## The equip toggle's state (owned items only; GDD §8 equip toggle).
 @export var equipped: bool = true:
@@ -111,6 +120,7 @@ func _init() -> void:
 	title_label = Label.new()
 	title_label.theme_type_variation = UiTheme.CARD_TITLE
 	title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title_label.resized.connect(_fit_title)
 	heading.add_child(title_label)
 	pips = TierPips.new()
 	heading.add_child(pips)
@@ -125,6 +135,7 @@ func _init() -> void:
 	column.add_child(description_label)
 	_bottom = HBoxContainer.new()
 	_bottom.alignment = BoxContainer.ALIGNMENT_END
+	_bottom.add_theme_constant_override(&"separation", 6)
 	column.add_child(_bottom)
 	equip_switch = ToggleSwitch.new()
 	equip_switch.toggled.connect(_on_equip_toggled)
@@ -132,6 +143,8 @@ func _init() -> void:
 	equip_label = Label.new()
 	equip_label.theme_type_variation = UiTheme.CAPTION
 	equip_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# A long price never widens the card: the label gives way first.
+	equip_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_bottom.add_child(equip_label)
 	buy_button = NeonButton.make("", NeonButton.Kind.PRICE)
 	buy_button.pressed.connect(func() -> void: buy_pressed.emit(item_id))
@@ -151,13 +164,21 @@ func configure(data: Dictionary) -> void:
 func compute_state() -> State:
 	if locked:
 		return State.LOCKED
-	if tier >= max_tier:
+	if is_stocked():
+		if stock >= max_stock:
+			return State.MAXED
+	elif tier >= max_tier:
 		return State.MAXED if max_tier > 1 else State.OWNED
 	return State.AVAILABLE if price <= credits else State.CANT_AFFORD
 
 
 func is_owned() -> bool:
-	return tier > 0
+	return tier > 0 or stock > 0
+
+
+## A breakable item, bought as stock rather than tiers.
+func is_stocked() -> bool:
+	return stock >= 0
 
 
 func refresh() -> void:
@@ -165,11 +186,13 @@ func refresh() -> void:
 	state = compute_state()
 	var owned: bool = is_owned() and not locked
 	icon.icon_name = icon_name
-	title_label.text = title
+	if title_label.text != title:
+		title_label.text = title
+		_fit_title()
 	description_label.text = description
-	pips.visible = max_tier > 1
-	pips.tiers = max_tier
-	pips.owned = tier
+	pips.visible = max_stock > 1 if is_stocked() else max_tier > 1
+	pips.tiers = max_stock if is_stocked() else max_tier
+	pips.owned = stock if is_stocked() else tier
 	lock_icon.visible = state == State.LOCKED
 	equip_switch.visible = owned
 	equip_label.visible = owned
@@ -180,11 +203,19 @@ func refresh() -> void:
 	buy_button.text = UiTheme.format_int(price)
 	buy_button.icon_name = IconFactory.credit_icon(1)
 	buy_button.icon_color = UiTheme.credit_color(1)
-	buy_button.tooltip_text = ("Upgrade to tier %d" % (tier + 1)) if owned else "Buy"
+	if is_stocked():
+		buy_button.tooltip_text = "Buy one more"
+	else:
+		buy_button.tooltip_text = ("Upgrade to tier %d" % (tier + 1)) if owned else "Buy"
 	var dim: bool = state == State.LOCKED
 	icon.modulate = Color(1, 1, 1, 0.35) if dim else Color.WHITE
 	title_label.modulate = Color(1, 1, 1, 0.55) if dim else Color.WHITE
 	description_label.modulate = title_label.modulate
+	if is_stocked() and state != State.LOCKED:
+		var full: bool = state == State.MAXED
+		_status("%s %d/%d" % ["FULL" if full else "STOCK", stock, max_stock],
+			UiTheme.ACCENT_CAPTION if stock > 0 else UiTheme.CAPTION)
+		return
 	match state:
 		State.LOCKED:
 			_status(locked_reason if locked_reason != "" else "LOCKED", UiTheme.CAPTION)
@@ -230,13 +261,19 @@ func _update_metrics() -> void:
 	lock_icon.icon_size = roundf(icon_px * 0.45)
 	icon_frame.add_theme_stylebox_override(&"panel", get_theme_stylebox(&"icon_frame", &"ItemCard"))
 	# The heading keeps room for the pips and the status, so every card is the same height.
-	var title_h: float = title_label.get_theme_font(&"font").get_height(title_label.get_theme_font_size(&"font_size"))
+	# The title style's own size: a long name may be drawn smaller (_fit_title), the room stays.
+	var title_h: float = get_theme_font(&"font", UiTheme.CARD_TITLE).get_height(get_theme_font_size(&"font_size", UiTheme.CARD_TITLE))
 	var status_h: float = status_label.get_theme_font(&"font").get_height(status_label.get_theme_font_size(&"font_size"))
 	_heading.custom_minimum_size.y = ceilf(title_h + status_h + pips.get_combined_minimum_size().y + 8.0)
 	var font: Font = description_label.get_theme_font(&"font")
 	var font_size: int = description_label.get_theme_font_size(&"font_size")
 	var line: float = font.get_height(font_size) + description_label.get_theme_constant(&"line_spacing")
 	description_label.custom_minimum_size.y = ceilf(line * 3.0)
+
+
+## Long names ("Juggernaut dash") shrink a little to fit rather than lose their end.
+func _fit_title() -> void:
+	UiTheme.fit_font(title_label, get_theme_font(&"font", UiTheme.CARD_TITLE), get_theme_font_size(&"font_size", UiTheme.CARD_TITLE))
 
 
 func _on_equip_toggled(on: bool) -> void:
