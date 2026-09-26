@@ -5,6 +5,7 @@ shader_type spatial;
 render_mode unshaded, blend_add, depth_draw_never, cull_disabled, fog_disabled;
 
 #include "res://scripts/world/meshes/shaders/kit_common.gdshaderinc"
+#include "res://scripts/world/meshes/shaders/kit_flash.gdshaderinc"
 
 uniform float glow_scale = 2.0;
 uniform float fade_begin = 40.0;
@@ -41,7 +42,7 @@ void fragment() {
 	}
 	float g = glow_scale * state_glow;
 	if (flicker_hz > 0.0) {
-		g *= step(0.5, fract(TIME * flicker_hz));
+		g *= warning_flicker(step(0.5, fract(TIME * flicker_hz)), 0.0);
 	}
 	float fade = 1.0 - smoothstep(fade_begin, fade_end, length(VERTEX));
 	ALBEDO = to_linear(COLOR.rgb) * (COLOR.a * a * g * fade);

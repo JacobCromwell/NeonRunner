@@ -22,6 +22,10 @@ const ACTION_LABELS: Dictionary = {
 	&"dash": "Juggernaut dash", &"slow_time": "Slow time", &"pause": "Pause",
 }
 
+## The profile's Reduced flashing, for visuals that aren't shaders (shaders read the global uniform
+## `reduced_flashing`). Kept current by apply_visuals().
+static var flashing_reduced: bool = false
+
 
 static func value(profile: Profile, key: String) -> Variant:
 	return profile.settings.get(key, DEFAULTS.get(key))
@@ -42,6 +46,14 @@ static func apply(profile: Profile) -> void:
 		AudioServer.set_bus_volume_db(index, linear_to_db(maxf(linear, 0.0001)))
 		AudioServer.set_bus_mute(index, linear <= 0.001)
 	apply_bindings(profile)
+	apply_visuals(profile)
+
+
+## Visual accessibility: Reduced flashing turns hazard strobes into steady glows (the hazard shaders
+## read the global shader uniform, other visuals `flashing_reduced`).
+static func apply_visuals(profile: Profile) -> void:
+	flashing_reduced = reduced_flashing(profile)
+	RenderingServer.global_shader_parameter_set(&"reduced_flashing", 1.0 if flashing_reduced else 0.0)
 
 
 static func apply_bindings(profile: Profile) -> void:

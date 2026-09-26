@@ -137,6 +137,7 @@ func show_settings(on_close: Callable = Callable()) -> void:
 ## After a settings change: volumes and keys are live already (Settings.set_value applies them);
 ## a run paused under the settings overlay picks up the comfort options too.
 func apply_settings() -> void:
+	Settings.apply_visuals(profile)
 	if run != null and run.world != null:
 		run.world.effects.shake_scale = Settings.shake_scale(profile)
 		run.world.player.steady_flash = Settings.reduced_flashing(profile)

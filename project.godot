@@ -131,3 +131,10 @@ renderer/rendering_method.mobile="mobile"
 rendering_device/fallback_to_opengl3=true
 textures/vram_compression/import_etc2_astc=true
 environment/defaults/default_clear_color=Color(0.02, 0.015, 0.05, 1)
+
+[shader_globals]
+
+reduced_flashing={
+"type": "float",
+"value": 0.0
+}

@@ -7,6 +7,7 @@ shader_type spatial;
 render_mode unshaded, cull_back, depth_draw_opaque;
 
 #include "res://scripts/world/meshes/shaders/kit_common.gdshaderinc"
+#include "res://scripts/world/meshes/shaders/kit_flash.gdshaderinc"
 
 uniform float glow_scale = 4.0;
 // Sky glow caught at grazing angles: distant roofs and hulls pick up the neon haze.
@@ -110,7 +111,7 @@ void fragment() {
 	if (glow > 0.002) {
 		float g = glow * glow_scale * state_glow;
 		if (flicker_hz > 0.0) {
-			g *= 0.2 + 0.8 * step(0.5, fract(TIME * flicker_hz));
+			g *= warning_flicker(step(0.5, fract(TIME * flicker_hz)), 0.2);
 		}
 		col = to_linear(base) * g;
 	} else {
