@@ -50,6 +50,11 @@ func setup(p_world: RunWorld, p_profile: Profile, p_touch: bool) -> void:
 				_pending.append(entry)
 	_pending.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["at"] < b["at"])
 	world.director.enemy_spawned.connect(_on_enemy_spawned)
+	# Enemies already in play (a boss's body, there from the fight's start) get their hint first thing.
+	for e: Enemy in world.director.active:
+		var entry: Dictionary = _take_enemy_hint(e)
+		if not entry.is_empty():
+			_start_hints.append(entry)
 
 
 ## Replaces {action} with the player's key or touch gesture.
@@ -79,13 +84,20 @@ func _process(_delta: float) -> void:
 
 
 func _on_enemy_spawned(enemy: Enemy) -> void:
+	var entry: Dictionary = _take_enemy_hint(enemy)
+	if not entry.is_empty():
+		_show(entry)
+
+
+## The hint waiting for this kind of enemy, taken off the list ({} if none): a boss's own hint
+## ("enemy:<boss id>") if it has one, else the one every boss shares ("enemy:boss").
+func _take_enemy_hint(enemy: Enemy) -> Dictionary:
 	var key: String = "host" if enemy.is_host else String(enemy.type_id)
-	# A boss's own hint ("enemy:<boss id>") if it has one, else the one every boss shares.
 	if enemy.is_boss and not _enemy_hints.has(key):
 		key = "boss"
-	if _enemy_hints.has(key):
-		_show(_enemy_hints[key])
-		_enemy_hints.erase(key)
+	var entry: Dictionary = _enemy_hints.get(key, {})
+	_enemy_hints.erase(key)
+	return entry
 
 
 func _show(entry: Dictionary) -> void:
