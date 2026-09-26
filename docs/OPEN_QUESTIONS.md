@@ -22,7 +22,7 @@ Companion to `GDD_CHECKPOINT.md`. The design phase is complete when this list is
 ### 2. Bosses
 For each boss: arena, phases, attacks, weak points, what power-ups are granted before the fight, how it scales on 3 vs 5–6 lanes, and its length.
 - ~~Roster, gameplay style, length, death, items, rewards~~ Answered (GDD §10, September 26, 2026).
-- Floating Head: the owner's design is in GDD §10; the design round's proposals await approval.
+- ~~Floating Head: full breakdown.~~ Answered (GDD §10, September 26, 2026).
 - Sewer Swarm: full breakdown.
 - Marketplace, Corporate and Dead Zone bosses: concepts needed (the owner is still thinking). The final villain's fight: full breakdown.
 - ~~Do bosses have their own leaderboards or star criteria?~~ Answered: yes (GDD §10).
