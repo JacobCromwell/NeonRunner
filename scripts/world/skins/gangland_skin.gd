@@ -141,8 +141,9 @@ extends ZoneSkin
 ## Military supply crates (olive, stencilled codes) and corporate containers (the logo on their
 ## doors) among the gangs' things.
 ## DESIGN-TBD: the owner asked for hints of corporate and military funding; these forms and shares
-## are proposals. The corporate brand colour and logo should match the Corporate zone's (task D4);
-## until then the containers and ads stay off-white and grey with a generic mark (kit_logo).
+## are proposals. The logo on the containers, crates and ads is the Corporate zone's brand mark
+## (kit_logo.gdshaderinc, task D4); the containers and ads keep their off-white and grey (whether they
+## should take the brand's blue is docs/questions/d4.md's).
 @export var military_crate_colors: PackedColorArray = PackedColorArray([
 	Color(0.27, 0.28, 0.19), Color(0.3, 0.3, 0.21), Color(0.24, 0.25, 0.18)])
 @export var container_colors: PackedColorArray = PackedColorArray([
