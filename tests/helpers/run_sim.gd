@@ -10,9 +10,15 @@ extends RefCounted
 ##   var world: RunWorld = sim.build_world(layout, loadout)
 ##   var r: Dictionary = await sim.step_world(world, seconds, [[distance, &"jump"]])
 ##   ... inspect world ... ; sim.free_world(world)
+##
+## With `trace` on, both also record the player after every physics frame in result["trace"]:
+## {t (the level clock), d (distance), x (world x), h, speed, surface, lane, alive, lean (the
+## sideways lean the model is shown, Player._switch_dir)}.
 
 var tree: SceneTree
 var tuning: MovementTuning
+## Record every physics frame in result["trace"] (see the header).
+var trace: bool = false
 
 
 func _init(p_tree: SceneTree, p_tuning: MovementTuning) -> void:
@@ -44,7 +50,7 @@ func run(p_layout: LevelLayout, start_lane: int, seconds: float, actions: Array,
 	var player := Player.new()
 	world.add_child(player)
 	player.setup(t, TrackGeometry.new(p_layout.lane_count, t), start_lane)
-	var result := {"cause": "", "max_wall_h": 0.0, "events": [], "at": {}}
+	var result := {"cause": "", "max_wall_h": 0.0, "events": [], "at": {}, "trace": []}
 	player.died.connect(func(cause: String) -> void: result["cause"] = cause)
 	player.movement_event.connect(func(kind: StringName) -> void: result["events"].append(kind))
 	await tree.physics_frame
@@ -58,6 +64,8 @@ func run(p_layout: LevelLayout, start_lane: int, seconds: float, actions: Array,
 			player.press(pending.pop_front()[1])
 		track.update(player.distance, player.elapsed)
 		await tree.physics_frame
+		if trace:
+			result["trace"].append(_sample(player))
 		while not pending_probes.is_empty() and player.distance >= float(pending_probes[0]):
 			result["at"][pending_probes.pop_front()] = {"surface": player.surface_name(), "lane": player.lane,
 				"h": player.h, "sliding": player.is_sliding(), "alive": player.alive}
@@ -96,7 +104,7 @@ func build_world(p_layout: LevelLayout, loadout: Loadout = null, p_tuning: Movem
 func step_world(world: RunWorld, seconds: float, actions: Array = [], probes: Array = [],
 		until_dead: bool = true) -> Dictionary:
 	var player: Player = world.player
-	var result := {"cause": "", "events": [], "at": {}}
+	var result := {"cause": "", "events": [], "at": {}, "trace": []}
 	var on_died := func(cause: String) -> void: result["cause"] = cause
 	var on_event := func(kind: StringName) -> void: result["events"].append(kind)
 	player.died.connect(on_died)
@@ -111,6 +119,8 @@ func step_world(world: RunWorld, seconds: float, actions: Array = [], probes: Ar
 		while not pending.is_empty() and player.distance >= float(pending[0][0]):
 			player.press(pending.pop_front()[1])
 		await tree.physics_frame
+		if trace:
+			result["trace"].append(_sample(player))
 		while not pending_probes.is_empty() and player.distance >= float(pending_probes[0]):
 			result["at"][pending_probes.pop_front()] = {"surface": player.surface_name(), "lane": player.lane,
 				"h": player.h, "alive": player.alive, "speed": player.speed}
@@ -128,3 +138,10 @@ func step_world(world: RunWorld, seconds: float, actions: Array = [], probes: Ar
 func free_world(world: RunWorld) -> void:
 	world.queue_free()
 	await tree.process_frame
+
+
+## One frame of the trace (see the header).
+static func _sample(player: Player) -> Dictionary:
+	return {"t": player.elapsed, "d": player.distance, "x": player.position.x, "h": player.h,
+		"speed": player.speed, "surface": player.surface_name(), "lane": player.lane, "alive": player.alive,
+		"lean": int(player.call(&"_switch_dir"))}

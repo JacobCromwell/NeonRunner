@@ -49,14 +49,27 @@ extends Resource
 @export_range(0.0, 12.0, 0.25, "suffix:m/s") var wall_jump_velocity: float = 6.0
 ## Gap between the outer lane edge and the wall face.
 @export_range(0.0, 1.0, 0.05, "suffix:m") var wall_margin: float = 0.3
+## GDD §3 (decided September 26, 2026): a blocked entry (a sign, or a wall a boss takes away) plays
+## the clank and bumps the player out toward the wall and back, like a blocked lane switch, so they
+## see why they didn't get on. The bump stops short of anything in its way (a sign that reaches down
+## to the player stops it at its face), so it never moves the player into a hazard.
+## DESIGN-TBD: how far and how fast (the GDD says "a small sideways bump").
+@export_range(0.0, 1.0, 0.05, "suffix:m") var wall_bump_distance: float = 0.35
+## DESIGN-TBD: see wall_bump_distance.
+@export_range(0.05, 0.5, 0.01, "suffix:s") var wall_bump_time: float = 0.16
 
 @export_group("Ramps & speed pads")
 ## DESIGN-TBD: ramp values are open (OPEN_QUESTIONS §4).
 @export_range(1.0, 6.0, 0.1, "suffix:m") var ramp_entry_height: float = 4.0
-@export_range(0.0, 15.0, 0.5, "suffix:m/s") var ramp_speed_boost: float = 0.0
-@export_range(0.5, 20.0, 0.5, "suffix:m/s per s") var ramp_boost_decay_per_second: float = 4.0
+## GDD §3 (decided September 26, 2026): a ramp adds a speed boost that fades away the same way a
+## speed pad's does (boost_decay_per_second). DESIGN-TBD: the size is a placeholder (a speed pad's
+## boost) for the owner to tune after playtesting.
+@export_range(0.0, 15.0, 0.5, "suffix:m/s") var ramp_speed_boost: float = 6.0
+## How fast a speed boost fades away, a ramp's and a speed pad's alike (GDD §3): the extra speed
+## drops by this much every second until it's gone (boost_left).
+@export_range(0.5, 20.0, 0.5, "suffix:m/s per s") var boost_decay_per_second: float = 4.0
 ## DESIGN-TBD: speed pads are only named in the GDD (§6: they arrive a few levels in). A pad in a
-## floor lane adds this much speed, which then decays like the ramp boost.
+## floor lane adds this much speed, which then fades like a ramp's.
 @export_range(0.0, 20.0, 0.5, "suffix:m/s") var speed_pad_boost: float = 6.0
 @export_range(0.5, 5.0, 0.1, "suffix:m") var speed_pad_length: float = 2.5
 
@@ -127,3 +140,18 @@ func jump_distance(speed: float) -> float:
 	var t_up: float = jump_velocity() / g_up
 	var t_down: float = sqrt(2.0 * jump_height / g_down)
 	return (t_up + t_down) * speed
+
+
+## What's left of a speed boost of `boost` m/s after `seconds` (GDD §3: a ramp's boost fades away the
+## same way a speed pad's does): it drops by boost_decay_per_second every second until it's gone.
+## The Player fades its boost with this each physics frame.
+func boost_left(boost: float, seconds: float) -> float:
+	return maxf(boost - boost_decay_per_second * maxf(seconds, 0.0), 0.0)
+
+
+## The extra track distance a boost of `boost` m/s adds over `seconds` while it fades (boost_left).
+func boost_distance(boost: float, seconds: float) -> float:
+	if boost <= 0.0:
+		return 0.0
+	var t: float = clampf(seconds, 0.0, boost / boost_decay_per_second)
+	return boost * t - 0.5 * boost_decay_per_second * t * t
