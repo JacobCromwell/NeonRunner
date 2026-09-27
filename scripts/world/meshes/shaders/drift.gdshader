@@ -12,6 +12,9 @@ render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, skip_vertex_tr
 
 #include "res://scripts/world/meshes/shaders/kit_common.gdshaderinc"
 
+// A level's darker lighting (ZoneSkin.apply_darkness): the scenery dims with it.
+global uniform float scenery_light;
+
 uniform float slice_length = 40.0;
 // Speeds toward the player over the ground (m/s); the player's own speed adds to them.
 uniform float ash_speed = 6.0;
@@ -64,6 +67,6 @@ void fragment() {
 	} else if (v_kind > 0.5) {
 		shape = 1.0;
 	}
-	ALBEDO = to_linear(COLOR.rgb);
+	ALBEDO = to_linear(COLOR.rgb) * light_factor(scenery_light);
 	ALPHA = v_alpha * shape;
 }

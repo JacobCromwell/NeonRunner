@@ -8,6 +8,7 @@ const PLAYER_DEAD := Color(1.0, 0.1, 0.1)
 const VISOR := Color(0.1, 0.9, 1.0)
 const SHADOW := Color(0.0, 0.0, 0.0, 0.55)
 const DEBUG_HITBOX := Color(1.0, 0.0, 0.0, 0.35)
+const SCENERY_SHADER: Shader = preload("res://scripts/world/greybox_scenery.gdshader")
 
 static var _cache: Dictionary = {}
 
@@ -18,6 +19,19 @@ static func flat(color: Color) -> StandardMaterial3D:
 		var m := StandardMaterial3D.new()
 		m.albedo_color = color
 		m.roughness = 0.8
+		_cache[key] = m
+	return _cache[key]
+
+
+## The grey-box skin's plain scenery (floor, walls, ceilings): lit like flat(), and dimmed by a
+## level's darker lighting (ZoneSkin.apply_darkness, the global `scenery_light`). Enemies, the
+## player and hazards keep flat() and glow(), so they stay as they are.
+static func scenery(color: Color) -> ShaderMaterial:
+	var key: String = "scenery_%s" % color.to_html()
+	if not _cache.has(key):
+		var m := ShaderMaterial.new()
+		m.shader = SCENERY_SHADER
+		m.set_shader_parameter(&"albedo", color)
 		_cache[key] = m
 	return _cache[key]
 

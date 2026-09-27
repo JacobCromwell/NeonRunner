@@ -100,7 +100,8 @@ func _build() -> void:
 		sun.light_energy = 0.7
 		sun.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY
 		add_child(sun)
-	_env.environment = world.skin.make_environment()
+	# The zone's look with the level's darkness (GDD §5, The Hush): only the scenery darkens.
+	_env.environment = world.skin.level_environment(context.config.darkness)
 	if camera == null:
 		camera = RunCamera.new()
 		add_child(camera)
@@ -124,6 +125,11 @@ func _build() -> void:
 	state = State.RUNNING
 	death_cause = ""
 	world.start()
+
+
+## A level's darker lighting ends with its run (ZoneSkin.apply_darkness sets a global uniform).
+func _exit_tree() -> void:
+	ZoneSkin.set_scenery_light(1.0)
 
 
 ## Continues after a death (revive item or rewarded ad). The App calls this.
@@ -281,6 +287,10 @@ func _build_debug_tools() -> void:
 	]
 	if context.config.resource_path == "":
 		sections.pop_back()
+	# A campaign level's recency curve for its pick weights (GDD §5, P2 13); Restart level rebuilds.
+	var recency: FeatureRecency = context.config.feature_recency
+	if recency != null and recency.resource_path != "":
+		sections.append({"title": "Feature picks (campaign)", "resource": recency, "path": recency.resource_path})
 	if context.is_boss():
 		# The boss's numbers (health, rewards, par times) and its script's own tuning.
 		var def: BossDef = context.boss
