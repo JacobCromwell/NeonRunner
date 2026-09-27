@@ -1,0 +1,513 @@
+class_name GoldenSkin
+extends ZoneSkin
+## Zone 6, the Golden Zone (GDD §5, §11): the city strictly for the elites and corporate bosses and
+## home of the final boss, in decadent opulence: a white and slightly creamy base with red and gold
+## accents, the gold reflective metal (never glowing neon), the red deep and unlit. The same future as
+## every zone, in its dominant shapes: towers of champagne mirror glass on gold mullions under glazed
+## crowns, palaces clad in seamless white panels with tall rounded smart-glass windows, sky bridges
+## slung between the towers, hover-yachts.
+## Floor segments are golden walkways over water (GoldenWalkways): a deck of burnished gold plates per
+## lane between polished rails, a dark joint between neighbouring walkways; gaps are drops to the dark
+## canal far below, with the orange edge glow on the collision edge as in every zone. The walkways
+## stand still, so their plate seams, mist, drifting gold leaf and speed streaks carry the sense of
+## speed (the owner's review: every still floor gets motion cues), and the canal flows in the gaps.
+## Walls are opulent facades (GoldenFacades) whose wall-run band stays calm and flush; above it,
+## golden statues holding halberds line the palaces' ledges (the statue kit, GoldenStatue, shared
+## with the Gilded Sentinels, task C4), never at wall-run height: a statue there is a live Sentinel.
+## Signs are boutique boards in the yellow/black hazard frame (GoldenProps); fences are the same pink
+## field between gold stanchions. Ceilings (GoldenCeilings) are the undersides of golden bridges (some
+## with water falling off their faces), galleries of golden arches and the elite's hover-yachts, each
+## built from the lanes it covers.
+## The cult is shown openly here (GDD §5): its emblem (the owner's pick, drawn by CultEmblem) is large
+## and polished gold meeting at a small red centre stone, on red banners, on reliefs facing the
+## approach (bridges, sky bridges, the towers' setbacks) and on medallions inlaid in the walkways; its
+## feed (CultFeed) plays in gilded frames above the band and on big screens hung over the street.
+## Colour rule (GDD §5): gold, red, cream and white stay lit and below the hazards' saturation, the
+## only decorative glows are warm-white lamps and lit windows, so pink, yellow and black, red, orange,
+## green and cyan keep their meaning and hazards stay the most saturated, brightest things on screen.
+## Visuals only: TrackBuilder owns every collision shape and gameplay node, and all variety comes
+## from hashing track positions (MeshKit.hash_i), so a chunk looks the same whenever it is built.
+
+@export_group("Environment")
+## DESIGN-TBD (docs/questions/d6a.md): the GDD gives the Golden Zone's palette and mood, not its time
+## of day. The blue hour: a deep blue sky over the warm afterglow of the set sun, the white palaces
+## floodlit and their gold gleaming against the dusk, the hazards' glow popping.
+@export var sky_zenith_color: Color = Color(0.1, 0.14, 0.3)
+@export var sky_horizon_color: Color = Color(0.56, 0.48, 0.52)
+## The afterglow over the horizon.
+@export var haze_color: Color = Color(0.92, 0.64, 0.46)
+@export_range(0.0, 2.0, 0.05) var haze_strength: float = 0.4
+@export var abyss_color: Color = Color(0.06, 0.06, 0.1)
+## The far skyline: dark towers against the afterglow, glittering with warm windows.
+@export var skyline_color: Color = Color(0.17, 0.18, 0.27)
+@export var skyline_window_color: Color = Color(0.98, 0.86, 0.64)
+## The moon (the sky shader's), high to one side over the far end of the street.
+@export var moon_color: Color = Color(0.93, 0.92, 0.88)
+@export var moon_direction: Vector3 = Vector3(-0.32, 0.36, -0.88)
+@export_range(0.0, 0.3, 0.005) var moon_radius: float = 0.03
+@export_range(0.0, 1.0, 0.01) var moon_clarity: float = 0.85
+@export var ambient_color: Color = Color(0.62, 0.62, 0.72)
+## Distant geometry fades into the dusk's haze between fog_begin and fog_end.
+@export var fog_color: Color = Color(0.3, 0.29, 0.36)
+@export_range(0.0, 150.0, 1.0, "suffix:m") var fog_begin: float = 26.0
+@export_range(50.0, 400.0, 5.0, "suffix:m") var fog_end: float = 230.0
+@export_range(0.0, 1.0, 0.01) var fog_max: float = 0.92
+@export_range(0.0, 2.0, 0.05) var glow_intensity: float = 0.7
+@export_range(0.5, 4.0, 0.05) var glow_threshold: float = 1.1
+## Brightness of emissive kit parts (vertex glow 1.0 = this many times the albedo).
+@export_range(1.0, 20.0, 0.5) var emissive_scale: float = 4.0
+## The dusk sky caught at grazing angles by the walkways, walls and undersides.
+@export var sheen_color: Color = Color(0.46, 0.46, 0.6)
+@export_range(0.0, 1.0, 0.01) var sheen_strength: float = 0.14
+## Where the afterglow lies (polished gold glints toward it).
+@export var afterglow_direction: Vector3 = Vector3(0.3, 0.12, -0.95)
+## The floodlights on the entablature washing the floors above it (and fading up over flood_reach),
+## the street's lamplight on the band (at its foot and at its top), and the dusk's cool tint high up.
+@export var flood_color: Color = Color(1.0, 0.86, 0.66)
+@export_range(0.0, 1.5, 0.05) var flood_strength: float = 0.35
+@export_range(2.0, 60.0, 0.5, "suffix:m") var flood_reach: float = 14.0
+@export_range(0.2, 1.2, 0.01) var street_light_low: float = 0.56
+@export_range(0.2, 1.2, 0.01) var street_light_high: float = 0.68
+@export var dusk_tint: Color = Color(0.86, 0.9, 1.04)
+## The same light on everything else lit (the walkways and kerbs low down, the ledges, statues and
+## bridges in the floodlights): kit_golden's golden_light().
+@export_range(0.2, 1.5, 0.01) var walkway_light: float = 0.9
+@export_range(0.2, 1.5, 0.01) var ledge_light: float = 0.95
+
+@export_group("Gold and red")
+## The zone's gold: reflective metal, lit and never glowing (GDD §5, §11). The cult's emblem uses
+## CultEmblem.GOLD_COLOR, the same gold (tests/suites/test_golden_skin.gd keeps them one).
+@export var gold_color: Color = Color(0.78, 0.66, 0.42)
+## Polished gold's brightest highlights: a pale champagne, never a yellow.
+@export var gold_shine_color: Color = Color(0.97, 0.93, 0.83)
+## The deep crimson of banners and lacquer: unlit (red glows only as enemy fire and weak points).
+@export var red_color: Color = Color(0.44, 0.1, 0.12)
+## White and cream stone and cladding: white, cream, ivory, champagne, a pale warm grey.
+@export var stone_colors: PackedColorArray = PackedColorArray([
+	Color(0.87, 0.86, 0.82), Color(0.86, 0.8, 0.68), Color(0.9, 0.86, 0.76), Color(0.82, 0.76, 0.66),
+	Color(0.8, 0.79, 0.76)])
+## The veins in the marble.
+@export var vein_color: Color = Color(0.6, 0.55, 0.48)
+
+@export_group("Walkways")
+## DESIGN-TBD (docs/questions/d6a.md): the GDD's golden walkways over water (proposed, owner agreed).
+## The deck's burnished gold, darker than the cream of the Golden Zone's cyborgs so they stand out on
+## it (task P3's concern), far brighter than the canal in the gaps.
+@export var walkway_color: Color = Color(0.64, 0.52, 0.28)
+## The dark joint between neighbouring walkways, so each lane reads as its own walkway.
+@export var joint_color: Color = Color(0.1, 0.085, 0.07)
+## The deck's plates: their seams streaming past are the still floor's own motion cue.
+@export_range(0.6, 8.0, 0.1, "suffix:m") var plate_length: float = 3.6
+@export_range(0.0, 1.0, 0.01) var walkway_polish: float = 0.55
+## The marble kerb between the outer lanes and the building faces.
+@export var kerb_color: Color = Color(0.84, 0.8, 0.72)
+## How far below the walkways the canal lies (deeper than the fall that ends a run, so a fall never
+## visibly lands).
+@export_range(4.5, 15.0, 0.1, "suffix:m") var canal_depth: float = 5.5
+## The canal: dark water, never lighter than a gap's inside may be.
+@export var canal_color: Color = Color(0.035, 0.055, 0.07)
+## How fast the canal flows toward the player (a motion cue in the gaps).
+@export_range(0.0, 6.0, 0.1, "suffix:m/s") var canal_flow: float = 1.4
+## Everything under the walkways (their sides and piers, the building faces down to the water), seen
+## only through gaps: deep shade that only darkens with depth, so a gap reads as a hole at a glance.
+## Kept far darker than any walkway material (tests/suites/test_golden_skin.gd).
+@export var gap_inside_color: Color = Color(0.075, 0.068, 0.06)
+## Gap edges: the orange edge language of every zone. Redder than it looks: the glow and the
+## tonemapper lift the green, and it must stay orange, not sign yellow.
+@export var gap_edge_color: Color = Color(1.0, 0.25, 0.04)
+## The cult's medallions inlaid in the walkways (GDD §5: its emblem shown openly): one slot per lane
+## every medallion_spacing metres, medallion_share of them used where the walkway runs on unbroken.
+## DESIGN-TBD (docs/questions/d6a.md): how often.
+@export_range(10.0, 200.0, 1.0, "suffix:m") var medallion_spacing: float = 60.0
+@export_range(0.0, 1.0, 0.01) var medallion_share: float = 0.15
+
+@export_group("Motion")
+## DESIGN-TBD (docs/questions/d6a.md): the walkways' motion cues (the owner's review: every still
+## floor gets dust, scraps and speed streaks; over water, the equivalent): per 40 m of track, mist
+## drifting up off the canal, flakes of gold leaf and speed streaks drifting toward the player
+## (a = opacity).
+@export_range(0, 200, 1) var mist_count: int = 55
+@export_range(0, 60, 1) var leaf_count: int = 10
+@export_range(0, 60, 1) var streak_count: int = 12
+@export var mist_color: Color = Color(0.92, 0.94, 0.95, 0.3)
+@export var leaf_color: Color = Color(0.82, 0.68, 0.4, 0.85)
+@export var streak_color: Color = Color(0.97, 0.95, 0.9, 0.24)
+@export_range(0.0, 30.0, 0.5, "suffix:m/s") var mist_speed: float = 4.5
+@export_range(0.0, 80.0, 0.5, "suffix:m/s") var streak_speed: float = 24.0
+
+@export_group("Buildings")
+## Buildings are 1–3 lots long; a lot is this long.
+@export_range(6.0, 40.0, 1.0, "suffix:m") var lot_length: float = 15.0
+## Palaces (a statue ledge over the band, balconies, a balustraded roof), galleries (a glazed vault,
+## the feed in gilded frames) and towers (mirror glass, setbacks, crowns, banners, hung screens).
+@export_range(0.0, 1.0, 0.01) var palace_share: float = 0.45
+@export_range(0.0, 1.0, 0.01) var gallery_share: float = 0.2
+@export_range(10.0, 60.0, 1.0, "suffix:m") var palace_min_height: float = 17.0
+@export_range(10.0, 80.0, 1.0, "suffix:m") var palace_max_height: float = 26.0
+@export_range(20.0, 160.0, 1.0, "suffix:m") var tower_min_height: float = 34.0
+@export_range(20.0, 200.0, 1.0, "suffix:m") var tower_max_height: float = 72.0
+## The calm band: flush, solid-looking stone from the walkway up to band_top (the wall-run band and a
+## margin), the entablature over it up to frieze_top, where the statues' ledge is.
+@export_range(0.3, 1.5, 0.05, "suffix:m") var plinth_top: float = 0.9
+@export_range(6.0, 9.0, 0.1, "suffix:m") var band_top: float = 7.0
+@export_range(7.0, 11.0, 0.1, "suffix:m") var frieze_top: float = 8.6
+## Decorative things (banners, frames, screens, reliefs on the walls) never sit lower than this.
+@export_range(6.0, 16.0, 0.25, "suffix:m") var decor_min_height: float = 8.0
+@export var granite_color: Color = Color(0.66, 0.62, 0.6)
+@export var glass_color: Color = Color(0.1, 0.11, 0.13)
+## Gold-mirrored and champagne mirror glass.
+@export var mirror_color: Color = Color(0.64, 0.57, 0.46)
+## Lamplight in the windows: warm white, below the glow threshold.
+@export var window_warm_color: Color = Color(1.0, 0.9, 0.74)
+@export_range(0.0, 3.0, 0.05) var window_glow: float = 0.8
+## Share of a building's windows that are lit (each building picks within this range).
+@export_range(0.0, 1.0, 0.01) var lit_min: float = 0.15
+@export_range(0.0, 1.0, 0.01) var lit_max: float = 0.4
+## The wall-run height marks (GDD §3: how high a wall run is): gold inlay lines, unlit, a deep gold
+## that reads on the cream stone.
+@export var wall_height_marks: PackedFloat32Array = PackedFloat32Array([2.0, 4.0])
+@export var wall_mark_color: Color = Color(0.5, 0.4, 0.24)
+## The warm-white lamps under balconies and along the bridges' seams.
+@export var lamp_color: Color = Color(1.0, 0.92, 0.78)
+
+@export_group("Statues")
+## Golden statues holding halberds line the palaces' ledges (GDD §9.11), all decorative: a statue at
+## wall-run height is a live Gilded Sentinel (task C4), so decorative ones never stand lower than this
+## (their feet; safe things look safe). DESIGN-TBD (docs/questions/d6a.md): the ledge's height.
+@export_range(7.0, 16.0, 0.1, "suffix:m") var statue_min_height: float = 8.8
+## Metres between the statues on a ledge, and the share of their places filled.
+@export_range(3.0, 20.0, 0.5, "suffix:m") var statue_spacing: float = 5.2
+@export_range(0.0, 1.0, 0.01) var statue_share: float = 0.9
+
+@export_group("Cult emblem")
+## DESIGN-TBD (docs/questions/d6a.md): how openly and where (GDD §5: shown openly only here). Red
+## banners with the emblem hung out from the towers facing the approach, and reliefs on the faces of
+## the towers' setbacks that face it (the share of towers carrying each).
+@export_range(0.0, 1.0, 0.01) var banner_share: float = 0.6
+@export_range(1.0, 5.0, 0.1, "suffix:m") var banner_width: float = 2.2
+@export_range(3.0, 14.0, 0.1, "suffix:m") var banner_length: float = 6.5
+@export_range(0.0, 1.0, 0.01) var relief_share: float = 0.7
+## The emblem's size on banners, reliefs and the bridges' faces (the medallions fill most of a lane).
+@export_range(0.8, 6.0, 0.1, "suffix:m") var emblem_size: float = 1.9
+
+@export_group("Cult feed")
+## DESIGN-TBD (docs/questions/d6a.md): where the cult's feed (CultFeed, GDD §5 "Cyborg Viewing
+## Devices") plays here: in gilded frames on the palaces and galleries, above the band and angled to
+## the approaching runner (feed_share of them), and on big screens hung out over the street from some
+## towers, facing the traffic (feed_hung_share: a boss arena can set it to 0 to clear the airspace).
+@export_range(0.0, 1.0, 0.01) var feed_share: float = 0.3
+@export_range(0.0, 1.0, 0.01) var feed_hung_share: float = 0.35
+@export_range(0.0, 1.0, 0.05) var feed_frame_brightness: float = 0.8
+@export_range(0.0, 1.0, 0.05) var feed_hung_brightness: float = 0.9
+## The hung screens (16:9): the widest, the share of the street's half width they may reach over, and
+## the lowest their bottom edge goes (far above the wall-run band and the ceilings).
+@export_range(2.0, 12.0, 0.1, "suffix:m") var feed_hung_width: float = 4.6
+@export_range(0.2, 1.0, 0.01) var feed_hung_reach: float = 0.7
+@export_range(9.0, 40.0, 0.5, "suffix:m") var feed_hung_bottom: float = 13.0
+
+@export_group("Overhead")
+## Sky bridges slung between the towers high over the street (the future in its dominant shapes),
+## one slot every sky_bridge_spacing metres, sky_bridge_share of them built where both sides are tall
+## enough; their faces carry the emblem toward the approach.
+@export_range(30.0, 400.0, 1.0, "suffix:m") var sky_bridge_spacing: float = 110.0
+@export_range(0.0, 1.0, 0.01) var sky_bridge_share: float = 0.7
+@export_range(14.0, 60.0, 0.5, "suffix:m") var sky_bridge_height: float = 24.0
+
+@export_group("Ceilings")
+## DESIGN-TBD (docs/questions/d6a.md): GDD §5 names golden bridges, golden archways and other
+## decadent structures; the mix is a proposal. Relative weights (bridges and archways need a ceiling
+## across every lane; narrower ones become suspended galleries or yachts).
+@export_range(0.0, 10.0, 0.1) var bridge_weight: float = 4.0
+@export_range(0.0, 10.0, 0.1) var archway_weight: float = 3.0
+@export_range(0.0, 10.0, 0.1) var yacht_weight: float = 2.0
+## Share of bridges with water falling off their faces into a gilded trough (GDD §5: sparse, scenery
+## only, kept above the ceiling so it never hides what's on the floor or walls).
+@export_range(0.0, 1.0, 0.01) var water_share: float = 0.5
+@export var water_color: Color = Color(0.74, 0.8, 0.84)
+## The gold of the coffers and the cream of their ribs.
+@export var coffer_color: Color = Color(0.7, 0.58, 0.36)
+@export var rib_color: Color = Color(0.84, 0.8, 0.72)
+@export var ceiling_lamp_color: Color = Color(1.0, 0.92, 0.78)
+@export var yacht_hull_color: Color = Color(0.88, 0.86, 0.8)
+## The yachts' engines: a pale blue-white, far from the pads' cyan.
+@export var engine_color: Color = Color(0.62, 0.72, 1.0)
+
+@export_group("Hazards")
+## Pink crackle always means electric fence (GDD §5).
+@export var fence_color: Color = Color(1.0, 0.18, 0.62)
+## Signs: the yellow/black hazard frame around a boutique's board.
+@export var sign_frame_color: Color = Color(1.0, 0.8, 0.15)
+## The boards: cream, midnight blue, deep crimson, ivory. Kept clear of the other hazard hues.
+@export var sign_content_colors: PackedColorArray = PackedColorArray([
+	Color(0.86, 0.82, 0.72), Color(0.14, 0.17, 0.28), Color(0.4, 0.1, 0.12), Color(0.9, 0.87, 0.8)])
+
+@export_group("Pads, ramps, finish")
+@export var pad_color: Color = Color(0.1, 1.0, 0.95)
+## Height of the anti-grav pad's light column.
+@export_range(1.0, 10.0, 0.1, "suffix:m") var pad_beam_height: float = 5.8
+@export var ramp_color: Color = Color(0.3, 1.0, 0.35)
+## DESIGN-TBD: speed pads share the ramps' green "safe boost" family (MeshKit.speed_strip).
+@export var speed_pad_color: Color = Color(0.45, 1.0, 0.55)
+@export var finish_color: Color = Color(1.0, 1.0, 1.0)
+## Dark graphite under pads, ramps and the finish gantry, so their glows read on the gold.
+@export var trigger_metal_color: Color = Color(0.2, 0.19, 0.2)
+
+const CULT_EMBLEM_CHOICE_PATH: String = "res://data/world/cult_emblem_choice.tres"
+## The emblem is rasterised once at this size (with mipmaps) for every relief, banner and medallion.
+const CULT_EMBLEM_PIXELS: int = 128
+
+## Emblem textures by option, shared by every skin instance.
+static var _emblem_textures: Dictionary = {}
+
+## Built on first use and shared by every mesh (exports changed later don't reach them).
+var _materials: Dictionary = {}
+var _walkways: GoldenWalkways
+var _facades: GoldenFacades
+var _ceilings: GoldenCeilings
+var _props: GoldenProps
+var _statues: GoldenStatue
+## The latest wall face seen (wall_section runs before a chunk's ceilings): bridges and archways reach
+## from wall to wall.
+var _wall_x: float = 0.0
+
+
+func _init() -> void:
+	# The cyborgs wear the ceremonial enforcer (GDD §9.2, CyborgSuit.look_for); the other enemies treat
+	# any variant but &"scavenger" like &"city", so their look is the clean one.
+	enemy_variant = &"golden"
+
+
+func make_environment() -> Environment:
+	# The sky's colours as sRGB Vector3s (srgb()), so the sky looks the same on both renderers.
+	var sky := {"zenith_color": srgb(sky_zenith_color), "horizon_color": srgb(sky_horizon_color),
+		"haze_color": srgb(haze_color), "haze_strength": haze_strength, "haze_height": 0.12,
+		"abyss_color": srgb(abyss_color), "skyline_color": srgb(skyline_color), "window_color": srgb(skyline_window_color),
+		"moon_color": srgb(moon_color), "moon_direction": moon_direction, "moon_radius": moon_radius,
+		"moon_clarity": moon_clarity, "star_amount": 0.15}
+	return MeshKit.night_environment(sky, ambient_color, fog_color, fog_begin, fog_end, fog_max, 0.0,
+		glow_intensity, glow_threshold)
+
+
+func floor_segment(parent: Node3D, center: Vector3, size: Vector3, lane_x: float,
+		edge_start: bool, edge_end: bool) -> void:
+	var batch := MeshBatch.new()
+	walkways().build(batch, center, size, lane_x, edge_start, edge_end)
+	batch.commit(parent)
+
+
+func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: float) -> void:
+	_wall_x = absf(face_x)
+	var batch := MeshBatch.new()
+	facades().build(batch, side, face_x, start, end)
+	if side < 0:
+		walkways().below(batch, absf(face_x), start, end)
+		facades().overhead(batch, absf(face_x), start, end)
+	batch.commit(parent)
+
+
+func fence(hazard: Hazard, size: Vector3, ground_y: float, gapped: bool) -> void:
+	props().fence(hazard, size, ground_y, gapped)
+
+
+func wall_sign(hazard: Hazard, size: Vector3) -> void:
+	props().wall_sign(hazard, size)
+
+
+func hull(parent: Node3D, center: Vector3, size: Vector3, lane_edges_x: Array[float]) -> void:
+	ceilings().build(parent, center, size, lane_edges_x, _wall_x if _wall_x > 0.0 else size.x * 0.5 + 0.3)
+
+
+func pad(trigger: Area3D, size: Vector3) -> void:
+	MeshBatch.add_instance(trigger, MeshKit.lift_pad(size, pad_color, trigger_metal_color, pad_beam_height,
+		solid_material(), glow_material()))
+
+
+func ramp(trigger: Area3D, size: Vector3, side: int) -> void:
+	MeshBatch.add_instance(trigger, MeshKit.kicker_ramp(size, side, ramp_color, trigger_metal_color, solid_material(),
+		glow_material()))
+
+
+func speed_pad(trigger: Area3D, size: Vector3) -> void:
+	MeshBatch.add_instance(trigger, MeshKit.speed_strip(size, speed_pad_color, trigger_metal_color, solid_material(),
+		glow_material()))
+
+
+func finish_line(parent: Node3D, width: float, distance: float) -> void:
+	var batch := MeshBatch.new()
+	MeshKit.finish_gate(batch, solid_material(), glow_material(), width, distance, finish_color, trigger_metal_color)
+	batch.commit(parent)
+
+
+# --- The statue kit (shared with the Gilded Sentinels, task C4) ------------------------------
+
+## The zone's statue kit (GoldenStatue), drawn with this skin's materials: the decorative statues on
+## the ledges come from it, and a live Gilded Sentinel builds its rig and niche with it.
+func statues() -> GoldenStatue:
+	if _statues == null:
+		_statues = GoldenStatue.new(solid_material(), gold_color, stone_colors[0])
+	return _statues
+
+
+## The decorative statues on the walls whose feet lie between two track distances, for reviews and
+## tests: side, at, center (the statue's feet), facing, height, pose. The same ones wall_section()
+## builds; every one stands at statue_min_height or higher.
+func statue_spots(side: int, face_x: float, start: float, end: float) -> Array[Dictionary]:
+	return facades().statue_spots(side, face_x, start, end)
+
+
+# --- The cult's feed and emblem ------------------------------------------------------------
+
+## The shared feed material (CultFeed): the same broadcast as in every zone.
+func feed_material() -> ShaderMaterial:
+	return CultFeed.material()
+
+
+## Whether the screen keyed by (a, b) plays the cult's feed (`share` of them).
+func shows_feed(a: int, b: int, share: float) -> bool:
+	return MeshKit.hash01(a, b, 131) < share
+
+
+## The screens on the walls playing the feed whose middles lie between two track distances, for
+## reviews and tests: side, at, kind (&"frame" gilded frames on the faces, &"hung" big screens hung
+## out over the street), width, height, center (the screen's middle). The same ones wall_section()
+## builds.
+func feed_boards(side: int, face_x: float, start: float, end: float) -> Array[Dictionary]:
+	return facades().feed_boards(side, face_x, start, end)
+
+
+## The cult's emblems on the walls and overhead whose middles lie between two track distances, for
+## reviews and tests: side, at, kind (&"banner", &"relief" on a tower's setback, &"sky_bridge"), size
+## (the mark's square, metres), center. The same ones wall_section() builds. (The bridges' reliefs and
+## the walkways' medallions belong to the ceilings and floor.)
+func cult_emblems(side: int, face_x: float, start: float, end: float) -> Array[Dictionary]:
+	return facades().emblems(side, face_x, start, end)
+
+
+## The option the owner picked for the cult's emblem (data/world/cult_emblem_choice.tres; the
+## choice's own default if the file is missing), never a hardcoded one.
+static func cult_emblem_option() -> int:
+	var choice := load(CULT_EMBLEM_CHOICE_PATH) as CultEmblemChoice
+	if choice == null:
+		push_error("GoldenSkin: no cult emblem choice at %s" % CULT_EMBLEM_CHOICE_PATH)
+		choice = CultEmblemChoice.new()
+	return choice.option
+
+
+## The cult's emblem as the Golden Zone shows it (GDD §5): CultEmblem's drawing of the owner's choice
+## in polished gold (CultEmblem.GOLD_COLOR) meeting at its small red centre stone
+## (CultEmblem.GOLD_ACCENT_COLOR), over a transparent background of the same gold, with mipmaps (the
+## kit shader picks the level itself and fades the mark out when it is small on screen).
+static func cult_emblem_texture() -> ImageTexture:
+	var option: int = cult_emblem_option()
+	if not _emblem_textures.has(option):
+		var img: Image = CultEmblem.build_image(option, CULT_EMBLEM_PIXELS, CultEmblem.GOLD_COLOR,
+			CultEmblem.GOLD_ACCENT_COLOR, Color(CultEmblem.GOLD_COLOR, 0.0))
+		img.generate_mipmaps()
+		_emblem_textures[option] = ImageTexture.create_from_image(img)
+	return _emblem_textures[option]
+
+
+## A panel showing the emblem (MeshKit.PAT_EMBLEM) on a face: a rectangle from `origin` spanning u (to
+## the viewer's right) and v (up), the mark `size` metres across centred on it, on `background`
+## (cloth = 0, stone = 1) in `color`. The panel's own margin shows the background.
+static func emblem_panel(layer: MeshLayer, origin: Vector3, u: Vector3, v: Vector3, size: float, color: Color,
+		background: int) -> void:
+	var half: float = maxf(size, 0.01) * 0.5
+	var hu: float = u.length() * 0.5 / half
+	var hv: float = v.length() * 0.5 / half
+	layer.rect(origin, u, v, color, 0.0, MeshKit.PAT_EMBLEM, Vector2(-hu, -hv), Vector2(hu, hv), float(background))
+
+
+# --- Shared materials (built once per skin, shared by every mesh) ------------------------
+
+func solid_material() -> ShaderMaterial:
+	if not _materials.has(&"solid"):
+		var m: ShaderMaterial = MeshKit.solid(_solid_params())
+		m.set_shader_parameter(&"cult_emblem", cult_emblem_texture())
+		_materials[&"solid"] = m
+	return _materials[&"solid"]
+
+
+func glow_material() -> ShaderMaterial:
+	if not _materials.has(&"glow"):
+		_materials[&"glow"] = MeshKit.glow({"fade_begin": fog_begin, "fade_end": fog_end})
+	return _materials[&"glow"]
+
+
+## The building faces (golden_facade.gdshader).
+func facade_material() -> ShaderMaterial:
+	if not _materials.has(&"facade"):
+		var marks: PackedFloat32Array = wall_height_marks
+		_materials[&"facade"] = MeshKit.material("golden_facade.gdshader", {
+			"glass_color": srgb(glass_color), "mirror_color": srgb(mirror_color), "gold_color": srgb(gold_color),
+			"shine_color": srgb(gold_shine_color), "granite_color": srgb(granite_color),
+			"window_warm": srgb(window_warm_color), "window_glow": window_glow, "sheen_color": srgb(sheen_color),
+			"sheen_strength": sheen_strength, "flood_color": srgb(flood_color), "flood_strength": flood_strength,
+			"flood_reach": flood_reach, "street_low": street_light_low, "street_high": street_light_high, "dusk_tint": srgb(dusk_tint), "plinth_top": plinth_top, "band_top": band_top, "frieze_top": frieze_top,
+			"storey": GoldenFacades.STOREY, "mark_a": marks[0] if marks.size() > 0 else -10.0,
+			"mark_b": marks[1] if marks.size() > 1 else -10.0, "mark_color": srgb(wall_mark_color),
+			"canal_y": -canal_depth})
+	return _materials[&"facade"]
+
+
+## A colour for this skin's shader uniforms: its sRGB values as a Vector3. Godot converts a Color set
+## on a colour uniform to linear on Forward+ (not on the Compatibility renderer), and the kit's shaders
+## convert once more (to_linear); as a Vector3 it arrives as authored on both renderers, and is
+## converted once, like a vertex colour, so the two renderers match.
+static func srgb(c: Color) -> Vector3:
+	return Vector3(c.r, c.g, c.b)
+
+
+func drift_material() -> ShaderMaterial:
+	if not _materials.has(&"drift"):
+		_materials[&"drift"] = MeshKit.material("drift.gdshader", {
+			"slice_length": TrackBuilder.CHUNK_LENGTH, "ash_speed": mist_speed, "streak_speed": streak_speed})
+	return _materials[&"drift"]
+
+
+## ON, WARNING and OFF materials for a fence's glowing parts (bars, emitters).
+func fence_part_materials() -> Array[Material]:
+	if not _materials.has(&"fence_parts"):
+		_materials[&"fence_parts"] = MeshKit.hazard_part_materials(_solid_params())
+	return _materials[&"fence_parts"]
+
+
+## ON, WARNING and OFF materials for a fence's energy field.
+func fence_field_materials() -> Array[Material]:
+	if not _materials.has(&"fence_field"):
+		_materials[&"fence_field"] = MeshKit.fence_field_materials(fence_color, fog_begin + 40.0, fog_end + 20.0)
+	return _materials[&"fence_field"]
+
+
+func _solid_params() -> Dictionary:
+	var sun: Vector3 = afterglow_direction.normalized() if afterglow_direction.length() > 0.001 else Vector3.FORWARD
+	return {"glow_scale": emissive_scale, "sheen_color": srgb(sheen_color), "sheen_strength": sheen_strength,
+		"golden_shine": srgb(gold_shine_color), "golden_sun": sun, "golden_rail": srgb(gold_color),
+		"golden_joint": srgb(joint_color), "golden_plate": plate_length, "golden_polish": walkway_polish,
+		"golden_inlay": srgb(kerb_color), "golden_vein": srgb(vein_color), "golden_flow": canal_flow,
+		"golden_trim": srgb(gold_color), "golden_rib": srgb(rib_color), "golden_light_street": walkway_light,
+		"golden_light_flood": ledge_light}
+
+
+func walkways() -> GoldenWalkways:
+	if _walkways == null:
+		_walkways = GoldenWalkways.new(self)
+	return _walkways
+
+
+func facades() -> GoldenFacades:
+	if _facades == null:
+		_facades = GoldenFacades.new(self)
+	return _facades
+
+
+func ceilings() -> GoldenCeilings:
+	if _ceilings == null:
+		_ceilings = GoldenCeilings.new(self)
+	return _ceilings
+
+
+func props() -> GoldenProps:
+	if _props == null:
+		_props = GoldenProps.new(self)
+	return _props
