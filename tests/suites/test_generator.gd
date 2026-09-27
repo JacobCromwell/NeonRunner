@@ -5,7 +5,8 @@ extends TestSuite
 ## floor route under every ceiling, run on real physics); features that start partway into a level
 ## (introductions, and every rules script that adds a feature's enemies or pieces keeping to the
 ## start), per-level feature weights, and the guarantee that every feature appears
-## (LevelConfig.guarantee_features, and the host and Octodog rules' own).
+## (LevelConfig.guarantee_features, and the host and Octodog rules' own); the campaign's recency
+## curve for pick weights (FeatureRecency); quiet stretches and bursts (LevelConfig.quiet_seconds).
 
 const HostRules := preload("res://scripts/enemies/host_rules.gd")
 
@@ -45,6 +46,9 @@ func run() -> void:
 	_test_pattern_features()
 	_test_guarantee(base)
 	_test_rules_guarantees(base)
+	_test_recency(base)
+	_test_pacing(base)
+	_test_pacing_introductions(base)
 	await _test_floor_routes_on_physics(base)
 
 
@@ -516,6 +520,319 @@ func _test_rules_guarantees(base: LevelConfig) -> void:
 		if bool(c[2]):
 			check(added == 24, "every level got its %s (%d of 24) in %s" % [feature, added, c[1]])
 	check(dogs_with_chases > 0, "some guaranteed dogs share their level with a Bad Dream's chase (%d)" % dogs_with_chases)
+
+
+## The campaign's recency curve (GDD §5, owner's review P2 13: beyond the guarantee, a level's newest
+## things get the most picks; FeatureRecency): a pattern's pick weight is multiplied by the curve's
+## factor for its newest feature's age; with keep_feature_share the features' patterns are then scaled
+## back to weigh together what they did without it, and plain obstacles keep their weight, so the level
+## picks them as often as before. Without ages, or with the curve off, every weight is as it was. Over
+## many levels the feature the level introduces gets far more picks, and the oldest fewer, never none.
+func _test_recency(base: LevelConfig) -> void:
+	var patterns: Array = LevelGenerator.load_for(base)
+	var by_id: Dictionary = {}
+	for p: Dictionary in patterns:
+		by_id[String(p["id"])] = p
+	var curve := FeatureRecency.new()
+	var plain: LevelConfig = base.duplicate() as LevelConfig
+	plain.features = PackedStringArray(["cyborg", "ceilings", "pulsing", "window_cyborg", "ramps", "speed_pads"])
+	plain.difficulty = 0.5
+	var ages: Dictionary[String, int] = {"cyborg": 6, "ceilings": 3, "pulsing": 2, "window_cyborg": 2, "ramps": 1,
+		"speed_pads": 0}
+	var curved: LevelConfig = plain.duplicate() as LevelConfig
+	curved.feature_ages = ages
+	curved.feature_recency = curve
+	check(not plain.recency_on() and curved.recency_on(), "the curve shapes only a level the campaign dated")
+	check(curved.recency_factor(["window_cyborg", "ramps"]) == curve.one_level_later
+		and curved.recency_factor(["ceilings", "cyborg"]) == curve.three_levels_later and curved.recency_factor([]) == 1.0,
+		"a pattern follows its newest feature, and one that requires nothing isn't touched")
+	check(curve.factor(0) == curve.introduced and curve.factor(4) == curve.older and curve.factor(9) == curve.older,
+		"four levels on and later, a feature has the curve's `older` factor")
+	var copy: LevelConfig = curved.duplicate() as LevelConfig
+	check(copy.feature_ages == ages and copy.feature_recency == curve, "a copy of a level keeps its ages and curve")
+
+	var gen := LevelGenerator.new()
+	gen.generate(plain, tuning, patterns)
+	var at: float = 600.0
+	var w0: Dictionary = _weights_by_id(gen.pick_weights(patterns, 0.5, at))
+	gen.config = curved
+	var w1: Dictionary = _weights_by_id(gen.pick_weights(patterns, 0.5, at))
+	curve.keep_feature_share = false
+	var raw: Dictionary = _weights_by_id(gen.pick_weights(patterns, 0.5, at))
+	curve.keep_feature_share = true
+	curve.enabled = false
+	var off: Dictionary = _weights_by_id(gen.pick_weights(patterns, 0.5, at))
+	curve.enabled = true
+	check(off == w0, "with the curve off, every pattern weighs what it did")
+	check(w1.keys() == w0.keys() and w0.size() > 10, "the curve changes weights, not which patterns fit (%d)" % w0.size())
+	var feat0: float = 0.0
+	var feat1: float = 0.0
+	var scale: float = -1.0
+	var combos: int = 0
+	for id: String in w0:
+		var requires: Array = (by_id[id] as Dictionary).get("requires", [])
+		var factor: float = curved.recency_factor(requires)
+		check(is_equal_approx(float(raw[id]), float(w0[id]) * factor),
+			"%s's weight is multiplied by its newest feature's factor (%.2f)" % [id, factor])
+		if requires.is_empty():
+			check(is_equal_approx(float(w1[id]), float(w0[id])), "a plain obstacle (%s) keeps its weight" % id)
+			continue
+		combos += 1 if requires.size() > 1 else 0
+		feat0 += float(w0[id])
+		feat1 += float(w1[id])
+		var s: float = float(w1[id]) / (float(w0[id]) * factor)
+		if scale < 0.0:
+			scale = s
+		check(is_equal_approx(s, scale), "every feature's patterns are scaled back alike (%s: %.3f, %.3f)" % [id, s, scale])
+	check(is_equal_approx(feat0, feat1), "the features' patterns weigh together what they did (%.3f, %.3f)" % [feat0, feat1])
+	check(scale > 0.0 and scale < 1.0, "and the scale that keeps it is below 1 (%.3f)" % scale)
+	check(combos >= 2, "patterns requiring several features were checked (%d)" % combos)
+
+	# Over many levels, picks follow the curve.
+	var tally: Array[Dictionary] = [{}, {}]
+	for lanes: int in [3, 5, 6]:
+		for level_seed: int in range(1, 9):
+			for k: int in 2:
+				var config: LevelConfig = (plain if k == 0 else curved).duplicate() as LevelConfig
+				config.lane_count = lanes
+				config.level_seed = level_seed
+				var g := LevelGenerator.new()
+				g.generate(config, tuning, patterns)
+				check(g.warnings.is_empty(), "no warnings with the curve lanes=%d seed=%d %s" % [lanes, level_seed, g.warnings])
+				for p: Dictionary in g.picks:
+					var requires: Array = p["requires"]
+					for f: Variant in (["core"] if requires.is_empty() else requires):
+						tally[k][String(f)] = int(tally[k].get(String(f), 0)) + 1
+					tally[k]["total"] = int(tally[k].get("total", 0)) + 1
+	var before: Dictionary = tally[0]
+	var after: Dictionary = tally[1]
+	check(int(after.get("speed_pads", 0)) >= 2 * int(before.get("speed_pads", 0)),
+		"the feature the level introduces gets far more picks (%d, without the curve %d)" % [after.get("speed_pads", 0), before.get("speed_pads", 0)])
+	check(int(after.get("cyborg", 0)) < int(before.get("cyborg", 0)) and int(after.get("cyborg", 0)) > 0,
+		"the oldest gets fewer, but some (%d, without the curve %d)" % [after.get("cyborg", 0), before.get("cyborg", 0)])
+	var core0: float = float(before.get("core", 0)) / float(before["total"])
+	var core1: float = float(after.get("core", 0)) / float(after["total"])
+	check(absf(core1 - core0) < 0.04, "plain obstacles keep their share of the picks (%.3f, without the curve %.3f)" % [core1, core0])
+	print("  recency curve: picks of the newest feature %d -> %d, the oldest %d -> %d, plain obstacles' share %.3f -> %.3f"
+		% [before.get("speed_pads", 0), after.get("speed_pads", 0), before.get("cyborg", 0), after.get("cyborg", 0), core0, core1])
+
+
+## pick_weights()'s result as pattern id → weight.
+func _weights_by_id(pool: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for i: int in (pool["patterns"] as Array).size():
+		out[String(pool["patterns"][i]["id"])] = float(pool["weights"][i])
+	return out
+
+
+## Quiet stretches and bursts (LevelConfig.quiet_seconds; GDD §5, The Hush: long silent stretches
+## broken by sudden threats): the stretches alternate from the level's first pattern, quiet first; a
+## quiet stretch picks no enemy but its quiet features' and stays sparse; a burst picks only threats,
+## densely, its enemies inside it; rules that guarantee an enemy put it in a burst (burst_spot). Every
+## rule, fairness check and the guarantee still hold, at 3, 5 and 6 lanes, and it's deterministic.
+## With quiet_seconds 0 the other settings change nothing.
+func _test_pacing(base: LevelConfig) -> void:
+	var paced: LevelConfig = base.duplicate() as LevelConfig
+	paced.features = PackedStringArray(["cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "ramps",
+		"octodog", "speed_pads", "generator", "drone", "host"])
+	paced.duration_seconds = 150.0
+	paced.difficulty = 0.7
+	paced.enemy_scaling = 0.7
+	paced.guarantee_features = true
+	paced.quiet_seconds = 14.0
+	paced.burst_seconds = 7.0
+	paced.quiet_spacing_seconds = 4.0
+	paced.burst_spacing_seconds = 0.9
+	paced.quiet_features = PackedStringArray(["host"])
+	var patterns: Array = LevelGenerator.load_for(paced)
+	var by_id: Dictionary = {}
+	for p: Dictionary in patterns:
+		by_id[String(p["id"])] = p
+	var speed: float = tuning.run_speed
+	var cycle: float = (paced.quiet_seconds + paced.burst_seconds) * speed
+	# Metres, enemies (hosts apart), hosts and obstacle rows in quiet stretches [0] and bursts [1]; the
+	# same level paced evenly [2].
+	var metres: Array[float] = [0.0, 0.0, 0.0]
+	var enemies: Array[int] = [0, 0, 0]
+	var rows: Array[int] = [0, 0, 0]
+	var hosts: int = 0
+	var bursts: int = 0
+	var on_time: int = 0
+	for lanes: int in [3, 5, 6]:
+		for level_seed: int in range(1, 7):
+			var config: LevelConfig = paced.duplicate() as LevelConfig
+			config.lane_count = lanes
+			config.level_seed = level_seed
+			var tag: String = "paced lanes=%d seed=%d" % [lanes, level_seed]
+			var gen := LevelGenerator.new()
+			var layout: LevelLayout = gen.generate(config, tuning, patterns)
+			check(gen.warnings.is_empty(), "a level paced in bursts generates without warnings %s %s" % [tag, gen.warnings])
+			LayoutChecks.check_layout(self, layout, config, tag)
+			LayoutChecks.check_rules(self, layout, config, tag)
+			var again: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
+			check(JSON.stringify(again.to_dict()) == JSON.stringify(layout.to_dict()), "deterministic " + tag)
+			for f: String in config.features:
+				check(not LayoutChecks.feature_positions(layout, f).is_empty(), "it has `%s` %s" % [f, tag])
+			var last: float = layout.length - config.end_clear_distance
+			var stretches: Array[Vector2] = gen.quiet_stretches()
+			check(stretches.size() == ceili((last - config.start_clear_distance) / cycle), "its quiet stretches " + tag)
+			var level_quiet: float = 0.0
+			for i: int in stretches.size():
+				var s: Vector2 = stretches[i]
+				check(is_equal_approx(s.x, config.start_clear_distance + i * cycle) and gen.quiet_at(s.x + 0.5)
+					and gen.quiet_at(s.y - 0.5) and gen.burst_index(s.x + 0.5) == -1,
+					"quiet stretch %d starts on the beat and is quiet throughout %s" % [i, tag])
+				if s.y + 0.5 < last:
+					check(not gen.quiet_at(s.y + 0.5) and gen.burst_index(s.y + 0.5) == i
+						and is_equal_approx(gen.stretch_end(s.y + 0.5), s.y + config.burst_seconds * speed)
+						and is_equal_approx(gen.stretch_end(s.x + 0.5), s.y), "burst %d follows it %s" % [i, tag])
+					# The burst's first pick comes a burst spacing after its start at the latest, or after
+					# the pattern running into it: the quiet spacing never carries the cursor past it.
+					bursts += 1
+					var prev_end: float = 0.0
+					for p: Dictionary in gen.picks:
+						if float(p["at"]) >= s.y - 0.01:
+							var due: float = maxf(s.y, prev_end) + config.burst_spacing_seconds * speed + 0.01
+							on_time += 1 if float(p["at"]) <= due else 0
+							break
+						prev_end = float(p["at"]) + float(p["used"])
+				level_quiet += s.y - s.x
+			metres[0] += level_quiet
+			metres[1] += last - config.start_clear_distance - level_quiet
+			for p: Dictionary in gen.picks:
+				var pattern: Dictionary = by_id[String(p["id"])]
+				var requires: Array = pattern.get("requires", [])
+				var quiet_feature: bool = not requires.is_empty()
+				for need: Variant in requires:
+					quiet_feature = quiet_feature and config.quiet_features.has(String(need))
+				var threat: bool = false
+				var last_enemy: float = -1.0
+				for e: Dictionary in pattern.get("elements", []):
+					var kind: String = String(e.get("kind", ""))
+					threat = threat or kind in ["gap", "fence", "sign", "enemy"]
+					if kind == "enemy":
+						last_enemy = maxf(last_enemy, float(e.get("at", 0.0)) + float(e.get("at_seconds", 0.0)) * speed)
+				var at: float = float(p["at"])
+				if gen.quiet_at(at):
+					check(last_enemy < 0.0 or quiet_feature, "a quiet stretch picks no enemy but its quiet features' (%s at %.0f) %s" % [p["id"], at, tag])
+				else:
+					check(threat, "a burst picks only threats (%s at %.0f) %s" % [p["id"], at, tag])
+					check(last_enemy < 0.0 or quiet_feature or at + last_enemy < gen.stretch_end(at),
+						"a burst's enemies stand in it (%s at %.0f) %s" % [p["id"], at, tag])
+			for e: Dictionary in layout.enemies:
+				if String(e["type"]) == "cyborg" and bool((e.get("params", {}) as Dictionary).get("host", false)):
+					hosts += 1
+				else:
+					enemies[0 if gen.quiet_at(float(e["at"])) else 1] += 1
+			for at: float in _row_starts(layout):
+				rows[0 if gen.quiet_at(at) else 1] += 1
+			# The same level paced evenly.
+			var even: LevelConfig = config.duplicate() as LevelConfig
+			even.quiet_seconds = 0.0
+			var flat: LevelLayout = LevelGenerator.new().generate(even, tuning, patterns)
+			metres[2] += last - config.start_clear_distance
+			enemies[2] += flat.enemies.size() - HostRules.hosts_in(flat).size()
+			rows[2] += _row_starts(flat).size()
+	var quiet_e: float = enemies[0] / metres[0] * 100.0
+	var burst_e: float = enemies[1] / metres[1] * 100.0
+	var even_e: float = enemies[2] / metres[2] * 100.0
+	var quiet_r: float = rows[0] / metres[0] * 100.0
+	var burst_r: float = rows[1] / metres[1] * 100.0
+	var even_r: float = rows[2] / metres[2] * 100.0
+	print("  quiet stretches and bursts, per 100 m: enemies %.2f quiet, %.2f in bursts, %.2f paced evenly; obstacle rows %.2f, %.2f, %.2f; %d hosts in 18 levels"
+		% [quiet_e, burst_e, even_e, quiet_r, burst_r, even_r, hosts])
+	check(quiet_e < burst_e * 0.25, "quiet stretches have few enemies (%.2f per 100 m, bursts %.2f)" % [quiet_e, burst_e])
+	check(quiet_r < burst_r * 0.8, "and sparse obstacles (%.2f rows per 100 m, bursts %.2f)" % [quiet_r, burst_r])
+	check(burst_e > even_e and burst_r > even_r * 0.9,
+		"bursts are dense: more enemies than the level paced evenly (%.2f against %.2f per 100 m), as many obstacles (%.2f, %.2f)"
+		% [burst_e, even_e, burst_r, even_r])
+	check(on_time == bursts, "every burst begins on time (%d of %d)" % [on_time, bursts])
+
+	# Rules that guarantee an enemy put it in a burst (the host, a quiet feature here, anywhere).
+	var gen := LevelGenerator.new()
+	gen.generate(paced, tuning, patterns)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var in_bursts: bool = true
+	for i: int in 200:
+		var at: float = gen.burst_spot(rng, 500.0, 2000.0, "drone")
+		in_bursts = in_bursts and not is_nan(at) and at >= 500.0 and at <= 2000.0 and not gen.quiet_at(at)
+	check(in_bursts, "burst_spot draws spots in bursts")
+	check(is_nan(gen.burst_spot(rng, 500.0, 2000.0, "host")), "a quiet feature's guaranteed enemy goes anywhere")
+	check(is_nan(gen.burst_spot(rng, 70.0, 300.0, "drone")), "with no burst in reach, the rule picks its spot as usual")
+	var even_gen := LevelGenerator.new()
+	var even_config: LevelConfig = paced.duplicate() as LevelConfig
+	even_config.quiet_seconds = 0.0
+	even_gen.generate(even_config, tuning, patterns)
+	var state: int = rng.state
+	check(is_nan(even_gen.burst_spot(rng, 500.0, 2000.0, "drone")) and rng.state == state and even_gen.quiet_stretches().is_empty()
+		and not even_gen.quiet_at(600.0) and even_gen.burst_index(600.0) == -1,
+		"a level paced evenly has no quiet stretches or bursts, and draws nothing for them")
+
+	# quiet_seconds 0 switches it all off: the other settings change nothing.
+	var reference: LevelConfig = paced.duplicate() as LevelConfig
+	var defaults := LevelConfig.new()
+	reference.quiet_seconds = 0.0
+	reference.burst_seconds = defaults.burst_seconds
+	reference.quiet_spacing_seconds = defaults.quiet_spacing_seconds
+	reference.burst_spacing_seconds = defaults.burst_spacing_seconds
+	reference.quiet_features = defaults.quiet_features
+	check(JSON.stringify(LevelGenerator.new().generate(even_config, tuning, patterns).to_dict())
+		== JSON.stringify(LevelGenerator.new().generate(reference, tuning, patterns).to_dict()),
+		"with quiet_seconds 0, the other pacing settings change nothing")
+
+
+## The track distances where a row of holes or fences starts (one per row, whatever its lanes).
+func _row_starts(layout: LevelLayout) -> Array[float]:
+	var seen: Dictionary = {}
+	for g: Dictionary in layout.gaps:
+		seen["g%.2f" % float(g["start"])] = float(g["start"])
+	for f: Dictionary in layout.fences:
+		seen["f%.2f" % float(f["at"])] = float(f["at"])
+	var out: Array[float] = []
+	out.assign(seen.values())
+	return out
+
+
+## GDD §6 (one new thing at a time): in a level paced in bursts, a burst takes at most one
+## introduction. Two enemies whose starts fall in the same quiet stretch wait for the bursts (a quiet
+## stretch places no enemy), and come in different ones, each after its start.
+func _test_pacing_introductions(base: LevelConfig) -> void:
+	var patterns: Array = LevelGenerator.load_for(base)
+	var checked: int = 0
+	for lanes: int in [3, 5, 6]:
+		for level_seed: int in range(1, 7):
+			var config: LevelConfig = base.duplicate() as LevelConfig
+			config.features = PackedStringArray(["cyborg", "window_cyborg", "pulsing"])
+			config.lane_count = lanes
+			config.level_seed = level_seed
+			config.difficulty = 0.4
+			config.duration_seconds = 150.0
+			config.quiet_seconds = 14.0
+			config.burst_seconds = 7.0
+			var starts: Dictionary[String, float] = {"cyborg": 0.2, "window_cyborg": 0.2}
+			config.feature_starts = starts
+			var tag: String = "lanes=%d seed=%d" % [lanes, level_seed]
+			var gen := LevelGenerator.new()
+			var layout: LevelLayout = gen.generate(config, tuning, patterns)
+			check(gen.warnings.is_empty(), "two introductions in a level paced in bursts: no warnings " + tag)
+			var start: float = 0.2 * layout.length
+			check(gen.quiet_at(start), "both starts fall in a quiet stretch " + tag)
+			var first: Dictionary = {}
+			for p: Dictionary in gen.picks:
+				for f: String in ["cyborg", "window_cyborg"]:
+					if (p["requires"] as Array).has(f) and not first.has(f):
+						first[f] = float(p["at"])
+			if first.size() < 2:
+				check(false, "both features are introduced " + tag)
+				continue
+			for f: String in first:
+				check(float(first[f]) >= start and not gen.quiet_at(float(first[f])),
+					"`%s` is introduced after its start, in a burst (%.0f) %s" % [f, first[f], tag])
+			check(gen.burst_index(float(first["cyborg"])) != gen.burst_index(float(first["window_cyborg"])),
+				"in different bursts (%.0f, %.0f) %s" % [first["cyborg"], first["window_cyborg"], tag])
+			checked += 1
+	check(checked == 18, "introductions checked in %d levels" % checked)
 
 
 ## GDD §3: the floor route under a ceiling is always survivable without the pad. The routes FloorRoute

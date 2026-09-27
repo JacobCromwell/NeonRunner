@@ -72,8 +72,9 @@ var attempts: int = 0
 ## The floor every ceiling keeps safe (GDD §3): its landing zone and its pads' spots, for this level's
 ## pacing and run speed. Rules that add ceilings or floor enemies keep to it.
 var zones: CeilingZones
-## The patterns the pattern pass of the last build placed, in order: {id, requires, at, due} (`due`:
-## an introduction or one of the guarantee's forced picks). For tests and the level report.
+## The patterns the pattern pass of the last build placed, in order: {id, requires, at, used, due}
+## (`used`: the track it took; `due`: an introduction or one of the guarantee's forced picks). For
+## tests and the level report.
 var picks: Array[Dictionary] = []
 
 var _rng := RandomNumberGenerator.new()
@@ -182,7 +183,7 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 			_secure_ceilings(pattern, pattern_start_counts)
 		_settle_due(pattern, cursor)
 		picks.append({"id": String(pattern.get("id", "?")), "requires": pattern.get("requires", []), "at": cursor,
-			"due": due})
+			"used": used, "due": due})
 		var end: float = cursor + used
 		var clear_end: float = end + _spacing_seconds(end, difficulty) * speed
 		if config.paced_in_bursts() and quiet_at(end):
@@ -453,10 +454,29 @@ func ramp_launch(r: Dictionary) -> RampLaunch:
 	return RampLaunch.of(r, tuning, speed)
 
 
-## A weighted random pick among the patterns that fit at track distance `at`: in their difficulty
-## range and lane count, and with every required feature active there (feature_active). With
-## `only`, just the patterns that require that feature. Returns {} (without drawing a random
-## number) when none fits.
+## A weighted random pick among the patterns that fit at track distance `at` (pick_weights). Returns
+## {} (without drawing a random number) when none fits.
+func _pick_pattern(patterns: Array, difficulty: float, at: float, only: String = "") -> Dictionary:
+	var pool: Dictionary = pick_weights(patterns, difficulty, at, only)
+	var candidates: Array = pool["patterns"]
+	var weights: Array[float] = pool["weights"]
+	if candidates.is_empty():
+		return {}
+	var total: float = 0.0
+	for w: float in weights:
+		total += w
+	var roll: float = _rng.randf() * total
+	for i: int in candidates.size():
+		roll -= weights[i]
+		if roll <= 0.0:
+			return candidates[i]
+	return candidates[-1]
+
+
+## The patterns that fit at track distance `at`, in their order in `patterns`, and their pick weights:
+## {"patterns": Array, "weights": Array[float]}. A pattern fits in its difficulty range and lane
+## count, with every required feature active there (feature_active); with `only`, just the patterns
+## that require that feature.
 ## A pattern's weight is its own times the level's feature_weights for what it requires, and with
 ## the campaign's recency curve (LevelConfig.recency_on) times its newest feature's factor; with
 ## keep_feature_share the features' patterns are then scaled back to weigh together what they
@@ -464,10 +484,9 @@ func ramp_launch(r: Dictionary) -> RampLaunch:
 ## bursts, only the patterns _pacing_allows are taken (threats in bursts, enemies only there bar
 ## quiet_features), and a burst that has had its introduction leaves out the features still waiting
 ## for theirs (_intro_held).
-func _pick_pattern(patterns: Array, difficulty: float, at: float, only: String = "") -> Dictionary:
+func pick_weights(patterns: Array, difficulty: float, at: float, only: String = "") -> Dictionary:
 	var candidates: Array = []
 	var weights: Array[float] = []
-	var total: float = 0.0
 	var recency: bool = config.recency_on()
 	var paced: bool = config.paced_in_bursts()
 	var held: PackedStringArray = _intros_waiting(at) if _intro_held(at) else PackedStringArray()
@@ -500,22 +519,12 @@ func _pick_pattern(patterns: Array, difficulty: float, at: float, only: String =
 			curved += weight
 		candidates.append(p)
 		weights.append(weight)
-		total += weight
-	if candidates.is_empty():
-		return {}
 	if recency and config.feature_recency.keep_feature_share and curved > 0.0:
 		var scale: float = plain / curved
-		total = 0.0
 		for i: int in candidates.size():
 			if not (candidates[i].get("requires", []) as Array).is_empty():
 				weights[i] *= scale
-			total += weights[i]
-	var roll: float = _rng.randf() * total
-	for i: int in candidates.size():
-		roll -= weights[i]
-		if roll <= 0.0:
-			return candidates[i]
-	return candidates[-1]
+	return {"patterns": candidates, "weights": weights}
 
 
 ## The picks this build must give a feature, earliest first: each feature's introduction at its
