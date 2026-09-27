@@ -2,7 +2,7 @@ class_name HumanoidParts
 extends Resource
 ## What a HumanoidRig is made of: skeleton proportions, the low-poly pieces on each segment, and
 ## named attachment sets (equipment, zone variants) that can be switched on and off. The player
-## (PlayerSuit) and later the enemy cyborgs share the rig and swap these parts (GDD §9.2: "one
+## (PlayerSuit) and the enemy cyborgs (CyborgSuit) share the rig and swap these parts (GDD §9.2: "one
 ## shared body and skeleton with swappable parts per zone").
 ##
 ## Units are metres at design scale; HumanoidRig scales the figure to whatever size it must fit.

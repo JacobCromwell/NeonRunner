@@ -2,8 +2,9 @@ class_name HumanoidRig
 extends Node3D
 ## A segmented low-poly humanoid: 16 joints (Node3D), each carrying one rigid part (MeshInstance3D)
 ## built from a HumanoidParts description, animated procedurally (code-driven joint rotations, no
-## imported animation). The player (PlayerAvatar) uses it now; the enemy cyborgs will use it with
-## other parts (GDD §9.2: one shared body and skeleton with swappable parts).
+## imported animation). The player (PlayerAvatar, driving it with animate()) and the enemy cyborgs
+## (CyborgBody, posing it with apply_pose()) use it with their own parts (GDD §9.2: one shared body
+## and skeleton with swappable parts).
 ##
 ## Hierarchy: HumanoidRig (its scale fits the figure to a size) → Body (the ground point under the
 ## pelvis: whole-body lean, collapse and squash) → pelvis → chest → neck → head; chest → upper_arm_l/r

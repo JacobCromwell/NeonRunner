@@ -206,6 +206,10 @@ switched-on permanent item: `WeaponPowerup` (auto-fire, tiers 1–4, enemy healt
 `DashPowerup`, `MagnetPowerup` and `SlowTimePowerup`. Breakables (armor, shield, grapple) are charges
 on the Player. The controller's header documents its API: `hud_state()` for the HUD (`charges` -1 for
 permanent items), `equipment()` for the player model, and `try_dash()` / `try_slow_time()`.
+The player model shows what the run carries (`PlayerAvatar.set_equipment`, looks in `PlayerSuit`): the
+weapon sits over the gold arm's (left) shoulder, so shots leave from there (`Player.weapon_muzzle()`),
+and armor that breaks in play shatters. Effects tied to the runner's own glow (the dash's shell and
+lines, the invulnerability tint) use its copper, thinned toward white; the shots keep their colours.
 
 ## Zone skins
 
@@ -328,8 +332,30 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
 ## Characters, UI and audio
 
 - **Characters:** `HumanoidRig` (`scripts/characters/`) is the procedural rig and pose set behind the
-  player model (`PlayerAvatar`, a human in a cyber suit) and the cyborgs (`CyborgBody` with
-  `CyborgSuit`: one skeleton, a part set per zone look, one material per cyborg).
+  player model (`PlayerAvatar`: Razor Echo, look in `PlayerSuit`) and the cyborgs (`CyborgBody` with
+  `CyborgSuit`: one skeleton, a part set per zone look, one material per cyborg). A look is a
+  `HumanoidParts`: `HumanoidPiece` shapes per segment (BOX, PRISM, LATHE, BAND, TORUS, and SHELL, a
+  closed sheet cut to an arc), named attachment sets (equipment, zone variants), and optional
+  `HumanoidPanel`s. A piece's `glow` and `shine` (polish) ride in the mesh (UV.x, the vertex colour's
+  alpha) so a whole segment is one draw call.
+  - **Panels** are stiff flaps hinged at the waist (Razor Echo's coat skirt; looks without them are
+    untouched). All of a rig's panels are one mesh on the pelvis joint; `update_panels()` (called by
+    `animate()`; a user that poses the rig itself with `apply_pose()` calls it after) swings each by a
+    pitch and a roll through a damped spring: it hangs toward the feet (on the ceiling too; on a wall it
+    sags toward real gravity), follows its thigh, trails in the wind of the run and flares when falling,
+    then the leg on its side and the surface push it clear (a hem pushed by the surface trails while
+    the runner moves, otherwise folds the way it leans). `humanoid_panels.gdshaderinc` turns each
+    panel's vertices by the rig's `panel_rot` / `panel_hinge` arrays, so the material must be the rig's
+    own. The numbers are `HumanoidAnimTuning`'s Coat panels group (F6, "Runner animation").
+  - **The player's shader** (`humanoid_body.gdshader`) also has a rim light and `glow_albedo` (soft
+    trim that shines by its own light). The builder stores vertex colours in linear space; on the
+    Compatibility renderer, which works in sRGB space, the shader converts them back (as
+    `kit_common.gdshaderinc` does for the mesh kit). `cyborg_body.gdshader` doesn't yet, so the
+    cyborgs show darker and more saturated on the web than on Forward+ (left for P2, which rebuilds
+    them).
+  - **Colour rule:** the player's only glow on the base model is its soft copper (`PlayerSuit.GLOW`);
+    `test_avatar` keeps it and the effects built from it at least 0.3 from every skin's hazard colours
+    and enemy fire on the hue and saturation wheel, and power-up looks never use it.
 - **UI:** a theme built in code (`scripts/ui/theme/`: `UiStyle` in `data/ui/ui_style.tres`,
   `UiTheme`), code-drawn icons (`scripts/ui/icons/`) and a widget kit (`scripts/ui/widgets/`). Screens
   (`scripts/ui/screens/`) extend `ScreenBase`; the HUD is `RunHud`. Orbitron is for titles and Exo 2
@@ -519,7 +545,9 @@ and ends a stuck run after 600 s of real time.
 ## Review tools
 
 Scenes in `tools/showcase/` show one part of the game up close for visual review (not part of the
-game): the avatar, the enemies (`enemy_showcase` for the cyborg family, `octodog_screech`,
+game): the avatar (`avatar_showcase`: every pose, power-up and concept-sheet view, front, back and
+side; `avatar_run_review`: a scripted run through the game camera on any zone's skin, with any
+power-up look), the enemies (`enemy_showcase` for the cyborg family, `octodog_screech`,
 `drone_truck_showcase`, `bad_dream_showcase`), the UI kit, the screens, a zone skin (`skin_review`:
 any skin from fixed spots, or a scripted run with a ceiling ride and a wall run), and comparison
 sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render

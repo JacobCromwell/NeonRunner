@@ -36,6 +36,7 @@ extends RefCounted
 const CACHE_KEY: String = "player_razor_echo_v1"
 
 ## The signature glow: soft copper (conduits, the ocular implant, the vest's lights).
+## DESIGN-TBD (docs/questions/p1.md 3): how bright and how deep the copper is.
 const GLOW := Color(0.96, 0.64, 0.46)
 ## The copper thinned toward white, for effects laid over the runner (the dash's shell and lines).
 const GLOW_PALE := Color(1.0, 0.8, 0.66)
@@ -87,6 +88,7 @@ const MAGNET := Color(0.3, 0.68, 1.0)
 const SHIELD := Color(0.35, 0.85, 1.0)
 
 ## The rim light that keeps the dark coat's outline on dark tracks (humanoid_body.gdshader).
+## DESIGN-TBD (docs/questions/p1.md 4): its colour and strength.
 const RIM_COLOR := Color(0.62, 0.7, 0.86)
 const RIM_STRENGTH: float = 0.3
 const RIM_POWER: float = 3.0
@@ -231,6 +233,7 @@ static func _torso(list: Array[HumanoidPiece]) -> void:
 ## The copper pattern across the back (the view the player sees all game): a rusted plate carrying
 ## two conduits (a hook and a cross), joined and dropping into a forked Y down to the belt, framed by
 ## two long conduits from the shoulders to the belt.
+## DESIGN-TBD (docs/questions/p1.md 2): the sheet's pipes, simplified; the owner may want other shapes.
 static func _back(list: Array[HumanoidPiece]) -> void:
 	_add(list, &"chest", BOX, Vector3(0.16, 0.115, 0.014), Vector3(0.0, 0.19, 0.11), PLATE, 0.0,
 		{"rotation_degrees": Vector3(-3.8, 0.0, 0.0)})

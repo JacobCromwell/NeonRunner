@@ -103,4 +103,5 @@ extends Resource
 @export_range(0.0, 0.1, 0.005, "suffix:m") var panel_ground_clearance: float = 0.012
 ## On a wall the panels sag this far toward real gravity (sideways in the runner's frame). On the
 ## ceiling they hang toward the feet, as on the floor.
+## DESIGN-TBD (docs/questions/p1.md 7): the brief only says how the ceiling looks.
 @export_range(0.0, 45.0, 1.0, "suffix:°") var panel_wall_sag: float = 12.0

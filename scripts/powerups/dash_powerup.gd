@@ -8,9 +8,10 @@ extends PowerupModule
 ##
 ## The look, while dashing: an energy shell around the player and speed lines streaming past; a
 ## camera kick when it starts and a bigger hit when it smashes an enemy. (No afterimages: seen from
-## the chase camera they all line up behind the player and add up to a glare.) They follow the
-## runner's own glow, Razor Echo's soft copper, thinned toward white (PlayerSuit.GLOW_PALE) so the
-## additive shell and the smash burst never read as a hazard's orange.
+## the chase camera they all line up behind the player and add up to a glare.)
+## DESIGN-TBD (docs/questions/p1.md 6): they follow the runner's own glow, Razor Echo's soft copper,
+## thinned toward white (PlayerSuit.GLOW_PALE) so the additive shell and the smash burst never read as
+## a hazard's orange.
 
 const COLOR := PlayerSuit.GLOW_PALE
 

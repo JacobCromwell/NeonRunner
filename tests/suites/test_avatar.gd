@@ -294,7 +294,7 @@ func _test_run_fits_visual_size() -> void:
 	for top: float in tops:
 		mean += top / tops.size()
 	check(absf(mean - vis.y) <= vis.y * 0.03,
-		"run pose: helmet top averages %.3f m over the stride (visual_size.y %.2f ±3%%)" % [mean, vis.y])
+		"run pose: the top of the head (hair tips) averages %.3f m over the stride (visual_size.y %.2f ±3%%)" % [mean, vis.y])
 	check(box.end.y <= vis.y * 1.04, "run pose: never taller than visual_size.y + 4%% (%.3f m)" % box.end.y)
 	check(box.position.y > -0.01 and box.position.y < 0.01, "run pose: feet reach the ground (%.3f m)" % box.position.y)
 	check(box.size.x <= vis.x * 1.02 and box.size.x >= vis.x * 0.75,
