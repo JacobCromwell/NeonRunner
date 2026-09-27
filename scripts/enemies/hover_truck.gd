@@ -580,9 +580,9 @@ func _shoot(from: Vector3, target: Vector3, speed: float, look: StringName, shot
 	if dist < 0.5:
 		return
 	var velocity: Vector3 = to / dist * speed + Vector3(0.0, 0.0, -world.player.speed)
-	world.projectiles.fire_enemy(from, velocity, look, shot_name, dist / speed + 0.8)
-	# In the player's frame it reaches their spot after dist / speed: the shot's turn lasts until then.
-	world.director.note_attack_shot(self, dist / speed)
+	var shot: Projectile = world.projectiles.fire_enemy(from, velocity, look, shot_name, dist / speed + 0.8)
+	# The cannon shot's turn lasts until the shell and the gunners' bolts have passed the player (GDD §9).
+	world.director.note_attack_shot(self, shot)
 
 
 # --- Destroyed -----------------------------------------------------------------------------------

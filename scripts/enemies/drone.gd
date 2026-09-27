@@ -356,9 +356,10 @@ func _fire_bullet(p: Player) -> void:
 	if dist < 0.5:
 		return
 	var velocity: Vector3 = to / dist * _bullet_speed + Vector3(0.0, 0.0, -p.speed)
-	world.projectiles.fire_enemy(from, velocity, &"enemy_bullet", SHOT_NAME, dist / _bullet_speed + tune.bullet_overshoot)
-	# In the player's frame it reaches their spot after dist / speed: the barrage's turn lasts until then.
-	world.director.note_attack_shot(self, dist / _bullet_speed)
+	var shot: Projectile = world.projectiles.fire_enemy(from, velocity, &"enemy_bullet", SHOT_NAME,
+		dist / _bullet_speed + tune.bullet_overshoot)
+	# The barrage's turn lasts until its bullets have passed the player (GDD §9).
+	world.director.note_attack_shot(self, shot)
 	bullets_fired += 1
 	_flash_left = 0.05
 

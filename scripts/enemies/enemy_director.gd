@@ -10,15 +10,15 @@ extends Node3D
 ## Big attacks take turns (GDD §9; docs/ARCHITECTURE.md, Enemies): an enemy asks
 ## major_attack_blocked() before its big attack's warning starts and waits (pacing, following) while
 ## the answer is true; its attack is on while it reports Enemy.is_major_attack_active(), and the
-## attack's shots hold its turn until they've passed the player (note_attack_shot).
+## attack's shots hold its turn until they're behind the player (note_attack_shot).
 
 const SCRIPTS_DIR: String = "res://scripts/enemies"
 const TUNING_DIR: String = "res://data/enemies"
 const DEFAULT_LEAD: float = 110.0
-## A big attack's shot holds its turn this long after it reaches the player (by then it's behind
-## them, whatever small change of speed they made meanwhile). DESIGN-TBD (docs/questions/r3.md): an
-## attack is over once its last shot has passed the player.
-const SHOT_PASS_MARGIN: float = 0.2
+## A big attack's shot holds its turn until it's this far behind the player's hitbox (metres; it
+## can't come back from there). DESIGN-TBD (docs/questions/r3.md): an attack is over once its last
+## shot has passed the player.
+const SHOT_PASS_MARGIN: float = 0.5
 
 ## Why an enemy's big attack is held: not at all, GDD §9.7's exclusive rule, or taking turns.
 enum Hold { NONE, EXCLUSIVE, TURN }
@@ -37,8 +37,9 @@ var _frame: int = 0
 ## Each enemy's last major_attack_blocked() call, by instance id: {frame, hold, since_frame, since}
 ## (since: when its current wait began, as a frame and a level time).
 var _asks: Dictionary = {}
-## Per type: the level time until which a big attack's shots are still on their way to the player.
-var _shots_until: Dictionary = {}
+## The shots of big attacks, until they've passed the player: [{shot: Projectile, type, name}]
+## (the pool reuses a Projectile, so its name must still match).
+var _shots: Array[Dictionary] = []
 static var _scripts: Dictionary = {}
 static var _tunings: Dictionary = {}
 static var _warned: Dictionary = {}
@@ -53,7 +54,7 @@ func setup(p_world: RunWorld) -> void:
 	_next = 0
 	_frame = 0
 	_asks.clear()
-	_shots_until.clear()
+	_shots.clear()
 	for entry: Dictionary in world.layout.enemies:
 		var e: Dictionary = entry.duplicate()
 		e["spawn_at"] = float(entry["at"]) - lead_for(String(entry["type"]))
@@ -68,6 +69,9 @@ func update(player_distance: float) -> void:
 	for id: int in _asks.keys():
 		if int(_asks[id]["frame"]) < _frame - 2:
 			_asks.erase(id)
+	for i: int in range(_shots.size() - 1, -1, -1):
+		if not _on_its_way(_shots[i]):
+			_shots.remove_at(i)
 	while _next < _pending.size() and player_distance >= float(_pending[_next]["spawn_at"]):
 		spawn(_pending[_next])
 		_next += 1
@@ -170,18 +174,32 @@ func turn_wait(enemy: Enemy) -> float:
 	return maxf(world.level_time() - float(rec["since"]), 0.0)
 
 
-## A shot of `enemy`'s big attack reaches the player in `reach_seconds`: while big attacks take
-## turns, the attack's turn lasts until the shot has passed them (SHOT_PASS_MARGIN).
-func note_attack_shot(enemy: Enemy, reach_seconds: float) -> void:
-	if world == null:
-		return
-	var until: float = world.level_time() + maxf(reach_seconds, 0.0) + SHOT_PASS_MARGIN
-	_shots_until[enemy.type_id] = maxf(float(_shots_until.get(enemy.type_id, -INF)), until)
+## `shot` (what ProjectilePool.fire_enemy returned; null is ignored) is part of `enemy`'s big attack:
+## while big attacks take turns, the attack's turn lasts until the shot has passed the player
+## (SHOT_PASS_MARGIN behind them) or is gone. It's watched where it really is, so the turn lasts as
+## long as the shot can still reach the player, whatever their speed does meanwhile (a dash's end).
+func note_attack_shot(enemy: Enemy, shot: Projectile) -> void:
+	if shot != null and shot.in_use:
+		_shots.append({"shot": shot, "type": enemy.type_id, "name": shot.hazard_name})
 
 
 ## True while shots of a big attack of `type` are still on their way to the player.
 func shots_on_their_way(type: StringName) -> bool:
-	return world != null and float(_shots_until.get(type, -INF)) > world.level_time()
+	for rec: Dictionary in _shots:
+		if rec["type"] == type and _on_its_way(rec):
+			return true
+	return false
+
+
+## A noted shot is still in flight (the same shot: the pool hasn't reused it for another) and not yet
+## past the player.
+func _on_its_way(rec: Dictionary) -> bool:
+	var shot: Projectile = rec["shot"]
+	if not is_instance_valid(shot) or not shot.in_use or shot.hazard_name != rec["name"] or world == null \
+			or world.player == null:
+		return false
+	var behind: float = world.tuning.hurtbox_size.z * 0.5 + shot.radius + SHOT_PASS_MARGIN
+	return shot.position.z <= world.player.position.z + behind
 
 
 func _hold_for(enemy: Enemy) -> Hold:
@@ -192,8 +210,8 @@ func _hold_for(enemy: Enemy) -> Hold:
 			return Hold.EXCLUSIVE
 	if not big_attacks_take_turns():
 		return Hold.NONE
-	for type: StringName in _shots_until:
-		if type != enemy.type_id and shots_on_their_way(type):
+	for rec: Dictionary in _shots:
+		if rec["type"] != enemy.type_id and _on_its_way(rec):
 			return Hold.TURN
 	for e: Enemy in active:
 		if e != enemy and e.type_id != enemy.type_id and _in_play(e) and e.is_major_attack_active():

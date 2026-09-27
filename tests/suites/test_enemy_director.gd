@@ -161,8 +161,9 @@ func _test_waits_before_warning() -> void:
 	await sim.free_world(w)
 
 
-## Shots hold their attack's turn until they've passed the player (EnemyDirector.note_attack_shot):
-## the next type's warning starts only then.
+## Shots hold their attack's turn until they've passed the player (EnemyDirector.note_attack_shot,
+## SHOT_PASS_MARGIN behind them), watched where they really are: the next type's warning starts only
+## then.
 func _test_shots_hold_the_turn() -> void:
 	var w: RunWorld = _world(true)
 	var a := _dummy(w, "alpha", {"first": 0.2, "interval": 10.0, "warning": 0.4, "attack": 0.2, "shot": 0.8})
@@ -178,7 +179,8 @@ func _test_shots_hold_the_turn() -> void:
 	var hit: float = _time_of(a, "hit")
 	var start_b: float = _time_of(b, "start")
 	check(in_flight[0], "after its attack, its shot is still on its way")
-	check(start_b >= hit + 0.8 + EnemyDirector.SHOT_PASS_MARGIN - 0.02 and start_b <= hit + 0.8 + EnemyDirector.SHOT_PASS_MARGIN + 0.1,
+	# It comes level with the player 0.8 s after it's fired, and is past them a few frames later.
+	check(start_b >= hit + 0.8 and start_b <= hit + 0.8 + 0.2,
 		"another type starts once the shot has passed the player (%.2f s after it was fired)" % (start_b - hit))
 	check(not w.director.shots_on_their_way(&"alpha"), "and then it's gone")
 	await sim.free_world(w)
@@ -289,7 +291,7 @@ func _test_many() -> void:
 			"warning": rng.randf_range(0.3, 1.0), "attack": rng.randf_range(0.1, 0.8),
 			"shot": rng.randf_range(0.3, 0.9) if i % 2 == 0 else 0.0}
 		longest = maxf(longest, float(p["warning"]) + float(p["attack"])
-			+ (float(p["shot"]) + EnemyDirector.SHOT_PASS_MARGIN if float(p["shot"]) > 0.0 else 0.0))
+			+ (float(p["shot"]) + 0.2 if float(p["shot"]) > 0.0 else 0.0))
 		dummies.append(_dummy(w, "type%d" % i, p))
 	await _run(w, 60.0)
 	var overlaps: int = 0
@@ -309,7 +311,7 @@ func _test_many() -> void:
 					continue
 				for g: Array in dummies[j].get(&"history"):
 					if g[0] == "start" and float(g[1]) > float(h[1]) + 0.0001 \
-							and float(g[1]) < float(h[1]) + shot + EnemyDirector.SHOT_PASS_MARGIN - 0.02:
+							and float(g[1]) < float(h[1]) + shot - 0.02:
 						shot_overlaps += 1
 	check(overlaps == 0 and shot_overlaps == 0, "no two types' big attacks overlap (%d, %d during shots)" % [overlaps, shot_overlaps])
 	var worst: float = 0.0

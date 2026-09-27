@@ -143,9 +143,11 @@ screech's swipe) and the hover truck's entrance don't take part. An enemy takes 
 the enemies still to come (the Barnacle Turret, Buzz Overdrive, the Resonator, the Gilded Sentinels,
 the Tithe Collector) opt in the same way for whichever of their attacks count as big:
 - **Report it.** `is_major_attack_active()` is true from the start of the attack's warning until its
-  last hazard is over (the lunge has passed, the lurch has ended). Each shot fired in it goes through
-  `world.director.note_attack_shot(self, seconds)`, the time the shot takes to reach the player: the
-  attack's turn lasts until it has passed them (`EnemyDirector.SHOT_PASS_MARGIN` after that).
+  last hazard is over (the lunge has passed, the lurch has ended). Each shot fired in it goes to
+  `world.director.note_attack_shot(self, shot)` (the Projectile `fire_enemy()` returned): the attack's
+  turn lasts until the shot is behind the player (`EnemyDirector.SHOT_PASS_MARGIN`) or gone. The
+  director watches where the shot really is, so a change in the player's speed (a dash ending) can't
+  cut the turn short.
 - **Ask before the warning, never after it.** Just before the warning would start, once everything
   else about the attack is ready (its own spacing, its target, a clear stretch), the enemy asks
   `world.director.major_attack_blocked(self)`, and while the answer is true it doesn't start, asks
