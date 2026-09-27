@@ -28,6 +28,9 @@ const END_BAND: float = 1.2
 const TOP_LIMIT: float = 7.4
 ## Flush lamps along each lane seam, this far apart.
 const LAMP_SPACING: float = 7.5
+## A gunship's engines: its cores' glow and their halos' (dim: see _ship()).
+const ENGINE_GLOW: float = 0.45
+const ENGINE_HALO: float = 0.14
 
 ## Weak: the skin owns this builder, so a strong reference back would keep both alive forever.
 var skin: CorporateSkin:
@@ -273,7 +276,8 @@ func _viaduct(batch: MeshBatch, size: Vector3, edges: Array[float], hw: float, w
 ## A military gunship heading toward the runner: an armoured underside (the surface), sloped flanks
 ## with the corporation's mark stencilled on them and a row of running lights, an armoured bow rising
 ## over the near end with a dark cockpit band, a superstructure with a radar dome and masts, and its
-## engines at the far end over the orange band, their cold glow dropping below the hull. No guns.
+## engines at the far end over the orange band, glowing dimly: a runner dropping off the end passes
+## right by them, so they never flare up or fill the screen. No guns.
 func _ship(batch: MeshBatch, size: Vector3, edges: Array[float], hw: float, variant: int) -> void:
 	var s: MeshLayer = batch.layer(skin.solid_material())
 	var g: MeshLayer = batch.layer(skin.glow_material())
@@ -339,7 +343,8 @@ func _ship(batch: MeshBatch, size: Vector3, edges: Array[float], hw: float, vari
 	for mx: float in [-bw * 0.35, bw * 0.35]:
 		s.box(Vector3(mx, rise + 3.4, bz + 0.8), Vector3(0.1, 2.4, 0.1), trim)
 	s.box(Vector3(bw * 0.35, rise + 4.65, bz + 0.8), Vector3(0.2, 0.2, 0.2), lamp, 0.9)
-	# Stern: engines above the orange band, their glow dropping below the hull so it reads from underneath.
+	# Stern: engines above the orange band, dim (the camera passes right by them when the runner drops
+	# off the end: a bright core or a big halo would flash across the screen).
 	s.rect(Vector3(-hw, 0, zf), Vector3(0, rise, 0), Vector3(hw * 2.0, 0, 0), trim.darkened(0.3))
 	var engines: int = clampi(roundi(hw * 2.0 / 4.0), 1, 4)
 	for i: int in engines:
@@ -349,7 +354,8 @@ func _ship(batch: MeshBatch, size: Vector3, edges: Array[float], hw: float, vari
 		s.prism_xform(nozzle, 8, Color(0.1, 0.1, 0.12), 0.0, MeshKit.PAT_PLAIN, false)
 		var core := Transform3D(Basis(Vector3(r * 0.72, 0, 0), Vector3(0, 0, -0.05), Vector3(0, r * 0.72, 0)),
 			Vector3(ex, 1.2, zf - 1.1))
-		s.prism_xform(core, 8, skin.engine_color, 0.9)
-		g.rect(Vector3(ex - r * 2.4, 1.2 - r * 2.4, zf - 1.3), Vector3(r * 4.8, 0, 0), Vector3(0, r * 4.8, 0), skin.engine_color,
-			0.4, MeshKit.SHAPE_RADIAL)
-	g.rect(Vector3(-hw, -2.2, zf - 0.3), Vector3(hw * 2.0, 0, 0), Vector3(0, 3.2, 0), skin.engine_color, 0.4, MeshKit.SHAPE_RADIAL)
+		s.prism_xform(core, 8, skin.engine_color, ENGINE_GLOW)
+		# The halo stays above the underside (nothing glowing hangs where the runner drops off).
+		var halo: float = minf(r * 1.5, 1.15)
+		g.rect(Vector3(ex - halo, 1.2 - halo, zf - 1.3), Vector3(halo * 2.0, 0, 0), Vector3(0, halo * 2.0, 0), skin.engine_color,
+			ENGINE_HALO, MeshKit.SHAPE_RADIAL)

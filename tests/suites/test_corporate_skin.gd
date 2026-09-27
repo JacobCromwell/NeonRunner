@@ -466,8 +466,9 @@ func _clear_play_space(skin: CorporateSkin) -> void:
 
 ## Every kind of ceiling, over every number of lanes from one to six, full width or narrow and off
 ## centre (task B3): a flat underside covering exactly its lanes (a gate: from wall to wall), nothing
-## hanging below it but flush lamps and seams, the orange band at its far end, a seam under each lane
-## boundary, and nothing rising past TOP_LIMIT; only a ceiling across every lane becomes a gate.
+## hanging below it but flush lamps and seams (and no glow a runner dropping off it would pass
+## through), the orange band at its far end, a seam under each lane boundary, and nothing rising past
+## TOP_LIMIT; only a ceiling across every lane becomes a gate.
 func _ceilings(skin: CorporateSkin) -> void:
 	var lane_w: float = tuning.lane_width
 	var wall_x: float = 3.0 * lane_w + tuning.wall_margin
@@ -484,7 +485,7 @@ func _ceilings(skin: CorporateSkin) -> void:
 				edges.append(offset - size.x * 0.5 + k * lane_w)
 			var mesh: ArrayMesh = skin.ceilings().mesh_for(kind, 1, size, edges, offset, wall_x, tuning.ceiling_height)
 			var tag: String = "kind %d, %d lanes" % [kind, lanes]
-			var under := {"min_x": INF, "max_x": -INF, "lowest": 0.0, "highest": 0.0, "band": false}
+			var under := {"min_x": INF, "max_x": -INF, "lowest": 0.0, "glow_lowest": 0.0, "highest": 0.0, "band": false}
 			for s: int in mesh.get_surface_count():
 				var arrays: Array = mesh.surface_get_arrays(s)
 				var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
@@ -494,6 +495,7 @@ func _ceilings(skin: CorporateSkin) -> void:
 					var v: Vector3 = verts[i]
 					under["highest"] = maxf(under["highest"], v.y)
 					if glow_surface:
+						under["glow_lowest"] = minf(under["glow_lowest"], v.y)
 						continue
 					under["lowest"] = minf(under["lowest"], v.y)
 					if absf(v.y) < 0.001:
@@ -506,6 +508,9 @@ func _ceilings(skin: CorporateSkin) -> void:
 				problems.append("%s: underside spans %.2f..%.2f, not ±%.2f" % [tag, under["min_x"], under["max_x"], want])
 			if under["lowest"] < -0.06:
 				problems.append("%s: something hangs %.2f m below the surface" % [tag, under["lowest"]])
+			# A runner dropping off the end passes through anything glowing below it (a flash).
+			if under["glow_lowest"] < -0.1:
+				problems.append("%s: a glow hangs %.2f m below the surface" % [tag, under["glow_lowest"]])
 			if under["highest"] > CorporateCeilings.TOP_LIMIT + 0.01:
 				problems.append("%s: something rises %.2f m above the surface (limit %.1f)" % [tag, under["highest"],
 					CorporateCeilings.TOP_LIMIT])
