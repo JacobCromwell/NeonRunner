@@ -170,16 +170,32 @@ func recency_on() -> bool:
 
 ## The recency curve's factor for a pattern that requires `requires` (LevelGenerator): its newest
 ## feature's (the smallest age, so a pattern that shows off a new feature counts as one of its
-## picks); 1 for a pattern that requires nothing, without the curve, or when no feature is dated.
+## picks), no more than the cap of any capped feature it requires (FeatureRecency.max_factor); 1
+## for a pattern that requires nothing, without the curve, or when no feature is dated.
 func recency_factor(requires: Array) -> float:
 	if not recency_on() or requires.is_empty():
 		return 1.0
 	var newest: int = -1
+	var cap: float = INF
 	for need: Variant in requires:
-		var age: int = int(feature_ages.get(String(need), -1))
+		var feature: String = String(need)
+		var age: int = int(feature_ages.get(feature, -1))
 		if age >= 0 and (newest < 0 or age < newest):
 			newest = age
-	return feature_recency.factor(newest)
+		if feature_recency.max_factor.has(feature):
+			cap = minf(cap, float(feature_recency.max_factor[feature]))
+	return minf(feature_recency.factor(newest), cap)
+
+
+## True if the recency curve holds a pattern that requires `requires` at a capped factor (it
+## requires a feature FeatureRecency.max_factor lists): the curve never scales it back with the rest.
+func recency_capped(requires: Array) -> bool:
+	if not recency_on():
+		return false
+	for need: Variant in requires:
+		if feature_recency.max_factor.has(String(need)):
+			return true
+	return false
 
 
 ## True if the level alternates quiet stretches and bursts (quiet_seconds above 0).

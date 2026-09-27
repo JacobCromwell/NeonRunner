@@ -524,15 +524,20 @@ func _test_rules_guarantees(base: LevelConfig) -> void:
 
 ## The campaign's recency curve (GDD §5, owner's review P2 13: beyond the guarantee, a level's newest
 ## things get the most picks; FeatureRecency): a pattern's pick weight is multiplied by the curve's
-## factor for its newest feature's age; with keep_feature_share the features' patterns are then scaled
-## back to weigh together what they did without it, and plain obstacles keep their weight, so the level
-## picks them as often as before. Without ages, or with the curve off, every weight is as it was. Over
-## many levels the feature the level introduces gets far more picks, and the oldest fewer, never none.
+## factor for its newest feature's age, no more than a capped feature's cap (max_factor); with
+## keep_feature_share the features' patterns, capped ones apart, are then scaled back so that
+## together they weigh what they did without it, kind by kind with keep_share_by_kind
+## (LevelGenerator.pattern_kind; patterns with enemies by the enemies they place, enemy_count), and
+## plain obstacles keep their weight, so the level picks them as often as before. Without ages, or
+## with the curve off, every weight is as it was. Over many levels the feature the level introduces
+## gets more picks (from the other features of its kind), the oldest fewer, never none, and the level
+## places about as many enemies.
 func _test_recency(base: LevelConfig) -> void:
 	var patterns: Array = LevelGenerator.load_for(base)
 	var by_id: Dictionary = {}
 	for p: Dictionary in patterns:
 		by_id[String(p["id"])] = p
+	_test_pattern_kinds(by_id)
 	var curve := FeatureRecency.new()
 	var plain: LevelConfig = base.duplicate() as LevelConfig
 	plain.features = PackedStringArray(["cyborg", "ceilings", "pulsing", "window_cyborg", "ramps", "speed_pads"])
@@ -557,39 +562,84 @@ func _test_recency(base: LevelConfig) -> void:
 	var w0: Dictionary = _weights_by_id(gen.pick_weights(patterns, 0.5, at))
 	gen.config = curved
 	var w1: Dictionary = _weights_by_id(gen.pick_weights(patterns, 0.5, at))
+	curve.keep_share_by_kind = false
+	var together: Dictionary = _weights_by_id(gen.pick_weights(patterns, 0.5, at))
 	curve.keep_feature_share = false
 	var raw: Dictionary = _weights_by_id(gen.pick_weights(patterns, 0.5, at))
 	curve.keep_feature_share = true
+	curve.keep_share_by_kind = true
+	var caps: Dictionary[String, float] = {"window_cyborg": 1.0}
+	curve.max_factor = caps
+	check(curved.recency_factor(["window_cyborg", "ramps"]) == 1.0 and curved.recency_capped(["window_cyborg", "ramps"])
+		and not curved.recency_capped(["ramps"]), "a capped feature holds a pattern that requires it at its cap")
+	var capped: Dictionary = _weights_by_id(gen.pick_weights(patterns, 0.5, at))
+	var no_caps: Dictionary[String, float] = {}
+	curve.max_factor = no_caps
 	curve.enabled = false
 	var off: Dictionary = _weights_by_id(gen.pick_weights(patterns, 0.5, at))
 	curve.enabled = true
 	check(off == w0, "with the curve off, every pattern weighs what it did")
 	check(w1.keys() == w0.keys() and w0.size() > 10, "the curve changes weights, not which patterns fit (%d)" % w0.size())
+	# Per kind, what the features' patterns weigh (those with enemies, by the enemies they place):
+	# without the curve [0], with it [1], and with window cyborgs capped at 1 [2]; each kind's scale.
+	var sums: Array[Array] = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
+	var scales: Array[float] = [-1.0, -1.0, -1.0]
+	var capped_scales: Array[float] = [-1.0, -1.0, -1.0]
+	var one_scale: float = -1.0
 	var feat0: float = 0.0
-	var feat1: float = 0.0
-	var scale: float = -1.0
+	var feat_together: float = 0.0
 	var combos: int = 0
+	var capped_ok: bool = true
+	var capped_seen: int = 0
 	for id: String in w0:
-		var requires: Array = (by_id[id] as Dictionary).get("requires", [])
+		var p: Dictionary = by_id[id]
+		var requires: Array = p.get("requires", [])
 		var factor: float = curved.recency_factor(requires)
 		check(is_equal_approx(float(raw[id]), float(w0[id]) * factor),
 			"%s's weight is multiplied by its newest feature's factor (%.2f)" % [id, factor])
 		if requires.is_empty():
-			check(is_equal_approx(float(w1[id]), float(w0[id])), "a plain obstacle (%s) keeps its weight" % id)
+			check(is_equal_approx(float(w1[id]), float(w0[id])) and is_equal_approx(float(together[id]), float(w0[id]))
+				and is_equal_approx(float(capped[id]), float(w0[id])), "a plain obstacle (%s) keeps its weight" % id)
 			continue
 		combos += 1 if requires.size() > 1 else 0
-		feat0 += float(w0[id])
-		feat1 += float(w1[id])
+		var kind: int = LevelGenerator.pattern_kind(p)
+		var measure: float = float(LevelGenerator.enemy_count(p, plain.lane_count)) if kind == 0 else 1.0
+		sums[0][kind] += float(w0[id]) * measure
+		sums[1][kind] += float(w1[id]) * measure
+		sums[2][kind] += float(capped[id]) * measure
 		var s: float = float(w1[id]) / (float(w0[id]) * factor)
-		if scale < 0.0:
-			scale = s
-		check(is_equal_approx(s, scale), "every feature's patterns are scaled back alike (%s: %.3f, %.3f)" % [id, s, scale])
-	check(is_equal_approx(feat0, feat1), "the features' patterns weigh together what they did (%.3f, %.3f)" % [feat0, feat1])
-	check(scale > 0.0 and scale < 1.0, "and the scale that keeps it is below 1 (%.3f)" % scale)
+		if scales[kind] < 0.0:
+			scales[kind] = s
+		check(is_equal_approx(s, scales[kind]), "a kind's patterns are scaled back alike (%s: %.3f, %.3f)" % [id, s, scales[kind]])
+		var s1: float = float(together[id]) / (float(w0[id]) * factor)
+		if one_scale < 0.0:
+			one_scale = s1
+		check(is_equal_approx(s1, one_scale), "without keep_share_by_kind, all alike (%s: %.3f, %.3f)" % [id, s1, one_scale])
+		feat0 += float(w0[id])
+		feat_together += float(together[id])
+		if requires.has("window_cyborg"):
+			# Capped at 1: its own weight, never scaled back.
+			capped_ok = capped_ok and is_equal_approx(float(capped[id]), float(w0[id]))
+			capped_seen += 1
+		else:
+			var sc: float = float(capped[id]) / (float(w0[id]) * factor)
+			if capped_scales[kind] < 0.0:
+				capped_scales[kind] = sc
+			check(is_equal_approx(sc, capped_scales[kind]), "with a cap, the rest of a kind is scaled back alike (%s)" % id)
+	for kind: int in 3:
+		check(sums[0][kind] > 0.0, "kind %d was checked" % kind)
+		check(is_equal_approx(sums[0][kind], sums[1][kind]) and is_equal_approx(sums[0][kind], sums[2][kind]),
+			"kind %d weighs what it did (%s), with a cap too: %.3f, %.3f, %.3f" % [kind,
+			"by the enemies its patterns place" if kind == 0 else "its share", sums[0][kind], sums[1][kind], sums[2][kind]])
+	check(is_equal_approx(feat0, feat_together) and one_scale > 0.0 and one_scale < 1.0,
+		"without keep_share_by_kind, the features' patterns weigh together what they did (%.3f, %.3f; scale %.3f)"
+		% [feat0, feat_together, one_scale])
+	check(capped_ok and capped_seen >= 2, "a capped feature's patterns keep their own weight (%d)" % capped_seen)
 	check(combos >= 2, "patterns requiring several features were checked (%d)" % combos)
 
-	# Over many levels, picks follow the curve.
+	# Over many levels, picks follow the curve, and the level's patterns place as many enemies.
 	var tally: Array[Dictionary] = [{}, {}]
+	var placed: Array[int] = [0, 0]
 	for lanes: int in [3, 5, 6]:
 		for level_seed: int in range(1, 9):
 			for k: int in 2:
@@ -604,17 +654,48 @@ func _test_recency(base: LevelConfig) -> void:
 					for f: Variant in (["core"] if requires.is_empty() else requires):
 						tally[k][String(f)] = int(tally[k].get(String(f), 0)) + 1
 					tally[k]["total"] = int(tally[k].get("total", 0)) + 1
+					placed[k] += LevelGenerator.enemy_count(by_id[String(p["id"])], lanes)
 	var before: Dictionary = tally[0]
 	var after: Dictionary = tally[1]
-	check(int(after.get("speed_pads", 0)) >= 2 * int(before.get("speed_pads", 0)),
-		"the feature the level introduces gets far more picks (%d, without the curve %d)" % [after.get("speed_pads", 0), before.get("speed_pads", 0)])
+	# A safe mechanic takes its extra picks from the other safe ones only (keep_share_by_kind).
+	check(int(after.get("speed_pads", 0)) * 10 >= int(before.get("speed_pads", 0)) * 12,
+		"the feature the level introduces gets more picks (%d, without the curve %d)" % [after.get("speed_pads", 0), before.get("speed_pads", 0)])
 	check(int(after.get("cyborg", 0)) < int(before.get("cyborg", 0)) and int(after.get("cyborg", 0)) > 0,
 		"the oldest gets fewer, but some (%d, without the curve %d)" % [after.get("cyborg", 0), before.get("cyborg", 0)])
 	var core0: float = float(before.get("core", 0)) / float(before["total"])
 	var core1: float = float(after.get("core", 0)) / float(after["total"])
 	check(absf(core1 - core0) < 0.04, "plain obstacles keep their share of the picks (%.3f, without the curve %.3f)" % [core1, core0])
-	print("  recency curve: picks of the newest feature %d -> %d, the oldest %d -> %d, plain obstacles' share %.3f -> %.3f"
-		% [before.get("speed_pads", 0), after.get("speed_pads", 0), before.get("cyborg", 0), after.get("cyborg", 0), core0, core1])
+	check(placed[1] >= placed[0] * 0.9, "the level's patterns place about as many enemies (%d, without the curve %d)"
+		% [placed[1], placed[0]])
+	print("  recency curve: picks of the newest feature %d -> %d, the oldest %d -> %d, plain obstacles' share %.3f -> %.3f, enemies placed %d -> %d"
+		% [before.get("speed_pads", 0), after.get("speed_pads", 0), before.get("cyborg", 0), after.get("cyborg", 0), core0, core1,
+		placed[0], placed[1]])
+
+
+## LevelGenerator.pattern_kind (enemies, obstacles only, safe) and enemy_count (as _pick_lanes picks
+## lanes) on made-up patterns and a real one.
+func _test_pattern_kinds(by_id: Dictionary) -> void:
+	var enemy_row: Dictionary = {"elements": [{"kind": "fence", "lanes": {"mode": "random", "count": 2}},
+		{"kind": "enemy", "type": "cyborg", "lanes": {"mode": "others"}},
+		{"kind": "enemy", "type": "cyborg", "lanes": {"mode": "same"}},
+		{"kind": "enemy", "type": "window_cyborg", "side": "random"}]}
+	check(LevelGenerator.pattern_kind(enemy_row) == 0 and LevelGenerator.pattern_kind({"elements": [{"kind": "gap"}]}) == 1
+		and LevelGenerator.pattern_kind({"elements": [{"kind": "sign", "side": "left"}]}) == 1
+		and LevelGenerator.pattern_kind({"elements": [{"kind": "hull"}, {"kind": "credits"}]}) == 2
+		and LevelGenerator.pattern_kind({"elements": [{"kind": "ramp"}]}) == 2, "patterns' kinds: enemies, obstacles only, safe")
+	# 2 fenced lanes; the others (3 of 5) get a cyborg each; "same" repeats those 3; one on the wall.
+	check(LevelGenerator.enemy_count(enemy_row, 5) == 7 and LevelGenerator.enemy_count(enemy_row, 3) == 3,
+		"enemies a pattern places: its selectors' lanes, one per wall enemy (%d at 5 lanes, %d at 3)"
+		% [LevelGenerator.enemy_count(enemy_row, 5), LevelGenerator.enemy_count(enemy_row, 3)])
+	var selectors: Dictionary = {"all": 6, "all_but": 5, "edge": 1, "center": 1}
+	for mode: String in selectors:
+		var one: Dictionary = {"elements": [{"kind": "enemy", "type": "screech", "lanes": {"mode": mode, "count": 1}}]}
+		check(LevelGenerator.enemy_count(one, 6) == int(selectors[mode]), "a `%s` selector's enemies at 6 lanes" % mode)
+	var frac: Dictionary = {"elements": [{"kind": "enemy", "type": "cyborg", "lanes": {"mode": "random", "frac": 0.5}}]}
+	check(LevelGenerator.enemy_count(frac, 5) == 3 and LevelGenerator.enemy_count(frac, 3) == 2,
+		"a `frac` selector rounds, as the generator does")
+	check(by_id.has("host_single") and LevelGenerator.enemy_count(by_id["host_single"], 6) == 1
+		and LevelGenerator.pattern_kind(by_id["host_single"]) == 0, "a host's pattern places one host")
 
 
 ## pick_weights()'s result as pattern id → weight.

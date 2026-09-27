@@ -426,18 +426,26 @@ func _floor_under(layout: LevelLayout, h: Dictionary) -> int:
 ## newest things get the most picks): the campaign gives every level's copy its curve
 ## (data/tuning/feature_recency.tres, F6-tunable) and each feature's age, the levels since the campaign
 ## introduced it. The curve peaks where a feature is introduced, stays high over the next levels and
-## settles lower, never at zero. Over the campaign, the features a level introduces get far more of
-## its picks than without the curve (its own picks: an introduction or a guarantee's forced pick is
-## there either way), and plain obstacles keep their share.
+## settles lower, never at zero. It never boosts a feature the data caps (whose rules keep only so
+## many of its enemies, or the rare vent screech), and it keeps each kind of pattern's share (the
+## enemies they place, for patterns with enemies): checked exactly at spots all through every level,
+## so no level gets easier. Over the campaign, the uncapped features a level introduces get far more
+## of its picks than without the curve (its own picks: an introduction or a guarantee's forced pick
+## is there either way), and plain obstacles keep their share.
 func _test_recency(campaign: Campaign) -> void:
 	var curve: FeatureRecency = campaign.feature_recency
 	check(curve != null and curve.resource_path == "res://data/tuning/feature_recency.tres" and curve.enabled
-		and curve.keep_feature_share, "the campaign has its recency curve, switched on")
+		and curve.keep_feature_share and curve.keep_share_by_kind, "the campaign has its recency curve, switched on, keeping each kind's share")
 	if curve == null:
 		return
 	check(curve.introduced > curve.one_level_later and curve.one_level_later > curve.two_levels_later
 		and curve.two_levels_later > curve.three_levels_later and curve.three_levels_later >= curve.older and curve.older > 0.0,
 		"the level that introduces a feature picks it most, the next ones still a lot, older ones less but never none")
+	for f: String in ["host", "hover_truck", "drone", "octodog", "screech_vents"]:
+		check(curve.max_factor.has(f) and float(curve.max_factor[f]) <= 1.0,
+			"`%s` is never boosted: its rules keep only so many (the vent screech is rare, GDD §9.5)" % f)
+	for f: String in curve.max_factor:
+		check(FIRST_LEVEL.has(f), "a capped feature (`%s`) is one the campaign knows" % f)
 	for s: CampaignStep in campaign.steps():
 		if not s.is_level():
 			continue
@@ -456,33 +464,84 @@ func _test_recency(campaign: Campaign) -> void:
 	var intro: Array[int] = [0, 0]
 	var core: Array[int] = [0, 0]
 	var total: Array[int] = [0, 0]
+	var spots: int = 0
 	for s: CampaignStep in campaign.steps():
 		if not s.is_level():
 			continue
+		# The levels that introduce an uncapped feature with patterns get the seed sweep too: a level's
+		# own seed alone is too few picks to see the curve in.
+		var sweep: int = 0
+		for f: String in s.level.features:
+			if FIRST_LEVEL.get(f, "") == s.id and not curve.max_factor.has(f) and not LevelConfig.PLANNED_FEATURES.has(f):
+				sweep = 8
 		for lanes: int in [3, 5, 6]:
-			for k: int in 2:
-				var config: LevelConfig = campaign.configure(s, lanes)
-				if k == 0:
-					config.feature_recency = null
-				var gen := LevelGenerator.new()
-				gen.generate(config, tuning, LevelGenerator.load_for(config))
-				for p: Dictionary in gen.picks:
-					total[k] += 1
-					var requires: Array = p["requires"]
-					if requires.is_empty():
-						core[k] += 1
-					if bool(p["due"]):
-						continue
-					for f: Variant in requires:
-						if int(config.feature_ages.get(String(f), -1)) == 0:
-							intro[k] += 1
-							break
-	check(intro[1] * 10 >= intro[0] * 13, "the features a level introduces get far more of its picks (%d, without the curve %d)"
+			for seed_k: int in sweep + 1:
+				for k: int in 2:
+					var config: LevelConfig = campaign.configure(s, lanes)
+					if seed_k > 0:
+						config.level_seed = 9300 + seed_k
+					if k == 0:
+						config.feature_recency = null
+					var patterns: Array = LevelGenerator.load_for(config)
+					var gen := LevelGenerator.new()
+					gen.generate(config, tuning, patterns)
+					for p: Dictionary in gen.picks:
+						total[k] += 1
+						var requires: Array = p["requires"]
+						if requires.is_empty():
+							core[k] += 1
+						if bool(p["due"]):
+							continue
+						for f: Variant in requires:
+							if int(config.feature_ages.get(String(f), -1)) == 0 and not curve.max_factor.has(String(f)):
+								intro[k] += 1
+								break
+					if k == 1 and seed_k == 0:
+						spots += _check_kind_shares(gen, config, patterns, "%s lanes=%d" % [s.id, lanes])
+	check(spots >= 15 * 3 * 8, "the curve keeps each kind's share all through every level (%d spots)" % spots)
+	check(intro[1] * 10 >= intro[0] * 12, "the uncapped features a level introduces get more of its picks (%d, without the curve %d)"
 		% [intro[1], intro[0]])
 	check(absf(float(core[1]) / total[1] - float(core[0]) / total[0]) < 0.03,
 		"plain obstacles keep their share of the picks (%.3f, without the curve %.3f)" % [float(core[1]) / total[1], float(core[0]) / total[0]])
-	print("  recency curve over the campaign: %d own picks of newly introduced features (%d without), plain obstacles %.3f of picks (%.3f)"
+	print("  recency curve over the campaign: %d own picks of newly introduced uncapped features (%d without), plain obstacles %.3f of picks (%.3f)"
 		% [intro[1], intro[0], float(core[1]) / total[1], float(core[0]) / total[0]])
+
+
+## At spots all through a generated campaign level (with its difficulty there), the curve keeps what
+## each kind of feature pattern weighs (LevelGenerator.pattern_kind; patterns with enemies by the
+## enemies they place) and a capped feature's patterns at their own weight times the cap. Returns
+## the spots checked.
+func _check_kind_shares(gen: LevelGenerator, config: LevelConfig, patterns: Array, tag: String) -> int:
+	var curve: FeatureRecency = config.feature_recency
+	var n: int = 0
+	for i: int in 10:
+		var at: float = config.start_clear_distance + (gen.layout.length - config.start_clear_distance) * (i + 0.5) / 10.0
+		var difficulty: float = gen.difficulty_at(at / gen.layout.length)
+		var with: Dictionary = gen.pick_weights(patterns, difficulty, at)
+		curve.enabled = false
+		var without: Dictionary = gen.pick_weights(patterns, difficulty, at)
+		curve.enabled = true
+		var sums: Array[Array] = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
+		var ok: bool = (with["patterns"] as Array).size() == (without["patterns"] as Array).size()
+		for j: int in (with["patterns"] as Array).size():
+			var p: Dictionary = with["patterns"][j]
+			var requires: Array = p.get("requires", [])
+			var w1: float = float(with["weights"][j])
+			var w0: float = float(without["weights"][j])
+			if requires.is_empty():
+				ok = ok and is_equal_approx(w0, w1)
+				continue
+			if config.recency_capped(requires):
+				ok = ok and is_equal_approx(w1, w0 * config.recency_factor(requires))
+			var kind: int = LevelGenerator.pattern_kind(p)
+			var measure: float = float(LevelGenerator.enemy_count(p, config.lane_count)) if kind == 0 else 1.0
+			sums[0][kind] += w0 * measure
+			sums[1][kind] += w1 * measure
+		for kind: int in 3:
+			ok = ok and is_equal_approx(sums[0][kind], sums[1][kind])
+		check(ok, "%s at %.0f m: each kind keeps its share, capped features their own weight" % [tag, at])
+		n += 1
+	return n
 
 
 ## The Hush (GDD §5, decided September 26, 2026): "a quiet, eerie remix: fewer enemies but more hosts
@@ -490,9 +549,9 @@ func _test_recency(campaign: Campaign) -> void:
 ## it is The Hush's own data, which no other level uses: quiet stretches and bursts, hosts picked more
 ## often and placed in the quiet stretches (a chase starts only if the player kills one), and its
 ## darkness (_test_darker_lighting). Generated at 3, 5 and 6 lanes on its own seed and others, it has
-## fewer enemies than Dead Zone 1 and than itself without the remix, more hosts, every one of them in
-## a quiet stretch, no enemy but hosts picked in its quiet stretches, and bursts far denser than its
-## quiet stretches.
+## fewer enemies than Dead Zone 1 and than itself without the remix, more hosts than without it,
+## every one of them in a quiet stretch, no enemy but hosts picked in its quiet stretches, and bursts
+## far denser than its quiet stretches.
 func _test_hush(campaign: Campaign) -> void:
 	var hush: CampaignStep = campaign.step("dead_zone/2")
 	var ash: CampaignStep = campaign.step("dead_zone/1")
@@ -517,7 +576,7 @@ func _test_hush(campaign: Campaign) -> void:
 	var burst_metres: float = 0.0
 	var levels: int = 0
 	for lanes: int in [3, 5, 6]:
-		for k: int in 5:
+		for k: int in 13:
 			for which: int in 3:
 				var config: LevelConfig = campaign.configure(ash if which == 2 else hush, lanes)
 				if k > 0:
@@ -567,7 +626,7 @@ func _test_hush(campaign: Campaign) -> void:
 		float(enemies[2]) / levels, float(hosts[2]) / levels, quiet_enemies * 100.0 / quiet_metres, burst_enemies * 100.0 / burst_metres])
 	check(enemies[0] * 10 < enemies[1] * 8 and enemies[0] < enemies[2],
 		"fewer enemies: %d, against %d without the remix and %d in Dead Zone 1" % [enemies[0], enemies[1], enemies[2]])
-	check(hosts[0] > hosts[1] and hosts[0] >= hosts[2],
+	check(hosts[0] > hosts[1] and hosts[0] > hosts[2],
 		"more hosts: %d, against %d without the remix and %d in Dead Zone 1" % [hosts[0], hosts[1], hosts[2]])
 	check(quiet_enemies * 100.0 / quiet_metres < burst_enemies * 100.0 / burst_metres * 0.25,
 		"silent stretches broken by sudden threats: enemies %.2f per 100 m in the quiet stretches, %.2f in the bursts"

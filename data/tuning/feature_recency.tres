@@ -10,4 +10,12 @@ one_level_later = 2.5
 two_levels_later = 1.75
 three_levels_later = 1.25
 older = 1.0
+max_factor = Dictionary[String, float]({
+"drone": 1.0,
+"host": 1.0,
+"hover_truck": 1.0,
+"octodog": 1.0,
+"screech_vents": 1.0
+})
 keep_feature_share = true
+keep_share_by_kind = true

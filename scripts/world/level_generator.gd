@@ -34,8 +34,10 @@ extends RefCounted
 ##
 ## Beyond that guarantee, a campaign level's newest things get the most picks (GDD §5, owner's review
 ## P2 13): with the campaign's recency curve (LevelConfig.feature_recency and feature_ages), each
-## pattern's pick weight follows how recently the campaign introduced its newest feature, and the
-## curve only moves picks between the level's features (FeatureRecency.keep_feature_share).
+## pattern's pick weight follows how recently the campaign introduced its newest feature, the curve
+## only moves picks between the level's features of the same kind (FeatureRecency.keep_feature_share,
+## keep_share_by_kind), and never boosts a feature whose rules would drop its extra enemies
+## (FeatureRecency.max_factor): no level gets easier.
 ##
 ## A level may alternate long quiet stretches with short, dense bursts (LevelConfig.quiet_seconds;
 ## GDD §5, The Hush): quiet stretches pick sparse patterns without enemies (bar quiet_features), bursts
@@ -495,21 +497,30 @@ func _pick_pattern(patterns: Array, difficulty: float, at: float, only: String =
 ## count, with every required feature active there (feature_active); with `only`, just the patterns
 ## that require that feature.
 ## A pattern's weight is its own times the level's feature_weights for what it requires, and with
-## the campaign's recency curve (LevelConfig.recency_on) times its newest feature's factor; with
-## keep_feature_share the features' patterns are then scaled back to weigh together what they
-## weighed without the curve, so the curve only moves picks between features. In a level paced in
-## bursts, only the patterns _pacing_allows are taken (threats in bursts, enemies only there bar
-## quiet_features), and a burst that has had its introduction leaves out the features still waiting
-## for theirs (_intro_held).
+## the campaign's recency curve (LevelConfig.recency_on) times its newest feature's factor (no more
+## than a capped feature's cap, FeatureRecency.max_factor); with keep_feature_share the features'
+## patterns, capped ones apart, are then scaled back so that together they weigh what they weighed
+## without the curve. With keep_share_by_kind that holds kind by kind (pattern_kind), and patterns
+## with enemies weigh by the enemies they place (enemy_count): the curve only moves picks between
+## features of the same kind, and the level places as many enemies, obstacles and safe mechanics as
+## before. In a level paced in bursts, only the patterns _pacing_allows are taken (threats in bursts,
+## enemies only there bar quiet_features), and a burst that has had its introduction leaves out the
+## features still waiting for theirs (_intro_held).
 func pick_weights(patterns: Array, difficulty: float, at: float, only: String = "") -> Dictionary:
 	var candidates: Array = []
 	var weights: Array[float] = []
 	var recency: bool = config.recency_on()
+	var by_kind: bool = recency and config.feature_recency.keep_share_by_kind
 	var paced: bool = config.paced_in_bursts()
 	var held: PackedStringArray = _intros_waiting(at) if _intro_held(at) else PackedStringArray()
-	# The features' patterns' weights without and with the recency curve (keep_feature_share).
-	var plain: float = 0.0
-	var curved: float = 0.0
+	# Per kind of pattern (all in one without by_kind), what the features' patterns weigh without the
+	# recency curve, and with it: the capped ones, and the rest (keep_feature_share). Patterns with
+	# enemies count their enemies too (by_kind), so the curve keeps how many a level places.
+	var plain: Array[float] = [0.0, 0.0, 0.0]
+	var capped: Array[float] = [0.0, 0.0, 0.0]
+	var curved: Array[float] = [0.0, 0.0, 0.0]
+	# Each candidate's kind if keep_feature_share scales it back, else -1.
+	var scaled_kind: Array[int] = []
 	for p: Dictionary in patterns:
 		if difficulty < float(p.get("min_difficulty", 0.0)) or difficulty > float(p.get("max_difficulty", 1.0)):
 			continue
@@ -529,19 +540,81 @@ func pick_weights(patterns: Array, difficulty: float, at: float, only: String = 
 			weight *= config.feature_weight(String(need))
 		if not ok or weight <= 0.0:
 			continue
+		var kind: int = -1
 		if recency and not requires.is_empty():
-			var factor: float = config.recency_factor(requires)
-			plain += weight
-			weight *= factor
-			curved += weight
+			kind = pattern_kind(p) if by_kind else 0
+			var measure: float = float(enemy_count(p, config.lane_count)) if by_kind and kind == 0 else 1.0
+			plain[kind] += weight * measure
+			weight *= config.recency_factor(requires)
+			if config.recency_capped(requires):
+				capped[kind] += weight * measure
+				kind = -1
+			else:
+				curved[kind] += weight * measure
 		candidates.append(p)
 		weights.append(weight)
-	if recency and config.feature_recency.keep_feature_share and curved > 0.0:
-		var scale: float = plain / curved
+		scaled_kind.append(kind)
+	if recency and config.feature_recency.keep_feature_share:
+		var scale: Array[float] = [1.0, 1.0, 1.0]
+		for k: int in 3:
+			if curved[k] > 0.0:
+				scale[k] = maxf(plain[k] - capped[k], 0.0) / curved[k]
 		for i: int in candidates.size():
-			if not (candidates[i].get("requires", []) as Array).is_empty():
-				weights[i] *= scale
+			if scaled_kind[i] >= 0:
+				weights[i] *= scale[scaled_kind[i]]
 	return {"patterns": candidates, "weights": weights}
+
+
+## A pattern's kind, for the recency curve's shares (FeatureRecency.keep_share_by_kind): 0 if it
+## places enemies, 1 if it places obstacles only (holes, fences, signs), 2 if neither (a plain
+## ceiling, a ramp, a speed pad: safe mechanics).
+static func pattern_kind(pattern: Dictionary) -> int:
+	var kind: int = 2
+	for element: Dictionary in pattern.get("elements", []):
+		var element_kind: String = String(element.get("kind", ""))
+		if element_kind == "enemy":
+			return 0
+		if element_kind in ["gap", "fence", "sign"]:
+			kind = 1
+	return kind
+
+
+## How many enemies `pattern` places at `lanes` lanes: one for each wall enemy, and one for each lane
+## a floor enemy's selector picks (as _pick_lanes counts them, before any rule drops one).
+static func enemy_count(pattern: Dictionary, lanes: int) -> int:
+	var count: int = 0
+	var prev: int = 0
+	for element: Dictionary in pattern.get("elements", []):
+		var element_kind: String = String(element.get("kind", ""))
+		if element_kind == "enemy" and element.has("side"):
+			count += 1
+		elif element_kind in ["gap", "fence", "hull", "speed_pad", "enemy"]:
+			var fallback: Dictionary = {} if element_kind in ["gap", "fence"] else {"mode": "random", "count": 1}
+			var picked: int = _selector_count(element.get("lanes", fallback), lanes, prev)
+			if element_kind == "enemy":
+				count += picked
+			prev = picked
+	return count
+
+
+## How many lanes a lane selector picks at `lanes` lanes, `prev` being how many the element before
+## picked (_pick_lanes).
+static func _selector_count(selector: Dictionary, lanes: int, prev: int) -> int:
+	var n: int = int(selector.get("count", 1))
+	if selector.has("frac"):
+		n = maxi(1, roundi(float(selector["frac"]) * lanes))
+	match String(selector.get("mode", "random")):
+		"all":
+			return lanes
+		"same":
+			return prev
+		"others":
+			return lanes - prev
+		"edge", "center":
+			return 1
+		"all_but":
+			return lanes - clampi(n, 1, lanes - 1)
+	return clampi(n, 1, lanes)
 
 
 ## The picks this build must give a feature, earliest first: each feature's introduction at its
