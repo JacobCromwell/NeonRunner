@@ -848,6 +848,7 @@ func _update_avatar(delta: float) -> void:
 ## lane switch, and into the blocked lane through a blocked switch's bump. A blocked wall entry's bump
 ## stays upright on the way out and leans away from the wall on the way back: pushed off it. (Leaning
 ## in would take the upper body past a sign that the bump stopped the body short of.)
+## DESIGN-TBD: the wall bump's look on the model (GDD §3 only says "a small sideways bump").
 func _switch_dir() -> int:
 	if _switch_t >= 1.0:
 		return 0

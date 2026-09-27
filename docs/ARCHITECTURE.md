@@ -60,7 +60,7 @@ power-ups.
 
 | File | What |
 |---|---|
-| `data/tuning/movement.tres` (`MovementTuning`) | run speed, jump, walls, ceiling, piece sizes, camera, touch |
+| `data/tuning/movement.tres` (`MovementTuning`) | run speed, jump, walls (and the blocked entry's bump), ramps and speed pads (their boosts share one fade), ceiling, piece sizes, camera, touch |
 | `data/tuning/game_rules.tres` (`GameRules`) | lanes per device, death share, invulnerability, stomp, score, economy, stars |
 | `data/tuning/powerups.tres` (`PowerupTuning`) | weapon tiers, claws, dash, magnet, slow time |
 | `data/tuning/pickups.tres` (`PickupTuning`) | in-run pickups: where they appear, taking them, the charge cap, the look |
@@ -87,6 +87,13 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
 - Falls aren't hazards: the Player handles them (the grapple hook saves one fall).
 - Enemy shots go through `ProjectilePool.fire_enemy()`; the pool sweeps each shot against the
   player's hitbox and calls `receive_hit`, so armor, shield, invulnerability and the dash all apply.
+- **Blocked moves bump, never hurt.** A lane switch into a solid side (a lane blocker: the hover
+  truck's, a boss's block) and a wall entry where the wall is blocked (a sign, or a wall a boss takes
+  away; GDD §3) move the player out toward it and back (`Player._start_bump`) with the clank
+  (`lane_blocked` / `wall_blocked`). The player stays in their lane and can act meanwhile; collision is
+  unchanged. The wall's bump (`wall_bump_distance`, `wall_bump_time`) stops short of any hazard or wall
+  blocker in its way, so a sign that reaches down to the player stops it at its face, and the model
+  leans away from the wall on the way back.
 
 ## Enemies
 
@@ -151,9 +158,20 @@ patterns (filtered by the level's features) → enemy rules scripts → credits.
 scripts: `rng_for(name)`, `add_enemy(type, at, lane, side, params)`, `add_hull_with_pad(lane, at,
 seconds)`, `floor_clear(from, to)`, `enemy_floor_span(entry)`, `enemy_uses_floor(entry)`,
 `difficulty_at(progress)`, `feature_start(feature)`, `feature_started(feature, at)`,
-`feature_active(feature, at)`, `feature_share_at(feature, share)`, plus `layout`, `config`,
-`tuning`, `speed`, `jump_distance` and `zones` (the level's `CeilingZones`). Pattern format:
-`data/patterns/README.md`.
+`feature_active(feature, at)`, `feature_share_at(feature, share)`, `ramp_launch(ramp)`, plus
+`layout`, `config`, `tuning`, `speed`, `jump_distance` and `zones` (the level's `CeilingZones`).
+Pattern format: `data/patterns/README.md`.
+
+**Ramps** (GDD §3) launch the player onto the wall higher than a free entry and add a speed boost
+that fades away the same way a speed pad's does (both share `boost_decay_per_second`;
+`MovementTuning.boost_left` and `boost_distance`), so a ramp's wall run goes further than a free
+one. `RampLaunch` (`scripts/world/ramp_launch.gd`; `gen.ramp_launch(ramp)`) predicts it the way the
+Player moves: where the player is on the wall and when (`distance_at`, `time_at`), how high
+(`height_at`, `body_at`: the heights the body spans) and how fast (`speed_at`), from the launch
+(`start`) to the drop back into the ramp's lane (`end()`). Every rule that predicts a ramp's wall run
+uses it: the credits along it (`LevelGenerator.wall_run_credits`), and task B5's wall fences, which
+must never put a live wall fence where a ramp launches the player into it. `test_movement` holds it
+to the real Player at 3, 5 and 6 lanes, and `test_interactions` rides the credits on real physics.
 
 Rules scripts run in the order of the level's `features` list, except that a script declaring
 `const RUN_AFTER: Array[String]` runs after those features' rules (the host rules after the drone's;
@@ -601,7 +619,8 @@ the web demo until the real plugins are chosen (risk test R3).
 
 `tools/godot.sh test` runs every `tests/suites/test_*.gd` (a `TestSuite`); `--suite=<name>` runs
 one. `RunSim` (`tests/helpers/run_sim.gd`) runs a Player over a hand-built layout (`run()`), or a
-full RunWorld (`build_world()` + `step_world()`). `SkinSuite` (`tests/helpers/skin_suite.gd`) holds
+full RunWorld (`build_world()` + `step_world()`); with `trace` on it records the player after every
+physics frame (position, height, speed, surface, lane, lean). `SkinSuite` (`tests/helpers/skin_suite.gd`) holds
 the checks every zone skin must pass. `LayoutChecks` (`tests/helpers/layout_checks.gd`) holds the
 fairness checks for generated layouts (the generator suite runs them over many seeds, the campaign
 suite over every campaign level at 3, 5 and 6 lanes, the enemy suites over their own levels), among
@@ -622,7 +641,9 @@ and ends a stuck run after 600 s of real time.
 Scenes in `tools/showcase/` show one part of the game up close for visual review (not part of the
 game): the avatar (`avatar_showcase`: every pose, power-up and concept-sheet view, front, back and
 side; `avatar_run_review`: a scripted run through the game camera on any zone's skin, with any
-power-up look), the enemies (`enemy_showcase` for the cyborg family, `octodog_screech`,
+power-up look), ramps and walls (`ramp_wall_review`: a ramp launch with the credits along its wall
+run, and blocked wall entries at a low and a high sign, through the game camera or a close one),
+the enemies (`enemy_showcase` for the cyborg family, `octodog_screech`,
 `drone_truck_showcase`, `bad_dream_showcase`), the UI kit, the screens, a zone skin (`skin_review`:
 any skin from fixed spots, or a scripted run with a ceiling ride and a wall run), and comparison
 sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
