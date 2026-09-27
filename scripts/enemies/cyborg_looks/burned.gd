@@ -52,7 +52,7 @@ static func veins() -> Array[HumanoidPiece]:
 ## A flickering, cracked screen with a little more static (Reduced flashing turns the flicker into a
 ## steady dimming, cyborg_body.gdshader).
 static func material_params() -> Dictionary:
-	return {&"flicker": 1.0, &"crack": 1.0, &"static_amount": 0.22}
+	return {&"flicker": 0.75, &"crack": 1.0, &"static_amount": 0.22}
 
 
 ## A base colour under soot: darker, faded, a little warmer.

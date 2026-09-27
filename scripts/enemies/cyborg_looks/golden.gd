@@ -3,7 +3,7 @@ extends RefCounted
 ## art agent"; brief docs/art/BRIEF_CYBORG_GANGSTER.md): the elites' ceremonial enforcer. It is the
 ## Casino Mob Enforcer (casino.gd's build(), the same body, head and drum-fed gun) in the zone's
 ## white, cream, red and gold (GDD §5, Zone 6), more opulent and ceremonial:
-## - an ivory suit with pale gold pinstripes over a red shirt, red lapels, the gold breastplate, and a
+## - a cream suit with pale gold pinstripes over a red shirt, red lapels, the gold breastplate, and a
 ##   red sash from the right shoulder to the left hip in place of the bandolier;
 ## - the cult's Convergent Triad worn openly (GDD §5: shown openly only in the Golden Zone) on a
 ##   medallion on the sash: CultEmblem's drawing of the owner's choice in unlit, polished gold meeting
@@ -57,7 +57,7 @@ const ENAMEL := Color(0.76, 0.73, 0.66)
 ## The mark spans CultEmblem's unit square, 2 × EMBLEM_HALF across on the medallion.
 const EMBLEM_HALF: float = 0.066
 const EMBLEM_PIXELS: int = 128
-## The pinstripes, pale gold on ivory.
+## The pinstripes, pale gold on cream.
 const STRIPE_COLOR := Color(0.62, 0.53, 0.35)
 
 static var _emblem: ImageTexture

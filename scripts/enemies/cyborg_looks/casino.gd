@@ -3,9 +3,9 @@ extends RefCounted
 ## owner's sheet docs/art/reference/cyborg_casino_enforcer.jpg): the "Casino Mob Enforcer", the
 ## casinos' muscle. The same unit as the base, never bigger than it: the same skeleton, poses and
 ## hitboxes, and the same TV screen (the face in the same place).
-## - The head: the base's TV gilded (unlit, polished gold) with a black lacquer bezel, card suits
-##   engraved on its sides and top, and a dark tube behind; braided gold cables run into it from the
-##   backpack.
+## - The head: the base's TV gilded (unlit, polished gold), its gold bezel with a thin black lip round
+##   the screen, card suits engraved on its sides and top, and a dark tube behind; braided gold cables
+##   run into it from the backpack.
 ## - The body: a black pinstripe suit (gold pinstripes, cyborg_body.gdshader's glow 70) open over a
 ##   black shirt and a gold breastplate with a diamond engraved on it, black satin lapels trimmed in
 ##   gold, a bandolier across the chest; gold armour plates on the shoulders and knees; gunmetal

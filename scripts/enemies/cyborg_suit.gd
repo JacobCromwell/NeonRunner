@@ -45,7 +45,7 @@ extends RefCounted
 ## Rig convention (HumanoidPiece): metres, +y up, -z forward (where the cyborg faces), +x its right.
 ## Limb pieces are authored for the right limb; RIGHT-only pieces are the cyber arm's, LEFT-only ones
 ## the hoodie sleeve's and the left leg's. The part helpers at the end (add, pipe, bar, cable, vein,
-## merged) are the looks' shared tools.
+## patch, facing, merged) are the looks' shared tools.
 
 const Kit = preload("res://scripts/enemies/cyborg_kit.gd")
 const SHADER: Shader = preload("res://scripts/enemies/cyborg_body.gdshader")
