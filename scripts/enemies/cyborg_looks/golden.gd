@@ -28,8 +28,8 @@ const BOX := HumanoidPiece.Shape.BOX
 const PALETTE: Dictionary = {
 	"suit": Color(0.72, 0.68, 0.6),
 	"suit_shade": Color(0.6, 0.56, 0.49),
-	"shirt": Color(0.4, 0.15, 0.17),
-	"lapel": Color(0.42, 0.16, 0.19),
+	"shirt": Color(0.4, 0.162, 0.18),
+	"lapel": Color(0.42, 0.17, 0.19),
 	"gold": Color(0.74, 0.6, 0.35),
 	"gold_dark": Color(0.52, 0.42, 0.24),
 	"gold_shine": 0.8,
@@ -38,18 +38,18 @@ const PALETTE: Dictionary = {
 	"metal": Color(0.74, 0.71, 0.65),
 	"metal_dark": Color(0.64, 0.61, 0.55),
 	"metal_shine": 0.35,
-	"strap": Color(0.4, 0.15, 0.17),
+	"strap": Color(0.4, 0.162, 0.18),
 	"cable": Color(0.55, 0.45, 0.27),
 	"tube": Color(0.66, 0.63, 0.56),
 	"cartridge": Color(0.52, 0.42, 0.24),
 	"stock": Color(0.74, 0.71, 0.64),
-	"drum": Color(0.4, 0.15, 0.17),
+	"drum": Color(0.4, 0.162, 0.18),
 	"suits": false,
 	"bandolier": false,
 }
 ## The sash (deep red) and the medallion: its centre and radius on the chest (chest segment space,
 ## on the sash where it crosses the breastplate), its ivory enamel and gold rim.
-const SASH := Color(0.42, 0.16, 0.19)
+const SASH := Color(0.42, 0.17, 0.19)
 const SASH_EDGE := Color(0.52, 0.42, 0.24)
 const MEDALLION_CENTER := Vector3(0.028, 0.235, -0.119)
 const MEDALLION_RADIUS: float = 0.062

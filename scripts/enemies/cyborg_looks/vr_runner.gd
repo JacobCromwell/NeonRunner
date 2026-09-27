@@ -224,9 +224,10 @@ static func _cannon(list: Array[HumanoidPiece]) -> void:
 ## The tablet in the left hand: a thin gunmetal slab held by its edge, its screen dark glass (unlit).
 ## When the aiming pose raises the forearm, the tablet lies face up in front of the chest.
 static func _tablet(list: Array[HumanoidPiece]) -> void:
-	CyborgSuit.add(list, &"forearm", BOX, Vector3(0.11, 0.17, 0.012), Vector3(0.0, -0.33, -0.032), GUNMETAL, 0.0,
+	# Held a little inside the hand, so it stays within the base's outline.
+	CyborgSuit.add(list, &"forearm", BOX, Vector3(0.09, 0.16, 0.012), Vector3(-0.014, -0.325, -0.032), GUNMETAL, 0.0,
 		{"side": LEFT, "chamfer": 0.3, "shine": 0.5})
-	CyborgSuit.patch(list, &"forearm", Vector3(0.0, -0.335, -0.0385), Vector2(0.094, 0.145), GLASS, Vector3.ZERO, 1.0, LEFT)
+	CyborgSuit.patch(list, &"forearm", Vector3(-0.014, -0.33, -0.0385), Vector2(0.076, 0.136), GLASS, Vector3.ZERO, 1.0, LEFT)
 
 
 ## Dark tactical trousers (knee pads, a strap round the right thigh), and dark trainers with pale

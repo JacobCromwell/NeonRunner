@@ -128,11 +128,11 @@ static func _head(list: Array[HumanoidPiece]) -> void:
 		CyborgSuit.patch(list, &"head", Vector3(x, c.y - s.y * 0.5 - 0.026, bezel_z - 0.0105), Vector2(0.016, 0.016), BRASS_DARK)
 	# The cage: a frame of brass bars round the front (clear of the screen), bars running back over the
 	# top and along the bottom corners, and a crossbar over the back of the box.
-	var bar := Vector2(0.018, 0.018)
+	var bar := Vector2(0.018, 0.016)
 	var cz: float = front - 0.022
 	var cx: float = tv.x * 0.5 + 0.02
-	var cy_top: float = top + 0.018
-	var cy_bottom: float = bottom - 0.014
+	var cy_top: float = top + 0.008
+	var cy_bottom: float = bottom - 0.012
 	var brass := {"shine": BRASS_SHINE}
 	CyborgSuit.add(list, &"head", BOX, Vector3(cx * 2.0 + bar.x, bar.y, bar.x), Vector3(0.0, cy_top, cz), BRASS, 0.0, brass)
 	CyborgSuit.add(list, &"head", BOX, Vector3(cx * 2.0 + bar.x, bar.y, bar.x), Vector3(0.0, cy_bottom, cz), BRASS, 0.0, brass)
@@ -153,7 +153,7 @@ static func _head(list: Array[HumanoidPiece]) -> void:
 		Vector3(m.x, m.y, m.z - MONITOR_SIZE.z * 0.5 - 0.001), Color.BLACK, CyborgSuit.GLASS, turned)
 	# The antenna, raked back off the tube's top (it turns with the head): a mast and two crossbars.
 	var foot := Vector3(0.085, 0.235, 0.1)
-	var tip := Vector3(0.13, 0.33, 0.25)
+	var tip := Vector3(0.13, 0.305, 0.27)
 	CyborgSuit.add(list, &"head", BOX, Vector3(0.04, 0.02, 0.04), foot, GUNMETAL)
 	CyborgSuit.pipe(list, &"head", foot, tip, 0.012, STEEL, 4)
 	for k: int in 2:
