@@ -133,7 +133,6 @@ const BOX := HumanoidPiece.Shape.BOX
 const PRISM := HumanoidPiece.Shape.PRISM
 const LATHE := HumanoidPiece.Shape.LATHE
 const BAND := HumanoidPiece.Shape.BAND
-const SHELL := HumanoidPiece.Shape.SHELL
 const MIRRORED := HumanoidPiece.Placement.MIRRORED
 const RIGHT := HumanoidPiece.Placement.RIGHT
 const LEFT := HumanoidPiece.Placement.LEFT
