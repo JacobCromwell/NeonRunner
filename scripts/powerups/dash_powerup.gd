@@ -9,19 +9,22 @@ extends PowerupModule
 ## The look, while dashing: an energy shell around the player and speed lines streaming past; a
 ## camera kick when it starts and a bigger hit when it smashes an enemy. (No afterimages: seen from
 ## the chase camera they all line up behind the player and add up to a glare.)
+## DESIGN-TBD (docs/questions/p1.md 6): they follow the runner's own glow, Razor Echo's soft copper,
+## thinned toward white (PlayerSuit.GLOW_PALE) so the additive shell and the smash burst never read as
+## a hazard's orange.
 
-const COLOR := Color(0.45, 0.95, 1.0)
+const COLOR := PlayerSuit.GLOW_PALE
 
 const SHELL_SHADER: String = """
 shader_type spatial;
 render_mode unshaded, blend_add, depth_draw_never, cull_back, shadows_disabled;
-uniform vec4 color : source_color = vec4(0.45, 0.95, 1.0, 1.0);
+uniform vec4 color : source_color = vec4(1.0, 0.8, 0.66, 1.0);
 uniform float strength = 1.0;
 void fragment() {
 	float rim = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
 	float bands = 0.75 + 0.25 * sin(UV.y * 40.0 - TIME * 30.0);
-	ALBEDO = color.rgb * 1.8;
-	ALPHA = clamp((0.12 + pow(rim, 2.0) * 1.3) * bands * strength, 0.0, 1.0);
+	ALBEDO = color.rgb * 1.3;
+	ALPHA = clamp((0.1 + pow(rim, 2.0) * 1.1) * bands * strength, 0.0, 1.0);
 }
 """
 
@@ -111,7 +114,7 @@ func _build_visuals() -> void:
 	# Speed lines: thin streaks around the player that stay behind in the world, so they stream past.
 	var streak := BoxMesh.new()
 	streak.size = Vector3(0.025, 0.025, 2.2)
-	_speed_lines = _particles(streak, 48, 0.2, _fade_ramp(Color(0.85, 1.0, 1.0, 0.8)))
+	_speed_lines = _particles(streak, 48, 0.2, _fade_ramp(Color(COLOR.lerp(Color.WHITE, 0.4), 0.8)))
 	_speed_lines.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING
 	_speed_lines.emission_ring_axis = Vector3.BACK
 	_speed_lines.emission_ring_radius = 1.9
