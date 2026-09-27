@@ -17,8 +17,9 @@ extends Node
 ##   --level=city/2          a campaign level, with the full flow (also takes --lanes=N, --god,
 ##                           --nofall and --full-loadout, for reviews)
 ##   --boss=city_boss        a boss fight by its BossDef id: a zone's boss with the full flow (like
-##                           --level=city/boss), any other (data/bosses/<id>.tres, e.g. the test boss)
-##                           as quick play, starting over after a death or a win. Both take --lanes=N,
+##                           --level=city/boss; a fight still being built, its preview_scene, as quick
+##                           play), any other (data/bosses/<id>.tres, e.g. the test boss) as quick
+##                           play, starting over after a death or a win. Both take --lanes=N,
 ##                           --god, --nofall, --full-loadout, --skin=<zone> (quick play only) and
 ##                           --phase=N (start at phase N, as a checkpoint would)
 ##   --flavor=web_demo       pretend to be another build flavor (full_pc, full_mobile, web_demo)
@@ -346,11 +347,16 @@ func _apply_review_args(ctx: RunContext) -> void:
 				ctx.config.skin = load(skin_path) as ZoneSkin
 
 
-## --boss=<id>: a zone's boss by its step (the full flow), or data/bosses/<id>.tres as quick play.
-## False if there's no such boss, or it isn't built.
+## --boss=<id>: a zone's boss by its step (the full flow; a fight still being built, BossDef.preview(),
+## as quick play), or data/bosses/<id>.tres as quick play. False if there's no such boss, or it isn't
+## built.
 func _start_boss_arg(id: String, args: PackedStringArray) -> bool:
 	for s: CampaignStep in campaign.steps():
 		if s.kind == CampaignStep.Kind.BOSS and s.boss != null and String(s.boss.id) == id:
+			var preview: BossDef = s.boss.preview()
+			if preview != null:
+				start_boss_quick(preview, args)
+				return true
 			_review_args = args
 			play_step(s)
 			return true
