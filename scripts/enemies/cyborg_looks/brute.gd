@@ -45,15 +45,15 @@ const TORSO_RINGS: Array[Vector4] = [
 ]
 
 ## The jumpsuit (brown work cloth), leather, and the boots.
-const SUIT := Color(0.38, 0.31, 0.22)
-const SUIT_SHADE := Color(0.3, 0.245, 0.175)
-const SUIT_WORN := Color(0.45, 0.39, 0.3)
+const SUIT := Color(0.31, 0.26, 0.19)
+const SUIT_SHADE := Color(0.24, 0.2, 0.15)
+const SUIT_WORN := Color(0.42, 0.36, 0.27)
 const LEATHER := Color(0.22, 0.16, 0.11)
 const BOOT := Color(0.22, 0.17, 0.13)
 ## The armour: dull, scuffed brass (unlit ornament), darker at its edges and rivets.
-const BRASS := Color(0.5, 0.41, 0.26)
-const BRASS_DARK := Color(0.34, 0.28, 0.18)
-const BRASS_SHINE: float = 0.4
+const BRASS := Color(0.56, 0.45, 0.26)
+const BRASS_DARK := Color(0.38, 0.3, 0.18)
+const BRASS_SHINE: float = 0.6
 ## The steel: the prosthetic arms, the pipe gun, the toe caps; the casing's dark, heavy steel.
 const STEEL := CyborgSuit.STEEL
 const STEEL_DARK := Color(0.29, 0.29, 0.29)
@@ -99,7 +99,7 @@ static func veins() -> Array[HumanoidPiece]:
 ## The side monitors (glass), and dull brass with a little metal to it.
 static func material_params() -> Dictionary:
 	return {&"glass_rect": Vector4(MONITOR_CENTER.x, MONITOR_CENTER.y, MONITOR_SCREEN.x * 0.5, MONITOR_SCREEN.y * 0.5),
-		&"glass_energy": 0.55, &"polish_metallic": 0.3}
+		&"glass_energy": 0.55, &"polish_metallic": 0.5, &"polished_roughness": 0.3}
 
 
 ## The base's TV (the screen and its face in the same place) in a heavy, dark steel casing, caged in

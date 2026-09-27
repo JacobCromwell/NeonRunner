@@ -32,6 +32,8 @@ extends RefCounted
 ## emitter ring and orb, shared pieces at the same muzzle), and none is bigger than the base; only the
 ## body, the weapon's model and the screen's frame and wear change. A skin's `enemy_variant` picks the
 ## look (look_for); window cyborgs and hosts wear their zone's look too.
+## DESIGN-TBD (docs/questions/p3.md 5): every look moves like the base (CyborgPoses), though the
+## sheets' enforcers stand upright.
 ##
 ## Hands and feet ride on the forearms and shins, and the neck, backpack and cables on the chest, so a
 ## whole cyborg is 11 segment meshes (11 draw calls) and a window cyborg's upper body 7, in every look.
@@ -71,6 +73,7 @@ const LOOK_TITLES: Dictionary = {
 ## name (the Marketplace &"casino"; Corporate &"vr_runner", the Dead Zone &"burned" and the Golden Zone
 ## &"golden" once their skins exist), which the other enemies treat like &"city". Any other name wears
 ## the base.
+## DESIGN-TBD (docs/questions/p3.md 7): whether a coming zone's other enemies should be weathered.
 const VARIANT_LOOKS: Dictionary = {&"city": BASE, &"scavenger": BRUTE}
 ## The zone variants' builders, one file each.
 const BruteLook = preload("res://scripts/enemies/cyborg_looks/brute.gd")
@@ -204,6 +207,7 @@ static func attachment_sets(look: StringName, host: bool) -> Array[StringName]:
 
 
 ## The veins a host of this look wears: its own set when its body isn't the base's, else HOST_SET.
+## DESIGN-TBD (docs/questions/p3.md 8): where each look's veins run.
 static func host_set(look: StringName) -> StringName:
 	var own: StringName = look_for(look)
 	return StringName("%s_host" % own) if _has_own_veins(own) else HOST_SET

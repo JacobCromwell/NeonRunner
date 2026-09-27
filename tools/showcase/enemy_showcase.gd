@@ -78,7 +78,7 @@ func _ready() -> void:
 			_far_scene()
 		"lineup":
 			_lineup()
-			_look(Vector3(0.0, 1.05, 4.6), Vector3(0.0, 0.85, -1.0))
+			_look(Vector3(0.0, 1.0, 4.05), Vector3(0.0, 0.86, -1.0))
 		"lineup_far":
 			_far_lineup()
 		_:

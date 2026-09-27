@@ -26,8 +26,8 @@ const BOX := HumanoidPiece.Shape.BOX
 
 ## The Golden Zone's palette for Casino.build() (its keys).
 const PALETTE: Dictionary = {
-	"suit": Color(0.72, 0.68, 0.6),
-	"suit_shade": Color(0.6, 0.56, 0.49),
+	"suit": Color(0.74, 0.69, 0.58),
+	"suit_shade": Color(0.62, 0.57, 0.48),
 	"shirt": Color(0.4, 0.162, 0.18),
 	"lapel": Color(0.42, 0.17, 0.19),
 	"gold": Color(0.74, 0.6, 0.35),

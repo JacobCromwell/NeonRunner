@@ -19,8 +19,8 @@ const LEFT := HumanoidPiece.Placement.LEFT
 ## Soot over the base's colours: each keeps SOOT_VALUE of its brightness and SOOT_SATURATION of its
 ## colour, then leans toward SOOT (a warm black) by SOOT_MIX.
 const SOOT := Color(0.1, 0.095, 0.09)
-const SOOT_VALUE: float = 0.62
-const SOOT_SATURATION: float = 0.45
+const SOOT_VALUE: float = 0.68
+const SOOT_SATURATION: float = 0.5
 const SOOT_MIX: float = 0.12
 ## The TV's casing keeps more of its grey (charred, not black), so the head still reads.
 const CASING_VALUE: float = 0.8

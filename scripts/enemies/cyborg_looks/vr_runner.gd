@@ -56,14 +56,14 @@ const TORSO_RINGS: Array[Vector4] = [
 ]
 
 ## The jacket and trousers (near black), the pale unlit piping, worn patches, the mask and collar.
-const JACKET := Color(0.1, 0.105, 0.115)
+const JACKET := Color(0.12, 0.125, 0.135)
 const JACKET_SHADE := Color(0.07, 0.072, 0.08)
 const RIB := Color(0.16, 0.165, 0.17)
 const PIPING := Color(0.52, 0.54, 0.56)
 const WORN := Color(0.27, 0.25, 0.23)
-const TROUSERS := Color(0.12, 0.125, 0.13)
+const TROUSERS := Color(0.19, 0.2, 0.165)
 const MASK := Color(0.08, 0.08, 0.085)
-const HARNESS := Color(0.23, 0.24, 0.2)
+const HARNESS := Color(0.28, 0.29, 0.23)
 ## The headset and the gear: dark gunmetal, and polished chrome (unlit).
 const HEADSET := Color(0.14, 0.145, 0.155)
 const HEADSET_RIM := Color(0.26, 0.27, 0.285)
