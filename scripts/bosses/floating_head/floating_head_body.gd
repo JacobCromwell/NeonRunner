@@ -1,8 +1,9 @@
 class_name FloatingHeadBody
 extends BossPart
 ## The Floating Head's ship (GDD §10), the fight's body: the hull and face (FloatingHeadModel), and
-## the parts that move: the face screen, the jaw, the searchlight on its gimbal, the bomb-bay doors,
-## the weak points' covers, and a glow its lift pads throw on the street below. The encounter
+## the parts that move: the face screen (its eyes glowing red as they charge a laser: eye_charge), the
+## jaw (it opens for the cyborg drop: jaw_open), the searchlight on its gimbal, the bomb-bay doors, the
+## weak points' covers, and a glow its lift pads throw on the street below. The encounter
 ## (FloatingHead) flies it and says what each part does; this draws it.
 ## Hitboxes: the hull is solid (a boss's body: claws never defeat it, the dash passes through), out of
 ## reach while it flies. Three weak points on its crown and the crown's top (a surface to stand on)
@@ -27,6 +28,12 @@ var lamp: Lamp = Lamp.OFF
 ## Where the searchlight points (world space) while it's on.
 var lamp_target := Vector3.ZERO
 var bay_open: bool = false
+## The mouth: 0 shut, 1 open (the cyborg drop).
+var jaw_open: float = 0.0
+## Where the face looks (world space) instead of at the runner, while look_override is on (the eye
+## lasers' aim).
+var look_point := Vector3.ZERO
+var look_override: bool = false
 
 var _ship: Node3D
 var _screen: MeshInstance3D
@@ -52,6 +59,9 @@ func _build() -> void:
 	tuning = params.get("tuning") as FloatingHeadTuning
 	if tuning == null:
 		tuning = FloatingHeadTuning.new()
+	# GDD §9: big attacks take turns (EnemyDirector.major_attack_blocked): other enemies hold theirs
+	# while its lasers or a bomb's warning are on.
+	exclusive_major_attack = true
 	shape = FloatingHeadModel.shape_for(world.geo.wall_x() * 2.0, world.geo.lane_count, tuning)
 	var meshes: Dictionary = FloatingHeadModel.meshes(shape)
 	_ship = Node3D.new()
@@ -116,6 +126,11 @@ func top_solid() -> bool:
 	return _top.collision_layer != 0
 
 
+## How high the crown's top surface is (world, at its middle): where E1c's runner lands on its head.
+func top_height() -> float:
+	return (_top.global_transform * Vector3(0.0, shape.top_size.y * 0.5, 0.0)).y
+
+
 ## The searchlight's lens (world space), where its beam starts.
 func lamp_world() -> Vector3:
 	return _lens.global_position if is_inside_tree() else global_position
@@ -129,6 +144,26 @@ func bay_world() -> Vector3:
 ## The face screen's centre (world space).
 func screen_world() -> Vector3:
 	return _screen.global_position
+
+
+## One of the face's eyes (world space; `side` -1 is the viewer's left): where its laser starts. The
+## face shader draws the eyes at ±0.26 and 0.02 screen heights from the screen's centre.
+func eye_world(side: int) -> Vector3:
+	var sh: float = shape.screen_size.y
+	return _ship.to_global(shape.screen_center + Vector3(side * 0.26 * sh, 0.02 * sh, 0.05))
+
+
+## The mouth's opening (world space): where the dropped cyborgs come out.
+func mouth_world() -> Vector3:
+	return _ship.to_global(Vector3(0.0, (shape.mouth_bottom + shape.mouth_top) * 0.5, shape.mouth_front + 0.4))
+
+
+## GDD §9 (big attacks take turns): its lasers and its bombs' warnings are a major attack.
+func is_major_attack_active() -> bool:
+	var head := encounter as FloatingHead
+	if head == null or not is_instance_valid(head):
+		return false
+	return (head.faceoff != null and head.faceoff.lasering()) or (head.bombing != null and not head.bombing.target.is_empty())
 
 
 ## The face screen's material (tests and reviews read its state).
@@ -160,8 +195,9 @@ func draw_stats() -> Dictionary:
 
 func _tick(delta: float) -> void:
 	_time += delta
-	# The face: it watches the runner (its pupils follow them), blinking now and then.
-	var eye: Vector3 = _ship.to_local(world.player.global_position + Vector3(0.0, 0.8, 0.0)) - shape.screen_center
+	# The face: it watches the runner (its pupils follow them), or its lasers' aim, blinking now and then.
+	var watched: Vector3 = look_point if look_override else world.player.global_position + Vector3(0.0, 0.8, 0.0)
+	var eye: Vector3 = _ship.to_local(watched) - shape.screen_center
 	var want := Vector2(clampf(eye.x / 7.0, -1.0, 1.0), clampf(eye.y / 10.0, -1.0, 1.0))
 	_look = _look.lerp(want, 1.0 - exp(-5.0 * delta))
 	var blink: float = clampf(1.0 - absf(fmod(_time, 4.7) - 0.09) / 0.09, 0.0, 1.0)
@@ -185,8 +221,11 @@ func _tick(delta: float) -> void:
 	_door_open = move_toward(_door_open, 1.0 if bay_open else 0.0, delta * 2.5)
 	for i: int in _doors.size():
 		_doors[i].rotation.z = -deg_to_rad(80.0) * smoothstep(0.0, 1.0, _door_open)
-	# The lift pads' glow on the street below, brighter the lower it flies.
+	# The jaw swings down and out (its bottom toward the runner) to open the mouth.
+	_jaw.rotation.x = -deg_to_rad(62.0) * smoothstep(0.0, 1.0, clampf(jaw_open, 0.0, 1.0))
+	# The lift pads' glow on the street below, brighter the lower it flies (none once it's down).
 	var height: float = global_position.y
+	_floor_glow.visible = height > 0.5
 	_floor_glow.position = Vector3(0.0, 0.04 - height, -shape.length * 0.5)
 	_floor_glow_material.set_shader_parameter(&"state_glow", clampf((16.0 - height) / 12.0, 0.0, 1.0))
 

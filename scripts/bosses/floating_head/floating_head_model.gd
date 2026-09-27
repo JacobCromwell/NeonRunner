@@ -3,7 +3,7 @@ extends RefCounted
 ## The Floating Head's ship and face, built in code from the mesh kit (MeshLayer, the kit's solid and
 ## glow shaders), low-poly and merged: one draw call per material and moving part. GDD §10: a giant
 ## ship whose back is a giant cybernetic propaganda face watching over the city.
-## DESIGN-TBD (docs/questions/e1.md): the look beyond that brief. Placeholder:
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 83): the look beyond that brief. Placeholder:
 ## - the hull is a long armoured head lying face-back, as wide as the street it flies down (a giant
 ##   ship in a street canyon; its height grows a little with the street's width), gunmetal like the
 ##   City's ceiling ships: rib bands, a strake along each cheekbone, lit gallery windows down its sides,
