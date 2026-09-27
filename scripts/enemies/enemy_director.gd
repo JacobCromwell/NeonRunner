@@ -16,7 +16,8 @@ const SCRIPTS_DIR: String = "res://scripts/enemies"
 const TUNING_DIR: String = "res://data/enemies"
 const DEFAULT_LEAD: float = 110.0
 ## A big attack's shot holds its turn this long after it reaches the player (by then it's behind
-## them, whatever small change of speed they made meanwhile).
+## them, whatever small change of speed they made meanwhile). DESIGN-TBD (docs/questions/r3.md): an
+## attack is over once its last shot has passed the player.
 const SHOT_PASS_MARGIN: float = 0.2
 
 ## Why an enemy's big attack is held: not at all, GDD §9.7's exclusive rule, or taking turns.
@@ -131,8 +132,9 @@ func targets_ahead(from: Vector3, max_distance: float) -> Array[Enemy]:
 ##   way to the player (note_attack_shot). An enemy whose own attack is already on carries on (the
 ##   Bad Dream's next slash in its chase). Otherwise, of the enemies of different types waiting for
 ##   their turn, the one that has waited longest goes first (then the one spawned first), so no enemy
-##   is kept waiting for ever by others that keep asking. Types space their own attacks themselves
-##   (one drone barrage at a time, one Octodog or hover truck at a time).
+##   is kept waiting for ever by others that keep asking (DESIGN-TBD, docs/questions/r3.md: who goes
+##   first). Types space their own attacks themselves (one drone barrage at a time, one Octodog or
+##   hover truck at a time).
 func major_attack_blocked(enemy: Enemy) -> bool:
 	var hold: Hold = _hold_for(enemy)
 	if big_attacks_take_turns():

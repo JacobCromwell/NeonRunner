@@ -485,7 +485,9 @@ func _sign_between(side: int, from: float, to: float) -> bool:
 
 # --- Declared properties and the director ------------------------------------------------------
 
-## GDD §9.7: its whole chase is a major attack (from bursting out until it dissolves).
+## GDD §9.7: its whole chase is a major attack (from bursting out until it dissolves). DESIGN-TBD
+## (docs/questions/r3.md): while big attacks take turns (GDD §9) the whole chase holds every other
+## type's big attack too, not only between its slashes.
 func is_major_attack_active() -> bool:
 	return alive and not _done and state != State.DISSOLVE
 

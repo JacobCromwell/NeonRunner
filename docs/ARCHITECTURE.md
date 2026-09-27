@@ -61,7 +61,7 @@ power-ups.
 | File | What |
 |---|---|
 | `data/tuning/movement.tres` (`MovementTuning`) | run speed, jump, walls, ceiling, piece sizes, camera, touch |
-| `data/tuning/game_rules.tres` (`GameRules`) | lanes per device, death share, invulnerability, stomp, score, economy, stars |
+| `data/tuning/game_rules.tres` (`GameRules`) | lanes per device, death share, invulnerability, stomp, whether big attacks take turns, score, economy, stars |
 | `data/tuning/powerups.tres` (`PowerupTuning`) | weapon tiers, claws, dash, magnet, slow time |
 | `data/tuning/pickups.tres` (`PickupTuning`) | in-run pickups: where they appear, taking them, the charge cap, the look |
 | `data/enemies/<type>.tres` (`EnemyTuning` subclasses) | per-enemy numbers, early/late pairs for campaign scaling |
@@ -125,11 +125,46 @@ heli drone, and the Cyborg's Bad Dream (released by a killed host, spawned by th
 time rather than placed by the generator). `scripts/enemies/mesh_batch.gd` merges an enemy's low-poly
 parts into one mesh per material to keep draw calls down.
 
-**Major attacks take turns through the director.** An enemy reports `is_major_attack_active()`
-(the Octodog through its charge sequence, the drone through wind-up and barrage, the Bad Dream through
-its chase), and before starting one asks `EnemyDirector.major_attack_blocked(self)`, which is true
-while another enemy's major attack is on and either of the two is `exclusive_major_attack` (the Bad
-Dream is: GDD §9.7). Other types can opt in the same way.
+**Big attacks take turns through the director** (GDD §9, decided September 26, 2026). The big attacks
+of different enemy types never overlap, so the player never has to dodge two at once. The owner may
+revert this after playtesting, so it sits behind one switch, `GameRules.big_attacks_take_turns` (on by
+default, in the F6 panel); switched off, the game plays exactly as before the rule. The big attacks
+(DESIGN-TBD, `docs/questions/r3.md`): the Octodog's charge sequence (its first wind-up until it gives
+up), the drone's wind-up and barrage, the hover truck's rev and forward lurch and its cannon's charge
+and volley, and the Bad Dream's chase. Small attacks (a cyborg's burst, a window cyborg's shot, a
+screech's swipe) and the hover truck's entrance don't take part. An enemy takes part like this, and
+the enemies still to come (the Barnacle Turret, Buzz Overdrive, the Resonator, the Gilded Sentinels,
+the Tithe Collector) opt in the same way for whichever of their attacks count as big:
+- **Report it.** `is_major_attack_active()` is true from the start of the attack's warning until its
+  last hazard is over (the lunge has passed, the lurch has ended). Each shot fired in it goes through
+  `world.director.note_attack_shot(self, seconds)`, the time the shot takes to reach the player: the
+  attack's turn lasts until it has passed them (`EnemyDirector.SHOT_PASS_MARGIN` after that).
+- **Ask before the warning, never after it.** Just before the warning would start, once everything
+  else about the attack is ready (its own spacing, its target, a clear stretch), the enemy asks
+  `world.director.major_attack_blocked(self)`, and while the answer is true it doesn't start, asks
+  again next frame, and goes on as it was: the drone keeps following, the truck holds back or keeps
+  pacing, the Octodog paces in position. Asking only when ready matters: the director queues those
+  held, and a waiting enemy that stops asking loses its place after a frame. Once a warning has
+  started the attack runs its course; nothing stops it for another's turn.
+- **An attack that may only come within a window** (the Octodog's planned charges) moves the window
+  on while `held_for_turn(self)` says it's waiting for another type, up to a limit of its own
+  (`OctodogTuning.turn_wait_max`), and keeps every fairness rule it was planned with.
+- **An attack that can't wait** because the player sets it off (the Bad Dream bursts out of a killed
+  host) or the generator planned its moment still reports itself: the others wait for it. It can
+  overlap an attack that was already on when it came; the Bad Dream holds its slash until that one
+  is over. (A planned one, like the Buzz Overdrive's cut, would need the others held off before its
+  warning, which the director can't do yet.)
+
+The director holds a big attack while another type's is on or its shots are still on their way; an
+enemy whose own attack is on carries on (the Bad Dream's next slash in its chase); and of the enemies
+of different types waiting, the one that has waited longest goes next (then the one spawned first),
+so none is kept from its turn by others that keep asking. Waiting only happens before a warning, never
+inside an attack, so two enemies can't wait on each other. Types space their own attacks themselves
+(one drone barrage at a time; one Octodog, one hover truck at a time). GDD §9.7's rule holds with the
+switch off as well: an `exclusive_major_attack` (the Bad Dream's chase) and the attacks of the types in
+its `exclusive_of` (Octodogs', drones') never overlap. `is_waiting()` and `turn_wait()` say whether and
+how long an enemy has been waiting. `tools/measure/big_attacks.gd` measures the overlaps and the delays
+over the campaign (Review tools); `tests/helpers/turn_dummy.gd` is a scripted big attack for tests.
 
 **Floor use.** The floor under a ceiling may hold enemies (GDD §3, changed September 26, 2026), but
 a ceiling's landing zone and the spot of each of its pads keep off the floor enemies use (see
@@ -628,7 +663,9 @@ them `check_ceilings` (GDD §3: pads that can be stepped on, safe landing zones,
 every ceiling without its pad, found by `FloorRoute`, `tests/helpers/floor_route.gd`), and finds a
 feature's pieces in a layout with the generator's own `LevelGenerator.feature_positions()`; a task
 that adds a new kind of piece extends it (and `FloorRoute`'s cells, if the piece is on the floor), or
-gives its rules script `positions()`. `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
+gives its rules script `positions()`. `test_enemy_director` checks the turn-taking between big attacks
+with scripted test enemies (`tests/helpers/turn_dummy.gd`) and over simulated runs of campaign levels,
+watched by `tools/measure/attack_watch.gd` (see Review tools). `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
 for framework tests, with `make_def()` for a BossDef from a list of phases; `test_bosses` runs fights
 in bare worlds and, with the test boss in the City's slot, through the App. `test_pickups` checks
 pickup placement against the rules as it writes them itself, over hand-built cases and generated
@@ -648,3 +685,13 @@ a scripted run with a ceiling ride and a wall run), and comparison
 sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
 `CLAUDE.md`.
+
+`tools/measure/big_attacks.gd` measures the big attacks (GDD §9, "Big attacks take turns") over
+simulated runs of the campaign's levels at 3, 5 and 6 lanes, with `GameRules.big_attacks_take_turns` on
+and off: a god-mode runner in the middle lane, stomping every host it passes, while the enemies play as
+in the game. It reports the time big attacks of different types overlap, how many of each kind came, and
+how long attacks waited for their turn (`godot --headless --fixed-fps 60 -s
+res://tools/measure/big_attacks.gd -- --levels=gangland/3 --lanes=3,5,6 --out=build/measure/x.json`; the
+whole campaign takes about ten minutes). `attack_watch.gd` does the watching from the enemies' own states
+and the live shots, never from the turn-taking code, and hashes each run's event log, so two builds (or
+the switch off and a build without the rule) can be compared run by run.

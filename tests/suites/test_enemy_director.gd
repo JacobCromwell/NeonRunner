@@ -205,9 +205,8 @@ func _test_longest_wait_first() -> void:
 	await sim.free_world(w)
 
 
-## Two types that are ready again as soon as they're done can't keep a third from its turn: it goes
-## after at most one attack of each (without the order of waiting, the two first in play would take
-## every turn).
+## Three types that are ready again as soon as they're done go round in turns: none waits longer than
+## one attack of each other type, and none is kept from its turns.
 func _test_no_starvation() -> void:
 	var w: RunWorld = _world(true)
 	var a := _dummy(w, "alpha", {"first": 0.0, "interval": 0.02, "warning": 0.3, "attack": 0.3})
@@ -277,7 +276,8 @@ func _test_attack_on_carries_on() -> void:
 
 ## Five types on random schedules for a minute of play, some firing shots: no two types' big attacks
 ## ever overlap (shots included), nothing deadlocks, and every one gets its turns, never waiting
-## longer than one attack of each other type.
+## longer than one attack of each other type. (Without the order of waiting, first come first served,
+## one of these five never gets a turn.)
 func _test_many() -> void:
 	var w: RunWorld = _world(true)
 	var rng := RandomNumberGenerator.new()

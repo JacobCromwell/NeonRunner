@@ -234,7 +234,9 @@ func charging() -> bool:
 ## warning) until the lurch is over, and a cannon shot, from the charge until the window shooters'
 ## bolts have followed it (the shots' flight holds the turn too, EnemyDirector.note_attack_shot).
 ## While another type's big attack is on, it keeps pacing or holding back and revs or charges once
-## its turn comes (EnemyDirector.major_attack_blocked).
+## its turn comes (EnemyDirector.major_attack_blocked). DESIGN-TBD (docs/questions/r3.md): its
+## entrance (the banging, then the burst that hurts a player on that wall section) isn't one: the
+## generator plans where it bursts out, so it couldn't wait for a turn.
 func is_major_attack_active() -> bool:
 	return alive and (state == State.REV or state == State.LURCH_FWD or _charge_left >= 0.0 or not _volley.is_empty())
 

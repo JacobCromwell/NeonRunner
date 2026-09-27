@@ -232,7 +232,8 @@ func _can_wind_up(v: float) -> bool:
 ## GDD §9, §9.7: its charge sequence, from its first wind-up until it gives up, is a big attack: the
 ## Cyborg's Bad Dream never slashes during one, and while big attacks take turns no other type's
 ## starts (EnemyDirector.major_attack_blocked). Its first wind-up waits for its turn; the rest of the
-## sequence follows without asking.
+## sequence follows without asking. DESIGN-TBD (docs/questions/r3.md): the whole sequence is one big
+## attack, so no other type attacks between its charges either.
 func is_major_attack_active() -> bool:
 	if not alive or phase in [Phase.IDLE, Phase.GIVE_UP, Phase.LEAVE, Phase.FALLING]:
 		return false
