@@ -89,6 +89,8 @@ func _build() -> void:
 	if encounter != null:
 		encounter.setup(world, context, arena)
 		encounter.defeated.connect(_on_boss_defeated)
+	if not context.review_pickups.is_empty():
+		world.pickups.start_review(context.review_pickups)
 
 	if _env == null:
 		_env = WorldEnvironment.new()
@@ -274,6 +276,7 @@ func _build_debug_tools() -> void:
 		{"title": "Game rules", "resource": rules, "path": App.RULES_PATH},
 		{"title": "Power-ups", "resource": App.powerup_tuning, "path": App.POWERUPS_PATH},
 		{"title": "Runner animation", "resource": load(PlayerAvatar.ANIM_TUNING_PATH), "path": PlayerAvatar.ANIM_TUNING_PATH},
+		{"title": "Pickups", "resource": world.pickups.tuning, "path": PickupField.TUNING_PATH},
 		{"title": "Level pacing", "resource": context.config, "path": context.config.resource_path},
 	]
 	if context.config.resource_path == "":

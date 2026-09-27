@@ -19,6 +19,9 @@ var revives_used: int = 0
 var god_mode: bool = false
 ## Quick play review aid (--nofall): the grapple never runs out, so falls never end the run.
 var no_fall: bool = false
+## Quick play review aid (--pickups): pickups of these items appear in turn, to review their look.
+## Levels never place pickups in the game (GDD §10 puts them in boss fights).
+var review_pickups: PackedStringArray = []
 ## Campaign position for the completion bonus (0-based level index), -1 outside the campaign.
 var level_index: int = -1
 ## A boss fight (GDD §10): the boss, whose arena `config` describes (BossArena.base_config). Null for
@@ -72,6 +75,7 @@ func retry() -> RunContext:
 	next.attempt = attempt + 1
 	next.god_mode = god_mode
 	next.no_fall = no_fall
+	next.review_pickups = review_pickups
 	next.level_index = level_index
 	next.boss = boss
 	next.boss_resume = boss_resume.duplicate()

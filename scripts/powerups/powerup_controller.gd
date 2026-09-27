@@ -23,10 +23,11 @@ extends Node
 ##   The weapon is `active` while it has a target and `ready` shows its fire cycle; the dash and slow
 ##   time are `active` while running and `ready` 0 → 1 over their cooldown; claws and the magnet are
 ##   always active and ready. Armor, shield and grapple carry the player's charges (0 = used up; they
-##   stay listed for the whole run, `active` false once used).
+##   stay listed for the whole run, `active` false once used); one the run didn't bring joins the list
+##   when the player picks it up (GDD §10 pickups).
 ## - equipment() -> Dictionary: {claws: bool, armor: bool, shield: bool, weapon_tier: int,
 ##   magnet: bool} for the player model's set_equipment(); `equipment_changed` fires when it changes
-##   (armor or shield broke).
+##   (armor or shield broke, or was picked up).
 ## - try_dash() / try_slow_time() -> bool: what the actions do (for touch buttons and tests).
 ## - Signals below. Sounds: laser_fire / missile_fire per shot, dash_ready, slow_time_on / _off
 ##   (the `dash` sound comes from the player's own dash event).
@@ -81,6 +82,7 @@ func setup(p_world: RunWorld) -> void:
 			_carried.append(item)
 	world.player.died.connect(_on_player_died)
 	world.player.item_used.connect(_on_item_used)
+	world.player.item_gained.connect(_on_item_gained)
 
 
 ## Starts the juggernaut dash if the run has it and it's off cooldown. True if it started.
@@ -151,6 +153,15 @@ func _on_player_died(_cause: String) -> void:
 
 
 func _on_item_used(item: StringName) -> void:
+	if item == &"armor" or item == &"shield":
+		equipment_changed.emit(equipment())
+
+
+## A breakable item was picked up: it's carried from now on (in shop order), and the model shows it.
+func _on_item_gained(item: StringName) -> void:
+	if BREAKABLES.has(item) and not _carried.has(item):
+		_carried.append(item)
+		_carried.sort_custom(func(a: StringName, b: StringName) -> bool: return BREAKABLES.find(a) < BREAKABLES.find(b))
 	if item == &"armor" or item == &"shield":
 		equipment_changed.emit(equipment())
 

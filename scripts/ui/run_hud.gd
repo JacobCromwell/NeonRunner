@@ -9,7 +9,8 @@ extends CanvasLayer
 ## top left, the progress meter moves into the right column and the icons sit above the debug help.
 ## Power-ups report themselves: if world.powerups has hud_state(), each entry
 ## {id, icon, tier, ready 0–1, active, charges} gets an icon; otherwise the HUD shows the player's
-## own charges (and claws, which have no cooldown).
+## own charges (and claws, which have no cooldown). A pickup taken during the run (GDD §10) flashes
+## its item's icon, which joins the protections in its place if the run didn't bring that item.
 
 signal pause_pressed
 
@@ -50,6 +51,7 @@ var _hint: PanelContainer
 var _hint_label: Label
 var _hint_tween: Tween
 var _score_source: ScoreKeeper
+var _pickup_source: PickupField
 var _quick: bool = false
 
 
@@ -178,12 +180,17 @@ func bind(p_world: RunWorld, p_context: RunContext) -> void:
 			_score_source.changed.disconnect(_on_score_changed)
 		if _score_source.bonus_awarded.is_connected(_on_bonus):
 			_score_source.bonus_awarded.disconnect(_on_bonus)
+	if _pickup_source != null and is_instance_valid(_pickup_source) and _pickup_source.collected.is_connected(_on_pickup_collected):
+		_pickup_source.collected.disconnect(_on_pickup_collected)
 	world = p_world
 	context = p_context
 	_quick = context != null and context.mode == RunContext.Mode.QUICK and OS.is_debug_build()
 	_score_source = world.score
 	world.score.changed.connect(_on_score_changed)
 	world.score.bonus_awarded.connect(_on_bonus)
+	_pickup_source = world.pickups
+	if _pickup_source != null:
+		_pickup_source.collected.connect(_on_pickup_collected)
 	score_counter.set_value(world.score.score, false)
 	credits_counter.set_value(world.score.credits, false)
 	for child: Node in _popups.get_children():
@@ -254,7 +261,7 @@ func _build_items() -> void:
 	var p: Player = world.player
 	for entry: Array in PROTECTIONS:
 		if world.loadout.charge(entry[0]) > 0 or int(p.get(entry[2])) > 0:
-			var icon: CooldownIcon = _add_icon(entry[0], entry[1])
+			var icon: CooldownIcon = _protection_icon(entry[0])
 			icon.count = int(p.get(entry[2]))
 	if world.powerups != null and world.powerups.has_method(&"hud_state"):
 		_update_powerups(world.powerups.call(&"hud_state"))
@@ -270,6 +277,8 @@ func _update_powerups(states: Array) -> void:
 		if id == &"":
 			continue
 		var icon: CooldownIcon = item_icons.get(id)
+		if icon == null and _protection_order(id) >= 0:
+			icon = _protection_icon(id)
 		if icon == null:
 			icon = _add_icon(id, ShopScreen.icon_for(StringName(String(d.get("icon", id))), int(d.get("tier", 1))))
 			if POWERUP_ACTIONS.has(id):
@@ -287,6 +296,40 @@ func _add_icon(id: StringName, icon_name: StringName) -> CooldownIcon:
 	_items.add_child(icon)
 	item_icons[id] = icon
 	return icon
+
+
+## The icon of a protection (armor, shield or grapple), made if it isn't shown yet: the protections
+## come first, in PROTECTIONS order, then the power-ups. Null for anything else.
+func _protection_icon(id: StringName) -> CooldownIcon:
+	var icon: CooldownIcon = item_icons.get(id)
+	var order: int = _protection_order(id)
+	if icon != null or order < 0:
+		return icon
+	icon = _add_icon(id, PROTECTIONS[order][1])
+	var before: int = 0
+	for other: Array in PROTECTIONS:
+		if _protection_order(other[0]) < order and item_icons.has(other[0]):
+			before += 1
+	_items.move_child(icon, before)
+	return icon
+
+
+## The place of `id` in PROTECTIONS, or -1 if it isn't a protection.
+func _protection_order(id: StringName) -> int:
+	for i: int in PROTECTIONS.size():
+		if PROTECTIONS[i][0] == id:
+			return i
+	return -1
+
+
+## A pickup was taken (GDD §10): its item's icon shows, with the charges the player holds now, and
+## flashes (also when the player already held all they can).
+func _on_pickup_collected(pickup: Pickup, _gained: bool) -> void:
+	var icon: CooldownIcon = _protection_icon(pickup.item)
+	if icon == null:
+		return
+	icon.count = world.player.charges_of(pickup.item)
+	icon.flash_ready()
 
 
 func _place_progress() -> void:

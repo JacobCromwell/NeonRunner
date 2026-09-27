@@ -617,6 +617,50 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
 55. **How dusty and worn:** sand on roofs, awnings and ledges, sun-bleached patches, grime at the foot of faces and
     under windows, weathering blotches and a light haze; one `wear` value scales it all.
 
+**In-run pickups** (from B7; numbers in `data/tuning/pickups.tres`)
+56. **A pickup of an item the player already holds** (GDD §8, §10): does it add a second charge, pay something, or
+    do nothing? It matters most for the final phase's armor pickup, which comes whether or not the player still has
+    armor. Placeholder: taken without adding a charge (at most one of each item, like the loadout); if the cap is
+    raised, picked-up charges break before the player's own.
+57. **Where a pickup appears** (GDD §10 says when, not where): 42 m ahead (about 2.3 s), in the player's lane or the
+    nearest fair lane at most 2 lanes away, with 12 m of floor before it and 6 m after free of gaps, fences, pads,
+    ramps, ceilings, enemies and a boss's floor warnings. When nothing in reach is fair it waits, so a due armor
+    pickup can come a little later than the 10–15 or 15–17 s. Right distances, and is waiting the right answer?
+58. **A missed pickup** is gone, and the armor rule's once-per-phase cap still counts it, so a player who misses the
+    pickup after a break gets none until the next phase. Intended, or should it come back once?
+59. **Picked-up items and the stock:** a picked-up charge belongs to the fight, like a granted item: breaking it
+    never costs stock, and a pickup never adds to the stock.
+60. **The pickups' look and sound:** the HUD's round badge for the item standing upright at chest height (1.3 m):
+    its white icon on a dark disc in a white ring, a soft halo and floor glow; it bobs and sways, never spins, and
+    looks the same in every zone (white is also the 100-credit gem's colour; size, shape and icon tell them apart).
+    A soft chime when one appears, a latch and chime when taken, and a first-encounter hint per item.
+
+**Razor Echo, the player model** (from P1; brief `docs/art/BRIEF_RAZOR_ECHO.md`; frames in the P1 report)
+61. **How each power-up looks on Razor Echo** (brief "Power-up looks", proposed; supersedes FB 35): each in steel, white
+    or its own colour, never copper. Weapon: a gunmetal emitter on a folding mount over the gold arm's shoulder,
+    growing by tier (cyan, violet and white lights, the shots' colours; shots now leave the left shoulder). Claws:
+    three steel blades from each hand's knuckles. Armor: steel plates on the shoulders, chest and upper back, which
+    burst into tumbling shards when it breaks. Magnet: a coil with azure windings on the back of the belt. Shield: the
+    existing pale-cyan bubble. Should the shield follow the copper?
+62. **The pattern across the back** (GDD §11): the sheet's pipes simplified for about 30 pixels on screen: a hook and a
+    cross on a rusted plate, a forked Y to the belt, two long framing conduits, and a loop down each back panel of the
+    skirt. The right shapes?
+63. **How bright and deep the copper is** ("soft copper"): it renders pale (about RGB 250, 195, 140) on both renderers,
+    well apart from the gap edges; a deeper copper moves toward gap-edge orange and enemy fire. Keep it, or deeper?
+64. **The rim light for dark tracks:** a faint pale steel-blue glow on faces seen edge-on, below the bloom threshold.
+    Right colour and strength?
+65. **Invulnerability and death in the new look** (FB 36, 37): the invulnerability tint is pale copper-white; on death
+    the red flash stays and the conduits and eye go dark.
+66. **The dash in copper:** the dash's shell, speed lines and smash burst are pale copper, a little dimmer so the
+    additive shell never reads as a hazard's orange.
+67. **How the coat moves:** four stiff panels from the waist (two behind, split by a vent; two at the front edges)
+    follow the thighs through a spring with a little lag and overshoot, trail in the wind, flare when falling, trail
+    behind a slide, hang toward the feet on the ceiling, and fold along the legs in a death. On a wall they also sag
+    12° toward real gravity (the brief doesn't say). Right amount of motion; keep the wall sag?
+68. **Details read off the sheet:** the scar across the right cheek, a dark leather fingerless glove on the right hand,
+    two small copper lights on the vest (the sheet's were cyan and orange), a dusty hem, and a high collar open at the
+    front with a copper conduit round its back. Anything to change?
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).

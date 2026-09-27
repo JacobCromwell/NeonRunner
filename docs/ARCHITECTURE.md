@@ -37,6 +37,7 @@ RunWorld (scripts/run/run_world.gd)       one run's gameplay world; everything s
   Enemies    EnemyDirector: spawns layout enemies as the player approaches, retires them
   Projectiles ProjectilePool: every shot, pooled and swept
   Credits    CreditField: every credit as MultiMesh instances; pickup and magnet
+  Pickups    PickupField: armor, shield and grapple pickups a boss offers, placed fairly, pooled
   Effects    RunEffects: particle bursts, glowing lines, camera-shake requests
   Score      ScoreKeeper: level score, credits, kills, bonuses, stats
   Sounds     PlayerSfx: non-positional sounds (RunWorld.play_sfx / play_sfx_at)
@@ -52,7 +53,8 @@ flow, any other, such as the test boss, as quick play) and also takes `--phase=N
 work in debug builds only, so a release build can't skip progression or farm credits with them.
 
 Physics order each frame: RunWorld (builds chunks, spawns enemies) → Player (moves, checks hazards
-and triggers) → the boss's pattern (a boss fight) → enemies → projectiles → credits → power-ups.
+and triggers) → the boss's pattern (a boss fight) → enemies → projectiles → credits → pickups →
+power-ups.
 
 ## Data (tunables live in data, CLAUDE.md principle 7)
 
@@ -61,6 +63,7 @@ and triggers) → the boss's pattern (a boss fight) → enemies → projectiles 
 | `data/tuning/movement.tres` (`MovementTuning`) | run speed, jump, walls, ceiling, piece sizes, camera, touch |
 | `data/tuning/game_rules.tres` (`GameRules`) | lanes per device, death share, invulnerability, stomp, score, economy, stars |
 | `data/tuning/powerups.tres` (`PowerupTuning`) | weapon tiers, claws, dash, magnet, slow time |
+| `data/tuning/pickups.tres` (`PickupTuning`) | in-run pickups: where they appear, taking them, the charge cap, the look |
 | `data/enemies/<type>.tres` (`EnemyTuning` subclasses) | per-enemy numbers, early/late pairs for campaign scaling |
 | `data/shop/catalog.json` | shop items, tiers and prices |
 | `data/campaign/campaign.tres` → `data/zones/*.tres` → `data/levels/*.tres` | the campaign |
@@ -206,6 +209,40 @@ switched-on permanent item: `WeaponPowerup` (auto-fire, tiers 1–4, enemy healt
 `DashPowerup`, `MagnetPowerup` and `SlowTimePowerup`. Breakables (armor, shield, grapple) are charges
 on the Player. The controller's header documents its API: `hud_state()` for the HUD (`charges` -1 for
 permanent items), `equipment()` for the player model, and `try_dash()` / `try_slow_time()`.
+The player model shows what the run carries (`PlayerAvatar.set_equipment`, looks in `PlayerSuit`): the
+weapon sits over the gold arm's (left) shoulder, so shots leave from there (`Player.weapon_muzzle()`),
+and armor that breaks in play shatters. Effects tied to the runner's own glow (the dash's shell and
+lines, the invulnerability tint) use its copper, thinned toward white; the shots keep their colours.
+
+## Pickups
+
+GDD §10 puts armor, shield and grapple pickups in boss fights (the standard armor rule, and fights
+that offer their own), never in levels, so no pattern places one. `PickupField`
+(`scripts/run/pickup_field.gd`, in every `RunWorld`) runs them; its numbers are in
+`data/tuning/pickups.tres` (`PickupTuning`, F6).
+
+- **Offers:** `offer(item, at, lane)` (a boss calls `BossEncounter.offer_pickup`) queues a pickup,
+  which appears at the first fair spot, now or as soon as there is one: at least `lead_distance`
+  ahead (within `search_window` beyond, on the built track), at most `reach_lanes` from the player's
+  lane (nearer lanes first), with `clear_before` of floor before it and `clear_after` after it free of
+  gaps, fences of any kind, pads, ramps, speed pads, ceilings overhead and enemies (planned on the
+  track near the lane, or in play: any hitbox, fence, block or lane blocker up to `clear_height`), and
+  no boss floor warning over it (`BossProps.warned`). `at` and `lane` are requests the rules still
+  apply to. `find_spot()` and the static `layout_fair()` answer placement questions for tests.
+- **Taking:** the player's hitbox (swept over the frame) reaching its `take_box()` takes it:
+  `Player.gain_item(item, max_charges)` adds a charge unless the player holds all they may, the
+  `Loadout` counts it in `picked_up` (the App asks `Loadout.costs_stock()` when an item breaks, so a
+  picked-up charge, like a granted one, never costs stock), and `collected(pickup, gained)` fires. The
+  HUD shows the item in its place among the protections and flashes it; the power-up controller lists
+  it in `hud_state()` and the player model shows armor and shields. A pickup the player runs past is
+  `missed` and gone. `clear()` removes everything (a boss beaten: none after the fight).
+- **Look:** `Pickup` (`scripts/run/pickup.gd`, `pickup.gdshader`) is the HUD's round badge for the
+  item standing upright at chest height: the item's icon white-hot on a dark disc in a white ring,
+  with a halo and a floor glow, bobbing but never spinning, the same in every zone. Neutral whites keep
+  it clear of every hazard colour; its size and icon keep it apart from credits. Sounds `pickup_appear`
+  and `pickup`; a first-encounter hint per item (`pickup:<item>` in `data/hints/hints.json`). Pickups
+  are pooled.
+- **Review:** quick play's `--pickups[=armor,shield,grapple]` offers them in turn (debug builds).
 
 ## Zone skins
 
@@ -346,8 +383,30 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
 ## Characters, UI and audio
 
 - **Characters:** `HumanoidRig` (`scripts/characters/`) is the procedural rig and pose set behind the
-  player model (`PlayerAvatar`, a human in a cyber suit) and the cyborgs (`CyborgBody` with
-  `CyborgSuit`: one skeleton, a part set per zone look, one material per cyborg).
+  player model (`PlayerAvatar`: Razor Echo, look in `PlayerSuit`) and the cyborgs (`CyborgBody` with
+  `CyborgSuit`: one skeleton, a part set per zone look, one material per cyborg). A look is a
+  `HumanoidParts`: `HumanoidPiece` shapes per segment (BOX, PRISM, LATHE, BAND, TORUS, and SHELL, a
+  closed sheet cut to an arc), named attachment sets (equipment, zone variants), and optional
+  `HumanoidPanel`s. A piece's `glow` and `shine` (polish) ride in the mesh (UV.x, the vertex colour's
+  alpha) so a whole segment is one draw call.
+  - **Panels** are stiff flaps hinged at the waist (Razor Echo's coat skirt; looks without them are
+    untouched). All of a rig's panels are one mesh on the pelvis joint; `update_panels()` (called by
+    `animate()`; a user that poses the rig itself with `apply_pose()` calls it after) swings each by a
+    pitch and a roll through a damped spring: it hangs toward the feet (on the ceiling too; on a wall it
+    sags toward real gravity), follows its thigh, trails in the wind of the run and flares when falling,
+    then the leg on its side and the surface push it clear (a hem pushed by the surface trails while
+    the runner moves, otherwise folds the way it leans). `humanoid_panels.gdshaderinc` turns each
+    panel's vertices by the rig's `panel_rot` / `panel_hinge` arrays, so the material must be the rig's
+    own. The numbers are `HumanoidAnimTuning`'s Coat panels group (F6, "Runner animation").
+  - **The player's shader** (`humanoid_body.gdshader`) also has a rim light and `glow_albedo` (soft
+    trim that shines by its own light). The builder stores vertex colours in linear space; on the
+    Compatibility renderer, which works in sRGB space, the shader converts them back (as
+    `kit_common.gdshaderinc` does for the mesh kit). `cyborg_body.gdshader` doesn't yet, so the
+    cyborgs show darker and more saturated on the web than on Forward+ (left for P2, which rebuilds
+    them).
+  - **Colour rule:** the player's only glow on the base model is its soft copper (`PlayerSuit.GLOW`);
+    `test_avatar` keeps it and the effects built from it at least 0.3 from every skin's hazard colours
+    and enemy fire on the hue and saturation wheel, and power-up looks never use it.
 - **UI:** a theme built in code (`scripts/ui/theme/`: `UiStyle` in `data/ui/ui_style.tres`,
   `UiTheme`), code-drawn icons (`scripts/ui/icons/`) and a widget kit (`scripts/ui/widgets/`). Screens
   (`scripts/ui/screens/`) extend `ScreenBase`; the HUD is `RunHud`. Orbitron is for titles and Exo 2
@@ -431,7 +490,8 @@ encounter.setup(world, context, arena)   joins the world between the player and 
   zone's looks, freed once passed: `fence` (normal fence rules; it can flicker in first, and a boss
   may move it), `block` (solid; the player can't switch into it), `pad` and `ceiling`, `block_wall`
   (takes a stretch of wall away), and the red floor warnings `lane_warning` and `circle_warning`
-  (steady with Reduced flashing).
+  (steady with Reduced flashing; `warned(lane, from, to)` says where they are, and pickups keep off
+  them).
 - **Parts** (`BossPart`, made with `add_part()` through the director): a boss's body shares the fight's
   health (weapon hits go to `BossEncounter.damage`, nothing else defeats it) and has weak points
   (`add_weak_point`: a stomp from above is a big hit; `set_weak_points_enabled` for weak points that
@@ -456,10 +516,14 @@ encounter.setup(world, context, arena)   joins the world between the player and 
   `payout_credits`, and gives the stars from the par times; the App records it as the step's record
   (best score, best time, stars) and submits the boss leaderboard, `boss/<boss id>/<tier>` (none in
   the web demo). Its results and level-select tile show the boss's stars and bests like a level's.
-- **Pickups** (task B7): `armor_pickup_due(reason)` follows GDD §10's standard armor rule, at the start
-  of the final phase and `armor_delay_min`–`max` seconds after the player's armor or shield breaks, at
-  most `armor_pickups_per_phase` per phase; `phase_started` and `protection_broken` are there for
-  other pickups.
+- **Pickups** (see Pickups): `armor_pickup_due(reason)` follows GDD §10's standard armor rule, at the
+  start of the final phase and `armor_delay_min`–`max` seconds after the player's armor or shield
+  breaks, at most `armor_pickups_per_phase` per phase, and each time the encounter offers an armor
+  pickup (`_on_armor_pickup_due`, which a boss may override to place it its own way).
+  `offer_pickup(item, at, lane)` offers an armor, shield or grapple pickup of the boss's own (GDD §10:
+  a section of floor that spawns one; the test boss offers a shield in its second phase), and
+  `phase_started` and `protection_broken` are there to time them. The win clears every pickup, and
+  nothing is offered after it.
 - **The light**: `set_light_level(level, seconds)` fades the environment's ambient and sky light and
   the sun, never below `MIN_LIGHT_LEVEL`; glowing things keep their colours, and the light returns
   with the fight.
@@ -469,8 +533,9 @@ parts extending `BossPart`, a tuning resource of its own in `data/bosses/<id>_tu
 slot's `BossDef` filled in (scene, phases, arena, numbers). Override the hooks it needs:
 `_plan_lap`, `_build_boss`, `_on_phase_started` / `_intro_tick`, `_on_pattern_started` /
 `_pattern_tick`, `_on_weak_point_hit`, `_on_part_defeated`, `_on_part_emp`, `_on_phase_ended`,
-`_on_defeated` / `_defeated_tick`. Every attack needs its visual and audio warning, random choices
-come from `rng`, and time from the physics step. The test boss (`TestBoss`) is a small example.
+`_on_defeated` / `_defeated_tick`, `_on_armor_pickup_due`. Every attack needs its visual and audio
+warning (a floor warning from `props` also keeps pickups away), random choices come from `rng`, and
+time from the physics step. The test boss (`TestBoss`) is a small example.
 
 **How the designed bosses fit** (GDD §10; each is a later task):
 - **Floating Head (E1):** the ship and face are the body part; the bombing run drops bombs under
@@ -525,20 +590,24 @@ the web demo until the real plugins are chosen (risk test R3).
 one. `RunSim` (`tests/helpers/run_sim.gd`) runs a Player over a hand-built layout (`run()`), or a
 full RunWorld (`build_world()` + `step_world()`). `SkinSuite` (`tests/helpers/skin_suite.gd`) holds
 the checks every zone skin must pass, and helpers to inspect what a skin builds over a whole level
-(`visit_level()`, `rects_of()`, `under_hazard()`). `LayoutChecks` (`tests/helpers/layout_checks.gd`) holds the
-fairness checks for generated layouts (the generator suite runs them over many seeds, the campaign
+(`visit_level()`, `rects_of()`, `under_hazard()`). `LayoutChecks` (`tests/helpers/layout_checks.gd`)
+holds the fairness checks for generated layouts (the generator suite runs them over many seeds, the campaign
 suite over every campaign level at 3, 5 and 6 lanes) and finds a feature's pieces in a layout with the
 generator's own `LevelGenerator.feature_positions()`; a task that adds a new kind of piece extends
 it, or gives its rules script `positions()`. `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
 for framework tests, with `make_def()` for a BossDef from a list of phases; `test_bosses` runs fights
-in bare worlds and, with the test boss in the City's slot, through the App. The runner frees anything
+in bare worlds and, with the test boss in the City's slot, through the App. `test_pickups` checks
+pickup placement against the rules as it writes them itself, over hand-built cases and generated
+tracks at 3, 5 and 6 lanes, and the armor rule end to end on the test boss. The runner frees anything
 a suite leaves in the tree, gives suites a fresh, unsaved profile, reports a suite that fails to load,
 and ends a stuck run after 600 s of real time.
 
 ## Review tools
 
 Scenes in `tools/showcase/` show one part of the game up close for visual review (not part of the
-game): the avatar, the enemies (`enemy_showcase` for the cyborg family, `octodog_screech`,
+game): the avatar (`avatar_showcase`: every pose, power-up and concept-sheet view, front, back and
+side; `avatar_run_review`: a scripted run through the game camera on any zone's skin, with any
+power-up look), the enemies (`enemy_showcase` for the cyborg family, `octodog_screech`,
 `drone_truck_showcase`, `bad_dream_showcase`), the UI kit, the screens, a zone skin (`skin_review`:
 any skin from fixed spots, including close-ups of the cult's feed screens and emblems a skin lists, or
 a scripted run with a ceiling ride and a wall run), and comparison
