@@ -229,16 +229,15 @@ func _low_building(batch: MeshBatch, facade: MeshLayer, solid: MeshLayer, glow: 
 		# glow over it (it would wash the picture out).
 		CultFeed.wall_screen(batch.layer(skin.feed_material()), side, px, d0, len, y0, h, skin.feed_board_brightness, id)
 		return
+	var e: float = board["emblem"]
+	if e > 0.0:
+		# The glyphs leave a clear square in the corner where they end, for the sponsor's badge.
+		var m: float = e * EMBLEM_MARGIN
+		_panel(solid, side, px, d0, len, y0, 0.0, len - m, 0.0, h, color, 0.65, MeshKit.PAT_GLYPHS, 1.5)
+		_panel(solid, side, px, d0, len, y0, len - m, len, m, h, color, 0.65, MeshKit.PAT_GLYPHS, 1.5)
+		_emblem(solid, side, px, d0, len, y0, len - m, len, 0.0, m, e)
 	else:
-		var e: float = board["emblem"]
-		if e > 0.0:
-			# The glyphs leave a clear square in the corner where they end, for the sponsor's badge.
-			var m: float = e * EMBLEM_MARGIN
-			_panel(solid, side, px, d0, len, y0, 0.0, len - m, 0.0, h, color, 0.65, MeshKit.PAT_GLYPHS, 1.5)
-			_panel(solid, side, px, d0, len, y0, len - m, len, m, h, color, 0.65, MeshKit.PAT_GLYPHS, 1.5)
-			_emblem(solid, side, px, d0, len, y0, len - m, len, 0.0, m, e)
-		else:
-			_panel(solid, side, px, d0, len, y0, 0.0, len, 0.0, h, color, 0.65, MeshKit.PAT_GLYPHS, 1.5)
+		_panel(solid, side, px, d0, len, y0, 0.0, len, 0.0, h, color, 0.65, MeshKit.PAT_GLYPHS, 1.5)
 	glow.rect(Vector3(px - side * 0.4, y0 - 1.5, -d0 + 1.5), Vector3(0, 0, -(len + 3.0)), Vector3(0, h + 3.0, 0), color,
 		0.14, MeshKit.SHAPE_FLAT)
 
