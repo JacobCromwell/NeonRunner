@@ -348,15 +348,16 @@ func carries_emblem(a: int, b: int) -> bool:
 
 
 ## The screens on the walls playing the feed whose middles lie between two track distances, for
-## reviews and tests: side, at, kind (&"tower_screen" flush on a tower, &"street_screen" hung out over
-## the street), width, height, center (the screen's middle, on its face). The same ones wall_section()
-## builds.
+## reviews and tests: side, at, kind (&"roof_board" on a low building's roof, &"street_screen" hung out
+## over the street), width, height, center (the screen's middle, on its face). The same ones
+## wall_section() builds.
 func feed_boards(side: int, face_x: float, start: float, end: float) -> Array[Dictionary]:
 	return towers().feed_boards(side, face_x, start, end)
 
 
 ## The cult's emblems on the walls whose middles lie between two track distances, for reviews and
-## tests: side, at, kind (&"screen" or &"banner"), size (the mark's square, metres), center.
+## tests: side, at, kind (&"screen" on a street screen's ad, &"roof_board" or &"banner"), size (the
+## mark, metres), center. The same ones wall_section() builds.
 func cult_emblems(side: int, face_x: float, start: float, end: float) -> Array[Dictionary]:
 	return towers().emblems(side, face_x, start, end)
 
