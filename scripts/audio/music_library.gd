@@ -3,7 +3,10 @@ extends Resource
 ## Which file plays for each music track, and how loud. The current files are seamless loops made by
 ## tools/asset_gen/music_gen.gd (tools/godot.sh music). To replace a track, point its entry in
 ## `files` at the new file (WAV, Ogg Vorbis or MP3) and set its level: a file that isn't marked as a
-## loop is looped as a whole. The Music autoload (MusicDirector) plays these on the Music bus.
+## loop is looped as a whole. A track has a level-complete riff in its key, the sound effect
+## level_complete_<track> (MusicDirector.level_complete_sound()): a replacement in another key needs
+## that riff remade to match, or removed so the E riff plays. The Music autoload (MusicDirector)
+## plays these on the Music bus.
 
 ## The bus every music player uses. Settings set its volume by this name.
 const BUS: StringName = &"Music"
@@ -14,9 +17,26 @@ const BUS: StringName = &"Music"
 @export var volume_db: Dictionary = {}
 ## Tempo per track in beats per minute (4/4). Each loop is a whole number of bars at this tempo.
 @export var bpm: Dictionary = {}
+
+@export_group("Pause duck")
 ## How far Music.set_ducked(true) lowers the music (pause menus), and how long the dip takes.
 @export_range(-24.0, 0.0, 0.5, "suffix:dB") var duck_db: float = -8.0
 @export_range(0.0, 2.0, 0.05, "suffix:s") var duck_time: float = 0.3
+
+@export_group("Death dip")
+## The death dip (GDD §11: the music dips when the player dies, holds under the death screen, and
+## comes back when they continue or retry; Music.set_dipped()): how far the playing track sinks.
+## With the pause duck, the deeper of the two applies.
+## DESIGN-TBD: the dip's amount, low-pass and timings are placeholders until the owner's playtest
+## (OPEN_QUESTIONS §D, FB 52: the mix balance is tuned after playtesting).
+@export_range(-30.0, 0.0, 0.5, "suffix:dB") var dip_db: float = -10.0
+## The low-pass the Music bus closes to during the dip, so the track loses its highs and sounds far
+## away (8000 Hz barely touches it).
+@export_range(200.0, 8000.0, 10.0, "suffix:Hz") var dip_lowpass_hz: float = 800.0
+## How long the dip takes to go all the way down (it starts as the player dies, under the death's
+## dive-bomb sound), and to come back up on a revive or a restart.
+@export_range(0.0, 3.0, 0.05, "suffix:s") var dip_time: float = 0.5
+@export_range(0.0, 3.0, 0.05, "suffix:s") var dip_recover_time: float = 1.0
 
 var _cache: Dictionary = {}
 

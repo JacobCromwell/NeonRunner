@@ -21,6 +21,10 @@ const TRACKS: Dictionary = {
 	"menu": preload("res://tools/asset_gen/track_menu.gd"),
 	"city": preload("res://tools/asset_gen/track_city.gd"),
 	"gangland": preload("res://tools/asset_gen/track_gangland.gd"),
+	"marketplace": preload("res://tools/asset_gen/track_marketplace.gd"),
+	"corporate": preload("res://tools/asset_gen/track_corporate.gd"),
+	"dead_zone": preload("res://tools/asset_gen/track_dead_zone.gd"),
+	"golden": preload("res://tools/asset_gen/track_golden.gd"),
 }
 ## Import settings for each music file: loop forward from the first sample to the guard sample at
 ## the end (-1), and compress with QOA.
