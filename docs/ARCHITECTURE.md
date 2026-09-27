@@ -240,7 +240,10 @@ either can put a NaN in a pixel, and the glow pass blows it up into a white disc
 **Pattern ids.** Ids up to 19 are the City's and Gangland's, in `kit_solid.gdshader` itself; ids 20-29
 are the Marketplace's (all in use), in `kit_market.gdshaderinc` (one include and one dispatch line in
 `kit_solid`). A new zone takes the next free block of ten (30-39 next) in its own include, so zones
-built in parallel never collide on an id.
+built in parallel never collide on an id. Ids 60-69 are the cult's, shared by every zone, in
+`kit_cult.gdshaderinc` (its include follows `cult_mark()` in `kit_solid`, and its dispatch runs after
+the zones' own): `PAT_CULT_MARK` (60) draws the cult's emblem from the material's `cult_emblem`
+texture as a mark on a dark panel.
 
 **Gangland's ceilings** (`GanglandCeiling`) take their width from the lanes they cover (the collision
 box), never from the track, and draw each side as anchored (running into the building face) or free
@@ -294,7 +297,14 @@ its mip level itself and fades it out before it spans fewer than about 24 pixels
 mark could read like a radiation trefoil. The Marketplace uses geometry instead: it turns the emblem
 into a mesh-kit template once (`MarketplaceSkin.cult_emblem()`), then appends it where it hides: a
 small warm-white badge on some ads, an unlit bronze mark on some shop signs, never smaller than
-`emblem_min_size` (0.9 m, for the same reason).
+`emblem_min_size` (0.9 m, for the same reason). The Neon City (D9) draws it with `MeshKit.PAT_CULT_MARK`:
+its solid material carries the chosen emblem's coverage (`CultFeed.emblem_texture()`), and one
+rectangle per mark, in UV emblem space (the mark's square spans -1 to 1, a wider range leaves a clear
+margin), paints it in the vertex colour on the panel's dark background, glowing at the vertex alpha;
+`cult_mark()` fades it out on screen as in Gangland, and the City keeps it at least `emblem_min_size`
+across too. It sits as a sponsor's badge where a roof billboard's glyphs end and at the foot of some
+towers' neon banners (the glyphs leave its square clear, so nothing overlaps); `CitySkin.cult_emblems()`
+lists them.
 
 **The cult's feed** (GDD §5, "Cyborg Viewing Devices"): the same wordless broadcast plays on screens
 in every zone, in sync, alongside the ordinary ads. It is one shared piece, `CultFeed`
@@ -305,6 +315,7 @@ a screen to a mesh layer:
 ```gdscript
 var feed: MeshLayer = batch.layer(CultFeed.material())    # shared; one mesh surface per chunk
 CultFeed.screen(feed, lower_left, right, up, brightness)  # a rectangle facing right × up, as seen
+CultFeed.wall_screen(feed, side, x, d0, length, y0, height, brightness)  # on a wall, facing the street
 ```
 
 `right` and `up` span the screen as its viewer sees it (the picture is never mirrored, so don't put a
@@ -318,7 +329,14 @@ play it and where), keep other glows off it, and never tint it (only cold white 
 warm white; purple glitching belongs to hosts). It honours Reduced flashing (the static and the
 rolling bar hold still). The Marketplace plays it on some billboards, casino signs and floating ads
 (`feed_share`) and on old TVs in some shop windows (`feed_window_share`; `shop_windows()` marks
-them with `screen`). `tools/showcase/cult_feed_showcase.tscn` shows a whole loop on three screens.
+them with `screen`). The Neon City (D9) plays it on some low buildings' roof billboards instead of
+their ad and on big screens hung out over the street from some flush towers, 12 m up or more and
+facing the oncoming traffic (anything flat on the City's facades is seen almost edge-on from the game
+camera); `CitySkin.feed_boards()` lists both. Gangland plays it on salvaged screens among the posters
+of some overpasses' sign gantries, and on a TV glowing in an upper window of some ruins, above the
+boarded-up band (`GanglandSkin.feed_windows()` lists those; `GanglandRuins.WINDOW_RECTS` mirrors the
+facade shader's window rectangles so the TV's room covers a window exactly). Neither puts a screen in
+the wall-run band. `tools/showcase/cult_feed_showcase.tscn` shows a whole loop on three screens.
 
 **Reduced flashing** (Settings): `Settings.apply_visuals()` sets the global shader uniform
 `reduced_flashing` (declared in `project.godot`) and `Settings.flashing_reduced`. Hazard shaders
@@ -506,7 +524,8 @@ the web demo until the real plugins are chosen (risk test R3).
 `tools/godot.sh test` runs every `tests/suites/test_*.gd` (a `TestSuite`); `--suite=<name>` runs
 one. `RunSim` (`tests/helpers/run_sim.gd`) runs a Player over a hand-built layout (`run()`), or a
 full RunWorld (`build_world()` + `step_world()`). `SkinSuite` (`tests/helpers/skin_suite.gd`) holds
-the checks every zone skin must pass. `LayoutChecks` (`tests/helpers/layout_checks.gd`) holds the
+the checks every zone skin must pass, and helpers to inspect what a skin builds over a whole level
+(`visit_level()`, `rects_of()`, `under_hazard()`). `LayoutChecks` (`tests/helpers/layout_checks.gd`) holds the
 fairness checks for generated layouts (the generator suite runs them over many seeds, the campaign
 suite over every campaign level at 3, 5 and 6 lanes) and finds a feature's pieces in a layout with the
 generator's own `LevelGenerator.feature_positions()`; a task that adds a new kind of piece extends
@@ -521,7 +540,8 @@ and ends a stuck run after 600 s of real time.
 Scenes in `tools/showcase/` show one part of the game up close for visual review (not part of the
 game): the avatar, the enemies (`enemy_showcase` for the cyborg family, `octodog_screech`,
 `drone_truck_showcase`, `bad_dream_showcase`), the UI kit, the screens, a zone skin (`skin_review`:
-any skin from fixed spots, or a scripted run with a ceiling ride and a wall run), and comparison
+any skin from fixed spots, including close-ups of the cult's feed screens and emblems a skin lists, or
+a scripted run with a ceiling ride and a wall run), and comparison
 sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
 `CLAUDE.md`.

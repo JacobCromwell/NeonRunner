@@ -13,7 +13,9 @@ extends ZoneSkin
 ## so their things carry hints of it: military supply crates with stencilled codes, corporate
 ## containers used as barricades, notice boards, and corporate ads pasted among the posters. The
 ## cult behind it all hides in plain sight (GDD §5): its emblem (CultEmblem, the owner's pick) sits
-## small and unlit beside some of those markings, never a centrepiece.
+## small and unlit beside some of those markings, never a centrepiece, and its feed (CultFeed) plays
+## on salvaged screens among the posters on some overpass gantries and on TVs glowing in some upper
+## windows, never in the boarded-up wall-run band.
 ## The street stands still, unlike the city's trucks, so drifting dust, paper scraps and speed
 ## streaks carry the sense of speed (GDD §5, proposed; camera shake belongs to gameplay, not the skin).
 ## Colour rule (GDD §5): browns and tans stay desaturated and never glow; the only glowing decoration

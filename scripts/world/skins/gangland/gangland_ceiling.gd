@@ -8,8 +8,8 @@ extends RefCounted
 ## edge (MeshKit.ceiling_end: the drop back to the floor, as in every zone).
 ## Seen on the approach, one of two structures, picked by hashing the ceiling's start:
 ## - an overpass: a tagged concrete fascia under a crash barrier and railing, with a sign gantry
-##   (salvaged billboards and corporate ads), dead lamp posts, a wreck and military supply crates
-##   behind a sandbag nest up on the deck;
+##   (salvaged billboards and corporate ads, and salvaged screens playing the cult's feed), dead lamp
+##   posts, a wreck and military supply crates behind a sandbag nest up on the deck;
 ## - a building: the upper storeys of a bombed-out block bridging the street (facade.gdshader's ruin
 ##   mode, lit windows with curtains) with a broken top, laundry and rooftop clutter.
 ## Width comes from the lanes the ceiling covers (its collision box), never from the track: each

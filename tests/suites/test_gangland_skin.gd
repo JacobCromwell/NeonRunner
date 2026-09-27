@@ -8,7 +8,10 @@ extends SkinSuite
 ## speed streaks. Ceilings (GanglandCeiling): both structures cover their collision underside, carry
 ## the orange end band and lamps on every lane seam, hang nothing below the surface, rise no higher
 ## than the lines strung across the street, and take their width from the lanes they cover. A whole
-## level shows signs of life and hints of corporate and military funding.
+## level shows signs of life and hints of corporate and military funding. The cult (GDD §5): its
+## emblem is the owner's choice, on a minority of the stencilled markings; its feed plays on the
+## shared CultFeed material on some gantry billboards and TVs in upper windows, untinted, never in the
+## wall-run band.
 
 const GANGLAND_SKIN_PATH: String = "res://data/skins/gangland_skin.tres"
 const GANGLAND_ZONE_PATH: String = "res://data/zones/gangland.tres"
@@ -478,6 +481,13 @@ func _cult_feed(skin: GanglandSkin) -> void:
 			if (float(w["bottom"]) < skin.boarded_below + GanglandRuins.BAND_MARGIN - 0.01 or not inside) and window_bad.size() < 4:
 				window_bad.append(str(w["center"]))
 	print("  gangland feed (5 lanes): %d TV windows over 3 km of walls" % tvs.size())
+	# The TV's room must cover a window of the facade exactly: the ruins mirror the shader's windows.
+	var facade_code: String = FileAccess.get_file_as_string("res://scripts/world/meshes/shaders/facade.gdshader")
+	var mirrored: bool = true
+	for win: Vector4 in GanglandRuins.WINDOW_RECTS:
+		mirrored = mirrored and facade_code.contains("win = vec4(%s, %s, %s, %s)" % [_decimal(win.x), _decimal(win.y),
+			_decimal(win.z), _decimal(win.w)])
+	check(mirrored and GanglandRuins.WINDOW_RECTS.size() == 4, "the TV windows' rectangles are facade.gdshader's windows")
 	check(not tvs.is_empty() and window_bad.is_empty(),
 		"over 3 km, %d ruins have a TV playing the feed in an upper window, above the boarded-up band, inside its window: %s" % [
 			tvs.size(), ", ".join(window_bad)])
@@ -519,6 +529,14 @@ func _under_hazard_or_trigger(node: Node, stop: Node) -> bool:
 			return true
 		parent = parent.get_parent()
 	return false
+
+
+## A value as the shader source writes it: up to two decimals, no trailing zeros ("0.3", "0.07").
+static func _decimal(v: float) -> String:
+	var s: String = "%.2f" % v
+	while s.ends_with("0") and not s.ends_with(".0"):
+		s = s.left(-1)
+	return s
 
 
 static func _chroma(c: Color) -> float:

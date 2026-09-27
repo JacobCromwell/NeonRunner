@@ -4,6 +4,10 @@ extends ZoneSkin
 ## toward the player, gaps are the spaces between them with a road far below, walls are tower
 ## facades, signs are neon billboards in a yellow/black hazard frame, electric fences are pink
 ## energy fields between the trucks' exhaust stacks, and ceilings are the undersides of low ships.
+## The cult (GDD §5): its feed (CultFeed) plays on some roof billboards and on big screens hung out
+## over the street from some towers, facing the traffic, and its emblem (the owner's pick) hides small
+## in some neon ads in its warm-white neon, never on hazard signs. Both stay far above the wall-run
+## band, which keeps calm; hazards stay the most saturated and brightest things on screen.
 ## Visuals only: TrackBuilder owns every collision shape and gameplay node, and all variety comes
 ## from hashing track positions (MeshKit.hash_i), so a chunk looks the same whenever it is built.
 ## Geometry is merged per piece (one node, one draw call per material) from cached templates.

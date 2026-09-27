@@ -11,7 +11,8 @@ extends RefCounted
 ## bulbs strung over the side streets, and washing lines across the street high above the play space
 ## (across()). Hints of who funds the gangs: side streets barricaded with stacked military supply
 ## crates or corporate containers (their stencils and logos facing the street) instead of rusty
-## sheets, corporate ads pasted on the sheets, and military notice boards above the band.
+## sheets, corporate ads pasted on the sheets, and military notice boards above the band. The cult's
+## feed reaches people at home: in some ruins a TV glows with it in an upper window (tv_window()).
 ## Nothing vent-like sits at the foot of the walls (in Gangland those are sewer-screech spawn
 ## points), no window opens in the wall-run band (window cyborgs lean out of lit openings), and every
 ## prop on a facade stays above the band or flush with the wall face.

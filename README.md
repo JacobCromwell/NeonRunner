@@ -120,7 +120,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 - **Modes:** the campaign, endless mode, and harder difficulty tiers after the last level.
 - **Look and sound:**
   - a human runner in a cyber suit
-  - the City, Gangland and Marketplace zone looks, and the cult's feed on screens in the Marketplace
+  - the City, Gangland and Marketplace zone looks, with the cult's feed on screens and its emblem hidden
+    in ads in all three
   - neon UI screens and HUD
   - generated music (menu, City, Gangland) and 63 sound effects
   - first-encounter hints
@@ -173,8 +174,9 @@ lists its options.
 - **Screens:** every screen at desktop and touch sizes.
 - **Zone skins:** all three skins, including a check that none adds collision, and the build budget; for
   Gangland and the Marketplace the colour rule (only hazards glow in hazard colours) and ceilings a runner
-  can read upside down, and for the Marketplace gaps that read as holes, its clear play space and walls,
-  shop windows, the cult emblem and the cult's feed (its shared material has a suite of its own).
+  can read upside down, for the Marketplace gaps that read as holes, its clear play space and walls and
+  shop windows, and for all three where the cult's emblem hides and where its feed plays, never in the
+  wall-run band (the feed's shared material has a suite of its own).
 - **Sounds and music.**
 - **Boot:** the real game scene.
 
