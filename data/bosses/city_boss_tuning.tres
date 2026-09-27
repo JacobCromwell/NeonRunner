@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="FloatingHeadTuning" format=3]
+
+[ext_resource type="Script" path="res://scripts/bosses/floating_head/floating_head_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+street_margin = 0.6
+hull_length = 24.0
+head_height_narrow = 10.5
+head_height_wide = 12.0
+enter_behind = 42.0
+enter_height = 10.5
+first_run_seconds = 17.0
+later_run_seconds = 9.0
+later_runs = 2
+station_ahead = 34.0
+station_height = 12.0
+sweep_speed = 10.0
+sweep_out_lanes = 2
+sweep_seconds = 0.6
+settle_seconds = 0.12
+lock_seconds = 1.1
+straddle_every = 3
+spot_radius = 1.35
+arrival_seconds = 0.1
+blast_seconds = 0.35
+blast_radius = 1.1
+blast_width_share = 0.7
+blast_depth = 1.9
+blast_height = 2.4
+clear_before_impact = 8.0
+clear_after_impact = 5.0
+max_escape_lanes = 2
+escape_clear_after = 5.0
+pickup_margin = 3.0
+descend_seconds = 3.0
+face_ahead = 26.0
+face_height = 3.0
+boot_seconds = 1.6
