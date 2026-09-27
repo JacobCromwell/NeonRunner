@@ -85,44 +85,21 @@ func build(batch: MeshBatch, center: Vector3, size: Vector3, lane_x: float, edge
 	var b: float = far_d - lip_f
 	var lane_key: int = MeshKit.key(lane_x)
 	var unit: float = carriage_unit(lane_key)
-	var offset: float = MeshKit.hash01(lane_key, 12) * unit
 
-	# The carriages' roofs on the lane's grid, one stretch per grid cell. What sits on a grid line is
-	# the business of the piece holding it (_joint_at): a gangway, a thin seam where a chunk cut leaves
-	# no room for one, or nothing near a gap's edge, where the short stub between the line and the
-	# edge is the end of its neighbouring carriage.
-	var k: int = floori((a - offset) / unit)
-	var d: float = a
-	var prev_cell: int = k
-	while d < b - 0.001:
-		var g0: float = offset + k * unit
-		var g1: float = g0 + unit
-		var d1: float = minf(g1, b)
-		var cell: int = k
-		if g0 > a + 0.001 and _joint_at(g0, a, b, edge_start, edge_end) == NONE:
-			# No joint on the line: the carriage before it runs on to the gap.
-			cell = prev_cell
-		elif edge_start and g0 <= a + 0.001 and g1 < b - 0.001 and _joint_at(g1, a, b, edge_start, edge_end) == NONE:
-			# The stub from the gap's edge to a line with no joint is the next carriage's end.
-			cell = k + 1
-		prev_cell = cell
-		var r0: float = d
-		var r1: float = d1
-		if g0 > a + 0.001 and _joint_at(g0, a, b, edge_start, edge_end) == GANGWAY:
-			r0 = g0 + JOINT_HALF
-		if g1 < b - 0.001:
-			match _joint_at(g1, a, b, edge_start, edge_end):
-				GANGWAY:
-					r1 = g1 - JOINT_HALF
-					_gangway(s, t0, t1, g1)
-				SEAM:
-					s.rect(Vector3(t0 + SHOULDER, 0.003, -g1 + 0.03), Vector3(t1 - t0 - SHOULDER * 2.0, 0, 0), Vector3(0, 0, -0.06),
-						skin.joint_color)
-		if r1 > r0 + 0.001:
-			_roof(s, t0, t1, r0, r1, offset + cell * unit, unit, lane_key, cell, edge_start and r0 <= a + 0.001,
-				edge_end and r1 >= b - 0.001, a, b)
-		d = d1
-		k += 1
+	# The carriages' roofs and what joins them (carriage_plan()).
+	var plan: Dictionary = carriage_plan(lane_x, a, b, edge_start, edge_end)
+	for j: Dictionary in plan["joints"]:
+		var g: float = j["at"]
+		if j["kind"] == GANGWAY:
+			_gangway(s, t0, t1, g)
+		else:
+			s.rect(Vector3(t0 + SHOULDER, 0.003, -g + 0.03), Vector3(t1 - t0 - SHOULDER * 2.0, 0, 0), Vector3(0, 0, -0.06),
+				skin.joint_color)
+	for r: Dictionary in plan["roofs"]:
+		var r0: float = r["from"]
+		var r1: float = r["to"]
+		_roof(s, t0, t1, r0, r1, r["start"], unit, lane_key, r["cell"], edge_start and r0 <= a + 0.001,
+			edge_end and r1 >= b - 0.001, a, b)
 
 	# The walkway along the building face beside an outer lane, flush with the roofs.
 	if left_ledge:
@@ -157,6 +134,57 @@ func build(batch: MeshBatch, center: Vector3, size: Vector3, lane_x: float, edge
 ## up across the track).
 func carriage_unit(lane_key: int) -> float:
 	return skin.carriage_length * (0.9 + 0.2 * MeshKit.hash01(lane_key, 11))
+
+
+## Where the carriages' grid lines lie in the lane centred on lane_x: at carriage_offset() + k *
+## carriage_unit().
+func carriage_offset(lane_key: int) -> float:
+	return MeshKit.hash01(lane_key, 12) * carriage_unit(lane_key)
+
+
+## The carriages on the roof of a floor piece whose roof runs from a to b (track distances) in the lane
+## centred on lane_x, with a gap at a (edge_start) and at b (edge_end): {"roofs": the stretches of roof,
+## each {"from", "to", "cell": the carriage's grid cell (carriage()), "start": where that cell starts},
+## "joints": what joins them, each {"at": a grid line, "kind": GANGWAY or SEAM}}. The carriages sit on
+## the lane's grid; what sits on a grid line is the business of the piece holding it (_joint_at): a
+## gangway, a thin seam where a chunk cut leaves no room for one, or nothing near a gap's edge, where
+## the short stub between the line and the edge belongs to the carriage on the line's other side.
+func carriage_plan(lane_x: float, a: float, b: float, edge_start: bool, edge_end: bool) -> Dictionary:
+	var lane_key: int = MeshKit.key(lane_x)
+	var unit: float = carriage_unit(lane_key)
+	var offset: float = carriage_offset(lane_key)
+	var roofs: Array[Dictionary] = []
+	var joints: Array[Dictionary] = []
+	var k: int = floori((a - offset) / unit)
+	var d: float = a
+	var prev_cell: int = k
+	while d < b - 0.001:
+		var g0: float = offset + k * unit
+		var g1: float = g0 + unit
+		var d1: float = minf(g1, b)
+		var cell: int = k
+		if g0 > a + 0.001 and _joint_at(g0, a, b, edge_start, edge_end) == NONE:
+			# No joint on the line: the carriage before it runs on to the gap.
+			cell = prev_cell
+		elif edge_start and g0 <= a + 0.001 and g1 < b - 0.001 and _joint_at(g1, a, b, edge_start, edge_end) == NONE:
+			# The stub from the gap's edge to a line with no joint is the next carriage's end.
+			cell = k + 1
+		prev_cell = cell
+		var r0: float = d
+		var r1: float = d1
+		if g0 > a + 0.001 and _joint_at(g0, a, b, edge_start, edge_end) == GANGWAY:
+			r0 = g0 + JOINT_HALF
+		if g1 < b - 0.001:
+			var kind: int = _joint_at(g1, a, b, edge_start, edge_end)
+			if kind == GANGWAY:
+				r1 = g1 - JOINT_HALF
+			if kind != NONE:
+				joints.append({"at": g1, "kind": kind})
+		if r1 > r0 + 0.001:
+			roofs.append({"from": r0, "to": r1, "cell": cell, "start": offset + cell * unit})
+		d = d1
+		k += 1
+	return {"roofs": roofs, "joints": joints}
 
 
 ## What the piece whose roof runs from a to b draws on the grid line at g: nothing within GAP_MARGIN of
