@@ -232,6 +232,12 @@ func _test_hosts() -> void:
 	await physics_frames(10)
 	check(normal.health < normal.max_health, "a missile hits the cyborg next to it")
 	check(is_equal_approx(host.health, before), "missile splash never hurts a host")
+	# FB 71 (decided September 26, 2026): a host is immune_to_weapons like a generator, so a stray
+	# shot aimed straight at it can't clip it either (only a stomp, claws or the dash can).
+	var direct_before: float = host.health
+	w.projectiles.fire_player(host.aim_point() + Vector3(0.0, 0.0, 6.0), Vector3(0.0, 0.0, -80.0), 1.0, &"laser")
+	await physics_frames(10)
+	check(is_equal_approx(host.health, direct_before) and host.alive, "a stray direct hit doesn't hurt a host either")
 	await sim.free_world(w)
 
 	# Killing a host (here a stomp) pays the host bonus; no Bad Dream script yet, so nothing spawns.
