@@ -48,6 +48,8 @@ const SCREEN_RIM: float = 0.15
 const SCREEN_CASE: float = 0.4
 const SCREEN_CLEAR: float = 2.5
 const SCREEN_TOP_CLEAR: float = 3.0
+## The cult's emblem on a street screen's ad is at most this share of the screen's height.
+const SCREEN_EMBLEM_MAX: float = 0.4
 ## A low building's roof board.
 const BOARD_HEIGHT: float = 4.5
 const BOARD_MAX_LENGTH: float = 13.0
@@ -83,8 +85,9 @@ class Building:
 	## A low building's roof, and what stands on it (0 a board, 1 the brand's sculpture).
 	var roof_y: float = 0.0
 	var roof_kind: int = 0
-	## A banner on an outrigger: its distance (-1: none), top and height.
-	var banner_d: float = -1.0
+	## A banner on an outrigger (has_banner): its distance, top and height.
+	var has_banner: bool = false
+	var banner_d: float = 0.0
 	var banner_top: float = 0.0
 	var banner_h: float = 0.0
 
@@ -159,8 +162,7 @@ func building(side: int, span: Vector2i) -> Building:
 		b.banner_d = lerpf(b.t0 + 3.0, b.b1 - 3.0 - BANNER_WIDTH, MeshKit.hash01(side, id, 31))
 		b.banner_h = BANNER_MIN_HEIGHT + 3.0 * MeshKit.hash01(side, id, 32)
 		b.banner_top = OVER_STREET_MIN + 1.0 + b.banner_h + 6.0 * MeshKit.hash01(side, id, 33)
-		if b.banner_top + 4.0 > b.height or b.setback > 0.0:
-			b.banner_d = -1.0
+		b.has_banner = b.banner_top + 4.0 <= b.height and b.setback <= 0.0
 	_buildings[key] = b
 	return b
 
@@ -240,7 +242,7 @@ func _tower(batch: MeshBatch, facade: MeshLayer, solid: MeshLayer, glow: MeshLay
 	if u1 > f0:
 		solid.box(Vector3(tower_x - side * 0.04, crown - 0.1, -(f0 + u1) * 0.5), Vector3(0.08, 0.12, u1 - f0), strip_color, 0.5)
 	# A banner on an outrigger, facing the oncoming runner, or a big screen hung out over the street.
-	if b.banner_d >= start and b.banner_d < end:
+	if b.has_banner and b.banner_d >= start and b.banner_d < end:
 		_banner(solid, b, face_x)
 	var screen: Dictionary = street_screen(b, face_x)
 	if not screen.is_empty() and float(screen["at"]) >= start and float(screen["at"]) < end:
@@ -308,7 +310,7 @@ func _banner(solid: MeshLayer, b: Building, face_x: float) -> void:
 
 ## The size of the cult's emblem at the foot of a building's banner (0 if it has none).
 func banner_emblem(b: Building) -> float:
-	if b.banner_d < 0.0 or not skin.carries_emblem(b.side, b.id + 7):
+	if not b.has_banner or not skin.carries_emblem(b.side, b.id + 7):
 		return 0.0
 	return clampf(BANNER_WIDTH * 0.5, skin.emblem_min_size, 1.4)
 
@@ -334,7 +336,7 @@ func street_screen(b: Building, face_x: float) -> Dictionary:
 	var lo: float = b.t0 + SCREEN_CLEAR
 	var hi: float = b.b1 - SCREEN_CLEAR
 	var at: float = lerpf(lo, hi, MeshKit.hash01(b.side, b.id, 142))
-	if b.banner_d >= 0.0 and at > b.banner_d - SCREEN_CLEAR and at < b.banner_d + SCREEN_CLEAR:
+	if b.has_banner and at > b.banner_d - SCREEN_CLEAR and at < b.banner_d + SCREEN_CLEAR:
 		at = b.banner_d + SCREEN_CLEAR * 1.5
 	if hi < lo or at > hi:
 		return {}
@@ -378,12 +380,13 @@ func _street_screen(batch: MeshBatch, solid: MeshLayer, glow: MeshLayer, b: Buil
 
 
 ## The size of the cult's emblem on a street screen showing an ad (0 if none): small beside the ad's
-## own mark (GDD §5: never a centrepiece), and only where it stays at least emblem_min_size.
+## own mark (GDD §5: never a centrepiece), at most SCREEN_EMBLEM_MAX of the screen's height, and only
+## where it stays at least emblem_min_size (so the narrow street of three lanes has none).
 func screen_emblem(b: Building, screen: Dictionary) -> float:
 	if screen.is_empty() or screen["feed"] or not skin.carries_emblem(b.side, b.id):
 		return 0.0
 	var e: float = maxf(float(screen["height"]) * 0.22, skin.emblem_min_size)
-	return e if e <= float(screen["height"]) * 0.36 else 0.0
+	return e if e <= float(screen["height"]) * SCREEN_EMBLEM_MAX else 0.0
 
 
 ## A low building: its podium runs up to the roof, and on the roof a board (an ad, or the cult's feed)
@@ -536,12 +539,13 @@ func _compound(facade: MeshLayer, solid: MeshLayer, glow: MeshLayer, b: Building
 		var sd: float = lerpf(b.b0 + 4.0, b.b1 - 4.0, (float(i) + 0.5) / stacks)
 		if sd >= start and sd < end:
 			_containers(solid, side, face_x + side * 2.2, sd, band - 2.2, MeshKit.hash_i(side, id, 53 + i))
-	# A watchtower near the compound's near end, its searchlight aimed at the sky.
+	# A watchtower near the compound's near end, its searchlight aimed at the sky ahead, leaning away
+	# from the street: never over the lanes (a boss that flies there keeps the air to itself).
 	var wd: float = b.b0 + 3.0
 	if wd >= start and wd < end:
 		solid.append(_watchtower(side), Transform3D(Basis.IDENTITY, Vector3(face_x + side * 3.2, band, -wd)))
 		var lamp := Vector3(face_x + side * 3.2, band + 9.4, -wd)
-		var aim := Vector3(-side * 0.35, 1.0, -0.55).normalized()
+		var aim := Vector3(side * 0.3, 1.0, -0.55).normalized()
 		_beam(glow, lamp, aim, 34.0, 1.4)
 	# A radar dome and a mast on the block's roof.
 	var rd: float = lerpf(near + 3.0, far - 3.0, MeshKit.hash01(side, id, 55))
