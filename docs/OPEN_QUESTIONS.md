@@ -154,7 +154,7 @@ Each item has a placeholder in code marked `DESIGN-TBD` and, where it's a number
 7. **Ceiling rules:** moving past the outer ceiling lane does nothing (no ceiling → wall). The ceiling has the same lane count and gravity as the floor. Jump and slide also work on the ceiling, mirrored (jump drops you away from the hull, then gravity pulls you back). Correct?
 8. **Air slide:** pressing slide in mid-air drops fast and slides on landing. It's not in the GDD and can be switched off with `air_slide_fast_fall`. Keep it?
 9. ~~**Hull end landing:**~~ Answered: keep a safe landing zone (GDD §3, September 26, 2026).
-10. **Ramps:** the placeholder launches onto the wall at 4.0 m, with no speed boost (`ramp_speed_boost = 0`). The ramp sits in the outer lane and launches the player when they run over it.
+10. **Ramps:** (the boost was changed by the owner's review and built by R1: see "From build phase 2" item 80.) The placeholder launches onto the wall at 4.0 m, with no speed boost (`ramp_speed_boost = 0`). The ramp sits in the outer lane and launches the player when they run over it.
 11. **Pulsing fences:** on/off timings are placeholders (about 1.0–1.2 s each, with 0.35 s of flicker and an electric crackle before switching on).
 12. **Difficulty within a level:** the placeholder adds +0.25 difficulty linearly from start to end.
 13. ~~**Mobile orientation:** landscape or portrait?~~ Answered: landscape (GDD §2).
@@ -699,6 +699,19 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
 79. **A TV in a window next to window cyborgs** (GDD §9.2 readability): the feed's loop shows a screen-head face, so a TV
     could look a little like a window cyborg's face. The TVs stay well above the band window cyborgs use, small, dim, in
     a dark room, and the face shows 7 s of the 18 s loop. Distinct enough, or should Gangland's TVs leave the face out?
+
+**Ramps' speed boost and the blocked-wall bump** (from R1; numbers in `data/tuning/movement.tres`)
+80. **A ramp's speed boost** (GDD §3): a speed pad's, 6 m/s (`ramp_speed_boost`), fading at their shared 4 m/s every
+    second (`boost_decay_per_second`), so it's gone after 1.5 s. A ramp's wall run now covers about 43 m instead of 39 m.
+    Bigger, smaller, or a speed pad's? (To tune after playtesting.)
+81. **The blocked-entry bump** (GDD §3: "a small sideways bump"): out toward the wall and back over 0.16 s
+    (`wall_bump_time`), at most 0.35 m (`wall_bump_distance`); a sign that reaches down to the runner stops it at its
+    face. The runner stays upright going out and leans away from the wall coming back, as if pushed off it. Right size,
+    speed and look?
+82. **Wall-run credits with claws** (GDD §7, §8; unchanged by R1): the credits follow the path of a runner without
+    claws. Claws make wall runs 1.5 times longer, so a runner with claws slides down more slowly and passes the last
+    three credits (35 of the 42) too high to take them. Keep it (claws trade those credits for a longer run), or place
+    the line so both paths reach it (for example fewer credits, all in the high first half)?
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
