@@ -97,7 +97,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   15. Golden 3 *The Golden Palace*, then the final boss.
 
   Everything introduced keeps appearing later (the Buzz Overdrive from Corporate 1 through the Golden Zone),
-  and a level's newest things get the most of its picks (the campaign's recency curve,
+  and a level's newest things get the most of its picks, taken from older things of their kind (enemies from
+  enemies, obstacles from obstacles), so no level gets easier; enemies whose rules keep only so many (hosts,
+  hover trucks, drones, Octodogs) and the rare vent screech aren't boosted (the campaign's recency curve,
   `data/tuning/feature_recency.tres`). The Barnacle Turret, wall fences, Buzz Overdrive, Tithe Collector,
   Resonator and Gilded Sentinels aren't built yet: their levels already list them, and they appear once
   their code exists. Level names are placeholders, except the Golden Palace.
@@ -209,7 +211,8 @@ against its bursts, with the recency curve on and off:
 - **Power-ups:** each one's behaviour.
 - **Economy and saves:** the economy and save files.
 - **Game flow:** the campaign (its zones, steps and level-by-level schedule, the features' ages for the
-  recency curve, The Hush and its darker lighting on every skin) and app flow.
+  recency curve and each kind's share of the picks through every level, The Hush and its darker lighting on
+  every skin) and app flow.
 - **Bosses:** the boss framework with the test boss: phases, the checkpoint, no escalation, the arena,
   the damage rules on a boss, and the flow around a fight; the Floating Head's fight so far at 3, 5 and 6
   lanes: its build and hitboxes, bombs that fall only after their warning, a runner who keeps moving

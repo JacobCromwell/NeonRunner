@@ -42,11 +42,15 @@ patterns:
 Beyond that guarantee, a campaign level's newest things get the most picks (GDD §5; the campaign's
 recency curve, `data/tuning/feature_recency.tres`): a pattern's `weight` is multiplied by the curve's
 factor for its newest required feature, by how many levels ago the campaign introduced it (4 in the
-level that introduces it, then 2.5, 1.75 and 1.25, then 1), and the features' patterns are scaled back
-to weigh together what they did, so plain obstacles keep their share. So a pattern's `weight` says how
-often it comes against the other patterns of its feature and of the same age; a pattern that combines
-an old feature with a new one follows the new one. Quick play and tests have no curve. See
-`docs/ARCHITECTURE.md`, The generator.
+level that introduces it, then 2.5, 1.75 and 1.25, then 1; never more than a capped feature's cap, 1
+for the host, the hover truck, the drone, the Octodog and the vent screech), and the features'
+patterns are scaled back kind by kind to weigh together what they did: patterns with an `enemy`
+element by the enemies they place, those with only a `gap`, `fence` or `sign`, and the safe ones (a
+`hull`, a `ramp`, a `speed_pad`), so plain obstacles keep their share and a level places as many
+enemies and obstacles as before. So a pattern's `weight` says how often it comes against the other
+patterns of its kind, feature and age; a pattern that combines an old feature with a new one follows
+the new one, and adding an `enemy` element to a pattern moves it to the enemies' kind. Quick play
+and tests have no curve. See `docs/ARCHITECTURE.md`, The generator.
 
 A level may be paced in quiet stretches and bursts (`LevelConfig.quiet_seconds`; The Hush): a quiet
 stretch picks only patterns without enemies (sparse obstacles, and safe mechanics such as a plain

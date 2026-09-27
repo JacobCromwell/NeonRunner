@@ -164,7 +164,10 @@ the Tithe Collector) opt in the same way for whichever of their attacks count as
   started the attack runs its course; nothing stops it for another's turn.
 - **An attack that may only come within a window** (the Octodog's planned charges) moves the window
   on while `held_for_turn(self)` says it's waiting for another type, up to a limit of its own
-  (`OctodogTuning.turn_wait_max`), and keeps every fairness rule it was planned with.
+  (`OctodogTuning.turn_wait_max`), and keeps every fairness rule it was planned with. Once held it
+  keeps asking every frame until its turn comes, whether or not its stretch is clear by then, and if
+  the wait made it miss its planned stretch, the window keeps moving on until the stretch ahead is
+  clear again (within the same limit), so waiting for its turn never costs it its charges.
 - **An attack that can't wait** because the player sets it off (the Bad Dream bursts out of a killed
   host) or the generator planned its moment still reports itself: the others wait for it. It can
   overlap an attack that was already on when it came; the Bad Dream holds its slash until that one
@@ -208,9 +211,10 @@ paced in bursts `quiet_at(at)`, `stretch_end(at)`, `burst_index(at)`, `quiet_str
 `burst_spans(lo, hi)`, `prefers_bursts(feature)`, `burst_spot(rng, lo, hi, feature)` and
 `pacing_pools(spots, feature)`, plus
 `layout`, `config`, `tuning`, `speed`, `jump_distance` and `zones` (the level's `CeilingZones`).
-`pick_weights(patterns, difficulty, at)` gives the weights a pick draws from, and `picks` lists the
-patterns the last build placed (id, features, spot, length, due or not), for tests and
-`tools/measure/level_shape.gd`. Pattern format: `data/patterns/README.md`.
+`pick_weights(patterns, difficulty, at)` gives the weights a pick draws from (the static
+`pattern_kind(pattern)` and `enemy_count(pattern, lanes)` say how the recency curve counts a pattern),
+and `picks` lists the patterns the last build placed (id, features, spot, length, due or not), for
+tests and `tools/measure/level_shape.gd`. Pattern format: `data/patterns/README.md`.
 
 **Ramps** (GDD §3) launch the player onto the wall higher than a free entry and add a speed boost
 that fades away the same way a speed pad's does (both share `boost_decay_per_second`;
@@ -284,12 +288,20 @@ gives each campaign level's copy the campaign's recency curve (`LevelConfig.feat
 features' age, the levels since the campaign introduced it (`LevelConfig.feature_ages`: 0 in the level
 that introduces it). A pattern's pick weight is then multiplied by the curve's factor for its newest
 feature (DESIGN-TBD: 4 where it's introduced, 2.5, 1.75 and 1.25 over the next three levels, 1 from
-then on), and with `keep_feature_share` the features' patterns are scaled back to weigh together what
-they did without the curve: plain gaps, fences and signs keep their weight, so the curve only moves
-picks between the level's features and a level gets no busier or emptier. A level's own
-`feature_weights` still apply on top. Quick play, tests, boss arenas and endless mode have no ages, and
-the curve's `enabled` switch turns it off: those levels generate exactly as before. It works with the
-guarantee rather than instead of it: every feature still appears in every campaign level.
+then on), but no more than a capped feature's cap (`max_factor`; DESIGN-TBD: 1, never boosted, for the
+host, the hover truck, the drone and the Octodog, whose rules keep only so many of their enemies, and
+for the rare vent screech), so the curve never spends picks on enemies the rules would drop and leave
+their stretch empty. With `keep_feature_share` the features' patterns, capped ones apart, are then
+scaled back to weigh together what they did without the curve, and with `keep_share_by_kind` kind by
+kind (`LevelGenerator.pattern_kind`): patterns with enemies keep the number of enemies they place
+(`enemy_count`), obstacle-only ones and safe ones (a plain ceiling, a ramp, a speed pad) their share,
+and plain gaps, fences and signs keep their weight. So the curve only moves picks between features of
+the same kind (a new enemy takes them from older enemies, a new mechanic from older mechanics) and no
+level gets easier: measured over the campaign, no level has fewer enemies or obstacle rows than
+without the curve beyond measuring noise (`docs/questions/r5.md`). A level's own `feature_weights`
+still apply on top. Quick play, tests, boss arenas and endless mode have no ages, and the curve's
+`enabled` switch turns it off: those levels generate exactly as before. It works with the guarantee
+rather than instead of it: every feature still appears in every campaign level.
 
 **Quiet stretches and bursts** (GDD §5, The Hush: "long silent stretches broken by sudden threats").
 A level with `LevelConfig.quiet_seconds` above 0 alternates, from its first pattern, a quiet stretch of
@@ -822,8 +834,9 @@ every ceiling without its pad, found by `FloorRoute`, `tests/helpers/floor_route
 feature's pieces in a layout with the generator's own `LevelGenerator.feature_positions()`; a task
 that adds a new kind of piece extends it (and `FloorRoute`'s cells, if the piece is on the floor), or
 gives its rules script `positions()`. The generator suite also checks the recency curve's pick weights
-exactly (`pick_weights()`) and levels paced in bursts; the campaign suite, The Hush and the darker
-lighting on every skin. `test_enemy_director` checks the turn-taking between big attacks
+exactly (`pick_weights()`: each kind's share, the caps) and levels paced in bursts; the campaign suite
+checks each kind's share at spots all through every campaign level, The Hush and the darker lighting
+on every skin. `test_enemy_director` checks the turn-taking between big attacks
 with scripted test enemies (`tests/helpers/turn_dummy.gd`) and over simulated runs of campaign levels,
 watched by `tools/measure/attack_watch.gd` (see Review tools). `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
 for framework tests, with `make_def()` for a BossDef from a list of phases; `test_bosses` runs fights
