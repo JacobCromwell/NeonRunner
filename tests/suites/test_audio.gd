@@ -351,6 +351,15 @@ func _test_run_hooks() -> void:
 	check(music.current() == &"gangland" and track != null and absf(track.volume_db - full_db) < 0.05,
 		"a Gangland level plays the Gangland track at its level")
 	check(App.run.call(&"_complete_riff") == &"level_complete_gangland", "and would end on Gangland's riff")
+	if App.run.tuning_panel != null:
+		App.run.tuning_panel.open()
+		var sliders: int = 0
+		for prop: String in ["duck_db", "duck_time", "dip_db", "dip_lowpass_hz", "dip_time", "dip_recover_time"]:
+			var slider: HSlider = App.run.tuning_panel.find_slider(prop)
+			if slider != null and is_equal_approx(slider.value, float(library.get(prop))):
+				sliders += 1
+		App.run.tuning_panel.close()
+		check(sliders == 6, "F6 shows the music's duck and dip, on the library the Music autoload plays by (%d of 6)" % sliders)
 	App.run.world.player._die("test hazard")
 	check(music.is_dipped(), "the music dips the moment the player dies")
 	# The HUD's pause button still works in the moment before the revive offer.
