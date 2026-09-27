@@ -9,6 +9,8 @@ render_mode unshaded, cull_back, depth_draw_opaque;
 #include "res://scripts/world/meshes/shaders/kit_common.gdshaderinc"
 #include "res://scripts/world/meshes/shaders/kit_flash.gdshaderinc"
 #include "res://scripts/world/meshes/shaders/kit_marks.gdshaderinc"
+// Marketplace patterns (ids 20-29).
+#include "res://scripts/world/meshes/shaders/kit_market.gdshaderinc"
 
 uniform float glow_scale = 4.0;
 // Sky glow caught at grazing angles: distant roofs and hulls pick up the neon haze.
@@ -102,7 +104,9 @@ void fragment() {
 	int pattern = int(UV2.x + 0.5);
 	float glass = 0.0;
 
-	if (pattern == 1) {
+	if (pattern >= 20) {
+		base = market_surface(pattern, UV2.y, base, v_world, n, UV, TIME, glow);
+	} else if (pattern == 1) {
 		// ROOF: transverse panel seams and slight plate tones.
 		float z = v_world.z + UV2.y;
 		base *= 1.0 - 0.4 * grid_line(z, 1.6, 0.025);

@@ -37,6 +37,7 @@ RunWorld (scripts/run/run_world.gd)       one run's gameplay world; everything s
   Enemies    EnemyDirector: spawns layout enemies as the player approaches, retires them
   Projectiles ProjectilePool: every shot, pooled and swept
   Credits    CreditField: every credit as MultiMesh instances; pickup and magnet
+  Pickups    PickupField: armor, shield and grapple pickups a boss offers, placed fairly, pooled
   Effects    RunEffects: particle bursts, glowing lines, camera-shake requests
   Score      ScoreKeeper: level score, credits, kills, bonuses, stats
   Sounds     PlayerSfx: non-positional sounds (RunWorld.play_sfx / play_sfx_at)
@@ -52,7 +53,8 @@ flow, any other, such as the test boss, as quick play) and also takes `--phase=N
 work in debug builds only, so a release build can't skip progression or farm credits with them.
 
 Physics order each frame: RunWorld (builds chunks, spawns enemies) → Player (moves, checks hazards
-and triggers) → the boss's pattern (a boss fight) → enemies → projectiles → credits → power-ups.
+and triggers) → the boss's pattern (a boss fight) → enemies → projectiles → credits → pickups →
+power-ups.
 
 ## Data (tunables live in data, CLAUDE.md principle 7)
 
@@ -61,6 +63,7 @@ and triggers) → the boss's pattern (a boss fight) → enemies → projectiles 
 | `data/tuning/movement.tres` (`MovementTuning`) | run speed, jump, walls, ceiling, piece sizes, camera, touch |
 | `data/tuning/game_rules.tres` (`GameRules`) | lanes per device, death share, invulnerability, stomp, score, economy, stars |
 | `data/tuning/powerups.tres` (`PowerupTuning`) | weapon tiers, claws, dash, magnet, slow time |
+| `data/tuning/pickups.tres` (`PickupTuning`) | in-run pickups: where they appear, taking them, the charge cap, the look |
 | `data/enemies/<type>.tres` (`EnemyTuning` subclasses) | per-enemy numbers, early/late pairs for campaign scaling |
 | `data/shop/catalog.json` | shop items, tiers and prices |
 | `data/campaign/campaign.tres` → `data/zones/*.tres` → `data/levels/*.tres` | the campaign |
@@ -238,6 +241,36 @@ switched-on permanent item: `WeaponPowerup` (auto-fire, tiers 1–4, enemy healt
 on the Player. The controller's header documents its API: `hud_state()` for the HUD (`charges` -1 for
 permanent items), `equipment()` for the player model, and `try_dash()` / `try_slow_time()`.
 
+## Pickups
+
+GDD §10 puts armor, shield and grapple pickups in boss fights (the standard armor rule, and fights
+that offer their own), never in levels, so no pattern places one. `PickupField`
+(`scripts/run/pickup_field.gd`, in every `RunWorld`) runs them; its numbers are in
+`data/tuning/pickups.tres` (`PickupTuning`, F6).
+
+- **Offers:** `offer(item, at, lane)` (a boss calls `BossEncounter.offer_pickup`) queues a pickup,
+  which appears at the first fair spot, now or as soon as there is one: at least `lead_distance`
+  ahead (within `search_window` beyond, on the built track), at most `reach_lanes` from the player's
+  lane (nearer lanes first), with `clear_before` of floor before it and `clear_after` after it free of
+  gaps, fences of any kind, pads, ramps, speed pads, ceilings overhead and enemies (planned on the
+  track near the lane, or in play: any hitbox, fence, block or lane blocker up to `clear_height`), and
+  no boss floor warning over it (`BossProps.warned`). `at` and `lane` are requests the rules still
+  apply to. `find_spot()` and the static `layout_fair()` answer placement questions for tests.
+- **Taking:** the player's hitbox (swept over the frame) reaching its `take_box()` takes it:
+  `Player.gain_item(item, max_charges)` adds a charge unless the player holds all they may, the
+  `Loadout` counts it in `picked_up` (the App asks `Loadout.costs_stock()` when an item breaks, so a
+  picked-up charge, like a granted one, never costs stock), and `collected(pickup, gained)` fires. The
+  HUD shows the item in its place among the protections and flashes it; the power-up controller lists
+  it in `hud_state()` and the player model shows armor and shields. A pickup the player runs past is
+  `missed` and gone. `clear()` removes everything (a boss beaten: none after the fight).
+- **Look:** `Pickup` (`scripts/run/pickup.gd`, `pickup.gdshader`) is the HUD's round badge for the
+  item standing upright at chest height: the item's icon white-hot on a dark disc in a white ring,
+  with a halo and a floor glow, bobbing but never spinning, the same in every zone. Neutral whites keep
+  it clear of every hazard colour; its size and icon keep it apart from credits. Sounds `pickup_appear`
+  and `pickup`; a first-encounter hint per item (`pickup:<item>` in `data/hints/hints.json`). Pickups
+  are pooled.
+- **Review:** quick play's `--pickups[=armor,shield,grapple]` offers them in turn (debug builds).
+
 ## Zone skins
 
 A `ZoneSkin` (`scripts/world/skins/zone_skin.gd`) decorates abstract pieces through hooks
@@ -245,26 +278,33 @@ A `ZoneSkin` (`scripts/world/skins/zone_skin.gd`) decorates abstract pieces thro
 `finish_line`, `make_environment`). Skins add visuals only, never collision or gameplay. Hazards keep
 one colour and shape language in every zone (pink crackle = electric fence).
 
-Skins so far: `CitySkin` (Zone 1, the Neon City) and `GanglandSkin` (Zone 2). `GreyboxSkin` is the
-fallback for zones without their own look yet (the Marketplace, Corporate, the Dead Zone and the
-Golden Zone for now). A zone's skin lives at `data/skins/<zone id>_skin.tres` (`--skin=<zone id>` in
-quick play) and is set in its `data/zones/<zone id>.tres`; a level's own `skin` wins over its zone's
-(the Golden Palace, Golden 3, may get its own). Both real skins build on the mesh kit
-(`scripts/world/meshes/`): `MeshKit` has shared builders for hazards, triggers and environments, and
-`MeshLayer` batches a chunk's geometry. The shaders in `scripts/world/meshes/shaders/` are
-procedural. `HazardStateVisual` swaps a hazard's ON / WARNING / OFF materials. A skin's
-`enemy_variant` (`&"city"` or `&"scavenger"`) picks the enemies' look.
+Skins so far: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2) and `MarketplaceSkin`
+(Zone 3, the Marketplace). `GreyboxSkin` is the fallback for zones without their own look yet
+(Corporate, the Dead Zone and the Golden Zone for now). A zone's skin lives at
+`data/skins/<zone id>_skin.tres` (`--skin=<zone id>` in quick play) and is set in its
+`data/zones/<zone id>.tres`; a level's own `skin` wins over its zone's (the Golden Palace, Golden 3,
+may get its own). The real skins build on the mesh kit (`scripts/world/meshes/`): `MeshKit` has
+shared builders for hazards, triggers and environments, and `MeshLayer` batches a chunk's geometry.
+The shaders in `scripts/world/meshes/shaders/` are procedural. `HazardStateVisual` swaps a hazard's
+ON / WARNING / OFF materials. A skin's `enemy_variant` (`&"city"` or `&"scavenger"`) picks the
+enemies' look.
 
 The kit's solid shader (`kit_solid.gdshader`) draws surface patterns chosen per vertex (`MeshKit.PAT_*`):
 panels, glass, glyphs and chevrons for the City; worn asphalt (with sand drifts and scorch around holes),
 road strata, salvaged plating, posters (with corporate ads), cast concrete and stencilled crates and
-container doors for Gangland. Features a zone opts into are uniforms that default to off, so one zone's
-additions never change another's look. Painted marks shared between shaders live in includes:
-`kit_marks.gdshaderinc` (graffiti pieces and tags, stencil codes) and `kit_logo.gdshaderinc` (the
-corporations' placeholder logo). Two shader rules: take derivatives (`fwidth`, implicit texture LODs)
-outside any branch that can differ between neighbouring pixels and pass them in, and use
-`filtered_pulse()` only for ranges within 0–1 (`band()` for any other). Breaking either can put a NaN in a
-pixel, and the glow pass blows it up into a white disc.
+container doors for Gangland; canvas, tin and whole rows of stall roofs, stall faces, tiles, shop
+signs, ads, casino bulbs and stucco for the Marketplace. Features a zone opts into are uniforms that
+default to off, so one zone's additions never change another's look. Painted marks shared between
+shaders live in includes: `kit_marks.gdshaderinc` (graffiti pieces and tags, stencil codes) and
+`kit_logo.gdshaderinc` (the corporations' placeholder logo). Two shader rules: take derivatives
+(`fwidth`, implicit texture LODs) outside any branch that can differ between neighbouring pixels and
+pass them in, and use `filtered_pulse()` only for ranges within 0–1 (`band()` for any other). Breaking
+either can put a NaN in a pixel, and the glow pass blows it up into a white disc.
+
+**Pattern ids.** Ids up to 19 are the City's and Gangland's, in `kit_solid.gdshader` itself; ids 20-29
+are the Marketplace's (all in use), in `kit_market.gdshaderinc` (one include and one dispatch line in
+`kit_solid`). A new zone takes the next free block of ten (30-39 next) in its own include, so zones
+built in parallel never collide on an id.
 
 **Gangland's ceilings** (`GanglandCeiling`) take their width from the lanes they cover (the collision
 box), never from the track, and draw each side as anchored (running into the building face) or free
@@ -272,6 +312,37 @@ box), never from the track, and draw each side as anchored (running into the bui
 the structure above (an overpass or a bombed-out building), the running surface is a flat slab with lamps
 on every lane seam, nothing hangs below it, and its far end carries the orange band
 (`MeshKit.ceiling_end`, as in every zone).
+
+**The Marketplace** (`scripts/world/skins/marketplace/`): `MarketStalls` (the floor), `MarketFacades`
+(the walls, and the pennants and festoon lights across the street), `MarketCeilings` and `MarketProps`
+(fences and signs); its building faces use their own shader, `shopfront.gdshader`.
+- *The stall floor is laid out on the GPU.* A lane piece's roofs are one quad with `PAT_STALLS`: the
+  shader finds each point's stall from its track position (slots along the lane, runs of 1-3 slots)
+  and draws its roof, hem and frame pole. `kit_hash_u()` in the include is `MeshKit.hash_i` bit for
+  bit, so `MarketStalls.stall_at()` and `roof_of()` reproduce the shader's choices. Anything that
+  must match the shader's layout goes through those two.
+- *Gaps read as holes.* Everything under the roofs (stall faces, building faces, the market floor)
+  is drawn with `PAT_UNDER` in the skin's `gap_inside_color`, a deep shade that only darkens with
+  depth, and nothing under the roofs is lit or glows but the orange edge strip. The suite pins it
+  (far darker than any roof, no roof in the edge colour).
+- *Shop windows for the citizens (task D3).* Every shopfront has a row of real window openings with
+  lit displays at the low part of the wall (0.85-2.8 m above the floor, above the wall vents' zone).
+  `MarketplaceSkin.shop_windows(side, face_x, start, end)` lists the windows whose centres lie
+  between two track distances (position on the glass, width, bottom, top, depth into the building,
+  kind), computed from track positions alone, so it can be asked before or after a chunk exists.
+  Citizens stand inside, between the glass plane and `face_x + side * depth`.
+- *Ceilings from their lanes (task B3).* `MarketCeilings` builds every kind (a building bridging the
+  street, an overpass, a merchant ship, a floating ad) from the ceiling's collision box and lane
+  seams, so a ceiling over fewer lanes just builds narrower; only a full-width ceiling becomes a
+  building bridging the street. `mesh_for(kind, ...)` builds a given kind directly.
+- *Decorative signs* (neon, painted blade signs, ad boards, casino bulbs) never sit below
+  `decor_min_height` (8 m) and never wear the striped frame, which is reserved for hazard signs.
+- *Futuristic and worn* (GDD §5): `shopfront.gdshader` draws cladding, rounded smart-glass windows,
+  roller shutters and grime; `MarketFacades` adds air-conditioning units, drone racks, cable trays,
+  glass balconies, rooftop dishes and masts, and cables across the street (the machinery's faces
+  use `PAT_TECH`), all above the wall-run band, which the suite checks stays flush. Dust on roofs,
+  awnings and ledges comes from `kit_market.gdshaderinc` (`market_dust`, scaled by the skin's
+  `wear`).
 
 **The cult emblem** (D7, GDD §5 "The cult"): `CultEmblem` (`scripts/world/meshes/cult_emblem.gd`)
 builds each option's 2D vector geometry as a flat mesh (mesh kit conventions: emissive for a neon
@@ -284,7 +355,34 @@ through the kit shader: the skin sets the `cult_emblem` texture (the option rast
 colours, `GanglandSkin.cult_emblem_texture()`), `cult_emblem_share` puts it on some corporate ads, and
 `MeshKit.stencil_param(..., emblem)` on some crates, container doors and notice boards. The shader picks
 its mip level itself and fades it out before it spans fewer than about 24 pixels, where the three-fold
-mark could read like a radiation trefoil.
+mark could read like a radiation trefoil. The Marketplace uses geometry instead: it turns the emblem
+into a mesh-kit template once (`MarketplaceSkin.cult_emblem()`), then appends it where it hides: a
+small warm-white badge on some ads, an unlit bronze mark on some shop signs, never smaller than
+`emblem_min_size` (0.9 m, for the same reason).
+
+**The cult's feed** (GDD §5, "Cyborg Viewing Devices"): the same wordless broadcast plays on screens
+in every zone, in sync, alongside the ordinary ads. It is one shared piece, `CultFeed`
+(`scripts/world/meshes/cult_feed.gd`): a glowing, shader-driven material (`cult_feed.gdshader`, the
+picture in `cult_feed.gdshaderinc`) that works on the Compatibility renderer, and a helper that adds
+a screen to a mesh layer:
+
+```gdscript
+var feed: MeshLayer = batch.layer(CultFeed.material())    # shared; one mesh surface per chunk
+CultFeed.screen(feed, lower_left, right, up, brightness)  # a rectangle facing right × up, as seen
+```
+
+`right` and `up` span the screen as its viewer sees it (the picture is never mirrored, so don't put a
+screen in a template that gets mirrored); `brightness` (0-1) dims small or low screens. The material
+draws only the picture: give each screen a bezel, frame or TV set of its own. What it shows is a
+placeholder (DESIGN-TBD, `docs/questions/d2.md`): a CRT picture in cold white, like the cyborgs' screen
+heads (task P2), with scanlines, soft static and a slow rolling bar, looping through a screen-head
+face, the chosen emblem (`CultEmblem`, faded out below about 24 pixels) and rings converging on a
+point, one at a time. Rules for every skin: keep it the same broadcast (vary only how many screens
+play it and where), keep other glows off it, and never tint it (only cold white and the emblem's
+warm white; purple glitching belongs to hosts). It honours Reduced flashing (the static and the
+rolling bar hold still). The Marketplace plays it on some billboards, casino signs and floating ads
+(`feed_share`) and on old TVs in some shop windows (`feed_window_share`; `shop_windows()` marks
+them with `screen`). `tools/showcase/cult_feed_showcase.tscn` shows a whole loop on three screens.
 
 **Reduced flashing** (Settings): `Settings.apply_visuals()` sets the global shader uniform
 `reduced_flashing` (declared in `project.godot`) and `Settings.flashing_reduced`. Hazard shaders
@@ -379,7 +477,8 @@ encounter.setup(world, context, arena)   joins the world between the player and 
   zone's looks, freed once passed: `fence` (normal fence rules; it can flicker in first, and a boss
   may move it), `block` (solid; the player can't switch into it), `pad` and `ceiling`, `block_wall`
   (takes a stretch of wall away), and the red floor warnings `lane_warning` and `circle_warning`
-  (steady with Reduced flashing).
+  (steady with Reduced flashing; `warned(lane, from, to)` says where they are, and pickups keep off
+  them).
 - **Parts** (`BossPart`, made with `add_part()` through the director): a boss's body shares the fight's
   health (weapon hits go to `BossEncounter.damage`, nothing else defeats it) and has weak points
   (`add_weak_point`: a stomp from above is a big hit; `set_weak_points_enabled` for weak points that
@@ -404,10 +503,14 @@ encounter.setup(world, context, arena)   joins the world between the player and 
   `payout_credits`, and gives the stars from the par times; the App records it as the step's record
   (best score, best time, stars) and submits the boss leaderboard, `boss/<boss id>/<tier>` (none in
   the web demo). Its results and level-select tile show the boss's stars and bests like a level's.
-- **Pickups** (task B7): `armor_pickup_due(reason)` follows GDD §10's standard armor rule, at the start
-  of the final phase and `armor_delay_min`–`max` seconds after the player's armor or shield breaks, at
-  most `armor_pickups_per_phase` per phase; `phase_started` and `protection_broken` are there for
-  other pickups.
+- **Pickups** (see Pickups): `armor_pickup_due(reason)` follows GDD §10's standard armor rule, at the
+  start of the final phase and `armor_delay_min`–`max` seconds after the player's armor or shield
+  breaks, at most `armor_pickups_per_phase` per phase, and each time the encounter offers an armor
+  pickup (`_on_armor_pickup_due`, which a boss may override to place it its own way).
+  `offer_pickup(item, at, lane)` offers an armor, shield or grapple pickup of the boss's own (GDD §10:
+  a section of floor that spawns one; the test boss offers a shield in its second phase), and
+  `phase_started` and `protection_broken` are there to time them. The win clears every pickup, and
+  nothing is offered after it.
 - **The light**: `set_light_level(level, seconds)` fades the environment's ambient and sky light and
   the sun, never below `MIN_LIGHT_LEVEL`; glowing things keep their colours, and the light returns
   with the fight.
@@ -417,8 +520,9 @@ parts extending `BossPart`, a tuning resource of its own in `data/bosses/<id>_tu
 slot's `BossDef` filled in (scene, phases, arena, numbers). Override the hooks it needs:
 `_plan_lap`, `_build_boss`, `_on_phase_started` / `_intro_tick`, `_on_pattern_started` /
 `_pattern_tick`, `_on_weak_point_hit`, `_on_part_defeated`, `_on_part_emp`, `_on_phase_ended`,
-`_on_defeated` / `_defeated_tick`. Every attack needs its visual and audio warning, random choices
-come from `rng`, and time from the physics step. The test boss (`TestBoss`) is a small example.
+`_on_defeated` / `_defeated_tick`, `_on_armor_pickup_due`. Every attack needs its visual and audio
+warning (a floor warning from `props` also keeps pickups away), random choices come from `rng`, and
+time from the physics step. The test boss (`TestBoss`) is a small example.
 
 **How the designed bosses fit** (GDD §10; each is a later task):
 - **Floating Head (E1):** the ship and face are the body part; the bombing run drops bombs under
@@ -481,7 +585,9 @@ feature's pieces in a layout with the generator's own `LevelGenerator.feature_po
 that adds a new kind of piece extends it (and `FloorRoute`'s cells, if the piece is on the floor), or
 gives its rules script `positions()`. `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
 for framework tests, with `make_def()` for a BossDef from a list of phases; `test_bosses` runs fights
-in bare worlds and, with the test boss in the City's slot, through the App. The runner frees anything
+in bare worlds and, with the test boss in the City's slot, through the App. `test_pickups` checks
+pickup placement against the rules as it writes them itself, over hand-built cases and generated
+tracks at 3, 5 and 6 lanes, and the armor rule end to end on the test boss. The runner frees anything
 a suite leaves in the tree, gives suites a fresh, unsaved profile, reports a suite that fails to load,
 and ends a stuck run after 600 s of real time.
 
@@ -489,7 +595,8 @@ and ends a stuck run after 600 s of real time.
 
 Scenes in `tools/showcase/` show one part of the game up close for visual review (not part of the
 game): the avatar, the enemies (`enemy_showcase` for the cyborg family, `octodog_screech`,
-`drone_truck_showcase`, `bad_dream_showcase`), the UI kit, the screens, and comparison sheets for an
-open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
+`drone_truck_showcase`, `bad_dream_showcase`), the UI kit, the screens, a zone skin (`skin_review`:
+any skin from fixed spots, or a scripted run with a ceiling ride and a wall run), and comparison
+sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
 `CLAUDE.md`.

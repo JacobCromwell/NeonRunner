@@ -38,3 +38,9 @@ extends Resource
 @export_range(0.0, 30.0, 0.5, "suffix:m") var clear_before_drop: float = 16.0
 @export_range(0.0, 20.0, 0.5, "suffix:m") var clear_after_drop: float = 4.0
 @export_range(0.3, 3.0, 0.05, "suffix:s") var rise_seconds: float = 1.0
+
+@export_group("Pickups")
+## Besides the standard armor rule, the core offers this pickup when the pattern of phase
+## `bonus_pickup_phase` begins (a boss's own pickups, BossEncounter.offer_pickup; 0 = none).
+@export_enum("armor", "shield", "grapple") var bonus_pickup: String = "shield"
+@export_range(0, 3) var bonus_pickup_phase: int = 2

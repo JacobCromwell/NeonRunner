@@ -11,6 +11,8 @@ extends BossEncounter
 ##    weak point up. A stomp takes the phase (BossEncounter.hit_damage); running past it, it rises and
 ##    the cycle starts again. Weapons chip at it throughout, up to the boss's weapon cap.
 ## Phases: the second is a checkpoint; the third is faster and the lights go down (set_light_level).
+## Pickups: the standard armor rule's (BossEncounter), and a boss's own: when the second phase's
+## pattern begins, the core offers a shield pickup on the floor ahead (offer_pickup).
 ## Numbers: TestBossTuning (data/bosses/test_boss_tuning.tres).
 
 enum Step { HOVER, CHARGE, FIRE, COOLDOWN, DROP, DAZED, RISE }
@@ -77,6 +79,12 @@ func _intro_tick(delta: float) -> void:
 	if phase_index > 0 and k < 0.6:
 		shake = Vector3(sin(state_time * 53.0), cos(state_time * 47.0), 0.0) * 0.12 * (1.0 - k)
 	body.position = _from.lerp(_hover_point(world.player.position.x), k) + shake
+
+
+func _on_pattern_started(index: int) -> void:
+	# A boss's own pickup (GDD §10: some fights offer pickups), besides the standard armor rule.
+	if tuning.bonus_pickup_phase == index + 1:
+		offer_pickup(StringName(tuning.bonus_pickup))
 
 
 func _on_weak_point_hit(_part: BossPart, hazard: Hazard) -> void:
