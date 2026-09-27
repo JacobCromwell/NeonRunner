@@ -91,11 +91,9 @@ func _test_zones(campaign: Campaign) -> void:
 		check(zone.display_name != "" and zone.tagline != "", "%s has a name and a tagline" % id)
 		check(zone.skin != null, "%s has a skin" % id)
 		check(zone.in_demo == (id == "city"), "%s %s the web demo (GDD §2)" % [id, "is in" if id == "city" else "isn't in"])
-		# Zones name their track after their id; until the music task makes one, the Music player skips
-		# it quietly (test_audio).
+		# Zones name their track after their id, and every zone's track exists (test_audio checks the files).
 		check(zone.music == zone.id, "%s's music track is named after the zone" % id)
-		if id in ["city", "gangland"]:
-			check(library.has(zone.music), "%s's music exists" % id)
+		check(library.has(zone.music), "%s's music exists" % id)
 		check(zone.expected_loadout.is_empty(), "%s's expected loadout is still an empty placeholder (GDD §8)" % id)
 	check(campaign.planned_level_count() == 15 and campaign.level_count() == 15, "15 levels (GDD §5)")
 

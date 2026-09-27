@@ -14,13 +14,21 @@ const Review = preload("res://tools/asset_gen/audio_review.gd")
 const DSP = preload("res://tools/asset_gen/sfx_dsp.gd")
 const OUT_DIR: String = "res://assets/music"
 const REVIEW_DIR: String = "res://build/music_review"
-# DESIGN-TBD: the music style per zone is still open (OPEN_QUESTIONS §6, Audio). These placeholders
-# follow the build brief: moody neon synthwave for the menus, driving synth-metal for the City,
-# heavier industrial metal for Gangland.
+# DESIGN-TBD: the music style per zone is still open (OPEN_QUESTIONS §6, Audio; FB 54 waits for a later
+# design round). These placeholders follow the build briefs and each zone's mood in GDD §5, each with a
+# tempo, key and texture of its own: moody neon synthwave for the menus (100 BPM, A minor), driving
+# synth-metal for the City (160, E minor), industrial metal for Gangland (120, D phrygian), bouncy
+# ska-metal for the happy Marketplace (144, Bb major), cold drop-B cyber-metal and a march for the
+# oppressive Corporate zone (112, B minor), quiet-then-crushing doom for the Dead Zone (84, C# minor),
+# and neoclassical metal for the Golden Zone's decadence (132, F# harmonic minor).
 const TRACKS: Dictionary = {
 	"menu": preload("res://tools/asset_gen/track_menu.gd"),
 	"city": preload("res://tools/asset_gen/track_city.gd"),
 	"gangland": preload("res://tools/asset_gen/track_gangland.gd"),
+	"marketplace": preload("res://tools/asset_gen/track_marketplace.gd"),
+	"corporate": preload("res://tools/asset_gen/track_corporate.gd"),
+	"dead_zone": preload("res://tools/asset_gen/track_dead_zone.gd"),
+	"golden": preload("res://tools/asset_gen/track_golden.gd"),
 }
 ## Import settings for each music file: loop forward from the first sample to the guard sample at
 ## the end (-1), and compress with QOA.

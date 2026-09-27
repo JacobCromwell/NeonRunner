@@ -1,9 +1,8 @@
 extends "res://tools/asset_gen/sfx_bank.gd"
-## Player movement and level sounds: jump, land, slide, wall runs, ramps, pads, the hull, death, the
-## pulsing fence's warning and the level-complete riff.
+## Player movement and level sounds: jump, land, slide, wall runs, ramps, pads, the hull, death and the
+## pulsing fence's warning. The level-complete riffs are in sfx_bank_riffs.gd.
 
 const E2: float = 82.41
-const G2: float = 98.0
 const A2: float = 110.0
 
 
@@ -20,7 +19,6 @@ func sounds() -> Dictionary:
 		"hull_end": _hull_end,
 		"died": _died,
 		"fence_warning": _fence_warning,
-		"level_complete": _level_complete,
 	}
 
 
@@ -180,21 +178,4 @@ func _fence_warning() -> PackedFloat32Array:
 	DSP.filter(b, &"bandpass", 1800.0, 0.6)
 	DSP.drive(b, 5.0)
 	DSP.crush(b, 6, 11025.0)
-	return b
-
-
-## Level complete: a short power-chord riff. E5 chug, chug, G5, then A5 rings out with a crash.
-func _level_complete() -> PackedFloat32Array:
-	var rng := _rng(14)
-	var eighth: float = 60.0 / 170.0 / 2.0
-	var b := DSP.buffer(eighth * 3.0 + 1.3)
-	var hits: Array = [[0.0, E2, true], [eighth, E2, true], [eighth * 2.0, G2, true], [eighth * 3.0, A2, false]]
-	for hit: Array in hits:
-		var muted: bool = hit[2]
-		var chord := DSP.power_chord(eighth if muted else 1.3, hit[1], muted, rng)
-		DSP.envelope(chord, 0.002, 0.07 if muted else 0.7, 0.02 if muted else 0.2)
-		DSP.mix(b, chord, hit[0])
-	DSP.mix(b, DSP.crash(0.9, _rng(15)), eighth * 3.0, 0.12)
-	DSP.mix(b, DSP.kick(0.25, 150.0, 45.0, _rng(16)), eighth * 3.0, 0.7)
-	DSP.crush(b, 11, 24000.0)
 	return b
