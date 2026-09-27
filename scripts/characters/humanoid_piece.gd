@@ -66,6 +66,9 @@ enum Placement {
 @export var color: Color = Color.WHITE
 ## Emission strength: 0 = matte, 1 = standard neon trim, above 1 = brighter (visors).
 @export_range(0.0, 3.0, 0.05) var glow: float = 0.0
+## Polish: 0 = the material's own roughness, 1 = smooth and glinting (polished metal). Written into
+## the vertex colour's alpha as 1 - shine; humanoid_body.gdshader reads it, other shaders may ignore it.
+@export_range(0.0, 1.0, 0.05) var shine: float = 0.0
 ## Optional own material (for example an animated LED screen). Pieces that share a material are
 ## merged into one extra surface; null uses the rig's body material (vertex colour + glow).
 @export var material: Material

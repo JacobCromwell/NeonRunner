@@ -69,7 +69,9 @@ const SCAR := Color(0.66, 0.4, 0.38)
 const EYE := Color(0.12, 0.1, 0.1)
 const HAIR := Color(0.07, 0.07, 0.08)
 const GLOVE := Color(0.15, 0.13, 0.12)
-const GOLD := Color(0.84, 0.64, 0.3)
+const GOLD := Color(0.88, 0.65, 0.25)
+## The gold arm and the implant's brass are polished (HumanoidPiece.shine): they glint, never glow.
+const GOLD_SHINE: float = 0.7
 const GOLD_DARK := Color(0.46, 0.33, 0.15)
 const PLATE := Color(0.33, 0.28, 0.24)
 
@@ -197,7 +199,7 @@ static func _pelvis(list: Array[HumanoidPiece]) -> void:
 	# The belt over the coat's waist: it hides where the skirt panels hang from.
 	_add(list, &"pelvis", LATHE, Vector3(0.325, 0.0, 0.25), Vector3(0.0, SKIRT_HINGE_Y, 0.005), LEATHER, 0.0,
 		{"sides": 8, "profile": PackedVector4Array([Vector4(-0.035, 1.0, 1.0, 0.0), Vector4(0.03, 1.0, 1.0, 0.0)])})
-	_add(list, &"pelvis", BOX, Vector3(0.05, 0.04, 0.014), Vector3(0.0, SKIRT_HINGE_Y, -0.127), BUCKLE)
+	_add(list, &"pelvis", BOX, Vector3(0.05, 0.04, 0.014), Vector3(0.0, SKIRT_HINGE_Y, -0.127), BUCKLE, 0.0, {"shine": 0.5})
 
 
 ## The coat's body, the tactical vest in its open front, the lapels and the high collar.
@@ -278,12 +280,21 @@ static func _head(list: Array[HumanoidPiece]) -> void:
 			[Vector3(0.035, 0.175, 0.055), Vector3(55.0, 0.0, -25.0)],
 			[Vector3(-0.035, 0.175, 0.055), Vector3(55.0, 0.0, 25.0)],
 			[Vector3(0.07, 0.15, 0.02), Vector3(30.0, 0.0, -65.0)],
-			[Vector3(-0.07, 0.15, 0.02), Vector3(30.0, 0.0, 65.0)]]:
+			[Vector3(-0.07, 0.15, 0.02), Vector3(30.0, 0.0, 65.0)],
+			# Tufts over the hairline, so it isn't a straight edge.
+			[Vector3(-0.04, 0.145, -0.075), Vector3(-75.0, 0.0, 15.0)],
+			[Vector3(0.015, 0.15, -0.08), Vector3(-70.0, 0.0, -10.0)],
+			[Vector3(0.055, 0.14, -0.065), Vector3(-65.0, 0.0, -35.0)],
+			# Swept back over the crown and the nape.
+			[Vector3(0.03, 0.12, 0.09), Vector3(105.0, 0.0, -20.0)],
+			[Vector3(-0.03, 0.12, 0.09), Vector3(105.0, 0.0, 20.0)],
+			[Vector3(0.0, 0.08, 0.1), Vector3(120.0, 0.0, 0.0)]]:
 		_add(list, &"head", PRISM, Vector3(0.055, 0.095, 0.055), spike[0], HAIR, 0.0,
 			{"sides": 3, "top_scale": Vector2.ZERO, "rotation_degrees": spike[1]})
 	# The copper ocular implant over the left eye: a brass housing, the glowing lens, a strut to the
 	# temple. (Authored on the right, placed on the left.)
-	_add(list, &"head", BOX, Vector3(0.054, 0.04, 0.024), Vector3(0.037, 0.088, -0.074), GOLD, 0.0, {"side": LEFT})
+	_add(list, &"head", BOX, Vector3(0.054, 0.04, 0.024), Vector3(0.037, 0.088, -0.074), GOLD, 0.0,
+		{"side": LEFT, "shine": GOLD_SHINE})
 	_add(list, &"head", BOX, Vector3(0.026, 0.026, 0.012), Vector3(0.037, 0.088, -0.089), GLOW, EYE_GLOW,
 		{"side": LEFT})
 	_add(list, &"head", BOX, Vector3(0.012, 0.014, 0.06), Vector3(0.068, 0.092, -0.045), GOLD_DARK, 0.0, {"side": LEFT})
@@ -321,25 +332,33 @@ static func _arms(list: Array[HumanoidPiece]) -> void:
 
 ## The gold cybernetic left arm, from the shoulder down: a domed shoulder with a copper light, the
 ## upper arm, a dark elbow joint, the forearm with a copper cable, a wrist ring and the articulated
-## hand. (Authored on the right, placed on the left.)
+## hand. Dark rings split it into plates; the gold is polished (shine), so it glints as it swings.
+## (Authored on the right, placed on the left.)
 static func _gold_arm(list: Array[HumanoidPiece]) -> void:
-	_add(list, &"upper_arm", LATHE, Vector3(0.13, 0.0, 0.13), Vector3(0.012, 0.0, 0.0), GOLD, 0.0, {"side": LEFT,
+	var gold := {"side": LEFT, "shine": GOLD_SHINE}
+	_add(list, &"upper_arm", LATHE, Vector3(0.13, 0.0, 0.13), Vector3(0.012, 0.0, 0.0), GOLD, 0.0, _with(gold, {
 		"sides": 6, "profile": PackedVector4Array([Vector4(-0.045, 1.0, 1.0, 0.0), Vector4(0.012, 0.96, 0.96, 0.0),
-			Vector4(0.05, 0.55, 0.55, 0.0)])})
+			Vector4(0.05, 0.55, 0.55, 0.0)])}))
 	_add(list, &"upper_arm", BOX, Vector3(0.012, 0.026, 0.026), Vector3(0.078, -0.01, 0.0), GLOW, LIGHT_GLOW,
 		{"side": LEFT})
 	_add(list, &"upper_arm", PRISM, Vector3(0.076, 0.19, 0.072), Vector3(0.0, -0.1, 0.0), GOLD, 0.0,
-		{"side": LEFT, "top_scale": Vector2(1.1, 1.1)})
+		_with(gold, {"top_scale": Vector2(1.1, 1.1)}))
+	_add(list, &"upper_arm", BAND, Vector3(0.088, 0.0, 0.084), Vector3(0.0, -0.11, 0.0), GOLD_DARK, 0.0, {"side": LEFT,
+		"profile": PackedVector4Array([Vector4(-0.008, 1.0, 1.0, 0.0), Vector4(0.008, 1.0, 1.0, 0.0)])})
 	_pipe(list, &"upper_arm", Vector3(0.0, -0.03, 0.04), Vector3(0.0, -0.18, 0.038), 0.014, Vector3.BACK, LEFT, 0.4)
 	_add(list, &"upper_arm", PRISM, Vector3(0.07, 0.05, 0.07), Vector3(0.0, -0.2, 0.0), GOLD_DARK, 0.0,
-		{"side": LEFT, "rotation_degrees": Vector3(0.0, 0.0, 90.0)})
+		{"side": LEFT, "shine": 0.4, "rotation_degrees": Vector3(0.0, 0.0, 90.0)})
 	_add(list, &"forearm", PRISM, Vector3(0.07, 0.16, 0.066), Vector3(0.0, -0.085, 0.0), GOLD, 0.0,
-		{"side": LEFT, "top_scale": Vector2(1.15, 1.12)})
+		_with(gold, {"top_scale": Vector2(1.15, 1.12)}))
+	_add(list, &"forearm", BAND, Vector3(0.082, 0.0, 0.078), Vector3(0.0, -0.075, 0.0), GOLD_DARK, 0.0, {"side": LEFT,
+		"profile": PackedVector4Array([Vector4(-0.007, 1.0, 1.0, 0.0), Vector4(0.007, 1.0, 1.0, 0.0)])})
 	_pipe(list, &"forearm", Vector3(-0.022, -0.02, -0.03), Vector3(-0.02, -0.14, -0.028), 0.012, Vector3.FORWARD, LEFT, 0.4)
-	_add(list, &"forearm", PRISM, Vector3(0.07, 0.02, 0.066), Vector3(0.0, -0.165, 0.0), GOLD_DARK, 0.0, {"side": LEFT})
+	_add(list, &"forearm", PRISM, Vector3(0.07, 0.02, 0.066), Vector3(0.0, -0.165, 0.0), GOLD_DARK, 0.0,
+		{"side": LEFT, "shine": 0.4})
 	_add(list, &"hand", BOX, Vector3(0.062, 0.066, 0.074), Vector3(0.0, -0.035, -0.004), GOLD, 0.0,
-		{"side": LEFT, "chamfer": 0.35})
-	_add(list, &"hand", BOX, Vector3(0.058, 0.04, 0.058), Vector3(0.0, -0.086, -0.01), GOLD_DARK, 0.0, {"side": LEFT})
+		_with(gold, {"chamfer": 0.35}))
+	_add(list, &"hand", BOX, Vector3(0.058, 0.04, 0.058), Vector3(0.0, -0.086, -0.01), GOLD_DARK, 0.0,
+		{"side": LEFT, "shine": 0.4})
 
 
 static func _legs(list: Array[HumanoidPiece]) -> void:
@@ -442,12 +461,12 @@ static func _claws() -> Array[HumanoidPiece]:
 static func _armor() -> Array[HumanoidPiece]:
 	var list: Array[HumanoidPiece] = []
 	_add(list, &"upper_arm", BOX, Vector3(0.155, 0.05, 0.165), Vector3(0.022, 0.058, 0.0), ARMOR, 0.0,
-		{"chamfer": 0.4, "top_scale": Vector2(0.75, 0.8)})
+		{"top_scale": Vector2(0.72, 0.8), "shine": 0.5})
 	_add(list, &"upper_arm", BOX, Vector3(0.016, 0.014, 0.15), Vector3(0.1, 0.04, 0.0), ARMOR_EDGE, 0.6)
 	_add(list, &"chest", BOX, Vector3(0.17, 0.13, 0.024), Vector3(0.0, 0.15, -0.124), ARMOR, 0.0,
-		{"chamfer": 0.35, "top_scale": Vector2(1.08, 1.0)})
+		{"top_scale": Vector2(1.08, 1.0), "shine": 0.5})
 	_add(list, &"chest", BOX, Vector3(0.15, 0.012, 0.01), Vector3(0.0, 0.21, -0.137), ARMOR_EDGE, 0.6)
-	_add(list, &"chest", BOX, Vector3(0.27, 0.042, 0.024), Vector3(0.0, 0.262, 0.1), ARMOR, 0.0, {"chamfer": 0.3})
+	_add(list, &"chest", BOX, Vector3(0.27, 0.042, 0.024), Vector3(0.0, 0.262, 0.1), ARMOR, 0.0, {"shine": 0.5})
 	return list
 
 
@@ -525,6 +544,13 @@ static func _pipe_piece(segment: StringName, a: Vector3, b: Vector3, width: floa
 	var basis := Basis(y.cross(z), y, z)
 	return _piece(segment, PRISM, Vector3(width, along.length() + width * 0.5, width), (a + b) * 0.5, color, glow,
 		{"sides": 3, "rotation_degrees": basis.get_euler() * (180.0 / PI)})
+
+
+## `base` with `more` merged over it (piece options shared by several pieces).
+static func _with(base: Dictionary, more: Dictionary) -> Dictionary:
+	var out: Dictionary = base.duplicate()
+	out.merge(more, true)
+	return out
 
 
 static func _add(list: Array[HumanoidPiece], segment: StringName, shape: HumanoidPiece.Shape, size: Vector3,

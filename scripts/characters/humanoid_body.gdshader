@@ -17,6 +17,8 @@ uniform float glow_albedo = 1.0;
 // Tint over the whole body (invulnerability flash, death flash). Alpha = strength.
 uniform vec4 tint : source_color = vec4(1.0, 1.0, 1.0, 0.0);
 uniform float roughness : hint_range(0.0, 1.0) = 0.55;
+// Roughness of a fully polished piece (HumanoidPiece.shine 1, carried in the vertex colour's alpha).
+uniform float polished_roughness : hint_range(0.0, 1.0) = 0.18;
 // Rim light (0 = off): a soft glow on the faces seen edge-on, so a dark outfit's silhouette still
 // reads on dark ground. Emission, so it needs no light and looks the same on every renderer; it
 // stays below the glow threshold (no bloom) and doesn't power down with glow_boost.
@@ -49,7 +51,8 @@ void fragment() {
 	float glow = UV.x;
 	vec3 base = humanoid_base_color(COLOR.rgb);
 	ALBEDO = mix(base * mix(1.0, glow_albedo, step(0.001, glow)), tint.rgb, tint.a);
-	ROUGHNESS = roughness;
+	ROUGHNESS = mix(polished_roughness, roughness, COLOR.a);
+	SPECULAR = mix(0.9, 0.5, COLOR.a);
 	float edge = max(1.0 - clamp(dot(normalize(NORMAL), normalize(VIEW)), 0.0, 1.0), 0.0001);
 	EMISSION = base * glow * glow_energy * glow_boost + tint.rgb * (tint.a * 0.6)
 		+ rim_color.rgb * rim_strength * pow(edge, rim_power);

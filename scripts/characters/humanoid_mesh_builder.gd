@@ -1,8 +1,8 @@
 class_name HumanoidMeshBuilder
 extends RefCounted
 ## Builds flat-shaded, low-poly geometry from HumanoidPiece shapes into one surface. Every triangle
-## has its own face normal (the faceted low-poly look). The vertex colour is the albedo (linear) and
-## UV.x the glow amount, which humanoid_body.gdshader turns into emission, so plain parts and neon
+## has its own face normal (the faceted low-poly look). The vertex colour is the albedo (linear; its
+## alpha 1 - the piece's shine) and UV.x the glow amount, which humanoid_body.gdshader turns into emission, so plain parts and neon
 ## trim share one material and a whole rig segment costs a single draw call. UV.y is a tag: 0 for
 ## ordinary parts, k + 1 for the pieces of HumanoidRig panel k (the shader swings them).
 ##
@@ -35,7 +35,7 @@ func add_piece(piece: HumanoidPiece, mirror: bool, tag: int = 0) -> void:
 	if mirror:
 		_xf = Transform3D(Basis.from_scale(Vector3(-1.0, 1.0, 1.0)), Vector3.ZERO) * _xf
 	_color = piece.color.srgb_to_linear()
-	_color.a = 1.0
+	_color.a = 1.0 - clampf(piece.shine, 0.0, 1.0)
 	_glow = piece.glow
 	_tag = float(tag)
 	var half := Vector2(piece.size.x, piece.size.z) * 0.5
