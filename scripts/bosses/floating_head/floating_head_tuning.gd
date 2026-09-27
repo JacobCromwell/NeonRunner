@@ -100,12 +100,12 @@ extends Resource
 @export_range(0.5, 4.0, 0.1, "suffix:s") var boot_seconds: float = 1.6
 
 @export_group("Face-off")
-## DESIGN-TBD (docs/questions/e1.md): the face-off's attacks, one list per phase (the last list for
-## any later phase), taken in turn over and over (when one can't start fairly, the next in line that
-## can goes first): "low" (the eye lasers sweep across the lanes low: jump them), "high" (high: slide
-## under them), "drag" (they burn down the runner's lane: switch lanes) and "drop" (the cyborg drop). A
-## drag timed for each marked tower comes on top (Towers). It hovers at its face pose (Reveal) for the
-## lasers. These and the timings below set the face-off's pace.
+## DESIGN-TBD (docs/questions/e1.md, item 4): the face-off's attacks, one list per phase (the last
+## list for any later phase), taken in turn over and over (when one can't start fairly, the next in
+## line that can goes first): "low" (the eye lasers sweep across the lanes low: jump them), "high"
+## (high: slide under them), "drag" (they burn down the runner's lane: switch lanes) and "drop" (the
+## cyborg drop). A drag timed for each marked tower comes on top (Towers). It hovers at its face pose
+## (Reveal) for the lasers. These and the timings below set the face-off's pace.
 @export var faceoff_patterns: PackedStringArray = ["low,drag,high,drop,drag", "high,drag,low,drop,low,drag",
 	"drag,high,low,drop,drag,high,drop"]
 ## Seconds from one attack's end to the next one's warning, and to move between its places.
@@ -113,8 +113,9 @@ extends Resource
 @export_range(0.2, 3.0, 0.05, "suffix:s") var move_seconds: float = 0.9
 
 @export_group("Eye lasers")
-## GDD §10 (proposed): "the eyes glow and whine, then twin beams sweep across the lanes". The warning:
-## the eyes glow red and whine for this long while thin aiming beams show where the attack goes.
+## GDD §10 (proposed): "the eyes glow and whine, then twin beams sweep across the lanes". DESIGN-TBD
+## (docs/questions/e1.md, items 1-3): the warning: the eyes glow red and whine for this long while thin
+## aiming beams show where the attack goes.
 @export_range(0.4, 3.0, 0.05, "suffix:s") var laser_charge_seconds: float = 1.0
 ## Where a sweep's twin beams cross the runner's spot: a low sweep's both at sweep_low_height (jump
 ## them: a sliding runner is 0.45 m tall); a high sweep's one at sweep_high_height and the other at
@@ -142,9 +143,10 @@ extends Resource
 
 @export_group("Cyborg drop")
 ## GDD §10: "its mouth opens and drops 1–2 cyborgs onto the trucks ahead, who then fight like normal
-## cyborgs". DESIGN-TBD: it pulls back to drop them this far ahead (room for them to fight), its belly
-## this high; the mouth opens (the warning, with its grinding sound) this long before the first drops,
-## the cyborgs drop drop_interval apart and fall for drop_fall_seconds.
+## cyborgs". DESIGN-TBD (docs/questions/e1.md, items 5-6): it pulls back to drop them this far ahead
+## (room for them to fight), its belly this high; the mouth opens (the warning, with its grinding sound
+## and red circles where they'll land) this long before the first drops, the cyborgs drop
+## drop_interval apart and fall for drop_fall_seconds.
 @export_range(20.0, 90.0, 0.5, "suffix:m") var drop_ahead: float = 50.0
 @export_range(0.5, 10.0, 0.1, "suffix:m") var drop_height: float = 2.6
 @export_range(0.3, 3.0, 0.05, "suffix:s") var mouth_seconds: float = 0.8
@@ -153,15 +155,16 @@ extends Resource
 ## Cyborgs per drop, one number per phase (the last for any later phase): GDD §10, "the next phase is
 ## faster, with more cyborgs".
 @export var cyborgs_per_drop: PackedInt32Array = [1, 2, 2]
-## DESIGN-TBD: its lasers wait while a cyborg it dropped is still ahead of the runner (no big attacks at
-## once, GDD §9), at most this long.
+## DESIGN-TBD (docs/questions/e1.md, item 6): its lasers wait while a cyborg it dropped is still
+## ahead of the runner (no big attacks at once, GDD §9), at most this long.
 @export_range(0.0, 10.0, 0.1, "suffix:s") var drop_hold_max: float = 4.0
 
 @export_group("Towers")
-## GDD §10: "marked, cracked towers stand ahead at the roadside". DESIGN-TBD: one every
-## tower_spacing metres (sides in turn), the first tower_first into each lap, tower_height tall (its
-## head, the top 30%, juts out over the street above the ship's highest flight) and tower_width wide. The track stays clear of holes and fences from tower_clear_before before a tower
-## to tower_clear_after past it (the pin, and the run up to it).
+## GDD §10: "marked, cracked towers stand ahead at the roadside". DESIGN-TBD (docs/questions/e1.md,
+## items 7-9): one every tower_spacing metres (sides in turn), the first tower_first into each lap,
+## tower_height tall (its head, the top 30%, juts out over the street above the ship's highest flight)
+## and tower_width wide. The track stays clear of holes and fences from tower_clear_before before a
+## tower to tower_clear_after past it (the pin, and the run up to it).
 @export_range(80.0, 800.0, 5.0, "suffix:m") var tower_spacing: float = 300.0
 @export_range(0.0, 800.0, 5.0, "suffix:m") var tower_first: float = 240.0
 @export_range(15.0, 80.0, 0.5, "suffix:m") var tower_height: float = 40.0
@@ -184,17 +187,17 @@ extends Resource
 
 @export_group("Pinned")
 ## GDD §10: "the tower topples onto the ship and pins it low across the trucks". DESIGN-TBD
-## (docs/questions/e1.md): pinned, it sinks between the trucks until the tops of its weak points'
-## sockets are this high (so E1c's ways onto its head reach it: a wall jump off a free wall entry peaks
-## about 2.9 m up, the hover truck's roof is 2.2 m, a ceiling 6 m), rolled toward the tower by
-## pin_roll_degrees, with the tower resting on its crown pin_rest_offset behind its face (behind the
+## (docs/questions/e1.md, item 10): pinned, it sinks between the trucks until the highest top of its
+## weak points' sockets is this high (so E1c's ways onto its head reach it: a wall jump off a free wall
+## entry peaks about 2.9 m up, the hover truck's roof is 2.2 m, a ceiling 6 m), rolled toward the tower
+## by pin_roll_degrees, with the tower resting on its crown pin_rest_offset behind its face (behind the
 ## weak points).
 @export_range(1.0, 6.0, 0.05, "suffix:m") var pin_top_height: float = 2.5
 @export_range(0.0, 20.0, 0.5, "suffix:deg") var pin_roll_degrees: float = 5.0
 @export_range(4.0, 20.0, 0.5, "suffix:m") var pin_rest_offset: float = 9.0
 @export_range(0.1, 2.0, 0.05, "suffix:s") var pin_sink_seconds: float = 0.35
-## DESIGN-TBD (task E1c builds the stomp windows): for now it shakes free once the runner is this close
-## to its face, and rises back to its face pose in release_seconds.
+## DESIGN-TBD (docs/questions/e1.md, item 11; task E1c builds the stomp windows): for now it shakes
+## free once the runner is this close to its face, and rises back to its face pose in release_seconds.
 @export_range(2.0, 40.0, 0.5, "suffix:m") var pin_release_gap: float = 12.0
 @export_range(0.3, 3.0, 0.05, "suffix:s") var release_seconds: float = 1.1
 
