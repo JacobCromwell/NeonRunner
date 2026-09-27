@@ -61,7 +61,7 @@
 			]
 		},
 		{
-			"id": "screech_city_vent",
+			"id": "screech_wall_vent",
 			"min_difficulty": 0.0, "weight": 0.4,
 			"requires": ["screech_vents"],
 			"length": 24,

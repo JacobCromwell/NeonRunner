@@ -116,9 +116,12 @@ An enemy type needs only files of its own; nothing shared is edited:
 `take_damage()`, `defeat(cause)`, `retire()`. Subclasses override `_build()` (visuals, hitboxes,
 properties), `_tick(delta)` (behaviour), and optionally `_on_defeated`, `should_retire`, `aim_point`,
 `hit_radius`. A layout entry is `{type, at, lane, side, seed, params}`; `rng` is seeded from it, so
-every attempt at a seed plays out the same way. Every attack needs a visual **and** audio warning
-before it can hurt (CLAUDE.md readability rules). Enemy fire uses the pool's red "enemy_*" looks in
-every zone. `world.skin.enemy_variant` (`&"city"` or `&"scavenger"`) picks the zone look: the other
+every attempt at a seed plays out the same way. Setting `is_host` also sets `immune_to_weapons`
+(GDD §9.7, decided September 26, 2026): a host is immune to every kind of weapon damage, direct or
+splash, the same way a fence generator declares its own immunity (GDD §9.1), so no targeting, no
+damage and no health bar; only a stomp, the claws or the dash still kill it, with the host bonus.
+Every attack needs a visual **and** audio warning before it can hurt (CLAUDE.md readability rules).
+Enemy fire uses the pool's red "enemy_*" looks in every zone. `world.skin.enemy_variant` (`&"city"` or `&"scavenger"`) picks the zone look: the other
 enemies weather by it, and the cyborgs dress in the look `CyborgSuit.look_for()` finds for it (every
 variant wears the base screen-head look until the zone variants of task P3 exist; see Characters).
 

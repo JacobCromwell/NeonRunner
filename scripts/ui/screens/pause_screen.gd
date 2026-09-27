@@ -2,7 +2,7 @@ class_name PauseScreen
 extends ScreenBase
 ## The pause overlay over the stopped run: which level or boss fight this is and how far along, then
 ## resume, restart (a boss fight restarts from a checkpoint it reached), settings, and quit to the menu
-## (after a check, since the run's credits are lost). Pause or back (Esc) resumes.
+## (after a check: quitting keeps the same credit share as a death, GDD §4). Pause or back (Esc) resumes.
 
 ## The menu's buttons by name (resume, restart, settings, quit), for tests.
 var buttons: Dictionary = {}
@@ -81,7 +81,8 @@ static func reopen() -> void:
 
 
 func _ask_quit() -> void:
-	# DESIGN-TBD: whether quitting mid-level asks first; the run's credits are lost either way.
-	_quit_dialog = ConfirmDialog.ask(self, "QUIT THIS RUN?", "Credits picked up in this run are lost.",
+	var share: int = roundi((App.rules.death_credit_keep_fraction if App.rules != null else 0.0) * 100.0)
+	_quit_dialog = ConfirmDialog.ask(self, "QUIT THIS RUN?",
+		"You'll keep %d%% of the credits picked up in this run, like a death." % share,
 		"QUIT", "KEEP PLAYING", true)
 	_quit_dialog.confirmed.connect(App.quit_run)

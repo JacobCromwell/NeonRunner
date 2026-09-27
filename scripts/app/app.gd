@@ -477,14 +477,30 @@ func resume_game() -> void:
 		get_node(^"/root/Music").call(&"set_ducked", false)
 
 
-## Leaves a run from the pause menu (no credits, like quitting a level in most runners).
+## Leaves a run from the pause menu (GDD §4, decided September 26, 2026): keeps
+## `GameRules.death_credit_keep_fraction` of this attempt's credits, like a death, but it's never a
+## completion and never touches a level's best score, stars, best time or leaderboard placement (the
+## `deaths` stat isn't bumped either: quitting isn't dying). Quick play (the grey-box review tool)
+## never touches the wallet or profile at all on a quit, same as on a death or a finish there. A
+## boss fight quit follows the same rule; it just can't keep a checkpoint reached this attempt, since
+## starting the step afresh never does (RunContext.boss_resume, documented there) and quitting has
+## nowhere else to carry it to.
 func quit_run() -> void:
-	var campaign_run: bool = run != null and run.context.is_campaign()
+	if run == null:
+		resume_game()
+		return
+	var campaign_run: bool = run.context.is_campaign()
+	var result: RunResult = run.quit_result() if run.context.mode != RunContext.Mode.QUICK else null
 	resume_game()
+	if result != null:
+		_apply_result(result, false)
 	if campaign_run:
 		show_level_select()
 	else:
 		show_title()
+	if result != null and result.credits_earned > 0:
+		Toast.show_message(screen, "+%s credits kept" % UiTheme.format_int(result.credits_earned),
+			IconFactory.credit_icon(100))
 
 
 func _start_run(ctx: RunContext, music: StringName) -> void:
@@ -586,8 +602,10 @@ func _on_run_finished(result: RunResult) -> void:
 		play_ui_sound(&"ui_unlock")
 
 
-## Pays the wallet, stores records and submits leaderboards for a finished run.
-func _apply_result(result: RunResult) -> void:
+## Pays the wallet, stores records and submits leaderboards for a finished run. `count_as_death`
+## gates the `deaths` stat only: quitting from the pause menu (quit_run) keeps the same credit share
+## as a death (GDD §4) without having died.
+func _apply_result(result: RunResult, count_as_death: bool = true) -> void:
 	var ctx: RunContext = result.context
 	profile.add_earned(result.credits_earned)
 	profile.stat_add("runs")
@@ -595,7 +613,7 @@ func _apply_result(result: RunResult) -> void:
 	profile.stat_add("credits_collected", result.credits_collected)
 	if result.completed:
 		profile.stat_add("bosses_defeated" if ctx.is_boss() else "levels_completed")
-	else:
+	elif count_as_death:
 		profile.stat_add("deaths")
 	if ctx.is_campaign():
 		# Levels and bosses alike (GDD §10: bosses have records, stars and leaderboards like levels).

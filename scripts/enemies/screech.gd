@@ -18,7 +18,8 @@ extends Enemy
 ##   swipe (an enemy attack).
 ##
 ## Where it may appear is the level's business (features): "screech" allows manholes and vents,
-## "screech_vents" only vents (city zones, rare; see data/patterns/screech.json).
+## "screech_vents" only vents (rare, for zones whose floor has no manholes, GDD §9.5; there are none
+## in the Neon City; see data/patterns/screech.json).
 ## Its body is ScreechModel: one mesh, one material, animated in its shader, reusable by the swarm boss.
 
 enum Phase { HIDDEN, SHAKE, EMERGE, DASH, SWIPE, VENT_WAIT, VENT_SWIPE, DROP, DONE }
