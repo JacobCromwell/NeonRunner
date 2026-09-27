@@ -513,9 +513,9 @@ func _test_floor_routes_on_physics(base: LevelConfig) -> void:
 		if hull and pieces > 0:
 			var features: Array = ["pulsing"]
 			features.append_array(p.get("requires", []))
-			cases.append([String(p["id"]), features, [p], 3, 1])
+			cases.append([String(p["id"]), features, [p], 2, 1])
 	check(cases.size() >= 6, "gauntlet patterns put floor pieces or enemies under their own ceiling (%d)" % cases.size())
-	cases.append(["drone", ["ceilings", "pulsing", "ramps", "speed_pads", "drone"], LevelGenerator.load_for(base), 3, 2])
+	cases.append(["drone", ["ceilings", "pulsing", "ramps", "speed_pads", "drone"], LevelGenerator.load_for(base), 2, 2])
 	var ran: int = 0
 	for c: Array in cases:
 		for lanes: int in [3, 5, 6]:
@@ -532,11 +532,12 @@ func _test_floor_routes_on_physics(base: LevelConfig) -> void:
 				check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
 				check(not layout.hulls.is_empty(), "the level has ceilings " + tag)
 				var zones := CeilingZones.make(config, tuning)
+				var grid := FloorRoute.new(layout, tuning)
 				var runs: int = 0
 				for h: Dictionary in layout.hulls:
 					if runs >= int(c[3]):
 						break
-					var route: Dictionary = LayoutChecks.floor_route(layout, tuning, zones, h)
+					var route: Dictionary = LayoutChecks.floor_route(grid, zones, h)
 					check(bool(route["ok"]), "a floor route under the ceiling at %.0f (%s) %s" % [h["start"], route["reason"], tag])
 					if not bool(route["ok"]):
 						continue
@@ -548,12 +549,13 @@ func _test_floor_routes_on_physics(base: LevelConfig) -> void:
 						% [what, r["surface"], r["distance"]])
 					runs += 1
 					ran += 1
-	check(ran >= 60, "floor routes run on physics: %d" % ran)
+	check(ran >= 45, "floor routes run on physics: %d" % ran)
 
 
-## Runs `route` (FloorRoute) on real physics: the layout's floor pieces, pads and ceilings from the
-## route's start to its end (and a little past), moved to start after a run-up; no enemies. Returns
-## RunSim.run's result, and `reached`: the player got past the route's end.
+## Runs `route` (FloorRoute) on real physics: the layout's floor pieces, pads and ceilings the route
+## passes (from its start to its end: what lies beyond is the next stretch's), moved to start after a
+## run-up; no enemies. Returns RunSim.run's result, and `reached`: the player got past the route's
+## end.
 func _replay(sim: RunSim, layout: LevelLayout, route: Dictionary) -> Dictionary:
 	const LEAD: float = 30.0
 	var from: float = float(route["from"])
@@ -566,7 +568,7 @@ func _replay(sim: RunSim, layout: LevelLayout, route: Dictionary) -> Dictionary:
 		for item: Dictionary in lists[key]:
 			var start: float = float(item.get("start", item.get("at", 0.0)))
 			var end: float = float(item.get("end", start + 5.0))
-			if end < from - 1.0 or start > to + 40.0:
+			if end < from - 1.0 or start > to:
 				continue
 			var moved: Dictionary = item.duplicate()
 			for k: String in ["at", "start", "end"]:

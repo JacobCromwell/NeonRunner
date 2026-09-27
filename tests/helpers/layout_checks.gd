@@ -62,6 +62,7 @@ static func check_ceilings(suite: TestSuite, layout: LevelLayout, config: LevelC
 	var zones := CeilingZones.make(config, tuning)
 	var finish: float = layout.length - config.end_clear_distance + 0.001
 	var half: float = tuning.fence_depth * 0.5
+	var grid: FloorRoute = null
 	for p: Dictionary in layout.pads:
 		var at: float = float(p["at"])
 		var lane: int = int(p["lane"])
@@ -96,21 +97,23 @@ static func check_ceilings(suite: TestSuite, layout: LevelLayout, config: LevelC
 			var span: Vector2 = LevelGenerator.enemy_floor_span(e)
 			suite.check(span.x > landing.y or span.y < landing.x,
 				"no floor enemy on the landing zone after the ceiling at %.1f (%s at %.1f) %s" % [h["end"], e["type"], e["at"], tag])
-		var route: Dictionary = floor_route(layout, tuning, zones, h)
+		if grid == null:
+			grid = FloorRoute.new(layout, tuning)
+		var route: Dictionary = floor_route(grid, zones, h)
 		suite.check(bool(route["ok"]), "a floor route runs under the ceiling at %.1f without its pad (%s) %s"
 			% [h["start"], route["reason"], tag])
 
 
-## A floor route (FloorRoute.find) under ceiling section `h` to the end of its landing zone, never
-## stepping on a pad. It starts at the last clear stretch before its pads' run-up (FloorRoute.
-## clear_start): the player may be in any lane there, as between any two of the generator's patterns.
-static func floor_route(layout: LevelLayout, tuning: MovementTuning, zones: CeilingZones, h: Dictionary) -> Dictionary:
+## A floor route (FloorRoute.find, on the layout's `grid`) under ceiling section `h` to the end of its
+## landing zone, never stepping on a pad. It starts at the last clear stretch before its pads'
+## run-up (FloorRoute.clear_start): the player may be in any lane there, as between any two of the
+## generator's patterns.
+static func floor_route(grid: FloorRoute, zones: CeilingZones, h: Dictionary) -> Dictionary:
 	var from: float = float(h["start"])
-	for p: Dictionary in layout.pads:
+	for p: Dictionary in grid.layout.pads:
 		if float(p["at"]) >= float(h["start"]) and float(p["at"]) <= float(h["end"]):
 			from = minf(from, zones.pad_zone(float(p["at"])).x)
-	return FloorRoute.find(layout, tuning, FloorRoute.clear_start(layout, tuning, from - ROUTE_LEAD),
-		zones.landing_zone(h).y)
+	return grid.find(grid.clear_start(from - ROUTE_LEAD), zones.landing_zone(h).y)
 
 
 static func check_rules(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
