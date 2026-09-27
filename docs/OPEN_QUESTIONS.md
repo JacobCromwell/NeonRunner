@@ -489,7 +489,7 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
     (difficulty 0–0.6), since the other pulsing patterns start at 0.4, which City 3 barely reaches; and a speed
     pad in one lane with four credits after it (no pattern placed speed pads before, so Gangland 2's never
     appeared).
-15. **Music for the new zones until their tracks exist.** Zones name their track after their id; until the
+15. (No longer comes up: every zone has its own track since D8, item 109.) **Music for the new zones until their tracks exist.** Zones name their track after their id; until the
     music task adds them the game skips them quietly and the menu music keeps playing. Fine as a stopgap?
 16. **The economy over 15 levels** ("From the full build" items 10–11). Completion pays 100 + 25 per campaign
     level, so Golden 3 pays 450; prices were set for a two-zone campaign. Needs a balancing pass.
@@ -750,6 +750,110 @@ play it with `--boss=city_boss` in debug builds)
 92. **Its sounds** (GDD §11): a flyover roar with a Doppler drop and a power chord, the searchlight's clunk and arc hum, a
     lock's clack and two-tone alarm, a falling whistle, a blast, and the reveal's tube thunk, static and blare. Do they
     fit?
+
+**Big attacks take turns** (from R3; the switch is `big_attacks_take_turns` in `data/tuning/game_rules.tres`, on, F6 "Game
+rules"; switched off, the game plays exactly as before; measure with `tools/measure/big_attacks.gd`)
+93. **Which attacks count as big** (GDD §9): the Octodog's whole charge sequence (so nothing else attacks between its
+    charges), the drone's wind-up and barrage, the hover truck's rev and lurch and its cannon's charge and volley, and the
+    Bad Dream's whole chase. Small (not taking turns): a cyborg's burst, a window cyborg's shots, a screech's swipe. Not
+    counted: the hover truck's entrance, whose moment the generator plans, so it can't wait (a big attack was open during
+    about 13 s of truck entrances over the measured runs). Right list? Should the entrance count (the others would then
+    be held off a few seconds before each one)?
+94. **When a big attack is over:** when nothing of it can still reach the player: the lunge has passed, the lurch has
+    ended, and the last bullet, shell or bolt is 0.5 m behind the player or gone. A warning never waits once it has
+    started. OK?
+95. **The Bad Dream's chase holds every other type's big attack for its 20–30 s** (§9.7 already held Octodog charges and
+    drone barrages; now a hover truck's lurch and cannon wait too). In Golden 3 at 5 lanes a truck arriving mid-chase
+    gets one lurch and no cannon shot (3 shots and a lurch without the rule). The other way: count only its slashes, so
+    others attack between them. Which?
+96. **Who goes first, and how long an Octodog waits:** of the enemies waiting, the one that has waited longest goes next,
+    so none waits for ever. While waiting they carry on (a drone follows, a truck holds back or paces; a cannon shot that
+    doesn't get its turn before the truck's pacing ends is skipped). An Octodog paces in front of the player and its
+    planned charges move on with it for up to 4 s (`turn_wait_max`), keeping the planner's margins; then it runs off as
+    before. OK?
+97. **Keep the rule after playtesting?** Measured over every campaign level at 3, 5 and 6 lanes (45 simulated runs,
+    6,298 s): **without it**, big attacks of different types overlap for 60.5 s in all (61 times in 25 runs; 1.3 s a run
+    on average, 7.3 s at worst in Dead Zone 2 at 3 lanes), mostly a drone barrage with a truck's lurch or cannon (40 s);
+    **with it**, never. The cost: 12% of the trucks' cannon shots, 6% of their lurches and 4% of drone barrages; no
+    Octodog charge or Bad Dream slash lost. One attack in eleven waits: a barrage 1.6 s on average (up to 5 s), a lurch
+    3.1 s (up to 9 s, in a chase), a cannon shot 1.6 s, an Octodog 2 s.
+98. **The enemies still to come** (proposals for their tasks): Buzz Overdrive's rev and charge are big, but the generator
+    plans its cut, so like the truck's entrance it can't wait (the others would be held off before its rev); the
+    Resonator's pulse is big; the Gilded Sentinel's halberd swing (its wall section and the outer lane): big or small?;
+    the Barnacle Turret's burst is small (its "one fires at a time" stays its own rule); the Tithe Collector isn't an
+    attack.
+
+**The ragged screen-head cyborg** (from P2; brief `docs/art/BRIEF_CYBORG_GANGSTER.md`, Variant 1; review with
+`tools/showcase/enemy_showcase.tscn`, views `poses`, `faces`, `turn`, `window`, `far`, `charge`)
+99. **ERR before the screen goes dark** (brief: proposed): a defeated cyborg's screen shows "ERR" in cold white for 0.2 s,
+    then collapses to a bright line and goes dark over 0.14 s like an old CRT (with Reduced flashing it only fades). Its
+    death sparks are cold white now (they were orange, close to the player's copper). Keep the ERR; long enough?
+100. **The faces' pixel art** (13 × 9 LEDs): calm (square eyes, flat mouth), aiming (brows running into narrowed eyes, a
+    long hard mouth), the panic variant's shocked "O", ERR, and the hosts' two corrupted faces (a wide grin; broken eyes
+    over a zigzag mouth). Drawn bold so each keeps its shape at about 7 × 5 pixels, as it is 14 m ahead at 720p. Right
+    expressions?
+101. **Static on the screen:** a faint cold-white static (about 8% brightness) under scanlines, on dark glass darkening to
+    rounded corners; the concept sheet's screen is mostly static, but here it stays faint so the face reads. More?
+102. **How a host looks** (GDD §9.7): the white face tinged purple over a dim purple wash, blocks of purple static and rows
+    jumping sideways; thin purple veins up the neck, down the sleeve onto the hand and along the cyber arm and cannon,
+    pulsing slowly (steady with Reduced flashing). They stay a true purple, since brighter drifts toward the fences' pink.
+    Right amount, right places?
+103. **How strung out it moves:** hunched 11° with the screen raised to look ahead; now and then the head jerks up to
+    8–13° in 0.05 s and settles; a fine tremor in the free hand; a shamble dragging the left leg, with the heavy cannon
+    arm swinging less. Timings and reach unchanged. Too much, too little?
+104. **The window cyborg's window light** is now a dim, cold screen light (the feed on a TV in the room), below the glow
+    threshold; it was a warm orange that read like the player's copper and the gap edges. Right?
+105. **Details read off the concept sheet:** a grimy grey TV casing with a dented bezel, vents, two knobs and rust; a dark
+    leather vest open over an olive-khaki hoodie with a frayed hem and hanging drawstrings; olive cargo pants with
+    patches and a thigh strap; scuffed brown laced boots; an olive-grey metal backpack with two black cables into the TV
+    and a brown rubber hose (the sheet's is copper) into a rusted-steel cyber arm whose forearm is the cannon; a bare,
+    bony left hand. Anything to change?
+106. **The cult feed's face now matches the cyborgs' calm face** (GDD §5, "Cyborg Viewing Devices"; item 52): the same
+    proportions, smooth instead of LED dots, in the same cold white, so billboards and screen heads show one face. Keep
+    them the same?
+107. **How much the body stands out on a dark track** (GDD §9.2; deadly parts look deadly): the grimy clothes are much
+    darker than the old pale armour on the City's dark roofs, and the olive blends into Gangland's brown street; the read
+    at gameplay distance comes from the lit face, the light TV casing and the red emitter ring. A faint rim light would
+    lift the silhouette but is a glow on clothing, which the colour rules rule out. Strong enough, or lighter clothes, or
+    allow the rim light?
+
+**Quitting keeps 20%** (from R2; the rule is decided, GDD §4; these are how it shows)
+108. **What the player sees after quitting:** the pause menu's confirmation now says 20% of the run's credits are kept,
+    like a death; after quitting, the game goes straight back to level select (or the title) as before, with a short
+    "+N credits kept" note, rather than through the results screen a death shows. A quit also counts as an attempt on
+    that level (its tile then reads "not cleared" instead of "new"), though it never improves its best score, stars,
+    time or leaderboard place, and it isn't counted as a death in the stats. Right, or should a quit show the results
+    screen, or not count as an attempt?
+
+**Music for the four new zones, the death dip and the level-complete riffs** (from D8; levels and tempos in
+`data/audio/music_library.tres`, F6 "Music"; `tools/godot.sh music --review` renders review images)
+109. **Music style per zone** (FB 54 stays open for a later design round). All placeholders in the crunchy 16-bit /
+    heavy-metal style, one seamless loop each, levelled to the same loudness; the menus (100 BPM synthwave), the City
+    (160 BPM galloping synth-metal, E minor) and Gangland (120 BPM drop-D industrial, D phrygian) are unchanged. New:
+    - **Marketplace:** 144 BPM, B♭ major, 40 s. Bouncy ska-metal: a Mega Drive horn section in thirds over off-beat
+      guitar chops, an organ, a walking slap bass; a punk-polka chorus under a soaring horn hook.
+    - **Corporate:** 112 BPM, B minor (drop-B), 43 s. Cold cyber-metal: a machine riff of palm-muted sixteenths locked
+      to the kick; a half-time march with timpani and a Vangelis-style synth-brass theme; a military snare cadence.
+    - **Dead Zone:** 84 BPM, C♯ minor, 46 s. Quiet but never empty: a heartbeat, a ticking pulse, a drone and a lonely
+      tremolo guitar with echo, creaking girders and wind; then a slow doom riff that rings out into the quiet again.
+    - **Golden Zone** (also the Golden Palace): 132 BPM, F♯ harmonic minor, 44 s. Neoclassical metal: harpsichord,
+      strings and timpani under a regal theme, guitar sweeps; no bells or chimes, so it never sounds like the
+      Resonator's chime.
+    Is each one's direction right for its zone?
+110. **The death dip** (GDD §11): as the player dies the track sinks 10 dB over 0.5 s while a low-pass closes to 800 Hz,
+    so it sounds far away rather than stopping; it holds under the revive offer and comes back over 1 s on a revive or
+    a retry; leaving to the summary crossfades to the menu music as before. With the pause menu's duck, the deeper of
+    the two applies. Right depth and muffling? Start at the death (as built) or only when the revive offer appears?
+111. **The level-complete riff in each zone's key** (GDD §11): the same shape everywhere (two chugs on the root, one on
+    the third, the fourth rings out), on each track's beat and with a touch of its sound: City E E G A (also the
+    fallback), Gangland D D F G with an anvil, Marketplace B♭ B♭ D E♭ with a horn stab, Corporate B B D E with a
+    brass swell, Dead Zone C♯ C♯ E F♯ dying away with no crash, Golden F♯ F♯ A B with a harpsichord flourish. A boss's
+    defeat plays the riff of the music playing. Recognisably the same riff? The Marketplace's uses the major third to
+    stay in B♭ major (every other one the minor third): keep it?
+112. **The Hush's silent stretches and the music** (GDD §5; task R5): both Dead Zone levels play the same track, whose
+    quiet half sits about 4 dB under the other tracks and its doom half about 1 dB over. For The Hush, should its
+    level play only the quiet half, a quieter mix, or the music dipped during its silent stretches (the music player
+    could dip on the level's signal the way it dips on a death)?
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).

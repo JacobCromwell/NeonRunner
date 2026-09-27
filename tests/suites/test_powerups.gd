@@ -291,11 +291,13 @@ func _test_health_bars() -> void:
 	await tree.process_frame
 	check(bars.shown().is_empty(), "no bars while every enemy is at full health")
 	enemy.take_damage(1.0, &"weapon")
-	host.take_damage(1.0, &"weapon")  # a stray direct hit can still clip a host
+	host.take_damage(1.0, &"weapon")  # a host is immune_to_weapons: a stray direct hit can't clip it
 	immune.take_damage(1.0, &"weapon")
 	await tree.process_frame
 	check(bars.is_shown(enemy), "a damaged enemy shows a health bar")
 	check(not bars.is_shown(host) and not bars.is_shown(immune), "never on hosts or weapon-immune enemies")
+	check(is_equal_approx(host.health, 3.0) and is_equal_approx(immune.health, 3.0),
+		"a direct hit does no damage to a host or a weapon-immune enemy")
 	check(bars.shown().size() == 1, "one bar (%d)" % bars.shown().size())
 	enemy.take_damage(5.0, &"weapon")
 	await tree.process_frame
@@ -472,9 +474,12 @@ func _test_slow_time_through_app() -> void:
 	check(is_equal_approx(Engine.time_scale, 1.0), "app: the pause menu runs at normal speed")
 	App.resume_game()
 	check(Engine.time_scale < 1.0, "app: resuming continues the slow-down")
+	App.run.world.score.credits = 50  # quick play never pays the wallet, quit or not (a review tool)
+	var wallet_before: int = App.profile.credits()
 	App.quit_run()
 	await tree.process_frame
 	check(is_equal_approx(Engine.time_scale, 1.0) and App.run == null, "app: quitting the run restores normal time")
+	check(App.profile.credits() == wallet_before, "app: quitting a quick-play run doesn't touch the wallet")
 
 	App.start_quick(PackedStringArray(["--full-loadout"]))
 	await physics_frames(10)
