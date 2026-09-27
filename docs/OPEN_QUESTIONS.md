@@ -898,6 +898,43 @@ play it with `--boss=city_boss` in debug builds; showcase scenarios `faceoff`, `
     warnings sound the same every time.
 (E1b's placeholder release, the ship shaking free as the runner comes within 12 m, is replaced by E1c's stomp windows.)
 
+**The cyborg zone variants** (from P3; brief `docs/art/BRIEF_CYBORG_GANGSTER.md`, "Zone variants"; review with
+`tools/showcase/enemy_showcase.tscn --view=lineup` (`--back`, `--host`, `--face=aiming`), `--view=lineup_far`, and
+`--variant=brute|casino|vr_runner|burned|golden`; each skin picks its look with `enemy_variant`)
+124. **The Broadcast Brute** (Gangland): the base's TV in a dark steel casing inside a cage of dull brass bars, two small
+    side monitors showing a dim cold-white X, a short antenna raked back; a brown work jumpsuit under scuffed brass
+    armour; heavy steel arms; a crude pipe gun in the right fist (valve, gas canister, tape). Should the side monitors be
+    dim screens like this or unlit dark glass? Brass armour (the brief allows it), or rusted steel to keep brass further
+    from Razor Echo's gold arm?
+125. **The Casino Mob Enforcer** (Marketplace): a gilded TV engraved with card suits; a black suit with gold pinstripes, a
+    gold breastplate, a bandolier, gold pauldrons and knee plates; gunmetal forearms with gold rings; a compact drum-fed
+    gun held one-handed along the right forearm (the cyborgs aim with the weapon arm alone; the sheet holds a rifle in
+    both hands); no "SPADE" arm cannon. Its screen's LEDs are small diamonds instead of dots. Is the one-handed gun right?
+    Are diamond LEDs enough of a casino touch, or should the screen also show dice or card glyphs?
+126. **The Golden Zone's ceremonial enforcer:** built from the Casino Mob Enforcer in cream with pale gold pinstripes, a
+    red shirt and lapels, a red sash with the Convergent Triad on a medallion (unlit polished gold meeting at a small red
+    stone, fading out below about 24 pixels like the skins' marks), gold epaulettes, ivory gauntlets, gold filigree on
+    the TV, a gold gun with a red drum; the reds are deep and unlit, well clear of the charge-up's red. Right palette? A
+    cream cyborg may blend into the Golden Zone's cream walkways (D6a): would a red tunic be better? Should the Triad be
+    worn larger (on the back or the TV's top) so it shows from further away?
+127. **The Wide-Aspect VR Runner** (Corporate): a wide headset whose visor is the screen (19 × 7 LEDs, flat and evenly
+    lit), with the same expressions redrawn for the wide shape (about 8 × 3 pixels 14 m ahead; the three faces still
+    differ there); a high collar over the lower face; a charcoal bomber jacket, olive-grey trousers, chrome hands, a sleek
+    chrome arm cannon, an unlit tablet in the left hand. Are the visor's faces right, and do they read at their size?
+128. **Posture:** every look moves like the base (hunched, twitchy, limping), since they're one unit; the sheets' Brute,
+    enforcer and runner stand upright. Should they stand straighter (same timings and reach), or is the shared
+    strung-out posture right?
+129. **How burned the Dead Zone's cyborg is:** the base under soot, pale ash on its top surfaces (which keeps its outline on
+    dark ground), scorch marks, a shredded hem and ripped sleeve; the screen cracked and flickering at three quarters of
+    P2's strength so the face never quite goes out (steady with Reduced flashing); no embers (they would glow a hazard
+    orange). More or less burned? Keep the crack?
+130. **The other enemies' weathering in the later zones:** drones, hover trucks, Octodogs and screeches weather only under
+    Gangland's `scavenger`, so the Marketplace, Corporate, Dead Zone and Golden Zone show their clean versions. Should any
+    of those zones (the Dead Zone?) have the weathered versions?
+131. **A host's veins on each look:** on the surfaces the player sees (the Brute's chest, neck and both steel arms; the
+    enforcers' neck, sleeves and gauntlets; the VR Runner's collar, sleeves, chrome hand and cannon). Right places?
+    (Item 102, on the amount of purple, applies to every look.)
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
