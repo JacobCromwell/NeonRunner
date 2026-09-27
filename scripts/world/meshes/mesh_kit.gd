@@ -93,6 +93,38 @@ const PAT_STALLS: int = 28
 ## 2 brushed metal with seams.
 const PAT_TECH: int = 29
 
+## Golden Zone surface patterns of the solid kit shader (kit_golden.gdshaderinc), ids 50-59. None of
+## them glows (gold is reflective metal, never neon, GDD §5): give their vertices COLOR.a = 0.
+## Reflective gold, lit as polished metal (param: polish, 0 satin to 1 a mirror finish).
+const PAT_GOLD: int = 50
+## A golden walkway along one lane: UV.x metres across from its left edge (UV.y metres along); param =
+## walkway_param(): joints to the neighbouring walkways, a medallion, the lane's width.
+const PAT_WALKWAY: int = 51
+## Polished white and cream marble (param 1: smaller blocks).
+const PAT_MARBLE: int = 52
+## Everything under the walkways, seen only through gaps: deep shade darkening with depth.
+const PAT_UNDERDECK: int = 53
+## The canal far below the walkways: dark water flowing toward the player.
+const PAT_CANAL: int = 54
+## Falling water (scenery): UV.x metres across the sheet, UV.y 0 at the lip to 1 at the foot; param 1
+## a thin jet without foam.
+const PAT_WATER: int = 55
+## The cult's emblem shown openly, polished gold meeting at its red stone, embossed (the material's
+## cult_emblem texture): UV in emblem space as for PAT_CULT_MARK; param 0 on red cloth, 1 on stone.
+const PAT_EMBLEM: int = 56
+## A gilded coffered underside (bridges, archways): param = the coffers' length along the track (m).
+const PAT_COFFER: int = 57
+## Red cloth with gold trims and a fringed hem: UV.x 0-1 across, UV.y metres up from the hem; param =
+## the cloth's width in centimetres.
+const PAT_CLOTH: int = 58
+## A boutique's board, a hazard sign's content: UV in metres; param = seed (0-99) + 100 * the board's
+## height in decimetres.
+const PAT_BOUTIQUE: int = 59
+## PAT_WALKWAY's flags.
+const WALKWAY_JOINT_LEFT: int = 1
+const WALKWAY_JOINT_RIGHT: int = 2
+const WALKWAY_MEDALLION: int = 4
+
 ## The cult's patterns of the solid kit shader (kit_cult.gdshaderinc), ids 60-69.
 ## The cult's emblem (the material's cult_emblem texture) on a dark panel, for logos and ads: UV is
 ## emblem space (the mark's square spans -1 to 1; a wider range leaves a clear margin), the mark in
@@ -142,6 +174,11 @@ static func key(value: float) -> int:
 ## texture).
 static func stencil_param(kind: int, size: int, seed: int, emblem: bool = false) -> float:
 	return float(kind + 4 * clampi(size, 0, 3) + 16 * posmod(seed, 16) + (256 if emblem else 0))
+
+
+## The PAT_WALKWAY parameter: `flags` (WALKWAY_*) and the lane's width in metres (to the centimetre).
+static func walkway_param(flags: int, width: float) -> float:
+	return float((flags & 7) + 8 * roundi(width * 100.0))
 
 
 # --- Unit templates ------------------------------------------------------------

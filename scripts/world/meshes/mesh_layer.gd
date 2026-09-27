@@ -85,17 +85,18 @@ func quad_uv(a: Vector3, b: Vector3, c: Vector3, d: Vector3, uv_a: Vector2, uv_b
 	uv2s.append_array(PackedVector2Array([p, p, p, p, p, p]))
 
 
-## An upright prism (radius to the corners, `sides` faces) standing on `base`. `caps` adds top and bottom.
+## An upright prism (radius to the corners, `sides` faces) standing on `base`. `caps` adds top and bottom;
+## `param` is the pattern's parameter.
 func prism(base: Vector3, radius: float, height: float, sides: int, color: Color, glow: float = 0.0,
-		pattern: int = 0, caps: bool = true) -> void:
+		pattern: int = 0, caps: bool = true, param: float = 0.0) -> void:
 	var xform := Transform3D(Basis.from_scale(Vector3(radius, height, radius)), base)
-	_append_uniform(MeshKit.unit_prism(sides, caps), xform, Color(color, glow), Vector2(pattern, 0.0))
+	_append_uniform(MeshKit.unit_prism(sides, caps), xform, Color(color, glow), Vector2(pattern, param))
 
 
 ## A prism along an arbitrary axis: `xform` maps the unit prism (radius 1, y from 0 to 1).
 func prism_xform(xform: Transform3D, sides: int, color: Color, glow: float = 0.0, pattern: int = 0,
-		caps: bool = true) -> void:
-	_append_uniform(MeshKit.unit_prism(sides, caps), xform, Color(color, glow), Vector2(pattern, 0.0))
+		caps: bool = true, param: float = 0.0) -> void:
+	_append_uniform(MeshKit.unit_prism(sides, caps), xform, Color(color, glow), Vector2(pattern, param))
 
 
 ## Appends another layer (a cached template) transformed by `xform`, keeping its colours and UVs.

@@ -79,6 +79,8 @@ vec4 cult_mark(vec2 p, float fw) {
 
 // The cult's emblem as a mark of its own (ids 60-69).
 #include "res://scripts/world/meshes/shaders/kit_cult.gdshaderinc"
+// Golden Zone patterns (ids 50-59), after cult_mark(): its emblems use it.
+#include "res://scripts/world/meshes/shaders/kit_golden.gdshaderinc"
 
 // Two coordinates in the plane of the face, picked by its dominant axis.
 vec2 face_coords(vec3 n) {
@@ -376,6 +378,10 @@ void fragment() {
 	if (pattern >= 60 && pattern < 70) {
 		// The cult's emblem (kit_cult.gdshaderinc).
 		base = cult_surface(pattern, base, UV, fwidth(UV), panel_dark, glow);
+	}
+	if (pattern >= 50 && pattern < 60) {
+		// The Golden Zone (kit_golden.gdshaderinc); the eye vector in world space, for reflective gold.
+		base = golden_surface(pattern, UV2.y, base, v_world, n, (INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz, UV, TIME);
 	}
 
 	vec3 col;
