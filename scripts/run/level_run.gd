@@ -151,6 +151,14 @@ func _result(completed: bool) -> RunResult:
 	return RunResult.from_world(world, context, completed, "" if completed else death_cause, rules)
 
 
+## The result for leaving from the pause menu (GDD §4, decided September 26, 2026): never a
+## completion, so it keeps the same share of this attempt's credits as a death
+## (`death_cause` is still "" here since the player hasn't died) but never a "died" cause. The App
+## uses this instead of `finished`, since quitting doesn't go through the death/revive flow.
+func quit_result() -> RunResult:
+	return _result(false)
+
+
 ## Starts the same level again in place (debug restart and quick play).
 func restart(next_context: RunContext = null) -> void:
 	context = next_context if next_context != null else context.retry()
