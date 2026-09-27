@@ -27,7 +27,18 @@ const BAND_MARGIN: float = 1.5
 ## Storey heights and window cell widths of the facade styles (facade.gdshader).
 const STOREYS: Array[float] = [3.3, 3.0, 3.3, 3.3]
 const CELL_WIDTHS: Array[float] = [1.3, 2.2, 4.0, 1.6]
+## Where the window sits in its cell for each style (fractions of the cell: x0, y0, x1, y1), as in
+## facade.gdshader.
+const WINDOW_RECTS: Array[Vector4] = [Vector4(0.07, 0.3, 0.93, 0.9), Vector4(0.22, 0.3, 0.78, 0.8),
+	Vector4(0.03, 0.42, 0.97, 0.82), Vector4(0.25, 0.1, 0.75, 0.92)]
 const STYLES: Array[int] = [1, 3, 1, 2]
+## A TV window (the cult's feed): the dark room, the TV's bezel and screen stand this far out of the
+## facade, and the TV is this wide at most (4:3).
+const TV_ROOM_OUT: float = 0.01
+const TV_BEZEL_OUT: float = 0.018
+const TV_SCREEN_OUT: float = 0.024
+const TV_MAX_WIDTH: float = 0.9
+const TV_BEZEL: float = 0.07
 ## Washing lines across the street are strung at least this high and sag CROSS_LINE_SAG, so their
 ## laundry (under a metre) hangs above every ceiling (GanglandCeiling.ABOVE_LIMIT over the ceiling
 ## height); at most one per CROSS_LINE_SLOT metres.
@@ -96,7 +107,7 @@ func build(batch: MeshBatch, side: int, face_x: float, start: float, end: float)
 	var lot: float = skin.lot_length
 	var span: Vector2i = MeshKit.lot_run(side, floori(start / lot), 0.4, 3, 2)
 	while span.x * lot < end:
-		_building(facade, solid, glow, side, face_x, span, start, end)
+		_building(batch, facade, solid, glow, side, face_x, span, start, end)
 		span = MeshKit.lot_run(side, span.y + 1, 0.4, 3, 2)
 	var mark_x: float = face_x - side * 0.02
 	for h: float in skin.wall_height_marks:
@@ -133,8 +144,8 @@ func top_at(side: int, u: float) -> float:
 	return r.top(u) if u >= r.t0 else 0.0
 
 
-func _building(facade: MeshLayer, solid: MeshLayer, glow: MeshLayer, side: int, face_x: float, span: Vector2i,
-		start: float, end: float) -> void:
+func _building(batch: MeshBatch, facade: MeshLayer, solid: MeshLayer, glow: MeshLayer, side: int, face_x: float,
+		span: Vector2i, start: float, end: float) -> void:
 	var lot: float = skin.lot_length
 	var b0: float = span.x * lot
 	var id: int = span.x
@@ -170,6 +181,11 @@ func _building(facade: MeshLayer, solid: MeshLayer, glow: MeshLayer, side: int, 
 	else:
 		_balconies(solid, r, side, face_x, style, start, end, id)
 		_notice_board(solid, r, side, face_x, start, end, id)
+		var tv: Dictionary = tv_window(side, span)
+		if not tv.is_empty():
+			var at: float = (float(tv["d0"]) + float(tv["d1"])) * 0.5
+			if at >= start and at < end:
+				_tv_window(batch, solid, glow, side, face_x, tv, id)
 		if MeshKit.hash01(side, id, 90) < skin.rooftop_share * 0.5:
 			var u: float = lerpf(r.t0 + 2.0, r.b1 - 2.0, MeshKit.hash01(side, id, 91))
 			if u >= start and u < end:
@@ -375,19 +391,117 @@ func _balconies(solid: MeshLayer, r: Ruin, side: int, face_x: float, style: int,
 
 ## A military notice board bolted to the facade above the band: an olive panel with a stencilled code.
 func _notice_board(solid: MeshLayer, r: Ruin, side: int, face_x: float, start: float, end: float, id: int) -> void:
-	if MeshKit.hash01(side, id, 110) >= skin.notice_share:
+	var board: Dictionary = _notice_spec(r, side, id)
+	if board.is_empty():
 		return
-	var u: float = lerpf(r.t0 + 1.5, r.b1 - 1.5, MeshKit.hash01(side, id, 111))
-	var y: float = skin.boarded_below + 1.2 + 1.2 * MeshKit.hash01(side, id, 112)
-	var w: float = 2.2
-	var h: float = 1.1
-	if u < start or u >= end or u - w * 0.5 < r.t0 or u + w * 0.5 > r.b1 or y + h > r.top(u) - 0.5:
+	var u: float = board["u"]
+	var y: float = board["y"]
+	var w: float = board["w"]
+	var h: float = board["h"]
+	if u < start or u >= end:
 		return
 	var color: Color = skin.military_crate_colors[MeshKit.hash_i(side, id, 113) % skin.military_crate_colors.size()]
 	var cult: bool = MeshKit.hash01(side, id, 115) < skin.cult_emblem_share
 	solid.box(Vector3(face_x - side * 0.04, y + h * 0.5, -u), Vector3(0.08, h + 0.1, w + 0.1), color.darkened(0.3))
 	_wall_rect(solid, side, face_x - side * 0.082, u - w * 0.5, u + w * 0.5, y, y + h, color, MeshKit.PAT_STENCIL, u,
 		MeshKit.stencil_param(MeshKit.STENCIL_CODE, 1, MeshKit.hash_i(side, id, 114), cult), true)
+
+
+## Where a tall ruin's notice board goes: its middle's distance (u), bottom (y), width and height.
+## Empty if it has none.
+func _notice_spec(r: Ruin, side: int, id: int) -> Dictionary:
+	if MeshKit.hash01(side, id, 110) >= skin.notice_share:
+		return {}
+	var u: float = lerpf(r.t0 + 1.5, r.b1 - 1.5, MeshKit.hash01(side, id, 111))
+	var y: float = skin.boarded_below + 1.2 + 1.2 * MeshKit.hash01(side, id, 112)
+	var w: float = 2.2
+	var h: float = 1.1
+	if u - w * 0.5 < r.t0 or u + w * 0.5 > r.b1 or y + h > r.top(u) - 0.5:
+		return {}
+	return {"u": u, "y": y, "w": w, "h": h}
+
+
+# --- The cult's feed ------------------------------------------------------------------------
+
+## The window of a tall ruin with a TV glowing in it, playing the cult's feed (GDD §5: the feed
+## reaches people at home): one of its windows a row or two above the boarded-up band, clear of the
+## broken top and the notice board. The window (d0, d1 along the track, y0, y1 up) and the TV's
+## screen in it (tv_d0, tv_width, tv_y0, tv_height). Empty if the ruin has none.
+func tv_window(side: int, span: Vector2i) -> Dictionary:
+	var r: Ruin = ruin_for(side, span)
+	var id: int = span.x
+	if r.low or MeshKit.hash01(side, id, 150) >= skin.feed_window_share:
+		return {}
+	var style: int = STYLES[MeshKit.hash_i(side, id, 7) % STYLES.size()]
+	var cell := Vector2(CELL_WIDTHS[style], STOREYS[style])
+	var win: Vector4 = WINDOW_RECTS[style]
+	# The lowest row whose window clears the band by BAND_MARGIN, or the one above it.
+	var row: int = ceili((skin.boarded_below + BAND_MARGIN) / cell.y - win.y) + MeshKit.hash_i(side, id, 151) % 2
+	var col0: int = ceili((r.t0 + 0.5) / cell.x)
+	var col1: int = floori((r.b1 - 0.5) / cell.x) - 1
+	if col1 < col0:
+		return {}
+	var col: int = col0 + MeshKit.hash_i(side, id, 152) % (col1 - col0 + 1)
+	var d0: float = (float(col) + win.x) * cell.x
+	var d1: float = (float(col) + win.z) * cell.x
+	var y0: float = (float(row) + win.y) * cell.y
+	var y1: float = (float(row) + win.w) * cell.y
+	if y1 > minf(minf(r.top(d0), r.top(d1)), r.top((d0 + d1) * 0.5)) - 0.8:
+		return {}
+	var board: Dictionary = _notice_spec(r, side, id)
+	if not board.is_empty() and absf(float(board["u"]) - (d0 + d1) * 0.5) < (float(board["w"]) + d1 - d0) * 0.5 + 0.2 \
+			and float(board["y"]) < y1 + 0.2 and float(board["y"]) + float(board["h"]) > y0 - 0.2:
+		return {}
+	# A boxy set standing low in the room, a little off centre.
+	var tw: float = minf((d1 - d0) * 0.55, TV_MAX_WIDTH)
+	var th: float = tw * 0.75
+	var tv_d0: float = lerpf(d0 + TV_BEZEL + 0.05, d1 - tw - TV_BEZEL - 0.05, MeshKit.hash01(side, id, 153))
+	return {"d0": d0, "d1": d1, "y0": y0, "y1": y1, "tv_d0": tv_d0, "tv_width": tw, "tv_y0": y0 + 0.2 + TV_BEZEL,
+		"tv_height": th}
+
+
+## The ruins' TV windows (GanglandSkin.feed_windows()) with middles in [start, end).
+func tv_windows(side: int, face_x: float, start: float, end: float) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var lot: float = skin.lot_length
+	var span: Vector2i = MeshKit.lot_run(side, floori(start / lot), 0.4, 3, 2)
+	while span.x * lot < end:
+		var tv: Dictionary = tv_window(side, span)
+		if not tv.is_empty():
+			var at: float = (float(tv["d0"]) + float(tv["d1"])) * 0.5
+			if at >= start and at < end:
+				var sd: float = float(tv["tv_d0"]) + float(tv["tv_width"]) * 0.5
+				out.append({"side": side, "at": at, "center": Vector3(face_x, (float(tv["y0"]) + float(tv["y1"])) * 0.5, -at),
+					"width": float(tv["d1"]) - float(tv["d0"]), "bottom": tv["y0"], "top": tv["y1"],
+					"screen_center": Vector3(face_x - side * TV_SCREEN_OUT, float(tv["tv_y0"]) + float(tv["tv_height"]) * 0.5,
+						-sd), "screen_width": tv["tv_width"], "screen_height": tv["tv_height"]})
+		span = MeshKit.lot_run(side, span.y + 1, 0.4, 3, 2)
+	return out
+
+
+## A TV glowing in a dark room behind an upper window: the room over the window's opening, the set's
+## dark bezel and its screen playing the feed, and the cold light it throws over the window.
+func _tv_window(batch: MeshBatch, solid: MeshLayer, glow: MeshLayer, side: int, face_x: float, tv: Dictionary,
+		seed: int) -> void:
+	var d0: float = tv["d0"]
+	var d1: float = tv["d1"]
+	var y0: float = tv["y0"]
+	var y1: float = tv["y1"]
+	_wall_rect(solid, side, face_x - side * TV_ROOM_OUT, d0, d1, y0, y1, Color(0.035, 0.035, 0.04), MeshKit.PAT_PLAIN,
+		d0, 0.0, false)
+	var sd0: float = tv["tv_d0"]
+	var tw: float = tv["tv_width"]
+	var sy0: float = tv["tv_y0"]
+	var th: float = tv["tv_height"]
+	_wall_rect(solid, side, face_x - side * TV_BEZEL_OUT, sd0 - TV_BEZEL, sd0 + tw + TV_BEZEL, sy0 - TV_BEZEL,
+		sy0 + th + TV_BEZEL, Color(0.09, 0.09, 0.095), MeshKit.PAT_PLAIN, sd0, 0.0, false)
+	CultFeed.wall_screen(batch.layer(skin.feed_material()), side, face_x - side * TV_SCREEN_OUT, sd0, tw, sy0, th,
+		skin.feed_window_brightness, seed)
+	if skin.feed_window_glow > 0.0:
+		var gx: float = face_x - side * 0.08
+		var w: float = d1 - d0 + 0.6
+		glow.rect(Vector3(gx, y0 - 0.3, -(d0 - 0.3)), Vector3(0, 0, -w), Vector3(0, y1 - y0 + 0.6, 0), CultFeed.FEED_COLOR,
+			skin.feed_window_glow, MeshKit.SHAPE_RADIAL)
 
 
 ## Life on a low building's roof: water tanks, antennas, dishes, crates, a washing line.
