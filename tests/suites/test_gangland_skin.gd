@@ -44,6 +44,7 @@ func run() -> void:
 	await _edges_and_surfaces(skin)
 	await _ceilings(skin)
 	await _life_and_funding(skin)
+	await _cult_feed(skin)
 	await determinism(skin, GANGLAND_LEVEL_PATH)
 	stop_error_count("building gangland levels")
 
@@ -418,6 +419,95 @@ func _cult_emblem(skin: GanglandSkin, marked: int, stencils: int) -> void:
 		opaque)
 	check(marked > 0 and marked * 3 < stencils,
 		"the emblem hides on a minority of stencilled crates, containers and boards (%d of %d faces)" % [marked, stencils])
+
+
+# --- The cult's feed --------------------------------------------------------------------------
+
+## The feed (CultFeed, GDD §5 "Cyborg Viewing Devices") plays on the shared material: on salvaged
+## screens among the posters on the overpasses' gantries (about feed_share of the boards, facing the
+## approach, up on the deck) and on TVs in upper windows of the ruins (inside their window, above the
+## boarded-up band, the TV in its window). Over a whole level every screen built is one of those,
+## untinted, never in the wall-run band nor on a hazard, and every TV is one feed_windows() lists.
+func _cult_feed(skin: GanglandSkin) -> void:
+	check(skin.feed_material() == CultFeed.material(), "gangland plays the shared feed")
+	# The gantries, over many overpasses (their boards are picked by the overpass's look and length).
+	var builder: GanglandCeiling = skin.ceiling()
+	var ceiling_y: float = tuning.ceiling_height
+	var deck: float = ceiling_y + skin.overpass_depth
+	var screens: int = 0
+	var posters: int = 0
+	var gantry_bad: PackedStringArray = []
+	for i: int in 240:
+		var start: float = 60.0 + float(i) * 7.3
+		if builder.kind_at(start) != GanglandCeiling.Kind.OVERPASS:
+			continue
+		var meshes: Array[MeshInstance3D] = _build_ceiling(builder, 0.0, 5.0 * tuning.lane_width, start,
+			30.0 + float(i) * 0.37, ceiling_y, [-3.6, -1.2, 1.2, 3.6], true, true)
+		for m: MeshInstance3D in meshes:
+			for s: int in m.mesh.get_surface_count():
+				var material: Material = m.mesh.surface_get_material(s)
+				for r: Dictionary in rects_of(m, m.mesh.surface_get_arrays(s)):
+					if material == skin.solid_material() and r["pattern"] == MeshKit.PAT_POSTER and r["center"].y > deck:
+						posters += 1
+					elif material == skin.feed_material():
+						screens += 1
+						var lowest: float = minf(r["o"].y, minf(r["ov"].y, r["ou"].y))
+						if (not (r["normal"] as Vector3).is_equal_approx(Vector3.BACK) or lowest < deck + 1.0
+								or absf(r["center"].x) > 6.0) and gantry_bad.size() < 4:
+							gantry_bad.append("%s facing %s" % [r["center"], r["normal"]])
+		meshes[0].get_parent().queue_free()
+	await tree.process_frame
+	var share: float = float(screens) / float(maxi(screens + posters, 1))
+	print("  gangland feed (5 lanes): %d of %d gantry billboards are screens playing it (share %.2f)" % [screens,
+		screens + posters, share])
+	check(screens > 0 and posters > 0 and absf(share - skin.feed_share) < 0.15 and gantry_bad.is_empty(),
+		"about %.2f of the gantry billboards are screens playing the feed (%.2f), facing the approach up on the deck: %s" % [
+			skin.feed_share, share, ", ".join(gantry_bad)])
+	# The TV windows, over 3 km of both walls.
+	var geo := TrackGeometry.new(5, tuning)
+	var wall: float = geo.wall_x()
+	var tvs: Array[Dictionary] = []
+	var window_bad: PackedStringArray = []
+	for side: int in [-1, 1]:
+		for w: Dictionary in skin.feed_windows(side, side * wall, -100.0, 3000.0):
+			tvs.append(w)
+			var c: Vector3 = w["center"]
+			var sc: Vector3 = w["screen_center"]
+			var inside: bool = absf(sc.z - c.z) + float(w["screen_width"]) * 0.5 < float(w["width"]) * 0.5 \
+				and sc.y - float(w["screen_height"]) * 0.5 > float(w["bottom"]) and sc.y + float(w["screen_height"]) * 0.5 < float(w["top"])
+			if (float(w["bottom"]) < skin.boarded_below + GanglandRuins.BAND_MARGIN - 0.01 or not inside) and window_bad.size() < 4:
+				window_bad.append(str(w["center"]))
+	print("  gangland feed (5 lanes): %d TV windows over 3 km of walls" % tvs.size())
+	check(not tvs.is_empty() and window_bad.is_empty(),
+		"over 3 km, %d ruins have a TV playing the feed in an upper window, above the boarded-up band, inside its window: %s" % [
+			tvs.size(), ", ".join(window_bad)])
+	# Everything built over a whole level.
+	var built: Array[Dictionary] = []
+	var bad: PackedStringArray = []
+	await visit_level(level(GANGLAND_LEVEL_PATH, 5, 0.6), skin, func(m: MeshInstance3D, arrays: Array, material: Material) -> void:
+		if material != skin.feed_material():
+			return
+		for r: Dictionary in rects_of(m, arrays):
+			built.append(r)
+			var lowest: float = minf(r["o"].y, minf(r["ov"].y, r["ou"].y))
+			var n: Vector3 = r["normal"]
+			var facing: bool = n.is_equal_approx(Vector3.BACK) or n.is_equal_approx(Vector3(-signf(r["center"].x), 0, 0))
+			if (lowest < skin.boarded_below + GanglandRuins.BAND_MARGIN or not _same_rgb(r["color"], Color.WHITE)
+					or not facing or under_hazard(m)) and bad.size() < 4:
+				bad.append("%s facing %s" % [r["center"], n]))
+	var unlisted: int = 0
+	var on_walls: int = 0
+	for r: Dictionary in built:
+		if not (r["normal"] as Vector3).is_equal_approx(Vector3.BACK):
+			on_walls += 1
+			var found: bool = false
+			for w: Dictionary in tvs:
+				found = found or (w["screen_center"] as Vector3).distance_to(r["center"]) < 0.05
+			unlisted += int(not found)
+	check(on_walls > 0 and bad.is_empty(),
+		"over a whole level the feed's %d screens (%d TVs, the rest on gantries) are untinted, face the street or the approach, above the band: %s" % [
+			built.size(), on_walls, ", ".join(bad)])
+	check(unlisted == 0, "every TV built is one feed_windows() lists (%d unlisted)" % unlisted)
 
 
 # --- Helpers ----------------------------------------------------------------------------------
