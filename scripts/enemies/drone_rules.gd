@@ -22,6 +22,8 @@ extends RefCounted
 ## - Late starts (LevelConfig.feature_starts): no drone before the `drone` feature's start, and none
 ##   so early that its first pad would come before the `ceilings` feature's start; the guaranteed
 ##   wave falls in the same share of the stretch where drones may appear.
+## - In a level paced in bursts (LevelConfig.quiet_seconds, The Hush), the guaranteed wave arrives
+##   in a burst when one lies in its share of the level.
 
 const TYPE: String = "drone"
 ## Scheduled pads are placed like every rule's guaranteed pad (shared with host_rules.gd).
@@ -120,7 +122,8 @@ static func apply(gen: LevelGenerator) -> void:
 
 ## One drone somewhere in the first half of the stretch where drones may appear, from `earliest` to
 ## the level's end (between the tuning's shares of it; never before the run-up ends or after
-## `latest`). Returns its entry, or {} if the level has no room for it.
+## `latest`), in a burst there if the level is paced in bursts (LevelGenerator.burst_spot). Returns
+## its entry, or {} if the level has no room for it.
 static func _add_guaranteed(gen: LevelGenerator, t: DroneTuning, earliest: float, latest: float) -> Dictionary:
 	var rng: RandomNumberGenerator = gen.rng_for("drone_wave")
 	var from: float = maxf(earliest, 0.0)
@@ -130,7 +133,10 @@ static func _add_guaranteed(gen: LevelGenerator, t: DroneTuning, earliest: float
 	if hi < lo:
 		return {}
 	var lane: int = rng.randi_range(0, gen.layout.lane_count - 1)
-	return gen.add_enemy(TYPE, rng.randf_range(lo, hi), lane, 0, {"slot": 0})
+	var at: float = gen.burst_spot(rng, lo, hi, TYPE)
+	if is_nan(at):
+		at = rng.randf_range(lo, hi)
+	return gen.add_enemy(TYPE, at, lane, 0, {"slot": 0})
 
 
 static func tuning() -> DroneTuning:

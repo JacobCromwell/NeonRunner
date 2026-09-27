@@ -32,7 +32,9 @@ extends RefCounted
 ##   above: its chase fits and gets its pads, and, like any cyborg, it stands clear of floor obstacles
 ##   and ceilings' landing zones (CyborgRules), out of the way of every pad (CeilingZones.enemy_clear),
 ##   clear of other enemies and of a hover truck's lane while the truck is about
-##   (HoverTruckRules.open_lanes). DESIGN-TBD: the spot is picked at random among those that fit.
+##   (HoverTruckRules.open_lanes). DESIGN-TBD: the spot is picked at random among those that fit (in
+##   a level paced in bursts, among those in a burst first, unless hosts are one of its quiet
+##   features, as in The Hush: LevelGenerator.prefers_bursts).
 ## Like the cyborg rules they start with, these run after the hover truck's (its route ramp). The
 ## Octodog's rules run after these and plan each dog's charges off the chases (octodog_rules.gd;
 ## GDD §9.7: a Bad Dream is never on during an Octodog charge sequence).
@@ -131,23 +133,35 @@ static func _add_guaranteed(gen: LevelGenerator, t: BadDreamTuning, rng: RandomN
 			spots.append(at)
 		at += GUARANTEE_STEP
 	var pick: RandomNumberGenerator = gen.rng_for("host_guarantee")
-	while not spots.is_empty():
-		var spot: float = spots.pop_at(pick.randi_range(0, spots.size() - 1))
-		var plan: Dictionary = plan_pads(gen, t, rng, t.chase_stretch(spot, speed), pads_before)
-		if not bool(plan["ok"]):
-			continue
-		# A lane no truck holds, where the host isn't in the way of a pad (CeilingZones).
-		var lanes: Array[int] = []
-		for lane: int in HoverTruckRules.open_lanes(gen, spot):
-			if gen.zones.enemy_clear(gen.layout, {"type": "cyborg", "at": spot, "lane": lane, "params": {}}):
-				lanes.append(lane)
-		if lanes.is_empty():
-			continue
-		var host: Dictionary = gen.add_enemy("cyborg", spot, lanes[pick.randi_range(0, lanes.size() - 1)], 0,
-			{"host": true, "panic": false})
-		for pad_at: float in plan["pads"]:
-			PadPlacement.place(gen, rng, pad_at, t.pad_ceiling_seconds)
-		return host
+	# In a level paced in bursts, a host goes in a burst unless hosts are one of its quiet features.
+	var pools: Array[Array] = [spots]
+	if gen.prefers_bursts("host"):
+		var burst: Array[float] = []
+		var rest: Array[float] = []
+		for s: float in spots:
+			if gen.quiet_at(s):
+				rest.append(s)
+			else:
+				burst.append(s)
+		pools = [burst, rest]
+	for pool: Array[float] in pools:
+		while not pool.is_empty():
+			var spot: float = pool.pop_at(pick.randi_range(0, pool.size() - 1))
+			var plan: Dictionary = plan_pads(gen, t, rng, t.chase_stretch(spot, speed), pads_before)
+			if not bool(plan["ok"]):
+				continue
+			# A lane no truck holds, where the host isn't in the way of a pad (CeilingZones).
+			var lanes: Array[int] = []
+			for lane: int in HoverTruckRules.open_lanes(gen, spot):
+				if gen.zones.enemy_clear(gen.layout, {"type": "cyborg", "at": spot, "lane": lane, "params": {}}):
+					lanes.append(lane)
+			if lanes.is_empty():
+				continue
+			var host: Dictionary = gen.add_enemy("cyborg", spot, lanes[pick.randi_range(0, lanes.size() - 1)], 0,
+				{"host": true, "panic": false})
+			for pad_at: float in plan["pads"]:
+				PadPlacement.place(gen, rng, pad_at, t.pad_ceiling_seconds)
+			return host
 	return {}
 
 

@@ -262,23 +262,68 @@ func _spacing_seconds(at: float, difficulty: float) -> float:
 	return lerpf(config.spacing_seconds_easy, config.spacing_seconds_hard, difficulty)
 
 
-## True if `pattern` may be picked at a quiet spot: it places no enemy, or every feature it requires
-## is one of the level's quiet_features.
-func _quiet_allows(pattern: Dictionary) -> bool:
-	var enemies: bool = false
+## Track distances [from, to] within `lo`–`hi` that lie in bursts, in order: where a rule that
+## guarantees an enemy at a spot of its choosing puts it in a level paced in bursts (the threats come
+## in the bursts; GDD §5, The Hush). Empty in a level paced evenly.
+func burst_spans(lo: float, hi: float) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	if not config.paced_in_bursts():
+		return out
+	var from: float = config.start_clear_distance + config.quiet_seconds * speed
+	while from <= hi:
+		var span := Vector2(maxf(from, lo), minf(from + config.burst_seconds * speed, hi))
+		if span.y >= span.x:
+			out.append(span)
+		from += _pacing_cycle()
+	return out
+
+
+## True if a rule that guarantees one of `feature`'s enemies should put it in a burst: in a level
+## paced in bursts, for every feature but its quiet_features.
+func prefers_bursts(feature: String) -> bool:
+	return config.paced_in_bursts() and not config.quiet_features.has(feature)
+
+
+## For a rule guaranteeing one of `feature`'s enemies (prefers_bursts): a spot drawn with `rng` from
+## the bursts within `lo`–`hi` (each metre of burst equally likely). NAN, drawing nothing, when the
+## feature needn't be in a burst or no burst lies there: the rule then picks its spot as usual.
+func burst_spot(rng: RandomNumberGenerator, lo: float, hi: float, feature: String) -> float:
+	if not prefers_bursts(feature):
+		return NAN
+	var spans: Array[Vector2] = burst_spans(lo, hi)
+	var total: float = 0.0
+	for s: Vector2 in spans:
+		total += s.y - s.x
+	if spans.is_empty():
+		return NAN
+	var r: float = rng.randf() * total
+	for s: Vector2 in spans:
+		if r <= s.y - s.x:
+			return s.x + r
+		r -= s.y - s.x
+	return spans[-1].y
+
+
+## True if `pattern` may be picked at `at` in a level paced in bursts: a pattern that places enemies
+## must require only quiet_features, or else start in a burst and place its enemies before that
+## burst ends, so a burst's threats appear in the burst (an Octodog's charges or a hover truck's stay
+## may still run on after it). Patterns without enemies fit anywhere.
+func _quiet_allows(pattern: Dictionary, at: float) -> bool:
+	var last_enemy: float = -1.0
 	for element: Dictionary in pattern.get("elements", []):
 		if String(element.get("kind", "")) == "enemy":
-			enemies = true
-			break
-	if not enemies:
+			last_enemy = maxf(last_enemy, float(element.get("at", 0.0)) + float(element.get("at_seconds", 0.0)) * speed)
+	if last_enemy < 0.0:
 		return true
 	var requires: Array = pattern.get("requires", [])
-	if requires.is_empty():
-		return false
+	var quiet_ok: bool = not requires.is_empty()
 	for need: Variant in requires:
 		if not config.quiet_features.has(String(need)):
-			return false
-	return true
+			quiet_ok = false
+			break
+	if quiet_ok:
+		return true
+	return not quiet_at(at) and at + last_enemy < stretch_end(at)
 
 
 ## Track distance from which `feature` may place anything: its share of the level from
@@ -407,14 +452,15 @@ func ramp_launch(r: Dictionary) -> RampLaunch:
 ## the campaign's recency curve (LevelConfig.recency_on) times its newest feature's factor; with
 ## keep_feature_share the features' patterns are then scaled back to weigh together what they
 ## weighed without the curve, so the curve only moves picks between features. In a level paced in
-## bursts, a quiet spot takes only the patterns _quiet_allows, and a burst that has had its
-## introduction leaves out the features still waiting for theirs (_intro_held).
+## bursts, only the patterns _quiet_allows are taken (enemies in bursts, bar quiet_features), and a
+## burst that has had its introduction leaves out the features still waiting for theirs
+## (_intro_held).
 func _pick_pattern(patterns: Array, difficulty: float, at: float, only: String = "") -> Dictionary:
 	var candidates: Array = []
 	var weights: Array[float] = []
 	var total: float = 0.0
 	var recency: bool = config.recency_on()
-	var quiet: bool = quiet_at(at)
+	var paced: bool = config.paced_in_bursts()
 	var held: PackedStringArray = _intros_waiting(at) if _intro_held(at) else PackedStringArray()
 	# The features' patterns' weights without and with the recency curve (keep_feature_share).
 	var plain: float = 0.0
@@ -427,7 +473,7 @@ func _pick_pattern(patterns: Array, difficulty: float, at: float, only: String =
 		var requires: Array = p.get("requires", [])
 		if only != "" and not requires.has(only):
 			continue
-		if quiet and not _quiet_allows(p):
+		if paced and not _quiet_allows(p, at):
 			continue
 		var weight: float = float(p.get("weight", 1.0))
 		var ok: bool = true
