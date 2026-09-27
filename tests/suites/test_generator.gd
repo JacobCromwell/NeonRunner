@@ -15,7 +15,7 @@ func run() -> void:
 	var patterns: Array = LevelGenerator.load_patterns(base.patterns_path)
 	check(patterns.size() > 0, "patterns loaded")
 	var levels: int = 0
-	var wall_lines: int = 0
+	var wall_lines := Vector2i.ZERO
 	for lanes: int in [3, 5, 6]:
 		for difficulty: float in [0.0, 0.3, 0.6, 1.0]:
 			for level_seed: int in range(1, 31):
@@ -33,7 +33,8 @@ func run() -> void:
 				LayoutChecks.check_layout(self, a, config, tag)
 				wall_lines += _check_wall_run_credits(a, tag)
 				levels += 1
-	check(wall_lines > levels, "most ramps have credits along their wall run (%d lines in %d levels)" % [wall_lines, levels])
+	check(wall_lines.x * 2 > wall_lines.y, "most ramps have credits along their wall run (%d of %d)" % [wall_lines.x, wall_lines.y])
+	print("  ramps with credits along their wall run: %d of %d, in %d levels" % [wall_lines.x, wall_lines.y, levels])
 
 	_test_pattern_ceilings(base)
 	_test_rule_ceilings_keep_off_floor_enemies(base)
@@ -49,8 +50,8 @@ func run() -> void:
 
 ## GDD §3 and §7: the credits along each ramp's wall run are the ones LevelGenerator.wall_run_credits
 ## puts on the path the boosted player takes (RampLaunch; test_interactions rides them on real
-## physics), all of them kept. Returns how many ramps have some.
-func _check_wall_run_credits(layout: LevelLayout, tag: String) -> int:
+## physics), all of them kept. Returns how many ramps have some, and how many ramps there are.
+func _check_wall_run_credits(layout: LevelLayout, tag: String) -> Vector2i:
 	var lines: int = 0
 	for r: Dictionary in layout.ramps:
 		var line: Array[Dictionary] = LevelGenerator.wall_run_credits(layout, r, tuning, tuning.run_speed)
@@ -60,7 +61,7 @@ func _check_wall_run_credits(layout: LevelLayout, tag: String) -> int:
 		check(kept == line.size(), "the credits along the wall run of the ramp at %.1f are on its boosted path (%d of %d) %s"
 			% [float(r["at"]), kept, line.size(), tag])
 		lines += 1 if not line.is_empty() else 0
-	return lines
+	return Vector2i(lines, layout.ramps.size())
 
 
 ## GDD §3 (changed September 26, 2026): a pattern may put gaps, fences and floor enemies under its

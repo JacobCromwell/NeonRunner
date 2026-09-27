@@ -817,7 +817,7 @@ func _place_wall_run_credits() -> void:
 ## The credits along ramp `r`'s wall run in `p_layout`, richer the further along (GDD §7): each where
 ## the launched player is at that moment (RampLaunch, with the ramp's fading speed boost), 0.3 s apart
 ## once they're on the wall. The line stops before a sign on that wall. Entries as in
-## LevelLayout.credits; `speed` is the level's run speed.
+## LevelLayout.credits; `p_speed` is the level's run speed.
 static func wall_run_credits(p_layout: LevelLayout, r: Dictionary, p_tuning: MovementTuning,
 		p_speed: float) -> Array[Dictionary]:
 	var values: Array[int] = [1, 1, 5, 5, 5, 25]
