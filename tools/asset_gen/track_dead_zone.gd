@@ -6,9 +6,9 @@ extends RefCounted
 ##   A  bars 1–8    ash: the C#–G# drone, the pad (C#m A F#m D G#: the Neapolitan D and the dominant
 ##                  G# with its B#), a heartbeat on 1 and 3, the tick, a clean guitar lament with
 ##                  tremolo and a long echo, distant girders creaking, wind, embers
-##   B  bars 9–16   doom: the riff on the tritone (C# … E G F#) then creeping down (A, F#–G–G#, D, G#),
-##                  half-time drums with a cavernous snare, a wailing lead; the last chord rings out
-##                  into the quiet
+##   B  bars 9–16   doom: the riff on the tritone (C# … E G F#), then A, a chromatic creep F#–G–G#, the
+##                  Neapolitan D and G#; half-time drums with a cavernous snare, a wailing lead; the
+##                  last chord rings out into the quiet
 
 const Song = preload("res://tools/asset_gen/music_song.gd")
 const Inst = preload("res://tools/asset_gen/music_instruments.gd")

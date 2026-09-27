@@ -3,10 +3,10 @@ extends Resource
 ## Which file plays for each music track, and how loud. The current files are seamless loops made by
 ## tools/asset_gen/music_gen.gd (tools/godot.sh music). To replace a track, point its entry in
 ## `files` at the new file (WAV, Ogg Vorbis or MP3) and set its level: a file that isn't marked as a
-## loop is looped as a whole. A track has a level-complete riff in its key, the sound effect
-## level_complete_<track> (MusicDirector.level_complete_sound()): a replacement in another key needs
-## that riff remade to match, or removed so the E riff plays. The Music autoload (MusicDirector)
-## plays these on the Music bus.
+## loop is looped as a whole. A level ends on a riff in the key of the track playing
+## (MusicDirector.level_complete_sound(): the sound effect level_complete_<track>, or the E riff, the
+## City's, for a track without one), so a replacement in another key needs its riff remade to match.
+## The Music autoload (MusicDirector) plays these on the Music bus.
 
 ## The bus every music player uses. Settings set its volume by this name.
 const BUS: StringName = &"Music"
@@ -19,7 +19,8 @@ const BUS: StringName = &"Music"
 @export var bpm: Dictionary = {}
 
 @export_group("Pause duck")
-## How far Music.set_ducked(true) lowers the music (pause menus), and how long the dip takes.
+## How far Music.set_ducked(true) lowers the music (pause menus), and how long it takes to go down
+## or come back.
 @export_range(-24.0, 0.0, 0.5, "suffix:dB") var duck_db: float = -8.0
 @export_range(0.0, 2.0, 0.05, "suffix:s") var duck_time: float = 0.3
 
