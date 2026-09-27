@@ -457,9 +457,26 @@ func _test_pause() -> void:
 	(pause.buttons["quit"] as BaseButton).pressed.emit()
 	await _frames(2)
 	var dialog: ConfirmDialog = pause.get("_quit_dialog")
+	check(dialog.message.contains("20%"), "the quit question says the credit share, not that they're all lost (%s)" % dialog.message)
+	# FB 14 (decided September 26, 2026): quitting keeps the same credit share as a death.
+	App.run.world.score.credits = 100
+	var wallet_before: int = App.profile.credits()
+	var record_before: Dictionary = App.profile.record("city/1").duplicate()
+	var deaths_before: int = int(App.profile.stats.get("deaths", 0))
 	dialog.confirm_button.pressed.emit()
 	await _frames(2)
 	check(App.run == null and App.screen is LevelSelectScreen and not tree.paused, "confirming quits to the level select")
+	check(App.profile.credits() == wallet_before + floori(100 * App.rules.death_credit_keep_fraction),
+		"quitting pays the wallet %d%% of the run's credits, like a death" % roundi(App.rules.death_credit_keep_fraction * 100.0))
+	var record: Dictionary = App.profile.record("city/1")
+	check(record.get("completed", false) == record_before.get("completed", false) \
+			and record.get("best_score", 0) == record_before.get("best_score", 0) \
+			and record.get("stars", 0) == record_before.get("stars", 0) \
+			and record.get("best_time", 0.0) == record_before.get("best_time", 0.0),
+		"quitting is never a completion and never improves the level's record (%s -> %s)" % [str(record_before), str(record)])
+	check(int(record.get("attempts", 0)) == int(record_before.get("attempts", 0)) + 1,
+		"quitting still counts as an attempt, like giving up after a death does")
+	check(int(App.profile.stats.get("deaths", 0)) == deaths_before, "quitting doesn't count as a death")
 
 
 func _test_death() -> void:
