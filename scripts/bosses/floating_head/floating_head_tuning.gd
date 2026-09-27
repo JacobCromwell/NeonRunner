@@ -100,11 +100,12 @@ extends Resource
 @export_range(0.5, 4.0, 0.1, "suffix:s") var boot_seconds: float = 1.6
 
 @export_group("Face-off")
-## DESIGN-TBD (docs/questions/e1.md): the face-off's attacks in turn, one list per phase (the last
-## list for any later phase), cycling: "low" (the eye lasers sweep across the lanes low: jump them),
-## "high" (high: slide under them), "drag" (they burn down the runner's lane: switch lanes) and "drop"
-## (the cyborg drop). A drag timed for each marked tower comes on top (Towers). It hovers at its face
-## pose (Reveal) for the lasers.
+## DESIGN-TBD (docs/questions/e1.md): the face-off's attacks, one list per phase (the last list for
+## any later phase), taken in turn over and over (when one can't start fairly, the next in line that
+## can goes first): "low" (the eye lasers sweep across the lanes low: jump them), "high" (high: slide
+## under them), "drag" (they burn down the runner's lane: switch lanes) and "drop" (the cyborg drop). A
+## drag timed for each marked tower comes on top (Towers). It hovers at its face pose (Reveal) for the
+## lasers. These and the timings below set the face-off's pace.
 @export var faceoff_patterns: PackedStringArray = ["low,drag,high,drop,drag", "high,drag,low,drop,low,drag",
 	"drag,high,low,drop,drag,high,drop"]
 ## Seconds from one attack's end to the next one's warning, and to move between its places.
