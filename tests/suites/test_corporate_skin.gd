@@ -466,9 +466,10 @@ func _clear_play_space(skin: CorporateSkin) -> void:
 
 ## Every kind of ceiling, over every number of lanes from one to six, full width or narrow and off
 ## centre (task B3): a flat underside covering exactly its lanes (a gate: from wall to wall), nothing
-## hanging below it but flush lamps and seams (and no glow a runner dropping off it would pass
-## through), the orange band at its far end, a seam under each lane boundary, and nothing rising past
-## TOP_LIMIT; only a ceiling across every lane becomes a gate.
+## hanging below it but flush lamps and seams, the orange band at its far end and nothing else past
+## it (a runner dropping off the end passes whatever hangs there, glowing or not, right in front of the
+## camera), a seam under each lane boundary, and nothing rising past TOP_LIMIT; only a ceiling across
+## every lane becomes a gate.
 func _ceilings(skin: CorporateSkin) -> void:
 	var lane_w: float = tuning.lane_width
 	var wall_x: float = 3.0 * lane_w + tuning.wall_margin
@@ -485,7 +486,8 @@ func _ceilings(skin: CorporateSkin) -> void:
 				edges.append(offset - size.x * 0.5 + k * lane_w)
 			var mesh: ArrayMesh = skin.ceilings().mesh_for(kind, 1, size, edges, offset, wall_x, tuning.ceiling_height)
 			var tag: String = "kind %d, %d lanes" % [kind, lanes]
-			var under := {"min_x": INF, "max_x": -INF, "lowest": 0.0, "glow_lowest": 0.0, "highest": 0.0, "band": false}
+			var under := {"min_x": INF, "max_x": -INF, "lowest": 0.0, "glow_lowest": 0.0, "highest": 0.0, "band": false,
+				"past_glow": 0.0, "past_any": 0.0}
 			for s: int in mesh.get_surface_count():
 				var arrays: Array = mesh.surface_get_arrays(s)
 				var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
@@ -494,6 +496,12 @@ func _ceilings(skin: CorporateSkin) -> void:
 				for i: int in verts.size():
 					var v: Vector3 = verts[i]
 					under["highest"] = maxf(under["highest"], v.y)
+					var past: float = -size.z * 0.5 - v.z
+					if _same_rgb(colors[i], skin.gap_edge_color):
+						past = 0.0
+					if glow_surface or colors[i].a > 0.0:
+						under["past_glow"] = maxf(under["past_glow"], past)
+					under["past_any"] = maxf(under["past_any"], past)
 					if glow_surface:
 						under["glow_lowest"] = minf(under["glow_lowest"], v.y)
 						continue
@@ -516,6 +524,11 @@ func _ceilings(skin: CorporateSkin) -> void:
 					CorporateCeilings.TOP_LIMIT])
 			if not under["band"]:
 				problems.append("%s: no orange band at the far end" % tag)
+			# The camera passes the far end as the runner drops off: whatever sticks out past it would be right
+			# in front of it (the shared orange band's glow aside).
+			if under["past_any"] > CorporateCeilings.NOZZLE_RIM + 0.01 or under["past_glow"] > 0.05:
+				problems.append("%s: something reaches %.2f m past the far end (glowing: %.2f m)" % [tag, under["past_any"],
+					under["past_glow"]])
 			for x: float in edges:
 				if not _has_seam(mesh, x - offset, skin):
 					problems.append("%s: no seam at x %.2f" % [tag, x - offset])
