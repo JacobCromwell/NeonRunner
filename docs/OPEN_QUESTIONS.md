@@ -635,6 +635,32 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
     looks the same in every zone (white is also the 100-credit gem's colour; size, shape and icon tell them apart).
     A soft chime when one appears, a latch and chime when taken, and a first-encounter hint per item.
 
+**Razor Echo, the player model** (from P1; brief `docs/art/BRIEF_RAZOR_ECHO.md`; frames in the P1 report)
+61. **How each power-up looks on Razor Echo** (brief "Power-up looks", proposed; supersedes FB 35): each in steel, white
+    or its own colour, never copper. Weapon: a gunmetal emitter on a folding mount over the gold arm's shoulder,
+    growing by tier (cyan, violet and white lights, the shots' colours; shots now leave the left shoulder). Claws:
+    three steel blades from each hand's knuckles. Armor: steel plates on the shoulders, chest and upper back, which
+    burst into tumbling shards when it breaks. Magnet: a coil with azure windings on the back of the belt. Shield: the
+    existing pale-cyan bubble. Should the shield follow the copper?
+62. **The pattern across the back** (GDD §11): the sheet's pipes simplified for about 30 pixels on screen: a hook and a
+    cross on a rusted plate, a forked Y to the belt, two long framing conduits, and a loop down each back panel of the
+    skirt. The right shapes?
+63. **How bright and deep the copper is** ("soft copper"): it renders pale (about RGB 250, 195, 140) on both renderers,
+    well apart from the gap edges; a deeper copper moves toward gap-edge orange and enemy fire. Keep it, or deeper?
+64. **The rim light for dark tracks:** a faint pale steel-blue glow on faces seen edge-on, below the bloom threshold.
+    Right colour and strength?
+65. **Invulnerability and death in the new look** (FB 36, 37): the invulnerability tint is pale copper-white; on death
+    the red flash stays and the conduits and eye go dark.
+66. **The dash in copper:** the dash's shell, speed lines and smash burst are pale copper, a little dimmer so the
+    additive shell never reads as a hazard's orange.
+67. **How the coat moves:** four stiff panels from the waist (two behind, split by a vent; two at the front edges)
+    follow the thighs through a spring with a little lag and overshoot, trail in the wind, flare when falling, trail
+    behind a slide, hang toward the feet on the ceiling, and fold along the legs in a death. On a wall they also sag
+    12° toward real gravity (the brief doesn't say). Right amount of motion; keep the wall sag?
+68. **Details read off the sheet:** the scar across the right cheek, a dark leather fingerless glove on the right hand,
+    two small copper lights on the vest (the sheet's were cyan and orange), a dusty hem, and a high collar open at the
+    front with a copper conduit round its back. Anything to change?
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).

@@ -77,3 +77,31 @@ extends Resource
 @export_group("Idle")
 @export_range(0.05, 2.0, 0.05, "suffix:Hz") var breathe_rate: float = 0.35
 @export_range(0.0, 10.0, 0.25, "suffix:°") var breathe_amount: float = 2.0
+
+@export_group("Coat panels")
+## How hard a panel (HumanoidPanel: a coat's skirt) springs toward where it wants to hang. With the
+## damping below it lags a little behind its thigh and overshoots slightly.
+@export_range(10.0, 400.0, 5.0, "suffix:1/s²") var panel_stiffness: float = 110.0
+## Damping of a panel's swing: 2·√stiffness is critical (no overshoot at all).
+@export_range(0.0, 60.0, 0.5, "suffix:1/s") var panel_damping: float = 12.0
+## At full speed, the wind of the run takes the panels this share of the way from hanging toward
+## straight back.
+@export_range(0.0, 1.0, 0.01) var panel_drag: float = 0.2
+## Speed at which the wind reaches full strength.
+@export_range(1.0, 40.0, 0.5, "suffix:m/s") var panel_drag_speed: float = 18.0
+## The wind is this many times stronger while dashing.
+@export_range(1.0, 4.0, 0.05) var panel_dash_drag: float = 1.8
+## Falling this fast flares the panels fully.
+@export_range(1.0, 40.0, 0.5, "suffix:m/s") var panel_flare_speed: float = 12.0
+## Full flare: each panel swings away from its leg (back panels back, front panels forward) ...
+@export_range(0.0, 90.0, 1.0, "suffix:°") var panel_fall_flare: float = 40.0
+## ... and out to the side.
+@export_range(0.0, 60.0, 1.0, "suffix:°") var panel_fall_roll: float = 18.0
+## Gap kept between a panel and the leg on its side (about the leg's radius).
+@export_range(0.0, 0.2, 0.005, "suffix:m") var panel_leg_clearance: float = 0.06
+## Gap kept between a panel's hem and the surface the runner is on.
+@export_range(0.0, 0.1, 0.005, "suffix:m") var panel_ground_clearance: float = 0.012
+## On a wall the panels sag this far toward real gravity (sideways in the runner's frame). On the
+## ceiling they hang toward the feet, as on the floor.
+## DESIGN-TBD (docs/questions/p1.md 7): the brief only says how the ceiling looks.
+@export_range(0.0, 45.0, 1.0, "suffix:°") var panel_wall_sag: float = 12.0
