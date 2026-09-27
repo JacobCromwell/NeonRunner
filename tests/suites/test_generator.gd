@@ -118,19 +118,21 @@ func _test_rule_ceilings_keep_off_floor_enemies(base: LevelConfig) -> void:
 		var mismatches: int = 0
 		var over: int = 0
 		var seconds: float = 3.0
-		for pad_at: float in range(int(at) - 240, int(at) + 160, 1):
-			# Nothing but the enemy under test: a level generated from no patterns is empty.
-			var gen := LevelGenerator.new()
-			gen.generate(config, tuning, [])
-			gen.add_enemy(String(c[0]), at, 1, 0, (c[1] as Dictionary).duplicate())
-			var added: bool = gen.add_hull_with_pad(0, pad_at, seconds)
-			var spot: Vector2 = zones.pad_spot(pad_at)
-			var landing: Vector2 = zones.landing_zone({"end": pad_at + seconds * speed})
-			var touches: bool = (span.x <= spot.y and span.y >= spot.x) or (span.x <= landing.y and span.y >= landing.x)
-			if added == touches:
-				mismatches += 1
-			if added and at > pad_at - config.hull_lead_in and at < pad_at + seconds * speed:
-				over += 1
+		for pad_lane: int in [0, 1]:
+			for pad_at: float in range(int(at) - 240, int(at) + 160, 1):
+				# Nothing but the enemy under test (in lane 1): a level generated from no patterns is empty.
+				var gen := LevelGenerator.new()
+				gen.generate(config, tuning, [])
+				gen.add_enemy(String(c[0]), at, 1, 0, (c[1] as Dictionary).duplicate())
+				var added: bool = gen.add_hull_with_pad(pad_lane, pad_at, seconds)
+				# From its own lane the enemy keeps off the pad's whole zone, from another off its spot.
+				var keep: Vector2 = zones.pad_zone(pad_at) if pad_lane == 1 else zones.pad_spot(pad_at)
+				var landing: Vector2 = zones.landing_zone({"end": pad_at + seconds * speed})
+				var touches: bool = (span.x <= keep.y and span.y >= keep.x) or (span.x <= landing.y and span.y >= landing.x)
+				if added == touches:
+					mismatches += 1
+				if added and at > pad_at - config.hull_lead_in and at < pad_at + seconds * speed:
+					over += 1
 		check(mismatches == 0, "a rule's ceiling keeps its pad and landing off exactly the floor of %s (%d wrong)" % [tag, mismatches])
 		# A ceiling may lie over an enemy whose stretch fits between its pad and its end.
 		if span.y - span.x < seconds * speed - tuning.pad_length - 1.0:

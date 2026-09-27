@@ -59,7 +59,7 @@ static func apply(gen: LevelGenerator) -> void:
 			continue
 		var wanted: int = _roll_charges(gen, t, rng)
 		var anchors: Array[float] = _plan_charges(gen, t, at - stop, wanted, chases)
-		if anchors.size() < mini(MIN_CHARGES, wanted):
+		if anchors.size() < mini(MIN_CHARGES, wanted) or not _run_off_ceiling_zones(gen, t, anchors):
 			dropped.append(e)
 			continue
 		busy_until = _commit(gen, t, e, anchors)
@@ -163,18 +163,25 @@ static func _run_start(gen: LevelGenerator, a0: float) -> float:
 		Octodog.CEILING_LANDING - zones.landing) - 0.001
 
 
-## True if no pad's spot or ceiling landing zone already in the level (CeilingZones) reaches into
-## [from, to], so a dog's floor stretch starting there keeps off them like any floor enemy's.
+## True if no pad's zone or ceiling landing zone already in the level (CeilingZones) reaches into
+## [from, to], so a dog's floor stretch there keeps off them like any floor enemy's (whatever lane
+## the dog and the pad are in).
 static func _off_ceiling_zones(gen: LevelGenerator, from: float, to: float) -> bool:
 	var zone := Vector2(from, to)
 	for p: Dictionary in gen.layout.pads:
-		var spot: Vector2 = gen.zones.pad_spot(float(p["at"]))
-		if spot.x <= zone.y and spot.y >= zone.x:
+		var pad: Vector2 = gen.zones.pad_zone(float(p["at"]))
+		if pad.x <= zone.y and pad.y >= zone.x:
 			return false
 	for landing: Vector2 in gen.zones.landing_zones(gen.layout):
 		if landing.x <= zone.y and landing.y >= zone.x:
 			return false
 	return true
+
+
+## The same for the whole floor stretch a dog with wind-ups at `anchors` would use (floor_span).
+static func _run_off_ceiling_zones(gen: LevelGenerator, t: OctodogTuning, anchors: Array[float]) -> bool:
+	var window: float = t.window_length(gen.speed, gen.config.enemy_scaling)
+	return _off_ceiling_zones(gen, _run_start(gen, anchors[0]), _run_end(anchors[-1], window))
 
 
 ## Where the floor a dog's charges use ends, for a last wind-up at `last`: the end of the player's
@@ -220,7 +227,7 @@ static func _add_guaranteed(gen: LevelGenerator, t: OctodogTuning, chases: Array
 	while not spots.is_empty():
 		var spot: float = spots.pop_at(rng.randi_range(0, spots.size() - 1))
 		var anchors: Array[float] = _plan_charges(gen, t, spot - stop, wanted, chases)
-		if anchors.size() < mini(MIN_CHARGES, wanted):
+		if anchors.size() < mini(MIN_CHARGES, wanted) or not _run_off_ceiling_zones(gen, t, anchors):
 			continue
 		var lanes: Array[int] = _lanes_for(gen, spot)
 		var dog: Dictionary = gen.add_enemy(TYPE, spot, lanes[rng.randi_range(0, lanes.size() - 1)], 0, {})

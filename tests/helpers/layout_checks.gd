@@ -53,7 +53,8 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 ##   fence from a full jump before it until its lift reaches the hull, and no ramp before it (so it's
 ##   never on or at the edge of a gap, never in a fence, and reachable);
 ## - each landing zone is safe to land on: no hole or fence in any lane, and it ends before the finish;
-## - no floor enemy uses the floor on a landing zone or where a pad lies;
+## - no floor enemy uses the floor on a landing zone, on a pad's zone from the pad's lane, or where a
+##   pad lies from any other lane;
 ## - a floor route runs under every ceiling, from before its pad's run-up to the end of its landing
 ##   zone, without its pad (FloorRoute), so the ceiling is never required.
 ## The stretches come from CeilingZones (the same the generator uses); the checks are written here.
@@ -81,9 +82,11 @@ static func check_ceilings(suite: TestSuite, layout: LevelLayout, config: LevelC
 			suite.check(layout.outer_lane(int(r["side"])) != lane or float(r["at"]) > at + tuning.pad_length
 				or float(r["at"]) + tuning.ramp_length < zone.x, "pad at %.1f: no ramp on the way to it %s" % [at, tag])
 		for e: Dictionary in layout.enemies:
+			# In the pad's lane an enemy keeps off the pad's whole zone; elsewhere off where it lies.
 			var span: Vector2 = LevelGenerator.enemy_floor_span(e)
-			suite.check(span.x > at + tuning.pad_length or span.y < at,
-				"pad at %.1f: no floor enemy where it lies (%s at %.1f) %s" % [at, e["type"], e["at"], tag])
+			var keep: Vector2 = zone if int(e.get("lane", -1)) == lane else Vector2(at, at + tuning.pad_length)
+			suite.check(span.x > keep.y or span.y < keep.x,
+				"pad at %.1f: no floor enemy in its way (%s at %.1f, lane %d) %s" % [at, e["type"], e["at"], e.get("lane", -1), tag])
 	for h: Dictionary in layout.hulls:
 		var landing: Vector2 = zones.landing_zone(h)
 		suite.check(landing.y <= finish, "a ceiling and its landing zone end before the finish " + tag)

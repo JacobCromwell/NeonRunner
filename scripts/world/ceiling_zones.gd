@@ -7,10 +7,10 @@ extends RefCounted
 ##   from the section's end, for LevelConfig.hull_landing_seconds at run speed, no lane holds a gap
 ##   or a fence, and no floor enemy uses the floor there (LevelGenerator.enemy_floor_span).
 ## - Each anti-grav pad's spot, so the player can actually step on the pad. The pad's lane holds no
-##   gap, fence or ramp from a full jump's length before the pad (a player who cleared the lane's
-##   last obstacle lands before it) until its lift has carried the player up to the hull (nothing in
-##   that lane catches them on the way up), and no floor enemy, in any lane, uses the floor where
-##   the pad lies.
+##   gap, fence or ramp, and no floor enemy standing in it uses the floor, from a full jump's length
+##   before the pad (a player who cleared the lane's last obstacle lands before it) until its lift
+##   has carried the player up to the hull (nothing in that lane catches them on the way up); and no
+##   floor enemy in any other lane uses the floor where the pad lies.
 ## The ceiling itself is never required: the floor under it holds what the generator's patterns put
 ## there, with their usual fairness, and a floor runner can always pass the pad by (switch away from
 ## it or jump it). The generator keeps both stretches for every ceiling: a pattern's own
@@ -99,9 +99,9 @@ func landing_clear(layout: LevelLayout, zone: Vector2) -> bool:
 
 
 ## True if a pad at `at` in `lane` can be stepped on: its lane is clear (pad_lane_clear) and no
-## floor enemy uses the floor where it lies (pad_enemies_clear).
+## floor enemy is in the way (pad_enemies_clear).
 func pad_clear(layout: LevelLayout, lane: int, at: float) -> bool:
-	return pad_lane_clear(layout, lane, at) and pad_enemies_clear(layout, at)
+	return pad_lane_clear(layout, lane, at) and pad_enemies_clear(layout, lane, at)
 
 
 ## True if `lane` holds no gap or fence in the pad's zone (pad_zone), and no ramp from the zone's
@@ -120,14 +120,20 @@ func pad_lane_clear(layout: LevelLayout, lane: int, at: float) -> bool:
 	return true
 
 
-## True if no floor enemy's stretch (LevelGenerator.enemy_floor_span) reaches the spot where a pad
-## at `at` lies, in any lane.
-func pad_enemies_clear(layout: LevelLayout, at: float) -> bool:
-	var spot: Vector2 = pad_spot(at)
+## True if no floor enemy is in the way of a pad at `at` in `lane` (pad_enemy_in).
+func pad_enemies_clear(layout: LevelLayout, lane: int, at: float) -> bool:
 	for e: Dictionary in layout.enemies:
-		if enemy_in(e, spot):
+		if pad_enemy_in(e, lane, at):
 			return false
 	return true
+
+
+## True if enemy entry `e` is in the way of a pad at `at` in `lane`: its floor stretch
+## (LevelGenerator.enemy_floor_span) reaches the pad's zone (pad_zone) while it stands in that lane,
+## or the spot where the pad lies (pad_spot) from any lane.
+func pad_enemy_in(e: Dictionary, lane: int, at: float) -> bool:
+	var zone: Vector2 = pad_zone(at) if int(e.get("lane", -1)) == lane else pad_spot(at)
+	return enemy_in(e, zone)
 
 
 ## Takes out whatever keeps `zone` from being safe to land on (see landing_clear). Returns how many
@@ -141,17 +147,16 @@ func clear_landing(layout: LevelLayout, zone: Vector2) -> int:
 
 
 ## Takes out whatever keeps a pad at `at` in `lane` from being stepped on (see pad_clear): the gaps,
-## fences and ramps in its lane's zone, and the floor enemies whose stretch reaches its spot. Returns
-## how many pieces and enemies went.
+## fences and ramps in its lane's zone, and the floor enemies in its way (pad_enemy_in). Returns how
+## many pieces and enemies went.
 func clear_pad(layout: LevelLayout, lane: int, at: float) -> int:
 	var zone: Vector2 = pad_zone(at)
 	var ramp_zone := Vector2(zone.x, at + pad_length)
-	var spot: Vector2 = pad_spot(at)
 	var before: int = layout.gaps.size() + layout.fences.size() + layout.ramps.size() + layout.enemies.size()
 	_keep(layout.gaps, func(g: Dictionary) -> bool: return not gap_in(g, zone, lane))
 	_keep(layout.fences, func(f: Dictionary) -> bool: return not fence_in(f, zone, lane))
 	_keep(layout.ramps, func(r: Dictionary) -> bool: return not ramp_in(layout, r, ramp_zone, lane))
-	_keep(layout.enemies, func(e: Dictionary) -> bool: return not enemy_in(e, spot))
+	_keep(layout.enemies, func(e: Dictionary) -> bool: return not pad_enemy_in(e, lane, at))
 	return before - (layout.gaps.size() + layout.fences.size() + layout.ramps.size() + layout.enemies.size())
 
 
