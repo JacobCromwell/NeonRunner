@@ -254,8 +254,9 @@ var _props: CorporateProps
 ## street reaches from wall to wall.
 var _wall_x: float = 0.0
 ## A lane's width, from the floor pieces seen (they're built before the walls in every chunk), so the
-## trench below can lay one guideway under every lane.
+## trench below can lay one guideway under every lane, and the width the roofs' shading was set for.
 var _lane_width: float = 2.4
+var _shaded_lane_width: float = 2.4
 
 
 func _init() -> void:
@@ -276,6 +277,10 @@ func floor_segment(parent: Node3D, center: Vector3, size: Vector3, lane_x: float
 		edge_start: bool, edge_end: bool) -> void:
 	# The collision box spans the lane (outer lanes reach the wall).
 	_lane_width = 2.0 * minf(center.x + size.x * 0.5 - lane_x, lane_x - (center.x - size.x * 0.5))
+	if absf(_lane_width - _shaded_lane_width) > 0.001:
+		# The lane width is tunable live (F6): the roofs' livery is laid out in metres across the roof.
+		_shaded_lane_width = _lane_width
+		solid_material().set_shader_parameter(&"corp_roof_half_width", trains().roof_half_width(_lane_width))
 	var batch := MeshBatch.new()
 	if floor_style == FloorStyle.PLAZA:
 		plaza().build(batch, center, size, lane_x, edge_start, edge_end)
@@ -426,7 +431,7 @@ func fence_field_materials() -> Array[Material]:
 func _solid_params() -> Dictionary:
 	return {"glow_scale": emissive_scale, "sheen_color": sheen_color, "sheen_strength": sheen_strength,
 		"corp_brand": livery_color, "corp_brand_glow": brand_color, "corp_marking": marking_color,
-		"corp_text": screen_text_color, "corp_roof_half_width": trains().roof_half_width(2.4)}
+		"corp_text": screen_text_color, "corp_roof_half_width": trains().roof_half_width(_shaded_lane_width)}
 
 
 func trains() -> CorporateTrains:

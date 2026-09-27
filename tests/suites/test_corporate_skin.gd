@@ -59,6 +59,7 @@ func run() -> void:
 		"the corporate environment has a sky, glow and fog")
 	_palette(skin)
 	_brand(skin)
+	_live_lane_width()
 	for lanes: int in [3, 5, 6]:
 		await whole_level(skin, "corporate", CORP_LEVEL_PATH, lanes)
 	await hazards_and_triggers(skin)
@@ -148,6 +149,19 @@ func _brand(skin: CorporateSkin) -> void:
 	var m: ShaderMaterial = skin.solid_material()
 	check(m.get_shader_parameter("corp_brand_glow") == brand and m.get_shader_parameter("corp_brand") == skin.livery_color,
 		"the kit material carries the brand's colours")
+
+
+## The roofs' livery is laid out in metres across the roof (kit_corporate.gdshaderinc, corp_roof), so
+## the material follows the lane width, which F6 tunes live. A fresh skin: the loaded one is shared.
+func _live_lane_width() -> void:
+	var fresh := CorporateSkin.new()
+	var parent := Node3D.new()
+	for width: float in [3.0, 2.4]:
+		fresh.floor_segment(parent, Vector3(0.0, -0.25, -10.0), Vector3(width, 0.5, 20.0), 0.0, false, false)
+		var half: float = fresh.solid_material().get_shader_parameter(&"corp_roof_half_width")
+		check(is_equal_approx(half, fresh.trains().roof_half_width(width)),
+			"the roofs' livery follows a %.1f m lane (half width %.2f)" % [width, half])
+	parent.free()
 
 
 ## Over the showcase track (every kind of piece): the gap in lane 3 (50-57 m) has the orange edge glow
