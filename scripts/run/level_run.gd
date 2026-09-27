@@ -123,6 +123,7 @@ func _build() -> void:
 		_build_debug_tools()
 	state = State.RUNNING
 	death_cause = ""
+	_dip_music(false)
 	world.start()
 
 
@@ -134,6 +135,7 @@ func revive() -> void:
 	world.player.revive()
 	state = State.RUNNING
 	hud.set_message("")
+	_dip_music(false)
 
 
 ## Ends the run after a death without reviving. Emits `finished` with a failed result.
@@ -174,7 +176,7 @@ func _physics_process(_delta: float) -> void:
 		world.player.running = false
 		_timer = COMPLETE_PAUSE
 		hud.set_message("LEVEL COMPLETE")
-		world.play_sfx(&"level_complete")
+		world.play_sfx(_complete_riff())
 
 
 func _process(delta: float) -> void:
@@ -211,7 +213,7 @@ func _on_boss_defeated() -> void:
 	_timer = COMPLETE_PAUSE
 	world.player.god_mode = true
 	hud.set_message("BOSS DEFEATED")
-	world.play_sfx(&"level_complete")
+	world.play_sfx(_complete_riff())
 
 
 func _on_player_died(cause: String) -> void:
@@ -223,6 +225,21 @@ func _on_player_died(cause: String) -> void:
 	_timer = QUICK_DEATH_PAUSE if context.mode == RunContext.Mode.QUICK else rules.death_screen_delay
 	hud.set_message("DIED: %s" % cause)
 	world.effects.shake(0.35, 0.35)
+	_dip_music(true)
+
+
+## GDD §11: the music dips while the player lies dead (under the death screen), and comes back on a
+## revive or a restart.
+func _dip_music(on: bool) -> void:
+	var music: MusicDirector = MusicDirector.instance()
+	if music != null:
+		music.set_dipped(on)
+
+
+## The riff that ends the level or the fight, in the key of the music playing (GDD §11).
+func _complete_riff() -> StringName:
+	var music: MusicDirector = MusicDirector.instance()
+	return MusicDirector.level_complete_sound(music.current() if music != null else &"", App.sfx_library)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -285,6 +302,7 @@ func _build_debug_tools() -> void:
 		{"title": "Power-ups", "resource": App.powerup_tuning, "path": App.POWERUPS_PATH},
 		{"title": "Runner animation", "resource": load(PlayerAvatar.ANIM_TUNING_PATH), "path": PlayerAvatar.ANIM_TUNING_PATH},
 		{"title": "Pickups", "resource": world.pickups.tuning, "path": PickupField.TUNING_PATH},
+		{"title": "Music", "resource": load(MusicDirector.LIBRARY_PATH), "path": MusicDirector.LIBRARY_PATH},
 		{"title": "Level pacing", "resource": context.config, "path": context.config.resource_path},
 	]
 	if context.config.resource_path == "":
