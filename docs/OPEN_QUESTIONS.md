@@ -783,6 +783,40 @@ rules"; switched off, the game plays exactly as before; measure with `tools/meas
     the Barnacle Turret's burst is small (its "one fires at a time" stays its own rule); the Tithe Collector isn't an
     attack.
 
+**The ragged screen-head cyborg** (from P2; brief `docs/art/BRIEF_CYBORG_GANGSTER.md`, Variant 1; review with
+`tools/showcase/enemy_showcase.tscn`, views `poses`, `faces`, `turn`, `window`, `far`, `charge`)
+99. **ERR before the screen goes dark** (brief: proposed): a defeated cyborg's screen shows "ERR" in cold white for 0.2 s,
+    then collapses to a bright line and goes dark over 0.14 s like an old CRT (with Reduced flashing it only fades). Its
+    death sparks are cold white now (they were orange, close to the player's copper). Keep the ERR; long enough?
+100. **The faces' pixel art** (13 × 9 LEDs): calm (square eyes, flat mouth), aiming (brows running into narrowed eyes, a
+    long hard mouth), the panic variant's shocked "O", ERR, and the hosts' two corrupted faces (a wide grin; broken eyes
+    over a zigzag mouth). Drawn bold so each keeps its shape at about 7 × 5 pixels, as it is 14 m ahead at 720p. Right
+    expressions?
+101. **Static on the screen:** a faint cold-white static (about 8% brightness) under scanlines, on dark glass darkening to
+    rounded corners; the concept sheet's screen is mostly static, but here it stays faint so the face reads. More?
+102. **How a host looks** (GDD §9.7): the white face tinged purple over a dim purple wash, blocks of purple static and rows
+    jumping sideways; thin purple veins up the neck, down the sleeve onto the hand and along the cyber arm and cannon,
+    pulsing slowly (steady with Reduced flashing). They stay a true purple, since brighter drifts toward the fences' pink.
+    Right amount, right places?
+103. **How strung out it moves:** hunched 11° with the screen raised to look ahead; now and then the head jerks up to
+    8–13° in 0.05 s and settles; a fine tremor in the free hand; a shamble dragging the left leg, with the heavy cannon
+    arm swinging less. Timings and reach unchanged. Too much, too little?
+104. **The window cyborg's window light** is now a dim, cold screen light (the feed on a TV in the room), below the glow
+    threshold; it was a warm orange that read like the player's copper and the gap edges. Right?
+105. **Details read off the concept sheet:** a grimy grey TV casing with a dented bezel, vents, two knobs and rust; a dark
+    leather vest open over an olive-khaki hoodie with a frayed hem and hanging drawstrings; olive cargo pants with
+    patches and a thigh strap; scuffed brown laced boots; an olive-grey metal backpack with two black cables into the TV
+    and a brown rubber hose (the sheet's is copper) into a rusted-steel cyber arm whose forearm is the cannon; a bare,
+    bony left hand. Anything to change?
+106. **The cult feed's face now matches the cyborgs' calm face** (GDD §5, "Cyborg Viewing Devices"; item 52): the same
+    proportions, smooth instead of LED dots, in the same cold white, so billboards and screen heads show one face. Keep
+    them the same?
+107. **How much the body stands out on a dark track** (GDD §9.2; deadly parts look deadly): the grimy clothes are much
+    darker than the old pale armour on the City's dark roofs, and the olive blends into Gangland's brown street; the read
+    at gameplay distance comes from the lit face, the light TV casing and the red emitter ring. A faint rim light would
+    lift the silhouette but is a glow on clothing, which the colour rules rule out. Strong enough, or lighter clothes, or
+    allow the rim light?
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
