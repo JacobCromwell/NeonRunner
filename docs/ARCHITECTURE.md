@@ -65,6 +65,7 @@ power-ups.
 | `data/tuning/game_rules.tres` (`GameRules`) | lanes per device, death share, invulnerability, stomp, whether big attacks take turns, score, economy, stars |
 | `data/tuning/powerups.tres` (`PowerupTuning`) | weapon tiers, claws, dash, magnet, slow time |
 | `data/tuning/pickups.tres` (`PickupTuning`) | in-run pickups: where they appear, taking them, the charge cap, the look |
+| `data/tuning/feature_recency.tres` (`FeatureRecency`) | the campaign's recency curve: how a level's pick weights follow how recently the campaign introduced each feature |
 | `data/enemies/<type>.tres` (`EnemyTuning` subclasses) | per-enemy numbers, early/late pairs for campaign scaling |
 | `data/shop/catalog.json` | shop items, tiers and prices |
 | `data/campaign/campaign.tres` → `data/zones/*.tres` → `data/levels/*.tres` | the campaign |
@@ -199,9 +200,14 @@ patterns (filtered by the level's features) → enemy rules scripts → credits.
 scripts: `rng_for(name)`, `add_enemy(type, at, lane, side, params)`, `add_hull_with_pad(lane, at,
 seconds)`, `floor_clear(from, to)`, `enemy_floor_span(entry)`, `enemy_uses_floor(entry)`,
 `difficulty_at(progress)`, `feature_start(feature)`, `feature_started(feature, at)`,
-`feature_active(feature, at)`, `feature_share_at(feature, share)`, `ramp_launch(ramp)`, plus
+`feature_active(feature, at)`, `feature_share_at(feature, share)`, `ramp_launch(ramp)`, and for a level
+paced in bursts `quiet_at(at)`, `stretch_end(at)`, `burst_index(at)`, `quiet_stretches()`,
+`burst_spans(lo, hi)`, `prefers_bursts(feature)`, `burst_spot(rng, lo, hi, feature)` and
+`pacing_pools(spots, feature)`, plus
 `layout`, `config`, `tuning`, `speed`, `jump_distance` and `zones` (the level's `CeilingZones`).
-Pattern format: `data/patterns/README.md`.
+`pick_weights(patterns, difficulty, at)` gives the weights a pick draws from, and `picks` lists the
+patterns the last build placed (id, features, spot, length, due or not), for tests and
+`tools/measure/level_shape.gd`. Pattern format: `data/patterns/README.md`.
 
 **Ramps** (GDD §3) launch the player onto the wall higher than a free entry and add a speed boost
 that fades away the same way a speed pad's does (both share `boost_decay_per_second`;
@@ -266,7 +272,41 @@ drops the starts. An introduced enemy can still be cleared by a later fairness r
 keeps its lane free), and the feature then first shows a little later.
 
 **Feature weights.** `LevelConfig.feature_weights` (feature → factor) scales the pick weight of the
-patterns that require a feature (0 leaves them out). Corporate 2's heavier military presence uses it.
+patterns that require a feature (0 leaves them out). Corporate 2's heavier military presence and The
+Hush's hosts use it.
+
+**A level's newest things get the most picks** (GDD §5, owner's review P2 13). `Campaign.configure`
+gives each campaign level's copy the campaign's recency curve (`LevelConfig.feature_recency`,
+`FeatureRecency` in `data/tuning/feature_recency.tres`, F6 "Feature picks (campaign)") and each of its
+features' age, the levels since the campaign introduced it (`LevelConfig.feature_ages`: 0 in the level
+that introduces it). A pattern's pick weight is then multiplied by the curve's factor for its newest
+feature (DESIGN-TBD: 4 where it's introduced, 2.5, 1.75 and 1.25 over the next three levels, 1 from
+then on), and with `keep_feature_share` the features' patterns are scaled back to weigh together what
+they did without the curve: plain gaps, fences and signs keep their weight, so the curve only moves
+picks between the level's features and a level gets no busier or emptier. A level's own
+`feature_weights` still apply on top. Quick play, tests, boss arenas and endless mode have no ages, and
+the curve's `enabled` switch turns it off: those levels generate exactly as before. It works with the
+guarantee rather than instead of it: every feature still appears in every campaign level.
+
+**Quiet stretches and bursts** (GDD §5, The Hush: "long silent stretches broken by sudden threats").
+A level with `LevelConfig.quiet_seconds` above 0 alternates, from its first pattern, a quiet stretch of
+that many seconds at run speed with a burst of `burst_seconds`, quiet first. Its pattern pass then:
+- in a quiet stretch, picks patterns `quiet_spacing_seconds` apart, only those without enemies (sparse
+  obstacles, and safe mechanics such as a plain ceiling, a ramp or a speed pad) and those of its
+  `quiet_features` whose enemies stand inside the stretch (The Hush's hosts, which belong to the quiet
+  stretches); the spacing never carries the cursor past the next burst's start;
+- in a burst, picks threats only (a pattern with a hole, a fence, a sign or an enemy, whose enemies
+  stand inside the burst), `burst_spacing_seconds` apart;
+- gives a burst at most one introduction (`feature_starts`): a second one waits for the next burst, so
+  a burst never stacks two new things. A due pick (an introduction, or the guarantee's) of an enemy
+  a quiet stretch leaves out waits for a burst.
+
+The rules scripts then run as always, so every fairness rule and the guarantee hold. The drone, hover
+truck, Octodog and host rules put an enemy they guarantee in a burst when one lies in reach, and the
+host rules put a quiet feature's host in a quiet stretch (`burst_spot`, `pacing_pools`). Threats that
+last (a hover truck's stay, a drone until its pad, a Bad Dream's chase) may run on into the next quiet
+stretch, and an Octodog, whose charges need a clear floor, often finds its spot in one.
+`quiet_seconds` 0 (every other level) turns all of it off.
 
 **Every feature appears.** In a level with `LevelConfig.guarantee_features` (every campaign level),
 each feature a pattern can place there is in the finished level, at any lane count and on any seed
@@ -351,6 +391,21 @@ shared builders for hazards, triggers and environments, and `MeshLayer` batches 
 The shaders in `scripts/world/meshes/shaders/` are procedural. `HazardStateVisual` swaps a hazard's
 ON / WARNING / OFF materials. A skin's `enemy_variant` (`&"city"` or `&"scavenger"`) picks the
 enemies' look (the cyborgs' through `CyborgSuit.look_for()`).
+
+**A level's darker lighting** (`LevelConfig.darkness`, 0–1; GDD §5, The Hush) reaches every skin for
+free: the run takes its environment from `ZoneSkin.level_environment(darkness)`, whose
+`apply_darkness()` dims only the scenery. The sky and the distance fog lose energy, and the global
+shader uniform `scenery_light` (project.godot; 1 = the zone's own light, never below
+`MIN_SCENERY_LIGHT`, 0.3) dims what the scenery's shaders draw: `kit_solid`'s lit surfaces (never its
+glowing ones), `facade`, `shopfront`, `road`, `drift`, and the grey box's floor, walls and ceilings
+(`GreyboxMaterials.scenery()`). Glows, the ambient light and the sun stay, so hazards, triggers,
+credits, enemies and the runner (lit or glowing by their own materials) read as well as anywhere. The
+factor is given for linear space; `light_factor()` in `kit_common.gdshaderinc` (and
+`ZoneSkin.energy_factor()` for the environment) converts it for the Compatibility renderer's sRGB
+space, so both renderers dim alike. A new skin gets it by drawing its scenery with the kit, or by
+reading `scenery_light` (through `light_factor`) in a shader of its own, or by overriding
+`apply_darkness()` (calling it first). Only the run that set the light last resets it when it ends
+(`LevelRun`). `skin_review` takes `--darkness=X` to look at it.
 
 The kit's solid shader (`kit_solid.gdshader`) draws surface patterns chosen per vertex (`MeshKit.PAT_*`):
 panels, glass, glyphs and chevrons for the City; worn asphalt (with sand drifts and scorch around holes),
@@ -551,14 +606,24 @@ lengths run 110–150 s and add up to 35 minutes.
 **The schedule** (GDD §5) is each level's `features` list, in the order the campaign introduces them:
 a feature once introduced stays in every later level, bar the exceptions the design gives (screeches
 come from manholes only in street zones and from wall vents, `screech_vents`, elsewhere, with none in
-Marketplace 1; the Buzz Overdrive appears in Corporate and the Dead Zone only; the Tithe Collector
-skips the Dead Zone). Each level introduces its new features at starts of their own
-(`feature_starts`, see Late starts under The generator; City 1's cyborgs come late in the level).
-`test_campaign` holds the schedule table and its exceptions, and checks that every level has each
-of its features at 3, 5 and 6 lanes, on its own seed and over a seed sweep (Every feature appears,
-under The generator). Features of enemies and mechanics still
-to be built (`LevelConfig.PLANNED_FEATURES`, with the wall fences' `wall_fences` and
-`wall_fences_partial`) are listed already and do nothing until their code and patterns exist.
+Marketplace 1; the Tithe Collector skips the Dead Zone). The Buzz Overdrive appears from Corporate 1
+through the Dead Zone and the Golden Zone, the Golden Palace included (GDD §9.9, corrected). Each
+level introduces its new features at starts of their own (`feature_starts`, see Late starts under The
+generator; City 1's cyborgs come late in the level), and its newest features get the most picks
+(the campaign's recency curve, under The generator). `test_campaign` holds the schedule table and its
+exceptions, checks the features' order, and checks that every level has each of its features at 3, 5
+and 6 lanes, on its own seed and over a seed sweep (Every feature appears, under The generator).
+Features of enemies and mechanics still to be built (`LevelConfig.PLANNED_FEATURES`, with the wall
+fences' `wall_fences` and `wall_fences_partial`) are listed already and do nothing until their code and
+patterns exist.
+
+**The Hush** (Dead Zone 2; GDD §5: "a quiet, eerie remix: fewer enemies but more hosts and Bad Dream
+chases, darker lighting, and long silent stretches broken by sudden threats") brings nothing new; its
+remix is its own data, which no other level uses: quiet stretches and bursts (`quiet_seconds` and the
+rest, with its hosts as its quiet feature), hosts picked more often (`feature_weights`), and its
+`darkness`. A Bad Dream chase starts only when the player kills a host (GDD §9.7), so more chases come
+from more hosts, standing alone in the quiet stretches where one is easy to reach; the host rules
+still fit one chase at a time. All DESIGN-TBD (`docs/questions/r5.md`).
 
 A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, which the player
 continues past. A cinematic is a scene whose root extends `Cinematic` (emit `finished`, support
@@ -733,7 +798,9 @@ them `check_ceilings` (GDD §3: pads that can be stepped on, safe landing zones,
 every ceiling without its pad, found by `FloorRoute`, `tests/helpers/floor_route.gd`), and finds a
 feature's pieces in a layout with the generator's own `LevelGenerator.feature_positions()`; a task
 that adds a new kind of piece extends it (and `FloorRoute`'s cells, if the piece is on the floor), or
-gives its rules script `positions()`. `test_enemy_director` checks the turn-taking between big attacks
+gives its rules script `positions()`. The generator suite also checks the recency curve's pick weights
+exactly (`pick_weights()`) and levels paced in bursts; the campaign suite, The Hush and the darker
+lighting on every skin. `test_enemy_director` checks the turn-taking between big attacks
 with scripted test enemies (`tests/helpers/turn_dummy.gd`) and over simulated runs of campaign levels,
 watched by `tools/measure/attack_watch.gd` (see Review tools). `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
 for framework tests, with `make_def()` for a BossDef from a list of phases; `test_bosses` runs fights
@@ -756,7 +823,8 @@ the enemies (`enemy_showcase` for the cyborg family: poses, the faces close up, 
 cyborgs, and a far view through the run camera where the expressions must read; `octodog_screech`,
 `drone_truck_showcase`, `bad_dream_showcase`), a boss (`floating_head_showcase`), the UI kit, the
 screens, a zone skin (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed
-screens and emblems a skin lists, or a scripted run with a ceiling ride and a wall run), and comparison
+screens and emblems a skin lists, or a scripted run with a ceiling ride and a wall run, in a level's
+darker lighting with `--darkness=X`), and comparison
 sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
 `CLAUDE.md`.
@@ -770,3 +838,10 @@ res://tools/measure/big_attacks.gd -- --levels=gangland/3 --lanes=3,5,6 --out=bu
 whole campaign takes about ten minutes). `attack_watch.gd` does the watching from the enemies' own states
 and the live shots, never from the turn-taking code, and hashes each run's event log, so two builds (or
 the switch off and a build without the rule) can be compared run by run.
+
+`tools/measure/level_shape.gd` measures the campaign's shape: for each level at 3, 5 and 6 lanes, on its
+own seed and others, each feature's share of the pattern picks, the enemy, host and obstacle counts, the
+features that appear only thanks to the every-feature guarantee, and for a level paced in bursts (The
+Hush) its quiet stretches against its bursts, with the recency curve on and off and a level's remix
+settings on or off (`godot --headless -s res://tools/measure/level_shape.gd -- --levels=dead_zone/2
+--curve=on,off`; the whole campaign both ways takes about a minute and a half).
