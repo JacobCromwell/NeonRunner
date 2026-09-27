@@ -142,7 +142,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   - the City, Gangland and Marketplace zone looks, with the cult's feed on screens and its emblem hidden
     in ads in all three
   - neon UI screens and HUD
-  - generated music (menu, City, Gangland) and 65 sound effects
+  - generated music for the menus and each of the six zones (it dips when the runner dies), and 76 sound
+    effects, among them the level-complete riff in each zone's key
   - first-encounter hints
 - **Settings:** volumes, key rebinding, screen shake, reduced flashing, hints.
 - **Platforms:** export presets for Windows, Android, iOS and the web demo. Ads, purchases and
@@ -151,11 +152,12 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 ## Tuning while you play (F6)
 
 F6 pauses the game and opens a panel with sections for movement, game rules, power-ups, the runner's animation,
-level pacing and each enemy type in the level. Changes apply immediately; pacing, speed, jump and size changes also reshape the level, so press
+the music's pause duck and death dip, level pacing and each enemy type in the level. Changes apply immediately; pacing, speed, jump and size changes also reshape the level, so press
 **Restart level** to rebuild it. **Save** writes the values back to their files in `data/`; **Reload files** undoes
 unsaved changes. Every other number is in `data/` too: enemy tunings in `data/enemies/`, prices in
 `data/shop/catalog.json`, patterns in `data/patterns/` (format: `data/patterns/README.md`), sound volumes in
-`data/audio/sfx_library.tres`, and UI colours and sizes in `data/ui/ui_style.tres`.
+`data/audio/sfx_library.tres`, music levels and tempos in `data/audio/music_library.tres`, and UI colours and
+sizes in `data/ui/ui_style.tres`.
 
 ## Tools
 
@@ -215,7 +217,8 @@ F6 panel) and without, and how much taking turns delays them:
   can read upside down, for the Marketplace gaps that read as holes, its clear play space and walls and
   shop windows, and for all three where the cult's emblem hides and where its feed plays, never in the
   wall-run band (the feed's shared material has a suite of its own).
-- **Sounds and music.**
+- **Sounds and music:** every sound and track loads (the tracks loop seamlessly, one per zone), the death dip
+  and how it combines with the pause duck, and the level-complete riff in each zone's key.
 - **Boot:** the real game scene.
 
 Headless runs skip sounds, because the dummy audio driver never finishes a playback.

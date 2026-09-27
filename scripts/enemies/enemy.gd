@@ -29,8 +29,15 @@ var health: float = 1.0
 var score_value: int = 100
 ## Weapons can't hurt it and auto-fire never targets it (e.g. the Bad Dream).
 var immune_to_weapons: bool = false
-## A cyborg carrying a Bad Dream: auto-fire never targets it and missile splash never hurts it (GDD §9.7).
-var is_host: bool = false
+## A cyborg carrying a Bad Dream: immune to all weapon damage, like a fence generator (GDD §9.7,
+## decided September 26, 2026, FB 71: a stray shot can never release a Bad Dream by accident). Only
+## a stomp, the claws or the dash still kill it, with the host bonus. Setting this also sets
+## immune_to_weapons, so every host declares its own immunity the way a generator does.
+var is_host: bool = false:
+	set(v):
+		is_host = v
+		if v:
+			immune_to_weapons = true
 ## Claw contact doesn't defeat it (bosses, the Bad Dream).
 var claw_immune: bool = false
 ## Landing on its top defeats it. False = landing on it hurts unless the player has claws.
@@ -124,18 +131,20 @@ func is_major_attack_active() -> bool:
 	return false
 
 
-## Auto-fire can pick this enemy (GDD §8: the weapon fires at the nearest valid target).
+## Auto-fire can pick this enemy (GDD §8: the weapon fires at the nearest valid target). A host is
+## immune_to_weapons (GDD §9.7), so it's already excluded.
 func targetable() -> bool:
-	return alive and not immune_to_weapons and not is_host and is_inside_tree()
+	return alive and not immune_to_weapons and is_inside_tree()
 
 
 func health_ratio() -> float:
 	return clampf(health / maxf(max_health, 0.001), 0.0, 1.0)
 
 
-## Weapon damage. `splash` damage never hurts hosts (GDD §9.7).
+## Weapon damage. Never hurts an immune_to_weapons enemy (a host, GDD §9.7; a generator, GDD §9.1),
+## direct or splash alike.
 func take_damage(amount: float, source: StringName, splash: bool = false) -> void:
-	if not alive or immune_to_weapons or (splash and is_host):
+	if not alive or immune_to_weapons:
 		return
 	health -= amount
 	health_changed.emit(self)

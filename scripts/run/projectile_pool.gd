@@ -167,10 +167,10 @@ func _on_contacted(_outcome: int, p: Projectile) -> void:
 
 func _hit_enemies(p: Projectile, from: Vector3, to: Vector3) -> void:
 	for e: Enemy in world.director.active:
+		# A host is immune_to_weapons (GDD §9.7, decided September 26, 2026: no targeting, no direct
+		# or splash damage), so a stray shot passes through it like a generator's (GDD §9.1).
 		if not is_instance_valid(e) or not e.alive or e.immune_to_weapons:
 			continue
-		# Hosts are never shot on purpose (auto-fire skips them) but a shot aimed elsewhere can
-		# still clip one; GDD §9.7 only rules out targeting and splash, so direct hits count.
 		var r: float = e.hit_radius() + p.radius
 		if _segment_point_distance(from, to, e.aim_point()) > r:
 			continue
@@ -188,8 +188,9 @@ func _hit_enemies(p: Projectile, from: Vector3, to: Vector3) -> void:
 
 func _splash(p: Projectile, direct: Enemy) -> void:
 	for e: Enemy in world.director.active:
-		# Splash never hurts hosts (GDD §9.7) or weapon-immune enemies, so it doesn't report them either.
-		if e == direct or not is_instance_valid(e) or not e.alive or e.is_host or e.immune_to_weapons:
+		# A host is immune_to_weapons (GDD §9.7), so splash never hurts one either, and it doesn't
+		# report the hit.
+		if e == direct or not is_instance_valid(e) or not e.alive or e.immune_to_weapons:
 			continue
 		if e.aim_point().distance_to(p.position) <= p.splash_radius:
 			# DESIGN-TBD: the heavy missile's swarm bonus (GDD §8) applies to its splash as well.

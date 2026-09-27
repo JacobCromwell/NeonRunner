@@ -489,7 +489,7 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
     (difficulty 0–0.6), since the other pulsing patterns start at 0.4, which City 3 barely reaches; and a speed
     pad in one lane with four credits after it (no pattern placed speed pads before, so Gangland 2's never
     appeared).
-15. **Music for the new zones until their tracks exist.** Zones name their track after their id; until the
+15. (No longer comes up: every zone has its own track since D8, item 109.) **Music for the new zones until their tracks exist.** Zones name their track after their id; until the
     music task adds them the game skips them quietly and the menu music keeps playing. Fine as a stopgap?
 16. **The economy over 15 levels** ("From the full build" items 10–11). Completion pays 100 + 25 per campaign
     level, so Golden 3 pays 450; prices were set for a two-zone campaign. Needs a balancing pass.
@@ -816,6 +816,44 @@ rules"; switched off, the game plays exactly as before; measure with `tools/meas
     at gameplay distance comes from the lit face, the light TV casing and the red emitter ring. A faint rim light would
     lift the silhouette but is a glow on clothing, which the colour rules rule out. Strong enough, or lighter clothes, or
     allow the rim light?
+
+**Quitting keeps 20%** (from R2; the rule is decided, GDD §4; these are how it shows)
+108. **What the player sees after quitting:** the pause menu's confirmation now says 20% of the run's credits are kept,
+    like a death; after quitting, the game goes straight back to level select (or the title) as before, with a short
+    "+N credits kept" note, rather than through the results screen a death shows. A quit also counts as an attempt on
+    that level (its tile then reads "not cleared" instead of "new"), though it never improves its best score, stars,
+    time or leaderboard place, and it isn't counted as a death in the stats. Right, or should a quit show the results
+    screen, or not count as an attempt?
+
+**Music for the four new zones, the death dip and the level-complete riffs** (from D8; levels and tempos in
+`data/audio/music_library.tres`, F6 "Music"; `tools/godot.sh music --review` renders review images)
+109. **Music style per zone** (FB 54 stays open for a later design round). All placeholders in the crunchy 16-bit /
+    heavy-metal style, one seamless loop each, levelled to the same loudness; the menus (100 BPM synthwave), the City
+    (160 BPM galloping synth-metal, E minor) and Gangland (120 BPM drop-D industrial, D phrygian) are unchanged. New:
+    - **Marketplace:** 144 BPM, B♭ major, 40 s. Bouncy ska-metal: a Mega Drive horn section in thirds over off-beat
+      guitar chops, an organ, a walking slap bass; a punk-polka chorus under a soaring horn hook.
+    - **Corporate:** 112 BPM, B minor (drop-B), 43 s. Cold cyber-metal: a machine riff of palm-muted sixteenths locked
+      to the kick; a half-time march with timpani and a Vangelis-style synth-brass theme; a military snare cadence.
+    - **Dead Zone:** 84 BPM, C♯ minor, 46 s. Quiet but never empty: a heartbeat, a ticking pulse, a drone and a lonely
+      tremolo guitar with echo, creaking girders and wind; then a slow doom riff that rings out into the quiet again.
+    - **Golden Zone** (also the Golden Palace): 132 BPM, F♯ harmonic minor, 44 s. Neoclassical metal: harpsichord,
+      strings and timpani under a regal theme, guitar sweeps; no bells or chimes, so it never sounds like the
+      Resonator's chime.
+    Is each one's direction right for its zone?
+110. **The death dip** (GDD §11): as the player dies the track sinks 10 dB over 0.5 s while a low-pass closes to 800 Hz,
+    so it sounds far away rather than stopping; it holds under the revive offer and comes back over 1 s on a revive or
+    a retry; leaving to the summary crossfades to the menu music as before. With the pause menu's duck, the deeper of
+    the two applies. Right depth and muffling? Start at the death (as built) or only when the revive offer appears?
+111. **The level-complete riff in each zone's key** (GDD §11): the same shape everywhere (two chugs on the root, one on
+    the third, the fourth rings out), on each track's beat and with a touch of its sound: City E E G A (also the
+    fallback), Gangland D D F G with an anvil, Marketplace B♭ B♭ D E♭ with a horn stab, Corporate B B D E with a
+    brass swell, Dead Zone C♯ C♯ E F♯ dying away with no crash, Golden F♯ F♯ A B with a harpsichord flourish. A boss's
+    defeat plays the riff of the music playing. Recognisably the same riff? The Marketplace's uses the major third to
+    stay in B♭ major (every other one the minor third): keep it?
+112. **The Hush's silent stretches and the music** (GDD §5; task R5): both Dead Zone levels play the same track, whose
+    quiet half sits about 4 dB under the other tracks and its doom half about 1 dB over. For The Hush, should its
+    level play only the quiet half, a quieter mix, or the music dipped during its silent stretches (the music player
+    could dip on the level's signal the way it dips on a death)?
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
