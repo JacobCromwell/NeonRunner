@@ -66,6 +66,33 @@ const DRIFT_ASH: int = 0
 const DRIFT_SCRAP: int = 1
 const DRIFT_STREAK: int = 2
 
+## Marketplace surface patterns of the solid kit shader (kit_market.gdshaderinc), ids 20-29.
+## Canvas roofs and awnings: UV 0-1 across the panel and along the stall; param = stripes (0 plain,
+## 1 along the track, 2 across it) + 4 * the stall's length in decimetres (0: no hem along its start).
+const PAT_CANVAS: int = 20
+## Corrugated tin: UV as for canvas; param = ribs (0 along the track, 1 across it) + 4 * the stall's
+## length in decimetres.
+const PAT_TIN: int = 21
+## Everything under the stall roofs, seen only through gaps, in deep shade (darkens COLOR): param 0
+## a face across the lane, 1 a face along it, 2 the market floor.
+const PAT_UNDER: int = 22
+## Stone flags (param 0, an overpass's walkway) or coffered soffit panels (param 1).
+const PAT_TILES: int = 23
+## A painted shop sign (UV in metres; param = seed 0-99 + 100 * the panel's height in decimetres).
+const PAT_SHOPSIGN: int = 24
+## An ad screen, glowing (UV.y 0-1 up the screen, UV.x in the same units; param a whole-number seed).
+const PAT_AD: int = 25
+## Rows of light bulbs on a dark panel, glowing (UV in metres).
+const PAT_BULBS: int = 26
+## Sun-bleached plaster.
+const PAT_STUCCO: int = 27
+## A whole row of market-stall roofs along one lane, laid out by the shader from world position
+## (UV.x 0-1 across the lane; param the lane's key, see MarketStalls).
+const PAT_STALLS: int = 28
+## Building machinery (UV in metres): param 0 a solar panel, 1 an air-conditioning unit's front,
+## 2 brushed metal with seams.
+const PAT_TECH: int = 29
+
 const SHADER_DIR: String = "res://scripts/world/meshes/shaders/"
 
 static var _boxes: Dictionary = {}

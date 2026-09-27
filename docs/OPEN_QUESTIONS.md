@@ -105,6 +105,43 @@ For each boss: arena, phases, attacks, weak points, what power-ups are granted b
 
 ## D. Raised during build
 
+### Owner's placeholder review (September 26, 2026)
+The owner reviewed every placeholder below. **GB** means "From the R1 core-movement grey box", **FB** "From the full build", and **P2** "From build phase 2"; numbers are the items' own. Unless listed under changes, playtesting or later rounds, **an item is approved as is**: its placeholder now counts as decided (GDD §12), and its `DESIGN-TBD` marker can come off.
+
+**Changes (recorded in the GDD):**
+- GB 5: a blocked wall entry adds a small sideways bump to the clank (§3).
+- GB 6: **no change**. What looks like a hit is a hit on every surface, so a low wall runner can hit a fence in the outer lane (§3). Buzz Overdrive's "wall runners are safe" rule stands; its hitboxes stay inside its lane.
+- GB 10: ramps add a speed boost that fades like a speed pad's (§3).
+- FB 6: endless mode runs until death, climbs in difficulty, cycles through the unlocked zones' scenery, and pays 20% plus a lump sum every 2 minutes survived (§6).
+- FB 14: quitting from the pause menu keeps 20%, like a death (§4).
+- FB 27: big attacks of different enemy types take turns (§9). The owner may revert this after playtesting, since early playtests felt not very challenging.
+- FB 53: the music dips on death, and the level-complete riff plays in each zone's key (§11).
+- FB 71: hosts are immune to all weapon damage (§9.7).
+- FB 85: no screeches in the Neon City (§9.5).
+- P2 4: Buzz Overdrive also appears in the Golden Zone (§9.9; a recording error, corrected).
+- P2 7: Dead Zone 2 has fewer enemies but more hosts and Bad Dream chases, darker lighting, and long silent stretches broken by sudden threats (§5).
+- P2 10: the placeholder level names are approved (§5).
+- FB 46: every zone with a still floor gets the dust, scraps and speed-streak motion cues.
+- P2 6: the Corporate skin also shows military ships and props.
+- P2 13: beyond the "each feature at least once" guarantee, a level's newest things get the most picks.
+- P2 18: a narrow Gangland ceiling is a slab broken off a building.
+- P2 20: the Gangland corporate logo matches the Corporate zone's brand once it exists.
+
+**Tune after playtesting** (placeholders stay):
+- movement and pacing: GB 2, GB 3, GB 11, GB 12, GB 16 (5 PC lanes for now), FB 41
+- economy: FB 10, FB 11, P2 16 (needs a balancing pass over 15 levels)
+- audio mix: FB 52
+- enemy numbers: FB 68, FB 75, FB 80, FB 82, FB 87, FB 96–98, and the EMP radius in FB 73
+- difficulty curve: P2 8
+
+**Later design rounds:**
+- cinematics: FB 3, P2 11
+- audio: GB 15, FB 54
+- power-ups and balance: P2 12
+- mobile: FB 15
+- title and brand: FB 109
+- other: FB 111 (achievements)
+
 ### From the R1 core-movement grey box (September 25, 2026)
 Each item has a placeholder in code marked `DESIGN-TBD` and, where it's a number, a value in `data/tuning/movement.tres` or `data/levels/`. Answer them after playtesting the grey box.
 
@@ -457,6 +494,35 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
 16. **The economy over 15 levels** ("From the full build" items 10–11). Completion pays 100 + 25 per campaign
     level, so Golden 3 pays 450; prices were set for a two-zone campaign. Needs a balancing pass.
 
+**Gangland update** (from D1; numbers are F6-tunable exports on `GanglandSkin`)
+17. **Gangland's ceilings** (GDD §3, §5; replaces "From the full build" item 45, the scavenger barge). Placeholder:
+    two structures, picked per ceiling (45% buildings): an overpass (tagged concrete fascia, crash barrier and
+    railing, a sign gantry with billboards and corporate ads, a dead lamp post, a gang lookout of sandbags and
+    military crates) and the upper storeys of a bombed-out building bridging the street (lit and curtained
+    windows, laundry, a broken roof). Both run on one flat concrete slab, a beam per lane, with dark joints, small
+    warm-white work lamps on every lane seam and the orange end band. Right structures, and is the lamp-lit seam
+    a good lane read?
+18. **Narrow ceilings in Gangland** (GDD §3, task B3): a side in mid-street ends in a plain edge face. What should
+    a narrow ceiling be here: a slab broken off a building, a pedestrian bridge, something else?
+19. **Time of day** (GDD §5, §11 give the palette, not the hour). Placeholder: a dusty dusk (brown sky, tan dust on
+    the horizon, a veiled pale sun, smoke columns, brown dust fog), dark enough for hazards to pop. Keep it, or a
+    harsher daylight?
+20. **Hints of corporate and military funding** (GDD §5). Placeholder: side streets barricaded with stencilled
+    olive military crates (30%) or corporate containers with a logo (30%); olive military notice boards above the
+    wall-run band; corporate ads among the posters (30%); sandbags as a fence mount. The corporate logo and colour
+    are a generic grey mark (`kit_logo.gdshaderinc`): should they match the Corporate zone's brand (task D4)?
+21. **The cult emblem, hidden in plain sight** (GDD §5, proposed): unlit bronze, small, beside the logo on some
+    container doors, as the sponsor's mark in the corner of some ads, and on some crates and notice boards (35%
+    of each); it fades out below about 24 px on screen. The right amount of "hidden"?
+22. **Signs of life** (GDD §5): graffiti pieces and tags over the lower storeys (dusty blue, steel grey, violet
+    grey, cream; no hazard hues), 12–32% of upper windows lit, laundry, rooftop clutter, bulbs over side streets,
+    washing lines across the street at 15.4 m and up. Too busy, or not enough?
+23. **Holes as craters** ("From the full build" item 47): the asphalt is scorched toward each hole and sand
+    drifts along the street; holes stay one lane wide and square-cut, with the orange edge on the collision edge.
+    Enough of a crater read?
+24. **Motion on the still street** ("From the full build" item 46): dust-coloured flecks, paper scraps and pale
+    speed streaks, as before.
+
 **Every feature appears** (from the B1 follow-up; see item 13, now built)
 25. **Where a guaranteed enemy goes** (GDD §5). When a level's rules drop every host or every Octodog, those
     rules add one where it fits every rule; otherwise the generator rebuilds the level with a pick of the
@@ -513,34 +579,43 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
 41. **Boss leaderboards** (GDD §10): one board per boss and difficulty tier (`boss/<boss id>/<tier>`); none in the web
     demo.
 
-**Gangland update** (from D1; numbers are F6-tunable exports on `GanglandSkin`)
-17. **Gangland's ceilings** (GDD §3, §5; replaces "From the full build" item 45, the scavenger barge). Placeholder:
-    two structures, picked per ceiling (45% buildings): an overpass (tagged concrete fascia, crash barrier and
-    railing, a sign gantry with billboards and corporate ads, a dead lamp post, a gang lookout of sandbags and
-    military crates) and the upper storeys of a bombed-out building bridging the street (lit and curtained
-    windows, laundry, a broken roof). Both run on one flat concrete slab, a beam per lane, with dark joints, small
-    warm-white work lamps on every lane seam and the orange end band. Right structures, and is the lamp-lit seam
-    a good lane read?
-18. **Narrow ceilings in Gangland** (GDD §3, task B3): a side in mid-street ends in a plain edge face. What should
-    a narrow ceiling be here: a slab broken off a building, a pedestrian bridge, something else?
-19. **Time of day** (GDD §5, §11 give the palette, not the hour). Placeholder: a dusty dusk (brown sky, tan dust on
-    the horizon, a veiled pale sun, smoke columns, brown dust fog), dark enough for hazards to pop. Keep it, or a
-    harsher daylight?
-20. **Hints of corporate and military funding** (GDD §5). Placeholder: side streets barricaded with stencilled
-    olive military crates (30%) or corporate containers with a logo (30%); olive military notice boards above the
-    wall-run band; corporate ads among the posters (30%); sandbags as a fence mount. The corporate logo and colour
-    are a generic grey mark (`kit_logo.gdshaderinc`): should they match the Corporate zone's brand (task D4)?
-21. **The cult emblem, hidden in plain sight** (GDD §5, proposed): unlit bronze, small, beside the logo on some
-    container doors, as the sponsor's mark in the corner of some ads, and on some crates and notice boards (35%
-    of each); it fades out below about 24 px on screen. The right amount of "hidden"?
-22. **Signs of life** (GDD §5): graffiti pieces and tags over the lower storeys (dusty blue, steel grey, violet
-    grey, cream; no hazard hues), 12–32% of upper windows lit, laundry, rooftop clutter, bulbs over side streets,
-    washing lines across the street at 15.4 m and up. Too busy, or not enough?
-23. **Holes as craters** ("From the full build" item 47): the asphalt is scorched toward each hole and sand
-    drifts along the street; holes stay one lane wide and square-cut, with the orange edge on the collision edge.
-    Enough of a crater read?
-24. **Motion on the still street** ("From the full build" item 46): dust-coloured flecks, paper scraps and pale
-    speed streaks, as before.
+**Marketplace skin** (from D2; numbers and colours are exports on `MarketplaceSkin`)
+42. **Enemy look in the Marketplace:** GDD §9.2 now gives its cyborgs the Casino Mob Enforcer (task P3). Placeholder:
+    the city look until P3 sets the skin's `enemy_variant`; hover trucks, drones and screeches keep the city look.
+43. **Time of day and light** (GDD §5 gives palette and mood): placeholder a warm, dusty dusk: a periwinkle-to-rose
+    sky with an early moon, a low sun gilding the upper floors, the street in evening shade, a light dust haze, and
+    warm-lit shop displays. Right for a "bustling, happy market"?
+44. **Under the stall roofs:** placeholder the market floor 6.5 m below, everything under the roofs in deep shade, so
+    a gap shows only dark faces dropping away and the orange edge (the first pass's lit counters made a gap look like
+    a roof). How deep, and what should it show?
+45. **The mix of ceilings:** placeholder weights 3.5 building bridging the street, 2.5 overpass, 1.5 merchant ship,
+    2.5 floating ad; a narrow ceiling (task B3) becomes an overpass.
+46. **Shop windows at wall-run height and the citizens in them** (GDD §5, §9.2): every shopfront has windows from
+    0.85 m to 2.8 m with a lit display the player runs across on a wall run (`shop_windows()` lists them for task
+    D3). A window cyborg draws its own dark window over the shopfront. Right height, and how should D3's citizens
+    read apart from window cyborgs?
+47. **Decorative signs:** neon, ad boards and casino bulbs never below 8 m, and the wall-run band above the shop
+    windows stays calm; hazard signs are painted shop signs inside the yellow/black frame.
+48. **Fence mounts:** steel poles with glowing insulator caps in stacked wooden market crates at the lane edges.
+49. **Motion on the still floor** (approved for every still-floor zone in the review): dust, paper scraps and speed
+    streaks, the stalls' frame poles and scalloped hems, pennants and festoon lights across the street every ~34 m,
+    and cables higher still.
+50. **How often the emblem hides in the market:** 40% of floating ads, rooftop boards and casino signs carry it as a
+    small warm-white badge, and 40% of painted blade signs in unlit bronze; never smaller than 0.9 m, never an ad's
+    main mark, never on hazard signs.
+51. **Wall-run height marks on light walls** (FB 44): the 2 m and 4 m lines as dark, unlit paint.
+52. **What the cult's feed shows** (GDD §5, Cyborg Viewing Devices: the design doesn't say). Placeholder, shared by
+    every skin (`CultFeed`): a wordless cold-white CRT picture (scanlines, soft static, a slow rolling bar) looping
+    over 18 s through a screen-head face, the emblem in warm white, and rings converging on a point, one at a time
+    (the emblem and the rings together read as a radiation trefoil), in sync on every screen.
+53. **How often the feed plays in the market:** 35% of billboards, casino signs and floating ads, and an old TV in
+    22% of shop windows (dimmer, so the wall-run band stays calm).
+54. **How the market's future looks** (GDD §5: never historical): composite cladding with slab-edge bands, rounded
+    windows in thin aluminium frames with smart glass or roller shutters, metal-clad piers, air-conditioning units,
+    delivery-drone racks, glass balconies, cable trays and cables across the street, dishes and masts on the roofs,
+    all above the wall-run band. The right kind of future?
+55. **How dusty and worn:** sand on roofs, awnings and ledges, sun-bleached patches, grime at the foot of faces and
+    under windows, weathering blotches and a light haze; one `wear` value scales it all.
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
