@@ -1,6 +1,6 @@
 extends "res://tools/asset_gen/sfx_bank.gd"
 ## Power-ups, weapons and protective items: the dash, slow time, lasers and missiles, hits and stomps,
-## and the armor, shield, grapple hook and revive.
+## the armor, shield, grapple hook and revive, and the pickups that bring them during a fight.
 
 const E2: float = 82.41
 const E4: float = 329.63
@@ -8,6 +8,9 @@ const B4: float = 493.88
 const E5: float = 659.26
 const GS5: float = 830.61
 const B5: float = 987.77
+const E6: float = 1318.51
+const GS6: float = 1661.22
+const B6: float = 1975.53
 const A6: float = 1760.0
 
 
@@ -17,6 +20,8 @@ func sounds() -> Dictionary:
 		"shield_break": _shield_break,
 		"grapple": _grapple,
 		"revive": _revive,
+		"pickup": _pickup,
+		"pickup_appear": _pickup_appear,
 		"dash": _dash,
 		"dash_ready": _dash_ready,
 		"slow_time_on": _slow_time_on,
@@ -107,6 +112,46 @@ func _revive() -> PackedFloat32Array:
 	DSP.mix(b, chord, 0.77, 0.7)
 	DSP.mix(b, DSP.crash(1.0, rng), 0.77, 0.12)
 	DSP.mix(b, DSP.kick(0.25, 150.0, 45.0, rng), 0.77, 0.6)
+	DSP.crush(b, 11, 24000.0)
+	return b
+
+
+## A pickup taken (GDD §10): a protective item snaps on. A quick FM swoop up, a mechanical latch
+## (clack-clunk) and a hollow two-note chime rising a fourth (B5, E6) over a small power chord and a
+## sparkle. Heavier and more metal than a credit's pulse blips, so the two never sound alike.
+func _pickup() -> PackedFloat32Array:
+	var rng := _rng(213)
+	var b := DSP.buffer(0.75)
+	var swoop := DSP.fm(0.12, func(u: float) -> float: return DSP.sweep(380.0, 1500.0, u), 1.0,
+		func(u: float) -> float: return 2.5 * (1.0 - u) + 0.4)
+	DSP.envelope(swoop, 0.002, 0.06)
+	DSP.mix(b, swoop, 0.0, 0.55)
+	DSP.mix(b, DSP.metal_hit(0.06, 2300.0, 0.012, rng), 0.09, 0.7)
+	DSP.mix(b, DSP.metal_hit(0.12, 900.0, 0.03, rng), 0.12, 0.8)
+	DSP.mix(b, DSP.kick(0.15, 170.0, 80.0, rng), 0.12, 0.45)
+	DSP.mix(b, _fm_note(0.3, B5, 2.0, 2.4, 0.5, 0.08), 0.14, 0.6)
+	DSP.mix(b, _fm_note(0.55, E6, 2.0, 2.4, 0.5, 0.16), 0.22, 0.65)
+	var chord := DSP.power_chord(0.45, E2 * 2.0, false, rng)
+	DSP.envelope(chord, 0.002, 0.18, 0.1)
+	DSP.mix(b, chord, 0.12, 0.3)
+	DSP.mix(b, _sparkle(0.45, rng), 0.2, 0.2)
+	DSP.crush(b, 10, 24000.0)
+	return b
+
+
+## A pickup appears ahead (GDD §10): a soft shimmer. A reversed swell into a quiet high bell pair
+## (E6, B6) with a sparkle: friendly, nothing like an attack's warning.
+func _pickup_appear() -> PackedFloat32Array:
+	var rng := _rng(214)
+	var b := DSP.buffer(0.8)
+	var swell := DSP.crash(0.35, rng)
+	swell.reverse()
+	DSP.filter(swell, &"highpass", 3000.0)
+	DSP.mix(b, swell, 0.0, 0.25)
+	DSP.mix(b, Inst.fm_bell(E6, 0.5), 0.3, 0.45)
+	DSP.mix(b, Inst.fm_bell(B6, 0.45), 0.36, 0.3)
+	DSP.mix(b, _fm_note(0.3, GS6, 3.5, 1.5, 0.3, 0.1), 0.33, 0.2)
+	DSP.mix(b, _sparkle(0.45, rng), 0.3, 0.3)
 	DSP.crush(b, 11, 24000.0)
 	return b
 

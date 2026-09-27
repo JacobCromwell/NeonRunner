@@ -1,11 +1,11 @@
 class_name RunWorld
 extends Node3D
-## One run's gameplay world: the track, the player, enemies, projectiles, credits, effects and the
-## score, plus everything they share (layout, config, tuning, rules, geometry, loadout). LevelRun
-## adds the camera, HUD and flow on top; tests build a bare RunWorld (RunSim).
+## One run's gameplay world: the track, the player, enemies, projectiles, credits, pickups, effects
+## and the score, plus everything they share (layout, config, tuning, rules, geometry, loadout).
+## LevelRun adds the camera, HUD and flow on top; tests build a bare RunWorld (RunSim).
 ##
 ## Children update in tree order each physics frame: this node (track chunks, enemy spawns), then
-## the player, the enemies, the projectiles, the credits, and the power-ups last.
+## the player, the enemies, the projectiles, the credits, the pickups, and the power-ups last.
 ## Power-ups plug in by convention: if res://scripts/powerups/powerup_controller.gd exists, it is
 ## created as a child and given setup(world).
 
@@ -28,6 +28,8 @@ var player: Player
 var director: EnemyDirector
 var projectiles: ProjectilePool
 var credits: CreditField
+## Armor, shield and grapple pickups (GDD §10: offered in boss fights, BossEncounter.offer_pickup).
+var pickups: PickupField
 var effects: RunEffects
 var score: ScoreKeeper
 ## The power-up controller (null until the power-ups exist).
@@ -64,6 +66,7 @@ func build(p_config: LevelConfig, p_layout: LevelLayout, p_tuning: MovementTunin
 	director = _add(EnemyDirector.new(), "Enemies") as EnemyDirector
 	projectiles = _add(ProjectilePool.new(), "Projectiles") as ProjectilePool
 	credits = _add(CreditField.new(), "Credits") as CreditField
+	pickups = _add(PickupField.new(), "Pickups") as PickupField
 	effects = _add(RunEffects.new(), "Effects") as RunEffects
 	score = _add(ScoreKeeper.new(), "Score") as ScoreKeeper
 	sounds = _add(PlayerSfx.new(), "Sounds") as PlayerSfx
@@ -74,6 +77,7 @@ func build(p_config: LevelConfig, p_layout: LevelLayout, p_tuning: MovementTunin
 	director.setup(self)
 	projectiles.setup(self)
 	credits.setup(self)
+	pickups.setup(self)
 	score.setup(self)
 	if ResourceLoader.exists(POWERUPS_SCRIPT):
 		powerups = (load(POWERUPS_SCRIPT) as GDScript).new() as Node

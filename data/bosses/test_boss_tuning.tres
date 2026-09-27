@@ -22,3 +22,5 @@ dazed_height = 0.45
 clear_before_drop = 16.0
 clear_after_drop = 4.0
 rise_seconds = 1.0
+bonus_pickup = "shield"
+bonus_pickup_phase = 2
