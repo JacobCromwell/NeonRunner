@@ -3,13 +3,15 @@ extends RefCounted
 ## - rolls the panic variant (about 1 in 3, CyborgTuning.panic_chance) for every placed cyborg that
 ##   doesn't set `params.panic` itself, so the layout says which ones panic and every attempt at a
 ##   seed is the same (hosts never panic unless a pattern says so);
-## - drops a cyborg placed within obstacle_margin of a gap, fence, ramp, pad, speed pad or ceiling
-##   section in any lane: standing there it could block the lane a player needs at that obstacle
-##   (GDD §9 fairness). A cyborg keeps the same margin while it moves (Cyborg clamps its walk and its
-##   panic run with obstacle_spans()).
+## - drops a cyborg placed within obstacle_margin of a gap, fence, ramp, pad or speed pad in any lane:
+##   standing there it could block the lane a player needs at that obstacle (GDD §9 fairness); nor
+##   within it of a ceiling's landing zone (GDD §3: the floor there is safe to land on). Under a
+##   ceiling it may stand (GDD §3: the floor there may be dangerous); it holds fire at a player on
+##   the ceiling (Cyborg). A cyborg keeps the same margins while it moves (Cyborg clamps its walk and
+##   its panic run with obstacle_spans()).
 ## These rules run after the hover truck's, which add a ramp for its wall route, so cyborgs keep
 ## their margin from that ramp too. Pads that later rules add (drones, hosts) clear the floor
-## enemies around them themselves (PadPlacement).
+## enemies around their pads and landing zones themselves (PadPlacement).
 
 const RUN_AFTER: Array[String] = ["hover_truck"]
 const TUNING_PATH: String = "res://data/enemies/cyborg.tres"
@@ -20,7 +22,7 @@ static func apply(gen: LevelGenerator) -> void:
 	if tuning == null:
 		tuning = CyborgTuning.new()
 	var rng: RandomNumberGenerator = gen.rng_for("cyborg")
-	var spans: Array[Vector2] = obstacle_spans(gen.layout, gen.tuning)
+	var spans: Array[Vector2] = obstacle_spans(gen.layout, gen.tuning, gen.zones)
 	var kept: Array[Dictionary] = []
 	for e: Dictionary in gen.layout.enemies:
 		if String(e.get("type", "")) != "cyborg":
@@ -37,8 +39,9 @@ static func apply(gen: LevelGenerator) -> void:
 
 
 ## Every floor obstacle's [start, end] along the track, any lane: gaps, fences, ramps, anti-grav
-## pads, speed pads and ceiling sections.
-static func obstacle_spans(layout: LevelLayout, t: MovementTuning) -> Array[Vector2]:
+## pads, speed pads, and every ceiling section's landing zone (`zones`, CeilingZones; the level's
+## pacing at run speed). The floor under a ceiling isn't one (GDD §3).
+static func obstacle_spans(layout: LevelLayout, t: MovementTuning, zones: CeilingZones) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	for g: Dictionary in layout.gaps:
 		out.append(Vector2(g["start"], g["end"]))
@@ -50,8 +53,7 @@ static func obstacle_spans(layout: LevelLayout, t: MovementTuning) -> Array[Vect
 		out.append(Vector2(p["at"], float(p["at"]) + t.pad_length))
 	for s: Dictionary in layout.speed_pads:
 		out.append(Vector2(s["at"], float(s["at"]) + t.speed_pad_length))
-	for h: Dictionary in layout.hulls:
-		out.append(Vector2(h["start"], h["end"]))
+	out.append_array(zones.landing_zones(layout))
 	return out
 
 

@@ -31,6 +31,17 @@
 			]
 		},
 		{
+			"id": "ceiling_over_manholes",
+			"min_difficulty": 0.3, "weight": 0.3,
+			"requires": ["ceilings", "screech"],
+			"length": 10,
+			"elements": [
+				{ "kind": "hull", "at": 0, "lanes": { "mode": "random", "count": 1 }, "length_seconds": 4.0 },
+				{ "kind": "enemy", "type": "screech", "at_seconds": 1.8, "lanes": { "mode": "random", "count": 1 }, "params": { "source": "manhole" } },
+				{ "kind": "enemy", "type": "screech", "at_seconds": 2.8, "lanes": { "mode": "random", "count": 1 }, "params": { "source": "manhole" } }
+			]
+		},
+		{
 			"id": "screech_vent",
 			"min_difficulty": 0.0, "weight": 1.0,
 			"requires": ["screech"],

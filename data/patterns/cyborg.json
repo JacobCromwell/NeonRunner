@@ -27,6 +27,17 @@
 			]
 		},
 		{
+			"id": "ceiling_over_cyborgs",
+			"min_difficulty": 0.35, "weight": 0.3, "requires": ["ceilings", "cyborg"],
+			"length": 10,
+			"elements": [
+				{ "kind": "hull", "at": 0, "lanes": { "mode": "random", "count": 1 }, "length_seconds": 4.0 },
+				{ "kind": "enemy", "type": "cyborg", "at_seconds": 1.7, "lanes": { "mode": "random", "count": 1 } },
+				{ "kind": "fence", "at_seconds": 2.45, "variant": "full", "lanes": { "mode": "all_but", "count": 1 } },
+				{ "kind": "enemy", "type": "cyborg", "at_seconds": 3.2, "lanes": { "mode": "random", "count": 1 } }
+			]
+		},
+		{
 			"id": "host_single",
 			"min_difficulty": 0.0, "weight": 0.8, "requires": ["host"],
 			"length": 34,

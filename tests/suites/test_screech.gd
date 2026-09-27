@@ -354,6 +354,7 @@ func _test_generator() -> void:
 	var base: LevelConfig = load(LEVEL_PATH) as LevelConfig
 	var manholes: int = 0
 	var vents: int = 0
+	var under_ceilings: int = 0
 	for features: PackedStringArray in [PackedStringArray(["ramps", "ceilings", "pulsing", "screech"]),
 			PackedStringArray(["ramps", "ceilings", "pulsing", "screech_vents"])]:
 		var vents_only: bool = features.has("screech_vents")
@@ -379,8 +380,8 @@ func _test_generator() -> void:
 						count += 1
 						var at: float = float(e["at"])
 						var lane: int = int(e["lane"])
-						check(not a.under_hull(at) and not _hull_near(a, at - 30.0, at + 5.0),
-							"a screech never comes out under a ceiling " + tag)
+						if a.under_hull(at):
+							under_ceilings += 1
 						if String(e["params"].get("source", "")) == "vent":
 							vents += 1
 							check(absi(int(e["side"])) == 1 and lane == a.outer_lane(int(e["side"])),
@@ -392,21 +393,18 @@ func _test_generator() -> void:
 							check(int(e["side"]) == 0 and lane >= 0 and lane < a.lane_count, "a manhole sits in a floor lane " + tag)
 							check(not a.gapped_between(lane, at - 15.0, at + 2.0) and not _fence_near(a, lane, at - 15.0, at + 2.0),
 								"a manhole's lane is clear where it attacks " + tag)
+					# GDD §3: a screech may lurk under a ceiling, but never where the player lands or
+					# steps onto a pad (its reach covers where it springs out at them).
+					LayoutChecks.check_ceilings(self, a, config, tag)
 		check(count > 20, "levels with %s get screeches (%d)" % [features[-1], count])
 	check(manholes > 20 and vents > 20, "manholes and vents both appear (%d, %d)" % [manholes, vents])
+	check(under_ceilings > 0, "some screeches lurk under a ceiling (GDD §3: the floor there may be dangerous): %d" % under_ceilings)
 	var plain: LevelConfig = base.duplicate() as LevelConfig
 	var layout: LevelLayout = LevelGenerator.new().generate(plain, tuning, LevelGenerator.load_for(plain))
 	var none: bool = true
 	for e: Dictionary in layout.enemies:
 		none = none and e["type"] != "screech"
 	check(none, "no screeches without the feature")
-
-
-func _hull_near(layout: LevelLayout, from: float, to: float) -> bool:
-	for h: Dictionary in layout.hulls:
-		if float(h["start"]) <= to and float(h["end"]) >= from:
-			return true
-	return false
 
 
 func _sign_over(layout: LevelLayout, side: int, at: float) -> bool:

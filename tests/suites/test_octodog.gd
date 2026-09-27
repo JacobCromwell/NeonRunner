@@ -386,8 +386,8 @@ func _test_passing_is_harmless() -> void:
 		await sim.free_world(w)
 
 
-## GDD §3: floor enemies never go under a ceiling section. Unplanned, a dog gives up rather than
-## charge again with a ceiling coming.
+## A dog never charges a player who might be stepping onto a pad (or dropping off a ceiling).
+## Unplanned, it gives up rather than charge again with a pad coming.
 func _test_gives_up_before_ceiling() -> void:
 	var layout := RunSim.layout(3, 800)
 	layout.hulls.append({"start": 110.0, "end": 180.0})
@@ -404,7 +404,7 @@ func _test_gives_up_before_ceiling() -> void:
 	await _until(func() -> bool: return (_dog(id) != null and _dog(id).charges_done >= 1
 		and _dog(id).phase != Octodog.Phase.LUNGE), 3.0)
 	check(is_instance_valid(dog) and dog.phase == Octodog.Phase.GIVE_UP,
-		"with a ceiling section ahead it gives up after 1 charge")
+		"with a pad ahead it gives up after 1 charge")
 	await sim.free_world(w)
 
 
@@ -494,8 +494,9 @@ func _test_generator() -> void:
 	check(none, "no Octodogs without the feature")
 
 
-## Each planned dog: charges within the scaled range, every charge's stretch clear, no ceiling
-## anywhere along its run, one dog at a time, bait dogs just past their hole. Returns the count.
+## Each planned dog: charges within the scaled range, every charge's stretch clear, no pad or ceiling
+## landing anywhere along its run (the floor under a ceiling is fair game, GDD §3), one dog at a
+## time, bait dogs just past their hole. Returns the count.
 func _check_dogs(layout: LevelLayout, config: LevelConfig, tag: String) -> int:
 	var speed: float = tuning.run_speed
 	var s: float = config.enemy_scaling
@@ -525,8 +526,8 @@ func _check_dogs(layout: LevelLayout, config: LevelConfig, tag: String) -> int:
 			check(Octodog.window_clear(layout, a, a + window), "charge %d at %.0f is never stacked with an obstacle %s" % [i, a, tag])
 			if i > 0:
 				check(a - float(at[i - 1]) >= t.cycle_distance(speed, s) - 0.01, "charges are spaced out " + tag)
-		check(not Octodog.ceiling_between(layout, float(at[0]) - 6.0, float(at[-1]) + stop + 2.0),
-			"its whole run stays off ceiling sections " + tag)
+		check(not Octodog.pad_or_landing_between(layout, float(at[0]) - 6.0, float(at[-1]) + stop + 2.0),
+			"its whole run stays off pads and ceiling landings " + tag)
 		busy_until = float(at[-1]) + window + stop
 		if p.get("bait", false):
 			var baited: bool = false

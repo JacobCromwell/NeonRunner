@@ -131,12 +131,17 @@ its chase), and before starting one asks `EnemyDirector.major_attack_blocked(sel
 while another enemy's major attack is on and either of the two is `exclusive_major_attack` (the Bad
 Dream is: GDD §9.7). Other types can opt in the same way.
 
-**Floor use.** GDD §3 keeps the floor under a ceiling clear, and that includes enemies. A type's
-tuning says whether it uses the floor (`uses_floor`: false for fliers like drones and hover trucks,
-and wall-only enemies like window cyborgs) and how much of it around its spot
-(`floor_reach_before`/`_after`). Rules that plan a longer run for one enemy store it in
-`params.floor_span` (the Octodog's charges). `LevelGenerator.enemy_floor_span(entry)` and
-`enemy_uses_floor(entry)` read all of this, and `floor_clear` / `add_hull_with_pad` respect it.
+**Floor use.** The floor under a ceiling may hold enemies (GDD §3, changed September 26, 2026), but
+a ceiling's landing zone and the spot of each of its pads keep off the floor enemies use (see
+Ceilings under The generator). A type's tuning says whether it uses the floor (`uses_floor`: false
+for fliers like drones and hover trucks, and wall-only enemies like window cyborgs) and how much of
+it around its spot (`floor_reach_before`/`_after`: where it stands, moves and attacks a player in its
+lane; the screech's 30 m before covers where it springs out). Rules that plan a longer run for one
+enemy store it in `params.floor_span` (the Octodog's charges). `LevelGenerator.enemy_floor_span(entry)`
+and `enemy_uses_floor(entry)` read all of this; `CeilingZones`, `floor_clear` and `add_hull_with_pad`
+respect it. An enemy that can't reach the ceiling stays consistent with it at run time: cyborgs, window
+cyborgs and hover trucks hold fire at a player riding a ceiling, the drone and the Bad Dream wait
+below, the Octodog never winds up and a screech stays in its manhole.
 
 ## The generator
 
@@ -147,19 +152,45 @@ scripts: `rng_for(name)`, `add_enemy(type, at, lane, side, params)`, `add_hull_w
 seconds)`, `floor_clear(from, to)`, `enemy_floor_span(entry)`, `enemy_uses_floor(entry)`,
 `difficulty_at(progress)`, `feature_start(feature)`, `feature_started(feature, at)`,
 `feature_active(feature, at)`, `feature_share_at(feature, share)`, plus `layout`, `config`,
-`tuning`, `speed`, `jump_distance`. Pattern format: `data/patterns/README.md`.
+`tuning`, `speed`, `jump_distance` and `zones` (the level's `CeilingZones`). Pattern format:
+`data/patterns/README.md`.
 
 Rules scripts run in the order of the level's `features` list, except that a script declaring
 `const RUN_AFTER: Array[String]` runs after those features' rules (the host rules after the drone's;
 the cyborg rules, and the host rules that start with them, after the hover truck's, so cyborgs keep
-their margin from the ramp a truck adds; the Octodog rules after the drone's and the host's, so each
-dog is planned around the level's final ceilings and chases and nothing clears it afterwards).
-When a rule needs room for one of its guarantees, it removes what's in the way rather than moving it
-(taking content out never makes a level unfair). Guaranteed pads come from
-`scripts/enemies/pad_placement.gd`, shared by the drone and host rules: the drone's pad schedule
-(GDD §9.6) owns every pad after its first wave, pattern ceilings give way, and the host rules (which
-run after the drone's) cover each Bad Dream chase with pads at most 10 s apart or leave that host out.
-The Octodog rules keep each dog's charges off every stretch a chase can cover (GDD §9.7).
+their margin from the ramp a truck adds; the Octodog rules after the drone's, the host's and the
+hover truck's, so each dog is planned around the level's final ceilings, chases and truck lanes and
+nothing clears it afterwards). When a rule needs room for one of its guarantees, it removes what's
+in the way rather than moving it (taking content out never makes a level unfair). Guaranteed pads
+come from `scripts/enemies/pad_placement.gd`, shared by the drone and host rules: the drone's pad
+schedule (GDD §9.6) owns every pad after its first wave, pattern ceilings give way, and the host rules
+(which run after the drone's) cover each Bad Dream chase with pads at most 10 s apart or leave that
+host out. The Octodog rules keep each dog's charges off every stretch a chase can cover (GDD §9.7).
+
+**Ceilings over a dangerous floor** (GDD §3, changed September 26, 2026). The floor beneath a
+ceiling may hold gaps, hazards and enemies: the ceiling is the way to escape them, and it's never
+required. `CeilingZones` (`scripts/world/ceiling_zones.gd`, `gen.zones`) holds the two stretches every
+ceiling keeps safe, and the checks and clearing for them:
+- **The landing zone**: from a section's end, `hull_landing_seconds` at run speed (21.6 m), no lane
+  holds a gap or a fence and no floor enemy's stretch reaches in, so the player always lands safely.
+- **Each pad's spot**: its lane holds no gap, fence or ramp from a full jump before the pad (a
+  player who cleared the lane's last obstacle lands before it) until the lift has carried them up to
+  the hull (`rise`), so the pad is never on or at the edge of a gap, never in a fence, and reachable;
+  and no floor enemy's stretch, in any lane, reaches where it lies.
+
+A pattern may put floor pieces and enemies under its own ceiling (a gauntlet; `_place_pattern` keeps
+them), and `_secure_ceilings` drops what a pattern puts in its ceiling's landing zone or pad spot, with
+a warning. A ceiling a rule adds lies over whatever the floor holds (`add_hull_with_pad` refuses one
+whose pad or landing isn't clear; `PadPlacement` clears only those two stretches first, picking a pad
+lane that needs no clearing when it can, and drops a fence generator left powering nothing). So the
+floor under any ceiling holds what patterns put there, with their usual fairness and spacing, and a
+floor runner can always pass the pad by. Rules that add floor enemies keep off both stretches: the
+cyborg rules' `obstacle_spans` include every landing zone, and the Octodog's charges and runs keep
+off pads and landings (`Octodog.pad_or_landing_between`), not off the floor under a ceiling.
+Narrow ceilings (B3) and floor cuts planned in advance (B4, which never cut a landing zone or a
+pad's lane) ask `CeilingZones` too. The tests check every generated ceiling with
+`LayoutChecks.check_ceilings`, including a floor route under it that never takes the pad (`FloorRoute`,
+a conservative model of the floor moves; some routes are replayed on real physics).
 
 **Late starts.** `LevelConfig.feature_starts` (feature → share of the level) holds a feature back
 until its start: patterns that require it aren't picked before, and the first pattern picked from
@@ -573,9 +604,12 @@ one. `RunSim` (`tests/helpers/run_sim.gd`) runs a Player over a hand-built layou
 full RunWorld (`build_world()` + `step_world()`). `SkinSuite` (`tests/helpers/skin_suite.gd`) holds
 the checks every zone skin must pass. `LayoutChecks` (`tests/helpers/layout_checks.gd`) holds the
 fairness checks for generated layouts (the generator suite runs them over many seeds, the campaign
-suite over every campaign level at 3, 5 and 6 lanes) and finds a feature's pieces in a layout with the
-generator's own `LevelGenerator.feature_positions()`; a task that adds a new kind of piece extends
-it, or gives its rules script `positions()`. `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
+suite over every campaign level at 3, 5 and 6 lanes, the enemy suites over their own levels), among
+them `check_ceilings` (GDD §3: pads that can be stepped on, safe landing zones, and a floor route under
+every ceiling without its pad, found by `FloorRoute`, `tests/helpers/floor_route.gd`), and finds a
+feature's pieces in a layout with the generator's own `LevelGenerator.feature_positions()`; a task
+that adds a new kind of piece extends it (and `FloorRoute`'s cells, if the piece is on the floor), or
+gives its rules script `positions()`. `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
 for framework tests, with `make_def()` for a BossDef from a list of phases; `test_bosses` runs fights
 in bare worlds and, with the test boss in the City's slot, through the App. `test_pickups` checks
 pickup placement against the rules as it writes them itself, over hand-built cases and generated
