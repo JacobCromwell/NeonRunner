@@ -39,8 +39,8 @@ extends RefCounted
 ##
 ## A level may alternate long quiet stretches with short, dense bursts (LevelConfig.quiet_seconds;
 ## GDD §5, The Hush): quiet stretches pick sparse patterns without enemies (bar quiet_features), bursts
-## pick from everything, densely. Every rule, fairness check and the guarantee apply to it unchanged,
-## and a burst takes at most one introduction, so it never stacks two new things.
+## pick threats, densely. Every rule, fairness check and the guarantee apply to it unchanged, and a
+## burst takes at most one introduction, so it never stacks two new things.
 
 const DENOMINATIONS: Array[int] = [1, 5, 25, 100]
 const RULES_DIR: String = "res://scripts/enemies"
@@ -304,15 +304,24 @@ func burst_spot(rng: RandomNumberGenerator, lo: float, hi: float, feature: Strin
 	return spans[-1].y
 
 
-## True if `pattern` may be picked at `at` in a level paced in bursts: a pattern that places enemies
-## must require only quiet_features, or else start in a burst and place its enemies before that
-## burst ends, so a burst's threats appear in the burst (an Octodog's charges or a hover truck's stay
-## may still run on after it). Patterns without enemies fit anywhere.
-func _quiet_allows(pattern: Dictionary, at: float) -> bool:
+## True if `pattern` may be picked at `at` in a level paced in bursts (GDD §5, The Hush: long silent
+## stretches broken by sudden threats):
+## - a pattern that places enemies must require only quiet_features (those go anywhere), or else
+##   start in a burst and place its enemies before that burst ends, so a burst's threats appear in
+##   the burst (an Octodog's charges or a hover truck's stay may still run on after it);
+## - a burst takes only threats: patterns with a hole, a fence, a sign or an enemy. Safe mechanics
+##   alone (a plain ceiling, a ramp, a speed pad) go in the quiet stretches, with sparse obstacles.
+func _pacing_allows(pattern: Dictionary, at: float) -> bool:
 	var last_enemy: float = -1.0
+	var threat: bool = false
 	for element: Dictionary in pattern.get("elements", []):
-		if String(element.get("kind", "")) == "enemy":
+		var kind: String = String(element.get("kind", ""))
+		if kind == "enemy":
 			last_enemy = maxf(last_enemy, float(element.get("at", 0.0)) + float(element.get("at_seconds", 0.0)) * speed)
+		threat = threat or kind in ["gap", "fence", "sign", "enemy"]
+	var quiet: bool = quiet_at(at)
+	if not quiet and not threat:
+		return false
 	if last_enemy < 0.0:
 		return true
 	var requires: Array = pattern.get("requires", [])
@@ -323,7 +332,7 @@ func _quiet_allows(pattern: Dictionary, at: float) -> bool:
 			break
 	if quiet_ok:
 		return true
-	return not quiet_at(at) and at + last_enemy < stretch_end(at)
+	return not quiet and at + last_enemy < stretch_end(at)
 
 
 ## Track distance from which `feature` may place anything: its share of the level from
@@ -452,9 +461,9 @@ func ramp_launch(r: Dictionary) -> RampLaunch:
 ## the campaign's recency curve (LevelConfig.recency_on) times its newest feature's factor; with
 ## keep_feature_share the features' patterns are then scaled back to weigh together what they
 ## weighed without the curve, so the curve only moves picks between features. In a level paced in
-## bursts, only the patterns _quiet_allows are taken (enemies in bursts, bar quiet_features), and a
-## burst that has had its introduction leaves out the features still waiting for theirs
-## (_intro_held).
+## bursts, only the patterns _pacing_allows are taken (threats in bursts, enemies only there bar
+## quiet_features), and a burst that has had its introduction leaves out the features still waiting
+## for theirs (_intro_held).
 func _pick_pattern(patterns: Array, difficulty: float, at: float, only: String = "") -> Dictionary:
 	var candidates: Array = []
 	var weights: Array[float] = []
@@ -473,7 +482,7 @@ func _pick_pattern(patterns: Array, difficulty: float, at: float, only: String =
 		var requires: Array = p.get("requires", [])
 		if only != "" and not requires.has(only):
 			continue
-		if paced and not _quiet_allows(p, at):
+		if paced and not _pacing_allows(p, at):
 			continue
 		var weight: float = float(p.get("weight", 1.0))
 		var ok: bool = true
