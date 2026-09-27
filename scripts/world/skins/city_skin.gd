@@ -103,6 +103,35 @@ extends ZoneSkin
 @export var hull_light_color: Color = Color(0.6, 0.75, 1.0)
 @export var engine_color: Color = Color(0.45, 0.6, 1.0)
 
+@export_group("Cult feed")
+## DESIGN-TBD (docs/questions/d9.md): how often the cult's feed (CultFeed, GDD §5 "Cyborg Viewing
+## Devices") plays in the Neon City, alongside the ordinary neon ads: the share of the low buildings'
+## roof billboards showing it instead of an ad, and of towers carrying a big screen playing it.
+@export_range(0.0, 1.0, 0.01) var feed_share: float = 0.35
+@export_range(0.0, 1.0, 0.01) var feed_tower_share: float = 0.4
+## Brightness of the feed (0-1) on the roof billboards and on the towers' big screens.
+@export_range(0.0, 1.0, 0.05) var feed_board_brightness: float = 0.9
+@export_range(0.0, 1.0, 0.05) var feed_screen_brightness: float = 0.85
+## The towers' big screens (16:9), hung out over the street facing the oncoming traffic: the widest,
+## the share of the street's half width they may reach over, and the lowest their bottom edge goes
+## (far above the wall-run band and the ships).
+@export_range(2.0, 12.0, 0.1, "suffix:m") var feed_screen_width: float = 4.8
+@export_range(0.2, 1.0, 0.01) var feed_screen_reach: float = 0.7
+@export_range(9.0, 40.0, 0.5, "suffix:m") var feed_screen_bottom: float = 12.0
+
+@export_group("Cult emblem")
+## The cult's emblem hidden in the city's ads (GDD §5, proposed: in logos and ads in every zone): a
+## sponsor's badge in a corner of some roof billboards, a brand mark at the foot of some towers' neon
+## banners, in its own warm-white neon (CultEmblem.default_scheme), never an ad's main mark and never
+## on hazard signs. It is the owner's pick (CultFeed.emblem_option(), from the choice file).
+## DESIGN-TBD (docs/questions/d9.md): where and how often.
+@export_range(0.0, 1.0, 0.01) var emblem_share: float = 0.4
+## Never smaller than this: tiny, its three-fold silhouette could read like the radiation trefoil
+## (the kit shader also fades it out before it spans fewer than about 24 pixels on screen).
+@export_range(0.5, 3.0, 0.05, "suffix:m") var emblem_min_size: float = 0.9
+## Glow of its warm-white neon.
+@export_range(0.0, 1.5, 0.05) var emblem_glow: float = 0.6
+
 @export_group("Pads, ramps, finish")
 @export var pad_color: Color = Color(0.1, 1.0, 0.95)
 ## Height of the anti-grav pad's light column.
@@ -173,11 +202,50 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	props().finish_line(parent, width, distance)
 
 
+# --- The cult's feed and emblem ------------------------------------------------------------
+
+## The shared feed material (CultFeed): the same broadcast as in every zone.
+func feed_material() -> ShaderMaterial:
+	return CultFeed.material()
+
+
+## Whether the screen keyed by (a, b) plays the cult's feed instead of an ad (`share` of them).
+func shows_feed(a: int, b: int, share: float) -> bool:
+	return MeshKit.hash01(a, b, 131) < share
+
+
+## Whether the ad keyed by (a, b) carries the cult's emblem (emblem_share of them).
+func carries_emblem(a: int, b: int) -> bool:
+	return MeshKit.hash01(a, b, 97) < emblem_share
+
+
+## The screens on the walls playing the feed (the roof billboards and the towers' big screens) whose
+## middles lie between two track distances, for reviews and tests: side, at, kind (&"roof_board" or
+## &"tower_screen"), width, height, center (the screen's middle, on its face). The same ones
+## wall_section() builds.
+func feed_boards(side: int, face_x: float, start: float, end: float) -> Array[Dictionary]:
+	return towers().feed_boards(side, face_x, start, end)
+
+
+## The cult's emblems on the walls whose middles lie between two track distances, for reviews and
+## tests: side, at, kind (&"roof_board" or &"banner"), size (the mark's square, metres), center.
+func cult_emblems(side: int, face_x: float, start: float, end: float) -> Array[Dictionary]:
+	return towers().emblems(side, face_x, start, end)
+
+
+## The warm white the emblem glows in on the city's ads: the chosen option's own neon.
+func emblem_color() -> Color:
+	return CultEmblem.default_scheme(CultFeed.emblem_option())["neon"]
+
+
 # --- Shared materials (built once per skin, shared by every mesh) ------------------------
 
 func solid_material() -> ShaderMaterial:
 	if not _materials.has(&"solid"):
-		_materials[&"solid"] = MeshKit.solid(_solid_params())
+		var m: ShaderMaterial = MeshKit.solid(_solid_params())
+		# The emblem's coverage for MeshKit.PAT_CULT_MARK (the owner's pick, drawn by CultEmblem).
+		m.set_shader_parameter(&"cult_emblem", CultFeed.emblem_texture())
+		_materials[&"solid"] = m
 	return _materials[&"solid"]
 
 
