@@ -1,5 +1,6 @@
 extends TestSuite
-## The Floating Head, the Neon City's boss (GDD §10; task E1, its first step E1a so far):
+## The Floating Head, the Neon City's boss (GDD §10; task E1: E1a's part here, the face-off's in
+## test_floating_head_faceoff.gd):
 ## - its data and its preview: the City's slot keeps its placeholder card until the fight is done,
 ##   while debug builds play it with --boss=city_boss (BossDef.preview_scene);
 ## - its build: the scene makes a FloatingHead, the ship fits the street at 3, 5 and 6 lanes, a boss's
@@ -573,7 +574,7 @@ func _test_reveal_and_later_runs() -> void:
 	check(head.body.global_position.y >= 2.6, "above the fences, so the track stays in view under it")
 	var locks: int = _events(head, &"lock").size()
 	await _until(world, func() -> bool: return false, 3.0)
-	check(_events(head, &"lock").size() == locks, "no bombs in the face-off (placeholder until task E1b)")
+	check(_events(head, &"lock").size() == locks, "no bombs in the face-off: it attacks with its eyes and mouth there")
 	await sim.free_world(world)
 	# The faster phases: a shorter run after it rises, faster warnings, the face already on.
 	var t := def.tuning as FloatingHeadTuning

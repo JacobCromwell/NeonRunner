@@ -712,27 +712,31 @@ warning (a floor warning from `props` also keeps pickups away), random choices c
 time from the physics step. The test boss (`TestBoss`) is a small example.
 
 **The Floating Head** (GDD §10, task E1; built so far: E1a, the ship and face, the entrance, the
-bombing run and the reveal), in `scripts/bosses/floating_head/`:
+bombing run and the reveal; E1b, the face-off with its eye lasers and cyborg drop, and the marked
+towers that pin it), in `scripts/bosses/floating_head/`:
 
 | File | What |
 |---|---|
-| `floating_head.gd` (`FloatingHead`) | the encounter: each phase's intro (the first is the entrance, overhead from behind; later ones rise), its bombing run if it has one (`run_seconds(phase)`), then the descent in front of the runner (the first time, the reveal: the face powers on) and the face-off (a placeholder hover until E1b). The ship's `pose` is kept relative to the runner (sideways, belly height, stern ahead), so nothing depends on how long the fight has lasted. `sound()` plays and logs every warning |
-| `floating_head_body.gd` (`FloatingHeadBody`) | the body part: the model and its moving parts (face screen, jaw, searchlight gimbal, bay doors, weak-point covers), a solid hull hitbox, three weak points on the crown and the crown's top surface (both off until it's pinned, E1c: `set_weak_points_enabled`, `set_top_solid`), and the face's state (`screen_power`, `anger`, `eye_charge`, `glitch`) |
+| `floating_head.gd` (`FloatingHead`) | the encounter: each phase's intro (the first is the entrance, overhead from behind; later ones rise), its bombing run if it has one (`run_seconds(phase)`), then the descent in front of the runner (the first time, the reveal: the face powers on) and the face-off until a tower pins it (`begin_pin`: it brakes under the falling tower and lies still on the track, sunk between the trucks until its weak points' tops are `pin_top_height` up and rolled toward the tower; for now it shakes free before the runner reaches it, `_release`, until E1c's stomps). The ship's `pose` is kept relative to the runner (sideways, belly height, stern ahead) except while pinned, so nothing depends on how long the fight has lasted. The marked towers are planned with each lap (`_plan_lap`: every `tower_spacing`, sides in turn, the track cleared of holes and fences around each) and brought into sight as the runner nears them (`towers_between`, `tower_node`). The fairness helpers its attacks share: `escape_lane`, `floor_clear_lane`/`floor_clear_all`, `pickup_near`, `enemy_in_lane`. `sound()` plays and logs every warning |
+| `floating_head_body.gd` (`FloatingHeadBody`) | the body part: the model and its moving parts (face screen, jaw, searchlight gimbal, bay doors, weak-point covers), a solid hull hitbox, three weak points on the crown and the crown's top surface (both off until it's pinned, E1c: `set_weak_points_enabled`, `set_top_solid`, `top_height`), the face's state (`screen_power`, `anger`, `eye_charge`, `glitch`, `jaw_open`, and `look_point` for the eyes to watch the laser's aim), where its eyes and mouth are (`eye_world`, `mouth_world`), and `exclusive_major_attack` (its lasers and bombs take turns with other big attacks) |
 | `floating_head_model.gd` (`FloatingHeadModel`) | the low-poly meshes, built in code from a `Shape` sized to the street (MeshKit layers merged into a few surfaces: about 13 surfaces and 11k vertices), and the bomb |
 | `floating_head_bombing.gd` (`FloatingHeadBombing`) | the searchlight and the bombs: the lock (the warning: red light, `circle_warning`, lock sound, the bomb falling with its whistle), the fairness rules (`plan`, `fair`, `escape_lane`), and pooled blast hitboxes (enemy attacks) that keep clear of a wall runner |
-| `floating_head_face.gdshader`, `floating_head_light.gdshader` | the face screen (unshaded and procedural: the same on every renderer; still with Reduced flashing) and the searchlight's beam and spot |
+| `floating_head_faceoff.gd` (`FloatingHeadFaceOff`) | the face-off: the phase's attacks wait in line (`faceoff_pattern`; the first that can start fairly goes next) with a drag timed for each marked tower. Eye lasers: the warning (the eyes' `eye_charge` and whine, thin aiming beams with a sweep's aim lines or a drag's aiming spot, then the drag's `lane_warning`), a sweep's twin beams (low: both low, jump them; high: one at the waist and one above a jump's reach, like a gapped fence, slide under them) or a drag down the runner's lane leaving a burning line (keeps clear of a wall runner), each with enemy-attack hitboxes. The cyborg drop: the jaw opens (with its sound and `circle_warning`s where they land), then normal cyborgs from the director (`spawn_enemy`) fall from the mouth onto clear roof and fight. A tower's drag is a bait when the runner is in the outer lane on its side as the warning ends, or the fallback after `fallback_after` misses; either calls `FloatingHead.begin_pin`. Lasers wait while its cyborgs are ahead and share the cyborgs' airspace (`CyborgGun.AIRSPACE_META`) |
+| `floating_head_tower.gd` (`FloatingHeadTower`) | a marked tower at the roadside (flush with the facades, its head jutting out over the street above the ship's highest flight so it shows from far along the street; no hitboxes: scenery until it falls): pale concrete with white painted bands and targets, cracks and cold warning lights; the laser's cut glows red-hot as it's clipped, then it topples forward onto the ship (`fall_onto`, `rest_on`) and crumbles away when the pin ends |
+| `floating_head_face.gdshader`, `floating_head_light.gdshader`, `floating_head_laser.gdshader` | the face screen (unshaded and procedural: the same on every renderer; still with Reduced flashing), the searchlight's beam and spot, and the lasers (the beams, the aim lines and the burning line: additive, lifted on the Compatibility renderer; the burn's embers hold still with Reduced flashing) |
 | `floating_head_tuning.gd`, `data/bosses/city_boss_tuning.tres` | its numbers (F6 in its fight) |
 | `data/bosses/city_boss_skin.tres` | its arena's City look: the City's skin without the towers' big screens hung out over the street, where the ship flies |
-| `tools/showcase/floating_head_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/stern/below/entrance/bombing/reveal`) |
+| `tools/showcase/floating_head_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/stern/below/entrance/bombing/reveal/faceoff/fallback/pinned`) |
+| `tests/helpers/floating_head_bot.gd` (`FloatingHeadBot`) | a runner who plays the face-off by its warnings, pressing only named actions (tests and the showcase) |
 
 **How the designed bosses fit** (GDD §10; each is a later task):
-- **Floating Head (E1b–E1d):** eye-laser sweeps are attack hitboxes on the part, their warning the
-  face's `eye_charge`; the cyborg drop is `spawn_enemy("cyborg", ...)` from the jaw. The marked towers
-  are laid out on each lap (`_plan_lap`), and the fallen tower is a surface (`add_surface`) or a ramp.
-  The weak points and the crown's top are live only while it's pinned; phase 3's pad and the ship's
-  underside are `arena.add_pieces()` (or `props.pad` and `props.ceiling` within sight);
-  `weapon_share_cap` 0.34 keeps weapons to one stomp. E1d adds the propaganda voice and slogans and
-  the defeat (the face's `glitch`), and moves the scene from `preview_scene` to `scene`.
+- **Floating Head (E1c–E1d):** E1c's stomp windows go where the pin is (`FloatingHead`'s PINNED
+  step, which now shakes free at `pin_release_gap` as a placeholder): the weak points and the crown's
+  top switch on while it's pinned, the fallen tower becomes a ramp or surface (`add_surface`, or
+  `props` within sight), and phase 3's pad and the ship's underside are `props.pad` and
+  `props.ceiling` (or `arena.add_pieces()`); `weapon_share_cap` 0.34 keeps weapons to one stomp. E1d
+  adds the propaganda voice and slogans and the defeat (the face's `glitch`), and moves the scene
+  from `preview_scene` to `scene`.
 - **Sewer Swarm (E4):** 4–5 clusters are parts with health of their own and `is_swarm` (MultiMesh
   crowds drawn by the part), moving ahead of and behind the player (parts never retire); baiting one
   into a live fence or a hole is the boss script's check (`arena.live_fence_between`,
@@ -795,7 +799,10 @@ in bare worlds and, with the test boss in the City's slot, through the App. `tes
 pickup placement against the rules as it writes them itself, over hand-built cases and generated
 tracks at 3, 5 and 6 lanes, and the armor rule end to end on the test boss. `test_floating_head`
 runs the Floating Head's fight in bare worlds at 3, 5 and 6 lanes with a runner who dodges each lock
-(and one who doesn't), and rechecks its bombs' fairness from the arena's layout. `test_audio` checks
+(and one who doesn't), and rechecks its bombs' fairness from the arena's layout;
+`test_floating_head_faceoff` plays its face-off with `FloatingHeadBot` (every laser warned and
+escaped without god mode, the cyborg drop, a baited and a fallback tower pinning it) and rechecks
+each attack's fairness from the real arena's layout. `test_audio` checks
 the music files (seamless loops, lengths, tempos, size budgets), the Music autoload's fades, duck and
 death dip on its players' levels and the bus's low-pass (headless runs never start a player), and the
 run's music hooks through the App. The runner frees
