@@ -43,6 +43,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
 | `--skin=gangland` | Quick play in another zone's look |
+| `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`) |
 | `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`, ...) with the full game flow once it's built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
@@ -110,9 +111,12 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   an arena track that keeps going for as long as it lasts, with the boss's health bar and phase
   markers on the HUD, weak points to stomp and weapon chip damage, a checkpoint for the final fight,
   no time limit and no escalation, stars from par times, a payout, records and a leaderboard per
-  boss, and the standard armor rule's pickup timing. The test boss (`--boss=test_boss`), a hovering
-  core that blasts the lane it lights up red and drops dazed into the player's lane to be stomped,
-  shows it all; the six zone bosses are still to be built on it.
+  boss, and pickups: armor, shield and grapple pickups on the floor ahead, placed where they're fair
+  to take, from the standard armor rule (at the start of the final phase, and a while after the
+  player's armor or shield breaks) or offered by the boss itself. The test boss (`--boss=test_boss`),
+  a hovering core that blasts the lane it lights up red and drops dazed into the player's lane to be
+  stomped, shows it all (it offers a shield in its second phase); the six zone bosses are still to be
+  built on it.
 - **Economy:** credits in four denominations, level score and stars, and a shop. Items are five permanent
   power-ups (weapon line, claws, juggernaut dash, magnet, slow time) and three breakables (armor, shield,
   grapple hook). After a death you're offered a revive (an item, or a rewarded ad on mobile). Net worth
@@ -122,7 +126,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   - a human runner in a cyber suit
   - the City and Gangland zone looks
   - neon UI screens and HUD
-  - generated music (menu, City, Gangland) and 63 sound effects
+  - generated music (menu, City, Gangland) and 65 sound effects
   - first-encounter hints
 - **Settings:** volumes, key rebinding, screen shake, reduced flashing, hints.
 - **Platforms:** export presets for Windows, Android, iOS and the web demo. Ads, purchases and

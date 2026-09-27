@@ -5,16 +5,18 @@ extends Resource
 ## rules: where a pickup may appear so the player can see it coming and take it safely.
 
 @export_group("Where a pickup appears")
-## How far ahead of the player a pickup appears: far enough to see it coming and change lanes, near
-## enough to be in plain view. The first fair spot at or after this distance is taken.
+## DESIGN-TBD (docs/questions/b7.md): the GDD says when pickups come, not where; this group is the
+## placeholder. How far ahead of the player a pickup appears: far enough to see it coming and change
+## lanes, near enough to be in plain view. The first fair spot at or after this distance is taken.
 @export_range(15.0, 120.0, 1.0, "suffix:m") var lead_distance: float = 42.0
 ## How much further along the track to look for a fair spot. With none in reach, the pickup waits
 ## (and keeps looking as the player runs on) until there is one.
 @export_range(0.0, 80.0, 1.0, "suffix:m") var search_window: float = 30.0
 ## Spacing of the spots tried along the track.
 @export_range(0.5, 10.0, 0.5, "suffix:m") var search_step: float = 1.0
-## The most lanes a pickup may be from the player's lane (a wall runner counts as the outer lane on
-## that side). Nearer lanes come first: the player's own, then its neighbours.
+## DESIGN-TBD (docs/questions/b7.md): the most lanes a pickup may be from the player's lane (a wall
+## runner counts as the outer lane on that side). Nearer lanes come first: the player's own, then its
+## neighbours.
 @export_range(0, 5) var reach_lanes: int = 2
 ## The pickup's lane has floor and nothing in the way for this far before it: no gap, fence, pad,
 ## ramp or speed pad, no ceiling overhead and no enemy, so the player can be in that lane, on the

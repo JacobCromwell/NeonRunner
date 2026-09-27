@@ -26,6 +26,9 @@ extends Node3D
 ## the player's (Loadout.picked_up: breaking it costs no stock), the pickup sound and a burst. A
 ## pickup the player has run past is missed and gone. Pickups are pooled.
 ##
+## DESIGN-TBD (docs/questions/b7.md): where a pickup appears (PickupTuning), that an offer waits for a
+## fair spot however long it takes, and that a missed pickup is gone for good.
+##
 ## Signals for the HUD, hints and tests: spawned, collected (with whether a charge was added), missed.
 
 ## A pickup appeared on the track.

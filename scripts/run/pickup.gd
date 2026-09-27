@@ -8,6 +8,7 @@ extends Node3D
 ## no plate on the floor or column of light (pads), no stripes or crackle (hazards), and its whites
 ## carry no hazard hue (CLAUDE.md readability rules). The badge is about twice the size of the biggest
 ## credit. It looks the same in every zone: like credits and hazards, it's part of the game's language.
+## DESIGN-TBD (docs/questions/b7.md): the look is a placeholder; the GDD doesn't describe pickups.
 ## Visual only: PickupField decides where it goes, when it's taken and when it's missed, and pools it.
 
 ## Emitted when a taken or missed pickup has shrunk away (PickupField pools it again).
