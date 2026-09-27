@@ -64,6 +64,8 @@ const DRAG_OVERSHOOT: float = 2.0
 const SWING_SECONDS: float = 0.2
 ## The red circle that marks where a dropped cyborg will land (radius).
 const DROP_MARK_RADIUS: float = 0.9
+## A dropped cyborg leaps out this far in front of the face (clear of the open jaw) and lands there.
+const DROP_FRONT: float = 3.0
 
 var head: FloatingHead
 var tuning: FloatingHeadTuning
@@ -822,9 +824,9 @@ func _plan_drop() -> Array[Dictionary]:
 	return out
 
 
-## The roof right under the mouth now.
+## The roof just in front of the mouth now (clear of its open jaw).
 func _drop_at() -> float:
-	return world.player.distance + head.pose.z - 1.0
+	return world.player.distance + head.pose.z - DROP_FRONT
 
 
 func _cyborg_margin() -> float:

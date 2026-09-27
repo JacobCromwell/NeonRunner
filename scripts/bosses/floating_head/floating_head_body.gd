@@ -49,6 +49,9 @@ var _hull_box: Hazard
 var _top: StaticBody3D
 var _floor_glow: MeshInstance3D
 var _floor_glow_material: ShaderMaterial
+## The mouth's inside, lit up while it's open.
+var _mouth_glow: MeshInstance3D
+var _mouth_material: StandardMaterial3D
 var _door_open: float = 0.0
 var _look := Vector2.ZERO
 var _time: float = 0.0
@@ -79,6 +82,22 @@ func _build() -> void:
 	_ship.add_child(_jaw)
 	MeshBatch.add_instance(_jaw, meshes["jaw"])
 	_lip = MeshBatch.add_instance(_jaw, meshes["lip"], "Lip")
+	# The mouth's inside lights up in the face's cold white as the jaw drops open (the cyborg drop's
+	# warning).
+	_mouth_material = StandardMaterial3D.new()
+	_mouth_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_mouth_material.emission_enabled = true
+	_mouth_material.emission = FACE_WHITE
+	var quad := QuadMesh.new()
+	quad.size = Vector2(shape.mouth_half * 2.0, shape.mouth_top - shape.mouth_bottom)
+	_mouth_glow = MeshInstance3D.new()
+	_mouth_glow.name = "MouthGlow"
+	_mouth_glow.mesh = quad
+	_mouth_glow.material_override = _mouth_material
+	_mouth_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_mouth_glow.position = Vector3(0.0, (shape.mouth_bottom + shape.mouth_top) * 0.5, 0.08)
+	_mouth_glow.visible = false
+	_ship.add_child(_mouth_glow)
 	_lamp_head = Node3D.new()
 	_lamp_head.name = "Searchlight"
 	_lamp_head.position = shape.lamp_pivot
@@ -221,8 +240,15 @@ func _tick(delta: float) -> void:
 	_door_open = move_toward(_door_open, 1.0 if bay_open else 0.0, delta * 2.5)
 	for i: int in _doors.size():
 		_doors[i].rotation.z = -deg_to_rad(80.0) * smoothstep(0.0, 1.0, _door_open)
-	# The jaw swings down and out (its bottom toward the runner) to open the mouth.
-	_jaw.rotation.x = -deg_to_rad(62.0) * smoothstep(0.0, 1.0, clampf(jaw_open, 0.0, 1.0))
+	# The jaw drops open (sliding down below the mouth, its chin tipping toward the runner), and the
+	# mouth's inside lights up.
+	var open: float = smoothstep(0.0, 1.0, clampf(jaw_open, 0.0, 1.0))
+	var jaw_height: float = shape.mouth_top - shape.mouth_bottom + 0.16
+	_jaw.position = shape.jaw_hinge + Vector3(0.0, -(jaw_height + 0.3) * open, 0.3 * open)
+	_jaw.rotation.x = -deg_to_rad(14.0) * open
+	_mouth_glow.visible = open > 0.01
+	_mouth_material.albedo_color = Color(FACE_WHITE.r * open, FACE_WHITE.g * open, FACE_WHITE.b * open)
+	_mouth_material.emission_energy_multiplier = 2.2 * open
 	# The lift pads' glow on the street below, brighter the lower it flies (none once it's down).
 	var height: float = global_position.y
 	_floor_glow.visible = height > 0.5

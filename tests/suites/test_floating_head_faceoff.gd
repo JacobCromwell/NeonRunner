@@ -49,6 +49,7 @@ func run() -> void:
 	await _test_bait()
 	await _test_fallback()
 	await _test_real_arena()
+	await _test_real_arena_drops()
 	await _test_same_every_attempt()
 
 
@@ -651,6 +652,39 @@ func _test_real_arena() -> void:
 		check(unfair.is_empty(), "every attack keeps the fairness rules (%s) %s" % [", ".join(unfair), tag])
 		check(touch[0] == 0, "the dodging runner never touches a laser %s" % tag)
 		check(not _events(head, &"tower_clip").is_empty(), "the runner baits a tower %s" % tag)
+		await sim.free_world(world)
+
+
+## Drops again and again on the real arena in a later phase (two cyborgs each): every cyborg lands on
+## clear roof, rechecked from the layout, each drop in lanes of its own with a lane left free.
+func _test_real_arena_drops() -> void:
+	var margin: float = float(EnemyDirector.tuning_for("cyborg").get("obstacle_margin"))
+	for lanes: int in LANES:
+		var pair: Array = _fight(_def("drop,low", false, false), lanes, {"phase": 1})
+		var world: RunWorld = pair[0]
+		var head: FloatingHead = pair[1]
+		var tag: String = "(phase 2, %d lanes)" % lanes
+		world.player.god_mode = true
+		world.player.grapples = 1_000_000
+		var bot := FloatingHeadBot.new(head, true)
+		await _until(world, func() -> bool:
+			bot.step()
+			return false, 45.0)
+		var unfair: PackedStringArray = []
+		var lands: Array[Dictionary] = _events(head, &"cyborg_land")
+		for e: Dictionary in lands:
+			if not _all_clear(world.layout, lanes, float(e["at"]) - margin + 0.5, float(e["at"]) + margin - 0.5):
+				unfair.append("%.0f" % float(e["at"]))
+		var crowded: int = 0
+		for e: Dictionary in _events(head, &"drop_warn"):
+			var used: Dictionary = {}
+			for l: int in e["lanes"]:
+				used[l] = true
+			if used.size() != (e["lanes"] as Array).size() or used.size() >= lanes:
+				crowded += 1
+		check(lands.size() >= 4, "it drops cyborgs again and again on the real arena (%d) %s" % [lands.size(), tag])
+		check(unfair.is_empty(), "every one lands on clear roof (%s) %s" % [", ".join(unfair), tag])
+		check(crowded == 0, "each drop in lanes of its own, a lane left free %s" % tag)
 		await sim.free_world(world)
 
 
