@@ -356,22 +356,17 @@ func _test_many() -> void:
 
 ## Simulated runs of campaign levels, measured as tools/measure/big_attacks.gd does (a god-mode runner
 ## in the middle lane stomping every host it passes, the real enemies): with the switch on the big
-## attacks of different types never overlap and every type still attacks; with it off the old
-## overlaps are back. Gangland 3 is item 27's level (drones, Octodogs, hover trucks); Dead Zone 1
-## adds hosts and the Bad Dream.
+## attacks of different types never overlap, every type still attacks and every Octodog charges;
+## with it off the old overlaps are back. Gangland 3 is item 27's level (drones, Octodogs, hover
+## trucks), at 3 lanes and at 6, whose layout has the overlaps; Dead Zone 1 adds hosts and the Bad
+## Dream.
 func _test_campaign() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
-	var cases: Array = [["gangland/3", 3, true], ["gangland/3", 3, false], ["dead_zone/1", 5, true]]
+	var cases: Array = [["gangland/3", 3, true], ["gangland/3", 6, true], ["gangland/3", 6, false], ["dead_zone/1", 5, true]]
 	for case: Array in cases:
 		var tag: String = "%s lanes=%d turns %s" % [case[0], case[1], "on" if case[2] else "off"]
 		var config: LevelConfig = campaign.configure(campaign.step(case[0]), case[1])
 		config.skin = null  # the grey box: skins never change gameplay
-		if case[0] == "gangland/3":
-			# The layout this case was written for, from before the campaign's recency curve (R5). With the
-			# curve, this seed's one Octodog has its first charge planned while the hover truck's cannon
-			# charges: held for its turn, it stops asking once a fence enters its moved-on window, and gives
-			# up without charging (a follow-up for the Octodog's turn wait; Golden 2 at 6 lanes has one too).
-			config.feature_recency = null
 		var layout: LevelLayout = LevelGenerator.new().generate(config, tuning, LevelGenerator.load_for(config))
 		var w: RunWorld = sim.build_world(layout, null, null, config)
 		w.rules = w.rules.duplicate() as GameRules
