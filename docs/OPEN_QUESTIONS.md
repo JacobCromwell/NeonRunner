@@ -817,6 +817,14 @@ rules"; switched off, the game plays exactly as before; measure with `tools/meas
     lift the silhouette but is a glow on clothing, which the colour rules rule out. Strong enough, or lighter clothes, or
     allow the rim light?
 
+**Quitting keeps 20%** (from R2; the rule is decided, GDD §4; these are how it shows)
+108. **What the player sees after quitting:** the pause menu's confirmation now says 20% of the run's credits are kept,
+    like a death; after quitting, the game goes straight back to level select (or the title) as before, with a short
+    "+N credits kept" note, rather than through the results screen a death shows. A quit also counts as an attempt on
+    that level (its tile then reads "not cleared" instead of "new"), though it never improves its best score, stars,
+    time or leaderboard place, and it isn't counted as a death in the stats. Right, or should a quit show the results
+    screen, or not count as an attempt?
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
