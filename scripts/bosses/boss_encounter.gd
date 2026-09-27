@@ -15,7 +15,10 @@ extends Node3D
 ## - the checkpoint: reaching a phase marked `checkpoint` stores where a retry resumes
 ##   (RunContext.boss_resume, with the fight time, score and weapon damage so far);
 ## - the standard armor rule (GDD §10): armor_pickup_due at the start of the final phase and a while
-##   after the player's armor or shield breaks, at most once per phase (task B7 spawns the pickups);
+##   after the player's armor or shield breaks, at most once per phase, and an armor pickup on the
+##   floor ahead each time (_on_armor_pickup_due; the run's PickupField places it fairly); a boss
+##   script can offer other pickups too (offer_pickup: GDD §10's floor that spawns an armor, shield or
+##   grapple pickup), and none comes after the fight;
 ## - the win: the time bonus and the defeat score go to the ScoreKeeper, the boss's parts are
 ##   defeated, and LevelRun ends the run (results, payout, stars from par times, the leaderboard);
 ## - events for other systems: phase_started / phase_ended, protection_broken, armor_pickup_due,
@@ -33,10 +36,12 @@ extends Node3D
 ## fight), _build_boss() (make parts with add_part, visuals), _on_phase_started(i) and _intro_tick(delta)
 ## (entrance and transitions), _on_pattern_started(i) and _pattern_tick(delta) (the pattern),
 ## _on_weak_point_hit(part, hazard), _on_part_defeated(part, cause), _on_part_emp(part, center, radius),
-## _on_phase_ended(i), _on_defeated() and _defeated_tick(delta). Helpers: add_part(), spawn_enemy()
-## (normal enemies: a cyborg drop, a Buzz Overdrive onto the roof), damage() (a boss's own causes: a
-## cluster shocked by a fence, an EMP), hit_damage(), set_light_level(), arena queries (floor_clear,
-## live_fence_between, hole_between), pace(), phase(), is_final_phase(), player_distance(), log_event().
+## _on_phase_ended(i), _on_defeated(), _defeated_tick(delta) and _on_armor_pickup_due(reason) (where
+## the armor rule's pickup goes). Helpers: add_part(), spawn_enemy() (normal enemies: a cyborg drop, a
+## Buzz Overdrive onto the roof), offer_pickup() (an armor, shield or grapple pickup on the floor),
+## damage() (a boss's own causes: a cluster shocked by a fence, an EMP), hit_damage(),
+## set_light_level(), arena queries (floor_clear, live_fence_between, hole_between), pace(), phase(),
+## is_final_phase(), player_distance(), log_event().
 
 ## A phase begins: its intro starts (the entrance for the first phase, the transition for later ones).
 signal phase_started(index: int)
@@ -51,7 +56,8 @@ signal checkpoint_reached(index: int)
 signal protection_broken(item: StringName)
 ## GDD §10's standard armor rule says an armor pickup appears now: `reason` is &"final_phase" (the
 ## final phase began) or &"protection_broken" (BossDef.armor_delay_min–max seconds after a break, at
-## most armor_pickups_per_phase per phase). Task B7 spawns the pickup ahead of the player.
+## most armor_pickups_per_phase per phase). The encounter then offers it (_on_armor_pickup_due), and
+## the run's PickupField puts it on the floor ahead of the player.
 signal armor_pickup_due(reason: StringName)
 signal defeated
 
@@ -346,6 +352,19 @@ func spawn_enemy(type: String, at: float, lane: int, side: int = 0, params: Dict
 		"seed": hash([String(def.id), type, _spawned, rng.seed]), "params": params.duplicate(true)})
 
 
+## Offers the player a pickup (GDD §10: "a section of floor that spawns an armor, shield or grapple
+## pickup"): `item` is &"armor", &"shield" or &"grapple". The run's PickupField puts it on the floor
+## at the first fair spot ahead of the player (in plain view and within reach, never over a gap, in a
+## fence or where an attack is telegraphed), at or after track distance `at` if given, in or nearest to
+## `lane` if given, as soon as there is one. Nothing is offered once the boss is beaten. False if the
+## offer wasn't taken.
+func offer_pickup(item: StringName, at: float = -1.0, lane: int = -1) -> bool:
+	if state == State.DEFEATED or world == null or world.pickups == null:
+		return false
+	log_event(&"pickup_offered", {"item": item})
+	return world.pickups.offer(item, at, lane)
+
+
 ## Switches the weak points of every part on or off.
 func set_weak_points_enabled(on: bool) -> void:
 	for part: BossPart in parts:
@@ -442,6 +461,13 @@ func _defeated_tick(_delta: float) -> void:
 	pass
 
 
+## The standard armor rule says an armor pickup is due (armor_pickup_due; `reason` as there): by
+## default one on the floor ahead of the player (offer_pickup). A boss may put it somewhere of its
+## own (a spot on its arena) with offer_pickup's `at` and `lane`.
+func _on_armor_pickup_due(_reason: StringName) -> void:
+	offer_pickup(&"armor")
+
+
 # --- Internals -------------------------------------------------------------------------
 
 func _physics_process(delta: float) -> void:
@@ -498,6 +524,7 @@ func _begin_phase(index: int) -> void:
 	if def.armor_rule and is_final_phase():
 		log_event(&"armor_pickup", {"reason": &"final_phase"})
 		armor_pickup_due.emit(&"final_phase")
+		_on_armor_pickup_due(&"final_phase")
 	_on_phase_started(index)
 
 
@@ -514,6 +541,9 @@ func _defeat(cause: StringName) -> void:
 	state_time = 0.0
 	_defeat_time = carried_time + world.player.elapsed
 	_armor_due.clear()
+	# No pickup after the fight: none still waiting for a spot, none left on the track.
+	if world.pickups != null:
+		world.pickups.clear()
 	set_weak_points_enabled(false)
 	log_event(&"defeated", {"cause": cause})
 	var bonus: int = def.time_bonus(_defeat_time)
@@ -566,6 +596,7 @@ func _update_armor_rule() -> void:
 			_armor_due.remove_at(i)
 			log_event(&"armor_pickup", {"reason": &"protection_broken"})
 			armor_pickup_due.emit(&"protection_broken")
+			_on_armor_pickup_due(&"protection_broken")
 
 
 ## The environment and the directional lights of the run, as they are before any dimming.

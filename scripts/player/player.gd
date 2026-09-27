@@ -15,6 +15,8 @@ signal died(cause: String)
 signal movement_event(kind: StringName)
 ## A protective item was used up: &"armor", &"shield" or &"grapple".
 signal item_used(item: StringName)
+## A protective item was picked up during the run (gain_item): &"armor", &"shield" or &"grapple".
+signal item_gained(item: StringName)
 ## The player's contact defeated an enemy (cause: &"stomp", &"claws" or &"dash").
 signal enemy_contact(enemy: Enemy, cause: StringName)
 signal revived
@@ -156,6 +158,36 @@ func apply_loadout(p_armor: int, p_shield: int, p_grapples: int, p_claws: bool, 
 	claws = p_claws
 	wall_time_multiplier = p_wall_time_multiplier
 	_avatar.set_equipment({"armor": armor > 0, "shield": shield > 0, "claws": claws})
+
+
+## One more charge of a breakable item picked up during the run (GDD §10: a boss fight's pickups,
+## PickupField): &"armor", &"shield" or &"grapple", up to `cap` charges of it. True if it was added.
+func gain_item(item: StringName, cap: int = 1) -> bool:
+	var have: int = charges_of(item)
+	if have < 0 or have >= cap:
+		return false
+	match item:
+		&"armor":
+			armor += 1
+		&"shield":
+			shield += 1
+		_:
+			grapples += 1
+	_avatar.set_equipment({"armor": armor > 0, "shield": shield > 0})
+	item_gained.emit(item)
+	return true
+
+
+## Charges left of a breakable item (&"armor", &"shield" or &"grapple"), or -1 for anything else.
+func charges_of(item: StringName) -> int:
+	match item:
+		&"armor":
+			return armor
+		&"shield":
+			return shield
+		&"grapple":
+			return grapples
+	return -1
 
 
 func is_invulnerable() -> bool:
