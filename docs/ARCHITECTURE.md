@@ -168,8 +168,9 @@ the Tithe Collector) opt in the same way for whichever of their attacks count as
 The director holds a big attack while another type's is on or its shots are still on their way; an
 enemy whose own attack is on carries on (the Bad Dream's next slash in its chase); and of the enemies
 of different types waiting, the one that has waited longest goes next (then the one spawned first),
-so none is kept from its turn by others that keep asking. Waiting only happens before a warning, never
-inside an attack, so two enemies can't wait on each other. Types space their own attacks themselves
+so none is kept from its turn by others that keep asking. An attack that is on never waits for another
+(the Bad Dream holds a slash within its chase only for an attack that was already on when the chase
+began, and that one doesn't wait), so two enemies can't wait on each other. Types space their own attacks themselves
 (one drone barrage at a time; one Octodog, one hover truck at a time). GDD §9.7's rule holds with the
 switch off as well: an `exclusive_major_attack` (the Bad Dream's chase) and the attacks of the types in
 its `exclusive_of` (Octodogs', drones') never overlap. `is_waiting()` and `turn_wait()` say whether and
