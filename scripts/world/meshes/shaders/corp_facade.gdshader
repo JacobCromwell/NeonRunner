@@ -11,8 +11,9 @@
 //   0 CURTAIN  a glass curtain wall: dark glass catching the sky in a grid of steel mullions, a
 //              spandrel at every floor, offices lit cold white a block at a time.
 //   1 FINS     vertical fins over deep, narrow windows (the fins close up at grazing angles).
-//   2 PODIUM   the calm band a runner runs across: large cladding panels with shadow-gap joints, and on
-//              some buildings a band of dark smoked glass through the lobby floors. Never lit.
+//   2 PODIUM   the calm band a runner runs across: dark cladding panels between brushed steel pilasters
+//              every 3 m, a steel fascia under the cornice, and on some buildings a lobby of dark smoked
+//              glass. Never lit.
 //   3 BLAST    the military's prefab concrete T-walls: segments with dark joints, olive and grey
 //              paint, stencilled codes, grime at the foot.
 //   4 SERVICE  louvred plant floors (only high up: at the foot of a wall louvres would read as vents,
@@ -43,6 +44,8 @@ uniform vec3 blast_c : source_color = vec3(0.4, 0.41, 0.42);
 uniform vec3 stencil_color : source_color = vec3(0.74, 0.74, 0.7);
 uniform vec3 grime_color : source_color = vec3(0.08, 0.085, 0.09);
 uniform float grime = 1.0;
+// The podium's steel: pilasters, fascia, kick plate.
+uniform vec3 pilaster_color : source_color = vec3(0.34, 0.36, 0.39);
 // The floodlights' cold wash: its colour, strength, the lamps' height and spacing, and how far up it
 // reaches.
 uniform vec3 flood_color : source_color = vec3(0.86, 0.92, 1.0);
@@ -128,25 +131,36 @@ void fragment() {
 		average = mix(average, albedo * 0.85, fin_w);
 		col = weather(col, uv, storey_base, seed);
 	} else if (style == 2) {
+		// Dark cladding panels between steel pilasters every 3 m (the band's rhythm as it streams
+		// past), a groove at 3.6 m, a steel fascia under the cornice and a kick plate at the foot.
+		vec3 steel = to_linear(pilaster_color);
 		vec2 q = uv / vec2(3.0, 1.8);
 		vec2 fq = fw_m / vec2(3.0, 1.8);
-		float joint = max(filtered_pulse(q.x, fq.x, 0.0, 0.012), filtered_pulse(q.y, fq.y, 0.0, 0.02));
-		col = albedo * (0.93 + 0.09 * hash12(floor(q) + seed)) * (1.0 - 0.45 * joint);
+		float joint = filtered_pulse(q.y, fq.y, 0.0, 0.02);
+		col = albedo * (0.9 + 0.12 * hash12(floor(q) + seed)) * (1.0 - 0.4 * joint);
+		col *= 0.92 + 0.1 * value_noise(vec2(uv.x * 0.6, uv.y * 0.9) + seed);
 		if (hash11(seed * 1.7 + 0.3) < 0.45) {
-			// A band of dark smoked glass through the lobby floors, in slim steel frames: nobody is in.
-			float g = band(uv.y, 0.9, calm_top - 1.5, fw_m.y);
-			float frame = filtered_pulse(uv.x / 3.0, fw_m.x / 3.0, 0.0, 0.03);
-			vec3 smoked = to_linear(glass_color) * 1.4 + sky * 1.1;
+			// A lobby of dark smoked glass in slim steel frames, a faint cold light deep inside.
+			float g = band(uv.y, 0.6, calm_top - 1.2, fw_m.y);
+			float frame = filtered_pulse(uv.x / 1.5, fw_m.x / 1.5, 0.0, 0.03);
+			float inside = band(fract(uv.y / 2.4), 0.8, 0.86, fw_m.y / 2.4) * 0.35;
+			vec3 smoked = to_linear(glass_color) * 1.3 + sky * 1.2 + to_linear(window_cold) * inside * 0.08;
 			col = mix(col, mix(smoked, albedo * 0.8, frame), g);
-			col = mix(col, albedo * 0.7, band(uv.y, calm_top - 1.5, calm_top - 1.35, fw_m.y));
 		}
-		// A steel kick plate at the foot.
-		col = mix(col, albedo * 0.62, band(uv.y, -1.0, 0.3, fw_m.y));
+		col *= 1.0 - 0.45 * band(uv.y, 3.56, 3.62, fw_m.y);
+		// Pilasters: brushed steel, a shadow line down each side.
+		float px = fract(uv.x / 3.0) * 3.0;
+		float pil = band(px, 0.0, 0.34, fw_m.x);
+		float edge = band(px, 0.34, 0.39, fw_m.x) + band(px, 2.95, 3.0, fw_m.x);
+		vec3 pil_col = steel * (0.9 + 0.1 * value_noise(vec2(uv.x * 12.0, uv.y * 0.4)));
+		col = mix(col, pil_col, pil);
+		col *= 1.0 - 0.5 * edge;
+		col = mix(col, steel * 0.9, band(uv.y, calm_top - 1.2, calm_top, fw_m.y));
+		col = mix(col, steel * 0.55, band(uv.y, -1.0, 0.6, fw_m.y));
 		col = weather(col, uv, 0.0, seed);
-		col *= 0.78 + 0.22 * smoothstep(0.0, 5.0, uv.y);
 		opaque = 0.0;
 		far = smoothstep(0.2, 0.6, aa);
-		average = albedo * 0.72;
+		average = mix(albedo * 0.9, steel, 0.12);
 	} else if (style == 3) {
 		float sx = uv.x / 1.52;
 		float seg = floor(sx);

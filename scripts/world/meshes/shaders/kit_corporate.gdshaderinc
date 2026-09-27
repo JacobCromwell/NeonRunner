@@ -76,9 +76,9 @@ vec3 corp_roof(vec3 base, vec3 w, vec2 uv, float param) {
 		float mark = stencil_code(sp, 0.42, seed + floor(uv.y / 6.1), max(fx, fw.y));
 		col = mix(col, corp_marking * 0.85, mark * 0.8 * step(0.45, hash11(floor(uv.y / 6.1) + seed * 1.9)));
 	}
-	// The brand's mark painted mid-carriage on some.
+	// The brand's mark painted mid-carriage on some, nearly as wide as the roof.
 	if (logo_on > 0.5) {
-		float s = hw * 0.64;
+		float s = hw * 0.95;
 		float mark = corp_logo(vec2(xm, uv.y - len * 0.5) / s, max(fx, fw.y) / s);
 		col = mix(col, style < 0.5 ? corp_brand : corp_marking * 0.8, mark * 0.92);
 	}
@@ -176,12 +176,16 @@ vec3 corp_plate(vec3 base, vec3 w, vec3 n, float param) {
 }
 
 // PAT_CORP_AD (34): a corporate screen, glowing: generic, soulless corporate art. UV.y runs 0-1 up
-// the screen and UV.x in the same units (it ends at the screen's aspect ratio); param a whole-number
-// seed picks the ad: the brand's mark with its slogan, a chart that only goes up, or a grid globe
-// (the corporation everywhere). COLOR is the brand's glow; the art is it and cold white, nothing else.
-// A slow sweep of light crosses it (no flashing); glow_mask shapes the glow.
-vec3 corp_ad(vec3 base, vec2 uv, float param, float t, out float glow_mask) {
-	float seed = floor(param + 0.5);
+// the screen and UV.x in the same units (it ends at the screen's aspect ratio); param = a seed (0-99)
+// + 100 * the screen's height in decimetres when UV is in metres instead (a hazard sign's face). The
+// seed picks the ad: the brand's mark with its slogan, a chart that only goes up, or a grid globe (the
+// corporation everywhere). COLOR is the brand's glow; the art is it and cold white, nothing else. A
+// slow sweep of light crosses it (no flashing); glow_mask shapes the glow.
+vec3 corp_ad(vec3 base, vec2 uv_in, float param, float t, out float glow_mask) {
+	float code = floor(param + 0.5);
+	float seed = mod(code, 100.0);
+	float height = floor(code / 100.0) * 0.1;
+	vec2 uv = uv_in / (height > 0.0 ? height : 1.0);
 	float kind = mod(seed, 3.0);
 	float fw = max(max(fwidth(uv.x), fwidth(uv.y)), 1e-4);
 	vec3 white = corp_text;
@@ -274,20 +278,23 @@ vec3 corp_banner(vec3 base, vec2 uv, float param) {
 	return mix(col, corp_marking * 0.9, rows * 0.9);
 }
 
-// PAT_CORP_GLASS (37): a glass wall with a lit corridor behind it (a skyway's sides and end, a
-// tower's sky lobby). UV in metres: x along the glass, y up from the corridor's floor. Cold white
-// light panels run along its ceiling (glowing, glow_mask), mullions every 1.5 m, the floor dark.
+// PAT_CORP_GLASS (37): a glass wall with a lit corridor behind it (a skyway's sides and end). UV in
+// metres: x along the glass, y up from the corridor's floor; param = the corridor's height in
+// decimetres. Dark glass, catching a little of the sky toward its top; behind it the corridor's back
+// wall lit from above and a strip of cold white ceiling panels (the only bright part); steel mullions
+// every 1.5 m. The glass glows as a whole (glow_mask 1: its brightness is in the colour), the mullions
+// are lit steel.
 vec3 corp_glass(vec3 base, vec2 uv, float param, out float glow_mask) {
 	vec2 fw = max(fwidth(uv), vec2(1e-4));
 	float height = max(floor(param + 0.5) * 0.1, 1.0);
 	float mullion = filtered_pulse(uv.x / 1.5, fw.x / 1.5, 0.0, 0.05);
-	float lights = band(uv.y, height - 0.34, height - 0.22, fw.y) * filtered_pulse(uv.x / 1.5, fw.x / 1.5, 0.12, 0.88);
-	vec3 inside = mix(base * 0.18, base * 0.55, smoothstep(0.2, height, uv.y));
-	inside = mix(inside, base * 0.08, band(uv.y, -1.0, 0.25, fw.y));
-	vec3 col = mix(inside, vec3(0.2, 0.21, 0.24), mullion);
-	col = mix(col, corp_text, lights * (1.0 - mullion));
-	glow_mask = mix(0.25, 1.0, lights) * (1.0 - mullion);
-	return col;
+	float lights = band(uv.y, height - 0.32, height - 0.2, fw.y) * filtered_pulse(uv.x / 1.5, fw.x / 1.5, 0.14, 0.86);
+	float wall = smoothstep(height * 0.3, height - 0.3, uv.y) * band(uv.y, 0.0, height - 0.32, fw.y);
+	vec3 glass = vec3(0.035, 0.04, 0.05) + vec3(0.03, 0.035, 0.045) * clamp(uv.y / height, 0.0, 1.0);
+	vec3 col = mix(glass, base * 0.3, wall * 0.85);
+	col = mix(col, corp_text, lights);
+	glow_mask = 1.0 - mullion;
+	return mix(col, vec3(0.2, 0.21, 0.24), mullion);
 }
 
 // Dispatches the Corporate patterns (ids 30-39) for kit_solid.gdshader.

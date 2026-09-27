@@ -32,17 +32,17 @@ enum FloorStyle { MAGLEV, PLAZA }
 @export_group("Environment")
 ## DESIGN-TBD: the GDD gives the zone's palette and mood, not its hour or weather. A heavy overcast
 ## night: a low smog deck lit a cold grey from below by the city, no moon, no stars.
-@export var sky_zenith_color: Color = Color(0.03, 0.035, 0.05)
-@export var sky_horizon_color: Color = Color(0.13, 0.15, 0.19)
+@export var sky_zenith_color: Color = Color(0.05, 0.06, 0.08)
+@export var sky_horizon_color: Color = Color(0.16, 0.18, 0.22)
 ## The smog lit by the towers' cold light, low over the horizon.
-@export var haze_color: Color = Color(0.26, 0.3, 0.36)
-@export_range(0.0, 2.0, 0.05) var haze_strength: float = 0.75
+@export var haze_color: Color = Color(0.3, 0.34, 0.4)
+@export_range(0.0, 2.0, 0.05) var haze_strength: float = 0.7
 @export var abyss_color: Color = Color(0.012, 0.015, 0.02)
 @export var skyline_color: Color = Color(0.05, 0.058, 0.075)
 @export var skyline_window_color: Color = Color(0.72, 0.8, 0.9)
 @export var ambient_color: Color = Color(0.5, 0.55, 0.64)
 ## Distant geometry fades into the smog between fog_begin and fog_end.
-@export var fog_color: Color = Color(0.1, 0.115, 0.14)
+@export var fog_color: Color = Color(0.13, 0.15, 0.19)
 @export_range(0.0, 150.0, 1.0, "suffix:m") var fog_begin: float = 18.0
 @export_range(50.0, 400.0, 5.0, "suffix:m") var fog_end: float = 190.0
 @export_range(0.0, 1.0, 0.01) var fog_max: float = 1.0
@@ -61,8 +61,11 @@ enum FloorStyle { MAGLEV, PLAZA }
 ## over 20° from each), fully saturated where they are soft and light: the harsh, generic corporate
 ## blue of a screen's glare. Blue is also the dimmest hue, so the brand never outshines a hazard.
 @export var brand_color: Color = Color(0.14, 0.27, 1.0)
-## The brand's paint (liveries, banners, flags, plaques): lit, never glowing.
+## The brand's paint on banners, flags and plaques: lit, never glowing.
 @export var brand_paint_color: Color = Color(0.11, 0.18, 0.46)
+## The brand's livery on the trains' roofs (the painted mark, the pinstripes): lighter than the cloth,
+## so nothing painted on a roof is ever as dark as a gap's inside.
+@export var livery_color: Color = Color(0.26, 0.36, 0.62)
 ## How brightly the brand's signs glow.
 @export_range(0.0, 1.5, 0.05) var brand_glow: float = 0.6
 ## Pale paint for markings and stencils, and the cold white of lettering on screens.
@@ -82,16 +85,16 @@ enum FloorStyle { MAGLEV, PLAZA }
 @export_range(1.0, 5.0, 0.1, "suffix:m") var train_depth: float = 3.2
 ## Corporate express roofs: light steel, sterile white-grey and gunmetal.
 @export var roof_colors: PackedColorArray = PackedColorArray([
-	Color(0.55, 0.57, 0.61), Color(0.64, 0.66, 0.69), Color(0.44, 0.46, 0.5)])
+	Color(0.46, 0.48, 0.52), Color(0.53, 0.55, 0.58), Color(0.38, 0.4, 0.44)])
 ## Military freight car roofs: olive drab.
 @export var military_roof_colors: PackedColorArray = PackedColorArray([
-	Color(0.3, 0.31, 0.22), Color(0.27, 0.28, 0.2)])
+	Color(0.3, 0.31, 0.25), Color(0.27, 0.285, 0.23)])
 ## DESIGN-TBD: the share of carriages that are military freight (runs of cars share a kind), and of
 ## corporate cars with the brand's mark painted on the roof.
-@export_range(0.0, 1.0, 0.01) var military_car_share: float = 0.25
+@export_range(0.0, 1.0, 0.01) var military_car_share: float = 0.15
 @export_range(0.0, 1.0, 0.01) var roof_logo_share: float = 0.3
-## The gangway bellows between two carriages: a dark band across the roof.
-@export var joint_color: Color = Color(0.1, 0.105, 0.12)
+## The gangway bellows between two carriages: a grey band across the roof, never as dark as a gap.
+@export var joint_color: Color = Color(0.27, 0.28, 0.3)
 ## The walkway along the building faces beside the outer lanes (and the plaza's paving colour).
 @export var ledge_color: Color = Color(0.38, 0.4, 0.43)
 ## DESIGN-TBD: everything below the running surface (the carriages' sides and ends, the guideways,
@@ -108,19 +111,17 @@ enum FloorStyle { MAGLEV, PLAZA }
 ## The plaza's paving (PLAZA): polished slabs.
 @export var paving_colors: PackedColorArray = PackedColorArray([
 	Color(0.4, 0.41, 0.43), Color(0.34, 0.35, 0.37)])
-## How thick the plaza deck is at a gap's edge, before its shaft drops into the dark.
-@export_range(0.3, 3.0, 0.05, "suffix:m") var deck_depth: float = 1.1
 
 @export_group("Motion")
 ## DESIGN-TBD: GDD §5 proposes motion effects for still floors (the owner's review: every zone with a
 ## still floor gets them). Per 40 m of track: fine grit and drizzle, a few scraps of paper and speed
 ## streaks drifting toward the player (a = opacity). The trains also show their carriage joints.
-@export_range(0, 200, 1) var dust_count: int = 50
+@export_range(0, 200, 1) var dust_count: int = 20
 @export_range(0, 60, 1) var scrap_count: int = 3
 @export_range(0, 60, 1) var streak_count: int = 16
-@export var dust_color: Color = Color(0.72, 0.76, 0.82, 0.35)
+@export var dust_color: Color = Color(0.72, 0.76, 0.82, 0.22)
 @export var scrap_color: Color = Color(0.74, 0.76, 0.78, 0.55)
-@export var streak_color: Color = Color(0.86, 0.9, 0.96, 0.3)
+@export var streak_color: Color = Color(0.86, 0.9, 0.96, 0.2)
 @export_range(0.0, 30.0, 0.5, "suffix:m/s") var dust_speed: float = 7.0
 @export_range(0.0, 80.0, 0.5, "suffix:m/s") var streak_speed: float = 26.0
 
@@ -132,9 +133,11 @@ enum FloorStyle { MAGLEV, PLAZA }
 ## Curtain walls' mullions and spandrels, and fins: steel and gunmetal.
 @export var facade_colors: PackedColorArray = PackedColorArray([
 	Color(0.3, 0.32, 0.35), Color(0.22, 0.235, 0.26), Color(0.38, 0.4, 0.43), Color(0.26, 0.27, 0.28)])
-## The sterile cladding of the calm band: pale stone, brushed steel, dark granite.
+## The sterile cladding of the calm band: dark granite, gunmetal and graphite, between brushed steel
+## pilasters (darker than the floor, so the running surface reads as the play space).
 @export var podium_colors: PackedColorArray = PackedColorArray([
-	Color(0.44, 0.45, 0.46), Color(0.36, 0.38, 0.41), Color(0.25, 0.26, 0.28), Color(0.5, 0.5, 0.49)])
+	Color(0.2, 0.21, 0.23), Color(0.15, 0.16, 0.18), Color(0.25, 0.26, 0.28), Color(0.18, 0.18, 0.19)])
+@export var pilaster_color: Color = Color(0.34, 0.36, 0.39)
 ## The military's blast walls: two olives and a grey (lit, never glowing).
 @export var blast_colors: PackedColorArray = PackedColorArray([
 	Color(0.3, 0.31, 0.22), Color(0.35, 0.36, 0.3), Color(0.4, 0.41, 0.42)])
@@ -154,7 +157,7 @@ enum FloorStyle { MAGLEV, PLAZA }
 @export_range(0.0, 1.0, 0.01) var strip_share: float = 0.7
 ## Faint lines on the facades at these heights, to read how high a wall run is.
 @export var wall_height_marks: PackedFloat32Array = PackedFloat32Array([2.0, 4.0])
-@export var wall_mark_color: Color = Color(0.6, 0.66, 0.74)
+@export var wall_mark_color: Color = Color(0.42, 0.45, 0.5)
 ## DESIGN-TBD (generic, soulless corporate art, GDD §5): the share of towers carrying the brand's big
 ## sign near the top, banners hanging down their faces, and surveillance cameras over the band.
 @export_range(0.0, 1.0, 0.01) var sign_share: float = 0.45
@@ -197,7 +200,7 @@ enum FloorStyle { MAGLEV, PLAZA }
 @export_range(0.0, 10.0, 0.1) var gate_weight: float = 2.5
 @export_range(0.0, 10.0, 0.1) var viaduct_weight: float = 2.5
 @export_range(0.0, 10.0, 0.1) var ship_weight: float = 1.0
-@export var soffit_color: Color = Color(0.4, 0.42, 0.45)
+@export var soffit_color: Color = Color(0.34, 0.36, 0.39)
 @export var concrete_color: Color = Color(0.42, 0.42, 0.41)
 ## The flush lamps along the lane seams under every ceiling: cold white.
 @export var ceiling_lamp_color: Color = Color(0.86, 0.92, 1.0)
@@ -395,7 +398,7 @@ func facade_material() -> ShaderMaterial:
 			"blast_a": blast_colors[0], "blast_b": blast_colors[1 % blast_colors.size()],
 			"blast_c": blast_colors[2 % blast_colors.size()], "stencil_color": marking_color,
 			"flood_color": flood_color, "flood_strength": flood_strength, "flood_height": band_top + 0.3,
-			"flood_spacing": flood_spacing})
+			"flood_spacing": flood_spacing, "pilaster_color": pilaster_color})
 	return _materials[&"facade"]
 
 
@@ -422,7 +425,7 @@ func fence_field_materials() -> Array[Material]:
 
 func _solid_params() -> Dictionary:
 	return {"glow_scale": emissive_scale, "sheen_color": sheen_color, "sheen_strength": sheen_strength,
-		"corp_brand": brand_paint_color, "corp_brand_glow": brand_color, "corp_marking": marking_color,
+		"corp_brand": livery_color, "corp_brand_glow": brand_color, "corp_marking": marking_color,
 		"corp_text": screen_text_color, "corp_roof_half_width": trains().roof_half_width(2.4)}
 
 

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="CorporateSkin" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/skins/corporate_skin.gd" id="1_skin"]
+
+[resource]
+script = ExtResource("1_skin")
+enemy_variant = &"corporate"
+floor_style = 1
+compound_share = 0.3
+hover_ship_share = 0.8
+ship_weight = 2.0

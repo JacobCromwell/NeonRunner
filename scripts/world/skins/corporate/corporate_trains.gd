@@ -204,30 +204,28 @@ func _roof(s: MeshLayer, t0: float, t1: float, d0: float, d1: float, g0: float, 
 	s.rect(Vector3(t0, -SHOULDER_DROP, -d0), Vector3(sx, SHOULDER_DROP, 0), Vector3(0, 0, -(d1 - d0)), rim)
 
 
-## A gangway between two carriages at grid line g: a recessed dark band across the train, bridged by a
-## flush cover plate (so it never reads as a hole), the bellows' folds showing at the shoulders.
+## A gangway between two carriages at grid line g: a slightly recessed band of grey bellows across the
+## train (never as dark as a gap's inside, so it never reads as a hole) with its folds as fine dark
+## lines, and a flush cover plate bridging it.
 func _gangway(s: MeshLayer, t0: float, t1: float, g: float) -> void:
 	var z: float = -g
 	var w: float = t1 - t0
-	var dark: Color = skin.joint_color
-	s.rect(Vector3(t0, -0.06, z + JOINT_HALF), Vector3(w, 0, 0), Vector3(0, 0, -JOINT_HALF * 2.0), dark)
+	var bellows: Color = skin.joint_color
+	s.rect(Vector3(t0, -0.04, z + JOINT_HALF), Vector3(w, 0, 0), Vector3(0, 0, -JOINT_HALF * 2.0), bellows)
 	# The carriages' roof ends, a crisp lip either side of the band.
 	for e: float in [z + JOINT_HALF, z - JOINT_HALF]:
 		var facing: float = 1.0 if e < z else -1.0
 		if facing > 0.0:
-			s.rect(Vector3(t0 + SHOULDER, -0.06, e), Vector3(w - SHOULDER * 2.0, 0, 0), Vector3(0, 0.06, 0), dark.lightened(0.25))
+			s.rect(Vector3(t0 + SHOULDER, -0.04, e), Vector3(w - SHOULDER * 2.0, 0, 0), Vector3(0, 0.04, 0), bellows.lightened(0.2))
 		else:
-			s.rect(Vector3(t1 - SHOULDER, -0.06, e), Vector3(-(w - SHOULDER * 2.0), 0, 0), Vector3(0, 0.06, 0), dark.lightened(0.25))
+			s.rect(Vector3(t1 - SHOULDER, -0.04, e), Vector3(-(w - SHOULDER * 2.0), 0, 0), Vector3(0, 0.04, 0), bellows.lightened(0.2))
+	for i: int in 4:
+		var fz: float = z - JOINT_HALF + (float(i) + 0.5) * JOINT_HALF * 2.0 / 4.0
+		s.rect(Vector3(t0, -0.035, fz + 0.012), Vector3(w, 0, 0), Vector3(0, 0, -0.024), bellows.darkened(0.45))
 	var plate: float = minf(JOINT_PLATE, w * 0.5 - SHOULDER)
 	var cx: float = (t0 + t1) * 0.5
-	s.box(Vector3(cx, -0.015, z), Vector3(plate * 2.0, 0.03, JOINT_HALF * 2.0 + 0.1), skin.ledge_color.darkened(0.15), 0.0,
+	s.box(Vector3(cx, -0.015, z), Vector3(plate * 2.0, 0.03, JOINT_HALF * 2.0 + 0.1), skin.ledge_color, 0.0,
 		MeshKit.PAT_PLAIN, MeshKit.FACE_PY | MeshKit.FACE_PZ | MeshKit.FACE_NZ)
-	for i: int in 3:
-		var fz: float = z - JOINT_HALF + (float(i) + 0.5) * JOINT_HALF * 2.0 / 3.0
-		for side: float in [-1.0, 1.0]:
-			var fx: float = cx + side * (plate + (w * 0.5 - plate) * 0.5)
-			s.box(Vector3(fx, -0.05, fz), Vector3(w * 0.5 - plate, 0.02, 0.05), dark.lightened(0.12), 0.0, MeshKit.PAT_PLAIN,
-				MeshKit.FACE_PY)
 
 
 ## The walkway along the building face between x0 and x1 (world x), flush with the roofs: a brushed
