@@ -713,6 +713,44 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
     three credits (35 of the 42) too high to take them. Keep it (claws trade those credits for a longer run), or place
     the line so both paths reach it (for example fewer credits, all in the high first half)?
 
+**The Floating Head: ship, entrance, bombing run and reveal** (from E1a; numbers in `data/bosses/city_boss_tuning.tres`;
+play it with `--boss=city_boss` in debug builds)
+83. **The ship and its face** (GDD §10): a hull shaped like a huge head seen from behind, dark gunmetal with cold white and
+    blue lights; its stern is a visor screen with a face in cold-white LED dots (eyes that follow the runner, heavy brows,
+    static, a rolling bar), a hinged jaw below (the mouth for the cyborg drop), loudspeaker "ears", a searchlight and bomb
+    bay underneath, three red weak points on the crown under covers. Does the look fit? Should the face keep the cult's
+    cold-white screen language or have a colour of its own (never a hazard colour)?
+84. **Its size:** it fills the street less 0.6 m a side (6.6 m wide at 3 lanes, 11.4 m at 5, 13.8 m at 6), 24 m long,
+    10.5–12 m tall, so the arena's walls carry no signs. A bigger ship would fly above the buildings, where its face and
+    weak points are hard to read on a phone. Right scale?
+85. **The entrance:** a 4 s intro. It starts 42 m behind the runner out of sight with a jet roar, sweeps overhead (the
+    camera shakes) and eases into its station, its stern 34 m ahead and its belly 12 m up; it attacks nothing on the way.
+86. **The searchlight** (GDD §10, proposed): the light hunts the runner, its spot where the runner will be when a bomb
+    lands (about 22 m ahead); after each blast it swings away 1–2 lanes and back. The lock is the warning: the light turns
+    from white to red, a red target circle marks the spot, a clack-and-alarm plays, and the bomb falls with its whistle;
+    the blast comes 1.1 s after the lock. Every third lock covers two lanes. That makes 9 locks and 12 bombs in the 17 s
+    first run. Hunt the player like this, or sweep a fixed pattern? Is 1.1 s right? Is a white sweeping light (red only
+    when locked) right?
+87. **The blast:** a fireball whose hitbox burns 0.35 s, 0.7 of a lane wide and 2.4 m tall, too tall to jump, so
+    switching lanes is the dodge; armor and the shield block it, the dash passes through, and a wall runner beside it is
+    safe. Should a jump, a slide or a wall run ever be a planned way to dodge a bomb?
+88. **Where bombs may fall** (fairness): only on clear roof (no holes or fences from 8 m before to 5 m after), with a free
+    lane at most 2 lanes away and a clear way to it, never under a ceiling, never within 3 m of a pickup. Otherwise the
+    light keeps hunting, so a runner hemmed in by fences may see no bombs for a moment. Right rules?
+89. **The later, shorter runs** (GDD §10: once or twice it rises for another, shorter run): 2 runs of 9 s, at the start of
+    phases 2 and 3, at the phase's pace, so the warning shrinks to 0.96 s and then 0.85 s. When should they come, how
+    long, and should "the next phase is faster" also shorten the warnings?
+90. **The reveal:** after the first run it drops in front of the runner over 3 s, to 26 m ahead with its belly 3 m up
+    (above the fences, so the track stays in view); over the last 1.6 s its screen powers on (a bright line, static, then
+    the face) with a picture tube's thunk, static and a loudspeaker blare. Is the height right?
+91. **The arena:** the City's truck roofs with gaps, fences and pulsing fences at difficulty 0.3, 3 laps of 60 s, opening
+    with 80 m of clear roof; no signs, no ceilings yet (phase 3 will need one), no enemies of its own (the cyborgs come
+    from its mouth). Its City look hangs none of the towers' big feed screens over the street, since the ship flies there
+    (the roof billboards still play the feed). Right mix, and how hard should the arena be under the bombs?
+92. **Its sounds** (GDD §11): a flyover roar with a Doppler drop and a power chord, the searchlight's clunk and arc hum, a
+    lock's clack and two-tone alarm, a falling whistle, a blast, and the reveal's tube thunk, static and blare. Do they
+    fit?
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
