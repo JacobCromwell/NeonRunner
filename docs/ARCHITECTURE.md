@@ -49,8 +49,9 @@ the F6 tuning panel. Quick play (`--quick`, or any of `--god --seed=N --lanes=N 
 --features=a,b --full-loadout --nofall --skin=<name>`) restarts on death like the grey box did.
 `--level=<step id>` plays a campaign step with the full flow and takes `--lanes`, `--god`, `--nofall`
 and `--full-loadout` for reviews; `--boss=<boss id>` plays a boss fight (a zone's boss with the full
-flow, any other, such as the test boss, as quick play) and also takes `--phase=N`. Command-line starts
-work in debug builds only, so a release build can't skip progression or farm credits with them.
+flow; any other, such as the test boss, or a zone's boss still being built (`BossDef.preview_scene`),
+as quick play) and also takes `--phase=N`. Command-line starts work in debug builds only, so a
+release build can't skip progression or farm credits with them.
 
 Physics order each frame: RunWorld (builds chunks, spawns enemies) → Player (moves, checks hazards
 and triggers) → the boss's pattern (a boss fight) → enemies → projectiles → credits → pickups →
@@ -404,7 +405,11 @@ to be built (`LevelConfig.PLANNED_FEATURES`, with the wall fences' `wall_fences`
 A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, which the player
 continues past. A cinematic is a scene whose root extends `Cinematic` (emit `finished`, support
 `skip()`); a boss is built on the boss framework (Bosses, below). Every boss slot is still a
-placeholder; the slots hold the phases GDD §10 gives each designed boss and its armor-rule delay.
+placeholder; the slots hold the phases GDD §10 gives each designed boss and its armor-rule delay. A
+fight still being built names its scene in the slot's `preview_scene` instead of `scene`: the
+campaign keeps the card, and debug builds play the fight with `--boss=<boss id>` as quick play
+(`BossDef.preview()`), so nothing is recorded. The City's Floating Head is one until its last step
+(E1d) moves it to `scene`.
 
 ## Bosses
 
@@ -431,6 +436,7 @@ encounter.setup(world, context, arena)   joins the world between the player and 
 | `scripts/bosses/boss_props.gd` | what a boss places within sight: fences, blocks, pads, ceilings, a wall taken away, floor warnings |
 | `scripts/ui/widgets/boss_bar.gd` | the HUD's boss bar, with a marker at each phase's end |
 | `scripts/bosses/test_boss*.gd`, `data/bosses/test_boss*.tres`, `scenes/bosses/test_boss.tscn` | the test boss, outside the campaign (`./play.sh --boss=test_boss`) |
+| `scripts/bosses/floating_head/`, `scenes/bosses/floating_head.tscn`, `data/bosses/city_boss*.tres` | the Floating Head, the City's boss (see below; `./play.sh --boss=city_boss` while it's a preview) |
 
 - **The arena** (`BossArena`): the generator plans `BossDef.arena_laps` laps from the boss's arena
   config (one lap's seed, features, difficulty, pacing and skin; `duration_seconds` is the lap's
@@ -493,13 +499,27 @@ slot's `BossDef` filled in (scene, phases, arena, numbers). Override the hooks i
 warning (a floor warning from `props` also keeps pickups away), random choices come from `rng`, and
 time from the physics step. The test boss (`TestBoss`) is a small example.
 
+**The Floating Head** (GDD §10, task E1; built so far: E1a, the ship and face, the entrance, the
+bombing run and the reveal), in `scripts/bosses/floating_head/`:
+
+| File | What |
+|---|---|
+| `floating_head.gd` (`FloatingHead`) | the encounter: each phase's intro (the first is the entrance, overhead from behind; later ones rise), its bombing run if it has one (`run_seconds(phase)`), then the descent in front of the runner (the first time, the reveal: the face powers on) and the face-off (a placeholder hover until E1b). The ship's `pose` is kept relative to the runner (sideways, belly height, stern ahead), so nothing depends on how long the fight has lasted. `sound()` plays and logs every warning |
+| `floating_head_body.gd` (`FloatingHeadBody`) | the body part: the model and its moving parts (face screen, jaw, searchlight gimbal, bay doors, weak-point covers), a solid hull hitbox, three weak points on the crown and the crown's top surface (both off until it's pinned, E1c: `set_weak_points_enabled`, `set_top_solid`), and the face's state (`screen_power`, `anger`, `eye_charge`, `glitch`) |
+| `floating_head_model.gd` (`FloatingHeadModel`) | the low-poly meshes, built in code from a `Shape` sized to the street (MeshKit layers merged into a few surfaces: about 13 surfaces and 11k vertices), and the bomb |
+| `floating_head_bombing.gd` (`FloatingHeadBombing`) | the searchlight and the bombs: the lock (the warning: red light, `circle_warning`, lock sound, the bomb falling with its whistle), the fairness rules (`plan`, `fair`, `escape_lane`), and pooled blast hitboxes (enemy attacks) that keep clear of a wall runner |
+| `floating_head_face.gdshader`, `floating_head_light.gdshader` | the face screen (unshaded and procedural: the same on every renderer; still with Reduced flashing) and the searchlight's beam and spot |
+| `floating_head_tuning.gd`, `data/bosses/city_boss_tuning.tres` | its numbers (F6 in its fight) |
+| `tools/showcase/floating_head_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/stern/below/entrance/bombing/reveal`) |
+
 **How the designed bosses fit** (GDD §10; each is a later task):
-- **Floating Head (E1):** the ship and face are the body part; the bombing run drops bombs under
-  `circle_warning`s where the searchlight lingers; eye-laser sweeps are attack hitboxes on the part;
-  the cyborg drop is `spawn_enemy("cyborg", ...)`. The marked towers are laid out on each lap
-  (`_plan_lap`), and the fallen tower is a surface (`add_surface`) or a ramp. The weak points are live
-  only while it's pinned; phase 3's pad and the ship's underside are `arena.add_pieces()` (or
-  `props.pad` and `props.ceiling` within sight); `weapon_share_cap` 0.34 keeps weapons to one stomp.
+- **Floating Head (E1b–E1d):** eye-laser sweeps are attack hitboxes on the part, their warning the
+  face's `eye_charge`; the cyborg drop is `spawn_enemy("cyborg", ...)` from the jaw. The marked towers
+  are laid out on each lap (`_plan_lap`), and the fallen tower is a surface (`add_surface`) or a ramp.
+  The weak points and the crown's top are live only while it's pinned; phase 3's pad and the ship's
+  underside are `arena.add_pieces()` (or `props.pad` and `props.ceiling` within sight);
+  `weapon_share_cap` 0.34 keeps weapons to one stomp. E1d adds the propaganda voice and slogans and
+  the defeat (the face's `glitch`), and moves the scene from `preview_scene` to `scene`.
 - **Sewer Swarm (E4):** 4–5 clusters are parts with health of their own and `is_swarm` (MultiMesh
   crowds drawn by the part), moving ahead of and behind the player (parts never retire); baiting one
   into a live fence or a hole is the boss script's check (`arena.live_fence_between`,
@@ -553,16 +573,19 @@ it, or gives its rules script `positions()`. `DummyBoss` (`tests/helpers/dummy_b
 for framework tests, with `make_def()` for a BossDef from a list of phases; `test_bosses` runs fights
 in bare worlds and, with the test boss in the City's slot, through the App. `test_pickups` checks
 pickup placement against the rules as it writes them itself, over hand-built cases and generated
-tracks at 3, 5 and 6 lanes, and the armor rule end to end on the test boss. The runner frees anything
-a suite leaves in the tree, gives suites a fresh, unsaved profile, reports a suite that fails to load,
-and ends a stuck run after 600 s of real time.
+tracks at 3, 5 and 6 lanes, and the armor rule end to end on the test boss. `test_floating_head`
+runs the Floating Head's fight in bare worlds at 3, 5 and 6 lanes with a runner who dodges each lock
+(and one who doesn't), and rechecks its bombs' fairness from the arena's layout. The runner frees
+anything a suite leaves in the tree, gives suites a fresh, unsaved profile, reports a suite that fails
+to load, and ends a stuck run after 600 s of real time.
 
 ## Review tools
 
 Scenes in `tools/showcase/` show one part of the game up close for visual review (not part of the
 game): the avatar, the enemies (`enemy_showcase` for the cyborg family, `octodog_screech`,
-`drone_truck_showcase`, `bad_dream_showcase`), the UI kit, the screens, a zone skin (`skin_review`:
-any skin from fixed spots, or a scripted run with a ceiling ride and a wall run), and comparison
+`drone_truck_showcase`, `bad_dream_showcase`), a boss (`floating_head_showcase`), the UI kit, the
+screens, a zone skin (`skin_review`: any skin from fixed spots, or a scripted run with a ceiling ride
+and a wall run), and comparison
 sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
 `CLAUDE.md`.
