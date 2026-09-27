@@ -128,6 +128,19 @@ func pad_enemies_clear(layout: LevelLayout, lane: int, at: float) -> bool:
 	return true
 
 
+## True if enemy entry `e` (placed or about to be) keeps off every ceiling's safe floor in `layout`:
+## no landing zone and no pad it would be in the way of (pad_enemy_in). Rules that add a floor enemy
+## after the ceilings are in place (the host and Octodog guarantees) keep to this.
+func enemy_clear(layout: LevelLayout, e: Dictionary) -> bool:
+	for zone: Vector2 in landing_zones(layout):
+		if enemy_in(e, zone):
+			return false
+	for p: Dictionary in layout.pads:
+		if pad_enemy_in(e, int(p["lane"]), float(p["at"])):
+			return false
+	return true
+
+
 ## True if enemy entry `e` is in the way of a pad at `at` in `lane`: its floor stretch
 ## (LevelGenerator.enemy_floor_span) reaches the pad's zone (pad_zone) while it stands in that lane,
 ## or the spot where the pad lies (pad_spot) from any lane.

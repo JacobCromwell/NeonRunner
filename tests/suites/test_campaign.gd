@@ -65,6 +65,7 @@ func run() -> void:
 	_test_curve_and_lengths(campaign)
 	_test_skins(campaign)
 	_test_levels_generate(campaign)
+	_test_ceiling_gauntlets(campaign)
 	_test_unlocking()
 
 
@@ -345,6 +346,55 @@ func _check_level(s: CampaignStep, config: LevelConfig, tag: String, stats: Dict
 		stats["introductions"] = int(stats["introductions"]) + 1
 		if at[0] > start + INTRODUCTION_REACH:
 			(stats["late"] as Array).append("%s %s (%.2f)" % [tag, f, at[0] / layout.length])
+
+
+## GDD §3 and §6: the floor under a ceiling may be dangerous, but the level that introduces ceilings
+## (City 2) shows a plain one first, on its own seed and on others, at 3, 5 and 6 lanes, so the player
+## meets the pad and the ceiling before a gauntlet under one; gauntlets (floor pieces or floor
+## enemies under a ceiling) do come later in the campaign.
+func _test_ceiling_gauntlets(campaign: Campaign) -> void:
+	var intro: CampaignStep = campaign.step(FIRST_LEVEL["ceilings"])
+	for lanes: int in [3, 5, 6]:
+		for level_seed: int in range(0, 9):
+			var config: LevelConfig = campaign.configure(intro, lanes)
+			if level_seed > 0:
+				config.level_seed = 9100 + level_seed
+			var gen := LevelGenerator.new()
+			var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+			var tag: String = "%s lanes=%d seed=%d" % [intro.id, lanes, config.level_seed]
+			check(not layout.hulls.is_empty(), "%s has ceilings" % tag)
+			if not layout.hulls.is_empty():
+				check(_floor_under(layout, layout.hulls[0]) == 0,
+					"the first ceiling of the level that introduces them is plain (%d under it) %s"
+					% [_floor_under(layout, layout.hulls[0]), tag])
+	var gauntlets: int = 0
+	var first_level: int = 99
+	for s: CampaignStep in campaign.steps():
+		if not s.is_level():
+			continue
+		for lanes: int in [3, 5, 6]:
+			var config: LevelConfig = campaign.configure(s, lanes)
+			var layout: LevelLayout = LevelGenerator.new().generate(config, tuning, LevelGenerator.load_for(config))
+			for h: Dictionary in layout.hulls:
+				if _floor_under(layout, h) > 0:
+					gauntlets += 1
+					first_level = mini(first_level, s.level_index)
+	check(gauntlets > 45, "the campaign has ceilings over a dangerous floor (%d on the levels' own seeds)" % gauntlets)
+	check(first_level >= intro.level_index, "none before ceilings are introduced (first in level %d)" % (first_level + 1))
+
+
+## Floor pieces and floor enemies under ceiling section `h` (between its start and end).
+func _floor_under(layout: LevelLayout, h: Dictionary) -> int:
+	var n: int = 0
+	var a: float = float(h["start"])
+	var b: float = float(h["end"])
+	for g: Dictionary in layout.gaps:
+		n += 1 if float(g["end"]) > a and float(g["start"]) < b else 0
+	for f: Dictionary in layout.fences:
+		n += 1 if float(f["at"]) > a and float(f["at"]) < b else 0
+	for e: Dictionary in layout.enemies:
+		n += 1 if LevelGenerator.enemy_uses_floor(e) and float(e["at"]) > a and float(e["at"]) < b else 0
+	return n
 
 
 ## Unlocking follows the campaign order (with a fresh profile); the web demo covers Zone 1 only.
