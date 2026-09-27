@@ -644,7 +644,9 @@ remix is its own data, which no other level uses: quiet stretches and bursts (`q
 rest, with its hosts as its quiet feature), hosts picked more often (`feature_weights`), and its
 `darkness`. A Bad Dream chase starts only when the player kills a host (GDD §9.7), so more chases come
 from more hosts, standing alone in the quiet stretches where one is easy to reach; the host rules
-still fit one chase at a time. All DESIGN-TBD (`docs/questions/r5.md`).
+still fit one chase at a time. All DESIGN-TBD (`docs/questions/r5.md`). Endless mode, which copies the
+furthest zone's last level, leaves the remix out (`App.start_endless`: no quiet stretches, no quiet
+features or their weights, no darkness), so endless in the Dead Zone plays as it did before.
 
 A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, which the player
 continues past. A cinematic is a scene whose root extends `Cinematic` (emit `finished`, support

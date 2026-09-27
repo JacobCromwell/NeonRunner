@@ -441,10 +441,16 @@ func start_endless() -> void:
 	# A 20-minute random level brings every feature many times over, so the campaign's guarantee
 	# (every feature at least once, which may rebuild the level) would only cost load time.
 	ctx.config.guarantee_features = false
-	# The zone's play, not one level's own shape: The Hush's quiet stretches and bursts and its darker
-	# lighting stay in The Hush (GDD §5).
+	# The zone's play, not one level's own shape: The Hush's quiet stretches and bursts, the hosts it
+	# picks more often for them (its quiet features' weights) and its darker lighting stay in The Hush
+	# (GDD §5). (A new dictionary: the copy shares the level's.)
 	ctx.config.quiet_seconds = 0.0
 	ctx.config.darkness = 0.0
+	var weights: Dictionary[String, float] = ctx.config.feature_weights.duplicate()
+	for f: String in ctx.config.quiet_features:
+		weights.erase(f)
+	ctx.config.feature_weights = weights
+	ctx.config.quiet_features = PackedStringArray()
 	if ctx.config.skin == null and zone != null:
 		ctx.config.skin = zone.skin
 	ctx.tuning = tuning

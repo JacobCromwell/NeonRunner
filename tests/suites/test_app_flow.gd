@@ -171,16 +171,21 @@ func _test_endless() -> void:
 		check(not ctx.config.guarantee_features and city_3.guarantee_features,
 			"endless skips the campaign's every-feature guarantee (a 20-minute level needs no rebuilds)")
 	App.show_title()
-	# With the Dead Zone reached, endless copies The Hush but not its pacing in bursts or its darkness.
+	# With the Dead Zone reached, endless copies The Hush but not its own remix: its pacing in bursts,
+	# the hosts it picks more often, or its darkness.
 	for s: CampaignStep in App.campaign.steps():
 		if s.index < App.campaign.step("dead_zone/2").index:
 			App.profile.record_run(s.id, 0, true, 100, 3, 10.0)
+	var hush: LevelConfig = App.campaign.step("dead_zone/2").level
 	App.start_endless()
 	await physics_frames(3)
 	var dead: RunContext = App.run.context if App.run != null else null
-	check(dead != null and dead.config.features == App.campaign.step("dead_zone/2").level.features
+	check(dead != null and dead.config.features == hush.features
 		and not dead.config.paced_in_bursts() and dead.config.darkness == 0.0,
 		"endless in the Dead Zone plays The Hush's features, evenly paced, in the zone's own light")
+	check(dead != null and dead.config.feature_weight("host") == 1.0 and dead.config.quiet_features.is_empty()
+		and hush.feature_weight("host") > 1.0 and hush.quiet_features == PackedStringArray(["host"]),
+		"with hosts as often as elsewhere, and The Hush keeps its own")
 	App.show_title()
 
 
