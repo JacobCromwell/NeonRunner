@@ -474,27 +474,29 @@ static func _legs(list: Array[HumanoidPiece]) -> void:
 	_add(list, &"shin", BOX, Vector3(0.086, 0.03, 0.035), Vector3(0.0, -0.279, -0.126), BOOT_SCUFF)
 
 
-## The hosts' purple veins (GDD §9.7): glowing lines along the neck, down the hoodie's sleeve onto
-## the back of the hand, and along the cyber arm's hose and piston. Purple on a cyborg always and only
-## means "host", so only hosts wear this set.
+## The hosts' purple veins (GDD §9.7): glowing lines up the front of the neck, branching down the
+## front of the hoodie's sleeve onto the back of the hand, and along the front of the cyber arm and
+## its cannon (the side the player sees). Purple on a cyborg always and only means "host", so only
+## hosts wear this set.
 static func _host_veins() -> Array[HumanoidPiece]:
 	var list: Array[HumanoidPiece] = []
-	var w: float = 0.009
-	for vein: Array in [[Vector3(0.034, 0.41, -0.012), Vector3(0.03, 0.47, -0.02)],
-			[Vector3(-0.026, 0.405, -0.026), Vector3(-0.03, 0.47, -0.018)],
-			[Vector3(0.006, 0.41, -0.036), Vector3(0.012, 0.47, -0.036)]]:
+	var w: float = 0.012
+	for vein: Array in [[Vector3(0.026, 0.405, -0.03), Vector3(0.02, 0.475, -0.036)],
+			[Vector3(-0.024, 0.405, -0.03), Vector3(-0.016, 0.475, -0.036)],
+			[Vector3(0.0, 0.41, -0.04), Vector3(0.004, 0.475, -0.041)]]:
 		_vein(list, &"chest", vein[0], vein[1], w, HumanoidPiece.Placement.CENTER)
+	# Down the free arm (authored on the right, placed on the left); paths of points.
 	for path: Array in [
-			[&"upper_arm", Vector3(0.047, -0.03, 0.0), Vector3(0.05, -0.15, 0.012), Vector3(0.045, -0.26, 0.004)],
-			[&"upper_arm", Vector3(0.05, -0.15, 0.012), Vector3(0.036, -0.2, 0.034)],
-			[&"forearm", Vector3(0.044, -0.01, 0.0), Vector3(0.043, -0.12, 0.014), Vector3(0.036, -0.2, 0.0)],
-			[&"forearm", Vector3(0.043, -0.12, 0.014), Vector3(0.024, -0.17, 0.036)],
-			[&"forearm", Vector3(0.016, -0.25, 0.012), Vector3(0.016, -0.3, 0.02)]]:
+			[&"upper_arm", Vector3(0.018, -0.02, -0.046), Vector3(0.026, -0.14, -0.045), Vector3(0.016, -0.26, -0.041)],
+			[&"upper_arm", Vector3(0.026, -0.14, -0.045), Vector3(0.044, -0.2, -0.022)],
+			[&"forearm", Vector3(0.016, -0.01, -0.041), Vector3(0.024, -0.12, -0.041), Vector3(0.012, -0.2, -0.038)],
+			[&"forearm", Vector3(0.024, -0.12, -0.041), Vector3(0.04, -0.17, -0.018)],
+			[&"forearm", Vector3(0.016, -0.25, -0.01), Vector3(0.016, -0.3, -0.02)]]:
 		for k: int in range(1, path.size() - 1):
 			_vein(list, path[0], path[k], path[k + 1], w, LEFT)
-	_vein(list, &"upper_arm", Vector3(0.012, -0.03, 0.062), Vector3(0.015, -0.25, 0.066), w, RIGHT)
-	_vein(list, &"upper_arm", Vector3(-0.028, -0.13, 0.04), Vector3(-0.028, -0.25, 0.04), w, RIGHT)
-	_vein(list, &"forearm", Vector3(-0.035, -0.05, 0.058), Vector3(-0.052, -0.28, 0.062), w, RIGHT)
+	_vein(list, &"upper_arm", Vector3(0.026, -0.05, -0.045), Vector3(0.026, -0.21, -0.045), w, RIGHT)
+	_vein(list, &"forearm", Vector3(0.028, -0.02, -0.047), Vector3(0.028, -0.13, -0.047), w, RIGHT)
+	_vein(list, &"forearm", Vector3(0.03, -0.15, -0.061), Vector3(0.03, -0.35, -0.061), w, RIGHT)
 	return list
 
 

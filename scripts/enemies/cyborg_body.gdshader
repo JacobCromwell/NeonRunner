@@ -58,10 +58,11 @@ uniform float charge = 0.0;
 // The orb's centre in the cannon forearm's space.
 uniform vec3 orb_center = vec3(0.0, -0.43, 0.0);
 
-// A host's veins: emission over their colour, and the pulse's rate (Hz) and depth.
-uniform float vein_energy = 2.0;
+// A host's veins: emission over their colour, and the pulse's rate (Hz) and depth. Kept near 1: much
+// brighter and the purple's blue clips first, drifting it toward the fences' pink.
+uniform float vein_energy = 1.0;
 uniform float vein_rate = 1.1;
-uniform float vein_depth = 0.35;
+uniform float vein_depth = 0.3;
 
 // The share of a cell an LED dot's light fills (in linear light), for the face far away.
 const float DOT_FILL = 0.42;
