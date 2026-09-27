@@ -345,9 +345,10 @@ func _ship(batch: MeshBatch, size: Vector3, edges: Array[float], hw: float, vari
 	for mx: float in [-bw * 0.35, bw * 0.35]:
 		s.box(Vector3(mx, rise + 3.4, bz + 0.8), Vector3(0.1, 2.4, 0.1), trim)
 	s.box(Vector3(bw * 0.35, rise + 4.65, bz + 0.8), Vector3(0.2, 0.2, 0.2), lamp, 0.9)
-	# Stern: the engines flush with it, above the orange band, glowing dimly toward the back. Anything
-	# past the far end would be right in front of the camera as the runner drops off (a bright core or
-	# a halo there flashed across the screen), so only their thin rims stick out.
+	# Stern: the engines flush with it, above the orange band, glowing dimly toward the back. The camera
+	# passes right by the far end's corner as the runner drops off, looking ahead and up: anything past
+	# the end, or facing forward there, fills the screen for a frame (glowing cores and halos did), so
+	# only the engines' thin rims stick out and their cores face the back alone.
 	s.rect(Vector3(-hw, 0, zf), Vector3(0, rise, 0), Vector3(hw * 2.0, 0, 0), trim.darkened(0.3))
 	var engines: int = clampi(roundi(hw * 2.0 / 4.0), 1, 4)
 	for i: int in engines:
@@ -355,6 +356,11 @@ func _ship(batch: MeshBatch, size: Vector3, edges: Array[float], hw: float, vari
 		var r: float = minf(0.95, hw / engines * 0.8)
 		var rim := Transform3D(Basis(Vector3(r, 0, 0), Vector3(0, 0, -NOZZLE_RIM), Vector3(0, r, 0)), Vector3(ex, 1.2, zf))
 		s.prism_xform(rim, 8, Color(0.1, 0.1, 0.12), 0.0, MeshKit.PAT_PLAIN, false)
-		var core := Transform3D(Basis(Vector3(r * 0.72, 0, 0), Vector3(0, 0, -0.01), Vector3(0, r * 0.72, 0)),
-			Vector3(ex, 1.2, zf - 0.01))
-		s.prism_xform(core, 8, skin.engine_color, ENGINE_GLOW)
+		# The core: an octagon facing -z only (quad() faces (d - a) × (b - a)), matching the rim's corners.
+		var core := Vector3(ex, 1.2, zf - 0.02)
+		for k: int in 8:
+			var a0: float = TAU * (float(k) + 0.5) / 8.0
+			var a1: float = TAU * (float(k) + 1.5) / 8.0
+			var p0: Vector3 = core + Vector3(cos(a0), sin(a0), 0.0) * r * 0.72
+			var p1: Vector3 = core + Vector3(cos(a1), sin(a1), 0.0) * r * 0.72
+			s.quad(core, p0, p1, p1, skin.engine_color, ENGINE_GLOW)
