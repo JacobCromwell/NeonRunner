@@ -4,6 +4,12 @@ extends RefCounted
 ## +z tilts left). Walking and the panic sprint reuse HumanoidPoses.run() with the cyborgs' own
 ## animation tunings; standing reuses HumanoidPoses.idle(). CyborgBody blends these and aims the
 ## cannon arm on top.
+##
+## The posture (GDD §9.2: a ragged, strung-out gangster, "gaunt, hunched and twitchy"): the chest
+## hunched forward with the screen head raised back to look ahead and the arms hanging slack, and a
+## shambling walk that drags the left leg (posture()). On top of the blended pose CyborgBody adds the
+## twitches (a jerk of the head now and then, like a glitch in the feed) and a fine tremor in the free
+## hand (jitter()), so they stay sharp. None of it changes a pose's timing or the cannon arm's reach.
 
 const PELVIS: int = HumanoidPose.PELVIS
 const CHEST: int = HumanoidPose.CHEST
@@ -19,6 +25,31 @@ const FOOT_L: int = HumanoidPose.FOOT_L
 const THIGH_R: int = HumanoidPose.THIGH_R
 const SHIN_R: int = HumanoidPose.SHIN_R
 const FOOT_R: int = HumanoidPose.FOOT_R
+
+## The hunch (degrees the chest leans forward); the neck and head take it back so the screen faces
+## ahead. The arms hang ARM_SLACK degrees forward of straight down.
+## DESIGN-TBD (docs/questions/p2.md 5): how strung out it moves (the hunch, limp, twitches, tremor).
+const HUNCH: float = 11.0
+const ARM_SLACK: float = 5.0
+## The shamble: the left knee lifts only LIMP of its full bend as it swings through, the body dips
+## LIMP_DIP degrees toward the left leg as it takes the weight, and the heavy cannon arm swings only
+## CANNON_SWING of the free arm's swing.
+const LIMP: float = 0.5
+const LIMP_DIP: float = 4.0
+const CANNON_SWING: float = 0.45
+## Twitches: time is cut into slots of TWITCH_SLOT seconds, and in TWITCH_SHARE of them the head jerks
+## by up to TWITCH_HEAD (pitch, yaw, roll, degrees), getting there in TWITCH_SNAP seconds and settling
+## back over TWITCH_SETTLE, with the chest hitching by TWITCH_HITCH.
+const TWITCH_SLOT: float = 1.9
+const TWITCH_SHARE: float = 0.55
+const TWITCH_SNAP: float = 0.05
+const TWITCH_SETTLE: float = 0.3
+const TWITCH_HEAD := Vector3(8.0, 13.0, 11.0)
+const TWITCH_HITCH: float = 3.0
+## The free hand's fine tremor (degrees at the elbow, Hz), and a faint one in the head.
+const TREMOR: float = 1.6
+const TREMOR_RATE: float = 9.0
+const HEAD_TREMOR: float = 0.4
 
 ## Aiming: a braced stance, the free arm cocked against the chest.
 const AIM := {
@@ -53,13 +84,20 @@ const SLUMP := {
 
 static func idle(p: HumanoidPose, time: float, t: HumanoidAnimTuning, hunch: float) -> void:
 	HumanoidPoses.idle(p, time, t)
-	_hunch(p, hunch)
+	posture(p, hunch)
 
 
-## Walking: the shared run cycle at a walk's stride (the cyborgs' walk tuning).
+## Walking: the shared run cycle at a walk's stride (the cyborgs' walk tuning), shambling: the left
+## leg drags (its cycle is `phase` itself) and the body dips toward it as it lands.
 static func walk(p: HumanoidPose, phase: float, amount: float, t: HumanoidAnimTuning, hunch: float) -> void:
 	HumanoidPoses.run(p, phase, amount, t)
-	_hunch(p, hunch)
+	var stance: float = HumanoidPoses.stance_weight(phase)
+	p.rot[SHIN_L] *= 1.0 - (1.0 - LIMP) * (1.0 - stance)
+	var dip: float = LIMP_DIP * stance * amount
+	p.add_deg(PELVIS, Vector3(0.0, 0.0, dip))
+	p.add_deg(CHEST, Vector3(0.0, 0.0, -dip * 0.6))
+	p.rot[UPPER_ARM_R].x *= CANNON_SWING
+	posture(p, hunch)
 
 
 static func aim(p: HumanoidPose, time: float, t: HumanoidAnimTuning, hunch: float) -> void:
@@ -67,7 +105,7 @@ static func aim(p: HumanoidPose, time: float, t: HumanoidAnimTuning, hunch: floa
 	for joint: int in [THIGH_L, SHIN_L, FOOT_L, THIGH_R, SHIN_R, FOOT_R, UPPER_ARM_L, FOREARM_L]:
 		p.rot[joint] = Vector3.ZERO
 	p.add_table(AIM, 1.0)
-	_hunch(p, hunch)
+	posture(p, hunch)
 
 
 ## The panic variant's flight: a flat-out sprint leaning forward, the free arm flailing overhead and
@@ -105,8 +143,50 @@ static func slump(p: HumanoidPose) -> void:
 	p.ground = 0.0
 
 
-## The scavenger's hunch: the chest forward, the head raised back to look ahead.
-static func _hunch(p: HumanoidPose, hunch: float) -> void:
-	if hunch > 0.0:
-		p.add_deg(CHEST, Vector3(-hunch, 0.0, 0.0))
-		p.add_deg(HEAD, Vector3(hunch * 0.7, 0.0, 0.0))
+## The hunch: the chest forward, the neck and head raised back so the screen looks ahead, the arms
+## hanging slack.
+static func posture(p: HumanoidPose, hunch: float) -> void:
+	if hunch <= 0.0:
+		return
+	p.add_deg(CHEST, Vector3(-hunch, 0.0, 0.0))
+	p.add_deg(NECK, Vector3(hunch * 0.5, 0.0, 0.0))
+	p.add_deg(HEAD, Vector3(hunch * 0.5, 0.0, 0.0))
+	for side: int in [-1, 1]:
+		p.add_limb(UPPER_ARM_R, side, Vector3(ARM_SLACK - hunch, 0.0, 0.0))
+
+
+## A twitch at `time` for the cyborg whose schedule is offset by `phase` (slots): x, y, z the jerk's
+## direction per axis (-1..1) and w how far into it (0 still, 1 at the jerk's peak).
+static func twitch(time: float, phase: float) -> Vector4:
+	var k: float = time / TWITCH_SLOT + phase
+	var slot: float = floorf(k)
+	if _hash(slot, 1.0) > TWITCH_SHARE:
+		return Vector4.ZERO
+	var start: float = _hash(slot, 2.0) * (TWITCH_SLOT - TWITCH_SNAP - TWITCH_SETTLE)
+	var dt: float = (k - slot) * TWITCH_SLOT - start
+	var e: float = smoothstep(0.0, TWITCH_SNAP, dt) * (1.0 - smoothstep(TWITCH_SNAP, TWITCH_SNAP + TWITCH_SETTLE, dt))
+	return Vector4(_hash(slot, 3.0) * 2.0 - 1.0, _hash(slot, 4.0) * 2.0 - 1.0, _hash(slot, 5.0) * 2.0 - 1.0, e)
+
+
+## The twitches and the tremor, in radians per joint (HumanoidPose joint index → Euler angles) for
+## CyborgBody to add to the posed rig: the head's jerk and the chest's hitch (`twitching` false
+## leaves them out), the free hand's tremor and a faint one in the head.
+static func jitter(time: float, phase: float, twitching: bool) -> Dictionary:
+	var out: Dictionary = {}
+	var s: float = sin(time * TAU * TREMOR_RATE) + 0.5 * sin(time * TAU * TREMOR_RATE * 1.73 + 1.3)
+	var head := Vector3(0.0, 0.0, HEAD_TREMOR * s)
+	var chest := Vector3.ZERO
+	if twitching:
+		var tw: Vector4 = twitch(time, phase)
+		head += Vector3(tw.x * TWITCH_HEAD.x, tw.y * TWITCH_HEAD.y, tw.z * TWITCH_HEAD.z) * tw.w
+		chest = Vector3(-TWITCH_HITCH, 0.0, tw.z * TWITCH_HITCH) * tw.w
+	out[HEAD] = head * HumanoidPose.DEG
+	out[CHEST] = chest * HumanoidPose.DEG
+	out[FOREARM_L] = Vector3(TREMOR * s, 0.0, 0.0) * HumanoidPose.DEG
+	return out
+
+
+## A repeatable pseudo-random number in [0, 1) from two numbers.
+static func _hash(a: float, b: float) -> float:
+	var h: float = sin(a * 127.1 + b * 311.7) * 43758.5453
+	return h - floorf(h)

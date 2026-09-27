@@ -6,6 +6,7 @@ shader_type spatial;
 // Plain spatial shading: works on Forward+, Mobile and Compatibility (web, low-end Android).
 
 #include "res://scripts/characters/humanoid_panels.gdshaderinc"
+#include "res://scripts/characters/humanoid_color.gdshaderinc"
 
 // Emission of a glow-1 trim. Above the environment's glow threshold, so trims bloom.
 uniform float glow_energy = 2.6;
@@ -26,18 +27,8 @@ uniform vec4 rim_color : source_color = vec4(0.62, 0.7, 0.86, 1.0);
 uniform float rim_strength = 0.0;
 uniform float rim_power = 2.5;
 
-// HumanoidMeshBuilder stores vertex colours in linear space, which Forward+ and Mobile light in. The
-// Compatibility renderer (web, low-end Android) works in sRGB space and shows values as they are
-// (kit_common.gdshaderinc handles the same difference for the mesh kit), so there the colour goes
-// back to sRGB; without this every colour shows far too dark and too saturated on the web.
-vec3 humanoid_base_color(vec3 linear_color) {
-#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
-	return mix(12.92 * linear_color, 1.055 * pow(linear_color, vec3(1.0 / 2.4)) - 0.055,
-		step(vec3(0.0031308), linear_color));
-#else
-	return linear_color;
-#endif
-}
+// The vertex colours are linear; humanoid_base_color() (humanoid_color.gdshaderinc) shows them right on
+// every renderer, the Compatibility one included.
 
 void vertex() {
 	vec3 v = VERTEX;

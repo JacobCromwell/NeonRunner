@@ -12,6 +12,9 @@ extends Resource
 ## The fight: a scene whose root extends BossEncounter (scripts/bosses/boss_encounter.gd).
 ## Empty = not built yet (placeholder card).
 @export_file("*.tscn") var scene: String = ""
+## A fight still being built: while `scene` is empty, debug builds play this one with
+## `--boss=<id>` (as quick play, so nothing is recorded), and the campaign keeps its placeholder card.
+@export_file("*.tscn") var preview_scene: String = ""
 ## Power-ups the fight grants before it starts (GDD §8: every boss must be beatable with only what
 ## the game grants): a permanent item at tier 1 or better ("weapon", or "weapon:2" for a tier), one
 ## charge of a breakable one ("armor"), which never costs the player's own stock (Loadout.grant).
@@ -72,6 +75,16 @@ extends Resource
 
 func is_built() -> bool:
 	return scene != "" and ResourceLoader.exists(scene)
+
+
+## A copy of this boss that plays its preview scene (a fight still being built), or null if it has
+## none or is built already. The copy shares everything else (phases, arena, tuning).
+func preview() -> BossDef:
+	if is_built() or preview_scene == "" or not ResourceLoader.exists(preview_scene):
+		return null
+	var out: BossDef = duplicate() as BossDef
+	out.scene = preview_scene
+	return out
 
 
 ## The phases in order: the listed ones, or a single default phase.

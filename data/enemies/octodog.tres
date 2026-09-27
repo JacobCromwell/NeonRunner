@@ -27,6 +27,7 @@ lateral_speed = 9.0
 pass_clearance = 3.0
 clear_after_seconds = 0.5
 charge_slack = 40.0
+turn_wait_max = 4.0
 appear_distance = 55.0
 gap_bait_bonus = 300
 bait_distance = 3.0
