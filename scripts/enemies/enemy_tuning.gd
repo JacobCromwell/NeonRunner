@@ -19,11 +19,14 @@ extends Resource
 
 @export_group("Generator")
 ## False for enemies that never come down to the floor lanes (fliers such as drones, wall-only
-## enemies such as window cyborgs). The generator keeps ceiling sections off the floor the others
-## use (GDD §3: the floor beneath a ceiling stays clear); see LevelGenerator.enemy_floor_span().
+## enemies such as window cyborgs). The generator keeps a ceiling's landing zone and the spots of its
+## pads off the floor the others use (GDD §3: the floor under a ceiling may be dangerous, but the
+## player always lands safely and can step on the pad); see LevelGenerator.enemy_floor_span() and
+## CeilingZones.
 @export var uses_floor: bool = true
-## The floor it uses before (toward the player) and after its layout position. Rules that plan a
-## longer run for one enemy (the Octodog's charges) set params.floor_span on it instead.
+## The floor it uses before (toward the player) and after its layout position: where it stands,
+## moves and attacks a player in its lane. Rules that plan a longer run for one enemy (the Octodog's
+## charges) set params.floor_span on it instead.
 @export_range(0.0, 100.0, 0.5, "suffix:m") var floor_reach_before: float = 10.0
 @export_range(0.0, 100.0, 0.5, "suffix:m") var floor_reach_after: float = 10.0
 

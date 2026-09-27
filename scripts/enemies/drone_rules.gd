@@ -14,8 +14,9 @@ extends RefCounted
 ##   schedule. A later wave arrives at one of the scheduled pads, as the player steps on it (it isn't
 ##   on screen yet, so that pad doesn't hurl it), so its own 10 s and the earlier drone's 8–10 s both
 ##   hold. DESIGN-TBD: waves come at least min_wave_gap_seconds apart; closer ones are dropped.
-## - GDD §3: the floor under each scheduled ceiling is cleared (no gaps, fences or floor enemies
-##   under it, and the landing after it stays clear), and its pad avoids a hover truck's lane.
+## - GDD §3: each scheduled ceiling lies over whatever the floor holds there (the floor under a
+##   ceiling may be dangerous, and the pad is the way out of it); only its landing zone and its
+##   pad's spot are cleared (PadPlacement, CeilingZones), and its pad avoids a hover truck's lane.
 ## - Pads need ceilings: a level with drones but without the `ceilings` feature gets a warning and no
 ##   pad schedule.
 ## - Late starts (LevelConfig.feature_starts): no drone before the `drone` feature's start, and none
@@ -144,8 +145,9 @@ static func last_pad_at(gen: LevelGenerator, t: DroneTuning) -> float:
 		- (t.pad_ceiling_seconds + gen.config.hull_landing_seconds) * gen.speed - 0.5
 
 
-## A ceiling with a pad at `at`, clearing whatever is in its way (a ceiling from another rule set
-## gives way to the schedule), in a lane no hover truck holds. Returns false if it didn't fit.
+## A ceiling with a pad at `at`, clearing only what's in the way of its pad and its landing zone (a
+## ceiling from another rule set gives way to the schedule), in a lane no hover truck holds. Returns
+## false if it didn't fit.
 static func _place_pad(gen: LevelGenerator, t: DroneTuning, rng: RandomNumberGenerator, at: float) -> bool:
 	return PadPlacement.place(gen, rng, at, t.pad_ceiling_seconds)
 

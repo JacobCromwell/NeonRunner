@@ -661,6 +661,29 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
     two small copper lights on the vest (the sheet's were cyan and orange), a dusty hem, and a high collar open at the
     front with a copper conduit round its back. Anything to change?
 
+**Dangerous floor under ceilings** (from B2; `CeilingZones`, the gauntlet patterns)
+69. **Gauntlets under ceilings** (GDD §3, §6): six new patterns put a gauntlet under a 4–4.5 s ceiling (fence rows, hole
+    rows or a mix with one lane free, cyborgs, manholes, a generator with its fences), from difficulty 0.3–0.5, picked
+    with weights 0.15–0.35 against the plain ceiling's 1.2, so most ceilings stay plain. City 2 introduces ceilings
+    with a plain one and may show a gauntlet in its second half. The right mix, and should City 2 show one or only City 3?
+70. **What "safe to land on" covers** (GDD §3): 21.6 m after a ceiling's end with no hole or fence in any lane and no
+    floor enemy's reach. A cyborg further ahead may still fire at a player dropping off a ceiling. Should enemies also
+    hold fire while the player drops and lands?
+71. **A pad the player can step on:** the pad's lane is free of holes, fences and ramps from a full jump before it
+    until the lift reaches the hull, and no floor enemy reaches the pad. A hazard row may still force the player out of
+    the pad's lane just before it. Enough, or should the approach be clear in every lane?
+72. **Rule ceilings now lie over the floor** (replaces FB 90's clearing): the drone's pad schedule and a Bad Dream
+    chase's pads clear only the landing zone and the pad's spot, so drone and host levels keep much more floor
+    content (they used to empty about half of every drone stretch). Intended density, or lighter patterns there?
+73. **Octodogs under a ceiling** may run and charge a floor runner; their charges keep off pads and landing zones, and
+    they never wind up at a ceiling rider.
+74. **Credits under a ceiling:** unchanged: trails skip the floor under a ceiling (the ceiling's line and its 25 reward
+    taking the pad); rich credits at hole edges and fences appear there as anywhere. Should the harder floor route
+    under a gauntlet pay more?
+75. **The ceiling camera and hazards below** (GDD §3, §11): riding a ceiling, the camera sits at 2.4 m, so a gapped
+    fence below (its field reaches 2.1 m) fills the bottom of the screen with pink for about 0.25 s. Harmless, but it
+    could read as a hit. Raise the ceiling camera (say to 3 m)?
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).

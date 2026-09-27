@@ -28,8 +28,8 @@ enum Phase { IDLE, WINDUP, LUNGE, TURN, SPRINT, PACE, GIVE_UP, LEAVE, FALLING }
 const BODY_SIZE := Vector3(0.78, 0.72, 0.9)
 const TOP_SIZE := Vector3(0.84, 0.24, 0.96)
 const PHASE_NAMES: PackedStringArray = ["idle", "windup", "lunge", "turn", "sprint", "pace", "give_up", "leave", "falling"]
-## ceiling_between(): metres kept clear before a ceiling section (and around a pad), and after one
-## for a player dropping off it to land.
+## pad_or_landing_between(): metres kept clear around an anti-grav pad, and after a ceiling section's
+## end for a player dropping off it to land (at least its landing zone, CeilingZones).
 const CEILING_LEAD: float = 6.0
 const CEILING_LANDING: float = 25.0
 
@@ -248,8 +248,9 @@ func _lunge(delta: float, pd: float) -> void:
 			_set_hitboxes(false)
 
 
-## Whether another charge can come: the next planned point (or, unplanned, the stretch ahead) has
-## no ceiling section and fits before the level ends.
+## Whether another charge can come: the stretch to the next planned point (or, unplanned, the
+## stretch ahead) has no anti-grav pad or ceiling landing (the player may take the pad or drop back
+## there) and fits before the level ends.
 func _next_charge_possible() -> bool:
 	var pd: float = world.player.distance
 	var v: float = maxf(world.player.speed, 1.0)
@@ -258,7 +259,7 @@ func _next_charge_possible() -> bool:
 		until = _anchors[charges_done] + _t.window_length(v, _scaling) + _t.stop_distance(v, _scaling)
 	if until > world.layout.length - 10.0:
 		return false
-	return not ceiling_between(world.layout, pd, until)
+	return not pad_or_landing_between(world.layout, pd, until)
 
 
 func _turn(delta: float) -> void:
@@ -507,13 +508,15 @@ func hit_radius() -> float:
 # --- Layout checks (shared with octodog_rules.gd) ---------------------------------------------
 
 ## True if a charge may happen while the player runs from `from` to `to`: no fence (unless an EMP
-## switched it off), no ceiling section or anti-grav pad, and holes in at most one lane (a single
-## hole can be switched away from or jumped, and may be the bait for a gap kill).
+## switched it off), no anti-grav pad or ceiling landing (pad_or_landing_between), and holes in at
+## most one lane (a single hole can be switched away from or jumped, and may be the bait for a gap
+## kill). The floor under a ceiling is fair game (GDD §3): a floor runner can be charged there, a
+## player riding the ceiling above can't (_can_wind_up).
 static func window_clear(layout: LevelLayout, from: float, to: float) -> bool:
 	for f: Dictionary in layout.fences:
 		if float(f["at"]) >= from - 1.0 and float(f["at"]) <= to and not f.get("disabled", false):
 			return false
-	if ceiling_between(layout, from, to):
+	if pad_or_landing_between(layout, from, to):
 		return false
 	var holed: Dictionary = {}
 	for g: Dictionary in layout.gaps:
@@ -522,10 +525,12 @@ static func window_clear(layout: LevelLayout, from: float, to: float) -> bool:
 	return holed.size() <= 1
 
 
-## True if a ceiling section (with its lead-in and landing) or an anti-grav pad touches [from, to].
-static func ceiling_between(layout: LevelLayout, from: float, to: float) -> bool:
+## True if an anti-grav pad (CEILING_LEAD around it) or where the player lands after a ceiling
+## section (CEILING_LANDING past its end) touches [from, to]: a charge never meets a player stepping
+## onto a pad or dropping back to the floor.
+static func pad_or_landing_between(layout: LevelLayout, from: float, to: float) -> bool:
 	for h: Dictionary in layout.hulls:
-		if float(h["start"]) - CEILING_LEAD <= to and float(h["end"]) + CEILING_LANDING >= from:
+		if float(h["end"]) <= to and float(h["end"]) + CEILING_LANDING >= from:
 			return true
 	for p: Dictionary in layout.pads:
 		if float(p["at"]) >= from - CEILING_LEAD and float(p["at"]) <= to + CEILING_LEAD:
