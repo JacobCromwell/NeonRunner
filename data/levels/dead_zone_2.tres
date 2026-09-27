@@ -12,7 +12,7 @@ difficulty_bias = 0.0
 features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "screech", "ramps", "octodog", "speed_pads", "generator", "drone", "barnacle_turret", "wall_fences", "buzz_overdrive", "wall_fences_partial", "host")
 guarantee_features = true
 feature_weights = Dictionary[String, float]({
-"host": 3.0
+"host": 5.0
 })
 darkness = 0.7
 quiet_seconds = 14.0

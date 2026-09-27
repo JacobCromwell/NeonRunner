@@ -307,9 +307,10 @@ func burst_spot(rng: RandomNumberGenerator, lo: float, hi: float, feature: Strin
 
 ## True if `pattern` may be picked at `at` in a level paced in bursts (GDD §5, The Hush: long silent
 ## stretches broken by sudden threats):
-## - a pattern that places enemies must require only quiet_features (those go anywhere), or else
-##   start in a burst and place its enemies before that burst ends, so a burst's threats appear in
-##   the burst (an Octodog's charges or a hover truck's stay may still run on after it);
+## - a pattern that places enemies and requires only quiet_features belongs to the quiet stretches
+##   (The Hush's hosts stand alone in the silence); any other that places enemies must start in a
+##   burst and place its enemies before that burst ends, so a burst's threats appear in the burst
+##   (an Octodog's charges or a hover truck's stay may still run on after it);
 ## - a burst takes only threats: patterns with a hole, a fence, a sign or an enemy. Safe mechanics
 ##   alone (a plain ceiling, a ramp, a speed pad) go in the quiet stretches, with sparse obstacles.
 func _pacing_allows(pattern: Dictionary, at: float) -> bool:
@@ -332,7 +333,7 @@ func _pacing_allows(pattern: Dictionary, at: float) -> bool:
 			quiet_ok = false
 			break
 	if quiet_ok:
-		return true
+		return quiet
 	return not quiet and at + last_enemy < stretch_end(at)
 
 

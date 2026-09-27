@@ -627,8 +627,9 @@ func _weights_by_id(pool: Dictionary) -> Dictionary:
 
 ## Quiet stretches and bursts (LevelConfig.quiet_seconds; GDD §5, The Hush: long silent stretches
 ## broken by sudden threats): the stretches alternate from the level's first pattern, quiet first; a
-## quiet stretch picks no enemy but its quiet features' and stays sparse; a burst picks only threats,
-## densely, its enemies inside it; rules that guarantee an enemy put it in a burst (burst_spot). Every
+## quiet stretch picks no enemy but its quiet features', which it keeps, and stays sparse; a burst
+## picks only threats, densely, its enemies inside it; rules that guarantee an enemy put it in a burst
+## (burst_spot). Every
 ## rule, fairness check and the guarantee still hold, at 3, 5 and 6 lanes, and it's deterministic.
 ## With quiet_seconds 0 the other settings change nothing.
 func _test_pacing(base: LevelConfig) -> void:
@@ -687,15 +688,20 @@ func _test_pacing(base: LevelConfig) -> void:
 						and is_equal_approx(gen.stretch_end(s.y + 0.5), s.y + config.burst_seconds * speed)
 						and is_equal_approx(gen.stretch_end(s.x + 0.5), s.y), "burst %d follows it %s" % [i, tag])
 					# The burst's first pick comes a burst spacing after its start at the latest, or after
-					# the pattern running into it: the quiet spacing never carries the cursor past it.
-					bursts += 1
+					# the pattern running into it: the quiet spacing never carries the cursor past it. (A
+					# burst right at the level's end may have room for no pattern at all.)
 					var prev_end: float = 0.0
+					var picked: bool = false
 					for p: Dictionary in gen.picks:
 						if float(p["at"]) >= s.y - 0.01:
 							var due: float = maxf(s.y, prev_end) + config.burst_spacing_seconds * speed + 0.01
+							bursts += 1
 							on_time += 1 if float(p["at"]) <= due else 0
+							picked = true
 							break
 						prev_end = float(p["at"]) + float(p["used"])
+					check(picked or s.y > last - 130.0, "a burst gets its threats (at %.0f, the level's end-clear at %.0f) %s"
+						% [s.y, last, tag])
 				level_quiet += s.y - s.x
 			metres[0] += level_quiet
 			metres[1] += last - config.start_clear_distance - level_quiet
@@ -717,8 +723,9 @@ func _test_pacing(base: LevelConfig) -> void:
 					check(last_enemy < 0.0 or quiet_feature, "a quiet stretch picks no enemy but its quiet features' (%s at %.0f) %s" % [p["id"], at, tag])
 				else:
 					check(threat, "a burst picks only threats (%s at %.0f) %s" % [p["id"], at, tag])
-					check(last_enemy < 0.0 or quiet_feature or at + last_enemy < gen.stretch_end(at),
-						"a burst's enemies stand in it (%s at %.0f) %s" % [p["id"], at, tag])
+					check(last_enemy < 0.0 or (not quiet_feature and at + last_enemy < gen.stretch_end(at)),
+						"a burst's enemies stand in it, and a quiet feature's belong to the quiet stretches (%s at %.0f) %s"
+						% [p["id"], at, tag])
 			for e: Dictionary in layout.enemies:
 				if String(e["type"]) == "cyborg" and bool((e.get("params", {}) as Dictionary).get("host", false)):
 					hosts += 1

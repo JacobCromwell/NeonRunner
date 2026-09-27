@@ -109,18 +109,18 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 ## seconds at run speed with a burst of burst_seconds, quiet first. In a quiet stretch patterns are
 ## quiet_spacing_seconds apart, and one that places enemies is picked only if every feature it
 ## requires is in quiet_features (so it stays sparse obstacles, safe mechanics such as plain
-## ceilings, and those enemies); a burst picks the level's threats (patterns with a hole, a fence, a
-## sign or an enemy, whose enemies stand in the burst), burst_spacing_seconds apart. The generator's
-## rules still apply afterwards to all of it, and a burst takes at most one feature's introduction
-## (feature_starts).
+## ceilings, and those enemies); a burst picks the level's other threats (patterns with a hole, a
+## fence, a sign or an enemy, whose enemies stand in the burst), burst_spacing_seconds apart. The
+## generator's rules still apply afterwards to all of it, and a burst takes at most one feature's
+## introduction (feature_starts).
 ## 0 turns it off: the level is paced evenly (spacing_seconds_easy/hard), as every other level is.
 ## DESIGN-TBD: The Hush's numbers.
 @export_range(0.0, 60.0, 0.5, "suffix:s") var quiet_seconds: float = 0.0
 @export_range(1.0, 30.0, 0.5, "suffix:s") var burst_seconds: float = 8.0
 @export_range(0.2, 10.0, 0.05, "suffix:s") var quiet_spacing_seconds: float = 4.0
 @export_range(0.2, 4.0, 0.05, "suffix:s") var burst_spacing_seconds: float = 0.9
-## Features whose enemy patterns may still be picked in a quiet stretch (The Hush: its hosts, standing
-## alone in the silence; a chase starts only if the player kills one).
+## Features whose enemy patterns belong to the quiet stretches: picked there, and not in bursts (The
+## Hush: its hosts, standing alone in the silence; a chase starts only if the player kills one).
 @export var quiet_features: PackedStringArray = PackedStringArray()
 
 @export_group("Fairness rules")
