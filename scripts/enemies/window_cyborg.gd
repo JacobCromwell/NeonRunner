@@ -20,6 +20,9 @@ const Kit = preload("res://scripts/enemies/cyborg_kit.gd")
 ## The body is drawn a little larger than a floor cyborg so the torso fills the window.
 const BODY_SCALE: float = 1.25
 const HUSK_KEEP: float = 40.0
+## The light inside the window: the cold white of a screen showing the feed, dim (below the glow
+## threshold), so the only glows on a window cyborg stay its face and its cannon.
+const WINDOW_LIGHT := Color(0.6, 0.66, 0.76)
 
 var tuning: WindowCyborgTuning
 var side: int = 1
@@ -87,7 +90,7 @@ func _on_defeated(cause: StringName) -> void:
 	gun.stop()
 	_husk = true
 	world.play_sfx_at(&"enemy_death", aim_point())
-	world.effects.burst(aim_point(), Color(1.0, 0.6, 0.2), 20, 0.7)
+	world.effects.burst(aim_point(), Kit.LED_COLOR, 20, 0.7)
 	body.die(cause)
 
 
@@ -107,7 +110,9 @@ func _may_attack() -> bool:
 	return ahead > 0.0 and ahead <= tuning.engage_distance
 
 
-## The window: a dark opening lit warm from inside, with a frame and a sill, on the facade.
+## The window: a dark opening lit from inside by the cold, dim light of a screen (the cult's feed,
+## GDD §5; never a warm glow, which would read like the player's copper), with a frame and a sill,
+## on the facade.
 func _build_window() -> void:
 	var key: String = "window/%d/%.2f/%.2f/%.2f/%.2f/%.2f" % [side, band_bottom, band_top,
 		tuning.window_length, tuning.window_above, tuning.window_below]
@@ -123,14 +128,14 @@ static func _window_mesh(s: int, bottom: float, top: float, length: float) -> Ar
 	var b := Kit.Builder.new()
 	var frame := Color(0.36, 0.38, 0.44)
 	var dark := Color(0.025, 0.02, 0.03)
-	var warm := Color(1.0, 0.55, 0.22)
+	var screen_light := WINDOW_LIGHT
 	var h: float = top - bottom
 	var mid: float = (top + bottom) * 0.5
 	var inward: float = -s  # toward the lanes
-	# The opening, just in front of the wall face, with warm light along its top edge.
+	# The opening, just in front of the wall face, with dim screen light along its top edge.
 	b.box(Vector3(inward * 0.012, mid, 0.0), Vector3(0.02, h, length), dark)
-	b.box(Vector3(inward * 0.024, top - 0.07, 0.0), Vector3(0.01, 0.06, length - 0.1), warm, 0.55)
-	b.box(Vector3(inward * 0.024, bottom + 0.12, 0.0), Vector3(0.01, 0.2, length - 0.1), warm, 0.18)
+	b.box(Vector3(inward * 0.024, top - 0.07, 0.0), Vector3(0.01, 0.06, length - 0.1), screen_light, 0.34)
+	b.box(Vector3(inward * 0.024, bottom + 0.12, 0.0), Vector3(0.01, 0.2, length - 0.1), screen_light, 0.12)
 	# Frame and sill.
 	var fw: float = 0.09
 	b.box(Vector3(inward * 0.05, top + fw * 0.5, 0.0), Vector3(0.1, fw, length + fw * 2.0), frame)

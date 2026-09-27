@@ -231,25 +231,37 @@ func _generator_scene() -> void:
 
 
 ## Gameplay distance: the run camera's view from a player at the start (behind and above, as
-## MovementTuning places it), with cyborgs ahead showing each expression and window cyborgs on the walls.
+## MovementTuning places it), with a row of cyborgs 14 m ahead and another 28 m ahead, each showing the
+## calm face, the panic variant's shocked "O", the aiming face (cannon charged) and a host, and window
+## cyborgs on both walls. Prints where each head is on screen (for cropping review frames).
 func _far_scene() -> void:
 	var t := load("res://data/tuning/movement.tres") as MovementTuning
 	_world.player.visible = true
 	_camera.fov = t.camera_fov
 	_look(Vector3(0.0, t.camera_height, t.camera_distance), Vector3(0.0, 1.0, -t.camera_look_ahead))
 	var v: StringName = StringName(_opt("variant", "city"))
-	var specs: Array = [[12.0, 1, Kit.Face.NEUTRAL, false], [18.0, 3, Kit.Face.SHOCKED, false],
-		[26.0, 2, Kit.Face.AIMING, false], [34.0, 4, Kit.Face.NEUTRAL, true], [44.0, 0, Kit.Face.SHOCKED, false]]
-	for spec: Array in specs:
-		var b := _body(v, spec[3], _world.lane_point(spec[1], spec[0]), 30 + int(spec[0]))
-		b.set_expression(spec[2])
-		if spec[2] == Kit.Face.AIMING:
-			b.set_pose(CyborgBody.Pose.AIM)
-			b.aim_at(Vector3(0.0, 1.0, 0.0))
-			b.set_charge(0.8)
-	for spec: Array in [[1, 22.0, 5], [-1, 38.0, 6]]:
+	var faces: Array = [[Kit.Face.NEUTRAL, false], [Kit.Face.SHOCKED, false], [Kit.Face.AIMING, false],
+		[Kit.Face.NEUTRAL, true]]
+	var bodies: Array[CyborgBody] = []
+	for row: int in 2:
+		var at: float = 14.0 + 14.0 * row
+		for i: int in faces.size():
+			var b := _body(v, faces[i][1], _world.lane_point(i + row, at), 30 + row * 10 + i)
+			b.set_expression(faces[i][0])
+			if faces[i][0] == Kit.Face.AIMING:
+				b.set_pose(CyborgBody.Pose.AIM)
+				b.aim_at(Vector3(0.0, 1.0, 0.0))
+				b.set_charge(0.8)
+			bodies.append(b)
+	for spec: Array in [[1, 21.0, 5], [-1, 35.0, 6]]:
 		_world.director.spawn({"type": "window_cyborg", "at": spec[1], "lane": 4 if spec[0] > 0 else 0,
 			"side": spec[0], "seed": spec[2], "params": {"fires": false}})
+	await get_tree().process_frame
+	for b: CyborgBody in bodies:
+		var head: Vector3 = b.rig.joint(&"head").global_position + Vector3(0.0, 0.15, 0.0)
+		var p: Vector2 = _camera.unproject_position(head) / Vector2(get_viewport().get_visible_rect().size)
+		print("far head %s host=%s at %.0f m: screen %.4f %.4f" % [Kit.Face.keys()[b.face], b.host,
+			-b.global_position.z, p.x, p.y])
 
 
 func _charge_scene() -> void:

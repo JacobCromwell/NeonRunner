@@ -1,14 +1,16 @@
 class_name Cyborg
 extends Enemy
-## The cyborg (GDD §9.2): a humanoid standing on the floor lanes (the truck roofs) with an LED visor
-## face and an arm cannon (CyborgGun: a visible charge-up with a sound, bursts of 2–3 loosely aimed
-## laser bolts, a reload pause).
+## The cyborg (GDD §9.2): a humanoid standing on the floor lanes (the truck roofs), a ragged gangster
+## whose whole head is a screen showing its LED face (CyborgBody, CyborgSuit), with an arm cannon
+## (CyborgGun: a visible charge-up with a sound, bursts of 2–3 loosely aimed laser bolts, a reload
+## pause).
 ## - Normal: walks slowly toward the player, stopping to shoot, and drops behind quickly once passed.
 ## - Panic variant (about 1 in 3, rolled by the generator: params.panic): freezes with a shocked "O"
 ##   face when the player comes near, then runs away ahead of them, firing wildly over its shoulder,
 ##   and cowers once it runs out of room.
-## - Host (params.host, feature `host`, GDD §9.7): its visor glitches purple. Auto-fire never targets
-##   it and missile splash never hurts it; killing it earns a big bonus and releases the Bad Dream.
+## - Host (params.host, feature `host`, GDD §9.7): its screen glitches purple and purple veins glow
+##   along its neck and arms. Auto-fire never targets it and missile splash never hurts it; killing
+##   it earns a big bonus and releases the Bad Dream.
 ## Killed by a stomp on the head, weapons, claws or the dash: a stompable top over the head and a
 ## solid body (both slightly smaller than the visuals, and the body stops below the stomp line, so a
 ## player dropping onto the head only ever touches the head).
@@ -136,7 +138,8 @@ func hit_radius() -> float:
 func _on_defeated(cause: StringName) -> void:
 	gun.stop()
 	world.play_sfx_at(&"enemy_death", global_position)
-	world.effects.burst(aim_point(), Color(1.0, 0.6, 0.2), 20, 0.7)
+	# The screen head blowing out: sparks in the face's cold white (never the player's copper).
+	world.effects.burst(aim_point(), Kit.LED_COLOR, 20, 0.7)
 	if is_host:
 		_release_bad_dream()
 	body.death_finished.connect(queue_free)

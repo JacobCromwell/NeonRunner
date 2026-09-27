@@ -36,7 +36,8 @@ uniform float roughness : hint_range(0.0, 1.0) = 0.8;
 uniform float polished_roughness : hint_range(0.0, 1.0) = 0.3;
 uniform float metallic : hint_range(0.0, 1.0) = 0.06;
 
-uniform sampler2D face : filter_nearest;
+// The face's pixel image (one texel per LED, with mipmaps for the far view).
+uniform sampler2D face : filter_linear_mipmap, repeat_disable;
 uniform vec2 face_grid = vec2(13.0, 9.0);
 uniform vec4 led_color : source_color = vec4(0.86, 0.91, 1.0, 1.0);
 uniform vec4 glitch_color : source_color = vec4(0.72, 0.25, 1.0, 1.0);
@@ -61,6 +62,9 @@ uniform vec3 orb_center = vec3(0.0, -0.43, 0.0);
 uniform float vein_energy = 2.0;
 uniform float vein_rate = 1.1;
 uniform float vein_depth = 0.35;
+
+// The share of a cell an LED dot's light fills (in linear light), for the face far away.
+const float DOT_FILL = 0.42;
 
 varying vec3 v_local;
 varying flat float v_kind;
@@ -114,24 +118,25 @@ void fragment() {
 		float tick = mod(floor(t * mix(12.0, 2.5, reduced_flashing)), 97.0);
 		float jump = step(1.0 - 0.3 * glitch, hash12(vec2(cell.y, tick) + seed));
 		cell.x = mod(cell.x + jump * floor((hash12(vec2(tick, cell.y + 3.0)) - 0.5) * 7.0), face_grid.x);
-		float on = textureLod(face, (cell + 0.5) / face_grid, 0.0).r;
-		vec2 f = fract(q * face_grid) - 0.5;
 		vec2 cells_per_px = duv / squash * face_grid;
-		float px_per_cell = 1.0 / max(max(cells_per_px.x, cells_per_px.y), 1e-5);
-		float led = mix(0.62, smoothstep(0.5, 0.28, length(f)), smoothstep(1.5, 4.0, px_per_cell));
-		// The picture as brightness seen (0-1), turned into light with to_linear() at the end, so the
-		// screen looks the same on every renderer (a faint grey in linear light shows far brighter).
-		// Only the LEDs glow above the bloom threshold (led_energy); the static and a host's purple show
-		// at the brightness given.
+		float cells_px = max(cells_per_px.x, cells_per_px.y);
+		float px_per_cell = 1.0 / max(cells_px, 1e-5);
+		// Close up each LED is its own texel; far away the cells under a pixel are averaged (mipmaps),
+		// so a face a few pixels across keeps its shape instead of aliasing to black.
+		float on_near = texelFetch(face, ivec2(clamp(cell, vec2(0.0), face_grid - 1.0)), 0).r;
+		float on_far = textureLod(face, clamp(q, vec2(0.0), vec2(1.0)), log2(max(cells_px, 1.0))).r;
+		float on = mix(on_near, on_far, smoothstep(0.6, 1.4, cells_px));
+		vec2 f = fract(q * face_grid) - 0.5;
+		float dot_shape = smoothstep(0.5, 0.28, length(f));
+		float near = smoothstep(1.5, 4.0, px_per_cell);
 		// Faint static in the LEDs' cold white (still with Reduced flashing), fading to its average far away.
 		float grain_tick = mod(floor(t * 14.0), 89.0) * (1.0 - reduced_flashing);
 		float grain = hash12(floor(uv * vec2(aspect * 54.0, 54.0)) + vec2(grain_tick * 7.13, seed * 3.31 + 11.0));
 		grain = mix(0.5, grain, 1.0 - smoothstep(0.3, 0.8, max(duv.x * aspect, duv.y) * 54.0));
-		float white = on * led;
 		float noise = static_amount * grain;
 		// A host: purple static in blocks round its face, a faint purple wash, the face tinged purple.
 		float blocks = step(0.8, hash12(cell + vec2(tick * 1.7, tick) + seed));
-		float purple = glitch * (blocks * led * 0.7 * (1.0 - on) + 0.16 + 0.2 * grain);
+		float purple = glitch * (blocks * mix(0.45, dot_shape, near) * 0.7 * (1.0 - on) + 0.16 + 0.2 * grain);
 		vec3 face_color = mix(led_color.rgb, glitch_color.rgb, 0.22 * glitch * on);
 		// Zone variants: a flickering screen (steadily dimmed with Reduced flashing) and a crack.
 		float drop = step(0.72, hash12(vec2(mod(floor(t * 9.0), 89.0), seed + 1.0)));
@@ -147,7 +152,13 @@ void fragment() {
 		shade *= shown * (1.0 - cracked) * tube * smoothstep(0.0, 0.06, power);
 		// Switching off: the collapsing line brightens (not with Reduced flashing).
 		float boost = mix(1.0 + 1.6 * (1.0 - power), 1.0, reduced_flashing);
-		vec3 light = face_color * to_linear(vec3(white * shade)) * led_energy
+		// The LEDs glow above the bloom threshold (led_energy), their light taken in linear light: each
+		// dot close up, and far away the dots' average (they fill DOT_FILL of a cell), so a distant face
+		// still glows as brightly as its dots would. The static and a host's purple are brightness as
+		// seen (0-1), turned into light with to_linear(), so the screen looks the same on every renderer.
+		float lit = mix(on * DOT_FILL * humanoid_to_linear(vec3(shade)).x,
+			humanoid_to_linear(vec3(on * dot_shape * shade)).x, near);
+		vec3 light = humanoid_glow(face_color, led_energy * lit)
 			+ led_color.rgb * to_linear(vec3(noise * shade)) + glitch_color.rgb * to_linear(vec3(purple * shade));
 		// Dark glass with a soft sheen (a glossier one mirrors the sky and washes the face out).
 		ALBEDO = to_linear(mix(vec3(0.07), vec3(0.04, 0.042, 0.046) + vec3(0.3) * cracked, tube));
@@ -155,14 +166,14 @@ void fragment() {
 		SPECULAR = mix(0.3, 0.2, tube);
 		EMISSION = light * boost;
 	} else if (v_kind < 2.5) {
-		ALBEDO = charge_color.rgb * 0.25;
-		EMISSION = charge_color.rgb * mix(0.5, 4.0, charge) * max(glow_boost, 0.25);
+		ALBEDO = humanoid_glow(charge_color.rgb, 0.25);
+		EMISSION = humanoid_glow(charge_color.rgb, mix(0.5, 4.0, charge) * max(glow_boost, 0.25));
 	} else if (v_kind < 3.5) {
 		ALBEDO = charge_color.rgb;
-		EMISSION = charge_color.rgb * 5.0;
+		EMISSION = humanoid_glow(charge_color.rgb, 5.0);
 	} else {
 		float beat = mix(1.0 + vein_depth * 0.5 * sin(TIME * 6.2832 * vein_rate + seed), 1.0, reduced_flashing);
-		ALBEDO = glitch_color.rgb * 0.3;
-		EMISSION = glitch_color.rgb * vein_energy * beat * glow_boost;
+		ALBEDO = humanoid_glow(glitch_color.rgb, 0.3);
+		EMISSION = humanoid_glow(glitch_color.rgb, vein_energy * beat * glow_boost);
 	}
 }

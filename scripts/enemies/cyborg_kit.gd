@@ -24,45 +24,48 @@ const GLITCH_COLOR := Color(0.72, 0.25, 1.0)
 ## Electric-fence pink (GDD §9.1: pink crackle = fence); a skin's own fence_color wins when it has one.
 const FENCE_PINK := Color(1.0, 0.18, 0.62)
 
-## The faces' pixel grid: square cells on the screen head's 0.33 × 0.23 m screen. Every face keeps its
-## features two cells thick or ringed, so its shape still reads when the screen is a few pixels tall.
+## The faces' pixel grid: square cells on the screen head's 0.33 × 0.23 m screen. The features are big
+## and bold (eyes three LEDs across, the "O" two thick, the brows running in from the corners) so each
+## face keeps its own shape when the screen is only about 7 × 5 pixels, as it is 14 m ahead of the
+## player at 720p: two eyes and a bar, a V and a long bar, two eyes over a ring.
 const FACE_GRID := Vector2i(13, 9)
 const FACES: Dictionary = {
-	# Calm, like the cult feed's face (CultFeed): two tall eyes and a flat mouth.
+	# Calm, like the cult feed's face (CultFeed): two eyes and a flat mouth.
 	Face.NEUTRAL: [
 		".............",
-		".............",
-		"...##...##...",
-		"...##...##...",
-		"...##...##...",
-		".............",
-		"....#####....",
-		".............",
-		".............",
-	],
-	# Charging the cannon: brows slanted down into narrowed eyes, the mouth a hard line.
-	Face.AIMING: [
-		".............",
-		".##.......##.",
 		"..###...###..",
-		"...##...##...",
+		"..###...###..",
+		"..###...###..",
 		".............",
 		".............",
 		"...#######...",
 		".............",
 		".............",
 	],
-	# The panic variant's shocked "O" (GDD §9.2): wide round eyes and a round mouth.
-	Face.SHOCKED: [
-		"..###...###..",
-		".#...#.#...#.",
-		".#...#.#...#.",
+	# Charging the cannon: brows slanted down from the corners into narrowed eyes, the mouth a long,
+	# hard line.
+	Face.AIMING: [
+		"##.........##",
+		".###.....###.",
 		"..###...###..",
 		".............",
-		".....###.....",
-		"....#...#....",
-		"....#...#....",
-		".....###.....",
+		".............",
+		".............",
+		".###########.",
+		".............",
+		".............",
+	],
+	# The panic variant's shocked "O" (GDD §9.2): wide, staring eyes over a big round mouth.
+	Face.SHOCKED: [
+		".###.....###.",
+		".#.#.....#.#.",
+		".###.....###.",
+		"....#####....",
+		"...##...##...",
+		"..##.....##..",
+		"..##.....##..",
+		"...##...##...",
+		"....#####....",
 	],
 	# Defeated: ERR, then the screen goes dark (CyborgBody.die).
 	Face.DEAD: [
@@ -78,12 +81,12 @@ const FACES: Dictionary = {
 	],
 	Face.CORRUPT_GRIN: [
 		".............",
-		"..##.....##..",
-		"..##.....##..",
+		"..###...###..",
+		"..###...###..",
 		".............",
 		"#...........#",
-		".#.........#.",
-		"..#########..",
+		"##.........##",
+		".###########.",
 		".............",
 		".............",
 	],
@@ -294,7 +297,8 @@ static func energy_material(color: Color) -> ShaderMaterial:
 	return _materials[key]
 
 
-## The pixel image of a face (white = LED on), cached.
+## The pixel image of a face (white = LED on), cached. Its mipmaps let the shader average the face far
+## away, where an LED is smaller than a pixel.
 static func face_texture(face: Face) -> ImageTexture:
 	if not _faces.has(face):
 		var rows: Array = FACES[face]
@@ -303,5 +307,6 @@ static func face_texture(face: Face) -> ImageTexture:
 			var row: String = rows[y]
 			for x: int in FACE_GRID.x:
 				img.set_pixel(x, y, Color.WHITE if row[x] == "#" else Color.BLACK)
+		img.generate_mipmaps()
 		_faces[face] = ImageTexture.create_from_image(img)
 	return _faces[face]

@@ -64,6 +64,20 @@ const SCREEN_SIZE := Vector3(0.33, 0.23, 0.01)
 ## The charge orb on the cannon forearm (segment space): the cannon's tip.
 const MUZZLE := Vector3(0.0, -0.43, 0.0)
 
+## The cables from the backpack up into the screen head (points in the chest joint's space; the head
+## joint is at y 0.48): each loops up behind the neck and ends inside the TV's tube within about
+## 0.11 m of the head joint, where the tube stays round it however far the head turns.
+const HEAD_CABLES: Array = [
+	[Vector3(-0.045, 0.395, 0.205), Vector3(-0.06, 0.5, 0.25), Vector3(-0.055, 0.585, 0.21), Vector3(-0.04, 0.585, 0.1)],
+	[Vector3(0.045, 0.395, 0.205), Vector3(0.07, 0.48, 0.235), Vector3(0.06, 0.55, 0.2), Vector3(0.045, 0.56, 0.09)],
+]
+const HEAD_CABLE_WIDTHS: Array[float] = [0.036, 0.028]
+## The hose from the backpack over the right shoulder (standing out past the TV's side from the
+## front) into the cyber arm's shoulder cap, ending within 0.035 m of the shoulder joint (0.23, 0.4, 0).
+const ARM_HOSE: Array = [Vector3(0.11, 0.3, 0.22), Vector3(0.24, 0.39, 0.2), Vector3(0.285, 0.48, 0.1),
+	Vector3(0.232, 0.428, 0.022)]
+const ARM_HOSE_WIDTH: float = 0.042
+
 ## The torso: the hoodie's section (a 12-sided ring, half sizes) swept through these rings (height in
 ## the chest joint's space, x scale, z scale, z shift): from its torn hem at the hips, a thin waist,
 ## narrow chest and bony shoulders rolled a little forward, up round the neck. The vest is the same
@@ -148,13 +162,16 @@ static func attachment_sets(look: StringName, host: bool) -> Array[StringName]:
 	return sets
 
 
-## A new material for one cyborg (its face, charge, flash and death are its own).
+## A new material for one cyborg (its face, charge, flash and death are its own). The screen's own
+## wear (flicker, a crack) is the look's: the base's screen is whole and steady.
 static func new_material(look: StringName, host: bool, visual_seed: int) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = SHADER
 	m.set_shader_parameter(&"led_color", Kit.LED_COLOR)
 	m.set_shader_parameter(&"glitch_color", Kit.GLITCH_COLOR)
 	m.set_shader_parameter(&"glitch", 1.0 if host else 0.0)
+	m.set_shader_parameter(&"flicker", 0.0)
+	m.set_shader_parameter(&"crack", 0.0)
 	m.set_shader_parameter(&"seed", float(visual_seed % 997))
 	m.set_shader_parameter(&"charge_color", Kit.CHARGE_COLOR)
 	m.set_shader_parameter(&"orb_center", MUZZLE)
@@ -252,7 +269,7 @@ static func _screen_head(list: Array[HumanoidPiece]) -> void:
 	_add(list, &"head", BOX, TV_SIZE, TV_CENTER, CASING, 0.0, {"chamfer": 0.12})
 	# The tube's tapered back: +y of the box points back (+z), and its far end is smaller.
 	_add(list, &"head", BOX, Vector3(0.34, 0.15, 0.25), Vector3(0.0, 0.14, 0.055), CASING_DARK, 0.0,
-		{"rotation_degrees": Vector3(90.0, 0.0, 0.0), "top_scale": Vector2(0.72, 0.7), "chamfer": 0.1})
+		{"rotation_degrees": Vector3(90.0, 0.0, 0.0), "top_scale": Vector2(0.72, 0.7)})
 	_add(list, &"head", BOX, Vector3(0.21, 0.15, 0.022), Vector3(0.0, 0.14, 0.135), GUNMETAL)
 	for k: int in 3:
 		_add(list, &"head", BOX, Vector3(0.15, 0.012, 0.006), Vector3(0.0, 0.18 - k * 0.034, 0.148), RUBBER)
@@ -274,11 +291,10 @@ static func _screen_head(list: Array[HumanoidPiece]) -> void:
 	for k: int in 3:
 		_add(list, &"head", BOX, Vector3(0.03, 0.008, 0.004), Vector3(-0.14 + k * 0.042, chin_y, bezel_z - 0.011), RUBBER)
 	for x: float in [0.12, 0.152]:
-		_add(list, &"head", PRISM, Vector3(0.02, 0.012, 0.02), Vector3(x, chin_y, bezel_z - 0.014), GUNMETAL, 0.0,
-			{"sides": 6, "rotation_degrees": Vector3(90.0, 0.0, 0.0)})
+		_add(list, &"head", BOX, Vector3(0.018, 0.018, 0.012), Vector3(x, chin_y, bezel_z - 0.014), GUNMETAL)
 	# Vents in both sides; grime, rust streaks and a dent on the casing.
-	for k: int in 3:
-		_add(list, &"head", BOX, Vector3(0.005, 0.01, 0.075), Vector3(TV_SIZE.x * 0.5 + 0.002, 0.22 - k * 0.026, -0.075),
+	for k: int in 2:
+		_add(list, &"head", BOX, Vector3(0.005, 0.012, 0.075), Vector3(TV_SIZE.x * 0.5 + 0.002, 0.215 - k * 0.032, -0.075),
 			RUBBER, 0.0, {"side": MIRRORED})
 	_add(list, &"head", BOX, Vector3(0.14, 0.004, 0.08), Vector3(-0.05, top + 0.001, -0.075), GRIME, 0.0,
 		{"rotation_degrees": Vector3(0.0, 12.0, 0.0)})
@@ -288,7 +304,6 @@ static func _screen_head(list: Array[HumanoidPiece]) -> void:
 	_add(list, &"head", BOX, Vector3(0.004, 0.08, 0.05), Vector3(TV_SIZE.x * 0.5 + 0.002, 0.07, -0.11), RUST)
 	_add(list, &"head", BOX, Vector3(0.022, 0.07, 0.004), Vector3(0.165, 0.255, bezel_z - 0.0105), RUST, 0.0,
 		{"rotation_degrees": Vector3(0.0, 0.0, -6.0)})
-	_add(list, &"head", BOX, Vector3(0.06, 0.035, 0.004), Vector3(-0.15, 0.012, bezel_z - 0.0105), GRIME)
 
 
 ## The hoodie: the torso (hem to shoulders, round the neck), a torn and frayed hem hanging below the
@@ -302,8 +317,7 @@ static func _hoodie(list: Array[HumanoidPiece]) -> void:
 	_add(list, &"chest", BAND, Vector3(r.x * 2.0 + 0.006, 0.0, r.y * 2.0 + 0.006), Vector3.ZERO, HOODIE_FRAYED, 0.0,
 		{"sides": 12, "profile": PackedVector4Array([Vector4(hem.x, 1.0, 1.0, 0.0), Vector4(hem.x + 0.025, 1.0, 1.0, 0.0)])})
 	for tooth: Vector3 in [Vector3(-100.0, 0.05, 0.05), Vector3(-55.0, 0.05, 0.045), Vector3(-12.0, 0.055, 0.06),
-			Vector3(30.0, 0.045, 0.04), Vector3(95.0, 0.05, 0.05), Vector3(150.0, 0.05, 0.055),
-			Vector3(-150.0, 0.05, 0.045)]:
+			Vector3(30.0, 0.045, 0.04), Vector3(100.0, 0.05, 0.05), Vector3(165.0, 0.05, 0.055)]:
 		# A wedge (its top face pinched to an edge), flipped so the point hangs down, turned to the waist.
 		var a: float = deg_to_rad(tooth.x)
 		var at := Vector3(sin(a) * (r.x + 0.002), hem.x - tooth.z * 0.5 + 0.004, -cos(a) * (r.y + 0.002))
@@ -311,8 +325,7 @@ static func _hoodie(list: Array[HumanoidPiece]) -> void:
 			{"top_scale": Vector2(0.0, 1.0), "rotation_degrees": Vector3(180.0, -tooth.x, 0.0)})
 	# The ribbed neck (the sheet's black corrugated neck) and the hood bunched round its base.
 	_add(list, &"chest", PRISM, Vector3(0.066, 0.11, 0.066), Vector3(0.0, 0.455, 0.0), RUBBER, 0.0, {"sides": 6})
-	for y: float in [0.44, 0.47]:
-		_add(list, &"chest", PRISM, Vector3(0.08, 0.016, 0.08), Vector3(0.0, y, 0.0), RUBBER_RIB, 0.0, {"sides": 6})
+	_add(list, &"chest", PRISM, Vector3(0.08, 0.018, 0.08), Vector3(0.0, 0.452, 0.0), RUBBER_RIB, 0.0, {"sides": 6})
 	_add(list, &"chest", LATHE, Vector3(0.17, 0.0, 0.15), Vector3(0.0, 0.0, 0.012), HOODIE_SHADE, 0.0, {"sides": 8,
 		"profile": PackedVector4Array([Vector4(0.385, 0.95, 0.95, 0.0), Vector4(0.418, 1.08, 1.12, 0.008),
 			Vector4(0.445, 0.7, 0.72, 0.012)])})
@@ -355,12 +368,12 @@ static func _backpack(list: Array[HumanoidPiece]) -> void:
 	_add(list, &"chest", BOX, Vector3(0.25, 0.28, 0.12), Vector3(0.0, 0.215, 0.165), PACK, 0.0,
 		{"chamfer": 0.2, "shine": METAL_SHINE})
 	_add(list, &"chest", BOX, Vector3(0.26, 0.035, 0.13), Vector3(0.0, 0.37, 0.165), GUNMETAL, 0.0,
-		{"chamfer": 0.2, "shine": METAL_SHINE})
+		{"shine": METAL_SHINE})
 	_add(list, &"chest", BOX, Vector3(0.13, 0.03, 0.06), Vector3(0.0, 0.395, 0.19), GUNMETAL)
 	for k: int in 3:
 		_add(list, &"chest", BOX, Vector3(0.15, 0.014, 0.006), Vector3(-0.025, 0.285 - k * 0.034, 0.227), RUBBER)
 	_add(list, &"chest", PRISM, Vector3(0.04, 0.02, 0.04), Vector3(0.078, 0.295, 0.233), STEEL, 0.0,
-		{"sides": 8, "rotation_degrees": Vector3(90.0, 0.0, 0.0), "shine": METAL_SHINE})
+		{"sides": 6, "rotation_degrees": Vector3(90.0, 0.0, 0.0), "shine": METAL_SHINE})
 	_add(list, &"chest", BOX, Vector3(0.05, 0.09, 0.004), Vector3(0.08, 0.17, 0.227), RUST)
 	_add(list, &"chest", BOX, Vector3(0.045, 0.14, 0.09), Vector3(-0.145, 0.19, 0.17), GUNMETAL)
 	# Webbing straps from the top of the pack over the shoulders to the chest.
@@ -370,22 +383,15 @@ static func _backpack(list: Array[HumanoidPiece]) -> void:
 		var c := Vector3(side * 0.11, 0.3, -0.11)
 		_bar(list, &"chest", a, b, Vector2(0.034, 0.01), STRAP, Vector3.UP)
 		_bar(list, &"chest", b, c, Vector2(0.034, 0.01), STRAP, Vector3.FORWARD)
-	# Cables looping up from the pack behind the neck into the back of the screen head (the head joint
-	# is at y 0.48). They end inside the TV, within about 0.11 m of that joint, where the tube stays
-	# round them however far the head turns.
-	_cable(list, [Vector3(-0.045, 0.395, 0.205), Vector3(-0.06, 0.5, 0.25), Vector3(-0.055, 0.585, 0.21),
-		Vector3(-0.04, 0.585, 0.1)], 0.036, CABLE)
-	_cable(list, [Vector3(0.045, 0.395, 0.205), Vector3(0.07, 0.48, 0.235), Vector3(0.06, 0.55, 0.2),
-		Vector3(0.045, 0.56, 0.09)], 0.028, CABLE)
-	# The hose over the right shoulder (standing out past the TV's side from the front), into the
-	# cyber arm's shoulder cap (the shoulder joint is at (0.23, 0.4, 0); it ends within 0.035 m of it).
-	_cable(list, [Vector3(0.11, 0.3, 0.22), Vector3(0.24, 0.39, 0.2), Vector3(0.285, 0.48, 0.1),
-		Vector3(0.232, 0.428, 0.022)], 0.042, HOSE)
+	# The cables into the screen head and the hose into the cyber arm (HEAD_CABLES, ARM_HOSE).
+	for k: int in HEAD_CABLES.size():
+		_cable(list, HEAD_CABLES[k], HEAD_CABLE_WIDTHS[k], CABLE)
+	_cable(list, ARM_HOSE, ARM_HOSE_WIDTH, HOSE)
 
 
 ## The left arm: thin, in the hoodie's sleeve, ending in a bare, bony hand.
 static func _free_arm(list: Array[HumanoidPiece]) -> void:
-	var sleeve := {"side": LEFT, "sides": 8}
+	var sleeve := {"side": LEFT, "sides": 6}
 	_add(list, &"upper_arm", PRISM, Vector3(0.106, 0.08, 0.1), Vector3(0.004, -0.02, 0.0), HOODIE, 0.0,
 		_with(sleeve, {"top_scale": Vector2(0.7, 0.72)}))
 	_add(list, &"upper_arm", PRISM, Vector3(0.084, 0.23, 0.084), Vector3(0.0, -0.145, 0.0), HOODIE, 0.0,
@@ -398,7 +404,7 @@ static func _free_arm(list: Array[HumanoidPiece]) -> void:
 		{"side": LEFT, "sides": 6})
 	# The hand hangs palm in (thin across the palm, x), thumb forward, fingers a little curled.
 	_add(list, &"forearm", BOX, Vector3(0.028, 0.065, 0.058), Vector3(0.0, -0.276, -0.004), SKIN, 0.0,
-		{"side": LEFT, "chamfer": 0.3})
+		{"side": LEFT})
 	_add(list, &"forearm", BOX, Vector3(0.024, 0.058, 0.05), Vector3(0.002, -0.334, -0.012), SKIN_SHADE, 0.0,
 		{"side": LEFT, "top_scale": Vector2(1.0, 1.1), "rotation_degrees": Vector3(-14.0, 0.0, 0.0)})
 	_add(list, &"forearm", BOX, Vector3(0.017, 0.046, 0.018), Vector3(-0.006, -0.282, -0.04), SKIN, 0.0,
@@ -413,10 +419,10 @@ static func _free_arm(list: Array[HumanoidPiece]) -> void:
 static func _cyber_arm(list: Array[HumanoidPiece]) -> void:
 	var metal := {"side": RIGHT, "shine": METAL_SHINE}
 	_add(list, &"upper_arm", LATHE, Vector3(0.13, 0.0, 0.13), Vector3(0.008, 0.0, 0.0), STEEL, 0.0, _with(metal, {
-		"sides": 8, "profile": PackedVector4Array([Vector4(-0.05, 0.9, 0.9, 0.0), Vector4(-0.01, 1.0, 1.0, 0.0),
+		"sides": 6, "profile": PackedVector4Array([Vector4(-0.05, 0.9, 0.9, 0.0), Vector4(-0.01, 1.0, 1.0, 0.0),
 			Vector4(0.035, 0.72, 0.72, 0.0), Vector4(0.056, 0.3, 0.3, 0.0)])}))
 	_add(list, &"upper_arm", BAND, Vector3(0.121, 0.0, 0.121), Vector3(0.008, 0.0, 0.0), RUST, 0.0, {"side": RIGHT,
-		"sides": 8, "profile": PackedVector4Array([Vector4(-0.05, 0.96, 0.96, 0.0), Vector4(-0.036, 0.98, 0.98, 0.0)])})
+		"sides": 6, "profile": PackedVector4Array([Vector4(-0.05, 0.96, 0.96, 0.0), Vector4(-0.036, 0.98, 0.98, 0.0)])})
 	_add(list, &"upper_arm", PRISM, Vector3(0.05, 0.24, 0.05), Vector3(0.0, -0.15, 0.0), GUNMETAL, 0.0,
 		{"side": RIGHT, "sides": 6})
 	_add(list, &"upper_arm", BOX, Vector3(0.066, 0.17, 0.018), Vector3(0.0, -0.13, -0.034), STEEL, 0.0, metal)
@@ -425,19 +431,18 @@ static func _cyber_arm(list: Array[HumanoidPiece]) -> void:
 	_pipe(list, &"upper_arm", Vector3(-0.028, -0.13, 0.03), Vector3(-0.028, -0.255, 0.03), 0.014, STEEL, 6, RIGHT)
 	_pipe(list, &"upper_arm", Vector3(0.012, -0.02, 0.045), Vector3(0.014, -0.25, 0.05), 0.03, HOSE, 6, RIGHT)
 	_add(list, &"upper_arm", PRISM, Vector3(0.076, 0.078, 0.076), Vector3(0.0, -0.28, 0.0), GUNMETAL, 0.0,
-		_with(metal, {"sides": 8, "rotation_degrees": Vector3(0.0, 0.0, 90.0)}))
+		_with(metal, {"sides": 6, "rotation_degrees": Vector3(0.0, 0.0, 90.0)}))
 	# The arm cannon.
-	_add(list, &"forearm", BOX, Vector3(0.086, 0.13, 0.09), Vector3(0.0, -0.07, 0.0), GUNMETAL, 0.0,
-		_with(metal, {"chamfer": 0.25}))
+	_add(list, &"forearm", BOX, Vector3(0.086, 0.13, 0.09), Vector3(0.0, -0.07, 0.0), GUNMETAL, 0.0, metal)
 	_add(list, &"forearm", PRISM, Vector3(0.118, 0.22, 0.118), Vector3(0.0, -0.25, 0.0), STEEL, 0.0,
 		_with(metal, {"sides": 8}))
 	for y: float in [-0.18, -0.22]:
 		_add(list, &"forearm", PRISM, Vector3(0.14, 0.014, 0.14), Vector3(0.0, y, 0.0), GUNMETAL, 0.0,
-			{"side": RIGHT, "sides": 8})
+			{"side": RIGHT, "sides": 6})
 	_add(list, &"forearm", BOX, Vector3(0.02, 0.1, 0.066), Vector3(0.062, -0.3, 0.0), RUST, 0.0, {"side": RIGHT})
 	_pipe(list, &"forearm", Vector3(-0.035, -0.05, 0.046), Vector3(-0.052, -0.29, 0.05), 0.02, RUBBER, 6, RIGHT)
 	_add(list, &"forearm", PRISM, Vector3(0.1, 0.05, 0.1), Vector3(0.0, -0.375, 0.0), GUNMETAL, 0.0,
-		_with(metal, {"sides": 8}))
+		_with(metal, {"sides": 6}))
 
 
 ## Patched olive cargo pants (a cargo pocket on each thigh, a faded patch over the right thigh, a
@@ -457,9 +462,8 @@ static func _legs(list: Array[HumanoidPiece]) -> void:
 		"sides": 8, "profile": PackedVector4Array([Vector4(-0.011, 1.0, 1.0, 0.0), Vector4(0.011, 1.0, 1.0, 0.0)])})
 	_add(list, &"thigh", BOX, Vector3(0.03, 0.028, 0.01), Vector3(0.036, -0.06, -0.066), STEEL, 0.0,
 		{"side": RIGHT, "shine": METAL_SHINE})
-	_add(list, &"shin", PRISM, Vector3(0.118, 0.17, 0.118), Vector3(0.0, -0.08, 0.0), PANTS, 0.0,
-		{"sides": 8, "top_scale": Vector2(1.06, 1.06)})
-	_add(list, &"shin", PRISM, Vector3(0.124, 0.03, 0.124), Vector3(0.0, -0.165, 0.0), PANTS_SHADE, 0.0, {"sides": 8})
+	_add(list, &"shin", PRISM, Vector3(0.126, 0.18, 0.126), Vector3(0.0, -0.085, 0.0), PANTS, 0.0,
+		{"sides": 8, "top_scale": Vector2(0.97, 0.97)})
 	_add(list, &"shin", PRISM, Vector3(0.098, 0.11, 0.098), Vector3(0.0, -0.215, 0.0), BOOT, 0.0, {"sides": 8})
 	# The laces: a crossed pair down the boot's front.
 	for z_rot: float in [62.0, -62.0]:
@@ -499,10 +503,10 @@ static func _vein(list: Array[HumanoidPiece], segment: StringName, a: Vector3, b
 	_pipe(list, segment, a, b, width, Kit.GLITCH_COLOR, 4, side, VEIN)
 
 
-## A cable or hose through `points`: one prism per stretch, overlapping a little at the bends.
-static func _cable(list: Array[HumanoidPiece], points: Array[Vector3], width: float, color: Color) -> void:
+## A cable or hose through `points` (Vector3s): one prism per stretch, overlapping a little at the bends.
+static func _cable(list: Array[HumanoidPiece], points: Array, width: float, color: Color) -> void:
 	for k: int in points.size() - 1:
-		_pipe(list, &"chest", points[k], points[k + 1], width, color, 6)
+		_pipe(list, &"chest", points[k], points[k + 1], width, color, 5)
 
 
 ## A `sides`-sided prism from `a` to `b` (a rod, cable or vein), `width` across.
