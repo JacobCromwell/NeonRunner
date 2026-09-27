@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1_skin")
-enemy_variant = &"corporate"
+enemy_variant = &"vr_runner"
 floor_style = 1
 compound_share = 0.3
 hover_ship_share = 0.8

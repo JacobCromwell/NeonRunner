@@ -259,10 +259,9 @@ var _lane_width: float = 2.4
 
 
 func _init() -> void:
-	# DESIGN-TBD: GDD §9.2 gives the Corporate zone's cyborgs their own variant, the "Wide-Aspect VR"
-	# Runner (task P3). This name is the zone's; the cyborgs wear the base look until P3 maps it, and
-	# every other enemy reads anything but &"scavenger" as the sleek city look.
-	enemy_variant = &"corporate"
+	# GDD §9.2: the Corporate zone's cyborgs are the "Wide-Aspect VR" Runner (CyborgSuit's vr_runner
+	# look); every other enemy reads it as the clean look (docs/ARCHITECTURE.md, Zone skins).
+	enemy_variant = &"vr_runner"
 
 
 func make_environment() -> Environment:

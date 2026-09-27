@@ -4,4 +4,4 @@
 
 [resource]
 script = ExtResource("1_skin")
-enemy_variant = &"corporate"
+enemy_variant = &"vr_runner"
