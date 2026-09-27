@@ -145,6 +145,12 @@ func big_attacks_take_turns() -> bool:
 	return world == null or world.rules == null or world.rules.big_attacks_take_turns
 
 
+## True if `enemy` asked for its turn this frame or the last and was held (while big attacks take
+## turns; the director doesn't keep track otherwise).
+func is_waiting(enemy: Enemy) -> bool:
+	return _waiting(_asks.get(enemy.get_instance_id(), {}))
+
+
 ## True if `enemy` asked for its turn this frame or the last and was held for another type's big
 ## attack (not by GDD §9.7's exclusive rule): an enemy that may only attack within a window (the
 ## Octodog's planned charges) moves the window on while it waits.
