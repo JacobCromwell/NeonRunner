@@ -4,6 +4,8 @@ extends TestSuite
 const DroneScript := preload("res://scripts/enemies/drone.gd")
 
 var sim: RunSim
+## Fences and holes found under the pad schedule's ceilings (_check_rules).
+var floor_under_ceilings: int = 0
 
 
 func run() -> void:
@@ -334,6 +336,8 @@ func _test_rules() -> void:
 				drones += _check_rules(a, config, t, tag)
 				levels += 1
 	check(drones >= levels, "the patterns place drones (%d in %d levels)" % [drones, levels])
+	check(floor_under_ceilings > levels, "the floor under the pads' ceilings keeps its fences and holes (%d in %d levels)"
+		% [floor_under_ceilings, levels])
 
 	# The campaign level that introduces drones.
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
@@ -415,22 +419,14 @@ func _check_rules(layout: LevelLayout, config: LevelConfig, t: DroneTuning, tag:
 		- (t.pad_ceiling_seconds + config.hull_landing_seconds) * speed
 	check(pads[-1] >= last_possible - t.pad_repeat_max_seconds * speed - 1.0,
 		"the pad schedule repeats to the end of the level (last at %.0f m) %s" % [pads[-1], tag])
-	# GDD §3: nothing on the floor under a ceiling; every pad is under one and on solid floor.
+	# GDD §3: the floor under the schedule's ceilings keeps what it holds (the pad is the way out of
+	# it); every pad can be stepped on, every landing zone is safe, and a floor route runs under each.
+	LayoutChecks.check_ceilings(self, layout, config, tag)
 	for h: Dictionary in layout.hulls:
-		for g: Dictionary in layout.gaps:
-			check(float(g["start"]) > float(h["end"]) or float(g["end"]) < float(h["start"]), "no gap under a ceiling " + tag)
 		for f: Dictionary in layout.fences:
-			check(float(f["at"]) < float(h["start"]) or float(f["at"]) > float(h["end"]), "no fence under a ceiling " + tag)
-		for e: Dictionary in layout.enemies:
-			if int(e.get("side", 0)) == 0 and LevelGenerator.enemy_uses_floor(e):
-				check(float(e["at"]) < float(h["start"]) or float(e["at"]) > float(h["end"]),
-					"no floor enemy under a ceiling (%s) %s" % [e["type"], tag])
-	for p: Dictionary in layout.pads:
-		var covered: bool = false
-		for h: Dictionary in layout.hulls:
-			if float(h["start"]) <= float(p["at"]) - 1.0 and float(h["end"]) >= float(p["at"]) + 10.0:
-				covered = true
-		check(covered, "pad at %.0f has a ceiling above %s" % [p["at"], tag])
-		check(not layout.gapped_between(int(p["lane"]), float(p["at"]) - 6.0, float(p["at"]) + tuning.pad_length),
-			"pad at %.0f is on solid floor %s" % [p["at"], tag])
+			if float(f["at"]) > float(h["start"]) and float(f["at"]) < float(h["end"]):
+				floor_under_ceilings += 1
+		for g: Dictionary in layout.gaps:
+			if float(g["start"]) > float(h["start"]) and float(g["end"]) < float(h["end"]):
+				floor_under_ceilings += 1
 	return drones.size()

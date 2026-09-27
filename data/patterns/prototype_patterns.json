@@ -146,6 +146,43 @@
 			]
 		},
 		{
+			"id": "ceiling_over_fences",
+			"min_difficulty": 0.3, "weight": 0.35,
+			"requires": ["ceilings"],
+			"length": 10,
+			"elements": [
+				{ "kind": "hull", "at": 0, "lanes": { "mode": "random", "count": 1 }, "length_seconds": 4.0 },
+				{ "kind": "fence", "at_seconds": 1.1, "variant": "full", "lanes": { "mode": "all_but", "count": 1 } },
+				{ "kind": "fence", "at_seconds": 2.2, "variant": "full", "lanes": { "mode": "all_but", "count": 1 } },
+				{ "kind": "fence", "at_seconds": 3.3, "variant": "full", "lanes": { "mode": "all_but", "count": 1 } }
+			]
+		},
+		{
+			"id": "ceiling_over_holes",
+			"min_difficulty": 0.35, "weight": 0.3,
+			"requires": ["ceilings"],
+			"length": 10,
+			"elements": [
+				{ "kind": "hull", "at": 0, "lanes": { "mode": "random", "count": 1 }, "length_seconds": 4.0 },
+				{ "kind": "gap", "at_seconds": 1.1, "lanes": { "mode": "all_but", "count": 1 }, "jump_frac": 0.5 },
+				{ "kind": "gap", "at_seconds": 2.2, "lanes": { "mode": "all_but", "count": 1 }, "jump_frac": 0.5 },
+				{ "kind": "gap", "at_seconds": 3.2, "lanes": { "mode": "all_but", "count": 1 }, "jump_frac": 0.5 }
+			]
+		},
+		{
+			"id": "ceiling_over_gauntlet",
+			"min_difficulty": 0.5, "weight": 0.3,
+			"requires": ["ceilings"],
+			"length": 10,
+			"elements": [
+				{ "kind": "hull", "at": 0, "lanes": { "mode": "random", "count": 1 }, "length_seconds": 4.5 },
+				{ "kind": "fence", "at_seconds": 1.0, "variant": "gapped", "lanes": { "mode": "all" } },
+				{ "kind": "gap", "at_seconds": 2.0, "lanes": { "mode": "all_but", "count": 1 }, "jump_frac": 0.5 },
+				{ "kind": "fence", "at_seconds": 3.0, "variant": "full", "lanes": { "mode": "all_but", "count": 1 } },
+				{ "kind": "fence", "at_seconds": 3.9, "variant": "full", "lanes": { "mode": "random", "frac": 0.5 } }
+			]
+		},
+		{
 			"id": "speed_pad_single",
 			"min_difficulty": 0.0, "weight": 1,
 			"requires": ["speed_pads"],

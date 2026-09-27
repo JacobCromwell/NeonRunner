@@ -10,7 +10,7 @@ extends RefCounted
 ## one the real Player can run (test_generator replays some on real physics); it may miss some that
 ## exist. Enemies aren't in it: each keeps to its own fairness rules.
 ##   var route: Dictionary = FloorRoute.find(layout, tuning, from, to)
-##   route: {ok, start_lane, end_lane, actions: [[distance, action]], reason}
+##   route: {ok, start_lane, end_lane, actions: [[distance, action]], reason, from, to}
 
 ## Metres per step of the model.
 const STEP: float = 0.5
@@ -120,7 +120,7 @@ static func find(layout: LevelLayout, tuning: MovementTuning, from: float, to: f
 		if found >= 0:
 			break
 	if found < 0:
-		return {"ok": false, "reason": _stuck(reach, from, lanes, size), "actions": []}
+		return {"ok": false, "reason": _stuck(reach, from, lanes, size), "actions": [], "from": from, "to": to}
 	# Walk back to the start, collecting the moves.
 	var steps: Array[Vector2i] = []  # (step the move starts at, move)
 	var at: int = found
@@ -141,7 +141,8 @@ static func find(layout: LevelLayout, tuning: MovementTuning, from: float, to: f
 			Move.SLIDE:
 				for k: int in s.y / 16:
 					actions.append([d + k * (slide_steps - 2) * STEP, &"slide"])
-	return {"ok": true, "start_lane": at / size, "end_lane": found / size, "actions": actions, "reason": ""}
+	return {"ok": true, "start_lane": at / size, "end_lane": found / size, "actions": actions, "reason": "",
+		"from": from, "to": to}
 
 
 ## Where a route may start, at or before `before`: the latest spot inside a clear stretch (every lane

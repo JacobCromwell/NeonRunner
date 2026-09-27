@@ -229,8 +229,7 @@ func _test_generation() -> void:
 							check(powered.has(f), "its EMP reaches every fence of its group (lane %d) %s" % [int(f["lane"]), tag])
 					for f: Dictionary in powered:
 						fed[snappedf(float(f["at"]), 0.01)] = true
-					check(not a.under_hull(at) and not a.gapped_between(lane, at - 1.5, at + 1.5),
-						"a generator stands on clear floor " + tag)
+					check(not a.gapped_between(lane, at - 1.5, at + 1.5), "a generator stands on solid floor " + tag)
 					check(lane >= 0 and lane < lanes, "generator lane in range " + tag)
 				var row_ats: Dictionary = {}
 				for f: Dictionary in a.fences:

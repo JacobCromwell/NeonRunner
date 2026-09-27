@@ -8,6 +8,7 @@ spawn_lead = 110.0
 score_value = 100
 health_early = 1.0
 health_late = 1.0
+floor_reach_before = 30.0
 trigger_seconds = 1.6
 min_warning_seconds = 1.15
 shake_time_early = 0.6

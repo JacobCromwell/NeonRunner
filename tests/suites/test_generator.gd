@@ -1,8 +1,11 @@
 extends TestSuite
 ## Generator fairness over many seeds, lane counts and difficulties, plus pattern-data checks;
-## features that start partway into a level (introductions, and every rules script that adds a
-## feature's enemies or pieces keeping to the start), per-level feature weights, and the guarantee
-## that every feature appears (LevelConfig.guarantee_features, and the host and Octodog rules' own).
+## ceilings over a dangerous floor (GDD §3: a pattern's gauntlet under its own ceiling, rules'
+## ceilings over whatever the floor holds, the safe landing zone, pads the player can step on, and a
+## floor route under every ceiling, run on real physics); features that start partway into a level
+## (introductions, and every rules script that adds a feature's enemies or pieces keeping to the
+## start), per-level feature weights, and the guarantee that every feature appears
+## (LevelConfig.guarantee_features, and the host and Octodog rules' own).
 
 const HostRules := preload("res://scripts/enemies/host_rules.gd")
 
@@ -38,6 +41,7 @@ func run() -> void:
 	_test_pattern_features()
 	_test_guarantee(base)
 	_test_rules_guarantees(base)
+	await _test_floor_routes_on_physics(base)
 
 
 ## GDD §3 (changed September 26, 2026): a pattern may put gaps, fences and floor enemies under its
@@ -487,3 +491,93 @@ func _test_rules_guarantees(base: LevelConfig) -> void:
 		if bool(c[2]):
 			check(added == 24, "every level got its %s (%d of 24) in %s" % [feature, added, c[1]])
 	check(dogs_with_chases > 0, "some guaranteed dogs share their level with a Bad Dream's chase (%d)" % dogs_with_chases)
+
+
+## GDD §3: the floor route under a ceiling is always survivable without the pad. The routes FloorRoute
+## finds under ceilings (the model LayoutChecks checks every ceiling with) are run by the real Player
+## on real physics, on the floor pieces, pads and ceilings of the layout (enemies keep to their own
+## fairness rules and aren't in it): under each gauntlet pattern's ceiling (the pattern alone in a
+## level), and under the drone's pad schedule over ordinary floors, at 3, 5 and 6 lanes. The player
+## comes through on the floor, alive, never having stepped on the pad.
+func _test_floor_routes_on_physics(base: LevelConfig) -> void:
+	var sim := RunSim.new(tree, tuning)
+	var cases: Array = []  # [tag, features, patterns, ceilings to run, seeds]
+	for p: Dictionary in LevelGenerator.load_for(base):
+		var hull: bool = false
+		var pieces: int = 0
+		for e: Dictionary in p.get("elements", []):
+			if String(e.get("kind", "")) == "hull":
+				hull = true
+			elif String(e.get("kind", "")) in ["gap", "fence", "enemy"]:
+				pieces += 1
+		if hull and pieces > 0:
+			var features: Array = ["pulsing"]
+			features.append_array(p.get("requires", []))
+			cases.append([String(p["id"]), features, [p], 3, 1])
+	check(cases.size() >= 6, "gauntlet patterns put floor pieces or enemies under their own ceiling (%d)" % cases.size())
+	cases.append(["drone", ["ceilings", "pulsing", "ramps", "speed_pads", "drone"], LevelGenerator.load_for(base), 3, 2])
+	var ran: int = 0
+	for c: Array in cases:
+		for lanes: int in [3, 5, 6]:
+			for level_seed: int in range(1, int(c[4]) + 1):
+				var config: LevelConfig = base.duplicate() as LevelConfig
+				config.lane_count = lanes
+				config.difficulty = 0.8
+				config.enemy_scaling = 0.8
+				config.level_seed = level_seed
+				config.features = PackedStringArray(c[1])
+				var tag: String = "%s lanes=%d seed=%d" % [c[0], lanes, level_seed]
+				var gen := LevelGenerator.new()
+				var layout: LevelLayout = gen.generate(config, tuning, c[2])
+				check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
+				check(not layout.hulls.is_empty(), "the level has ceilings " + tag)
+				var zones := CeilingZones.make(config, tuning)
+				var runs: int = 0
+				for h: Dictionary in layout.hulls:
+					if runs >= int(c[3]):
+						break
+					var route: Dictionary = LayoutChecks.floor_route(layout, tuning, zones, h)
+					check(bool(route["ok"]), "a floor route under the ceiling at %.0f (%s) %s" % [h["start"], route["reason"], tag])
+					if not bool(route["ok"]):
+						continue
+					var r: Dictionary = await _replay(sim, layout, route)
+					var what: String = "under the ceiling at %.0f (%d moves) %s" % [h["start"], (route["actions"] as Array).size(), tag]
+					check(bool(r["alive"]), "the player runs the floor route %s: %s" % [what, r["cause"]])
+					check(not (r["events"] as Array).has(&"pad"), "without stepping on the pad " + what)
+					check(r["surface"] == "floor" and bool(r["reached"]), "and comes through on the floor %s (%s at %.0f)"
+						% [what, r["surface"], r["distance"]])
+					runs += 1
+					ran += 1
+	check(ran >= 60, "floor routes run on physics: %d" % ran)
+
+
+## Runs `route` (FloorRoute) on real physics: the layout's floor pieces, pads and ceilings from the
+## route's start to its end (and a little past), moved to start after a run-up; no enemies. Returns
+## RunSim.run's result, and `reached`: the player got past the route's end.
+func _replay(sim: RunSim, layout: LevelLayout, route: Dictionary) -> Dictionary:
+	const LEAD: float = 30.0
+	var from: float = float(route["from"])
+	var to: float = float(route["to"])
+	var offset: float = LEAD - from
+	var part := RunSim.layout(layout.lane_count, to - from + LEAD + 80.0)
+	var lists: Dictionary = layout.to_dict()
+	var into: Dictionary = part.to_dict()
+	for key: String in ["gaps", "fences", "pads", "hulls", "ramps", "speed_pads", "signs"]:
+		for item: Dictionary in lists[key]:
+			var start: float = float(item.get("start", item.get("at", 0.0)))
+			var end: float = float(item.get("end", start + 5.0))
+			if end < from - 1.0 or start > to + 40.0:
+				continue
+			var moved: Dictionary = item.duplicate()
+			for k: String in ["at", "start", "end"]:
+				if moved.has(k):
+					moved[k] = float(moved[k]) + offset
+			(into[key] as Array).append(moved)
+	var actions: Array = []
+	for a: Array in route["actions"]:
+		# One physics step early: the Player acts on a press in its next step.
+		actions.append([float(a[0]) + offset - tuning.run_speed / Engine.physics_ticks_per_second, a[1]])
+	var seconds: float = (to - from + LEAD + 10.0) / tuning.run_speed
+	var r: Dictionary = await sim.run(part, int(route["start_lane"]), seconds, actions)
+	r["reached"] = float(r["distance"]) >= to + offset
+	return r
