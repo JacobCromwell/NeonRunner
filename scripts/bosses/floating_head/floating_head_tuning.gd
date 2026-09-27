@@ -158,8 +158,8 @@ extends Resource
 
 @export_group("Towers")
 ## GDD §10: "marked, cracked towers stand ahead at the roadside". DESIGN-TBD: one every
-## tower_spacing metres (sides in turn), the first tower_first into each lap, tower_height tall and
-## tower_width wide. The track stays clear of holes and fences from tower_clear_before before a tower
+## tower_spacing metres (sides in turn), the first tower_first into each lap, tower_height tall (its
+## head, the top 30%, juts out over the street above the ship's highest flight) and tower_width wide. The track stays clear of holes and fences from tower_clear_before before a tower
 ## to tower_clear_after past it (the pin, and the run up to it).
 @export_range(80.0, 800.0, 5.0, "suffix:m") var tower_spacing: float = 300.0
 @export_range(0.0, 800.0, 5.0, "suffix:m") var tower_first: float = 240.0

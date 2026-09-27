@@ -5,10 +5,10 @@ extends Node3D
 ##   sweep across the lanes: jump a low sweep, slide under a high one, or switch lanes when a beam
 ##   drags down a lane"). Every laser attack starts with its warning: the eyes glow red
 ##   (FloatingHeadBody's eye_charge) and whine (head_laser_charge) for laser_charge_seconds while thin
-##   aiming beams show where it goes: for a sweep, the line it will cross the runner's spot along (low
-##   or high) and the wall it starts from (the one further from the runner); for a drag, the lane it
-##   will burn, following the runner's lane until the warning ends, then the framework's red lane
-##   warning. Then the beams fire (head_laser_fire): a sweep crosses the street wall to wall at
+##   aiming beams show where it goes: for a sweep, the lines it will cross the runner's spot along (low,
+##   or high: two) and the wall it starts from (the one further from the runner); for a drag, a red
+##   spot on the lane it will burn, following the runner's lane until the warning ends, then the
+##   framework's red lane warning. Then the beams fire (head_laser_fire): a sweep crosses the street wall to wall at
 ##   laser_sweep_speed; a drag lands under the face in that lane and burns down it to the runner's spot
 ##   in drag_seconds, leaving a burning line;
 ## - the cyborg drop (GDD §10: "its mouth opens and drops 1–2 cyborgs onto the trucks ahead, who then
@@ -104,6 +104,9 @@ var _lines: Array[MeshInstance3D] = []
 var _line_materials: Array[ShaderMaterial] = []
 var _strip: MeshInstance3D
 var _strip_material: ShaderMaterial
+## A drag's aiming spot on the floor.
+var _dot: MeshInstance3D
+var _dot_material: ShaderMaterial
 ## A sweep's hitboxes, one along each eye's beam.
 var _sweep_hazards: Array[Hazard] = []
 var _burn_hazard: Hazard
@@ -154,6 +157,12 @@ func setup(p_head: FloatingHead) -> void:
 	_strip_material.set_shader_parameter(&"laser_color", LASER_RED)
 	_strip = _mesh_node(_quad_mesh(), _strip_material, "Burn")
 	_strip.visible = false
+	_dot_material = ShaderMaterial.new()
+	_dot_material.shader = shader
+	_dot_material.set_shader_parameter(&"shape", 3)
+	_dot_material.set_shader_parameter(&"laser_color", LASER_RED)
+	_dot = _mesh_node(_quad_mesh(), _dot_material, "AimSpot")
+	_dot.visible = false
 	for i: int in 2:
 		_sweep_hazards.append(_make_hazard(LASER_NAME))
 	_burn_hazard = _make_hazard(BURN_NAME)
@@ -505,10 +514,15 @@ func _update_charge(delta: float) -> void:
 		_show_aim_lines(attack["heights"], 0.25 + 0.75 * _charge)
 		_show_beams(targets, AIM_RADIUS, 0.35 + 0.5 * _charge, 0.0, false)
 	else:
-		# The drag's aim follows the runner's lane (a little behind), on the floor under the face.
+		# The drag's aim follows the runner's lane (a little behind), on the floor under the face, where
+		# a red spot shows it.
 		var target: Vector3 = _drag_aim(head.player_lane())
 		_aim = Vector3(move_toward(_aim.x, target.x, 16.0 * delta), target.y, target.z)
 		_show_beams([_aim, _aim], AIM_RADIUS, 0.35 + 0.5 * _charge, 0.0, false)
+		var w: float = world.geo.lane_width * 0.55
+		_dot.global_transform = Transform3D(Basis.from_scale(Vector3(w, 1.0, w * 1.6)), _aim + Vector3(0.0, 0.03, 0.0))
+		_dot.visible = true
+		_dot_material.set_shader_parameter(&"strength", 0.5 + 0.9 * _charge)
 
 
 ## The warning is over: the attack fires (or, if it can't fire fairly any more, powers down).
@@ -516,6 +530,7 @@ func _commit() -> void:
 	var kind: StringName = attack["kind"]
 	for line: MeshInstance3D in _lines:
 		line.visible = false
+	_dot.visible = false
 	if kind == &"low" or kind == &"high":
 		attack["x"] = float(attack["start_x"])
 		_set_step(Step.FIRE)
@@ -691,6 +706,8 @@ func _lasers_off() -> void:
 		beam.visible = false
 	for line: MeshInstance3D in _lines:
 		line.visible = false
+	if _dot != null:
+		_dot.visible = false
 	for hazard: Hazard in _sweep_hazards:
 		hazard.set_enabled(false)
 	if head != null and head.body != null and is_instance_valid(head.body):
@@ -751,15 +768,20 @@ func _drag_aim(lane: int) -> Vector3:
 	return Vector3(world.geo.lane_x(lane), 0.05, TrackGeometry.world_z(world.player.distance + head.pose.z - 1.0))
 
 
-## The face watches the runner, or the laser's aim while it attacks.
+## The face watches the runner, the laser's aim while it attacks, or the marked tower it's lining up.
 func _update_look(_delta: float) -> void:
 	if head.body == null or not is_instance_valid(head.body):
 		return
 	var aiming: bool = running and not attack.is_empty() and attack["kind"] != &"drop" \
 		and (step == Step.CHARGE or step == Step.FIRE)
-	head.body.look_override = aiming
+	var eyeing: FloatingHeadTower = null
+	if running and attack.get("kind", &"") == &"tower" and (step == Step.MOVE or step == Step.WAIT_TOWER):
+		eyeing = head.tower_node(attack["tower"])
+	head.body.look_override = aiming or eyeing != null
 	if aiming:
 		head.body.look_point = _aim
+	elif eyeing != null:
+		head.body.look_point = eyeing.strike_point() + Vector3(0.0, 6.0, 0.0)
 
 
 # --- The cyborg drop -------------------------------------------------------------------------------

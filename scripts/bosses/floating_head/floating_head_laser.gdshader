@@ -7,6 +7,7 @@
 //            along it (0 at the end nearest the runner); a red glow with a hot core line and embers,
 //            the embers holding still with Reduced flashing.
 //   shape 2, a sweep's aiming line across the street: a thin tube like a beam's, even along its length.
+//   shape 3, a drag's aiming spot on the floor: a flat quad, a round red glow with a hot centre.
 // Additive and unshaded, so it works the same on Forward+, Mobile and Compatibility (lifted there to
 // read as brightly); it fades out far away itself, since fog would brighten an additive surface.
 shader_type spatial;
@@ -42,10 +43,15 @@ void fragment() {
 		float ember = hash12(floor(vec2(UV.x * 6.0, UV.y * 18.0 + floor(TIME * 9.0) * still)));
 		a = glow * (0.45 + 0.35 * ember) + line * 1.2;
 		col = mix(laser_color, core_color, line * 0.6);
-	} else {
+	} else if (shape == 2) {
 		float facing = abs(dot(normalize(NORMAL), normalize(VIEW)));
 		a = pow(facing, 1.5);
 		col = laser_color;
+	} else {
+		float r = length(UV * 2.0 - 1.0);
+		float centre = exp(-r * r * 12.0);
+		a = (1.0 - smoothstep(0.25, 1.0, r)) * 0.8 + centre;
+		col = mix(laser_color, core_color, centre * 0.5);
 	}
 	float fade = 1.0 - smoothstep(fade_begin, fade_end, length(VERTEX));
 	float k = max(a * strength * fade, 0.0);

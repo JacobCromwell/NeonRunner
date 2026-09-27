@@ -228,6 +228,11 @@ func _test_towers() -> void:
 	var t := def.tuning as FloatingHeadTuning
 	var loud: PackedStringArray = _hazard_glows(FloatingHeadTower.tower_mesh(t.tower_width, t.tower_height))
 	check(loud.is_empty(), "nothing on a marked tower glows in a hazard colour: %s" % ", ".join(loud))
+	# Its head juts out over the street above everything that flies down it.
+	var ship_top: float = t.station_height + maxf(t.head_height_narrow, t.head_height_wide) + 0.5
+	var head_bottom: float = t.tower_height * (1.0 - FloatingHeadTower.HEAD_SHARE) - 0.5
+	check(head_bottom > ship_top and t.enter_height + t.head_height_wide < head_bottom,
+		"a tower's head (from %.1f m up) clears the ship at its highest (%.1f m)" % [head_bottom, ship_top])
 	for lanes: int in LANES:
 		var config: LevelConfig = BossArena.base_config(def)
 		config.lane_count = lanes

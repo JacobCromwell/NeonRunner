@@ -4,11 +4,13 @@ extends Node3D
 ## baits the eye laser into one (or the laser clips one on its own); it topples onto the ship and pins
 ## it low across the trucks. FloatingHead plans where they stand (_plan_lap) and brings them into sight;
 ## FloatingHeadFaceOff clips them; the encounter's pin makes one fall onto the ship.
-## DESIGN-TBD (docs/questions/e1.md): the look. Placeholder: a slender, weathered concrete tower block
-## standing flush with the facades, its base split by big cracks with bent rebar, a painted white target
-## (a ring and a cross, the laser's "aim here") on the faces toward the street and the traffic, and a
-## column of cold white warning lights. Nothing on it glows in a hazard colour; the laser's cut across
-## its base glows red-hot for a moment when it's clipped (the attack's own colour).
+## DESIGN-TBD (docs/questions/e1.md): the look. Placeholder: a slender tower block of pale, weathered
+## concrete standing flush with the dark facades, its heavy head jutting out over the street high up
+## (so it shows from far along the street), its base split by big cracks with bent rebar, painted
+## white bands, big white targets (a ring and a cross, the laser's "aim here") on its head's faces
+## toward the street and the traffic, and cold white warning lights up its street-side edges and
+## under its head. Nothing on it glows in a hazard colour; the laser's
+## cut across its base glows red-hot for a moment when it's clipped (the attack's own colour).
 ## No hitboxes (task E1b): the runner never reaches it while it stands at the wall line, falls ahead of
 ## them or lies on the pinned ship (the pin ends before they get there). E1c decides how the fallen
 ## tower is climbed.
@@ -18,10 +20,10 @@ extends Node3D
 
 enum State { STANDING, CLIPPED, FALLING, FALLEN, CRUMBLING }
 
-## Concrete tones and the painted mark (sRGB). No hazard hues.
-const CONCRETE := Color(0.27, 0.28, 0.32)
-const CONCRETE_DARK := Color(0.15, 0.15, 0.18)
-const CONCRETE_LIGHT := Color(0.36, 0.37, 0.41)
+## Concrete tones and the painted mark (sRGB): paler than the City's facades. No hazard hues.
+const CONCRETE := Color(0.5, 0.51, 0.54)
+const CONCRETE_DARK := Color(0.3, 0.3, 0.33)
+const CONCRETE_LIGHT := Color(0.62, 0.63, 0.66)
 const CRACK := Color(0.04, 0.04, 0.05)
 const REBAR := Color(0.3, 0.22, 0.18)
 const PAINT := Color(0.86, 0.88, 0.92)
@@ -32,6 +34,11 @@ const WARNING_LIGHT := Color(0.8, 0.88, 1.0)
 const CUT := Color(1.0, 0.36, 0.12)
 ## How far its street-side face stands proud of the facades (clear of z-fighting, not in the way).
 const PROUD: float = 0.05
+## Its head (the top HEAD_SHARE of it) juts out this far over the street, so the runner sees it coming
+## along the street; it stays above everything that flies down the street (the ship at its bombing
+## station tops out about 24 m up).
+const OVERHANG: float = 2.8
+const HEAD_SHARE: float = 0.3
 ## How long the cut glows once the tower's clipped.
 const CUT_SECONDS: float = 1.6
 ## Its broken section sinks away this far while it crumbles.
@@ -200,36 +207,55 @@ static func tower_mesh(width: float, height: float) -> ArrayMesh:
 	var x0: float = -PROUD
 	var cx: float = x0 + hw
 	var plinth: float = 4.2
-	# The shaft over a heavier plinth, with a cap on top.
-	m.box(Vector3(cx, plinth + (height - plinth) * 0.5, 0.0), Vector3(w, height - plinth, w), CONCRETE)
+	var head_y: float = height * (1.0 - HEAD_SHARE)
+	# The shaft over a heavier plinth, up to its head.
+	m.box(Vector3(cx, plinth + (head_y - plinth) * 0.5, 0.0), Vector3(w, head_y - plinth, w), CONCRETE)
 	m.box(Vector3(cx, plinth * 0.5, 0.0), Vector3(w + 0.3, plinth, w + 0.3), CONCRETE_DARK)
-	m.box(Vector3(cx, height + 0.4, 0.0), Vector3(w + 0.4, 0.8, w + 0.4), CONCRETE_LIGHT)
-	# Floor bands and windows on every face: dark glass, a few lit cold.
+	# Its head: a heavier block jutting out over the street, on a dark ledge, with a cap on top.
+	var hx0: float = x0 - OVERHANG
+	var hlen: float = w + OVERHANG
+	var hcx: float = hx0 + hlen * 0.5
+	var hd: float = w + 0.6
+	var hy: float = (head_y + height) * 0.5
+	m.box(Vector3(hcx, hy, 0.0), Vector3(hlen, height - head_y, hd), CONCRETE)
+	m.box(Vector3(hcx, head_y - 0.25, 0.0), Vector3(hlen + 0.3, 0.5, hd + 0.3), CONCRETE_DARK)
+	m.box(Vector3(hcx, height + 0.4, 0.0), Vector3(hlen + 0.4, 0.8, hd + 0.4), CONCRETE_LIGHT)
+	# Floor bands and windows up the shaft: dark glass, a few lit cold.
 	var floor_h: float = 3.4
-	var floors: int = int((height - plinth - 1.0) / floor_h)
+	var floors: int = int((head_y - plinth - 1.0) / floor_h)
 	for f: int in floors:
 		var y: float = plinth + 0.6 + f * floor_h
 		m.box(Vector3(cx, y - 0.2, 0.0), Vector3(w + 0.12, 0.25, w + 0.12), CONCRETE_LIGHT)
 		for face: int in 4:
 			var lit: bool = (f * 7 + face * 3) % 5 == 0
 			_window_row(m, face, cx, hw, y + 0.4, floor_h - 1.2, lit)
-	# The mark: a painted target on the street side and on both ends (toward and away from the traffic).
-	var mark_y: float = clampf(height * 0.42, plinth + 4.0, height - 4.0)
-	_mark(m, Transform3D(Basis(Vector3(0, 0, 1), Vector3(0, 1, 0), Vector3(-1, 0, 0)), Vector3(x0 - 0.02, mark_y, 0.0)), w)
+	# The mark: painted bands round the shaft, a big painted target on each end of the head (toward
+	# and away from the traffic: the side the runner sees coming) and on its street side, and a smaller
+	# one on the shaft.
+	for band_y: float in [plinth + 3.0, head_y - 3.2]:
+		m.box(Vector3(cx, band_y, 0.0), Vector3(w + 0.1, 1.1, w + 0.1), PAINT, 0.35)
 	for end: float in [-1.0, 1.0]:
 		var face_basis := Basis(Vector3(end, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, end))
-		_mark(m, Transform3D(face_basis, Vector3(cx, mark_y, end * (hw + 0.02))), w)
+		_mark(m, Transform3D(face_basis, Vector3(hcx, hy, end * (hd * 0.5 + 0.02))), minf(hlen, height - head_y), 3.0)
+		_mark(m, Transform3D(face_basis, Vector3(cx, head_y * 0.55, end * (hw + 0.02))), w)
+	var street := Basis(Vector3(0, 0, 1), Vector3(0, 1, 0), Vector3(-1, 0, 0))
+	_mark(m, Transform3D(street, Vector3(hx0 - 0.02, hy, 0.0)), minf(hd, height - head_y), 3.0)
+	_mark(m, Transform3D(street, Vector3(x0 - 0.02, head_y * 0.55, 0.0)), w)
 	# Cracks up the plinth and the first floors, with bent rebar sticking out of the widest.
 	_cracks(m, x0, cx, hw, plinth)
-	# A column of cold warning lights up its street-side edges, and a mast on the cap.
+	# Columns of cold warning lights up the shaft's street-side edges, a row under the head's street
+	# edge, and a mast on the cap.
 	for z: float in [-hw + 0.25, hw - 0.25]:
-		var y: float = plinth + 2.0
-		while y < height - 1.0:
-			m.box(Vector3(x0 - 0.04, y, z), Vector3(0.1, 0.22, 0.22), WARNING_LIGHT, 1.0, MeshKit.PAT_PLAIN,
+		var y: float = plinth + 1.5
+		while y < head_y - 1.0:
+			m.box(Vector3(x0 - 0.06, y, z), Vector3(0.14, 0.5, 0.32), WARNING_LIGHT, 1.8, MeshKit.PAT_PLAIN,
 				MeshKit.ALL_FACES & ~MeshKit.FACE_PX)
-			y += 6.0
-	m.box(Vector3(cx, height + 3.0, 0.0), Vector3(0.18, 4.6, 0.18), CONCRETE_DARK)
-	m.box(Vector3(cx, height + 5.4, 0.0), Vector3(0.3, 0.3, 0.3), WARNING_LIGHT, 1.2)
+			y += 3.5
+	for i: int in 5:
+		var z: float = lerpf(-hd * 0.5 + 0.3, hd * 0.5 - 0.3, i / 4.0)
+		m.box(Vector3(hx0 + 0.35, head_y - 0.56, z), Vector3(0.4, 0.14, 0.4), WARNING_LIGHT, 1.8)
+	m.box(Vector3(hx0 + 0.8, height + 3.0, 0.0), Vector3(0.18, 4.6, 0.18), CONCRETE_DARK)
+	m.box(Vector3(hx0 + 0.8, height + 5.4, 0.0), Vector3(0.3, 0.3, 0.3), WARNING_LIGHT, 1.2)
 	var out: ArrayMesh = batch.to_mesh()
 	_meshes[id] = out
 	return out
@@ -255,9 +281,10 @@ static func _window_row(m: MeshLayer, face: int, cx: float, hw: float, y: float,
 				m.box(Vector3(cx + u, y + h * 0.5, -hw - 0.02), Vector3(pane * 0.7, h, 0.06), color, glow)
 
 
-## The painted target on a face (`xform`: x across the face, y up, z out of it): a ring and a cross.
-static func _mark(m: MeshLayer, xform: Transform3D, width: float) -> void:
-	var r: float = minf(width * 0.42, 2.2)
+## The painted target on a face (`xform`: x across the face, y up, z out of it): a ring and a cross,
+## as big as `width` allows, `max_radius` at most.
+static func _mark(m: MeshLayer, xform: Transform3D, width: float, max_radius: float = 2.2) -> void:
+	var r: float = minf(width * 0.42, max_radius)
 	var t: float = 0.22
 	var sides: int = 16
 	for i: int in sides:
