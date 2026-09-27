@@ -2,36 +2,47 @@ extends RefCounted
 ## Shared art kit for the cyborg family and fence generators (procedural low-poly with emissive trim,
 ## CLAUDE.md Assets): flat-shaded tapered boxes and prisms with vertex colours merged into one surface
 ## (the generator, the window frame), the part, energy and cable shaders, the cyborgs' colours, and the
-## LED visor's pixel faces (drawn by cyborg_body.gdshader on the shared humanoid rig, see CyborgSuit).
-## Meshes, materials and textures are cached, so every instance shares them. Visual only: nothing here
-## touches collision or gameplay.
+## pixel faces of their screen heads (drawn by cyborg_body.gdshader on the shared humanoid rig, see
+## CyborgSuit). Meshes, materials and textures are cached, so every instance shares them. Visual only:
+## nothing here touches collision or gameplay.
 ##
 ## Vertex colour alpha is the glow strength (0 = plain surface, 1 = full emissive trim).
 
+## The screen faces (GDD §9.2: the screen is the face). DEAD is the "ERR" a defeated cyborg's screen
+## shows before it goes dark; the two CORRUPT faces are the hosts' glitches (GDD §9.7).
 enum Face { NEUTRAL, AIMING, SHOCKED, DEAD, CORRUPT_GRIN, CORRUPT_BROKEN }
 
 ## Enemy fire and the arm-cannon charge are hot red in every zone, like ProjectilePool's enemy looks.
 const CHARGE_COLOR := Color(1.0, 0.15, 0.1)
-## LED faces: amber, so they never read like the player's cyan visor (GDD §11).
-const LED_COLOR := Color(1.0, 0.62, 0.14)
-const LED_SCAVENGER := Color(0.95, 0.78, 0.22)
-## Hosts glitch with purple static (GDD §9.7), the Bad Dream's colour.
+## The screen faces glow cold white (GDD §9.2, changed from amber), so the enemies never share the
+## player's copper glow (GDD §11). It is the cult feed's own cold white (CultFeed): the cyborgs'
+## screens show the same broadcast's face (GDD §5, Cyborg Viewing Devices).
+const LED_COLOR: Color = CultFeed.FEED_COLOR
+## Hosts glitch with purple static and glowing veins (GDD §9.7), the Bad Dream's colour. On a cyborg,
+## purple always and only means "host".
 const GLITCH_COLOR := Color(0.72, 0.25, 1.0)
 ## Electric-fence pink (GDD §9.1: pink crackle = fence); a skin's own fence_color wins when it has one.
 const FENCE_PINK := Color(1.0, 0.18, 0.62)
 
-const FACE_GRID := Vector2i(13, 7)
+## The faces' pixel grid: square cells on the screen head's 0.33 × 0.23 m screen. Every face keeps its
+## features two cells thick or ringed, so its shape still reads when the screen is a few pixels tall.
+const FACE_GRID := Vector2i(13, 9)
 const FACES: Dictionary = {
+	# Calm, like the cult feed's face (CultFeed): two tall eyes and a flat mouth.
 	Face.NEUTRAL: [
 		".............",
-		"..###...###..",
-		"..###...###..",
 		".............",
+		"...##...##...",
+		"...##...##...",
+		"...##...##...",
 		".............",
 		"....#####....",
 		".............",
+		".............",
 	],
+	# Charging the cannon: brows slanted down into narrowed eyes, the mouth a hard line.
 	Face.AIMING: [
+		".............",
 		".##.......##.",
 		"..###...###..",
 		"...##...##...",
@@ -39,26 +50,34 @@ const FACES: Dictionary = {
 		".............",
 		"...#######...",
 		".............",
+		".............",
 	],
+	# The panic variant's shocked "O" (GDD §9.2): wide round eyes and a round mouth.
 	Face.SHOCKED: [
 		"..###...###..",
 		".#...#.#...#.",
+		".#...#.#...#.",
 		"..###...###..",
+		".............",
 		".....###.....",
 		"....#...#....",
 		"....#...#....",
 		".....###.....",
 	],
+	# Defeated: ERR, then the screen goes dark (CyborgBody.die).
 	Face.DEAD: [
-		".#.#.....#.#.",
-		"..#.......#..",
-		".#.#.....#.#.",
 		".............",
 		".............",
-		"...#######...",
+		".###.###.###.",
+		".#...#.#.#.#.",
+		".###.##..##..",
+		".#...#.#.#.#.",
+		".###.#.#.#.#.",
+		".............",
 		".............",
 	],
 	Face.CORRUPT_GRIN: [
+		".............",
 		"..##.....##..",
 		"..##.....##..",
 		".............",
@@ -66,8 +85,10 @@ const FACES: Dictionary = {
 		".#.........#.",
 		"..#########..",
 		".............",
+		".............",
 	],
 	Face.CORRUPT_BROKEN: [
+		".............",
 		".####...#....",
 		".#..#..###...",
 		".####...#....",
@@ -75,12 +96,18 @@ const FACES: Dictionary = {
 		".#.#.#.#.#.#.",
 		"#.#.#.#.#.#.#",
 		".............",
+		".............",
 	],
 }
 
+## The builder stores vertex colours in linear space (Builder._color), which Forward+ and Mobile light
+## in; on the Compatibility renderer (web, low-end Android) humanoid_color.gdshaderinc turns them back
+## to sRGB, as for the humanoid rig. Without it the generator and the window frame show far too dark
+## and saturated on the web.
 const PART_SHADER: String = """
 shader_type spatial;
 render_mode cull_back;
+#include "res://scripts/characters/humanoid_color.gdshaderinc"
 uniform float roughness : hint_range(0.0, 1.0) = 0.42;
 uniform float metallic : hint_range(0.0, 1.0) = 0.12;
 uniform float glow_energy = 2.6;
@@ -89,10 +116,11 @@ uniform vec4 tint : source_color = vec4(1.0);
 uniform float tint_amount : hint_range(0.0, 1.0) = 0.0;
 uniform float tint_glow = 0.0;
 void fragment() {
-	ALBEDO = mix(COLOR.rgb, tint.rgb, tint_amount);
+	vec3 base = humanoid_base_color(COLOR.rgb);
+	ALBEDO = mix(base, tint.rgb, tint_amount);
 	ROUGHNESS = roughness;
 	METALLIC = metallic;
-	EMISSION = COLOR.rgb * COLOR.a * glow_energy * (1.0 - tint_amount) + tint.rgb * tint_glow;
+	EMISSION = base * COLOR.a * glow_energy * (1.0 - tint_amount) + tint.rgb * tint_glow;
 }
 """
 

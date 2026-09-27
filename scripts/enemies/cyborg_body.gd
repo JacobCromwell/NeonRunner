@@ -1,18 +1,19 @@
 class_name CyborgBody
 extends Node3D
 ## The cyborgs' body (GDD §9.2) on the shared HumanoidRig (scripts/characters/), with CyborgSuit's
-## parts: one skeleton for every cyborg, the zone look switched in as an attachment set (the sleek
-## &"city" citizen or the patched-together &"scavenger" with a cracked, flickering visor), the LED
-## visor face, the host's purple glitch (GDD §9.7) and the arm cannon's charge glow all drawn by one
-## material per cyborg (cyborg_body.gdshader): 11 draw calls for a whole cyborg, 7 for a window
+## parts: one skeleton for every cyborg, the look switched in as an attachment set (the base, the
+## ragged "Static TV Head" gangster, until the zone variants of task P3 exist), the screen head's
+## face, the host's purple glitch and veins (GDD §9.7) and the arm cannon's charge glow all drawn by
+## one material per cyborg (cyborg_body.gdshader): 11 draw calls for a whole cyborg, 7 for a window
 ## cyborg's upper body. Visual only: it never touches collision or gameplay, and its randomness never
 ## uses the enemy's gameplay random stream.
 ##
 ## It poses the rig itself (HumanoidRig.apply_pose with HumanoidPoses and CyborgPoses, blended), so
-## nothing here changes how the player's avatar moves.
+## nothing here changes how the player's avatar moves. The posture is hunched and the walk a shamble;
+## the twitches and the free hand's tremor are added after the blend so they stay sharp.
 ##
 ## API (unchanged from the pre-rig body):
-##   build(variant, host, upper_body_only, visual_seed)
+##   build(variant, host, upper_body_only, visual_seed)   variant: the skin's enemy_variant
 ##   set_pose(pose), set_move_speed(m/s), aim_at(world point) / clear_aim()
 ##   set_expression(face), set_charge(0–1: the arm cannon's charge glow, the attack telegraph)
 ##   muzzle_position(), flash() (hit), die(cause) (death animation; emits `death_finished`)
@@ -39,8 +40,12 @@ const GLITCH_TIME := Vector2(0.12, 0.45)
 const SOFT_GLITCH_RATE: float = 0.6
 const SOFT_GLITCH_TIME := Vector2(0.6, 1.0)
 const BLEND_SPEED: float = 14.0
-## The scavenger stands hunched (degrees).
-const HUNCH: float = 8.0
+## A defeated cyborg's screen shows ERR for ERR_TIME seconds, then switches off over SCREEN_OFF_TIME
+## (the picture collapses to a line and goes dark; with Reduced flashing it just fades). Both fit in
+## the quickest death animation, the claws' and the dash's.
+## DESIGN-TBD (docs/questions/p2.md 1): the brief proposes the ERR; how long it shows.
+const ERR_TIME: float = 0.22
+const SCREEN_OFF_TIME: float = 0.14
 const FLASH_TINT := Color(1.0, 0.95, 0.9, 0.75)
 const SOFT_FLASH_TINT := Color(1.0, 0.95, 0.9, 0.3)
 const DEAD_TINT := Color(0.03, 0.03, 0.035, 0.55)
@@ -48,7 +53,9 @@ const DEAD_TINT := Color(0.03, 0.03, 0.035, 0.55)
 const LEG_JOINTS: Array[int] = [HumanoidPose.THIGH_L, HumanoidPose.SHIN_L, HumanoidPose.FOOT_L,
 	HumanoidPose.THIGH_R, HumanoidPose.SHIN_R, HumanoidPose.FOOT_R]
 
+## The skin's enemy_variant it was built for, and the look that dresses it (CyborgSuit.look_for).
 var variant: StringName = &"city"
+var look: StringName = CyborgSuit.BASE
 var host: bool = false
 var upper_body_only: bool = false
 var pose: Pose = Pose.IDLE
@@ -57,6 +64,8 @@ var charge: float = 0.0
 var move_speed: float = 0.0
 ## Extra forward lean of the upper body (radians): the window cyborg leans out over the sill.
 var lean: float = 0.0
+## The screen's power (1 on, 0 dark): a defeated cyborg's switches off.
+var screen_power: float = 1.0
 ## The shared rig and this cyborg's own material.
 var rig: HumanoidRig
 var material: ShaderMaterial
@@ -72,6 +81,7 @@ var _aim_w: float = 0.0
 var _aim_q := Quaternion.IDENTITY
 var _t: float = 0.0
 var _phase: float = 0.0
+var _twitch_phase: float = 0.0
 var _vis_rng := RandomNumberGenerator.new()
 var _glitch_left: float = 0.0
 var _glitch_rest: float = 0.0
@@ -79,25 +89,27 @@ var _flash_left: float = 0.0
 var _dead: bool = false
 
 
-## Builds the body. `visual_seed` only varies visuals (glitch timing, idle sway).
+## Builds the body. `p_variant` is the skin's enemy_variant; `visual_seed` only varies visuals (glitch
+## timing, idle sway, twitches).
 func build(p_variant: StringName, p_host: bool = false, p_upper_body_only: bool = false,
 		visual_seed: int = 0) -> void:
-	variant = p_variant if p_variant == &"scavenger" else &"city"
+	variant = p_variant
+	look = CyborgSuit.look_for(p_variant)
 	host = p_host
 	upper_body_only = p_upper_body_only
 	_vis_rng.seed = visual_seed
 	_t = _vis_rng.randf() * 10.0
+	_twitch_phase = _vis_rng.randf() * 10.0
 	_root = Node3D.new()
 	_root.name = "Root"
 	add_child(_root)
-	material = CyborgSuit.new_material(variant, host, visual_seed)
+	material = CyborgSuit.new_material(look, host, visual_seed)
 	rig = HumanoidRig.new()
 	rig.name = "Rig"
 	rig.rotation.y = PI  # The rig faces -z; this body faces +z.
 	_root.add_child(rig)
 	rig.build(CyborgSuit.parts(), material, CyborgSuit.walk_tuning())
-	var sets: Array[StringName] = [variant]
-	rig.set_attachments(sets)
+	rig.set_attachments(CyborgSuit.attachment_sets(look, host))
 	if upper_body_only:
 		var parts: Array[MeshInstance3D] = rig.part_instances()
 		for joint: int in LEG_JOINTS:
@@ -161,8 +173,9 @@ func draw_call_count() -> int:
 	return rig.draw_call_count()
 
 
-## The death animation (visual only). `cause`: &"stomp" squashes, &"claws" and &"dash" fling it out of
-## the lane, anything else knocks it over. The window cyborg's upper body slumps over the sill and stays.
+## The death animation (visual only). The screen shows ERR, then switches off. `cause`: &"stomp"
+## squashes, &"claws" and &"dash" fling it out of the lane, anything else knocks it over. The window
+## cyborg's upper body slumps over the sill and stays, its screen dark.
 func die(cause: StringName) -> void:
 	if _dead:
 		return
@@ -175,6 +188,9 @@ func die(cause: StringName) -> void:
 	material.set_shader_parameter(&"glitch", 0.0)
 	material.set_shader_parameter(&"tint", DEAD_TINT)
 	material.set_shader_parameter(&"glow_boost", 0.0)
+	var screen := create_tween()
+	screen.tween_interval(ERR_TIME)
+	screen.tween_method(_set_screen_power, 1.0, 0.0, SCREEN_OFF_TIME)
 	var tween := create_tween()
 	if upper_body_only:
 		tween.tween_interval(0.35)
@@ -207,6 +223,11 @@ func _process(delta: float) -> void:
 	_animate(delta)
 
 
+func _set_screen_power(value: float) -> void:
+	screen_power = value
+	material.set_shader_parameter(&"screen_power", value)
+
+
 func _update_flash(delta: float) -> void:
 	if _flash_left <= 0.0:
 		return
@@ -236,10 +257,11 @@ func _update_visor(delta: float) -> void:
 		material.set_shader_parameter(&"face", Kit.face_texture(corrupt))
 
 
-## Builds this frame's target pose, blends toward it, poses the rig, then aims the cannon arm.
+## Builds this frame's target pose, blends toward it, poses the rig, adds the twitches and the tremor,
+## then aims the cannon arm.
 func _animate(delta: float) -> void:
 	var walk: HumanoidAnimTuning = CyborgSuit.walk_tuning()
-	var hunch: float = HUNCH if variant == &"scavenger" else 0.0
+	var hunch: float = Poses.HUNCH
 	var speed: float = move_speed
 	if upper_body_only:
 		if _dead:
@@ -273,7 +295,20 @@ func _animate(delta: float) -> void:
 	_cur = _mix
 	_mix = tmp
 	rig.apply_pose(_cur)
+	_add_jitter()
 	_aim_arm(k)
+
+
+## The twitches (standing, walking and in a window; not while aiming, fleeing, cowering or dead) and
+## the tremor (not while fleeing or dead), straight onto the posed joints.
+func _add_jitter() -> void:
+	if _dead or (pose == Pose.RUN_AWAY and not upper_body_only):
+		return
+	var twitching: bool = upper_body_only or pose == Pose.IDLE or pose == Pose.WALK
+	var extra: Dictionary = Poses.jitter(_t, _twitch_phase, twitching and not _aiming)
+	for joint: int in extra:
+		var node: Node3D = rig.joint(HumanoidRig.JOINT_NAMES[joint])
+		node.rotation += extra[joint]
 
 
 ## The stride follows the ground covered (like the player's), so the feet don't skate.
