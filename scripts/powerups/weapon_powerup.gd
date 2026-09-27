@@ -16,8 +16,9 @@ extends PowerupModule
 ## ProjectilePool looks per tier.
 const LOOKS: Array[StringName] = [&"laser", &"laser_2", &"missile", &"heavy_missile"]
 ## The shoulder mount in the player's body space (x right, y away from the surface, -z forward),
-## as fractions of the visual body size (MovementTuning.visual_size).
-const MOUNT := Vector3(0.55, 0.8, -0.7)
+## as fractions of the visual body size (MovementTuning.visual_size): over the gold left arm, where
+## Razor Echo's weapon sits (PlayerSuit).
+const MOUNT := Vector3(-0.55, 0.8, -0.7)
 
 var health_bars: EnemyHealthBars
 var fx: WeaponFx
@@ -154,8 +155,8 @@ func fire_at(target: Enemy) -> bool:
 	return true
 
 
-## Where shots leave the player: the right shoulder, turned with the player onto walls and the
-## ceiling, lower while sliding.
+## Where shots leave the player: the left shoulder (the gold arm's), turned with the player onto
+## walls and the ceiling, lower while sliding.
 func muzzle_point() -> Vector3:
 	var p: Player = world.player
 	if p.is_inside_tree():

@@ -1,18 +1,25 @@
 class_name LayoutChecks
 extends RefCounted
 ## Fairness checks for generated layouts, shared by the generator suite (many seeds of the prototype
-## level) and the campaign suite (every campaign level):
+## level), the enemy suites and the campaign suite (every campaign level):
 ## - check_layout: every layout, whatever its features: holes are jumpable and no stretch where every
-##   lane is a hole is longer than a jump, fences stand on floor, pads sit under a ceiling on solid
-##   floor, the floor under a ceiling and its landing stay clear (GDD §3), ramps stand on floor with
-##   no sign at their wall entry, and nothing lies in the end-clear stretch.
+##   lane is a hole is longer than a jump, fences stand on floor, ramps stand on floor with no sign at
+##   their wall entry, nothing lies in the end-clear stretch, and every ceiling keeps GDD §3
+##   (check_ceilings).
+## - check_ceilings: the floor under a ceiling may be dangerous (GDD §3, changed September 26, 2026),
+##   but every pad lies under a ceiling and can be stepped on, every landing zone is safe to land on,
+##   floor enemies keep off both (CeilingZones), and a floor route runs under every ceiling without
+##   its pad (FloorRoute).
 ## - check_rules: the enemy rules still hold when many features share a level: drones get 10 s before
 ##   their first pad and then pads 8–10 s apart (GDD §9.6), a Bad Dream's chase has pads at most
-##   10 s apart and keeps off Octodog runs (GDD §9.7), Octodog runs stay off ceilings (GDD §3),
-##   cyborgs keep their margin from floor obstacles, and every fence generator powers a fence.
+##   10 s apart and keeps off Octodog runs (GDD §9.7), Octodog runs stay off pads and ceiling
+##   landings, cyborgs keep their margin from floor obstacles, and every fence generator powers a
+##   fence.
 ## Each check goes through `suite.check()`, so failures are reported by the suite that called.
 
 const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
+## A floor route under a ceiling is looked for from this far before its pad's run-up.
+const ROUTE_LEAD: float = 5.0
 
 
 static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
@@ -20,7 +27,6 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 	var n: int = layout.lane_count
 	var max_gap: float = tuning.jump_distance(tuning.run_speed) * config.max_gap_jump_fraction + 0.001
 	var finish_buffer: float = layout.length - config.end_clear_distance + 0.001
-	var landing: float = config.hull_landing_seconds * tuning.run_speed
 	for g: Dictionary in layout.gaps:
 		suite.check(g["lane"] >= 0 and g["lane"] < n, "gap lane in range " + tag)
 		suite.check(g["end"] - g["start"] <= max_gap, "gap jumpable (%.1f m) %s" % [g["end"] - g["start"], tag])
@@ -30,23 +36,7 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 		suite.check(not gapped_between(layout, f["lane"], f["at"], f["at"]), "fence not over a gap at %.1f %s" % [f["at"], tag])
 		suite.check(f["at"] <= finish_buffer, "fence before the end-clear stretch " + tag)
 	suite.check(longest_all_lane_hole(layout) <= max_gap, "every all-lane hole is jumpable " + tag)
-	for p: Dictionary in layout.pads:
-		var covered: bool = false
-		for h: Dictionary in layout.hulls:
-			if h["start"] <= p["at"] - 1.0 and h["end"] >= p["at"] + 10.0:
-				covered = true
-		suite.check(covered, "pad at %.1f has a hull above %s" % [p["at"], tag])
-		suite.check(not gapped_between(layout, p["lane"], p["at"] - 6.0, p["at"] + tuning.pad_length),
-			"pad at %.1f is reachable on solid floor %s" % [p["at"], tag])
-	for h: Dictionary in layout.hulls:
-		suite.check(h["end"] + landing <= finish_buffer, "hull and its landing end before the finish " + tag)
-		for f: Dictionary in layout.fences:
-			suite.check(f["at"] < h["start"] or f["at"] > h["end"], "no fence under the ceiling at %.1f %s" % [f["at"], tag])
-		for lane: int in n:
-			suite.check(not gapped_between(layout, lane, h["start"], h["end"]), "no gap under the ceiling at %.1f %s" % [h["start"], tag])
-		for lane: int in n:
-			suite.check(not gapped_between(layout, lane, h["end"] - 2.0, h["end"] + landing * 0.8),
-				"hull landing clear at %.1f %s" % [h["end"], tag])
+	check_ceilings(suite, layout, config, tag)
 	for r: Dictionary in layout.ramps:
 		var lane: int = layout.outer_lane(r["side"])
 		suite.check(not gapped_between(layout, lane, r["at"], r["at"] + tuning.ramp_length), "ramp on solid floor " + tag)
@@ -56,6 +46,77 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 					"ramp entry not blocked by a sign " + tag)
 	for s: Dictionary in layout.signs:
 		suite.check(s["end"] <= finish_buffer, "sign before the end-clear stretch " + tag)
+
+
+## GDD §3 (changed September 26, 2026) for every ceiling. The floor under it may hold anything, but:
+## - each pad lies under a ceiling section, and the player can step on it: its lane holds no hole or
+##   fence from a full jump before it until its lift reaches the hull, and no ramp before it (so it's
+##   never on or at the edge of a gap, never in a fence, and reachable);
+## - each landing zone is safe to land on: no hole or fence in any lane, and it ends before the finish;
+## - no floor enemy uses the floor on a landing zone, on a pad's zone from the pad's lane, or where a
+##   pad lies from any other lane;
+## - a floor route runs under every ceiling, from before its pad's run-up to the end of its landing
+##   zone, without its pad (FloorRoute), so the ceiling is never required.
+## The stretches come from CeilingZones (the same the generator uses); the checks are written here.
+static func check_ceilings(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
+	var tuning: MovementTuning = suite.tuning
+	var zones := CeilingZones.make(config, tuning)
+	var finish: float = layout.length - config.end_clear_distance + 0.001
+	var half: float = tuning.fence_depth * 0.5
+	var grid: FloorRoute = null
+	for p: Dictionary in layout.pads:
+		var at: float = float(p["at"])
+		var lane: int = int(p["lane"])
+		var covered: bool = false
+		for h: Dictionary in layout.hulls:
+			covered = covered or (float(h["start"]) <= at - 1.0 and float(h["end"]) >= at + 10.0)
+		suite.check(covered, "pad at %.1f has a ceiling above %s" % [at, tag])
+		var zone: Vector2 = zones.pad_zone(at)
+		suite.check(not gapped_between(layout, lane, zone.x, zone.y),
+			"pad at %.1f is on solid floor, a full jump clear of any hole in its lane %s" % [at, tag])
+		for f: Dictionary in layout.fences:
+			suite.check(int(f["lane"]) != lane or float(f["at"]) + half < zone.x or float(f["at"]) - half > zone.y,
+				"pad at %.1f: no fence in its lane from a jump before it until the lift reaches the hull (fence at %.1f) %s"
+				% [at, f["at"], tag])
+		for r: Dictionary in layout.ramps:
+			suite.check(layout.outer_lane(int(r["side"])) != lane or float(r["at"]) > at + tuning.pad_length
+				or float(r["at"]) + tuning.ramp_length < zone.x, "pad at %.1f: no ramp on the way to it %s" % [at, tag])
+		for e: Dictionary in layout.enemies:
+			# In the pad's lane an enemy keeps off the pad's whole zone; elsewhere off where it lies.
+			var span: Vector2 = LevelGenerator.enemy_floor_span(e)
+			var keep: Vector2 = zone if int(e.get("lane", -1)) == lane else Vector2(at, at + tuning.pad_length)
+			suite.check(span.x > keep.y or span.y < keep.x,
+				"pad at %.1f: no floor enemy in its way (%s at %.1f, lane %d) %s" % [at, e["type"], e["at"], e.get("lane", -1), tag])
+	for h: Dictionary in layout.hulls:
+		var landing: Vector2 = zones.landing_zone(h)
+		suite.check(landing.y <= finish, "a ceiling and its landing zone end before the finish " + tag)
+		for lane: int in layout.lane_count:
+			suite.check(not gapped_between(layout, lane, landing.x, landing.y),
+				"the landing zone after the ceiling at %.1f has no hole (lane %d) %s" % [h["end"], lane, tag])
+		for f: Dictionary in layout.fences:
+			suite.check(float(f["at"]) + half < landing.x or float(f["at"]) - half > landing.y,
+				"the landing zone after the ceiling at %.1f has no fence (%.1f) %s" % [h["end"], f["at"], tag])
+		for e: Dictionary in layout.enemies:
+			var span: Vector2 = LevelGenerator.enemy_floor_span(e)
+			suite.check(span.x > landing.y or span.y < landing.x,
+				"no floor enemy on the landing zone after the ceiling at %.1f (%s at %.1f) %s" % [h["end"], e["type"], e["at"], tag])
+		if grid == null:
+			grid = FloorRoute.new(layout, tuning)
+		var route: Dictionary = floor_route(grid, zones, h)
+		suite.check(bool(route["ok"]), "a floor route runs under the ceiling at %.1f without its pad (%s) %s"
+			% [h["start"], route["reason"], tag])
+
+
+## A floor route (FloorRoute.find, on the layout's `grid`) under ceiling section `h` to the end of its
+## landing zone, never stepping on a pad. It starts at the last clear stretch before its pads'
+## run-up (FloorRoute.clear_start): the player may be in any lane there, as between any two of the
+## generator's patterns.
+static func floor_route(grid: FloorRoute, zones: CeilingZones, h: Dictionary) -> Dictionary:
+	var from: float = float(h["start"])
+	for p: Dictionary in grid.layout.pads:
+		if float(p["at"]) >= float(h["start"]) and float(p["at"]) <= float(h["end"]):
+			from = minf(from, zones.pad_zone(float(p["at"])).x)
+	return grid.find(grid.clear_start(from - ROUTE_LEAD), zones.landing_zone(h).y)
 
 
 static func check_rules(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
@@ -124,7 +185,8 @@ static func check_rules(suite: TestSuite, layout: LevelLayout, config: LevelConf
 				var run: Vector2 = LevelGenerator.enemy_floor_span(e)
 				suite.check(run.y < s.x or run.x > s.y,
 					"a Bad Dream's chase (%.0f–%.0f) keeps off an Octodog's run (%.0f–%.0f) %s" % [s.x, s.y, run.x, run.y, tag])
-	# Octodog runs stay off ceilings (GDD §3).
+	# Octodog charges and runs stay off pads and ceiling landings (the floor under a ceiling is theirs
+	# too, GDD §3).
 	var ot := EnemyDirector.tuning_for("octodog") as OctodogTuning
 	var window: float = ot.window_length(speed, config.enemy_scaling)
 	var stop: float = ot.stop_distance(speed, config.enemy_scaling)
@@ -136,11 +198,11 @@ static func check_rules(suite: TestSuite, layout: LevelLayout, config: LevelConf
 		for a: Variant in charges:
 			suite.check(Octodog.window_clear(layout, float(a), float(a) + window), "an Octodog charge has a clear stretch " + tag)
 		if not charges.is_empty():
-			suite.check(not Octodog.ceiling_between(layout, float(charges[0]) - 6.0, float(charges[-1]) + stop + 2.0),
-				"an Octodog's whole run stays off ceilings " + tag)
-	# Cyborgs keep their margin from floor obstacles; every generator powers a fence.
+			suite.check(not Octodog.pad_or_landing_between(layout, float(charges[0]) - 6.0, float(charges[-1]) + stop + 2.0),
+				"an Octodog's whole run stays off pads and ceiling landings " + tag)
+	# Cyborgs keep their margin from floor obstacles and landing zones; every generator powers a fence.
 	var ct := EnemyDirector.tuning_for("cyborg") as CyborgTuning
-	var spans: Array[Vector2] = CyborgRules.obstacle_spans(layout, tuning)
+	var spans: Array[Vector2] = CyborgRules.obstacle_spans(layout, tuning, CeilingZones.make(config, tuning))
 	var gt := EnemyDirector.tuning_for("generator") as FenceGeneratorTuning
 	var geo := TrackGeometry.new(layout.lane_count, tuning)
 	for e: Dictionary in layout.enemies:

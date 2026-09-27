@@ -93,6 +93,12 @@ const PAT_STALLS: int = 28
 ## 2 brushed metal with seams.
 const PAT_TECH: int = 29
 
+## The cult's patterns of the solid kit shader (kit_cult.gdshaderinc), ids 60-69.
+## The cult's emblem (the material's cult_emblem texture) on a dark panel, for logos and ads: UV is
+## emblem space (the mark's square spans -1 to 1; a wider range leaves a clear margin), the mark in
+## COLOR.rgb, glowing at COLOR.a (warm-white neon) or unlit at 0. It fades out below about 24 pixels.
+const PAT_CULT_MARK: int = 60
+
 const SHADER_DIR: String = "res://scripts/world/meshes/shaders/"
 
 static var _boxes: Dictionary = {}

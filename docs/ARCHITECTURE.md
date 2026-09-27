@@ -132,12 +132,17 @@ its chase), and before starting one asks `EnemyDirector.major_attack_blocked(sel
 while another enemy's major attack is on and either of the two is `exclusive_major_attack` (the Bad
 Dream is: GDD §9.7). Other types can opt in the same way.
 
-**Floor use.** GDD §3 keeps the floor under a ceiling clear, and that includes enemies. A type's
-tuning says whether it uses the floor (`uses_floor`: false for fliers like drones and hover trucks,
-and wall-only enemies like window cyborgs) and how much of it around its spot
-(`floor_reach_before`/`_after`). Rules that plan a longer run for one enemy store it in
-`params.floor_span` (the Octodog's charges). `LevelGenerator.enemy_floor_span(entry)` and
-`enemy_uses_floor(entry)` read all of this, and `floor_clear` / `add_hull_with_pad` respect it.
+**Floor use.** The floor under a ceiling may hold enemies (GDD §3, changed September 26, 2026), but
+a ceiling's landing zone and the spot of each of its pads keep off the floor enemies use (see
+Ceilings under The generator). A type's tuning says whether it uses the floor (`uses_floor`: false
+for fliers like drones and hover trucks, and wall-only enemies like window cyborgs) and how much of
+it around its spot (`floor_reach_before`/`_after`: where it stands, moves and attacks a player in its
+lane; the screech's 30 m before covers where it springs out). Rules that plan a longer run for one
+enemy store it in `params.floor_span` (the Octodog's charges). `LevelGenerator.enemy_floor_span(entry)`
+and `enemy_uses_floor(entry)` read all of this; `CeilingZones`, `floor_clear` and `add_hull_with_pad`
+respect it. An enemy that can't reach the ceiling stays consistent with it at run time: cyborgs, window
+cyborgs and hover trucks hold fire at a player riding a ceiling, the drone and the Bad Dream wait
+below, the Octodog never winds up and a screech stays in its manhole.
 
 ## The generator
 
@@ -148,19 +153,45 @@ scripts: `rng_for(name)`, `add_enemy(type, at, lane, side, params)`, `add_hull_w
 seconds)`, `floor_clear(from, to)`, `enemy_floor_span(entry)`, `enemy_uses_floor(entry)`,
 `difficulty_at(progress)`, `feature_start(feature)`, `feature_started(feature, at)`,
 `feature_active(feature, at)`, `feature_share_at(feature, share)`, plus `layout`, `config`,
-`tuning`, `speed`, `jump_distance`. Pattern format: `data/patterns/README.md`.
+`tuning`, `speed`, `jump_distance` and `zones` (the level's `CeilingZones`). Pattern format:
+`data/patterns/README.md`.
 
 Rules scripts run in the order of the level's `features` list, except that a script declaring
 `const RUN_AFTER: Array[String]` runs after those features' rules (the host rules after the drone's;
 the cyborg rules, and the host rules that start with them, after the hover truck's, so cyborgs keep
-their margin from the ramp a truck adds; the Octodog rules after the drone's and the host's, so each
-dog is planned around the level's final ceilings and chases and nothing clears it afterwards).
-When a rule needs room for one of its guarantees, it removes what's in the way rather than moving it
-(taking content out never makes a level unfair). Guaranteed pads come from
-`scripts/enemies/pad_placement.gd`, shared by the drone and host rules: the drone's pad schedule
-(GDD §9.6) owns every pad after its first wave, pattern ceilings give way, and the host rules (which
-run after the drone's) cover each Bad Dream chase with pads at most 10 s apart or leave that host out.
-The Octodog rules keep each dog's charges off every stretch a chase can cover (GDD §9.7).
+their margin from the ramp a truck adds; the Octodog rules after the drone's, the host's and the
+hover truck's, so each dog is planned around the level's final ceilings, chases and truck lanes and
+nothing clears it afterwards). When a rule needs room for one of its guarantees, it removes what's
+in the way rather than moving it (taking content out never makes a level unfair). Guaranteed pads
+come from `scripts/enemies/pad_placement.gd`, shared by the drone and host rules: the drone's pad
+schedule (GDD §9.6) owns every pad after its first wave, pattern ceilings give way, and the host rules
+(which run after the drone's) cover each Bad Dream chase with pads at most 10 s apart or leave that
+host out. The Octodog rules keep each dog's charges off every stretch a chase can cover (GDD §9.7).
+
+**Ceilings over a dangerous floor** (GDD §3, changed September 26, 2026). The floor beneath a
+ceiling may hold gaps, hazards and enemies: the ceiling is the way to escape them, and it's never
+required. `CeilingZones` (`scripts/world/ceiling_zones.gd`, `gen.zones`) holds the two stretches every
+ceiling keeps safe, and the checks and clearing for them:
+- **The landing zone**: from a section's end, `hull_landing_seconds` at run speed (21.6 m), no lane
+  holds a gap or a fence and no floor enemy's stretch reaches in, so the player always lands safely.
+- **Each pad's spot**: its lane holds no gap, fence or ramp from a full jump before the pad (a
+  player who cleared the lane's last obstacle lands before it) until the lift has carried them up to
+  the hull (`rise`), so the pad is never on or at the edge of a gap, never in a fence, and reachable;
+  and no floor enemy's stretch, in any lane, reaches where it lies.
+
+A pattern may put floor pieces and enemies under its own ceiling (a gauntlet; `_place_pattern` keeps
+them), and `_secure_ceilings` drops what a pattern puts in its ceiling's landing zone or pad spot, with
+a warning. A ceiling a rule adds lies over whatever the floor holds (`add_hull_with_pad` refuses one
+whose pad or landing isn't clear; `PadPlacement` clears only those two stretches first, picking a pad
+lane that needs no clearing when it can, and drops a fence generator left powering nothing). So the
+floor under any ceiling holds what patterns put there, with their usual fairness and spacing, and a
+floor runner can always pass the pad by. Rules that add floor enemies keep off both stretches: the
+cyborg rules' `obstacle_spans` include every landing zone, and the Octodog's charges and runs keep
+off pads and landings (`Octodog.pad_or_landing_between`), not off the floor under a ceiling.
+Narrow ceilings (B3) and floor cuts planned in advance (B4, which never cut a landing zone or a
+pad's lane) ask `CeilingZones` too. The tests check every generated ceiling with
+`LayoutChecks.check_ceilings`, including a floor route under it that never takes the pad (`FloorRoute`,
+a conservative model of the floor moves; some routes are replayed on real physics).
 
 **Late starts.** `LevelConfig.feature_starts` (feature → share of the level) holds a feature back
 until its start: patterns that require it aren't picked before, and the first pattern picked from
@@ -210,6 +241,10 @@ switched-on permanent item: `WeaponPowerup` (auto-fire, tiers 1–4, enemy healt
 `DashPowerup`, `MagnetPowerup` and `SlowTimePowerup`. Breakables (armor, shield, grapple) are charges
 on the Player. The controller's header documents its API: `hud_state()` for the HUD (`charges` -1 for
 permanent items), `equipment()` for the player model, and `try_dash()` / `try_slow_time()`.
+The player model shows what the run carries (`PlayerAvatar.set_equipment`, looks in `PlayerSuit`): the
+weapon sits over the gold arm's (left) shoulder, so shots leave from there (`Player.weapon_muzzle()`),
+and armor that breaks in play shatters. Effects tied to the runner's own glow (the dash's shell and
+lines, the invulnerability tint) use its copper, thinned toward white; the shots keep their colours.
 
 ## Pickups
 
@@ -274,7 +309,10 @@ either can put a NaN in a pixel, and the glow pass blows it up into a white disc
 **Pattern ids.** Ids up to 19 are the City's and Gangland's, in `kit_solid.gdshader` itself; ids 20-29
 are the Marketplace's (all in use), in `kit_market.gdshaderinc` (one include and one dispatch line in
 `kit_solid`). A new zone takes the next free block of ten (30-39 next) in its own include, so zones
-built in parallel never collide on an id.
+built in parallel never collide on an id. Ids 60-69 are the cult's, shared by every zone, in
+`kit_cult.gdshaderinc` (its include follows `cult_mark()` in `kit_solid`, and its dispatch runs after
+the zones' own): `PAT_CULT_MARK` (60) draws the cult's emblem from the material's `cult_emblem`
+texture as a mark on a dark panel.
 
 **Gangland's ceilings** (`GanglandCeiling`) take their width from the lanes they cover (the collision
 box), never from the track, and draw each side as anchored (running into the building face) or free
@@ -328,7 +366,14 @@ its mip level itself and fades it out before it spans fewer than about 24 pixels
 mark could read like a radiation trefoil. The Marketplace uses geometry instead: it turns the emblem
 into a mesh-kit template once (`MarketplaceSkin.cult_emblem()`), then appends it where it hides: a
 small warm-white badge on some ads, an unlit bronze mark on some shop signs, never smaller than
-`emblem_min_size` (0.9 m, for the same reason).
+`emblem_min_size` (0.9 m, for the same reason). The Neon City (D9) draws it with `MeshKit.PAT_CULT_MARK`:
+its solid material carries the chosen emblem's coverage (`CultFeed.emblem_texture()`), and one
+rectangle per mark, in UV emblem space (the mark's square spans -1 to 1, a wider range leaves a clear
+margin), paints it in the vertex colour on the panel's dark background, glowing at the vertex alpha;
+`cult_mark()` fades it out on screen as in Gangland, and the City keeps it at least `emblem_min_size`
+across too. It sits as a sponsor's badge where a roof billboard's glyphs end and at the foot of some
+towers' neon banners (the glyphs leave its square clear, so nothing overlaps); `CitySkin.cult_emblems()`
+lists them.
 
 **The cult's feed** (GDD §5, "Cyborg Viewing Devices"): the same wordless broadcast plays on screens
 in every zone, in sync, alongside the ordinary ads. It is one shared piece, `CultFeed`
@@ -339,6 +384,7 @@ a screen to a mesh layer:
 ```gdscript
 var feed: MeshLayer = batch.layer(CultFeed.material())    # shared; one mesh surface per chunk
 CultFeed.screen(feed, lower_left, right, up, brightness)  # a rectangle facing right × up, as seen
+CultFeed.wall_screen(feed, side, x, d0, length, y0, height, brightness)  # on a wall, facing the street
 ```
 
 `right` and `up` span the screen as its viewer sees it (the picture is never mirrored, so don't put a
@@ -352,7 +398,14 @@ play it and where), keep other glows off it, and never tint it (only cold white 
 warm white; purple glitching belongs to hosts). It honours Reduced flashing (the static and the
 rolling bar hold still). The Marketplace plays it on some billboards, casino signs and floating ads
 (`feed_share`) and on old TVs in some shop windows (`feed_window_share`; `shop_windows()` marks
-them with `screen`). `tools/showcase/cult_feed_showcase.tscn` shows a whole loop on three screens.
+them with `screen`). The Neon City (D9) plays it on some low buildings' roof billboards instead of
+their ad and on big screens hung out over the street from some flush towers, 12 m up or more and
+facing the oncoming traffic (anything flat on the City's facades is seen almost edge-on from the game
+camera); `CitySkin.feed_boards()` lists both. Gangland plays it on salvaged screens among the posters
+of some overpasses' sign gantries, and on a TV glowing in an upper window of some ruins, above the
+boarded-up band (`GanglandSkin.feed_windows()` lists those; `GanglandRuins.WINDOW_RECTS` mirrors the
+facade shader's window rectangles so the TV's room covers a window exactly). Neither puts a screen in
+the wall-run band. `tools/showcase/cult_feed_showcase.tscn` shows a whole loop on three screens.
 
 **Reduced flashing** (Settings): `Settings.apply_visuals()` sets the global shader uniform
 `reduced_flashing` (declared in `project.godot`) and `Settings.flashing_reduced`. Hazard shaders
@@ -362,8 +415,30 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
 ## Characters, UI and audio
 
 - **Characters:** `HumanoidRig` (`scripts/characters/`) is the procedural rig and pose set behind the
-  player model (`PlayerAvatar`, a human in a cyber suit) and the cyborgs (`CyborgBody` with
-  `CyborgSuit`: one skeleton, a part set per zone look, one material per cyborg).
+  player model (`PlayerAvatar`: Razor Echo, look in `PlayerSuit`) and the cyborgs (`CyborgBody` with
+  `CyborgSuit`: one skeleton, a part set per zone look, one material per cyborg). A look is a
+  `HumanoidParts`: `HumanoidPiece` shapes per segment (BOX, PRISM, LATHE, BAND, TORUS, and SHELL, a
+  closed sheet cut to an arc), named attachment sets (equipment, zone variants), and optional
+  `HumanoidPanel`s. A piece's `glow` and `shine` (polish) ride in the mesh (UV.x, the vertex colour's
+  alpha) so a whole segment is one draw call.
+  - **Panels** are stiff flaps hinged at the waist (Razor Echo's coat skirt; looks without them are
+    untouched). All of a rig's panels are one mesh on the pelvis joint; `update_panels()` (called by
+    `animate()`; a user that poses the rig itself with `apply_pose()` calls it after) swings each by a
+    pitch and a roll through a damped spring: it hangs toward the feet (on the ceiling too; on a wall it
+    sags toward real gravity), follows its thigh, trails in the wind of the run and flares when falling,
+    then the leg on its side and the surface push it clear (a hem pushed by the surface trails while
+    the runner moves, otherwise folds the way it leans). `humanoid_panels.gdshaderinc` turns each
+    panel's vertices by the rig's `panel_rot` / `panel_hinge` arrays, so the material must be the rig's
+    own. The numbers are `HumanoidAnimTuning`'s Coat panels group (F6, "Runner animation").
+  - **The player's shader** (`humanoid_body.gdshader`) also has a rim light and `glow_albedo` (soft
+    trim that shines by its own light). The builder stores vertex colours in linear space; on the
+    Compatibility renderer, which works in sRGB space, the shader converts them back (as
+    `kit_common.gdshaderinc` does for the mesh kit). `cyborg_body.gdshader` doesn't yet, so the
+    cyborgs show darker and more saturated on the web than on Forward+ (left for P2, which rebuilds
+    them).
+  - **Colour rule:** the player's only glow on the base model is its soft copper (`PlayerSuit.GLOW`);
+    `test_avatar` keeps it and the effects built from it at least 0.3 from every skin's hazard colours
+    and enemy fire on the hue and saturation wheel, and power-up looks never use it.
 - **UI:** a theme built in code (`scripts/ui/theme/`: `UiStyle` in `data/ui/ui_style.tres`,
   `UiTheme`), code-drawn icons (`scripts/ui/icons/`) and a widget kit (`scripts/ui/widgets/`). Screens
   (`scripts/ui/screens/`) extend `ScreenBase`; the HUD is `RunHud`. Orbitron is for titles and Exo 2
@@ -565,11 +640,15 @@ the web demo until the real plugins are chosen (risk test R3).
 `tools/godot.sh test` runs every `tests/suites/test_*.gd` (a `TestSuite`); `--suite=<name>` runs
 one. `RunSim` (`tests/helpers/run_sim.gd`) runs a Player over a hand-built layout (`run()`), or a
 full RunWorld (`build_world()` + `step_world()`). `SkinSuite` (`tests/helpers/skin_suite.gd`) holds
-the checks every zone skin must pass. `LayoutChecks` (`tests/helpers/layout_checks.gd`) holds the
+the checks every zone skin must pass, and helpers to inspect what a skin builds over a whole level
+(`visit_level()`, `rects_of()`, `under_hazard()`). `LayoutChecks` (`tests/helpers/layout_checks.gd`) holds the
 fairness checks for generated layouts (the generator suite runs them over many seeds, the campaign
-suite over every campaign level at 3, 5 and 6 lanes) and finds a feature's pieces in a layout with the
-generator's own `LevelGenerator.feature_positions()`; a task that adds a new kind of piece extends
-it, or gives its rules script `positions()`. `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
+suite over every campaign level at 3, 5 and 6 lanes, the enemy suites over their own levels), among
+them `check_ceilings` (GDD §3: pads that can be stepped on, safe landing zones, and a floor route under
+every ceiling without its pad, found by `FloorRoute`, `tests/helpers/floor_route.gd`), and finds a
+feature's pieces in a layout with the generator's own `LevelGenerator.feature_positions()`; a task
+that adds a new kind of piece extends it (and `FloorRoute`'s cells, if the piece is on the floor), or
+gives its rules script `positions()`. `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
 for framework tests, with `make_def()` for a BossDef from a list of phases; `test_bosses` runs fights
 in bare worlds and, with the test boss in the City's slot, through the App. `test_pickups` checks
 pickup placement against the rules as it writes them itself, over hand-built cases and generated
@@ -582,10 +661,12 @@ to load, and ends a stuck run after 600 s of real time.
 ## Review tools
 
 Scenes in `tools/showcase/` show one part of the game up close for visual review (not part of the
-game): the avatar, the enemies (`enemy_showcase` for the cyborg family, `octodog_screech`,
+game): the avatar (`avatar_showcase`: every pose, power-up and concept-sheet view, front, back and
+side; `avatar_run_review`: a scripted run through the game camera on any zone's skin, with any
+power-up look), the enemies (`enemy_showcase` for the cyborg family, `octodog_screech`,
 `drone_truck_showcase`, `bad_dream_showcase`), a boss (`floating_head_showcase`), the UI kit, the
-screens, a zone skin (`skin_review`: any skin from fixed spots, or a scripted run with a ceiling ride
-and a wall run), and comparison
+screens, a zone skin (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed
+screens and emblems a skin lists, or a scripted run with a ceiling ride and a wall run), and comparison
 sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
 `CLAUDE.md`.

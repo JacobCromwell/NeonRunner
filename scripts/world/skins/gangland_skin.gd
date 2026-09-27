@@ -13,7 +13,9 @@ extends ZoneSkin
 ## so their things carry hints of it: military supply crates with stencilled codes, corporate
 ## containers used as barricades, notice boards, and corporate ads pasted among the posters. The
 ## cult behind it all hides in plain sight (GDD §5): its emblem (CultEmblem, the owner's pick) sits
-## small and unlit beside some of those markings, never a centrepiece.
+## small and unlit beside some of those markings, never a centrepiece, and its feed (CultFeed) plays
+## on salvaged screens among the posters on some overpass gantries and on TVs glowing in some upper
+## windows, never in the boarded-up wall-run band.
 ## The street stands still, unlike the city's trucks, so drifting dust, paper scraps and speed
 ## streaks carry the sense of speed (GDD §5, proposed; camera shake belongs to gameplay, not the skin).
 ## Colour rule (GDD §5): browns and tans stay desaturated and never glow; the only glowing decoration
@@ -160,6 +162,20 @@ extends ZoneSkin
 ## DESIGN-TBD: GDD §5 proposes hiding it in logos and ads; where and how often is a proposal.
 @export_range(0.0, 1.0, 0.01) var cult_emblem_share: float = 0.35
 
+@export_group("Cult feed")
+## The cult's feed (CultFeed, GDD §5 "Cyborg Viewing Devices") reaches Gangland too: salvaged
+## screens among the posters on the overpasses' sign gantries play it, and a TV glows with it in an
+## upper window of some ruins (never in the boarded-up wall-run band).
+## DESIGN-TBD (docs/questions/d9.md): where and how often. The share of gantry billboards that are
+## screens playing it, and of tall ruins with a TV window.
+@export_range(0.0, 1.0, 0.01) var feed_share: float = 0.35
+@export_range(0.0, 1.0, 0.01) var feed_window_share: float = 0.3
+## Brightness of the feed (0-1) on the gantry screens, and on the TVs (dim: a dark room lit by one).
+@export_range(0.0, 1.0, 0.05) var feed_board_brightness: float = 0.85
+@export_range(0.0, 1.0, 0.05) var feed_window_brightness: float = 0.5
+## The cold glow a TV throws over its window.
+@export_range(0.0, 0.5, 0.01) var feed_window_glow: float = 0.1
+
 @export_group("Motion")
 ## DESIGN-TBD: GDD §5 proposes motion effects for still streets. Per 40 m of track: dust flecks,
 ## paper scraps and speed streaks drifting toward the player (a = opacity).
@@ -291,6 +307,26 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	var batch := MeshBatch.new()
 	MeshKit.finish_gate(batch, solid_material(), glow_material(), width, distance, finish_color, scrap_metal_color)
 	batch.commit(parent)
+
+
+# --- The cult's feed ------------------------------------------------------------------------
+
+## The shared feed material (CultFeed): the same broadcast as in every zone.
+func feed_material() -> ShaderMaterial:
+	return CultFeed.material()
+
+
+## Whether the gantry billboard keyed by (a, b) is a screen playing the cult's feed (feed_share).
+func shows_feed(a: int, b: int) -> bool:
+	return MeshKit.hash01(a, b, 131) < feed_share
+
+
+## The ruins' windows with a TV playing the feed whose middles lie between two track distances, for
+## reviews and tests: side, at, center (the window's middle, on the wall face), width, bottom, top,
+## and the TV's screen (screen_center, screen_width, screen_height). The same ones wall_section()
+## builds.
+func feed_windows(side: int, face_x: float, start: float, end: float) -> Array[Dictionary]:
+	return ruins().tv_windows(side, face_x, start, end)
 
 
 # --- Shared materials (built once per skin, shared by every mesh) ------------------------

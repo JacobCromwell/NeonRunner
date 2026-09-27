@@ -737,9 +737,11 @@ func _watch(w: RunWorld, enemies: Array, seconds: float) -> PackedStringArray:
 
 ## host_rules.gd over lane counts, seeds and difficulties: every chase fits before the end, chases
 ## never overlap, anti-grav pads come at most pad_gap_seconds apart through every chase, and the
-## ceilings keep GDD §3; deterministic and without warnings. With drones (in either order of
-## features) their pad schedule stays intact and covers the chases after the first drone; with
-## Octodogs their planned charges stay off every ceiling. Without ceilings, hosts are dropped.
+## ceilings keep GDD §3 (LayoutChecks.check_ceilings: the floor under a chase's ceilings keeps what it
+## holds, its pads can be stepped on, its landings are safe, a floor route runs under each);
+## deterministic and without warnings. With drones (in either order of features) their pad schedule
+## stays intact and covers the chases after the first drone; with Octodogs their planned charges stay
+## off every pad and ceiling landing. Without ceilings, hosts are dropped.
 func _test_generator() -> void:
 	var base: LevelConfig = load(LEVEL_PATH) as LevelConfig
 	var dt: DroneTuning = EnemyDirector.tuning_for("drone") as DroneTuning
@@ -773,7 +775,7 @@ func _test_generator() -> void:
 					check(JSON.stringify(a.to_dict()) == JSON.stringify(b.to_dict()), "same seed, same hosts and pads " + tag)
 					var n: int = _check_hosts(a, config, tag)
 					hosts += n
-					_check_ceilings(a, config, tag)
+					LayoutChecks.check_ceilings(self, a, config, tag)
 					if config.has_feature("drone"):
 						_check_drone_pads(a, config, dt, tag)
 						if n > 0 and HostRules.first_drone_at(a) < INF:
@@ -843,31 +845,6 @@ func _check_hosts(layout: LevelLayout, config: LevelConfig, tag: String) -> int:
 	return hosts.size()
 
 
-## GDD §3 for every ceiling: a pad under a hull, on solid floor; nothing on the floor beneath it; a
-## clear landing; all before the finish.
-func _check_ceilings(layout: LevelLayout, config: LevelConfig, tag: String) -> void:
-	var landing: float = config.hull_landing_seconds * tuning.run_speed
-	var finish: float = layout.length - config.end_clear_distance + 0.001
-	for p: Dictionary in layout.pads:
-		var covered: bool = false
-		for h: Dictionary in layout.hulls:
-			covered = covered or (float(h["start"]) <= float(p["at"]) - 1.0 and float(h["end"]) >= float(p["at"]) + 10.0)
-		check(covered, "pad at %.0f has a ceiling above %s" % [p["at"], tag])
-		check(not layout.gapped_between(int(p["lane"]), float(p["at"]) - 6.0, float(p["at"]) + tuning.pad_length),
-			"pad at %.0f is on solid floor %s" % [p["at"], tag])
-	for h: Dictionary in layout.hulls:
-		check(float(h["end"]) + landing <= finish, "ceiling and landing before the finish " + tag)
-		for g: Dictionary in layout.gaps:
-			check(float(g["start"]) > float(h["end"]) + landing * 0.8 or float(g["end"]) < float(h["start"]),
-				"no gap under a ceiling or on its landing " + tag)
-		for f: Dictionary in layout.fences:
-			check(float(f["at"]) < float(h["start"]) or float(f["at"]) > float(h["end"]), "no fence under a ceiling " + tag)
-		for e: Dictionary in layout.enemies:
-			if int(e.get("side", 0)) == 0 and LevelGenerator.enemy_uses_floor(e):
-				check(float(e["at"]) < float(h["start"]) or float(e["at"]) > float(h["end"]),
-					"no floor enemy under a ceiling (%s) %s" % [e["type"], tag])
-
-
 ## The drone rules (GDD §9.6) still hold with hosts about: at least 10 s of dodging before the first
 ## pad after each drone, then pads 8–10 s apart (the host rules add none after the first drone).
 func _check_drone_pads(layout: LevelLayout, config: LevelConfig, dt: DroneTuning, tag: String) -> void:
@@ -905,7 +882,8 @@ func _check_drone_pads(layout: LevelLayout, config: LevelConfig, dt: DroneTuning
 			"the drone's pads stay 8–10 s apart (%.2f s at %.0f m) %s" % [gap, pads[i], tag])
 
 
-## Planned Octodog charges stay clear of every ceiling, hosts' pads included. Returns the dog count.
+## Planned Octodog charges stay clear of every pad and ceiling landing, hosts' pads included. Returns
+## the dog count.
 func _check_dogs(layout: LevelLayout, config: LevelConfig, ot: OctodogTuning, tag: String) -> int:
 	var speed: float = tuning.run_speed
 	var window: float = ot.window_length(speed, config.enemy_scaling)
@@ -917,8 +895,8 @@ func _check_dogs(layout: LevelLayout, config: LevelConfig, ot: OctodogTuning, ta
 		n += 1
 		var at: Array = e["params"].get("charge_at", [])
 		for a: Variant in at:
-			check(Octodog.window_clear(layout, float(a), float(a) + window), "an Octodog charge stays clear of ceilings " + tag)
+			check(Octodog.window_clear(layout, float(a), float(a) + window), "an Octodog charge stays clear of pads and landings " + tag)
 		if not at.is_empty():
-			check(not Octodog.ceiling_between(layout, float(at[0]) - 6.0, float(at[-1]) + stop + 2.0),
-				"its whole run stays off ceiling sections " + tag)
+			check(not Octodog.pad_or_landing_between(layout, float(at[0]) - 6.0, float(at[-1]) + stop + 2.0),
+				"its whole run stays off pads and ceiling landings " + tag)
 	return n

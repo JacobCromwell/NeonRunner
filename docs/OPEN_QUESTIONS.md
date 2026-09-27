@@ -635,6 +635,71 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
     looks the same in every zone (white is also the 100-credit gem's colour; size, shape and icon tell them apart).
     A soft chime when one appears, a latch and chime when taken, and a first-encounter hint per item.
 
+**Razor Echo, the player model** (from P1; brief `docs/art/BRIEF_RAZOR_ECHO.md`; frames in the P1 report)
+61. **How each power-up looks on Razor Echo** (brief "Power-up looks", proposed; supersedes FB 35): each in steel, white
+    or its own colour, never copper. Weapon: a gunmetal emitter on a folding mount over the gold arm's shoulder,
+    growing by tier (cyan, violet and white lights, the shots' colours; shots now leave the left shoulder). Claws:
+    three steel blades from each hand's knuckles. Armor: steel plates on the shoulders, chest and upper back, which
+    burst into tumbling shards when it breaks. Magnet: a coil with azure windings on the back of the belt. Shield: the
+    existing pale-cyan bubble. Should the shield follow the copper?
+62. **The pattern across the back** (GDD §11): the sheet's pipes simplified for about 30 pixels on screen: a hook and a
+    cross on a rusted plate, a forked Y to the belt, two long framing conduits, and a loop down each back panel of the
+    skirt. The right shapes?
+63. **How bright and deep the copper is** ("soft copper"): it renders pale (about RGB 250, 195, 140) on both renderers,
+    well apart from the gap edges; a deeper copper moves toward gap-edge orange and enemy fire. Keep it, or deeper?
+64. **The rim light for dark tracks:** a faint pale steel-blue glow on faces seen edge-on, below the bloom threshold.
+    Right colour and strength?
+65. **Invulnerability and death in the new look** (FB 36, 37): the invulnerability tint is pale copper-white; on death
+    the red flash stays and the conduits and eye go dark.
+66. **The dash in copper:** the dash's shell, speed lines and smash burst are pale copper, a little dimmer so the
+    additive shell never reads as a hazard's orange.
+67. **How the coat moves:** four stiff panels from the waist (two behind, split by a vent; two at the front edges)
+    follow the thighs through a spring with a little lag and overshoot, trail in the wind, flare when falling, trail
+    behind a slide, hang toward the feet on the ceiling, and fold along the legs in a death. On a wall they also sag
+    12° toward real gravity (the brief doesn't say). Right amount of motion; keep the wall sag?
+68. **Details read off the sheet:** the scar across the right cheek, a dark leather fingerless glove on the right hand,
+    two small copper lights on the vest (the sheet's were cyan and orange), a dusty hem, and a high collar open at the
+    front with a copper conduit round its back. Anything to change?
+
+**Dangerous floor under ceilings** (from B2; `CeilingZones`, the gauntlet patterns)
+69. **Gauntlets under ceilings** (GDD §3, §6): six new patterns put a gauntlet under a 4–4.5 s ceiling (fence rows, hole
+    rows or a mix with one lane free, cyborgs, manholes, a generator with its fences), from difficulty 0.3–0.5, picked
+    with weights 0.15–0.35 against the plain ceiling's 1.2, so most ceilings stay plain. City 2 introduces ceilings
+    with a plain one and may show a gauntlet in its second half. The right mix, and should City 2 show one or only City 3?
+70. **What "safe to land on" covers** (GDD §3): 21.6 m after a ceiling's end with no hole or fence in any lane and no
+    floor enemy's reach. A cyborg further ahead may still fire at a player dropping off a ceiling. Should enemies also
+    hold fire while the player drops and lands?
+71. **A pad the player can step on:** the pad's lane is free of holes, fences and ramps from a full jump before it
+    until the lift reaches the hull, and no floor enemy reaches the pad. A hazard row may still force the player out of
+    the pad's lane just before it. Enough, or should the approach be clear in every lane?
+72. **Rule ceilings now lie over the floor** (replaces FB 90's clearing): the drone's pad schedule and a Bad Dream
+    chase's pads clear only the landing zone and the pad's spot, so drone and host levels keep much more floor
+    content (they used to empty about half of every drone stretch). Intended density, or lighter patterns there?
+73. **Octodogs under a ceiling** may run and charge a floor runner; their charges keep off pads and landing zones, and
+    they never wind up at a ceiling rider.
+74. **Credits under a ceiling:** unchanged: trails skip the floor under a ceiling (the ceiling's line and its 25 reward
+    taking the pad); rich credits at hole edges and fences appear there as anywhere. Should the harder floor route
+    under a gauntlet pay more?
+75. **The ceiling camera and hazards below** (GDD §3, §11): riding a ceiling, the camera sits at 2.4 m, so a gapped
+    fence below (its field reaches 2.1 m) fills the bottom of the screen with pink for about 0.25 s. Harmless, but it
+    could read as a hit. Raise the ceiling camera (say to 3 m)?
+
+**The cult's feed and emblem in the City and Gangland** (from D9; what the feed shows is item 52)
+76. **Where the feed plays in the Neon City** (GDD §5): the City has no shop windows at the play field, so 35% of the low
+    buildings' roof billboards show it, and 40% of the towers flush with the street hang a big screen (4.8 m wide, its
+    bottom 12–16 m up) out over the street facing the traffic: about one hung screen every 170 m and one feed billboard
+    every 210 m. The right places and amounts?
+77. **Where the emblem hides in the City:** a 1.4 m sponsor's badge in the corner of 40% of the roof billboard ads and a
+    brand mark at the foot of 40% of the towers' neon banners, in its warm-white neon, never on hazard signs, never below
+    0.9 m: about one every 50 m, usually too small or edge-on to notice from the lanes. Right amount? Should it also
+    brand the hover trucks' containers or the ships (they are play surfaces)?
+78. **Where the feed plays in Gangland:** 35% of the overpasses' gantry billboards are salvaged screens playing it, and
+    30% of the tall ruins have a TV glowing with it in one upper window (9.9 m up or higher). The paper corporate ads in
+    the wall-run band stay paper. Should the bombed-out buildings bridging the street show a TV too?
+79. **A TV in a window next to window cyborgs** (GDD §9.2 readability): the feed's loop shows a screen-head face, so a TV
+    could look a little like a window cyborg's face. The TVs stay well above the band window cyborgs use, small, dim, in
+    a dark room, and the face shows 7 s of the 18 s loop. Distinct enough, or should Gangland's TVs leave the face out?
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
