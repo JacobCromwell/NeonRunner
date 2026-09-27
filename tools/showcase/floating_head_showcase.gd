@@ -1,7 +1,7 @@
 extends Node3D
 ## The Floating Head up close and in scripted runs, for visual review (GDD §10, task E1; not part of
-## the game). It builds the fight the way the game does (its arena on the City's truck roofs, the
-## City's look) with the runner in god mode. The fight itself: ./play.sh --boss=city_boss (debug
+## the game). It builds the fight the way the game does (its arena on the City's truck roofs, in its
+## arena's City look) with the runner in god mode. The fight itself: ./play.sh --boss=city_boss (debug
 ## builds). Render frames on both renderers, e.g.:
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot4 --path . --resolution 960x540 --fixed-fps 10 \
 ##     --write-movie build/fh/f.png --quit-after 60 res://tools/showcase/floating_head_showcase.tscn \
@@ -51,7 +51,8 @@ func _ready() -> void:
 	ctx.boss = def
 	ctx.config = BossArena.base_config(def)
 	ctx.config.lane_count = lanes
-	ctx.config.skin = load("res://data/skins/city_skin.tres") as ZoneSkin
+	if ctx.config.skin == null:
+		ctx.config.skin = load("res://data/skins/city_skin.tres") as ZoneSkin
 	ctx.tuning = tuning
 	head = BossEncounter.create(def) as FloatingHead
 	var arena: BossArena = head.plan_arena(ctx)

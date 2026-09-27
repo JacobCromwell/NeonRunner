@@ -4,6 +4,7 @@
 [ext_resource type="Script" path="res://scripts/campaign/boss_phase.gd" id="2_phase"]
 [ext_resource type="Script" path="res://scripts/core/level_config.gd" id="3_level"]
 [ext_resource type="Resource" path="res://data/bosses/city_boss_tuning.tres" id="4_tuning"]
+[ext_resource type="Resource" path="res://data/bosses/city_boss_skin.tres" id="5_skin"]
 
 [sub_resource type="Resource" id="phase_1"]
 script = ExtResource("2_phase")
@@ -41,6 +42,7 @@ features = PackedStringArray("pulsing")
 start_clear_distance = 80.0
 spacing_seconds_easy = 2.4
 spacing_seconds_hard = 1.7
+skin = ExtResource("5_skin")
 
 [resource]
 script = ExtResource("1_script")

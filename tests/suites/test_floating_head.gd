@@ -179,6 +179,20 @@ func _test_data() -> void:
 	check(def.phase_count() == 3 and def.phase_list()[0].intro_seconds >= 3.0, "three phases; the first's intro is the entrance")
 	check(def.arena != null and not def.arena.features.has("ceilings") and not def.arena.features.has("cyborg"),
 		"its arena: the City's roofs, gaps and fences, no ceilings or enemies of its own")
+	# The ship fills the street high up, so its arena's City hangs no big screens out over the street.
+	var skin := def.arena.skin as CitySkin
+	check(skin != null, "its arena has the City's look")
+	if skin != null:
+		var city := load("res://data/skins/city_skin.tres") as CitySkin
+		var wall: float = TrackGeometry.new(5, tuning).wall_x()
+		var hung: int = 0
+		var usual: int = 0
+		for side: int in [-1, 1]:
+			for board: Dictionary in skin.feed_boards(side, side * wall, 0.0, 3000.0):
+				hung += 1 if board["kind"] == &"tower_screen" else 0
+			for board: Dictionary in city.feed_boards(side, side * wall, 0.0, 3000.0):
+				usual += 1 if board["kind"] == &"tower_screen" else 0
+		check(hung == 0 and usual > 0, "no big screens hang out over its street, where the ship flies (the City's has %d over 3 km)" % usual)
 	# Every warning is heard (CLAUDE.md), the same every time.
 	var sfx := load("res://data/audio/sfx_library.tres") as SfxLibrary
 	for sound: StringName in [&"head_flyover", &"searchlight_on", &"searchlight_lock", &"bomb_whistle", &"bomb_blast", &"head_reveal"]:
@@ -362,6 +376,8 @@ func _test_bombing_run() -> void:
 				straddles += 1
 		check(locks.size() >= 6, "the light locks on again and again (%d locks) %s" % [locks.size(), tag])
 		check(straddles >= 1 and straddles < locks.size(), "some locks straddle two lanes (%d) %s" % [straddles, tag])
+		print("  Floating Head's first run %s: %d locks (%d over two lanes), %d bombs" % [tag, locks.size(), straddles,
+			blasts.size()])
 		# Every blast was a lock's: the same spot, after the whole warning.
 		var matched: bool = true
 		var bombs: int = 0

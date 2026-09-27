@@ -585,6 +585,7 @@ bombing run and the reveal), in `scripts/bosses/floating_head/`:
 | `floating_head_bombing.gd` (`FloatingHeadBombing`) | the searchlight and the bombs: the lock (the warning: red light, `circle_warning`, lock sound, the bomb falling with its whistle), the fairness rules (`plan`, `fair`, `escape_lane`), and pooled blast hitboxes (enemy attacks) that keep clear of a wall runner |
 | `floating_head_face.gdshader`, `floating_head_light.gdshader` | the face screen (unshaded and procedural: the same on every renderer; still with Reduced flashing) and the searchlight's beam and spot |
 | `floating_head_tuning.gd`, `data/bosses/city_boss_tuning.tres` | its numbers (F6 in its fight) |
+| `data/bosses/city_boss_skin.tres` | its arena's City look: the City's skin without the towers' big screens hung out over the street, where the ship flies |
 | `tools/showcase/floating_head_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/stern/below/entrance/bombing/reveal`) |
 
 **How the designed bosses fit** (GDD §10; each is a later task):

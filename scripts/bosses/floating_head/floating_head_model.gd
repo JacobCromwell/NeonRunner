@@ -12,8 +12,9 @@ extends RefCounted
 ##   eyes and brows; dark until GDD §10's reveal) under a heavy brow with a cold light line, a slatted
 ##   mechanical jaw over a muzzle (the mouth: it opens for the cyborg drop, task E1b) whose lip line
 ##   lights up with the face, slatted engine vents at the jaw's corners and a ring of exhaust ports
-##   around the head (it flies forward, so its engines face the player), and loudspeaker grilles beside
-##   the screen where the street is wide enough (it shouts its propaganda);
+##   around the head (it flies forward, so its engines face the player), loudspeaker grilles beside
+##   the screen where the street is wide enough and loudspeaker "ears" on its sides (it shouts its
+##   propaganda);
 ## - its belly: the searchlight under its chin, a bomb bay with two doors, lift pads, running lights;
 ## - on its crown: three sockets under armoured covers where the red weak points come out while it's
 ##   pinned (task E1c), and antenna masts.
