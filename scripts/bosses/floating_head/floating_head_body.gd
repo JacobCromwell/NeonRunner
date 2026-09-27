@@ -3,11 +3,14 @@ extends BossPart
 ## The Floating Head's ship (GDD §10), the fight's body: the hull and face (FloatingHeadModel), and
 ## the parts that move: the face screen (its eyes glowing red as they charge a laser: eye_charge), the
 ## jaw (it opens for the cyborg drop: jaw_open), the searchlight on its gimbal, the bomb-bay doors, the
-## weak points' covers, and a glow its lift pads throw on the street below. The encounter
-## (FloatingHead) flies it and says what each part does; this draws it.
+## weak points' covers (they swing open and the red domes rise out, pulsing, for a stomp window:
+## weak_open), and a glow its lift pads throw on the street below. The encounter (FloatingHead) flies it
+## and says what each part does; this draws it.
 ## Hitboxes: the hull is solid (a boss's body: claws never defeat it, the dash passes through), out of
-## reach while it flies. Three weak points on its crown and the crown's top (a surface to stand on)
-## stay off until it's pinned (task E1c). Weapons aim at its face.
+## reach while it flies and off while it's pinned (set_hull_solid: the pinned ship is the floor of the
+## ways onto its head). A weak point over each lane near the crown's middle (a generous stomp box over
+## each red dome) and the crown's deck (a surface to stand on, exactly where the hull is drawn) stay off
+## until a stomp window opens (set_weak_points_enabled, set_top_solid). Weapons aim at its face.
 
 const FACE_SHADER: String = "res://scripts/bosses/floating_head/floating_head_face.gdshader"
 ## The searchlight's lens: off, sweeping (cold white) or lingering (enemy-attack red).
@@ -16,6 +19,15 @@ const LENS_WHITE := Color(0.85, 0.92, 1.0)
 const LENS_RED := Color(1.0, 0.16, 0.1)
 ## The face's cold white (the cult's screens): its lip line lights up with the face.
 const FACE_WHITE := Color(0.86, 0.91, 1.0)
+## A weak point's stomp box starts this far under its socket's top (and reaches stomp_top above it).
+const STOMP_BELOW: float = 0.2
+## Opening, a cover swings back this far about its back edge and the red dome rises out of its socket.
+const COVER_OPEN_DEGREES: float = 115.0
+const DOME_SUNK: float = 0.45
+## The open domes pulse this fast, between these glows (a steady glow with Reduced flashing).
+const PULSE_HZ: float = 1.4
+const PULSE_LOW: float = 0.85
+const PULSE_HIGH: float = 1.45
 
 var tuning: FloatingHeadTuning
 var shape: FloatingHeadModel.Shape
@@ -34,6 +46,8 @@ var jaw_open: float = 0.0
 ## lasers' aim).
 var look_point := Vector3.ZERO
 var look_override: bool = false
+## The weak points' covers: 0 shut, 1 swung open with the red domes out (a stomp window).
+var weak_open: float = 0.0
 
 var _ship: Node3D
 var _screen: MeshInstance3D
@@ -45,8 +59,9 @@ var _lens: MeshInstance3D
 var _doors: Array[Node3D] = []
 var _covers: Array[MeshInstance3D] = []
 var _domes: Array[MeshInstance3D] = []
+var _dome_material: ShaderMaterial
 var _hull_box: Hazard
-var _top: StaticBody3D
+var _deck: StaticBody3D
 var _floor_glow: MeshInstance3D
 var _floor_glow_material: ShaderMaterial
 ## The mouth's inside, lit up while it's open.
@@ -65,7 +80,7 @@ func _build() -> void:
 	# GDD §9: big attacks take turns (EnemyDirector.major_attack_blocked): other enemies hold theirs
 	# while its lasers or a bomb's warning are on.
 	exclusive_major_attack = true
-	shape = FloatingHeadModel.shape_for(world.geo.wall_x() * 2.0, world.geo.lane_count, tuning)
+	shape = FloatingHeadModel.shape_for(world.geo.wall_x() * 2.0, world.geo.lane_count, tuning, world.geo.lane_width)
 	var meshes: Dictionary = FloatingHeadModel.meshes(shape)
 	_ship = Node3D.new()
 	_ship.name = "Ship"
@@ -112,42 +127,71 @@ func _build() -> void:
 		_ship.add_child(hinge)
 		MeshBatch.add_instance(hinge, meshes["door"])
 		_doors.append(hinge)
+	# The weak points: red domes (their own material, so they can pulse) under armoured covers, and a
+	# generous stomp box over each: the dome and some room around it, from just under the socket's top to
+	# stomp_top above it.
+	_dome_material = FloatingHeadModel.solid_material().duplicate() as ShaderMaterial
+	var stomp_height: float = tuning.stomp_top + STOMP_BELOW
 	for p: Vector3 in shape.weak_points:
 		_covers.append(MeshBatch.add_instance(_ship, meshes["cover"], "WeakPointCover", p))
 		var dome: MeshInstance3D = MeshBatch.add_instance(_ship, meshes["weak"], "WeakPoint", p)
+		dome.material_override = _dome_material
 		dome.visible = false
 		_domes.append(dome)
-		add_weak_point(Vector3(1.5, 0.6, 1.5), p + Vector3(0.0, 0.3, 0.0), _ship)
+		add_weak_point(Vector3(tuning.stomp_width, stomp_height, tuning.stomp_depth),
+			p + Vector3(0.0, stomp_height * 0.5 - STOMP_BELOW, 0.0), _ship)
 	set_weak_points_enabled(false)
-	# The hull: solid, like any enemy's body. The crown's top: a surface to land on once it's pinned.
+	# The hull: solid, like any enemy's body. The crown's deck: a surface to land on once it's pinned.
 	_hull_box = add_hitbox(&"body", Vector3(shape.width * 0.9, shape.height * 0.88, shape.length * 0.85),
 		Vector3(0.0, shape.height * 0.5, -shape.length * 0.425), false, _ship)
 	_hull_box.hazard_name = "Floating Head"
-	_top = add_surface(shape.top_size, shape.top_center, false, _ship)
+	_deck = _build_deck()
 	set_top_solid(false)
 	_build_floor_glow()
 	_update_lens()
 	_lip.material_override = GreyboxMaterials.flat(Color(0.08, 0.08, 0.1))
 
 
-## Flies it to `pos` (the stern's belly, world space), nose up by `pitch` and banked by `roll`.
+## Flies it to `pos` (the stern's belly, world space), nose up by `pitch` and banked by `roll` about its
+## crown over the weak points (FloatingHeadModel.ship_transform).
 func set_pose(pos: Vector3, pitch: float = 0.0, roll: float = 0.0) -> void:
 	position = pos
-	_ship.rotation = Vector3(pitch, 0.0, roll)
+	_ship.transform = FloatingHeadModel.ship_transform(shape, pitch, roll)
 
 
-## The crown's top as a floor surface (it's out of reach until it's pinned, task E1c).
+## The crown's deck as a floor surface: out of reach in flight, on while a stomp window is open (and
+## while it shakes free with the runner still on it).
 func set_top_solid(on: bool) -> void:
-	_top.collision_layer = TrackBuilder.LAYER_FLOOR if on else 0
+	_deck.collision_layer = TrackBuilder.LAYER_FLOOR if on else 0
 
 
 func top_solid() -> bool:
-	return _top.collision_layer != 0
+	return _deck.collision_layer != 0
 
 
-## How high the crown's top surface is (world, at its middle): where E1c's runner lands on its head.
+## The hull's solid hitbox on or off: off while it's pinned and shaking free, when the pinned ship is
+## the floor of the ways onto its head (the window closes before the runner can reach its face).
+func set_hull_solid(on: bool) -> void:
+	_hull_box.set_enabled(on)
+
+
+func hull_solid() -> bool:
+	return _hull_box.is_active()
+
+
+## How high the crown is (world) on its centre line over the weak points.
 func top_height() -> float:
-	return (_top.global_transform * Vector3(0.0, shape.top_size.y * 0.5, 0.0)).y
+	return _ship.to_global(shape.roll_pivot + Vector3(0.0, 0.0, FloatingHeadModel.WEAK_Z)).y
+
+
+## Where weak point `i`'s socket top is (world space).
+func weak_point_world(i: int) -> Vector3:
+	return _ship.to_global(shape.weak_points[i])
+
+
+## The ship's space to world, as it is now.
+func ship_global() -> Transform3D:
+	return _ship.global_transform
 
 
 ## The searchlight's lens (world space), where its beam starts.
@@ -254,6 +298,41 @@ func _tick(delta: float) -> void:
 	_floor_glow.visible = height > 0.5
 	_floor_glow.position = Vector3(0.0, 0.04 - height, -shape.length * 0.5)
 	_floor_glow_material.set_shader_parameter(&"state_glow", clampf((16.0 - height) / 12.0, 0.0, 1.0))
+	_update_weak_points()
+
+
+## The weak points' covers swing back about their back edges and the red domes rise out of their
+## sockets as a stomp window opens (weak_open), pulsing while they're out (steady with Reduced
+## flashing: nothing flickers).
+func _update_weak_points() -> void:
+	var k: float = smoothstep(0.0, 1.0, clampf(weak_open, 0.0, 1.0))
+	var swing := Basis(Vector3(1.0, 0.0, 0.0), -deg_to_rad(COVER_OPEN_DEGREES) * k)
+	for i: int in _covers.size():
+		var p: Vector3 = shape.weak_points[i]
+		var hinge: Vector3 = p + Vector3(0.0, 0.0, -0.85)
+		_covers[i].transform = Transform3D(swing, hinge + swing * (p - hinge))
+		_domes[i].visible = k > 0.02
+		_domes[i].position = p + Vector3(0.0, -DOME_SUNK * (1.0 - k), 0.0)
+	var pulse: float = 0.5 + 0.5 * sin(TAU * PULSE_HZ * _time)
+	var glow: float = (PULSE_LOW + PULSE_HIGH) * 0.5 if Settings.flashing_reduced else lerpf(PULSE_LOW, PULSE_HIGH, pulse)
+	_dome_material.set_shader_parameter(&"state_glow", glow * k)
+
+
+## The crown's deck: a concave shape over the hull's skin (FloatingHeadModel.deck_faces), off until a
+## stomp window opens.
+func _build_deck() -> StaticBody3D:
+	var deck := StaticBody3D.new()
+	deck.name = "Deck"
+	deck.collision_layer = 0
+	deck.collision_mask = 0
+	var faces := ConcavePolygonShape3D.new()
+	faces.set_faces(FloatingHeadModel.deck_faces(shape))
+	faces.backface_collision = true
+	var cs := CollisionShape3D.new()
+	cs.shape = faces
+	deck.add_child(cs)
+	_ship.add_child(deck)
+	return deck
 
 
 func _update_lens() -> void:

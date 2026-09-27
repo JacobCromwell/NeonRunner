@@ -17,9 +17,9 @@ extends TestSuite
 ##   free, holding their fire until they land; its lasers wait while they're ahead, and no burst
 ##   overlaps a laser attack;
 ## - the towers: a bait clips the tower (its bonus), which topples onto the ship and pins it low and
-##   still across the trucks (weak points and top off until task E1c); the fallback clips one on its
-##   own after fallback_after misses (no bonus); it shakes free before the runner reaches it (E1b's
-##   placeholder) and the face-off goes on;
+##   still across the trucks, a stomp window open (its weak points out, its deck a floor; the windows
+##   themselves are test_floating_head_stomps.gd's); the fallback clips one on its own after
+##   fallback_after misses (no bonus);
 ## - its real arena at 3, 5 and 6 lanes: every attack keeps the fairness rules (rechecked from the
 ##   layout), and every attempt plays out the same way.
 
@@ -515,32 +515,33 @@ func _test_bait() -> void:
 		var t: FloatingHeadTuning = head.tuning
 		var tag: String = "(%d lanes)" % lanes
 		var bot := FloatingHeadBot.new(head, true)
+		# This runner baits the tower, then stays down on the trucks: the stomp windows are
+		# test_floating_head_stomps.gd's.
+		bot.wrong_route = true
 		var cause: Array[String] = _watch_death(world)
 		var s: Dictionary = {"z": INF, "drift": 0.0, "top_lo": INF, "top_hi": -INF, "crown": 0.0, "live": 0, "fallen": false,
-			"touch": 0, "gap": INF, "red": 0.0}
+			"touch": 0, "red": 0.0, "frames": 0}
 		await _until(world, func() -> bool:
 			bot.step()
 			if _touching_laser(head):
 				s["touch"] += 1
-			if head.step == FloatingHead.Step.PINNED:
+			if head.step == FloatingHead.Step.PINNED and _events(head, &"pinned").size() == 1:
+				s["frames"] += 1
 				var z: float = head.body.global_position.z
 				if s["z"] == INF:
 					s["z"] = z
 					s["fallen"] = head.pinned_tower != null and head.pinned_tower.state == FloatingHeadTower.State.FALLEN
 				s["drift"] = maxf(float(s["drift"]), absf(z - float(s["z"])))
-				for h: Hazard in head.body.weak_points:
-					var top: float = (h.global_transform * Vector3(0.0, -0.3, 0.0)).y
+				for i: int in head.body.shape.weak_points.size():
+					var top: float = head.body.weak_point_world(i).y
 					s["top_lo"] = minf(float(s["top_lo"]), top)
 					s["top_hi"] = maxf(float(s["top_hi"]), top)
 				s["crown"] = head.body.top_height()
-				if head.body.weak_points_enabled() or head.body.top_solid():
+				if head.body.weak_points_enabled() and head.body.top_solid() and not head.body.hull_solid():
 					s["live"] += 1
 				if head.step_time > 0.4:
 					s["red"] = maxf(float(s["red"]), head.body.eye_charge)
-				s["gap"] = minf(float(s["gap"]), head.pose.z)
-			var released: Array[Dictionary] = _events(head, &"released")
-			return not world.player.alive or (not released.is_empty() and _events(head, &"laser_charge").any(
-				func(e: Dictionary) -> bool: return float(e["t"]) > float(released[0]["t"]))), 60.0)
+			return not world.player.alive or not _events(head, &"window_missed").is_empty(), 60.0)
 		var clips: Array[Dictionary] = _events(head, &"tower_clip")
 		var baited: bool = clips.size() == 1 and bool(clips[0]["baited"]) \
 			and int(clips[0]["lane"]) == (0 if int(clips[0]["side"]) < 0 else lanes - 1)
@@ -553,16 +554,13 @@ func _test_bait() -> void:
 			"the runner who baited it dodged the drag, no god mode (%s) %s" % [cause[0], tag])
 		check(s["fallen"], "the tower lies across the ship %s" % tag)
 		check(float(s["drift"]) < 0.01, "pinned, the ship lies still on the track (%.3f m) %s" % [s["drift"], tag])
-		check(absf(float(s["top_hi"]) - t.pin_top_height) < 0.02 and float(s["top_lo"]) > t.pin_top_height - 1.0,
-			"pinned low across the trucks: its weak points' tops %.2f-%.2f m up (%.2f m, rolled toward the tower) %s" % [
+		check(absf(float(s["top_hi"]) - t.pin_top_height) < 0.02 and float(s["top_lo"]) > t.pin_top_height - 1.25,
+			"pinned low across the trucks: its weak points' sockets %.2f-%.2f m up (%.2f m, rolled toward the tower) %s" % [
 			s["top_lo"], s["top_hi"], t.pin_top_height, tag])
-		print("  Floating Head pinned %s: weak points' tops %.2f-%.2f m, crown top %.2f m" % [tag, s["top_lo"], s["top_hi"], s["crown"]])
-		check(int(s["live"]) == 0, "its weak points and its crown's top stay off (task E1c builds the stomps) %s" % tag)
+		print("  Floating Head pinned %s: weak points' sockets %.2f-%.2f m, crown %.2f m" % [tag, s["top_lo"], s["top_hi"], s["crown"]])
+		check(int(s["frames"]) > 0 and int(s["live"]) == int(s["frames"]),
+			"pinned, its weak points are out and its crown's deck is a floor, its hull harmless (a stomp window) %s" % tag)
 		check(float(s["red"]) < 0.01, "pinned, its eyes don't glow red (no laser is coming) %s" % tag)
-		var release: Array[Dictionary] = _events(head, &"release")
-		check(release.size() == 1 and float(release[0]["gap"]) >= t.pin_release_gap - 0.5 and float(s["gap"]) > 3.0,
-			"it shakes free before the runner reaches it (E1b's placeholder) %s" % tag)
-		check(head.step == FloatingHead.Step.FACE_OFF and head.faceoff.running, "then the face-off goes on %s" % tag)
 		await sim.free_world(world)
 
 

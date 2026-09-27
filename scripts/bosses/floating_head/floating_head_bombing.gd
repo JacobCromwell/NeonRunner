@@ -308,7 +308,8 @@ func fair(lanes: Array[int], pl: int, at: float) -> bool:
 	for l: int in lanes:
 		if not _clear(l, at - tuning.clear_before_impact, at + tuning.clear_after_impact) or _pickup_near(l, at):
 			return false
-	if head.arena != null and head.arena.ceiling_between(at - 8.0, at + 4.0):
+	# No lock under a ceiling: the arena's, or the third stomp window's own (FloatingHead.ceiling_between).
+	if head.ceiling_between(at - 8.0, at + 4.0):
 		return false
 	return escape_lane(lanes, pl, world.player.distance, at) >= 0
 
