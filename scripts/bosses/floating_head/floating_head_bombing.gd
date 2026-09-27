@@ -315,35 +315,17 @@ func fair(lanes: Array[int], pl: int, at: float) -> bool:
 
 ## The nearest lane a runner in `pl` at `d0` can switch to out of bombs on `lanes` at `at`: not struck,
 ## at most max_escape_lanes away, and it and every lane on the way free of holes and fences from `d0`
-## to escape_clear_after past the blast. -1 if there is none.
+## to escape_clear_after past the blast (FloatingHead.escape_lane). -1 if there is none.
 func escape_lane(lanes: Array[int], pl: int, d0: float, at: float) -> int:
-	var n: int = world.geo.lane_count
-	for dist: int in range(1, tuning.max_escape_lanes + 1):
-		for s: int in [-1, 1]:
-			var e: int = pl + s * dist
-			if e < 0 or e >= n or lanes.has(e):
-				continue
-			var ok: bool = true
-			for l: int in range(mini(pl, e), maxi(pl, e) + 1):
-				if l != pl and not _clear(l, d0, at + tuning.escape_clear_after):
-					ok = false
-					break
-			if ok:
-				return e
-	return -1
+	return head.escape_lane(lanes, pl, d0, at + tuning.escape_clear_after)
 
 
 func _clear(lane: int, from: float, to: float) -> bool:
-	return head.arena == null or head.arena.floor_clear(from, to, lane)
+	return head.floor_clear_lane(lane, from, to)
 
 
 func _pickup_near(lane: int, at: float) -> bool:
-	if world.pickups == null:
-		return false
-	for p: Pickup in world.pickups.active:
-		if is_instance_valid(p) and p.lane == lane and absf(p.at - at) < tuning.pickup_margin:
-			return true
-	return false
+	return head.pickup_near(lane, at, tuning.pickup_margin)
 
 
 ## After a blast the light swings away across the lanes before it hunts again: a seeded pick among

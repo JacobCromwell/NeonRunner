@@ -43,10 +43,11 @@ func run() -> void:
 	check(skin != null, "the marketplace skin loads")
 	if skin == null:
 		return
-	# DESIGN-TBD placeholder (docs/questions/d2.md): the city look until task P3 builds the Casino Mob
-	# Enforcer (GDD §9.2).
-	check(skin.enemy_variant == &"city" and MarketplaceSkin.new().enemy_variant == &"city",
-		"marketplace enemies wear the city look (placeholder)")
+	# GDD §9.2: the Marketplace's cyborgs are the Casino Mob Enforcer (task P3); the other enemies keep
+	# their clean look (only &"scavenger" weathers them).
+	check(skin.enemy_variant == &"casino" and MarketplaceSkin.new().enemy_variant == &"casino"
+		and CyborgSuit.look_for(skin.enemy_variant) == CyborgSuit.CASINO,
+		"marketplace cyborgs wear the Casino Mob Enforcer")
 	var zone := load(MARKET_ZONE_PATH) as ZoneDef
 	check(zone != null and zone.skin is MarketplaceSkin, "the Marketplace zone uses the marketplace skin")
 	start_error_count()

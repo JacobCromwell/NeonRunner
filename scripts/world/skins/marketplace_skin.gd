@@ -241,9 +241,9 @@ var _wall_x: float = 0.0
 
 
 func _init() -> void:
-	# DESIGN-TBD: GDD §9.2 gives the Marketplace's cyborgs their own variant, the Casino Mob Enforcer
-	# (task P3, not built yet); until then they wear the city look, and P3 sets this.
-	enemy_variant = &"city"
+	# The cyborgs wear the Casino Mob Enforcer (GDD §9.2, CyborgSuit.look_for); the other enemies treat
+	# any variant but &"scavenger" like &"city", so their look is the clean one it was.
+	enemy_variant = &"casino"
 
 
 func make_environment() -> Environment:

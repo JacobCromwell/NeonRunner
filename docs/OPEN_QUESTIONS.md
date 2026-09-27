@@ -855,6 +855,86 @@ rules"; switched off, the game plays exactly as before; measure with `tools/meas
     level play only the quiet half, a quieter mix, or the music dipped during its silent stretches (the music player
     could dip on the level's signal the way it dips on a death)?
 
+**The Floating Head: the face-off, the towers and the pin** (from E1b; numbers in `data/bosses/city_boss_tuning.tres`;
+play it with `--boss=city_boss` in debug builds; showcase scenarios `faceoff`, `fallback`, `pinned`, `mouth`)
+113. **The eye lasers' warning** (GDD §10, proposed): for 1.0 s the eyes glow red (red only in the eyes) and whine, while
+    thin aiming beams show where it will fire: red aim lines across the street at the beams' heights for a sweep, a red
+    spot following the runner's lane for a drag (then the red lane warning as it fires). Does it read? Is 1.0 s right?
+114. **High and low sweeps:** a low sweep's two beams cross at 0.35 m (jump them; a slide doesn't pass). A high sweep's
+    cross at 0.85 m and 1.9 m, the shape of a gapped fence, so only a slide passes (with one beam at 0.85 m a well-timed
+    jump would clear it too). Sweeps cross the street at 13 m/s. Is the gapped-fence shape right for "high", or should a
+    jump also get past it?
+115. **The drag:** it burns down the runner's lane from about 25 m ahead to the runner in 1.0 s and leaves a burning line
+    for 0.8 s (clear of a wall runner beside it). It fires only while a lane beside the runner is free to switch into.
+116. **The face-off's rhythm** (with the owner's "not very challenging" in mind): one attack list per phase taken in
+    order (for example low, drag, high, drop, drag), the next fair one going first when one can't start; 0.8 s between
+    attacks and 0.9 s to move, divided by the phase's pace (1, 1.15, 1.3): about one attack every 3 s, plus a tower
+    about every 20 s once baited. These are the numbers to tighten. Should later phases also shorten the warning itself?
+117. **The cyborg drop:** it pulls back to 50 m ahead, opens its jaw with a grinding sound for 0.8 s while red target
+    circles mark the landing spots, then drops 1 cyborg (phase 1) or 2 (later), each in its own lane with a lane left
+    free; they fight like normal cyborgs, so 1 in 3 is the panic variant. Its lasers wait while one is still ahead (up
+    to 4 s). Is a red circle right for a landing spot? Should a dropped cyborg never be the panic variant?
+118. **A dropped cyborg's burst during an eye laser:** never (one big attack at a time, as in R3's rule). Should they ever
+    overlap, say in the last phase, for more challenge?
+119. **The marked towers:** a 40 m pale concrete tower whose head juts 2.8 m out over the street (so it shows from far
+    along it), with white painted bands, big white target marks (a ring and a cross), dark cracks at the base and cold
+    white lights; no hitbox until it falls. One every 300 m on alternating sides, the first 240 m into each lap, with
+    the track clear of holes and fences around it. What should the mark look like (never a hazard colour)? How often?
+120. **Baiting a tower:** for each tower it pulls back beside it and times a drag so its warning ends as the tower passes
+    its face; if the runner is in the outer lane on the tower's side then, the drag clips the tower: a bait, worth 500
+    points ("Tower!"), and the runner dodges the drag as usual. 3 attacks come before any tower attempt. Is "be in the
+    outer lane on the tower's side when the eyes finish charging" the right rule? Should a tower attempt look different
+    from a normal drag?
+121. **The fallback:** once 2 towers in a phase go by unbaited, the next tower's drag strikes the tower first, then swings
+    into the runner's lane, with no bonus: about 60–70 s into a face-off where the runner never baits. Sooner?
+122. **The pinned pose** (E1c needs three ways onto its head: up the fallen tower like a ramp, a wall jump, a drop from a
+    ceiling): the tower topples onto the crown behind the weak points; the ship sinks between the trucks until its
+    weak points' tops are 2.5 m up (a wall jump peaks about 2.9 m, a truck roof is 2.2 m), rolled 5° toward the tower,
+    its face mostly hidden below the roofs; the tower lies diagonally from its stump across the crown. (The other
+    options were tilting it nose-down with its face showing, or shrinking it.) Does sinking read? Is a hidden face all
+    right while pinned? Should the tower fall so it makes a straight ramp?
+123. **Its face-off sounds:** the eyes' rising, throbbing whine ending in a click; the beams' zap and buzz; the jaw's
+    grinding ratchet and clank; a cyborg's landing clank; the tower's crack and groan; its crash onto the ship. The
+    warnings sound the same every time.
+(E1b's placeholder release, the ship shaking free as the runner comes within 12 m, is replaced by E1c's stomp windows.)
+
+**The cyborg zone variants** (from P3; brief `docs/art/BRIEF_CYBORG_GANGSTER.md`, "Zone variants"; review with
+`tools/showcase/enemy_showcase.tscn --view=lineup` (`--back`, `--host`, `--face=aiming`), `--view=lineup_far`, and
+`--variant=brute|casino|vr_runner|burned|golden`; each skin picks its look with `enemy_variant`)
+124. **The Broadcast Brute** (Gangland): the base's TV in a dark steel casing inside a cage of dull brass bars, two small
+    side monitors showing a dim cold-white X, a short antenna raked back; a brown work jumpsuit under scuffed brass
+    armour; heavy steel arms; a crude pipe gun in the right fist (valve, gas canister, tape). Should the side monitors be
+    dim screens like this or unlit dark glass? Brass armour (the brief allows it), or rusted steel to keep brass further
+    from Razor Echo's gold arm?
+125. **The Casino Mob Enforcer** (Marketplace): a gilded TV engraved with card suits; a black suit with gold pinstripes, a
+    gold breastplate, a bandolier, gold pauldrons and knee plates; gunmetal forearms with gold rings; a compact drum-fed
+    gun held one-handed along the right forearm (the cyborgs aim with the weapon arm alone; the sheet holds a rifle in
+    both hands); no "SPADE" arm cannon. Its screen's LEDs are small diamonds instead of dots. Is the one-handed gun right?
+    Are diamond LEDs enough of a casino touch, or should the screen also show dice or card glyphs?
+126. **The Golden Zone's ceremonial enforcer:** built from the Casino Mob Enforcer in cream with pale gold pinstripes, a
+    red shirt and lapels, a red sash with the Convergent Triad on a medallion (unlit polished gold meeting at a small red
+    stone, fading out below about 24 pixels like the skins' marks), gold epaulettes, ivory gauntlets, gold filigree on
+    the TV, a gold gun with a red drum; the reds are deep and unlit, well clear of the charge-up's red. Right palette? A
+    cream cyborg may blend into the Golden Zone's cream walkways (D6a): would a red tunic be better? Should the Triad be
+    worn larger (on the back or the TV's top) so it shows from further away?
+127. **The Wide-Aspect VR Runner** (Corporate): a wide headset whose visor is the screen (19 × 7 LEDs, flat and evenly
+    lit), with the same expressions redrawn for the wide shape (about 8 × 3 pixels 14 m ahead; the three faces still
+    differ there); a high collar over the lower face; a charcoal bomber jacket, olive-grey trousers, chrome hands, a sleek
+    chrome arm cannon, an unlit tablet in the left hand. Are the visor's faces right, and do they read at their size?
+128. **Posture:** every look moves like the base (hunched, twitchy, limping), since they're one unit; the sheets' Brute,
+    enforcer and runner stand upright. Should they stand straighter (same timings and reach), or is the shared
+    strung-out posture right?
+129. **How burned the Dead Zone's cyborg is:** the base under soot, pale ash on its top surfaces (which keeps its outline on
+    dark ground), scorch marks, a shredded hem and ripped sleeve; the screen cracked and flickering at three quarters of
+    P2's strength so the face never quite goes out (steady with Reduced flashing); no embers (they would glow a hazard
+    orange). More or less burned? Keep the crack?
+130. **The other enemies' weathering in the later zones:** drones, hover trucks, Octodogs and screeches weather only under
+    Gangland's `scavenger`, so the Marketplace, Corporate, Dead Zone and Golden Zone show their clean versions. Should any
+    of those zones (the Dead Zone?) have the weathered versions?
+131. **A host's veins on each look:** on the surfaces the player sees (the Brute's chest, neck and both steel arms; the
+    enforcers' neck, sleeves and gauntlets; the VR Runner's collar, sleeves, chrome hand and cannon). Right places?
+    (Item 102, on the amount of purple, applies to every look.)
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).

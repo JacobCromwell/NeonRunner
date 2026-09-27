@@ -1,17 +1,22 @@
 extends TestSuite
 ## The cyborgs' body on the shared HumanoidRig (GDD §9.2: one shared body and skeleton with
-## swappable parts per zone), in the ragged screen-head base look (task P2): it uses the rig with
-## CyborgSuit's parts and one look's attachment set (every skin's enemy_variant wears the base until
-## the zone variants exist); draw calls and triangles stay within budget; the hitboxes are exactly
-## what they were before the new look and stay inside the visuals; the colour rules hold (only the
-## cold white face, the red charge-up and a host's purple glow; nothing copper, no hazard colours,
-## purple only on hosts); the faces keep their shapes far away; a defeated cyborg's screen shows ERR,
-## then goes dark; the posture is hunched, twitchy and shambling; Settings > Reduced flashing calms
-## the host's glitch, the hit flash and the screen; and building cyborgs leaves the player's avatar
-## untouched.
+## swappable parts per zone), in every look: the ragged screen-head base (task P2) and its zone
+## variants (task P3: the Broadcast Brute, the Casino Mob Enforcer, the Wide-Aspect VR Runner, the
+## burned-out base and the Golden Zone's ceremonial enforcer). Each skin's enemy_variant picks its
+## zone's look, and window cyborgs and hosts wear it too; every look uses the rig with CyborgSuit's
+## parts and one attachment set (its host veins on top); draw calls and triangles stay within budget;
+## the hitboxes are exactly what they were before the new looks, stay inside the visuals, and no look
+## is bigger than the base; every weapon ends in the shared emitter ring and charge orb; the colour
+## rules hold (only the cold white face and screens, the red charge-up and a host's purple glow;
+## nothing copper, no hazard colours, purple only on hosts; gold and chrome only as unlit, polished
+## ornament); the faces keep their shapes far away, the VR visor's too; the Golden Zone's look wears
+## the cult's emblem; a defeated cyborg's screen shows ERR, then goes dark; the posture is hunched,
+## twitchy and shambling; Settings > Reduced flashing calms the host's glitch, the hit flash and the
+## screen; and building cyborgs leaves the player's avatar untouched.
 
 const Kit = preload("res://scripts/enemies/cyborg_kit.gd")
 const Poses = preload("res://scripts/enemies/cyborg_poses.gd")
+const GoldenLook = preload("res://scripts/enemies/cyborg_looks/golden.gd")
 const SHADER_PATH: String = "res://scripts/enemies/cyborg_body.gdshader"
 ## Draw calls: a whole cyborg (was 13, 14 while charging, before the rig) and a window cyborg's upper body.
 const FULL_BODY_CALLS: int = 11
@@ -20,22 +25,33 @@ const UPPER_BODY_CALLS: int = 7
 ## screen at once on a phone.
 const FULL_BODY_TRIANGLES: int = 2400
 const UPPER_BODY_TRIANGLES: int = 2000
-## The skins' enemy variants in use (they pick the other enemies' weathering); every one must dress
-## the cyborgs.
-const SKIN_VARIANTS: Array[StringName] = [&"city", &"scavenger"]
+## The skins' enemy variants that aren't look names (they also pick the other enemies' weathering),
+## and the look each dresses the cyborgs in.
+const SKIN_VARIANTS: Dictionary = {&"city": &"base", &"scavenger": &"brute"}
+## Each zone's look (GDD §9.2, "Zone variants"), by the zone's id: the skin that exists must pick it.
+const ZONE_LOOKS: Dictionary = {&"city": &"base", &"gangland": &"brute", &"marketplace": &"casino",
+	&"corporate": &"vr_runner", &"dead_zone": &"burned", &"golden": &"golden"}
 ## The hitboxes as they were before the new look (task P2 changes looks only): the solid body, the
 ## stompable head and shoulders, and the window cyborg's body band.
 const BODY_BOX := Vector3(0.4, 1.0, 0.28)
 const BODY_AT := Vector3(0.0, 0.5, 0.0)
 const HEAD_BOX := Vector3(0.7, 0.38, 0.6)
 const HEAD_AT := Vector3(0.0, 1.31, 0.0)
+## No look is bigger than the base (brief): standing, its outline (width, height, depth) is within
+## this much of the base's.
+const BIGGER_TOLERANCE: float = 0.03
 ## Colours: hazard colours keep this far away on the hue and saturation wheel (test_avatar's measure).
 const MIN_HAZARD_DISTANCE: float = 0.3
-## Clothing and metal are dull: no piece more saturated or brighter than these.
+## Unlit colours are never more saturated than this, and never brighter than their look's limit: the
+## grimy looks (the base, the Brute, the burned base) keep P2's dull range; the polished ones (the Casino
+## Mob Enforcer's gold, the VR Runner's chrome, the Golden Zone's ivory and gold) may be brighter.
 const MAX_SATURATION: float = 0.6
 const MAX_VALUE: float = 0.62
-## 14 m ahead of the player at 720p the screen is about this many pixels.
+const LOOK_MAX_VALUE: Dictionary = {&"base": 0.62, &"brute": 0.62, &"burned": 0.62, &"casino": 0.72,
+	&"vr_runner": 0.72, &"golden": 0.78}
+## 14 m ahead of the player at 720p the TV's screen is about this many pixels, and the VR visor this.
 const FAR_PIXELS := Vector2i(7, 5)
+const FAR_VISOR_PIXELS := Vector2i(8, 3)
 
 var sim: RunSim
 
@@ -46,11 +62,17 @@ func run() -> void:
 	tree.root.add_child(avatar)
 	var avatar_meshes: Array[Mesh] = _meshes(avatar.rig)
 	var avatar_calls: int = avatar.draw_call_count()
+	_test_variants()
+	await _test_zone_looks_in_play()
 	await _test_rig_and_budget()
 	await _test_hitboxes_pinned()
 	await _test_hitboxes_inside()
+	await _test_not_bigger()
 	_test_look()
+	_test_variant_looks()
+	_test_weapons()
 	_test_colours()
+	_test_emblem()
 	await _test_poses()
 	await _test_posture()
 	await _test_faces_and_charge()
@@ -109,9 +131,75 @@ static func _pieces() -> Dictionary:
 	return out
 
 
-func _test_rig_and_budget() -> void:
+## Every look name and every skin variant, as enemy_variant values.
+static func _variant_names() -> Array[StringName]:
 	var names: Array[StringName] = CyborgSuit.LOOKS.duplicate()
-	names.append_array(SKIN_VARIANTS)
+	for v: StringName in SKIN_VARIANTS:
+		names.append(v)
+	return names
+
+
+## GDD §9.2's zone variants: six looks, each zone's skin picks its own (the skins that exist; the
+## others use a look's own name when they come), a look's name picks itself, the Neon City's and
+## Gangland's variants (which also weather the other enemies) map to theirs, anything else wears the
+## base; every look has its title, and a host wears its look's veins.
+func _test_variants() -> void:
+	check(CyborgSuit.LOOKS.size() == 6 and CyborgSuit.LOOKS[0] == CyborgSuit.BASE,
+		"six looks, the base first (%s)" % str(CyborgSuit.LOOKS))
+	for look: StringName in CyborgSuit.LOOKS:
+		check(CyborgSuit.look_for(look) == look and CyborgSuit.LOOK_TITLES.has(look), "%s picks itself and has a title" % look)
+		check(ZONE_LOOKS.values().has(look), "%s dresses a zone" % look)
+	for v: StringName in SKIN_VARIANTS:
+		check(CyborgSuit.look_for(v) == SKIN_VARIANTS[v], "the %s variant wears the %s look" % [v, SKIN_VARIANTS[v]])
+	check(CyborgSuit.look_for(&"no_such_variant") == CyborgSuit.BASE, "an unknown variant wears the base")
+	var found: int = 0
+	for zone: StringName in ZONE_LOOKS:
+		var path: String = "res://data/skins/%s_skin.tres" % zone
+		if not ResourceLoader.exists(path):
+			continue
+		found += 1
+		var skin := load(path) as ZoneSkin
+		check(CyborgSuit.look_for(skin.enemy_variant) == ZONE_LOOKS[zone],
+			"the %s skin's cyborgs wear the %s look (enemy_variant %s)" % [zone, ZONE_LOOKS[zone], skin.enemy_variant])
+	check(found >= 3, "the City's, Gangland's and the Marketplace's skins are checked (%d)" % found)
+	check(CyborgSuit.look_for((load("res://data/skins/greybox_skin.tres") as ZoneSkin).enemy_variant) == CyborgSuit.BASE,
+		"zones on the grey box wear the base until their skins exist")
+	for look: StringName in CyborgSuit.LOOKS:
+		var sets: Array[StringName] = CyborgSuit.attachment_sets(look, true)
+		check(sets.size() == 2 and sets[0] == look and sets[1] == CyborgSuit.host_set(look)
+			and CyborgSuit.parts().attachments.has(sets[1]), "a %s host wears its look and its veins (%s)" % [look, str(sets)])
+	check(CyborgSuit.host_set(CyborgSuit.BASE) == CyborgSuit.HOST_SET and CyborgSuit.host_set(CyborgSuit.BURNED) == CyborgSuit.HOST_SET,
+		"the burned base's hosts wear the base's veins")
+
+
+## Window cyborgs and hosts wear their zone's look (brief): cyborgs, hosts and window cyborgs spawned
+## in a world dress by its skin's enemy_variant.
+func _test_zone_looks_in_play() -> void:
+	var w: RunWorld = sim.build_world(RunSim.layout(5, 400.0))
+	for v: StringName in _variant_names():
+		var skin := w.skin.duplicate() as ZoneSkin
+		skin.enemy_variant = v
+		w.skin = skin
+		var look: StringName = CyborgSuit.look_for(v)
+		var c := w.director.spawn({"type": "cyborg", "at": 60.0, "lane": 2, "seed": 3,
+			"params": {"panic": false, "fires": false, "host": false}}) as Cyborg
+		var h := w.director.spawn({"type": "cyborg", "at": 70.0, "lane": 1, "seed": 4,
+			"params": {"panic": false, "fires": false, "host": true}}) as Cyborg
+		var wc := w.director.spawn({"type": "window_cyborg", "at": 80.0, "lane": 4, "side": 1, "seed": 4,
+			"params": {"fires": false}}) as WindowCyborg
+		var host_sets: Array[StringName] = CyborgSuit.attachment_sets(look, true)
+		host_sets.sort_custom(func(a: StringName, b: StringName) -> bool: return String(a) < String(b))
+		check(c.body.look == look and h.body.look == look and wc.body.look == look,
+			"%s: cyborgs, hosts and window cyborgs wear the %s look" % [v, look])
+		check(h.body.rig.attachments() == host_sets and h.is_host, "%s: a host wears its look's veins" % v)
+		for e: Enemy in [c, h, wc]:
+			e.retire()
+		await physics_frames(1)
+	await sim.free_world(w)
+
+
+func _test_rig_and_budget() -> void:
+	var names: Array[StringName] = _variant_names()
 	for v: StringName in names:
 		var b := _body(v)
 		check(b.rig is HumanoidRig and b.rig.parts == CyborgSuit.parts(), "%s: the body is the shared HumanoidRig with the cyborg parts" % v)
@@ -131,12 +219,16 @@ func _test_rig_and_budget() -> void:
 		check(u.rig.triangle_count() <= UPPER_BODY_TRIANGLES,
 			"%s: a window cyborg's upper body is %d triangles (budget %d)" % [v, u.rig.triangle_count(), UPPER_BODY_TRIANGLES])
 		u.queue_free()
-	var host := _body(&"city", true)
-	check(host.draw_call_count() == FULL_BODY_CALLS, "a host costs the same draw calls (its veins ride in the segment meshes)")
-	check(host.rig.attachments() == [CyborgSuit.BASE, CyborgSuit.HOST_SET], "a host wears the veins over its look")
-	check(host.rig.triangle_count() <= FULL_BODY_TRIANGLES,
-		"a host is %d triangles (budget %d)" % [host.rig.triangle_count(), FULL_BODY_TRIANGLES])
-	host.queue_free()
+	var base_host := _body(&"city", true)
+	check(base_host.rig.attachments() == [CyborgSuit.BASE, CyborgSuit.HOST_SET], "a host wears the veins over its look")
+	base_host.queue_free()
+	for look: StringName in CyborgSuit.LOOKS:
+		var host := _body(look, true)
+		check(host.draw_call_count() == FULL_BODY_CALLS,
+			"%s: a host costs the same draw calls (its veins ride in the segment meshes)" % look)
+		check(host.rig.triangle_count() <= FULL_BODY_TRIANGLES,
+			"%s: a host is %d triangles (budget %d)" % [look, host.rig.triangle_count(), FULL_BODY_TRIANGLES])
+		host.queue_free()
 	await tree.process_frame
 
 
@@ -146,7 +238,7 @@ func _test_hitboxes_pinned() -> void:
 		"the cyborg's hitbox sizes are unchanged")
 	var w: RunWorld = sim.build_world(RunSim.layout(5, 400.0))
 	var wt := load("res://data/enemies/window_cyborg.tres") as WindowCyborgTuning
-	for v: StringName in SKIN_VARIANTS:
+	for v: StringName in _variant_names():
 		var skin := w.skin.duplicate() as ZoneSkin
 		skin.enemy_variant = v
 		w.skin = skin
@@ -198,7 +290,7 @@ static func _hitboxes(e: Enemy) -> Dictionary:
 ## frame is.
 func _test_hitboxes_inside() -> void:
 	var w: RunWorld = sim.build_world(RunSim.layout(5, 400.0))
-	for v: StringName in SKIN_VARIANTS:
+	for v: StringName in _variant_names():
 		var skin := w.skin.duplicate() as ZoneSkin
 		skin.enemy_variant = v
 		w.skin = skin
@@ -227,14 +319,37 @@ func _test_hitboxes_inside() -> void:
 	await sim.free_world(w)
 
 
+## No look is bigger than the base (brief: a bigger body would no longer match the hitboxes, which are
+## the base's): standing in the same pose at the same moment, each look's outline is within
+## BIGGER_TOLERANCE of the base's in width, height and depth, and its head fits the stomp zone's
+## footprint.
+func _test_not_bigger() -> void:
+	var sizes: Dictionary = {}
+	for look: StringName in CyborgSuit.LOOKS:
+		var b := _body(look)
+		b.set_process(false)
+		b._t = 0.0
+		b._twitch_phase = 0.0
+		b._snap = true
+		b._animate(0.0)
+		sizes[look] = _visual_bounds(b, b).size
+		var head: AABB = _mesh_bounds(CyborgSuit.parts().segment_mesh(&"head", 0, [look]))
+		check(head.size.x <= HEAD_BOX.x and head.size.z <= HEAD_BOX.z,
+			"%s: the head (%.2f × %.2f m) fits the stomp zone's footprint" % [look, head.size.x, head.size.z])
+		b.queue_free()
+	var base: Vector3 = sizes[CyborgSuit.BASE]
+	for look: StringName in CyborgSuit.LOOKS:
+		var s: Vector3 = sizes[look]
+		check(s.x <= base.x + BIGGER_TOLERANCE and s.y <= base.y + BIGGER_TOLERANCE and s.z <= base.z + BIGGER_TOLERANCE,
+			"%s is no bigger than the base (%s against %s)" % [look, str(s), str(base)])
+	await tree.process_frame
+
+
 ## The base look (GDD §9.2, Variant 1): the whole head is a TV (a boxy casing wider than the neck by
 ## far, its screen the face), the backpack, cables into the head, the cannon arm on the right; a host
-## wears veins; every skin variant picks a look.
+## wears veins.
 func _test_look() -> void:
 	check(CyborgSuit.LOOKS.has(CyborgSuit.BASE), "the base is a look")
-	for v: StringName in SKIN_VARIANTS:
-		check(CyborgSuit.look_for(v) == CyborgSuit.BASE, "the %s skins' cyborgs wear the base" % v)
-	check(CyborgSuit.look_for(&"no_such_variant") == CyborgSuit.BASE, "an unknown variant wears the base")
 	check(CyborgSuit.attachment_sets(CyborgSuit.BASE, true) == [CyborgSuit.BASE, CyborgSuit.HOST_SET],
 		"a host's sets are its look and the veins")
 	var parts: HumanoidParts = CyborgSuit.parts()
@@ -279,6 +394,90 @@ func _test_look() -> void:
 			"a host's %s %d carries veins, a plain cyborg's doesn't" % [seg[0], seg[1]])
 
 
+## The zone variants (brief, "Zone variants (task P3)"): the screen is always the face (every look's
+## head has its glass exactly on its screen_rect, its LEDs square there); the Brute's TV is caged in
+## brass with a small screen each side (dimmer than the face); the VR Runner's screen is its wide visor
+## with its own face grid; the Casino Mob Enforcer and the ceremonial enforcer wear pinstripes and
+## diamond LEDs; the burned base's screen flickers and is cracked while the others are whole and
+## steady; and every look's hosts have veins on the chest and both arms, which only a host wears.
+func _test_variant_looks() -> void:
+	var parts: HumanoidParts = CyborgSuit.parts()
+	for look: StringName in CyborgSuit.LOOKS:
+		var glass: AABB = _glow_bounds(parts.segment_mesh(&"head", 0, [look]), CyborgSuit.SCREEN)
+		var rect: Vector4 = CyborgSuit.screen_rect(look)
+		check(glass.size.x > 0.0 and Vector4(glass.position.x, glass.position.y, glass.end.x, glass.end.y).is_equal_approx(rect)
+			and glass.end.z < -0.1, "%s: the screen is the face, at the front of the head on its rectangle (%s)" % [look, str(rect)])
+		var grid: Vector2i = CyborgSuit.face_grid(look)
+		check(absf((rect.z - rect.x) / (rect.w - rect.y) - float(grid.x) / grid.y) < 0.02,
+			"%s: the face's LEDs are square on its screen" % look)
+		var params: Dictionary = CyborgSuit.look_params(look)
+		var worn: bool = float(params[&"flicker"]) > 0.0 and float(params[&"crack"]) > 0.0
+		check(worn == (look == CyborgSuit.BURNED) and (float(params[&"flicker"]) == 0.0 or look == CyborgSuit.BURNED),
+			"%s: %s" % [look, "its screen flickers and is cracked" if look == CyborgSuit.BURNED else "its screen is whole and steady"])
+		var striped: bool = look == CyborgSuit.CASINO or look == CyborgSuit.GOLDEN
+		check(_has_glow(parts.segment_mesh(&"chest", 0, [look]), CyborgSuit.STRIPES) == striped
+			and (float(params[&"led_shape"]) > 0.5) == striped,
+			"%s: %s" % [look, "a pinstripe suit and diamond LEDs" if striped else "no pinstripes, round LEDs"])
+		var veins: Array[StringName] = CyborgSuit.attachment_sets(look, true)
+		for seg: Array in [[&"chest", 0], [&"upper_arm", -1], [&"upper_arm", 1], [&"forearm", -1], [&"forearm", 1]]:
+			check(_has_glow(parts.segment_mesh(seg[0], seg[1], veins), CyborgSuit.VEIN)
+				and not _has_glow(parts.segment_mesh(seg[0], seg[1], [look]), CyborgSuit.VEIN),
+				"%s: a host's %s %d carries veins, a plain cyborg's doesn't" % [look, seg[0], seg[1]])
+	# The Brute: the cage, and a monitor each side of the TV whose glass is dimmer than the face.
+	var brute_head: ArrayMesh = parts.segment_mesh(&"head", 0, [CyborgSuit.BRUTE])
+	var monitors: AABB = _glow_bounds(brute_head, CyborgSuit.GLASS)
+	var brute: Dictionary = CyborgSuit.look_params(CyborgSuit.BRUTE)
+	var glass_rect: Vector4 = brute[&"glass_rect"]
+	check(monitors.position.x < -CyborgSuit.TV_SIZE.x * 0.5 and monitors.end.x > CyborgSuit.TV_SIZE.x * 0.5
+		and absf(monitors.end.x - glass_rect.x - glass_rect.z) < 0.01,
+		"the Brute's TV has a small screen on each side (%s)" % str(monitors))
+	var energy: RegExMatch = RegEx.create_from_string("uniform float led_energy = ([0-9.]+);").search(
+		FileAccess.get_file_as_string(SHADER_PATH))
+	var led_energy: float = float(energy.get_string(1)) if energy != null else 0.0
+	check(float(brute[&"glass_energy"]) < 0.3 * led_energy,
+		"the side screens glow well below the face (%.2f against %.2f)" % [float(brute[&"glass_energy"]), led_energy])
+	check(_mesh_bounds(brute_head).size.x > CyborgSuit.TV_SIZE.x + 0.1, "the Brute's head is wider with its cage and monitors")
+	for look: StringName in CyborgSuit.LOOKS:
+		if look != CyborgSuit.BRUTE:
+			check(not _has_glow(parts.segment_mesh(&"head", 0, [look]), CyborgSuit.GLASS), "%s: no side screens" % look)
+	# The VR Runner: a wide visor (its own faces).
+	var vr: Vector4 = CyborgSuit.screen_rect(CyborgSuit.VR_RUNNER)
+	check(CyborgSuit.uses_visor(CyborgSuit.VR_RUNNER) and CyborgSuit.face_grid(CyborgSuit.VR_RUNNER) == Kit.VISOR_GRID
+		and (vr.z - vr.x) / (vr.w - vr.y) > 2.5, "the VR Runner's screen is a wide visor with its own face grid")
+	for look: StringName in CyborgSuit.LOOKS:
+		if look != CyborgSuit.VR_RUNNER:
+			check(not CyborgSuit.uses_visor(look) and CyborgSuit.screen_rect(look) == CyborgSuit.screen_rect(CyborgSuit.BASE),
+				"%s: the base's TV screen" % look)
+
+
+## One visible weapon, one attack (brief): in every look the right forearm ends in the shared emitter
+## ring and charge orb (the same red charge-up in every zone, one set of them), nothing of the look
+## reaches past the ring (the weapon ends at the muzzle), and the left arm has neither.
+func _test_weapons() -> void:
+	var parts: HumanoidParts = CyborgSuit.parts()
+	var ring_far: float = 0.0
+	for piece: HumanoidPiece in parts.pieces:
+		if piece.glow == CyborgSuit.RING:
+			ring_far = piece.offset.y - piece.size.y * 0.5 - 0.002
+	for look: StringName in CyborgSuit.LOOKS:
+		var own_charge: bool = false
+		for piece: HumanoidPiece in parts.attachments[look]:
+			own_charge = own_charge or piece.glow == CyborgSuit.RING or piece.glow == CyborgSuit.ORB
+		var fore_r: ArrayMesh = parts.segment_mesh(&"forearm", 1, [look])
+		var fore_l: ArrayMesh = parts.segment_mesh(&"forearm", -1, [look])
+		check(not own_charge and _has_glow(fore_r, CyborgSuit.RING) and _has_glow(fore_r, CyborgSuit.ORB)
+			and not _has_glow(fore_l, CyborgSuit.RING) and not _has_glow(fore_l, CyborgSuit.ORB),
+			"%s: the weapon on the right arm ends in the shared emitter ring and charge orb" % look)
+		var lowest: float = INF
+		var arrays: Array = fore_r.surface_get_arrays(0)
+		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var uvs: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
+		for i: int in verts.size():
+			if absf(uvs[i].x - CyborgSuit.ORB) > 0.5 and absf(uvs[i].x - CyborgSuit.RING) > 0.5:
+				lowest = minf(lowest, verts[i].y)
+		check(lowest >= ring_far, "%s: nothing reaches past the muzzle's ring (%.3f ≥ %.3f)" % [look, lowest, ring_far])
+
+
 ## GDD §9.2's colour rules. The only glows are the marked pieces the shader draws: the screen (cold
 ## white), the cannon's ring and orb (enemy-fire red) and, on hosts only, the veins (purple). The
 ## cold white is the cult feed's, near-white, and far from the player's copper and every hazard and
@@ -296,39 +495,59 @@ func _test_colours() -> void:
 	check(_chroma_distance(Kit.LED_COLOR, PlayerSuit.GLOW) >= MIN_HAZARD_DISTANCE,
 		"the cold white is nothing like the player's copper (%.2f)" % _chroma_distance(Kit.LED_COLOR, PlayerSuit.GLOW))
 	check(_is_purple(Kit.GLITCH_COLOR), "a host's glitch is purple")
-	var markers: Array[float] = [CyborgSuit.SCREEN, CyborgSuit.RING, CyborgSuit.ORB]
+	# Unlit colours also keep clear of the enemy fire's red (red means enemy fire).
+	hazards["enemy fire"] = Kit.CHARGE_COLOR
+	# The glowing marks (the screen, the ring and orb, a secondary screen) and the unlit patterned
+	# surfaces (the emblem's medallion, pinstripes), whose base colours follow the colour rules.
+	var markers: Array[float] = [CyborgSuit.SCREEN, CyborgSuit.RING, CyborgSuit.ORB, CyborgSuit.GLASS]
+	var surfaces: Array[float] = [CyborgSuit.EMBLEM, CyborgSuit.STRIPES]
+	# Each set's look (a host set is its look's), for its brightness limit.
+	var owner_look: Dictionary = {"": CyborgSuit.BASE}
+	var host_sets: Array[String] = []
+	for look: StringName in CyborgSuit.LOOKS:
+		owner_look[String(look)] = look
+		owner_look[String(CyborgSuit.host_set(look))] = look
+		host_sets.append(String(CyborgSuit.host_set(look)))
 	var pieces: Dictionary = _pieces()
 	for set_name: String in pieces:
+		check(owner_look.has(set_name), "the %s set belongs to a look" % set_name)
+		var look: StringName = owner_look.get(set_name, CyborgSuit.BASE)
+		var max_value: float = LOOK_MAX_VALUE[look]
 		var wrong_glow: PackedStringArray = []
 		var loud: PackedStringArray = []
 		var purple: PackedStringArray = []
 		var hazardous: PackedStringArray = []
 		for piece: HumanoidPiece in pieces[set_name]:
 			var tag: String = "%s %s" % [piece.segment, piece.color.to_html(false)]
-			if set_name == String(CyborgSuit.HOST_SET):
+			if host_sets.has(set_name):
 				if piece.glow != CyborgSuit.VEIN or piece.color != Kit.GLITCH_COLOR:
 					wrong_glow.append(tag)
 				continue
-			if piece.glow > 0.0:
+			if piece.glow > 0.0 and not surfaces.has(piece.glow):
 				if not markers.has(piece.glow):
 					wrong_glow.append(tag)
 				continue
-			if piece.color.s > MAX_SATURATION or piece.color.v > MAX_VALUE:
-				loud.append(tag)
-			if _is_purple(piece.color):
-				purple.append(tag)
-			for h: String in hazards:
-				if _chroma_distance(piece.color, hazards[h]) < MIN_HAZARD_DISTANCE:
-					hazardous.append("%s (%s)" % [tag, h])
+			_colour_faults(piece.color, max_value, hazards, tag, loud, purple, hazardous)
 		var what: String = "the %s set" % set_name if set_name != "" else "the shared pieces"
-		if set_name == String(CyborgSuit.HOST_SET):
+		if host_sets.has(set_name):
 			check(wrong_glow.is_empty() and not (pieces[set_name] as Array).is_empty(),
 				"%s: only purple veins (%s)" % [what, ", ".join(wrong_glow)])
 			continue
-		check(wrong_glow.is_empty(), "%s: nothing glows but the screen, ring and orb (%s)" % [what, ", ".join(wrong_glow)])
-		check(loud.is_empty(), "%s: the clothing and metal are dull (%s)" % [what, ", ".join(loud)])
+		check(wrong_glow.is_empty(), "%s: nothing glows but the screens, ring and orb (%s)" % [what, ", ".join(wrong_glow)])
+		check(loud.is_empty(), "%s: no colour brighter than %.2f or more saturated than %.2f (%s)"
+			% [what, max_value, MAX_SATURATION, ", ".join(loud)])
 		check(purple.is_empty(), "%s: no purple (it means host) (%s)" % [what, ", ".join(purple)])
 		check(hazardous.is_empty(), "%s: no hazard or safe colour (%s)" % [what, ", ".join(hazardous)])
+	# The looks' own unlit colours in the material (the pinstripes) follow the same rules.
+	for look: StringName in CyborgSuit.LOOKS:
+		var params: Dictionary = CyborgSuit.look_params(look)
+		if params.has(&"stripe_color"):
+			var loud: PackedStringArray = []
+			var purple: PackedStringArray = []
+			var hazardous: PackedStringArray = []
+			_colour_faults(params[&"stripe_color"], LOOK_MAX_VALUE[look], hazards, "stripes", loud, purple, hazardous)
+			check(loud.is_empty() and purple.is_empty() and hazardous.is_empty(),
+				"%s: the pinstripes are an unlit colour within the rules (%s)" % [look, ", ".join(loud + purple + hazardous)])
 	# The web renderer: vertex colours are shown right (they are linear), glows keep their hue.
 	var code: String = FileAccess.get_file_as_string(SHADER_PATH)
 	check(code.contains("humanoid_color.gdshaderinc") and code.contains("humanoid_base_color(COLOR.rgb)"),
@@ -351,6 +570,91 @@ static func _hazard_colors() -> Dictionary:
 				var c: Color = skin.get(property)
 				if c.s > 0.4:
 					out["%s %s" % [file.get_basename(), property.trim_suffix("_color")]] = c
+	return out
+
+
+## Adds `tag` to the lists an unlit colour breaks: too bright or saturated, purple, or near a hazard.
+static func _colour_faults(c: Color, max_value: float, hazards: Dictionary, tag: String, loud: PackedStringArray,
+		purple: PackedStringArray, hazardous: PackedStringArray) -> void:
+	if c.s > MAX_SATURATION or c.v > max_value:
+		loud.append(tag)
+	if _is_purple(c):
+		purple.append(tag)
+	for h: String in hazards:
+		if _chroma_distance(c, hazards[h]) < MIN_HAZARD_DISTANCE:
+			hazardous.append("%s (%s)" % [tag, h])
+
+
+## The Golden Zone's ceremonial enforcer wears the cult's Convergent Triad openly (GDD §5, "The cult";
+## brief): only it has the emblem's medallion, on the chest facing forward, with the emblem's square
+## inside it; the emblem is CultEmblem's drawing of the owner's choice (data/world/cult_emblem_choice.tres)
+## in the look's unlit gold meeting at CultEmblem's small red centre stone, with mipmaps; the shader
+## never makes it glow and fades it out below about 24 pixels on screen (the radiation-trefoil rule).
+func _test_emblem() -> void:
+	var parts: HumanoidParts = CyborgSuit.parts()
+	for look: StringName in CyborgSuit.LOOKS:
+		var wears: bool = false
+		for piece: HumanoidPiece in parts.attachments[look]:
+			wears = wears or piece.glow == CyborgSuit.EMBLEM
+		check(wears == (look == CyborgSuit.GOLDEN), "%s %s the cult's emblem" % [look, "wears" if wears else "doesn't wear"])
+	var medal: AABB = _glow_bounds(parts.segment_mesh(&"chest", 0, [CyborgSuit.GOLDEN]), CyborgSuit.EMBLEM)
+	var params: Dictionary = CyborgSuit.look_params(CyborgSuit.GOLDEN)
+	var rect: Vector3 = params[&"emblem_rect"]
+	var centre: Vector3 = medal.get_center()
+	# The Triad reaches 0.42 of CultEmblem's unit square from its centre: 0.84 of the half size here.
+	var mark_reach: float = 0.84 * rect.z
+	check(medal.size.x > 0.0 and Vector2(centre.x, centre.y).distance_to(Vector2(rect.x, rect.y)) < 0.002
+		and medal.size.x * 0.5 >= mark_reach and medal.size.y * 0.5 >= mark_reach and medal.end.z < -0.1,
+		"the medallion faces forward on the chest, the emblem inside it (%s, reach %.3f)" % [str(medal), mark_reach])
+	var tex: ImageTexture = params[&"emblem"]
+	var img: Image = tex.get_image() if tex != null else null
+	check(img != null and img.has_mipmaps() and tex == GoldenLook.emblem_texture(), "the emblem is a texture with mipmaps")
+	if img == null:
+		return
+	var gold: Color = GoldenLook.PALETTE["gold"]
+	var expected: Image = CultEmblem.build_image(CultFeed.emblem_option(), img.get_width(), gold, CultEmblem.GOLD_ACCENT_COLOR,
+		Color(gold, 0.0))
+	var level0: Image = img.duplicate() as Image
+	level0.clear_mipmaps()
+	check(level0.get_data() == expected.get_data(), "it is CultEmblem's drawing of the owner's choice (option %s)"
+		% CultEmblem.option_letter(CultFeed.emblem_option()))
+	var marked: int = 0
+	var stone: int = 0
+	for y: int in level0.get_height():
+		for x: int in level0.get_width():
+			var c: Color = level0.get_pixel(x, y)
+			if c.a > 0.5:
+				marked += 1
+				if c.r - c.g > 0.3:
+					stone += 1
+	check(marked > 0 and stone > 0 and stone <= marked * 0.08,
+		"polished gold meeting at a small red centre stone (%d of %d marked pixels)" % [stone, marked])
+	var hazards: Dictionary = _hazard_colors()
+	var loud: PackedStringArray = []
+	var purple: PackedStringArray = []
+	var hazardous: PackedStringArray = []
+	_colour_faults(gold, LOOK_MAX_VALUE[CyborgSuit.GOLDEN], hazards, "gold", loud, purple, hazardous)
+	check(loud.is_empty() and purple.is_empty() and hazardous.is_empty(), "the emblem's gold is an unlit colour within the rules")
+	var code: String = FileAccess.get_file_as_string(SHADER_PATH)
+	check(code.contains("vec4 emblem_mark(") and code.contains("1.0 - smoothstep(0.055, 0.085, fw)"),
+		"the shader fades the emblem out below about 24 pixels")
+	check(code.contains("float glow = v_kind < 0.5 ? UV.x : 0.0;"), "the emblem and the pinstripes never glow")
+
+
+## The bounds of a mesh's vertices marked with glow value `glow`.
+static func _glow_bounds(mesh: ArrayMesh, glow: float) -> AABB:
+	var out := AABB()
+	var first: bool = true
+	if mesh == null:
+		return out
+	for s: int in mesh.get_surface_count():
+		var arrays: Array = mesh.surface_get_arrays(s)
+		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var uvs: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
+		for i: int in verts.size():
+			if absf(uvs[i].x - glow) < 0.01:
+				out = AABB(verts[i], Vector3.ZERO) if first else out.expand(verts[i])
+				first = false
 	return out
 
 
@@ -488,6 +792,26 @@ func _test_faces_and_charge() -> void:
 	check(absf(elbow.distance_to(plain.muzzle_position()) - 0.43) < 0.01, "the muzzle is at the cannon's tip")
 	for b: CyborgBody in [plain, host]:
 		b.queue_free()
+	# Every look shows the shared expressions in its own screen's face set (the VR visor's are its own),
+	# and its hosts glitch through their corrupted faces in the same set.
+	for look: StringName in CyborgSuit.LOOKS:
+		var b := _body(look, true)
+		var ok: bool = b.material.get_shader_parameter(&"face_grid") == Vector2(CyborgSuit.face_grid(look))
+		for f: Kit.Face in [Kit.Face.AIMING, Kit.Face.SHOCKED, Kit.Face.NEUTRAL]:
+			b.set_expression(f)
+			ok = ok and b.material.get_shader_parameter(&"face") == CyborgSuit.face_texture(look, f)
+		var faces: Array[Texture2D] = []
+		for f: Kit.Face in Kit.FACES:
+			faces.append(CyborgSuit.face_texture(look, f))
+		var seen: bool = true
+		for i: int in 600:
+			b._update_visor(1.0 / 60.0)
+			seen = seen and faces.has(b.material.get_shader_parameter(&"face"))
+		var size: Vector2i = CyborgSuit.face_grid(look)
+		var tex: Texture2D = CyborgSuit.face_texture(look, Kit.Face.NEUTRAL)
+		check(ok and seen and tex.get_width() == size.x and tex.get_height() == size.y,
+			"%s: the screen shows the shared expressions in its own face set (%d × %d)" % [look, size.x, size.y])
+		b.queue_free()
 	await tree.process_frame
 
 
@@ -523,25 +847,50 @@ func _test_far_faces() -> void:
 				var d: float = _difference(small[a], small[b])
 				check(d > 0.12, "14 m ahead the %s and %s faces still differ (%.2f)" % [Kit.Face.keys()[a], Kit.Face.keys()[b], d])
 	check(Kit.face_texture(Kit.Face.NEUTRAL).get_image().has_mipmaps(), "the faces carry mipmaps for the far view")
+	# The VR Runner's wide visor: the same faces on its own grid, ERR among them, and 14 m ahead (about
+	# 8 × 3 pixels) the three expressions still tell apart.
+	for f: Kit.Face in Kit.FACES:
+		var rows: Array = Kit.VISOR_FACES[f]
+		var ok: bool = rows.size() == Kit.VISOR_GRID.y
+		for row: String in rows:
+			ok = ok and row.length() == Kit.VISOR_GRID.x
+		check(ok, "visor face %s is %d × %d LEDs" % [Kit.Face.keys()[f], Kit.VISOR_GRID.x, Kit.VISOR_GRID.y])
+	check(Kit.VISOR_FACES.size() == Kit.FACES.size(), "the visor has every face")
+	var visor_err: Array = Kit.VISOR_FACES[Kit.Face.DEAD]
+	check(String(visor_err[1]).contains(".###.###.###.") and String(visor_err[3]).contains(".###.##..##.."),
+		"a defeated VR Runner's visor reads ERR")
+	var visor: Vector4 = CyborgSuit.screen_rect(CyborgSuit.VR_RUNNER)
+	var far := Vector2(FAR_PIXELS) * Vector2((visor.z - visor.x) / CyborgSuit.SCREEN_SIZE.x, (visor.w - visor.y) / CyborgSuit.SCREEN_SIZE.y)
+	check(Vector2i(roundi(far.x), roundi(far.y)) == FAR_VISOR_PIXELS, "14 m ahead the visor is about %s pixels (%s)"
+		% [str(FAR_VISOR_PIXELS), str(far)])
+	var visor_small: Dictionary = {}
+	for f: Kit.Face in [Kit.Face.NEUTRAL, Kit.Face.AIMING, Kit.Face.SHOCKED]:
+		visor_small[f] = _shrink(Kit.VISOR_FACES[f], FAR_VISOR_PIXELS, Kit.VISOR_GRID)
+	for a: Kit.Face in visor_small:
+		for b: Kit.Face in visor_small:
+			if a < b:
+				var d: float = _difference(visor_small[a], visor_small[b])
+				check(d > 0.12, "14 m ahead the visor's %s and %s faces still differ (%.2f)" % [Kit.Face.keys()[a], Kit.Face.keys()[b], d])
+	check(Kit.face_texture(Kit.Face.NEUTRAL, true).get_image().has_mipmaps(), "the visor's faces carry mipmaps too")
 	var code: String = FileAccess.get_file_as_string(SHADER_PATH)
 	check(code.contains("textureLod(face") and code.contains("texelFetch(face"),
 		"the shader shows each LED close up and averages them far away")
 
 
-## A face's pixels box-filtered down to `size` (coverage 0-1 per pixel).
-static func _shrink(rows: Array, size: Vector2i) -> PackedFloat32Array:
+## A face's pixels (on `grid`) box-filtered down to `size` (coverage 0-1 per pixel).
+static func _shrink(rows: Array, size: Vector2i, grid: Vector2i = Kit.FACE_GRID) -> PackedFloat32Array:
 	var out := PackedFloat32Array()
 	out.resize(size.x * size.y)
-	var cw: float = float(Kit.FACE_GRID.x) / size.x
-	var ch: float = float(Kit.FACE_GRID.y) / size.y
+	var cw: float = float(grid.x) / size.x
+	var ch: float = float(grid.y) / size.y
 	for py: int in size.y:
 		for px: int in size.x:
 			var sum: float = 0.0
-			for y: int in Kit.FACE_GRID.y:
+			for y: int in grid.y:
 				var oy: float = maxf(0.0, minf(y + 1.0, (py + 1) * ch) - maxf(float(y), py * ch))
 				if oy <= 0.0:
 					continue
-				for x: int in Kit.FACE_GRID.x:
+				for x: int in grid.x:
 					var ox: float = maxf(0.0, minf(x + 1.0, (px + 1) * cw) - maxf(float(x), px * cw))
 					if ox > 0.0 and String(rows[y])[x] == "#":
 						sum += ox * oy
@@ -581,6 +930,12 @@ func _test_deaths() -> void:
 		b.queue_free()
 	check(CyborgBody.ERR_TIME + CyborgBody.SCREEN_OFF_TIME <= 0.34,
 		"ERR and the switch-off fit inside the quickest death (the claws' and the dash's, 0.34 s)")
+	for look: StringName in [CyborgSuit.VR_RUNNER, CyborgSuit.BRUTE]:
+		var d := _body(look, true)
+		d.die(&"stomp")
+		check(d.material.get_shader_parameter(&"face") == CyborgSuit.face_texture(look, Kit.Face.DEAD),
+			"%s: a defeated one's screen shows ERR in its own face set" % look)
+		d.queue_free()
 	var u := _body(&"city", false, true)
 	var chest: Node3D = u.rig.joint(&"chest")
 	var before_up: Vector3 = u.global_basis.inverse() * (chest.global_basis * Vector3.UP)
