@@ -34,8 +34,12 @@ extends Enemy
 ##   lane's slash covers the whole floor).
 ## - GDD §9.7 at runtime: its chase is an exclusive major attack (Enemy.exclusive_major_attack):
 ##   Octodogs and drones don't start a charge sequence or a barrage while it chases, and it holds its
-##   slash while one of theirs is on (EnemyDirector.major_attack_blocked). The generator guarantees
-##   anti-grav pads during the chase and keeps chases apart (host_rules.gd).
+##   slash while one of theirs is on (EnemyDirector.major_attack_blocked). While big attacks take
+##   turns (GDD §9, GameRules.big_attacks_take_turns) its chase is a big attack like theirs: no other
+##   type's starts while it chases, and it holds its slash until another's (a hover truck's lurch or
+##   cannon shot, say) is over and its shots have passed. Its chase starts when the player kills the
+##   host, so it never waits itself. The generator guarantees anti-grav pads during the chase and
+##   keeps chases apart (host_rules.gd).
 ##
 ## Spawn params: from_host (bool), chase (seconds: overrides the rolled chase length), emerge (bool,
 ## default true; false starts it already in place, for tests and the showcase).
@@ -111,8 +115,10 @@ func _build() -> void:
 	claw_immune = true
 	stompable = false
 	dash_kills = false
-	# GDD §9.7: never at the same time as an Octodog charge sequence or a drone barrage.
+	# GDD §9.7: never at the same time as an Octodog charge sequence or a drone barrage (whether or
+	# not big attacks take turns; while they do, its chase holds every other type's too).
 	exclusive_major_attack = true
+	exclusive_of = [&"octodog", &"drone"]
 	_scaling = world.config.enemy_scaling if world.config != null else 0.0
 	var p: Dictionary = spawn.get("params", {})
 	chase_seconds = float(p.get("chase", rng.randf_range(_t.chase_min_seconds, _t.chase_max_seconds)))
@@ -249,7 +255,8 @@ func _drift(p: Player, delta: float) -> void:
 
 ## Whether a telegraph may start now: the player is on the floor or a wall, not falling into a hole
 ## or coming down from a ceiling (it waits below the hull until they're down); no other enemy's
-## major attack is on (GDD §9.7); and the slash lands before the chase ends.
+## major attack is on (GDD §9.7, and GDD §9 while big attacks take turns); and the slash lands
+## before the chase ends.
 func _may_slash(p: Player) -> bool:
 	if not p.alive or not p.running or p.in_pit or _dropping or p.surface == Player.Surface.CEILING:
 		return false

@@ -11,7 +11,8 @@ extends Enemy
 ##   is safe; bullets are spaced so they can zigzag back through the stream, and the whole barrage
 ##   lands within the hit invulnerability window, so armor or a shield protects through all of it.
 ##   At a player on a wall it keeps firing (it leads the wall-run descent); while the player is on
-##   the ceiling it waits.
+##   the ceiling it waits. The barrage is a big attack (GDD §9): while another type's is on, the
+##   drone keeps following and winds up once its turn comes (EnemyDirector.major_attack_blocked).
 ## - Kill: stepping on any anti-grav pad hurls every drone on screen up into the ship's hull
 ##   (drone_crash); weapons take 15 laser tier 1 shots (health 15). Claws don't work, and it has no
 ##   contact hitbox: it only hurts through its bullets.
@@ -238,19 +239,23 @@ func _update_follow(p: Player, delta: float) -> void:
 	_follow_left -= delta
 	if _follow_left > 0.0 or not _can_attack(p) or _barrage_busy():
 		return
-	if world.director.major_attack_blocked(self):
-		return  # GDD §9.7: no barrage starts while the Cyborg's Bad Dream chases
 	# Settle over the lane first (it waits no more than 1.5 s for a player who keeps moving).
-	if absf(rel_x - tx) < 0.35 or _follow_left < -1.5:
-		_start_windup(p)
+	if absf(rel_x - tx) >= 0.35 and _follow_left >= -1.5:
+		return
+	# GDD §9.7: no barrage starts while the Cyborg's Bad Dream chases; GDD §9: nor while another
+	# type's big attack is on (it keeps following and waits for its turn).
+	if world.director.major_attack_blocked(self):
+		return
+	_start_windup(p)
 
 
 func _can_attack(p: Player) -> bool:
 	return p.alive and p.running and p.surface != Player.Surface.CEILING
 
 
-## GDD §9.7: a wind-up and its barrage are a major attack: the Cyborg's Bad Dream never slashes
-## during one (EnemyDirector.major_attack_blocked).
+## A wind-up and its barrage are a big attack (GDD §9, §9.7): the Cyborg's Bad Dream never slashes
+## during one, and while big attacks take turns another type's doesn't start until its bullets have
+## passed the player (EnemyDirector.major_attack_blocked, note_attack_shot).
 func is_major_attack_active() -> bool:
 	return alive and (state == State.WINDUP or state == State.FIRE)
 
@@ -352,6 +357,8 @@ func _fire_bullet(p: Player) -> void:
 		return
 	var velocity: Vector3 = to / dist * _bullet_speed + Vector3(0.0, 0.0, -p.speed)
 	world.projectiles.fire_enemy(from, velocity, &"enemy_bullet", SHOT_NAME, dist / _bullet_speed + tune.bullet_overshoot)
+	# In the player's frame it reaches their spot after dist / speed: the barrage's turn lasts until then.
+	world.director.note_attack_shot(self, dist / _bullet_speed)
 	bullets_fired += 1
 	_flash_left = 0.05
 
