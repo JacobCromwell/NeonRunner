@@ -28,6 +28,11 @@ const LAMP_SPACING: float = 7.5
 ## A bridge's face: its height above the underside, and (over fewer lanes) the suspended gallery's.
 const FASCIA: float = 2.4
 const GALLERY_FASCIA: float = 1.2
+## The crest at the middle of a bridge's face (the emblem in relief, rising over the rail so it reads
+## from far down the street), how high its foot is, and the archways' keystone relief.
+const CREST: float = 3.0
+const CREST_FOOT: float = 0.3
+const KEYSTONE: float = 2.2
 ## An archway's arches: spacing along the track, their rise over the deck at the middle, the deck.
 const ARCH_SPACING: float = 6.0
 const ARCH_RISE: float = 4.6
@@ -136,20 +141,27 @@ func _underside(s: MeshLayer, g: MeshLayer, hw: float, zn: float, zf: float, edg
 
 
 ## The cult's emblem in relief (GDD §5: shown openly) on a gold-rimmed marble panel `panel` metres
-## square, its middle at `c`, facing +z.
+## square facing +z, its middle at `c` on the face it stands on: the rim, then the panel standing off
+## it (GoldenFacades.RIM_DEPTH, RELIEF_STANDOFF: no flicker from afar).
 func _relief(s: MeshLayer, c: Vector3, panel: float) -> void:
-	s.box(c + Vector3(0.0, 0.0, 0.04), Vector3(panel + 0.24, panel + 0.24, 0.08), skin.gold_color, 0.0, MeshKit.PAT_GOLD,
-		MeshKit.ALL_FACES & ~MeshKit.FACE_NZ, 0.95)
-	GoldenSkin.emblem_panel(s, c + Vector3(-panel * 0.5, -panel * 0.5, 0.092), Vector3(panel, 0, 0), Vector3(0, panel, 0),
-		panel * 0.78, skin.stone_colors[0], 1)
+	s.box(c + Vector3(0.0, 0.0, GoldenFacades.RIM_DEPTH * 0.5), Vector3(panel + 0.24, panel + 0.24, GoldenFacades.RIM_DEPTH),
+		skin.gold_color, 0.0, MeshKit.PAT_GOLD, MeshKit.ALL_FACES & ~MeshKit.FACE_NZ, 0.95)
+	GoldenSkin.emblem_panel(s, c + Vector3(-panel * 0.5, -panel * 0.5, GoldenFacades.RIM_DEPTH + GoldenFacades.RELIEF_STANDOFF),
+		Vector3(panel, 0, 0), Vector3(0, panel, 0), relief_emblem(panel), skin.stone_colors[0], 1)
+
+
+## The emblem's size on a relief panel `panel` metres square.
+static func relief_emblem(panel: float) -> float:
+	return panel * 0.78
 
 
 # --- A golden bridge ------------------------------------------------------------------------
 
 ## A bridge between the palaces across every lane: the coffered underside from wall to wall, its
 ## marble face toward the approach with a gold band along its bottom edge (so the ceiling's edge reads
-## from the floor), the emblem in relief at its middle, a gold cornice and rail on top; on some, water
-## pouring off the face into a gilded trough on either side of the emblem.
+## from the floor), a gold cornice and rail on top, and the crest at its middle rising over the rail:
+## the emblem in relief; on some, water pouring off the face into a gilded trough on either side of
+## the crest.
 func _bridge(batch: MeshBatch, size: Vector3, edges: Array[float], wall_x: float, variant: int) -> void:
 	var s: MeshLayer = batch.layer(skin.solid_material())
 	var g: MeshLayer = batch.layer(skin.glow_material())
@@ -171,10 +183,9 @@ func _bridge(batch: MeshBatch, size: Vector3, edges: Array[float], wall_x: float
 		x += 1.3
 	s.box(Vector3(0, FASCIA + 1.06, zn - 0.15), Vector3(w * 2.0, 0.1, 0.18), skin.gold_color, 0.0, MeshKit.PAT_GOLD,
 		MeshKit.ALL_FACES & ~MeshKit.FACE_NZ, 0.95)
-	var panel: float = FASCIA - 0.5
-	_relief(s, Vector3(0.0, FASCIA * 0.5 + 0.05, zn + 0.01), panel)
+	_relief(s, Vector3(0.0, CREST_FOOT + CREST * 0.5, zn + 0.01), CREST)
 	if has_water(variant, size.z):
-		var inner: float = panel * 0.5 + 0.7
+		var inner: float = CREST * 0.5 + 0.7
 		var cw: float = minf(3.2, w - inner - 1.2)
 		if cw > 0.8:
 			for side: float in [-1.0, 1.0]:
@@ -218,7 +229,7 @@ func _gallery(batch: MeshBatch, size: Vector3, edges: Array[float], hw: float, w
 			s.rect(Vector3(x, 0, zn), Vector3(0, 0, zf - zn), Vector3(0, h, 0), marble, 0.0, MeshKit.PAT_MARBLE)
 		else:
 			s.rect(Vector3(x, 0, zf), Vector3(0, 0, zn - zf), Vector3(0, h, 0), marble, 0.0, MeshKit.PAT_MARBLE)
-		s.box(Vector3(x + side * 0.02, 0.09, (zn + zf) * 0.5), Vector3(0.04, 0.18, zn - zf), skin.gold_color, 0.0,
+		s.box(Vector3(x + side * 0.008, 0.09, (zn + zf) * 0.5), Vector3(0.016, 0.18, zn - zf), skin.gold_color, 0.0,
 			MeshKit.PAT_GOLD, MeshKit.FACE_PX if side > 0.0 else MeshKit.FACE_NX, 0.9)
 	s.rect(Vector3(-hw, 0, zn), Vector3(hw * 2.0, 0, 0), Vector3(0, h, 0), marble, 0.0, MeshKit.PAT_MARBLE)
 	s.box(Vector3(0, 0.09, zn + 0.02), Vector3(hw * 2.0, 0.18, 0.04), skin.gold_color, 0.0, MeshKit.PAT_GOLD,
@@ -275,7 +286,7 @@ func _archway(batch: MeshBatch, size: Vector3, edges: Array[float], wall_x: floa
 			s.box(Vector3(rx, (ARCH_DECK + top) * 0.5, az), Vector3(0.07, top - ARCH_DECK, 0.07), skin.gold_color, 0.0,
 				MeshKit.PAT_GOLD, MeshKit.ALL_FACES & ~(MeshKit.FACE_NY | MeshKit.FACE_PY), 0.95)
 		if first:
-			_relief(s, Vector3(0.0, ARCH_DECK + ARCH_RISE - 0.95, az + 0.24), 1.5)
+			_relief(s, Vector3(0.0, ARCH_DECK + ARCH_RISE - 0.85, az + 0.24), KEYSTONE)
 
 
 ## The height of an arch's inner edge (over the underside) at x, for walls at ±w: a parabola from the

@@ -29,10 +29,10 @@ const STRIP_HEIGHT: float = 0.1
 const STRIP_GLOW: float = 0.6
 ## The halo along the strip of a gap's far side (additive, kit_glow).
 const EDGE_HALO: float = 0.35
-## Medallions sit one slot per lane in each MEDALLION_SLOT metres of track (a chunk's length, so a
-## medallion never straddles a chunk cut), their centres MEDALLION_INSET or more from the slot's ends,
-## and MEDALLION_CLEAR or more from any gap's edge.
-const MEDALLION_SLOT: float = 40.0
+## Medallions sit one slot per lane in each MEDALLION_SLOT metres of track (a chunk, so a medallion
+## never straddles a chunk cut), their centres MEDALLION_INSET or more from the slot's ends, and
+## MEDALLION_CLEAR or more from any gap's edge.
+const MEDALLION_SLOT: float = TrackBuilder.CHUNK_LENGTH
 const MEDALLION_INSET: float = 8.0
 const MEDALLION_CLEAR: float = 1.5
 

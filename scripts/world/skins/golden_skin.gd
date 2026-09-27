@@ -116,9 +116,8 @@ extends ZoneSkin
 ## tonemapper lift the green, and it must stay orange, not sign yellow.
 @export var gap_edge_color: Color = Color(1.0, 0.25, 0.04)
 ## The cult's medallions inlaid in the walkways (GDD §5: its emblem shown openly): one slot per lane
-## every medallion_spacing metres, medallion_share of them used where the walkway runs on unbroken.
-## DESIGN-TBD (docs/questions/d6a.md): how often.
-@export_range(10.0, 200.0, 1.0, "suffix:m") var medallion_spacing: float = 60.0
+## in every chunk (GoldenWalkways.MEDALLION_SLOT), medallion_share of them used where the walkway runs
+## on unbroken. DESIGN-TBD (docs/questions/d6a.md): how often.
 @export_range(0.0, 1.0, 0.01) var medallion_share: float = 0.15
 
 @export_group("Motion")
@@ -184,11 +183,13 @@ extends ZoneSkin
 ## banners with the emblem hung out from the towers facing the approach, and reliefs on the faces of
 ## the towers' setbacks that face it (the share of towers carrying each).
 @export_range(0.0, 1.0, 0.01) var banner_share: float = 0.6
-@export_range(1.0, 5.0, 0.1, "suffix:m") var banner_width: float = 2.2
+@export_range(1.0, 5.0, 0.1, "suffix:m") var banner_width: float = 3.0
 @export_range(3.0, 14.0, 0.1, "suffix:m") var banner_length: float = 6.5
 @export_range(0.0, 1.0, 0.01) var relief_share: float = 0.7
-## The emblem's size on banners, reliefs and the bridges' faces (the medallions fill most of a lane).
-@export_range(0.8, 6.0, 0.1, "suffix:m") var emblem_size: float = 1.9
+## The emblem's size on banners (reliefs on towers are 1.3 times as big, on sky bridges 1.2 times; the
+## bridges' crests and the medallions fit their own shapes). Large, so it still reads from afar: the
+## kit fades a mark out when it is under about 24 pixels on screen (kit_solid's cult_mark()).
+@export_range(0.8, 6.0, 0.1, "suffix:m") var emblem_size: float = 2.4
 
 @export_group("Cult feed")
 ## DESIGN-TBD (docs/questions/d6a.md): where the cult's feed (CultFeed, GDD §5 "Cyborg Viewing
@@ -199,8 +200,9 @@ extends ZoneSkin
 @export_range(0.0, 1.0, 0.01) var feed_hung_share: float = 0.35
 @export_range(0.0, 1.0, 0.05) var feed_frame_brightness: float = 0.8
 @export_range(0.0, 1.0, 0.05) var feed_hung_brightness: float = 0.9
-## The hung screens (16:9): the widest, the share of the street's half width they may reach over, and
-## the lowest their bottom edge goes (far above the wall-run band and the ceilings).
+## The hung screens (16:9): the widest, the share of the street's half width they may reach over (on a
+## narrower street they are narrower), and the lowest their bottom edge goes (far above the wall-run
+## band and the ceilings).
 @export_range(2.0, 12.0, 0.1, "suffix:m") var feed_hung_width: float = 4.6
 @export_range(0.2, 1.0, 0.01) var feed_hung_reach: float = 0.7
 @export_range(9.0, 40.0, 0.5, "suffix:m") var feed_hung_bottom: float = 13.0
@@ -237,9 +239,10 @@ extends ZoneSkin
 @export var fence_color: Color = Color(1.0, 0.18, 0.62)
 ## Signs: the yellow/black hazard frame around a boutique's board.
 @export var sign_frame_color: Color = Color(1.0, 0.8, 0.15)
-## The boards: cream, midnight blue, deep crimson, ivory. Kept clear of the other hazard hues.
+## The boards: cream, midnight blue, black lacquer, ivory, with gold lettering. They glow a little
+## inside the hazard frame, so they keep clear of the other hazard hues (no crimson here).
 @export var sign_content_colors: PackedColorArray = PackedColorArray([
-	Color(0.86, 0.82, 0.72), Color(0.14, 0.17, 0.28), Color(0.4, 0.1, 0.12), Color(0.9, 0.87, 0.8)])
+	Color(0.86, 0.82, 0.72), Color(0.14, 0.17, 0.28), Color(0.1, 0.09, 0.1), Color(0.9, 0.87, 0.8)])
 
 @export_group("Pads, ramps, finish")
 @export var pad_color: Color = Color(0.1, 1.0, 0.95)
@@ -441,9 +444,11 @@ func facade_material() -> ShaderMaterial:
 		_materials[&"facade"] = MeshKit.material("golden_facade.gdshader", {
 			"glass_color": srgb(glass_color), "mirror_color": srgb(mirror_color), "gold_color": srgb(gold_color),
 			"shine_color": srgb(gold_shine_color), "granite_color": srgb(granite_color),
-			"window_warm": srgb(window_warm_color), "window_glow": window_glow, "sheen_color": srgb(sheen_color),
+			"window_warm": srgb(window_warm_color), "window_glow": window_glow, "drape_color": srgb(red_color),
+			"sheen_color": srgb(sheen_color),
 			"sheen_strength": sheen_strength, "flood_color": srgb(flood_color), "flood_strength": flood_strength,
-			"flood_reach": flood_reach, "street_low": street_light_low, "street_high": street_light_high, "dusk_tint": srgb(dusk_tint), "plinth_top": plinth_top, "band_top": band_top, "frieze_top": frieze_top,
+			"flood_reach": flood_reach, "street_low": street_light_low, "street_high": street_light_high,
+			"dusk_tint": srgb(dusk_tint), "plinth_top": plinth_top, "band_top": band_top, "frieze_top": frieze_top,
 			"storey": GoldenFacades.STOREY, "mark_a": marks[0] if marks.size() > 0 else -10.0,
 			"mark_b": marks[1] if marks.size() > 1 else -10.0, "mark_color": srgb(wall_mark_color),
 			"canal_y": -canal_depth})

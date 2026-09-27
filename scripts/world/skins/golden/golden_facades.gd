@@ -44,25 +44,38 @@ const LEDGE_THICK: float = 0.5
 ## turns from the street toward the approaching runner (a three-quarter view from the lanes).
 const STATUE_OUT: float = 0.45
 const STATUE_TURN: float = 0.35
+## A balcony's floor over its storey's floor line: at the sills of the windows above it
+## (golden_facade.gdshader's UPPER style).
+const BALCONY_UP: float = 0.7
 ## Towers' gold fins: spacing, depth, width.
 const FIN_SPACING: float = 4.5
 const FIN_OUT: float = 0.32
 ## A banner's pole juts out this far past the cloth; the cloth hangs this far from the wall.
 const BANNER_GAP: float = 0.3
 ## Gilded frames on galleries: size, angle toward the approach, gap from the wall, height of the middle.
-const FRAME_SIZE := Vector2(3.4, 2.1)
+const FRAME_SIZE := Vector2(4.2, 2.6)
 const FRAME_TURN: float = 0.5
 const FRAME_GAP: float = 0.35
 const FRAME_Y: float = 11.4
 const FRAME_RIM: float = 0.16
-## Hung screens: gap from the wall to the screen's inner edge, rim and casing depth.
+## Hung screens: gap from the wall to the screen's inner edge, rim, and the narrowest worth hanging.
 const SCREEN_GAP: float = 0.5
 const SCREEN_RIM: float = 0.18
+const SCREEN_MIN_WIDTH: float = 1.8
 ## Sky bridges: the deck's thickness and length along the track.
-const SKY_DECK: float = 1.3
+const SKY_DECK: float = 1.6
 const SKY_LENGTH: float = 7.0
 ## Clearance kept around a tower's banner, screen and relief, and between them and its ends.
 const CLEAR: float = 3.5
+## The lowest a banner's cloth hangs: clear over every ceiling's structure (a golden bridge's rail, an
+## archway's ribs near the walls) as well as the wall-run band.
+const BANNER_BOTTOM: float = 11.0
+## How far a relief stands out from the gold rim behind it, and the rim from the face it is on; how far
+## an emblem or screen stands off the cloth or casing behind it: far enough apart that they never
+## flicker into each other from across the city.
+const RELIEF_STANDOFF: float = 0.08
+const RIM_DEPTH: float = 0.12
+const EMBLEM_STANDOFF: float = 0.05
 
 
 ## One building's layout, computed from its lot run alone.
@@ -157,7 +170,7 @@ func building(side: int, span: Vector2i) -> Building:
 					b.setback = 0.0
 			if length >= 12.0 and MeshKit.hash01(side, id, 20) < skin.banner_share:
 				b.banner_d = lerpf(b.b0 + CLEAR, b.b1 - CLEAR - skin.banner_width, MeshKit.hash01(side, id, 21))
-				b.banner_top = maxf(skin.decor_min_height + skin.banner_length + 1.5, 16.0) + 3.0 * MeshKit.hash01(side, id, 22)
+				b.banner_top = maxf(skin.decor_min_height, BANNER_BOTTOM) + skin.banner_length + 3.0 * MeshKit.hash01(side, id, 22)
 				if b.banner_top > b.height - 2.0 or (b.setback > 0.0 and b.banner_top > b.setback_y - 0.5):
 					b.banner_d = -1.0
 			b.screen = _hung_screen(b)
@@ -188,15 +201,13 @@ func _place_frames(b: Building) -> void:
 		b.frames.append({"at": at, "feed": skin.shows_feed(b.seed, 70 + i, skin.feed_share)})
 
 
-## A tower's big screen hung out over the street playing the cult's feed (feed_hung_share of the
-## towers): clear of its ends and its banner, high above the play space and the ceilings, facing the
-## oncoming runner. Its middle's distance (at), bottom (y0), width, height, and inner and outer edges
-## (x_in at the wall end, x_out over the street, relative to the wall face: add face_x). Empty if none.
+## Where a tower's big screen playing the cult's feed hangs (feed_hung_share of the towers): its
+## middle's distance (at) and bottom (y0), clear of its ends and its banner, high above the play space
+## and the ceilings. Empty if none. screen_spec() sizes it to the street.
 func _hung_screen(b: Building) -> Dictionary:
 	if not skin.shows_feed(b.side, b.id, skin.feed_hung_share):
 		return {}
-	var w: float = skin.feed_hung_width
-	var h: float = w * 9.0 / 16.0
+	var h: float = skin.feed_hung_width * 9.0 / 16.0
 	var lo: float = b.b0 + CLEAR
 	var hi: float = b.b1 - CLEAR
 	var at: float = lerpf(lo, hi, MeshKit.hash01(b.side, b.id, 142))
@@ -208,8 +219,21 @@ func _hung_screen(b: Building) -> Dictionary:
 	var top_limit: float = b.setback_y if b.setback > 0.0 else b.height - b.crown_h
 	if y0 + h + 1.0 > top_limit:
 		return {}
-	return {"at": at, "y0": y0, "width": w, "height": h, "x_in": -b.side * SCREEN_GAP,
-		"x_out": -b.side * (SCREEN_GAP + w)}
+	return {"at": at, "y0": y0}
+
+
+## A tower's hung screen on a street whose wall face is at face_x, facing the oncoming runner: its
+## middle's distance (at), bottom (y0), width and height (16:9, as wide as feed_hung_width allows
+## within feed_hung_reach of the street's half width), and inner and outer edges (x_in at the wall
+## end, x_out over the street, world x). Empty if the tower has none, or the street is too narrow.
+func screen_spec(b: Building, face_x: float) -> Dictionary:
+	if b.screen.is_empty():
+		return {}
+	var w: float = minf(skin.feed_hung_width, absf(face_x) * skin.feed_hung_reach - SCREEN_GAP)
+	if w < SCREEN_MIN_WIDTH:
+		return {}
+	return {"at": b.screen["at"], "y0": b.screen["y0"], "width": w, "height": w * 9.0 / 16.0,
+		"x_in": face_x - b.side * SCREEN_GAP, "x_out": face_x - b.side * (SCREEN_GAP + w)}
 
 
 # --- Listings (GoldenSkin's statue_spots, feed_boards, cult_emblems) --------------------------
@@ -242,10 +266,10 @@ func feed_boards(side: int, face_x: float, start: float, end: float) -> Array[Di
 				var spec: Dictionary = _frame_spec(b, f, face_x)
 				out.append({"side": side, "at": f["at"], "kind": &"frame", "width": spec["width"], "height": spec["height"],
 					"center": spec["center"]})
-		if not b.screen.is_empty() and float(b.screen["at"]) >= start and float(b.screen["at"]) < end:
-			var s: Dictionary = b.screen
+		var s: Dictionary = screen_spec(b, face_x)
+		if not s.is_empty() and float(s["at"]) >= start and float(s["at"]) < end:
 			out.append({"side": side, "at": s["at"], "kind": &"hung", "width": s["width"], "height": s["height"],
-				"center": Vector3(face_x + (float(s["x_in"]) + float(s["x_out"])) * 0.5, float(s["y0"]) + float(s["height"]) * 0.5,
+				"center": Vector3((float(s["x_in"]) + float(s["x_out"])) * 0.5, float(s["y0"]) + float(s["height"]) * 0.5,
 					-float(s["at"]))})
 		span = MeshKit.lot_run(side, span.y + 1, 0.45, 3, 5)
 	return out
@@ -275,7 +299,8 @@ func emblems(side: int, face_x: float, start: float, end: float) -> Array[Dictio
 	if side < 0:
 		for bridge: Dictionary in sky_bridges(absf(face_x), start, end):
 			out.append({"side": 0, "at": bridge["at"], "kind": &"sky_bridge", "size": bridge["emblem"],
-				"center": Vector3(0.0, float(bridge["y"]) + SKY_DECK * 0.5, -float(bridge["at"]) + SKY_LENGTH * 0.5 + 0.02)})
+				"center": Vector3(0.0, float(bridge["y"]) + SKY_DECK * 0.5, -float(bridge["at"]) + SKY_LENGTH * 0.5 + RIM_DEPTH
+					+ RELIEF_STANDOFF)})
 	return out
 
 
@@ -335,8 +360,8 @@ func _palace(_batch: MeshBatch, facade: MeshLayer, solid: MeshLayer, b: Building
 		var column: int = MeshKit.hash_i(b.seed, c, 5)
 		var storey: int = 0
 		while first_floor + float(storey) * STOREY + STOREY < b.height - 1.5:
-			var y: float = first_floor + float(storey) * STOREY
-			if (column >> ((storey * 3) % 27)) & 7 == 0:
+			var y: float = first_floor + float(storey) * STOREY + BALCONY_UP
+			if ((column >> ((storey * 3) % 27)) & 7) == 0:
 				solid.append(_balcony(side), Transform3D(Basis.IDENTITY, Vector3(face_x, y, -cx)))
 			storey += 1
 	# The parapet: a marble cap with a gold rail on it.
@@ -399,8 +424,9 @@ func _tower(batch: MeshBatch, facade: MeshLayer, solid: MeshLayer, b: Building, 
 		var spec: Dictionary = _banner_spec(b, face_x)
 		if float(spec["at"]) >= start and float(spec["at"]) < end:
 			_banner(solid, b, spec)
-	if not b.screen.is_empty() and float(b.screen["at"]) >= start and float(b.screen["at"]) < end:
-		_hung(batch, solid, b, face_x)
+	var screen: Dictionary = screen_spec(b, face_x)
+	if not screen.is_empty() and float(screen["at"]) >= start and float(screen["at"]) < end:
+		_hung(batch, solid, b, screen, face_x)
 	# The near end: the base up to the setback, the set-back part above it; the relief on it.
 	_near_end(facade, b, face_x, start, end, 0.0, skin.frieze_top, step, STYLE_TOWER)
 	_near_end(facade, b, face_x, start, end, b.setback, step, b.height, STYLE_TOWER)
@@ -408,17 +434,17 @@ func _tower(batch: MeshBatch, facade: MeshLayer, solid: MeshLayer, b: Building, 
 	if not relief.is_empty() and b.b0 >= start and b.b0 < end:
 		var c: Vector3 = relief["center"]
 		var size: float = relief["size"]
-		var panel: float = size * 1.35
-		var z: float = -b.b0 + 0.03
-		solid.box(Vector3(c.x, c.y, z - 0.01), Vector3(panel + 0.3, panel + 0.3, 0.06), skin.gold_color, 0.0, MeshKit.PAT_GOLD,
-			MeshKit.FACE_PZ, 0.9)
-		GoldenSkin.emblem_panel(solid, Vector3(c.x - panel * 0.5, c.y - panel * 0.5, z + 0.025), Vector3(panel, 0, 0),
+		var panel: float = relief["panel"]
+		solid.box(Vector3(c.x, c.y, -b.b0 + RIM_DEPTH * 0.5), Vector3(panel + 0.3, panel + 0.3, RIM_DEPTH), skin.gold_color, 0.0,
+			MeshKit.PAT_GOLD, MeshKit.FACE_PZ | MeshKit.FACE_PX | MeshKit.FACE_NX | MeshKit.FACE_PY | MeshKit.FACE_NY, 0.9)
+		GoldenSkin.emblem_panel(solid, Vector3(c.x - panel * 0.5, c.y - panel * 0.5, c.z), Vector3(panel, 0, 0),
 			Vector3(0, panel, 0), size, skin.stone_colors[0], 1)
 
 
 ## The relief on a tower's near end (facing the approach, seen over the lower building before it):
-## its middle (center, on the face) and the emblem's size; empty if the tower has none. Reliefs sit
-## on relief_share of the towers whose near end rises well above the building before them.
+## its middle (center, on the panel's face), the emblem's size and the panel's; empty if the tower has
+## none. Reliefs sit on relief_share of the towers whose near end rises well above the building
+## before them.
 func relief_spec(b: Building, face_x: float) -> Dictionary:
 	if b.kind != Kind.TOWER or MeshKit.hash01(b.side, b.id, 40) >= skin.relief_share:
 		return {}
@@ -433,7 +459,7 @@ func relief_spec(b: Building, face_x: float) -> Dictionary:
 	# Out from the street face's corner by a little more than the setback, where it shows best.
 	var x: float = face_x + b.side * (b.setback + panel * 0.5 + 1.2) if y > b.setback_y and b.setback > 0.0 \
 		else face_x + b.side * (panel * 0.5 + 1.2)
-	return {"center": Vector3(x, y, -b.b0 + 0.055), "size": size}
+	return {"center": Vector3(x, y, -b.b0 + RIM_DEPTH + RELIEF_STANDOFF), "size": size, "panel": panel}
 
 
 # --- Pieces ---------------------------------------------------------------------------------
@@ -497,7 +523,7 @@ func _banner_spec(b: Building, face_x: float) -> Dictionary:
 	var ey: float = top - 0.4 - size * 0.62
 	var at: float = b.banner_d + w * 0.5
 	return {"at": at, "x0": x0, "x1": x1, "top": top, "bottom": bottom, "size": size,
-		"emblem": Vector3((x0 + x1) * 0.5, ey, -at + 0.02)}
+		"emblem": Vector3((x0 + x1) * 0.5, ey, -at + EMBLEM_STANDOFF)}
 
 
 ## A red banner with the cult's emblem (GDD §5: shown openly), hung from a gold pole jutting out of the
@@ -521,27 +547,23 @@ func _banner(solid: MeshLayer, b: Building, spec: Dictionary) -> void:
 		MeshKit.PAT_CLOTH, Vector2(0.0, 0.0), Vector2(1.0, top - bottom), roundf(w * 100.0))
 	var e: Vector3 = spec["emblem"]
 	var size: float = spec["size"]
-	GoldenSkin.emblem_panel(solid, Vector3(e.x - size * 0.5, e.y - size * 0.5, z + 0.01), Vector3(size, 0, 0),
+	GoldenSkin.emblem_panel(solid, Vector3(e.x - size * 0.5, e.y - size * 0.5, e.z), Vector3(size, 0, 0),
 		Vector3(0, size, 0), size, skin.red_color, 0)
 
 
-## A tower's big screen playing the cult's feed, hung out over the street on two gold arms: a gilded
-## casing with the screen on its front, facing the oncoming runner (+z).
-func _hung(batch: MeshBatch, solid: MeshLayer, b: Building, face_x: float) -> void:
-	var s: Dictionary = b.screen
+## A tower's big screen playing the cult's feed (spec: screen_spec()), hung out over the street on
+## two gold arms: a gilded casing with the screen on its front, facing the oncoming runner (+z).
+func _hung(batch: MeshBatch, solid: MeshLayer, b: Building, s: Dictionary, face_x: float) -> void:
 	var at: float = s["at"]
 	var w: float = s["width"]
 	var h: float = s["height"]
 	var y0: float = s["y0"]
-	var x_in: float = face_x + float(s["x_in"])
-	var x_out: float = face_x + float(s["x_out"])
-	var x0: float = minf(x_in, x_out)
-	solid.box(Vector3(x0 + w * 0.5, y0 + h * 0.5, -at - 0.16), Vector3(w + SCREEN_RIM * 2.0, h + SCREEN_RIM * 2.0, 0.3),
-		skin.gold_color, 0.0, MeshKit.PAT_GOLD, MeshKit.ALL_FACES & ~MeshKit.FACE_NZ, 0.9)
-	solid.box(Vector3(x0 + w * 0.5, y0 + h * 0.5, -at - 0.02), Vector3(w + 0.04, h + 0.04, 0.02), Color(0.04, 0.04, 0.05), 0.0,
-		MeshKit.PAT_PLAIN, MeshKit.FACE_PZ)
+	var x_in: float = s["x_in"]
+	var x0: float = minf(x_in, float(s["x_out"]))
+	solid.box(Vector3(x0 + w * 0.5, y0 + h * 0.5, -at - EMBLEM_STANDOFF - 0.15), Vector3(w + SCREEN_RIM * 2.0,
+		h + SCREEN_RIM * 2.0, 0.3), skin.gold_color, 0.0, MeshKit.PAT_GOLD, MeshKit.ALL_FACES & ~MeshKit.FACE_NZ, 0.9)
 	for y: float in [y0 + 0.3, y0 + h - 0.3]:
-		solid.box(Vector3((face_x + x_in) * 0.5, y, -at - 0.16), Vector3(SCREEN_GAP + 0.3, 0.1, 0.1), skin.gold_color, 0.0,
+		solid.box(Vector3((face_x + x_in) * 0.5, y, -at - 0.2), Vector3(SCREEN_GAP + 0.3, 0.1, 0.1), skin.gold_color, 0.0,
 			MeshKit.PAT_GOLD, MeshKit.ALL_FACES, 0.9)
 	CultFeed.screen(batch.layer(skin.feed_material()), Vector3(x0, y0, -at), Vector3(w, 0, 0), Vector3(0, h, 0),
 		skin.feed_hung_brightness, b.id * 2 + (1 if b.side > 0 else 0))
@@ -556,7 +578,7 @@ func _frame_spec(b: Building, f: Dictionary, face_x: float) -> Dictionary:
 	var h: float = FRAME_SIZE.y
 	var out: float = FRAME_GAP + w * 0.5 * absf(right.x) + FRAME_RIM
 	var center := Vector3(face_x - b.side * out, FRAME_Y, -float(f["at"]))
-	return {"center": center, "facing": facing, "right": right, "width": w, "height": h, "emblem": h * 0.62}
+	return {"center": center, "facing": facing, "right": right, "width": w, "height": h, "emblem": h * 0.8}
 
 
 ## A gilded frame hung out from a gallery's face on a gold bracket, turned toward the approaching
@@ -576,14 +598,14 @@ func _frame(batch: MeshBatch, solid: MeshLayer, b: Building, f: Dictionary, face
 			[Vector3((w + rim) * 0.5, 0.0, 0.0), Vector3(rim, h, 0.14)], [Vector3(-(w + rim) * 0.5, 0.0, 0.0), Vector3(rim, h, 0.14)]]:
 		solid.box_xform(Transform3D(basis.scaled_local(piece[1]), c + basis * (piece[0] as Vector3)), skin.gold_color, 0.0,
 			MeshKit.PAT_GOLD, MeshKit.ALL_FACES & ~MeshKit.FACE_NZ, 0.95)
-	solid.box_xform(Transform3D(basis.scaled_local(Vector3(w, h, 0.06)), c - facing * 0.04), Color(0.05, 0.05, 0.06), 0.0,
+	solid.box_xform(Transform3D(basis.scaled_local(Vector3(w, h, 0.06)), c - facing * 0.07), Color(0.05, 0.05, 0.06), 0.0,
 		MeshKit.PAT_PLAIN, MeshKit.FACE_PZ)
 	# The bracket to the wall.
 	var back: Vector3 = c - facing * 0.1
 	var wall_point := Vector3(face_x, c.y, back.z)
 	solid.box((back + wall_point) * 0.5, Vector3(absf(back.x - wall_point.x) + 0.1, 0.12, 0.12), skin.gold_color, 0.0,
 		MeshKit.PAT_GOLD, MeshKit.ALL_FACES, 0.9)
-	var origin: Vector3 = c - right * (w * 0.5) - Vector3.UP * (h * 0.5) + facing * 0.012
+	var origin: Vector3 = c - right * (w * 0.5) - Vector3.UP * (h * 0.5) + facing * 0.03
 	if f["feed"]:
 		CultFeed.screen(batch.layer(skin.feed_material()), origin, right * w, Vector3.UP * h, skin.feed_frame_brightness,
 			b.seed + int(f["at"]))
@@ -609,8 +631,9 @@ func _near_end(facade: MeshLayer, b: Building, face_x: float, start: float, end:
 
 # --- Overhead -------------------------------------------------------------------------------
 
-## The sky bridges between two track distances (see overhead()): at (the near face's distance), y (the
-## deck's underside), the faces they meet on either side (x_left, x_right) and the emblem's size.
+## The sky bridges between two track distances (see overhead()): at (the deck's middle's distance), y
+## (the deck's underside), the faces they meet on either side (x_left, x_right), and the relief on the
+## near face: its panel's size and the emblem's.
 func sky_bridges(half_width: float, start: float, end: float) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var spacing: float = skin.sky_bridge_spacing
@@ -630,7 +653,9 @@ func sky_bridges(half_width: float, start: float, end: float) -> Array[Dictionar
 			faces.append(x)
 		if faces.size() < 2:
 			continue
-		out.append({"at": at, "y": y, "x_left": -faces[0], "x_right": faces[1], "emblem": skin.emblem_size * 1.2})
+		var panel: float = minf(skin.emblem_size * 1.5, SKY_DECK + 2.0)
+		out.append({"at": at, "y": y, "x_left": -faces[0], "x_right": faces[1], "panel": panel,
+			"emblem": minf(skin.emblem_size * 1.2, panel * 0.8)})
 	return out
 
 
@@ -640,7 +665,7 @@ func sky_bridges(half_width: float, start: float, end: float) -> Array[Dictionar
 func _tower_face_at(side: int, at: float, y: float, half_width: float) -> float:
 	var lot: float = skin.lot_length
 	var face: float = -1.0
-	for d: float in [at - SKY_LENGTH - 1.0, at + 1.0]:
+	for d: float in [at - SKY_LENGTH * 0.5 - 1.0, at + SKY_LENGTH * 0.5 + 1.0]:
 		var b: Building = building(side, MeshKit.lot_run(side, floori(d / lot), 0.45, 3, 5))
 		if b.kind != Kind.TOWER or b.height - b.crown_h < y + SKY_DECK + 3.0:
 			return -1.0
@@ -676,13 +701,12 @@ func overhead(batch: MeshBatch, half_width: float, start: float, end: float) -> 
 		solid.box(Vector3((xl + xr) * 0.5, y + SKY_DECK + 1.15, zn - 0.2), Vector3(w, 0.08, 0.08), skin.gold_color, 0.0,
 			MeshKit.PAT_GOLD, MeshKit.ALL_FACES, 0.95)
 		# The emblem, in relief on a gold-rimmed panel on the face.
-		var size: float = bridge["emblem"]
-		var panel: float = minf(size * 1.25, SKY_DECK + 1.6)
+		var panel: float = bridge["panel"]
 		var py: float = y + SKY_DECK * 0.5
-		solid.box(Vector3(0.0, py, zn + 0.05), Vector3(panel + 0.24, panel + 0.24, 0.1), skin.gold_color, 0.0,
+		solid.box(Vector3(0.0, py, zn + RIM_DEPTH * 0.5), Vector3(panel + 0.24, panel + 0.24, RIM_DEPTH), skin.gold_color, 0.0,
 			MeshKit.PAT_GOLD, MeshKit.FACE_PZ | MeshKit.FACE_NY | MeshKit.FACE_PY | MeshKit.FACE_PX | MeshKit.FACE_NX, 0.95)
-		GoldenSkin.emblem_panel(solid, Vector3(-panel * 0.5, py - panel * 0.5, zn + 0.102), Vector3(panel, 0, 0),
-			Vector3(0, panel, 0), minf(size, panel * 0.8), skin.stone_colors[0], 1)
+		GoldenSkin.emblem_panel(solid, Vector3(-panel * 0.5, py - panel * 0.5, zn + RIM_DEPTH + RELIEF_STANDOFF),
+			Vector3(panel, 0, 0), Vector3(0, panel, 0), bridge["emblem"], skin.stone_colors[0], 1)
 		# Lamps under the deck.
 		var x: float = xl + 2.0
 		while x < xr - 1.5:

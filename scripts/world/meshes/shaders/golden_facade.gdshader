@@ -19,7 +19,9 @@
 //              gold line along its top.
 //   2 FRIEZE   the entablature over the band, band_top to frieze_top: cream mouldings round a gold
 //              frieze of fluting.
-//   3 UPPER    storeys over the band: cladding panels, gold slab bands, tall gold-framed windows.
+//   3 UPPER    storeys over the band: cladding panels, gold slab bands, tall gold-framed windows
+//              (dark with the dusk in them, gold-mirrored, or lit warm, half of those framed by red
+//              velvet drapes).
 //   4 TOWER    a curtain wall: champagne mirror glass on gold mullions, cream spandrel bands.
 //   5 CROWN    a tower's glazed crown: gold ribs over warm-lit glass.
 //   6 DEEP     below the walkways, seen only through gaps: the stone in deep shade (COLOR), darkening
@@ -42,6 +44,8 @@ uniform vec3 shine_color = vec3(0.97, 0.93, 0.83);
 uniform vec3 granite_color = vec3(0.66, 0.62, 0.6);
 uniform vec3 window_warm = vec3(1.0, 0.9, 0.74);
 uniform float window_glow = 0.8;
+// The red velvet drapes in some lit windows.
+uniform vec3 drape_color = vec3(0.44, 0.1, 0.12);
 uniform vec3 sheen_color = vec3(0.62, 0.55, 0.46);
 uniform float sheen_strength = 0.16;
 uniform vec3 flood_color = vec3(1.0, 0.86, 0.66);
@@ -220,6 +224,11 @@ void fragment() {
 		vec3 dark = to_linear(glass_color) + sky * light_k(1.5) + to_linear(sheen_color) * light_k(0.06 * smoothstep(0.35, 0.65,
 			fract(wp.x * 0.7 - wp.y * 0.45 + k)));
 		vec3 room = to_linear(window_warm) * light_k(window_glow * (0.4 + 0.35 * wp.y));
+		// Red velvet drapes gathered at the sides of half the rooms (the zone's red accent, unlit).
+		float fwp = fw_m.x / (half_size.x * 2.0);
+		float drapes = step(0.5, hash12(cell * 1.9 + seed * 2.0))
+			* (1.0 - smoothstep(0.14 - fwp, 0.14 + fwp, min(wp.x, 1.0 - wp.x) - 0.05 * wp.y));
+		room = mix(room, to_linear(drape_color) * light_k(0.5 + 0.4 * wp.y), drapes);
 		vec3 mirror = mirror_at(mirror_color, n, eye, uv.y);
 		vec3 glass = k < 0.55 ? mix(dark, room, lamp) : (k < 0.82 ? mirror : dark);
 		// A slim gold transom across each window.
