@@ -13,7 +13,9 @@ func _build() -> void:
 	claw_immune = bool(p.get("claw_immune", false))
 	dash_kills = bool(p.get("dash_kills", true))
 	is_host = bool(p.get("host", false))
-	immune_to_weapons = bool(p.get("immune", false))
+	# Setting is_host already implies immune_to_weapons (Enemy); "immune" lets a test ask for it
+	# without a host too.
+	immune_to_weapons = immune_to_weapons or bool(p.get("immune", false))
 	max_health = float(p.get("health", 3.0))
 	score_value = 100
 	position = world.lane_point(int(spawn.get("lane", 1)), float(spawn.get("at", 30.0)))

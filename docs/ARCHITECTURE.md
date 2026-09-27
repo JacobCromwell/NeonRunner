@@ -62,7 +62,7 @@ power-ups.
 | File | What |
 |---|---|
 | `data/tuning/movement.tres` (`MovementTuning`) | run speed, jump, walls (and the blocked entry's bump), ramps and speed pads (their boosts share one fade), ceiling, piece sizes, camera, touch |
-| `data/tuning/game_rules.tres` (`GameRules`) | lanes per device, death share, invulnerability, stomp, score, economy, stars |
+| `data/tuning/game_rules.tres` (`GameRules`) | lanes per device, death share, invulnerability, stomp, whether big attacks take turns, score, economy, stars |
 | `data/tuning/powerups.tres` (`PowerupTuning`) | weapon tiers, claws, dash, magnet, slow time |
 | `data/tuning/pickups.tres` (`PickupTuning`) | in-run pickups: where they appear, taking them, the charge cap, the look |
 | `data/enemies/<type>.tres` (`EnemyTuning` subclasses) | per-enemy numbers, early/late pairs for campaign scaling |
@@ -115,9 +115,14 @@ An enemy type needs only files of its own; nothing shared is edited:
 `take_damage()`, `defeat(cause)`, `retire()`. Subclasses override `_build()` (visuals, hitboxes,
 properties), `_tick(delta)` (behaviour), and optionally `_on_defeated`, `should_retire`, `aim_point`,
 `hit_radius`. A layout entry is `{type, at, lane, side, seed, params}`; `rng` is seeded from it, so
-every attempt at a seed plays out the same way. Every attack needs a visual **and** audio warning
-before it can hurt (CLAUDE.md readability rules). Enemy fire uses the pool's red "enemy_*" looks in
-every zone. `world.skin.enemy_variant` (`&"city"` or `&"scavenger"`) picks the zone look.
+every attempt at a seed plays out the same way. Setting `is_host` also sets `immune_to_weapons`
+(GDD §9.7, decided September 26, 2026): a host is immune to every kind of weapon damage, direct or
+splash, the same way a fence generator declares its own immunity (GDD §9.1), so no targeting, no
+damage and no health bar; only a stomp, the claws or the dash still kill it, with the host bonus.
+Every attack needs a visual **and** audio warning before it can hurt (CLAUDE.md readability rules).
+Enemy fire uses the pool's red "enemy_*" looks in every zone. `world.skin.enemy_variant` (`&"city"` or `&"scavenger"`) picks the zone look: the other
+enemies weather by it, and the cyborgs dress in the look `CyborgSuit.look_for()` finds for it (every
+variant wears the base screen-head look until the zone variants of task P3 exist; see Characters).
 
 A level uses an enemy only if its `features` list has the type's name (GDD §6: one new thing at a
 time), from the feature's start if the level gives it one (The generator). Quick play can add
@@ -133,11 +138,49 @@ heli drone, and the Cyborg's Bad Dream (released by a killed host, spawned by th
 time rather than placed by the generator). `scripts/enemies/mesh_batch.gd` merges an enemy's low-poly
 parts into one mesh per material to keep draw calls down.
 
-**Major attacks take turns through the director.** An enemy reports `is_major_attack_active()`
-(the Octodog through its charge sequence, the drone through wind-up and barrage, the Bad Dream through
-its chase), and before starting one asks `EnemyDirector.major_attack_blocked(self)`, which is true
-while another enemy's major attack is on and either of the two is `exclusive_major_attack` (the Bad
-Dream is: GDD §9.7). Other types can opt in the same way.
+**Big attacks take turns through the director** (GDD §9, decided September 26, 2026). The big attacks
+of different enemy types never overlap, so the player never has to dodge two at once. The owner may
+revert this after playtesting, so it sits behind one switch, `GameRules.big_attacks_take_turns` (on by
+default, in the F6 panel); switched off, the game plays exactly as before the rule. The big attacks
+(DESIGN-TBD, `docs/questions/r3.md`): the Octodog's charge sequence (its first wind-up until it gives
+up), the drone's wind-up and barrage, the hover truck's rev and forward lurch and its cannon's charge
+and volley, and the Bad Dream's chase. Small attacks (a cyborg's burst, a window cyborg's shot, a
+screech's swipe) and the hover truck's entrance don't take part. An enemy takes part like this, and
+the enemies still to come (the Barnacle Turret, Buzz Overdrive, the Resonator, the Gilded Sentinels,
+the Tithe Collector) opt in the same way for whichever of their attacks count as big:
+- **Report it.** `is_major_attack_active()` is true from the start of the attack's warning until its
+  last hazard is over (the lunge has passed, the lurch has ended). Each shot fired in it goes to
+  `world.director.note_attack_shot(self, shot)` (the Projectile `fire_enemy()` returned): the attack's
+  turn lasts until the shot is behind the player (`EnemyDirector.SHOT_PASS_MARGIN`) or gone. The
+  director watches where the shot really is, so a change in the player's speed (a dash ending) can't
+  cut the turn short.
+- **Ask before the warning, never after it.** Just before the warning would start, once everything
+  else about the attack is ready (its own spacing, its target, a clear stretch), the enemy asks
+  `world.director.major_attack_blocked(self)`, and while the answer is true it doesn't start, asks
+  again next frame, and goes on as it was: the drone keeps following, the truck holds back or keeps
+  pacing, the Octodog paces in position. Asking only when ready matters: the director queues those
+  held, and a waiting enemy that stops asking loses its place after a frame. Once a warning has
+  started the attack runs its course; nothing stops it for another's turn.
+- **An attack that may only come within a window** (the Octodog's planned charges) moves the window
+  on while `held_for_turn(self)` says it's waiting for another type, up to a limit of its own
+  (`OctodogTuning.turn_wait_max`), and keeps every fairness rule it was planned with.
+- **An attack that can't wait** because the player sets it off (the Bad Dream bursts out of a killed
+  host) or the generator planned its moment still reports itself: the others wait for it. It can
+  overlap an attack that was already on when it came; the Bad Dream holds its slash until that one
+  is over. (A planned one, like the Buzz Overdrive's cut, would need the others held off before its
+  warning, which the director can't do yet.)
+
+The director holds a big attack while another type's is on or its shots are still on their way; an
+enemy whose own attack is on carries on (the Bad Dream's next slash in its chase); and of the enemies
+of different types waiting, the one that has waited longest goes next (then the one spawned first),
+so none is kept from its turn by others that keep asking. An attack that is on never waits for another
+(the Bad Dream holds a slash within its chase only for an attack that was already on when the chase
+began, and that one doesn't wait), so two enemies can't wait on each other. Types space their own attacks themselves
+(one drone barrage at a time; one Octodog, one hover truck at a time). GDD §9.7's rule holds with the
+switch off as well: an `exclusive_major_attack` (the Bad Dream's chase) and the attacks of the types in
+its `exclusive_of` (Octodogs', drones') never overlap. `is_waiting()` and `turn_wait()` say whether and
+how long an enemy has been waiting. `tools/measure/big_attacks.gd` measures the overlaps and the delays
+over the campaign (Review tools); `tests/helpers/turn_dummy.gd` is a scripted big attack for tests.
 
 **Floor use.** The floor under a ceiling may hold enemies (GDD §3, changed September 26, 2026), but
 a ceiling's landing zone and the spot of each of its pads keep off the floor enemies use (see
@@ -310,7 +353,7 @@ may get its own). The real skins build on the mesh kit (`scripts/world/meshes/`)
 shared builders for hazards, triggers and environments, and `MeshLayer` batches a chunk's geometry.
 The shaders in `scripts/world/meshes/shaders/` are procedural. `HazardStateVisual` swaps a hazard's
 ON / WARNING / OFF materials. A skin's `enemy_variant` (`&"city"` or `&"scavenger"`) picks the
-enemies' look.
+enemies' look (the cyborgs' through `CyborgSuit.look_for()`).
 
 The kit's solid shader (`kit_solid.gdshader`) draws surface patterns chosen per vertex (`MeshKit.PAT_*`):
 panels, glass, glyphs and chevrons for the City; worn asphalt (with sand drifts and scorch around holes),
@@ -409,9 +452,10 @@ CultFeed.wall_screen(feed, side, x, d0, length, y0, height, brightness)  # on a 
 screen in a template that gets mirrored); `brightness` (0-1) dims small or low screens. The material
 draws only the picture: give each screen a bezel, frame or TV set of its own. What it shows is a
 placeholder (DESIGN-TBD, `docs/questions/d2.md`): a CRT picture in cold white, like the cyborgs' screen
-heads (task P2), with scanlines, soft static and a slow rolling bar, looping through a screen-head
-face, the chosen emblem (`CultEmblem`, faded out below about 24 pixels) and rings converging on a
-point, one at a time. Rules for every skin: keep it the same broadcast (vary only how many screens
+heads, with scanlines, soft static and a slow rolling bar, looping through the cyborgs' calm face
+(`cyborg_kit.gd`'s Face.NEUTRAL drawn smooth, in the same cold white: keep the two the same face), the
+chosen emblem (`CultEmblem`, faded out below about 24 pixels) and rings converging on a point, one at a
+time. Rules for every skin: keep it the same broadcast (vary only how many screens
 play it and where), keep other glows off it, and never tint it (only cold white and the emblem's
 warm white; purple glitching belongs to hosts). It honours Reduced flashing (the static and the
 rolling bar hold still). The Marketplace plays it on some billboards, casino signs and floating ads
@@ -449,14 +493,38 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
     panel's vertices by the rig's `panel_rot` / `panel_hinge` arrays, so the material must be the rig's
     own. The numbers are `HumanoidAnimTuning`'s Coat panels group (F6, "Runner animation").
   - **The player's shader** (`humanoid_body.gdshader`) also has a rim light and `glow_albedo` (soft
-    trim that shines by its own light). The builder stores vertex colours in linear space; on the
-    Compatibility renderer, which works in sRGB space, the shader converts them back (as
-    `kit_common.gdshaderinc` does for the mesh kit). `cyborg_body.gdshader` doesn't yet, so the
-    cyborgs show darker and more saturated on the web than on Forward+ (left for P2, which rebuilds
-    them).
+    trim that shines by its own light).
+  - **Colour spaces:** the builder stores vertex colours in linear space; on the Compatibility
+    renderer, which works in sRGB space, the rig's shaders (`humanoid_body`, `cyborg_body` and the
+    cyborg kit's part shader) convert them back with `humanoid_color.gdshaderinc` (as
+    `kit_common.gdshaderinc` does for the mesh kit). The same include's `humanoid_glow()` scales a
+    colour uniform into a bright glow in linear light on every renderer, so a glow keeps its hue on the
+    web (scaled in sRGB, the cyborgs' red charge-up turned cream). Sums of light (the screen head's
+    LEDs averaged far away) are taken in linear light too (`humanoid_to_linear`); dim picture parts
+    are brightness as seen, turned into light with `to_linear()`.
   - **Colour rule:** the player's only glow on the base model is its soft copper (`PlayerSuit.GLOW`);
     `test_avatar` keeps it and the effects built from it at least 0.3 from every skin's hazard colours
     and enemy fire on the hue and saturation wheel, and power-up looks never use it.
+  - **The cyborgs** (GDD §9.2; task P2): `CyborgSuit` builds one `HumanoidParts` whose attachment
+    sets are the looks (`LOOKS`; so far only `&"base"`, the ragged "Static TV Head" gangster from the
+    owner's concept sheet) plus `&"host"` (a host's purple veins, worn on top). Only the boot soles and
+    the arm cannon's emitter ring and charge orb are shared by every look (the soles ground the rig; the
+    charge-up must look the same in every zone). `look_for(variant)` maps a skin's `enemy_variant` to a
+    look, falling back to the base, so zone variants (task P3) are new attachment sets, built from the
+    base's part builders (`_screen_head`, `_hoodie`, `_vest`, `_backpack`, `_free_arm`, `_cyber_arm`,
+    `_legs`), with an entry in `LOOKS`, a mapping in `look_for` and, if their screen differs, their own
+    `screen_rect` and screen wear (`new_material`: `flicker`, `crack`). A cyborg is 11 draw calls (a
+    window cyborg's upper body 7): hands and feet ride on the forearms and shins, and the neck, backpack
+    and cables on the chest. The cables and the shoulder hose belong to the chest and end inside the TV
+    and the shoulder cap near their joints (`HEAD_CABLES`, `ARM_HOSE`), so they stay plugged in however
+    the head and arm turn. `cyborg_body.gdshader` draws the screen head's face from marked pieces
+    (`SCREEN`, `RING`, `ORB`, `VEIN` glow values): the pixel faces of `cyborg_kit.gd` as LED dots in the
+    cult feed's cold white, averaged through mipmaps far away so a face a few pixels across keeps its
+    shape; a host's purple static; the switch-off after a defeated cyborg's ERR. `CyborgPoses` gives
+    them their posture (hunched, a shambling limp, twitches and a tremor added after the blend).
+    `test_cyborg_body` pins the hitboxes, budgets and colour rules: nothing on a cyborg glows but the
+    cold white face, the red charge-up and a host's purple; nothing is copper, purple only on hosts,
+    no hazard or "safe" colour anywhere.
 - **UI:** a theme built in code (`scripts/ui/theme/`: `UiStyle` in `data/ui/ui_style.tres`,
   `UiTheme`), code-drawn icons (`scripts/ui/icons/`) and a widget kit (`scripts/ui/widgets/`). Screens
   (`scripts/ui/screens/`) extend `ScreenBase`; the HUD is `RunHud`. Orbitron is for titles and Exo 2
@@ -686,7 +754,9 @@ them `check_ceilings` (GDD §3: pads that can be stepped on, safe landing zones,
 every ceiling without its pad, found by `FloorRoute`, `tests/helpers/floor_route.gd`), and finds a
 feature's pieces in a layout with the generator's own `LevelGenerator.feature_positions()`; a task
 that adds a new kind of piece extends it (and `FloorRoute`'s cells, if the piece is on the floor), or
-gives its rules script `positions()`. `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
+gives its rules script `positions()`. `test_enemy_director` checks the turn-taking between big attacks
+with scripted test enemies (`tests/helpers/turn_dummy.gd`) and over simulated runs of campaign levels,
+watched by `tools/measure/attack_watch.gd` (see Review tools). `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
 for framework tests, with `make_def()` for a BossDef from a list of phases; `test_bosses` runs fights
 in bare worlds and, with the test boss in the City's slot, through the App. `test_pickups` checks
 pickup placement against the rules as it writes them itself, over hand-built cases and generated
@@ -706,10 +776,21 @@ game): the avatar (`avatar_showcase`: every pose, power-up and concept-sheet vie
 side; `avatar_run_review`: a scripted run through the game camera on any zone's skin, with any
 power-up look), ramps and walls (`ramp_wall_review`: a ramp launch with the credits along its wall
 run, and blocked wall entries at a low and a high sign, through the game camera or a close one),
-the enemies (`enemy_showcase` for the cyborg family, `octodog_screech`,
+the enemies (`enemy_showcase` for the cyborg family: poses, the faces close up, a turnaround, window
+cyborgs, and a far view through the run camera where the expressions must read; `octodog_screech`,
 `drone_truck_showcase`, `bad_dream_showcase`), a boss (`floating_head_showcase`), the UI kit, the
 screens, a zone skin (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed
 screens and emblems a skin lists, or a scripted run with a ceiling ride and a wall run), and comparison
 sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
 `CLAUDE.md`.
+
+`tools/measure/big_attacks.gd` measures the big attacks (GDD §9, "Big attacks take turns") over
+simulated runs of the campaign's levels at 3, 5 and 6 lanes, with `GameRules.big_attacks_take_turns` on
+and off: a god-mode runner in the middle lane, stomping every host it passes, while the enemies play as
+in the game. It reports the time big attacks of different types overlap, how many of each kind came, and
+how long attacks waited for their turn (`godot --headless --fixed-fps 60 -s
+res://tools/measure/big_attacks.gd -- --levels=gangland/3 --lanes=3,5,6 --out=build/measure/x.json`; the
+whole campaign takes about ten minutes). `attack_watch.gd` does the watching from the enemies' own states
+and the live shots, never from the turn-taking code, and hashes each run's event log, so two builds (or
+the switch off and a build without the rule) can be compared run by run.

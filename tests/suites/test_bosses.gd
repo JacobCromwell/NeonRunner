@@ -880,11 +880,17 @@ func _app_checkpoint(step: CampaignStep) -> void:
 	(pause.buttons["restart"] as BaseButton).pressed.emit()
 	await physics_frames(3)
 	check(App.run.encounter.phase_index == 1, "from the checkpoint too")
+	# FB 14 (decided September 26, 2026): a boss fight quit keeps the same credit share as a death.
+	App.run.world.score.credits = 40
+	var wallet_before: int = App.profile.credits()
 	App.quit_run()
 	await tree.process_frame
+	check(App.profile.credits() == wallet_before + floori(40 * App.rules.death_credit_keep_fraction),
+		"quitting a boss fight pays the wallet too")
 	App.play_step(step)
 	await physics_frames(3)
-	check(App.run.encounter.phase_index == 0 and App.run.context.boss_resume.is_empty(), "starting the fight again from the map starts it afresh")
+	check(App.run.encounter.phase_index == 0 and App.run.context.boss_resume.is_empty(),
+		"starting the fight again from the map starts it afresh (its checkpoint isn't kept on a quit either)")
 
 
 ## GDD §2: the web demo is Zone 1 including its boss, then the store-link screen; no leaderboards.

@@ -751,6 +751,80 @@ play it with `--boss=city_boss` in debug builds)
     lock's clack and two-tone alarm, a falling whistle, a blast, and the reveal's tube thunk, static and blare. Do they
     fit?
 
+**Big attacks take turns** (from R3; the switch is `big_attacks_take_turns` in `data/tuning/game_rules.tres`, on, F6 "Game
+rules"; switched off, the game plays exactly as before; measure with `tools/measure/big_attacks.gd`)
+93. **Which attacks count as big** (GDD §9): the Octodog's whole charge sequence (so nothing else attacks between its
+    charges), the drone's wind-up and barrage, the hover truck's rev and lurch and its cannon's charge and volley, and the
+    Bad Dream's whole chase. Small (not taking turns): a cyborg's burst, a window cyborg's shots, a screech's swipe. Not
+    counted: the hover truck's entrance, whose moment the generator plans, so it can't wait (a big attack was open during
+    about 13 s of truck entrances over the measured runs). Right list? Should the entrance count (the others would then
+    be held off a few seconds before each one)?
+94. **When a big attack is over:** when nothing of it can still reach the player: the lunge has passed, the lurch has
+    ended, and the last bullet, shell or bolt is 0.5 m behind the player or gone. A warning never waits once it has
+    started. OK?
+95. **The Bad Dream's chase holds every other type's big attack for its 20–30 s** (§9.7 already held Octodog charges and
+    drone barrages; now a hover truck's lurch and cannon wait too). In Golden 3 at 5 lanes a truck arriving mid-chase
+    gets one lurch and no cannon shot (3 shots and a lurch without the rule). The other way: count only its slashes, so
+    others attack between them. Which?
+96. **Who goes first, and how long an Octodog waits:** of the enemies waiting, the one that has waited longest goes next,
+    so none waits for ever. While waiting they carry on (a drone follows, a truck holds back or paces; a cannon shot that
+    doesn't get its turn before the truck's pacing ends is skipped). An Octodog paces in front of the player and its
+    planned charges move on with it for up to 4 s (`turn_wait_max`), keeping the planner's margins; then it runs off as
+    before. OK?
+97. **Keep the rule after playtesting?** Measured over every campaign level at 3, 5 and 6 lanes (45 simulated runs,
+    6,298 s): **without it**, big attacks of different types overlap for 60.5 s in all (61 times in 25 runs; 1.3 s a run
+    on average, 7.3 s at worst in Dead Zone 2 at 3 lanes), mostly a drone barrage with a truck's lurch or cannon (40 s);
+    **with it**, never. The cost: 12% of the trucks' cannon shots, 6% of their lurches and 4% of drone barrages; no
+    Octodog charge or Bad Dream slash lost. One attack in eleven waits: a barrage 1.6 s on average (up to 5 s), a lurch
+    3.1 s (up to 9 s, in a chase), a cannon shot 1.6 s, an Octodog 2 s.
+98. **The enemies still to come** (proposals for their tasks): Buzz Overdrive's rev and charge are big, but the generator
+    plans its cut, so like the truck's entrance it can't wait (the others would be held off before its rev); the
+    Resonator's pulse is big; the Gilded Sentinel's halberd swing (its wall section and the outer lane): big or small?;
+    the Barnacle Turret's burst is small (its "one fires at a time" stays its own rule); the Tithe Collector isn't an
+    attack.
+
+**The ragged screen-head cyborg** (from P2; brief `docs/art/BRIEF_CYBORG_GANGSTER.md`, Variant 1; review with
+`tools/showcase/enemy_showcase.tscn`, views `poses`, `faces`, `turn`, `window`, `far`, `charge`)
+99. **ERR before the screen goes dark** (brief: proposed): a defeated cyborg's screen shows "ERR" in cold white for 0.2 s,
+    then collapses to a bright line and goes dark over 0.14 s like an old CRT (with Reduced flashing it only fades). Its
+    death sparks are cold white now (they were orange, close to the player's copper). Keep the ERR; long enough?
+100. **The faces' pixel art** (13 × 9 LEDs): calm (square eyes, flat mouth), aiming (brows running into narrowed eyes, a
+    long hard mouth), the panic variant's shocked "O", ERR, and the hosts' two corrupted faces (a wide grin; broken eyes
+    over a zigzag mouth). Drawn bold so each keeps its shape at about 7 × 5 pixels, as it is 14 m ahead at 720p. Right
+    expressions?
+101. **Static on the screen:** a faint cold-white static (about 8% brightness) under scanlines, on dark glass darkening to
+    rounded corners; the concept sheet's screen is mostly static, but here it stays faint so the face reads. More?
+102. **How a host looks** (GDD §9.7): the white face tinged purple over a dim purple wash, blocks of purple static and rows
+    jumping sideways; thin purple veins up the neck, down the sleeve onto the hand and along the cyber arm and cannon,
+    pulsing slowly (steady with Reduced flashing). They stay a true purple, since brighter drifts toward the fences' pink.
+    Right amount, right places?
+103. **How strung out it moves:** hunched 11° with the screen raised to look ahead; now and then the head jerks up to
+    8–13° in 0.05 s and settles; a fine tremor in the free hand; a shamble dragging the left leg, with the heavy cannon
+    arm swinging less. Timings and reach unchanged. Too much, too little?
+104. **The window cyborg's window light** is now a dim, cold screen light (the feed on a TV in the room), below the glow
+    threshold; it was a warm orange that read like the player's copper and the gap edges. Right?
+105. **Details read off the concept sheet:** a grimy grey TV casing with a dented bezel, vents, two knobs and rust; a dark
+    leather vest open over an olive-khaki hoodie with a frayed hem and hanging drawstrings; olive cargo pants with
+    patches and a thigh strap; scuffed brown laced boots; an olive-grey metal backpack with two black cables into the TV
+    and a brown rubber hose (the sheet's is copper) into a rusted-steel cyber arm whose forearm is the cannon; a bare,
+    bony left hand. Anything to change?
+106. **The cult feed's face now matches the cyborgs' calm face** (GDD §5, "Cyborg Viewing Devices"; item 52): the same
+    proportions, smooth instead of LED dots, in the same cold white, so billboards and screen heads show one face. Keep
+    them the same?
+107. **How much the body stands out on a dark track** (GDD §9.2; deadly parts look deadly): the grimy clothes are much
+    darker than the old pale armour on the City's dark roofs, and the olive blends into Gangland's brown street; the read
+    at gameplay distance comes from the lit face, the light TV casing and the red emitter ring. A faint rim light would
+    lift the silhouette but is a glow on clothing, which the colour rules rule out. Strong enough, or lighter clothes, or
+    allow the rim light?
+
+**Quitting keeps 20%** (from R2; the rule is decided, GDD §4; these are how it shows)
+108. **What the player sees after quitting:** the pause menu's confirmation now says 20% of the run's credits are kept,
+    like a death; after quitting, the game goes straight back to level select (or the title) as before, with a short
+    "+N credits kept" note, rather than through the results screen a death shows. A quit also counts as an attempt on
+    that level (its tile then reads "not cleared" instead of "new"), though it never improves its best score, stars,
+    time or leaderboard place, and it isn't counted as a death in the stats. Right, or should a quit show the results
+    screen, or not count as an attempt?
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).

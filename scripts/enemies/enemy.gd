@@ -29,8 +29,15 @@ var health: float = 1.0
 var score_value: int = 100
 ## Weapons can't hurt it and auto-fire never targets it (e.g. the Bad Dream).
 var immune_to_weapons: bool = false
-## A cyborg carrying a Bad Dream: auto-fire never targets it and missile splash never hurts it (GDD §9.7).
-var is_host: bool = false
+## A cyborg carrying a Bad Dream: immune to all weapon damage, like a fence generator (GDD §9.7,
+## decided September 26, 2026, FB 71: a stray shot can never release a Bad Dream by accident). Only
+## a stomp, the claws or the dash still kill it, with the host bonus. Setting this also sets
+## immune_to_weapons, so every host declares its own immunity the way a generator does.
+var is_host: bool = false:
+	set(v):
+		is_host = v
+		if v:
+			immune_to_weapons = true
 ## Claw contact doesn't defeat it (bosses, the Bad Dream).
 var claw_immune: bool = false
 ## Landing on its top defeats it. False = landing on it hurts unless the player has claws.
@@ -43,11 +50,14 @@ var is_boss: bool = false
 var is_obstacle: bool = false
 ## Part of a swarm (the swarm boss's clusters): heavy missiles deal bonus damage (GDD §8).
 var is_swarm: bool = false
-## Its major attack (is_major_attack_active) never overlaps another enemy's: while it's on, others
-## hold off starting theirs, and it holds its own while another's is on (the Bad Dream, GDD §9.7:
+## Its major attack (is_major_attack_active) never overlaps those of the types in exclusive_of,
+## whether or not big attacks take turns (GameRules.big_attacks_take_turns): while it's on, they hold
+## off starting theirs, and it holds its own while one of theirs is on (the Bad Dream, GDD §9.7:
 ## never at the same time as an Octodog charge sequence or a drone barrage). See
 ## EnemyDirector.major_attack_blocked().
 var exclusive_major_attack: bool = false
+## The types an exclusive major attack keeps apart from (empty: every type); its own type always.
+var exclusive_of: Array[StringName] = []
 
 # --- State ---------------------------------------------------------------------------------
 var alive: bool = true
@@ -111,25 +121,30 @@ func hit_radius() -> float:
 	return 0.7
 
 
-## True while this enemy is in its "major attack": an Octodog's charge sequence, a drone's wind-up
-## and barrage, the Bad Dream's chase. Enemies coordinate them through the director
-## (exclusive_major_attack, EnemyDirector.major_attack_blocked). The default: never.
+## True while this enemy is in its "major attack" (a big attack, GDD §9), from the start of its
+## warning until its last hazard is over: an Octodog's charge sequence, a drone's wind-up and
+## barrage, a hover truck's rev and forward lurch or its cannon's charge and volley, the Bad Dream's
+## chase. Shots it fires in one report themselves (EnemyDirector.note_attack_shot) and hold the
+## attack's turn until they have passed the player. Big attacks take turns through the director
+## (EnemyDirector.major_attack_blocked, docs/ARCHITECTURE.md, Enemies). The default: never.
 func is_major_attack_active() -> bool:
 	return false
 
 
-## Auto-fire can pick this enemy (GDD §8: the weapon fires at the nearest valid target).
+## Auto-fire can pick this enemy (GDD §8: the weapon fires at the nearest valid target). A host is
+## immune_to_weapons (GDD §9.7), so it's already excluded.
 func targetable() -> bool:
-	return alive and not immune_to_weapons and not is_host and is_inside_tree()
+	return alive and not immune_to_weapons and is_inside_tree()
 
 
 func health_ratio() -> float:
 	return clampf(health / maxf(max_health, 0.001), 0.0, 1.0)
 
 
-## Weapon damage. `splash` damage never hurts hosts (GDD §9.7).
+## Weapon damage. Never hurts an immune_to_weapons enemy (a host, GDD §9.7; a generator, GDD §9.1),
+## direct or splash alike.
 func take_damage(amount: float, source: StringName, splash: bool = false) -> void:
-	if not alive or immune_to_weapons or (splash and is_host):
+	if not alive or immune_to_weapons:
 		return
 	health -= amount
 	health_changed.emit(self)

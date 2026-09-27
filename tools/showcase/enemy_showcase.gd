@@ -1,13 +1,24 @@
 extends Node3D
 ## Close-up showcase of the cyborg family and fence generators, for visual review only (not part of
-## the game). Render it with the Compatibility renderer, e.g.
-##   SCENE=res://tools/showcase/enemy_showcase.tscn render.sh . build/showcase 12 -- --view=city
-## Views: city, scavenger (pose rows), faces (visor close-ups), window, generator (in a real RunWorld),
-## charge (a cyborg charging and firing at the camera), and play: a generated level with the enemies
-## on, run by a god-mode player with grapples (so gaps don't end the run) through the real run camera
-## (options: --seed=N --lanes=N --difficulty=X --start=metres --features=a,b --claws).
-## Every view takes --skin=res://path/to/skin.tres (default: the grey box) and --variant=city|scavenger
-## (the cyborgs' zone look; the scavenger view always shows the scavenger).
+## the game). Render frames of it, e.g. (the Compatibility renderer with --rendering-method
+## gl_compatibility before the --):
+##   godot --path . --write-movie build/f.png --quit-after 6 res://tools/showcase/enemy_showcase.tscn -- --view=faces
+## Views:
+##   poses (default)  the pose row: idle, walking, aiming with the cannon charged, the panic variant's
+##                    run with its shocked "O", cowering, and a host
+##   faces            the screen head close up: calm, aiming, shocked, ERR (defeated) and a host
+##   turn             front, side, back and the other side (the backpack, cables and cyber arm)
+##   window           window cyborgs on the facade
+##   far              gameplay distance: the run camera's view, with every expression and window
+##                    cyborgs ahead (the expressions must read here)
+##   generator        fence generators in a real RunWorld
+##   charge           a cyborg charging its cannon at the camera
+##   play             a generated level with the enemies on, run by a god-mode player with grapples (so
+##                    gaps don't end the run) through the real run camera (options: --seed=N --lanes=N
+##                    --difficulty=X --start=metres --features=a,b --claws); it runs until closed
+## Every view takes --skin=res://path/to/skin.tres (default: the grey box) and --variant=<name>, the
+## skin's enemy_variant (CyborgSuit.look_for picks the cyborgs' look from it; every name wears the base
+## until the zone variants exist).
 
 const Kit = preload("res://scripts/enemies/cyborg_kit.gd")
 
@@ -16,7 +27,7 @@ var _camera: Camera3D
 
 
 func _ready() -> void:
-	var view: String = "city"
+	var view: String = "poses"
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--view="):
 			view = arg.get_slice("=", 1)
@@ -24,7 +35,7 @@ func _ready() -> void:
 		_play()
 		return
 	_world = _build_world(view)
-	var variant: StringName = &"scavenger" if view == "scavenger" else StringName(_opt("variant", "city"))
+	var variant: StringName = StringName(_opt("variant", "city"))
 	_camera = Camera3D.new()
 	_camera.fov = 50.0
 	add_child(_camera)
@@ -38,12 +49,12 @@ func _ready() -> void:
 	env.environment = _world.skin.make_environment()
 	add_child(env)
 	match view:
-		"scavenger":
-			_pose_row(variant)
-			_look(Vector3(0.0, 1.3, 5.2), Vector3(0.0, 0.8, -1.0))
 		"faces":
 			_face_row(variant)
-			_look(Vector3(0.0, 1.5, 2.4), Vector3(0.0, 1.25, -1.0))
+			_look(Vector3(0.0, 1.45, 2.3), Vector3(0.0, 1.32, -1.0))
+		"turn":
+			_turn_row(variant)
+			_look(Vector3(0.0, 1.2, 4.0), Vector3(0.0, 0.85, -1.0))
 		"window":
 			_window_scene()
 			_look(Vector3(2.0, 2.3, -6.0), Vector3(4.2, 2.0, -12.0))
@@ -53,6 +64,8 @@ func _ready() -> void:
 		"charge":
 			_charge_scene()
 			_look(Vector3(0.6, 1.4, -2.0), Vector3(0.0, 1.0, -9.0))
+		"far":
+			_far_scene()
 		_:
 			_pose_row(variant)
 			_look(Vector3(0.0, 1.3, 5.2), Vector3(0.0, 0.8, -1.0))
@@ -188,15 +201,21 @@ func _pose_row(v: StringName) -> void:
 	host.set_pose(CyborgBody.Pose.IDLE)
 
 
+## Calm, aiming, shocked, ERR (a defeated cyborg's screen before it goes dark) and a host.
 func _face_row(v: StringName) -> void:
 	var faces: Array = [Kit.Face.NEUTRAL, Kit.Face.AIMING, Kit.Face.SHOCKED, Kit.Face.DEAD]
 	for i: int in faces.size():
-		var b := _body(v, false, Vector3(-0.9 + i * 0.6, 0.0, 0.0), 10 + i)
+		var b := _body(v, false, Vector3(-1.1 + i * 0.55, 0.0, 0.0), 10 + i)
 		b.set_expression(faces[i])
-	var s := _body(&"scavenger", false, Vector3(-0.6, 0.0, -0.9), 20)
-	s.set_expression(Kit.Face.NEUTRAL)
-	var h := _body(&"city", true, Vector3(0.6, 0.0, -0.9), 21)
+	var h := _body(v, true, Vector3(1.1, 0.0, 0.0), 21)
 	h.set_expression(Kit.Face.NEUTRAL)
+
+
+## The same cyborg from the front, its right side, the back and its left side.
+func _turn_row(v: StringName) -> void:
+	for i: int in 4:
+		var b := _body(v, false, Vector3(-1.8 + i * 1.2, 0.0, 0.0), 40)
+		b.rotation.y = -PI * 0.5 * i
 
 
 func _window_scene() -> void:
@@ -209,6 +228,40 @@ func _generator_scene() -> void:
 	_world.director.spawn({"type": "generator", "at": 11.0, "lane": 1, "side": 0, "seed": 1, "params": {}})
 	var dead: Enemy = _world.director.spawn({"type": "generator", "at": 60.0, "lane": 3, "side": 0, "seed": 2, "params": {}})
 	dead.defeat(&"dash")
+
+
+## Gameplay distance: the run camera's view from a player at the start (behind and above, as
+## MovementTuning places it), with a row of cyborgs 14 m ahead and another 28 m ahead, each showing the
+## calm face, the panic variant's shocked "O", the aiming face (cannon charged) and a host, and window
+## cyborgs on both walls. Prints where each head is on screen (for cropping review frames).
+func _far_scene() -> void:
+	var t := load("res://data/tuning/movement.tres") as MovementTuning
+	_world.player.visible = true
+	_camera.fov = t.camera_fov
+	_look(Vector3(0.0, t.camera_height, t.camera_distance), Vector3(0.0, 1.0, -t.camera_look_ahead))
+	var v: StringName = StringName(_opt("variant", "city"))
+	var faces: Array = [[Kit.Face.NEUTRAL, false], [Kit.Face.SHOCKED, false], [Kit.Face.AIMING, false],
+		[Kit.Face.NEUTRAL, true]]
+	var bodies: Array[CyborgBody] = []
+	for row: int in 2:
+		var at: float = 14.0 + 14.0 * row
+		for i: int in faces.size():
+			var b := _body(v, faces[i][1], _world.lane_point(i + row, at), 30 + row * 10 + i)
+			b.set_expression(faces[i][0])
+			if faces[i][0] == Kit.Face.AIMING:
+				b.set_pose(CyborgBody.Pose.AIM)
+				b.aim_at(Vector3(0.0, 1.0, 0.0))
+				b.set_charge(0.8)
+			bodies.append(b)
+	for spec: Array in [[1, 21.0, 5], [-1, 35.0, 6]]:
+		_world.director.spawn({"type": "window_cyborg", "at": spec[1], "lane": 4 if spec[0] > 0 else 0,
+			"side": spec[0], "seed": spec[2], "params": {"fires": false}})
+	await get_tree().process_frame
+	for b: CyborgBody in bodies:
+		var head: Vector3 = b.rig.joint(&"head").global_position + Vector3(0.0, 0.15, 0.0)
+		var p: Vector2 = _camera.unproject_position(head) / Vector2(get_viewport().get_visible_rect().size)
+		print("far head %s host=%s at %.0f m: screen %.4f %.4f" % [Kit.Face.keys()[b.face], b.host,
+			-b.global_position.z, p.x, p.y])
 
 
 func _charge_scene() -> void:
