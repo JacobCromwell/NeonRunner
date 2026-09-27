@@ -44,7 +44,7 @@ var turn_waits: Dictionary = {}
 ## Seconds a hover truck's entrance was on while a big attack was open.
 var entrance_overlap: float = 0.0
 var hosts_stomped: int = 0
-## Octodogs by spawn index: the most charges each made.
+## Octodogs by spawn index: the charges (wind-ups) each made.
 var dog_charges: Dictionary = {}
 var log := PackedStringArray()
 
@@ -85,8 +85,8 @@ func observe() -> void:
 			if ahead > 0.0 and ahead < 2.5:
 				e.defeat(&"stomp")
 				hosts_stomped += 1
-		if e.type_id == &"octodog":
-			dog_charges[key] = maxi(int(dog_charges.get(key, 0)), int(e.get(&"charges_done")))
+		if e.type_id == &"octodog" and not dog_charges.has(key):
+			dog_charges[key] = 0
 		if e.type_id == &"hover_truck" and e.alive:
 			var s: int = int(e.get(&"state"))
 			entrance = entrance or s == TruckScript.State.BANGING \
@@ -97,6 +97,8 @@ func observe() -> void:
 			if not _was_open.has(wk):
 				# An attack starts: how long did its enemy wait for it (as seen the frame before)?
 				attacks[kind] = int(attacks.get(kind, 0)) + 1
+				if kind == "dog_charge":
+					dog_charges[key] = int(dog_charges.get(key, 0)) + 1
 				if float(_held.get(key, 0.0)) > 0.0:
 					(waits.get_or_add(kind, []) as Array).append(float(_held[key]))
 				if float(_held_turn.get(key, 0.0)) > 0.0:

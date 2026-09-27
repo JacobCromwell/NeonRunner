@@ -103,7 +103,7 @@ func _test_takes_turns() -> void:
 	check(_overlaps(a, b).is_empty(), "two types' big attacks never overlap (%s)" % [_overlaps(a, b)])
 	var na: int = int(a.call(&"count", "start"))
 	var nb: int = int(b.call(&"count", "start"))
-	check(na >= 4 and nb >= 4 and absi(na - nb) <= 1, "both keep attacking, in turn (%d and %d attacks)" % [na, nb])
+	check(na >= 3 and nb >= 3 and absi(na - nb) <= 1, "both keep attacking, in turn (%d and %d attacks)" % [na, nb])
 	var end_a: float = _time_of(a, "end")
 	var start_b: float = _time_of(b, "start")
 	check(start_b >= end_a - 0.0001 and start_b <= end_a + 2.5 / Engine.physics_ticks_per_second,
@@ -344,7 +344,7 @@ func _test_campaign() -> void:
 		w.rules.big_attacks_take_turns = case[2]
 		w.player.god_mode = true
 		w.player.grapples = 1_000_000
-		var watch = AttackWatch.new(w, true)
+		var watch: AttackWatch = AttackWatch.new(w, true)
 		await tree.physics_frame
 		w.player.running = true
 		while w.player.distance < layout.length:

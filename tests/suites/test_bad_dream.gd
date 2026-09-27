@@ -8,6 +8,7 @@ extends TestSuite
 ## counts, seeds and difficulties, alone and together with drones and Octodogs.
 
 const DroneScript := preload("res://scripts/enemies/drone.gd")
+const TruckScript := preload("res://scripts/enemies/hover_truck.gd")
 const HostRules := preload("res://scripts/enemies/host_rules.gd")
 const CYBORG_TUNING_PATH: String = "res://data/enemies/cyborg.tres"
 ## Jump this far (track distance) before a walking cyborg to land on its head (as in test_cyborg).
@@ -42,6 +43,7 @@ func run() -> void:
 	await _test_emp()
 	await _test_one_at_a_time()
 	await _test_major_attacks()
+	await _test_takes_turns()
 	_test_generator()
 
 
@@ -142,6 +144,8 @@ func _test_declared() -> void:
 	check(dream.immune_to_weapons and dream.claw_immune and not dream.stompable and not dream.dash_kills,
 		"declared: immune to weapons, claws and stomping; the dash doesn't kill it")
 	check(dream.exclusive_major_attack and dream.is_major_attack_active(), "its chase is an exclusive major attack")
+	check(dream.exclusive_of == [&"octodog", &"drone"],
+		"GDD §9.7 names the attacks it never overlaps, switch or not: Octodogs' and drones' (%s)" % [dream.exclusive_of])
 	check(dream.slash_hitbox().is_enemy_attack and not dream.slash_hitbox().is_solid and dream.slash_hitbox().dash_passes
 		and dream.slash_hitbox().part == &"attack", "the slash is an enemy attack the dash passes through")
 	check(dream.body_hitbox().is_enemy_attack and dream.body_hitbox().dash_passes, "so is its body")
@@ -664,6 +668,8 @@ func _test_major_attacks() -> void:
 	for h: Array in dog.history:
 		dog_wound = dog_wound or h[0] == "windup"
 	check(not dog_wound and int(drone.get(&"barrages")) == 0, "the Octodog never charged and the drone never fired")
+	check(is_zero_approx(float(dog.get(&"_turn_shift"))),
+		"held by the chase (GDD §9.7), the Octodog runs off rather than moving its charges on")
 	await _until(func() -> bool: return int(drone.get(&"barrages")) >= 1, 6.0)
 	check(int(drone.get(&"barrages")) >= 1, "once the chase is over, the drone fires again")
 	await sim.free_world(w)
@@ -706,6 +712,88 @@ func _test_major_attacks() -> void:
 	check(int(drone.get(&"barrages")) == 1 and dream.slashes >= 1,
 		"the barrage finished, then only the Bad Dream attacked (%d barrages, %d slashes)" % [int(drone.get(&"barrages")), dream.slashes])
 	await sim.free_world(w)
+
+
+## GDD §9, big attacks take turns: its chase is a big attack like the others. A hover truck (which
+## GDD §9.7 doesn't name) neither revs nor charges its cannon while it chases, and holds back or
+## keeps pacing until the chase is over; and with a truck's lurch on when a slash is due, it holds
+## the slash until the lurch is over. Switched off (GameRules.big_attacks_take_turns), the truck
+## attacks during the chase and the Bad Dream slashes during its lurch, as before the rule.
+func _test_takes_turns() -> void:
+	var tt := load("res://data/enemies/hover_truck.tres") as HoverTruckTuning
+	for turns: bool in [true, false]:
+		var tag: String = "turns %s" % ("on" if turns else "off")
+		# It chases for 6 s; a truck holding back is ready to rev after 1.6 s, and to fire after that.
+		var made: Array = await _world(5, 1, {"chase": 6.0})
+		var w: RunWorld = made[0]
+		var dream: BadDream = made[1]
+		w.rules = w.rules.duplicate() as GameRules
+		w.rules.big_attacks_take_turns = turns
+		w.player.god_mode = true
+		var truck := w.director.spawn({"type": "hover_truck", "at": 0.0, "lane": 4, "side": 1, "seed": 5,
+			"params": {"skip_entrance": true, "phase": "hold_back", "offset": tt.back_offset}}) as Enemy
+		var id: int = dream.get_instance_id()
+		var truck_went: float = -1.0
+		var chase_over: float = -1.0
+		var held_back: bool = true
+		var slashes: int = 0
+		for i: int in 9 * Engine.physics_ticks_per_second:
+			await tree.physics_frame
+			var d: BadDream = _dream(id)
+			if d != null:
+				slashes = d.slashes
+			if chase_over < 0.0 and (d == null or not d.is_major_attack_active()):
+				chase_over = w.level_time()
+			if truck_went < 0.0 and truck.is_major_attack_active():
+				truck_went = w.level_time()
+			if w.director.is_waiting(truck):
+				var s: int = int(truck.get(&"state"))
+				held_back = held_back and (s == TruckScript.State.HOLD_BACK or s == TruckScript.State.PACE)
+		if turns:
+			check(truck_went >= chase_over - 0.001 and chase_over > 5.0,
+				"%s: a truck neither revs nor fires while it chases (first at %.2f s, the chase over at %.2f s)"
+				% [tag, truck_went, chase_over])
+			check(held_back, "%s: meanwhile the truck holds back or keeps pacing" % tag)
+			check(slashes >= 1, "%s: it slashed meanwhile (%d)" % [tag, slashes])
+		else:
+			check(truck_went >= 0.0 and truck_went < chase_over,
+				"%s: the truck attacks during the chase, as before the rule (at %.2f s, the chase over at %.2f s)"
+				% [tag, truck_went, chase_over])
+		await sim.free_world(w)
+
+	# A lurch on when the slash is due: it holds the slash until the lurch is over.
+	for turns: bool in [true, false]:
+		var tag: String = "turns %s" % ("on" if turns else "off")
+		var w: RunWorld = sim.build_world(RunSim.layout(5, 1500.0))
+		w.rules = w.rules.duplicate() as GameRules
+		w.rules.big_attacks_take_turns = turns
+		w.player.setup(tuning, w.geo, 1)
+		w.player.god_mode = true
+		var truck := w.director.spawn({"type": "hover_truck", "at": 0.0, "lane": 4, "side": 1, "seed": 5,
+			"params": {"skip_entrance": true, "phase": "hold_back", "offset": tt.back_offset, "guns": false}}) as Enemy
+		await tree.physics_frame
+		w.player.running = true
+		await _until(func() -> bool: return int(truck.get(&"state")) == TruckScript.State.REV, 3.0)
+		var dream := w.director.spawn({"type": "bad_dream", "at": 0.0, "lane": 1, "side": 0, "seed": 5,
+			"params": {"emerge": false, "chase": 20.0}}) as BadDream
+		var lurch_over: float = -1.0
+		var told: float = -1.0
+		for i: int in 5 * Engine.physics_ticks_per_second:
+			await tree.physics_frame
+			if lurch_over < 0.0 and not truck.is_major_attack_active():
+				lurch_over = w.level_time()
+			if told < 0.0 and dream.is_attacking():
+				told = w.level_time()
+			if told >= 0.0 and lurch_over >= 0.0:
+				break
+		if turns:
+			check(told >= lurch_over - 0.001 and lurch_over > 0.0,
+				"%s: it holds its slash until the lurch is over (telegraph at %.2f s, the lurch over at %.2f s)"
+				% [tag, told, lurch_over])
+		else:
+			check(told >= 0.0 and told < lurch_over,
+				"%s: it slashes during the lurch, as before the rule (at %.2f s, the lurch over at %.2f s)" % [tag, told, lurch_over])
+		await sim.free_world(w)
 
 
 ## Runs the world for `seconds`, checking every frame that the Bad Dream (the first enemy) never
