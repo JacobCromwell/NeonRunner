@@ -27,6 +27,10 @@ const DIFFICULTY_OPTIONS: Array[float] = [0.0, 0.3, 0.6, 0.9]
 const COMPLETE_PAUSE: float = 2.0
 const QUICK_DEATH_PAUSE: float = 1.2
 
+## The run whose level set the scenery light last (ZoneSkin.apply_darkness, a global uniform): only it
+## sets the light back when it ends, so a run freed after the next one started leaves that one's alone.
+static var _lighting_run: LevelRun
+
 var context: RunContext
 var rules: GameRules
 var world: RunWorld
@@ -102,6 +106,7 @@ func _build() -> void:
 		add_child(sun)
 	# The zone's look with the level's darkness (GDD §5, The Hush): only the scenery darkens.
 	_env.environment = world.skin.level_environment(context.config.darkness)
+	_lighting_run = self
 	if camera == null:
 		camera = RunCamera.new()
 		add_child(camera)
@@ -127,9 +132,12 @@ func _build() -> void:
 	world.start()
 
 
-## A level's darker lighting ends with its run (ZoneSkin.apply_darkness sets a global uniform).
+## A level's darker lighting ends with its run (ZoneSkin.apply_darkness sets a global uniform), unless
+## a newer run has set its own since.
 func _exit_tree() -> void:
-	ZoneSkin.set_scenery_light(1.0)
+	if _lighting_run == self:
+		_lighting_run = null
+		ZoneSkin.set_scenery_light(1.0)
 
 
 ## Continues after a death (revive item or rewarded ad). The App calls this.
