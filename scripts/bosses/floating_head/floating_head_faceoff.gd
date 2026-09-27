@@ -328,7 +328,9 @@ func _run(delta: float) -> void:
 				_hold = tuning.drop_hold_max
 				_end_attack()
 		Step.PINNED:
-			pass
+			# Pinned under the tower: its eyes' glow dies away (red means a laser is coming).
+			_charge = move_toward(_charge, 0.0, delta / RECOVER_SECONDS)
+			head.body.eye_charge = _charge
 
 
 ## Picks the next attack: a marked tower's drag when it's due, once the face-off has shown towers_after

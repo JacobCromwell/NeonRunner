@@ -517,7 +517,7 @@ func _test_bait() -> void:
 		var bot := FloatingHeadBot.new(head, true)
 		var cause: Array[String] = _watch_death(world)
 		var s: Dictionary = {"z": INF, "drift": 0.0, "top_lo": INF, "top_hi": -INF, "crown": 0.0, "live": 0, "fallen": false,
-			"touch": 0, "gap": INF}
+			"touch": 0, "gap": INF, "red": 0.0}
 		await _until(world, func() -> bool:
 			bot.step()
 			if _touching_laser(head):
@@ -535,6 +535,8 @@ func _test_bait() -> void:
 				s["crown"] = head.body.top_height()
 				if head.body.weak_points_enabled() or head.body.top_solid():
 					s["live"] += 1
+				if head.step_time > 0.4:
+					s["red"] = maxf(float(s["red"]), head.body.eye_charge)
 				s["gap"] = minf(float(s["gap"]), head.pose.z)
 			var released: Array[Dictionary] = _events(head, &"released")
 			return not world.player.alive or (not released.is_empty() and _events(head, &"laser_charge").any(
@@ -556,6 +558,7 @@ func _test_bait() -> void:
 			s["top_lo"], s["top_hi"], t.pin_top_height, tag])
 		print("  Floating Head pinned %s: weak points' tops %.2f-%.2f m, crown top %.2f m" % [tag, s["top_lo"], s["top_hi"], s["crown"]])
 		check(int(s["live"]) == 0, "its weak points and its crown's top stay off (task E1c builds the stomps) %s" % tag)
+		check(float(s["red"]) < 0.01, "pinned, its eyes don't glow red (no laser is coming) %s" % tag)
 		var release: Array[Dictionary] = _events(head, &"release")
 		check(release.size() == 1 and float(release[0]["gap"]) >= t.pin_release_gap - 0.5 and float(s["gap"]) > 3.0,
 			"it shakes free before the runner reaches it (E1b's placeholder) %s" % tag)
