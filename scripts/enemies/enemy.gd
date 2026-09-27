@@ -43,11 +43,14 @@ var is_boss: bool = false
 var is_obstacle: bool = false
 ## Part of a swarm (the swarm boss's clusters): heavy missiles deal bonus damage (GDD §8).
 var is_swarm: bool = false
-## Its major attack (is_major_attack_active) never overlaps another enemy's: while it's on, others
-## hold off starting theirs, and it holds its own while another's is on (the Bad Dream, GDD §9.7:
+## Its major attack (is_major_attack_active) never overlaps those of the types in exclusive_of,
+## whether or not big attacks take turns (GameRules.big_attacks_take_turns): while it's on, they hold
+## off starting theirs, and it holds its own while one of theirs is on (the Bad Dream, GDD §9.7:
 ## never at the same time as an Octodog charge sequence or a drone barrage). See
 ## EnemyDirector.major_attack_blocked().
 var exclusive_major_attack: bool = false
+## The types an exclusive major attack keeps apart from (empty: every type); its own type always.
+var exclusive_of: Array[StringName] = []
 
 # --- State ---------------------------------------------------------------------------------
 var alive: bool = true
@@ -111,9 +114,12 @@ func hit_radius() -> float:
 	return 0.7
 
 
-## True while this enemy is in its "major attack": an Octodog's charge sequence, a drone's wind-up
-## and barrage, the Bad Dream's chase. Enemies coordinate them through the director
-## (exclusive_major_attack, EnemyDirector.major_attack_blocked). The default: never.
+## True while this enemy is in its "major attack" (a big attack, GDD §9), from the start of its
+## warning until its last hazard is over: an Octodog's charge sequence, a drone's wind-up and
+## barrage, a hover truck's rev and forward lurch or its cannon's charge and volley, the Bad Dream's
+## chase. Shots it fires in one report themselves (EnemyDirector.note_attack_shot) and hold the
+## attack's turn until they have passed the player. Big attacks take turns through the director
+## (EnemyDirector.major_attack_blocked, docs/ARCHITECTURE.md, Enemies). The default: never.
 func is_major_attack_active() -> bool:
 	return false
 

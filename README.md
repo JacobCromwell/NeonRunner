@@ -172,16 +172,23 @@ and power-up look, and a scripted run on any zone's skin; ramp launches and bloc
 family, the Floating Head, the UI kit, every screen, a zone skin's fixed review track, the cult's feed); each
 script's header lists its options.
 
+`tools/measure/big_attacks.gd` measures how the big attacks of different enemy types overlap over simulated runs of
+the campaign, with big attacks taking turns (GDD §9, the `big_attacks_take_turns` switch in the game rules and the
+F6 panel) and without, and how much taking turns delays them:
+`godot --headless --fixed-fps 60 -s res://tools/measure/big_attacks.gd -- [--levels=gangland/3] [--lanes=3,5,6]`
+(the whole campaign, both ways, takes about ten minutes; its header lists the options).
+
 ## Tests
 
-`tools/godot.sh test` runs 32 suites with about 2,800,000 checks:
+`tools/godot.sh test` runs 33 suites with about 2,800,000 checks:
 - **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds, and every campaign level
   (each with every feature it lists, on its own seed and on others). Under every ceiling the floor may be
   dangerous, so each one's pads, landing zone and a floor route that never takes the pad are checked, and
   some of those routes are run on real physics.
 - **Movement:** scenarios on real physics, among them a ramp's boost against a speed pad's, a ramp's wall run
   and its credits against the generator's prediction, and the bump of a blocked wall entry.
-- **Enemies:** each type's attacks, dodges, kills and generation rules.
+- **Enemies:** each type's attacks, dodges, kills and generation rules, and big attacks of different types
+  taking turns (the director, each enemy, and simulated runs of campaign levels).
 - **Damage:** the shared damage rules.
 - **Power-ups:** each one's behaviour.
 - **Economy and saves:** the economy and save files.
@@ -207,7 +214,7 @@ Headless runs skip sounds, because the dummy audio driver never finishes a playb
 
 ```
 play.sh, play.cmd       play the current version
-tools/                  godot.sh (play/edit/test/smoke/sfx/music), asset generators, showcase scenes
+tools/                  godot.sh (play/edit/test/smoke/sfx/music), asset generators, showcase scenes, measurements
 scenes/main.tscn        the main scene: world, screens and overlays
 scenes/bosses/          boss fight scenes (the test boss and the Floating Head so far)
 scripts/app/            App (state and flow), Profile, SaveService, Settings, BuildFlavor

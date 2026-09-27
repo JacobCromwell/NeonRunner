@@ -34,8 +34,6 @@ const HoverTruckRules = preload("res://scripts/enemies/hover_truck_rules.gd")
 const TYPE: String = "octodog"
 ## A dog is dropped when fewer charges than this fit (GDD §9.4 asks for at least 2).
 const MIN_CHARGES: int = 2
-## Metres kept clear of other enemies after a charge's stretch.
-const OTHER_ENEMY_MARGIN: float = 25.0
 ## Metres between the spots tried for a guaranteed dog.
 const GUARANTEE_STEP: float = 4.0
 
@@ -199,15 +197,10 @@ static func _off_chases(chases: Array[Vector2], from: float, to: float) -> bool:
 
 
 ## True if the player's stretch [a, a + window] has no fence, ceiling, pad, holes in two or more
-## lanes, and no enemy other than a dog nearby.
+## lanes, and no enemy other than a dog nearby (Octodog.charge_clear: the dog checks a charge the
+## same way when a wait for its turn moves it on).
 static func _window_ok(layout: LevelLayout, a: float, window: float) -> bool:
-	if not Octodog.window_clear(layout, a, a + window):
-		return false
-	for other: Dictionary in layout.enemies:
-		var d: float = float(other["at"])
-		if String(other["type"]) != TYPE and d >= a - 5.0 and d <= a + window + OTHER_ENEMY_MARGIN:
-			return false
-	return true
+	return Octodog.charge_clear(layout, a, window)
 
 
 ## One dog where a dog fits every rule (see the header), in a level left without one. The spots

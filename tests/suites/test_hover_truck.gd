@@ -2,6 +2,8 @@ extends TestSuite
 ## The hover truck (GDD §9.3) in full RunWorlds on real physics, and its generator rules.
 
 const TruckScript := preload("res://scripts/enemies/hover_truck.gd")
+const DroneScript := preload("res://scripts/enemies/drone.gd")
+const AttackWatch = preload("res://tools/measure/attack_watch.gd")
 const S := TruckScript.State
 
 var sim: RunSim
@@ -19,6 +21,7 @@ func run() -> void:
 	await _test_cannon()
 	await _test_leaving()
 	await _test_weapons()
+	await _test_takes_turns()
 	_test_rules()
 
 
@@ -419,6 +422,87 @@ func _test_weapons() -> void:
 	t.take_damage(heavy, &"weapon")
 	check(not t.alive and t.state == S.WRECKED, "5 heavy missiles (tier 4) do: it spins out")
 	await sim.free_world(w)
+
+
+## GDD §9, big attacks take turns: its lurch and its cannon shot are big attacks
+## (is_major_attack_active: the rev and the lurch; the charge and the volley). Ready to rev while a
+## drone's barrage is on, it holds back behind the player, and ready to charge its cannon it keeps
+## pacing; each goes once the barrage's last bullet has passed the player, and its shell holds its own
+## turn the same way. Switched off (GameRules.big_attacks_take_turns), each goes during the barrage,
+## as before the rule.
+func _test_takes_turns() -> void:
+	var dt := load("res://data/enemies/drone.tres") as DroneTuning
+	var tt := load("res://data/enemies/hover_truck.tres") as HoverTruckTuning
+	# The drone swoops in at once and fires from about fire_at until about barrage_end.
+	var fire_at: float = dt.swoop_time + dt.first_follow_time + dt.windup_early
+	for kind: String in ["lurch", "cannon"]:
+		for turns: bool in [true, false]:
+			var tag: String = "%s, turns %s" % [kind, "on" if turns else "off"]
+			var w: RunWorld = sim.build_world(RunSim.layout(3, 800.0))
+			w.rules = w.rules.duplicate() as GameRules
+			w.rules.big_attacks_take_turns = turns
+			w.player.setup(tuning, w.geo, 0)
+			w.player.god_mode = true
+			var watch := AttackWatch.new(w)
+			var d := w.director.spawn({"type": "drone", "at": 0.0, "lane": 0, "side": 0, "seed": 7,
+				"params": {"slot": 0}}) as DroneScript
+			# The truck gets ready (hold-back over, or its first shot due) as the barrage starts.
+			var ready_in: float = tt.hold_back_seconds if kind == "lurch" else tt.first_shot_delay
+			var spawn_at: float = fire_at + 0.2 - ready_in
+			var t: TruckScript = null
+			var went: float = -1.0
+			var barrage_over: float = -1.0
+			var held_ok: bool = true
+			var waited: float = 0.0
+			var active_ok: bool = true
+			var saw_active: bool = false
+			var shell_holds: bool = false
+			await tree.physics_frame
+			w.player.running = true
+			for i: int in 9 * Engine.physics_ticks_per_second:
+				await tree.physics_frame
+				watch.observe()
+				var now: float = w.level_time()
+				if t == null and now >= spawn_at:
+					var params := {"skip_entrance": true, "guns": kind == "cannon",
+						"phase": "hold_back" if kind == "lurch" else "pace",
+						"offset": tt.back_offset if kind == "lurch" else tt.pace_offset}
+					t = _truck(w, 0.0, params, 1)
+				if d.barrages > 0 and barrage_over < 0.0 and d.state != DroneScript.State.FIRE \
+						and not w.director.shots_on_their_way(&"drone"):
+					barrage_over = now
+				if t == null:
+					continue
+				var going: bool = t.state == S.REV if kind == "lurch" else t.charging()
+				if going and went < 0.0:
+					went = now
+				var attacking: bool = t.state == S.REV or t.state == S.LURCH_FWD or t.charging() \
+					or not (t.get(&"_volley") as Array).is_empty()
+				active_ok = active_ok and t.is_major_attack_active() == attacking
+				saw_active = saw_active or t.is_major_attack_active()
+				if w.director.is_waiting(t):
+					waited += 1.0 / Engine.physics_ticks_per_second
+					held_ok = held_ok and (t.state == S.HOLD_BACK and absf(t.offset - tt.back_offset) < 1.0 if kind == "lurch"
+						else t.state == S.PACE and absf(t.offset - tt.pace_offset) < 1.5)
+				if kind == "cannon" and t.cannon_shots > 0:
+					shell_holds = shell_holds or w.director.shots_on_their_way(&"hover_truck")
+				if went >= 0.0 and barrage_over >= 0.0 and now > maxf(went, barrage_over) + 2.0:
+					break
+			check(t != null and went >= 0.0 and d.barrages >= 1, "%s: the truck and the drone both attacked" % tag)
+			check(active_ok and saw_active, "%s: its big attack is on exactly through its rev and lurch, and its charge and volley" % tag)
+			if kind == "cannon":
+				check(t != null and t.cannon_shots >= 1 and shell_holds, "%s: it fired, and its shell held its turn until it passed" % tag)
+			if turns:
+				check(went >= barrage_over - 0.001 and waited > 0.3,
+					"%s: it goes once the barrage's last bullet has passed (%.2f s, the barrage over at %.2f s, after waiting %.2f s)"
+					% [tag, went, barrage_over, waited])
+				check(held_ok, "%s: meanwhile it %s" % [tag, "holds back behind the player" if kind == "lurch" else "keeps pacing"])
+				check(is_zero_approx(watch.overlap), "%s: the two big attacks never overlap (%.2f s)" % [tag, watch.overlap])
+			else:
+				check(went >= 0.0 and went < barrage_over and waited == 0.0,
+					"%s: it goes during the barrage, as before the rule (%.2f s, the barrage over at %.2f s)" % [tag, went, barrage_over])
+				check(watch.overlap > 0.2, "%s: the two overlap (%.2f s)" % [tag, watch.overlap])
+			await sim.free_world(w)
 
 
 ## Generator rules (GDD §9.3) over many seeds, difficulties and lane counts, and in the campaign

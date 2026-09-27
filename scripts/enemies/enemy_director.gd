@@ -6,10 +6,22 @@ extends Node3D
 ##   res://data/enemies/<type>.tres       its EnemyTuning (optional)
 ## A layout entry {type, at, lane, side, seed, params} is spawned when the player comes within the
 ## type's spawn_lead of `at`.
+##
+## Big attacks take turns (GDD §9; docs/ARCHITECTURE.md, Enemies): an enemy asks
+## major_attack_blocked() before its big attack's warning starts and waits (pacing, following) while
+## the answer is true; its attack is on while it reports Enemy.is_major_attack_active(), and the
+## attack's shots hold its turn until they're behind the player (note_attack_shot).
 
 const SCRIPTS_DIR: String = "res://scripts/enemies"
 const TUNING_DIR: String = "res://data/enemies"
 const DEFAULT_LEAD: float = 110.0
+## A big attack's shot holds its turn until it's this far behind the player's hitbox (metres; it
+## can't come back from there). DESIGN-TBD (docs/questions/r3.md): an attack is over once its last
+## shot has passed the player.
+const SHOT_PASS_MARGIN: float = 0.5
+
+## Why an enemy's big attack is held: not at all, GDD §9.7's exclusive rule, or taking turns.
+enum Hold { NONE, EXCLUSIVE, TURN }
 
 signal enemy_spawned(enemy: Enemy)
 signal enemy_defeated(enemy: Enemy, cause: StringName)
@@ -20,6 +32,14 @@ var active: Array[Enemy] = []
 
 var _pending: Array[Dictionary] = []
 var _next: int = 0
+## Physics frames since setup (update() counts them): when each enemy last asked for its turn.
+var _frame: int = 0
+## Each enemy's last major_attack_blocked() call, by instance id: {frame, hold, since_frame, since}
+## (since: when its current wait began, as a frame and a level time).
+var _asks: Dictionary = {}
+## The shots of big attacks, until they've passed the player: [{shot: Projectile, type, name}]
+## (the pool reuses a Projectile, so its name must still match).
+var _shots: Array[Dictionary] = []
 static var _scripts: Dictionary = {}
 static var _tunings: Dictionary = {}
 static var _warned: Dictionary = {}
@@ -32,6 +52,9 @@ func setup(p_world: RunWorld) -> void:
 	active.clear()
 	_pending.clear()
 	_next = 0
+	_frame = 0
+	_asks.clear()
+	_shots.clear()
 	for entry: Dictionary in world.layout.enemies:
 		var e: Dictionary = entry.duplicate()
 		e["spawn_at"] = float(entry["at"]) - lead_for(String(entry["type"]))
@@ -42,6 +65,13 @@ func setup(p_world: RunWorld) -> void:
 ## Spawns what the player has come close to and retires enemies that are done. RunWorld calls this
 ## every physics frame.
 func update(player_distance: float) -> void:
+	_frame += 1
+	for id: int in _asks.keys():
+		if int(_asks[id]["frame"]) < _frame - 2:
+			_asks.erase(id)
+	for i: int in range(_shots.size() - 1, -1, -1):
+		if not _on_its_way(_shots[i]):
+			_shots.remove_at(i)
 	while _next < _pending.size() and player_distance >= float(_pending[_next]["spawn_at"]):
 		spawn(_pending[_next])
 		_next += 1
@@ -94,17 +124,140 @@ func targets_ahead(from: Vector3, max_distance: float) -> Array[Enemy]:
 	return out
 
 
-## True if `enemy` must hold off its major attack right now: another living enemy's major attack is
-## on (Enemy.is_major_attack_active) and one of the two must never overlap another's
-## (Enemy.exclusive_major_attack). GDD §9.7: the Bad Dream is never at the same time as an Octodog
-## charge sequence or a drone barrage (those two may still overlap each other).
+## True if `enemy` must hold off its big attack right now. An enemy asks just before its attack's
+## warning would start, once everything else about the attack is ready, and every frame after that
+## until the answer is false; meanwhile it goes on as it was (pacing, following). A warning that has
+## started always finishes with its attack: nothing here stops an attack that is on. Two rules:
+## - GDD §9.7, always: an exclusive major attack (Enemy.exclusive_major_attack) and those of the types
+##   it names (Enemy.exclusive_of) never overlap: the Bad Dream's chase and the Octodog's charge
+##   sequences and drone barrages.
+## - GDD §9, while big attacks take turns (GameRules.big_attacks_take_turns): no big attack starts
+##   while one of another type is on (Enemy.is_major_attack_active) or its shots are still on their
+##   way to the player (note_attack_shot). An enemy whose own attack is already on carries on (the
+##   Bad Dream's next slash in its chase). Otherwise, of the enemies of different types waiting for
+##   their turn, the one that has waited longest goes first (then the one spawned first), so no enemy
+##   is kept waiting for ever by others that keep asking (DESIGN-TBD, docs/questions/r3.md: who goes
+##   first). Types space their own attacks themselves (one drone barrage at a time, one Octodog or
+##   hover truck at a time).
 func major_attack_blocked(enemy: Enemy) -> bool:
-	for e: Enemy in active:
-		if e == enemy or not is_instance_valid(e) or not e.alive or not e.is_major_attack_active():
-			continue
-		if enemy.exclusive_major_attack or e.exclusive_major_attack:
+	var hold: Hold = _hold_for(enemy)
+	if big_attacks_take_turns():
+		_note_ask(enemy, hold)
+	return hold != Hold.NONE
+
+
+## GameRules.big_attacks_take_turns for this run (on when the run has no rules).
+func big_attacks_take_turns() -> bool:
+	return world == null or world.rules == null or world.rules.big_attacks_take_turns
+
+
+## True if `enemy` asked for its turn this frame or the last and was held (while big attacks take
+## turns; the director doesn't keep track otherwise).
+func is_waiting(enemy: Enemy) -> bool:
+	return _waiting(_asks.get(enemy.get_instance_id(), {}))
+
+
+## True if `enemy` asked for its turn this frame or the last and was held for another type's big
+## attack (not by GDD §9.7's exclusive rule): an enemy that may only attack within a window (the
+## Octodog's planned charges) moves the window on while it waits.
+func held_for_turn(enemy: Enemy) -> bool:
+	var rec: Dictionary = _asks.get(enemy.get_instance_id(), {})
+	return _waiting(rec) and int(rec["hold"]) == Hold.TURN
+
+
+## Seconds `enemy` has been waiting to start its big attack (0 when it isn't waiting): the delay
+## turn-taking adds (tests and tools/measure read it).
+func turn_wait(enemy: Enemy) -> float:
+	var rec: Dictionary = _asks.get(enemy.get_instance_id(), {})
+	if not _waiting(rec) or world == null:
+		return 0.0
+	return maxf(world.level_time() - float(rec["since"]), 0.0)
+
+
+## `shot` (what ProjectilePool.fire_enemy returned; null is ignored) is part of `enemy`'s big attack:
+## while big attacks take turns, the attack's turn lasts until the shot has passed the player
+## (SHOT_PASS_MARGIN behind them) or is gone. It's watched where it really is, so the turn lasts as
+## long as the shot can still reach the player, whatever their speed does meanwhile (a dash's end).
+func note_attack_shot(enemy: Enemy, shot: Projectile) -> void:
+	if shot != null and shot.in_use:
+		_shots.append({"shot": shot, "type": enemy.type_id, "name": shot.hazard_name})
+
+
+## True while shots of a big attack of `type` are still on their way to the player.
+func shots_on_their_way(type: StringName) -> bool:
+	for rec: Dictionary in _shots:
+		if rec["type"] == type and _on_its_way(rec):
 			return true
 	return false
+
+
+## A noted shot is still in flight (the same shot: the pool hasn't reused it for another) and not yet
+## past the player.
+func _on_its_way(rec: Dictionary) -> bool:
+	var shot: Projectile = rec["shot"]
+	if not is_instance_valid(shot) or not shot.in_use or shot.hazard_name != rec["name"] or world == null \
+			or world.player == null:
+		return false
+	var behind: float = world.tuning.hurtbox_size.z * 0.5 + shot.radius + SHOT_PASS_MARGIN
+	return shot.position.z <= world.player.position.z + behind
+
+
+func _hold_for(enemy: Enemy) -> Hold:
+	for e: Enemy in active:
+		if e == enemy or not _in_play(e) or not e.is_major_attack_active():
+			continue
+		if _excludes(enemy, e) or _excludes(e, enemy):
+			return Hold.EXCLUSIVE
+	if not big_attacks_take_turns():
+		return Hold.NONE
+	for rec: Dictionary in _shots:
+		if rec["type"] != enemy.type_id and _on_its_way(rec):
+			return Hold.TURN
+	for e: Enemy in active:
+		if e != enemy and e.type_id != enemy.type_id and _in_play(e) and e.is_major_attack_active():
+			return Hold.TURN
+	if enemy.is_major_attack_active():
+		return Hold.NONE
+	# Nothing is on: an enemy of another type that has been waiting longer goes first.
+	var mine: Dictionary = _asks.get(enemy.get_instance_id(), {})
+	var my_since: int = int(mine["since_frame"]) if _waiting(mine) else _frame
+	var my_index: int = active.find(enemy)
+	for i: int in active.size():
+		var e: Enemy = active[i]
+		if e == enemy or e.type_id == enemy.type_id or not _in_play(e):
+			continue
+		var rec: Dictionary = _asks.get(e.get_instance_id(), {})
+		if not _waiting(rec):
+			continue
+		var since: int = int(rec["since_frame"])
+		if since < my_since or (since == my_since and my_index >= 0 and i < my_index):
+			return Hold.TURN
+	return Hold.NONE
+
+
+func _note_ask(enemy: Enemy, hold: Hold) -> void:
+	var id: int = enemy.get_instance_id()
+	var rec: Dictionary = _asks.get(id, {})
+	if hold == Hold.NONE or not _waiting(rec):
+		rec = {"since_frame": _frame, "since": world.level_time() if world != null else 0.0}
+	rec["frame"] = _frame
+	rec["hold"] = hold
+	_asks[id] = rec
+
+
+## An ask record of an enemy that is waiting for its turn: held when it asked, this frame or the last.
+func _waiting(rec: Dictionary) -> bool:
+	return not rec.is_empty() and int(rec["hold"]) != Hold.NONE and int(rec["frame"]) >= _frame - 1
+
+
+## True if `a`'s exclusive major attack keeps `b`'s apart (GDD §9.7).
+static func _excludes(a: Enemy, b: Enemy) -> bool:
+	return a.exclusive_major_attack and (a.exclusive_of.is_empty() or a.exclusive_of.has(b.type_id)
+		or a.type_id == b.type_id)
+
+
+static func _in_play(e: Enemy) -> bool:
+	return is_instance_valid(e) and e.alive
 
 
 func count_alive(type: StringName = &"") -> int:

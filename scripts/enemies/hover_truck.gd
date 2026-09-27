@@ -10,6 +10,9 @@ extends Enemy
 ## - Attack: while pacing ahead its rear cannon fires slow shells back at the player, each
 ##   telegraphed (truck_cannon_charge and a growing glow). Later levels add 1–2 window shooters
 ##   whose bolts follow the cannon in the same volley. A cyborg drives it, visible in the cab.
+##   The forward lurch and a cannon shot are big attacks (GDD §9): they take turns with other types'
+##   (is_major_attack_active; the rev and the charge wait for their turn, never the attack after
+##   them).
 ## - Contact: its sides and rear are safe but solid: its lane blocker bumps lane switches back, and
 ##   it never backs or drifts into a player in its lane. The one deadly part looks deadly: the
 ##   glowing front spikes (a sleek nose in the city, a spiked plow with barbed wire for
@@ -227,6 +230,17 @@ func charging() -> bool:
 	return _charge_left >= 0.0
 
 
+## Its big attacks (GDD §9: the lurch and the cannon shot): the forward lurch, from the rev (its
+## warning) until the lurch is over, and a cannon shot, from the charge until the window shooters'
+## bolts have followed it (the shots' flight holds the turn too, EnemyDirector.note_attack_shot).
+## While another type's big attack is on, it keeps pacing or holding back and revs or charges once
+## its turn comes (EnemyDirector.major_attack_blocked). DESIGN-TBD (docs/questions/r3.md): its
+## entrance (the banging, then the burst that hurts a player on that wall section) isn't one: the
+## generator plans where it bursts out, so it couldn't wait for a turn.
+func is_major_attack_active() -> bool:
+	return alive and (state == State.REV or state == State.LURCH_FWD or _charge_left >= 0.0 or not _volley.is_empty())
+
+
 ## Seconds it stays before leaving (GDD §9.3: 20–30 s), counted from the burst.
 func stay_seconds() -> float:
 	return _stay
@@ -366,7 +380,9 @@ func _update_cycle(delta: float) -> void:
 			_aim_for(tune.back_offset, tune.drift_speed, tune.drift_accel)
 			if due:
 				_enter(State.LEAVING)
-			elif _state_time >= tune.hold_back_seconds and _escape_ok():
+			elif _state_time >= tune.hold_back_seconds and _escape_ok() \
+					and not world.director.major_attack_blocked(self):
+				# GDD §9: it holds back until no other type's big attack is on, then revs.
 				_enter(State.REV)
 		State.REV:
 			_aim_for(offset, tune.drift_speed, tune.drift_accel)
@@ -504,7 +520,8 @@ func _update_guns(delta: float) -> void:
 		if _charge_left < 0.0:
 			_fire_cannon()
 		return
-	if _cannon_timer <= 0.0 and _volley.is_empty() and _can_fire():
+	if _cannon_timer <= 0.0 and _volley.is_empty() and _can_fire() and not world.director.major_attack_blocked(self):
+		# GDD §9: the charge (the shot's warning) waits until no other type's big attack is on.
 		_charge_left = tune.cannon_charge_seconds
 		world.play_sfx_at(&"truck_cannon_charge", _cannon_muzzle.global_position)
 
@@ -563,7 +580,9 @@ func _shoot(from: Vector3, target: Vector3, speed: float, look: StringName, shot
 	if dist < 0.5:
 		return
 	var velocity: Vector3 = to / dist * speed + Vector3(0.0, 0.0, -world.player.speed)
-	world.projectiles.fire_enemy(from, velocity, look, shot_name, dist / speed + 0.8)
+	var shot: Projectile = world.projectiles.fire_enemy(from, velocity, look, shot_name, dist / speed + 0.8)
+	# The cannon shot's turn lasts until the shell and the gunners' bolts have passed the player (GDD §9).
+	world.director.note_attack_shot(self, shot)
 
 
 # --- Destroyed -----------------------------------------------------------------------------------
