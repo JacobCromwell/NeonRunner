@@ -14,9 +14,9 @@ through zones full of enemies, and a single hit ends the run. Built with Godot 4
 Boss fights have their framework (they play in the runner, with phases, a health bar, checkpoints,
 stars and payouts), but each zone's boss is still a placeholder slot until it's built on it; a test
 boss shows the framework at work. The Neon City's Floating Head is being built: its ship and face, its
-entrance, its bombing run and the reveal of its face so far (debug builds play it with
-`--boss=city_boss`; the campaign keeps its placeholder slot until it's done). The short cinematics
-between levels are placeholder slots too.
+entrance, its bombing run, the reveal of its face and the face-off (eye lasers, the cyborg drop and the
+marked towers that pin it) so far (debug builds play it with `--boss=city_boss`; the campaign keeps its
+placeholder slot until it's done). The short cinematics between levels are placeholder slots too.
 Every placeholder decision is listed in `docs/OPEN_QUESTIONS.md`.
 
 Docs: `docs/GDD_CHECKPOINT.md` (the design, the authority), `docs/OPEN_QUESTIONS.md` (open decisions and
@@ -123,8 +123,11 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   stomped, shows it all (it offers a shield in its second phase). The Floating Head, the Neon City's
   boss, is being built on it: a giant ship whose stern is a propaganda face, roaring in overhead, a
   bombing run where a searchlight hunts the runner and bombs fall where it lingers (a red target
-  circle, an alarm and a falling whistle), and the reveal of its face (`--boss=city_boss`). The other
-  five zone bosses are still to be built.
+  circle, an alarm and a falling whistle), the reveal of its face, and the face-off: its eyes glow and
+  whine, then laser beams sweep the lanes low (jump) or high (slide) or drag down the runner's lane
+  (switch lanes), its mouth drops cyborgs onto the trucks ahead, and a laser baited into a marked tower
+  topples it onto the ship to pin it (`--boss=city_boss`). The other five zone bosses are still to be
+  built.
 - **Economy:** credits in four denominations, level score and stars, and a shop. Items are five permanent
   power-ups (weapon line, claws, juggernaut dash, magnet, slow time) and three breakables (armor, shield,
   grapple hook). After a death you're offered a revive (an item, or a rewarded ad on mobile). Net worth
@@ -185,7 +188,7 @@ F6 panel) and without, and how much taking turns delays them:
 
 ## Tests
 
-`tools/godot.sh test` runs 33 suites with about 2,800,000 checks:
+`tools/godot.sh test` runs 34 suites with about 2,800,000 checks:
 - **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds, and every campaign level
   (each with every feature it lists, on its own seed and on others). Under every ceiling the floor may be
   dangerous, so each one's pads, landing zone and a floor route that never takes the pad are checked, and
@@ -201,7 +204,9 @@ F6 panel) and without, and how much taking turns delays them:
 - **Bosses:** the boss framework with the test boss: phases, the checkpoint, no escalation, the arena,
   the damage rules on a boss, and the flow around a fight; the Floating Head's fight so far at 3, 5 and 6
   lanes: its build and hitboxes, bombs that fall only after their warning, a runner who keeps moving
-  always escaping them, and every attempt playing out the same way.
+  always escaping them, the face-off's lasers (each warned, and escaped without god mode by a runner who
+  reads them), its cyborg drop, a baited or fallback tower pinning it, and every attempt playing out the
+  same way.
 - **Screens:** every screen at desktop and touch sizes.
 - **The runner:** Razor Echo's poses on every surface, the coat's panels (never through the legs or the
   ground), the budgets, the power-up looks, and its copper glow kept clear of every hazard colour.
