@@ -258,9 +258,11 @@ func _test_skins(campaign: Campaign) -> void:
 			check(config.skin != null and config.skin == s.zone.skin, "%s takes its zone's skin" % s.id)
 	var market: ZoneDef = _zone(campaign, "marketplace")
 	check(market != null and market.skin is MarketplaceSkin, "marketplace uses its own skin")
+	var corporate: ZoneDef = _zone(campaign, "corporate")
+	check(corporate != null and corporate.skin is CorporateSkin, "corporate uses its own skin")
 	var golden: ZoneDef = _zone(campaign, "golden")
 	check(golden != null and golden.skin is GoldenSkin, "golden uses its own skin")
-	for id: String in ["corporate", "dead_zone"]:
+	for id: String in ["dead_zone"]:
 		var zone: ZoneDef = _zone(campaign, id)
 		check(zone != null and zone.skin is GreyboxSkin, "%s uses the grey-box skin until it has its own" % id)
 	var palace: CampaignStep = campaign.step("golden/3")

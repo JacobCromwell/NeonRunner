@@ -935,6 +935,49 @@ play it with `--boss=city_boss` in debug builds; showcase scenarios `faceoff`, `
     enforcers' neck, sleeves and gauntlets; the VR Runner's collar, sleeves, chrome hand and cannon). Right places?
     (Item 102, on the amount of purple, applies to every look.)
 
+**Corporate skin** (from D4; numbers and colours are exports on `CorporateSkin`, F6; play it with
+`--quick --skin=corporate --nofall` or `--level=corporate/1`)
+132. **Time of day and weather:** a heavy overcast night, a low smog deck lit cold grey from below by the city, no moon or
+    stars, fog from 18 m to 190 m. Right for "a more oppressive Blade Runner"?
+133. **The brand's colour and mark** (GDD §5: one harsh brand colour, away from the hazard colours): an electric
+    ultramarine (about 231°), between the UI's azure (209°) and violet (252°), fully saturated where they are soft; blue
+    is the dimmest hue, so it never outshines a hazard. The mark is a rounded square with its upper-right quarter split
+    off, generic and soulless on purpose. Approve the colour and the mark? Should the corporation have a name or wordmark?
+134. **Gangland's corporate hints** now carry the same mark (containers, crates, ads) but stay off-white and grey. Should
+    they take the brand's blue, as lit paint only?
+135. **Maglev or plaza, per level** (GDD §5): the zone runs on maglev train roofs; a plaza variant (an elevated deck of
+    polished slabs, with a heavier military presence) is built for Corporate 2, Checkpoint Plaza, and used there.
+    Right split?
+136. **The trains and what a gap shows:** express carriages 22 m long on a per-lane grid, a dark slit between parallel
+    trains, olive military freight cars (15%), and the brand's mark painted on 30% of corporate roofs in a flat dark
+    blue. A gap is the space between two carriages: the orange edge, then only deep shade below. **Orchestrator's note:**
+    the roof marks sit in the running lanes, where cyan anti-grav pads also appear; they're dim and flat where the pads
+    glow, but check on a phone that a blue mark never reads as a pad (or keep them off the lanes' centres).
+137. **Motion cues on the still floor:** per 40 m, 20 grit and drizzle flecks, 3 paper scraps and 16 speed streaks, plus
+    the carriage joints passing underfoot.
+138. **The calm band** (GDD §9.1: partial wall fences from this zone): below 7.2 m every wall is flush sterile cladding
+    where nothing glows or sticks out, so a pink wall fence never competes; decoration starts at 8 m; the 2 m and 4 m
+    wall-run height marks are pale unlit lines. Right heights?
+139. **Generic, soulless corporate art:** glass curtain walls and fin towers 44–170 m tall; the brand's glowing sign near
+    the top of 45% of towers, banners on 40%, surveillance cameras on 50%, cold light strips up 70% of corners, glass
+    skybridges 24–33 m up; wordless ads (the mark, charts that only go up, a turning globe).
+140. **The military presence** (heavier in Corporate 2): compounds for 18% of buildings (blast walls with wire, a
+    watchtower whose searchlight points at the sky, never the lanes, since a light on the lanes is the Floating Head's
+    warning), gunships hovering 40–52 m up, gunships flying low as ceilings, olive freight cars; the plaza raises
+    compounds to 30% and hovering gunships to 80%. Right forms and amounts?
+141. **The mix of ceilings:** a glass skyway along the street (weight 3.0), a tower bridging the street (2.5), a concrete
+    viaduct with a military checkpoint (2.5), a gunship flying low (1.0); every underside a flat plated surface with lamps
+    along the lane seams and the orange band at its far end.
+142. **How often the cult's emblem hides here:** 35% of the ads on street screens and roof boards (a small warm-white
+    badge) and 35% of banners at their foot (unlit bronze); never under 0.9 m, never on a hazard sign, always above 8 m.
+143. **How often the cult's feed plays here:** 35% of the big screens (roof boards, and screens hung out over the street
+    14–18 m up from 35% of flush towers).
+144. **A boss arena over the street** (Hostile Takeover's gunship): setting four shares to 0 clears everything above the
+    lanes (street screens, banners, skybridges, hovering ships). The right things to clear?
+145. **Hazards in the zone's dress:** fences strung between slim steel security pylons on round base plates or set in
+    olive barrier blocks, with the shared glowing bars; hazard signs are corporate screens inside the yellow and black
+    frame.
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
