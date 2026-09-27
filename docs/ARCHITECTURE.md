@@ -117,7 +117,9 @@ properties), `_tick(delta)` (behaviour), and optionally `_on_defeated`, `should_
 `hit_radius`. A layout entry is `{type, at, lane, side, seed, params}`; `rng` is seeded from it, so
 every attempt at a seed plays out the same way. Every attack needs a visual **and** audio warning
 before it can hurt (CLAUDE.md readability rules). Enemy fire uses the pool's red "enemy_*" looks in
-every zone. `world.skin.enemy_variant` (`&"city"` or `&"scavenger"`) picks the zone look.
+every zone. `world.skin.enemy_variant` (`&"city"` or `&"scavenger"`) picks the zone look: the other
+enemies weather by it, and the cyborgs dress in the look `CyborgSuit.look_for()` finds for it (every
+variant wears the base screen-head look until the zone variants of task P3 exist; see Characters).
 
 A level uses an enemy only if its `features` list has the type's name (GDD §6: one new thing at a
 time), from the feature's start if the level gives it one (The generator). Quick play can add
@@ -348,7 +350,7 @@ may get its own). The real skins build on the mesh kit (`scripts/world/meshes/`)
 shared builders for hazards, triggers and environments, and `MeshLayer` batches a chunk's geometry.
 The shaders in `scripts/world/meshes/shaders/` are procedural. `HazardStateVisual` swaps a hazard's
 ON / WARNING / OFF materials. A skin's `enemy_variant` (`&"city"` or `&"scavenger"`) picks the
-enemies' look.
+enemies' look (the cyborgs' through `CyborgSuit.look_for()`).
 
 The kit's solid shader (`kit_solid.gdshader`) draws surface patterns chosen per vertex (`MeshKit.PAT_*`):
 panels, glass, glyphs and chevrons for the City; worn asphalt (with sand drifts and scorch around holes),
@@ -447,9 +449,10 @@ CultFeed.wall_screen(feed, side, x, d0, length, y0, height, brightness)  # on a 
 screen in a template that gets mirrored); `brightness` (0-1) dims small or low screens. The material
 draws only the picture: give each screen a bezel, frame or TV set of its own. What it shows is a
 placeholder (DESIGN-TBD, `docs/questions/d2.md`): a CRT picture in cold white, like the cyborgs' screen
-heads (task P2), with scanlines, soft static and a slow rolling bar, looping through a screen-head
-face, the chosen emblem (`CultEmblem`, faded out below about 24 pixels) and rings converging on a
-point, one at a time. Rules for every skin: keep it the same broadcast (vary only how many screens
+heads, with scanlines, soft static and a slow rolling bar, looping through the cyborgs' calm face
+(`cyborg_kit.gd`'s Face.NEUTRAL drawn smooth, in the same cold white: keep the two the same face), the
+chosen emblem (`CultEmblem`, faded out below about 24 pixels) and rings converging on a point, one at a
+time. Rules for every skin: keep it the same broadcast (vary only how many screens
 play it and where), keep other glows off it, and never tint it (only cold white and the emblem's
 warm white; purple glitching belongs to hosts). It honours Reduced flashing (the static and the
 rolling bar hold still). The Marketplace plays it on some billboards, casino signs and floating ads
@@ -487,14 +490,38 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
     panel's vertices by the rig's `panel_rot` / `panel_hinge` arrays, so the material must be the rig's
     own. The numbers are `HumanoidAnimTuning`'s Coat panels group (F6, "Runner animation").
   - **The player's shader** (`humanoid_body.gdshader`) also has a rim light and `glow_albedo` (soft
-    trim that shines by its own light). The builder stores vertex colours in linear space; on the
-    Compatibility renderer, which works in sRGB space, the shader converts them back (as
-    `kit_common.gdshaderinc` does for the mesh kit). `cyborg_body.gdshader` doesn't yet, so the
-    cyborgs show darker and more saturated on the web than on Forward+ (left for P2, which rebuilds
-    them).
+    trim that shines by its own light).
+  - **Colour spaces:** the builder stores vertex colours in linear space; on the Compatibility
+    renderer, which works in sRGB space, the rig's shaders (`humanoid_body`, `cyborg_body` and the
+    cyborg kit's part shader) convert them back with `humanoid_color.gdshaderinc` (as
+    `kit_common.gdshaderinc` does for the mesh kit). The same include's `humanoid_glow()` scales a
+    colour uniform into a bright glow in linear light on every renderer, so a glow keeps its hue on the
+    web (scaled in sRGB, the cyborgs' red charge-up turned cream). Sums of light (the screen head's
+    LEDs averaged far away) are taken in linear light too (`humanoid_to_linear`); dim picture parts
+    are brightness as seen, turned into light with `to_linear()`.
   - **Colour rule:** the player's only glow on the base model is its soft copper (`PlayerSuit.GLOW`);
     `test_avatar` keeps it and the effects built from it at least 0.3 from every skin's hazard colours
     and enemy fire on the hue and saturation wheel, and power-up looks never use it.
+  - **The cyborgs** (GDD §9.2; task P2): `CyborgSuit` builds one `HumanoidParts` whose attachment
+    sets are the looks (`LOOKS`; so far only `&"base"`, the ragged "Static TV Head" gangster from the
+    owner's concept sheet) plus `&"host"` (a host's purple veins, worn on top). Only the boot soles and
+    the arm cannon's emitter ring and charge orb are shared by every look (the soles ground the rig; the
+    charge-up must look the same in every zone). `look_for(variant)` maps a skin's `enemy_variant` to a
+    look, falling back to the base, so zone variants (task P3) are new attachment sets, built from the
+    base's part builders (`_screen_head`, `_hoodie`, `_vest`, `_backpack`, `_free_arm`, `_cyber_arm`,
+    `_legs`), with an entry in `LOOKS`, a mapping in `look_for` and, if their screen differs, their own
+    `screen_rect` and screen wear (`new_material`: `flicker`, `crack`). A cyborg is 11 draw calls (a
+    window cyborg's upper body 7): hands and feet ride on the forearms and shins, and the neck, backpack
+    and cables on the chest. The cables and the shoulder hose belong to the chest and end inside the TV
+    and the shoulder cap near their joints (`HEAD_CABLES`, `ARM_HOSE`), so they stay plugged in however
+    the head and arm turn. `cyborg_body.gdshader` draws the screen head's face from marked pieces
+    (`SCREEN`, `RING`, `ORB`, `VEIN` glow values): the pixel faces of `cyborg_kit.gd` as LED dots in the
+    cult feed's cold white, averaged through mipmaps far away so a face a few pixels across keeps its
+    shape; a host's purple static; the switch-off after a defeated cyborg's ERR. `CyborgPoses` gives
+    them their posture (hunched, a shambling limp, twitches and a tremor added after the blend).
+    `test_cyborg_body` pins the hitboxes, budgets and colour rules: nothing on a cyborg glows but the
+    cold white face, the red charge-up and a host's purple; nothing is copper, purple only on hosts,
+    no hazard or "safe" colour anywhere.
 - **UI:** a theme built in code (`scripts/ui/theme/`: `UiStyle` in `data/ui/ui_style.tres`,
   `UiTheme`), code-drawn icons (`scripts/ui/icons/`) and a widget kit (`scripts/ui/widgets/`). Screens
   (`scripts/ui/screens/`) extend `ScreenBase`; the HUD is `RunHud`. Orbitron is for titles and Exo 2
@@ -725,7 +752,8 @@ game): the avatar (`avatar_showcase`: every pose, power-up and concept-sheet vie
 side; `avatar_run_review`: a scripted run through the game camera on any zone's skin, with any
 power-up look), ramps and walls (`ramp_wall_review`: a ramp launch with the credits along its wall
 run, and blocked wall entries at a low and a high sign, through the game camera or a close one),
-the enemies (`enemy_showcase` for the cyborg family, `octodog_screech`,
+the enemies (`enemy_showcase` for the cyborg family: poses, the faces close up, a turnaround, window
+cyborgs, and a far view through the run camera where the expressions must read; `octodog_screech`,
 `drone_truck_showcase`, `bad_dream_showcase`), a boss (`floating_head_showcase`), the UI kit, the
 screens, a zone skin (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed
 screens and emblems a skin lists, or a scripted run with a ceiling ride and a wall run), and comparison
