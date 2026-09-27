@@ -60,7 +60,7 @@ const SHIELD_CENTER: float = 0.51
 const SHIELD_CENTER_SLIDE: float = 0.27
 ## The armor's shards (metres, seconds): how many, how long they fly, where they burst from (per
 ## metre of visual height: the shoulders and chest).
-const SHARD_COUNT: int = 16
+const SHARD_COUNT: int = 18
 const SHARD_LIFETIME: float = 0.75
 const SHARD_ORIGIN: float = 0.74
 
@@ -157,7 +157,7 @@ func fit_to(size: Vector3) -> void:
 	_update_shield()
 	_shards.position = Vector3(0.0, SHARD_ORIGIN * size.y, 0.0)
 	_shards.emission_box_extents = Vector3(0.27, 0.07, 0.07) * size.y
-	(_shards.mesh as BoxMesh).size = Vector3(0.055, 0.04, 0.01) * size.y
+	(_shards.mesh as BoxMesh).size = Vector3(0.085, 0.06, 0.012) * size.y
 
 
 ## World position of the shoulder weapon's muzzle, following the pose, the size fit and the roll
@@ -246,7 +246,7 @@ func _shatter() -> void:
 
 func _build_shards() -> void:
 	var shard := BoxMesh.new()
-	shard.size = Vector3(0.055, 0.04, 0.01)
+	shard.size = Vector3(0.085, 0.06, 0.012)
 	var material := StandardMaterial3D.new()
 	material.vertex_color_use_as_albedo = true
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -273,8 +273,8 @@ func _build_shards() -> void:
 	# Up and out, drifting back in the wind of the run, then falling toward the feet.
 	_shards.direction = Vector3(0.0, 1.0, 0.45)
 	_shards.spread = 70.0
-	_shards.initial_velocity_min = 1.6
-	_shards.initial_velocity_max = 3.2
+	_shards.initial_velocity_min = 2.2
+	_shards.initial_velocity_max = 4.0
 	_shards.gravity = Vector3(0.0, -9.8, 0.0)
 	_shards.particle_flag_rotate_y = true
 	_shards.angle_min = -180.0
