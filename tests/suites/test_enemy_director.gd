@@ -185,6 +185,32 @@ func _test_shots_hold_the_turn() -> void:
 	check(not w.director.shots_on_their_way(&"alpha"), "and then it's gone")
 	await sim.free_world(w)
 
+	# Fired while the player dashes, the shot comes much later once the dash ends (they slow down):
+	# its turn lasts until it has really passed them, not until it would have at the dash's speed.
+	w = _world(true)
+	a = _dummy(w, "alpha", {"first": 0.2, "interval": 10.0, "warning": 0.4, "attack": 0.2, "shot": 0.8})
+	b = _dummy(w, "beta", {"first": 0.3, "interval": 10.0, "warning": 0.4, "attack": 0.4})
+	await tree.physics_frame
+	w.player.running = true
+	w.player.start_dash(0.75, 8.0)
+	var passed: float = -1.0
+	var reach: float = w.tuning.hurtbox_size.z * 0.5
+	for i: int in 5 * Engine.physics_ticks_per_second:
+		await tree.physics_frame
+		if passed < 0.0 and _time_of(a, "hit") >= 0.0:
+			var ahead: bool = false
+			for s: Projectile in w.projectiles.live_shots():
+				ahead = ahead or (not s.friendly and s.position.z <= w.player.position.z + reach)
+			if not ahead:
+				passed = w.level_time()
+	hit = _time_of(a, "hit")
+	start_b = _time_of(b, "start")
+	check(passed > hit + 1.5, "the dash's end slows the shot's arrival (it passed the player %.2f s after it was fired)" % (passed - hit))
+	check(start_b >= passed - 0.001 and start_b <= passed + 0.25,
+		"another type starts once it has really passed them (%.2f s after it was fired, %.2f s after it passed)"
+		% [start_b - hit, start_b - passed])
+	await sim.free_world(w)
+
 
 ## Of those waiting, the one that has waited longest goes first, whatever order they came into play.
 func _test_longest_wait_first() -> void:
