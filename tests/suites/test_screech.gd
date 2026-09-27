@@ -389,7 +389,7 @@ func _test_generator() -> void:
 							check(not _sign_over(a, int(e["side"]), at), "a vent isn't hidden behind a sign " + tag)
 						else:
 							manholes += 1
-							check(not vents_only, "city zones get vents only " + tag)
+							check(not vents_only, "the screech_vents feature gets vents only " + tag)
 							check(int(e["side"]) == 0 and lane >= 0 and lane < a.lane_count, "a manhole sits in a floor lane " + tag)
 							check(not a.gapped_between(lane, at - 15.0, at + 2.0) and not _fence_near(a, lane, at - 15.0, at + 2.0),
 								"a manhole's lane is clear where it attacks " + tag)
