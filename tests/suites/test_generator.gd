@@ -176,9 +176,12 @@ func _test_rule_ceilings_keep_off_floor_enemies(base: LevelConfig) -> void:
 					check((run.y < landing.x or run.x > landing.y) and (run.y < pad.x or run.x > pad.y),
 						"a later ceiling (%.0f–%.0f) keeps its pad and landing off a dog's run (%.0f–%.0f) %s"
 						% [h["start"], h["end"], run.x, run.y, tag])
-					for a: Variant in dog["params"]["charge_at"]:
+					var charges: Array = dog["params"]["charge_at"]
+					for a: Variant in charges:
 						check(float(h["end"]) + Octodog.CEILING_LANDING < float(a) or float(h["end"]) > float(a) + window - 0.01,
 							"no planned charge meets a player dropping off a later ceiling %s" % tag)
+					check(pad.x < float(charges[0]) - 2.0 * Octodog.CEILING_LEAD or pad.x > float(charges[-1]) + window,
+						"nor a player stepping onto its pad (%.0f, charges from %.0f) %s" % [pad.x, float(charges[0]), tag])
 	check(squeezed > 50, "later ceilings still fit around the dogs (%d)" % squeezed)
 	check(refused_by_dogs > 10, "and some are refused because of them (%d)" % refused_by_dogs)
 

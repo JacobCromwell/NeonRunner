@@ -15,7 +15,9 @@ const TRUCK_LANE_AFTER_SECONDS: float = 40.0
 
 
 ## A ceiling lasting `seconds` at run speed with a pad at `at`, clearing only what's in the way of
-## the floor it keeps safe (CeilingZones): in every lane, the gaps and fences on its landing zone and
+## the floor it keeps safe (CeilingZones; DESIGN-TBD, docs/questions/b2.md: the stretches under the
+## drone's and a chase's ceilings keep their floor content): in every lane, the gaps and fences on its
+## landing zone and
 ## the floor enemies whose stretch reaches it (LevelGenerator.enemy_floor_span; drones and hover
 ## trucks don't use the floor); in the pad's lane, the gaps, fences and ramps on the pad's run-up and
 ## rise; the floor enemies whose stretch reaches the pad's spot; and other ceiling sections it would

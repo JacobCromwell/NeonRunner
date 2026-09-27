@@ -13,9 +13,9 @@ extends RefCounted
 ##   wind-up may start ("charge_at"). Each is at a stretch with no fence, other enemy, or holes in
 ##   more than one lane, so a charge never stacks with an unavoidable obstacle; and neither a charge
 ##   nor the dog's run between charges comes near an anti-grav pad or where the player lands after a
-##   ceiling (Octodog.pad_or_landing_between). Under a ceiling it may run and charge (GDD §3: the
-##   floor there may be dangerous, and the ceiling is the escape: it never winds up at a player
-##   riding it). Charges that don't fit are left out (it gives up sooner). The stretch its charges
+##   ceiling (Octodog.pad_or_landing_between). DESIGN-TBD (docs/questions/b2.md): under a ceiling
+##   it may run and charge (GDD §3: the floor there may be dangerous, and the ceiling is the escape:
+##   it never winds up at a player riding it). Charges that don't fit are left out (it gives up sooner). The stretch its charges
 ##   use is stored as "floor_span", so ceilings added later keep their pads and landing off it.
 ## - Chases: a dog's run keeps off every stretch a Bad Dream's chase can cover (HostRules; GDD §9.7:
 ##   the Bad Dream is never on during an Octodog charge sequence, and the director would hold the
@@ -94,6 +94,7 @@ static func _first_charge_fits(gen: LevelGenerator, t: OctodogTuning, at: float,
 	var a0: float = at - stop
 	return a0 > 0.0 and not Octodog.pad_or_landing_between(gen.layout, a0 - 6.0, at + 2.0) \
 		and _window_ok(gen.layout, a0, window) \
+		and _off_ceiling_zones(gen, _run_start(gen, a0), a0) \
 		and _off_chases(chases, _run_start(gen, a0), a0 + window + stop)
 
 
@@ -151,15 +152,29 @@ static func _commit(gen: LevelGenerator, t: OctodogTuning, dog: Dictionary, anch
 	return busy_until
 
 
-## Where the floor a dog's charges use starts, for a first wind-up at `a0`: as early as the pads and
-## ceiling landings its own rules let near it allow (a pad no closer than CEILING_LEAD to the stretch
-## from a0 - CEILING_LEAD, a ceiling's end no closer than CEILING_LANDING), so every pad's spot and
-## landing zone in the level stays off it (CeilingZones), and a ceiling a later rule adds
-## (add_hull_with_pad keeps both off every floor enemy's stretch) never lands a player in a charge.
+## Where the floor a dog's charges use starts, for a first wind-up at `a0`: early enough that a
+## ceiling a later rule adds (add_hull_with_pad, which keeps its pads' spots and its landing zone off
+## every floor enemy's stretch, CeilingZones) keeps the margins the dog's own rules keep: no pad within
+## CEILING_LEAD of the stretch from a0 - CEILING_LEAD, no ceiling's end within CEILING_LANDING of it.
+## The dog keeps the ceilings already there off this stretch too (_off_ceiling_zones).
 static func _run_start(gen: LevelGenerator, a0: float) -> float:
 	var zones: CeilingZones = gen.zones
-	return a0 - Octodog.CEILING_LEAD - minf(Octodog.CEILING_LEAD - zones.pad_length,
-		Octodog.CEILING_LANDING - zones.landing) + 0.001
+	return a0 - Octodog.CEILING_LEAD - maxf(Octodog.CEILING_LEAD - zones.pad_length,
+		Octodog.CEILING_LANDING - zones.landing) - 0.001
+
+
+## True if no pad's spot or ceiling landing zone already in the level (CeilingZones) reaches into
+## [from, to], so a dog's floor stretch starting there keeps off them like any floor enemy's.
+static func _off_ceiling_zones(gen: LevelGenerator, from: float, to: float) -> bool:
+	var zone := Vector2(from, to)
+	for p: Dictionary in gen.layout.pads:
+		var spot: Vector2 = gen.zones.pad_spot(float(p["at"]))
+		if spot.x <= zone.y and spot.y >= zone.x:
+			return false
+	for landing: Vector2 in gen.zones.landing_zones(gen.layout):
+		if landing.x <= zone.y and landing.y >= zone.x:
+			return false
+	return true
 
 
 ## Where the floor a dog's charges use ends, for a last wind-up at `last`: the end of the player's

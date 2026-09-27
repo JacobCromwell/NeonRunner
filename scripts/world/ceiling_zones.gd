@@ -18,12 +18,15 @@ extends RefCounted
 ## add floor enemies keep off them too (CyborgRules.obstacle_spans, Octodog.pad_or_landing_between).
 ## Narrow ceilings (B3) and floor cuts planned in advance (B4) ask their questions here as well.
 
-## Metres of floor kept safe to land on after a ceiling section's end.
+## Metres of floor kept safe to land on after a ceiling section's end. DESIGN-TBD
+## (docs/questions/b2.md): LevelConfig.hull_landing_seconds at run speed, clear of holes, fences
+## and floor enemies' reach.
 var landing: float = 0.0
-## Metres of a pad's lane kept clear before the pad: a full jump at run speed.
+## Metres of a pad's lane kept clear before the pad: a full jump at run speed. DESIGN-TBD
+## (docs/questions/b2.md): what makes a pad one the player can step on.
 var run_up: float = 0.0
 ## Metres of a pad's lane kept clear after the pad: how far the player runs while its lift carries
-## them up to the hull.
+## them up to the hull. DESIGN-TBD, like run_up.
 var rise: float = 0.0
 ## A pad's length along its lane.
 var pad_length: float = 2.0
