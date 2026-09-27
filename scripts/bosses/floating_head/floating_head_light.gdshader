@@ -4,8 +4,9 @@
 // enemy-attack red once it lingers) and the strength; nothing flickers.
 //   shape 0, the beam: a cone, UV.y 0 at the lamp and 1 at the floor.
 //   shape 1, the spot: a flat square, UV 0-1 over it; a soft disc with a brighter rim.
-// Additive and unshaded, so it works the same on Forward+, Mobile and Compatibility; it fades out
-// far away itself, since fog would brighten an additive surface instead of hiding it.
+// Additive and unshaded, so it works the same on Forward+, Mobile and Compatibility (lifted there to
+// read as brightly); it fades out far away itself, since fog would brighten an additive surface
+// instead of hiding it.
 shader_type spatial;
 render_mode unshaded, blend_add, depth_draw_never, cull_disabled, fog_disabled, shadows_disabled;
 
@@ -31,5 +32,11 @@ void fragment() {
 		a = disc * 0.75 + rim * 0.5;
 	}
 	float fade = 1.0 - smoothstep(fade_begin, fade_end, length(VERTEX));
-	ALBEDO = to_linear(light_color) * (a * strength * fade);
+	float k = max(a * strength * fade, 0.0);
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+	// Compatibility adds light in sRGB space, where a faint additive light reads far dimmer than the
+	// same light added in linear space: lift it so the warning reads as brightly as on Forward+.
+	k = pow(k, 0.4545);
+#endif
+	ALBEDO = to_linear(light_color) * k;
 }
