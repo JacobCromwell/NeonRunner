@@ -288,6 +288,15 @@ static func enemy_uses_floor(entry: Dictionary) -> bool:
 	return t == null or t.uses_floor
 
 
+## The wall run that ramp `r` (a layout.ramps entry) launches the player into at this level's run
+## speed: where they are on the wall, how high and how fast, with the ramp's fading speed boost
+## (RampLaunch, GDD §3). Every rule that predicts a ramp's wall run asks it: the credits along it
+## (wall_run_credits), and a rule that must keep a wall hazard out of a ramp's launch (task B5: never a
+## live wall fence where a ramp launches the player into it).
+func ramp_launch(r: Dictionary) -> RampLaunch:
+	return RampLaunch.of(r, tuning, speed)
+
+
 ## A weighted random pick among the patterns that fit at track distance `at`: in their difficulty
 ## range and lane count, and with every required feature active there (feature_active). With
 ## `only`, just the patterns that require that feature. Returns {} (without drawing a random
@@ -799,21 +808,30 @@ func _place_fence_credits(rng: RandomNumberGenerator) -> void:
 		_add_credit(f["at"], "floor", f["lane"], 0, height, 5, true)
 
 
-## Credits along the wall-run path after each ramp, richer the further along (GDD §7).
+## Credits along the wall-run path after each ramp (wall_run_credits).
 func _place_wall_run_credits() -> void:
-	var values: Array[int] = [1, 1, 5, 5, 5, 25]
 	for r: Dictionary in layout.ramps:
-		var side: int = r["side"]
-		var entry_d: float = float(r["at"]) + 0.5 + speed * tuning.wall_entry_time
-		var h0: float = minf(tuning.ramp_entry_height, tuning.wall_max_height)
-		for i: int in values.size():
-			var t: float = 0.3 * (i + 1)
-			var s: float = clampf(t / tuning.wall_slide_time, 0.0, 1.0)
-			var h: float = tuning.wall_exit_height + (h0 - tuning.wall_exit_height) * (1.0 - pow(s, tuning.wall_descent_exponent))
-			var d: float = entry_d + speed * t
-			if _sign_near(side, d, 1.5):
-				break
-			_add_credit(d, "wall", layout.outer_lane(side), side, h, values[i], true)
+		layout.credits.append_array(wall_run_credits(layout, r, tuning, speed))
+
+
+## The credits along ramp `r`'s wall run in `p_layout`, richer the further along (GDD §7): each where
+## the launched player is at that moment (RampLaunch, with the ramp's fading speed boost), 0.3 s apart
+## once they're on the wall. The line stops before a sign on that wall. Entries as in
+## LevelLayout.credits; `p_speed` is the level's run speed.
+static func wall_run_credits(p_layout: LevelLayout, r: Dictionary, p_tuning: MovementTuning,
+		p_speed: float) -> Array[Dictionary]:
+	var values: Array[int] = [1, 1, 5, 5, 5, 25]
+	var side: int = int(r["side"])
+	var launch := RampLaunch.of(r, p_tuning, p_speed)
+	var out: Array[Dictionary] = []
+	for i: int in values.size():
+		var t: float = p_tuning.wall_entry_time + 0.3 * (i + 1)
+		var d: float = launch.distance_at(t)
+		if _sign_near(p_layout, side, d, 1.5):
+			break
+		out.append({"at": d, "surface": "wall", "lane": p_layout.outer_lane(side), "side": side,
+			"height": launch.height_at(t), "value": values[i], "risky": true})
+	return out
 
 
 ## A line of credits along the pad's lane on the ceiling and a rich one in the far lane.
@@ -854,7 +872,7 @@ func _drop_unsafe_credits() -> void:
 			if d > layout.length - 5.0:
 				continue
 		elif c["surface"] == "wall":
-			if _sign_near(c["side"], c["at"], 1.0):
+			if _sign_near(layout, c["side"], c["at"], 1.0):
 				continue
 		kept.append(c)
 	layout.credits = kept
@@ -867,8 +885,8 @@ func _fence_near(lane: int, d: float, margin: float) -> bool:
 	return false
 
 
-func _sign_near(side: int, d: float, margin: float) -> bool:
-	for s: Dictionary in layout.signs:
+static func _sign_near(p_layout: LevelLayout, side: int, d: float, margin: float) -> bool:
+	for s: Dictionary in p_layout.signs:
 		if s["side"] == side and d >= s["start"] - margin and d <= s["end"] + margin:
 			return true
 	return false
