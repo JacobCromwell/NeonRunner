@@ -119,8 +119,9 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 @export_range(1.0, 30.0, 0.5, "suffix:s") var burst_seconds: float = 8.0
 @export_range(0.2, 10.0, 0.05, "suffix:s") var quiet_spacing_seconds: float = 4.0
 @export_range(0.2, 4.0, 0.05, "suffix:s") var burst_spacing_seconds: float = 0.9
-## Features whose enemy patterns belong to the quiet stretches: picked there, and not in bursts (The
-## Hush: its hosts, standing alone in the silence; a chase starts only if the player kills one).
+## Features whose enemy patterns belong to the quiet stretches: picked there, with their enemies
+## inside the stretch, and not in bursts (The Hush: its hosts, standing alone in the silence; a chase
+## starts only if the player kills one).
 @export var quiet_features: PackedStringArray = PackedStringArray()
 
 @export_group("Fairness rules")

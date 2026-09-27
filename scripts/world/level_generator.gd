@@ -285,6 +285,23 @@ func prefers_bursts(feature: String) -> bool:
 	return config.paced_in_bursts() and not config.quiet_features.has(feature)
 
 
+## For a rule guaranteeing one of `feature`'s enemies at one of `spots`: the spots to try first and
+## the rest, in that order. In a level paced in bursts, those in a burst come first (prefers_bursts),
+## or for one of its quiet_features those in a quiet stretch; in a level paced evenly, just `spots`.
+func pacing_pools(spots: Array[float], feature: String) -> Array[Array]:
+	if not config.paced_in_bursts():
+		return [spots]
+	var first: Array[float] = []
+	var rest: Array[float] = []
+	var quiet_feature: bool = config.quiet_features.has(feature)
+	for s: float in spots:
+		if quiet_at(s) == quiet_feature:
+			first.append(s)
+		else:
+			rest.append(s)
+	return [first, rest]
+
+
 ## For a rule guaranteeing one of `feature`'s enemies (prefers_bursts): a spot drawn with `rng` from
 ## the bursts within `lo`–`hi` (each metre of burst equally likely). NAN, drawing nothing, when the
 ## feature needn't be in a burst or no burst lies there: the rule then picks its spot as usual.
@@ -307,10 +324,11 @@ func burst_spot(rng: RandomNumberGenerator, lo: float, hi: float, feature: Strin
 
 ## True if `pattern` may be picked at `at` in a level paced in bursts (GDD §5, The Hush: long silent
 ## stretches broken by sudden threats):
-## - a pattern that places enemies and requires only quiet_features belongs to the quiet stretches
-##   (The Hush's hosts stand alone in the silence); any other that places enemies must start in a
-##   burst and place its enemies before that burst ends, so a burst's threats appear in the burst
-##   (an Octodog's charges or a hover truck's stay may still run on after it);
+## - a pattern that places enemies and requires only quiet_features belongs to the quiet stretches:
+##   it must start in one and place its enemies before it ends (The Hush's hosts stand alone in the
+##   silence); any other that places enemies must start in a burst and place its enemies before that
+##   burst ends, so a burst's threats appear in the burst (an Octodog's charges or a hover truck's
+##   stay may still run on after it);
 ## - a burst takes only threats: patterns with a hole, a fence, a sign or an enemy. Safe mechanics
 ##   alone (a plain ceiling, a ramp, a speed pad) go in the quiet stretches, with sparse obstacles.
 func _pacing_allows(pattern: Dictionary, at: float) -> bool:
@@ -332,9 +350,7 @@ func _pacing_allows(pattern: Dictionary, at: float) -> bool:
 		if not config.quiet_features.has(String(need)):
 			quiet_ok = false
 			break
-	if quiet_ok:
-		return quiet
-	return not quiet and at + last_enemy < stretch_end(at)
+	return quiet == quiet_ok and at + last_enemy < stretch_end(at)
 
 
 ## Track distance from which `feature` may place anything: its share of the level from

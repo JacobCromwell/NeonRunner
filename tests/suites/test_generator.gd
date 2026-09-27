@@ -627,10 +627,10 @@ func _weights_by_id(pool: Dictionary) -> Dictionary:
 
 ## Quiet stretches and bursts (LevelConfig.quiet_seconds; GDD §5, The Hush: long silent stretches
 ## broken by sudden threats): the stretches alternate from the level's first pattern, quiet first; a
-## quiet stretch picks no enemy but its quiet features', which it keeps, and stays sparse; a burst
-## picks only threats, densely, its enemies inside it; rules that guarantee an enemy put it in a burst
-## (burst_spot). Every
-## rule, fairness check and the guarantee still hold, at 3, 5 and 6 lanes, and it's deterministic.
+## quiet stretch picks no enemy but its quiet features', which it keeps inside it, and stays sparse;
+## a burst picks only threats, densely, its enemies inside it; rules that guarantee an enemy put it in
+## a burst, or a quiet feature's in a quiet stretch (burst_spot, pacing_pools). Every rule, fairness
+## check and the guarantee still hold, at 3, 5 and 6 lanes, and it's deterministic.
 ## With quiet_seconds 0 the other settings change nothing.
 func _test_pacing(base: LevelConfig) -> void:
 	var paced: LevelConfig = base.duplicate() as LevelConfig
@@ -657,6 +657,7 @@ func _test_pacing(base: LevelConfig) -> void:
 	var enemies: Array[int] = [0, 0, 0]
 	var rows: Array[int] = [0, 0, 0]
 	var hosts: int = 0
+	var quiet_hosts: int = 0
 	var bursts: int = 0
 	var on_time: int = 0
 	for lanes: int in [3, 5, 6]:
@@ -720,7 +721,9 @@ func _test_pacing(base: LevelConfig) -> void:
 						last_enemy = maxf(last_enemy, float(e.get("at", 0.0)) + float(e.get("at_seconds", 0.0)) * speed)
 				var at: float = float(p["at"])
 				if gen.quiet_at(at):
-					check(last_enemy < 0.0 or quiet_feature, "a quiet stretch picks no enemy but its quiet features' (%s at %.0f) %s" % [p["id"], at, tag])
+					check(last_enemy < 0.0 or (quiet_feature and at + last_enemy < gen.stretch_end(at)),
+						"a quiet stretch picks no enemy but its quiet features', whose enemies stand in it (%s at %.0f) %s"
+						% [p["id"], at, tag])
 				else:
 					check(threat, "a burst picks only threats (%s at %.0f) %s" % [p["id"], at, tag])
 					check(last_enemy < 0.0 or (not quiet_feature and at + last_enemy < gen.stretch_end(at)),
@@ -729,6 +732,7 @@ func _test_pacing(base: LevelConfig) -> void:
 			for e: Dictionary in layout.enemies:
 				if String(e["type"]) == "cyborg" and bool((e.get("params", {}) as Dictionary).get("host", false)):
 					hosts += 1
+					quiet_hosts += 1 if gen.quiet_at(float(e["at"])) else 0
 				else:
 					enemies[0 if gen.quiet_at(float(e["at"])) else 1] += 1
 			for at: float in _row_starts(layout):
@@ -746,8 +750,9 @@ func _test_pacing(base: LevelConfig) -> void:
 	var quiet_r: float = rows[0] / metres[0] * 100.0
 	var burst_r: float = rows[1] / metres[1] * 100.0
 	var even_r: float = rows[2] / metres[2] * 100.0
-	print("  quiet stretches and bursts, per 100 m: enemies %.2f quiet, %.2f in bursts, %.2f paced evenly; obstacle rows %.2f, %.2f, %.2f; %d hosts in 18 levels"
-		% [quiet_e, burst_e, even_e, quiet_r, burst_r, even_r, hosts])
+	print("  quiet stretches and bursts, per 100 m: enemies %.2f quiet, %.2f in bursts, %.2f paced evenly; obstacle rows %.2f, %.2f, %.2f; %d hosts in 18 levels, %d in quiet stretches"
+		% [quiet_e, burst_e, even_e, quiet_r, burst_r, even_r, hosts, quiet_hosts])
+	check(quiet_hosts == hosts, "a quiet feature's enemies stand in the quiet stretches (%d of %d hosts)" % [quiet_hosts, hosts])
 	check(quiet_e < burst_e * 0.25, "quiet stretches have few enemies (%.2f per 100 m, bursts %.2f)" % [quiet_e, burst_e])
 	check(quiet_r < burst_r * 0.8, "and sparse obstacles (%.2f rows per 100 m, bursts %.2f)" % [quiet_r, burst_r])
 	check(burst_e > even_e and burst_r > even_r * 0.9,
@@ -755,7 +760,7 @@ func _test_pacing(base: LevelConfig) -> void:
 		% [burst_e, even_e, burst_r, even_r])
 	check(on_time == bursts, "every burst begins on time (%d of %d)" % [on_time, bursts])
 
-	# Rules that guarantee an enemy put it in a burst (the host, a quiet feature here, anywhere).
+	# Rules that guarantee an enemy put it in a burst, a quiet feature's (the host here) in a quiet stretch.
 	var gen := LevelGenerator.new()
 	gen.generate(paced, tuning, patterns)
 	var rng := RandomNumberGenerator.new()
@@ -765,15 +770,30 @@ func _test_pacing(base: LevelConfig) -> void:
 		var at: float = gen.burst_spot(rng, 500.0, 2000.0, "drone")
 		in_bursts = in_bursts and not is_nan(at) and at >= 500.0 and at <= 2000.0 and not gen.quiet_at(at)
 	check(in_bursts, "burst_spot draws spots in bursts")
-	check(is_nan(gen.burst_spot(rng, 500.0, 2000.0, "host")), "a quiet feature's guaranteed enemy goes anywhere")
+	check(is_nan(gen.burst_spot(rng, 500.0, 2000.0, "host")), "burst_spot draws nothing for a quiet feature")
 	check(is_nan(gen.burst_spot(rng, 70.0, 300.0, "drone")), "with no burst in reach, the rule picks its spot as usual")
+	var spots: Array[float] = []
+	for i: int in 150:
+		spots.append(500.0 + i * 10.0)
+	var drone_pools: Array[Array] = gen.pacing_pools(spots, "drone")
+	var host_pools: Array[Array] = gen.pacing_pools(spots, "host")
+	var pools_ok: bool = drone_pools.size() == 2 and host_pools.size() == 2 and not drone_pools[0].is_empty() \
+		and not host_pools[0].is_empty() and drone_pools[0].size() + drone_pools[1].size() == spots.size() \
+		and drone_pools[0].size() == host_pools[1].size()
+	for at: float in drone_pools[0]:
+		pools_ok = pools_ok and not gen.quiet_at(at)
+	for at: float in host_pools[0]:
+		pools_ok = pools_ok and gen.quiet_at(at)
+	check(pools_ok, "pacing_pools offers a burst's spots first, and a quiet feature's the quiet stretches' (%d, %d of %d)"
+		% [drone_pools[0].size(), host_pools[0].size(), spots.size()])
 	var even_gen := LevelGenerator.new()
 	var even_config: LevelConfig = paced.duplicate() as LevelConfig
 	even_config.quiet_seconds = 0.0
 	even_gen.generate(even_config, tuning, patterns)
 	var state: int = rng.state
 	check(is_nan(even_gen.burst_spot(rng, 500.0, 2000.0, "drone")) and rng.state == state and even_gen.quiet_stretches().is_empty()
-		and not even_gen.quiet_at(600.0) and even_gen.burst_index(600.0) == -1,
+		and not even_gen.quiet_at(600.0) and even_gen.burst_index(600.0) == -1
+		and even_gen.pacing_pools(spots, "drone") == [spots] and even_gen.pacing_pools(spots, "host") == [spots],
 		"a level paced evenly has no quiet stretches or bursts, and draws nothing for them")
 
 	# quiet_seconds 0 switches it all off: the other settings change nothing.

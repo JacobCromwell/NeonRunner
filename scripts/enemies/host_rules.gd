@@ -33,8 +33,8 @@ extends RefCounted
 ##   and ceilings' landing zones (CyborgRules), out of the way of every pad (CeilingZones.enemy_clear),
 ##   clear of other enemies and of a hover truck's lane while the truck is about
 ##   (HoverTruckRules.open_lanes). DESIGN-TBD: the spot is picked at random among those that fit (in
-##   a level paced in bursts, among those in a burst first, unless hosts are one of its quiet
-##   features, as in The Hush: LevelGenerator.prefers_bursts).
+##   a level paced in bursts, among those in a burst first, or in a quiet stretch first where hosts
+##   are one of its quiet features, as in The Hush: LevelGenerator.pacing_pools).
 ## Like the cyborg rules they start with, these run after the hover truck's (its route ramp). The
 ## Octodog's rules run after these and plan each dog's charges off the chases (octodog_rules.gd;
 ## GDD §9.7: a Bad Dream is never on during an Octodog charge sequence).
@@ -133,18 +133,9 @@ static func _add_guaranteed(gen: LevelGenerator, t: BadDreamTuning, rng: RandomN
 			spots.append(at)
 		at += GUARANTEE_STEP
 	var pick: RandomNumberGenerator = gen.rng_for("host_guarantee")
-	# In a level paced in bursts, a host goes in a burst unless hosts are one of its quiet features.
-	var pools: Array[Array] = [spots]
-	if gen.prefers_bursts("host"):
-		var burst: Array[float] = []
-		var rest: Array[float] = []
-		for s: float in spots:
-			if gen.quiet_at(s):
-				rest.append(s)
-			else:
-				burst.append(s)
-		pools = [burst, rest]
-	for pool: Array[float] in pools:
+	# In a level paced in bursts, a host goes in a burst, or in a quiet stretch where hosts are one of
+	# its quiet features (The Hush).
+	for pool: Array[float] in gen.pacing_pools(spots, "host"):
 		while not pool.is_empty():
 			var spot: float = pool.pop_at(pick.randi_range(0, pool.size() - 1))
 			var plan: Dictionary = plan_pads(gen, t, rng, t.chase_stretch(spot, speed), pads_before)

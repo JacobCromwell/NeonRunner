@@ -490,10 +490,11 @@ func _test_recency(campaign: Campaign) -> void:
 ## The Hush (GDD §5, decided September 26, 2026): "a quiet, eerie remix: fewer enemies but more hosts
 ## and Bad Dream chases, darker lighting, and long silent stretches broken by sudden threats". All of
 ## it is The Hush's own data, which no other level uses: quiet stretches and bursts, hosts picked more
-## often and allowed in the quiet stretches (a chase starts only if the player kills one), and its
+## often and placed in the quiet stretches (a chase starts only if the player kills one), and its
 ## darkness (_test_darker_lighting). Generated at 3, 5 and 6 lanes on its own seed and others, it has
-## fewer enemies than Dead Zone 1 and than itself without the remix, more hosts, no enemy but hosts
-## picked in its quiet stretches, and bursts far denser than its quiet stretches.
+## fewer enemies than Dead Zone 1 and than itself without the remix, more hosts, every one of them in
+## a quiet stretch, no enemy but hosts picked in its quiet stretches, and bursts far denser than its
+## quiet stretches.
 func _test_hush(campaign: Campaign) -> void:
 	var hush: CampaignStep = campaign.step("dead_zone/2")
 	var ash: CampaignStep = campaign.step("dead_zone/1")
@@ -538,7 +539,10 @@ func _test_hush(campaign: Campaign) -> void:
 					var host: bool = String(e["type"]) == "cyborg" and bool((e.get("params", {}) as Dictionary).get("host", false))
 					hosts[which] += 1 if host else 0
 					enemies[which] += 0 if host else 1
-					if which == 0 and not host:
+					if which == 0 and host:
+						check(gen.quiet_at(float(e["at"])), "its hosts stand in its quiet stretches, where one is easy to reach (at %.0f) %s"
+							% [float(e["at"]), tag])
+					elif which == 0:
 						if gen.quiet_at(float(e["at"])):
 							quiet_enemies += 1
 						else:
