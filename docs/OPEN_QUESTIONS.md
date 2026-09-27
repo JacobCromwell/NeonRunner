@@ -751,6 +751,38 @@ play it with `--boss=city_boss` in debug builds)
     lock's clack and two-tone alarm, a falling whistle, a blast, and the reveal's tube thunk, static and blare. Do they
     fit?
 
+**Big attacks take turns** (from R3; the switch is `big_attacks_take_turns` in `data/tuning/game_rules.tres`, on, F6 "Game
+rules"; switched off, the game plays exactly as before; measure with `tools/measure/big_attacks.gd`)
+93. **Which attacks count as big** (GDD §9): the Octodog's whole charge sequence (so nothing else attacks between its
+    charges), the drone's wind-up and barrage, the hover truck's rev and lurch and its cannon's charge and volley, and the
+    Bad Dream's whole chase. Small (not taking turns): a cyborg's burst, a window cyborg's shots, a screech's swipe. Not
+    counted: the hover truck's entrance, whose moment the generator plans, so it can't wait (a big attack was open during
+    about 13 s of truck entrances over the measured runs). Right list? Should the entrance count (the others would then
+    be held off a few seconds before each one)?
+94. **When a big attack is over:** when nothing of it can still reach the player: the lunge has passed, the lurch has
+    ended, and the last bullet, shell or bolt is 0.5 m behind the player or gone. A warning never waits once it has
+    started. OK?
+95. **The Bad Dream's chase holds every other type's big attack for its 20–30 s** (§9.7 already held Octodog charges and
+    drone barrages; now a hover truck's lurch and cannon wait too). In Golden 3 at 5 lanes a truck arriving mid-chase
+    gets one lurch and no cannon shot (3 shots and a lurch without the rule). The other way: count only its slashes, so
+    others attack between them. Which?
+96. **Who goes first, and how long an Octodog waits:** of the enemies waiting, the one that has waited longest goes next,
+    so none waits for ever. While waiting they carry on (a drone follows, a truck holds back or paces; a cannon shot that
+    doesn't get its turn before the truck's pacing ends is skipped). An Octodog paces in front of the player and its
+    planned charges move on with it for up to 4 s (`turn_wait_max`), keeping the planner's margins; then it runs off as
+    before. OK?
+97. **Keep the rule after playtesting?** Measured over every campaign level at 3, 5 and 6 lanes (45 simulated runs,
+    6,298 s): **without it**, big attacks of different types overlap for 60.5 s in all (61 times in 25 runs; 1.3 s a run
+    on average, 7.3 s at worst in Dead Zone 2 at 3 lanes), mostly a drone barrage with a truck's lurch or cannon (40 s);
+    **with it**, never. The cost: 12% of the trucks' cannon shots, 6% of their lurches and 4% of drone barrages; no
+    Octodog charge or Bad Dream slash lost. One attack in eleven waits: a barrage 1.6 s on average (up to 5 s), a lurch
+    3.1 s (up to 9 s, in a chase), a cannon shot 1.6 s, an Octodog 2 s.
+98. **The enemies still to come** (proposals for their tasks): Buzz Overdrive's rev and charge are big, but the generator
+    plans its cut, so like the truck's entrance it can't wait (the others would be held off before its rev); the
+    Resonator's pulse is big; the Gilded Sentinel's halberd swing (its wall section and the outer lane): big or small?;
+    the Barnacle Turret's burst is small (its "one fires at a time" stays its own rule); the Tithe Collector isn't an
+    attack.
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
