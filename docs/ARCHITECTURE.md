@@ -120,9 +120,10 @@ every attempt at a seed plays out the same way. Setting `is_host` also sets `imm
 splash, the same way a fence generator declares its own immunity (GDD §9.1), so no targeting, no
 damage and no health bar; only a stomp, the claws or the dash still kill it, with the host bonus.
 Every attack needs a visual **and** audio warning before it can hurt (CLAUDE.md readability rules).
-Enemy fire uses the pool's red "enemy_*" looks in every zone. `world.skin.enemy_variant` (`&"city"` or `&"scavenger"`) picks the zone look: the other
-enemies weather by it, and the cyborgs dress in the look `CyborgSuit.look_for()` finds for it (every
-variant wears the base screen-head look until the zone variants of task P3 exist; see Characters).
+Enemy fire uses the pool's red "enemy_*" looks in every zone. `world.skin.enemy_variant` picks the
+zone look: the cyborgs (window cyborgs and hosts too) dress in the zone variant
+`CyborgSuit.look_for()` finds for it (see Zone skins for each zone's value, and Characters), and the
+other enemies weather by it (`&"scavenger"` weathered, any other value the clean `&"city"` look).
 
 A level uses an enemy only if its `features` list has the type's name (GDD §6: one new thing at a
 time), from the feature's start if the level gives it one (The generator). Quick play can add
@@ -352,8 +353,25 @@ Skins so far: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2) and `M
 may get its own). The real skins build on the mesh kit (`scripts/world/meshes/`): `MeshKit` has
 shared builders for hazards, triggers and environments, and `MeshLayer` batches a chunk's geometry.
 The shaders in `scripts/world/meshes/shaders/` are procedural. `HazardStateVisual` swaps a hazard's
-ON / WARNING / OFF materials. A skin's `enemy_variant` (`&"city"` or `&"scavenger"`) picks the
-enemies' look (the cyborgs' through `CyborgSuit.look_for()`).
+ON / WARNING / OFF materials. A skin's `enemy_variant` picks the enemies' look: the cyborgs' zone
+variant (GDD §9.2, through `CyborgSuit.look_for()`) and the other enemies' weathering (drones, hover
+trucks, Octodogs and screeches weather on `&"scavenger"` and stay clean on anything else). Each zone's
+value, the one thing a new zone's skin sets for its enemies:
+
+| Zone | `enemy_variant` | Cyborgs | Other enemies |
+|---|---|---|---|
+| Neon City | `&"city"` | the base (Static TV Head) | clean |
+| Gangland | `&"scavenger"` | the Broadcast Brute | weathered |
+| Marketplace | `&"casino"` | the Casino Mob Enforcer | clean |
+| Corporate (D4) | `&"vr_runner"` | the Wide-Aspect VR Runner | clean |
+| Dead Zone (D5) | `&"burned"` | the base, burned out | clean |
+| Golden Zone (D6a) | `&"golden"` | the ceremonial enforcer | clean |
+
+The City and Gangland keep their older names because they also pick the other enemies' weathering
+(`CyborgSuit.VARIANT_LOOKS` maps them); every other zone sets its cyborg look's own name. A zone that
+also wants the weathered enemies (the Dead Zone might) needs those enemies to treat its name like
+`&"scavenger"` (a line in each one's look code). The zones still on the grey box wear the base until
+their skins exist; `--variant=` in the enemy showcase shows any look now.
 
 The kit's solid shader (`kit_solid.gdshader`) draws surface patterns chosen per vertex (`MeshKit.PAT_*`):
 panels, glass, glyphs and chevrons for the City; worn asphalt (with sand drifts and scorch around holes),
@@ -505,26 +523,41 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
   - **Colour rule:** the player's only glow on the base model is its soft copper (`PlayerSuit.GLOW`);
     `test_avatar` keeps it and the effects built from it at least 0.3 from every skin's hazard colours
     and enemy fire on the hue and saturation wheel, and power-up looks never use it.
-  - **The cyborgs** (GDD §9.2; task P2): `CyborgSuit` builds one `HumanoidParts` whose attachment
-    sets are the looks (`LOOKS`; so far only `&"base"`, the ragged "Static TV Head" gangster from the
-    owner's concept sheet) plus `&"host"` (a host's purple veins, worn on top). Only the boot soles and
-    the arm cannon's emitter ring and charge orb are shared by every look (the soles ground the rig; the
-    charge-up must look the same in every zone). `look_for(variant)` maps a skin's `enemy_variant` to a
-    look, falling back to the base, so zone variants (task P3) are new attachment sets, built from the
-    base's part builders (`_screen_head`, `_hoodie`, `_vest`, `_backpack`, `_free_arm`, `_cyber_arm`,
-    `_legs`), with an entry in `LOOKS`, a mapping in `look_for` and, if their screen differs, their own
-    `screen_rect` and screen wear (`new_material`: `flicker`, `crack`). A cyborg is 11 draw calls (a
-    window cyborg's upper body 7): hands and feet ride on the forearms and shins, and the neck, backpack
-    and cables on the chest. The cables and the shoulder hose belong to the chest and end inside the TV
-    and the shoulder cap near their joints (`HEAD_CABLES`, `ARM_HOSE`), so they stay plugged in however
-    the head and arm turn. `cyborg_body.gdshader` draws the screen head's face from marked pieces
-    (`SCREEN`, `RING`, `ORB`, `VEIN` glow values): the pixel faces of `cyborg_kit.gd` as LED dots in the
-    cult feed's cold white, averaged through mipmaps far away so a face a few pixels across keeps its
-    shape; a host's purple static; the switch-off after a defeated cyborg's ERR. `CyborgPoses` gives
-    them their posture (hunched, a shambling limp, twitches and a tremor added after the blend).
-    `test_cyborg_body` pins the hitboxes, budgets and colour rules: nothing on a cyborg glows but the
-    cold white face, the red charge-up and a host's purple; nothing is copper, purple only on hosts,
-    no hazard or "safe" colour anywhere.
+  - **The cyborgs** (GDD §9.2; tasks P2 and P3): `CyborgSuit` builds one `HumanoidParts` whose
+    attachment sets are the looks (`LOOKS`) and their hosts' veins. The looks are the ragged "Static TV
+    Head" base (P2, in `cyborg_suit.gd`) and its zone variants (P3), one file each in
+    `scripts/enemies/cyborg_looks/`: `brute.gd` (Gangland's Broadcast Brute), `casino.gd` (the
+    Marketplace's Casino Mob Enforcer), `vr_runner.gd` (Corporate's Wide-Aspect VR Runner), `burned.gd`
+    (the Dead Zone's base, burned out) and `golden.gd` (the Golden Zone's ceremonial enforcer, built
+    by `casino.gd`'s `build()` with its own palette). They are the same unit: one skeleton, the same
+    poses and hitboxes, the same face expressions, and only the boot soles and the weapon's emitter
+    ring and charge orb shared by every look (the soles ground the rig; the charge-up must look the
+    same in every zone), so every weapon (the arm cannon, the Brute's pipe gun, the enforcers' drum
+    gun, the VR Runner's chrome cannon) ends at the same muzzle (`MUZZLE`). No look is bigger than the
+    base. `look_for(variant)` maps a skin's `enemy_variant` to a look: a look's own name picks it,
+    `VARIANT_LOOKS` maps the City's and Gangland's older names, anything else wears the base (Zone
+    skins lists each zone's value). A look file gives `pieces()` (its set), `veins()` (its hosts' set,
+    `host_set(look)`; the burned base's hosts wear the base's `&"host"` set) and `material_params()`
+    (its changes to the shader's uniforms over the base's, `look_params()`: the screen's rectangle, wear
+    and LED shape, how metallic its polish is, its marked surfaces). The helpers at the end of
+    `cyborg_suit.gd` build the pieces: `add`, `pipe`, `bar`, `cable`, `vein`, and `patch` (a flat
+    decal, one quad: scorch, trim, engraving, a torn strip) with `facing` to turn it onto a surface.
+    A cyborg is 11 draw calls in every look (a window cyborg's upper body 7): hands and feet ride on
+    the forearms and shins, and the neck, backpack and cables on the chest. The cables and the shoulder
+    hose belong to the chest and end inside the head and the shoulder cap near their joints
+    (`HEAD_CABLES`, `ARM_HOSE`), so they stay plugged in however the head and arm turn.
+    `cyborg_body.gdshader` draws marked pieces (glow values `SCREEN`, `RING`, `ORB`, `VEIN`, `GLASS`,
+    `EMBLEM`, `STRIPES`): the pixel faces of `cyborg_kit.gd` as LED dots (round, or diamonds on the
+    enforcers) in the cult feed's cold white on the look's screen (the VR visor has its own face grid,
+    `VISOR_FACES`), averaged through mipmaps far away so a face a few pixels across keeps its shape; a
+    host's purple static; the switch-off after a defeated cyborg's ERR; the burned screen's flicker and
+    crack; the Brute's dim side screens; the Golden Zone's medallion with the cult's emblem (faded out
+    below about 24 pixels, as the skins do); and pinstripes. `CyborgPoses` gives every look its
+    posture (hunched, a shambling limp, twitches and a tremor added after the blend).
+    `test_cyborg_body` runs every check over every look: the hitboxes, budgets and size, the weapons,
+    and the colour rules: nothing on a cyborg glows but the cold white face and screens, the red
+    charge-up and a host's purple; nothing is copper, purple only on hosts, no hazard or "safe" colour
+    anywhere; gold and chrome only as unlit, polished ornament, the grimy looks dull.
 - **UI:** a theme built in code (`scripts/ui/theme/`: `UiStyle` in `data/ui/ui_style.tres`,
   `UiTheme`), code-drawn icons (`scripts/ui/icons/`) and a widget kit (`scripts/ui/widgets/`). Screens
   (`scripts/ui/screens/`) extend `ScreenBase`; the HUD is `RunHud`. Orbitron is for titles and Exo 2
@@ -784,7 +817,9 @@ side; `avatar_run_review`: a scripted run through the game camera on any zone's 
 power-up look), ramps and walls (`ramp_wall_review`: a ramp launch with the credits along its wall
 run, and blocked wall entries at a low and a high sign, through the game camera or a close one),
 the enemies (`enemy_showcase` for the cyborg family: poses, the faces close up, a turnaround, window
-cyborgs, and a far view through the run camera where the expressions must read; `octodog_screech`,
+cyborgs, and a far view through the run camera where the expressions must read, in any zone's look
+(`--variant=`, or ui_left / ui_right live), and every look side by side (`lineup`, front, back, as
+hosts or aiming, and `lineup_far` at gameplay distance); `octodog_screech`,
 `drone_truck_showcase`, `bad_dream_showcase`), a boss (`floating_head_showcase`), the UI kit, the
 screens, a zone skin (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed
 screens and emblems a skin lists, or a scripted run with a ceiling ride and a wall run), and comparison

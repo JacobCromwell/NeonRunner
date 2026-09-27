@@ -138,7 +138,10 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     a gold cybernetic arm and a copper ocular implant
   - the cyborgs: ragged, strung-out gangsters whose whole head is a beat-up CRT television, its screen
     their cold white LED face (calm, aiming, a shocked "O", ERR when defeated), with a backpack cabled
-    into the head and a scavenged arm cannon; hosts glitch purple and wear purple veins
+    into the head and a scavenged arm cannon; hosts glitch purple and wear purple veins. Each zone has
+    its own version of the same unit: Gangland's caged Broadcast Brute with a pipe gun, the
+    Marketplace's gilded Casino Mob Enforcer with a drum-fed gun, Corporate's Wide-Aspect VR Runner, the
+    Dead Zone's burned-out TV head, and the Golden Zone's ceremonial enforcer wearing the cult's emblem
   - the City, Gangland and Marketplace zone looks, with the cult's feed on screens and its emblem hidden
     in ads in all three
   - neon UI screens and HUD
@@ -210,9 +213,10 @@ F6 panel) and without, and how much taking turns delays them:
 - **Screens:** every screen at desktop and touch sizes.
 - **The runner:** Razor Echo's poses on every surface, the coat's panels (never through the legs or the
   ground), the budgets, the power-up looks, and its copper glow kept clear of every hazard colour.
-- **The cyborgs' look:** hitboxes pinned to their sizes, the budgets, the colour rules (only the cold white
-  face, the red charge-up and a host's purple glow), faces that still differ a few pixels across, and ERR
-  before a defeated cyborg's screen goes dark.
+- **The cyborgs' look:** in every zone's look, hitboxes pinned to their sizes and no look bigger than the
+  base, the budgets, every weapon ending in the same red charge-up, the colour rules (only the cold white
+  face, the red charge-up and a host's purple glow), faces that still differ a few pixels across (the VR
+  visor's too), and ERR before a defeated cyborg's screen goes dark.
 - **Zone skins:** all three skins, including a check that none adds collision, and the build budget; for
   Gangland and the Marketplace the colour rule (only hazards glow in hazard colours) and ceilings a runner
   can read upside down, for the Marketplace gaps that read as holes, its clear play space and walls and
