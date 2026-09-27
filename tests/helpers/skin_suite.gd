@@ -185,6 +185,62 @@ func showcase_track(skin: ZoneSkin) -> TrackBuilder:
 	return track
 
 
+## Builds a whole level chunk by chunk and calls visit(mesh, arrays, material) once for every surface
+## of every chunk's meshes (the debug hitbox left out), while the mesh is still in the tree, for
+## checks on what a skin puts where.
+func visit_level(layout: LevelLayout, skin: ZoneSkin, visit: Callable) -> void:
+	var world := Node3D.new()
+	tree.root.add_child(world)
+	var track := TrackBuilder.new()
+	world.add_child(track)
+	track.set_layout(layout, tuning, skin)
+	var seen: Dictionary = {}
+	var d: float = 0.0
+	while d <= layout.length + TrackBuilder.RUN_OUT + TrackBuilder.CHUNK_LENGTH:
+		track.update(d, d / tuning.run_speed)
+		for chunk: Node in track.get_children():
+			if seen.has(chunk):
+				continue
+			seen[chunk] = true
+			for node: Node in nodes_of(chunk, func(n: Node) -> bool: return n is MeshInstance3D):
+				var m := node as MeshInstance3D
+				if m.mesh == null or m.is_in_group(&"debug_hitbox"):
+					continue
+				for s: int in m.mesh.get_surface_count():
+					visit.call(m, m.mesh.surface_get_arrays(s), m.mesh.surface_get_material(s))
+		d += TrackBuilder.CHUNK_LENGTH
+	world.queue_free()
+	await tree.process_frame
+
+
+## The rectangles (MeshLayer.rect(), six vertices each) among a surface's vertices, in world space:
+## for each, its corners o (UV's start), o + v and o + u, its UV at o and at the far corner, its
+## colour and its pattern (UV2.x). Surfaces made only of rects (screens, marks) split exactly.
+static func rects_of(m: MeshInstance3D, arrays: Array) -> Array[Dictionary]:
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+	var uvs: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
+	var uv2s: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV2]
+	var out: Array[Dictionary] = []
+	for i: int in range(0, verts.size() - 5, 6):
+		var o: Vector3 = m.global_transform * verts[i]
+		var ov: Vector3 = m.global_transform * verts[i + 1]
+		var ou: Vector3 = m.global_transform * verts[i + 5]
+		out.append({"o": o, "ov": ov, "ou": ou, "center": (ov + ou) * 0.5, "uv0": uvs[i], "uv1": uvs[i + 2],
+			"color": colors[i], "pattern": roundi(uv2s[i].x), "normal": (ou - o).cross(ov - o).normalized()})
+	return out
+
+
+## Whether `node` hangs under a hazard (a fence's or a sign's visuals).
+static func under_hazard(node: Node) -> bool:
+	var parent: Node = node.get_parent()
+	while parent != null:
+		if parent is Hazard:
+			return true
+		parent = parent.get_parent()
+	return false
+
+
 func free_track(track: TrackBuilder) -> void:
 	track.get_parent().queue_free()
 	await tree.process_frame

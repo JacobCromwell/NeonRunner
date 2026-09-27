@@ -684,6 +684,22 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
     fence below (its field reaches 2.1 m) fills the bottom of the screen with pink for about 0.25 s. Harmless, but it
     could read as a hit. Raise the ceiling camera (say to 3 m)?
 
+**The cult's feed and emblem in the City and Gangland** (from D9; what the feed shows is item 52)
+76. **Where the feed plays in the Neon City** (GDD §5): the City has no shop windows at the play field, so 35% of the low
+    buildings' roof billboards show it, and 40% of the towers flush with the street hang a big screen (4.8 m wide, its
+    bottom 12–16 m up) out over the street facing the traffic: about one hung screen every 170 m and one feed billboard
+    every 210 m. The right places and amounts?
+77. **Where the emblem hides in the City:** a 1.4 m sponsor's badge in the corner of 40% of the roof billboard ads and a
+    brand mark at the foot of 40% of the towers' neon banners, in its warm-white neon, never on hazard signs, never below
+    0.9 m: about one every 50 m, usually too small or edge-on to notice from the lanes. Right amount? Should it also
+    brand the hover trucks' containers or the ships (they are play surfaces)?
+78. **Where the feed plays in Gangland:** 35% of the overpasses' gantry billboards are salvaged screens playing it, and
+    30% of the tall ruins have a TV glowing with it in one upper window (9.9 m up or higher). The paper corporate ads in
+    the wall-run band stay paper. Should the bombed-out buildings bridging the street show a TV too?
+79. **A TV in a window next to window cyborgs** (GDD §9.2 readability): the feed's loop shows a screen-head face, so a TV
+    could look a little like a window cyborg's face. The TVs stay well above the band window cyborgs use, small, dim, in
+    a dark room, and the face shows 7 s of the 18 s loop. Distinct enough, or should Gangland's TVs leave the face out?
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
