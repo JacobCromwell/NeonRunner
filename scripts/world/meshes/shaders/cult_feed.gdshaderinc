@@ -46,7 +46,7 @@ vec4 cf_phases(float t) {
 
 // A screen-head face: the cyborgs' calm face (cyborg_kit.gd, Face.NEUTRAL, 9 LEDs to the screen's
 // height) drawn smooth: eyes three LEDs across, two rows above the middle and three either side of
-// it, and a mouth seven across two rows below, the eyes drifting.
+// it, and a mouth seven across two rows below, the eyes drifting (docs/questions/p2.md 8).
 float cf_face(vec2 p, float t, float aa) {
 	float look = 0.04 * sin(t * 0.5);
 	float eyes = min(cf_round_box(p - vec2(-0.333 + look, 0.222), vec2(0.14, 0.14), 0.045),

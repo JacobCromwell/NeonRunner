@@ -14,6 +14,7 @@ extends RefCounted
 ## the right shoulder; and a scavenged cyber arm on the right that ends in the arm cannon (the arm the
 ## cyborgs fire from). The left arm is a thin one in the hoodie's sleeve, with a bare, bony hand.
 ## Posture (gaunt, hunched, twitchy) is CyborgPoses'.
+## DESIGN-TBD (docs/questions/p2.md 7): the details read off the sheet.
 ##
 ## Colour rules (GDD §9.2): the clothing is grimy khaki, olive, brown and faded grey; the metal rusted
 ## steel and gunmetal, dull and unlit (the sheet's brass arm is rusted steel here). Nothing on it
@@ -478,6 +479,7 @@ static func _legs(list: Array[HumanoidPiece]) -> void:
 ## front of the hoodie's sleeve onto the back of the hand, and along the front of the cyber arm and
 ## its cannon (the side the player sees). Purple on a cyborg always and only means "host", so only
 ## hosts wear this set.
+## DESIGN-TBD (docs/questions/p2.md 4): how much purple, and where the veins run.
 static func _host_veins() -> Array[HumanoidPiece]:
 	var list: Array[HumanoidPiece] = []
 	var w: float = 0.012

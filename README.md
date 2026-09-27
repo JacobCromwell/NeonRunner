@@ -133,6 +133,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 - **Look and sound:**
   - Razor Echo, the runner: a dark-blue trench coat with soft copper conduits and a skirt that swings,
     a gold cybernetic arm and a copper ocular implant
+  - the cyborgs: ragged, strung-out gangsters whose whole head is a beat-up CRT television, its screen
+    their cold white LED face (calm, aiming, a shocked "O", ERR when defeated), with a backpack cabled
+    into the head and a scavenged arm cannon; hosts glitch purple and wear purple veins
   - the City, Gangland and Marketplace zone looks, with the cult's feed on screens and its emblem hidden
     in ads in all three
   - neon UI screens and HUD
@@ -193,6 +196,9 @@ script's header lists its options.
 - **Screens:** every screen at desktop and touch sizes.
 - **The runner:** Razor Echo's poses on every surface, the coat's panels (never through the legs or the
   ground), the budgets, the power-up looks, and its copper glow kept clear of every hazard colour.
+- **The cyborgs' look:** hitboxes pinned to their sizes, the budgets, the colour rules (only the cold white
+  face, the red charge-up and a host's purple glow), faces that still differ a few pixels across, and ERR
+  before a defeated cyborg's screen goes dark.
 - **Zone skins:** all three skins, including a check that none adds collision, and the build budget; for
   Gangland and the Marketplace the colour rule (only hazards glow in hazard colours) and ceilings a runner
   can read upside down, for the Marketplace gaps that read as holes, its clear play space and walls and

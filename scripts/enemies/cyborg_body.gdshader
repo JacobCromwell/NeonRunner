@@ -41,7 +41,8 @@ uniform sampler2D face : filter_linear_mipmap, repeat_disable;
 uniform vec2 face_grid = vec2(13.0, 9.0);
 uniform vec4 led_color : source_color = vec4(0.86, 0.91, 1.0, 1.0);
 uniform vec4 glitch_color : source_color = vec4(0.72, 0.25, 1.0, 1.0);
-// Emission of a lit LED over its colour, and the static's share of it.
+// Emission of a lit LED over its colour, and the static's brightness at most (seen, 0-1).
+// DESIGN-TBD (docs/questions/p2.md 3): how much static; the host's purple below (p2.md 4).
 uniform float led_energy = 2.6;
 uniform float static_amount = 0.16;
 uniform float glitch = 0.0;

@@ -28,6 +28,7 @@ const FENCE_PINK := Color(1.0, 0.18, 0.62)
 ## and bold (eyes three LEDs across, the "O" two thick, the brows running in from the corners) so each
 ## face keeps its own shape when the screen is only about 7 × 5 pixels, as it is 14 m ahead of the
 ## player at 720p: two eyes and a bar, a V and a long bar, two eyes over a ring.
+## DESIGN-TBD (docs/questions/p2.md 2): the faces' pixel art.
 const FACE_GRID := Vector2i(13, 9)
 const FACES: Dictionary = {
 	# Calm, like the cult feed's face (CultFeed): two eyes and a flat mouth.

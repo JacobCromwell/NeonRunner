@@ -22,6 +22,7 @@ const BODY_SCALE: float = 1.25
 const HUSK_KEEP: float = 40.0
 ## The light inside the window: the cold white of a screen showing the feed, dim (below the glow
 ## threshold), so the only glows on a window cyborg stay its face and its cannon.
+## DESIGN-TBD (docs/questions/p2.md 6): it was a warm orange.
 const WINDOW_LIGHT := Color(0.6, 0.66, 0.76)
 
 var tuning: WindowCyborgTuning

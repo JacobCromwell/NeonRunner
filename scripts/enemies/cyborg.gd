@@ -135,6 +135,7 @@ func _on_defeated(cause: StringName) -> void:
 	gun.stop()
 	world.play_sfx_at(&"enemy_death", global_position)
 	# The screen head blowing out: sparks in the face's cold white (never the player's copper).
+	# DESIGN-TBD (docs/questions/p2.md 1): they were orange.
 	world.effects.burst(aim_point(), Kit.LED_COLOR, 20, 0.7)
 	if is_host:
 		_release_bad_dream()

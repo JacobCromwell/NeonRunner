@@ -28,6 +28,7 @@ const FOOT_R: int = HumanoidPose.FOOT_R
 
 ## The hunch (degrees the chest leans forward); the neck and head take it back so the screen faces
 ## ahead. The arms hang ARM_SLACK degrees forward of straight down.
+## DESIGN-TBD (docs/questions/p2.md 5): how strung out it moves (the hunch, limp, twitches, tremor).
 const HUNCH: float = 11.0
 const ARM_SLACK: float = 5.0
 ## The shamble: the left knee lifts only LIMP of its full bend as it swings through, the body dips

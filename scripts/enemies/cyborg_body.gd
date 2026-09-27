@@ -43,7 +43,7 @@ const BLEND_SPEED: float = 14.0
 ## A defeated cyborg's screen shows ERR for ERR_TIME seconds, then switches off over SCREEN_OFF_TIME
 ## (the picture collapses to a line and goes dark; with Reduced flashing it just fades). Both fit in
 ## the quickest death animation, the claws' and the dash's.
-## DESIGN-TBD (docs/questions/p2.md 1): the brief proposes the ERR; how long it shows.
+## DESIGN-TBD (docs/questions/p2.md 1): the brief proposes the ERR; whether to keep it, and how long.
 const ERR_TIME: float = 0.2
 const SCREEN_OFF_TIME: float = 0.14
 const FLASH_TINT := Color(1.0, 0.95, 0.9, 0.75)
