@@ -104,6 +104,71 @@ const FACES: Dictionary = {
 	],
 }
 
+## The same faces redrawn for the wide VR visor of the Corporate zone's variant (the "Wide-Aspect VR"
+## Runner, CyborgSuit's &"vr_runner" look): square cells on its 0.38 × 0.14 m visor. Each keeps its
+## face's features and where they sit, spread across the wide shape: the eyes far apart, the shocked
+## "O" between them, ERR in the middle. At gameplay distance (14 m ahead at 720p) the visor is about
+## 8 × 3 pixels, where the three faces still differ: two blocks over a short bar, two slants over a
+## long bar, a bright middle between two rings.
+## DESIGN-TBD (docs/questions/p3.md 4): the visor faces' pixel art.
+const VISOR_GRID := Vector2i(19, 7)
+const VISOR_FACES: Dictionary = {
+	Face.NEUTRAL: [
+		"...................",
+		"...####.....####...",
+		"...####.....####...",
+		"...####.....####...",
+		"...................",
+		"......#######......",
+		"...................",
+	],
+	Face.AIMING: [
+		".##.............##.",
+		"..###.........###..",
+		"...####.....####...",
+		"...................",
+		"...................",
+		"..###############..",
+		"...................",
+	],
+	Face.SHOCKED: [
+		"........###........",
+		".###...##.##...###.",
+		".#.#..##...##..#.#.",
+		".###..##...##..###.",
+		"......##...##......",
+		".......##.##.......",
+		"........###........",
+	],
+	Face.DEAD: [
+		"...................",
+		"....###.###.###....",
+		"....#...#.#.#.#....",
+		"....###.##..##.....",
+		"....#...#.#.#.#....",
+		"....###.#.#.#.#....",
+		"...................",
+	],
+	Face.CORRUPT_GRIN: [
+		"...................",
+		"...####.....####...",
+		"...####.....####...",
+		"...................",
+		"#.................#",
+		"##...............##",
+		".#################.",
+	],
+	Face.CORRUPT_BROKEN: [
+		"...................",
+		".####.....#........",
+		".#..#....###.......",
+		".####.....#........",
+		"...................",
+		".#.#.#.#.#.#.#.#.#.",
+		"#.#.#.#.#.#.#.#.#.#",
+	],
+}
+
 ## The builder stores vertex colours in linear space (Builder._color), which Forward+ and Mobile light
 ## in; on the Compatibility renderer (web, low-end Android) humanoid_color.gdshaderinc turns them back
 ## to sRGB, as for the humanoid rig. Without it the generator and the window frame show far too dark
@@ -299,15 +364,22 @@ static func energy_material(color: Color) -> ShaderMaterial:
 
 
 ## The pixel image of a face (white = LED on), cached. Its mipmaps let the shader average the face far
-## away, where an LED is smaller than a pixel.
-static func face_texture(face: Face) -> ImageTexture:
-	if not _faces.has(face):
-		var rows: Array = FACES[face]
-		var img := Image.create(FACE_GRID.x, FACE_GRID.y, false, Image.FORMAT_L8)
-		for y: int in FACE_GRID.y:
+## away, where an LED is smaller than a pixel. `visor`: the wide VR visor's version (VISOR_FACES).
+static func face_texture(face: Face, visor: bool = false) -> ImageTexture:
+	var key: int = int(face) + (100 if visor else 0)
+	if not _faces.has(key):
+		var rows: Array = face_rows(face, visor)
+		var grid: Vector2i = VISOR_GRID if visor else FACE_GRID
+		var img := Image.create(grid.x, grid.y, false, Image.FORMAT_L8)
+		for y: int in grid.y:
 			var row: String = rows[y]
-			for x: int in FACE_GRID.x:
+			for x: int in grid.x:
 				img.set_pixel(x, y, Color.WHITE if row[x] == "#" else Color.BLACK)
 		img.generate_mipmaps()
-		_faces[face] = ImageTexture.create_from_image(img)
-	return _faces[face]
+		_faces[key] = ImageTexture.create_from_image(img)
+	return _faces[key]
+
+
+## A face's pixel rows ("#" = LED on) on the TV screen's grid, or on the visor's.
+static func face_rows(face: Face, visor: bool = false) -> Array:
+	return VISOR_FACES[face] if visor else FACES[face]

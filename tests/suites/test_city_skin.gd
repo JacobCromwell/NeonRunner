@@ -23,6 +23,7 @@ func run() -> void:
 		return
 	check((load(LEVEL_PATH) as LevelConfig).skin is CitySkin, "the prototype level uses the city skin")
 	check(skin.enemy_variant == &"city", "city enemies wear the sleek city look")
+	check(CyborgSuit.look_for(skin.enemy_variant) == CyborgSuit.BASE, "city cyborgs wear the base look")
 	start_error_count()
 	var env: Environment = skin.make_environment()
 	check(env != null and env.sky != null and env.glow_enabled and env.fog_enabled, "the city environment has a sky, glow and fog")

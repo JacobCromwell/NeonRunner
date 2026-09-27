@@ -1,12 +1,12 @@
 class_name CyborgBody
 extends Node3D
 ## The cyborgs' body (GDD §9.2) on the shared HumanoidRig (scripts/characters/), with CyborgSuit's
-## parts: one skeleton for every cyborg, the look switched in as an attachment set (the base, the
-## ragged "Static TV Head" gangster, until the zone variants of task P3 exist), the screen head's
-## face, the host's purple glitch and veins (GDD §9.7) and the arm cannon's charge glow all drawn by
-## one material per cyborg (cyborg_body.gdshader): 11 draw calls for a whole cyborg, 7 for a window
-## cyborg's upper body. Visual only: it never touches collision or gameplay, and its randomness never
-## uses the enemy's gameplay random stream.
+## parts: one skeleton for every cyborg, the look switched in as an attachment set (the zone's look:
+## the ragged "Static TV Head" base or one of its zone variants, CyborgSuit.look_for), the screen's
+## face (on the look's screen, in its face set), the host's purple glitch and veins (GDD §9.7) and the
+## weapon's charge glow all drawn by one material per cyborg (cyborg_body.gdshader): 11 draw calls for
+## a whole cyborg, 7 for a window cyborg's upper body. Visual only: it never touches collision or
+## gameplay, and its randomness never uses the enemy's gameplay random stream.
 ##
 ## It poses the rig itself (HumanoidRig.apply_pose with HumanoidPoses and CyborgPoses, blended), so
 ## nothing here changes how the player's avatar moves. The posture is hunched and the walk a shamble;
@@ -144,7 +144,7 @@ func clear_aim() -> void:
 func set_expression(f: Kit.Face) -> void:
 	face = f
 	if material != null and _glitch_left <= 0.0:
-		material.set_shader_parameter(&"face", Kit.face_texture(f))
+		material.set_shader_parameter(&"face", CyborgSuit.face_texture(look, f))
 
 
 ## The arm cannon's charge glow (0 = idle, 1 = about to fire): the visual half of the telegraph.
@@ -244,7 +244,7 @@ func _update_visor(delta: float) -> void:
 	if _glitch_left > 0.0:
 		_glitch_left -= delta
 		if _glitch_left <= 0.0:
-			material.set_shader_parameter(&"face", Kit.face_texture(face))
+			material.set_shader_parameter(&"face", CyborgSuit.face_texture(look, face))
 			_glitch_rest = SOFT_GLITCH_TIME.x if soft else 0.0
 		return
 	if _glitch_rest > 0.0:
@@ -254,7 +254,7 @@ func _update_visor(delta: float) -> void:
 		var span: Vector2 = SOFT_GLITCH_TIME if soft else GLITCH_TIME
 		_glitch_left = _vis_rng.randf_range(span.x, span.y)
 		var corrupt: Kit.Face = Kit.Face.CORRUPT_GRIN if _vis_rng.randf() < 0.5 else Kit.Face.CORRUPT_BROKEN
-		material.set_shader_parameter(&"face", Kit.face_texture(corrupt))
+		material.set_shader_parameter(&"face", CyborgSuit.face_texture(look, corrupt))
 
 
 ## Builds this frame's target pose, blends toward it, poses the rig, adds the twitches and the tremor,

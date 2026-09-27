@@ -16,26 +16,36 @@ extends Node3D
 ##   play             a generated level with the enemies on, run by a god-mode player with grapples (so
 ##                    gaps don't end the run) through the real run camera (options: --seed=N --lanes=N
 ##                    --difficulty=X --start=metres --features=a,b --claws); it runs until closed
+##   lineup           every look side by side, the base first (GDD §9.2's zone variants), idle with the
+##                    calm face; --face=aiming|shocked|dead shows another expression (aiming charges the
+##                    weapon), --host makes them all hosts, --back turns them round, --side shows their
+##                    right side (the weapon arm)
+##   lineup_far       every look at gameplay distance through the run camera: calm faces 14 m ahead,
+##                    aiming ones (weapons charged) behind them, shocked ones behind those
 ## Every view takes --skin=res://path/to/skin.tres (default: the grey box) and --variant=<name>, the
-## skin's enemy_variant (CyborgSuit.look_for picks the cyborgs' look from it; every name wears the base
-## until the zone variants exist).
+## skin's enemy_variant: a look's own name (base, brute, casino, vr_runner, burned, golden) or a skin's
+## (city: the base; scavenger: Gangland's Brute), as CyborgSuit.look_for reads it. Live, ui_left and
+## ui_right switch the look (the view rebuilds with it). --nolabel hides the captions.
 
 const Kit = preload("res://scripts/enemies/cyborg_kit.gd")
+const SCENE: String = "res://tools/showcase/enemy_showcase.tscn"
+
+## The look picked live with ui_left / ui_right: it outlives the scene's reload.
+static var _picked: StringName = &""
 
 var _world: RunWorld
 var _camera: Camera3D
+var _variant: StringName = &"city"
 
 
 func _ready() -> void:
-	var view: String = "poses"
-	for arg: String in OS.get_cmdline_user_args():
-		if arg.begins_with("--view="):
-			view = arg.get_slice("=", 1)
+	var view: String = _opt("view", "poses")
+	_variant = _picked if _picked != &"" else StringName(_opt("variant", "city"))
 	if view == "play":
 		_play()
 		return
 	_world = _build_world(view)
-	var variant: StringName = StringName(_opt("variant", "city"))
+	var variant: StringName = _variant
 	_camera = Camera3D.new()
 	_camera.fov = 50.0
 	add_child(_camera)
@@ -66,9 +76,54 @@ func _ready() -> void:
 			_look(Vector3(0.6, 1.4, -2.0), Vector3(0.0, 1.0, -9.0))
 		"far":
 			_far_scene()
+		"lineup":
+			_lineup()
+			_look(Vector3(0.0, 1.05, 4.6), Vector3(0.0, 0.85, -1.0))
+		"lineup_far":
+			_far_lineup()
 		_:
 			_pose_row(variant)
 			_look(Vector3(0.0, 1.3, 5.2), Vector3(0.0, 0.8, -1.0))
+	if not OS.get_cmdline_user_args().has("--nolabel") and not view.begins_with("lineup") and view != "generator":
+		_caption("%s   (enemy_variant %s)" % [CyborgSuit.LOOK_TITLES[CyborgSuit.look_for(variant)], variant])
+
+
+## ui_left / ui_right: the previous or next look, rebuilding the view with it.
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed(&"ui_right") or event.is_action_pressed(&"ui_left"):
+		var step: int = 1 if event.is_action_pressed(&"ui_right") else -1
+		var looks: Array[StringName] = CyborgSuit.LOOKS
+		_picked = looks[posmod(looks.find(CyborgSuit.look_for(_variant)) + step, looks.size())]
+		get_tree().change_scene_to_file(SCENE)
+
+
+## A caption at the top of the screen.
+func _caption(text: String) -> void:
+	var layer := CanvasLayer.new()
+	add_child(layer)
+	var label := Label.new()
+	label.text = text
+	label.position = Vector2(16.0, 10.0)
+	label.add_theme_font_size_override(&"font_size", 22)
+	label.add_theme_color_override(&"font_color", Color(0.85, 0.9, 1.0))
+	label.add_theme_color_override(&"font_outline_color", Color(0.0, 0.0, 0.0))
+	label.add_theme_constant_override(&"outline_size", 6)
+	layer.add_child(label)
+
+
+## A caption floating in the scene, facing the camera.
+func _label(at: Vector3, text: String, size: int = 28) -> void:
+	if OS.get_cmdline_user_args().has("--nolabel"):
+		return
+	var label := Label3D.new()
+	label.text = text
+	label.font_size = size
+	label.pixel_size = 0.004
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.modulate = Color(0.85, 0.9, 1.0)
+	label.outline_size = 8
+	label.position = at
+	add_child(label)
 
 
 ## The value of a --name=value argument, or `default`.
@@ -108,7 +163,7 @@ func _play() -> void:
 			start = float(v)
 		elif arg.begins_with("--features="):
 			config.features = PackedStringArray(v.split(",", false))
-	config.skin = _skin(StringName(_opt("variant", "city")))
+	config.skin = _skin(_variant)
 	var t := load("res://data/tuning/movement.tres") as MovementTuning
 	var layout: LevelLayout = LevelGenerator.new().generate(config, t, LevelGenerator.load_for(config))
 	for e: Dictionary in layout.enemies:
@@ -152,7 +207,7 @@ func _build_world(view: String) -> RunWorld:
 				"pulse_on": 1.0, "pulse_off": 1.0, "phase": 0.0})
 	var config := LevelConfig.new()
 	config.lane_count = 5
-	config.skin = _skin(StringName(_opt("variant", "city")))
+	config.skin = _skin(_variant)
 	var world := RunWorld.new()
 	add_child(world)
 	world.build(config, layout, load("res://data/tuning/movement.tres") as MovementTuning,
@@ -239,7 +294,7 @@ func _far_scene() -> void:
 	_world.player.visible = true
 	_camera.fov = t.camera_fov
 	_look(Vector3(0.0, t.camera_height, t.camera_distance), Vector3(0.0, 1.0, -t.camera_look_ahead))
-	var v: StringName = StringName(_opt("variant", "city"))
+	var v: StringName = _variant
 	var faces: Array = [[Kit.Face.NEUTRAL, false], [Kit.Face.SHOCKED, false], [Kit.Face.AIMING, false],
 		[Kit.Face.NEUTRAL, true]]
 	var bodies: Array[CyborgBody] = []
@@ -273,3 +328,50 @@ func _charge_scene() -> void:
 	body.set_charge(1.0)
 	body.set_expression(Kit.Face.AIMING)
 	c.set_physics_process(false)
+
+
+## Every look side by side, the base first, 1.1 m apart and facing the camera (or turned by --back or
+## --side), each captioned with its name and zone.
+func _lineup() -> void:
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	var faces: Dictionary = {"calm": Kit.Face.NEUTRAL, "aiming": Kit.Face.AIMING, "shocked": Kit.Face.SHOCKED,
+		"dead": Kit.Face.DEAD}
+	var face: Kit.Face = faces.get(_opt("face", "calm"), Kit.Face.NEUTRAL)
+	var looks: Array[StringName] = CyborgSuit.LOOKS
+	for i: int in looks.size():
+		var x: float = (i - (looks.size() - 1) * 0.5) * 1.1
+		var b := _body(looks[i], args.has("--host"), Vector3(x, 0.0, 0.0), 50 + i)
+		if args.has("--back"):
+			b.rotation.y = PI
+		elif args.has("--side"):
+			b.rotation.y = -PI * 0.5
+		b.set_expression(face)
+		if face == Kit.Face.AIMING:
+			b.set_pose(CyborgBody.Pose.AIM)
+			b.aim_at(Vector3(x * 0.6, 1.0, 6.0))
+			b.set_charge(1.0)
+		var title: String = CyborgSuit.LOOK_TITLES[looks[i]]
+		_label(Vector3(x, 1.78, 0.0), title.replace(" · ", "\n"), 24)
+
+
+## Every look at gameplay distance through the run camera: the calm face 14 m ahead, the aiming face
+## (weapon charged) 21 m ahead and the shocked one 28 m ahead, each row spread across the lanes.
+func _far_lineup() -> void:
+	var t := load("res://data/tuning/movement.tres") as MovementTuning
+	_world.player.visible = true
+	_camera.fov = t.camera_fov
+	_look(Vector3(0.0, t.camera_height, t.camera_distance), Vector3(0.0, 1.0, -t.camera_look_ahead))
+	var looks: Array[StringName] = CyborgSuit.LOOKS
+	var left: float = _world.lane_point(0, 0.0).x
+	var right: float = _world.lane_point(_world.geo.lane_count - 1, 0.0).x
+	var rows: Array = [[14.0, Kit.Face.NEUTRAL], [21.0, Kit.Face.AIMING], [28.0, Kit.Face.SHOCKED]]
+	for r: int in rows.size():
+		var at: float = rows[r][0]
+		for i: int in looks.size():
+			var x: float = lerpf(left, right, (i + 0.25 + 0.5 * (r % 2)) / (looks.size() - 0.5))
+			var b := _body(looks[i], false, Vector3(x, 0.0, _world.lane_point(0, at).z), 70 + r * 10 + i)
+			b.set_expression(rows[r][1])
+			if rows[r][1] == Kit.Face.AIMING:
+				b.set_pose(CyborgBody.Pose.AIM)
+				b.aim_at(Vector3(0.0, 1.0, 0.0))
+				b.set_charge(0.8)
