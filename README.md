@@ -13,7 +13,10 @@ through zones full of enemies, and a single hit ends the run. Built with Godot 4
 
 Boss fights have their framework (they play in the runner, with phases, a health bar, checkpoints,
 stars and payouts), but each zone's boss is still a placeholder slot until it's built on it; a test
-boss shows the framework at work. The short cinematics between levels are placeholder slots too.
+boss shows the framework at work. The Neon City's Floating Head is being built: its ship and face, its
+entrance, its bombing run and the reveal of its face so far (debug builds play it with
+`--boss=city_boss`; the campaign keeps its placeholder slot until it's done). The short cinematics
+between levels are placeholder slots too.
 Every placeholder decision is listed in `docs/OPEN_QUESTIONS.md`.
 
 Docs: `docs/GDD_CHECKPOINT.md` (the design, the authority), `docs/OPEN_QUESTIONS.md` (open decisions and
@@ -45,7 +48,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--skin=gangland` | Quick play in another zone's look: `city`, `gangland` or `marketplace` |
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`) |
-| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`, ...) with the full game flow once it's built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
+| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`, ...) with the full game flow once it's built, and as quick play while it's being built (`--boss=city_boss`: the Floating Head so far). Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
 
 Example: `./play.sh --lanes=6 --features=octodog,ceilings --god`, or the test boss's last phase:
@@ -95,7 +98,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   The Barnacle Turret, wall fences, Buzz Overdrive, Tithe Collector, Resonator and Gilded Sentinels aren't
   built yet: their levels already list them, and they appear once their code exists. Level names are
   placeholders, except the Golden Palace.
-- **Movement:** floor lanes, side-wall runs and wall jumps, anti-grav pads onto the ceiling, ramps, speed pads.
+- **Movement:** floor lanes, side-wall runs and wall jumps (a sign blocking the wall bumps you back with a
+  clank), anti-grav pads onto the ceiling, ramps (higher onto the wall, with a speed boost that fades like
+  a speed pad's), speed pads.
 - **Obstacles:** gaps, signs, and electric fences (full-height or gapped, always-on or pulsing), some with a
   generator that switches them off.
 - **Enemies:**
@@ -115,8 +120,11 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   to take, from the standard armor rule (at the start of the final phase, and a while after the
   player's armor or shield breaks) or offered by the boss itself. The test boss (`--boss=test_boss`),
   a hovering core that blasts the lane it lights up red and drops dazed into the player's lane to be
-  stomped, shows it all (it offers a shield in its second phase); the six zone bosses are still to be
-  built on it.
+  stomped, shows it all (it offers a shield in its second phase). The Floating Head, the Neon City's
+  boss, is being built on it: a giant ship whose stern is a propaganda face, roaring in overhead, a
+  bombing run where a searchlight hunts the runner and bombs fall where it lingers (a red target
+  circle, an alarm and a falling whistle), and the reveal of its face (`--boss=city_boss`). The other
+  five zone bosses are still to be built.
 - **Economy:** credits in four denominations, level score and stars, and a shop. Items are five permanent
   power-ups (weapon line, claws, juggernaut dash, magnet, slow time) and three breakables (armor, shield,
   grapple hook). After a death you're offered a revive (an item, or a rewarded ad on mobile). Net worth
@@ -125,7 +133,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 - **Look and sound:**
   - Razor Echo, the runner: a dark-blue trench coat with soft copper conduits and a skirt that swings,
     a gold cybernetic arm and a copper ocular implant
-  - the City, Gangland and Marketplace zone looks, and the cult's feed on screens in the Marketplace
+  - the City, Gangland and Marketplace zone looks, with the cult's feed on screens and its emblem hidden
+    in ads in all three
   - neon UI screens and HUD
   - generated music (menu, City, Gangland) and 65 sound effects
   - first-encounter hints
@@ -159,29 +168,36 @@ generated by code (`tools/asset_gen/`, and procedural meshes and shaders under `
 OFL-licensed; licenses are in `assets/LICENSES.md`.
 
 The scenes in `tools/showcase/` show one part of the game up close for visual review (the runner in every pose
-and power-up look, and a scripted run on any zone's skin; each enemy family, the UI kit, every screen, a zone skin's fixed review track, the cult's feed); each script's header
-lists its options.
+and power-up look, and a scripted run on any zone's skin; ramp launches and blocked wall entries; each enemy
+family, the Floating Head, the UI kit, every screen, a zone skin's fixed review track, the cult's feed); each
+script's header lists its options.
 
 ## Tests
 
-`tools/godot.sh test` runs 30 suites with about 1,285,000 checks:
+`tools/godot.sh test` runs 32 suites with about 2,800,000 checks:
 - **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds, and every campaign level
-  (each with every feature it lists, on its own seed and on others).
-- **Movement:** scenarios on real physics.
+  (each with every feature it lists, on its own seed and on others). Under every ceiling the floor may be
+  dangerous, so each one's pads, landing zone and a floor route that never takes the pad are checked, and
+  some of those routes are run on real physics.
+- **Movement:** scenarios on real physics, among them a ramp's boost against a speed pad's, a ramp's wall run
+  and its credits against the generator's prediction, and the bump of a blocked wall entry.
 - **Enemies:** each type's attacks, dodges, kills and generation rules.
 - **Damage:** the shared damage rules.
 - **Power-ups:** each one's behaviour.
 - **Economy and saves:** the economy and save files.
 - **Game flow:** the campaign (its zones, steps and level-by-level schedule) and app flow.
 - **Bosses:** the boss framework with the test boss: phases, the checkpoint, no escalation, the arena,
-  the damage rules on a boss, and the flow around a fight.
+  the damage rules on a boss, and the flow around a fight; the Floating Head's fight so far at 3, 5 and 6
+  lanes: its build and hitboxes, bombs that fall only after their warning, a runner who keeps moving
+  always escaping them, and every attempt playing out the same way.
 - **Screens:** every screen at desktop and touch sizes.
 - **The runner:** Razor Echo's poses on every surface, the coat's panels (never through the legs or the
   ground), the budgets, the power-up looks, and its copper glow kept clear of every hazard colour.
 - **Zone skins:** all three skins, including a check that none adds collision, and the build budget; for
   Gangland and the Marketplace the colour rule (only hazards glow in hazard colours) and ceilings a runner
-  can read upside down, and for the Marketplace gaps that read as holes, its clear play space and walls,
-  shop windows, the cult emblem and the cult's feed (its shared material has a suite of its own).
+  can read upside down, for the Marketplace gaps that read as holes, its clear play space and walls and
+  shop windows, and for all three where the cult's emblem hides and where its feed plays, never in the
+  wall-run band (the feed's shared material has a suite of its own).
 - **Sounds and music.**
 - **Boot:** the real game scene.
 
@@ -193,7 +209,7 @@ Headless runs skip sounds, because the dummy audio driver never finishes a playb
 play.sh, play.cmd       play the current version
 tools/                  godot.sh (play/edit/test/smoke/sfx/music), asset generators, showcase scenes
 scenes/main.tscn        the main scene: world, screens and overlays
-scenes/bosses/          boss fight scenes (the test boss so far)
+scenes/bosses/          boss fight scenes (the test boss and the Floating Head so far)
 scripts/app/            App (state and flow), Profile, SaveService, Settings, BuildFlavor
 scripts/run/            a run: LevelRun, RunWorld, camera, projectiles, credits, score, effects, hints
 scripts/player/         the Player controller and its avatar
@@ -202,7 +218,8 @@ scripts/enemies/        one script (plus tuning and generator rules) per enemy t
 scripts/powerups/       the permanent power-ups
 scripts/world/          level layout, generator, track builder, hazards; zone skins and the mesh kit
 scripts/campaign/       campaign, zones, bosses (BossDef, BossPhase) and cinematic slots
-scripts/bosses/         the boss framework (BossEncounter, BossPart, BossArena, BossProps) and the test boss
+scripts/bosses/         the boss framework (BossEncounter, BossPart, BossArena, BossProps), the test boss,
+                        and one folder per boss (floating_head/)
 scripts/economy/        the shop catalog
 scripts/ui/             theme, icons, widgets, screens, HUD, debug tools
 scripts/audio/          sound library, music player, hazard warning sounds

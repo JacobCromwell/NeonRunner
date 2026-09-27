@@ -61,14 +61,46 @@ so pieces keep their timing against a hull when run speed changes.
 | `gap` | `lanes`, `jump_frac` (gap length as a fraction of a full jump's distance, capped by the level's `max_gap_jump_fraction`) |
 | `fence` | `lanes`, `variant` (`full` = jump or switch lanes; `gapped` = slide under), `pulse_chance`, `pulse_on`, `pulse_off` (seconds) |
 | `sign` | `side` (`left`/`right`/`random`/`both`/`same`), `length`, `bottom`, `top` (height band on the wall, in metres) |
-| `ramp` | `side`. The ramp sits in the outermost lane on that side and launches the player onto the wall |
-| `hull` | `lanes` (where the anti-grav pad goes), `length_seconds` (how long the ceiling lasts at run speed). The floor under a ceiling always stays clear (GDD §3): the generator drops any gap, fence or floor enemy a pattern places there and reports it as a warning |
+| `ramp` | `side`. The ramp sits in the outermost lane on that side and launches the player onto the wall, higher than a free entry and with a speed boost that fades like a speed pad's (GDD §3): its wall run covers about 43 m at run speed, against 39 m for a free entry. A wall piece after it meets a faster, higher runner; `RampLaunch` says where the runner is and how high (see Ramps in `docs/ARCHITECTURE.md`) |
+| `hull` | `lanes` (where the anti-grav pad goes), `length_seconds` (how long the ceiling lasts at run speed). The pattern's other elements may lie under it (see Ceilings below); its landing zone and its pad's spot stay clear, and the generator drops (with a warning) what the pattern puts there |
 | `speed_pad` | `lanes`. A speed pad in each lane (DESIGN-TBD: GDD §6 only names speed pads) |
-| `enemy` | `type` (the enemy type name), `lanes` (floor enemies; one per lane) **or** `side` (wall enemies, e.g. window cyborgs: `left`/`right`/`random`/`same`), `params` (passed to the enemy as `spawn.params`), `allow_under_hull` (optional). An enemy whose type uses the floor (its tuning's `uses_floor`, wall vents included) is dropped from under a ceiling; fliers and wall-only enemies may be there |
+| `enemy` | `type` (the enemy type name), `lanes` (floor enemies; one per lane) **or** `side` (wall enemies, e.g. window cyborgs: `left`/`right`/`random`/`same`), `params` (passed to the enemy as `spawn.params`). An enemy may stand under a ceiling; one whose type uses the floor (its tuning's `uses_floor` and reach, wall vents included) keeps off a ceiling's landing zone and its pads' spots |
 | `credits` | `surface` (`floor`/`ceiling`/`wall`), `lanes` or `side`, `count`, `spacing` (m), `value` (1, 5, 25 or 100), `height` (m from the surface, or the height on the wall) |
 
 Credits are also placed automatically after the patterns (trails in clear stretches; rich credits at gap
-edges, by fences, along wall runs and on ceilings), tuned in the level's Credits group.
+edges, by fences, along each ramp's wall run on the path the boosted runner takes, and on ceilings),
+tuned in the level's Credits group.
+
+## Ceilings over a dangerous floor
+
+GDD §3 (changed September 26, 2026): the floor beneath a ceiling may hold gaps, hazards and enemies,
+and the ceiling is the way to escape them, so it's the easier route; it's never required. A pattern
+with a `hull` may put its own pieces and enemies under the ceiling: a gauntlet. Every ceiling keeps two
+stretches safe all the same (`CeilingZones`, `docs/ARCHITECTURE.md`):
+- **Its landing zone:** from the ceiling's end, `hull_landing_seconds` (1.2 s) at run speed, no gap or
+  fence in any lane and no floor enemy's reach, so the player always lands safely. A pattern's `used`
+  length includes it, so the next pattern starts past it.
+- **Its pad's spot:** in the pad's lane, no gap, fence or ramp from a full jump (about 12 m) before
+  the pad until its lift reaches the hull (about 8 m after it), and no floor enemy's reach (any lane)
+  where the pad lies.
+
+What a pattern puts in those stretches is dropped, with a warning. Writing a gauntlet:
+- Time its pieces with `at_seconds` against the hull, from about 1 s after the pad to the ceiling's
+  end, and space them like patterns (about 1 s apart): the floor runner meets them one after another.
+- Leave a way through every row (`all_but`, a jumpable hole, a gapped fence to slide under), as every
+  pattern does. The tests look for a floor route under every ceiling that never takes the pad
+  (`FloorRoute`) and run some of them on real physics.
+- Keep enemies' margins: cyborgs stand 10 m clear of pads, fences, holes and landing zones (their
+  rules drop them otherwise), a screech's reach runs 30 m before its manhole, a generator powers the
+  fences ahead of it.
+- Give it a `min_difficulty` above the ceilings' introduction (City 2 introduces ceilings at about
+  0.18), so the player meets a plain ceiling first (GDD §6: one new thing at a time). The gauntlets so
+  far: `ceiling_over_fences` (0.3), `ceiling_over_holes` (0.35), `ceiling_over_gauntlet` (0.5), and
+  with enemies `ceiling_over_cyborgs` (0.35), `ceiling_over_manholes` (0.3), `ceiling_over_generator`
+  (0.4). DESIGN-TBD: their mix and weights (`docs/questions/b2.md`).
+
+Ceilings that rules add (the drone's pad schedule, a Bad Dream chase's pads) lie over whatever the
+floor holds there: only their landing zone and their pad's spot are cleared.
 
 ## Lane selectors
 
@@ -89,9 +121,10 @@ Rules that patterns can't express (e.g. "an anti-grav pad at least 10 s after a 
 They run after the patterns, in the order of the level's `features` list; a script that declares
 `const RUN_AFTER: Array[String] = [...]` runs after those features' rules whatever the order (the host
 rules plan the Bad Dream's pads around the drones' pad schedule, and the Octodog rules plan each dog
-around both). A ceiling a rule adds
-(`add_hull_with_pad`) keeps off the floor that enemies use (`LevelGenerator.enemy_floor_span`); a pad a
-rule guarantees at a spot, clearing the floor it needs, comes from `scripts/enemies/pad_placement.gd`.
+around both). A ceiling a rule adds (`add_hull_with_pad`) lies over whatever the floor holds, but keeps
+its landing zone and its pad's spot off the floor that enemies use (`LevelGenerator.enemy_floor_span`);
+a pad a rule guarantees at a spot, clearing only those two stretches, comes from
+`scripts/enemies/pad_placement.gd`.
 Anything a rule adds keeps to its feature's start (`LevelGenerator.feature_active`). A rule that drops
 its feature's enemies where they don't fit may also add one where it does when a level that guarantees
 its features (`gen.config.guarantee_features`) is left without any (the host and Octodog rules do),

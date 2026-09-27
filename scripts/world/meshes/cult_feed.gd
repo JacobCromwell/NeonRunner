@@ -57,6 +57,17 @@ static func screen(layer: MeshLayer, origin: Vector3, u: Vector3, v: Vector3, br
 	layer.rect(origin, u, v, Color.WHITE, clampf(brightness, 0.0, 1.0), posmod(seed, 997), Vector2.ZERO, Vector2.ONE, aspect)
 
 
+## A screen on a wall-parallel plane at x, facing the street from the wall on `side` (-1 the left
+## wall, so it faces +x; +1 the right one), from track distance d0 over `length` and from height y0
+## over `height`: screen() with the picture the right way round as seen from the street.
+static func wall_screen(layer: MeshLayer, side: int, x: float, d0: float, length: float, y0: float, height: float,
+		brightness: float = 1.0, seed: int = 0) -> void:
+	if side < 0:
+		screen(layer, Vector3(x, y0, -d0), Vector3(0, 0, -length), Vector3(0, height, 0), brightness, seed)
+	else:
+		screen(layer, Vector3(x, y0, -d0 - length), Vector3(0, 0, length), Vector3(0, height, 0), brightness, seed)
+
+
 ## The warm white the emblem glows in on the feed: the chosen option's own neon.
 static func emblem_color() -> Color:
 	return CultEmblem.default_scheme(emblem_option())["neon"]

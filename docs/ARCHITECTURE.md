@@ -49,8 +49,9 @@ the F6 tuning panel. Quick play (`--quick`, or any of `--god --seed=N --lanes=N 
 --features=a,b --full-loadout --nofall --skin=<name>`) restarts on death like the grey box did.
 `--level=<step id>` plays a campaign step with the full flow and takes `--lanes`, `--god`, `--nofall`
 and `--full-loadout` for reviews; `--boss=<boss id>` plays a boss fight (a zone's boss with the full
-flow, any other, such as the test boss, as quick play) and also takes `--phase=N`. Command-line starts
-work in debug builds only, so a release build can't skip progression or farm credits with them.
+flow; any other, such as the test boss, or a zone's boss still being built (`BossDef.preview_scene`),
+as quick play) and also takes `--phase=N`. Command-line starts work in debug builds only, so a
+release build can't skip progression or farm credits with them.
 
 Physics order each frame: RunWorld (builds chunks, spawns enemies) → Player (moves, checks hazards
 and triggers) → the boss's pattern (a boss fight) → enemies → projectiles → credits → pickups →
@@ -60,7 +61,7 @@ power-ups.
 
 | File | What |
 |---|---|
-| `data/tuning/movement.tres` (`MovementTuning`) | run speed, jump, walls, ceiling, piece sizes, camera, touch |
+| `data/tuning/movement.tres` (`MovementTuning`) | run speed, jump, walls (and the blocked entry's bump), ramps and speed pads (their boosts share one fade), ceiling, piece sizes, camera, touch |
 | `data/tuning/game_rules.tres` (`GameRules`) | lanes per device, death share, invulnerability, stomp, score, economy, stars |
 | `data/tuning/powerups.tres` (`PowerupTuning`) | weapon tiers, claws, dash, magnet, slow time |
 | `data/tuning/pickups.tres` (`PickupTuning`) | in-run pickups: where they appear, taking them, the charge cap, the look |
@@ -87,6 +88,13 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
 - Falls aren't hazards: the Player handles them (the grapple hook saves one fall).
 - Enemy shots go through `ProjectilePool.fire_enemy()`; the pool sweeps each shot against the
   player's hitbox and calls `receive_hit`, so armor, shield, invulnerability and the dash all apply.
+- **Blocked moves bump, never hurt.** A lane switch into a solid side (a lane blocker: the hover
+  truck's, a boss's block) and a wall entry where the wall is blocked (a sign, or a wall a boss takes
+  away; GDD §3) move the player out toward it and back (`Player._start_bump`) with the clank
+  (`lane_blocked` / `wall_blocked`). The player stays in their lane and can act meanwhile; collision is
+  unchanged. The wall's bump (`wall_bump_distance`, `wall_bump_time`) stops short of any hazard or wall
+  blocker in its way, so a sign that reaches down to the player stops it at its face, and the model
+  leans away from the wall on the way back.
 
 ## Enemies
 
@@ -131,12 +139,17 @@ its chase), and before starting one asks `EnemyDirector.major_attack_blocked(sel
 while another enemy's major attack is on and either of the two is `exclusive_major_attack` (the Bad
 Dream is: GDD §9.7). Other types can opt in the same way.
 
-**Floor use.** GDD §3 keeps the floor under a ceiling clear, and that includes enemies. A type's
-tuning says whether it uses the floor (`uses_floor`: false for fliers like drones and hover trucks,
-and wall-only enemies like window cyborgs) and how much of it around its spot
-(`floor_reach_before`/`_after`). Rules that plan a longer run for one enemy store it in
-`params.floor_span` (the Octodog's charges). `LevelGenerator.enemy_floor_span(entry)` and
-`enemy_uses_floor(entry)` read all of this, and `floor_clear` / `add_hull_with_pad` respect it.
+**Floor use.** The floor under a ceiling may hold enemies (GDD §3, changed September 26, 2026), but
+a ceiling's landing zone and the spot of each of its pads keep off the floor enemies use (see
+Ceilings under The generator). A type's tuning says whether it uses the floor (`uses_floor`: false
+for fliers like drones and hover trucks, and wall-only enemies like window cyborgs) and how much of
+it around its spot (`floor_reach_before`/`_after`: where it stands, moves and attacks a player in its
+lane; the screech's 30 m before covers where it springs out). Rules that plan a longer run for one
+enemy store it in `params.floor_span` (the Octodog's charges). `LevelGenerator.enemy_floor_span(entry)`
+and `enemy_uses_floor(entry)` read all of this; `CeilingZones`, `floor_clear` and `add_hull_with_pad`
+respect it. An enemy that can't reach the ceiling stays consistent with it at run time: cyborgs, window
+cyborgs and hover trucks hold fire at a player riding a ceiling, the drone and the Bad Dream wait
+below, the Octodog never winds up and a screech stays in its manhole.
 
 ## The generator
 
@@ -146,20 +159,57 @@ patterns (filtered by the level's features) → enemy rules scripts → credits.
 scripts: `rng_for(name)`, `add_enemy(type, at, lane, side, params)`, `add_hull_with_pad(lane, at,
 seconds)`, `floor_clear(from, to)`, `enemy_floor_span(entry)`, `enemy_uses_floor(entry)`,
 `difficulty_at(progress)`, `feature_start(feature)`, `feature_started(feature, at)`,
-`feature_active(feature, at)`, `feature_share_at(feature, share)`, plus `layout`, `config`,
-`tuning`, `speed`, `jump_distance`. Pattern format: `data/patterns/README.md`.
+`feature_active(feature, at)`, `feature_share_at(feature, share)`, `ramp_launch(ramp)`, plus
+`layout`, `config`, `tuning`, `speed`, `jump_distance` and `zones` (the level's `CeilingZones`).
+Pattern format: `data/patterns/README.md`.
+
+**Ramps** (GDD §3) launch the player onto the wall higher than a free entry and add a speed boost
+that fades away the same way a speed pad's does (both share `boost_decay_per_second`;
+`MovementTuning.boost_left` and `boost_distance`), so a ramp's wall run goes further than a free
+one. `RampLaunch` (`scripts/world/ramp_launch.gd`; `gen.ramp_launch(ramp)`) predicts it the way the
+Player moves: where the player is on the wall and when (`distance_at`, `time_at`), how high
+(`height_at`, `body_at`: the heights the body spans) and how fast (`speed_at`), from the launch
+(`start`) to the drop back into the ramp's lane (`end()`). Every rule that predicts a ramp's wall run
+uses it: the credits along it (`LevelGenerator.wall_run_credits`), and task B5's wall fences, which
+must never put a live wall fence where a ramp launches the player into it. `test_movement` holds it
+to the real Player at 3, 5 and 6 lanes, and `test_interactions` rides the credits on real physics.
 
 Rules scripts run in the order of the level's `features` list, except that a script declaring
 `const RUN_AFTER: Array[String]` runs after those features' rules (the host rules after the drone's;
 the cyborg rules, and the host rules that start with them, after the hover truck's, so cyborgs keep
-their margin from the ramp a truck adds; the Octodog rules after the drone's and the host's, so each
-dog is planned around the level's final ceilings and chases and nothing clears it afterwards).
-When a rule needs room for one of its guarantees, it removes what's in the way rather than moving it
-(taking content out never makes a level unfair). Guaranteed pads come from
-`scripts/enemies/pad_placement.gd`, shared by the drone and host rules: the drone's pad schedule
-(GDD §9.6) owns every pad after its first wave, pattern ceilings give way, and the host rules (which
-run after the drone's) cover each Bad Dream chase with pads at most 10 s apart or leave that host out.
-The Octodog rules keep each dog's charges off every stretch a chase can cover (GDD §9.7).
+their margin from the ramp a truck adds; the Octodog rules after the drone's, the host's and the
+hover truck's, so each dog is planned around the level's final ceilings, chases and truck lanes and
+nothing clears it afterwards). When a rule needs room for one of its guarantees, it removes what's
+in the way rather than moving it (taking content out never makes a level unfair). Guaranteed pads
+come from `scripts/enemies/pad_placement.gd`, shared by the drone and host rules: the drone's pad
+schedule (GDD §9.6) owns every pad after its first wave, pattern ceilings give way, and the host rules
+(which run after the drone's) cover each Bad Dream chase with pads at most 10 s apart or leave that
+host out. The Octodog rules keep each dog's charges off every stretch a chase can cover (GDD §9.7).
+
+**Ceilings over a dangerous floor** (GDD §3, changed September 26, 2026). The floor beneath a
+ceiling may hold gaps, hazards and enemies: the ceiling is the way to escape them, and it's never
+required. `CeilingZones` (`scripts/world/ceiling_zones.gd`, `gen.zones`) holds the two stretches every
+ceiling keeps safe, and the checks and clearing for them:
+- **The landing zone**: from a section's end, `hull_landing_seconds` at run speed (21.6 m), no lane
+  holds a gap or a fence and no floor enemy's stretch reaches in, so the player always lands safely.
+- **Each pad's spot**: its lane holds no gap, fence or ramp from a full jump before the pad (a
+  player who cleared the lane's last obstacle lands before it) until the lift has carried them up to
+  the hull (`rise`), so the pad is never on or at the edge of a gap, never in a fence, and reachable;
+  and no floor enemy's stretch, in any lane, reaches where it lies.
+
+A pattern may put floor pieces and enemies under its own ceiling (a gauntlet; `_place_pattern` keeps
+them), and `_secure_ceilings` drops what a pattern puts in its ceiling's landing zone or pad spot, with
+a warning. A ceiling a rule adds lies over whatever the floor holds (`add_hull_with_pad` refuses one
+whose pad or landing isn't clear; `PadPlacement` clears only those two stretches first, picking a pad
+lane that needs no clearing when it can, and drops a fence generator left powering nothing). So the
+floor under any ceiling holds what patterns put there, with their usual fairness and spacing, and a
+floor runner can always pass the pad by. Rules that add floor enemies keep off both stretches: the
+cyborg rules' `obstacle_spans` include every landing zone, and the Octodog's charges and runs keep
+off pads and landings (`Octodog.pad_or_landing_between`), not off the floor under a ceiling.
+Narrow ceilings (B3) and floor cuts planned in advance (B4, which never cut a landing zone or a
+pad's lane) ask `CeilingZones` too. The tests check every generated ceiling with
+`LayoutChecks.check_ceilings`, including a floor route under it that never takes the pad (`FloorRoute`,
+a conservative model of the floor moves; some routes are replayed on real physics).
 
 **Late starts.** `LevelConfig.feature_starts` (feature → share of the level) holds a feature back
 until its start: patterns that require it aren't picked before, and the first pattern picked from
@@ -277,7 +327,10 @@ either can put a NaN in a pixel, and the glow pass blows it up into a white disc
 **Pattern ids.** Ids up to 19 are the City's and Gangland's, in `kit_solid.gdshader` itself; ids 20-29
 are the Marketplace's (all in use), in `kit_market.gdshaderinc` (one include and one dispatch line in
 `kit_solid`). A new zone takes the next free block of ten (30-39 next) in its own include, so zones
-built in parallel never collide on an id.
+built in parallel never collide on an id. Ids 60-69 are the cult's, shared by every zone, in
+`kit_cult.gdshaderinc` (its include follows `cult_mark()` in `kit_solid`, and its dispatch runs after
+the zones' own): `PAT_CULT_MARK` (60) draws the cult's emblem from the material's `cult_emblem`
+texture as a mark on a dark panel.
 
 **Gangland's ceilings** (`GanglandCeiling`) take their width from the lanes they cover (the collision
 box), never from the track, and draw each side as anchored (running into the building face) or free
@@ -331,7 +384,14 @@ its mip level itself and fades it out before it spans fewer than about 24 pixels
 mark could read like a radiation trefoil. The Marketplace uses geometry instead: it turns the emblem
 into a mesh-kit template once (`MarketplaceSkin.cult_emblem()`), then appends it where it hides: a
 small warm-white badge on some ads, an unlit bronze mark on some shop signs, never smaller than
-`emblem_min_size` (0.9 m, for the same reason).
+`emblem_min_size` (0.9 m, for the same reason). The Neon City (D9) draws it with `MeshKit.PAT_CULT_MARK`:
+its solid material carries the chosen emblem's coverage (`CultFeed.emblem_texture()`), and one
+rectangle per mark, in UV emblem space (the mark's square spans -1 to 1, a wider range leaves a clear
+margin), paints it in the vertex colour on the panel's dark background, glowing at the vertex alpha;
+`cult_mark()` fades it out on screen as in Gangland, and the City keeps it at least `emblem_min_size`
+across too. It sits as a sponsor's badge where a roof billboard's glyphs end and at the foot of some
+towers' neon banners (the glyphs leave its square clear, so nothing overlaps); `CitySkin.cult_emblems()`
+lists them.
 
 **The cult's feed** (GDD §5, "Cyborg Viewing Devices"): the same wordless broadcast plays on screens
 in every zone, in sync, alongside the ordinary ads. It is one shared piece, `CultFeed`
@@ -342,6 +402,7 @@ a screen to a mesh layer:
 ```gdscript
 var feed: MeshLayer = batch.layer(CultFeed.material())    # shared; one mesh surface per chunk
 CultFeed.screen(feed, lower_left, right, up, brightness)  # a rectangle facing right × up, as seen
+CultFeed.wall_screen(feed, side, x, d0, length, y0, height, brightness)  # on a wall, facing the street
 ```
 
 `right` and `up` span the screen as its viewer sees it (the picture is never mirrored, so don't put a
@@ -355,7 +416,14 @@ play it and where), keep other glows off it, and never tint it (only cold white 
 warm white; purple glitching belongs to hosts). It honours Reduced flashing (the static and the
 rolling bar hold still). The Marketplace plays it on some billboards, casino signs and floating ads
 (`feed_share`) and on old TVs in some shop windows (`feed_window_share`; `shop_windows()` marks
-them with `screen`). `tools/showcase/cult_feed_showcase.tscn` shows a whole loop on three screens.
+them with `screen`). The Neon City (D9) plays it on some low buildings' roof billboards instead of
+their ad and on big screens hung out over the street from some flush towers, 12 m up or more and
+facing the oncoming traffic (anything flat on the City's facades is seen almost edge-on from the game
+camera); `CitySkin.feed_boards()` lists both. Gangland plays it on salvaged screens among the posters
+of some overpasses' sign gantries, and on a TV glowing in an upper window of some ruins, above the
+boarded-up band (`GanglandSkin.feed_windows()` lists those; `GanglandRuins.WINDOW_RECTS` mirrors the
+facade shader's window rectangles so the TV's room covers a window exactly). Neither puts a screen in
+the wall-run band. `tools/showcase/cult_feed_showcase.tscn` shows a whole loop on three screens.
 
 **Reduced flashing** (Settings): `Settings.apply_visuals()` sets the global shader uniform
 `reduced_flashing` (declared in `project.godot`) and `Settings.flashing_reduced`. Hazard shaders
@@ -430,7 +498,11 @@ to be built (`LevelConfig.PLANNED_FEATURES`, with the wall fences' `wall_fences`
 A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, which the player
 continues past. A cinematic is a scene whose root extends `Cinematic` (emit `finished`, support
 `skip()`); a boss is built on the boss framework (Bosses, below). Every boss slot is still a
-placeholder; the slots hold the phases GDD §10 gives each designed boss and its armor-rule delay.
+placeholder; the slots hold the phases GDD §10 gives each designed boss and its armor-rule delay. A
+fight still being built names its scene in the slot's `preview_scene` instead of `scene`: the
+campaign keeps the card, and debug builds play the fight with `--boss=<boss id>` as quick play
+(`BossDef.preview()`), so nothing is recorded. The City's Floating Head is one until its last step
+(E1d) moves it to `scene`.
 
 ## Bosses
 
@@ -457,6 +529,7 @@ encounter.setup(world, context, arena)   joins the world between the player and 
 | `scripts/bosses/boss_props.gd` | what a boss places within sight: fences, blocks, pads, ceilings, a wall taken away, floor warnings |
 | `scripts/ui/widgets/boss_bar.gd` | the HUD's boss bar, with a marker at each phase's end |
 | `scripts/bosses/test_boss*.gd`, `data/bosses/test_boss*.tres`, `scenes/bosses/test_boss.tscn` | the test boss, outside the campaign (`./play.sh --boss=test_boss`) |
+| `scripts/bosses/floating_head/`, `scenes/bosses/floating_head.tscn`, `data/bosses/city_boss*.tres` | the Floating Head, the City's boss (see below; `./play.sh --boss=city_boss` while it's a preview) |
 
 - **The arena** (`BossArena`): the generator plans `BossDef.arena_laps` laps from the boss's arena
   config (one lap's seed, features, difficulty, pacing and skin; `duration_seconds` is the lap's
@@ -519,13 +592,28 @@ slot's `BossDef` filled in (scene, phases, arena, numbers). Override the hooks i
 warning (a floor warning from `props` also keeps pickups away), random choices come from `rng`, and
 time from the physics step. The test boss (`TestBoss`) is a small example.
 
+**The Floating Head** (GDD §10, task E1; built so far: E1a, the ship and face, the entrance, the
+bombing run and the reveal), in `scripts/bosses/floating_head/`:
+
+| File | What |
+|---|---|
+| `floating_head.gd` (`FloatingHead`) | the encounter: each phase's intro (the first is the entrance, overhead from behind; later ones rise), its bombing run if it has one (`run_seconds(phase)`), then the descent in front of the runner (the first time, the reveal: the face powers on) and the face-off (a placeholder hover until E1b). The ship's `pose` is kept relative to the runner (sideways, belly height, stern ahead), so nothing depends on how long the fight has lasted. `sound()` plays and logs every warning |
+| `floating_head_body.gd` (`FloatingHeadBody`) | the body part: the model and its moving parts (face screen, jaw, searchlight gimbal, bay doors, weak-point covers), a solid hull hitbox, three weak points on the crown and the crown's top surface (both off until it's pinned, E1c: `set_weak_points_enabled`, `set_top_solid`), and the face's state (`screen_power`, `anger`, `eye_charge`, `glitch`) |
+| `floating_head_model.gd` (`FloatingHeadModel`) | the low-poly meshes, built in code from a `Shape` sized to the street (MeshKit layers merged into a few surfaces: about 13 surfaces and 11k vertices), and the bomb |
+| `floating_head_bombing.gd` (`FloatingHeadBombing`) | the searchlight and the bombs: the lock (the warning: red light, `circle_warning`, lock sound, the bomb falling with its whistle), the fairness rules (`plan`, `fair`, `escape_lane`), and pooled blast hitboxes (enemy attacks) that keep clear of a wall runner |
+| `floating_head_face.gdshader`, `floating_head_light.gdshader` | the face screen (unshaded and procedural: the same on every renderer; still with Reduced flashing) and the searchlight's beam and spot |
+| `floating_head_tuning.gd`, `data/bosses/city_boss_tuning.tres` | its numbers (F6 in its fight) |
+| `data/bosses/city_boss_skin.tres` | its arena's City look: the City's skin without the towers' big screens hung out over the street, where the ship flies |
+| `tools/showcase/floating_head_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/stern/below/entrance/bombing/reveal`) |
+
 **How the designed bosses fit** (GDD §10; each is a later task):
-- **Floating Head (E1):** the ship and face are the body part; the bombing run drops bombs under
-  `circle_warning`s where the searchlight lingers; eye-laser sweeps are attack hitboxes on the part;
-  the cyborg drop is `spawn_enemy("cyborg", ...)`. The marked towers are laid out on each lap
-  (`_plan_lap`), and the fallen tower is a surface (`add_surface`) or a ramp. The weak points are live
-  only while it's pinned; phase 3's pad and the ship's underside are `arena.add_pieces()` (or
-  `props.pad` and `props.ceiling` within sight); `weapon_share_cap` 0.34 keeps weapons to one stomp.
+- **Floating Head (E1b–E1d):** eye-laser sweeps are attack hitboxes on the part, their warning the
+  face's `eye_charge`; the cyborg drop is `spawn_enemy("cyborg", ...)` from the jaw. The marked towers
+  are laid out on each lap (`_plan_lap`), and the fallen tower is a surface (`add_surface`) or a ramp.
+  The weak points and the crown's top are live only while it's pinned; phase 3's pad and the ship's
+  underside are `arena.add_pieces()` (or `props.pad` and `props.ceiling` within sight);
+  `weapon_share_cap` 0.34 keeps weapons to one stomp. E1d adds the propaganda voice and slogans and
+  the defeat (the face's `glitch`), and moves the scene from `preview_scene` to `scene`.
 - **Sewer Swarm (E4):** 4–5 clusters are parts with health of their own and `is_swarm` (MultiMesh
   crowds drawn by the part), moving ahead of and behind the player (parts never retire); baiting one
   into a live fence or a hole is the boss script's check (`arena.live_fence_between`,
@@ -570,27 +658,37 @@ the web demo until the real plugins are chosen (risk test R3).
 
 `tools/godot.sh test` runs every `tests/suites/test_*.gd` (a `TestSuite`); `--suite=<name>` runs
 one. `RunSim` (`tests/helpers/run_sim.gd`) runs a Player over a hand-built layout (`run()`), or a
-full RunWorld (`build_world()` + `step_world()`). `SkinSuite` (`tests/helpers/skin_suite.gd`) holds
-the checks every zone skin must pass. `LayoutChecks` (`tests/helpers/layout_checks.gd`) holds the
+full RunWorld (`build_world()` + `step_world()`); with `trace` on it records the player after every
+physics frame (position, height, speed, surface, lane, lean). `SkinSuite` (`tests/helpers/skin_suite.gd`) holds
+the checks every zone skin must pass, and helpers to inspect what a skin builds over a whole level
+(`visit_level()`, `rects_of()`, `under_hazard()`). `LayoutChecks` (`tests/helpers/layout_checks.gd`) holds the
 fairness checks for generated layouts (the generator suite runs them over many seeds, the campaign
-suite over every campaign level at 3, 5 and 6 lanes) and finds a feature's pieces in a layout with the
-generator's own `LevelGenerator.feature_positions()`; a task that adds a new kind of piece extends
-it, or gives its rules script `positions()`. `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
+suite over every campaign level at 3, 5 and 6 lanes, the enemy suites over their own levels), among
+them `check_ceilings` (GDD §3: pads that can be stepped on, safe landing zones, and a floor route under
+every ceiling without its pad, found by `FloorRoute`, `tests/helpers/floor_route.gd`), and finds a
+feature's pieces in a layout with the generator's own `LevelGenerator.feature_positions()`; a task
+that adds a new kind of piece extends it (and `FloorRoute`'s cells, if the piece is on the floor), or
+gives its rules script `positions()`. `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
 for framework tests, with `make_def()` for a BossDef from a list of phases; `test_bosses` runs fights
 in bare worlds and, with the test boss in the City's slot, through the App. `test_pickups` checks
 pickup placement against the rules as it writes them itself, over hand-built cases and generated
-tracks at 3, 5 and 6 lanes, and the armor rule end to end on the test boss. The runner frees anything
-a suite leaves in the tree, gives suites a fresh, unsaved profile, reports a suite that fails to load,
-and ends a stuck run after 600 s of real time.
+tracks at 3, 5 and 6 lanes, and the armor rule end to end on the test boss. `test_floating_head`
+runs the Floating Head's fight in bare worlds at 3, 5 and 6 lanes with a runner who dodges each lock
+(and one who doesn't), and rechecks its bombs' fairness from the arena's layout. The runner frees
+anything a suite leaves in the tree, gives suites a fresh, unsaved profile, reports a suite that fails
+to load, and ends a stuck run after 600 s of real time.
 
 ## Review tools
 
 Scenes in `tools/showcase/` show one part of the game up close for visual review (not part of the
 game): the avatar (`avatar_showcase`: every pose, power-up and concept-sheet view, front, back and
 side; `avatar_run_review`: a scripted run through the game camera on any zone's skin, with any
-power-up look), the enemies (`enemy_showcase` for the cyborg family, `octodog_screech`,
-`drone_truck_showcase`, `bad_dream_showcase`), the UI kit, the screens, a zone skin (`skin_review`:
-any skin from fixed spots, or a scripted run with a ceiling ride and a wall run), and comparison
+power-up look), ramps and walls (`ramp_wall_review`: a ramp launch with the credits along its wall
+run, and blocked wall entries at a low and a high sign, through the game camera or a close one),
+the enemies (`enemy_showcase` for the cyborg family, `octodog_screech`,
+`drone_truck_showcase`, `bad_dream_showcase`), a boss (`floating_head_showcase`), the UI kit, the
+screens, a zone skin (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed
+screens and emblems a skin lists, or a scripted run with a ceiling ride and a wall run), and comparison
 sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
 `CLAUDE.md`.

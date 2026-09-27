@@ -154,7 +154,7 @@ Each item has a placeholder in code marked `DESIGN-TBD` and, where it's a number
 7. **Ceiling rules:** moving past the outer ceiling lane does nothing (no ceiling → wall). The ceiling has the same lane count and gravity as the floor. Jump and slide also work on the ceiling, mirrored (jump drops you away from the hull, then gravity pulls you back). Correct?
 8. **Air slide:** pressing slide in mid-air drops fast and slides on landing. It's not in the GDD and can be switched off with `air_slide_fast_fall`. Keep it?
 9. ~~**Hull end landing:**~~ Answered: keep a safe landing zone (GDD §3, September 26, 2026).
-10. **Ramps:** the placeholder launches onto the wall at 4.0 m, with no speed boost (`ramp_speed_boost = 0`). The ramp sits in the outer lane and launches the player when they run over it.
+10. **Ramps:** (the boost was changed by the owner's review and built by R1: see "From build phase 2" item 80.) The placeholder launches onto the wall at 4.0 m, with no speed boost (`ramp_speed_boost = 0`). The ramp sits in the outer lane and launches the player when they run over it.
 11. **Pulsing fences:** on/off timings are placeholders (about 1.0–1.2 s each, with 0.35 s of flicker and an electric crackle before switching on).
 12. **Difficulty within a level:** the placeholder adds +0.25 difficulty linearly from start to end.
 13. ~~**Mobile orientation:** landscape or portrait?~~ Answered: landscape (GDD §2).
@@ -660,6 +660,96 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
 68. **Details read off the sheet:** the scar across the right cheek, a dark leather fingerless glove on the right hand,
     two small copper lights on the vest (the sheet's were cyan and orange), a dusty hem, and a high collar open at the
     front with a copper conduit round its back. Anything to change?
+
+**Dangerous floor under ceilings** (from B2; `CeilingZones`, the gauntlet patterns)
+69. **Gauntlets under ceilings** (GDD §3, §6): six new patterns put a gauntlet under a 4–4.5 s ceiling (fence rows, hole
+    rows or a mix with one lane free, cyborgs, manholes, a generator with its fences), from difficulty 0.3–0.5, picked
+    with weights 0.15–0.35 against the plain ceiling's 1.2, so most ceilings stay plain. City 2 introduces ceilings
+    with a plain one and may show a gauntlet in its second half. The right mix, and should City 2 show one or only City 3?
+70. **What "safe to land on" covers** (GDD §3): 21.6 m after a ceiling's end with no hole or fence in any lane and no
+    floor enemy's reach. A cyborg further ahead may still fire at a player dropping off a ceiling. Should enemies also
+    hold fire while the player drops and lands?
+71. **A pad the player can step on:** the pad's lane is free of holes, fences and ramps from a full jump before it
+    until the lift reaches the hull, and no floor enemy reaches the pad. A hazard row may still force the player out of
+    the pad's lane just before it. Enough, or should the approach be clear in every lane?
+72. **Rule ceilings now lie over the floor** (replaces FB 90's clearing): the drone's pad schedule and a Bad Dream
+    chase's pads clear only the landing zone and the pad's spot, so drone and host levels keep much more floor
+    content (they used to empty about half of every drone stretch). Intended density, or lighter patterns there?
+73. **Octodogs under a ceiling** may run and charge a floor runner; their charges keep off pads and landing zones, and
+    they never wind up at a ceiling rider.
+74. **Credits under a ceiling:** unchanged: trails skip the floor under a ceiling (the ceiling's line and its 25 reward
+    taking the pad); rich credits at hole edges and fences appear there as anywhere. Should the harder floor route
+    under a gauntlet pay more?
+75. **The ceiling camera and hazards below** (GDD §3, §11): riding a ceiling, the camera sits at 2.4 m, so a gapped
+    fence below (its field reaches 2.1 m) fills the bottom of the screen with pink for about 0.25 s. Harmless, but it
+    could read as a hit. Raise the ceiling camera (say to 3 m)?
+
+**The cult's feed and emblem in the City and Gangland** (from D9; what the feed shows is item 52)
+76. **Where the feed plays in the Neon City** (GDD §5): the City has no shop windows at the play field, so 35% of the low
+    buildings' roof billboards show it, and 40% of the towers flush with the street hang a big screen (4.8 m wide, its
+    bottom 12–16 m up) out over the street facing the traffic: about one hung screen every 170 m and one feed billboard
+    every 210 m. The right places and amounts?
+77. **Where the emblem hides in the City:** a 1.4 m sponsor's badge in the corner of 40% of the roof billboard ads and a
+    brand mark at the foot of 40% of the towers' neon banners, in its warm-white neon, never on hazard signs, never below
+    0.9 m: about one every 50 m, usually too small or edge-on to notice from the lanes. Right amount? Should it also
+    brand the hover trucks' containers or the ships (they are play surfaces)?
+78. **Where the feed plays in Gangland:** 35% of the overpasses' gantry billboards are salvaged screens playing it, and
+    30% of the tall ruins have a TV glowing with it in one upper window (9.9 m up or higher). The paper corporate ads in
+    the wall-run band stay paper. Should the bombed-out buildings bridging the street show a TV too?
+79. **A TV in a window next to window cyborgs** (GDD §9.2 readability): the feed's loop shows a screen-head face, so a TV
+    could look a little like a window cyborg's face. The TVs stay well above the band window cyborgs use, small, dim, in
+    a dark room, and the face shows 7 s of the 18 s loop. Distinct enough, or should Gangland's TVs leave the face out?
+
+**Ramps' speed boost and the blocked-wall bump** (from R1; numbers in `data/tuning/movement.tres`)
+80. **A ramp's speed boost** (GDD §3): a speed pad's, 6 m/s (`ramp_speed_boost`), fading at their shared 4 m/s every
+    second (`boost_decay_per_second`), so it's gone after 1.5 s. A ramp's wall run now covers about 43 m instead of 39 m.
+    Bigger, smaller, or a speed pad's? (To tune after playtesting.)
+81. **The blocked-entry bump** (GDD §3: "a small sideways bump"): out toward the wall and back over 0.16 s
+    (`wall_bump_time`), at most 0.35 m (`wall_bump_distance`); a sign that reaches down to the runner stops it at its
+    face. The runner stays upright going out and leans away from the wall coming back, as if pushed off it. Right size,
+    speed and look?
+82. **Wall-run credits with claws** (GDD §7, §8; unchanged by R1): the credits follow the path of a runner without
+    claws. Claws make wall runs 1.5 times longer, so a runner with claws slides down more slowly and passes the last
+    three credits (35 of the 42) too high to take them. Keep it (claws trade those credits for a longer run), or place
+    the line so both paths reach it (for example fewer credits, all in the high first half)?
+
+**The Floating Head: ship, entrance, bombing run and reveal** (from E1a; numbers in `data/bosses/city_boss_tuning.tres`;
+play it with `--boss=city_boss` in debug builds)
+83. **The ship and its face** (GDD §10): a hull shaped like a huge head seen from behind, dark gunmetal with cold white and
+    blue lights; its stern is a visor screen with a face in cold-white LED dots (eyes that follow the runner, heavy brows,
+    static, a rolling bar), a hinged jaw below (the mouth for the cyborg drop), loudspeaker "ears", a searchlight and bomb
+    bay underneath, three red weak points on the crown under covers. Does the look fit? Should the face keep the cult's
+    cold-white screen language or have a colour of its own (never a hazard colour)?
+84. **Its size:** it fills the street less 0.6 m a side (6.6 m wide at 3 lanes, 11.4 m at 5, 13.8 m at 6), 24 m long,
+    10.5–12 m tall, so the arena's walls carry no signs. A bigger ship would fly above the buildings, where its face and
+    weak points are hard to read on a phone. Right scale?
+85. **The entrance:** a 4 s intro. It starts 42 m behind the runner out of sight with a jet roar, sweeps overhead (the
+    camera shakes) and eases into its station, its stern 34 m ahead and its belly 12 m up; it attacks nothing on the way.
+86. **The searchlight** (GDD §10, proposed): the light hunts the runner, its spot where the runner will be when a bomb
+    lands (about 22 m ahead); after each blast it swings away 1–2 lanes and back. The lock is the warning: the light turns
+    from white to red, a red target circle marks the spot, a clack-and-alarm plays, and the bomb falls with its whistle;
+    the blast comes 1.1 s after the lock. Every third lock covers two lanes. That makes 9 locks and 12 bombs in the 17 s
+    first run. Hunt the player like this, or sweep a fixed pattern? Is 1.1 s right? Is a white sweeping light (red only
+    when locked) right?
+87. **The blast:** a fireball whose hitbox burns 0.35 s, 0.7 of a lane wide and 2.4 m tall, too tall to jump, so
+    switching lanes is the dodge; armor and the shield block it, the dash passes through, and a wall runner beside it is
+    safe. Should a jump, a slide or a wall run ever be a planned way to dodge a bomb?
+88. **Where bombs may fall** (fairness): only on clear roof (no holes or fences from 8 m before to 5 m after), with a free
+    lane at most 2 lanes away and a clear way to it, never under a ceiling, never within 3 m of a pickup. Otherwise the
+    light keeps hunting, so a runner hemmed in by fences may see no bombs for a moment. Right rules?
+89. **The later, shorter runs** (GDD §10: once or twice it rises for another, shorter run): 2 runs of 9 s, at the start of
+    phases 2 and 3, at the phase's pace, so the warning shrinks to 0.96 s and then 0.85 s. When should they come, how
+    long, and should "the next phase is faster" also shorten the warnings?
+90. **The reveal:** after the first run it drops in front of the runner over 3 s, to 26 m ahead with its belly 3 m up
+    (above the fences, so the track stays in view); over the last 1.6 s its screen powers on (a bright line, static, then
+    the face) with a picture tube's thunk, static and a loudspeaker blare. Is the height right?
+91. **The arena:** the City's truck roofs with gaps, fences and pulsing fences at difficulty 0.3, 3 laps of 60 s, opening
+    with 80 m of clear roof; no signs, no ceilings yet (phase 3 will need one), no enemies of its own (the cyborgs come
+    from its mouth). Its City look hangs none of the towers' big feed screens over the street, since the ship flies there
+    (the roof billboards still play the feed). Right mix, and how hard should the arena be under the bombs?
+92. **Its sounds** (GDD §11): a flyover roar with a Doppler drop and a power chord, the searchlight's clunk and arc hum, a
+    lock's clack and two-tone alarm, a falling whistle, a blast, and the reveal's tube thunk, static and blare. Do they
+    fit?
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).

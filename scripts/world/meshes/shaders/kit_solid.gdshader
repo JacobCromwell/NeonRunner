@@ -77,6 +77,9 @@ vec4 cult_mark(vec2 p, float fw) {
 	return vec4(t.rgb, t.a * inside * (1.0 - smoothstep(0.055, 0.085, fw)));
 }
 
+// The cult's emblem as a mark of its own (ids 60-69).
+#include "res://scripts/world/meshes/shaders/kit_cult.gdshaderinc"
+
 // Two coordinates in the plane of the face, picked by its dominant axis.
 vec2 face_coords(vec3 n) {
 	return abs(n.y) > 0.5 ? v_world.xz : (abs(n.x) > 0.5 ? v_world.zy : v_world.xy);
@@ -369,6 +372,10 @@ void fragment() {
 			c = paint_graffiti(c, face_coords(n), 29.0, graffiti_pieces * 0.6, max(fwp.x, fwp.y));
 		}
 		base = c;
+	}
+	if (pattern >= 60 && pattern < 70) {
+		// The cult's emblem (kit_cult.gdshaderinc).
+		base = cult_surface(pattern, base, UV, fwidth(UV), panel_dark, glow);
 	}
 
 	vec3 col;

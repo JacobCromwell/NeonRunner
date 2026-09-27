@@ -14,7 +14,9 @@ extends Enemy
 ## Killed by a stomp on the head, weapons, claws or the dash: a stompable top over the head and a
 ## solid body (both slightly smaller than the visuals, and the body stops below the stomp line, so a
 ## player dropping onto the head only ever touches the head).
-## Movement never takes it within obstacle_margin of a gap, fence, ramp, pad or ceiling section.
+## Movement never takes it within obstacle_margin of a gap, fence, ramp, pad, speed pad or a
+## ceiling's landing zone (CyborgRules.obstacle_spans). It may stand under a ceiling (GDD §3: the
+## floor there may be dangerous) and holds fire while the player rides the ceiling (_may_attack).
 ## Scaling (GDD §6): health, reload time and bolt speed come from early/late values in
 ## data/enemies/cyborg.tres and the level's enemy_scaling.
 ##
@@ -44,8 +46,6 @@ var home: float = 0.0
 ## The closest it may walk toward the player, and the furthest a panic run may take it.
 var walk_limit: float = 0.0
 var run_limit: float = 0.0
-## Standing where no floor enemy may be (under a ceiling section): leaves play at once.
-var misplaced: bool = false
 
 ## Speed along the track: + = forward (away from the player).
 var _speed: float = 0.0
@@ -123,10 +123,6 @@ func _tick(delta: float) -> void:
 	_update_body(delta)
 
 
-func should_retire() -> bool:
-	return misplaced or super.should_retire()
-
-
 func aim_point() -> Vector3:
 	return global_position + Vector3(0.0, 0.85, 0.0)
 
@@ -178,13 +174,14 @@ func _enter(next: Mode) -> void:
 			gun.stop()
 
 
-## Keeps the walk and the panic run clear of every obstacle (GDD §9 fairness), and flags a cyborg
-## standing under a ceiling section (GDD §3: the floor under a ceiling stays clear).
+## Keeps the walk and the panic run clear of every obstacle (GDD §9 fairness) and of every ceiling's
+## landing zone (GDD §3: the floor there is safe to land on).
 func _compute_limits() -> void:
 	var margin: float = tuning.obstacle_margin
 	walk_limit = home - tuning.walk_max
 	run_limit = minf(home + tuning.panic_run_max, world.layout.length - margin)
-	for s: Vector2 in CyborgRules.obstacle_spans(world.layout, world.tuning):
+	var zones := CeilingZones.make(world.config, world.tuning)
+	for s: Vector2 in CyborgRules.obstacle_spans(world.layout, world.tuning, zones):
 		if s.y <= home:
 			walk_limit = maxf(walk_limit, s.y + margin)
 		elif s.x >= home:
@@ -194,9 +191,6 @@ func _compute_limits() -> void:
 			run_limit = home
 	walk_limit = minf(walk_limit, home)
 	run_limit = maxf(run_limit, home)
-	for h: Dictionary in world.layout.hulls:
-		if home >= float(h["start"]) - 1.0 and home <= float(h["end"]) + 1.0:
-			misplaced = true
 
 
 func _update_body(delta: float) -> void:
