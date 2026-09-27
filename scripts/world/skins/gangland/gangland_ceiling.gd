@@ -8,8 +8,8 @@ extends RefCounted
 ## edge (MeshKit.ceiling_end: the drop back to the floor, as in every zone).
 ## Seen on the approach, one of two structures, picked by hashing the ceiling's start:
 ## - an overpass: a tagged concrete fascia under a crash barrier and railing, with a sign gantry
-##   (salvaged billboards and corporate ads), dead lamp posts, a wreck and military supply crates
-##   behind a sandbag nest up on the deck;
+##   (salvaged billboards and corporate ads, and salvaged screens playing the cult's feed), dead lamp
+##   posts, a wreck and military supply crates behind a sandbag nest up on the deck;
 ## - a building: the upper storeys of a bombed-out block bridging the street (facade.gdshader's ruin
 ##   mode, lit windows with curtains) with a broken top, laundry and rooftop clutter.
 ## Width comes from the lanes the ceiling covers (its collision box), never from the track: each
@@ -33,6 +33,8 @@ const FREE_LIP: float = 0.15
 const LAMP_SPACING: float = 9.0
 ## Nothing of a ceiling rises higher than this above its underside.
 const ABOVE_LIMIT: float = 7.9
+## A gantry screen playing the cult's feed sits this far inside its board, which frames it.
+const FEED_INSET: float = 0.06
 
 ## Weak: the skin owns this builder, so a strong reference back would keep both alive forever.
 var skin: GanglandSkin:
@@ -82,7 +84,7 @@ func _mesh(size: Vector3, seams: Array[float], kind: Kind, deco: int, anchored_l
 	_underside(s, g, xa, xb, zn, zf, seams, kind)
 	MeshKit.ceiling_end(s, g, (xb - xa) * 0.5, zf, STERN_BAND, skin.gap_edge_color, (xa + xb) * 0.5)
 	if kind == Kind.OVERPASS:
-		_overpass(s, g, xa, xb, zn, zf, size.x, deco, anchored_left, anchored_right)
+		_overpass(s, g, batch.layer(skin.feed_material()), xa, xb, zn, zf, size.x, deco, anchored_left, anchored_right)
 	else:
 		_building(batch.layer(skin.facade_material()), s, xa, xb, zn, zf, size.x, deco, anchored_left, anchored_right,
 			base_y)
@@ -132,8 +134,8 @@ func _free_side(s: MeshLayer, x: float, side: float, zn: float, zf: float, heigh
 
 # --- Overpass -----------------------------------------------------------------------------
 
-func _overpass(s: MeshLayer, g: MeshLayer, xa: float, xb: float, zn: float, zf: float, lanes_width: float, deco: int,
-		anchored_left: bool, anchored_right: bool) -> void:
+func _overpass(s: MeshLayer, g: MeshLayer, feed: MeshLayer, xa: float, xb: float, zn: float, zf: float,
+		lanes_width: float, deco: int, anchored_left: bool, anchored_right: bool) -> void:
 	var t: float = skin.overpass_depth
 	var concrete: Color = skin.ceiling_concrete_color
 	var fascia: Color = concrete.lightened(0.08)
@@ -174,7 +176,8 @@ func _overpass(s: MeshLayer, g: MeshLayer, xa: float, xb: float, zn: float, zf: 
 		var cx: float = nest_x + 0.8 + 1.4 * float(i)
 		GanglandClutter.crate_stack(s, Vector3(cx, t + 0.14, zn - 1.2), Vector3(0, 0, 1), skin.military_crate_colors,
 			k + i * 13, skin.cult_emblem_share)
-	# A sign gantry over the deck, its boards salvaged billboards and corporate ads.
+	# A sign gantry over the deck, its boards salvaged billboards and corporate ads, and some of them
+	# salvaged screens playing the cult's feed (its backing board the bezel), facing the approach.
 	var gz: float = zn - 5.0 - 3.0 * MeshKit.hash01(k, 1)
 	var top: float = t + 5.4
 	for x: float in [x0 + 0.5, x1 - 0.5]:
@@ -188,6 +191,10 @@ func _overpass(s: MeshLayer, g: MeshLayer, xa: float, xb: float, zn: float, zf: 
 		var h: float = 1.5 + 0.4 * MeshKit.hash01(k, i, 2)
 		var poster: Color = skin.sign_content_colors[MeshKit.hash_i(k, i, 3) % skin.sign_content_colors.size()]
 		s.box(Vector3(bx, top - 0.3 - h * 0.5, gz - 0.06), Vector3(w + 0.16, h + 0.16, 0.1), metal.darkened(0.3))
+		if skin.shows_feed(k, i):
+			CultFeed.screen(feed, Vector3(bx - w * 0.5 + FEED_INSET, top - 0.3 - h + FEED_INSET, gz),
+				Vector3(w - FEED_INSET * 2.0, 0, 0), Vector3(0, h - FEED_INSET * 2.0, 0), skin.feed_board_brightness, k + i)
+			continue
 		s.rect(Vector3(bx - w * 0.5, top - 0.3 - h, gz), Vector3(w, 0, 0), Vector3(0, h, 0), poster, 0.0,
 			MeshKit.PAT_POSTER, Vector2(0, 0), Vector2(w, h), float(MeshKit.hash_i(k, i, 4) % 97))
 	# A dead lamp post on one side, its arm over the deck.

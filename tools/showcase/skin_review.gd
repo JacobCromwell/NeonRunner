@@ -20,7 +20,11 @@ extends Node3D
 ##                   ahead, when its chunk is built). Skins that list their cult feed screens
 ##                   (feed_boards(), shop_windows() with "screen") add 17 the first billboard playing
 ##                   the feed and 18 the first shop window with a TV playing it, close up, and 19 that
-##                   window from the lanes.
+##                   window from the lanes. After those come, where the skin lists them, the first
+##                   feed screen of each other kind (feed_boards()), the first window with a TV
+##                   playing the feed high on a wall (feed_windows()) and the first cult emblem of
+##                   each kind (cult_emblems()), close up. Each shot's number, frame and subject are
+##                   printed.
 ##                   --shot=N shows only that one.
 ## The level's ceilings: for the Marketplace skin, one of each kind (building bridge, overpass,
 ## ship, floating ad), found by asking the skin which kind a spot gets.
@@ -252,8 +256,8 @@ func _shot_list() -> Array:
 		out.append([p, Vector3(0.0, tuning.camera_height, -(p - tuning.camera_distance)),
 			Vector3(0.0, 1.0, -(p + tuning.camera_look_ahead))])
 	# 17-19: the cult's feed on a billboard and on a shop-window TV.
+	var board: Dictionary = {}
 	if skin.has_method(&"feed_boards"):
-		var board: Dictionary = {}
 		for side: int in [1, -1]:
 			for found: Dictionary in skin.call(&"feed_boards", side, side * w, 20.0, LENGTH - 60.0):
 				if board.is_empty() or float(found["at"]) < float(board["at"]):
@@ -263,7 +267,8 @@ func _shot_list() -> Array:
 			var side: float = signf(c.x)
 			# From the far side of the street (inside the street however narrow), a little ahead.
 			var across: float = minf(13.0, absf(c.x) + w - 0.8)
-			out.append([float(board["at"]) - 30.0, Vector3(c.x - side * across, c.y - 3.0, c.z + 11.0), c])
+			out.append([float(board["at"]) - 30.0, Vector3(c.x - side * across, c.y - 3.0, c.z + 11.0), c,
+				"the first billboard playing the feed (%s)" % board.get("kind", "")])
 	if skin.has_method(&"shop_windows"):
 		var tv: Dictionary = {}
 		for side: int in [1, -1]:
@@ -274,9 +279,52 @@ func _shot_list() -> Array:
 			var c: Vector3 = tv["center"]
 			var side: float = float(tv["side"])
 			var inside := Vector3(c.x + side * 0.45, 1.55, c.z)
-			out.append([float(tv["at"]) - 20.0, Vector3(c.x - side * 2.6, 1.9, c.z + 2.2), inside])
-			out.append([float(tv["at"]) - 30.0, Vector3(0.0, tuning.camera_height, c.z + 12.0), inside])
+			out.append([float(tv["at"]) - 20.0, Vector3(c.x - side * 2.6, 1.9, c.z + 2.2), inside,
+				"the first shop window with a TV playing the feed"])
+			out.append([float(tv["at"]) - 30.0, Vector3(0.0, tuning.camera_height, c.z + 12.0), inside,
+				"that window from the lanes"])
+	# Then the first feed screen of each other kind, the first TV window high on a wall, and the first
+	# cult emblem of each kind, close up from the far side of the street.
+	if skin.has_method(&"feed_boards"):
+		# Shot 17 shows the first of all, which is the first of its kind.
+		for found: Dictionary in _first_of_each_kind(&"feed_boards", w):
+			if found.get("kind", &"") != board.get("kind", &""):
+				out.append(_close_up(found, w, 11.0, 3.0, 13.0, "the first %s playing the feed" % found["kind"]))
+	if skin.has_method(&"feed_windows"):
+		var firsts: Array[Dictionary] = _first_of_each_kind(&"feed_windows", w)
+		if not firsts.is_empty():
+			var tv: Dictionary = firsts[0]
+			var shot: Array = _close_up(tv, w, 5.0, 1.5, 9.0, "the first window with a TV playing the feed")
+			shot[2] = tv["screen_center"]
+			out.append(shot)
+	if skin.has_method(&"cult_emblems"):
+		for found: Dictionary in _first_of_each_kind(&"cult_emblems", w):
+			out.append(_close_up(found, w, 4.0, 1.0, 10.0, "the first cult emblem on a %s" % found["kind"]))
 	return out
+
+
+## The first entry of each kind (or the first of all, if they have no kind) that the skin's
+## `method` lists along the review track on either wall.
+func _first_of_each_kind(method: StringName, wall_x: float) -> Array[Dictionary]:
+	var firsts: Dictionary = {}
+	for side: int in [1, -1]:
+		for found: Dictionary in skin.call(method, side, side * wall_x, 20.0, LENGTH - 60.0):
+			var kind: Variant = found.get("kind", &"")
+			if not firsts.has(kind) or float(found["at"]) < float(firsts[kind]["at"]):
+				firsts[kind] = found
+	var out: Array[Dictionary] = []
+	for kind: Variant in firsts:
+		out.append(firsts[kind])
+	return out
+
+
+## A still camera on something on a wall (`found` from a skin's listing: its "at" and "center"): from
+## the far side of the street (at most `reach` across), `ahead` metres before it and `below` under it.
+func _close_up(found: Dictionary, wall_x: float, ahead: float, below: float, reach: float, label: String) -> Array:
+	var c: Vector3 = found["center"]
+	var side: float = signf(c.x)
+	var across: float = minf(reach, absf(c.x) + wall_x - 0.8)
+	return [float(found["at"]) - 30.0, Vector3(c.x - side * across, c.y - below, c.z + ahead), c, label]
 
 
 func _show_shot(index: int) -> void:
@@ -286,4 +334,4 @@ func _show_shot(index: int) -> void:
 	track.update(float(shot[0]), float(shot[0]) / tuning.run_speed)
 	camera.position = shot[1]
 	camera.look_at(shot[2])
-	print("shot %d at frame %d" % [index, _frame])
+	print("shot %d at frame %d%s" % [index, _frame, (": " + String(shot[3])) if shot.size() > 3 else ""])
