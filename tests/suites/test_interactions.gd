@@ -14,6 +14,7 @@ func run() -> void:
 	await _test_enemies()
 	await _test_projectiles()
 	await _test_credits()
+	await _test_wall_run_credits()
 	await _test_speed_pad_and_emp()
 	await _test_raised_platform()
 
@@ -257,6 +258,57 @@ func _test_credits() -> void:
 		"a ramp's wall run multiplies credit score (%d)" % w.score.score)
 	check(w.score.ramps == 1, "ramps are counted")
 	await sim.free_world(w)
+
+
+## GDD §3 and §7: the credits along a ramp's wall run sit on the path the boosted player takes. With
+## the generator's own placement (LevelGenerator.wall_run_credits) for a ramp on either wall, at 3, 5
+## and 6 lanes, a player who rides the ramp collects every one, passing each within a few centimetres
+## of its height. Placed for a run without the boost, the later ones would be well off that path.
+func _test_wall_run_credits() -> void:
+	var flat: MovementTuning = tuning.duplicate() as MovementTuning
+	flat.ramp_speed_boost = 0.0
+	sim.trace = true
+	for lanes: int in [3, 5, 6]:
+		for side: int in [-1, 1]:
+			var tag: String = "(lanes=%d, side %d)" % [lanes, side]
+			var layout := RunSim.layout(lanes)
+			var ramp := {"side": side, "at": 30.0}
+			layout.ramps.append(ramp)
+			var line: Array[Dictionary] = LevelGenerator.wall_run_credits(layout, ramp, tuning, tuning.run_speed)
+			layout.credits.append_array(line)
+			var total: int = 0
+			for c: Dictionary in line:
+				total += int(c["value"])
+			var w: RunWorld = sim.build_world(layout)
+			w.player.setup(tuning, w.geo, layout.outer_lane(side))
+			var r: Dictionary = await sim.step_world(w, 4.0)
+			check(line.size() == 6 and w.score.credit_pickups == line.size() and w.score.credits == total,
+				"a ramp's wall run collects every credit along it (%d of %d, worth %d of %d) %s"
+				% [w.score.credit_pickups, line.size(), w.score.credits, total, tag])
+			var off: float = 0.0
+			for c: Dictionary in line:
+				off = maxf(off, absf(_wall_height_at(r["trace"], float(c["at"])) - float(c["height"])))
+			check(off < 0.1, "each sits on the path the boosted player takes (%.3f m off at most) %s" % [off, tag])
+			var unboosted: float = 0.0
+			for c: Dictionary in LevelGenerator.wall_run_credits(layout, ramp, flat, flat.run_speed):
+				unboosted = maxf(unboosted, absf(_wall_height_at(r["trace"], float(c["at"])) - float(c["height"])))
+			check(unboosted > 0.3, "placed without the boost, they'd be off it (%.2f m) %s" % [unboosted, tag])
+			await sim.free_world(w)
+	sim.trace = false
+
+
+## The wall runner's height where they passed track distance `d`, from a traced run (-INF if they
+## weren't on the wall there).
+static func _wall_height_at(trace: Array, d: float) -> float:
+	for i: int in range(1, trace.size()):
+		var a: Dictionary = trace[i - 1]
+		var b: Dictionary = trace[i]
+		if float(a["d"]) <= d and float(b["d"]) >= d:
+			if a["surface"] != "wall" or b["surface"] != "wall":
+				return -INF
+			var k: float = (d - float(a["d"])) / maxf(float(b["d"]) - float(a["d"]), 0.0001)
+			return lerpf(float(a["h"]), float(b["h"]), k)
+	return -INF
 
 
 func _test_speed_pad_and_emp() -> void:
