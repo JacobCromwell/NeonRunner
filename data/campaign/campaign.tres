@@ -8,6 +8,7 @@
 [ext_resource type="Resource" path="res://data/zones/corporate.tres" id="z_corporate"]
 [ext_resource type="Resource" path="res://data/zones/dead_zone.tres" id="z_dead_zone"]
 [ext_resource type="Resource" path="res://data/zones/golden.tres" id="z_golden"]
+[ext_resource type="Resource" path="res://data/tuning/feature_recency.tres" id="recency"]
 
 [resource]
 script = ExtResource("1_script")
@@ -16,3 +17,4 @@ difficulty_start = 0.1
 difficulty_end = 0.9
 difficulty_curve_exponent = 1.0
 planned_levels_per_placeholder_zone = 3
+feature_recency = ExtResource("recency")

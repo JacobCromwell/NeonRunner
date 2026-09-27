@@ -31,6 +31,16 @@ extends RefCounted
 ## unchanged, so the guarantee never bends a fairness rule. Rules that hold the room for their
 ## feature themselves may add one where it fits when none is left (the host and Octodog rules),
 ## which saves a build.
+##
+## Beyond that guarantee, a campaign level's newest things get the most picks (GDD §5, owner's review
+## P2 13): with the campaign's recency curve (LevelConfig.feature_recency and feature_ages), each
+## pattern's pick weight follows how recently the campaign introduced its newest feature, and the
+## curve only moves picks between the level's features (FeatureRecency.keep_feature_share).
+##
+## A level may alternate long quiet stretches with short, dense bursts (LevelConfig.quiet_seconds;
+## GDD §5, The Hush): quiet stretches pick sparse patterns without enemies (bar quiet_features), bursts
+## pick from everything, densely. Every rule, fairness check and the guarantee apply to it unchanged,
+## and a burst takes at most one introduction, so it never stacks two new things.
 
 const DENOMINATIONS: Array[int] = [1, 5, 25, 100]
 const RULES_DIR: String = "res://scripts/enemies"
@@ -62,15 +72,20 @@ var attempts: int = 0
 ## The floor every ceiling keeps safe (GDD §3): its landing zone and its pads' spots, for this level's
 ## pacing and run speed. Rules that add ceilings or floor enemies keep to it.
 var zones: CeilingZones
+## The patterns the pattern pass of the last build placed, in order: {id, requires, at, due} (`due`:
+## an introduction or one of the guarantee's forced picks). For tests and the level report.
+var picks: Array[Dictionary] = []
 
 var _rng := RandomNumberGenerator.new()
 ## Clear stretches between patterns [start, end], filled with credit trails later.
 var _clear_stretches: Array[Vector2] = []
 var _enemy_count: int = 0
-## Picks that must use a feature once the cursor reaches their spot, earliest first: {feature, at}.
-## A feature's introduction at its start (LevelConfig.feature_starts), and the guarantee's forced
-## picks (_pick_due).
+## Picks that must use a feature once the cursor reaches their spot, earliest first: {feature, at,
+## intro}. A feature's introduction at its start (LevelConfig.feature_starts; `intro`), and the
+## guarantee's forced picks (_pick_due).
 var _due: Array[Dictionary] = []
+## In a level paced in bursts, the burst (burst_index) that has had its introduction; -1 for none.
+var _intro_burst: int = -1
 
 
 static func load_patterns(path: String) -> Array:
@@ -141,6 +156,8 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	_clear_stretches.clear()
 	_enemy_count = 0
 	warnings.clear()
+	picks.clear()
+	_intro_burst = -1
 	var accel: float = tuning.speed_gain_per_minute / 60.0
 	layout.length = speed * config.duration_seconds + 0.5 * accel * config.duration_seconds * config.duration_seconds
 	_due = _due_picks(forced)
@@ -151,6 +168,7 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 		var progress: float = cursor / layout.length
 		var difficulty: float = difficulty_at(progress)
 		var pattern: Dictionary = _pick_due(patterns, difficulty, cursor)
+		var due: bool = not pattern.is_empty()
 		if pattern.is_empty():
 			pattern = _pick_pattern(patterns, difficulty, cursor)
 		if pattern.is_empty():
@@ -163,9 +181,15 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 		if layout.hulls.size() > int(pattern_start_counts["hulls"]):
 			_secure_ceilings(pattern, pattern_start_counts)
 		_settle_due(pattern, cursor)
-		var spacing_seconds: float = lerpf(config.spacing_seconds_easy, config.spacing_seconds_hard, difficulty)
-		var clear_end: float = cursor + used + spacing_seconds * speed
-		_clear_stretches.append(Vector2(cursor + used, minf(clear_end, layout.length - config.end_clear_distance)))
+		picks.append({"id": String(pattern.get("id", "?")), "requires": pattern.get("requires", []), "at": cursor,
+			"due": due})
+		var end: float = cursor + used
+		var clear_end: float = end + _spacing_seconds(end, difficulty) * speed
+		if config.paced_in_bursts() and quiet_at(end):
+			# A quiet stretch's long spacing never carries the cursor far past the next burst's start: the
+			# burst begins on time, after the burst spacing at least.
+			clear_end = maxf(minf(clear_end, stretch_end(end)), end + config.burst_spacing_seconds * speed)
+		_clear_stretches.append(Vector2(end, minf(clear_end, layout.length - config.end_clear_distance)))
 		cursor = clear_end
 
 	_apply_enemy_rules()
@@ -177,6 +201,84 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 ## The difficulty at a point of the level (0–1 progress): the level's base plus its ramp.
 func difficulty_at(progress: float) -> float:
 	return clampf(config.difficulty + config.difficulty_ramp * progress, 0.0, 1.0)
+
+
+# --- Quiet stretches and bursts (LevelConfig.quiet_seconds; GDD §5, The Hush) --------------------
+
+## True if track distance `at` lies in one of the level's quiet stretches: from the level's first
+## pattern (start_clear_distance) on, quiet_seconds at run speed, then burst_seconds of burst, and
+## again. The run-up counts as quiet. Always false in a level paced evenly.
+func quiet_at(at: float) -> bool:
+	if not config.paced_in_bursts():
+		return false
+	if at < config.start_clear_distance:
+		return true
+	return fposmod(at - config.start_clear_distance, _pacing_cycle()) < config.quiet_seconds * speed
+
+
+## The track distance where the quiet stretch or the burst holding `at` ends (INF in a level paced
+## evenly).
+func stretch_end(at: float) -> float:
+	if not config.paced_in_bursts():
+		return INF
+	var from: float = config.start_clear_distance
+	var cycle: float = _pacing_cycle()
+	var start: float = from + floorf(maxf(at - from, 0.0) / cycle) * cycle
+	var quiet_end: float = start + config.quiet_seconds * speed
+	return quiet_end if at < quiet_end else start + cycle
+
+
+## Which burst track distance `at` is in (0 = the level's first); -1 in a quiet stretch or a level
+## paced evenly.
+func burst_index(at: float) -> int:
+	if not config.paced_in_bursts() or quiet_at(at):
+		return -1
+	return floori((at - config.start_clear_distance) / _pacing_cycle())
+
+
+## The level's quiet stretches [start, end] up to its end-clear stretch, in order (none in a level
+## paced evenly). Bursts are what lies between them.
+func quiet_stretches() -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	if not config.paced_in_bursts():
+		return out
+	var last: float = layout.length - config.end_clear_distance
+	var at: float = config.start_clear_distance
+	while at < last:
+		out.append(Vector2(at, minf(at + config.quiet_seconds * speed, last)))
+		at += _pacing_cycle()
+	return out
+
+
+func _pacing_cycle() -> float:
+	return maxf((config.quiet_seconds + config.burst_seconds) * speed, 1.0)
+
+
+## Seconds of clear track after a pattern that ends at `at`: the level's spacing for its difficulty,
+## or in a level paced in bursts the quiet or the burst spacing there.
+func _spacing_seconds(at: float, difficulty: float) -> float:
+	if config.paced_in_bursts():
+		return config.quiet_spacing_seconds if quiet_at(at) else config.burst_spacing_seconds
+	return lerpf(config.spacing_seconds_easy, config.spacing_seconds_hard, difficulty)
+
+
+## True if `pattern` may be picked at a quiet spot: it places no enemy, or every feature it requires
+## is one of the level's quiet_features.
+func _quiet_allows(pattern: Dictionary) -> bool:
+	var enemies: bool = false
+	for element: Dictionary in pattern.get("elements", []):
+		if String(element.get("kind", "")) == "enemy":
+			enemies = true
+			break
+	if not enemies:
+		return true
+	var requires: Array = pattern.get("requires", [])
+	if requires.is_empty():
+		return false
+	for need: Variant in requires:
+		if not config.quiet_features.has(String(need)):
+			return false
+	return true
 
 
 ## Track distance from which `feature` may place anything: its share of the level from
@@ -301,10 +403,22 @@ func ramp_launch(r: Dictionary) -> RampLaunch:
 ## range and lane count, and with every required feature active there (feature_active). With
 ## `only`, just the patterns that require that feature. Returns {} (without drawing a random
 ## number) when none fits.
+## A pattern's weight is its own times the level's feature_weights for what it requires, and with
+## the campaign's recency curve (LevelConfig.recency_on) times its newest feature's factor; with
+## keep_feature_share the features' patterns are then scaled back to weigh together what they
+## weighed without the curve, so the curve only moves picks between features. In a level paced in
+## bursts, a quiet spot takes only the patterns _quiet_allows, and a burst that has had its
+## introduction leaves out the features still waiting for theirs (_intro_held).
 func _pick_pattern(patterns: Array, difficulty: float, at: float, only: String = "") -> Dictionary:
 	var candidates: Array = []
 	var weights: Array[float] = []
 	var total: float = 0.0
+	var recency: bool = config.recency_on()
+	var quiet: bool = quiet_at(at)
+	var held: PackedStringArray = _intros_waiting(at) if _intro_held(at) else PackedStringArray()
+	# The features' patterns' weights without and with the recency curve (keep_feature_share).
+	var plain: float = 0.0
+	var curved: float = 0.0
 	for p: Dictionary in patterns:
 		if difficulty < float(p.get("min_difficulty", 0.0)) or difficulty > float(p.get("max_difficulty", 1.0)):
 			continue
@@ -313,20 +427,34 @@ func _pick_pattern(patterns: Array, difficulty: float, at: float, only: String =
 		var requires: Array = p.get("requires", [])
 		if only != "" and not requires.has(only):
 			continue
+		if quiet and not _quiet_allows(p):
+			continue
 		var weight: float = float(p.get("weight", 1.0))
 		var ok: bool = true
 		for need: Variant in requires:
-			if not feature_active(String(need), at):
+			if not feature_active(String(need), at) or held.has(String(need)):
 				ok = false
 				break
 			weight *= config.feature_weight(String(need))
 		if not ok or weight <= 0.0:
 			continue
+		if recency and not requires.is_empty():
+			var factor: float = config.recency_factor(requires)
+			plain += weight
+			weight *= factor
+			curved += weight
 		candidates.append(p)
 		weights.append(weight)
 		total += weight
 	if candidates.is_empty():
 		return {}
+	if recency and config.feature_recency.keep_feature_share and curved > 0.0:
+		var scale: float = plain / curved
+		total = 0.0
+		for i: int in candidates.size():
+			if not (candidates[i].get("requires", []) as Array).is_empty():
+				weights[i] *= scale
+			total += weights[i]
 	var roll: float = _rng.randf() * total
 	for i: int in candidates.size():
 		roll -= weights[i]
@@ -344,14 +472,14 @@ func _due_picks(forced: Dictionary) -> Array[Dictionary]:
 	for key: Variant in config.feature_starts:
 		var feature: String = String(key)
 		if config.has_feature(feature):
-			out.append({"feature": feature, "at": feature_start(feature)})
+			out.append({"feature": feature, "at": feature_start(feature), "intro": true})
 	var n: int = GUARANTEE_SHARES.size()
 	for key: Variant in forced:
 		var feature: String = String(key)
 		var misses: int = int(forced[key])
 		for k: int in mini(misses, GUARANTEE_MAX_PICKS):
 			var share: float = GUARANTEE_SHARES[(misses - 1 + k * 5) % n]
-			out.append({"feature": feature, "at": feature_share_at(feature, share)})
+			out.append({"feature": feature, "at": feature_share_at(feature, share), "intro": false})
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return float(a["at"]) < float(b["at"]) or (float(a["at"]) == float(b["at"]) and String(a["feature"]) < String(b["feature"])))
 	return out
@@ -362,10 +490,15 @@ func _due_picks(forced: Dictionary) -> Array[Dictionary]:
 ## (GDD §6: one new thing at a time) rather than whenever chance brings it, and how the guarantee
 ## places a feature a build missed. {} if nothing is due, or no due feature has a pattern that fits
 ## here (it's then tried again at the next pick, so a feature with no patterns yet changes nothing).
+## In a level paced in bursts, a due pick of a feature a quiet stretch leaves out waits for the next
+## burst, and a burst that has had one introduction holds the next for the burst after (_intro_held).
 func _pick_due(patterns: Array, difficulty: float, at: float) -> Dictionary:
+	var held: bool = _intro_held(at)
 	for due: Dictionary in _due:
 		if float(due["at"]) > at + 0.001:
 			break
+		if held and bool(due.get("intro", false)):
+			continue
 		var pattern: Dictionary = _pick_pattern(patterns, difficulty, at, String(due["feature"]))
 		if not pattern.is_empty():
 			return pattern
@@ -373,15 +506,35 @@ func _pick_due(patterns: Array, difficulty: float, at: float) -> Dictionary:
 
 
 ## A pattern placed at `at` settles the due pick of each feature it uses whose spot the cursor has
-## reached (the earliest one, if a feature has several).
+## reached (the earliest one, if a feature has several). An introduction settled in a burst makes it
+## that burst's one introduction.
 func _settle_due(pattern: Dictionary, at: float) -> void:
 	for need: Variant in pattern.get("requires", []):
 		for i: int in _due.size():
 			if float(_due[i]["at"]) > at + 0.001:
 				break
 			if String(_due[i]["feature"]) == String(need):
+				if bool(_due[i].get("intro", false)) and burst_index(at) >= 0:
+					_intro_burst = burst_index(at)
 				_due.remove_at(i)
 				break
+
+
+## True if a level paced in bursts is in a burst at `at` that has had its introduction already: the
+## features still waiting for theirs wait for the next burst (a burst never stacks two new things).
+func _intro_held(at: float) -> bool:
+	return config.paced_in_bursts() and _intro_burst >= 0 and burst_index(at) == _intro_burst
+
+
+## The features whose introduction is due by `at` and not placed yet.
+func _intros_waiting(at: float) -> PackedStringArray:
+	var out: PackedStringArray = []
+	for due: Dictionary in _due:
+		if float(due["at"]) > at + 0.001:
+			break
+		if bool(due.get("intro", false)) and not out.has(String(due["feature"])):
+			out.append(String(due["feature"]))
+	return out
 
 
 ## The level's features that some pattern can place: a pattern that requires the feature, needs
