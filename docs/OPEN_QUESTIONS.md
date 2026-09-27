@@ -617,6 +617,24 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
 55. **How dusty and worn:** sand on roofs, awnings and ledges, sun-bleached patches, grime at the foot of faces and
     under windows, weathering blotches and a light haze; one `wear` value scales it all.
 
+**In-run pickups** (from B7; numbers in `data/tuning/pickups.tres`)
+56. **A pickup of an item the player already holds** (GDD §8, §10): does it add a second charge, pay something, or
+    do nothing? It matters most for the final phase's armor pickup, which comes whether or not the player still has
+    armor. Placeholder: taken without adding a charge (at most one of each item, like the loadout); if the cap is
+    raised, picked-up charges break before the player's own.
+57. **Where a pickup appears** (GDD §10 says when, not where): 42 m ahead (about 2.3 s), in the player's lane or the
+    nearest fair lane at most 2 lanes away, with 12 m of floor before it and 6 m after free of gaps, fences, pads,
+    ramps, ceilings, enemies and a boss's floor warnings. When nothing in reach is fair it waits, so a due armor
+    pickup can come a little later than the 10–15 or 15–17 s. Right distances, and is waiting the right answer?
+58. **A missed pickup** is gone, and the armor rule's once-per-phase cap still counts it, so a player who misses the
+    pickup after a break gets none until the next phase. Intended, or should it come back once?
+59. **Picked-up items and the stock:** a picked-up charge belongs to the fight, like a granted item: breaking it
+    never costs stock, and a pickup never adds to the stock.
+60. **The pickups' look and sound:** the HUD's round badge for the item standing upright at chest height (1.3 m):
+    its white icon on a dark disc in a white ring, a soft halo and floor glow; it bobs and sways, never spins, and
+    looks the same in every zone (white is also the 100-credit gem's colour; size, shape and icon tell them apart).
+    A soft chime when one appears, a latch and chime when taken, and a first-encounter hint per item.
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
