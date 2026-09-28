@@ -290,7 +290,8 @@ range of lanes: `{start, end}` covers every lane, and a narrow one adds `first_l
 same data as before). Every ceiling, a pattern's or a rule's, gets its lanes from
 `ceiling_lanes(pads, at, one_lane_ok)`: every lane unless the level's `narrow_ceiling_share`
 (`LevelConfig`, group "Narrow ceilings", from `narrow_ceiling_start`) makes it narrow; then one lane
-(`one_lane_ceiling_share` of them) or two lanes to all but one, anywhere that holds its pads. The draws
+(`one_lane_ceiling_share` of them) or two lanes up to `narrow_ceiling_max_lanes` (all but one by
+default), anywhere that holds its pads. The draws
 come from a stream of their own (`_ceiling_rng`), so with a share of 0 every level generates byte for
 byte as before, and narrowing ceilings never changes which patterns a level picks. A one-lane ceiling
 lasts `one_lane_ceiling_seconds` at most (`one_lane_seconds`) and comes only from a pattern that puts

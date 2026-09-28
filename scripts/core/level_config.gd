@@ -143,11 +143,15 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 ## Share of the level (0–1) from which ceilings may be narrow; every ceiling before it covers every
 ## lane (City 2 shows its first ceilings full width). DESIGN-TBD (docs/questions/b3.md).
 @export_range(0.0, 1.0, 0.05) var narrow_ceiling_start: float = 0.0
-## Of the narrow ceilings, the share that cover a single lane; the others cover from two lanes to all
-## but one, each width as likely. A one-lane ceiling is simply ridden out (GDD §3), so it's very short
-## (one_lane_ceiling_seconds) and only where its pattern puts nothing under it. DESIGN-TBD
-## (docs/questions/b3.md).
+## Of the narrow ceilings, the share that cover a single lane; the others cover from two lanes to
+## narrow_ceiling_max_lanes, each width as likely. A one-lane ceiling is simply ridden out (GDD §3),
+## so it's very short (one_lane_ceiling_seconds) and only where its pattern puts nothing under it.
+## DESIGN-TBD (docs/questions/b3.md).
 @export_range(0.0, 1.0, 0.05) var one_lane_ceiling_share: float = 0.35
+## The most lanes a narrow ceiling covers; 0 (or anything from the lane count less one up): all but one
+## lane. A narrow ceiling whose pads lie further apart than this covers every lane instead.
+## DESIGN-TBD (docs/questions/b3.md).
+@export_range(0, 6, 1) var narrow_ceiling_max_lanes: int = 0
 ## How long a one-lane ceiling lasts from its pad to its end, at run speed (GDD §3: very short; a plain
 ## ceiling lasts 4 s). DESIGN-TBD (docs/questions/b3.md).
 @export_range(0.5, 4.0, 0.1, "suffix:s") var one_lane_ceiling_seconds: float = 1.6

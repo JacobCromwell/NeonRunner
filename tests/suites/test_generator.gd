@@ -40,6 +40,7 @@ func run() -> void:
 	_test_pattern_ceilings(base)
 	_test_narrow_landing(base)
 	_test_narrow_ceilings(base)
+	_test_narrow_widest(base)
 	_test_rule_ceilings_keep_off_floor_enemies(base)
 	_test_feature_starts(base)
 	_test_rules_keep_to_starts(base)
@@ -251,6 +252,43 @@ func _test_narrow_ceilings(base: LevelConfig) -> void:
 	check(rule_narrow > 0, "the rules' ceilings (a drone's pads, a chase's) are narrow too (%d)" % rule_narrow)
 	check(late == 0, "no narrow ceiling before narrow_ceiling_start (%d)" % late)
 	check(unchanged_picks == runs, "narrowing ceilings leaves the pattern picks alone (%d of %d levels)" % [unchanged_picks, runs])
+
+
+## LevelConfig.narrow_ceiling_max_lanes caps a narrow ceiling's width: capped at 2 on 5 and 6 lanes,
+## every ceiling covers one lane, two, or every lane (one whose pads lie further apart), and the
+## fairness checks hold; a cap of all but one lane is the default (0), layout for layout.
+func _test_narrow_widest(base: LevelConfig) -> void:
+	var widths: Dictionary = {}
+	var same: int = 0
+	var runs: int = 0
+	for lanes: int in [5, 6]:
+		for level_seed: int in range(1, 9):
+			var config: LevelConfig = base.duplicate() as LevelConfig
+			config.lane_count = lanes
+			config.level_seed = level_seed
+			config.difficulty = 0.6
+			config.features = PackedStringArray(["ramps", "ceilings", "pulsing"])
+			config.narrow_ceiling_share = 1.0
+			var patterns: Array = LevelGenerator.load_for(config)
+			var capped: LevelConfig = config.duplicate() as LevelConfig
+			capped.narrow_ceiling_max_lanes = 2
+			var tag: String = "narrow ceilings at most 2 lanes wide, lanes=%d seed=%d" % [lanes, level_seed]
+			var gen := LevelGenerator.new()
+			var layout: LevelLayout = gen.generate(capped, tuning, patterns)
+			check(gen.warnings.is_empty(), "generate without warnings %s %s" % [tag, gen.warnings])
+			LayoutChecks.check_layout(self, layout, capped, tag)
+			for h: Dictionary in layout.hulls:
+				var w: int = layout.hull_width(h)
+				var key: int = w if w <= 2 else (0 if w == lanes else w)
+				widths[key] = int(widths.get(key, 0)) + 1
+			var explicit: LevelConfig = config.duplicate() as LevelConfig
+			explicit.narrow_ceiling_max_lanes = lanes - 1
+			same += 1 if JSON.stringify(LevelGenerator.new().generate(explicit, tuning, patterns).to_dict()) \
+				== JSON.stringify(LevelGenerator.new().generate(config, tuning, patterns).to_dict()) else 0
+			runs += 1
+	check(int(widths.get(1, 0)) > 0 and int(widths.get(2, 0)) > 0 and widths.keys().all(func(k: int) -> bool: return k <= 2),
+		"capped at 2, a ceiling covers one lane, two or every lane (widths, 0 for every lane: %s)" % [widths])
+	check(same == runs, "a cap of all but one lane is the default's layout (%d of %d)" % [same, runs])
 
 
 ## Ceilings that enemy rules add later (drone pads, add_hull_with_pad) lie over whatever the floor

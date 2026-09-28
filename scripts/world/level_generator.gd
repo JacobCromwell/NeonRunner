@@ -450,9 +450,10 @@ func add_hull_with_pad(lane: int, at: float, length_seconds: float, lanes: Vecto
 ## (LevelConfig.narrow_ceiling_share) and `at` is past narrow_ceiling_start. Then, from the level's own
 ## ceiling stream (so full-width ceilings and every other pick stay as they were): whether this one
 ## is narrow; if so, one lane (one_lane_ceiling_share of them, where `one_lane_ok` and the pads share a
-## lane: a pattern that puts nothing under its ceiling, or a rule's ceiling), or from two lanes to all
-## but one, each as likely; and where the range lies, anywhere that holds every pad. A one-lane
-## ceiling lasts one_lane_ceiling_seconds at most (one_lane_seconds). DESIGN-TBD (docs/questions/b3.md).
+## lane: a pattern that puts nothing under its ceiling, or a rule's ceiling), or from two lanes to
+## narrow_ceiling_max_lanes (all but one by default), each as likely, and every lane if its pads lie
+## further apart; and where the range lies, anywhere that holds every pad. A one-lane ceiling lasts
+## one_lane_ceiling_seconds at most (one_lane_seconds). DESIGN-TBD (docs/questions/b3.md).
 func ceiling_lanes(pads: Array[int], at: float, one_lane_ok: bool) -> Vector2i:
 	var n: int = layout.lane_count
 	var full := Vector2i(0, n - 1)
@@ -465,10 +466,13 @@ func ceiling_lanes(pads: Array[int], at: float, one_lane_ok: bool) -> Vector2i:
 	var hi_pad: int = pads.max()
 	var width: int = 1
 	if not (one_lane_ok and lo_pad == hi_pad and _ceiling_rng.randf() < config.one_lane_ceiling_share):
+		var widest: int = n - 1
+		if config.narrow_ceiling_max_lanes > 0:
+			widest = clampi(config.narrow_ceiling_max_lanes, 1, n - 1)
 		var least: int = maxi(2, hi_pad - lo_pad + 1)
-		if least > n - 1:
+		if least > widest:
 			return full
-		width = _ceiling_rng.randi_range(least, n - 1)
+		width = _ceiling_rng.randi_range(least, widest)
 	var first: int = _ceiling_rng.randi_range(maxi(0, hi_pad - width + 1), mini(lo_pad, n - width))
 	return Vector2i(first, first + width - 1)
 
