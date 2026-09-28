@@ -158,13 +158,14 @@ func dip_cutoff_hz() -> float:
 
 
 ## The sound effect that ends a level or a boss fight while `track` plays (GDD §11: the riff in the
-## zone's key): level_complete_<track> when the sound library lists one, otherwise the E riff. A
-## track replaced by a file in another key needs its riff remade to match, or removed.
+## zone's key): level_complete_<track> when the sound library lists one (and this build has its file:
+## the web demo leaves out the riffs of the zones it doesn't have), otherwise the E riff. A track
+## replaced by a file in another key needs its riff remade to match, or removed.
 static func level_complete_sound(track: StringName, sfx: SfxLibrary) -> StringName:
 	if track == &"" or sfx == null:
 		return LEVEL_COMPLETE
 	var riff: String = "%s_%s" % [LEVEL_COMPLETE, track]
-	return StringName(riff) if sfx.volume_db.has(riff) else LEVEL_COMPLETE
+	return StringName(riff) if sfx.volume_db.has(riff) and sfx.has_file(StringName(riff)) else LEVEL_COMPLETE
 
 
 func _process(delta: float) -> void:
