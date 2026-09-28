@@ -587,7 +587,8 @@ slab with lamps on every lane seam, nothing hangs below it, and its far end carr
 - *Ceilings from their lanes (task B3).* `MarketCeilings` builds every kind (a building bridging the
   street, an overpass, a merchant ship, a floating ad) from the ceiling's collision box and lane
   seams, so a ceiling over fewer lanes just builds narrower; only a full-width ceiling becomes a
-  building bridging the street. `mesh_for(kind, ...)` builds a given kind directly.
+  building bridging the street. `mesh_for(kind, ...)` builds a given kind directly. A ship's engine halos
+  stop at the underside (`MeshKit.stern_halo`).
 - *Decorative signs* (neon, painted blade signs, ad boards, casino bulbs) never sit below
   `decor_min_height` (8 m) and never wear the striped frame, which is reserved for hazard signs.
 - *Futuristic and worn* (GDD §5): `shopfront.gdshader` draws cladding, rounded smart-glass windows,
@@ -667,7 +668,8 @@ shader, `golden_facade.gdshader`. White and cream with red and gold accents (GDD
   a marble face with the emblem's crest, water off some into gilded troughs), a gallery of golden arches
   (only across every lane) or a hover-yacht from the ceiling's collision box and lane seams; over fewer
   lanes a bridge becomes a suspended gallery. Water stays above the underside. `mesh_for(kind, ...)`
-  builds a given kind directly.
+  builds a given kind directly. `GoldenSkin.ceiling_section` hands it the section's wall distance, and a
+  yacht's engine halos stop at the underside (`MeshKit.stern_halo`), as every zone's far end must.
 - *Ceilings under the walls' decorations.* The walls build without knowing where ceilings are, so
   `GoldenFacades.clearance_profile()` declares what they hold out over the street, as (reach, lowest
   height) tiers: the statue ledge, the statues, the gilded frames, the banners, and `OVER_STREET` beyond.
