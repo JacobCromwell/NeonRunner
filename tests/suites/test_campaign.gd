@@ -672,7 +672,8 @@ func _test_darker_lighting(campaign: Campaign) -> void:
 	check(ProjectSettings.has_setting("shader_globals/scenery_light"), "the scenery light is a global shader uniform (project.godot)")
 	var dims: Array[String] = ["res://scripts/world/meshes/shaders/kit_solid.gdshader", "res://scripts/world/meshes/shaders/facade.gdshader",
 		"res://scripts/world/meshes/shaders/shopfront.gdshader", "res://scripts/world/meshes/shaders/road.gdshader",
-		"res://scripts/world/meshes/shaders/drift.gdshader", "res://scripts/world/greybox_scenery.gdshader"]
+		"res://scripts/world/meshes/shaders/drift.gdshader", "res://scripts/world/meshes/shaders/corp_facade.gdshader",
+		"res://scripts/world/greybox_scenery.gdshader"]
 	for path: String in dims:
 		var code: String = FileAccess.get_file_as_string(path)
 		check(code.contains("global uniform float scenery_light;") and code.count("scenery_light") >= 2,

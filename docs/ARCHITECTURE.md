@@ -430,9 +430,10 @@ free: the run takes its environment from `ZoneSkin.level_environment(darkness)`,
 `apply_darkness()` dims only the scenery. The sky and the distance fog lose energy, and the global
 shader uniform `scenery_light` (project.godot; 1 = the zone's own light, never below
 `MIN_SCENERY_LIGHT`, 0.3) dims what the scenery's shaders draw: `kit_solid`'s lit surfaces (never its
-glowing ones), `facade`, `shopfront`, `road`, `drift`, and the grey box's floor, walls and ceilings
-(`GreyboxMaterials.scenery()`). Glows, the ambient light and the sun stay, so hazards, triggers,
-credits, enemies and the runner (lit or glowing by their own materials) read as well as anywhere. The
+glowing ones), `facade`, `shopfront`, `road`, `drift`, the Corporate skin's `corp_facade`, and the
+grey box's floor, walls and ceilings (`GreyboxMaterials.scenery()`). Glows, the ambient light and the
+sun stay, so hazards, triggers, credits, enemies and the runner (lit or glowing by their own
+materials) read as well as anywhere. The
 factor is given for linear space; `light_factor()` in `kit_common.gdshaderinc` (and
 `ZoneSkin.energy_factor()` for the environment) converts it for the Compatibility renderer's sRGB
 space, so both renderers dim alike. A new skin gets it by drawing its scenery with the kit, or by

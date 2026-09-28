@@ -9,7 +9,7 @@ extends Node3D
 ##   --skin=name     a skin in data/skins/ (name_skin.tres) or a res:// path (default: city)
 ##   --lanes=N       lane count (default 5)
 ##   --darkness=X    a level's darker lighting, 0–1 (LevelConfig.darkness, ZoneSkin.apply_darkness:
-##                   The Hush's is 0.5); default 0, the zone's own light
+##                   The Hush's is 0.7); default 0, the zone's own light
 ##   --view=run      (default) a god-mode player runs the level: jumps a gap and a fence, takes a pad
 ##                   onto a ceiling and switches lanes up there, rides a ramp onto the right wall past
 ##                   its shopfronts, then takes the other ceilings. Each action and movement event is
