@@ -136,8 +136,11 @@ all it takes to bring it into its levels.
 Built so far: cyborg (with its panic variant and hosts), window cyborg, fence generator, hover
 truck, Octodog, sewer screech (manholes, and wall vents; `screech_vents` is wall vents only, for zones
 whose floor has no manholes),
-heli drone, and the Cyborg's Bad Dream (released by a killed host, spawned by the director at run
-time rather than placed by the generator). `scripts/enemies/mesh_batch.gd` merges an enemy's low-poly
+heli drone, the Cyborg's Bad Dream (released by a killed host, spawned by the director at run
+time rather than placed by the generator), and the Resonator (GDD §9.10, the Golden Zone: a golden
+broadcast spire hovering far ahead whose red waves roll along the floor across every lane; its model,
+`resonator_model.gd`, is built in code, and `resonator_rules.gd` plans each pulse where its wave meets
+the player on clear floor). `scripts/enemies/mesh_batch.gd` merges an enemy's low-poly
 parts into one mesh per material to keep draw calls down.
 
 **Big attacks take turns through the director** (GDD §9, decided September 26, 2026). The big attacks
@@ -146,9 +149,10 @@ revert this after playtesting, so it sits behind one switch, `GameRules.big_atta
 default, in the F6 panel); switched off, the game plays exactly as before the rule. The big attacks
 (DESIGN-TBD, `docs/questions/r3.md`): the Octodog's charge sequence (its first wind-up until it gives
 up), the drone's wind-up and barrage, the hover truck's rev and forward lurch and its cannon's charge
-and volley, and the Bad Dream's chase. Small attacks (a cyborg's burst, a window cyborg's shot, a
-screech's swipe) and the hover truck's entrance don't take part. An enemy takes part like this, and
-the enemies still to come (the Barnacle Turret, Buzz Overdrive, the Resonator, the Gilded Sentinels,
+and volley, the Bad Dream's chase, and the Resonator's pulse (its warning until its last wave has
+passed the player; DESIGN-TBD, `docs/questions/c3.md`). Small attacks (a cyborg's burst, a window
+cyborg's shot, a screech's swipe) and the hover truck's entrance don't take part. An enemy takes part
+like this, and the enemies still to come (the Barnacle Turret, Buzz Overdrive, the Gilded Sentinels,
 the Tithe Collector) opt in the same way for whichever of their attacks count as big:
 - **Report it.** `is_major_attack_active()` is true from the start of the attack's warning until its
   last hazard is over (the lunge has passed, the lurch has ended). Each shot fired in it goes to
@@ -168,7 +172,11 @@ the Tithe Collector) opt in the same way for whichever of their attacks count as
   (`OctodogTuning.turn_wait_max`), and keeps every fairness rule it was planned with. Once held it
   keeps asking every frame until its turn comes, whether or not its stretch is clear by then, and if
   the wait made it miss its planned stretch, the window keeps moving on until the stretch ahead is
-  clear again (within the same limit), so waiting for its turn never costs it its charges.
+  clear again (within the same limit), so waiting for its turn never costs it its charges. The
+  Resonator's planned pulses do the same: a pulse held for another type's turn, or for clear floor
+  where its wave would meet the player, moves the rest of its visit on; after
+  `ResonatorTuning.turn_wait_max` spent waiting for other attacks (waiting for clear floor doesn't
+  count) it drops its remaining pulses and leaves, never before its first.
 - **An attack that can't wait** because the player sets it off (the Bad Dream bursts out of a killed
   host) or the generator planned its moment still reports itself: the others wait for it. It can
   overlap an attack that was already on when it came; the Bad Dream holds its slash until that one
@@ -233,7 +241,9 @@ Rules scripts run in the order of the level's `features` list, except that a scr
 the cyborg rules, and the host rules that start with them, after the hover truck's, so cyborgs keep
 their margin from the ramp a truck adds; the Octodog rules after the drone's, the host's and the
 hover truck's, so each dog is planned around the level's final ceilings, chases and truck lanes and
-nothing clears it afterwards). When a rule needs room for one of its guarantees, it removes what's
+nothing clears it afterwards; the Resonator rules after every feature that puts things on the floor or
+plans a big attack, so each pulse is planned on the level's final floor and off every Octodog's run).
+When a rule needs room for one of its guarantees, it removes what's
 in the way rather than moving it (taking content out never makes a level unfair). Guaranteed pads
 come from `scripts/enemies/pad_placement.gd`, shared by the drone and host rules: the drone's pad
 schedule (GDD §9.6) owns every pad after its first wave, pattern ceilings give way, and the host rules
@@ -290,8 +300,8 @@ features' age, the levels since the campaign introduced it (`LevelConfig.feature
 that introduces it). A pattern's pick weight is then multiplied by the curve's factor for its newest
 feature (DESIGN-TBD: 4 where it's introduced, 2.5, 1.75 and 1.25 over the next three levels, 1 from
 then on), but no more than a capped feature's cap (`max_factor`; DESIGN-TBD: 1, never boosted, for the
-host, the hover truck, the drone and the Octodog, whose rules keep only so many of their enemies, and
-for the rare vent screech), so the curve never spends picks on enemies the rules would drop and leave
+host, the hover truck, the drone, the Octodog and the Resonator, whose rules keep only so many of their
+enemies, and for the rare vent screech), so the curve never spends picks on enemies the rules would drop and leave
 their stretch empty. With `keep_feature_share` the features' patterns, capped ones apart, are then
 scaled back to weigh together what they did without the curve, and with `keep_share_by_kind` kind by
 kind (`LevelGenerator.pattern_kind`): patterns with enemies keep the number of enemies they place
@@ -345,7 +355,7 @@ each feature a pattern can place there is in the finished level, at any lane cou
   average in the campaign).
 - Rules that hold the room for a feature themselves also add one where it fits when a level is left
   without any, which saves a build: a drone wave and a hover truck in any level (their tunings'
-  `guarantee_one_wave` and `guarantee_one`), and a host and an Octodog in a level with
+  `guarantee_one_wave` and `guarantee_one`), and a host, an Octodog and a Resonator in a level with
   `guarantee_features`.
 
 ## Power-ups
@@ -398,9 +408,9 @@ A `ZoneSkin` (`scripts/world/skins/zone_skin.gd`) decorates abstract pieces thro
 one colour and shape language in every zone (pink crackle = electric fence).
 
 Skins so far: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2), `MarketplaceSkin`
-(Zone 3, the Marketplace) and `CorporateSkin` (Zone 4, Corporate). `GreyboxSkin` is the fallback for
-zones without their own look yet (the Dead Zone and the Golden Zone for now). A zone's skin lives at
-`data/skins/<zone id>_skin.tres` (`--skin=<zone id>` in quick play) and is set in its
+(Zone 3, the Marketplace), `CorporateSkin` (Zone 4, Corporate) and `GoldenSkin` (Zone 6, the Golden
+Zone). `GreyboxSkin` is the fallback for zones without their own look yet (the Dead Zone for now). A
+zone's skin lives at `data/skins/<zone id>_skin.tres` (`--skin=<zone id>` in quick play) and is set in its
 `data/zones/<zone id>.tres`; a level's own `skin` wins over its zone's (the Golden Palace, Golden 3,
 may get its own). The real skins build on the mesh kit (`scripts/world/meshes/`): `MeshKit` has
 shared builders for hazards, triggers and environments, and `MeshLayer` batches a chunk's geometry.
@@ -430,8 +440,8 @@ free: the run takes its environment from `ZoneSkin.level_environment(darkness)`,
 `apply_darkness()` dims only the scenery. The sky and the distance fog lose energy, and the global
 shader uniform `scenery_light` (project.godot; 1 = the zone's own light, never below
 `MIN_SCENERY_LIGHT`, 0.3) dims what the scenery's shaders draw: `kit_solid`'s lit surfaces (never its
-glowing ones), `facade`, `shopfront`, `road`, `drift`, the Corporate skin's `corp_facade`, and the
-grey box's floor, walls and ceilings (`GreyboxMaterials.scenery()`). Glows, the ambient light and the
+glowing ones), `facade`, `shopfront`, `road`, `drift`, the Corporate skin's `corp_facade`, the Golden
+Zone's `golden_facade`, and the grey box's floor, walls and ceilings (`GreyboxMaterials.scenery()`). Glows, the ambient light and the
 sun stay, so hazards, triggers, credits, enemies and the runner (lit or glowing by their own
 materials) read as well as anywhere. The
 factor is given for linear space; `light_factor()` in `kit_common.gdshaderinc` (and
@@ -446,7 +456,9 @@ panels, glass, glyphs and chevrons for the City; worn asphalt (with sand drifts 
 road strata, salvaged plating, posters (with corporate ads), cast concrete and stencilled crates and
 container doors for Gangland; canvas, tin and whole rows of stall roofs, stall faces, tiles, shop
 signs, ads, casino bulbs and stucco for the Marketplace; train roofs, the shade below them, paving,
-armour plate, corporate ads, the brand's mark on panels, banners and lit glass for Corporate. Features
+armour plate, corporate ads, the brand's mark on panels, banners and lit glass for Corporate;
+reflective gold, golden walkways, marble, the shade under the walkways, the canal, falling water, the
+cult's emblem in relief, gilded coffers, red cloth and boutique boards for the Golden Zone. Features
 a zone opts into are uniforms that default to off, so one zone's additions never change another's
 look. Painted marks shared between shaders live in includes: `kit_marks.gdshaderinc` (graffiti pieces
 and tags, stencil codes) and `kit_logo.gdshaderinc` (`corp_logo()`, the Corporate brand's mark, which
@@ -455,9 +467,22 @@ Gangland's corporate crates, containers and ads carry too). Two shader rules: ta
 pass them in, and use `filtered_pulse()` only for ranges within 0–1 (`band()` for any other). Breaking
 either can put a NaN in a pixel, and the glow pass blows it up into a white disc.
 
+**Colours in a skin's own uniforms.** A `Color` set on a `vec3` shader uniform reaches the shader
+already converted to linear on Forward+ and Mobile, but unconverted on the Compatibility renderer, so a
+shader that converts it once more (`to_linear()`, as the kit's do for vertex colours) draws it darker and
+more saturated on Forward+ than on the web. The Golden Zone passes its uniform colours as sRGB `Vector3`s
+(`GoldenSkin.srgb()`), which arrive unconverted on both renderers and are converted once, like a vertex
+colour. Likewise a light factor multiplied in after `to_linear()` scales sRGB values on the
+Compatibility renderer; `golden_facade.gdshader` passes every one of its light factors through
+`light_factor()` (kit_common), which raises it to the 1/2.2 power there, so its walls are as bright on
+both renderers. (The older skins' uniform colours, and the kit's own `shade` factor, still differ a little
+between the renderers.)
+
 **Pattern ids.** Ids up to 19 are the City's and Gangland's, in `kit_solid.gdshader` itself; ids 20-29
 are the Marketplace's (all in use), in `kit_market.gdshaderinc`, and ids 30-39 the Corporate zone's
-(30-37 in use), in `kit_corporate.gdshaderinc` (each: one include and one dispatch line in `kit_solid`).
+(30-37 in use), in `kit_corporate.gdshaderinc`, and ids 50-59 the Golden Zone's (all in use), in
+`kit_golden.gdshaderinc` (each: one include and one dispatch line in `kit_solid`; the Golden Zone's
+include follows `cult_mark()`, which its emblems use).
 A new zone takes the next free block of ten in its own include, so zones built in parallel never
 collide on an id. Ids 60-69 are the cult's, shared by every zone, in
 `kit_cult.gdshaderinc` (its include follows `cult_mark()` in `kit_solid`, and its dispatch runs after
@@ -538,6 +563,51 @@ template) and `CorporateProps` (fences and signs); its building faces use their 
 - *The military presence* is data: `compound_share`, `hover_ship_share`, `ship_weight` and
   `military_car_share`; the plaza variant raises them for Corporate 2's heavier presence.
 
+**The Golden Zone** (`scripts/world/skins/golden/`): `GoldenWalkways` (the floor: golden walkways over
+the canal), `GoldenFacades` (the walls, and the sky bridges over the street), `GoldenCeilings`,
+`GoldenProps` (fences and signs) and `GoldenStatue` (the statue kit); its building faces use their own
+shader, `golden_facade.gdshader`. White and cream with red and gold accents (GDD §5), at the blue hour.
+- *The gold is metal, never neon.* `golden_metal()` (kit_golden) lights gold as a fake reflection of the
+  dusk: bright where it reflects the afterglow, a greyed bronze where it reflects the street (dark golds
+  that keep their hue go orange in the tonemapper), champagne at its brightest. Nothing gold, red, marble,
+  cloth or water ever glows; the only decorative glows are warm-white lamps and lit windows. The zone's
+  gold is `CultEmblem.GOLD_COLOR`, half saturated so it never passes for sign yellow or gap-edge orange.
+- *Walkways over water.* Each lane is its own walkway (`PAT_WALKWAY`, laid out from world position, so
+  plates continue across chunk cuts): plates between rails, a dark joint to a neighbouring walkway, a
+  marble kerb on the outer lanes. The canal (`PAT_CANAL`) is `canal_depth` below; everything under the
+  decks (`PAT_UNDERDECK`, the facades' DEEP style) is deep shade in `gap_inside_color`. A gap's edge is the
+  lip, dark line and strip of every zone, with a soft halo on the far edge. Medallions of the emblem are
+  inlaid in some walkways, one lane square, one slot per lane per chunk, clear of gap edges
+  (`GoldenWalkways.medallions()`). The suite pins that gaps read as holes at 3 and 5 lanes.
+- *The calm band.* Every building face is flush from the canal to `band_top` (7 m): stone with only the
+  gold wall-run height marks, nothing vent- or niche-like (vents are the Screech's lairs, niches the
+  Sentinels'), nothing sticking out. The entablature above carries the palaces' statue ledge.
+- *The statue kit* (`GoldenStatue`, for the Gilded Sentinels, task C4). Statue space: the pedestal's
+  foot at the origin, facing +Z. Poses are dictionaries of joint angles (`shoulder_r/l`, `elbow_r/l`,
+  `grip`, `head`, in degrees; missing keys take `REST`); `POSES` names the decorative `guard`, `vigil`,
+  `salute` and the swing's `raise` and `strike`, and `blend_poses(a, b, t)` mixes two. For decoration,
+  `mesh(pose)` is one cached template to append into a wall mesh (no draw call of its own). For a live
+  Sentinel, `rig(parent, pose)` builds it as nodes and returns them by name (`root`, `body`, `pedestal`,
+  `head`, `eyes`, `arm_r`, `arm_l`, `elbow_r`, `elbow_l`, `grip`, `halberd`): turn the pivots with
+  `apply_pose(nodes, pose)` or directly, and give `eyes` (a MeshInstance3D) a glowing red material of
+  its own. `niche(width, height)` is the niche it stands in, proud of any wall. The skin's kit is
+  `GoldenSkin.statues()` (its gold and solid material). Decorative statues stand only on the ledge, at
+  `statue_min_height` (8.8 m) or higher; `GoldenSkin.statue_spots()` lists them.
+- *Ceilings from their lanes (task B3).* `GoldenCeilings` builds a golden bridge (a coffered underside,
+  a marble face with the emblem's crest, water off some into gilded troughs), a gallery of golden arches
+  (only across every lane) or a hover-yacht from the ceiling's collision box and lane seams; over fewer
+  lanes a bridge becomes a suspended gallery. Water stays above the underside. `mesh_for(kind, ...)`
+  builds a given kind directly.
+- *Ceilings under the walls' decorations.* The walls build without knowing where ceilings are, so
+  `GoldenFacades.clearance_profile()` declares what they hold out over the street, as (reach, lowest
+  height) tiers: the statue ledge, the statues, the gilded frames, the banners, and `OVER_STREET` beyond.
+  `GoldenCeilings.headroom()` turns it into how high a ceiling may rise at a distance from a wall:
+  arches are flatter over a narrow street (`arch_rise()`), a bridge's face stays under the ledges and its
+  rail stops short of the statues, and a yacht near a wall has a lower cabin and no mast. The suite
+  checks both sides on streets of 3 to 6 lanes; a new wall decoration extends the profile.
+- *Overhead.* Sky bridges between towers 24 m up or more, only where towers tall enough stand on both
+  sides; banners hang no lower than `GoldenFacades.BANNER_BOTTOM` (11 m), clear of every ceiling.
+
 **The cult emblem** (D7, GDD §5 "The cult"): `CultEmblem` (`scripts/world/meshes/cult_emblem.gd`)
 builds each option's 2D vector geometry as a flat mesh (mesh kit conventions: emissive for a neon
 ad, lit for paint or the Golden Zone's gold) or a rasterised texture, at any size. The owner chose
@@ -562,6 +632,14 @@ towers' neon banners (the glyphs leave its square clear, so nothing overlaps); `
 lists them. The Corporate zone (D4) draws it the same way: a warm-white badge in a lower corner of some
 ads on the street screens and roof boards (never more than `CorporateTowers.SCREEN_EMBLEM_MAX` of a
 screen's height), unlit bronze at the foot of some banners; `CorporateSkin.cult_emblems()` lists them.
+The Golden Zone (D6a) shows it openly, large, in polished gold meeting at its red stone
+(`MeshKit.PAT_EMBLEM`, kit_golden: the material's `cult_emblem` texture is the choice drawn in
+`CultEmblem.GOLD_COLOR` and `GOLD_ACCENT_COLOR`, `GoldenSkin.cult_emblem_texture()`, embossed and lit as
+gold on red cloth or marble): on banners, reliefs on towers, gallery frames, sky bridges
+(`GoldenSkin.cult_emblems()` lists them), on the bridges' crests and archways' keystones, and on the
+walkways' medallions. The listed ones
+are 2 m across or more (so they still read from afar before `cult_mark()` fades them), and every one
+stands off its backing far enough never to flicker (`GoldenFacades.RELIEF_STANDOFF`, `EMBLEM_STANDOFF`).
 
 **The cult's feed** (GDD §5, "Cyborg Viewing Devices"): the same wordless broadcast plays on screens
 in every zone, in sync, alongside the ordinary ads. It is one shared piece, `CultFeed`
@@ -595,7 +673,10 @@ of some overpasses' sign gantries, and on a TV glowing in an upper window of som
 boarded-up band (`GanglandSkin.feed_windows()` lists those; `GanglandRuins.WINDOW_RECTS` mirrors the
 facade shader's window rectangles so the TV's room covers a window exactly). The Corporate zone (D4)
 plays it on some low buildings' roof boards and on some of the big screens flush towers hang out over
-the street, 14 m up or more; `CorporateSkin.feed_boards()` lists both. None of them puts a screen in
+the street, 14 m up or more; `CorporateSkin.feed_boards()` lists both. The Golden Zone (D6a) plays it in
+some galleries' gilded frames and on big screens hung out over the street from some towers, sized to the
+street (`feed_hung_reach`), 10 m up or more; `feed_hung_share` at 0 clears the hung ones for a boss
+arena, and `GoldenSkin.feed_boards()` lists both. None of them puts a screen in
 the wall-run band. `tools/showcase/cult_feed_showcase.tscn` shows a whole loop on three screens.
 
 **Reduced flashing** (Settings): `Settings.apply_visuals()` sets the global shader uniform
@@ -937,7 +1018,12 @@ propaganda cut, the glitch, the fall, the wreck with room for a runner in every 
 it without god mode, Reduced flashing, the same every attempt) and plays the whole fight through the
 campaign at 3, 5 and 6 lanes with the bot and no god mode (City 3, the boss intro's slot, the fight,
 its results and stars, the shop, the outro's slot, and the web demo's end screen), checking along the
-way that its propaganda never masks a warning, then that a death restarts the fight. `test_audio` checks
+way that its propaganda never masks a warning, then that a death restarts the fight. `test_resonator` plays the
+Resonator in full worlds on real physics (the warning always before the wave, a jump clearing it at 3,
+5 and 6 lanes with its margin measured, walls and the ceiling safe, armor, shield and dash, turns with a
+`TurnDummy`, Reduced flashing), checks its rules over many seeds, and plays the real Golden 1-3 layouts
+at 3, 5 and 6 lanes, watched by `attack_watch.gd`: no wave meets the runner on a gap or a fence, and no
+big attacks overlap. `test_audio` checks
 the music files (seamless loops, lengths, tempos, size budgets), the Music autoload's fades, duck and
 death dip on its players' levels and the bus's low-pass (headless runs never start a player), and the
 run's music hooks through the App. The runner frees
@@ -955,10 +1041,13 @@ the enemies (`enemy_showcase` for the cyborg family: poses, the faces close up, 
 cyborgs, and a far view through the run camera where the expressions must read, in any zone's look
 (`--variant=`, or ui_left / ui_right live), and every look side by side (`lineup`, front, back, as
 hosts or aiming, and `lineup_far` at gameplay distance); `octodog_screech`,
-`drone_truck_showcase`, `bad_dream_showcase`), a boss (`floating_head_showcase`), the UI kit, the
-screens, a zone skin (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed
-screens and emblems a skin lists, or a scripted run with a ceiling ride and a wall run, in a level's
-darker lighting with `--darkness=X`), and comparison
+`drone_truck_showcase`, `bad_dream_showcase`, `resonator_showcase`: its model through its warning
+and pulse, or a scripted run where it pulses at a runner who jumps its waves), the Golden Zone's statue
+kit (`statue_showcase`: every pose, a turnaround, and a live statue rigged in its niche and swinging, as
+task C4 would build it), a boss (`floating_head_showcase`), the UI kit, the screens, a zone skin
+(`skin_review`: any skin from fixed spots, including close-ups of the cult's feed screens and emblems a
+skin lists, or a scripted run with a ceiling ride and a wall run, in a level's darker lighting with
+`--darkness=X`), and comparison
 sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
 `CLAUDE.md`.

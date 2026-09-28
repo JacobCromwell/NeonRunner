@@ -14,6 +14,8 @@ extends RefCounted
 ##     the window shooters' bolts have passed the player
 ##   Octodog: each charge, wind-up and lunge
 ##   Bad Dream: each slash, telegraph to claws
+##   Resonator: each pulse, from its warning (the halos and the chime) until its last wave has passed
+##     the player
 ## Overlap is the time during which attacks of two or more types are open at once. Also watched
 ## (not a big attack, docs/questions/r3.md): a hover truck's entrance, from its first bang until its
 ## burst stops hurting. The event log lists every state change of every enemy, so two builds can be
@@ -33,7 +35,8 @@ var overlap: float = 0.0
 var overlap_pairs: Dictionary = {}
 ## How many times an overlap began.
 var events: int = 0
-## Big attacks started, by kind: drone, truck_lurch, truck_cannon, dog_charge, dream_slash.
+## Big attacks started, by kind: drone, truck_lurch, truck_cannon, dog_charge, dream_slash,
+## resonator_pulse.
 var attacks: Dictionary = {}
 ## Seconds each type had an attack open.
 var open_seconds: Dictionary = {}
@@ -46,6 +49,8 @@ var entrance_overlap: float = 0.0
 var hosts_stomped: int = 0
 ## Octodogs by spawn index: the charges (wind-ups) each made.
 var dog_charges: Dictionary = {}
+## Resonators by spawn index: the pulses each made (from the time it starts pacing the player).
+var resonator_pulses: Dictionary = {}
 var log := PackedStringArray()
 
 var _ids: Dictionary = {}
@@ -87,6 +92,9 @@ func observe() -> void:
 				hosts_stomped += 1
 		if e.type_id == &"octodog" and not dog_charges.has(key):
 			dog_charges[key] = 0
+		if e.type_id == &"resonator" and not resonator_pulses.has(key) and e.alive \
+				and int(e.get(&"state")) != Resonator.State.APPROACH:
+			resonator_pulses[key] = 0
 		if e.type_id == &"hover_truck" and e.alive:
 			var s: int = int(e.get(&"state"))
 			entrance = entrance or s == TruckScript.State.BANGING \
@@ -99,6 +107,8 @@ func observe() -> void:
 				attacks[kind] = int(attacks.get(kind, 0)) + 1
 				if kind == "dog_charge":
 					dog_charges[key] = int(dog_charges.get(key, 0)) + 1
+				if kind == "resonator_pulse":
+					resonator_pulses[key] = int(resonator_pulses.get(key, 0)) + 1
 				if float(_held.get(key, 0.0)) > 0.0:
 					(waits.get_or_add(kind, []) as Array).append(float(_held[key]))
 				if float(_held_turn.get(key, 0.0)) > 0.0:
@@ -159,6 +169,10 @@ static func open_kinds(e: Enemy) -> Array[String]:
 			var s: int = int(e.get(&"state"))
 			if s == BadDream.State.TELEGRAPH or s == BadDream.State.LUNGE:
 				out.append("dream_slash")
+		&"resonator":
+			var s: int = int(e.get(&"state"))
+			if s == Resonator.State.WARNING or s == Resonator.State.PULSE or bool(e.call(&"waves_on_their_way")):
+				out.append("resonator_pulse")
 	return out
 
 
@@ -178,6 +192,16 @@ func charges() -> int:
 	return n
 
 
+## Resonators that came to pace the player and never pulsed (none should: GDD §9's turns never
+## starve one, Resonator.turn_wait_max).
+func resonators_without_a_pulse() -> int:
+	var n: int = 0
+	for key: int in resonator_pulses:
+		if int(resonator_pulses[key]) == 0:
+			n += 1
+	return n
+
+
 ## The event log's hash: equal for two runs whose enemies did the same things at the same times.
 func log_hash() -> String:
 	return "\n".join(log).md5_text()
@@ -187,7 +211,8 @@ func summary() -> Dictionary:
 	return {"overlap": overlap, "overlap_pairs": overlap_pairs, "events": events, "attacks": attacks,
 		"open": open_seconds, "held": waits, "held_turn": turn_waits, "entrance_overlap": entrance_overlap,
 		"hosts_stomped": hosts_stomped, "dogs": dog_charges.size(), "dog_charges": charges(),
-		"dogs_no_charge": dogs_without_a_charge(), "log_hash": log_hash(), "log_lines": log.size()}
+		"dogs_no_charge": dogs_without_a_charge(), "resonators": resonator_pulses.size(),
+		"resonators_no_pulse": resonators_without_a_pulse(), "log_hash": log_hash(), "log_lines": log.size()}
 
 
 func _on_spawned(e: Enemy) -> void:
@@ -208,6 +233,9 @@ static func _signature(e: Enemy) -> String:
 			return "%s phase=%d charges=%d" % [base, int(e.get(&"phase")), int(e.get(&"charges_done"))]
 		&"bad_dream":
 			return "%s state=%d slashes=%d" % [base, int(e.get(&"state")), int(e.get(&"slashes"))]
+		&"resonator":
+			return "%s state=%d pulses=%d waves=%d" % [base, int(e.get(&"state")), int(e.get(&"pulses_done")),
+				int(e.get(&"waves_sent"))]
 		&"cyborg":
 			return "%s mode=%d" % [base, int(e.get(&"mode"))]
 	return base
