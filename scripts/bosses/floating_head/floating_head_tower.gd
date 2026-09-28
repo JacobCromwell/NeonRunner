@@ -11,8 +11,8 @@ extends Node3D
 ## head's faces toward the street and the traffic, and cold white warning lights up its street-side
 ## edges and under its head. Nothing on it glows in a hazard colour; the laser's cut across its base
 ## glows red-hot for a moment when it's clipped (the attack's own colour).
-## As it crashes onto the ship it breaks in two (break_at; DESIGN-TBD, docs/questions/e1.md, From
-## E1c, item 2): the upper section stays on the ship's back, behind its weak points, and the lower
+## As it crashes onto the ship it breaks in two (break_at; DESIGN-TBD, docs/OPEN_QUESTIONS.md §D,
+## item 159): the upper section stays on the ship's back, behind its weak points, and the lower
 ## section, which would lie across the lanes in front of it, drops away in a cloud of dust (or makes the
 ## first stomp window's ramp, FloatingHeadRamp, in its place). When the ship shakes free, the rest drops
 ## away too.
