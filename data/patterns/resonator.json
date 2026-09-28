@@ -1,0 +1,14 @@
+{
+	"version": 1,
+	"patterns": [
+		{
+			"id": "resonator",
+			"min_difficulty": 0.0, "weight": 1.4,
+			"requires": ["resonator"],
+			"length": 135,
+			"elements": [
+				{ "kind": "enemy", "type": "resonator", "at": 3, "lanes": { "mode": "center" } }
+			]
+		}
+	]
+}
