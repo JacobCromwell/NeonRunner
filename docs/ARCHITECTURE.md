@@ -988,7 +988,13 @@ one. `RunSim` (`tests/helpers/run_sim.gd`) runs a Player over a hand-built layou
 full RunWorld (`build_world()` + `step_world()`); with `trace` on it records the player after every
 physics frame (position, height, speed, surface, lane, lean). `SkinSuite` (`tests/helpers/skin_suite.gd`) holds
 the checks every zone skin must pass, and helpers to inspect what a skin builds over a whole level
-(`visit_level()`, `rects_of()`, `under_hazard()`). `LayoutChecks` (`tests/helpers/layout_checks.gd`) holds the
+(`visit_level()`, `rects_of()`, `under_hazard()`). Its chunk build-time budgets (`whole_level()`,
+`BUILD_BUDGET_MEAN_MS`/`BUILD_BUDGET_MAX_MS`) time the dressed build over `build_all()`'s
+`timing_passes` (`BUILD_TIMING_PASSES`, 3) fresh builds and keep, per build step, the fastest seen:
+OS preemption on a loaded machine only ever adds wall-clock time to one pass, never removes it, so
+the minimum stays a faithful reading of the skin's real cost. `test_skin_budget` (with the test-only
+`SlowTestSkin`, `tests/helpers/slow_test_skin.gd`, which busy-waits a few real milliseconds per lane)
+checks that check still fails a skin that really is expensive. `LayoutChecks` (`tests/helpers/layout_checks.gd`) holds the
 fairness checks for generated layouts (the generator suite runs them over many seeds, the campaign
 suite over every campaign level at 3, 5 and 6 lanes, the enemy suites over their own levels), among
 them `check_ceilings` (GDD §3: pads that can be stepped on, safe landing zones, and a floor route under
