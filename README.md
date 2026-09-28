@@ -41,7 +41,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 |---|---|
 | `--quick` | Quick play: the prototype level, restarting on death, with the debug keys and HUD |
 | `--seed=N --lanes=N --difficulty=X` | Quick play with that seed, lane count (3, 5 or 6) or difficulty (0–1) |
-| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`). The full list is in `LevelConfig` |
+| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `resonator`). The full list is in `LevelConfig` |
 | `--god` | Hits don't kill (falls still do) |
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
@@ -99,9 +99,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   Everything introduced keeps appearing later (the Buzz Overdrive from Corporate 1 through the Golden Zone),
   and a level's newest things get the most of its picks, taken from older things of their kind (enemies from
   enemies, obstacles from obstacles), so no level gets easier; enemies whose rules keep only so many (hosts,
-  hover trucks, drones, Octodogs) and the rare vent screech aren't boosted (the campaign's recency curve,
-  `data/tuning/feature_recency.tres`). The Barnacle Turret, wall fences, Buzz Overdrive, Tithe Collector,
-  Resonator and Gilded Sentinels aren't built yet: their levels already list them, and they appear once
+  hover trucks, drones, Octodogs, Resonators) and the rare vent screech aren't boosted (the campaign's recency
+  curve, `data/tuning/feature_recency.tres`). The Barnacle Turret, wall fences, Buzz Overdrive, Tithe
+  Collector and Gilded Sentinels aren't built yet: their levels already list them, and they appear once
   their code exists. Level names are placeholders, except the Golden Palace.
 - **Movement:** floor lanes, side-wall runs and wall jumps (a sign blocking the wall bumps you back with a
   clank), anti-grav pads onto the ceiling, ramps (higher onto the wall, with a speed boost that fades like
@@ -117,6 +117,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   - the heli drone
   - the Cyborg's Bad Dream, released by killing a host cyborg (from Dead Zone 1; in quick play, try
     `--features=cyborg,host,ceilings`)
+  - the Resonator (from Golden 1): a golden broadcast spire hovering far ahead. When its halos line up
+    and its three-note chime plays, a red wave rolls along the floor across every lane: jump it, or be
+    on a wall or the ceiling. Shoot it down or wait until it leaves (in quick play, `--features=resonator`)
 - **Bosses:** a framework for runner-style boss fights (GDD §10): the fight plays in the normal run on
   an arena track that keeps going for as long as it lasts, with the boss's health bar and phase
   markers on the HUD, weak points to stomp and weapon chip damage, a checkpoint for the final fight,
