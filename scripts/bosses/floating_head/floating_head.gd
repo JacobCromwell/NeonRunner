@@ -61,11 +61,13 @@ extends BossEncounter
 ## out (head_voice_cut, no shriek). Pinned, it shakes free as after any stomp; then it lurches up in
 ## front of the runner, its face tearing into static (DYING: held still with Reduced flashing), loses
 ## power and plunges forward into the street (FALLING: head_power_down; its screen collapses to a line
-## and its lights die) at the first stretch ahead clear of holes and fences (crash_site), where it lies
-## sunk between the trucks (WRECKED: head_crash, dust, debris and cold sparks, no flash), its crown's
-## highest point a stride above the roofs. The runner runs across its back: nothing in it hurts, and
-## anything left under it is crushed. The results wait until the runner reaches it (victory_over), and
-## LevelRun keeps the runner safe meanwhile. Numbers: FloatingHeadTuning, groups Propaganda and Defeat.
+## and its lights die) at the first stretch ahead clear of holes and fences (crash_site), where it
+## breaks up (WRECKED: head_crash, dust, debris and cold sparks, no flash): its dead face falls flat in
+## the street and its stern half lies sunk between the trucks, torn open at both ends, a tunnel the
+## lanes run through (FloatingHeadModel's wreck). The runner runs over its face and through the wreck:
+## nothing in it hurts, and anything left where it landed is crushed. The results wait until the runner
+## reaches it (victory_over), and LevelRun keeps the runner safe meanwhile. Numbers: FloatingHeadTuning,
+## groups Propaganda and Defeat.
 
 enum Step { ENTER, RISE, BOMBING, DESCEND, FACE_OFF, PIN_FALL, PINNED, SHAKE, RELEASE, DYING, FALLING, WRECKED }
 
@@ -83,6 +85,8 @@ const CEILING_CLEAR: float = 1.0
 const SHUDDER: float = 0.2
 ## A pulsing fence this far ahead of the runner may sound its warning: the propaganda gives way.
 const FENCE_EARSHOT: float = 45.0
+## Its torn-off face lies this far before the wreck.
+const FACE_GAP: float = 0.8
 ## The defeat: its nose dips this far (radians) as it plunges; a crash site is looked for every this
 ## many metres; smoke rises from the wreck and sparks spit from it every so often (seconds).
 const FALL_DIVE: float = 0.16
@@ -122,8 +126,10 @@ var ramp_lane: int = -1
 ## The third way up's pads (their track distance, every lane) and ceiling (track distances).
 var pad_at: float = 0.0
 var ceiling_span := Vector2.ZERO
-## The defeat: where its wreck's face lies (a track distance; -1 until it has picked a crash site).
+## The defeat: where its wreck's face lies (a track distance; -1 until it has picked a crash site), and
+## the spark bursts it has thrown (none with Reduced flashing; tests read it).
 var crash_at: float = -1.0
+var sparks_shown: int = 0
 
 var _from := Vector3.ZERO
 var _to := Vector3.ZERO
@@ -562,8 +568,8 @@ func _on_defeated() -> void:
 	bombing.clear()
 	faceoff.clear()
 	voice.cut()
-	body.glitch = 1.0
 	window_open = false
+	log_event(&"defeat", {"from": Step.keys()[step]})
 	if step == Step.PINNED or step == Step.SHAKE:
 		# The third window's pads and ceiling go; the tower and the ramp drop away as it shakes free.
 		_remove_way_up()
@@ -573,7 +579,7 @@ func _on_defeated() -> void:
 	else:
 		_end_pin(true)
 		_start_dying()
-	log_event(&"defeat", {"step": Step.keys()[step]})
+	body.glitch = _defeat_glitch()
 
 
 func _defeated_tick(delta: float) -> void:
@@ -594,12 +600,12 @@ func _defeated_tick(delta: float) -> void:
 	_place()
 
 
-## After the defeat: over once the runner has reached its wreck (the results follow a moment later,
-## as they run across it), or if the runner is down.
+## After the defeat: over once the runner has reached its fallen face (the results follow a moment
+## later, LevelRun.COMPLETE_PAUSE, as they run through the wreck), or if the runner is down.
 func victory_over() -> bool:
 	if world == null or world.player == null or not world.player.alive:
 		return true
-	return step == Step.WRECKED and player_distance() >= crash_at
+	return step == Step.WRECKED and player_distance() >= crash_at - face_lead()
 
 
 ## True once the runner has run past the wreck's bow.
@@ -972,42 +978,31 @@ func dying_pose() -> Vector3:
 	return Vector3(0.0, tuning.defeat_height, tuning.defeat_ahead)
 
 
-## The wreck's nose-down pitch and its roll (onto its right for a positive wreck_roll_degrees).
-func wreck_pitch() -> float:
-	return deg_to_rad(tuning.wreck_pitch_degrees)
-
-
-func wreck_roll() -> float:
-	return -deg_to_rad(tuning.wreck_roll_degrees)
-
-
-## The wreck's belly height: its crown's highest point over the lanes, along its deck (the part the
-## runner runs across), at wreck_top above the roofs.
+## The wreck's belly height: sunk between the trucks until the roofs meet it wreck_floor_share of its
+## height up, where it's widest.
 func wreck_belly() -> float:
-	var s: FloatingHeadModel.Shape = body.shape
-	var xform: Transform3D = FloatingHeadModel.ship_transform(s, wreck_pitch(), wreck_roll())
-	var deck_end: float = FloatingHeadModel.RINGS[FloatingHeadModel.DECK_RINGS].x * s.length
-	var top: float = -INF
-	var n: int = lane_count()
-	var reach: float = (n - 1) * 0.5 * world.geo.lane_width + 0.5
-	for i: int in 13:
-		var x: float = lerpf(-reach, reach, float(i) / 12.0)
-		for j: int in 9:
-			var z: float = deck_end * float(j) / 8.0
-			top = maxf(top, (xform * Vector3(x, FloatingHeadModel.crown_height(s, x / s.width, z), z)).y)
-	return tuning.wreck_top - top
+	return -tuning.wreck_floor_share * body.shape.height
+
+
+## The wreck's length along the track (its stern half), and how far before it its face lies (the
+## fallen screen, and a gap).
+func wreck_length() -> float:
+	return FloatingHeadModel.WRECK_LENGTH * body.shape.length
+
+
+func face_lead() -> float:
+	return body.shape.screen_size.y + FACE_GAP
 
 
 ## Where it can come down: the first spot from crash_ahead to crash_ahead + crash_search ahead of the
 ## runner where the street is clear of holes and fences (and ceilings) in every lane from
-## crash_clear_before its face to crash_clear_after past its bow; -1 if there's none.
+## crash_clear_before its fallen face to crash_clear_after past the wreck; -1 if there's none.
 func crash_site() -> float:
 	var d: float = player_distance()
-	var length: float = body.shape.length
 	var at: float = d + tuning.crash_ahead
 	while at <= d + tuning.crash_ahead + tuning.crash_search + 0.001:
-		var from: float = at - tuning.crash_clear_before
-		var to: float = at + length + tuning.crash_clear_after
+		var from: float = at - face_lead() - tuning.crash_clear_before
+		var to: float = at + wreck_length() + tuning.crash_clear_after
 		if floor_clear_all(from, to) and not ceiling_between(from, to):
 			return at
 		at += CRASH_STEP
@@ -1070,8 +1065,8 @@ func _falling_tick() -> void:
 	var a: float = (crash_at - s0 - v0 * t) / (t * t)
 	pose.z = s0 + v0 * elapsed + a * elapsed * elapsed - player_distance()
 	pose.y = lerpf(float(_fall["y0"]), wreck_belly(), k * k)
-	_pitch = lerpf(0.0, wreck_pitch(), k) - FALL_DIVE * sin(PI * k)
-	_roll = lerpf(float(_fall["roll0"]), wreck_roll(), k)
+	_pitch = -FALL_DIVE * sin(PI * k)
+	_roll = lerpf(float(_fall["roll0"]), 0.0, k)
 	_boot = 1.0 - smoothstep(0.0, 0.6, k)
 	body.power = 1.0 - smoothstep(0.0, 0.8, k)
 	body.glitch = _defeat_glitch()
@@ -1079,44 +1074,61 @@ func _falling_tick() -> void:
 		_crash()
 
 
-## It hits the street: the crash (sound, dust, debris, a heavy shake; no flash), it lies still, a dark
-## wreck sunk between the trucks, and anything left under it is crushed.
+## It hits the street and breaks up (the crash: sound, dust, debris, a heavy shake; no flash): its face
+## tears off and falls flat into the street before it, its bow breaks away, and its stern half lies sunk
+## between the trucks, a dark wreck the lanes run through. Anything left where it lands is crushed.
 func _crash() -> void:
 	_set_step(Step.WRECKED)
 	pose.z = crash_at - player_distance()
 	pose.y = wreck_belly()
-	_pitch = wreck_pitch()
-	_roll = wreck_roll()
+	_pitch = 0.0
+	_roll = 0.0
 	_boot = 0.0
 	body.power = 0.0
 	body.glitch = 0.0
-	body.wreck()
 	_place()
-	var mid := Vector3(0.0, 0.6, TrackGeometry.world_z(crash_at + body.shape.length * 0.35))
+	body.wreck(fallen_face())
+	var s: FloatingHeadModel.Shape = body.shape
+	var mid := Vector3(0.0, 1.0, TrackGeometry.world_z(crash_at + wreck_length() * 0.5))
 	sound(&"head_crash", body.screen_world())
 	world.effects.shake(0.9, 1.2)
 	world.effects.burst(mid, FloatingHeadTower.CONCRETE, 64, 3.0)
-	world.effects.burst(mid + Vector3(0.0, 1.0, 5.0), DEBRIS, 48, 2.2)
-	world.effects.burst(Vector3(0.0, 0.4, TrackGeometry.world_z(crash_at)), FloatingHeadTower.CONCRETE_LIGHT, 40, 1.6)
+	world.effects.burst(Vector3(0.0, 2.0, TrackGeometry.world_z(crash_at + wreck_length() + 2.0)), DEBRIS, 48, 2.2)
+	world.effects.burst(Vector3(0.0, 0.5, TrackGeometry.world_z(crash_at - face_lead() * 0.5)),
+		FloatingHeadTower.CONCRETE_LIGHT, 40, 1.6)
 	if not Settings.flashing_reduced:
-		world.effects.burst(mid + Vector3(0.0, 0.5, 0.0), WRECK_SPARK, 36, 1.4)
-	_crush(crash_at - 2.0, crash_at + body.shape.length + 2.0)
-	body.start_smoke()
+		world.effects.burst(mid + Vector3(0.0, s.height * 0.3, 0.0), WRECK_SPARK, 36, 1.4)
+		sparks_shown += 1
+	_crush(crash_at - face_lead() - 2.0, crash_at + wreck_length() + 2.0)
+	body.crash_dust(wreck_length(), -pose.y)
+	body.start_smoke(wreck_length())
 	log_event(&"crashed", {"at": crash_at, "belly": pose.y})
 
 
-## The wreck: still, smoking, spitting sparks now and then (none with Reduced flashing); it notes when
-## the runner has run past its bow.
+## Where its torn-off face lies (world space): flat on the roofs just in front of the wreck, its top
+## toward the wreck, facing up, a little askew.
+func fallen_face() -> Transform3D:
+	var sh: float = body.shape.screen_size.y
+	var flat := Basis(Vector3(1.0, 0.0, 0.0), Vector3(0.0, 0.0, -1.0), Vector3(0.0, 1.0, 0.0))
+	var askew := Basis(Vector3.UP, deg_to_rad(4.0)) * flat
+	return Transform3D(askew, Vector3(0.0, 0.05, TrackGeometry.world_z(crash_at - FACE_GAP - sh * 0.5)))
+
+
+## The wreck: still, smoking, spitting cold sparks from its insides now and then (none with Reduced
+## flashing); it notes when the runner has come out of it.
 func _wreck_tick(delta: float) -> void:
 	pose.z = crash_at - player_distance()
 	_sparks_t -= delta
 	if _sparks_t <= 0.0:
 		_sparks_t = SPARKS_EVERY
 		if not Settings.flashing_reduced:
-			var x: float = _effects_rng.randf_range(-0.35, 0.35) * body.shape.width
-			var z: float = crash_at + _effects_rng.randf_range(0.5, 0.6 * body.shape.length)
-			world.effects.burst(Vector3(x, 0.3, TrackGeometry.world_z(z)), WRECK_SPARK, 10, 0.5)
-	if not _wreck_passed and player_distance() > crash_at + body.shape.length:
+			var s: FloatingHeadModel.Shape = body.shape
+			var x: float = _effects_rng.randf_range(-0.3, 0.3) * s.width
+			var z: float = crash_at + _effects_rng.randf_range(1.0, wreck_length() - 1.0)
+			var y: float = s.height * (1.0 - tuning.wreck_floor_share) - 1.2
+			world.effects.burst(Vector3(x, y, TrackGeometry.world_z(z)), WRECK_SPARK, 10, 0.5)
+			sparks_shown += 1
+	if not _wreck_passed and player_distance() > crash_at + wreck_length() + 1.0:
 		_wreck_passed = true
 		log_event(&"wreck_passed", {"alive": world.player.alive})
 

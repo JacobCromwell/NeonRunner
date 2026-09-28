@@ -6,6 +6,11 @@ extends Resource
 ## bombs fall and their falling whistle; every other number here is a placeholder (DESIGN-TBD,
 ## docs/OPEN_QUESTIONS.md §D, items 83-92, 113-123 and the stomp windows' 158-170; the propaganda and
 ## the defeat: docs/questions/e1.md, From E1d).
+## The fight's length (GDD §10: 60-120 s; item 169) comes from the bombing runs, the attacks before a
+## tower and the towers' spacing. DESIGN-TBD (docs/questions/e1.md, From E1d, item 4): placeholders
+## that bring a runner who never misses to about 100 s (a 16 s first run, two 8 s later runs, towers
+## every 240 m, two attacks before one, and the laser clipping every other tower on its own for a
+## runner who doesn't bait them).
 
 @export_group("Ship")
 ## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, items 83-84): the hull fills the street between the walls (a
@@ -28,11 +33,11 @@ extends Resource
 
 @export_group("Bombing run")
 ## GDD §10: the first run lasts about 15-20 s (from the searchlight switching on to its last bomb).
-@export_range(5.0, 30.0, 0.5, "suffix:s") var first_run_seconds: float = 17.0
+@export_range(5.0, 30.0, 0.5, "suffix:s") var first_run_seconds: float = 16.0
 ## GDD §10: once or twice during the fight it rises for another, shorter run. DESIGN-TBD
 ## (docs/OPEN_QUESTIONS.md §D, item 89): at the start of the next `later_runs` phases, after it rises
 ## back into the sky (0 = never).
-@export_range(0.0, 20.0, 0.5, "suffix:s") var later_run_seconds: float = 9.0
+@export_range(0.0, 20.0, 0.5, "suffix:s") var later_run_seconds: float = 8.0
 @export_range(0, 2) var later_runs: int = 2
 ## DESIGN-TBD (item 85): its station during a run: its stern this far ahead of the player and its
 ## belly this high, so it looms over the top of the screen with its searchlight pointing back at the
@@ -166,7 +171,7 @@ extends Resource
 ## lap, tower_height tall (its head, the top 30%, juts out over the street above the ship's highest
 ## flight) and tower_width wide. The track stays clear of holes and fences from tower_clear_before
 ## before a tower to tower_clear_after past it (the pin, the ways onto its head, and the run up to it).
-@export_range(80.0, 800.0, 5.0, "suffix:m") var tower_spacing: float = 300.0
+@export_range(80.0, 800.0, 5.0, "suffix:m") var tower_spacing: float = 240.0
 @export_range(0.0, 800.0, 5.0, "suffix:m") var tower_first: float = 240.0
 @export_range(15.0, 80.0, 0.5, "suffix:m") var tower_height: float = 40.0
 @export_range(2.0, 8.0, 0.1, "suffix:m") var tower_width: float = 3.6
@@ -177,10 +182,10 @@ extends Resource
 ## runner leads the beam there (the bait), or at the tower anyway once fallback_after towers have gone
 ## by in the phase (GDD §10: "the laser eventually clips a tower on its own").
 @export_range(20.0, 90.0, 0.5, "suffix:m") var tower_ahead: float = 48.0
-@export_range(0, 6) var fallback_after: int = 2
+@export_range(0, 6) var fallback_after: int = 1
 ## A face-off shows this many of its attacks before it takes aim at a tower (one new thing at a time:
 ## the lasers first); towers that go by sooner are just scenery.
-@export_range(0, 10) var towers_after: int = 3
+@export_range(0, 10) var towers_after: int = 2
 ## GDD §10: "baiting it is faster and scores more". DESIGN-TBD: points for a baited tower.
 @export_range(0, 10000, 50) var bait_score: int = 500
 ## The clipped tower topples forward onto the ship this long (it brakes under it).
@@ -294,20 +299,18 @@ extends Resource
 @export_range(0.5, 4.0, 0.05, "suffix:s") var defeat_fall_seconds: float = 1.4
 ## Where it comes down: its face crash_ahead ahead of the runner as it starts to fall, or further (up to
 ## crash_search more) at the first spot where the street is clear of holes and fences in every lane from
-## crash_clear_before its face to crash_clear_after past its bow. With none in reach it limps on ahead,
-## glitching, until there is one (crash_limp_max seconds at most).
-@export_range(20.0, 150.0, 1.0, "suffix:m") var crash_ahead: float = 60.0
-@export_range(0.0, 150.0, 1.0, "suffix:m") var crash_search: float = 40.0
+## crash_clear_before its fallen face to crash_clear_after past the wreck. With none in reach it limps on
+## ahead, glitching, until there is one (crash_limp_max seconds at most).
+@export_range(20.0, 150.0, 1.0, "suffix:m") var crash_ahead: float = 50.0
+@export_range(0.0, 150.0, 1.0, "suffix:m") var crash_search: float = 50.0
 @export_range(0.0, 30.0, 0.5, "suffix:m") var crash_clear_before: float = 8.0
 @export_range(0.0, 30.0, 0.5, "suffix:m") var crash_clear_after: float = 10.0
 @export_range(0.0, 20.0, 0.5, "suffix:s") var crash_limp_max: float = 6.0
-## The wreck: sunk into the street between the trucks, nose down by wreck_pitch_degrees (negative) and
-## rolled by wreck_roll_degrees (positive: onto its right), its crown's highest point wreck_top above
-## the roofs: a step the runner takes in their stride. The runner runs across its back; nothing in it
-## hurts (its fins and masts broke off in the crash).
-@export_range(0.0, 0.55, 0.01, "suffix:m") var wreck_top: float = 0.4
-@export_range(-10.0, 10.0, 0.5, "suffix:deg") var wreck_pitch_degrees: float = -2.0
-@export_range(-20.0, 20.0, 0.5, "suffix:deg") var wreck_roll_degrees: float = 8.0
+## The wreck (FloatingHeadModel's): it hits the street and breaks up; its face tears off and falls flat
+## in front of it, and its stern half lies across the street, sunk between the trucks until the roofs
+## meet it wreck_floor_share of its height up, where it's widest, so the lanes run through it like a
+## tunnel: the runner runs over its dead face and through the wreck. Nothing in it hurts.
+@export_range(0.3, 0.5, 0.01) var wreck_floor_share: float = 0.42
 
 
 ## The face-off's attacks for phase `index`, in turn (Face-off).

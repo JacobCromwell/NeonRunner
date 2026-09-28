@@ -47,6 +47,8 @@ const CAPTION_WIDTH: float = 0.88
 const CAPTION_LINE: float = 0.125
 ## Sizes the caption's glyphs are drawn at (then scaled to fit the band).
 const CAPTION_FONT_SIZE: int = 96
+## The wreck's torn-off face falls flat into the street this fast.
+const FACE_FALL_SECONDS: float = 0.4
 
 var tuning: FloatingHeadTuning
 var shape: FloatingHeadModel.Shape
@@ -104,6 +106,10 @@ var _power_shown: float = 1.0
 var _caption_label: Label3D
 var _caption_text: String = ""
 var _wrecked: bool = false
+## Its torn-off face falling into the street (the wreck): from, to (world space), and how far (0-1).
+var _face_from := Transform3D.IDENTITY
+var _face_rest := Transform3D.IDENTITY
+var _face_fall: float = 1.0
 
 
 func _build() -> void:
@@ -310,66 +316,145 @@ func _on_defeated(_cause: StringName) -> void:
 	pass
 
 
-## The crash (the defeat): the hull is a wreck (its fins and masts broken off), dark, and its crown's
-## deck a floor the runner runs across.
-func wreck() -> void:
+## The crash (the defeat): the hull becomes the wreck (FloatingHeadModel's: its stern half, torn open at
+## both ends), its face tears off and falls flat into the street before it (to `face_rest`, world space,
+## over FACE_FALL_SECONDS: the dead screen, cracked, the face faintly burnt into it), and the parts that
+## went with its face and bow (the jaw, the searchlight, the bay doors) are gone. No deck: the lanes run
+## through it on the roofs.
+func wreck(face_rest: Transform3D) -> void:
 	_wrecked = true
-	var meshes: Dictionary = FloatingHeadModel.meshes(shape)
-	_hull.mesh = meshes["wreck"]
-	# The new mesh's surfaces take the dimmed copies again.
+	_hull.mesh = FloatingHeadModel.meshes(shape)["wreck"]
+	# The new mesh's surfaces take dimmed copies of their materials again.
 	_power_materials.clear()
 	_power_shown = -1.0
 	weak_open = 0.0
 	lamp = Lamp.OFF
-	set_top_solid(true)
+	jaw_open = 0.0
+	bay_open = false
+	_jaw.visible = false
+	_lamp_head.visible = false
+	for door: Node3D in _doors:
+		door.visible = false
+	set_top_solid(false)
+	slogan = ""
+	caption = 0.0
+	_face_from = _screen.global_transform
+	_face_rest = face_rest
+	_face_fall = 0.0
+	_screen_material.set_shader_parameter(&"broken", 1.0)
+	_build_face_frame()
+
+
+## The torn-off face's frame: its bezel, torn out of the stern with it (a raised rim round the dead
+## glass, so it reads as a fallen screen and not a hole in the street).
+func _build_face_frame() -> void:
+	var batch := MeshBatch.new()
+	var m: MeshLayer = batch.layer(FloatingHeadModel.solid_material())
+	var sw: float = shape.screen_size.x
+	var sh: float = shape.screen_size.y
+	var b: float = FloatingHeadModel.BEZEL_WIDTH
+	var rim: Color = FloatingHeadModel.HULL_LIGHT.darkened(0.2)
+	for side: float in [-1.0, 1.0]:
+		m.box(Vector3(0.0, side * (sh + b) * 0.5, 0.02), Vector3(sw + b * 2.0, b, 0.12), rim)
+		m.box(Vector3(side * (sw + b) * 0.5, 0.0, 0.02), Vector3(b, sh, 0.12), rim)
+	batch.commit(_screen, "FaceFrame")
 
 
 func is_wreck() -> bool:
 	return _wrecked
 
 
-## Dark smoke rising from the wreck's back (two plumes: slow, soft, grey; never a glow). CPU particles,
-## so the Compatibility renderer draws them too.
-func start_smoke() -> void:
+## Where its face screen is now (world space; on the wreck, where it fell).
+func face_transform() -> Transform3D:
+	return _screen.global_transform
+
+
+## Dark smoke rising from the wreck's crown near both its torn ends (soft grey puffs, never a glow).
+## CPU particles, so the Compatibility renderer draws them too.
+func start_smoke(length: float) -> void:
+	for spot: Vector2 in [Vector2(-0.18, -1.5), Vector2(0.2, -length + 1.5)]:
+		var z: float = spot.y
+		var p: CPUParticles3D = _puffs("Smoke", Color(0.22, 0.22, 0.25), 2.2)
+		p.amount = 16
+		p.lifetime = 3.2
+		p.spread = 14.0
+		p.gravity = Vector3(0.0, 0.8, 0.0)
+		p.initial_velocity_min = 1.0
+		p.initial_velocity_max = 2.0
+		p.position = Vector3(spot.x * shape.width, FloatingHeadModel.crown_height(shape, spot.x, z), z)
+		p.emitting = true
+		_ship.add_child(p)
+
+
+## The crash's dust (the defeat): a cloud of soft grey puffs bursting out along the wreck, `length`
+## long, from the roofs `floor_height` up its hull (a one-shot, no flash).
+func crash_dust(length: float, floor_height: float) -> void:
+	var p: CPUParticles3D = _puffs("CrashDust", Color(0.36, 0.35, 0.38), 3.0)
+	p.one_shot = true
+	p.explosiveness = 0.9
+	p.amount = 32
+	p.lifetime = 1.8
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	p.emission_box_extents = Vector3(shape.width * 0.5, 0.4, length * 0.6)
+	p.spread = 75.0
+	p.gravity = Vector3(0.0, -1.0, 0.0)
+	p.initial_velocity_min = 3.0
+	p.initial_velocity_max = 8.0
+	p.damping_min = 2.0
+	p.damping_max = 3.0
+	p.position = Vector3(0.0, floor_height + 0.6, -length * 0.4)
+	p.emitting = true
+	_ship.add_child(p)
+
+
+## Soft round puffs (grey, fading in and out and growing as they go): the wreck's smoke and dust.
+func _puffs(node_name: String, tint: Color, size: float) -> CPUParticles3D:
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.vertex_color_use_as_albedo = true
 	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
-	mat.albedo_color = Color(0.2, 0.2, 0.23)
+	mat.albedo_color = tint
+	mat.albedo_texture = _puff_texture()
 	var quad := QuadMesh.new()
-	quad.size = Vector2(1.6, 1.6)
+	quad.size = Vector2(size, size)
 	quad.material = mat
 	var fade := Gradient.new()
 	fade.set_color(0, Color(1.0, 1.0, 1.0, 0.0))
 	fade.set_color(1, Color(1.0, 1.0, 1.0, 0.0))
-	fade.add_point(0.15, Color(1.0, 1.0, 1.0, 0.55))
-	fade.add_point(0.6, Color(1.0, 1.0, 1.0, 0.3))
+	fade.add_point(0.15, Color(1.0, 1.0, 1.0, 0.7))
+	fade.add_point(0.6, Color(1.0, 1.0, 1.0, 0.4))
 	var grow := Curve.new()
-	grow.max_value = 2.0
-	grow.add_point(Vector2(0.0, 0.5))
-	grow.add_point(Vector2(1.0, 1.8))
-	for spot: Vector2 in [Vector2(-0.12, -4.0), Vector2(0.16, -11.0)]:
-		var z: float = spot.y
-		var p := CPUParticles3D.new()
-		p.name = "Smoke"
-		p.mesh = quad
-		p.amount = 18
-		p.lifetime = 2.8
-		p.randomness = 0.4
-		p.local_coords = false
-		p.direction = Vector3.UP
-		p.spread = 16.0
-		p.gravity = Vector3(0.0, 0.9, 0.0)
-		p.initial_velocity_min = 1.2
-		p.initial_velocity_max = 2.4
-		p.scale_amount_min = 1.0
-		p.scale_amount_max = 1.8
-		p.scale_amount_curve = grow
-		p.color_ramp = fade
-		p.position = Vector3(spot.x * shape.width, FloatingHeadModel.crown_height(shape, spot.x, z), z)
-		p.emitting = true
-		_ship.add_child(p)
+	grow.max_value = 3.0
+	grow.add_point(Vector2(0.0, 0.6))
+	grow.add_point(Vector2(1.0, 2.6))
+	var p := CPUParticles3D.new()
+	p.name = node_name
+	p.mesh = quad
+	p.randomness = 0.4
+	p.local_coords = false
+	p.direction = Vector3.UP
+	p.scale_amount_min = 1.0
+	p.scale_amount_max = 1.6
+	p.scale_amount_curve = grow
+	p.color_ramp = fade
+	return p
+
+
+## A soft round puff (a radial fade, made in code): the smoke's texture.
+static func _puff_texture() -> Texture2D:
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(1.0, 1.0, 1.0, 1.0))
+	ramp.set_color(1, Color(1.0, 1.0, 1.0, 0.0))
+	ramp.add_point(0.45, Color(1.0, 1.0, 1.0, 0.6))
+	var tex := GradientTexture2D.new()
+	tex.gradient = ramp
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(0.5, 0.0)
+	tex.width = 64
+	tex.height = 64
+	return tex
 
 
 ## Shows `text` on the face screen's caption band ("" clears it); `caption` fades it in and out.
@@ -427,6 +512,17 @@ func _animate(delta: float) -> void:
 	_update_weak_points()
 	_update_power()
 	_update_caption()
+	if _wrecked:
+		_update_fallen_face(delta)
+
+
+## The wreck's torn-off face tips forward off its stern and falls flat into the street before it.
+func _update_fallen_face(delta: float) -> void:
+	_face_fall = minf(_face_fall + delta / FACE_FALL_SECONDS, 1.0)
+	var k: float = _face_fall * _face_fall
+	var turn: Quaternion = _face_from.basis.get_rotation_quaternion().slerp(_face_rest.basis.get_rotation_quaternion(), k)
+	var at: Vector3 = _face_from.origin.lerp(_face_rest.origin, k)
+	_screen.global_transform = Transform3D(Basis(turn), at)
 
 
 ## Its lights follow `power`: every kit material on its parts (not the face screen, which has its own
@@ -473,8 +569,8 @@ func _update_caption() -> void:
 	c.a = shown
 	_caption_label.modulate = c
 	var jump: float = 0.0
-	if glitch > 0.05:
-		var tick: float = 0.0 if Settings.flashing_reduced else floorf(_time * 12.0)
+	if glitch > 0.05 and not Settings.flashing_reduced:
+		var tick: float = floorf(_time * 12.0)
 		jump = (fposmod(sin(tick * 12.9898 + 4.1) * 43758.5453, 1.0) - 0.5) * glitch * 0.22 * shape.screen_size.x
 	_caption_label.position.x = jump
 
