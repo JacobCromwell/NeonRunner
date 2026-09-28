@@ -21,7 +21,8 @@ extends RefCounted
 ##   few places for a visit in the Golden levels).
 ## - One at a time: a Resonator whose visit would begin before the last one's could end (its last
 ##   pulse, plus turn_wait_max for waits at run time, plus visit_gap_seconds) moves on to begin then.
-##   One that fits fewer than min_pulses tries a few spots further on (MOVE_TRIES), else it's left out.
+##   One that fits fewer than min_pulses tries a few spots a little earlier or further on
+##   (MOVE_OFFSETS; never before the feature's start or the last visit's end), else it's left out.
 ## - In a level that guarantees its features (LevelConfig.guarantee_features), if no Resonator is left,
 ##   one is added (guarantee_one) at the first spot after the feature's start where its pulses fit
 ##   (DESIGN-TBD, docs/questions/c3.md).
@@ -34,10 +35,10 @@ const TYPE: String = "resonator"
 ## Metres between the warning starts tried for a pulse, and the spots tried for a guaranteed Resonator.
 const STEP: float = 2.0
 const GUARANTEE_STEP: float = 40.0
-## A Resonator whose visit doesn't fit at its spot tries this many spots further on, this far apart
-## (DESIGN-TBD, docs/questions/c3.md), before it's left out.
-const MOVE_TRIES: int = 3
-const MOVE_STEP: float = 40.0
+## A Resonator whose visit doesn't fit at its spot tries these spots around it, in this order, before
+## it's left out (DESIGN-TBD, docs/questions/c3.md). Earlier ones help where another rule has put
+## something on the floor its pattern kept clear (an Octodog's run the Octodog rules added there).
+const MOVE_OFFSETS: Array[float] = [-20.0, 40.0, -40.0, 80.0, 120.0]
 ## A pulse is planned with this much more clear floor either side of its meeting stretch than the
 ## Resonator asks for at run time, so the warning that starts on the frame the player passes its
 ## planned point (up to a frame's run later) finds it clear.
@@ -54,14 +55,21 @@ static func apply(gen: LevelGenerator) -> void:
 	var dropped: Array[Dictionary] = []
 	for e: Dictionary in resonators_in(layout):
 		# One at a time: a Resonator that would arrive before the last visit is over waits until then.
-		var at: float = maxf(float(e["at"]), free_from + t.hover_ahead - t.approach_ease)
+		var lowest: float = maxf(free_from + t.hover_ahead - t.approach_ease, gen.feature_start(TYPE))
+		var base: float = maxf(float(e["at"]), lowest)
+		var at: float = base
 		var plan: Dictionary = plan_visit(gen, t, rng, at, busy, first)
 		# Where its visit doesn't fit (an Octodog's run, or no clear floor for its pulses), it may come a
-		# little later: it's a flier, so its spot is free to move on.
-		var tries: int = 0
-		while plan.is_empty() and tries < MOVE_TRIES:
-			tries += 1
-			at += MOVE_STEP
+		# little earlier or later: it's a flier, so its spot is free to move.
+		var tried: Array[float] = [at]
+		for offset: float in MOVE_OFFSETS:
+			if not plan.is_empty():
+				break
+			var spot: float = maxf(base + offset, lowest)
+			if tried.has(spot):
+				continue
+			tried.append(spot)
+			at = spot
 			plan = plan_visit(gen, t, rng, at, busy, first)
 		if plan.is_empty():
 			dropped.append(e)
