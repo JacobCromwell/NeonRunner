@@ -67,7 +67,9 @@ unless another file is named.
    Placeholder weights (Ceilings group): a golden bridge 4.0 (a gilded coffered underside, a marble face
    with the emblem's crest and a gold rail; over fewer lanes a suspended gallery on gold beams), a gallery of
    parabolic golden arches 3.0 (only across every lane), a hover-yacht of the elite 2.0 (a cream hull with a
-   gold line and a deep red stripe, pale blue-white engines). Right mix and forms?
+   gold line and a deep red stripe, pale blue-white engines). Over a narrow street (3 lanes) the arches are
+   flatter and the bridges' rails shorter, so nothing cuts through the statues, frames and banners on the
+   walls. Right mix and forms?
 10. **Waterfalls and fountains off the ceilings** (GDD §5: scenery only, sparse). Placeholder: on half the
     golden bridges (`water_share`), water pours off the bridge's face from a gold lip into a gilded trough on
     either side of the crest, all above the ceiling's underside, never over the floor or the walls' band; a
