@@ -1066,7 +1066,7 @@ or `--scenario=window|missed`)
     scenery, and a cyborg still under the ship as it crashes down is crushed. All right?
 168. **Weapons:** with 300 health and the framework's 34% cap, weapons alone can end one phase and no more. With the
     owner's "not very challenging" in mind, should they be slower still?
-169. **The fight's length** (GDD §10: 60–120 s): a runner who never misses takes about 134 s (a 17 s first bombing run,
+169. (E1d brought a perfect run to about 101 s: see item 201.) **The fight's length** (GDD §10: 60–120 s): a runner who never misses takes about 134 s (a 17 s first bombing run,
     two 9 s later runs, three face-offs until a tower, three windows). To tighten it: shorter or fewer bombing runs,
     fewer attacks before a tower, or towers closer together? (Task E1d brings it inside 60–120 s as a placeholder.)
 170. **Edge cases after a lost window:** at 3 lanes a runner sliding down a wall beside the pinned ship lands inside its
@@ -1162,6 +1162,36 @@ play with `--features=resonator --skin=golden`)
 196. **One on screen at a time:** a Resonator arriving sends the last one away after its current pulse. Right?
 197. **The hint:** "When the Resonator's chime plays, a red wave rolls along the floor. Jump it ({jump}), or be on a wall or
     the ceiling." Right wording?
+
+**The Floating Head: propaganda, defeat, and the finished fight** (from E1d; the fight now plays in the City's boss
+slot; numbers in `data/bosses/city_boss_tuning.tres` and `data/bosses/city_boss.tres`; showcase scenarios `slogans`,
+`defeat`, `wreck`)
+198. **The slogans** (GDD §10: a few short slogans on its face screen, so only they need translating; the owner writes
+    them). Placeholders after GDD §5's "every path leads to him": "EVERY PATH / LEADS TO HIM", "STAY / ALIGNED",
+    "DON'T RUN. / CONVERGE.", "HE SEES / YOU", "RETURN TO / THE FEED": two lines of at most 12 characters in the UI's
+    display font on a dark band across the face, under the eyes (the lasers' warning) and above the mouth (the drop's
+    warning); ready for translation once the game has it. Their words, how many, and where on the face?
+199. **The propaganda voice** (GDD §10: heavily distorted, not meant to be understood): four phrases of made-up
+    syllables with an announcer's rise and fall, a deep voice through a blown loudhailer, starting at the reveal, 1.5–3.5 s
+    apart, under its warnings in level. It never masks a warning: while an attack warns or strikes, a cue sounds, a
+    dropped cyborg is about or a pulsing fence is near, it ducks 18 dB at once and the slogan fades; so it's heard mostly
+    between attacks (about 12 phrases in a 100 s fight). The right character and amount? Pause rather than duck?
+200. **The defeat** (GDD §10): the last stomp's cry is the propaganda cutting out mid-shout (it stutters, dives like a
+    stopping tape and dies in static). It shakes free, lurches ahead with its face tearing into static (steady with
+    Reduced flashing), loses power (the face collapses to a line and goes dark) and crashes into the street at the first
+    clear stretch ahead: a dust cloud and a heavy shake, no flash. Its cracked, dead face falls flat before the wreck, and
+    its stern half lies across the street like a tunnel the runner runs through (dark metal, cold white sparks, grey
+    smoke, nothing in a hazard colour, nothing that hurts); its bow vanishes in the dust. Does the tunnel read as "runs
+    through the wreck"? Should the bow stay, and should the fallen face show something (a last slogan, a frozen frame)?
+201. **The fight's length** (60–120 s): a 16 s first bombing run, two 8 s later runs, marked towers every 240 m, two
+    attacks before it aims at a tower, and the laser clipping every other tower on its own for a runner who doesn't bait
+    them. A perfect run takes about 101 s at 3, 5 and 6 lanes; a struggling one (never baiting, missing each phase's
+    first window) about 234–254 s (no time limit, no escalation). Right, or should a struggling run be shorter?
+202. **Par times** (GDD §10, proposed): three stars under 110 s, two under 150 s, so a perfect run gets three and a run
+    that misses a window or two gets two.
+203. **After the win:** the results come 2 s after the runner reaches the fallen face; meanwhile the runner is safe (the
+    framework's rule), so fences in the way are harmless, but a hole still ends the run early (the win counts). Should the
+    street to the wreck be clear, or its fences go dark as it crashes?
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
