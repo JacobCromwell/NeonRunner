@@ -148,9 +148,11 @@ func _update_camera(delta: float) -> void:
 	if player.surface == Player.Surface.CEILING:
 		cam_y = tuning.camera_ceiling_height
 		look_y = tuning.ceiling_height - 1.2
+	var limit: float = RunCamera.ceiling_limit(get_world_3d().direct_space_state,
+		Vector3(_cam_focus.x, _cam_focus.y, p.z + tuning.camera_distance), tuning)
 	var k: float = 1.0 - exp(-tuning.camera_smoothing * delta)
 	_cam_focus.x = lerpf(_cam_focus.x, p.x * tuning.camera_follow_x, k)
-	_cam_focus.y = lerpf(_cam_focus.y, cam_y, k)
+	_cam_focus.y = minf(lerpf(_cam_focus.y, minf(cam_y, limit), k), limit)
 	_cam_look_y = lerpf(_cam_look_y, look_y, k)
 	camera.fov = tuning.camera_fov
 	camera.position = Vector3(_cam_focus.x, _cam_focus.y, p.z + tuning.camera_distance)

@@ -4,8 +4,10 @@ extends RefCounted
 ## may be dangerous: it may hold gaps, hazards and enemies, and the ceiling is the way to escape
 ## them. Two stretches of floor around every ceiling section stay safe all the same:
 ## - Its landing zone. Wherever the player drops back to the floor, the floor is safe to land on:
-##   from the section's end, for LevelConfig.hull_landing_seconds at run speed, no lane holds a gap
-##   or a fence, and no floor enemy uses the floor there (LevelGenerator.enemy_floor_span).
+##   from the section's end, for LevelConfig.hull_landing_seconds at run speed, no lane the section
+##   covers holds a gap or a fence (every lane, for a ceiling over every lane; a narrow ceiling's
+##   rider can only drop from its own lanes, GDD §3), and no floor enemy uses the floor there, in any
+##   lane (LevelGenerator.enemy_floor_span).
 ## - Each anti-grav pad's spot, so the player can actually step on the pad. The pad's lane holds no
 ##   gap, fence or ramp, and no floor enemy standing in it uses the floor, from a full jump's length
 ##   before the pad (a player who cleared the lane's last obstacle lands before it) until its lift
@@ -16,7 +18,13 @@ extends RefCounted
 ## it or jump it). The generator keeps both stretches for every ceiling: a pattern's own
 ## (LevelGenerator) and those rules add (LevelGenerator.add_hull_with_pad, PadPlacement); rules that
 ## add floor enemies keep off them too (CyborgRules.obstacle_spans, Octodog.pad_or_landing_between).
-## Narrow ceilings (B3) and floor cuts planned in advance (B4) ask their questions here as well.
+## A narrow ceiling (B3) covers a range of lanes (LevelLayout.hull_lanes): its pads lie in that range
+## and its landing zone covers those lanes; the rules that keep off landing zones in every lane (the
+## cyborgs', the Octodog's) still do, which is safe for any range. Floor cuts planned in advance (B4)
+## ask their questions here as well.
+
+## Every lane, for the `lanes` of landing_clear() and clear_landing().
+const ALL_LANES := Vector2i(0, 1 << 30)
 
 ## Metres of floor kept safe to land on after a ceiling section's end. DESIGN-TBD
 ## (docs/questions/b2.md): LevelConfig.hull_landing_seconds at run speed, clear of holes, fences
@@ -59,10 +67,16 @@ static func lift_seconds(tuning: MovementTuning) -> float:
 	return (-v0 + sqrt(v0 * v0 + 2.0 * a * tuning.ceiling_height)) / a
 
 
-## Where the player lands after ceiling section `hull`: [end, end + landing], in every lane.
+## Where the player lands after ceiling section `hull`: [end, end + landing], in every lane it covers
+## (LevelLayout.hull_lanes; landing_lanes).
 func landing_zone(hull: Dictionary) -> Vector2:
 	var end: float = float(hull["end"])
 	return Vector2(end, end + landing)
+
+
+## The lanes whose floor ceiling section `hull` keeps safe to land on in `layout`: the lanes it covers.
+static func landing_lanes(layout: LevelLayout, hull: Dictionary) -> Vector2i:
+	return layout.hull_lanes(hull)
 
 
 ## The stretch of its lane a pad at `at` keeps clear: [at - run_up, at + pad_length + rise].
@@ -83,14 +97,15 @@ func landing_zones(layout: LevelLayout) -> Array[Vector2]:
 	return out
 
 
-## True if the floor in `zone` is safe to land on: no gap or fence in any lane, and no floor
-## enemy's stretch reaches into it.
-func landing_clear(layout: LevelLayout, zone: Vector2) -> bool:
+## True if the floor in `zone` is safe to land on: no gap or fence in `lanes` (Vector2i(first, last);
+## every lane by default, as under a ceiling over every lane), and no floor enemy's stretch, in any
+## lane, reaches into it.
+func landing_clear(layout: LevelLayout, zone: Vector2, lanes: Vector2i = ALL_LANES) -> bool:
 	for g: Dictionary in layout.gaps:
-		if gap_in(g, zone):
+		if gap_in(g, zone) and in_lanes(int(g["lane"]), lanes):
 			return false
 	for f: Dictionary in layout.fences:
-		if fence_in(f, zone):
+		if fence_in(f, zone) and in_lanes(int(f["lane"]), lanes):
 			return false
 	for e: Dictionary in layout.enemies:
 		if enemy_in(e, zone):
@@ -149,14 +164,19 @@ func pad_enemy_in(e: Dictionary, lane: int, at: float) -> bool:
 	return enemy_in(e, zone)
 
 
-## Takes out whatever keeps `zone` from being safe to land on (see landing_clear). Returns how many
-## pieces and enemies went.
-func clear_landing(layout: LevelLayout, zone: Vector2) -> int:
+## Takes out whatever keeps `zone` from being safe to land on in `lanes` (see landing_clear). Returns
+## how many pieces and enemies went.
+func clear_landing(layout: LevelLayout, zone: Vector2, lanes: Vector2i = ALL_LANES) -> int:
 	var before: int = layout.gaps.size() + layout.fences.size() + layout.enemies.size()
-	_keep(layout.gaps, func(g: Dictionary) -> bool: return not gap_in(g, zone))
-	_keep(layout.fences, func(f: Dictionary) -> bool: return not fence_in(f, zone))
+	_keep(layout.gaps, func(g: Dictionary) -> bool: return not (gap_in(g, zone) and in_lanes(int(g["lane"]), lanes)))
+	_keep(layout.fences, func(f: Dictionary) -> bool: return not (fence_in(f, zone) and in_lanes(int(f["lane"]), lanes)))
 	_keep(layout.enemies, func(e: Dictionary) -> bool: return not enemy_in(e, zone))
 	return before - (layout.gaps.size() + layout.fences.size() + layout.enemies.size())
+
+
+## True if `lane` is within `lanes` (Vector2i(first, last)).
+static func in_lanes(lane: int, lanes: Vector2i) -> bool:
+	return lane >= lanes.x and lane <= lanes.y
 
 
 ## Takes out whatever keeps a pad at `at` in `lane` from being stepped on (see pad_clear): the gaps,

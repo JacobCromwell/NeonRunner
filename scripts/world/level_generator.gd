@@ -22,6 +22,14 @@ extends RefCounted
 ## holds only what patterns put there, with their usual fairness and spacing, and the pad can always
 ## be passed by.
 ##
+## Narrow ceilings (GDD §3, decided September 26, 2026: ceilings don't have to cover every lane): a
+## ceiling covers a contiguous range of lanes (LevelLayout.hull_lanes), with its pads inside it and its
+## landing zone over its lanes. A level's narrow_ceiling_share of its ceilings (LevelConfig, from
+## narrow_ceiling_start on) cover fewer lanes than the track has, pattern ceilings and rules' alike
+## (ceiling_lanes, from a random stream of its own, so full-width ceilings and everything else come out
+## exactly as before); a one-lane ceiling is very short (one_lane_ceiling_seconds) and only where its
+## pattern puts nothing under it.
+##
 ## Every feature appears (LevelConfig.guarantee_features; GDD §5: anything introduced earlier keeps
 ## appearing later): after the passes, the generator checks that each feature a pattern can place
 ## in the level is in the finished layout (feature_positions). Rules may have dropped what didn't
@@ -80,6 +88,9 @@ var zones: CeilingZones
 var picks: Array[Dictionary] = []
 
 var _rng := RandomNumberGenerator.new()
+## Which ceilings are narrow, and their lanes (ceiling_lanes): a stream of its own, drawn from only
+## where a ceiling may be narrow, so a level without narrow ceilings generates exactly as before.
+var _ceiling_rng := RandomNumberGenerator.new()
 ## Clear stretches between patterns [start, end], filled with credit trails later.
 var _clear_stretches: Array[Vector2] = []
 var _enemy_count: int = 0
@@ -154,6 +165,7 @@ func generate(p_config: LevelConfig, p_tuning: MovementTuning, patterns: Array) 
 ## picks, `forced`: feature → how many builds missed it), the rules, the credits.
 func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	_rng.seed = config.level_seed
+	_ceiling_rng.seed = hash([config.level_seed, "narrow_ceilings"])
 	layout = LevelLayout.new()
 	layout.lane_count = config.lane_count
 	_clear_stretches.clear()
@@ -401,19 +413,25 @@ func add_enemy(type: String, at: float, lane: int, side: int = 0, params: Dictio
 
 ## Adds a ceiling section with an anti-grav pad at `at` in `lane` (hull lead-in before it), lasting
 ## `length_seconds` at run speed, over whatever the floor holds there (GDD §3: the floor under a
-## ceiling may be dangerous). Returns false (adding nothing) if the pad can't be stepped on or its
-## landing zone isn't safe to land on (CeilingZones: pad_clear, landing_clear, which include floor
+## ceiling may be dangerous), covering `lanes` (Vector2i(first, last); every lane by default, and a
+## narrow ceiling's range from ceiling_lanes, which must hold the pad's lane: a pad sits under its
+## ceiling). Returns false (adding nothing) if the pad can't be stepped on or its landing zone isn't
+## safe to land on (CeilingZones: pad_clear, landing_clear over its lanes, which include floor
 ## enemies' stretches), it would touch another ceiling, its landing doesn't end before the level's
 ## end-clear stretch, or the level's ceilings haven't started by `at` (a late `ceilings` feature,
 ## feature_started). PadPlacement clears the way first.
-func add_hull_with_pad(lane: int, at: float, length_seconds: float) -> bool:
+func add_hull_with_pad(lane: int, at: float, length_seconds: float, lanes: Vector2i = Vector2i(-1, -1)) -> bool:
 	if not feature_started("ceilings", at):
 		return false
-	var hull := {"start": at - config.hull_lead_in, "end": at + length_seconds * speed}
+	var span: Vector2i = lanes if lanes.x >= 0 else Vector2i(0, layout.lane_count - 1)
+	if lane < span.x or lane > span.y:
+		return false
+	var hull: Dictionary = LevelLayout.make_hull(at - config.hull_lead_in, at + length_seconds * speed, span,
+		layout.lane_count)
 	var landing: Vector2 = zones.landing_zone(hull)
 	if landing.y > layout.length - config.end_clear_distance:
 		return false
-	if not zones.pad_clear(layout, lane, at) or not zones.landing_clear(layout, landing):
+	if not zones.pad_clear(layout, lane, at) or not zones.landing_clear(layout, landing, span):
 		return false
 	for h: Dictionary in layout.hulls:
 		if float(hull["start"]) <= float(h["end"]) + 1.0 and float(hull["end"]) >= float(h["start"]) - 1.0:
@@ -421,6 +439,43 @@ func add_hull_with_pad(lane: int, at: float, length_seconds: float) -> bool:
 	layout.pads.append({"lane": lane, "at": at})
 	layout.hulls.append(hull)
 	return true
+
+
+## The lanes a new ceiling with its pads in `pads` covers, starting its lead-in before a pad at `at`
+## (GDD §3: ceilings don't have to cover every lane; its pads always lie under it): Vector2i(first,
+## last). Every lane, drawing nothing, unless the level makes a share of its ceilings narrow
+## (LevelConfig.narrow_ceiling_share) and `at` is past narrow_ceiling_start. Then, from the level's own
+## ceiling stream (so full-width ceilings and every other pick stay as they were): whether this one
+## is narrow; if so, one lane (one_lane_ceiling_share of them, where `one_lane_ok` and the pads share a
+## lane: a pattern that puts nothing under its ceiling, or a rule's ceiling), or from two lanes to all
+## but one, each as likely; and where the range lies, anywhere that holds every pad. A one-lane
+## ceiling lasts one_lane_ceiling_seconds at most (one_lane_seconds). DESIGN-TBD (docs/questions/b3.md).
+func ceiling_lanes(pads: Array[int], at: float, one_lane_ok: bool) -> Vector2i:
+	var n: int = layout.lane_count
+	var full := Vector2i(0, n - 1)
+	if config.narrow_ceiling_share <= 0.0 or n < 2 or pads.is_empty() \
+			or at < config.narrow_ceiling_start * layout.length:
+		return full
+	if _ceiling_rng.randf() >= config.narrow_ceiling_share:
+		return full
+	var lo_pad: int = pads.min()
+	var hi_pad: int = pads.max()
+	var width: int = 1
+	if not (one_lane_ok and lo_pad == hi_pad and _ceiling_rng.randf() < config.one_lane_ceiling_share):
+		var least: int = maxi(2, hi_pad - lo_pad + 1)
+		if least > n - 1:
+			return full
+		width = _ceiling_rng.randi_range(least, n - 1)
+	var first: int = _ceiling_rng.randi_range(maxi(0, hi_pad - width + 1), mini(lo_pad, n - width))
+	return Vector2i(first, first + width - 1)
+
+
+## How long a ceiling over `lanes` lasts past its pad, at most `seconds`: a one-lane ceiling is very
+## short (GDD §3; LevelConfig.one_lane_ceiling_seconds).
+func one_lane_seconds(lanes: Vector2i, seconds: float) -> float:
+	if lanes.x == lanes.y and layout.lane_count > 1:
+		return minf(seconds, config.one_lane_ceiling_seconds)
+	return seconds
 
 
 ## True if nothing on the floor touches any lane between two track distances: no gap, no fence,
@@ -835,10 +890,13 @@ func _place_pattern(pattern: Dictionary, origin: float) -> float:
 				prev_side = side
 			"hull":
 				var lanes: Array[int] = _pick_lanes(element.get("lanes", {"mode": "random", "count": 1}), prev_lanes)
-				var hull_len: float = float(element.get("length_seconds", 4.0)) * speed
+				# Its lanes: every lane, or a narrow ceiling's range over its pads (one lane only if the
+				# pattern puts nothing under it; ceiling_lanes).
+				var span: Vector2i = ceiling_lanes(lanes, at, plain_ceiling(pattern))
+				var hull_len: float = one_lane_seconds(span, float(element.get("length_seconds", 4.0))) * speed
 				for lane: int in lanes:
 					layout.pads.append({"lane": lane, "at": at})
-				layout.hulls.append({"start": at - config.hull_lead_in, "end": at + hull_len})
+				layout.hulls.append(LevelLayout.make_hull(at - config.hull_lead_in, at + hull_len, span, layout.lane_count))
 				used = maxf(used, at - origin + hull_len + zones.landing)
 				prev_lanes = lanes
 			"speed_pad":
@@ -865,17 +923,29 @@ func _place_pattern(pattern: Dictionary, origin: float) -> float:
 	return used
 
 
+## True if `pattern` puts nothing but its ceiling (and credits) on the track: nothing under the
+## ceiling, so a one-lane ceiling may come of it (GDD §3: a one-lane ceiling is simply ridden out,
+## short and relatively safe; a gauntlet's ceiling stays long enough to escape it).
+static func plain_ceiling(pattern: Dictionary) -> bool:
+	for element: Dictionary in pattern.get("elements", []):
+		if not (String(element.get("kind", "")) in ["hull", "credits"]):
+			return false
+	return true
+
+
 ## GDD §3: the ceilings a pattern just placed (the pieces after `counts`) keep their landing zone
-## and their pads' spots safe (CeilingZones). A piece of the pattern's own there is a mistake in the
-## pattern data: it's dropped, with a warning. Anything an earlier pattern left there (possible only
-## with pacing tighter than a pad's run-up) is taken out quietly, which never makes a level unfair.
+## (over their lanes) and their pads' spots safe (CeilingZones). A piece of the pattern's own there
+## is a mistake in the pattern data: it's dropped, with a warning. Anything an earlier pattern left
+## there (possible only with pacing tighter than a pad's run-up) is taken out quietly, which never
+## makes a level unfair.
 func _secure_ceilings(pattern: Dictionary, counts: Dictionary) -> void:
 	var own: Array[Dictionary] = []
 	var lists: Dictionary = layout.to_dict()
 	for key: String in ["gaps", "fences", "ramps", "enemies"]:
 		own.append_array((lists[key] as Array).slice(int(counts[key])))
 	for i: int in range(int(counts["hulls"]), layout.hulls.size()):
-		zones.clear_landing(layout, zones.landing_zone(layout.hulls[i]))
+		var h: Dictionary = layout.hulls[i]
+		zones.clear_landing(layout, zones.landing_zone(h), layout.hull_lanes(h))
 	for i: int in range(int(counts["pads"]), layout.pads.size()):
 		zones.clear_pad(layout, int(layout.pads[i]["lane"]), float(layout.pads[i]["at"]))
 	lists = layout.to_dict()
@@ -1081,7 +1151,7 @@ func _place_trails(rng: RandomNumberGenerator) -> void:
 		for i: int in config.credit_trail_count:
 			var l: int = lane + (shift if i >= config.credit_trail_count / 2 else 0)
 			var d: float = start + i * config.credit_trail_spacing
-			if layout.under_hull(d):
+			if layout.under_hull(d, l):
 				continue
 			_add_credit(d, "floor", l, 0, 0.7, 1)
 
@@ -1141,7 +1211,9 @@ static func wall_run_credits(p_layout: LevelLayout, r: Dictionary, p_tuning: Mov
 	return out
 
 
-## A line of credits along the pad's lane on the ceiling and a rich one in the far lane.
+## A line of credits along the pad's lane on the ceiling and a rich one in its far lane: the lane of
+## the ceiling furthest from the pad's (a ceiling over one lane has none; GDD §3, the rider moves only
+## within its lanes).
 func _place_ceiling_credits(rng: RandomNumberGenerator) -> void:
 	for p: Dictionary in layout.pads:
 		var hull: Dictionary = {}
@@ -1157,8 +1229,9 @@ func _place_ceiling_credits(rng: RandomNumberGenerator) -> void:
 			_add_credit(d, "ceiling", lane, 0, 0.6, 1)
 			d += 4.0
 			placed += 1
-		if layout.lane_count > 1:
-			var far_lane: int = 0 if lane >= layout.lane_count / 2 else layout.lane_count - 1
+		var lanes: Vector2i = layout.hull_lanes(hull)
+		if lanes.y > lanes.x:
+			var far_lane: int = lanes.x if 2 * lane >= lanes.x + lanes.y else lanes.y
 			var far_d: float = lerpf(float(p["at"]), float(hull["end"]), 0.7)
 			_add_credit(far_d, "ceiling", far_lane, 0, 0.6, 25 if rng.randf() < 0.7 else 5, true)
 
