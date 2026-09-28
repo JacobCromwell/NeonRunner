@@ -96,7 +96,7 @@ func _play() -> void:
 		if e.kind == CineEvent.Kind.SOUND:
 			_sound_player(e.name)
 	# The first frame already shows time 0: its events have fired (a fade from black starts black).
-	_advance(0.0)
+	advance(0.0)
 
 
 ## The stage the timeline plays on (null: none). Default: the timeline's own, `timeline.stage`. A script
@@ -134,11 +134,15 @@ func duration() -> float:
 func _process(delta: float) -> void:
 	if done or _held or playing == null:
 		return
-	_advance(delta)
+	advance(delta)
 
 
 ## Moves the clock on by `delta`: events due, actors, camera, the stage's chunks; ends at the duration.
-func _advance(delta: float) -> void:
+## The clock runs by itself while it plays (_process); a test or a tool may step it instead, having
+## called set_process(false). The overlay's fades and cards run on real frames either way.
+func advance(delta: float) -> void:
+	if done or playing == null:
+		return
 	time = minf(time + delta, playing.duration)
 	while _next_event < playing.events.size() and playing.events[_next_event].time <= time:
 		var e: CineEvent = playing.events[_next_event]
@@ -285,16 +289,23 @@ func _update_camera(delta: float) -> void:
 	if keys.is_empty():
 		return
 	var positions: Array = []
+	var follows: Array = []
 	var targets: Array = []
+	var watches: Array = []
 	var fovs: Array = []
 	var rolls: Array = []
 	for k: CineCameraKey in keys:
-		positions.append(_key_point(k.position, k.follow))
-		targets.append(_key_point(k.target, k.watch))
+		var follow: StringName = k.follow if actors.has(k.follow) else &""
+		var watch: StringName = k.watch if actors.has(k.watch) else &""
+		follows.append(follow)
+		positions.append(_key_offset(k.position, follow))
+		watches.append(watch)
+		targets.append(_key_offset(k.target, watch))
 		fovs.append(k.fov)
 		rolls.append(k.roll)
-	var from: Vector3 = CinePath.sample(keys, positions, time)
-	var to: Vector3 = CinePath.sample(keys, targets, time)
+	var ride := Callable(self, &"_actor_at")
+	var from: Vector3 = CinePath.sample_riding(keys, positions, follows, ride, time)
+	var to: Vector3 = CinePath.sample_riding(keys, targets, watches, ride, time)
 	var shake := Vector3.ZERO
 	if _shake_left > 0.0:
 		_shake_left = maxf(_shake_left - delta, 0.0)
@@ -314,14 +325,21 @@ func _update_camera(delta: float) -> void:
 		camera.rotate_object_local(Vector3.BACK, deg_to_rad(roll))
 
 
-## A key's point in world space: track space, or an offset from the actor `actor_id` (x right, y up, z
-## ahead of it).
-func _key_point(p: Vector3, actor_id: StringName) -> Vector3:
+## A camera key's point as the riding path takes it: a track-space point in world space, or with an
+## actor to ride with, the offset from it (x right, y up, z ahead of it) in world axes.
+func _key_offset(p: Vector3, actor_id: StringName) -> Vector3:
 	if actor_id != &"":
-		var node := actors.get(actor_id) as CineActorNode
-		if node != null:
-			return node.position + Vector3(p.x, p.y, -p.z)
+		return Vector3(p.x, p.y, -p.z)
 	return stage.point(p) if stage != null else Vector3(p.x, p.y, -p.z)
+
+
+## Where actor `actor_id` is at time `at`, in world space (Vector3.ZERO for none): what a riding camera
+## key follows.
+func _actor_at(actor_id: StringName, at: float) -> Vector3:
+	if actor_id == &"":
+		return Vector3.ZERO
+	var node := actors.get(actor_id) as CineActorNode
+	return node.point_at(at) if node != null else Vector3.ZERO
 
 
 # --- Holding while the game is in the background ------------------------------------------------

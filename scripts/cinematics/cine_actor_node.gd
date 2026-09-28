@@ -37,6 +37,8 @@ var yaw: float = 0.0
 var _started: bool = false
 var _airborne: bool = false
 var _died: bool = false
+## Its keys' positions, in order (built on first use).
+var _points: Array = []
 
 
 ## Builds the model. `variant` dresses a cyborg that names no look of its own (the stage skin's
@@ -59,16 +61,30 @@ func setup(p_actor: CineActor, p_stage: CineStage, tuning: MovementTuning, varia
 			body.build(actor.look if actor.look != &"" else variant, actor.host, false, visual_seed)
 
 
+## Where its path puts it at time `t`, in track space (what a camera key riding with it follows).
+func track_point_at(t: float) -> Vector3:
+	if actor.keys.is_empty():
+		return Vector3.ZERO
+	if _points.size() != actor.keys.size():
+		_points.clear()
+		for k: CineActorKey in actor.keys:
+			_points.append(k.position)
+	return CinePath.sample(actor.keys, _points, t)
+
+
+## Where its path puts it at time `t`, in world space.
+func point_at(t: float) -> Vector3:
+	var p: Vector3 = track_point_at(t)
+	return stage.point(p) if stage != null else Vector3(p.x, p.y, -p.z)
+
+
 ## Moves and poses it for time `t` (`delta` since the last update; 0 the first time). `others` finds
 ## the other actors by id (a cyborg's aim).
 func update(t: float, delta: float, others: Dictionary) -> void:
 	visible = t >= actor.enter and (actor.leave < 0.0 or t < actor.leave)
 	if actor.keys.is_empty():
 		return
-	var points: Array = []
-	for k: CineActorKey in actor.keys:
-		points.append(k.position)
-	var p: Vector3 = CinePath.sample(actor.keys, points, t)
+	var p: Vector3 = track_point_at(t)
 	var step: Vector3 = p - track_position if _started else Vector3.ZERO
 	if step.length() > MAX_STEP:
 		step = Vector3.ZERO
