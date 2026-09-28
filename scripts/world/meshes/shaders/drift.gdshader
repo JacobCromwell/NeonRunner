@@ -1,9 +1,10 @@
-// Drifting ash, paper scraps and speed streaks: motion for still streets (GDD §5, proposed).
-// Billboards animated in the vertex shader, so a whole chunk's worth is one static mesh surface and
-// nothing runs per frame on the CPU (MeshKit.drift_particles builds them).
+// Drifting ash, paper scraps and speed streaks: motion for still streets (GDD §5, proposed), and in
+// the Dead Zone puffs of smoke. Billboards animated in the vertex shader, so a whole chunk's worth is
+// one static mesh surface and nothing runs per frame on the CPU (MeshKit.drift_particles builds them).
 //   VERTEX  the particle's anchor: x and y across and up, z the far end of its slice
 //   UV      the corner (-1..1)
-//   UV2     x = kind (0 ash fleck, 1 paper scrap, 2 speed streak), y = phase (0..1) along the slice
+//   UV2     x = kind (0 ash fleck, 1 paper scrap, 2 speed streak, 3 smoke puff), y = phase (0..1)
+//           along the slice
 //   COLOR   rgb colour (sRGB), a = opacity
 // Particles travel toward the player (+z) through their slice of `slice_length` metres and wrap,
 // fading out and back in, so slices tile seamlessly whichever chunks exist.
@@ -30,11 +31,20 @@ varying float v_kind;
 void vertex() {
 	float kind = floor(UV2.x + 0.5);
 	float phase = UV2.y;
-	float t = fract(phase + TIME * (kind > 1.5 ? streak_speed : ash_speed) / slice_length);
+	float t = fract(phase + TIME * (kind > 2.5 ? ash_speed * 0.6 : (kind > 1.5 ? streak_speed : ash_speed)) / slice_length);
 	float s = phase * 57.0;
 	vec3 p = VERTEX + vec3(0.0, 0.0, t * slice_length);
 	vec3 view;
-	if (kind > 1.5) {
+	if (kind > 2.5) {
+		// Smoke: a big, soft puff swelling as it drifts and rises slowly, turning lazily.
+		p.x += sin(TIME * 0.35 + s) * 0.9;
+		p.y += t * 1.2 + sin(TIME * 0.5 + s * 1.3) * 0.2;
+		float size = (1.1 + 0.9 * fract(s * 7.0)) * (0.7 + 0.6 * t);
+		float spin = TIME * 0.2 + s;
+		vec2 c = UV * size;
+		c = vec2(c.x * cos(spin) - c.y * sin(spin), c.x * sin(spin) + c.y * cos(spin));
+		view = (MODELVIEW_MATRIX * vec4(p, 1.0)).xyz + vec3(c, 0.0);
+	} else if (kind > 1.5) {
 		// A streak: a thin line along the track, about two pixels wide at any distance.
 		float len = 2.0 + 4.0 * fract(s);
 		vec3 a = (MODELVIEW_MATRIX * vec4(p, 1.0)).xyz;
@@ -53,15 +63,21 @@ void vertex() {
 	}
 	VERTEX = view;
 	float d = length(view);
+	// Smoke puffs are big: they fade out three times as far from the camera, so none fills the screen.
+	float near = kind > 2.5 ? fade_near * 3.0 : fade_near;
 	v_alpha = COLOR.a * smoothstep(0.0, 0.12, t) * (1.0 - smoothstep(0.85, 1.0, t))
-		* smoothstep(fade_near * 0.5, fade_near, d) * (1.0 - smoothstep(fade_far * 0.6, fade_far, d));
+		* smoothstep(near * 0.5, near, d) * (1.0 - smoothstep(fade_far * 0.6, fade_far, d));
 	v_corner = UV;
 	v_kind = kind;
 }
 
 void fragment() {
 	float shape = max(1.0 - length(v_corner), 0.0);
-	if (v_kind > 1.5) {
+	if (v_kind > 2.5) {
+		// A soft round puff with a ragged edge.
+		float r = length(v_corner) + 0.18 * sin(atan(v_corner.y, v_corner.x) * 3.0 + v_corner.x * 2.0);
+		shape = (1.0 - smoothstep(0.2, 1.0, r)) * 0.9;
+	} else if (v_kind > 1.5) {
 		// Soft across, brightest at the head (the end nearest the player).
 		shape = (1.0 - abs(v_corner.x)) * (0.5 + 0.5 * v_corner.y);
 	} else if (v_kind > 0.5) {
