@@ -71,7 +71,7 @@ func make_environment() -> Environment:
 func floor_segment(parent: Node3D, center: Vector3, size: Vector3, lane_x: float,
 		edge_start: bool, edge_end: bool) -> void:
 	# Inset slightly so lane boundaries read as dark seams.
-	GreyboxMaterials.add_box(parent, center, size - Vector3(0.08, 0.0, 0.0), GreyboxMaterials.flat(floor_color))
+	GreyboxMaterials.add_box(parent, center, size - Vector3(0.08, 0.0, 0.0), GreyboxMaterials.scenery(floor_color))
 	var top: float = center.y + size.y * 0.5
 	var near_z: float = center.z + size.z * 0.5
 	var far_z: float = center.z - size.z * 0.5
@@ -92,7 +92,7 @@ func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: f
 	var bottom: float = -6.0
 	var mid_z: float = -(start + end) * 0.5
 	GreyboxMaterials.add_box(parent, Vector3(face_x + side * 0.5, (wall_height + bottom) * 0.5, mid_z),
-		Vector3(1.0, wall_height - bottom, end - start), GreyboxMaterials.flat(wall_color))
+		Vector3(1.0, wall_height - bottom, end - start), GreyboxMaterials.scenery(wall_color))
 	var stripe_x: float = face_x - side * 0.01
 	var stripe_mat: Material = GreyboxMaterials.glow(wall_stripe_color, 1.2)
 	var d: float = ceilf(start / mark_spacing) * mark_spacing
@@ -124,7 +124,7 @@ func wall_sign(hazard: Hazard, size: Vector3) -> void:
 
 
 func hull(parent: Node3D, center: Vector3, size: Vector3, lane_edges_x: Array[float]) -> void:
-	GreyboxMaterials.add_box(parent, center, size, GreyboxMaterials.flat(hull_color))
+	GreyboxMaterials.add_box(parent, center, size, GreyboxMaterials.scenery(hull_color))
 	var underside: float = center.y - size.y * 0.5 - 0.01
 	var seam_mat: Material = GreyboxMaterials.glow(hull_seam_color, 1.5)
 	for x: float in lane_edges_x:

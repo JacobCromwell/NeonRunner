@@ -12,7 +12,8 @@ extends Resource
 ## - wall_fences: full-height wall fences (GDD §9.1), from Marketplace 2
 ## - wall_fences_partial: wall fences over the low or the high part of the wall only (GDD §9.1),
 ##   from Corporate 1 (their patterns require both wall_fences and wall_fences_partial)
-## - buzz_overdrive: the Buzz Overdrive (GDD §9.9), Corporate 1 to Dead Zone 2
+## - buzz_overdrive: the Buzz Overdrive (GDD §9.9), from Corporate 1 through the Dead Zone and the
+##   Golden Zone (the Golden Palace included)
 ## - tithe_collector: the Tithe Collector (GDD §9.12), Corporate 2, then the Golden Zone
 ## - resonator: the Resonator (GDD §9.10), from Golden 1
 ## - gilded_sentinel: the Gilded Sentinels (GDD §9.11), from Golden 2
@@ -70,13 +71,30 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 @export var guarantee_features: bool = false
 ## DESIGN-TBD: how often this level picks a feature's patterns, as a factor on their pick weight
 ## (feature name → factor; 1 when not listed, 0 leaves them out), e.g. Corporate 2's heavier
-## military presence (GDD §5, proposed). A pattern requiring several listed features takes the
-## product.
+## military presence (GDD §5, proposed) and The Hush's hosts. A pattern requiring several listed
+## features takes the product. It applies on top of the campaign's recency curve (feature_recency):
+## the curve moves picks between the level's features, and these factors still scale them.
 @export var feature_weights: Dictionary[String, float] = {}
+## Levels since the campaign introduced each of this level's features (feature name → 0 in the
+## level that introduces it, 1 in the next level, ...). Campaign.configure fills it in, with
+## feature_recency, on its copy of a campaign level; level files, quick play, tests and boss arenas
+## leave both empty, so their levels generate as before.
+@export_storage var feature_ages: Dictionary[String, int] = {}
+## The campaign's recency curve (GDD §5, owner's review P2 13: beyond the guarantee, a level's newest
+## things get the most picks): with feature_ages, it scales each feature's pick weight by how
+## recently the campaign introduced it (LevelGenerator, FeatureRecency). Null: every feature on equal
+## terms (plus feature_weights).
+@export_storage var feature_recency: FeatureRecency
 ## The core pattern file. Every other .json file in its folder is loaded too (LevelGenerator.load_for).
 @export_file("*.json") var patterns_path: String = "res://data/patterns/prototype_patterns.json"
 ## The zone's visuals. Gameplay never depends on it.
 @export var skin: ZoneSkin
+## How much darker than its zone's normal light the level's scenery is (GDD §5: The Hush's darker
+## lighting): 0 = the zone's own light, 1 = the darkest the skin allows (never pitch black,
+## ZoneSkin.MIN_SCENERY_LIGHT). Only the scenery darkens: the sky, the distance fog and the skin's lit
+## surfaces; hazards, triggers, enemies, the player, credits and the HUD keep their glow and their
+## light (ZoneSkin.apply_darkness). DESIGN-TBD: The Hush's value.
+@export_range(0.0, 1.0, 0.05) var darkness: float = 0.0
 
 @export_group("Pacing")
 ## Empty run-up before the first pattern.
@@ -86,6 +104,25 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 ## Seconds of clear track between patterns at difficulty 0 and 1.
 @export_range(0.2, 4.0, 0.05, "suffix:s") var spacing_seconds_easy: float = 1.8
 @export_range(0.2, 4.0, 0.05, "suffix:s") var spacing_seconds_hard: float = 0.9
+## Quiet stretches and bursts (GDD §5, The Hush: long silent stretches broken by sudden threats).
+## With quiet_seconds above 0, the level after its run-up alternates a quiet stretch of that many
+## seconds at run speed with a burst of burst_seconds, quiet first. In a quiet stretch patterns are
+## quiet_spacing_seconds apart, and one that places enemies is picked only if every feature it
+## requires is in quiet_features (so it stays sparse obstacles, safe mechanics such as plain
+## ceilings, and those enemies); a burst picks the level's other threats (patterns with a hole, a
+## fence, a sign or an enemy, whose enemies stand in the burst), burst_spacing_seconds apart. The
+## generator's rules still apply afterwards to all of it, and a burst takes at most one feature's
+## introduction (feature_starts).
+## 0 turns it off: the level is paced evenly (spacing_seconds_easy/hard), as every other level is.
+## DESIGN-TBD: The Hush's numbers.
+@export_range(0.0, 60.0, 0.5, "suffix:s") var quiet_seconds: float = 0.0
+@export_range(1.0, 30.0, 0.5, "suffix:s") var burst_seconds: float = 8.0
+@export_range(0.2, 10.0, 0.05, "suffix:s") var quiet_spacing_seconds: float = 4.0
+@export_range(0.2, 4.0, 0.05, "suffix:s") var burst_spacing_seconds: float = 0.9
+## Features whose enemy patterns belong to the quiet stretches: picked there, with their enemies
+## inside the stretch, and not in bursts (The Hush: its hosts, standing alone in the silence; a chase
+## starts only if the player kills one).
+@export var quiet_features: PackedStringArray = PackedStringArray()
 
 @export_group("Fairness rules")
 ## Longest gap the generator will place, as a fraction of a full jump's distance.
@@ -123,4 +160,45 @@ func feature_start(feature: String) -> float:
 ## Factor on the pick weight of `feature`'s patterns: 1 unless feature_weights lists it.
 func feature_weight(feature: String) -> float:
 	return maxf(float(feature_weights.get(feature, 1.0)), 0.0)
+
+
+## True if the campaign's recency curve shapes this level's pick weights (feature_recency, switched
+## on, and the ages Campaign.configure gave the level's features).
+func recency_on() -> bool:
+	return feature_recency != null and feature_recency.enabled and not feature_ages.is_empty()
+
+
+## The recency curve's factor for a pattern that requires `requires` (LevelGenerator): its newest
+## feature's (the smallest age, so a pattern that shows off a new feature counts as one of its
+## picks), no more than the cap of any capped feature it requires (FeatureRecency.max_factor); 1
+## for a pattern that requires nothing, without the curve, or when no feature is dated.
+func recency_factor(requires: Array) -> float:
+	if not recency_on() or requires.is_empty():
+		return 1.0
+	var newest: int = -1
+	var cap: float = INF
+	for need: Variant in requires:
+		var feature: String = String(need)
+		var age: int = int(feature_ages.get(feature, -1))
+		if age >= 0 and (newest < 0 or age < newest):
+			newest = age
+		if feature_recency.max_factor.has(feature):
+			cap = minf(cap, float(feature_recency.max_factor[feature]))
+	return minf(feature_recency.factor(newest), cap)
+
+
+## True if the recency curve holds a pattern that requires `requires` at a capped factor (it
+## requires a feature FeatureRecency.max_factor lists): the curve never scales it back with the rest.
+func recency_capped(requires: Array) -> bool:
+	if not recency_on():
+		return false
+	for need: Variant in requires:
+		if feature_recency.max_factor.has(String(need)):
+			return true
+	return false
+
+
+## True if the level alternates quiet stretches and bursts (quiet_seconds above 0).
+func paced_in_bursts() -> bool:
+	return quiet_seconds > 0.0
 

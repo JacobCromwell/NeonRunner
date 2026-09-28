@@ -16,20 +16,30 @@ extends Node3D
 ##   bombing   the run with a runner who dodges every lock (to its free side), through the run camera
 ##   reveal    a short run, then it drops in front of the runner and its face powers on
 ##   faceoff   straight to the face-off (no bombing run), through the run camera, with a runner who
-##             answers every attack by its warning (FloatingHeadBot) and baits each marked tower
+##             answers every attack by its warning (FloatingHeadBot), baits each marked tower and takes
+##             the stomp window's way onto its head (the phase's: --phase=0 the ramp, 1 a wall jump, 2
+##             the ceiling)
 ##   fallback  the same, with a runner who keeps away from the towers, so the laser clips one on its own
-##   pinned    a marked tower topples onto it and pins it, seen from the runner's spot (standing still)
+##   missed    the same, with a runner who stays down on the trucks: the window closes and it shakes
+##             free
+##   pinned    a marked tower topples onto it and pins it, seen from the runner's spot (standing still),
+##             and the stomp window opens (--phase picks its way up)
+##   window    the same pin, the camera circling the pinned ship: the open weak points, the crown, and
+##             the way up (--phase=0 the ramp, 2 the pads and the ceiling)
 ##   mouth     its face from the runner's eye height at the drop station, the jaw opening and closing
 ##             and its eyes charging in turn (the warnings, up close)
 ## Options: --lanes=N (3, 5 or 6; 3 by default), --seconds=S (the first run's length in `reveal`),
 ## --pattern=low,drag,high,drop (the face-off's attacks), --towers=off (no marked towers),
 ## --towers-after=N (the attacks it shows before it takes aim at a tower; 0 baits the first tower at
 ## once, about 11 s in), --phase=N (start at phase N, as a checkpoint would: 1 or 2 drop two cyborgs;
-## with no bombing run first in faceoff and fallback).
+## with no bombing run first in faceoff, fallback and missed), --wall=left|right (the wall the wall
+## jump takes; the nearer one by default).
 ## Frames worth a look (at --fixed-fps 10): faceoff at 3 lanes, a low sweep 78-95, a drag 106-128 (its
 ## aiming spot, then the lane warning and the burning line), a high sweep 138-160; faceoff with
-## --towers-after=0, the bait and the pin about 85-125; faceoff with --pattern=drop,low, the drop
-## about 78-100; pinned, the tower falling 72-84.
+## --towers-after=0, the bait and the pin about 85-125, then the stomp window: the ramp (phase 0),
+## the wall jump (1) or the ceiling (2) about 105-140; faceoff with --pattern=drop,low, the drop
+## about 78-100; pinned and window, the next marked tower falling about 105-118 (with the ceiling's
+## pads and the ceiling lowering in at --phase=2) and the window open from about 120.
 
 const BOSS_PATH: String = "res://data/bosses/city_boss.tres"
 
@@ -51,6 +61,7 @@ func _ready() -> void:
 	var towers: bool = true
 	var towers_after: int = -1
 	var phase: int = 0
+	var wall: int = 0
 	for arg: String in OS.get_cmdline_user_args():
 		var v: String = arg.get_slice("=", 1)
 		if arg.begins_with("--scenario="):
@@ -67,12 +78,14 @@ func _ready() -> void:
 			towers_after = int(v)
 		elif arg.begins_with("--phase="):
 			phase = int(v)
+		elif arg.begins_with("--wall="):
+			wall = -1 if v == "left" else 1
 	var def: BossDef = (load(BOSS_PATH) as BossDef).preview()
 	var t: FloatingHeadTuning = (def.tuning as FloatingHeadTuning).duplicate() as FloatingHeadTuning
 	if scenario == "reveal":
 		# A short run, so the reveal comes soon.
 		t.first_run_seconds = reveal_seconds
-	elif scenario in ["faceoff", "fallback", "pinned"]:
+	elif scenario in ["faceoff", "fallback", "missed", "pinned", "window"]:
 		# Straight to the face-off.
 		t.first_run_seconds = 0.0
 		t.later_runs = 0
@@ -104,8 +117,10 @@ func _ready() -> void:
 	world.player.god_mode = true
 	world.player.grapples = 1_000_000
 	head.setup(world, ctx, arena)
-	if scenario == "faceoff" or scenario == "fallback":
-		bot = FloatingHeadBot.new(head, scenario == "faceoff")
+	if scenario in ["faceoff", "fallback", "missed"]:
+		bot = FloatingHeadBot.new(head, scenario != "fallback")
+		bot.wrong_route = scenario == "missed"
+		bot.wall_side = wall
 
 	var env := WorldEnvironment.new()
 	env.environment = world.skin.make_environment()
@@ -127,7 +142,7 @@ func _ready() -> void:
 			_cam.far = 600.0
 			add_child(_cam)
 			_cam.make_current()
-		"stern", "pinned", "mouth":
+		"stern", "pinned", "mouth", "window":
 			_cam = Camera3D.new()
 			_cam.fov = 55.0
 			_cam.far = 600.0
@@ -158,9 +173,9 @@ func _physics_process(delta: float) -> void:
 			head.body.eye_charge = clampf((k - 2.2) / 1.0, 0.0, 1.0) * (1.0 if k < 3.8 else 0.0)
 		"bombing":
 			_dodge()
-		"faceoff", "fallback":
+		"faceoff", "fallback", "missed":
 			bot.step()
-		"pinned":
+		"pinned", "window":
 			_pin_now()
 
 
@@ -186,6 +201,22 @@ func _process(_delta: float) -> void:
 			# From the runner's spot, a little up: the tower falling onto it and the pinned head.
 			_cam.global_position = Vector3(0.0, 3.2, world.player.global_position.z + 6.0)
 			_cam.look_at(Vector3(0.0, 2.5, TrackGeometry.world_z(world.player.distance + 40.0)), Vector3.UP)
+		"window":
+			# Circling the pinned ship's face a little above its crown: the open weak points, its crown
+			# and the way up; before the pin, from the runner's spot.
+			if head.step != FloatingHead.Step.PINNED:
+				_cam.global_position = Vector3(0.0, 3.2, world.player.global_position.z + 6.0)
+				_cam.look_at(Vector3(0.0, 2.5, TrackGeometry.world_z(world.player.distance + 40.0)), Vector3.UP)
+			else:
+				# Swinging from side to side over the street behind its face, looking down at its crown (under
+				# the ceiling, further back, when the way up is the ceiling).
+				var focus := Vector3(0.0, 1.8, TrackGeometry.world_z(head.pin_stern + 1.0))
+				var a: float = 0.55 * sin(_t * 0.35)
+				var gap: float = world.geo.wall_x() - 1.0
+				var low: bool = head.route == &"ceiling"
+				var r: float = 20.0 if low else 13.0
+				_cam.global_position = focus + Vector3(clampf(sin(a) * r, -gap, gap), 2.2 if low else 7.0, cos(a) * r)
+				_cam.look_at(focus, Vector3.UP)
 
 
 ## Holds the ship `pose` from the runner (sideways, belly height, stern ahead) with its face at `power`.
@@ -214,9 +245,10 @@ func _dodge() -> void:
 		world.player.press(&"move_right" if e > pl else &"move_left")
 
 
-## Once the face-off begins, the ship takes aim from its tower station and a marked tower beside it is
-## clipped: it falls and pins the ship. The runner stops once it's pinned, so it stays pinned (the
-## runner never comes close enough for it to shake free).
+## Once the face-off begins, the ship waits at its tower station (no attacks) and the next marked
+## tower is clipped as it passes the ship's face: it falls and pins the ship (on the track cleared
+## around the tower, as in the fight). The runner stops once it's pinned, so the window stays open (the
+## runner never comes close enough for it to close).
 func _pin_now() -> void:
 	if _pinned:
 		if head.step == FloatingHead.Step.PINNED and world.player.running:
@@ -224,11 +256,16 @@ func _pin_now() -> void:
 		return
 	if head.step != FloatingHead.Step.FACE_OFF:
 		return
-	_pinned = true
-	head.faceoff.stop()
-	head.pose = head.faceoff.station(&"tower")
-	var tower := {"at": world.player.distance + head.pose.z + 1.0, "side": -1, "key": "review"}
-	var node: FloatingHeadTower = head.tower_node(tower)
-	node.clip()
-	head.sound(&"tower_crack", node.strike_point())
-	head.begin_pin(node)
+	if head.faceoff.running:
+		head.faceoff.stop()
+		head.pose = head.faceoff.station(&"tower")
+	var face: float = world.player.distance + head.pose.z
+	for tower: Dictionary in head.towers_between(face - 5.0, face + 400.0):
+		if float(tower["at"]) > face + 1.0:
+			return
+		_pinned = true
+		var node: FloatingHeadTower = head.tower_node(tower)
+		node.clip()
+		head.sound(&"tower_crack", node.strike_point())
+		head.begin_pin(node)
+		return

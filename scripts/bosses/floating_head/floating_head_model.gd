@@ -16,8 +16,9 @@ extends RefCounted
 ##   the screen where the street is wide enough and loudspeaker "ears" on its sides (it shouts its
 ##   propaganda);
 ## - its belly: the searchlight under its chin, a bomb bay with two doors, lift pads, running lights;
-## - on its crown: three sockets under armoured covers where the red weak points come out while it's
-##   pinned (task E1c), and antenna masts.
+## - on its crown: a row of sockets under armoured covers, one over each of the lanes it spans near its
+##   middle (FloatingHeadTuning.weak_point_reach), where the red weak points come out while it's pinned
+##   (the stomp windows), and antenna masts.
 ## Colour rule (GDD §5, CLAUDE.md): nothing on it glows in a hazard colour but its attacks and weak
 ## points (red): its lights are cold white and periwinkle blue (the City's engine colour), clear of
 ## the pads' cyan.
@@ -53,11 +54,12 @@ class Shape:
 	var bay_center := Vector3.ZERO
 	var bay_half: float = 0.0
 	var bay_length: float = 0.0
-	## Where the three weak points come out on the crown (their sockets' tops).
+	## Where the weak points come out on the crown (their sockets' tops), one over each lane near the
+	## middle, left to right.
 	var weak_points: Array[Vector3] = []
-	## The crown's walkable top: a box (centre, size) along the head's top.
-	var top_center := Vector3.ZERO
-	var top_size := Vector3.ZERO
+	## The crown's centre line over the weak points: it banks about this point (a pinned roll keeps the
+	## weak points over their lanes).
+	var roll_pivot := Vector3.ZERO
 
 
 ## Colours (sRGB). Hull tones stay desaturated; lights keep off every hazard hue.
@@ -75,6 +77,13 @@ const WEAK := Color(1.0, 0.08, 0.1)
 const MOUTH := Color(0.03, 0.03, 0.04)
 ## How far a weak point's socket stands proud of the crown.
 const SOCKET_RISE: float = 0.1
+## The weak points' row along the crown (ship space z): a little behind the face.
+const WEAK_Z: float = -3.4
+## The crown's walkable top (deck_faces): the hull's skin from the face back to this ring, across the
+## outline's segments from DECK_FIRST to DECK_LAST (the crown down to its shoulders).
+const DECK_RINGS: int = 3
+const DECK_FIRST: int = 7
+const DECK_LAST: int = 14
 ## The screen's frame.
 const BEZEL_WIDTH: float = 0.3
 ## The face panel sits inside a rim this share of the head's outline.
@@ -112,10 +121,11 @@ static var _meshes: Dictionary = {}
 static var _bomb: ArrayMesh
 
 
-## The ship for a street `street_width` metres wide between its walls with `lane_count` lanes.
-static func shape_for(street_width: float, lane_count: int, t: FloatingHeadTuning) -> Shape:
-	var id: String = "%.3f|%d|%s" % [street_width, lane_count, [t.street_margin, t.hull_length, t.head_height_narrow,
-		t.head_height_wide]]
+## The ship for a street `street_width` metres wide between its walls with `lane_count` lanes
+## `lane_width` wide.
+static func shape_for(street_width: float, lane_count: int, t: FloatingHeadTuning, lane_width: float) -> Shape:
+	var id: String = "%.3f|%d|%.3f|%s" % [street_width, lane_count, lane_width, [t.street_margin, t.hull_length,
+		t.head_height_narrow, t.head_height_wide, t.weak_point_reach]]
 	if _shapes.has(id):
 		return _shapes[id]
 	var s := Shape.new()
@@ -149,10 +159,17 @@ static func shape_for(street_width: float, lane_count: int, t: FloatingHeadTunin
 	s.bay_center = Vector3(0.0, 0.0, -6.5)
 	s.bay_half = 0.14 * w
 	s.bay_length = 4.0
-	for fx: float in [-0.24, 0.0, 0.24]:
-		s.weak_points.append(Vector3(fx * w, crown_height(s, fx, -3.4) + SOCKET_RISE, -3.4))
-	s.top_size = Vector3(0.6 * w, 0.4, 12.0)
-	s.top_center = Vector3(0.0, crown_height(s, 0.0, -7.2) - 0.2, -7.2)
+	# The weak points: one over each lane whose centre lies within weak_point_reach of the middle (the
+	# runner comes down on them in a lane), the nearest one if none does.
+	var nearest: float = INF
+	for l: int in lane_count:
+		var x: float = (float(l) - (lane_count - 1) * 0.5) * lane_width
+		nearest = minf(nearest, absf(x))
+		if absf(x) <= t.weak_point_reach * w + 0.001:
+			s.weak_points.append(Vector3(x, crown_height(s, x / w, WEAK_Z) + SOCKET_RISE, WEAK_Z))
+	if s.weak_points.is_empty():
+		s.weak_points.append(Vector3(nearest, crown_height(s, nearest / w, WEAK_Z) + SOCKET_RISE, WEAK_Z))
+	s.roll_pivot = Vector3(0.0, crown_height(s, 0.0, WEAK_Z), 0.0)
 	_shapes[id] = s
 	return s
 
@@ -179,6 +196,33 @@ static func crown_height(s: Shape, fx: float, z: float) -> float:
 ## The belly's height (ship space) at `z`: flat under the face, rising toward the bow.
 static func belly_height(s: Shape, z: float) -> float:
 	return _section(s, z).z * s.height
+
+
+## The ship's transform in its body's space (FloatingHeadBody.set_pose): nose up by `pitch`, banked by
+## `roll` about its crown over the weak points (s.roll_pivot), so a pinned roll keeps them over their
+## lanes.
+static func ship_transform(s: Shape, pitch: float, roll: float) -> Transform3D:
+	var bank := Basis(Vector3(0.0, 0.0, 1.0), roll)
+	var banked := Transform3D(bank, s.roll_pivot - bank * s.roll_pivot)
+	return Transform3D(Basis(Vector3(1.0, 0.0, 0.0), pitch), Vector3.ZERO) * banked
+
+
+## The crown's walkable top (ship space): the hull skin's triangles from the face back to ring
+## DECK_RINGS, over the crown down to its shoulders (outline segments DECK_FIRST to DECK_LAST), for a
+## concave collision shape: the deck FloatingHeadBody switches on while the ship is pinned, exactly
+## where the hull is drawn.
+static func deck_faces(s: Shape) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	var rings: Array[PackedVector3Array] = []
+	for i: int in DECK_RINGS + 1:
+		rings.append(_ring(s, RINGS[i]))
+	for i: int in DECK_RINGS:
+		var a: PackedVector3Array = rings[i]
+		var b: PackedVector3Array = rings[i + 1]
+		for j: int in range(DECK_FIRST, DECK_LAST + 1):
+			var k: int = j + 1
+			out.append_array(PackedVector3Array([a[j], a[k], b[k], a[j], b[k], b[j]]))
+	return out
 
 
 ## The meshes for a ship `s`: {hull, screen, jaw, lip, lamp, lens, door, cover, weak}. Parts are in
@@ -638,7 +682,8 @@ static func _door(s: Shape) -> ArrayMesh:
 	return batch.to_mesh()
 
 
-## A weak point's armoured cover, closed over its socket (until it's pinned: task E1c).
+## A weak point's armoured cover, closed over its socket until a stomp window opens (FloatingHeadBody
+## swings it open about its back edge).
 static func _cover() -> ArrayMesh:
 	var batch := MeshBatch.new()
 	var m: MeshLayer = batch.layer(solid_material())

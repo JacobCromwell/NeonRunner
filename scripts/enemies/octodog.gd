@@ -26,9 +26,16 @@ extends Enemy
 ## Its charge sequence is a big attack (GDD §9, is_major_attack_active). Its first wind-up waits
 ## while another enemy's big attack is on (EnemyDirector.major_attack_blocked): the dog keeps pacing
 ## in position, and if it's waiting for its turn (GDD §9, not the Bad Dream's chase, GDD §9.7, which
-## it runs off from) its planned charges move on with the player for up to turn_wait_max.
+## it runs off from) its planned charges move on with the player. Once held, it asks for its turn
+## every frame until its turn comes, clear stretch ahead or not; and if the wait made it miss its
+## planned stretch, its charges keep moving on until the stretch ahead is clear again, so the wait
+## never costs it its charges. Both together last up to turn_wait_max (_moves_on).
 
 enum Phase { IDLE, WINDUP, LUNGE, TURN, SPRINT, PACE, GIVE_UP, LEAVE, FALLING }
+## The director's answer to its first wind-up's ask (EnemyDirector.major_attack_blocked), asked at
+## most once a frame: not asked yet this frame, free to go, held for another type's turn (GDD §9), or
+## held by an exclusive attack (the Bad Dream's chase, GDD §9.7).
+enum TurnAnswer { NOT_ASKED, FREE, HELD_FOR_TURN, HELD_EXCLUSIVE }
 
 const BODY_SIZE := Vector3(0.78, 0.72, 0.9)
 const TOP_SIZE := Vector3(0.84, 0.24, 0.96)
@@ -70,9 +77,10 @@ var _fall_v: float = 0.0
 var _yaw: float = PI
 var _hitboxes_on: bool = true
 var _pace_since: float = 0.0
-## Big attacks take turns (GDD §9): its first wind-up was held this frame for another type's big
-## attack, how long it has waited so far, and how far that moved its planned charges on (m).
-var _held_for_turn: bool = false
+## Big attacks take turns (GDD §9): this frame's answer to its first wind-up's ask for its turn
+## (_ask_turn), how long its planned charges have moved on with the player so far (seconds), and how
+## far (m).
+var _turn_answer: TurnAnswer = TurnAnswer.NOT_ASKED
 var _turn_waited: float = 0.0
 var _turn_shift: float = 0.0
 var _doghouse_key: String = ""
@@ -161,10 +169,10 @@ func _tick(delta: float) -> void:
 	var v: float = maxf(player.speed, 1.0)
 	var rel: float = _d - pd
 	_phase_time += delta
-	_held_for_turn = false
+	_turn_answer = TurnAnswer.NOT_ASKED
 	match phase:
 		Phase.IDLE:
-			_idle(rel, v)
+			_idle(delta, rel, v)
 		Phase.WINDUP:
 			if _phase_time >= _t.windup_time(_scaling):
 				_start_lunge()
@@ -191,7 +199,7 @@ func _set_phase(next: Phase) -> void:
 	history.append([PHASE_NAMES[next], world.player.distance])
 
 
-func _idle(rel: float, v: float) -> void:
+func _idle(delta: float, rel: float, v: float) -> void:
 	if in_doghouse and rel <= maxf(_t.appear_distance, _t.stop_distance(v, _scaling) + 10.0):
 		_burst_out_of_doghouse()
 	if rel > _t.stop_distance(v, _scaling):
@@ -199,6 +207,9 @@ func _idle(rel: float, v: float) -> void:
 	if _can_wind_up(v):
 		_start_windup()
 	else:
+		if _turn_answer == TurnAnswer.HELD_FOR_TURN:
+			# Held for another type's turn at its planned moment: its wait starts here (_pace).
+			_wait_a_frame(delta)
 		# Not a clear moment: run ahead and wait for one rather than stand in the way.
 		_set_phase(Phase.SPRINT)
 
@@ -218,15 +229,53 @@ func _can_wind_up(v: float) -> bool:
 	var window: float = _t.window_length(v, _scaling)
 	if not window_clear(world.layout, from, from + window):
 		return false
-	if _turn_shift > 0.0 and (not charge_clear(world.layout, from, window)
-			or from + window > world.layout.length - (world.config.end_clear_distance if world.config != null else 0.0)):
+	if _turn_shift > 0.0 and (not charge_clear(world.layout, from, window) or from + window > _last_window_end()):
 		return false
-	if charges_done == 0 and world.director.major_attack_blocked(self):
-		# GDD §9.7: no new charge sequence while the Cyborg's Bad Dream chases; GDD §9: nor while
-		# another type's big attack is on (it waits for its turn, _pace).
-		_held_for_turn = world.director.held_for_turn(self)
+	# GDD §9.7: no new charge sequence while the Cyborg's Bad Dream chases; GDD §9: nor while another
+	# type's big attack is on (it waits for its turn, _pace).
+	return charges_done > 0 or _ask_turn() == TurnAnswer.FREE
+
+
+## Its sequence's first wind-up asks the director for its turn (EnemyDirector.major_attack_blocked),
+## at most once a frame; the answer holds for the rest of the frame.
+func _ask_turn() -> TurnAnswer:
+	if _turn_answer == TurnAnswer.NOT_ASKED:
+		if not world.director.major_attack_blocked(self):
+			_turn_answer = TurnAnswer.FREE
+		elif world.director.held_for_turn(self):
+			_turn_answer = TurnAnswer.HELD_FOR_TURN
+		else:
+			_turn_answer = TurnAnswer.HELD_EXCLUSIVE
+	return _turn_answer
+
+
+## The track distance a charge's stretch must end by: the level's end-clear stretch starts there.
+func _last_window_end() -> float:
+	return world.layout.length - (world.config.end_clear_distance if world.config != null else 0.0)
+
+
+## GDD §9: whether its planned charges move on with the player this frame, instead of charge_slack
+## running out: while its first wind-up is held for another type's turn, and once that wait has made
+## it miss its planned stretch, until the stretch ahead is clear again (charge_clear, with the
+## planner's margins, before the end-clear stretch). Once held, it keeps asking for its turn every
+## frame (EnemyDirector: until the answer is false), stretch clear or not, so a new wait counts
+## and the Bad Dream's chase still stops it (it runs off once charge_slack runs out). The wait and the
+## moving on share turn_wait_max (_pace). Never before its first wait, and never for later charges.
+func _moves_on(v: float) -> bool:
+	if charges_done > 0:
 		return false
-	return true
+	if _turn_answer == TurnAnswer.HELD_FOR_TURN:
+		return true
+	if _turn_shift <= 0.0 or not world.player.alive:
+		return false
+	match _ask_turn():
+		TurnAnswer.HELD_FOR_TURN:
+			return true
+		TurnAnswer.HELD_EXCLUSIVE:
+			return false
+	var from: float = world.player.distance
+	var window: float = _t.window_length(v, _scaling)
+	return not charge_clear(world.layout, from, window) and from + window <= _last_window_end()
 
 
 ## GDD §9, §9.7: its charge sequence, from its first wind-up until it gives up, is a big attack: the
@@ -323,15 +372,21 @@ func _pace(delta: float, rel: float, v: float) -> void:
 	var in_place: bool = absf(rel - want) < 1.5 and absf(_x - world.geo.lane_x(lane)) < 0.25
 	if pd >= anchor and in_place and _can_wind_up(v):
 		_start_windup()
-	elif _held_for_turn and _turn_waited < _t.turn_wait_max and world.player.alive:
-		# GDD §9: waiting for its turn, it keeps pacing in position, and its planned charges move on
-		# with the player (the whole sequence waits), for up to turn_wait_max.
-		_turn_waited += delta
-		_turn_shift += world.player.speed * delta
+	elif _turn_waited < _t.turn_wait_max and _moves_on(v):
+		# GDD §9: waiting for its turn (and then for the clear stretch the wait made it miss), it keeps
+		# pacing in position, and its planned charges move on with the player (the whole sequence
+		# waits), for up to turn_wait_max.
+		_wait_a_frame(delta)
 	elif pd > anchor + _t.charge_slack or not world.player.alive:
 		# No clear moment came: it gives up and runs off.
 		_set_phase(Phase.LEAVE)
 		_set_hitboxes(false)
+
+
+## One frame of its wait for its turn (GDD §9): its planned charges move on with the player.
+func _wait_a_frame(delta: float) -> void:
+	_turn_waited += delta
+	_turn_shift += world.player.speed * delta
 
 
 ## Where the current charge's wind-up may start (a player distance): its planned point, or where it
