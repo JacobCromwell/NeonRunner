@@ -265,6 +265,8 @@ Each skin covers:
 
 The owner reviews them.
 
+**No more generated songs** (owner, September 28, 2026; GDD §11): D8's tracks are the last generated music. The owner will provide the songs; until then every task uses the existing tracks and creates none. Sound effects are unaffected.
+
 ### P. Player and cyborg looks
 
 Added September 26, 2026, from the owner's design round 4 (GDD §9.2 and §11). All three change **looks only**, never gameplay or hitboxes.
