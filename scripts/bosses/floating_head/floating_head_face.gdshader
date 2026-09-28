@@ -38,6 +38,16 @@ uniform float blink = 0.0;
 uniform float eye_charge = 0.0;
 // Picture break-up (the defeat, task E1d): rows tear and static floods in.
 uniform float glitch = 0.0;
+// The propaganda's caption band (task E1d; FloatingHeadBody shows the slogan's text over it): 0 off,
+// 1 shown. It covers the screen from its bottom edge up to caption_top (screen heights from its
+// centre), under the eyes (the lasers' warning), the face's lines dimmed behind a dark band with a
+// light rule along its top.
+uniform float caption = 0.0;
+uniform float caption_top = -0.17;
+// The wreck (task E1d): the dead screen lying in the street, its glass cracked from where it hit and
+// the face faintly burnt into it. Nothing moves on it.
+uniform float broken = 0.0;
+const vec2 CRACK_AT = vec2(0.16, -0.12);
 
 float fh_fill(float d, float aa) {
 	return 1.0 - smoothstep(-aa, aa, d);
@@ -108,6 +118,22 @@ vec3 fh_face(vec2 p, float aa) {
 	return vec3(bright, dim * 0.55, max(left.y, right.y));
 }
 
+// The broken glass's cracks at p: rays out of the point it hit, each kinked twice, and a ring round it.
+float fh_cracks(vec2 p, float aa) {
+	float d = abs(length(p - CRACK_AT) - 0.05);
+	for (int i = 0; i < 9; i++) {
+		float fi = float(i);
+		float a = fi * 0.698 + 0.3 * sin(fi * 3.7);
+		vec2 dir = vec2(cos(a), sin(a));
+		vec2 side = vec2(-dir.y, dir.x);
+		vec2 p1 = CRACK_AT + dir * (0.16 + 0.1 * fract(sin(fi * 12.3) * 43.7)) + side * 0.03 * sin(fi * 5.1);
+		vec2 p2 = p1 + dir * (0.22 + 0.25 * fract(sin(fi * 7.9) * 31.3)) - side * 0.05 * cos(fi * 2.3);
+		d = min(d, fh_segment(p, CRACK_AT, p1));
+		d = min(d, fh_segment(p, p1, p2));
+	}
+	return fh_fill(d - 0.004, aa);
+}
+
 void fragment() {
 	// Derivatives first, outside any branch (the kit's shader rules).
 	vec2 fw = fwidth(UV);
@@ -127,8 +153,13 @@ void fragment() {
 	vec2 cell = fract(p * dots) - 0.5;
 	float detail = 1.0 - smoothstep(0.25, 0.6, aa * dots);
 	float led = mix(0.85, 1.0 - smoothstep(0.32, 0.48, length(cell)), detail);
-	float lines = max(face.x, face.y) * led;
-	vec3 col = mix(screen_lit, face_color, lines);
+	// The caption band: the face's lines give way to a dark band under the slogan, with a light rule
+	// along its top edge.
+	float cap_band = clamp(caption, 0.0, 1.0) * (1.0 - smoothstep(caption_top - aa, caption_top + aa, p.y));
+	float cap_rule = clamp(caption, 0.0, 1.0) * (1.0 - smoothstep(0.004, 0.004 + aa * 2.0, abs(p.y - caption_top - 0.012)));
+	face.xy *= 1.0 - cap_band * 0.85;
+	float lines = max(max(face.x, face.y) * led, cap_rule * (0.6 + 0.3 * detail));
+	vec3 col = mix(screen_lit * (1.0 - cap_band * 0.6), face_color, lines);
 	// The eyes charging: their insides fill with red and glow.
 	float charge = clamp(eye_charge, 0.0, 1.0) * face.z;
 	col = mix(col, charge_color * (0.55 + 0.45 * led), charge);
@@ -149,6 +180,14 @@ void fragment() {
 	// Off: dark glass with a faint diagonal reflection of the city.
 	float sheen = smoothstep(0.35, 0.0, abs(p.x * 0.6 + p.y - 0.15)) * 0.05;
 	vec3 glass = screen_dark * 0.8 + vec3(0.02, 0.022, 0.035) * sheen * 10.0;
+	if (broken > 0.0) {
+		// The dead screen: dull grey glass (a panel, not a hole in the street), the face burnt faintly
+		// into it, cracked from where it hit.
+		vec3 ghost = fh_face(p, aa);
+		glass = mix(glass, vec3(0.1, 0.11, 0.14) + sheen * 0.6, broken);
+		glass = mix(glass, face_color * 0.26, max(ghost.x, ghost.y) * 0.6 * broken);
+		glass += face_color * 0.32 * fh_cracks(p, aa) * broken;
+	}
 	col = mix(glass, col, step(0.001, on));
 	// The curved tube: darker toward the corners, and rounded like a visor (rounder at the chin).
 	vec2 v = p / vec2(aspect * 0.5, 0.5);

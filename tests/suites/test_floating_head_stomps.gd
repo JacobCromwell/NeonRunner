@@ -32,8 +32,8 @@ var def: BossDef
 
 func run() -> void:
 	sim = RunSim.new(tree, tuning)
-	def = (load(BOSS_PATH) as BossDef).preview()
-	check(def != null, "the Floating Head's fight exists")
+	def = load(BOSS_PATH) as BossDef
+	check(def != null and def.is_built(), "the Floating Head's fight exists")
 	if def == null:
 		return
 	_test_data()
@@ -250,7 +250,11 @@ func _test_routes() -> void:
 			var stomps: Array[Dictionary] = _events(head, &"stomp")
 			check(not stomps.is_empty() and stomps[0]["route"] == route and (r["weak_lanes"] as Array).has(int(stomps[0]["lane"])),
 				"the stomp lands on a weak point %s" % tag)
-			check(_sounds(head, &"head_shriek") == 1, "GDD §10: it shrieks %s" % tag)
+			if phase < 2:
+				check(_sounds(head, &"head_shriek") == 1, "GDD §10: it shrieks %s" % tag)
+			else:
+				check(_sounds(head, &"head_shriek") == 0 and _events(head, &"voice_cut").size() == 1,
+					"the last stomp's cry is the propaganda cutting out mid-shout (GDD §10's defeat) %s" % tag)
 			var third: float = head.max_health / 3.0
 			if phase < 2:
 				check(absf(head.health - (float(r["health0"]) - third)) < 0.5 and head.phase_index == phase + 1,

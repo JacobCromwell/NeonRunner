@@ -157,7 +157,9 @@ func _test_slots(campaign: Campaign) -> void:
 		"the Floating Head has three phases, a stomp taking a third each, the later ones faster (GDD §10)")
 	check(head.weapon_share_cap <= 1.0 / 3.0 + 0.01, "its weapons can save at most one of the three stomps (GDD §10)")
 	for s: CampaignStep in campaign.steps():
-		if s.kind == CampaignStep.Kind.BOSS:
+		if s.kind == CampaignStep.Kind.BOSS and s.zone == campaign.zones[0]:
+			check(s.boss != null and s.boss.is_built(), "the City's boss step plays the Floating Head's fight (task E1d)")
+		elif s.kind == CampaignStep.Kind.BOSS:
 			check(s.boss != null and not s.boss.is_built(), "boss slot %s is still a placeholder" % s.id)
 		elif s.kind == CampaignStep.Kind.CINEMATIC:
 			check(s.cinematic != null and not s.cinematic.is_built(), "cinematic slot %s is still a placeholder" % s.id)

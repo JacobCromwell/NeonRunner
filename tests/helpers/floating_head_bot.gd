@@ -21,12 +21,28 @@ extends RefCounted
 ##   trucks instead (a missed window).
 ## With `wrong` set to a sweep kind (&"low" or &"high"), it answers that kind the wrong way (slides
 ## under a low sweep, jumps a high one), to show the answer matters.
+## With `reads_track` on (the default), it also runs the arena like any runner (_read_track): it jumps
+## the holes and full fences in its lane (timed to clear them) and slides under gapped ones; and it
+## watches bolts in the air (_dodge_bolts: a dropped cyborg's, wild ones too) and sidesteps one that
+## would reach its lane.
 
 ## The wall route's timing: into the wall this far before the ship's face, off it this far before.
 const ENTER_BEFORE: float = 12.0
 const JUMP_BEFORE: float = 3.0
 ## The second move inward comes this long after the wall jump.
 const SECOND_MOVE: float = 0.1
+## Reading the track: a hole is jumped this far before its edge, a full fence this far before it (the
+## jump's arc is highest over it; no later than FENCE_JUMP_LAST before it, where the arc still clears
+## it), a gapped fence slid under from this far before it. Sliding under a high sweep, it may jump out
+## of the slide (to clear a hole or a fence behind it) once the beams are past, this long after.
+const HOLE_LEAD: float = 1.6
+const FENCE_JUMP_LEAD: float = 6.2
+const FENCE_JUMP_LAST: float = 3.6
+const FENCE_SLIDE_LEAD: float = 3.5
+const SWEEP_PASSED: float = 0.3
+## A bolt that would cross its spot within this long, closer than this sideways, is dodged.
+const BOLT_REACT: float = 0.7
+const BOLT_REACH: float = 0.75
 
 var head: FloatingHead
 var baits: bool = true
@@ -36,12 +52,16 @@ var wrong: StringName = &""
 var wrong_route: bool = false
 ## The wall the wall route takes: 0 the nearer one, -1 left, +1 right.
 var wall_side: int = 0
+## Runs the arena's holes and fences and dodges bolts too (see the header).
+var reads_track: bool = true
 ## What it did, for tests: {t (fight time), action, why}.
 var log: Array[Dictionary] = []
 
 var _handled: Dictionary = {}
 var _target: int = -1
 var _why: String = ""
+## When it last slid under a high sweep (fight time).
+var _sweep_slide: float = -10.0
 ## The stomp window it's taking: {pin (the pin's stern), stage, side, t}.
 var _route: Dictionary = {}
 
@@ -76,7 +96,11 @@ func step() -> void:
 			_handled[id] = true
 			_dodge_lane(int(attack["lane"]), "drag")
 	_avoid_cyborgs()
+	if reads_track:
+		_dodge_bolts()
 	_walk()
+	if reads_track:
+		_read_track()
 
 
 # --- The stomp windows ---------------------------------------------------------------------------
@@ -226,6 +250,8 @@ func _sweep(attack: Dictionary, kind: StringName, id: int) -> void:
 	var jump: bool = kind == &"low"
 	if wrong == kind:
 		jump = not jump
+	if not jump:
+		_sweep_slide = head.fight_time()
 	_press(&"jump" if jump else &"slide", String(kind))
 
 
@@ -283,6 +309,82 @@ func _avoid_cyborgs() -> void:
 		if to >= 0 and to < n and not _cyborg_in(to, player.distance, player.distance + 30.0):
 			_go(to, "cyborg")
 			return
+
+
+## The arena's own holes and fences in the lane it runs in (or is moving to), read like any runner:
+## a hole or a full fence is jumped (a fence so the jump's arc is highest over it), a gapped fence slid
+## under. Pulsing fences count as always on.
+func _read_track() -> void:
+	var player: Player = head.world.player
+	if head.arena == null or player.surface != Player.Surface.FLOOR or not player.grounded:
+		return
+	var d: float = player.distance
+	var lanes: Array[int] = [player.lane]
+	if _target >= 0 and _target != player.lane:
+		lanes.append(_target)
+	var layout: LevelLayout = head.arena.layout
+	# Sliding: under a gapped fence it stays down; under a high sweep it may jump out once it's past.
+	var can_jump: bool = not player.is_sliding() or head.fight_time() - _sweep_slide >= SWEEP_PASSED
+	for f: Dictionary in layout.fences:
+		if lanes.has(int(f["lane"])) and f["variant"] == "gapped" and absf(float(f["at"]) - d - 0.5) <= 1.5:
+			can_jump = false
+	for g: Dictionary in layout.gaps:
+		var ahead: float = float(g["start"]) - d
+		if lanes.has(int(g["lane"])) and ahead > -0.2 and ahead <= HOLE_LEAD:
+			if can_jump:
+				_press(&"jump", "hole")
+			return
+	for f: Dictionary in layout.fences:
+		if not lanes.has(int(f["lane"])) or f.get("disabled", false):
+			continue
+		var ahead: float = float(f["at"]) - d
+		if f["variant"] == "gapped":
+			if ahead > 0.0 and ahead <= FENCE_SLIDE_LEAD and not player.is_sliding():
+				_press(&"slide", "gapped fence")
+				return
+		elif ahead > FENCE_JUMP_LAST and ahead <= FENCE_JUMP_LEAD:
+			if can_jump:
+				_press(&"jump", "fence")
+			return
+
+
+## Bolts in the air (a dropped cyborg's, wild ones too): one that would cross its spot within
+## BOLT_REACT seconds, less than BOLT_REACH to the side, sends it to the nearest lane no bolt is heading
+## for (like a player watching the bolts).
+func _dodge_bolts() -> void:
+	var world: RunWorld = head.world
+	var player: Player = world.player
+	if player.surface != Player.Surface.FLOOR:
+		return
+	var lane: int = _target if _target >= 0 else player.lane
+	if not _bolt_toward(lane):
+		return
+	for s: int in [1, -1, 2, -2]:
+		var to: int = lane + s
+		if to >= 0 and to < head.lane_count() and not _bolt_toward(to) \
+				and head.floor_clear_lane(to, player.distance, player.distance + 12.0):
+			_go(to, "bolt")
+			return
+
+
+## True if a hostile bolt will cross the runner's spot in `lane` soon (see _dodge_bolts).
+func _bolt_toward(lane: int) -> bool:
+	var world: RunWorld = head.world
+	var player: Player = world.player
+	var x: float = world.geo.lane_x(lane)
+	for shot: Projectile in world.projectiles.live_shots():
+		if shot.friendly:
+			continue
+		var gap: float = -shot.global_position.z - player.distance
+		var closing: float = shot.velocity.z + player.speed
+		if gap < -0.5 or closing <= 0.1:
+			continue
+		var t: float = maxf(gap, 0.0) / closing
+		if t > BOLT_REACT:
+			continue
+		if absf(shot.global_position.x + shot.velocity.x * t - x) < BOLT_REACH:
+			return true
+	return false
 
 
 func _cyborg_in(lane: int, from: float, to: float) -> bool:

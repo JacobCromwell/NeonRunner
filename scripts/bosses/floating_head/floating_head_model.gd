@@ -115,6 +115,11 @@ const RINGS: Array[Vector4] = [
 ]
 ## The rings (by index) between which the galleries glow.
 const GALLERY_RINGS := Vector2i(1, 3)
+## The wreck (the defeat, _wreck): the head's stern half, to this share of its length, torn open at
+## both ends; its plating this thick at the torn edges, bare dark metal inside.
+const WRECK_LENGTH: float = 0.5
+const PLATE_THICKNESS: float = 0.12
+const INSIDE := Color(0.15, 0.15, 0.19)
 
 static var _shapes: Dictionary = {}
 static var _meshes: Dictionary = {}
@@ -176,14 +181,7 @@ static func shape_for(street_width: float, lane_count: int, t: FloatingHeadTunin
 
 ## The head outline's half width (ship space) at height `y` on the stern.
 static func outline_half(s: Shape, y: float) -> float:
-	var v: float = clampf(y / s.height, 0.0, 1.0)
-	for i: int in RIGHT.size() - 1:
-		var a: Vector2 = RIGHT[i]
-		var b: Vector2 = RIGHT[i + 1]
-		if v <= b.y:
-			return lerpf(a.x, b.x, (v - a.y) / maxf(b.y - a.y, 0.0001)) * s.width
-	var last: Vector2 = RIGHT[-1]
-	return lerpf(last.x, 0.0, (v - last.y) / maxf(1.0 - last.y, 0.0001)) * s.width
+	return _outline_x(clampf(y / s.height, 0.0, 1.0)) * s.width
 
 
 ## The crown's height (ship space) at a share `fx` of the width across (-0.5..0.5) and at `z`,
@@ -225,15 +223,17 @@ static func deck_faces(s: Shape) -> PackedVector3Array:
 	return out
 
 
-## The meshes for a ship `s`: {hull, screen, jaw, lip, lamp, lens, door, cover, weak}. Parts are in
-## their own spaces: the jaw and its lip hang from the hinge, the lamp head points along -z from its
-## gimbal, a bay door reaches along +x from its hinge, a cover and a weak point sit on their socket.
+## The meshes for a ship `s`: {hull, wreck, screen, jaw, lip, lamp, lens, door, cover, weak}. Parts
+## are in their own spaces: the jaw and its lip hang from the hinge, the lamp head points along -z from
+## its gimbal, a bay door reaches along +x from its hinge, a cover and a weak point sit on their socket.
+## The wreck is what's left after its crash (the defeat, _wreck).
 static func meshes(s: Shape) -> Dictionary:
 	var id: String = "%.3f|%.3f|%.3f" % [s.width, s.height, s.length]
 	if _meshes.has(id):
 		return _meshes[id]
 	var out := {
 		"hull": _hull(s),
+		"wreck": _wreck(s),
 		"screen": _screen(s),
 		"jaw": _jaw(s),
 		"lip": _lip(s),
@@ -578,23 +578,150 @@ static func _belly(m: MeshLayer, g: MeshLayer, s: Shape) -> void:
 		z0 -= 2.6
 
 
-static func _crown(m: MeshLayer, s: Shape) -> void:
+static func _crown(m: MeshLayer, s: Shape, wrecked: bool = false) -> void:
 	var w: float = s.width
 	var l: float = s.length
 	# The weak points' sockets, standing proud of the crown (the covers and the red domes are parts of
 	# their own).
 	for p: Vector3 in s.weak_points:
 		m.prism(p + Vector3(0, -0.6, 0), 0.95, 0.6, 10, HULL_DARK)
-	# Dorsal fins along the crown toward the bow, and antenna masts.
+	# Dorsal fins along the crown toward the bow, and antenna masts; on the wreck, a jagged stub where a
+	# fin broke off (the rest went with the bow).
 	for z: float in [-0.4 * l, -0.52 * l, -0.64 * l]:
 		var top: float = crown_height(s, 0.0, z)
+		if wrecked:
+			if z > -WRECK_LENGTH * l + 0.5:
+				m.box_xform(Transform3D(Basis.from_euler(Vector3(0.45, 0.0, 0.3)) * Basis.from_scale(Vector3(0.14, 0.3, 1.5)),
+					Vector3(0.0, top + 0.04, z + 0.3)), HULL_DARK.darkened(0.3))
+			continue
 		m.box_xform(Transform3D(Basis.from_euler(Vector3(0.45, 0.0, 0.0)) * Basis.from_scale(Vector3(0.14, 1.3, 2.4)),
 			Vector3(0.0, top + 0.45, z)), HULL_DARK)
+	if wrecked:
+		return
 	for mast: Vector2 in [Vector2(-0.14, -0.6), Vector2(0.14, -0.7)]:
 		var z: float = mast.y * l
 		var base := Vector3(mast.x * w, crown_height(s, mast.x, z) - 0.1, z)
 		m.prism(base, 0.07, 3.0, 5, HULL_LIGHT)
 		m.prism(base + Vector3(0, 3.0, 0), 0.12, 0.14, 6, LIGHT, 1.0)
+
+
+# --- The wreck (the defeat) -------------------------------------------------------------------
+
+## The rings of the wreck's hull: the stern half's, to where it broke (WRECK_LENGTH).
+static func wreck_rings(s: Shape) -> Array[Vector4]:
+	var out: Array[Vector4] = []
+	var end_z: float = -WRECK_LENGTH * s.length
+	for r: Vector4 in RINGS:
+		if r.x * s.length > end_z + 0.01:
+			out.append(r)
+	var section: Vector3 = _section(s, end_z)
+	out.append(Vector4(-WRECK_LENGTH, section.x, section.y, section.z))
+	return out
+
+
+## Half the wreck's width inside (ship space) at height `y` over its belly and `z` along it: where its
+## inner plating is (the lanes run through it; tests check the runner's room).
+static func wreck_inner_half(s: Shape, y: float, z: float) -> float:
+	var section: Vector3 = _section(s, z)
+	var v: float = (y / s.height - section.z) / maxf(section.y, 0.01)
+	return _outline_x(clampf(v, 0.0, 1.0)) * s.width * section.x - PLATE_THICKNESS
+
+
+## The outline's half width (a share of the width) at a share `v` of the height.
+static func _outline_x(v: float) -> float:
+	for i: int in RIGHT.size() - 1:
+		var a: Vector2 = RIGHT[i]
+		var b: Vector2 = RIGHT[i + 1]
+		if v <= b.y:
+			return lerpf(a.x, b.x, (v - a.y) / maxf(b.y - a.y, 0.0001))
+	var last: Vector2 = RIGHT[-1]
+	return lerpf(last.x, 0.0, (v - last.y) / maxf(1.0 - last.y, 0.0001))
+
+
+## The wreck (GDD §10's defeat: "it crashes into the street ahead; the runner runs through the wreck").
+## DESIGN-TBD (docs/questions/e1.md, From E1d, item 3): the head's stern half, torn open at both ends:
+## its face tore off in the crash (FloatingHeadBody lays the dead screen in the street before it) and its
+## bow broke away, so it lies across the street like a tunnel the lanes run through. Its plating shows
+## its thickness at the torn edges, with jagged shreds; inside it's bare dark metal and ribs; its lights
+## are dead (no glow anywhere: nothing on it may look like a hazard). The weak points' sockets and a
+## broken fin stub stay on its crown.
+static func _wreck(s: Shape) -> ArrayMesh:
+	var batch := MeshBatch.new()
+	var m: MeshLayer = batch.layer(solid_material())
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([s.width, s.height, "wreck"])
+	var rings: Array[PackedVector3Array] = []
+	var inner: Array[PackedVector3Array] = []
+	for r: Vector4 in wreck_rings(s):
+		var ring: PackedVector3Array = _ring(s, r)
+		rings.append(ring)
+		inner.append(_inset(ring, s, r, PLATE_THICKNESS))
+	_skin(m, rings)
+	var n: int = PROFILE.size()
+	for i: int in inner.size() - 1:
+		var a: PackedVector3Array = inner[i]
+		var b: PackedVector3Array = inner[i + 1]
+		for j: int in n:
+			var k: int = (j + 1) % n
+			m.quad(b[j], b[k], a[k], a[j], INSIDE.darkened(0.25 * MeshKit.hash01(i, j, 11)))
+	# Rib bands around it, outside and in.
+	for i: int in range(1, rings.size() - 1):
+		var center := Vector3(0.0, 0.5 * s.height, rings[i][0].z)
+		for j: int in n:
+			var a: Vector3 = rings[i][j]
+			var b: Vector3 = rings[i][(j + 1) % n]
+			var out: Vector3 = (((a + b) * 0.5) - center).normalized() * 0.06
+			_bar(m, a + out, b + out, 0.16, HULL_DARK, 0.0, Vector3.BACK)
+			var ia: Vector3 = inner[i][j]
+			var ib: Vector3 = inner[i][(j + 1) % n]
+			_bar(m, ia - out * 2.0, ib - out * 2.0, 0.22, HULL_DARK.darkened(0.3), 0.0, Vector3.BACK)
+	for p: int in STRAKE_POINTS:
+		for i: int in range(1, rings.size() - 1):
+			var a: Vector3 = rings[i][p]
+			var b: Vector3 = rings[i + 1][p]
+			var side: float = signf(a.x)
+			_bar(m, a + Vector3(side * 0.1, 0, 0), b + Vector3(side * 0.1, 0, 0), 0.26, HULL_LIGHT, 0.0, Vector3.UP)
+	_torn_edge(m, rings[0], inner[0], 1.0, rng)
+	_torn_edge(m, rings[-1], inner[-1], -1.0, rng)
+	_crown(m, s, true)
+	return batch.to_mesh()
+
+
+## A ring moved `t` metres in toward the head's middle (its section's centre): the plating's inside.
+static func _inset(ring: PackedVector3Array, s: Shape, r: Vector4, t: float) -> PackedVector3Array:
+	var center := Vector3(0.0, (r.w + 0.5 * r.z) * s.height, ring[0].z)
+	var out := PackedVector3Array()
+	for p: Vector3 in ring:
+		var d: Vector3 = center - p
+		d.z = 0.0
+		out.append(p + d.normalized() * minf(t, d.length() * 0.5))
+	return out
+
+
+## Where the hull tore open (`facing` +1: the stern's end, toward +z; -1: the break toward the bow): the
+## plating's cut edge, and jagged shreds of it bent outward.
+static func _torn_edge(m: MeshLayer, outer: PackedVector3Array, inner: PackedVector3Array, facing: float,
+		rng: RandomNumberGenerator) -> void:
+	var n: int = outer.size()
+	var center := Vector3.ZERO
+	for p: Vector3 in outer:
+		center += p
+	center /= float(n)
+	var edge: Color = HULL_LIGHT.darkened(0.35)
+	for j: int in n:
+		var k: int = (j + 1) % n
+		# The cut edge, seen from either side.
+		m.quad(outer[j], inner[j], inner[k], outer[k], edge)
+		m.quad(outer[k], inner[k], inner[j], outer[j], edge)
+		if rng.randf() < 0.5:
+			continue
+		# A shred: a torn flap of plating peeled back outward (never into the way through).
+		var mid: Vector3 = (outer[j] + outer[k] + inner[j] + inner[k]) * 0.25
+		var out_dir := Vector3(mid.x - center.x, mid.y - center.y, 0.0).normalized()
+		var tip: Vector3 = mid + Vector3(0.0, 0.0, facing * rng.randf_range(0.12, 0.4)) + out_dir * rng.randf_range(0.15, 0.45)
+		var tooth: Color = HULL.darkened(0.15 + 0.2 * rng.randf())
+		_tri(m, outer[j], outer[k], tip, tooth, 0.0)
+		_tri(m, outer[k], outer[j], tip, tooth, 0.0)
 
 
 # --- Moving parts -----------------------------------------------------------------------------

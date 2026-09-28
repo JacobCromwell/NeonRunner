@@ -7,8 +7,9 @@ extends SceneTree
 const SUITES_DIR: String = "res://tests/suites"
 ## A run that takes longer than this (real time) is stuck, e.g. a suite awaiting something that
 ## never comes or a script error that stopped the runner: it fails instead of hanging. Timers
-## can't measure this: --fixed-fps runs game time far faster than real time.
-const WATCHDOG_SECONDS: int = 600
+## can't measure this: --fixed-fps runs game time far faster than real time. A full run takes about
+## 400 s on a quiet machine and nearer 600 s when several runs share its CPUs, so the limit leaves room.
+const WATCHDOG_SECONDS: int = 1200
 
 var _deadline_msec: int = 0
 

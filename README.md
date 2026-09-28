@@ -13,11 +13,9 @@ through zones full of enemies, and a single hit ends the run. Built with Godot 4
 - all three build flavors
 
 Boss fights have their framework (they play in the runner, with phases, a health bar, checkpoints,
-stars and payouts), but each zone's boss is still a placeholder slot until it's built on it; a test
-boss shows the framework at work. The Neon City's Floating Head is being built: its ship and face, its
-entrance, its bombing run, the reveal of its face, the face-off (eye lasers, the cyborg drop and the
-marked towers that pin it) and the stomp windows while it's pinned so far (debug builds play it with
-`--boss=city_boss`; the campaign keeps its placeholder slot until its defeat and voice are done). The short cinematics between levels are placeholder slots too.
+stars and payouts); a test boss shows the framework at work. The Neon City's boss, the Floating Head,
+is built and plays in the campaign after City 3 (debug builds: `--boss=city_boss`); the other zones'
+bosses are still placeholder slots. The short cinematics between levels are placeholder slots too.
 Every placeholder decision is listed in `docs/OPEN_QUESTIONS.md`.
 
 Docs: `docs/GDD_CHECKPOINT.md` (the design, the authority), `docs/OPEN_QUESTIONS.md` (open decisions and
@@ -49,7 +47,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `corporate`, `corporate_plaza` (Corporate's plaza floor) or `golden` |
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`) |
-| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`, ...) with the full game flow once it's built, and as quick play while it's being built (`--boss=city_boss`: the Floating Head so far). Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
+| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
 
 Example: `./play.sh --lanes=6 --features=octodog,ceilings --god`, or the test boss's last phase:
@@ -130,15 +128,20 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   player's armor or shield breaks) or offered by the boss itself. The test boss (`--boss=test_boss`),
   a hovering core that blasts the lane it lights up red and drops dazed into the player's lane to be
   stomped, shows it all (it offers a shield in its second phase). The Floating Head, the Neon City's
-  boss, is being built on it: a giant ship whose stern is a propaganda face, roaring in overhead, a
+  boss, is built on it: a giant ship whose stern is a propaganda face, roaring in overhead, a
   bombing run where a searchlight hunts the runner and bombs fall where it lingers (a red target
   circle, an alarm and a falling whistle), the reveal of its face, and the face-off: its eyes glow and
   whine, then laser beams sweep the lanes low (jump) or high (slide) or drag down the runner's lane
   (switch lanes), its mouth drops cyborgs onto the trucks ahead, and a laser baited into a marked tower
   topples it onto the ship to pin it. Pinned, its red weak points come out on its crown: stomp one, a
   third of its health. Each phase has its own way up: run up the fallen tower's slab like a ramp, a
-  wall jump, then pads and a ceiling to drop from. Miss it and it shakes free and the face-off goes on
-  (`--boss=city_boss`). The other five zone bosses are still to be built.
+  wall jump, then pads and a ceiling to drop from. Miss it and it shakes free and the face-off goes on.
+  All the while it shouts its propaganda through its loudhailers (a distorted voice never meant to be
+  understood, ducking under every warning) with slogans on its face screen. Beaten, its face glitches,
+  the propaganda cuts out mid-shout and it crashes into the street ahead: the runner runs over its
+  fallen face and through the wreck, on to the zone's outro (in the web demo, the "get the full game"
+  screen). About 100 s for a runner who never misses (`--boss=city_boss`, or the campaign's
+  `--level=city/boss`). The other five zone bosses are still to be built.
 - **Economy:** credits in four denominations, level score and stars, and a shop. Items are five permanent
   power-ups (weapon line, claws, juggernaut dash, magnet, slow time) and three breakables (armor, shield,
   grapple hook). After a death you're offered a revive (an item, or a rewarded ad on mobile). Net worth
@@ -210,7 +213,7 @@ against its bursts, with the recency curve on and off:
 
 ## Tests
 
-`tools/godot.sh test` runs 38 suites with about 2,900,000 checks:
+`tools/godot.sh test` runs 39 suites with about 2,900,000 checks:
 - **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds, and every campaign level
   (each with every feature it lists, on its own seed and on others). Under every ceiling the floor may be
   dangerous, so each one's pads, landing zone and a floor route that never takes the pad are checked, and
@@ -232,7 +235,11 @@ against its bursts, with the recency curve on and off:
   always escaping them, the face-off's lasers (each warned, and escaped without god mode by a runner who
   reads them), its cyborg drop, a baited or fallback tower pinning it, each phase's stomp window taken
   without god mode (the ramp, a wall jump, the ceiling), missed windows repeating without escalation,
-  the whole fight from its entrance to the last stomp, and every attempt playing out the same way.
+  the whole fight from its entrance to the last stomp, and every attempt playing out the same way; its
+  defeat (the propaganda cut, the crash, room for a runner in every lane of its wreck, Reduced
+  flashing), and the whole fight through the campaign at 3, 5 and 6 lanes with no god mode, from City 3
+  to the outro (and the web demo's end screen), its propaganda never masking a warning, and a death
+  restarting the fight.
 - **Screens:** every screen at desktop and touch sizes.
 - **The runner:** Razor Echo's poses on every surface, the coat's panels (never through the legs or the
   ground), the budgets, the power-up looks, and its copper glow kept clear of every hazard colour.
