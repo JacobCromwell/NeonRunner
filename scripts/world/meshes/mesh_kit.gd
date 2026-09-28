@@ -657,6 +657,19 @@ static func ceiling_end(s: MeshLayer, g: MeshLayer, half_width: float, zf: float
 		Vector3(0, 0, -(band + CEILING_END_GLOW)), color, 0.35, SHAPE_RADIAL)
 
 
+## A round halo facing along the track around `center` (hull-local: the ceiling's underside at y = 0),
+## `radius` across, cut off at the underside: a ship's engine glowing at its stern. Past a ceiling's far
+## end nothing glows below the underside, where the chase camera passes as the player drops (see
+## ceiling_end); the halo keeps its shape above it.
+static func stern_halo(g: MeshLayer, center: Vector3, radius: float, color: Color, strength: float) -> void:
+	var bottom: float = maxf(center.y - radius, 0.0)
+	var top: float = center.y + radius
+	if top <= bottom:
+		return
+	g.rect(Vector3(center.x - radius, bottom, center.z), Vector3(radius * 2.0, 0, 0), Vector3(0, top - bottom, 0), color,
+		strength, SHAPE_RADIAL, Vector2(0.0, (bottom - (center.y - radius)) / (radius * 2.0)), Vector2.ONE)
+
+
 static func _ring(s: MeshLayer, center: Vector3, w: float, d: float, t: float, color: Color, glow_amount: float) -> void:
 	s.box(center + Vector3(0, 0, d * 0.5 - t * 0.5), Vector3(w, 0.02, t), color, glow_amount, PAT_PLAIN, FACE_PY)
 	s.box(center - Vector3(0, 0, d * 0.5 - t * 0.5), Vector3(w, 0.02, t), color, glow_amount, PAT_PLAIN, FACE_PY)

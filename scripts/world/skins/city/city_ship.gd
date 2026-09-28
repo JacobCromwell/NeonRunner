@@ -142,11 +142,7 @@ func ship_mesh(size: Vector3, lane_edges_x: Array[float], offset_x: float, small
 		var core := Transform3D(Basis(Vector3(r * 0.75, 0, 0), Vector3(0, 0, -0.05), Vector3(0, r * 0.75, 0)),
 			Vector3(ex, ey, zf - 1.3))
 		s.prism_xform(core, 8, skin.engine_color, 1.0)
-		# The halo, cut off at the underside (its lower part drawn no lower than it).
-		var hr: float = r * 2.6
-		var bottom: float = maxf(ey - hr, 0.0)
-		g.rect(Vector3(ex - hr, bottom, zf - 1.5), Vector3(hr * 2.0, 0, 0), Vector3(0, ey + hr - bottom, 0),
-			skin.engine_color, 0.55, MeshKit.SHAPE_RADIAL, Vector2(0.0, (bottom - (ey - hr)) / (hr * 2.0)), Vector2.ONE)
+		MeshKit.stern_halo(g, Vector3(ex, ey, zf - 1.5), r * 2.6, skin.engine_color, 0.55)
 		g.rect(Vector3(ex - r * 0.8, ey, zf - 1.5), Vector3(r * 1.6, 0, 0), Vector3(0, 0, -14.0), skin.engine_color, 0.22,
 			MeshKit.SHAPE_BEAM)
 	# The engines' light on the underside toward the stern, under the ship only (never past its end).

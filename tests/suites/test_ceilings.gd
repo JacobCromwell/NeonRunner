@@ -24,6 +24,7 @@ func run() -> void:
 	await _test_pad_holds_lane()
 	await _test_one_lane_ride()
 	await _test_camera()
+	await _test_skins()
 
 
 ## The ranges tried at `lanes` lanes: one lane at each edge and in the middle, two lanes at an edge,
@@ -306,3 +307,179 @@ func _test_camera() -> void:
 	check(absf(RunCamera.ceiling_limit(space, Vector3(lane0, 4.2, -38.5), tuning) - (tuning.ceiling_height - clearance)) < 0.001,
 		"and just before one, so the camera comes down before it gets there")
 	await sim.free_world(w)
+
+
+## Every zone skin (each skin in data/skins/, and the City boss arena's) dresses a ceiling from the
+## lanes it covers (GDD §3; ZoneSkin.ceiling_section), full width or narrow, at 3, 5 and 6 lanes, for
+## several spots along the track (the kinds of structure a skin picks by hashing where a ceiling is):
+## - its underside, the surface, covers the ceiling's collision footprint, and on a side that doesn't
+##   reach the street's edge stops at that edge (it never looks like it covers a lane it doesn't);
+## - nothing hangs below the underside over the footprint (a lamp flush with it at most);
+## - the orange band crosses the far end over the ceiling's whole width ("you drop here");
+## - past the far end nothing sits below the underside, glowing or not: the chase camera passes there
+##   as the player drops (RunCamera.ceiling_limit), and what glowed there flashed across the screen.
+func _test_skins() -> void:
+	var skins: Dictionary = {}
+	for file: String in DirAccess.get_files_at("res://data/skins"):
+		if file.ends_with(".tres"):
+			skins[file.get_basename()] = load("res://data/skins".path_join(file))
+	skins["city_boss_skin"] = load("res://data/bosses/city_boss_skin.tres")
+	check(skins.size() >= 7, "every skin is swept (%d)" % skins.size())
+	var built: int = 0
+	for skin_name: String in skins:
+		var skin := skins[skin_name] as ZoneSkin
+		if skin == null:
+			check(false, "%s is a zone skin" % skin_name)
+			continue
+		var edge_color: Color = skin.get("gap_edge_color") if skin.get("gap_edge_color") is Color else Color(1.0, 0.25, 0.04)
+		var problems: PackedStringArray = []
+		for lanes: int in [3, 5, 6]:
+			var geo := TrackGeometry.new(lanes, tuning)
+			var mid: int = lanes / 2
+			var ranges: Array[Vector2i] = [Vector2i(0, lanes - 1), Vector2i(0, 0), Vector2i(mid, mid), Vector2i(lanes - 1, lanes - 1),
+				Vector2i(lanes - 2, lanes - 1), Vector2i(1, lanes - 1)]
+			for r: Vector2i in ranges:
+				for spot: int in 3:
+					var start: float = 180.0 + 97.3 * spot + 11.0 * r.x
+					var length: float = 29.0 if r.x == r.y else 44.0 + 9.0 * spot
+					var section := CeilingSection.make(geo, tuning.ceiling_height, TrackBuilder.HULL_THICKNESS, start,
+						start + length, r)
+					var tag: String = "%s lanes=%d range %s at %.0f" % [skin_name, lanes, r, start]
+					var root := Node3D.new()
+					tree.root.add_child(root)
+					skin.ceiling_section(root, section)
+					_check_dressed(root, section, edge_color, spot == 0, tag, problems)
+					root.queue_free()
+					built += 1
+		check(problems.is_empty(), "%s dresses every ceiling from its lanes:\n    %s" % [skin_name,
+			"\n    ".join(problems.slice(0, 10))])
+	await tree.process_frame
+	check(built >= 7 * 3 * 6 * 3, "ceilings dressed: %d" % built)
+
+
+## The triangles of every visible mesh under `root`, in world space: {a, b, c, color, glow}. A kit
+## mesh carries its colour and glow per vertex (COLOR.a above 0 glows on the solid material; every
+## card on a glow material glows); a grey-box piece carries them in its material.
+static func _triangles(root: Node) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var stack: Array[Node] = [root]
+	while not stack.is_empty():
+		var node: Node = stack.pop_back()
+		stack.append_array(node.get_children())
+		var m := node as MeshInstance3D
+		if m == null or m.mesh == null or not m.visible:
+			continue
+		var xform: Transform3D = m.global_transform
+		for s: int in m.mesh.get_surface_count():
+			var arrays: Array = m.mesh.surface_get_arrays(s)
+			var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var colors := PackedColorArray()
+			if arrays[Mesh.ARRAY_COLOR] != null:
+				colors = arrays[Mesh.ARRAY_COLOR]
+			var index := PackedInt32Array()
+			if arrays[Mesh.ARRAY_INDEX] != null:
+				index = arrays[Mesh.ARRAY_INDEX]
+			var material: Material = m.material_override if m.material_override != null else m.mesh.surface_get_material(s)
+			var card: bool = material is ShaderMaterial and (material as ShaderMaterial).shader != null \
+				and (material as ShaderMaterial).shader.resource_path.ends_with("kit_glow.gdshader")
+			var base := Color.WHITE
+			var lit_glow: bool = false
+			if material is StandardMaterial3D:
+				base = (material as StandardMaterial3D).albedo_color
+				lit_glow = (material as StandardMaterial3D).emission_enabled
+			var count: int = index.size() if not index.is_empty() else verts.size()
+			for t: int in range(0, count - 2, 3):
+				var i0: int = index[t] if not index.is_empty() else t
+				var i1: int = index[t + 1] if not index.is_empty() else t + 1
+				var i2: int = index[t + 2] if not index.is_empty() else t + 2
+				var c: Color = colors[i0] if not colors.is_empty() else base
+				out.append({"a": xform * verts[i0], "b": xform * verts[i1], "c": xform * verts[i2], "color": c,
+					"glow": card or lit_glow or (not colors.is_empty() and c.a > 0.001)})
+	return out
+
+
+## The checks _test_skins makes of one dressed ceiling (see there), adding what fails to `problems`.
+## `coverage`: also sample the underside's coverage of the footprint (the slowest check).
+func _check_dressed(root: Node3D, section: CeilingSection, edge_color: Color, coverage: bool, tag: String,
+		problems: PackedStringArray) -> void:
+	var y0: float = section.underside_y()
+	var x0: float = section.edge_x(-1)
+	var x1: float = section.edge_x(1)
+	var tris: Array[Dictionary] = _triangles(root)
+	if tris.is_empty():
+		problems.append("%s: nothing drawn" % tag)
+		return
+	var plane: Array[Dictionary] = []
+	var band := Vector2(INF, -INF)
+	var plane_x := Vector2(INF, -INF)
+	var below_past: String = ""
+	var hanging: String = ""
+	for tri: Dictionary in tris:
+		var pts: Array[Vector3] = [tri["a"], tri["b"], tri["c"]]
+		var in_plane: bool = true
+		var past: bool = false
+		var lowest: float = INF
+		for p: Vector3 in pts:
+			in_plane = in_plane and absf(p.y - y0) < 0.006
+			past = past or -p.z > section.end + 0.01
+			lowest = minf(lowest, p.y)
+			if hanging == "" and p.x > x0 + 0.02 and p.x < x1 - 0.02 and -p.z > section.start + 0.02 \
+					and -p.z < section.end - 0.02 and p.y < y0 - 0.1 and p.y > 0.5:
+				hanging = "%s" % p
+		if past and lowest < y0 - 0.001 and below_past == "":
+			below_past = "%s%s" % [pts, " (glowing)" if tri["glow"] else ""]
+		if in_plane:
+			plane.append(tri)
+			for p: Vector3 in pts:
+				plane_x = Vector2(minf(plane_x.x, p.x), maxf(plane_x.y, p.x))
+		var c: Color = tri["color"]
+		if tri["glow"] and absf(c.r - edge_color.r) < 0.02 and absf(c.g - edge_color.g) < 0.02 \
+				and absf(c.b - edge_color.b) < 0.02:
+			var near_end: bool = true
+			for p: Vector3 in pts:
+				near_end = near_end and -p.z > section.end - 1.6 and absf(p.y - y0) < 0.08
+			if near_end:
+				for p: Vector3 in pts:
+					band = Vector2(minf(band.x, p.x), maxf(band.y, p.x))
+	if below_past != "":
+		problems.append("%s: past the far end something sits below the underside: %s" % [tag, below_past])
+	if hanging != "":
+		problems.append("%s: something hangs below the underside over the lanes at %s" % [tag, hanging])
+	if band.x > x0 + 0.05 or band.y < x1 - 0.05:
+		problems.append("%s: the orange band spans %.2f to %.2f, not the ceiling's width %.2f to %.2f" % [tag, band.x,
+			band.y, x0, x1])
+	if not section.reaches_wall(-1) and plane_x.x < x0 - 0.35:
+		problems.append("%s: the underside reaches %.2f past its free left edge %.2f" % [tag, plane_x.x, x0])
+	if not section.reaches_wall(1) and plane_x.y > x1 + 0.35:
+		problems.append("%s: the underside reaches %.2f past its free right edge %.2f" % [tag, plane_x.y, x1])
+	if not coverage:
+		return
+	var xs: Array[float] = [x0 + 0.1, x1 - 0.1]
+	for lane: int in range(section.first_lane, section.last_lane + 1):
+		xs.append(section.center.x + (float(lane) - (section.first_lane + section.last_lane) * 0.5) * section.lane_width)
+	var bare: int = 0
+	var d: float = section.start + 0.4
+	while d < section.end - 0.2:
+		for x: float in xs:
+			if not _covered(plane, Vector2(x, -d)):
+				bare += 1
+		d += 3.7
+	if bare > 0:
+		problems.append("%s: the underside leaves %d points of the footprint bare" % [tag, bare])
+
+
+static func _covered(tris: Array[Dictionary], p: Vector2) -> bool:
+	for tri: Dictionary in tris:
+		var a := Vector2((tri["a"] as Vector3).x, (tri["a"] as Vector3).z)
+		var b := Vector2((tri["b"] as Vector3).x, (tri["b"] as Vector3).z)
+		var c := Vector2((tri["c"] as Vector3).x, (tri["c"] as Vector3).z)
+		if p.x < minf(a.x, minf(b.x, c.x)) - 0.001 or p.x > maxf(a.x, maxf(b.x, c.x)) + 0.001:
+			continue
+		var d1: float = (p - b).cross(a - b)
+		var d2: float = (p - c).cross(b - c)
+		var d3: float = (p - a).cross(c - a)
+		var has_neg: bool = d1 < 0.0 or d2 < 0.0 or d3 < 0.0
+		var has_pos: bool = d1 > 0.0 or d2 > 0.0 or d3 > 0.0
+		if not (has_neg and has_pos):
+			return true
+	return false

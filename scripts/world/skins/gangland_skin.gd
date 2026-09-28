@@ -283,8 +283,15 @@ func wall_sign(hazard: Hazard, size: Vector3) -> void:
 	props().wall_sign(hazard, size)
 
 
-## Ceilings span the whole track today, so both sides run into the building faces. Task B3 (narrow
-## ceilings) passes which sides reach a wall to GanglandCeiling.build().
+## A ceiling over its lanes (GanglandCeiling): across the street (both sides run into the building
+## faces) an overpass or a bombed-out building; over fewer lanes (a narrow ceiling, GDD §3) a slab
+## broken off a building, lodged in the building face on a side that reaches the street's edge.
+func ceiling_section(parent: Node3D, section: CeilingSection) -> void:
+	ceiling().build(parent, section.center, section.size, section.lane_edges_x, section.reaches_wall(-1),
+		section.reaches_wall(1), section.wall_x)
+
+
+## A ceiling given as its box alone: across the street, both sides into the building faces.
 func hull(parent: Node3D, center: Vector3, size: Vector3, lane_edges_x: Array[float]) -> void:
 	ceiling().build(parent, center, size, lane_edges_x)
 

@@ -270,8 +270,8 @@ func _ship(batch: MeshBatch, size: Vector3, edges: Array[float], hw: float, vari
 		var core := Transform3D(Basis(Vector3(r * 0.72, 0, 0), Vector3(0, 0, -0.05), Vector3(0, r * 0.72, 0)),
 			Vector3(ex, 1.1, zf - 1.1))
 		s.prism_xform(core, 8, skin.engine_color, 0.9)
-		g.rect(Vector3(ex - r * 2.4, 1.1 - r * 2.4, zf - 1.3), Vector3(r * 4.8, 0, 0), Vector3(0, r * 4.8, 0),
-			skin.engine_color, 0.4, MeshKit.SHAPE_RADIAL)
+		# Its halo stops at the underside: past the far end nothing glows below it (MeshKit.stern_halo).
+		MeshKit.stern_halo(g, Vector3(ex, 1.1, zf - 1.3), r * 2.4, skin.engine_color, 0.4)
 
 
 # --- A floating advertisement ------------------------------------------------------------
