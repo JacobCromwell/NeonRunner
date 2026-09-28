@@ -288,21 +288,26 @@ vec3 dz_concrete(vec3 base, vec3 w, vec3 n, float param) {
 			}
 		}
 		float fq = max(fwp.x, fwp.y) / 0.45;
-		float gap = 1.0 - smoothstep(0.02, 0.09 + fq, sqrt(d2) - sqrt(d1));
-		vec3 rubble = base * (0.6 + 0.65 * hash12(id + 5.0)) * (0.8 + 0.45 * clamp(rel.y + 0.5, 0.0, 1.0));
-		rubble = mix(rubble, dz_soot * 2.0, gap * 0.85);
-		return mix(rubble, dz_ash * 0.8, smoothstep(0.55, 0.85, value_noise(p * 1.3 + 2.0)) * 0.5);
+		float gap = 1.0 - smoothstep(0.03, 0.12 + fq, sqrt(d2) - sqrt(d1));
+		// Each chunk is a broken facet turned its own way to the light: some catch it, most are in shadow,
+		// a few are charred black; big slabs lie among the small chunks.
+		float h1 = hash12(id + 5.0);
+		float ang = hash12(id + 9.0) * 6.2832;
+		float facet = clamp(0.5 + 1.6 * dot(rel, vec2(cos(ang), sin(ang))), 0.0, 1.0);
+		float slab = smoothstep(0.62, 0.66, value_noise(p * 0.55 + 41.0));
+		vec3 rubble = base * (0.45 + 0.75 * h1) * (0.55 + 0.7 * mix(facet, 0.6, slab));
+		rubble = mix(rubble, dz_soot * 1.5, step(0.82, hash12(id + 13.0)) * (1.0 - slab));
+		rubble = mix(rubble, dz_soot * 1.2, gap * 0.9 * (1.0 - slab));
+		return mix(rubble, dz_ash * 0.75, smoothstep(0.6, 0.9, value_noise(p * 1.3 + 2.0)) * 0.45);
 	} else if (mode > 0.5) {
 		// The soffit: charred, soot streaked along the way the smoke rolled under it, formwork joints
 		// across it streaming past overhead, small spalled patches (rough, darker, a paler broken rim).
 		float joint = filtered_pulse(w.z / 1.2, fz / 1.2, 0.0, 0.02);
 		float streak = smoothstep(0.35, 0.8, value_noise(vec2(p.x * 1.7, w.z * 0.12) + 21.0));
-		float sn = value_noise(p * 1.2 + 21.0);
-		float spall = smoothstep(0.8, 0.83, sn) * 0.7;
-		float rim = smoothstep(0.78, 0.8, sn) * (1.0 - spall);
+		float sn = value_noise(p * vec2(1.1, 0.7) + 0.35 * value_noise(p * 3.1) + 21.0);
+		float spall = smoothstep(0.8, 0.86, sn);
 		vec3 soffit = mix(col, col * 0.4, max(soot * 0.45, streak * 0.5)) * (1.0 - 0.3 * joint);
-		soffit = mix(soffit, col * 1.15, rim * 0.6);
-		return mix(soffit, col * (0.45 + 0.2 * value_noise(p * 6.0) * detail), spall * 0.85);
+		return mix(soffit, soffit * (0.6 + 0.25 * value_noise(p * 6.0) * detail), spall * 0.7);
 	}
 	// Cast concrete: form-board lines (across a deck, up a wall), soot blooms, streaks down upright
 	// faces, ash on upward ones.
@@ -365,9 +370,14 @@ vec3 dz_board_face(vec3 base, vec2 uv, float param) {
 	float block = band(f.x, 0.12, 0.55, fq.x) * band(f.y, 0.3, 0.82, fq.y) * step(0.35, hash12(cell + 9.0));
 	float bars = band(f.x, 0.62, 0.9, fq.x) * max(band(f.y, 0.62, 0.72, fq.y), band(f.y, 0.4, 0.46, fq.y));
 	vec3 poster = mix(base, mix(base, dz_ash, 0.55), max(block, bars) * (0.5 + 0.5 * value_noise(uv * 1.7 + seed)));
-	float burn = value_noise(uv * vec2(0.9, 1.3) + seed * 1.9);
-	poster = mix(poster, dz_soot * 1.5, smoothstep(0.45, 0.72, burn));
-	return mix(poster, dz_board * 0.5, smoothstep(0.74, 0.78, burn));
+	// The burn: a char spreading from the edges and from patches, browning then blackening the print,
+	// and a few holes burnt right through with ragged charred rims.
+	float edge_burn = 1.0 - smoothstep(0.0, 0.9, min(uv.y, uv.x + 0.3 * value_noise(uv * 2.0 + seed)));
+	float burn = max(value_noise(uv * vec2(0.9, 1.3) + seed * 1.9), edge_burn * 0.9);
+	burn += 0.08 * (value_noise(uv * 6.0 + seed) - 0.5);
+	poster = mix(poster, poster * 0.55, smoothstep(0.35, 0.55, burn));
+	poster = mix(poster, dz_soot * 1.6, smoothstep(0.5, 0.75, burn));
+	return mix(poster, dz_board * 0.35, smoothstep(0.8, 0.83, burn));
 }
 
 // PAT_DZ_MARK (46): the cult's emblem, scorched and half-gone (GDD §5: hidden in plain sight; here

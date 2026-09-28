@@ -151,7 +151,7 @@ extends ZoneSkin
 ## silence): the share of towers with a column of smoke rising from their broken tops, far above the
 ## play field, its colour (a = its opacity at the core) and how fast its billows rise.
 @export_range(0.0, 1.0, 0.01) var plume_share: float = 0.22
-@export var plume_color: Color = Color(0.1, 0.098, 0.096, 0.55)
+@export var plume_color: Color = Color(0.2, 0.197, 0.194, 0.7)
 @export_range(0.0, 5.0, 0.1, "suffix:m/s") var plume_rise: float = 1.2
 
 @export_group("Embers")
