@@ -19,6 +19,7 @@ const SOFT_FLASH_MIN_TIME: float = 0.8
 ## touch screens) and where its middle sits, as a share of the screen's height.
 const CARD_FADE: float = 0.5
 const CARD_TITLE_SIZE: int = 58
+const CARD_CAPTION_SIZE: int = 22
 const CARD_CENTER: float = 0.56
 ## The skip button's resting look, until the pointer or a touch comes near it.
 const SKIP_DIM: float = 0.6
@@ -71,10 +72,15 @@ func _ready() -> void:
 	card_caption = Label.new()
 	card_caption.theme_type_variation = UiTheme.SUBHEADING
 	card_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	card_caption.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	card_caption.add_theme_font_size_override(&"font_size", roundi(UiTheme.px(CARD_CAPTION_SIZE)))
+	card_caption.add_theme_color_override(&"font_outline_color", Color(0.0, 0.0, 0.0, 0.85))
+	card_caption.add_theme_constant_override(&"outline_size", roundi(UiTheme.px(6)))
 	card.add_child(card_caption)
 	card_title = Label.new()
 	card_title.theme_type_variation = UiTheme.TITLE
 	card_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	card_title.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	card_title.add_theme_font_size_override(&"font_size", roundi(UiTheme.px(CARD_TITLE_SIZE)))
 	card_title.add_theme_color_override(&"font_outline_color", Color(0.0, 0.0, 0.0, 0.85))
 	card_title.add_theme_constant_override(&"outline_size", roundi(UiTheme.px(8)))
@@ -152,11 +158,12 @@ func flash(strength: float, seconds: float, color: Color = Color.WHITE) -> void:
 		.set_ease(Tween.EASE_OUT)
 
 
-## Shows a text card: `title` large, `caption` above it (may be empty), for `seconds`, fading in and
-## out, the line under it opening from the middle.
+## Shows a text card: `title` large, `caption` above it (may be empty), in capitals like the menus'
+## titles, for `seconds`, fading in and out, the line under it opening from the middle.
 func show_card(title: String, caption: String, seconds: float) -> void:
-	card_title.text = title
-	card_caption.text = caption
+	# The text comes translated (CinematicSequencer.fill_text); the labels don't translate the capitals.
+	card_title.text = title.to_upper()
+	card_caption.text = caption.to_upper()
 	card_caption.visible = caption != ""
 	if _card_tween != null:
 		_card_tween.kill()

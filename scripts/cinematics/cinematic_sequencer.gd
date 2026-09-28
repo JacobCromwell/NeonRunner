@@ -245,16 +245,20 @@ func music_track(cue_track: StringName) -> StringName:
 	return zone.music
 
 
-## `text` with the slot's data filled in: {zone}, {zone_number}, {boss}, {title}.
+## `text` translated, with the slot's data filled in (translated too): {zone}, {zone_number}, {boss},
+## {title}.
 func fill_text(text: String) -> String:
-	if text == "" or not text.contains("{"):
+	if text == "":
 		return text
+	var out: String = tr(text)
+	if not out.contains("{"):
+		return out
 	var number: int = step.zone_index + 1 if step != null else 0
-	return text.format({
-		"zone": zone.display_name if zone != null else "",
+	return out.format({
+		"zone": tr(zone.display_name) if zone != null else "",
 		"zone_number": str(number) if number > 0 else "",
-		"boss": zone.boss.display_name if zone != null and zone.boss != null else "",
-		"title": def.title if def != null else "",
+		"boss": tr(zone.boss.display_name) if zone != null and zone.boss != null else "",
+		"title": tr(def.title) if def != null else "",
 	})
 
 
