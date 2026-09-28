@@ -39,6 +39,27 @@ patterns:
   declare `static func positions(layout: LevelLayout) -> Array[float]` (the track distances of its
   pieces), or an entry in `feature_positions`.
 
+Beyond that guarantee, a campaign level's newest things get the most picks (GDD §5; the campaign's
+recency curve, `data/tuning/feature_recency.tres`): a pattern's `weight` is multiplied by the curve's
+factor for its newest required feature, by how many levels ago the campaign introduced it (4 in the
+level that introduces it, then 2.5, 1.75 and 1.25, then 1; never more than a capped feature's cap, 1
+for the host, the hover truck, the drone, the Octodog and the vent screech), and the features'
+patterns are scaled back kind by kind to weigh together what they did: patterns with an `enemy`
+element by the enemies they place, those with only a `gap`, `fence` or `sign`, and the safe ones (a
+`hull`, a `ramp`, a `speed_pad`), so plain obstacles keep their share and a level places as many
+enemies and obstacles as before. So a pattern's `weight` says how often it comes against the other
+patterns of its kind, feature and age; a pattern that combines an old feature with a new one follows
+the new one, and adding an `enemy` element to a pattern moves it to the enemies' kind. Quick play
+and tests have no curve. See `docs/ARCHITECTURE.md`, The generator.
+
+A level may be paced in quiet stretches and bursts (`LevelConfig.quiet_seconds`; The Hush): a quiet
+stretch picks only patterns without enemies (sparse obstacles, and safe mechanics such as a plain
+ceiling, a ramp or a speed pad) and those of the level's `quiet_features`, which belong there (their
+enemies stand inside the stretch); a burst
+picks only threats, patterns with a `gap`, a `fence`, a `sign` or an `enemy` element, and only those
+whose enemies stand inside the burst (an enemy's `at` counts, not the pattern's `length`, so a long
+pattern like the Octodog's fits when its dog does). Patterns need nothing special for it.
+
 ## Pattern fields
 
 | Field | Meaning |
@@ -128,4 +149,7 @@ a pad a rule guarantees at a spot, clearing only those two stretches, comes from
 Anything a rule adds keeps to its feature's start (`LevelGenerator.feature_active`). A rule that drops
 its feature's enemies where they don't fit may also add one where it does when a level that guarantees
 its features (`gen.config.guarantee_features`) is left without any (the host and Octodog rules do),
-which saves the generator another build. See `docs/ARCHITECTURE.md`.
+which saves the generator another build. In a level paced in bursts, a rule that picks such a spot
+itself puts the enemy in a burst when it can, or in a quiet stretch if its feature is one of the
+level's quiet features (`gen.burst_spot(...)`, `gen.pacing_pools(spots, feature)`, `gen.quiet_at(at)`).
+See `docs/ARCHITECTURE.md`.

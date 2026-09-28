@@ -461,20 +461,31 @@ func _test_doghouse() -> void:
 ## still makes all of them, and nothing else starts meanwhile. Switched off
 ## (GameRules.big_attacks_take_turns), it charges during the other, as before the rule. A turn that
 ## doesn't come within turn_wait_max lets charge_slack run out (it gives up), and a charge moved on
-## keeps the planner's margins (here the level's end-clear stretch).
+## keeps the planner's margins (here the level's end-clear stretch). A wait that makes it miss its
+## planned stretch (fences come into its moved-on window while it's held) never costs it its
+## charges: it keeps asking for its turn, then moves on to the next clear stretch and charges there.
 func _test_takes_turns() -> void:
 	var speed: float = tuning.run_speed
 	var stop: float = t.stop_distance(speed, 0.0)
 	var a0: float = 36.0
 	var plan: Array = [a0, a0 + t.cycle_distance(speed, 0.0)]
-	# (the other attack's warning+attack, the level's length, its end-clear stretch)
-	var cases: Array = [["waits", 3.0, 400.0, 40.0, true], ["charges during it", 3.0, 400.0, 40.0, false],
-		["gives up", 15.0, 600.0, 40.0, true], ["end-clear", 3.0, 200.0, 100.0, true]]
+	var window: float = t.window_length(speed, 0.0)
+	# (the other attack's warning+attack, the level's length, its end-clear stretch, big attacks take
+	# turns, rows of fences across every lane)
+	var cases: Array = [["waits", 3.0, 400.0, 40.0, true, []], ["charges during it", 3.0, 400.0, 40.0, false, []],
+		["gives up", 15.0, 600.0, 40.0, true, []], ["end-clear", 3.0, 200.0, 100.0, true, []],
+		["fences after the wait", 2.0, 400.0, 40.0, true, [80.0, 100.0]],
+		# Its planned stretch is clear only at its planned moment, when it's held for the first time.
+		["fences right after its moment", 2.0, 400.0, 40.0, true, [72.5, 95.0]]]
 	for case: Array in cases:
 		var tag: String = "%s, turns %s" % [case[0], "on" if case[4] else "off"]
 		var config := LevelConfig.new()
 		config.end_clear_distance = case[3]
-		var w: RunWorld = sim.build_world(RunSim.layout(3, case[2]), null, null, config)
+		var track: LevelLayout = RunSim.layout(3, case[2])
+		for at: float in case[5]:
+			for lane: int in 3:
+				track.fences.append(RunSim.fence(lane, at, "full"))
+		var w: RunWorld = sim.build_world(track, null, null, config)
 		w.rules = w.rules.duplicate() as GameRules
 		w.rules.big_attacks_take_turns = case[4]
 		w.player.setup(tuning, w.geo, 1)
@@ -488,6 +499,7 @@ func _test_takes_turns() -> void:
 		await tree.physics_frame
 		w.player.running = true
 		var first_windup: float = -1.0
+		var windup_clear: bool = true
 		var left_at: float = -1.0
 		var in_front: bool = true
 		var waited: float = 0.0
@@ -501,6 +513,7 @@ func _test_takes_turns() -> void:
 			turn_waited = float(d.get(&"_turn_waited"))
 			if first_windup < 0.0 and d.phase == Octodog.Phase.WINDUP:
 				first_windup = now
+				windup_clear = Octodog.charge_clear(track, w.player.distance, window)
 			if left_at < 0.0 and d.phase == Octodog.Phase.LEAVE:
 				left_at = now
 			if w.director.held_for_turn(d):
@@ -538,6 +551,14 @@ func _test_takes_turns() -> void:
 			"end-clear":
 				check(first_windup < 0.0 and left_at > 0.0,
 					"%s: a charge moved past the level's end-clear stretch doesn't come (it runs off)" % tag)
+			"fences after the wait", "fences right after its moment":
+				check(first_windup >= other_end - 0.001 and windup_clear,
+					"%s: it winds up after the other is over, where the stretch is clear again (%.2f s, over at %.2f s)"
+					% [tag, first_windup, other_end])
+				check(d_end != null and d_end.charges_done == 2 and left_at < 0.0,
+					"%s: the wait didn't cost it its charges (it made %d)" % [tag, d_end.charges_done if d_end != null else -1])
+				check(turn_waited <= t.turn_wait_max + 0.001,
+					"%s: its planned charges moved on for no longer than turn_wait_max (%.2f s)" % [tag, turn_waited])
 		await sim.free_world(w)
 
 

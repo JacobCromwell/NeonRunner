@@ -27,6 +27,8 @@ render_mode unshaded, cull_back;
 #include "res://scripts/world/meshes/shaders/kit_flash.gdshaderinc"
 #include "res://scripts/world/meshes/shaders/kit_marks.gdshaderinc"
 
+// A level's darker lighting (ZoneSkin.apply_darkness): the faces dim with the rest of the scenery.
+global uniform float scenery_light;
 uniform vec3 window_cold : source_color = vec3(0.78, 0.86, 0.98);
 uniform float window_glow = 0.9;
 uniform vec3 glass_color : source_color = vec3(0.03, 0.035, 0.045);
@@ -193,5 +195,5 @@ void fragment() {
 	float pool = 0.55 + 0.45 * cos((fract(uv.x / flood_spacing) - 0.5) * 6.2832);
 	float wash = smoothstep(0.0, 1.0, up) * exp(-max(up, 0.0) / flood_reach) * pool;
 	col += albedo * to_linear(flood_color) * (flood_strength * wash * mix(0.35, 1.0, opaque));
-	ALBEDO = col;
+	ALBEDO = col * light_factor(scenery_light);
 }

@@ -20,6 +20,7 @@ func run() -> void:
 	await _test_pause()
 	await _test_slots_and_demo()
 	await _test_ad_revive()
+	await _test_darker_level()
 	await _test_endless()
 
 	App.show_title()
@@ -170,6 +171,46 @@ func _test_endless() -> void:
 		check(not ctx.config.guarantee_features and city_3.guarantee_features,
 			"endless skips the campaign's every-feature guarantee (a 20-minute level needs no rebuilds)")
 	App.show_title()
+	# With the Dead Zone reached, endless copies The Hush but not its own remix: its pacing in bursts,
+	# the hosts it picks more often, or its darkness.
+	for s: CampaignStep in App.campaign.steps():
+		if s.index < App.campaign.step("dead_zone/2").index:
+			App.profile.record_run(s.id, 0, true, 100, 3, 10.0)
+	var hush: LevelConfig = App.campaign.step("dead_zone/2").level
+	App.start_endless()
+	await physics_frames(3)
+	var dead: RunContext = App.run.context if App.run != null else null
+	check(dead != null and dead.config.features == hush.features
+		and not dead.config.paced_in_bursts() and dead.config.darkness == 0.0,
+		"endless in the Dead Zone plays The Hush's features, evenly paced, in the zone's own light")
+	check(dead != null and dead.config.feature_weight("host") == 1.0 and dead.config.quiet_features.is_empty()
+		and hush.feature_weight("host") > 1.0 and hush.quiet_features == PackedStringArray(["host"]),
+		"with hosts as often as elsewhere, and The Hush keeps its own")
+	App.show_title()
+
+
+## GDD §5: The Hush's darker lighting reaches its run: the run's environment is the zone skin's with
+## the level's darkness (ZoneSkin.level_environment), and the scenery light comes back when the run
+## ends.
+func _test_darker_level() -> void:
+	await _campaign_level("dead_zone/2")
+	var run: LevelRun = App.run
+	check(run != null and run.context.config.darkness > 0.0, "The Hush starts, with its darkness")
+	if run == null:
+		return
+	# The run's WorldEnvironment sets its world's environment.
+	var env: Environment = run.get_world_3d().environment
+	var plain: Environment = run.world.skin.make_environment()
+	var light: float = ZoneSkin.scenery_light_for(run.context.config.darkness)
+	check(env != null and is_equal_approx(env.background_energy_multiplier, plain.background_energy_multiplier * ZoneSkin.energy_factor(light))
+		and is_equal_approx(ZoneSkin.scenery_light_now, light), "its run's scenery is darker (%.2f)" % ZoneSkin.scenery_light_now)
+	# The next level's run sets its own light, and The Hush's, freed after it started, leaves it alone.
+	await _campaign_level("golden/1")
+	check(ZoneSkin.scenery_light_now == 1.0, "the next level has its zone's own light (%.2f)" % ZoneSkin.scenery_light_now)
+	await _campaign_level("dead_zone/2")
+	App.show_title()
+	await physics_frames(2)
+	check(ZoneSkin.scenery_light_now == 1.0, "and the light comes back when the run ends")
 
 
 func get_tree_paused() -> bool:
