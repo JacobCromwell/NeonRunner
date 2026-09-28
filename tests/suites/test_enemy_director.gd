@@ -32,6 +32,7 @@ func run() -> void:
 	await _test_exclusive()
 	await _test_attack_on_carries_on()
 	await _test_many()
+	await _test_many_with_gaps()
 	await _test_campaign()
 
 
@@ -477,24 +478,91 @@ func _test_attack_on_carries_on() -> void:
 ## one of these five never gets a turn.)
 func _test_many() -> void:
 	var w: RunWorld = _world(true)
+	var made: Array = _random_dummies(w, 7, false)
+	var dummies: Array[Enemy] = made[0]
+	var longest: float = made[1]
+	await _run(w, 60.0)
+	var overlaps: Vector2i = _all_overlaps(dummies)
+	check(overlaps == Vector2i.ZERO, "no two types' big attacks overlap (%d, %d during shots)" % [overlaps.x, overlaps.y])
+	var worst: float = 0.0
+	var fewest: int = 1000
+	for d: Enemy in dummies:
+		fewest = mini(fewest, int(d.call(&"count", "start")))
+		for wait: float in d.get(&"waits"):
+			worst = maxf(worst, wait)
+	check(fewest >= 5, "every type keeps getting turns (the fewest attacked %d times)" % fewest)
+	check(worst <= 4.0 * longest + 0.1, "no wait is longer than one attack of each other type (%.2f s, bound %.2f s)"
+		% [worst, 4.0 * longest + 0.1])
+	await sim.free_world(w)
+
+
+## The same, with pauses in each type's asks (not ready for a moment) and stalls when its turn comes
+## (not quite ready yet), all shorter than the grace: still no overlap and no deadlock, every type keeps
+## getting turns, and no wait is longer than one attack and one hesitation of each other type, plus one
+## of its own.
+func _test_many_with_gaps() -> void:
+	var w: RunWorld = _world(true)
+	var made: Array = _random_dummies(w, 11, true)
+	var dummies: Array[Enemy] = made[0]
+	var longest: float = made[1]
+	var slowest: float = made[2]
+	await _run(w, 60.0)
+	var overlaps: Vector2i = _all_overlaps(dummies)
+	check(overlaps == Vector2i.ZERO, "with gaps: no two types' big attacks overlap (%d, %d during shots)" % [overlaps.x, overlaps.y])
+	var worst: float = 0.0
+	var fewest: int = 1000
+	var hesitations: int = 0
+	for d: Enemy in dummies:
+		fewest = mini(fewest, int(d.call(&"count", "start")))
+		hesitations += int(d.call(&"count", "stalled"))
+		for wait: float in d.get(&"waits"):
+			worst = maxf(worst, wait)
+	var bound: float = 4.0 * (longest + slowest) + slowest + 0.1
+	check(slowest < w.rules.turn_place_grace and hesitations >= 5 and fewest >= 5,
+		"with gaps: every type keeps getting turns (the fewest attacked %d times; %d stalls when a turn came)" % [fewest, hesitations])
+	check(worst <= bound, "with gaps: no wait is longer than one attack and one hesitation of each other type (%.2f s, bound %.2f s)"
+		% [worst, bound])
+	await sim.free_world(w)
+
+
+## Five test enemies of different types on random schedules (seeded), every other one firing a shot,
+## and with `gaps`, pauses and stalls of up to a second every second or two. Returns [the enemies, the
+## longest attack with its shot's flight, the longest pause or stall].
+func _random_dummies(w: RunWorld, seed_value: int, gaps: bool) -> Array:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 7
+	rng.seed = seed_value
 	var dummies: Array[Enemy] = []
 	var longest: float = 0.0
+	var slowest: float = 0.0
 	for i: int in 5:
 		var p := {"first": rng.randf_range(0.0, 1.0), "interval": rng.randf_range(0.1, 2.0),
 			"warning": rng.randf_range(0.3, 1.0), "attack": rng.randf_range(0.1, 0.8),
 			"shot": rng.randf_range(0.3, 0.9) if i % 2 == 0 else 0.0}
 		longest = maxf(longest, float(p["warning"]) + float(p["attack"])
 			+ (float(p["shot"]) + 0.2 if float(p["shot"]) > 0.0 else 0.0))
+		if gaps:
+			var pauses: Array = []
+			var stalls: Array = []
+			var at: float = rng.randf_range(0.5, 3.0)
+			while at < 60.0:
+				var span: float = rng.randf_range(0.2, 1.0)
+				(pauses if rng.randf() < 0.5 else stalls).append([at, at + span])
+				slowest = maxf(slowest, span)
+				at += span + rng.randf_range(0.5, 2.5)
+			p["pauses"] = pauses
+			p["stalls"] = stalls
 		dummies.append(_dummy(w, "type%d" % i, p))
-	await _run(w, 60.0)
+	return [dummies, longest, slowest]
+
+
+## Overlaps between the attacks of these test enemies (x), and warnings started while another type's
+## shot was still on its way (y): a shot's flight belongs to its attack.
+static func _all_overlaps(dummies: Array[Enemy]) -> Vector2i:
 	var overlaps: int = 0
 	var shot_overlaps: int = 0
 	for i: int in dummies.size():
 		for j: int in range(i + 1, dummies.size()):
 			overlaps += _overlaps(dummies[i], dummies[j]).size()
-		# A shot's flight belongs to its attack: nobody else's warning starts before it has passed.
 		var shot: float = float(dummies[i].get(&"shot"))
 		if shot <= 0.0:
 			continue
@@ -508,17 +576,7 @@ func _test_many() -> void:
 					if g[0] == "start" and float(g[1]) > float(h[1]) + 0.0001 \
 							and float(g[1]) < float(h[1]) + shot - 0.02:
 						shot_overlaps += 1
-	check(overlaps == 0 and shot_overlaps == 0, "no two types' big attacks overlap (%d, %d during shots)" % [overlaps, shot_overlaps])
-	var worst: float = 0.0
-	var fewest: int = 1000
-	for d: Enemy in dummies:
-		fewest = mini(fewest, int(d.call(&"count", "start")))
-		for wait: float in d.get(&"waits"):
-			worst = maxf(worst, wait)
-	check(fewest >= 5, "every type keeps getting turns (the fewest attacked %d times)" % fewest)
-	check(worst <= 4.0 * longest + 0.1, "no wait is longer than one attack of each other type (%.2f s, bound %.2f s)"
-		% [worst, 4.0 * longest + 0.1])
-	await sim.free_world(w)
+	return Vector2i(overlaps, shot_overlaps)
 
 
 # --- The campaign -------------------------------------------------------------------------------
