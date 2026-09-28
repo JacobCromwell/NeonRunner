@@ -1,8 +1,9 @@
 extends TestSuite
 ## The Floating Head, the Neon City's boss (GDD §10; task E1: E1a's part here, the face-off's in
-## test_floating_head_faceoff.gd):
-## - its data and its preview: the City's slot keeps its placeholder card until the fight is done,
-##   while debug builds play it with --boss=city_boss (BossDef.preview_scene);
+## test_floating_head_faceoff.gd, the stomp windows' in test_floating_head_stomps.gd, the propaganda,
+## the defeat and the campaign's flow in test_floating_head_defeat.gd):
+## - its data and its route in: the City's boss step plays the fight (task E1d), and debug builds'
+##   --boss=city_boss plays that step;
 ## - its build: the scene makes a FloatingHead, the ship fits the street at 3, 5 and 6 lanes, a boss's
 ##   body with its hitboxes (the hull solid, a weak point over each lane near its middle and the
 ##   crown's deck off until it's pinned), the face dark before the reveal, only its attacks and weak
@@ -24,7 +25,7 @@ var def: BossDef
 
 func run() -> void:
 	sim = RunSim.new(tree, tuning)
-	def = (load(BOSS_PATH) as BossDef).preview()
+	def = load(BOSS_PATH) as BossDef
 	_test_data()
 	if def == null:
 		return
@@ -37,7 +38,7 @@ func run() -> void:
 	await _test_same_every_attempt()
 	await _test_blast_rules()
 	await _test_reveal_and_later_runs()
-	await _test_preview_route()
+	await _test_route_in()
 
 
 # --- Helpers -------------------------------------------------------------------------------
@@ -166,11 +167,14 @@ func _lock_fair(layout: LevelLayout, t: FloatingHeadTuning, lock: Dictionary, la
 func _test_data() -> void:
 	var slot := load(BOSS_PATH) as BossDef
 	check(slot.id == &"city_boss" and slot.display_name == "Floating Head", "the City's boss slot holds the Floating Head")
-	check(not slot.is_built(), "the fight isn't in the campaign yet: its slot keeps the placeholder card until it's done (E1d)")
-	check(def != null and def.is_built() and def.scene == slot.preview_scene, "its preview plays the fight's scene")
+	check(slot.is_built() and slot.scene == "res://scenes/bosses/floating_head.tscn" and slot.preview() == null,
+		"the fight is built: the City's boss step plays its scene, with no preview left (E1d)")
+	var made: BossEncounter = BossEncounter.create(slot)
+	check(made is FloatingHead, "its scene makes the Floating Head's encounter")
+	if made != null:
+		made.free()
 	if def == null:
 		return
-	check(slot.preview().phases == slot.phases and slot.preview().tuning == slot.tuning, "the preview shares the slot's data")
 	var t := def.tuning as FloatingHeadTuning
 	check(t != null and t.resource_path == "res://data/bosses/city_boss_tuning.tres", "its numbers are its own tuning resource")
 	check(t.first_run_seconds >= 15.0 and t.first_run_seconds <= 20.0,
@@ -610,26 +614,31 @@ func _test_reveal_and_later_runs() -> void:
 		await sim.free_world(world)
 
 
-# --- The preview route ------------------------------------------------------------------------------
+# --- The route in -----------------------------------------------------------------------------------
 
-## Debug builds play the fight with --boss=city_boss as quick play; the campaign's step still shows
-## the placeholder card.
-func _test_preview_route() -> void:
+## The campaign's boss step plays the fight (task E1d: no placeholder card), and debug builds'
+## --boss=city_boss plays that step, through the campaign's flow.
+func _test_route_in() -> void:
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	tree.root.add_child(main)
 	await tree.process_frame
 	var saved: Profile = App.profile
 	App.profile = Profile.new()
-	check(App.call(&"_start_boss_arg", "city_boss", PackedStringArray()), "--boss=city_boss starts the fight")
+	App.play_step(App.campaign.step("city/boss"))
 	await physics_frames(3)
 	var run: LevelRun = App.run
-	check(run != null and run.encounter is FloatingHead and run.context.mode == RunContext.Mode.QUICK
-		and run.context.boss.id == &"city_boss", "as quick play, on the preview (nothing is recorded)")
+	check(not App.screen is SlotScreen and run != null and run.encounter is FloatingHead
+		and run.context.mode == RunContext.Mode.CAMPAIGN and run.context.step.id == "city/boss",
+		"the campaign's boss step starts the fight, no placeholder card (E1d)")
 	if run != null:
 		check(run.world.skin is CitySkin and run.hud.boss_bar.visible, "in the City's look, with the boss bar")
-	App.play_step(App.campaign.step("city/boss"))
+	App.show_title()
 	await tree.process_frame
-	check(App.screen is SlotScreen and App.run == null, "the campaign's step still shows the placeholder card")
+	check(App.call(&"_start_boss_arg", "city_boss", PackedStringArray()), "--boss=city_boss starts the fight")
+	await physics_frames(3)
+	run = App.run
+	check(run != null and run.encounter is FloatingHead and run.context.mode == RunContext.Mode.CAMPAIGN,
+		"as the campaign's step (the full flow)")
 	App.show_title()
 	await tree.process_frame
 	App.profile = saved

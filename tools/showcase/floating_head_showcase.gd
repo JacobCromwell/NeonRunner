@@ -28,6 +28,14 @@ extends Node3D
 ##             the way up (--phase=0 the ramp, 2 the pads and the ceiling)
 ##   mouth     its face from the runner's eye height at the drop station, the jaw opening and closing
 ##             and its eyes charging in turn (the warnings, up close)
+##   slogans   its face from the runner's eye height with each propaganda slogan on its caption band in
+##             turn (the placeholder slogans), the last one breaking up in the defeat's glitch
+##   defeat    the last phase through the run camera (--phase=2 by default): a runner who reads the
+##             fight baits the first marked tower, rides the ceiling and stomps the last weak point; the
+##             defeat plays out (the face glitches, the propaganda cuts out, it lurches up, loses power
+##             and crashes into the street ahead) and the runner runs across the wreck
+##   wreck     the defeat on its own: in the last phase, it's beaten as soon as it drops in front of the
+##             runner (as by weapons), then glitches, falls and crashes; the runner runs across the wreck
 ## Options: --lanes=N (3, 5 or 6; 3 by default), --seconds=S (the first run's length in `reveal`),
 ## --pattern=low,drag,high,drop (the face-off's attacks), --towers=off (no marked towers),
 ## --towers-after=N (the attacks it shows before it takes aim at a tower; 0 baits the first tower at
@@ -39,7 +47,10 @@ extends Node3D
 ## --towers-after=0, the bait and the pin about 85-125, then the stomp window: the ramp (phase 0),
 ## the wall jump (1) or the ceiling (2) about 105-140; faceoff with --pattern=drop,low, the drop
 ## about 78-100; pinned and window, the next marked tower falling about 105-118 (with the ceiling's
-## pads and the ceiling lowering in at --phase=2) and the window open from about 120.
+## pads and the ceiling lowering in at --phase=2) and the window open from about 120; slogans, one
+## slogan every 25 frames from about 10; defeat, the stomp about 95-105, the glitch and the fall to about
+## 140, the crash and the run across the wreck about 140-175; wreck, the defeat from about 50, the crash
+## about 85 and the run across the wreck about 85-120.
 
 const BOSS_PATH: String = "res://data/bosses/city_boss.tres"
 
@@ -63,6 +74,13 @@ func _ready() -> void:
 	var phase: int = 0
 	var wall: int = 0
 	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--scenario="):
+			scenario = arg.get_slice("=", 1)
+	if scenario in ["defeat", "wreck"]:
+		# The last phase (a checkpoint's start), its first marked tower baited at once.
+		phase = 2
+		towers_after = 0
+	for arg: String in OS.get_cmdline_user_args():
 		var v: String = arg.get_slice("=", 1)
 		if arg.begins_with("--scenario="):
 			scenario = v
@@ -80,12 +98,12 @@ func _ready() -> void:
 			phase = int(v)
 		elif arg.begins_with("--wall="):
 			wall = -1 if v == "left" else 1
-	var def: BossDef = (load(BOSS_PATH) as BossDef).preview()
+	var def: BossDef = (load(BOSS_PATH) as BossDef).duplicate() as BossDef
 	var t: FloatingHeadTuning = (def.tuning as FloatingHeadTuning).duplicate() as FloatingHeadTuning
 	if scenario == "reveal":
 		# A short run, so the reveal comes soon.
 		t.first_run_seconds = reveal_seconds
-	elif scenario in ["faceoff", "fallback", "missed", "pinned", "window"]:
+	elif scenario in ["faceoff", "fallback", "missed", "pinned", "window", "defeat", "wreck"]:
 		# Straight to the face-off.
 		t.first_run_seconds = 0.0
 		t.later_runs = 0
@@ -117,7 +135,7 @@ func _ready() -> void:
 	world.player.god_mode = true
 	world.player.grapples = 1_000_000
 	head.setup(world, ctx, arena)
-	if scenario in ["faceoff", "fallback", "missed"]:
+	if scenario in ["faceoff", "fallback", "missed", "defeat", "wreck"]:
 		bot = FloatingHeadBot.new(head, scenario != "fallback")
 		bot.wrong_route = scenario == "missed"
 		bot.wall_side = wall
@@ -142,14 +160,14 @@ func _ready() -> void:
 			_cam.far = 600.0
 			add_child(_cam)
 			_cam.make_current()
-		"stern", "pinned", "mouth", "window":
+		"stern", "pinned", "mouth", "window", "slogans":
 			_cam = Camera3D.new()
 			_cam.fov = 55.0
 			_cam.far = 600.0
 			add_child(_cam)
 			_cam.make_current()
 	world.start()
-	if scenario in ["model", "below", "stern", "mouth"]:
+	if scenario in ["model", "below", "stern", "mouth", "slogans"]:
 		# The runner stands still: nothing moves but the ship's own parts.
 		world.player.running = false
 
@@ -171,9 +189,22 @@ func _physics_process(delta: float) -> void:
 			var k: float = fmod(_t, 4.0)
 			head.body.jaw_open = clampf(k / 0.8, 0.0, 1.0) * clampf((2.0 - k) / 0.4, 0.0, 1.0)
 			head.body.eye_charge = clampf((k - 2.2) / 1.0, 0.0, 1.0) * (1.0 if k < 3.8 else 0.0)
+		"slogans":
+			# Each slogan in turn, 2.5 s apiece; after the last, the defeat's glitch breaks it up.
+			_pose_still(Vector3(0.0, head.tuning.face_height, head.tuning.face_ahead - 6.0), 1.0)
+			var slogans: PackedStringArray = head.tuning.slogans
+			var i: int = int(_t / 2.5)
+			head.body.show_slogan(slogans[mini(i, slogans.size() - 1)] if not slogans.is_empty() else "")
+			head.body.caption = clampf(fmod(_t, 2.5) / 0.25, 0.0, 1.0) if i < slogans.size() else 1.0
+			head.body.glitch = 1.0 if i >= slogans.size() else 0.0
 		"bombing":
 			_dodge()
-		"faceoff", "fallback", "missed":
+		"faceoff", "fallback", "missed", "defeat":
+			bot.step()
+		"wreck":
+			# Beaten as soon as it's in front of the runner, as weapons would do it.
+			if head.step == FloatingHead.Step.FACE_OFF and head.state == BossEncounter.State.FIGHT:
+				head.damage(head.health, &"stomp")
 			bot.step()
 		"pinned", "window":
 			_pin_now()
@@ -194,7 +225,7 @@ func _process(_delta: float) -> void:
 		"below":
 			_cam.global_position = head.body.global_position + Vector3(s.width * 0.9, -5.5, 10.0)
 			_cam.look_at(head.body.global_position + Vector3(0.0, 0.0, -s.length * 0.4), Vector3.UP)
-		"stern", "mouth":
+		"stern", "mouth", "slogans":
 			_cam.global_position = Vector3(0.0, 2.0, world.player.global_position.z + 4.0)
 			_cam.look_at(head.body.screen_world() + Vector3(0.0, -2.0, 0.0), Vector3.UP)
 		"pinned":
