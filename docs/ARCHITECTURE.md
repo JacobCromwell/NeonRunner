@@ -1028,7 +1028,7 @@ the music files (seamless loops, lengths, tempos, size budgets), the Music autol
 death dip on its players' levels and the bus's low-pass (headless runs never start a player), and the
 run's music hooks through the App. The runner frees
 anything a suite leaves in the tree, gives suites a fresh, unsaved profile, reports a suite that fails
-to load, and ends a stuck run after 600 s of real time.
+to load, and ends a stuck run after 1200 s of real time.
 
 ## Review tools
 
