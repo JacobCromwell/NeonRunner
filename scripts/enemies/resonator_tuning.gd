@@ -90,7 +90,7 @@ extends EnemyTuning
 @export_range(0.2, 2.0, 0.05, "suffix:s") var clear_after_seconds: float = 0.6
 ## How far past its earliest point the generator looks for a clear meeting stretch for a pulse (it
 ## hovers and waits meanwhile). A pulse that finds none is left out.
-@export_range(0.0, 400.0, 5.0, "suffix:m") var pulse_slack: float = 120.0
+@export_range(0.0, 600.0, 5.0, "suffix:m") var pulse_slack: float = 240.0
 ## DESIGN-TBD: a Resonator that can't fit this many pulses is left out.
 @export_range(1, 8) var min_pulses: int = 2
 ## Seconds between one visit's end (its last pulse, plus turn_wait_max for waits) and the next
