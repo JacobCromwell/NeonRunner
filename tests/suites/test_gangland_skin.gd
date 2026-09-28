@@ -36,6 +36,7 @@ func run() -> void:
 	check(zone != null and zone.skin is GanglandSkin, "the Gangland zone uses the gangland skin")
 	check(skin.enemy_variant == &"scavenger" and GanglandSkin.new().enemy_variant == &"scavenger",
 		"gangland enemies wear the scavenger look")
+	check(CyborgSuit.look_for(skin.enemy_variant) == CyborgSuit.BRUTE, "gangland cyborgs are the Broadcast Brute")
 	start_error_count()
 	var env: Environment = skin.make_environment()
 	check(env != null and env.sky != null and env.glow_enabled and env.fog_enabled,

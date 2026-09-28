@@ -4,19 +4,19 @@ A neon 3D runner for PC (Steam), Android, iOS and a web demo. You run lanes, sid
 through zones full of enemies, and a single hit ends the run. Built with Godot 4.7.2 and GDScript only.
 
 **Status:** the game is built around everything designed so far:
-- the whole campaign structure: six zones and 15 levels, three of the zones still in the grey-box look
+- the whole campaign structure: six zones and 15 levels, two of the zones still in the grey-box look
 - seven enemy types, plus fence generators
 - the shop, power-ups and economy
 - every screen and the HUD
-- three zone looks (the Neon City, Gangland and the Marketplace), generated music and sound effects
+- four zone looks (the Neon City, Gangland, the Marketplace and Corporate), generated music and sound effects
 - all three build flavors
 
 Boss fights have their framework (they play in the runner, with phases, a health bar, checkpoints,
 stars and payouts), but each zone's boss is still a placeholder slot until it's built on it; a test
 boss shows the framework at work. The Neon City's Floating Head is being built: its ship and face, its
-entrance, its bombing run and the reveal of its face so far (debug builds play it with
-`--boss=city_boss`; the campaign keeps its placeholder slot until it's done). The short cinematics
-between levels are placeholder slots too.
+entrance, its bombing run, the reveal of its face and the face-off (eye lasers, the cyborg drop and the
+marked towers that pin it) so far (debug builds play it with `--boss=city_boss`; the campaign keeps its
+placeholder slot until it's done). The short cinematics between levels are placeholder slots too.
 Every placeholder decision is listed in `docs/OPEN_QUESTIONS.md`.
 
 Docs: `docs/GDD_CHECKPOINT.md` (the design, the authority), `docs/OPEN_QUESTIONS.md` (open decisions and
@@ -45,7 +45,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--god` | Hits don't kill (falls still do) |
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
-| `--skin=gangland` | Quick play in another zone's look: `city`, `gangland` or `marketplace` |
+| `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `corporate` or `corporate_plaza` (Corporate's plaza floor) |
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`) |
 | `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`, ...) with the full game flow once it's built, and as quick play while it's being built (`--boss=city_boss`: the Floating Head so far). Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
@@ -76,7 +76,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 - **Campaign:** 15 levels in six zones, about 35 minutes of flawless running: the Neon City (the web demo's
   zone) and Gangland with three levels each, the Marketplace, Corporate and the Dead Zone with two, and the
   Golden Zone with three.
-  Each zone has a boss slot and cinematic slots; the last three zones use the grey-box look until their skins
+  Each zone has a boss slot and cinematic slots; the last two zones use the grey-box look until their skins
   are made. Each level introduces about one new thing (GDD §5), where its data says (`feature_starts`):
   1. City 1 *Rooftop Rush*: gaps, fences, walls and signs, then cyborgs late in the level.
   2. City 2 *Skyway*: ceilings and anti-grav pads.
@@ -128,8 +128,11 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   stomped, shows it all (it offers a shield in its second phase). The Floating Head, the Neon City's
   boss, is being built on it: a giant ship whose stern is a propaganda face, roaring in overhead, a
   bombing run where a searchlight hunts the runner and bombs fall where it lingers (a red target
-  circle, an alarm and a falling whistle), and the reveal of its face (`--boss=city_boss`). The other
-  five zone bosses are still to be built.
+  circle, an alarm and a falling whistle), the reveal of its face, and the face-off: its eyes glow and
+  whine, then laser beams sweep the lanes low (jump) or high (slide) or drag down the runner's lane
+  (switch lanes), its mouth drops cyborgs onto the trucks ahead, and a laser baited into a marked tower
+  topples it onto the ship to pin it (`--boss=city_boss`). The other five zone bosses are still to be
+  built.
 - **Economy:** credits in four denominations, level score and stars, and a shop. Items are five permanent
   power-ups (weapon line, claws, juggernaut dash, magnet, slow time) and three breakables (armor, shield,
   grapple hook). After a death you're offered a revive (an item, or a rewarded ad on mobile). Net worth
@@ -140,7 +143,10 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     a gold cybernetic arm and a copper ocular implant
   - the cyborgs: ragged, strung-out gangsters whose whole head is a beat-up CRT television, its screen
     their cold white LED face (calm, aiming, a shocked "O", ERR when defeated), with a backpack cabled
-    into the head and a scavenged arm cannon; hosts glitch purple and wear purple veins
+    into the head and a scavenged arm cannon; hosts glitch purple and wear purple veins. Each zone has
+    its own version of the same unit: Gangland's caged Broadcast Brute with a pipe gun, the
+    Marketplace's gilded Casino Mob Enforcer with a drum-fed gun, Corporate's Wide-Aspect VR Runner, the
+    Dead Zone's burned-out TV head, and the Golden Zone's ceremonial enforcer wearing the cult's emblem
   - the City, Gangland and Marketplace zone looks, with the cult's feed on screens and its emblem hidden
     in ads in all three
   - neon UI screens and HUD
@@ -197,7 +203,7 @@ against its bursts, with the recency curve on and off:
 
 ## Tests
 
-`tools/godot.sh test` runs 33 suites with about 2,900,000 checks:
+`tools/godot.sh test` runs 34 suites with about 2,900,000 checks:
 - **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds, and every campaign level
   (each with every feature it lists, on its own seed and on others). Under every ceiling the floor may be
   dangerous, so each one's pads, landing zone and a floor route that never takes the pad are checked, and
@@ -216,18 +222,23 @@ against its bursts, with the recency curve on and off:
 - **Bosses:** the boss framework with the test boss: phases, the checkpoint, no escalation, the arena,
   the damage rules on a boss, and the flow around a fight; the Floating Head's fight so far at 3, 5 and 6
   lanes: its build and hitboxes, bombs that fall only after their warning, a runner who keeps moving
-  always escaping them, and every attempt playing out the same way.
+  always escaping them, the face-off's lasers (each warned, and escaped without god mode by a runner who
+  reads them), its cyborg drop, a baited or fallback tower pinning it, and every attempt playing out the
+  same way.
 - **Screens:** every screen at desktop and touch sizes.
 - **The runner:** Razor Echo's poses on every surface, the coat's panels (never through the legs or the
   ground), the budgets, the power-up looks, and its copper glow kept clear of every hazard colour.
-- **The cyborgs' look:** hitboxes pinned to their sizes, the budgets, the colour rules (only the cold white
-  face, the red charge-up and a host's purple glow), faces that still differ a few pixels across, and ERR
-  before a defeated cyborg's screen goes dark.
-- **Zone skins:** all three skins, including a check that none adds collision, and the build budget; for
-  Gangland and the Marketplace the colour rule (only hazards glow in hazard colours) and ceilings a runner
-  can read upside down, for the Marketplace gaps that read as holes, its clear play space and walls and
-  shop windows, and for all three where the cult's emblem hides and where its feed plays, never in the
-  wall-run band (the feed's shared material has a suite of its own).
+- **The cyborgs' look:** in every zone's look, hitboxes pinned to their sizes and no look bigger than the
+  base, the budgets, every weapon ending in the same red charge-up, the colour rules (only the cold white
+  face, the red charge-up and a host's purple glow), faces that still differ a few pixels across (the VR
+  visor's too), and ERR before a defeated cyborg's screen goes dark.
+- **Zone skins:** all four skins, including a check that none adds collision, and the build budget; for
+  Gangland, the Marketplace and Corporate the colour rule (only hazards glow in hazard colours) and
+  ceilings a runner can read upside down, for the Marketplace and Corporate gaps that read as holes and a
+  clear play space and calm walls, the Marketplace's shop windows, Corporate's brand colour (clear of the
+  hazards and the UI's accents), its carriages lined up across chunk cuts, every kind of ceiling at one to
+  six lanes and a boss arena's clear sky, and for all four where the cult's emblem hides and where its
+  feed plays, never in the wall-run band (the feed's shared material has a suite of its own).
 - **Sounds and music:** every sound and track loads (the tracks loop seamlessly, one per zone), the death dip
   and how it combines with the pause duck, and the level-complete riff in each zone's key.
 - **Boot:** the real game scene.

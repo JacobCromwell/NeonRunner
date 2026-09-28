@@ -11,8 +11,16 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##   bomb_blast        the bomb going off: a crack, a deep boom and debris
 ##   head_reveal       its face screen powering on (GDD §10's reveal): a picture tube's thunk and whine,
 ##                     a burst of static, then a distorted loudspeaker blare
-## Later steps of the fight (task E1) add the eye lasers, the cyborg drop, the shriek, the propaganda
-## voice and the crash.
+##   head_laser_charge the eyes glowing up before a laser (GDD §10, proposed: "the eyes glow and whine"):
+##                     a rising, throbbing electric whine that throbs faster, ending on a click
+##   head_laser_fire   the twin beams firing: a zap down into a harsh, sizzling buzz
+##   head_mouth_open   the mouth grinding open for the cyborg drop (its warning): gears ratcheting,
+##                     a pneumatic hiss and a heavy clank as the jaw locks open
+##   cyborg_drop_land  a dropped cyborg landing on a truck roof: a thud and a metal clatter
+##   tower_crack       the laser clipping a marked tower (its fall's warning): a sharp crack, then the
+##                     long groan of concrete and steel giving way
+##   tower_crash       the tower slamming onto the ship: a huge crash, crumpling metal and falling debris
+## Later steps of the fight (task E1) add the shriek, the propaganda voice and the crash of its defeat.
 
 ## A1 and E2 (Hz): the fight's key, under the City's music.
 const A1: float = 55.0
@@ -27,6 +35,12 @@ func sounds() -> Dictionary:
 		"bomb_whistle": _bomb_whistle,
 		"bomb_blast": _bomb_blast,
 		"head_reveal": _head_reveal,
+		"head_laser_charge": _head_laser_charge,
+		"head_laser_fire": _head_laser_fire,
+		"head_mouth_open": _head_mouth_open,
+		"cyborg_drop_land": _cyborg_drop_land,
+		"tower_crack": _tower_crack,
+		"tower_crash": _tower_crash,
 	}
 
 
@@ -179,5 +193,150 @@ func _head_reveal() -> PackedFloat32Array:
 	DSP.filter(blare, &"lowpass", 3500.0)
 	DSP.adsr(blare, 0.03, 0.2, 0.75, 0.2)
 	DSP.mix(b, blare, 1.05, 1.0)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## The eyes charging a laser (its warning, laser_charge_seconds at the first phase's pace): two detuned
+## saws rising from a growl to a scream, throbbing faster and faster like a capacitor filling, over a
+## buzzing floor, cut off by a click as it's ready. The same every time.
+func _head_laser_charge() -> PackedFloat32Array:
+	var rng := _rng(407)
+	var d: float = 1.0
+	var n: int = int(d * RATE)
+	var rise := func(u: float) -> float: return DSP.sweep(260.0, 1500.0, pow(u, 1.4))
+	var b := DSP.osc(d, rise, &"saw")
+	DSP.mix(b, DSP.osc(d, func(u: float) -> float: return float(rise.call(u)) * 1.007, &"saw"), 0.0, 0.8)
+	DSP.mix(b, DSP.osc(d, func(u: float) -> float: return float(rise.call(u)) * 2.0, &"square"), 0.0, 0.18)
+	DSP.filter(b, &"bandpass", 1400.0, 0.7)
+	DSP.drive(b, 2.2)
+	# The throb: a tremolo speeding up from 7 to 26 beats a second.
+	var phase: float = 0.0
+	for i: int in n:
+		var u: float = float(i) / n
+		phase += TAU * lerpf(7.0, 26.0, u) / RATE
+		b[i] *= (0.55 + 0.45 * sin(phase)) * (0.35 + 0.65 * u)
+	var floor_buzz := DSP.osc(d, func(_u: float) -> float: return A1 * 2.0, &"saw")
+	DSP.filter(floor_buzz, &"lowpass", 400.0)
+	DSP.drive(floor_buzz, 3.0)
+	DSP.shape(floor_buzz, 0.1, 0.05)
+	DSP.mix(b, floor_buzz, 0.0, 0.35)
+	DSP.mix(b, DSP.metal_hit(0.06, 2400.0, 0.02, rng), d - 0.07, 0.6)
+	DSP.shape(b, 0.02, 0.01)
+	DSP.crush(b, 9, 20000.0)
+	return b
+
+
+## The twin beams firing: a zap diving from a shriek into a harsh buzz, with a hot sizzle on top.
+func _head_laser_fire() -> PackedFloat32Array:
+	var rng := _rng(408)
+	var d: float = 1.0
+	var b := DSP.buffer(d)
+	var zap := DSP.osc(0.16, func(u: float) -> float: return DSP.sweep(3200.0, 180.0, pow(u, 0.5)), &"square")
+	DSP.shape(zap, 0.002, 0.03)
+	DSP.mix(b, zap, 0.0, 0.7)
+	var buzz := DSP.osc(d, func(u: float) -> float: return 110.0 * (1.0 + 0.02 * sin(TAU * 11.0 * u)), &"saw")
+	DSP.mix(buzz, DSP.osc(d, func(_u: float) -> float: return 165.2, &"square"), 0.0, 0.5)
+	DSP.filter(buzz, &"lowpass", 2200.0)
+	DSP.drive(buzz, 4.0)
+	DSP.adsr(buzz, 0.02, 0.2, 0.7, 0.3)
+	DSP.mix(b, buzz, 0.04, 0.8)
+	var sizzle := DSP.noise(d, rng)
+	DSP.filter(sizzle, &"bandpass", 4200.0, 0.9)
+	DSP.adsr(sizzle, 0.01, 0.3, 0.55, 0.3)
+	DSP.mix(b, sizzle, 0.0, 0.5)
+	DSP.mix(b, _crackle(0.8, 24, 0.5, 5200.0, rng), 0.05, 0.35)
+	DSP.crush(b, 8, 18000.0)
+	return b
+
+
+## The mouth opening for the cyborg drop (its warning): gears ratcheting under a grinding drone, a
+## pneumatic hiss, and a heavy clank as the jaw locks open.
+func _head_mouth_open() -> PackedFloat32Array:
+	var rng := _rng(409)
+	var d: float = 0.85
+	var b := DSP.buffer(d)
+	var grind := DSP.noise(0.7, rng)
+	DSP.filter(grind, &"lowpass", 700.0)
+	DSP.drive(grind, 3.0)
+	DSP.mix(grind, DSP.osc(0.7, func(u: float) -> float: return DSP.sweep(62.0, 48.0, u), &"saw"), 0.0, 0.5)
+	DSP.adsr(grind, 0.04, 0.1, 0.8, 0.12)
+	DSP.mix(b, grind, 0.0, 0.8)
+	for k: int in 9:
+		DSP.mix(b, DSP.metal_hit(0.05, 700.0 + 60.0 * (k % 3), 0.015, rng), 0.03 + k * 0.065, 0.45)
+	var hiss := DSP.noise(0.45, rng)
+	DSP.filter(hiss, &"highpass", 2800.0)
+	DSP.shape(hiss, 0.02, 0.3)
+	DSP.mix(b, hiss, 0.3, 0.4)
+	DSP.mix(b, DSP.metal_hit(0.25, 180.0, 0.07, rng), 0.62, 1.0)
+	DSP.mix(b, DSP.kick(0.2, 110.0, 45.0, rng), 0.62, 0.7)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## A dropped cyborg landing on a truck roof: a heavy thud under a ringing clank of its metal feet on the
+## roof (loud in the middle frequencies, so a phone's speaker carries it), a puff of grit.
+func _cyborg_drop_land() -> PackedFloat32Array:
+	var rng := _rng(410)
+	var b := DSP.buffer(0.4)
+	DSP.mix(b, DSP.kick(0.3, 150.0, 50.0, rng), 0.0, 0.7)
+	DSP.mix(b, DSP.metal_hit(0.22, 620.0, 0.06, rng), 0.0, 1.0)
+	DSP.mix(b, DSP.metal_hit(0.16, 1300.0, 0.04, rng), 0.012, 0.7)
+	DSP.mix(b, DSP.metal_hit(0.1, 2100.0, 0.03, rng), 0.03, 0.4)
+	var grit := DSP.noise(0.25, rng)
+	DSP.filter(grit, &"bandpass", 2500.0, 0.8)
+	DSP.envelope(grit, 0.003, 0.07)
+	DSP.mix(b, grit, 0.0, 0.55)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## The laser clipping a marked tower (the warning that it will fall): a sharp crack of concrete, then a
+## long groan of steel and stone giving way, sagging lower, with a steel beam creaking over it (the
+## crack and the creak carry on a phone's speaker).
+func _tower_crack() -> PackedFloat32Array:
+	var rng := _rng(411)
+	var d: float = 1.3
+	var b := DSP.buffer(d)
+	var crack := DSP.noise(0.2, rng)
+	DSP.filter(crack, &"highpass", 1200.0)
+	DSP.envelope(crack, 0.001, 0.04)
+	DSP.mix(b, crack, 0.0, 1.0)
+	var snap := DSP.noise(0.25, rng)
+	DSP.filter(snap, &"bandpass", 2000.0, 1.0)
+	DSP.envelope(snap, 0.001, 0.09)
+	DSP.mix(b, snap, 0.0, 0.9)
+	DSP.mix(b, DSP.kick(0.3, 160.0, 60.0, rng), 0.0, 0.55)
+	DSP.mix(b, _crackle(0.5, 30, 0.15, 3000.0, rng), 0.02, 0.6)
+	var groan := DSP.osc(1.1, func(u: float) -> float: return DSP.sweep(95.0, 58.0, u) * (1.0 + 0.03 * sin(TAU * 4.0 * u)), &"saw")
+	DSP.mix(groan, DSP.osc(1.1, func(u: float) -> float: return DSP.sweep(143.0, 84.0, u), &"saw"), 0.0, 0.6)
+	DSP.filter(groan, &"lowpass", 1100.0)
+	DSP.drive(groan, 3.0)
+	DSP.adsr(groan, 0.15, 0.2, 0.8, 0.3)
+	DSP.mix(b, groan, 0.15, 0.7)
+	var creak := DSP.osc(1.0, func(u: float) -> float: return DSP.sweep(820.0, 520.0, u) * (1.0 + 0.02 * sin(TAU * 9.0 * u)), &"saw")
+	DSP.filter(creak, &"bandpass", 950.0, 1.2)
+	DSP.adsr(creak, 0.2, 0.2, 0.7, 0.3)
+	DSP.mix(b, creak, 0.2, 0.7)
+	for k: int in 4:
+		DSP.mix(b, DSP.metal_hit(0.2, rng.randf_range(220.0, 520.0), 0.06, rng), rng.randf_range(0.3, 1.1), 0.3)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## The tower slamming onto the ship: a huge crash, crumpling metal and a long rattle of debris.
+func _tower_crash() -> PackedFloat32Array:
+	var rng := _rng(412)
+	var b := _explosion(1.8, 1.4, rng)
+	DSP.mix(b, DSP.kick(0.5, 110.0, 32.0, rng), 0.0, 1.0)
+	DSP.mix(b, DSP.crash(1.2, rng), 0.0, 0.5)
+	var crumple := DSP.noise(0.9, rng)
+	DSP.filter(crumple, &"bandpass", 900.0, 0.7)
+	DSP.drive(crumple, 4.0)
+	DSP.envelope(crumple, 0.01, 0.3)
+	DSP.mix(b, crumple, 0.05, 0.6)
+	for k: int in 10:
+		var at: float = rng.randf_range(0.2, 1.5)
+		DSP.mix(b, DSP.metal_hit(0.2, rng.randf_range(300.0, 2200.0), 0.05, rng), at, 0.4 * (1.0 - at / 1.8))
 	DSP.crush(b, 9, 18000.0)
 	return b

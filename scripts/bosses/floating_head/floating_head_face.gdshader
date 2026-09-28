@@ -1,10 +1,10 @@
 // The Floating Head's face screen (GDD §10: the ship's back is a giant cybernetic propaganda face
 // watching over the city). FloatingHeadBody drives the uniforms; the mesh is one quad whose UV runs
 // 0-1 across and up as the viewer sees it.
-// DESIGN-TBD (docs/questions/e1.md): the face's look. Placeholder: the cult's screen language (the
-// cyborgs' screen heads, the cult's feed) at the size of a building: a cold white face in LED dots
-// on a dark screen, big stern eyes whose pupils follow the runner, heavy brows, a nose line and
-// circuit traces down the cheeks, with soft static and a slow rolling bar.
+// DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 83): the face's look. Placeholder: the cult's screen
+// language (the cyborgs' screen heads, the cult's feed) at the size of a building: a cold white face
+// in LED dots on a dark screen, big stern eyes whose pupils follow the runner, heavy brows, a nose
+// line and circuit traces down the cheeks, with soft static and a slow rolling bar.
 // Rules: it glows only in cold white, and red only in its eyes while they charge (the eye lasers'
 // warning, task E1b: enemy-attack red); nothing strobes: powering on is a line opening into the
 // picture, and with Reduced flashing the static, the rolling bar and the tearing hold still.

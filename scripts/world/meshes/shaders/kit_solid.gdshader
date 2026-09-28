@@ -11,6 +11,8 @@ render_mode unshaded, cull_back, depth_draw_opaque;
 #include "res://scripts/world/meshes/shaders/kit_marks.gdshaderinc"
 // Marketplace patterns (ids 20-29).
 #include "res://scripts/world/meshes/shaders/kit_market.gdshaderinc"
+// Corporate patterns (ids 30-39).
+#include "res://scripts/world/meshes/shaders/kit_corporate.gdshaderinc"
 
 // A level's darker lighting (ZoneSkin.apply_darkness): the lit surfaces dim, glowing ones don't.
 global uniform float scenery_light;
@@ -374,6 +376,9 @@ void fragment() {
 			c = paint_graffiti(c, face_coords(n), 29.0, graffiti_pieces * 0.6, max(fwp.x, fwp.y));
 		}
 		base = c;
+	}
+	if (pattern >= 30 && pattern < 40) {
+		base = corp_surface(pattern, UV2.y, base, v_world, n, UV, TIME, panel_dark, glow);
 	}
 	if (pattern >= 60 && pattern < 70) {
 		// The cult's emblem (kit_cult.gdshaderinc).

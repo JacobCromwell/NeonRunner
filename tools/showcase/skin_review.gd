@@ -29,7 +29,8 @@ extends Node3D
 ##                   printed.
 ##                   --shot=N shows only that one.
 ## The level's ceilings: for the Marketplace skin, one of each kind (building bridge, overpass,
-## ship, floating ad), found by asking the skin which kind a spot gets.
+## ship, floating ad), and for the Corporate skin one of each of its kinds (glass skyway, tower
+## bridging the street, viaduct, gunship), found by asking the skin which kind a spot gets.
 
 const TUNING_PATH: String = "res://data/tuning/movement.tres"
 const LENGTH: float = 900.0
@@ -148,25 +149,34 @@ static func _fence(lane: int, at: float, variant: String) -> Dictionary:
 	return {"lane": lane, "at": at, "variant": variant, "pulsing": false, "pulse_on": 1.0, "pulse_off": 1.0, "phase": 0.0}
 
 
-## Where each ceiling starts. With the Marketplace skin, nudged forward until the skin gives each
-## one a different kind (bridge, overpass, ship, ad) so one run shows them all.
+## Where each ceiling starts. With the Marketplace and Corporate skins, nudged forward until the skin
+## gives each one a different kind (the Marketplace's bridge, overpass, ship and ad; the Corporate
+## skyway, gate, viaduct and gunship) so one run shows them all.
 func _hull_starts() -> Array[float]:
 	var out: Array[float] = []
 	for i: int in HULLS.size():
 		out.append(HULLS[i].x)
+	var wanted: Array[int] = []
+	var kind_of := Callable()
 	var market := skin as MarketplaceSkin
-	if market == null:
+	var corporate := skin as CorporateSkin
+	if market != null:
+		wanted = [MarketCeilings.Kind.BRIDGE, MarketCeilings.Kind.OVERPASS, MarketCeilings.Kind.SHIP, MarketCeilings.Kind.AD]
+		kind_of = market.ceilings().kind_of
+	elif corporate != null:
+		wanted = [CorporateCeilings.Kind.SKYWAY, CorporateCeilings.Kind.GATE, CorporateCeilings.Kind.VIADUCT,
+			CorporateCeilings.Kind.SHIP]
+		kind_of = corporate.ceilings().kind_of
+	else:
 		return out
 	var geo := TrackGeometry.new(lanes, tuning)
 	var wall_x: float = geo.wall_x()
-	var wanted: Array[int] = [MarketCeilings.Kind.BRIDGE, MarketCeilings.Kind.OVERPASS, MarketCeilings.Kind.SHIP,
-		MarketCeilings.Kind.AD]
 	for i: int in HULLS.size():
 		for step: int in 400:
 			var s: float = HULLS[i].x + step * 0.25
 			var center := Vector3(0.0, tuning.ceiling_height + TrackBuilder.HULL_THICKNESS * 0.5, -(s + HULLS[i].y * 0.5))
 			var size := Vector3(geo.half_width() * 2.0, TrackBuilder.HULL_THICKNESS, HULLS[i].y)
-			if market.ceilings().kind_of(center, size, wall_x) == wanted[i]:
+			if int(kind_of.call(center, size, wall_x)) == wanted[i]:
 				out[i] = s
 				break
 	return out
