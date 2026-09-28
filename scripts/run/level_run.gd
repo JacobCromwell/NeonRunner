@@ -26,6 +26,8 @@ const LANE_OPTIONS: Array[int] = [3, 5, 6]
 const DIFFICULTY_OPTIONS: Array[float] = [0.0, 0.3, 0.6, 0.9]
 const COMPLETE_PAUSE: float = 2.0
 const QUICK_DEATH_PAUSE: float = 1.2
+## The longest a beaten boss's defeat may hold the results (BossEncounter.victory_over).
+const BOSS_VICTORY_MAX: float = 20.0
 
 ## The run whose level set the scenery light last (ZoneSkin.apply_darkness, a global uniform): only it
 ## sets the light back when it ends, so a run freed after the next one started leaves that one's alone.
@@ -45,6 +47,8 @@ var debug_hud: DebugHud
 var tuning_panel: TuningPanel
 
 var _timer: float = 0.0
+## Seconds a beaten boss's defeat has been playing out, while it holds the results (-1: not holding).
+var _victory_time: float = -1.0
 var _show_hitboxes: bool = false
 var _env: WorldEnvironment
 var _deaths_by_cause: Dictionary = {}
@@ -129,6 +133,7 @@ func _build() -> void:
 		_build_debug_tools()
 	state = State.RUNNING
 	death_cause = ""
+	_victory_time = -1.0
 	_dip_music(false)
 	world.start()
 
@@ -181,8 +186,19 @@ func restart(next_context: RunContext = null) -> void:
 	_build()
 
 
-func _physics_process(_delta: float) -> void:
-	if state != State.RUNNING or world == null:
+func _physics_process(delta: float) -> void:
+	if world == null:
+		return
+	if _victory_time >= 0.0:
+		# A beaten boss's defeat plays out on the track first (the Floating Head crashes into the street
+		# ahead and the runner runs through its wreck); then the results follow a moment later.
+		_victory_time += delta
+		if encounter == null or not is_instance_valid(encounter) or encounter.victory_over() \
+				or _victory_time >= BOSS_VICTORY_MAX:
+			_victory_time = -1.0
+			_timer = COMPLETE_PAUSE
+		return
+	if state != State.RUNNING:
 		return
 	# A boss fight ends with the boss (_on_boss_defeated); its arena never runs out.
 	if encounter == null and world.player.distance >= world.layout.length:
@@ -218,13 +234,15 @@ func _process(delta: float) -> void:
 
 
 ## The boss is beaten (GDD §10): the run is won. The runner keeps running while the defeat plays out
-## (the Floating Head crashes into the street ahead and the runner runs through the wreck), safe from
-## anything still in the air, then the results follow (DESIGN-TBD: then the shop, as after a level).
+## (BossEncounter.victory_over: the Floating Head crashes into the street ahead and the runner runs
+## through the wreck), safe from anything still in the air, then the results follow COMPLETE_PAUSE
+## later (DESIGN-TBD: then the shop, as after a level).
 func _on_boss_defeated() -> void:
 	if state != State.RUNNING:
 		return
 	state = State.COMPLETE
-	_timer = COMPLETE_PAUSE
+	_timer = 0.0
+	_victory_time = 0.0
 	world.player.god_mode = true
 	hud.set_message("BOSS DEFEATED")
 	world.play_sfx(_complete_riff())

@@ -39,9 +39,11 @@ extends Node3D
 ##                   a far end)
 ##   --reduced-flashing  Settings > Reduced flashing on (steady warnings instead of flicker)
 ## The level's ceilings: for the Marketplace skin, one of each kind (building bridge, overpass,
-## ship, floating ad), and for the Corporate skin one of each of its kinds (glass skyway, tower
-## bridging the street, viaduct, gunship), found by asking the skin which kind a spot gets (with
-## --narrow, a narrow ceiling can't be a tower across the street, so that one goes first).
+## ship, floating ad), for the Corporate skin one of each of its kinds (glass skyway, tower
+## bridging the street, viaduct, gunship), and for the Dead Zone two charred bridges and two dead
+## buildings, found by asking the skin which kind a spot gets (with --narrow, a narrow ceiling can't be
+## a Corporate tower across the street, so that one goes first, and the Dead Zone's narrow ones are its
+## slabs and fallen spans, whatever the spot).
 
 const TUNING_PATH: String = "res://data/tuning/movement.tres"
 const LENGTH: float = 900.0
@@ -204,9 +206,10 @@ static func _fence(lane: int, at: float, variant: String) -> Dictionary:
 	return {"lane": lane, "at": at, "variant": variant, "pulsing": false, "pulse_on": 1.0, "pulse_off": 1.0, "phase": 0.0}
 
 
-## Where each ceiling starts. With the Marketplace and Corporate skins, nudged forward until the skin
-## gives each one a different kind (the Marketplace's bridge, overpass, ship and ad; the Corporate
-## skyway, gate, viaduct and gunship) so one run shows them all.
+## Where each ceiling starts. With the Marketplace, Corporate and Dead Zone skins, nudged forward until
+## the skin gives each one the kind wanted (the Marketplace's bridge, overpass, ship and ad; the
+## Corporate skyway, gate, viaduct and gunship; the Dead Zone's bridge and dead building, twice) so one
+## run shows them all.
 func _hull_starts() -> Array[float]:
 	var out: Array[float] = []
 	for i: int in HULLS.size():
@@ -215,6 +218,7 @@ func _hull_starts() -> Array[float]:
 	var kind_of := Callable()
 	var market := skin as MarketplaceSkin
 	var corporate := skin as CorporateSkin
+	var dead := skin as DeadZoneSkin
 	if market != null:
 		wanted = [MarketCeilings.Kind.BRIDGE, MarketCeilings.Kind.OVERPASS, MarketCeilings.Kind.SHIP, MarketCeilings.Kind.AD]
 		kind_of = market.ceilings().kind_of
@@ -225,6 +229,14 @@ func _hull_starts() -> Array[float]:
 			wanted = [CorporateCeilings.Kind.GATE, CorporateCeilings.Kind.SKYWAY, CorporateCeilings.Kind.SHIP,
 				CorporateCeilings.Kind.VIADUCT]
 		kind_of = corporate.ceilings().kind_of
+	elif dead != null:
+		# Across every lane the Dead Zone has two kinds (its slabs and fallen spans cover fewer lanes).
+		wanted = [DeadCeilings.Kind.BRIDGE, DeadCeilings.Kind.BUILDING, DeadCeilings.Kind.BRIDGE,
+			DeadCeilings.Kind.BUILDING]
+		if _narrow:
+			# A narrow ceiling's kind comes from its lanes: a fallen span in mid-street, a slab at an edge.
+			wanted = [DeadCeilings.Kind.BRIDGE, DeadCeilings.Kind.SPAN, DeadCeilings.Kind.SLAB, DeadCeilings.Kind.SLAB]
+		kind_of = dead.ceilings().kind_of
 	else:
 		return out
 	var geo := TrackGeometry.new(lanes, tuning)

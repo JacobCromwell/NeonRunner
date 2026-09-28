@@ -65,6 +65,8 @@ const SHAPE_STREAK: int = 4  ## Soft horizontal streak.
 const DRIFT_ASH: int = 0
 const DRIFT_SCRAP: int = 1
 const DRIFT_STREAK: int = 2
+## A soft puff of smoke drifting low over the street (the Dead Zone's): big, faint and slow.
+const DRIFT_SMOKE: int = 3
 
 ## Marketplace surface patterns of the solid kit shader (kit_market.gdshaderinc), ids 20-29.
 ## Canvas roofs and awnings: UV 0-1 across the panel and along the stall; param = stripes (0 plain,
@@ -119,6 +121,31 @@ const PAT_CORP_BANNER: int = 36
 ## A glass wall with a lit corridor behind it (UV in metres, y up from the corridor's floor; param =
 ## the corridor's height in decimetres).
 const PAT_CORP_GLASS: int = 37
+
+## Dead Zone surface patterns of the solid kit shader (kit_dead_zone.gdshaderinc), ids 40-49. Nothing
+## glows but PAT_DZ_TOWER's rare embers: give the other patterns' vertices COLOR.a = 0.
+## The rubble street: road plates under pale ash, scattered rubble, worn lane lines (UV.x -1 to 1
+## across the lane; param flags a lane line on its left (1) and right (2) edge, and a gutter (4)).
+const PAT_DZ_STREET: int = 40
+## Everything below the street, seen only through holes: deep shade darkening with depth (darkens
+## COLOR): param 0 a face across the lane, 1 a face along it, 2 the void's floor.
+const PAT_DZ_UNDER: int = 41
+## A burnt-out tower's face (UV: metres along it, world height): param = dz_tower_param(); COLOR.a
+## above 0 lets the rare ember high up glow (at most that much).
+const PAT_DZ_TOWER: int = 42
+## Charred concrete: param 0 a wall or deck, 1 an underside ridden upside down, 2 a heap of rubble.
+const PAT_DZ_CONCRETE: int = 43
+## Scorched steel: param 0 plain, 1 corrugated.
+const PAT_DZ_STEEL: int = 44
+## A dead billboard or screen, never glowing (UV in metres, as seen from the street): param = seed
+## (0-99) + 100 * kind (DZ_BOARD_POSTER, DZ_BOARD_SCREEN).
+const PAT_DZ_BOARD: int = 45
+## The cult's emblem scorched and half-gone, unlit (the material's cult_emblem texture): UV in emblem
+## space as for PAT_CULT_MARK, COLOR the mark's paint, param a seed for the burn.
+const PAT_DZ_MARK: int = 46
+## PAT_DZ_BOARD's kinds.
+const DZ_BOARD_POSTER: int = 0
+const DZ_BOARD_SCREEN: int = 1
 
 ## Golden Zone surface patterns of the solid kit shader (kit_golden.gdshaderinc), ids 50-59. None of
 ## them glows (gold is reflective metal, never neon, GDD §5): give their vertices COLOR.a = 0.
@@ -210,6 +237,12 @@ static func key(value: float) -> int:
 ## texture).
 static func stencil_param(kind: int, size: int, seed: int, emblem: bool = false) -> float:
 	return float(kind + 4 * clampi(size, 0, 3) + 16 * posmod(seed, 16) + (256 if emblem else 0))
+
+
+## The PAT_DZ_TOWER parameter: a window `style` (0-3, the City's: office glass, punched windows,
+## ribbon windows, tall slots) and a whole-number `seed` (0-999).
+static func dz_tower_param(style: int, seed: int) -> float:
+	return float(posmod(style, 4) + 4 * posmod(seed, 1000))
 
 
 ## The PAT_WALKWAY parameter: `flags` (WALKWAY_*) and the lane's width in metres (to the centimetre).
@@ -768,18 +801,19 @@ static func facade_strip(layer: MeshLayer, side: int, x: float, us: PackedFloat3
 ## Drifting ash, paper scraps and speed streaks over the track between two distances, for a
 ## drift.gdshader material whose slice_length is `slice`. Every slice of the track gets the same
 ## cached set (it can't be seen repeating: particles fade out long before the next slice), so a
-## chunk costs a few bulk appends. Particles stay within ±half_width, from 0.4 m up to top_y.
-## `colors` holds the ash, scrap and streak colours (alpha = opacity).
+## chunk costs a few bulk appends. Particles stay within ±half_width, from 0.4 m up to top_y (streaks
+## and smoke no higher than 4.5 m). `colors` holds the ash, scrap and streak colours (alpha =
+## opacity), and a fourth for `smoke` puffs of smoke (none unless it's given).
 static func drift_particles(layer: MeshLayer, start: float, end: float, slice: float, half_width: float, top_y: float,
-		ash: int, scraps: int, streaks: int, colors: PackedColorArray) -> void:
-	var id: String = "drift_%s_%s_%s_%d_%d_%d_%s" % [slice, half_width, top_y, ash, scraps, streaks, colors]
+		ash: int, scraps: int, streaks: int, colors: PackedColorArray, smoke: int = 0) -> void:
+	var id: String = "drift_%s_%s_%s_%d_%d_%d_%s_%d" % [slice, half_width, top_y, ash, scraps, streaks, colors, smoke]
 	var template: MeshLayer = _templates.get(id)
 	if template == null:
 		template = MeshLayer.new()
-		var counts: Array[int] = [ash, scraps, streaks]
+		var counts: Array[int] = [ash, scraps, streaks, smoke if colors.size() > DRIFT_SMOKE else 0]
 		var n: int = 0
-		for kind: int in [DRIFT_ASH, DRIFT_SCRAP, DRIFT_STREAK]:
-			var y_max: float = top_y if kind != DRIFT_STREAK else minf(top_y, 4.5)
+		for kind: int in [DRIFT_ASH, DRIFT_SCRAP, DRIFT_STREAK, DRIFT_SMOKE]:
+			var y_max: float = top_y if kind == DRIFT_ASH or kind == DRIFT_SCRAP else minf(top_y, 4.5)
 			for i: int in counts[kind]:
 				var at := Vector3(lerpf(-half_width, half_width, hash01(n, kind, 71)), lerpf(0.4, y_max, hash01(n, kind, 72)), 0)
 				_billboard(template, at, colors[kind], kind, hash01(n, kind, 73))

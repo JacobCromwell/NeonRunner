@@ -1066,7 +1066,7 @@ or `--scenario=window|missed`)
     scenery, and a cyborg still under the ship as it crashes down is crushed. All right?
 168. **Weapons:** with 300 health and the framework's 34% cap, weapons alone can end one phase and no more. With the
     owner's "not very challenging" in mind, should they be slower still?
-169. **The fight's length** (GDD §10: 60–120 s): a runner who never misses takes about 134 s (a 17 s first bombing run,
+169. (E1d brought a perfect run to about 101 s: see item 201.) **The fight's length** (GDD §10: 60–120 s): a runner who never misses takes about 134 s (a 17 s first bombing run,
     two 9 s later runs, three face-offs until a tower, three windows). To tighten it: shorter or fewer bombing runs,
     fewer attacks before a tower, or towers closer together? (Task E1d brings it inside 60–120 s as a placeholder.)
 170. **Edge cases after a lost window:** at 3 lanes a runner sliding down a wall beside the pinned ship lands inside its
@@ -1162,6 +1162,78 @@ play with `--features=resonator --skin=golden`)
 196. **One on screen at a time:** a Resonator arriving sends the last one away after its current pulse. Right?
 197. **The hint:** "When the Resonator's chime plays, a red wave rolls along the floor. Jump it ({jump}), or be on a wall or
     the ceiling." Right wording?
+
+**The Floating Head: propaganda, defeat, and the finished fight** (from E1d; the fight now plays in the City's boss
+slot; numbers in `data/bosses/city_boss_tuning.tres` and `data/bosses/city_boss.tres`; showcase scenarios `slogans`,
+`defeat`, `wreck`)
+198. **The slogans** (GDD §10: a few short slogans on its face screen, so only they need translating; the owner writes
+    them). Placeholders after GDD §5's "every path leads to him": "EVERY PATH / LEADS TO HIM", "STAY / ALIGNED",
+    "DON'T RUN. / CONVERGE.", "HE SEES / YOU", "RETURN TO / THE FEED": two lines of at most 12 characters in the UI's
+    display font on a dark band across the face, under the eyes (the lasers' warning) and above the mouth (the drop's
+    warning); ready for translation once the game has it. Their words, how many, and where on the face?
+199. **The propaganda voice** (GDD §10: heavily distorted, not meant to be understood): four phrases of made-up
+    syllables with an announcer's rise and fall, a deep voice through a blown loudhailer, starting at the reveal, 1.5–3.5 s
+    apart, under its warnings in level. It never masks a warning: while an attack warns or strikes, a cue sounds, a
+    dropped cyborg is about or a pulsing fence is near, it ducks 18 dB at once and the slogan fades; so it's heard mostly
+    between attacks (about 12 phrases in a 100 s fight). The right character and amount? Pause rather than duck?
+200. **The defeat** (GDD §10): the last stomp's cry is the propaganda cutting out mid-shout (it stutters, dives like a
+    stopping tape and dies in static). It shakes free, lurches ahead with its face tearing into static (steady with
+    Reduced flashing), loses power (the face collapses to a line and goes dark) and crashes into the street at the first
+    clear stretch ahead: a dust cloud and a heavy shake, no flash. Its cracked, dead face falls flat before the wreck, and
+    its stern half lies across the street like a tunnel the runner runs through (dark metal, cold white sparks, grey
+    smoke, nothing in a hazard colour, nothing that hurts); its bow vanishes in the dust. Does the tunnel read as "runs
+    through the wreck"? Should the bow stay, and should the fallen face show something (a last slogan, a frozen frame)?
+201. **The fight's length** (60–120 s): a 16 s first bombing run, two 8 s later runs, marked towers every 240 m, two
+    attacks before it aims at a tower, and the laser clipping every other tower on its own for a runner who doesn't bait
+    them. A perfect run takes about 101 s at 3, 5 and 6 lanes; a struggling one (never baiting, missing each phase's
+    first window) about 234–254 s (no time limit, no escalation). Right, or should a struggling run be shorter?
+202. **Par times** (GDD §10, proposed): three stars under 110 s, two under 150 s, so a perfect run gets three and a run
+    that misses a window or two gets two.
+203. **After the win:** the results come 2 s after the runner reaches the fallen face; meanwhile the runner is safe (the
+    framework's rule), so fences in the way are harmless, but a hole still ends the run early (the win counts). Should the
+    street to the wreck be clear, or its fences go dark as it crashes?
+
+**Dead Zone skin** (from D5; numbers and colours are exports on `DeadZoneSkin`, F6; play it with
+`--quick --skin=dead_zone --nofall` or `--level=dead_zone/1` (`dead_zone/2` is The Hush); the Bad Dream's chase
+through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
+204. **Time of day:** a smoke-choked night: a low pall of smoke, an ash-grey haze on the horizon with the ruins in dark
+    silhouette against it, smoke columns faintly lit from below by distant fires, a veiled moon. Distance fades into the
+    haze (lighter than the ruins), so the black Bad Dream and the burned cyborgs read as dark silhouettes against it.
+    (The Sleep Taker's defeat brings "the first grey dawn light", GDD §10.) Right hour and mood?
+205. **The rubble street and its holes:** broken road plates under pale ash, worn lane lines mostly buried, rubble drawn
+    flat (nothing on the running surface stands up like an obstacle), no round shapes (a manhole means a screech). A gap
+    is a collapsed hole with the usual orange edge and a soft halo on its far edge, deep shade and a dark void below; the
+    ash-grey street is the zone's lightest surface, so a hole reads at a glance. Right look?
+206. **Motion cues:** per 40 m, 70 ash flakes drifting and falling, 7 faint smoke puffs drifting low and rising, 12 speed
+    streaks, with the plate seams and rubble streaming past. Right equivalent?
+207. **The ruins and the calm band:** the Neon City's own towers, gutted (burnt-out window grids, dead neon banners and
+    roof boards, broken skybridges, tops sheared off, 40% burnt down to their steel frames); every face flush and closed
+    up to 7.2 m (nothing that opens, lights up, sticks out, or looks like a window cyborg's window, a vent or a manhole),
+    with faint lines at the wall-run heights. Right look? More destruction (whole blocks gone, open sky) would need open
+    lots, which no zone's walls have yet.
+208. **Embers** (fires kept minimal): in 35% of towers, a few rooms smoulder 16 m up or higher, a dull orange kept below
+    the bloom threshold and under a third of a gap edge's brightness, breathing slowly (still with Reduced flashing); none
+    near the play field. Too many, too few, or none?
+209. **Smoke columns** billow slowly up from the broken tops of 22% of the ruins 20 m tall or more. Right amount?
+210. **The ceilings:** across every lane a crumbling charred bridge (a wreck and a toppled lamp post on its deck) or a
+    dead tower's burnt-out upper storeys; over fewer lanes a floor slab broken off the tower it reaches, or a collapsed
+    span hanging from a steel gantry. Every underside is flat charred concrete with the orange band at its far end.
+    Right mix and forms?
+211. **The cult's emblem here:** in its unlit bronze, scorched and half-gone (a ragged burn front across it), on 40% of the
+    dead roof billboards and at the foot of the dead neon banners. Is a burnt remnant of the cult right here, and how
+    much?
+212. **The cult's feed on surviving screens** (proposal): it still plays in the dead city on a few surviving screens, dim
+    and high up (20% of the roof boards, big screens hung from 12% of the towers, 15 m up or more; about 16 over 3 km).
+    The burned cyborgs' flickering screens suggest the broadcast still reaches them. Should it play here at all, and
+    this sparsely?
+213. **Broken skybridges:** a stub from each wall 18 m up or more, broken off short of the middle, in half the stretches
+    where towers stand tall on both sides. Enough future in the ruins?
+214. **Hazards in the zone's dress:** the same pink fence between charred steel posts in rubble or wreckage; signs are dead
+    billboards (a cracked dark screen or a burnt poster, unlit) in the yellow/black frame. OK?
+215. **The other enemies' look here** (only the cyborgs have a Dead Zone variant, GDD §9.2): drones, hover trucks,
+    Octodogs and screeches keep their clean look. Burnt or weathered here too? (Item 130 asks the same across zones.)
+216. **The Hush's darkness** on this skin: every piece dims with it; on screen the street goes from about 80 to 56 in grey
+    value and the walls from 40 to 20, while hazards, triggers and enemies stay as bright. Dark enough? (Item 155.)
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).

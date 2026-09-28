@@ -4,20 +4,18 @@ A neon 3D runner for PC (Steam), Android, iOS and a web demo. You run lanes, sid
 through zones full of enemies, and a single hit ends the run. Built with Godot 4.7.2 and GDScript only.
 
 **Status:** the game is built around everything designed so far:
-- the whole campaign structure: six zones and 15 levels, one of the zones still in the grey-box look
+- the whole campaign structure: six zones and 15 levels
 - seven enemy types, plus fence generators
 - the shop, power-ups and economy
 - every screen and the HUD
-- five zone looks (the Neon City, Gangland, the Marketplace, Corporate and the Golden Zone), generated music
-  and sound effects
+- all six zone looks (the Neon City, Gangland, the Marketplace, Corporate, the Dead Zone and the Golden Zone),
+  generated music and sound effects
 - all three build flavors
 
 Boss fights have their framework (they play in the runner, with phases, a health bar, checkpoints,
-stars and payouts), but each zone's boss is still a placeholder slot until it's built on it; a test
-boss shows the framework at work. The Neon City's Floating Head is being built: its ship and face, its
-entrance, its bombing run, the reveal of its face, the face-off (eye lasers, the cyborg drop and the
-marked towers that pin it) and the stomp windows while it's pinned so far (debug builds play it with
-`--boss=city_boss`; the campaign keeps its placeholder slot until its defeat and voice are done). The short cinematics between levels are placeholder slots too.
+stars and payouts); a test boss shows the framework at work. The Neon City's boss, the Floating Head,
+is built and plays in the campaign after City 3 (debug builds: `--boss=city_boss`); the other zones'
+bosses are still placeholder slots. The short cinematics between levels are placeholder slots too.
 Every placeholder decision is listed in `docs/OPEN_QUESTIONS.md`.
 
 Docs: `docs/GDD_CHECKPOINT.md` (the design, the authority), `docs/OPEN_QUESTIONS.md` (open decisions and
@@ -46,10 +44,10 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--god` | Hits don't kill (falls still do) |
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
-| `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `corporate`, `corporate_plaza` (Corporate's plaza floor) or `golden` |
+| `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `corporate`, `corporate_plaza` (Corporate's plaza floor), `dead_zone` or `golden` |
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`) |
-| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`, ...) with the full game flow once it's built, and as quick play while it's being built (`--boss=city_boss`: the Floating Head so far). Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
+| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
 
 Example: `./play.sh --lanes=6 --features=octodog,ceilings --god`, or the test boss's last phase:
@@ -77,8 +75,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 - **Campaign:** 15 levels in six zones, about 35 minutes of flawless running: the Neon City (the web demo's
   zone) and Gangland with three levels each, the Marketplace, Corporate and the Dead Zone with two, and the
   Golden Zone with three.
-  Each zone has a boss slot and cinematic slots; the Dead Zone uses the grey-box look until its skin is
-  made. Each level introduces about one new thing (GDD §5), where its data says (`feature_starts`):
+  Each zone has a boss slot and cinematic slots. Each level introduces about one new thing (GDD §5), where
+  its data says (`feature_starts`):
   1. City 1 *Rooftop Rush*: gaps, fences, walls and signs, then cyborgs late in the level.
   2. City 2 *Skyway*: ceilings and anti-grav pads.
   3. City 3 *Neon Crossfire*: pulsing fences, window cyborgs and the hover truck.
@@ -132,15 +130,20 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   player's armor or shield breaks) or offered by the boss itself. The test boss (`--boss=test_boss`),
   a hovering core that blasts the lane it lights up red and drops dazed into the player's lane to be
   stomped, shows it all (it offers a shield in its second phase). The Floating Head, the Neon City's
-  boss, is being built on it: a giant ship whose stern is a propaganda face, roaring in overhead, a
+  boss, is built on it: a giant ship whose stern is a propaganda face, roaring in overhead, a
   bombing run where a searchlight hunts the runner and bombs fall where it lingers (a red target
   circle, an alarm and a falling whistle), the reveal of its face, and the face-off: its eyes glow and
   whine, then laser beams sweep the lanes low (jump) or high (slide) or drag down the runner's lane
   (switch lanes), its mouth drops cyborgs onto the trucks ahead, and a laser baited into a marked tower
   topples it onto the ship to pin it. Pinned, its red weak points come out on its crown: stomp one, a
   third of its health. Each phase has its own way up: run up the fallen tower's slab like a ramp, a
-  wall jump, then pads and a ceiling to drop from. Miss it and it shakes free and the face-off goes on
-  (`--boss=city_boss`). The other five zone bosses are still to be built.
+  wall jump, then pads and a ceiling to drop from. Miss it and it shakes free and the face-off goes on.
+  All the while it shouts its propaganda through its loudhailers (a distorted voice never meant to be
+  understood, ducking under every warning) with slogans on its face screen. Beaten, its face glitches,
+  the propaganda cuts out mid-shout and it crashes into the street ahead: the runner runs over its
+  fallen face and through the wreck, on to the zone's outro (in the web demo, the "get the full game"
+  screen). About 100 s for a runner who never misses (`--boss=city_boss`, or the campaign's
+  `--level=city/boss`). The other five zone bosses are still to be built.
 - **Economy:** credits in four denominations, level score and stars, and a shop. Items are five permanent
   power-ups (weapon line, claws, juggernaut dash, magnet, slow time) and three breakables (armor, shield,
   grapple hook). After a death you're offered a revive (an item, or a rewarded ad on mobile). Net worth
@@ -236,7 +239,11 @@ against its bursts, with the recency curve on and off:
   always escaping them, the face-off's lasers (each warned, and escaped without god mode by a runner who
   reads them), its cyborg drop, a baited or fallback tower pinning it, each phase's stomp window taken
   without god mode (the ramp, a wall jump, the ceiling), missed windows repeating without escalation,
-  the whole fight from its entrance to the last stomp, and every attempt playing out the same way.
+  the whole fight from its entrance to the last stomp, and every attempt playing out the same way; its
+  defeat (the propaganda cut, the crash, room for a runner in every lane of its wreck, Reduced
+  flashing), and the whole fight through the campaign at 3, 5 and 6 lanes with no god mode, from City 3
+  to the outro (and the web demo's end screen), its propaganda never masking a warning, and a death
+  restarting the fight.
 - **Screens:** every screen at desktop and touch sizes.
 - **The runner:** Razor Echo's poses on every surface, the coat's panels (never through the legs or the
   ground), the budgets, the power-up looks, and its copper glow kept clear of every hazard colour.
@@ -244,14 +251,16 @@ against its bursts, with the recency curve on and off:
   base, the budgets, every weapon ending in the same red charge-up, the colour rules (only the cold white
   face, the red charge-up and a host's purple glow), faces that still differ a few pixels across (the VR
   visor's too), and ERR before a defeated cyborg's screen goes dark.
-- **Zone skins:** all five skins, including a check that none adds collision, and the build budget; for
-  Gangland, the Marketplace, Corporate and the Golden Zone the colour rule (only hazards glow in hazard
-  colours) and ceilings a runner can read upside down, for the Marketplace, Corporate and the Golden Zone
-  gaps that read as holes and a clear play space and calm walls, the Marketplace's shop windows,
-  Corporate's brand colour (clear of the hazards and the UI's accents), its carriages lined up across chunk
-  cuts, every kind of ceiling at one to six lanes and a boss arena's clear sky, the Golden Zone's gold
+- **Zone skins:** all six skins, including a check that none adds collision, and the build budget; for
+  Gangland, the Marketplace, Corporate, the Dead Zone and the Golden Zone the colour rule (only hazards glow
+  in hazard colours) and ceilings a runner can read upside down, for the Marketplace, Corporate, the Dead
+  Zone and the Golden Zone gaps that read as holes and a clear play space and calm walls, the Marketplace's
+  shop windows, Corporate's brand colour (clear of the hazards and the UI's accents), its carriages lined up
+  across chunk cuts, every kind of ceiling at one to six lanes and a boss arena's clear sky, the Dead Zone's
+  near-black palette (ash-grey haze behind the Bad Dream's silhouette, embers dim and far above the play
+  field, smoke only from tall ruins) and its ceilings at every width and position, the Golden Zone's gold
   (never glowing, never sign yellow or gap orange), its statues far above the wall-run band and the
-  statue kit for the Gilded Sentinels, and for all five where the cult's emblem hides (or, in the Golden
+  statue kit for the Gilded Sentinels, and for all six where the cult's emblem hides (or, in the Golden
   Zone, is shown openly) and where its feed plays, never in the wall-run band (the feed's shared material
   has a suite of its own). Every skin builds its ceilings from the lanes they cover, with the orange end
   band across them and nothing below the underside past the far end, where the camera passes as you drop.

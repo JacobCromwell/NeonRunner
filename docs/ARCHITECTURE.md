@@ -49,8 +49,8 @@ the F6 tuning panel. Quick play (`--quick`, or any of `--god --seed=N --lanes=N 
 --features=a,b --full-loadout --nofall --skin=<name>`) restarts on death like the grey box did.
 `--level=<step id>` plays a campaign step with the full flow and takes `--lanes`, `--god`, `--nofall`
 and `--full-loadout` for reviews; `--boss=<boss id>` plays a boss fight (a zone's boss with the full
-flow; any other, such as the test boss, or a zone's boss still being built (`BossDef.preview_scene`),
-as quick play) and also takes `--phase=N`. Command-line starts work in debug builds only, so a
+flow, such as `--boss=city_boss`; any other, such as the test boss, or a zone's boss still being built
+(`BossDef.preview_scene`), as quick play) and also takes `--phase=N`. Command-line starts work in debug builds only, so a
 release build can't skip progression or farm credits with them.
 
 Physics order each frame: RunWorld (builds chunks, spawns enemies) → Player (moves, checks hazards
@@ -452,11 +452,11 @@ gameplay. Hazards keep one colour and shape language in every zone (pink crackle
 (`lane_edges_x`), the wall faces' distance (`wall_x`) and whether each side reaches the street's edge
 (`reaches_wall(side)`), and hand it to `ceiling_section(parent, section)`. A skin builds the ceiling from
 those, never from the track's width, so a narrow ceiling is simply a narrower one: the City's is a smaller
-craft (`CityShip`, `small`), Gangland's a slab broken off a building, the Marketplace's, Corporate
-zone's and Golden Zone's kinds build narrower (a structure that needs both walls, the Marketplace's
-building bridge, the Corporate tower across the street, the Golden arches, becomes another kind over
-fewer lanes). The default hook calls the older `hull(center, size, lane_edges_x)`, which the grey box
-still uses. Every ceiling's underside covers its footprint and stops at a free side's edge, nothing hangs
+craft (`CityShip`, `small`), Gangland's a slab broken off a building, the Dead Zone's a slab broken off
+the tower it reaches or a fallen span, and the Marketplace's, Corporate zone's and Golden Zone's kinds
+build narrower (a structure that needs both walls, the Marketplace's building bridge, the Corporate
+tower across the street, the Golden arches, becomes another kind over fewer lanes). The default hook
+calls the older `hull(center, size, lane_edges_x)`, which the grey box still uses. Every ceiling's underside covers its footprint and stops at a free side's edge, nothing hangs
 below it, and the orange end band (`MeshKit.ceiling_end`) spans its width.
 
 **Nothing below the underside past a far end.** When the player drops off a ceiling's far end, the chase
@@ -469,14 +469,15 @@ underside: use `MeshKit.ceiling_end` for the band, `MeshKit.stern_halo` for an e
 underside), and `MeshKit.near_fade(metres)` as a glow card's `param` for any other glow the camera
 passes close to (kit_glow reads a negative UV2.y as "fade out within this many metres of the camera").
 `test_ceilings` builds every skin in `data/skins/` (and the City boss arena's) over full and narrow
-ranges at 3, 5 and 6 lanes and checks all of this, so a new zone's skin (the Dead Zone, D5) is held to it
-as soon as its file exists: build ceilings through `ceiling_section` (or `hull`) from the section, keep
-the band and every glow past the far end above the underside, and check the drop on both renderers
-(`skin_review --narrow`, Review tools).
+ranges at 3, 5 and 6 lanes and checks all of this, so every zone's skin is held to it, and a new skin
+(a level's own, such as the Golden Palace's) as soon as its file exists: build ceilings through
+`ceiling_section` (or `hull`) from the section, keep the band and every glow past the far end above the
+underside, and check the drop on both renderers (`skin_review --narrow`, Review tools).
 
-Skins so far: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2), `MarketplaceSkin`
-(Zone 3, the Marketplace), `CorporateSkin` (Zone 4, Corporate) and `GoldenSkin` (Zone 6, the Golden
-Zone). `GreyboxSkin` is the fallback for zones without their own look yet (the Dead Zone for now). A
+Skins: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2), `MarketplaceSkin`
+(Zone 3, the Marketplace), `CorporateSkin` (Zone 4, Corporate), `DeadZoneSkin` (Zone 5, the Dead Zone)
+and `GoldenSkin` (Zone 6, the Golden Zone). `GreyboxSkin` is the fallback for a zone without its own
+look (every zone has one now). A
 zone's skin lives at `data/skins/<zone id>_skin.tres` (`--skin=<zone id>` in quick play) and is set in its
 `data/zones/<zone id>.tres`; a level's own `skin` wins over its zone's (the Golden Palace, Golden 3,
 may get its own). The real skins build on the mesh kit (`scripts/world/meshes/`): `MeshKit` has
@@ -499,8 +500,8 @@ value, the one thing a new zone's skin sets for its enemies:
 The City and Gangland keep their older names because they also pick the other enemies' weathering
 (`CyborgSuit.VARIANT_LOOKS` maps them); every other zone sets its cyborg look's own name. A zone that
 also wants the weathered enemies (the Dead Zone might) needs those enemies to treat its name like
-`&"scavenger"` (a line in each one's look code). The zones still on the grey box wear the base until
-their skins exist; `--variant=` in the enemy showcase shows any look now.
+`&"scavenger"` (a line in each one's look code). A zone on the grey box wears the base; `--variant=` in
+the enemy showcase shows any look now.
 
 **A level's darker lighting** (`LevelConfig.darkness`, 0–1; GDD §5, The Hush) reaches every skin for
 free: the run takes its environment from `ZoneSkin.level_environment(darkness)`, whose
@@ -508,7 +509,7 @@ free: the run takes its environment from `ZoneSkin.level_environment(darkness)`,
 shader uniform `scenery_light` (project.godot; 1 = the zone's own light, never below
 `MIN_SCENERY_LIGHT`, 0.3) dims what the scenery's shaders draw: `kit_solid`'s lit surfaces (never its
 glowing ones), `facade`, `shopfront`, `road`, `drift`, the Corporate skin's `corp_facade`, the Golden
-Zone's `golden_facade`, and the grey box's floor, walls and ceilings (`GreyboxMaterials.scenery()`). Glows, the ambient light and the
+Zone's `golden_facade`, the Dead Zone's `dead_smoke`, and the grey box's floor, walls and ceilings (`GreyboxMaterials.scenery()`). Glows, the ambient light and the
 sun stay, so hazards, triggers, credits, enemies and the runner (lit or glowing by their own
 materials) read as well as anywhere. The
 factor is given for linear space; `light_factor()` in `kit_common.gdshaderinc` (and
@@ -523,8 +524,9 @@ panels, glass, glyphs and chevrons for the City; worn asphalt (with sand drifts 
 road strata, salvaged plating, posters (with corporate ads), cast concrete and stencilled crates and
 container doors for Gangland; canvas, tin and whole rows of stall roofs, stall faces, tiles, shop
 signs, ads, casino bulbs and stucco for the Marketplace; train roofs, the shade below them, paving,
-armour plate, corporate ads, the brand's mark on panels, banners and lit glass for Corporate;
-reflective gold, golden walkways, marble, the shade under the walkways, the canal, falling water, the
+armour plate, corporate ads, the brand's mark on panels, banners and lit glass for Corporate; the
+rubble street, the shade below it, gutted towers, charred concrete, scorched steel, dead boards and the
+scorched emblem for the Dead Zone; reflective gold, golden walkways, marble, the shade under the walkways, the canal, falling water, the
 cult's emblem in relief, gilded coffers, red cloth and boutique boards for the Golden Zone. Features
 a zone opts into are uniforms that default to off, so one zone's additions never change another's
 look. Painted marks shared between shaders live in includes: `kit_marks.gdshaderinc` (graffiti pieces
@@ -539,7 +541,8 @@ already converted to linear on Forward+ and Mobile, but unconverted on the Compa
 shader that converts it once more (`to_linear()`, as the kit's do for vertex colours) draws it darker and
 more saturated on Forward+ than on the web. The Golden Zone passes its uniform colours as sRGB `Vector3`s
 (`GoldenSkin.srgb()`), which arrive unconverted on both renderers and are converted once, like a vertex
-colour. Likewise a light factor multiplied in after `to_linear()` scales sRGB values on the
+colour; the Dead Zone does the same (`DeadZoneSkin.srgb()`, its `dz_*` uniforms and its sky). Likewise
+a light factor multiplied in after `to_linear()` scales sRGB values on the
 Compatibility renderer; `golden_facade.gdshader` passes every one of its light factors through
 `light_factor()` (kit_common), which raises it to the 1/2.2 power there, so its walls are as bright on
 both renderers. (The older skins' uniform colours, and the kit's own `shade` factor, still differ a little
@@ -547,9 +550,10 @@ between the renderers.)
 
 **Pattern ids.** Ids up to 19 are the City's and Gangland's, in `kit_solid.gdshader` itself; ids 20-29
 are the Marketplace's (all in use), in `kit_market.gdshaderinc`, and ids 30-39 the Corporate zone's
-(30-37 in use), in `kit_corporate.gdshaderinc`, and ids 50-59 the Golden Zone's (all in use), in
+(30-37 in use), in `kit_corporate.gdshaderinc`, ids 40-49 the Dead Zone's (40-46 in use), in
+`kit_dead_zone.gdshaderinc`, and ids 50-59 the Golden Zone's (all in use), in
 `kit_golden.gdshaderinc` (each: one include and one dispatch line in `kit_solid`; the Golden Zone's
-include follows `cult_mark()`, which its emblems use).
+and the Dead Zone's includes follow `cult_mark()`, which their emblems use).
 A new zone takes the next free block of ten in its own include, so zones built in parallel never
 collide on an id. Ids 60-69 are the cult's, shared by every zone, in
 `kit_cult.gdshaderinc` (its include follows `cult_mark()` in `kit_solid`, and its dispatch runs after
@@ -635,6 +639,44 @@ template) and `CorporateProps` (fences and signs); its building faces use their 
 - *The military presence* is data: `compound_share`, `hover_ship_share`, `ship_weight` and
   `military_car_share`; the plaza variant raises them for Corporate 2's heavier presence.
 
+**The Dead Zone** (`scripts/world/skins/dead_zone/`): `DeadStreet` (the floor: a rubble street, and the
+void below it), `DeadTowers` (the walls: the Neon City's towers burnt out, and the broken skybridges and
+smoke over the street), `DeadCeilings` and `DeadProps` (fences and signs). Everything is drawn with the
+kit's solid shader (`kit_dead_zone.gdshaderinc`), the drift shader and one shader of its own,
+`dead_smoke.gdshader` (columns of smoke: one billboarded column per six vertices, lit by
+`scenery_light`). Dark black, dark grey and ash grey at night (GDD §5); the ash-grey street is its
+lightest surface.
+- *Gaps read as holes.* The street (`PAT_DZ_STREET`, laid out from world position) is broken plates under
+  pale ash with rubble drawn flat, never built, so nothing on the running surface stands up like an
+  obstacle, and nothing round lies on it (a manhole is a screech's lair). Everything below it (the cut,
+  the sides along lane edges, the void floor `void_depth` down) is `PAT_DZ_UNDER` in `gap_inside_color`,
+  which only darkens with depth; a gap's edge is the lip, strip and far halo of every zone. The suite
+  pins it over whole levels at 3 and 5 lanes (the hole far darker than the street's darkest shade).
+- *The calm band.* `PAT_DZ_TOWER` draws the City's four window styles gutted (burnt rooms, shards,
+  torn holes, soot) above `band_top` (7.2 m) and, below it, flush ash-dusted cladding with soot tongues
+  climbing from the street: nothing opens, glows, sticks out or looks like a window (a window cyborg's)
+  or a vent there; the 2 m and 4 m wall-run marks are unlit paint. Decoration (dead neon banners, dead
+  roof boards, screens) starts at `decor_min_height` (8 m); what hangs over the street (screens, broken
+  skybridges) stays above `DeadTowers.OVER_STREET_MIN` (14 m), and nothing of a ceiling rises more than
+  `DeadCeilings.TOP_LIMIT` above its underside.
+- *Fires kept minimal* (GDD §5). The only glows besides hazards, triggers, ceiling ends and the feed are
+  embers: a few windows of some towers, `ember_min_height` (16 m) up or more, a dull orange below the
+  bloom threshold and under a third of a gap edge's glow (the faces' vertex alpha, breathing slowly,
+  steady with Reduced flashing); smoke columns rise only from ruins 20 m tall or more
+  (`DeadTowers.PLUME_MIN_TOP`). The suite checks both over whole levels.
+- *Motion on a still street.* Ash flakes, faint puffs of smoke and speed streaks drift toward the runner
+  (`MeshKit.drift_particles(..., smoke)`: the drift shader's fourth kind, `DRIFT_SMOKE`, a big soft puff
+  that fades three times as far from the camera as the others; a skin passing no smoke count is
+  unchanged).
+- *Ceilings from their lanes (task B3).* `DeadCeilings` builds a charred bridge or a dead building
+  across every lane (weights `bridge_weight`, `building_weight`), and over fewer lanes a slab broken off
+  the tower it reaches (one wall) or a collapsed span hanging from its gantry (neither wall), from the
+  collision box and lane seams; `reaches_wall()` decides which sides run into a building face, from the
+  section's wall distance (`DeadZoneSkin.ceiling_section`; `hull()` alone uses the wall face the skin saw
+  last, as `wall_section` runs before a chunk's ceilings). Every underside is flat
+  charred concrete with a steel strip and a pale line on each lane seam, and the orange far-end band.
+  `mesh_for(kind, ...)` builds a given kind directly.
+
 **The Golden Zone** (`scripts/world/skins/golden/`): `GoldenWalkways` (the floor: golden walkways over
 the canal), `GoldenFacades` (the walls, and the sky bridges over the street), `GoldenCeilings`,
 `GoldenProps` (fences and signs) and `GoldenStatue` (the statue kit); its building faces use their own
@@ -705,6 +747,11 @@ towers' neon banners (the glyphs leave its square clear, so nothing overlaps); `
 lists them. The Corporate zone (D4) draws it the same way: a warm-white badge in a lower corner of some
 ads on the street screens and roof boards (never more than `CorporateTowers.SCREEN_EMBLEM_MAX` of a
 screen's height), unlit bronze at the foot of some banners; `CorporateSkin.cult_emblems()` lists them.
+The Dead Zone (D5) keeps it scorched and half-gone (`MeshKit.PAT_DZ_MARK`, kit_dead_zone: the chosen
+emblem from the solid material's `cult_emblem` texture, in its unlit metal, with a ragged burn front
+eating part of it away and soot over the rest, never glowing) in a corner of some dead roof boards and
+at the foot of some dead neon banners, at least `emblem_min_size` across; `DeadZoneSkin.cult_emblems()`
+lists them.
 The Golden Zone (D6a) shows it openly, large, in polished gold meeting at its red stone
 (`MeshKit.PAT_EMBLEM`, kit_golden: the material's `cult_emblem` texture is the choice drawn in
 `CultEmblem.GOLD_COLOR` and `GOLD_ACCENT_COLOR`, `GoldenSkin.cult_emblem_texture()`, embossed and lit as
@@ -746,7 +793,10 @@ of some overpasses' sign gantries, and on a TV glowing in an upper window of som
 boarded-up band (`GanglandSkin.feed_windows()` lists those; `GanglandRuins.WINDOW_RECTS` mirrors the
 facade shader's window rectangles so the TV's room covers a window exactly). The Corporate zone (D4)
 plays it on some low buildings' roof boards and on some of the big screens flush towers hang out over
-the street, 14 m up or more; `CorporateSkin.feed_boards()` lists both. The Golden Zone (D6a) plays it in
+the street, 14 m up or more; `CorporateSkin.feed_boards()` lists both. The Dead Zone (D5) plays it,
+sparse and dim, on the few surviving screens: some low buildings' roof boards and a big screen hung out
+over the street from a few flush towers, `feed_screen_bottom` (15 m) up or more;
+`DeadZoneSkin.feed_boards()` lists both. The Golden Zone (D6a) plays it in
 some galleries' gilded frames and on big screens hung out over the street from some towers, sized to the
 street (`feed_hung_reach`), 10 m up or more; `feed_hung_share` at 0 clears the hung ones for a boss
 arena, and `GoldenSkin.feed_boards()` lists both. None of them puts a screen in
@@ -893,12 +943,11 @@ features or their weights, no darkness), so endless in the Dead Zone plays as it
 
 A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, which the player
 continues past. A cinematic is a scene whose root extends `Cinematic` (emit `finished`, support
-`skip()`); a boss is built on the boss framework (Bosses, below). Every boss slot is still a
-placeholder; the slots hold the phases GDD §10 gives each designed boss and its armor-rule delay. A
-fight still being built names its scene in the slot's `preview_scene` instead of `scene`: the
-campaign keeps the card, and debug builds play the fight with `--boss=<boss id>` as quick play
-(`BossDef.preview()`), so nothing is recorded. The City's Floating Head is one until its last step
-(E1d) moves it to `scene`.
+`skip()`); a boss is built on the boss framework (Bosses, below). The City's Floating Head is built
+(its step plays the fight); the other boss slots are still placeholders, holding the phases GDD §10
+gives each designed boss and its armor-rule delay. A fight still being built names its scene in the
+slot's `preview_scene` instead of `scene`: the campaign keeps the card, and debug builds play the
+fight with `--boss=<boss id>` as quick play (`BossDef.preview()`), so nothing is recorded.
 
 ## Bosses
 
@@ -925,7 +974,7 @@ encounter.setup(world, context, arena)   joins the world between the player and 
 | `scripts/bosses/boss_props.gd` | what a boss places within sight: fences, blocks, pads, ceilings, a wall taken away, floor warnings |
 | `scripts/ui/widgets/boss_bar.gd` | the HUD's boss bar, with a marker at each phase's end |
 | `scripts/bosses/test_boss*.gd`, `data/bosses/test_boss*.tres`, `scenes/bosses/test_boss.tscn` | the test boss, outside the campaign (`./play.sh --boss=test_boss`) |
-| `scripts/bosses/floating_head/`, `scenes/bosses/floating_head.tscn`, `data/bosses/city_boss*.tres` | the Floating Head, the City's boss (see below; `./play.sh --boss=city_boss` while it's a preview) |
+| `scripts/bosses/floating_head/`, `scenes/bosses/floating_head.tscn`, `data/bosses/city_boss*.tres` | the Floating Head, the City's boss (see below; `./play.sh --boss=city_boss` or `--level=city/boss`) |
 
 - **The arena** (`BossArena`): the generator plans `BossDef.arena_laps` laps from the boss's arena
   config (one lap's seed, features, difficulty, pacing and skin; `duration_seconds` is the lap's
@@ -963,7 +1012,10 @@ encounter.setup(world, context, arena)   joins the world between the player and 
   (`RunContext.boss_resume`: the phase, and the fight time, score and weapon damage so far);
   `RunContext.retry()` keeps it, starting the step afresh doesn't. `--phase=N` starts there in reviews.
 - **The win**: the time bonus and the defeat score go to the ScoreKeeper, the parts are defeated, and
-  LevelRun ends the run after a short outro. `RunResult.from_boss` pays the collected credits plus
+  LevelRun ends the run once the defeat has played out (`victory_over()`: at once by default; a
+  defeat that plays out on the track, such as the Floating Head's crash and the run through its wreck,
+  holds the results until it's over, at most `LevelRun.BOSS_VICTORY_MAX` seconds) and a short pause
+  (`COMPLETE_PAUSE`); the runner keeps running meanwhile, safe (god mode). `RunResult.from_boss` pays the collected credits plus
   `payout_credits`, and gives the stars from the par times; the App records it as the step's record
   (best score, best time, stars) and submits the boss leaderboard, `boss/<boss id>/<tier>` (none in
   the web demo). Its results and level-select tile show the boss's stars and bests like a level's.
@@ -984,33 +1036,34 @@ parts extending `BossPart`, a tuning resource of its own in `data/bosses/<id>_tu
 slot's `BossDef` filled in (scene, phases, arena, numbers). Override the hooks it needs:
 `_plan_lap`, `_build_boss`, `_on_phase_started` / `_intro_tick`, `_on_pattern_started` /
 `_pattern_tick`, `_on_weak_point_hit`, `_on_part_defeated`, `_on_part_emp`, `_on_phase_ended`,
-`_on_defeated` / `_defeated_tick`, `_on_armor_pickup_due`. Every attack needs its visual and audio
+`_on_defeated` / `_defeated_tick` / `victory_over`, `_on_armor_pickup_due`. Every attack needs its visual and audio
 warning (a floor warning from `props` also keeps pickups away), random choices come from `rng`, and
 time from the physics step. The test boss (`TestBoss`) is a small example.
 
-**The Floating Head** (GDD §10, task E1; built so far: E1a, the ship and face, the entrance, the
-bombing run and the reveal; E1b, the face-off with its eye lasers and cyborg drop, and the marked
-towers that pin it; E1c, the stomp windows while it's pinned), in `scripts/bosses/floating_head/`:
+**The Floating Head** (GDD §10, task E1: E1a, the ship and face, the entrance, the bombing run and
+the reveal; E1b, the face-off with its eye lasers and cyborg drop, and the marked towers that pin it;
+E1c, the stomp windows while it's pinned; E1d, its propaganda and its defeat, and the City's boss step
+plays it), in `scripts/bosses/floating_head/`:
 
 | File | What |
 |---|---|
-| `floating_head.gd` (`FloatingHead`) | the encounter: each phase's intro (the first is the entrance, overhead from behind; later ones rise), its bombing run if it has one (`run_seconds(phase)`), then the descent in front of the runner (the first time, the reveal: the face powers on) and the face-off until a tower pins it (`begin_pin`: it brakes under the falling tower and lies still on the track, sunk between the trucks until its weak points' sockets are `pin_top_height` up and rolled toward the tower about its crown, `pinned_transform`; the tower breaks behind the weak points as it lands). Then the phase's stomp window (`route`, from `stomp_route(phase)`): `_open_window` switches the weak points and the crown's deck on and the hull hitbox off, and the way up is built in the arena (`_slam_ramp`: the tower's slab, a `FloatingHeadRamp`, in `ramp_lane`; the wall needs nothing; `_light_pads` and `_update_ceiling`: `props.pad` in every lane and a `props.ceiling` that lowers in once the ship is past its end). `_check_window` closes it (`_miss`) when the runner is still on the trucks within `window_release_gap` of its face or past `pass_line()`; a stomp ends the phase instead. Either way it shakes free (`SHAKE`: it lurches ahead of the runner, its deck under a runner still on it until its face has passed them) and rises: to the next phase's station after a stomp (the phase's intro), back in front for the face-off after a miss (`RELEASE`). The ship's `pose` is kept relative to the runner (sideways, belly height, stern ahead) except while pinned, so nothing depends on how long the fight has lasted. The marked towers are planned with each lap (`_plan_lap`: every `tower_spacing`, sides in turn, the track cleared of holes and fences around each) and brought into sight as the runner nears them (`towers_between`, `tower_node`); a tower whose pin would land on a pickup or a dropped cyborg goes by (`pin_zone_blocker`), and armor pickups wait while a pin is under way (`pin_busy`, `_on_armor_pickup_due`). The fairness helpers its attacks share: `escape_lane`, `floor_clear_lane`/`floor_clear_all`, `pickup_near`, `enemy_in_lane`, `ceiling_between` (the arena's ceilings and its window's own: no bomb locks under one, the face-off waits past it). `sound()` plays and logs every warning |
-| `floating_head_body.gd` (`FloatingHeadBody`) | the body part: the model and its moving parts (face screen, jaw, searchlight gimbal, bay doors, weak-point covers that swing open with the red domes pulsing out: `weak_open`), a solid hull hitbox (`set_hull_solid`: off while pinned), a weak point over each lane near the crown's middle (generous stomp boxes, `stomp_width`/`stomp_depth`/`stomp_top`) and the crown's deck (a concave shape exactly over the drawn hull, `FloatingHeadModel.deck_faces`), both off until a window opens (`set_weak_points_enabled`, `set_top_solid`; `top_height`, `weak_point_world`), the face's state (`screen_power`, `anger`, `eye_charge`, `glitch`, `jaw_open`, and `look_point` for the eyes to watch the laser's aim), where its eyes and mouth are (`eye_world`, `mouth_world`), and `exclusive_major_attack` (its lasers and bombs take turns with other big attacks) |
-| `floating_head_model.gd` (`FloatingHeadModel`) | the low-poly meshes, built in code from a `Shape` sized to the street and its lanes (MeshKit layers merged into a few surfaces: about 13 surfaces and 11k vertices; the weak points over the lanes within `weak_point_reach` of the middle), the bomb, the crown's deck faces, and `ship_transform` (its pitch and its roll about the crown over the weak points) |
+| `floating_head.gd` (`FloatingHead`) | the encounter: each phase's intro (the first is the entrance, overhead from behind; later ones rise), its bombing run if it has one (`run_seconds(phase)`), then the descent in front of the runner (the first time, the reveal: the face powers on) and the face-off until a tower pins it (`begin_pin`: it brakes under the falling tower and lies still on the track, sunk between the trucks until its weak points' sockets are `pin_top_height` up and rolled toward the tower about its crown, `pinned_transform`; the tower breaks behind the weak points as it lands). Then the phase's stomp window (`route`, from `stomp_route(phase)`): `_open_window` switches the weak points and the crown's deck on and the hull hitbox off, and the way up is built in the arena (`_slam_ramp`: the tower's slab, a `FloatingHeadRamp`, in `ramp_lane`; the wall needs nothing; `_light_pads` and `_update_ceiling`: `props.pad` in every lane and a `props.ceiling` that lowers in once the ship is past its end). `_check_window` closes it (`_miss`) when the runner is still on the trucks within `window_release_gap` of its face or past `pass_line()`; a stomp ends the phase instead. Either way it shakes free (`SHAKE`: it lurches ahead of the runner, its deck under a runner still on it until its face has passed them) and rises: to the next phase's station after a stomp (the phase's intro), back in front for the face-off after a miss (`RELEASE`). The ship's `pose` is kept relative to the runner (sideways, belly height, stern ahead) except while pinned, so nothing depends on how long the fight has lasted. The marked towers are planned with each lap (`_plan_lap`: every `tower_spacing`, sides in turn, the track cleared of holes and fences around each) and brought into sight as the runner nears them (`towers_between`, `tower_node`); a tower whose pin would land on a pickup or a dropped cyborg goes by (`pin_zone_blocker`), and armor pickups wait while a pin is under way (`pin_busy`, `_on_armor_pickup_due`). The fairness helpers its attacks share: `escape_lane`, `floor_clear_lane`/`floor_clear_all`, `pickup_near`, `enemy_in_lane`, `ceiling_between` (the arena's ceilings and its window's own: no bomb locks under one, the face-off waits past it). `sound()` plays and logs every warning; `warning_active()` says when one of its attacks warns or strikes, a cue still sounds, a cyborg it dropped is about or a pulsing fence is near (the propaganda gives way). The defeat (`_on_defeated`, then `_defeated_tick`'s steps): the propaganda cuts out (`voice.cut()`), pinned it shakes free (`SHAKE`), then `DYING` (it lurches up to `dying_pose()` in front of the runner, its face glitching: `_defeat_glitch`, steady with Reduced flashing), `FALLING` (it loses power and plunges to `crash_site()`: the first stretch ahead where the floor is clear around its wreck; it limps on until there is one) and `WRECKED` (`_crash`: the dust, its face falls flat before the wreck, `fallen_face()`, and its stern half lies sunk to `wreck_belly()`, a tunnel the lanes run through; `victory_over()` once the runner reaches its face; `wreck_passed()`) |
+| `floating_head_body.gd` (`FloatingHeadBody`) | the body part: the model and its moving parts (face screen, jaw, searchlight gimbal, bay doors, weak-point covers that swing open with the red domes pulsing out: `weak_open`), a solid hull hitbox (`set_hull_solid`: off while pinned), a weak point over each lane near the crown's middle (generous stomp boxes, `stomp_width`/`stomp_depth`/`stomp_top`) and the crown's deck (a concave shape exactly over the drawn hull, `FloatingHeadModel.deck_faces`), both off until a window opens (`set_weak_points_enabled`, `set_top_solid`; `top_height`, `weak_point_world`), the face's state (`screen_power`, `anger`, `eye_charge`, `glitch`, `jaw_open`, and `look_point` for the eyes to watch the laser's aim), where its eyes and mouth are (`eye_world`, `mouth_world`), and `exclusive_major_attack` (its lasers and bombs take turns with other big attacks). The slogan's caption band (`show_slogan`, `caption`: a Label3D in the face's cold white over a dark band the face shader draws across the screen's lower part, under the eyes; Label3D translates its text like the UI's labels). Beaten, it stays and keeps drawing itself: `power` fades its lights (per-instance copies of its kit materials' `state_glow`), `wreck(face_rest)` swaps in the wreck and lays its torn-off face in the street (cracked, framed), `crash_dust` and `start_smoke` (soft grey puffs from a radial `GradientTexture2D`) |
+| `floating_head_model.gd` (`FloatingHeadModel`) | the low-poly meshes, built in code from a `Shape` sized to the street and its lanes (MeshKit layers merged into a few surfaces: about 13 surfaces and 11k vertices; the weak points over the lanes within `weak_point_reach` of the middle), the bomb, the crown's deck faces, and `ship_transform` (its pitch and its roll about the crown over the weak points). The wreck (`_wreck`): its stern half (`WRECK_LENGTH`), torn open at both ends (the cut plating and flaps peeled outward), plated inside, dark; `wreck_inner_half` is its inside's half width at a height (the runner's room in it, tested at every lane count) |
+| `floating_head_voice.gd` (`FloatingHeadVoice`) | the propaganda: from the reveal on, a phrase every so often (`head_voice_1-4`, a seeded order and pauses of its own) from a positional player at the face, each with the next slogan (`FloatingHeadTuning.slogans`); it ducks `voice_duck_db` at once under `FloatingHead.warning_active()`, the slogan fades, and no phrase starts until the warnings have been over a moment; `cut()` stops it mid-shout for the defeat (`head_voice_cut`) |
 | `floating_head_bombing.gd` (`FloatingHeadBombing`) | the searchlight and the bombs: the lock (the warning: red light, `circle_warning`, lock sound, the bomb falling with its whistle), the fairness rules (`plan`, `fair`, `escape_lane`), and pooled blast hitboxes (enemy attacks) that keep clear of a wall runner |
 | `floating_head_faceoff.gd` (`FloatingHeadFaceOff`) | the face-off: the phase's attacks wait in line (`faceoff_pattern`; the first that can start fairly goes next) with a drag timed for each marked tower. Eye lasers: the warning (the eyes' `eye_charge` and whine, thin aiming beams with a sweep's aim lines or a drag's aiming spot, then the drag's `lane_warning`), a sweep's twin beams (low: both low, jump them; high: one at the waist and one above a jump's reach, like a gapped fence, slide under them) or a drag down the runner's lane leaving a burning line (keeps clear of a wall runner), each with enemy-attack hitboxes. The cyborg drop: the jaw opens (with its sound and `circle_warning`s where they land), then normal cyborgs from the director (`spawn_enemy`) fall from the mouth onto clear roof and fight. A tower's drag is a bait when the runner is in the outer lane on its side as the warning ends, or the fallback after `fallback_after` misses; either calls `FloatingHead.begin_pin`. Lasers wait while its cyborgs are ahead and share the cyborgs' airspace (`CyborgGun.AIRSPACE_META`) |
 | `floating_head_tower.gd` (`FloatingHeadTower`) | a marked tower at the roadside (flush with the facades, its head jutting out over the street above the ship's highest flight so it shows from far along the street; no hitboxes: scenery until it falls): pale concrete with white painted bands and targets, cracks and cold warning lights; the laser's cut glows red-hot as it's clipped, then it topples forward onto the ship (`fall_onto`, `rest_on`), breaks in two as it lands (`break_at`, `tower_mesh`'s sections with torn ends: the lower section drops away), and the rest crumbles away when the ship shakes free |
 | `floating_head_ramp.gd` (`FloatingHeadRamp`) | the first stomp window's way up: the tower's broken slab slammed down in a lane (`ramp_length` long, its top end `ramp_lift` above the crown at the face), its top a floor (a convex slab) and its sides a lane blocker down to the trucks where it stands above a step; green chevrons up it; it sinks away when the ship shakes free |
-| `floating_head_face.gdshader`, `floating_head_light.gdshader`, `floating_head_laser.gdshader` | the face screen (unshaded and procedural: the same on every renderer; still with Reduced flashing), the searchlight's beam and spot, and the lasers (the beams, the aim lines and the burning line: additive, lifted on the Compatibility renderer; the burn's embers hold still with Reduced flashing) |
+| `floating_head_face.gdshader`, `floating_head_light.gdshader`, `floating_head_laser.gdshader` | the face screen (unshaded and procedural: the same on every renderer; still with Reduced flashing; its `glitch`, the `caption` band, and `broken`: the dead screen in the street, cracked, the face burnt in faintly), the searchlight's beam and spot, and the lasers (the beams, the aim lines and the burning line: additive, lifted on the Compatibility renderer; the burn's embers hold still with Reduced flashing) |
 | `floating_head_tuning.gd`, `data/bosses/city_boss_tuning.tres` | its numbers (F6 in its fight) |
 | `data/bosses/city_boss_skin.tres` | its arena's City look: the City's skin without the towers' big screens hung out over the street, where the ship flies |
-| `tools/showcase/floating_head_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/stern/below/entrance/bombing/reveal/faceoff/fallback/missed/pinned/window/mouth`, `--phase=N` for the phase's stomp window) |
-| `tests/helpers/floating_head_bot.gd` (`FloatingHeadBot`) | a runner who plays the fight by its warnings, pressing only named actions: dodges bombs and lasers, baits towers, and takes each stomp window's way up (`routes`; `wrong_route` stays on the trucks) (tests and the showcase) |
+| `tools/showcase/floating_head_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/stern/below/entrance/bombing/reveal/faceoff/fallback/missed/pinned/window/mouth/slogans/defeat/wreck`, `--phase=N` for the phase's stomp window) |
+| `tests/helpers/floating_head_bot.gd` (`FloatingHeadBot`) | a runner who plays the fight by its warnings, pressing only named actions: dodges bombs and lasers, baits towers, and takes each stomp window's way up (`routes`; `wrong_route` stays on the trucks); it also runs the arena (`reads_track`: jumps holes and full fences, slides under gapped ones, sidesteps bolts), so it plays the whole fight without god mode (tests and the showcase) |
 
 **How the designed bosses fit** (GDD §10; each is a later task):
-- **Floating Head (E1d):** E1d adds the propaganda voice and slogans and the defeat (the face's
-  `glitch`; for now a won fight ends in a burst and the ship is gone at once, `_on_defeated`), and
-  moves the scene from `preview_scene` to `scene`. `weapon_share_cap` 0.34 keeps weapons to one stomp.
+- **Floating Head (E1, built):** the City's boss step plays it; `weapon_share_cap` 0.34 keeps
+  weapons to one stomp, and its defeat plays out on the track before the results (`victory_over`).
 - **Sewer Swarm (E4):** 4–5 clusters are parts with health of their own and `is_swarm` (MultiMesh
   crowds drawn by the part), moving ahead of and behind the player (parts never retire); baiting one
   into a live fence or a hole is the boss script's check (`arena.live_fence_between`,
@@ -1083,7 +1136,13 @@ escaped without god mode, the cyborg drop, a baited and a fallback tower pinning
 each attack's fairness from the real arena's layout; `test_floating_head_stomps` has the bot take each
 phase's stomp window at 3, 5 and 6 lanes without god mode, checks the ways up are physical, missed
 windows repeat without escalation, the damage and weapon cap, the armor pickups, the window's ceiling
-rules, and plays the whole fight from its entrance to the last stomp. `test_resonator` plays the
+rules, and plays the whole fight from its entrance to the last stomp; `test_floating_head_defeat`
+checks its defeat (after the last stomp at 3, 5 and 6 lanes and by weapons in the air: the
+propaganda cut, the glitch, the fall, the wreck with room for a runner in every lane, the run through
+it without god mode, Reduced flashing, the same every attempt) and plays the whole fight through the
+campaign at 3, 5 and 6 lanes with the bot and no god mode (City 3, the boss intro's slot, the fight,
+its results and stars, the shop, the outro's slot, and the web demo's end screen), checking along the
+way that its propaganda never masks a warning, then that a death restarts the fight. `test_resonator` plays the
 Resonator in full worlds on real physics (the warning always before the wave, a jump clearing it at 3,
 5 and 6 lanes with its margin measured, walls and the ceiling safe, armor, shield and dash, turns with a
 `TurnDummy`, Reduced flashing), checks its rules over many seeds, and plays the real Golden 1-3 layouts
@@ -1097,7 +1156,7 @@ the music files (seamless loops, lengths, tempos, size budgets), the Music autol
 death dip on its players' levels and the bus's low-pass (headless runs never start a player), and the
 run's music hooks through the App. The runner frees
 anything a suite leaves in the tree, gives suites a fresh, unsaved profile, reports a suite that fails
-to load, and ends a stuck run after 600 s of real time.
+to load, and ends a stuck run after 1200 s of real time.
 
 ## Review tools
 

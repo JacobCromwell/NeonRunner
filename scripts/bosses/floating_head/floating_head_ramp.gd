@@ -9,7 +9,7 @@ extends Node3D
 ## stands higher than a step, down to the trucks (a lane switch into it bumps; a runner in the air
 ## above it may switch over and land on it). It gives no boost and launches nobody: a slope, not a ramp
 ## pad (so RampLaunch's wall-run prediction doesn't apply to it).
-## DESIGN-TBD (docs/questions/e1.md, From E1c, item 1): the look. Placeholder: a slab of the tower's
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 158): the look. Placeholder: a slab of the tower's
 ## pale concrete as wide as a lane, a row of the tower's windows and a painted white band along its
 ## sides, its top end torn off with rebar sticking out, and the City's green ramp chevrons running up
 ## the middle of its top ("go up here", the zone's ramp colour) with white edge lines.
