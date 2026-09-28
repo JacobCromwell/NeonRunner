@@ -114,10 +114,10 @@ func _ready() -> void:
 ## and pulse by the Resonator's own timings (CHIME_NOTES, warning_seconds).
 func _build_model_view() -> void:
 	_world.player.visible = false
+	var t: ResonatorTuning = EnemyDirector.tuning_for("resonator") as ResonatorTuning
 	_model = ResonatorModel.new()
 	add_child(_model)
-	_model.build()
-	var t: ResonatorTuning = EnemyDirector.tuning_for("resonator") as ResonatorTuning
+	_model.build(t.model_scale)
 	_model.position = Vector3(0.0, t.hover_height, -12.0)
 	var half: float = t.band_half_width(_lanes, _world.tuning)
 	_wave = MeshInstance3D.new()
