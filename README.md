@@ -181,8 +181,8 @@ OFL-licensed; licenses are in `assets/LICENSES.md`.
 
 The scenes in `tools/showcase/` show one part of the game up close for visual review (the runner in every pose
 and power-up look, and a scripted run on any zone's skin; ramp launches and blocked wall entries; each enemy
-family, the Floating Head, the UI kit, every screen, a zone skin's fixed review track, the cult's feed); each
-script's header lists its options.
+family, the Floating Head, the UI kit, every screen, a zone skin's fixed review track, the cult's feed, the
+Golden Zone's statues); each script's header lists its options.
 
 `tools/measure/big_attacks.gd` measures how the big attacks of different enemy types overlap over simulated runs of
 the campaign, with big attacks taking turns (GDD §9, the `big_attacks_take_turns` switch in the game rules and the
