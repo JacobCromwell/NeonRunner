@@ -9,6 +9,11 @@ extends TestSuite
 ## for slower CI machines but catches a skin that got expensive.
 const BUILD_BUDGET_MEAN_MS: float = 4.0
 const BUILD_BUDGET_MAX_MS: float = 16.0
+## Timed builds of the dressed level whole_level() takes, keeping the fastest of the three per build
+## step (T-BUDGET): several agents' test runs can share this machine's CPUs, and OS preemption only
+## ever adds wall-clock time to a build, never removes it, so the minimum across a few fresh builds
+## stays a faithful reading of the skin's real cost even when one pass gets paused mid-build.
+const BUILD_TIMING_PASSES: int = 3
 ## Visible mesh surfaces (one draw call each when on screen) a 5-lane chunk may add on average.
 const SURFACE_BUDGET_PER_CHUNK: float = 32.0
 
@@ -56,7 +61,9 @@ func level(level_path: String, lanes: int, difficulty: float, level_seed: int = 
 func whole_level(skin: ZoneSkin, name: String, level_path: String, lanes: int) -> void:
 	var tag: String = "(%d lanes)" % lanes
 	var layout: LevelLayout = level(level_path, lanes, 0.6)
-	var dressed: Dictionary = await build_all(layout, skin)
+	# Only the dressed build's time is checked against the budget, so only it pays for extra passes;
+	# the bare comparison build (for the collision counts below) needs just the one.
+	var dressed: Dictionary = await build_all(layout, skin, BUILD_TIMING_PASSES)
 	var bare: Dictionary = await build_all(layout, ZoneSkin.new())
 	check(dressed["chunks"] == ceili((layout.length + TrackBuilder.RUN_OUT) / TrackBuilder.CHUNK_LENGTH) + 1,
 		"every chunk of the level is built %s: %d" % [tag, dressed["chunks"]])
@@ -84,8 +91,24 @@ func whole_level(skin: ZoneSkin, name: String, level_path: String, lanes: int) -
 			tag, surfaces, SURFACE_BUDGET_PER_CHUNK])
 
 
-## Builds a whole level chunk by chunk and tallies what each new chunk contains.
-func build_all(layout: LevelLayout, skin: ZoneSkin) -> Dictionary:
+## Builds a whole level chunk by chunk and tallies what each new chunk contains. `timing_passes`
+## builds the level this many times over (a fresh TrackBuilder and world each time, as a single pass
+## always did) and keeps, per build step, the minimum time seen across passes -- see
+## BUILD_TIMING_PASSES. The tallies (surfaces, vertices, collision, triggers) come from the first
+## pass only; only its "times" differ from a single pass's own.
+func build_all(layout: LevelLayout, skin: ZoneSkin, timing_passes: int = 1) -> Dictionary:
+	var stats: Dictionary = await _build_once(layout, skin)
+	for _p: int in (timing_passes - 1):
+		var extra: Dictionary = await _build_once(layout, skin)
+		var times: Array = stats["times"]
+		var extra_times: Array = extra["times"]
+		for i: int in mini(times.size(), extra_times.size()):
+			times[i] = minf(times[i], extra_times[i])
+	return stats
+
+
+## One build of a whole level, chunk by chunk, tallying what each new chunk contains.
+func _build_once(layout: LevelLayout, skin: ZoneSkin) -> Dictionary:
 	var world := Node3D.new()
 	tree.root.add_child(world)
 	var track := TrackBuilder.new()
