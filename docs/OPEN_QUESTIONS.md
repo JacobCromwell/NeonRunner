@@ -1193,6 +1193,48 @@ slot; numbers in `data/bosses/city_boss_tuning.tres` and `data/bosses/city_boss.
     framework's rule), so fences in the way are harmless, but a hole still ends the run early (the win counts). Should the
     street to the wreck be clear, or its fences go dark as it crashes?
 
+**Dead Zone skin** (from D5; numbers and colours are exports on `DeadZoneSkin`, F6; play it with
+`--quick --skin=dead_zone --nofall` or `--level=dead_zone/1` (`dead_zone/2` is The Hush); the Bad Dream's chase
+through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
+204. **Time of day:** a smoke-choked night: a low pall of smoke, an ash-grey haze on the horizon with the ruins in dark
+    silhouette against it, smoke columns faintly lit from below by distant fires, a veiled moon. Distance fades into the
+    haze (lighter than the ruins), so the black Bad Dream and the burned cyborgs read as dark silhouettes against it.
+    (The Sleep Taker's defeat brings "the first grey dawn light", GDD §10.) Right hour and mood?
+205. **The rubble street and its holes:** broken road plates under pale ash, worn lane lines mostly buried, rubble drawn
+    flat (nothing on the running surface stands up like an obstacle), no round shapes (a manhole means a screech). A gap
+    is a collapsed hole with the usual orange edge and a soft halo on its far edge, deep shade and a dark void below; the
+    ash-grey street is the zone's lightest surface, so a hole reads at a glance. Right look?
+206. **Motion cues:** per 40 m, 70 ash flakes drifting and falling, 7 faint smoke puffs drifting low and rising, 12 speed
+    streaks, with the plate seams and rubble streaming past. Right equivalent?
+207. **The ruins and the calm band:** the Neon City's own towers, gutted (burnt-out window grids, dead neon banners and
+    roof boards, broken skybridges, tops sheared off, 40% burnt down to their steel frames); every face flush and closed
+    up to 7.2 m (nothing that opens, lights up, sticks out, or looks like a window cyborg's window, a vent or a manhole),
+    with faint lines at the wall-run heights. Right look? More destruction (whole blocks gone, open sky) would need open
+    lots, which no zone's walls have yet.
+208. **Embers** (fires kept minimal): in 35% of towers, a few rooms smoulder 16 m up or higher, a dull orange kept below
+    the bloom threshold and under a third of a gap edge's brightness, breathing slowly (still with Reduced flashing); none
+    near the play field. Too many, too few, or none?
+209. **Smoke columns** billow slowly up from the broken tops of 22% of the ruins 20 m tall or more. Right amount?
+210. **The ceilings:** across every lane a crumbling charred bridge (a wreck and a toppled lamp post on its deck) or a
+    dead tower's burnt-out upper storeys; over fewer lanes a floor slab broken off the tower it reaches, or a collapsed
+    span hanging from a steel gantry. Every underside is flat charred concrete with the orange band at its far end.
+    Right mix and forms?
+211. **The cult's emblem here:** in its unlit bronze, scorched and half-gone (a ragged burn front across it), on 40% of the
+    dead roof billboards and at the foot of the dead neon banners. Is a burnt remnant of the cult right here, and how
+    much?
+212. **The cult's feed on surviving screens** (proposal): it still plays in the dead city on a few surviving screens, dim
+    and high up (20% of the roof boards, big screens hung from 12% of the towers, 15 m up or more; about 16 over 3 km).
+    The burned cyborgs' flickering screens suggest the broadcast still reaches them. Should it play here at all, and
+    this sparsely?
+213. **Broken skybridges:** a stub from each wall 18 m up or more, broken off short of the middle, in half the stretches
+    where towers stand tall on both sides. Enough future in the ruins?
+214. **Hazards in the zone's dress:** the same pink fence between charred steel posts in rubble or wreckage; signs are dead
+    billboards (a cracked dark screen or a burnt poster, unlit) in the yellow/black frame. OK?
+215. **The other enemies' look here** (only the cyborgs have a Dead Zone variant, GDD §9.2): drones, hover trucks,
+    Octodogs and screeches keep their clean look. Burnt or weathered here too? (Item 130 asks the same across zones.)
+216. **The Hush's darkness** on this skin: every piece dims with it; on screen the street goes from about 80 to 56 in grey
+    value and the walls from 40 to 20, while hazards, triggers and enemies stay as bright. Dark enough? (Item 155.)
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
