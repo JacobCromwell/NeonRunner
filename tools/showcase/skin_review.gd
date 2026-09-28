@@ -383,6 +383,11 @@ func _shot_list() -> Array:
 			var beside: float = geo.lane_x(0) if _pad_lane(i) >= lanes / 2 else geo.lane_x(lanes - 1)
 			out.append([s - 30.0, Vector3(beside * 0.8, tuning.camera_height, -(s - 10.0)), Vector3(pad_x, 5.2, -(s + 14.0)),
 				"narrow ceiling %d from the floor beside it" % i])
+			var r: Vector2i = _hull_lanes(i)
+			var mid_x: float = (geo.lane_x(r.x) + geo.lane_x(r.y)) * 0.5
+			var across: float = -signf(mid_x) if absf(mid_x) > 0.1 else 1.0
+			out.append([s - 30.0, Vector3(across * (geo.wall_x() - 1.0), 3.6, -(s - 8.0)), Vector3(mid_x, h + 0.6, -(s + 6.0)),
+				"narrow ceiling %d, three-quarter view of its near end" % i])
 	# 13-16: a gap coming up, from where the game camera would be with the player in the middle lane.
 	for ahead: float in FAR_GAP_AHEAD:
 		var p: float = FAR_GAP - ahead

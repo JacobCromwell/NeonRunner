@@ -1,5 +1,8 @@
 // Additive glow cards: halos, headlight beams, light columns, streaks (MeshLayer data).
 //   COLOR.rgb  colour (sRGB)   COLOR.a  strength   UV 0-1 over the card   UV2.x shape (MeshKit.SHAPE_*)
+//   UV2.y      RISE: the bands' phase; below 0, on any shape: the card fades out within -UV2.y metres of
+//              the camera (MeshKit.near_fade; a card the camera passes close to, such as a ceiling's end
+//              glow, never fills the screen)
 // Fog would brighten additive cards toward the fog colour, so they fade out with distance here instead.
 shader_type spatial;
 render_mode unshaded, blend_add, depth_draw_never, cull_disabled, fog_disabled;
@@ -45,5 +48,9 @@ void fragment() {
 		g *= warning_flicker(step(0.5, fract(TIME * flicker_hz)), 0.0);
 	}
 	float fade = 1.0 - smoothstep(fade_begin, fade_end, length(VERTEX));
+	float near = max(-UV2.y, 0.0);
+	if (near > 0.0) {
+		fade *= smoothstep(near * 0.4, near, length(VERTEX));
+	}
 	ALBEDO = to_linear(COLOR.rgb) * (COLOR.a * a * g * fade);
 }

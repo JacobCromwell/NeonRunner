@@ -144,8 +144,10 @@ func ship_mesh(size: Vector3, lane_edges_x: Array[float], offset_x: float, small
 		s.prism_xform(core, 8, skin.engine_color, 1.0)
 		MeshKit.stern_halo(g, Vector3(ex, ey, zf - 1.5), r * 2.6, skin.engine_color, 0.55)
 		g.rect(Vector3(ex - r * 0.8, ey, zf - 1.5), Vector3(r * 1.6, 0, 0), Vector3(0, 0, -14.0), skin.engine_color, 0.22,
-			MeshKit.SHAPE_BEAM)
-	# The engines' light on the underside toward the stern, under the ship only (never past its end).
-	g.rect(Vector3(-hw, -0.06, zf + 3.0), Vector3(hw * 2.0, 0, 0), Vector3(0, 0, -3.0), skin.engine_color, 0.3,
-		MeshKit.SHAPE_RADIAL, Vector2(0.0, 0.0), Vector2(1.0, 0.5))
+			MeshKit.SHAPE_BEAM, Vector2.ZERO, Vector2.ONE, MeshKit.near_fade(MeshKit.STERN_NEAR))
+	# The engines' light on the underside toward the stern, under the ship only, ending at the orange
+	# band: laid over the band, the blue turned it pink (the band must read as the gap edge's orange).
+	var lit: float = zf + stern_lip
+	g.rect(Vector3(-hw, -0.06, lit + 3.0), Vector3(hw * 2.0, 0, 0), Vector3(0, 0, -3.0), skin.engine_color, 0.3,
+		MeshKit.SHAPE_RADIAL, Vector2(0.0, 0.0), Vector2(1.0, 0.5), MeshKit.near_fade(MeshKit.STERN_NEAR))
 	return batch.to_mesh()

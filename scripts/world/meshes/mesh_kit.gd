@@ -162,6 +162,12 @@ const SHADER_DIR: String = "res://scripts/world/meshes/shaders/"
 ## How far the glow under a ceiling's end band (ceiling_end) reaches back from the band, under the
 ## ceiling. It never reaches past the far end.
 const CEILING_END_GLOW: float = 1.5
+## The ceiling end glow fades out this close to the camera (near_fade): it marks the drop from further
+## off, and never washes the screen as the camera passes under it after the player drops.
+const CEILING_END_NEAR: float = 4.0
+## A ship's engine glows at its stern (stern_halo, beams) fade out this close to the camera: it passes
+## right under them after the player drops off the ship's end.
+const STERN_NEAR: float = 8.0
 
 static var _boxes: Dictionary = {}
 static var _prisms: Dictionary = {}
@@ -654,20 +660,30 @@ static func ceiling_end(s: MeshLayer, g: MeshLayer, half_width: float, zf: float
 		s.box(Vector3(lx, -0.025, zf + 0.25), Vector3(0.35, 0.05, 0.2), color, 0.6, PAT_PLAIN, ALL_FACES & ~FACE_PY)
 		lx += 1.2
 	g.rect(Vector3(x0, -0.05, zf + band + CEILING_END_GLOW), Vector3(half_width * 2.0, 0, 0),
-		Vector3(0, 0, -(band + CEILING_END_GLOW)), color, 0.35, SHAPE_RADIAL)
+		Vector3(0, 0, -(band + CEILING_END_GLOW)), color, 0.35, SHAPE_RADIAL, Vector2.ZERO, Vector2.ONE,
+		near_fade(CEILING_END_NEAR))
+
+
+## A glow card's parameter (UV2.y, the `param` of MeshLayer.rect) for a card that fades out near the
+## camera: from `metres` away, gone within 40% of that (kit_glow.gdshader), so a card the chase camera
+## passes close to never fills the screen. Any shape takes it.
+static func near_fade(metres: float) -> float:
+	return -absf(metres)
 
 
 ## A round halo facing along the track around `center` (hull-local: the ceiling's underside at y = 0),
 ## `radius` across, cut off at the underside: a ship's engine glowing at its stern. Past a ceiling's far
 ## end nothing glows below the underside, where the chase camera passes as the player drops (see
-## ceiling_end); the halo keeps its shape above it.
+## ceiling_end); the halo keeps its shape above it, and fades out as the camera comes close
+## (near_fade(STERN_NEAR)).
 static func stern_halo(g: MeshLayer, center: Vector3, radius: float, color: Color, strength: float) -> void:
 	var bottom: float = maxf(center.y - radius, 0.0)
 	var top: float = center.y + radius
 	if top <= bottom:
 		return
 	g.rect(Vector3(center.x - radius, bottom, center.z), Vector3(radius * 2.0, 0, 0), Vector3(0, top - bottom, 0), color,
-		strength, SHAPE_RADIAL, Vector2(0.0, (bottom - (center.y - radius)) / (radius * 2.0)), Vector2.ONE)
+		strength, SHAPE_RADIAL, Vector2(0.0, (bottom - (center.y - radius)) / (radius * 2.0)), Vector2.ONE,
+		near_fade(STERN_NEAR))
 
 
 static func _ring(s: MeshLayer, center: Vector3, w: float, d: float, t: float, color: Color, glow_amount: float) -> void:
