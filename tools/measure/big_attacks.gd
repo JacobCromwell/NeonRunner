@@ -6,7 +6,10 @@ extends SceneTree
 ##   godot --headless --fixed-fps 60 -s res://tools/measure/big_attacks.gd -- [options]
 ## Options:
 ##   --levels=gangland/3,dead_zone/1   campaign steps (default: every level)
+##   --features=octodog                only the levels whose features include all of these
 ##   --lanes=3,5,6                     lane counts (default 3,5,6)
+##   --seeds=N                         each level's own seed and N others, 9001 to 9000 + N
+##                                     (default 0: the campaign's own seeds)
 ##   --turns=on,off                    the switch (default both)
 ##   --seconds=N                       stop each run after N s of play (default: at the finish)
 ##   --no-hosts                        leave hosts alone (default: the runner stomps every host it
@@ -15,6 +18,10 @@ extends SceneTree
 ##                                     skins never change gameplay)
 ##   --out=build/measure/x.json        also write every run's numbers and event log there
 ## The whole campaign at 3, 5 and 6 lanes, both ways (90 runs), takes about 10 minutes.
+##
+## Each run's line ends with the enemies that never made a big attack (Octodogs without a charge,
+## Resonators without a pulse, drones without a barrage, hover trucks without a lurch or a cannon
+## shot); a drone brought down by a pad or a truck that leaves early may have had no chance.
 ##
 ## The simulated runner: god mode and endless grapples (quick play's --god --nofall), in the middle
 ## lane all the way (it takes the pads in that lane), stomping every host it passes. The enemies play
@@ -25,7 +32,9 @@ extends SceneTree
 const AttackWatch = preload("res://tools/measure/attack_watch.gd")
 
 var _levels: PackedStringArray = []
+var _features: PackedStringArray = []
 var _lanes: Array[int] = [3, 5, 6]
+var _seeds: int = 0
 var _turns: Array[bool] = [true, false]
 var _limit: float = INF
 var _stomp_hosts: bool = true
@@ -50,20 +59,27 @@ func _run() -> void:
 		app.set(&"autosave", false)
 		app.set(&"save_path", "user://measure_profile.json")
 	var runs: Array[Dictionary] = []
-	print("level          lanes turns   secs  attacks: drone lurch cannon  dog dream  reso  overlap s events  waited s (mean/max, n)  log")
+	print("level          lanes  seed turns   secs  attacks: drone lurch cannon  dog dream  reso  overlap s events"
+		+ "  waited s (mean/max, n)  idle dog/reso/drone/truck  log")
 	for id: String in _levels:
 		var step: CampaignStep = campaign.step(id)
 		if step == null or not step.is_level():
 			print("%s: not a campaign level" % id)
 			continue
+		var wanted: bool = true
+		for f: String in _features:
+			wanted = wanted and campaign.configure(step, _lanes[0]).features.has(f)
+		if not wanted:
+			continue
 		for lanes: int in _lanes:
-			for turns: bool in _turns:
-				if app != null:
-					# The same profile for every run (the first Octodogs of a profile hide in a doghouse).
-					app.set(&"profile", Profile.new())
-				var r: Dictionary = await _measure(campaign, step, lanes, turns, tuning)
-				runs.append(r)
-				print(_line(r))
+			for k: int in _seeds + 1:
+				for turns: bool in _turns:
+					if app != null:
+						# The same profile for every run (the first Octodogs of a profile hide in a doghouse).
+						app.set(&"profile", Profile.new())
+					var r: Dictionary = await _measure(campaign, step, lanes, 9000 + k if k > 0 else -1, turns, tuning)
+					runs.append(r)
+					print(_line(r))
 	print("")
 	for turns: bool in _turns:
 		_print_totals(runs, turns)
@@ -82,10 +98,14 @@ func _parse_args() -> void:
 		var value: String = arg.get_slice("=", 1)
 		if arg.begins_with("--levels="):
 			_levels = value.split(",", false)
+		elif arg.begins_with("--features="):
+			_features = value.split(",", false)
 		elif arg.begins_with("--lanes="):
 			_lanes.clear()
 			for v: String in value.split(",", false):
 				_lanes.append(int(v))
+		elif arg.begins_with("--seeds="):
+			_seeds = maxi(int(value), 0)
 		elif arg.begins_with("--turns="):
 			_turns.clear()
 			for v: String in value.split(",", false):
@@ -100,9 +120,13 @@ func _parse_args() -> void:
 			_out = value
 
 
-## One simulated run of a campaign level. Returns its numbers (AttackWatch.summary() and the run's).
-func _measure(campaign: Campaign, step: CampaignStep, lanes: int, turns: bool, tuning: MovementTuning) -> Dictionary:
+## One simulated run of a campaign level, on its own seed (`level_seed` -1) or another. Returns its
+## numbers (AttackWatch.summary() and the run's).
+func _measure(campaign: Campaign, step: CampaignStep, lanes: int, level_seed: int, turns: bool,
+		tuning: MovementTuning) -> Dictionary:
 	var config: LevelConfig = campaign.configure(step, lanes)
+	if level_seed >= 0:
+		config.level_seed = level_seed
 	if not _skins:
 		config.skin = null
 	var layout: LevelLayout = LevelGenerator.new().generate(config, tuning, LevelGenerator.load_for(config))
@@ -122,6 +146,7 @@ func _measure(campaign: Campaign, step: CampaignStep, lanes: int, turns: bool, t
 	var r: Dictionary = watch.summary()
 	r["level"] = step.id
 	r["lanes"] = lanes
+	r["seed"] = config.level_seed
 	r["turns"] = turns
 	r["seconds"] = world.level_time()
 	if _out != "":
@@ -141,11 +166,13 @@ func _line(r: Dictionary) -> String:
 	for w: float in waits:
 		total += w
 		most = maxf(most, w)
-	return "%-14s %d     %-5s %6.1f         %5d %5d %6d %4d %5d %5d  %9.2f %6d  %5.2f/%5.2f (%2d)        %s" % [
-		r["level"], r["lanes"], "on" if r["turns"] else "off", r["seconds"], int(a.get("drone", 0)),
+	var idle: String = "%d/%d/%d/%d" % [int(r["dogs_no_charge"]), int(r["resonators_no_pulse"]),
+		int(r["drones_no_barrage"]), int(r["trucks_idle"])]
+	return "%-14s %d     %5d %-5s %6.1f         %5d %5d %6d %4d %5d %5d  %9.2f %6d  %5.2f/%5.2f (%2d)        %-9s  %s" % [
+		r["level"], r["lanes"], r["seed"], "on" if r["turns"] else "off", r["seconds"], int(a.get("drone", 0)),
 		int(a.get("truck_lurch", 0)), int(a.get("truck_cannon", 0)), int(a.get("dog_charge", 0)),
 		int(a.get("dream_slash", 0)), int(a.get("resonator_pulse", 0)), r["overlap"], r["events"],
-		total / maxf(waits.size(), 1), most, waits.size(), String(r["log_hash"]).substr(0, 8)]
+		total / maxf(waits.size(), 1), most, waits.size(), idle, String(r["log_hash"]).substr(0, 8)]
 
 
 func _print_totals(runs: Array[Dictionary], turns: bool) -> void:
@@ -167,6 +194,13 @@ func _print_totals(runs: Array[Dictionary], turns: bool) -> void:
 	var slashes_runs: int = 0
 	var resonators: int = 0
 	var resonators_idle: int = 0
+	var drones: int = 0
+	var drones_idle: int = 0
+	var trucks: int = 0
+	var trucks_no_lurch: int = 0
+	var trucks_no_cannon: int = 0
+	var trucks_idle: int = 0
+	var starved: PackedStringArray = []
 	for r: Dictionary in runs:
 		if bool(r["turns"]) != turns:
 			continue
@@ -180,6 +214,15 @@ func _print_totals(runs: Array[Dictionary], turns: bool) -> void:
 		charges += int(r["dog_charges"])
 		resonators += int(r.get("resonators", 0))
 		resonators_idle += int(r.get("resonators_no_pulse", 0))
+		drones += int(r["drones"])
+		drones_idle += int(r["drones_no_barrage"])
+		trucks += int(r["trucks"])
+		trucks_no_lurch += int(r["trucks_no_lurch"])
+		trucks_no_cannon += int(r["trucks_no_cannon"])
+		trucks_idle += int(r["trucks_idle"])
+		if int(r["dogs_no_charge"]) + int(r.get("resonators_no_pulse", 0)) > 0:
+			starved.append("%s at %d lanes, seed %d (%d dogs, %d Resonators)" % [r["level"], r["lanes"], r["seed"],
+				int(r["dogs_no_charge"]), int(r.get("resonators_no_pulse", 0))])
 		if float(r["overlap"]) > 0.0:
 			with_overlap += 1
 		if float(r["overlap"]) > worst:
@@ -222,3 +265,8 @@ func _print_totals(runs: Array[Dictionary], turns: bool) -> void:
 	print("  Octodogs: %d, %d charges in all, %d never charged; Bad Dream slashes in %d runs" % [dogs, charges,
 		dogs_idle, slashes_runs])
 	print("  Resonators: %d came to pace the runner, %d never pulsed" % [resonators, resonators_idle])
+	print("  Drones: %d swooped in, %d never fired a barrage" % [drones, drones_idle])
+	print("  Hover trucks: %d burst out, %d never lurched, %d never fired the cannon, %d did neither"
+		% [trucks, trucks_no_lurch, trucks_no_cannon, trucks_idle])
+	for s: String in starved:
+		print("    never charged or pulsed: %s" % s)

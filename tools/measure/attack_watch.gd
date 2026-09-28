@@ -51,6 +51,11 @@ var hosts_stomped: int = 0
 var dog_charges: Dictionary = {}
 ## Resonators by spawn index: the pulses each made (from the time it starts pacing the player).
 var resonator_pulses: Dictionary = {}
+## Drones by spawn index: the barrages each started (from the time it swoops in).
+var drone_barrages: Dictionary = {}
+## Hover trucks by spawn index: the forward lurches (revs) and cannon shots (charges) each started
+## (from the time it bursts out): {"lurch": n, "cannon": n}.
+var truck_attacks: Dictionary = {}
 var log := PackedStringArray()
 
 var _ids: Dictionary = {}
@@ -95,10 +100,15 @@ func observe() -> void:
 		if e.type_id == &"resonator" and not resonator_pulses.has(key) and e.alive \
 				and int(e.get(&"state")) != Resonator.State.APPROACH:
 			resonator_pulses[key] = 0
+		if e.type_id == &"drone" and not drone_barrages.has(key) and e.alive \
+				and int(e.get(&"state")) != DroneScript.State.WAITING:
+			drone_barrages[key] = 0
 		if e.type_id == &"hover_truck" and e.alive:
 			var s: int = int(e.get(&"state"))
 			entrance = entrance or s == TruckScript.State.BANGING \
 				or (s == TruckScript.State.EMERGE and now - float(e.get(&"burst_time")) < 0.45)
+			if not truck_attacks.has(key) and s != TruckScript.State.HIDDEN and s != TruckScript.State.BANGING:
+				truck_attacks[key] = {"lurch": 0, "cannon": 0}
 		for kind: String in open_kinds(e):
 			open_types[e.type_id] = true
 			var wk: String = "%d/%s" % [key, kind]
@@ -109,6 +119,12 @@ func observe() -> void:
 					dog_charges[key] = int(dog_charges.get(key, 0)) + 1
 				if kind == "resonator_pulse":
 					resonator_pulses[key] = int(resonator_pulses.get(key, 0)) + 1
+				if kind == "drone":
+					drone_barrages[key] = int(drone_barrages.get(key, 0)) + 1
+				if kind == "truck_lurch" or kind == "truck_cannon":
+					var made: Dictionary = truck_attacks.get_or_add(key, {"lurch": 0, "cannon": 0})
+					var k: String = "lurch" if kind == "truck_lurch" else "cannon"
+					made[k] = int(made[k]) + 1
 				if float(_held.get(key, 0.0)) > 0.0:
 					(waits.get_or_add(kind, []) as Array).append(float(_held[key]))
 				if float(_held_turn.get(key, 0.0)) > 0.0:
@@ -202,6 +218,25 @@ func resonators_without_a_pulse() -> int:
 	return n
 
 
+## Drones that swooped in and never fired a barrage (a pad may bring one down first).
+func drones_without_a_barrage() -> int:
+	var n: int = 0
+	for key: int in drone_barrages:
+		if int(drone_barrages[key]) == 0:
+			n += 1
+	return n
+
+
+## Hover trucks that burst out and never made an attack of `kind` ("lurch" or "cannon"; "" = neither).
+func trucks_without(kind: String) -> int:
+	var n: int = 0
+	for key: int in truck_attacks:
+		var made: Dictionary = truck_attacks[key]
+		if (kind == "" and int(made["lurch"]) + int(made["cannon"]) == 0) or (kind != "" and int(made[kind]) == 0):
+			n += 1
+	return n
+
+
 ## The event log's hash: equal for two runs whose enemies did the same things at the same times.
 func log_hash() -> String:
 	return "\n".join(log).md5_text()
@@ -212,7 +247,10 @@ func summary() -> Dictionary:
 		"open": open_seconds, "held": waits, "held_turn": turn_waits, "entrance_overlap": entrance_overlap,
 		"hosts_stomped": hosts_stomped, "dogs": dog_charges.size(), "dog_charges": charges(),
 		"dogs_no_charge": dogs_without_a_charge(), "resonators": resonator_pulses.size(),
-		"resonators_no_pulse": resonators_without_a_pulse(), "log_hash": log_hash(), "log_lines": log.size()}
+		"resonators_no_pulse": resonators_without_a_pulse(), "drones": drone_barrages.size(),
+		"drones_no_barrage": drones_without_a_barrage(), "trucks": truck_attacks.size(),
+		"trucks_no_lurch": trucks_without("lurch"), "trucks_no_cannon": trucks_without("cannon"),
+		"trucks_idle": trucks_without(""), "log_hash": log_hash(), "log_lines": log.size()}
 
 
 func _on_spawned(e: Enemy) -> void:
