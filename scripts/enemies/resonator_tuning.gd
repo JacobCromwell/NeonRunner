@@ -21,9 +21,12 @@ extends EnemyTuning
 @export_group("Hovering")
 ## DESIGN-TBD: how far ahead of the player it hovers while it pulses ("far ahead", GDD §9.10). Kept
 ## within the weapon's range (PowerupTuning.weapon_range) so auto-fire can target it.
-@export_range(20.0, 65.0, 1.0, "suffix:m") var hover_ahead: float = 38.0
+@export_range(20.0, 65.0, 1.0, "suffix:m") var hover_ahead: float = 34.0
 ## DESIGN-TBD: the height of its red core above the floor: out of reach of a stomp, under the ceiling.
 @export_range(2.0, 3.6, 0.05, "suffix:m") var hover_height: float = 3.1
+## The model's size (1 = a spire 4.7 m tall, halos 3.3 m across). Its top stays under the ceiling
+## (MovementTuning.ceiling_height) at hover_height; the tests check it.
+@export_range(0.6, 1.3, 0.05) var model_scale: float = 1.1
 ## It hovers still where the generator put it until the player is this much further than hover_ahead
 ## away, then eases into pacing them over twice this distance of their run.
 @export_range(2.0, 30.0, 0.5, "suffix:m") var approach_ease: float = 12.0

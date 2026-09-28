@@ -18,6 +18,9 @@ extends Node3D
 ## (resonator.gdshader) that works on every renderer; the meshes are built once and shared. Its origin
 ## is the core. The Resonator sets the animation inputs every frame; wave_mesh() builds its waves.
 
+## The spire's tips above and below the core (at model scale 1).
+const TOP_Y: float = 2.45
+const BOTTOM_Y: float = -2.25
 ## The halos: radii (to the band's middle), with arcs starting at these angles (degrees).
 const HALO_RADII: Array[float] = [1.0, 1.32, 1.64]
 const HALO_OFFSETS: Array[float] = [0.0, 40.0, 80.0]
@@ -129,7 +132,7 @@ func halo_normals() -> Array[Vector3]:
 
 ## World position of the emitter's tip, where a pulse leaves for the floor.
 func emitter_point() -> Vector3:
-	return to_global(Vector3(0.0, -2.2, 0.0))
+	return to_global(Vector3(0.0, BOTTOM_Y, 0.0))
 
 
 func animate(delta: float) -> void:
@@ -207,11 +210,11 @@ static func spire_mesh() -> ArrayMesh:
 	# stretch from this point to the next].
 	b.lathe([[0.0, 0.5, &"deep"], [0.3, 0.56, &"ivory"], [0.3, 0.62, &"gold"], [0.22, 0.74, &"gold"],
 		[0.13, 0.95, &"gold"], [0.13, 1.28, &"ivory"], [0.24, 1.4, &"ivory"], [0.24, 1.48, &"gold"],
-		[0.12, 1.6, &"gold"], [0.07, 2.05, &"gold"], [0.0, 2.45, &"gold"]])
+		[0.12, 1.6, &"gold"], [0.07, 2.05, &"gold"], [0.0, TOP_Y, &"gold"]])
 	# The lower mast down to the emitter's tip, with the collar that glows while it warns.
 	b.lathe([[0.0, -0.5, &"deep"], [0.3, -0.56, &"ivory"], [0.3, -0.62, &"gold"], [0.22, -0.74, &"gold"],
 		[0.12, -0.95, &"gold"], [0.12, -1.22, &"gold"], [0.26, -1.34, &"trim"], [0.26, -1.44, &"gold"],
-		[0.14, -1.56, &"gold"], [0.08, -1.95, &"gold"], [0.0, -2.25, &"gold"]])
+		[0.14, -1.56, &"gold"], [0.08, -1.95, &"gold"], [0.0, BOTTOM_Y, &"gold"]])
 	# The cage: three ribs bowing out around the core, on the sides and at the back (the core faces
 	# the runner).
 	for deg: float in [30.0, 150.0, 270.0]:
@@ -219,11 +222,11 @@ static func spire_mesh() -> ArrayMesh:
 		var mid: Vector3 = dir * 0.42
 		b.bar(dir * 0.28 + Vector3(0.0, -0.58, 0.0), mid, dir, 0.07, 0.05, &"gold")
 		b.bar(mid, dir * 0.28 + Vector3(0.0, 0.58, 0.0), dir, 0.07, 0.05, &"gold")
-	# Three fins at each end.
+	# Three slim vanes at each end, like an antenna's or a probe's.
 	for deg: float in [30.0, 150.0, 270.0]:
 		var dir := Vector3(cos(deg_to_rad(deg)), 0.0, sin(deg_to_rad(deg)))
-		b.fin(dir, 0.09, 0.36, 1.6, 2.2, 0.035, &"ivory")
-		b.fin(dir, 0.1, 0.32, -1.5, -2.02, 0.035, &"gold")
+		b.fin(dir, 0.08, 0.24, 1.62, 2.28, 0.03, &"gold")
+		b.fin(dir, 0.1, 0.3, -1.5, -2.02, 0.035, &"gold")
 	# The core: a red crystal (a six-sided bipyramid).
 	b.bipyramid(0.24, 0.38, &"core")
 	_spire_mesh = b.commit()
@@ -310,18 +313,19 @@ class _Builder:
 	func commit() -> ArrayMesh:
 		return st.commit()
 
-	## [colour, kind, metallic, roughness] for a named surface.
+	## [colour, kind, metallic, roughness] for a named surface. The gold is polished but keeps some
+	## diffuse colour, so it still reads as gold (not dark bronze) where there's little to reflect.
 	static func look(kind: StringName) -> Array:
 		match kind:
 			&"ivory":
 				return [IVORY, LIT, 0.0, 0.35]
 			&"deep":
-				return [GOLD_DEEP, LIT, 0.8, 0.45]
+				return [GOLD_DEEP, LIT, 0.5, 0.45]
 			&"trim":
-				return [GOLD, TRIM, 0.75, 0.3]
+				return [GOLD, TRIM, 0.5, 0.32]
 			&"core":
 				return [RED, CORE, 0.0, 0.3]
-		return [GOLD, LIT, 0.75, 0.3]
+		return [GOLD, LIT, 0.5, 0.32]
 
 	## A triangle facing `out`.
 	func tri(a: Vector3, b: Vector3, c: Vector3, out: Vector3, kind: StringName) -> void:

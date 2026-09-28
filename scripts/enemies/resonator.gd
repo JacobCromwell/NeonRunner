@@ -182,7 +182,7 @@ func _build() -> void:
 	_model = ResonatorModel.new()
 	_model.name = "Model"
 	add_child(_model)
-	_model.build()
+	_model.build(tune.model_scale)
 	for i: int in WAVE_POOL:
 		_waves.append(_make_wave(i))
 	_place()
@@ -501,7 +501,7 @@ func aim_point() -> Vector3:
 
 
 func hit_radius() -> float:
-	return 0.85
+	return 0.85 * tune.model_scale
 
 
 func _on_defeated(_cause: StringName) -> void:

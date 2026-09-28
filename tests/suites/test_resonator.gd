@@ -151,6 +151,13 @@ func _test_numbers() -> void:
 	var powerups := load("res://data/tuning/powerups.tres") as PowerupTuning
 	check(t.hover_ahead < powerups.weapon_range - 5.0, "it hovers within the weapon's reach (%.0f of %.0f m)"
 		% [t.hover_ahead, powerups.weapon_range])
+	var top: float = t.hover_height + ResonatorModel.TOP_Y * t.model_scale
+	var bottom: float = t.hover_height + ResonatorModel.BOTTOM_Y * t.model_scale
+	var halo: float = (ResonatorModel.HALO_RADII[-1] + ResonatorModel.HALO_WIDTH * 0.5) * t.model_scale
+	check(top < tuning.ceiling_height - 0.1 and t.hover_height - halo > 0.3,
+		"its spire stays under the ceiling (top %.2f m) and its halos off the floor (lowest %.2f m)" % [top, t.hover_height - halo])
+	check(t.hover_height > tuning.jump_height + tuning.hurtbox_size.y and bottom > 0.3,
+		"its core hovers above a jumping runner's head (%.2f m over %.2f m)" % [t.hover_height, tuning.jump_height + tuning.hurtbox_size.y])
 
 
 # --- Model, sounds, hint ------------------------------------------------------------------------------

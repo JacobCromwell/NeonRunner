@@ -29,11 +29,13 @@ void fragment() {
 	vec3 col;
 	float a;
 	if (UV2.x < 0.5) {
-		// The crest: red, a hot line just in front of its top, stripes rolling toward the runner.
+		// The crest: bands of brighter red rolling over it toward the runner, and a pale hot line
+		// just in front of its top (the face the runner sees).
 		float top = clamp(1.0 - abs(UV.y - 0.4) * 3.2, 0.0, 1.0);
-		float stripe = 0.5 + 0.5 * sin((UV.y * 3.0 + roll) * 6.2832);
-		col = mix(to_linear(wave_color), to_linear(hot_color), top * top * 0.85);
-		col *= 1.0 + top * top * hdr + stripe * 0.3;
+		float stripe = smoothstep(0.3, 0.7, 0.5 + 0.5 * sin((UV.y * 3.0 + roll) * 6.2832));
+		col = to_linear(wave_color) * (0.7 + 0.4 * stripe);
+		col = mix(col, to_linear(hot_color), top * top * top * 0.75);
+		col *= 1.0 + top * top * hdr;
 		a = 0.94 * ends;
 	} else {
 		// The wake: a red haze on the floor behind it, fading with ripples.
