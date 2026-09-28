@@ -38,10 +38,11 @@ const SPIN_REST: float = 0.5
 const SPIN_WARNING: float = 7.0
 const FACETS: int = 6
 
-## The Golden Zone's gold (CultEmblem.GOLD_COLOR), a darker gold for the inner parts, ivory enamel,
-## and the core's red (enemy fire).
-const GOLD := Color(0.80, 0.64, 0.30)
-const GOLD_DEEP := Color(0.52, 0.40, 0.19)
+## The Golden Zone's gold (CultEmblem.GOLD_COLOR, the cult's gold everywhere in the zone: pale and only
+## half saturated, so it never reads as sign yellow or gap-edge orange), a darker gold for the inner
+## parts, ivory enamel, and the core's red (enemy fire).
+const GOLD: Color = CultEmblem.GOLD_COLOR
+const GOLD_DEEP := Color(0.50, 0.41, 0.25)
 const IVORY := Color(0.89, 0.86, 0.79)
 const RED := Color(1.0, 0.15, 0.1)
 ## What a surface is (vertex alpha, resonator.gdshader): lit, a trim that glows while it warns, the core.

@@ -187,6 +187,8 @@ func _test_model() -> void:
 					or near.call(c, ResonatorModel.IVORY))
 	check(ok_colours and kinds.has(0.0) and kinds.has(0.5) and kinds.has(1.0),
 		"lit gold and ivory, gold trims that glow only while it warns, and the red core (%s)" % [kinds.keys()])
+	check(ResonatorModel.GOLD.is_equal_approx(CultEmblem.GOLD_COLOR) and ResonatorModel.GOLD_DEEP.v < ResonatorModel.GOLD.v,
+		"its gold is the Golden Zone's own (CultEmblem.GOLD_COLOR), with a darker gold inside")
 	# Its glow and its wave are enemy-fire red (ProjectilePool's enemy_bolt), the same in every zone.
 	var red: String = "vec3(1.0, 0.15, 0.1)"
 	check(ResonatorModel.shader().code.contains("glow_color : source_color = " + red)
