@@ -92,6 +92,9 @@ func _test_preset() -> void:
 		"its canvas follows the window (adaptive), in a page or a portal's frame")
 	check(bool(presets.get_value(options, "html/focus_canvas_on_start", false)), "the keyboard works at once")
 	check(not bool(presets.get_value(options, "progressive_web_app/enabled", true)), "no installable web app (a service worker) for the demo")
+	var head: String = String(presets.get_value(options, "html/head_include", ""))
+	check(head.contains("orientation: portrait") and head.contains("pointer: coarse") and head.contains("sideways")
+		and head.contains("DESIGN-TBD"), "a phone held upright is asked to turn sideways (the game is landscape, GDD §2)")
 	var includes: PackedStringArray = DemoFilter.patterns_of(String(presets.get_value(section, "include_filter", "")))
 	check(includes.has("*.json") and includes.has("assets/fonts/*/OFL.txt"), "it takes the data read as text and the font licenses")
 	# The filter matches the data.
