@@ -1,8 +1,9 @@
 extends RefCounted
 ## Watches the big attacks in a run (GDD §9, "Big attacks take turns") frame by frame, for
-## tools/measure/big_attacks.gd and the tests (test_enemy_director.gd). It reads the enemies' own
-## states and the live shots, never the turn-taking code it checks, so it measures a build with the
-## rule on, off, or without it the same way.
+## tools/measure/big_attacks.gd and the tests (test_enemy_director.gd). It reads the attacks from the
+## enemies' own states and the live shots, never from the turn-taking code it checks (only the waits
+## come from the director's report), so it measures a build with the rule on, off, or without it the
+## same way.
 ##   const AttackWatch = preload("res://tools/measure/attack_watch.gd")
 ##   var watch := AttackWatch.new(world)     # before the enemies spawn
 ##   ... every physics frame: await tree.physics_frame; watch.observe()
@@ -29,8 +30,11 @@ const SHOT_TYPES: Dictionary = {"drone gatling": &"drone", "hover truck cannon":
 	"hover truck gunner": &"hover_truck"}
 ## A wait for a turn runs from the first frame the director reports its enemy waiting until its
 ## attack starts, through gaps of up to this many seconds in which it doesn't (a gap in the enemy's
-## asks, or a director that dropped its place), so two directors that keep a waiting enemy's place
-## differently measure the same behaviour alike.
+## asks, or a director that dropped its place), so a director that keeps a waiting enemy's place
+## through a short gap and one that drops it and gives it back measure the same asks alike. It follows
+## the asks, though: an enemy that asks for longer is seen waiting for longer (an Octodog that asks
+## through its slack, from R3b on), and a wait whose attack comes more than this long after the enemy
+## was last seen waiting isn't counted.
 const WAIT_BRIDGE: float = 3.0
 
 var world: RunWorld
