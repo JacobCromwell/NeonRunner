@@ -93,6 +93,33 @@ const PAT_STALLS: int = 28
 ## 2 brushed metal with seams.
 const PAT_TECH: int = 29
 
+## Corporate surface patterns of the solid kit shader (kit_corporate.gdshaderinc), ids 30-39.
+## A maglev carriage's roof: UV.x -1 to 1 across it, UV.y metres from the carriage's start; param =
+## style (0 corporate express, 1 military freight) + 4 * painted brand mark + 8 * seed (0-63) + 512 * the
+## carriage's length in decimetres.
+const PAT_CORP_ROOF: int = 30
+## Everything below the running surface, in deep shade darkening with depth (darkens COLOR): param 0 a
+## face across the lane, 1 a face along it, 2 the trench's floor, 3 a guideway beam or pier.
+const PAT_CORP_UNDER: int = 31
+## A plaza's paving (world xz; UV.x -1 to 1 across the lane, param flags a steel edge strip on its left
+## (1) and right (2) edge).
+const PAT_CORP_PAVING: int = 32
+## Plating (world position): param 0 a soffit, 1 military armour, 2 brushed steel, 3 precast concrete.
+const PAT_CORP_PLATE: int = 33
+## A corporate screen, glowing (UV.y 0-1 up the screen, UV.x in the same units; param a whole-number
+## seed picks the ad).
+const PAT_CORP_AD: int = 34
+## The brand's mark (kit_logo.gdshaderinc) on a panel, UV in logo space (the mark spans about -0.78 to
+## 0.78): param 0 the mark in COLOR on a dark panel, 1 cold white on a COLOR ground, 2 COLOR painted on
+## steel, 3 pale paint on a COLOR ground.
+const PAT_CORP_LOGO: int = 35
+## A banner hanging down a tower (UV in metres, x across from its left edge, y down from its top;
+## param = seed + 100 * its width in decimetres).
+const PAT_CORP_BANNER: int = 36
+## A glass wall with a lit corridor behind it (UV in metres, y up from the corridor's floor; param =
+## the corridor's height in decimetres).
+const PAT_CORP_GLASS: int = 37
+
 ## The cult's patterns of the solid kit shader (kit_cult.gdshaderinc), ids 60-69.
 ## The cult's emblem (the material's cult_emblem texture) on a dark panel, for logos and ads: UV is
 ## emblem space (the mark's square spans -1 to 1; a wider range leaves a clear margin), the mark in

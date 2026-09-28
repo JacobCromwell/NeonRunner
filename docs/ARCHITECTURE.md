@@ -345,9 +345,9 @@ A `ZoneSkin` (`scripts/world/skins/zone_skin.gd`) decorates abstract pieces thro
 `finish_line`, `make_environment`). Skins add visuals only, never collision or gameplay. Hazards keep
 one colour and shape language in every zone (pink crackle = electric fence).
 
-Skins so far: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2) and `MarketplaceSkin`
-(Zone 3, the Marketplace). `GreyboxSkin` is the fallback for zones without their own look yet
-(Corporate, the Dead Zone and the Golden Zone for now). A zone's skin lives at
+Skins so far: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2), `MarketplaceSkin`
+(Zone 3, the Marketplace) and `CorporateSkin` (Zone 4, Corporate). `GreyboxSkin` is the fallback for
+zones without their own look yet (the Dead Zone and the Golden Zone for now). A zone's skin lives at
 `data/skins/<zone id>_skin.tres` (`--skin=<zone id>` in quick play) and is set in its
 `data/zones/<zone id>.tres`; a level's own `skin` wins over its zone's (the Golden Palace, Golden 3,
 may get its own). The real skins build on the mesh kit (`scripts/world/meshes/`): `MeshKit` has
@@ -377,18 +377,21 @@ The kit's solid shader (`kit_solid.gdshader`) draws surface patterns chosen per 
 panels, glass, glyphs and chevrons for the City; worn asphalt (with sand drifts and scorch around holes),
 road strata, salvaged plating, posters (with corporate ads), cast concrete and stencilled crates and
 container doors for Gangland; canvas, tin and whole rows of stall roofs, stall faces, tiles, shop
-signs, ads, casino bulbs and stucco for the Marketplace. Features a zone opts into are uniforms that
-default to off, so one zone's additions never change another's look. Painted marks shared between
-shaders live in includes: `kit_marks.gdshaderinc` (graffiti pieces and tags, stencil codes) and
-`kit_logo.gdshaderinc` (the corporations' placeholder logo). Two shader rules: take derivatives
+signs, ads, casino bulbs and stucco for the Marketplace; train roofs, the shade below them, paving,
+armour plate, corporate ads, the brand's mark on panels, banners and lit glass for Corporate. Features
+a zone opts into are uniforms that default to off, so one zone's additions never change another's
+look. Painted marks shared between shaders live in includes: `kit_marks.gdshaderinc` (graffiti pieces
+and tags, stencil codes) and `kit_logo.gdshaderinc` (`corp_logo()`, the Corporate brand's mark, which
+Gangland's corporate crates, containers and ads carry too). Two shader rules: take derivatives
 (`fwidth`, implicit texture LODs) outside any branch that can differ between neighbouring pixels and
 pass them in, and use `filtered_pulse()` only for ranges within 0–1 (`band()` for any other). Breaking
 either can put a NaN in a pixel, and the glow pass blows it up into a white disc.
 
 **Pattern ids.** Ids up to 19 are the City's and Gangland's, in `kit_solid.gdshader` itself; ids 20-29
-are the Marketplace's (all in use), in `kit_market.gdshaderinc` (one include and one dispatch line in
-`kit_solid`). A new zone takes the next free block of ten (30-39 next) in its own include, so zones
-built in parallel never collide on an id. Ids 60-69 are the cult's, shared by every zone, in
+are the Marketplace's (all in use), in `kit_market.gdshaderinc`, and ids 30-39 the Corporate zone's
+(30-37 in use), in `kit_corporate.gdshaderinc` (each: one include and one dispatch line in `kit_solid`).
+A new zone takes the next free block of ten in its own include, so zones built in parallel never
+collide on an id. Ids 60-69 are the cult's, shared by every zone, in
 `kit_cult.gdshaderinc` (its include follows `cult_mark()` in `kit_solid`, and its dispatch runs after
 the zones' own): `PAT_CULT_MARK` (60) draws the cult's emblem from the material's `cult_emblem`
 texture as a mark on a dark panel.
@@ -431,6 +434,42 @@ on every lane seam, nothing hangs below it, and its far end carries the orange b
   awnings and ledges comes from `kit_market.gdshaderinc` (`market_dust`, scaled by the skin's
   `wear`).
 
+**The Corporate zone** (`scripts/world/skins/corporate/`): `CorporateTrains` (the floor: the roofs of
+maglev trains, and the guideway trench below), `CorporatePlaza` (the paved deck of the plaza variant,
+`floor_style` PLAZA, `data/skins/corporate_plaza_skin.tres`), `CorporateTowers` (the walls, and the
+skybridges and hovering gunships over the street), `CorporateCeilings`, `CorporateShips` (the gunship
+template) and `CorporateProps` (fences and signs); its building faces use their own shader,
+`corp_facade.gdshader`.
+- *The brand.* One harsh colour, `brand_color` (an electric ultramarine between the UI's azure and
+  violet, clear of every hazard hue), and one mark, `corp_logo()` in `kit_logo.gdshaderinc`, which
+  Gangland's corporate crates, containers and ads share. Glowing decoration keeps to cold white and the
+  brand's blue; the military olive is always lit, never glowing.
+- *Carriages on a grid.* Each lane's carriages sit on a grid (`carriage_length`, offset per lane:
+  `carriage_unit()`, `carriage_offset()`), so they line up across chunk cuts, and a carriage's kind
+  (runs of express or olive freight cars) comes from hashing its grid cell (`carriage()`).
+  `carriage_plan()` lays out a floor piece's roofs and joints: no joint within `GAP_MARGIN` of a gap's
+  edge, and a thin seam instead of a gangway where one would cross a chunk cut.
+- *Gaps read as holes.* Everything below the running surface (the carriages' sides and ends, the
+  guideways, the trench, the plaza deck's edges) is drawn with `PAT_CORP_UNDER` in `gap_inside_color`, a
+  deep shade that only darkens with depth, with the guideways and the trench floor deeper than a fall
+  that ends the run; nothing below is lit or glows but the orange strip. The suite pins it over a whole
+  level, for the trains and the plaza.
+- *The calm band.* Every wall is flush through `band_top` (7.2 m): nothing glows, lights up or sticks
+  out there (partial wall fences, B5, sit in it); decorative signs and screens start at
+  `decor_min_height` (8 m). What hangs out over the street (banners, big screens, skybridges) stays
+  above `CorporateTowers.OVER_STREET_MIN`, and nothing of a ceiling rises more than
+  `CorporateCeilings.TOP_LIMIT` above its underside, so the two never meet.
+- *Ceilings from their lanes (task B3).* `CorporateCeilings` builds every kind (a glass skyway, a tower
+  bridging the street, a viaduct with a military checkpoint, a gunship flying low) from the ceiling's
+  collision box and lane seams; only a full-width ceiling becomes a tower bridging the street.
+  `mesh_for(kind, ...)` builds a given kind directly.
+- *A boss over the street.* Hostile Takeover's gunship paces the train overhead (GDD §10): an arena skin
+  with `street_screen_share`, `banner_share`, `skybridge_share` and `hover_ship_share` at 0 builds
+  nothing over the lanes above the ceilings (the suite checks it). Searchlights never point at the
+  lanes (a light locking onto them is the Floating Head's warning).
+- *The military presence* is data: `compound_share`, `hover_ship_share`, `ship_weight` and
+  `military_car_share`; the plaza variant raises them for Corporate 2's heavier presence.
+
 **The cult emblem** (D7, GDD §5 "The cult"): `CultEmblem` (`scripts/world/meshes/cult_emblem.gd`)
 builds each option's 2D vector geometry as a flat mesh (mesh kit conventions: emissive for a neon
 ad, lit for paint or the Golden Zone's gold) or a rasterised texture, at any size. The owner chose
@@ -452,7 +491,9 @@ margin), paints it in the vertex colour on the panel's dark background, glowing 
 `cult_mark()` fades it out on screen as in Gangland, and the City keeps it at least `emblem_min_size`
 across too. It sits as a sponsor's badge where a roof billboard's glyphs end and at the foot of some
 towers' neon banners (the glyphs leave its square clear, so nothing overlaps); `CitySkin.cult_emblems()`
-lists them.
+lists them. The Corporate zone (D4) draws it the same way: a warm-white badge in a lower corner of some
+ads on the street screens and roof boards (never more than `CorporateTowers.SCREEN_EMBLEM_MAX` of a
+screen's height), unlit bronze at the foot of some banners; `CorporateSkin.cult_emblems()` lists them.
 
 **The cult's feed** (GDD §5, "Cyborg Viewing Devices"): the same wordless broadcast plays on screens
 in every zone, in sync, alongside the ordinary ads. It is one shared piece, `CultFeed`
@@ -484,7 +525,9 @@ facing the oncoming traffic (anything flat on the City's facades is seen almost 
 camera); `CitySkin.feed_boards()` lists both. Gangland plays it on salvaged screens among the posters
 of some overpasses' sign gantries, and on a TV glowing in an upper window of some ruins, above the
 boarded-up band (`GanglandSkin.feed_windows()` lists those; `GanglandRuins.WINDOW_RECTS` mirrors the
-facade shader's window rectangles so the TV's room covers a window exactly). Neither puts a screen in
+facade shader's window rectangles so the TV's room covers a window exactly). The Corporate zone (D4)
+plays it on some low buildings' roof boards and on some of the big screens flush towers hang out over
+the street, 14 m up or more; `CorporateSkin.feed_boards()` lists both. None of them puts a screen in
 the wall-run band. `tools/showcase/cult_feed_showcase.tscn` shows a whole loop on three screens.
 
 **Reduced flashing** (Settings): `Settings.apply_visuals()` sets the global shader uniform
