@@ -61,6 +61,8 @@ const OVER_STREET_MIN: float = 14.0
 ## metres up.
 const SKYBRIDGE_SLOT: float = 150.0
 const SKYBRIDGE_Y: float = 18.0
+## Smoke rises only from ruins at least this tall (its base a little below their broken tops).
+const PLUME_MIN_TOP: float = 20.0
 
 
 ## One building's layout, from its lot run alone (the same whichever chunk asks).
@@ -272,6 +274,11 @@ func _building(batch: MeshBatch, solid: MeshLayer, r: Ruin, face_x: float, start
 		_frame(solid, r, tower_x, start, end)
 	if r.banner_d >= start and r.banner_d < end:
 		_banner(solid, r, tower_x)
+	# A broken ledge along the podium's top (or a flush tower's first storey over the band).
+	_ledge(solid, r, face_x, maxf(r.f0, start), minf(r.b1, end))
+	var smoke: Dictionary = plume(r, face_x)
+	if not smoke.is_empty() and float(smoke["at"]) >= start and float(smoke["at"]) < end:
+		_plume(batch.layer(skin.smoke_material()), smoke["base"], smoke["width"], smoke["height"])
 	var screen: Dictionary = feed_screen(r, face_x)
 	if not screen.is_empty() and float(screen["at"]) >= start and float(screen["at"]) < end:
 		_feed_screen(batch, solid, r, face_x, screen)
@@ -363,6 +370,69 @@ func _frame(solid: MeshLayer, r: Ruin, x: float, start: float, end: float) -> vo
 func _column_top(r: Ruin, k: int) -> float:
 	var jag: float = 9.0 * pow(MeshKit.hash01(r.side, k, 180), 1.5)
 	return maxf(r.frame_top - jag, r.top(float(k) * BAY))
+
+
+## A cornice of charred concrete along the podium's top (a flush tower's: at its first storey over the
+## band), broken off in places, rebar bent out of the breaks and a cable hanging from some; all of it
+## above the calm band, from u0 to u1 of this chunk.
+func _ledge(solid: MeshLayer, r: Ruin, face_x: float, u0: float, u1: float) -> void:
+	if u1 <= u0 + 0.01:
+		return
+	var side: int = r.side
+	var y: float = (r.podium_top - 0.6) if r.split else skin.band_top + BAND_MARGIN + 1.0
+	if r.low:
+		return
+	var out: float = 0.45
+	var x: float = face_x - side * out * 0.5
+	var steel: Color = skin.steel_color
+	var concrete: Color = skin.slab_color.darkened(0.15)
+	var c: int = floori(u0)
+	while float(c) < u1:
+		var a: float = maxf(float(c), u0)
+		var b: float = minf(float(c + 1), u1)
+		var gone: bool = MeshKit.hash01(side, c, 220) < 0.25 or MeshKit.hash01(side, floori(float(c) / 3.0), 221) < 0.12
+		if not gone and b > a + 0.01:
+			var sag: float = 0.12 * MeshKit.hash01(side, c, 222)
+			solid.box(Vector3(x, y - sag, -(a + b) * 0.5), Vector3(out, 0.32, b - a), concrete, 0.0, MeshKit.PAT_DZ_CONCRETE)
+		elif gone and float(c) >= u0 and MeshKit.hash01(side, c, 223) < 0.5:
+			# Rebar bent out of the break.
+			var bend := Basis.from_euler(Vector3((MeshKit.hash01(side, c, 224) - 0.5) * 1.2, 0.0, side * 0.5)).scaled_local(
+				Vector3(0.025, 0.7, 0.025))
+			solid.box_xform(Transform3D(bend, Vector3(face_x - side * 0.3, y - 0.3, -float(c) - 0.5)), steel, 0.0,
+				MeshKit.PAT_DZ_STEEL)
+		if float(c) >= u0 and MeshKit.hash01(side, c, 225) < 0.06:
+			# A cable hanging from the ledge, well above the band.
+			var length: float = minf(1.5 + 2.0 * MeshKit.hash01(side, c, 226), y - skin.band_top - 0.6)
+			if length > 0.5:
+				solid.box(Vector3(face_x - side * 0.3, y - 0.16 - length * 0.5, -float(c) - 0.5), Vector3(0.03, length, 0.03),
+					steel.darkened(0.3))
+		c += 1
+
+
+## The column of smoke rising from a ruin's broken top: its distance (at), base (inside the building,
+## below its top), width at the base and height. Empty if the ruin has none.
+func plume(r: Ruin, face_x: float) -> Dictionary:
+	if r.low or MeshKit.hash01(r.side, r.id, 210) >= skin.plume_share:
+		return {}
+	var at: float = lerpf(r.t0 + 2.0, r.b1 - 2.0, MeshKit.hash01(r.side, r.id, 211))
+	var x: float = face_x + r.side * (r.setback + 5.0 + 8.0 * MeshKit.hash01(r.side, r.id, 212))
+	var top: float = maxf(r.top(at), r.frame_top * 0.8)
+	if top < PLUME_MIN_TOP:
+		return {}
+	return {"at": at, "base": Vector3(x, top - 3.0, -at), "width": 5.0 + 4.0 * MeshKit.hash01(r.side, r.id, 213),
+		"height": 45.0 + 30.0 * MeshKit.hash01(r.side, r.id, 214)}
+
+
+## One column of smoke (dead_smoke.gdshader): a quad whose six vertices sit at its base, spread out by
+## the shader into a column facing the camera.
+func _plume(layer: MeshLayer, base: Vector3, width: float, height: float) -> void:
+	var c: Color = skin.plume_color
+	layer.verts.append_array(PackedVector3Array([base, base, base, base, base, base]))
+	layer.colors.append_array(PackedColorArray([c, c, c, c, c, c]))
+	layer.uvs.append_array(PackedVector2Array([Vector2(-1, -1), Vector2(-1, 1), Vector2(1, 1), Vector2(-1, -1), Vector2(1, 1),
+		Vector2(1, -1)]))
+	var size := Vector2(width, height)
+	layer.uv2s.append_array(PackedVector2Array([size, size, size, size, size, size]))
 
 
 # --- Stumps -----------------------------------------------------------------------------------

@@ -66,6 +66,12 @@ vec3 dz_street(vec3 base, vec3 w, vec2 uv, float param) {
 	float crack = band(cx, -0.006, 0.006, fq.x) * step(0.55, hash12(cell + 17.0));
 	float line_dark = max(seam, crack);
 	vec3 col = base * tone * (1.0 - 0.4 * line_dark);
+	// Some plates heaved by the blasts: a paler raised edge on the far side, a darker one on the near
+	// side (shading only: the running surface stays flat).
+	float heaved = step(0.82, hash12(cell + 29.0));
+	float far_edge = 1.0 - smoothstep(0.0, 0.08, f.y + 0.5);
+	float near_edge = smoothstep(0.42, 0.5, f.y);
+	col *= 1.0 + heaved * (0.22 * far_edge - 0.18 * near_edge);
 	// Burn marks from the fires: broad, soft and never much darker.
 	col *= 1.0 - 0.12 * smoothstep(0.55, 0.85, value_noise(p * 0.07 + 31.0));
 	// The ash: a veil over everything, thicker in streaks drawn along the street and in the gutters, a
@@ -82,17 +88,29 @@ vec3 dz_street(vec3 base, vec3 w, vec2 uv, float param) {
 	float line = on_edge * dash * (uv.x < 0.0 ? float(flags & 1) : float((flags >> 1) & 1));
 	float paint = smoothstep(0.35, 0.65, value_noise(p * vec2(3.0, 0.5) + 3.0));
 	col = mix(col, dz_line, line * paint * 0.55);
-	// Scattered rubble over the ash: charred chunks, their tops dusted with ash, their near sides dark.
-	vec2 rc = floor(p / 0.7);
-	vec2 rf = fract(p / 0.7) - 0.5;
+	// Scattered rubble over the ash, in spills where a facade came down and sparse between them:
+	// chunks of broken concrete and charred debris, their tops lit, their near sides dark.
+	float spill = smoothstep(0.5, 0.8, value_noise(p * vec2(0.3, 0.12) + 57.0));
+	vec2 rc = floor(p / 0.6);
+	vec2 rf = fract(p / 0.6) - 0.5;
 	float r = hash12(rc + 41.0);
-	vec2 half_size = vec2(0.04 + 0.1 * hash12(rc + 3.0), 0.03 + 0.08 * hash12(rc + 7.0)) / 0.7;
+	vec2 half_size = vec2(0.04 + 0.12 * hash12(rc + 3.0), 0.03 + 0.1 * hash12(rc + 7.0)) / 0.6;
 	vec2 off = (vec2(hash12(rc + 11.0), hash12(rc + 13.0)) - 0.5) * 0.4;
-	vec2 d = abs(rf - off) - half_size;
-	float aa = fpm / 0.7 + 1e-4;
-	float chunk = (1.0 - smoothstep(-aa, aa, max(d.x, d.y))) * step(0.8, r) * detail;
+	// Each chunk lies at its own angle, a corner broken off it.
+	float ang = hash12(rc + 19.0) * 3.1416;
+	vec2 lp = rf - off;
+	lp = vec2(lp.x * cos(ang) - lp.y * sin(ang), lp.x * sin(ang) + lp.y * cos(ang));
+	vec2 d = abs(lp) - half_size;
+	float corner = dot(lp / max(half_size, vec2(1e-3)), vec2(0.7071)) - 0.9;
+	float aa = fpm / 0.6 + 1e-4;
+	float chunk = (1.0 - smoothstep(-aa, aa, max(max(d.x, d.y), corner * min(half_size.x, half_size.y))))
+		* step(mix(0.9, 0.5, spill), r) * detail;
 	float near_side = smoothstep(-aa, aa, rf.y - off.y - half_size.y * 0.2);
-	vec3 rubble = mix(dz_rubble * (0.75 + 0.4 * hash12(rc + 23.0)), dz_soot * 3.0, near_side * 0.8);
+	float pale = step(0.55, hash12(rc + 23.0));
+	vec3 top = mix(dz_soot * 3.5, dz_rubble, pale) * (0.8 + 0.35 * hash12(rc + 27.0));
+	vec3 rubble = mix(top, dz_soot * 2.0, near_side * 0.75);
+	// Soot around the spills.
+	col *= 1.0 - 0.1 * spill;
 	return mix(col, rubble, chunk);
 }
 
@@ -145,49 +163,77 @@ vec3 dz_tower(vec3 base, vec2 uv, float param, float t, inout float glow) {
 	vec3 wall = base * (0.84 + 0.28 * value_noise(vec2(uv.x * 0.9, uv.y * 0.12) + seed));
 	wall *= 1.0 - 0.4 * smoothstep(0.55, 0.85, value_noise(uv * 0.08 + seed * 1.7));
 	wall *= 1.0 - 0.3 * smoothstep(0.62, 0.9, value_noise(vec2(uv.x * 2.6, uv.y * 0.16) + seed * 0.3));
-	// The calm band: flush cladding panels in a running bond, scorched, ash along the joints' ledges and
-	// drifted against the foot.
+	// The calm band: flush cladding panels in a running bond, heat-stained, some fallen off onto the bare
+	// concrete behind (still flush, never an opening), scorch rising in tongues from the fires that burned
+	// along the street, the band blackened toward its top by the smoke that poured up the face, ash
+	// drifted against its foot. No pale line runs along it but the height marks (DeadTowers).
 	vec2 bq = uv / vec2(1.8, 1.2);
 	bq.x += 0.5 * mod(floor(bq.y), 2.0);
 	vec2 bfq = fw_m / vec2(1.8, 1.2);
-	float joint = max(filtered_pulse(bq.x, bfq.x, 0.0, 0.015), filtered_pulse(bq.y, bfq.y, 0.0, 0.025));
-	float ledge = filtered_pulse(bq.y, bfq.y, 0.025, 0.06);
-	vec3 band_col = wall * (0.92 + 0.14 * hash12(floor(bq) + seed)) * (1.0 - 0.4 * joint);
-	band_col = mix(band_col, dz_ash * 0.8, ledge * 0.35);
-	band_col = mix(band_col, dz_ash * 0.85, (1.0 - smoothstep(0.0, 0.45, uv.y)) * 0.55);
-	// The windows above it.
+	float pk = hash12(floor(bq) + seed * 0.7);
+	float fallen = step(0.88, pk);
+	float joint = max(filtered_pulse(bq.x, bfq.x, 0.0, 0.015), filtered_pulse(bq.y, bfq.y, 0.0, 0.025)) * (1.0 - fallen);
+	// The band's panels are dusted with ash, a shade paler than the soot-black storeys above, so the
+	// scorch shows on them.
+	vec3 dusted = mix(wall, dz_ash * 0.62, 0.3);
+	vec3 bare = mix(base, dz_ash * 0.5, 0.25) * (0.8 + 0.3 * value_noise(uv * 2.2 + seed));
+	vec3 band_col = mix(dusted * (0.88 + 0.22 * pk), bare, fallen) * (1.0 - 0.45 * joint);
+	// Two rows of scorch tongues on different spacings, each of its own height and width, their edges
+	// ragged.
+	float tongue = 0.0;
+	for (int i = 0; i < 2; i++) {
+		float period = i == 0 ? 2.7 : 4.3;
+		float tx = uv.x / period + float(i) * 0.37;
+		float tc = floor(tx);
+		float th = (1.5 + 5.0 * hash11(tc * 1.3 + seed + float(i) * 11.0)) * (i == 0 ? 1.0 : 1.2);
+		float rise = clamp(uv.y / th, 0.0, 1.0);
+		float tw = (0.2 + 0.25 * hash11(tc * 2.9 + seed)) * (1.0 - rise * rise) + 0.03;
+		float wobble = 0.1 * sin(uv.y * 1.3 + tc * 2.0) + 0.12 * (value_noise(vec2(tx * 4.0, uv.y * 1.6) + seed) - 0.5);
+		float edge_d = abs(fract(tx) - 0.5 + wobble) - tw;
+		tongue = max(tongue, (1.0 - smoothstep(-0.08, 0.08, edge_d)) * step(0.35, hash11(tc + seed * 2.1 + float(i) * 5.0)));
+	}
+	band_col = mix(band_col, dz_soot * 1.4, tongue * 0.85);
+	band_col = mix(band_col, dz_soot * 1.6, 0.6 * smoothstep(4.0, dz_band_top + 0.5, uv.y));
+	band_col = mix(band_col, dz_ash * 0.8, (1.0 - smoothstep(0.0, 0.3, uv.y)) * 0.5);
+	// The windows above it: burnt-out rooms (dark, the floor inside catching a little ash low in the
+	// window, a column in some) with soot streaking up the face above them into the next storey; jagged
+	// shards of smoked glass left in some frames; around some the cladding has fallen too, leaving a
+	// larger, ragged hole onto the gutted floor.
 	float in_win = filtered_pulse(p.x, fw.x, win.x, win.z) * filtered_pulse(p.y, fw.y, win.y, win.w);
-	float sill = filtered_pulse(p.y, fw.y, 0.0, 0.035);
 	float k = hash12(cell * vec2(1.7, 2.3) + seed * 5.0);
+	float k_below = hash12((cell - vec2(0.0, 1.0)) * vec2(1.7, 2.3) + seed * 5.0);
 	float wx = (fp.x - win.x) / (win.z - win.x);
 	float wy = (fp.y - win.y) / (win.w - win.y);
-	// A burnt room: dark, its floor catching a little ash low in the window, a column in some.
-	vec3 room = dz_soot * (1.0 + 2.2 * (1.0 - smoothstep(0.0, 0.22, wy)));
+	vec3 room = dz_soot * (1.0 + 2.0 * (1.0 - smoothstep(0.0, 0.22, wy)));
 	float column = step(0.6, hash12(cell + seed * 3.0)) * filtered_pulse(fp.x, fw.x, 0.45, 0.55);
 	room = mix(room, dz_soot * 0.6, column);
-	// Jagged shards of smoked glass left in some frames, below a sawtooth break.
 	float teeth = 2.0 + floor(k * 4.0);
 	float saw = abs(fract(wx * teeth + k * 7.0) - 0.5) * 2.0;
 	float edge = 0.18 + 0.45 * saw * hash11(cell.x * 3.1 + cell.y * 1.7 + seed);
-	float shard = step(0.7, k) * (1.0 - smoothstep(edge - 0.03, edge + 0.03, wy));
+	float shard = step(0.62, k) * step(k, 0.84) * (1.0 - smoothstep(edge - 0.03, edge + 0.03, wy));
 	vec3 fill = mix(room, dz_glass, shard);
+	// Where the cladding fell around a window the hole is larger and ragged.
+	float torn = step(0.84, k) * step(k, 0.94);
+	vec2 tq = (fp - vec2((win.x + win.z) * 0.5, (win.y + win.w) * 0.5)) / vec2(win.z - win.x, win.w - win.y);
+	float rag = 0.62 + 0.18 * value_noise(fp * 9.0 + cell * 3.1);
+	float hole = torn * (1.0 - smoothstep(rag - 0.04, rag + 0.04, max(abs(tq.x), abs(tq.y))));
+	in_win = max(in_win, hole);
 	// Embers: the rare room high up still burning (faces that smoulder: COLOR.a > 0).
 	float burning = step(k, dz_ember_share) * step(dz_ember_height, cell.y * cs.y) * step(0.001, glow);
 	float breath = mix(0.72 + 0.28 * sin(t * 1.1 + k * 400.0), 0.86, reduced_flashing);
 	float ember = burning * in_win * (1.0 - smoothstep(0.05, 0.6, wy)) * breath * (1.0 - far);
 	fill = mix(fill, dz_ember, ember);
-	// Soot rising from the burnt-out windows, and ash on the sills.
-	vec3 upper = wall;
-	float plume = step(k, 0.55) * step(win.w, fp.y) * (1.0 - smoothstep(win.w, 1.0, fp.y))
-		* filtered_pulse(fp.x, fw.x, win.x, win.z);
-	upper = mix(upper, dz_soot, plume * 0.75);
-	upper = mix(upper, dz_ash * 0.72, sill * 0.55);
+	// Soot streaking up from the burnt-out windows: over the rest of this storey and into the next.
+	float mid = filtered_pulse(fp.x, fw.x, win.x + 0.04, win.z - 0.04);
+	float above = step(k, 0.62) * step(win.w, fp.y) * (1.0 - 0.5 * smoothstep(win.w, 1.0, fp.y));
+	float from_below = step(k_below, 0.62) * step(fp.y, win.y) * (0.5 - 0.5 * smoothstep(0.0, win.y, fp.y));
+	vec3 upper = mix(wall, dz_soot, max(above, from_below) * mid * 0.8);
 	vec3 col = mix(upper, fill, in_win);
-	// Blast holes: ragged clusters of cells blown open onto gutted floors, their slabs' edges showing.
+	// Blast holes: a few ragged clusters of cells blown open onto gutted floors, their slabs' edges showing.
 	vec2 jag = (vec2(value_noise(uv * 1.9 + seed), value_noise(uv * 1.9 + seed + 7.1)) - 0.5) * 0.3;
 	vec2 bc = floor(p + jag);
-	float blown = step(value_noise(bc * vec2(0.45, 0.6) + seed * 1.3), 0.22) * step(dz_band_top + 3.0, bc.y * cs.y);
-	vec3 gutted = dz_soot * (0.5 + 3.0 * filtered_pulse(p.y, fw.y, 0.0, 0.06));
+	float blown = step(value_noise(bc * vec2(0.45, 0.6) + seed * 1.3), 0.12) * step(dz_band_top + 3.0, bc.y * cs.y);
+	vec3 gutted = dz_soot * (0.6 + 3.5 * filtered_pulse(p.y, fw.y, 0.0, 0.08));
 	col = mix(col, gutted, blown);
 	ember *= 1.0 - blown;
 	// Far away the openings blur into the face's average.
@@ -216,21 +262,47 @@ vec3 dz_concrete(vec3 base, vec3 w, vec3 n, float param) {
 	vec3 col = base * (0.86 + 0.22 * value_noise(p * 0.4 + 3.0));
 	float soot = smoothstep(0.45, 0.8, value_noise(p * 0.15 + 7.0));
 	if (mode > 1.5) {
-		// Rubble: chunks of broken concrete in staggered rows, each lit on top and dark in the gaps.
-		vec2 q = p / vec2(0.62, 0.38);
-		q.x += 0.5 * hash11(floor(q.y) * 1.7);
-		vec2 fqw = fwp / vec2(0.62, 0.38);
-		float gap = max(filtered_pulse(q.x, fqw.x, 0.0, 0.1), filtered_pulse(q.y, fqw.y, 0.0, 0.12));
-		vec3 rubble = base * (0.7 + 0.5 * hash12(floor(q) + 5.0)) * (0.75 + 0.35 * fract(q.y));
+		// Rubble: broken chunks of every size heaped together (the cells of a jittered grid, each its own
+		// tone, lit toward its top), dark gaps between them, dust and ash settled over the heap.
+		vec2 q = p / 0.45;
+		vec2 qi = floor(q);
+		vec2 qf = fract(q);
+		float d1 = 8.0;
+		float d2 = 8.0;
+		vec2 id = vec2(0.0);
+		vec2 rel = vec2(0.0);
+		for (int j = -1; j <= 1; j++) {
+			for (int i = -1; i <= 1; i++) {
+				vec2 o = vec2(float(i), float(j));
+				vec2 c = o + vec2(hash12(qi + o + 3.0), hash12(qi + o + 7.0)) * 0.85;
+				vec2 dv = c - qf;
+				float dd = dot(dv, dv);
+				if (dd < d1) {
+					d2 = d1;
+					d1 = dd;
+					id = qi + o;
+					rel = -dv;
+				} else if (dd < d2) {
+					d2 = dd;
+				}
+			}
+		}
+		float fq = max(fwp.x, fwp.y) / 0.45;
+		float gap = 1.0 - smoothstep(0.02, 0.09 + fq, sqrt(d2) - sqrt(d1));
+		vec3 rubble = base * (0.6 + 0.65 * hash12(id + 5.0)) * (0.8 + 0.45 * clamp(rel.y + 0.5, 0.0, 1.0));
 		rubble = mix(rubble, dz_soot * 2.0, gap * 0.85);
 		return mix(rubble, dz_ash * 0.8, smoothstep(0.55, 0.85, value_noise(p * 1.3 + 2.0)) * 0.5);
 	} else if (mode > 0.5) {
-		// The soffit: soot, formwork joints across it, spalled patches with the rebar grid showing.
+		// The soffit: charred, soot streaked along the way the smoke rolled under it, formwork joints
+		// across it streaming past overhead, small spalled patches (rough, darker, a paler broken rim).
 		float joint = filtered_pulse(w.z / 1.2, fz / 1.2, 0.0, 0.02);
-		float spall = smoothstep(0.62, 0.7, value_noise(p * 0.5 + 21.0));
-		float rebar = max(filtered_pulse(p.x / 0.3, fwp.x / 0.3, 0.0, 0.1), filtered_pulse(p.y / 0.3, fwp.y / 0.3, 0.0, 0.1));
-		vec3 soffit = mix(col, col * 0.45, soot * 0.55) * (1.0 - 0.3 * joint);
-		return mix(soffit, mix(col * 1.12, dz_soot * 3.0, rebar * detail * 0.8), spall * 0.8);
+		float streak = smoothstep(0.35, 0.8, value_noise(vec2(p.x * 1.7, w.z * 0.12) + 21.0));
+		float sn = value_noise(p * 1.2 + 21.0);
+		float spall = smoothstep(0.8, 0.83, sn) * 0.7;
+		float rim = smoothstep(0.78, 0.8, sn) * (1.0 - spall);
+		vec3 soffit = mix(col, col * 0.4, max(soot * 0.45, streak * 0.5)) * (1.0 - 0.3 * joint);
+		soffit = mix(soffit, col * 1.15, rim * 0.6);
+		return mix(soffit, col * (0.45 + 0.2 * value_noise(p * 6.0) * detail), spall * 0.85);
 	}
 	// Cast concrete: form-board lines (across a deck, up a wall), soot blooms, streaks down upright
 	// faces, ash on upward ones.
@@ -240,7 +312,9 @@ vec3 dz_concrete(vec3 base, vec3 w, vec3 n, float param) {
 		upright);
 	float streak = upright * smoothstep(0.6, 0.9, value_noise(vec2(p.x * 2.6, p.y * 0.22) + 9.0));
 	vec3 cast = col * (1.0 - 0.18 * board);
-	cast = mix(cast, cast * 0.4, max(soot * 0.65, streak * 0.5));
+	cast = mix(cast, cast * 0.35, max(soot * 0.75, streak * 0.6));
+	// Blackened in broad patches where the fires licked the upright faces.
+	cast *= 1.0 - 0.35 * upright * smoothstep(0.4, 0.75, value_noise(vec2(p.x * 0.8, p.y * 0.3) + 17.0));
 	return mix(cast, dz_ash * (0.85 + 0.25 * value_noise(p * 2.1)), up * (0.3 + 0.45 * value_noise(p * 0.9 + 4.0)));
 }
 

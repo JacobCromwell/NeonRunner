@@ -34,13 +34,14 @@ extends ZoneSkin
 
 @export_group("Environment")
 ## DESIGN-TBD (docs/questions/d5.md): the GDD gives the Dead Zone's palette and mood, not its hour. A
-## smoke-choked night: a black sky over pale ash haze on the horizon (the ruins stand against it in
-## silhouette), columns of smoke glowing faintly from fires far away, a veiled moon.
-@export var sky_zenith_color: Color = Color(0.03, 0.031, 0.034)
-@export var sky_horizon_color: Color = Color(0.13, 0.128, 0.126)
+## smoke-choked night: a low pall of smoke, dark overhead and paler toward the horizon, where ash haze
+## hangs (the ruins stand against it in dark silhouette), columns of smoke glowing faintly from fires far
+## away, a veiled moon.
+@export var sky_zenith_color: Color = Color(0.07, 0.07, 0.072)
+@export var sky_horizon_color: Color = Color(0.2, 0.197, 0.194)
 ## The ash haze over the horizon, lit by the veiled moon.
-@export var haze_color: Color = Color(0.32, 0.315, 0.31)
-@export_range(0.0, 2.0, 0.05) var haze_strength: float = 0.55
+@export var haze_color: Color = Color(0.34, 0.335, 0.33)
+@export_range(0.0, 2.0, 0.05) var haze_strength: float = 0.6
 @export var abyss_color: Color = Color(0.02, 0.02, 0.02)
 @export var skyline_color: Color = Color(0.05, 0.05, 0.052)
 ## The rare embers in the far ruins' windows: dull and dim (the sky shader shows few in a ruined
@@ -58,7 +59,7 @@ extends ZoneSkin
 @export var ambient_color: Color = Color(0.56, 0.57, 0.6)
 ## Distant geometry fades into the ash haze between fog_begin and fog_end: lighter than the ruins, so
 ## dark silhouettes (the Bad Dream, the cyborgs) read against it.
-@export var fog_color: Color = Color(0.17, 0.168, 0.165)
+@export var fog_color: Color = Color(0.2, 0.197, 0.194)
 @export_range(0.0, 150.0, 1.0, "suffix:m") var fog_begin: float = 10.0
 @export_range(50.0, 400.0, 5.0, "suffix:m") var fog_end: float = 150.0
 @export_range(0.0, 1.0, 0.01) var fog_max: float = 1.0
@@ -74,7 +75,7 @@ extends ZoneSkin
 ## The pale ash lying over the street, the sills and the decks, and falling.
 @export var ash_color: Color = Color(0.46, 0.452, 0.44)
 ## How much of the street the ash covers.
-@export_range(0.0, 1.0, 0.01) var ash_amount: float = 0.55
+@export_range(0.0, 1.0, 0.01) var ash_amount: float = 0.45
 @export var soot_color: Color = Color(0.03, 0.03, 0.03)
 
 @export_group("Street")
@@ -108,7 +109,7 @@ extends ZoneSkin
 @export_range(0, 40, 1) var smoke_count: int = 7
 @export_range(0, 60, 1) var streak_count: int = 12
 @export var ash_flake_color: Color = Color(0.62, 0.61, 0.6, 0.65)
-@export var smoke_puff_color: Color = Color(0.2, 0.2, 0.2, 0.14)
+@export var smoke_puff_color: Color = Color(0.3, 0.3, 0.3, 0.22)
 @export var streak_color: Color = Color(0.72, 0.72, 0.72, 0.24)
 @export_range(0.0, 30.0, 0.5, "suffix:m/s") var ash_speed: float = 5.0
 @export_range(0.0, 80.0, 0.5, "suffix:m/s") var streak_speed: float = 24.0
@@ -121,8 +122,8 @@ extends ZoneSkin
 @export_range(6.0, 40.0, 1.0, "suffix:m") var lot_length: float = 16.0
 ## Charred cladding and concrete: blacks and dark greys, one ash-grey.
 @export var facade_colors: PackedColorArray = PackedColorArray([
-	Color(0.13, 0.13, 0.132), Color(0.1, 0.1, 0.1), Color(0.16, 0.157, 0.153), Color(0.085, 0.085, 0.09),
-	Color(0.21, 0.207, 0.2)])
+	Color(0.15, 0.15, 0.152), Color(0.12, 0.12, 0.12), Color(0.18, 0.177, 0.173), Color(0.1, 0.1, 0.105),
+	Color(0.23, 0.227, 0.22)])
 ## The calm band: nothing opens, sticks out, lights up or looks like a vent on the walls below this
 ## height (the wall-run band tops out below 6 m), and decoration starts at decor_min_height.
 @export_range(6.0, 10.0, 0.1, "suffix:m") var band_top: float = 7.2
@@ -132,9 +133,10 @@ extends ZoneSkin
 ## Share of towers burnt down to their steel frames at the top, and the steel's colour.
 @export_range(0.0, 1.0, 0.01) var skeleton_share: float = 0.4
 @export var steel_color: Color = Color(0.12, 0.118, 0.118)
-## Faint lines on the facades at these heights, to read how high a wall run is: pale, unlit paint.
+## Faint lines on the facades at these heights, to read how high a wall run is: unlit paint, a little
+## paler than the charred walls.
 @export var wall_height_marks: PackedFloat32Array = PackedFloat32Array([2.0, 4.0])
-@export var wall_mark_color: Color = Color(0.44, 0.44, 0.43)
+@export var wall_mark_color: Color = Color(0.24, 0.24, 0.235)
 ## The dead neon on the towers (banners of unlit tubes, as the City's were) and the dead boards.
 @export var dead_neon_color: Color = Color(0.3, 0.3, 0.31)
 @export var board_color: Color = Color(0.07, 0.07, 0.075)
@@ -143,6 +145,14 @@ extends ZoneSkin
 ## Broken skybridges high over the street (the city's future in its ruins): the share of slots with
 ## one, where the towers on both sides stand tall enough. A boss arena can set it to 0.
 @export_range(0.0, 1.0, 0.01) var skybridge_share: float = 0.5
+
+@export_group("Smoke")
+## DESIGN-TBD (docs/questions/d5.md): smoke rising from some ruins (GDD §5: rubble, embers, smoke and
+## silence): the share of towers with a column of smoke rising from their broken tops, far above the
+## play field, its colour (a = its opacity at the core) and how fast its billows rise.
+@export_range(0.0, 1.0, 0.01) var plume_share: float = 0.22
+@export var plume_color: Color = Color(0.1, 0.098, 0.096, 0.55)
+@export_range(0.0, 5.0, 0.1, "suffix:m/s") var plume_rise: float = 1.2
 
 @export_group("Embers")
 ## DESIGN-TBD (docs/questions/d5.md): fires are kept minimal, dim and in the background (GDD §5). The
@@ -234,7 +244,7 @@ func _init() -> void:
 func make_environment() -> Environment:
 	# The sky's colours as sRGB Vector3s (srgb()), so the sky looks the same on both renderers.
 	var sky := {"zenith_color": srgb(sky_zenith_color), "horizon_color": srgb(sky_horizon_color),
-		"haze_color": srgb(haze_color), "haze_strength": haze_strength, "haze_height": 0.14,
+		"haze_color": srgb(haze_color), "haze_strength": haze_strength, "haze_height": 0.2,
 		"abyss_color": srgb(abyss_color), "skyline_color": srgb(skyline_color), "window_color": srgb(skyline_window_color),
 		"moon_color": srgb(moon_color), "moon_direction": moon_direction, "moon_radius": moon_radius,
 		"moon_clarity": moon_clarity, "star_amount": 0.0, "skyline_ruin": 1.0, "smoke_amount": smoke_amount,
@@ -347,6 +357,14 @@ func glow_material() -> ShaderMaterial:
 	if not _materials.has(&"glow"):
 		_materials[&"glow"] = MeshKit.glow({"fade_begin": fog_begin + 20.0, "fade_end": fog_end})
 	return _materials[&"glow"]
+
+
+## The columns of smoke rising from the ruins (dead_smoke.gdshader): scenery, dimmed by a level's
+## darker lighting like the rest.
+func smoke_material() -> ShaderMaterial:
+	if not _materials.has(&"smoke"):
+		_materials[&"smoke"] = MeshKit.material("dead_smoke.gdshader", {"rise_speed": plume_rise})
+	return _materials[&"smoke"]
 
 
 func drift_material() -> ShaderMaterial:
