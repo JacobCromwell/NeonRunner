@@ -33,7 +33,10 @@ void fragment() {
 		// RISE: a light column, bright at the base, soft bands drifting up.
 		float band = 0.8 + 0.2 * sin((uv.y * 3.0 - TIME * 0.9 + UV2.y) * 6.2832);
 		float across = 1.0 - abs(uv.x * 2.0 - 1.0);
-		a = pow(1.0 - uv.y, 1.6) * band * across * across;
+		// The base clamped: at the card's top edge the interpolated uv.y can land a hair above 1, and
+		// pow() of a negative number is NaN, which the glow pass blew up into a white disc (seen from
+		// beside a narrow ceiling, where the top of a pad's light column shows).
+		a = pow(max(1.0 - uv.y, 0.0), 1.6) * band * across * across;
 	} else if (shape == 4) {
 		// STREAK: a soft horizontal line.
 		float cy = abs(uv.y - 0.5) * 2.0;
