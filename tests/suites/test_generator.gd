@@ -38,6 +38,8 @@ func run() -> void:
 	print("  ramps with credits along their wall run: %d of %d, in %d levels" % [wall_lines.x, wall_lines.y, levels])
 
 	_test_pattern_ceilings(base)
+	_test_narrow_landing(base)
+	_test_narrow_ceilings(base)
 	_test_rule_ceilings_keep_off_floor_enemies(base)
 	_test_feature_starts(base)
 	_test_rules_keep_to_starts(base)
@@ -71,7 +73,8 @@ func _check_wall_run_credits(layout: LevelLayout, tag: String) -> Vector2i:
 ## GDD §3 (changed September 26, 2026): a pattern may put gaps, fences and floor enemies under its
 ## own ceiling, a gauntlet the ceiling lets the player escape; they're kept, with no warning, and the
 ## floor route under it is checked like every ceiling's (LayoutChecks). What a pattern puts in its
-## ceiling's landing zone, or in its pad's lane around the pad, is dropped with a warning.
+## ceiling's landing zone, or in its pad's lane around the pad, is dropped with a warning. (Ceilings
+## over every lane here; narrow ones in _test_narrow_landing.)
 func _test_pattern_ceilings(base: LevelConfig) -> void:
 	var gauntlet := [{"id": "test_gauntlet", "length": 10, "elements": [
 		{"kind": "hull", "at": 0, "lanes": {"mode": "edge"}, "length_seconds": 4.0},
@@ -85,6 +88,7 @@ func _test_pattern_ceilings(base: LevelConfig) -> void:
 		var config: LevelConfig = base.duplicate() as LevelConfig
 		config.duration_seconds = 40.0
 		config.lane_count = lanes
+		config.narrow_ceiling_share = 0.0
 		var tag: String = "lanes=%d" % lanes
 		var zones := CeilingZones.make(config, tuning)
 		var gen := LevelGenerator.new()
@@ -112,6 +116,141 @@ func _test_pattern_ceilings(base: LevelConfig) -> void:
 			"and its gap in the pad's lane, while the gaps in the other lanes stay under the ceiling %s" % tag)
 		LayoutChecks.check_layout(self, dropped, config, tag)
 		check(zones.landing > 0.0 and zones.run_up > 0.0 and zones.rise > 0.0, "the zones have a size " + tag)
+
+
+## GDD §3 with narrow ceilings: a ceiling's landing zone covers the lanes the ceiling covers (its
+## rider drops from one of those), so what a pattern puts in the landing zone is dropped there and kept
+## in the other lanes, and its gap in the pad's lane is dropped as always.
+func _test_narrow_landing(base: LevelConfig) -> void:
+	var bad := [{"id": "bad_hull", "length": 10, "elements": [
+		{"kind": "hull", "at": 0, "lanes": {"mode": "center"}, "length_seconds": 3.0},
+		{"kind": "gap", "at": 3, "lanes": {"mode": "all"}, "jump_frac": 0.4},
+		{"kind": "fence", "at_seconds": 3.3, "variant": "full", "lanes": {"mode": "all"}}]}]
+	for lanes: int in [3, 5, 6]:
+		var config: LevelConfig = base.duplicate() as LevelConfig
+		config.duration_seconds = 40.0
+		config.lane_count = lanes
+		config.narrow_ceiling_share = 1.0
+		var tag: String = "lanes=%d" % lanes
+		var gen := LevelGenerator.new()
+		var layout: LevelLayout = gen.generate(config, tuning, bad)
+		check(gen.warnings.size() == 1 and gen.warnings[0].contains("bad_hull"),
+			"a pattern's pieces in a narrow ceiling's landing zone are reported once %s %s" % [tag, gen.warnings])
+		check(layout.hulls.size() >= 3, "the level has ceilings %s (%d)" % [tag, layout.hulls.size()])
+		var ok: bool = true
+		for h: Dictionary in layout.hulls:
+			var lanes_h: Vector2i = layout.hull_lanes(h)
+			ok = ok and lanes_h.y - lanes_h.x + 1 >= 2 and lanes_h.y - lanes_h.x + 1 < lanes
+			for f: Dictionary in layout.fences:
+				if float(f["at"]) > float(h["end"]) and float(f["at"]) < float(h["end"]) + 8.0:
+					ok = ok and not layout.hull_covers(h, int(f["lane"]))
+			var kept: int = 0
+			for f: Dictionary in layout.fences:
+				kept += 1 if float(f["at"]) > float(h["end"]) and float(f["at"]) < float(h["end"]) + 8.0 else 0
+			ok = ok and kept == lanes - (lanes_h.y - lanes_h.x + 1)
+		check(ok, "the fences in its landing zone go from the ceiling's lanes and stay in the others, over a "
+			+ "gauntlet's narrow ceiling (two lanes to all but one) %s" % tag)
+		LayoutChecks.check_layout(self, layout, config, tag)
+
+
+## GDD §3 (decided September 26, 2026): ceilings don't have to cover every lane. With a level's
+## narrow_ceiling_share, that share of its ceilings (the patterns' and the rules') cover a contiguous
+## range of lanes holding their pads, at 3, 5 and 6 lanes alike: every width from one lane to all but
+## one comes up, a one-lane ceiling only where its pattern puts nothing under it (or a rule's), and
+## every check LayoutChecks makes of a ceiling holds for each range (its pads inside it and steppable,
+## a one-lane one short, its landing zone safe over its lanes, a floor route under it without the pad,
+## credits on it within its lanes), as do the enemy rules around the pads. Levels generate the same
+## way every time; no ceiling is narrow before narrow_ceiling_start, or with a share of 0; and
+## narrowing ceilings changes nothing else about the pattern pass (with no one-lane ceilings, whose
+## shorter length moves the patterns after them, the same patterns come in the same spots).
+func _test_narrow_ceilings(base: LevelConfig) -> void:
+	var feature_sets: Array = [["ramps", "ceilings", "pulsing"],
+		["cyborg", "ceilings", "ramps", "hover_truck", "octodog", "generator", "drone", "host", "screech"]]
+	var widths: Dictionary = {}
+	var narrow: int = 0
+	var total: int = 0
+	var one_lane_gauntlets: int = 0
+	var rule_narrow: int = 0
+	var late: int = 0
+	var unchanged_picks: int = 0
+	var runs: int = 0
+	for features: Array in feature_sets:
+		for lanes: int in [3, 5, 6]:
+			for level_seed: int in range(1, 13):
+				var config: LevelConfig = base.duplicate() as LevelConfig
+				config.lane_count = lanes
+				config.difficulty = 0.6
+				config.enemy_scaling = 0.6
+				config.level_seed = level_seed
+				config.features = PackedStringArray(features)
+				config.narrow_ceiling_share = 0.7
+				var tag: String = "narrow %d features lanes=%d seed=%d" % [features.size(), lanes, level_seed]
+				var patterns: Array = LevelGenerator.load_for(config)
+				var gen := LevelGenerator.new()
+				var layout: LevelLayout = gen.generate(config, tuning, patterns)
+				check(gen.warnings.is_empty(), "narrow ceilings generate without warnings %s %s" % [tag, gen.warnings])
+				var again: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
+				check(JSON.stringify(layout.to_dict()) == JSON.stringify(again.to_dict()), "deterministic " + tag)
+				LayoutChecks.check_layout(self, layout, config, tag)
+				LayoutChecks.check_rules(self, layout, config, tag)
+				# The pads the pattern pass placed, and whether their pattern put anything under its ceiling.
+				var pattern_pads: Dictionary = {}
+				var by_id: Dictionary = {}
+				for p: Dictionary in patterns:
+					by_id[String(p.get("id", ""))] = p
+				for pick: Dictionary in gen.picks:
+					var pattern: Dictionary = by_id.get(String(pick["id"]), {})
+					for e: Dictionary in pattern.get("elements", []):
+						if String(e.get("kind", "")) == "hull":
+							var pad_at: float = float(pick["at"]) + float(e.get("at", 0.0)) + float(e.get("at_seconds", 0.0)) * tuning.run_speed
+							pattern_pads[snappedf(pad_at, 0.01)] = LevelGenerator.plain_ceiling(pattern)
+				for h: Dictionary in layout.hulls:
+					total += 1
+					var width: int = layout.hull_width(h)
+					if width == lanes:
+						continue
+					narrow += 1
+					var key: String = "%d:%d" % [lanes, width]
+					widths[key] = int(widths.get(key, 0)) + 1
+					for p: Dictionary in layout.pads:
+						if float(p["at"]) < float(h["start"]) or float(p["at"]) > float(h["end"]):
+							continue
+						var at: float = snappedf(float(p["at"]), 0.01)
+						if not pattern_pads.has(at):
+							rule_narrow += 1
+						elif width == 1 and not bool(pattern_pads[at]):
+							one_lane_gauntlets += 1
+				# Narrow ceilings start at narrow_ceiling_start.
+				var started: LevelConfig = config.duplicate() as LevelConfig
+				started.narrow_ceiling_start = 0.5
+				var half: LevelLayout = LevelGenerator.new().generate(started, tuning, patterns)
+				for h: Dictionary in half.hulls:
+					if h.has("first_lane") and float(h["start"]) + started.hull_lead_in < 0.5 * half.length - 0.01:
+						late += 1
+				# Without one-lane ceilings the pattern pass is the one a level without narrow ceilings makes.
+				var two_up: LevelConfig = config.duplicate() as LevelConfig
+				two_up.one_lane_ceiling_share = 0.0
+				var off: LevelConfig = config.duplicate() as LevelConfig
+				off.narrow_ceiling_share = 0.0
+				var gen_two := LevelGenerator.new()
+				gen_two.generate(two_up, tuning, patterns)
+				var gen_off := LevelGenerator.new()
+				var plain_layout: LevelLayout = gen_off.generate(off, tuning, patterns)
+				unchanged_picks += 1 if JSON.stringify(gen_two.picks) == JSON.stringify(gen_off.picks) else 0
+				runs += 1
+				for h: Dictionary in plain_layout.hulls:
+					check(not h.has("first_lane"), "a share of 0 keeps every ceiling over every lane " + tag)
+	print("  narrow ceilings at a share of 0.7: %d of %d ceilings, %d of them the rules'; by lanes:width %s" % [narrow,
+		total, rule_narrow, widths])
+	check(narrow * 10 > total * 5, "a share of 0.7 makes most ceilings narrow (%d of %d)" % [narrow, total])
+	for lanes: int in [3, 5, 6]:
+		for width: int in range(1, lanes):
+			check(int(widths.get("%d:%d" % [lanes, width], 0)) > 0, "narrow ceilings %d lanes wide at %d lanes (%s)"
+				% [width, lanes, widths])
+	check(one_lane_gauntlets == 0, "a gauntlet's ceiling is never one lane (%d)" % one_lane_gauntlets)
+	check(rule_narrow > 0, "the rules' ceilings (a drone's pads, a chase's) are narrow too (%d)" % rule_narrow)
+	check(late == 0, "no narrow ceiling before narrow_ceiling_start (%d)" % late)
+	check(unchanged_picks == runs, "narrowing ceilings leaves the pattern picks alone (%d of %d levels)" % [unchanged_picks, runs])
 
 
 ## Ceilings that enemy rules add later (drone pads, add_hull_with_pad) lie over whatever the floor

@@ -14,3 +14,5 @@ guarantee_features = true
 feature_starts = Dictionary[String, float]({
 "ceilings": 0.1
 })
+narrow_ceiling_share = 0.5
+narrow_ceiling_start = 0.5

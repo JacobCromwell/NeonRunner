@@ -14,3 +14,4 @@ guarantee_features = true
 feature_starts = Dictionary[String, float]({
 "host": 0.1
 })
+narrow_ceiling_share = 0.5

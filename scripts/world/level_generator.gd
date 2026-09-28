@@ -55,8 +55,11 @@ extends RefCounted
 const DENOMINATIONS: Array[int] = [1, 5, 25, 100]
 const RULES_DIR: String = "res://scripts/enemies"
 ## The most builds generate() makes to have every feature appear (guarantee_features). Past it the
-## level keeps the build that missed the fewest, with a warning.
-const GUARANTEE_ATTEMPTS: int = 16
+## level keeps the build that missed the fewest, with a warning. Most levels take one to three; The
+## Hush, whose bursts leave its many features little room, took up to 17 on a few seeds (task B3's
+## sweeps: 16 left one seed at 3 lanes and one at 6 without a feature, with and without narrow
+## ceilings), so there's room to spare. A level found within fewer builds is built exactly the same.
+const GUARANTEE_ATTEMPTS: int = 24
 ## Where a new build forces a pick of a feature the last one missed: a share of the stretch where
 ## the feature is active (from its start to the level's end), a new one each time it's missed. The
 ## early shares come before most drone waves, whose pad schedule clears the floor after them; none
