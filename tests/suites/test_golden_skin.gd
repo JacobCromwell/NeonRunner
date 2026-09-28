@@ -438,9 +438,12 @@ func _statue_kit(skin: GoldenSkin) -> void:
 	for pose: StringName in GoldenStatue.DECORATIVE:
 		named = named and GoldenStatue.POSES.has(pose)
 	check(named and GoldenStatue.full_pose({}) == GoldenStatue.REST, "the kit names its decorative and swing poses")
-	var mid: Dictionary = GoldenStatue.blend_poses(GoldenStatue.pose_named(&"raise"), GoldenStatue.pose_named(&"strike"), 0.5)
-	check(is_equal_approx(float(mid["elbow_r"]), 25.0) and (mid["shoulder_r"] as Vector3).is_equal_approx(Vector3(110.0, -10.0, 4.0)),
-		"poses blend joint by joint (a Sentinel's swing)")
+	var raise: Dictionary = GoldenStatue.full_pose(GoldenStatue.pose_named(&"raise"))
+	var strike: Dictionary = GoldenStatue.full_pose(GoldenStatue.pose_named(&"strike"))
+	var mid: Dictionary = GoldenStatue.blend_poses(raise, strike, 0.5)
+	check(is_equal_approx(float(mid["elbow_r"]), (float(raise["elbow_r"]) + float(strike["elbow_r"])) * 0.5)
+		and (mid["shoulder_r"] as Vector3).is_equal_approx(((raise["shoulder_r"] as Vector3) + (strike["shoulder_r"] as Vector3)) * 0.5)
+		and GoldenStatue.blend_poses(raise, strike, 1.0) == strike, "poses blend joint by joint (a Sentinel's swing)")
 	var guard: MeshLayer = kit.mesh(GoldenStatue.pose_named(&"guard"))
 	check(guard == kit.mesh(GoldenStatue.pose_named(&"guard")) and guard != kit.mesh(GoldenStatue.pose_named(&"vigil")),
 		"merged statues are cached per pose")

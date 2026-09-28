@@ -925,7 +925,9 @@ the enemies (`enemy_showcase` for the cyborg family: poses, the faces close up, 
 cyborgs, and a far view through the run camera where the expressions must read, in any zone's look
 (`--variant=`, or ui_left / ui_right live), and every look side by side (`lineup`, front, back, as
 hosts or aiming, and `lineup_far` at gameplay distance); `octodog_screech`,
-`drone_truck_showcase`, `bad_dream_showcase`), a boss (`floating_head_showcase`), the UI kit, the
+`drone_truck_showcase`, `bad_dream_showcase`), the Golden Zone's statue kit (`statue_showcase`: every
+pose, a turnaround, and a live statue rigged in its niche and swinging, as task C4 would build it), a
+boss (`floating_head_showcase`), the UI kit, the
 screens, a zone skin (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed
 screens and emblems a skin lists, or a scripted run with a ceiling ride and a wall run), and comparison
 sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render

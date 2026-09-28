@@ -33,7 +33,8 @@ extends RefCounted
 ## POSES: the decorative &"guard" (upright at its right side, the butt by its foot), &"vigil" (planted
 ## before it, both hands on the shaft) and &"salute" (upright, the left fist on its chest, head high);
 ## and two for a Sentinel's swing, &"raise" (drawn back high over its right shoulder) and &"strike"
-## (swung down and across its front), proposals for task C4 to tune.
+## (chopped down in front of it and across toward its left, the blade down, into the lane before its
+## niche), proposals for task C4 to tune.
 
 enum Part { BODY, HEAD, EYES, UPPER_ARM_R, FOREARM_R, UPPER_ARM_L, FOREARM_L, HALBERD, PEDESTAL }
 
@@ -66,8 +67,8 @@ const POSES: Dictionary = {
 		"shoulder_l": Vector3(22.0, -38.0, -6.0), "elbow_l": 118.0, "head": Vector3(-6.0, 0.0, 0.0)},
 	&"raise": {"shoulder_r": Vector3(150.0, 20.0, 18.0), "elbow_r": 40.0, "grip": Vector3(60.0, 0.0, 0.0),
 		"shoulder_l": Vector3(30.0, 0.0, 12.0), "elbow_l": 40.0, "head": Vector3(-4.0, -12.0, 0.0)},
-	&"strike": {"shoulder_r": Vector3(70.0, -40.0, -10.0), "elbow_r": 10.0, "grip": Vector3(80.0, 0.0, 0.0),
-		"shoulder_l": Vector3(20.0, 0.0, 20.0), "elbow_l": 30.0, "head": Vector3(8.0, 12.0, 0.0)},
+	&"strike": {"shoulder_r": Vector3(55.0, 30.0, -5.0), "elbow_r": 20.0, "grip": Vector3(200.0, 0.0, 0.0),
+		"shoulder_l": Vector3(40.0, 10.0, 10.0), "elbow_l": 50.0, "head": Vector3(14.0, 18.0, 0.0)},
 }
 ## The decorative poses the skin picks from.
 const DECORATIVE: Array[StringName] = [&"guard", &"vigil", &"salute"]
