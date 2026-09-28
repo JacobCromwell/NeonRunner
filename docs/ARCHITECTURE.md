@@ -1064,7 +1064,9 @@ frames on the Compatibility renderer (the web and low-end Android path) with `--
 simulated runs of the campaign's levels at 3, 5 and 6 lanes, with `GameRules.big_attacks_take_turns` on
 and off: a god-mode runner in the middle lane, stomping every host it passes, while the enemies play as
 in the game. It reports the time big attacks of different types overlap, how many of each kind came,
-how long attacks waited for their turn, and the enemies that never got a big attack in (Octodogs
+how long attacks waited for their turn (from the first frame the director holds an enemy until its
+attack, through gaps of up to 3 s, so directors that keep a waiting enemy's place differently measure
+alike), and the enemies that never got a big attack in (Octodogs
 without a charge, Resonators without a pulse, drones without a barrage, hover trucks without a lurch
 or a cannon shot) (`godot --headless --fixed-fps 60 -s res://tools/measure/big_attacks.gd --
 --levels=gangland/3 --lanes=3,5,6 --out=build/measure/x.json`; the whole campaign on its own seeds takes
