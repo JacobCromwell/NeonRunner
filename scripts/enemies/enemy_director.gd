@@ -197,9 +197,9 @@ func held_for_turn(enemy: Enemy) -> bool:
 ## Seconds `enemy` has been waiting to start its big attack, since its wait began (0 when it isn't
 ## waiting): the delay turn-taking adds (tests and tools/measure read it).
 func turn_wait(enemy: Enemy) -> float:
-	if not is_waiting(enemy) or world == null:
+	if not is_waiting(enemy):
 		return 0.0
-	return maxf(world.level_time() - float(_waits[enemy.get_instance_id()]["since"]), 0.0)
+	return maxf(_now() - float(_waits[enemy.get_instance_id()]["since"]), 0.0)
 
 
 ## `shot` (what ProjectilePool.fire_enemy returned; null is ignored) is part of `enemy`'s big attack:
@@ -265,8 +265,8 @@ func _hold_for(enemy: Enemy) -> Hold:
 
 
 ## Notes an ask in the queue: a held enemy's wait begins (if it wasn't waiting), and every ask keeps a
-## waiting enemy's place. Let go at once, an enemy that wasn't waiting has nothing to keep, nor has one
-## whose own attack is on (it carries on).
+## waiting enemy's place. An enemy let go that wasn't waiting has no place to keep, and one let go
+## while its own attack is on carries on: its wait is over.
 func _note_ask(enemy: Enemy, hold: Hold) -> void:
 	var id: int = enemy.get_instance_id()
 	var rec: Dictionary = _waits.get(id, {})
@@ -285,8 +285,8 @@ func _note_ask(enemy: Enemy, hold: Hold) -> void:
 
 
 ## A wait ends when its enemy's big attack starts (told it may go, it went), when the enemy leaves
-## play, or when it hasn't asked for turn_place_grace() (it gave up, or it isn't ready for longer than
-## a moment).
+## play, or when it hasn't asked for turn_place_grace() (it isn't ready for longer than a moment, or it
+## gave up without saying so); give_up_turn() ends one at once.
 func _end_waits() -> void:
 	for id: int in _waits.keys():
 		var rec: Dictionary = _waits[id]
