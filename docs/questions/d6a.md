@@ -13,11 +13,14 @@ unless another file is named.
    engine-turned finish) between polished gold rails, with a dark 5 cm joint where two walkways meet; the
    outer lanes run on to the facades over a cream marble kerb. The canal lies 5.5 m below (`canal_depth`,
    deeper than a fall that ends the run, so a fall never visibly lands): dark water flowing toward the
-   player (`canal_flow`). A gap is a missing stretch of walkway with the same orange edge as the City and
-   Gangland on the collision edge (a lip on the deck, a strip along the top of its face), plus a soft
-   orange halo along the far edge so it carries against the lit gold; below it only deep shade
-   (`gap_inside_color`) and the dark canal. The walkways' gold is kept darker than the cream of the zone's
-   ceremonial cyborgs so they stand out on it. Right look?
+   player (`canal_flow`). A gap is a missing stretch of walkway with the City's and Gangland's orange
+   edge: the same 18 cm lip on the deck at the collision edge, with a strip along the top of its face. On
+   a lit gold floor a dim edge loses its weight, so both glow as brightly as the Marketplace's (its floor
+   is lit too), and a soft orange halo runs along the far edge (`GoldenWalkways`); below it only deep shade
+   (`gap_inside_color`) and the dark canal. The walkways are a deep, satin-burnished gold (`walkway_color`,
+   `walkway_polish`), well below the cream of the zone's ceremonial cyborgs in value and saturation, so the
+   cyborgs stand out on them at gameplay distance (a more polished deck paled toward champagne ahead of the
+   runner, just where they stand). Right look?
 3. **Motion cues on the still walkways** (GDD §5 proposal, approved for every still floor; over water, the
    equivalent). Placeholder, per 40 m: 55 motes of mist, 10 flakes of gold leaf and 12 speed streaks
    drifting toward the player (Motion group), with the plate seams streaming past underfoot and the canal

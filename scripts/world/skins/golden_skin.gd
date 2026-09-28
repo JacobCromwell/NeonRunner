@@ -91,14 +91,18 @@ extends ZoneSkin
 
 @export_group("Walkways")
 ## DESIGN-TBD (docs/questions/d6a.md): the GDD's golden walkways over water (proposed, owner agreed).
-## The deck's burnished gold, darker than the cream of the Golden Zone's cyborgs so they stand out on
-## it (task P3's concern), far brighter than the canal in the gaps.
-@export var walkway_color: Color = Color(0.64, 0.52, 0.28)
+## The deck's burnished gold, a deep gold well below the cream of the Golden Zone's cyborgs in value
+## and saturation, so they stand out on it at gameplay distance (task P3's concern), and far brighter
+## than the canal in the gaps.
+@export var walkway_color: Color = Color(0.58, 0.47, 0.25)
 ## The dark joint between neighbouring walkways, so each lane reads as its own walkway.
 @export var joint_color: Color = Color(0.1, 0.085, 0.07)
 ## The deck's plates: their seams streaming past are the still floor's own motion cue.
 @export_range(0.6, 8.0, 0.1, "suffix:m") var plate_length: float = 3.6
-@export_range(0.0, 1.0, 0.01) var walkway_polish: float = 0.55
+## How polished the deck is (golden_metal()'s polish). A satin burnish: more polish makes the deck
+## ahead reflect the afterglow and pale toward champagne, just where the cream cyborgs stand. The
+## rails and the medallions' rings stay polished.
+@export_range(0.0, 1.0, 0.01) var walkway_polish: float = 0.3
 ## The marble kerb between the outer lanes and the building faces.
 @export var kerb_color: Color = Color(0.84, 0.8, 0.72)
 ## How far below the walkways the canal lies (deeper than the fall that ends a run, so a fall never
