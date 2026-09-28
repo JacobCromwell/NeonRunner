@@ -1,6 +1,6 @@
 class_name CeilingSection
 extends RefCounted
-## One ceiling section as a zone skin dresses it (ZoneSkin.ceiling): where it is, which lanes it
+## One ceiling section as a zone skin dresses it (ZoneSkin.ceiling_section): where it is, which lanes it
 ## covers, and its collision box. A ceiling covers a contiguous range of lanes, every lane or fewer
 ## (a narrow ceiling, GDD §3: "ceilings don't have to cover every lane"), at any lane count. Its
 ## collision box spans exactly those lanes (TrackBuilder, BossProps), so a skin that builds from the

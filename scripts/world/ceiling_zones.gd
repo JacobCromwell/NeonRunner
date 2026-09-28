@@ -68,15 +68,10 @@ static func lift_seconds(tuning: MovementTuning) -> float:
 
 
 ## Where the player lands after ceiling section `hull`: [end, end + landing], in every lane it covers
-## (LevelLayout.hull_lanes; landing_lanes).
+## (LevelLayout.hull_lanes).
 func landing_zone(hull: Dictionary) -> Vector2:
 	var end: float = float(hull["end"])
 	return Vector2(end, end + landing)
-
-
-## The lanes whose floor ceiling section `hull` keeps safe to land on in `layout`: the lanes it covers.
-static func landing_lanes(layout: LevelLayout, hull: Dictionary) -> Vector2i:
-	return layout.hull_lanes(hull)
 
 
 ## The stretch of its lane a pad at `at` keeps clear: [at - run_up, at + pad_length + rise].
