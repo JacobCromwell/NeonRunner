@@ -27,10 +27,11 @@ uniform vec3 dz_rubble = vec3(0.36, 0.355, 0.35);
 // Smoked glass left in the windows.
 uniform vec3 dz_glass = vec3(0.06, 0.065, 0.072);
 // The embers still smouldering in a few rooms high up (dim; never at the gap edge's brightness), the
-// lowest they burn and the share of windows up there that do (on faces that smoulder at all).
+// lowest they burn and the share of three-window stretches of a storey up there still burning (on
+// faces that smoulder at all).
 uniform vec3 dz_ember = vec3(0.62, 0.24, 0.1);
 uniform float dz_ember_height = 16.0;
-uniform float dz_ember_share = 0.006;
+uniform float dz_ember_share = 0.04;
 // The calm band: below this height every tower face is flush, closed and solid-looking.
 uniform float dz_band_top = 7.2;
 
@@ -141,9 +142,10 @@ vec3 dz_under(vec3 base, vec3 w, vec3 n, float param) {
 // Below dz_band_top (the wall-run band and a margin) every face stays calm and solid-looking: flush
 // scorched panels, no opening, nothing dark or window-like (a window cyborg's window must be the only
 // one there) and nothing vent-like at the foot (in the Dead Zone a grille there is a screech's vent).
-// A face whose COLOR.a is above 0 smoulders: in the rare room above dz_ember_height still burning, a
-// dim ember glow lies low in the window (the kit's glow at COLOR.a, below the bloom threshold),
-// breathing slowly (steady with Reduced flashing); far away it fades out rather than sparkle.
+// A face whose COLOR.a is above 0 smoulders: in the rare stretch of a storey above dz_ember_height
+// still burning, a dim ember glow lies low in most of its windows (the kit's glow at COLOR.a, below the
+// bloom threshold), breathing slowly (steady with Reduced flashing); farther off it spreads over the
+// window's cell, and it fades out before a cell gets small enough to sparkle.
 // UV: x metres along the face, y world height. param = style + 4 * seed (a whole number).
 vec3 dz_tower(vec3 base, vec2 uv, float param, float t, inout float glow) {
 	vec2 fw_m = max(fwidth(uv), vec2(1e-4));
@@ -218,11 +220,16 @@ vec3 dz_tower(vec3 base, vec2 uv, float param, float t, inout float glow) {
 	float rag = 0.62 + 0.18 * value_noise(fp * 9.0 + cell * 3.1);
 	float hole = torn * (1.0 - smoothstep(rag - 0.04, rag + 0.04, max(abs(tq.x), abs(tq.y))));
 	in_win = max(in_win, hole);
-	// Embers: the rare room high up still burning (faces that smoulder: COLOR.a > 0).
-	float burning = step(k, dz_ember_share) * step(dz_ember_height, cell.y * cs.y) * step(0.001, glow);
-	float breath = mix(0.72 + 0.28 * sin(t * 1.1 + k * 400.0), 0.86, reduced_flashing);
-	float ember = burning * in_win * (1.0 - smoothstep(0.05, 0.6, wy)) * breath * (1.0 - far);
-	fill = mix(fill, dz_ember, ember);
+	// Embers (faces that smoulder: COLOR.a > 0): in the rare stretch of three windows of a storey high
+	// up still burning, most of the rooms glow. Close up the glow lies low in the window; farther off it
+	// spreads over the window's cell (its average), so a burning room stays a small, steady spot rather
+	// than sparkling, and it fades out once a cell is under about two pixels.
+	float fire = hash12(vec2(floor(cell.x / 3.0), cell.y) * vec2(3.1, 1.9) + seed * 2.7);
+	float burning = step(fire, dz_ember_share) * step(hash12(cell + seed + 17.0), 0.75)
+		* step(dz_ember_height, cell.y * cs.y) * step(0.001, glow);
+	float breath = mix(0.72 + 0.28 * sin(t * 1.1 + fire * 400.0), 0.86, reduced_flashing);
+	float lit = mix(in_win * (1.0 - smoothstep(0.05, 0.6, wy)), 0.35, far);
+	float ember = burning * lit * breath * (1.0 - smoothstep(0.5, 1.0, max(fw.x, fw.y)));
 	// Soot streaking up from the burnt-out windows: over the rest of this storey and into the next.
 	float mid = filtered_pulse(fp.x, fw.x, win.x + 0.04, win.z - 0.04);
 	float above = step(k, 0.62) * step(win.w, fp.y) * (1.0 - 0.5 * smoothstep(win.w, 1.0, fp.y));
@@ -238,10 +245,14 @@ vec3 dz_tower(vec3 base, vec2 uv, float param, float t, inout float glow) {
 	ember *= 1.0 - blown;
 	// Far away the openings blur into the face's average.
 	col = mix(col, mix(wall, dz_soot, 0.45), far);
+	col = mix(col, dz_ember, ember);
 	// Fine grit up close.
 	col *= 1.0 + 0.1 * detail * (hash12(floor(uv * 14.0)) - 0.5);
 	float upper_part = step(dz_band_top, uv.y);
-	glow *= ember * upper_part;
+	// Only an ember's core glows (at the face's full COLOR.a): the kit draws a glowing pixel as its
+	// emission alone, so a faint glow would come out darker than the lit wall around it. Its fringe and a
+	// far cell's average are lit, tinted toward the ember.
+	glow *= step(0.6, ember) * upper_part;
 	return mix(band_col, col, upper_part);
 }
 

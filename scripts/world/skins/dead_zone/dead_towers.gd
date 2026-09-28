@@ -227,7 +227,7 @@ func _building(batch: MeshBatch, solid: MeshLayer, r: Ruin, face_x: float, start
 		_side_street(solid, r, face_x, start, end)
 		if r.f0 >= start and r.f0 < end:
 			var top: float = r.podium_top if r.split and not r.low else r.top(r.f0)
-			_end_face(solid, side, face_x, r.f0, 0.0, top, r.wall.darkened(0.15), 0.0, param)
+			_end_face(solid, side, face_x, r.f0, 0.0, top, r.wall.darkened(0.15), 0.0 if r.low else ember, param)
 	var u0: float = maxf(r.f0, start)
 	var u1: float = minf(r.b1, end)
 	var tower_x: float = face_x + side * r.setback
@@ -269,7 +269,7 @@ func _building(batch: MeshBatch, solid: MeshLayer, r: Ruin, face_x: float, start
 			MeshKit.facade_strip(solid, side, tower_x, us, tops, r.podium_top, r.wall, 0.0, MeshKit.PAT_DZ_TOWER, param)
 	# The tower's near side, seen across its alley or over its setback.
 	if r.split and r.t0 >= start and r.t0 < end:
-		_end_face(solid, side, tower_x, r.t0, r.podium_top, r.top(r.t0), r.wall.darkened(0.1), 0.0, param)
+		_end_face(solid, side, tower_x, r.t0, r.podium_top, r.top(r.t0), r.wall.darkened(0.1), ember, param)
 	if r.frame_top > 0.0:
 		_frame(solid, r, tower_x, start, end)
 	if r.banner_d >= start and r.banner_d < end:
@@ -302,13 +302,17 @@ func _split_face(solid: MeshLayer, side: int, x: float, us: PackedFloat32Array, 
 
 
 ## A building's near end (facing the approaching runner), DEPTH deep from the face at x, from y0 to y1.
+## If it smoulders (ember > 0), only its part above ember_min_height does.
 func _end_face(solid: MeshLayer, side: int, x: float, u: float, y0: float, y1: float, wall: Color, ember: float,
 		param: float) -> void:
 	if y1 <= y0 + 0.05:
 		return
+	var cut: float = clampf(skin.ember_min_height, y0, y1) if ember > 0.0 else y1
 	var x_min: float = minf(x, x + side * DEPTH)
-	solid.rect(Vector3(x_min, y0, -u), Vector3(DEPTH, 0, 0), Vector3(0, y1 - y0, 0), wall, ember, MeshKit.PAT_DZ_TOWER,
-		Vector2(x_min, y0), Vector2(x_min + DEPTH, y1), param + 4.0 * 3.0)
+	for part: Vector3 in [Vector3(y0, cut, 0.0), Vector3(cut, y1, ember)]:
+		if part.y > part.x + 0.05:
+			solid.rect(Vector3(x_min, part.x, -u), Vector3(DEPTH, 0, 0), Vector3(0, part.y - part.x, 0), wall, part.z,
+				MeshKit.PAT_DZ_TOWER, Vector2(x_min, part.x), Vector2(x_min + DEPTH, part.y), param + 4.0 * 3.0)
 
 
 ## A side street between two buildings, choked with rubble flush with the wall face up past the band

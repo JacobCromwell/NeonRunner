@@ -157,11 +157,12 @@ extends ZoneSkin
 @export_group("Embers")
 ## DESIGN-TBD (docs/questions/d5.md): fires are kept minimal, dim and in the background (GDD §5). The
 ## share of towers with rooms still smouldering high up, the lowest those rooms are, the share of
-## their windows up there that glow, and how dimly (the kit's glow, kept below the bloom threshold).
-## Embers are orange like a gap edge, so they stay small, dim and far above the play field.
+## three-window stretches of their storeys up there still burning (most of a burning stretch's windows
+## glow), and how dimly (the kit's glow, kept below the bloom threshold). Embers are orange like a gap
+## edge, so they stay small, dim and far above the play field.
 @export_range(0.0, 1.0, 0.01) var smoulder_share: float = 0.35
 @export_range(10.0, 60.0, 0.5, "suffix:m") var ember_min_height: float = 16.0
-@export_range(0.0, 0.05, 0.001) var ember_window_share: float = 0.006
+@export_range(0.0, 0.2, 0.005) var ember_share: float = 0.04
 @export var ember_color: Color = Color(0.62, 0.24, 0.1)
 @export_range(0.0, 0.5, 0.01) var ember_glow: float = 0.22
 
@@ -400,7 +401,7 @@ func _solid_params() -> Dictionary:
 	return {"glow_scale": emissive_scale, "sheen_color": srgb(sheen_color), "sheen_strength": sheen_strength,
 		"dz_ash": srgb(ash_color), "dz_ash_amount": ash_amount, "dz_soot": srgb(soot_color), "dz_board": srgb(board_color),
 		"dz_line": srgb(lane_marking_color), "dz_rubble": srgb(rubble_color), "dz_glass": srgb(glass_color),
-		"dz_ember": srgb(ember_color), "dz_ember_height": ember_min_height, "dz_ember_share": ember_window_share,
+		"dz_ember": srgb(ember_color), "dz_ember_height": ember_min_height, "dz_ember_share": ember_share,
 		"dz_band_top": band_top}
 
 

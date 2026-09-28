@@ -111,7 +111,7 @@ func _palette(skin: DeadZoneSkin, env: Environment) -> void:
 	var edge_peak: float = _max_linear(skin.gap_edge_color) * DeadStreet.LIP_GLOW * skin.emissive_scale
 	check(ember_peak < skin.glow_threshold and ember_peak < edge_peak / 3.0,
 		"the embers glow dimly (%.2f), below the bloom threshold and far below a gap edge (%.2f)" % [ember_peak, edge_peak])
-	check(skin.ember_min_height >= 12.0 and skin.ember_window_share <= 0.02,
+	check(skin.ember_min_height >= 12.0 and skin.ember_share <= 0.1 and skin.smoulder_share <= 0.5,
 		"the embers are few and far above the play field (%.1f m)" % skin.ember_min_height)
 	check(skin.distant_fire_color.v < 0.4, "the fires in the smoke over the horizon are dim (%s)" % skin.distant_fire_color)
 
