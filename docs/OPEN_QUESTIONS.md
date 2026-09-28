@@ -1235,6 +1235,94 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
 216. **The Hush's darkness** on this skin: every piece dims with it; on screen the street goes from about 80 to 56 in grey
     value and the walls from 40 to 20, while hazards, triggers and enemies stay as bright. Dark enough? (Item 155.)
 
+**Narrow ceilings** (from B3; numbers are exports on `LevelConfig`, group "Narrow ceilings", F6, values in
+`data/levels/*.tres`; review with `tools/showcase/skin_review.tscn -- --narrow` (any skin, `--lanes=3`,
+`--view=shot`, `--reduced-flashing`) or play `--level=city/3`, `--level=gangland/1`,
+`--quick --features=ceilings,cyborg --lanes=6`; measured over every campaign level on 9 seeds at 3, 5 and 6 lanes)
+217. **How often, and where they first appear.** Placeholder: `narrow_ceiling_share` 0.5 in every
+    campaign level from City 2 on (half of a level's ceilings are narrow; City 1 has no ceilings) and in
+    quick play's level (`prototype_level.tres`); 0, the default, wherever a level file doesn't set it (a
+    boss arena's laps, for one). City 2, which introduces ceilings, keeps its first
+    half full width (`narrow_ceiling_start` 0.5), so ceilings come first and narrow ones later in the
+    level. Measured: City 2 has 0.6 to 1.0 narrow ceilings a level (13–25% of its ceilings, the first at
+    61–78% of the level, in about half its builds), City 3 1.4 to 1.6 (about 45%), Gangland 1 and 2 1.0
+    to 2.0 (37–60%), and from Gangland 3 on, where ceilings are common, 3 to 6.6 a level (38–52%). A
+    level generates exactly as before with a share of 0. Is City 2's second half the right place to
+    introduce them (GDD §5: each level introduces about one new thing, and City 2's is ceilings and
+    pads), or should they wait for City 3 or Gangland? And is half of a level's ceilings the right
+    amount?
+218. **Widths.** Placeholder: 35% of narrow ceilings cover one lane (`one_lane_ceiling_share`); the others
+    cover from two lanes to all but one (`narrow_ceiling_max_lanes` 0; a number caps it), each width as
+    likely, placed anywhere that holds their pads. At 3 lanes that means one or two lanes; at 5 and 6 lanes
+    every width comes up. Right mix? Should wide streets lean toward some widths (for example no five-lane
+    ceiling on six lanes, which reads almost like a full one: `narrow_ceiling_max_lanes` 4)?
+219. **One-lane ceilings: very short and relatively safe.** Placeholder: 1.6 s from the pad to the end
+    (`one_lane_ceiling_seconds`; a plain pattern's ceiling lasts 4 s). A pattern's ceiling can be one lane
+    only if the pattern puts nothing else on the track (just the ceiling and credits), so a gauntlet's
+    ceiling, which is an escape from what's under it, always keeps a second lane; the rules' ceilings
+    (a drone's pads, a Bad Dream chase's) can be one lane too, over whatever the floor held there (b2's
+    placeholder). No hazards ride on them (GDD §9.8: never a Barnacle Turret on a one-lane ceiling), and
+    the drop lands on safe floor (item 221). Right length? Should a rule's ceiling always keep two
+    lanes as well?
+220. **A move toward a lane the ceiling doesn't cover.** Placeholder (`Player._bump_ceiling_edge`,
+    DESIGN-TBD): blocked, with the same feedback as a lane switch into a solid side: the runner bumps out
+    toward that side and back (stopping short of the ceiling's edge, so it never looks like stepping off)
+    and the blocked wall entry's clank plays (`ceiling_blocked` event, `wall_blocked` sound). A lane
+    switch still under way from the floor when a pad lifts the runner ends in the pad's lane the same
+    way. Right look and sound? Should the edge of a narrow ceiling show something more, such as a lit
+    rim along its sides (today its sides show only the skin's own edge: a hull's side, a slab's broken
+    edge)?
+221. **Landing and the floor around a narrow ceiling.** Placeholder (`CeilingZones`): the safe landing
+    zone (1.2 s after the end, B2's placeholder) keeps holes and fences out of the lanes the ceiling
+    covers, since its rider can only drop from those; the other lanes keep what their patterns put
+    there. Floor enemies still keep off the landing zone in every lane. The floor route under every
+    ceiling stays survivable without the pad (checked on every campaign level). Right?
+222. **The rules' ceilings are narrow too.** Placeholder: a drone wave's pads and a Bad Dream chase's pads
+    get narrow ceilings at the level's share, over the pad's lane. A chase's one-lane ceiling lasts 1.6 s
+    instead of 3 s; its pads still come as often, so the Bad Dream's refuge is there as before. Right?
+223. **Credits on a narrow ceiling.** Placeholder: the usual line along the pad's lane and the rich credit
+    in the ceiling's far lane (the lane of the ceiling furthest from the pad's); a one-lane ceiling has
+    only the line. Credit trails on the floor skip only the lanes a ceiling covers. Right?
+224. **Drones hurled into a narrow ceiling** (GDD §9.6: stepping on a pad hurls every drone on screen up
+    into the ship's hull). Placeholder (`Drone.hurl_x`): a drone not under the ceiling veers into its lanes
+    as it rises and crashes 0.8 m inside its edge. Right, or should a drone that isn't under the ceiling
+    just crash upward into nothing?
+225. **The City's narrow ceilings: a smaller craft** (`CityShip`, `small`). Placeholder: built from its lanes
+    like any ship, with a lower hull (sides rising 30% of its width, 1.3–2.0 m, against a full ship's
+    2.6 m), a deck on top, a shorter, sharper bow with a dark glass canopy over it and a light strip along
+    its rim, smaller headlights, and one engine per lane (two at most). Right look?
+226. **Gangland's narrow ceilings: a slab broken off a building** (the owner's review, P2 18;
+    `GanglandCeiling`, `Kind.SLAB`). Placeholder: a 0.6 m thick floor slab with broken edges, rebar sticking
+    0.5 m out of them, rubble, broken column stubs and a piece of wall still standing on it. A side that
+    reaches the street's edge stays lodged in the building face there; a slab that reaches neither side
+    hangs from torn, bent steel beams of its building's frame, running up to the building faces on both
+    sides 2.4 m above its top. Right look?
+227. **The other zones' narrow ceilings.** Placeholder: each builds its kinds from the ceiling's lanes. In
+    the Marketplace a building bridging the street needs both walls, so over fewer lanes it becomes an
+    overpass; its merchant ships and floating ads just build narrower. In the Corporate zone (and its
+    plaza) a tower across the street becomes a viaduct over fewer lanes; skyways and gunships build
+    narrower. In the Dead Zone (D5, which built its own) a narrow ceiling is a slab broken off the tower on
+    the side it reaches, or a fallen span hanging from its gantry in mid-street. In the Golden Zone (D6a) a
+    bridge over fewer lanes is a gallery hung on gold beams, and the arches stay full width only. The grey
+    box shows a plain slab. The orange end band spans the ceiling's lanes in every zone. Right?
+228. **The camera at a ceiling's end.** Dropping off any ceiling's far end used to flash an orange wash
+    and a glare (about a quarter of a second in a 30 fps capture): the chase camera rose after the
+    falling runner and passed through the ceiling's end, and the end band's glow card reached 1.5 m past
+    the end below the underside. Now the
+    camera stays at least 1 m under any ceiling over it, just beside it, 2.5 m ahead or until 3 m past
+    its end (`MovementTuning.camera_ceiling_clearance`, F6), and every zone keeps what glows past a far
+    end above the underside, fading as the camera comes within 4 m (the band's glow) or 8 m (engine
+    glows). The band itself is unchanged. For a moment after a drop the view sits a little lower than
+    before. OK?
+229. **No hint, no recency boost.** Placeholder: narrow ceilings aren't a feature of their own (they
+    aren't in a level's `features`), so they get no first-encounter hint (`data/hints/hints.json`) and
+    the campaign's recency curve (R5) doesn't boost them after they first appear. Narrowing a ceiling
+    takes nothing from the level: ceilings over two lanes or more leave the patterns as they were (the
+    same ones in the same spots, and a narrow ceiling's landing zone clears only its own lanes), and a
+    one-lane ceiling is shorter, so what follows it comes a little earlier.
+    Should they get a hint (for example "Some ceilings cover only a few lanes: you can only move within
+    them.") or be introduced like a feature?
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
