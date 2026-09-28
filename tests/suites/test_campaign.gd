@@ -299,9 +299,8 @@ func _test_skins(campaign: Campaign) -> void:
 	check(corporate != null and corporate.skin is CorporateSkin, "corporate uses its own skin")
 	var golden: ZoneDef = _zone(campaign, "golden")
 	check(golden != null and golden.skin is GoldenSkin, "golden uses its own skin")
-	for id: String in ["dead_zone"]:
-		var zone: ZoneDef = _zone(campaign, id)
-		check(zone != null and zone.skin is GreyboxSkin, "%s uses the grey-box skin until it has its own" % id)
+	var dead: ZoneDef = _zone(campaign, "dead_zone")
+	check(dead != null and dead.skin is DeadZoneSkin, "dead_zone uses its own skin")
 	var palace: CampaignStep = campaign.step("golden/3")
 	var own_skin := GreyboxSkin.new()
 	var step := CampaignStep.new()
@@ -685,7 +684,7 @@ func _test_darker_lighting(campaign: Campaign) -> void:
 	var dims: Array[String] = ["res://scripts/world/meshes/shaders/kit_solid.gdshader", "res://scripts/world/meshes/shaders/facade.gdshader",
 		"res://scripts/world/meshes/shaders/shopfront.gdshader", "res://scripts/world/meshes/shaders/road.gdshader",
 		"res://scripts/world/meshes/shaders/drift.gdshader", "res://scripts/world/meshes/shaders/corp_facade.gdshader",
-		"res://scripts/world/greybox_scenery.gdshader"]
+		"res://scripts/world/meshes/shaders/dead_smoke.gdshader", "res://scripts/world/greybox_scenery.gdshader"]
 	for path: String in dims:
 		var code: String = FileAccess.get_file_as_string(path)
 		check(code.contains("global uniform float scenery_light;") and code.count("scenery_light") >= 2,
