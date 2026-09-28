@@ -52,6 +52,13 @@ func unlock_achievement(_id: String) -> void:
 	pass
 
 
+## Opens a page outside the game, such as a store page (the web demo's "get the full game" screen,
+## GDD §2). True if the platform opened it. On the web this opens a new browser tab; a portal whose
+## rules restrict outbound links gets a backend of its own that says no here.
+func open_url(url: String) -> bool:
+	return OS.shell_open(url) == OK
+
+
 func cloud_save_available() -> bool:
 	return false
 
