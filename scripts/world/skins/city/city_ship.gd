@@ -4,9 +4,23 @@ extends RefCounted
 ## player. The hull spans every ceiling lane as one plated surface with subtle lane seams; its bow
 ## rises above the near end, and its stern carries an orange edge (the surface ends here, like a
 ## gap edge) under a row of glowing engines, so the drop back to the floor is readable.
+## A ceiling over fewer lanes than the street has (a narrow ceiling, GDD §3) is a smaller craft: built
+## from its own lanes like any ship, with a lower hull, a shorter, sharper bow with a canopy over it,
+## smaller headlights, and one engine per lane (two at most).
+## Past the stern's far end nothing glows below the underside: the chase camera passes just below it
+## as the player drops off (RunCamera.ceiling_limit), and the engines' wash that hung below the stern
+## there flashed across the screen (task B3). The engines glow above the underside only.
 ## DESIGN-TBD: the GDD doesn't say which way the ships fly; like the trucks, they come toward the
-## player, which puts the engines' glow at the far end where the player drops.
+## player, which puts the engines' glow at the far end where the player drops. The smaller craft's
+## look is a proposal (docs/questions/b3.md).
 ## Ship space: origin at the centre of the underside (the ceiling surface), z = -distance.
+
+## A smaller craft's hull: its sides rise this share of its width, between these heights.
+const SMALL_RISE_SHARE: float = 0.3
+const SMALL_RISE_MIN: float = 1.3
+const SMALL_RISE_MAX: float = 2.0
+## A full ship's hull height above its underside.
+const RISE: float = 2.6
 
 ## Weak: the skin owns this builder, so a strong reference back would keep both alive forever.
 var skin: CitySkin:
@@ -20,16 +34,22 @@ func _init(p_skin: CitySkin) -> void:
 	_skin = weakref(p_skin)
 
 
-func build(parent: Node3D, center: Vector3, size: Vector3, lane_edges_x: Array[float]) -> void:
-	var id: String = "%s_%s_%s" % [size, lane_edges_x, center.x]
+## Adds a ship with collision box center/size and seams lane_edges_x (world x). `small`: a smaller
+## craft, for a ceiling over fewer lanes than the street has.
+func build(parent: Node3D, center: Vector3, size: Vector3, lane_edges_x: Array[float], small: bool = false) -> void:
+	var id: String = "%s_%s_%s_%s" % [size, lane_edges_x, center.x, small]
 	var mesh: ArrayMesh = _meshes.get(id)
 	if mesh == null:
-		mesh = _ship_mesh(size, lane_edges_x, center.x)
+		if _meshes.size() > 256:
+			_meshes.clear()
+		mesh = ship_mesh(size, lane_edges_x, center.x, small)
 		_meshes[id] = mesh
 	MeshBatch.add_instance(parent, mesh, "", Vector3(center.x, center.y - size.y * 0.5, center.z))
 
 
-func _ship_mesh(size: Vector3, lane_edges_x: Array[float], offset_x: float) -> ArrayMesh:
+## The ship's mesh in ship space, for collision size `size` centred on offset_x with seams at
+## lane_edges_x (world x); `small` for a smaller craft.
+func ship_mesh(size: Vector3, lane_edges_x: Array[float], offset_x: float, small: bool = false) -> ArrayMesh:
 	var batch := MeshBatch.new()
 	var s: MeshLayer = batch.layer(skin.solid_material())
 	var g: MeshLayer = batch.layer(skin.glow_material())
@@ -39,8 +59,8 @@ func _ship_mesh(size: Vector3, lane_edges_x: Array[float], offset_x: float) -> A
 	var hull: Color = skin.hull_color
 	var light: Color = skin.hull_light_color
 	var stern_lip: float = 1.2
-	var rise: float = 2.6
-	var slope: float = 0.9
+	var rise: float = clampf(hw * 2.0 * SMALL_RISE_SHARE, SMALL_RISE_MIN, SMALL_RISE_MAX) if small else RISE
+	var slope: float = minf(0.6, hw * 0.25) if small else 0.9
 
 	# Underside: one plate per ceiling lane, flush light seams between them.
 	var edges: Array[float] = [-hw]
@@ -67,9 +87,6 @@ func _ship_mesh(size: Vector3, lane_edges_x: Array[float], offset_x: float) -> A
 			ez += 15.0
 	# The stern edge: a wide orange band with amber lights, the ceiling ends here (like a gap edge).
 	MeshKit.ceiling_end(s, g, hw, zf, stern_lip, skin.gap_edge_color)
-	# Engine wash hanging below the stern, so the end reads from underneath.
-	g.rect(Vector3(-hw, -2.4, zf - 0.3), Vector3(hw * 2.0, 0, 0), Vector3(0, 3.4, 0), skin.engine_color, 0.55,
-		MeshKit.SHAPE_RADIAL)
 
 	# Sloped sides with a band of lit windows and running lights along the underside edges.
 	for side: float in [-1.0, 1.0]:
@@ -81,10 +98,14 @@ func _ship_mesh(size: Vector3, lane_edges_x: Array[float], offset_x: float) -> A
 		s.rect(Vector3(x, 0, z0) + top * 0.45 + Vector3(side * 0.01, 0, 0), u, top * 0.12, light, 0.3, MeshKit.PAT_HULL)
 		s.box(Vector3(x - side * 0.05, -0.03, 0), Vector3(0.1, 0.06, size.z - 1.0), light, 0.35, MeshKit.PAT_PLAIN,
 			MeshKit.FACE_NY | (MeshKit.FACE_PX if side > 0.0 else MeshKit.FACE_NX))
+	if small:
+		# A deck over the smaller craft's hull.
+		s.rect(Vector3(-hw + slope, rise, zn), Vector3((hw - slope) * 2.0, 0, 0), Vector3(0, 0, zf - zn),
+			hull.darkened(0.12), 0.0, MeshKit.PAT_HULL)
 
 	# Bow: rises from the near end toward the player, narrowing to a nose with running lights.
-	var tip_hw: float = hw * 0.55
-	var tip_z: float = zn + 5.0
+	var tip_hw: float = hw * (0.35 if small else 0.55)
+	var tip_z: float = zn + (3.2 if small else 5.0)
 	var bl := Vector3(-hw, 0, zn)
 	var br := Vector3(hw, 0, zn)
 	var tl := Vector3(-tip_hw, rise, tip_z)
@@ -93,27 +114,42 @@ func _ship_mesh(size: Vector3, lane_edges_x: Array[float], offset_x: float) -> A
 	s.quad(br, tr, br + Vector3(-slope, rise, 0), br + Vector3(-slope, rise, 0), hull.lightened(0.08))
 	s.quad(bl, bl + Vector3(slope, rise, 0), tl, tl, hull.lightened(0.08))
 	s.box(Vector3(0, -0.03, zn - 0.1), Vector3(hw * 2.0 - 0.4, 0.06, 0.12), light, 0.5)
+	var lamp: float = 0.7 if small else 1.2
 	for side: float in [-1.0, 1.0]:
-		s.box(Vector3(side * tip_hw * 0.8, rise - 0.25, tip_z - 0.3), Vector3(0.5, 0.18, 0.2), skin.headlight_color, 1.0)
-		g.rect(Vector3(side * tip_hw * 0.8 - 1.2, rise - 1.45, tip_z), Vector3(2.4, 0, 0), Vector3(0, 2.4, 0),
-			skin.headlight_color, 0.35, MeshKit.SHAPE_RADIAL)
+		s.box(Vector3(side * tip_hw * 0.8, rise - 0.25, tip_z - 0.3), Vector3(0.5 * lamp / 1.2, 0.18, 0.2),
+			skin.headlight_color, 1.0)
+		g.rect(Vector3(side * tip_hw * 0.8 - lamp, rise - 0.25 - lamp, tip_z), Vector3(lamp * 2.0, 0, 0),
+			Vector3(0, lamp * 2.0, 0), skin.headlight_color, 0.35, MeshKit.SHAPE_RADIAL)
+	if small:
+		# A cockpit canopy over the bow: dark glass catching the sky, a light strip along its rim.
+		var cw: float = maxf(hw - slope - 0.25, 0.4)
+		var cz: float = zn - 1.6
+		s.box(Vector3(0, rise + 0.32, cz), Vector3(cw * 2.0, 0.64, 2.6), Color(0.05, 0.06, 0.1), 0.0, MeshKit.PAT_GLASS,
+			MeshKit.NO_BOTTOM)
+		s.box(Vector3(0, rise + 0.02, cz), Vector3(cw * 2.0 + 0.1, 0.06, 2.7), light, 0.35, MeshKit.PAT_PLAIN,
+			MeshKit.NO_BOTTOM)
 
-	# Stern: engines above the orange edge, their glow dropping below the hull so it reads from underneath.
+	# Stern: engines above the orange edge, glowing only above the underside past the far end (see
+	# the header), so the glow marks the ship's end without reaching the camera's path.
 	s.rect(Vector3(-hw, 0, zf), Vector3(0, rise, 0), Vector3(hw * 2.0, 0, 0), hull.darkened(0.3))
-	var engines: int = clampi(roundi(hw * 2.0 / 4.0), 2, 5)
+	var engines: int = clampi(roundi(hw * 2.0 / 2.6), 1, 2) if small else clampi(roundi(hw * 2.0 / 4.0), 2, 5)
+	var r: float = minf(0.55 if small else 1.1, hw / engines * (0.8 if small else 0.9))
+	var ey: float = maxf(r + 0.15, rise * 0.45) if small else 1.1
 	for i: int in engines:
 		var ex: float = -hw + (float(i) + 0.5) * hw * 2.0 / engines
-		var r: float = minf(1.1, hw / engines * 0.9)
-		var ez: float = zf
-		var nozzle := Transform3D(Basis(Vector3(r, 0, 0), Vector3(0, 0, -1.4), Vector3(0, r, 0)), Vector3(ex, 1.1, ez))
+		var nozzle := Transform3D(Basis(Vector3(r, 0, 0), Vector3(0, 0, -1.4), Vector3(0, r, 0)), Vector3(ex, ey, zf))
 		s.prism_xform(nozzle, 8, Color(0.1, 0.1, 0.13), 0.0, MeshKit.PAT_PLAIN, false)
 		var core := Transform3D(Basis(Vector3(r * 0.75, 0, 0), Vector3(0, 0, -0.05), Vector3(0, r * 0.75, 0)),
-			Vector3(ex, 1.1, ez - 1.3))
+			Vector3(ex, ey, zf - 1.3))
 		s.prism_xform(core, 8, skin.engine_color, 1.0)
-		g.rect(Vector3(ex - r * 2.6, 1.1 - r * 2.6, ez - 1.5), Vector3(r * 5.2, 0, 0), Vector3(0, r * 5.2, 0),
-			skin.engine_color, 0.55, MeshKit.SHAPE_RADIAL)
-		g.rect(Vector3(ex - r * 0.8, 1.1, ez - 1.5), Vector3(r * 1.6, 0, 0), Vector3(0, 0, -14.0), skin.engine_color, 0.22,
+		# The halo, cut off at the underside (its lower part drawn no lower than it).
+		var hr: float = r * 2.6
+		var bottom: float = maxf(ey - hr, 0.0)
+		g.rect(Vector3(ex - hr, bottom, zf - 1.5), Vector3(hr * 2.0, 0, 0), Vector3(0, ey + hr - bottom, 0),
+			skin.engine_color, 0.55, MeshKit.SHAPE_RADIAL, Vector2(0.0, (bottom - (ey - hr)) / (hr * 2.0)), Vector2.ONE)
+		g.rect(Vector3(ex - r * 0.8, ey, zf - 1.5), Vector3(r * 1.6, 0, 0), Vector3(0, 0, -14.0), skin.engine_color, 0.22,
 			MeshKit.SHAPE_BEAM)
-	g.rect(Vector3(-hw, -0.06, zf + 3.0), Vector3(hw * 2.0, 0, 0), Vector3(0, 0, -6.0), skin.engine_color, 0.3,
-		MeshKit.SHAPE_RADIAL)
+	# The engines' light on the underside toward the stern, under the ship only (never past its end).
+	g.rect(Vector3(-hw, -0.06, zf + 3.0), Vector3(hw * 2.0, 0, 0), Vector3(0, 0, -3.0), skin.engine_color, 0.3,
+		MeshKit.SHAPE_RADIAL, Vector2(0.0, 0.0), Vector2(1.0, 0.5))
 	return batch.to_mesh()

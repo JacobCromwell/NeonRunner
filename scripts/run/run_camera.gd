@@ -5,11 +5,12 @@ extends Camera3D
 ## (ceiling_limit). Shakes on request (RunEffects), scaled by the accessibility setting. All numbers
 ## come from MovementTuning's Camera group.
 
-## A ceiling within this far to either side of the camera, or this far ahead of it, holds it down too
-## (ceiling_limit): one beside it (a narrow ceiling) as well as one over it, and one just ahead before
-## the camera gets under it.
+## A ceiling within this far to either side of the camera, this far ahead of it or this far behind it
+## holds it down too (ceiling_limit): one beside it (a narrow ceiling) as well as one over it, one just
+## ahead before the camera gets under it, and one just passed for a moment after its far end.
 const CEILING_SIDE: float = 1.0
 const CEILING_AHEAD: float = 2.5
+const CEILING_BEHIND: float = 3.0
 ## ceiling_limit looks for a ceiling from this far below the camera to this far above it.
 const CEILING_BELOW: float = 2.0
 const CEILING_SEARCH: float = 14.0
@@ -70,19 +71,19 @@ func _update(delta: float, instant: bool) -> void:
 
 
 ## The highest the camera may be at `pos` (world space): camera_ceiling_clearance below the underside
-## of any ceiling over it, within CEILING_SIDE to either side or CEILING_AHEAD ahead (a ceiling's
-## collision box on the hull layer: the track's, a narrow one's, a boss's); INF with none. So the
-## camera never rises into a ceiling. It would, after a drop off a ceiling's far end: the player falls
-## from the ceiling's height and the camera follows them up, and it climbed into the ceiling before it
-## passed the end, where the end band's glow and the ceiling's insides filled the screen (a one-frame
-## orange wash and a glare, task B3). Past the end nothing holds it, and the skins keep every glow
-## there above the underside (MeshKit.ceiling_end). The review tools that copy the chase camera
-## (tools/showcase) use it too.
+## of any ceiling over it, within CEILING_SIDE to either side, CEILING_AHEAD ahead or CEILING_BEHIND
+## behind (a ceiling's collision box on the hull layer: the track's, a narrow one's, a boss's); INF
+## with none. So the camera never rises into a ceiling. It would, after a drop off a ceiling's far end:
+## the player falls from the ceiling's height and the camera follows them up, and it climbed into the
+## ceiling before it passed the end, where the end band's glow and the ceiling's insides filled the
+## screen (a one-frame orange wash and a glare, task B3). It stays that low until CEILING_BEHIND past
+## the end, and the skins keep every glow past a far end above the underside (MeshKit.ceiling_end).
+## The review tools that copy the chase camera (tools/showcase) use it too.
 static func ceiling_limit(space: PhysicsDirectSpaceState3D, pos: Vector3, t: MovementTuning) -> float:
 	var ray := PhysicsRayQueryParameters3D.new()
 	ray.collision_mask = TrackBuilder.LAYER_HULL
 	var limit: float = INF
-	for ahead: float in [0.0, CEILING_AHEAD]:
+	for ahead: float in [-CEILING_BEHIND, 0.0, CEILING_AHEAD]:
 		for side: float in [-CEILING_SIDE, 0.0, CEILING_SIDE]:
 			ray.from = Vector3(pos.x + side, pos.y - CEILING_BELOW, pos.z - ahead)
 			ray.to = ray.from + Vector3(0.0, CEILING_BELOW + CEILING_SEARCH, 0.0)
