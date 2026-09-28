@@ -27,8 +27,10 @@ const OPTION_TITLES: PackedStringArray = ["Broadcast Halo", "Convergent Triad", 
 
 ## The Golden Zone's gold and its red inset gem: reflective metal, never emissive (GDD §5, §11).
 ## Shared by every option so the comparison sheet's gold-relief panel compares shapes, not colours.
-const GOLD_COLOR := Color(0.80, 0.64, 0.30)
-const GOLD_ACCENT_COLOR := Color(0.55, 0.10, 0.09)
+## The zone's own gold and red (GoldenSkin, task D6a): a pale gold only half saturated, so it never
+## reads as sign yellow or gap-edge orange, and a deep ruby stone, unlit.
+const GOLD_COLOR := Color(0.78, 0.66, 0.42)
+const GOLD_ACCENT_COLOR := Color(0.52, 0.09, 0.1)
 
 static var _geometry_cache: Dictionary = {}
 static var _mesh_cache: Dictionary = {}
