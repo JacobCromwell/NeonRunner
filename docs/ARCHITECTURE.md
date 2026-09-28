@@ -198,14 +198,13 @@ different types waiting go in the order their waits began (then the one spawned 
 they're asking at that moment, so none is kept from its turn by others that keep asking: one that
 began waiting later never goes first. An attack that is on never waits for another (the Bad Dream
 holds a slash within its chase only for an attack that was already on when the chase began, and that
-one doesn't wait), and a waiting enemy is only ever held by those ahead of it in the queue, so two
+one doesn't wait), and in the queue a waiting enemy is only ever held by those ahead of it, so two
 enemies can't wait on each other; the one at the head starts, gives up, or loses its place after the
 grace (asking while it isn't ready holds the others back: only the Octodog does that, and only until
 it charges or runs off, `turn_wait_max` plus its `charge_slack` at most), so nothing waits for ever.
-Types space their own attacks themselves
-(one drone barrage at a time; one Octodog, one hover truck at a time). GDD §9.7's rule holds with the
-switch off as well: an `exclusive_major_attack` (the Bad Dream's chase) and the attacks of the types in
-its `exclusive_of` (Octodogs', drones') never overlap. `is_waiting()` and `turn_wait()` say whether and
+Types space their own attacks themselves (one drone barrage at a time; one Octodog, one hover truck at
+a time). GDD §9.7's rule holds with the switch off as well: an `exclusive_major_attack` (the Bad
+Dream's chase) and the attacks of the types in its `exclusive_of` (Octodogs', drones') never overlap. `is_waiting()` and `turn_wait()` say whether and
 how long an enemy has been waiting (from its first held ask until its attack starts or it loses its
 place). `tools/measure/big_attacks.gd` measures the overlaps, the delays and the enemies that never got
 a big attack in over the campaign (Review tools); `tests/helpers/turn_dummy.gd` is a scripted big
