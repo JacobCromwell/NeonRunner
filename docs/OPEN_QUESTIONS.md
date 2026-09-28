@@ -461,7 +461,7 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
 6. **Corporate 2's heavier military presence** (GDD §5, proposed). Placeholder: drones, hover trucks and Buzz
    Overdrives are picked 1.5× as often (`feature_weights` in `data/levels/corporate_2.tres`); their rules
    still cap how many fit. Should it also (or instead) be the Corporate skin's military ships and props?
-7. **Dead Zone 2, "a quiet, eerie remix"** (GDD §5). Placeholder: Dead Zone 1's features, a little harder,
+7. (Decided in the owner's review and built by R5: see items 152–156.) **Dead Zone 2, "a quiet, eerie remix"** (GDD §5). Placeholder: Dead Zone 1's features, a little harder,
    nothing new. What makes it a remix in play: fewer enemies, more hosts, something else?
 8. **The difficulty curve over 15 levels** (GDD §6; supersedes "From the full build" item 4). Placeholder
    (`data/campaign/campaign.tres`): 0.1 → 0.9, linear, plus each level's bias: City 1 −0.05, Golden 2 +0.05
@@ -977,6 +977,53 @@ play it with `--boss=city_boss` in debug builds; showcase scenarios `faceoff`, `
 145. **Hazards in the zone's dress:** fences strung between slim steel security pylons on round base plates or set in
     olive barrier blocks, with the shared glowing bars; hazard signs are corporate screens inside the yellow and black
     frame.
+
+**The campaign's shape: newest things picked most, The Hush, Buzz Overdrive in the Golden Zone** (from R5; the curve in
+`data/tuning/feature_recency.tres`, F6 "Feature picks (campaign)"; The Hush in `data/levels/dead_zone_2.tres`; measure with
+`tools/measure/level_shape.gd`. Buzz Overdrive is now listed in Golden 1–3, as corrected.)
+146. **The recency curve** (P2 13): a pattern's pick weight is multiplied by 4 in the level that introduces its newest
+    feature, 2.5 a level later, 1.75 two later, 1.25 three later, 1 from four on. Right shape? Should the oldest features
+    drop below 1?
+147. **No level gets easier: picks move within a kind.** The curve only moves picks between patterns of the same kind
+    (enemy patterns keep the number of enemies they place; obstacle-only and safe patterns keep their shares), so a new
+    enemy takes picks from older enemies and a new mechanic from older mechanics. Over 453 layouts a level, no level lost
+    more than 0.08 enemies or 0.04 obstacle rows (within noise), and several gained (Gangland 1–3 up to +0.7 enemies and
+    +1.7 rows; Marketplace 1–2 about +1.8 rows). The cost: City 2's new ceilings, its only safe feature, gain nothing.
+    Is "within a kind" right?
+148. **Features the curve leaves alone:** the host, hover truck, drone and Octodog (whose own rules dropped most extra
+    picks and left empty stretches: Golden 1 lost 1.4 enemies and 3 rows that way) and the vent screech (rare, §9.5) are
+    never boosted. So the curve changes nothing in Dead Zone 1, The Hush, Corporate 2 or the Golden Zone until their own
+    new enemies are built, and Gangland 2's new Octodog keeps its old share (fifth). Should any get a boost after all,
+    or the Octodog only where it's introduced?
+149. **The newest things' shares now:** most picked in City 2 (ceilings 50%), City 3 (pulsing fences 30%) and Gangland 1
+    (screeches 33%); second or third in Gangland 3 and Marketplace 1 (generators 14%, from 8%). A feature with many
+    patterns can still out-pick a new one with one light pattern. Should the curve set each feature's share directly?
+150. **Older features lean on the guarantee a little more:** without the every-feature guarantee, Gangland 2 would lack a
+    ceiling or a cyborg in 5 of 27 layouts (1 before); the guarantee still places every feature. Acceptable?
+151. **Level weights on top of the curve:** Marketplace 2's vent screeches (2.5×) and Corporate 2's military (1.5×
+    drones, hover trucks and Buzz Overdrives) still apply and are now all that favours them. Keep both?
+152. **The Hush's quiet stretches and bursts** (GDD §5): 14 s quiet stretches with no enemies but hosts, alternating
+    with 7 s bursts of threats only, patterns 0.9 s apart (the spacing other levels reach only at full difficulty).
+    Per level: 10.9 enemies besides hosts (21.2 before) and 34 obstacle rows (41); many of its features now come only
+    from the guarantee (no Octodog without it in 24 of 27 layouts). Right lengths and densities? Tighter bursts (not
+    playtested)?
+153. **Threats that outlast a burst:** a hover truck, a drone or a Bad Dream chase starting in a burst carries on into
+    the next quiet stretch; an Octodog, needing a clear floor, lands in a quiet stretch about half the time. Acceptable,
+    or should a quiet stretch wait until they're gone?
+154. **More Bad Dream chases** (a chase only starts when the player kills a host on purpose, §9.7): The Hush has 1.45 hosts
+    a level (Dead Zone 1: 1.09), two or three in 42% of layouts, all in quiet stretches where stomping, clawing or dashing
+    into them is easy (hosts picked 12.5× as often). The host rules allow one chase at a time and none across the first
+    drone wave, so three is the most in practice. More chases would need shorter chases, fewer or later drones in The
+    Hush, or more reason to kill a host (a bigger bonus). Which, if any?
+155. **Darker lighting:** The Hush's `darkness` 0.7: the scenery gets 51% of its light (floor about 23% darker on screen,
+    sky about a third), never below 30%; glows, the runner and the enemies keep theirs. Right amount? The Dead Zone skin
+    (D5) sets the zone's own palette and the darkness applies on top.
+156. **Music in the silent stretches:** see item 112; the generator can list the stretches for the music player.
+157. **The Octodog's wait for its turn** (R3's rule): a dog held for another type's turn keeps asking until its turn
+    comes, and if the wait made it miss its clear stretch, its charges move on until the stretch ahead is clear, within
+    the same 4 s; then its usual 40 m of slack runs. So a dog may pace ahead for up to about 6 s before its first charge.
+    Fine, or should it re-plan further ahead? (A rarer case remains: on 3 of 277 dogs over extra seeds, none on the
+    campaign's own, a drone's repeated barrages keep a dog from its turn; a follow-up gives a waiting enemy its place.)
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
