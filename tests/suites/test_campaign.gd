@@ -277,12 +277,20 @@ func _test_curve_and_lengths(campaign: Campaign) -> void:
 
 
 ## Levels take their zone's skin, the grey box until a zone has its own; a level's own skin wins (the
-## Golden Palace may get one, GDD §5).
+## Golden Palace may get one, GDD §5), and is then a variant of its zone's skin (Corporate 2's plaza).
 func _test_skins(campaign: Campaign) -> void:
 	for s: CampaignStep in campaign.steps():
 		if s.is_level():
 			var config: LevelConfig = campaign.configure(s, 3)
-			check(config.skin != null and config.skin == s.zone.skin, "%s takes its zone's skin" % s.id)
+			if s.level.skin != null:
+				check(config.skin == s.level.skin and s.zone.skin != null
+					and config.skin.get_script() == s.zone.skin.get_script(),
+					"%s takes its own variant of its zone's skin" % s.id)
+			else:
+				check(config.skin != null and config.skin == s.zone.skin, "%s takes its zone's skin" % s.id)
+	var plaza: ZoneSkin = load("res://data/levels/corporate_2.tres").skin
+	check(plaza is CorporateSkin and plaza.resource_path.ends_with("corporate_plaza_skin.tres"),
+		"corporate/2 (Checkpoint Plaza) runs on the plaza variant")
 	var market: ZoneDef = _zone(campaign, "marketplace")
 	check(market != null and market.skin is MarketplaceSkin, "marketplace uses its own skin")
 	var corporate: ZoneDef = _zone(campaign, "corporate")
