@@ -34,6 +34,8 @@ render_mode unshaded, cull_back;
 #include "res://scripts/world/meshes/shaders/kit_common.gdshaderinc"
 #include "res://scripts/world/meshes/shaders/kit_marks.gdshaderinc"
 
+// A level's darker lighting (ZoneSkin.apply_darkness): the faces dim like all the scenery.
+global uniform float scenery_light;
 // Colours are sRGB Vector3s (GoldenSkin.srgb()), converted once here with to_linear(), like the
 // vertex colours, so both renderers match.
 uniform vec3 glass_color = vec3(0.1, 0.11, 0.13);
@@ -67,23 +69,15 @@ uniform vec3 mark_color = vec3(0.5, 0.4, 0.24);
 // The canal's surface (world height): the waterline on the stone below the walkways.
 uniform float canal_y = -5.5;
 
-// A factor of light meant for linear space, as this renderer needs it: the Compatibility renderer
-// works in sRGB space, where the same change of brightness is the factor's 1/2.2 power (without it
-// every face lit by a factor is far darker on the web than on Forward+).
-float light_k(float k) {
-#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
-	return pow(max(k, 0.0), 1.0 / 2.2);
-#else
-	return k;
-#endif
-}
-
-vec3 light_k3(vec3 k) {
-	return vec3(light_k(k.x), light_k(k.y), light_k(k.z));
+// Every factor of light here is given for linear space and goes through kit_common's light_factor(),
+// which the Compatibility renderer (working in sRGB space) needs as the factor's 1/2.2 power: without
+// it every face lit by a factor is far darker on the web than on Forward+. Per channel:
+vec3 light_factor3(vec3 k) {
+	return vec3(light_factor(k.x), light_factor(k.y), light_factor(k.z));
 }
 
 // An sRGB colour as linear light on every renderer (to_linear() passes colours through unchanged on
-// the Compatibility renderer): for coloured light that goes into a light_k3() factor.
+// the Compatibility renderer): for coloured light that goes into a light_factor3() factor.
 vec3 light_color(vec3 c) {
 	return mix(c * (1.0 / 12.92), pow((c + 0.055) * (1.0 / 1.055), vec3(2.4)), step(vec3(0.04045), c));
 }
@@ -113,7 +107,7 @@ vec3 gold_at(vec3 n, vec3 eye, float polish) {
 // where it reflects the afterglow. Linear.
 vec3 mirror_at(vec3 tint, vec3 n, vec3 eye, float y) {
 	vec2 seen = dusk_seen(reflect(-eye, n));
-	return to_linear(tint) * light_k3((0.25 + 0.75 * seen.x) * mix(vec3(1.0), vec3(0.8, 0.88, 1.1), seen.y)
+	return to_linear(tint) * light_factor3((0.25 + 0.75 * seen.x) * mix(vec3(1.0), vec3(0.8, 0.88, 1.1), seen.y)
 		* (0.9 + 0.1 * smoothstep(0.0, 40.0, y)));
 }
 
@@ -220,15 +214,15 @@ void fragment() {
 		float in_frame = 1.0 - smoothstep(0.06 - aa, 0.06 + aa, d);
 		vec2 wp = (wc + half_size) / (half_size * 2.0);
 		float lamp = step(hash12(cell * 3.3 + seed), COLOR.a);
-		vec3 sky = to_linear(sheen_color) * light_k(sheen_strength * (0.4 + 0.6 * fres * fres));
-		vec3 dark = to_linear(glass_color) + sky * light_k(1.5) + to_linear(sheen_color) * light_k(0.06 * smoothstep(0.35, 0.65,
-			fract(wp.x * 0.7 - wp.y * 0.45 + k)));
-		vec3 room = to_linear(window_warm) * light_k(window_glow * (0.4 + 0.35 * wp.y));
+		vec3 sky = to_linear(sheen_color) * light_factor(sheen_strength * (0.4 + 0.6 * fres * fres));
+		float streak = smoothstep(0.35, 0.65, fract(wp.x * 0.7 - wp.y * 0.45 + k));
+		vec3 dark = to_linear(glass_color) + sky * light_factor(1.5) + to_linear(sheen_color) * light_factor(0.06 * streak);
+		vec3 room = to_linear(window_warm) * light_factor(window_glow * (0.4 + 0.35 * wp.y));
 		// Red velvet drapes gathered at the sides of half the rooms (the zone's red accent, unlit).
 		float fwp = fw_m.x / (half_size.x * 2.0);
 		float drapes = step(0.5, hash12(cell * 1.9 + seed * 2.0))
 			* (1.0 - smoothstep(0.14 - fwp, 0.14 + fwp, min(wp.x, 1.0 - wp.x) - 0.05 * wp.y));
-		room = mix(room, to_linear(drape_color) * light_k(0.5 + 0.4 * wp.y), drapes);
+		room = mix(room, to_linear(drape_color) * light_factor(0.5 + 0.4 * wp.y), drapes);
 		vec3 mirror = mirror_at(mirror_color, n, eye, uv.y);
 		vec3 glass = k < 0.55 ? mix(dark, room, lamp) : (k < 0.82 ? mirror : dark);
 		// A slim gold transom across each window.
@@ -245,7 +239,7 @@ void fragment() {
 		float k = hash12(floor(p) * vec2(1.3, 2.9) + seed);
 		vec3 glass = mirror_at(mirror_color, n, eye, uv.y) * (0.94 + 0.12 * hash11(floor(p.x) * 0.7 + seed));
 		float lamp = step(k, COLOR.a * 0.6);
-		glass = mix(glass, to_linear(window_warm) * light_k(window_glow * 0.6), lamp * 0.8);
+		glass = mix(glass, to_linear(window_warm) * light_factor(window_glow * 0.6), lamp * 0.8);
 		col = mix(glass, wall, spandrel);
 		col = mix(col, gold, mullion);
 		lit_by_flood = spandrel;
@@ -253,7 +247,7 @@ void fragment() {
 		// Gold ribs over warm-lit glass.
 		float rib = filtered_pulse(uv.x / 0.9, fw_m.x / 0.9, 0.0, 0.22);
 		float ring = filtered_pulse(uv.y / 2.4, fw_m.y / 2.4, 0.0, 0.08);
-		vec3 lit = to_linear(window_warm) * light_k(window_glow * (0.5 + 0.2 * value_noise(uv * 0.5 + seed)));
+		vec3 lit = to_linear(window_warm) * light_factor(window_glow * (0.5 + 0.2 * value_noise(uv * 0.5 + seed)));
 		col = mix(lit, gold, max(rib, ring));
 		lit_by_flood = max(rib, ring);
 	} else {
@@ -261,20 +255,20 @@ void fragment() {
 		// floodlight reaches it: it only darkens.
 		float depth = mix(1.0, 0.25, smoothstep(-0.1, canal_y + 0.5, uv.y));
 		float waterline = band(uv.y, canal_y, canal_y + 0.45, fw_m.y);
-		col = albedo * light_k(depth * (0.9 + 0.1 * value_noise(uv * 0.8 + seed)) * (1.0 - 0.3 * waterline));
+		col = albedo * light_factor(depth * (0.9 + 0.1 * value_noise(uv * 0.8 + seed)) * (1.0 - 0.3 * waterline));
 	}
 
 	if (style != 6) {
 		// The light, as one linear factor: the street's warm lamps on the band; above the entablature
 		// the floodlights wash the floors from below, strongest just over it, fading up into the dusk,
-		// whose cool light tints the tops. light_k3() makes it the same brightness on both renderers.
+		// whose cool light tints the tops. light_factor3() makes it the same brightness on both renderers.
 		float y = uv.y;
 		float flood = exp(-max(y - frieze_top, 0.0) / max(flood_reach, 0.1));
 		float street = y < band_top ? mix(street_low, street_high, smoothstep(0.0, band_top, y)) : mix(0.5, street_high + 0.12, flood);
 		vec3 light = vec3(shade * street)
 			+ light_color(flood_color) * (flood_strength * flood * lit_by_flood * step(band_top, y));
 		light *= mix(vec3(1.0), dusk_tint, smoothstep(14.0, 60.0, y));
-		col *= light_k3(light);
+		col *= light_factor3(light);
 	}
-	ALBEDO = col;
+	ALBEDO = col * light_factor(scenery_light);
 }

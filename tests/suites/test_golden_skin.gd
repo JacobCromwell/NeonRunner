@@ -181,6 +181,11 @@ func _surfaces(skin: GoldenSkin) -> void:
 	check(lights.is_empty(), "the facades' lit windows keep off the hazard hues: %s" % ", ".join(lights))
 	var drapes: Vector3 = facade.get_shader_parameter("drape_color")
 	check(_same_rgb(Color(drapes.x, drapes.y, drapes.z), skin.red_color), "the windows' drapes are the zone's red (unlit)")
+	# A level's darker lighting (ZoneSkin.apply_darkness) reaches the zone's own facade shader, as it
+	# does the kit's: its faces dim with the global scenery_light, once, as a linear factor.
+	var code: String = FileAccess.get_file_as_string(facade.shader.resource_path)
+	check(code.contains("global uniform float scenery_light;") and code.count("scenery_light") == 2
+		and code.contains("ALBEDO = col * light_factor(scenery_light);"), "the facades dim with a level's darker lighting")
 
 
 ## Gaps read as holes at a glance, as in every zone (CLAUDE.md readability rules): whatever a gap
