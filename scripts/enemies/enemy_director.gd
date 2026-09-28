@@ -142,13 +142,14 @@ func targets_ahead(from: Vector3, max_distance: float) -> Array[Enemy]:
 ##   space their own attacks themselves (one drone barrage at a time, one Octodog or hover truck at a
 ##   time).
 ## The queue: an enemy's wait begins the first time it's held, and it keeps its place until its
-## attack starts or it gives the attack up (give_up_turn), even through its turn: told it may go, an
-## enemy that isn't quite ready yet (an Octodog whose moved-on stretch isn't clear) still goes before
-## those that waited less. A short gap in its asks (its stretch not clear for a moment, its planned
-## point not reached yet) doesn't cost it its place either; it loses its place after
-## turn_place_grace() without asking (it isn't ready for longer than that), or when it leaves play.
-## So an enemy that gives up says so, and one told it may go that keeps asking holds the others back
-## while it does (DESIGN-TBD, docs/questions/r3b.md: how long a waiting enemy keeps its place).
+## attack starts or it gives the attack up (give_up_turn), as long as it keeps asking, even through
+## its turn: told it may go, an enemy that isn't quite ready yet and asks again (an Octodog whose
+## moved-on stretch isn't clear) still goes before those that waited less. A short gap in its asks
+## (its stretch not clear for a moment, its planned point not reached yet) doesn't cost it its place
+## either; it loses its place after turn_place_grace() without asking (it isn't ready, and the others
+## shouldn't wait for it), or when it leaves play. So an enemy that gives up says so, and one that
+## means to wait longer than a moment keeps asking, holding the others back while it does (DESIGN-TBD,
+## docs/questions/r3b.md: how long a waiting enemy keeps its place).
 func major_attack_blocked(enemy: Enemy) -> bool:
 	var hold: Hold = _hold_for(enemy)
 	if big_attacks_take_turns():

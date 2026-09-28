@@ -29,9 +29,10 @@ extends Enemy
 ## it runs off from) its planned charges move on with the player. Once held, it asks for its turn
 ## every frame until its turn comes, clear stretch ahead or not; and if the wait made it miss its
 ## planned stretch, its charges keep moving on until the stretch ahead is clear again, so the wait
-## never costs it its charges. Both together last up to turn_wait_max (_moves_on). Meanwhile it keeps
-## its place in the director's queue (another type ready again waits for it) until it charges, or
-## gives it up when it runs off (EnemyDirector.give_up_turn).
+## never costs it its charges. Both together last up to turn_wait_max (_moves_on). After that it
+## still asks every frame while its charge_slack lasts, so all along it keeps its place in the
+## director's queue (another type ready again waits for it) until it charges, or gives it up when it
+## runs off (EnemyDirector.give_up_turn).
 
 enum Phase { IDLE, WINDUP, LUNGE, TURN, SPRINT, PACE, GIVE_UP, LEAVE, FALLING }
 ## The director's answer to its first wind-up's ask (EnemyDirector.major_attack_blocked), asked at
@@ -386,6 +387,10 @@ func _pace(delta: float, rel: float, v: float) -> void:
 		# No clear moment came: it gives up and runs off.
 		_set_phase(Phase.LEAVE)
 		_set_hitboxes(false)
+	elif charges_done == 0 and _turn_shift > 0.0:
+		# GDD §9: a dog that waited for its turn still means to charge as soon as its stretch is clear,
+		# within its slack: it keeps asking, so it keeps its place in the director's queue meanwhile.
+		_ask_turn()
 
 
 ## One frame of its wait for its turn (GDD §9): its planned charges move on with the player.

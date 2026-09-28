@@ -90,8 +90,7 @@ static func _time_of(d: Enemy, event: String, nth: int = 0) -> float:
 
 ## GDD §9 (may be reverted after playtesting): one switch in the game rules, on by default, shown in
 ## the F6 panel (a bool exported on GameRules). How long a waiting enemy keeps its place without
-## asking is a tunable next to it (a float with a range hint), longer than an Octodog's charge slack
-## at run speed, so a dog that waited keeps its place until it charges or runs off.
+## asking is a tunable next to it (a float with a range hint).
 func _test_switch() -> void:
 	var rules := load("res://data/tuning/game_rules.tres") as GameRules
 	check(rules.big_attacks_take_turns and GameRules.new().big_attacks_take_turns,
@@ -106,11 +105,9 @@ func _test_switch() -> void:
 		elif prop["name"] == "turn_place_grace":
 			grace_shown = prop["type"] == TYPE_FLOAT and exported and int(prop["hint"]) == PROPERTY_HINT_RANGE
 	check(shown, "the switch is an exported bool, so the F6 panel shows it")
-	var dog := load("res://data/enemies/octodog.tres") as OctodogTuning
 	check(grace_shown and is_equal_approx(rules.turn_place_grace, GameRules.new().turn_place_grace)
-		and rules.turn_place_grace > dog.charge_slack / tuning.run_speed,
-		"a waiting enemy keeps its place for %.1f s without asking (an F6 tunable), longer than an Octodog's slack (%.1f s)"
-		% [rules.turn_place_grace, dog.charge_slack / tuning.run_speed])
+		and rules.turn_place_grace > 0.0,
+		"a waiting enemy keeps its place for %.1f s without asking (an F6 tunable)" % rules.turn_place_grace)
 
 
 # --- Turns --------------------------------------------------------------------------------------
@@ -337,20 +334,20 @@ func _test_place_lapses() -> void:
 		var tag: String = "stops asking" if quiet else "gives up"
 		var w: RunWorld = _world(true)
 		var grace: float = w.rules.turn_place_grace
-		var a := _dummy(w, "alpha", {"first": 0.1, "interval": 10.0, "warning": 0.5, "attack": 0.5})
+		var a := _dummy(w, "alpha", {"first": 0.1, "interval": 10.0, "warning": 0.3, "attack": 0.3})
 		var p := {"first": 0.3, "interval": 10.0, "warning": 0.3, "attack": 0.3}
 		if quiet:
-			p["pauses"] = [[0.6, 100.0]]
+			p["pauses"] = [[0.5, 100.0]]
 		else:
-			p["give_up"] = 0.3
+			p["give_up"] = 0.2
 		var quits := _dummy(w, "beta", p)
-		var next := _dummy(w, "gamma", {"first": 0.5, "interval": 10.0, "warning": 0.3, "attack": 0.3})
-		await _run(w, 0.6 + grace + 1.0)
+		var next := _dummy(w, "gamma", {"first": 0.4, "interval": 10.0, "warning": 0.3, "attack": 0.3})
+		await _run(w, 0.5 + grace + 1.0)
 		var end_a: float = _time_of(a, "end")
 		var start_next: float = _time_of(next, "start")
 		check(_time_of(quits, "start") < 0.0 and not w.director.is_waiting(quits), "%s: it never went" % tag)
 		if quiet:
-			check(start_next >= end_a + 0.5 and absf(start_next - (0.6 + grace)) < 0.05,
+			check(start_next >= end_a + 0.5 and absf(start_next - (0.5 + grace)) < 0.05,
 				"%s: the next went once its place was gone, %.1f s after its last ask (%.2f s)" % [tag, grace, start_next])
 		else:
 			check(_time_of(quits, "gave_up") < end_a and start_next >= end_a - 0.0001 and start_next < end_a + 0.05,
@@ -359,68 +356,80 @@ func _test_place_lapses() -> void:
 
 
 ## The Octodog that R5's measurement found starved (3 of 277 dogs over extra seeds; on today's
-## campaign Golden 3 at 5 lanes on seed 9004 and Dead Zone 1 at 5 lanes on seed 9017), scripted:
-## another type attacks again and again (on for 2 s, ready again 1.2 s later), and rows of fences
-## make the dog's moved-on stretch unclear just as each of those attacks ends. Held at its planned
-## moment, the dog keeps its place when its turn comes before its stretch is clear, so the other,
-## ready again, waits for it, and the dog charges as soon as its stretch clears. (Before, the dog lost
-## its place the moment it was told it may go: the other went again, and the dog's slack ran out
-## before a clear stretch came between the other's attacks.)
+## campaign Golden 3 at 5 lanes on seed 9004, Golden 3 at 6 lanes on seed 9019 and Dead Zone 1 at 5
+## lanes on seed 9017), scripted: another type attacks again and again, and rows of fences make the
+## dog's moved-on stretch unclear just as the other's attack ends. Held at its planned moment, the dog
+## keeps its place when its turn comes before its stretch is clear, so the other, ready again, waits
+## for it, and the dog charges as soon as its stretch clears. That holds while its charges move on
+## (turn_wait_max) and after, while its charge_slack lasts (it keeps asking). (Before, the dog lost its
+## place the moment it was told it may go: the other went again, and the dog's slack ran out before a
+## clear stretch came between the other's attacks.)
 func _test_octodog_keeps_its_place() -> void:
 	var t := load("res://data/enemies/octodog.tres") as OctodogTuning
 	var speed: float = tuning.run_speed
 	var window: float = t.window_length(speed, 0.0)
 	var a0: float = 36.0
-	var track: LevelLayout = RunSim.layout(3, 600.0)
-	for at: float in [80.0, 140.0, 195.0]:
-		for lane: int in 3:
-			track.fences.append(RunSim.fence(lane, at, "full"))
-	var w: RunWorld = sim.build_world(track)
-	w.rules = w.rules.duplicate() as GameRules
-	w.rules.big_attacks_take_turns = true
-	w.player.setup(tuning, w.geo, 1)
-	w.player.god_mode = true
-	var other := _dummy(w, "blocker", {"first": 1.0, "interval": 1.2, "warning": 0.5, "attack": 1.5})
-	var dog := w.director.spawn({"type": "octodog", "at": a0 + t.stop_distance(speed, 0.0), "lane": 1, "side": 0,
-		"seed": 11, "params": {"doghouse": false, "charges": 2, "charge_at": [a0, a0 + t.cycle_distance(speed, 0.0)]}}) as Octodog
-	var id: int = dog.get_instance_id()
-	var held_at_plan: bool = false
-	var turn_came_unclear: bool = false
-	var windup: float = -1.0
-	var over: float = -1.0
-	var left: bool = false
-	await tree.physics_frame
-	w.player.running = true
-	for i: int in 12 * Engine.physics_ticks_per_second:
+	# [case, the other's attack after its 0.5 s warning, the seconds until it's ready again, rows of fences]
+	var cases: Array = [["while its charges move on", 1.5, 1.2, [80.0, 140.0, 195.0]],
+		["in its slack", 4.0, 1.0, [125.0, 140.0]]]
+	for case: Array in cases:
+		var tag: String = case[0]
+		var track: LevelLayout = RunSim.layout(3, 600.0)
+		for at: float in case[3]:
+			for lane: int in 3:
+				track.fences.append(RunSim.fence(lane, at, "full"))
+		var w: RunWorld = sim.build_world(track)
+		w.rules = w.rules.duplicate() as GameRules
+		w.rules.big_attacks_take_turns = true
+		w.player.setup(tuning, w.geo, 1)
+		w.player.god_mode = true
+		var other := _dummy(w, "blocker", {"first": 1.0, "interval": case[2], "warning": 0.5, "attack": case[1]})
+		var dog := w.director.spawn({"type": "octodog", "at": a0 + t.stop_distance(speed, 0.0), "lane": 1, "side": 0,
+			"seed": 11, "params": {"doghouse": false, "charges": 2, "charge_at": [a0, a0 + t.cycle_distance(speed, 0.0)]}}) as Octodog
+		var id: int = dog.get_instance_id()
+		var held_at_plan: bool = false
+		var turn_came_unclear: bool = false
+		var windup: float = -1.0
+		var moved_on: float = 0.0
+		var over: float = -1.0
+		var left: bool = false
 		await tree.physics_frame
-		var d: Octodog = _octodog(id)
-		if d == null:
-			break
-		var now: float = w.level_time()
-		held_at_plan = held_at_plan or (w.director.held_for_turn(d) and absf(now - a0 / speed) < 0.1)
-		if windup < 0.0 and d.phase == Octodog.Phase.WINDUP:
-			windup = now
-		if windup < 0.0 and w.director.is_waiting(d) and not w.director.held_for_turn(d) \
-				and not other.is_major_attack_active() and not Octodog.charge_clear(track, w.player.distance, window):
-			turn_came_unclear = true
-		left = left or d.phase == Octodog.Phase.LEAVE
-		if windup >= 0.0 and over < 0.0 and not d.is_major_attack_active():
-			over = now
-		if over >= 0.0 and _time_of(other, "start", 1) >= 0.0:
-			break
-	var d_end: Octodog = _octodog(id)
-	var ready_again: float = _time_of(other, "ready", 1)
-	var again: float = _time_of(other, "start", 1)
-	check(held_at_plan and turn_came_unclear,
-		"held at its planned moment, its turn came while its moved-on stretch wasn't clear")
-	check(ready_again > 0.0 and ready_again < windup and _time_of(other, "held") >= ready_again - 0.001,
-		"the other, ready again at %.2f s, waited for it" % ready_again)
-	check(windup > 0.0 and again >= over - 0.001 and over > windup,
-		"the dog winds up once its stretch is clear (%.2f s), and the other goes after its charges (%.2f s, over at %.2f s)"
-		% [windup, again, over])
-	check(d_end != null and d_end.charges_done == 2 and not left, "the dog makes both its charges (%d)"
-		% (d_end.charges_done if d_end != null else -1))
-	await sim.free_world(w)
+		w.player.running = true
+		for i: int in 14 * Engine.physics_ticks_per_second:
+			await tree.physics_frame
+			var d: Octodog = _octodog(id)
+			if d == null:
+				break
+			var now: float = w.level_time()
+			held_at_plan = held_at_plan or (w.director.held_for_turn(d) and absf(now - a0 / speed) < 0.1)
+			if windup < 0.0 and d.phase == Octodog.Phase.WINDUP:
+				windup = now
+				moved_on = float(d.get(&"_turn_waited"))
+			if windup < 0.0 and w.director.is_waiting(d) and not w.director.held_for_turn(d) \
+					and not other.is_major_attack_active() and not Octodog.charge_clear(track, w.player.distance, window):
+				turn_came_unclear = true
+			left = left or d.phase == Octodog.Phase.LEAVE
+			if windup >= 0.0 and over < 0.0 and not d.is_major_attack_active():
+				over = now
+			if over >= 0.0 and _time_of(other, "start", 1) >= 0.0:
+				break
+		var d_end: Octodog = _octodog(id)
+		var ready_again: float = _time_of(other, "ready", 1)
+		var again: float = _time_of(other, "start", 1)
+		check(held_at_plan and turn_came_unclear,
+			"%s: held at its planned moment, its turn came while its moved-on stretch wasn't clear" % tag)
+		check(ready_again > 0.0 and ready_again < windup and _time_of(other, "held") >= ready_again - 0.001,
+			"%s: the other, ready again at %.2f s, waited for it" % [tag, ready_again])
+		check(windup > 0.0 and again >= over - 0.001 and over > windup,
+			"%s: the dog winds up once its stretch is clear (%.2f s), and the other goes after its charges (%.2f s, over at %.2f s)"
+			% [tag, windup, again, over])
+		if case[0] == "in its slack":
+			check(moved_on >= t.turn_wait_max - 0.001 and windup - ready_again > w.rules.turn_place_grace,
+				"%s: its charges had stopped moving on (%.2f s), and it kept its place for longer than the grace by asking"
+				% [tag, moved_on])
+		check(d_end != null and d_end.charges_done == 2 and not left, "%s: the dog makes both its charges (%d)"
+			% [tag, d_end.charges_done if d_end != null else -1])
+		await sim.free_world(w)
 
 
 ## GDD §9.7 holds whether or not big attacks take turns: an exclusive attack and those of the types it
@@ -526,7 +535,7 @@ func _test_many_with_gaps() -> void:
 
 
 ## Five test enemies of different types on random schedules (seeded), every other one firing a shot,
-## and with `gaps`, pauses and stalls of up to a second every second or two. Returns [the enemies, the
+## and with `gaps`, pauses and stalls of up to 0.8 s every second or two. Returns [the enemies, the
 ## longest attack with its shot's flight, the longest pause or stall].
 func _random_dummies(w: RunWorld, seed_value: int, gaps: bool) -> Array:
 	var rng := RandomNumberGenerator.new()
@@ -545,7 +554,7 @@ func _random_dummies(w: RunWorld, seed_value: int, gaps: bool) -> Array:
 			var stalls: Array = []
 			var at: float = rng.randf_range(0.5, 3.0)
 			while at < 60.0:
-				var span: float = rng.randf_range(0.2, 1.0)
+				var span: float = rng.randf_range(0.2, 0.8)
 				(pauses if rng.randf() < 0.5 else stalls).append([at, at + span])
 				slowest = maxf(slowest, span)
 				at += span + rng.randf_range(0.5, 2.5)

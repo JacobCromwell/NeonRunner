@@ -166,22 +166,25 @@ the Tithe Collector) opt in the same way for whichever of their attacks count as
   again next frame, and goes on as it was: the drone keeps following, the truck holds back or keeps
   pacing, the Octodog paces in position. Asking only when ready matters: the director queues those
   held. Once a warning has started the attack runs its course; nothing stops it for another's turn.
-- **Give up out loud.** A waiting enemy keeps its place in the queue until its attack starts: through
-  its turn (told it may go, one that isn't quite ready still goes before those that waited less) and
-  through a gap in its asks (its stretch not clear for a moment, its planned point not reached yet)
-  of up to `GameRules.turn_place_grace` (3 s; DESIGN-TBD, `docs/questions/r3b.md`). So an enemy that
+- **Keep asking to keep your place; give up out loud.** A waiting enemy keeps its place in the queue
+  until its attack starts, as long as it keeps asking: through its turn too (told it may go, one that
+  isn't quite ready and asks again still goes before those that waited less), and through a gap in
+  its asks (its stretch not clear for a moment, its planned point not reached yet) of up to
+  `GameRules.turn_place_grace` (1 s; DESIGN-TBD, `docs/questions/r3b.md`). After a longer gap it
+  loses its place, so the others don't wait for an enemy that isn't ready (a Resonator waiting for
+  clear floor): an enemy that means to wait longer keeps asking (the Octodog, below). An enemy that
   gives up the attack it waited for calls `world.director.give_up_turn(self)` and leaves the queue at
   once: the Octodog runs off, the hover truck changes state (it asks only while pacing, for its
   cannon, or holding back, for its lurch), the Resonator leaves, the Bad Dream dissolves. One that
-  stops asking without saying so loses its place after the grace, and one that leaves play at once.
+  leaves play loses its place at once.
 - **An attack that may only come within a window** (the Octodog's planned charges) moves the window
   on while `held_for_turn(self)` says it's waiting for another type, up to a limit of its own
   (`OctodogTuning.turn_wait_max`), and keeps every fairness rule it was planned with. Once held it
   keeps asking every frame until its turn comes, whether or not its stretch is clear by then, and if
   the wait made it miss its planned stretch, the window keeps moving on until the stretch ahead is
-  clear again (within the same limit), so waiting for its turn never costs it its charges: it keeps
-  its place meanwhile, so another type ready again waits for it rather than go first again (and its
-  charge slack is shorter than the grace, so it keeps its place until it charges or runs off). The
+  clear again (within the same limit), so waiting for its turn never costs it its charges. After
+  that it still asks every frame while its `charge_slack` lasts, so all along it keeps its place: another
+  type ready again waits for it rather than go first again, until it charges or runs off. The
   Resonator's planned pulses do the same: a pulse held for another type's turn, or for clear floor
   where its wave would meet the player, moves the rest of its visit on; after
   `ResonatorTuning.turn_wait_max` spent waiting for other attacks (waiting for clear floor doesn't
@@ -199,9 +202,10 @@ they're asking at that moment, so none is kept from its turn by others that keep
 began waiting later never goes first. An attack that is on never waits for another (the Bad Dream
 holds a slash within its chase only for an attack that was already on when the chase began, and that
 one doesn't wait), and in the queue a waiting enemy is only ever held by those ahead of it, so two
-enemies can't wait on each other; the one at the head starts, gives up, or loses its place after the
-grace (asking while it isn't ready holds the others back: only the Octodog does that, and only until
-it charges or runs off, `turn_wait_max` plus its `charge_slack` at most), so nothing waits for ever.
+enemies can't wait on each other; the one at the head starts, gives up, or loses its place a grace
+after it stops asking (asking while it isn't ready holds the others back: only the Octodog does that,
+and only until it charges or runs off, `turn_wait_max` plus its `charge_slack` at most), so nothing
+waits for ever.
 Types space their own attacks themselves (one drone barrage at a time; one Octodog, one hover truck at
 a time). GDD §9.7's rule holds with the switch off as well: an `exclusive_major_attack` (the Bad
 Dream's chase) and the attacks of the types in its `exclusive_of` (Octodogs', drones') never overlap. `is_waiting()` and `turn_wait()` say whether and
@@ -1066,7 +1070,7 @@ and off: a god-mode runner in the middle lane, stomping every host it passes, wh
 in the game. It reports the time big attacks of different types overlap, how many of each kind came,
 how long attacks waited for their turn (from the first frame the director holds an enemy until its
 attack, through gaps of up to 3 s, so directors that keep a waiting enemy's place differently measure
-alike), and the enemies that never got a big attack in (Octodogs
+the same behaviour alike), and the enemies that never got a big attack in (Octodogs
 without a charge, Resonators without a pulse, drones without a barrage, hover trucks without a lurch
 or a cannon shot) (`godot --headless --fixed-fps 60 -s res://tools/measure/big_attacks.gd --
 --levels=gangland/3 --lanes=3,5,6 --out=build/measure/x.json`; the whole campaign on its own seeds takes
