@@ -370,10 +370,14 @@ vec3 dz_board_face(vec3 base, vec2 uv, float param) {
 	float block = band(f.x, 0.12, 0.55, fq.x) * band(f.y, 0.3, 0.82, fq.y) * step(0.35, hash12(cell + 9.0));
 	float bars = band(f.x, 0.62, 0.9, fq.x) * max(band(f.y, 0.62, 0.72, fq.y), band(f.y, 0.4, 0.46, fq.y));
 	vec3 poster = mix(base, mix(base, dz_ash, 0.55), max(block, bars) * (0.5 + 0.5 * value_noise(uv * 1.7 + seed)));
-	// The burn: a char spreading from the edges and from patches, browning then blackening the print,
-	// and a few holes burnt right through with ragged charred rims.
-	float edge_burn = 1.0 - smoothstep(0.0, 0.9, min(uv.y, uv.x + 0.3 * value_noise(uv * 2.0 + seed)));
-	float burn = max(value_noise(uv * vec2(0.9, 1.3) + seed * 1.9), edge_burn * 0.9);
+	// The burn: fire climbed the board from its foot in ragged tongues and ate in from one end,
+	// browning then blackening the print, with holes burnt right through where it burnt longest;
+	// elsewhere only brown scorch patches.
+	float tongues = value_noise(vec2(uv.x * 1.1 + seed * 1.9, uv.y * 0.3 + seed));
+	float climb = 1.0 - smoothstep(0.0, 0.6 + 2.2 * tongues * tongues, uv.y);
+	float end_burn = 1.0 - smoothstep(0.0, 1.1, uv.x + 0.5 * value_noise(uv * vec2(1.5, 0.8) + seed));
+	float scorch = 0.55 * value_noise(uv * vec2(0.9, 1.3) + seed * 1.9);
+	float burn = max(max(climb, end_burn * 0.9), scorch);
 	burn += 0.08 * (value_noise(uv * 6.0 + seed) - 0.5);
 	poster = mix(poster, poster * 0.55, smoothstep(0.35, 0.55, burn));
 	poster = mix(poster, dz_soot * 1.6, smoothstep(0.5, 0.75, burn));
