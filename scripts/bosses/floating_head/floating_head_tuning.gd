@@ -267,7 +267,7 @@ extends Resource
 ## (FloatingHeadVoice). From the reveal on it shouts a phrase every so often (head_voice_1-4, in a
 ## seeded order), voice_gap_min to voice_gap_max seconds apart, each with the next slogan on its face
 ## screen's caption band, which stays up slogan_hold_seconds after the phrase. DESIGN-TBD
-## (docs/questions/e1.md, From E1d, item 1): the pauses, and the slogans: placeholders until the owner
+## (docs/questions/e1.md, From E1d, items 1-2): the pauses, and the slogans: placeholders until the owner
 ## writes them. They are the fight's only text (a Label3D, which Godot translates like the UI's labels
 ## once the game has translations); "\n" breaks a line, and a line keeps to about 12 characters so it
 ## reads from the runner's distance.
@@ -288,7 +288,7 @@ extends Resource
 
 @export_group("Defeat")
 ## GDD §10: "its face glitches, the propaganda cuts out mid-shout, and it crashes into the street ahead;
-## the runner runs through the wreck". DESIGN-TBD (docs/questions/e1.md, From E1d, item 2): pinned, it
+## the runner runs through the wreck". DESIGN-TBD (docs/questions/e1.md, From E1d, items 3 and 6): pinned, it
 ## first shakes free as after any stomp; then, its face glitching, it lurches up in front of the runner
 ## (its face defeat_ahead ahead and its belly defeat_height up) over defeat_glitch_seconds, loses power
 ## (its face screen collapses to a line and goes dark, its lights die) and plunges forward into the

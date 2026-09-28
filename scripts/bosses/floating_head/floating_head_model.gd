@@ -639,7 +639,7 @@ static func _outline_x(v: float) -> float:
 
 
 ## The wreck (GDD §10's defeat: "it crashes into the street ahead; the runner runs through the wreck").
-## DESIGN-TBD (docs/questions/e1.md, From E1d, item 2): the head's stern half, torn open at both ends:
+## DESIGN-TBD (docs/questions/e1.md, From E1d, item 3): the head's stern half, torn open at both ends:
 ## its face tore off in the crash (FloatingHeadBody lays the dead screen in the street before it) and its
 ## bow broke away, so it lies across the street like a tunnel the lanes run through. Its plating shows
 ## its thickness at the torn edges, with jagged shreds; inside it's bare dark metal and ribs; its lights
