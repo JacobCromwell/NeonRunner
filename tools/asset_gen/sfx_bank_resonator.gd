@@ -7,7 +7,8 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##                    all), exactly on Resonator.CHIME_NOTES, where its halos swing into line. The
 ##                    same every time: a warning must be learnable.
 ##   resonator_pulse  the wave leaving: a deep resonant thump and hum, then the rush of the wave rolling
-##                    in along the floor, peaking as it reaches the runner about 1.3 s later
+##                    in along the floor, peaking as it reaches the runner about 1.1 s later (its travel
+##                    from ResonatorTuning.hover_ahead at run speed: regenerate it when those change)
 ##   resonator_death  shot down: the chime's notes bent out of tune and falling apart, shattering glass
 ##                    and a small explosion
 
@@ -72,7 +73,7 @@ func _resonator_chime() -> PackedFloat32Array:
 
 ## The wave leaving and rolling in: a deep thump dropping away, a resonant hum on the chime's root two
 ## octaves down, wobbling as it fades, and a rush of noise that rises and brightens as the wave rolls
-## toward the runner, peaking at about 1.3 s (the wave's travel at run speed) and cut off as it passes.
+## toward the runner, peaking as it gets there (_wave_travel) and cut off as it passes.
 func _resonator_pulse() -> PackedFloat32Array:
 	var rng := _rng(1002)
 	var length: float = 1.55
@@ -85,7 +86,7 @@ func _resonator_pulse() -> PackedFloat32Array:
 	DSP.mix(b, hum, 0.0, 0.55)
 	var rush := DSP.noise(length, rng)
 	DSP.filter_sweep(rush, &"bandpass", 250.0, 2600.0, 1.2)
-	var peak: float = 1.3
+	var peak: float = _wave_travel()
 	for i: int in rush.size():
 		var t: float = float(i) / RATE
 		var rise: float = pow(clampf(t / peak, 0.0, 1.0), 2.0)
@@ -101,6 +102,16 @@ func _resonator_pulse() -> PackedFloat32Array:
 	DSP.drive(b, 1.8)
 	DSP.crush(b, 10, 20000.0)
 	return b
+
+
+## Seconds a wave takes to reach the runner (ResonatorTuning.travel_seconds at run speed, halfway through
+## the Golden Zone's scaling): about 1.1 s.
+func _wave_travel() -> float:
+	var t := load("res://data/enemies/resonator.tres") as ResonatorTuning
+	var movement := load("res://data/tuning/movement.tres") as MovementTuning
+	if t == null or movement == null:
+		return 1.1
+	return t.travel_seconds(movement.run_speed, lerpf(t.scaling_from, t.scaling_to, 0.5))
 
 
 ## Shot down: the chime's three notes struck together and bending down out of tune as the halos break,
