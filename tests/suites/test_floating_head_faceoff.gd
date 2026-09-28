@@ -35,8 +35,8 @@ var def: BossDef
 
 func run() -> void:
 	sim = RunSim.new(tree, tuning)
-	def = (load(BOSS_PATH) as BossDef).preview()
-	check(def != null, "the Floating Head's fight exists")
+	def = load(BOSS_PATH) as BossDef
+	check(def != null and def.is_built(), "the Floating Head's fight exists")
 	if def == null:
 		return
 	_test_data()

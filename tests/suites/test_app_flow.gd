@@ -119,12 +119,16 @@ func _test_pause() -> void:
 
 
 func _test_slots_and_demo() -> void:
-	App.play_step(App.campaign.step("city/boss"))
+	# The City's boss is built (task E1d; test_floating_head_defeat.gd plays its whole flow), Gangland's is
+	# still a placeholder card.
+	App.play_step(App.campaign.step("gangland/boss"))
 	check(App.screen is SlotScreen and App.run == null, "an unbuilt boss shows its placeholder card")
 	var card := App.screen as SlotScreen
+	if card == null:
+		return
 	App.complete_step(card.step)
 	App.advance_from(card.step)
-	check(App.screen is SlotScreen and (App.screen as SlotScreen).step.id == "city/outro",
+	check(App.screen is SlotScreen and (App.screen as SlotScreen).step.id == "gangland/outro",
 		"continuing moves on to the next step (the outro cinematic slot)")
 	BuildFlavor.set_override(BuildFlavor.Kind.WEB_DEMO)
 	App.advance_from(App.campaign.step("city/outro"))

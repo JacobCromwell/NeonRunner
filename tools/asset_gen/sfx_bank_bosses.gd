@@ -31,11 +31,41 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##   head_shriek       a stomp lands (GDD §10: it shrieks): a distorted, glitching mechanical scream
 ##   head_shake_free   it shakes free of the tower: grinding, scraping metal, a lurching thud and its
 ##                     engines roaring up
-## Later steps of the fight (task E1) add the propaganda voice and the crash of its defeat.
+##   head_voice_1..4   the propaganda voice (GDD §10: "a heavily distorted announcement voice that isn't
+##                     meant to be understood"): phrases of made-up syllables with an announcer's rise
+##                     and fall, shouted through a blown loudhailer with a ring-modulated edge and the
+##                     street's echo; no real language
+##   head_voice_cut    the defeat (GDD §10: "the propaganda cuts out mid-shout"): a rising shout that
+##                     breaks into a stutter, dives like a stopping tape and dies in static
+##   head_power_down   it loses power: its engines spin down, sputtering, and the wind rises as it drops
+##   head_crash        it crashes into the street: a huge impact, crumpling hull, its face screen
+##                     shattering, debris raining down and a long rumble
 
 ## A1 and E2 (Hz): the fight's key, under the City's music.
 const A1: float = 55.0
 const E2: float = 82.41
+## The propaganda voice's vowels: their first two formants (Hz).
+const VOWELS: Dictionary = {
+	&"a": Vector2(760.0, 1220.0), &"e": Vector2(500.0, 1800.0), &"i": Vector2(330.0, 2250.0),
+	&"o": Vector2(520.0, 880.0), &"u": Vector2(340.0, 800.0), &"ae": Vector2(660.0, 1700.0),
+}
+## The propaganda phrases: syllables of [seconds, pitch from, pitch to (Hz), vowel from, vowel to,
+## consonant before it (&"t", &"k", &"s", &"m" or none)]; a syllable with no vowel is a pause. A deep
+## announcer's voice, shouting: each phrase climbs to its stressed syllables and falls at its end.
+const PHRASES: Array = [
+	[[0.14, 150.0, 162.0, &"a", &"e", &"t"], [0.2, 172.0, 186.0, &"e", &"ae", &"k"], [0.16, 164.0, 150.0, &"o", &"a", &""],
+		[0.07, 0.0, 0.0, &"", &"", &""], [0.17, 152.0, 146.0, &"i", &"e", &"s"], [0.15, 146.0, 152.0, &"a", &"o", &"t"],
+		[0.22, 166.0, 180.0, &"ae", &"a", &"m"], [0.14, 150.0, 140.0, &"u", &"o", &"k"], [0.36, 146.0, 116.0, &"a", &"o", &""]],
+	[[0.18, 190.0, 198.0, &"o", &"a", &"k"], [0.15, 176.0, 170.0, &"e", &"i", &"t"], [0.24, 184.0, 196.0, &"a", &"ae", &"s"],
+		[0.1, 0.0, 0.0, &"", &"", &""], [0.15, 160.0, 154.0, &"u", &"e", &"m"], [0.16, 158.0, 150.0, &"i", &"a", &"t"],
+		[0.42, 162.0, 120.0, &"o", &"u", &"k"]],
+	[[0.13, 140.0, 146.0, &"e", &"a", &"s"], [0.13, 150.0, 156.0, &"a", &"o", &"t"], [0.19, 170.0, 182.0, &"i", &"e", &"k"],
+		[0.14, 160.0, 150.0, &"o", &"a", &""], [0.08, 0.0, 0.0, &"", &"", &""], [0.13, 148.0, 152.0, &"ae", &"e", &"m"],
+		[0.13, 150.0, 146.0, &"u", &"o", &"t"], [0.2, 174.0, 188.0, &"a", &"ae", &"k"], [0.14, 160.0, 152.0, &"e", &"i", &"s"],
+		[0.38, 150.0, 118.0, &"a", &"o", &""]],
+	[[0.2, 204.0, 216.0, &"a", &"o", &"k"], [0.16, 196.0, 186.0, &"i", &"e", &"t"], [0.12, 0.0, 0.0, &"", &"", &""],
+		[0.2, 210.0, 222.0, &"ae", &"a", &"s"], [0.44, 214.0, 150.0, &"o", &"u", &"m"]],
+]
 
 
 func sounds() -> Dictionary:
@@ -58,6 +88,13 @@ func sounds() -> Dictionary:
 		"head_weak_open": _head_weak_open,
 		"head_shriek": _head_shriek,
 		"head_shake_free": _head_shake_free,
+		"head_voice_1": _head_voice.bind(0),
+		"head_voice_2": _head_voice.bind(1),
+		"head_voice_3": _head_voice.bind(2),
+		"head_voice_4": _head_voice.bind(3),
+		"head_voice_cut": _head_voice_cut,
+		"head_power_down": _head_power_down,
+		"head_crash": _head_crash,
 	}
 
 
@@ -488,5 +525,201 @@ func _head_shake_free() -> PackedFloat32Array:
 	DSP.drive(engines, 2.5)
 	DSP.adsr(engines, 0.3, 0.3, 0.8, 0.3)
 	DSP.mix(b, engines, 0.4, 0.9)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+# --- The propaganda voice and the defeat (task E1d) --------------------------------------------
+
+## One of the propaganda phrases (PHRASES[index]) through the loudhailer: made-up syllables, so it's
+## heard as a shouted announcement and never understood.
+func _head_voice(index: int) -> PackedFloat32Array:
+	var rng := _rng(430 + index)
+	return _loudhailer(_syllables(PHRASES[index], 0.5, rng), rng)
+
+
+## The syllables of a phrase, one after another, with `tail` seconds of room after them (for echoes).
+func _syllables(parts: Array, tail: float, rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var total: float = tail
+	for p: Array in parts:
+		total += float(p[0])
+	var b := DSP.buffer(total)
+	var at: float = 0.0
+	for p: Array in parts:
+		var d: float = float(p[0])
+		if StringName(p[3]) != &"":
+			DSP.mix(b, _syllable(d, float(p[1]), float(p[2]), VOWELS[p[3]], VOWELS[p[4]], StringName(p[5]), rng), at)
+		at += d
+	return b
+
+
+## A syllable: a consonant's burst or hiss, then the voiced vowel gliding between two vowels' formants
+## as its pitch moves from `hz_from` to `hz_to`, with a square wave an octave down for a giant's chest.
+func _syllable(d: float, hz_from: float, hz_to: float, vowel_from: Vector2, vowel_to: Vector2, consonant: StringName,
+		rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var b := DSP.buffer(d)
+	var onset: float = 0.0
+	match consonant:
+		&"t", &"k":
+			var burst := DSP.noise(0.03, rng)
+			DSP.filter(burst, &"bandpass", 2600.0 if consonant == &"t" else 1500.0, 1.2)
+			DSP.envelope(burst, 0.001, 0.008)
+			DSP.mix(b, burst, 0.0, 1.4)
+			onset = 0.018
+		&"s":
+			var hiss := DSP.noise(0.07, rng)
+			DSP.filter(hiss, &"highpass", 3600.0)
+			DSP.shape(hiss, 0.01, 0.02)
+			DSP.mix(b, hiss, 0.0, 0.7)
+			onset = 0.05
+		&"m":
+			var hum := DSP.osc(0.05, func(_u: float) -> float: return hz_from)
+			DSP.shape(hum, 0.005, 0.01)
+			DSP.mix(b, hum, 0.0, 0.5)
+			onset = 0.035
+	var v: float = maxf(d - onset, 0.03)
+	var pitch := func(u: float) -> float: return lerpf(hz_from, hz_to, u)
+	var voiced := _voice(v, pitch, Vector2(vowel_from.x, vowel_to.x), Vector2(vowel_from.y, vowel_to.y), 5.5, 0.2, rng)
+	var chest := DSP.osc(v, func(u: float) -> float: return float(pitch.call(u)) * 0.5, &"square")
+	DSP.filter(chest, &"lowpass", 320.0)
+	DSP.mix(voiced, chest, 0.0, 0.3)
+	DSP.adsr(voiced, 0.015, 0.08, 0.8, minf(0.05, v * 0.3))
+	DSP.mix(b, voiced, onset)
+	return b
+
+
+## The loudhailer the face shouts through: a ring-modulated cybernetic edge, a narrow, blown-out horn
+## (band-limited, overdriven, bit-crushed) and the street's echoes off the buildings.
+func _loudhailer(dry: PackedFloat32Array, rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var n: int = dry.size()
+	for i: int in n:
+		dry[i] *= 0.62 + 0.38 * sin(TAU * 61.0 * float(i) / RATE)
+	DSP.filter(dry, &"highpass", 300.0)
+	DSP.filter(dry, &"peaking", 1400.0, 0.8, 9.0)
+	DSP.drive(dry, 6.0)
+	DSP.filter(dry, &"lowpass", 3600.0)
+	DSP.crush(dry, 8, 11025.0)
+	# A little hiss on the line.
+	var line := DSP.noise(DSP.seconds_of(dry), rng)
+	DSP.filter(line, &"bandpass", 2800.0, 0.7)
+	DSP.mix(dry, line, 0.0, 0.025)
+	var wet := dry.duplicate()
+	DSP.filter(wet, &"lowpass", 2200.0)
+	var out := dry.duplicate()
+	DSP.mix(out, wet, 0.14, 0.42)
+	DSP.mix(out, wet, 0.33, 0.22)
+	return out
+
+
+## GDD §10's defeat: "the propaganda cuts out mid-shout". A shout climbing to a held vowel breaks up:
+## a sliver of it stutters, the rest dives in pitch like a tape stopping, a last burst of static, and
+## silence (but for the street's echo).
+func _head_voice_cut() -> PackedFloat32Array:
+	var rng := _rng(440)
+	var shout := _syllables([[0.15, 172.0, 192.0, &"a", &"e", &"t"], [0.17, 196.0, 216.0, &"e", &"a", &"k"],
+		[0.55, 222.0, 238.0, &"a", &"ae", &""]], 0.0, rng)
+	var cut_at: float = 0.56
+	var grain_len: int = int(0.045 * RATE)
+	var cut: int = int(cut_at * RATE)
+	var b := DSP.buffer(1.5)
+	for i: int in cut:
+		b[i] = shout[i]
+	# The stutter: the last 45 ms repeated, each time more broken.
+	var at: int = cut
+	for k: int in 5:
+		var grain := shout.slice(cut - grain_len, cut)
+		DSP.crush(grain, 8.0 - k, 11025.0 / (k + 1))
+		DSP.shape(grain, 0.002, 0.004)
+		for i: int in grain.size():
+			if at + i < b.size():
+				b[at + i] = grain[i] * (1.0 - 0.12 * k)
+		at += grain.size()
+	# The tape stop: the rest of the shout read ever slower, its pitch diving to nothing.
+	var stop: int = int(0.34 * RATE)
+	var pos: float = float(cut)
+	for i: int in stop:
+		var speed: float = pow(1.0 - float(i) / stop, 1.6)
+		pos += speed
+		var j: int = mini(int(pos), shout.size() - 1)
+		if at + i < b.size():
+			b[at + i] = shout[j] * (1.0 - 0.5 * float(i) / stop)
+	at += stop
+	var static_burst := DSP.noise(0.14, rng)
+	DSP.filter(static_burst, &"bandpass", 3000.0, 0.8)
+	DSP.crush(static_burst, 5, 6000.0)
+	DSP.shape(static_burst, 0.002, 0.03)
+	DSP.mix(b, static_burst, float(at) / RATE, 0.8)
+	return _loudhailer(b, rng)
+
+
+## It loses power (the defeat): its engines spin down, the power cutting in and out as they die, a
+## falling whine, electrical sputters, and the wind rising as it drops toward the street.
+func _head_power_down() -> PackedFloat32Array:
+	var rng := _rng(441)
+	var d: float = 1.9
+	var spin := func(u: float) -> float: return lerpf(1.0, 0.22, 1.0 - pow(1.0 - u, 2.0))
+	var drone := DSP.buffer(d)
+	for hz: float in [A1, A1 * 1.013, A1 * 1.5, A1 * 2.0]:
+		DSP.mix(drone, DSP.osc(d, func(u: float) -> float: return hz * float(spin.call(u)), &"saw"), 0.0, 0.3)
+	DSP.filter_sweep(drone, &"lowpass", 1400.0, 180.0, 0.9)
+	DSP.drive(drone, 3.0)
+	# The power cutting in and out as it dies: short gaps in the first half, more of them as it goes.
+	var n: int = drone.size()
+	var i: int = 0
+	var gain: float = 1.0
+	while i < n:
+		var u: float = float(i) / n
+		var seg: int = int(rng.randf_range(0.03, 0.09) * RATE)
+		var on: bool = u > 0.55 or rng.randf() > 0.25 + 0.5 * u
+		for j: int in mini(seg, n - i):
+			gain = move_toward(gain, 1.0 if on else 0.15, 1.0 / 200.0)
+			drone[i + j] *= gain
+		i += seg
+	var b := DSP.buffer(d)
+	DSP.mix(b, drone, 0.0, 1.0)
+	var whine := DSP.osc(d, func(u: float) -> float: return 1150.0 * float(spin.call(u)), &"triangle")
+	DSP.filter(whine, &"bandpass", 900.0, 0.8)
+	DSP.adsr(whine, 0.01, 0.6, 0.5, 0.4)
+	DSP.mix(b, whine, 0.0, 0.3)
+	DSP.mix(b, _crackle(d * 0.6, 26, 0.5, 3200.0, rng), 0.0, 0.6)
+	DSP.mix(b, _whoosh(1.1, 350.0, 1700.0, 0.8, rng), 0.75, 0.55)
+	DSP.adsr(b, 0.01, 0.8, 0.7, 0.3)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## It crashes into the street (the defeat): a huge impact and a deep boom, the hull crumpling, its
+## face screen shattering, debris raining down on the trucks, and a long rumble dying away.
+func _head_crash() -> PackedFloat32Array:
+	var rng := _rng(442)
+	var d: float = 2.4
+	var b := DSP.buffer(d)
+	DSP.mix(b, _explosion(2.3, 1.8, rng), 0.0, 1.0)
+	DSP.mix(b, DSP.kick(0.7, 90.0, 26.0, rng), 0.0, 1.0)
+	DSP.mix(b, DSP.crash(1.6, rng), 0.02, 0.45)
+	var crumple := DSP.noise(1.3, rng)
+	DSP.filter_sweep(crumple, &"bandpass", 1100.0, 420.0, 0.8)
+	DSP.drive(crumple, 5.0)
+	DSP.adsr(crumple, 0.01, 0.4, 0.4, 0.3)
+	DSP.mix(b, crumple, 0.03, 0.6)
+	# The face screen shattering: bright pings and a glassy hiss.
+	for k: int in 36:
+		var hz: float = rng.randf_range(3200.0, 8800.0)
+		var ping := DSP.osc(0.05, func(_u: float) -> float: return hz)
+		DSP.envelope(ping, 0.001, 0.012)
+		var at: float = 0.04 + pow(rng.randf(), 1.8) * 0.7
+		DSP.mix(b, ping, at, rng.randf_range(0.2, 0.55) * (1.0 - at))
+	var glass := DSP.noise(0.5, rng)
+	DSP.filter(glass, &"highpass", 4200.0)
+	DSP.envelope(glass, 0.002, 0.1)
+	DSP.mix(b, glass, 0.03, 0.5)
+	for k: int in 18:
+		var at: float = rng.randf_range(0.2, 2.0)
+		DSP.mix(b, DSP.metal_hit(0.22, rng.randf_range(260.0, 2000.0), 0.05, rng), at, 0.45 * (1.0 - at / d))
+	var rumble := DSP.noise(d, rng)
+	DSP.filter(rumble, &"lowpass", 150.0)
+	DSP.drive(rumble, 2.0)
+	DSP.envelope(rumble, 0.05, 0.8, 0.4)
+	DSP.mix(b, rumble, 0.0, 0.9)
 	DSP.crush(b, 9, 18000.0)
 	return b
