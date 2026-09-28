@@ -28,6 +28,7 @@ func run() -> void:
 	await _test_keeps_place_through_a_gap()
 	await _test_keeps_place_through_its_turn()
 	await _test_place_lapses()
+	await _test_octodog_keeps_its_place()
 	await _test_exclusive()
 	await _test_attack_on_carries_on()
 	await _test_many()
@@ -66,6 +67,12 @@ static func _overlaps(a: Enemy, b: Enemy) -> Array:
 			if maxf(sa[0], sb[0]) < minf(sa[1], sb[1]) - 0.0001:
 				out.append([sa[0], sb[0]])
 	return out
+
+
+## The Octodog with this instance id, or null once it's freed.
+static func _octodog(id: int) -> Octodog:
+	var o: Object = instance_from_id(id)
+	return o as Octodog if is_instance_valid(o) else null
 
 
 static func _time_of(d: Enemy, event: String, nth: int = 0) -> float:
@@ -337,6 +344,71 @@ func _test_place_lapses() -> void:
 			check(_time_of(quits, "gave_up") < end_a and start_next >= end_a - 0.0001 and start_next < end_a + 0.05,
 				"%s: the next went as soon as the attack on was over (%.2f s, over at %.2f s)" % [tag, start_next, end_a])
 		await sim.free_world(w)
+
+
+## The Octodog that R5's measurement found starved (3 of 277 dogs over extra seeds; on today's
+## campaign Golden 3 at 5 lanes on seed 9004 and Dead Zone 1 at 5 lanes on seed 9017), scripted:
+## another type attacks again and again (on for 2 s, ready again 1.2 s later), and rows of fences
+## make the dog's moved-on stretch unclear just as each of those attacks ends. Held at its planned
+## moment, the dog keeps its place when its turn comes before its stretch is clear, so the other,
+## ready again, waits for it, and the dog charges as soon as its stretch clears. (Before, the dog lost
+## its place the moment it was told it may go: the other went again, and the dog's slack ran out
+## before a clear stretch came between the other's attacks.)
+func _test_octodog_keeps_its_place() -> void:
+	var t := load("res://data/enemies/octodog.tres") as OctodogTuning
+	var speed: float = tuning.run_speed
+	var window: float = t.window_length(speed, 0.0)
+	var a0: float = 36.0
+	var track: LevelLayout = RunSim.layout(3, 600.0)
+	for at: float in [80.0, 140.0, 195.0]:
+		for lane: int in 3:
+			track.fences.append(RunSim.fence(lane, at, "full"))
+	var w: RunWorld = sim.build_world(track)
+	w.rules = w.rules.duplicate() as GameRules
+	w.rules.big_attacks_take_turns = true
+	w.player.setup(tuning, w.geo, 1)
+	w.player.god_mode = true
+	var other := _dummy(w, "blocker", {"first": 1.0, "interval": 1.2, "warning": 0.5, "attack": 1.5})
+	var dog := w.director.spawn({"type": "octodog", "at": a0 + t.stop_distance(speed, 0.0), "lane": 1, "side": 0,
+		"seed": 11, "params": {"doghouse": false, "charges": 2, "charge_at": [a0, a0 + t.cycle_distance(speed, 0.0)]}}) as Octodog
+	var id: int = dog.get_instance_id()
+	var held_at_plan: bool = false
+	var turn_came_unclear: bool = false
+	var windup: float = -1.0
+	var over: float = -1.0
+	var left: bool = false
+	await tree.physics_frame
+	w.player.running = true
+	for i: int in 12 * Engine.physics_ticks_per_second:
+		await tree.physics_frame
+		var d: Octodog = _octodog(id)
+		if d == null:
+			break
+		var now: float = w.level_time()
+		held_at_plan = held_at_plan or (w.director.held_for_turn(d) and absf(now - a0 / speed) < 0.1)
+		if windup < 0.0 and d.phase == Octodog.Phase.WINDUP:
+			windup = now
+		if windup < 0.0 and w.director.is_waiting(d) and not w.director.held_for_turn(d) \
+				and not other.is_major_attack_active() and not Octodog.charge_clear(track, w.player.distance, window):
+			turn_came_unclear = true
+		left = left or d.phase == Octodog.Phase.LEAVE
+		if windup >= 0.0 and over < 0.0 and not d.is_major_attack_active():
+			over = now
+		if over >= 0.0 and _time_of(other, "start", 1) >= 0.0:
+			break
+	var d_end: Octodog = _octodog(id)
+	var ready_again: float = _time_of(other, "ready", 1)
+	var again: float = _time_of(other, "start", 1)
+	check(held_at_plan and turn_came_unclear,
+		"held at its planned moment, its turn came while its moved-on stretch wasn't clear")
+	check(ready_again > 0.0 and ready_again < windup and _time_of(other, "held") >= ready_again - 0.001,
+		"the other, ready again at %.2f s, waited for it" % ready_again)
+	check(windup > 0.0 and again >= over - 0.001 and over > windup,
+		"the dog winds up once its stretch is clear (%.2f s), and the other goes after its charges (%.2f s, over at %.2f s)"
+		% [windup, again, over])
+	check(d_end != null and d_end.charges_done == 2 and not left, "the dog makes both its charges (%d)"
+		% (d_end.charges_done if d_end != null else -1))
+	await sim.free_world(w)
 
 
 ## GDD §9.7 holds whether or not big attacks take turns: an exclusive attack and those of the types it
