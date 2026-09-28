@@ -33,9 +33,11 @@ extends Node3D
 ##   defeat    the last phase through the run camera (--phase=2 by default): a runner who reads the
 ##             fight baits the first marked tower, rides the ceiling and stomps the last weak point; the
 ##             defeat plays out (the face glitches, the propaganda cuts out, it lurches up, loses power
-##             and crashes into the street ahead) and the runner runs across the wreck
+##             and crashes into the street ahead) and the runner runs over its fallen face and through
+##             the wreck
 ##   wreck     the defeat on its own: in the last phase, it's beaten as soon as it drops in front of the
-##             runner (as by weapons), then glitches, falls and crashes; the runner runs across the wreck
+##             runner (as by weapons), then glitches, falls and crashes; the runner runs through the
+##             wreck
 ## Options: --lanes=N (3, 5 or 6; 3 by default), --seconds=S (the first run's length in `reveal`),
 ## --pattern=low,drag,high,drop (the face-off's attacks), --towers=off (no marked towers),
 ## --towers-after=N (the attacks it shows before it takes aim at a tower; 0 baits the first tower at
@@ -48,9 +50,10 @@ extends Node3D
 ## the wall jump (1) or the ceiling (2) about 105-140; faceoff with --pattern=drop,low, the drop
 ## about 78-100; pinned and window, the next marked tower falling about 105-118 (with the ceiling's
 ## pads and the ceiling lowering in at --phase=2) and the window open from about 120; slogans, one
-## slogan every 25 frames from about 10; defeat, the stomp about 95-105, the glitch and the fall to about
-## 140, the crash and the run across the wreck about 140-175; wreck, the defeat from about 50, the crash
-## about 85 and the run across the wreck about 85-120.
+## slogan every 25 frames from about 10 (the glitch from 125); defeat, the ceiling and the stomp about
+## 115-140, the glitch 145-165, the fall 165-175, the crash, its face and the run through the wreck
+## about 175-200; wreck, the glitch from about 50, the fall 65-75, the crash, its face and the run
+## through the wreck about 75-100.
 
 const BOSS_PATH: String = "res://data/bosses/city_boss.tres"
 
