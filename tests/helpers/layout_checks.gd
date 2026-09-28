@@ -49,12 +49,17 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 
 
 ## GDD §3 (changed September 26, 2026) for every ceiling. The floor under it may hold anything, but:
-## - each pad lies under a ceiling section, and the player can step on it: its lane holds no hole or
-##   fence from a full jump before it until its lift reaches the hull, and no ramp before it (so it's
-##   never on or at the edge of a gap, never in a fence, and reachable);
-## - each landing zone is safe to land on: no hole or fence in any lane, and it ends before the finish;
+## - each pad lies under a ceiling section, over the pad's own lane (a narrow ceiling's pads lie in
+##   its lanes), and the player can step on it: its lane holds no hole or fence from a full jump before
+##   it until its lift reaches the hull, and no ramp before it (so it's never on or at the edge of a
+##   gap, never in a fence, and reachable);
+## - each ceiling covers a contiguous range of real lanes (a range over every lane is stored without
+##   one), and a one-lane ceiling is short: one_lane_ceiling_seconds from its pad at most;
+## - each landing zone is safe to land on: no hole or fence in any lane the ceiling covers, and it
+##   ends before the finish;
 ## - no floor enemy uses the floor on a landing zone, on a pad's zone from the pad's lane, or where a
 ##   pad lies from any other lane;
+## - credits on a ceiling hang under a ceiling over their lane;
 ## - a floor route runs under every ceiling, from before its pad's run-up to the end of its landing
 ##   zone, without its pad (FloorRoute), so the ceiling is never required.
 ## The stretches come from CeilingZones (the same the generator uses); the checks are written here.
@@ -69,8 +74,8 @@ static func check_ceilings(suite: TestSuite, layout: LevelLayout, config: LevelC
 		var lane: int = int(p["lane"])
 		var covered: bool = false
 		for h: Dictionary in layout.hulls:
-			covered = covered or (float(h["start"]) <= at - 1.0 and float(h["end"]) >= at + 10.0)
-		suite.check(covered, "pad at %.1f has a ceiling above %s" % [at, tag])
+			covered = covered or (float(h["start"]) <= at - 1.0 and float(h["end"]) >= at + 10.0 and layout.hull_covers(h, lane))
+		suite.check(covered, "pad at %.1f has a ceiling above it, over its lane %d %s" % [at, lane, tag])
 		var zone: Vector2 = zones.pad_zone(at)
 		suite.check(not gapped_between(layout, lane, zone.x, zone.y),
 			"pad at %.1f is on solid floor, a full jump clear of any hole in its lane %s" % [at, tag])
@@ -89,13 +94,25 @@ static func check_ceilings(suite: TestSuite, layout: LevelLayout, config: LevelC
 				"pad at %.1f: no floor enemy in its way (%s at %.1f, lane %d) %s" % [at, e["type"], e["at"], e.get("lane", -1), tag])
 	for h: Dictionary in layout.hulls:
 		var landing: Vector2 = zones.landing_zone(h)
+		var lanes: Vector2i = layout.hull_lanes(h)
 		suite.check(landing.y <= finish, "a ceiling and its landing zone end before the finish " + tag)
-		for lane: int in layout.lane_count:
+		if h.has("first_lane"):
+			suite.check(int(h["first_lane"]) >= 0 and int(h["first_lane"]) <= int(h["last_lane"])
+				and int(h["last_lane"]) < layout.lane_count and lanes != Vector2i(0, layout.lane_count - 1),
+				"the ceiling at %.1f covers a range of real lanes, fewer than all (%s) %s" % [h["start"], lanes, tag])
+		if lanes.x == lanes.y and layout.lane_count > 1:
+			for p: Dictionary in layout.pads:
+				if float(p["at"]) >= float(h["start"]) and float(p["at"]) <= float(h["end"]):
+					suite.check(float(h["end"]) - float(p["at"]) <= config.one_lane_ceiling_seconds * tuning.run_speed + 0.01,
+						"a one-lane ceiling is short (%.1f s from its pad at %.1f) %s" % [
+							(float(h["end"]) - float(p["at"])) / tuning.run_speed, p["at"], tag])
+		for lane: int in range(lanes.x, lanes.y + 1):
 			suite.check(not gapped_between(layout, lane, landing.x, landing.y),
 				"the landing zone after the ceiling at %.1f has no hole (lane %d) %s" % [h["end"], lane, tag])
 		for f: Dictionary in layout.fences:
-			suite.check(float(f["at"]) + half < landing.x or float(f["at"]) - half > landing.y,
-				"the landing zone after the ceiling at %.1f has no fence (%.1f) %s" % [h["end"], f["at"], tag])
+			suite.check(int(f["lane"]) < lanes.x or int(f["lane"]) > lanes.y
+				or float(f["at"]) + half < landing.x or float(f["at"]) - half > landing.y,
+				"the landing zone after the ceiling at %.1f has no fence (%.1f, lane %d) %s" % [h["end"], f["at"], f["lane"], tag])
 		for e: Dictionary in layout.enemies:
 			var span: Vector2 = LevelGenerator.enemy_floor_span(e)
 			suite.check(span.x > landing.y or span.y < landing.x,
@@ -105,6 +122,10 @@ static func check_ceilings(suite: TestSuite, layout: LevelLayout, config: LevelC
 		var route: Dictionary = floor_route(grid, zones, h)
 		suite.check(bool(route["ok"]), "a floor route runs under the ceiling at %.1f without its pad (%s) %s"
 			% [h["start"], route["reason"], tag])
+	for c: Dictionary in layout.credits:
+		if String(c["surface"]) == "ceiling":
+			suite.check(not layout.hull_at(float(c["at"]), int(c["lane"])).is_empty(),
+				"a credit on the ceiling at %.1f hangs under a ceiling over its lane %d %s" % [c["at"], c["lane"], tag])
 
 
 ## A floor route (FloorRoute.find, on the layout's `grid`) under ceiling section `h` to the end of its

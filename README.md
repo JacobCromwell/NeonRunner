@@ -104,7 +104,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   their code exists. Level names are placeholders, except the Golden Palace.
 - **Movement:** floor lanes, side-wall runs and wall jumps (a sign blocking the wall bumps you back with a
   clank), anti-grav pads onto the ceiling, ramps (higher onto the wall, with a speed boost that fades like
-  a speed pad's), speed pads.
+  a speed pad's), speed pads. From the second half of City 2 on, about half the ceilings cover only some of
+  the lanes (a placeholder amount): on one you switch lanes only within it (a move past its edge bumps you
+  back with the clank), and a one-lane ceiling is short.
 - **Obstacles:** gaps, signs, and electric fences (full-height or gapped, always-on or pulsing), some with a
   generator that switches them off.
 - **Enemies:**
@@ -212,14 +214,17 @@ against its bursts, with the recency curve on and off:
 
 ## Tests
 
-`tools/godot.sh test` runs 39 suites with about 2,900,000 checks:
+`tools/godot.sh test` runs 42 suites with about 3,250,000 checks:
 - **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds, and every campaign level
   (each with every feature it lists, on its own seed and on others). Under every ceiling the floor may be
   dangerous, so each one's pads, landing zone and a floor route that never takes the pad are checked, and
-  some of those routes are run on real physics. Also the recency curve's pick weights, and levels paced in
-  quiet stretches and bursts (The Hush).
+  some of those routes are run on real physics; ceilings over fewer lanes too, at every width, with their
+  pads under them, their landing zone over their lanes, and one-lane ceilings short. Also the recency
+  curve's pick weights, and levels paced in quiet stretches and bursts (The Hush).
 - **Movement:** scenarios on real physics, among them a ramp's boost against a speed pad's, a ramp's wall run
-  and its credits against the generator's prediction, and the bump of a blocked wall entry.
+  and its credits against the generator's prediction, the bump of a blocked wall entry, and moves on a
+  ceiling over fewer lanes (blocked at its edges, a pad holding you to its lane, the camera kept under the
+  ceiling through a drop).
 - **Enemies:** each type's attacks, dodges, kills and generation rules, and big attacks of different types
   taking turns (the director, each enemy, and simulated runs of campaign levels).
 - **Damage:** the shared damage rules.
@@ -257,7 +262,8 @@ against its bursts, with the recency curve on and off:
   (never glowing, never sign yellow or gap orange), its statues far above the wall-run band and the
   statue kit for the Gilded Sentinels, and for all six where the cult's emblem hides (or, in the Golden
   Zone, is shown openly) and where its feed plays, never in the wall-run band (the feed's shared material
-  has a suite of its own).
+  has a suite of its own). Every skin builds its ceilings from the lanes they cover, with the orange end
+  band across them and nothing below the underside past the far end, where the camera passes as you drop.
 - **Sounds and music:** every sound and track loads (the tracks loop seamlessly, one per zone), the death dip
   and how it combines with the pause duck, and the level-complete riff in each zone's key.
 - **Boot:** the real game scene.

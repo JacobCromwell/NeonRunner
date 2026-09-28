@@ -132,6 +132,30 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 ## DESIGN-TBD: seconds of gap-free floor after a ceiling section ends, so the drop never lands in a hole.
 @export_range(0.0, 3.0, 0.1, "suffix:s") var hull_landing_seconds: float = 1.2
 
+@export_group("Narrow ceilings")
+## GDD §3 (decided September 26, 2026): ceilings don't have to cover every lane, and on one the player
+## switches lanes only within its lanes. The share of this level's ceilings that cover a range of its
+## lanes rather than all of them: pattern ceilings and those the rules add (a drone's pads, a Bad
+## Dream chase's) alike (LevelGenerator.ceiling_lanes). 0: every ceiling covers every lane, and the
+## level generates exactly as it did before narrow ceilings. DESIGN-TBD (docs/questions/b3.md): how
+## often, and where they first appear.
+@export_range(0.0, 1.0, 0.05) var narrow_ceiling_share: float = 0.0
+## Share of the level (0–1) from which ceilings may be narrow; every ceiling before it covers every
+## lane (City 2 shows its first ceilings full width). DESIGN-TBD (docs/questions/b3.md).
+@export_range(0.0, 1.0, 0.05) var narrow_ceiling_start: float = 0.0
+## Of the narrow ceilings, the share that cover a single lane; the others cover from two lanes to
+## narrow_ceiling_max_lanes, each width as likely. A one-lane ceiling is simply ridden out (GDD §3),
+## so it's very short (one_lane_ceiling_seconds) and only where its pattern puts nothing under it.
+## DESIGN-TBD (docs/questions/b3.md).
+@export_range(0.0, 1.0, 0.05) var one_lane_ceiling_share: float = 0.35
+## The most lanes a narrow ceiling covers; 0 (or anything from the lane count less one up): all but one
+## lane. A narrow ceiling whose pads lie further apart than this covers every lane instead.
+## DESIGN-TBD (docs/questions/b3.md).
+@export_range(0, 6, 1) var narrow_ceiling_max_lanes: int = 0
+## How long a one-lane ceiling lasts from its pad to its end, at run speed (GDD §3: very short; a plain
+## ceiling lasts 4 s). DESIGN-TBD (docs/questions/b3.md).
+@export_range(0.5, 4.0, 0.1, "suffix:s") var one_lane_ceiling_seconds: float = 1.6
+
 @export_group("Credits")
 ## DESIGN-TBD (GDD §7): credit placement. Trails of small credits fill the clear stretches between
 ## patterns; high-value credits sit in risky spots (gap edges, by fences, far along wall runs).

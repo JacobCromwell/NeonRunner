@@ -139,7 +139,9 @@ func _edges_and_surfaces(skin: GanglandSkin) -> void:
 # --- Ceilings -------------------------------------------------------------------------------
 
 ## The showcase hull as built in a track, then each structure built directly: full width (both sides
-## run into the walls) and narrow (free sides), as narrow ceilings (task B3) will need.
+## run into the walls), and a narrow ceiling (task B3), which is a slab broken off a building (the
+## owner's review, P2 18) whatever the spot: free on both sides (hung from beams to both walls), or
+## lodged in the building face on the side that reaches it.
 func _ceilings(skin: GanglandSkin) -> void:
 	var track: TrackBuilder = showcase_track(skin)
 	# The ceiling's mesh sits at the underside's height; wall and floor batches sit at the origin.
@@ -183,30 +185,68 @@ func _ceilings(skin: GanglandSkin) -> void:
 		check(span.x < -6.0 - GanglandCeiling.WALL_EMBED + 0.2 and span.y > 6.0 + GanglandCeiling.WALL_EMBED - 0.2,
 			"%s runs into the building faces on both sides (underside from %.2f to %.2f m)" % [name, span.x, span.y])
 		_check_ceiling(skin, full, -6.0, 6.0, full_seams, Vector2(start, start + length), name)
-		# Two lanes in the middle (lanes 1-2 of 5), both sides free: the width follows the lanes.
-		var narrow: Array[MeshInstance3D] = _build_ceiling(builder, -1.2, 2.0 * lane_width, start, length, ceiling_y,
-			narrow_seams, false, false)
-		span = _underside_x_extent(narrow, ceiling_y)
+		full[0].get_parent().queue_free()
+	await tree.process_frame
+	# Narrow ceilings are slabs broken off a building, wherever they are.
+	check(builder.kind_of(starts.values()[0], false, false) == GanglandCeiling.Kind.SLAB
+		and builder.kind_of(starts.values()[1], true, false) == GanglandCeiling.Kind.SLAB
+		and builder.kind_of(starts.values()[1], false, true) == GanglandCeiling.Kind.SLAB
+		and builder.kind_of(starts.values()[0], true, true) == builder.kind_at(starts.values()[0]),
+		"a ceiling across the street is an overpass or a building, any narrower one a slab broken off a building")
+	var wall_x: float = 5.0 * lane_width * 0.5 + tuning.wall_margin
+	for start: float in [starts.values()[0], starts.values()[1]]:
+		var length: float = 44.0
+		# Two lanes in the middle (lanes 1-2 of 5), both sides free: the width follows the lanes, the
+		# break closes both sides, and its frame's beams run up to both building faces.
+		var slab: Array[MeshInstance3D] = _build_ceiling(builder, -1.2, 2.0 * lane_width, start, length, ceiling_y,
+			narrow_seams, false, false, wall_x)
+		var span: Vector2 = _underside_x_extent(slab, ceiling_y)
 		check(absf(span.x - (-3.6 - GanglandCeiling.FREE_LIP)) < 0.05 and absf(span.y - (1.2 + GanglandCeiling.FREE_LIP)) < 0.05,
-			"%s over two lanes takes its width from them (underside from %.2f to %.2f m)" % [name, span.x, span.y])
-		_check_ceiling(skin, narrow, -3.6, 1.2, narrow_seams, Vector2(start, start + length), name + " (narrow)")
-		check(_free_side_faces(narrow, -3.6 - GanglandCeiling.FREE_LIP, 1.2 + GanglandCeiling.FREE_LIP, ceiling_y),
-			"%s over two lanes closes its free sides with an edge face" % name)
-		for list: Array[MeshInstance3D] in [full, narrow]:
+			"a slab over two lanes takes its width from them (underside from %.2f to %.2f m)" % [span.x, span.y])
+		_check_ceiling(skin, slab, -3.6, 1.2, narrow_seams, Vector2(start, start + length), "a slab in mid-street")
+		check(_free_side_faces(slab, -3.6 - GanglandCeiling.FREE_LIP, 1.2 + GanglandCeiling.FREE_LIP, ceiling_y),
+			"a slab over two lanes closes its free sides with the break's face")
+		var reach: Vector2 = _extent_above(slab, ceiling_y + GanglandCeiling.SLAB_DEPTH + 0.5)
+		check(reach.x < -wall_x + 0.5 and reach.y > wall_x - 0.5,
+			"a slab free on both sides hangs from beams running up to both building faces (%.2f to %.2f m, walls at ±%.2f)"
+			% [reach.x, reach.y, wall_x])
+		# The rightmost lane alone: lodged in the building face on the right, a break on the left, no beams.
+		var edge: Array[MeshInstance3D] = _build_ceiling(builder, 4.8, lane_width, start, 29.0, ceiling_y, [], false, true,
+			wall_x)
+		span = _underside_x_extent(edge, ceiling_y)
+		check(absf(span.x - (3.6 - GanglandCeiling.FREE_LIP)) < 0.05 and span.y > 6.0 + GanglandCeiling.WALL_EMBED - 0.2,
+			"a slab at the street's edge runs into the building face there (underside from %.2f to %.2f m)" % [span.x, span.y])
+		_check_ceiling(skin, edge, 3.6, 6.0, [], Vector2(start, start + 29.0), "a slab at the street's edge")
+		reach = _extent_above(edge, ceiling_y + GanglandCeiling.SLAB_DEPTH + 0.5)
+		check(reach.x > 3.0, "and needs no beams across the street (reaching %.2f m)" % reach.x)
+		for list: Array[MeshInstance3D] in [slab, edge]:
 			list[0].get_parent().queue_free()
 	await tree.process_frame
 
 
+## The x extent of the vertices higher than `y`.
+func _extent_above(meshes: Array[MeshInstance3D], y: float) -> Vector2:
+	var out := Vector2(INF, -INF)
+	for m: MeshInstance3D in meshes:
+		for s: int in m.mesh.get_surface_count():
+			for v: Vector3 in m.mesh.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]:
+				var p: Vector3 = m.global_transform * v
+				if p.y > y:
+					out = Vector2(minf(out.x, p.x), maxf(out.y, p.x))
+	return out
+
+
 ## Builds one ceiling of `width` centred on x = center_x under a fresh node; returns its meshes.
+## `wall_x`: the wall faces' distance from the track's centre (0: the builder's default).
 func _build_ceiling(builder: GanglandCeiling, center_x: float, width: float, start: float, length: float,
-		ceiling_y: float, seams: Array, left: bool, right: bool) -> Array[MeshInstance3D]:
+		ceiling_y: float, seams: Array, left: bool, right: bool, wall_x: float = 0.0) -> Array[MeshInstance3D]:
 	var root := Node3D.new()
 	tree.root.add_child(root)
 	var typed: Array[float] = []
 	typed.assign(seams)
 	var thickness: float = TrackBuilder.HULL_THICKNESS
 	builder.build(root, Vector3(center_x, ceiling_y + thickness * 0.5, -(start + length * 0.5)),
-		Vector3(width, thickness, length), typed, left, right)
+		Vector3(width, thickness, length), typed, left, right, wall_x)
 	var out: Array[MeshInstance3D] = []
 	for child: Node in root.get_children():
 		if child is MeshInstance3D:

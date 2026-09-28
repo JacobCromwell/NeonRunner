@@ -99,19 +99,15 @@ func ceiling(start: float, end: float) -> Node3D:
 	var root := Node3D.new()
 	root.name = "Ceiling"
 	add_child(root)
-	var thickness: float = TrackBuilder.HULL_THICKNESS
-	var center := Vector3(0.0, world.tuning.ceiling_height + thickness * 0.5, -(start + end) * 0.5)
-	var size := Vector3(world.geo.half_width() * 2.0, thickness, end - start)
+	var section := CeilingSection.make(world.geo, world.tuning.ceiling_height, TrackBuilder.HULL_THICKNESS, start, end,
+		Vector2i(0, world.geo.lane_count - 1))
 	var body := StaticBody3D.new()
 	body.collision_layer = TrackBuilder.LAYER_HULL
 	body.collision_mask = 0
-	body.position = center
+	body.position = section.center
 	root.add_child(body)
-	_add_shape(body, size)
-	var seams: Array[float] = []
-	for lane: int in range(1, world.geo.lane_count):
-		seams.append(world.geo.lane_x(lane) - world.geo.lane_width * 0.5)
-	world.skin.hull(root, center, size, seams)
+	_add_shape(body, section.size)
+	world.skin.ceiling_section(root, section)
 	keep(root, end)
 	return root
 
