@@ -170,13 +170,13 @@ the Tithe Collector) opt in the same way for whichever of their attacks count as
   until its attack starts, as long as it keeps asking: through its turn too (told it may go, one that
   isn't quite ready and asks again still goes before those that waited less), and through a gap in
   its asks (its stretch not clear for a moment, its planned point not reached yet) of up to
-  `GameRules.turn_place_grace` (1 s; DESIGN-TBD, `docs/questions/r3b.md`). After a longer gap it
-  loses its place, so the others don't wait for an enemy that isn't ready (a Resonator waiting for
-  clear floor): an enemy that means to wait longer keeps asking (the Octodog, below). An enemy that
-  gives up the attack it waited for calls `world.director.give_up_turn(self)` and leaves the queue at
-  once: the Octodog runs off, the hover truck changes state (it asks only while pacing, for its
-  cannon, or holding back, for its lurch), the Resonator leaves, the Bad Dream dissolves. One that
-  leaves play loses its place at once.
+  `GameRules.turn_place_grace` (1 s; DESIGN-TBD, `docs/questions/r3b.md`); meanwhile those behind
+  it wait. After a longer gap it loses its place, so the others don't wait long for an enemy that
+  isn't ready (a Resonator waiting for clear floor): an enemy that means to wait longer keeps asking
+  (the Octodog, below). An enemy that gives up the attack it waited for calls
+  `world.director.give_up_turn(self)` and leaves the queue at once: the Octodog runs off, the hover
+  truck changes state (it asks only while pacing, for its cannon, or holding back, for its lurch), the
+  Resonator leaves, the Bad Dream dissolves. One that leaves play loses its place at once.
 - **An attack that may only come within a window** (the Octodog's planned charges) moves the window
   on while `held_for_turn(self)` says it's waiting for another type, up to a limit of its own
   (`OctodogTuning.turn_wait_max`), and keeps every fairness rule it was planned with. Once held it
