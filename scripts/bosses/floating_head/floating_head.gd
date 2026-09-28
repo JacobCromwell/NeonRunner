@@ -106,12 +106,14 @@ var _booting: bool = false
 var _pin: Dictionary = {}
 var _roll: float = 0.0
 var _impact: bool = false
-## Shaking free: where from (pose and roll), and whether a stomp did it (then it rises for the next
-## phase; else it goes back to the face-off).
+## Shaking free: where from (pose and roll), and whether the phase ended (a stomp, or weapons while it
+## was pinned: then it rises for the next phase; else, a missed window, it goes back to the face-off).
 var _shake_from := Vector3.ZERO
 var _shake_roll: float = 0.0
-var _shake_stomped: bool = false
-## The third window's ceiling section (a prop), lowering in: seconds since it appeared.
+var _shake_next_phase: bool = false
+## The third window's pads and ceiling section (props), the ceiling lowering in: seconds since it
+## appeared.
+var _pads: Array[Node3D] = []
 var _ceiling: Node3D
 var _ceiling_t: float = 0.0
 ## Armor pickups due while a pin is under way, to offer once it's over.
@@ -385,7 +387,8 @@ func _on_phase_started(index: int) -> void:
 		log_event(&"enter")
 	elif pinned:
 		# GDD §10: after a stomp it shakes free, shrieks and rises: the lurch free of the tower, then the
-		# rise back to its station (_shake_tick).
+		# rise back to its station (_shake_tick). (Weapons that end the phase while it's pinned free it the
+		# same way.)
 		_start_shake(true)
 	else:
 		# A phase that ended while it flew (weapons), or a checkpoint's: it rises back to its station, or
@@ -675,9 +678,10 @@ func _slam_ramp(side: int) -> void:
 func _light_pads() -> void:
 	# A ceiling from an earlier window, if any is left, stays a prop until the runner is past it.
 	_ceiling = null
+	_pads.clear()
 	pad_at = pin_stern - tuning.pad_before_face
 	for l: int in lane_count():
-		props.pad(l, pad_at)
+		_pads.append(props.pad(l, pad_at))
 	ceiling_span = Vector2(pad_at - _hull_lead_in(), pin_stern - tuning.ceiling_end_before_face)
 	sound(&"pads_light", Vector3(0.0, 0.5, TrackGeometry.world_z(pad_at)))
 	log_event(&"pads", {"at": pad_at, "ceiling": ceiling_span})
@@ -741,10 +745,11 @@ func _miss(why: StringName, gap: float) -> void:
 
 
 ## It shakes free (after a stomp or a missed window): the tower and the ramp break up and drop away, and
-## it lurches shake_ahead further ahead of the runner and shake_lift up (_shake_tick).
-func _start_shake(stomped: bool) -> void:
+## it lurches shake_ahead further ahead of the runner and shake_lift up (_shake_tick). `next_phase`: the
+## phase ended (then it rises to the next phase's station; else back to the face-off).
+func _start_shake(next_phase: bool) -> void:
 	window_open = false
-	_shake_stomped = stomped
+	_shake_next_phase = next_phase
 	_shake_from = pose
 	_shake_roll = _roll
 	if pinned_tower != null and is_instance_valid(pinned_tower):
@@ -757,12 +762,12 @@ func _start_shake(stomped: bool) -> void:
 	world.effects.shake(0.45, 0.7)
 	world.effects.burst(body.global_position + Vector3(0.0, 1.0, -4.0), FloatingHeadTower.CONCRETE, 40, 1.8)
 	_set_step(Step.SHAKE)
-	log_event(&"shake_free", {"stomped": stomped, "gap": pose.z})
+	log_event(&"shake_free", {"next_phase": next_phase, "gap": pose.z})
 
 
 ## The lurch: its face pulls away from the runner (never toward them), shuddering, as it rights itself.
 ## Its deck stays under a runner still on it until its face has passed them. Then it rises: back to its
-## station for the next phase after a stomp, to the front of the runner after a miss.
+## station for the next phase after a stomp, to the front of the runner after a missed window.
 func _shake_tick() -> void:
 	var k: float = clampf(step_time / maxf(tuning.shake_seconds / pace(), 0.05), 0.0, 1.0)
 	var e: float = smoothstep(0.0, 1.0, k)
@@ -780,7 +785,7 @@ func _finish_shake() -> void:
 	body.glitch = 0.0
 	_roll = 0.0
 	_pin = {}
-	if _shake_stomped:
+	if _shake_next_phase:
 		var left: float = maxf(phase().intro_seconds - state_time, 0.3) if state == State.INTRO else 0.3
 		_move(Step.RISE, pose, _rise_pose(phase_index), left)
 		log_event(&"rise")
@@ -788,8 +793,8 @@ func _finish_shake() -> void:
 		_move(Step.RELEASE, pose, face_pose(), tuning.release_seconds / pace())
 
 
-## Ends a pin at once (a phase change while it flew, the win): the tower and the ramp drop away and it
-## rights itself.
+## Ends a pin at once (a phase that ended while the tower was still falling, the win): the tower and the
+## ramp drop away, the third window's pads and ceiling go (the window is gone), and it rights itself.
 func _end_pin(quiet: bool) -> void:
 	if pinned_tower != null and is_instance_valid(pinned_tower):
 		pinned_tower.crumble()
@@ -797,6 +802,14 @@ func _end_pin(quiet: bool) -> void:
 	if ramp != null and is_instance_valid(ramp):
 		ramp.crumble()
 	ramp = null
+	if ceiling_span != Vector2.ZERO:
+		for pad: Node3D in _pads:
+			props.remove(pad)
+		if _ceiling != null:
+			props.remove(_ceiling)
+		_ceiling = null
+		ceiling_span = Vector2.ZERO
+	_pads.clear()
 	window_open = false
 	_pin = {}
 	_roll = 0.0

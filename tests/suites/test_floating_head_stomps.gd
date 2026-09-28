@@ -264,7 +264,7 @@ func _test_routes() -> void:
 							s["behind"] += 1
 					return head.state == BossEncounter.State.FIGHT, 6.0)
 				var shakes: Array[Dictionary] = _events(head, &"shake_free")
-				check(shakes.size() == 1 and bool(shakes[0]["stomped"]) and _sounds(head, &"head_shake_free") == 1
+				check(shakes.size() == 1 and bool(shakes[0]["next_phase"]) and _sounds(head, &"head_shake_free") == 1
 					and not _events(head, &"rise").is_empty(), "then it shakes free and rises %s" % tag)
 				check(head.pose.y > head.tuning.face_height - 0.5 and not head.body.top_solid() and head.body.hull_solid(),
 					"back in the air, its crown no floor and its hull solid again %s" % tag)
@@ -424,7 +424,7 @@ func _test_missed_windows() -> void:
 			same = absf(fall0 - fall1) < 0.02 and absf(open0 - open1) < 0.02
 		check(same, "the next tower pins it again: the same window, the same timing %s" % tag)
 		var shakes: Array[Dictionary] = _events(head, &"shake_free")
-		check(shakes.size() >= 2 and not bool(shakes[0]["stomped"]) and _sounds(head, &"head_shake_free") >= 2,
+		check(shakes.size() >= 2 and not bool(shakes[0]["next_phase"]) and _sounds(head, &"head_shake_free") >= 2,
 			"each miss, it shakes free with its sound %s" % tag)
 		await sim.free_world(world)
 

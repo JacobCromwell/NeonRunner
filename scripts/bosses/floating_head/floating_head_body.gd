@@ -21,8 +21,9 @@ const LENS_RED := Color(1.0, 0.16, 0.1)
 const FACE_WHITE := Color(0.86, 0.91, 1.0)
 ## A weak point's stomp box starts this far under its socket's top (and reaches stomp_top above it).
 const STOMP_BELOW: float = 0.2
-## Opening, a cover swings back this far about its back edge and the red dome rises out of its socket.
-const COVER_OPEN_DEGREES: float = 115.0
+## Opening, a cover swings back this far about its back edge (lying back on the crown behind its
+## socket) and the red dome rises out of the socket.
+const COVER_OPEN_DEGREES: float = 150.0
 const DOME_SUNK: float = 0.45
 ## The open domes pulse this fast, between these glows (a steady glow with Reduced flashing).
 const PULSE_HZ: float = 1.4
@@ -313,9 +314,8 @@ func _update_weak_points() -> void:
 		_covers[i].transform = Transform3D(swing, hinge + swing * (p - hinge))
 		_domes[i].visible = k > 0.02
 		_domes[i].position = p + Vector3(0.0, -DOME_SUNK * (1.0 - k), 0.0)
-	var pulse: float = 0.5 + 0.5 * sin(TAU * PULSE_HZ * _time)
-	var glow: float = (PULSE_LOW + PULSE_HIGH) * 0.5 if Settings.flashing_reduced else lerpf(PULSE_LOW, PULSE_HIGH, pulse)
-	_dome_material.set_shader_parameter(&"state_glow", glow * k)
+	var pulse: float = 0.5 if Settings.flashing_reduced else 0.5 + 0.5 * sin(TAU * PULSE_HZ * _time)
+	_dome_material.set_shader_parameter(&"state_glow", lerpf(PULSE_LOW, PULSE_HIGH, pulse) * k)
 
 
 ## The crown's deck: a concave shape over the hull's skin (FloatingHeadModel.deck_faces), off until a
