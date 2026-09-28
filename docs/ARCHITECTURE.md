@@ -347,8 +347,8 @@ one colour and shape language in every zone (pink crackle = electric fence).
 
 Skins so far: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2), `MarketplaceSkin`
 (Zone 3, the Marketplace), `CorporateSkin` (Zone 4, Corporate) and `GoldenSkin` (Zone 6, the Golden
-Zone). `GreyboxSkin` is the fallback for zones without their own look yet (the Dead Zone for now). A zone's skin lives at
-`data/skins/<zone id>_skin.tres` (`--skin=<zone id>` in quick play) and is set in its
+Zone). `GreyboxSkin` is the fallback for zones without their own look yet (the Dead Zone for now). A
+zone's skin lives at `data/skins/<zone id>_skin.tres` (`--skin=<zone id>` in quick play) and is set in its
 `data/zones/<zone id>.tres`; a level's own `skin` wins over its zone's (the Golden Palace, Golden 3,
 may get its own). The real skins build on the mesh kit (`scripts/world/meshes/`): `MeshKit` has
 shared builders for hazards, triggers and environments, and `MeshLayer` batches a chunk's geometry.
@@ -546,11 +546,12 @@ towers' neon banners (the glyphs leave its square clear, so nothing overlaps); `
 lists them. The Corporate zone (D4) draws it the same way: a warm-white badge in a lower corner of some
 ads on the street screens and roof boards (never more than `CorporateTowers.SCREEN_EMBLEM_MAX` of a
 screen's height), unlit bronze at the foot of some banners; `CorporateSkin.cult_emblems()` lists them.
-The Golden Zone (D6a) shows it openly, large, in polished gold meeting at its red stone (`MeshKit.PAT_EMBLEM`,
-kit_golden: the material's `cult_emblem` texture is the choice drawn in `CultEmblem.GOLD_COLOR` and
-`GOLD_ACCENT_COLOR`, `GoldenSkin.cult_emblem_texture()`, embossed and lit as gold on red cloth or
-marble): on banners, reliefs on towers, gallery frames, sky bridges (`GoldenSkin.cult_emblems()` lists
-them), on the bridges' crests and archways' keystones, and on the walkways' medallions. The listed ones
+The Golden Zone (D6a) shows it openly, large, in polished gold meeting at its red stone
+(`MeshKit.PAT_EMBLEM`, kit_golden: the material's `cult_emblem` texture is the choice drawn in
+`CultEmblem.GOLD_COLOR` and `GOLD_ACCENT_COLOR`, `GoldenSkin.cult_emblem_texture()`, embossed and lit as
+gold on red cloth or marble): on banners, reliefs on towers, gallery frames, sky bridges
+(`GoldenSkin.cult_emblems()` lists them), on the bridges' crests and archways' keystones, and on the
+walkways' medallions. The listed ones
 are 2 m across or more (so they still read from afar before `cult_mark()` fades them), and every one
 stands off its backing far enough never to flicker (`GoldenFacades.RELIEF_STANDOFF`, `EMBLEM_STANDOFF`).
 
@@ -927,10 +928,10 @@ cyborgs, and a far view through the run camera where the expressions must read, 
 hosts or aiming, and `lineup_far` at gameplay distance); `octodog_screech`,
 `drone_truck_showcase`, `bad_dream_showcase`), the Golden Zone's statue kit (`statue_showcase`: every
 pose, a turnaround, and a live statue rigged in its niche and swinging, as task C4 would build it), a
-boss (`floating_head_showcase`), the UI kit, the
-screens, a zone skin (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed
-screens and emblems a skin lists, or a scripted run with a ceiling ride and a wall run), and comparison
-sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
+boss (`floating_head_showcase`), the UI kit, the screens, a zone skin (`skin_review`: any skin from
+fixed spots, including close-ups of the cult's feed screens and emblems a skin lists, or a scripted run
+with a ceiling ride and a wall run), and comparison sheets for an open design choice
+(`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
 `CLAUDE.md`.
 
