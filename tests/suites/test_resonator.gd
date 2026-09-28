@@ -701,6 +701,12 @@ func _test_generator() -> void:
 						check(first <= start + 210.0, "%s: its first comes right after the feature's start (%.0f m, start %.0f m)"
 							% [tag, first, start])
 	check(late.size() <= 1, "Golden 1 introduces it right after its start on other seeds too (late: %s)" % [late])
+	# The campaign's recency curve never boosts it (FeatureRecency.max_factor): its rules keep one visit at
+	# a time, so they'd drop most extra picks and leave their stretches empty (boosted, Golden 1 lost about
+	# 2 enemies and 3 obstacle rows a level).
+	var curve: FeatureRecency = campaign.feature_recency
+	check(curve != null and curve.max_factor.has("resonator") and float(curve.max_factor["resonator"]) <= 1.0,
+		"the recency curve never boosts the Resonator: its rules keep one visit at a time")
 
 
 # --- The campaign, played ----------------------------------------------------------------------------------
