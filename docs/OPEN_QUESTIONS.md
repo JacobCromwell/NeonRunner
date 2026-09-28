@@ -1116,6 +1116,53 @@ or `--scenario=window|missed`)
     boards (cream, midnight blue, black lacquer, ivory with gold lettering) in the yellow/black frame (a crimson board was
     dropped, since a glowing red reads as a hazard). OK?
 
+**The Resonator** (from C3; numbers in `data/enemies/resonator.tres`, F6 "Enemy: Resonator"; review with
+`tools/showcase/resonator_showcase.tscn` (`--view=model|play|close`, `--skin=golden`, `--double`, `--wall`), or quick
+play with `--features=resonator --skin=golden`)
+184. **The look** (GDD §9.10): a faceted, double-ended golden mast with ivory collars and three small vanes at each end
+    (the emblem's three-fold symmetry), opening in the middle into a cage of gold ribs around a red crystal core (the only
+    part that always glows); three halos of gold arcs tumble slowly at rest. No bell, chain, cross, candle or steeple
+    shape. 5.2 m tall. Right look?
+185. **The warning:** 1.3 s. The halos spin up and swing into line facing the runner, one on each of the chime's three
+    notes, ending as a red target, while the core and trims glow brighter; the wave leaves at the end and reaches the
+    runner about 1.1 s later (about 2.4 s from the first note). Steady glow with Reduced flashing. Right length and look?
+186. **Distance and size (please look at this one):** it hovers 34 m ahead, its core 3.1 m up (too high to stomp). On the
+    Golden skin's bright facades the red target is small at that distance (about 40 pixels across at 960×540), so the
+    chime and the visible approaching wave carry most of the warning (frames: C3's `build/sheets/resonator_golden.png`).
+    Closer, or larger? (`hover_ahead`, `model_scale`, F6.)
+187. **The wave:** a straight, low red crest across every lane (a ring 34 m out crosses the track almost straight), rolling
+    at 11 m/s early to 14 m/s late. Its hitbox is 0.45 m high: a jump started 0.1–0.6 s before it arrives clears it; a
+    slide doesn't; wall and ceiling riders are safe. Right shape, speed and height?
+188. **Pulses and scaling** (later in the zone it pulses faster or sends double waves): both. 3 pulses early to 4 late, a
+    rest of 2.2 s to 1.2 s between pulses, and up to half the pulses doubled late (the second wave 0.9 s behind, inside the
+    hit invulnerability, so armor that blocks the first covers the second); a level's first pulse is always single.
+    Right counts and ramp?
+189. **Toughness:** 15 health (15 laser tier 1 shots, like the Gilded Sentinels), score 400; no contact hitbox (like the
+    drone); shot down, a wave still rolling fizzles out. Right?
+190. **Protection:** armor and the shield block a wave (GDD §9.10), and the dash passes through it like any enemy attack.
+    Right for the dash?
+191. **A big attack** (item 98): from its warning until its last wave has passed, a pulse is a big attack; it waits for
+    other types' turns (moving its visit on) and after 8 s of waiting drops its remaining pulses, never its first. Over
+    Golden 1–3: no overlap with turns on; 10 of 44 pulses waited, 0.8 s on average. Right?
+192. **Never a wave on a gap or a fence:** from 0.6 s before its wave meets the runner until 0.6 s after, no gap, live
+    fence, floor enemy, pad, ceiling landing or speed pad in any lane, so a jump always has solid floor to leave from and
+    land on; re-checked before each warning. The right stretch? Should a speed pad count?
+193. **Where visits go:** one Resonator at a time, at least 6 s apart; no pulse planned during an Octodog's run; drones,
+    hover trucks and chases take turns with it at run time. About 2.6 visits of 3 pulses in Golden 1, 1.8 of nearly 4 in
+    Golden 2 and 3. Measured over 21 seeds at 3, 5 and 6 lanes, a visit's clear floor trades obstacle rows for waves:
+    Golden 1 has 38.7 obstacle rows a level (45.4 before the Resonator) and 17.3 enemies with the Resonators (16.8),
+    Golden 2 42.1 (48.0) and 17.2 (17.5), Golden 3 42.4 (48.0) and 17.6 (17.7), for about 8 waves to jump a level.
+    Right amount, with the balancing pass (R7) in mind?
+194. **The recency curve leaves it alone** (like item 148): boosted, its one-at-a-time rule dropped a third of its picks and
+    left empty stretches (Golden 1 lost 1.9 enemies and 3.4 rows), so it's capped. Should the Golden Zone's newest enemy
+    get a boost after all (fewer, longer visits, or visits placed by its rules)?
+195. **The chime and its sounds** (GDD §9.10): soft mallets on tuned metal bars with a glassy shimmer, rising G5, C6, E6
+    (a bright major triad, far from the Golden music's F♯ minor), the same every time; the pulse a deep thump and a rush
+    rolling in along the floor; its death the chime bending out of tune and shattering. Right notes and feel?
+196. **One on screen at a time:** a Resonator arriving sends the last one away after its current pulse. Right?
+197. **The hint:** "When the Resonator's chime plays, a red wave rolls along the floor. Jump it ({jump}), or be on a wall or
+    the ceiling." Right wording?
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).

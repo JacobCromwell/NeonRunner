@@ -433,12 +433,16 @@ func _test_pattern_features() -> void:
 func _test_guarantee(base: LevelConfig) -> void:
 	var without: int = 0
 	var retried: int = 0
+	var unbuilt: String = _unbuilt_feature()
 	for lanes: int in [3, 5, 6]:
 		for level_seed: int in range(1, 11):
 			var config: LevelConfig = base.duplicate() as LevelConfig
 			config.lane_count = lanes
 			config.level_seed = level_seed
-			config.features = PackedStringArray(["ramps", "ceilings", "pulsing", "speed_pads", "resonator"])
+			var features := PackedStringArray(["ramps", "ceilings", "pulsing", "speed_pads"])
+			if unbuilt != "":
+				features.append(unbuilt)
+			config.features = features
 			config.feature_weights = {"speed_pads": 0.02}
 			var tag: String = "lanes=%d seed=%d" % [lanes, level_seed]
 			var plain := LevelGenerator.new()
@@ -451,8 +455,9 @@ func _test_guarantee(base: LevelConfig) -> void:
 			var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
 			check(not layout.speed_pads.is_empty(), "with it, the rare feature appears " + tag)
 			check(gen.warnings.is_empty(), "and nothing is reported missing " + tag + " %s" % [gen.warnings])
-			check(not gen.placeable_features(LevelGenerator.load_for(config)).has("resonator"),
-				"a feature no pattern places yet isn't required " + tag)
+			if unbuilt != "":
+				check(not gen.placeable_features(LevelGenerator.load_for(config)).has(unbuilt),
+					"a feature no pattern places yet (`%s`) isn't required %s" % [unbuilt, tag])
 			LayoutChecks.check_layout(self, layout, config, tag)
 			var again := LevelGenerator.new()
 			check(JSON.stringify(again.generate(config, tuning, LevelGenerator.load_for(config)).to_dict()) == JSON.stringify(layout.to_dict())
@@ -474,6 +479,19 @@ func _test_guarantee(base: LevelConfig) -> void:
 	for w: String in gen.warnings:
 		said = said or (w.begins_with("guarantee:") and w.contains("host"))
 	check(said, "and the level reports it (%s)" % [gen.warnings])
+
+
+## A planned feature (LevelConfig.PLANNED_FEATURES) that no pattern requires yet, one still to be built,
+## for the guarantee's check that such a feature isn't required; "" once every planned one is built.
+func _unbuilt_feature() -> String:
+	var patterns: Array = LevelGenerator.load_for(load(LEVEL_PATH) as LevelConfig)
+	for f: String in LevelConfig.PLANNED_FEATURES:
+		var placed: bool = false
+		for p: Dictionary in patterns:
+			placed = placed or (p.get("requires", []) as Array).has(f)
+		if not placed:
+			return f
+	return ""
 
 
 ## The host and Octodog rules' own guarantees (guarantee_features): a level left without one (every

@@ -15,6 +15,7 @@ max_factor = Dictionary[String, float]({
 "host": 1.0,
 "hover_truck": 1.0,
 "octodog": 1.0,
+"resonator": 1.0,
 "screech_vents": 1.0
 })
 keep_feature_share = true
