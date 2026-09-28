@@ -310,8 +310,9 @@ func wall_sign(hazard: Hazard, size: Vector3) -> void:
 	props().wall_sign(hazard, size)
 
 
-## A ceiling over its lanes, reaching to the wall faces where the section says they are (CorporateCeilings: only a ceiling across every lane becomes
-## a tower bridging the street; over fewer lanes, a narrow ceiling (GDD §3), it builds narrower).
+## A ceiling over its lanes, reaching to the wall faces where the section says they are
+## (CorporateCeilings: only a ceiling across every lane becomes a tower bridging the street; over
+## fewer lanes, a narrow ceiling (GDD §3), it builds narrower).
 func ceiling_section(parent: Node3D, section: CeilingSection) -> void:
 	ceilings().build(parent, section.center, section.size, section.lane_edges_x, section.wall_x)
 

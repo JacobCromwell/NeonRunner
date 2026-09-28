@@ -95,7 +95,12 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   (`lane_blocked` / `wall_blocked`). The player stays in their lane and can act meanwhile; collision is
   unchanged. The wall's bump (`wall_bump_distance`, `wall_bump_time`) stops short of any hazard or wall
   blocker in its way, so a sign that reaches down to the player stops it at its face, and the model
-  leans away from the wall on the way back.
+  leans away from the wall on the way back. On a ceiling over fewer lanes (a narrow ceiling, GDD §3) a
+  move toward a lane it doesn't cover is blocked the same way (`ceiling_blocked`, the same clank;
+  `Player._bump_ceiling_edge`, a bump that stops short of the ceiling's edge). The player asks the
+  ceilings themselves: a ray on the hull layer over the middle of each lane (`_ceiling_over`), so the
+  track's ceilings and a boss's (`BossProps.ceiling`) hold the player in alike, and a pad lands the
+  player in its own lane even if a switch was under way (`_hold_to_pad_lane`).
 
 ## Enemies
 
@@ -213,7 +218,8 @@ below, the Octodog never winds up and a screech stays in its manhole.
 patterns, a difficulty value and a seed, for any lane count. Passes, each with its own random stream:
 patterns (filtered by the level's features) → enemy rules scripts → credits. Helpers for rules
 scripts: `rng_for(name)`, `add_enemy(type, at, lane, side, params)`, `add_hull_with_pad(lane, at,
-seconds)`, `floor_clear(from, to)`, `enemy_floor_span(entry)`, `enemy_uses_floor(entry)`,
+seconds, lanes)`, `ceiling_lanes(pads, at, one_lane_ok)`, `one_lane_seconds(lanes, seconds)`,
+`floor_clear(from, to)`, `enemy_floor_span(entry)`, `enemy_uses_floor(entry)`,
 `difficulty_at(progress)`, `feature_start(feature)`, `feature_started(feature, at)`,
 `feature_active(feature, at)`, `feature_share_at(feature, share)`, `ramp_launch(ramp)`, and for a level
 paced in bursts `quiet_at(at)`, `stretch_end(at)`, `burst_index(at)`, `quiet_stretches()`,
@@ -255,7 +261,8 @@ ceiling may hold gaps, hazards and enemies: the ceiling is the way to escape the
 required. `CeilingZones` (`scripts/world/ceiling_zones.gd`, `gen.zones`) holds the two stretches every
 ceiling keeps safe, and the checks and clearing for them:
 - **The landing zone**: from a section's end, `hull_landing_seconds` at run speed (21.6 m), no lane
-  holds a gap or a fence and no floor enemy's stretch reaches in, so the player always lands safely.
+  the section covers holds a gap or a fence (a narrow ceiling's rider drops only from its lanes) and no
+  floor enemy's stretch reaches in, in any lane, so the player always lands safely.
 - **Each pad's spot**: its lane holds no gap, fence or ramp from a full jump before the pad (a
   player who cleared the lane's last obstacle lands before it) until the lift has carried them up to
   the hull (`rise`), so the pad is never on or at the edge of a gap, never in a fence, and reachable;
@@ -270,10 +277,40 @@ floor under any ceiling holds what patterns put there, with their usual fairness
 floor runner can always pass the pad by. Rules that add floor enemies keep off both stretches: the
 cyborg rules' `obstacle_spans` include every landing zone, and the Octodog's charges and runs keep
 off pads and landings (`Octodog.pad_or_landing_between`), not off the floor under a ceiling.
-Narrow ceilings (B3) and floor cuts planned in advance (B4, which never cut a landing zone or a
-pad's lane) ask `CeilingZones` too. The tests check every generated ceiling with
-`LayoutChecks.check_ceilings`, including a floor route under it that never takes the pad (`FloorRoute`,
-a conservative model of the floor moves; some routes are replayed on real physics).
+Floor cuts planned in advance (B4, which never cut a landing zone or a pad's lane) ask `CeilingZones`
+too. The tests check every generated ceiling with `LayoutChecks.check_ceilings`, including a floor
+route under it that never takes the pad (`FloorRoute`, a conservative model of the floor moves; some
+routes are replayed on real physics).
+
+**Narrow ceilings** (B3; GDD §3, decided September 26, 2026: ceilings don't have to cover every lane,
+and on one the player switches lanes only within its width). A hull in the layout covers a contiguous
+range of lanes: `{start, end}` covers every lane, and a narrow one adds `first_lane` and `last_lane`
+(`LevelLayout.make_hull`, `hull_lanes`, `hull_width`, `hull_covers`, `hull_at(d, lane)`,
+`under_hull(d, lane)`; the keys are left out for every lane, so a level without narrow ceilings is the
+same data as before). Every ceiling, a pattern's or a rule's, gets its lanes from
+`ceiling_lanes(pads, at, one_lane_ok)`: every lane unless the level's `narrow_ceiling_share`
+(`LevelConfig`, group "Narrow ceilings", from `narrow_ceiling_start`) makes it narrow; then one lane
+(`one_lane_ceiling_share` of them) or two lanes to all but one, anywhere that holds its pads. The draws
+come from a stream of their own (`_ceiling_rng`), so with a share of 0 every level generates byte for
+byte as before, and narrowing ceilings never changes which patterns a level picks. A one-lane ceiling
+lasts `one_lane_ceiling_seconds` at most (`one_lane_seconds`) and comes only from a pattern that puts
+nothing but its ceiling on the track (`plain_ceiling`) or from a rule (PadPlacement), never from a
+gauntlet. What follows the lanes:
+- the landing zone is kept (`_secure_ceilings`, `PadPlacement`) and checked (`CeilingZones.landing_clear`,
+  `clear_landing`, both taking the lanes) only over the ceiling's lanes; floor enemies keep off it in
+  every lane, as before, which is safe for any range;
+- a pad is always under its ceiling, in its range (`add_hull_with_pad` refuses one outside it);
+- the credits: the line on the ceiling runs along the pad's lane and the rich one sits in the ceiling's
+  far lane (none on a one-lane ceiling); floor trails skip only the covered lanes;
+- a pad hurls every drone on screen into the ceiling's lanes (`Drone.hurl_x`: it veers in as it rises);
+- the player can't leave the ceiling sideways (Damage and interactions, blocked moves).
+
+`LayoutChecks.check_ceilings` checks each range (pads over their lane, a one-lane ceiling short, the
+landing zone per lane, the floor route, credits within the lanes), and `test_generator` sweeps widths
+at 3, 5 and 6 lanes. Enemies that use ceilings must respect the range: the Barnacle Turret (C1, GDD
+§9.8) never goes on a one-lane ceiling (`layout.hull_width(h) == 1`: no room to dodge) and at most two
+go on one ceiling, mounted over lanes the ceiling covers (`hull_covers`); anything aimed at a ceiling
+rider can only expect them to move within `hull_lanes(h)`.
 
 **Late starts.** `LevelConfig.feature_starts` (feature → share of the level) holds a feature back
 until its start: patterns that require it aren't picked before, and the first pattern picked from
@@ -403,9 +440,37 @@ that offer their own), never in levels, so no pattern places one. `PickupField`
 ## Zone skins
 
 A `ZoneSkin` (`scripts/world/skins/zone_skin.gd`) decorates abstract pieces through hooks
-(`floor_segment`, `wall_section`, `fence`, `wall_sign`, `hull`, `pad`, `ramp`, `speed_pad`,
-`finish_line`, `make_environment`). Skins add visuals only, never collision or gameplay. Hazards keep
-one colour and shape language in every zone (pink crackle = electric fence).
+(`floor_segment`, `wall_section`, `fence`, `wall_sign`, `ceiling_section` (by default `hull`), `pad`,
+`ramp`, `speed_pad`, `finish_line`, `make_environment`). Skins add visuals only, never collision or
+gameplay. Hazards keep one colour and shape language in every zone (pink crackle = electric fence).
+
+**Ceilings from their lanes** (B3). `TrackBuilder` (and `BossProps.ceiling`) describe each ceiling as a
+`CeilingSection` (`scripts/world/ceiling_section.gd`): its span along the track, the lanes it covers
+(`first_lane`, `last_lane`, `full()`), its collision box (`center`, `size`), the lane seams inside it
+(`lane_edges_x`), the wall faces' distance (`wall_x`) and whether each side reaches the street's edge
+(`reaches_wall(side)`), and hand it to `ceiling_section(parent, section)`. A skin builds the ceiling from
+those, never from the track's width, so a narrow ceiling is simply a narrower one: the City's is a smaller
+craft (`CityShip`, `small`), Gangland's a slab broken off a building, the Marketplace's, Corporate
+zone's and Golden Zone's kinds build narrower (a structure that needs both walls, the Marketplace's
+building bridge, the Corporate tower across the street, the Golden arches, becomes another kind over
+fewer lanes). The default hook calls the older `hull(center, size, lane_edges_x)`, which the grey box
+still uses. Every ceiling's underside covers its footprint and stops at a free side's edge, nothing hangs
+below it, and the orange end band (`MeshKit.ceiling_end`) spans its width.
+
+**Nothing below the underside past a far end.** When the player drops off a ceiling's far end, the chase
+camera follows them down and passes just below the underside there: `RunCamera.ceiling_limit` keeps it
+`camera_ceiling_clearance` (1 m) under any ceiling over it, beside it (a narrow one), just ahead or just
+behind (the review tools' camera copies use it too). Whatever a skin draws below the underside past the
+far end fills the screen for a frame as the camera passes (task B3 found the end band's glow card doing
+it in every zone: an orange wash and a glare), so past a far end glows and faces stay above the
+underside: use `MeshKit.ceiling_end` for the band, `MeshKit.stern_halo` for an engine's halo (cut at the
+underside), and `MeshKit.near_fade(metres)` as a glow card's `param` for any other glow the camera
+passes close to (kit_glow reads a negative UV2.y as "fade out within this many metres of the camera").
+`test_ceilings` builds every skin in `data/skins/` (and the City boss arena's) over full and narrow
+ranges at 3, 5 and 6 lanes and checks all of this, so a new zone's skin (the Dead Zone, D5) is held to it
+as soon as its file exists: build ceilings through `ceiling_section` (or `hull`) from the section, keep
+the band and every glow past the far end above the underside, and check the drop on both renderers
+(`skin_review --narrow`, Review tools).
 
 Skins so far: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2), `MarketplaceSkin`
 (Zone 3, the Marketplace), `CorporateSkin` (Zone 4, Corporate) and `GoldenSkin` (Zone 6, the Golden
@@ -491,9 +556,13 @@ texture as a mark on a dark panel.
 
 **Gangland's ceilings** (`GanglandCeiling`) take their width from the lanes they cover (the collision
 box), never from the track, and draw each side as anchored (running into the building face) or free
-(an edge face), so narrow ceilings (B3) only need to tell the builder which sides reach a wall. Whatever
-the structure above (an overpass or a bombed-out building), the running surface is a flat slab with lamps
-on every lane seam, nothing hangs below it, and its far end carries the orange band
+(an edge face). A ceiling across the street is an overpass or a bombed-out building (`kind_of`, by
+hashing its start); a narrow one (B3) is always a slab broken off a building (`Kind.SLAB`, the owner's
+review P2 18): broken edges with rebar, rubble, column stubs and a piece of wall on it, lodged in the
+building face on a side that reaches the street's edge, or hung from its building's torn steel frame
+running up to both building faces when it reaches neither (`GanglandSkin.ceiling_section` passes which
+sides reach a wall, and the walls' distance). Whatever the structure, the running surface is a flat
+slab with lamps on every lane seam, nothing hangs below it, and its far end carries the orange band
 (`MeshKit.ceiling_end`, as in every zone).
 
 **The Marketplace** (`scripts/world/skins/marketplace/`): `MarketStalls` (the floor), `MarketFacades`
@@ -988,8 +1057,9 @@ the checks every zone skin must pass, and helpers to inspect what a skin builds 
 (`visit_level()`, `rects_of()`, `under_hazard()`). `LayoutChecks` (`tests/helpers/layout_checks.gd`) holds the
 fairness checks for generated layouts (the generator suite runs them over many seeds, the campaign
 suite over every campaign level at 3, 5 and 6 lanes, the enemy suites over their own levels), among
-them `check_ceilings` (GDD §3: pads that can be stepped on, safe landing zones, and a floor route under
-every ceiling without its pad, found by `FloorRoute`, `tests/helpers/floor_route.gd`), and finds a
+them `check_ceilings` (GDD §3: pads that can be stepped on and under their ceiling, safe landing zones
+over each ceiling's lanes, a one-lane ceiling short, and a floor route under every ceiling without its
+pad, found by `FloorRoute`, `tests/helpers/floor_route.gd`), and finds a
 feature's pieces in a layout with the generator's own `LevelGenerator.feature_positions()`; a task
 that adds a new kind of piece extends it (and `FloorRoute`'s cells, if the piece is on the floor), or
 gives its rules script `positions()`. The generator suite also checks the recency curve's pick weights
@@ -1014,7 +1084,11 @@ Resonator in full worlds on real physics (the warning always before the wave, a 
 5 and 6 lanes with its margin measured, walls and the ceiling safe, armor, shield and dash, turns with a
 `TurnDummy`, Reduced flashing), checks its rules over many seeds, and plays the real Golden 1-3 layouts
 at 3, 5 and 6 lanes, watched by `attack_watch.gd`: no wave meets the runner on a gap or a fence, and no
-big attacks overlap. `test_audio` checks
+big attacks overlap. `test_ceilings` covers narrow ceilings (B3) from the layout to the screen: the
+sections and collision boxes the track builds for each range at 3, 5 and 6 lanes, moves on a ceiling
+(within it, and blocked at its edges with the bump and the clank's event, on real physics), a pad
+holding the player to its lane, a one-lane ceiling ridden and dropped from, the camera kept under a
+ceiling and past its end, and every skin's ceilings (see Zone skins). `test_audio` checks
 the music files (seamless loops, lengths, tempos, size budgets), the Music autoload's fades, duck and
 death dip on its players' levels and the bus's low-pass (headless runs never start a player), and the
 run's music hooks through the App. The runner frees
@@ -1038,7 +1112,10 @@ kit (`statue_showcase`: every pose, a turnaround, and a live statue rigged in it
 task C4 would build it), a boss (`floating_head_showcase`), the UI kit, the screens, a zone skin
 (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed screens and emblems a
 skin lists, or a scripted run with a ceiling ride and a wall run, in a level's darker lighting with
-`--darkness=X`), and comparison
+`--darkness=X`; `--narrow` makes three of its ceilings narrow, one lane in the middle, the two leftmost
+lanes and the rightmost lane, with shots riding each, of its far end from below and from beside it, and
+a run that tries moves past their edges; `--from=D` starts the run further on, `--reduced-flashing`
+turns Reduced flashing on), and comparison
 sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
 `CLAUDE.md`.

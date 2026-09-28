@@ -320,9 +320,10 @@ func wall_sign(hazard: Hazard, size: Vector3) -> void:
 	props().wall_sign(hazard, size)
 
 
-## A ceiling over its lanes, reaching to the wall faces where the section says they are (GoldenCeilings: only a ceiling across every lane becomes a
-## bridge or an archway from wall to wall; over fewer lanes, a narrow ceiling (GDD §3), a bridge
-## becomes a suspended gallery, and it builds narrower).
+## A ceiling over its lanes, reaching to the wall faces where the section says they are
+## (GoldenCeilings: only a ceiling across every lane becomes a bridge or an archway from wall to wall;
+## over fewer lanes, a narrow ceiling (GDD §3), a bridge becomes a suspended gallery, and it builds
+## narrower).
 func ceiling_section(parent: Node3D, section: CeilingSection) -> void:
 	ceilings().build(parent, section.center, section.size, section.lane_edges_x, section.wall_x)
 
