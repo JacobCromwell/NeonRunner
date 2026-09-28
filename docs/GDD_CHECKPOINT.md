@@ -608,7 +608,7 @@ Shared interaction rules apply unless stated otherwise:
   
   The gameplay camera sits behind the player, so the **back view matters most**: the coat's copper conduits and the gold arm must read from behind. The silhouette must still read clearly differently from the enemy cyborgs' screen heads. Customization is still open.
 - **Player scale** (owner feedback after the R1 grey box, September 26, 2026): the player looked too big next to the lanes, walls and ceiling. The player (with its hitbox, jump height and fence heights) is about 75% of the grey-box size; the lanes, walls and ceiling keep their size.
-- **Music** (decided September 26, 2026): code-generated placeholder loops in the same crunchy 16-bit / heavy-metal style as the sound effects, one per zone plus the menus. Any track can later be replaced file by file with commissioned or licensed music. **The music dips when the player dies**, and the level-complete riff plays in each zone's key.
+- **Music** (decided September 26, 2026): code-generated placeholder loops in the same crunchy 16-bit / heavy-metal style as the sound effects, one per zone plus the menus. Any track can later be replaced file by file with commissioned or licensed music. **The music dips when the player dies**, and the level-complete riff plays in each zone's key. **No more generated songs** (decided September 28, 2026): the owner will provide the game's songs later; until then the game keeps the generated tracks it already has, and no new music is generated (a place that needs a song it doesn't have reuses an existing track or plays none).
 - **Readability rules:**
   - Hazards keep a consistent color and shape language across zones.
   - Safe things look safe; deadly parts look deadly.

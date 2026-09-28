@@ -407,9 +407,10 @@ A `ZoneSkin` (`scripts/world/skins/zone_skin.gd`) decorates abstract pieces thro
 `finish_line`, `make_environment`). Skins add visuals only, never collision or gameplay. Hazards keep
 one colour and shape language in every zone (pink crackle = electric fence).
 
-Skins so far: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2), `MarketplaceSkin`
-(Zone 3, the Marketplace), `CorporateSkin` (Zone 4, Corporate) and `GoldenSkin` (Zone 6, the Golden
-Zone). `GreyboxSkin` is the fallback for zones without their own look yet (the Dead Zone for now). A
+Skins: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2), `MarketplaceSkin`
+(Zone 3, the Marketplace), `CorporateSkin` (Zone 4, Corporate), `DeadZoneSkin` (Zone 5, the Dead Zone)
+and `GoldenSkin` (Zone 6, the Golden Zone). `GreyboxSkin` is the fallback for a zone without its own
+look (every zone has one now). A
 zone's skin lives at `data/skins/<zone id>_skin.tres` (`--skin=<zone id>` in quick play) and is set in its
 `data/zones/<zone id>.tres`; a level's own `skin` wins over its zone's (the Golden Palace, Golden 3,
 may get its own). The real skins build on the mesh kit (`scripts/world/meshes/`): `MeshKit` has
@@ -432,8 +433,8 @@ value, the one thing a new zone's skin sets for its enemies:
 The City and Gangland keep their older names because they also pick the other enemies' weathering
 (`CyborgSuit.VARIANT_LOOKS` maps them); every other zone sets its cyborg look's own name. A zone that
 also wants the weathered enemies (the Dead Zone might) needs those enemies to treat its name like
-`&"scavenger"` (a line in each one's look code). The zones still on the grey box wear the base until
-their skins exist; `--variant=` in the enemy showcase shows any look now.
+`&"scavenger"` (a line in each one's look code). A zone on the grey box wears the base; `--variant=` in
+the enemy showcase shows any look now.
 
 **A level's darker lighting** (`LevelConfig.darkness`, 0–1; GDD §5, The Hush) reaches every skin for
 free: the run takes its environment from `ZoneSkin.level_environment(darkness)`, whose
@@ -441,7 +442,7 @@ free: the run takes its environment from `ZoneSkin.level_environment(darkness)`,
 shader uniform `scenery_light` (project.godot; 1 = the zone's own light, never below
 `MIN_SCENERY_LIGHT`, 0.3) dims what the scenery's shaders draw: `kit_solid`'s lit surfaces (never its
 glowing ones), `facade`, `shopfront`, `road`, `drift`, the Corporate skin's `corp_facade`, the Golden
-Zone's `golden_facade`, and the grey box's floor, walls and ceilings (`GreyboxMaterials.scenery()`). Glows, the ambient light and the
+Zone's `golden_facade`, the Dead Zone's `dead_smoke`, and the grey box's floor, walls and ceilings (`GreyboxMaterials.scenery()`). Glows, the ambient light and the
 sun stay, so hazards, triggers, credits, enemies and the runner (lit or glowing by their own
 materials) read as well as anywhere. The
 factor is given for linear space; `light_factor()` in `kit_common.gdshaderinc` (and
@@ -456,8 +457,9 @@ panels, glass, glyphs and chevrons for the City; worn asphalt (with sand drifts 
 road strata, salvaged plating, posters (with corporate ads), cast concrete and stencilled crates and
 container doors for Gangland; canvas, tin and whole rows of stall roofs, stall faces, tiles, shop
 signs, ads, casino bulbs and stucco for the Marketplace; train roofs, the shade below them, paving,
-armour plate, corporate ads, the brand's mark on panels, banners and lit glass for Corporate;
-reflective gold, golden walkways, marble, the shade under the walkways, the canal, falling water, the
+armour plate, corporate ads, the brand's mark on panels, banners and lit glass for Corporate; the
+rubble street, the shade below it, gutted towers, charred concrete, scorched steel, dead boards and the
+scorched emblem for the Dead Zone; reflective gold, golden walkways, marble, the shade under the walkways, the canal, falling water, the
 cult's emblem in relief, gilded coffers, red cloth and boutique boards for the Golden Zone. Features
 a zone opts into are uniforms that default to off, so one zone's additions never change another's
 look. Painted marks shared between shaders live in includes: `kit_marks.gdshaderinc` (graffiti pieces
@@ -472,7 +474,8 @@ already converted to linear on Forward+ and Mobile, but unconverted on the Compa
 shader that converts it once more (`to_linear()`, as the kit's do for vertex colours) draws it darker and
 more saturated on Forward+ than on the web. The Golden Zone passes its uniform colours as sRGB `Vector3`s
 (`GoldenSkin.srgb()`), which arrive unconverted on both renderers and are converted once, like a vertex
-colour. Likewise a light factor multiplied in after `to_linear()` scales sRGB values on the
+colour; the Dead Zone does the same (`DeadZoneSkin.srgb()`, its `dz_*` uniforms and its sky). Likewise
+a light factor multiplied in after `to_linear()` scales sRGB values on the
 Compatibility renderer; `golden_facade.gdshader` passes every one of its light factors through
 `light_factor()` (kit_common), which raises it to the 1/2.2 power there, so its walls are as bright on
 both renderers. (The older skins' uniform colours, and the kit's own `shade` factor, still differ a little
@@ -480,9 +483,10 @@ between the renderers.)
 
 **Pattern ids.** Ids up to 19 are the City's and Gangland's, in `kit_solid.gdshader` itself; ids 20-29
 are the Marketplace's (all in use), in `kit_market.gdshaderinc`, and ids 30-39 the Corporate zone's
-(30-37 in use), in `kit_corporate.gdshaderinc`, and ids 50-59 the Golden Zone's (all in use), in
+(30-37 in use), in `kit_corporate.gdshaderinc`, ids 40-49 the Dead Zone's (40-46 in use), in
+`kit_dead_zone.gdshaderinc`, and ids 50-59 the Golden Zone's (all in use), in
 `kit_golden.gdshaderinc` (each: one include and one dispatch line in `kit_solid`; the Golden Zone's
-include follows `cult_mark()`, which its emblems use).
+and the Dead Zone's includes follow `cult_mark()`, which their emblems use).
 A new zone takes the next free block of ten in its own include, so zones built in parallel never
 collide on an id. Ids 60-69 are the cult's, shared by every zone, in
 `kit_cult.gdshaderinc` (its include follows `cult_mark()` in `kit_solid`, and its dispatch runs after
@@ -563,6 +567,43 @@ template) and `CorporateProps` (fences and signs); its building faces use their 
 - *The military presence* is data: `compound_share`, `hover_ship_share`, `ship_weight` and
   `military_car_share`; the plaza variant raises them for Corporate 2's heavier presence.
 
+**The Dead Zone** (`scripts/world/skins/dead_zone/`): `DeadStreet` (the floor: a rubble street, and the
+void below it), `DeadTowers` (the walls: the Neon City's towers burnt out, and the broken skybridges and
+smoke over the street), `DeadCeilings` and `DeadProps` (fences and signs). Everything is drawn with the
+kit's solid shader (`kit_dead_zone.gdshaderinc`), the drift shader and one shader of its own,
+`dead_smoke.gdshader` (columns of smoke: one billboarded column per six vertices, lit by
+`scenery_light`). Dark black, dark grey and ash grey at night (GDD §5); the ash-grey street is its
+lightest surface.
+- *Gaps read as holes.* The street (`PAT_DZ_STREET`, laid out from world position) is broken plates under
+  pale ash with rubble drawn flat, never built, so nothing on the running surface stands up like an
+  obstacle, and nothing round lies on it (a manhole is a screech's lair). Everything below it (the cut,
+  the sides along lane edges, the void floor `void_depth` down) is `PAT_DZ_UNDER` in `gap_inside_color`,
+  which only darkens with depth; a gap's edge is the lip, strip and far halo of every zone. The suite
+  pins it over whole levels at 3 and 5 lanes (the hole far darker than the street's darkest shade).
+- *The calm band.* `PAT_DZ_TOWER` draws the City's four window styles gutted (burnt rooms, shards,
+  torn holes, soot) above `band_top` (7.2 m) and, below it, flush ash-dusted cladding with soot tongues
+  climbing from the street: nothing opens, glows, sticks out or looks like a window (a window cyborg's)
+  or a vent there; the 2 m and 4 m wall-run marks are unlit paint. Decoration (dead neon banners, dead
+  roof boards, screens) starts at `decor_min_height` (8 m); what hangs over the street (screens, broken
+  skybridges) stays above `DeadTowers.OVER_STREET_MIN` (14 m), and nothing of a ceiling rises more than
+  `DeadCeilings.TOP_LIMIT` above its underside.
+- *Fires kept minimal* (GDD §5). The only glows besides hazards, triggers, ceiling ends and the feed are
+  embers: a few windows of some towers, `ember_min_height` (16 m) up or more, a dull orange below the
+  bloom threshold and under a third of a gap edge's glow (the faces' vertex alpha, breathing slowly,
+  steady with Reduced flashing); smoke columns rise only from ruins 20 m tall or more
+  (`DeadTowers.PLUME_MIN_TOP`). The suite checks both over whole levels.
+- *Motion on a still street.* Ash flakes, faint puffs of smoke and speed streaks drift toward the runner
+  (`MeshKit.drift_particles(..., smoke)`: the drift shader's fourth kind, `DRIFT_SMOKE`, a big soft puff
+  that fades three times as far from the camera as the others; a skin passing no smoke count is
+  unchanged).
+- *Ceilings from their lanes (task B3).* `DeadCeilings` builds a charred bridge or a dead building
+  across every lane (weights `bridge_weight`, `building_weight`), and over fewer lanes a slab broken off
+  the tower it reaches (one wall) or a collapsed span hanging from its gantry (neither wall), from the
+  collision box and lane seams; `reaches_wall()` decides which sides run into a building face, from the
+  wall face the skin saw last (`wall_section` runs before a chunk's ceilings). Every underside is flat
+  charred concrete with a steel strip and a pale line on each lane seam, and the orange far-end band.
+  `mesh_for(kind, ...)` builds a given kind directly.
+
 **The Golden Zone** (`scripts/world/skins/golden/`): `GoldenWalkways` (the floor: golden walkways over
 the canal), `GoldenFacades` (the walls, and the sky bridges over the street), `GoldenCeilings`,
 `GoldenProps` (fences and signs) and `GoldenStatue` (the statue kit); its building faces use their own
@@ -632,6 +673,11 @@ towers' neon banners (the glyphs leave its square clear, so nothing overlaps); `
 lists them. The Corporate zone (D4) draws it the same way: a warm-white badge in a lower corner of some
 ads on the street screens and roof boards (never more than `CorporateTowers.SCREEN_EMBLEM_MAX` of a
 screen's height), unlit bronze at the foot of some banners; `CorporateSkin.cult_emblems()` lists them.
+The Dead Zone (D5) keeps it scorched and half-gone (`MeshKit.PAT_DZ_MARK`, kit_dead_zone: the chosen
+emblem from the solid material's `cult_emblem` texture, in its unlit metal, with a ragged burn front
+eating part of it away and soot over the rest, never glowing) in a corner of some dead roof boards and
+at the foot of some dead neon banners, at least `emblem_min_size` across; `DeadZoneSkin.cult_emblems()`
+lists them.
 The Golden Zone (D6a) shows it openly, large, in polished gold meeting at its red stone
 (`MeshKit.PAT_EMBLEM`, kit_golden: the material's `cult_emblem` texture is the choice drawn in
 `CultEmblem.GOLD_COLOR` and `GOLD_ACCENT_COLOR`, `GoldenSkin.cult_emblem_texture()`, embossed and lit as
@@ -673,7 +719,10 @@ of some overpasses' sign gantries, and on a TV glowing in an upper window of som
 boarded-up band (`GanglandSkin.feed_windows()` lists those; `GanglandRuins.WINDOW_RECTS` mirrors the
 facade shader's window rectangles so the TV's room covers a window exactly). The Corporate zone (D4)
 plays it on some low buildings' roof boards and on some of the big screens flush towers hang out over
-the street, 14 m up or more; `CorporateSkin.feed_boards()` lists both. The Golden Zone (D6a) plays it in
+the street, 14 m up or more; `CorporateSkin.feed_boards()` lists both. The Dead Zone (D5) plays it,
+sparse and dim, on the few surviving screens: some low buildings' roof boards and a big screen hung out
+over the street from a few flush towers, `feed_screen_bottom` (15 m) up or more;
+`DeadZoneSkin.feed_boards()` lists both. The Golden Zone (D6a) plays it in
 some galleries' gilded frames and on big screens hung out over the street from some towers, sized to the
 street (`feed_hung_reach`), 10 m up or more; `feed_hung_share` at 0 clears the hung ones for a boss
 arena, and `GoldenSkin.feed_boards()` lists both. None of them puts a screen in
@@ -762,7 +811,9 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
   track and one per zone, named after the zone's id (`ZoneDef.music`). Both are generated by code in
   `tools/asset_gen/` (`tools/godot.sh sfx` / `music`): a track is composed in `track_<name>.gd` with
   `music_song.gd` (stems on a 16th grid that wrap around the loop, and loop-safe effects) and
-  `music_instruments.gd`, and a new one is listed in `music_gen.gd` and the library. Tracks are
+  `music_instruments.gd`, and a new one is listed in `music_gen.gd` and the library. **No new tracks are
+  generated** (owner, September 28, 2026): the owner will provide the songs, which replace the generated
+  files one by one (same names, re-levelled in the library); until then new places reuse an existing track. Tracks are
   levelled so their K-weighted loudness (400 ms windows: the median, and the energy mean) sits at
   about -26.8 dB, some 10 dB under the attack warnings.
   - **Dips:** `set_ducked()` lowers the music under the pause menu, and `set_dipped()` is the death dip
@@ -988,7 +1039,13 @@ one. `RunSim` (`tests/helpers/run_sim.gd`) runs a Player over a hand-built layou
 full RunWorld (`build_world()` + `step_world()`); with `trace` on it records the player after every
 physics frame (position, height, speed, surface, lane, lean). `SkinSuite` (`tests/helpers/skin_suite.gd`) holds
 the checks every zone skin must pass, and helpers to inspect what a skin builds over a whole level
-(`visit_level()`, `rects_of()`, `under_hazard()`). `LayoutChecks` (`tests/helpers/layout_checks.gd`) holds the
+(`visit_level()`, `rects_of()`, `under_hazard()`). Its chunk build-time budgets (`whole_level()`,
+`BUILD_BUDGET_MEAN_MS`/`BUILD_BUDGET_MAX_MS`) time the dressed build over `build_all()`'s
+`timing_passes` (`BUILD_TIMING_PASSES`, 3) fresh builds and keep, per build step, the fastest seen:
+OS preemption on a loaded machine only ever adds wall-clock time to one pass, never removes it, so
+the minimum stays a faithful reading of the skin's real cost. `test_skin_budget` (with the test-only
+`SlowTestSkin`, `tests/helpers/slow_test_skin.gd`, which busy-waits a few real milliseconds per lane)
+checks that check still fails a skin that really is expensive. `LayoutChecks` (`tests/helpers/layout_checks.gd`) holds the
 fairness checks for generated layouts (the generator suite runs them over many seeds, the campaign
 suite over every campaign level at 3, 5 and 6 lanes, the enemy suites over their own levels), among
 them `check_ceilings` (GDD §3: pads that can be stepped on, safe landing zones, and a floor route under
