@@ -31,6 +31,18 @@ extends RefCounted
 ## unchanged, so the guarantee never bends a fairness rule. Rules that hold the room for their
 ## feature themselves may add one where it fits when none is left (the host and Octodog rules),
 ## which saves a build.
+##
+## Beyond that guarantee, a campaign level's newest things get the most picks (GDD §5, owner's review
+## P2 13): with the campaign's recency curve (LevelConfig.feature_recency and feature_ages), each
+## pattern's pick weight follows how recently the campaign introduced its newest feature, the curve
+## only moves picks between the level's features of the same kind (FeatureRecency.keep_feature_share,
+## keep_share_by_kind), and never boosts a feature whose rules would drop its extra enemies
+## (FeatureRecency.max_factor): no level gets easier.
+##
+## A level may alternate long quiet stretches with short, dense bursts (LevelConfig.quiet_seconds;
+## GDD §5, The Hush): quiet stretches pick sparse patterns without enemies (bar quiet_features), bursts
+## pick threats, densely. Every rule, fairness check and the guarantee apply to it unchanged, and a
+## burst takes at most one introduction, so it never stacks two new things.
 
 const DENOMINATIONS: Array[int] = [1, 5, 25, 100]
 const RULES_DIR: String = "res://scripts/enemies"
@@ -62,15 +74,21 @@ var attempts: int = 0
 ## The floor every ceiling keeps safe (GDD §3): its landing zone and its pads' spots, for this level's
 ## pacing and run speed. Rules that add ceilings or floor enemies keep to it.
 var zones: CeilingZones
+## The patterns the pattern pass of the last build placed, in order: {id, requires, at, used, due}
+## (`used`: the track it took; `due`: an introduction or one of the guarantee's forced picks). For
+## tests and the level report.
+var picks: Array[Dictionary] = []
 
 var _rng := RandomNumberGenerator.new()
 ## Clear stretches between patterns [start, end], filled with credit trails later.
 var _clear_stretches: Array[Vector2] = []
 var _enemy_count: int = 0
-## Picks that must use a feature once the cursor reaches their spot, earliest first: {feature, at}.
-## A feature's introduction at its start (LevelConfig.feature_starts), and the guarantee's forced
-## picks (_pick_due).
+## Picks that must use a feature once the cursor reaches their spot, earliest first: {feature, at,
+## intro}. A feature's introduction at its start (LevelConfig.feature_starts; `intro`), and the
+## guarantee's forced picks (_pick_due).
 var _due: Array[Dictionary] = []
+## In a level paced in bursts, the burst (burst_index) that has had its introduction; -1 for none.
+var _intro_burst: int = -1
 
 
 static func load_patterns(path: String) -> Array:
@@ -141,6 +159,8 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	_clear_stretches.clear()
 	_enemy_count = 0
 	warnings.clear()
+	picks.clear()
+	_intro_burst = -1
 	var accel: float = tuning.speed_gain_per_minute / 60.0
 	layout.length = speed * config.duration_seconds + 0.5 * accel * config.duration_seconds * config.duration_seconds
 	_due = _due_picks(forced)
@@ -151,6 +171,7 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 		var progress: float = cursor / layout.length
 		var difficulty: float = difficulty_at(progress)
 		var pattern: Dictionary = _pick_due(patterns, difficulty, cursor)
+		var due: bool = not pattern.is_empty()
 		if pattern.is_empty():
 			pattern = _pick_pattern(patterns, difficulty, cursor)
 		if pattern.is_empty():
@@ -163,9 +184,15 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 		if layout.hulls.size() > int(pattern_start_counts["hulls"]):
 			_secure_ceilings(pattern, pattern_start_counts)
 		_settle_due(pattern, cursor)
-		var spacing_seconds: float = lerpf(config.spacing_seconds_easy, config.spacing_seconds_hard, difficulty)
-		var clear_end: float = cursor + used + spacing_seconds * speed
-		_clear_stretches.append(Vector2(cursor + used, minf(clear_end, layout.length - config.end_clear_distance)))
+		picks.append({"id": String(pattern.get("id", "?")), "requires": pattern.get("requires", []), "at": cursor,
+			"used": used, "due": due})
+		var end: float = cursor + used
+		var clear_end: float = end + _spacing_seconds(end, difficulty) * speed
+		if config.paced_in_bursts() and quiet_at(end):
+			# A quiet stretch's long spacing never carries the cursor far past the next burst's start: the
+			# burst begins on time, after the burst spacing at least.
+			clear_end = maxf(minf(clear_end, stretch_end(end)), end + config.burst_spacing_seconds * speed)
+		_clear_stretches.append(Vector2(end, minf(clear_end, layout.length - config.end_clear_distance)))
 		cursor = clear_end
 
 	_apply_enemy_rules()
@@ -177,6 +204,155 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 ## The difficulty at a point of the level (0–1 progress): the level's base plus its ramp.
 func difficulty_at(progress: float) -> float:
 	return clampf(config.difficulty + config.difficulty_ramp * progress, 0.0, 1.0)
+
+
+# --- Quiet stretches and bursts (LevelConfig.quiet_seconds; GDD §5, The Hush) --------------------
+
+## True if track distance `at` lies in one of the level's quiet stretches: from the level's first
+## pattern (start_clear_distance) on, quiet_seconds at run speed, then burst_seconds of burst, and
+## again. The run-up counts as quiet. Always false in a level paced evenly.
+func quiet_at(at: float) -> bool:
+	if not config.paced_in_bursts():
+		return false
+	if at < config.start_clear_distance:
+		return true
+	return fposmod(at - config.start_clear_distance, _pacing_cycle()) < config.quiet_seconds * speed
+
+
+## The track distance where the quiet stretch or the burst holding `at` ends (INF in a level paced
+## evenly).
+func stretch_end(at: float) -> float:
+	if not config.paced_in_bursts():
+		return INF
+	var from: float = config.start_clear_distance
+	var cycle: float = _pacing_cycle()
+	var start: float = from + floorf(maxf(at - from, 0.0) / cycle) * cycle
+	var quiet_end: float = start + config.quiet_seconds * speed
+	return quiet_end if at < quiet_end else start + cycle
+
+
+## Which burst track distance `at` is in (0 = the level's first); -1 in a quiet stretch or a level
+## paced evenly.
+func burst_index(at: float) -> int:
+	if not config.paced_in_bursts() or quiet_at(at):
+		return -1
+	return floori((at - config.start_clear_distance) / _pacing_cycle())
+
+
+## The level's quiet stretches [start, end] up to its end-clear stretch, in order (none in a level
+## paced evenly). Bursts are what lies between them.
+func quiet_stretches() -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	if not config.paced_in_bursts():
+		return out
+	var last: float = layout.length - config.end_clear_distance
+	var at: float = config.start_clear_distance
+	while at < last:
+		out.append(Vector2(at, minf(at + config.quiet_seconds * speed, last)))
+		at += _pacing_cycle()
+	return out
+
+
+func _pacing_cycle() -> float:
+	return maxf((config.quiet_seconds + config.burst_seconds) * speed, 1.0)
+
+
+## Seconds of clear track after a pattern that ends at `at`: the level's spacing for its difficulty,
+## or in a level paced in bursts the quiet or the burst spacing there.
+func _spacing_seconds(at: float, difficulty: float) -> float:
+	if config.paced_in_bursts():
+		return config.quiet_spacing_seconds if quiet_at(at) else config.burst_spacing_seconds
+	return lerpf(config.spacing_seconds_easy, config.spacing_seconds_hard, difficulty)
+
+
+## Track distances [from, to] within `lo`–`hi` that lie in bursts, in order: where a rule that
+## guarantees an enemy at a spot of its choosing puts it in a level paced in bursts (the threats come
+## in the bursts; GDD §5, The Hush). Empty in a level paced evenly.
+func burst_spans(lo: float, hi: float) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	if not config.paced_in_bursts():
+		return out
+	var from: float = config.start_clear_distance + config.quiet_seconds * speed
+	while from <= hi:
+		var span := Vector2(maxf(from, lo), minf(from + config.burst_seconds * speed, hi))
+		if span.y >= span.x:
+			out.append(span)
+		from += _pacing_cycle()
+	return out
+
+
+## True if a rule that guarantees one of `feature`'s enemies should put it in a burst: in a level
+## paced in bursts, for every feature but its quiet_features.
+func prefers_bursts(feature: String) -> bool:
+	return config.paced_in_bursts() and not config.quiet_features.has(feature)
+
+
+## For a rule guaranteeing one of `feature`'s enemies at one of `spots`: the spots to try first and
+## the rest, in that order. In a level paced in bursts, those in a burst come first (prefers_bursts),
+## or for one of its quiet_features those in a quiet stretch; in a level paced evenly, just `spots`.
+func pacing_pools(spots: Array[float], feature: String) -> Array[Array]:
+	if not config.paced_in_bursts():
+		return [spots]
+	var first: Array[float] = []
+	var rest: Array[float] = []
+	var quiet_feature: bool = config.quiet_features.has(feature)
+	for s: float in spots:
+		if quiet_at(s) == quiet_feature:
+			first.append(s)
+		else:
+			rest.append(s)
+	return [first, rest]
+
+
+## For a rule guaranteeing one of `feature`'s enemies (prefers_bursts): a spot drawn with `rng` from
+## the bursts within `lo`–`hi` (each metre of burst equally likely). NAN, drawing nothing, when the
+## feature needn't be in a burst or no burst lies there: the rule then picks its spot as usual.
+func burst_spot(rng: RandomNumberGenerator, lo: float, hi: float, feature: String) -> float:
+	if not prefers_bursts(feature):
+		return NAN
+	var spans: Array[Vector2] = burst_spans(lo, hi)
+	var total: float = 0.0
+	for s: Vector2 in spans:
+		total += s.y - s.x
+	if spans.is_empty():
+		return NAN
+	var r: float = rng.randf() * total
+	for s: Vector2 in spans:
+		if r <= s.y - s.x:
+			return s.x + r
+		r -= s.y - s.x
+	return spans[-1].y
+
+
+## True if `pattern` may be picked at `at` in a level paced in bursts (GDD §5, The Hush: long silent
+## stretches broken by sudden threats):
+## - a pattern that places enemies and requires only quiet_features belongs to the quiet stretches:
+##   it must start in one and place its enemies before it ends (The Hush's hosts stand alone in the
+##   silence); any other that places enemies must start in a burst and place its enemies before that
+##   burst ends, so a burst's threats appear in the burst (an Octodog's charges or a hover truck's
+##   stay may still run on after it);
+## - a burst takes only threats: patterns with a hole, a fence, a sign or an enemy. Safe mechanics
+##   alone (a plain ceiling, a ramp, a speed pad) go in the quiet stretches, with sparse obstacles.
+func _pacing_allows(pattern: Dictionary, at: float) -> bool:
+	var last_enemy: float = -1.0
+	var threat: bool = false
+	for element: Dictionary in pattern.get("elements", []):
+		var kind: String = String(element.get("kind", ""))
+		if kind == "enemy":
+			last_enemy = maxf(last_enemy, float(element.get("at", 0.0)) + float(element.get("at_seconds", 0.0)) * speed)
+		threat = threat or kind in ["gap", "fence", "sign", "enemy"]
+	var quiet: bool = quiet_at(at)
+	if not quiet and not threat:
+		return false
+	if last_enemy < 0.0:
+		return true
+	var requires: Array = pattern.get("requires", [])
+	var quiet_ok: bool = not requires.is_empty()
+	for need: Variant in requires:
+		if not config.quiet_features.has(String(need)):
+			quiet_ok = false
+			break
+	return quiet == quiet_ok and at + last_enemy < stretch_end(at)
 
 
 ## Track distance from which `feature` may place anything: its share of the level from
@@ -297,14 +473,54 @@ func ramp_launch(r: Dictionary) -> RampLaunch:
 	return RampLaunch.of(r, tuning, speed)
 
 
-## A weighted random pick among the patterns that fit at track distance `at`: in their difficulty
-## range and lane count, and with every required feature active there (feature_active). With
-## `only`, just the patterns that require that feature. Returns {} (without drawing a random
-## number) when none fits.
+## A weighted random pick among the patterns that fit at track distance `at` (pick_weights). Returns
+## {} (without drawing a random number) when none fits.
 func _pick_pattern(patterns: Array, difficulty: float, at: float, only: String = "") -> Dictionary:
+	var pool: Dictionary = pick_weights(patterns, difficulty, at, only)
+	var candidates: Array = pool["patterns"]
+	var weights: Array[float] = pool["weights"]
+	if candidates.is_empty():
+		return {}
+	var total: float = 0.0
+	for w: float in weights:
+		total += w
+	var roll: float = _rng.randf() * total
+	for i: int in candidates.size():
+		roll -= weights[i]
+		if roll <= 0.0:
+			return candidates[i]
+	return candidates[-1]
+
+
+## The patterns that fit at track distance `at`, in their order in `patterns`, and their pick weights:
+## {"patterns": Array, "weights": Array[float]}. A pattern fits in its difficulty range and lane
+## count, with every required feature active there (feature_active); with `only`, just the patterns
+## that require that feature.
+## A pattern's weight is its own times the level's feature_weights for what it requires, and with
+## the campaign's recency curve (LevelConfig.recency_on) times its newest feature's factor (no more
+## than a capped feature's cap, FeatureRecency.max_factor); with keep_feature_share the features'
+## patterns, capped ones apart, are then scaled back so that together they weigh what they weighed
+## without the curve. With keep_share_by_kind that holds kind by kind (pattern_kind), and patterns
+## with enemies weigh by the enemies they place (enemy_count): the curve only moves picks between
+## features of the same kind, and the level places as many enemies, obstacles and safe mechanics as
+## before. In a level paced in bursts, only the patterns _pacing_allows are taken (threats in bursts,
+## enemies only there bar quiet_features), and a burst that has had its introduction leaves out the
+## features still waiting for theirs (_intro_held).
+func pick_weights(patterns: Array, difficulty: float, at: float, only: String = "") -> Dictionary:
 	var candidates: Array = []
 	var weights: Array[float] = []
-	var total: float = 0.0
+	var recency: bool = config.recency_on()
+	var by_kind: bool = recency and config.feature_recency.keep_share_by_kind
+	var paced: bool = config.paced_in_bursts()
+	var held: PackedStringArray = _intros_waiting(at) if _intro_held(at) else PackedStringArray()
+	# Per kind of pattern (all in one without by_kind), what the features' patterns weigh without the
+	# recency curve, and with it: the capped ones, and the rest (keep_feature_share). Patterns with
+	# enemies count their enemies too (by_kind), so the curve keeps how many a level places.
+	var plain: Array[float] = [0.0, 0.0, 0.0]
+	var capped: Array[float] = [0.0, 0.0, 0.0]
+	var curved: Array[float] = [0.0, 0.0, 0.0]
+	# Each candidate's kind if keep_feature_share scales it back, else -1.
+	var scaled_kind: Array[int] = []
 	for p: Dictionary in patterns:
 		if difficulty < float(p.get("min_difficulty", 0.0)) or difficulty > float(p.get("max_difficulty", 1.0)):
 			continue
@@ -313,26 +529,92 @@ func _pick_pattern(patterns: Array, difficulty: float, at: float, only: String =
 		var requires: Array = p.get("requires", [])
 		if only != "" and not requires.has(only):
 			continue
+		if paced and not _pacing_allows(p, at):
+			continue
 		var weight: float = float(p.get("weight", 1.0))
 		var ok: bool = true
 		for need: Variant in requires:
-			if not feature_active(String(need), at):
+			if not feature_active(String(need), at) or held.has(String(need)):
 				ok = false
 				break
 			weight *= config.feature_weight(String(need))
 		if not ok or weight <= 0.0:
 			continue
+		var kind: int = -1
+		if recency and not requires.is_empty():
+			kind = pattern_kind(p) if by_kind else 0
+			var measure: float = float(enemy_count(p, config.lane_count)) if by_kind and kind == 0 else 1.0
+			plain[kind] += weight * measure
+			weight *= config.recency_factor(requires)
+			if config.recency_capped(requires):
+				capped[kind] += weight * measure
+				kind = -1
+			else:
+				curved[kind] += weight * measure
 		candidates.append(p)
 		weights.append(weight)
-		total += weight
-	if candidates.is_empty():
-		return {}
-	var roll: float = _rng.randf() * total
-	for i: int in candidates.size():
-		roll -= weights[i]
-		if roll <= 0.0:
-			return candidates[i]
-	return candidates[-1]
+		scaled_kind.append(kind)
+	if recency and config.feature_recency.keep_feature_share:
+		var scale: Array[float] = [1.0, 1.0, 1.0]
+		for k: int in 3:
+			if curved[k] > 0.0:
+				scale[k] = maxf(plain[k] - capped[k], 0.0) / curved[k]
+		for i: int in candidates.size():
+			if scaled_kind[i] >= 0:
+				weights[i] *= scale[scaled_kind[i]]
+	return {"patterns": candidates, "weights": weights}
+
+
+## A pattern's kind, for the recency curve's shares (FeatureRecency.keep_share_by_kind): 0 if it
+## places enemies, 1 if it places obstacles only (holes, fences, signs), 2 if neither (a plain
+## ceiling, a ramp, a speed pad: safe mechanics).
+static func pattern_kind(pattern: Dictionary) -> int:
+	var kind: int = 2
+	for element: Dictionary in pattern.get("elements", []):
+		var element_kind: String = String(element.get("kind", ""))
+		if element_kind == "enemy":
+			return 0
+		if element_kind in ["gap", "fence", "sign"]:
+			kind = 1
+	return kind
+
+
+## How many enemies `pattern` places at `lanes` lanes: one for each wall enemy, and one for each lane
+## a floor enemy's selector picks (as _pick_lanes counts them, before any rule drops one).
+static func enemy_count(pattern: Dictionary, lanes: int) -> int:
+	var count: int = 0
+	var prev: int = 0
+	for element: Dictionary in pattern.get("elements", []):
+		var element_kind: String = String(element.get("kind", ""))
+		if element_kind == "enemy" and element.has("side"):
+			count += 1
+		elif element_kind in ["gap", "fence", "hull", "speed_pad", "enemy"]:
+			var fallback: Dictionary = {} if element_kind in ["gap", "fence"] else {"mode": "random", "count": 1}
+			var picked: int = _selector_count(element.get("lanes", fallback), lanes, prev)
+			if element_kind == "enemy":
+				count += picked
+			prev = picked
+	return count
+
+
+## How many lanes a lane selector picks at `lanes` lanes, `prev` being how many the element before
+## picked (_pick_lanes).
+static func _selector_count(selector: Dictionary, lanes: int, prev: int) -> int:
+	var n: int = int(selector.get("count", 1))
+	if selector.has("frac"):
+		n = maxi(1, roundi(float(selector["frac"]) * lanes))
+	match String(selector.get("mode", "random")):
+		"all":
+			return lanes
+		"same":
+			return prev
+		"others":
+			return lanes - prev
+		"edge", "center":
+			return 1
+		"all_but":
+			return lanes - clampi(n, 1, lanes - 1)
+	return clampi(n, 1, lanes)
 
 
 ## The picks this build must give a feature, earliest first: each feature's introduction at its
@@ -344,14 +626,14 @@ func _due_picks(forced: Dictionary) -> Array[Dictionary]:
 	for key: Variant in config.feature_starts:
 		var feature: String = String(key)
 		if config.has_feature(feature):
-			out.append({"feature": feature, "at": feature_start(feature)})
+			out.append({"feature": feature, "at": feature_start(feature), "intro": true})
 	var n: int = GUARANTEE_SHARES.size()
 	for key: Variant in forced:
 		var feature: String = String(key)
 		var misses: int = int(forced[key])
 		for k: int in mini(misses, GUARANTEE_MAX_PICKS):
 			var share: float = GUARANTEE_SHARES[(misses - 1 + k * 5) % n]
-			out.append({"feature": feature, "at": feature_share_at(feature, share)})
+			out.append({"feature": feature, "at": feature_share_at(feature, share), "intro": false})
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return float(a["at"]) < float(b["at"]) or (float(a["at"]) == float(b["at"]) and String(a["feature"]) < String(b["feature"])))
 	return out
@@ -362,10 +644,15 @@ func _due_picks(forced: Dictionary) -> Array[Dictionary]:
 ## (GDD §6: one new thing at a time) rather than whenever chance brings it, and how the guarantee
 ## places a feature a build missed. {} if nothing is due, or no due feature has a pattern that fits
 ## here (it's then tried again at the next pick, so a feature with no patterns yet changes nothing).
+## In a level paced in bursts, a due pick of a feature a quiet stretch leaves out waits for the next
+## burst, and a burst that has had one introduction holds the next for the burst after (_intro_held).
 func _pick_due(patterns: Array, difficulty: float, at: float) -> Dictionary:
+	var held: bool = _intro_held(at)
 	for due: Dictionary in _due:
 		if float(due["at"]) > at + 0.001:
 			break
+		if held and bool(due.get("intro", false)):
+			continue
 		var pattern: Dictionary = _pick_pattern(patterns, difficulty, at, String(due["feature"]))
 		if not pattern.is_empty():
 			return pattern
@@ -373,15 +660,35 @@ func _pick_due(patterns: Array, difficulty: float, at: float) -> Dictionary:
 
 
 ## A pattern placed at `at` settles the due pick of each feature it uses whose spot the cursor has
-## reached (the earliest one, if a feature has several).
+## reached (the earliest one, if a feature has several). An introduction settled in a burst makes it
+## that burst's one introduction.
 func _settle_due(pattern: Dictionary, at: float) -> void:
 	for need: Variant in pattern.get("requires", []):
 		for i: int in _due.size():
 			if float(_due[i]["at"]) > at + 0.001:
 				break
 			if String(_due[i]["feature"]) == String(need):
+				if bool(_due[i].get("intro", false)) and burst_index(at) >= 0:
+					_intro_burst = burst_index(at)
 				_due.remove_at(i)
 				break
+
+
+## True if a level paced in bursts is in a burst at `at` that has had its introduction already: the
+## features still waiting for theirs wait for the next burst (a burst never stacks two new things).
+func _intro_held(at: float) -> bool:
+	return config.paced_in_bursts() and _intro_burst >= 0 and burst_index(at) == _intro_burst
+
+
+## The features whose introduction is due by `at` and not placed yet.
+func _intros_waiting(at: float) -> PackedStringArray:
+	var out: PackedStringArray = []
+	for due: Dictionary in _due:
+		if float(due["at"]) > at + 0.001:
+			break
+		if bool(due.get("intro", false)) and not out.has(String(due["feature"])):
+			out.append(String(due["feature"]))
+	return out
 
 
 ## The level's features that some pattern can place: a pattern that requires the feature, needs

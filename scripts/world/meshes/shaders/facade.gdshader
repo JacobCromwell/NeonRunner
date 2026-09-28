@@ -16,6 +16,9 @@ render_mode unshaded, cull_back;
 #include "res://scripts/world/meshes/shaders/kit_flash.gdshaderinc"
 #include "res://scripts/world/meshes/shaders/kit_marks.gdshaderinc"
 
+// A level's darker lighting (ZoneSkin.apply_darkness): the scenery dims with it.
+global uniform float scenery_light;
+
 uniform vec3 window_warm : source_color = vec3(1.0, 0.9, 0.76);
 uniform vec3 window_cool : source_color = vec3(0.7, 0.84, 1.0);
 uniform vec3 window_neon : source_color = vec3(0.62, 0.45, 1.0);
@@ -165,7 +168,7 @@ void fragment() {
 		}
 		// Far away, the openings blur into the facade's average.
 		col = mix(col, mix(wall, soot * 1.5, 0.3), smoothstep(0.1, 0.4, max(fw.x, fw.y)));
-		ALBEDO = col;
+		ALBEDO = col * light_factor(scenery_light);
 	} else {
 		// Offices light up in blocks of four per floor; homes one window at a time.
 		float bx = style == 0 ? floor(cell.x / 4.0) : cell.x;
@@ -196,6 +199,6 @@ void fragment() {
 		// Where single windows blur together, use the facade's average window instead.
 		vec3 avg_win = mix(glass, to_linear(mix(window_warm, window_cool, 0.6)) * (window_glow * 0.55), share * seen);
 		win_col = mix(win_col, avg_win, smoothstep(0.1, 0.4, max(fw.x, fw.y)));
-		ALBEDO = mix(wall, win_col, in_win);
+		ALBEDO = mix(wall, win_col, in_win) * light_factor(scenery_light);
 	}
 }

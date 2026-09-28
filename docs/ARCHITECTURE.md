@@ -65,6 +65,7 @@ power-ups.
 | `data/tuning/game_rules.tres` (`GameRules`) | lanes per device, death share, invulnerability, stomp, whether big attacks take turns, score, economy, stars |
 | `data/tuning/powerups.tres` (`PowerupTuning`) | weapon tiers, claws, dash, magnet, slow time |
 | `data/tuning/pickups.tres` (`PickupTuning`) | in-run pickups: where they appear, taking them, the charge cap, the look |
+| `data/tuning/feature_recency.tres` (`FeatureRecency`) | the campaign's recency curve: how a level's pick weights follow how recently the campaign introduced each feature |
 | `data/enemies/<type>.tres` (`EnemyTuning` subclasses) | per-enemy numbers, early/late pairs for campaign scaling |
 | `data/shop/catalog.json` | shop items, tiers and prices |
 | `data/campaign/campaign.tres` → `data/zones/*.tres` → `data/levels/*.tres` | the campaign |
@@ -164,7 +165,10 @@ the Tithe Collector) opt in the same way for whichever of their attacks count as
   started the attack runs its course; nothing stops it for another's turn.
 - **An attack that may only come within a window** (the Octodog's planned charges) moves the window
   on while `held_for_turn(self)` says it's waiting for another type, up to a limit of its own
-  (`OctodogTuning.turn_wait_max`), and keeps every fairness rule it was planned with.
+  (`OctodogTuning.turn_wait_max`), and keeps every fairness rule it was planned with. Once held it
+  keeps asking every frame until its turn comes, whether or not its stretch is clear by then, and if
+  the wait made it miss its planned stretch, the window keeps moving on until the stretch ahead is
+  clear again (within the same limit), so waiting for its turn never costs it its charges.
 - **An attack that can't wait** because the player sets it off (the Bad Dream bursts out of a killed
   host) or the generator planned its moment still reports itself: the others wait for it. It can
   overlap an attack that was already on when it came; the Bad Dream holds its slash until that one
@@ -203,9 +207,15 @@ patterns (filtered by the level's features) → enemy rules scripts → credits.
 scripts: `rng_for(name)`, `add_enemy(type, at, lane, side, params)`, `add_hull_with_pad(lane, at,
 seconds)`, `floor_clear(from, to)`, `enemy_floor_span(entry)`, `enemy_uses_floor(entry)`,
 `difficulty_at(progress)`, `feature_start(feature)`, `feature_started(feature, at)`,
-`feature_active(feature, at)`, `feature_share_at(feature, share)`, `ramp_launch(ramp)`, plus
+`feature_active(feature, at)`, `feature_share_at(feature, share)`, `ramp_launch(ramp)`, and for a level
+paced in bursts `quiet_at(at)`, `stretch_end(at)`, `burst_index(at)`, `quiet_stretches()`,
+`burst_spans(lo, hi)`, `prefers_bursts(feature)`, `burst_spot(rng, lo, hi, feature)` and
+`pacing_pools(spots, feature)`, plus
 `layout`, `config`, `tuning`, `speed`, `jump_distance` and `zones` (the level's `CeilingZones`).
-Pattern format: `data/patterns/README.md`.
+`pick_weights(patterns, difficulty, at)` gives the weights a pick draws from (the static
+`pattern_kind(pattern)` and `enemy_count(pattern, lanes)` say how the recency curve counts a pattern),
+and `picks` lists the patterns the last build placed (id, features, spot, length, due or not), for
+tests and `tools/measure/level_shape.gd`. Pattern format: `data/patterns/README.md`.
 
 **Ramps** (GDD §3) launch the player onto the wall higher than a free entry and add a speed boost
 that fades away the same way a speed pad's does (both share `boost_decay_per_second`;
@@ -270,7 +280,49 @@ drops the starts. An introduced enemy can still be cleared by a later fairness r
 keeps its lane free), and the feature then first shows a little later.
 
 **Feature weights.** `LevelConfig.feature_weights` (feature → factor) scales the pick weight of the
-patterns that require a feature (0 leaves them out). Corporate 2's heavier military presence uses it.
+patterns that require a feature (0 leaves them out). Corporate 2's heavier military presence and The
+Hush's hosts use it.
+
+**A level's newest things get the most picks** (GDD §5, owner's review P2 13). `Campaign.configure`
+gives each campaign level's copy the campaign's recency curve (`LevelConfig.feature_recency`,
+`FeatureRecency` in `data/tuning/feature_recency.tres`, F6 "Feature picks (campaign)") and each of its
+features' age, the levels since the campaign introduced it (`LevelConfig.feature_ages`: 0 in the level
+that introduces it). A pattern's pick weight is then multiplied by the curve's factor for its newest
+feature (DESIGN-TBD: 4 where it's introduced, 2.5, 1.75 and 1.25 over the next three levels, 1 from
+then on), but no more than a capped feature's cap (`max_factor`; DESIGN-TBD: 1, never boosted, for the
+host, the hover truck, the drone and the Octodog, whose rules keep only so many of their enemies, and
+for the rare vent screech), so the curve never spends picks on enemies the rules would drop and leave
+their stretch empty. With `keep_feature_share` the features' patterns, capped ones apart, are then
+scaled back to weigh together what they did without the curve, and with `keep_share_by_kind` kind by
+kind (`LevelGenerator.pattern_kind`): patterns with enemies keep the number of enemies they place
+(`enemy_count`), obstacle-only ones and safe ones (a plain ceiling, a ramp, a speed pad) their share,
+and plain gaps, fences and signs keep their weight. So the curve only moves picks between features of
+the same kind (a new enemy takes them from older enemies, a new mechanic from older mechanics) and no
+level gets easier: measured over the campaign, no level has fewer enemies or obstacle rows than
+without the curve beyond measuring noise (`docs/questions/r5.md`). A level's own `feature_weights`
+still apply on top. Quick play, tests, boss arenas and endless mode have no ages, and the curve's
+`enabled` switch turns it off: those levels generate exactly as before. It works with the guarantee
+rather than instead of it: every feature still appears in every campaign level.
+
+**Quiet stretches and bursts** (GDD §5, The Hush: "long silent stretches broken by sudden threats").
+A level with `LevelConfig.quiet_seconds` above 0 alternates, from its first pattern, a quiet stretch of
+that many seconds at run speed with a burst of `burst_seconds`, quiet first. Its pattern pass then:
+- in a quiet stretch, picks patterns `quiet_spacing_seconds` apart, only those without enemies (sparse
+  obstacles, and safe mechanics such as a plain ceiling, a ramp or a speed pad) and those of its
+  `quiet_features` whose enemies stand inside the stretch (The Hush's hosts, which belong to the quiet
+  stretches); the spacing never carries the cursor past the next burst's start;
+- in a burst, picks threats only (a pattern with a hole, a fence, a sign or an enemy, whose enemies
+  stand inside the burst), `burst_spacing_seconds` apart;
+- gives a burst at most one introduction (`feature_starts`): a second one waits for the next burst, so
+  a burst never stacks two new things. A due pick (an introduction, or the guarantee's) of an enemy
+  a quiet stretch leaves out waits for a burst.
+
+The rules scripts then run as always, so every fairness rule and the guarantee hold. The drone, hover
+truck, Octodog and host rules put an enemy they guarantee in a burst when one lies in reach, and the
+host rules put a quiet feature's host in a quiet stretch (`burst_spot`, `pacing_pools`). Threats that
+last (a hover truck's stay, a drone until its pad, a Bad Dream's chase) may run on into the next quiet
+stretch, and an Octodog, whose charges need a clear floor, often finds its spot in one.
+`quiet_seconds` 0 (every other level) turns all of it off.
 
 **Every feature appears.** In a level with `LevelConfig.guarantee_features` (every campaign level),
 each feature a pattern can place there is in the finished level, at any lane count and on any seed
@@ -373,6 +425,22 @@ also wants the weathered enemies (the Dead Zone might) needs those enemies to tr
 `&"scavenger"` (a line in each one's look code). The zones still on the grey box wear the base until
 their skins exist; `--variant=` in the enemy showcase shows any look now.
 
+**A level's darker lighting** (`LevelConfig.darkness`, 0–1; GDD §5, The Hush) reaches every skin for
+free: the run takes its environment from `ZoneSkin.level_environment(darkness)`, whose
+`apply_darkness()` dims only the scenery. The sky and the distance fog lose energy, and the global
+shader uniform `scenery_light` (project.godot; 1 = the zone's own light, never below
+`MIN_SCENERY_LIGHT`, 0.3) dims what the scenery's shaders draw: `kit_solid`'s lit surfaces (never its
+glowing ones), `facade`, `shopfront`, `road`, `drift`, the Corporate skin's `corp_facade`, the Golden
+Zone's `golden_facade`, and the grey box's floor, walls and ceilings (`GreyboxMaterials.scenery()`). Glows, the ambient light and the
+sun stay, so hazards, triggers, credits, enemies and the runner (lit or glowing by their own
+materials) read as well as anywhere. The
+factor is given for linear space; `light_factor()` in `kit_common.gdshaderinc` (and
+`ZoneSkin.energy_factor()` for the environment) converts it for the Compatibility renderer's sRGB
+space, so both renderers dim alike. A new skin gets it by drawing its scenery with the kit, or by
+reading `scenery_light` (through `light_factor`) in a shader of its own, or by overriding
+`apply_darkness()` (calling it first). Only the run that set the light last resets it when it ends
+(`LevelRun`). `skin_review` takes `--darkness=X` to look at it.
+
 The kit's solid shader (`kit_solid.gdshader`) draws surface patterns chosen per vertex (`MeshKit.PAT_*`):
 panels, glass, glyphs and chevrons for the City; worn asphalt (with sand drifts and scorch around holes),
 road strata, salvaged plating, posters (with corporate ads), cast concrete and stencilled crates and
@@ -395,9 +463,10 @@ shader that converts it once more (`to_linear()`, as the kit's do for vertex col
 more saturated on Forward+ than on the web. The Golden Zone passes its uniform colours as sRGB `Vector3`s
 (`GoldenSkin.srgb()`), which arrive unconverted on both renderers and are converted once, like a vertex
 colour. Likewise a light factor multiplied in after `to_linear()` scales sRGB values on the
-Compatibility renderer; `golden_facade.gdshader`'s `light_k()` raises it to the 1/2.2 power there, so its
-walls are as bright on both renderers. (The older skins' uniform colours, and the kit's own `shade`
-factor, still differ a little between the renderers.)
+Compatibility renderer; `golden_facade.gdshader` passes every one of its light factors through
+`light_factor()` (kit_common), which raises it to the 1/2.2 power there, so its walls are as bright on
+both renderers. (The older skins' uniform colours, and the kit's own `shade` factor, still differ a little
+between the renderers.)
 
 **Pattern ids.** Ids up to 19 are the City's and Gangland's, in `kit_solid.gdshader` itself; ids 20-29
 are the Marketplace's (all in use), in `kit_market.gdshaderinc`, and ids 30-39 the Corporate zone's
@@ -718,14 +787,26 @@ lengths run 110–150 s and add up to 35 minutes.
 **The schedule** (GDD §5) is each level's `features` list, in the order the campaign introduces them:
 a feature once introduced stays in every later level, bar the exceptions the design gives (screeches
 come from manholes only in street zones and from wall vents, `screech_vents`, elsewhere, with none in
-Marketplace 1; the Buzz Overdrive appears in Corporate and the Dead Zone only; the Tithe Collector
-skips the Dead Zone). Each level introduces its new features at starts of their own
-(`feature_starts`, see Late starts under The generator; City 1's cyborgs come late in the level).
-`test_campaign` holds the schedule table and its exceptions, and checks that every level has each
-of its features at 3, 5 and 6 lanes, on its own seed and over a seed sweep (Every feature appears,
-under The generator). Features of enemies and mechanics still
-to be built (`LevelConfig.PLANNED_FEATURES`, with the wall fences' `wall_fences` and
-`wall_fences_partial`) are listed already and do nothing until their code and patterns exist.
+Marketplace 1; the Tithe Collector skips the Dead Zone). The Buzz Overdrive appears from Corporate 1
+through the Dead Zone and the Golden Zone, the Golden Palace included (GDD §9.9, corrected). Each
+level introduces its new features at starts of their own (`feature_starts`, see Late starts under The
+generator; City 1's cyborgs come late in the level), and its newest features get the most picks
+(the campaign's recency curve, under The generator). `test_campaign` holds the schedule table and its
+exceptions, checks the features' order, and checks that every level has each of its features at 3, 5
+and 6 lanes, on its own seed and over a seed sweep (Every feature appears, under The generator).
+Features of enemies and mechanics still to be built (`LevelConfig.PLANNED_FEATURES`, with the wall
+fences' `wall_fences` and `wall_fences_partial`) are listed already and do nothing until their code and
+patterns exist.
+
+**The Hush** (Dead Zone 2; GDD §5: "a quiet, eerie remix: fewer enemies but more hosts and Bad Dream
+chases, darker lighting, and long silent stretches broken by sudden threats") brings nothing new; its
+remix is its own data, which no other level uses: quiet stretches and bursts (`quiet_seconds` and the
+rest, with its hosts as its quiet feature), hosts picked more often (`feature_weights`), and its
+`darkness`. A Bad Dream chase starts only when the player kills a host (GDD §9.7), so more chases come
+from more hosts, standing alone in the quiet stretches where one is easy to reach; the host rules
+still fit one chase at a time. All DESIGN-TBD (`docs/questions/r5.md`). Endless mode, which copies the
+furthest zone's last level, leaves the remix out (`App.start_endless`: no quiet stretches, no quiet
+features or their weights, no darkness), so endless in the Dead Zone plays as it did before.
 
 A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, which the player
 continues past. A cinematic is a scene whose root extends `Cinematic` (emit `finished`, support
@@ -826,30 +907,27 @@ time from the physics step. The test boss (`TestBoss`) is a small example.
 
 **The Floating Head** (GDD §10, task E1; built so far: E1a, the ship and face, the entrance, the
 bombing run and the reveal; E1b, the face-off with its eye lasers and cyborg drop, and the marked
-towers that pin it), in `scripts/bosses/floating_head/`:
+towers that pin it; E1c, the stomp windows while it's pinned), in `scripts/bosses/floating_head/`:
 
 | File | What |
 |---|---|
-| `floating_head.gd` (`FloatingHead`) | the encounter: each phase's intro (the first is the entrance, overhead from behind; later ones rise), its bombing run if it has one (`run_seconds(phase)`), then the descent in front of the runner (the first time, the reveal: the face powers on) and the face-off until a tower pins it (`begin_pin`: it brakes under the falling tower and lies still on the track, sunk between the trucks until its weak points' tops are `pin_top_height` up and rolled toward the tower; for now it shakes free before the runner reaches it, `_release`, until E1c's stomps). The ship's `pose` is kept relative to the runner (sideways, belly height, stern ahead) except while pinned, so nothing depends on how long the fight has lasted. The marked towers are planned with each lap (`_plan_lap`: every `tower_spacing`, sides in turn, the track cleared of holes and fences around each) and brought into sight as the runner nears them (`towers_between`, `tower_node`). The fairness helpers its attacks share: `escape_lane`, `floor_clear_lane`/`floor_clear_all`, `pickup_near`, `enemy_in_lane`. `sound()` plays and logs every warning |
-| `floating_head_body.gd` (`FloatingHeadBody`) | the body part: the model and its moving parts (face screen, jaw, searchlight gimbal, bay doors, weak-point covers), a solid hull hitbox, three weak points on the crown and the crown's top surface (both off until it's pinned, E1c: `set_weak_points_enabled`, `set_top_solid`, `top_height`), the face's state (`screen_power`, `anger`, `eye_charge`, `glitch`, `jaw_open`, and `look_point` for the eyes to watch the laser's aim), where its eyes and mouth are (`eye_world`, `mouth_world`), and `exclusive_major_attack` (its lasers and bombs take turns with other big attacks) |
-| `floating_head_model.gd` (`FloatingHeadModel`) | the low-poly meshes, built in code from a `Shape` sized to the street (MeshKit layers merged into a few surfaces: about 13 surfaces and 11k vertices), and the bomb |
+| `floating_head.gd` (`FloatingHead`) | the encounter: each phase's intro (the first is the entrance, overhead from behind; later ones rise), its bombing run if it has one (`run_seconds(phase)`), then the descent in front of the runner (the first time, the reveal: the face powers on) and the face-off until a tower pins it (`begin_pin`: it brakes under the falling tower and lies still on the track, sunk between the trucks until its weak points' sockets are `pin_top_height` up and rolled toward the tower about its crown, `pinned_transform`; the tower breaks behind the weak points as it lands). Then the phase's stomp window (`route`, from `stomp_route(phase)`): `_open_window` switches the weak points and the crown's deck on and the hull hitbox off, and the way up is built in the arena (`_slam_ramp`: the tower's slab, a `FloatingHeadRamp`, in `ramp_lane`; the wall needs nothing; `_light_pads` and `_update_ceiling`: `props.pad` in every lane and a `props.ceiling` that lowers in once the ship is past its end). `_check_window` closes it (`_miss`) when the runner is still on the trucks within `window_release_gap` of its face or past `pass_line()`; a stomp ends the phase instead. Either way it shakes free (`SHAKE`: it lurches ahead of the runner, its deck under a runner still on it until its face has passed them) and rises: to the next phase's station after a stomp (the phase's intro), back in front for the face-off after a miss (`RELEASE`). The ship's `pose` is kept relative to the runner (sideways, belly height, stern ahead) except while pinned, so nothing depends on how long the fight has lasted. The marked towers are planned with each lap (`_plan_lap`: every `tower_spacing`, sides in turn, the track cleared of holes and fences around each) and brought into sight as the runner nears them (`towers_between`, `tower_node`); a tower whose pin would land on a pickup or a dropped cyborg goes by (`pin_zone_blocker`), and armor pickups wait while a pin is under way (`pin_busy`, `_on_armor_pickup_due`). The fairness helpers its attacks share: `escape_lane`, `floor_clear_lane`/`floor_clear_all`, `pickup_near`, `enemy_in_lane`, `ceiling_between` (the arena's ceilings and its window's own: no bomb locks under one, the face-off waits past it). `sound()` plays and logs every warning |
+| `floating_head_body.gd` (`FloatingHeadBody`) | the body part: the model and its moving parts (face screen, jaw, searchlight gimbal, bay doors, weak-point covers that swing open with the red domes pulsing out: `weak_open`), a solid hull hitbox (`set_hull_solid`: off while pinned), a weak point over each lane near the crown's middle (generous stomp boxes, `stomp_width`/`stomp_depth`/`stomp_top`) and the crown's deck (a concave shape exactly over the drawn hull, `FloatingHeadModel.deck_faces`), both off until a window opens (`set_weak_points_enabled`, `set_top_solid`; `top_height`, `weak_point_world`), the face's state (`screen_power`, `anger`, `eye_charge`, `glitch`, `jaw_open`, and `look_point` for the eyes to watch the laser's aim), where its eyes and mouth are (`eye_world`, `mouth_world`), and `exclusive_major_attack` (its lasers and bombs take turns with other big attacks) |
+| `floating_head_model.gd` (`FloatingHeadModel`) | the low-poly meshes, built in code from a `Shape` sized to the street and its lanes (MeshKit layers merged into a few surfaces: about 13 surfaces and 11k vertices; the weak points over the lanes within `weak_point_reach` of the middle), the bomb, the crown's deck faces, and `ship_transform` (its pitch and its roll about the crown over the weak points) |
 | `floating_head_bombing.gd` (`FloatingHeadBombing`) | the searchlight and the bombs: the lock (the warning: red light, `circle_warning`, lock sound, the bomb falling with its whistle), the fairness rules (`plan`, `fair`, `escape_lane`), and pooled blast hitboxes (enemy attacks) that keep clear of a wall runner |
 | `floating_head_faceoff.gd` (`FloatingHeadFaceOff`) | the face-off: the phase's attacks wait in line (`faceoff_pattern`; the first that can start fairly goes next) with a drag timed for each marked tower. Eye lasers: the warning (the eyes' `eye_charge` and whine, thin aiming beams with a sweep's aim lines or a drag's aiming spot, then the drag's `lane_warning`), a sweep's twin beams (low: both low, jump them; high: one at the waist and one above a jump's reach, like a gapped fence, slide under them) or a drag down the runner's lane leaving a burning line (keeps clear of a wall runner), each with enemy-attack hitboxes. The cyborg drop: the jaw opens (with its sound and `circle_warning`s where they land), then normal cyborgs from the director (`spawn_enemy`) fall from the mouth onto clear roof and fight. A tower's drag is a bait when the runner is in the outer lane on its side as the warning ends, or the fallback after `fallback_after` misses; either calls `FloatingHead.begin_pin`. Lasers wait while its cyborgs are ahead and share the cyborgs' airspace (`CyborgGun.AIRSPACE_META`) |
-| `floating_head_tower.gd` (`FloatingHeadTower`) | a marked tower at the roadside (flush with the facades, its head jutting out over the street above the ship's highest flight so it shows from far along the street; no hitboxes: scenery until it falls): pale concrete with white painted bands and targets, cracks and cold warning lights; the laser's cut glows red-hot as it's clipped, then it topples forward onto the ship (`fall_onto`, `rest_on`) and crumbles away when the pin ends |
+| `floating_head_tower.gd` (`FloatingHeadTower`) | a marked tower at the roadside (flush with the facades, its head jutting out over the street above the ship's highest flight so it shows from far along the street; no hitboxes: scenery until it falls): pale concrete with white painted bands and targets, cracks and cold warning lights; the laser's cut glows red-hot as it's clipped, then it topples forward onto the ship (`fall_onto`, `rest_on`), breaks in two as it lands (`break_at`, `tower_mesh`'s sections with torn ends: the lower section drops away), and the rest crumbles away when the ship shakes free |
+| `floating_head_ramp.gd` (`FloatingHeadRamp`) | the first stomp window's way up: the tower's broken slab slammed down in a lane (`ramp_length` long, its top end `ramp_lift` above the crown at the face), its top a floor (a convex slab) and its sides a lane blocker down to the trucks where it stands above a step; green chevrons up it; it sinks away when the ship shakes free |
 | `floating_head_face.gdshader`, `floating_head_light.gdshader`, `floating_head_laser.gdshader` | the face screen (unshaded and procedural: the same on every renderer; still with Reduced flashing), the searchlight's beam and spot, and the lasers (the beams, the aim lines and the burning line: additive, lifted on the Compatibility renderer; the burn's embers hold still with Reduced flashing) |
 | `floating_head_tuning.gd`, `data/bosses/city_boss_tuning.tres` | its numbers (F6 in its fight) |
 | `data/bosses/city_boss_skin.tres` | its arena's City look: the City's skin without the towers' big screens hung out over the street, where the ship flies |
-| `tools/showcase/floating_head_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/stern/below/entrance/bombing/reveal/faceoff/fallback/pinned`) |
-| `tests/helpers/floating_head_bot.gd` (`FloatingHeadBot`) | a runner who plays the face-off by its warnings, pressing only named actions (tests and the showcase) |
+| `tools/showcase/floating_head_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/stern/below/entrance/bombing/reveal/faceoff/fallback/missed/pinned/window/mouth`, `--phase=N` for the phase's stomp window) |
+| `tests/helpers/floating_head_bot.gd` (`FloatingHeadBot`) | a runner who plays the fight by its warnings, pressing only named actions: dodges bombs and lasers, baits towers, and takes each stomp window's way up (`routes`; `wrong_route` stays on the trucks) (tests and the showcase) |
 
 **How the designed bosses fit** (GDD §10; each is a later task):
-- **Floating Head (E1c–E1d):** E1c's stomp windows go where the pin is (`FloatingHead`'s PINNED
-  step, which now shakes free at `pin_release_gap` as a placeholder): the weak points and the crown's
-  top switch on while it's pinned, the fallen tower becomes a ramp or surface (`add_surface`, or
-  `props` within sight), and phase 3's pad and the ship's underside are `props.pad` and
-  `props.ceiling` (or `arena.add_pieces()`); `weapon_share_cap` 0.34 keeps weapons to one stomp. E1d
-  adds the propaganda voice and slogans and the defeat (the face's `glitch`), and moves the scene
-  from `preview_scene` to `scene`.
+- **Floating Head (E1d):** E1d adds the propaganda voice and slogans and the defeat (the face's
+  `glitch`; for now a won fight ends in a burst and the ship is gone at once, `_on_defeated`), and
+  moves the scene from `preview_scene` to `scene`. `weapon_share_cap` 0.34 keeps weapons to one stomp.
 - **Sewer Swarm (E4):** 4–5 clusters are parts with health of their own and `is_swarm` (MultiMesh
   crowds drawn by the part), moving ahead of and behind the player (parts never retire); baiting one
   into a live fence or a hole is the boss script's check (`arena.live_fence_between`,
@@ -904,7 +982,10 @@ them `check_ceilings` (GDD §3: pads that can be stepped on, safe landing zones,
 every ceiling without its pad, found by `FloorRoute`, `tests/helpers/floor_route.gd`), and finds a
 feature's pieces in a layout with the generator's own `LevelGenerator.feature_positions()`; a task
 that adds a new kind of piece extends it (and `FloorRoute`'s cells, if the piece is on the floor), or
-gives its rules script `positions()`. `test_enemy_director` checks the turn-taking between big attacks
+gives its rules script `positions()`. The generator suite also checks the recency curve's pick weights
+exactly (`pick_weights()`: each kind's share, the caps) and levels paced in bursts; the campaign suite
+checks each kind's share at spots all through every campaign level, The Hush and the darker lighting
+on every skin. `test_enemy_director` checks the turn-taking between big attacks
 with scripted test enemies (`tests/helpers/turn_dummy.gd`) and over simulated runs of campaign levels,
 watched by `tools/measure/attack_watch.gd` (see Review tools). `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
 for framework tests, with `make_def()` for a BossDef from a list of phases; `test_bosses` runs fights
@@ -915,7 +996,10 @@ runs the Floating Head's fight in bare worlds at 3, 5 and 6 lanes with a runner 
 (and one who doesn't), and rechecks its bombs' fairness from the arena's layout;
 `test_floating_head_faceoff` plays its face-off with `FloatingHeadBot` (every laser warned and
 escaped without god mode, the cyborg drop, a baited and a fallback tower pinning it) and rechecks
-each attack's fairness from the real arena's layout. `test_audio` checks
+each attack's fairness from the real arena's layout; `test_floating_head_stomps` has the bot take each
+phase's stomp window at 3, 5 and 6 lanes without god mode, checks the ways up are physical, missed
+windows repeat without escalation, the damage and weapon cap, the armor pickups, the window's ceiling
+rules, and plays the whole fight from its entrance to the last stomp. `test_audio` checks
 the music files (seamless loops, lengths, tempos, size budgets), the Music autoload's fades, duck and
 death dip on its players' levels and the bus's low-pass (headless runs never start a player), and the
 run's music hooks through the App. The runner frees
@@ -937,8 +1021,8 @@ hosts or aiming, and `lineup_far` at gameplay distance); `octodog_screech`,
 pose, a turnaround, and a live statue rigged in its niche and swinging, as task C4 would build it), a
 boss (`floating_head_showcase`), the UI kit, the screens, a zone skin (`skin_review`: any skin from
 fixed spots, including close-ups of the cult's feed screens and emblems a skin lists, or a scripted run
-with a ceiling ride and a wall run), and comparison sheets for an open design choice
-(`cult_emblem_sheet`, D7). Each script's header lists its options. Render
+with a ceiling ride and a wall run, in a level's darker lighting with `--darkness=X`), and comparison
+sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
 `CLAUDE.md`.
 
@@ -951,3 +1035,10 @@ res://tools/measure/big_attacks.gd -- --levels=gangland/3 --lanes=3,5,6 --out=bu
 whole campaign takes about ten minutes). `attack_watch.gd` does the watching from the enemies' own states
 and the live shots, never from the turn-taking code, and hashes each run's event log, so two builds (or
 the switch off and a build without the rule) can be compared run by run.
+
+`tools/measure/level_shape.gd` measures the campaign's shape: for each level at 3, 5 and 6 lanes, on its
+own seed and others, each feature's share of the pattern picks, the enemy, host and obstacle counts, the
+features that appear only thanks to the every-feature guarantee, and for a level paced in bursts (The
+Hush) its quiet stretches against its bursts, with the recency curve on and off and a level's remix
+settings on or off (`godot --headless -s res://tools/measure/level_shape.gd -- --levels=dead_zone/2
+--curve=on,off`; the whole campaign both ways takes about a minute and a half).

@@ -52,9 +52,11 @@ extends EnemyTuning
 ## and the dog gives up.
 @export_range(0.0, 100.0, 5.0, "suffix:m") var charge_slack: float = 40.0
 ## DESIGN-TBD: while big attacks take turns (GDD §9, GameRules.big_attacks_take_turns), a dog whose
-## first wind-up waits for another type's big attack keeps pacing in position for up to this long
-## before charge_slack starts to run out, and its whole sequence of planned charges moves on by as
-## much. A charge moved on this way still needs a clear stretch, with the generator's margins.
+## first wind-up waits for another type's big attack keeps pacing in position, and its whole sequence
+## of planned charges moves on with the player, while it waits and then, if the wait made it miss its
+## planned stretch, until the stretch ahead is clear again: for up to this long in all, before
+## charge_slack starts to run out. A charge moved on this way still needs a clear stretch, with the
+## generator's margins.
 @export_range(0.0, 10.0, 0.25, "suffix:s") var turn_wait_max: float = 4.0
 ## DESIGN-TBD: distance at which a dog hiding in its doghouse bursts out; beyond it no dog can be
 ## targeted by auto-fire, doghouse or not (so the hint never changes gameplay).

@@ -16,6 +16,8 @@ extends RefCounted
 ##   none, and the level that introduces the truck should show it).
 ## - Late starts (LevelConfig.feature_starts): no truck before the `hover_truck` feature's start; the
 ##   guaranteed one falls in the same share of the stretch where trucks are active.
+## - In a level paced in bursts (LevelConfig.quiet_seconds, The Hush), the guaranteed truck bursts in
+##   during a burst when one lies in its share of the level.
 
 const TYPE: String = "hover_truck"
 
@@ -152,8 +154,9 @@ static func _ramp_fits(gen: LevelGenerator, side: int, lane: int, at: float) -> 
 
 
 ## One truck in the level (between the tuning's shares of the stretch where trucks are active,
-## LevelGenerator.feature_share_at; never before the run-up ends or after `latest`). Returns its
-## entry, or {} if there's no room.
+## LevelGenerator.feature_share_at; never before the run-up ends or after `latest`), bursting in
+## during a burst if the level is paced in bursts (LevelGenerator.burst_spot). Returns its entry, or
+## {} if there's no room.
 static func _add_guaranteed(gen: LevelGenerator, t: HoverTruckTuning, latest: float) -> Dictionary:
 	var rng: RandomNumberGenerator = gen.rng_for("hover_truck_guarantee")
 	var lo: float = maxf(gen.feature_share_at(TYPE, t.guaranteed_from),
@@ -162,7 +165,10 @@ static func _add_guaranteed(gen: LevelGenerator, t: HoverTruckTuning, latest: fl
 	if hi < lo:
 		return {}
 	var side: int = -1 if rng.randf() < 0.5 else 1
-	return gen.add_enemy(TYPE, rng.randf_range(lo, hi), gen.layout.outer_lane(side), side, {})
+	var at: float = gen.burst_spot(rng, lo, hi, TYPE)
+	if is_nan(at):
+		at = rng.randf_range(lo, hi)
+	return gen.add_enemy(TYPE, at, gen.layout.outer_lane(side), side, {})
 
 
 static func _remove_entries(layout: LevelLayout, entries: Array[Dictionary]) -> void:

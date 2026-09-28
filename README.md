@@ -15,9 +15,9 @@ through zones full of enemies, and a single hit ends the run. Built with Godot 4
 Boss fights have their framework (they play in the runner, with phases, a health bar, checkpoints,
 stars and payouts), but each zone's boss is still a placeholder slot until it's built on it; a test
 boss shows the framework at work. The Neon City's Floating Head is being built: its ship and face, its
-entrance, its bombing run, the reveal of its face and the face-off (eye lasers, the cyborg drop and the
-marked towers that pin it) so far (debug builds play it with `--boss=city_boss`; the campaign keeps its
-placeholder slot until it's done). The short cinematics between levels are placeholder slots too.
+entrance, its bombing run, the reveal of its face, the face-off (eye lasers, the cyborg drop and the
+marked towers that pin it) and the stomp windows while it's pinned so far (debug builds play it with
+`--boss=city_boss`; the campaign keeps its placeholder slot until its defeat and voice are done). The short cinematics between levels are placeholder slots too.
 Every placeholder decision is listed in `docs/OPEN_QUESTIONS.md`.
 
 Docs: `docs/GDD_CHECKPOINT.md` (the design, the authority), `docs/OPEN_QUESTIONS.md` (open decisions and
@@ -91,14 +91,19 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   10. Corporate 2 *Checkpoint Plaza*: the Tithe Collector, and a heavier military presence (more drones,
       hover trucks and Buzz Overdrives).
   11. Dead Zone 1 *Ashfall*: hosts and the Cyborg's Bad Dream.
-  12. Dead Zone 2 *The Hush*: a quiet, eerie remix with nothing new.
+  12. Dead Zone 2 *The Hush*: a quiet, eerie remix with nothing new: long silent stretches broken by short
+      bursts of threats, fewer enemies but more hosts (standing alone in the silence), and darker lighting.
   13. Golden 1 *Gilded Canals*: the Resonator.
   14. Golden 2 *Sentinel Row*: the Gilded Sentinels, and the hardest level.
   15. Golden 3 *The Golden Palace*, then the final boss.
 
-  The Barnacle Turret, wall fences, Buzz Overdrive, Tithe Collector, Resonator and Gilded Sentinels aren't
-  built yet: their levels already list them, and they appear once their code exists. Level names are
-  placeholders, except the Golden Palace.
+  Everything introduced keeps appearing later (the Buzz Overdrive from Corporate 1 through the Golden Zone),
+  and a level's newest things get the most of its picks, taken from older things of their kind (enemies from
+  enemies, obstacles from obstacles), so no level gets easier; enemies whose rules keep only so many (hosts,
+  hover trucks, drones, Octodogs) and the rare vent screech aren't boosted (the campaign's recency curve,
+  `data/tuning/feature_recency.tres`). The Barnacle Turret, wall fences, Buzz Overdrive, Tithe Collector,
+  Resonator and Gilded Sentinels aren't built yet: their levels already list them, and they appear once
+  their code exists. Level names are placeholders, except the Golden Palace.
 - **Movement:** floor lanes, side-wall runs and wall jumps (a sign blocking the wall bumps you back with a
   clank), anti-grav pads onto the ceiling, ramps (higher onto the wall, with a speed boost that fades like
   a speed pad's), speed pads.
@@ -127,8 +132,10 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   circle, an alarm and a falling whistle), the reveal of its face, and the face-off: its eyes glow and
   whine, then laser beams sweep the lanes low (jump) or high (slide) or drag down the runner's lane
   (switch lanes), its mouth drops cyborgs onto the trucks ahead, and a laser baited into a marked tower
-  topples it onto the ship to pin it (`--boss=city_boss`). The other five zone bosses are still to be
-  built.
+  topples it onto the ship to pin it. Pinned, its red weak points come out on its crown: stomp one, a
+  third of its health. Each phase has its own way up: run up the fallen tower's slab like a ramp, a
+  wall jump, then pads and a ceiling to drop from. Miss it and it shakes free and the face-off goes on
+  (`--boss=city_boss`). The other five zone bosses are still to be built.
 - **Economy:** credits in four denominations, level score and stars, and a shop. Items are five permanent
   power-ups (weapon line, claws, juggernaut dash, magnet, slow time) and three breakables (armor, shield,
   grapple hook). After a death you're offered a revive (an item, or a rewarded ad on mobile). Net worth
@@ -156,9 +163,11 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 ## Tuning while you play (F6)
 
 F6 pauses the game and opens a panel with sections for movement, game rules, power-ups, the runner's animation,
-the music's pause duck and death dip, level pacing and each enemy type in the level. Changes apply immediately; pacing, speed, jump and size changes also reshape the level, so press
-**Restart level** to rebuild it. **Save** writes the values back to their files in `data/`; **Reload files** undoes
-unsaved changes. Every other number is in `data/` too: enemy tunings in `data/enemies/`, prices in
+the music's pause duck and death dip, level pacing, the campaign's recency curve for pick weights (in a campaign
+level) and each enemy type in the level. Changes apply immediately; pacing, pick weights, speed, jump and size
+changes also reshape the level, so press **Restart level** to rebuild it. **Save** writes the values back to
+their files in `data/`; **Reload files** undoes unsaved changes. Every other number is in `data/` too: enemy
+tunings in `data/enemies/`, prices in
 `data/shop/catalog.json`, patterns in `data/patterns/` (format: `data/patterns/README.md`), sound volumes in
 `data/audio/sfx_library.tres`, music levels and tempos in `data/audio/music_library.tres`, and UI colours and
 sizes in `data/ui/ui_style.tres`.
@@ -190,13 +199,19 @@ F6 panel) and without, and how much taking turns delays them:
 `godot --headless --fixed-fps 60 -s res://tools/measure/big_attacks.gd -- [--levels=gangland/3] [--lanes=3,5,6]`
 (the whole campaign, both ways, takes about ten minutes; its header lists the options).
 
+`tools/measure/level_shape.gd` measures each campaign level's shape: every feature's share of its picks, its
+enemy, host and obstacle counts, what only the every-feature guarantee brings, and The Hush's quiet stretches
+against its bursts, with the recency curve on and off:
+`godot --headless -s res://tools/measure/level_shape.gd -- [--levels=dead_zone/2] [--curve=on,off]`.
+
 ## Tests
 
-`tools/godot.sh test` runs 34 suites with about 2,800,000 checks:
+`tools/godot.sh test` runs 35 suites with about 2,900,000 checks:
 - **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds, and every campaign level
   (each with every feature it lists, on its own seed and on others). Under every ceiling the floor may be
   dangerous, so each one's pads, landing zone and a floor route that never takes the pad are checked, and
-  some of those routes are run on real physics.
+  some of those routes are run on real physics. Also the recency curve's pick weights, and levels paced in
+  quiet stretches and bursts (The Hush).
 - **Movement:** scenarios on real physics, among them a ramp's boost against a speed pad's, a ramp's wall run
   and its credits against the generator's prediction, and the bump of a blocked wall entry.
 - **Enemies:** each type's attacks, dodges, kills and generation rules, and big attacks of different types
@@ -204,13 +219,16 @@ F6 panel) and without, and how much taking turns delays them:
 - **Damage:** the shared damage rules.
 - **Power-ups:** each one's behaviour.
 - **Economy and saves:** the economy and save files.
-- **Game flow:** the campaign (its zones, steps and level-by-level schedule) and app flow.
+- **Game flow:** the campaign (its zones, steps and level-by-level schedule, the features' ages for the
+  recency curve and each kind's share of the picks through every level, The Hush and its darker lighting on
+  every skin) and app flow.
 - **Bosses:** the boss framework with the test boss: phases, the checkpoint, no escalation, the arena,
   the damage rules on a boss, and the flow around a fight; the Floating Head's fight so far at 3, 5 and 6
   lanes: its build and hitboxes, bombs that fall only after their warning, a runner who keeps moving
   always escaping them, the face-off's lasers (each warned, and escaped without god mode by a runner who
-  reads them), its cyborg drop, a baited or fallback tower pinning it, and every attempt playing out the
-  same way.
+  reads them), its cyborg drop, a baited or fallback tower pinning it, each phase's stomp window taken
+  without god mode (the ramp, a wall jump, the ceiling), missed windows repeating without escalation,
+  the whole fight from its entrance to the last stomp, and every attempt playing out the same way.
 - **Screens:** every screen at desktop and touch sizes.
 - **The runner:** Razor Echo's poses on every surface, the coat's panels (never through the legs or the
   ground), the budgets, the power-up looks, and its copper glow kept clear of every hazard colour.

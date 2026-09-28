@@ -9,7 +9,7 @@ display_name = "Gilded Canals"
 level_seed = 601
 duration_seconds = 145.0
 difficulty_bias = 0.0
-features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "ramps", "octodog", "speed_pads", "generator", "drone", "barnacle_turret", "wall_fences", "screech_vents", "wall_fences_partial", "tithe_collector", "host", "resonator")
+features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "ramps", "octodog", "speed_pads", "generator", "drone", "barnacle_turret", "wall_fences", "screech_vents", "buzz_overdrive", "wall_fences_partial", "tithe_collector", "host", "resonator")
 guarantee_features = true
 feature_starts = Dictionary[String, float]({
 "resonator": 0.1
