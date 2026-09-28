@@ -3,7 +3,9 @@ extends TestSuite
 ## ids, boss and cinematic slots, skins, music and the demo scope; the level-by-level schedule (where
 ## each feature first appears, later levels keeping it, one new thing at a time, late starts); the
 ## difficulty curve and level lengths; unlocking; and that every campaign level generates fairly for
-## 3, 5 and 6 lanes.
+## 3, 5 and 6 lanes. Also the campaign's shape (task R5): the recency curve for pick weights and the
+## features' ages, The Hush's quiet remix (fewer enemies, more hosts, quiet stretches and bursts,
+## darker lighting), and the lighting hook reaching every skin.
 
 ## The zones in order and their level counts (GDD §5). Other tasks rely on these ids: skins at
 ## data/skins/<id>_skin.tres, music tracks named after them.
@@ -33,16 +35,19 @@ const LEFT_OUT: Dictionary = {
 	"screech": ["marketplace/1", "marketplace/2", "corporate/1", "corporate/2", "golden/1", "golden/2", "golden/3"],
 	# In the Dead Zone's rubble street, `screech` brings manholes and wall vents both.
 	"screech_vents": ["dead_zone/1", "dead_zone/2"],
-	# GDD §9.9: the Buzz Overdrive appears in only two zones (DESIGN-TBD: Corporate and the Dead Zone).
-	"buzz_overdrive": ["golden/1", "golden/2", "golden/3"],
 	# GDD §9.12 (proposed): the Tithe Collector skips the Dead Zone and returns in the Golden Zone.
 	"tithe_collector": ["dead_zone/1", "dead_zone/2"],
 }
+## GDD §9.9 (corrected September 26, 2026): the Buzz Overdrive appears in the Corporate zone and the
+## two zones after it, the Dead Zone and the Golden Zone (the Golden Palace plays like any level).
+const BUZZ_OVERDRIVE_LEVELS: Array = ["corporate/1", "corporate/2", "dead_zone/1", "dead_zone/2", "golden/1", "golden/2",
+	"golden/3"]
 ## Levels that bring nothing new (GDD §5): Dead Zone 2 is "a quiet, eerie remix", Golden 3 the
 ## Golden Palace.
 const NOTHING_NEW: Array = ["dead_zone/2", "golden/3"]
-## The seed sweep: the levels with the most features, on this many seeds each at 3, 5 and 6 lanes.
-const SWEEP_LEVELS: Array = ["gangland/3", "corporate/2", "dead_zone/1", "golden/1", "golden/3"]
+## The seed sweep: the levels with the most features, and The Hush (paced in bursts), on this many
+## seeds each at 3, 5 and 6 lanes.
+const SWEEP_LEVELS: Array = ["gangland/3", "corporate/2", "dead_zone/1", "dead_zone/2", "golden/1", "golden/3"]
 const SWEEP_SEEDS: int = 8
 ## How far past its start a new feature's first piece or enemy may be: the first pattern picked
 ## from the start uses it, and the pick can wait for the longest pattern before it (an Octodog's
@@ -66,6 +71,9 @@ func run() -> void:
 	_test_skins(campaign)
 	_test_levels_generate(campaign)
 	_test_ceiling_gauntlets(campaign)
+	_test_recency(campaign)
+	_test_hush(campaign)
+	_test_darker_lighting(campaign)
 	_test_unlocking()
 
 
@@ -200,6 +208,25 @@ func _test_schedule(campaign: Campaign) -> void:
 	check(city_1.feature_start("cyborg") >= 0.5, "City 1's cyborgs come late in the level (%.2f)" % city_1.feature_start("cyborg"))
 	for id: String in ["marketplace/1", "marketplace/2", "corporate/1", "corporate/2", "golden/1", "golden/2", "golden/3"]:
 		check(not campaign.step(id).level.has_feature("screech"), "no manholes in %s's floor" % id)
+	# GDD §9.9 (corrected): the Buzz Overdrive, from Corporate 1 through the Golden Zone.
+	for s: CampaignStep in levels:
+		var listed: bool = BUZZ_OVERDRIVE_LEVELS.has(s.id)
+		check(s.level.has_feature("buzz_overdrive") == listed,
+			"%s %s the Buzz Overdrive (GDD §9.9)" % [s.id, "lists" if listed else "doesn't list"])
+	# Every level lists its features in the order the campaign introduces them (the generator runs the
+	# rules scripts in that order).
+	var order: PackedStringArray = []
+	for s: CampaignStep in levels:
+		for f: String in s.level.features:
+			if not order.has(f):
+				order.append(f)
+	for s: CampaignStep in levels:
+		var last: int = -1
+		var in_order: bool = true
+		for f: String in s.level.features:
+			in_order = in_order and order.find(f) > last
+			last = order.find(f)
+		check(in_order, "%s lists its features in the order the campaign introduces them" % s.id)
 	var corporate_2: LevelConfig = campaign.step("corporate/2").level
 	check(corporate_2.feature_weight("drone") > 1.0 and corporate_2.feature_weight("hover_truck") > 1.0,
 		"Corporate 2 has a heavier military presence (GDD §5, proposed)")
@@ -395,6 +422,284 @@ func _floor_under(layout: LevelLayout, h: Dictionary) -> int:
 	for e: Dictionary in layout.enemies:
 		n += 1 if LevelGenerator.enemy_uses_floor(e) and float(e["at"]) > a and float(e["at"]) < b else 0
 	return n
+
+
+## The recency curve for pick weights (GDD §5, owner's review P2 13: beyond the guarantee, a level's
+## newest things get the most picks): the campaign gives every level's copy its curve
+## (data/tuning/feature_recency.tres, F6-tunable) and each feature's age, the levels since the campaign
+## introduced it. The curve peaks where a feature is introduced, stays high over the next levels and
+## settles lower, never at zero. It never boosts a feature the data caps (whose rules keep only so
+## many of its enemies, or the rare vent screech), and it keeps each kind of pattern's share (the
+## enemies they place, for patterns with enemies): checked exactly at spots all through every level,
+## so no level gets easier. Over the campaign, the uncapped features a level introduces get far more
+## of its picks than without the curve (its own picks: an introduction or a guarantee's forced pick
+## is there either way), and plain obstacles keep their share.
+func _test_recency(campaign: Campaign) -> void:
+	var curve: FeatureRecency = campaign.feature_recency
+	check(curve != null and curve.resource_path == "res://data/tuning/feature_recency.tres" and curve.enabled
+		and curve.keep_feature_share and curve.keep_share_by_kind, "the campaign has its recency curve, switched on, keeping each kind's share")
+	if curve == null:
+		return
+	check(curve.introduced > curve.one_level_later and curve.one_level_later > curve.two_levels_later
+		and curve.two_levels_later > curve.three_levels_later and curve.three_levels_later >= curve.older and curve.older > 0.0,
+		"the level that introduces a feature picks it most, the next ones still a lot, older ones less but never none")
+	for f: String in ["host", "hover_truck", "drone", "octodog", "screech_vents"]:
+		check(curve.max_factor.has(f) and float(curve.max_factor[f]) <= 1.0,
+			"`%s` is never boosted: its rules keep only so many (the vent screech is rare, GDD §9.5)" % f)
+	for f: String in curve.max_factor:
+		check(FIRST_LEVEL.has(f), "a capped feature (`%s`) is one the campaign knows" % f)
+	for s: CampaignStep in campaign.steps():
+		if not s.is_level():
+			continue
+		var config: LevelConfig = campaign.configure(s, 5)
+		check(config.feature_recency == curve and config.recency_on(), "%s's copy has the campaign's curve" % s.id)
+		check(s.level.feature_ages.is_empty() and s.level.feature_recency == null, "%s's own file has neither" % s.id)
+		for f: String in s.level.features:
+			var first: CampaignStep = campaign.step(String(FIRST_LEVEL.get(f, "")))
+			var age: int = s.level_index - first.level_index if first != null else -1
+			check(int(config.feature_ages.get(f, -99)) == age, "%s: `%s` was introduced %d levels ago (%d)" % [s.id, f, age,
+				config.feature_ages.get(f, -99)])
+	check(int(campaign.configure(campaign.step("golden/1"), 3).feature_ages["buzz_overdrive"]) == 4
+		and int(campaign.configure(campaign.step("dead_zone/2"), 3).feature_ages["host"]) == 1,
+		"e.g. Golden 1's Buzz Overdrive is 4 levels old, The Hush's hosts 1")
+
+	var intro: Array[int] = [0, 0]
+	var core: Array[int] = [0, 0]
+	var total: Array[int] = [0, 0]
+	var spots: int = 0
+	for s: CampaignStep in campaign.steps():
+		if not s.is_level():
+			continue
+		# The levels that introduce an uncapped feature with patterns get the seed sweep too: a level's
+		# own seed alone is too few picks to see the curve in.
+		var sweep: int = 0
+		for f: String in s.level.features:
+			if FIRST_LEVEL.get(f, "") == s.id and not curve.max_factor.has(f) and not LevelConfig.PLANNED_FEATURES.has(f):
+				sweep = 8
+		for lanes: int in [3, 5, 6]:
+			for seed_k: int in sweep + 1:
+				for k: int in 2:
+					var config: LevelConfig = campaign.configure(s, lanes)
+					if seed_k > 0:
+						config.level_seed = 9300 + seed_k
+					if k == 0:
+						config.feature_recency = null
+					var patterns: Array = LevelGenerator.load_for(config)
+					var gen := LevelGenerator.new()
+					gen.generate(config, tuning, patterns)
+					for p: Dictionary in gen.picks:
+						total[k] += 1
+						var requires: Array = p["requires"]
+						if requires.is_empty():
+							core[k] += 1
+						if bool(p["due"]):
+							continue
+						for f: Variant in requires:
+							if int(config.feature_ages.get(String(f), -1)) == 0 and not curve.max_factor.has(String(f)):
+								intro[k] += 1
+								break
+					if k == 1 and seed_k == 0:
+						spots += _check_kind_shares(gen, config, patterns, "%s lanes=%d" % [s.id, lanes])
+	check(spots >= 15 * 3 * 8, "the curve keeps each kind's share all through every level (%d spots)" % spots)
+	check(intro[1] * 10 >= intro[0] * 12, "the uncapped features a level introduces get more of its picks (%d, without the curve %d)"
+		% [intro[1], intro[0]])
+	check(absf(float(core[1]) / total[1] - float(core[0]) / total[0]) < 0.03,
+		"plain obstacles keep their share of the picks (%.3f, without the curve %.3f)" % [float(core[1]) / total[1], float(core[0]) / total[0]])
+	print("  recency curve over the campaign: %d own picks of newly introduced uncapped features (%d without), plain obstacles %.3f of picks (%.3f)"
+		% [intro[1], intro[0], float(core[1]) / total[1], float(core[0]) / total[0]])
+
+
+## At spots all through a generated campaign level (with its difficulty there), the curve keeps what
+## each kind of feature pattern weighs (LevelGenerator.pattern_kind; patterns with enemies by the
+## enemies they place) and a capped feature's patterns at their own weight times the cap. Returns
+## the spots checked.
+func _check_kind_shares(gen: LevelGenerator, config: LevelConfig, patterns: Array, tag: String) -> int:
+	var curve: FeatureRecency = config.feature_recency
+	var n: int = 0
+	for i: int in 10:
+		var at: float = config.start_clear_distance + (gen.layout.length - config.start_clear_distance) * (i + 0.5) / 10.0
+		var difficulty: float = gen.difficulty_at(at / gen.layout.length)
+		var with: Dictionary = gen.pick_weights(patterns, difficulty, at)
+		curve.enabled = false
+		var without: Dictionary = gen.pick_weights(patterns, difficulty, at)
+		curve.enabled = true
+		var sums: Array[Array] = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
+		var ok: bool = (with["patterns"] as Array).size() == (without["patterns"] as Array).size()
+		for j: int in (with["patterns"] as Array).size():
+			var p: Dictionary = with["patterns"][j]
+			var requires: Array = p.get("requires", [])
+			var w1: float = float(with["weights"][j])
+			var w0: float = float(without["weights"][j])
+			if requires.is_empty():
+				ok = ok and is_equal_approx(w0, w1)
+				continue
+			if config.recency_capped(requires):
+				ok = ok and is_equal_approx(w1, w0 * config.recency_factor(requires))
+			var kind: int = LevelGenerator.pattern_kind(p)
+			var measure: float = float(LevelGenerator.enemy_count(p, config.lane_count)) if kind == 0 else 1.0
+			sums[0][kind] += w0 * measure
+			sums[1][kind] += w1 * measure
+		for kind: int in 3:
+			ok = ok and is_equal_approx(sums[0][kind], sums[1][kind])
+		check(ok, "%s at %.0f m: each kind keeps its share, capped features their own weight" % [tag, at])
+		n += 1
+	return n
+
+
+## The Hush (GDD §5, decided September 26, 2026): "a quiet, eerie remix: fewer enemies but more hosts
+## and Bad Dream chases, darker lighting, and long silent stretches broken by sudden threats". All of
+## it is The Hush's own data, which no other level uses: quiet stretches and bursts, hosts picked more
+## often and placed in the quiet stretches (a chase starts only if the player kills one), and its
+## darkness (_test_darker_lighting). Generated at 3, 5 and 6 lanes on its own seed and others, it has
+## fewer enemies than Dead Zone 1 and than itself without the remix, more hosts than without it,
+## every one of them in a quiet stretch, no enemy but hosts picked in its quiet stretches, and bursts
+## far denser than its quiet stretches.
+func _test_hush(campaign: Campaign) -> void:
+	var hush: CampaignStep = campaign.step("dead_zone/2")
+	var ash: CampaignStep = campaign.step("dead_zone/1")
+	var level: LevelConfig = hush.level
+	check(level.paced_in_bursts() and level.quiet_seconds > level.burst_seconds
+		and level.quiet_features == PackedStringArray(["host"]) and level.feature_weight("host") > 1.0 and level.darkness > 0.0,
+		"The Hush alternates long quiet stretches with short bursts, picks hosts more often (in its quiet stretches too) and is darker")
+	for s: CampaignStep in campaign.steps():
+		if s.is_level() and s != hush:
+			check(not s.level.paced_in_bursts() and s.level.darkness == 0.0 and s.level.quiet_features.is_empty(),
+				"%s keeps its even pacing and its zone's own light" % s.id)
+	var patterns: Array = LevelGenerator.load_for(level)
+	var by_id: Dictionary = {}
+	for p: Dictionary in patterns:
+		by_id[String(p["id"])] = p
+	# Enemies (hosts apart) and hosts: The Hush [0], itself without the remix [1], Dead Zone 1 [2].
+	var enemies: Array[int] = [0, 0, 0]
+	var hosts: Array[int] = [0, 0, 0]
+	var quiet_enemies: int = 0
+	var burst_enemies: int = 0
+	var quiet_metres: float = 0.0
+	var burst_metres: float = 0.0
+	var levels: int = 0
+	for lanes: int in [3, 5, 6]:
+		for k: int in 13:
+			for which: int in 3:
+				var config: LevelConfig = campaign.configure(ash if which == 2 else hush, lanes)
+				if k > 0:
+					config.level_seed = 9200 + k
+				if which == 1:
+					config.quiet_seconds = 0.0
+					config.quiet_features = PackedStringArray()
+					var none: Dictionary[String, float] = {}
+					config.feature_weights = none
+					config.darkness = 0.0
+				var tag: String = "%s lanes=%d seed=%d" % [["The Hush", "The Hush without the remix", "Dead Zone 1"][which], lanes,
+					config.level_seed]
+				var gen := LevelGenerator.new()
+				var layout: LevelLayout = gen.generate(config, tuning, patterns)
+				check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
+				for e: Dictionary in layout.enemies:
+					var host: bool = String(e["type"]) == "cyborg" and bool((e.get("params", {}) as Dictionary).get("host", false))
+					hosts[which] += 1 if host else 0
+					enemies[which] += 0 if host else 1
+					if which == 0 and host:
+						check(gen.quiet_at(float(e["at"])), "its hosts stand in its quiet stretches, where one is easy to reach (at %.0f) %s"
+							% [float(e["at"]), tag])
+					elif which == 0:
+						if gen.quiet_at(float(e["at"])):
+							quiet_enemies += 1
+						else:
+							burst_enemies += 1
+				if which != 0:
+					continue
+				levels += 1
+				var last: float = layout.length - config.end_clear_distance
+				for s: Vector2 in gen.quiet_stretches():
+					quiet_metres += s.y - s.x
+				burst_metres += last - config.start_clear_distance
+				check(gen.quiet_stretches().size() >= 6, "long quiet stretches, again and again %s" % tag)
+				for p: Dictionary in gen.picks:
+					if not gen.quiet_at(float(p["at"])):
+						continue
+					var enemy: bool = false
+					for e: Dictionary in (by_id[String(p["id"])] as Dictionary).get("elements", []):
+						enemy = enemy or String(e.get("kind", "")) == "enemy"
+					check(not enemy or p["requires"] == ["host"], "its quiet stretches pick no enemy but hosts (%s at %.0f) %s"
+						% [p["id"], p["at"], tag])
+	burst_metres -= quiet_metres
+	print("  The Hush over %d levels: %.1f enemies and %.2f hosts a level (without the remix %.1f and %.2f; Dead Zone 1 %.1f and %.2f); %.2f enemies per 100 m in its quiet stretches, %.2f in its bursts"
+		% [levels, float(enemies[0]) / levels, float(hosts[0]) / levels, float(enemies[1]) / levels, float(hosts[1]) / levels,
+		float(enemies[2]) / levels, float(hosts[2]) / levels, quiet_enemies * 100.0 / quiet_metres, burst_enemies * 100.0 / burst_metres])
+	check(enemies[0] * 10 < enemies[1] * 8 and enemies[0] < enemies[2],
+		"fewer enemies: %d, against %d without the remix and %d in Dead Zone 1" % [enemies[0], enemies[1], enemies[2]])
+	check(hosts[0] > hosts[1] and hosts[0] > hosts[2],
+		"more hosts: %d, against %d without the remix and %d in Dead Zone 1" % [hosts[0], hosts[1], hosts[2]])
+	check(quiet_enemies * 100.0 / quiet_metres < burst_enemies * 100.0 / burst_metres * 0.25,
+		"silent stretches broken by sudden threats: enemies %.2f per 100 m in the quiet stretches, %.2f in the bursts"
+		% [quiet_enemies * 100.0 / quiet_metres, burst_enemies * 100.0 / burst_metres])
+
+
+## The Hush's darker lighting (GDD §5) is a level setting every skin's environment follows
+## (ZoneSkin.level_environment, apply_darkness): the sky and the distance fog dim, and the skin's
+## scenery through the global `scenery_light` uniform; the ambient light, the sun and every glow stay,
+## so hazards and enemies read as well as anywhere; it never goes below MIN_SCENERY_LIGHT, and
+## darkness 0 is the zone's own light. Checked on every skin in data/skins and the grey box, and in
+## the shaders: the scenery's read the uniform, the hazards', triggers', the feed's, the enemies', the
+## runner's and the pickups' don't.
+func _test_darker_lighting(campaign: Campaign) -> void:
+	var darkness: float = campaign.step("dead_zone/2").level.darkness
+	var light: float = ZoneSkin.scenery_light_for(darkness)
+	check(light < 0.9 and light > ZoneSkin.MIN_SCENERY_LIGHT, "The Hush's scenery is darker, never pitch black (%.2f)" % light)
+	check(ZoneSkin.scenery_light_for(0.0) == 1.0 and is_equal_approx(ZoneSkin.scenery_light_for(1.0), ZoneSkin.MIN_SCENERY_LIGHT)
+		and is_equal_approx(ZoneSkin.scenery_light_for(3.0), ZoneSkin.MIN_SCENERY_LIGHT) and ZoneSkin.MIN_SCENERY_LIGHT >= 0.3,
+		"darkness runs from the zone's own light down to MIN_SCENERY_LIGHT")
+	var skins: Array[ZoneSkin] = [GreyboxSkin.new()]
+	for file: String in DirAccess.get_files_at("res://data/skins"):
+		if file.ends_with(".tres"):
+			skins.append(load("res://data/skins".path_join(file)) as ZoneSkin)
+	check(skins.size() >= 4, "every skin is checked (%d)" % skins.size())
+	var factor: float = ZoneSkin.energy_factor(light)
+	for skin: ZoneSkin in skins:
+		var skin_name: String = skin.resource_path.get_file() if skin.resource_path != "" else "the grey box"
+		var plain: Environment = skin.make_environment()
+		var dark: Environment = skin.level_environment(darkness)
+		check(is_equal_approx(dark.background_energy_multiplier, plain.background_energy_multiplier * factor)
+			and is_equal_approx(dark.fog_light_energy, plain.fog_light_energy * factor), "%s: the sky and the fog dim" % skin_name)
+		check(is_equal_approx(ZoneSkin.scenery_light_now, light), "%s: and the scenery (%.2f)" % [skin_name, ZoneSkin.scenery_light_now])
+		check(dark.ambient_light_energy == plain.ambient_light_energy and dark.ambient_light_color == plain.ambient_light_color
+			and dark.glow_intensity == plain.glow_intensity and dark.glow_hdr_threshold == plain.glow_hdr_threshold
+			and dark.glow_enabled == plain.glow_enabled, "%s: the light on the runner and the enemies, and every glow, stay" % skin_name)
+		var normal: Environment = skin.level_environment(0.0)
+		check(is_equal_approx(normal.background_energy_multiplier, plain.background_energy_multiplier)
+			and is_equal_approx(normal.fog_light_energy, plain.fog_light_energy) and ZoneSkin.scenery_light_now == 1.0,
+			"%s: darkness 0 is the zone's own light" % skin_name)
+	check(ProjectSettings.has_setting("shader_globals/scenery_light"), "the scenery light is a global shader uniform (project.godot)")
+	var dims: Array[String] = ["res://scripts/world/meshes/shaders/kit_solid.gdshader", "res://scripts/world/meshes/shaders/facade.gdshader",
+		"res://scripts/world/meshes/shaders/shopfront.gdshader", "res://scripts/world/meshes/shaders/road.gdshader",
+		"res://scripts/world/meshes/shaders/drift.gdshader", "res://scripts/world/meshes/shaders/corp_facade.gdshader",
+		"res://scripts/world/greybox_scenery.gdshader"]
+	for path: String in dims:
+		var code: String = FileAccess.get_file_as_string(path)
+		check(code.contains("global uniform float scenery_light;") and code.count("scenery_light") >= 2,
+			"%s dims with the scenery light" % path.get_file())
+	check(FileAccess.get_file_as_string(dims[0]).contains("(to_linear(base) * shade + sheen) * light_factor(scenery_light)"),
+		"the kit's solid shader dims its lit surfaces only, never its glowing ones")
+	var keeps: Array[String] = ["res://scripts/world/meshes/shaders/energy_field.gdshader", "res://scripts/world/meshes/shaders/kit_glow.gdshader",
+		"res://scripts/world/meshes/shaders/cult_feed.gdshader", "res://scripts/world/meshes/shaders/night_sky.gdshader",
+		"res://scripts/enemies/cyborg_body.gdshader", "res://scripts/characters/humanoid_body.gdshader", "res://scripts/run/pickup.gdshader"]
+	for path: String in keeps:
+		check(not FileAccess.get_file_as_string(path).contains("scenery_light"), "%s keeps its own light" % path.get_file())
+	# The grey box: its floor, walls and ceilings are scenery; its fence posts, like enemies, aren't.
+	var box := GreyboxSkin.new()
+	var parent := Node3D.new()
+	box.floor_segment(parent, Vector3.ZERO, Vector3(3.0, 1.0, 10.0), 0.0, false, false)
+	box.wall_section(parent, 1, 8.0, 0.0, 10.0)
+	box.hull(parent, Vector3(0.0, 5.0, -5.0), Vector3(9.0, 0.5, 10.0), [])
+	var scenery: int = 0
+	for child: Node in parent.get_children():
+		var m := child as MeshInstance3D
+		if m != null and m.material_override is ShaderMaterial \
+				and (m.material_override as ShaderMaterial).shader == GreyboxMaterials.SCENERY_SHADER:
+			scenery += 1
+	check(scenery == 3, "the grey box's floor, walls and ceilings dim with the scenery (%d)" % scenery)
+	parent.free()
+	ZoneSkin.set_scenery_light(1.0)
 
 
 ## Unlocking follows the campaign order (with a fresh profile); the web demo covers Zone 1 only.

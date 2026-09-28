@@ -21,6 +21,10 @@ extends Resource
 @export var tier_names: PackedStringArray = PackedStringArray(["Normal", "Hard", "Insane"])
 @export var tier_difficulty_bonus: PackedFloat32Array = PackedFloat32Array([0.0, 0.15, 0.3])
 @export var tier_speed_multiplier: PackedFloat32Array = PackedFloat32Array([1.0, 1.1, 1.2])
+## The recency curve for every campaign level's pick weights (GDD §5, owner's review P2 13: a level's
+## newest things get the most picks): configure() gives each level's copy this curve and how many
+## levels ago the campaign introduced each of its features (LevelConfig.feature_ages).
+@export var feature_recency: FeatureRecency
 
 var _steps: Array[CampaignStep] = []
 
@@ -80,7 +84,8 @@ func tier_count() -> int:
 
 
 ## A copy of the step's level, ready to generate: lane count, difficulty (curve + bias + tier),
-## enemy scaling, and the zone's skin if the level has none.
+## enemy scaling, the zone's skin if the level has none, and the recency curve with its features'
+## ages (feature_ages).
 func configure(s: CampaignStep, lane_count: int, difficulty_tier: int = 0) -> LevelConfig:
 	var config: LevelConfig = s.level.duplicate() as LevelConfig
 	config.lane_count = lane_count
@@ -90,7 +95,28 @@ func configure(s: CampaignStep, lane_count: int, difficulty_tier: int = 0) -> Le
 	config.enemy_scaling = level_progress(s.level_index)
 	if config.skin == null and s.zone.skin != null:
 		config.skin = s.zone.skin
+	config.feature_ages = feature_ages(s)
+	config.feature_recency = feature_recency
 	return config
+
+
+## How many levels ago the campaign introduced each of step `s`'s features: 0 for a feature `s`
+## introduces (the first level that lists it), 1 for one the level before introduced, and so on.
+## A feature left out of some levels in between (manhole screeches outside street zones) still
+## counts from its first level.
+func feature_ages(s: CampaignStep) -> Dictionary[String, int]:
+	var out: Dictionary[String, int] = {}
+	if s == null or s.level == null:
+		return out
+	for f: String in s.level.features:
+		out[f] = 0
+	for other: CampaignStep in steps():
+		if not other.is_level() or other.level_index >= s.level_index:
+			continue
+		for f: String in other.level.features:
+			if out.has(f):
+				out[f] = maxi(out[f], s.level_index - other.level_index)
+	return out
 
 
 ## The boss step's arena, ready to plan (BossArena.base_config): lane count, the arena's own

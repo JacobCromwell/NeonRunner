@@ -11,6 +11,17 @@ vec3 to_linear(vec3 c) {
 #endif
 }
 
+// A factor on light (such as a level's scenery_light, ZoneSkin.apply_darkness), given for linear
+// space: the Compatibility renderer, working in sRGB space, takes its sRGB equivalent, so the scene
+// dims by as much on the web as on Forward+.
+float light_factor(float f) {
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+	return pow(max(f, 0.0), 1.0 / 2.2);
+#else
+	return f;
+#endif
+}
+
 float hash11(float p) {
 	p = fract(p * 0.1031);
 	p *= p + 33.33;

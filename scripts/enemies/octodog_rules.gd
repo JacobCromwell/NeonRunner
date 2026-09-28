@@ -26,7 +26,8 @@ extends RefCounted
 ##   (every one placed was dropped, or none was placed), one is added where a dog fits all of the
 ##   above, with its first wind-up after the run-up and after the feature's start, in a lane that
 ##   has floor under it and that no hover truck keeps free (HoverTruckRules.open_lanes).
-##   DESIGN-TBD: the spot is picked at random among those that fit.
+##   DESIGN-TBD: the spot is picked at random among those that fit (in a level paced in bursts,
+##   among those in a burst first: LevelGenerator.pacing_pools).
 
 const RUN_AFTER: Array[String] = ["drone", "host", "hover_truck"]
 const HostRules = preload("res://scripts/enemies/host_rules.gd")
@@ -205,7 +206,8 @@ static func _window_ok(layout: LevelLayout, a: float, window: float) -> bool:
 
 ## One dog where a dog fits every rule (see the header), in a level left without one. The spots
 ## whose first charge fits, and that have a lane for the dog, are tried in random order until the
-## rest of its charges fit too. Returns the dog, or {} if no spot fits.
+## rest of its charges fit too; in a level paced in bursts, the spots in a burst first
+## (LevelGenerator.pacing_pools). Returns the dog, or {} if no spot fits.
 static func _add_guaranteed(gen: LevelGenerator, t: OctodogTuning, chases: Array[Vector2]) -> Dictionary:
 	var layout: LevelLayout = gen.layout
 	var stop: float = t.stop_distance(gen.speed, gen.config.enemy_scaling)
@@ -217,15 +219,16 @@ static func _add_guaranteed(gen: LevelGenerator, t: OctodogTuning, chases: Array
 		if _first_charge_fits(gen, t, at, chases) and not _lanes_for(gen, at).is_empty():
 			spots.append(at)
 		at += GUARANTEE_STEP
-	while not spots.is_empty():
-		var spot: float = spots.pop_at(rng.randi_range(0, spots.size() - 1))
-		var anchors: Array[float] = _plan_charges(gen, t, spot - stop, wanted, chases)
-		if anchors.size() < mini(MIN_CHARGES, wanted) or not _run_off_ceiling_zones(gen, t, anchors):
-			continue
-		var lanes: Array[int] = _lanes_for(gen, spot)
-		var dog: Dictionary = gen.add_enemy(TYPE, spot, lanes[rng.randi_range(0, lanes.size() - 1)], 0, {})
-		_commit(gen, t, dog, anchors)
-		return dog
+	for pool: Array[float] in gen.pacing_pools(spots, TYPE):
+		while not pool.is_empty():
+			var spot: float = pool.pop_at(rng.randi_range(0, pool.size() - 1))
+			var anchors: Array[float] = _plan_charges(gen, t, spot - stop, wanted, chases)
+			if anchors.size() < mini(MIN_CHARGES, wanted) or not _run_off_ceiling_zones(gen, t, anchors):
+				continue
+			var lanes: Array[int] = _lanes_for(gen, spot)
+			var dog: Dictionary = gen.add_enemy(TYPE, spot, lanes[rng.randi_range(0, lanes.size() - 1)], 0, {})
+			_commit(gen, t, dog, anchors)
+			return dog
 	return {}
 
 

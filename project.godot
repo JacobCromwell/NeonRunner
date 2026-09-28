@@ -142,3 +142,7 @@ reduced_flashing={
 "type": "float",
 "value": 0.0
 }
+scenery_light={
+"type": "float",
+"value": 1.0
+}

@@ -27,6 +27,10 @@ const DIFFICULTY_OPTIONS: Array[float] = [0.0, 0.3, 0.6, 0.9]
 const COMPLETE_PAUSE: float = 2.0
 const QUICK_DEATH_PAUSE: float = 1.2
 
+## The run whose level set the scenery light last (ZoneSkin.apply_darkness, a global uniform): only it
+## sets the light back when it ends, so a run freed after the next one started leaves that one's alone.
+static var _lighting_run: LevelRun
+
 var context: RunContext
 var rules: GameRules
 var world: RunWorld
@@ -100,7 +104,9 @@ func _build() -> void:
 		sun.light_energy = 0.7
 		sun.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY
 		add_child(sun)
-	_env.environment = world.skin.make_environment()
+	# The zone's look with the level's darkness (GDD §5, The Hush): only the scenery darkens.
+	_env.environment = world.skin.level_environment(context.config.darkness)
+	_lighting_run = self
 	if camera == null:
 		camera = RunCamera.new()
 		add_child(camera)
@@ -125,6 +131,14 @@ func _build() -> void:
 	death_cause = ""
 	_dip_music(false)
 	world.start()
+
+
+## A level's darker lighting ends with its run (ZoneSkin.apply_darkness sets a global uniform), unless
+## a newer run has set its own since.
+func _exit_tree() -> void:
+	if _lighting_run == self:
+		_lighting_run = null
+		ZoneSkin.set_scenery_light(1.0)
 
 
 ## Continues after a death (revive item or rewarded ad). The App calls this.
@@ -307,6 +321,10 @@ func _build_debug_tools() -> void:
 	]
 	if context.config.resource_path == "":
 		sections.pop_back()
+	# A campaign level's recency curve for its pick weights (GDD §5, P2 13); Restart level rebuilds.
+	var recency: FeatureRecency = context.config.feature_recency
+	if recency != null and recency.resource_path != "":
+		sections.append({"title": "Feature picks (campaign)", "resource": recency, "path": recency.resource_path})
 	if context.is_boss():
 		# The boss's numbers (health, rewards, par times) and its script's own tuning.
 		var def: BossDef = context.boss
