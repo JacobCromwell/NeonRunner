@@ -225,15 +225,17 @@ static func deck_faces(s: Shape) -> PackedVector3Array:
 	return out
 
 
-## The meshes for a ship `s`: {hull, screen, jaw, lip, lamp, lens, door, cover, weak}. Parts are in
-## their own spaces: the jaw and its lip hang from the hinge, the lamp head points along -z from its
-## gimbal, a bay door reaches along +x from its hinge, a cover and a weak point sit on their socket.
+## The meshes for a ship `s`: {hull, wreck, screen, jaw, lip, lamp, lens, door, cover, weak}. Parts
+## are in their own spaces: the jaw and its lip hang from the hinge, the lamp head points along -z from
+## its gimbal, a bay door reaches along +x from its hinge, a cover and a weak point sit on their socket.
+## The wreck is the hull after its crash (the defeat): its fins and antenna masts broken off to stubs.
 static func meshes(s: Shape) -> Dictionary:
 	var id: String = "%.3f|%.3f|%.3f" % [s.width, s.height, s.length]
 	if _meshes.has(id):
 		return _meshes[id]
 	var out := {
 		"hull": _hull(s),
+		"wreck": _hull(s, true),
 		"screen": _screen(s),
 		"jaw": _jaw(s),
 		"lip": _lip(s),
@@ -279,7 +281,7 @@ static func bomb_mesh() -> ArrayMesh:
 
 # --- The hull ------------------------------------------------------------------------------
 
-static func _hull(s: Shape) -> ArrayMesh:
+static func _hull(s: Shape, wrecked: bool = false) -> ArrayMesh:
 	var batch := MeshBatch.new()
 	var m: MeshLayer = batch.layer(solid_material())
 	var g: MeshLayer = batch.layer(glow_material())
@@ -293,7 +295,7 @@ static func _hull(s: Shape) -> ArrayMesh:
 	_stern(m, g, s, rings[0])
 	_ears(m, s)
 	_belly(m, g, s)
-	_crown(m, s)
+	_crown(m, s, wrecked)
 	return batch.to_mesh()
 
 
@@ -578,21 +580,32 @@ static func _belly(m: MeshLayer, g: MeshLayer, s: Shape) -> void:
 		z0 -= 2.6
 
 
-static func _crown(m: MeshLayer, s: Shape) -> void:
+static func _crown(m: MeshLayer, s: Shape, wrecked: bool = false) -> void:
 	var w: float = s.width
 	var l: float = s.length
 	# The weak points' sockets, standing proud of the crown (the covers and the red domes are parts of
 	# their own).
 	for p: Vector3 in s.weak_points:
 		m.prism(p + Vector3(0, -0.6, 0), 0.95, 0.6, 10, HULL_DARK)
-	# Dorsal fins along the crown toward the bow, and antenna masts.
+	# Dorsal fins along the crown toward the bow, and antenna masts; in the wreck, jagged stubs where
+	# they broke off (so nothing stands up in the runner's way across its back).
+	var k: int = 0
 	for z: float in [-0.4 * l, -0.52 * l, -0.64 * l]:
 		var top: float = crown_height(s, 0.0, z)
-		m.box_xform(Transform3D(Basis.from_euler(Vector3(0.45, 0.0, 0.0)) * Basis.from_scale(Vector3(0.14, 1.3, 2.4)),
-			Vector3(0.0, top + 0.45, z)), HULL_DARK)
+		if wrecked:
+			var lean: float = 0.3 if k % 2 == 0 else -0.25
+			m.box_xform(Transform3D(Basis.from_euler(Vector3(0.45, 0.0, lean)) * Basis.from_scale(Vector3(0.14, 0.26, 1.6)),
+				Vector3(0.0, top + 0.02, z - 0.2)), HULL_DARK.darkened(0.3))
+		else:
+			m.box_xform(Transform3D(Basis.from_euler(Vector3(0.45, 0.0, 0.0)) * Basis.from_scale(Vector3(0.14, 1.3, 2.4)),
+				Vector3(0.0, top + 0.45, z)), HULL_DARK)
+		k += 1
 	for mast: Vector2 in [Vector2(-0.14, -0.6), Vector2(0.14, -0.7)]:
 		var z: float = mast.y * l
 		var base := Vector3(mast.x * w, crown_height(s, mast.x, z) - 0.1, z)
+		if wrecked:
+			m.prism(base, 0.08, 0.35, 5, HULL_LIGHT.darkened(0.4))
+			continue
 		m.prism(base, 0.07, 3.0, 5, HULL_LIGHT)
 		m.prism(base + Vector3(0, 3.0, 0), 0.12, 0.14, 6, LIGHT, 1.0)
 

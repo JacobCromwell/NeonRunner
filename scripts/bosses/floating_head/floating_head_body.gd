@@ -11,6 +11,11 @@ extends BossPart
 ## ways onto its head). A weak point over each lane near the crown's middle (a generous stomp box over
 ## each red dome) and the crown's deck (a surface to stand on, exactly where the hull is drawn) stay off
 ## until a stomp window opens (set_weak_points_enabled, set_top_solid). Weapons aim at its face.
+## Its propaganda's slogans show on a caption band across the bottom of its face screen (show_slogan:
+## a Label3D in the face's cold white; FloatingHeadVoice says when). Beaten, it stays: the encounter
+## plays its defeat (FloatingHead): its power dies (power: its lights, pads and trim fade), and after
+## the crash it's a wreck (wreck(): its fins and masts broken off, its crown's deck a floor the runner
+## runs across); no hitbox of it is live any more.
 
 const FACE_SHADER: String = "res://scripts/bosses/floating_head/floating_head_face.gdshader"
 ## The searchlight's lens: off, sweeping (cold white) or lingering (enemy-attack red).
@@ -21,7 +26,7 @@ const LENS_RED := Color(1.0, 0.16, 0.1)
 const FACE_WHITE := Color(0.86, 0.91, 1.0)
 ## A weak point's stomp box starts this far under its socket's top (and reaches stomp_top above it).
 const STOMP_BELOW: float = 0.2
-## DESIGN-TBD (docs/questions/e1.md, From E1c, item 3): opening, a cover swings back this far about
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 160): opening, a cover swings back this far about
 ## its back edge (lying back on the crown behind its socket) and the red dome rises out of the socket.
 const COVER_OPEN_DEGREES: float = 150.0
 const DOME_SUNK: float = 0.45
@@ -29,6 +34,19 @@ const DOME_SUNK: float = 0.45
 const PULSE_HZ: float = 1.4
 const PULSE_LOW: float = 0.85
 const PULSE_HIGH: float = 1.45
+## The slogans' font (the UI's display face) and how bright they glow (above the bloom threshold, like
+## the face's lines).
+const CAPTION_FONT: String = "res://assets/fonts/orbitron/Orbitron[wght].ttf"
+const CAPTION_WEIGHT: int = 800
+const CAPTION_GLOW: float = 2.2
+## The caption band: from the screen's bottom edge up to this share of its height below its centre
+## (under the eyes, which carry the lasers' warning, and above the mouth, the cyborg drop's), its text
+## at most this share of the screen's width and of a line's height.
+const CAPTION_TOP: float = -0.17
+const CAPTION_WIDTH: float = 0.88
+const CAPTION_LINE: float = 0.125
+## Sizes the caption's glyphs are drawn at (then scaled to fit the band).
+const CAPTION_FONT_SIZE: int = 96
 
 var tuning: FloatingHeadTuning
 var shape: FloatingHeadModel.Shape
@@ -49,8 +67,16 @@ var look_point := Vector3.ZERO
 var look_override: bool = false
 ## The weak points' covers: 0 shut, 1 swung open with the red domes out (a stomp window).
 var weak_open: float = 0.0
+## The ship's power, 1 (running) to 0 (dead, its defeat): its lights, trim, lift pads and their glow on
+## the street fade with it (the face screen has its own, screen_power).
+var power: float = 1.0
+## The slogan on the face screen's caption band ("" for none), and how much of it shows (0-1: the band
+## and its text fade in and out together).
+var slogan: String = ""
+var caption: float = 0.0
 
 var _ship: Node3D
+var _hull: MeshInstance3D
 var _screen: MeshInstance3D
 var _screen_material: ShaderMaterial
 var _jaw: Node3D
@@ -71,6 +97,13 @@ var _mouth_material: StandardMaterial3D
 var _door_open: float = 0.0
 var _look := Vector2.ZERO
 var _time: float = 0.0
+## Per-instance copies of its parts' kit materials, whose state_glow follows `power` (made the first
+## time the power drops), and the power they show.
+var _power_materials: Array[ShaderMaterial] = []
+var _power_shown: float = 1.0
+var _caption_label: Label3D
+var _caption_text: String = ""
+var _wrecked: bool = false
 
 
 func _build() -> void:
@@ -86,12 +119,14 @@ func _build() -> void:
 	_ship = Node3D.new()
 	_ship.name = "Ship"
 	add_child(_ship)
-	MeshBatch.add_instance(_ship, meshes["hull"], "Hull")
+	_hull = MeshBatch.add_instance(_ship, meshes["hull"], "Hull")
 	_screen = MeshBatch.add_instance(_ship, meshes["screen"], "Screen", shape.screen_center)
 	_screen_material = ShaderMaterial.new()
 	_screen_material.shader = load(FACE_SHADER) as Shader
 	_screen_material.set_shader_parameter(&"aspect", shape.screen_size.x / shape.screen_size.y)
+	_screen_material.set_shader_parameter(&"caption_top", CAPTION_TOP)
 	_screen.material_override = _screen_material
+	_build_caption()
 	_jaw = Node3D.new()
 	_jaw.name = "Jaw"
 	_jaw.position = shape.jaw_hinge
@@ -257,7 +292,97 @@ func draw_stats() -> Dictionary:
 	return out
 
 
+## Beaten, it keeps drawing itself (the encounter flies it through its defeat); Enemy stops ticking a
+## defeated enemy.
+func _physics_process(delta: float) -> void:
+	super._physics_process(delta)
+	if not alive and world != null:
+		_animate(delta)
+
+
 func _tick(delta: float) -> void:
+	_animate(delta)
+
+
+## The fight is won: the encounter plays the defeat (FloatingHead: the glitch, the fall, the crash and
+## the wreck), so the body stays; its hitboxes are already off (Enemy.defeat).
+func _on_defeated(_cause: StringName) -> void:
+	pass
+
+
+## The crash (the defeat): the hull is a wreck (its fins and masts broken off), dark, and its crown's
+## deck a floor the runner runs across.
+func wreck() -> void:
+	_wrecked = true
+	var meshes: Dictionary = FloatingHeadModel.meshes(shape)
+	_hull.mesh = meshes["wreck"]
+	# The new mesh's surfaces take the dimmed copies again.
+	_power_materials.clear()
+	_power_shown = -1.0
+	weak_open = 0.0
+	lamp = Lamp.OFF
+	set_top_solid(true)
+
+
+func is_wreck() -> bool:
+	return _wrecked
+
+
+## Dark smoke rising from the wreck's back (two plumes: slow, soft, grey; never a glow). CPU particles,
+## so the Compatibility renderer draws them too.
+func start_smoke() -> void:
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.vertex_color_use_as_albedo = true
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	mat.albedo_color = Color(0.2, 0.2, 0.23)
+	var quad := QuadMesh.new()
+	quad.size = Vector2(1.6, 1.6)
+	quad.material = mat
+	var fade := Gradient.new()
+	fade.set_color(0, Color(1.0, 1.0, 1.0, 0.0))
+	fade.set_color(1, Color(1.0, 1.0, 1.0, 0.0))
+	fade.add_point(0.15, Color(1.0, 1.0, 1.0, 0.55))
+	fade.add_point(0.6, Color(1.0, 1.0, 1.0, 0.3))
+	var grow := Curve.new()
+	grow.max_value = 2.0
+	grow.add_point(Vector2(0.0, 0.5))
+	grow.add_point(Vector2(1.0, 1.8))
+	for spot: Vector2 in [Vector2(-0.12, -4.0), Vector2(0.16, -11.0)]:
+		var z: float = spot.y
+		var p := CPUParticles3D.new()
+		p.name = "Smoke"
+		p.mesh = quad
+		p.amount = 18
+		p.lifetime = 2.8
+		p.randomness = 0.4
+		p.local_coords = false
+		p.direction = Vector3.UP
+		p.spread = 16.0
+		p.gravity = Vector3(0.0, 0.9, 0.0)
+		p.initial_velocity_min = 1.2
+		p.initial_velocity_max = 2.4
+		p.scale_amount_min = 1.0
+		p.scale_amount_max = 1.8
+		p.scale_amount_curve = grow
+		p.color_ramp = fade
+		p.position = Vector3(spot.x * shape.width, FloatingHeadModel.crown_height(shape, spot.x, z), z)
+		p.emitting = true
+		_ship.add_child(p)
+
+
+## Shows `text` on the face screen's caption band ("" clears it); `caption` fades it in and out.
+func show_slogan(text: String) -> void:
+	slogan = text
+
+
+## The caption's label (tests and reviews read it).
+func caption_label() -> Label3D:
+	return _caption_label
+
+
+func _animate(delta: float) -> void:
 	_time += delta
 	# The face: it watches the runner (its pupils follow them), or its lasers' aim, blinking now and then.
 	var watched: Vector3 = look_point if look_override else world.player.global_position + Vector3(0.0, 0.8, 0.0)
@@ -296,10 +421,102 @@ func _tick(delta: float) -> void:
 	_mouth_material.emission_energy_multiplier = 2.2 * open
 	# The lift pads' glow on the street below, brighter the lower it flies (none once it's down).
 	var height: float = global_position.y
-	_floor_glow.visible = height > 0.5
+	_floor_glow.visible = height > 0.5 and power > 0.02
 	_floor_glow.position = Vector3(0.0, 0.04 - height, -shape.length * 0.5)
-	_floor_glow_material.set_shader_parameter(&"state_glow", clampf((16.0 - height) / 12.0, 0.0, 1.0))
+	_floor_glow_material.set_shader_parameter(&"state_glow", clampf((16.0 - height) / 12.0, 0.0, 1.0) * power)
 	_update_weak_points()
+	_update_power()
+	_update_caption()
+
+
+## Its lights follow `power`: every kit material on its parts (not the face screen, which has its own
+## power, nor the red domes) gets a copy of its own the first time the power drops, whose glow scales
+## with it; a smooth fade, never a flicker.
+func _update_power() -> void:
+	var level: float = clampf(power, 0.0, 1.0)
+	if is_equal_approx(level, _power_shown):
+		return
+	if _power_materials.is_empty():
+		for node: Node in _ship.find_children("*", "MeshInstance3D", true, false):
+			var m := node as MeshInstance3D
+			if m == _screen or _domes.has(m) or m == _mouth_glow or m.mesh == null or m.material_override != null:
+				continue
+			for i: int in m.mesh.get_surface_count():
+				var mat := m.mesh.surface_get_material(i) as ShaderMaterial
+				if mat == null:
+					continue
+				var copy := mat.duplicate() as ShaderMaterial
+				m.set_surface_override_material(i, copy)
+				_power_materials.append(copy)
+	for mat: ShaderMaterial in _power_materials:
+		mat.set_shader_parameter(&"state_glow", level)
+	_power_shown = level
+
+
+## The slogan on the caption band: the band (drawn by the face shader) and its text fade in and out
+## with `caption`, and only show on a lit face. The text is sized to fit the band (its widest line
+## within CAPTION_WIDTH of the screen, each line within CAPTION_LINE of its height). While the face
+## glitches, the text jumps sideways with the tearing rows (it holds still with Reduced flashing).
+func _update_caption() -> void:
+	var shown: float = clampf(caption, 0.0, 1.0) * smoothstep(0.75, 1.0, screen_power)
+	if slogan == "":
+		shown = 0.0
+	_screen_material.set_shader_parameter(&"caption", shown)
+	_caption_label.visible = shown > 0.01
+	if not _caption_label.visible:
+		return
+	if slogan != _caption_text:
+		_caption_text = slogan
+		_caption_label.text = slogan
+		_fit_caption()
+	var c: Color = FACE_WHITE * CAPTION_GLOW
+	c.a = shown
+	_caption_label.modulate = c
+	var jump: float = 0.0
+	if glitch > 0.05:
+		var tick: float = 0.0 if Settings.flashing_reduced else floorf(_time * 12.0)
+		jump = (fposmod(sin(tick * 12.9898 + 4.1) * 43758.5453, 1.0) - 0.5) * glitch * 0.22 * shape.screen_size.x
+	_caption_label.position.x = jump
+
+
+## The caption's size: its glyphs at CAPTION_FONT_SIZE, scaled (pixel_size) so the widest line fits
+## CAPTION_WIDTH of the screen and a line's height CAPTION_LINE of it. It measures the text as shown
+## (translated, if the game has translations: Label3D translates its text like the UI's labels).
+func _fit_caption() -> void:
+	var font: Font = _caption_label.font
+	var shown: String = _caption_label.atr(slogan)
+	var widest: float = 1.0
+	for line: String in shown.split("\n"):
+		widest = maxf(widest, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, CAPTION_FONT_SIZE).x)
+	var by_width: float = shape.screen_size.x * CAPTION_WIDTH / widest
+	var by_height: float = shape.screen_size.y * CAPTION_LINE / float(CAPTION_FONT_SIZE)
+	_caption_label.pixel_size = minf(by_width, by_height)
+
+
+## The caption's text: a Label3D in front of the screen's lower part, centred in the band, in the
+## face's cold white; drawn after the screen, facing the runner like the face.
+func _build_caption() -> void:
+	_caption_label = Label3D.new()
+	_caption_label.name = "Caption"
+	var variation := FontVariation.new()
+	variation.base_font = load(CAPTION_FONT) as Font
+	variation.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("wght"): CAPTION_WEIGHT}
+	variation.spacing_glyph = 2
+	_caption_label.font = variation
+	_caption_label.font_size = CAPTION_FONT_SIZE
+	_caption_label.outline_size = 0
+	_caption_label.shaded = false
+	_caption_label.double_sided = false
+	_caption_label.fixed_size = false
+	_caption_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_caption_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_caption_label.line_spacing = -8.0
+	_caption_label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_ALWAYS
+	_caption_label.render_priority = 1
+	_caption_label.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_caption_label.position = Vector3(0.0, (-0.5 + CAPTION_TOP) * 0.5 * shape.screen_size.y, 0.06)
+	_caption_label.visible = false
+	_screen.add_child(_caption_label)
 
 
 ## The weak points' covers swing back about their back edges and the red domes rise out of their
@@ -336,6 +553,9 @@ func _build_deck() -> StaticBody3D:
 
 
 func _update_lens() -> void:
+	if power < 0.5:
+		_lens.material_override = GreyboxMaterials.flat(Color(0.08, 0.08, 0.1))
+		return
 	match lamp:
 		Lamp.OFF:
 			_lens.material_override = GreyboxMaterials.flat(Color(0.12, 0.13, 0.16))
@@ -354,12 +574,3 @@ func _build_floor_glow() -> void:
 	g.rect(Vector3(-hw, 0.0, -hl), Vector3(hw * 2.0, 0, 0), Vector3(0, 0, hl * 2.0), FloatingHeadModel.ENGINE, 0.45,
 		MeshKit.SHAPE_RADIAL)
 	_floor_glow = batch.commit(self, "FloorGlow")
-
-
-## The fight is won (GDD §10's defeat, its crash into the street, is task E1d): for now it bursts.
-func _on_defeated(_cause: StringName) -> void:
-	world.play_sfx_at(&"truck_explode", screen_world())
-	world.effects.burst(screen_world(), FloatingHeadModel.LIGHT, 64, 1.6)
-	world.effects.burst(global_position + Vector3(0.0, shape.height * 0.3, -3.0), Color(1.0, 0.4, 0.15), 64, 1.8)
-	world.effects.shake(0.5, 0.6)
-	queue_free()

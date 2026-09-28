@@ -1,14 +1,14 @@
 class_name FloatingHead
 extends BossEncounter
 ## The Floating Head, the Neon City's boss (GDD §10): a giant ship whose back is a giant cybernetic
-## propaganda face watching over the city and shouting its propaganda.
-## Built so far (tasks E1a-E1c): the ship and its face (FloatingHeadBody, FloatingHeadModel), the
-## entrance, the bombing run with its searchlight (FloatingHeadBombing), the reveal, the face-off with
-## its eye lasers and cyborg drop (FloatingHeadFaceOff), the marked towers (FloatingHeadTower): one
-## baited into the laser (or clipped on its own) topples onto the ship and pins it low across the
-## trucks; and the stomp windows while it's pinned, one way onto its head per phase. The propaganda
-## voice and the defeat (E1d) follow; for now a won fight ends in a burst. The fight stays out of the
-## City's boss slot until E1d (debug builds play it with --boss=city_boss, BossDef.preview_scene).
+## propaganda face watching over the city and shouting its propaganda. The City's boss step plays it
+## (data/bosses/city_boss.tres; tasks E1a-E1d): the ship and its face (FloatingHeadBody,
+## FloatingHeadModel), the entrance, the bombing run with its searchlight (FloatingHeadBombing), the
+## reveal, the face-off with its eye lasers and cyborg drop (FloatingHeadFaceOff), the marked towers
+## (FloatingHeadTower): one baited into the laser (or clipped on its own) topples onto the ship and pins
+## it low across the trucks; the stomp windows while it's pinned, one way onto its head per phase; its
+## propaganda voice and slogans (FloatingHeadVoice); and its defeat: it crashes into the street ahead
+## and the runner runs through the wreck.
 ##
 ## Each phase:
 ## 1. Its intro. The first phase's is the entrance: the ship roars in overhead from behind the runner
@@ -51,8 +51,23 @@ extends BossEncounter
 ## fences around each) and brought into sight as the runner nears them. A tower whose pin would land on
 ## a pickup or a dropped cyborg goes by as scenery (pin_zone_blocker); pickups due while a tower is being
 ## lined up or the ship is pinned wait until it's back in the air (_on_armor_pickup_due).
+##
+## The propaganda (GDD §10): from the reveal on it shouts through its loudhailers now and then, a
+## voice never meant to be understood, with a slogan on its face screen (FloatingHeadVoice); both give
+## way to every warning (warning_active).
+##
+## The defeat (GDD §10: "its face glitches, the propaganda cuts out mid-shout, and it crashes into the
+## street ahead; the runner runs through the wreck"). The final stomp's cry is the propaganda cutting
+## out (head_voice_cut, no shriek). Pinned, it shakes free as after any stomp; then it lurches up in
+## front of the runner, its face tearing into static (DYING: held still with Reduced flashing), loses
+## power and plunges forward into the street (FALLING: head_power_down; its screen collapses to a line
+## and its lights die) at the first stretch ahead clear of holes and fences (crash_site), where it lies
+## sunk between the trucks (WRECKED: head_crash, dust, debris and cold sparks, no flash), its crown's
+## highest point a stride above the roofs. The runner runs across its back: nothing in it hurts, and
+## anything left under it is crushed. The results wait until the runner reaches it (victory_over), and
+## LevelRun keeps the runner safe meanwhile. Numbers: FloatingHeadTuning, groups Propaganda and Defeat.
 
-enum Step { ENTER, RISE, BOMBING, DESCEND, FACE_OFF, PIN_FALL, PINNED, SHAKE, RELEASE }
+enum Step { ENTER, RISE, BOMBING, DESCEND, FACE_OFF, PIN_FALL, PINNED, SHAKE, RELEASE, DYING, FALLING, WRECKED }
 
 const BODY_SCRIPT: Script = preload("res://scripts/bosses/floating_head/floating_head_body.gd")
 ## Towers come into sight this far ahead, and go this far behind.
@@ -66,11 +81,24 @@ const CEILING_DROP: float = 9.0
 const CEILING_CLEAR: float = 1.0
 ## Its shudder while it shakes free (metres, at its start).
 const SHUDDER: float = 0.2
+## A pulsing fence this far ahead of the runner may sound its warning: the propaganda gives way.
+const FENCE_EARSHOT: float = 45.0
+## The defeat: its nose dips this far (radians) as it plunges; a crash site is looked for every this
+## many metres; smoke rises from the wreck and sparks spit from it every so often (seconds).
+const FALL_DIVE: float = 0.16
+const CRASH_STEP: float = 2.0
+const SMOKE_EVERY: float = 0.35
+const SPARKS_EVERY: float = 0.9
+## Smoke and sparks: grey and cold white, never a hazard colour.
+const SMOKE := Color(0.32, 0.32, 0.36)
+const DEBRIS := Color(0.2, 0.2, 0.26)
+const WRECK_SPARK := Color(0.8, 0.88, 1.0)
 
 var body: FloatingHeadBody
 var tuning: FloatingHeadTuning
 var bombing: FloatingHeadBombing
 var faceoff: FloatingHeadFaceOff
+var voice: FloatingHeadVoice
 var step: Step = Step.ENTER
 var step_time: float = 0.0
 ## The face screen has powered on (GDD §10's reveal happens once, when it first drops in front).
@@ -94,6 +122,8 @@ var ramp_lane: int = -1
 ## The third way up's pads (their track distance, every lane) and ceiling (track distances).
 var pad_at: float = 0.0
 var ceiling_span := Vector2.ZERO
+## The defeat: where its wreck's face lies (a track distance; -1 until it has picked a crash site).
+var crash_at: float = -1.0
 
 var _from := Vector3.ZERO
 var _to := Vector3.ZERO
@@ -122,6 +152,18 @@ var _armor_waiting: int = 0
 var _tower_plan: Dictionary = {}
 ## Towers in sight, by key.
 var _tower_nodes: Dictionary = {}
+## Seconds its last cue (sound()) still sounds: the propaganda gives way meanwhile.
+var _cue_left: float = 0.0
+## The fall (the defeat): where from ({s0: its face's track distance, y0: its belly, roll0}), and
+## seconds it has limped on looking for a crash site; the wreck's pose (pitch, roll) and its smoke and
+## sparks' timers; whether the runner has run past it.
+var _fall: Dictionary = {}
+var _limp: float = 0.0
+var _pitch: float = 0.0
+var _smoke_t: float = 0.0
+var _sparks_t: float = 0.0
+var _wreck_passed: bool = false
+var _effects_rng := RandomNumberGenerator.new()
 
 
 func _build_boss() -> void:
@@ -136,11 +178,16 @@ func _build_boss() -> void:
 	faceoff = FloatingHeadFaceOff.new()
 	add_child(faceoff)
 	faceoff.setup(self)
+	voice = FloatingHeadVoice.new()
+	add_child(voice)
+	voice.setup(self)
+	_effects_rng.seed = hash([String(def.id), "wreck"])
 	if int(context.boss_resume.get("phase", 0)) > 0:
 		# Resuming at a later phase: it has been revealed, and waits in front of the runner.
 		revealed = true
 		_boot = 1.0
 		pose = face_pose()
+		voice.start()
 	else:
 		pose = enter_pose()
 	_place()
@@ -202,10 +249,39 @@ func player_lane() -> int:
 	return clampi(p.lane, 0, lane_count() - 1)
 
 
-## Plays a sound at `pos` and notes it (every warning is heard: tests read the notes).
+## Plays a sound at `pos` and notes it (every warning is heard: tests read the notes). The propaganda
+## gives way while it sounds (warning_active).
 func sound(sound_name: StringName, pos: Vector3) -> void:
 	world.play_sfx_at(sound_name, pos)
 	log_event(&"sound", {"name": sound_name})
+	if voice != null:
+		_cue_left = maxf(_cue_left, voice.seconds_of(sound_name))
+
+
+## True while one of its attacks warns or strikes (a bomb's lock and fall, the eyes charging and the
+## lasers firing, its mouth open and its cyborgs dropping, a tower toppling onto it), while one of its
+## cues still sounds (sound()), while a cyborg it dropped is still about (its charge-up is a warning of
+## its own) and while a pulsing fence ahead may sound its warning: the propaganda gives way to all of
+## them (FloatingHeadVoice ducks and its slogan fades).
+func warning_active() -> bool:
+	if _cue_left > 0.0 or step == Step.PIN_FALL:
+		return true
+	if bombing != null and not bombing.target.is_empty():
+		return true
+	if faceoff != null:
+		var s: FloatingHeadFaceOff.Step = faceoff.step
+		if s == FloatingHeadFaceOff.Step.CHARGE or s == FloatingHeadFaceOff.Step.FIRE \
+				or s == FloatingHeadFaceOff.Step.MOUTH or s == FloatingHeadFaceOff.Step.DROPPING:
+			return true
+		if not faceoff.falling().is_empty() or not faceoff.dropped().is_empty():
+			return true
+	if arena != null and world != null and world.player != null:
+		var d: float = player_distance()
+		for f: Dictionary in arena.layout.fences:
+			if bool(f.get("pulsing", false)) and not f.get("disabled", false) and float(f["at"]) >= d - 2.0 \
+					and float(f["at"]) <= d + FENCE_EARSHOT:
+				return true
+	return false
 
 
 # --- Fairness helpers (the bombing run and the face-off) -----------------------------------------
@@ -337,6 +413,11 @@ func _physics_process(delta: float) -> void:
 	if _armor_waiting > 0 and not pin_busy() and state != State.DEFEATED:
 		_armor_waiting -= 1
 		offer_pickup(&"armor")
+	# The propaganda holds with the fight while the runner is down.
+	if voice != null and world != null and world.player != null \
+			and (state == State.DEFEATED or (world.player.alive and world.player.running)):
+		_cue_left = maxf(_cue_left - delta, 0.0)
+		voice.tick(delta)
 
 
 ## Towers come into sight ahead and go once passed. A fallen one frees itself once it has crumbled; its
@@ -463,10 +544,11 @@ func _pattern_tick(delta: float) -> void:
 
 
 ## A stomp landed on a weak point (its damage follows at once, and ends the phase): GDD §10, it
-## shrieks.
+## shrieks. The last one beats it: then its cry is the propaganda cutting out (_on_defeated).
 func _on_weak_point_hit(_part: BossPart, hazard: Hazard) -> void:
 	window_open = false
-	sound(&"head_shriek", body.screen_world())
+	if not (is_final_phase() and hit_damage() >= health - max_health * EPSILON):
+		sound(&"head_shriek", body.screen_world())
 	world.effects.burst(hazard.global_position, FloatingHeadModel.WEAK, 40, 1.2)
 	world.effects.burst(hazard.global_position + Vector3(0.0, 0.4, 0.0), FloatingHeadTower.CONCRETE_LIGHT, 20, 0.8)
 	world.effects.shake(0.5, 0.5)
@@ -474,16 +556,55 @@ func _on_weak_point_hit(_part: BossPart, hazard: Hazard) -> void:
 	log_event(&"stomp", {"route": route, "lane": _lane_at(hazard.global_position.x)})
 
 
+## Beaten (GDD §10): its attacks stop, the propaganda cuts out mid-shout and its face glitches. Pinned,
+## it shakes free first (a runner on its crown drops off behind); then it dies in front of the runner.
 func _on_defeated() -> void:
 	bombing.clear()
 	faceoff.clear()
-	_end_pin(true)
+	voice.cut()
+	body.glitch = 1.0
+	window_open = false
+	if step == Step.PINNED or step == Step.SHAKE:
+		# The third window's pads and ceiling go; the tower and the ramp drop away as it shakes free.
+		_remove_way_up()
+		_shake_next_phase = false
+		if step == Step.PINNED:
+			_start_shake(false, true)
+	else:
+		_end_pin(true)
+		_start_dying()
+	log_event(&"defeat", {"step": Step.keys()[step]})
 
 
 func _defeated_tick(delta: float) -> void:
 	# The last blasts and burns go out.
 	bombing.tick(delta)
 	faceoff.tick(delta)
+	_bob += delta
+	step_time += delta
+	match step:
+		Step.SHAKE:
+			_shake_tick()
+		Step.DYING:
+			_dying_tick(delta)
+		Step.FALLING:
+			_falling_tick()
+		Step.WRECKED:
+			_wreck_tick(delta)
+	_place()
+
+
+## After the defeat: over once the runner has reached its wreck (the results follow a moment later,
+## as they run across it), or if the runner is down.
+func victory_over() -> bool:
+	if world == null or world.player == null or not world.player.alive:
+		return true
+	return step == Step.WRECKED and player_distance() >= crash_at
+
+
+## True once the runner has run past the wreck's bow.
+func wreck_passed() -> bool:
+	return _wreck_passed
 
 
 ## The standard armor rule's pickups (GDD §10): on the floor ahead, as usual, except while a marked
@@ -746,8 +867,9 @@ func _miss(why: StringName, gap: float) -> void:
 
 ## It shakes free (after a stomp or a missed window): the tower and the ramp break up and drop away, and
 ## it lurches shake_ahead further ahead of the runner and shake_lift up (_shake_tick). `next_phase`: the
-## phase ended (then it rises to the next phase's station; else back to the face-off).
-func _start_shake(next_phase: bool) -> void:
+## phase ended (then it rises to the next phase's station; else back to the face-off). `defeat`: the
+## last stomp (no grinding roar: its cry is the propaganda cutting out); then it dies in the air.
+func _start_shake(next_phase: bool, defeat: bool = false) -> void:
 	window_open = false
 	_shake_next_phase = next_phase
 	_shake_from = pose
@@ -758,7 +880,8 @@ func _start_shake(next_phase: bool) -> void:
 	if ramp != null and is_instance_valid(ramp):
 		ramp.crumble()
 	ramp = null
-	sound(&"head_shake_free", body.screen_world())
+	if not defeat:
+		sound(&"head_shake_free", body.screen_world())
 	world.effects.shake(0.45, 0.7)
 	world.effects.burst(body.global_position + Vector3(0.0, 1.0, -4.0), FloatingHeadTower.CONCRETE, 40, 1.8)
 	_set_step(Step.SHAKE)
@@ -773,18 +896,21 @@ func _shake_tick() -> void:
 	var e: float = smoothstep(0.0, 1.0, k)
 	pose = Vector3(_shake_from.x, _shake_from.y + tuning.shake_lift * e, _shake_from.z + tuning.shake_ahead * e)
 	_roll = lerpf(_shake_roll, 0.0, e)
-	body.glitch = lerpf(0.8, 0.0, e)
+	body.glitch = _defeat_glitch() if state == State.DEFEATED else lerpf(0.8, 0.0, e)
 	body.set_top_solid(pose.z < 0.0)
 	if k >= 1.0:
 		_finish_shake()
 
 
-## Free: its deck off, and it rises.
+## Free: its deck off, and it rises (or, beaten, dies in the air).
 func _finish_shake() -> void:
 	body.set_top_solid(false)
-	body.glitch = 0.0
 	_roll = 0.0
 	_pin = {}
+	if state == State.DEFEATED:
+		_start_dying()
+		return
+	body.glitch = 0.0
 	if _shake_next_phase:
 		var left: float = maxf(phase().intro_seconds - state_time, 0.3) if state == State.INTRO else 0.3
 		_move(Step.RISE, pose, _rise_pose(phase_index), left)
@@ -802,14 +928,7 @@ func _end_pin(quiet: bool) -> void:
 	if ramp != null and is_instance_valid(ramp):
 		ramp.crumble()
 	ramp = null
-	if ceiling_span != Vector2.ZERO:
-		for pad: Node3D in _pads:
-			props.remove(pad)
-		if _ceiling != null:
-			props.remove(_ceiling)
-		_ceiling = null
-		ceiling_span = Vector2.ZERO
-	_pads.clear()
+	_remove_way_up()
 	window_open = false
 	_pin = {}
 	_roll = 0.0
@@ -818,6 +937,18 @@ func _end_pin(quiet: bool) -> void:
 		body.set_top_solid(false)
 	if not quiet:
 		log_event(&"released")
+
+
+## The third window's pads and ceiling go (the window is gone).
+func _remove_way_up() -> void:
+	if ceiling_span != Vector2.ZERO:
+		for pad: Node3D in _pads:
+			props.remove(pad)
+		if _ceiling != null:
+			props.remove(_ceiling)
+		_ceiling = null
+		ceiling_span = Vector2.ZERO
+	_pads.clear()
 
 
 ## Enemies left under the ship's footprint (or the ramp's, in `lane`) as it crashes down are crushed.
@@ -832,6 +963,173 @@ func _crush(from: float, to: float, lane: int = -1) -> void:
 		world.effects.burst(e.global_position + Vector3(0.0, 0.6, 0.0), FloatingHeadTower.CONCRETE_LIGHT, 16, 0.8)
 		log_event(&"crushed", {"at": d})
 		e.retire()
+
+
+# --- The defeat -------------------------------------------------------------------------------------
+
+## Where it dies in the air: in front of the runner, a little higher and further than its face pose.
+func dying_pose() -> Vector3:
+	return Vector3(0.0, tuning.defeat_height, tuning.defeat_ahead)
+
+
+## The wreck's nose-down pitch and its roll (onto its right for a positive wreck_roll_degrees).
+func wreck_pitch() -> float:
+	return deg_to_rad(tuning.wreck_pitch_degrees)
+
+
+func wreck_roll() -> float:
+	return -deg_to_rad(tuning.wreck_roll_degrees)
+
+
+## The wreck's belly height: its crown's highest point over the lanes, along its deck (the part the
+## runner runs across), at wreck_top above the roofs.
+func wreck_belly() -> float:
+	var s: FloatingHeadModel.Shape = body.shape
+	var xform: Transform3D = FloatingHeadModel.ship_transform(s, wreck_pitch(), wreck_roll())
+	var deck_end: float = FloatingHeadModel.RINGS[FloatingHeadModel.DECK_RINGS].x * s.length
+	var top: float = -INF
+	var n: int = lane_count()
+	var reach: float = (n - 1) * 0.5 * world.geo.lane_width + 0.5
+	for i: int in 13:
+		var x: float = lerpf(-reach, reach, float(i) / 12.0)
+		for j: int in 9:
+			var z: float = deck_end * float(j) / 8.0
+			top = maxf(top, (xform * Vector3(x, FloatingHeadModel.crown_height(s, x / s.width, z), z)).y)
+	return tuning.wreck_top - top
+
+
+## Where it can come down: the first spot from crash_ahead to crash_ahead + crash_search ahead of the
+## runner where the street is clear of holes and fences (and ceilings) in every lane from
+## crash_clear_before its face to crash_clear_after past its bow; -1 if there's none.
+func crash_site() -> float:
+	var d: float = player_distance()
+	var length: float = body.shape.length
+	var at: float = d + tuning.crash_ahead
+	while at <= d + tuning.crash_ahead + tuning.crash_search + 0.001:
+		var from: float = at - tuning.crash_clear_before
+		var to: float = at + length + tuning.crash_clear_after
+		if floor_clear_all(from, to) and not ceiling_between(from, to):
+			return at
+		at += CRASH_STEP
+	return -1.0
+
+
+## Its face tears into static: in bursts, or steadily with Reduced flashing (nothing flickers then).
+func _defeat_glitch() -> float:
+	if Settings.flashing_reduced:
+		return 0.8
+	var burst: float = fposmod(sin(floorf(_bob * 7.0) * 12.9898) * 43758.5453, 1.0)
+	return 1.0 if burst > 0.4 else 0.55
+
+
+## Its last moments in the air: glitching, it lurches up in front of the runner (dying_pose) over
+## defeat_glitch_seconds, its jaw sagging open; then it plunges (_dying_tick).
+func _start_dying() -> void:
+	_move(Step.DYING, pose, dying_pose(), tuning.defeat_glitch_seconds)
+	_shake_roll = _roll
+	_limp = 0.0
+	log_event(&"dying")
+
+
+func _dying_tick(delta: float) -> void:
+	var k: float = clampf(step_time / maxf(_seconds, 0.05), 0.0, 1.0)
+	pose = _from.lerp(_to, smoothstep(0.0, 1.0, k))
+	_roll = lerpf(_shake_roll, 0.0, smoothstep(0.0, 1.0, k))
+	body.glitch = _defeat_glitch()
+	body.anger = 1.0
+	body.eye_charge = 0.0
+	body.jaw_open = 0.35 * smoothstep(0.0, 1.0, k)
+	_smoke_puffs(delta)
+	if k < 1.0:
+		return
+	# Down at the first stretch of clear street ahead; until there is one, it limps on ahead.
+	_limp += delta
+	var at: float = crash_site()
+	if at < 0.0 and _limp < tuning.crash_limp_max:
+		return
+	_start_fall(at if at >= 0.0 else player_distance() + tuning.crash_ahead)
+
+
+## It loses power and plunges forward into the street, its face at `at` when it lands.
+func _start_fall(at: float) -> void:
+	crash_at = at
+	_fall = {"s0": player_distance() + pose.z, "y0": pose.y, "roll0": _roll, "v0": world.player.speed}
+	_set_step(Step.FALLING)
+	sound(&"head_power_down", body.screen_world())
+	log_event(&"fall", {"at": at})
+
+
+## The plunge: forward (from the runner's pace, speeding up to reach its crash site) and down like a
+## stone, its nose dipping; its face screen collapses to a line and goes dark, and its lights die.
+func _falling_tick() -> void:
+	var t: float = maxf(tuning.defeat_fall_seconds, 0.05)
+	var k: float = clampf(step_time / t, 0.0, 1.0)
+	var elapsed: float = k * t
+	var s0: float = float(_fall["s0"])
+	var v0: float = float(_fall["v0"])
+	var a: float = (crash_at - s0 - v0 * t) / (t * t)
+	pose.z = s0 + v0 * elapsed + a * elapsed * elapsed - player_distance()
+	pose.y = lerpf(float(_fall["y0"]), wreck_belly(), k * k)
+	_pitch = lerpf(0.0, wreck_pitch(), k) - FALL_DIVE * sin(PI * k)
+	_roll = lerpf(float(_fall["roll0"]), wreck_roll(), k)
+	_boot = 1.0 - smoothstep(0.0, 0.6, k)
+	body.power = 1.0 - smoothstep(0.0, 0.8, k)
+	body.glitch = _defeat_glitch()
+	if k >= 1.0:
+		_crash()
+
+
+## It hits the street: the crash (sound, dust, debris, a heavy shake; no flash), it lies still, a dark
+## wreck sunk between the trucks, and anything left under it is crushed.
+func _crash() -> void:
+	_set_step(Step.WRECKED)
+	pose.z = crash_at - player_distance()
+	pose.y = wreck_belly()
+	_pitch = wreck_pitch()
+	_roll = wreck_roll()
+	_boot = 0.0
+	body.power = 0.0
+	body.glitch = 0.0
+	body.wreck()
+	_place()
+	var mid := Vector3(0.0, 0.6, TrackGeometry.world_z(crash_at + body.shape.length * 0.35))
+	sound(&"head_crash", body.screen_world())
+	world.effects.shake(0.9, 1.2)
+	world.effects.burst(mid, FloatingHeadTower.CONCRETE, 64, 3.0)
+	world.effects.burst(mid + Vector3(0.0, 1.0, 5.0), DEBRIS, 48, 2.2)
+	world.effects.burst(Vector3(0.0, 0.4, TrackGeometry.world_z(crash_at)), FloatingHeadTower.CONCRETE_LIGHT, 40, 1.6)
+	if not Settings.flashing_reduced:
+		world.effects.burst(mid + Vector3(0.0, 0.5, 0.0), WRECK_SPARK, 36, 1.4)
+	_crush(crash_at - 2.0, crash_at + body.shape.length + 2.0)
+	body.start_smoke()
+	log_event(&"crashed", {"at": crash_at, "belly": pose.y})
+
+
+## The wreck: still, smoking, spitting sparks now and then (none with Reduced flashing); it notes when
+## the runner has run past its bow.
+func _wreck_tick(delta: float) -> void:
+	pose.z = crash_at - player_distance()
+	_sparks_t -= delta
+	if _sparks_t <= 0.0:
+		_sparks_t = SPARKS_EVERY
+		if not Settings.flashing_reduced:
+			var x: float = _effects_rng.randf_range(-0.35, 0.35) * body.shape.width
+			var z: float = crash_at + _effects_rng.randf_range(0.5, 0.6 * body.shape.length)
+			world.effects.burst(Vector3(x, 0.3, TrackGeometry.world_z(z)), WRECK_SPARK, 10, 0.5)
+	if not _wreck_passed and player_distance() > crash_at + body.shape.length:
+		_wreck_passed = true
+		log_event(&"wreck_passed", {"alive": world.player.alive})
+
+
+## Puffs of dark smoke from its hull as it dies in the air.
+func _smoke_puffs(delta: float) -> void:
+	_smoke_t -= delta
+	if _smoke_t > 0.0:
+		return
+	_smoke_t = SMOKE_EVERY
+	var s: FloatingHeadModel.Shape = body.shape
+	var local := Vector3(_effects_rng.randf_range(-0.3, 0.3) * s.width, s.height * 0.95, -_effects_rng.randf_range(2.0, 12.0))
+	world.effects.burst(body.ship_global() * local, SMOKE, 12, 0.6)
 
 
 # --- Internals -------------------------------------------------------------------------------
@@ -864,6 +1162,8 @@ func _update_boot(delta: float) -> void:
 	_boot = minf(_boot + delta / maxf(boot, 0.05), 1.0)
 	if _boot >= 1.0:
 		_booting = false
+		# GDD §10: its face on, the propaganda starts.
+		voice.start()
 
 
 ## The lane whose middle is nearest world x `x`.
@@ -890,12 +1190,14 @@ func _set_step(next: Step) -> void:
 
 
 ## Puts the ship where its pose says, bobbing gently, its nose dipping as it swoops in and lifting as
-## it settles; pinned, it lies still, rolled onto the tower's side; shaking free, it shudders. Its hull
-## is solid except while it's pinned or shaking free (the runner may be on it then).
+## it settles; pinned, it lies still, rolled onto the tower's side; shaking free, it shudders; dying, it
+## lurches and wallows; falling and wrecked, it takes the defeat's pitch and roll. Its hull is solid
+## except while it's pinned or shaking free (the runner may be on it then), and never once it's beaten.
 func _place() -> void:
 	if body == null or not is_instance_valid(body):
 		return
-	var calm: float = 0.0 if step == Step.PINNED or step == Step.SHAKE or (step == Step.PIN_FALL and _impact) else 1.0
+	var still: bool = step == Step.PINNED or step == Step.SHAKE or step == Step.FALLING or step == Step.WRECKED
+	var calm: float = 0.0 if still or (step == Step.PIN_FALL and _impact) else 1.0
 	var bob: float = 0.22 * sin(_bob * 1.3) * calm
 	var pitch: float = 0.012 * sin(_bob * 0.9) * calm
 	var roll: float = 0.015 * sin(_bob * 0.7 + 1.0) * calm + _roll
@@ -903,10 +1205,18 @@ func _place() -> void:
 		pitch -= 0.06 * (1.0 - clampf(step_time / _seconds, 0.0, 1.0))
 	elif step == Step.DESCEND or step == Step.RISE:
 		pitch += 0.04 * sin(PI * clampf(step_time / _seconds, 0.0, 1.0))
+	elif step == Step.DYING:
+		# Wallowing as its engines sputter.
+		roll += 0.07 * sin(_bob * 4.3)
+		pitch += 0.035 * sin(_bob * 3.1 + 0.6)
+	elif step == Step.FALLING or step == Step.WRECKED:
+		pitch += _pitch
 	var shudder := Vector3.ZERO
 	if step == Step.SHAKE:
 		var fade: float = 1.0 - clampf(step_time / maxf(tuning.shake_seconds / pace(), 0.05), 0.0, 1.0)
 		shudder = Vector3(sin(_bob * 53.0), 0.6 * cos(_bob * 47.0), 0.0) * SHUDDER * fade
+	elif step == Step.DYING:
+		shudder = Vector3(sin(_bob * 41.0), 0.6 * cos(_bob * 37.0), 0.0) * SHUDDER * 0.6
 	body.set_pose(Vector3(pose.x, pose.y + bob, TrackGeometry.world_z(player_distance() + pose.z)) + shudder, pitch, roll)
 	body.screen_power = _boot
-	body.set_hull_solid(step != Step.PINNED and step != Step.SHAKE)
+	body.set_hull_solid(state != State.DEFEATED and step != Step.PINNED and step != Step.SHAKE)

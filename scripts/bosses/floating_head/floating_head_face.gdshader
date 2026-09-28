@@ -38,6 +38,12 @@ uniform float blink = 0.0;
 uniform float eye_charge = 0.0;
 // Picture break-up (the defeat, task E1d): rows tear and static floods in.
 uniform float glitch = 0.0;
+// The propaganda's caption band (task E1d; FloatingHeadBody shows the slogan's text over it): 0 off,
+// 1 shown. It covers the screen from its bottom edge up to caption_top (screen heights from its
+// centre), under the eyes (the lasers' warning), the face's lines dimmed behind a dark band with a
+// light rule along its top.
+uniform float caption = 0.0;
+uniform float caption_top = -0.17;
 
 float fh_fill(float d, float aa) {
 	return 1.0 - smoothstep(-aa, aa, d);
@@ -127,8 +133,13 @@ void fragment() {
 	vec2 cell = fract(p * dots) - 0.5;
 	float detail = 1.0 - smoothstep(0.25, 0.6, aa * dots);
 	float led = mix(0.85, 1.0 - smoothstep(0.32, 0.48, length(cell)), detail);
-	float lines = max(face.x, face.y) * led;
-	vec3 col = mix(screen_lit, face_color, lines);
+	// The caption band: the face's lines give way to a dark band under the slogan, with a light rule
+	// along its top edge.
+	float cap_band = clamp(caption, 0.0, 1.0) * (1.0 - smoothstep(caption_top - aa, caption_top + aa, p.y));
+	float cap_rule = clamp(caption, 0.0, 1.0) * (1.0 - smoothstep(0.004, 0.004 + aa * 2.0, abs(p.y - caption_top - 0.012)));
+	face.xy *= 1.0 - cap_band * 0.85;
+	float lines = max(max(face.x, face.y) * led, cap_rule * (0.6 + 0.3 * detail));
+	vec3 col = mix(screen_lit * (1.0 - cap_band * 0.6), face_color, lines);
 	// The eyes charging: their insides fill with red and glow.
 	float charge = clamp(eye_charge, 0.0, 1.0) * face.z;
 	col = mix(col, charge_color * (0.55 + 0.45 * led), charge);
