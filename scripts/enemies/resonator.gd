@@ -31,8 +31,9 @@ extends Enemy
 ## Big attacks take turns (GDD §9): a pulse, from its warning until its last wave has passed the
 ## player, is a big attack (is_major_attack_active). It asks the director just before each warning
 ## (EnemyDirector.major_attack_blocked); while it's held, or the floor isn't clear, it hovers and moves
-## its pulses on with the player. After turn_wait_max of waiting in all it drops the pulses left, but
-## never its first: every visit pulses, unless the level ends first. One Resonator pulses at a time.
+## its pulses on with the player. After turn_wait_max of waiting for other attacks in all it drops the
+## pulses left, but never its first: every visit pulses, unless the level ends first. One Resonator
+## pulses at a time, and one arriving to pace the player sends the last one away after its pulse.
 ## Spawned without a plan (tests, quick experiments), it pulses as soon as it can, with the same checks.
 ## Spawn params: {"pulses": n, "pulse_at": [player distances], "double": bool or [bool per pulse]}.
 
@@ -112,6 +113,13 @@ var sounds: Array = []
 var charge: float = 0.0
 ## The current (or last) pulse sends two waves.
 var double_now: bool = false
+## Why its due pulse is waiting (&"" when it isn't): &"player" (not running, or down), &"busy" (its
+## last waves are still on their way, or another Resonator is pulsing), &"floor" (the floor where the
+## wave would meet the player isn't clear, or it wouldn't meet them before the level's end-clear
+## stretch), &"turn" (the director holds it: another type's big attack is on, GDD §9). And how long it
+## has waited for each, in all (tests, the debug HUD).
+var wait_reason: StringName = &""
+var waited_for: Dictionary = {}
 
 var _scaling: float = 0.0
 ## Track distance of the Resonator (its core), and where the generator put it.
@@ -282,14 +290,19 @@ func _pace(delta: float, p: float) -> void:
 			_start_leave()
 		return
 	if p < _due_at():
+		wait_reason = &""
 		return
-	if _ready_to_pulse():
+	wait_reason = _why_not_ready()
+	if wait_reason == &"":
 		_start_warning()
 		return
 	# Not ready (another type's big attack is on, or the floor where the wave would meet the player
-	# isn't clear): it hovers, and its pulses move on with the player.
+	# isn't clear): it hovers, and its pulses move on with the player. Only waits for other attacks
+	# count toward turn_wait_max; waiting for clear floor is part of every pulse's fairness.
+	waited_for[wait_reason] = float(waited_for.get(wait_reason, 0.0)) + delta
 	_shift += maxf(p - _last_p, 0.0)
-	_waited += delta
+	if wait_reason == &"turn" or wait_reason == &"busy":
+		_waited += delta
 	if (pulses_done > 0 and _waited > tune.turn_wait_max) or not _fits_before_end(p):
 		_log("dropped")
 		pulses = pulses_done
@@ -307,16 +320,18 @@ func _due_at() -> float:
 
 
 ## Everything a warning needs, the director asked last (GDD §9: it asks only once it's otherwise ready,
-## and while it's held it doesn't start).
-func _ready_to_pulse() -> bool:
+## and while it's held it doesn't start). &"" when it may start, else why not (wait_reason).
+func _why_not_ready() -> StringName:
 	var pl: Player = world.player
-	if not pl.alive or not pl.running or waves_on_their_way() or _other_pulsing():
-		return false
+	if not pl.alive or not pl.running:
+		return &"player"
+	if waves_on_their_way() or _other_pulsing():
+		return &"busy"
 	var v: float = maxf(pl.speed, 1.0)
 	var stretch: Vector2 = tune.meeting_stretch(pl.distance, _double_for(pulses_done), v, _scaling)
 	if stretch.y > _last_ok() or not pulse_clear(world.layout, _zones, pl.distance, stretch):
-		return false
-	return not world.director.major_attack_blocked(self)
+		return &"floor"
+	return &"turn" if world.director.major_attack_blocked(self) else &""
 
 
 ## True while the next pulse could still meet the player before the level's end-clear stretch.
@@ -527,6 +542,17 @@ func events(names: PackedStringArray) -> Array:
 	return out
 
 
+## How far halo `k` (0 the inner, 2 the outer) has swung into line for the warning: 0 at rest, rising
+## to 1 on its note of the chime (CHIME_NOTES), held while a double pulse's second wave leaves. The
+## model follows it (and relaxes back after the pulse).
+func line_up(k: int) -> float:
+	if not alive:
+		return 0.0
+	if state == State.WARNING:
+		return smoothstep(CHIME_NOTES[k] - LINE_UP_BEFORE, CHIME_NOTES[k] + LINE_UP_AFTER, _state_time)
+	return 1.0 if state == State.PULSE else 0.0
+
+
 ## Half the width of its waves' hitbox (tests).
 func band_half() -> float:
 	return _band_half
@@ -556,11 +582,7 @@ func _process(delta: float) -> void:
 		# Throbbing faster as the wave nears (a steady ramp with Reduced flashing).
 		throb = 0.72 + 0.28 * sin(TAU * _state_time * lerpf(2.0, 5.0, charge))
 	for k: int in 3:
-		var target: float = 0.0
-		if warning:
-			target = smoothstep(CHIME_NOTES[k] - LINE_UP_BEFORE, CHIME_NOTES[k] + LINE_UP_AFTER, _state_time)
-		elif holding:
-			target = 1.0
+		var target: float = line_up(k)
 		var now: float = _model.align[k]
 		_model.align[k] = target if target >= now else move_toward(now, target, delta * 1.4)
 		_model.halo_glow[k] = _model.align[k] * (throb if warning else 1.0) * (1.0 if warning or holding else 0.6)

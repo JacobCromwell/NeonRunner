@@ -14,13 +14,14 @@ extends RefCounted
 ## - Double waves ("double"): a share of the pulses (double_share, rising across the zone) send two
 ##   waves, only where their longer stretch is clear (else a single one goes), and never the level's
 ##   first pulse (GDD §6: one new thing at a time).
-## - Big attacks (GDD §9): no pulse comes while a Bad Dream's chase could be on (HostRules: a chase
-##   holds every other type's big attack) or during an Octodog's charges (its whole run is one big
-##   attack), so neither keeps a pulse waiting long at run time; drones and hover trucks, which stay
-##   for a while, take turns with it through the director.
+## - Big attacks (GDD §9): no pulse comes during an Octodog's run (its charges are one big attack, so
+##   it would keep the pulse waiting). Drones and hover trucks, which stay for a while, and a Bad
+##   Dream's chase, which only comes if the player kills its host, take turns with it through the
+##   director at run time (DESIGN-TBD, docs/questions/c3.md: a chase's stretch, 20–30 s, would leave
+##   few places for a visit in the Golden levels).
 ## - One at a time: a Resonator whose visit would begin before the last one's could end (its last
 ##   pulse, plus turn_wait_max for waits at run time, plus visit_gap_seconds) moves on to begin then.
-##   One that fits fewer than min_pulses is left out.
+##   One that fits fewer than min_pulses tries a few spots further on (MOVE_TRIES), else it's left out.
 ## - In a level that guarantees its features (LevelConfig.guarantee_features), if no Resonator is left,
 ##   one is added (guarantee_one) at the first spot after the feature's start where its pulses fit
 ##   (DESIGN-TBD, docs/questions/c3.md).
@@ -29,11 +30,14 @@ extends RefCounted
 const RUN_AFTER: Array[String] = ["drone", "host", "hover_truck", "octodog", "cyborg", "window_cyborg",
 	"screech", "screech_vents", "generator", "barnacle_turret", "wall_fences", "wall_fences_partial",
 	"buzz_overdrive", "tithe_collector", "gilded_sentinel"]
-const HostRules = preload("res://scripts/enemies/host_rules.gd")
 const TYPE: String = "resonator"
 ## Metres between the warning starts tried for a pulse, and the spots tried for a guaranteed Resonator.
 const STEP: float = 2.0
 const GUARANTEE_STEP: float = 40.0
+## A Resonator whose visit doesn't fit at its spot tries this many spots further on, this far apart
+## (DESIGN-TBD, docs/questions/c3.md), before it's left out.
+const MOVE_TRIES: int = 3
+const MOVE_STEP: float = 40.0
 ## A pulse is planned with this much more clear floor either side of its meeting stretch than the
 ## Resonator asks for at run time, so the warning that starts on the frame the player passes its
 ## planned point (up to a frame's run later) finds it clear.
@@ -52,6 +56,13 @@ static func apply(gen: LevelGenerator) -> void:
 		# One at a time: a Resonator that would arrive before the last visit is over waits until then.
 		var at: float = maxf(float(e["at"]), free_from + t.hover_ahead - t.approach_ease)
 		var plan: Dictionary = plan_visit(gen, t, rng, at, busy, first)
+		# Where its visit doesn't fit (an Octodog's run, or no clear floor for its pulses), it may come a
+		# little later: it's a flier, so its spot is free to move on.
+		var tries: int = 0
+		while plan.is_empty() and tries < MOVE_TRIES:
+			tries += 1
+			at += MOVE_STEP
+			plan = plan_visit(gen, t, rng, at, busy, first)
 		if plan.is_empty():
 			dropped.append(e)
 			continue
@@ -85,11 +96,15 @@ static func visit_start(t: ResonatorTuning, at: float) -> float:
 
 
 ## The stretches no pulse may overlap (from its warning until its wave has met the player): every
-## stretch a Bad Dream's chase can cover (HostRules.chase_stretches) and every Octodog's run (its
-## params.floor_span, octodog_rules.gd).
+## Octodog's run (its params.floor_span, octodog_rules.gd).
 static func busy_stretches(gen: LevelGenerator) -> Array[Vector2]:
-	var out: Array[Vector2] = HostRules.chase_stretches(gen)
-	for e: Dictionary in gen.layout.enemies:
+	return octodog_runs(gen.layout)
+
+
+## Every Octodog's run in `layout` (LevelGenerator.enemy_floor_span).
+static func octodog_runs(layout: LevelLayout) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for e: Dictionary in layout.enemies:
 		if String(e.get("type", "")) == "octodog":
 			var span: Vector2 = LevelGenerator.enemy_floor_span(e)
 			if span.y >= span.x:
@@ -192,8 +207,8 @@ static func _add_guaranteed(gen: LevelGenerator, t: ResonatorTuning, busy: Array
 
 ## Every planned pulse in `layout` that breaks a rule above, as a line of text (the tests' check):
 ## a clear meeting stretch (at run speed, without the plan's margin), before the end-clear stretch,
-## off the busy stretches (taken from the layout, so busy stretches of chases are read from its hosts),
-## pulses in order and at least a pulse and a rest apart, and one visit at a time.
+## off every Octodog's run, pulses in order and at least a pulse and a rest apart, and one visit at a
+## time.
 static func problems(layout: LevelLayout, config: LevelConfig, movement: MovementTuning) -> PackedStringArray:
 	var out := PackedStringArray()
 	var t: ResonatorTuning = tuning()
@@ -201,14 +216,7 @@ static func problems(layout: LevelLayout, config: LevelConfig, movement: Movemen
 	var zones := CeilingZones.make(config, movement)
 	var scaling: float = config.enemy_scaling
 	var last_ok: float = layout.length - config.end_clear_distance
-	var bt := EnemyDirector.tuning_for("bad_dream") as BadDreamTuning
-	var busy: Array[Vector2] = []
-	for e: Dictionary in layout.enemies:
-		var params: Dictionary = e.get("params", {})
-		if String(e.get("type", "")) == "cyborg" and bool(params.get("host", false)) and bt != null:
-			busy.append(bt.chase_stretch(float(e["at"]), speed))
-		elif String(e.get("type", "")) == "octodog":
-			busy.append(LevelGenerator.enemy_floor_span(e))
+	var busy: Array[Vector2] = octodog_runs(layout)
 	var prev_end: float = -INF
 	for e: Dictionary in resonators_in(layout):
 		var params: Dictionary = e.get("params", {})
@@ -236,7 +244,7 @@ static func problems(layout: LevelLayout, config: LevelConfig, movement: Movemen
 					stretch.x, stretch.y])
 			for b: Vector2 in busy:
 				if b.x <= stretch.y and b.y >= a:
-					out.append("%s: pulse %d overlaps a chase or an Octodog's run (%.0f-%.0f)" % [tag, i, b.x, b.y])
+					out.append("%s: pulse %d overlaps an Octodog's run (%.0f-%.0f)" % [tag, i, b.x, b.y])
 			free = a + (t.pulse_seconds(dbl, speed, scaling, movement.hurtbox_size.z, EnemyDirector.SHOT_PASS_MARGIN)
 				+ t.pulse_rest_at(scaling)) * speed
 		prev_end = float(anchors[-1]) + t.pulse_seconds(bool(doubles[-1]), speed, scaling, movement.hurtbox_size.z,

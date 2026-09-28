@@ -59,8 +59,9 @@ extends EnemyTuning
 @export_range(0.5, 2.0, 0.05, "suffix:s") var double_gap: float = 0.9
 ## DESIGN-TBD: a pulse that isn't ready when it's due (another enemy's big attack is on, GDD §9, or
 ## the floor where its wave would meet the player isn't clear) waits and moves the visit's other
-## pulses on with it. After this long in all it drops its remaining pulses and leaves, but never
-## before its first: a visit always gets to pulse, unless the level ends first.
+## pulses on with it. After this long waiting for other attacks in all (waiting for clear floor
+## doesn't count) it drops its remaining pulses and leaves, but never before its first: a visit always
+## gets to pulse, unless the level ends first.
 @export_range(0.0, 30.0, 0.5, "suffix:s") var turn_wait_max: float = 8.0
 
 @export_group("Wave")
