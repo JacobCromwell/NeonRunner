@@ -10,9 +10,10 @@ extends Node3D
 
 signal died(cause: String)
 ## Something happened that feedback (sound, HUD) may react to: jump, land, slide, wall_enter,
-## wall_jump, wall_exit, wall_blocked, ramp, pad, hull_end, died, stomp, lane_blocked, speed_pad,
-## grapple, armor_break, shield_break, revive, dash, dash_end. The two blocked moves (lane_blocked,
-## wall_blocked) come with a bump: out toward the blocked side and back.
+## wall_jump, wall_exit, wall_blocked, ramp, pad, hull_end, died, stomp, lane_blocked,
+## ceiling_blocked, speed_pad, grapple, armor_break, shield_break, revive, dash, dash_end. The three
+## blocked moves (lane_blocked, wall_blocked, and ceiling_blocked: a move past the edge of a ceiling
+## over fewer lanes) come with a bump: out toward the blocked side and back.
 signal movement_event(kind: StringName)
 ## A protective item was used up: &"armor", &"shield" or &"grapple".
 signal item_used(item: StringName)
@@ -399,7 +400,12 @@ func _on_move(dir: int) -> void:
 		Surface.CEILING:
 			# DESIGN-TBD: no way from the ceiling onto a wall; the move is ignored at the edge.
 			var target: int = clampi(lane + dir, 0, geo.lane_count - 1)
-			if target != lane:
+			if target == lane:
+				return
+			if _ceiling_ends_before(target):
+				# GDD §3: a ceiling over fewer lanes keeps the player within its lanes.
+				_bump_ceiling_edge(dir)
+			else:
 				_start_switch(target)
 
 
@@ -582,6 +588,51 @@ func _surface_y(height: float) -> float:
 	return height if surface != Surface.CEILING else tuning.ceiling_height - height
 
 
+## GDD §3 (decided September 26, 2026): ceilings don't have to cover every lane, and on one the player
+## switches lanes only within its lanes. True if a ceiling is over the player's lane here but not over
+## `target`, so the move would leave it. With no ceiling over the player's lane at all (a pad with
+## nothing above it), nothing holds them in.
+func _ceiling_ends_before(target: int) -> bool:
+	return _ceiling_over(lane) and not _ceiling_over(target)
+
+
+## True if a ceiling section (anything on the hull layer: the track's ceilings, a boss's) is over the
+## middle of lane `lane_index` at the player's distance, at the ceiling's height. The ceiling's own
+## collision box says where it is, so this follows its lanes exactly.
+func _ceiling_over(lane_index: int) -> bool:
+	var x: float = geo.lane_x(lane_index)
+	var z: float = TrackGeometry.world_z(distance)
+	_ray.collision_mask = TrackBuilder.LAYER_HULL
+	_ray.from = Vector3(x, tuning.ceiling_height - 0.6, z)
+	_ray.to = Vector3(x, tuning.ceiling_height + 0.3, z)
+	return not get_world_3d().direct_space_state.intersect_ray(_ray).is_empty()
+
+
+## A move toward a lane the ceiling doesn't cover (GDD §3): the clank and a bump out toward that side
+## and back, like a lane switch into a solid side (the ceiling_blocked event plays the lane bump's
+## clank), so the player sees why they didn't move. The lane doesn't change, and the bump stops short
+## of the ceiling's edge (the body never passes the last lane's edge), so the player stays on it.
+## DESIGN-TBD (docs/questions/b3.md): how a blocked move on a narrow ceiling looks and sounds.
+func _bump_ceiling_edge(dir: int) -> void:
+	var room: float = minf(rules.lane_bump_fraction * geo.lane_width, (geo.lane_width - tuning.visual_size.x) * 0.5)
+	_start_bump(dir, maxf(room - absf(_x - geo.lane_x(lane)), 0.0), tuning.lane_switch_time, false)
+	_event(&"ceiling_blocked")
+
+
+## An anti-grav pad lands the player on its ceiling in its own lane (GDD §3: a pad sits under its
+## ceiling). A lane switch still under way from the floor toward a lane that ceiling doesn't cover is
+## blocked like any move on it (_bump_ceiling_edge), back into the pad's lane.
+func _hold_to_pad_lane(pad: Area3D) -> void:
+	if _switch_t >= 1.0 or _bumping:
+		return
+	var pad_lane: int = geo.lane_at(pad.global_position.x)
+	if lane == pad_lane or _ceiling_over(lane) or not _ceiling_over(pad_lane):
+		return
+	var dir: int = signi(lane - pad_lane)
+	lane = pad_lane
+	_bump_ceiling_edge(dir)
+
+
 # --- Walls -----------------------------------------------------------------
 
 ## Enters the wall on `side` (a move past the outer lane, or a ramp: `from_ramp`, `ramp` its trigger's
@@ -729,6 +780,7 @@ func _check_triggers(motion: float) -> void:
 			&"pad":
 				_flip(Surface.CEILING, tuning.antigrav_launch_velocity)
 				_event(&"pad")
+				_hold_to_pad_lane(area)
 				return
 			&"ramp":
 				if _try_enter_wall(int(area.get_meta(&"side")), true, area.get_instance_id()):

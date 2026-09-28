@@ -21,3 +21,4 @@ spacing_seconds_hard = 0.9
 max_gap_jump_fraction = 0.8
 hull_lead_in = 3.0
 hull_landing_seconds = 1.2
+narrow_ceiling_share = 0.5

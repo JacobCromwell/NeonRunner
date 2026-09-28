@@ -186,6 +186,12 @@ func wall_sign(hazard: Hazard, size: Vector3) -> void:
 	props().wall_sign(hazard, size)
 
 
+## A ship over the ceiling's lanes: over every lane a ship across the street, over fewer (a narrow
+## ceiling, GDD §3) a smaller craft over its own lanes (CityShip).
+func ceiling_section(parent: Node3D, section: CeilingSection) -> void:
+	ship().build(parent, section.center, section.size, section.lane_edges_x, not section.full())
+
+
 func hull(parent: Node3D, center: Vector3, size: Vector3, lane_edges_x: Array[float]) -> void:
 	ship().build(parent, center, size, lane_edges_x)
 

@@ -250,14 +250,13 @@ func _build_sign(root: Node3D, s: Dictionary) -> void:
 	skin.wall_sign(hazard, size)
 
 
+## A ceiling section: its collision box over the lanes it covers (all of them, or a narrow ceiling's
+## range, GDD §3), which the player hangs from and switches lanes within, dressed by the skin.
 func _build_hull(root: Node3D, h: Dictionary) -> void:
-	var center := Vector3(0.0, tuning.ceiling_height + HULL_THICKNESS * 0.5, -(h["start"] + h["end"]) * 0.5)
-	var size := Vector3(geo.half_width() * 2.0, HULL_THICKNESS, h["end"] - h["start"])
-	_static_box(root, center, size, LAYER_HULL)
-	var seams: Array[float] = []
-	for lane: int in range(1, layout.lane_count):
-		seams.append(geo.lane_x(lane) - geo.lane_width * 0.5)
-	skin.hull(root, center, size, seams)
+	var section := CeilingSection.make(geo, tuning.ceiling_height, HULL_THICKNESS, float(h["start"]), float(h["end"]),
+		layout.hull_lanes(h))
+	_static_box(root, section.center, section.size, LAYER_HULL)
+	skin.ceiling_section(root, section)
 
 
 func _build_pad(root: Node3D, p: Dictionary) -> void:

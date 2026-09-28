@@ -481,5 +481,6 @@ func _yacht(batch: MeshBatch, size: Vector3, edges: Array[float], hw: float, _va
 		var core := Transform3D(Basis(Vector3(r * 0.7, 0, 0), Vector3(0, 0, -0.05), Vector3(0, r * 0.7, 0)),
 			Vector3(ex, 0.95, zf - 0.9))
 		s.prism_xform(core, 8, skin.engine_color, 0.9)
-		g.rect(Vector3(ex - r * 2.2, 0.95 - r * 2.2, zf - 1.1), Vector3(r * 4.4, 0, 0), Vector3(0, r * 4.4, 0),
-			skin.engine_color, 0.35, MeshKit.SHAPE_RADIAL)
+		# Its halo stops at the underside: past the far end nothing glows below it, where the chase
+		# camera passes as the player drops (MeshKit.stern_halo, task B3).
+		MeshKit.stern_halo(g, Vector3(ex, 0.95, zf - 1.1), r * 2.2, skin.engine_color, 0.35)

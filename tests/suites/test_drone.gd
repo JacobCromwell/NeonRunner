@@ -258,6 +258,42 @@ func _test_pad() -> void:
 		return refs[0].get_ref() == null and refs[1].get_ref() == null)
 	check(gone, "the hurled drones crash into the hull and disappear")
 	await sim.free_world(w)
+	await _test_pad_narrow()
+
+
+## GDD §9.6 and §3: a pad under a ceiling over fewer lanes hurls the drones into that ceiling: a drone
+## hovering over lanes the ceiling doesn't cover veers into its lanes as it rises and crashes under
+## them. At 3, 5 and 6 lanes, a one-lane ceiling at either edge.
+func _test_pad_narrow() -> void:
+	for lanes: int in [3, 5, 6]:
+		for lane: int in [0, lanes - 1]:
+			var tag: String = "lanes=%d, ceiling over lane %d" % [lanes, lane]
+			var layout := RunSim.layout(lanes, 400.0)
+			layout.pads.append({"lane": lane, "at": 120.0})
+			layout.hulls.append(LevelLayout.make_hull(117.0, 150.0, Vector2i(lane, lane), lanes))
+			var w: RunWorld = sim.build_world(layout)
+			w.player.setup(tuning, w.geo, lane)
+			w.player.god_mode = true
+			var d := _drone(w, 20.0, 0, 5)
+			var far_x: float = w.geo.lane_x(lanes - 1 - lane)
+			var last := [NAN]
+			var ref: WeakRef = weakref(d)
+			d = null
+			await _run_until(w, 12.0, func() -> bool:
+				var drone := ref.get_ref() as DroneScript
+				if drone == null:
+					return true
+				if drone.state != DroneScript.State.DOWN:
+					drone.rel_x = far_x  # over the far side of the track until the pad
+				else:
+					last[0] = drone.global_position.x
+				return false)
+			var half: float = w.geo.lane_width * 0.5
+			var x: float = float(last[0])
+			check(not is_nan(x) and x >= w.geo.lane_x(lane) - half and x <= w.geo.lane_x(lane) + half,
+				"the drone veers into the ceiling's lane before it crashes (x %.2f, lane at %.2f) %s" % [x, w.geo.lane_x(lane), tag])
+			check(ref.get_ref() == null, "and crashes " + tag)
+			await sim.free_world(w)
 
 
 ## GDD §8 damage reference: 15 shots at laser tier 1, 5 at missile tier 4. Claws don't work.

@@ -16,16 +16,18 @@ const TRUCK_LANE_AFTER_SECONDS: float = 40.0
 
 ## A ceiling lasting `seconds` at run speed with a pad at `at`, clearing only what's in the way of
 ## the floor it keeps safe (CeilingZones; DESIGN-TBD, docs/questions/b2.md: the stretches under the
-## drone's and a chase's ceilings keep their floor content): in every lane, the gaps and fences on its
-## landing zone and
-## the floor enemies whose stretch reaches it (LevelGenerator.enemy_floor_span; drones and hover
-## trucks don't use the floor); in the pad's lane, the gaps, fences and ramps on the pad's run-up and
-## rise; the floor enemies whose stretch reaches the pad's spot; and other ceiling sections it would
-## touch (with their pads). The floor under the ceiling keeps everything else. A fence generator left
-## with nothing to power goes too (GeneratorRules). The lane comes from `rng` (pad_lane), among the
-## lanes whose run-up and rise are clear when there are any. Returns false (clearing nothing) before
-## the `ceilings` feature's start (LevelConfig.feature_starts), or if its landing wouldn't end before
-## the level's end-clear stretch.
+## drone's and a chase's ceilings keep their floor content): in the lanes it covers, the gaps and
+## fences on its landing zone, and the floor enemies whose stretch reaches it
+## (LevelGenerator.enemy_floor_span; drones and hover trucks don't use the floor); in the pad's lane,
+## the gaps, fences and ramps on the pad's run-up and rise; the floor enemies whose stretch reaches the
+## pad's spot; and other ceiling sections it would touch (with their pads). The floor under the
+## ceiling keeps everything else. A fence generator left with nothing to power goes too
+## (GeneratorRules). The lane comes from `rng` (pad_lane), among the lanes whose run-up and rise are
+## clear when there are any; the lanes the ceiling covers from LevelGenerator.ceiling_lanes (a narrow
+## ceiling over the pad's lane in a level with narrow ceilings, GDD §3; a one-lane one lasts
+## one_lane_ceiling_seconds at most). Returns false (clearing nothing) before the `ceilings` feature's
+## start (LevelConfig.feature_starts), or if its landing wouldn't end before the level's end-clear
+## stretch.
 static func place(gen: LevelGenerator, rng: RandomNumberGenerator, at: float, seconds: float) -> bool:
 	if not gen.feature_started("ceilings", at):
 		return false
@@ -39,12 +41,17 @@ static func place(gen: LevelGenerator, rng: RandomNumberGenerator, at: float, se
 	for h: Dictionary in layout.hulls.duplicate():
 		if start <= float(h["end"]) + 1.0 and end >= float(h["start"]) - 1.0:
 			remove_hull(layout, h)
-	var cleared: int = zones.clear_landing(layout, landing)
+	# The pad's lane, then the ceiling's lanes around it, then its landing over those lanes: a landing
+	# never reaches the pad's run-up and rise, so clearing it first or last clears the same.
 	var lane: int = pad_lane(gen, rng, at)
+	var lanes: Vector2i = gen.ceiling_lanes([lane], at, true)
+	var length: float = gen.one_lane_seconds(lanes, seconds)
+	landing = zones.landing_zone({"start": start, "end": at + length * gen.speed})
+	var cleared: int = zones.clear_landing(layout, landing, lanes)
 	cleared += zones.clear_pad(layout, lane, at)
 	if cleared > 0:
 		GeneratorRules.keep_powered(gen)
-	return gen.add_hull_with_pad(lane, at, seconds)
+	return gen.add_hull_with_pad(lane, at, length, lanes)
 
 
 ## A random lane for a pad at `at`: one no hover truck holds while it's around, and among those, one
