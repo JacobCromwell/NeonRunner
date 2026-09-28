@@ -67,9 +67,15 @@ const SKY_DECK: float = 1.6
 const SKY_LENGTH: float = 7.0
 ## Clearance kept around a tower's banner, screen and relief, and between them and its ends.
 const CLEAR: float = 3.5
-## The lowest a banner's cloth hangs: clear over every ceiling's structure (a golden bridge's rail, an
-## archway's ribs near the walls) as well as the wall-run band.
+## The lowest a banner's cloth hangs: high over the wall-run band and the ceilings.
 const BANNER_BOTTOM: float = 11.0
+## How far the decorative statues (with their halberds) and the gilded frames (their far corners) reach
+## out from the wall face, and the lowest anything of the walls hangs over the street further out
+## (hung screens, banner poles, sky bridges): bounds for clearance_profile(), which test_golden_skin
+## checks against what the walls build.
+const STATUE_REACH: float = 1.5
+const FRAME_REACH: float = 2.8
+const OVER_STREET: float = 12.5
 ## How far a relief stands out from the gold rim behind it, and the rim from the face it is on; how far
 ## an emblem or screen stands off the cloth or casing behind it: far enough apart that they never
 ## flicker into each other from across the city.
@@ -215,7 +221,7 @@ func _hung_screen(b: Building) -> Dictionary:
 		at = b.banner_d + skin.banner_width + CLEAR if b.banner_d + skin.banner_width + CLEAR <= hi else b.banner_d - CLEAR
 	if hi < lo or at > hi or at < lo:
 		return {}
-	var y0: float = skin.feed_hung_bottom + 3.0 * MeshKit.hash01(b.side, b.id, 141)
+	var y0: float = maxf(skin.feed_hung_bottom, OVER_STREET + SCREEN_RIM) + 3.0 * MeshKit.hash01(b.side, b.id, 141)
 	var top_limit: float = b.setback_y if b.setback > 0.0 else b.height - b.crown_h
 	if y0 + h + 1.0 > top_limit:
 		return {}
@@ -307,6 +313,17 @@ func emblems(side: int, face_x: float, start: float, end: float) -> Array[Dictio
 ## The top of the palaces' statue ledge (where the statues' pedestals stand).
 func ledge_top() -> float:
 	return skin.frieze_top + LEDGE_UP
+
+
+## What the walls hold out over the street, as [reach, floor] pairs from the wall out: within `reach`
+## metres of a wall face nothing of the walls sticks out lower than `floor` (world height): the statue
+## ledge, the statues on it, the gilded frames, the banners; beyond the last, nothing lower than
+## OVER_STREET. The ceilings keep under it (GoldenCeilings.headroom()), so a bridge, an arch or a yacht
+## never cuts through a statue, a frame or a banner, however narrow the street.
+func clearance_profile() -> Array[Vector2]:
+	return [Vector2(LEDGE_OUT + 0.05, ledge_top() - LEDGE_THICK), Vector2(STATUE_REACH, ledge_top()),
+		Vector2(FRAME_REACH, FRAME_Y - FRAME_SIZE.y * 0.5 - FRAME_RIM), Vector2(BANNER_GAP + skin.banner_width + 0.1,
+			BANNER_BOTTOM)]
 
 
 # --- A building ---------------------------------------------------------------------------------

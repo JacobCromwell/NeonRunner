@@ -519,6 +519,13 @@ shader, `golden_facade.gdshader`. White and cream with red and gold accents (GDD
   (only across every lane) or a hover-yacht from the ceiling's collision box and lane seams; over fewer
   lanes a bridge becomes a suspended gallery. Water stays above the underside. `mesh_for(kind, ...)`
   builds a given kind directly.
+- *Ceilings under the walls' decorations.* The walls build without knowing where ceilings are, so
+  `GoldenFacades.clearance_profile()` declares what they hold out over the street, as (reach, lowest
+  height) tiers: the statue ledge, the statues, the gilded frames, the banners, and `OVER_STREET` beyond.
+  `GoldenCeilings.headroom()` turns it into how high a ceiling may rise at a distance from a wall:
+  arches are flatter over a narrow street (`arch_rise()`), a bridge's face stays under the ledges and its
+  rail stops short of the statues, and a yacht near a wall has a lower cabin and no mast. The suite
+  checks both sides on streets of 3 to 6 lanes; a new wall decoration extends the profile.
 - *Overhead.* Sky bridges between towers 24 m up or more, only where towers tall enough stand on both
   sides; banners hang no lower than `GoldenFacades.BANNER_BOTTOM` (11 m), clear of every ceiling.
 

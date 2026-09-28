@@ -12,6 +12,8 @@ extends SkinSuite
 ## - decorative statues stand only far above the wall-run band (a statue at wall-run height is a live
 ##   Gilded Sentinel), where statue_spots() says, and never glow; the statue kit's API for task C4;
 ## - every kind of ceiling builds from the lanes it covers (task B3), and its water stays above it;
+##   ceilings keep under what the walls hold out over the street (statue ledges, statues, frames,
+##   banners), and the walls keep to the clearance profile they declare, on streets of 3 to 6 lanes;
 ## - the cult's emblem is the owner's choice in the zone's gold and red, shown openly and large on
 ##   banners, reliefs, sky bridges, frames and medallions, never on a hazard sign;
 ## - the cult's feed plays only on the shared material and only high up; a boss arena can turn the
@@ -67,6 +69,7 @@ func run() -> void:
 	await _gaps(skin)
 	await _clear_play_space(skin)
 	_statues(skin)
+	_wall_clearance(skin)
 	await _statue_kit(skin)
 	_ceilings(skin)
 	_medallions(skin)
@@ -427,6 +430,38 @@ func _statues(skin: GoldenSkin) -> void:
 	check(lit, "decorative statues never glow: their eyes are dark bronze (only a live Sentinel's glow red)")
 
 
+## What the walls hold out over the street keeps to the profile they declare for the ceilings
+## (GoldenFacades.clearance_profile(), OVER_STREET beyond it): over 3 km of both walls at 3 and 6
+## lanes, with the sky bridges, nothing sticks out over the street lower than the profile allows at
+## its distance from the wall.
+func _wall_clearance(skin: GoldenSkin) -> void:
+	var profile: Array[Vector2] = skin.facades().clearance_profile()
+	var low: PackedStringArray = []
+	var over: int = 0
+	for lanes: int in [3, 6]:
+		var wall: float = TrackGeometry.new(lanes, tuning).wall_x()
+		for side: int in [-1, 1]:
+			var batch := MeshBatch.new()
+			skin.facades().build(batch, side, side * wall, 0.0, 3000.0)
+			if side < 0:
+				skin.facades().overhead(batch, wall, 0.0, 3000.0)
+			for material: Material in [skin.solid_material(), skin.feed_material(), skin.glow_material()]:
+				var layer: MeshLayer = batch.layer(material)
+				for p: Vector3 in layer.verts:
+					var from_wall: float = wall - absf(p.x)
+					if from_wall <= 0.05:
+						continue
+					over += 1
+					var floor_y: float = GoldenFacades.OVER_STREET
+					for tier: Vector2 in profile:
+						if from_wall <= tier.x:
+							floor_y = minf(floor_y, tier.y)
+					if p.y < floor_y - 0.001 and low.size() < 4:
+						low.append("%.2f m up, %.2f m out (%d lanes)" % [p.y, from_wall, lanes])
+	check(over > 1000 and low.is_empty(), "the walls hold nothing out over the street below their clearance profile " +
+		"(%d points): %s" % [over, ", ".join(low)])
+
+
 ## The statue kit for the Gilded Sentinels (task C4): shared by the skin, poses fill in from REST and
 ## blend, merged meshes are cached per pose and stand on their pedestal, the rig has every pivot and
 ## poses like the merged mesh, and the niche frames its opening.
@@ -480,69 +515,110 @@ func _statue_kit(skin: GoldenSkin) -> void:
 		and nb.size.x < 2.0 and nb.position.z > -0.001, "the niche frames its opening, proud of the wall: %s" % nb)
 
 
-## Every kind of ceiling, over every number of lanes from one to six, full width or narrow and off
-## centre (task B3): a flat underside covering exactly its lanes (bridges and archways across every
-## lane reach from wall to wall), nothing hanging below it but flush lamps and seams, the orange band
-## at its far end, a seam under each lane boundary; the water off the bridges stays above the
-## underside, on some of them only.
+## Every kind of ceiling, on streets of 3, 5 and 6 lanes over every number of their lanes, full width
+## or narrow and pushed against a wall (task B3): a flat underside covering exactly its lanes (bridges
+## and archways across every lane reach from wall to wall), nothing hanging below it but flush lamps
+## and seams, the orange band at its far end, a seam under each lane boundary; the water off the
+## bridges stays above the underside, on some of them only; and above the underside nothing reaches
+## into what the walls hold out over the street (GoldenCeilings.headroom(): the statue ledges, the
+## statues, the gilded frames, the banners), however narrow the street.
 func _ceilings(skin: GoldenSkin) -> void:
 	var lane_w: float = tuning.lane_width
-	var wall_x: float = 3.0 * lane_w + tuning.wall_margin
+	var base: float = tuning.ceiling_height
 	var problems: PackedStringArray = []
+	var clashes: PackedStringArray = []
 	var water := {"bridges": 0, "wrong": 0, "low": 0}
-	for kind: int in [GoldenCeilings.Kind.BRIDGE, GoldenCeilings.Kind.ARCHWAY, GoldenCeilings.Kind.YACHT]:
-		for lanes: int in range(1, 7):
-			var offset: float = 0.0 if lanes == 6 else (6 - lanes) * lane_w * 0.5 * (1.0 if lanes % 2 == 0 else -1.0)
-			var size := Vector3(lanes * lane_w, TrackBuilder.HULL_THICKNESS, 30.0)
-			var edges: Array[float] = []
-			for k: int in range(1, lanes):
-				edges.append(offset - size.x * 0.5 + k * lane_w)
-			var tag: String = "kind %d, %d lanes" % [kind, lanes]
-			for variant: int in 4:
-				var length: float = 30.0 + 10.0 * variant
-				size.z = length
-				var mesh: ArrayMesh = skin.ceilings().mesh_for(kind, variant, size, edges, offset, wall_x)
-				var under := {"min_x": INF, "max_x": -INF, "lowest": 0.0, "band": false, "water": 0, "water_low": 0}
-				for s: int in mesh.get_surface_count():
-					var arrays: Array = mesh.surface_get_arrays(s)
-					var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-					var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
-					var uv2: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV2]
-					var glow_surface: bool = mesh.surface_get_material(s) == skin.glow_material()
-					for i: int in verts.size():
-						var v: Vector3 = verts[i]
-						if glow_surface:
-							continue
-						under["lowest"] = minf(under["lowest"], v.y)
-						if roundi(uv2[i].x) == MeshKit.PAT_WATER:
-							under["water"] += 1
-							if v.y < -0.001:
-								under["water_low"] += 1
-						if absf(v.y) < 0.001:
-							under["min_x"] = minf(under["min_x"], v.x)
-							under["max_x"] = maxf(under["max_x"], v.x)
-							if _same_rgb(colors[i], skin.gap_edge_color) and v.z < -size.z * 0.5 + GoldenCeilings.END_BAND + 0.01:
-								under["band"] = true
-				var full: bool = lanes == 6 and kind != GoldenCeilings.Kind.YACHT
-				var want: float = wall_x if full else size.x * 0.5 + 0.15
-				if absf(under["min_x"] + want) > 0.02 or absf(under["max_x"] - want) > 0.02:
-					problems.append("%s: underside spans %.2f..%.2f, not ±%.2f" % [tag, under["min_x"], under["max_x"], want])
-				if under["lowest"] < -0.06:
-					problems.append("%s: something hangs %.2f m below the surface" % [tag, under["lowest"]])
-				if not under["band"]:
-					problems.append("%s: no orange band at the far end" % tag)
-				if kind == GoldenCeilings.Kind.BRIDGE and full:
-					water["bridges"] += 1
-					water["wrong"] += 1 if (under["water"] > 0) != skin.ceilings().has_water(variant, length) else 0
-				elif under["water"] > 0:
-					problems.append("%s: water off a ceiling that isn't a bridge" % tag)
-				water["low"] += under["water_low"]
-				for x: float in edges:
-					if not _has_seam(mesh, x - offset, skin):
-						problems.append("%s: no seam at x %.2f" % [tag, x - offset])
-				if problems.size() > 6:
-					break
+	for street: int in [3, 5, 6]:
+		var wall_x: float = street * lane_w * 0.5 + tuning.wall_margin
+		for kind: int in [GoldenCeilings.Kind.BRIDGE, GoldenCeilings.Kind.ARCHWAY, GoldenCeilings.Kind.YACHT]:
+			for lanes: int in range(1, street + 1):
+				var offset: float = (street - lanes) * lane_w * 0.5 * (1.0 if lanes % 2 == 0 else -1.0)
+				var size := Vector3(lanes * lane_w, TrackBuilder.HULL_THICKNESS, 30.0)
+				var edges: Array[float] = []
+				for k: int in range(1, lanes):
+					edges.append(offset - size.x * 0.5 + k * lane_w)
+				var tag: String = "kind %d, %d of %d lanes" % [kind, lanes, street]
+				for variant: int in 4:
+					var length: float = 30.0 + 10.0 * variant
+					size.z = length
+					var mesh: ArrayMesh = skin.ceilings().mesh_for(kind, variant, size, edges, offset, wall_x, base)
+					var under := {"min_x": INF, "max_x": -INF, "lowest": 0.0, "band": false, "water": 0, "water_low": 0}
+					_ceiling_mesh(mesh, skin, size, under)
+					for c: String in _clashes(mesh, skin, offset, wall_x, base):
+						if clashes.size() < 6:
+							clashes.append("%s: %s" % [tag, c])
+					var full: bool = lanes == street and kind != GoldenCeilings.Kind.YACHT
+					var want: float = wall_x if full else size.x * 0.5 + 0.15
+					if absf(under["min_x"] + want) > 0.02 or absf(under["max_x"] - want) > 0.02:
+						problems.append("%s: underside spans %.2f..%.2f, not ±%.2f" % [tag, under["min_x"], under["max_x"], want])
+					if under["lowest"] < -0.06:
+						problems.append("%s: something hangs %.2f m below the surface" % [tag, under["lowest"]])
+					if not under["band"]:
+						problems.append("%s: no orange band at the far end" % tag)
+					if kind == GoldenCeilings.Kind.BRIDGE and full:
+						water["bridges"] += 1
+						water["wrong"] += 1 if (under["water"] > 0) != skin.ceilings().has_water(variant, length) \
+							and wall_x > 5.0 else 0
+					elif under["water"] > 0:
+						problems.append("%s: water off a ceiling that isn't a bridge" % tag)
+					water["low"] += under["water_low"]
+					for x: float in edges:
+						if not _has_seam(mesh, x - offset, skin):
+							problems.append("%s: no seam at x %.2f" % [tag, x - offset])
+					if problems.size() > 6:
+						break
 	check(problems.is_empty(), "every kind of ceiling builds from its lanes, full width or narrow:\n  %s" % "\n  ".join(problems))
+	check(clashes.is_empty(), "no ceiling reaches into the statues, ledges, frames or banners on the walls:\n  %s" % "\n  ".join(
+		clashes))
+	var narrow: float = skin.ceilings().arch_rise(3.0 * lane_w * 0.5 + tuning.wall_margin, base)
+	var wide: float = skin.ceilings().arch_rise(6.0 * lane_w * 0.5 + tuning.wall_margin, base)
+	check(narrow < wide and narrow > 2.0, "arches are flatter over a narrow street: rise %.2f m at 3 lanes, %.2f m at 6" % [
+		narrow, wide])
+	_ceiling_water(skin, water)
+
+
+## One ceiling mesh's underside (its extent across, its lowest point, the orange band) and water, into
+## `under`.
+func _ceiling_mesh(mesh: ArrayMesh, skin: GoldenSkin, size: Vector3, under: Dictionary) -> void:
+	for s: int in mesh.get_surface_count():
+		var arrays: Array = mesh.surface_get_arrays(s)
+		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+		var uv2: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV2]
+		if mesh.surface_get_material(s) == skin.glow_material():
+			continue
+		for i: int in verts.size():
+			var v: Vector3 = verts[i]
+			under["lowest"] = minf(under["lowest"], v.y)
+			if roundi(uv2[i].x) == MeshKit.PAT_WATER:
+				under["water"] += 1
+				if v.y < -0.001:
+					under["water_low"] += 1
+			if absf(v.y) < 0.001:
+				under["min_x"] = minf(under["min_x"], v.x)
+				under["max_x"] = maxf(under["max_x"], v.x)
+				if _same_rgb(colors[i], skin.gap_edge_color) and v.z < -size.z * 0.5 + GoldenCeilings.END_BAND + 0.01:
+					under["band"] = true
+
+
+## The points of a ceiling mesh (centred on offset, underside at world height base, walls at ±wall_x)
+## over the street that rise above the headroom there (at most four).
+func _clashes(mesh: ArrayMesh, skin: GoldenSkin, offset: float, wall_x: float, base: float) -> PackedStringArray:
+	var out: PackedStringArray = []
+	for s: int in mesh.get_surface_count():
+		if mesh.surface_get_material(s) == skin.glow_material():
+			continue
+		for v: Vector3 in mesh.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]:
+			var from_wall: float = wall_x - absf(v.x + offset)
+			if from_wall >= -0.001 and v.y > skin.ceilings().headroom(maxf(from_wall, 0.0), base) + 0.002 and out.size() < 4:
+				out.append("%.2f m up, %.2f m from a wall" % [v.y, from_wall])
+	return out
+
+
+## Water pours off some bridges only (on a street wide enough for it beside the crest), and never
+## below the underside; only a ceiling across every lane may become a bridge or archway reaching from
+## wall to wall.
+func _ceiling_water(skin: GoldenSkin, water: Dictionary) -> void:
 	var with_water: int = 0
 	var bridges: int = 0
 	for variant: int in 4:
@@ -551,7 +627,8 @@ func _ceilings(skin: GoldenSkin) -> void:
 			with_water += 1 if skin.ceilings().has_water(variant, length) else 0
 	check(with_water > 0 and with_water < bridges and water["wrong"] == 0 and water["low"] == 0,
 		"water pours off some bridges (%d of %d), always above the underside" % [with_water, bridges])
-	# Only a ceiling across every lane may become a bridge or archway reaching from wall to wall.
+	var lane_w: float = tuning.lane_width
+	var wall_x: float = 3.0 * lane_w + tuning.wall_margin
 	var kinds_full: Dictionary = {}
 	var kinds_narrow: Dictionary = {}
 	for i: int in 300:

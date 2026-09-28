@@ -19,24 +19,34 @@ extends RefCounted
 ## carries the orange edge band of every zone (MeshKit.ceiling_end), so the drop back to the floor
 ## reads like a gap edge. The water stays above the underside, never over the floor or the walls'
 ## wall-run band, so it never hides a hazard.
+## Above the underside every structure keeps under what the walls hold out over the street (the statue
+## ledges, the statues, the gilded frames, the banners: headroom(), from GoldenFacades'
+## clearance_profile()), so on a narrow street the arches are flatter, the bridges' rails stop short of
+## the statues and a yacht near a wall has a lower cabin and no mast.
 ## Ceiling space: origin at the centre of the underside (the ceiling surface), z = -distance.
 
 enum Kind { BRIDGE, ARCHWAY, YACHT }
 
 const END_BAND: float = 1.2
 const LAMP_SPACING: float = 7.5
-## A bridge's face: its height above the underside, and (over fewer lanes) the suspended gallery's.
+## How far every structure keeps below what the walls hold out (headroom()).
+const CLEARANCE: float = 0.1
+## A bridge's face: its greatest height above the underside (bridge_fascia() fits it under the statue
+## ledges), the cornice on top of it, and (over fewer lanes) the suspended gallery's.
 const FASCIA: float = 2.4
+const CORNICE: float = 0.2
 const GALLERY_FASCIA: float = 1.2
 ## The crest at the middle of a bridge's face (the emblem in relief, rising over the rail so it reads
 ## from far down the street), how high its foot is, and the archways' keystone relief.
 const CREST: float = 3.0
 const CREST_FOOT: float = 0.3
 const KEYSTONE: float = 2.2
-## An archway's arches: spacing along the track, their rise over the deck at the middle, the deck.
+## An archway's arches: spacing along the track, their greatest rise over the deck at the middle
+## (arch_rise() fits it to the street), the deck, a rib's depth.
 const ARCH_SPACING: float = 6.0
 const ARCH_RISE: float = 4.6
 const ARCH_DECK: float = 0.5
+const ARCH_THICK: float = 0.5
 const ARCH_SEGMENTS: int = 12
 ## Water off a bridge's face: the trough's height and reach, where the curtains start below the top.
 const TROUGH_H: float = 0.42
@@ -65,7 +75,7 @@ func build(parent: Node3D, center: Vector3, size: Vector3, lane_edges_x: Array[f
 	if mesh == null:
 		if _meshes.size() > 256:
 			_meshes.clear()
-		mesh = mesh_for(kind, variant, size, lane_edges_x, center.x, wall_x)
+		mesh = mesh_for(kind, variant, size, lane_edges_x, center.x, wall_x, center.y - size.y * 0.5)
 		_meshes[id] = mesh
 	MeshBatch.add_instance(parent, mesh, "", Vector3(center.x, center.y - size.y * 0.5, center.z))
 
@@ -94,9 +104,48 @@ func has_water(variant: int, length: float) -> bool:
 	return MeshKit.hash01(variant, MeshKit.key(length), 95) < skin.water_share
 
 
+## How high a ceiling's structure may rise above its underside (at world height base_y) `from_wall`
+## metres out from the nearest wall face: CLEARANCE under everything the walls hold out there
+## (GoldenFacades.clearance_profile(); OVER_STREET beyond it).
+func headroom(from_wall: float, base_y: float) -> float:
+	var top: float = GoldenFacades.OVER_STREET
+	for tier: Vector2 in skin.facades().clearance_profile():
+		if from_wall <= tier.x:
+			top = minf(top, tier.y)
+	return top - CLEARANCE - base_y
+
+
+## The arches' rise over the deck at the middle of a street whose walls stand at ±w, the underside at
+## world height base_y: ARCH_RISE, or as much as fits under headroom() everywhere (a rib is highest
+## where it is furthest from the walls, so each tier of the walls' profile bounds it at its edge).
+func arch_rise(w: float, base_y: float) -> float:
+	var rise: float = minf(ARCH_RISE, headroom(w, base_y) - ARCH_DECK - ARCH_THICK)
+	for tier: Vector2 in skin.facades().clearance_profile():
+		var t: float = maxf(w - tier.x, 0.0) / maxf(w, 0.01)
+		rise = minf(rise, (headroom(tier.x, base_y) - ARCH_DECK - ARCH_THICK) / maxf(1.0 - t * t, 0.05))
+	return maxf(rise, 0.4)
+
+
+## A golden bridge's face height (under its cornice) with the underside at world height base_y: FASCIA,
+## or lower so the cornice stays under the statue ledges where the bridge meets the walls.
+func bridge_fascia(base_y: float) -> float:
+	return clampf(headroom(0.0, base_y) - CORNICE, 1.0, FASCIA)
+
+
+## How far from a wall there is headroom (above an underside at world height base_y) for something
+## `height` tall; w if nowhere across a street whose walls stand at ±w.
+func clear_from(height: float, w: float, base_y: float) -> float:
+	var reach: float = 0.0
+	while reach < w and headroom(reach, base_y) < height:
+		reach += 0.05
+	return reach
+
+
 ## The mesh of a ceiling of `kind` (colour variant 0-3) with collision size `size` centred on
-## offset_x, seams at lane_edges_x (world x). In ceiling space (see above); build() places it.
-func mesh_for(kind: int, variant: int, size: Vector3, lane_edges_x: Array[float], offset_x: float, wall_x: float) -> ArrayMesh:
+## offset_x, seams at lane_edges_x (world x), its underside at world height base_y, walls at ±wall_x.
+## In ceiling space (see above); build() places it.
+func mesh_for(kind: int, variant: int, size: Vector3, lane_edges_x: Array[float], offset_x: float, wall_x: float,
+		base_y: float = 6.0) -> ArrayMesh:
 	var batch := MeshBatch.new()
 	var full: bool = absf(offset_x) < 0.01 and size.x * 0.5 > wall_x - 0.6
 	var hw: float = size.x * 0.5 + 0.15
@@ -106,16 +155,16 @@ func mesh_for(kind: int, variant: int, size: Vector3, lane_edges_x: Array[float]
 	match kind:
 		Kind.ARCHWAY:
 			if full:
-				_archway(batch, size, edges, wall_x)
+				_archway(batch, size, edges, wall_x, base_y)
 			else:
-				_gallery(batch, size, edges, hw, wall_x, offset_x, variant)
+				_gallery(batch, size, edges, hw, wall_x, offset_x, variant, base_y)
 		Kind.YACHT:
-			_yacht(batch, size, edges, hw, variant)
+			_yacht(batch, size, edges, hw, variant, wall_x, offset_x, base_y)
 		_:
 			if full:
-				_bridge(batch, size, edges, wall_x, variant)
+				_bridge(batch, size, edges, wall_x, variant, base_y)
 			else:
-				_gallery(batch, size, edges, hw, wall_x, offset_x, variant)
+				_gallery(batch, size, edges, hw, wall_x, offset_x, variant, base_y)
 	return batch.to_mesh()
 
 
@@ -159,45 +208,55 @@ static func relief_emblem(panel: float) -> float:
 
 ## A bridge between the palaces across every lane: the coffered underside from wall to wall, its
 ## marble face toward the approach with a gold band along its bottom edge (so the ceiling's edge reads
-## from the floor), a gold cornice and rail on top, and the crest at its middle rising over the rail:
-## the emblem in relief; on some, water pouring off the face into a gilded trough on either side of
-## the crest.
-func _bridge(batch: MeshBatch, size: Vector3, edges: Array[float], wall_x: float, variant: int) -> void:
+## from the floor), a gold cornice on top (under the statue ledges where it meets the walls), a rail of
+## marble posts under a gold rail between two newels (short of the statues), and the crest at its
+## middle rising over the rail: the emblem in relief; on some, water pouring off the face into a
+## gilded trough on either side of the crest.
+func _bridge(batch: MeshBatch, size: Vector3, edges: Array[float], wall_x: float, variant: int, base_y: float) -> void:
 	var s: MeshLayer = batch.layer(skin.solid_material())
 	var g: MeshLayer = batch.layer(skin.glow_material())
 	var zn: float = size.z * 0.5
 	var zf: float = -size.z * 0.5
 	var w: float = wall_x
+	var fascia: float = bridge_fascia(base_y)
 	_underside(s, g, w, zn, zf, edges, skin.coffer_color, MeshKit.PAT_COFFER, 1.5)
 	var marble: Color = skin.stone_colors[(variant + 1) % skin.stone_colors.size()]
-	s.rect(Vector3(-w, 0, zn), Vector3(w * 2.0, 0, 0), Vector3(0, FASCIA, 0), marble, 0.0, MeshKit.PAT_MARBLE)
+	s.rect(Vector3(-w, 0, zn), Vector3(w * 2.0, 0, 0), Vector3(0, fascia, 0), marble, 0.0, MeshKit.PAT_MARBLE)
 	s.box(Vector3(0, 0.1, zn + 0.05), Vector3(w * 2.0, 0.2, 0.1), skin.gold_color, 0.0, MeshKit.PAT_GOLD,
 		MeshKit.FACE_PZ | MeshKit.FACE_NY | MeshKit.FACE_PY, 0.9)
-	s.box(Vector3(0, FASCIA + 0.1, zn + 0.06), Vector3(w * 2.0, 0.2, 0.2), skin.gold_color, 0.0, MeshKit.PAT_GOLD,
-		MeshKit.FACE_PZ | MeshKit.FACE_NY | MeshKit.FACE_PY, 0.9)
-	# The rail on top: marble posts under a gold rail.
-	var x: float = -w + 0.4
-	while x < w - 0.3:
-		s.box(Vector3(x, FASCIA + 0.6, zn - 0.15), Vector3(0.14, 0.8, 0.14), marble, 0.0, MeshKit.PAT_MARBLE,
-			MeshKit.ALL_FACES & ~(MeshKit.FACE_NY | MeshKit.FACE_NZ))
-		x += 1.3
-	s.box(Vector3(0, FASCIA + 1.06, zn - 0.15), Vector3(w * 2.0, 0.1, 0.18), skin.gold_color, 0.0, MeshKit.PAT_GOLD,
-		MeshKit.ALL_FACES & ~MeshKit.FACE_NZ, 0.95)
-	_relief(s, Vector3(0.0, CREST_FOOT + CREST * 0.5, zn + 0.01), CREST)
+	s.box(Vector3(0, fascia + CORNICE * 0.5, zn + 0.06), Vector3(w * 2.0, CORNICE, 0.2), skin.gold_color, 0.0,
+		MeshKit.PAT_GOLD, MeshKit.FACE_PZ | MeshKit.FACE_NY | MeshKit.FACE_PY, 0.9)
+	var rail_top: float = fascia + CORNICE + 0.96
+	var rail_x: float = w - clear_from(rail_top, w, base_y) - 0.15
+	if rail_x > 0.8:
+		var posts: int = maxi(roundi(rail_x * 2.0 / 1.3), 1)
+		for i: int in range(1, posts):
+			s.box(Vector3(-rail_x + rail_x * 2.0 * float(i) / float(posts), fascia + CORNICE + 0.4, zn - 0.15),
+				Vector3(0.14, 0.8, 0.14), marble, 0.0, MeshKit.PAT_MARBLE, MeshKit.ALL_FACES & ~(MeshKit.FACE_NY | MeshKit.FACE_NZ))
+		for side: float in [-1.0, 1.0]:
+			s.box(Vector3(side * rail_x, fascia + CORNICE + 0.45, zn - 0.15), Vector3(0.26, 0.9, 0.26), marble, 0.0,
+				MeshKit.PAT_MARBLE, MeshKit.ALL_FACES & ~(MeshKit.FACE_NY | MeshKit.FACE_NZ))
+		s.box(Vector3(0, rail_top - 0.05, zn - 0.15), Vector3(rail_x * 2.0, 0.1, 0.18), skin.gold_color, 0.0, MeshKit.PAT_GOLD,
+			MeshKit.ALL_FACES & ~MeshKit.FACE_NZ, 0.95)
+	# The crest, as big as fits under the headroom at its corners.
+	var crest: float = CREST
+	while crest > 1.0 and CREST_FOOT + crest + 0.12 > headroom(w - crest * 0.5 - 0.12, base_y):
+		crest -= 0.1
+	_relief(s, Vector3(0.0, CREST_FOOT + crest * 0.5, zn + 0.01), crest)
 	if has_water(variant, size.z):
-		var inner: float = CREST * 0.5 + 0.7
+		var inner: float = crest * 0.5 + 0.7
 		var cw: float = minf(3.2, w - inner - 1.2)
 		if cw > 0.8:
 			for side: float in [-1.0, 1.0]:
 				var x0: float = side * inner if side > 0.0 else -(inner + cw)
-				_curtain(s, x0, cw, zn)
+				_curtain(s, x0, cw, zn, fascia)
 
 
-## Water pouring off a bridge's face from a gold lip near its top into a gilded trough along its
-## foot: a sheet `width` wide from x0, in front of the face at zn. The trough's bottom is the
+## Water pouring off a bridge's face (`fascia` tall) from a gold lip near its top into a gilded trough
+## along its foot: a sheet `width` wide from x0, in front of the face at zn. The trough's bottom is the
 ## underside's plane, so nothing hangs below the ceiling.
-func _curtain(s: MeshLayer, x0: float, width: float, zn: float) -> void:
-	var lip: float = FASCIA - 0.16
+func _curtain(s: MeshLayer, x0: float, width: float, zn: float, fascia: float) -> void:
+	var lip: float = fascia - 0.16
 	var z: float = zn + CURTAIN_OUT
 	s.box(Vector3(x0 + width * 0.5, lip + 0.05, zn + CURTAIN_OUT * 0.5 + 0.02), Vector3(width + 0.2, 0.1, CURTAIN_OUT + 0.08),
 		skin.gold_color, 0.0, MeshKit.PAT_GOLD, MeshKit.ALL_FACES & ~MeshKit.FACE_NZ, 0.95)
@@ -213,14 +272,14 @@ func _curtain(s: MeshLayer, x0: float, width: float, zn: float) -> void:
 ## A suspended gallery over some of the lanes (a bridge or an archway over fewer lanes): a deck with
 ## the coffered underside, marble faces with gold bands, a gold rail on top, the emblem at the middle
 ## of its face if it's wide enough, and gold beams carrying it into the buildings at both ends, above
-## the deck.
+## the deck; all of it low enough to pass under the statue ledges.
 func _gallery(batch: MeshBatch, size: Vector3, edges: Array[float], hw: float, wall_x: float, offset_x: float,
-		variant: int) -> void:
+		variant: int, base_y: float) -> void:
 	var s: MeshLayer = batch.layer(skin.solid_material())
 	var g: MeshLayer = batch.layer(skin.glow_material())
 	var zn: float = size.z * 0.5
 	var zf: float = -size.z * 0.5
-	var h: float = GALLERY_FASCIA
+	var h: float = minf(GALLERY_FASCIA, headroom(0.0, base_y) - 0.96)
 	_underside(s, g, hw, zn, zf, edges, skin.coffer_color, MeshKit.PAT_COFFER, 1.5)
 	var marble: Color = skin.stone_colors[(variant + 2) % skin.stone_colors.size()]
 	for side: float in [-1.0, 1.0]:
@@ -256,12 +315,14 @@ func _gallery(batch: MeshBatch, size: Vector3, edges: Array[float], hw: float, w
 ## Parabolic gold arches springing from the walls, every ARCH_SPACING metres, over a flat marble deck
 ## hung from them on gold rods: the deck's underside (the running surface) cream with the lane seams
 ## and lamps, a gold band along its near edge; the first arch in marble with the emblem on its keystone.
-func _archway(batch: MeshBatch, size: Vector3, edges: Array[float], wall_x: float) -> void:
+## The arches rise as high as the street's width lets them (arch_rise()).
+func _archway(batch: MeshBatch, size: Vector3, edges: Array[float], wall_x: float, base_y: float) -> void:
 	var s: MeshLayer = batch.layer(skin.solid_material())
 	var g: MeshLayer = batch.layer(skin.glow_material())
 	var zn: float = size.z * 0.5
 	var zf: float = -size.z * 0.5
 	var w: float = wall_x
+	var rise: float = arch_rise(w, base_y)
 	_underside(s, g, w, zn, zf, edges, skin.stone_colors[2], MeshKit.PAT_MARBLE, 0.0)
 	# Gold ribs across the underside every 3 m (flush: they stream past a rider).
 	var z: float = zn - 1.5
@@ -278,29 +339,34 @@ func _archway(batch: MeshBatch, size: Vector3, edges: Array[float], wall_x: floa
 		if az < zf + END_BAND:
 			break
 		var first: bool = i == 0
-		_arch(s, w, az, skin.stone_colors[0] if first else skin.gold_color, first)
+		_arch(s, w, rise, az, skin.stone_colors[0] if first else skin.gold_color, first)
 		# Rods from the arch down to the deck, at a third of the way out on each side.
 		for sx: float in [-1.0, 1.0]:
 			var rx: float = sx * w * 0.5
-			var top: float = _arch_y(rx, w)
+			var top: float = _arch_y(rx, w, rise)
 			s.box(Vector3(rx, (ARCH_DECK + top) * 0.5, az), Vector3(0.07, top - ARCH_DECK, 0.07), skin.gold_color, 0.0,
 				MeshKit.PAT_GOLD, MeshKit.ALL_FACES & ~(MeshKit.FACE_NY | MeshKit.FACE_PY), 0.95)
 		if first:
-			_relief(s, Vector3(0.0, ARCH_DECK + ARCH_RISE - 0.85, az + 0.24), KEYSTONE)
+			# The keystone's relief: its top just under the crown's and under the headroom at its corners,
+			# its foot over the underside (smaller over a low arch).
+			var panel: float = minf(KEYSTONE, rise + 0.4)
+			var top: float = minf(ARCH_DECK + rise + ARCH_THICK - 0.13, headroom(w - panel * 0.5 - 0.12, base_y))
+			panel = minf(panel, top - 0.44)
+			_relief(s, Vector3(0.0, top - 0.12 - panel * 0.5, az + 0.24), panel)
 
 
 ## The height of an arch's inner edge (over the underside) at x, for walls at ±w: a parabola from the
-## deck's top at the walls to ARCH_RISE over it at the middle.
-static func _arch_y(x: float, w: float) -> float:
+## deck's top at the walls to `rise` over it at the middle.
+static func _arch_y(x: float, w: float, rise: float) -> float:
 	var t: float = clampf(x / w, -1.0, 1.0)
-	return ARCH_DECK + ARCH_RISE * (1.0 - t * t)
+	return ARCH_DECK + rise * (1.0 - t * t)
 
 
-## One arch rib across the street at az (its near face at az + 0.22): segments along the parabola, a
-## face toward the approach, its underside and its top, in `color` (polished gold, or marble with gold
-## edges for the first).
-func _arch(s: MeshLayer, w: float, az: float, color: Color, marble: bool) -> void:
-	var thick: float = 0.5
+## One arch rib across the street at az (its near face at az + 0.22), rising `rise` over the deck:
+## segments along the parabola, a face toward the approach, its underside and its top, in `color`
+## (polished gold, or marble with gold edges for the first).
+func _arch(s: MeshLayer, w: float, rise: float, az: float, color: Color, marble: bool) -> void:
+	var thick: float = ARCH_THICK
 	var zf: float = az - 0.22
 	var zn: float = az + 0.22
 	var pattern: int = MeshKit.PAT_MARBLE if marble else MeshKit.PAT_GOLD
@@ -308,8 +374,8 @@ func _arch(s: MeshLayer, w: float, az: float, color: Color, marble: bool) -> voi
 	for i: int in ARCH_SEGMENTS:
 		var x0: float = lerpf(-w, w, float(i) / ARCH_SEGMENTS)
 		var x1: float = lerpf(-w, w, float(i + 1) / ARCH_SEGMENTS)
-		var y0: float = _arch_y(x0, w)
-		var y1: float = _arch_y(x1, w)
+		var y0: float = _arch_y(x0, w, rise)
+		var y1: float = _arch_y(x1, w, rise)
 		# Front (+z), then underside and top.
 		s.quad(Vector3(x0, y0, zn), Vector3(x0, y0 + thick, zn), Vector3(x1, y1 + thick, zn), Vector3(x1, y1, zn), color, 0.0,
 			pattern, param)
@@ -329,15 +395,19 @@ func _arch(s: MeshLayer, w: float, az: float, color: Color, marble: bool) -> voi
 
 ## A hover-yacht of the elite heading toward the player: a cream hull whose flat underside is the
 ## ceiling, sloped sides with a gold line and a deep red boot stripe (unlit) and portholes, a pointed
-## prow rising over the near end, a sleek cabin of tinted glass with a gold trim, and its engines at
-## the stern over the orange band, glowing a pale blue-white.
-func _yacht(batch: MeshBatch, size: Vector3, edges: Array[float], hw: float, variant: int) -> void:
+## prow rising over the near end, a sleek cabin of tinted glass with a gold trim, a mast light, and its
+## engines at the stern over the orange band, glowing a pale blue-white. Its hull, cabin and mast keep
+## under the headroom where they are (walls at ±wall_x, the yacht's middle at offset_x, the underside at
+## world height base_y): next to a wall a narrow yacht has a lower cabin and no mast.
+func _yacht(batch: MeshBatch, size: Vector3, edges: Array[float], hw: float, _variant: int, wall_x: float,
+		offset_x: float, base_y: float) -> void:
 	var s: MeshLayer = batch.layer(skin.solid_material())
 	var g: MeshLayer = batch.layer(skin.glow_material())
 	var zn: float = size.z * 0.5
 	var zf: float = -size.z * 0.5
 	var hull: Color = skin.yacht_hull_color
-	var rise: float = 1.8
+	var middle: float = wall_x - absf(offset_x)
+	var rise: float = minf(1.8, headroom(maxf(middle - hw, 0.0), base_y) - 0.1)
 	var slope: float = minf(0.7, hw * 0.3)
 	_underside(s, g, hw, zn, zf, edges, hull, MeshKit.PAT_HULL, 0.0)
 	var lamp: Color = skin.lamp_color
@@ -384,19 +454,24 @@ func _yacht(batch: MeshBatch, size: Vector3, edges: Array[float], hw: float, var
 	var cab_w: float = minf(deck_hw * 1.2, 5.6)
 	var cab_len: float = minf(size.z * 0.5, 14.0)
 	var cab_z: float = zn - 3.0 - cab_len * 0.5
-	var cab_h: float = 1.6
-	s.box(Vector3(0, rise + cab_h * 0.5, cab_z), Vector3(cab_w, cab_h, cab_len), hull, 0.0, MeshKit.PAT_HULL, MeshKit.NO_BOTTOM)
-	for sx: float in [-1.0, 1.0]:
-		s.box(Vector3(sx * (cab_w * 0.5 + 0.005), rise + cab_h * 0.55, cab_z), Vector3(0.01, cab_h * 0.5, cab_len - 1.0),
-			skin.glass_color, 0.0, MeshKit.PAT_GLASS, MeshKit.FACE_PX if sx > 0.0 else MeshKit.FACE_NX)
-	s.box(Vector3(0, rise + cab_h * 0.55, cab_z + cab_len * 0.5 + 0.005), Vector3(cab_w - 0.4, cab_h * 0.5, 0.01),
-		skin.glass_color, 0.0, MeshKit.PAT_GLASS, MeshKit.FACE_PZ)
-	s.box(Vector3(0, rise + cab_h + 0.03, cab_z), Vector3(cab_w + 0.1, 0.06, cab_len + 0.1), skin.gold_color, 0.0,
-		MeshKit.PAT_GOLD, MeshKit.NO_BOTTOM, 0.95)
-	# A mast light: a small warm-white beacon, and the stern's engines over the orange band.
-	s.box(Vector3(0, rise + cab_h + 1.2, cab_z - cab_len * 0.3), Vector3(0.08, 2.2, 0.08), skin.gold_color, 0.0,
-		MeshKit.PAT_GOLD, MeshKit.ALL_FACES, 0.9)
-	s.box(Vector3(0, rise + cab_h + 2.35, cab_z - cab_len * 0.3), Vector3(0.18, 0.18, 0.18), lamp, 0.8)
+	var cab_h: float = minf(1.6, headroom(maxf(middle - cab_w * 0.5 - 0.05, 0.0), base_y) - rise - 0.07)
+	if cab_h >= 0.5:
+		s.box(Vector3(0, rise + cab_h * 0.5, cab_z), Vector3(cab_w, cab_h, cab_len), hull, 0.0, MeshKit.PAT_HULL,
+			MeshKit.NO_BOTTOM)
+		for sx: float in [-1.0, 1.0]:
+			s.box(Vector3(sx * (cab_w * 0.5 + 0.005), rise + cab_h * 0.55, cab_z), Vector3(0.01, cab_h * 0.5, cab_len - 1.0),
+				skin.glass_color, 0.0, MeshKit.PAT_GLASS, MeshKit.FACE_PX if sx > 0.0 else MeshKit.FACE_NX)
+		s.box(Vector3(0, rise + cab_h * 0.55, cab_z + cab_len * 0.5 + 0.005), Vector3(cab_w - 0.4, cab_h * 0.5, 0.01),
+			skin.glass_color, 0.0, MeshKit.PAT_GLASS, MeshKit.FACE_PZ)
+		s.box(Vector3(0, rise + cab_h + 0.03, cab_z), Vector3(cab_w + 0.1, 0.06, cab_len + 0.1), skin.gold_color, 0.0,
+			MeshKit.PAT_GOLD, MeshKit.NO_BOTTOM, 0.95)
+		# A mast light, a small warm-white beacon, where there is room over the cabin.
+		var mast: float = minf(2.2, headroom(middle, base_y) - rise - cab_h - 0.3)
+		if mast >= 0.6:
+			s.box(Vector3(0, rise + cab_h + 0.1 + mast * 0.5, cab_z - cab_len * 0.3), Vector3(0.08, mast, 0.08), skin.gold_color,
+				0.0, MeshKit.PAT_GOLD, MeshKit.ALL_FACES, 0.9)
+			s.box(Vector3(0, rise + cab_h + mast + 0.15, cab_z - cab_len * 0.3), Vector3(0.18, 0.18, 0.18), lamp, 0.8)
+	# The stern's engines over the orange band.
 	var engines: int = clampi(roundi(hw * 2.0 / 4.0), 1, 4)
 	for i: int in engines:
 		var ex: float = -hw + (float(i) + 0.5) * hw * 2.0 / engines

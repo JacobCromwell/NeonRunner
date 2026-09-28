@@ -206,10 +206,10 @@ extends ZoneSkin
 @export_range(0.0, 1.0, 0.05) var feed_hung_brightness: float = 0.9
 ## The hung screens (16:9): the widest, the share of the street's half width they may reach over (on a
 ## narrower street they are narrower), and the lowest their bottom edge goes (far above the wall-run
-## band and the ceilings).
+## band and the ceilings; never below GoldenFacades.OVER_STREET).
 @export_range(2.0, 12.0, 0.1, "suffix:m") var feed_hung_width: float = 4.6
 @export_range(0.2, 1.0, 0.01) var feed_hung_reach: float = 0.7
-@export_range(9.0, 40.0, 0.5, "suffix:m") var feed_hung_bottom: float = 13.0
+@export_range(12.5, 40.0, 0.5, "suffix:m") var feed_hung_bottom: float = 13.0
 
 @export_group("Overhead")
 ## Sky bridges slung between the towers high over the street (the future in its dominant shapes),
