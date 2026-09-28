@@ -1025,6 +1025,54 @@ play it with `--boss=city_boss` in debug builds; showcase scenarios `faceoff`, `
     Fine, or should it re-plan further ahead? (A rarer case remains: on 3 of 277 dogs over extra seeds, none on the
     campaign's own, a drone's repeated barrages keep a dog from its turn; a follow-up gives a waiting enemy its place.)
 
+**The Floating Head: the stomp windows** (from E1c; numbers in `data/bosses/city_boss_tuning.tres`, groups Stomp windows,
+Ramp window, Ceiling window; showcase `floating_head_showcase.tscn -- --scenario=faceoff --towers-after=0 --phase=0|1|2`,
+or `--scenario=window|missed`)
+158. **The fallen tower as a ramp** (GDD §10): as the tower crashes onto the ship, a broken slab of it (pale concrete, a
+    row of its windows, a torn top end) slams into the weak point's lane nearest the tower's wall, 14 m long, its top
+    resting just past the ship's face 0.8 m above the crown, with the City's green ramp chevrons up its middle; it gives
+    no boost. The runner runs off its end onto the weak point (a jump at the top overshoots). Does green read right on a
+    tower that isn't a ramp pad, or should it be white paint? Is "run off the end" the skill?
+159. **The tower breaks as it lands:** lying from its stump across every lane it would block every route and cover a
+    weak point, so it breaks 2.5 m behind the weak points: the part behind stays on the ship's back, the part in front
+    drops away in dust (its slab makes phase 1's ramp). Does it still read as the same tower?
+160. **The weak points:** one over each lane near the ship's centre line (3 at 3 and 5 lanes, 4 at 6), red domes that
+    rise as armoured covers swing back, pulsing slowly (steady with Reduced flashing), with a hiss and a rising
+    four-note "target" arpeggio; a stomp counts over a generous box (2.0 m wide, 3.0 m along, up to 0.55 m above the
+    socket). Right number and size?
+161. **Pinned, the ship is the way up's floor** (collision stays physical): its crown is a floor exactly where it's drawn
+    and its hull stops being deadly (the window closes before a runner on the trucks can reach its face); it rolls 5°
+    toward the tower, so the tower-side weak point sits lower and that side is easier. All right?
+162. **When a window closes** (no timer, no escalation): once the runner is still on the trucks within 8 m of its face
+    (no jump from there reaches a weak point) or 1 m past the weak points, it shakes free (lurching 8 m further ahead
+    and up, so a runner on its crown drops off behind), rises back in front and the face-off goes on, with the same
+    window next time. The wall route means committing before the 8 m line. Right lines, and is it clear enough that the
+    chance is gone?
+163. **After a stomp:** a distorted, glitching mechanical scream through its loudspeakers, red sparks and its face
+    glitching, the same lurch free, then the rise to the next phase. The right sound, or should it carry the propaganda
+    voice (E1d)?
+164. **The wall jump** (phase 2): a wall jump off a fresh wall entry peaks about 2.9 m, reaching the weak points from
+    either wall at every lane count (at 5 and 6 lanes with a second move inward in the air); the wall away from the
+    tower is harder. Right difficulty? The wall jump also works in phases 1 and 3: should the walls be taken away there
+    so each phase's own way is the only one?
+165. **The ceiling** (phase 3): as the tower falls, pads light up in every lane 26 m before the ship's face (about 1.6 s
+    to see them, with a sound), and a City ship underside lowers in from 9 m above once the ship's face is past its end,
+    ending 5.5 m before the face; the drop off its end lands on the weak points at every lane count. Pads in every lane
+    (a runner can't miss them unless they jump)? Should the ceiling arrive another way (a ship flying in overhead)?
+166. **The order of the ways up** is data (ramp, wall, ceiling, as the GDD lists them); a missed window always comes back
+    the same way, never harder and never easier. Should a struggling player ever be offered an easier way?
+167. **Pickups and the pin:** an armor pickup falling due while a tower is lined up or the ship is pinned waits until
+    it's back in the air (up to about 8 s), a marked tower whose pin would land on a pickup or a dropped cyborg goes by as
+    scenery, and a cyborg still under the ship as it crashes down is crushed. All right?
+168. **Weapons:** with 300 health and the framework's 34% cap, weapons alone can end one phase and no more. With the
+    owner's "not very challenging" in mind, should they be slower still?
+169. **The fight's length** (GDD §10: 60–120 s): a runner who never misses takes about 134 s (a 17 s first bombing run,
+    two 9 s later runs, three face-offs until a tower, three windows). To tighten it: shorter or fewer bombing runs,
+    fewer attacks before a tower, or towers closer together? (Task E1d brings it inside 60–120 s as a placeholder.)
+170. **Edge cases after a lost window:** at 3 lanes a runner sliding down a wall beside the pinned ship lands inside its
+    hull for a moment before it shakes free; at 6 lanes a drop off the ceiling into the outer lane on the tower's side
+    lands where the rolled hull dips under the roofs. Both only after the chance is gone, and nothing hurts. Acceptable?
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
