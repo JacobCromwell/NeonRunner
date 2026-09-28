@@ -1017,8 +1017,9 @@ func _defeat_glitch() -> float:
 	return 1.0 if burst > 0.4 else 0.55
 
 
-## Its last moments in the air: glitching, it lurches up in front of the runner (dying_pose) over
-## defeat_glitch_seconds, its jaw sagging open; then it plunges (_dying_tick).
+## Its last moments in the air: glitching and smoking, it lurches up in front of the runner
+## (dying_pose) over defeat_glitch_seconds, wallowing; then it plunges (_dying_tick). Its eyes and mouth
+## stay shut (their glow and opening are its attacks' warnings).
 func _start_dying() -> void:
 	_move(Step.DYING, pose, dying_pose(), tuning.defeat_glitch_seconds)
 	_shake_roll = _roll
@@ -1033,7 +1034,7 @@ func _dying_tick(delta: float) -> void:
 	body.glitch = _defeat_glitch()
 	body.anger = 1.0
 	body.eye_charge = 0.0
-	body.jaw_open = 0.35 * smoothstep(0.0, 1.0, k)
+	body.jaw_open = 0.0
 	_smoke_puffs(delta)
 	if k < 1.0:
 		return

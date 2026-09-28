@@ -149,7 +149,7 @@ func _live_hitbox(body: FloatingHeadBody) -> bool:
 ## (lowest while dying), dark (the face and the lights were out by the crash), dead (the runner died)}.
 func _watch_defeat(world: RunWorld, head: FloatingHead, seconds: float) -> Dictionary:
 	var out := {"room": INF, "ahead": true, "glitch": INF, "powered": INF, "dead": false, "live": false, "solid": false,
-		"face_on": INF}
+		"face_on": INF, "warns": false}
 	for i: int in int(seconds * Engine.physics_ticks_per_second):
 		if not world.player.alive:
 			out["dead"] = true
@@ -161,8 +161,10 @@ func _watch_defeat(world: RunWorld, head: FloatingHead, seconds: float) -> Dicti
 				out["glitch"] = minf(float(out["glitch"]), head.body.glitch)
 				out["face_on"] = minf(float(out["face_on"]), head.body.screen_power)
 				out["ahead"] = bool(out["ahead"]) and head.pose.z > 0.0
+				out["warns"] = bool(out["warns"]) or head.body.eye_charge > 0.0 or head.body.jaw_open > 0.0
 			FloatingHead.Step.FALLING:
 				out["ahead"] = bool(out["ahead"]) and head.pose.z > 0.0
+				out["warns"] = bool(out["warns"]) or head.body.eye_charge > 0.0 or head.body.jaw_open > 0.0
 			FloatingHead.Step.WRECKED:
 				out["room"] = minf(float(out["room"]), _room(head))
 				out["powered"] = minf(float(out["powered"]), 1.0 - maxf(head.body.power, head.body.screen_power))
@@ -235,6 +237,7 @@ func _test_defeat_after_stomp() -> void:
 		check(_sounds_in(head.events, &"head_power_down") == 1 and _sounds_in(head.events, &"head_crash") == 1,
 			"it's heard losing power and crashing %s" % tag)
 		check(float(w["glitch"]) >= 0.5 and float(w["face_on"]) >= 0.99, "its face glitches, still on, as it dies in the air %s" % tag)
+		check(not bool(w["warns"]), "with no warning of an attack on it (its eyes dark, its mouth shut) %s" % tag)
 		check(bool(w["ahead"]), "in the air it stays ahead of the runner, its face toward them %s" % tag)
 		check(float(w["powered"]) >= 0.999, "wrecked, its face and its lights are dark %s" % tag)
 		check(not bool(w["live"]) and not bool(w["solid"]), "nothing on the wreck can hurt: no hitbox, no deck %s" % tag)

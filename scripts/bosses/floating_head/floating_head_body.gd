@@ -44,7 +44,7 @@ const CAPTION_GLOW: float = 2.2
 ## at most this share of the screen's width and of a line's height.
 const CAPTION_TOP: float = -0.17
 const CAPTION_WIDTH: float = 0.88
-const CAPTION_LINE: float = 0.125
+const CAPTION_LINE: float = 0.145
 ## Sizes the caption's glyphs are drawn at (then scaled to fit the band).
 const CAPTION_FONT_SIZE: int = 96
 ## The wreck's torn-off face falls flat into the street this fast.
