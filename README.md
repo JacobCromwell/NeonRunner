@@ -4,11 +4,12 @@ A neon 3D runner for PC (Steam), Android, iOS and a web demo. You run lanes, sid
 through zones full of enemies, and a single hit ends the run. Built with Godot 4.7.2 and GDScript only.
 
 **Status:** the game is built around everything designed so far:
-- the whole campaign structure: six zones and 15 levels, two of the zones still in the grey-box look
+- the whole campaign structure: six zones and 15 levels, one of the zones still in the grey-box look
 - seven enemy types, plus fence generators
 - the shop, power-ups and economy
 - every screen and the HUD
-- four zone looks (the Neon City, Gangland, the Marketplace and Corporate), generated music and sound effects
+- five zone looks (the Neon City, Gangland, the Marketplace, Corporate and the Golden Zone), generated music
+  and sound effects
 - all three build flavors
 
 Boss fights have their framework (they play in the runner, with phases, a health bar, checkpoints,
@@ -45,7 +46,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--god` | Hits don't kill (falls still do) |
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
-| `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `corporate` or `corporate_plaza` (Corporate's plaza floor) |
+| `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `corporate`, `corporate_plaza` (Corporate's plaza floor) or `golden` |
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`) |
 | `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`, ...) with the full game flow once it's built, and as quick play while it's being built (`--boss=city_boss`: the Floating Head so far). Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
@@ -76,8 +77,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 - **Campaign:** 15 levels in six zones, about 35 minutes of flawless running: the Neon City (the web demo's
   zone) and Gangland with three levels each, the Marketplace, Corporate and the Dead Zone with two, and the
   Golden Zone with three.
-  Each zone has a boss slot and cinematic slots; the last two zones use the grey-box look until their skins
-  are made. Each level introduces about one new thing (GDD §5), where its data says (`feature_starts`):
+  Each zone has a boss slot and cinematic slots; the Dead Zone uses the grey-box look until its skin is
+  made. Each level introduces about one new thing (GDD §5), where its data says (`feature_starts`):
   1. City 1 *Rooftop Rush*: gaps, fences, walls and signs, then cyborgs late in the level.
   2. City 2 *Skyway*: ceilings and anti-grav pads.
   3. City 3 *Neon Crossfire*: pulsing fences, window cyborgs and the hover truck.
@@ -217,13 +218,16 @@ F6 panel) and without, and how much taking turns delays them:
   base, the budgets, every weapon ending in the same red charge-up, the colour rules (only the cold white
   face, the red charge-up and a host's purple glow), faces that still differ a few pixels across (the VR
   visor's too), and ERR before a defeated cyborg's screen goes dark.
-- **Zone skins:** all four skins, including a check that none adds collision, and the build budget; for
-  Gangland, the Marketplace and Corporate the colour rule (only hazards glow in hazard colours) and
-  ceilings a runner can read upside down, for the Marketplace and Corporate gaps that read as holes and a
-  clear play space and calm walls, the Marketplace's shop windows, Corporate's brand colour (clear of the
-  hazards and the UI's accents), its carriages lined up across chunk cuts, every kind of ceiling at one to
-  six lanes and a boss arena's clear sky, and for all four where the cult's emblem hides and where its
-  feed plays, never in the wall-run band (the feed's shared material has a suite of its own).
+- **Zone skins:** all five skins, including a check that none adds collision, and the build budget; for
+  Gangland, the Marketplace, Corporate and the Golden Zone the colour rule (only hazards glow in hazard
+  colours) and ceilings a runner can read upside down, for the Marketplace, Corporate and the Golden Zone
+  gaps that read as holes and a clear play space and calm walls, the Marketplace's shop windows,
+  Corporate's brand colour (clear of the hazards and the UI's accents), its carriages lined up across chunk
+  cuts, every kind of ceiling at one to six lanes and a boss arena's clear sky, the Golden Zone's gold
+  (never glowing, never sign yellow or gap orange), its statues far above the wall-run band and the
+  statue kit for the Gilded Sentinels, and for all five where the cult's emblem hides (or, in the Golden
+  Zone, is shown openly) and where its feed plays, never in the wall-run band (the feed's shared material
+  has a suite of its own).
 - **Sounds and music:** every sound and track loads (the tracks loop seamlessly, one per zone), the death dip
   and how it combines with the pause duck, and the level-complete riff in each zone's key.
 - **Boot:** the real game scene.
