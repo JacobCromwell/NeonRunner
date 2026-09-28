@@ -19,13 +19,19 @@ extends RefCounted
 ## Overlap is the time during which attacks of two or more types are open at once. Also watched
 ## (not a big attack, docs/questions/r3.md): a hover truck's entrance, from its first bang until its
 ## burst stops hurting. The event log lists every state change of every enemy, so two builds can be
-## compared run by run.
+## compared run by run. A wait for a turn lasts from the first frame the director reports its enemy
+## waiting until the enemy's next big attack starts, through short gaps (WAIT_BRIDGE).
 
 const DroneScript := preload("res://scripts/enemies/drone.gd")
 const TruckScript := preload("res://scripts/enemies/hover_truck.gd")
 ## Enemy shots that belong to a big attack, by name, and the type they belong to.
 const SHOT_TYPES: Dictionary = {"drone gatling": &"drone", "hover truck cannon": &"hover_truck",
 	"hover truck gunner": &"hover_truck"}
+## A wait for a turn runs from the first frame the director reports its enemy waiting until its
+## attack starts, through gaps of up to this many seconds in which it doesn't (a gap in the enemy's
+## asks, or a director that dropped its place), so two directors that keep a waiting enemy's place
+## differently measure the same behaviour alike.
+const WAIT_BRIDGE: float = 3.0
 
 var world: RunWorld
 ## The runner stomps every host it passes (each releases a Bad Dream chase).
@@ -40,8 +46,9 @@ var events: int = 0
 var attacks: Dictionary = {}
 ## Seconds each type had an attack open.
 var open_seconds: Dictionary = {}
-## By kind: for each attack that started after a wait, how long it waited (seconds), and how much
-## of that it waited for another type's turn (only a director that takes turns keeps track).
+## By kind: for each attack that started after a wait (WAIT_BRIDGE), how long it waited (seconds),
+## and how much of that it was held for another type's turn (only a director that takes turns keeps
+## track).
 var waits: Dictionary = {}
 var turn_waits: Dictionary = {}
 ## Seconds a hover truck's entrance was on while a big attack was open.
@@ -61,7 +68,10 @@ var log := PackedStringArray()
 var _ids: Dictionary = {}
 var _sigs: Dictionary = {}
 var _was_open: Dictionary = {}
-var _held: Dictionary = {}
+## Enemies waiting for their turn, by spawn index: when the current wait began and when the director
+## last reported it waiting (level times), and the seconds of it held for another type's turn.
+var _wait_began: Dictionary = {}
+var _wait_seen: Dictionary = {}
 var _held_turn: Dictionary = {}
 var _overlapping: bool = false
 
@@ -125,18 +135,21 @@ func observe() -> void:
 					var made: Dictionary = truck_attacks.get_or_add(key, {"lurch": 0, "cannon": 0})
 					var k: String = "lurch" if kind == "truck_lurch" else "cannon"
 					made[k] = int(made[k]) + 1
-				if float(_held.get(key, 0.0)) > 0.0:
-					(waits.get_or_add(kind, []) as Array).append(float(_held[key]))
-				if float(_held_turn.get(key, 0.0)) > 0.0:
-					(turn_waits.get_or_add(kind, []) as Array).append(float(_held_turn[key]))
+				if _wait_began.has(key) and now - float(_wait_seen[key]) <= WAIT_BRIDGE + dt:
+					(waits.get_or_add(kind, []) as Array).append(now - float(_wait_began[key]))
+					if float(_held_turn.get(key, 0.0)) > 0.0:
+						(turn_waits.get_or_add(kind, []) as Array).append(float(_held_turn[key]))
+				_end_wait(key)
 			_was_open[wk] = now
 		if turns_known and bool(world.director.call(&"is_waiting", e)):
-			_held[key] = float(world.director.call(&"turn_wait", e)) + dt
+			if not _wait_began.has(key) or now - float(_wait_seen[key]) > WAIT_BRIDGE:
+				_wait_began[key] = now - float(world.director.call(&"turn_wait", e))
+				_held_turn[key] = 0.0
+			_wait_seen[key] = now
 			if bool(world.director.call(&"held_for_turn", e)):
 				_held_turn[key] = float(_held_turn.get(key, 0.0)) + dt
-		else:
-			_held.erase(key)
-			_held_turn.erase(key)
+		elif _wait_began.has(key) and now - float(_wait_seen[key]) > WAIT_BRIDGE:
+			_end_wait(key)
 	var reach: float = p.position.z + world.tuning.hurtbox_size.z * 0.5
 	for shot: Projectile in world.projectiles.live_shots():
 		if not shot.friendly and shot.in_use and SHOT_TYPES.has(shot.hazard_name) and shot.position.z <= reach + shot.radius:
@@ -190,6 +203,12 @@ static func open_kinds(e: Enemy) -> Array[String]:
 			if s == Resonator.State.WARNING or s == Resonator.State.PULSE or bool(e.call(&"waves_on_their_way")):
 				out.append("resonator_pulse")
 	return out
+
+
+func _end_wait(key: int) -> void:
+	_wait_began.erase(key)
+	_wait_seen.erase(key)
+	_held_turn.erase(key)
 
 
 ## Octodogs that never charged, and the charges all of them made.
