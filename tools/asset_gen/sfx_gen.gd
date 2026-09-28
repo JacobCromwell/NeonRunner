@@ -8,6 +8,7 @@ extends SceneTree
 ##   sfx_bank_power.gd    power-ups, weapons and protective items
 ##   sfx_bank_enemies.gd  enemies: every attack's warning, the attacks, hits and deaths
 ##   sfx_bank_bosses.gd   bosses: their entrances, warnings and attacks
+##   sfx_bank_resonator.gd  the Resonator: its chime (the warning), its pulse and its death
 ## Run: tools/godot.sh sfx   (--only=jump,land renders just those; --review also writes
 ## build/sfx_review/<name>.png: waveform on top, spectrogram (40 Hz–16 kHz, time left to right) below).
 ## Each line of the report ends with the sound's loudest 400 ms as heard on headphones (K-weighted) and
@@ -23,6 +24,7 @@ const BANKS: Array = [
 	preload("res://tools/asset_gen/sfx_bank_power.gd"),
 	preload("res://tools/asset_gen/sfx_bank_enemies.gd"),
 	preload("res://tools/asset_gen/sfx_bank_bosses.gd"),
+	preload("res://tools/asset_gen/sfx_bank_resonator.gd"),
 ]
 const OUT_DIR: String = "res://assets/sfx"
 const REVIEW_DIR: String = "res://build/sfx_review"

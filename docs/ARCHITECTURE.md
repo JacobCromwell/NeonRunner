@@ -136,8 +136,11 @@ all it takes to bring it into its levels.
 Built so far: cyborg (with its panic variant and hosts), window cyborg, fence generator, hover
 truck, Octodog, sewer screech (manholes, and wall vents; `screech_vents` is wall vents only, for zones
 whose floor has no manholes),
-heli drone, and the Cyborg's Bad Dream (released by a killed host, spawned by the director at run
-time rather than placed by the generator). `scripts/enemies/mesh_batch.gd` merges an enemy's low-poly
+heli drone, the Cyborg's Bad Dream (released by a killed host, spawned by the director at run
+time rather than placed by the generator), and the Resonator (GDD §9.10, the Golden Zone: a golden
+broadcast spire hovering far ahead whose red waves roll along the floor across every lane; its model,
+`resonator_model.gd`, is built in code, and `resonator_rules.gd` plans each pulse where its wave meets
+the player on clear floor). `scripts/enemies/mesh_batch.gd` merges an enemy's low-poly
 parts into one mesh per material to keep draw calls down.
 
 **Big attacks take turns through the director** (GDD §9, decided September 26, 2026). The big attacks
@@ -146,9 +149,10 @@ revert this after playtesting, so it sits behind one switch, `GameRules.big_atta
 default, in the F6 panel); switched off, the game plays exactly as before the rule. The big attacks
 (DESIGN-TBD, `docs/questions/r3.md`): the Octodog's charge sequence (its first wind-up until it gives
 up), the drone's wind-up and barrage, the hover truck's rev and forward lurch and its cannon's charge
-and volley, and the Bad Dream's chase. Small attacks (a cyborg's burst, a window cyborg's shot, a
-screech's swipe) and the hover truck's entrance don't take part. An enemy takes part like this, and
-the enemies still to come (the Barnacle Turret, Buzz Overdrive, the Resonator, the Gilded Sentinels,
+and volley, the Bad Dream's chase, and the Resonator's pulse (its warning until its last wave has
+passed the player; DESIGN-TBD, `docs/questions/c3.md`). Small attacks (a cyborg's burst, a window
+cyborg's shot, a screech's swipe) and the hover truck's entrance don't take part. An enemy takes part
+like this, and the enemies still to come (the Barnacle Turret, Buzz Overdrive, the Gilded Sentinels,
 the Tithe Collector) opt in the same way for whichever of their attacks count as big:
 - **Report it.** `is_major_attack_active()` is true from the start of the attack's warning until its
   last hazard is over (the lunge has passed, the lurch has ended). Each shot fired in it goes to
@@ -168,7 +172,11 @@ the Tithe Collector) opt in the same way for whichever of their attacks count as
   (`OctodogTuning.turn_wait_max`), and keeps every fairness rule it was planned with. Once held it
   keeps asking every frame until its turn comes, whether or not its stretch is clear by then, and if
   the wait made it miss its planned stretch, the window keeps moving on until the stretch ahead is
-  clear again (within the same limit), so waiting for its turn never costs it its charges.
+  clear again (within the same limit), so waiting for its turn never costs it its charges. The
+  Resonator's planned pulses do the same: a pulse held for another type's turn, or for clear floor
+  where its wave would meet the player, moves the rest of its visit on; after
+  `ResonatorTuning.turn_wait_max` spent waiting for other attacks (waiting for clear floor doesn't
+  count) it drops its remaining pulses and leaves, never before its first.
 - **An attack that can't wait** because the player sets it off (the Bad Dream bursts out of a killed
   host) or the generator planned its moment still reports itself: the others wait for it. It can
   overlap an attack that was already on when it came; the Bad Dream holds its slash until that one
@@ -233,7 +241,9 @@ Rules scripts run in the order of the level's `features` list, except that a scr
 the cyborg rules, and the host rules that start with them, after the hover truck's, so cyborgs keep
 their margin from the ramp a truck adds; the Octodog rules after the drone's, the host's and the
 hover truck's, so each dog is planned around the level's final ceilings, chases and truck lanes and
-nothing clears it afterwards). When a rule needs room for one of its guarantees, it removes what's
+nothing clears it afterwards; the Resonator rules after every feature that puts things on the floor or
+plans a big attack, so each pulse is planned on the level's final floor and off every Octodog's run).
+When a rule needs room for one of its guarantees, it removes what's
 in the way rather than moving it (taking content out never makes a level unfair). Guaranteed pads
 come from `scripts/enemies/pad_placement.gd`, shared by the drone and host rules: the drone's pad
 schedule (GDD §9.6) owns every pad after its first wave, pattern ceilings give way, and the host rules
@@ -290,8 +300,8 @@ features' age, the levels since the campaign introduced it (`LevelConfig.feature
 that introduces it). A pattern's pick weight is then multiplied by the curve's factor for its newest
 feature (DESIGN-TBD: 4 where it's introduced, 2.5, 1.75 and 1.25 over the next three levels, 1 from
 then on), but no more than a capped feature's cap (`max_factor`; DESIGN-TBD: 1, never boosted, for the
-host, the hover truck, the drone and the Octodog, whose rules keep only so many of their enemies, and
-for the rare vent screech), so the curve never spends picks on enemies the rules would drop and leave
+host, the hover truck, the drone, the Octodog and the Resonator, whose rules keep only so many of their
+enemies, and for the rare vent screech), so the curve never spends picks on enemies the rules would drop and leave
 their stretch empty. With `keep_feature_share` the features' patterns, capped ones apart, are then
 scaled back to weigh together what they did without the curve, and with `keep_share_by_kind` kind by
 kind (`LevelGenerator.pattern_kind`): patterns with enemies keep the number of enemies they place
@@ -345,7 +355,7 @@ each feature a pattern can place there is in the finished level, at any lane cou
   average in the campaign).
 - Rules that hold the room for a feature themselves also add one where it fits when a level is left
   without any, which saves a build: a drone wave and a hover truck in any level (their tunings'
-  `guarantee_one_wave` and `guarantee_one`), and a host and an Octodog in a level with
+  `guarantee_one_wave` and `guarantee_one`), and a host, an Octodog and a Resonator in a level with
   `guarantee_features`.
 
 ## Power-ups
@@ -999,7 +1009,12 @@ escaped without god mode, the cyborg drop, a baited and a fallback tower pinning
 each attack's fairness from the real arena's layout; `test_floating_head_stomps` has the bot take each
 phase's stomp window at 3, 5 and 6 lanes without god mode, checks the ways up are physical, missed
 windows repeat without escalation, the damage and weapon cap, the armor pickups, the window's ceiling
-rules, and plays the whole fight from its entrance to the last stomp. `test_audio` checks
+rules, and plays the whole fight from its entrance to the last stomp. `test_resonator` plays the
+Resonator in full worlds on real physics (the warning always before the wave, a jump clearing it at 3,
+5 and 6 lanes with its margin measured, walls and the ceiling safe, armor, shield and dash, turns with a
+`TurnDummy`, Reduced flashing), checks its rules over many seeds, and plays the real Golden 1-3 layouts
+at 3, 5 and 6 lanes, watched by `attack_watch.gd`: no wave meets the runner on a gap or a fence, and no
+big attacks overlap. `test_audio` checks
 the music files (seamless loops, lengths, tempos, size budgets), the Music autoload's fades, duck and
 death dip on its players' levels and the bus's low-pass (headless runs never start a player), and the
 run's music hooks through the App. The runner frees
@@ -1017,11 +1032,13 @@ the enemies (`enemy_showcase` for the cyborg family: poses, the faces close up, 
 cyborgs, and a far view through the run camera where the expressions must read, in any zone's look
 (`--variant=`, or ui_left / ui_right live), and every look side by side (`lineup`, front, back, as
 hosts or aiming, and `lineup_far` at gameplay distance); `octodog_screech`,
-`drone_truck_showcase`, `bad_dream_showcase`), the Golden Zone's statue kit (`statue_showcase`: every
-pose, a turnaround, and a live statue rigged in its niche and swinging, as task C4 would build it), a
-boss (`floating_head_showcase`), the UI kit, the screens, a zone skin (`skin_review`: any skin from
-fixed spots, including close-ups of the cult's feed screens and emblems a skin lists, or a scripted run
-with a ceiling ride and a wall run, in a level's darker lighting with `--darkness=X`), and comparison
+`drone_truck_showcase`, `bad_dream_showcase`, `resonator_showcase`: its model through its warning
+and pulse, or a scripted run where it pulses at a runner who jumps its waves), the Golden Zone's statue
+kit (`statue_showcase`: every pose, a turnaround, and a live statue rigged in its niche and swinging, as
+task C4 would build it), a boss (`floating_head_showcase`), the UI kit, the screens, a zone skin
+(`skin_review`: any skin from fixed spots, including close-ups of the cult's feed screens and emblems a
+skin lists, or a scripted run with a ceiling ride and a wall run, in a level's darker lighting with
+`--darkness=X`), and comparison
 sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
 `CLAUDE.md`.

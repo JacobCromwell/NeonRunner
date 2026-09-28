@@ -50,7 +50,7 @@ func _run() -> void:
 		app.set(&"autosave", false)
 		app.set(&"save_path", "user://measure_profile.json")
 	var runs: Array[Dictionary] = []
-	print("level          lanes turns   secs  attacks: drone lurch cannon  dog dream  overlap s events  waited s (mean/max, n)  log")
+	print("level          lanes turns   secs  attacks: drone lurch cannon  dog dream  reso  overlap s events  waited s (mean/max, n)  log")
 	for id: String in _levels:
 		var step: CampaignStep = campaign.step(id)
 		if step == null or not step.is_level():
@@ -141,11 +141,11 @@ func _line(r: Dictionary) -> String:
 	for w: float in waits:
 		total += w
 		most = maxf(most, w)
-	return "%-14s %d     %-5s %6.1f         %5d %5d %6d %4d %5d  %9.2f %6d  %5.2f/%5.2f (%2d)        %s" % [
+	return "%-14s %d     %-5s %6.1f         %5d %5d %6d %4d %5d %5d  %9.2f %6d  %5.2f/%5.2f (%2d)        %s" % [
 		r["level"], r["lanes"], "on" if r["turns"] else "off", r["seconds"], int(a.get("drone", 0)),
 		int(a.get("truck_lurch", 0)), int(a.get("truck_cannon", 0)), int(a.get("dog_charge", 0)),
-		int(a.get("dream_slash", 0)), r["overlap"], r["events"], total / maxf(waits.size(), 1), most,
-		waits.size(), String(r["log_hash"]).substr(0, 8)]
+		int(a.get("dream_slash", 0)), int(a.get("resonator_pulse", 0)), r["overlap"], r["events"],
+		total / maxf(waits.size(), 1), most, waits.size(), String(r["log_hash"]).substr(0, 8)]
 
 
 func _print_totals(runs: Array[Dictionary], turns: bool) -> void:
@@ -165,6 +165,8 @@ func _print_totals(runs: Array[Dictionary], turns: bool) -> void:
 	var dogs_idle: int = 0
 	var charges: int = 0
 	var slashes_runs: int = 0
+	var resonators: int = 0
+	var resonators_idle: int = 0
 	for r: Dictionary in runs:
 		if bool(r["turns"]) != turns:
 			continue
@@ -176,6 +178,8 @@ func _print_totals(runs: Array[Dictionary], turns: bool) -> void:
 		dogs += int(r["dogs"])
 		dogs_idle += int(r["dogs_no_charge"])
 		charges += int(r["dog_charges"])
+		resonators += int(r.get("resonators", 0))
+		resonators_idle += int(r.get("resonators_no_pulse", 0))
 		if float(r["overlap"]) > 0.0:
 			with_overlap += 1
 		if float(r["overlap"]) > worst:
@@ -217,3 +221,4 @@ func _print_totals(runs: Array[Dictionary], turns: bool) -> void:
 			% [kind, int(attacks[kind]), list.size(), total / maxf(list.size(), 1), most, total, turn_total])
 	print("  Octodogs: %d, %d charges in all, %d never charged; Bad Dream slashes in %d runs" % [dogs, charges,
 		dogs_idle, slashes_runs])
+	print("  Resonators: %d came to pace the runner, %d never pulsed" % [resonators, resonators_idle])

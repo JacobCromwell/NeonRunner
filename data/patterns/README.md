@@ -43,7 +43,7 @@ Beyond that guarantee, a campaign level's newest things get the most picks (GDD 
 recency curve, `data/tuning/feature_recency.tres`): a pattern's `weight` is multiplied by the curve's
 factor for its newest required feature, by how many levels ago the campaign introduced it (4 in the
 level that introduces it, then 2.5, 1.75 and 1.25, then 1; never more than a capped feature's cap, 1
-for the host, the hover truck, the drone, the Octodog and the vent screech), and the features'
+for the host, the hover truck, the drone, the Octodog, the Resonator and the vent screech), and the features'
 patterns are scaled back kind by kind to weigh together what they did: patterns with an `enemy`
 element by the enemies they place, those with only a `gap`, `fence` or `sign`, and the safe ones (a
 `hull`, a `ramp`, a `speed_pad`), so plain obstacles keep their share and a level places as many
@@ -68,7 +68,7 @@ pattern like the Octodog's fits when its dog does). Patterns need nothing specia
 | `min_difficulty` / `max_difficulty` | The pattern can be picked only while the current difficulty (0–1) is in this range |
 | `weight` | Relative pick chance among the patterns that qualify |
 | `min_lanes` | Optional. Skip on devices with fewer lanes |
-| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`), `screech_vents` (wall-vent screeches only, rare, for zones whose floor has no manholes, GDD §9.5), or a planned one: `barnacle_turret`, `wall_fences`, `wall_fences_partial` (with `wall_fences`: low or high wall fences), `buzz_overdrive`, `tithe_collector`, `resonator`, `gilded_sentinel` |
+| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`, `resonator`), `screech_vents` (wall-vent screeches only, rare, for zones whose floor has no manholes, GDD §9.5), or a planned one: `barnacle_turret`, `wall_fences`, `wall_fences_partial` (with `wall_fences`: low or high wall fences), `buzz_overdrive`, `tithe_collector`, `gilded_sentinel` |
 | `length` | Metres of track the pattern takes (the generator extends it for long gaps and hulls) |
 | `elements` | The pieces to place (see below) |
 
@@ -148,8 +148,17 @@ a pad a rule guarantees at a spot, clearing only those two stretches, comes from
 `scripts/enemies/pad_placement.gd`.
 Anything a rule adds keeps to its feature's start (`LevelGenerator.feature_active`). A rule that drops
 its feature's enemies where they don't fit may also add one where it does when a level that guarantees
-its features (`gen.config.guarantee_features`) is left without any (the host and Octodog rules do),
-which saves the generator another build. In a level paced in bursts, a rule that picks such a spot
+its features (`gen.config.guarantee_features`) is left without any (the host, Octodog and Resonator
+rules do), which saves the generator another build. In a level paced in bursts, a rule that picks such a spot
 itself puts the enemy in a burst when it can, or in a quiet stretch if its feature is one of the
 level's quiet features (`gen.burst_spot(...)`, `gen.pacing_pools(spots, feature)`, `gen.quiet_at(at)`).
 See `docs/ARCHITECTURE.md`.
+
+The Resonator's pattern (`resonator.json`) places one Resonator over the middle lane and nothing else,
+and its `length` (135 m) keeps the floor clear where its first two pulses' waves meet the player (it's a
+flier: its own spot needs no floor). Its rules (`resonator_rules.gd`, after every rule that puts things
+on the floor or plans a big attack) then plan each pulse where the wave meets the player on floor that
+is clear in every lane (no gap, fence, floor enemy, pad or ceiling landing, and off every Octodog's
+run), move a Resonator whose visit doesn't fit a little earlier or later, keep one visit at a time, and
+drop what still doesn't fit. Other patterns need nothing for it: the Resonator only uses floor that's
+clear already.
