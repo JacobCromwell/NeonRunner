@@ -38,9 +38,11 @@ extends Resource
 ## still never overlaps an Octodog's charges or a drone barrage (GDD §9.7), as before the rule.
 @export var big_attacks_take_turns: bool = true
 ## DESIGN-TBD (docs/questions/r3b.md): while big attacks take turns, an enemy waiting for its turn keeps
-## its place in the queue until its attack starts, through gaps in its asks (its stretch not clear
-## for a moment, its planned point not reached yet) of up to this long; after that it has given up or
-## isn't ready, and loses its place (EnemyDirector.major_attack_blocked).
+## its place in the queue until its attack starts or it gives it up, through gaps in its asks (its
+## stretch not clear for a moment, its planned point not reached yet) of up to this long; after that
+## it isn't ready, and loses its place (EnemyDirector.major_attack_blocked). Longer than an Octodog's
+## charge_slack at run speed (40 m, 2.2 s), so a dog that waited keeps its place until it charges or
+## runs off.
 @export_range(0.0, 10.0, 0.1, "suffix:s") var turn_place_grace: float = 3.0
 
 @export_group("Score")

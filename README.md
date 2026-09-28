@@ -198,9 +198,10 @@ Golden Zone's statues); each script's header lists its options.
 
 `tools/measure/big_attacks.gd` measures how the big attacks of different enemy types overlap over simulated runs of
 the campaign, with big attacks taking turns (GDD §9, the `big_attacks_take_turns` switch in the game rules and the
-F6 panel) and without, and how much taking turns delays them:
-`godot --headless --fixed-fps 60 -s res://tools/measure/big_attacks.gd -- [--levels=gangland/3] [--lanes=3,5,6]`
-(the whole campaign, both ways, takes about ten minutes; its header lists the options).
+F6 panel) and without, how much taking turns delays them, and which enemies never got a big attack in:
+`godot --headless --fixed-fps 60 -s res://tools/measure/big_attacks.gd -- [--levels=gangland/3] [--lanes=3,5,6]
+[--seeds=6] [--features=octodog]` (the whole campaign, both ways, takes about ten minutes on the levels' own seeds;
+its header lists the options).
 
 `tools/measure/level_shape.gd` measures each campaign level's shape: every feature's share of its picks, its
 enemy, host and obstacle counts, what only the every-feature guarantee brings, and The Hush's quiet stretches

@@ -88,17 +88,28 @@ static func _time_of(d: Enemy, event: String, nth: int = 0) -> float:
 # --- The switch ---------------------------------------------------------------------------------
 
 ## GDD §9 (may be reverted after playtesting): one switch in the game rules, on by default, shown in
-## the F6 panel (a bool exported on GameRules).
+## the F6 panel (a bool exported on GameRules). How long a waiting enemy keeps its place without
+## asking is a tunable next to it (a float with a range hint), longer than an Octodog's charge slack
+## at run speed, so a dog that waited keeps its place until it charges or runs off.
 func _test_switch() -> void:
 	var rules := load("res://data/tuning/game_rules.tres") as GameRules
 	check(rules.big_attacks_take_turns and GameRules.new().big_attacks_take_turns,
 		"big attacks take turns by default (data/tuning/game_rules.tres)")
 	var shown: bool = false
+	var grace_shown: bool = false
 	for prop: Dictionary in rules.get_property_list():
+		var exported: bool = (int(prop["usage"]) & PROPERTY_USAGE_EDITOR) != 0 \
+			and (int(prop["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0
 		if prop["name"] == "big_attacks_take_turns":
-			shown = prop["type"] == TYPE_BOOL and (int(prop["usage"]) & PROPERTY_USAGE_EDITOR) != 0 \
-				and (int(prop["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0
+			shown = prop["type"] == TYPE_BOOL and exported
+		elif prop["name"] == "turn_place_grace":
+			grace_shown = prop["type"] == TYPE_FLOAT and exported and int(prop["hint"]) == PROPERTY_HINT_RANGE
 	check(shown, "the switch is an exported bool, so the F6 panel shows it")
+	var dog := load("res://data/enemies/octodog.tres") as OctodogTuning
+	check(grace_shown and is_equal_approx(rules.turn_place_grace, GameRules.new().turn_place_grace)
+		and rules.turn_place_grace > dog.charge_slack / tuning.run_speed,
+		"a waiting enemy keeps its place for %.1f s without asking (an F6 tunable), longer than an Octodog's slack (%.1f s)"
+		% [rules.turn_place_grace, dog.charge_slack / tuning.run_speed])
 
 
 # --- Turns --------------------------------------------------------------------------------------
