@@ -1073,6 +1073,49 @@ or `--scenario=window|missed`)
     hull for a moment before it shakes free; at 6 lanes a drop off the ceiling into the outer lane on the tower's side
     lands where the rolled hull dips under the roofs. Both only after the chance is gone, and nothing hurts. Acceptable?
 
+**Golden Zone skin** (from D6a; numbers and colours are exports on `GoldenSkin`, F6; play it with
+`--quick --skin=golden --nofall` or `--level=golden/1`; the statue kit in `tools/showcase/statue_showcase.tscn`)
+171. **Time of day:** the blue hour: a deep blue sky over the warm afterglow of the set sun, a pale moon, the white
+    palaces floodlit from their entablatures, warm lamplight on the calm band. (In full daylight the hazards' glow washed
+    out against the white; at night the white turned grey.) Right hour?
+172. **The walkways over water:** each lane its own walkway of deep, satin-burnished gold plates between polished gold
+    rails, over a dark canal 5.5 m below flowing toward the player; a gap is a missing stretch with the usual orange lip
+    on the collision edge, glowing as brightly as the Marketplace's (a lit gold floor swallows a dimmer edge), a soft
+    halo on the far edge, and deep shade below. The gold is kept well below the cream cyborgs in value and saturation so
+    they stand out (a more polished deck paled right where they stand). Right look?
+173. **Motion cues over water:** per 40 m, 55 motes of mist, 10 flakes of gold leaf and 12 speed streaks drifting toward
+    the player, with the plate seams streaming past and the canal flowing in the gaps. The right equivalent?
+174. **The facades and the calm band:** every face flush up past the wall-run band (polished granite, then calm stone to
+    7 m where nothing opens, lights up, sticks out or looks like a vent or a niche, since vents and niches mean screeches
+    and Sentinels here), gold inlay lines at the 2 m and 4 m wall-run heights, a gold frieze to 8.6 m; above it white
+    palaces with gold-framed windows and balconies, galleries of gilded frames, and champagne-glass towers on gold fins.
+    Right?
+175. **The statues** (GDD §9.11): a 2.6 m gilded guardian in faceted ceremonial armour with a crested helmet and a 2.95 m
+    halberd, future rather than historical; three decorative poses and two swing poses for C4's live Sentinel. Decorative
+    ones stand on the palaces' ledge with their feet 8.8 m up (a wall run reaches about 5.8 m), every 5.2 m, 90% filled.
+    Right look, height and density?
+176. **The cult's emblem, shown openly** (GDD §5): in polished gold meeting at a red stone, on red banners on 60% of
+    towers, in relief on 70% of the towers rising over the building before them, on a crest on every golden bridge and
+    the archways' keystones, on the sky bridges, in the galleries' frames, and inlaid as medallions in the walkways; drawn
+    large because marks fade out below about 24 pixels. How openly, where, and how often?
+177. **The retuned gold** (`CultEmblem`): the old placeholder gold read as sign yellow once lit, so it's now a paler,
+    half-saturated gold meeting at a deep ruby stone, the same gold the whole zone uses. Approve?
+178. **The cult's feed here:** in 30% of the galleries' gilded frames and on big screens hung over the street from 35% of
+    towers (a boss arena can turn those off). Right places and amounts?
+179. **The ceilings:** golden bridges with coffered undersides and a crest (over fewer lanes, a suspended gallery on gold
+    beams; weight 4.0), a gallery of parabolic golden arches (full width only; 3.0), a hover-yacht of the elite (2.0);
+    flatter and shorter over narrow streets so nothing cuts through the walls' statues and frames. Right mix and forms?
+180. **Waterfalls off the ceilings** (GDD §5: scenery only, sparse): on half the bridges, water pours off the bridge's face
+    into gilded troughs beside the crest, always above the underside, never over the floor or the wall-run band; 3-lane
+    streets have no room for them. What the owner means, and sparse enough?
+181. **Over the street:** sky bridges slung between towers 24–30 m up in 70% of stretches where towers stand on both
+    sides; hover-yachts as ceilings. Enough future?
+182. **Red accents:** besides the banners, frames and the yachts' stripe, half the lit windows show red velvet drapes.
+    Enough red?
+183. **Hazards in the zone's dress:** fences between marble-and-gold stanchions with pink emitters; signs are boutique
+    boards (cream, midnight blue, black lacquer, ivory with gold lettering) in the yellow/black frame (a crimson board was
+    dropped, since a glowing red reads as a hazard). OK?
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
