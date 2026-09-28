@@ -2,7 +2,7 @@ extends RefCounted
 ## Watches the big attacks in a run (GDD §9, "Big attacks take turns") frame by frame, for
 ## tools/measure/big_attacks.gd and the tests (test_enemy_director.gd). It reads the attacks from the
 ## enemies' own states and the live shots, never from the turn-taking code it checks (only the waits
-## come from the director's report), so it measures a build with the rule on, off, or without it the
+## come from the director's answers), so it measures a build with the rule on, off, or without it the
 ## same way.
 ##   const AttackWatch = preload("res://tools/measure/attack_watch.gd")
 ##   var watch := AttackWatch.new(world)     # before the enemies spawn
@@ -20,21 +20,22 @@ extends RefCounted
 ## Overlap is the time during which attacks of two or more types are open at once. Also watched
 ## (not a big attack, docs/questions/r3.md): a hover truck's entrance, from its first bang until its
 ## burst stops hurting. The event log lists every state change of every enemy, so two builds can be
-## compared run by run. A wait for a turn lasts from the first frame the director reports its enemy
-## waiting until the enemy's next big attack starts, through short gaps (WAIT_BRIDGE).
+## compared run by run. A wait for a turn lasts from the first frame the director holds its enemy for
+## another type's turn until the enemy's next big attack starts, through short gaps (WAIT_BRIDGE).
 
 const DroneScript := preload("res://scripts/enemies/drone.gd")
 const TruckScript := preload("res://scripts/enemies/hover_truck.gd")
 ## Enemy shots that belong to a big attack, by name, and the type they belong to.
 const SHOT_TYPES: Dictionary = {"drone gatling": &"drone", "hover truck cannon": &"hover_truck",
 	"hover truck gunner": &"hover_truck"}
-## A wait for a turn runs from the first frame the director reports its enemy waiting until its
-## attack starts, through gaps of up to this many seconds in which it doesn't (a gap in the enemy's
-## asks, or a director that dropped its place), so a director that keeps a waiting enemy's place
-## through a short gap and one that drops it and gives it back measure the same asks alike. It follows
-## the asks, though: an enemy that asks for longer is seen waiting for longer (an Octodog that asks
-## through its slack, from R3b on), and a wait whose attack comes more than this long after the enemy
-## was last seen waiting isn't counted.
+## A wait for a turn runs from the first frame the director holds its enemy for another type's turn
+## (EnemyDirector.held_for_turn: it asked this frame or the last and was held for another's attack)
+## until its attack starts, through gaps of up to this many seconds in which it isn't held (its stretch
+## not clear for a while, its turn come while it isn't quite ready); a wait whose attack comes later
+## than that after its last hold isn't counted. An Octodog's wait lasts until it charges or runs off,
+## however long it moves its charges on and uses its slack: all of that is its delay. The director
+## answers each ask the same whatever it keeps in its queue, so two directors measure the same asks
+## alike; waits for GDD §9.7's exclusive rule (the Bad Dream's chase) don't count.
 const WAIT_BRIDGE: float = 3.0
 
 var world: RunWorld
@@ -50,9 +51,8 @@ var events: int = 0
 var attacks: Dictionary = {}
 ## Seconds each type had an attack open.
 var open_seconds: Dictionary = {}
-## By kind: for each attack that started after a wait (WAIT_BRIDGE), how long it waited (seconds),
-## and how much of that it was held for another type's turn (only a director that takes turns keeps
-## track).
+## By kind: for each attack that started after a wait for its turn (WAIT_BRIDGE), how long it waited
+## (seconds), and how much of that it was held (only a director that takes turns holds any).
 var waits: Dictionary = {}
 var turn_waits: Dictionary = {}
 ## Seconds a hover truck's entrance was on while a big attack was open.
@@ -73,7 +73,7 @@ var _ids: Dictionary = {}
 var _sigs: Dictionary = {}
 var _was_open: Dictionary = {}
 ## Enemies waiting for their turn, by spawn index: when the current wait began and when the director
-## last reported it waiting (level times), and the seconds of it held for another type's turn.
+## last held it for another type's turn (level times), and the seconds it was held.
 var _wait_began: Dictionary = {}
 var _wait_seen: Dictionary = {}
 var _held_turn: Dictionary = {}
@@ -95,7 +95,7 @@ func observe() -> void:
 	var now: float = world.level_time()
 	var open_types: Dictionary = {}
 	var entrance: bool = false
-	var turns_known: bool = world.director.has_method(&"is_waiting")
+	var turns_known: bool = world.director.has_method(&"held_for_turn")
 	for e: Enemy in world.director.active:
 		if not is_instance_valid(e):
 			continue
@@ -139,20 +139,18 @@ func observe() -> void:
 					var made: Dictionary = truck_attacks.get_or_add(key, {"lurch": 0, "cannon": 0})
 					var k: String = "lurch" if kind == "truck_lurch" else "cannon"
 					made[k] = int(made[k]) + 1
-				if _wait_began.has(key) and now - float(_wait_seen[key]) <= WAIT_BRIDGE + dt:
+				if _wait_began.has(key) and not _wait_over(e, now - float(_wait_seen[key]) - dt):
 					(waits.get_or_add(kind, []) as Array).append(now - float(_wait_began[key]))
-					if float(_held_turn.get(key, 0.0)) > 0.0:
-						(turn_waits.get_or_add(kind, []) as Array).append(float(_held_turn[key]))
+					(turn_waits.get_or_add(kind, []) as Array).append(float(_held_turn[key]))
 				_end_wait(key)
 			_was_open[wk] = now
-		if turns_known and bool(world.director.call(&"is_waiting", e)):
-			if not _wait_began.has(key) or now - float(_wait_seen[key]) > WAIT_BRIDGE:
-				_wait_began[key] = now - float(world.director.call(&"turn_wait", e))
+		if turns_known and bool(world.director.call(&"held_for_turn", e)):
+			if not _wait_began.has(key):
+				_wait_began[key] = now
 				_held_turn[key] = 0.0
 			_wait_seen[key] = now
-			if bool(world.director.call(&"held_for_turn", e)):
-				_held_turn[key] = float(_held_turn.get(key, 0.0)) + dt
-		elif _wait_began.has(key) and now - float(_wait_seen[key]) > WAIT_BRIDGE:
+			_held_turn[key] = float(_held_turn[key]) + dt
+		elif _wait_began.has(key) and _wait_over(e, now - float(_wait_seen[key])):
 			_end_wait(key)
 	var reach: float = p.position.z + world.tuning.hurtbox_size.z * 0.5
 	for shot: Projectile in world.projectiles.live_shots():
@@ -207,6 +205,15 @@ static func open_kinds(e: Enemy) -> Array[String]:
 			if s == Resonator.State.WARNING or s == Resonator.State.PULSE or bool(e.call(&"waves_on_their_way")):
 				out.append("resonator_pulse")
 	return out
+
+
+## True once a wait for `e`'s turn that has seen no hold for `gap` seconds is over: after WAIT_BRIDGE,
+## and an Octodog's only once it runs off or is out of play (until then it paces on, moving its charges
+## on or using its slack: all of that is its delay).
+func _wait_over(e: Enemy, gap: float) -> bool:
+	if e.type_id == &"octodog":
+		return not e.alive or int(e.get(&"phase")) in [Octodog.Phase.GIVE_UP, Octodog.Phase.LEAVE, Octodog.Phase.FALLING]
+	return gap > WAIT_BRIDGE
 
 
 func _end_wait(key: int) -> void:

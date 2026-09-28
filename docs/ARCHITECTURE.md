@@ -1134,17 +1134,17 @@ frames on the Compatibility renderer (the web and low-end Android path) with `--
 simulated runs of the campaign's levels at 3, 5 and 6 lanes, with `GameRules.big_attacks_take_turns` on
 and off: a god-mode runner in the middle lane, stomping every host it passes, while the enemies play as
 in the game. It reports the time big attacks of different types overlap, how many of each kind came,
-how long attacks waited for their turn (from the first frame the director reports an enemy waiting
-until its attack, through gaps of up to 3 s, so a director that keeps a place through a short gap and
-one that drops it and gives it back measure the same asks alike; an enemy that asks for longer is seen
-waiting for longer), and the enemies that never got a big attack in (Octodogs
+how long attacks waited for their turn (from the first frame the director holds an enemy for another
+type's turn until its attack, through gaps of up to 3 s, and an Octodog's until it charges, however
+long it moves its charges on; the director answers each ask the same whatever its queue keeps, so two
+builds measure the same asks alike), and the enemies that never got a big attack in (Octodogs
 without a charge, Resonators without a pulse, drones without a barrage, hover trucks without a lurch
 or a cannon shot) (`godot --headless --fixed-fps 60 -s res://tools/measure/big_attacks.gd --
 --levels=gangland/3 --lanes=3,5,6 --out=build/measure/x.json`; the whole campaign on its own seeds takes
 about ten minutes; `--seeds=6` adds six other seeds a level, `--seeds=9007-9020` runs a range, and
 `--features=octodog` keeps the levels that use a feature). `attack_watch.gd` watches the attacks from the
 enemies' own states and the live shots, never from the turn-taking code (only the waits come from the
-director's report), and hashes each run's event log, so two builds (or the switch off and a build
+director's answers), and hashes each run's event log, so two builds (or the switch off and a build
 without the rule) can be compared run by run.
 
 `tools/measure/level_shape.gd` measures the campaign's shape: for each level at 3, 5 and 6 lanes, on its

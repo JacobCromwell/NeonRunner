@@ -269,7 +269,7 @@ func _print_totals(runs: Array[Dictionary], turns: bool) -> void:
 		var turn_total: float = 0.0
 		for w: float in turn_waits.get(kind, []):
 			turn_total += w
-		print("  %-12s %4d attacks; %3d waited first: mean %.2f s, max %.2f s (%.1f s in all, %.1f s of it for another type's turn)"
+		print("  %-12s %4d attacks; %3d waited for their turn: mean %.2f s, max %.2f s (%.1f s in all, %.1f s of it held)"
 			% [kind, int(attacks[kind]), list.size(), total / maxf(list.size(), 1), most, total, turn_total])
 	print("  Octodogs: %d, %d charges in all, %d never charged; Bad Dream slashes in %d runs" % [dogs, charges,
 		dogs_idle, slashes_runs])
