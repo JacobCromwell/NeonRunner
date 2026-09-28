@@ -16,6 +16,7 @@ stomp_tolerance = 0.45
 grapple_pull_velocity = 10.0
 lane_bump_fraction = 0.3
 big_attacks_take_turns = true
+turn_place_grace = 2.0
 ramp_score_multiplier = 2.0
 stomp_bonus = 50
 wall_run_score_per_metre = 0
