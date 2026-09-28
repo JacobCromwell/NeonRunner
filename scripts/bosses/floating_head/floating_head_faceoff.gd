@@ -66,6 +66,8 @@ const SWING_SECONDS: float = 0.2
 const DROP_MARK_RADIUS: float = 0.9
 ## A dropped cyborg leaps out this far in front of the face (clear of the open jaw) and lands there.
 const DROP_FRONT: float = 3.0
+## No attack starts while a ceiling lies within this far ahead of the runner (_fair_to_start).
+const CEILING_REACH: float = 60.0
 
 var head: FloatingHead
 var tuning: FloatingHeadTuning
@@ -352,6 +354,12 @@ func _choose_next() -> void:
 				_towers_done[tower["key"]] = true
 				head.log_event(&"tower_skipped", {"at": tower["at"], "side": tower["side"], "why": &"burst"})
 				return
+			var blocker: StringName = head.pin_zone_blocker(float(tower["at"]))
+			if blocker != &"":
+				# The pin and its way up would land on a pickup or a cyborg it dropped: this tower goes by.
+				_towers_done[tower["key"]] = true
+				head.log_event(&"tower_skipped", {"at": tower["at"], "side": tower["side"], "why": blocker})
+				return
 			_begin_tower(tower, lead)
 			return
 	for i: int in queue.size():
@@ -466,12 +474,15 @@ func _end_attack() -> void:
 	_gap = tuning.attack_gap / head.pace()
 
 
-## Whether `kind` may start now (from where the ship is): a drop waits until the runner is past the
-## cyborgs of the last one; lasers wait for the airspace; a sweep needs the floor clear in every lane
-## where the runner will be while its beams cross the street (from SWEEP_CLEAR_BEFORE before where they
-## are when it fires to sweep_clear_after past where they are when it's done); a drag a lane to switch
-## into.
+## Whether `kind` may start now (from where the ship is): nothing starts while a ceiling (the third
+## stomp window's, after a missed window) lies within an attack's reach of the runner, who may be riding
+## it or dropping from it; a drop waits until the runner is past the cyborgs of the last one; lasers
+## wait for the airspace; a sweep needs the floor clear in every lane where the runner will be while its
+## beams cross the street (from SWEEP_CLEAR_BEFORE before where they are when it fires to
+## sweep_clear_after past where they are when it's done); a drag a lane to switch into.
 func _fair_to_start(kind: StringName) -> bool:
+	if head.ceiling_between(world.player.distance - SWEEP_CLEAR_BEFORE, world.player.distance + CEILING_REACH):
+		return false
 	if kind == &"drop":
 		return not _cyborgs_ahead()
 	if not _airspace_free():

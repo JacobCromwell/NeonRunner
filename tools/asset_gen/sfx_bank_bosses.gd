@@ -20,7 +20,18 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##   tower_crack       the laser clipping a marked tower (its fall's warning): a sharp crack, then the
 ##                     long groan of concrete and steel giving way
 ##   tower_crash       the tower slamming onto the ship: a huge crash, crumpling metal and falling debris
-## Later steps of the fight (task E1) add the shriek, the propaganda voice and the crash of its defeat.
+##   ramp_slam         the tower's broken slab slamming down into a lane (the first stomp window's ramp):
+##                     a heavy stone thud and grit
+##   pads_light        anti-grav pads lighting up (the third window's way up): a rising electric hum with
+##                     a shimmer, in the pads' fifths
+##   ceiling_lower     a ceiling section (a ship's underside) lowering in overhead: a descending engine
+##                     drone and a hydraulic thump as it settles
+##   head_weak_open    its weak points' covers swinging open for a stomp window: hydraulic hiss, the
+##                     covers' clank, and a bright rising "target" arpeggio
+##   head_shriek       a stomp lands (GDD §10: it shrieks): a distorted, glitching mechanical scream
+##   head_shake_free   it shakes free of the tower: grinding, scraping metal, a lurching thud and its
+##                     engines roaring up
+## Later steps of the fight (task E1) add the propaganda voice and the crash of its defeat.
 
 ## A1 and E2 (Hz): the fight's key, under the City's music.
 const A1: float = 55.0
@@ -41,6 +52,12 @@ func sounds() -> Dictionary:
 		"cyborg_drop_land": _cyborg_drop_land,
 		"tower_crack": _tower_crack,
 		"tower_crash": _tower_crash,
+		"ramp_slam": _ramp_slam,
+		"pads_light": _pads_light,
+		"ceiling_lower": _ceiling_lower,
+		"head_weak_open": _head_weak_open,
+		"head_shriek": _head_shriek,
+		"head_shake_free": _head_shake_free,
 	}
 
 
@@ -338,5 +355,138 @@ func _tower_crash() -> PackedFloat32Array:
 	for k: int in 10:
 		var at: float = rng.randf_range(0.2, 1.5)
 		DSP.mix(b, DSP.metal_hit(0.2, rng.randf_range(300.0, 2200.0), 0.05, rng), at, 0.4 * (1.0 - at / 1.8))
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## The tower's broken slab slamming down into a lane (the first stomp window's ramp): a heavy stone
+## thud, a crunch of concrete and grit pattering down (the crunch carries on a phone's speaker).
+func _ramp_slam() -> PackedFloat32Array:
+	var rng := _rng(413)
+	var b := DSP.buffer(0.9)
+	DSP.mix(b, _boom(0.8, 95.0, 36.0, 0.18, rng), 0.0, 1.0)
+	DSP.mix(b, DSP.kick(0.3, 130.0, 45.0, rng), 0.0, 0.8)
+	var crunch := DSP.noise(0.35, rng)
+	DSP.filter(crunch, &"bandpass", 1200.0, 0.8)
+	DSP.drive(crunch, 3.0)
+	DSP.envelope(crunch, 0.002, 0.09)
+	DSP.mix(b, crunch, 0.0, 2.0)
+	DSP.mix(b, DSP.metal_hit(0.2, 760.0, 0.05, rng), 0.0, 0.6)
+	DSP.mix(b, _crackle(0.8, 30, 0.3, 2600.0, rng), 0.03, 1.1)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## Anti-grav pads lighting up in every lane (the third stomp window's way up): a rising electric hum in
+## fifths, a soft zap as each catches, and a shimmer.
+func _pads_light() -> PackedFloat32Array:
+	var rng := _rng(414)
+	var d: float = 0.9
+	var b := DSP.buffer(d)
+	for hz: float in [220.0, 330.0]:
+		var hum := DSP.osc(d, func(u: float) -> float: return DSP.sweep(hz * 0.5, hz, minf(u * 2.5, 1.0)), &"square")
+		DSP.filter(hum, &"bandpass", hz * 2.0, 0.9)
+		DSP.adsr(hum, 0.1, 0.2, 0.6, 0.25)
+		DSP.mix(b, hum, 0.0, 0.5)
+	for k: int in 3:
+		var zap := DSP.osc(0.06, func(u: float) -> float: return DSP.sweep(2400.0, 900.0, u), &"square")
+		DSP.shape(zap, 0.002, 0.02)
+		DSP.mix(b, zap, 0.05 + k * 0.09, 0.35)
+	DSP.mix(b, _sparkle(0.6, rng), 0.25, 0.3)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## A ceiling section lowering in overhead (a ship's underside settling over the street): an engine
+## drone gliding down, a whoosh, and a hydraulic thump and hiss as it locks in place.
+func _ceiling_lower() -> PackedFloat32Array:
+	var rng := _rng(415)
+	var d: float = 1.1
+	var b := DSP.buffer(d)
+	var drone := DSP.osc(d, func(u: float) -> float: return DSP.sweep(140.0, 70.0, u), &"saw")
+	DSP.mix(drone, DSP.osc(d, func(u: float) -> float: return DSP.sweep(141.5, 70.6, u), &"saw"), 0.0, 0.8)
+	DSP.filter(drone, &"lowpass", 700.0)
+	DSP.drive(drone, 2.0)
+	DSP.adsr(drone, 0.1, 0.3, 0.7, 0.3)
+	DSP.mix(b, drone, 0.0, 0.7)
+	DSP.mix(b, _whoosh(0.7, 2200.0, 500.0, 1.2, rng), 0.0, 0.5)
+	DSP.mix(b, DSP.kick(0.3, 100.0, 40.0, rng), 0.62, 0.8)
+	DSP.mix(b, DSP.metal_hit(0.2, 240.0, 0.06, rng), 0.62, 0.6)
+	var hiss := DSP.noise(0.35, rng)
+	DSP.filter(hiss, &"highpass", 2600.0)
+	DSP.shape(hiss, 0.01, 0.25)
+	DSP.mix(b, hiss, 0.66, 0.35)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## Its weak points' covers swinging open (a stomp window opens): a hydraulic hiss, the covers' heavy
+## clank, and a bright rising "target" arpeggio on a pulse wave (A, C, E, A: the fight's key), so the
+## window is heard as well as seen.
+func _head_weak_open() -> PackedFloat32Array:
+	var rng := _rng(416)
+	var d: float = 0.9
+	var b := DSP.buffer(d)
+	var hiss := DSP.noise(0.4, rng)
+	DSP.filter(hiss, &"highpass", 2200.0)
+	DSP.shape(hiss, 0.01, 0.25)
+	DSP.mix(b, hiss, 0.0, 0.45)
+	DSP.mix(b, DSP.metal_hit(0.25, 330.0, 0.07, rng), 0.12, 0.9)
+	DSP.mix(b, DSP.kick(0.2, 120.0, 50.0, rng), 0.12, 0.5)
+	var notes: Array[float] = [440.0, 523.3, 659.3, 880.0]
+	for k: int in notes.size():
+		var hz: float = notes[k]
+		var beep := Inst.pulse(0.12, hz, 0.25)
+		DSP.mix(beep, Inst.pulse(0.12, hz * 2.0, 0.5), 0.0, 0.25)
+		DSP.shape(beep, 0.003, 0.03)
+		DSP.mix(b, beep, 0.3 + k * 0.09, 0.55 + 0.1 * k)
+	DSP.crush(b, 8, 16000.0)
+	return b
+
+
+## A stomp lands (GDD §10: it shrieks): a distorted mechanical scream through its loudspeakers, pitch
+## jumping and glitching, over a crackle of static.
+func _head_shriek() -> PackedFloat32Array:
+	var rng := _rng(417)
+	var d: float = 1.3
+	var scream := _voice(d, func(u: float) -> float:
+		return DSP.sweep(620.0, 260.0, pow(u, 0.7)) * (1.0 + 0.25 * float(int(u * 11.0) % 2)),
+		Vector2(900.0, 620.0), Vector2(2600.0, 1700.0), 9.0, 1.2, rng)
+	DSP.drive(scream, 6.0)
+	DSP.filter(scream, &"bandpass", 1500.0, 0.6)
+	DSP.adsr(scream, 0.02, 0.3, 0.75, 0.35)
+	var b := DSP.buffer(d)
+	DSP.mix(b, scream, 0.0, 1.0)
+	var buzz := DSP.osc(d, func(u: float) -> float: return DSP.sweep(160.0, 70.0, u), &"saw")
+	DSP.filter(buzz, &"lowpass", 900.0)
+	DSP.drive(buzz, 3.0)
+	DSP.adsr(buzz, 0.02, 0.3, 0.6, 0.35)
+	DSP.mix(b, buzz, 0.0, 0.45)
+	DSP.mix(b, _crackle(d, 40, 0.6, 3000.0, rng), 0.0, 0.5)
+	DSP.crush_sweep(b, 9.0, 5.0, 18000.0, 6000.0)
+	return b
+
+
+## It shakes free of the tower: a long grinding scrape of metal and stone, a lurching thud, and its
+## engines roaring up as it pulls away.
+func _head_shake_free() -> PackedFloat32Array:
+	var rng := _rng(418)
+	var d: float = 1.6
+	var b := DSP.buffer(d)
+	var scrape := DSP.noise(0.9, rng)
+	DSP.filter_sweep(scrape, &"bandpass", 500.0, 1400.0, 1.4)
+	DSP.drive(scrape, 4.0)
+	DSP.adsr(scrape, 0.03, 0.2, 0.7, 0.2)
+	DSP.mix(b, scrape, 0.0, 0.7)
+	for k: int in 5:
+		DSP.mix(b, DSP.metal_hit(0.15, rng.randf_range(400.0, 1200.0), 0.04, rng), 0.05 + k * 0.14, 0.4)
+	DSP.mix(b, _boom(0.7, 110.0, 40.0, 0.2, rng), 0.25, 0.9)
+	var engines := DSP.buffer(1.2)
+	for hz: float in [A1, A1 * 1.01, A1 * 1.5]:
+		DSP.mix(engines, DSP.osc(1.2, func(u: float) -> float: return hz * lerpf(0.8, 1.25, u), &"saw"), 0.0, 0.35)
+	DSP.filter(engines, &"lowpass", 600.0)
+	DSP.drive(engines, 2.5)
+	DSP.adsr(engines, 0.3, 0.3, 0.8, 0.3)
+	DSP.mix(b, engines, 0.4, 0.9)
 	DSP.crush(b, 9, 18000.0)
 	return b

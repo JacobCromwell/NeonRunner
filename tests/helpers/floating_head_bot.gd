@@ -1,27 +1,49 @@
 class_name FloatingHeadBot
 extends RefCounted
-## A runner who plays the Floating Head's face-off by its warnings, for tests and reviews
+## A runner who plays the Floating Head's fight by its warnings, for tests and reviews
 ## (tools/showcase/floating_head_showcase.gd). Call step() every physics frame. It only presses the
 ## player's named actions, and only reacts to what the fight shows (an attack's kind, height, lane and
-## where its beams are), the way a player reads the warnings:
+## where its beams are; a lit bomb target; the pinned ship, its weak points and its way up), the way a
+## player reads the warnings:
+## - a bomb's lock on its lane: switches to the free lane the fairness rules keep (like any player who
+##   keeps moving);
 ## - a sweep: jumps a low one, slides under a high one, as the beams reach its spot;
 ## - a drag: once its lane is committed (the red lane warning), switches to the free lane the fairness
 ##   rules keep (FloatingHead.escape_lane);
 ## - a marked tower: with `baits` on, moves to the outer lane on the tower's side while the drag aims,
 ##   and dodges only once it's committed (the bait); with `baits` off, keeps out of that lane;
-## - dropped cyborgs: keeps out of the lane of one ahead of it.
+## - dropped cyborgs: keeps out of the lane of one ahead of it;
+## - with `routes` on, a stomp window: takes the phase's way onto its head once the laser's burning line
+##   is out of the way (FloatingHead.route): into the ramp's lane, up it and off its end without a jump;
+##   onto the nearer wall enter_before its face and a wall jump jump_before it, inward (and one lane
+##   further in the air where the outer lane has no weak point); or over the pads, onto the ceiling,
+##   along it to the nearest weak point's lane, and off its end. With `wrong_route` it runs on down the
+##   trucks instead (a missed window).
 ## With `wrong` set to a sweep kind (&"low" or &"high"), it answers that kind the wrong way (slides
 ## under a low sweep, jumps a high one), to show the answer matters.
 
+## The wall route's timing: into the wall this far before the ship's face, off it this far before.
+const ENTER_BEFORE: float = 12.0
+const JUMP_BEFORE: float = 3.0
+## The second move inward comes this long after the wall jump.
+const SECOND_MOVE: float = 0.1
+
 var head: FloatingHead
 var baits: bool = true
+var routes: bool = true
 var wrong: StringName = &""
+## Stays down on the trucks through a stomp window (a miss).
+var wrong_route: bool = false
+## The wall the wall route takes: 0 the nearer one, -1 left, +1 right.
+var wall_side: int = 0
 ## What it did, for tests: {t (fight time), action, why}.
 var log: Array[Dictionary] = []
 
 var _handled: Dictionary = {}
 var _target: int = -1
 var _why: String = ""
+## The stomp window it's taking: {pin (the pin's stern), stage, side, t}.
+var _route: Dictionary = {}
 
 
 func _init(p_head: FloatingHead, p_baits: bool = true) -> void:
@@ -34,6 +56,10 @@ func step() -> void:
 	var player: Player = world.player
 	if not player.alive or not player.running:
 		return
+	if routes and _take_route():
+		_walk()
+		return
+	_dodge_bombs()
 	var f: FloatingHeadFaceOff = head.faceoff
 	var attack: Dictionary = f.attack
 	var kind: StringName = attack.get("kind", &"")
@@ -52,6 +78,138 @@ func step() -> void:
 	_avoid_cyborgs()
 	_walk()
 
+
+# --- The stomp windows ---------------------------------------------------------------------------
+
+## Takes the pin's way onto its head: true while it's doing so (nothing else steers it then).
+func _take_route() -> bool:
+	var pinned: bool = head.step == FloatingHead.Step.PIN_FALL or head.step == FloatingHead.Step.PINNED
+	if not pinned or head.route == &"":
+		_route = {}
+		return false
+	if wrong_route:
+		# Stays down on the trucks: out of the first window's ramp lane, and over the third window's pads
+		# with a jump (a pad only lifts a runner on the ground).
+		var p: Player = head.world.player
+		var ahead: float = head.pad_at - p.distance
+		if head.route == &"ceiling" and ahead > 0.0 and ahead < 3.5 and p.grounded \
+				and not _handled.has("pads %s" % head.pin_stern):
+			_handled["pads %s" % head.pin_stern] = true
+			_press(&"jump", "over the pads")
+		if head.route == &"ramp":
+			var ramp_lane: int = head.ramp_lane if head.ramp_lane >= 0 else head.ramp_lane_for(head.pin_side)
+			if p.lane == ramp_lane and p.distance < head.pin_stern - head.tuning.ramp_length:
+				_go(ramp_lane + (1 if ramp_lane < head.lane_count() / 2 else -1), "off the ramp")
+		return false
+	var player: Player = head.world.player
+	if player.distance > head.pass_line():
+		return false
+	if _route.get("pin", -1.0) != head.pin_stern:
+		_route = {"pin": head.pin_stern, "stage": &"lane", "t": 0.0}
+	# The drag that clipped the tower still burns down its lane for a moment: first out of its way.
+	var burning: int = _burning_lane()
+	var to_face: float = head.pin_stern - player.distance
+	match head.route:
+		&"ramp":
+			var lane: int = head.ramp_lane if head.ramp_lane >= 0 else head.ramp_lane_for(head.pin_side)
+			if lane != burning:
+				_go(lane, "ramp")
+			elif player.lane == burning:
+				_dodge_lane(burning, "burn")
+		&"wall":
+			_wall_route(to_face, burning)
+		&"ceiling":
+			if player.surface == Player.Surface.CEILING:
+				_go(_nearest_weak_lane(player.lane), "ceiling")
+			elif player.lane == burning:
+				_dodge_lane(burning, "burn")
+	return true
+
+
+## The wall route: to the outer lane by the nearer wall (or `wall_side`), onto the wall enter_before the
+## ship's face, and a wall jump jump_before it, inward; one lane further in the air where the outer lane
+## has no weak point.
+func _wall_route(to_face: float, burning: int) -> void:
+	var player: Player = head.world.player
+	var n: int = head.lane_count()
+	if not _route.has("side"):
+		var side: int = wall_side
+		if side == 0:
+			side = -1 if player.lane * 2 < n - 1 else (1 if player.lane * 2 > n - 1 else head.pin_side)
+		_route["side"] = side
+	var side: int = int(_route["side"])
+	var outer: int = 0 if side < 0 else n - 1
+	var inward: StringName = &"move_right" if side < 0 else &"move_left"
+	match _route["stage"]:
+		&"lane":
+			if outer != burning:
+				_go(outer, "wall")
+			elif player.lane == burning:
+				_dodge_lane(burning, "burn")
+			if player.lane == outer and player.surface == Player.Surface.FLOOR and player.grounded \
+					and to_face <= ENTER_BEFORE and outer != burning:
+				_target = -1
+				_press(&"move_left" if side < 0 else &"move_right", "wall enter")
+				_route["stage"] = &"wall"
+		&"wall":
+			if player.surface == Player.Surface.WALL and to_face <= JUMP_BEFORE:
+				_press(inward, "wall jump")
+				_route["stage"] = &"jumped"
+				_route["t"] = head.fight_time()
+		&"jumped":
+			if not head.weak_point_lanes().has(outer) and head.fight_time() - float(_route["t"]) >= SECOND_MOVE:
+				_press(inward, "onto the weak point")
+				_route["stage"] = &"done"
+
+
+## The lane of the drag's burning line while it still reaches ahead of the runner (-1: none).
+func _burning_lane() -> int:
+	var player: Player = head.world.player
+	for h: Hazard in head.faceoff.laser_hazards():
+		if h.hazard_name != FloatingHeadFaceOff.BURN_NAME:
+			continue
+		var near: float = -h.global_position.z - h.size.z * 0.5
+		var far: float = -h.global_position.z + h.size.z * 0.5
+		if far > player.distance - 1.0 or near > player.distance - 1.0:
+			return clampi(roundi(h.global_position.x / head.world.geo.lane_width + (head.lane_count() - 1) * 0.5),
+				0, head.lane_count() - 1)
+	return -1
+
+
+## The weak point's lane nearest `lane`.
+func _nearest_weak_lane(lane: int) -> int:
+	var best: int = lane
+	var dist: int = 1000
+	for l: int in head.weak_point_lanes():
+		if absi(l - lane) < dist:
+			dist = absi(l - lane)
+			best = l
+	return best
+
+
+# --- The bombing run -----------------------------------------------------------------------------
+
+## A lock on its lane: to the free lane the rules leave it (once per lock).
+func _dodge_bombs() -> void:
+	var b: FloatingHeadBombing = head.bombing
+	if b.target.is_empty():
+		return
+	var key: String = "lock %s" % b.target["lock"]
+	if _handled.has(key):
+		return
+	_handled[key] = true
+	var pl: int = head.player_lane()
+	var lanes: Array[int] = []
+	for l: int in b.target["lanes"]:
+		lanes.append(l)
+	if not lanes.has(pl):
+		return
+	var e: int = b.escape_lane(lanes, pl, head.world.player.distance, float(b.target["at"]))
+	if e >= 0:
+		_go(e, "bomb")
+
+
+# --- The face-off --------------------------------------------------------------------------------
 
 ## Jumps or slides as the beams reach its spot.
 func _sweep(attack: Dictionary, kind: StringName, id: int) -> void:
@@ -140,10 +298,10 @@ func _go(lane: int, why: String) -> void:
 	_why = why
 
 
-## One lane a frame toward the lane it's heading for.
+## One lane a frame toward the lane it's heading for (on the trucks or the ceiling).
 func _walk() -> void:
 	var player: Player = head.world.player
-	if _target < 0 or player.surface != Player.Surface.FLOOR:
+	if _target < 0 or player.surface == Player.Surface.WALL:
 		return
 	var pl: int = player.lane
 	if pl == _target:

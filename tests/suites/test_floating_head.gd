@@ -4,9 +4,9 @@ extends TestSuite
 ## - its data and its preview: the City's slot keeps its placeholder card until the fight is done,
 ##   while debug builds play it with --boss=city_boss (BossDef.preview_scene);
 ## - its build: the scene makes a FloatingHead, the ship fits the street at 3, 5 and 6 lanes, a boss's
-##   body with its hitboxes (the hull solid, three weak points and the crown's top off until it's
-##   pinned), the face dark before the reveal, only its attacks and weak points in hazard colours,
-##   and a draw budget;
+##   body with its hitboxes (the hull solid, a weak point over each lane near its middle and the
+##   crown's deck off until it's pinned), the face dark before the reveal, only its attacks and weak
+##   points in hazard colours, and a draw budget;
 ## - its arena: the City's roofs with no signs on its walls, fair and the same on every attempt;
 ## - the entrance: it flies in overhead from behind and only attacks once it's at its station;
 ## - the bombing run: bombs fall only where the searchlight lingered, after its visual and audio
@@ -228,19 +228,28 @@ func _test_build() -> void:
 		check(widest < world.geo.wall_x() - 0.05, "the ship fits between the walls (%.2f m of %.2f) %s" % [widest, world.geo.wall_x(), tag])
 		var s: FloatingHeadModel.Shape = body.shape
 		check(s.height >= 10.0 and s.length >= 20.0, "a giant ship: %.1f m tall, %.1f m long %s" % [s.height, s.length, tag])
-		# Hitboxes: the hull solid; three weak points on the crown and the crown's top, off for now.
+		# Hitboxes: the hull solid; a weak point over each lane near the crown's middle (3, 3 and 4 at 3, 5
+		# and 6 lanes) and the crown's deck, off until a stomp window opens.
 		var solid: int = 0
 		for child: Node in body.find_children("*", "Hazard", true, false):
 			var h := child as Hazard
 			if h.part == &"body" and h.is_solid and h.is_active():
 				solid += 1
-		check(solid == 1, "its hull has a solid hitbox %s" % tag)
-		check(body.weak_points.size() == 3 and not body.weak_points_enabled(), "three weak points, off until it's pinned %s" % tag)
+		check(solid == 1 and body.hull_solid(), "its hull has a solid hitbox %s" % tag)
+		var expected: int = 4 if lanes == 6 else 3
+		check(body.weak_points.size() == expected and s.weak_points.size() == expected and not body.weak_points_enabled(),
+			"%d weak points, off until it's pinned %s" % [expected, tag])
 		var on_top: bool = true
+		var over_lanes: bool = true
 		for p: Vector3 in s.weak_points:
-			on_top = on_top and p.y > s.height * 0.9 and absf(p.x) < s.width * 0.3
+			on_top = on_top and p.y > s.height * 0.9 and absf(p.x) <= s.width * 0.4
+			var near: float = INF
+			for l: int in lanes:
+				near = minf(near, absf(p.x - world.geo.lane_x(l)))
+			over_lanes = over_lanes and near < 0.01
 		check(on_top, "its weak points sit on top of its head (GDD §10) %s" % tag)
-		check(not body.top_solid(), "its crown's top is no surface to stand on until it's pinned %s" % tag)
+		check(over_lanes, "each over a lane's middle, where a runner comes down on it %s" % tag)
+		check(not body.top_solid(), "its crown's deck is no surface to stand on until it's pinned %s" % tag)
 		check(body.screen_material() != null and is_zero_approx(body.screen_power) and _power(body) == 0.0,
 			"its face screen is dark before the reveal %s" % tag)
 		# Low-poly and merged: a few draw calls and vertices for a giant ship.
@@ -257,7 +266,7 @@ func _test_build() -> void:
 ## The colour rule (GDD §5, CLAUDE.md): only hazards glow in hazard colours. The ship's lights are cold
 ## whites and blues; red glows only on its weak points and its bombs.
 func _check_colours() -> void:
-	var s: FloatingHeadModel.Shape = FloatingHeadModel.shape_for(12.6, 5, def.tuning as FloatingHeadTuning)
+	var s: FloatingHeadModel.Shape = FloatingHeadModel.shape_for(12.6, 5, def.tuning as FloatingHeadTuning, tuning.lane_width)
 	var meshes: Dictionary = FloatingHeadModel.meshes(s)
 	var loud: PackedStringArray = []
 	for key: String in ["hull", "jaw", "lamp", "door", "cover"]:

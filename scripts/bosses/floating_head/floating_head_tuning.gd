@@ -4,7 +4,7 @@ extends Resource
 ## are at pace 1: each phase divides them by its BossPhase.pace (GDD §10: the next phase is faster).
 ## The GDD fixes the first bombing run's length (about 15-20 s), the searchlight that warns where the
 ## bombs fall and their falling whistle; every other number here is a placeholder (DESIGN-TBD,
-## docs/OPEN_QUESTIONS.md §D, items 83-92; the face-off's: docs/questions/e1.md).
+## docs/OPEN_QUESTIONS.md §D, items 83-92 and 113-123; the stomp windows': docs/questions/e1.md).
 
 @export_group("Ship")
 ## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, items 83-84): the hull fills the street between the walls (a
@@ -100,9 +100,9 @@ extends Resource
 @export_range(0.5, 4.0, 0.1, "suffix:s") var boot_seconds: float = 1.6
 
 @export_group("Face-off")
-## DESIGN-TBD (docs/questions/e1.md, item 4): the face-off's attacks, one list per phase (the last
-## list for any later phase), taken in turn over and over (when one can't start fairly, the next in
-## line that can goes first): "low" (the eye lasers sweep across the lanes low: jump them), "high"
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 116): the face-off's attacks, one list per phase (the
+## last list for any later phase), taken in turn over and over (when one can't start fairly, the next
+## in line that can goes first): "low" (the eye lasers sweep across the lanes low: jump them), "high"
 ## (high: slide under them), "drag" (they burn down the runner's lane: switch lanes) and "drop" (the
 ## cyborg drop). A drag timed for each marked tower comes on top (Towers). It hovers at its face pose
 ## (Reveal) for the lasers. These and the timings below set the face-off's pace.
@@ -114,8 +114,8 @@ extends Resource
 
 @export_group("Eye lasers")
 ## GDD §10 (proposed): "the eyes glow and whine, then twin beams sweep across the lanes". DESIGN-TBD
-## (docs/questions/e1.md, items 1-3): the warning: the eyes glow red and whine for this long while thin
-## aiming beams show where the attack goes.
+## (docs/OPEN_QUESTIONS.md §D, items 113-115): the warning: the eyes glow red and whine for this long
+## while thin aiming beams show where the attack goes.
 @export_range(0.4, 3.0, 0.05, "suffix:s") var laser_charge_seconds: float = 1.0
 ## Where a sweep's twin beams cross the runner's spot: a low sweep's both at sweep_low_height (jump
 ## them: a sliding runner is 0.45 m tall); a high sweep's one at sweep_high_height and the other at
@@ -143,10 +143,10 @@ extends Resource
 
 @export_group("Cyborg drop")
 ## GDD §10: "its mouth opens and drops 1–2 cyborgs onto the trucks ahead, who then fight like normal
-## cyborgs". DESIGN-TBD (docs/questions/e1.md, items 5-6): it pulls back to drop them this far ahead
-## (room for them to fight), its belly this high; the mouth opens (the warning, with its grinding sound
-## and red circles where they'll land) this long before the first drops, the cyborgs drop
-## drop_interval apart and fall for drop_fall_seconds.
+## cyborgs". DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, items 117-118): it pulls back to drop them this
+## far ahead (room for them to fight), its belly this high; the mouth opens (the warning, with its
+## grinding sound and red circles where they'll land) this long before the first drops, the cyborgs
+## drop drop_interval apart and fall for drop_fall_seconds.
 @export_range(20.0, 90.0, 0.5, "suffix:m") var drop_ahead: float = 50.0
 @export_range(0.5, 10.0, 0.1, "suffix:m") var drop_height: float = 2.6
 @export_range(0.3, 3.0, 0.05, "suffix:s") var mouth_seconds: float = 0.8
@@ -155,16 +155,16 @@ extends Resource
 ## Cyborgs per drop, one number per phase (the last for any later phase): GDD §10, "the next phase is
 ## faster, with more cyborgs".
 @export var cyborgs_per_drop: PackedInt32Array = [1, 2, 2]
-## DESIGN-TBD (docs/questions/e1.md, item 6): its lasers wait while a cyborg it dropped is still
-## ahead of the runner (no big attacks at once, GDD §9), at most this long.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 118): its lasers wait while a cyborg it dropped is
+## still ahead of the runner (no big attacks at once, GDD §9), at most this long.
 @export_range(0.0, 10.0, 0.1, "suffix:s") var drop_hold_max: float = 4.0
 
 @export_group("Towers")
-## GDD §10: "marked, cracked towers stand ahead at the roadside". DESIGN-TBD (docs/questions/e1.md,
-## items 7-9): one every tower_spacing metres (sides in turn), the first tower_first into each lap,
-## tower_height tall (its head, the top 30%, juts out over the street above the ship's highest flight)
-## and tower_width wide. The track stays clear of holes and fences from tower_clear_before before a
-## tower to tower_clear_after past it (the pin, and the run up to it).
+## GDD §10: "marked, cracked towers stand ahead at the roadside". DESIGN-TBD (docs/OPEN_QUESTIONS.md
+## §D, items 119-121): one every tower_spacing metres (sides in turn), the first tower_first into each
+## lap, tower_height tall (its head, the top 30%, juts out over the street above the ship's highest
+## flight) and tower_width wide. The track stays clear of holes and fences from tower_clear_before
+## before a tower to tower_clear_after past it (the pin, the ways onto its head, and the run up to it).
 @export_range(80.0, 800.0, 5.0, "suffix:m") var tower_spacing: float = 300.0
 @export_range(0.0, 800.0, 5.0, "suffix:m") var tower_first: float = 240.0
 @export_range(15.0, 80.0, 0.5, "suffix:m") var tower_height: float = 40.0
@@ -187,19 +187,73 @@ extends Resource
 
 @export_group("Pinned")
 ## GDD §10: "the tower topples onto the ship and pins it low across the trucks". DESIGN-TBD
-## (docs/questions/e1.md, item 10): pinned, it sinks between the trucks until the highest top of its
-## weak points' sockets is this high (so E1c's ways onto its head reach it: a wall jump off a free wall
-## entry peaks about 2.9 m up, the hover truck's roof is 2.2 m, a ceiling 6 m), rolled toward the tower
-## by pin_roll_degrees, with the tower resting on its crown pin_rest_offset behind its face (behind the
-## weak points).
+## (docs/OPEN_QUESTIONS.md §D, item 122): pinned, it sinks between the trucks until the highest top of
+## its weak points' sockets is this high (so the stomp windows' ways onto its head reach it: a wall jump
+## off a free wall entry peaks about 2.9 m up, a ceiling is 6 m), rolled toward the tower by
+## pin_roll_degrees (about its crown, so its weak points stay over their lanes), with the tower resting
+## on its crown pin_rest_offset behind its face.
 @export_range(1.0, 6.0, 0.05, "suffix:m") var pin_top_height: float = 2.5
 @export_range(0.0, 20.0, 0.5, "suffix:deg") var pin_roll_degrees: float = 5.0
 @export_range(4.0, 20.0, 0.5, "suffix:m") var pin_rest_offset: float = 9.0
 @export_range(0.1, 2.0, 0.05, "suffix:s") var pin_sink_seconds: float = 0.35
-## DESIGN-TBD (docs/questions/e1.md, item 11; task E1c builds the stomp windows): for now it shakes
-## free once the runner is this close to its face, and rises back to its face pose in release_seconds.
-@export_range(2.0, 40.0, 0.5, "suffix:m") var pin_release_gap: float = 12.0
+## DESIGN-TBD (docs/questions/e1.md, From E1c, item 5): after a missed window it rises back to its
+## face pose in this long, and the face-off goes on.
 @export_range(0.3, 3.0, 0.05, "suffix:s") var release_seconds: float = 1.1
+
+@export_group("Stomp windows")
+## GDD §10: "while it's pinned, the player stomps one [weak point]. Each phase uses a different Zone 1
+## skill to get on top: (1) run up the fallen tower like a ramp; (2) wall-jump onto it; (3) ride a
+## ship's underside via an anti-grav pad and drop onto it when the hull ends." One word per phase (the
+## last for any later phase): "ramp", "wall" or "ceiling".
+@export var stomp_routes: PackedStringArray = ["ramp", "wall", "ceiling"]
+## DESIGN-TBD (docs/questions/e1.md, From E1c, item 3): a weak point sits over every lane whose
+## centre lies within this share of the ship's width from its centre line (3, 3 and 4 of them at 3, 5
+## and 6 lanes).
+@export_range(0.2, 0.45, 0.01) var weak_point_reach: float = 0.38
+## DESIGN-TBD (item 3): where a stomp counts: a box over each weak point this wide and this deep
+## (along the track), from a little under its socket to stomp_top above it; a runner coming down with
+## their feet within GameRules.stomp_tolerance under its top stomps it. Generous: the red dome is
+## 1.7 m across.
+@export_range(1.0, 2.4, 0.05, "suffix:m") var stomp_width: float = 2.0
+@export_range(1.0, 5.0, 0.1, "suffix:m") var stomp_depth: float = 3.0
+@export_range(0.3, 1.2, 0.05, "suffix:m") var stomp_top: float = 0.55
+## DESIGN-TBD (item 5): the window closes (a miss) when the runner is still down on the trucks (feet
+## under window_floor_height) within window_release_gap of its face, or has run window_pass_margin past
+## its weak points without a stomp. Then it shakes free: no time limit, no escalation (GDD §10).
+@export_range(2.0, 20.0, 0.5, "suffix:m") var window_release_gap: float = 8.0
+@export_range(0.1, 1.5, 0.05, "suffix:m") var window_floor_height: float = 0.5
+@export_range(0.0, 5.0, 0.25, "suffix:m") var window_pass_margin: float = 1.0
+## DESIGN-TBD (items 5-6): shaking free (after a stomp or a miss), it lurches shake_ahead further
+## ahead of the runner and shake_lift up over shake_seconds (the tower breaks up and drops away), then
+## rises.
+@export_range(0.2, 2.0, 0.05, "suffix:s") var shake_seconds: float = 0.7
+@export_range(2.0, 20.0, 0.5, "suffix:m") var shake_ahead: float = 8.0
+@export_range(0.0, 2.0, 0.05, "suffix:m") var shake_lift: float = 0.4
+## DESIGN-TBD (item 2): the tower breaks where it crosses this far behind the weak points' stomp
+## boxes: the part beyond stays on the ship's back, the part below (towards its foot) drops away or
+## makes the ramp.
+@export_range(0.5, 8.0, 0.25, "suffix:m") var tower_break_after: float = 2.5
+
+@export_group("Ramp window")
+## DESIGN-TBD (docs/questions/e1.md, From E1c, item 1): the first way up. As the tower crashes onto
+## the ship, its broken lower section slams down in the weak point's lane nearest the tower's wall,
+## ramp_length long, leaning on the ship's face with its top end ramp_lift above the crown there (the
+## runner runs off its end and drops onto the weak point), resting ramp_overhang onto the crown. Solid
+## all over: its top is a floor, its sides block a lane switch.
+@export_range(6.0, 30.0, 0.5, "suffix:m") var ramp_length: float = 14.0
+@export_range(0.2, 2.0, 0.05, "suffix:m") var ramp_lift: float = 0.8
+@export_range(0.0, 2.0, 0.05, "suffix:m") var ramp_overhang: float = 0.8
+@export_range(0.1, 1.0, 0.05, "suffix:s") var ramp_slam_seconds: float = 0.3
+
+@export_group("Ceiling window")
+## DESIGN-TBD (docs/questions/e1.md, From E1c, item 8): the third way up. As the tower falls,
+## anti-grav pads light up in every lane pad_before_face before the ship's pinned face, and a ceiling
+## (the zone's ceiling section, a ship's underside) lowers in over them once the ship is past where it
+## will end, ceiling_end_before_face before its face (the drop from its end lands on the weak points),
+## over ceiling_lower_seconds.
+@export_range(12.0, 60.0, 0.5, "suffix:m") var pad_before_face: float = 26.0
+@export_range(2.0, 10.0, 0.25, "suffix:m") var ceiling_end_before_face: float = 5.5
+@export_range(0.1, 2.0, 0.05, "suffix:s") var ceiling_lower_seconds: float = 0.5
 
 
 ## The face-off's attacks for phase `index`, in turn (Face-off).
@@ -219,3 +273,12 @@ func cyborgs_in_drop(index: int) -> int:
 	if cyborgs_per_drop.is_empty():
 		return 1
 	return maxi(cyborgs_per_drop[clampi(index, 0, cyborgs_per_drop.size() - 1)], 1)
+
+
+## The way onto its head in phase `index`'s stomp windows (Stomp windows): &"ramp", &"wall" or
+## &"ceiling" (an unknown word counts as "ramp").
+func stomp_route(index: int) -> StringName:
+	if stomp_routes.is_empty():
+		return &"ramp"
+	var word: String = stomp_routes[clampi(index, 0, stomp_routes.size() - 1)].strip_edges()
+	return StringName(word) if word in ["ramp", "wall", "ceiling"] else &"ramp"

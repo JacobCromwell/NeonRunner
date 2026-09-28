@@ -14,9 +14,9 @@ through zones full of enemies, and a single hit ends the run. Built with Godot 4
 Boss fights have their framework (they play in the runner, with phases, a health bar, checkpoints,
 stars and payouts), but each zone's boss is still a placeholder slot until it's built on it; a test
 boss shows the framework at work. The Neon City's Floating Head is being built: its ship and face, its
-entrance, its bombing run, the reveal of its face and the face-off (eye lasers, the cyborg drop and the
-marked towers that pin it) so far (debug builds play it with `--boss=city_boss`; the campaign keeps its
-placeholder slot until it's done). The short cinematics between levels are placeholder slots too.
+entrance, its bombing run, the reveal of its face, the face-off (eye lasers, the cyborg drop and the
+marked towers that pin it) and the stomp windows while it's pinned so far (debug builds play it with
+`--boss=city_boss`; the campaign keeps its placeholder slot until its defeat and voice are done). The short cinematics between levels are placeholder slots too.
 Every placeholder decision is listed in `docs/OPEN_QUESTIONS.md`.
 
 Docs: `docs/GDD_CHECKPOINT.md` (the design, the authority), `docs/OPEN_QUESTIONS.md` (open decisions and
@@ -131,8 +131,10 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   circle, an alarm and a falling whistle), the reveal of its face, and the face-off: its eyes glow and
   whine, then laser beams sweep the lanes low (jump) or high (slide) or drag down the runner's lane
   (switch lanes), its mouth drops cyborgs onto the trucks ahead, and a laser baited into a marked tower
-  topples it onto the ship to pin it (`--boss=city_boss`). The other five zone bosses are still to be
-  built.
+  topples it onto the ship to pin it. Pinned, its red weak points come out on its crown: stomp one, a
+  third of its health. Each phase has its own way up: run up the fallen tower's slab like a ramp, a
+  wall jump, then pads and a ceiling to drop from. Miss it and it shakes free and the face-off goes on
+  (`--boss=city_boss`). The other five zone bosses are still to be built.
 - **Economy:** credits in four denominations, level score and stars, and a shop. Items are five permanent
   power-ups (weapon line, claws, juggernaut dash, magnet, slow time) and three breakables (armor, shield,
   grapple hook). After a death you're offered a revive (an item, or a rewarded ad on mobile). Net worth
@@ -223,8 +225,9 @@ against its bursts, with the recency curve on and off:
   the damage rules on a boss, and the flow around a fight; the Floating Head's fight so far at 3, 5 and 6
   lanes: its build and hitboxes, bombs that fall only after their warning, a runner who keeps moving
   always escaping them, the face-off's lasers (each warned, and escaped without god mode by a runner who
-  reads them), its cyborg drop, a baited or fallback tower pinning it, and every attempt playing out the
-  same way.
+  reads them), its cyborg drop, a baited or fallback tower pinning it, each phase's stomp window taken
+  without god mode (the ramp, a wall jump, the ceiling), missed windows repeating without escalation,
+  the whole fight from its entrance to the last stomp, and every attempt playing out the same way.
 - **Screens:** every screen at desktop and touch sizes.
 - **The runner:** Razor Echo's poses on every surface, the coat's panels (never through the legs or the
   ground), the budgets, the power-up looks, and its copper glow kept clear of every hazard colour.
