@@ -21,8 +21,8 @@ const LENS_RED := Color(1.0, 0.16, 0.1)
 const FACE_WHITE := Color(0.86, 0.91, 1.0)
 ## A weak point's stomp box starts this far under its socket's top (and reaches stomp_top above it).
 const STOMP_BELOW: float = 0.2
-## Opening, a cover swings back this far about its back edge (lying back on the crown behind its
-## socket) and the red dome rises out of the socket.
+## DESIGN-TBD (docs/questions/e1.md, From E1c, item 3): opening, a cover swings back this far about
+## its back edge (lying back on the crown behind its socket) and the red dome rises out of the socket.
 const COVER_OPEN_DEGREES: float = 150.0
 const DOME_SUNK: float = 0.45
 ## The open domes pulse this fast, between these glows (a steady glow with Reduced flashing).

@@ -196,7 +196,8 @@ extends Resource
 @export_range(0.0, 20.0, 0.5, "suffix:deg") var pin_roll_degrees: float = 5.0
 @export_range(4.0, 20.0, 0.5, "suffix:m") var pin_rest_offset: float = 9.0
 @export_range(0.1, 2.0, 0.05, "suffix:s") var pin_sink_seconds: float = 0.35
-## After a missed window it rises back to its face pose in this long, and the face-off goes on.
+## DESIGN-TBD (docs/questions/e1.md, From E1c, item 5): after a missed window it rises back to its
+## face pose in this long, and the face-off goes on.
 @export_range(0.3, 3.0, 0.05, "suffix:s") var release_seconds: float = 1.1
 
 @export_group("Stomp windows")
@@ -205,46 +206,50 @@ extends Resource
 ## ship's underside via an anti-grav pad and drop onto it when the hull ends." One word per phase (the
 ## last for any later phase): "ramp", "wall" or "ceiling".
 @export var stomp_routes: PackedStringArray = ["ramp", "wall", "ceiling"]
-## DESIGN-TBD (docs/questions/e1.md, From E1c): a weak point sits over every lane whose centre lies
-## within this share of the ship's width from its centre line (3, 3 and 4 of them at 3, 5 and 6 lanes).
+## DESIGN-TBD (docs/questions/e1.md, From E1c, item 3): a weak point sits over every lane whose
+## centre lies within this share of the ship's width from its centre line (3, 3 and 4 of them at 3, 5
+## and 6 lanes).
 @export_range(0.2, 0.45, 0.01) var weak_point_reach: float = 0.38
-## Where a stomp counts: a box over each weak point this wide and this deep (along the track), from a
-## little under its socket to stomp_top above it; a runner coming down with their feet within
-## GameRules.stomp_tolerance under its top stomps it. Generous: the red dome is 1.7 m across.
+## DESIGN-TBD (item 3): where a stomp counts: a box over each weak point this wide and this deep
+## (along the track), from a little under its socket to stomp_top above it; a runner coming down with
+## their feet within GameRules.stomp_tolerance under its top stomps it. Generous: the red dome is
+## 1.7 m across.
 @export_range(1.0, 2.4, 0.05, "suffix:m") var stomp_width: float = 2.0
 @export_range(1.0, 5.0, 0.1, "suffix:m") var stomp_depth: float = 3.0
 @export_range(0.3, 1.2, 0.05, "suffix:m") var stomp_top: float = 0.55
-## The window closes (a miss) when the runner is still down on the trucks (feet under
-## window_floor_height) within window_release_gap of its face, or has run window_pass_margin past its
-## weak points without a stomp. Then it shakes free: no time limit, no escalation (GDD §10).
+## DESIGN-TBD (item 5): the window closes (a miss) when the runner is still down on the trucks (feet
+## under window_floor_height) within window_release_gap of its face, or has run window_pass_margin past
+## its weak points without a stomp. Then it shakes free: no time limit, no escalation (GDD §10).
 @export_range(2.0, 20.0, 0.5, "suffix:m") var window_release_gap: float = 8.0
 @export_range(0.1, 1.5, 0.05, "suffix:m") var window_floor_height: float = 0.5
 @export_range(0.0, 5.0, 0.25, "suffix:m") var window_pass_margin: float = 1.0
-## Shaking free (after a stomp or a miss): it lurches shake_ahead further ahead of the runner and
-## shake_lift up over shake_seconds (the tower breaks up and drops away), then rises.
+## DESIGN-TBD (items 5-6): shaking free (after a stomp or a miss), it lurches shake_ahead further
+## ahead of the runner and shake_lift up over shake_seconds (the tower breaks up and drops away), then
+## rises.
 @export_range(0.2, 2.0, 0.05, "suffix:s") var shake_seconds: float = 0.7
 @export_range(2.0, 20.0, 0.5, "suffix:m") var shake_ahead: float = 8.0
 @export_range(0.0, 2.0, 0.05, "suffix:m") var shake_lift: float = 0.4
-## The tower breaks where it crosses this far behind the weak points' stomp boxes: the part beyond
-## stays on the ship's back, the part below (towards its foot) drops away or makes the ramp.
+## DESIGN-TBD (item 2): the tower breaks where it crosses this far behind the weak points' stomp
+## boxes: the part beyond stays on the ship's back, the part below (towards its foot) drops away or
+## makes the ramp.
 @export_range(0.5, 8.0, 0.25, "suffix:m") var tower_break_after: float = 2.5
 
 @export_group("Ramp window")
-## DESIGN-TBD (docs/questions/e1.md, From E1c): the first way up. As the tower crashes onto the ship, its
-## broken lower section slams down in the weak point's lane nearest the tower's wall, ramp_length long,
-## leaning on the ship's face with its top end ramp_lift above the crown there (the runner runs off its
-## end and drops onto the weak point), resting ramp_overhang onto the crown. Solid all over: its top is a
-## floor, its sides block a lane switch.
+## DESIGN-TBD (docs/questions/e1.md, From E1c, item 1): the first way up. As the tower crashes onto
+## the ship, its broken lower section slams down in the weak point's lane nearest the tower's wall,
+## ramp_length long, leaning on the ship's face with its top end ramp_lift above the crown there (the
+## runner runs off its end and drops onto the weak point), resting ramp_overhang onto the crown. Solid
+## all over: its top is a floor, its sides block a lane switch.
 @export_range(6.0, 30.0, 0.5, "suffix:m") var ramp_length: float = 14.0
 @export_range(0.2, 2.0, 0.05, "suffix:m") var ramp_lift: float = 0.8
 @export_range(0.0, 2.0, 0.05, "suffix:m") var ramp_overhang: float = 0.8
 @export_range(0.1, 1.0, 0.05, "suffix:s") var ramp_slam_seconds: float = 0.3
 
 @export_group("Ceiling window")
-## DESIGN-TBD (docs/questions/e1.md, From E1c): the third way up. As the tower falls, anti-grav pads light
-## up in every lane pad_before_face before the ship's pinned face, and a ceiling (the zone's ceiling
-## section, a ship's underside) lowers in over them once the ship is past where it will end,
-## ceiling_end_before_face before its face (the drop from its end lands on the weak points),
+## DESIGN-TBD (docs/questions/e1.md, From E1c, item 8): the third way up. As the tower falls,
+## anti-grav pads light up in every lane pad_before_face before the ship's pinned face, and a ceiling
+## (the zone's ceiling section, a ship's underside) lowers in over them once the ship is past where it
+## will end, ceiling_end_before_face before its face (the drop from its end lands on the weak points),
 ## over ceiling_lower_seconds.
 @export_range(12.0, 60.0, 0.5, "suffix:m") var pad_before_face: float = 26.0
 @export_range(2.0, 10.0, 0.25, "suffix:m") var ceiling_end_before_face: float = 5.5
