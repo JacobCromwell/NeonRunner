@@ -174,9 +174,9 @@ the Tithe Collector) opt in the same way for whichever of their attacks count as
   the wait made it miss its planned stretch, the window keeps moving on until the stretch ahead is
   clear again (within the same limit), so waiting for its turn never costs it its charges. The
   Resonator's planned pulses do the same: a pulse held for another type's turn, or for clear floor
-  where its wave would meet the player, moves the rest of its visit on; after `ResonatorTuning.
-  turn_wait_max` spent waiting for other attacks (waiting for clear floor doesn't count) it drops its
-  remaining pulses and leaves, never before its first.
+  where its wave would meet the player, moves the rest of its visit on; after
+  `ResonatorTuning.turn_wait_max` spent waiting for other attacks (waiting for clear floor doesn't
+  count) it drops its remaining pulses and leaves, never before its first.
 - **An attack that can't wait** because the player sets it off (the Bad Dream bursts out of a killed
   host) or the generator planned its moment still reports itself: the others wait for it. It can
   overlap an attack that was already on when it came; the Bad Dream holds its slash until that one
