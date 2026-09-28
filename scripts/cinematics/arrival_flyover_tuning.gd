@@ -10,7 +10,7 @@ extends Resource
 ## ceiling. The cinematics tests check the path against the stage at 3, 5 and 6 lanes.
 
 @export_group("Timing")
-## How long it lasts (GDD §1: 5-15 s).
+## DESIGN-TBD (docs/questions/f1.md 1): how long it lasts (GDD §1: 5-15 s).
 @export_range(5.0, 15.0, 0.1, "suffix:s") var duration: float = 9.5
 ## The opening shot (looking up the street at the zone's skyline, tilting down as the runner runs in)
 ## ends here, and the glide over the street behind the runner ends here; then it settles.
@@ -18,14 +18,15 @@ extends Resource
 @export_range(2.0, 12.0, 0.1, "suffix:s") var glide_end: float = 6.3
 ## It settles into the run camera's view of the runner this long before the end.
 @export_range(0.2, 4.0, 0.1, "suffix:s") var settled_before_end: float = 1.1
-## From black at the start, and to black at the end.
+## DESIGN-TBD (docs/questions/f1.md 6): from black at the start, and to black at the end.
 @export_range(0.0, 2.0, 0.05, "suffix:s") var fade_in: float = 0.8
 @export_range(0.0, 2.0, 0.05, "suffix:s") var fade_out: float = 0.45
 ## The zone's music fades in over this.
 @export_range(0.0, 4.0, 0.1, "suffix:s") var music_fade: float = 1.5
 
 @export_group("Card")
-## The card naming the zone (before a boss, the boss) comes in here and stays this long.
+## DESIGN-TBD (docs/questions/f1.md 2, 3): the card naming the zone (before a boss, the boss) comes in
+## here and stays this long.
 @export_range(0.0, 5.0, 0.05, "suffix:s") var card_at: float = 0.9
 @export_range(1.0, 6.0, 0.1, "suffix:s") var card_seconds: float = 2.9
 

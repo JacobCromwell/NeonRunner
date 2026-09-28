@@ -15,7 +15,10 @@ through zones full of enemies, and a single hit ends the run. Built with Godot 4
 Boss fights have their framework (they play in the runner, with phases, a health bar, checkpoints,
 stars and payouts); a test boss shows the framework at work. The Neon City's boss, the Floating Head,
 is built and plays in the campaign after City 3 (debug builds: `--boss=city_boss`); the other zones'
-bosses are still placeholder slots. The short cinematics between levels are placeholder slots too.
+bosses are still placeholder slots. The short cinematics are built with a code-driven cinematic toolkit
+(camera paths, the runner and cyborgs on the humanoid rig, timed events, skippable); until the owner
+describes the story beats, each zone's intro (and the City's boss intro) plays a placeholder arrival flyover
+over the zone, and the outros are placeholder cards.
 Every placeholder decision is listed in `docs/OPEN_QUESTIONS.md`.
 
 Docs: `docs/GDD_CHECKPOINT.md` (the design, the authority), `docs/OPEN_QUESTIONS.md` (open decisions and
@@ -46,7 +49,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--full-loadout` | Every power-up |
 | `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `corporate`, `corporate_plaza` (Corporate's plaza floor), `dead_zone` or `golden` |
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
-| `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`) |
+| `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level |
 | `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
 
@@ -62,7 +65,7 @@ Example: `./play.sh --lanes=6 --features=octodog,ceilings --god`, or the test bo
 | Slide (fast drop in the air) | Down arrow | Swipe down |
 | Juggernaut dash (power-up) | Shift | Tap |
 | Slow time (power-up, PC only) | E | – |
-| Pause | Esc / P | Pause button |
+| Pause (skips a cinematic) | Esc / P | Pause button (a cinematic's Skip button) |
 
 Every key can be rebound in Settings. PC runs use 5 lanes and mobile runs use 3 (the exact PC count is still
 open: 5 or 6).
@@ -75,7 +78,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 - **Campaign:** 15 levels in six zones, about 35 minutes of flawless running: the Neon City (the web demo's
   zone) and Gangland with three levels each, the Marketplace, Corporate and the Dead Zone with two, and the
   Golden Zone with three.
-  Each zone has a boss slot and cinematic slots. Each level introduces about one new thing (GDD §5), where
+  Each zone has a boss slot and cinematic slots; its intro plays a placeholder arrival flyover over the zone
+  in its own look (skippable). Each level introduces about one new thing (GDD §5), where
   its data says (`feature_starts`):
   1. City 1 *Rooftop Rush*: gaps, fences, walls and signs, then cyborgs late in the level.
   2. City 2 *Skyway*: ceilings and anti-grav pads.
@@ -197,7 +201,10 @@ OFL-licensed; licenses are in `assets/LICENSES.md`.
 The scenes in `tools/showcase/` show one part of the game up close for visual review (the runner in every pose
 and power-up look, and a scripted run on any zone's skin; ramp launches and blocked wall entries; each enemy
 family, the Floating Head, the UI kit, every screen, a zone skin's fixed review track, the cult's feed, the
-Golden Zone's statues); each script's header lists its options.
+Golden Zone's statues, any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
+lists its options. For example, a zone's arrival flyover rendered to frames on the web / low-end renderer:
+`godot --path . --rendering-method gl_compatibility --fixed-fps 10 --write-movie build/cine/f.png --quit-after 100
+res://tools/showcase/cinematic_review.tscn -- --slot=golden/intro --once`.
 
 `tools/measure/big_attacks.gd` measures how the big attacks of different enemy types overlap over simulated runs of
 the campaign, with big attacks taking turns (GDD §9, the `big_attacks_take_turns` switch in the game rules and the
@@ -239,6 +246,12 @@ against its bursts, with the recency curve on and off:
   flashing), and the whole fight through the campaign at 3, 5 and 6 lanes with no god mode, from City 3
   to the outro (and the web demo's end screen), its propaganda never masking a warning, and a death
   restarting the fight.
+- **Cinematics:** the toolkit's camera and actor paths (smooth, eased and cut moves, cameras riding with an
+  actor), a timeline's checks, a cinematic played to its end with every event in order, skipping (the pause
+  action and the Skip button), Reduced flashing, holding while the game is in the background, a cinematic
+  described in data, every zone's arrival flyover and the City's boss intro at 3, 5 and 6 lanes (the zone's
+  skin from its data, a camera that never flies into a ceiling or out of the street, ending in the run
+  camera's view), and the App's flow through a built slot, the web demo's too.
 - **Screens:** every screen at desktop and touch sizes.
 - **The runner:** Razor Echo's poses on every surface, the coat's panels (never through the legs or the
   ground), the budgets, the power-up looks, and its copper glow kept clear of every hazard colour.
@@ -271,6 +284,7 @@ play.sh, play.cmd       play the current version
 tools/                  godot.sh (play/edit/test/smoke/sfx/music), asset generators, showcase scenes, measurements
 scenes/main.tscn        the main scene: world, screens and overlays
 scenes/bosses/          boss fight scenes (the test boss and the Floating Head so far)
+scenes/cinematics/      cinematic scenes (the placeholder arrival flyover so far)
 scripts/app/            App (state and flow), Profile, SaveService, Settings, BuildFlavor
 scripts/run/            a run: LevelRun, RunWorld, camera, projectiles, credits, score, effects, hints
 scripts/player/         the Player controller and its avatar
@@ -278,7 +292,8 @@ scripts/characters/     the procedural humanoid rig
 scripts/enemies/        one script (plus tuning and generator rules) per enemy type, EnemyDirector
 scripts/powerups/       the permanent power-ups
 scripts/world/          level layout, generator, track builder, hazards; zone skins and the mesh kit
-scripts/campaign/       campaign, zones, bosses (BossDef, BossPhase) and cinematic slots
+scripts/campaign/       campaign, zones, bosses (BossDef, BossPhase) and cinematic slots (CinematicDef, Cinematic)
+scripts/cinematics/     the cinematic toolkit (CinematicSequencer, CineTimeline, CineStage, ...) and the flyover
 scripts/bosses/         the boss framework (BossEncounter, BossPart, BossArena, BossProps), the test boss,
                         and one folder per boss (floating_head/)
 scripts/economy/        the shop catalog

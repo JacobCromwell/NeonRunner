@@ -5,7 +5,8 @@ extends Node
 ##
 ## Cinematics are skippable at any moment: the pause action (or a skip button of the scene's own)
 ## emits `skip_requested`, whoever plays the cinematic answers with skip() (the App does), and the
-## scene ends promptly, emitting `finished`. A scene emits `finished` once.
+## scene ends promptly, emitting `finished`. A scene emits `finished` once. DESIGN-TBD
+## (docs/questions/f1.md 4): skippable at once, even the first time.
 ##
 ## Build cinematics with the toolkit in scripts/cinematics/ (CinematicSequencer: camera paths,
 ## actors on the humanoid rig, timed events, a stretch of the zone to play on, the skip button,

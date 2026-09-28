@@ -67,6 +67,7 @@ func _make_timeline() -> CineTimeline:
 		settled.follow = &"runner"
 		settled.watch = &"runner"
 	# The picture fades in from black and out at the end; the slot's music comes in; the card names it.
+	# DESIGN-TBD (docs/questions/f1.md 2, 3): the card's words.
 	t.effect(0.0, CineEvent.FADE_IN, f.fade_in)
 	t.music(0.0, CineEvent.ZONE_MUSIC, f.music_fade)
 	if slot == &"boss_intro":

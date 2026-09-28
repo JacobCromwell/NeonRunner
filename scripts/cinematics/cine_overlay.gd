@@ -10,7 +10,7 @@ signal skip_pressed
 
 ## Above the world, under the App's screens (10) and overlays (20).
 const LAYER: int = 12
-## Each letterbox bar's height, as a share of the screen's height.
+## DESIGN-TBD (docs/questions/f1.md 6): each letterbox bar's height, as a share of the screen's height.
 const BAR_SHARE: float = 0.1
 ## A flash with Reduced flashing: at most this bright, and never quicker than this.
 const SOFT_FLASH_ALPHA: float = 0.25
@@ -21,7 +21,7 @@ const CARD_FADE: float = 0.5
 const CARD_TITLE_SIZE: int = 58
 const CARD_CAPTION_SIZE: int = 22
 const CARD_CENTER: float = 0.56
-## The skip button's resting look, until the pointer or a touch comes near it.
+## DESIGN-TBD (docs/questions/f1.md 4): the skip button's resting look, until the pointer comes near it.
 const SKIP_DIM: float = 0.6
 ## Seconds before the skip button shows, so the first frames stay clean.
 const SKIP_DELAY: float = 0.4
