@@ -31,6 +31,13 @@ extends Resource
 ## Share of a lane switch the player travels before being bumped back by a solid side.
 @export_range(0.1, 0.6, 0.05) var lane_bump_fraction: float = 0.3
 
+@export_group("Enemies")
+## GDD §9 (decided September 26, 2026): the big attacks of different enemy types take turns, so the
+## player never has to dodge two at once (EnemyDirector.major_attack_blocked). The owner may revert
+## this after playtesting: switched off, each type only spaces its own attacks, and the Bad Dream
+## still never overlaps an Octodog's charges or a drone barrage (GDD §9.7), as before the rule.
+@export var big_attacks_take_turns: bool = true
+
 @export_group("Score")
 ## DESIGN-TBD: score multiplier on credits collected during a ramp-launched wall run (GDD §3).
 @export_range(1.0, 5.0, 0.25) var ramp_score_multiplier: float = 2.0

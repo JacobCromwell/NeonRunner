@@ -11,10 +11,13 @@ extends Node3D
 signal died(cause: String)
 ## Something happened that feedback (sound, HUD) may react to: jump, land, slide, wall_enter,
 ## wall_jump, wall_exit, wall_blocked, ramp, pad, hull_end, died, stomp, lane_blocked, speed_pad,
-## grapple, armor_break, shield_break, revive, dash, dash_end.
+## grapple, armor_break, shield_break, revive, dash, dash_end. The two blocked moves (lane_blocked,
+## wall_blocked) come with a bump: out toward the blocked side and back.
 signal movement_event(kind: StringName)
 ## A protective item was used up: &"armor", &"shield" or &"grapple".
 signal item_used(item: StringName)
+## A protective item was picked up during the run (gain_item): &"armor", &"shield" or &"grapple".
+signal item_gained(item: StringName)
 ## The player's contact defeated an enemy (cause: &"stomp", &"claws" or &"dash").
 signal enemy_contact(enemy: Enemy, cause: StringName)
 signal revived
@@ -22,7 +25,10 @@ signal revived
 enum Surface { FLOOR, CEILING, WALL }
 
 const ACTIONS: Array[StringName] = [&"move_left", &"move_right", &"jump", &"slide"]
+## The feet's trigger sensor (pads, ramps, speed pads), swept back over each frame's motion.
 const SENSOR_SIZE := Vector3(0.4, 0.3, 0.4)
+## Room a blocked wall entry's bump leaves between the body and whatever stopped it (metres).
+const BUMP_CLEARANCE: float = 0.02
 
 var tuning: MovementTuning
 var geo: TrackGeometry
@@ -75,7 +81,19 @@ var _wall_entry_x: float = 0.0
 var _wall_entry_h: float = 0.0
 var _roll: float = 0.0
 var _queued: Array[StringName] = []
+## A bump (a blocked lane switch or wall entry, _start_bump) is playing out: how far toward the
+## blocked side it reaches (metres, signed), which way that side is, how long it takes, and whether a
+## wall pushed the player back (the model leans away from it on the way back).
 var _bumping: bool = false
+var _bump_reach: float = 0.0
+var _bump_dir: int = 0
+var _bump_time: float = 0.0
+var _bump_off_wall: bool = false
+## The ramp whose blocked wall entry bumped the player last: a ramp bumps once, not every frame the
+## player runs over it.
+var _blocked_ramp: int = 0
+var _bump_shape := BoxShape3D.new()
+var _bump_query := PhysicsShapeQueryParameters3D.new()
 var _dash_left: float = 0.0
 var _dash_bonus: float = 0.0
 var _last_speed_pad: int = 0
@@ -109,6 +127,10 @@ func _ready() -> void:
 	_blocker_query.collide_with_areas = true
 	_blocker_query.collide_with_bodies = false
 	_blocker_query.collision_mask = TrackBuilder.LAYER_LANE_BLOCKER
+	_bump_query.shape = _bump_shape
+	_bump_query.collide_with_areas = true
+	_bump_query.collide_with_bodies = false
+	_bump_query.collision_mask = TrackBuilder.LAYER_HAZARD | TrackBuilder.LAYER_WALL_BLOCKER
 
 
 func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> void:
@@ -137,6 +159,11 @@ func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> v
 	_roll = 0.0
 	_queued.clear()
 	_bumping = false
+	_bump_reach = 0.0
+	_bump_dir = 0
+	_bump_time = 0.0
+	_bump_off_wall = false
+	_blocked_ramp = 0
 	invulnerable_left = 0.0
 	dashing = false
 	_dash_left = 0.0
@@ -156,6 +183,36 @@ func apply_loadout(p_armor: int, p_shield: int, p_grapples: int, p_claws: bool, 
 	claws = p_claws
 	wall_time_multiplier = p_wall_time_multiplier
 	_avatar.set_equipment({"armor": armor > 0, "shield": shield > 0, "claws": claws})
+
+
+## One more charge of a breakable item picked up during the run (GDD §10: a boss fight's pickups,
+## PickupField): &"armor", &"shield" or &"grapple", up to `cap` charges of it. True if it was added.
+func gain_item(item: StringName, cap: int = 1) -> bool:
+	var have: int = charges_of(item)
+	if have < 0 or have >= cap:
+		return false
+	match item:
+		&"armor":
+			armor += 1
+		&"shield":
+			shield += 1
+		_:
+			grapples += 1
+	_avatar.set_equipment({"armor": armor > 0, "shield": shield > 0})
+	item_gained.emit(item)
+	return true
+
+
+## Charges left of a breakable item (&"armor", &"shield" or &"grapple"), or -1 for anything else.
+func charges_of(item: StringName) -> int:
+	match item:
+		&"armor":
+			return armor
+		&"shield":
+			return shield
+		&"grapple":
+			return grapples
+	return -1
 
 
 func is_invulnerable() -> bool:
@@ -290,7 +347,8 @@ func _physics_process(delta: float) -> void:
 			dashing = false
 			_dash_bonus = 0.0
 			_event(&"dash_end")
-	_boost = move_toward(_boost, 0.0, tuning.ramp_boost_decay_per_second * delta)
+	# A ramp's boost and a speed pad's fade away the same way (GDD §3).
+	_boost = tuning.boost_left(_boost, delta)
 	speed = tuning.run_speed + tuning.speed_gain_per_minute * elapsed / 60.0 + _boost + _dash_bonus
 	var motion: float = speed * delta
 	distance += motion
@@ -367,10 +425,8 @@ func _event(kind: StringName) -> void:
 func _start_switch(target: int) -> void:
 	if target != lane and _lane_blocked(target):
 		# GDD §9.3: a solid side (the hover truck's) bumps the player back.
-		_bumping = true
-		_switch_from = geo.lane_x(lane)
-		_switch_to = geo.lane_x(target)
-		_switch_t = 0.0
+		var dir: int = signi(target - lane)
+		_start_bump(dir, rules.lane_bump_fraction * absf(geo.lane_x(target) - geo.lane_x(lane)), tuning.lane_switch_time, false)
 		_event(&"lane_blocked")
 		return
 	_bumping = false
@@ -380,20 +436,35 @@ func _start_switch(target: int) -> void:
 	_switch_t = 0.0
 
 
+## A bump: `reach` metres out toward the blocked side `dir` (-1 left, 1 right) and back over `seconds`,
+## ending in the middle of the lane (from wherever a switch in progress had got to). The lane doesn't
+## change, and the player can act meanwhile: a move or a jump works as usual. `off_wall`: a wall
+## pushed the player back (a blocked wall entry).
+func _start_bump(dir: int, reach: float, seconds: float, off_wall: bool) -> void:
+	_bumping = true
+	_bump_dir = dir
+	_bump_reach = dir * maxf(reach, 0.0)
+	_bump_time = seconds
+	_bump_off_wall = off_wall
+	_switch_from = _x
+	_switch_to = geo.lane_x(lane)
+	_switch_t = 0.0
+
+
 func _update_lane_switch(delta: float) -> void:
 	if _switch_t >= 1.0:
 		return
-	_switch_t = minf(1.0, _switch_t + delta / tuning.lane_switch_time)
-	if _bumping:
-		# Out toward the blocked lane and back again.
-		var reach: float = rules.lane_bump_fraction * (1.0 - absf(2.0 * _switch_t - 1.0))
-		_x = lerpf(_switch_from, _switch_to, reach)
-		if _switch_t >= 1.0:
-			_bumping = false
-			_x = _switch_from
-		return
-	var k: float = 1.0 - (1.0 - _switch_t) * (1.0 - _switch_t)
-	_x = lerpf(_switch_from, _switch_to, k)
+	_switch_t = minf(1.0, _switch_t + delta / (_bump_time if _bumping else tuning.lane_switch_time))
+	_x = _switch_x(_switch_from, _switch_to, _bump_reach if _bumping else 0.0, _switch_t)
+	if _bumping and _switch_t >= 1.0:
+		_bumping = false
+
+
+## Where a lane switch or a bump puts the player at progress t (0–1): from `from` to `to`, easing out,
+## plus a bump's `reach` out toward the blocked side and back again.
+static func _switch_x(from: float, to: float, reach: float, t: float) -> float:
+	var k: float = 1.0 - (1.0 - t) * (1.0 - t)
+	return lerpf(from, to, k) + reach * (1.0 - absf(2.0 * t - 1.0))
 
 
 ## True if a solid side (a lane blocker) fills `target` lane beside the player right now.
@@ -513,14 +584,19 @@ func _surface_y(height: float) -> float:
 
 # --- Walls -----------------------------------------------------------------
 
-func _try_enter_wall(side: int, from_ramp: bool) -> bool:
+## Enters the wall on `side` (a move past the outer lane, or a ramp: `from_ramp`, `ramp` its trigger's
+## instance id). Refused while falling into a gap, and where the wall is blocked (a sign, or a wall a
+## boss takes away), which clanks and bumps instead (_bump_wall; a ramp only once).
+func _try_enter_wall(side: int, from_ramp: bool, ramp: int = 0) -> bool:
 	if surface != Surface.FLOOR or in_pit:
 		return false
 	if not grounded and h < 0.0 and _coyote <= 0.0:
 		return false  # Already dropping into a gap; like a jump, the wall is out of reach.
 	if _wall_blocked(side):
-		# DESIGN-TBD: blocked-entry feedback (only a sound for now).
-		_event(&"wall_blocked")
+		if ramp == 0 or ramp != _blocked_ramp:
+			if ramp != 0:
+				_blocked_ramp = ramp
+			_bump_wall(side)
 		return false
 	surface = Surface.WALL
 	wall_side = side
@@ -536,10 +612,68 @@ func _try_enter_wall(side: int, from_ramp: bool) -> bool:
 	_slide_left = 0.0
 	_slide_on_land = false
 	_switch_t = 1.0
+	_bumping = false
 	if from_ramp:
+		# GDD §3: a ramp adds speed, which fades away like a speed pad's (boost_left).
 		_boost += tuning.ramp_speed_boost
 	_event(&"ramp" if from_ramp else &"wall_enter")
 	return true
+
+
+## GDD §3: a blocked wall entry plays the clank (the wall_blocked event's sound) and a small sideways
+## bump, out toward the wall and back like a blocked lane switch's, so the player sees why they didn't
+## get on. The player stays in the outer lane, and the bump never takes them into a hazard (_bump_room).
+func _bump_wall(side: int) -> void:
+	_start_bump(side, _bump_room(side), tuning.wall_bump_time, true)
+	_event(&"wall_blocked")
+
+
+## How far toward the wall on `side` a bump may take the player, up to wall_bump_distance: the body (at
+## its visual size, a little wider than the hitbox) must not reach into a hazard or anything that
+## blocks the wall, anywhere along the bump. So a sign that reaches down to the player stops the bump
+## at its face, and a bump never moves the player into a hazard. Collision itself is unchanged.
+func _bump_room(side: int) -> float:
+	var most: float = maxf(tuning.wall_bump_distance, 0.0)
+	if _bump_clear(side, most):
+		return most
+	var lo: float = 0.0
+	var hi: float = most
+	for i: int in 8:
+		var mid: float = (lo + hi) * 0.5
+		if _bump_clear(side, mid):
+			lo = mid
+		else:
+			hi = mid
+	return maxf(lo - BUMP_CLEARANCE, 0.0)
+
+
+## True if a bump of `reach` metres toward the wall on `side`, started now, keeps the body off every
+## hazard and wall blocker: nothing in the ground it newly covers, beyond both the middle of its lane
+## and where it is now (a bump started off-centre peaks further out), over the track it runs meanwhile
+## and the heights it may pass through.
+func _bump_clear(side: int, reach: float) -> bool:
+	var half: float = tuning.visual_size.x * 0.5
+	var home: float = geo.lane_x(lane)
+	# Distances toward the wall: where the body's middle is now (or its lane's, if further out), and
+	# the furthest the bump takes it (the curve's corners are on the samples).
+	var now: float = maxf(side * _x, side * home)
+	var peak: float = now
+	for i: int in range(1, 33):
+		peak = maxf(peak, side * _switch_x(_x, home, side * reach, i / 32.0))
+	if peak <= now + 0.001:
+		return true
+	var inner: float = now + half
+	var outer: float = peak + half
+	var seconds: float = tuning.wall_bump_time
+	var rise: float = vh * seconds
+	var y0: float = h + minf(rise, 0.0) - 0.1
+	var y1: float = h + tuning.visual_size.y + maxf(rise, 0.0) + 0.1
+	var d0: float = distance - tuning.visual_size.z * 0.5 - 0.1
+	var d1: float = distance + maxf(speed, 0.0) * seconds + tuning.visual_size.z * 0.5 + 0.1
+	_bump_shape.size = Vector3(outer - inner, y1 - y0, d1 - d0)
+	_bump_query.transform = Transform3D(Basis.IDENTITY,
+		Vector3(side * (inner + outer) * 0.5, (y0 + y1) * 0.5, TrackGeometry.world_z((d0 + d1) * 0.5)))
+	return get_world_3d().direct_space_state.intersect_shape(_bump_query, 1).is_empty()
 
 
 func _wall_blocked(side: int) -> bool:
@@ -597,12 +731,12 @@ func _check_triggers(motion: float) -> void:
 				_event(&"pad")
 				return
 			&"ramp":
-				if _try_enter_wall(int(area.get_meta(&"side")), true):
+				if _try_enter_wall(int(area.get_meta(&"side")), true, area.get_instance_id()):
 					return
 			&"speed_pad":
 				if area.get_instance_id() != _last_speed_pad:
 					_last_speed_pad = area.get_instance_id()
-					_boost += tuning.speed_pad_boost
+					_boost += tuning.speed_pad_boost  # Fades like a ramp's (boost_left).
 					_event(&"speed_pad")
 
 
@@ -692,7 +826,6 @@ func _apply_transform(delta: float) -> void:
 
 ## Avatar: hands the runner model this frame's movement state (see PlayerAvatar.animate).
 func _update_avatar(delta: float) -> void:
-	var switch_dir: int = int(signf(_switch_to - _switch_from)) if _switch_t < 1.0 else 0
 	_avatar.fit_to(tuning.visual_size)
 	_avatar.animate({
 		"surface": surface_name(),
@@ -702,13 +835,28 @@ func _update_avatar(delta: float) -> void:
 		"distance": distance,
 		"speed": speed,
 		"wall_side": wall_side,
-		"switch_dir": switch_dir,
+		"switch_dir": _switch_dir(),
 		"alive": alive,
 		"dashing": dashing,
 		"just_landed": _avatar_landed,
 		"stomping": _slide_on_land and not grounded,  # DESIGN-TBD: the air-slide fast fall shows the stomp.
 	}, delta)
 	_avatar_landed = false
+
+
+## Avatar: the way the model leans sideways (PlayerAvatar's switch_dir) while it moves across: into a
+## lane switch, and into the blocked lane through a blocked switch's bump. A blocked wall entry's bump
+## stays upright on the way out and leans away from the wall on the way back: pushed off it. (Leaning
+## in would take the upper body past a sign that the bump stopped the body short of.)
+## DESIGN-TBD: the wall bump's look on the model (GDD §3 only says "a small sideways bump").
+func _switch_dir() -> int:
+	if _switch_t >= 1.0:
+		return 0
+	if not _bumping:
+		return int(signf(_switch_to - _switch_from))
+	if _bump_off_wall:
+		return -_bump_dir if _switch_t >= 0.5 else 0
+	return _bump_dir
 
 
 ## A blob shadow on the surface below (or above, on the ceiling) to read height and gaps.

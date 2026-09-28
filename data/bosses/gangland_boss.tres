@@ -1,9 +1,36 @@
 [gd_resource type="Resource" script_class="BossDef" format=3]
 
 [ext_resource type="Script" path="res://scripts/campaign/boss_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/campaign/boss_phase.gd" id="2_phase"]
+
+[sub_resource type="Resource" id="phase_1"]
+script = ExtResource("2_phase")
+display_name = "Rising"
+health_share = 1.0
+hits = 2
+intro_seconds = 2.0
+
+[sub_resource type="Resource" id="phase_2"]
+script = ExtResource("2_phase")
+display_name = "Surrounded"
+health_share = 1.0
+hits = 3
+intro_seconds = 2.0
+
+[sub_resource type="Resource" id="phase_3"]
+script = ExtResource("2_phase")
+display_name = "The Host"
+health_share = 1.0
+hits = 3
+intro_seconds = 2.0
 
 [resource]
 script = ExtResource("1_script")
 id = &"gangland_boss"
 display_name = "Sewer Swarm"
-notes = "DESIGN-TBD: a mutant horde rising from the sewers (GDD §10), built from sewer screech clusters rendered with MultiMesh. Which zone it belongs to is still open; it sits here because Gangland has the sewers."
+notes = "Designed, not built yet (GDD §10): a horde of screeches rising from the sewers around the Host, a person fused with machines. Clusters surge down the lanes, then strike from behind while the swarm climbs one wall at a time. Bait them into live fences and holes; then reach the Host's glowing implants by a ramp and a wall jump, and stomp them three times to set the person free."
+phases = Array[ExtResource("2_phase")]([SubResource("phase_1"), SubResource("phase_2"), SubResource("phase_3")])
+armor_rule = true
+armor_delay_min = 15.0
+armor_delay_max = 17.0
+armor_pickups_per_phase = 1

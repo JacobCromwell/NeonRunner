@@ -9,6 +9,11 @@ extends TestSuite
 ## for slower CI machines but catches a skin that got expensive.
 const BUILD_BUDGET_MEAN_MS: float = 4.0
 const BUILD_BUDGET_MAX_MS: float = 16.0
+## Timed builds of the dressed level whole_level() takes, keeping the fastest of the three per build
+## step (T-BUDGET): several agents' test runs can share this machine's CPUs, and OS preemption only
+## ever adds wall-clock time to a build, never removes it, so the minimum across a few fresh builds
+## stays a faithful reading of the skin's real cost even when one pass gets paused mid-build.
+const BUILD_TIMING_PASSES: int = 3
 ## Visible mesh surfaces (one draw call each when on screen) a 5-lane chunk may add on average.
 const SURFACE_BUDGET_PER_CHUNK: float = 32.0
 
@@ -56,7 +61,9 @@ func level(level_path: String, lanes: int, difficulty: float, level_seed: int = 
 func whole_level(skin: ZoneSkin, name: String, level_path: String, lanes: int) -> void:
 	var tag: String = "(%d lanes)" % lanes
 	var layout: LevelLayout = level(level_path, lanes, 0.6)
-	var dressed: Dictionary = await build_all(layout, skin)
+	# Only the dressed build's time is checked against the budget, so only it pays for extra passes;
+	# the bare comparison build (for the collision counts below) needs just the one.
+	var dressed: Dictionary = await build_all(layout, skin, BUILD_TIMING_PASSES)
 	var bare: Dictionary = await build_all(layout, ZoneSkin.new())
 	check(dressed["chunks"] == ceili((layout.length + TrackBuilder.RUN_OUT) / TrackBuilder.CHUNK_LENGTH) + 1,
 		"every chunk of the level is built %s: %d" % [tag, dressed["chunks"]])
@@ -84,8 +91,24 @@ func whole_level(skin: ZoneSkin, name: String, level_path: String, lanes: int) -
 			tag, surfaces, SURFACE_BUDGET_PER_CHUNK])
 
 
-## Builds a whole level chunk by chunk and tallies what each new chunk contains.
-func build_all(layout: LevelLayout, skin: ZoneSkin) -> Dictionary:
+## Builds a whole level chunk by chunk and tallies what each new chunk contains. `timing_passes`
+## builds the level this many times over (a fresh TrackBuilder and world each time, as a single pass
+## always did) and keeps, per build step, the minimum time seen across passes -- see
+## BUILD_TIMING_PASSES. The tallies (surfaces, vertices, collision, triggers) come from the first
+## pass only; only its "times" differ from a single pass's own.
+func build_all(layout: LevelLayout, skin: ZoneSkin, timing_passes: int = 1) -> Dictionary:
+	var stats: Dictionary = await _build_once(layout, skin)
+	for _p: int in (timing_passes - 1):
+		var extra: Dictionary = await _build_once(layout, skin)
+		var times: Array = stats["times"]
+		var extra_times: Array = extra["times"]
+		for i: int in mini(times.size(), extra_times.size()):
+			times[i] = minf(times[i], extra_times[i])
+	return stats
+
+
+## One build of a whole level, chunk by chunk, tallying what each new chunk contains.
+func _build_once(layout: LevelLayout, skin: ZoneSkin) -> Dictionary:
 	var world := Node3D.new()
 	tree.root.add_child(world)
 	var track := TrackBuilder.new()
@@ -183,6 +206,62 @@ func showcase_track(skin: ZoneSkin) -> TrackBuilder:
 	track.set_layout(layout, tuning, skin)
 	track.update(0.0, 0.0)
 	return track
+
+
+## Builds a whole level chunk by chunk and calls visit(mesh, arrays, material) once for every surface
+## of every chunk's meshes (the debug hitbox left out), while the mesh is still in the tree, for
+## checks on what a skin puts where.
+func visit_level(layout: LevelLayout, skin: ZoneSkin, visit: Callable) -> void:
+	var world := Node3D.new()
+	tree.root.add_child(world)
+	var track := TrackBuilder.new()
+	world.add_child(track)
+	track.set_layout(layout, tuning, skin)
+	var seen: Dictionary = {}
+	var d: float = 0.0
+	while d <= layout.length + TrackBuilder.RUN_OUT + TrackBuilder.CHUNK_LENGTH:
+		track.update(d, d / tuning.run_speed)
+		for chunk: Node in track.get_children():
+			if seen.has(chunk):
+				continue
+			seen[chunk] = true
+			for node: Node in nodes_of(chunk, func(n: Node) -> bool: return n is MeshInstance3D):
+				var m := node as MeshInstance3D
+				if m.mesh == null or m.is_in_group(&"debug_hitbox"):
+					continue
+				for s: int in m.mesh.get_surface_count():
+					visit.call(m, m.mesh.surface_get_arrays(s), m.mesh.surface_get_material(s))
+		d += TrackBuilder.CHUNK_LENGTH
+	world.queue_free()
+	await tree.process_frame
+
+
+## The rectangles (MeshLayer.rect(), six vertices each) among a surface's vertices, in world space:
+## for each, its corners o (UV's start), o + v and o + u, its UV at o and at the far corner, its
+## colour and its pattern (UV2.x). Surfaces made only of rects (screens, marks) split exactly.
+static func rects_of(m: MeshInstance3D, arrays: Array) -> Array[Dictionary]:
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+	var uvs: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
+	var uv2s: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV2]
+	var out: Array[Dictionary] = []
+	for i: int in range(0, verts.size() - 5, 6):
+		var o: Vector3 = m.global_transform * verts[i]
+		var ov: Vector3 = m.global_transform * verts[i + 1]
+		var ou: Vector3 = m.global_transform * verts[i + 5]
+		out.append({"o": o, "ov": ov, "ou": ou, "center": (ov + ou) * 0.5, "uv0": uvs[i], "uv1": uvs[i + 2],
+			"color": colors[i], "pattern": roundi(uv2s[i].x), "normal": (ou - o).cross(ov - o).normalized()})
+	return out
+
+
+## Whether `node` hangs under a hazard (a fence's or a sign's visuals).
+static func under_hazard(node: Node) -> bool:
+	var parent: Node = node.get_parent()
+	while parent != null:
+		if parent is Hazard:
+			return true
+		parent = parent.get_parent()
+	return false
 
 
 func free_track(track: TrackBuilder) -> void:

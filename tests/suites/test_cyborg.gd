@@ -232,6 +232,12 @@ func _test_hosts() -> void:
 	await physics_frames(10)
 	check(normal.health < normal.max_health, "a missile hits the cyborg next to it")
 	check(is_equal_approx(host.health, before), "missile splash never hurts a host")
+	# FB 71 (decided September 26, 2026): a host is immune_to_weapons like a generator, so a stray
+	# shot aimed straight at it can't clip it either (only a stomp, claws or the dash can).
+	var direct_before: float = host.health
+	w.projectiles.fire_player(host.aim_point() + Vector3(0.0, 0.0, 6.0), Vector3(0.0, 0.0, -80.0), 1.0, &"laser")
+	await physics_frames(10)
+	check(is_equal_approx(host.health, direct_before) and host.alive, "a stray direct hit doesn't hurt a host either")
 	await sim.free_world(w)
 
 	# Killing a host (here a stomp) pays the host bonus; no Bad Dream script yet, so nothing spawns.
@@ -278,16 +284,43 @@ func _test_keeps_clear() -> void:
 		"the runner ran, then stopped clear of the fence (%.1f)" % highest)
 	await sim.free_world(w)
 
-	# A cyborg that finds itself under a ceiling section (e.g. one added by a later rule) leaves play.
-	l = RunSim.layout(3, 600.0)
-	l.hulls.append({"start": 140.0, "end": 200.0})
-	w = sim.build_world(l)
-	var under: Cyborg = _spawn(w, 160.0, 1, {"fires": false})
-	check(under.misplaced, "a cyborg under a ceiling section is flagged")
-	await sim.step_world(w, 0.1)
-	check(not is_instance_valid(under) or not under.alive or under.is_queued_for_deletion(),
-		"and leaves play (GDD §3: the floor under a ceiling stays clear)")
-	await sim.free_world(w)
+	# GDD §3: the floor under a ceiling may hold enemies. A cyborg standing under a ceiling section
+	# stays in play and keeps clear of the ceiling's landing zone; it holds fire while the player rides
+	# the ceiling above it, and fires at a player who stays on the floor below.
+	for ride: bool in [true, false]:
+		l = RunSim.layout(3, 600.0)
+		l.pads.append({"lane": 1 if ride else 0, "at": 60.0})
+		l.hulls.append({"start": 57.0, "end": 200.0})
+		w = sim.build_world(l)
+		w.player.god_mode = true
+		var under: Cyborg = _spawn(w, 150.0, 1, {"panic": true}, 3)
+		var landing: float = w.config.hull_landing_seconds * tuning.run_speed
+		check(under.run_limit <= 200.0 - margin + 0.01 and under.walk_limit >= 60.0 + tuning.pad_length + margin - 0.01,
+			"a cyborg under a ceiling keeps its margin from the pad and the landing zone (%.1f–%.1f, landing %.0f m)"
+			% [under.walk_limit, under.run_limit, landing])
+		var aimed_up: int = 0
+		var rode: bool = false
+		if not w.player.running:
+			await tree.physics_frame
+			w.player.running = true
+		for i: int in 8 * 60:
+			await tree.physics_frame
+			if w.player.surface == Player.Surface.CEILING:
+				rode = true
+				if is_instance_valid(under) and under.gun.is_attacking():
+					aimed_up += 1
+			if w.player.distance > 205.0:
+				break
+		var tag: String = "(riding the ceiling)" if ride else "(on the floor below)"
+		check(rode == ride, "the player %s the ceiling %s" % ["took" if ride else "stayed off", tag])
+		check(is_instance_valid(under) and not under.is_queued_for_deletion(), "the cyborg under the ceiling stays in play " + tag)
+		if is_instance_valid(under):
+			if ride:
+				check(aimed_up == 0 and _events_of(under.gun, &"shot").is_empty(),
+					"it holds fire at a player on the ceiling above it (%d frames aiming)" % aimed_up)
+			else:
+				check(not _events_of(under.gun, &"shot").is_empty(), "it fires at a player on the floor under the ceiling")
+		await sim.free_world(w)
 
 
 func _test_generation() -> void:
@@ -295,6 +328,7 @@ func _test_generation() -> void:
 	var normal: int = 0
 	var panics: int = 0
 	var hosts: int = 0
+	var under_ceilings: int = 0
 	for lanes: int in [3, 5, 6]:
 		for difficulty: float in [0.2, 0.5, 0.8]:
 			for level_seed: int in range(1, 16):
@@ -310,7 +344,7 @@ func _test_generation() -> void:
 				check(gen.warnings.is_empty(), "cyborg patterns generate without warnings " + tag)
 				var b: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
 				check(JSON.stringify(a.enemies) == JSON.stringify(b.enemies), "same seed, same cyborgs " + tag)
-				var spans: Array[Vector2] = CyborgRules.obstacle_spans(a, tuning)
+				var spans: Array[Vector2] = CyborgRules.obstacle_spans(a, tuning, CeilingZones.make(config, tuning))
 				for e: Dictionary in a.enemies:
 					if String(e["type"]) != "cyborg":
 						continue
@@ -325,12 +359,15 @@ func _test_generation() -> void:
 							panics += 1
 					check(int(e["lane"]) >= 0 and int(e["lane"]) < lanes, "cyborg lane in range " + tag)
 					check(not CyborgRules.near_any(spans, float(e["at"]), ct.obstacle_margin - 0.01),
-						"a cyborg stands clear of gaps, fences, ramps, pads and ceilings at %.1f %s" % [float(e["at"]), tag])
-					check(not a.under_hull(float(e["at"])), "no cyborg under a ceiling " + tag)
+						"a cyborg stands clear of gaps, fences, ramps, pads and landing zones at %.1f %s" % [float(e["at"]), tag])
+					if a.under_hull(float(e["at"])):
+						under_ceilings += 1
+				LayoutChecks.check_ceilings(self, a, config, tag)
 	var share: float = float(panics) / maxf(float(normal), 1.0)
 	check(normal > 200, "plenty of cyborgs generated (%d)" % normal)
 	check(share > 0.26 and share < 0.41, "about 1 in 3 cyborgs panics (%.2f of %d)" % [share, normal])
 	check(hosts > 20, "host patterns place hosts (%d)" % hosts)
+	check(under_ceilings > 10, "some cyborgs stand under a ceiling (GDD §3: the floor there may be dangerous): %d" % under_ceilings)
 
 	# Levels without the feature have no cyborgs.
 	var plain: LevelConfig = base.duplicate() as LevelConfig
@@ -360,7 +397,7 @@ func _test_fair_play() -> void:
 			w.director.enemy_spawned.connect(func(e: Enemy) -> void:
 				if e is Cyborg:
 					guns.append((e as Cyborg).gun))
-			var spans: Array[Vector2] = CyborgRules.obstacle_spans(layout, tuning)
+			var spans: Array[Vector2] = CyborgRules.obstacle_spans(layout, tuning, CeilingZones.make(config, tuning))
 			var too_close: int = 0
 			await tree.physics_frame
 			w.player.running = true

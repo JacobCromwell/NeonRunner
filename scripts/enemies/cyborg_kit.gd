@@ -2,72 +2,97 @@ extends RefCounted
 ## Shared art kit for the cyborg family and fence generators (procedural low-poly with emissive trim,
 ## CLAUDE.md Assets): flat-shaded tapered boxes and prisms with vertex colours merged into one surface
 ## (the generator, the window frame), the part, energy and cable shaders, the cyborgs' colours, and the
-## LED visor's pixel faces (drawn by cyborg_body.gdshader on the shared humanoid rig, see CyborgSuit).
-## Meshes, materials and textures are cached, so every instance shares them. Visual only: nothing here
-## touches collision or gameplay.
+## pixel faces of their screen heads (drawn by cyborg_body.gdshader on the shared humanoid rig, see
+## CyborgSuit). Meshes, materials and textures are cached, so every instance shares them. Visual only:
+## nothing here touches collision or gameplay.
 ##
 ## Vertex colour alpha is the glow strength (0 = plain surface, 1 = full emissive trim).
 
+## The screen faces (GDD §9.2: the screen is the face). DEAD is the "ERR" a defeated cyborg's screen
+## shows before it goes dark; the two CORRUPT faces are the hosts' glitches (GDD §9.7).
 enum Face { NEUTRAL, AIMING, SHOCKED, DEAD, CORRUPT_GRIN, CORRUPT_BROKEN }
 
 ## Enemy fire and the arm-cannon charge are hot red in every zone, like ProjectilePool's enemy looks.
 const CHARGE_COLOR := Color(1.0, 0.15, 0.1)
-## LED faces: amber, so they never read like the player's cyan visor (GDD §11).
-const LED_COLOR := Color(1.0, 0.62, 0.14)
-const LED_SCAVENGER := Color(0.95, 0.78, 0.22)
-## Hosts glitch with purple static (GDD §9.7), the Bad Dream's colour.
+## The screen faces glow cold white (GDD §9.2, changed from amber), so the enemies never share the
+## player's copper glow (GDD §11). It is the cult feed's own cold white (CultFeed): the cyborgs'
+## screens show the same broadcast's face (GDD §5, Cyborg Viewing Devices).
+const LED_COLOR: Color = CultFeed.FEED_COLOR
+## Hosts glitch with purple static and glowing veins (GDD §9.7), the Bad Dream's colour. On a cyborg,
+## purple always and only means "host".
 const GLITCH_COLOR := Color(0.72, 0.25, 1.0)
 ## Electric-fence pink (GDD §9.1: pink crackle = fence); a skin's own fence_color wins when it has one.
 const FENCE_PINK := Color(1.0, 0.18, 0.62)
 
-const FACE_GRID := Vector2i(13, 7)
+## The faces' pixel grid: square cells on the screen head's 0.33 × 0.23 m screen. The features are big
+## and bold (eyes three LEDs across, the "O" two thick, the brows running in from the corners) so each
+## face keeps its own shape when the screen is only about 7 × 5 pixels, as it is 14 m ahead of the
+## player at 720p: two eyes and a bar, a V and a long bar, two eyes over a ring.
+## DESIGN-TBD (docs/questions/p2.md 2): the faces' pixel art.
+const FACE_GRID := Vector2i(13, 9)
 const FACES: Dictionary = {
+	# Calm, like the cult feed's face (CultFeed): two eyes and a flat mouth.
 	Face.NEUTRAL: [
 		".............",
 		"..###...###..",
 		"..###...###..",
+		"..###...###..",
 		".............",
 		".............",
-		"....#####....",
+		"...#######...",
+		".............",
 		".............",
 	],
+	# Charging the cannon: brows slanted down from the corners into narrowed eyes, the mouth a long,
+	# hard line.
 	Face.AIMING: [
-		".##.......##.",
+		"##.........##",
+		".###.....###.",
 		"..###...###..",
-		"...##...##...",
 		".............",
 		".............",
-		"...#######...",
+		".............",
+		".###########.",
+		".............",
 		".............",
 	],
+	# The panic variant's shocked "O" (GDD §9.2): wide, staring eyes over a big round mouth.
 	Face.SHOCKED: [
-		"..###...###..",
-		".#...#.#...#.",
-		"..###...###..",
-		".....###.....",
-		"....#...#....",
-		"....#...#....",
-		".....###.....",
+		".###.....###.",
+		".#.#.....#.#.",
+		".###.....###.",
+		"....#####....",
+		"...##...##...",
+		"..##.....##..",
+		"..##.....##..",
+		"...##...##...",
+		"....#####....",
 	],
+	# Defeated: ERR, then the screen goes dark (CyborgBody.die).
 	Face.DEAD: [
-		".#.#.....#.#.",
-		"..#.......#..",
-		".#.#.....#.#.",
 		".............",
 		".............",
-		"...#######...",
+		".###.###.###.",
+		".#...#.#.#.#.",
+		".###.##..##..",
+		".#...#.#.#.#.",
+		".###.#.#.#.#.",
+		".............",
 		".............",
 	],
 	Face.CORRUPT_GRIN: [
-		"..##.....##..",
-		"..##.....##..",
+		".............",
+		"..###...###..",
+		"..###...###..",
 		".............",
 		"#...........#",
-		".#.........#.",
-		"..#########..",
+		"##.........##",
+		".###########.",
+		".............",
 		".............",
 	],
 	Face.CORRUPT_BROKEN: [
+		".............",
 		".####...#....",
 		".#..#..###...",
 		".####...#....",
@@ -75,12 +100,83 @@ const FACES: Dictionary = {
 		".#.#.#.#.#.#.",
 		"#.#.#.#.#.#.#",
 		".............",
+		".............",
 	],
 }
 
+## The same faces redrawn for the wide VR visor of the Corporate zone's variant (the "Wide-Aspect VR"
+## Runner, CyborgSuit's &"vr_runner" look): square cells on its 0.38 × 0.14 m visor. Each keeps its
+## face's features and where they sit, spread across the wide shape: the eyes far apart, the shocked
+## "O" between them, ERR in the middle. At gameplay distance (14 m ahead at 720p) the visor is about
+## 8 × 3 pixels, where the three faces still differ: two blocks over a short bar, two slants over a
+## long bar, a bright middle between two rings.
+## DESIGN-TBD (docs/questions/p3.md 4): the visor faces' pixel art.
+const VISOR_GRID := Vector2i(19, 7)
+const VISOR_FACES: Dictionary = {
+	Face.NEUTRAL: [
+		"...................",
+		"...####.....####...",
+		"...####.....####...",
+		"...####.....####...",
+		"...................",
+		"......#######......",
+		"...................",
+	],
+	Face.AIMING: [
+		".##.............##.",
+		"..###.........###..",
+		"...####.....####...",
+		"...................",
+		"...................",
+		"..###############..",
+		"...................",
+	],
+	Face.SHOCKED: [
+		"........###........",
+		".###...##.##...###.",
+		".#.#..##...##..#.#.",
+		".###..##...##..###.",
+		"......##...##......",
+		".......##.##.......",
+		"........###........",
+	],
+	Face.DEAD: [
+		"...................",
+		"....###.###.###....",
+		"....#...#.#.#.#....",
+		"....###.##..##.....",
+		"....#...#.#.#.#....",
+		"....###.#.#.#.#....",
+		"...................",
+	],
+	Face.CORRUPT_GRIN: [
+		"...................",
+		"...####.....####...",
+		"...####.....####...",
+		"...................",
+		"#.................#",
+		"##...............##",
+		".#################.",
+	],
+	Face.CORRUPT_BROKEN: [
+		"...................",
+		".####.....#........",
+		".#..#....###.......",
+		".####.....#........",
+		"...................",
+		".#.#.#.#.#.#.#.#.#.",
+		"#.#.#.#.#.#.#.#.#.#",
+	],
+}
+
+## The builder stores vertex colours in linear space (Builder._color), which Forward+ and Mobile light
+## in; on the Compatibility renderer (web, low-end Android) humanoid_color.gdshaderinc turns them back
+## to sRGB, as for the humanoid rig. Without it the generator and the window frame show far too dark
+## and saturated on the web.
 const PART_SHADER: String = """
 shader_type spatial;
 render_mode cull_back;
+#include "res://scripts/characters/humanoid_color.gdshaderinc"
 uniform float roughness : hint_range(0.0, 1.0) = 0.42;
 uniform float metallic : hint_range(0.0, 1.0) = 0.12;
 uniform float glow_energy = 2.6;
@@ -89,10 +185,11 @@ uniform vec4 tint : source_color = vec4(1.0);
 uniform float tint_amount : hint_range(0.0, 1.0) = 0.0;
 uniform float tint_glow = 0.0;
 void fragment() {
-	ALBEDO = mix(COLOR.rgb, tint.rgb, tint_amount);
+	vec3 base = humanoid_base_color(COLOR.rgb);
+	ALBEDO = mix(base, tint.rgb, tint_amount);
 	ROUGHNESS = roughness;
 	METALLIC = metallic;
-	EMISSION = COLOR.rgb * COLOR.a * glow_energy * (1.0 - tint_amount) + tint.rgb * tint_glow;
+	EMISSION = base * COLOR.a * glow_energy * (1.0 - tint_amount) + tint.rgb * tint_glow;
 }
 """
 
@@ -266,14 +363,23 @@ static func energy_material(color: Color) -> ShaderMaterial:
 	return _materials[key]
 
 
-## The pixel image of a face (white = LED on), cached.
-static func face_texture(face: Face) -> ImageTexture:
-	if not _faces.has(face):
-		var rows: Array = FACES[face]
-		var img := Image.create(FACE_GRID.x, FACE_GRID.y, false, Image.FORMAT_L8)
-		for y: int in FACE_GRID.y:
+## The pixel image of a face (white = LED on), cached. Its mipmaps let the shader average the face far
+## away, where an LED is smaller than a pixel. `visor`: the wide VR visor's version (VISOR_FACES).
+static func face_texture(face: Face, visor: bool = false) -> ImageTexture:
+	var key: int = int(face) + (100 if visor else 0)
+	if not _faces.has(key):
+		var rows: Array = face_rows(face, visor)
+		var grid: Vector2i = VISOR_GRID if visor else FACE_GRID
+		var img := Image.create(grid.x, grid.y, false, Image.FORMAT_L8)
+		for y: int in grid.y:
 			var row: String = rows[y]
-			for x: int in FACE_GRID.x:
+			for x: int in grid.x:
 				img.set_pixel(x, y, Color.WHITE if row[x] == "#" else Color.BLACK)
-		_faces[face] = ImageTexture.create_from_image(img)
-	return _faces[face]
+		img.generate_mipmaps()
+		_faces[key] = ImageTexture.create_from_image(img)
+	return _faces[key]
+
+
+## A face's pixel rows ("#" = LED on) on the TV screen's grid, or on the visor's.
+static func face_rows(face: Face, visor: bool = false) -> Array:
+	return VISOR_FACES[face] if visor else FACES[face]

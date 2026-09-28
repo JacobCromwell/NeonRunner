@@ -2,8 +2,12 @@ extends TestSuite
 ## The heli drone (GDD §9.6) in full RunWorlds on real physics, and its generator rules.
 
 const DroneScript := preload("res://scripts/enemies/drone.gd")
+const TruckScript := preload("res://scripts/enemies/hover_truck.gd")
+const AttackWatch = preload("res://tools/measure/attack_watch.gd")
 
 var sim: RunSim
+## Fences and holes found under the pad schedule's ceilings (_check_rules).
+var floor_under_ceilings: int = 0
 
 
 func run() -> void:
@@ -15,6 +19,7 @@ func run() -> void:
 	await _test_wall_and_ceiling()
 	await _test_pad()
 	await _test_weapons()
+	await _test_takes_turns()
 	_test_barrage_numbers()
 	_test_rules()
 
@@ -290,6 +295,66 @@ func _test_weapons() -> void:
 	await sim.free_world(w)
 
 
+## GDD §9, big attacks take turns: a drone ready to wind up while a hover truck revs and lurches keeps
+## following the player, and winds up once the lurch is over; it reports each bullet, which holds its
+## barrage's turn until it has passed the player. Switched off (GameRules.big_attacks_take_turns), it
+## winds up during the lurch, as before the rule.
+func _test_takes_turns() -> void:
+	var tt := load("res://data/enemies/hover_truck.tres") as HoverTruckTuning
+	var dt := load("res://data/enemies/drone.tres") as DroneTuning
+	for turns: bool in [true, false]:
+		var tag: String = "turns %s" % ("on" if turns else "off")
+		var w: RunWorld = sim.build_world(RunSim.layout(3, 800.0))
+		w.rules = w.rules.duplicate() as GameRules
+		w.rules.big_attacks_take_turns = turns
+		w.player.setup(tuning, w.geo, 0)
+		w.player.god_mode = true
+		var watch := AttackWatch.new(w)
+		var d := _drone(w, 0.0)
+		# A truck holding back in the far lane, timed to rev just before the drone is ready.
+		var ready_at: float = dt.swoop_time + dt.first_follow_time
+		var truck: TruckScript = null
+		var windup_at: float = -1.0
+		var lurch_over: float = -1.0
+		var waited: float = 0.0
+		var kept_following: bool = true
+		var bullets_hold: bool = false
+		await tree.physics_frame
+		w.player.running = true
+		for i: int in 10 * Engine.physics_ticks_per_second:
+			await tree.physics_frame
+			watch.observe()
+			var now: float = w.level_time()
+			if truck == null and now >= ready_at - tt.hold_back_seconds - 0.25:
+				truck = w.director.spawn({"type": "hover_truck", "at": 0.0, "lane": 2, "side": 1, "seed": 5,
+					"params": {"skip_entrance": true, "phase": "hold_back", "offset": tt.back_offset, "guns": false}}) as TruckScript
+			if w.director.is_waiting(d):
+				waited += 1.0 / Engine.physics_ticks_per_second
+				kept_following = kept_following and d.state == DroneScript.State.FOLLOW \
+					and absf(d.rel_x - w.geo.lane_x(w.player.lane)) < 0.4
+			if windup_at < 0.0 and d.state == DroneScript.State.WINDUP:
+				windup_at = now
+			if truck != null and lurch_over < 0.0 and truck.forward_lurches > 0 and truck.state == TruckScript.State.ALONGSIDE:
+				lurch_over = now
+			if d.barrages > 0 and d.state == DroneScript.State.COOLDOWN:
+				bullets_hold = bullets_hold or w.director.shots_on_their_way(&"drone")
+			if d.barrages > 0 and d.state == DroneScript.State.FOLLOW and lurch_over >= 0.0:
+				break
+		check(truck != null and truck.forward_lurches == 1 and d.barrages == 1, "%s: the truck lurched and the drone fired" % tag)
+		check(bullets_hold, "%s: after the barrage its bullets are still on their way, holding its turn" % tag)
+		if turns:
+			check(windup_at >= lurch_over - 0.001 and waited > 0.8,
+				"%s: it winds up once the lurch is over (at %.2f s, the lurch over at %.2f s, after waiting %.2f s)"
+				% [tag, windup_at, lurch_over, waited])
+			check(kept_following, "%s: meanwhile it keeps following the player" % tag)
+			check(is_zero_approx(watch.overlap), "%s: the two big attacks never overlap (%.2f s)" % [tag, watch.overlap])
+		else:
+			check(windup_at > 0.0 and windup_at < lurch_over and waited == 0.0,
+				"%s: it winds up during the lurch, as before the rule (%.2f s, the lurch over at %.2f s)" % [tag, windup_at, lurch_over])
+			check(watch.overlap > 0.3, "%s: the two overlap (%.2f s)" % [tag, watch.overlap])
+		await sim.free_world(w)
+
+
 ## The barrage numbers keep the fairness rules at every campaign scaling.
 func _test_barrage_numbers() -> void:
 	var t := load("res://data/enemies/drone.tres") as DroneTuning
@@ -334,6 +399,8 @@ func _test_rules() -> void:
 				drones += _check_rules(a, config, t, tag)
 				levels += 1
 	check(drones >= levels, "the patterns place drones (%d in %d levels)" % [drones, levels])
+	check(floor_under_ceilings > levels, "the floor under the pads' ceilings keeps its fences and holes (%d in %d levels)"
+		% [floor_under_ceilings, levels])
 
 	# The campaign level that introduces drones.
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
@@ -415,22 +482,14 @@ func _check_rules(layout: LevelLayout, config: LevelConfig, t: DroneTuning, tag:
 		- (t.pad_ceiling_seconds + config.hull_landing_seconds) * speed
 	check(pads[-1] >= last_possible - t.pad_repeat_max_seconds * speed - 1.0,
 		"the pad schedule repeats to the end of the level (last at %.0f m) %s" % [pads[-1], tag])
-	# GDD §3: nothing on the floor under a ceiling; every pad is under one and on solid floor.
+	# GDD §3: the floor under the schedule's ceilings keeps what it holds (the pad is the way out of
+	# it); every pad can be stepped on, every landing zone is safe, and a floor route runs under each.
+	LayoutChecks.check_ceilings(self, layout, config, tag)
 	for h: Dictionary in layout.hulls:
-		for g: Dictionary in layout.gaps:
-			check(float(g["start"]) > float(h["end"]) or float(g["end"]) < float(h["start"]), "no gap under a ceiling " + tag)
 		for f: Dictionary in layout.fences:
-			check(float(f["at"]) < float(h["start"]) or float(f["at"]) > float(h["end"]), "no fence under a ceiling " + tag)
-		for e: Dictionary in layout.enemies:
-			if int(e.get("side", 0)) == 0 and LevelGenerator.enemy_uses_floor(e):
-				check(float(e["at"]) < float(h["start"]) or float(e["at"]) > float(h["end"]),
-					"no floor enemy under a ceiling (%s) %s" % [e["type"], tag])
-	for p: Dictionary in layout.pads:
-		var covered: bool = false
-		for h: Dictionary in layout.hulls:
-			if float(h["start"]) <= float(p["at"]) - 1.0 and float(h["end"]) >= float(p["at"]) + 10.0:
-				covered = true
-		check(covered, "pad at %.0f has a ceiling above %s" % [p["at"], tag])
-		check(not layout.gapped_between(int(p["lane"]), float(p["at"]) - 6.0, float(p["at"]) + tuning.pad_length),
-			"pad at %.0f is on solid floor %s" % [p["at"], tag])
+			if float(f["at"]) > float(h["start"]) and float(f["at"]) < float(h["end"]):
+				floor_under_ceilings += 1
+		for g: Dictionary in layout.gaps:
+			if float(g["start"]) > float(h["start"]) and float(g["end"]) < float(h["end"]):
+				floor_under_ceilings += 1
 	return drones.size()

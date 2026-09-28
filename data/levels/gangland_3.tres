@@ -7,6 +7,11 @@ script = ExtResource("1_level")
 id = &"gangland_3"
 display_name = "Rotor Wash"
 level_seed = 203
-duration_seconds = 140.0
-difficulty_bias = 0.05
-features = PackedStringArray("ceilings", "pulsing", "cyborg", "hover_truck", "ramps", "screech", "generator", "octodog", "speed_pads", "drone", "window_cyborg")
+duration_seconds = 145.0
+difficulty_bias = 0.0
+features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "screech", "ramps", "octodog", "speed_pads", "generator", "drone")
+guarantee_features = true
+feature_starts = Dictionary[String, float]({
+"drone": 0.4,
+"generator": 0.1
+})

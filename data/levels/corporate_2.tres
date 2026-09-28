@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="LevelConfig" format=3]
+
+[ext_resource type="Script" path="res://scripts/core/level_config.gd" id="1_level"]
+[ext_resource type="Resource" path="res://data/skins/corporate_plaza_skin.tres" id="2_skin"]
+
+[resource]
+script = ExtResource("1_level")
+id = &"corporate_2"
+display_name = "Checkpoint Plaza"
+level_seed = 402
+duration_seconds = 150.0
+difficulty_bias = 0.0
+features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "ramps", "octodog", "speed_pads", "generator", "drone", "barnacle_turret", "wall_fences", "screech_vents", "buzz_overdrive", "wall_fences_partial", "tithe_collector")
+skin = ExtResource("2_skin")
+guarantee_features = true
+feature_starts = Dictionary[String, float]({
+"tithe_collector": 0.1
+})
+feature_weights = Dictionary[String, float]({
+"buzz_overdrive": 1.5,
+"drone": 1.5,
+"hover_truck": 1.5
+})

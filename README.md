@@ -4,15 +4,19 @@ A neon 3D runner for PC (Steam), Android, iOS and a web demo. You run lanes, sid
 through zones full of enemies, and a single hit ends the run. Built with Godot 4.7.2 and GDScript only.
 
 **Status:** the game is built around everything designed so far:
-- a campaign of two zones with three levels each
+- the whole campaign structure: six zones and 15 levels
 - seven enemy types, plus fence generators
 - the shop, power-ups and economy
 - every screen and the HUD
-- two zone looks, generated music and sound effects
+- all six zone looks (the Neon City, Gangland, the Marketplace, Corporate, the Dead Zone and the Golden Zone),
+  generated music and sound effects
 - all three build flavors
 
-Bosses and the short cinematics between levels are placeholder slots until they're designed. Every
-placeholder decision is listed in `docs/OPEN_QUESTIONS.md`.
+Boss fights have their framework (they play in the runner, with phases, a health bar, checkpoints,
+stars and payouts); a test boss shows the framework at work. The Neon City's boss, the Floating Head,
+is built and plays in the campaign after City 3 (debug builds: `--boss=city_boss`); the other zones'
+bosses are still placeholder slots. The short cinematics between levels are placeholder slots too.
+Every placeholder decision is listed in `docs/OPEN_QUESTIONS.md`.
 
 Docs: `docs/GDD_CHECKPOINT.md` (the design, the authority), `docs/OPEN_QUESTIONS.md` (open decisions and
 placeholders), `docs/ARCHITECTURE.md` (how the code fits together), `docs/NEXT_STEPS.md` (risk tests and the
@@ -36,15 +40,18 @@ Options for testing (debug builds only, the same with `play.cmd`):
 |---|---|
 | `--quick` | Quick play: the prototype level, restarting on death, with the debug keys and HUD |
 | `--seed=N --lanes=N --difficulty=X` | Quick play with that seed, lane count (3, 5 or 6) or difficulty (0–1) |
-| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`) |
+| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `resonator`). The full list is in `LevelConfig` |
 | `--god` | Hits don't kill (falls still do) |
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
-| `--skin=gangland` | Quick play in another zone's look |
+| `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `corporate`, `corporate_plaza` (Corporate's plaza floor), `dead_zone` or `golden` |
+| `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`) |
+| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
 
-Example: `./play.sh --lanes=6 --features=octodog,ceilings --god`.
+Example: `./play.sh --lanes=6 --features=octodog,ceilings --god`, or the test boss's last phase:
+`./play.sh --boss=test_boss --phase=3 --god --nofall`.
 
 ## Controls
 
@@ -65,15 +72,39 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 
 ## What's in the game
 
-- **Campaign:** Zone 1, the Neon City (the web demo's zone), and Zone 2, Gangland, with three levels each. Each
-  zone has boss and cinematic slots. Zones 3–6 are placeholders. Each level introduces one new thing:
-  1. City 1: gaps, fences, walls and signs.
-  2. City 2: ceilings and pulsing fences.
-  3. City 3: cyborgs and a rare hover truck.
-  4. Gangland 1: ramps, sewer screeches and fence generators.
-  5. Gangland 2: Octodogs and speed pads.
-  6. Gangland 3: heli drones and window cyborgs.
-- **Movement:** floor lanes, side-wall runs and wall jumps, anti-grav pads onto the ceiling, ramps, speed pads.
+- **Campaign:** 15 levels in six zones, about 35 minutes of flawless running: the Neon City (the web demo's
+  zone) and Gangland with three levels each, the Marketplace, Corporate and the Dead Zone with two, and the
+  Golden Zone with three.
+  Each zone has a boss slot and cinematic slots. Each level introduces about one new thing (GDD §5), where
+  its data says (`feature_starts`):
+  1. City 1 *Rooftop Rush*: gaps, fences, walls and signs, then cyborgs late in the level.
+  2. City 2 *Skyway*: ceilings and anti-grav pads.
+  3. City 3 *Neon Crossfire*: pulsing fences, window cyborgs and the hover truck.
+  4. Gangland 1 *Scrapyard Streets*: sewer screeches and ramps.
+  5. Gangland 2 *Dog Run*: Octodogs and speed pads.
+  6. Gangland 3 *Rotor Wash*: fence generators and heli drones.
+  7. Marketplace 1 *Awning Alley*: the Barnacle Turret.
+  8. Marketplace 2 *Shopfront Sparks*: wall fences, and sewer screeches from the shopfronts' wall vents.
+  9. Corporate 1 *Maglev Line*: the Buzz Overdrive, then partial wall fences.
+  10. Corporate 2 *Checkpoint Plaza*: the Tithe Collector, and a heavier military presence (more drones,
+      hover trucks and Buzz Overdrives).
+  11. Dead Zone 1 *Ashfall*: hosts and the Cyborg's Bad Dream.
+  12. Dead Zone 2 *The Hush*: a quiet, eerie remix with nothing new: long silent stretches broken by short
+      bursts of threats, fewer enemies but more hosts (standing alone in the silence), and darker lighting.
+  13. Golden 1 *Gilded Canals*: the Resonator.
+  14. Golden 2 *Sentinel Row*: the Gilded Sentinels, and the hardest level.
+  15. Golden 3 *The Golden Palace*, then the final boss.
+
+  Everything introduced keeps appearing later (the Buzz Overdrive from Corporate 1 through the Golden Zone),
+  and a level's newest things get the most of its picks, taken from older things of their kind (enemies from
+  enemies, obstacles from obstacles), so no level gets easier; enemies whose rules keep only so many (hosts,
+  hover trucks, drones, Octodogs, Resonators) and the rare vent screech aren't boosted (the campaign's recency
+  curve, `data/tuning/feature_recency.tres`). The Barnacle Turret, wall fences, Buzz Overdrive, Tithe
+  Collector and Gilded Sentinels aren't built yet: their levels already list them, and they appear once
+  their code exists. Level names are placeholders, except the Golden Palace.
+- **Movement:** floor lanes, side-wall runs and wall jumps (a sign blocking the wall bumps you back with a
+  clank), anti-grav pads onto the ceiling, ramps (higher onto the wall, with a speed boost that fades like
+  a speed pad's), speed pads.
 - **Obstacles:** gaps, signs, and electric fences (full-height or gapped, always-on or pulsing), some with a
   generator that switches them off.
 - **Enemies:**
@@ -83,18 +114,53 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   - the Octodog
   - the sewer screech
   - the heli drone
-  - the Cyborg's Bad Dream, released by killing a host cyborg (built, but not yet in a campaign level:
-    the GDD saves it for late levels; try `--features=cyborg,host,ceilings`)
+  - the Cyborg's Bad Dream, released by killing a host cyborg (from Dead Zone 1; in quick play, try
+    `--features=cyborg,host,ceilings`)
+  - the Resonator (from Golden 1): a golden broadcast spire hovering far ahead. When its halos line up
+    and its three-note chime plays, a red wave rolls along the floor across every lane: jump it, or be
+    on a wall or the ceiling. Shoot it down or wait until it leaves (in quick play, `--features=resonator`)
+- **Bosses:** a framework for runner-style boss fights (GDD §10): the fight plays in the normal run on
+  an arena track that keeps going for as long as it lasts, with the boss's health bar and phase
+  markers on the HUD, weak points to stomp and weapon chip damage, a checkpoint for the final fight,
+  no time limit and no escalation, stars from par times, a payout, records and a leaderboard per
+  boss, and pickups: armor, shield and grapple pickups on the floor ahead, placed where they're fair
+  to take, from the standard armor rule (at the start of the final phase, and a while after the
+  player's armor or shield breaks) or offered by the boss itself. The test boss (`--boss=test_boss`),
+  a hovering core that blasts the lane it lights up red and drops dazed into the player's lane to be
+  stomped, shows it all (it offers a shield in its second phase). The Floating Head, the Neon City's
+  boss, is built on it: a giant ship whose stern is a propaganda face, roaring in overhead, a
+  bombing run where a searchlight hunts the runner and bombs fall where it lingers (a red target
+  circle, an alarm and a falling whistle), the reveal of its face, and the face-off: its eyes glow and
+  whine, then laser beams sweep the lanes low (jump) or high (slide) or drag down the runner's lane
+  (switch lanes), its mouth drops cyborgs onto the trucks ahead, and a laser baited into a marked tower
+  topples it onto the ship to pin it. Pinned, its red weak points come out on its crown: stomp one, a
+  third of its health. Each phase has its own way up: run up the fallen tower's slab like a ramp, a
+  wall jump, then pads and a ceiling to drop from. Miss it and it shakes free and the face-off goes on.
+  All the while it shouts its propaganda through its loudhailers (a distorted voice never meant to be
+  understood, ducking under every warning) with slogans on its face screen. Beaten, its face glitches,
+  the propaganda cuts out mid-shout and it crashes into the street ahead: the runner runs over its
+  fallen face and through the wreck, on to the zone's outro (in the web demo, the "get the full game"
+  screen). About 100 s for a runner who never misses (`--boss=city_boss`, or the campaign's
+  `--level=city/boss`). The other five zone bosses are still to be built.
 - **Economy:** credits in four denominations, level score and stars, and a shop. Items are five permanent
   power-ups (weapon line, claws, juggernaut dash, magnet, slow time) and three breakables (armor, shield,
   grapple hook). After a death you're offered a revive (an item, or a rewarded ad on mobile). Net worth
   has its own leaderboard.
 - **Modes:** the campaign, endless mode, and harder difficulty tiers after the last level.
 - **Look and sound:**
-  - a human runner in a cyber suit
-  - the City and Gangland zone looks
+  - Razor Echo, the runner: a dark-blue trench coat with soft copper conduits and a skirt that swings,
+    a gold cybernetic arm and a copper ocular implant
+  - the cyborgs: ragged, strung-out gangsters whose whole head is a beat-up CRT television, its screen
+    their cold white LED face (calm, aiming, a shocked "O", ERR when defeated), with a backpack cabled
+    into the head and a scavenged arm cannon; hosts glitch purple and wear purple veins. Each zone has
+    its own version of the same unit: Gangland's caged Broadcast Brute with a pipe gun, the
+    Marketplace's gilded Casino Mob Enforcer with a drum-fed gun, Corporate's Wide-Aspect VR Runner, the
+    Dead Zone's burned-out TV head, and the Golden Zone's ceremonial enforcer wearing the cult's emblem
+  - the City, Gangland and Marketplace zone looks, with the cult's feed on screens and its emblem hidden
+    in ads in all three
   - neon UI screens and HUD
-  - generated music (menu, City, Gangland) and 63 sound effects
+  - generated music for the menus and each of the six zones (it dips when the runner dies), and 76 sound
+    effects, among them the level-complete riff in each zone's key
   - first-encounter hints
 - **Settings:** volumes, key rebinding, screen shake, reduced flashing, hints.
 - **Platforms:** export presets for Windows, Android, iOS and the web demo. Ads, purchases and
@@ -103,18 +169,21 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 ## Tuning while you play (F6)
 
 F6 pauses the game and opens a panel with sections for movement, game rules, power-ups, the runner's animation,
-level pacing and each enemy type in the level. Changes apply immediately; pacing, speed, jump and size changes also reshape the level, so press
-**Restart level** to rebuild it. **Save** writes the values back to their files in `data/`; **Reload files** undoes
-unsaved changes. Every other number is in `data/` too: enemy tunings in `data/enemies/`, prices in
+the music's pause duck and death dip, level pacing, the campaign's recency curve for pick weights (in a campaign
+level) and each enemy type in the level. Changes apply immediately; pacing, pick weights, speed, jump and size
+changes also reshape the level, so press **Restart level** to rebuild it. **Save** writes the values back to
+their files in `data/`; **Reload files** undoes unsaved changes. Every other number is in `data/` too: enemy
+tunings in `data/enemies/`, prices in
 `data/shop/catalog.json`, patterns in `data/patterns/` (format: `data/patterns/README.md`), sound volumes in
-`data/audio/sfx_library.tres`, and UI colours and sizes in `data/ui/ui_style.tres`.
+`data/audio/sfx_library.tres`, music levels and tempos in `data/audio/music_library.tres`, and UI colours and
+sizes in `data/ui/ui_style.tres`.
 
 ## Tools
 
 ```
 tools/godot.sh play [options]   play (what ./play.sh runs)
 tools/godot.sh edit             open the editor
-tools/godot.sh test             all tests, about a minute; exit code 0 = pass (--suite=name runs one)
+tools/godot.sh test             all tests, under two minutes; exit code 0 = pass (--suite=name runs one)
 tools/godot.sh smoke [options]  40 s of the real game, headless; prints only problems
 tools/godot.sh sfx [--review]   regenerate the sound effects (assets/sfx/) from tools/asset_gen/
 tools/godot.sh music [--review] regenerate the music (assets/music/)
@@ -125,22 +194,72 @@ tools/godot.sh import           force a resource import
 generated by code (`tools/asset_gen/`, and procedural meshes and shaders under `scripts/`). The two fonts are
 OFL-licensed; licenses are in `assets/LICENSES.md`.
 
-The scenes in `tools/showcase/` show one part of the game up close for visual review (the runner, each enemy
-family, the UI kit, every screen); each script's header lists its options.
+The scenes in `tools/showcase/` show one part of the game up close for visual review (the runner in every pose
+and power-up look, and a scripted run on any zone's skin; ramp launches and blocked wall entries; each enemy
+family, the Floating Head, the UI kit, every screen, a zone skin's fixed review track, the cult's feed, the
+Golden Zone's statues); each script's header lists its options.
+
+`tools/measure/big_attacks.gd` measures how the big attacks of different enemy types overlap over simulated runs of
+the campaign, with big attacks taking turns (GDD §9, the `big_attacks_take_turns` switch in the game rules and the
+F6 panel) and without, and how much taking turns delays them:
+`godot --headless --fixed-fps 60 -s res://tools/measure/big_attacks.gd -- [--levels=gangland/3] [--lanes=3,5,6]`
+(the whole campaign, both ways, takes about ten minutes; its header lists the options).
+
+`tools/measure/level_shape.gd` measures each campaign level's shape: every feature's share of its picks, its
+enemy, host and obstacle counts, what only the every-feature guarantee brings, and The Hush's quiet stretches
+against its bursts, with the recency curve on and off:
+`godot --headless -s res://tools/measure/level_shape.gd -- [--levels=dead_zone/2] [--curve=on,off]`.
 
 ## Tests
 
-`tools/godot.sh test` runs 26 suites with about 766,000 checks:
-- **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds.
-- **Movement:** scenarios on real physics.
-- **Enemies:** each type's attacks, dodges, kills and generation rules.
+`tools/godot.sh test` runs 39 suites with about 2,900,000 checks:
+- **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds, and every campaign level
+  (each with every feature it lists, on its own seed and on others). Under every ceiling the floor may be
+  dangerous, so each one's pads, landing zone and a floor route that never takes the pad are checked, and
+  some of those routes are run on real physics. Also the recency curve's pick weights, and levels paced in
+  quiet stretches and bursts (The Hush).
+- **Movement:** scenarios on real physics, among them a ramp's boost against a speed pad's, a ramp's wall run
+  and its credits against the generator's prediction, and the bump of a blocked wall entry.
+- **Enemies:** each type's attacks, dodges, kills and generation rules, and big attacks of different types
+  taking turns (the director, each enemy, and simulated runs of campaign levels).
 - **Damage:** the shared damage rules.
 - **Power-ups:** each one's behaviour.
 - **Economy and saves:** the economy and save files.
-- **Game flow:** the campaign and app flow.
+- **Game flow:** the campaign (its zones, steps and level-by-level schedule, the features' ages for the
+  recency curve and each kind's share of the picks through every level, The Hush and its darker lighting on
+  every skin) and app flow.
+- **Bosses:** the boss framework with the test boss: phases, the checkpoint, no escalation, the arena,
+  the damage rules on a boss, and the flow around a fight; the Floating Head's fight so far at 3, 5 and 6
+  lanes: its build and hitboxes, bombs that fall only after their warning, a runner who keeps moving
+  always escaping them, the face-off's lasers (each warned, and escaped without god mode by a runner who
+  reads them), its cyborg drop, a baited or fallback tower pinning it, each phase's stomp window taken
+  without god mode (the ramp, a wall jump, the ceiling), missed windows repeating without escalation,
+  the whole fight from its entrance to the last stomp, and every attempt playing out the same way; its
+  defeat (the propaganda cut, the crash, room for a runner in every lane of its wreck, Reduced
+  flashing), and the whole fight through the campaign at 3, 5 and 6 lanes with no god mode, from City 3
+  to the outro (and the web demo's end screen), its propaganda never masking a warning, and a death
+  restarting the fight.
 - **Screens:** every screen at desktop and touch sizes.
-- **Zone skins:** both skins, including a check that neither adds collision.
-- **Sounds and music.**
+- **The runner:** Razor Echo's poses on every surface, the coat's panels (never through the legs or the
+  ground), the budgets, the power-up looks, and its copper glow kept clear of every hazard colour.
+- **The cyborgs' look:** in every zone's look, hitboxes pinned to their sizes and no look bigger than the
+  base, the budgets, every weapon ending in the same red charge-up, the colour rules (only the cold white
+  face, the red charge-up and a host's purple glow), faces that still differ a few pixels across (the VR
+  visor's too), and ERR before a defeated cyborg's screen goes dark.
+- **Zone skins:** all six skins, including a check that none adds collision, and the build budget; for
+  Gangland, the Marketplace, Corporate, the Dead Zone and the Golden Zone the colour rule (only hazards glow
+  in hazard colours) and ceilings a runner can read upside down, for the Marketplace, Corporate, the Dead
+  Zone and the Golden Zone gaps that read as holes and a clear play space and calm walls, the Marketplace's
+  shop windows, Corporate's brand colour (clear of the hazards and the UI's accents), its carriages lined up
+  across chunk cuts, every kind of ceiling at one to six lanes and a boss arena's clear sky, the Dead Zone's
+  near-black palette (ash-grey haze behind the Bad Dream's silhouette, embers dim and far above the play
+  field, smoke only from tall ruins) and its ceilings at every width and position, the Golden Zone's gold
+  (never glowing, never sign yellow or gap orange), its statues far above the wall-run band and the
+  statue kit for the Gilded Sentinels, and for all six where the cult's emblem hides (or, in the Golden
+  Zone, is shown openly) and where its feed plays, never in the wall-run band (the feed's shared material
+  has a suite of its own).
+- **Sounds and music:** every sound and track loads (the tracks loop seamlessly, one per zone), the death dip
+  and how it combines with the pause duck, and the level-complete riff in each zone's key.
 - **Boot:** the real game scene.
 
 Headless runs skip sounds, because the dummy audio driver never finishes a playback.
@@ -149,8 +268,9 @@ Headless runs skip sounds, because the dummy audio driver never finishes a playb
 
 ```
 play.sh, play.cmd       play the current version
-tools/                  godot.sh (play/edit/test/smoke/sfx/music), asset generators, showcase scenes
-scenes/main.tscn        the one scene: world, screens and overlays
+tools/                  godot.sh (play/edit/test/smoke/sfx/music), asset generators, showcase scenes, measurements
+scenes/main.tscn        the main scene: world, screens and overlays
+scenes/bosses/          boss fight scenes (the test boss and the Floating Head so far)
 scripts/app/            App (state and flow), Profile, SaveService, Settings, BuildFlavor
 scripts/run/            a run: LevelRun, RunWorld, camera, projectiles, credits, score, effects, hints
 scripts/player/         the Player controller and its avatar
@@ -158,7 +278,9 @@ scripts/characters/     the procedural humanoid rig
 scripts/enemies/        one script (plus tuning and generator rules) per enemy type, EnemyDirector
 scripts/powerups/       the permanent power-ups
 scripts/world/          level layout, generator, track builder, hazards; zone skins and the mesh kit
-scripts/campaign/       campaign, zones, bosses and cinematic slots
+scripts/campaign/       campaign, zones, bosses (BossDef, BossPhase) and cinematic slots
+scripts/bosses/         the boss framework (BossEncounter, BossPart, BossArena, BossProps), the test boss,
+                        and one folder per boss (floating_head/)
 scripts/economy/        the shop catalog
 scripts/ui/             theme, icons, widgets, screens, HUD, debug tools
 scripts/audio/          sound library, music player, hazard warning sounds

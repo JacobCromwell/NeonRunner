@@ -4,8 +4,10 @@ extends Node
 ## screen:
 ##   godot --path . res://tools/showcase/screens_showcase.tscn -- --screen=shop
 ## Screens: title, levels, shop, shop_next, settings, pause, pause_settings, death, results,
-## failed, slot, cinematic, demo_end, hud.
-## Options: --fresh (a new profile), --touch (phone/tablet sizing), --mobile (a mobile build:
+## failed, slot, cinematic, demo_end, hud; and a boss fight, with the test boss in the City's boss slot:
+## boss (the HUD's boss bar at the checkpoint), boss_pause, boss_death, boss_results.
+## Options: --fresh (a new profile), --progress=<step id> (every campaign step before that one
+## completed, e.g. --progress=golden/1), --touch (phone/tablet sizing), --mobile (a mobile build:
 ## 3 lanes, credit packs, rewarded ads), --flavor=web_demo (read by App), --scroll-end (scrolls the
 ## screen's list to its end), --wait=N (frames before a shot), --shot=<png> (saves a screenshot and
 ## quits: any window size, unlike --write-movie).
@@ -25,6 +27,9 @@ func _ready() -> void:
 	App.profile = SampleProfiles.fresh() if args.has("--fresh") else SampleProfiles.rich()
 	if args.has("--mobile") and not args.has("--fresh"):
 		App.profile.add_purchased(1000)
+	for arg: String in args:
+		if arg.begins_with("--progress="):
+			SampleProfiles.complete_until(App.profile, App.campaign, arg.get_slice("=", 1))
 	InputMap.load_from_project_settings()
 	Settings.apply(App.profile)
 	main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
@@ -85,6 +90,8 @@ func _open(screen: String) -> void:
 			world.score.add_bonus(&"stomp", 50, "Stomp")
 			world.score.multiplier = 2.0
 			App.run.hud.show_hint("Cyborgs fire in bursts: watch the arm glow, then switch lanes. Stomp their heads!")
+		"boss", "boss_pause", "boss_death", "boss_results":
+			await _boss(screen)
 		_:
 			push_warning("screens showcase: unknown screen '%s'" % screen)
 
@@ -95,6 +102,34 @@ func _play(step_id: String, seconds: float) -> void:
 	App.run.context.god_mode = true
 	App.run.world.player.god_mode = true
 	await _seconds(seconds)
+
+
+## A boss fight on the campaign flow: the test boss in the City's boss slot, god mode, played into its
+## second phase (the checkpoint), then paused, downed, or beaten for the results.
+func _boss(screen: String) -> void:
+	var step: CampaignStep = App.campaign.step("city/boss")
+	step.boss = load("res://data/bosses/test_boss.tres") as BossDef
+	App.play_step(step)
+	App.run.context.god_mode = true
+	App.run.world.player.god_mode = true
+	App.run.world.player.grapples = 1_000_000
+	var encounter: BossEncounter = App.run.encounter
+	await _seconds(3.0)
+	encounter.damage(encounter.hit_damage(), &"showcase")
+	await _seconds(1.0)
+	match screen:
+		"boss_pause":
+			App.pause_game()
+		"boss_death":
+			App.run.world.player.god_mode = false
+			App.run.world.player.call(&"_die", "Test Core bolt")
+			await _seconds(App.rules.death_screen_delay + 0.8)
+		"boss_results":
+			while not encounter.is_defeated():
+				if encounter.is_vulnerable():
+					encounter.damage(encounter.max_health, &"showcase")
+				await get_tree().physics_frame
+			await _seconds(LevelRun.COMPLETE_PAUSE + 1.0)
 
 
 func _seconds(seconds: float) -> void:

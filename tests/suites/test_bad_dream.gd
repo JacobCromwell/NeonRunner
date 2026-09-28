@@ -8,6 +8,7 @@ extends TestSuite
 ## counts, seeds and difficulties, alone and together with drones and Octodogs.
 
 const DroneScript := preload("res://scripts/enemies/drone.gd")
+const TruckScript := preload("res://scripts/enemies/hover_truck.gd")
 const HostRules := preload("res://scripts/enemies/host_rules.gd")
 const CYBORG_TUNING_PATH: String = "res://data/enemies/cyborg.tres"
 ## Jump this far (track distance) before a walking cyborg to land on its head (as in test_cyborg).
@@ -42,6 +43,7 @@ func run() -> void:
 	await _test_emp()
 	await _test_one_at_a_time()
 	await _test_major_attacks()
+	await _test_takes_turns()
 	_test_generator()
 
 
@@ -142,6 +144,8 @@ func _test_declared() -> void:
 	check(dream.immune_to_weapons and dream.claw_immune and not dream.stompable and not dream.dash_kills,
 		"declared: immune to weapons, claws and stomping; the dash doesn't kill it")
 	check(dream.exclusive_major_attack and dream.is_major_attack_active(), "its chase is an exclusive major attack")
+	check(dream.exclusive_of == [&"octodog", &"drone"],
+		"GDD §9.7 names the attacks it never overlaps, switch or not: Octodogs' and drones' (%s)" % [dream.exclusive_of])
 	check(dream.slash_hitbox().is_enemy_attack and not dream.slash_hitbox().is_solid and dream.slash_hitbox().dash_passes
 		and dream.slash_hitbox().part == &"attack", "the slash is an enemy attack the dash passes through")
 	check(dream.body_hitbox().is_enemy_attack and dream.body_hitbox().dash_passes, "so is its body")
@@ -600,21 +604,21 @@ func _test_emp() -> void:
 	check(not w.score.bonuses.has(&"chase"), "no survival bonus for an EMP'd chase")
 	await sim.free_world(w)
 
-	# Through a real fence generator destroyed by weapons.
+	# Through a real fence generator, destroyed by the dash (GDD §9.1: weapons never set one off,
+	# so a shot at it, unlike here before, would no longer do anything).
 	var l := RunSim.layout(3, 800.0)
-	l.fences.append(RunSim.fence(0, 70.0, "full"))
+	l.fences.append(RunSim.fence(1, 70.0, "full"))
 	made = await _world(3, 1, {"chase": 30.0}, null, l)
 	w = made[0]
 	dream = made[1]
 	id = dream.get_instance_id()
 	w.player.god_mode = true
-	var gen := w.director.spawn({"type": "generator", "at": 61.0, "lane": 0, "side": 0, "seed": 1, "params": {}}) as Enemy
-	for i: int in 6:
-		if gen == null or not gen.alive:
-			break
-		w.projectiles.fire_player(gen.aim_point() + Vector3(0.0, 0.0, 6.0), Vector3(0.0, 0.0, -90.0), 1.0)
-		await physics_frames(8)
-	check(gen != null and not gen.alive, "the generator was shot down")
+	var gen := w.director.spawn({"type": "generator", "at": 61.0, "lane": 1, "side": 0, "seed": 1, "params": {}}) as Enemy
+	check(not w.director.targets_ahead(gen.aim_point(), 200.0).has(gen), "auto-fire can't target it")
+	await _until(func() -> bool: return 61.0 - w.player.distance <= 5.0, 6.0)
+	w.player.start_dash(0.6, 0.0)
+	await _until(func() -> bool: return gen == null or not gen.alive, 2.0)
+	check(gen != null and not gen.alive, "the dash destroyed it")
 	await physics_frames(2)
 	check(_count(id, "emp") == 1 and (_gone(id) or dream.state == BadDream.State.DISSOLVE),
 		"its EMP dissolves the Bad Dream")
@@ -664,6 +668,8 @@ func _test_major_attacks() -> void:
 	for h: Array in dog.history:
 		dog_wound = dog_wound or h[0] == "windup"
 	check(not dog_wound and int(drone.get(&"barrages")) == 0, "the Octodog never charged and the drone never fired")
+	check(is_zero_approx(float(dog.get(&"_turn_shift"))),
+		"held by the chase (GDD §9.7), the Octodog runs off rather than moving its charges on")
 	await _until(func() -> bool: return int(drone.get(&"barrages")) >= 1, 6.0)
 	check(int(drone.get(&"barrages")) >= 1, "once the chase is over, the drone fires again")
 	await sim.free_world(w)
@@ -708,6 +714,88 @@ func _test_major_attacks() -> void:
 	await sim.free_world(w)
 
 
+## GDD §9, big attacks take turns: its chase is a big attack like the others. A hover truck (which
+## GDD §9.7 doesn't name) neither revs nor charges its cannon while it chases, and holds back or
+## keeps pacing until the chase is over; and with a truck's lurch on when a slash is due, it holds
+## the slash until the lurch is over. Switched off (GameRules.big_attacks_take_turns), the truck
+## attacks during the chase and the Bad Dream slashes during its lurch, as before the rule.
+func _test_takes_turns() -> void:
+	var tt := load("res://data/enemies/hover_truck.tres") as HoverTruckTuning
+	for turns: bool in [true, false]:
+		var tag: String = "turns %s" % ("on" if turns else "off")
+		# It chases for 6 s; a truck holding back is ready to rev after 1.6 s, and to fire after that.
+		var made: Array = await _world(5, 1, {"chase": 6.0})
+		var w: RunWorld = made[0]
+		var dream: BadDream = made[1]
+		w.rules = w.rules.duplicate() as GameRules
+		w.rules.big_attacks_take_turns = turns
+		w.player.god_mode = true
+		var truck := w.director.spawn({"type": "hover_truck", "at": 0.0, "lane": 4, "side": 1, "seed": 5,
+			"params": {"skip_entrance": true, "phase": "hold_back", "offset": tt.back_offset}}) as Enemy
+		var id: int = dream.get_instance_id()
+		var truck_went: float = -1.0
+		var chase_over: float = -1.0
+		var held_back: bool = true
+		var slashes: int = 0
+		for i: int in 9 * Engine.physics_ticks_per_second:
+			await tree.physics_frame
+			var d: BadDream = _dream(id)
+			if d != null:
+				slashes = d.slashes
+			if chase_over < 0.0 and (d == null or not d.is_major_attack_active()):
+				chase_over = w.level_time()
+			if truck_went < 0.0 and truck.is_major_attack_active():
+				truck_went = w.level_time()
+			if w.director.is_waiting(truck):
+				var s: int = int(truck.get(&"state"))
+				held_back = held_back and (s == TruckScript.State.HOLD_BACK or s == TruckScript.State.PACE)
+		if turns:
+			check(truck_went >= chase_over - 0.001 and chase_over > 5.0,
+				"%s: a truck neither revs nor fires while it chases (first at %.2f s, the chase over at %.2f s)"
+				% [tag, truck_went, chase_over])
+			check(held_back, "%s: meanwhile the truck holds back or keeps pacing" % tag)
+			check(slashes >= 1, "%s: it slashed meanwhile (%d)" % [tag, slashes])
+		else:
+			check(truck_went >= 0.0 and truck_went < chase_over,
+				"%s: the truck attacks during the chase, as before the rule (at %.2f s, the chase over at %.2f s)"
+				% [tag, truck_went, chase_over])
+		await sim.free_world(w)
+
+	# A lurch on when the slash is due: it holds the slash until the lurch is over.
+	for turns: bool in [true, false]:
+		var tag: String = "turns %s" % ("on" if turns else "off")
+		var w: RunWorld = sim.build_world(RunSim.layout(5, 1500.0))
+		w.rules = w.rules.duplicate() as GameRules
+		w.rules.big_attacks_take_turns = turns
+		w.player.setup(tuning, w.geo, 1)
+		w.player.god_mode = true
+		var truck := w.director.spawn({"type": "hover_truck", "at": 0.0, "lane": 4, "side": 1, "seed": 5,
+			"params": {"skip_entrance": true, "phase": "hold_back", "offset": tt.back_offset, "guns": false}}) as Enemy
+		await tree.physics_frame
+		w.player.running = true
+		await _until(func() -> bool: return int(truck.get(&"state")) == TruckScript.State.REV, 3.0)
+		var dream := w.director.spawn({"type": "bad_dream", "at": 0.0, "lane": 1, "side": 0, "seed": 5,
+			"params": {"emerge": false, "chase": 20.0}}) as BadDream
+		var lurch_over: float = -1.0
+		var told: float = -1.0
+		for i: int in 5 * Engine.physics_ticks_per_second:
+			await tree.physics_frame
+			if lurch_over < 0.0 and not truck.is_major_attack_active():
+				lurch_over = w.level_time()
+			if told < 0.0 and dream.is_attacking():
+				told = w.level_time()
+			if told >= 0.0 and lurch_over >= 0.0:
+				break
+		if turns:
+			check(told >= lurch_over - 0.001 and lurch_over > 0.0,
+				"%s: it holds its slash until the lurch is over (telegraph at %.2f s, the lurch over at %.2f s)"
+				% [tag, told, lurch_over])
+		else:
+			check(told >= 0.0 and told < lurch_over,
+				"%s: it slashes during the lurch, as before the rule (at %.2f s, the lurch over at %.2f s)" % [tag, told, lurch_over])
+		await sim.free_world(w)
+
+
 ## Runs the world for `seconds`, checking every frame that the Bad Dream (the first enemy) never
 ## telegraphs or slashes while another's major attack is on, and that no other enemy starts one while
 ## the Bad Dream chases. Returns the violations.
@@ -737,9 +825,11 @@ func _watch(w: RunWorld, enemies: Array, seconds: float) -> PackedStringArray:
 
 ## host_rules.gd over lane counts, seeds and difficulties: every chase fits before the end, chases
 ## never overlap, anti-grav pads come at most pad_gap_seconds apart through every chase, and the
-## ceilings keep GDD §3; deterministic and without warnings. With drones (in either order of
-## features) their pad schedule stays intact and covers the chases after the first drone; with
-## Octodogs their planned charges stay off every ceiling. Without ceilings, hosts are dropped.
+## ceilings keep GDD §3 (LayoutChecks.check_ceilings: the floor under a chase's ceilings keeps what it
+## holds, its pads can be stepped on, its landings are safe, a floor route runs under each);
+## deterministic and without warnings. With drones (in either order of features) their pad schedule
+## stays intact and covers the chases after the first drone; with Octodogs their planned charges stay
+## off every pad and ceiling landing. Without ceilings, hosts are dropped.
 func _test_generator() -> void:
 	var base: LevelConfig = load(LEVEL_PATH) as LevelConfig
 	var dt: DroneTuning = EnemyDirector.tuning_for("drone") as DroneTuning
@@ -773,7 +863,7 @@ func _test_generator() -> void:
 					check(JSON.stringify(a.to_dict()) == JSON.stringify(b.to_dict()), "same seed, same hosts and pads " + tag)
 					var n: int = _check_hosts(a, config, tag)
 					hosts += n
-					_check_ceilings(a, config, tag)
+					LayoutChecks.check_ceilings(self, a, config, tag)
 					if config.has_feature("drone"):
 						_check_drone_pads(a, config, dt, tag)
 						if n > 0 and HostRules.first_drone_at(a) < INF:
@@ -843,31 +933,6 @@ func _check_hosts(layout: LevelLayout, config: LevelConfig, tag: String) -> int:
 	return hosts.size()
 
 
-## GDD §3 for every ceiling: a pad under a hull, on solid floor; nothing on the floor beneath it; a
-## clear landing; all before the finish.
-func _check_ceilings(layout: LevelLayout, config: LevelConfig, tag: String) -> void:
-	var landing: float = config.hull_landing_seconds * tuning.run_speed
-	var finish: float = layout.length - config.end_clear_distance + 0.001
-	for p: Dictionary in layout.pads:
-		var covered: bool = false
-		for h: Dictionary in layout.hulls:
-			covered = covered or (float(h["start"]) <= float(p["at"]) - 1.0 and float(h["end"]) >= float(p["at"]) + 10.0)
-		check(covered, "pad at %.0f has a ceiling above %s" % [p["at"], tag])
-		check(not layout.gapped_between(int(p["lane"]), float(p["at"]) - 6.0, float(p["at"]) + tuning.pad_length),
-			"pad at %.0f is on solid floor %s" % [p["at"], tag])
-	for h: Dictionary in layout.hulls:
-		check(float(h["end"]) + landing <= finish, "ceiling and landing before the finish " + tag)
-		for g: Dictionary in layout.gaps:
-			check(float(g["start"]) > float(h["end"]) + landing * 0.8 or float(g["end"]) < float(h["start"]),
-				"no gap under a ceiling or on its landing " + tag)
-		for f: Dictionary in layout.fences:
-			check(float(f["at"]) < float(h["start"]) or float(f["at"]) > float(h["end"]), "no fence under a ceiling " + tag)
-		for e: Dictionary in layout.enemies:
-			if int(e.get("side", 0)) == 0 and LevelGenerator.enemy_uses_floor(e):
-				check(float(e["at"]) < float(h["start"]) or float(e["at"]) > float(h["end"]),
-					"no floor enemy under a ceiling (%s) %s" % [e["type"], tag])
-
-
 ## The drone rules (GDD §9.6) still hold with hosts about: at least 10 s of dodging before the first
 ## pad after each drone, then pads 8–10 s apart (the host rules add none after the first drone).
 func _check_drone_pads(layout: LevelLayout, config: LevelConfig, dt: DroneTuning, tag: String) -> void:
@@ -905,7 +970,8 @@ func _check_drone_pads(layout: LevelLayout, config: LevelConfig, dt: DroneTuning
 			"the drone's pads stay 8–10 s apart (%.2f s at %.0f m) %s" % [gap, pads[i], tag])
 
 
-## Planned Octodog charges stay clear of every ceiling, hosts' pads included. Returns the dog count.
+## Planned Octodog charges stay clear of every pad and ceiling landing, hosts' pads included. Returns
+## the dog count.
 func _check_dogs(layout: LevelLayout, config: LevelConfig, ot: OctodogTuning, tag: String) -> int:
 	var speed: float = tuning.run_speed
 	var window: float = ot.window_length(speed, config.enemy_scaling)
@@ -917,8 +983,8 @@ func _check_dogs(layout: LevelLayout, config: LevelConfig, ot: OctodogTuning, ta
 		n += 1
 		var at: Array = e["params"].get("charge_at", [])
 		for a: Variant in at:
-			check(Octodog.window_clear(layout, float(a), float(a) + window), "an Octodog charge stays clear of ceilings " + tag)
+			check(Octodog.window_clear(layout, float(a), float(a) + window), "an Octodog charge stays clear of pads and landings " + tag)
 		if not at.is_empty():
-			check(not Octodog.ceiling_between(layout, float(at[0]) - 6.0, float(at[-1]) + stop + 2.0),
-				"its whole run stays off ceiling sections " + tag)
+			check(not Octodog.pad_or_landing_between(layout, float(at[0]) - 6.0, float(at[-1]) + stop + 2.0),
+				"its whole run stays off pads and ceiling landings " + tag)
 	return n

@@ -7,6 +7,11 @@ script = ExtResource("1_level")
 id = &"gangland_1"
 display_name = "Scrapyard Streets"
 level_seed = 201
-duration_seconds = 120.0
+duration_seconds = 135.0
 difficulty_bias = 0.0
-features = PackedStringArray("ceilings", "pulsing", "cyborg", "hover_truck", "ramps", "screech", "generator")
+features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "screech", "ramps")
+guarantee_features = true
+feature_starts = Dictionary[String, float]({
+"ramps": 0.4,
+"screech": 0.1
+})

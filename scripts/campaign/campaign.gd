@@ -6,7 +6,9 @@ extends Resource
 ## from their position (GDD §6).
 
 @export var zones: Array[ZoneDef] = []
-## Difficulty of the first and last campaign levels; levels in between follow the curve.
+## DESIGN-TBD: difficulty of the first and last campaign levels; levels in between follow the curve,
+## so each level is slightly harder than the last (GDD §6). Levels add their difficulty_bias on top:
+## Golden 2's makes it the campaign's peak (GDD §5, proposed), with Golden 3 a little below it.
 @export_range(0.0, 1.0, 0.05) var difficulty_start: float = 0.1
 @export_range(0.0, 1.0, 0.05) var difficulty_end: float = 0.9
 ## Shapes the curve: 1 = linear, above 1 = gentle start and steeper end.
@@ -19,6 +21,10 @@ extends Resource
 @export var tier_names: PackedStringArray = PackedStringArray(["Normal", "Hard", "Insane"])
 @export var tier_difficulty_bonus: PackedFloat32Array = PackedFloat32Array([0.0, 0.15, 0.3])
 @export var tier_speed_multiplier: PackedFloat32Array = PackedFloat32Array([1.0, 1.1, 1.2])
+## The recency curve for every campaign level's pick weights (GDD §5, owner's review P2 13: a level's
+## newest things get the most picks): configure() gives each level's copy this curve and how many
+## levels ago the campaign introduced each of its features (LevelConfig.feature_ages).
+@export var feature_recency: FeatureRecency
 
 var _steps: Array[CampaignStep] = []
 
@@ -78,7 +84,8 @@ func tier_count() -> int:
 
 
 ## A copy of the step's level, ready to generate: lane count, difficulty (curve + bias + tier),
-## enemy scaling, and the zone's skin if the level has none.
+## enemy scaling, the zone's skin if the level has none, and the recency curve with its features'
+## ages (feature_ages).
 func configure(s: CampaignStep, lane_count: int, difficulty_tier: int = 0) -> LevelConfig:
 	var config: LevelConfig = s.level.duplicate() as LevelConfig
 	config.lane_count = lane_count
@@ -87,6 +94,49 @@ func configure(s: CampaignStep, lane_count: int, difficulty_tier: int = 0) -> Le
 	config.difficulty = clampf(curve_difficulty(s.level_index) + s.level.difficulty_bias + bonus, 0.0, 1.0)
 	config.enemy_scaling = level_progress(s.level_index)
 	if config.skin == null and s.zone.skin != null:
+		config.skin = s.zone.skin
+	config.feature_ages = feature_ages(s)
+	config.feature_recency = feature_recency
+	return config
+
+
+## How many levels ago the campaign introduced each of step `s`'s features: 0 for a feature `s`
+## introduces (the first level that lists it), 1 for one the level before introduced, and so on.
+## A feature left out of some levels in between (manhole screeches outside street zones) still
+## counts from its first level.
+func feature_ages(s: CampaignStep) -> Dictionary[String, int]:
+	var out: Dictionary[String, int] = {}
+	if s == null or s.level == null:
+		return out
+	for f: String in s.level.features:
+		out[f] = 0
+	for other: CampaignStep in steps():
+		if not other.is_level() or other.level_index >= s.level_index:
+			continue
+		for f: String in other.level.features:
+			if out.has(f):
+				out[f] = maxi(out[f], s.level_index - other.level_index)
+	return out
+
+
+## The boss step's arena, ready to plan (BossArena.base_config): lane count, the arena's own
+## difficulty plus the tier's bonus (bosses keep their own difficulty rather than the level curve),
+## enemy scaling as in the zone's last level (enemies a boss brings in fight like the zone's), and the
+## zone's skin unless the arena has its own.
+func configure_boss(s: CampaignStep, lane_count: int, difficulty_tier: int = 0) -> LevelConfig:
+	var config: LevelConfig = BossArena.base_config(s.boss)
+	config.lane_count = lane_count
+	var bonus: float = tier_difficulty_bonus[clampi(difficulty_tier, 0, tier_difficulty_bonus.size() - 1)] \
+		if not tier_difficulty_bonus.is_empty() else 0.0
+	config.difficulty = clampf(config.difficulty + bonus, 0.0, 1.0)
+	var last_level: int = 0
+	for other: CampaignStep in steps():
+		if other.index >= s.index:
+			break
+		if other.is_level():
+			last_level = other.level_index
+	config.enemy_scaling = level_progress(last_level)
+	if config.skin == null and s.zone != null and s.zone.skin != null:
 		config.skin = s.zone.skin
 	return config
 

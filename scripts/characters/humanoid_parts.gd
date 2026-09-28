@@ -2,7 +2,7 @@ class_name HumanoidParts
 extends Resource
 ## What a HumanoidRig is made of: skeleton proportions, the low-poly pieces on each segment, and
 ## named attachment sets (equipment, zone variants) that can be switched on and off. The player
-## (PlayerSuit) and later the enemy cyborgs share the rig and swap these parts (GDD §9.2: "one
+## (PlayerSuit) and the enemy cyborgs (CyborgSuit) share the rig and swap these parts (GDD §9.2: "one
 ## shared body and skeleton with swappable parts per zone").
 ##
 ## Units are metres at design scale; HumanoidRig scales the figure to whatever size it must fit.
@@ -41,6 +41,10 @@ const SEGMENTS: Array[StringName] = [&"pelvis", &"chest", &"neck", &"head", &"up
 ## Name → Array of HumanoidPiece. Merged into the segment meshes while switched on.
 @export var attachments: Dictionary = {}
 
+@export_group("Panels")
+## Stiff flaps hinged at the waist (a coat's skirt), swung by HumanoidRig. Empty for most looks.
+@export var panels: Array[HumanoidPanel] = []
+
 static var _mesh_cache: Dictionary = {}
 static var _support_cache: Dictionary = {}
 
@@ -67,6 +71,35 @@ func segment_mesh(segment: StringName, limb_side: int, active: Array[StringName]
 	return _mesh_cache[key]
 
 
+## Every panel merged into one mesh in the pelvis joint's space (one surface, drawn with the body
+## material; UV.y = panel index + 1). Its metadata: "points" (every vertex), "point_panels" (the
+## panel of each point), "triangles" and "body_surface" (0). Null without panels.
+func panel_mesh() -> ArrayMesh:
+	if panels.is_empty():
+		return null
+	var key: String = "%s|panels" % _key()
+	if not _mesh_cache.has(key):
+		var builder := HumanoidMeshBuilder.new()
+		var owners := PackedInt32Array()
+		for i: int in panels.size():
+			var panel: HumanoidPanel = panels[i]
+			var before: int = builder.vertices.size()
+			for piece: HumanoidPiece in panel.pieces:
+				builder.add_piece(piece, panel.side < 0, i + 1)
+			for v: int in builder.vertices.size() - before:
+				owners.append(i)
+		var mesh: ArrayMesh = null
+		if not builder.is_empty():
+			mesh = ArrayMesh.new()
+			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, builder.arrays())
+			mesh.set_meta(&"body_surface", 0)
+			mesh.set_meta(&"triangles", builder.triangle_count())
+			mesh.set_meta(&"points", builder.vertices)
+			mesh.set_meta(&"point_panels", owners)
+		_mesh_cache[key] = mesh
+	return _mesh_cache[key]
+
+
 ## A few extreme points of the bare segment (no attachments), for keeping the posed body on the
 ## ground cheaply: the lowest vertex of any pose is always close to one of these.
 func support_points(segment: StringName, limb_side: int) -> PackedVector3Array:
@@ -76,7 +109,7 @@ func support_points(segment: StringName, limb_side: int) -> PackedVector3Array:
 		var points := PackedVector3Array()
 		if mesh != null:
 			var all: PackedVector3Array = mesh.get_meta(&"points")
-			for dir: Vector3 in _support_directions():
+			for dir: Vector3 in support_directions():
 				var best: Vector3 = all[0]
 				for p: Vector3 in all:
 					if p.dot(dir) > best.dot(dir):
@@ -141,7 +174,8 @@ func _build_mesh(segment: StringName, limb_side: int, sets: Array) -> ArrayMesh:
 	return mesh
 
 
-static func _support_directions() -> Array[Vector3]:
+## The directions support points are picked along: the six axes and the eight diagonals.
+static func support_directions() -> Array[Vector3]:
 	var dirs: Array[Vector3] = [Vector3.UP, Vector3.DOWN, Vector3.LEFT, Vector3.RIGHT, Vector3.FORWARD, Vector3.BACK]
 	for x: float in [-1.0, 1.0]:
 		for y: float in [-1.0, 1.0]:

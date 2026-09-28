@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="ZoneDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/campaign/zone_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/core/level_config.gd" id="2_levelscript"]
+[ext_resource type="Resource" path="res://data/levels/corporate_1.tres" id="lvl_corporate_1"]
+[ext_resource type="Resource" path="res://data/levels/corporate_2.tres" id="lvl_corporate_2"]
+[ext_resource type="Resource" path="res://data/skins/corporate_skin.tres" id="skin"]
+[ext_resource type="Resource" path="res://data/cinematics/corporate_intro.tres" id="c_intro"]
+[ext_resource type="Resource" path="res://data/cinematics/corporate_outro.tres" id="c_outro"]
+[ext_resource type="Resource" path="res://data/bosses/corporate_boss.tres" id="boss"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"corporate"
+display_name = "Corporate"
+tagline = "Maglev roofs and sterile plazas, under corporate and military rule."
+music = &"corporate"
+skin = ExtResource("skin")
+levels = Array[ExtResource("2_levelscript")]([ExtResource("lvl_corporate_1"), ExtResource("lvl_corporate_2")])
+intro = ExtResource("c_intro")
+outro = ExtResource("c_outro")
+boss = ExtResource("boss")
+in_demo = false
+placeholder = false

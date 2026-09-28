@@ -41,6 +41,18 @@ const PAT_STRATA: int = 11
 const PAT_RUST: int = 12
 ## Salvaged billboard content: faded, torn posters and graffiti (UV in metres, param a whole-number seed).
 const PAT_POSTER: int = 13
+## Cast concrete (decks, slabs, fascias): form-board lines, joints, stains and streaks; param > 0 paints
+## graffiti over it (the share of slots painted, with the material's graffiti_pieces colours).
+const PAT_CONCRETE: int = 14
+## Painted crates and container doors with a stencilled marking (UV in metres, centred on the face);
+## param = stencil_param(kind, size, seed).
+const PAT_STENCIL: int = 15
+## PAT_STENCIL kinds: a military supply code, the corporate logo (kit_logo.gdshaderinc), and both on
+## corrugated container doors.
+const STENCIL_CODE: int = 0
+const STENCIL_LOGO: int = 1
+const STENCIL_CODE_CORRUGATED: int = 2
+const STENCIL_LOGO_CORRUGATED: int = 3
 
 ## Shapes of the additive glow shader (UV2.x); UV runs 0–1 over the card.
 const SHAPE_FLAT: int = 0    ## Even glow with soft edges.
@@ -53,6 +65,125 @@ const SHAPE_STREAK: int = 4  ## Soft horizontal streak.
 const DRIFT_ASH: int = 0
 const DRIFT_SCRAP: int = 1
 const DRIFT_STREAK: int = 2
+## A soft puff of smoke drifting low over the street (the Dead Zone's): big, faint and slow.
+const DRIFT_SMOKE: int = 3
+
+## Marketplace surface patterns of the solid kit shader (kit_market.gdshaderinc), ids 20-29.
+## Canvas roofs and awnings: UV 0-1 across the panel and along the stall; param = stripes (0 plain,
+## 1 along the track, 2 across it) + 4 * the stall's length in decimetres (0: no hem along its start).
+const PAT_CANVAS: int = 20
+## Corrugated tin: UV as for canvas; param = ribs (0 along the track, 1 across it) + 4 * the stall's
+## length in decimetres.
+const PAT_TIN: int = 21
+## Everything under the stall roofs, seen only through gaps, in deep shade (darkens COLOR): param 0
+## a face across the lane, 1 a face along it, 2 the market floor.
+const PAT_UNDER: int = 22
+## Stone flags (param 0, an overpass's walkway) or coffered soffit panels (param 1).
+const PAT_TILES: int = 23
+## A painted shop sign (UV in metres; param = seed 0-99 + 100 * the panel's height in decimetres).
+const PAT_SHOPSIGN: int = 24
+## An ad screen, glowing (UV.y 0-1 up the screen, UV.x in the same units; param a whole-number seed).
+const PAT_AD: int = 25
+## Rows of light bulbs on a dark panel, glowing (UV in metres).
+const PAT_BULBS: int = 26
+## Sun-bleached plaster.
+const PAT_STUCCO: int = 27
+## A whole row of market-stall roofs along one lane, laid out by the shader from world position
+## (UV.x 0-1 across the lane; param the lane's key, see MarketStalls).
+const PAT_STALLS: int = 28
+## Building machinery (UV in metres): param 0 a solar panel, 1 an air-conditioning unit's front,
+## 2 brushed metal with seams.
+const PAT_TECH: int = 29
+
+## Corporate surface patterns of the solid kit shader (kit_corporate.gdshaderinc), ids 30-39.
+## A maglev carriage's roof: UV.x -1 to 1 across it, UV.y metres from the carriage's start; param =
+## style (0 corporate express, 1 military freight) + 4 * painted brand mark + 8 * seed (0-63) + 512 * the
+## carriage's length in decimetres.
+const PAT_CORP_ROOF: int = 30
+## Everything below the running surface, in deep shade darkening with depth (darkens COLOR): param 0 a
+## face across the lane, 1 a face along it, 2 the trench's floor, 3 a guideway beam or pier.
+const PAT_CORP_UNDER: int = 31
+## A plaza's paving (world xz; UV.x -1 to 1 across the lane, param flags a steel edge strip on its left
+## (1) and right (2) edge).
+const PAT_CORP_PAVING: int = 32
+## Plating (world position): param 0 a soffit, 1 military armour, 2 brushed steel, 3 precast concrete.
+const PAT_CORP_PLATE: int = 33
+## A corporate screen, glowing (UV.y 0-1 up the screen, UV.x in the same units; param a whole-number
+## seed picks the ad).
+const PAT_CORP_AD: int = 34
+## The brand's mark (kit_logo.gdshaderinc) on a panel, UV in logo space (the mark spans about -0.78 to
+## 0.78): param 0 the mark in COLOR on a dark panel, 1 cold white on a COLOR ground, 2 COLOR painted on
+## steel, 3 pale paint on a COLOR ground.
+const PAT_CORP_LOGO: int = 35
+## A banner hanging down a tower (UV in metres, x across from its left edge, y down from its top;
+## param = seed + 100 * its width in decimetres).
+const PAT_CORP_BANNER: int = 36
+## A glass wall with a lit corridor behind it (UV in metres, y up from the corridor's floor; param =
+## the corridor's height in decimetres).
+const PAT_CORP_GLASS: int = 37
+
+## Dead Zone surface patterns of the solid kit shader (kit_dead_zone.gdshaderinc), ids 40-49. Nothing
+## glows but PAT_DZ_TOWER's rare embers: give the other patterns' vertices COLOR.a = 0.
+## The rubble street: road plates under pale ash, scattered rubble, worn lane lines (UV.x -1 to 1
+## across the lane; param flags a lane line on its left (1) and right (2) edge, and a gutter (4)).
+const PAT_DZ_STREET: int = 40
+## Everything below the street, seen only through holes: deep shade darkening with depth (darkens
+## COLOR): param 0 a face across the lane, 1 a face along it, 2 the void's floor.
+const PAT_DZ_UNDER: int = 41
+## A burnt-out tower's face (UV: metres along it, world height): param = dz_tower_param(); COLOR.a
+## above 0 lets the rare ember high up glow (at most that much).
+const PAT_DZ_TOWER: int = 42
+## Charred concrete: param 0 a wall or deck, 1 an underside ridden upside down, 2 a heap of rubble.
+const PAT_DZ_CONCRETE: int = 43
+## Scorched steel: param 0 plain, 1 corrugated.
+const PAT_DZ_STEEL: int = 44
+## A dead billboard or screen, never glowing (UV in metres, as seen from the street): param = seed
+## (0-99) + 100 * kind (DZ_BOARD_POSTER, DZ_BOARD_SCREEN).
+const PAT_DZ_BOARD: int = 45
+## The cult's emblem scorched and half-gone, unlit (the material's cult_emblem texture): UV in emblem
+## space as for PAT_CULT_MARK, COLOR the mark's paint, param a seed for the burn.
+const PAT_DZ_MARK: int = 46
+## PAT_DZ_BOARD's kinds.
+const DZ_BOARD_POSTER: int = 0
+const DZ_BOARD_SCREEN: int = 1
+
+## Golden Zone surface patterns of the solid kit shader (kit_golden.gdshaderinc), ids 50-59. None of
+## them glows (gold is reflective metal, never neon, GDD §5): give their vertices COLOR.a = 0.
+## Reflective gold, lit as polished metal (param: polish, 0 satin to 1 a mirror finish).
+const PAT_GOLD: int = 50
+## A golden walkway along one lane: UV.x metres across from its left edge (UV.y metres along); param =
+## walkway_param(): joints to the neighbouring walkways, a medallion, the lane's width.
+const PAT_WALKWAY: int = 51
+## Polished white and cream marble (param 1: smaller blocks).
+const PAT_MARBLE: int = 52
+## Everything under the walkways, seen only through gaps: deep shade darkening with depth.
+const PAT_UNDERDECK: int = 53
+## The canal far below the walkways: dark water flowing toward the player.
+const PAT_CANAL: int = 54
+## Falling water (scenery): UV.x metres across the sheet, UV.y 0 at the lip to 1 at the foot; param 1
+## a thin jet without foam.
+const PAT_WATER: int = 55
+## The cult's emblem shown openly, polished gold meeting at its red stone, embossed (the material's
+## cult_emblem texture): UV in emblem space as for PAT_CULT_MARK; param 0 on red cloth, 1 on stone.
+const PAT_EMBLEM: int = 56
+## A gilded coffered underside (bridges, archways): param = the coffers' length along the track (m).
+const PAT_COFFER: int = 57
+## Red cloth with gold trims and a fringed hem: UV.x 0-1 across, UV.y metres up from the hem; param =
+## the cloth's width in centimetres.
+const PAT_CLOTH: int = 58
+## A boutique's board, a hazard sign's content: UV in metres; param = seed (0-99) + 100 * the board's
+## height in decimetres.
+const PAT_BOUTIQUE: int = 59
+## PAT_WALKWAY's flags.
+const WALKWAY_JOINT_LEFT: int = 1
+const WALKWAY_JOINT_RIGHT: int = 2
+const WALKWAY_MEDALLION: int = 4
+
+## The cult's patterns of the solid kit shader (kit_cult.gdshaderinc), ids 60-69.
+## The cult's emblem (the material's cult_emblem texture) on a dark panel, for logos and ads: UV is
+## emblem space (the mark's square spans -1 to 1; a wider range leaves a clear margin), the mark in
+## COLOR.rgb, glowing at COLOR.a (warm-white neon) or unlit at 0. It fades out below about 24 pixels.
+const PAT_CULT_MARK: int = 60
 
 const SHADER_DIR: String = "res://scripts/world/meshes/shaders/"
 
@@ -89,6 +220,25 @@ static func pick(values: Array, a: int, b: int = 0, c: int = 0) -> Variant:
 ## A stable integer key for a track distance or a position (to hash on), at centimetre precision.
 static func key(value: float) -> int:
 	return roundi(value * 100.0)
+
+
+## The PAT_STENCIL parameter: `kind` (STENCIL_*), a marking 0.3 m tall per `size` step (0-3, 0.3 to
+## 1.2 m), a `seed` (0-15) that picks the code's glyphs, and `emblem`: the cult's emblem, small and
+## unlit, beside the code or the logo (only where the material has the kit shader's cult_emblem
+## texture).
+static func stencil_param(kind: int, size: int, seed: int, emblem: bool = false) -> float:
+	return float(kind + 4 * clampi(size, 0, 3) + 16 * posmod(seed, 16) + (256 if emblem else 0))
+
+
+## The PAT_DZ_TOWER parameter: a window `style` (0-3, the City's: office glass, punched windows,
+## ribbon windows, tall slots) and a whole-number `seed` (0-999).
+static func dz_tower_param(style: int, seed: int) -> float:
+	return float(posmod(style, 4) + 4 * posmod(seed, 1000))
+
+
+## The PAT_WALKWAY parameter: `flags` (WALKWAY_*) and the lane's width in metres (to the centimetre).
+static func walkway_param(flags: int, width: float) -> float:
+	return float((flags & 7) + 8 * roundi(width * 100.0))
 
 
 # --- Unit templates ------------------------------------------------------------
@@ -519,14 +669,16 @@ static func finish_gate(batch: MeshBatch, solid_material: Material, glow_materia
 
 ## The far end of a ceiling (hull-local: underside at y = 0, the end at z = zf, `band` deep): a band
 ## of the orange edge glow with amber lights along it and a glow below, so the drop back to the floor
-## reads like a gap edge in every zone.
-static func ceiling_end(s: MeshLayer, g: MeshLayer, half_width: float, zf: float, band: float, color: Color) -> void:
-	s.rect(Vector3(-half_width, 0, zf), Vector3(half_width * 2.0, 0, 0), Vector3(0, 0, band), color, 0.33)
-	var lx: float = -half_width + 0.6
-	while lx < half_width - 0.3:
+## reads like a gap edge in every zone. The band spans half_width to each side of center_x.
+static func ceiling_end(s: MeshLayer, g: MeshLayer, half_width: float, zf: float, band: float, color: Color,
+		center_x: float = 0.0) -> void:
+	var x0: float = center_x - half_width
+	s.rect(Vector3(x0, 0, zf), Vector3(half_width * 2.0, 0, 0), Vector3(0, 0, band), color, 0.33)
+	var lx: float = x0 + 0.6
+	while lx < center_x + half_width - 0.3:
 		s.box(Vector3(lx, -0.025, zf + 0.25), Vector3(0.35, 0.05, 0.2), color, 0.6, PAT_PLAIN, ALL_FACES & ~FACE_PY)
 		lx += 1.2
-	g.rect(Vector3(-half_width, -0.05, zf + band + 1.5), Vector3(half_width * 2.0, 0, 0), Vector3(0, 0, -(band + 3.0)),
+	g.rect(Vector3(x0, -0.05, zf + band + 1.5), Vector3(half_width * 2.0, 0, 0), Vector3(0, 0, -(band + 3.0)),
 		color, 0.35, SHAPE_RADIAL)
 
 
@@ -612,18 +764,19 @@ static func facade_strip(layer: MeshLayer, side: int, x: float, us: PackedFloat3
 ## Drifting ash, paper scraps and speed streaks over the track between two distances, for a
 ## drift.gdshader material whose slice_length is `slice`. Every slice of the track gets the same
 ## cached set (it can't be seen repeating: particles fade out long before the next slice), so a
-## chunk costs a few bulk appends. Particles stay within ±half_width, from 0.4 m up to top_y.
-## `colors` holds the ash, scrap and streak colours (alpha = opacity).
+## chunk costs a few bulk appends. Particles stay within ±half_width, from 0.4 m up to top_y (streaks
+## and smoke no higher than 4.5 m). `colors` holds the ash, scrap and streak colours (alpha =
+## opacity), and a fourth for `smoke` puffs of smoke (none unless it's given).
 static func drift_particles(layer: MeshLayer, start: float, end: float, slice: float, half_width: float, top_y: float,
-		ash: int, scraps: int, streaks: int, colors: PackedColorArray) -> void:
-	var id: String = "drift_%s_%s_%s_%d_%d_%d_%s" % [slice, half_width, top_y, ash, scraps, streaks, colors]
+		ash: int, scraps: int, streaks: int, colors: PackedColorArray, smoke: int = 0) -> void:
+	var id: String = "drift_%s_%s_%s_%d_%d_%d_%s_%d" % [slice, half_width, top_y, ash, scraps, streaks, colors, smoke]
 	var template: MeshLayer = _templates.get(id)
 	if template == null:
 		template = MeshLayer.new()
-		var counts: Array[int] = [ash, scraps, streaks]
+		var counts: Array[int] = [ash, scraps, streaks, smoke if colors.size() > DRIFT_SMOKE else 0]
 		var n: int = 0
-		for kind: int in [DRIFT_ASH, DRIFT_SCRAP, DRIFT_STREAK]:
-			var y_max: float = top_y if kind != DRIFT_STREAK else minf(top_y, 4.5)
+		for kind: int in [DRIFT_ASH, DRIFT_SCRAP, DRIFT_STREAK, DRIFT_SMOKE]:
+			var y_max: float = top_y if kind == DRIFT_ASH or kind == DRIFT_SCRAP else minf(top_y, 4.5)
 			for i: int in counts[kind]:
 				var at := Vector3(lerpf(-half_width, half_width, hash01(n, kind, 71)), lerpf(0.4, y_max, hash01(n, kind, 72)), 0)
 				_billboard(template, at, colors[kind], kind, hash01(n, kind, 73))

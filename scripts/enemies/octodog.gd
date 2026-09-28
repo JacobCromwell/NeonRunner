@@ -22,16 +22,31 @@ extends Enemy
 ## player distances where each wind-up may start) so no charge lands on an unavoidable obstacle.
 ## Before each wind-up the dog checks the stretch again and waits (runs ahead of the player) while
 ## it isn't clear. Spawned without a plan (tests, quick experiments), it plans for itself.
+##
+## Its charge sequence is a big attack (GDD §9, is_major_attack_active). Its first wind-up waits
+## while another enemy's big attack is on (EnemyDirector.major_attack_blocked): the dog keeps pacing
+## in position, and if it's waiting for its turn (GDD §9, not the Bad Dream's chase, GDD §9.7, which
+## it runs off from) its planned charges move on with the player. Once held, it asks for its turn
+## every frame until its turn comes, clear stretch ahead or not; and if the wait made it miss its
+## planned stretch, its charges keep moving on until the stretch ahead is clear again, so the wait
+## never costs it its charges. Both together last up to turn_wait_max (_moves_on).
 
 enum Phase { IDLE, WINDUP, LUNGE, TURN, SPRINT, PACE, GIVE_UP, LEAVE, FALLING }
+## The director's answer to its first wind-up's ask (EnemyDirector.major_attack_blocked), asked at
+## most once a frame: not asked yet this frame, free to go, held for another type's turn (GDD §9), or
+## held by an exclusive attack (the Bad Dream's chase, GDD §9.7).
+enum TurnAnswer { NOT_ASKED, FREE, HELD_FOR_TURN, HELD_EXCLUSIVE }
 
 const BODY_SIZE := Vector3(0.78, 0.72, 0.9)
 const TOP_SIZE := Vector3(0.84, 0.24, 0.96)
 const PHASE_NAMES: PackedStringArray = ["idle", "windup", "lunge", "turn", "sprint", "pace", "give_up", "leave", "falling"]
-## ceiling_between(): metres kept clear before a ceiling section (and around a pad), and after one
-## for a player dropping off it to land.
+## pad_or_landing_between(): metres kept clear around an anti-grav pad, and after a ceiling section's
+## end for a player dropping off it to land (at least its landing zone, CeilingZones).
 const CEILING_LEAD: float = 6.0
 const CEILING_LANDING: float = 25.0
+## charge_clear(): metres kept clear of other enemies before and after a charge's stretch.
+const OTHER_ENEMY_BEFORE: float = 5.0
+const OTHER_ENEMY_MARGIN: float = 25.0
 
 var phase: Phase = Phase.IDLE
 ## Charges planned for this dog, and lunges made so far.
@@ -62,6 +77,12 @@ var _fall_v: float = 0.0
 var _yaw: float = PI
 var _hitboxes_on: bool = true
 var _pace_since: float = 0.0
+## Big attacks take turns (GDD §9): this frame's answer to its first wind-up's ask for its turn
+## (_ask_turn), how long its planned charges have moved on with the player so far (seconds), and how
+## far (m).
+var _turn_answer: TurnAnswer = TurnAnswer.NOT_ASKED
+var _turn_waited: float = 0.0
+var _turn_shift: float = 0.0
 var _doghouse_key: String = ""
 var _telegraph_base := Transform3D.IDENTITY
 
@@ -148,9 +169,10 @@ func _tick(delta: float) -> void:
 	var v: float = maxf(player.speed, 1.0)
 	var rel: float = _d - pd
 	_phase_time += delta
+	_turn_answer = TurnAnswer.NOT_ASKED
 	match phase:
 		Phase.IDLE:
-			_idle(rel, v)
+			_idle(delta, rel, v)
 		Phase.WINDUP:
 			if _phase_time >= _t.windup_time(_scaling):
 				_start_lunge()
@@ -177,7 +199,7 @@ func _set_phase(next: Phase) -> void:
 	history.append([PHASE_NAMES[next], world.player.distance])
 
 
-func _idle(rel: float, v: float) -> void:
+func _idle(delta: float, rel: float, v: float) -> void:
 	if in_doghouse and rel <= maxf(_t.appear_distance, _t.stop_distance(v, _scaling) + 10.0):
 		_burst_out_of_doghouse()
 	if rel > _t.stop_distance(v, _scaling):
@@ -185,26 +207,82 @@ func _idle(rel: float, v: float) -> void:
 	if _can_wind_up(v):
 		_start_windup()
 	else:
+		if _turn_answer == TurnAnswer.HELD_FOR_TURN:
+			# Held for another type's turn at its planned moment: its wait starts here (_pace).
+			_wait_a_frame(delta)
 		# Not a clear moment: run ahead and wait for one rather than stand in the way.
 		_set_phase(Phase.SPRINT)
 
 
-## Whether a wind-up may start now: a charge left, the player on the floor or a wall, and the stretch
-## they'll run through until the lunge has passed them free of other obstacles.
+## Whether a wind-up may start now: a charge left, the player on the floor or a wall, the stretch
+## they'll run through until the lunge has passed them free of other obstacles (with the planner's
+## margins and before the level's end-clear stretch too, for charges a wait for its turn moved on),
+## and, for a sequence's first, no other enemy's big attack on (EnemyDirector.major_attack_blocked,
+## asked last, once the charge is otherwise ready).
 func _can_wind_up(v: float) -> bool:
 	var player: Player = world.player
 	if charges_done >= charges or not player.alive or player.surface == Player.Surface.CEILING:
 		return false
 	if world.layout.gapped_between(_lane_at(_x), _d - 0.6, _d + 0.6):
 		return false  # never winds up standing over a hole
-	if charges_done == 0 and world.director.major_attack_blocked(self):
-		return false  # GDD §9.7: no new charge sequence while the Cyborg's Bad Dream chases
 	var from: float = player.distance
-	return window_clear(world.layout, from, from + _t.window_length(v, _scaling))
+	var window: float = _t.window_length(v, _scaling)
+	if not window_clear(world.layout, from, from + window):
+		return false
+	if _turn_shift > 0.0 and (not charge_clear(world.layout, from, window) or from + window > _last_window_end()):
+		return false
+	# GDD §9.7: no new charge sequence while the Cyborg's Bad Dream chases; GDD §9: nor while another
+	# type's big attack is on (it waits for its turn, _pace).
+	return charges_done > 0 or _ask_turn() == TurnAnswer.FREE
 
 
-## GDD §9.7: its charge sequence, from its first wind-up until it gives up, is a major attack: the
-## Cyborg's Bad Dream never slashes during one (EnemyDirector.major_attack_blocked).
+## Its sequence's first wind-up asks the director for its turn (EnemyDirector.major_attack_blocked),
+## at most once a frame; the answer holds for the rest of the frame.
+func _ask_turn() -> TurnAnswer:
+	if _turn_answer == TurnAnswer.NOT_ASKED:
+		if not world.director.major_attack_blocked(self):
+			_turn_answer = TurnAnswer.FREE
+		elif world.director.held_for_turn(self):
+			_turn_answer = TurnAnswer.HELD_FOR_TURN
+		else:
+			_turn_answer = TurnAnswer.HELD_EXCLUSIVE
+	return _turn_answer
+
+
+## The track distance a charge's stretch must end by: the level's end-clear stretch starts there.
+func _last_window_end() -> float:
+	return world.layout.length - (world.config.end_clear_distance if world.config != null else 0.0)
+
+
+## GDD §9: whether its planned charges move on with the player this frame, instead of charge_slack
+## running out: while its first wind-up is held for another type's turn, and once that wait has made
+## it miss its planned stretch, until the stretch ahead is clear again (charge_clear, with the
+## planner's margins, before the end-clear stretch). Once held, it keeps asking for its turn every
+## frame (EnemyDirector: until the answer is false), stretch clear or not, so a new wait counts
+## and the Bad Dream's chase still stops it (it runs off once charge_slack runs out). The wait and the
+## moving on share turn_wait_max (_pace). Never before its first wait, and never for later charges.
+func _moves_on(v: float) -> bool:
+	if charges_done > 0:
+		return false
+	if _turn_answer == TurnAnswer.HELD_FOR_TURN:
+		return true
+	if _turn_shift <= 0.0 or not world.player.alive:
+		return false
+	match _ask_turn():
+		TurnAnswer.HELD_FOR_TURN:
+			return true
+		TurnAnswer.HELD_EXCLUSIVE:
+			return false
+	var from: float = world.player.distance
+	var window: float = _t.window_length(v, _scaling)
+	return not charge_clear(world.layout, from, window) and from + window <= _last_window_end()
+
+
+## GDD §9, §9.7: its charge sequence, from its first wind-up until it gives up, is a big attack: the
+## Cyborg's Bad Dream never slashes during one, and while big attacks take turns no other type's
+## starts (EnemyDirector.major_attack_blocked). Its first wind-up waits for its turn; the rest of the
+## sequence follows without asking. DESIGN-TBD (docs/questions/r3.md): the whole sequence is one big
+## attack, so no other type attacks between its charges either.
 func is_major_attack_active() -> bool:
 	if not alive or phase in [Phase.IDLE, Phase.GIVE_UP, Phase.LEAVE, Phase.FALLING]:
 		return false
@@ -248,17 +326,18 @@ func _lunge(delta: float, pd: float) -> void:
 			_set_hitboxes(false)
 
 
-## Whether another charge can come: the next planned point (or, unplanned, the stretch ahead) has
-## no ceiling section and fits before the level ends.
+## Whether another charge can come: the stretch to the next planned point (or, unplanned, the
+## stretch ahead) has no anti-grav pad or ceiling landing (the player may take the pad or drop back
+## there) and fits before the level ends.
 func _next_charge_possible() -> bool:
 	var pd: float = world.player.distance
 	var v: float = maxf(world.player.speed, 1.0)
 	var until: float = pd + _t.cycle_distance(v, _scaling) + _t.stop_distance(v, _scaling) + 10.0
 	if charges_done < _anchors.size():
-		until = _anchors[charges_done] + _t.window_length(v, _scaling) + _t.stop_distance(v, _scaling)
+		until = _anchors[charges_done] + _turn_shift + _t.window_length(v, _scaling) + _t.stop_distance(v, _scaling)
 	if until > world.layout.length - 10.0:
 		return false
-	return not ceiling_between(world.layout, pd, until)
+	return not pad_or_landing_between(world.layout, pd, until)
 
 
 func _turn(delta: float) -> void:
@@ -289,14 +368,33 @@ func _pace(delta: float, rel: float, v: float) -> void:
 	var lane: int = _windup_lane()
 	_step_toward(lane, delta)
 	var pd: float = world.player.distance
-	var anchor: float = _anchors[charges_done] if charges_done < _anchors.size() else _pace_since
+	var anchor: float = _charge_point()
 	var in_place: bool = absf(rel - want) < 1.5 and absf(_x - world.geo.lane_x(lane)) < 0.25
 	if pd >= anchor and in_place and _can_wind_up(v):
 		_start_windup()
+	elif _turn_waited < _t.turn_wait_max and _moves_on(v):
+		# GDD §9: waiting for its turn (and then for the clear stretch the wait made it miss), it keeps
+		# pacing in position, and its planned charges move on with the player (the whole sequence
+		# waits), for up to turn_wait_max.
+		_wait_a_frame(delta)
 	elif pd > anchor + _t.charge_slack or not world.player.alive:
 		# No clear moment came: it gives up and runs off.
 		_set_phase(Phase.LEAVE)
 		_set_hitboxes(false)
+
+
+## One frame of its wait for its turn (GDD §9): its planned charges move on with the player.
+func _wait_a_frame(delta: float) -> void:
+	_turn_waited += delta
+	_turn_shift += world.player.speed * delta
+
+
+## Where the current charge's wind-up may start (a player distance): its planned point, or where it
+## got into position if it has no plan, moved on by its wait for its turn (the first charge's).
+func _charge_point() -> float:
+	if charges_done < _anchors.size():
+		return _anchors[charges_done] + _turn_shift
+	return _pace_since + (_turn_shift if charges_done == 0 else 0.0)
 
 
 ## The lane to charge from: the player's, or one beside it for a diagonal lunge (seeded), never
@@ -507,13 +605,15 @@ func hit_radius() -> float:
 # --- Layout checks (shared with octodog_rules.gd) ---------------------------------------------
 
 ## True if a charge may happen while the player runs from `from` to `to`: no fence (unless an EMP
-## switched it off), no ceiling section or anti-grav pad, and holes in at most one lane (a single
-## hole can be switched away from or jumped, and may be the bait for a gap kill).
+## switched it off), no anti-grav pad or ceiling landing (pad_or_landing_between), and holes in at
+## most one lane (a single hole can be switched away from or jumped, and may be the bait for a gap
+## kill). The floor under a ceiling is fair game (GDD §3): a floor runner can be charged there, a
+## player riding the ceiling above can't (_can_wind_up).
 static func window_clear(layout: LevelLayout, from: float, to: float) -> bool:
 	for f: Dictionary in layout.fences:
 		if float(f["at"]) >= from - 1.0 and float(f["at"]) <= to and not f.get("disabled", false):
 			return false
-	if ceiling_between(layout, from, to):
+	if pad_or_landing_between(layout, from, to):
 		return false
 	var holed: Dictionary = {}
 	for g: Dictionary in layout.gaps:
@@ -522,10 +622,27 @@ static func window_clear(layout: LevelLayout, from: float, to: float) -> bool:
 	return holed.size() <= 1
 
 
-## True if a ceiling section (with its lead-in and landing) or an anti-grav pad touches [from, to].
-static func ceiling_between(layout: LevelLayout, from: float, to: float) -> bool:
+## True if the generator may plan a charge whose wind-up starts with the player at `from`: the stretch
+## the player runs through until the lunge has passed them (`window` metres) is clear (window_clear)
+## and no enemy but a dog stands near it (octodog_rules.gd). A charge that a wait for its turn moved
+## off its planned point needs the same (_can_wind_up).
+static func charge_clear(layout: LevelLayout, from: float, window: float) -> bool:
+	if not window_clear(layout, from, from + window):
+		return false
+	for other: Dictionary in layout.enemies:
+		var d: float = float(other["at"])
+		if String(other["type"]) != "octodog" and d >= from - OTHER_ENEMY_BEFORE \
+				and d <= from + window + OTHER_ENEMY_MARGIN:
+			return false
+	return true
+
+
+## True if an anti-grav pad (CEILING_LEAD around it) or where the player lands after a ceiling
+## section (CEILING_LANDING past its end) touches [from, to]: a charge never meets a player stepping
+## onto a pad or dropping back to the floor.
+static func pad_or_landing_between(layout: LevelLayout, from: float, to: float) -> bool:
 	for h: Dictionary in layout.hulls:
-		if float(h["start"]) - CEILING_LEAD <= to and float(h["end"]) + CEILING_LANDING >= from:
+		if float(h["end"]) <= to and float(h["end"]) + CEILING_LANDING >= from:
 			return true
 	for p: Dictionary in layout.pads:
 		if float(p["at"]) >= from - CEILING_LEAD and float(p["at"]) <= to + CEILING_LEAD:

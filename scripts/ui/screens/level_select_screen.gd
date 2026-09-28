@@ -1,8 +1,9 @@
 class_name LevelSelectScreen
 extends ScreenBase
 ## The campaign map (GDD §6): every zone in order. A built zone shows its steps as tiles: cinematic
-## slots, levels (stars and best score for the chosen difficulty tier) and the boss slot. Steps not
-## reached yet are locked; in the web demo, steps past its zone lead to the "full game" screen.
+## slots, levels (stars and best score for the chosen difficulty tier) and the boss (once built, its
+## stars, best score and best time too, GDD §10). Steps not reached yet are locked; in the web demo,
+## steps past its zone lead to the "full game" screen.
 ## Zones not designed yet show as "coming soon". Once a harder tier is unlocked, a selector picks
 ## the tier the tiles show and play.
 
@@ -14,6 +15,7 @@ var tier: int = 0
 var tiles: Dictionary = {}
 var tier_buttons: Array[NeonButton] = []
 var _zones: VBoxContainer
+var _scroll: ScrollContainer
 
 
 func _ready() -> void:
@@ -22,15 +24,15 @@ func _ready() -> void:
 	tier = clampi(chosen_tier, 0, App.profile.unlocked_tier)
 	if App.profile.unlocked_tier > 0:
 		_build_tier_selector()
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.follow_focus = true
-	content.add_child(scroll)
+	_scroll = ScrollContainer.new()
+	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.follow_focus = true
+	content.add_child(_scroll)
 	_zones = VBoxContainer.new()
 	_zones.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_zones.add_theme_constant_override(&"separation", roundi(UiTheme.px(14)))
-	scroll.add_child(_zones)
+	_scroll.add_child(_zones)
 	_build_zones()
 
 
@@ -63,14 +65,18 @@ func _build_zones() -> void:
 		child.queue_free()
 	tiles.clear()
 	var steps: Array[CampaignStep] = App.campaign.steps()
-	var coming := HFlowContainer.new()
+	# Zones still to be designed share one row of "coming soon" cards after the built ones (made only
+	# when there is one: a node never added to the tree would leak).
+	var coming: HFlowContainer = null
 	for zi: int in App.campaign.zones.size():
 		var zone: ZoneDef = App.campaign.zones[zi]
 		if zone.placeholder or zone.levels.is_empty():
+			if coming == null:
+				coming = HFlowContainer.new()
 			coming.add_child(_coming_soon_card(zone, zi))
 		else:
 			_zones.add_child(_zone_section(zone, zi, steps))
-	if coming.get_child_count() > 0:
+	if coming != null:
 		_zones.add_child(coming)
 	# Focus the next step to play (or the first open one).
 	var next: CampaignStep = App.next_unfinished_step(tier)
@@ -84,6 +90,21 @@ func _build_zones() -> void:
 	initial_focus = target
 	if is_node_ready():
 		focus_initial.call_deferred()
+	_scroll_into_view(target)
+
+
+## Scrolls the list to `target` once the tiles have their layout, `frames` frames from now:
+## follow_focus can't scroll to controls laid out in the same frame, and six zones make a list
+## several screens long, so a player deep in the campaign would otherwise open it at the top with the
+## focused step out of sight. (A one-shot connection rather than an await: it simply drops if the
+## screen is freed first.)
+func _scroll_into_view(target: Control, frames: int = 2) -> void:
+	if target == null or not is_inside_tree():
+		return
+	if frames > 0:
+		get_tree().process_frame.connect(_scroll_into_view.bind(target, frames - 1), CONNECT_ONE_SHOT)
+	elif is_instance_valid(target) and target.is_inside_tree():
+		_scroll.ensure_control_visible(target)
 
 
 func _zone_section(zone: ZoneDef, zi: int, steps: Array[CampaignStep]) -> Control:
@@ -116,12 +137,13 @@ func _zone_section(zone: ZoneDef, zi: int, steps: Array[CampaignStep]) -> Contro
 	return panel
 
 
-## Stars earned in the zone out of the most possible, on the chosen tier.
+## Stars earned in the zone out of the most possible, on the chosen tier: its levels', and its boss's
+## once the fight is built (a placeholder slot gives none).
 func _zone_stars(zone: ZoneDef, steps: Array[CampaignStep]) -> Control:
 	var earned: int = 0
 	var most: int = 0
 	for s: CampaignStep in steps:
-		if s.zone == zone and s.is_level():
+		if s.zone == zone and (s.is_level() or LevelSelectScreen.has_boss_record(s)):
 			earned += App.profile.stars(s.id, tier)
 			most += 3
 	var row := HBoxContainer.new()
@@ -143,10 +165,13 @@ func _step_tile(s: CampaignStep) -> TileButton:
 		CampaignStep.Kind.LEVEL:
 			_fill_level(tile, s, done, locked)
 		CampaignStep.Kind.BOSS:
-			tile.custom_minimum_size.x = UiTheme.px(156)
-			tile.content.add_child(_centered_icon(&"boss", 36, UiTheme.style().danger if not locked else UiTheme.style().text_disabled))
-			tile.add_label("BOSS", UiTheme.SUBHEADING)
-			tile.add_label(s.title(), UiTheme.CAPTION)
+			if LevelSelectScreen.has_boss_record(s):
+				_fill_boss(tile, s, done, locked)
+			else:
+				tile.custom_minimum_size.x = UiTheme.px(156)
+				tile.content.add_child(_centered_icon(&"boss", 36, UiTheme.style().danger if not locked else UiTheme.style().text_disabled))
+				tile.add_label("BOSS", UiTheme.SUBHEADING)
+				tile.add_label(s.title(), UiTheme.CAPTION)
 		CampaignStep.Kind.CINEMATIC:
 			tile.custom_minimum_size.x = UiTheme.px(112)
 			tile.content.add_child(_centered_icon(&"film", 28, UiTheme.style().text_dim))
@@ -156,7 +181,7 @@ func _step_tile(s: CampaignStep) -> TileButton:
 		tile.content.add_child(_badge(&"store", "FULL GAME", UiTheme.style().accent_2))
 	elif locked:
 		tile.content.add_child(_badge(&"lock", "LOCKED", UiTheme.style().text_dim))
-	elif done and not s.is_level():
+	elif done and not s.is_level() and not LevelSelectScreen.has_boss_record(s):
 		tile.content.add_child(_badge(&"check", "DONE", UiTheme.style().accent))
 	tile.disabled = locked
 	if locked:
@@ -192,6 +217,50 @@ func _fill_level(tile: TileButton, s: CampaignStep, done: bool, locked: bool) ->
 		tile.add_label("BEST %s" % UiTheme.format_int(best), UiTheme.CAPTION, HORIZONTAL_ALIGNMENT_LEFT)
 	elif int(record.get("attempts", 0)) > 0:
 		tile.add_label("NOT CLEARED", UiTheme.CAPTION, HORIZONTAL_ALIGNMENT_LEFT)
+	else:
+		tile.add_label("NEW", UiTheme.ACCENT_CAPTION, HORIZONTAL_ALIGNMENT_LEFT)
+
+
+## True for a boss step whose fight is built: it keeps records like a level (stars, best score, best
+## time). A placeholder slot doesn't.
+static func has_boss_record(s: CampaignStep) -> bool:
+	return s.kind == CampaignStep.Kind.BOSS and s.boss != null and s.boss.is_built()
+
+
+## A built boss's tile: the boss icon and its stars on top, its name, then its best score and best
+## time once beaten (GDD §10: bosses have stars like levels, and par times for them).
+func _fill_boss(tile: TileButton, s: CampaignStep, done: bool, locked: bool) -> void:
+	tile.custom_minimum_size.x = UiTheme.px(210)
+	var record: Dictionary = App.profile.record(s.id, tier)
+	var top := HBoxContainer.new()
+	tile.content.add_child(top)
+	var icon := NeonIcon.make(&"boss", UiTheme.px(26), UiTheme.style().danger if not locked else UiTheme.style().text_disabled)
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	top.add_child(icon)
+	var label := ScreenBase.make_label("BOSS", UiTheme.SUBHEADING)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	top.add_child(label)
+	var stars := StarRow.new()
+	stars.star_size = UiTheme.px(20)
+	stars.stars = int(record.get("stars", 0))
+	stars.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	stars.add_theme_constant_override(&"separation", roundi(UiTheme.px(4)))
+	top.add_child(stars)
+	var boss_name := ScreenBase.make_label(s.title(), &"", HORIZONTAL_ALIGNMENT_LEFT)
+	boss_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	tile.content.add_child(boss_name)
+	if locked:
+		return
+	var best_time: float = float(record.get("best_time", 0.0))
+	if done and best_time > 0.0:
+		tile.add_label("BEST %s · %s" % [UiTheme.format_int(int(record.get("best_score", 0))),
+			ResultsScreen.format_time(best_time)], UiTheme.CAPTION, HORIZONTAL_ALIGNMENT_LEFT)
+	elif done:
+		# Passed while it was still a placeholder: no fight to show a best for.
+		tile.add_label("DONE", UiTheme.ACCENT_CAPTION, HORIZONTAL_ALIGNMENT_LEFT)
+	elif int(record.get("attempts", 0)) > 0:
+		tile.add_label("NOT BEATEN", UiTheme.CAPTION, HORIZONTAL_ALIGNMENT_LEFT)
 	else:
 		tile.add_label("NEW", UiTheme.ACCENT_CAPTION, HORIZONTAL_ALIGNMENT_LEFT)
 

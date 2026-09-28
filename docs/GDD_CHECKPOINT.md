@@ -147,7 +147,7 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 ### The cult (decided September 26, 2026)
 - The cult is so widespread that it is **the reason the gangsters and cyborg gangsters attack the runner** in the first place.
 - **What makes it insidious:** people are completely subservient to its philosophy without realizing that they're in a cult.
-- **Symbol and colour:** *(open)*. An art agent will draw up a few options for the owner to choose from.
+- **Symbol and colour** (owner, September 26, 2026): the **Convergent Triad**, option B of the options drawn in code (`tools/showcase/cult_emblem_sheet.tscn`): three notched arrows converging on a small centre point, with three-fold symmetry. At a glance it passes for a generic corporate "sync" or "alignment" mark ("every path leads to him"). In glowing ads it is a warm white, never a hazard colour; unlit it is brushed bronze; in the Golden Zone it is polished gold meeting at a small red centre stone.
 - *(Proposed)* **Hidden in plain sight:** the symbol is worked into logos, ads and corporate art in every zone, and is displayed openly only in the Golden Zone.
 - **Cyborg Viewing Devices** (decided September 26, 2026): the cult's philosophy reaches people **through their screens**. The more devoted someone is, the more of their face the device replaces, until the screen *is* the face: that's what the cyborg gangsters are. The order to attack the runner reaches them the same way, through the feed. Told purely through the environment and the cyborgs' look (no words): screen heads on the enemies, the same feed playing on billboards and in shop windows, and glitching screens on hosts, whose feed the Bad Dream has corrupted.
 
@@ -608,7 +608,7 @@ Shared interaction rules apply unless stated otherwise:
   
   The gameplay camera sits behind the player, so the **back view matters most**: the coat's copper conduits and the gold arm must read from behind. The silhouette must still read clearly differently from the enemy cyborgs' screen heads. Customization is still open.
 - **Player scale** (owner feedback after the R1 grey box, September 26, 2026): the player looked too big next to the lanes, walls and ceiling. The player (with its hitbox, jump height and fence heights) is about 75% of the grey-box size; the lanes, walls and ceiling keep their size.
-- **Music** (decided September 26, 2026): code-generated placeholder loops in the same crunchy 16-bit / heavy-metal style as the sound effects, one per zone plus the menus. Any track can later be replaced file by file with commissioned or licensed music. **The music dips when the player dies**, and the level-complete riff plays in each zone's key.
+- **Music** (decided September 26, 2026): code-generated placeholder loops in the same crunchy 16-bit / heavy-metal style as the sound effects, one per zone plus the menus. Any track can later be replaced file by file with commissioned or licensed music. **The music dips when the player dies**, and the level-complete riff plays in each zone's key. **No more generated songs** (decided September 28, 2026): the owner will provide the game's songs later; until then the game keeps the generated tracks it already has, and no new music is generated (a place that needs a song it doesn't have reuses an existing track or plays none).
 - **Readability rules:**
   - Hazards keep a consistent color and shape language across zones.
   - Safe things look safe; deadly parts look deadly.

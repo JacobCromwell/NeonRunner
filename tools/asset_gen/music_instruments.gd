@@ -264,3 +264,209 @@ static func boom(seconds: float, rng: RandomNumberGenerator) -> PackedFloat32Arr
 	DSP.mix(b, rumble, 0.0, 0.8)
 	DSP.envelope(b, 0.001, seconds * 0.4, 0.05)
 	return b
+
+
+# --- Instruments for the later zones (Marketplace, Corporate, Dead Zone, Golden Zone) ------------
+
+## A plucked string (Karplus–Strong): one period of noise circulating in a tuned delay line that
+## loses its highs on every pass. `brightness` (0–1) is how hard and bright the pick is; the string
+## dies away by 60 dB over `decay` seconds.
+static func pluck(hz: float, seconds: float, brightness: float, decay: float,
+		rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var b := DSP.buffer(seconds)
+	var n: int = b.size()
+	# The two-point average in the loop adds half a sample of delay.
+	var delay: float = float(RATE) / hz - 0.5
+	var whole: int = int(delay)
+	var frac: float = delay - whole
+	var gain: float = pow(0.001, 1.0 / maxf(hz * decay, 1.0))
+	var burst := PackedFloat32Array()
+	burst.resize(whole + 1)
+	var k: float = clampf(brightness, 0.05, 1.0)
+	var lp: float = 0.0
+	var mean: float = 0.0
+	for i: int in burst.size():
+		lp += k * (rng.randf_range(-1.0, 1.0) - lp)
+		burst[i] = lp
+		mean += lp
+	mean /= burst.size()
+	for i: int in n:
+		var x: float = burst[i] - mean if i < burst.size() else 0.0
+		if i >= whole + 2:
+			var near: float = lerpf(b[i - whole], b[i - whole - 1], frac)
+			var far: float = lerpf(b[i - whole - 1], b[i - whole - 2], frac)
+			x += gain * 0.5 * (near + far)
+		b[i] = x
+	return b
+
+
+## A harpsichord: two plucked strings, the 8-foot and the 4-foot an octave up, a bright quill and the
+## jack's click, thin in the bass like the real thing, damped when the key comes up.
+static func harpsichord(hz: float, seconds: float, rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var decay: float = clampf(2.4 - hz / 500.0, 0.7, 2.2)
+	var b := pluck(hz, seconds + 0.03, 0.9, decay, rng)
+	DSP.mix(b, pluck(hz * 2.0 * pow(2.0, 3.0 / 1200.0), seconds + 0.03, 0.95, decay * 0.6, rng), 0.0, 0.45)
+	var click := DSP.noise(0.004, rng)
+	DSP.filter(click, &"highpass", 3000.0)
+	DSP.mix(b, click, 0.0, 0.25)
+	DSP.filter(b, &"highpass", 170.0)
+	DSP.filter(b, &"peaking", 2400.0, 1.0, 3.0)
+	DSP.adsr(b, 0.0005, 10.0, 1.0, 0.03)
+	DSP.crush(b, 12, 24000.0)
+	return b
+
+
+## A lonely clean electric guitar: two plucked strings a few cents apart through a warm, barely
+## driven amp, with a tremolo (the amp's pulsing volume, `tremolo_hz`; 0 = none) for ghostly lines.
+static func clean_guitar(hz: float, seconds: float, tremolo_hz: float, rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var b := pluck(hz, seconds + 0.12, 0.45, 4.0, rng)
+	DSP.mix(b, pluck(hz * pow(2.0, 7.0 / 1200.0), seconds + 0.12, 0.35, 3.2, rng), 0.0, 0.6)
+	if tremolo_hz > 0.0:
+		for i: int in b.size():
+			b[i] *= 1.0 - 0.45 * (0.5 - 0.5 * cos(TAU * tremolo_hz * float(i) / RATE))
+	DSP.filter(b, &"highpass", 110.0)
+	DSP.filter(b, &"lowpass", 3000.0, 0.7)
+	DSP.drive(b, 1.8)
+	DSP.adsr(b, 0.002, 10.0, 1.0, 0.1)
+	DSP.crush(b, 12, 24000.0)
+	return b
+
+
+## A Mega Drive FM horn for a brass section's stabs and lines: a brassy operator pair that blares
+## bright on the attack and relaxes, a lip scoop up into the pitch, and a second, slightly sharp player.
+static func fm_horn(hz: float, seconds: float, rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var b := DSP.buffer(seconds + 0.05)
+	var n: int = b.size()
+	for player: int in 2:
+		var detune: float = 1.0 if player == 0 else 1.0045
+		var level: float = 0.55 if player == 0 else 0.45
+		var pc: float = rng.randf()
+		var pm: float = pc
+		for i: int in n:
+			var t: float = float(i) / RATE
+			var f: float = hz * detune * pow(2.0, -0.7 * exp(-t / 0.022) / 12.0)
+			var index: float = 1.1 + 2.1 * (1.0 - exp(-t / 0.006)) * exp(-t / 0.09)
+			pc = fmod(pc + f / RATE, 1.0)
+			pm = fmod(pm + f / RATE, 1.0)
+			b[i] += sin(TAU * pc + index * sin(TAU * pm)) * level
+	DSP.adsr(b, 0.01, 0.16, 0.72, 0.04)
+	DSP.filter(b, &"lowpass", 5000.0, 0.7)
+	DSP.drive(b, 1.5)
+	DSP.crush(b, 11, 24000.0)
+	return b
+
+
+## Vangelis-style synth brass (the CS-80's): two detuned saws per note through a resonant low-pass
+## that swells open with the note and settles back, the pitch easing up into place, and a slow
+## vibrato on long notes.
+static func cs_brass(midis: Array, seconds: float, rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var b := DSP.buffer(seconds + 0.25)
+	var n: int = b.size()
+	for m: int in midis:
+		var hz: float = DSP.midi_hz(m)
+		for cents: float in [-6.0, 5.0]:
+			var p: float = rng.randf()
+			for i: int in n:
+				var t: float = float(i) / RATE
+				var semis: float = cents / 100.0 - 0.3 * exp(-t / 0.07) \
+					+ 0.12 * sin(TAU * 5.2 * t) * smoothstep(0.35, 0.8, t)
+				var dt: float = hz * (1.0 + 0.05776 * semis) / RATE
+				p += dt
+				if p >= 1.0:
+					p -= 1.0
+				b[i] += (2.0 * p - 1.0 - _blep(p, dt)) * 0.3
+	var f := DSP.Biquad.new()
+	for i: int in n:
+		if i % 16 == 0:
+			var t: float = float(i) / RATE
+			var cutoff: float = 350.0 + 2300.0 * (1.0 - exp(-t / 0.08)) * (0.45 + 0.55 * exp(-t / 0.45))
+			f.set_filter(&"lowpass", cutoff, 1.3)
+		b[i] = f.process(b[i])
+	DSP.adsr(b, 0.05, 0.5, 0.8, 0.22)
+	DSP.drive(b, 1.4)
+	return b
+
+
+## A string section: four detuned saws per note with a gentle vibrato that fades in, bowed in over
+## `attack` seconds and let go, warm and a little nasal.
+static func strings(midis: Array, seconds: float, attack: float, rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var b := DSP.buffer(seconds + 0.3)
+	var n: int = b.size()
+	for m: int in midis:
+		var hz: float = DSP.midi_hz(m)
+		for cents: float in [-11.0, -4.0, 4.0, 10.0]:
+			var p: float = rng.randf()
+			var rate: float = rng.randf_range(4.8, 5.8)
+			var lfo: float = rng.randf() * TAU
+			for i: int in n:
+				var t: float = float(i) / RATE
+				var semis: float = cents / 100.0 + 0.13 * sin(TAU * rate * t + lfo) * smoothstep(0.1, 0.5, t)
+				var dt: float = hz * (1.0 + 0.05776 * semis) / RATE
+				p += dt
+				if p >= 1.0:
+					p -= 1.0
+				b[i] += (2.0 * p - 1.0 - _blep(p, dt)) * 0.12
+	DSP.filter(b, &"lowpass", 3400.0, 0.7)
+	DSP.filter(b, &"highpass", 150.0)
+	DSP.filter(b, &"peaking", 1100.0, 0.8, 2.5)
+	DSP.adsr(b, attack, 2.0, 0.85, 0.25)
+	return b
+
+
+## A sequencer bass for cold machine lines (EBM): a saw pair and a square through a resonant low-pass
+## that snaps shut; an accent opens it further.
+static func seq_bass(hz: float, seconds: float, accent: bool, rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var b := saws(seconds + 0.02, [hz, hz * 1.004], 0.45, rng)
+	DSP.mix(b, pulse(seconds + 0.02, hz, 0.5), 0.0, 0.35)
+	DSP.filter_sweep(b, &"lowpass", 2600.0 if accent else 1500.0, 200.0, 1.6)
+	DSP.adsr(b, 0.002, 0.14, 0.55, 0.015)
+	DSP.drive(b, 2.0)
+	DSP.filter(b, &"highpass", 28.0)
+	DSP.crush(b, 12, 24000.0)
+	return b
+
+
+## A combo organ for ska's off-beat bubble: drawbar sines (the fundamental, octave, twelfth and
+## fifteenth), a key click and a little tube grit.
+static func organ(midis: Array, seconds: float, rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var b := DSP.buffer(seconds + 0.03)
+	var n: int = b.size()
+	for m: int in midis:
+		var hz: float = DSP.midi_hz(m)
+		for partial: Array in [[1.0, 0.7], [2.0, 0.55], [3.0, 0.35], [4.0, 0.25]]:
+			var p: float = rng.randf()
+			var inc: float = hz * float(partial[0]) / RATE
+			var level: float = float(partial[1]) * 0.3
+			for i: int in n:
+				p += inc
+				if p >= 1.0:
+					p -= 1.0
+				b[i] += sin(TAU * p) * level
+	var click := DSP.noise(0.003, rng)
+	DSP.filter(click, &"bandpass", 2500.0, 0.8)
+	DSP.mix(b, click, 0.0, 0.2)
+	DSP.shape(b, 0.004, 0.025)
+	DSP.drive(b, 1.4)
+	DSP.crush(b, 11, 24000.0)
+	return b
+
+
+## A timpani: a tuned drum (its modes at 1, 1.5, 2 and 2.44 times the pitch) that settles after the
+## felt mallet's strike.
+static func timpani(hz: float, seconds: float, rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var b := DSP.buffer(seconds)
+	var n: int = b.size()
+	for mode: Array in [[1.0, 1.0, 1.0], [1.5, 0.45, 0.6], [1.99, 0.3, 0.45], [2.44, 0.18, 0.35]]:
+		var phase: float = rng.randf()
+		var tau: float = seconds * 0.45 * float(mode[2])
+		for i: int in n:
+			var t: float = float(i) / RATE
+			phase = fmod(phase + hz * float(mode[0]) * (1.0 + 0.06 * exp(-t / 0.04)) / RATE, 1.0)
+			b[i] += sin(TAU * phase) * float(mode[1]) * exp(-t / tau)
+	var mallet := DSP.noise(0.03, rng)
+	DSP.filter(mallet, &"lowpass", 900.0)
+	DSP.envelope(mallet, 0.001, 0.008)
+	DSP.mix(b, mallet, 0.0, 0.6)
+	DSP.envelope(b, 0.002, 10.0, 0.05)
+	DSP.drive(b, 1.3)
+	return b

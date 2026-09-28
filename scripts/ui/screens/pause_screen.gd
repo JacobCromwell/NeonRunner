@@ -1,8 +1,8 @@
 class_name PauseScreen
 extends ScreenBase
-## The pause overlay over the stopped run: which level this is and how far along, then resume,
-## restart the level, settings, and quit to the menu (after a check, since the run's credits are
-## lost). Pause or back (Esc) resumes.
+## The pause overlay over the stopped run: which level or boss fight this is and how far along, then
+## resume, restart (a boss fight restarts from a checkpoint it reached), settings, and quit to the menu
+## (after a check: quitting keeps the same credit share as a death, GDD §4). Pause or back (Esc) resumes.
 
 ## The menu's buttons by name (resume, restart, settings, quit), for tests.
 var buttons: Dictionary = {}
@@ -25,23 +25,17 @@ func _ready() -> void:
 		column.add_child(ScreenBase.make_label(names[0], UiTheme.SUBHEADING, HORIZONTAL_ALIGNMENT_CENTER))
 		if names[1] != "":
 			column.add_child(ScreenBase.make_label(names[1], UiTheme.HEADING, HORIZONTAL_ALIGNMENT_CENTER))
-		if run.world != null and run.world.layout != null and run.context.mode != RunContext.Mode.ENDLESS:
-			var fraction: float = clampf(run.world.player.distance / maxf(run.world.layout.length, 1.0), 0.0, 1.0)
-			var row := HBoxContainer.new()
-			row.add_theme_constant_override(&"separation", 12)
+		var row: Control = DeathScreen.progress_row(run)
+		if row != null:
 			column.add_child(row)
-			progress = ProgressMeter.new()
-			progress.value = fraction
-			progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			progress.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			row.add_child(progress)
-			row.add_child(ScreenBase.make_label("%d%%" % floori(fraction * 100.0), UiTheme.VALUE))
+			progress = row.get_child(0) as ProgressMeter
 
 	var gap := Control.new()
 	gap.custom_minimum_size.y = UiTheme.px(4)
 	column.add_child(gap)
+	var boss: bool = run != null and run.context != null and run.context.is_boss()
 	_add_button(column, "resume", "RESUME", NeonButton.Kind.PRIMARY, &"play", App.resume_game)
-	_add_button(column, "restart", "RESTART LEVEL", NeonButton.Kind.NORMAL, &"restart", _restart)
+	_add_button(column, "restart", "RESTART FIGHT" if boss else "RESTART LEVEL", NeonButton.Kind.NORMAL, &"restart", _restart)
 	_add_button(column, "settings", "SETTINGS", NeonButton.Kind.NORMAL, &"settings", _open_settings)
 	_add_button(column, "quit", "QUIT TO MENU", NeonButton.Kind.FLAT, &"home", _ask_quit)
 	initial_focus = buttons["resume"]
@@ -87,7 +81,8 @@ static func reopen() -> void:
 
 
 func _ask_quit() -> void:
-	# DESIGN-TBD: whether quitting mid-level asks first; the run's credits are lost either way.
-	_quit_dialog = ConfirmDialog.ask(self, "QUIT THIS RUN?", "Credits picked up in this run are lost.",
+	var share: int = roundi((App.rules.death_credit_keep_fraction if App.rules != null else 0.0) * 100.0)
+	_quit_dialog = ConfirmDialog.ask(self, "QUIT THIS RUN?",
+		"You'll keep %d%% of the credits picked up in this run, like a death." % share,
 		"QUIT", "KEEP PLAYING", true)
 	_quit_dialog.confirmed.connect(App.quit_run)

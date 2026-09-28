@@ -11,9 +11,13 @@ extends RefCounted
 ##   It hovers over such things anyway, and the player needs that lane for route (b).
 ## - The wall section it bursts through keeps no sign and no wall enemy.
 ## - With the `ramps` feature, route (a) gets a ramp on its side ramp_after_seconds after the burst
-##   (unless one is there already), clear of signs.
+##   (unless one is there already), clear of signs, and not before the ramps' start.
 ## - DESIGN-TBD: a level with the feature always gets at least one truck (the patterns may pick
 ##   none, and the level that introduces the truck should show it).
+## - Late starts (LevelConfig.feature_starts): no truck before the `hover_truck` feature's start; the
+##   guaranteed one falls in the same share of the stretch where trucks are active.
+## - In a level paced in bursts (LevelConfig.quiet_seconds, The Hush), the guaranteed truck bursts in
+##   during a burst when one lies in its share of the level.
 
 const TYPE: String = "hover_truck"
 
@@ -23,6 +27,7 @@ static func apply(gen: LevelGenerator) -> void:
 	var layout: LevelLayout = gen.layout
 	var speed: float = gen.speed
 	var latest: float = layout.length - gen.config.end_clear_distance - t.stay_min_seconds * speed
+	var earliest: float = gen.feature_start(TYPE)
 	var trucks: Array[Dictionary] = []
 	for e: Dictionary in layout.enemies:
 		if String(e.get("type", "")) == TYPE:
@@ -34,7 +39,7 @@ static func apply(gen: LevelGenerator) -> void:
 	var most: int = t.max_per_level_at(gen.config.enemy_scaling)
 	for e: Dictionary in trucks:
 		var at: float = e["at"]
-		if at > latest or at - t.burst_lead - t.clear_before < free_from or kept.size() >= most:
+		if at > latest or at < earliest or at - t.burst_lead - t.clear_before < free_from or kept.size() >= most:
 			removed.append(e)
 			continue
 		kept.append(e)
@@ -74,6 +79,23 @@ static func window_end(t: HoverTruckTuning, at: float, speed: float) -> float:
 	return at + (t.stay_max_seconds + t.leave_seconds) * speed
 
 
+## The lanes at track distance `at` that no hover truck keeps free (its lane, from window_start to
+## window_end): where another rule may still add a floor enemy (the host and Octodog guarantees).
+static func open_lanes(gen: LevelGenerator, at: float) -> Array[int]:
+	var t: HoverTruckTuning = tuning()
+	var out: Array[int] = []
+	for lane: int in gen.layout.lane_count:
+		var free: bool = true
+		for e: Dictionary in gen.layout.enemies:
+			if String(e.get("type", "")) == TYPE and int(e.get("lane", -1)) == lane \
+					and at >= window_start(t, float(e["at"])) and at <= window_end(t, float(e["at"]), gen.speed):
+				free = false
+				break
+		if free:
+			out.append(lane)
+	return out
+
+
 ## The wall section it bursts through (track distances), with some room around it.
 static func burst_section(t: HoverTruckTuning, at: float) -> Vector2:
 	return Vector2(at - t.length * 0.5 - t.burst_section_before - 6.0, at + t.length * 0.5 + t.burst_section_after + 3.0)
@@ -108,7 +130,7 @@ static func _ensure_ramp(gen: LevelGenerator, t: HoverTruckTuning, side: int, la
 			return
 	var c: float = lo
 	while c <= hi:
-		if _ramp_fits(gen, side, lane, c):
+		if gen.feature_started("ramps", c) and _ramp_fits(gen, side, lane, c):
 			layout.ramps.append({"side": side, "at": c})
 			return
 		c += 4.0
@@ -131,17 +153,22 @@ static func _ramp_fits(gen: LevelGenerator, side: int, lane: int, at: float) -> 
 	return true
 
 
-## One truck in the level (between the tuning's shares, never before the run-up ends or after
-## `latest`). Returns its entry, or {} if there's no room.
+## One truck in the level (between the tuning's shares of the stretch where trucks are active,
+## LevelGenerator.feature_share_at; never before the run-up ends or after `latest`), bursting in
+## during a burst if the level is paced in bursts (LevelGenerator.burst_spot). Returns its entry, or
+## {} if there's no room.
 static func _add_guaranteed(gen: LevelGenerator, t: HoverTruckTuning, latest: float) -> Dictionary:
 	var rng: RandomNumberGenerator = gen.rng_for("hover_truck_guarantee")
-	var lo: float = maxf(gen.layout.length * t.guaranteed_from,
+	var lo: float = maxf(gen.feature_share_at(TYPE, t.guaranteed_from),
 		gen.config.start_clear_distance + t.burst_lead + t.clear_before)
-	var hi: float = minf(gen.layout.length * t.guaranteed_to, latest)
+	var hi: float = minf(gen.feature_share_at(TYPE, t.guaranteed_to), latest)
 	if hi < lo:
 		return {}
 	var side: int = -1 if rng.randf() < 0.5 else 1
-	return gen.add_enemy(TYPE, rng.randf_range(lo, hi), gen.layout.outer_lane(side), side, {})
+	var at: float = gen.burst_spot(rng, lo, hi, TYPE)
+	if is_nan(at):
+		at = rng.randf_range(lo, hi)
+	return gen.add_enemy(TYPE, at, gen.layout.outer_lane(side), side, {})
 
 
 static func _remove_entries(layout: LevelLayout, entries: Array[Dictionary]) -> void:

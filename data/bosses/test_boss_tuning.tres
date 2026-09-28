@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="TestBossTuning" format=3]
+
+[ext_resource type="Script" path="res://scripts/bosses/test_boss_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+hover_ahead = 26.0
+hover_height = 4.2
+drift_speed = 7.0
+hover_seconds = 1.4
+charge_seconds = 1.1
+bolts = 3
+bolt_interval = 0.16
+bolt_speed = 11.0
+cooldown_seconds = 1.0
+attacks_per_cycle = 2
+clear_before_impact = 12.0
+clear_after_impact = 8.0
+drop_lead = 48.0
+drop_seconds = 1.2
+dazed_height = 0.45
+clear_before_drop = 16.0
+clear_after_drop = 4.0
+rise_seconds = 1.0
+bonus_pickup = "shield"
+bonus_pickup_phase = 2

@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="BossDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/campaign/boss_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/campaign/boss_phase.gd" id="2_phase"]
+
+[sub_resource type="Resource" id="phase_1"]
+script = ExtResource("2_phase")
+health_share = 1.0
+hits = 1
+intro_seconds = 2.0
+
+[sub_resource type="Resource" id="phase_2"]
+script = ExtResource("2_phase")
+health_share = 1.0
+hits = 1
+intro_seconds = 2.0
+
+[sub_resource type="Resource" id="phase_3"]
+script = ExtResource("2_phase")
+health_share = 1.0
+hits = 1
+intro_seconds = 2.0
+
+[resource]
+script = ExtResource("1_script")
+id = &"marketplace_boss"
+display_name = "The House"
+notes = "Designed, not built yet (GDD §10): a slot machine the size of a building, rolling down the market street. Each spin of its reels announces the attacks: cherry bombs, a rolling electric fence, gold blocks slammed into the lanes. Run over the glowing 7 buttons while the reels spin to rig a jackpot, then stomp the coin hopper that bursts open on top."
+phases = Array[ExtResource("2_phase")]([SubResource("phase_1"), SubResource("phase_2"), SubResource("phase_3")])
+armor_rule = true
+armor_delay_min = 15.0
+armor_delay_max = 17.0
+armor_pickups_per_phase = 1

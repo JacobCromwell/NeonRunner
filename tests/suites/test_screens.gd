@@ -1,9 +1,9 @@
 extends TestSuite
-## The game's screens and HUD on the real main scene. Every screen and overlay builds and frees
-## cleanly for a fresh and a rich profile, at desktop and touch sizes; fits the smallest screen
-## (1280×720 after stretching) without clipping; and gives keyboard focus that moves. Then each
-## screen's own behaviour: the title menu, level select (locks, tiers, the demo's limit), the
-## shop (buying, stock, equip, the way out, credit packs), settings (volumes, toggles, keys), the
+## The game's screens and HUD on the real main scene. Every screen and overlay (a boss fight's results
+## too) builds and frees cleanly for a fresh and a rich profile, at desktop and touch sizes; fits the
+## smallest screen (1280×720 after stretching) without clipping; and gives keyboard focus that moves.
+## Then each screen's own behaviour: the title menu, level select (locks, tiers, the demo's limit),
+## the shop (buying, stock, equip, the way out, credit packs), settings (volumes, toggles, keys), the
 ## pause, death and results overlays, the slot and demo-end screens, and the HUD following a
 ## RunWorld's score, credits, charges and power-ups.
 
@@ -81,6 +81,13 @@ func _show_result(completed: bool) -> ResultsScreen:
 	return s
 
 
+func _show_boss_result(won: bool) -> ResultsScreen:
+	var s := ResultsScreen.new()
+	s.result = SampleProfiles.boss_result(won)
+	App.show_screen(s)
+	return s
+
+
 func _start_level(id: String) -> void:
 	App.start_level(App.campaign.step(id))
 	await physics_frames(10)
@@ -138,7 +145,10 @@ func _test_every_screen(tag: String) -> void:
 		["settings", func() -> void: App.show_settings(), SettingsScreen],
 		["results", func() -> void: _show_result(true), ResultsScreen],
 		["run summary", func() -> void: _show_result(false), ResultsScreen],
-		["boss slot", func() -> void: App.play_step(App.campaign.step("city/boss")), SlotScreen],
+		["boss results", func() -> void: _show_boss_result(true), ResultsScreen],
+		["boss run summary", func() -> void: _show_boss_result(false), ResultsScreen],
+		# The City's boss is built (task E1d); Gangland's is still a placeholder card.
+		["boss slot", func() -> void: App.play_step(App.campaign.step("gangland/boss")), SlotScreen],
 		["cinematic slot", func() -> void: App.play_step(App.campaign.step("city/intro")), SlotScreen],
 		["demo end", func() -> void: App.show_demo_end(), DemoEndScreen],
 	]
@@ -252,7 +262,44 @@ func _test_level_select() -> void:
 		await _frames(2)
 		check(App.screen is DemoEndScreen, "and leads to the demo's end screen")
 	BuildFlavor.set_override(-1)
+
+	# Deep into the six-zone campaign, the list opens on the next step, scrolled into view, at desktop
+	# and touch sizes.
+	for touch: int in [0, 1]:
+		UiTheme.touch_override = touch
+		App.profile = SampleProfiles.fresh()
+		SampleProfiles.complete_until(App.profile, App.campaign, "golden/2")
+		App.show_level_select()
+		await _frames(4)
+		levels = App.screen as LevelSelectScreen
+		var tile: TileButton = levels.tiles.get("golden/2")
+		var scroll: ScrollContainer = levels.find_children("*", "ScrollContainer", true, false)[0]
+		var tag: String = "touch" if touch == 1 else "desktop"
+		check(tile != null and _focus() == tile, "late in the campaign the next step has the focus (%s, %s)" % [_focus(), tag])
+		check(tile != null and scroll.get_global_rect().encloses(tile.get_global_rect()),
+			"and the list scrolls it into view (%s)" % tag)
+		check(levels.tiles.size() == App.campaign.steps().size(), "every step of the six zones has a tile (%s)" % tag)
+	UiTheme.touch_override = 0
 	App.profile = SampleProfiles.rich()
+
+	# Every shipped zone is built; a zone still to be designed would show as "coming soon".
+	var shipped: Campaign = App.campaign
+	var trial := Campaign.new()
+	var later := ZoneDef.new()
+	later.id = &"later"
+	later.display_name = "Later Zone"
+	later.placeholder = true
+	trial.zones.assign([shipped.zones[0], later])
+	App.campaign = trial
+	App.show_level_select()
+	await _frames(2)
+	var labels: PackedStringArray = []
+	for node: Node in App.screen.find_children("*", "Label", true, false):
+		labels.append((node as Label).text)
+	check(labels.has("Later Zone · coming soon") and labels.has("ZONE 2"), "a zone still to be designed shows as coming soon")
+	App.campaign = shipped
+	App.show_level_select()
+	await _frames(1)
 
 
 # --- Shop ------------------------------------------------------------------------
@@ -411,9 +458,26 @@ func _test_pause() -> void:
 	(pause.buttons["quit"] as BaseButton).pressed.emit()
 	await _frames(2)
 	var dialog: ConfirmDialog = pause.get("_quit_dialog")
+	check(dialog.message.contains("20%"), "the quit question says the credit share, not that they're all lost (%s)" % dialog.message)
+	# FB 14 (decided September 26, 2026): quitting keeps the same credit share as a death.
+	App.run.world.score.credits = 100
+	var wallet_before: int = App.profile.credits()
+	var record_before: Dictionary = App.profile.record("city/1").duplicate()
+	var deaths_before: int = int(App.profile.stats.get("deaths", 0))
 	dialog.confirm_button.pressed.emit()
 	await _frames(2)
 	check(App.run == null and App.screen is LevelSelectScreen and not tree.paused, "confirming quits to the level select")
+	check(App.profile.credits() == wallet_before + floori(100 * App.rules.death_credit_keep_fraction),
+		"quitting pays the wallet %d%% of the run's credits, like a death" % roundi(App.rules.death_credit_keep_fraction * 100.0))
+	var record: Dictionary = App.profile.record("city/1")
+	check(record.get("completed", false) == record_before.get("completed", false) \
+			and record.get("best_score", 0) == record_before.get("best_score", 0) \
+			and record.get("stars", 0) == record_before.get("stars", 0) \
+			and record.get("best_time", 0.0) == record_before.get("best_time", 0.0),
+		"quitting is never a completion and never improves the level's record (%s -> %s)" % [str(record_before), str(record)])
+	check(int(record.get("attempts", 0)) == int(record_before.get("attempts", 0)) + 1,
+		"quitting still counts as an attempt, like giving up after a death does")
+	check(int(App.profile.stats.get("deaths", 0)) == deaths_before, "quitting doesn't count as a death")
 
 
 func _test_death() -> void:
@@ -485,14 +549,17 @@ func _test_results() -> void:
 
 func _test_slots_and_demo_end() -> void:
 	App.profile = SampleProfiles.fresh()
-	App.play_step(App.campaign.step("city/boss"))
+	# The City's boss is built (task E1d); Gangland's is still a placeholder card.
+	App.play_step(App.campaign.step("gangland/boss"))
 	await _frames(2)
 	var slot := App.screen as SlotScreen
 	check(slot != null and _focus() == slot.continue_button, "the boss slot focuses Continue")
+	if slot == null:
+		return
 	slot.continue_button.pressed.emit()
 	await _frames(2)
-	check(App.profile.is_completed("city/boss") and App.screen is SlotScreen and (App.screen as SlotScreen).step.id == "city/outro",
-		"Continue counts the boss as done and moves on")
+	check(App.profile.is_completed("gangland/boss") and App.screen is SlotScreen
+		and (App.screen as SlotScreen).step.id == "gangland/outro", "Continue counts the boss as done and moves on")
 	(App.screen as ScreenBase).go_back()
 	await _frames(1)
 	check(App.screen is LevelSelectScreen, "back returns to the level select")

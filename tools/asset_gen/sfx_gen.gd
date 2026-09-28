@@ -2,10 +2,13 @@ extends SceneTree
 ## Generates every game sound effect into assets/sfx/<name>.wav: crunchy 16-bit synth tones,
 ## heavy-metal guitar and drums, engines, machines and monsters, all built from code so any of them
 ## can be regenerated and tweaked. The sounds live in banks, one function each:
-##   sfx_bank_player.gd   movement, the fence warning, death and level complete
+##   sfx_bank_player.gd   movement, the fence warning and death
+##   sfx_bank_riffs.gd    the level-complete riff, one per music track in its key
 ##   sfx_bank_ui.gd       menus, results, countdown, credits and bonuses
 ##   sfx_bank_power.gd    power-ups, weapons and protective items
 ##   sfx_bank_enemies.gd  enemies: every attack's warning, the attacks, hits and deaths
+##   sfx_bank_bosses.gd   bosses: their entrances, warnings and attacks
+##   sfx_bank_resonator.gd  the Resonator: its chime (the warning), its pulse and its death
 ## Run: tools/godot.sh sfx   (--only=jump,land renders just those; --review also writes
 ## build/sfx_review/<name>.png: waveform on top, spectrogram (40 Hz–16 kHz, time left to right) below).
 ## Each line of the report ends with the sound's loudest 400 ms as heard on headphones (K-weighted) and
@@ -16,9 +19,12 @@ const DSP = preload("res://tools/asset_gen/sfx_dsp.gd")
 const Review = preload("res://tools/asset_gen/audio_review.gd")
 const BANKS: Array = [
 	preload("res://tools/asset_gen/sfx_bank_player.gd"),
+	preload("res://tools/asset_gen/sfx_bank_riffs.gd"),
 	preload("res://tools/asset_gen/sfx_bank_ui.gd"),
 	preload("res://tools/asset_gen/sfx_bank_power.gd"),
 	preload("res://tools/asset_gen/sfx_bank_enemies.gd"),
+	preload("res://tools/asset_gen/sfx_bank_bosses.gd"),
+	preload("res://tools/asset_gen/sfx_bank_resonator.gd"),
 ]
 const OUT_DIR: String = "res://assets/sfx"
 const REVIEW_DIR: String = "res://build/sfx_review"

@@ -171,15 +171,16 @@ func _test_targeting() -> void:
 	await sim.free_world(w)
 
 
-## Shots leave the player's shoulder, turned with the player onto a wall or the ceiling.
+## Shots leave the player's left shoulder (Razor Echo's gold arm carries the weapon), turned with
+## the player onto a wall or the ceiling.
 func _test_muzzle() -> void:
 	var w: RunWorld = sim.build_world(RunSim.layout(3), _loadout({"weapon": 1}))
 	var c: PowerupController = _controller(w)
 	await _run_to(w, 5.0)
 	var p: Player = w.player
 	var m: Vector3 = c.weapon.muzzle_point() - p.global_position
-	check(p.surface == Player.Surface.FLOOR and m.y > 0.6 and m.x > 0.1 and m.z < 0.0,
-		"on the floor, shots leave the right shoulder, in front (%s)" % m)
+	check(p.surface == Player.Surface.FLOOR and m.y > 0.6 and m.x < -0.1 and m.z < 0.0,
+		"on the floor, shots leave the gold arm's shoulder (the left), in front (%s)" % m)
 	await sim.step_world(w, 1.0, [[6.0, &"move_right"], [10.0, &"move_right"]])
 	m = c.weapon.muzzle_point() - p.global_position
 	check(p.surface == Player.Surface.WALL and p.wall_side == 1 and m.x < -0.6,
@@ -290,11 +291,13 @@ func _test_health_bars() -> void:
 	await tree.process_frame
 	check(bars.shown().is_empty(), "no bars while every enemy is at full health")
 	enemy.take_damage(1.0, &"weapon")
-	host.take_damage(1.0, &"weapon")  # a stray direct hit can still clip a host
+	host.take_damage(1.0, &"weapon")  # a host is immune_to_weapons: a stray direct hit can't clip it
 	immune.take_damage(1.0, &"weapon")
 	await tree.process_frame
 	check(bars.is_shown(enemy), "a damaged enemy shows a health bar")
 	check(not bars.is_shown(host) and not bars.is_shown(immune), "never on hosts or weapon-immune enemies")
+	check(is_equal_approx(host.health, 3.0) and is_equal_approx(immune.health, 3.0),
+		"a direct hit does no damage to a host or a weapon-immune enemy")
 	check(bars.shown().size() == 1, "one bar (%d)" % bars.shown().size())
 	enemy.take_damage(5.0, &"weapon")
 	await tree.process_frame
@@ -471,9 +474,12 @@ func _test_slow_time_through_app() -> void:
 	check(is_equal_approx(Engine.time_scale, 1.0), "app: the pause menu runs at normal speed")
 	App.resume_game()
 	check(Engine.time_scale < 1.0, "app: resuming continues the slow-down")
+	App.run.world.score.credits = 50  # quick play never pays the wallet, quit or not (a review tool)
+	var wallet_before: int = App.profile.credits()
 	App.quit_run()
 	await tree.process_frame
 	check(is_equal_approx(Engine.time_scale, 1.0) and App.run == null, "app: quitting the run restores normal time")
+	check(App.profile.credits() == wallet_before, "app: quitting a quick-play run doesn't touch the wallet")
 
 	App.start_quick(PackedStringArray(["--full-loadout"]))
 	await physics_frames(10)

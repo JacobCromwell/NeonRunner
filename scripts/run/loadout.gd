@@ -8,6 +8,14 @@ extends RefCounted
 var tiers: Dictionary = {}
 ## Breakable items: id -> charges this run (armor, shield, grapple, revive).
 var charges: Dictionary = {}
+## Items a boss fight granted (GDD §8: bosses may grant power-ups before the fight): id -> true.
+## A granted breakable's charge is the fight's, so using it never takes one from the player's stock.
+var granted: Dictionary = {}
+## Charges picked up during the current attempt (GDD §10: a fight's pickups) and not broken yet:
+## id -> charges. Like a granted item's, a picked-up charge is the fight's, so breaking it never takes
+## one from the player's stock. The run's PickupField counts them in (afresh for each world it
+## starts); the App asks costs_stock() when an item breaks.
+var picked_up: Dictionary = {}
 
 
 func tier(id: StringName) -> int:
@@ -49,6 +57,49 @@ static func full(catalog: ShopCatalog) -> Loadout:
 		elif item.id != &"revive":
 			out.charges[item.id] = 1
 	return out
+
+
+## Adds what a boss fight grants (BossDef.granted_items): a permanent item at least at tier 1, or the
+## tier given as "id:tier"; one charge of a breakable item (never more than one: a player bringing
+## their own keeps it in stock instead). Items the platform doesn't sell (slow time on mobile) and
+## unknown ids are left out, and so is the revive, which is used from stock on the death screen.
+## DESIGN-TBD (docs/questions/b8.md): how generous a grant is, and that it ignores the equip toggle.
+func grant(items: PackedStringArray, catalog: ShopCatalog, mobile: bool) -> void:
+	for spec: String in items:
+		var id := StringName(spec.get_slice(":", 0).strip_edges())
+		var item: ShopItem = catalog.item(id) if catalog != null else null
+		if item == null or not item.available_on(mobile) or id == &"revive":
+			if item == null:
+				push_warning("Loadout: a boss grants '%s', which isn't in the shop catalog" % spec)
+			continue
+		if item.kind == ShopItem.Kind.PERMANENT:
+			var t: int = clampi(int(spec.get_slice(":", 1)) if spec.contains(":") else 1, 1, item.tier_count())
+			tiers[id] = maxi(tier(id), t)
+		else:
+			charges[id] = maxi(charge(id), 1)
+		granted[id] = true
+
+
+func is_granted(id: StringName) -> bool:
+	return granted.has(id)
+
+
+## One charge of `id` was picked up during the run (PickupField).
+func add_picked_up(id: StringName) -> void:
+	picked_up[id] = int(picked_up.get(id, 0)) + 1
+
+
+## A charge of `id` broke: true if it comes out of the player's stock. A granted item's never does,
+## and neither does a picked-up charge, which this counts as used. DESIGN-TBD (docs/questions/b7.md):
+## with more than one charge held, the picked-up ones break first.
+func costs_stock(id: StringName) -> bool:
+	if is_granted(id):
+		return false
+	var free: int = int(picked_up.get(id, 0))
+	if free > 0:
+		picked_up[id] = free - 1
+		return false
+	return true
 
 
 func describe() -> String:

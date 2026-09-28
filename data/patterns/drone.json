@@ -8,7 +8,7 @@
 			"length": 6,
 			"elements": [
 				{ "kind": "enemy", "type": "drone", "at": 3, "lanes": { "mode": "random", "count": 1 },
-				  "allow_under_hull": true, "params": { "slot": 0 } }
+				  "params": { "slot": 0 } }
 			]
 		},
 		{
@@ -18,9 +18,9 @@
 			"length": 6,
 			"elements": [
 				{ "kind": "enemy", "type": "drone", "at": 3, "lanes": { "mode": "random", "count": 1 },
-				  "allow_under_hull": true, "params": { "slot": 0 } },
+				  "params": { "slot": 0 } },
 				{ "kind": "enemy", "type": "drone", "at": 3, "lanes": { "mode": "same" },
-				  "allow_under_hull": true, "params": { "slot": 1 } }
+				  "params": { "slot": 1 } }
 			]
 		}
 	]

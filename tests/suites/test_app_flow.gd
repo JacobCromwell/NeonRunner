@@ -1,7 +1,7 @@
 extends TestSuite
 ## The game's flow through the App on the real main scene: title, campaign levels, the death flow
 ## (revive offer → summary → shop → retry, GDD §4), completion and records, pause, boss and
-## cinematic slots, the web demo's end screen, and rewarded-ad revives on mobile.
+## cinematic slots, the web demo's end screen, rewarded-ad revives on mobile, and endless mode.
 
 var main: Node
 
@@ -20,6 +20,8 @@ func run() -> void:
 	await _test_pause()
 	await _test_slots_and_demo()
 	await _test_ad_revive()
+	await _test_darker_level()
+	await _test_endless()
 
 	App.show_title()
 	await tree.process_frame
@@ -117,12 +119,16 @@ func _test_pause() -> void:
 
 
 func _test_slots_and_demo() -> void:
-	App.play_step(App.campaign.step("city/boss"))
+	# The City's boss is built (task E1d; test_floating_head_defeat.gd plays its whole flow), Gangland's is
+	# still a placeholder card.
+	App.play_step(App.campaign.step("gangland/boss"))
 	check(App.screen is SlotScreen and App.run == null, "an unbuilt boss shows its placeholder card")
 	var card := App.screen as SlotScreen
+	if card == null:
+		return
 	App.complete_step(card.step)
 	App.advance_from(card.step)
-	check(App.screen is SlotScreen and (App.screen as SlotScreen).step.id == "city/outro",
+	check(App.screen is SlotScreen and (App.screen as SlotScreen).step.id == "gangland/outro",
 		"continuing moves on to the next step (the outro cinematic slot)")
 	BuildFlavor.set_override(BuildFlavor.Kind.WEB_DEMO)
 	App.advance_from(App.campaign.step("city/outro"))
@@ -148,6 +154,67 @@ func _test_ad_revive() -> void:
 	check(App.run != null and App.run.world.player.alive, "watching the ad revives the player")
 	Platform.configure_for(BuildFlavor.current())
 	check(not Platform.ads_available(), "no ads on PC")
+
+
+## Endless mode plays the furthest zone's last level (here City 3, which introduces its new things
+## at starts of their own) with every feature there from the start; the campaign level keeps its
+## starts.
+func _test_endless() -> void:
+	for id: String in ["city/intro", "city/1", "city/2"]:
+		App.profile.record_run(id, 0, true, 100, 3, 10.0)
+	var city_3: LevelConfig = App.campaign.step("city/3").level
+	App.start_endless()
+	await physics_frames(3)
+	var ctx: RunContext = App.run.context if App.run != null else null
+	check(ctx != null and ctx.mode == RunContext.Mode.ENDLESS, "endless mode starts")
+	if ctx != null:
+		check(ctx.config.features == city_3.features and ctx.config.feature_starts.is_empty(),
+			"endless plays the furthest zone's features from the start (%s)" % [ctx.config.feature_starts])
+	check(city_3.feature_starts.size() == 3, "and the campaign level keeps its own starts")
+	if ctx != null:
+		check(not ctx.config.guarantee_features and city_3.guarantee_features,
+			"endless skips the campaign's every-feature guarantee (a 20-minute level needs no rebuilds)")
+	App.show_title()
+	# With the Dead Zone reached, endless copies The Hush but not its own remix: its pacing in bursts,
+	# the hosts it picks more often, or its darkness.
+	for s: CampaignStep in App.campaign.steps():
+		if s.index < App.campaign.step("dead_zone/2").index:
+			App.profile.record_run(s.id, 0, true, 100, 3, 10.0)
+	var hush: LevelConfig = App.campaign.step("dead_zone/2").level
+	App.start_endless()
+	await physics_frames(3)
+	var dead: RunContext = App.run.context if App.run != null else null
+	check(dead != null and dead.config.features == hush.features
+		and not dead.config.paced_in_bursts() and dead.config.darkness == 0.0,
+		"endless in the Dead Zone plays The Hush's features, evenly paced, in the zone's own light")
+	check(dead != null and dead.config.feature_weight("host") == 1.0 and dead.config.quiet_features.is_empty()
+		and hush.feature_weight("host") > 1.0 and hush.quiet_features == PackedStringArray(["host"]),
+		"with hosts as often as elsewhere, and The Hush keeps its own")
+	App.show_title()
+
+
+## GDD §5: The Hush's darker lighting reaches its run: the run's environment is the zone skin's with
+## the level's darkness (ZoneSkin.level_environment), and the scenery light comes back when the run
+## ends.
+func _test_darker_level() -> void:
+	await _campaign_level("dead_zone/2")
+	var run: LevelRun = App.run
+	check(run != null and run.context.config.darkness > 0.0, "The Hush starts, with its darkness")
+	if run == null:
+		return
+	# The run's WorldEnvironment sets its world's environment.
+	var env: Environment = run.get_world_3d().environment
+	var plain: Environment = run.world.skin.make_environment()
+	var light: float = ZoneSkin.scenery_light_for(run.context.config.darkness)
+	check(env != null and is_equal_approx(env.background_energy_multiplier, plain.background_energy_multiplier * ZoneSkin.energy_factor(light))
+		and is_equal_approx(ZoneSkin.scenery_light_now, light), "its run's scenery is darker (%.2f)" % ZoneSkin.scenery_light_now)
+	# The next level's run sets its own light, and The Hush's, freed after it started, leaves it alone.
+	await _campaign_level("golden/1")
+	check(ZoneSkin.scenery_light_now == 1.0, "the next level has its zone's own light (%.2f)" % ZoneSkin.scenery_light_now)
+	await _campaign_level("dead_zone/2")
+	App.show_title()
+	await physics_frames(2)
+	check(ZoneSkin.scenery_light_now == 1.0, "and the light comes back when the run ends")
 
 
 func get_tree_paused() -> bool:

@@ -5,6 +5,9 @@ render_mode unshaded, cull_back;
 
 #include "res://scripts/world/meshes/shaders/kit_common.gdshaderinc"
 
+// A level's darker lighting (ZoneSkin.apply_darkness): the scenery dims with it.
+global uniform float scenery_light;
+
 uniform float scroll_speed = 14.0;
 uniform float lane_width = 3.4;
 uniform vec3 asphalt : source_color = vec3(0.04, 0.04, 0.06);
@@ -43,5 +46,5 @@ void fragment() {
 	float streak = smoothstep(-0.28, 0.0, s) * (1.0 - smoothstep(0.0, 0.02, s));
 	float across = 1.0 - smoothstep(0.08, 0.2, abs(lx - 0.5));
 	col += to_linear(oncoming ? head_color : tail_color) * (streak * across * has_car * streak_glow);
-	ALBEDO = col;
+	ALBEDO = col * light_factor(scenery_light);
 }

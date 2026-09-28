@@ -16,6 +16,12 @@ extends Node
 ##   --skin=gangland         quick play in another zone's look (data/skins/<name>_skin.tres)
 ##   --level=city/2          a campaign level, with the full flow (also takes --lanes=N, --god,
 ##                           --nofall and --full-loadout, for reviews)
+##   --boss=city_boss        a boss fight by its BossDef id: a zone's boss with the full flow (like
+##                           --level=city/boss; a fight still being built, its preview_scene, as quick
+##                           play), any other (data/bosses/<id>.tres, e.g. the test boss) as quick
+##                           play, starting over after a death or a win. Both take --lanes=N,
+##                           --god, --nofall, --full-loadout, --skin=<zone> (quick play only) and
+##                           --phase=N (start at phase N, as a checkpoint would)
 ##   --flavor=web_demo       pretend to be another build flavor (full_pc, full_mobile, web_demo)
 
 signal profile_changed
@@ -26,6 +32,10 @@ const POWERUPS_PATH: String = "res://data/tuning/powerups.tres"
 const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
 const SFX_PATH: String = "res://data/audio/sfx_library.tres"
 const QUICK_LEVEL_PATH: String = "res://data/levels/prototype_level.tres"
+## Where --boss=<id> finds a boss that isn't in the campaign (the test boss).
+const BOSSES_DIR: String = "res://data/bosses"
+## The look of a quick-play boss fight whose arena has none (--skin= picks another).
+const QUICK_BOSS_SKIN: String = "res://data/skins/city_skin.tres"
 ## DESIGN-TBD: endless mode (OPEN_QUESTIONS §8): one long level whose difficulty keeps rising.
 const ENDLESS_SECONDS: float = 1200.0
 
@@ -95,9 +105,13 @@ func boot(p_main: Node) -> void:
 				play_step(s)
 				return
 	for arg: String in args:
+		if arg.begins_with("--boss="):
+			if _start_boss_arg(arg.get_slice("=", 1), args):
+				return
+	for arg: String in args:
 		if arg == "--quick" or arg == "--god" or arg.begins_with("--seed=") or arg.begins_with("--lanes=") \
 				or arg.begins_with("--difficulty=") or arg.begins_with("--features=") or arg == "--full-loadout" \
-				or arg == "--nofall" or arg.begins_with("--skin="):
+				or arg == "--nofall" or arg.begins_with("--skin=") or arg.begins_with("--pickups"):
 			start_quick(args)
 			return
 	show_title()
@@ -240,9 +254,12 @@ func advance_from(s: CampaignStep) -> void:
 		play_step(next)
 
 
-## Marks a boss or cinematic step as done (placeholders complete when the player continues).
+## Marks a boss or cinematic slot as done (placeholders complete when the player continues; a built
+## boss records its fight through the results instead, so a boss slot passed as a placeholder earns
+## no stars that would show once the fight is built). The campaign's last step is a cinematic.
 func complete_step(s: CampaignStep, score: int = 0) -> void:
-	profile.record_run(s.id, 0, true, score, 3, 0.0)
+	profile.record_run(s.id, 0, true, score, 0 if s.kind == CampaignStep.Kind.BOSS else 3, 0.0)
+	_check_game_finished()
 	save()
 
 
@@ -250,9 +267,13 @@ func lane_count() -> int:
 	return rules.lanes_for_device(mobile)
 
 
-## What the player takes into the next run, from what they own and have switched on.
-func make_loadout() -> Loadout:
-	return Loadout.from_profile(profile, catalog, mobile)
+## What the player takes into the next run, from what they own and have switched on, plus what a
+## boss fight grants (GDD §8).
+func make_loadout(boss: BossDef = null) -> Loadout:
+	var out: Loadout = Loadout.from_profile(profile, catalog, mobile)
+	if boss != null:
+		out.grant(boss.granted_items, catalog, mobile)
+	return out
 
 
 # --- Runs --------------------------------------------------------------------------
@@ -270,8 +291,41 @@ func start_level(s: CampaignStep, difficulty_tier: int = 0) -> void:
 	_start_run(ctx, s.zone.music)
 
 
-## Review aids for campaign levels started with --level= (debug builds): the lane count, god mode,
-## no falls and a full loadout, for every level the session plays.
+## A campaign boss fight (GDD §10): it plays in the run world like a level, on the boss's own arena,
+## with its granted items, and goes through the same flow (death screen, results, shop, retry).
+func start_boss(s: CampaignStep, difficulty_tier: int = 0) -> void:
+	var ctx := RunContext.new()
+	ctx.mode = RunContext.Mode.CAMPAIGN
+	ctx.step = s
+	ctx.boss = s.boss
+	ctx.difficulty_tier = difficulty_tier
+	ctx.config = campaign.configure_boss(s, lane_count(), difficulty_tier)
+	ctx.tuning = _boss_tuning(_tuning_for_tier(difficulty_tier))
+	ctx.loadout = make_loadout(s.boss)
+	_apply_review_args(ctx)
+	_start_run(ctx, _music_for(ctx))
+
+
+## A boss fight as quick play (--boss= for a boss outside the campaign, such as the test boss; debug
+## builds): no records or wallet, starting over after a death or a win, with the quick-play overrides.
+func start_boss_quick(def: BossDef, args: PackedStringArray = PackedStringArray()) -> void:
+	var ctx := RunContext.new()
+	ctx.mode = RunContext.Mode.QUICK
+	ctx.boss = def
+	ctx.config = BossArena.base_config(def)
+	ctx.config.lane_count = lane_count()
+	if ctx.config.skin == null and ResourceLoader.exists(QUICK_BOSS_SKIN):
+		ctx.config.skin = load(QUICK_BOSS_SKIN) as ZoneSkin
+	ctx.tuning = _boss_tuning(tuning)
+	ctx.loadout = make_loadout(def)
+	_review_args = args
+	_apply_review_args(ctx)
+	_start_run(ctx, def.music if def.music != &"" else &"city")
+
+
+## Review aids for campaign steps started with --level= or --boss= (debug builds): the lane count,
+## god mode, no falls, a full loadout, and for a boss fight its starting phase (--phase=N) and, in
+## quick play, its look (--skin=), for every run the session plays.
 func _apply_review_args(ctx: RunContext) -> void:
 	for arg: String in _review_args:
 		if arg.begins_with("--lanes="):
@@ -282,6 +336,47 @@ func _apply_review_args(ctx: RunContext) -> void:
 			ctx.no_fall = true
 		elif arg == "--full-loadout":
 			ctx.loadout = Loadout.full(catalog)
+			if ctx.boss != null:
+				ctx.loadout.grant(ctx.boss.granted_items, catalog, mobile)
+		elif arg.begins_with("--phase=") and ctx.boss != null:
+			var index: int = clampi(int(arg.get_slice("=", 1)) - 1, 0, ctx.boss.phase_count() - 1)
+			ctx.boss_resume = {"phase": index} if index > 0 else {}
+		elif arg.begins_with("--skin=") and ctx.boss != null and ctx.mode == RunContext.Mode.QUICK:
+			var skin_path: String = "res://data/skins/%s_skin.tres" % arg.get_slice("=", 1)
+			if ResourceLoader.exists(skin_path):
+				ctx.config.skin = load(skin_path) as ZoneSkin
+
+
+## --boss=<id>: a zone's boss by its step (the full flow; a fight still being built, BossDef.preview(),
+## as quick play), or data/bosses/<id>.tres as quick play. False if there's no such boss, or it isn't
+## built.
+func _start_boss_arg(id: String, args: PackedStringArray) -> bool:
+	for s: CampaignStep in campaign.steps():
+		if s.kind == CampaignStep.Kind.BOSS and s.boss != null and String(s.boss.id) == id:
+			var preview: BossDef = s.boss.preview()
+			if preview != null:
+				start_boss_quick(preview, args)
+				return true
+			_review_args = args
+			play_step(s)
+			return true
+	var path: String = BOSSES_DIR.path_join(id + ".tres")
+	var def: BossDef = load(path) as BossDef if ResourceLoader.exists(path) else null
+	if def == null or not def.is_built():
+		push_warning("App: no built boss '%s' (%s)" % [id, path])
+		return false
+	start_boss_quick(def, args)
+	return true
+
+
+## A boss fight's movement tuning: the run speed never rises during the fight (GDD §10: no
+## escalation, however long it lasts).
+func _boss_tuning(base: MovementTuning) -> MovementTuning:
+	if is_zero_approx(base.speed_gain_per_minute):
+		return base
+	var t: MovementTuning = base.duplicate() as MovementTuning
+	t.speed_gain_per_minute = 0.0
+	return t
 
 
 ## The grey-box workflow: the prototype level with command-line overrides, restarting on death.
@@ -316,6 +411,9 @@ func start_quick(args: PackedStringArray = PackedStringArray()) -> void:
 					ctx.config.features.append(f)
 		elif arg == "--full-loadout":
 			ctx.loadout = Loadout.full(catalog)
+		elif arg == "--pickups" or arg.begins_with("--pickups="):
+			# Review aid: pickups in turn (all three, or the ones listed), though levels have none.
+			ctx.review_pickups = v.split(",", false) if arg.contains("=") else PackedStringArray(PickupField.ITEMS)
 	_start_run(ctx, &"city")
 
 
@@ -336,6 +434,23 @@ func start_endless() -> void:
 	ctx.config.difficulty = 0.2
 	ctx.config.difficulty_ramp = 0.8
 	ctx.config.enemy_scaling = 1.0
+	# Everything the zone has, from the start: a campaign level's introductions (feature_starts)
+	# would hold features back for minutes in a 20-minute level. (A new dictionary: the copy shares
+	# the level's.)
+	ctx.config.feature_starts = {}
+	# A 20-minute random level brings every feature many times over, so the campaign's guarantee
+	# (every feature at least once, which may rebuild the level) would only cost load time.
+	ctx.config.guarantee_features = false
+	# The zone's play, not one level's own shape: The Hush's quiet stretches and bursts, the hosts it
+	# picks more often for them (its quiet features' weights) and its darker lighting stay in The Hush
+	# (GDD §5). (A new dictionary: the copy shares the level's.)
+	ctx.config.quiet_seconds = 0.0
+	ctx.config.darkness = 0.0
+	var weights: Dictionary[String, float] = ctx.config.feature_weights.duplicate()
+	for f: String in ctx.config.quiet_features:
+		weights.erase(f)
+	ctx.config.feature_weights = weights
+	ctx.config.quiet_features = PackedStringArray()
 	if ctx.config.skin == null and zone != null:
 		ctx.config.skin = zone.skin
 	ctx.tuning = tuning
@@ -343,9 +458,11 @@ func start_endless() -> void:
 	_start_run(ctx, zone.music if zone != null else &"city")
 
 
+## The next attempt at the same level or boss fight (same seed; a boss fight resumes at a checkpoint
+## it reached, GDD §10), with the loadout as the shop left it.
 func retry(ctx: RunContext) -> void:
 	var next: RunContext = ctx.retry()
-	next.loadout = make_loadout()
+	next.loadout = make_loadout(ctx.boss)
 	next.revives_used = 0
 	_start_run(next, _music_for(next))
 
@@ -366,14 +483,30 @@ func resume_game() -> void:
 		get_node(^"/root/Music").call(&"set_ducked", false)
 
 
-## Leaves a run from the pause menu (no credits, like quitting a level in most runners).
+## Leaves a run from the pause menu (GDD §4, decided September 26, 2026): keeps
+## `GameRules.death_credit_keep_fraction` of this attempt's credits, like a death, but it's never a
+## completion and never touches a level's best score, stars, best time or leaderboard placement (the
+## `deaths` stat isn't bumped either: quitting isn't dying). Quick play (the grey-box review tool)
+## never touches the wallet or profile at all on a quit, same as on a death or a finish there. A
+## boss fight quit follows the same rule; it just can't keep a checkpoint reached this attempt, since
+## starting the step afresh never does (RunContext.boss_resume, documented there) and quitting has
+## nowhere else to carry it to.
 func quit_run() -> void:
-	var campaign_run: bool = run != null and run.context.is_campaign()
+	if run == null:
+		resume_game()
+		return
+	var campaign_run: bool = run.context.is_campaign()
+	var result: RunResult = run.quit_result() if run.context.mode != RunContext.Mode.QUICK else null
 	resume_game()
+	if result != null:
+		_apply_result(result, false)
 	if campaign_run:
 		show_level_select()
 	else:
 		show_title()
+	if result != null and result.credits_earned > 0:
+		Toast.show_message(screen, "+%s credits kept" % UiTheme.format_int(result.credits_earned),
+			IconFactory.credit_icon(100))
 
 
 func _start_run(ctx: RunContext, music: StringName) -> void:
@@ -407,8 +540,11 @@ func _end_run() -> void:
 
 
 ## A breakable item broke during a run: it leaves the stock at once (GDD §8), so quitting can't
-## save it.
+## save it. An item a boss fight granted, or one picked up during the fight, was the fight's, not the
+## player's (Loadout.costs_stock).
 func _on_item_used(item: StringName) -> void:
+	if run != null and run.context.loadout != null and not run.context.loadout.costs_stock(item):
+		return
 	profile.use_stock(item)
 	save()
 	profile_changed.emit()
@@ -472,29 +608,32 @@ func _on_run_finished(result: RunResult) -> void:
 		play_ui_sound(&"ui_unlock")
 
 
-## Pays the wallet, stores records and submits leaderboards for a finished run.
-func _apply_result(result: RunResult) -> void:
+## Pays the wallet, stores records and submits leaderboards for a finished run. `count_as_death`
+## gates the `deaths` stat only: quitting from the pause menu (quit_run) keeps the same credit share
+## as a death (GDD §4) without having died.
+func _apply_result(result: RunResult, count_as_death: bool = true) -> void:
 	var ctx: RunContext = result.context
 	profile.add_earned(result.credits_earned)
 	profile.stat_add("runs")
 	profile.stat_add("kills", int(result.stats.get("kills", 0)))
 	profile.stat_add("credits_collected", result.credits_collected)
 	if result.completed:
-		profile.stat_add("levels_completed")
-	else:
+		profile.stat_add("bosses_defeated" if ctx.is_boss() else "levels_completed")
+	elif count_as_death:
 		profile.stat_add("deaths")
 	if ctx.is_campaign():
+		# Levels and bosses alike (GDD §10: bosses have records, stars and leaderboards like levels).
 		result.record = profile.record_run(ctx.step.id, ctx.difficulty_tier, result.completed, result.score,
 			result.stars, result.time)
 		if result.completed:
-			Platform.submit_score("level/%s/%d" % [ctx.step.id, ctx.difficulty_tier], result.score)
+			Platform.submit_score(ctx.leaderboard_id(), result.score)
 			_check_game_finished()
 	elif ctx.mode == RunContext.Mode.ENDLESS:
 		var key: String = "%d/%d" % [ctx.config.lane_count, ctx.difficulty_tier]
 		if result.score > int(profile.endless_best.get(key, 0)):
 			profile.endless_best[key] = result.score
 			result.record = {"new_best": true}
-		Platform.submit_score("endless/%s" % key, result.score)
+		Platform.submit_score(ctx.leaderboard_id(), result.score)
 	Platform.submit_score("net_worth", profile.net_worth())
 	save()
 	profile_changed.emit()
@@ -580,8 +719,9 @@ func save() -> void:
 		SaveService.save_profile(profile, save_path)
 
 
-# --- Bosses and cinematics (slots until designed) ----------------------------------------
+# --- Bosses and cinematics (placeholder cards until built) --------------------------------
 
+## A boss step: the fight (a run like a level's, start_boss), or its placeholder card until built.
 func _play_boss(s: CampaignStep, difficulty_tier: int) -> void:
 	_end_run()
 	if s.boss == null or not s.boss.is_built():
@@ -589,23 +729,7 @@ func _play_boss(s: CampaignStep, difficulty_tier: int) -> void:
 		card.step = s
 		show_screen(card)
 		return
-	close_overlay()
-	if screen != null and is_instance_valid(screen):
-		screen.queue_free()
-	screen = null
-	var node: Node = (load(s.boss.scene) as PackedScene).instantiate()
-	_boss_node = node
-	main.world_root.add_child(node)
-	var encounter := node as BossEncounter
-	encounter.finished.connect(func(won: bool, score: int, earned: int) -> void:
-		profile.add_earned(earned)
-		if won:
-			complete_step(s, score)
-			advance_from(s)
-		else:
-			save()
-			play_step(s, difficulty_tier))
-	encounter.begin(s.boss, make_loadout(), lane_count(), difficulty_tier)
+	start_boss(s, difficulty_tier)
 
 
 func _play_cinematic(s: CampaignStep) -> void:
@@ -650,6 +774,8 @@ func _furthest_zone() -> ZoneDef:
 
 
 func _music_for(ctx: RunContext) -> StringName:
+	if ctx.is_boss() and ctx.boss.music != &"":
+		return ctx.boss.music
 	return ctx.step.zone.music if ctx.is_campaign() else &"city"
 
 

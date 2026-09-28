@@ -1,0 +1,70 @@
+[gd_resource type="Resource" script_class="BossDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/campaign/boss_def.gd" id="1_def"]
+[ext_resource type="Script" path="res://scripts/campaign/boss_phase.gd" id="2_phase"]
+[ext_resource type="Script" path="res://scripts/core/level_config.gd" id="3_level"]
+[ext_resource type="Resource" path="res://data/bosses/test_boss_tuning.tres" id="4_tuning"]
+
+[sub_resource type="Resource" id="phase_1"]
+script = ExtResource("2_phase")
+display_name = "Warm-up"
+health_share = 1.0
+hits = 1
+pace = 1.0
+checkpoint = false
+intro_seconds = 2.5
+
+[sub_resource type="Resource" id="phase_2"]
+script = ExtResource("2_phase")
+display_name = "Checkpoint"
+health_share = 1.0
+hits = 1
+pace = 1.15
+checkpoint = true
+intro_seconds = 1.5
+
+[sub_resource type="Resource" id="phase_3"]
+script = ExtResource("2_phase")
+display_name = "Overdrive"
+health_share = 1.0
+hits = 1
+pace = 1.3
+checkpoint = false
+intro_seconds = 1.5
+
+[sub_resource type="Resource" id="arena"]
+script = ExtResource("3_level")
+id = &"test_boss_arena"
+display_name = "Test Core arena"
+level_seed = 8008
+duration_seconds = 60.0
+difficulty = 0.15
+difficulty_ramp = 0.0
+features = PackedStringArray("ceilings")
+spacing_seconds_easy = 2.4
+spacing_seconds_hard = 1.6
+
+[resource]
+script = ExtResource("1_def")
+id = &"test_boss"
+display_name = "Test Core"
+scene = "res://scenes/bosses/test_boss.tscn"
+granted_items = PackedStringArray("armor")
+notes = "The boss framework's test boss (B8): not in the campaign. Play it with ./play.sh --boss=test_boss (debug builds)."
+health = 90.0
+weapon_share_cap = 0.34
+phases = Array[ExtResource("2_phase")]([SubResource("phase_1"), SubResource("phase_2"), SubResource("phase_3")])
+arena = SubResource("arena")
+arena_laps = 2
+tuning = ExtResource("4_tuning")
+payout_credits = 300
+defeat_score = 3000
+weak_point_score = 500
+two_star_seconds = 75.0
+three_star_seconds = 50.0
+time_bonus_per_second = 50
+time_bonus_seconds = 120.0
+armor_rule = true
+armor_delay_min = 15.0
+armor_delay_max = 17.0
+armor_pickups_per_phase = 1

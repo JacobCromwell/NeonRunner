@@ -1,9 +1,63 @@
 [gd_resource type="Resource" script_class="BossDef" format=3]
 
 [ext_resource type="Script" path="res://scripts/campaign/boss_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/campaign/boss_phase.gd" id="2_phase"]
+[ext_resource type="Script" path="res://scripts/core/level_config.gd" id="3_level"]
+[ext_resource type="Resource" path="res://data/bosses/city_boss_tuning.tres" id="4_tuning"]
+[ext_resource type="Resource" path="res://data/bosses/city_boss_skin.tres" id="5_skin"]
+
+[sub_resource type="Resource" id="phase_1"]
+script = ExtResource("2_phase")
+health_share = 1.0
+hits = 1
+pace = 1.0
+checkpoint = false
+intro_seconds = 4.0
+
+[sub_resource type="Resource" id="phase_2"]
+script = ExtResource("2_phase")
+health_share = 1.0
+hits = 1
+pace = 1.15
+checkpoint = false
+intro_seconds = 2.5
+
+[sub_resource type="Resource" id="phase_3"]
+script = ExtResource("2_phase")
+health_share = 1.0
+hits = 1
+pace = 1.3
+checkpoint = false
+intro_seconds = 2.5
+
+[sub_resource type="Resource" id="arena"]
+script = ExtResource("3_level")
+id = &"city_boss_arena"
+display_name = "Floating Head arena"
+level_seed = 1101
+duration_seconds = 60.0
+difficulty = 0.3
+difficulty_ramp = 0.0
+features = PackedStringArray("pulsing")
+start_clear_distance = 80.0
+spacing_seconds_easy = 2.4
+spacing_seconds_hard = 1.7
+skin = ExtResource("5_skin")
 
 [resource]
 script = ExtResource("1_script")
 id = &"city_boss"
-display_name = "Zone 1 boss"
-notes = "DESIGN-TBD: not designed yet. The GDD lists the Floating Head (a monstrous head that fires projectiles; jump on its weak points) among the boss ideas."
+display_name = "Floating Head"
+scene = "res://scenes/bosses/floating_head.tscn"
+notes = "GDD §10: a giant ship whose back is a cybernetic propaganda face shouting over the city. It bombs the lanes where its searchlight lingers, then turns to face you: eye-laser sweeps, and cyborgs dropped from its mouth. Bait a laser into a marked tower to pin it, then stomp the red weak point on its head, once per phase: up the fallen tower, by a wall jump, then dropping from a ceiling. Armor pickups help in the last phase. Beaten, it crashes into the street ahead and you run through the wreck."
+weapon_share_cap = 0.34
+phases = Array[ExtResource("2_phase")]([SubResource("phase_1"), SubResource("phase_2"), SubResource("phase_3")])
+arena = SubResource("arena")
+arena_laps = 3
+tuning = ExtResource("4_tuning")
+two_star_seconds = 150.0
+three_star_seconds = 110.0
+armor_rule = true
+armor_delay_min = 10.0
+armor_delay_max = 15.0
+armor_pickups_per_phase = 1

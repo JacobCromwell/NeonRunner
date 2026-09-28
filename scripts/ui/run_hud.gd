@@ -2,14 +2,15 @@ class_name RunHud
 extends CanvasLayer
 ## The in-game display on the kit's HUD theme (OPEN_QUESTIONS §5 leaves its contents open): the
 ## score and the run's credits top right, with bonus pop-ups and the ramp multiplier beside them;
-## level progress top centre; the protection the player carries and the power-ups bottom left; a
-## centre message; first-encounter hints under the progress meter; and a pause button on touch
-## screens.
+## level progress top centre, or in a boss fight the boss's health bar with its phase markers
+## (BossBar, GDD §10); the protection the player carries and the power-ups bottom left; a centre
+## message; first-encounter hints under the progress meter; and a pause button on touch screens.
 ## Everything stays inside the screen's safe area. In quick play, where the debug HUD fills the
 ## top left, the progress meter moves into the right column and the icons sit above the debug help.
 ## Power-ups report themselves: if world.powerups has hud_state(), each entry
 ## {id, icon, tier, ready 0–1, active, charges} gets an icon; otherwise the HUD shows the player's
-## own charges (and claws, which have no cooldown).
+## own charges (and claws, which have no cooldown). A pickup taken during the run (GDD §10) flashes
+## its item's icon, which joins the protections in its place if the run didn't bring that item.
 
 signal pause_pressed
 
@@ -22,6 +23,8 @@ const PROTECTIONS: Array = [[&"armor", &"armor", &"armor"], [&"shield", &"shield
 	[&"grapple", &"grapple", &"grapples"]]
 ## Power-ups the player triggers with a key: the key shows on the icon (keyboard devices).
 const POWERUP_ACTIONS: Dictionary = {&"dash": &"dash", &"slow_time": &"slow_time"}
+## Shown when a boss fight reaches its checkpoint (GDD §10).
+const CHECKPOINT_TEXT: String = "Checkpoint! A retry starts here."
 
 var world: RunWorld
 var context: RunContext
@@ -30,6 +33,8 @@ var root: Control
 var score_counter: CreditCounter
 var credits_counter: CreditCounter
 var progress: ProgressMeter
+## The boss's health in a boss fight (in the progress meter's place).
+var boss_bar: BossBar
 var pause_button: NeonButton
 ## Id (armor, shield, grapple, or a power-up's id) -> its CooldownIcon.
 var item_icons: Dictionary = {}
@@ -46,6 +51,7 @@ var _hint: PanelContainer
 var _hint_label: Label
 var _hint_tween: Tween
 var _score_source: ScoreKeeper
+var _pickup_source: PickupField
 var _quick: bool = false
 
 
@@ -122,6 +128,11 @@ func _ready() -> void:
 	# DESIGN-TBD: what progress markers stand for (OPEN_QUESTIONS §5); none are shown yet.
 	progress.custom_minimum_size.x = UiTheme.px(420)
 	_top_center.add_child(progress)
+	boss_bar = BossBar.new()
+	boss_bar.name = "BossBar"
+	boss_bar.custom_minimum_size.x = UiTheme.px(460)
+	boss_bar.visible = false
+	_top_center.add_child(boss_bar)
 
 	# Bottom left: protection and power-ups.
 	_items = HBoxContainer.new()
@@ -169,17 +180,23 @@ func bind(p_world: RunWorld, p_context: RunContext) -> void:
 			_score_source.changed.disconnect(_on_score_changed)
 		if _score_source.bonus_awarded.is_connected(_on_bonus):
 			_score_source.bonus_awarded.disconnect(_on_bonus)
+	if _pickup_source != null and is_instance_valid(_pickup_source) and _pickup_source.collected.is_connected(_on_pickup_collected):
+		_pickup_source.collected.disconnect(_on_pickup_collected)
 	world = p_world
 	context = p_context
 	_quick = context != null and context.mode == RunContext.Mode.QUICK and OS.is_debug_build()
 	_score_source = world.score
 	world.score.changed.connect(_on_score_changed)
 	world.score.bonus_awarded.connect(_on_bonus)
+	_pickup_source = world.pickups
+	if _pickup_source != null:
+		_pickup_source.collected.connect(_on_pickup_collected)
 	score_counter.set_value(world.score.score, false)
 	credits_counter.set_value(world.score.credits, false)
 	for child: Node in _popups.get_children():
 		child.queue_free()
 	_place_progress()
+	_bind_boss(BossEncounter.of(world))
 	_build_items()
 	set_message("")
 	_fit_frame()
@@ -221,7 +238,8 @@ func _process(_delta: float) -> void:
 	if world == null or not is_instance_valid(world) or world.player == null:
 		return
 	var p: Player = world.player
-	progress.value = clampf(p.distance / maxf(world.layout.length, 1.0), 0.0, 1.0)
+	if not boss_bar.visible:
+		progress.value = clampf(p.distance / maxf(world.layout.length, 1.0), 0.0, 1.0)
 	var mult: float = world.score.multiplier
 	_multiplier.visible = mult > 1.0
 	if _multiplier.visible:
@@ -243,7 +261,7 @@ func _build_items() -> void:
 	var p: Player = world.player
 	for entry: Array in PROTECTIONS:
 		if world.loadout.charge(entry[0]) > 0 or int(p.get(entry[2])) > 0:
-			var icon: CooldownIcon = _add_icon(entry[0], entry[1])
+			var icon: CooldownIcon = _protection_icon(entry[0])
 			icon.count = int(p.get(entry[2]))
 	if world.powerups != null and world.powerups.has_method(&"hud_state"):
 		_update_powerups(world.powerups.call(&"hud_state"))
@@ -259,6 +277,8 @@ func _update_powerups(states: Array) -> void:
 		if id == &"":
 			continue
 		var icon: CooldownIcon = item_icons.get(id)
+		if icon == null and _protection_order(id) >= 0:
+			icon = _protection_icon(id)
 		if icon == null:
 			icon = _add_icon(id, ShopScreen.icon_for(StringName(String(d.get("icon", id))), int(d.get("tier", 1))))
 			if POWERUP_ACTIONS.has(id):
@@ -278,6 +298,40 @@ func _add_icon(id: StringName, icon_name: StringName) -> CooldownIcon:
 	return icon
 
 
+## The icon of a protection (armor, shield or grapple), made if it isn't shown yet: the protections
+## come first, in PROTECTIONS order, then the power-ups. Null for anything else.
+func _protection_icon(id: StringName) -> CooldownIcon:
+	var icon: CooldownIcon = item_icons.get(id)
+	var order: int = _protection_order(id)
+	if icon != null or order < 0:
+		return icon
+	icon = _add_icon(id, PROTECTIONS[order][1])
+	var before: int = 0
+	for other: Array in PROTECTIONS:
+		if _protection_order(other[0]) < order and item_icons.has(other[0]):
+			before += 1
+	_items.move_child(icon, before)
+	return icon
+
+
+## The place of `id` in PROTECTIONS, or -1 if it isn't a protection.
+func _protection_order(id: StringName) -> int:
+	for i: int in PROTECTIONS.size():
+		if PROTECTIONS[i][0] == id:
+			return i
+	return -1
+
+
+## A pickup was taken (GDD §10): its item's icon shows, with the charges the player holds now, and
+## flashes (also when the player already held all they can).
+func _on_pickup_collected(pickup: Pickup, _gained: bool) -> void:
+	var icon: CooldownIcon = _protection_icon(pickup.item)
+	if icon == null:
+		return
+	icon.count = world.player.charges_of(pickup.item)
+	icon.flash_ready()
+
+
 func _place_progress() -> void:
 	var in_column: bool = progress.get_parent() == _right
 	# Endless runs have no end to measure against.
@@ -293,6 +347,32 @@ func _place_progress() -> void:
 		_right.remove_child(progress)
 		_top_center.add_child(progress)
 		progress.custom_minimum_size.x = UiTheme.px(420)
+
+
+## A boss fight shows the boss's bar in the progress meter's place (a fight has no distance to
+## measure; in quick play it joins the score column, clear of the debug HUD), and says when a
+## checkpoint is reached.
+func _bind_boss(encounter: BossEncounter) -> void:
+	boss_bar.visible = encounter != null
+	var in_column: bool = boss_bar.get_parent() == _right
+	if _quick and not in_column:
+		_top_center.remove_child(boss_bar)
+		_right.add_child(boss_bar)
+		_right.move_child(boss_bar, 2)
+		boss_bar.custom_minimum_size.x = UiTheme.px(300)
+		boss_bar.size_flags_horizontal = Control.SIZE_SHRINK_END
+	elif not _quick and in_column:
+		_right.remove_child(boss_bar)
+		_top_center.add_child(boss_bar)
+		boss_bar.custom_minimum_size.x = UiTheme.px(460)
+		boss_bar.size_flags_horizontal = Control.SIZE_FILL
+	if encounter == null:
+		boss_bar.encounter = null
+		return
+	progress.visible = false
+	boss_bar.bind(encounter)
+	if not _quick:
+		encounter.checkpoint_reached.connect(func(_index: int) -> void: show_hint(CHECKPOINT_TEXT))
 
 
 ## Keeps everything inside the safe area plus a margin; in quick play it clears the debug HUD.
@@ -317,7 +397,8 @@ func _fit_frame() -> void:
 func _place_hint() -> void:
 	_hint.offset_left = 0.0
 	_hint.offset_right = 0.0
-	_hint.offset_top = UiTheme.px(44)
+	# Under the boss bar, which is taller than the progress meter.
+	_hint.offset_top = UiTheme.px(66 if boss_bar != null and boss_bar.visible and not _quick else 44)
 	_hint.offset_bottom = _hint.offset_top
 
 
