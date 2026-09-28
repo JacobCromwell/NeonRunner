@@ -197,6 +197,9 @@ func _set_phase(next: Phase) -> void:
 	phase = next
 	_phase_time = 0.0
 	history.append([PHASE_NAMES[next], world.player.distance])
+	if next == Phase.LEAVE:
+		# Running off, it gives up the turn it may still be waiting for (GDD §9).
+		world.director.give_up_turn(self)
 
 
 func _idle(delta: float, rel: float, v: float) -> void:

@@ -25,6 +25,9 @@ func run() -> void:
 	await _test_shots_hold_the_turn()
 	await _test_longest_wait_first()
 	await _test_no_starvation()
+	await _test_keeps_place_through_a_gap()
+	await _test_keeps_place_through_its_turn()
+	await _test_place_lapses()
 	await _test_exclusive()
 	await _test_attack_on_carries_on()
 	await _test_many()
@@ -251,6 +254,89 @@ func _test_no_starvation() -> void:
 	check(worst <= 2 * 0.6 + 0.1, "nobody waits longer than one attack of each other type (%.2f s at most)" % worst)
 	check(_overlaps(a, b).is_empty() and _overlaps(a, c).is_empty() and _overlaps(b, c).is_empty(), "and none overlap")
 	await sim.free_world(w)
+
+
+## A waiting enemy keeps its place in the queue through a short gap in its asks (its stretch not clear
+## for a moment): when the attack that was on is over, a type that began waiting later doesn't go
+## first, even though the gap spans that moment. With no grace (GameRules.turn_place_grace 0) the gap
+## sends it to the back of the queue, as before.
+func _test_keeps_place_through_a_gap() -> void:
+	for grace: float in [2.0, 0.0]:
+		var tag: String = "grace %.1f s" % grace
+		var w: RunWorld = _world(true)
+		w.rules.turn_place_grace = grace
+		var a := _dummy(w, "alpha", {"first": 0.1, "interval": 10.0, "warning": 0.5, "attack": 1.4})
+		var gap := _dummy(w, "beta", {"first": 0.5, "interval": 10.0, "warning": 0.3, "attack": 0.3,
+			"pauses": [[1.5, 2.4]]})
+		var late := _dummy(w, "gamma", {"first": 1.0, "interval": 10.0, "warning": 0.3, "attack": 0.3})
+		await _run(w, 1.8)
+		if grace > 0.0:
+			check(w.director.is_waiting(gap) and not w.director.held_for_turn(gap) and w.director.turn_wait(gap) > 1.2,
+				"%s: it isn't asking, but it's still waiting, since it first asked (%.2f s)" % [tag, w.director.turn_wait(gap)])
+		await _run(w, 2.2)
+		var end_a: float = _time_of(a, "end")
+		var start_gap: float = _time_of(gap, "start")
+		var start_late: float = _time_of(late, "start")
+		check(_overlaps(gap, late).is_empty() and _overlaps(a, gap).is_empty() and _overlaps(a, late).is_empty(),
+			"%s: no two overlap" % tag)
+		if grace > 0.0:
+			check(start_gap >= 2.4 - 0.001 and start_gap <= 2.4 + 0.05 and start_late >= _time_of(gap, "end") - 0.0001,
+				"%s: it goes as soon as it asks again (%.2f s), before the one that began waiting later (%.2f s); the attack on was over at %.2f s"
+				% [tag, start_gap, start_late, end_a])
+		else:
+			check(start_late >= end_a - 0.0001 and start_late < end_a + 0.05 and start_gap > start_late,
+				"%s: the gap cost it its place: the other went first (%.2f s, then %.2f s)" % [tag, start_late, start_gap])
+		await sim.free_world(w)
+
+
+## Told it may go, an enemy that isn't quite ready yet (an Octodog whose moved-on stretch isn't clear)
+## keeps asking and keeps its place: another type that is ready again waits for it rather than go
+## first again.
+func _test_keeps_place_through_its_turn() -> void:
+	var w: RunWorld = _world(true)
+	var a := _dummy(w, "alpha", {"first": 0.1, "interval": 0.3, "warning": 0.5, "attack": 1.4})
+	var slow := _dummy(w, "beta", {"first": 0.5, "interval": 10.0, "warning": 0.3, "attack": 0.3,
+		"stalls": [[1.9, 3.2]]})
+	await _run(w, 5.0)
+	var end_a: float = _time_of(a, "end")
+	var stalled: float = _time_of(slow, "stalled")
+	var start_slow: float = _time_of(slow, "start")
+	var again_a: float = _time_of(a, "start", 1)
+	check(stalled >= end_a - 0.0001 and stalled < end_a + 0.05 and start_slow >= 3.2 - 0.001 and start_slow <= 3.2 + 0.05,
+		"its turn came at %.2f s and it was ready at %.2f s" % [stalled, start_slow])
+	check(_time_of(a, "ready", 1) < start_slow and again_a >= _time_of(slow, "end") - 0.0001,
+		"the other, ready again at %.2f s, went after it (%.2f s)" % [_time_of(a, "ready", 1), again_a])
+	check(_overlaps(a, slow).is_empty(), "and they never overlap")
+	await sim.free_world(w)
+
+
+## Nothing waits for ever: an enemy that gives its attack up (EnemyDirector.give_up_turn) leaves the
+## queue at once, and one that stops asking without saying so loses its place
+## GameRules.turn_place_grace after its last ask; the next in the queue goes then.
+func _test_place_lapses() -> void:
+	for quiet: bool in [false, true]:
+		var tag: String = "stops asking" if quiet else "gives up"
+		var w: RunWorld = _world(true)
+		var grace: float = w.rules.turn_place_grace
+		var a := _dummy(w, "alpha", {"first": 0.1, "interval": 10.0, "warning": 0.5, "attack": 0.5})
+		var p := {"first": 0.3, "interval": 10.0, "warning": 0.3, "attack": 0.3}
+		if quiet:
+			p["pauses"] = [[0.6, 100.0]]
+		else:
+			p["give_up"] = 0.3
+		var quits := _dummy(w, "beta", p)
+		var next := _dummy(w, "gamma", {"first": 0.5, "interval": 10.0, "warning": 0.3, "attack": 0.3})
+		await _run(w, 0.6 + grace + 1.0)
+		var end_a: float = _time_of(a, "end")
+		var start_next: float = _time_of(next, "start")
+		check(_time_of(quits, "start") < 0.0 and not w.director.is_waiting(quits), "%s: it never went" % tag)
+		if quiet:
+			check(start_next >= end_a + 0.5 and absf(start_next - (0.6 + grace)) < 0.05,
+				"%s: the next went once its place was gone, %.1f s after its last ask (%.2f s)" % [tag, grace, start_next])
+		else:
+			check(_time_of(quits, "gave_up") < end_a and start_next >= end_a - 0.0001 and start_next < end_a + 0.05,
+				"%s: the next went as soon as the attack on was over (%.2f s, over at %.2f s)" % [tag, start_next, end_a])
+		await sim.free_world(w)
 
 
 ## GDD §9.7 holds whether or not big attacks take turns: an exclusive attack and those of the types it

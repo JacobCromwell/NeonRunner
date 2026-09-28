@@ -142,18 +142,25 @@ func targets_ahead(from: Vector3, max_distance: float) -> Array[Enemy]:
 ##   space their own attacks themselves (one drone barrage at a time, one Octodog or hover truck at a
 ##   time).
 ## The queue: an enemy's wait begins the first time it's held, and it keeps its place until its
-## attack starts, even through its turn: told it may go, an enemy that isn't quite ready yet (an
-## Octodog whose moved-on stretch isn't clear) still goes before those that waited less. A short gap
-## in its asks (its stretch not clear for a moment, its planned point not reached yet) doesn't cost
-## it its place either: it loses its place only after turn_place_grace() without asking (it gave up,
-## or it isn't ready for longer than that), or when it leaves play. So an enemy that has given up
-## stops asking, and one told it may go that keeps asking holds the others back while it does
-## (DESIGN-TBD, docs/questions/r3b.md: how long a waiting enemy keeps its place).
+## attack starts or it gives the attack up (give_up_turn), even through its turn: told it may go, an
+## enemy that isn't quite ready yet (an Octodog whose moved-on stretch isn't clear) still goes before
+## those that waited less. A short gap in its asks (its stretch not clear for a moment, its planned
+## point not reached yet) doesn't cost it its place either; it loses its place after
+## turn_place_grace() without asking (it isn't ready for longer than that), or when it leaves play.
+## So an enemy that gives up says so, and one told it may go that keeps asking holds the others back
+## while it does (DESIGN-TBD, docs/questions/r3b.md: how long a waiting enemy keeps its place).
 func major_attack_blocked(enemy: Enemy) -> bool:
 	var hold: Hold = _hold_for(enemy)
 	if big_attacks_take_turns():
 		_note_ask(enemy, hold)
 	return hold != Hold.NONE
+
+
+## `enemy` gives up the big attack it was waiting for (an Octodog runs off, a hover truck's pacing
+## ends before its cannon's turn came, a Resonator leaves): it leaves the queue at once, so no one
+## waits behind it. Harmless when it isn't waiting; its next held ask starts a new wait.
+func give_up_turn(enemy: Enemy) -> void:
+	_waits.erase(enemy.get_instance_id())
 
 
 ## GameRules.big_attacks_take_turns for this run (on when the run has no rules).

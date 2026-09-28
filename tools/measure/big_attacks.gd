@@ -10,6 +10,7 @@ extends SceneTree
 ##   --lanes=3,5,6                     lane counts (default 3,5,6)
 ##   --seeds=N                         each level's own seed and N others, 9001 to 9000 + N
 ##                                     (default 0: the campaign's own seeds)
+##   --seeds=A-B                       seeds A to B instead (not the level's own)
 ##   --turns=on,off                    the switch (default both)
 ##   --seconds=N                       stop each run after N s of play (default: at the finish)
 ##   --no-hosts                        leave hosts alone (default: the runner stomps every host it
@@ -34,7 +35,8 @@ const AttackWatch = preload("res://tools/measure/attack_watch.gd")
 var _levels: PackedStringArray = []
 var _features: PackedStringArray = []
 var _lanes: Array[int] = [3, 5, 6]
-var _seeds: int = 0
+## The seeds to run each level on (-1: the level's own).
+var _seeds: Array[int] = [-1]
 var _turns: Array[bool] = [true, false]
 var _limit: float = INF
 var _stomp_hosts: bool = true
@@ -72,12 +74,12 @@ func _run() -> void:
 		if not wanted:
 			continue
 		for lanes: int in _lanes:
-			for k: int in _seeds + 1:
+			for level_seed: int in _seeds:
 				for turns: bool in _turns:
 					if app != null:
 						# The same profile for every run (the first Octodogs of a profile hide in a doghouse).
 						app.set(&"profile", Profile.new())
-					var r: Dictionary = await _measure(campaign, step, lanes, 9000 + k if k > 0 else -1, turns, tuning)
+					var r: Dictionary = await _measure(campaign, step, lanes, level_seed, turns, tuning)
 					runs.append(r)
 					print(_line(r))
 	print("")
@@ -105,7 +107,14 @@ func _parse_args() -> void:
 			for v: String in value.split(",", false):
 				_lanes.append(int(v))
 		elif arg.begins_with("--seeds="):
-			_seeds = maxi(int(value), 0)
+			_seeds.clear()
+			if value.contains("-"):
+				for s: int in range(int(value.get_slice("-", 0)), int(value.get_slice("-", 1)) + 1):
+					_seeds.append(s)
+			else:
+				_seeds.append(-1)
+				for k: int in range(1, maxi(int(value), 0) + 1):
+					_seeds.append(9000 + k)
 		elif arg.begins_with("--turns="):
 			_turns.clear()
 			for v: String in value.split(",", false):

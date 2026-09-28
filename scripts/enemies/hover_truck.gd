@@ -408,6 +408,10 @@ func _update_cycle(delta: float) -> void:
 
 
 func _enter(next: State) -> void:
+	# GDD §9: it asks for its turn only while pacing (the cannon) or holding back (the lurch), so a
+	# change of state means it either started that attack or gave it up (a cannon shot whose turn
+	# didn't come before its pacing ended is skipped): either way it isn't waiting any more.
+	world.director.give_up_turn(self)
 	state = next
 	_state_time = 0.0
 	_spikes.set_enabled(next == State.LURCH_FWD)
