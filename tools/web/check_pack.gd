@@ -1,16 +1,18 @@
 extends SceneTree
-## Checks an exported web demo from the inside (task E2). Run its pack with the desktop Godot, headless:
-##   godot --headless --main-pack exports/web/index.pck --fixed-fps 60 -s <absolute path>/tools/web/check_pack.gd
+## Checks an exported web demo from the inside (task E2). Run its pack with the desktop Godot, headless,
+## from the pack's folder:
+##   cd exports/web && godot --headless --main-pack index.pck --fixed-fps 60 -s <repo>/tools/web/check_pack.gd
 ## (`tools/godot.sh web` exports the demo and runs this). The game then runs from the pack alone, so
 ## anything the demo needs that the export filter left out fails here:
-## - it is the web demo by the export's own feature tag (no --flavor);
-## - every music track and sound the demo can play loads from the pack, and the tracks and riffs it
-##   never plays aren't in it (the export stays lean);
+## - it is the web demo by the export's own feature tag (no --flavor), with no ads, purchases or
+##   leaderboards;
+## - every music track and sound the demo can play loads from the pack (demo_filter.gd names them
+##   from the data), and no other music or riff is in it (the export stays lean);
 ## - the demo's flow, walked from the title to the "get the full game" screen (demo_walk.gd: the
 ##   City's three levels and the Floating Head, with the results and the shop between them), logs no
 ##   error or warning.
-## Prints what it found and exits with 0 when all is well, 1 otherwise. The profile it plays is a fresh
-## one, never saved.
+## Prints what it found and exits with 0 when all is well, 1 otherwise. It plays a fresh profile and
+## never saves it.
 
 ## A check still running after this long (real time) is stuck.
 const WATCHDOG_SECONDS: int = 900
@@ -59,7 +61,9 @@ func _run() -> void:
 	# A main-loop script compiles before the autoloads are named globals: reach them through the tree.
 	var app: Node = root.get_node(^"App")
 	var platform: Node = root.get_node(^"Platform")
-	var walk_script := load((get_script() as Script).resource_path.get_base_dir().path_join("demo_walk.gd")) as GDScript
+	var here: String = (get_script() as Script).resource_path.get_base_dir()
+	var filter_script := load(here.path_join("demo_filter.gd")) as GDScript
+	var walk_script := load(here.path_join("demo_walk.gd")) as GDScript
 	var problems := PackedStringArray()
 	print("Checking the web demo's pack with Godot %s" % Engine.get_version_info()["string"])
 	# The build: the web demo by its own feature tag.
@@ -67,35 +71,7 @@ func _run() -> void:
 		problems.append("the pack isn't the web demo: no web_demo feature tag (flavor %s)" % BuildFlavor.name_of(BuildFlavor.current()))
 	if platform.call(&"ads_available") or platform.call(&"purchases_available") or platform.call(&"leaderboards_available"):
 		problems.append("the platform offers ads, purchases or leaderboards")
-	# Music and sounds: the demo's all load, the rest are left out.
-	var campaign: Campaign = app.get(&"campaign")
-	var sfx: SfxLibrary = app.get(&"sfx_library")
-	var tracks: PackedStringArray = walk_script.call(&"demo_tracks", campaign)
-	var music := load(MusicDirector.LIBRARY_PATH) as MusicLibrary
-	var left_out: int = 0
-	for track: String in music.names():
-		var file: String = music.path(StringName(track))
-		if tracks.has(track):
-			if not ResourceLoader.exists(file) or not load(file) is AudioStream:
-				problems.append("the demo plays the %s track, but %s isn't in the pack" % [track, file])
-		elif ResourceLoader.exists(file):
-			problems.append("%s is in the pack, but the demo never plays the %s track" % [file, track])
-		else:
-			left_out += 1
-	var sounds: PackedStringArray = walk_script.call(&"demo_sounds", sfx, tracks)
-	var loaded_sounds: int = 0
-	for sound: String in sfx.names():
-		var path: String = sfx.folder.path_join(sound + ".wav")
-		if sounds.has(sound):
-			if ResourceLoader.exists(path) and load(path) is AudioStream:
-				loaded_sounds += 1
-			else:
-				problems.append("the demo may play %s, but %s isn't in the pack" % [sound, path])
-		elif ResourceLoader.exists(path):
-			problems.append("%s is in the pack, but the demo never plays it" % path)
-		else:
-			left_out += 1
-	print("  music: %s load; %d sounds load; %d tracks and riffs left out" % [", ".join(tracks), loaded_sounds, left_out])
+	problems.append_array(_check_audio(app, filter_script))
 	# The flow, from the title to the end screen.
 	var main_scene: Node = (load(String(ProjectSettings.get_setting("application/run/main_scene"))) as PackedScene).instantiate()
 	root.add_child(main_scene)
@@ -128,3 +104,37 @@ func _run() -> void:
 			print("PROBLEM: " + p)
 		print("PACK CHECK FAILED (%d problems)" % problems.size())
 		quit(1)
+
+
+## The demo's music and sounds load from the pack; nothing else of the music library's folders, and
+## no riff of a track it never plays, is in it.
+func _check_audio(app: Node, filter_script: GDScript) -> PackedStringArray:
+	var problems := PackedStringArray()
+	var campaign: Campaign = app.get(&"campaign")
+	var sfx: SfxLibrary = app.get(&"sfx_library")
+	var music := load(MusicDirector.LIBRARY_PATH) as MusicLibrary
+	var tracks: PackedStringArray = filter_script.call(&"demo_tracks", campaign)
+	var sounds: PackedStringArray = filter_script.call(&"demo_sounds", sfx, music, tracks)
+	var keep: PackedStringArray = filter_script.call(&"demo_audio_files", music, sfx, tracks)
+	for file: String in keep:
+		if not ResourceLoader.exists(file) or not load(file) is AudioStream:
+			problems.append("the demo needs %s, but it isn't in the pack" % file)
+	# In a pack, a folder lists an imported file by its .import remap.
+	var folders := PackedStringArray([sfx.folder])
+	for track: String in music.names():
+		var folder: String = music.path(StringName(track)).get_base_dir()
+		if folder != "" and not folders.has(folder):
+			folders.append(folder)
+	var extensions: PackedStringArray = filter_script.get_script_constant_map()["AUDIO_EXTENSIONS"]
+	var shipped: int = 0
+	for folder: String in folders:
+		for file_name: String in DirAccess.get_files_at(folder):
+			var path: String = folder.path_join(file_name.trim_suffix(".import").trim_suffix(".remap"))
+			if not file_name.ends_with(".import") or not extensions.has(path.get_extension().to_lower()):
+				continue
+			shipped += 1
+			if not keep.has(path):
+				problems.append("%s is in the pack, but the demo never plays it" % path)
+	print("  music: %s; %d of %d sounds; %d audio files in the pack" % [", ".join(tracks), sounds.size(),
+		sfx.names().size(), shipped])
+	return problems

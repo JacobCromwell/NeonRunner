@@ -126,32 +126,6 @@ func probe() -> void:
 			loaded[path] = true
 
 
-## The music tracks the web demo can play: the menus', each demo zone's and its boss's, and the City's
-## (quick play's, in debug builds). Music only starts through App._play_music.
-static func demo_tracks(campaign: Campaign) -> PackedStringArray:
-	var out := PackedStringArray(["menu", "city"])
-	for zone: ZoneDef in campaign.zones:
-		if not zone.in_demo:
-			continue
-		for track: StringName in [zone.music, zone.boss.music if zone.boss != null else &""]:
-			if track != &"" and not out.has(String(track)):
-				out.append(String(track))
-	return out
-
-
-## The sounds the web demo keeps: every sound in the library but the level-complete riffs of tracks it
-## never plays (a level ends on the riff in the key of the music playing,
-## MusicDirector.level_complete_sound).
-static func demo_sounds(sfx: SfxLibrary, tracks: PackedStringArray) -> PackedStringArray:
-	var out := PackedStringArray()
-	var prefix: String = String(MusicDirector.LEVEL_COMPLETE) + "_"
-	for sound: String in sfx.names():
-		if sound.begins_with(prefix) and not tracks.has(sound.trim_prefix(prefix)):
-			continue
-		out.append(sound)
-	return out
-
-
 # --- The walk ---------------------------------------------------------------------------------
 
 ## From the first step to the end screen: plays each run, and on each screen presses the way on.
