@@ -143,7 +143,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   third of its health. Each phase has its own way up: run up the fallen tower's slab like a ramp (a lane
   switch steps onto its low part anywhere along it), a wall jump off lit marks on the walls, then pads and
   a ceiling to drop from; the first time each comes, a hint says how. Miss it and it shakes free and the
-  face-off goes on. A runner who brings no armor or shield gets an armor pickup early in every phase.
+  face-off goes on. A phase that begins while the runner's armor is down (and no shield) brings an
+  armor pickup early.
   All the while it shouts its propaganda through its loudhailers (a distorted voice never meant to be
   understood, ducking under every warning) with slogans on its face screen. Beaten, its face glitches,
   the propaganda cuts out mid-shout and it crashes into the street ahead: the runner runs over its
@@ -268,7 +269,7 @@ On a debug build, the options go into the page's engine settings: in `exports/we
 
 ## Tests
 
-`tools/godot.sh test` runs 45 suites with about 3,250,000 checks:
+`tools/godot.sh test` runs 46 suites with about 3,250,000 checks:
 - **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds, and every campaign level
   (each with every feature it lists, on its own seed and on others). Under every ceiling the floor may be
   dangerous, so each one's pads, landing zone and a floor route that never takes the pad are checked, and

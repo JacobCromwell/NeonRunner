@@ -72,10 +72,11 @@ extends Resource
 @export_range(0.0, 60.0, 0.5, "suffix:s") var armor_delay_max: float = 17.0
 ## Pickups after breaks per phase (GDD §10, proposed: at most one).
 @export_range(0, 5) var armor_pickups_per_phase: int = 1
-## DESIGN-TBD (docs/questions/e1e.md; the owner's playtest, September 30, 2026: a player who brings no
+## DESIGN-TBD (docs/questions/e1e.md; the owner's playtest, September 30, 2026: a player who brought no
 ## armor saw no pickup before the final phase, since nothing could break): a phase that begins with the
-## player holding no armor and no shield counts as a break at its start (an armor pickup
-## armor_delay_min–max seconds later, that phase's one). Off: GDD §10's rule as written.
+## player's armor down and no shield (with the free armor every run carries, while it's broken and
+## coming back) counts as a break at its start (an armor pickup armor_delay_min–max seconds later, that
+## phase's one) unless an armor pickup is already on its way. Off: GDD §10's rule as written.
 @export var armor_when_unprotected: bool = false
 
 

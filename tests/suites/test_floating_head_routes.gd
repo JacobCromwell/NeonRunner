@@ -11,9 +11,10 @@ extends TestSuite
 ##   jump from the trucks still can't reach);
 ## - the ceiling route stomps from a pad in any lane, riding straight ahead;
 ## - the first time each way up comes, a hint says how to take it (once per profile);
-## - a runner with no armor and no shield gets an armor pickup early in each phase (the standard rule's
-##   final-phase one, and after a break, as before);
-## - end to end through the campaign's flow at 3, 5 and 6 lanes, with no armor or shield: a runner who
+## - a phase that begins with the runner unprotected (no armor up, such as the free armor still coming
+##   back, and no shield) brings an armor pickup early; with the armor up the rule is as before, and the
+##   final phase's pickup still comes;
+## - end to end through the campaign's flow at 3, 5 and 6 lanes, with a fresh profile: a runner who
 ##   takes each route the forgiving way (boarding the ramp late from its side, one wall jump at the
 ##   mark, a pad and no move on the ceiling) stomps in every phase; a death restarts the fight (it has
 ##   no checkpoint, GDD §10) and the retry plays all three routes again, to the win.
@@ -61,8 +62,9 @@ func _def(runs: bool = false) -> BossDef:
 	return out
 
 
-## A fight against `p_def` in a bare world at `lanes`, from phase `phase`, with `loadout`: [world, head].
-func _fight(p_def: BossDef, lanes: int, phase: int = 0, loadout: Loadout = null) -> Array:
+## A fight against `p_def` in a bare world at `lanes`, from phase `phase`, with `loadout` (`before`, if
+## given, gets the built world before the fight begins): [world, head].
+func _fight(p_def: BossDef, lanes: int, phase: int = 0, loadout: Loadout = null, before: Callable = Callable()) -> Array:
 	var head := BossEncounter.create(p_def) as FloatingHead
 	var ctx := RunContext.new()
 	ctx.mode = RunContext.Mode.QUICK
@@ -73,6 +75,8 @@ func _fight(p_def: BossDef, lanes: int, phase: int = 0, loadout: Loadout = null)
 	ctx.boss_resume = {"phase": phase} if phase > 0 else {}
 	var arena: BossArena = head.plan_arena(ctx)
 	var world: RunWorld = sim.build_world(arena.layout, loadout, tuning, ctx.config)
+	if before.is_valid():
+		before.call(world)
 	head.setup(world, ctx, arena)
 	return [world, head]
 
@@ -167,7 +171,7 @@ func _test_data() -> void:
 	check(t.wall_entry_before > t.window_release_gap + 1.0 and t.wall_jump_before < t.window_release_gap,
 		"the wall marks start before the window's release line (%.0f m: get onto the wall there) and the jump mark is after it" % t.window_release_gap)
 	check(t.stomp_covers_outer_lanes, "the outermost stomp boxes cover the outer lanes where a wall jump lands")
-	check(def.armor_when_unprotected, "a runner who brings no armor or shield gets armor pickups early (the city boss)")
+	check(def.armor_when_unprotected, "a phase begun unprotected brings an armor pickup early (the city boss)")
 	var sfx := load("res://data/audio/sfx_library.tres") as SfxLibrary
 	check(sfx.names().has("wall_marks_light") and sfx.stream(&"wall_marks_light") != null
 		and float(sfx.pitch_variation.get("wall_marks_light", 0.0)) == 0.0,
@@ -428,41 +432,69 @@ func _test_route_hints() -> void:
 
 # --- Armor -------------------------------------------------------------------------------------
 
-## GDD §10's standard armor rule gave a runner who brings no armor and no shield nothing before the final
-## phase (nothing could break). Now each phase that begins with them unprotected counts as a break: an
-## armor pickup 10-15 s in, which appears. With armor or a shield it's the rule as before.
+## GDD §10's standard armor rule gave a runner with no armor up and no shield nothing before the final
+## phase (nothing could break). Now a phase that begins with them unprotected counts as a break: an
+## armor pickup 10-15 s in, which appears. Since G3 every run carries the free armor, so that's a phase
+## begun while it's broken and coming back (or a run without it). With the armor up or a shield it's the
+## rule as before; and a runner whose armor is up still gets the final phase's pickup (taking it adds a
+## hit, G3).
 func _test_unprotected_armor() -> void:
+	var free_armor := Loadout.new()
+	free_armor.armor = true
 	var shielded := Loadout.new()
 	shielded.charges = {&"shield": 1}
-	var armored := Loadout.new()
-	armored.charges = {&"armor": 1}
-	for case: int in 3:
-		var loadout: Loadout = [null, armored, shielded][case]
-		var pair: Array = _fight(_def(true), 5, 0, loadout)
+	var break_armor := func(w: RunWorld) -> void: w.player.armor_state.block()
+	for case: int in 4:
+		var loadout: Loadout = [null, free_armor, free_armor, shielded][case]
+		var pair: Array = _fight(_def(true), 5, 0, loadout, break_armor if case == 1 else Callable())
 		var world: RunWorld = pair[0]
 		var head: FloatingHead = pair[1]
 		world.player.god_mode = true
 		var bot := FloatingHeadBot.new(head, true)
+		var s := {"down": false}
 		await _until(world, func() -> bool:
 			bot.step()
+			if not _events(head, &"armor_pickup").is_empty() and not s["down"]:
+				s["down"] = world.player.armor == 0
 			return head.fight_time() > head.def.armor_delay_max + 2.0, 40.0)
 		var dues: Array[Dictionary] = _events(head, &"armor_pickup")
-		var tag: String = ["with no armor or shield", "with armor", "with a shield"][case]
-		if case == 0:
+		var tag: String = ["with no armor at all", "with the free armor broken as the fight begins", "with the free armor up",
+			"with a shield"][case]
+		if case <= 1:
 			var t0: float = float(dues[0]["t"]) if not dues.is_empty() else -1.0
 			check(dues.size() == 1 and dues[0]["reason"] == &"unprotected" and int(dues[0]["phase"]) == 0
 				and t0 >= head.def.armor_delay_min - 0.02 and t0 <= head.def.armor_delay_max + 0.02,
 				"%s, an armor pickup is due %.1f s into the first phase" % [tag, t0])
 			check(not _events(head, &"pickup_offered").is_empty() and world.pickups.made >= 1,
-				"and appears on the track (%d)" % world.pickups.made)
+				"and appears on the track (%d) %s" % [world.pickups.made, tag])
+			if case == 1:
+				check(s["down"], "while the free armor is still coming back")
 		else:
 			check(dues.is_empty(), "%s, none is due at the start (the rule as before: %d)" % [tag, dues.size()])
 		await sim.free_world(world)
+	# The final phase with the free armor up: its pickup comes, and taking it adds a hit.
+	var pair2: Array = _fight(_def(true), 5, 2, free_armor)
+	var world2: RunWorld = pair2[0]
+	var head2: FloatingHead = pair2[1]
+	world2.player.god_mode = true
+	var took: Array[bool] = [false]
+	world2.pickups.collected.connect(func(_p: Pickup, gained: bool) -> void: took[0] = gained)
+	await _until(world2, func() -> bool:
+		for p: Pickup in world2.pickups.active:
+			_steer(world2.player, p.lane)
+		return took[0], 20.0)
+	var finals: Array[Dictionary] = _events(head2, &"armor_pickup")
+	var rules := load("res://data/tuning/game_rules.tres") as GameRules
+	check(not finals.is_empty() and finals[0]["reason"] == &"final_phase" and world2.pickups.made >= 1,
+		"with the free armor up, the final phase's armor pickup still comes")
+	check(took[0] and world2.player.armor == rules.armor_hits + rules.armor_pickup_extra_hits,
+		"and taking it with the armor up adds a hit (%d hits)" % world2.player.armor)
+	await sim.free_world(world2)
 
 
 # --- End to end ---------------------------------------------------------------------------------
 
-## Through the campaign's flow at 3, 5 and 6 lanes with a fresh profile (no armor or shield): a runner
+## Through the campaign's flow at 3, 5 and 6 lanes with a fresh profile (the free armor, no shield): a runner
 ## who takes each way up the forgiving way stomps in the first two phases, dies in the third, retries
 ## (the fight starts over: it has no checkpoint) and stomps in all three phases to the win.
 func _test_end_to_end() -> void:
@@ -482,8 +514,8 @@ func _test_end_to_end() -> void:
 		check(first["stomps"] == two and first["died"],
 			"the first attempt: up the ramp boarded late, one wall jump at the mark, then a death in the last phase (%s) %s" % [
 			first["stomps"], tag])
-		check(int(first["armor"]) >= 2, "with no armor or shield, armor pickups came in the first phases (%d) %s" % [
-			int(first["armor"]), tag])
+		check(first["final"] and int(first["armor"]) >= 1,
+			"with the free armor up, the final phase's armor pickup came and was offered (%d offered) %s" % [int(first["armor"]), tag])
 		var result: RunResult = (App.screen as ResultsScreen).result if App.screen is ResultsScreen else null
 		check(result != null and not result.completed, "the death ends the attempt %s" % tag)
 		if result == null:
@@ -526,7 +558,7 @@ func _campaign_attempt(lanes: int, die: bool) -> Dictionary:
 	bot.ceiling_moves = false
 	var events: Array[Dictionary] = head.events
 	var stomps: Array[StringName] = []
-	var out := {"stomps": stomps, "died": false, "won": false, "cause": "", "armor": 0}
+	var out := {"stomps": stomps, "died": false, "won": false, "cause": "", "armor": 0, "final": false}
 	world.player.died.connect(func(c: String) -> void: out["cause"] = c)
 	for i: int in 300 * 60:
 		if App.run != run or not is_instance_valid(head) or App.screen is ResultsScreen:
@@ -545,6 +577,8 @@ func _campaign_attempt(lanes: int, die: bool) -> Dictionary:
 			stomps.append(e["route"])
 		elif e["event"] == &"pickup_offered":
 			out["armor"] += 1
+		elif e["event"] == &"armor_pickup" and e["reason"] == &"final_phase":
+			out["final"] = true
 	out["died"] = is_instance_valid(world) and not world.player.alive
 	if out["died"]:
 		# Down: the revive offer passes, then the results.

@@ -1071,9 +1071,10 @@ encounter.setup(world, context, arena)   joins the world between the player and 
   breaks, at most `armor_pickups_per_phase` per phase, and each time the encounter offers an armor
   pickup (`_on_armor_pickup_due`, which a boss may override to place it its own way). With
   `BossDef.armor_when_unprotected` (E1e, DESIGN-TBD; on for the Floating Head) a phase that begins with
-  the player holding no armor and no shield counts as a break at its start (`player_protected()`: armor
-  or a shield held, or an armor pickup due, on the track, waiting for a spot or held back by the boss,
-  `armor_pickups_waiting()`), so a player who brings neither gets one early in each phase.
+  the player's armor down and no shield (the free armor still coming back after a break) counts as a
+  break at its start (`player_protected()`: armor up or a shield held, or an armor pickup due, on the
+  track, waiting for a spot or held back by the boss, `armor_pickups_waiting()`), so no phase starts
+  unprotected without a pickup on its way.
   `offer_pickup(item, at, lane)` offers an armor, shield or grapple pickup of the boss's own (GDD §10:
   a section of floor that spawns one; the test boss offers a shield in its second phase), and
   `phase_started` and `protection_broken` are there to time them. The win clears every pickup, and

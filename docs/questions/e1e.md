@@ -25,9 +25,10 @@ Numbers in `data/bosses/city_boss_tuning.tres` (F6 in the fight) and `data/bosse
    box is lower and deeper (0.35 m over its socket, 4 m deep; were 0.55 m and 3 m). One wall jump now
    stomps over 4.5 to 7 m of jump points around the mark. Alternative: weak points of their own over
    the outer lanes (the tower side's would sit near the roofs, in a floor jump's reach).
-4. **Armor for a runner who brings none** (GDD §10, the standard armor rule): with no armor and no
+4. **Armor for a runner whose armor is down** (GDD §10, the standard armor rule): with no armor and no
    shield nothing could break, so no pickup came before the final phase, which the owner never
-   reached. Placeholder: a phase that begins with the runner unprotected counts as a break at its start
-   (an armor pickup 10 to 15 s in, the phase's one; `BossDef.armor_when_unprotected`, on for the
-   Floating Head only). Keep it here, make it the standard rule, or drop it once the planned free armor
-   at every level's start comes?
+   reached (the loadout and the flow were fine). G3's free armor now covers the start of every fight.
+   Placeholder on top: a phase that begins with the runner's armor down and no shield (the free armor
+   still coming back) and no pickup on its way counts as a break at its start (an armor pickup 10 to
+   15 s in, the phase's one; `BossDef.armor_when_unprotected`, on for the Floating Head only). Keep it,
+   make it the standard rule, or drop it now that the free armor comes back by itself?

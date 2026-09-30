@@ -529,8 +529,9 @@ func _test_damage() -> void:
 ## starts, and one 10-15 s after an armor break (at most once a phase), from the framework's hook. None
 ## ever lies in a bomb's or a dropped cyborg's landing circle, nor where a pin and its way up go.
 func _test_armor_pickups() -> void:
+	# The free armor every run carries (GDD §4).
 	var armored := Loadout.new()
-	armored.charges = {&"armor": 1}
+	armored.armor = true
 	var pair: Array = _fight(_def(true, true), 5, 1, armored)
 	var world: RunWorld = pair[0]
 	var head: FloatingHead = pair[1]
