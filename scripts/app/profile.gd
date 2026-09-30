@@ -7,7 +7,13 @@ extends RefCounted
 ## Net worth is the earned credits never spent; purchased credits never count toward it.
 ## DESIGN-TBD: purchases spend bought credits first, so buying credits never lowers net worth.
 
-const VERSION: int = 1
+## The save format. Older saves are brought up to date as they load (_migrate).
+## 2 (September 30, 2026): armor became a permanent upgrade to the free armor (GDD §4, §8).
+const VERSION: int = 2
+## What one unit of armor cost while it was a breakable item (save version 1; the shop never priced it
+## otherwise): a version 1 save's armor stock is paid back at this price. A record of the past, not a
+## tunable.
+const V1_ARMOR_PRICE: int = 150
 
 ## Credits earned in play and not spent: the net worth (GDD §7).
 var earned: int = 0
@@ -184,7 +190,6 @@ func to_dict() -> Dictionary:
 
 static func from_dict(d: Dictionary) -> Profile:
 	var p := Profile.new()
-	# Future versions migrate older saves here, based on d["version"].
 	p.earned = int(d.get("earned", 0))
 	p.purchased = int(d.get("purchased", 0))
 	p.lifetime_earned = int(d.get("lifetime_earned", 0))
@@ -202,7 +207,22 @@ static func from_dict(d: Dictionary) -> Profile:
 	for dict: Dictionary in [p.tiers, p.stocks, p.stats, p.endless_best]:
 		for k: Variant in dict.keys():
 			dict[k] = int(dict[k])
+	p._migrate(int(d.get("version", 1)))
 	return p
+
+
+## Brings a save written by an older version up to date (`from`: the version it was written with).
+## - 1 → 2: armor stopped being stock (GDD §8: a permanent upgrade to the free armor every run brings).
+##   The armor stock a player bought is paid back in credits at the price it cost (V1_ARMOR_PRICE),
+##   into the earned credits, and the purchase leaves lifetime_spent. Its old equip toggle goes too,
+##   so an upgrade bought later starts switched on.
+func _migrate(from: int) -> void:
+	if from < 2:
+		var refund: int = stock(&"armor") * V1_ARMOR_PRICE
+		stocks.erase("armor")
+		equip_off.erase("armor")
+		earned += refund
+		lifetime_spent = maxi(lifetime_spent - refund, 0)
 
 
 static func _dict(d: Dictionary, key: String) -> Dictionary:
