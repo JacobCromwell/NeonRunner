@@ -9,7 +9,7 @@ extends BossPart
 ## Hitboxes: the hull is solid (a boss's body: claws never defeat it, the dash passes through), out of
 ## reach while it flies and off while it's pinned (set_hull_solid: the pinned ship is the floor of the
 ## ways onto its head). A weak point over each lane near the crown's middle (a generous stomp box over
-## each red dome) and the crown's deck (a surface to stand on, exactly where the hull is drawn) stay off
+## each red dome, the outermost reaching over the outer lanes: stomp_outer_reach) and the crown's deck (a surface to stand on, exactly where the hull is drawn) stay off
 ## until a stomp window opens (set_weak_points_enabled, set_top_solid). Weapons aim at its face.
 ## Its propaganda's slogans show on a caption band across the bottom of its face screen (show_slogan:
 ## a Label3D in the face's cold white; FloatingHeadVoice says when). Beaten, it stays: the encounter
