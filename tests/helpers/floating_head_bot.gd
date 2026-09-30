@@ -59,6 +59,9 @@ var ceiling_moves: bool = true
 ## On the ramp route, it boards the ramp from beside it once this share of its lead-in is behind it
 ## (_board_late; -1: it gets into the ramp's lane early, before its foot).
 var ramp_board_at: float = -1.0
+## On the wall route, it moves one lane further in the air where it must (off: one wall jump and no
+## more, like a runner who doesn't know that move; the owner's playtest at 5 and 6 lanes before E1e).
+var second_move: bool = true
 ## Runs the arena's holes and fences and dodges bolts too (see the header).
 var reads_track: bool = true
 ## What it did, for tests: {t (fight time), action, why}.
@@ -214,7 +217,7 @@ func _wall_route(to_face: float, burning: int) -> void:
 				_route["stage"] = &"jumped"
 				_route["t"] = head.fight_time()
 		&"jumped":
-			if not head.weak_point_lanes().has(outer) and not head.tuning.stomp_covers_outer_lanes \
+			if second_move and not head.weak_point_lanes().has(outer) and not head.tuning.stomp_covers_outer_lanes \
 					and head.fight_time() - float(_route["t"]) >= SECOND_MOVE:
 				_press(inward, "onto the weak point")
 				_route["stage"] = &"done"

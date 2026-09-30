@@ -662,6 +662,8 @@ func begin_pin(tower: FloatingHeadTower) -> void:
 	_set_step(Step.PIN_FALL)
 	tower.fall_onto(pin_rest_point(pose.y, 0.0), fall)
 	log_event(&"pin_start", {"stern": pin_stern, "side": tower.side, "route": route})
+	# The first time each way up comes, a hint says how to take it ("boss:city_boss/wall", ...).
+	hint_due.emit("%s/%s" % [def.id, route])
 	if route == &"ceiling":
 		_light_pads()
 	elif route == &"wall":

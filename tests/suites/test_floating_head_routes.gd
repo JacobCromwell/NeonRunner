@@ -10,6 +10,7 @@ extends TestSuite
 ##   outer lanes, where a wall jump lands, are covered by the outermost weak points' stomp boxes, which a
 ##   jump from the trucks still can't reach);
 ## - the ceiling route stomps from a pad in any lane, riding straight ahead;
+## - the first time each way up comes, a hint says how to take it (once per profile);
 ## - a runner with no armor and no shield gets an armor pickup early in each phase (the standard rule's
 ##   final-phase one, and after a break, as before);
 ## - end to end through the campaign's flow at 3, 5 and 6 lanes, with no armor or shield: a runner who
@@ -37,6 +38,7 @@ func run() -> void:
 	await _test_wall_marks()
 	await _test_wall_forgiveness()
 	await _test_ceiling_any_lane()
+	await _test_route_hints()
 	await _test_unprotected_armor()
 	await _test_end_to_end()
 
@@ -395,6 +397,33 @@ func _test_ceiling_any_lane() -> void:
 			check(r["stomped"] and int(moves.get(&"pad", 0)) >= 1 and int(moves.get(&"hull_end", 0)) >= 1,
 				"a runner who takes the pad in lane %d and rides straight ahead drops onto a weak point (%d lanes)" % [lane, lanes])
 			await sim.free_world(r["world"])
+
+
+# --- Hints -------------------------------------------------------------------------------------
+
+## The first time each way up comes, a hint says how to take it, and only that once (a runner who
+## misses the window sees the next pin without it).
+func _test_route_hints() -> void:
+	var profile := Profile.new()
+	for phase: int in 3:
+		var pair: Array = _fight(_def(), 5, phase)
+		var world: RunWorld = pair[0]
+		var head: FloatingHead = pair[1]
+		world.player.god_mode = true
+		var hints := HintDirector.new()
+		world.add_child(hints)
+		hints.setup(world, profile, false)
+		var shown: Array[String] = []
+		hints.hint_shown.connect(func(id: String, _text: String) -> void: shown.append(id))
+		var bot := FloatingHeadBot.new(head, true)
+		bot.wrong_route = true
+		await _until(world, func() -> bool:
+			bot.step()
+			return _events(head, &"pin_start").size() >= 2, 120.0)
+		var id: String = "city_boss_%s" % ROUTES[phase]
+		check(_events(head, &"pin_start").size() >= 2 and shown.count(id) == 1,
+			"the first %s window shows its hint, and the next doesn't (%s)" % [ROUTES[phase], shown])
+		await sim.free_world(world)
 
 
 # --- Armor -------------------------------------------------------------------------------------

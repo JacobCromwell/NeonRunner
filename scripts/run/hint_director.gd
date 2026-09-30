@@ -4,9 +4,10 @@ extends Node
 ## data/hints/hints.json shows once per profile, a moment before the player first meets its trigger:
 ## "start" (level start), a piece ("gap", "fence_full", "fence_gapped", "fence_pulsing", "sign",
 ## "pad", "ramp", "speed_pad"), an enemy ("enemy:<type>", when one spawns; "enemy:boss" for any
-## boss without a hint of its own) or a pickup ("pickup:<item>", when one appears ahead; "pickup" for
-## any item without a hint of its own). "{action}" in the text becomes the player's key on PC or the
-## gesture on touch screens.
+## boss without a hint of its own), a pickup ("pickup:<item>", when one appears ahead; "pickup" for
+## any item without a hint of its own) or something of a boss's own ("boss:<key>", when the fight says
+## so: BossEncounter.hint_due, such as a way onto its head). "{action}" in the text becomes the player's
+## key on PC or the gesture on touch screens.
 
 signal hint_shown(id: String, text: String)
 
@@ -26,6 +27,8 @@ var _pending: Array[Dictionary] = []
 var _enemy_hints: Dictionary = {}
 ## Item ("" for the one every item shares) -> its hint.
 var _pickup_hints: Dictionary = {}
+## A boss's own key (BossEncounter.hint_due) -> its hint.
+var _boss_hints: Dictionary = {}
 var _start_hints: Array[Dictionary] = []
 
 
@@ -48,6 +51,8 @@ func setup(p_world: RunWorld, p_profile: Profile, p_touch: bool) -> void:
 			_enemy_hints[trigger.get_slice(":", 1)] = entry
 		elif trigger == "pickup" or trigger.begins_with("pickup:"):
 			_pickup_hints[trigger.get_slice(":", 1) if trigger.contains(":") else ""] = entry
+		elif trigger.begins_with("boss:"):
+			_boss_hints[trigger.trim_prefix("boss:")] = entry
 		else:
 			var at: float = _first_at(trigger)
 			if at >= 0.0:
@@ -57,6 +62,9 @@ func setup(p_world: RunWorld, p_profile: Profile, p_touch: bool) -> void:
 	world.director.enemy_spawned.connect(_on_enemy_spawned)
 	if world.pickups != null:
 		world.pickups.spawned.connect(_on_pickup_spawned)
+	var encounter: BossEncounter = BossEncounter.of(world)
+	if encounter != null:
+		encounter.hint_due.connect(_on_boss_hint)
 	# Enemies already in play (a boss's body, there from the fight's start) get their hint first thing.
 	for e: Enemy in world.director.active:
 		var entry: Dictionary = _take_enemy_hint(e)
@@ -88,6 +96,14 @@ func _process(_delta: float) -> void:
 	var lead: float = world.player.speed * LEAD_SECONDS
 	if world.player.distance >= float(_pending[0]["at"]) - lead:
 		_show(_pending.pop_front())
+
+
+## A boss says one of its own hints is due (BossEncounter.hint_due): shown the first time.
+func _on_boss_hint(key: String) -> void:
+	var entry: Dictionary = _boss_hints.get(key, {})
+	_boss_hints.erase(key)
+	if not entry.is_empty():
+		_show(entry)
 
 
 func _on_enemy_spawned(enemy: Enemy) -> void:
