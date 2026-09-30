@@ -1,8 +1,8 @@
 class_name SampleProfiles
 extends RefCounted
 ## Profiles for screen tests and the screens showcase: a fresh one, and a "rich" one partway
-## through Zone 1 with credits, items (some switched off), stock, records and the second
-## difficulty tier open, so every screen has something in each of its states.
+## through Zone 1 with credits, items (some switched off; the armor upgrade's first tier), stock,
+## records and the second difficulty tier open, so every screen has something in each of its states.
 
 
 static func fresh() -> Profile:
@@ -16,7 +16,7 @@ static func rich() -> Profile:
 	p.set_tier(&"claws", 1)
 	p.set_tier(&"magnet", 1)
 	p.set_equipped(&"magnet", false)
-	p.add_stock(&"armor", 3)
+	p.set_tier(&"armor", 1)
 	p.add_stock(&"shield", 5)
 	p.add_stock(&"grapple", 1)
 	p.add_stock(&"revive", 2)

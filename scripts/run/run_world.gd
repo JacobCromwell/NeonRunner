@@ -61,7 +61,8 @@ func build(p_config: LevelConfig, p_layout: LevelLayout, p_tuning: MovementTunin
 	player = _add(Player.new(), "Player") as Player
 	player.rules = rules
 	player.setup(tuning, geo, layout.lane_count / 2)
-	player.apply_loadout(loadout.charge(&"armor"), loadout.charge(&"shield"), loadout.charge(&"grapple"),
+	player.apply_loadout(DamageRules.Armor.create(rules, loadout.tier(&"armor"), loadout.has_armor()),
+		loadout.charge(&"shield"), loadout.charge(&"grapple"),
 		loadout.tier(&"claws") > 0,
 		powerup_tuning.claws_wall_time_multiplier if loadout.tier(&"claws") > 0 else 1.0)
 	player.set_equipment_look({"weapon_tier": loadout.tier(&"weapon"), "magnet": loadout.tier(&"magnet") > 0})

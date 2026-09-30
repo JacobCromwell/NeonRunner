@@ -22,9 +22,10 @@ extends Node3D
 ## (the nearest lane to it within reach is used); the fairness rules hold either way.
 ##
 ## Taking it: the player's hitbox (swept over the frame) reaching its take_box() takes it: one charge
-## of the item (Player.gain_item, up to PickupTuning.max_charges), counted as the fight's rather than
-## the player's (Loadout.picked_up: breaking it costs no stock), the pickup sound and a burst. A
-## pickup the player has run past is missed and gone. Pickups are pooled.
+## of a shield or grapple (Player.gain_item, up to PickupTuning.max_charges), counted as the fight's
+## rather than the player's (Loadout.picked_up: breaking it costs no stock), or the armor back whole at
+## once (GDD §4, §8: DamageRules.Armor.take_pickup, which adds a hit to whole armor), with the pickup
+## sound and a burst. A pickup the player has run past is missed and gone. Pickups are pooled.
 ##
 ## DESIGN-TBD (docs/questions/b7.md): where a pickup appears (PickupTuning), that an offer waits for a
 ## fair spot however long it takes, and that a missed pickup is gone for good.
@@ -303,7 +304,8 @@ func _spawn(item: StringName, lane: int, at: float) -> Pickup:
 func _take(p: Pickup) -> void:
 	active.erase(p)
 	var gained: bool = world.player.gain_item(p.item, tuning.max_charges)
-	if gained and world.loadout != null:
+	# A picked-up charge is the fight's (it costs no stock); the armor is no stock at all (GDD §8).
+	if gained and world.loadout != null and p.item != &"armor":
 		world.loadout.add_picked_up(p.item)
 	world.play_sfx(&"pickup")
 	world.effects.burst(p.badge_position(), Pickup.RING_COLOR, 22, 0.6)

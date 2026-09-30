@@ -16,8 +16,9 @@ extends Resource
 ## `--boss=<id>` (as quick play, so nothing is recorded), and the campaign keeps its placeholder card.
 @export_file("*.tscn") var preview_scene: String = ""
 ## Power-ups the fight grants before it starts (GDD §8: every boss must be beatable with only what
-## the game grants): a permanent item at tier 1 or better ("weapon", or "weapon:2" for a tier), one
-## charge of a breakable one ("armor"), which never costs the player's own stock (Loadout.grant).
+## the game grants): a permanent item at tier 1 or better ("weapon", or "weapon:2" for a tier; "armor"
+## is the armor upgrade's tier over the free armor), one charge of a breakable one ("shield"), which
+## never costs the player's own stock (Loadout.grant).
 @export var granted_items: PackedStringArray = PackedStringArray()
 ## Design notes shown on the placeholder card.
 @export_multiline var notes: String = ""

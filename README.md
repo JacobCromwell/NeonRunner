@@ -150,10 +150,13 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   fallen face and through the wreck, on to the zone's outro (in the web demo, the "get the full game"
   screen). About 100 s for a runner who never misses (`--boss=city_boss`, or the campaign's
   `--level=city/boss`). The other five zone bosses are still to be built.
-- **Economy:** credits in four denominations, level score and stars, and a shop. Items are five permanent
-  power-ups (weapon line, claws, juggernaut dash, magnet, slow time) and three breakables (armor, shield,
-  grapple hook). After a death you're offered a revive (an item, or a rewarded ad on mobile). Net worth
-  has its own leaderboard.
+- **Protection:** every level and boss fight starts with free armor: it blocks an enemy attack or an
+  electrical hazard (never a crash or a fall) and comes back 30 s after it breaks; the HUD shows its hits
+  and a ring filling while it comes back. Armor pickups in boss fights bring it back at once.
+- **Economy:** credits in four denominations, level score and stars, and a shop. Items are six permanent
+  lines (weapon, claws, juggernaut dash, magnet, slow time, and armor upgrades: one more hit or a shorter
+  wait, tier by tier) and two breakables (shield, grapple hook). After a death you're offered a revive
+  (an item, or a rewarded ad on mobile). Net worth has its own leaderboard.
 - **Modes:** the campaign, endless mode, and harder difficulty tiers after the last level.
 - **Look and sound:**
   - Razor Echo, the runner: a dark-blue trench coat with soft copper conduits and a skirt that swings,
