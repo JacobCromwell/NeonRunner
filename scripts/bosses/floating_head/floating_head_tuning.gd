@@ -223,6 +223,12 @@ extends Resource
 @export_range(1.0, 2.4, 0.05, "suffix:m") var stomp_width: float = 2.0
 @export_range(1.0, 5.0, 0.1, "suffix:m") var stomp_depth: float = 3.0
 @export_range(0.3, 1.2, 0.05, "suffix:m") var stomp_top: float = 0.55
+## DESIGN-TBD (docs/questions/e1e.md; the owner's playtest): a wall jump lands in the outer lane, and a
+## drop off the third window's ceiling in the lane it was ridden in; at 5 and 6 lanes the outer lanes
+## have no weak point of their own (weak_point_reach). With this on, the outermost weak point's stomp box
+## also reaches over the lanes beside it out to the wall, at its own height (so a jump from the trucks
+## still can't reach it): the wall jump and the drop stomp from the outer lane too.
+@export var stomp_covers_outer_lanes: bool = true
 ## DESIGN-TBD (item 162): the window closes (a miss) when the runner is still down on the trucks (feet
 ## under window_floor_height) within window_release_gap of its face, or has run window_pass_margin past
 ## its weak points without a stomp. Then it shakes free: no time limit, no escalation (GDD §10).
@@ -250,6 +256,16 @@ extends Resource
 @export_range(0.2, 2.0, 0.05, "suffix:m") var ramp_lift: float = 0.8
 @export_range(0.0, 2.0, 0.05, "suffix:m") var ramp_overhang: float = 0.8
 @export_range(0.1, 1.0, 0.05, "suffix:s") var ramp_slam_seconds: float = 0.3
+## DESIGN-TBD (docs/questions/e1e.md; the owner's playtest, September 30, 2026: a lane switch onto the
+## ramp anywhere but its very foot bounced off its side): the ramp's first ramp_board_share (from its
+## foot) is a low lead-in rising to ramp_board_height, with bevelled sides that a lane switch into its
+## lane steps up anywhere along it (never higher than a lane switch can step up them:
+## FloatingHeadRamp.side_step_limit, about 1.07 m with the movement tuning's lanes); from there the slab
+## rises more steeply onto the crown, and its sides block. While the ramp is the way up, the window
+## stays open for a runner down on the trucks until they pass the lead-in's end (instead of
+## window_release_gap). 0 = one straight slab whose sides block from a step high (E1c's).
+@export_range(0.0, 0.9, 0.05) var ramp_board_share: float = 0.75
+@export_range(0.0, 1.2, 0.05, "suffix:m") var ramp_board_height: float = 1.0
 
 @export_group("Ceiling window")
 ## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 165): the third way up. As the tower falls,

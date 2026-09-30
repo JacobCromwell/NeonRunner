@@ -174,14 +174,16 @@ func _build() -> void:
 	# stomp_top above it.
 	_dome_material = FloatingHeadModel.solid_material().duplicate() as ShaderMaterial
 	var stomp_height: float = tuning.stomp_top + STOMP_BELOW
-	for p: Vector3 in shape.weak_points:
+	for i: int in shape.weak_points.size():
+		var p: Vector3 = shape.weak_points[i]
 		_covers.append(MeshBatch.add_instance(_ship, meshes["cover"], "WeakPointCover", p))
 		var dome: MeshInstance3D = MeshBatch.add_instance(_ship, meshes["weak"], "WeakPoint", p)
 		dome.material_override = _dome_material
 		dome.visible = false
 		_domes.append(dome)
-		add_weak_point(Vector3(tuning.stomp_width, stomp_height, tuning.stomp_depth),
-			p + Vector3(0.0, stomp_height * 0.5 - STOMP_BELOW, 0.0), _ship)
+		var reach: Vector2 = stomp_outer_reach(i)
+		add_weak_point(Vector3(tuning.stomp_width + reach.x + reach.y, stomp_height, tuning.stomp_depth),
+			p + Vector3((reach.y - reach.x) * 0.5, stomp_height * 0.5 - STOMP_BELOW, 0.0), _ship)
 	set_weak_points_enabled(false)
 	# The hull: solid, like any enemy's body. The crown's deck: a surface to land on once it's pinned.
 	_hull_box = add_hitbox(&"body", Vector3(shape.width * 0.9, shape.height * 0.88, shape.length * 0.85),
@@ -229,6 +231,24 @@ func top_height() -> float:
 ## Where weak point `i`'s socket top is (world space).
 func weak_point_world(i: int) -> Vector3:
 	return _ship.to_global(shape.weak_points[i])
+
+
+## How much further weak point `i`'s stomp box reaches toward the left wall (x) and the right wall (y),
+## in metres: the outermost weak point on a side covers the lanes beside it out to the wall when they
+## have none of their own (FloatingHeadTuning.stomp_covers_outer_lanes; 5 and 6 lanes), so a wall jump
+## into the outer lane, or a drop off the third window's ceiling there, stomps it. Zero for the others.
+func stomp_outer_reach(i: int) -> Vector2:
+	if not tuning.stomp_covers_outer_lanes or shape.weak_points.is_empty():
+		return Vector2.ZERO
+	var lanes: int = world.geo.lane_count
+	var width: float = world.geo.lane_width
+	var out := Vector2.ZERO
+	if i == 0:
+		out.x = maxi(roundi(shape.weak_points[0].x / width + (lanes - 1) * 0.5), 0) * width
+	if i == shape.weak_points.size() - 1:
+		var last: int = roundi(shape.weak_points[i].x / width + (lanes - 1) * 0.5)
+		out.y = maxi(lanes - 1 - last, 0) * width
+	return out
 
 
 ## The ship's space to world, as it is now.

@@ -555,11 +555,14 @@ func _on_weak_point_hit(_part: BossPart, hazard: Hazard) -> void:
 	window_open = false
 	if not (is_final_phase() and hit_damage() >= health - max_health * EPSILON):
 		sound(&"head_shriek", body.screen_world())
-	world.effects.burst(hazard.global_position, FloatingHeadModel.WEAK, 40, 1.2)
-	world.effects.burst(hazard.global_position + Vector3(0.0, 0.4, 0.0), FloatingHeadTower.CONCRETE_LIGHT, 20, 0.8)
+	# At its red dome (an outermost weak point's stomp box also reaches over the lanes beside it).
+	var index: int = body.weak_points.find(hazard)
+	var dome: Vector3 = body.weak_point_world(index) if index >= 0 else hazard.global_position
+	world.effects.burst(dome, FloatingHeadModel.WEAK, 40, 1.2)
+	world.effects.burst(dome + Vector3(0.0, 0.4, 0.0), FloatingHeadTower.CONCRETE_LIGHT, 20, 0.8)
 	world.effects.shake(0.5, 0.5)
 	body.glitch = 1.0
-	log_event(&"stomp", {"route": route, "lane": _lane_at(hazard.global_position.x)})
+	log_event(&"stomp", {"route": route, "lane": _lane_at(dome.x), "from_lane": player_lane()})
 
 
 ## Beaten (GDD §10): its attacks stop, the propaganda cuts out mid-shout and its face glitches. Pinned,
@@ -794,7 +797,7 @@ func _slam_ramp(side: int) -> void:
 	ramp = FloatingHeadRamp.new()
 	add_child(ramp)
 	ramp.setup(world, ramp_lane, pin_stern - tuning.ramp_length, pin_stern, top, tuning.ramp_overhang,
-		tuning.ramp_slam_seconds / pace(), color)
+		tuning.ramp_slam_seconds / pace(), color, tuning.ramp_board_share, tuning.ramp_board_height)
 	_crush(pin_stern - tuning.ramp_length - 1.0, pin_stern, ramp_lane)
 	sound(&"ramp_slam", ramp.end_world())
 	log_event(&"ramp", {"lane": ramp_lane, "foot": ramp.foot, "top": top})
@@ -852,16 +855,25 @@ func _open_window() -> void:
 
 
 ## A missed window (GDD §10: "if the runner passes without a stomp, it shakes free"): the runner is
-## still down on the trucks close to its face, or has run past its weak points.
+## still down on the trucks close to its face (release_gap()), or has run past its weak points.
 func _check_window() -> void:
 	if not window_open:
 		return
 	var p: Player = world.player
 	var gap: float = pin_stern - player_distance()
-	if p.surface == Player.Surface.FLOOR and p.h < tuning.window_floor_height and gap < tuning.window_release_gap:
+	if p.surface == Player.Surface.FLOOR and p.h < tuning.window_floor_height and gap < release_gap():
 		_miss(&"floor", gap)
 	elif player_distance() > pass_line():
 		_miss(&"passed", gap)
+
+
+## How close to its face a runner still down on the trucks may come before the window closes:
+## window_release_gap, or while the fallen tower's ramp is the way up, the gap at the end of its lead-in
+## (a lane switch boards it up to there: the window stays open for a runner who boards late).
+func release_gap() -> float:
+	if route == &"ramp" and ramp != null and is_instance_valid(ramp):
+		return clampf(pin_stern - ramp.board_until(), 0.0, tuning.window_release_gap)
+	return tuning.window_release_gap
 
 
 func _miss(why: StringName, gap: float) -> void:
