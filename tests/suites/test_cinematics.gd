@@ -199,6 +199,8 @@ func _test_play_to_end() -> void:
 		"the events at time 0 fire before the first frame: the slot's music (@zone) comes in (%s)" % [seq.log_lines])
 	var runner := seq.actors[&"runner"] as CineActorNode
 	var thug := seq.actors[&"thug"] as CineActorNode
+	check(not runner.avatar.is_physics_processing(),
+		"the runner's model moves only on the cinematic's clock (it never carries on by itself between frames)")
 	var frames: int = 0
 	var card_seen: bool = false
 	var ran: float = 0.0

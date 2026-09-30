@@ -50,15 +50,26 @@ func setup(p_actor: CineActor, p_stage: CineStage, tuning: MovementTuning, varia
 	match actor.kind:
 		CineActor.Kind.RUNNER:
 			avatar = PlayerAvatar.new()
-			# Driven by update() on the cinematic's clock, never by itself between frames.
-			avatar.set_physics_process(false)
 			avatar.fit_to(tuning.visual_size)
 			add_child(avatar)
+			_hold_avatar()
 		CineActor.Kind.CYBORG:
 			body = CyborgBody.new()
 			body.name = "Body"
 			add_child(body)
 			body.build(actor.look if actor.look != &"" else variant, actor.host, false, visual_seed)
+
+
+func _ready() -> void:
+	_hold_avatar()
+
+
+## The runner's model is driven by update() on the cinematic's clock, never by itself between frames
+## (PlayerAvatar carries on from its last state when it isn't fed for two physics ticks, which a frame
+## at 30 fps spans). A node's physics processing comes back on when it's ready, so this runs once it is.
+func _hold_avatar() -> void:
+	if avatar != null and avatar.is_inside_tree():
+		avatar.set_physics_process(false)
 
 
 ## Where its path puts it at time `t`, in track space (what a camera key riding with it follows).
