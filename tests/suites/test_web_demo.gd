@@ -82,7 +82,7 @@ func _test_preset() -> void:
 		return
 	var options: String = section + ".options"
 	check(String(presets.get_value(section, "platform", "")) == "Web", "it exports for the web")
-	check(String(presets.get_value(section, "custom_features", "")).split(",").has("web_demo"),
+	check(DemoFilter.patterns_of(String(presets.get_value(section, "custom_features", ""))).has("web_demo"),
 		"with the web_demo feature tag, so the build is the demo flavor (CLAUDE.md principle 6)")
 	check(String(presets.get_value(section, "export_filter", "")) == "all_resources", "exporting every resource but those it leaves out")
 	check(not bool(presets.get_value(options, "variant/thread_support", true)),
