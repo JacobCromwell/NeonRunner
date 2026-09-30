@@ -14,10 +14,12 @@ extends RefCounted
 ##   and dodges only once it's committed (the bait); with `baits` off, keeps out of that lane;
 ## - dropped cyborgs: keeps out of the lane of one ahead of it;
 ## - with `routes` on, a stomp window: takes the phase's way onto its head once the laser's burning line
-##   is out of the way (FloatingHead.route): into the ramp's lane, up it and off its end without a jump;
-##   onto the nearer wall enter_before its face and a wall jump jump_before it, inward (and one lane
-##   further in the air where the outer lane has no weak point); or over the pads, onto the ceiling,
-##   along it to the nearest weak point's lane, and off its end. With `wrong_route` it runs on down the
+##   is out of the way (FloatingHead.route): into the ramp's lane, up it and off its end without a jump
+##   (with `ramp_board_at`, from beside it partway along it, stepping up its lead-in's side);
+##   by the wall marks (FloatingHeadWallMarks): onto the nearer wall a little past where they start and
+##   a wall jump at the jump mark, inward (one lane further in the air only where the outer lane has no
+##   weak point and its stomp box doesn't reach it); or over the pads, onto the ceiling, along it to the
+##   nearest weak point's lane (`ceiling_moves`), and off its end. With `wrong_route` it runs on down the
 ##   trucks instead (a missed window).
 ## With `wrong` set to a sweep kind (&"low" or &"high"), it answers that kind the wrong way (slides
 ## under a low sweep, jumps a high one), to show the answer matters.
@@ -26,9 +28,8 @@ extends RefCounted
 ## watches bolts in the air (_dodge_bolts: a dropped cyborg's, wild ones too) and sidesteps one that
 ## would reach its lane.
 
-## The wall route's timing: into the wall this far before the ship's face, off it this far before.
-const ENTER_BEFORE: float = 12.0
-const JUMP_BEFORE: float = 3.0
+## The wall route: onto the wall this far past where its marks start.
+const ENTER_INTO: float = 1.0
 ## The second move inward comes this long after the wall jump.
 const SECOND_MOVE: float = 0.1
 ## Reading the track: a hole is jumped this far before its edge, a full fence this far before it (the
@@ -52,6 +53,15 @@ var wrong: StringName = &""
 var wrong_route: bool = false
 ## The wall the wall route takes: 0 the nearer one, -1 left, +1 right.
 var wall_side: int = 0
+## On the ceiling route, it moves along the ceiling to a weak point's lane (off: it drops in the lane it
+## rode in, like a runner who only takes the pad).
+var ceiling_moves: bool = true
+## On the ramp route, it boards the ramp from beside it once this share of the ramp (foot to face) is
+## behind it (_board_late; -1: it gets into the ramp's lane early, before its foot).
+var ramp_board_at: float = -1.0
+## On the wall route, it moves one lane further in the air where it must (off: one wall jump and no
+## more, like a runner who doesn't know that move; the owner's playtest at 5 and 6 lanes before E1e).
+var second_move: bool = true
 ## Runs the arena's holes and fences and dodges bolts too (see the header).
 var reads_track: bool = true
 ## What it did, for tests: {t (fight time), action, why}.
@@ -136,7 +146,9 @@ func _take_route() -> bool:
 	match head.route:
 		&"ramp":
 			var lane: int = head.ramp_lane if head.ramp_lane >= 0 else head.ramp_lane_for(head.pin_side)
-			if lane != burning:
+			if ramp_board_at >= 0.0:
+				_board_late(lane, burning)
+			elif lane != burning:
 				_go(lane, "ramp")
 			elif player.lane == burning:
 				_dodge_lane(burning, "burn")
@@ -144,15 +156,43 @@ func _take_route() -> bool:
 			_wall_route(to_face, burning)
 		&"ceiling":
 			if player.surface == Player.Surface.CEILING:
-				_go(_nearest_weak_lane(player.lane), "ceiling")
+				if ceiling_moves:
+					_go(_nearest_weak_lane(player.lane), "ceiling")
 			elif player.lane == burning:
 				_dodge_lane(burning, "burn")
 	return true
 
 
-## The wall route: to the outer lane by the nearer wall (or `wall_side`), onto the wall enter_before the
-## ship's face, and a wall jump jump_before it, inward; one lane further in the air where the outer lane
-## has no weak point.
+## The ramp boarded late (`ramp_board_at`), the way the owner's playtest met it: it runs beside the ramp
+## in the lane nearer the middle (the other side where there's none) and switches into its lane once
+## that share of the ramp is behind it (stepping up its lead-in's bevelled side; E1c's slab bumps).
+func _board_late(lane: int, burning: int) -> void:
+	var player: Player = head.world.player
+	var n: int = head.lane_count()
+	var beside: int = lane + (1 if lane * 2 < n - 1 else -1)
+	if beside < 0 or beside >= n:
+		beside = lane - (1 if lane * 2 < n - 1 else -1)
+	var ramp: FloatingHeadRamp = head.ramp
+	if ramp == null or not is_instance_valid(ramp) or not ramp.landed:
+		if beside != burning:
+			_go(beside, "beside the ramp")
+		return
+	var board_at: float = ramp.foot + (ramp.face - ramp.foot) * ramp_board_at
+	var key: String = "board %s" % head.pin_stern
+	if player.distance >= board_at and lane != burning and player.lane == beside and not _handled.has(key):
+		# One switch into its lane (a slab it can't board bumps it back, and it stays beside it).
+		_handled[key] = true
+		_target = -1
+		_press(&"move_right" if lane > player.lane else &"move_left", "ramp, late")
+	elif not _handled.has(key) and player.lane != beside and beside != burning:
+		_go(beside, "beside the ramp")
+	elif player.lane == burning:
+		_dodge_lane(burning, "burn")
+
+
+## The wall route, by the wall marks: to the outer lane by the nearer wall (or `wall_side`), onto the
+## wall ENTER_INTO past where the marks start, and a wall jump at the jump mark, inward; one lane further
+## in the air only where the outer lane has no weak point and no stomp box reaches it.
 func _wall_route(to_face: float, burning: int) -> void:
 	var player: Player = head.world.player
 	var n: int = head.lane_count()
@@ -171,17 +211,18 @@ func _wall_route(to_face: float, burning: int) -> void:
 			elif player.lane == burning:
 				_dodge_lane(burning, "burn")
 			if player.lane == outer and player.surface == Player.Surface.FLOOR and player.grounded \
-					and to_face <= ENTER_BEFORE and outer != burning:
+					and to_face <= head.tuning.wall_entry_before - ENTER_INTO and outer != burning:
 				_target = -1
 				_press(&"move_left" if side < 0 else &"move_right", "wall enter")
 				_route["stage"] = &"wall"
 		&"wall":
-			if player.surface == Player.Surface.WALL and to_face <= JUMP_BEFORE:
+			if player.surface == Player.Surface.WALL and to_face <= head.tuning.wall_jump_before:
 				_press(inward, "wall jump")
 				_route["stage"] = &"jumped"
 				_route["t"] = head.fight_time()
 		&"jumped":
-			if not head.weak_point_lanes().has(outer) and head.fight_time() - float(_route["t"]) >= SECOND_MOVE:
+			if second_move and not head.weak_point_lanes().has(outer) and not head.tuning.stomp_covers_outer_lanes \
+					and head.fight_time() - float(_route["t"]) >= SECOND_MOVE:
 				_press(inward, "onto the weak point")
 				_route["stage"] = &"done"
 

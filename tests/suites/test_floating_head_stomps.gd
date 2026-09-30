@@ -72,8 +72,9 @@ func _def(runs: bool = false, plain: bool = true, pattern: String = "") -> BossD
 	return out
 
 
-## A fight against `p_def` in a bare world at `lanes`, starting at phase `phase`: [world, head].
-func _fight(p_def: BossDef, lanes: int, phase: int = 0) -> Array:
+## A fight against `p_def` in a bare world at `lanes`, starting at phase `phase`, with `loadout` (none:
+## nothing equipped): [world, head].
+func _fight(p_def: BossDef, lanes: int, phase: int = 0, loadout: Loadout = null) -> Array:
 	var head := BossEncounter.create(p_def) as FloatingHead
 	var ctx := RunContext.new()
 	ctx.mode = RunContext.Mode.QUICK
@@ -83,7 +84,7 @@ func _fight(p_def: BossDef, lanes: int, phase: int = 0) -> Array:
 	ctx.tuning = tuning
 	ctx.boss_resume = {"phase": phase} if phase > 0 else {}
 	var arena: BossArena = head.plan_arena(ctx)
-	var world: RunWorld = sim.build_world(arena.layout, null, tuning, ctx.config)
+	var world: RunWorld = sim.build_world(arena.layout, loadout, tuning, ctx.config)
 	head.setup(world, ctx, arena)
 	return [world, head]
 
@@ -324,18 +325,32 @@ func _test_surfaces() -> void:
 			var y: float = _surface_at(world, Vector3(x, 8.0, TrackGeometry.world_z(d)), TrackBuilder.LAYER_FLOOR, 12.0)
 			worst = maxf(worst, absf(y - ramp.top_at(d)) if not is_nan(y) else 99.0)
 		check(worst < 0.05, "its top is a floor surface all the way up, where it's drawn (%.3f m off) %s" % [worst, tag])
-		var rise: float = ramp.top_at(ramp.foot + world.player.speed / 60.0) - ramp.top_at(ramp.foot)
-		check(rise < 0.3, "a runner walks up it (%.2f m a frame at run speed) %s" % [rise, tag])
+		var steepest: float = 0.0
+		for d: float in [ramp.foot, ramp.knee - 0.4, ramp.knee, ramp.end - 0.4]:
+			steepest = maxf(steepest, ramp.top_at(d + world.player.speed / 60.0) - ramp.top_at(d))
+		check(steepest < 0.3, "a runner walks up it (%.2f m a frame at run speed at its steepest) %s" % [steepest, tag])
 		var side: int = 1 if ramp.lane == 0 else -1
 		var nx: float = world.geo.lane_x(ramp.lane + side)
-		var mid: float = lerpf(ramp.foot, ramp.face, 0.75)
 		var probe := Vector3(world.geo.lane_width * 0.5, tuning.hurtbox_size.y, tuning.hurtbox_size.z + 0.6)
+		# E1e: its lead-in's sides are bevelled (a lane switch steps up them); the slab's sides block.
+		check(ramp.knee > ramp.foot + (ramp.face - ramp.foot) * 0.7 and ramp.board_until() == ramp.knee,
+			"its lead-in runs most of its length (to %.1f m of %.1f) %s" % [ramp.knee - ramp.foot, ramp.face - ramp.foot, tag])
+		var lead_mid: float = lerpf(ramp.foot, ramp.knee, 0.6)
+		check(not _blocked(world, Vector3(x, tuning.hurtbox_size.y * 0.5, TrackGeometry.world_z(lead_mid)), probe),
+			"its lead-in's side lets a lane switch in %s" % tag)
+		var bevel_x: float = x + side * ((world.geo.lane_width - 0.2) * 0.5 + ramp.bevel * 0.3)
+		var bevel_y: float = _surface_at(world, Vector3(bevel_x, 3.0, TrackGeometry.world_z(lead_mid)), TrackBuilder.LAYER_FLOOR, 4.0)
+		check(bevel_y > 0.05 and bevel_y < ramp.top_at(lead_mid) - 0.05,
+			"its bevelled side is a floor between the trucks and its top (%.2f m, top %.2f m) %s" % [bevel_y, ramp.top_at(lead_mid), tag])
+		var mid: float = lerpf(ramp.knee, ramp.face, 0.5)
 		check(_blocked(world, Vector3(x, tuning.hurtbox_size.y * 0.5, TrackGeometry.world_z(mid)), probe),
-			"its side blocks a lane switch into it from the trucks (a solid side) %s" % tag)
-		check(not _blocked(world, Vector3(x, ramp.top_at(mid) + 0.1 + tuning.hurtbox_size.y * 0.5, TrackGeometry.world_z(mid)), probe),
+			"its slab's side blocks a lane switch into it from the trucks (a solid side) %s" % tag)
+		check(not _blocked(world, Vector3(x, ramp.top_at(mid + probe.z * 0.5) + 0.1 + tuning.hurtbox_size.y * 0.5, TrackGeometry.world_z(mid)), probe),
 			"but not a runner in the air above it %s" % tag)
 		check(not _blocked(world, Vector3(nx, tuning.hurtbox_size.y * 0.5, TrackGeometry.world_z(mid)), probe),
 			"nor the lane beside it %s" % tag)
+		var beside: float = _surface_at(world, Vector3(nx + side * -0.3, 3.0, TrackGeometry.world_z(lead_mid)), TrackBuilder.LAYER_FLOOR, 4.0)
+		check(absf(beside) < 0.01, "and its bevels stop short of a runner's feet in the lane beside it (%.2f m) %s" % [beside, tag])
 		# The crown: a floor where the hull is drawn, over every weak point's lane.
 		var off: float = 0.0
 		for l: int in head.weak_point_lanes():
@@ -407,11 +422,16 @@ func _test_missed_windows() -> void:
 		if misses.size() < 2 or opens.size() < 2:
 			await sim.free_world(world)
 			continue
-		check(misses[0]["why"] == &"floor" and float(misses[0]["gap"]) <= t.window_release_gap + 0.01
-			and float(misses[0]["gap"]) > t.window_release_gap - 1.0,
-			"the window closes as they come within %.0f m of its face on the trucks (%.1f m) %s" % [t.window_release_gap,
+		# E1e: while the ramp is the way up, the window stays open until a lane switch can't board it any
+		# more (the end of its lead-in).
+		var release: float = t.window_release_gap
+		if ROUTES[phase] == &"ramp":
+			release = t.ramp_length * (1.0 - t.ramp_board_share)
+		check(misses[0]["why"] == &"floor" and float(misses[0]["gap"]) <= release + 0.01
+			and float(misses[0]["gap"]) > release - 1.0,
+			"the window closes as they come within %.1f m of its face on the trucks (%.1f m) %s" % [release,
 			float(misses[0]["gap"]), tag])
-		check(int(s["inside"]) == 0 and float(s["min_gap"]) > t.window_release_gap - 1.0,
+		check(int(s["inside"]) == 0 and float(s["min_gap"]) > release - 1.0,
 			"it shakes free before they reach it: its face never nearer than %.1f m %s" % [float(s["min_gap"]), tag])
 		check(_events(head, &"released").size() >= 1 and head.faceoff.running, "it rises back in front and the face-off goes on %s" % tag)
 		check(head.phase_index == phase and absf(head.health - head.phase_start_health(phase)) < 0.01,
@@ -509,10 +529,12 @@ func _test_damage() -> void:
 ## starts, and one 10-15 s after an armor break (at most once a phase), from the framework's hook. None
 ## ever lies in a bomb's or a dropped cyborg's landing circle, nor where a pin and its way up go.
 func _test_armor_pickups() -> void:
-	var pair: Array = _fight(_def(true, true), 5, 1)
+	# The free armor every run carries (GDD §4).
+	var armored := Loadout.new()
+	armored.armor = true
+	var pair: Array = _fight(_def(true, true), 5, 1, armored)
 	var world: RunWorld = pair[0]
 	var head: FloatingHead = pair[1]
-	world.player.armor = 1
 	var bot := FloatingHeadBot.new(head, true)
 	# It runs straight into the first bomb (its armor takes it), then plays properly.
 	bot.routes = true

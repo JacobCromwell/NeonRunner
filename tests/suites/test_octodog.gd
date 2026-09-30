@@ -317,7 +317,9 @@ func _test_grab_and_claws() -> void:
 		await sim.free_world(w)
 
 
-## GDD §8/§9.4: 5 laser tier 1 shots; auto-fire only picks it once it's in view.
+## GDD §8/§9.4: a direct hit's plain damage (this test fires straight through the projectile pool,
+## not through auto-fire): 5 laser tier 1 shots. (Auto-fire's own laser tier 1 takes 2 more, via
+## PowerupTuning.tier1_extra_shots: see test_powerups.gd.) Auto-fire only picks it once it's in view.
 func _test_weapons() -> void:
 	var w: RunWorld = sim.build_world(RunSim.layout(3, 400))
 	await tree.physics_frame

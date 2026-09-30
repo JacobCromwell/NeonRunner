@@ -395,7 +395,9 @@ func _test_leaving() -> void:
 		await sim.free_world(w)
 
 
-## GDD §8 damage reference: 15 laser tier 1 shots, 5 missile tier 4 shots.
+## GDD §8 damage reference: a direct hit's plain damage (this test, unlike auto-fire, fires straight
+## through the projectile pool): 15 laser tier 1 shots, 5 missile tier 4 shots. (Auto-fire's own
+## laser tier 1 takes 2 more, via PowerupTuning.tier1_extra_shots: see test_powerups.gd.)
 func _test_weapons() -> void:
 	var w: RunWorld = sim.build_world(RunSim.layout(3, 600.0))
 	var laser: float = PowerupTuning.at_tier(w.powerup_tuning.weapon_damage, 1)
