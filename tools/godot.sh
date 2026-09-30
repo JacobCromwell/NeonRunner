@@ -9,6 +9,9 @@
 #   tools/godot.sh sfx [--review]     regenerate assets/sfx/*.wav from tools/asset_gen/sfx_gen.gd
 #   tools/godot.sh music [--review]   regenerate assets/music/*.wav from tools/asset_gen/music_gen.gd
 #                                     (--review writes images to build/sfx_review/, build/music_review/)
+#   tools/godot.sh web [--debug] [--serve]  export the web demo to exports/web/ (--debug: a debug build to
+#                                     exports/web_debug/) and check its pack; --serve then serves it at
+#                                     http://localhost:8060 (needs python3 and the web export templates)
 #   tools/godot.sh import             force a resource import
 #
 # Godot is found via $GODOT, then godot4/godot on PATH, then (under WSL) the Windows user
@@ -135,11 +138,55 @@ case "$command" in
 		"$GODOT_BIN" --headless --path "$PROJECT" -s res://tools/asset_gen/music_gen.gd -- "$@" 2>&1 | quiet
 		run_import
 		;;
+	web)
+		import_if_stale
+		mode="release"
+		out="$ROOT/exports/web"
+		serve=""
+		for arg in "$@"; do
+			case "$arg" in
+				--debug) mode="debug"; out="$ROOT/exports/web_debug" ;;
+				--serve) serve=1 ;;
+			esac
+		done
+		# The export filter comes from the data (the tracks and riffs the demo never plays).
+		"$GODOT_BIN" --headless --path "$PROJECT" -s res://tools/web/update_filter.gd 2>&1 | quiet
+		mkdir -p "$out"
+		rm -f "$out"/index.*
+		target="$out/index.html"
+		script="$ROOT/tools/web/check_pack.gd"
+		if [[ "$GODOT_BIN" == *.exe ]] && command -v wslpath >/dev/null 2>&1; then
+			target="$(wslpath -w "$target")"
+			script="$(wslpath -w "$script")"
+		fi
+		echo "Exporting the web demo ($mode) to $out ..."
+		# (The export's progress lines are coloured: strip the colours, then the progress.)
+		"$GODOT_BIN" --headless --path "$PROJECT" "--export-$mode" "Web (demo)" "$target" 2>&1 \
+			| sed -E 's/\x1b\[[0-9;]*m//g' | quiet | grep -vE 'first_scan_filesystem|savepack|^\[ *[0-9]+% \]' || true
+		if [[ ! -f "$out/index.pck" ]]; then
+			echo "The export failed. Are the web export templates for Godot $PINNED installed? (README.md, Web demo)" >&2
+			exit 1
+		fi
+		# The pack, run from its own folder so res:// is the pack alone (not this project's files).
+		set +e
+		(cd "$out" && "$GODOT_BIN" --headless --main-pack index.pck --fixed-fps 60 -s "$script" 2>&1 | quiet)
+		status=$?
+		set -e
+		echo "Files (bytes; gzip -9 as a web server would send them):"
+		for f in "$out"/index.*; do
+			printf '  %-32s %10d %10d\n' "$(basename "$f")" "$(wc -c <"$f")" "$(gzip -9 -c "$f" | wc -c)"
+		done
+		[[ $status -ne 0 ]] && exit "$status"
+		if [[ -n "$serve" ]]; then
+			echo "Serving $out at http://localhost:8060 (Ctrl+C stops it)"
+			exec python3 -m http.server 8060 --bind 127.0.0.1 --directory "$out"
+		fi
+		;;
 	import)
 		run_import
 		;;
 	*)
-		sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
+		sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'
 		exit 2
 		;;
 esac

@@ -130,7 +130,7 @@ func _test_steps(campaign: Campaign) -> void:
 
 
 ## A boss slot per zone from GDD §10's roster, and cinematic slots: every zone's intro and outro, and
-## the City's boss intro. All stay unbuilt slots for now.
+## the City's boss intro (the intros play placeholder flyovers, task F1; test_cinematics checks them).
 func _test_slots(campaign: Campaign) -> void:
 	var bosses: Dictionary = {"city": "Floating Head", "gangland": "Sewer Swarm", "marketplace": "The House",
 		"corporate": "Hostile Takeover", "dead_zone": "Sleep Taker", "golden": "The final villain"}
@@ -161,6 +161,9 @@ func _test_slots(campaign: Campaign) -> void:
 			check(s.boss != null and s.boss.is_built(), "the City's boss step plays the Floating Head's fight (task E1d)")
 		elif s.kind == CampaignStep.Kind.BOSS:
 			check(s.boss != null and not s.boss.is_built(), "boss slot %s is still a placeholder" % s.id)
+		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id.ends_with("intro"):
+			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/arrival_flyover.tscn"
+				and s.cinematic.is_built(), "cinematic slot %s plays the placeholder arrival flyover (task F1)" % s.id)
 		elif s.kind == CampaignStep.Kind.CINEMATIC:
 			check(s.cinematic != null and not s.cinematic.is_built(), "cinematic slot %s is still a placeholder" % s.id)
 

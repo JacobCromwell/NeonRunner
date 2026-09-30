@@ -6,4 +6,5 @@
 script = ExtResource("1_script")
 id = &"golden_intro"
 title = "The Golden Zone"
+scene = "res://scenes/cinematics/arrival_flyover.tscn"
 placeholder_text = "DESIGN-TBD: a short scene arriving in the city of the elite, home of the final villain."

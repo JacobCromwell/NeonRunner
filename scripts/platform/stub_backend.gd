@@ -19,6 +19,10 @@ var fake_ad_seconds: float = 1.0
 ## Scores submitted, by board (simulated leaderboards).
 var scores: Dictionary = {}
 var achievements: PackedStringArray = []
+## Pages asked for through open_url(), oldest first.
+var opened_urls: PackedStringArray = []
+## Off in tests: open_url() only records the page, so nothing leaves the game.
+var open_links: bool = true
 var tree: SceneTree
 
 
@@ -69,3 +73,8 @@ func submit_score(board: String, score: int) -> void:
 func unlock_achievement(id: String) -> void:
 	if not achievements.has(id):
 		achievements.append(id)
+
+
+func open_url(url: String) -> bool:
+	opened_urls.append(url)
+	return super(url) if open_links else true

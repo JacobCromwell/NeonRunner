@@ -9,3 +9,11 @@ static func is_mobile() -> bool:
 		if OS.has_feature(tag):
 			return true
 	return false
+
+
+## True when the player plays by touching the screen: a phone or tablet, or a real touch screen. The
+## project lets the mouse stand in for touch (input_devices/pointing/emulate_touch_from_mouse, so
+## swipes can be tried with a mouse), and with that on every desktop, and every desktop browser,
+## reports a touch screen; that doesn't count.
+static func has_touch() -> bool:
+	return is_mobile() or (DisplayServer.is_touchscreen_available() and not Input.is_emulating_touch_from_mouse())
