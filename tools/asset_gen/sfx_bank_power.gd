@@ -194,11 +194,12 @@ func _pickup_appear() -> PackedFloat32Array:
 	return b
 
 
-## Juggernaut dash: a heavy burst. A kick, a roaring low rumble, a fast whoosh and a muted power chord.
+## Juggernaut dash: a heavy burst. A kick, a roaring low rumble, a fast whoosh and a muted power
+## chord. G2 (September 30, 2026): the kick hits a touch harder, for the owner's "flashier" note.
 func _dash() -> PackedFloat32Array:
 	var rng := _rng(205)
 	var b := DSP.buffer(0.65)
-	DSP.mix(b, DSP.kick(0.3, 130.0, 42.0, rng), 0.0, 0.9)
+	DSP.mix(b, DSP.kick(0.3, 130.0, 42.0, rng), 0.0, 1.0)
 	var roar := DSP.noise(0.6, rng)
 	DSP.filter_sweep(roar, &"lowpass", 1200.0, 250.0, 1.2)
 	DSP.envelope(roar, 0.005, 0.2)

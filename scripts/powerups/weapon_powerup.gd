@@ -212,3 +212,5 @@ func _on_enemy_hit(enemy: Enemy, _damage: float, splash: bool) -> void:
 	# Only the heavy missile splashes; show the blast once, on its direct hit.
 	if is_heavy() and not splash and is_instance_valid(enemy):
 		fx.blast(enemy.aim_point(), world.powerup_tuning.splash_radius)
+	if is_instance_valid(enemy) and not enemy.alive:
+		fx.kill_flash(enemy.aim_point())
