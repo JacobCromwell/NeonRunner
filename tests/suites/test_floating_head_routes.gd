@@ -522,7 +522,7 @@ func _campaign_attempt(lanes: int, die: bool) -> Dictionary:
 	var head := run.encounter as FloatingHead
 	var world: RunWorld = run.world
 	var bot := FloatingHeadBot.new(head, true)
-	bot.ramp_board_at = 0.5
+	bot.ramp_board_at = 0.4
 	bot.ceiling_moves = false
 	var events: Array[Dictionary] = head.events
 	var stomps: Array[StringName] = []

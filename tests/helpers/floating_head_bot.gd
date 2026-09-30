@@ -15,7 +15,7 @@ extends RefCounted
 ## - dropped cyborgs: keeps out of the lane of one ahead of it;
 ## - with `routes` on, a stomp window: takes the phase's way onto its head once the laser's burning line
 ##   is out of the way (FloatingHead.route): into the ramp's lane, up it and off its end without a jump
-##   (with `ramp_board_at`, from beside it partway along its lead-in, stepping up its side);
+##   (with `ramp_board_at`, from beside it partway along it, stepping up its lead-in's side);
 ##   by the wall marks (FloatingHeadWallMarks): onto the nearer wall a little past where they start and
 ##   a wall jump at the jump mark, inward (one lane further in the air only where the outer lane has no
 ##   weak point and its stomp box doesn't reach it); or over the pads, onto the ceiling, along it to the
@@ -56,8 +56,8 @@ var wall_side: int = 0
 ## On the ceiling route, it moves along the ceiling to a weak point's lane (off: it drops in the lane it
 ## rode in, like a runner who only takes the pad).
 var ceiling_moves: bool = true
-## On the ramp route, it boards the ramp from beside it once this share of its lead-in is behind it
-## (_board_late; -1: it gets into the ramp's lane early, before its foot).
+## On the ramp route, it boards the ramp from beside it once this share of the ramp (foot to face) is
+## behind it (_board_late; -1: it gets into the ramp's lane early, before its foot).
 var ramp_board_at: float = -1.0
 ## On the wall route, it moves one lane further in the air where it must (off: one wall jump and no
 ## more, like a runner who doesn't know that move; the owner's playtest at 5 and 6 lanes before E1e).
@@ -165,7 +165,7 @@ func _take_route() -> bool:
 
 ## The ramp boarded late (`ramp_board_at`), the way the owner's playtest met it: it runs beside the ramp
 ## in the lane nearer the middle (the other side where there's none) and switches into its lane once
-## that share of the ramp's lead-in is behind it, stepping up its bevelled side.
+## that share of the ramp is behind it (stepping up its lead-in's bevelled side; E1c's slab bumps).
 func _board_late(lane: int, burning: int) -> void:
 	var player: Player = head.world.player
 	var n: int = head.lane_count()
@@ -177,10 +177,14 @@ func _board_late(lane: int, burning: int) -> void:
 		if beside != burning:
 			_go(beside, "beside the ramp")
 		return
-	var board_at: float = ramp.foot + (ramp.knee - ramp.foot) * ramp_board_at
-	if player.distance >= board_at and lane != burning:
-		_go(lane, "ramp, late")
-	elif player.lane != lane and beside != burning:
+	var board_at: float = ramp.foot + (ramp.face - ramp.foot) * ramp_board_at
+	var key: String = "board %s" % head.pin_stern
+	if player.distance >= board_at and lane != burning and player.lane == beside and not _handled.has(key):
+		# One switch into its lane (a slab it can't board bumps it back, and it stays beside it).
+		_handled[key] = true
+		_target = -1
+		_press(&"move_right" if lane > player.lane else &"move_left", "ramp, late")
+	elif not _handled.has(key) and player.lane != beside and beside != burning:
 		_go(beside, "beside the ramp")
 	elif player.lane == burning:
 		_dodge_lane(burning, "burn")

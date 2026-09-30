@@ -162,7 +162,7 @@ func _measure_ramp(lanes: int) -> void:
 
 func _ramp_try(lanes: int, side: int, gap: float) -> Dictionary:
 	var state := {"switched": false}
-	return await _play(0, lanes, func(head: FloatingHead, out: Dictionary) -> void:
+	var drive := func(head: FloatingHead, out: Dictionary) -> void:
 		var p: Player = head.world.player
 		var lane: int = head.ramp_lane_for(head.pin_side)
 		var to_middle: int = -1 if lane * 2 > lanes - 1 else 1
@@ -177,7 +177,8 @@ func _ramp_try(lanes: int, side: int, gap: float) -> Dictionary:
 			_steer(p, from)
 		elif head.pin_stern - p.distance <= gap:
 			_steer(p, lane)
-			state["switched"] = true)
+			state["switched"] = true
+	return await _play(0, lanes, drive)
 
 
 # --- The wall ----------------------------------------------------------------------------------------
@@ -204,7 +205,7 @@ func _measure_wall(lanes: int) -> void:
 
 func _wall_try(lanes: int, wall: int, entry: float, jump: float) -> Dictionary:
 	var state := {"stage": &"lane", "t": 0.0}
-	return await _play(1, lanes, func(head: FloatingHead, _out: Dictionary) -> void:
+	var drive := func(head: FloatingHead, _out: Dictionary) -> void:
 		var p: Player = head.world.player
 		var outer: int = 0 if wall < 0 else lanes - 1
 		var gap: float = head.pin_stern - p.distance
@@ -223,7 +224,8 @@ func _wall_try(lanes: int, wall: int, entry: float, jump: float) -> Dictionary:
 			&"jumped":
 				if _second_move and p.elapsed - float(state["t"]) >= 0.1:
 					p.press(inward)
-					state["stage"] = &"done")
+					state["stage"] = &"done"
+	return await _play(1, lanes, drive)
 
 
 # --- The ceiling -------------------------------------------------------------------------------------
@@ -231,9 +233,10 @@ func _wall_try(lanes: int, wall: int, entry: float, jump: float) -> Dictionary:
 func _measure_ceiling(lanes: int) -> void:
 	var row: PackedStringArray = []
 	for lane: int in lanes:
-		var r: Dictionary = await _play(2, lanes, func(head: FloatingHead, _out: Dictionary) -> void:
+		var drive := func(head: FloatingHead, _out: Dictionary) -> void:
 			var p: Player = head.world.player
 			if p.surface == Player.Surface.FLOOR and p.distance < head.pad_at:
-				_steer(p, lane))
+				_steer(p, lane)
+		var r: Dictionary = await _play(2, lanes, drive)
 		row.append("lane %d %s" % [lane, "stomps" if r["stomped"] else "MISSES"])
 	print("  ceiling, %d lanes, from a pad riding straight ahead: %s" % [lanes, ", ".join(row)])
