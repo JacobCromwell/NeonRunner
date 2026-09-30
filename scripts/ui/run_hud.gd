@@ -9,8 +9,10 @@ extends CanvasLayer
 ## top left, the progress meter moves into the right column and the icons sit above the debug help.
 ## Power-ups report themselves: if world.powerups has hud_state(), each entry
 ## {id, icon, tier, ready 0–1, active, charges} gets an icon; otherwise the HUD shows the player's
-## own charges (and claws, which have no cooldown). A pickup taken during the run (GDD §10) flashes
-## its item's icon, which joins the protections in its place if the run didn't bring that item.
+## own charges (and claws, which have no cooldown). The armor (GDD §4) shows its hits left, and while
+## it's broken a ring filling in the kit's calm accent until it's back, when the icon flashes (its
+## sound is the player's `armor_back`). A pickup taken during the run (GDD §10) flashes its item's
+## icon, which joins the protections in its place if the run didn't bring that item.
 
 signal pause_pressed
 
@@ -248,6 +250,8 @@ func _process(_delta: float) -> void:
 		var icon: CooldownIcon = item_icons.get(entry[0])
 		if icon != null:
 			icon.count = int(p.get(entry[2]))
+			if entry[0] == &"armor":
+				icon.set_cooldown(1.0 - p.armor_state.progress(), 1.0)
 	if world.powerups != null and world.powerups.has_method(&"hud_state"):
 		_update_powerups(world.powerups.call(&"hud_state"))
 
@@ -260,7 +264,7 @@ func _build_items() -> void:
 	item_icons.clear()
 	var p: Player = world.player
 	for entry: Array in PROTECTIONS:
-		if world.loadout.charge(entry[0]) > 0 or int(p.get(entry[2])) > 0:
+		if world.loadout.has(entry[0]) or int(p.get(entry[2])) > 0:
 			var icon: CooldownIcon = _protection_icon(entry[0])
 			icon.count = int(p.get(entry[2]))
 	if world.powerups != null and world.powerups.has_method(&"hud_state"):

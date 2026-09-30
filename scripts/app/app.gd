@@ -569,8 +569,12 @@ func _end_run() -> void:
 
 ## A breakable item broke during a run: it leaves the stock at once (GDD §8), so quitting can't
 ## save it. An item a boss fight granted, or one picked up during the fight, was the fight's, not the
-## player's (Loadout.costs_stock).
+## player's (Loadout.costs_stock). The armor is no stock (GDD §8: a permanent upgrade to the free
+## armor, which comes back), so its breaks cost nothing.
 func _on_item_used(item: StringName) -> void:
+	var shop_item: ShopItem = catalog.item(item)
+	if shop_item == null or shop_item.kind != ShopItem.Kind.BREAKABLE:
+		return
 	if run != null and run.context.loadout != null and not run.context.loadout.costs_stock(item):
 		return
 	profile.use_stock(item)

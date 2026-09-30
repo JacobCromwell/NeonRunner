@@ -32,9 +32,10 @@ extends Resource
 @export_range(1.0, 6.0, 0.1, "suffix:m") var clear_height: float = 3.0
 
 @export_group("Taking it")
-## DESIGN-TBD (docs/questions/b7.md): the most charges of one breakable item the player can hold.
-## A pickup of an item the player already holds this many of is taken without adding a charge
-## (1 = like the loadout, which brings one charge of each, and a boss's granted items).
+## DESIGN-TBD (docs/questions/b7.md): the most charges of one breakable item (shield, grapple) the
+## player can hold. A pickup of an item the player already holds this many of is taken without adding
+## a charge (1 = like the loadout, which brings one charge of each, and a boss's granted items). The
+## armor has its own rule (GameRules.armor_pickup_extra_hits).
 @export_range(1, 5) var max_charges: int = 1
 ## The space around the pickup that takes it when the player's hitbox reaches it: width across the
 ## lane (less than a lane, so the next lane never takes it), height from the floor and depth along

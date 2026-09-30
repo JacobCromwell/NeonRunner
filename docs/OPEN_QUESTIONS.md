@@ -1440,6 +1440,27 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     - *Placeholder:* bars of 10% of the screen's height each (`CineOverlay.BAR_SHARE`); the arrival flyover
     fades in over 0.8 s and out over 0.45 s (its data).
 
+**Free armor** (from G3; numbers in `data/tuning/game_rules.tres`, F6 "Game rules", Armor; the shop line in `data/shop/catalog.json`; review the HUD with the screens showcase `--screen=hud_armor`)
+244. **Worn armor** (GDD §4, §8). An upgraded armor takes more than one hit. When it has lost some hits
+    but isn't broken, does anything come back?
+    **Placeholder:** nothing comes back until its last hit goes; then it breaks and comes back whole
+    after its tier's wait (`DamageRules.Armor` in `scripts/core/damage_rules.gd`, `DESIGN-TBD`).
+    The alternative: each lost hit comes back on its own after the wait.
+245. **An armor pickup when the armor is whole** (GDD §10, the standard armor rule). A pickup brings
+    broken or worn armor back whole at once. Taken while the armor is already whole, what should it do?
+    **Placeholder:** it adds one hit over the armor's count, up to `armor_pickup_extra_hits` = 1
+    (`data/tuning/game_rules.tres`, F6 "Game rules"; `DESIGN-TBD`). The extra hit is used first and
+    doesn't come back: after a break the armor returns to its own count. The alternative: it gives
+    credits.
+246. **Switching the armor off** (GDD §8, Rules: the equip toggle). The shop's equip toggle switches
+    the armor upgrade off, down to the free armor. Should the free armor be switchable too (a challenge
+    run without it)?
+    **Placeholder:** no, the free armor can't be switched off (`Loadout.from_profile` in
+    `scripts/run/loadout.gd`, `DESIGN-TBD`).
+247. **A revive** (GDD §4). After a revive, is the armor back whole, or as it was when the player died
+    (broken and still coming back)?
+    **Placeholder:** back whole (`Player.revive` in `scripts/player/player.gd`, `DESIGN-TBD`).
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
