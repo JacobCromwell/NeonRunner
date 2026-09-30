@@ -1,8 +1,9 @@
 extends RefCounted
 ## Watches the big attacks in a run (GDD §9, "Big attacks take turns") frame by frame, for
-## tools/measure/big_attacks.gd and the tests (test_enemy_director.gd). It reads the enemies' own
-## states and the live shots, never the turn-taking code it checks, so it measures a build with the
-## rule on, off, or without it the same way.
+## tools/measure/big_attacks.gd and the tests (test_enemy_director.gd). It reads the attacks from the
+## enemies' own states and the live shots, never from the turn-taking code it checks (only the waits
+## come from the director's answers), so it measures a build with the rule on, off, or without it the
+## same way.
 ##   const AttackWatch = preload("res://tools/measure/attack_watch.gd")
 ##   var watch := AttackWatch.new(world)     # before the enemies spawn
 ##   ... every physics frame: await tree.physics_frame; watch.observe()
@@ -19,13 +20,23 @@ extends RefCounted
 ## Overlap is the time during which attacks of two or more types are open at once. Also watched
 ## (not a big attack, docs/questions/r3.md): a hover truck's entrance, from its first bang until its
 ## burst stops hurting. The event log lists every state change of every enemy, so two builds can be
-## compared run by run.
+## compared run by run. A wait for a turn lasts from the first frame the director holds its enemy for
+## another type's turn until the enemy's next big attack starts, through short gaps (WAIT_BRIDGE).
 
 const DroneScript := preload("res://scripts/enemies/drone.gd")
 const TruckScript := preload("res://scripts/enemies/hover_truck.gd")
 ## Enemy shots that belong to a big attack, by name, and the type they belong to.
 const SHOT_TYPES: Dictionary = {"drone gatling": &"drone", "hover truck cannon": &"hover_truck",
 	"hover truck gunner": &"hover_truck"}
+## A wait for a turn runs from the first frame the director holds its enemy for another type's turn
+## (EnemyDirector.held_for_turn: it asked this frame or the last and was held for another's attack)
+## until its attack starts, through gaps of up to this many seconds in which it isn't held (its stretch
+## not clear for a while, its turn come while it isn't quite ready); a wait whose attack comes later
+## than that after its last hold isn't counted. An Octodog's wait lasts until it charges or runs off,
+## however long it moves its charges on and uses its slack: all of that is its delay. The director
+## answers each ask the same whatever it keeps in its queue, so two directors measure the same asks
+## alike; waits for GDD §9.7's exclusive rule (the Bad Dream's chase) don't count.
+const WAIT_BRIDGE: float = 3.0
 
 var world: RunWorld
 ## The runner stomps every host it passes (each releases a Bad Dream chase).
@@ -40,8 +51,8 @@ var events: int = 0
 var attacks: Dictionary = {}
 ## Seconds each type had an attack open.
 var open_seconds: Dictionary = {}
-## By kind: for each attack that started after a wait, how long it waited (seconds), and how much
-## of that it waited for another type's turn (only a director that takes turns keeps track).
+## By kind: for each attack that started after a wait for its turn (WAIT_BRIDGE), how long it waited
+## (seconds), and how much of that it was held (only a director that takes turns holds any).
 var waits: Dictionary = {}
 var turn_waits: Dictionary = {}
 ## Seconds a hover truck's entrance was on while a big attack was open.
@@ -51,12 +62,20 @@ var hosts_stomped: int = 0
 var dog_charges: Dictionary = {}
 ## Resonators by spawn index: the pulses each made (from the time it starts pacing the player).
 var resonator_pulses: Dictionary = {}
+## Drones by spawn index: the barrages each started (from the time it swoops in).
+var drone_barrages: Dictionary = {}
+## Hover trucks by spawn index: the forward lurches (revs) and cannon shots (charges) each started
+## (from the time it bursts out): {"lurch": n, "cannon": n}.
+var truck_attacks: Dictionary = {}
 var log := PackedStringArray()
 
 var _ids: Dictionary = {}
 var _sigs: Dictionary = {}
 var _was_open: Dictionary = {}
-var _held: Dictionary = {}
+## Enemies waiting for their turn, by spawn index: when the current wait began and when the director
+## last held it for another type's turn (level times), and the seconds it was held.
+var _wait_began: Dictionary = {}
+var _wait_seen: Dictionary = {}
 var _held_turn: Dictionary = {}
 var _overlapping: bool = false
 
@@ -76,7 +95,7 @@ func observe() -> void:
 	var now: float = world.level_time()
 	var open_types: Dictionary = {}
 	var entrance: bool = false
-	var turns_known: bool = world.director.has_method(&"is_waiting")
+	var turns_known: bool = world.director.has_method(&"held_for_turn")
 	for e: Enemy in world.director.active:
 		if not is_instance_valid(e):
 			continue
@@ -95,10 +114,15 @@ func observe() -> void:
 		if e.type_id == &"resonator" and not resonator_pulses.has(key) and e.alive \
 				and int(e.get(&"state")) != Resonator.State.APPROACH:
 			resonator_pulses[key] = 0
+		if e.type_id == &"drone" and not drone_barrages.has(key) and e.alive \
+				and int(e.get(&"state")) != DroneScript.State.WAITING:
+			drone_barrages[key] = 0
 		if e.type_id == &"hover_truck" and e.alive:
 			var s: int = int(e.get(&"state"))
 			entrance = entrance or s == TruckScript.State.BANGING \
 				or (s == TruckScript.State.EMERGE and now - float(e.get(&"burst_time")) < 0.45)
+			if not truck_attacks.has(key) and s != TruckScript.State.HIDDEN and s != TruckScript.State.BANGING:
+				truck_attacks[key] = {"lurch": 0, "cannon": 0}
 		for kind: String in open_kinds(e):
 			open_types[e.type_id] = true
 			var wk: String = "%d/%s" % [key, kind]
@@ -109,18 +133,25 @@ func observe() -> void:
 					dog_charges[key] = int(dog_charges.get(key, 0)) + 1
 				if kind == "resonator_pulse":
 					resonator_pulses[key] = int(resonator_pulses.get(key, 0)) + 1
-				if float(_held.get(key, 0.0)) > 0.0:
-					(waits.get_or_add(kind, []) as Array).append(float(_held[key]))
-				if float(_held_turn.get(key, 0.0)) > 0.0:
+				if kind == "drone":
+					drone_barrages[key] = int(drone_barrages.get(key, 0)) + 1
+				if kind == "truck_lurch" or kind == "truck_cannon":
+					var made: Dictionary = truck_attacks.get_or_add(key, {"lurch": 0, "cannon": 0})
+					var k: String = "lurch" if kind == "truck_lurch" else "cannon"
+					made[k] = int(made[k]) + 1
+				if _wait_began.has(key) and not _wait_over(e, now - float(_wait_seen[key]) - dt):
+					(waits.get_or_add(kind, []) as Array).append(now - float(_wait_began[key]))
 					(turn_waits.get_or_add(kind, []) as Array).append(float(_held_turn[key]))
+				_end_wait(key)
 			_was_open[wk] = now
-		if turns_known and bool(world.director.call(&"is_waiting", e)):
-			_held[key] = float(world.director.call(&"turn_wait", e)) + dt
-			if bool(world.director.call(&"held_for_turn", e)):
-				_held_turn[key] = float(_held_turn.get(key, 0.0)) + dt
-		else:
-			_held.erase(key)
-			_held_turn.erase(key)
+		if turns_known and bool(world.director.call(&"held_for_turn", e)):
+			if not _wait_began.has(key):
+				_wait_began[key] = now
+				_held_turn[key] = 0.0
+			_wait_seen[key] = now
+			_held_turn[key] = float(_held_turn[key]) + dt
+		elif _wait_began.has(key) and _wait_over(e, now - float(_wait_seen[key])):
+			_end_wait(key)
 	var reach: float = p.position.z + world.tuning.hurtbox_size.z * 0.5
 	for shot: Projectile in world.projectiles.live_shots():
 		if not shot.friendly and shot.in_use and SHOT_TYPES.has(shot.hazard_name) and shot.position.z <= reach + shot.radius:
@@ -176,6 +207,21 @@ static func open_kinds(e: Enemy) -> Array[String]:
 	return out
 
 
+## True once a wait for `e`'s turn that has seen no hold for `gap` seconds is over: after WAIT_BRIDGE,
+## and an Octodog's only once it runs off or is out of play (until then it paces on, moving its charges
+## on or using its slack: all of that is its delay).
+func _wait_over(e: Enemy, gap: float) -> bool:
+	if e.type_id == &"octodog":
+		return not e.alive or int(e.get(&"phase")) in [Octodog.Phase.GIVE_UP, Octodog.Phase.LEAVE, Octodog.Phase.FALLING]
+	return gap > WAIT_BRIDGE
+
+
+func _end_wait(key: int) -> void:
+	_wait_began.erase(key)
+	_wait_seen.erase(key)
+	_held_turn.erase(key)
+
+
 ## Octodogs that never charged, and the charges all of them made.
 func dogs_without_a_charge() -> int:
 	var n: int = 0
@@ -202,6 +248,25 @@ func resonators_without_a_pulse() -> int:
 	return n
 
 
+## Drones that swooped in and never fired a barrage (a pad may bring one down first).
+func drones_without_a_barrage() -> int:
+	var n: int = 0
+	for key: int in drone_barrages:
+		if int(drone_barrages[key]) == 0:
+			n += 1
+	return n
+
+
+## Hover trucks that burst out and never made an attack of `kind` ("lurch" or "cannon"; "" = neither).
+func trucks_without(kind: String) -> int:
+	var n: int = 0
+	for key: int in truck_attacks:
+		var made: Dictionary = truck_attacks[key]
+		if (kind == "" and int(made["lurch"]) + int(made["cannon"]) == 0) or (kind != "" and int(made[kind]) == 0):
+			n += 1
+	return n
+
+
 ## The event log's hash: equal for two runs whose enemies did the same things at the same times.
 func log_hash() -> String:
 	return "\n".join(log).md5_text()
@@ -212,7 +277,10 @@ func summary() -> Dictionary:
 		"open": open_seconds, "held": waits, "held_turn": turn_waits, "entrance_overlap": entrance_overlap,
 		"hosts_stomped": hosts_stomped, "dogs": dog_charges.size(), "dog_charges": charges(),
 		"dogs_no_charge": dogs_without_a_charge(), "resonators": resonator_pulses.size(),
-		"resonators_no_pulse": resonators_without_a_pulse(), "log_hash": log_hash(), "log_lines": log.size()}
+		"resonators_no_pulse": resonators_without_a_pulse(), "drones": drone_barrages.size(),
+		"drones_no_barrage": drones_without_a_barrage(), "trucks": truck_attacks.size(),
+		"trucks_no_lurch": trucks_without("lurch"), "trucks_no_cannon": trucks_without("cannon"),
+		"trucks_idle": trucks_without(""), "log_hash": log_hash(), "log_lines": log.size()}
 
 
 func _on_spawned(e: Enemy) -> void:

@@ -314,6 +314,8 @@ func _start_dissolve(survived: bool, emp: bool) -> void:
 	_slash.set_enabled(false)
 	_body.set_enabled(false)
 	_marks.visible = false
+	# Its chase is over: a slash it was holding for another's attack won't come (GDD §9).
+	world.director.give_up_turn(self)
 	_dissolve_len = _t.emp_dissolve_time if emp else _t.dissolve_time
 	_set_state(State.DISSOLVE)
 	_sfx(&"bad_dream_dissolve")

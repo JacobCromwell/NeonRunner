@@ -170,14 +170,26 @@ the Tithe Collector) opt in the same way for whichever of their attacks count as
   `world.director.major_attack_blocked(self)`, and while the answer is true it doesn't start, asks
   again next frame, and goes on as it was: the drone keeps following, the truck holds back or keeps
   pacing, the Octodog paces in position. Asking only when ready matters: the director queues those
-  held, and a waiting enemy that stops asking loses its place after a frame. Once a warning has
-  started the attack runs its course; nothing stops it for another's turn.
+  held. Once a warning has started the attack runs its course; nothing stops it for another's turn.
+- **Keep asking to keep your place; give up out loud.** A waiting enemy keeps its place in the queue
+  until its attack starts, as long as it keeps asking: through its turn too (told it may go, one that
+  isn't quite ready and asks again still goes before those that waited less), and through a gap in
+  its asks (its stretch not clear for a moment, its planned point not reached yet) of up to
+  `GameRules.turn_place_grace` (1 s; DESIGN-TBD, `docs/questions/r3b.md`); meanwhile those behind
+  it wait. After a longer gap it loses its place, so the others don't wait long for an enemy that
+  isn't ready (a Resonator waiting for clear floor): an enemy that means to wait longer keeps asking
+  (the Octodog, below). An enemy that gives up the attack it waited for calls
+  `world.director.give_up_turn(self)` and leaves the queue at once: the Octodog runs off, the hover
+  truck changes state (it asks only while pacing, for its cannon, or holding back, for its lurch), the
+  Resonator leaves, the Bad Dream dissolves. One that leaves play loses its place at once.
 - **An attack that may only come within a window** (the Octodog's planned charges) moves the window
   on while `held_for_turn(self)` says it's waiting for another type, up to a limit of its own
   (`OctodogTuning.turn_wait_max`), and keeps every fairness rule it was planned with. Once held it
   keeps asking every frame until its turn comes, whether or not its stretch is clear by then, and if
   the wait made it miss its planned stretch, the window keeps moving on until the stretch ahead is
-  clear again (within the same limit), so waiting for its turn never costs it its charges. The
+  clear again (within the same limit), so waiting for its turn never costs it its charges. After
+  that it still asks every frame while its `charge_slack` lasts, so all along it keeps its place: another
+  type ready again waits for it rather than go first again, until it charges or runs off. The
   Resonator's planned pulses do the same: a pulse held for another type's turn, or for clear floor
   where its wave would meet the player, moves the rest of its visit on; after
   `ResonatorTuning.turn_wait_max` spent waiting for other attacks (waiting for clear floor doesn't
@@ -189,16 +201,23 @@ the Tithe Collector) opt in the same way for whichever of their attacks count as
   warning, which the director can't do yet.)
 
 The director holds a big attack while another type's is on or its shots are still on their way; an
-enemy whose own attack is on carries on (the Bad Dream's next slash in its chase); and of the enemies
-of different types waiting, the one that has waited longest goes next (then the one spawned first),
-so none is kept from its turn by others that keep asking. An attack that is on never waits for another
-(the Bad Dream holds a slash within its chase only for an attack that was already on when the chase
-began, and that one doesn't wait), so two enemies can't wait on each other. Types space their own attacks themselves
-(one drone barrage at a time; one Octodog, one hover truck at a time). GDD §9.7's rule holds with the
-switch off as well: an `exclusive_major_attack` (the Bad Dream's chase) and the attacks of the types in
-its `exclusive_of` (Octodogs', drones') never overlap. `is_waiting()` and `turn_wait()` say whether and
-how long an enemy has been waiting. `tools/measure/big_attacks.gd` measures the overlaps and the delays
-over the campaign (Review tools); `tests/helpers/turn_dummy.gd` is a scripted big attack for tests.
+enemy whose own attack is on carries on (the Bad Dream's next slash in its chase); and the enemies of
+different types waiting go in the order their waits began (then the one spawned first), whether or not
+they're asking at that moment, so none is kept from its turn by others that keep asking: one that
+began waiting later never goes first. An attack that is on never waits for another (the Bad Dream
+holds a slash within its chase only for an attack that was already on when the chase began, and that
+one doesn't wait), and in the queue a waiting enemy is only ever held by those ahead of it, so two
+enemies can't wait on each other; the one at the head starts, gives up, or loses its place a grace
+after it stops asking (asking while it isn't ready holds the others back: only the Octodog does that,
+and only until it charges or runs off, `turn_wait_max` plus its `charge_slack` at most), so nothing
+waits for ever.
+Types space their own attacks themselves (one drone barrage at a time; one Octodog, one hover truck at
+a time). GDD §9.7's rule holds with the switch off as well: an `exclusive_major_attack` (the Bad
+Dream's chase) and the attacks of the types in its `exclusive_of` (Octodogs', drones') never overlap. `is_waiting()` and `turn_wait()` say whether and
+how long an enemy has been waiting (from its first held ask until its attack starts or it loses its
+place). `tools/measure/big_attacks.gd` measures the overlaps, the delays and the enemies that never got
+a big attack in over the campaign (Review tools); `tests/helpers/turn_dummy.gd` is a scripted big
+attack for tests (with pauses in its asks and stalls when it may go).
 
 **Floor use.** The floor under a ceiling may hold enemies (GDD §3, changed September 26, 2026), but
 a ceiling's landing zone and the spot of each of its pads keep off the floor enemies use (see
@@ -1176,7 +1195,9 @@ gives its rules script `positions()`. The generator suite also checks the recenc
 exactly (`pick_weights()`: each kind's share, the caps) and levels paced in bursts; the campaign suite
 checks each kind's share at spots all through every campaign level, The Hush and the darker lighting
 on every skin. `test_enemy_director` checks the turn-taking between big attacks
-with scripted test enemies (`tests/helpers/turn_dummy.gd`) and over simulated runs of campaign levels,
+with scripted test enemies (`tests/helpers/turn_dummy.gd`: the queue's order, a place kept through a gap
+in the asks and through the turn, give-ups and the grace), a real Octodog that another type's repeated
+attacks used to keep from its turn, and simulated runs of campaign levels,
 watched by `tools/measure/attack_watch.gd` (see Review tools). `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
 for framework tests, with `make_def()` for a BossDef from a list of phases; `test_bosses` runs fights
 in bare worlds and, with the test boss in the City's slot, through the App. `test_pickups` checks
@@ -1241,12 +1262,19 @@ frames on the Compatibility renderer (the web and low-end Android path) with `--
 `tools/measure/big_attacks.gd` measures the big attacks (GDD §9, "Big attacks take turns") over
 simulated runs of the campaign's levels at 3, 5 and 6 lanes, with `GameRules.big_attacks_take_turns` on
 and off: a god-mode runner in the middle lane, stomping every host it passes, while the enemies play as
-in the game. It reports the time big attacks of different types overlap, how many of each kind came, and
-how long attacks waited for their turn (`godot --headless --fixed-fps 60 -s
-res://tools/measure/big_attacks.gd -- --levels=gangland/3 --lanes=3,5,6 --out=build/measure/x.json`; the
-whole campaign takes about ten minutes). `attack_watch.gd` does the watching from the enemies' own states
-and the live shots, never from the turn-taking code, and hashes each run's event log, so two builds (or
-the switch off and a build without the rule) can be compared run by run.
+in the game. It reports the time big attacks of different types overlap, how many of each kind came,
+how long attacks waited for their turn (from the first frame the director holds an enemy for another
+type's turn until its attack, through gaps of up to 3 s, and an Octodog's until it charges, however
+long it moves its charges on; the director answers each ask the same whatever its queue keeps, so two
+builds measure the same asks alike), and the enemies that never got a big attack in (Octodogs
+without a charge, Resonators without a pulse, drones without a barrage, hover trucks without a lurch
+or a cannon shot) (`godot --headless --fixed-fps 60 -s res://tools/measure/big_attacks.gd --
+--levels=gangland/3 --lanes=3,5,6 --out=build/measure/x.json`; the whole campaign on its own seeds takes
+about ten minutes; `--seeds=6` adds six other seeds a level, `--seeds=9007-9020` runs a range, and
+`--features=octodog` keeps the levels that use a feature). `attack_watch.gd` watches the attacks from the
+enemies' own states and the live shots, never from the turn-taking code (only the waits come from the
+director's answers), and hashes each run's event log, so two builds (or the switch off and a build
+without the rule) can be compared run by run.
 
 `tools/measure/level_shape.gd` measures the campaign's shape: for each level at 3, 5 and 6 lanes, on its
 own seed and others, each feature's share of the pattern picks, the enemy, host and obstacle counts, the
