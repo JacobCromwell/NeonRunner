@@ -102,9 +102,14 @@ func hud_entry() -> Dictionary:
 	return controller.make_hud_entry(id, tier, 1.0 - _cooldown / fire_interval(), engaged, -1)
 
 
+## How far ahead this tier's shots reach (PowerupTuning.weapon_range: shorter for tier 1).
+func range_m() -> float:
+	return PowerupTuning.at_tier(world.powerup_tuning.weapon_range, tier)
+
+
 ## The nearest valid target in range that the shots already in flight won't destroy, or null.
 func pick_target() -> Enemy:
-	for e: Enemy in world.director.targets_ahead(muzzle_point(), world.powerup_tuning.weapon_range):
+	for e: Enemy in world.director.targets_ahead(muzzle_point(), range_m()):
 		if incoming_damage(e) < e.health - 0.001:
 			return e
 	return null
