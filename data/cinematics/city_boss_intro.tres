@@ -6,4 +6,5 @@
 script = ExtResource("1_script")
 id = &"city_boss_intro"
 title = "Something big is coming"
+scene = "res://scenes/cinematics/arrival_flyover.tscn"
 placeholder_text = "DESIGN-TBD: a short scene before the Floating Head."

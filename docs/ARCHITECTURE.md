@@ -70,7 +70,7 @@ power-ups.
 | `data/shop/catalog.json` | shop items, tiers and prices |
 | `data/campaign/campaign.tres` → `data/zones/*.tres` → `data/levels/*.tres` | the campaign |
 | `data/bosses/*.tres` | bosses (`BossDef`: slot, health, phases, arena, rewards, par times, armor rule), and a boss script's own tuning (`<id>_tuning.tres`) |
-| `data/cinematics/*.tres` | cinematic slots |
+| `data/cinematics/*.tres` | cinematic slots (`CinematicDef`: each slot's scene), and the arrival flyover's numbers (`arrival_flyover.tres`, `ArrivalFlyoverTuning`) |
 | `data/patterns/*.json` | generator patterns (every file in the folder is loaded) |
 | `data/skins/*.tres` | zone looks |
 | `data/audio/*.tres` | sound and music libraries |
@@ -964,7 +964,9 @@ features or their weights, no darkness), so endless in the Dead Zone plays as it
 
 A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, which the player
 continues past. A cinematic is a scene whose root extends `Cinematic` (emit `finished`, support
-`skip()`); a boss is built on the boss framework (Bosses, below). The City's Floating Head is built
+`skip()`), built with the cinematic toolkit (Cinematics, below): every zone's intro and the City's boss
+intro play a placeholder arrival flyover, and the outros are still cards. A boss is built on the boss
+framework (Bosses, below). The City's Floating Head is built
 (its step plays the fight); the other boss slots are still placeholders, holding the phases GDD §10
 gives each designed boss and its armor-rule delay. A fight still being built names its scene in the
 slot's `preview_scene` instead of `scene`: the campaign keeps the card, and debug builds play the
@@ -1111,6 +1113,121 @@ plays it), in `scripts/bosses/floating_head/`:
 - **The final villain:** two stages, the second a `checkpoint` phase, so a death there restarts at the
   second stage.
 
+## Cinematics
+
+GDD §1 tells the story mostly through the zones themselves, plus 5–15 second cinematics between levels and
+zones (their story beats come from the owner later; task F2). The cinematic toolkit (`scripts/cinematics/`,
+task F1) is code-driven: a cinematic is a timeline of camera keys, actors on the humanoid rig and timed
+events, played on a stretch of the slot's zone.
+
+**The flow.** A slot's `CinematicDef.scene` is a scene whose root extends `Cinematic`
+(`scripts/campaign/cinematic.gd`). The App instances it under the world root and calls `play(def, step)`;
+the cinematic knows its `step`, `zone` and `slot` (`&"intro"`, `&"boss_intro"`, `&"outro"`; played on its
+own, it finds the campaign step whose slot holds its def). At its end it emits `finished` once, and the App
+marks the step done and seen and moves on (`advance_from`), so the next step's first frame follows at once.
+**Skipping:** the pause action (Esc / P) or the cinematic's Skip button emits `skip_requested`, the App
+answers with `skip_cinematic()` → `skip()`, and the cinematic ends within the call. `App.playing_cinematic()`
+is the one playing. A cinematic holds while the game is in the background (focus lost, app paused), so it
+never ends, and a level never starts, unattended.
+
+| File | What |
+|---|---|
+| `cinematic_sequencer.gd` (`CinematicSequencer`) | the player: builds the stage, actors, camera and overlay, runs the clock (`advance`), fires the events, emits `finished`; `skip()`; `log_lines` lists every event fired (tests, the review tool) |
+| `cine_timeline.gd` (`CineTimeline`) | one cinematic: `duration`, `letterbox`, `stage`, `camera` keys, `actors`, `events`; helpers to build one in a script (`shot`, `actor`, `sound`, `music`, `card`, `effect`, `cue`); `problems()` checks it; `sort()` |
+| `cine_key.gd`, `cine_path.gd` (`CineKey`, `CinePath`) | a key's time and how the path comes into it: `SMOOTH` (a flight through the keys, velocity carrying on through each), `LINEAR` (a straight move eased by Tween's transition and ease types) or `CUT`; `sample_riding` for keys that ride with an actor |
+| `cine_camera_key.gd` (`CineCameraKey`) | where the camera is (`position`), what it looks at (`target`), `fov`, `roll`; `follow` / `watch` an actor: the point is then an offset from it |
+| `cine_actor.gd`, `cine_actor_key.gd`, `cine_actor_node.gd` | an actor (`RUNNER`: Razor Echo's `PlayerAvatar`; `CYBORG`: a `CyborgBody` in the zone's look or a look of its own, a host or not), its keys (position, pose, heading, a cyborg's face, aim and charge) and its node in play |
+| `cine_event.gd` (`CineEvent`) | `SOUND` (a sound effect), `MUSIC` (a track, `@zone`, or none), `TEXT` (a card), `EFFECT` (`fade_in`, `fade_out`, `flash`, `shake`, `letterbox_in`, `letterbox_out`), `CUE` (a script's own moment) |
+| `cine_stage_def.gd`, `cine_stage.gd` (`CineStageDef`, `CineStage`) | the set: a stretch of track built by the `TrackBuilder` in the zone's skin, with its sky and fog (`ZoneSkin.level_environment(0)`) and the run's sun; ceilings, gaps and pads; streamed in chunks like a run |
+| `cine_overlay.gd` (`CineOverlay`) | the 2D layer: letterbox bars, fades, flashes, text cards (menu fonts, capitals) and the Skip button (showing the pause key), in the safe area |
+| `arrival_flyover.gd`, `arrival_flyover_tuning.gd`, `scenes/cinematics/arrival_flyover.tscn`, `data/cinematics/arrival_flyover.tres` | the placeholder arrival flyover (below) |
+
+**Track space.** Every point is `(x, y, z)`: x metres right of the start lane's centre (the lane a level's
+runner starts in, `lane_count / 2`), y metres up from the floor, z metres along the track. So a point
+at x = 0 is on a lane's centre at 3, 5 and 6 lanes alike; `CineStage.point()` / `to_track()` convert,
+and `lane_x()`, `wall_x()` and `lane_from_start()` give the street's geometry for scripts. Stage lanes are
+counted from the start lane too (a lane past the street's edge is left out).
+
+**The stage picks up the slot's look from the zone's data.** A stage def without a skin of its own takes
+the slot's (`CineStage.skin_for`): the zone's skin (`ZoneDef.skin`), and before a boss the fight's arena's
+(`BossDef.arena.skin`) if it has one. Its lanes default to the device's (`App.lane_count()`), so the street
+matches the level that follows. A `@zone` music cue plays the slot's track (`ZoneDef.music`, or before a
+boss `BossDef.music` if set); a track the music library doesn't list yet is skipped quietly and the music
+playing carries on, so a song the owner adds later under that name just plays (no music is generated for
+cinematics, GDD §11). Text on cards may name `{zone}`, `{zone_number}`, `{boss}` and `{title}`
+(translated, then filled in). So a later change of a zone's skin, music or name reaches its cinematics.
+
+**Cameras.** Keys are sampled with `CinePath`: `SMOOTH` keys make a Hermite spline timed by the keys (a
+Catmull-Rom whose tangents come from the neighbouring keys), with no jolt at any key; `LINEAR` keys ease
+with Tween's curves (`TRANS_SINE` + `EASE_IN_OUT` starts and ends at rest); a `CUT` holds, then jumps. A key
+that follows (or watches) an actor gives an offset from it: between two keys riding with the same actor
+the camera rides along, its offset moving through the keys; between a fixed key and a riding one it flies
+through where each key will be at its own time; the velocity carries on through every key either way.
+Straight up or down, the camera's up is the track's direction. `shake` follows the Screen shake setting.
+A camera flying over a street must keep out of what hangs over it: nothing does below about 10 m in any
+zone except ceilings (6 m up, their structure up to about 13 m), so keep under 9.5 m over open street and,
+over a ceiling or within a few metres of one, at least `camera_ceiling_clearance` (1 m) under its underside,
+as the run camera does (closer, the ceiling's end glow fills the screen); the tests check the flyovers so.
+
+**Actors.** The runner is the real player model (`PlayerAvatar`), driven with the same movement state as
+in play: its stride keeps pace with the ground it covers, it is in the air above the floor (with its jump
+poses), leans into sideways moves like a lane switch, and takes `slide`, `dash`, `stomp` and `dead` from its
+keys. A cyborg (`CyborgBody`) walks or idles by its speed, or takes `aim`, `run_away`, `cower` or `die`;
+its keys set its face, its aim (at another actor) and its charge glow (the red glow is its attack's
+warning in play, so show it only where an attack follows). An actor faces the way it moves, or a heading
+of its keys; it's in the scene from `enter` to `leave`. Actors are visual only: no collision, no gameplay.
+
+**Reduced flashing and comfort.** `flash` becomes a slow, faint glow with Reduced flashing
+(`CineOverlay.SOFT_FLASH_ALPHA`, `SOFT_FLASH_MIN_TIME`); nothing in the overlay blinks; the skins honour it
+as in play; `shake` is scaled by Screen shake (0 when it's off).
+
+**Writing a cinematic.** In data: a scene whose root is `CinematicSequencer` with `timeline` set to a
+`CineTimeline` resource (`tools/showcase/cinematic_sampler.tres` shows every kind of key and event). Or in
+a short script, which can use the stage's geometry:
+
+```gdscript
+extends CinematicSequencer   # the root of scenes/cinematics/<name>.tscn; the slot's CinematicDef.scene
+
+func _stage_def() -> CineStageDef:          # the set; no skin: the zone's (from its data)
+	var d := CineStageDef.new()
+	d.ceilings = PackedVector2Array([Vector2(120.0, 170.0)])
+	return d
+
+func _make_timeline() -> CineTimeline:      # `stage` is built by now
+	var t := CineTimeline.new()
+	t.duration = 8.0
+	var runner: CineActor = t.actor(&"runner")
+	runner.at(0.0, Vector3(0.0, 0.0, 0.0), &"run")
+	runner.at(8.0, Vector3(0.0, 0.0, tuning.run_speed * 8.0))  # LINEAR keys: a steady run
+	t.shot(0.0, Vector3(stage.wall_x(1) - 2.0, 3.0, 10.0), Vector3(0.0, 1.0, 0.0))
+	var ride: CineCameraKey = t.shot(8.0, Vector3(0.0, 4.2, -7.5), Vector3(0.0, 1.0, 14.0))
+	ride.follow = &"runner"                 # the run camera's view of the runner
+	ride.watch = &"runner"
+	t.music(0.0, CineEvent.ZONE_MUSIC, 1.5)
+	t.card(1.0, "{zone}", "ZONE {zone_number}", 3.0)
+	t.effect(0.0, CineEvent.FADE_IN, 0.8)
+	t.effect(7.6, CineEvent.FADE_OUT, 0.4)
+	return t
+
+func _on_cue(cue_name: StringName) -> void:  # a CUE event's moment (the `cue` signal fires too)
+	pass
+```
+
+Then set the slot's `CinematicDef.scene` to the scene. End on the run camera's view of the runner
+(`MovementTuning`'s camera numbers) or on black, since the next step opens on its own view at once.
+`tools/showcase/cinematic_review.tscn` plays any slot's cinematic on its own for renders (`--slot=<step
+id>`, `--sampler`, `--lanes=N`, `--reduced-flashing`, `--once`), printing each event with its frame.
+
+**The arrival flyover** (DESIGN-TBD, `docs/questions/f1.md`; `ArrivalFlyover`, a short script with its
+numbers in `data/cinematics/arrival_flyover.tres`): every zone's intro slot and the City's boss intro play
+it until the owner describes the story beats. It opens low in the street looking up at the zone's skyline
+and tilts down as the runner runs in beneath it, glides over the street behind the runner, and settles into
+the run camera's view as they run under one of the zone's ceilings; a card names the zone ("ZONE 1", "NEON
+CITY"; before a boss, the boss, as the level select does), the slot's music comes in, and it fades to black
+after 9.5 s, as the level (or the fight) opens on the same view. Gaps beside the runner's lane show the
+zone's floor pieces. It sets up in about 15-40 ms and costs about 0.3 ms a frame (headless), so it stays
+cheap on the web, where the demo plays the City's two.
+
 ## Economy and saving
 
 `Profile` (`scripts/app/profile.gd`) keeps earned and purchased credits apart (net worth = earned,
@@ -1123,7 +1240,52 @@ owned, switched-on items; one charge of each breakable per attempt.
 `BuildFlavor` (`full_pc`, `full_mobile`, `web_demo`) comes from export feature tags (or
 `--flavor=` for testing). `Platform` (autoload) is the only way to reach ads, purchases,
 leaderboards, achievements, store links and cloud save; `StubBackend` serves the editor, tests and
-the web demo until the real plugins are chosen (risk test R3).
+the web demo until the real plugins are chosen (risk test R3). The store links are data
+(`data/platform/store_links.json`) and open through `Platform.open_store()`, which hands the URL to the
+backend's `open_url()`: a portal that restricts outbound links gets a backend of its own, and the stub
+records what it opened (`opened_urls`; tests switch `open_links` off so nothing leaves the game).
+
+**The web demo** (GDD §2; task E2) is the "Web (demo)" export preset: the `web_demo` feature tag, the
+Compatibility renderer (the web's only one), no thread support (so it needs no cross-origin isolation
+headers, as itch.io and the portals serve it), no GDExtension support, and a canvas that follows the
+window or a portal's frame (`html/canvas_resize_policy` adaptive). `tools/godot.sh web` exports it
+(README, The web demo).
+- *What it plays:* the zones marked `in_demo` (the Neon City and its boss); a step past them leads to the
+  "get the full game" screen (`App.in_demo_scope()`). No endless mode, and no ads, purchases or
+  leaderboards: the platform offers none, and no screen shows any.
+- *What it leaves out* (`tools/web/demo_filter.gd`, worked out from the data): the tests, the tools, the
+  test boss, and the music it never plays: every audio file in the music library's folders that no track
+  the demo plays uses, the files of the tracks it never plays wherever they are, and those tracks'
+  level-complete riffs. The tracks it plays are the menus' (`menu`), the City's (`city`, quick play's too)
+  and each demo zone's and its boss's (`DemoFilter.demo_tracks()`). `tools/web/update_filter.gd` writes
+  the preset's exclude filter from that, `tools/godot.sh web` runs it before every export, and
+  `test_web_demo` fails while the preset doesn't match the data. So when a track is replaced (the owner's
+  songs, GDD §11: the same file name, or a new file named in `data/audio/music_library.tres`), the filter
+  follows the library: a demo track's new file ships, the old file left in its folder doesn't, and another
+  zone's new file stays out.
+- *A build without some sounds:* `SfxLibrary.has_file()`; `PlayerSfx` readies only the sounds the build
+  has, and `MusicDirector.level_complete_sound()` falls back to the E riff when a zone's riff isn't in
+  the build. A sound asked for by name whose file is missing still warns.
+- *Checks:* `test_web_demo` (the preset, the filter from the data and with replaced tracks, everything the
+  demo's scenes, scripts and data reference kept by the filter and loading, the walk from the title to the
+  end screen with the sound library as the export has it, no ads, purchases or leaderboards on any screen,
+  the store links). `tools/web/check_pack.gd` checks an exported pack from the inside, run by the desktop
+  Godot from the pack's folder so `res://` is the pack alone: the demo's music and sounds load, no other
+  music is in it, and `tools/web/demo_walk.gd` walks it from the title to the end screen (the City's three
+  levels and the Floating Head, with the results and the shop between them, in god mode) with no error or
+  warning logged. `tools/web/browser_check.js` drives the release and debug exports in Chromium through
+  Playwright (README).
+- *In the browser:* `user://` is the page's storage (IndexedDB, under `/userfs/godot/app_userdata/Neon
+  Runner/`), written through after each save, so progress survives a reload. Browsers hold sound back until
+  the first click, tap or key: Godot creates its AudioContext at start (Chrome notes it's suspended) and
+  resumes it on the first input. A phone's browser is a mobile device (`DeviceProfile.is_mobile()`, from the
+  engine's `web_android` and `web_ios` tags): 3 lanes, the touch layout and hints. Held upright, the page
+  covers the game with "turn your phone sideways" (a style in the preset's `html/head_include`) and
+  `App._on_window_resized()` pauses a running level (both DESIGN-TBD, `docs/questions/e2.md`).
+- *Touch words:* `DeviceProfile.has_touch()` means a phone, a tablet or a real touch screen. The project lets
+  the mouse stand in for touch (`input_devices/pointing/emulate_touch_from_mouse`), which makes
+  `DisplayServer.is_touchscreen_available()` true on every desktop and in every desktop browser, so the
+  hints go by `has_touch()` and name the keys there.
 
 ## Tests
 
@@ -1183,7 +1345,16 @@ holding the player to its lane, a one-lane ceiling ridden and dropped from, the 
 ceiling and past its end, and every skin's ceilings (see Zone skins). `test_audio` checks
 the music files (seamless loops, lengths, tempos, size budgets), the Music autoload's fades, duck and
 death dip on its players' levels and the bus's low-pass (headless runs never start a player), and the
-run's music hooks through the App. The runner frees
+run's music hooks through the App. `test_cinematics` checks the cinematic toolkit: its paths (smooth,
+eased and cut moves, cameras riding with an actor), a timeline's `problems()`, a cinematic played to its end
+(events in order, `finished` once, actors on their paths, the camera riding along), `skip()` and the pause
+action and the Skip button, Reduced flashing, holding in the background, the sampler (a cinematic described
+in data), every zone's arrival flyover and the City's boss intro at 3, 5 and 6 lanes (the zone's skin from
+its data, the level's lanes, a camera that never flies into a ceiling or out of the street, a runner that
+never runs over a hole, ending in the run camera's view), and the App's flow through a built slot (the
+next step follows, skipping, the web demo). `test_web_demo` checks the web demo's preset, its export filter against
+the data and everything the demo references, and walks the demo from the title to its end screen (see
+Platforms and build flavors). The runner frees
 anything a suite leaves in the tree, gives suites a fresh, unsaved profile, reports a suite that fails
 to load, and ends a stuck run after 1200 s of real time.
 
@@ -1207,7 +1378,8 @@ skin lists, or a scripted run with a ceiling ride and a wall run, in a level's d
 `--darkness=X`; `--narrow` makes three of its ceilings narrow, one lane in the middle, the two leftmost
 lanes and the rightmost lane, with shots riding each, of its far end from below and from beside it, and
 a run that tries moves past their edges; `--from=D` starts the run further on, `--reduced-flashing`
-turns Reduced flashing on), and comparison
+turns Reduced flashing on), a cinematic (`cinematic_review`: any campaign slot's cinematic on its own, as
+the App plays it, or the toolkit's sampler), and comparison
 sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
 `CLAUDE.md`.
