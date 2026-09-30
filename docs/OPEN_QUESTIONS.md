@@ -1369,6 +1369,77 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     moves its charges on to a clear stretch, the others wait for it, up to its 4 s `turn_wait_max` plus its slack
     (about 2.2 s at run speed).
 
+**The web demo** (from E2; export and check it with `tools/godot.sh web`, README "The web demo"; the demo is City 1–3 and the Floating Head, then the "get the full game" screen)
+231. **The portals' rules on outbound links** (GDD §2: itch.io, possibly Poki or CrazyGames; "check each
+    portal's rules on outbound links"). I couldn't read the rules: this build machine's network policy blocks
+    itch.io, docs.crazygames.com, developers.poki.com and sdk.poki.com. For each portal the demo goes to:
+    - **itch.io:** the demo's own page, where links to Steam, the App Store and Google Play are the usual
+    thing. Do you want its end screen as it is (three store tiles)?
+    - **Poki** and **CrazyGames:** do their rules allow links out of the game to other stores at all, only to
+    some (for example the game's own Steam page), or none? Do they ask for their own SDK (their ads, their
+    analytics, a "game loading/started" call) even in a game without ads? Is there a size or loading-time
+    limit the demo must meet (it downloads about 14 MB compressed, see the report)?
+    Placeholder: one build for every portal, with the three store tiles; the store links open through the
+    platform layer (`Platform.open_store()` → `PlatformBackend.open_url()`), so a portal that forbids them
+    gets a backend of its own that hides or disables the tiles, without touching the game.
+232. **The store links** (item 108): they still point at the stores' front pages
+    (`data/platform/store_links.json`, marked DESIGN-TBD). Which pages, once they exist? And which order and
+    names on the tiles (now "Steam (PC)", "App Store", "Google Play")?
+233. **A phone held upright** (GDD §2: landscape on every platform; the web demo can be opened on a phone in
+    either orientation, and the game is laid out for landscape only, so upright it shrinks to an unreadable
+    size). Placeholder: on a touch screen held upright the page covers the game with "TURN YOUR PHONE SIDEWAYS
+    TO PLAY" (a style in the preset's `html/head_include`, marked DESIGN-TBD), and a running level pauses
+    (`App._on_window_resized`, DESIGN-TBD); turned back, the pause menu waits. Right, or should the game try to
+    lock the orientation (browsers allow it only in full screen), or offer a full-screen button?
+234. **The demo on a phone plays like the mobile game** (GDD §3, §8): a phone's browser (Android, iPhone) gets
+    the mobile layout: 3 lanes, touch controls and hints, and no slow time (PC only). An iPad's browser says
+    it's a Mac, so it gets the PC layout (5 lanes, keyboard hints) while touch still works. Placeholder: as
+    described (`DeviceProfile.is_mobile()`, from the browser's own platform tags). Right?
+235. **The loading screen** (GDD §11: the look): while the demo downloads (about 14 MB, then the engine starts),
+    the page shows Godot's default splash, the Godot logo on grey, with a progress bar under it. Should it show
+    the game's own title or art instead, on the game's dark violet? Placeholder: Godot's default.
+236. **Sound before the first click** (GDD §11): browsers don't let a page play sound until the player clicks,
+    taps or presses a key, so the title's music starts with the player's first input (Chrome notes this in its
+    console). Placeholder: that. Should the demo instead open on a "click to play" card, so the music is there
+    from the first screen?
+237. **Where the demo's saves live** (GDD §2, §7): in the browser's own storage for the page (IndexedDB), so
+    progress and credits survive a reload but stay in that browser, and a portal's page keeps its own. There is
+    no way to carry them into the full game. Right?
+
+**Cinematics** (from F1; review with `tools/showcase/cinematic_review.tscn`, or play `--level=city/intro`, `--level=city/boss_intro`; numbers in `data/cinematics/`)
+238. **The arrival flyovers' story beats** (GDD §1: a light story told through the zones and 5–15 second
+    cinematics; the owner describes the beats later, task F2). What should each zone's intro show, and should
+    the intros share one form?
+    - *Placeholder:* one arrival flyover for every zone's intro slot (`scripts/cinematics/arrival_flyover.gd`,
+    `ArrivalFlyover`, marked DESIGN-TBD; numbers in `data/cinematics/arrival_flyover.tres`). 9.5 s: the camera
+    opens low in the street looking up at the zone's skyline, tilts down as the runner runs in beneath it,
+    glides over the street behind them, and settles into the run camera's view as they run under one of
+    the zone's ceilings; the zone's music comes in; it fades to black and the level opens on the same view.
+    Built in the zone's own skin, taken from the zone's data.
+239. **A title card naming the zone** (GDD §1: "little or no words"). Should an arrival cinematic name the zone
+    on screen?
+    - *Placeholder:* a card from about 0.9 s to 3.8 s: "ZONE 1" over "NEON CITY" (the zone's number and name,
+    from the zone's data), in the menus' fonts, capitals, fading in and out
+    (`ArrivalFlyover._make_timeline`, `CineOverlay.show_card`).
+240. **The City's boss intro** ("Something big is coming", before the Floating Head): what should it show,
+    and should it tease the boss?
+    - *Placeholder:* the same arrival flyover over the fight's arena look (`city_boss_skin`, taken from the
+    boss's arena data), with a card naming the boss as the level select does ("ZONE 1 · BOSS" over
+    "FLOATING HEAD"), and the fight's music. No glimpse of the ship.
+241. **Skipping.** GDD §1 doesn't say how cinematics are skipped. Should every cinematic be skippable at once,
+    even the first time? Should a seen cinematic play again when a step is replayed from the level select?
+    - *Placeholder:* always skippable at once with the pause action (Esc / P) or a Skip button (bottom right,
+    dim, from 0.4 s; on touch screens it's the only way). A skipped cinematic counts as seen and done, like
+    one played out. Replaying a step from the level select plays it again (nothing is skipped
+    automatically; the App marks each one seen, `cinematic/<step id>`, for later use).
+242. **The outros** stay placeholder cards (the task covered the intros). Should they get a placeholder
+    cinematic too (a departure from the zone, say) until their beats are known? The web demo still ends on
+    its end screen after the City's outro card.
+    - *Placeholder:* unchanged cards (`data/cinematics/*_outro.tres` have no scene).
+243. **The look of every cinematic:** letterbox bars, a fade from black at the start and to black at the end.
+    - *Placeholder:* bars of 10% of the screen's height each (`CineOverlay.BAR_SHARE`); the arrival flyover
+    fades in over 0.8 s and out over 0.45 s (its data).
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).

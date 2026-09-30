@@ -83,11 +83,11 @@ func store_names() -> PackedStringArray:
 	return out
 
 
-## Opens a store page (the demo's "get the full game" screen, GDD §2).
-func open_store(store: StringName) -> void:
+## Opens a store page (the demo's "get the full game" screen, GDD §2) through the backend. True if
+## the platform opened it; false for a store without a link.
+func open_store(store: StringName) -> bool:
 	var url: String = store_link(store)
-	if url != "":
-		OS.shell_open(url)
+	return backend.open_url(url) if url != "" else false
 
 
 func cloud_save_available() -> bool:

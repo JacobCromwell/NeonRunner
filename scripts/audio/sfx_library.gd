@@ -40,6 +40,13 @@ func volume(sound: StringName) -> float:
 	return float(volume_db.get(String(sound), 0.0))
 
 
+## True if this build has the sound's file. A build may leave out sounds it never plays: the web demo
+## leaves out the level-complete riffs of the zones it doesn't have (docs/ARCHITECTURE.md, Platforms
+## and build flavors).
+func has_file(sound: StringName) -> bool:
+	return ResourceLoader.exists(folder.path_join(String(sound) + ".wav"))
+
+
 ## The stream for a sound (with pitch variation applied), or null if its file is missing.
 func stream(sound: StringName) -> AudioStream:
 	var key: String = String(sound)

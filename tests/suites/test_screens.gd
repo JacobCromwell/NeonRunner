@@ -149,7 +149,8 @@ func _test_every_screen(tag: String) -> void:
 		["boss run summary", func() -> void: _show_boss_result(false), ResultsScreen],
 		# The City's boss is built (task E1d); Gangland's is still a placeholder card.
 		["boss slot", func() -> void: App.play_step(App.campaign.step("gangland/boss")), SlotScreen],
-		["cinematic slot", func() -> void: App.play_step(App.campaign.step("city/intro")), SlotScreen],
+		# The zones' intros play their arrival flyovers (task F1); the outros are still placeholder cards.
+		["cinematic slot", func() -> void: App.play_step(App.campaign.step("city/outro")), SlotScreen],
 		["demo end", func() -> void: App.show_demo_end(), DemoEndScreen],
 	]
 	for entry: Array in screens:
@@ -207,8 +208,9 @@ func _test_title() -> void:
 	title = App.screen as TitleScreen
 	(title.continue_button as BaseButton).pressed.emit()
 	await physics_frames(3)
-	check(App.screen is SlotScreen and (App.screen as SlotScreen).step.id == "city/intro",
-		"a new player's Play starts the campaign at its first step")
+	var first: Cinematic = App.playing_cinematic()
+	check(first != null and first.step.id == "city/intro",
+		"a new player's Play starts the campaign at its first step (the City's arrival flyover)")
 	App.profile = SampleProfiles.rich()
 
 

@@ -15,7 +15,10 @@ through zones full of enemies, and a single hit ends the run. Built with Godot 4
 Boss fights have their framework (they play in the runner, with phases, a health bar, checkpoints,
 stars and payouts); a test boss shows the framework at work. The Neon City's boss, the Floating Head,
 is built and plays in the campaign after City 3 (debug builds: `--boss=city_boss`); the other zones'
-bosses are still placeholder slots. The short cinematics between levels are placeholder slots too.
+bosses are still placeholder slots. The short cinematics are built with a code-driven cinematic toolkit
+(camera paths, the runner and cyborgs on the humanoid rig, timed events, skippable); until the owner
+describes the story beats, each zone's intro (and the City's boss intro) plays a placeholder arrival flyover
+over the zone, and the outros are placeholder cards.
 Every placeholder decision is listed in `docs/OPEN_QUESTIONS.md`.
 
 Docs: `docs/GDD_CHECKPOINT.md` (the design, the authority), `docs/OPEN_QUESTIONS.md` (open decisions and
@@ -46,7 +49,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--full-loadout` | Every power-up |
 | `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `corporate`, `corporate_plaza` (Corporate's plaza floor), `dead_zone` or `golden` |
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
-| `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`) |
+| `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level |
 | `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
 
@@ -62,7 +65,7 @@ Example: `./play.sh --lanes=6 --features=octodog,ceilings --god`, or the test bo
 | Slide (fast drop in the air) | Down arrow | Swipe down |
 | Juggernaut dash (power-up) | Shift | Tap |
 | Slow time (power-up, PC only) | E | – |
-| Pause | Esc / P | Pause button |
+| Pause (skips a cinematic) | Esc / P | Pause button (a cinematic's Skip button) |
 
 Every key can be rebound in Settings. PC runs use 5 lanes and mobile runs use 3 (the exact PC count is still
 open: 5 or 6).
@@ -75,7 +78,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 - **Campaign:** 15 levels in six zones, about 35 minutes of flawless running: the Neon City (the web demo's
   zone) and Gangland with three levels each, the Marketplace, Corporate and the Dead Zone with two, and the
   Golden Zone with three.
-  Each zone has a boss slot and cinematic slots. Each level introduces about one new thing (GDD §5), where
+  Each zone has a boss slot and cinematic slots; its intro plays a placeholder arrival flyover over the zone
+  in its own look (skippable). Each level introduces about one new thing (GDD §5), where
   its data says (`feature_starts`):
   1. City 1 *Rooftop Rush*: gaps, fences, walls and signs, then cyborgs late in the level.
   2. City 2 *Skyway*: ceilings and anti-grav pads.
@@ -168,8 +172,10 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     effects, among them the level-complete riff in each zone's key
   - first-encounter hints
 - **Settings:** volumes, key rebinding, screen shake, reduced flashing, hints.
-- **Platforms:** export presets for Windows, Android, iOS and the web demo. Ads, purchases and
-  leaderboards go through one platform layer, which is a stub until the real plugins are chosen.
+- **Platforms:** export presets for Windows, Android, iOS and the web demo, which exports lean (only the
+  music it plays) and is checked from the inside and in a browser (see The web demo). Ads, purchases,
+  leaderboards and store links go through one platform layer, which is a stub until the real plugins are
+  chosen.
 
 ## Tuning while you play (F6)
 
@@ -192,6 +198,7 @@ tools/godot.sh test             all tests, under two minutes; exit code 0 = pass
 tools/godot.sh smoke [options]  40 s of the real game, headless; prints only problems
 tools/godot.sh sfx [--review]   regenerate the sound effects (assets/sfx/) from tools/asset_gen/
 tools/godot.sh music [--review] regenerate the music (assets/music/)
+tools/godot.sh web [--debug] [--serve]  export the web demo and check it (see The web demo)
 tools/godot.sh import           force a resource import
 ```
 
@@ -202,7 +209,10 @@ OFL-licensed; licenses are in `assets/LICENSES.md`.
 The scenes in `tools/showcase/` show one part of the game up close for visual review (the runner in every pose
 and power-up look, and a scripted run on any zone's skin; ramp launches and blocked wall entries; each enemy
 family, the Floating Head, the UI kit, every screen, a zone skin's fixed review track, the cult's feed, the
-Golden Zone's statues); each script's header lists its options.
+Golden Zone's statues, any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
+lists its options. For example, a zone's arrival flyover rendered to frames on the web / low-end renderer:
+`godot --path . --rendering-method gl_compatibility --fixed-fps 10 --write-movie build/cine/f.png --quit-after 100
+res://tools/showcase/cinematic_review.tscn -- --slot=golden/intro --once`.
 
 `tools/measure/big_attacks.gd` measures how the big attacks of different enemy types overlap over simulated runs of
 the campaign, with big attacks taking turns (GDD §9, the `big_attacks_take_turns` switch in the game rules and the
@@ -216,9 +226,42 @@ enemy, host and obstacle counts, what only the every-feature guarantee brings, a
 against its bursts, with the recency curve on and off:
 `godot --headless -s res://tools/measure/level_shape.gd -- [--levels=dead_zone/2] [--curve=on,off]`.
 
+## The web demo
+
+The web demo (GDD §2) is the "Web (demo)" export preset: the Neon City's three levels and the Floating Head,
+then a "get the full game" screen with links to Steam, the App Store and Google Play (placeholder links in
+`data/platform/store_links.json`). It has no endless mode, ads, purchases or leaderboards, and saves in the
+browser.
+
+1. **Export templates**, once per machine: the web templates of Godot 4.7.2, from the official release
+   (`Godot_v4.7.2-stable_export_templates.tpz` on https://github.com/godotengine/godot-builds/releases/tag/4.7.2-stable;
+   check it against the release's `SHA512-SUMS.txt`). The demo needs only its two web templates:
+   `unzip -j Godot_v4.7.2-stable_export_templates.tpz templates/web_nothreads_debug.zip templates/web_nothreads_release.zip -d ~/.local/share/godot/export_templates/4.7.2.stable/`
+   (with `XDG_DATA_HOME` set, Godot looks in `$XDG_DATA_HOME/godot/export_templates/` instead; on Windows it's
+   `%APPDATA%\Godot\export_templates\4.7.2.stable\`, or the editor's Editor > Manage Export Templates).
+2. **Export and check:** `tools/godot.sh web` exports the demo to `exports/web/` (git-ignored), then runs the
+   exported pack headless from the title to the end screen (`tools/web/check_pack.gd`) and lists the files'
+   sizes. `--debug` exports a debug build to `exports/web_debug/` instead, where the command-line options work
+   (below). The export leaves out the music the demo never plays, worked out from the music library, so
+   replacing a track needs no change to the preset: `tools/godot.sh web` updates its filter, and the tests
+   fail until it's updated (`docs/ARCHITECTURE.md`, Platforms and build flavors). The editor's Project > Export
+   works too.
+3. **Serve it:** `tools/godot.sh web --serve` exports, checks and serves it at http://localhost:8060 (or any
+   static web server over `exports/web/`, e.g. `python3 -m http.server 8060 --directory exports/web`). It's
+   built without thread support, so it needs no special headers; upload the folder's files as they are (for
+   itch.io, a zip with `index.html` at its top).
+4. **In a browser:** `node tools/web/browser_check.js` drives both exports in Chromium through Playwright (Node
+   and Playwright with its Chromium needed): loading, the title on the Compatibility renderer, the sound after
+   the first key, the canvas at other window sizes, City 1's glow, saves that survive a reload, the shop, a phone
+   (taps, a swipe, held upright), and the end screen's store links. Frames and the console go to
+   `build/browser/`. Software WebGL (no GPU) draws a level at a frame every few seconds, so it takes a while.
+
+On a debug build, the options go into the page's engine settings: in `exports/web_debug/index.html`, set
+`"args":["--","--level=city/outro"]` in `GODOT_CONFIG` to open on the City's outro, one step from the end screen.
+
 ## Tests
 
-`tools/godot.sh test` runs 42 suites with about 3,250,000 checks:
+`tools/godot.sh test` runs 44 suites with about 3,250,000 checks:
 - **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds, and every campaign level
   (each with every feature it lists, on its own seed and on others). Under every ceiling the floor may be
   dangerous, so each one's pads, landing zone and a floor route that never takes the pad are checked, and
@@ -248,7 +291,18 @@ against its bursts, with the recency curve on and off:
   flashing), and the whole fight through the campaign at 3, 5 and 6 lanes with no god mode, from City 3
   to the outro (and the web demo's end screen), its propaganda never masking a warning, and a death
   restarting the fight.
+- **Cinematics:** the toolkit's camera and actor paths (smooth, eased and cut moves, cameras riding with an
+  actor), a timeline's checks, a cinematic played to its end with every event in order, skipping (the pause
+  action and the Skip button), Reduced flashing, holding while the game is in the background, a cinematic
+  described in data, every zone's arrival flyover and the City's boss intro at 3, 5 and 6 lanes (the zone's
+  skin from its data, a camera that never flies into a ceiling or out of the street, ending in the run
+  camera's view), and the App's flow through a built slot, the web demo's too.
 - **Screens:** every screen at desktop and touch sizes.
+- **The web demo:** its export preset, and a filter that leaves out only what the demo never loads, worked out
+  from the data (and following a replaced track); everything the demo's scenes, scripts and data reference kept
+  and loading; the demo walked from the title through the City's three levels and the Floating Head to the
+  "get the full game" screen; no ads, purchases or leaderboards on any screen; the store links from data
+  through the platform layer.
 - **The runner:** Razor Echo's poses on every surface, the coat's panels (never through the legs or the
   ground), the budgets, the power-up looks, and its copper glow kept clear of every hazard colour.
 - **The cyborgs' look:** in every zone's look, hitboxes pinned to their sizes and no look bigger than the
@@ -278,9 +332,11 @@ Headless runs skip sounds, because the dummy audio driver never finishes a playb
 
 ```
 play.sh, play.cmd       play the current version
-tools/                  godot.sh (play/edit/test/smoke/sfx/music), asset generators, showcase scenes, measurements
+tools/                  godot.sh (play/edit/test/smoke/sfx/music/web), asset generators, showcase scenes, measurements,
+                        the web demo's export tools and browser check (web/)
 scenes/main.tscn        the main scene: world, screens and overlays
 scenes/bosses/          boss fight scenes (the test boss and the Floating Head so far)
+scenes/cinematics/      cinematic scenes (the placeholder arrival flyover so far)
 scripts/app/            App (state and flow), Profile, SaveService, Settings, BuildFlavor
 scripts/run/            a run: LevelRun, RunWorld, camera, projectiles, credits, score, effects, hints
 scripts/player/         the Player controller and its avatar
@@ -288,7 +344,8 @@ scripts/characters/     the procedural humanoid rig
 scripts/enemies/        one script (plus tuning and generator rules) per enemy type, EnemyDirector
 scripts/powerups/       the permanent power-ups
 scripts/world/          level layout, generator, track builder, hazards; zone skins and the mesh kit
-scripts/campaign/       campaign, zones, bosses (BossDef, BossPhase) and cinematic slots
+scripts/campaign/       campaign, zones, bosses (BossDef, BossPhase) and cinematic slots (CinematicDef, Cinematic)
+scripts/cinematics/     the cinematic toolkit (CinematicSequencer, CineTimeline, CineStage, ...) and the flyover
 scripts/bosses/         the boss framework (BossEncounter, BossPart, BossArena, BossProps), the test boss,
                         and one folder per boss (floating_head/)
 scripts/economy/        the shop catalog
