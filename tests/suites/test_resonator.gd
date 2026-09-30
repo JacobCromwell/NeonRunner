@@ -110,8 +110,8 @@ func _count(r: Resonator, event: String) -> int:
 ## second wave comes inside the invulnerability window, the hitbox covers every lane and stays clear of
 ## a wall runner (the visible wave too), and it hovers within the weapon's reach.
 func _test_numbers() -> void:
-	check(t.health_at(1.0) == 15.0 and t.score_value > 0 and not t.uses_floor,
-		"15 laser tier 1 shots, a score, and it never uses the floor (%.0f)" % t.health_at(1.0))
+	check(t.health_at(1.0) == 17.0 and t.score_value > 0 and not t.uses_floor,
+		"17 laser tier 1 shots, a score, and it never uses the floor (%.0f)" % t.health_at(1.0))
 	var golden_1: float = 12.0 / 14.0
 	check(t.zone_t(golden_1) < 0.1 and is_equal_approx(t.zone_t(1.0), 1.0) and t.zone_t(0.0) == 0.0,
 		"its early numbers are Golden 1's and its late ones Golden 3's (zone_t %.2f at Golden 1)" % t.zone_t(golden_1))
@@ -149,8 +149,9 @@ func _test_numbers() -> void:
 			"%d lanes: the band (%.2f m) and the visible wave (%.2f m) stop short of a wall runner's body (%.2f m)"
 			% [lanes, half, visual_end, wall_body])
 	var powerups := load("res://data/tuning/powerups.tres") as PowerupTuning
-	check(t.hover_ahead < powerups.weapon_range - 5.0, "it hovers within the weapon's reach (%.0f of %.0f m)"
-		% [t.hover_ahead, powerups.weapon_range])
+	var tier1_range: float = PowerupTuning.at_tier(powerups.weapon_range, 1)
+	check(t.hover_ahead < tier1_range - 5.0, "it hovers within tier 1's reach, the shortest (%.0f of %.0f m)"
+		% [t.hover_ahead, tier1_range])
 	var top: float = t.hover_height + ResonatorModel.TOP_Y * t.model_scale
 	var bottom: float = t.hover_height + ResonatorModel.BOTTOM_Y * t.model_scale
 	var halo: float = (ResonatorModel.HALO_RADII[-1] + ResonatorModel.HALO_WIDTH * 0.5) * t.model_scale
@@ -477,7 +478,7 @@ func _test_protection() -> void:
 
 # --- Weapons, no stomp ---------------------------------------------------------------------------------
 
-## Weapons: auto-fire targets it within the weapon's reach, 15 laser tier 1 shots bring it down, and a
+## Weapons: auto-fire targets it within the weapon's reach, 17 laser tier 1 shots bring it down, and a
 ## wave still rolling fizzles out with it (its turn ends too). No stomp: it hovers out of reach ahead of
 ## the player, even when they speed up, and has no body or top to land on.
 func _test_weapons_and_stomp() -> void:
@@ -502,20 +503,21 @@ func _test_weapons_and_stomp() -> void:
 			ahead_ok = ahead_ok and res.track_distance() - w.player.distance > t.hover_ahead - 0.5 \
 				and res.global_position.y > tuning.jump_height + tuning.hurtbox_size.y
 	check(ahead_ok, "it keeps hover_ahead in front of the player, out of reach above a jump, even through a dash")
-	var targets: Array[Enemy] = w.director.targets_ahead(w.player.position + Vector3.UP, w.powerup_tuning.weapon_range)
+	var tier1_range: float = PowerupTuning.at_tier(w.powerup_tuning.weapon_range, 1)
+	var targets: Array[Enemy] = w.director.targets_ahead(w.player.position + Vector3.UP, tier1_range)
 	check(targets.has(r) and r.targetable(), "auto-fire can target it")
 	# Let a wave leave, then shoot it down with laser tier 1 shots.
 	await _until(func() -> bool: return _res(id) != null and _res(id).waves_on_their_way(), 8.0)
 	var laser: float = PowerupTuning.at_tier(w.powerup_tuning.weapon_damage, 1)
-	for i: int in 15:
+	for i: int in 17:
 		var res: Resonator = _res(id)
 		if res == null or not res.alive:
 			break
 		res.take_damage(laser, &"weapon")
-		if i < 14:
+		if i < 16:
 			check(res.alive, "alive after %d laser tier 1 shots" % [i + 1])
 	var down: Resonator = _res(id)
-	check(down == null or not down.alive, "the 15th brings it down")
+	check(down == null or not down.alive, "the 17th brings it down")
 	if down != null:
 		var harmless: bool = true
 		for wave: Resonator.Wave in down.wave_list():

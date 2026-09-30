@@ -393,7 +393,8 @@ func _test_leaving() -> void:
 		await sim.free_world(w)
 
 
-## GDD §8 damage reference: 15 laser tier 1 shots, 5 missile tier 4 shots.
+## GDD §8 damage reference: 17 laser tier 1 shots, 5 missile tier 4 shots (owner's September 30,
+## 2026 playtest; was 15 laser tier 1 shots).
 func _test_weapons() -> void:
 	var w: RunWorld = sim.build_world(RunSim.layout(3, 600.0))
 	var laser: float = PowerupTuning.at_tier(w.powerup_tuning.weapon_damage, 1)
@@ -403,14 +404,14 @@ func _test_weapons() -> void:
 	check(t.targetable(), "weapons can target it once it's in play")
 	var hits: Array = [0]
 	w.projectiles.enemy_hit.connect(func(_e: Enemy, _d: float, _s: bool) -> void: hits[0] += 1)
-	for i: int in 15:
+	for i: int in 17:
 		var from: Vector3 = w.player.position + Vector3(0.0, 1.0, 0.0)
 		var dir: Vector3 = (t.aim_point() - from).normalized()
 		w.projectiles.fire_player(from, dir * 90.0 + Vector3(0.0, 0.0, -w.player.speed), laser)
 		await _wait(w, 0.2)
-		if i == 13:
-			check(t.alive and hits[0] == 14, "14 laser tier 1 hits don't stop it (%d hits)" % hits[0])
-	check(not t.alive and hits[0] == 15, "the 15th does")
+		if i == 15:
+			check(t.alive and hits[0] == 16, "16 laser tier 1 hits don't stop it (%d hits)" % hits[0])
+	check(not t.alive and hits[0] == 17, "the 17th does")
 	await sim.free_world(w)
 
 	w = sim.build_world(RunSim.layout(3, 600.0))

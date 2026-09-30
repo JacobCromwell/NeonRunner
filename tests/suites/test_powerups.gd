@@ -19,6 +19,8 @@ func run() -> void:
 	await _test_targeting()
 	await _test_muzzle()
 	await _test_shot_counts()
+	_test_gdd_damage_table()
+	await _test_weapon_range()
 	await _test_splash()
 	await _test_health_bars()
 	await _test_dash()
@@ -150,8 +152,8 @@ func _test_targeting() -> void:
 	# the line of fire to them.
 	var host: Enemy = _pacer(w, 12.0, 4, {"health": 3.0, "host": true})
 	var immune: Enemy = _pacer(w, 14.0, 3, {"health": 3.0, "immune": true})
-	var near: Enemy = _pacer(w, 30.0, 0, {"health": 3.0})
-	var far: Enemy = _pacer(w, 45.0, 1, {"health": 3.0})
+	var near: Enemy = _pacer(w, 20.0, 0, {"health": 3.0})
+	var far: Enemy = _pacer(w, 35.0, 1, {"health": 3.0})
 	var ids: Dictionary = {host.get_instance_id(): "host", immune.get_instance_id(): "immune",
 		near.get_instance_id(): "near", far.get_instance_id(): "far"}
 	var targets: Array[String] = []
@@ -199,13 +201,14 @@ func _test_muzzle() -> void:
 	await sim.free_world(w)
 
 
-## GDD §8 damage reference: laser tier 1 kills a hover truck or drone (15) in 15 shots, an Octodog
-## (5) in 5 and a screech (1) in 1; the heavy missile (tier 4) kills a truck in 5 and a screech in 1.
-## Tiers 2–3 follow the tuning.
+## GDD §8 damage reference (owner's September 30, 2026 playtest): laser tier 1 kills a hover truck
+## or drone (17) in 17 shots, an Octodog (7) in 7 and a screech (1) in 1; the heavy missile (tier 4)
+## still kills a truck in 5 and a screech in 1 (weapon_damage's tier 4 was raised to match). Tiers
+## 2–3 follow the tuning.
 func _test_shot_counts() -> void:
-	var gdd: Dictionary = {"1/15": 15, "1/5": 5, "1/1": 1, "4/15": 5, "4/1": 1}
+	var gdd: Dictionary = {"1/17": 17, "1/7": 7, "1/1": 1, "4/17": 5, "4/1": 1}
 	for weapon_tier: int in [1, 2, 3, 4]:
-		for health: float in [15.0, 5.0, 1.0]:
+		for health: float in [17.0, 7.0, 1.0]:
 			var w: RunWorld = sim.build_world(RunSim.layout(3, 1200.0), _loadout({"weapon": weapon_tier}))
 			var c: PowerupController = _controller(w)
 			var dummy: Enemy = _pacer(w, 25.0, 1, {"health": health})
@@ -229,6 +232,67 @@ func _test_shot_counts() -> void:
 				"tier %d kills health %.0f in %d shots (dead %s, fired %d, hits %d)" % [weapon_tier, health, expected,
 				dead, shots[0], hits[0]])
 			await sim.free_world(w)
+
+
+## A table of every built enemy's shots to kill (GDD §8 damage reference, owner's September 30, 2026
+## playtest), loaded straight from each one's tuning resource rather than typed in twice: laser
+## tier 1 takes the enemy's old number of shots plus two at both ends of its campaign scaling (the
+## screech always 1, unaffected), and missile tier 4 keeps its old count for the two enemies the GDD
+## pins it for (the hover truck and the heli drone, still 5; the screech, still 1). This should fail
+## on main (health_early/health_late not yet raised) and pass once the data files are.
+func _test_gdd_damage_table() -> void:
+	var laser1: float = PowerupTuning.at_tier(pt.weapon_damage, 1)
+	var missile4: float = PowerupTuning.at_tier(pt.weapon_damage, 4)
+	# name, tuning resource, [tier 1 shots early, tier 1 shots late]. Health is "in laser tier 1
+	# shots" (EnemyTuning), so shots to kill == health exactly at tier 1.
+	var table: Array = [
+		["hover truck", "res://data/enemies/hover_truck.tres", 17, 17],
+		["heli drone", "res://data/enemies/drone.tres", 17, 17],
+		["Octodog", "res://data/enemies/octodog.tres", 7, 7],
+		["sewer screech", "res://data/enemies/screech.tres", 1, 1],
+		["cyborg", "res://data/enemies/cyborg.tres", 5, 7],
+		["window cyborg", "res://data/enemies/window_cyborg.tres", 5, 7],
+		["resonator", "res://data/enemies/resonator.tres", 17, 17],
+	]
+	for row: Array in table:
+		var name: String = row[0]
+		var t: EnemyTuning = load(row[1]) as EnemyTuning
+		var exp_early: int = row[2]
+		var exp_late: int = row[3]
+		var got_early: int = ceili(t.health_early / laser1 - 0.0001)
+		var got_late: int = ceili(t.health_late / laser1 - 0.0001)
+		check(got_early == exp_early and got_late == exp_late,
+			"%s: laser tier 1 kills it in %d/%d shots early/late (got %d/%d, health %.1f/%.1f)"
+			% [name, exp_early, exp_late, got_early, got_late, t.health_early, t.health_late])
+	# Missile tier 4's shots to kill only has to hold where the GDD pins a number.
+	var truck: EnemyTuning = load("res://data/enemies/hover_truck.tres") as EnemyTuning
+	var drone: EnemyTuning = load("res://data/enemies/drone.tres") as EnemyTuning
+	var screech: EnemyTuning = load("res://data/enemies/screech.tres") as EnemyTuning
+	check(ceili(truck.health_late / missile4 - 0.0001) == 5, "hover truck: missile tier 4 still kills it in 5")
+	check(ceili(drone.health_late / missile4 - 0.0001) == 5, "heli drone: missile tier 4 still kills it in 5")
+	check(ceili(screech.health_late / missile4 - 0.0001) == 1, "screech: any weapon still kills it in 1")
+
+
+## Laser tier 1's shorter range (GDD §8, owner's September 30, 2026 playtest): its reach is shorter
+## than the other tiers', which keep today's 70 m. Checked against real targeting, tier by tier: a
+## dummy just inside a tier's range is picked, one just beyond it isn't.
+func _test_weapon_range() -> void:
+	var r1: float = PowerupTuning.at_tier(pt.weapon_range, 1)
+	var r4: float = PowerupTuning.at_tier(pt.weapon_range, 4)
+	check(r1 < r4, "tier 1's range is shorter than the other tiers' (%.0f m of %.0f m)" % [r1, r4])
+	check(is_equal_approx(r4, 70.0) and is_equal_approx(PowerupTuning.at_tier(pt.weapon_range, 2), 70.0)
+		and is_equal_approx(PowerupTuning.at_tier(pt.weapon_range, 3), 70.0), "tiers 2-4 keep today's 70 m range")
+	for weapon_tier: int in [1, 4]:
+		var range_m: float = PowerupTuning.at_tier(pt.weapon_range, weapon_tier)
+		var w: RunWorld = sim.build_world(RunSim.layout(3, 400.0), _loadout({"weapon": weapon_tier}))
+		var c: PowerupController = _controller(w)
+		var near: Enemy = _pacer(w, range_m - 5.0, 1, {"health": 1000.0})
+		var far: Enemy = _pacer(w, range_m + 5.0, 2, {"health": 1000.0})
+		await _run_to(w, 1.0)
+		var target: Enemy = c.weapon.pick_target()
+		check(target == near, "tier %d: targets a dummy %.0f m inside its %.0f m range, not one %.0f m beyond it (got %s)"
+			% [weapon_tier, range_m - 5.0, range_m, range_m + 5.0, far if target == far else target])
+		await sim.free_world(w)
 
 
 func _test_splash() -> void:

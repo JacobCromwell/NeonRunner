@@ -296,7 +296,8 @@ func _test_pad_narrow() -> void:
 			await sim.free_world(w)
 
 
-## GDD §8 damage reference: 15 shots at laser tier 1, 5 at missile tier 4. Claws don't work.
+## GDD §8 damage reference: 17 shots at laser tier 1, 5 at missile tier 4 (owner's September 30,
+## 2026 playtest; was 15 at laser tier 1). Claws don't work.
 func _test_weapons() -> void:
 	var w: RunWorld = sim.build_world(RunSim.layout(3, 600.0))
 	w.player.god_mode = true
@@ -308,16 +309,16 @@ func _test_weapons() -> void:
 	# Laser shots through the pool, from the player toward the drone.
 	var hits: Array = [0]
 	w.projectiles.enemy_hit.connect(func(_e: Enemy, _dmg: float, _splash: bool) -> void: hits[0] += 1)
-	for i: int in 14:
+	for i: int in 16:
 		var from: Vector3 = w.player.position + Vector3(0.0, 1.0, 0.0)
 		var dir: Vector3 = (d.aim_point() - from).normalized()
 		w.projectiles.fire_player(from, dir * 90.0 + Vector3(0.0, 0.0, -w.player.speed), laser)
 		await _wait(w, 0.25)
-	check(d.alive and hits[0] == 14, "14 laser tier 1 hits don't bring it down (%d hits)" % hits[0])
+	check(d.alive and hits[0] == 16, "16 laser tier 1 hits don't bring it down (%d hits)" % hits[0])
 	var from2: Vector3 = w.player.position + Vector3(0.0, 1.0, 0.0)
 	w.projectiles.fire_player(from2, (d.aim_point() - from2).normalized() * 90.0 + Vector3(0.0, 0.0, -w.player.speed), laser)
 	await _wait(w, 0.3)
-	check(not d.alive and w.score.kills == 1, "the 15th does")
+	check(not d.alive and w.score.kills == 1, "the 17th does")
 	await sim.free_world(w)
 
 	w = sim.build_world(RunSim.layout(3, 600.0))
@@ -395,8 +396,8 @@ func _test_takes_turns() -> void:
 func _test_barrage_numbers() -> void:
 	var t := load("res://data/enemies/drone.tres") as DroneTuning
 	var rules := load("res://data/tuning/game_rules.tres") as GameRules
-	check(t != null and is_equal_approx(t.health_early, 15.0) and is_equal_approx(t.health_late, 15.0),
-		"drone health is 15 laser tier 1 shots early and late (GDD §8)")
+	check(t != null and is_equal_approx(t.health_early, 17.0) and is_equal_approx(t.health_late, 17.0),
+		"drone health is 17 laser tier 1 shots early and late (GDD §8)")
 	for s: float in [0.0, 0.25, 0.5, 0.75, 1.0]:
 		var n: int = t.barrage_count(s, rules.hit_invulnerability)
 		var interval: float = t.bullet_interval_at(s)
