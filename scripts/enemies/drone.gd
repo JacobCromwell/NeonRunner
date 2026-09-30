@@ -14,8 +14,9 @@ extends Enemy
 ##   the ceiling it waits. The barrage is a big attack (GDD §9): while another type's is on, the
 ##   drone keeps following and winds up once its turn comes (EnemyDirector.major_attack_blocked).
 ## - Kill: stepping on any anti-grav pad hurls every drone on screen up into the ship's hull
-##   (drone_crash); weapons take 15 laser tier 1 shots (health 15). Claws don't work, and it has no
-##   contact hitbox: it only hurts through its bullets.
+##   (drone_crash), over the lanes that ceiling covers (a narrow ceiling, GDD §3: it veers into the
+##   ceiling's lanes as it rises); weapons take 15 laser tier 1 shots (health 15). Claws don't work,
+##   and it has no contact hitbox: it only hurts through its bullets.
 ## - Persistence: stays until destroyed or the level ends (never retired).
 ## Spawn params: {"slot": 0 | 1}: slot 1 is the second drone of a wave, hovering further ahead and
 ## higher. Numbers: data/enemies/drone.tres (DroneTuning). Generator rules: drone_rules.gd.
@@ -25,6 +26,11 @@ const MeshBatch := preload("res://scripts/enemies/mesh_batch.gd")
 enum State { WAITING, SWOOP, FOLLOW, WINDUP, FIRE, COOLDOWN, DOWN }
 
 const SHOT_NAME: String = "drone gatling"
+## A hurled drone crashes this far inside the edge of a narrow ceiling (about its half width).
+const HURL_INSET: float = 0.8
+## How fast a hurled drone speeds up toward the hull (m/s²), and how long it takes at most.
+const HURL_ACCEL: float = 45.0
+const HURL_MAX_TIME: float = 0.8
 const EYE_COLOR := Color(1.0, 0.12, 0.08)
 const HOT_COLOR := Color(1.0, 0.38, 0.1)
 
@@ -65,6 +71,11 @@ var _spin_speed: float = 0.0
 var _bob_t: float = 0.0
 var _down_cause: StringName = &""
 var _down_v: float = 0.0
+## Hurled by a pad: the world x it veers to as it rises, inside the lanes of the ceiling the player is
+## going up to, from the x it started at, over the time its rise takes (_hurl_time).
+var _hurl_x: float = 0.0
+var _hurl_from: float = 0.0
+var _hurl_time: float = 0.0
 var _flash_left: float = 0.0
 
 var _pivot: Node3D
@@ -402,6 +413,11 @@ func _on_defeated(cause: StringName) -> void:
 	_state_time = 0.0
 	_down_cause = cause
 	_down_v = tune.hurl_speed if cause == &"pad" else 1.5
+	if cause == &"pad":
+		_hurl_from = rel_x
+		_hurl_x = hurl_x(world, world.player, rel_x)
+		var rise: float = maxf(world.tuning.ceiling_height - 0.35 - rel_y, 0.0)
+		_hurl_time = clampf((-_down_v + sqrt(_down_v * _down_v + 2.0 * HURL_ACCEL * rise)) / HURL_ACCEL, 0.05, HURL_MAX_TIME)
 	_aim_line.visible = false
 	_flash.visible = false
 	_pending_shots = 0
@@ -412,11 +428,14 @@ func _update_down(delta: float) -> void:
 	var p: Player = world.player
 	_state_time += delta
 	if _down_cause == &"pad":
-		_down_v += 45.0 * delta
+		_down_v += HURL_ACCEL * delta
 		rel_y += _down_v * delta
+		# Into the ceiling's lanes by the time it reaches the hull.
+		var k: float = clampf(_state_time / _hurl_time, 0.0, 1.0)
+		rel_x = lerpf(_hurl_from, _hurl_x, 1.0 - (1.0 - k) * (1.0 - k))
 		_pivot.rotate_y(16.0 * delta)
 		_pivot.rotation.x = minf(_pivot.rotation.x + 3.0 * delta, 0.9)
-		if rel_y >= world.tuning.ceiling_height - 0.35 or _state_time > 0.8:
+		if rel_y >= world.tuning.ceiling_height - 0.35 or _state_time > HURL_MAX_TIME:
 			_crash()
 			return
 	else:
@@ -431,6 +450,23 @@ func _update_down(delta: float) -> void:
 	for r: MeshInstance3D in _rotors:
 		r.rotate_y(12.0 * delta)
 	global_position = _world_point(p, rel_x, rel_y, rel_ahead)
+
+
+## Where a drone at world x `x` crashes into the ceiling `player` is going up to (a pad hurls it,
+## GDD §9.6): inside the lanes that ceiling covers (a narrow one, GDD §3), HURL_INSET from its edges;
+## `x` itself under a ceiling over every lane, or with no ceiling of the track over the player (a
+## boss's).
+static func hurl_x(p_world: RunWorld, player: Player, x: float) -> float:
+	var h: Dictionary = p_world.layout.hull_at(player.distance, player.lane)
+	if h.is_empty():
+		return x
+	var lanes: Vector2i = p_world.layout.hull_lanes(h)
+	var half: float = p_world.geo.lane_width * 0.5
+	var lo: float = p_world.geo.lane_x(lanes.x) - half + HURL_INSET
+	var hi: float = p_world.geo.lane_x(lanes.y) + half - HURL_INSET
+	if lanes == Vector2i(0, p_world.layout.lane_count - 1):
+		return x
+	return clampf(x, lo, hi)
 
 
 func _crash() -> void:

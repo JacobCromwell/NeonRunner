@@ -21,3 +21,4 @@ feature_weights = Dictionary[String, float]({
 "drone": 1.5,
 "hover_truck": 1.5
 })
+narrow_ceiling_share = 0.5

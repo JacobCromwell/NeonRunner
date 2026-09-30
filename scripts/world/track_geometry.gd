@@ -19,6 +19,11 @@ func lane_x(lane: int) -> float:
 	return (float(lane) - (lane_count - 1) * 0.5) * lane_width
 
 
+## The lane whose middle is nearest to world x `x` (clamped to the track's lanes).
+func lane_at(x: float) -> int:
+	return clampi(roundi(x / lane_width + (lane_count - 1) * 0.5), 0, lane_count - 1)
+
+
 ## Half the width of the lanes, from track centre to the outer lane edge.
 func half_width() -> float:
 	return lane_count * lane_width * 0.5

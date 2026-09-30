@@ -10,8 +10,10 @@ extends Node3D
 ## created as a child and given setup(world).
 
 const POWERUPS_SCRIPT: String = "res://scripts/powerups/powerup_controller.gd"
-## Player movement events that play a differently named sound.
-const EVENT_SOUNDS: Dictionary = {&"lane_blocked": &"wall_blocked", &"speed_pad": &"ramp"}
+## Player movement events that play a differently named sound. Every blocked move (a solid side, a
+## ceiling's edge) plays the blocked wall entry's clank.
+const EVENT_SOUNDS: Dictionary = {&"lane_blocked": &"wall_blocked", &"ceiling_blocked": &"wall_blocked",
+	&"speed_pad": &"ramp"}
 
 var config: LevelConfig
 var layout: LevelLayout

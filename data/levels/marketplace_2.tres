@@ -18,3 +18,4 @@ feature_starts = Dictionary[String, float]({
 feature_weights = Dictionary[String, float]({
 "screech_vents": 2.5
 })
+narrow_ceiling_share = 0.5

@@ -101,8 +101,25 @@ func wall_sign(_hazard: Hazard, _size: Vector3) -> void:
 	pass
 
 
-## A ceiling section. center/size describe the collision box; its underside is the surface.
-## lane_edges_x are the world x positions of the seams between ceiling lanes.
+## A ceiling section (TrackBuilder, and a boss's BossProps.ceiling). `section` covers a contiguous
+## range of lanes: every lane, or fewer for a narrow ceiling (GDD §3: "ceilings don't have to cover
+## every lane"), at any lane count. It carries the collision box over exactly those lanes (its
+## underside is the surface), the seams between them, the wall faces' distance and which of its sides
+## reach the street's edge (CeilingSection.reaches_wall). The far end (section.end) is where the player
+## drops back to the floor: mark it across the section's width with the orange band
+## (MeshKit.ceiling_end, as in every zone), and keep glows and anything bright off the far side of it,
+## which the chase camera passes through as the player drops (see MeshKit.ceiling_end).
+## The default dresses the collision box through hull(), so a skin that builds from the box alone
+## follows the range for free; a skin whose look depends on the range (a structure that runs into a
+## building face, a free edge in mid-street, a smaller craft) overrides this instead.
+func ceiling_section(parent: Node3D, section: CeilingSection) -> void:
+	hull(parent, section.center, section.size, section.lane_edges_x)
+
+
+## A ceiling section as its collision box alone (ceiling_section() calls it by default). center/size
+## describe the box; its underside is the surface. lane_edges_x are the world x positions of the seams
+## between its lanes. Call ceiling_section() to dress a ceiling, never this: a skin may override
+## ceiling_section() alone.
 func hull(_parent: Node3D, _center: Vector3, _size: Vector3, _lane_edges_x: Array[float]) -> void:
 	pass
 

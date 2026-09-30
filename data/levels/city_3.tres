@@ -16,3 +16,4 @@ feature_starts = Dictionary[String, float]({
 "pulsing": 0.1,
 "window_cyborg": 0.35
 })
+narrow_ceiling_share = 0.5
