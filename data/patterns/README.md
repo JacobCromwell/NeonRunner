@@ -83,7 +83,7 @@ so pieces keep their timing against a hull when run speed changes.
 | `fence` | `lanes`, `variant` (`full` = jump or switch lanes; `gapped` = slide under), `pulse_chance`, `pulse_on`, `pulse_off` (seconds) |
 | `sign` | `side` (`left`/`right`/`random`/`both`/`same`), `length`, `bottom`, `top` (height band on the wall, in metres) |
 | `ramp` | `side`. The ramp sits in the outermost lane on that side and launches the player onto the wall, higher than a free entry and with a speed boost that fades like a speed pad's (GDD §3): its wall run covers about 43 m at run speed, against 39 m for a free entry. A wall piece after it meets a faster, higher runner; `RampLaunch` says where the runner is and how high (see Ramps in `docs/ARCHITECTURE.md`) |
-| `hull` | `lanes` (where the anti-grav pad goes), `length_seconds` (how long the ceiling lasts at run speed). The pattern's other elements may lie under it (see Ceilings below); its landing zone and its pad's spot stay clear, and the generator drops (with a warning) what the pattern puts there |
+| `hull` | `lanes` (where the anti-grav pad goes), `length_seconds` (how long the ceiling lasts at run speed). The pattern's other elements may lie under it (see Ceilings below); its landing zone and its pad's spot stay clear, and the generator drops (with a warning) what the pattern puts there. The ceiling covers every lane, or in a level with narrow ceilings a range of lanes holding its pads (see Narrow ceilings below) |
 | `speed_pad` | `lanes`. A speed pad in each lane (DESIGN-TBD: GDD §6 only names speed pads) |
 | `enemy` | `type` (the enemy type name), `lanes` (floor enemies; one per lane) **or** `side` (wall enemies, e.g. window cyborgs: `left`/`right`/`random`/`same`), `params` (passed to the enemy as `spawn.params`). An enemy may stand under a ceiling; one whose type uses the floor (its tuning's `uses_floor` and reach, wall vents included) keeps off a ceiling's landing zone and its pads' spots |
 | `credits` | `surface` (`floor`/`ceiling`/`wall`), `lanes` or `side`, `count`, `spacing` (m), `value` (1, 5, 25 or 100), `height` (m from the surface, or the height on the wall) |
@@ -99,8 +99,8 @@ and the ceiling is the way to escape them, so it's the easier route; it's never 
 with a `hull` may put its own pieces and enemies under the ceiling: a gauntlet. Every ceiling keeps two
 stretches safe all the same (`CeilingZones`, `docs/ARCHITECTURE.md`):
 - **Its landing zone:** from the ceiling's end, `hull_landing_seconds` (1.2 s) at run speed, no gap or
-  fence in any lane and no floor enemy's reach, so the player always lands safely. A pattern's `used`
-  length includes it, so the next pattern starts past it.
+  fence in any lane the ceiling covers and no floor enemy's reach in any lane, so the player always
+  lands safely. A pattern's `used` length includes it, so the next pattern starts past it.
 - **Its pad's spot:** in the pad's lane, no gap, fence or ramp from a full jump (about 12 m) before
   the pad until its lift reaches the hull (about 8 m after it), and no floor enemy's reach (any lane)
   where the pad lies.
@@ -122,6 +122,19 @@ What a pattern puts in those stretches is dropped, with a warning. Writing a gau
 
 Ceilings that rules add (the drone's pad schedule, a Bad Dream chase's pads) lie over whatever the
 floor holds there: only their landing zone and their pad's spot are cleared.
+
+## Narrow ceilings
+
+GDD §3 (decided September 26, 2026): ceilings don't have to cover every lane, and on one the player
+switches lanes only within its width. A pattern doesn't choose: in a level with a `narrow_ceiling_share`
+(the level's Narrow ceilings group; DESIGN-TBD, `docs/questions/b3.md`) that share of its ceilings, the
+patterns' and the rules' alike, cover a range of lanes holding their pads, from the level's
+`narrow_ceiling_start` on. A pattern with several pads under one hull keeps them all under it. A
+one-lane ceiling (`one_lane_ceiling_share` of the narrow ones) comes only from a pattern that puts
+nothing but its hull (and credits) on the track, and is cut to `one_lane_ceiling_seconds` (1.6 s) from
+its pad, whatever the pattern's `length_seconds`; a gauntlet's ceiling always covers at least two lanes.
+What a gauntlet puts in the lanes beside a narrow ceiling is floor like any other: the floor route
+under the ceiling and the landing zone in its lanes are checked as always.
 
 ## Lane selectors
 
