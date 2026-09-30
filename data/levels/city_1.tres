@@ -14,3 +14,5 @@ guarantee_features = true
 feature_starts = Dictionary[String, float]({
 "cyborg": 0.6
 })
+spacing_seconds_easy = 1.3
+fill_empty_seconds = 2.0

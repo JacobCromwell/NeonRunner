@@ -161,7 +161,8 @@ func _apply_old_data(dir: String) -> void:
 				var name: String = prop["name"]
 				var value: Variant = old.get(name) if name in old else (fresh.get(name) if fresh != null else null)
 				# Sub-resources (skins, level lists) are the live ones: only plain values are old data.
-				if typeof(value) == TYPE_OBJECT:
+				if typeof(value) == TYPE_OBJECT or (value is Array and (value as Array).any(func(v: Variant) -> bool:
+						return typeof(v) == TYPE_OBJECT)):
 					continue
 				live.set(name, value)
 	if DirAccess.dir_exists_absolute(dir.path_join("patterns")):
@@ -272,7 +273,7 @@ static func activity(gen: LevelGenerator, layout: LevelLayout, config: LevelConf
 		var params: Dictionary = e.get("params", {})
 		match String(e["type"]):
 			"octodog":
-				var span: Vector2 = LevelGenerator.enemy_floor_span(e)
+				var span: Vector2 = LevelGenerator.enemy_floor_span(e, gen.pace)
 				out.append(span if span.y >= span.x else Vector2(at, at))
 			"resonator":
 				var rt := EnemyDirector.tuning_for("resonator") as ResonatorTuning

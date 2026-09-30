@@ -162,8 +162,9 @@ static func _ensure_ramp(gen: LevelGenerator, t: HoverTruckTuning, side: int, la
 		c += 4.0
 
 
-## Same fairness as pattern ramps: solid floor under it, no sign blocking its wall entry, and no pad
-## sharing its spot.
+## Same fairness as pattern ramps: solid floor under it, no sign blocking its wall entry, no pad
+## sharing its spot, and none in a pad's run-up (CeilingZones.pad_lane_clear: a ramp there would throw
+## the player onto the wall before the pad; the run-up is a full jump, longer at a faster zone's speed).
 static func _ramp_fits(gen: LevelGenerator, side: int, lane: int, at: float) -> bool:
 	var layout: LevelLayout = gen.layout
 	var length: float = gen.tuning.ramp_length
@@ -176,6 +177,11 @@ static func _ramp_fits(gen: LevelGenerator, side: int, lane: int, at: float) -> 
 		for p: Dictionary in list:
 			if int(p["lane"]) == lane and float(p["at"]) >= at - 4.0 and float(p["at"]) <= at + length + 4.0:
 				return false
+	var ramp := {"side": side, "at": at}
+	for p: Dictionary in layout.pads:
+		var pad: float = float(p["at"])
+		if gen.zones.ramp_in(layout, ramp, Vector2(gen.zones.pad_zone(pad).x, pad + gen.zones.pad_length), int(p["lane"])):
+			return false
 	return true
 
 

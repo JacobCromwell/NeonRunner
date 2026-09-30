@@ -135,7 +135,7 @@ static func octodog_runs(layout: LevelLayout) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	for e: Dictionary in layout.enemies:
 		if String(e.get("type", "")) == "octodog":
-			var span: Vector2 = LevelGenerator.enemy_floor_span(e)
+			var span: Vector2 = LevelGenerator.enemy_floor_span(e)  # a dog's planned run (params.floor_span)
 			if span.y >= span.x:
 				out.append(span)
 	return out

@@ -271,7 +271,11 @@ func quiet_at(at: float) -> bool:
 		return false
 	if at < config.start_clear_distance:
 		return true
-	return fposmod(at - config.start_clear_distance, _pacing_cycle()) < config.quiet_seconds * speed
+	# The same sums as stretch_end(), so a quiet stretch ends exactly where it says (a cursor it moves
+	# to the next burst's start is in that burst).
+	var from: float = config.start_clear_distance
+	var cycle: float = _pacing_cycle()
+	return at < from + floorf((at - from) / cycle) * cycle + config.quiet_seconds * speed
 
 
 ## The track distance where the quiet stretch or the burst holding `at` ends (INF in a level paced
@@ -535,7 +539,7 @@ func floor_clear(from: float, to: float) -> bool:
 		if f["at"] >= from and f["at"] <= to:
 			return false
 	for e: Dictionary in layout.enemies:
-		var span: Vector2 = enemy_floor_span(e)
+		var span: Vector2 = enemy_floor_span(e, pace)
 		if span.x <= to and span.y >= from:
 			return false
 	return true
@@ -543,19 +547,20 @@ func floor_clear(from: float, to: float) -> bool:
 
 ## The stretch of floor [start, end] an enemy entry uses, which a ceiling's landing zone and the
 ## spots of its pads keep off (CeilingZones): its params.floor_span if its rules planned one, else
-## its tuning's reach around its position. Vector2(INF, -INF) (overlapping nothing) for types whose
-## tuning says they don't use the floor.
-static func enemy_floor_span(entry: Dictionary) -> Vector2:
+## its tuning's reach around its position, stretched by the level's `pace` (MovementTuning.pace: in a
+## faster zone the enemies move and reach further in the same time). Vector2(INF, -INF) (overlapping
+## nothing) for types whose tuning says they don't use the floor.
+static func enemy_floor_span(entry: Dictionary, pace: float = 1.0) -> Vector2:
 	var params: Dictionary = entry.get("params", {})
 	if params.get("floor_span") is Vector2:
 		return params["floor_span"]
 	var at: float = float(entry["at"])
 	var t := EnemyDirector.tuning_for(String(entry.get("type", ""))) as EnemyTuning
 	if t == null:
-		return Vector2(at - 10.0, at + 10.0)
+		return Vector2(at - 10.0 * pace, at + 10.0 * pace)
 	if not t.uses_floor:
 		return Vector2(INF, -INF)
-	return Vector2(at - t.floor_reach_before, at + t.floor_reach_after)
+	return Vector2(at - t.floor_reach_before * pace, at + t.floor_reach_after * pace)
 
 
 ## False for enemy types whose tuning says they never come down to the floor lanes (fliers such as
@@ -1286,7 +1291,7 @@ func _enemy_keep_out(e: Dictionary, hooks: Dictionary) -> Vector2:
 		return (hooks[type] as GDScript).call("keep_out", self, e)
 	var at: float = float(e["at"])
 	var out := Vector2(at - FILL_ENEMY_LEAD_SECONDS * speed, at)
-	var span: Vector2 = enemy_floor_span(e)
+	var span: Vector2 = enemy_floor_span(e, pace)
 	if span.y >= span.x:
 		out = Vector2(minf(out.x, span.x), maxf(out.y, span.y))
 	return out

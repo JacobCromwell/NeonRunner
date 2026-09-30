@@ -21,3 +21,4 @@ quiet_spacing_seconds = 4.0
 burst_spacing_seconds = 0.9
 quiet_features = PackedStringArray("host")
 narrow_ceiling_share = 0.5
+fill_empty_seconds = 2.0

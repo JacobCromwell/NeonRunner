@@ -19,3 +19,5 @@ feature_weights = Dictionary[String, float]({
 "screech_vents": 2.5
 })
 narrow_ceiling_share = 0.5
+spacing_seconds_easy = 1.3
+fill_empty_seconds = 2.0

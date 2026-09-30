@@ -97,7 +97,7 @@ static func check_ceilings(suite: TestSuite, layout: LevelLayout, config: LevelC
 				or float(r["at"]) + tuning.ramp_length < zone.x, "pad at %.1f: no ramp on the way to it %s" % [at, tag])
 		for e: Dictionary in layout.enemies:
 			# In the pad's lane an enemy keeps off the pad's whole zone; elsewhere off where it lies.
-			var span: Vector2 = LevelGenerator.enemy_floor_span(e)
+			var span: Vector2 = LevelGenerator.enemy_floor_span(e, zones.pace)
 			var keep: Vector2 = zone if int(e.get("lane", -1)) == lane else Vector2(at, at + tuning.pad_length)
 			suite.check(span.x > keep.y or span.y < keep.x,
 				"pad at %.1f: no floor enemy in its way (%s at %.1f, lane %d) %s" % [at, e["type"], e["at"], e.get("lane", -1), tag])
@@ -123,7 +123,7 @@ static func check_ceilings(suite: TestSuite, layout: LevelLayout, config: LevelC
 				or float(f["at"]) + half < landing.x or float(f["at"]) - half > landing.y,
 				"the landing zone after the ceiling at %.1f has no fence (%.1f, lane %d) %s" % [h["end"], f["at"], f["lane"], tag])
 		for e: Dictionary in layout.enemies:
-			var span: Vector2 = LevelGenerator.enemy_floor_span(e)
+			var span: Vector2 = LevelGenerator.enemy_floor_span(e, zones.pace)
 			suite.check(span.x > landing.y or span.y < landing.x,
 				"no floor enemy on the landing zone after the ceiling at %.1f (%s at %.1f) %s" % [h["end"], e["type"], e["at"], tag])
 		if grid == null:

@@ -16,3 +16,5 @@ feature_starts = Dictionary[String, float]({
 "speed_pads": 0.45
 })
 narrow_ceiling_share = 0.5
+spacing_seconds_easy = 1.3
+fill_empty_seconds = 2.0

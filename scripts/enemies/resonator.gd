@@ -48,6 +48,8 @@ const LINE_UP_BEFORE: float = 0.1
 const LINE_UP_AFTER: float = 0.2
 ## pulse_clear(): metres kept between a wave's meeting stretch and an anti-grav pad (the player may be
 ## stepping onto it), and before a ceiling's end (where its rider drops back to the floor).
+## (Like every margin here, metres at MovementTuning.REFERENCE_SPEED, stretched by the level's pace:
+## CeilingZones.pace.)
 const PAD_MARGIN: float = 6.0
 const LANDING_LEAD: float = 2.0
 const WAVE_NAME: String = "Resonator's wave"
@@ -638,14 +640,14 @@ static func pulse_clear(layout: LevelLayout, zones: CeilingZones, warn_at: float
 		if not f.get("disabled", false) and zones.fence_in(f, stretch):
 			return false
 	for p: Dictionary in layout.pads:
-		if float(p["at"]) >= stretch.x - PAD_MARGIN and float(p["at"]) <= stretch.y + PAD_MARGIN:
+		if float(p["at"]) >= stretch.x - PAD_MARGIN * zones.pace and float(p["at"]) <= stretch.y + PAD_MARGIN * zones.pace:
 			return false
 	for h: Dictionary in layout.hulls:
 		var landing: Vector2 = zones.landing_zone(h)
-		if landing.x - LANDING_LEAD <= stretch.y and landing.y >= stretch.x:
+		if landing.x - LANDING_LEAD * zones.pace <= stretch.y and landing.y >= stretch.x:
 			return false
 	for e: Dictionary in layout.enemies:
-		if CeilingZones.enemy_in(e, stretch):
+		if zones.enemy_in(e, stretch):
 			return false
 	for s: Dictionary in layout.speed_pads:
 		if float(s["at"]) >= warn_at - 1.0 and float(s["at"]) <= stretch.y:
