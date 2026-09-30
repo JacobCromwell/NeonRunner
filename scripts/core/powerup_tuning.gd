@@ -6,10 +6,16 @@ extends Resource
 
 @export_group("Weapon")
 ## GDD §8: 4 tiers (laser, enhanced laser, missile, heavy missile). Damage is in laser tier 1 shots
-## (GDD damage reference: tier 1 = 1, tier 4 kills a hover truck or heli drone in 5 shots = 3.5).
-## DESIGN-TBD: tiers 2 and 3. Tier 4 (owner's playtest, September 30, 2026): raised from 3.0 so the
-## missile still kills a hover truck or heli drone in 5 shots at their new, higher health.
-@export var weapon_damage: PackedFloat32Array = PackedFloat32Array([1.0, 1.4, 2.0, 3.5])
+## (GDD damage reference: tier 1 = 1, tier 4 kills a hover truck or heli drone in 5 shots = 3).
+## DESIGN-TBD: tiers 2 and 3.
+@export var weapon_damage: PackedFloat32Array = PackedFloat32Array([1.0, 1.4, 2.0, 3.0])
+## GDD §8 damage reference (owner's September 30, 2026 playtest): "higher tiers keep today's
+## numbers, so upgrades feel like a bigger jump" (decided over raising enemy health, which would
+## have changed every tier). Laser tier 1 alone takes this many more shots to kill every enemy
+## except the sewer screech, which stays a one-hit kill at any tier. WeaponPowerup.damage() applies
+## it as a smaller per-shot tier 1 hit against each target (max_health split across its base shot
+## count plus this many), so health and tiers 2-4 are untouched.
+@export_range(0, 10, 1) var tier1_extra_shots: int = 2
 ## DESIGN-TBD: seconds between shots per tier (fire rate is open).
 @export var weapon_fire_interval: PackedFloat32Array = PackedFloat32Array([0.32, 0.3, 0.55, 0.65])
 ## Shot speed per tier (m/s, relative to the track). Lasers are fast, missiles slower.

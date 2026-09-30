@@ -19,7 +19,7 @@ func run() -> void:
 	await _test_targeting()
 	await _test_muzzle()
 	await _test_shot_counts()
-	_test_gdd_damage_table()
+	await _test_gdd_damage_table()
 	await _test_weapon_range()
 	await _test_splash()
 	await _test_health_bars()
@@ -201,14 +201,16 @@ func _test_muzzle() -> void:
 	await sim.free_world(w)
 
 
-## GDD §8 damage reference (owner's September 30, 2026 playtest): laser tier 1 kills a hover truck
-## or drone (17) in 17 shots, an Octodog (7) in 7 and a screech (1) in 1; the heavy missile (tier 4)
-## still kills a truck in 5 and a screech in 1 (weapon_damage's tier 4 was raised to match). Tiers
-## 2–3 follow the tuning.
+## GDD §8 damage reference (owner's September 30, 2026 playtest: "higher tiers keep today's
+## numbers"): laser tier 1 kills a hover truck or drone (health 15) in 17 shots, an Octodog (5) in 7
+## and a screech (1) in 1 - two more than its plain health takes, via
+## PowerupTuning.tier1_extra_shots (WeaponPowerup.damage()), not a change to health. The heavy
+## missile (tier 4) still kills a truck in 5 and a screech in 1, its damage untouched. Tiers 2-3
+## follow the tuning, plainly, since only tier 1 stretches.
 func _test_shot_counts() -> void:
-	var gdd: Dictionary = {"1/17": 17, "1/7": 7, "1/1": 1, "4/17": 5, "4/1": 1}
+	var gdd: Dictionary = {"1/15": 17, "1/5": 7, "1/1": 1, "4/15": 5, "4/1": 1}
 	for weapon_tier: int in [1, 2, 3, 4]:
-		for health: float in [17.0, 7.0, 1.0]:
+		for health: float in [15.0, 5.0, 1.0]:
 			var w: RunWorld = sim.build_world(RunSim.layout(3, 1200.0), _loadout({"weapon": weapon_tier}))
 			var c: PowerupController = _controller(w)
 			var dummy: Enemy = _pacer(w, 25.0, 1, {"health": health})
@@ -234,43 +236,45 @@ func _test_shot_counts() -> void:
 			await sim.free_world(w)
 
 
-## A table of every built enemy's shots to kill (GDD §8 damage reference, owner's September 30, 2026
-## playtest), loaded straight from each one's tuning resource rather than typed in twice: laser
-## tier 1 takes the enemy's old number of shots plus two at both ends of its campaign scaling (the
-## screech always 1, unaffected), and missile tier 4 keeps its old count for the two enemies the GDD
-## pins it for (the hover truck and the heli drone, still 5; the screech, still 1). This should fail
-## on main (health_early/health_late not yet raised) and pass once the data files are.
+## A table of every built enemy's shots to kill at every tier (GDD §8 damage reference, owner's
+## September 30, 2026 playtest: "higher tiers keep today's numbers, so upgrades feel like a bigger
+## jump"). Each enemy's health (EnemyTuning.health_early/_late) is its own, untouched; laser tier 1
+## alone takes two more shots than its plain health would (WeaponPowerup.damage(), via
+## PowerupTuning.tier1_extra_shots), so tier 1 is the enemy's old number plus two (the screech, a
+## one-shot kill already, stays at one) and tiers 2-4 are exactly today's numbers. Calls the real
+## WeaponPowerup.damage() (a pure query; it never actually hurts the dummy) rather than typing the
+## stretch formula twice, so a bug in the real one shows up here too.
 func _test_gdd_damage_table() -> void:
-	var laser1: float = PowerupTuning.at_tier(pt.weapon_damage, 1)
-	var missile4: float = PowerupTuning.at_tier(pt.weapon_damage, 4)
-	# name, tuning resource, [tier 1 shots early, tier 1 shots late]. Health is "in laser tier 1
-	# shots" (EnemyTuning), so shots to kill == health exactly at tier 1.
+	var w: RunWorld = sim.build_world(RunSim.layout(3), _loadout({"weapon": 1}))
+	var c: PowerupController = _controller(w)
+	# name, tuning resource, [tier 1 early, tier 1 late, tier 2 early, tier 2 late,
+	# tier 3 early, tier 3 late, tier 4 early, tier 4 late] - today's numbers, tier 1 plus two.
 	var table: Array = [
-		["hover truck", "res://data/enemies/hover_truck.tres", 17, 17],
-		["heli drone", "res://data/enemies/drone.tres", 17, 17],
-		["Octodog", "res://data/enemies/octodog.tres", 7, 7],
-		["sewer screech", "res://data/enemies/screech.tres", 1, 1],
-		["cyborg", "res://data/enemies/cyborg.tres", 5, 7],
-		["window cyborg", "res://data/enemies/window_cyborg.tres", 5, 7],
-		["resonator", "res://data/enemies/resonator.tres", 17, 17],
+		["hover truck", "res://data/enemies/hover_truck.tres", [17, 17, 11, 11, 8, 8, 5, 5]],
+		["heli drone", "res://data/enemies/drone.tres", [17, 17, 11, 11, 8, 8, 5, 5]],
+		["Octodog", "res://data/enemies/octodog.tres", [7, 7, 4, 4, 3, 3, 2, 2]],
+		["sewer screech", "res://data/enemies/screech.tres", [1, 1, 1, 1, 1, 1, 1, 1]],
+		["cyborg", "res://data/enemies/cyborg.tres", [5, 7, 3, 4, 2, 3, 1, 2]],
+		["window cyborg", "res://data/enemies/window_cyborg.tres", [5, 7, 3, 4, 2, 3, 1, 2]],
+		["resonator", "res://data/enemies/resonator.tres", [17, 17, 11, 11, 8, 8, 5, 5]],
 	]
 	for row: Array in table:
-		var name: String = row[0]
+		var enemy_name: String = row[0]
 		var t: EnemyTuning = load(row[1]) as EnemyTuning
-		var exp_early: int = row[2]
-		var exp_late: int = row[3]
-		var got_early: int = ceili(t.health_early / laser1 - 0.0001)
-		var got_late: int = ceili(t.health_late / laser1 - 0.0001)
-		check(got_early == exp_early and got_late == exp_late,
-			"%s: laser tier 1 kills it in %d/%d shots early/late (got %d/%d, health %.1f/%.1f)"
-			% [name, exp_early, exp_late, got_early, got_late, t.health_early, t.health_late])
-	# Missile tier 4's shots to kill only has to hold where the GDD pins a number.
-	var truck: EnemyTuning = load("res://data/enemies/hover_truck.tres") as EnemyTuning
-	var drone: EnemyTuning = load("res://data/enemies/drone.tres") as EnemyTuning
-	var screech: EnemyTuning = load("res://data/enemies/screech.tres") as EnemyTuning
-	check(ceili(truck.health_late / missile4 - 0.0001) == 5, "hover truck: missile tier 4 still kills it in 5")
-	check(ceili(drone.health_late / missile4 - 0.0001) == 5, "heli drone: missile tier 4 still kills it in 5")
-	check(ceili(screech.health_late / missile4 - 0.0001) == 1, "screech: any weapon still kills it in 1")
+		var expected: Array = row[2]
+		for scaling_i: int in 2:
+			var health: float = t.health_at(float(scaling_i))
+			var dummy: Enemy = w.director.spawn({"type": "dummy", "script": DUMMY,
+				"at": w.player_distance() + 25.0, "lane": 1, "seed": 1, "params": {"health": health}})
+			for tier_i: int in 4:
+				c.weapon.tier = tier_i + 1
+				var dmg: float = c.weapon.damage(dummy)
+				var got: int = ceili(health / dmg - 0.0001) if dmg > 0.0 else 0
+				var exp: int = expected[tier_i * 2 + scaling_i]
+				check(got == exp, "%s tier %d at scaling %d: %d shots (expected %d, health %.1f, dmg %.3f)"
+					% [enemy_name, tier_i + 1, scaling_i, got, exp, health, dmg])
+	c.weapon.tier = 1
+	await sim.free_world(w)
 
 
 ## Laser tier 1's shorter range (GDD §8, owner's September 30, 2026 playtest): its reach is shorter

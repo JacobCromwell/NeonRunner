@@ -10,8 +10,10 @@ extends PowerupModule
 ##
 ## Shots leave the player's right shoulder on whichever surface they're on. Auto-fire keeps track
 ## of its own shots in flight and doesn't waste more on an enemy they will already destroy, so a
-## 15-health enemy takes exactly 15 laser shots. Lasers lead moving targets; missiles home.
-## With the weapon, enemies show health bars (EnemyHealthBars).
+## 15-health enemy takes exactly 15 laser shots at tier 2-4, and 17 at tier 1 (see damage(): tier 1
+## alone stretches its per-shot hit, PowerupTuning.tier1_extra_shots, GDD §8's September 30, 2026
+## playtest). Lasers lead moving targets; missiles home. With the weapon, enemies show health bars
+## (EnemyHealthBars).
 
 ## ProjectilePool looks per tier.
 const LOOKS: Array[StringName] = [&"laser", &"laser_2", &"missile", &"heavy_missile"]
@@ -53,8 +55,24 @@ func look() -> StringName:
 	return LOOKS[tier - 1]
 
 
-func damage() -> float:
-	return PowerupTuning.at_tier(world.powerup_tuning.weapon_damage, tier)
+## This tier's per-shot damage, plain (`target == null`, e.g. for the HUD) or against a real target.
+## Tier 1 alone (PowerupTuning.tier1_extra_shots, GDD §8) stretches its per-shot hit down against a
+## target that takes more than one plain tier 1 shot to kill, so it takes that many more shots to
+## bring down, without touching the target's health or any other tier: `target.max_health` split
+## across its plain shot count (ceil(max_health / plain damage)) plus the extra. Left alone (plain
+## damage) for a one-shot kill already (the sewer screech), an immune_to_weapons target (never
+## offered anyway) and a boss part (GDD §10: a boss's weapon chip is its own rule,
+## BossEncounter.weapon_share_cap, not this one).
+func damage(target: Enemy = null) -> float:
+	var plain: float = PowerupTuning.at_tier(world.powerup_tuning.weapon_damage, tier)
+	var extra: int = world.powerup_tuning.tier1_extra_shots
+	if tier != 1 or extra <= 0 or target == null or target.immune_to_weapons or target.is_boss \
+			or target.max_health <= 0.0:
+		return plain
+	var plain_shots: int = ceili(target.max_health / plain - 0.0001)
+	if plain_shots <= 1:
+		return plain
+	return target.max_health / float(plain_shots + extra)
 
 
 func fire_interval() -> float:
@@ -145,7 +163,7 @@ func fire_at(target: Enemy) -> bool:
 	var life: float = clampf(1.5 * (from.distance_to(aim) + 10.0) / closing, 1.0, 6.0)
 	var heavy: bool = is_heavy()
 	var swarm: float = t.swarm_bonus_multiplier if heavy else 1.0
-	var dmg: float = damage()
+	var dmg: float = damage(target)
 	var shot: Projectile = world.projectiles.fire_player(from, velocity, dmg, look(),
 		target if homing else null, t.missile_turn_rate if homing else 0.0,
 		t.splash_radius if heavy else 0.0, t.splash_damage_share if heavy else 0.0, swarm, life)

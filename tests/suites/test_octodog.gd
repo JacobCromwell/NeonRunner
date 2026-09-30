@@ -315,8 +315,9 @@ func _test_grab_and_claws() -> void:
 		await sim.free_world(w)
 
 
-## GDD §8/§9.4: 7 laser tier 1 shots (owner's September 30, 2026 playtest; was 5); auto-fire only
-## picks it once it's in view.
+## GDD §8/§9.4: a direct hit's plain damage (this test fires straight through the projectile pool,
+## not through auto-fire): 5 laser tier 1 shots. (Auto-fire's own laser tier 1 takes 2 more, via
+## PowerupTuning.tier1_extra_shots: see test_powerups.gd.) Auto-fire only picks it once it's in view.
 func _test_weapons() -> void:
 	var w: RunWorld = sim.build_world(RunSim.layout(3, 400))
 	await tree.physics_frame
@@ -325,15 +326,15 @@ func _test_weapons() -> void:
 	var dog := w.director.spawn({"type": "octodog", "at": 40.0, "lane": 1, "side": 0, "seed": 1,
 		"params": {"doghouse": false}}) as Octodog
 	check(not far.targetable() and dog.targetable(), "auto-fire only targets a dog in view (within %.0f m)" % t.appear_distance)
-	check(is_equal_approx(dog.max_health, 7.0), "health: 7 laser tier 1 shots (%.1f)" % dog.max_health)
+	check(is_equal_approx(dog.max_health, 5.0), "health: 5 laser tier 1 shots (%.1f)" % dog.max_health)
 	var laser: float = App.powerup_tuning.weapon_damage[0] if has_app() else 1.0
-	for i: int in 7:
+	for i: int in 5:
 		w.projectiles.fire_player(Vector3(w.geo.lane_x(1), 0.65, -8.0), Vector3(0.0, 0.0, -90.0), laser)
 		await _until(func() -> bool: return w.projectiles.live_count() == 0, 1.0)
-		if i < 6:
-			check(not _gone(dog) and is_equal_approx(dog.health, 7.0 - (i + 1) * laser),
+		if i < 4:
+			check(not _gone(dog) and is_equal_approx(dog.health, 5.0 - (i + 1) * laser),
 				"alive after %d shots" % [i + 1])
-	check(_gone(dog) and w.score.kills == 1, "the seventh laser tier 1 shot kills it")
+	check(_gone(dog) and w.score.kills == 1, "the fifth laser tier 1 shot kills it")
 	await sim.free_world(w)
 
 

@@ -6,8 +6,8 @@
 script = ExtResource("1_tuning")
 spawn_lead = 130.0
 score_value = 250
-health_early = 7.0
-health_late = 7.0
+health_early = 5.0
+health_late = 5.0
 charges_min_early = 2
 charges_max_early = 3
 charges_min_late = 3

@@ -110,8 +110,8 @@ func _count(r: Resonator, event: String) -> int:
 ## second wave comes inside the invulnerability window, the hitbox covers every lane and stays clear of
 ## a wall runner (the visible wave too), and it hovers within the weapon's reach.
 func _test_numbers() -> void:
-	check(t.health_at(1.0) == 17.0 and t.score_value > 0 and not t.uses_floor,
-		"17 laser tier 1 shots, a score, and it never uses the floor (%.0f)" % t.health_at(1.0))
+	check(t.health_at(1.0) == 15.0 and t.score_value > 0 and not t.uses_floor,
+		"15 laser tier 1 shots, a score, and it never uses the floor (%.0f)" % t.health_at(1.0))
 	var golden_1: float = 12.0 / 14.0
 	check(t.zone_t(golden_1) < 0.1 and is_equal_approx(t.zone_t(1.0), 1.0) and t.zone_t(0.0) == 0.0,
 		"its early numbers are Golden 1's and its late ones Golden 3's (zone_t %.2f at Golden 1)" % t.zone_t(golden_1))
@@ -478,8 +478,9 @@ func _test_protection() -> void:
 
 # --- Weapons, no stomp ---------------------------------------------------------------------------------
 
-## Weapons: auto-fire targets it within the weapon's reach, 17 laser tier 1 shots bring it down, and a
-## wave still rolling fizzles out with it (its turn ends too). No stomp: it hovers out of reach ahead of
+## Weapons: auto-fire targets it within the weapon's reach; a direct hit's plain damage (this test
+## fires straight through take_damage, not auto-fire's own laser tier 1) takes 15 shots, and a wave
+## still rolling fizzles out with it (its turn ends too). No stomp: it hovers out of reach ahead of
 ## the player, even when they speed up, and has no body or top to land on.
 func _test_weapons_and_stomp() -> void:
 	var made: Array = await _world(3, 1, {"pulses": 2})
@@ -509,15 +510,15 @@ func _test_weapons_and_stomp() -> void:
 	# Let a wave leave, then shoot it down with laser tier 1 shots.
 	await _until(func() -> bool: return _res(id) != null and _res(id).waves_on_their_way(), 8.0)
 	var laser: float = PowerupTuning.at_tier(w.powerup_tuning.weapon_damage, 1)
-	for i: int in 17:
+	for i: int in 15:
 		var res: Resonator = _res(id)
 		if res == null or not res.alive:
 			break
 		res.take_damage(laser, &"weapon")
-		if i < 16:
+		if i < 14:
 			check(res.alive, "alive after %d laser tier 1 shots" % [i + 1])
 	var down: Resonator = _res(id)
-	check(down == null or not down.alive, "the 17th brings it down")
+	check(down == null or not down.alive, "the 15th brings it down")
 	if down != null:
 		var harmless: bool = true
 		for wave: Resonator.Wave in down.wave_list():
