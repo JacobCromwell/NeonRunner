@@ -5,7 +5,7 @@ extends Resource
 ## The GDD fixes the first bombing run's length (about 15-20 s), the searchlight that warns where the
 ## bombs fall and their falling whistle; every other number here is a placeholder (DESIGN-TBD,
 ## docs/OPEN_QUESTIONS.md §D, items 83-92, 113-123 and the stomp windows' 158-170; the propaganda and
-## the defeat: docs/questions/e1.md, From E1d).
+## the defeat: docs/questions/e1.md, From E1d; the owner's playtest fixes: docs/questions/e1e.md).
 ## The fight's length (GDD §10: 60-120 s; item 169) comes from the bombing runs, the attacks before a
 ## tower and the towers' spacing. DESIGN-TBD (docs/questions/e1.md, From E1d, item 4): placeholders
 ## that bring a runner who never misses to about 100 s (a 16 s first run, two 8 s later runs, towers
