@@ -461,13 +461,14 @@ func _test_app() -> void:
 	check(card != null and card.max_tier == 4 and card.tier == 0 and card.price == App.catalog.item(&"armor").price_of(1, false)
 		and card.stock == -1 and card.description.contains("30 s"),
 		"the demo's shop sells the upgrade as a permanent line (%s)" % (card.description if card != null else "no card"))
-	App.profile.add_earned(5000)
-	card.buy_pressed.emit(&"armor")
-	await tree.process_frame
-	await tree.process_frame
-	check(App.profile.tier(&"armor") == 1 and card.tier == 1 and card.title == "Armor I" and card.equip_switch.visible
-		and card.description.begins_with("Next: Armor II. %d hits" % rules.armor_hits_at(2)),
-		"buying tier 1 shows it owned, with an equip switch and the next tier (%s)" % card.description)
+	if card != null:
+		App.profile.add_earned(5000)
+		card.buy_pressed.emit(&"armor")
+		await tree.process_frame
+		await tree.process_frame
+		check(App.profile.tier(&"armor") == 1 and card.tier == 1 and card.title == "Armor I" and card.equip_switch.visible
+			and card.description.begins_with("Next: Armor II. %d hits" % rules.armor_hits_at(2)),
+			"buying tier 1 shows it owned, with an equip switch and the next tier (%s)" % card.description)
 	BuildFlavor.set_override(-1)
 
 	shot.free()
