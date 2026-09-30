@@ -1492,6 +1492,23 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     15 s in, the phase's one; `BossDef.armor_when_unprotected`, on for the Floating Head only). Keep it,
     make it the standard rule, or drop it now that the free armor comes back by itself?
 
+**Laser tier 1** (from G4; `weapon_range` and `tier1_extra_shots` in `data/tuning/powerups.tres`, F6)
+252. **Laser tier 1's exact range** (GDD §8 damage reference, owner's September 30, 2026 playtest: "a
+    shorter range... so enemies get close enough to be a threat before they fall"; the brief set the
+    approach at about 60% of the old range). **Placeholder:** `PowerupTuning.weapon_range` tier 1 is
+    42 m (was 70 m, shared with every tier), about 2.3 s of approach at the 18 m/s base run speed
+    (down from about 3.9 s). Tiers 2–4 keep 70 m, since they shared the old value (GDD's rule: "higher
+    tiers keep their range unless they share the value"). Is 42 m (60%) the right amount, or should it
+    be shorter/longer?
+    **Also applied without a question, since the owner's follow-up already resolved it:** the owner chose
+    "higher tiers keep today's numbers" over raising enemy health (which had also moved tiers 2 and 3),
+    so the two extra tier 1 shots are a weapon-side rule, not a health change. `PowerupTuning.tier1_extra_shots`
+    (2) is one number in data; `WeaponPowerup.damage()` applies it generically, splitting a target's
+    unchanged `max_health` across its plain shot count plus the extra, for any target except one already a
+    one-shot kill (the sewer screech), an `immune_to_weapons` target, or a boss part (`is_boss`; a boss's
+    weapon chip is its own rule, `BossEncounter.weapon_share_cap`). No enemy's `health_early`/`health_late`
+    or any tier's `weapon_damage` changed.
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
