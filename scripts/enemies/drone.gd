@@ -15,8 +15,8 @@ extends Enemy
 ##   drone keeps following and winds up once its turn comes (EnemyDirector.major_attack_blocked).
 ## - Kill: stepping on any anti-grav pad hurls every drone on screen up into the ship's hull
 ##   (drone_crash), over the lanes that ceiling covers (a narrow ceiling, GDD §3: it veers into the
-##   ceiling's lanes as it rises); weapons take 15 laser tier 1 shots (health 15). Claws don't work,
-##   and it has no contact hitbox: it only hurts through its bullets.
+##   ceiling's lanes as it rises); weapons take 17 laser tier 1 shots (health 17), 5 missile tier 4
+##   shots. Claws don't work, and it has no contact hitbox: it only hurts through its bullets.
 ## - Persistence: stays until destroyed or the level ends (never retired).
 ## Spawn params: {"slot": 0 | 1}: slot 1 is the second drone of a wave, hovering further ahead and
 ## higher. Numbers: data/enemies/drone.tres (DroneTuning). Generator rules: drone_rules.gd.

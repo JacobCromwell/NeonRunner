@@ -2,8 +2,8 @@ class_name HoverTruckTuning
 extends EnemyTuning
 ## Numbers for the hover truck (GDD §9.3), in data/enemies/hover_truck.tres. Pairs named _early/_late
 ## scale across the campaign with the level's enemy_scaling (GDD §6). The GDD fixes the 20–30 s stay,
-## the 0 → 1–2 window shooters and the shots to kill (health 15 = laser tier 1 shots); everything
-## else here is a DESIGN-TBD placeholder.
+## the 0 → 1–2 window shooters and the shots to kill (health 17 = laser tier 1 shots, since the
+## owner's September 30, 2026 playtest; was 15); everything else here is a DESIGN-TBD placeholder.
 
 @export_group("Shape")
 ## Length (cab + cargo box) and width. It holds one lane.

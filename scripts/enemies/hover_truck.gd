@@ -23,8 +23,8 @@ extends Enemy
 ## - Kill: land on its roof (a moving floor surface; routes: a ramp onto the wall then a wall jump,
 ##   or get ahead of it during a backward lurch, run on the wall and jump on as it lurches forward)
 ##   and stomp the glowing red weak point on the lower cab roof. While ridden it eases back so the
-##   rider moves toward the cab and drops onto the weak point. Weapons: 15 laser tier 1 shots. Either
-##   way it spins out and explodes (truck_explode).
+##   rider moves toward the cab and drops onto the weak point. Weapons: 17 laser tier 1 shots, 5
+##   missile tier 4 shots. Either way it spins out and explodes (truck_explode).
 ## Spawn params (tests and set pieces): {"skip_entrance": bool, "offset": m, "phase": "pace" |
 ## "hold_back" | "alongside", "guns": bool, "stay": s}. Numbers: data/enemies/hover_truck.tres
 ## (HoverTruckTuning). Generator rules: hover_truck_rules.gd.

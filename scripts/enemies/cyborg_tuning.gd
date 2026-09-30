@@ -3,7 +3,8 @@ extends CyborgGunTuning
 ## Floor cyborg numbers (GDD §9.2), on top of the arm cannon's (CyborgGunTuning). Edit
 ## data/enemies/cyborg.tres. DESIGN-TBD: prototype values until playtested. That includes its
 ## health (health_early/health_late, in laser tier 1 shots): GDD §8 leaves the cyborg's shots to
-## kill open, so it is 3 early and 5 late for now.
+## kill open, so it is 5 early and 7 late for now (was 3/5 before the owner's September 30, 2026
+## playtest raised every non-screech enemy's tier 1 shots to kill by two).
 
 @export_group("Movement")
 ## Walks slowly toward the player once they are this close.

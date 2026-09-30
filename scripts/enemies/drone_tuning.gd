@@ -3,7 +3,8 @@ extends EnemyTuning
 ## Numbers for the heli drone (GDD §9.6), in data/enemies/drone.tres. Pairs named _early/_late scale
 ## across the campaign with the level's enemy_scaling (GDD §6). Values marked DESIGN-TBD are
 ## placeholders, not design decisions; the GDD fixes only the 10 s / 8–10 s / ~15 s pad rules and
-## the shots to kill (health 15 = laser tier 1 shots).
+## the shots to kill (health 17 = laser tier 1 shots, since the owner's September 30, 2026 playtest;
+## was 15).
 
 @export_group("Hovering")
 ## DESIGN-TBD: how far ahead of the player the drone hovers, and how high (below the 6 m ceiling,

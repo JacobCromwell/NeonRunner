@@ -6,8 +6,8 @@
 script = ExtResource("1_tuning")
 spawn_lead = 10.0
 score_value = 300
-health_early = 15.0
-health_late = 15.0
+health_early = 17.0
+health_late = 17.0
 uses_floor = false
 hover_ahead = 11.0
 hover_height = 3.2
