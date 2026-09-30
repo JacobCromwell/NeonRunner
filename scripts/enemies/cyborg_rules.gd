@@ -5,9 +5,10 @@ extends RefCounted
 ##   seed is the same (hosts never panic unless a pattern says so);
 ## - drops a cyborg placed within obstacle_margin of a gap, fence, ramp, pad or speed pad in any lane:
 ##   standing there it could block the lane a player needs at that obstacle (GDD §9 fairness); nor
-##   within it of a ceiling's landing zone (GDD §3: the floor there is safe to land on). Under a
-##   ceiling it may stand (GDD §3: the floor there may be dangerous); it holds fire at a player on
-##   the ceiling (Cyborg). A cyborg keeps the same margins while it moves (Cyborg clamps its walk and
+##   within it of a ceiling's landing zone (GDD §3: the floor there is safe to land on). The margin
+##   is metres at the reference speed, stretched by the level's pace (obstacle_margin_at), so it
+##   keeps its time at any run speed. Under a ceiling it may stand (GDD §3: the floor there may be
+##   dangerous); it holds fire at a player on the ceiling (Cyborg). A cyborg keeps the same margins while it moves (Cyborg clamps its walk and
 ##   its panic run with obstacle_spans()).
 ## These rules run after the hover truck's, which add a ramp for its wall route, so cyborgs keep
 ## their margin from that ramp too. Pads that later rules add (drones, hosts) clear the floor
@@ -32,7 +33,7 @@ static func apply(gen: LevelGenerator) -> void:
 		e["params"] = params
 		if not params.has("panic"):
 			params["panic"] = not bool(params.get("host", false)) and rng.randf() < tuning.panic_chance
-		if near_any(spans, float(e["at"]), tuning.obstacle_margin):
+		if near_any(spans, float(e["at"]), obstacle_margin_at(tuning, gen.pace)):
 			continue
 		kept.append(e)
 	gen.layout.enemies = kept
@@ -55,6 +56,12 @@ static func obstacle_spans(layout: LevelLayout, t: MovementTuning, zones: Ceilin
 		out.append(Vector2(s["at"], float(s["at"]) + t.speed_pad_length))
 	out.append_array(zones.landing_zones(layout))
 	return out
+
+
+## A cyborg's obstacle_margin at a level's `pace` (MovementTuning.pace): the same time at any run
+## speed (GDD §3: a faster zone is never secretly tighter). The rules, the Cyborg and the tests use it.
+static func obstacle_margin_at(t: CyborgTuning, pace: float) -> float:
+	return t.obstacle_margin * pace
 
 
 ## True if any span comes within `margin` of the track distance `d`.

@@ -18,6 +18,10 @@ extends RefCounted
 ##   guaranteed one falls in the same share of the stretch where trucks are active.
 ## - In a level paced in bursts (LevelConfig.quiet_seconds, The Hush), the guaranteed truck bursts in
 ##   during a burst when one lies in its share of the level.
+## - clear_before is metres at MovementTuning.REFERENCE_SPEED, stretched by the level's pace
+##   (LevelGenerator.pace), so its lane is kept clear as long before the burst in a faster zone. The
+##   truck itself moves with the player once it's out (its offsets and burst_lead are the player's
+##   frame), so nothing else of it depends on the run speed.
 
 const TYPE: String = "hover_truck"
 
@@ -39,7 +43,7 @@ static func apply(gen: LevelGenerator) -> void:
 	var most: int = t.max_per_level_at(gen.config.enemy_scaling)
 	for e: Dictionary in trucks:
 		var at: float = e["at"]
-		if at > latest or at < earliest or at - t.burst_lead - t.clear_before < free_from or kept.size() >= most:
+		if at > latest or at < earliest or window_start(t, at, gen.pace) < free_from or kept.size() >= most:
 			removed.append(e)
 			continue
 		kept.append(e)
@@ -58,7 +62,7 @@ static func apply(gen: LevelGenerator) -> void:
 		var lane: int = layout.outer_lane(side)
 		e["lane"] = lane
 		var at: float = e["at"]
-		_clear_lane(layout, lane, window_start(t, at), window_end(t, at, speed))
+		_clear_lane(layout, lane, window_start(t, at, gen.pace), window_end(t, at, speed))
 		_clear_burst_wall(layout, t, side, at)
 		if gen.config.has_feature("ramps"):
 			_ensure_ramp(gen, t, side, lane, at)
@@ -69,9 +73,10 @@ static func tuning() -> HoverTruckTuning:
 	return res as HoverTruckTuning if res is HoverTruckTuning else HoverTruckTuning.new()
 
 
-## Where its lane must be free: from a little before the spot where it lands ...
-static func window_start(t: HoverTruckTuning, at: float) -> float:
-	return at - t.burst_lead - t.clear_before
+## Where its lane must be free: from a little before the spot where it lands (clear_before, stretched
+## by the level's `pace`) ...
+static func window_start(t: HoverTruckTuning, at: float, pace: float = 1.0) -> float:
+	return at - t.burst_lead - t.clear_before * pace
 
 
 ## ... until it has left, even after its longest stay.
@@ -88,7 +93,7 @@ static func open_lanes(gen: LevelGenerator, at: float) -> Array[int]:
 		var free: bool = true
 		for e: Dictionary in gen.layout.enemies:
 			if String(e.get("type", "")) == TYPE and int(e.get("lane", -1)) == lane \
-					and at >= window_start(t, float(e["at"])) and at <= window_end(t, float(e["at"]), gen.speed):
+					and at >= window_start(t, float(e["at"]), gen.pace) and at <= window_end(t, float(e["at"]), gen.speed):
 				free = false
 				break
 		if free:
@@ -160,7 +165,7 @@ static func _ramp_fits(gen: LevelGenerator, side: int, lane: int, at: float) -> 
 static func _add_guaranteed(gen: LevelGenerator, t: HoverTruckTuning, latest: float) -> Dictionary:
 	var rng: RandomNumberGenerator = gen.rng_for("hover_truck_guarantee")
 	var lo: float = maxf(gen.feature_share_at(TYPE, t.guaranteed_from),
-		gen.config.start_clear_distance + t.burst_lead + t.clear_before)
+		gen.config.start_clear_distance + t.burst_lead + t.clear_before * gen.pace)
 	var hi: float = minf(gen.feature_share_at(TYPE, t.guaranteed_to), latest)
 	if hi < lo:
 		return {}

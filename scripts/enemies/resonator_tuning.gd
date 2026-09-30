@@ -5,6 +5,11 @@ extends EnemyTuning
 ## Zone (scaling_from to scaling_to; see zone_t). The helper functions turn them into times and track
 ## distances at a given run speed; the Resonator (resonator.gd) and its generator rules
 ## (resonator_rules.gd) both use them, so a pulse is planned with the numbers it's played with.
+## Its distances along the track and its wave's speed are given at MovementTuning.REFERENCE_SPEED:
+## the helpers take the level's pace (MovementTuning.pace) and stretch them by it, so in a faster zone
+## it hovers further ahead and its waves roll faster, and each wave still takes as long to reach the
+## runner (GDD §3, owner's playtest September 30, 2026: enemies speed up to match, never with shorter
+## warnings).
 ## Values marked DESIGN-TBD are placeholders, not design decisions (docs/questions/c3.md): GDD §9.10
 ## fixes only the sequence (warning with halos and chime, then a red wave along the floor across every
 ## lane, a few pulses, then it leaves), the dodges (jump, a wall, the ceiling) and that it pulses faster
@@ -124,33 +129,39 @@ func double_share_at(t: float) -> float:
 	return scaled(double_share_early, double_share_late, zone_t(t))
 
 
-func wave_speed_at(t: float) -> float:
-	return scaled(wave_speed_early, wave_speed_late, zone_t(t))
+func wave_speed_at(t: float, pace: float = 1.0) -> float:
+	return scaled(wave_speed_early, wave_speed_late, zone_t(t)) * pace
+
+
+## How far ahead of the player it hovers in a level at `pace` (MovementTuning.pace).
+func hover_ahead_at(pace: float = 1.0) -> float:
+	return hover_ahead * pace
 
 
 ## Seconds a wave takes from leaving (under the Resonator, hover_ahead ahead) to reaching a player
-## running at `speed`.
-func travel_seconds(speed: float, t: float) -> float:
-	return hover_ahead / maxf(speed + wave_speed_at(t), 1.0)
+## running at `speed`. At the level's own run speed it's the same at any pace.
+func travel_seconds(speed: float, t: float, pace: float = 1.0) -> float:
+	return hover_ahead * pace / maxf(speed + wave_speed_at(t, pace), 1.0)
 
 
 ## Metres the player runs from a pulse's warning start to where its (first) wave meets them.
-func meet_offset(speed: float, t: float) -> float:
-	return (warning_seconds + travel_seconds(speed, t)) * speed
+func meet_offset(speed: float, t: float, pace: float = 1.0) -> float:
+	return (warning_seconds + travel_seconds(speed, t, pace)) * speed
 
 
 ## Seconds from a pulse's warning start until its last wave has passed a player running at `speed`
 ## (its back edge `margin` behind their hitbox, whose depth is `body_depth`).
-func pulse_seconds(double: bool, speed: float, t: float, body_depth: float = 0.38, margin: float = 0.5) -> float:
-	var pass_time: float = (wave_depth + body_depth + margin) / maxf(speed + wave_speed_at(t), 1.0)
-	return warning_seconds + travel_seconds(speed, t) + (double_gap if double else 0.0) + pass_time
+func pulse_seconds(double: bool, speed: float, t: float, body_depth: float = 0.38, margin: float = 0.5,
+		pace: float = 1.0) -> float:
+	var pass_time: float = (wave_depth + body_depth + margin) / maxf(speed + wave_speed_at(t, pace), 1.0)
+	return warning_seconds + travel_seconds(speed, t, pace) + (double_gap if double else 0.0) + pass_time
 
 
 ## The stretch of track the player runs through while a pulse whose warning starts at `warn_at`
 ## (a player distance) meets them: from clear_before_seconds before its first wave meets them to
 ## clear_after_seconds after its last. It must be clear floor (Resonator.pulse_clear).
-func meeting_stretch(warn_at: float, double: bool, speed: float, t: float) -> Vector2:
-	var meet: float = warn_at + meet_offset(speed, t)
+func meeting_stretch(warn_at: float, double: bool, speed: float, t: float, pace: float = 1.0) -> Vector2:
+	var meet: float = warn_at + meet_offset(speed, t, pace)
 	var last: float = meet + (double_gap * speed if double else 0.0)
 	return Vector2(meet - clear_before_seconds * speed, last + clear_after_seconds * speed)
 

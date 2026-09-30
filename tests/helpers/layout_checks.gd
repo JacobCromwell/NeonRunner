@@ -16,14 +16,23 @@ extends RefCounted
 ##   landings, cyborgs keep their margin from floor obstacles, and every fence generator powers a
 ##   fence.
 ## Each check goes through `suite.check()`, so failures are reported by the suite that called.
+## Every check runs at the level's own run speed (level_tuning: a campaign level's is its zone's), with
+## the margins in metres stretched by its pace, as the generator builds it (GDD §3: a faster zone keeps
+## every reaction window in seconds).
 
 const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
 ## A floor route under a ceiling is looked for from this far before its pad's run-up.
 const ROUTE_LEAD: float = 5.0
 
 
+## The movement tuning `config`'s level runs on (LevelConfig.movement_for: its own run speed, a
+## campaign level's zone's), from the suite's.
+static func level_tuning(suite: TestSuite, config: LevelConfig) -> MovementTuning:
+	return config.movement_for(suite.tuning)
+
+
 static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
-	var tuning: MovementTuning = suite.tuning
+	var tuning: MovementTuning = level_tuning(suite, config)
 	var n: int = layout.lane_count
 	var max_gap: float = tuning.jump_distance(tuning.run_speed) * config.max_gap_jump_fraction + 0.001
 	var finish_buffer: float = layout.length - config.end_clear_distance + 0.001
@@ -64,7 +73,7 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 ##   zone, without its pad (FloorRoute), so the ceiling is never required.
 ## The stretches come from CeilingZones (the same the generator uses); the checks are written here.
 static func check_ceilings(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
-	var tuning: MovementTuning = suite.tuning
+	var tuning: MovementTuning = level_tuning(suite, config)
 	var zones := CeilingZones.make(config, tuning)
 	var finish: float = layout.length - config.end_clear_distance + 0.001
 	var half: float = tuning.fence_depth * 0.5
@@ -141,8 +150,9 @@ static func floor_route(grid: FloorRoute, zones: CeilingZones, h: Dictionary) ->
 
 
 static func check_rules(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
-	var tuning: MovementTuning = suite.tuning
+	var tuning: MovementTuning = level_tuning(suite, config)
 	var speed: float = tuning.run_speed
+	var pace: float = tuning.pace()
 	var pads: Array[float] = []
 	for p: Dictionary in layout.pads:
 		if not pads.has(float(p["at"])):
@@ -209,18 +219,18 @@ static func check_rules(suite: TestSuite, layout: LevelLayout, config: LevelConf
 	# Octodog charges and runs stay off pads and ceiling landings (the floor under a ceiling is theirs
 	# too, GDD §3).
 	var ot := EnemyDirector.tuning_for("octodog") as OctodogTuning
-	var window: float = ot.window_length(speed, config.enemy_scaling)
-	var stop: float = ot.stop_distance(speed, config.enemy_scaling)
+	var window: float = ot.window_length(speed, config.enemy_scaling, pace)
+	var stop: float = ot.stop_distance(speed, config.enemy_scaling, pace)
 	for e: Dictionary in layout.enemies:
 		if String(e["type"]) != "octodog":
 			continue
 		var charges: Array = (e.get("params", {}) as Dictionary).get("charge_at", [])
 		suite.check(not charges.is_empty(), "an Octodog has its charges planned " + tag)
 		for a: Variant in charges:
-			suite.check(Octodog.window_clear(layout, float(a), float(a) + window), "an Octodog charge has a clear stretch " + tag)
+			suite.check(Octodog.window_clear(layout, float(a), float(a) + window, pace), "an Octodog charge has a clear stretch " + tag)
 		if not charges.is_empty():
-			suite.check(not Octodog.pad_or_landing_between(layout, float(charges[0]) - 6.0, float(charges[-1]) + stop + 2.0),
-				"an Octodog's whole run stays off pads and ceiling landings " + tag)
+			suite.check(not Octodog.pad_or_landing_between(layout, float(charges[0]) - 6.0 * pace,
+				float(charges[-1]) + stop + 2.0 * pace, pace), "an Octodog's whole run stays off pads and ceiling landings " + tag)
 	# Cyborgs keep their margin from floor obstacles and landing zones; every generator powers a fence.
 	var ct := EnemyDirector.tuning_for("cyborg") as CyborgTuning
 	var spans: Array[Vector2] = CyborgRules.obstacle_spans(layout, tuning, CeilingZones.make(config, tuning))
@@ -229,8 +239,9 @@ static func check_rules(suite: TestSuite, layout: LevelLayout, config: LevelConf
 	for e: Dictionary in layout.enemies:
 		match String(e["type"]):
 			"cyborg":
-				suite.check(not CyborgRules.near_any(spans, float(e["at"]), ct.obstacle_margin),
-					"a cyborg keeps %.0f m from floor obstacles (at %.0f) %s" % [ct.obstacle_margin, e["at"], tag])
+				var margin: float = CyborgRules.obstacle_margin_at(ct, pace)
+				suite.check(not CyborgRules.near_any(spans, float(e["at"]), margin),
+					"a cyborg keeps %.1f m from floor obstacles (at %.0f) %s" % [margin, e["at"], tag])
 			"generator":
 				suite.check(not FenceGenerator.fences_in_reach(layout, geo, float(e["at"]), int(e["lane"]), gt.emp_radius).is_empty(),
 					"a fence generator powers a fence (at %.0f) %s" % [e["at"], tag])

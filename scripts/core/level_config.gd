@@ -30,6 +30,13 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 ## GDD §4: levels last 90–150 seconds. DESIGN-TBD: each campaign level's length (together they make
 ## GDD §5's "a flawless run through every level takes about 35 minutes").
 @export_range(30.0, 150.0, 1.0, "suffix:s") var duration_seconds: float = 120.0
+## The run speed this level is built and played at (GDD §3, owner's playtest September 30, 2026: it
+## rises zone by zone). 0: its zone's (ZoneDef.run_speed) in the campaign, else the movement tuning's
+## base run speed (quick play, tests). Campaign.configure writes the level's own speed, its zone's or
+## 0 into its copy, times the difficulty tier's speed multiplier. The generator, the run's world and
+## the enemies all take their movement tuning from movement_for(), so they agree on it; the level
+## keeps its duration in seconds and gets longer in metres.
+@export_range(0.0, 40.0, 0.1, "suffix:m/s") var run_speed: float = 0.0
 ## 0 = easiest, 1 = hardest. In the campaign this is the campaign curve plus difficulty_bias.
 @export_range(0.0, 1.0, 0.05) var difficulty: float = 0.3
 ## Added to the campaign's automatic difficulty curve for this level (GDD §6: each level can be
@@ -174,6 +181,17 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 
 func has_feature(feature: String) -> bool:
 	return features.has(feature)
+
+
+## The movement tuning this level runs on: `base` itself unless the level has a run speed of its own
+## (run_speed above 0, and not base's already), else a copy of `base` at that speed. The generator,
+## RunWorld and App all ask this, so a level is built and played at the same speed.
+func movement_for(base: MovementTuning) -> MovementTuning:
+	if base == null or run_speed <= 0.0 or is_equal_approx(base.run_speed, run_speed):
+		return base
+	var out: MovementTuning = base.duplicate() as MovementTuning
+	out.run_speed = run_speed
+	return out
 
 
 ## Share of the level (0–1) where `feature` starts: 0 unless feature_starts lists it.

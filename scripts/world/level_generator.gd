@@ -73,10 +73,19 @@ const GUARANTEE_MAX_PICKS: int = 3
 
 var layout: LevelLayout
 var config: LevelConfig
+## The level's movement tuning (LevelConfig.movement_for: at its own run speed, its zone's in the
+## campaign).
 var tuning: MovementTuning
 ## Run speed the level is built for, and a full jump's length at that speed.
 var speed: float
 var jump_distance: float
+## How much faster than MovementTuning.REFERENCE_SPEED the level runs (MovementTuning.pace; 1 at
+## 18 m/s). The patterns' metres (an element's `at`, a pattern's `length`, a sign's length, credit
+## spacing) and the rules' margins in metres were written for the reference speed: they're stretched
+## by it (metres()), so every pattern keeps its timing in seconds and a faster zone is never secretly
+## tighter (GDD §3, "Pace and busier levels"). Seconds (`at_seconds`, spacing, ceilings' lengths) and
+## jumps (a gap's jump_frac) follow the run speed already.
+var pace: float = 1.0
 ## Problems found in the pattern data during the last generate(), one line per pattern.
 var warnings: PackedStringArray = []
 ## How many builds the last generate() made: 1, unless guarantee_features had to force a missing
@@ -132,8 +141,9 @@ static func load_for(p_config: LevelConfig) -> Array:
 
 func generate(p_config: LevelConfig, p_tuning: MovementTuning, patterns: Array) -> LevelLayout:
 	config = p_config
-	tuning = p_tuning
+	tuning = p_config.movement_for(p_tuning)
 	speed = tuning.run_speed
+	pace = tuning.pace()
 	jump_distance = tuning.jump_distance(speed)
 	zones = CeilingZones.make(config, tuning, speed)
 	attempts = 1
@@ -214,6 +224,12 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	_place_credits()
 	layout.enemies.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["at"] < b["at"])
 	return layout
+
+
+## `reference_metres` (a distance written for MovementTuning.REFERENCE_SPEED: a pattern's, a rule's
+## margin) at this level's run speed: stretched by `pace`, so it takes as long to run.
+func metres(reference_metres: float) -> float:
+	return reference_metres * pace
 
 
 ## The difficulty at a point of the level (0–1 progress): the level's base plus its ramp.
@@ -354,7 +370,7 @@ func _pacing_allows(pattern: Dictionary, at: float) -> bool:
 	for element: Dictionary in pattern.get("elements", []):
 		var kind: String = String(element.get("kind", ""))
 		if kind == "enemy":
-			last_enemy = maxf(last_enemy, float(element.get("at", 0.0)) + float(element.get("at_seconds", 0.0)) * speed)
+			last_enemy = maxf(last_enemy, metres(float(element.get("at", 0.0))) + float(element.get("at_seconds", 0.0)) * speed)
 		threat = threat or kind in ["gap", "fence", "sign", "enemy"]
 	var quiet: bool = quiet_at(at)
 	if not quiet and not threat:
@@ -844,14 +860,16 @@ static func feature_positions(p_layout: LevelLayout, feature: String) -> Array[f
 ## Places every element of a pattern starting at `origin`. Returns the track length it used (a
 ## ceiling's includes its landing zone, so the next pattern starts past it). GDD §3: floor pieces
 ## and floor enemies may lie under a ceiling (the pattern's own: a gauntlet the ceiling escapes);
-## _secure_ceilings keeps its landing zone and pads' spots safe afterwards.
+## _secure_ceilings keeps its landing zone and pads' spots safe afterwards. The pattern's metres are
+## stretched by the level's pace (metres()), so it keeps its timing at any run speed.
 func _place_pattern(pattern: Dictionary, origin: float) -> float:
-	var used: float = float(pattern.get("length", 8.0))
+	var used: float = metres(float(pattern.get("length", 8.0)))
 	var prev_lanes: Array[int] = []
 	var prev_side: int = 1
 	for element: Dictionary in pattern.get("elements", []):
-		# "at" is in metres; "at_seconds" scales with run speed (for pieces timed against a hull).
-		var at: float = origin + float(element.get("at", 0.0)) + float(element.get("at_seconds", 0.0)) * speed
+		# "at" is in metres at the reference speed (stretched by the pace); "at_seconds" scales with run
+		# speed (for pieces timed against a hull).
+		var at: float = origin + metres(float(element.get("at", 0.0))) + float(element.get("at_seconds", 0.0)) * speed
 		match String(element.get("kind", "")):
 			"gap":
 				var lanes: Array[int] = _pick_lanes(element.get("lanes", {}), prev_lanes)
@@ -880,7 +898,7 @@ func _place_pattern(pattern: Dictionary, origin: float) -> float:
 				var sides: Array[int] = [side]
 				if String(element.get("side", "")) == "both":
 					sides = [-1, 1]
-				var sign_len: float = float(element.get("length", 8.0))
+				var sign_len: float = metres(float(element.get("length", 8.0)))
 				for s: int in sides:
 					layout.signs.append({
 						"side": s,
@@ -1105,7 +1123,7 @@ static func _waits_for_others(pending: Array[Array], index: int) -> bool:
 func _place_credit_element(element: Dictionary, at: float, prev_lanes: Array[int], prev_side: int) -> void:
 	var surface: String = String(element.get("surface", "floor"))
 	var count: int = int(element.get("count", 5))
-	var spacing: float = float(element.get("spacing", config.credit_trail_spacing))
+	var spacing: float = metres(float(element.get("spacing", config.credit_trail_spacing)))
 	var value: int = int(element.get("value", 1))
 	var height: float = float(element.get("height", 0.7 if surface != "wall" else 2.0))
 	if surface == "wall":
@@ -1141,12 +1159,14 @@ func _place_credits() -> void:
 
 
 ## Trails of small credits along one lane in the clear stretches between patterns, sometimes
-## shifting one lane halfway so the player has to move.
+## shifting one lane halfway so the player has to move. Their spacing is stretched by the pace, like
+## the patterns', so a trail takes as long to run at any speed.
 func _place_trails(rng: RandomNumberGenerator) -> void:
 	var n: int = layout.lane_count
-	var trail_len: float = (config.credit_trail_count - 1) * config.credit_trail_spacing
+	var spacing: float = metres(config.credit_trail_spacing)
+	var trail_len: float = (config.credit_trail_count - 1) * spacing
 	for stretch: Vector2 in _clear_stretches:
-		if stretch.y - stretch.x < trail_len + 6.0 or rng.randf() >= config.credit_trail_chance:
+		if stretch.y - stretch.x < trail_len + metres(6.0) or rng.randf() >= config.credit_trail_chance:
 			continue
 		if config.credit_trail_count <= 0:
 			continue
@@ -1157,7 +1177,7 @@ func _place_trails(rng: RandomNumberGenerator) -> void:
 		var start: float = (stretch.x + stretch.y) * 0.5 - trail_len * 0.5
 		for i: int in config.credit_trail_count:
 			var l: int = lane + (shift if i >= config.credit_trail_count / 2 else 0)
-			var d: float = start + i * config.credit_trail_spacing
+			var d: float = start + i * spacing
 			if layout.under_hull(d, l):
 				continue
 			_add_credit(d, "floor", l, 0, 0.7, 1)
@@ -1230,11 +1250,11 @@ func _place_ceiling_credits(rng: RandomNumberGenerator) -> void:
 		if hull.is_empty():
 			continue
 		var lane: int = p["lane"]
-		var d: float = float(p["at"]) + 10.0
+		var d: float = float(p["at"]) + metres(10.0)
 		var placed: int = 0
-		while d < float(hull["end"]) - 8.0 and placed < 10:
+		while d < float(hull["end"]) - metres(8.0) and placed < 10:
 			_add_credit(d, "ceiling", lane, 0, 0.6, 1)
-			d += 4.0
+			d += metres(4.0)
 			placed += 1
 		var lanes: Vector2i = layout.hull_lanes(hull)
 		if lanes.y > lanes.x:

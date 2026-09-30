@@ -17,6 +17,7 @@ tagline = "Stall roofs, awnings, casinos and a bustling open-air market."
 music = &"marketplace"
 skin = ExtResource("skin")
 levels = Array[ExtResource("2_levelscript")]([ExtResource("lvl_marketplace_1"), ExtResource("lvl_marketplace_2")])
+run_speed = 22.6
 intro = ExtResource("c_intro")
 outro = ExtResource("c_outro")
 boss = ExtResource("boss")

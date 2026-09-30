@@ -122,6 +122,8 @@ var wait_reason: StringName = &""
 var waited_for: Dictionary = {}
 
 var _scaling: float = 0.0
+## The level's pace (MovementTuning.pace): its distances ahead and its waves' speed are stretched by it.
+var _run_pace: float = 1.0
 ## Track distance of the Resonator (its core), and where the generator put it.
 var _d: float = 0.0
 var _at: float = 0.0
@@ -161,6 +163,7 @@ func _build() -> void:
 		max_health = tune.health_early
 		score_value = tune.score_value
 	_scaling = world.config.enemy_scaling if world.config != null else 0.0
+	_run_pace = world.tuning.pace()
 	_at = float(spawn.get("at", 0.0))
 	_d = _at
 	var p: Dictionary = spawn.get("params", {})
@@ -239,7 +242,7 @@ func _tick(delta: float) -> void:
 		State.WARNING:
 			_warning(p)
 		State.PULSE:
-			_d = p + tune.hover_ahead
+			_d = p + _ahead()
 			if _state_time >= tune.double_gap:
 				_emit_wave()
 				_set_state(State.PACE)
@@ -260,21 +263,27 @@ func _set_state(next: State) -> void:
 ## Where the player is when it has eased into pacing them (it hovers still at its spot until
 ## approach_ease before that).
 func visit_start() -> float:
-	return _at - tune.hover_ahead + tune.approach_ease
+	return _at - _ahead() + tune.approach_ease * _run_pace
+
+
+## How far ahead of the player it hovers: hover_ahead, stretched by the level's pace (in a faster zone
+## its waves roll faster from further away, and take as long to arrive).
+func _ahead() -> float:
+	return tune.hover_ahead_at(_run_pace)
 
 
 ## Hovering still at its spot until the player comes within hover_ahead + approach_ease, then easing
 ## into pacing them: its speed rises steadily from nothing to theirs over 2 × approach_ease of their
 ## run, so it settles hover_ahead ahead of them exactly as they reach visit_start().
 func _approach(p: float) -> void:
-	var e: float = tune.approach_ease
-	var u: float = p - (_at - tune.hover_ahead - e)
+	var e: float = tune.approach_ease * _run_pace
+	var u: float = p - (_at - _ahead() - e)
 	if u <= 0.0:
 		_d = _at
 	elif u < 2.0 * e:
-		_d = p + tune.hover_ahead + e - u + u * u / (4.0 * e)
+		_d = p + _ahead() + e - u + u * u / (4.0 * e)
 	else:
-		_d = p + tune.hover_ahead
+		_d = p + _ahead()
 		_set_state(State.PACE)
 		_log("arrive")
 		# One at a time: a Resonator still here from before pulls away once its pulse is over.
@@ -284,7 +293,7 @@ func _approach(p: float) -> void:
 
 
 func _pace(delta: float, p: float) -> void:
-	_d = p + tune.hover_ahead
+	_d = p + _ahead()
 	if pulses_done >= pulses or (_leave_asked and not is_major_attack_active()):
 		if not waves_on_their_way():
 			_start_leave()
@@ -328,7 +337,7 @@ func _why_not_ready() -> StringName:
 	if waves_on_their_way() or _other_pulsing():
 		return &"busy"
 	var v: float = maxf(pl.speed, 1.0)
-	var stretch: Vector2 = tune.meeting_stretch(pl.distance, _double_for(pulses_done), v, _scaling)
+	var stretch: Vector2 = tune.meeting_stretch(pl.distance, _double_for(pulses_done), v, _scaling, _run_pace)
 	if stretch.y > _last_ok() or not pulse_clear(world.layout, _zones, pl.distance, stretch):
 		return &"floor"
 	return &"turn" if world.director.major_attack_blocked(self) else &""
@@ -336,7 +345,7 @@ func _why_not_ready() -> StringName:
 
 ## True while the next pulse could still meet the player before the level's end-clear stretch.
 func _fits_before_end(p: float) -> bool:
-	var stretch: Vector2 = tune.meeting_stretch(p, _double_for(pulses_done), world.tuning.run_speed, _scaling)
+	var stretch: Vector2 = tune.meeting_stretch(p, _double_for(pulses_done), world.tuning.run_speed, _scaling, _run_pace)
 	return stretch.y <= _last_ok()
 
 
@@ -354,7 +363,7 @@ func _start_warning() -> void:
 	double_now = _double_for(pulses_done)
 	pulses_done += 1
 	_next_free = pl.distance + (tune.pulse_seconds(double_now, v, _scaling, world.tuning.hurtbox_size.z,
-		EnemyDirector.SHOT_PASS_MARGIN) + tune.pulse_rest_at(_scaling)) * v
+		EnemyDirector.SHOT_PASS_MARGIN, _run_pace) + tune.pulse_rest_at(_scaling)) * v
 	_set_state(State.WARNING)
 	charge = 0.0
 	_log("warning")
@@ -362,7 +371,7 @@ func _start_warning() -> void:
 
 
 func _warning(p: float) -> void:
-	_d = p + tune.hover_ahead
+	_d = p + _ahead()
 	charge = clampf(_state_time / tune.warning_seconds, 0.0, 1.0)
 	if _state_time >= tune.warning_seconds:
 		charge = 0.0
@@ -374,7 +383,7 @@ func _warning(p: float) -> void:
 func _emit_wave() -> void:
 	var w: Wave = _free_wave()
 	w.d = _d
-	w.speed = tune.wave_speed_at(_scaling)
+	w.speed = tune.wave_speed_at(_scaling, _run_pace)
 	w.age = 0.0
 	w.fading = -1.0
 	w.rolling = true
@@ -448,7 +457,7 @@ func _park(w: Wave) -> void:
 
 
 func _start_leave() -> void:
-	_rel = maxf(_d - world.player.distance, tune.hover_ahead)
+	_rel = maxf(_d - world.player.distance, _ahead())
 	_set_state(State.LEAVE)
 	_log("leave")
 	# Its pulses are over or dropped: it gives up any turn it was still waiting for (GDD §9).

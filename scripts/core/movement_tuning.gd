@@ -5,8 +5,16 @@ extends Resource
 ## The range hints drive both the inspector sliders and the in-game panel.
 ## Values marked DESIGN-TBD are prototype guesses, not design decisions.
 
+## The run speed the generator's patterns, the enemies' along-track distances and speeds and the
+## rules' margins in metres were written for (18 m/s, the first build's speed everywhere). A faster
+## run stretches them by pace() so every timing stays what it was in seconds (GDD §3, "Pace and busier
+## levels": a faster zone is never secretly tighter). A unit, not a tunable.
+const REFERENCE_SPEED: float = 18.0
+
 @export_group("Run")
-## DESIGN-TBD: base run speed is open (OPEN_QUESTIONS §8).
+## The base run speed: quick play, the tests and boss fights run at it. A campaign level runs at its
+## zone's speed instead (GDD §3, owner's playtest September 30, 2026: about 21 m/s in the Neon City
+## rising to about 25 m/s in the Golden Zone; ZoneDef.run_speed, LevelConfig.run_speed).
 @export_range(5.0, 40.0, 0.5, "suffix:m/s") var run_speed: float = 18.0
 ## DESIGN-TBD: whether speed rises within a level is open. 0 = constant speed.
 @export_range(0.0, 10.0, 0.1, "suffix:m/s per min") var speed_gain_per_minute: float = 0.0
@@ -128,6 +136,13 @@ extends Resource
 @export_range(0.01, 0.2, 0.005) var swipe_min_distance: float = 0.05
 ## A touch shorter than this that doesn't move counts as a tap (dash).
 @export_range(0.05, 0.5, 0.01, "suffix:s") var tap_max_time: float = 0.22
+
+
+## How much faster than REFERENCE_SPEED this tuning runs (1 at 18 m/s). Metres written for the
+## reference speed (patterns, rules' margins, the enemies' along-track distances and speeds) are
+## multiplied by it, so they keep their timing in seconds at any run speed.
+func pace() -> float:
+	return run_speed / REFERENCE_SPEED
 
 
 func gravity() -> float:

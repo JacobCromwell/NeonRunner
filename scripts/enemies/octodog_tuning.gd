@@ -4,6 +4,10 @@ extends EnemyTuning
 ## _late scale with the level's enemy_scaling (0 = first campaign level, 1 = last). The helper
 ## functions turn them into distances at a given run speed; the enemy and its generator rules
 ## (octodog_rules.gd) both use them, so a charge is planned with the same numbers it's played with.
+## Distances along the track and speeds are given at MovementTuning.REFERENCE_SPEED: the helpers take
+## the level's pace (MovementTuning.pace) and stretch them by it, so in a faster zone the dog lunges and
+## sprints faster to match the runner and every wind-up, lunge and dodge keeps its seconds (GDD §3,
+## owner's playtest September 30, 2026: enemies speed up to match, never with shorter warnings).
 ## Values marked DESIGN-TBD are placeholders, not design decisions.
 
 @export_group("Charges")
@@ -83,6 +87,11 @@ func lunge_speed(t: float) -> float:
 	return scaled(lunge_speed_early, lunge_speed_late, t)
 
 
+## The lunge's ground speed at scaling `t` in a level at `pace` (MovementTuning.pace).
+func lunge_speed_at(t: float, pace: float = 1.0) -> float:
+	return lunge_speed(t) * pace
+
+
 ## Fewest and most charges at scaling `t`.
 func charges_range(t: float) -> Vector2i:
 	var lo: int = roundi(scaled(charges_min_early, charges_min_late, t))
@@ -90,28 +99,30 @@ func charges_range(t: float) -> Vector2i:
 	return Vector2i(lo, maxi(lo, hi))
 
 
-## How far ahead of the player the dog stands when its wind-up starts.
-func stop_distance(speed: float, t: float) -> float:
-	return lunge_start_distance + windup_time(t) * speed
+## How far ahead of the player the dog stands when its wind-up starts, for a player at `speed` in a
+## level at `pace` (MovementTuning.pace; 1 at the reference speed).
+func stop_distance(speed: float, t: float, pace: float = 1.0) -> float:
+	return lunge_start_distance * pace + windup_time(t) * speed
 
 
-## Seconds from the lunge's start until it reaches the player.
-func time_to_meet(speed: float, t: float) -> float:
-	return lunge_start_distance / maxf(speed + lunge_speed(t), 1.0)
+## Seconds from the lunge's start until it reaches the player. At the level's own run speed it's the
+## same at any pace: the lunge starts further out and comes faster.
+func time_to_meet(speed: float, t: float, pace: float = 1.0) -> float:
+	return lunge_start_distance * pace / maxf(speed + lunge_speed(t) * pace, 1.0)
 
 
 ## Metres the player runs from a wind-up's start until the lunge has passed them and they could
 ## have landed a jump: the stretch that must be free of other obstacles.
-func window_length(speed: float, t: float) -> float:
-	return (windup_time(t) + time_to_meet(speed, t) + clear_after_seconds) * speed
+func window_length(speed: float, t: float, pace: float = 1.0) -> float:
+	return (windup_time(t) + time_to_meet(speed, t, pace) + clear_after_seconds) * speed
 
 
 ## Seconds a lunge lasts, from its start until it's lunge_overshoot behind the player.
-func lunge_duration(speed: float, t: float) -> float:
-	return (lunge_start_distance + lunge_overshoot) / maxf(speed + lunge_speed(t), 1.0)
+func lunge_duration(speed: float, t: float, pace: float = 1.0) -> float:
+	return (lunge_start_distance + lunge_overshoot) * pace / maxf(speed + lunge_speed(t) * pace, 1.0)
 
 
 ## Metres the player runs from one wind-up's start to the earliest possible next one.
-func cycle_distance(speed: float, t: float) -> float:
-	var sprint: float = (stop_distance(speed, t) + lunge_overshoot) / sprint_speed_over_player
-	return (windup_time(t) + lunge_duration(speed, t) + turnaround_time + sprint + 0.2) * speed
+func cycle_distance(speed: float, t: float, pace: float = 1.0) -> float:
+	var sprint: float = (stop_distance(speed, t, pace) + lunge_overshoot * pace) / (sprint_speed_over_player * pace)
+	return (windup_time(t) + lunge_duration(speed, t, pace) + turnaround_time + sprint + 0.2) * speed
