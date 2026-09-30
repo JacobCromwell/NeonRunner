@@ -1030,7 +1030,52 @@ owned, switched-on items; one charge of each breakable per attempt.
 `BuildFlavor` (`full_pc`, `full_mobile`, `web_demo`) comes from export feature tags (or
 `--flavor=` for testing). `Platform` (autoload) is the only way to reach ads, purchases,
 leaderboards, achievements, store links and cloud save; `StubBackend` serves the editor, tests and
-the web demo until the real plugins are chosen (risk test R3).
+the web demo until the real plugins are chosen (risk test R3). The store links are data
+(`data/platform/store_links.json`) and open through `Platform.open_store()`, which hands the URL to the
+backend's `open_url()`: a portal that restricts outbound links gets a backend of its own, and the stub
+records what it opened (`opened_urls`; tests switch `open_links` off so nothing leaves the game).
+
+**The web demo** (GDD §2; task E2) is the "Web (demo)" export preset: the `web_demo` feature tag, the
+Compatibility renderer (the web's only one), no thread support (so it needs no cross-origin isolation
+headers, as itch.io and the portals serve it), no GDExtension support, and a canvas that follows the
+window or a portal's frame (`html/canvas_resize_policy` adaptive). `tools/godot.sh web` exports it
+(README, The web demo).
+- *What it plays:* the zones marked `in_demo` (the Neon City and its boss); a step past them leads to the
+  "get the full game" screen (`App.in_demo_scope()`). No endless mode, and no ads, purchases or
+  leaderboards: the platform offers none, and no screen shows any.
+- *What it leaves out* (`tools/web/demo_filter.gd`, worked out from the data): the tests, the tools, the
+  test boss, and the music it never plays: every audio file in the music library's folders that no track
+  the demo plays uses, the files of the tracks it never plays wherever they are, and those tracks'
+  level-complete riffs. The tracks it plays are the menus' (`menu`), the City's (`city`, quick play's too)
+  and each demo zone's and its boss's (`DemoFilter.demo_tracks()`). `tools/web/update_filter.gd` writes
+  the preset's exclude filter from that, `tools/godot.sh web` runs it before every export, and
+  `test_web_demo` fails while the preset doesn't match the data. So when a track is replaced (the owner's
+  songs, GDD §11: the same file name, or a new file named in `data/audio/music_library.tres`), the filter
+  follows the library: a demo track's new file ships, the old file left in its folder doesn't, and another
+  zone's new file stays out.
+- *A build without some sounds:* `SfxLibrary.has_file()`; `PlayerSfx` readies only the sounds the build
+  has, and `MusicDirector.level_complete_sound()` falls back to the E riff when a zone's riff isn't in
+  the build. A sound asked for by name whose file is missing still warns.
+- *Checks:* `test_web_demo` (the preset, the filter from the data and with replaced tracks, everything the
+  demo's scenes, scripts and data reference kept by the filter and loading, the walk from the title to the
+  end screen with the sound library as the export has it, no ads, purchases or leaderboards on any screen,
+  the store links). `tools/web/check_pack.gd` checks an exported pack from the inside, run by the desktop
+  Godot from the pack's folder so `res://` is the pack alone: the demo's music and sounds load, no other
+  music is in it, and `tools/web/demo_walk.gd` walks it from the title to the end screen (the City's three
+  levels and the Floating Head, with the results and the shop between them, in god mode) with no error or
+  warning logged. `tools/web/browser_check.js` drives the release and debug exports in Chromium through
+  Playwright (README).
+- *In the browser:* `user://` is the page's storage (IndexedDB, under `/userfs/godot/app_userdata/Neon
+  Runner/`), written through after each save, so progress survives a reload. Browsers hold sound back until
+  the first click, tap or key: Godot creates its AudioContext at start (Chrome notes it's suspended) and
+  resumes it on the first input. A phone's browser is a mobile device (`DeviceProfile.is_mobile()`, from the
+  engine's `web_android` and `web_ios` tags): 3 lanes, the touch layout and hints. Held upright, the page
+  covers the game with "turn your phone sideways" (a style in the preset's `html/head_include`) and
+  `App._on_window_resized()` pauses a running level (both DESIGN-TBD, `docs/questions/e2.md`).
+- *Touch words:* `DeviceProfile.has_touch()` means a phone, a tablet or a real touch screen. The project lets
+  the mouse stand in for touch (`input_devices/pointing/emulate_touch_from_mouse`), which makes
+  `DisplayServer.is_touchscreen_available()` true on every desktop and in every desktop browser, so the
+  hints go by `has_touch()` and name the keys there.
 
 ## Tests
 
@@ -1083,7 +1128,9 @@ at 3, 5 and 6 lanes, watched by `attack_watch.gd`: no wave meets the runner on a
 big attacks overlap. `test_audio` checks
 the music files (seamless loops, lengths, tempos, size budgets), the Music autoload's fades, duck and
 death dip on its players' levels and the bus's low-pass (headless runs never start a player), and the
-run's music hooks through the App. The runner frees
+run's music hooks through the App. `test_web_demo` checks the web demo's preset, its export filter against
+the data and everything the demo references, and walks the demo from the title to its end screen (see
+Platforms and build flavors). The runner frees
 anything a suite leaves in the tree, gives suites a fresh, unsaved profile, reports a suite that fails
 to load, and ends a stuck run after 1200 s of real time.
 
