@@ -31,7 +31,8 @@ func _ready() -> void:
 	_net_worth = ScreenBase.make_label("", UiTheme.CAPTION)
 	_net_worth.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_net_worth.size_flags_vertical = Control.SIZE_FILL
-	_net_worth.tooltip_text = "Earned credits you haven't spent. Leaderboards rank it."
+	# The web demo has no leaderboards (GDD §2).
+	_net_worth.tooltip_text = "Earned credits you haven't spent." + (" Leaderboards rank it." if BuildFlavor.has_leaderboards() else "")
 	_net_worth.mouse_filter = Control.MOUSE_FILTER_PASS
 	header_right.add_child(_net_worth)
 	wallet = CreditCounter.new()

@@ -78,6 +78,7 @@ func _ready() -> void:
 				Platform.configure_for(BuildFlavor.current())
 	profile = SaveService.load_profile(save_path)
 	Settings.apply(profile)
+	get_tree().root.size_changed.connect(_on_window_resized)
 
 
 func _notification(what: int) -> void:
@@ -89,6 +90,21 @@ func _notification(what: int) -> void:
 			save()
 		NOTIFICATION_WM_CLOSE_REQUEST:
 			save()
+
+
+## True when the web demo runs on a touch screen held upright. The game is laid out for landscape
+## everywhere (GDD §2), so the page then covers it with "turn your phone sideways" (the web preset's
+## head include). DESIGN-TBD (docs/questions/e2.md): what the web demo does on a phone held upright.
+func web_upright() -> bool:
+	var window: Vector2i = get_tree().root.size
+	return OS.has_feature("web") and DeviceProfile.has_touch() and window.y > window.x
+
+
+## A running level pauses while the web demo's phone is held upright, so nothing happens unseen; the
+## pause menu waits when it's turned back.
+func _on_window_resized() -> void:
+	if web_upright() and run != null and run.state == LevelRun.State.RUNNING and run.context.mode != RunContext.Mode.QUICK:
+		pause_game()
 
 
 ## Main calls this once its layers exist. Starts wherever the command line says.
