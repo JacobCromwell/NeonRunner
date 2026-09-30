@@ -29,7 +29,9 @@ func run() -> void:
 func _loadout(items: Dictionary) -> Loadout:
 	var l := Loadout.new()
 	for k: String in items:
-		if k in ["armor", "shield", "grapple", "revive"]:
+		if k == "armor":
+			l.armor = true
+		elif k in ["shield", "grapple", "revive"]:
 			l.charges[StringName(k)] = items[k]
 		else:
 			l.tiers[StringName(k)] = items[k]

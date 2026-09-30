@@ -4,8 +4,10 @@ extends Node
 ## screen:
 ##   godot --path . res://tools/showcase/screens_showcase.tscn -- --screen=shop
 ## Screens: title, levels, shop, shop_next, settings, pause, pause_settings, death, results,
-## failed, slot, cinematic, demo_end, hud; and a boss fight, with the test boss in the City's boss slot:
-## boss (the HUD's boss bar at the checkpoint), boss_pause, boss_death, boss_results.
+## failed, slot, cinematic, demo_end, hud; hud_armor (the HUD's armor through its states, GDD §4: up
+## until 2 s, broken at 2 s, its ring filling with the wait sped up, back at about 4.3 s; --tier=N wears
+## the upgrade's tier N, default 0: the free armor); and a boss fight, with the test boss in the City's
+## boss slot: boss (the HUD's boss bar at the checkpoint), boss_pause, boss_death, boss_results.
 ## Options: --fresh (a new profile), --progress=<step id> (every campaign step before that one
 ## completed, e.g. --progress=golden/1), --touch (phone/tablet sizing), --mobile (a mobile build:
 ## 3 lanes, credit packs, rewarded ads), --flavor=web_demo (read by App), --scroll-end (scrolls the
@@ -90,6 +92,8 @@ func _open(screen: String) -> void:
 			world.score.add_bonus(&"stomp", 50, "Stomp")
 			world.score.multiplier = 2.0
 			App.run.hud.show_hint("Cyborgs fire in bursts: watch the arm glow, then switch lanes. Stomp their heads!")
+		"hud_armor":
+			await _hud_armor()
 		"boss", "boss_pause", "boss_death", "boss_results":
 			await _boss(screen)
 		_:
@@ -102,6 +106,32 @@ func _play(step_id: String, seconds: float) -> void:
 	App.run.context.god_mode = true
 	App.run.world.player.god_mode = true
 	await _seconds(seconds)
+
+
+## The HUD's armor through its states on City 1 (god mode): up, then broken by enemy attacks at 2 s
+## (the runner flashes), its ring a third full at 2.5 s and filling (the wait sped up so a short capture
+## shows it), and back at about 4.3 s, when the icon flashes and armor_back plays.
+func _hud_armor() -> void:
+	var tier: int = 0
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--tier="):
+			tier = int(arg.get_slice("=", 1))
+	App.profile.set_tier(&"armor", tier)
+	await _play("city/1", 2.0)
+	var p: Player = App.run.world.player
+	var shot := Hazard.new()
+	shot.hazard_name = "showcase shot"
+	shot.is_enemy_attack = true
+	p.god_mode = false
+	while p.armor > 0:
+		p.invulnerable_left = 0.0
+		p.receive_hit(shot)
+	p.god_mode = true
+	shot.free()
+	await _seconds(0.5)
+	p.armor_state.recharge_left = p.armor_state.recharge_time * 0.67
+	await _seconds(1.5)
+	p.armor_state.recharge_left = 0.3
 
 
 ## A boss fight on the campaign flow: the test boss in the City's boss slot, god mode, played into its

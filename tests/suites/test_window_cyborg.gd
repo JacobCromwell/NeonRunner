@@ -31,7 +31,10 @@ func _spawn(w: RunWorld, at: float, side: int, params: Dictionary) -> WindowCybo
 func _loadout(items: Dictionary) -> Loadout:
 	var l := Loadout.new()
 	for k: String in items:
-		l.charges[StringName(k)] = items[k]
+		if k == "armor":
+			l.armor = true
+		else:
+			l.charges[StringName(k)] = items[k]
 	return l
 
 
