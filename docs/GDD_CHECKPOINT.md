@@ -84,6 +84,19 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 - **Settings menu:** audio volume and **full key rebinding**.
 - **Controllers:** stretch goal. All input must go through Godot input actions from day one so it's cheap to add later. Steam Deck is a target of opportunity.
 
+### Pace and busier levels (owner's playtest, September 30, 2026)
+- The game should feel **edgier, flashier and more action-packed**. After playing every zone, the owner found that the runner and the enemies felt slow, even though the levels were hard.
+- **Run speed rises zone by zone:** about **21 m/s in the Neon City** (it was 18 m/s everywhere), rising to about **25 m/s in the Golden Zone**. Enemies and their attacks speed up to match.
+- **Speed effects** add spectacle: the camera widens at speed, speed lines, camera shake, sparks, and a brief freeze on kills. All of them honour Reduced flashing.
+- **Busier levels:** more gaps, obstacles and enemies than the first build had (to an extent), so there is always something going on.
+- **Zone doodads:** scenery pieces standing in lanes, specific to each zone.
+  - The Neon City: pillars, small buildings and tiny market stalls.
+  - Gangland: burned-out cars and broken-down shops.
+  - The Marketplace: plenty of plants and casino machines.
+  - The other zones' doodads follow each zone's look.
+  - They never hurt. Running into one **pushes the player into a neighbouring lane**: the side with room, or, if both sides have room, a side chosen per doodad (the same on every attempt).
+  - *(Proposed:)* a push never lands the player on a gap or a hazard, and it costs nothing else.
+
 ---
 
 ## 4. Failure, Death & Revive
@@ -91,6 +104,7 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 - **One hit ends the run**, unless protected by armor or a shield.
 - **Falls:** into gaps between trucks or holes in the street, within a lane. Switching lanes into a lane that has a gap under you = fall. Lane switching itself is safe.
 - **Invulnerability:** after armor or a shield breaks, the player gets about **1 second of invulnerability** (character flashes).
+- **Free armor** (owner's playtest, September 30, 2026): every level and boss fight starts with armor, and after it breaks it **comes back 30 seconds later**. The armor in the shop becomes an upgrade to it (§8).
 - **No checkpoints.** Levels are short (**90–150 seconds**). Death restarts the level.
 - **On death, and when quitting a level from the pause menu, the player keeps 20%** of credits collected during that attempt (quitting decided September 26, 2026, so deliberately dying never pays better than quitting). Completing a level always pays far more, so deliberate dying is never profitable.
 
@@ -199,7 +213,7 @@ Level names approved by the owner (September 26, 2026).
 - **Replay features:**
   - Star ratings or grades per level
   - Harder difficulty tiers after completing the game
-  - **Endless mode** (decided September 26, 2026):
+  - **Endless mode** (decided September 26, 2026). **Deferred** (owner, September 30, 2026): the campaign comes first, and endless mode is revisited once the campaign is done.
     - It runs **until the player dies**, with no time limit, and its difficulty keeps climbing.
     - Its scenery **cycles through the zones the player has unlocked**, changing every few minutes.
     - It pays **20% of credits collected, like a death, plus a lump sum every 2 minutes survived**, so lasting longer pays off.
@@ -238,12 +252,12 @@ The shop appears between levels and after every death.
 | **Juggernaut dash** | Tap-triggered; barrels through enemies and obstacles. Uses a **cooldown**. | *(open)* |
 | **Magnet** | Automatically pulls in nearby credits. | Radius upgrades, **hard cap at the player's lane plus adjacent lanes**; never pulls credits from another surface (floor ↔ wall ↔ ceiling). |
 | **Slow time** | **PC only**, E key, cooldown-based. | *(open)* |
+| **Armor** (changed September 30, 2026; it was a breakable) | Free at the start of every level and boss fight. Blocks one **enemy attack or electrical hazard**; does NOT block solid collisions (signs, trucks, walls) or falls. After it breaks it **comes back 30 seconds later**. | Tiers **alternate** between one more hit before it breaks and a shorter wait before it comes back *(numbers open)*. |
 
 ### Breakable (break when used, then buy again)
 
 | Item | Behavior |
 |---|---|
-| **Armor** | Blocks one **enemy attack or electrical hazard**. Does NOT block solid collisions (signs, trucks, walls) or falls. |
 | **Shield** | Blocks **one hit of anything**. More expensive than armor. |
 | **Grapple hook** | Saves the player from **one fall**, then breaks. |
 | **Revive item** | Revives on the spot. On PC it's the only revive; on mobile, revive is by rewarded ad or this item. |
@@ -261,11 +275,13 @@ The shop appears between levels and after every death.
 
 ### Damage reference (shots to kill)
 
+**Laser tier 1** (owner's playtest, September 30, 2026): it has a **shorter range**, and every enemy except the sewer screech takes **two more tier-1 shots** than before. Higher tiers keep their numbers. The tier-1 numbers in this table and in §9 include the change.
+
 | Target | Laser tier 1 | Missile tier 4 |
 |---|---|---|
-| Hover truck | 15 | 5 |
-| Heli drone | 15 | 5 |
-| Octodog | 5 | *(scale)* |
+| Hover truck | 17 | 5 |
+| Heli drone | 17 | 5 |
+| Octodog | 7 | *(scale)* |
 | Sewer screech | 1 | 1 |
 | Cyborg | *(open)* | *(open)* |
 
@@ -346,7 +362,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Kill:**
   - Get onto its roof and **stomp the glowing red weak point on the cab**, sending it spinning out to explode.
   - **Routes onto the roof:** (a) take a ramp onto the wall, then wall-jump onto the truck; (b) during a backward lurch, get ahead of it, jump onto the wall, wait for the forward lurch, then jump onto the truck.
-  - Weapons also work (15 shots at laser tier 1, 5 at missile tier 4).
+  - Weapons also work (17 shots at laser tier 1, 5 at missile tier 4).
 - **Visual variants:** sleek city version; scavenger version (rusted bolted plates, spiked plow, barbed wire).
 - **Design principle it establishes:** safe things look safe, and the one deadly part looks deadly.
 
@@ -362,7 +378,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Hint:** a **doghouse** prop warns of the first Octodog appearances only.
 - **Dodge:** switch lanes or jump over it.
 - **Kill:**
-  - Weapons: 5 shots at laser tier 1.
+  - Weapons: 7 shots at laser tier 1.
   - Claws kill it (**claws beat tentacles**), and the dash kills it.
   - **Baiting it into a gap kills it** (skill bonus). The generator sometimes places Octodogs near gaps for this.
 - **Stomping without claws:** the tentacles grab the player, causing damage.
@@ -392,7 +408,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Where it attacks:** keeps firing at a player **on a wall**; **waits** while the player is on the ceiling.
 - **Kill:**
   - **Anti-grav pad:** stepping on one hurls **every drone on screen** into the ship hull, destroying it. Anti-grav affects **only drones**.
-  - Weapons: 15 shots at laser tier 1, 5 at missile tier 4, deliberately slow so the pad remains the satisfying route.
+  - Weapons: 17 shots at laser tier 1, 5 at missile tier 4, deliberately slow so the pad remains the satisfying route.
   - Claws don't work.
 - **Armor / shield:** plus the invulnerability window, this protects through a barrage.
 - **Persistence:** stays until destroyed or the level ends.
@@ -433,7 +449,7 @@ Shared interaction rules apply unless stated otherwise:
   - **Creature version in Gangland and the Marketplace:** more animalistic, as if alive, a bit cutesy and silly, like a furry creature. It keeps the same dome body and chest cannon, so it reads as the same enemy (readability rule). Since the turret arrives after Gangland, the Gangland look only matters if zones are ever mixed (e.g. endless mode).
 - **Attack:** fires at the player **the same way the cyborg does** (a visible charge-up with a sound, a short burst of bolts, then a pause), and is **slightly more accurate** than the cyborg. It should **not** be a difficult enemy.
 - **Dodge:** by dodging its shots.
-- **Kill:** claws, the dash, a stomp, or **5 shots** at laser tier 1.
+- **Kill:** claws, the dash, a stomp, or **7 shots** at laser tier 1.
 - **Body:** treated like the cyborg's body. Running into it is deadly unless the player has the shield or claws (or is dashing); armor doesn't help.
 - **Armor and shield:** both block its shots.
 - **Scaling:** across the campaign it fires somewhat faster and takes slightly more damage to kill, but never by much.
@@ -450,12 +466,12 @@ Shared interaction rules apply unless stated otherwise:
 - **Dodge:** leave its lane before it arrives. It only threatens **its own floor lane**: wall runners and ceiling runners are safe, even beside it.
 - **Contact:** touching the buzzsaw hurts. The **shield and armor block it**. After a block, the floor under the player **holds for about a second**, just enough to switch lanes (a jump would land back in the cut lane). Escaping after a block should be of **medium difficulty**.
 - **Kill:**
-  - **Weapons:** very tough, **20 shots** at laser tier 1. **Killing it before it charges saves the floor**; killing it mid-charge **stops the cut where it dies**. Tuned so laser tier 1 can't stop it in time, but the missile tiers usually can.
+  - **Weapons:** very tough, **22 shots** at laser tier 1. **Killing it before it charges saves the floor**; killing it mid-charge **stops the cut where it dies**. Tuned so laser tier 1 can't stop it in time, but the missile tiers usually can.
   - **Claws don't work** (it's claw-immune).
   - **The dash smashes it**, but that's a risky panic move: the player dashes straight into the cut lane, so it's only survivable with the grapple hook.
   - **No stomp** (the player would land on the blade).
 - **Limits:** only one at a time. It never cuts a lane holding a ramp, a pad or the safe landing zone after a ceiling. On 3 lanes, two lanes always stay whole.
-- **Scaling:** the only change across the campaign is that its **rev time gets slightly shorter**. It appears in the Corporate zone and the **two zones after it (the Dead Zone and the Golden Zone)**, so the speed-up is spread over few levels and it never gets too fast (corrected September 26, 2026). Its health stays at 20 shots.
+- **Scaling:** the only change across the campaign is that its **rev time gets slightly shorter**. It appears in the Corporate zone and the **two zones after it (the Dead Zone and the Golden Zone)**, so the speed-up is spread over few levels and it never gets too fast (corrected September 26, 2026). Its health stays at 22 shots.
 - **Implementation note:** the generator plans each cut in advance (lane, start and end), so levels stay fair and identical on every attempt; the saw is just the visible cause. This is the first floor that turns into a gap during play.
 
 ### 9.10 Resonator (the owner's "Hymn Censer" reworked in a sci-fi form; the Golden Zone's new enemy, first appears in Golden 1)
@@ -474,7 +490,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Look:** the Golden Zone's walls are lined with golden statues holding halberds, most of them decorative. A **live** one stands in a niche **at wall-run height** with **glowing red eyes**; decorative statues never stand at wall-run height (safe things look safe). They fit the Golden Palace as its guards.
 - **Attack:** as the player approaches, its eyes flare and stone grinds (visual and audio warning); then it **swings its halberd across its wall section and the outer floor lane**.
 - **Dodge:** on the wall, pass above or below the swing by timing the wall entry; on the floor, stay out of the outer lane. Later ones swing twice or come in pairs.
-- **Kill:** a stomp from a wall jump *(proposed)*, or weapons: **15 shots** at laser tier 1, with no special weapon rule (decided September 26, 2026). Armor blocks the halberd; the statue's body is solid *(proposed)*.
+- **Kill:** a stomp from a wall jump *(proposed)*, or weapons: **17 shots** at laser tier 1, with no special weapon rule (decided September 26, 2026). Armor blocks the halberd; the statue's body is solid *(proposed)*.
 
 ### 9.12 Tithe Collector (owner, September 26, 2026; first appears in Corporate 2 *(proposed)*)
 - **Look:** a small, fast gold drone with a collection plate; smug and gaudy.
@@ -522,6 +538,7 @@ Shared interaction rules apply unless stated otherwise:
   - **Back to the sky:** once or twice during the fight it rises for another bombing run (shorter than the first).
   - **Bringing it down** (the owner's idea of a building falling on it): marked, cracked towers stand ahead at the roadside. The player **baits the eye laser into a marked tower** by leading the beam to that side and dodging at the last moment, the way players bait an Octodog into a gap. The tower topples onto the ship and pins it low across the trucks. If the player doesn't manage it, the laser eventually clips a tower on its own, so a struggling player still gets a chance; baiting it is faster and scores more.
   - **Weak points**: glowing **red** on top of the head, the same language as the hover truck's weak point. While it's pinned, the player **stomps** one. Each phase uses a different Zone 1 skill to get on top: (1) run up the fallen tower like a ramp; (2) wall-jump onto it; (3) ride a ship's underside via an anti-grav pad and drop onto it when the hull ends.
+  - **Getting on top is forgiving** (owner's playtest, September 30, 2026): a lane switch onto the fallen tower partway along still gets the runner onto it, and each phase's route onto the head must be obvious and always there.
   - **Three phases**, one stomp each. After a stomp it shakes free, shrieks and rises; the next phase is faster, with more cyborgs.
   - **Damage:** stomps do the real damage (a third of its health each); weapons chip away slowly (tuned so even the best weapon saves at most one stomp over the whole fight).
   - **Propaganda voice:** a heavily distorted announcement voice that isn't meant to be understood, plus a few short slogans shown as text on its face screen (so only those slogans need translating).

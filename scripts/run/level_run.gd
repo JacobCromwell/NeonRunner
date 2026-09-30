@@ -127,7 +127,8 @@ func _build() -> void:
 	if context.mode != RunContext.Mode.QUICK and bool(Settings.value(App.profile, "hints")):
 		_hints = HintDirector.new()
 		add_child(_hints)
-		_hints.setup(world, App.profile, App.mobile or DisplayServer.is_touchscreen_available())
+		# Touch words ("swipe left") only where the player touches the screen, not in a desktop browser.
+		_hints.setup(world, App.profile, App.mobile or DeviceProfile.has_touch())
 		_hints.hint_shown.connect(func(_id: String, text: String) -> void: hud.show_hint(text))
 	if OS.is_debug_build() and debug_hud == null:
 		_build_debug_tools()

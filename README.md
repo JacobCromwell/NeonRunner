@@ -169,8 +169,10 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     effects, among them the level-complete riff in each zone's key
   - first-encounter hints
 - **Settings:** volumes, key rebinding, screen shake, reduced flashing, hints.
-- **Platforms:** export presets for Windows, Android, iOS and the web demo. Ads, purchases and
-  leaderboards go through one platform layer, which is a stub until the real plugins are chosen.
+- **Platforms:** export presets for Windows, Android, iOS and the web demo, which exports lean (only the
+  music it plays) and is checked from the inside and in a browser (see The web demo). Ads, purchases,
+  leaderboards and store links go through one platform layer, which is a stub until the real plugins are
+  chosen.
 
 ## Tuning while you play (F6)
 
@@ -193,6 +195,7 @@ tools/godot.sh test             all tests, under two minutes; exit code 0 = pass
 tools/godot.sh smoke [options]  40 s of the real game, headless; prints only problems
 tools/godot.sh sfx [--review]   regenerate the sound effects (assets/sfx/) from tools/asset_gen/
 tools/godot.sh music [--review] regenerate the music (assets/music/)
+tools/godot.sh web [--debug] [--serve]  export the web demo and check it (see The web demo)
 tools/godot.sh import           force a resource import
 ```
 
@@ -210,14 +213,48 @@ res://tools/showcase/cinematic_review.tscn -- --slot=golden/intro --once`.
 
 `tools/measure/big_attacks.gd` measures how the big attacks of different enemy types overlap over simulated runs of
 the campaign, with big attacks taking turns (GDD §9, the `big_attacks_take_turns` switch in the game rules and the
-F6 panel) and without, and how much taking turns delays them:
-`godot --headless --fixed-fps 60 -s res://tools/measure/big_attacks.gd -- [--levels=gangland/3] [--lanes=3,5,6]`
-(the whole campaign, both ways, takes about ten minutes; its header lists the options).
+F6 panel) and without, how much taking turns delays them, and which enemies never got a big attack in:
+`godot --headless --fixed-fps 60 -s res://tools/measure/big_attacks.gd -- [--levels=gangland/3] [--lanes=3,5,6]
+[--seeds=6] [--features=octodog]` (the whole campaign, both ways, takes about ten minutes on the levels' own seeds;
+its header lists the options).
 
 `tools/measure/level_shape.gd` measures each campaign level's shape: every feature's share of its picks, its
 enemy, host and obstacle counts, what only the every-feature guarantee brings, and The Hush's quiet stretches
 against its bursts, with the recency curve on and off:
 `godot --headless -s res://tools/measure/level_shape.gd -- [--levels=dead_zone/2] [--curve=on,off]`.
+
+## The web demo
+
+The web demo (GDD §2) is the "Web (demo)" export preset: the Neon City's three levels and the Floating Head,
+then a "get the full game" screen with links to Steam, the App Store and Google Play (placeholder links in
+`data/platform/store_links.json`). It has no endless mode, ads, purchases or leaderboards, and saves in the
+browser.
+
+1. **Export templates**, once per machine: the web templates of Godot 4.7.2, from the official release
+   (`Godot_v4.7.2-stable_export_templates.tpz` on https://github.com/godotengine/godot-builds/releases/tag/4.7.2-stable;
+   check it against the release's `SHA512-SUMS.txt`). The demo needs only its two web templates:
+   `unzip -j Godot_v4.7.2-stable_export_templates.tpz templates/web_nothreads_debug.zip templates/web_nothreads_release.zip -d ~/.local/share/godot/export_templates/4.7.2.stable/`
+   (with `XDG_DATA_HOME` set, Godot looks in `$XDG_DATA_HOME/godot/export_templates/` instead; on Windows it's
+   `%APPDATA%\Godot\export_templates\4.7.2.stable\`, or the editor's Editor > Manage Export Templates).
+2. **Export and check:** `tools/godot.sh web` exports the demo to `exports/web/` (git-ignored), then runs the
+   exported pack headless from the title to the end screen (`tools/web/check_pack.gd`) and lists the files'
+   sizes. `--debug` exports a debug build to `exports/web_debug/` instead, where the command-line options work
+   (below). The export leaves out the music the demo never plays, worked out from the music library, so
+   replacing a track needs no change to the preset: `tools/godot.sh web` updates its filter, and the tests
+   fail until it's updated (`docs/ARCHITECTURE.md`, Platforms and build flavors). The editor's Project > Export
+   works too.
+3. **Serve it:** `tools/godot.sh web --serve` exports, checks and serves it at http://localhost:8060 (or any
+   static web server over `exports/web/`, e.g. `python3 -m http.server 8060 --directory exports/web`). It's
+   built without thread support, so it needs no special headers; upload the folder's files as they are (for
+   itch.io, a zip with `index.html` at its top).
+4. **In a browser:** `node tools/web/browser_check.js` drives both exports in Chromium through Playwright (Node
+   and Playwright with its Chromium needed): loading, the title on the Compatibility renderer, the sound after
+   the first key, the canvas at other window sizes, City 1's glow, saves that survive a reload, the shop, a phone
+   (taps, a swipe, held upright), and the end screen's store links. Frames and the console go to
+   `build/browser/`. Software WebGL (no GPU) draws a level at a frame every few seconds, so it takes a while.
+
+On a debug build, the options go into the page's engine settings: in `exports/web_debug/index.html`, set
+`"args":["--","--level=city/outro"]` in `GODOT_CONFIG` to open on the City's outro, one step from the end screen.
 
 ## Tests
 
@@ -258,6 +295,11 @@ against its bursts, with the recency curve on and off:
   skin from its data, a camera that never flies into a ceiling or out of the street, ending in the run
   camera's view), and the App's flow through a built slot, the web demo's too.
 - **Screens:** every screen at desktop and touch sizes.
+- **The web demo:** its export preset, and a filter that leaves out only what the demo never loads, worked out
+  from the data (and following a replaced track); everything the demo's scenes, scripts and data reference kept
+  and loading; the demo walked from the title through the City's three levels and the Floating Head to the
+  "get the full game" screen; no ads, purchases or leaderboards on any screen; the store links from data
+  through the platform layer.
 - **The runner:** Razor Echo's poses on every surface, the coat's panels (never through the legs or the
   ground), the budgets, the power-up looks, and its copper glow kept clear of every hazard colour.
 - **The cyborgs' look:** in every zone's look, hitboxes pinned to their sizes and no look bigger than the
@@ -287,7 +329,8 @@ Headless runs skip sounds, because the dummy audio driver never finishes a playb
 
 ```
 play.sh, play.cmd       play the current version
-tools/                  godot.sh (play/edit/test/smoke/sfx/music), asset generators, showcase scenes, measurements
+tools/                  godot.sh (play/edit/test/smoke/sfx/music/web), asset generators, showcase scenes, measurements,
+                        the web demo's export tools and browser check (web/)
 scenes/main.tscn        the main scene: world, screens and overlays
 scenes/bosses/          boss fight scenes (the test boss and the Floating Head so far)
 scenes/cinematics/      cinematic scenes (the placeholder arrival flyover so far)

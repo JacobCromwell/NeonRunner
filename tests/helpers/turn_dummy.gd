@@ -7,9 +7,13 @@ extends Enemy
 ## off to one side (EnemyDirector.note_attack_shot). It never hurts anyone: it only reports.
 ## Spawn params: {first, interval, warning, attack, shot, give_up (seconds it waits before it lets
 ## this attack go; 0 = never), chain (asks again while its attack is on, like the Bad Dream's next
-## slash), exclusive (bool), exclusive_of (Array of type names)}.
+## slash), exclusive (bool), exclusive_of (Array of type names), pauses (level-time spans [from, to]
+## when it isn't ready: it neither asks nor starts, like an enemy whose stretch isn't clear for a
+## moment), stalls (level-time spans when it asks but doesn't start even when it may, like an Octodog
+## told it may go that is still moving its charges on to a clear stretch)}.
 ## Its history lists [event, level time]: ready, held, start (its warning starts), hit (its attack
-## starts), end, gave_up, and "again" / "again_held" for chained asks.
+## starts), end, gave_up, stalled (it may go but isn't ready), and "again" / "again_held" for chained
+## asks.
 
 enum Step { IDLE, READY, WARNING, ATTACK }
 
@@ -26,6 +30,8 @@ var attack: float = 0.5
 var shot: float = 0.0
 var give_up: float = 0.0
 var chain: bool = false
+var pauses: Array = []
+var stalls: Array = []
 ## Seconds it waited before each of its attacks started.
 var waits: Array[float] = []
 
@@ -44,6 +50,8 @@ func _build() -> void:
 	shot = float(p.get("shot", 0.0))
 	give_up = float(p.get("give_up", 0.0))
 	chain = bool(p.get("chain", false))
+	pauses = p.get("pauses", [])
+	stalls = p.get("stalls", [])
 	exclusive_major_attack = bool(p.get("exclusive", false))
 	for t: Variant in p.get("exclusive_of", []):
 		exclusive_of.append(StringName(t))
@@ -60,9 +68,11 @@ func _tick(delta: float) -> void:
 				step = Step.READY
 				_ready_at = now
 				history.append(["ready", now])
-				_ask(now)
+				if not _within(pauses, now):
+					_ask(now)
 		Step.READY:
-			_ask(now)
+			if not _within(pauses, now):
+				_ask(now)
 		Step.WARNING:
 			_clock -= delta
 			if chain:
@@ -96,8 +106,13 @@ func _ask(now: float) -> void:
 			history.append(["held", now])
 		if give_up > 0.0 and now - _ready_at >= give_up:
 			history.append(["gave_up", now])
+			world.director.give_up_turn(self)
 			step = Step.IDLE
 			_clock = interval
+		return
+	if _within(stalls, now):
+		if history.is_empty() or history[-1][0] != "stalled":
+			history.append(["stalled", now])
 		return
 	waits.append(now - _ready_at)
 	step = Step.WARNING
@@ -110,6 +125,14 @@ func is_major_attack_active() -> bool:
 
 
 func should_retire() -> bool:
+	return false
+
+
+## True if level time `now` falls in one of `spans` ([from, to] pairs).
+static func _within(spans: Array, now: float) -> bool:
+	for s: Variant in spans:
+		if now >= float(s[0]) and now < float(s[1]):
+			return true
 	return false
 
 

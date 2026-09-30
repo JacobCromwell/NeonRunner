@@ -170,14 +170,26 @@ the Tithe Collector) opt in the same way for whichever of their attacks count as
   `world.director.major_attack_blocked(self)`, and while the answer is true it doesn't start, asks
   again next frame, and goes on as it was: the drone keeps following, the truck holds back or keeps
   pacing, the Octodog paces in position. Asking only when ready matters: the director queues those
-  held, and a waiting enemy that stops asking loses its place after a frame. Once a warning has
-  started the attack runs its course; nothing stops it for another's turn.
+  held. Once a warning has started the attack runs its course; nothing stops it for another's turn.
+- **Keep asking to keep your place; give up out loud.** A waiting enemy keeps its place in the queue
+  until its attack starts, as long as it keeps asking: through its turn too (told it may go, one that
+  isn't quite ready and asks again still goes before those that waited less), and through a gap in
+  its asks (its stretch not clear for a moment, its planned point not reached yet) of up to
+  `GameRules.turn_place_grace` (1 s; DESIGN-TBD, `docs/questions/r3b.md`); meanwhile those behind
+  it wait. After a longer gap it loses its place, so the others don't wait long for an enemy that
+  isn't ready (a Resonator waiting for clear floor): an enemy that means to wait longer keeps asking
+  (the Octodog, below). An enemy that gives up the attack it waited for calls
+  `world.director.give_up_turn(self)` and leaves the queue at once: the Octodog runs off, the hover
+  truck changes state (it asks only while pacing, for its cannon, or holding back, for its lurch), the
+  Resonator leaves, the Bad Dream dissolves. One that leaves play loses its place at once.
 - **An attack that may only come within a window** (the Octodog's planned charges) moves the window
   on while `held_for_turn(self)` says it's waiting for another type, up to a limit of its own
   (`OctodogTuning.turn_wait_max`), and keeps every fairness rule it was planned with. Once held it
   keeps asking every frame until its turn comes, whether or not its stretch is clear by then, and if
   the wait made it miss its planned stretch, the window keeps moving on until the stretch ahead is
-  clear again (within the same limit), so waiting for its turn never costs it its charges. The
+  clear again (within the same limit), so waiting for its turn never costs it its charges. After
+  that it still asks every frame while its `charge_slack` lasts, so all along it keeps its place: another
+  type ready again waits for it rather than go first again, until it charges or runs off. The
   Resonator's planned pulses do the same: a pulse held for another type's turn, or for clear floor
   where its wave would meet the player, moves the rest of its visit on; after
   `ResonatorTuning.turn_wait_max` spent waiting for other attacks (waiting for clear floor doesn't
@@ -189,16 +201,23 @@ the Tithe Collector) opt in the same way for whichever of their attacks count as
   warning, which the director can't do yet.)
 
 The director holds a big attack while another type's is on or its shots are still on their way; an
-enemy whose own attack is on carries on (the Bad Dream's next slash in its chase); and of the enemies
-of different types waiting, the one that has waited longest goes next (then the one spawned first),
-so none is kept from its turn by others that keep asking. An attack that is on never waits for another
-(the Bad Dream holds a slash within its chase only for an attack that was already on when the chase
-began, and that one doesn't wait), so two enemies can't wait on each other. Types space their own attacks themselves
-(one drone barrage at a time; one Octodog, one hover truck at a time). GDD §9.7's rule holds with the
-switch off as well: an `exclusive_major_attack` (the Bad Dream's chase) and the attacks of the types in
-its `exclusive_of` (Octodogs', drones') never overlap. `is_waiting()` and `turn_wait()` say whether and
-how long an enemy has been waiting. `tools/measure/big_attacks.gd` measures the overlaps and the delays
-over the campaign (Review tools); `tests/helpers/turn_dummy.gd` is a scripted big attack for tests.
+enemy whose own attack is on carries on (the Bad Dream's next slash in its chase); and the enemies of
+different types waiting go in the order their waits began (then the one spawned first), whether or not
+they're asking at that moment, so none is kept from its turn by others that keep asking: one that
+began waiting later never goes first. An attack that is on never waits for another (the Bad Dream
+holds a slash within its chase only for an attack that was already on when the chase began, and that
+one doesn't wait), and in the queue a waiting enemy is only ever held by those ahead of it, so two
+enemies can't wait on each other; the one at the head starts, gives up, or loses its place a grace
+after it stops asking (asking while it isn't ready holds the others back: only the Octodog does that,
+and only until it charges or runs off, `turn_wait_max` plus its `charge_slack` at most), so nothing
+waits for ever.
+Types space their own attacks themselves (one drone barrage at a time; one Octodog, one hover truck at
+a time). GDD §9.7's rule holds with the switch off as well: an `exclusive_major_attack` (the Bad
+Dream's chase) and the attacks of the types in its `exclusive_of` (Octodogs', drones') never overlap. `is_waiting()` and `turn_wait()` say whether and
+how long an enemy has been waiting (from its first held ask until its attack starts or it loses its
+place). `tools/measure/big_attacks.gd` measures the overlaps, the delays and the enemies that never got
+a big attack in over the campaign (Review tools); `tests/helpers/turn_dummy.gd` is a scripted big
+attack for tests (with pauses in its asks and stalls when it may go).
 
 **Floor use.** The floor under a ceiling may hold enemies (GDD §3, changed September 26, 2026), but
 a ceiling's landing zone and the spot of each of its pads keep off the floor enemies use (see
@@ -1221,7 +1240,52 @@ owned, switched-on items; one charge of each breakable per attempt.
 `BuildFlavor` (`full_pc`, `full_mobile`, `web_demo`) comes from export feature tags (or
 `--flavor=` for testing). `Platform` (autoload) is the only way to reach ads, purchases,
 leaderboards, achievements, store links and cloud save; `StubBackend` serves the editor, tests and
-the web demo until the real plugins are chosen (risk test R3).
+the web demo until the real plugins are chosen (risk test R3). The store links are data
+(`data/platform/store_links.json`) and open through `Platform.open_store()`, which hands the URL to the
+backend's `open_url()`: a portal that restricts outbound links gets a backend of its own, and the stub
+records what it opened (`opened_urls`; tests switch `open_links` off so nothing leaves the game).
+
+**The web demo** (GDD §2; task E2) is the "Web (demo)" export preset: the `web_demo` feature tag, the
+Compatibility renderer (the web's only one), no thread support (so it needs no cross-origin isolation
+headers, as itch.io and the portals serve it), no GDExtension support, and a canvas that follows the
+window or a portal's frame (`html/canvas_resize_policy` adaptive). `tools/godot.sh web` exports it
+(README, The web demo).
+- *What it plays:* the zones marked `in_demo` (the Neon City and its boss); a step past them leads to the
+  "get the full game" screen (`App.in_demo_scope()`). No endless mode, and no ads, purchases or
+  leaderboards: the platform offers none, and no screen shows any.
+- *What it leaves out* (`tools/web/demo_filter.gd`, worked out from the data): the tests, the tools, the
+  test boss, and the music it never plays: every audio file in the music library's folders that no track
+  the demo plays uses, the files of the tracks it never plays wherever they are, and those tracks'
+  level-complete riffs. The tracks it plays are the menus' (`menu`), the City's (`city`, quick play's too)
+  and each demo zone's and its boss's (`DemoFilter.demo_tracks()`). `tools/web/update_filter.gd` writes
+  the preset's exclude filter from that, `tools/godot.sh web` runs it before every export, and
+  `test_web_demo` fails while the preset doesn't match the data. So when a track is replaced (the owner's
+  songs, GDD §11: the same file name, or a new file named in `data/audio/music_library.tres`), the filter
+  follows the library: a demo track's new file ships, the old file left in its folder doesn't, and another
+  zone's new file stays out.
+- *A build without some sounds:* `SfxLibrary.has_file()`; `PlayerSfx` readies only the sounds the build
+  has, and `MusicDirector.level_complete_sound()` falls back to the E riff when a zone's riff isn't in
+  the build. A sound asked for by name whose file is missing still warns.
+- *Checks:* `test_web_demo` (the preset, the filter from the data and with replaced tracks, everything the
+  demo's scenes, scripts and data reference kept by the filter and loading, the walk from the title to the
+  end screen with the sound library as the export has it, no ads, purchases or leaderboards on any screen,
+  the store links). `tools/web/check_pack.gd` checks an exported pack from the inside, run by the desktop
+  Godot from the pack's folder so `res://` is the pack alone: the demo's music and sounds load, no other
+  music is in it, and `tools/web/demo_walk.gd` walks it from the title to the end screen (the City's three
+  levels and the Floating Head, with the results and the shop between them, in god mode) with no error or
+  warning logged. `tools/web/browser_check.js` drives the release and debug exports in Chromium through
+  Playwright (README).
+- *In the browser:* `user://` is the page's storage (IndexedDB, under `/userfs/godot/app_userdata/Neon
+  Runner/`), written through after each save, so progress survives a reload. Browsers hold sound back until
+  the first click, tap or key: Godot creates its AudioContext at start (Chrome notes it's suspended) and
+  resumes it on the first input. A phone's browser is a mobile device (`DeviceProfile.is_mobile()`, from the
+  engine's `web_android` and `web_ios` tags): 3 lanes, the touch layout and hints. Held upright, the page
+  covers the game with "turn your phone sideways" (a style in the preset's `html/head_include`) and
+  `App._on_window_resized()` pauses a running level (both DESIGN-TBD, `docs/questions/e2.md`).
+- *Touch words:* `DeviceProfile.has_touch()` means a phone, a tablet or a real touch screen. The project lets
+  the mouse stand in for touch (`input_devices/pointing/emulate_touch_from_mouse`), which makes
+  `DisplayServer.is_touchscreen_available()` true on every desktop and in every desktop browser, so the
+  hints go by `has_touch()` and name the keys there.
 
 ## Tests
 
@@ -1248,7 +1312,9 @@ gives its rules script `positions()`. The generator suite also checks the recenc
 exactly (`pick_weights()`: each kind's share, the caps) and levels paced in bursts; the campaign suite
 checks each kind's share at spots all through every campaign level, The Hush and the darker lighting
 on every skin. `test_enemy_director` checks the turn-taking between big attacks
-with scripted test enemies (`tests/helpers/turn_dummy.gd`) and over simulated runs of campaign levels,
+with scripted test enemies (`tests/helpers/turn_dummy.gd`: the queue's order, a place kept through a gap
+in the asks and through the turn, give-ups and the grace), a real Octodog that another type's repeated
+attacks used to keep from its turn, and simulated runs of campaign levels,
 watched by `tools/measure/attack_watch.gd` (see Review tools). `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
 for framework tests, with `make_def()` for a BossDef from a list of phases; `test_bosses` runs fights
 in bare worlds and, with the test boss in the City's slot, through the App. `test_pickups` checks
@@ -1286,7 +1352,9 @@ action and the Skip button, Reduced flashing, holding in the background, the sam
 in data), every zone's arrival flyover and the City's boss intro at 3, 5 and 6 lanes (the zone's skin from
 its data, the level's lanes, a camera that never flies into a ceiling or out of the street, a runner that
 never runs over a hole, ending in the run camera's view), and the App's flow through a built slot (the
-next step follows, skipping, the web demo). The runner frees
+next step follows, skipping, the web demo). `test_web_demo` checks the web demo's preset, its export filter against
+the data and everything the demo references, and walks the demo from the title to its end screen (see
+Platforms and build flavors). The runner frees
 anything a suite leaves in the tree, gives suites a fresh, unsaved profile, reports a suite that fails
 to load, and ends a stuck run after 1200 s of real time.
 
@@ -1319,12 +1387,19 @@ frames on the Compatibility renderer (the web and low-end Android path) with `--
 `tools/measure/big_attacks.gd` measures the big attacks (GDD §9, "Big attacks take turns") over
 simulated runs of the campaign's levels at 3, 5 and 6 lanes, with `GameRules.big_attacks_take_turns` on
 and off: a god-mode runner in the middle lane, stomping every host it passes, while the enemies play as
-in the game. It reports the time big attacks of different types overlap, how many of each kind came, and
-how long attacks waited for their turn (`godot --headless --fixed-fps 60 -s
-res://tools/measure/big_attacks.gd -- --levels=gangland/3 --lanes=3,5,6 --out=build/measure/x.json`; the
-whole campaign takes about ten minutes). `attack_watch.gd` does the watching from the enemies' own states
-and the live shots, never from the turn-taking code, and hashes each run's event log, so two builds (or
-the switch off and a build without the rule) can be compared run by run.
+in the game. It reports the time big attacks of different types overlap, how many of each kind came,
+how long attacks waited for their turn (from the first frame the director holds an enemy for another
+type's turn until its attack, through gaps of up to 3 s, and an Octodog's until it charges, however
+long it moves its charges on; the director answers each ask the same whatever its queue keeps, so two
+builds measure the same asks alike), and the enemies that never got a big attack in (Octodogs
+without a charge, Resonators without a pulse, drones without a barrage, hover trucks without a lurch
+or a cannon shot) (`godot --headless --fixed-fps 60 -s res://tools/measure/big_attacks.gd --
+--levels=gangland/3 --lanes=3,5,6 --out=build/measure/x.json`; the whole campaign on its own seeds takes
+about ten minutes; `--seeds=6` adds six other seeds a level, `--seeds=9007-9020` runs a range, and
+`--features=octodog` keeps the levels that use a feature). `attack_watch.gd` watches the attacks from the
+enemies' own states and the live shots, never from the turn-taking code (only the waits come from the
+director's answers), and hashes each run's event log, so two builds (or the switch off and a build
+without the rule) can be compared run by run.
 
 `tools/measure/level_shape.gd` measures the campaign's shape: for each level at 3, 5 and 6 lanes, on its
 own seed and others, each feature's share of the pattern picks, the enemy, host and obstacle counts, the

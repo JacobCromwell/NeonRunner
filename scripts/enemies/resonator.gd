@@ -451,6 +451,8 @@ func _start_leave() -> void:
 	_rel = maxf(_d - world.player.distance, tune.hover_ahead)
 	_set_state(State.LEAVE)
 	_log("leave")
+	# Its pulses are over or dropped: it gives up any turn it was still waiting for (GDD §9).
+	world.director.give_up_turn(self)
 
 
 ## Another Resonator has come to pace the player: this one pulls away as soon as its pulse is over.

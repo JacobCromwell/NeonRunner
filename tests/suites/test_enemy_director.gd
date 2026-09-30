@@ -25,9 +25,14 @@ func run() -> void:
 	await _test_shots_hold_the_turn()
 	await _test_longest_wait_first()
 	await _test_no_starvation()
+	await _test_keeps_place_through_a_gap()
+	await _test_keeps_place_through_its_turn()
+	await _test_place_lapses()
+	await _test_octodog_keeps_its_place()
 	await _test_exclusive()
 	await _test_attack_on_carries_on()
 	await _test_many()
+	await _test_many_with_gaps()
 	await _test_campaign()
 
 
@@ -65,6 +70,12 @@ static func _overlaps(a: Enemy, b: Enemy) -> Array:
 	return out
 
 
+## The Octodog with this instance id, or null once it's freed.
+static func _octodog(id: int) -> Octodog:
+	var o: Object = instance_from_id(id)
+	return o as Octodog if is_instance_valid(o) else null
+
+
 static func _time_of(d: Enemy, event: String, nth: int = 0) -> float:
 	var n: int = 0
 	for h: Array in d.get(&"history"):
@@ -78,17 +89,25 @@ static func _time_of(d: Enemy, event: String, nth: int = 0) -> float:
 # --- The switch ---------------------------------------------------------------------------------
 
 ## GDD §9 (may be reverted after playtesting): one switch in the game rules, on by default, shown in
-## the F6 panel (a bool exported on GameRules).
+## the F6 panel (a bool exported on GameRules). How long a waiting enemy keeps its place without
+## asking is a tunable next to it (a float with a range hint).
 func _test_switch() -> void:
 	var rules := load("res://data/tuning/game_rules.tres") as GameRules
 	check(rules.big_attacks_take_turns and GameRules.new().big_attacks_take_turns,
 		"big attacks take turns by default (data/tuning/game_rules.tres)")
 	var shown: bool = false
+	var grace_shown: bool = false
 	for prop: Dictionary in rules.get_property_list():
+		var exported: bool = (int(prop["usage"]) & PROPERTY_USAGE_EDITOR) != 0 \
+			and (int(prop["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0
 		if prop["name"] == "big_attacks_take_turns":
-			shown = prop["type"] == TYPE_BOOL and (int(prop["usage"]) & PROPERTY_USAGE_EDITOR) != 0 \
-				and (int(prop["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0
+			shown = prop["type"] == TYPE_BOOL and exported
+		elif prop["name"] == "turn_place_grace":
+			grace_shown = prop["type"] == TYPE_FLOAT and exported and int(prop["hint"]) == PROPERTY_HINT_RANGE
 	check(shown, "the switch is an exported bool, so the F6 panel shows it")
+	check(grace_shown and is_equal_approx(rules.turn_place_grace, GameRules.new().turn_place_grace)
+		and rules.turn_place_grace > 0.0,
+		"a waiting enemy keeps its place for %.1f s without asking (an F6 tunable)" % rules.turn_place_grace)
 
 
 # --- Turns --------------------------------------------------------------------------------------
@@ -253,6 +272,166 @@ func _test_no_starvation() -> void:
 	await sim.free_world(w)
 
 
+## A waiting enemy keeps its place in the queue through a short gap in its asks (its stretch not clear
+## for a moment): when the attack that was on is over, a type that began waiting later doesn't go
+## first, even though the gap spans that moment. With no grace (GameRules.turn_place_grace 0) the gap
+## sends it to the back of the queue, as before.
+func _test_keeps_place_through_a_gap() -> void:
+	for grace: float in [2.0, 0.0]:
+		var tag: String = "grace %.1f s" % grace
+		var w: RunWorld = _world(true)
+		w.rules.turn_place_grace = grace
+		var a := _dummy(w, "alpha", {"first": 0.1, "interval": 10.0, "warning": 0.5, "attack": 1.4})
+		var gap := _dummy(w, "beta", {"first": 0.5, "interval": 10.0, "warning": 0.3, "attack": 0.3,
+			"pauses": [[1.5, 2.4]]})
+		var late := _dummy(w, "gamma", {"first": 1.0, "interval": 10.0, "warning": 0.3, "attack": 0.3})
+		await _run(w, 1.8)
+		if grace > 0.0:
+			check(w.director.is_waiting(gap) and not w.director.held_for_turn(gap) and w.director.turn_wait(gap) > 1.2,
+				"%s: it isn't asking, but it's still waiting, since it first asked (%.2f s)" % [tag, w.director.turn_wait(gap)])
+		await _run(w, 2.2)
+		var end_a: float = _time_of(a, "end")
+		var start_gap: float = _time_of(gap, "start")
+		var start_late: float = _time_of(late, "start")
+		check(_overlaps(gap, late).is_empty() and _overlaps(a, gap).is_empty() and _overlaps(a, late).is_empty(),
+			"%s: no two overlap" % tag)
+		if grace > 0.0:
+			check(start_gap >= 2.4 - 0.001 and start_gap <= 2.4 + 0.05 and start_late >= _time_of(gap, "end") - 0.0001,
+				"%s: it goes as soon as it asks again (%.2f s), before the one that began waiting later (%.2f s); the attack on was over at %.2f s"
+				% [tag, start_gap, start_late, end_a])
+		else:
+			check(start_late >= end_a - 0.0001 and start_late < end_a + 0.05 and start_gap > start_late,
+				"%s: the gap cost it its place: the other went first (%.2f s, then %.2f s)" % [tag, start_late, start_gap])
+		await sim.free_world(w)
+
+
+## Told it may go, an enemy that isn't quite ready yet (an Octodog whose moved-on stretch isn't clear)
+## keeps asking and keeps its place: another type that is ready again waits for it rather than go
+## first again.
+func _test_keeps_place_through_its_turn() -> void:
+	var w: RunWorld = _world(true)
+	var a := _dummy(w, "alpha", {"first": 0.1, "interval": 0.3, "warning": 0.5, "attack": 1.4})
+	var slow := _dummy(w, "beta", {"first": 0.5, "interval": 10.0, "warning": 0.3, "attack": 0.3,
+		"stalls": [[1.9, 3.2]]})
+	await _run(w, 5.0)
+	var end_a: float = _time_of(a, "end")
+	var stalled: float = _time_of(slow, "stalled")
+	var start_slow: float = _time_of(slow, "start")
+	var again_a: float = _time_of(a, "start", 1)
+	check(stalled >= end_a - 0.0001 and stalled < end_a + 0.05 and start_slow >= 3.2 - 0.001 and start_slow <= 3.2 + 0.05,
+		"its turn came at %.2f s and it was ready at %.2f s" % [stalled, start_slow])
+	check(_time_of(a, "ready", 1) < start_slow and again_a >= _time_of(slow, "end") - 0.0001,
+		"the other, ready again at %.2f s, went after it (%.2f s)" % [_time_of(a, "ready", 1), again_a])
+	check(_overlaps(a, slow).is_empty(), "and they never overlap")
+	await sim.free_world(w)
+
+
+## Nothing waits for ever: an enemy that gives its attack up (EnemyDirector.give_up_turn) leaves the
+## queue at once, and one that stops asking without saying so loses its place
+## GameRules.turn_place_grace after its last ask; the next in the queue goes then.
+func _test_place_lapses() -> void:
+	for quiet: bool in [false, true]:
+		var tag: String = "stops asking" if quiet else "gives up"
+		var w: RunWorld = _world(true)
+		var grace: float = w.rules.turn_place_grace
+		var a := _dummy(w, "alpha", {"first": 0.1, "interval": 10.0, "warning": 0.3, "attack": 0.3})
+		var p := {"first": 0.3, "interval": 10.0, "warning": 0.3, "attack": 0.3}
+		if quiet:
+			p["pauses"] = [[0.5, 100.0]]
+		else:
+			p["give_up"] = 0.2
+		var quits := _dummy(w, "beta", p)
+		var next := _dummy(w, "gamma", {"first": 0.4, "interval": 10.0, "warning": 0.3, "attack": 0.3})
+		await _run(w, 0.5 + grace + 1.0)
+		var end_a: float = _time_of(a, "end")
+		var start_next: float = _time_of(next, "start")
+		check(_time_of(quits, "start") < 0.0 and not w.director.is_waiting(quits), "%s: it never went" % tag)
+		if quiet:
+			check(start_next >= end_a + 0.5 and absf(start_next - (0.5 + grace)) < 0.05,
+				"%s: the next went once its place was gone, %.1f s after its last ask (%.2f s)" % [tag, grace, start_next])
+		else:
+			check(_time_of(quits, "gave_up") < end_a and start_next >= end_a - 0.0001 and start_next < end_a + 0.05,
+				"%s: the next went as soon as the attack on was over (%.2f s, over at %.2f s)" % [tag, start_next, end_a])
+		await sim.free_world(w)
+
+
+## The Octodog that R5's measurement found starved (3 of 277 dogs over extra seeds; on today's
+## campaign Golden 3 at 5 lanes on seed 9004, Golden 3 at 6 lanes on seed 9019 and Dead Zone 1 at 5
+## lanes on seed 9017), scripted: another type attacks again and again, and rows of fences make the
+## dog's moved-on stretch unclear just as the other's attack ends. Held at its planned moment, the dog
+## keeps its place when its turn comes before its stretch is clear, so the other, ready again, waits
+## for it, and the dog charges as soon as its stretch clears. That holds while its charges move on
+## (turn_wait_max) and after, while its charge_slack lasts (it keeps asking). (Before, the dog lost its
+## place the moment it was told it may go: the other went again, and the dog's slack ran out before a
+## clear stretch came between the other's attacks.)
+func _test_octodog_keeps_its_place() -> void:
+	var t := load("res://data/enemies/octodog.tres") as OctodogTuning
+	var speed: float = tuning.run_speed
+	var window: float = t.window_length(speed, 0.0)
+	var a0: float = 36.0
+	# [case, the other's attack after its 0.5 s warning, the seconds until it's ready again, rows of fences]
+	var cases: Array = [["while its charges move on", 1.5, 1.2, [80.0, 140.0, 195.0]],
+		["in its slack", 4.0, 1.0, [125.0, 140.0]]]
+	for case: Array in cases:
+		var tag: String = case[0]
+		var track: LevelLayout = RunSim.layout(3, 600.0)
+		for at: float in case[3]:
+			for lane: int in 3:
+				track.fences.append(RunSim.fence(lane, at, "full"))
+		var w: RunWorld = sim.build_world(track)
+		w.rules = w.rules.duplicate() as GameRules
+		w.rules.big_attacks_take_turns = true
+		w.player.setup(tuning, w.geo, 1)
+		w.player.god_mode = true
+		var other := _dummy(w, "blocker", {"first": 1.0, "interval": case[2], "warning": 0.5, "attack": case[1]})
+		var dog := w.director.spawn({"type": "octodog", "at": a0 + t.stop_distance(speed, 0.0), "lane": 1, "side": 0,
+			"seed": 11, "params": {"doghouse": false, "charges": 2, "charge_at": [a0, a0 + t.cycle_distance(speed, 0.0)]}}) as Octodog
+		var id: int = dog.get_instance_id()
+		var held_at_plan: bool = false
+		var turn_came_unclear: bool = false
+		var windup: float = -1.0
+		var moved_on: float = 0.0
+		var over: float = -1.0
+		var left: bool = false
+		await tree.physics_frame
+		w.player.running = true
+		for i: int in 14 * Engine.physics_ticks_per_second:
+			await tree.physics_frame
+			var d: Octodog = _octodog(id)
+			if d == null:
+				break
+			var now: float = w.level_time()
+			held_at_plan = held_at_plan or (w.director.held_for_turn(d) and absf(now - a0 / speed) < 0.1)
+			if windup < 0.0 and d.phase == Octodog.Phase.WINDUP:
+				windup = now
+				moved_on = float(d.get(&"_turn_waited"))
+			if windup < 0.0 and w.director.is_waiting(d) and not w.director.held_for_turn(d) \
+					and not other.is_major_attack_active() and not Octodog.charge_clear(track, w.player.distance, window):
+				turn_came_unclear = true
+			left = left or d.phase == Octodog.Phase.LEAVE
+			if windup >= 0.0 and over < 0.0 and not d.is_major_attack_active():
+				over = now
+			if over >= 0.0 and _time_of(other, "start", 1) >= 0.0:
+				break
+		var d_end: Octodog = _octodog(id)
+		var ready_again: float = _time_of(other, "ready", 1)
+		var again: float = _time_of(other, "start", 1)
+		check(held_at_plan and turn_came_unclear,
+			"%s: held at its planned moment, its turn came while its moved-on stretch wasn't clear" % tag)
+		check(ready_again > 0.0 and ready_again < windup and _time_of(other, "held") >= ready_again - 0.001,
+			"%s: the other, ready again at %.2f s, waited for it" % [tag, ready_again])
+		check(windup > 0.0 and again >= over - 0.001 and over > windup,
+			"%s: the dog winds up once its stretch is clear (%.2f s), and the other goes after its charges (%.2f s, over at %.2f s)"
+			% [tag, windup, again, over])
+		if case[0] == "in its slack":
+			check(moved_on >= t.turn_wait_max - 0.001 and windup - ready_again > w.rules.turn_place_grace,
+				"%s: its charges had stopped moving on (%.2f s), and it kept its place for longer than the grace by asking"
+				% [tag, moved_on])
+		check(d_end != null and d_end.charges_done == 2 and not left, "%s: the dog makes both its charges (%d)"
+			% [tag, d_end.charges_done if d_end != null else -1])
+		await sim.free_world(w)
+
+
 ## GDD §9.7 holds whether or not big attacks take turns: an exclusive attack and those of the types it
 ## names never overlap. Switched off, other types still don't coordinate with it; switched on, they
 ## take turns with it like everyone.
@@ -308,24 +487,91 @@ func _test_attack_on_carries_on() -> void:
 ## one of these five never gets a turn.)
 func _test_many() -> void:
 	var w: RunWorld = _world(true)
+	var made: Array = _random_dummies(w, 7, false)
+	var dummies: Array[Enemy] = made[0]
+	var longest: float = made[1]
+	await _run(w, 60.0)
+	var overlaps: Vector2i = _all_overlaps(dummies)
+	check(overlaps == Vector2i.ZERO, "no two types' big attacks overlap (%d, %d during shots)" % [overlaps.x, overlaps.y])
+	var worst: float = 0.0
+	var fewest: int = 1000
+	for d: Enemy in dummies:
+		fewest = mini(fewest, int(d.call(&"count", "start")))
+		for wait: float in d.get(&"waits"):
+			worst = maxf(worst, wait)
+	check(fewest >= 5, "every type keeps getting turns (the fewest attacked %d times)" % fewest)
+	check(worst <= 4.0 * longest + 0.1, "no wait is longer than one attack of each other type (%.2f s, bound %.2f s)"
+		% [worst, 4.0 * longest + 0.1])
+	await sim.free_world(w)
+
+
+## The same, with pauses in each type's asks (not ready for a moment) and stalls when its turn comes
+## (not quite ready yet), all shorter than the grace: still no overlap and no deadlock, every type keeps
+## getting turns, and no wait is longer than one attack and one hesitation of each other type, plus one
+## of its own.
+func _test_many_with_gaps() -> void:
+	var w: RunWorld = _world(true)
+	var made: Array = _random_dummies(w, 11, true)
+	var dummies: Array[Enemy] = made[0]
+	var longest: float = made[1]
+	var slowest: float = made[2]
+	await _run(w, 60.0)
+	var overlaps: Vector2i = _all_overlaps(dummies)
+	check(overlaps == Vector2i.ZERO, "with gaps: no two types' big attacks overlap (%d, %d during shots)" % [overlaps.x, overlaps.y])
+	var worst: float = 0.0
+	var fewest: int = 1000
+	var hesitations: int = 0
+	for d: Enemy in dummies:
+		fewest = mini(fewest, int(d.call(&"count", "start")))
+		hesitations += int(d.call(&"count", "stalled"))
+		for wait: float in d.get(&"waits"):
+			worst = maxf(worst, wait)
+	var bound: float = 4.0 * (longest + slowest) + slowest + 0.1
+	check(slowest < w.rules.turn_place_grace and hesitations >= 5 and fewest >= 5,
+		"with gaps: every type keeps getting turns (the fewest attacked %d times; %d stalls when a turn came)" % [fewest, hesitations])
+	check(worst <= bound, "with gaps: no wait is longer than one attack and one hesitation of each other type (%.2f s, bound %.2f s)"
+		% [worst, bound])
+	await sim.free_world(w)
+
+
+## Five test enemies of different types on random schedules (seeded), every other one firing a shot,
+## and with `gaps`, pauses and stalls of up to 0.8 s every second or two. Returns [the enemies, the
+## longest attack with its shot's flight, the longest pause or stall].
+func _random_dummies(w: RunWorld, seed_value: int, gaps: bool) -> Array:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 7
+	rng.seed = seed_value
 	var dummies: Array[Enemy] = []
 	var longest: float = 0.0
+	var slowest: float = 0.0
 	for i: int in 5:
 		var p := {"first": rng.randf_range(0.0, 1.0), "interval": rng.randf_range(0.1, 2.0),
 			"warning": rng.randf_range(0.3, 1.0), "attack": rng.randf_range(0.1, 0.8),
 			"shot": rng.randf_range(0.3, 0.9) if i % 2 == 0 else 0.0}
 		longest = maxf(longest, float(p["warning"]) + float(p["attack"])
 			+ (float(p["shot"]) + 0.2 if float(p["shot"]) > 0.0 else 0.0))
+		if gaps:
+			var pauses: Array = []
+			var stalls: Array = []
+			var at: float = rng.randf_range(0.5, 3.0)
+			while at < 60.0:
+				var span: float = rng.randf_range(0.2, 0.8)
+				(pauses if rng.randf() < 0.5 else stalls).append([at, at + span])
+				slowest = maxf(slowest, span)
+				at += span + rng.randf_range(0.5, 2.5)
+			p["pauses"] = pauses
+			p["stalls"] = stalls
 		dummies.append(_dummy(w, "type%d" % i, p))
-	await _run(w, 60.0)
+	return [dummies, longest, slowest]
+
+
+## Overlaps between the attacks of these test enemies (x), and warnings started while another type's
+## shot was still on its way (y): a shot's flight belongs to its attack.
+static func _all_overlaps(dummies: Array[Enemy]) -> Vector2i:
 	var overlaps: int = 0
 	var shot_overlaps: int = 0
 	for i: int in dummies.size():
 		for j: int in range(i + 1, dummies.size()):
 			overlaps += _overlaps(dummies[i], dummies[j]).size()
-		# A shot's flight belongs to its attack: nobody else's warning starts before it has passed.
 		var shot: float = float(dummies[i].get(&"shot"))
 		if shot <= 0.0:
 			continue
@@ -339,17 +585,7 @@ func _test_many() -> void:
 					if g[0] == "start" and float(g[1]) > float(h[1]) + 0.0001 \
 							and float(g[1]) < float(h[1]) + shot - 0.02:
 						shot_overlaps += 1
-	check(overlaps == 0 and shot_overlaps == 0, "no two types' big attacks overlap (%d, %d during shots)" % [overlaps, shot_overlaps])
-	var worst: float = 0.0
-	var fewest: int = 1000
-	for d: Enemy in dummies:
-		fewest = mini(fewest, int(d.call(&"count", "start")))
-		for wait: float in d.get(&"waits"):
-			worst = maxf(worst, wait)
-	check(fewest >= 5, "every type keeps getting turns (the fewest attacked %d times)" % fewest)
-	check(worst <= 4.0 * longest + 0.1, "no wait is longer than one attack of each other type (%.2f s, bound %.2f s)"
-		% [worst, 4.0 * longest + 0.1])
-	await sim.free_world(w)
+	return Vector2i(overlaps, shot_overlaps)
 
 
 # --- The campaign -------------------------------------------------------------------------------
