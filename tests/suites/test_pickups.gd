@@ -501,9 +501,13 @@ func _test_taking() -> void:
 			await _until(world, func() -> bool: return taken.size() > before, 4.0)
 			check(taken.size() == before + 1 and taken[before] == [item, true] and world.player.charges_of(item) == 1,
 				"running through it gives a %s %s" % [item, tag])
-			check(int(loadout.picked_up.get(item, 0)) == 1 and not loadout.costs_stock(item) and loadout.costs_stock(item),
-				"counted as the fight's: breaking it costs no stock (one) %s" % tag)
-			loadout.picked_up[item] = 1
+			if item == &"armor":
+				# The armor is no stock (GDD §8): a pickup brings it back whole (test_armor), no charge.
+				check(not loadout.picked_up.has(item), "the armor isn't counted as a charge %s" % tag)
+			else:
+				check(int(loadout.picked_up.get(item, 0)) == 1 and not loadout.costs_stock(item) and loadout.costs_stock(item),
+					"counted as the fight's: breaking it costs no stock (one) %s" % tag)
+				loadout.picked_up[item] = 1
 			if world.powerups != null and item != &"grapple":
 				sides[item] = bool(world.powerups.call(&"equipment")[String(item)])
 		check(sides.get(&"armor", false) and sides.get(&"shield", false), "the player model shows the armor and shield %s" % tag)
@@ -522,19 +526,19 @@ func _test_taking() -> void:
 		await sim.free_world(world)
 
 
-## A pickup of an item the player already holds all they can of (PickupTuning.max_charges): taken,
-## nothing added (DESIGN-TBD); the cap is data.
+## A pickup of a breakable item the player already holds all they can of (PickupTuning.max_charges):
+## taken, nothing added (DESIGN-TBD); the cap is data. (The armor has its own rule: test_armor.)
 func _test_cap() -> void:
 	var loadout := Loadout.new()
-	loadout.charges = {&"armor": 1}
+	loadout.charges = {&"shield": 1}
 	var world: RunWorld = await _world(RunSim.layout(5, 600.0), loadout)
 	var taken: Array = []
 	world.pickups.collected.connect(func(p: Pickup, gained: bool) -> void: taken.append([p.item, gained]))
-	world.pickups.offer(&"armor")
+	world.pickups.offer(&"shield")
 	await _until(world, func() -> bool: return not taken.is_empty(), 4.0)
-	check(taken == [[&"armor", false]] and world.player.armor == 1 and loadout.picked_up.is_empty() and world.pickups.active.is_empty(),
-		"with armor on already, an armor pickup is taken without adding a second (%s)" % [taken])
-	check(loadout.costs_stock(&"armor"), "and the armor the player brought still costs its stock")
+	check(taken == [[&"shield", false]] and world.player.shield == 1 and loadout.picked_up.is_empty() and world.pickups.active.is_empty(),
+		"with a shield on already, a shield pickup is taken without adding a second (%s)" % [taken])
+	check(loadout.costs_stock(&"shield"), "and the shield the player brought still costs its stock")
 	await sim.free_world(world)
 	var two: PickupTuning = pt.duplicate() as PickupTuning
 	two.max_charges = 2
@@ -544,18 +548,18 @@ func _test_cap() -> void:
 	check(loadout.picked_up.is_empty(), "every world starts the picked-up count afresh")
 	taken.clear()
 	world.pickups.collected.connect(func(p: Pickup, gained: bool) -> void: taken.append([p.item, gained]))
-	world.pickups.offer(&"armor")
+	world.pickups.offer(&"shield")
 	await _until(world, func() -> bool: return not taken.is_empty(), 4.0)
-	check(taken == [[&"armor", true]] and world.player.armor == 2, "with a cap of two in the data, it adds a second")
+	check(taken == [[&"shield", true]] and world.player.shield == 2, "with a cap of two in the data, it adds a second")
 	await sim.free_world(world)
 	# The stock rules for a break.
 	var l := Loadout.new()
 	l.charges = {&"shield": 1}
 	l.add_picked_up(&"shield")
 	check(not l.costs_stock(&"shield") and l.costs_stock(&"shield"), "a picked-up charge breaks free first, then the player's own costs stock")
-	l.grant(PackedStringArray(["armor"]), App.catalog, false)
-	l.add_picked_up(&"armor")
-	check(not l.costs_stock(&"armor") and not l.costs_stock(&"armor"), "a granted item never costs stock")
+	l.grant(PackedStringArray(["grapple"]), App.catalog, false)
+	l.add_picked_up(&"grapple")
+	check(not l.costs_stock(&"grapple") and not l.costs_stock(&"grapple"), "a granted item never costs stock")
 
 
 ## A pickup the player runs past is gone: no charge, and it doesn't come back.
@@ -669,7 +673,8 @@ func _test_boss_rule() -> void:
 		await sim.free_world(world)
 
 	var loadout := Loadout.new()
-	loadout.charges = {&"armor": 1, &"shield": 1}
+	loadout.armor = true
+	loadout.charges = {&"shield": 1}
 	var boss := BossEncounter.create(test_def) as TestBoss
 	var w: RunWorld = _fight(boss, test_def, 5, loadout)
 	w.player.grapples = 1_000_000

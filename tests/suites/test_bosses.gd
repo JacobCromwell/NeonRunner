@@ -459,7 +459,8 @@ func _test_armor_rule() -> void:
 	def.armor_delay_min = 2.0
 	def.armor_delay_max = 3.0
 	var loadout := Loadout.new()
-	loadout.charges = {&"armor": 1, &"shield": 1}
+	loadout.armor = true
+	loadout.charges = {&"shield": 1}
 	var enc := DummyBoss.new()
 	var world: RunWorld = _fight(enc, def, 5, loadout)
 	var due: Array = []
@@ -771,8 +772,9 @@ func _app_win(step: CampaignStep) -> void:
 	if run == null or run.encounter == null:
 		return
 	check(run.context.is_campaign() and run.world.geo.lane_count == App.lane_count(), "in the campaign flow, on the device's lanes")
-	check(run.context.loadout.charge(&"armor") == 1 and run.context.loadout.is_granted(&"armor") and run.world.player.armor == 1,
-		"with the items the boss grants (GDD §8)")
+	check(run.context.loadout.tier(&"armor") == 1 and run.context.loadout.is_granted(&"armor")
+		and run.world.player.armor == App.rules.armor_hits_at(1),
+		"with the items the boss grants (GDD §8; its armor: the upgrade's first tier over the free armor)")
 	check(is_zero_approx(run.context.tuning.speed_gain_per_minute) and run.hud.boss_bar.visible, "no speed-up, and the boss bar shows")
 	check(run.world.skin is CitySkin, "the arena wears the zone's look")
 	await _beat(run.encounter)
@@ -808,14 +810,15 @@ func _app_win(step: CampaignStep) -> void:
 
 
 func _app_death_and_retry(step: CampaignStep) -> void:
-	App.profile.add_stock(&"armor", 2)
+	App.profile.add_stock(&"shield", 2)
 	App.play_step(step)
 	await physics_frames(3)
 	var shot := Hazard.new()
 	shot.is_enemy_attack = true
 	App.run.world.player.receive_hit(shot)
 	shot.free()
-	check(App.profile.stock(&"armor") == 2 and App.run.world.player.armor == 0, "breaking the armor the boss granted costs no stock")
+	check(App.profile.stock(&"shield") == 2 and App.run.world.player.armor == App.rules.armor_hits_at(1) - 1
+		and App.run.world.player.shield == 1, "a hit on the granted armor costs no stock (the armor is none, GDD §8)")
 	await _kill_player()
 	check(App.screen is ResultsScreen and not (App.screen as ResultsScreen).result.completed,
 		"with nothing to revive with, a death shows the run summary")
@@ -830,7 +833,8 @@ func _app_death_and_retry(step: CampaignStep) -> void:
 	await physics_frames(3)
 	check(App.run != null and App.run.context.is_boss() and App.run.context.attempt == 2 and App.run.encounter.phase_index == 0,
 		"retry restarts the fight from the beginning (GDD §10)")
-	check(App.run.context.loadout.is_granted(&"armor") and App.run.world.player.armor == 1, "with the granted items again")
+	check(App.run.context.loadout.is_granted(&"armor") and App.run.world.player.armor == App.rules.armor_hits_at(1),
+		"with the granted items again")
 
 
 func _app_revive(step: CampaignStep) -> void:

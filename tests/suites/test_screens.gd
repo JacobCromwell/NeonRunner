@@ -309,19 +309,24 @@ func _test_shop() -> void:
 	await _frames(2)
 	var shop := App.screen as ShopScreen
 	check(shop.cards.size() == App.catalog.items_for(false).size(), "a card for every item sold on PC (%d)" % shop.cards.size())
-	var armor: ItemCard = shop.cards[&"armor"]
+	var grapple: ItemCard = shop.cards[&"grapple"]
 	var shield: ItemCard = shop.cards[&"shield"]
-	check(armor.stock == 3 and armor.max_stock == 5 and armor.status_label.text == "STOCK 3/5", "armor shows its stock (%s)" % armor.status_label.text)
+	check(grapple.stock == 1 and grapple.max_stock == 5 and grapple.status_label.text == "STOCK 1/5", "a breakable shows its stock (%s)" % grapple.status_label.text)
 	check(shield.state == ItemCard.State.MAXED and not shield.buy_button.visible, "a full stock can't be bought")
-	check(_focus() == armor.buy_button, "the first item that can be bought has the focus (%s)" % _focus())
+	check(_focus() == grapple.buy_button, "the first item that can be bought has the focus (%s)" % _focus())
+	var armor: ItemCard = shop.cards[&"armor"]
+	check(armor.stock == -1 and armor.tier == 1 and armor.max_tier == 4 and armor.title == "Armor I" and armor.equip_switch.visible
+		and armor.get_parent() == shop.cards[&"weapon"].get_parent() and armor.description.begins_with("Next: Armor II."),
+		"the armor is a permanent upgrade among the permanent items (GDD §8): %s" % armor.description)
+	var price: int = App.catalog.item(&"grapple").price
 	var before: int = App.profile.credits()
 	heard.clear()
 	UiSounds._quiet_until_ms = 0
-	armor.buy_pressed.emit(&"armor")
+	grapple.buy_pressed.emit(&"grapple")
 	await _frames(2)
-	check(App.profile.stock(&"armor") == 4 and App.profile.credits() == before - 150, "buying adds one to the stock")
-	check(armor.stock == 4 and armor.status_label.text == "STOCK 4/5", "and the card follows (%s)" % armor.status_label.text)
-	check(shop.wallet.value == before - 150 and shop.wallet.is_counting(), "the wallet counts down to the new balance")
+	check(App.profile.stock(&"grapple") == 2 and App.profile.credits() == before - price, "buying adds one to the stock")
+	check(grapple.stock == 2 and grapple.status_label.text == "STOCK 2/5", "and the card follows (%s)" % grapple.status_label.text)
+	check(shop.wallet.value == before - price and shop.wallet.is_counting(), "the wallet counts down to the new balance")
 	check(heard.has(&"ui_buy"), "buying plays ui_buy (%s)" % [heard])
 	var weapon: ItemCard = shop.cards[&"weapon"]
 	check(weapon.tier == 2 and weapon.max_tier == 4 and weapon.icon_name == &"weapon_2", "the weapon shows its tier and tier icon")
@@ -579,7 +584,8 @@ func _test_slots_and_demo_end() -> void:
 func _test_hud() -> void:
 	var sim := RunSim.new(tree, tuning)
 	var loadout := Loadout.new()
-	loadout.charges = {&"armor": 1, &"shield": 1, &"grapple": 1}
+	loadout.armor = true
+	loadout.charges = {&"shield": 1, &"grapple": 1}
 	loadout.tiers = {&"claws": 1}
 	var world: RunWorld = sim.build_world(RunSim.layout(5, 400.0), loadout)
 	var ctx := RunContext.new()
