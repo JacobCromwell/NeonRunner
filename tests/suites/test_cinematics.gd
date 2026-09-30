@@ -12,9 +12,11 @@ extends TestSuite
 const LANES: Array[int] = [3, 5, 6]
 const SAMPLER_PATH: String = "res://tools/showcase/cinematic_sampler.tres"
 const SFX_PATH: String = "res://data/audio/sfx_library.tres"
-## The camera keeps this far under a ceiling's underside while over it or this near it (metres).
-const CEILING_CLEARANCE: float = 0.4
-const CEILING_MARGIN: float = 2.0
+## The camera keeps as far under a ceiling's underside as the run camera does
+## (MovementTuning.camera_ceiling_clearance: closer, the ceiling's end glow fills the screen) while it's
+## over a ceiling or this near one along the track (the larger of RunCamera.CEILING_AHEAD and
+## CEILING_BEHIND).
+const CEILING_MARGIN: float = RunCamera.CEILING_BEHIND
 ## It stays this far inside the wall faces, and under the lowest thing any zone hangs over its lanes
 ## (bar ceilings), and this far above the floor.
 const WALL_CLEARANCE: float = 1.0
@@ -416,7 +418,8 @@ func _check_flyover(s: CampaignStep, lanes: int) -> void:
 		off_street = maxf(off_street, absf(cam.x) - (geo.wall_x() - WALL_CLEARANCE))
 		if cam.y < FLOOR_CLEARANCE:
 			off_street = maxf(off_street, FLOOR_CLEARANCE - cam.y)
-		if seq.stage.ceiling_over(d, CEILING_MARGIN) != Vector2.ZERO and cam.y > seq.tuning.ceiling_height - CEILING_CLEARANCE \
+		if seq.stage.ceiling_over(d, CEILING_MARGIN) != Vector2.ZERO \
+				and cam.y > seq.tuning.ceiling_height - seq.tuning.camera_ceiling_clearance \
 				and into_ceiling < 0.0:
 			into_ceiling = seq.time
 		if seq.stage.gap_at(seq.stage.start_lane, runner.track_position.z, 0.3) and over_hole < 0.0:

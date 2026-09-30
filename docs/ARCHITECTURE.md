@@ -1146,8 +1146,9 @@ the camera rides along, its offset moving through the keys; between a fixed key 
 through where each key will be at its own time; the velocity carries on through every key either way.
 Straight up or down, the camera's up is the track's direction. `shake` follows the Screen shake setting.
 A camera flying over a street must keep out of what hangs over it: nothing does below about 10 m in any
-zone except ceilings (6 m up, their structure up to about 13 m), so keep under 9.5 m over open street and
-under the ceiling's underside where one is overhead (the tests check the flyovers this way).
+zone except ceilings (6 m up, their structure up to about 13 m), so keep under 9.5 m over open street and,
+over a ceiling or within a few metres of one, at least `camera_ceiling_clearance` (1 m) under its underside,
+as the run camera does (closer, the ceiling's end glow fills the screen); the tests check the flyovers so.
 
 **Actors.** The runner is the real player model (`PlayerAvatar`), driven with the same movement state as
 in play: its stride keeps pace with the ground it covers, it is in the air above the floor (with its jump

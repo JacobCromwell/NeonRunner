@@ -6,8 +6,9 @@ extends Resource
 ##
 ## Heights keep clear of the street's furniture in every zone: nothing hangs over the lanes below
 ## about 10 m but ceilings (6 m up, their structure up to 13 m), so the camera stays under
-## `glide_height` over open street and drops to the run camera's height before it passes under the
-## ceiling. The cinematics tests check the path against the stage at 3, 5 and 6 lanes.
+## `glide_height` over open street and drops to the run camera's height before it nears the ceiling
+## (as the run camera, it keeps MovementTuning.camera_ceiling_clearance under one). The cinematics tests
+## check the path against the stage at 3, 5 and 6 lanes.
 
 @export_group("Timing")
 ## DESIGN-TBD (docs/questions/f1.md 1): how long it lasts (GDD §1: 5-15 s).
