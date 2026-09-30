@@ -18,6 +18,7 @@ var credits: int = 0
 var credit_pickups: int = 0
 var kills: int = 0
 var stomps: int = 0
+## Hits the armor or the shield blocked (a multi-hit armor counts each).
 var blocked: int = 0
 var ramps: int = 0
 var longest_wall_run: float = 0.0
@@ -37,7 +38,6 @@ func setup(p_world: RunWorld) -> void:
 	_rules = world.rules
 	max_credit_score = world.layout.total_credit_value()
 	world.player.movement_event.connect(_on_player_event)
-	world.player.item_used.connect(_on_item_used)
 	world.director.enemy_defeated.connect(_on_enemy_defeated)
 
 
@@ -83,14 +83,11 @@ func _on_enemy_defeated(enemy: Enemy, cause: StringName) -> void:
 		add_bonus(&"stomp", _rules.stomp_bonus, "Stomp")
 
 
-func _on_item_used(item: StringName) -> void:
-	if item == &"armor" or item == &"shield":
-		blocked += 1
-		changed.emit()
-
-
 func _on_player_event(kind: StringName) -> void:
 	match kind:
+		&"armor_hit", &"armor_break", &"shield_break":
+			blocked += 1
+			changed.emit()
 		&"ramp":
 			ramps += 1
 			multiplier = _rules.ramp_score_multiplier

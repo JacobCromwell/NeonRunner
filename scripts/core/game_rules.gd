@@ -21,6 +21,23 @@ extends Resource
 ## Pause before the death screen appears, so the death reads.
 @export_range(0.2, 3.0, 0.1, "suffix:s") var death_screen_delay: float = 1.0
 
+@export_group("Armor")
+## GDD §4 (owner's playtest, September 30, 2026): every level and boss fight starts with armor, free.
+## It blocks this many enemy attacks or electrical hazards before it breaks (GDD §8: one)...
+@export_range(1, 5) var armor_hits: int = 1
+## ...and comes back whole this long after it breaks (GDD §4: 30 seconds), on the run's clock
+## (DamageRules.Armor).
+@export_range(1.0, 120.0, 0.5, "suffix:s") var armor_recharge: float = 30.0
+## DESIGN-TBD (docs/questions/g3.md; the balancing pass, R7, tunes them): the shop's armor upgrade, one
+## entry per tier (tier 1 first, as many as the shop catalog's armor tiers): hits before it breaks, and
+## the wait before it comes back. GDD §8: the tiers alternate between one more hit and a shorter wait.
+@export var armor_tier_hits: PackedInt32Array = PackedInt32Array([2, 2, 3, 3])
+@export var armor_tier_recharge: PackedFloat32Array = PackedFloat32Array([30.0, 25.0, 25.0, 20.0])
+## DESIGN-TBD (docs/questions/g3.md): an armor pickup (GDD §10) brings broken or worn armor back whole at
+## once; taken while the armor is whole, it adds a hit, up to this many over the armor's count (0: it
+## does nothing then).
+@export_range(0, 3) var armor_pickup_extra_hits: int = 1
+
 @export_group("Interactions")
 ## Upward speed after stomping an enemy.
 @export_range(0.0, 15.0, 0.25, "suffix:m/s") var stomp_bounce_velocity: float = 7.5
@@ -67,6 +84,21 @@ extends Resource
 
 func lanes_for_device(mobile: bool) -> int:
 	return lanes_mobile if mobile else lanes_pc
+
+
+## Hits the armor blocks before it breaks at upgrade tier `tier` (0: the free armor). A tier past the
+## data's last uses the last.
+func armor_hits_at(tier: int) -> int:
+	if tier <= 0 or armor_tier_hits.is_empty():
+		return armor_hits
+	return maxi(armor_tier_hits[mini(tier, armor_tier_hits.size()) - 1], 1)
+
+
+## Seconds the armor takes to come back after it breaks, at upgrade tier `tier` (0: the free armor).
+func armor_recharge_at(tier: int) -> float:
+	if tier <= 0 or armor_tier_recharge.is_empty():
+		return armor_recharge
+	return maxf(armor_tier_recharge[mini(tier, armor_tier_recharge.size()) - 1], 1.0)
 
 
 ## Credits paid for finishing the level at `level_index` (0-based campaign position).
