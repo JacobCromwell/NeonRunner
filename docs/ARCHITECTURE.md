@@ -62,12 +62,12 @@ power-ups.
 | File | What |
 |---|---|
 | `data/tuning/movement.tres` (`MovementTuning`) | run speed, jump, walls (and the blocked entry's bump), ramps and speed pads (their boosts share one fade), ceiling, piece sizes, camera, touch |
-| `data/tuning/game_rules.tres` (`GameRules`) | lanes per device, death share, invulnerability, stomp, whether big attacks take turns, score, economy, stars |
+| `data/tuning/game_rules.tres` (`GameRules`) | lanes per device, death share, invulnerability, the armor (the free armor's hits and wait, the upgrade's per tier, a pickup's extra hit), stomp, whether big attacks take turns, score, economy, stars |
 | `data/tuning/powerups.tres` (`PowerupTuning`) | weapon tiers, claws, dash, magnet, slow time |
 | `data/tuning/pickups.tres` (`PickupTuning`) | in-run pickups: where they appear, taking them, the charge cap, the look |
 | `data/tuning/feature_recency.tres` (`FeatureRecency`) | the campaign's recency curve: how a level's pick weights follow how recently the campaign introduced each feature |
 | `data/enemies/<type>.tres` (`EnemyTuning` subclasses) | per-enemy numbers, early/late pairs for campaign scaling |
-| `data/shop/catalog.json` | shop items, tiers and prices |
+| `data/shop/catalog.json` | shop items, tiers and prices (the armor's texts take `{hits}` and `{seconds}`, filled from `GameRules` by `ShopScreen.item_text()`) |
 | `data/campaign/campaign.tres` → `data/zones/*.tres` → `data/levels/*.tres` | the campaign |
 | `data/bosses/*.tres` | bosses (`BossDef`: slot, health, phases, arena, rewards, par times, armor rule), and a boss script's own tuning (`<id>_tuning.tres`) |
 | `data/cinematics/*.tres` | cinematic slots |
@@ -87,6 +87,23 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   `BLOCKED_ARMOR`, `BLOCKED_SHIELD` (then ~1 s invulnerability), `KILL`, `DEFEAT_ENEMY` (claws or
   dash), `STOMP` (enemy defeated, player bounces). Nothing else hurts the player.
 - Falls aren't hazards: the Player handles them (the grapple hook saves one fall).
+- **The armor** (GDD §4 and §8, owner's playtest, September 30, 2026) is a state with rules of its own,
+  `DamageRules.Armor`: up with its hits left, or broken and coming back. Every run the profile starts
+  (levels, boss fights, retries, quick play, endless, the web demo) carries it free (`Loadout.armor`),
+  and the shop's armor is an upgrade to it (its tier, `tiers[&"armor"]`; the equip toggle switches only
+  the upgrade off). RunWorld makes the run's armor (`Armor.create(rules, tier, carried)`) from
+  `GameRules`' Armor group: the free armor's hits (1) and wait (30 s), and each tier's (placeholders
+  2/30 s, 2/25 s, 3/25 s, 3/20 s: the tiers alternate one more hit and a shorter wait). The Player holds
+  it (`armor_state`; `armor` is its hits left, and setting it, for tests and tools, puts that many hits
+  up) and applies what resolve() says: a blocked hit takes one (`block()`) with the usual
+  invulnerability (event `armor_hit`), the last one breaks it (`item_used(&"armor")`, `armor_break`),
+  and from the Player's physics step its wait runs (`tick()`: the run's clock, so a pause or a death
+  stops it, the same at any frame rate) until it's back whole (`armor_back`). A revive brings it back
+  whole (`restore()`); an armor pickup (`take_pickup()`) does too, at once, and on whole armor adds a
+  hit, up to `armor_pickup_extra_hits` over its count. `armor_changed` tells the HUD and the player
+  model; `ScoreKeeper` counts every blocked hit. A bare `Loadout` (tests, tools) has no armor until a
+  pickup gives it. DESIGN-TBD (`docs/questions/g3.md`): worn armor gets nothing back until it breaks;
+  the pickup's extra hit; the revive; that the free armor can't be switched off.
 - Enemy shots go through `ProjectilePool.fire_enemy()`; the pool sweeps each shot against the
   player's hitbox and calls `receive_hit`, so armor, shield, invulnerability and the dash all apply.
 - **Blocked moves bump, never hurt.** A lane switch into a solid side (a lane blocker: the hover
@@ -420,9 +437,11 @@ each feature a pattern can place there is in the finished level, at any lane cou
 
 `PowerupController` (`scripts/powerups/powerup_controller.gd`) runs one `PowerupModule` per owned,
 switched-on permanent item: `WeaponPowerup` (auto-fire, tiers 1–4, enemy health bars), `ClawsPowerup`,
-`DashPowerup`, `MagnetPowerup` and `SlowTimePowerup`. Breakables (armor, shield, grapple) are charges
-on the Player. The controller's header documents its API: `hud_state()` for the HUD (`charges` -1 for
-permanent items), `equipment()` for the player model, and `try_dash()` / `try_slow_time()`.
+`DashPowerup`, `MagnetPowerup` and `SlowTimePowerup`. The armor is the damage rules' (`DamageRules.Armor`,
+see Damage and interactions); the breakables (shield, grapple) are charges on the Player. The
+controller's header documents its API: `hud_state()` for the HUD (`charges` -1 for permanent items; the
+armor's hits, with its return as `ready`), `equipment()` for the player model, and `try_dash()` /
+`try_slow_time()`.
 The player model shows what the run carries (`PlayerAvatar.set_equipment`, looks in `PlayerSuit`): the
 weapon sits over the gold arm's (left) shoulder, so shots leave from there (`Player.weapon_muzzle()`),
 and armor that breaks in play shatters. Effects tied to the runner's own glow (the dash's shell and
@@ -444,9 +463,11 @@ that offer their own), never in levels, so no pattern places one. `PickupField`
   no boss floor warning over it (`BossProps.warned`). `at` and `lane` are requests the rules still
   apply to. `find_spot()` and the static `layout_fair()` answer placement questions for tests.
 - **Taking:** the player's hitbox (swept over the frame) reaching its `take_box()` takes it:
-  `Player.gain_item(item, max_charges)` adds a charge unless the player holds all they may, the
-  `Loadout` counts it in `picked_up` (the App asks `Loadout.costs_stock()` when an item breaks, so a
-  picked-up charge, like a granted one, never costs stock), and `collected(pickup, gained)` fires. The
+  `Player.gain_item(item, max_charges)` adds a shield or grapple charge unless the player holds all they
+  may, the `Loadout` counts it in `picked_up` (the App asks `Loadout.costs_stock()` when an item breaks,
+  so a picked-up charge, like a granted one, never costs stock), and `collected(pickup, gained)` fires.
+  An armor pickup brings the armor back whole at once (`DamageRules.Armor.take_pickup`: on whole armor it
+  adds a hit, up to `GameRules.armor_pickup_extra_hits`), and isn't counted: the armor is no stock. The
   HUD shows the item in its place among the protections and flashes it; the power-up controller lists
   it in `hud_state()` and the player model shows armor and shields. A pickup the player runs past is
   `missed` and gone. `clear()` removes everything (a boss beaten: none after the fight).
@@ -894,7 +915,10 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
     anywhere; gold and chrome only as unlit, polished ornament, the grimy looks dull.
 - **UI:** a theme built in code (`scripts/ui/theme/`: `UiStyle` in `data/ui/ui_style.tres`,
   `UiTheme`), code-drawn icons (`scripts/ui/icons/`) and a widget kit (`scripts/ui/widgets/`). Screens
-  (`scripts/ui/screens/`) extend `ScreenBase`; the HUD is `RunHud`. Orbitron is for titles and Exo 2
+  (`scripts/ui/screens/`) extend `ScreenBase`; the HUD is `RunHud`: its protections show the armor's
+  hits and, while it's broken, the cooldown ring filling in the kit's calm accent until it's back, when
+  the icon flashes and the player's `armor_back` plays (a latch and a low chime; a hit the armor survives
+  plays `armor_hit`). Orbitron is for titles and Exo 2
   for text and numbers. On the HUD, draw icons from `IconFactory.texture()` (cached, tinted with a
   modulate colour) rather than `IconFactory.draw()`: every polygon or polyline command costs its own
   draw call every frame, and the HUD's icons alone were once 220 of about 370.
@@ -1116,7 +1140,17 @@ plays it), in `scripts/bosses/floating_head/`:
 `Profile` (`scripts/app/profile.gd`) keeps earned and purchased credits apart (net worth = earned,
 unspent), item tiers and stock, equip toggles, records per difficulty tier, settings and stats.
 `SaveService` writes it to `user://profile.json` (with a backup). `Loadout` is what one run carries:
-owned, switched-on items; one charge of each breakable per attempt.
+owned, switched-on items; one charge of each breakable per attempt; and the free armor every run
+starts with (GDD §4), whatever the profile, settings or flavor. The shop (`ShopScreen`, the catalog's
+items) sells the permanent items tier by tier, among them the armor upgrade (GDD §8: four tiers; hits
+and waits in `GameRules`, prices in the catalog, both placeholders for R7), and the breakables (shield,
+grapple, revive) as stock.
+
+The save has a version (`Profile.VERSION`, now 2). `Profile.from_dict()` brings an older save up to
+date as it loads (`_migrate`): version 1's armor stock (armor was a breakable then) is paid back in
+earned credits at the 150 each it cost (`V1_ARMOR_PRICE`, the only price it ever had), the purchases
+leave `lifetime_spent`, and its old equip toggle goes, so an upgrade bought later starts switched on.
+A change to the save's format bumps the version and adds its step there, with a test.
 
 ## Platforms and build flavors
 
@@ -1157,7 +1191,11 @@ watched by `tools/measure/attack_watch.gd` (see Review tools). `DummyBoss` (`tes
 for framework tests, with `make_def()` for a BossDef from a list of phases; `test_bosses` runs fights
 in bare worlds and, with the test boss in the City's slot, through the App. `test_pickups` checks
 pickup placement against the rules as it writes them itself, over hand-built cases and generated
-tracks at 3, 5 and 6 lanes, and the armor rule end to end on the test boss. `test_floating_head`
+tracks at 3, 5 and 6 lanes, and the armor rule end to end on the test boss. `test_armor` covers the
+free armor and its upgrade (G3): the state's rules, its wait at any frame rate and not while paused,
+each tier's numbers alternating as GDD §8 says, a run's block, revive and pickups, the HUD, the shop
+line and texts, the save migration, and every kind of run through the App (the web demo's too).
+`test_floating_head`
 runs the Floating Head's fight in bare worlds at 3, 5 and 6 lanes with a runner who dodges each lock
 (and one who doesn't), and rechecks its bombs' fairness from the arena's layout;
 `test_floating_head_faceoff` plays its face-off with `FloatingHeadBot` (every laser warned and
@@ -1201,7 +1239,9 @@ hosts or aiming, and `lineup_far` at gameplay distance); `octodog_screech`,
 `drone_truck_showcase`, `bad_dream_showcase`, `resonator_showcase`: its model through its warning
 and pulse, or a scripted run where it pulses at a runner who jumps its waves), the Golden Zone's statue
 kit (`statue_showcase`: every pose, a turnaround, and a live statue rigged in its niche and swinging, as
-task C4 would build it), a boss (`floating_head_showcase`), the UI kit, the screens, a zone skin
+task C4 would build it), a boss (`floating_head_showcase`), the UI kit, the screens (`screens_showcase`;
+its `--screen=hud_armor [--tier=N]` takes the HUD's armor through its states: up, broken, its ring
+filling, back), a zone skin
 (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed screens and emblems a
 skin lists, or a scripted run with a ceiling ride and a wall run, in a level's darker lighting with
 `--darkness=X`; `--narrow` makes three of its ceilings narrow, one lane in the middle, the two leftmost
