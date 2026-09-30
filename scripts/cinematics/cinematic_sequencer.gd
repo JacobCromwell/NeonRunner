@@ -171,6 +171,9 @@ func _finish() -> void:
 		return
 	done = true
 	set_process(false)
+	# Over: the pause action belongs to whatever comes next (the level's pause menu), even in the frame
+	# before this is freed.
+	set_process_unhandled_input(false)
 	if stage != null:
 		stage.retire()
 	for node: CineActorNode in actors.values():
