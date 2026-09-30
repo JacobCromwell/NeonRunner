@@ -35,7 +35,9 @@ func run() -> void:
 func _loadout(items: Dictionary) -> Loadout:
 	var l := Loadout.new()
 	for k: String in items:
-		if k in ["armor", "shield", "grapple", "revive"]:
+		if k == "armor":
+			l.armor = true
+		elif k in ["shield", "grapple", "revive"]:
 			l.charges[StringName(k)] = items[k]
 		else:
 			l.tiers[StringName(k)] = items[k]
@@ -512,17 +514,22 @@ func _test_hud_state() -> void:
 	var weapon: Dictionary = _entry(c.hud_state(), &"weapon")
 	check(weapon["tier"] == 4 and weapon["icon"] == &"weapon" and _entry(c.hud_state(), &"magnet")["tier"] == 3,
 		"with tiers and icons")
-	check(_entry(c.hud_state(), &"armor")["charges"] == 1 and _entry(c.hud_state(), &"armor")["active"],
-		"armor carries its charge")
+	var hits: int = App.rules.armor_hits_at(4)
+	check(_entry(c.hud_state(), &"armor")["charges"] == hits and _entry(c.hud_state(), &"armor")["active"]
+		and _entry(c.hud_state(), &"armor")["tier"] == 4 and is_equal_approx(_entry(c.hud_state(), &"armor")["ready"], 1.0),
+		"armor carries its hits (%d at tier 4), up and ready" % hits)
 	var eq: Dictionary = c.equipment()
 	check(eq == {"claws": true, "armor": true, "shield": true, "weapon_tier": 4, "magnet": true},
 		"equipment() for the player model (%s)" % eq)
 	var changed: Array[Dictionary] = []
 	c.equipment_changed.connect(func(e: Dictionary) -> void: changed.append(e))
 
+	# With its last hit left, the fence breaks it.
+	w.player.armor = 1
 	await _run_to(w, 36.0)
 	var armor: Dictionary = _entry(c.hud_state(), &"armor")
-	check(w.player.alive and armor["charges"] == 0 and not armor["active"], "armor used up on a fence: 0 charges")
+	check(w.player.alive and armor["charges"] == 0 and not armor["active"] and armor["ready"] < 0.1,
+		"armor broken on a fence: 0 hits, coming back (ready %.2f)" % armor["ready"])
 	check(not changed.is_empty() and not changed[-1]["armor"] and changed[-1]["shield"], "equipment_changed reports it")
 
 	c.try_dash()
