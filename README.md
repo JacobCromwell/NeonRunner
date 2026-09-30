@@ -140,8 +140,10 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   whine, then laser beams sweep the lanes low (jump) or high (slide) or drag down the runner's lane
   (switch lanes), its mouth drops cyborgs onto the trucks ahead, and a laser baited into a marked tower
   topples it onto the ship to pin it. Pinned, its red weak points come out on its crown: stomp one, a
-  third of its health. Each phase has its own way up: run up the fallen tower's slab like a ramp, a
-  wall jump, then pads and a ceiling to drop from. Miss it and it shakes free and the face-off goes on.
+  third of its health. Each phase has its own way up: run up the fallen tower's slab like a ramp (a lane
+  switch steps onto its low part anywhere along it), a wall jump off lit marks on the walls, then pads and
+  a ceiling to drop from; the first time each comes, a hint says how. Miss it and it shakes free and the
+  face-off goes on. A runner who brings no armor or shield gets an armor pickup early in every phase.
   All the while it shouts its propaganda through its loudhailers (a distorted voice never meant to be
   understood, ducking under every warning) with slogans on its face screen. Beaten, its face glitches,
   the propaganda cuts out mid-shout and it crashes into the street ahead: the runner runs over its
@@ -218,6 +220,11 @@ F6 panel) and without, how much taking turns delays them, and which enemies neve
 [--seeds=6] [--features=octodog]` (the whole campaign, both ways, takes about ten minutes on the levels' own seeds;
 its header lists the options).
 
+`tools/measure/stomp_routes.gd` measures how forgiving the Floating Head's ways onto its head are: the latest lane
+switch onto the ramp that still stomps, the stretch of jump points a single wall jump stomps from, and the ceiling
+from every lane (`godot --headless --fixed-fps 60 -s res://tools/measure/stomp_routes.gd -- [--lanes=3,5,6]
+[--routes=ramp,wall,ceiling] [--e1c]`; `--e1c` measures the numbers from before the owner's playtest fixes).
+
 `tools/measure/level_shape.gd` measures each campaign level's shape: every feature's share of its picks, its
 enemy, host and obstacle counts, what only the every-feature guarantee brings, and The Hush's quiet stretches
 against its bursts, with the recency curve on and off:
@@ -258,7 +265,7 @@ On a debug build, the options go into the page's engine settings: in `exports/we
 
 ## Tests
 
-`tools/godot.sh test` runs 44 suites with about 3,250,000 checks:
+`tools/godot.sh test` runs 45 suites with about 3,250,000 checks:
 - **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds, and every campaign level
   (each with every feature it lists, on its own seed and on others). Under every ceiling the floor may be
   dangerous, so each one's pads, landing zone and a floor route that never takes the pad are checked, and
@@ -283,7 +290,10 @@ On a debug build, the options go into the page's engine settings: in `exports/we
   always escaping them, the face-off's lasers (each warned, and escaped without god mode by a runner who
   reads them), its cyborg drop, a baited or fallback tower pinning it, each phase's stomp window taken
   without god mode (the ramp, a wall jump, the ceiling), missed windows repeating without escalation,
-  the whole fight from its entrance to the last stomp, and every attempt playing out the same way; its
+  the whole fight from its entrance to the last stomp, and every attempt playing out the same way; each
+  way up taken the forgiving way (the ramp boarded from its side late, one wall jump off the wall marks
+  from either wall, the ceiling ridden straight ahead from any lane) and armor for a runner who brings
+  none, through the campaign's boss step with a death and a retry at 3, 5 and 6 lanes; its
   defeat (the propaganda cut, the crash, room for a runner in every lane of its wreck, Reduced
   flashing), and the whole fight through the campaign at 3, 5 and 6 lanes with no god mode, from City 3
   to the outro (and the web demo's end screen), its propaganda never masking a warning, and a death
