@@ -730,11 +730,12 @@ func _test_campaign() -> void:
 		var config: LevelConfig = campaign.configure(campaign.step(case[0]), case[1])
 		config.skin = null  # the grey box: skins never change gameplay
 		zones = CeilingZones.make(config, tuning)
+		var speed: float = config.movement_for(tuning).run_speed  # the Golden Zone's
 		var layout: LevelLayout = LevelGenerator.new().generate(config, tuning, LevelGenerator.load_for(config))
 		# Played until the last Resonator's visit is well over (its pulses may wait at run time).
 		var until: float = 0.0
 		for e: Dictionary in Rules.resonators_in(layout):
-			until = maxf(until, float((e["params"]["pulse_at"] as Array)[-1]) + 20.0 * tuning.run_speed)
+			until = maxf(until, float((e["params"]["pulse_at"] as Array)[-1]) + 20.0 * speed)
 		var w: RunWorld = sim.build_world(layout, null, null, config)
 		w.player.god_mode = true
 		w.player.grapples = 1_000_000
@@ -756,7 +757,7 @@ func _test_campaign() -> void:
 						met.append(w.player.distance)
 					last_rel[key] = rel if wave.rolling else INF
 		var bad: PackedStringArray = []
-		var margin: float = 0.4 * tuning.run_speed
+		var margin: float = 0.4 * speed
 		for d: float in met:
 			var zone := Vector2(d - margin, d + margin)
 			for g: Dictionary in layout.gaps:

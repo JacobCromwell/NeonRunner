@@ -475,7 +475,7 @@ func _count(layout: LevelLayout, type: String) -> int:
 
 ## Checks one layout against the drone rules. Returns the number of drones.
 func _check_rules(layout: LevelLayout, config: LevelConfig, t: DroneTuning, tag: String) -> int:
-	var speed: float = tuning.run_speed
+	var speed: float = config.movement_for(tuning).run_speed  # a campaign level runs at its zone's speed
 	var drones: Array[float] = []
 	for e: Dictionary in layout.enemies:
 		if String(e["type"]) == "drone":

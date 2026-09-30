@@ -179,6 +179,11 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 ## patterns; high-value credits sit in risky spots (gap edges, by fences, far along wall runs).
 @export_range(1.0, 10.0, 0.25, "suffix:m") var credit_trail_spacing: float = 3.0
 @export_range(0, 20) var credit_trail_count: int = 6
+## A clear stretch too short for a full trail gets a shorter one, down to this many credits (0: only
+## full trails, as before). Busier levels leave fewer long clear stretches (GDD §3, owner's playtest
+## September 30, 2026), so campaign levels take shorter trails to keep their credits about where they
+## were (the economy is task R7's). DESIGN-TBD (docs/questions/g1.md).
+@export_range(0, 20) var credit_trail_min: int = 0
 ## Chance that a clear stretch gets a trail.
 @export_range(0.0, 1.0, 0.05) var credit_trail_chance: float = 0.8
 ## Chance that a gap gets an arc of credits over it and a richer credit right at its edge.

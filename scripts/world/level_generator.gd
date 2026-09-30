@@ -1452,13 +1452,19 @@ func _place_credits() -> void:
 
 ## Trails of small credits along one lane in the clear stretches between patterns, sometimes
 ## shifting one lane halfway so the player has to move. Their spacing is stretched by the pace, like
-## the patterns', so a trail takes as long to run at any speed.
+## the patterns', so a trail takes as long to run at any speed. A stretch too short for a full trail
+## gets a shorter one, down to LevelConfig.credit_trail_min credits (0: none).
 func _place_trails(rng: RandomNumberGenerator) -> void:
 	var n: int = layout.lane_count
 	var spacing: float = metres(config.credit_trail_spacing)
 	var trail_len: float = (config.credit_trail_count - 1) * spacing
 	for stretch: Vector2 in _clear_stretches:
-		if stretch.y - stretch.x < trail_len + metres(6.0) or rng.randf() >= config.credit_trail_chance:
+		var count: int = config.credit_trail_count
+		if stretch.y - stretch.x < trail_len + metres(6.0):
+			count = mini(count, floori((stretch.y - stretch.x - metres(6.0)) / spacing) + 1)
+			if config.credit_trail_min <= 0 or count < config.credit_trail_min:
+				continue
+		if rng.randf() >= config.credit_trail_chance:
 			continue
 		if config.credit_trail_count <= 0:
 			continue
@@ -1466,9 +1472,9 @@ func _place_trails(rng: RandomNumberGenerator) -> void:
 		var shift: int = 0
 		if rng.randf() < 0.35:
 			shift = -1 if lane == n - 1 else (1 if lane == 0 else (-1 if rng.randf() < 0.5 else 1))
-		var start: float = (stretch.x + stretch.y) * 0.5 - trail_len * 0.5
-		for i: int in config.credit_trail_count:
-			var l: int = lane + (shift if i >= config.credit_trail_count / 2 else 0)
+		var start: float = (stretch.x + stretch.y) * 0.5 - (count - 1) * spacing * 0.5
+		for i: int in count:
+			var l: int = lane + (shift if i >= count / 2 else 0)
 			var d: float = start + i * spacing
 			if layout.under_hull(d, l):
 				continue

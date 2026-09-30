@@ -18,3 +18,5 @@ narrow_ceiling_share = 0.5
 narrow_ceiling_start = 0.5
 spacing_seconds_easy = 1.3
 fill_empty_seconds = 2.0
+credit_trail_chance = 0.6
+credit_trail_min = 5

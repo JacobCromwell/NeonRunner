@@ -238,9 +238,11 @@ static func _add_guaranteed(gen: LevelGenerator, t: ResonatorTuning, busy: Array
 ## a clear meeting stretch (at run speed, without the plan's margin), before the end-clear stretch,
 ## off every Octodog's run, pulses in order and at least a pulse and a rest apart, and one visit at a
 ## time.
-static func problems(layout: LevelLayout, config: LevelConfig, movement: MovementTuning) -> PackedStringArray:
+static func problems(layout: LevelLayout, config: LevelConfig, base: MovementTuning) -> PackedStringArray:
 	var out := PackedStringArray()
 	var t: ResonatorTuning = tuning()
+	# The level's own run speed (its zone's in the campaign), as the generator built it.
+	var movement: MovementTuning = config.movement_for(base)
 	var speed: float = movement.run_speed
 	var pace: float = movement.pace()
 	var zones := CeilingZones.make(config, movement)
