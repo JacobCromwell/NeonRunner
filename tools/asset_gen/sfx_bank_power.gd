@@ -17,6 +17,8 @@ const A6: float = 1760.0
 func sounds() -> Dictionary:
 	return {
 		"armor_break": _armor_break,
+		"armor_hit": _armor_hit,
+		"armor_back": _armor_back,
 		"shield_break": _shield_break,
 		"grapple": _grapple,
 		"revive": _revive,
@@ -52,6 +54,42 @@ func _armor_break() -> PackedFloat32Array:
 		DSP.mix(b, DSP.metal_hit(0.03, rng.randf_range(4000.0, 6500.0), 0.008, rng), at, 0.25 * (1.0 - at))
 	DSP.drive(b, 2.0)
 	DSP.crush(b, 9, 20000.0)
+	return b
+
+
+## Armor takes a hit and holds (an upgraded armor with hits to spare, GDD §8): one heavy plate clang
+## with a dull knock under it and a few sparks. No shattering debris, so it never sounds like the break.
+func _armor_hit() -> PackedFloat32Array:
+	var rng := _rng(215)
+	var b := DSP.buffer(0.5)
+	DSP.mix(b, DSP.kick(0.18, 170.0, 80.0, rng), 0.0, 0.6)
+	DSP.mix(b, DSP.metal_hit(0.45, 520.0, 0.12, rng), 0.0, 0.9)
+	DSP.mix(b, DSP.metal_hit(0.3, 1240.0, 0.06, rng), 0.004, 0.45)
+	for k: int in 5:
+		var at: float = 0.01 + 0.12 * rng.randf()
+		DSP.mix(b, DSP.metal_hit(0.03, rng.randf_range(4200.0, 6200.0), 0.006, rng), at, 0.15)
+	DSP.drive(b, 1.6)
+	DSP.crush(b, 10, 22000.0)
+	return b
+
+
+## Broken armor comes back (GDD §4, 30 s after it broke): the plates slide home and lock. A soft
+## rising servo whirr, two firm latch clicks and a warm, low FM chime (E4 and B4): calm and reassuring,
+## lower and heavier than a pickup's chime, nothing like an attack's warning.
+func _armor_back() -> PackedFloat32Array:
+	var rng := _rng(216)
+	var b := DSP.buffer(0.85)
+	var servo := DSP.fm(0.22, func(u: float) -> float: return DSP.sweep(180.0, 520.0, u), 2.0,
+		func(u: float) -> float: return 1.2 + 1.5 * u)
+	DSP.shape(servo, 0.08, 0.04)
+	DSP.filter(servo, &"lowpass", 2400.0)
+	DSP.mix(b, servo, 0.0, 0.35)
+	DSP.mix(b, DSP.metal_hit(0.08, 1500.0, 0.015, rng), 0.2, 0.55)
+	DSP.mix(b, DSP.metal_hit(0.14, 700.0, 0.035, rng), 0.25, 0.7)
+	DSP.mix(b, DSP.kick(0.12, 150.0, 90.0, rng), 0.25, 0.35)
+	DSP.mix(b, _fm_note(0.55, E4, 2.0, 1.8, 0.4, 0.18), 0.27, 0.5)
+	DSP.mix(b, _fm_note(0.5, B4, 2.0, 1.6, 0.4, 0.16), 0.3, 0.35)
+	DSP.crush(b, 11, 24000.0)
 	return b
 
 

@@ -22,12 +22,14 @@ extends Node
 ##      permanent power-ups: the HUD shows no count)}
 ##   The weapon is `active` while it has a target and `ready` shows its fire cycle; the dash and slow
 ##   time are `active` while running and `ready` 0 → 1 over their cooldown; claws and the magnet are
-##   always active and ready. Armor, shield and grapple carry the player's charges (0 = used up; they
-##   stay listed for the whole run, `active` false once used); one the run didn't bring joins the list
-##   when the player picks it up (GDD §10 pickups).
+##   always active and ready. The armor carries its hits left (`charges`; `tier` its upgrade tier),
+##   `active` while it's up, and `ready` 0 → 1 while it comes back after breaking (GDD §4). Shield and
+##   grapple carry the player's charges (0 = used up; they stay listed for the whole run, `active`
+##   false once used); one the run didn't bring joins the list when the player picks it up (GDD §10
+##   pickups).
 ## - equipment() -> Dictionary: {claws: bool, armor: bool, shield: bool, weapon_tier: int,
 ##   magnet: bool} for the player model's set_equipment(); `equipment_changed` fires when it changes
-##   (armor or shield broke, or was picked up).
+##   (the armor broke, came back or was picked up; the shield broke or was picked up).
 ## - try_dash() / try_slow_time() -> bool: what the actions do (for touch buttons and tests).
 ## - Signals below. Sounds: laser_fire / missile_fire per shot, dash_ready, slow_time_on / _off
 ##   (the `dash` sound comes from the player's own dash event).
@@ -40,9 +42,10 @@ signal dash_ready
 signal slow_time_changed(on: bool)
 signal equipment_changed(equipment: Dictionary)
 
-## Shop order, for hud_state().
+## Shop order, for hud_state(): the power-ups this controller runs, then what protects the player (the
+## armor, then the breakable items).
 const PERMANENT_ORDER: Array[StringName] = [&"weapon", &"claws", &"dash", &"magnet", &"slow_time"]
-const BREAKABLES: Array[StringName] = [&"armor", &"shield", &"grapple"]
+const PROTECTIONS: Array[StringName] = [&"armor", &"shield", &"grapple"]
 
 var world: RunWorld
 ## PC or mobile (slow time is PC only). From App.mobile when the App autoload exists.
@@ -55,7 +58,7 @@ var slow_time: SlowTimePowerup
 ## The running modules, in shop order.
 var modules: Array[PowerupModule] = []
 
-## Breakable items this run started with (they stay in hud_state once used up).
+## Protections this run started with (they stay in hud_state once used up).
 var _carried: Array[StringName] = []
 var _icons: Dictionary = {}
 
@@ -77,12 +80,13 @@ func setup(p_world: RunWorld) -> void:
 		add_child(m)
 		m.setup(self, item, t)
 		modules.append(m)
-	for item: StringName in BREAKABLES:
-		if loadout.charge(item) > 0:
+	for item: StringName in PROTECTIONS:
+		if loadout.has(item):
 			_carried.append(item)
 	world.player.died.connect(_on_player_died)
 	world.player.item_used.connect(_on_item_used)
 	world.player.item_gained.connect(_on_item_gained)
+	world.player.armor_changed.connect(_on_armor_changed)
 
 
 ## Starts the juggernaut dash if the run has it and it's off cooldown. True if it started.
@@ -103,7 +107,11 @@ func hud_state() -> Array[Dictionary]:
 		out.append(m.hud_entry())
 	var p: Player = world.player
 	for item: StringName in _carried:
-		var n: int = p.armor if item == &"armor" else (p.shield if item == &"shield" else p.grapples)
+		if item == &"armor":
+			var armor: DamageRules.Armor = p.armor_state
+			out.append(make_hud_entry(item, world.loadout.tier(&"armor"), armor.progress(), armor.is_up(), armor.hits))
+			continue
+		var n: int = p.shield if item == &"shield" else p.grapples
 		out.append(make_hud_entry(item, 0, 1.0, n > 0, n))
 	return out
 
@@ -112,7 +120,7 @@ func equipment() -> Dictionary:
 	var p: Player = world.player if world != null else null
 	return {
 		"claws": p != null and p.claws,
-		"armor": p != null and p.armor > 0,
+		"armor": p != null and p.armor_state.is_up(),
 		"shield": p != null and p.shield > 0,
 		"weapon_tier": weapon.tier if weapon != null else 0,
 		"magnet": magnet != null,
@@ -152,18 +160,25 @@ func _on_player_died(_cause: String) -> void:
 		m.stop()
 
 
+## The shield broke (the armor reports through armor_changed).
 func _on_item_used(item: StringName) -> void:
-	if item == &"armor" or item == &"shield":
+	if item == &"shield":
 		equipment_changed.emit(equipment())
 
 
-## A breakable item was picked up: it's carried from now on (in shop order), and the model shows it.
+## A protection was picked up: it's carried from now on (in shop order), and the model shows a shield
+## (the armor reports through armor_changed).
 func _on_item_gained(item: StringName) -> void:
-	if BREAKABLES.has(item) and not _carried.has(item):
+	if PROTECTIONS.has(item) and not _carried.has(item):
 		_carried.append(item)
-		_carried.sort_custom(func(a: StringName, b: StringName) -> bool: return BREAKABLES.find(a) < BREAKABLES.find(b))
-	if item == &"armor" or item == &"shield":
+		_carried.sort_custom(func(a: StringName, b: StringName) -> bool: return PROTECTIONS.find(a) < PROTECTIONS.find(b))
+	if item == &"shield":
 		equipment_changed.emit(equipment())
+
+
+## The armor broke, came back or was restored: the model wears it while it's up.
+func _on_armor_changed() -> void:
+	equipment_changed.emit(equipment())
 
 
 func _create(item: StringName) -> PowerupModule:
