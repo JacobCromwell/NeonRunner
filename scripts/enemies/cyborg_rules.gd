@@ -58,6 +58,16 @@ static func obstacle_spans(layout: LevelLayout, t: MovementTuning, zones: Ceilin
 	return out
 
 
+## What the generator's fill pass (LevelGenerator.fill_keep_outs) keeps off around cyborg entry `e`
+## (hosts too): from LevelGenerator.FILL_ENEMY_LEAD_SECONDS before it (its bursts come as the player
+## closes in, onto a clear path) and never less than its margin, to its margin after it.
+static func keep_out(gen: LevelGenerator, e: Dictionary) -> Vector2:
+	var t := load(TUNING_PATH) as CyborgTuning
+	var margin: float = obstacle_margin_at(t, gen.pace) if t != null else gen.metres(10.0)
+	var at: float = float(e["at"])
+	return Vector2(at - maxf(LevelGenerator.FILL_ENEMY_LEAD_SECONDS * gen.speed, margin), at + margin)
+
+
 ## A cyborg's obstacle_margin at a level's `pace` (MovementTuning.pace): the same time at any run
 ## speed (GDD §3: a faster zone is never secretly tighter). The rules, the Cyborg and the tests use it.
 static func obstacle_margin_at(t: CyborgTuning, pace: float) -> float:

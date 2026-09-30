@@ -108,9 +108,20 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 @export_range(0.0, 200.0, 1.0, "suffix:m") var start_clear_distance: float = 60.0
 ## Clear track kept before the finish line.
 @export_range(0.0, 200.0, 1.0, "suffix:m") var end_clear_distance: float = 40.0
-## Seconds of clear track between patterns at difficulty 0 and 1.
+## Seconds of clear track between patterns at difficulty 0 and 1. DESIGN-TBD (docs/questions/g1.md):
+## campaign levels set their own, closer than these defaults, for busier levels (GDD §3, owner's
+## playtest September 30, 2026); the hard spacing stays the fairness floor (a switch across every lane
+## between two patterns, at 6 lanes).
 @export_range(0.2, 4.0, 0.05, "suffix:s") var spacing_seconds_easy: float = 1.8
 @export_range(0.2, 4.0, 0.05, "suffix:s") var spacing_seconds_hard: float = 0.9
+## Busier levels (GDD §3, owner's playtest September 30, 2026: "more gaps, obstacles and enemies ... so
+## there is always something going on"): after the patterns and the rules, every stretch where nothing
+## is going on or kept (LevelGenerator.fill_keep_outs) longer than this many seconds at run speed gets
+## more of the level's plain obstacle patterns (holes and fences), spaced like the pattern pass places
+## them (LevelGenerator._fill_empty_stretches): more patterns, never harder ones. 0 turns it off: the
+## level is built exactly as before (quick play, the tests, boss arenas). DESIGN-TBD
+## (docs/questions/g1.md): each campaign level's value.
+@export_range(0.0, 10.0, 0.1, "suffix:s") var fill_empty_seconds: float = 0.0
 ## Quiet stretches and bursts (GDD §5, The Hush: long silent stretches broken by sudden threats).
 ## With quiet_seconds above 0, the level after its run-up alternates a quiet stretch of that many
 ## seconds at run speed with a burst of burst_seconds, quiet first. In a quiet stretch patterns are

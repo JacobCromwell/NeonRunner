@@ -18,12 +18,15 @@ extends SceneTree
 ##                                 "<level> lanes=<n> seed=<s>", plus the prototype level (quick play) at
 ##                                 several difficulties and seeds, with and without every enemy feature
 ##   --no-measure                  only the dump
+##   --set=key:value;key:value     set LevelConfig properties on every level's copy before generating
+##                                 (numbers), e.g. --set=fill_empty_seconds:2.5;spacing_seconds_easy:1.3,
+##                                 to try values before putting them in the level files
 ##
 ## Per level (the average over its lane counts and seeds) it prints the run speed, the level's length,
 ## and per minute of play: obstacle rows (a row of holes or fences at one spot, and each sign), of which
 ## rows of holes; enemies; big attacks (each Octodog charge and Resonator pulse the generator planned,
 ## each drone wave and each hover truck); mechanics (ramps, anti-grav pads, speed pads); and all events
-## (rows, enemies and mechanics). Then its empty stretches, in seconds at its run speed: the longest
+## (rows, enemies, big attacks and mechanics). Then its empty stretches, in seconds at its run speed: the longest
 ## (the mean of each layout's longest, and the longest of all) and the mean, over the level between its
 ## run-up and its end-clear stretch. What counts as going on (the rest is empty):
 ## - every hole, fence and sign; every ramp, pad and speed pad; a ceiling ride isn't (it's optional);
@@ -50,6 +53,7 @@ var _old_data: String = ""
 var _dump: String = ""
 var _measure_on: bool = true
 var _patterns_dir: String = ""
+var _set: Dictionary = {}
 
 
 func _initialize() -> void:
@@ -85,6 +89,8 @@ func _run() -> void:
 					config.level_seed = 9000 + k
 				if _base_speed and "run_speed" in config:
 					config.set("run_speed", 0.0)
+				for key: String in _set:
+					config.set(key, _set[key])
 				_use_patterns(config)
 				var gen := LevelGenerator.new()
 				var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
@@ -123,6 +129,9 @@ func _parse_args() -> void:
 			_dump = value
 		elif arg == "--no-measure":
 			_measure_on = false
+		elif arg.begins_with("--set="):
+			for pair: String in arg.trim_prefix("--set=").split(";", false):
+				_set[pair.get_slice(":", 0)] = float(pair.get_slice(":", 1))
 
 
 ## Copies every .tres under `dir` onto the live resource at the same path under res://data, so the
@@ -232,7 +241,7 @@ func _measure(gen: LevelGenerator, layout: LevelLayout, config: LevelConfig) -> 
 	return {"speed": speed, "seconds": layout.length / speed, "length": layout.length,
 		"rows": row_count / minutes, "holes": holes.size() / minutes, "enemies": layout.enemies.size() / minutes,
 		"big": big / minutes, "mechanics": mechanics / minutes,
-		"events": (row_count + layout.enemies.size() + mechanics) / minutes,
+		"events": (row_count + layout.enemies.size() + big + mechanics) / minutes,
 		"longest": longest, "gaps": gaps_s, "burst_longest": burst_longest,
 		"credits": layout.total_credit_value(), "count": layout.credits.size()}
 

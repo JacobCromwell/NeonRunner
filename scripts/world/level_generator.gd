@@ -51,6 +51,13 @@ extends RefCounted
 ## GDD §5, The Hush): quiet stretches pick sparse patterns without enemies (bar quiet_features), bursts
 ## pick threats, densely. Every rule, fairness check and the guarantee apply to it unchanged, and a
 ## burst takes at most one introduction, so it never stacks two new things.
+##
+## Pace and busier levels (GDD §3, owner's playtest September 30, 2026): a level runs at its own speed
+## (LevelConfig.run_speed, its zone's in the campaign), and everything the patterns and rules measure
+## in metres for MovementTuning.REFERENCE_SPEED is stretched by the level's pace (metres()), so every
+## reaction window keeps its seconds. After the rules, a fill pass (LevelConfig.fill_empty_seconds)
+## puts more of the level's plain obstacle patterns into its long empty stretches, off everything the
+## rules and ceilings keep (fill_keep_outs), spaced like the pattern pass: busier, never tighter.
 
 const DENOMINATIONS: Array[int] = [1, 5, 25, 100]
 const RULES_DIR: String = "res://scripts/enemies"
@@ -70,6 +77,18 @@ const GUARANTEE_SHARES: Array[float] = [0.3, 0.0, 0.55, 0.12, 0.4, 0.05, 0.7, 0.
 ## spread over its stretch, so one that rarely survives (a floor enemy where the drone's pads clear
 ## the floor) gets several chances in a build.
 const GUARANTEE_MAX_PICKS: int = 3
+## The fill pass keeps this much more than the level's spacing from everything already there, for a
+## pattern's tail (the pattern pass spaces patterns from the end of the last one's `length`, which
+## runs a little past its last piece).
+const FILL_TAIL_SECONDS: float = 0.25
+## Seconds before its spot an enemy counts as busy for the fill pass (fill_keep_outs), unless its
+## rules script says otherwise (`keep_out`): it winds up, fires or springs out as the player closes in.
+const FILL_ENEMY_LEAD_SECONDS: float = 2.0
+## Under a ceiling the fill pass times its fillers as the gauntlet patterns time their pieces
+## (data/patterns/README.md): from this long after the pad ...
+const FILL_CEILING_AFTER_PAD_SECONDS: float = 1.0
+## ... until this long before the ceiling's end (its landing zone follows).
+const FILL_CEILING_BEFORE_END_SECONDS: float = 0.6
 
 var layout: LevelLayout
 var config: LevelConfig
@@ -98,6 +117,9 @@ var zones: CeilingZones
 ## (`used`: the track it took; `due`: an introduction or one of the guarantee's forced picks). For
 ## tests and the level report.
 var picks: Array[Dictionary] = []
+## The patterns the fill pass of the last build placed (LevelConfig.fill_empty_seconds), in order:
+## {id, at, used}. For tests and tools/measure/level_pace.gd.
+var fills: Array[Dictionary] = []
 
 var _rng := RandomNumberGenerator.new()
 ## Which ceilings are narrow, and their lanes (ceiling_lanes): a stream of its own, drawn from only
@@ -185,6 +207,7 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	_enemy_count = 0
 	warnings.clear()
 	picks.clear()
+	fills.clear()
 	_intro_burst = -1
 	var accel: float = tuning.speed_gain_per_minute / 60.0
 	layout.length = speed * config.duration_seconds + 0.5 * accel * config.duration_seconds * config.duration_seconds
@@ -221,6 +244,7 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 		cursor = clear_end
 
 	_apply_enemy_rules()
+	_fill_empty_stretches(patterns)
 	_place_credits()
 	layout.enemies.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["at"] < b["at"])
 	return layout
@@ -583,8 +607,9 @@ func _pick_pattern(patterns: Array, difficulty: float, at: float, only: String =
 ## features of the same kind, and the level places as many enemies, obstacles and safe mechanics as
 ## before. In a level paced in bursts, only the patterns _pacing_allows are taken (threats in bursts,
 ## enemies only there bar quiet_features), and a burst that has had its introduction leaves out the
-## features still waiting for theirs (_intro_held).
-func pick_weights(patterns: Array, difficulty: float, at: float, only: String = "") -> Dictionary:
+## features still waiting for theirs (_intro_held). With `fill`, just the patterns the fill pass may
+## place (is_filler).
+func pick_weights(patterns: Array, difficulty: float, at: float, only: String = "", fill: bool = false) -> Dictionary:
 	var candidates: Array = []
 	var weights: Array[float] = []
 	var recency: bool = config.recency_on()
@@ -603,6 +628,8 @@ func pick_weights(patterns: Array, difficulty: float, at: float, only: String = 
 		if difficulty < float(p.get("min_difficulty", 0.0)) or difficulty > float(p.get("max_difficulty", 1.0)):
 			continue
 		if config.lane_count < int(p.get("min_lanes", 1)):
+			continue
+		if fill and not is_filler(p):
 			continue
 		var requires: Array = p.get("requires", [])
 		if only != "" and not requires.has(only):
@@ -1078,6 +1105,266 @@ func _sorted(values: Array[int]) -> Array[int]:
 	var out: Array[int] = values.duplicate()
 	out.sort()
 	return out
+
+
+# --- Busier levels: the fill pass (GDD §3, owner's playtest September 30, 2026) ------------------
+
+## Fills the level's long empty stretches with more of its plain obstacle patterns: where nothing goes
+## on for longer than LevelConfig.fill_empty_seconds at run speed (no piece and no enemy: fill_keep_outs'
+## "activity"), fillers (is_filler: holes and fences, picked by difficulty and weight as the pattern
+## pass picks) go wherever nothing is kept either (its "keep"), as far from everything already there as
+## the pattern pass spaces its patterns (the level's spacing there, plus FILL_TAIL_SECONDS) and as far
+## from each other. It runs after the
+## pattern pass and every rule, so track a rule kept for an enemy that then didn't come (a hover truck
+## too near the end, an Octodog whose charges didn't fit) doesn't stay bare, and it never touches what
+## a rule keeps. More of the same patterns, never harder ones (GDD §3: busier levels, "so there is
+## always something going on"). Its own random stream: with fill_empty_seconds 0 (quick play, tests,
+## boss arenas) a level is built exactly as it was before.
+func _fill_empty_stretches(patterns: Array) -> void:
+	if config.fill_empty_seconds <= 0.0:
+		return
+	var from: float = config.start_clear_distance
+	var to: float = layout.length - config.end_clear_distance
+	var outs: Dictionary = fill_keep_outs(patterns)
+	var blocked: Array[Vector2] = []
+	for k: Vector4 in outs["keep"]:
+		blocked.append(Vector2(k.x - k.z, k.y + k.w))
+	var empties: Array[Vector2] = free_stretches(outs["activity"], from, to)
+	var saved: RandomNumberGenerator = _rng
+	_rng = rng_for("fill")
+	for region: Vector2 in free_stretches(blocked, from, to):
+		# Only where nothing goes on for longer than fill_empty_seconds (every activity is kept, so the
+		# region lies inside one such stretch).
+		var empty := Vector2.ZERO
+		for e: Vector2 in empties:
+			if e.x <= region.x + 0.001 and e.y >= region.y - 0.001:
+				empty = e
+				break
+		if (empty.y - empty.x) / speed <= config.fill_empty_seconds:
+			continue
+		var cursor: float = region.x
+		var last: float = region.y
+		while cursor < last:
+			var difficulty: float = difficulty_at(cursor / layout.length)
+			var pattern: Dictionary = _pick_filler(patterns, difficulty, cursor, last - cursor)
+			if pattern.is_empty():
+				break
+			var used: float = _place_pattern(pattern, cursor)
+			fills.append({"id": String(pattern.get("id", "?")), "at": cursor, "used": used})
+			_trim_clear_stretches(Vector2(cursor, cursor + used))
+			cursor += used + _spacing_seconds(cursor + used, difficulty) * speed
+	_rng = saved
+	if not fills.is_empty():
+		_after_fill_rules()
+
+
+## Runs the `static func after_fill(gen: LevelGenerator)` of every feature's rules script that has one,
+## in the order of the level's features: a rule that keeps floor pieces out of somewhere the fill pass
+## doesn't keep off whole (a hover truck's lane) keeps the fillers out too.
+func _after_fill_rules() -> void:
+	for feature: String in config.features:
+		var path: String = RULES_DIR.path_join("%s_rules.gd" % feature)
+		if not ResourceLoader.exists(path):
+			continue
+		var script := load(path) as GDScript
+		if script != null and script.has_method("after_fill"):
+			script.call("after_fill", self)
+
+
+## True if the fill pass may place `pattern`: plain obstacles, holes and fences only, that need no
+## feature (so nothing new ever comes before its introduction) and put nothing on a wall.
+static func is_filler(pattern: Dictionary) -> bool:
+	if not (pattern.get("requires", []) as Array).is_empty():
+		return false
+	var elements: Array = pattern.get("elements", [])
+	if elements.is_empty():
+		return false
+	for element: Dictionary in elements:
+		if not (String(element.get("kind", "")) in ["gap", "fence"]):
+			return false
+	return true
+
+
+## What the fill pass keeps off: {"keep": Array[Vector4], "activity": Array[Vector2]}. "keep": stretches
+## of track [from, to] where something is going on or kept, as Vector4(from, to, margin before, margin
+## after), with how far a filler stays from each end (_fill_margin: the level's spacing there and a
+## pattern's tail; none where a gauntlet's timing already holds). "activity": what of it is going on
+## (every piece and enemy; not a landing zone, a pad's run-up or a quiet stretch). Kept off:
+## every floor piece (holes, fences, signs, speed pads), each ramp to where its wall run drops the player
+## back (RampLaunch), each pad's zone and each ceiling's landing zone (CeilingZones) and the floor under a
+## ceiling, but where the level already picks gauntlets (a pattern with a ceiling and holes or fences
+## under it, from its min_difficulty) over two lanes or more: there fillers may go under it, timed like
+## a gauntlet's pieces (FILL_CEILING_AFTER_PAD_SECONDS after its pads, FILL_CEILING_BEFORE_END_SECONDS
+## before its end); every enemy from FILL_ENEMY_LEAD_SECONDS before it to the end of the floor it uses
+## (LevelGenerator.enemy_floor_span), or what its rules script keeps for it (`static func keep_out(gen:
+## LevelGenerator, entry: Dictionary) -> Vector2`: a cyborg's margin, a hover truck's lane window, a
+## Resonator's visit); and a level's quiet stretches.
+func fill_keep_outs(patterns: Array) -> Dictionary:
+	var out: Array[Vector4] = []
+	var half: float = tuning.fence_depth * 0.5
+	for g: Dictionary in layout.gaps:
+		out.append(_keep(g["start"], g["end"]))
+	for f: Dictionary in layout.fences:
+		out.append(_keep(float(f["at"]) - half, float(f["at"]) + half))
+	for s: Dictionary in layout.signs:
+		out.append(_keep(s["start"], s["end"]))
+	for r: Dictionary in layout.ramps:
+		out.append(_keep(float(r["at"]), maxf(ramp_launch(r).end(), float(r["at"]) + tuning.ramp_length)))
+	for p: Dictionary in layout.speed_pads:
+		out.append(_keep(p["at"], float(p["at"]) + tuning.speed_pad_length))
+	for p: Dictionary in layout.pads:
+		out.append(Vector4(float(p["at"]), float(p["at"]) + tuning.pad_length, 0.0, 0.0))
+	var hooks: Dictionary = {}
+	for e: Dictionary in layout.enemies:
+		var k: Vector2 = _enemy_keep_out(e, hooks)
+		out.append(_keep(k.x, k.y))
+	var activity: Array[Vector2] = []
+	for k: Vector4 in out:
+		activity.append(Vector2(k.x, k.y))
+	var gauntlets: float = gauntlet_difficulty(patterns)
+	var open_hulls: Array[Dictionary] = []
+	for h: Dictionary in layout.hulls:
+		var landing: Vector2 = zones.landing_zone(h)
+		if layout.hull_width(h) >= 2 and difficulty_at(float(h["start"]) / layout.length) >= gauntlets:
+			open_hulls.append(h)
+			out.append(Vector4(float(h["end"]) - FILL_CEILING_BEFORE_END_SECONDS * speed, landing.y, 0.0,
+				_fill_margin(landing.y)))
+		else:
+			out.append(_keep(float(h["start"]), landing.y))
+	for p: Dictionary in layout.pads:
+		var at: float = float(p["at"])
+		var zone: Vector2 = zones.pad_zone(at)
+		var under_open: bool = false
+		for h: Dictionary in open_hulls:
+			under_open = under_open or (at >= float(h["start"]) and at <= float(h["end"]))
+		if under_open:
+			out.append(Vector4(zone.x, maxf(zone.y, at + FILL_CEILING_AFTER_PAD_SECONDS * speed), _fill_margin(zone.x), 0.0))
+		else:
+			out.append(_keep(zone.x, zone.y))
+	for q: Vector2 in quiet_stretches():
+		out.append(_keep(q.x, q.y))
+	return {"keep": out, "activity": activity}
+
+
+## A keep-out [from, to] with the fill pass's usual margin at both ends (_fill_margin).
+func _keep(from: float, to: float) -> Vector4:
+	return Vector4(from, to, _fill_margin(from), _fill_margin(to))
+
+
+## The lowest difficulty at which the level picks a gauntlet: a pattern with a ceiling and holes or
+## fences under it whose features the level has, with pick weight. INF without one.
+func gauntlet_difficulty(patterns: Array) -> float:
+	var out: float = INF
+	for p: Dictionary in patterns:
+		var hull: bool = false
+		var floor_piece: bool = false
+		for element: Dictionary in p.get("elements", []):
+			var kind: String = String(element.get("kind", ""))
+			hull = hull or kind == "hull"
+			floor_piece = floor_piece or kind in ["gap", "fence"]
+		if not (hull and floor_piece) or config.lane_count < int(p.get("min_lanes", 1)):
+			continue
+		var weight: float = float(p.get("weight", 1.0))
+		var ok: bool = true
+		for need: Variant in p.get("requires", []):
+			ok = ok and config.has_feature(String(need))
+			weight *= config.feature_weight(String(need))
+		if ok and weight > 0.0:
+			out = minf(out, float(p.get("min_difficulty", 0.0)))
+	return out
+
+
+## What the fill pass keeps off around enemy entry `e` (fill_keep_outs). `hooks` caches each type's
+## rules script's keep_out, if it has one.
+func _enemy_keep_out(e: Dictionary, hooks: Dictionary) -> Vector2:
+	var type: String = String(e.get("type", ""))
+	if not hooks.has(type):
+		var path: String = RULES_DIR.path_join("%s_rules.gd" % type)
+		var script: GDScript = load(path) as GDScript if ResourceLoader.exists(path) else null
+		hooks[type] = script if script != null and script.has_method("keep_out") else null
+	if hooks[type] != null:
+		return (hooks[type] as GDScript).call("keep_out", self, e)
+	var at: float = float(e["at"])
+	var out := Vector2(at - FILL_ENEMY_LEAD_SECONDS * speed, at)
+	var span: Vector2 = enemy_floor_span(e)
+	if span.y >= span.x:
+		out = Vector2(minf(out.x, span.x), maxf(out.y, span.y))
+	return out
+
+
+## The stretches of [from, to] that none of `busy` covers, in order.
+static func free_stretches(busy: Array[Vector2], from: float, to: float) -> Array[Vector2]:
+	var sorted: Array[Vector2] = busy.duplicate()
+	sorted.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
+	var out: Array[Vector2] = []
+	var cursor: float = from
+	for b: Vector2 in sorted:
+		if b.y <= cursor:
+			continue
+		if b.x > cursor:
+			out.append(Vector2(cursor, minf(b.x, to)))
+		cursor = maxf(cursor, b.y)
+		if cursor >= to:
+			return out
+	if cursor < to:
+		out.append(Vector2(cursor, to))
+	return out
+
+
+## How far the fill pass keeps a filler from what's around track distance `at`: the level's spacing
+## there plus FILL_TAIL_SECONDS, at run speed.
+func _fill_margin(at: float) -> float:
+	var difficulty: float = difficulty_at(clampf(at / layout.length, 0.0, 1.0))
+	return (_spacing_seconds(at, difficulty) + FILL_TAIL_SECONDS) * speed
+
+
+## A weighted pick among the fillers that fit in `room` metres from `at` (is_filler, pattern_extent).
+## {} (drawing nothing) when none fits.
+func _pick_filler(patterns: Array, difficulty: float, at: float, room: float) -> Dictionary:
+	var pool: Dictionary = pick_weights(patterns, difficulty, at, "", true)
+	var candidates: Array = []
+	var weights: Array[float] = []
+	var total: float = 0.0
+	for i: int in (pool["patterns"] as Array).size():
+		var p: Dictionary = pool["patterns"][i]
+		if pattern_extent(p) <= room:
+			candidates.append(p)
+			weights.append(float(pool["weights"][i]))
+			total += weights[-1]
+	if candidates.is_empty() or total <= 0.0:
+		return {}
+	var roll: float = _rng.randf() * total
+	for i: int in candidates.size():
+		roll -= weights[i]
+		if roll <= 0.0:
+			return candidates[i]
+	return candidates[-1]
+
+
+## The track a pattern of holes and fences takes at this level's speed: its length, or its last hole's
+## end (what _place_pattern returns for it).
+func pattern_extent(pattern: Dictionary) -> float:
+	var extent: float = metres(float(pattern.get("length", 8.0)))
+	for element: Dictionary in pattern.get("elements", []):
+		var at: float = metres(float(element.get("at", 0.0))) + float(element.get("at_seconds", 0.0)) * speed
+		if String(element.get("kind", "")) == "gap":
+			at += minf(float(element.get("jump_frac", 0.5)), config.max_gap_jump_fraction) * jump_distance
+		extent = maxf(extent, at)
+	return extent
+
+
+## Takes `span` out of the clear stretches the credit trails go in (a filler now stands there).
+func _trim_clear_stretches(span: Vector2) -> void:
+	var out: Array[Vector2] = []
+	for s: Vector2 in _clear_stretches:
+		if s.y <= span.x or s.x >= span.y:
+			out.append(s)
+			continue
+		if s.x < span.x:
+			out.append(Vector2(s.x, span.x))
+		if s.y > span.y:
+			out.append(Vector2(span.y, s.y))
+	_clear_stretches = out
 
 
 # --- Enemy rules ---------------------------------------------------------------

@@ -91,6 +91,23 @@ static func tuning() -> ResonatorTuning:
 	return res as ResonatorTuning if res is ResonatorTuning else ResonatorTuning.new()
 
 
+## What the generator's fill pass (LevelGenerator.fill_keep_outs) keeps off around Resonator entry `e`:
+## its planned visit, from its first pulse's warning to where its last wave meets the player on the
+## clear floor it was planned on (with PLAN_MARGIN); without a plan, from where it has eased into pacing
+## the player to its spot.
+static func keep_out(gen: LevelGenerator, e: Dictionary) -> Vector2:
+	var t: ResonatorTuning = tuning()
+	var at: float = float(e["at"])
+	var params: Dictionary = e.get("params", {})
+	var anchors: Array = params.get("pulse_at", [])
+	if anchors.is_empty():
+		return Vector2(visit_start(t, at, gen.pace), at)
+	var doubles: Array = params.get("double", [])
+	var double: bool = doubles.size() == anchors.size() and bool(doubles[-1])
+	var last: Vector2 = t.meeting_stretch(float(anchors[-1]), double, gen.speed, gen.config.enemy_scaling, gen.pace)
+	return Vector2(float(anchors[0]), last.y + PLAN_MARGIN)
+
+
 ## Every Resonator in the layout, along the track.
 static func resonators_in(layout: LevelLayout) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []

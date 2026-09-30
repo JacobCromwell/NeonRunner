@@ -84,6 +84,27 @@ static func window_end(t: HoverTruckTuning, at: float, speed: float) -> float:
 	return at + (t.stay_max_seconds + t.leave_seconds) * speed
 
 
+## What the generator's fill pass (LevelGenerator.fill_keep_outs) keeps off around truck entry `e`, in
+## every lane: from the start of its lane's window until its shortest stay is over (it's surely there,
+## lurching and firing, and that's what goes on). Fillers may come after that, while it may still stay:
+## after_fill() then clears its lane of them, as apply() cleared it of the patterns' pieces.
+static func keep_out(gen: LevelGenerator, e: Dictionary) -> Vector2:
+	var t: HoverTruckTuning = tuning()
+	var at: float = float(e["at"])
+	return Vector2(window_start(t, at, gen.pace), at + t.stay_min_seconds * gen.speed)
+
+
+## After the generator's fill pass (LevelGenerator._fill_empty_stretches): every truck's lane is kept
+## free of the fillers' holes and fences until it has left, as of the patterns' (apply). Taking pieces
+## out of a row never makes it unfair.
+static func after_fill(gen: LevelGenerator) -> void:
+	var t: HoverTruckTuning = tuning()
+	for e: Dictionary in gen.layout.enemies:
+		if String(e.get("type", "")) == TYPE:
+			var at: float = float(e["at"])
+			_clear_lane(gen.layout, int(e.get("lane", -1)), window_start(t, at, gen.pace), window_end(t, at, gen.speed))
+
+
 ## The lanes at track distance `at` that no hover truck keeps free (its lane, from window_start to
 ## window_end): where another rule may still add a floor enemy (the host and Octodog guarantees).
 static func open_lanes(gen: LevelGenerator, at: float) -> Array[int]:
