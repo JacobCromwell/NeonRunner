@@ -15,7 +15,8 @@ extends Node3D
 ## - the checkpoint: reaching a phase marked `checkpoint` stores where a retry resumes
 ##   (RunContext.boss_resume, with the fight time, score and weapon damage so far);
 ## - the standard armor rule (GDD §10): armor_pickup_due at the start of the final phase and a while
-##   after the player's armor or shield breaks, at most once per phase, and an armor pickup on the
+##   after the player's armor or shield breaks, at most once per phase (with BossDef.
+##   armor_when_unprotected, a phase begun with neither counts as a break), and an armor pickup on the
 ##   floor ahead each time (_on_armor_pickup_due; the run's PickupField places it fairly); a boss
 ##   script can offer other pickups too (offer_pickup: GDD §10's floor that spawns an armor, shield or
 ##   grapple pickup), and none comes after the fight;
@@ -58,11 +59,16 @@ signal checkpoint_reached(index: int)
 ## The player's armor or shield broke during the fight.
 signal protection_broken(item: StringName)
 ## GDD §10's standard armor rule says an armor pickup appears now: `reason` is &"final_phase" (the
-## final phase began) or &"protection_broken" (BossDef.armor_delay_min–max seconds after a break, at
-## most armor_pickups_per_phase per phase). The encounter then offers it (_on_armor_pickup_due), and
-## the run's PickupField puts it on the floor ahead of the player.
+## final phase began), &"protection_broken" (BossDef.armor_delay_min–max seconds after a break, at
+## most armor_pickups_per_phase per phase) or &"unprotected" (as long after a phase began with the
+## player holding no armor and no shield, with BossDef.armor_when_unprotected; counted like a break).
+## The encounter then offers it (_on_armor_pickup_due), and the run's PickupField puts it on the floor
+## ahead of the player.
 signal armor_pickup_due(reason: StringName)
 signal defeated
+## A first-encounter hint for something of the boss's own is due now (a way onto its head): the run's
+## HintDirector shows the hint whose trigger is "boss:<key>" (data/hints/hints.json), once per profile.
+signal hint_due(key: String)
 
 ## INTRO: a phase's intro (the boss can't be hurt). FIGHT: its pattern. DEFEATED: the boss is beaten.
 enum State { INTRO, FIGHT, DEFEATED }
@@ -536,6 +542,8 @@ func _begin_phase(index: int) -> void:
 		log_event(&"armor_pickup", {"reason": &"final_phase"})
 		armor_pickup_due.emit(&"final_phase")
 		_on_armor_pickup_due(&"final_phase")
+	elif def.armor_rule and def.armor_when_unprotected and not player_protected():
+		_schedule_armor(&"unprotected")
 	_on_phase_started(index)
 
 
@@ -588,26 +596,56 @@ func _on_item_used(item: StringName) -> void:
 		return
 	log_event(&"protection_broken", {"item": item})
 	protection_broken.emit(item)
-	if not def.armor_rule:
-		return
-	# DESIGN-TBD (docs/questions/b8.md): a break counts against its own phase's cap, and its delay is
-	# picked in [min, max] from the fight's own seeded stream.
+	if def.armor_rule:
+		_schedule_armor(&"protection_broken")
+
+
+## True if the player is protected or protection is on its way: armor or a shield held, or an armor
+## pickup already due (after a break), on the track, waiting for a spot, or held back by the boss
+## (armor_pickups_waiting).
+func player_protected() -> bool:
+	var p: Player = world.player
+	if p.armor > 0 or p.shield > 0 or not _armor_due.is_empty() or armor_pickups_waiting() > 0:
+		return true
+	if world.pickups != null:
+		for pickup: Pickup in world.pickups.active:
+			if is_instance_valid(pickup) and pickup.item == &"armor":
+				return true
+		for offer: Dictionary in world.pickups.pending:
+			if offer["item"] == &"armor":
+				return true
+	return false
+
+
+## Armor pickups the boss script holds back to place its own way later (_on_armor_pickup_due), which
+## player_protected counts as on their way. None by default.
+func armor_pickups_waiting() -> int:
+	return 0
+
+
+## An armor pickup BossDef.armor_delay_min–max seconds from now (a break, or a phase begun unprotected),
+## at most armor_pickups_per_phase a phase. DESIGN-TBD (docs/questions/b8.md): it counts against the
+## phase it comes from, and its delay is picked from the fight's own seeded stream.
+func _schedule_armor(reason: StringName) -> void:
 	var used: int = int(_armor_breaks.get(phase_index, 0))
 	if used >= def.armor_pickups_per_phase:
 		return
 	_armor_breaks[phase_index] = used + 1
 	var delay: float = _armor_rng.randf_range(def.armor_delay_min, maxf(def.armor_delay_max, def.armor_delay_min))
-	_armor_due.append({"at": fight_time() + delay, "phase": phase_index})
+	_armor_due.append({"at": fight_time() + delay, "phase": phase_index, "reason": reason})
+	log_event(&"armor_scheduled", {"reason": reason, "at": fight_time() + delay})
 
 
-## Pickups after breaks, when their delay is up (the fight's clock stops while the player is down).
+## Pickups after breaks (and unprotected phases), when their delay is up (the fight's clock stops while
+## the player is down).
 func _update_armor_rule() -> void:
 	for i: int in range(_armor_due.size() - 1, -1, -1):
 		if fight_time() >= float(_armor_due[i]["at"]):
+			var reason: StringName = _armor_due[i].get("reason", &"protection_broken")
 			_armor_due.remove_at(i)
-			log_event(&"armor_pickup", {"reason": &"protection_broken"})
-			armor_pickup_due.emit(&"protection_broken")
-			_on_armor_pickup_due(&"protection_broken")
+			log_event(&"armor_pickup", {"reason": reason})
+			armor_pickup_due.emit(reason)
+			_on_armor_pickup_due(reason)
 
 
 ## The environment and the directional lights of the run, as they are before any dimming.
