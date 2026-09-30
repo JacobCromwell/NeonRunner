@@ -32,9 +32,9 @@ extends SceneTree
 ## - every hole, fence and sign; every ramp, pad and speed pad; a ceiling ride isn't (it's optional);
 ## - a floor or window cyborg (host too) for 2 s before its spot (its charge-up and bolts come as the
 ##   player closes in), a screech for its trigger time (1.6 s), a fence generator at its spot;
-## - an Octodog over the run its charges use (its floor_span), a Resonator from each pulse's warning to
-##   where its wave meets the player, a drone wave from its arrival to its first pad, a hover truck for
-##   its shortest stay.
+## - an Octodog over the run its charges use (its floor_span), a Resonator over its visit (from its
+##   first pulse's warning to where its last wave meets the player), a drone wave from its arrival to
+##   its first pad, a hover truck for its shortest stay.
 ## In a level paced in bursts (The Hush) it also prints the longest empty stretch inside its bursts
 ## (its quiet stretches are empty by design). Credits: the credits' total value and count per level.
 
@@ -277,8 +277,10 @@ static func activity(gen: LevelGenerator, layout: LevelLayout, config: LevelConf
 				out.append(span if span.y >= span.x else Vector2(at, at))
 			"resonator":
 				var rt := EnemyDirector.tuning_for("resonator") as ResonatorTuning
-				for a: Variant in params.get("pulse_at", []):
-					out.append(Vector2(float(a), float(a) + rt.meet_offset(speed, config.enemy_scaling)))
+				var pulses: Array = params.get("pulse_at", [])
+				if not pulses.is_empty():
+					out.append(Vector2(float(pulses[0]), float(pulses[-1]) + rt.meet_offset(speed, config.enemy_scaling,
+						gen.pace)))
 			"drone":
 				var first: float = at
 				for p: float in pads:
