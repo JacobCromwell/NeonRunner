@@ -748,6 +748,8 @@ func _play_boss(s: CampaignStep, difficulty_tier: int) -> void:
 	start_boss(s, difficulty_tier)
 
 
+## A cinematic step: its scene under the world root (it takes its zone and slot from the step), skippable
+## (skip_cinematic), then on to the next step; or its placeholder card until built.
 func _play_cinematic(s: CampaignStep) -> void:
 	_end_run()
 	if s.cinematic == null or not s.cinematic.is_built():
@@ -763,11 +765,25 @@ func _play_cinematic(s: CampaignStep) -> void:
 	_boss_node = node
 	main.world_root.add_child(node)
 	var c := node as Cinematic
+	c.skip_requested.connect(skip_cinematic)
 	c.finished.connect(func() -> void:
 		profile.mark_seen("cinematic/" + s.id)
 		complete_step(s)
 		advance_from(s), CONNECT_ONE_SHOT)
-	c.play(s.cinematic)
+	c.play(s.cinematic, s)
+
+
+## The cinematic playing (a built cinematic slot), or null.
+func playing_cinematic() -> Cinematic:
+	return _boss_node as Cinematic if _boss_node != null and is_instance_valid(_boss_node) else null
+
+
+## Skips the cinematic playing, if any: the player asked (the pause action, or its skip button). It ends
+## at once and the campaign moves on, as when it plays out.
+func skip_cinematic() -> void:
+	var c: Cinematic = playing_cinematic()
+	if c != null:
+		c.skip()
 
 
 # --- Helpers ----------------------------------------------------------------------------

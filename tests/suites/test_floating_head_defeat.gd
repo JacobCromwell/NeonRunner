@@ -13,7 +13,7 @@ extends TestSuite
 ## - Reduced flashing: its glitch holds steady, no sparks, the slogan doesn't jump;
 ## - every attempt plays out the same way, the propaganda and the crash too;
 ## - the whole fight through the campaign at 3, 5 and 6 lanes (a runner who reads the fight and runs
-##   the arena, no god mode): the City's last level, the boss intro's slot, the fight, a win's results
+##   the arena, no god mode): the City's last level, the boss intro (skipped), the fight, a win's results
 ##   and stars, the shop, the outro's slot; in the web demo, then its end screen. Along the way the
 ##   propaganda starts with the reveal, shows its slogans, and never masks a warning (the voice ducks
 ##   and the slogan fades while an attack warns or strikes, and no phrase starts then); it crashes where
@@ -406,11 +406,12 @@ func _campaign_flow(lanes: int, demo: bool) -> void:
 	App.continue_after_result(level_result)
 	(App.screen as ShopScreen).on_close.call()
 	await tree.process_frame
-	var intro := App.screen as SlotScreen
-	check(intro != null and intro.step.id == "city/boss_intro", "then the boss intro's slot %s" % tag)
+	# The boss intro plays its flyover (task F1); the player skips it.
+	var intro: Cinematic = App.playing_cinematic()
+	check(intro != null and intro.step.id == "city/boss_intro", "then the boss intro's cinematic %s" % tag)
 	if intro == null:
 		return
-	intro.continue_button.pressed.emit()
+	App.skip_cinematic()
 	await physics_frames(3)
 	var run: LevelRun = App.run
 	check(run != null and run.encounter is FloatingHead and run.context.step.id == "city/boss"

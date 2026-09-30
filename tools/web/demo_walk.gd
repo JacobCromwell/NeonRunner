@@ -139,6 +139,13 @@ func _follow() -> bool:
 			if not await _play(App.run):
 				return false
 			continue
+		var c: Cinematic = App.playing_cinematic()
+		if c != null:
+			# A built cinematic slot (F1) plays in place of its card: note its step and skip it.
+			if c.step != null and (steps.is_empty() or steps[-1] != c.step.id):
+				steps.append(c.step.id)
+			App.skip_cinematic()
+			continue
 		var s: Control = App.screen
 		if s is SlotScreen:
 			see(s)

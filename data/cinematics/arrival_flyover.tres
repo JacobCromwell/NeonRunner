@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="ArrivalFlyoverTuning" format=3]
+
+[ext_resource type="Script" path="res://scripts/cinematics/arrival_flyover_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+duration = 9.5
+reveal_end = 3.0
+glide_end = 6.3
+settled_before_end = 1.1
+fade_in = 0.8
+fade_out = 0.45
+music_fade = 1.5
+card_at = 0.9
+card_seconds = 2.9
+open_height = 2.4
+open_side = 1.2
+open_at = -4.0
+open_look_height = 34.0
+open_look_ahead = 80.0
+reveal_height = 7.5
+reveal_at = 16.0
+glide_height = 6.0
+glide_behind = 8.5
+glide_side = 1.1
+glide_look_ahead = 22.0
+fov = 70.0
+runner_start = -22.0
+ceiling_before_end = 24.0
+ceiling_length = 52.0
+gaps = PackedVector3Array(-1, 46, 53, 1, 68, 75, -1, 96, 102, 2, 58, 64, -2, 80, 86)
