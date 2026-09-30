@@ -103,7 +103,8 @@ volume_db = {
 "ui_unlock": -5.5,
 "wall_blocked": -5.0,
 "wall_enter": -6.0,
-"wall_jump": -6.0
+"wall_jump": -6.0,
+"wall_marks_light": -4.5
 }
 pitch_variation = {
 "credit_1": 0.03,

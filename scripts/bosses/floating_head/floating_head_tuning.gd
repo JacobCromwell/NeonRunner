@@ -216,13 +216,14 @@ extends Resource
 ## centre lies within this share of the ship's width from its centre line (3, 3 and 4 of them at 3, 5
 ## and 6 lanes).
 @export_range(0.2, 0.45, 0.01) var weak_point_reach: float = 0.38
-## DESIGN-TBD (item 160): where a stomp counts: a box over each weak point this wide and this deep
-## (along the track), from a little under its socket to stomp_top above it; a runner coming down with
-## their feet within GameRules.stomp_tolerance under its top stomps it. Generous: the red dome is
-## 1.7 m across.
+## DESIGN-TBD (item 160; docs/questions/e1e.md): where a stomp counts: a box over each weak point this
+## wide and this deep (along the track), from a little under its socket to stomp_top above it; a runner
+## coming down with their feet within GameRules.stomp_tolerance under its top stomps it. Generous: the
+## red dome is 1.7 m across. E1e (the owner's playtest) made it lower and deeper (it was 0.55 m and
+## 3 m), so a wall jump lands on it over a longer stretch of the wall (tools/measure/stomp_routes.gd).
 @export_range(1.0, 2.4, 0.05, "suffix:m") var stomp_width: float = 2.0
-@export_range(1.0, 5.0, 0.1, "suffix:m") var stomp_depth: float = 3.0
-@export_range(0.3, 1.2, 0.05, "suffix:m") var stomp_top: float = 0.55
+@export_range(1.0, 6.0, 0.1, "suffix:m") var stomp_depth: float = 4.0
+@export_range(0.2, 1.2, 0.05, "suffix:m") var stomp_top: float = 0.35
 ## DESIGN-TBD (docs/questions/e1e.md; the owner's playtest): a wall jump lands in the outer lane, and a
 ## drop off the third window's ceiling in the lane it was ridden in; at 5 and 6 lanes the outer lanes
 ## have no weak point of their own (weak_point_reach). With this on, the outermost weak point's stomp box
@@ -266,6 +267,17 @@ extends Resource
 ## window_release_gap). 0 = one straight slab whose sides block from a step high (E1c's).
 @export_range(0.0, 0.9, 0.05) var ramp_board_share: float = 0.75
 @export_range(0.0, 1.2, 0.05, "suffix:m") var ramp_board_height: float = 1.0
+
+@export_group("Wall window")
+## DESIGN-TBD (docs/questions/e1e.md; the owner's playtest: after the first stomp nothing showed a way
+## onto its head): the second way up's cue. As the tower falls, both walls light up
+## (FloatingHeadWallMarks, with a sound): a strip of green chevrons at running height from
+## wall_entry_before the pinned ship's face (get onto the wall along its first part, before
+## window_release_gap) to a tall mark wall_jump_before its face (jump off the wall there, toward the
+## ship). A wall jump off the marks lands on a weak point at every lane count (the outermost stomp boxes
+## reach the outer lanes: stomp_covers_outer_lanes).
+@export_range(4.0, 30.0, 0.5, "suffix:m") var wall_entry_before: float = 13.0
+@export_range(0.0, 10.0, 0.25, "suffix:m") var wall_jump_before: float = 4.0
 
 @export_group("Ceiling window")
 ## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 165): the third way up. As the tower falls,

@@ -126,6 +126,8 @@ var ramp_lane: int = -1
 ## The third way up's pads (their track distance, every lane) and ceiling (track distances).
 var pad_at: float = 0.0
 var ceiling_span := Vector2.ZERO
+## The second way up's cue: the marks on both walls, while it's the way up.
+var wall_marks: FloatingHeadWallMarks
 ## The defeat: where its wreck's face lies (a track distance; -1 until it has picked a crash site), and
 ## the spark bursts it has thrown (none with Reduced flashing; tests read it).
 var crash_at: float = -1.0
@@ -627,6 +629,11 @@ func _on_armor_pickup_due(reason: StringName) -> void:
 	offer_pickup(&"armor")
 
 
+## Armor pickups held back while a pin is under way (the framework counts them as on their way).
+func armor_pickups_waiting() -> int:
+	return _armor_waiting
+
+
 ## True while a pin is coming or under way: a marked tower's drag lined up, the tower falling, the ship
 ## pinned or shaking free.
 func pin_busy() -> bool:
@@ -639,8 +646,8 @@ func pin_busy() -> bool:
 
 ## A clipped tower topples onto the ship (FloatingHeadFaceOff calls this as the laser clips it): it
 ## brakes to a stop under the falling tower, which lands on its crown behind its weak points and slams
-## it down between the trucks. The phase's way onto its head starts now: the third window's pads light
-## up at once (its ceiling follows once the ship is past it).
+## it down between the trucks. The phase's way onto its head starts now: the second window's wall marks
+## and the third window's pads light up at once (its ceiling follows once the ship is past it).
 func begin_pin(tower: FloatingHeadTower) -> void:
 	var fall: float = tuning.tower_fall_seconds / pace()
 	var s0: float = player_distance() + pose.z
@@ -657,6 +664,8 @@ func begin_pin(tower: FloatingHeadTower) -> void:
 	log_event(&"pin_start", {"stern": pin_stern, "side": tower.side, "route": route})
 	if route == &"ceiling":
 		_light_pads()
+	elif route == &"wall":
+		_light_wall_marks()
 
 
 ## The pinned ship's belly height, rolled by `roll`: its weak points' sockets' highest top at
@@ -790,10 +799,7 @@ func _slam_ramp(side: int) -> void:
 	ramp_lane = ramp_lane_for(side)
 	var x: float = world.geo.lane_x(ramp_lane)
 	var top: float = pinned_crown(x, 0.0).y + tuning.ramp_lift
-	var color := Color(0.3, 1.0, 0.35)
-	var skin_color: Variant = world.skin.get(&"ramp_color") if world.skin != null else null
-	if skin_color is Color:
-		color = skin_color
+	var color: Color = ramp_color()
 	ramp = FloatingHeadRamp.new()
 	add_child(ramp)
 	ramp.setup(world, ramp_lane, pin_stern - tuning.ramp_length, pin_stern, top, tuning.ramp_overhang,
@@ -801,6 +807,33 @@ func _slam_ramp(side: int) -> void:
 	_crush(pin_stern - tuning.ramp_length - 1.0, pin_stern, ramp_lane)
 	sound(&"ramp_slam", ramp.end_world())
 	log_event(&"ramp", {"lane": ramp_lane, "foot": ramp.foot, "top": top})
+
+
+## The second way up's cue (GDD §10: "wall-jump onto it"): both walls light up where a wall run leads
+## onto its head (FloatingHeadWallMarks: a strip from wall_entry_before where it will lie to the jump
+## mark wall_jump_before it), with its sound, as the tower falls.
+func _light_wall_marks() -> void:
+	_clear_wall_marks()
+	var jump_at: float = pin_stern - tuning.wall_jump_before
+	var start: float = pin_stern - maxf(tuning.wall_entry_before, tuning.wall_jump_before + 1.0)
+	wall_marks = FloatingHeadWallMarks.new()
+	props.keep(wall_marks, jump_at + FloatingHeadWallMarks.MARK_LENGTH)
+	wall_marks.setup(world, start, jump_at, ramp_color())
+	sound(&"wall_marks_light", Vector3(0.0, 2.0, TrackGeometry.world_z(start)))
+	log_event(&"wall_marks", {"start": start, "jump": jump_at})
+
+
+## The wall marks go (the window closed, or the pin is over).
+func _clear_wall_marks() -> void:
+	if wall_marks != null and is_instance_valid(wall_marks):
+		props.remove(wall_marks)
+	wall_marks = null
+
+
+## The zone's ramp colour (the City's green, "go up here"): the ways up's cues.
+func ramp_color() -> Color:
+	var skin_color: Variant = world.skin.get(&"ramp_color") if world.skin != null else null
+	return skin_color if skin_color is Color else Color(0.3, 1.0, 0.35)
 
 
 ## The third way up: anti-grav pads light up in every lane pad_before_face before where the ship will
@@ -889,6 +922,7 @@ func _miss(why: StringName, gap: float) -> void:
 ## last stomp (no grinding roar: its cry is the propaganda cutting out); then it dies in the air.
 func _start_shake(next_phase: bool, defeat: bool = false) -> void:
 	window_open = false
+	_clear_wall_marks()
 	_shake_next_phase = next_phase
 	_shake_from = pose
 	_shake_roll = _roll
@@ -957,8 +991,9 @@ func _end_pin(quiet: bool) -> void:
 		log_event(&"released")
 
 
-## The third window's pads and ceiling go (the window is gone).
+## The second window's wall marks and the third window's pads and ceiling go (the window is gone).
 func _remove_way_up() -> void:
+	_clear_wall_marks()
 	if ceiling_span != Vector2.ZERO:
 		for pad: Node3D in _pads:
 			props.remove(pad)
