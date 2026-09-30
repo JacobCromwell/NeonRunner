@@ -1406,6 +1406,40 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     progress and credits survive a reload but stay in that browser, and a portal's page keeps its own. There is
     no way to carry them into the full game. Right?
 
+**Cinematics** (from F1; review with `tools/showcase/cinematic_review.tscn`, or play `--level=city/intro`, `--level=city/boss_intro`; numbers in `data/cinematics/`)
+238. **The arrival flyovers' story beats** (GDD §1: a light story told through the zones and 5–15 second
+    cinematics; the owner describes the beats later, task F2). What should each zone's intro show, and should
+    the intros share one form?
+    - *Placeholder:* one arrival flyover for every zone's intro slot (`scripts/cinematics/arrival_flyover.gd`,
+    `ArrivalFlyover`, marked DESIGN-TBD; numbers in `data/cinematics/arrival_flyover.tres`). 9.5 s: the camera
+    opens low in the street looking up at the zone's skyline, tilts down as the runner runs in beneath it,
+    glides over the street behind them, and settles into the run camera's view as they run under one of
+    the zone's ceilings; the zone's music comes in; it fades to black and the level opens on the same view.
+    Built in the zone's own skin, taken from the zone's data.
+239. **A title card naming the zone** (GDD §1: "little or no words"). Should an arrival cinematic name the zone
+    on screen?
+    - *Placeholder:* a card from about 0.9 s to 3.8 s: "ZONE 1" over "NEON CITY" (the zone's number and name,
+    from the zone's data), in the menus' fonts, capitals, fading in and out
+    (`ArrivalFlyover._make_timeline`, `CineOverlay.show_card`).
+240. **The City's boss intro** ("Something big is coming", before the Floating Head): what should it show,
+    and should it tease the boss?
+    - *Placeholder:* the same arrival flyover over the fight's arena look (`city_boss_skin`, taken from the
+    boss's arena data), with a card naming the boss as the level select does ("ZONE 1 · BOSS" over
+    "FLOATING HEAD"), and the fight's music. No glimpse of the ship.
+241. **Skipping.** GDD §1 doesn't say how cinematics are skipped. Should every cinematic be skippable at once,
+    even the first time? Should a seen cinematic play again when a step is replayed from the level select?
+    - *Placeholder:* always skippable at once with the pause action (Esc / P) or a Skip button (bottom right,
+    dim, from 0.4 s; on touch screens it's the only way). A skipped cinematic counts as seen and done, like
+    one played out. Replaying a step from the level select plays it again (nothing is skipped
+    automatically; the App marks each one seen, `cinematic/<step id>`, for later use).
+242. **The outros** stay placeholder cards (the task covered the intros). Should they get a placeholder
+    cinematic too (a departure from the zone, say) until their beats are known? The web demo still ends on
+    its end screen after the City's outro card.
+    - *Placeholder:* unchanged cards (`data/cinematics/*_outro.tres` have no scene).
+243. **The look of every cinematic:** letterbox bars, a fade from black at the start and to black at the end.
+    - *Placeholder:* bars of 10% of the screen's height each (`CineOverlay.BAR_SHARE`); the arrival flyover
+    fades in over 0.8 s and out over 0.45 s (its data).
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
