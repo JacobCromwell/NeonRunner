@@ -41,6 +41,11 @@ const WAIT_BRIDGE: float = 3.0
 var world: RunWorld
 ## The runner stomps every host it passes (each releases a Bad Dream chase).
 var stomp_hosts: bool = false
+## The lane the runner keeps to: the one it starts in (the middle one). A zone doodad (GDD §3, task G5)
+## pushes it out, and it steps back once the doodad is behind it, so it keeps to that lane all the
+## way as it did before doodads stood in lanes (in a level without them it never moves). -1: it stays
+## wherever it's pushed.
+var keep_lane: int = -1
 ## Seconds of overlap between types, in all and by the types involved ("drone+hover_truck").
 var overlap: float = 0.0
 var overlap_pairs: Dictionary = {}
@@ -78,11 +83,14 @@ var _wait_began: Dictionary = {}
 var _wait_seen: Dictionary = {}
 var _held_turn: Dictionary = {}
 var _overlapping: bool = false
+## The level time before which the runner won't step back toward keep_lane again (one move at a time).
+var _next_step: float = 0.0
 
 
 func _init(p_world: RunWorld, p_stomp_hosts: bool = false) -> void:
 	world = p_world
 	stomp_hosts = p_stomp_hosts
+	keep_lane = world.player.lane
 	for e: Enemy in world.director.active:
 		_on_spawned(e)
 	world.director.enemy_spawned.connect(_on_spawned)
@@ -91,6 +99,7 @@ func _init(p_world: RunWorld, p_stomp_hosts: bool = false) -> void:
 ## Looks at the run once; call it every physics frame.
 func observe() -> void:
 	var p: Player = world.player
+	_keep_to_lane(p)
 	var dt: float = 1.0 / float(Engine.physics_ticks_per_second)
 	var now: float = world.level_time()
 	var open_types: Dictionary = {}
@@ -307,3 +316,15 @@ static func _signature(e: Enemy) -> String:
 		&"cyborg":
 			return "%s mode=%d" % [base, int(e.get(&"mode"))]
 	return base
+
+
+## Steps the runner back toward keep_lane after a zone doodad pushed it out, once that doodad is no longer
+## beside it: one move at a time, on the floor, through named actions as a player would.
+func _keep_to_lane(p: Player) -> void:
+	if keep_lane < 0 or not p.alive or not p.running or p.surface != Player.Surface.FLOOR or p.lane == keep_lane:
+		return
+	var toward: int = 1 if keep_lane > p.lane else -1
+	if world.level_time() < _next_step or world.layout.doodad_between(p.distance - 2.0, p.distance + 2.0, p.lane + toward):
+		return
+	_next_step = world.level_time() + 0.3
+	p.press(&"move_right" if toward > 0 else &"move_left")

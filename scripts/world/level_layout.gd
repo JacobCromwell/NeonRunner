@@ -4,6 +4,9 @@ extends RefCounted
 ## Positions along the track are distances in metres from the start (forward is positive).
 ## Lanes are indices 0..lane_count-1, left to right. Wall sides are -1 (left) and +1 (right).
 
+## A doodad's size classes, smallest first (LevelLayout.doodads `size`; MovementTuning.doodad_size).
+const DOODAD_SIZES: Array[StringName] = [&"small", &"medium", &"large"]
+
 var lane_count: int = 3
 var length: float = 0.0
 ## {lane, start, end}: a hole in the floor segment of one lane.
@@ -28,10 +31,19 @@ var speed_pads: Array[Dictionary] = []
 var credits: Array[Dictionary] = []
 ## {type, at, lane, side, seed, params}: an enemy (or destructible) for EnemyDirector.
 var enemies: Array[Dictionary] = []
+## {lane, start, end, size, side, seed}: a zone doodad (GDD §3, owner's playtest September 30, 2026):
+## a scenery piece standing in `lane` from `start` to `end` that never hurts. Running into its front
+## pushes the player into the neighbouring lane on `side` (-1 left, +1 right); its sides block a lane
+## switch like a solid side. `size` is its size class (DOODAD_SIZES: the skin picks the look, the
+## movement tuning its width and height), `seed` varies the look. The generator plans them
+## (LevelGenerator: doodads), the track builder builds them (TrackBuilder, ZoneSkin.doodad).
+var doodads: Array[Dictionary] = []
 
 
+## Every list of pieces, by name. A level without doodads has no "doodads" key, so its dictionary
+## (and every hash or dump of it) is the same as before doodads existed.
 func to_dict() -> Dictionary:
-	return {
+	var out := {
 		"lane_count": lane_count,
 		"length": length,
 		"gaps": gaps,
@@ -44,6 +56,9 @@ func to_dict() -> Dictionary:
 		"credits": credits,
 		"enemies": enemies,
 	}
+	if not doodads.is_empty():
+		out["doodads"] = doodads
+	return out
 
 
 func copy() -> LevelLayout:
@@ -59,6 +74,7 @@ func copy() -> LevelLayout:
 	out.speed_pads = speed_pads.duplicate(true)
 	out.credits = credits.duplicate(true)
 	out.enemies = enemies.duplicate(true)
+	out.doodads = doodads.duplicate(true)
 	return out
 
 
@@ -78,6 +94,17 @@ func total_credit_value() -> int:
 func gapped_between(lane: int, from: float, to: float) -> bool:
 	for g: Dictionary in gaps:
 		if g["lane"] == lane and g["start"] <= to and g["end"] >= from:
+			return true
+	return false
+
+
+## True if a doodad stands anywhere in [from, to]: in `lane`, or in any lane with -1. The enemies'
+## fairness checks ask it (an attack is never timed onto a doodad, which narrows the player's moves:
+## CyborgGun.path_clear, Octodog.window_clear, Resonator.pulse_clear, the drone's barrage and the
+## hover truck's cannon).
+func doodad_between(from: float, to: float, lane: int = -1) -> bool:
+	for d: Dictionary in doodads:
+		if float(d["start"]) <= to and float(d["end"]) >= from and (lane < 0 or int(d["lane"]) == lane):
 			return true
 	return false
 

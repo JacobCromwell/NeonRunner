@@ -50,6 +50,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--full-loadout` | Every power-up |
 | `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `corporate`, `corporate_plaza` (Corporate's plaza floor), `dead_zone` or `golden` |
 | `--speed=25` | Quick play at another run speed (m/s): a zone's pace, from 21 in the Neon City to 25 in the Golden Zone. The level keeps its timing in seconds (campaign levels already run at their zone's speed) |
+| `--doodads=0.6` | Quick play with zone doodads (scenery in lanes that pushes you aside, never hurts): the chance each stretch with room for one gets one. Campaign levels have their own share |
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level |
 | `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head) with the full game flow once it's built, and as quick play while it's being built (`dead_zone_boss`: the Sleep Taker). Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
@@ -244,8 +245,8 @@ F6 panel) and without, how much taking turns delays them, and which enemies neve
 its header lists the options).
 
 `tools/measure/level_pace.gd` measures each campaign level's pace and density: its run speed, events per minute
-(obstacle rows, holes, enemies, big attacks, mechanics), its longest and mean empty stretches in seconds, and its
-credits; it can also build the levels with another version's data and dump every layout, to prove a change leaves
+(obstacle rows, holes, enemies, big attacks, mechanics, zone doodads and the pushes a runner who ignores them
+takes), its longest and mean empty stretches in seconds, and its credits; it can also build the levels with another version's data and dump every layout, to prove a change leaves
 the old levels byte for byte as they were: `godot --headless -s res://tools/measure/level_pace.gd -- [--seeds=4]
 [--old-data=DIR] [--dump=FILE] [--set=key:value]` (its header lists the options).
 
@@ -294,7 +295,7 @@ On a debug build, the options go into the page's engine settings: in `exports/we
 
 ## Tests
 
-`tools/godot.sh test` runs 48 suites with about 3,700,000 checks:
+`tools/godot.sh test` runs 53 suites with about 4,900,000 checks:
 - **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds, and every campaign level
   (each with every feature it lists, on its own seed and on others), at the base speed and at the zones' speeds
   (21 to 25 m/s, with the fill pass that makes campaign levels busier), each reaction window in seconds. Under
@@ -302,6 +303,12 @@ On a debug build, the options go into the page's engine settings: in `exports/we
   the pad are checked, and some of those routes are run on real physics; ceilings over fewer lanes too, at every
   width, with their pads under them, their landing zone over their lanes, and one-lane ceilings short. Also the
   recency curve's pick weights, and levels paced in quiet stretches and bursts (The Hush).
+- **Zone doodads:** scenery standing in lanes that pushes you into the next lane and never hurts: placed only
+  where every lane around it is clear (hundreds of levels at 3, 5 and 6 lanes, and every campaign level), a
+  level without them built byte for byte as before, and the push on real physics (both ways, into the edge
+  lanes, jumping or sliding into one, a corner caught mid-switch, a blocked side entry, landing on top, a
+  ceiling rider passing over, shots passing through), with campaign doodads run into at their level's speed
+  and always onto safe floor, and drones and hover trucks holding fire while one is in reach.
 - **Movement:** scenarios on real physics, among them a ramp's boost against a speed pad's, a ramp's wall run
   and its credits against the generator's prediction, the bump of a blocked wall entry, and moves on a
   ceiling over fewer lanes (blocked at its edges, a pad holding you to its lane, the camera kept under the

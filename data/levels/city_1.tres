@@ -18,3 +18,7 @@ spacing_seconds_easy = 1.1
 fill_empty_seconds = 2.0
 credit_trail_chance = 0.6
 credit_trail_min = 5
+doodad_share = 0.15
+doodad_start = 0.2
+doodad_medium_weight = 0.5
+doodad_large_weight = 0.0

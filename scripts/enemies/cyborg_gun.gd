@@ -15,7 +15,8 @@ extends RefCounted
 ##   sight), and the enemy's own may_attack() agrees (e.g. not at a player on the ceiling);
 ## - each bolt needs at least min_warning_time to arrive;
 ## - the player's path around every bolt's arrival is free of fences and gaps in all lanes, so a
-##   burst is never timed onto a jump or a full-lane fence;
+##   burst is never timed onto a jump or a full-lane fence, and of zone doodads (GDD §3: a doodad's
+##   side blocks a dodge and its push moves the player);
 ## - no other cyborg's burst is in the air (one attacker at a time, via RunWorld metadata).
 ## Everything runs in the physics step from the enemy's seeded random stream, so every attempt at a
 ## seed plays out the same way.
@@ -278,12 +279,15 @@ func _burst_fair(lead: float, shots: int) -> bool:
 	return true
 
 
-## True if the player's path between two track distances has no live fence and no gap in any lane
-## (and, for a player on a wall, no sign on that wall). A shooter's own path_rule decides instead.
+## True if the player's path between two track distances has no live fence, no gap and no zone
+## doodad in any lane (and, for a player on a wall, no sign on that wall). A shooter's own path_rule
+## decides instead. The doodads: DESIGN-TBD (docs/questions/g5.md 5).
 func path_clear(from_d: float, to_d: float) -> bool:
 	if path_rule.is_valid():
 		return bool(path_rule.call(from_d, to_d))
 	var layout: LevelLayout = world.layout
+	if layout.doodad_between(from_d, to_d):
+		return false
 	for f: Dictionary in layout.fences:
 		var at: float = f["at"]
 		if at >= from_d and at <= to_d and not f.get("disabled", false):

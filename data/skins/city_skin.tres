@@ -4,3 +4,4 @@
 
 [resource]
 script = ExtResource("1_skin")
+doodad_palette = PackedColorArray(0.28, 0.29, 0.38, 1, 0.4, 0.4, 0.52, 1, 0.11, 0.11, 0.15, 1)

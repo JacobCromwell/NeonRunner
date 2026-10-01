@@ -476,7 +476,8 @@ func _player_inside() -> bool:
 
 
 ## A player in its lane ahead of it must be able to get out before the forward lurch arrives:
-## onto the wall beside it (no sign in the way) or into the next lane (no gap or fence there).
+## onto the wall beside it (no sign in the way) or into the next lane (no gap, fence or zone doodad
+## there: a doodad's side would block the switch).
 func _escape_ok() -> bool:
 	var p: Player = world.player
 	if not player_in_lane() or offset + tune.length * 0.5 > 0.0:
@@ -491,7 +492,7 @@ func _escape_ok() -> bool:
 			break
 	var inward: int = lane - side
 	var lane_ok: bool = inward >= 0 and inward < layout.lane_count \
-		and not layout.gapped_between(inward, d - 1.0, reach + 3.0)
+		and not layout.gapped_between(inward, d - 1.0, reach + 3.0) and not layout.doodad_between(d - 1.0, reach + 3.0, inward)
 	if lane_ok:
 		for f: Dictionary in layout.fences:
 			if int(f["lane"]) == inward and float(f["at"]) >= d - 1.0 and float(f["at"]) <= reach + 3.0:
@@ -524,8 +525,10 @@ func _update_guns(delta: float) -> void:
 		if _charge_left < 0.0:
 			_fire_cannon()
 		return
-	if _cannon_timer <= 0.0 and _volley.is_empty() and _can_fire() and not world.director.major_attack_blocked(self):
-		# GDD §9: the charge (the shot's warning) waits until no other type's big attack is on.
+	if _cannon_timer <= 0.0 and _volley.is_empty() and _can_fire() and not _doodad_in_reach() \
+			and not world.director.major_attack_blocked(self):
+		# GDD §9: the charge (the shot's warning) waits until no other type's big attack is on; GDD §3:
+		# nor is it fired at a player a zone doodad hems in (asked first, so it never holds a turn).
 		_charge_left = tune.cannon_charge_seconds
 		world.play_sfx_at(&"truck_cannon_charge", _cannon_muzzle.global_position)
 
@@ -537,6 +540,21 @@ func _can_fire() -> bool:
 	var p: Player = world.player
 	return p.alive and p.running and p.surface != Player.Surface.CEILING and state == State.PACE \
 		and offset - tune.length * 0.5 > 2.0 and absf(offset - tune.pace_offset) < 2.5 and not player_riding()
+
+
+## GDD §3 (zone doodads): the cannon never fires at a player a doodad hems in (its side blocks the
+## dodge, its push moves them into the shot). True while a doodad stands, in any lane, along the
+## stretch the player runs from now until a shot charged now, and its gunners' bolts, have passed
+## them. The generator keeps doodads off every lane while a truck is surely there (its shortest stay)
+## and out of its lane until it has left, so this holds back only a truck that stays longer.
+## DESIGN-TBD (docs/questions/g5.md 5).
+func _doodad_in_reach() -> bool:
+	if world.layout.doodads.is_empty():
+		return false
+	var p: Player = world.player
+	var seconds: float = tune.cannon_charge_seconds + maxf(offset, 0.0) / maxf(tune.shell_speed_at(_scaling), 1.0) \
+		+ shooters * tune.shooter_delay + 0.5
+	return world.layout.doodad_between(p.distance - 1.0, p.distance + maxf(p.speed, 1.0) * seconds)
 
 
 func _fire_cannon() -> void:

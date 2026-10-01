@@ -174,6 +174,27 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 ## ceiling lasts 4 s). DESIGN-TBD (docs/questions/b3.md).
 @export_range(0.5, 4.0, 0.1, "suffix:s") var one_lane_ceiling_seconds: float = 1.6
 
+@export_group("Doodads")
+## Zone doodads (GDD §3, owner's playtest September 30, 2026: "levels felt barren"): scenery pieces
+## standing in lanes that never hurt; running into one pushes the player into a neighbouring lane.
+## They take a lane rather than needing a reaction, so they make a level look busier without
+## tightening its reaction windows. The generator puts them only where nothing else goes on
+## (LevelGenerator: doodads): this is the chance that each stretch with room for one gets one (and
+## the next spot in a long stretch, doodad_gap_seconds on, another). 0: none, and the level is built
+## exactly as before (quick play, the tests, boss arenas). DESIGN-TBD (docs/questions/g5.md): each
+## level's value.
+@export_range(0.0, 1.0, 0.05) var doodad_share: float = 0.0
+## Share of the level (0–1) from which doodads stand (City 1 introduces them a little way in).
+@export_range(0.0, 1.0, 0.05) var doodad_start: float = 0.0
+## How often each size class is picked (LevelLayout.DOODAD_SIZES; MovementTuning has their sizes); 0
+## leaves a class out (City 1 starts with the smaller ones).
+@export_range(0.0, 1.0, 0.05) var doodad_small_weight: float = 1.0
+@export_range(0.0, 1.0, 0.05) var doodad_medium_weight: float = 1.0
+@export_range(0.0, 1.0, 0.05) var doodad_large_weight: float = 1.0
+## The least time between one doodad's end and the next one's front, at run speed, so a few in a row
+## never make a slalom. DESIGN-TBD.
+@export_range(0.5, 10.0, 0.1, "suffix:s") var doodad_gap_seconds: float = 2.5
+
 @export_group("Credits")
 ## DESIGN-TBD (GDD §7): credit placement. Trails of small credits fill the clear stretches between
 ## patterns; high-value credits sit in risky spots (gap edges, by fences, far along wall runs).
