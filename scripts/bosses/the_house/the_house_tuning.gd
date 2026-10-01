@@ -151,6 +151,9 @@ extends Resource
 ## Its approach stays clear: it stalls only where the last attack's hazards end at least this far (at
 ## 18 m/s) before its face.
 @export_range(0.0, 40.0, 0.5, "suffix:m") var approach_clear: float = 18.0
+## DESIGN-TBD: it stalls where the runner reaches its face this long after the JACKPOT (at any speed:
+## the window keeps its seconds), or further if it's already further off.
+@export_range(1.5, 6.0, 0.1, "suffix:s") var jackpot_approach: float = 2.6
 @export_range(4.0, 40.0, 0.5, "suffix:m/s") var lurch_speed: float = 16.0
 @export_range(0.5, 6.0, 0.1, "suffix:s") var recover_seconds: float = 1.8
 ## DESIGN-TBD: the fountain: fountain_count credits (every fountain_rich_every-th worth 25, the rest

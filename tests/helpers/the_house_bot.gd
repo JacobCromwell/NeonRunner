@@ -7,7 +7,7 @@ extends RefCounted
 ##   blocks, the rolled fences) and every lit 7 button: it plans a way through them all and over the
 ##   buttons, in order (TheHouseRoute, the machine's own fairness check: the route a player who reads the
 ##   warnings would take), dropping the last buttons if it can't make them all (`takes_buttons` off: it
-##   never goes for one), and follows it lane by lane;
+##   never goes for one; `avoids_buttons`: it steers around them), and follows it lane by lane;
 ## - fences in its lane: it jumps a full one and slides under a gapped one;
 ## - the jackpot: once the hopper bursts open it jumps so it comes down on the hopper (`stomps` off: it
 ##   runs on and lets the window pass).
@@ -25,6 +25,8 @@ var boss: TheHouse
 ## Seconds from something new showing to its first move.
 var reaction: float = 0.3
 var takes_buttons: bool = true
+## Steers around every lit button (a player who lets a whole set go by).
+var avoids_buttons: bool = false
 var stomps: bool = true
 ## The buttons it lets go by (their reels), whatever else it does.
 var skip_reels: Array[int] = []
@@ -85,7 +87,12 @@ func _plan() -> void:
 	var d0: float = p.distance
 	var obstacles: Array[Dictionary] = boss.attacks.obstacles(d0 - 3.0)
 	var buttons: Array[Dictionary] = []
-	if takes_buttons:
+	if avoids_buttons:
+		var half: float = boss.tuning.button_depth * boss.run_pace() * 0.5
+		for b: Dictionary in boss.buttons.active:
+			if b["state"] == "lit" and float(b["at"]) > d0 + 1.0:
+				obstacles.append(TheHouseRoute.obstacle(int(b["lane"]), float(b["at"]) - half, float(b["at"]) + half))
+	elif takes_buttons:
 		for b: Dictionary in boss.buttons.active:
 			if b["state"] == "lit" and float(b["at"]) > d0 + 1.0 and not skip_reels.has(int(b["reel"])):
 				buttons.append({"lane": int(b["lane"]), "at": float(b["at"])})

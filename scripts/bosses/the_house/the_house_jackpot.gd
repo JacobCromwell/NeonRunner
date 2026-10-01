@@ -3,8 +3,9 @@ extends Node3D
 ## The House's jackpot (GDD §10: "With all three locked: JACKPOT. Sirens go off, the machine overloads
 ## and sprays a fountain of real credits to grab, and its coin hopper bursts open on top as a glowing red
 ## weak point while it sags low. The player stomps it."):
-## 1. SAG: the sirens wail and its lights flash; it rolls on while it brakes to a stop (where the last
-##    attack's hazards lie at least approach_clear before its face, further if they reach that far), its
+## 1. SAG: the sirens wail and its lights flash; it rolls on while it brakes to a stop (where the runner
+##    reaches its face jackpot_approach later, at any speed, and the last attack's hazards lie at least
+##    approach_clear before it), its
 ##    hopper bursts open on its top with the fountain (fountain_count real credits flung over the street
 ##    ahead of the runner, landing as credits of the run's CreditField: CreditField.place), and it sinks into
 ##    the street over sag_seconds until its top is deck_height up: a deck the runner steps onto, the
@@ -86,7 +87,8 @@ func start() -> void:
 	# It stops where its approach is clear of the last attack's hazards, rolling on while it brakes.
 	var v: float = boss.speed()
 	var clear_from: float = boss.attacks.hazards_end() + tuning.approach_clear * boss.run_pace()
-	stall_front = maxf(front + v * tuning.sag_seconds * 0.5, clear_from)
+	var approach: float = world.player.distance + v * tuning.jackpot_approach
+	stall_front = maxf(maxf(front + v * tuning.sag_seconds * 0.5, approach), clear_from)
 	_brake_from = front
 	front_speed = v
 	body.jackpot = 1.0
