@@ -57,6 +57,8 @@ const PadPlacement = preload("res://scripts/enemies/pad_placement.gd")
 ## and the room its shortest keeps for the turret's spot beyond after_pad_seconds and
 ## before_end_seconds.
 const INTRO_STEP: float = 4.0
+## Metres between the spots tried for a turret that its first spot puts by a ceiling credit (off_credits).
+const CREDIT_STEP: float = 0.5
 const INTRO_SHORTER_SECONDS: float = 0.5
 const INTRO_SPARE_SECONDS: float = 0.3
 
@@ -109,9 +111,9 @@ static func apply(gen: LevelGenerator) -> void:
 			if hi < lo:
 				continue
 			hi = maxf(lo, minf(hi, cap))
-			var at: float = rng.randf_range(lo, hi)
 			var lane: int = spot["lane"]
-			if credit_near(layout, h, lane, at, t.credit_margin):
+			var at: float = off_credits(layout, h, lane, rng.randf_range(lo, hi), Vector2(lo, hi), t.credit_margin)
+			if is_nan(at):
 				continue
 			var lane_span: Vector2i = layout.hull_lanes(h)
 			layout.enemies.append({"type": TYPE, "at": at, "lane": lane, "side": 0,
@@ -252,6 +254,18 @@ static func tight_lane(span: Vector2i, pad_lanes: Array[int], lane: int) -> bool
 		if absi(p - lane) == 1 and others == 0:
 			return true
 	return false
+
+
+## `at`, or the spot nearest it within `span` (Vector2(lo, hi)) that keeps `margin` off the credits on
+## ceiling `h` in `lane` (credit_near), tried every CREDIT_STEP metres; NAN if none does.
+static func off_credits(layout: LevelLayout, h: Dictionary, lane: int, at: float, span: Vector2, margin: float) -> float:
+	if not credit_near(layout, h, lane, at, margin):
+		return at
+	for k: int in range(1, int((span.y - span.x) / CREDIT_STEP) + 2):
+		for d: float in [at + k * CREDIT_STEP, at - k * CREDIT_STEP]:
+			if d >= span.x and d <= span.y and not credit_near(layout, h, lane, d, margin):
+				return d
+	return NAN
 
 
 ## True if a credit on ceiling `h` lies in `lane` within `margin` of track distance `at`: one already in
