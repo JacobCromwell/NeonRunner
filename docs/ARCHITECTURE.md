@@ -1780,7 +1780,7 @@ back after a doodad's push (`AttackWatch.keep_lane`).
 the data and everything the demo references, and walks the demo from the title to its end screen (see
 Platforms and build flavors). The runner frees
 anything a suite leaves in the tree, gives suites a fresh, unsaved profile, reports a suite that fails
-to load, and ends a stuck run after 1200 s of real time.
+to load, and ends a stuck run after 2400 s of real time.
 
 ## Review tools
 
