@@ -57,5 +57,5 @@ void fragment() {
 	ALBEDO = COLOR.rgb * 0.3;
 	ROUGHNESS = 0.12;
 	SPECULAR = 0.85;
-	EMISSION = rim_color.rgb * rim * rim_energy + glow * COLOR.a * glow_energy * (1.0 + attack * v_hot * 1.5);
+	EMISSION = rim_color.rgb * rim * rim_energy + glow * COLOR.a * glow_energy * (1.0 + attack * v_hot * 0.3);
 }

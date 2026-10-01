@@ -135,5 +135,5 @@ void fragment() {
 	ROUGHNESS = 0.12;
 	SPECULAR = 0.85;
 	EMISSION = rim_color.rgb * rim * rim_energy * (1.0 - 0.6 * glitch)
-		+ glow * COLOR.a * glow_energy * (1.0 + attack * v_hot * (0.8 - 1.2 * v_throat));
+		+ glow * COLOR.a * glow_energy * (1.0 + attack * v_hot * (0.3 - 0.7 * v_throat));
 }
