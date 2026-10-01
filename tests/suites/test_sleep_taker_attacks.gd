@@ -186,15 +186,16 @@ func _test_slash_escapes() -> void:
 
 
 ## The slash's escapes to play at `lanes` and `speed`: the pad at every lane count, leaving the lanes
-## at 5 and 6; at the Dead Zone's speed (a second pass at another speed) one of them at each lane count,
-## by turns, to keep the suite's time down.
+## at 5 and 6; at the Dead Zone's speed only the tightest case, the pad at 3 lanes (the whole fight at
+## both speeds, test_sleep_taker_fight, plays the rest), to keep the suite's time down.
 static func _escapes(lanes: int, speed: float) -> Array[StringName]:
 	var out: Array[StringName] = [&"pad"]
+	if speed > MovementTuning.REFERENCE_SPEED + 0.5:
+		if lanes > 3:
+			out.clear()
+		return out
 	if lanes > 3:
 		out.append(&"lanes")
-	if speed > MovementTuning.REFERENCE_SPEED + 0.5 and lanes > 3:
-		out.clear()
-		out.append(&"lanes" if lanes == 5 else &"pad")
 	return out
 
 
@@ -309,8 +310,9 @@ func _test_hands_warning() -> void:
 func _test_hands_escapes() -> void:
 	for speed: float in SPEEDS:
 		for lanes: int in LANES:
-			# At the Dead Zone's speed, the narrowest and the widest street (to keep the suite's time down).
-			if speed > MovementTuning.REFERENCE_SPEED + 0.5 and lanes == 5:
+			# At the Dead Zone's speed, the narrowest street (to keep the suite's time down; the whole
+			# fight at both speeds, test_sleep_taker_fight, plays the rest).
+			if speed > MovementTuning.REFERENCE_SPEED + 0.5 and lanes > 3:
 				continue
 			await _hands_escapes(lanes, speed)
 
@@ -361,16 +363,12 @@ func _test_hands_same_every_attempt() -> void:
 ## The whole pattern as it comes, on its real arena (its holes and fences, the refuges, hands and lights
 ## out, and its generators), for a runner who reads it but lets every generator go by (so the fight never
 ## moves on: GDD §10, it keeps cycling its pattern): through a whole lap at every lane count, without god
-## mode or armor; the slash's lane escape at 5 and 6 lanes too; at 18 m/s, and at the Dead Zone's
-## 24.2 m/s at 3 and 6 lanes (one escape each).
+## mode or armor; the slash's lane escape at 5 and 6 lanes too. (At the Dead Zone's 24.2 m/s, the whole
+## fight on its arena at every lane count: test_sleep_taker_fight.)
 func _test_real_arena() -> void:
-	for speed: float in SPEEDS:
-		for lanes: int in LANES:
-			# At the Dead Zone's speed, 3 and 6 lanes (to keep the suite's time down).
-			if speed > MovementTuning.REFERENCE_SPEED + 0.5 and lanes == 5:
-				continue
-			for escape: StringName in _escapes(lanes, speed):
-				await _real_arena(lanes, escape, speed)
+	for lanes: int in LANES:
+		for escape: StringName in _escapes(lanes, MovementTuning.REFERENCE_SPEED):
+			await _real_arena(lanes, escape, MovementTuning.REFERENCE_SPEED)
 
 
 func _real_arena(lanes: int, escape: StringName, speed: float) -> void:

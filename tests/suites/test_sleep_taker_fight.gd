@@ -35,6 +35,8 @@ var sim: RunSim
 var def: BossDef
 ## The cleanest fight's length (s), measured by _test_whole_fight, for the par times.
 var _clean: float = 0.0
+## The whole fight's log at 5 lanes and 18 m/s (_test_whole_fight), for _test_same_every_attempt.
+var _log_5: String = ""
 
 
 func run() -> void:
@@ -213,6 +215,8 @@ func _whole_fight(lanes: int, speed: float) -> void:
 		on_time = on_time and bool(smashes[i]["in_reach"]) and smashes[i]["cause"] == &"stomp"
 	check(on_time, "it lunges in %.1f s before the runner reaches each generator, and every stomp's EMP reaches it %s" % [
 		t.lure_seconds, tag])
+	if lanes == 5 and is_equal_approx(speed, tuning.run_speed):
+		_log_5 = _fight_log(boss)
 	var bot_lead: float = bot.stomp_lead() / world.player.speed
 	check(window >= WINDOW_MIN, "the arcs show it's in reach %.2f s before the stomp lands (%.2f s before the jump) %s" % [
 		window, window - bot_lead, tag])
@@ -232,23 +236,27 @@ func _whole_fight(lanes: int, speed: float) -> void:
 	await sim.free_world(world)
 
 
-## Two attempts with the same moves play out the same way: generators, lures, hits and the defeat.
+## A second attempt with the same moves plays out as the first did (_test_whole_fight's at 5 lanes):
+## generators, lures, attacks, hits and the defeat.
 func _test_same_every_attempt() -> void:
-	var logs: Array[String] = []
-	for attempt: int in 2:
-		var pair: Array = _fight(def, 5)
-		var world: RunWorld = pair[0]
-		var boss: SleepTaker = pair[1]
-		var bot := SleepTakerBot.new(boss, &"pad")
-		bot.reaction = REACTION
-		await _run(world, 200.0, func() -> bool: return boss.is_defeated(), func() -> void: bot.step())
-		var line: PackedStringArray = []
-		for e: Dictionary in boss.events:
-			if e["event"] in [&"generator", &"lure", &"in_reach", &"emp_hit", &"phase", &"mist", &"slash", &"dark", &"defeated"]:
-				line.append("%s %.3f %s %s" % [e["event"], float(e["t"]), e.get("lane", ""), e.get("at", "")])
-		logs.append(" | ".join(line))
-		await sim.free_world(world)
-	check(logs[0] == logs[1] and logs[0].contains("emp_hit"), "every attempt plays out the same way")
+	var pair: Array = _fight(def, 5)
+	var world: RunWorld = pair[0]
+	var boss: SleepTaker = pair[1]
+	var bot := SleepTakerBot.new(boss, &"pad")
+	bot.reaction = REACTION
+	await _run(world, 200.0, func() -> bool: return boss.is_defeated(), func() -> void: bot.step())
+	var again: String = _fight_log(boss)
+	check(_log_5 != "" and again == _log_5 and again.contains("emp_hit"), "every attempt plays out the same way")
+	await sim.free_world(world)
+
+
+## What happened in a fight, for comparing attempts.
+func _fight_log(boss: SleepTaker) -> String:
+	var line: PackedStringArray = []
+	for e: Dictionary in boss.events:
+		if e["event"] in [&"generator", &"lure", &"in_reach", &"emp_hit", &"phase", &"mist", &"slash", &"dark", &"defeated"]:
+			line.append("%s %.3f %s %s" % [e["event"], float(e["t"]), e.get("lane", ""), e.get("at", "")])
+	return " | ".join(line)
 
 
 # --- A missed generator --------------------------------------------------------------------------
