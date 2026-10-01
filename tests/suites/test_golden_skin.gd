@@ -76,6 +76,8 @@ func run() -> void:
 	_cult_emblem(skin)
 	await _cult_feed(skin)
 	await determinism(skin, GOLDEN_LEVEL_PATH)
+	doodads_ok(skin, "golden")
+	_doodad_statue_not_sentinel(skin)
 	stop_error_count("building golden levels")
 
 
@@ -518,6 +520,18 @@ func _statue_kit(skin: GoldenSkin) -> void:
 		nb = nb.expand(v)
 	check(niche == kit.niche(1.3, 3.4) and nb.position.y > -0.2 and nb.end.y > 3.4 and nb.end.y < 3.7 and nb.size.x > 1.5
 		and nb.size.x < 2.0 and nb.position.z > -0.001, "the niche frames its opening, proud of the wall: %s" % nb)
+
+
+## GDD §3 (task G6): the large doodad's statue is deliberately not the Gilded Sentinels' armoured
+## guard with a halberd (GoldenStatue, shared by the decorative ledge statues and a live Sentinel's
+## rig, task C4) -- it never stands at wall-run height anyway, but it also never reuses that kit, so
+## it can never be mistaken for one even up close. A regression guard against the doodad script later
+## building itself from the statue kit (a plain text search, not a design rule of its own: the header
+## comment is free to name GoldenStatue when it explains why the doodad is deliberately not it).
+func _doodad_statue_not_sentinel(_skin: GoldenSkin) -> void:
+	var source: String = FileAccess.get_file_as_string("res://scripts/world/skins/golden/golden_doodads.gd")
+	check(not source.is_empty() and not source.contains("GoldenStatue.new(") and not source.contains("GoldenStatue.new ("),
+		"the doodad statue never builds from the Sentinels' statue kit")
 
 
 ## Every kind of ceiling, on streets of 3, 5 and 6 lanes over every number of their lanes, full width

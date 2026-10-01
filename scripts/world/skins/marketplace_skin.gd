@@ -217,6 +217,19 @@ extends ZoneSkin
 @export_range(0.0, 1.0, 0.05) var feed_board_brightness: float = 1.0
 @export_range(0.0, 1.0, 0.05) var feed_window_brightness: float = 0.45
 
+@export_group("Doodads")
+## The nice plants' pot (GDD §3, task G6: the owner's "plenty of nice plants") and their foliage, kept
+## well apart from the ramps' and speed pads' hazard green.
+@export var doodad_pot_color: Color = Color(0.56, 0.42, 0.33)
+@export var doodad_plant_colors: PackedColorArray = PackedColorArray([
+	Color(0.3, 0.38, 0.28), Color(0.36, 0.44, 0.3), Color(0.26, 0.33, 0.24)])
+## The casino machines' cabinets (GDD §3: the owner's "casino machines") and their dim screen face,
+## in the Marketplace's own casino-light white, never the bright glow of a real screen.
+@export var doodad_cabinet_colors: PackedColorArray = PackedColorArray([
+	Color(0.24, 0.18, 0.15), Color(0.2, 0.22, 0.27)])
+@export var doodad_cabinet_trim_color: Color = Color(0.62, 0.52, 0.3)
+@export var doodad_screen_color: Color = Color(0.48, 0.46, 0.42)
+
 @export_group("Pads, ramps, finish")
 @export var pad_color: Color = Color(0.1, 1.0, 0.95)
 ## Height of the anti-grav pad's light column.
@@ -238,6 +251,7 @@ var _facades: MarketFacades
 var _ceilings: MarketCeilings
 var _props: MarketProps
 var _citizens: MarketCitizens
+var _doodads: MarketDoodads
 ## The latest wall face seen (wall_section runs before a chunk's ceilings): a building bridging the
 ## street reaches from wall to wall.
 var _wall_x: float = 0.0
@@ -336,6 +350,11 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	var batch := MeshBatch.new()
 	MeshKit.finish_gate(batch, solid_material(), glow_material(), width, distance, finish_color, market_metal_color)
 	batch.commit(parent)
+
+
+## A potted plant (small), a bank of casino machines (medium) or a planted hedge row (large): MarketDoodads.
+func doodad(body: Node3D, size: Vector3, size_class: StringName, side: int, look_seed: int) -> void:
+	doodads().build(body, size, size_class, side, look_seed)
 
 
 ## The shop windows at the low part of the wall on `side` (face at face_x) whose centres lie between
@@ -507,3 +526,9 @@ func citizens() -> MarketCitizens:
 	if _citizens == null:
 		_citizens = MarketCitizens.new(self)
 	return _citizens
+
+
+func doodads() -> MarketDoodads:
+	if _doodads == null:
+		_doodads = MarketDoodads.new(self)
+	return _doodads

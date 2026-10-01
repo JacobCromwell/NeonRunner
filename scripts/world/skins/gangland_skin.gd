@@ -243,6 +243,7 @@ var _street: GanglandStreet
 var _ruins: GanglandRuins
 var _ceiling: GanglandCeiling
 var _props: GanglandProps
+var _doodads: GanglandDoodads
 
 
 func _init() -> void:
@@ -315,6 +316,11 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	var batch := MeshBatch.new()
 	MeshKit.finish_gate(batch, solid_material(), glow_material(), width, distance, finish_color, scrap_metal_color)
 	batch.commit(parent)
+
+
+## Burned-out car wrecks (small and medium) and a broken-down shop (large): GanglandDoodads.
+func doodad(body: Node3D, size: Vector3, size_class: StringName, side: int, look_seed: int) -> void:
+	doodads().build(body, size, size_class, side, look_seed)
 
 
 # --- The cult's feed ------------------------------------------------------------------------
@@ -441,3 +447,9 @@ func props() -> GanglandProps:
 	if _props == null:
 		_props = GanglandProps.new(self)
 	return _props
+
+
+func doodads() -> GanglandDoodads:
+	if _doodads == null:
+		_doodads = GanglandDoodads.new(self)
+	return _doodads

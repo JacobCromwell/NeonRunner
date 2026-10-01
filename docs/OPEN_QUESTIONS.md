@@ -1710,6 +1710,38 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     *Placeholder:* `drone.gd` and `hover_truck.gd` (`_doodad_in_reach`), `Octodog.window_clear`,
     `Resonator.pulse_clear`, `CyborgGun.path_clear`.
 
+**The Golden Palace** (from D6b; numbers and colours are exports on `GoldenPalaceSkin`, F6; play `--level=golden/3` or `--quick --skin=golden_palace`)
+275. **The floor's gold inlay runner** (GDD §5: "a palace floor (marble, inlay, gold runners)"): how
+    wide. **Placeholder:** `GoldenPalaceSkin.runner_half_width` (0.2 m, a roughly 0.4 m runner down
+    each lane's centre), `## DESIGN-TBD` in `scripts/world/skins/golden_palace_skin.gd`.
+276. **How tall the colonnade rises** above its entablature (frieze_top) before the hall reads as
+    receding into haze, comfortably clear of an alcove's statue and a hung tapestry. **Placeholder:**
+    `GoldenPalaceSkin.pilaster_height` (15 m), `## DESIGN-TBD` in the same file.
+277. **How far a ceiling piece's structure may rise** above its underside (GDD §5: "the vast hall's
+    ceiling stays far above") before the hall's haze would hide it anyway. **Placeholder:**
+    `GoldenPalaceSkin.hall_clear_height` (7.5 m, close to the Corporate zone's and the Dead Zone's own
+    ~7.4 m ceiling-structure budgets), `## DESIGN-TBD` in the same file.
+278. **The vault above the colonnade** (GDD §5: "an enormous vaulted space, perhaps with distant halls
+    and light shafts"): whether it should look like the Golden Zone's own dusk sky with the moon and
+    stars turned off (what's built: `GoldenPalaceSkin.make_environment()` reuses
+    `GoldenSkin.make_environment()` wholesale, its warm haze and dimmed "skyline" standing in for
+    distant halls glimpsed through light shafts), or something explicitly interior instead (a painted
+    or coffered ceiling glimpsed above the colonnade, a true horizon never showing).
+
+**Zone doodads: the looks** (from G6; colours in each skin's "Doodads" group, F6; review with `tools/showcase/doodad_review.tscn -- --skin=<zone>`)
+279. **What the Golden Zone's statue doodad looks like** (GDD §3, owner's playtest September 30, 2026:
+    "statues on plinths, never at wall-run height (the Gilded Sentinels' language)"). The large doodad
+    never stands at wall-run height anyway (it's a floor piece, far below `GoldenSkin.statue_min_height`),
+    so the instruction read as: don't give it the Gilded Sentinels' specific shape language either (the
+    armoured guard holding a halberd, `GoldenStatue`, task C4), so a statue in a lane is never mistaken
+    for the live enemy even up close. Built it as a plain, faceless, robed figure instead: tapered gold
+    tiers, a rounded cowl, hands clasped, a red sash, nothing raised or held. The alternative: reuse
+    `GoldenStatue`'s decorative poses (`&"guard"`, `&"vigil"`, `&"salute"`) scaled down to fit the box,
+    which would read as more clearly "a statue" (the same kit as the ledges') at the cost of standing
+    closer to the Sentinel's own silhouette.
+    *Placeholder:* `scripts/world/skins/golden/golden_doodads.gd` (`_statue`); `test_golden_skin`'s
+    `_doodad_statue_not_sentinel` guards against the doodad ever building from `GoldenStatue`.
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).

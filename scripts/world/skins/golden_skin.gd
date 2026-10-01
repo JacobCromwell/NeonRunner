@@ -272,6 +272,7 @@ var _walkways: GoldenWalkways
 var _facades: GoldenFacades
 var _ceilings: GoldenCeilings
 var _props: GoldenProps
+var _doodads: GoldenDoodads
 var _statues: GoldenStatue
 ## The latest wall face seen (wall_section runs before a chunk's ceilings): bridges and archways reach
 ## from wall to wall.
@@ -352,6 +353,12 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	var batch := MeshBatch.new()
 	MeshKit.finish_gate(batch, solid_material(), glow_material(), width, distance, finish_color, trigger_metal_color)
 	batch.commit(parent)
+
+
+## A gilded planter (small), a fountain (medium) or a robed statue on a plinth (large): GoldenDoodads.
+## The statue is never the Gilded Sentinels' armoured guard (see GoldenDoodads' header).
+func doodad(body: Node3D, size: Vector3, size_class: StringName, side: int, look_seed: int) -> void:
+	doodads().build(body, size, size_class, side, look_seed)
 
 
 # --- The statue kit (shared with the Gilded Sentinels, task C4) ------------------------------
@@ -529,3 +536,9 @@ func props() -> GoldenProps:
 	if _props == null:
 		_props = GoldenProps.new(self)
 	return _props
+
+
+func doodads() -> GoldenDoodads:
+	if _doodads == null:
+		_doodads = GoldenDoodads.new(self)
+	return _doodads

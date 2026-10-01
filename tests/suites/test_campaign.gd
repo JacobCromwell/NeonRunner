@@ -285,15 +285,16 @@ func _test_curve_and_lengths(campaign: Campaign) -> void:
 		"harder tiers raise difficulty")
 
 
-## Levels take their zone's skin, the grey box until a zone has its own; a level's own skin wins (the
-## Golden Palace may get one, GDD §5), and is then a variant of its zone's skin (Corporate 2's plaza).
+## Levels take their zone's skin, the grey box until a zone has its own; a level's own skin wins, and
+## is then a variant of its zone's skin: either the same script with different values (Corporate 2's
+## plaza) or a subclass of it reusing its materials (the Golden Palace, Golden 3, task D6b).
 func _test_skins(campaign: Campaign) -> void:
 	for s: CampaignStep in campaign.steps():
 		if s.is_level():
 			var config: LevelConfig = campaign.configure(s, 3)
 			if s.level.skin != null:
 				check(config.skin == s.level.skin and s.zone.skin != null
-					and config.skin.get_script() == s.zone.skin.get_script(),
+					and _related_skin_scripts(config.skin.get_script(), s.zone.skin.get_script()),
 					"%s takes its own variant of its zone's skin" % s.id)
 			else:
 				check(config.skin != null and config.skin == s.zone.skin, "%s takes its zone's skin" % s.id)
@@ -316,7 +317,18 @@ func _test_skins(campaign: Campaign) -> void:
 	step.level.skin = own_skin
 	step.level_index = palace.level_index
 	check(campaign.configure(step, 3).skin == own_skin, "a level's own skin wins over its zone's")
-	check(palace.level.skin == null, "and the shipped level has none of its own yet")
+	check(palace.level.skin is GoldenPalaceSkin, "and the shipped level (the Golden Palace, task D6b) has its own")
+
+
+## Whether `a` and `b` are the same script, or `a` is a subclass of `b` (GoldenPalaceSkin extends
+## GoldenSkin): how a level's own skin counts as "a variant of its zone's" above.
+static func _related_skin_scripts(a: Script, b: Script) -> bool:
+	var base: Script = a
+	while base != null:
+		if base == b:
+			return true
+		base = base.get_base_script()
+	return false
 
 
 ## Every campaign level generates cleanly and fairly for every lane count, on its own seed and (for

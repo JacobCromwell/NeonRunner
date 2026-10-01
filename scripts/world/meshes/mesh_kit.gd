@@ -185,6 +185,28 @@ const WALKWAY_MEDALLION: int = 4
 ## COLOR.rgb, glowing at COLOR.a (warm-white neon) or unlit at 0. It fades out below about 24 pixels.
 const PAT_CULT_MARK: int = 60
 
+## The Golden Palace's surface patterns of the solid kit shader (kit_golden_palace.gdshaderinc), ids
+## 70-79 (task D6b): the city-sized palace interior of Golden 3, reusing the Golden Zone's gold and
+## marble (golden_metal(), golden_marble(), golden_light()) rather than inventing new ones (GDD §5:
+## it reuses D6a's materials). None of them glows: gold stays reflective metal.
+## A palace floor's lane (GDD §5: marble, inlay, gold runners): polished marble with a gold inlay
+## runner down the lane's centre. UV.x is metres signed from the lane's centre (so the runner and the
+## joint line up with lane_x, continuous across chunk cuts, since it depends only on world x and the
+## lane's own x); param = palace_floor_param(): flags (a joint on the left, 2 on the right, where a
+## neighbouring lane's floor doesn't carry on) + 8 * the lane's half-width in centimetres.
+const PAT_PALACE_FLOOR: int = 70
+## Everything under a break in the palace floor (a collapsed floor, an open stairwell, a light well),
+## seen only through gaps: deep shade that only darkens with depth, with the faint silhouette of
+## broken stone steps near the top, so a gap reads as a hole at a glance.
+const PAT_PALACE_WELL: int = 71
+## The colonnade's flush wall panel between two pilasters, from the floor to the entablature (world
+## position, the same marble as the floor): the gold wall-run height marks inlaid in it (the
+## material's gp_mark_a/b, from the skin's wall_height_marks), the same language as every zone.
+const PAT_PALACE_PANEL: int = 72
+## PAT_PALACE_FLOOR's flags.
+const PALACE_JOINT_LEFT: int = 1
+const PALACE_JOINT_RIGHT: int = 2
+
 const SHADER_DIR: String = "res://scripts/world/meshes/shaders/"
 ## How far the glow under a ceiling's end band (ceiling_end) reaches back from the band, under the
 ## ceiling. It never reaches past the far end.
@@ -248,6 +270,12 @@ static func dz_tower_param(style: int, seed: int) -> float:
 ## The PAT_WALKWAY parameter: `flags` (WALKWAY_*) and the lane's width in metres (to the centimetre).
 static func walkway_param(flags: int, width: float) -> float:
 	return float((flags & 7) + 8 * roundi(width * 100.0))
+
+
+## The PAT_PALACE_FLOOR parameter: `flags` (PALACE_JOINT_*) and the lane's `half_width` in metres (to
+## the centimetre).
+static func palace_floor_param(flags: int, half_width: float) -> float:
+	return float((flags & 3) + 8 * roundi(half_width * 100.0))
 
 
 # --- Unit templates ------------------------------------------------------------

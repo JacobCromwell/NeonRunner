@@ -72,6 +72,7 @@ func run() -> void:
 	await _cult_feed(skin)
 	await _boss_arena(skin)
 	await determinism(skin, CORP_LEVEL_PATH)
+	doodads_ok(skin, "corporate")
 	var plaza := load(PLAZA_SKIN_PATH) as CorporateSkin
 	check(plaza != null and plaza.floor_style == CorporateSkin.FloorStyle.PLAZA and plaza.enemy_variant == &"vr_runner",
 		"the plaza variant loads, with the zone's cyborgs")

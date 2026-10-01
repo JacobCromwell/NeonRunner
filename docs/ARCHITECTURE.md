@@ -742,33 +742,78 @@ skin whose own scenery would otherwise double up with one (the Marketplace's cit
 clear of window cyborgs); read-only and visual only, like every other hook.
 
 **Zone doodads' looks** (task G5 built the mechanism and a plain default; task G6 gives each zone its
-own). GDD §3: the Neon City's pillars, small buildings and tiny market stalls; Gangland's burned-out
-cars and broken-down shops; the Marketplace's plants and casino machines; the other zones' in their
-look. What a look gets and keeps to:
+own, except the grey box, which keeps the plain default. `GoldenPalaceSkin` (D6b) extends `GoldenSkin`
+and doesn't override `doodad()`, so the Golden Palace inherits the Golden Zone's gilded planters,
+fountains and statues for free, unless a follow-up gives it its own interior ones.) What a look gets
+and keeps to:
 - *The hook*: `doodad(body, size, size_class, side, look_seed)`. `body` is the doodad's node, centred on
   its collision box `size` (width, height, length): the floor is at -size.y / 2 and its front, where the
   player meets it, at +size.z / 2; add meshes as its children. `size_class` is `&"small"`, `&"medium"` or
   `&"large"` (`LevelLayout.DOODAD_SIZES`), whose boxes come from `MovementTuning.doodad_size()`: by
   default 1.3 × 1.4 m, 1.9 × 3.6 m and 2.0 × 6.5 m (width × length), all 2.6 m tall (DESIGN-TBD). Map
-  each class to the zone's pieces of that size (the City: a pillar, a tiny market stall, a small
-  building). `side` is the side it pushes to (-1 left, +1 right) and `look_seed` a number to vary the
-  look by (which model, a tint, its props).
+  each class to the zone's pieces of that size. `side` is the side it pushes to (-1 left, +1 right) and
+  `look_seed` a number to vary the look by (which model, a tint, its props), hashed with `MeshKit.hash_i`
+  like everything else in a skin: never a random number generator, so a doodad looks the same wherever
+  and whenever it is built.
 - *Inside the box, filling most of it*: what looks like contact is contact (GDD §3), and it must read
   as too tall to jump (it is) and as wide as it blocks. A burned-out car is lower than 2.6 m: stack it,
   tip it on its side or pile its wreck high. Nothing outside the box (an awning, a branch, a sign arm):
-  the player would pass through it.
+  the player would pass through it. Placing a piece by a formula that fits its own size against the
+  box's remaining room (`x = (hash01 - 0.5) * (size.x - piece_w)`, and the same for z and for a stack's
+  height) keeps every seed inside the box by construction; a piece built with any rotation needs a wider
+  margin budgeted in by hand (the Dead Zone's leaning masonry works out its own tilted bounds this way)
+  since `MeshInstance3D.get_aabb()` is exact and every skin suite's `doodads_ok` (below) will catch a
+  margin that was cut too fine.
 - *Solid and safe* (CLAUDE.md readability rules): the zone's non-hazard colours, nothing glowing in a
   hazard colour (pink, yellow and black, red, orange, green, cyan), nothing that reads as a sign (no
   striped frames), a fence (nothing strung between posts), a barrier or an enemy (no eyes, no faces on
   screens; the cult's feed is the walls' business). Warm-white or zone-coloured lamps are fine if small.
 - *Its push side may show* (the default's front slants back toward it); nothing more is needed.
-- *Cheap*: one mesh per doodad from cached templates (the kit's `MeshBatch`, its solid material), fine
-  on the Compatibility renderer. With the kit's solid material a doodad dims with a level's darker
-  lighting like the scenery (The Hush).
+- *Cheap, and on the shared material alone*: one mesh per doodad from cached templates (the kit's
+  `MeshBatch`, one layer, so a doodad is always one draw call however many of the kit's surface patterns
+  it mixes), fine on the Compatibility renderer. Every doodad's `MeshInstance3D.material_override` is the
+  plain `MeshKit.solid()` (no params), never a zone's own tuned `solid_material()`: `test_doodads`'
+  `_test_skins` and each skin suite's `doodads_ok` (`tests/helpers/skin_suite.gd`) hold every skin to
+  this, so a doodad never glows and always renders through the one shared material instance (cheaper:
+  one less state change) across every zone. It still dims with a level's darker lighting like the
+  scenery (The Hush): `scenery_light` is a *global* shader uniform, so even the bare material reads it.
 - *The default* (`default_doodad_mesh`): a low-poly block in the skin's `doodad_palette` (body, top,
-  base; each zone's skin file sets its own): a base plinth, an inset body and a top, its front slanting
-  back toward its push side. `test_doodads` builds every skin's doodads in every class and checks the
-  box, that nothing glows and that the palette is muted; a zone's real looks should pass the same.
+  base), still used by the grey box and by any new zone before its own task gives it a doodad() of its
+  own: a base plinth, an inset body and a top, its front slanting back toward its push side.
+- *Each zone's own look* (task G6; `scripts/world/skins/<zone>/<zone>_doodads.gd`, called from the
+  skin's `doodad()`): the Neon City (`CityDoodads`) maps the three classes straight to the GDD's three
+  ideas, smallest first: a pillar, a tiny market stall (a counter, corner poles and a flat canopy) and a
+  small storefront (a facade slab with a window row and a signboard lip). Gangland (`GanglandDoodads`)
+  gives the small and medium classes a burned-out car each (one wreck, then two nose to tail), both
+  crushed low with scavenged salvage piled on top up to the box's top (GDD §3's "stack it... or pile its
+  wreck high"), and the large class a broken-down shop (boarded shopfront, a pulled shutter, a sagging
+  roof lip, rubble at its foot). The Marketplace (`MarketDoodads`) gives the owner's "plenty of nice
+  plants, casino machines": a tall potted plant (small), a bank of two casino cabinets along the box's
+  length with a dim screen face and a marquee hump, never as bright as a hazard sign (medium), and a
+  planted hedge row of three stems of varying height (large). Corporate (`CorporateDoodads`) covers the
+  owner's list directly: a steel planter (small); a security barrier (a wide olive block and a watch
+  mast) or a glass kiosk, picked per doodad by `look_seed` (medium); a sculpture plinth, an abstract
+  steel form built from offset slabs with a brand-paint accent (large). The Dead Zone (`DeadDoodads`)
+  takes the GDD's three ideas directly, smallest first: a crushed, ash-dusted wreck with rubble piled on
+  it (small), a rubble heap of stacked, irregular concrete chunks (medium) and a slab of fallen masonry
+  leaning across the lane at a shallow angle from vertical, with a crumbled edge and rebar (large). The
+  Golden Zone (`GoldenDoodads`) takes the owner's "gilded planters, fountains, statues on plinths": a
+  gilded planter with stylized gold reed fronds (small), a fountain with a still marble basin and a thin
+  falling jet of water (`MeshKit.PAT_WATER`, scenery only, GDD §5; medium) and a robed statue on a
+  plinth (large) -- deliberately not the Gilded Sentinels' armoured guard with a halberd (`GoldenStatue`,
+  task C4): "never at wall-run height (the Gilded Sentinels' language)" is true for free (every doodad
+  stands on the floor, far below any statue ledge, `GoldenSkin.statue_min_height`), but the doodad statue
+  also never reuses that kit or its shape -- a plain draped, faceless figure with its hands clasped and
+  nothing raised -- so it can never be mistaken for the live enemy even up close. `test_golden_skin`
+  guards against the doodad script ever building itself from `GoldenStatue`.
+  None of the six needed a new mesh-kit pattern or shader include: the kit's existing patterns (e.g.
+  `PAT_GOLD`, `PAT_MARBLE`, `PAT_DZ_CONCRETE`, `PAT_CORP_PLATE`, `PAT_TECH`) already cover every zone's
+  materials, each skin picking its own colours for them through its "Doodads" export group.
+- *Tested*: `test_doodads`' `_test_skins` builds every skin's doodads in every class (seed 7 alone) and
+  checks the box, that nothing glows and that `doodad_palette` is muted. `SkinSuite.doodads_ok(skin,
+  name)` (`tests/helpers/skin_suite.gd`), which every zone's own suite calls, extends this over several
+  seeds and both push sides: dressed, inside the box, on the shared `MeshKit.solid()` alone, never
+  glowing, and the identical (cached) mesh every time the same size, side and seed are drawn again.
 
 **Ceilings from their lanes** (B3). `TrackBuilder` (and `BossProps.ceiling`) describe each ceiling as a
 `CeilingSection` (`scripts/world/ceiling_section.gd`): its span along the track, the lanes it covers
@@ -804,8 +849,9 @@ and `GoldenSkin` (Zone 6, the Golden Zone). `GreyboxSkin` is the fallback for a 
 look (every zone has one now). A
 zone's skin lives at `data/skins/<zone id>_skin.tres` (`--skin=<zone id>` in quick play) and is set in its
 `data/zones/<zone id>.tres`; a level's own `skin` wins over its zone's (the Golden Palace, Golden 3,
-may get its own). The real skins build on the mesh kit (`scripts/world/meshes/`): `MeshKit` has
-shared builders for hazards, triggers and environments, and `MeshLayer` batches a chunk's geometry.
+task D6b, has one: `GoldenPalaceSkin`, below). The real skins build on the mesh kit
+(`scripts/world/meshes/`): `MeshKit` has shared builders for hazards, triggers and environments, and
+`MeshLayer` batches a chunk's geometry.
 The shaders in `scripts/world/meshes/shaders/` are procedural. `HazardStateVisual` swaps a hazard's
 ON / WARNING / OFF materials. A skin's `enemy_variant` picks the enemies' look: the cyborgs' zone
 variant (GDD §9.2, through `CyborgSuit.look_for()`) and the other enemies' weathering (drones, hover
@@ -887,7 +933,9 @@ A new zone takes the next free block of ten in its own include, so zones built i
 collide on an id. Ids 60-69 are the cult's, shared by every zone, in
 `kit_cult.gdshaderinc` (its include follows `cult_mark()` in `kit_solid`, and its dispatch runs after
 the zones' own): `PAT_CULT_MARK` (60) draws the cult's emblem from the material's `cult_emblem`
-texture as a mark on a dark panel.
+texture as a mark on a dark panel. Ids 70-79 are the Golden Palace's (task D6b, a level's own skin,
+not a zone's), in `kit_golden_palace.gdshaderinc`, after `kit_golden.gdshaderinc`'s `golden_metal()`
+and `golden_marble()`, which it calls directly.
 
 **Gangland's ceilings** (`GanglandCeiling`) take their width from the lanes they cover (the collision
 box), never from the track, and draw each side as anchored (running into the building face) or free
@@ -1074,6 +1122,51 @@ shader, `golden_facade.gdshader`. White and cream with red and gold accents (GDD
   checks both sides on streets of 3 to 6 lanes; a new wall decoration extends the profile.
 - *Overhead.* Sky bridges between towers 24 m up or more, only where towers tall enough stand on both
   sides; banners hang no lower than `GoldenFacades.BANNER_BOTTOM` (11 m), clear of every ceiling.
+
+**The Golden Palace** (Golden 3, task D6b, GDD §5 "Final level: the Golden Palace"): a level's own
+skin (`data/levels/golden_3.tres`'s `skin`, over the Golden Zone's), since the player runs *inside*
+the palace rather than its streets. `GoldenPalaceSkin` (`scripts/world/skins/golden_palace_skin.gd`)
+extends `GoldenSkin` outright, the only skin that does: GDScript can't redeclare an exported property
+in a subclass (CLAUDE.md principle 7), so `data/skins/golden_palace_skin.tres` sets fresh values for
+the few exports its colonnade and ceilings reuse for a new purpose (`lot_length` as the colonnade's
+bay spacing, `gallery_share`/`statue_share`/`banner_share`/`relief_share` as a bay's content,
+`banner_width`/`banner_length` as a tapestry's size, `bridge_weight`/`archway_weight`/`yacht_weight`
+as the ceiling pieces' weights, a chandelier taking the yacht's role), while its Gold and red,
+Statues, Hazards, Pads/ramps/finish and Environment groups, its statue kit (`GoldenStatue`), its cult
+emblem and feed (`CultEmblem`, `CultFeed`) and `make_environment()` (the stars turned off, the one
+field it doesn't expose as an export) all carry over unchanged; `test_campaign`'s `_test_skins()`
+counts a subclass of a zone's skin script as "its own variant" too, alongside Corporate 2's plaza (the
+same script, different values). Only `floor_segment()`, `wall_section()` and `ceiling_section()`/
+`hull()` are overridden (`scripts/world/skins/golden_palace/`):
+- *The floor* (`GoldenPalaceFloor`): a palace floor's lane, flush marble (`MeshKit.PAT_PALACE_FLOOR`,
+  laid out from world position) with a gold inlay runner down its centre (`runner_half_width`), no
+  raised kerb or rails (solid stone, not over water, unlike `GoldenWalkways`). Gaps are breaks in the
+  floor (GDD §5: "a collapsed floor, an open stairwell, a light well"): the usual orange edge, and
+  below it deep shade (`MeshKit.PAT_PALACE_WELL`) darkening with depth, so a gap reads as a hole at a
+  glance (pinned by `test_golden_palace_skin`, as every zone's floor is). Dust motes, floor-polish
+  glints and speed streaks drift over it (the Golden Zone's `mist_count`/`leaf_count`/`streak_count`
+  reused, the still floor's motion cue).
+- *The walls* (`GoldenPalaceWalls`): a colonnade. A flush marble panel (`MeshKit.PAT_PALACE_PANEL`,
+  with the gold wall-run height marks inlaid in it) runs from the floor to `frieze_top`, exactly as
+  calm as every zone's band; gilded pilasters stand above it, every `lot_length` metres, up to
+  `pilaster_height`. Between two pilasters, a bay (GDD §5) holds a gallery (a gold-framed opening
+  showing the cult's feed or its emblem, `gallery_share`), an alcove (a decorative statue in the same
+  niche shape a live Gilded Sentinel's uses, `GoldenStatue.niche()`, task C4, `statue_share`, always at
+  or above `statue_min_height`), a tapestry (`banner_share`) or a relief (`relief_share`); otherwise
+  the flush panel simply carries on. `statue_spots()`, `feed_boards()` and `cult_emblems()` list a
+  bay's content the same way the Golden Zone's `GoldenFacades` lists its ledges, frames and banners.
+- *The ceilings* (`GoldenPalaceCeilings`, task B3's narrow-ceiling rule): a bridge between galleries or
+  an archway (both need every lane; over fewer lanes both fold into the narrower BALCONY) or a hanging
+  chandelier (the yacht's weight, reused: it hangs over any width). Every underside reuses
+  `GoldenCeilings`' recipe (a flat surface, a darker seam and flush lamps on each lane seam, the
+  orange band at the far end); a chandelier's gilded rosette and ring of lamps stay flush with it too,
+  so nothing of it ever hangs below the running surface, the rule every ceiling keeps. Structures keep
+  `hall_clear_height` above their underside (a flat budget, not a wall-decoration profile: the
+  colonnade stands well clear, to the sides, so there is nothing to duck under, unlike the Golden
+  Zone's walls).
+- *Shader patterns* (ids 70-79, `kit_golden_palace.gdshaderinc`, after `kit_golden.gdshaderinc`'s
+  `golden_metal()`/`golden_marble()`, which it calls directly rather than inventing new ones):
+  `PAT_PALACE_FLOOR` (70), `PAT_PALACE_WELL` (71) and `PAT_PALACE_PANEL` (72).
 
 **The cult emblem** (D7, GDD §5 "The cult"): `CultEmblem` (`scripts/world/meshes/cult_emblem.gd`)
 builds each option's 2D vector geometry as a flat mesh (mesh kit conventions: emissive for a neon
