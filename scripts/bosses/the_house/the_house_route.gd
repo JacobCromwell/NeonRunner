@@ -22,6 +22,7 @@ extends RefCounted
 enum Kind { SOLID, FENCE, GAPPED }
 
 const STEP: float = 0.25
+const UNREACHED: int = 1 << 20
 
 var lanes: int = 3
 ## Track a lane switch takes, with its margin, and the body's reach either side along the track.
@@ -106,30 +107,40 @@ func find(start_lane: int, d0: float, act_at: float, d_end: float, obstacles: Ar
 		at_step[i] = int(w["lane"])
 	var act: int = clampi(ceili((act_at - d0) / STEP), 0, n - 1)
 	var k: int = maxi(ceili(switch_m / STEP), 1)
-	# parent[i][l]: the step (and lane) it came from, encoded prev_step * 16 + prev_lane, or -1; -2 marks
-	# the start.
+	# The fewest switches to be settled in each lane at each step (cost), and where it came from (parent:
+	# prev_step * 16 + prev_lane; -2 marks the start). Steps are taken in order, so a state reached by an
+	# earlier switch keeps it over a later one with as few switches: the route moves out of a lane as soon
+	# as it can and never zigzags.
+	var cost: Array[PackedInt32Array] = []
 	var parent: Array[PackedInt32Array] = []
 	for i: int in n:
+		var c := PackedInt32Array()
+		c.resize(lanes)
+		c.fill(UNREACHED)
+		cost.append(c)
 		var p := PackedInt32Array()
 		p.resize(lanes)
 		p.fill(-1)
 		parent.append(p)
 	if start_lane < 0 or start_lane >= lanes or blocked[start_lane][0] != 0:
 		return none
+	cost[0][start_lane] = 0
 	parent[0][start_lane] = -2
 	for i: int in n:
 		if at_step.has(i):
 			var keep: int = at_step[i]
 			for l: int in lanes:
 				if l != keep:
-					parent[i][l] = -1
+					cost[i][l] = UNREACHED
 		if i == n - 1:
 			break
 		for l: int in lanes:
-			if parent[i][l] == -1:
+			var c: int = cost[i][l]
+			if c >= UNREACHED:
 				continue
 			# Stay in the lane.
-			if blocked[l][i + 1] == 0 and parent[i + 1][l] == -1:
+			if blocked[l][i + 1] == 0 and c < cost[i + 1][l]:
+				cost[i + 1][l] = c
 				parent[i + 1][l] = i * 16 + l
 			if i < act:
 				continue
@@ -138,7 +149,7 @@ func find(start_lane: int, d0: float, act_at: float, d_end: float, obstacles: Ar
 			for dir: int in [-1, 1]:
 				var l2: int = l + dir
 				var j: int = i + k
-				if l2 < 0 or l2 >= lanes or j >= n or parent[j][l2] != -1:
+				if l2 < 0 or l2 >= lanes or j >= n or c + 1 >= cost[j][l2]:
 					continue
 				var ok: bool = blocked[l2][j] == 0
 				for s: int in range(i, j + 1):
@@ -151,13 +162,16 @@ func find(start_lane: int, d0: float, act_at: float, d_end: float, obstacles: Ar
 					elif s == j and at_step.has(s) and int(at_step[s]) != l2:
 						ok = false
 				if ok:
+					cost[j][l2] = c + 1
 					parent[j][l2] = i * 16 + l
-	# The route ends in the reachable lane nearest the start lane (then the left one).
+	# The route ends in the lane reached with the fewest switches (then the nearest the start lane).
 	var end_lane: int = -1
 	for dist: int in lanes:
 		for s: int in [-1, 1]:
 			var l: int = start_lane + s * dist
-			if end_lane < 0 and l >= 0 and l < lanes and parent[n - 1][l] != -1:
+			if l < 0 or l >= lanes or cost[n - 1][l] >= UNREACHED:
+				continue
+			if end_lane < 0 or cost[n - 1][l] < cost[n - 1][end_lane]:
 				end_lane = l
 	if end_lane < 0:
 		return none

@@ -110,7 +110,8 @@ func _plan() -> void:
 			break
 		buttons.pop_back()
 	stuck += 1
-	log.append({"t": boss.fight_time(), "action": &"stuck", "why": "no route through %d obstacles" % obstacles.size()})
+	log.append({"t": boss.fight_time(), "action": &"stuck", "why": "no route through %d obstacles" % obstacles.size(),
+		"lane": start, "d": d0, "x": p.position.x, "h": p.h, "obstacles": obstacles})
 
 
 ## One lane a frame toward the lane its route has it in now.
