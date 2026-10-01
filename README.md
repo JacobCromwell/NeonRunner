@@ -107,8 +107,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   and a level's newest things get the most of its picks, taken from older things of their kind (enemies from
   enemies, obstacles from obstacles), so no level gets easier; enemies whose rules keep only so many (hosts,
   hover trucks, drones, Octodogs, Resonators) and the rare vent screech aren't boosted (the campaign's recency
-  curve, `data/tuning/feature_recency.tres`). Wall fences, the Buzz Overdrive, the Tithe Collector and the
-  Gilded Sentinels aren't built yet: their levels already list them, and they appear once their code exists.
+  curve, `data/tuning/feature_recency.tres`). Wall fences, the Buzz Overdrive and the Gilded Sentinels
+  aren't built yet: their levels already list them, and they appear once their code exists.
   Level names are placeholders, except the Golden Palace.
 - **Movement:** floor lanes, side-wall runs and wall jumps (a sign blocking the wall bumps you back with a
   clank), anti-grav pads onto the ceiling, ramps (higher onto the wall, with a speed boost that fades like
@@ -136,6 +136,13 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   - the Resonator (from Golden 1): a golden broadcast spire hovering far ahead. When its halos line up
     and its three-note chime plays, a red wave rolls along the floor across every lane: jump it, or be
     on a wall or the ceiling. Shoot it down or wait until it leaves (in quick play, `--features=resonator`)
+  - the Tithe Collector (from Corporate 2, skipping the Dead Zone, back in the Golden Zone): a small gold
+    drone with a collection plate, smug and gaudy (plain metal, no rotors; anti-grav pads don't affect
+    it). It appears ahead of you and closes in slowly, sucking up the credits in its lane along the way
+    and weaving toward whichever lane has the most hazards ahead, so chasing it is the risk. Touching it
+    isn't deadly: it grabs 25% of the credits you've collected and flies off. Catch it (stomp, shoot, or
+    dash through it) for everything it took, plus a jackpot (in quick play, `--features=tithe_collector`,
+    or review its shared mechanism with `--thief`)
 - **Bosses:** a framework for runner-style boss fights (GDD §10): the fight plays in the normal run on
   an arena track that keeps going for as long as it lasts, with the boss's health bar and phase
   markers on the HUD, weak points to stomp and weapon chip damage, a checkpoint for the final fight,
