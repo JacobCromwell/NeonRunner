@@ -272,6 +272,14 @@ enemy, host and obstacle counts, what only the every-feature guarantee brings, a
 against its bursts, with the recency curve on and off:
 `godot --headless -s res://tools/measure/level_shape.gd -- [--levels=dead_zone/2] [--curve=on,off]`.
 
+`tools/measure/economy.gd` measures the campaign's economy (task R7): per level and zone, the credits
+available, what a good run collects (a stand-in share, default 0.7), the payout for finishing, and what a
+death or quit pays (GDD §4); then lays the shop's prices (`data/shop/catalog.json`) against the running
+wallet of a player who finishes every level once, in order, with nothing bought along the way: the first
+level each price is in reach of, and how many of that level's finish payouts it costs:
+`godot --headless -s res://tools/measure/economy.gd -- [--share=0.7] [--mobile=true] [--packs]` (its header
+lists the options; `--packs` also checks the mobile credit packs' sizes against the curve).
+
 ## The web demo
 
 The web demo (GDD §2) is the "Web (demo)" export preset: the Neon City's three levels and the Floating Head,

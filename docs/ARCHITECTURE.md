@@ -1881,8 +1881,12 @@ unspent), item tiers and stock, equip toggles, records per difficulty tier, sett
 owned, switched-on items; one charge of each breakable per attempt; and the free armor every run
 starts with (GDD §4), whatever the profile, settings or flavor. The shop (`ShopScreen`, the catalog's
 items) sells the permanent items tier by tier, among them the armor upgrade (GDD §8: four tiers; hits
-and waits in `GameRules`, prices in the catalog, both placeholders for R7), and the breakables (shield,
-grapple, revive) as stock.
+and waits in `GameRules`; prices in the catalog, laid against the campaign's economy by R7 and still
+DESIGN-TBD pending the owner, `docs/questions/r7.md`), and the breakables (shield, grapple, revive) as
+stock. `tools/measure/economy.gd` reads a campaign's credits, payouts and the shop's prices together
+(task R7): per level and zone, the credits available, a good run's share of them, the finish payout and
+what a death or quit pays, the running wallet of a single clean playthrough, and the first level each
+catalog price is in reach of it.
 
 The save has a version (`Profile.VERSION`, now 2). `Profile.from_dict()` brings an older save up to
 date as it loads (`_migrate`): version 1's armor stock (armor was a breakable then) is paid back in

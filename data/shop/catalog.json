@@ -1,6 +1,6 @@
 {
 	"version": 1,
-	"_note": "DESIGN-TBD: every price and most tier counts are placeholders (OPEN_QUESTIONS §4). GDD §8 fixes the weapon's four tiers.",
+	"_note": "DESIGN-TBD: every price and most tier counts are placeholders (OPEN_QUESTIONS §4). GDD §8 fixes the weapon's four tiers. R7 laid these prices against tools/measure/economy.gd's reading of the post-playtest economy (G1 pace, G3 free armor, G4 laser tier 1); see docs/questions/r7.md for the table and what's still open.",
 	"items": [
 		{
 			"id": "weapon", "kind": "permanent", "icon": "weapon",
@@ -50,10 +50,10 @@
 		{
 			"id": "armor", "kind": "permanent", "icon": "armor",
 			"name": "Armor",
-			"_note": "GDD §4, §8: every run starts with the free armor; these tiers upgrade it, alternating between one more hit and a shorter wait. Hits and waits are in data/tuning/game_rules.tres ({hits}, {seconds}). DESIGN-TBD: prices (R7 balances them).",
+			"_note": "GDD §4, §8: every run starts with the free armor; these tiers upgrade it, alternating between one more hit and a shorter wait. Hits and waits are in data/tuning/game_rules.tres ({hits}, {seconds}). DESIGN-TBD: prices (R7, docs/questions/r7.md): Armor I is priced to come early (the owner died a lot, GDD §4 playtest note) — within one clean run of City 1, or a handful of death attempts; the other tiers keep their placeholders, which already land near a zone boundary each (see the questions file's table).",
 			"description": "Free every run. Takes {hits} from attacks or electricity (not crashes or falls), back {seconds} s after it breaks.",
 			"tiers": [
-				{ "name": "Armor I", "price": 800, "description": "{hits} before it breaks, back {seconds} s after." },
+				{ "name": "Armor I", "price": 350, "description": "{hits} before it breaks, back {seconds} s after." },
 				{ "name": "Armor II", "price": 1700, "description": "{hits} before it breaks, back {seconds} s after." },
 				{ "name": "Armor III", "price": 3400, "description": "{hits} before it breaks, back {seconds} s after." },
 				{ "name": "Armor IV", "price": 6000, "description": "{hits} before it breaks, back {seconds} s after." }
