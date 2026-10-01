@@ -51,6 +51,8 @@ var _last_chunk: int = 0
 var _level_time: float = 0.0
 ## Built fence hazards by their index in layout.fences, so an EMP can switch them off.
 var _fence_nodes: Dictionary = {}
+## Built wall fence hazards by their index in layout.wall_fences (task B5), likewise.
+var _wall_fence_nodes: Dictionary = {}
 
 
 func set_layout(p_layout: LevelLayout, p_tuning: MovementTuning, p_skin: ZoneSkin = null) -> void:
@@ -64,6 +66,7 @@ func set_layout(p_layout: LevelLayout, p_tuning: MovementTuning, p_skin: ZoneSki
 	_chunks.clear()
 	_buckets.clear()
 	_fence_nodes.clear()
+	_wall_fence_nodes.clear()
 	_cut_nodes.clear()
 	_next_chunk = 0
 	_lane_gaps.clear()
@@ -71,18 +74,19 @@ func set_layout(p_layout: LevelLayout, p_tuning: MovementTuning, p_skin: ZoneSki
 	for lane: int in layout.lane_count:
 		_lane_gaps.append([])
 		_lane_cuts.append([])
-	_add_pieces(layout, 0)
+	_add_pieces(layout, 0, 0)
 
 
 ## Lengthens the track while it runs (a boss arena's next lap, BossArena; endless mode's next stretch):
-## appends every list of `extra` to the layout (LevelLayout.append_pieces: floor cuts too, so a cut can
-## be added during a run) and moves its end to extra.length. The pieces must lie past built_until():
-## chunks already built don't change. Credits and enemies only join the layout's lists; the credit
-## field and the enemy director don't pick them up.
+## appends every list of `extra` to the layout (LevelLayout.append_pieces: floor cuts and wall fences
+## too, so either can be added during a run) and moves its end to extra.length. The pieces must lie past
+## built_until(): chunks already built don't change. Credits and enemies only join the layout's lists;
+## the credit field and the enemy director don't pick them up.
 func extend_layout(extra: LevelLayout) -> void:
 	var first_fence: int = layout.fences.size()
+	var first_wall_fence: int = layout.wall_fences.size()
 	layout.append_pieces(extra)
-	_add_pieces(extra, first_fence)
+	_add_pieces(extra, first_fence, first_wall_fence)
 
 
 ## Track distance up to which chunks are built.
@@ -131,7 +135,9 @@ func floor_cuts() -> Array[FloorCut]:
 
 
 ## Switches off, for the rest of the level, every fence within `radius` of `center` (world space),
-## including fences not built yet (GDD §9.1: a destroyed generator's EMP). Returns how many.
+## including fences not built yet (GDD §9.1: a destroyed generator's EMP): floor fences, and wall fences
+## (task B5; GDD §9.1: "a generator's EMP switches them off"), each measured from where its field meets
+## the track (a floor fence's lane, a wall fence's wall face) at the EMP's height. Returns how many.
 func disable_fences_near(center: Vector3, radius: float) -> int:
 	var count: int = 0
 	for f: Dictionary in layout.fences:
@@ -145,6 +151,17 @@ func disable_fences_near(center: Vector3, radius: float) -> int:
 		var node: Variant = _fence_nodes.get(f["index"])
 		if node != null and is_instance_valid(node):
 			(node as Hazard).set_enabled(false)
+	for w: Dictionary in layout.wall_fences:
+		if w.get("disabled", false):
+			continue
+		var at := Vector3(int(w["side"]) * geo.wall_x(), center.y, TrackGeometry.world_z(w["at"]))
+		if at.distance_to(center) > radius:
+			continue
+		w["disabled"] = true
+		count += 1
+		var wall_node: Variant = _wall_fence_nodes.get(w.get("index", -1))
+		if wall_node != null and is_instance_valid(wall_node):
+			(wall_node as Hazard).set_enabled(false)
 	return count
 
 
@@ -157,6 +174,18 @@ func fence_hazards() -> Array[Hazard]:
 	return out
 
 
+## Built wall fence hazards (task B5; for tests, review tools and effects), in layout order.
+func wall_fence_hazards() -> Array[Hazard]:
+	var out: Array[Hazard] = []
+	var keys: Array = _wall_fence_nodes.keys()
+	keys.sort()
+	for k: Variant in keys:
+		var h: Variant = _wall_fence_nodes[k]
+		if is_instance_valid(h) and not (h as Node).is_queued_for_deletion():
+			out.append(h)
+	return out
+
+
 func set_hitboxes_visible(on: bool) -> void:
 	show_hitboxes = on
 	for node: Node in get_tree().get_nodes_in_group(&"debug_hitbox"):
@@ -165,8 +194,9 @@ func set_hitboxes_visible(on: bool) -> void:
 
 
 ## Sorts the track pieces of `pieces` (the whole layout, or an extension of it) into the chunks that
-## build them. `first_fence` is the layout index of its first fence.
-func _add_pieces(pieces: LevelLayout, first_fence: int) -> void:
+## build them. `first_fence` and `first_wall_fence` are the layout indices of its first fence and wall
+## fence.
+func _add_pieces(pieces: LevelLayout, first_fence: int, first_wall_fence: int) -> void:
 	_last_chunk = int(ceil((layout.length + RUN_OUT) / CHUNK_LENGTH))
 	for g: Dictionary in pieces.gaps:
 		_lane_gaps[g["lane"]].append(g)
@@ -175,6 +205,9 @@ func _add_pieces(pieces: LevelLayout, first_fence: int) -> void:
 	for i: int in pieces.fences.size():
 		pieces.fences[i]["index"] = first_fence + i
 	_bucket("fences", pieces.fences, "at", tuning.fence_depth)
+	for i: int in pieces.wall_fences.size():
+		pieces.wall_fences[i]["index"] = first_wall_fence + i
+	_bucket("wall_fences", pieces.wall_fences, "at", tuning.fence_depth)
 	_bucket("signs", pieces.signs, "start", 0.0, "end")
 	_bucket("hulls", pieces.hulls, "start", 0.0, "end")
 	_bucket("pads", pieces.pads, "at", tuning.pad_length)
@@ -242,6 +275,8 @@ func _build_chunk(index: int) -> void:
 
 	for f: Dictionary in bucket.get("fences", []):
 		_build_fence(root, f)
+	for w: Dictionary in bucket.get("wall_fences", []):
+		_build_wall_fence(root, w)
 	for s: Dictionary in bucket.get("signs", []):
 		_build_sign(root, s)
 	for h: Dictionary in bucket.get("hulls", []):
@@ -362,6 +397,36 @@ func _build_fence(root: Node3D, f: Dictionary) -> void:
 	skin.fence(hazard, size, -(bottom + top) * 0.5, gapped)
 	_fence_nodes[f["index"]] = hazard
 	if f.get("disabled", false):
+		hazard.set_enabled(false)
+
+
+## A wall fence (task B5; GDD §9.1; LevelLayout.wall_fences, WallFencePlan): an electric field across the
+## wall-run path on its wall, from the wall face out toward the lanes (WallFencePlan.reach: over a wall
+## runner's body, short of a floor runner in the outer lane), over its band's heights, a fence deep. It's
+## a hazard like a floor fence (electrical: DamageRules lets armor, the shield and the dash through,
+## never claws), never a wall blocker (the wall is open to enter; a live field just hurts), pulsing on
+## the level clock with a floor fence's warning (its flicker, and the crackle from HazardTelegraph), and
+## switched off for good by an EMP (disable_fences_near). The skin draws its emitters and field
+## (ZoneSkin.wall_fence).
+func _build_wall_fence(root: Node3D, w: Dictionary) -> void:
+	var side: int = int(w["side"])
+	var band_name: String = String(w["band"])
+	var box: AABB = WallFencePlan.hitbox(w, tuning, geo)
+	var center: Vector3 = box.get_center()
+	var hazard := _hazard(root, center, box.size, LAYER_HAZARD)
+	hazard.hazard_name = "wall fence (%s)" % band_name
+	hazard.is_electrical = true
+	if float(w["pulse_on"]) > 0.0 and float(w["pulse_off"]) > 0.0:
+		hazard.setup_pulsing(float(w["pulse_on"]), float(w["pulse_off"]), tuning.fence_pulse_warning, float(w["phase"]),
+			_level_time)
+		if sfx != null and sfx.stream(&"fence_warning") != null:
+			var telegraph := HazardTelegraph.new()
+			hazard.add_child(telegraph)
+			telegraph.bind(hazard, sfx.stream(&"fence_warning"), sfx.volume(&"fence_warning"),
+				sfx.warning_full_volume_distance, sfx.warning_max_distance)
+	skin.wall_fence(hazard, box.size, side, StringName(band_name), -center.y)
+	_wall_fence_nodes[int(w.get("index", _wall_fence_nodes.size()))] = hazard
+	if w.get("disabled", false):
 		hazard.set_enabled(false)
 
 

@@ -362,6 +362,11 @@ func _build_debug_tools() -> void:
 	var recency: FeatureRecency = context.config.feature_recency
 	if recency != null and recency.resource_path != "":
 		sections.append({"title": "Feature picks (campaign)", "resource": recency, "path": recency.resource_path})
+	# Where wall fences go and how they pulse (task B5), in a level that has them; Restart level rebuilds.
+	if context.config.has_feature(WallFencePlacement.FEATURE) or context.config.has_feature(WallFencePlacement.PARTIAL):
+		var wall_fences: WallFenceTuning = WallFencePlacement.tuning()
+		if wall_fences.resource_path != "":
+			sections.append({"title": "Wall fences", "resource": wall_fences, "path": wall_fences.resource_path})
 	if context.is_boss():
 		# The boss's numbers (health, rewards, par times) and its script's own tuning.
 		var def: BossDef = context.boss
