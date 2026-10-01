@@ -12,7 +12,7 @@ extends Resource
 @export_group("Nightmare")
 ## DESIGN-TBD: its body fills the street between the walls, less this on each side, and its size
 ## follows the street's width (a whole nightmare drawn at REF_WIDTH, scaled uniformly within
-## min_scale-max_scale, so its maws stay round): about 10.5 m tall over 3 lanes, 16 m over 5, 19 m
+## min_scale-max_scale, so its maws stay round): about 12 m tall over 3 lanes, 18 m over 5, 22 m
 ## over 6.
 @export_range(0.0, 2.0, 0.05, "suffix:m") var street_margin: float = 0.5
 @export_range(0.3, 1.0, 0.01) var min_scale: float = 0.62

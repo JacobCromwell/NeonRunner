@@ -341,4 +341,7 @@ func _test_real_arena() -> void:
 			check(boss.slash.strikes >= 4 and boss.hands.count >= 6 and boss.dark.count >= 1,
 				"every attack came: %d slashes, %d hands, %d lights out %s" % [boss.slash.strikes, boss.hands.count, boss.dark.count, tag])
 			check(_events(boss, &"refuge_missed").is_empty(), "no refuge went by without its slash %s" % tag)
+			if lanes == 5 and escape == &"pad":
+				print("  Sleep Taker on its arena (5 lanes): %.0f s of pattern, %d slashes, %d hands, %d lights out" % [
+					boss.fight_time() - boss.phase().intro_seconds, boss.slash.count, boss.hands.count, boss.dark.count])
 			await sim.free_world(world)

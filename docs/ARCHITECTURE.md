@@ -1070,6 +1070,7 @@ encounter.setup(world, context, arena)   joins the world between the player and 
 | `scripts/ui/widgets/boss_bar.gd` | the HUD's boss bar, with a marker at each phase's end |
 | `scripts/bosses/test_boss*.gd`, `data/bosses/test_boss*.tres`, `scenes/bosses/test_boss.tscn` | the test boss, outside the campaign (`./play.sh --boss=test_boss`) |
 | `scripts/bosses/floating_head/`, `scenes/bosses/floating_head.tscn`, `data/bosses/city_boss*.tres` | the Floating Head, the City's boss (see below; `./play.sh --boss=city_boss` or `--level=city/boss`) |
+| `scripts/bosses/sleep_taker/`, `scenes/bosses/sleep_taker.tscn`, `data/bosses/dead_zone_boss*.tres` | the Sleep Taker, the Dead Zone's boss, a preview until E5c-b (see below; `./play.sh --boss=dead_zone_boss`) |
 
 - **The arena** (`BossArena`): the generator plans `BossDef.arena_laps` laps from the boss's arena
   config (one lap's seed, features, difficulty, pacing and skin; `duration_seconds` is the lap's
@@ -1086,7 +1087,8 @@ encounter.setup(world, context, arena)   joins the world between the player and 
   may move it), `block` (solid; the player can't switch into it), `pad` and `ceiling`, `block_wall`
   (takes a stretch of wall away), and the red floor warnings `lane_warning` and `circle_warning`
   (steady with Reduced flashing; `warned(lane, from, to)` says where they are, and pickups keep off
-  them).
+  them); `floor_warning(node, lane, from, to)` counts a boss's own warning drawn its own way (the
+  Sleep Taker's mist, its slash's lanes) in `warned()` the same way.
 - **Parts** (`BossPart`, made with `add_part()` through the director): a boss's body shares the fight's
   health (weapon hits go to `BossEncounter.damage`, nothing else defeats it) and has weak points
   (`add_weak_point`: a stomp from above is a big hit; `set_weak_points_enabled` for weak points that
@@ -1130,9 +1132,12 @@ encounter.setup(world, context, arena)   joins the world between the player and 
 - **Hints**: `hint_due(key)` asks the run's `HintDirector` for a first-encounter hint of the boss's own
   (trigger `boss:<key>` in `data/hints/hints.json`, once per profile): the Floating Head asks for its
   way up's (`boss:city_boss/ramp`, `/wall`, `/ceiling`) as each pin begins.
-- **The light**: `set_light_level(level, seconds)` fades the environment's ambient and sky light and
-  the sun, never below `MIN_LIGHT_LEVEL`; glowing things keep their colours, and the light returns
-  with the fight.
+- **The light**: `set_light_level(level, seconds)` fades the environment's ambient and sky light, its
+  fog's light and the sun, never below `MIN_LIGHT_LEVEL`, and the scenery's own light with them (the
+  `scenery_light` uniform a level's darkness sets: the skins' scenery shaders are unshaded, so dimming
+  the lights alone leaves the street and the walls as they were; task E5c-a), never below
+  `ZoneSkin.MIN_SCENERY_LIGHT`; glowing things keep their colours, and the light returns with the
+  fight (the scenery's only if no newer run has set its own).
 
 **To build a boss:** a script extending `BossEncounter` as the root of a scene in `scenes/bosses/`,
 parts extending `BossPart`, a tuning resource of its own in `data/bosses/<id>_tuning.tres`, and the
@@ -1187,12 +1192,29 @@ plays it), in `scripts/bosses/floating_head/`:
   The gunship is a part whose belly is a ceiling (`add_surface(..., true)`); the Buzz Overdrive
   (C2) is `spawn_enemy` with its planned cut, which needs B4's floors turning into gaps during play.
   The docking clamps are phase 3's three hits.
-- **Sleep Taker:** a body part `immune_to_weapons`; fence generators come from the arena (the
-  `generator` feature) or `spawn_enemy("generator", ...)`; a destroyed one's EMP reaches the part
-  (`_on_part_emp`: `damage(hit_damage(), &"emp")`). Lights out is `set_light_level`; ceilings (pads)
-  are the refuge from the big slashes, which can't reach them.
+- **Sleep Taker (E5c-a built, see below):** E5c-b adds hurting it: fence generators from the arena
+  (the `generator` feature) or `spawn_enemy("generator", ...)`; a destroyed one's EMP reaches the part
+  (`_on_part_emp`: `damage(hit_damage(), &"emp")`).
 - **The final villain:** two stages, the second a `checkpoint` phase, so a death there restarts at the
   second stage.
+
+**The Sleep Taker** (GDD §10, task E5c: E5c-a, the nightmare, its arena, its entrance and its three
+attacks, weapons having no effect; E5c-b, hurting it by the generators' EMP, the phases, the defeat
+and its campaign slot). Until E5c-b its slot names the fight in `preview_scene`: the campaign keeps the
+card, and `--boss=dead_zone_boss` plays it in debug builds. In `scripts/bosses/sleep_taker/`:
+
+| File | What |
+|---|---|
+| `sleep_taker.gd` (`SleepTaker`) | the encounter: its arena's refuges (`_plan_lap`: every `refuge_spacing` metres a ceiling across every lane, the Dead Zone's charred bridge, with pads in `pad_lanes()`, the middle lane or lanes, and the track clear of holes and fences over `refuge_clear_span()` and the riders' landing), the entrance (it rises out of the street `enter_ahead` ahead, materializing, and drifts in to `hover_ahead`), its place (`pose`, kept relative to the runner; the slash's `pull()` brings it in), and the pattern (`_schedule`): one attack at a time, `attack_gap` apart; a refuge's slash when the runner reaches its warning point (`next_refuge`, `refuge_warn_at`: it strikes `strike_after_pad` after the pads; a moment missed is logged `refuge_missed`), otherwise the phase's list in order (`attack_patterns`: hands, lights_out), the first that can start fairly and be over before the next refuge's slash going next. Fairness helpers: `escape_lane`, `floor_clear_lane`, `ceiling_between`, `pickup_near`; `sound()` plays and logs each warning; first-time hints `boss:dead_zone_boss/refuge`, `/hands`, `/lights_out` (`hint_due`) |
+| `sleep_taker_body.gd` (`SleepTakerBody`) | the body part: `immune_to_weapons` (no targeting, no shot or splash hurts it; the BossDef's `weapon_share_cap` is 0 besides), no weak points, its touch an enemy attack inside its body and out of reach; the model scaled uniformly to the street (`scale_for`), what it's doing (`shriek`, `raise`, `slash`, `attack`, `lunge`, `inhale`, `swallowed`, eased) and `draw_stats()` |
+| `sleep_taker_model.gd` (`SleepTakerModel`), `sleep_taker_liquid.gdshader`, `sleep_taker_vapor.gdshader` | the nightmare, built once in code at its reference size: one liquid mesh (its fused heads, chest and waist, 28 maws facing the runner with the great one in its belly, two long arms and four tendrils of clawed fingers, drips) and one translucent vapour mesh (shroud, skirt, pool), each animated by its shader (maws breathing, gaping as it inhales, the great one opening with its teeth pulling back on a red throat, arms raising and sweeping, the lunge, the dissolve), plus its drips and the inhale's streaming light: four draws and about 11k vertices. Black with the Bad Dream's purple; only an attack heats to enemy-attack red; no flicker with Reduced flashing |
+| `sleep_taker_slash.gd` (`SleepTakerSlash`) | the giant slash: the warning (`slash_telegraph` then the lunge: the great maw's shriek, its three lanes `band_for()` locked and lit red with the Bad Dream's lane marks, counted as floor warnings), the strike (`box_for()`: the lanes less margins, clear of the walls, below `slash_height`: above a jump, far below a ceiling rider) and the recovery; its timings don't follow the phase's pace |
+| `sleep_taker_hands.gd` (`SleepTakerHands`), `sleep_taker_hand.gdshader`, `sleep_taker_mist.gdshader` | the grasping hands: `plan()` (the runner's lane, its floor clear around the hand, no ceiling or pickup there, a lane `max_escape_lanes` away clear), the mist (purple, unshaded, a floor warning) with its whispering, the hand bursting up as the runner nears and grasping, then sinking; pooled rigs |
+| `sleep_taker_lights_out.gd` (`SleepTakerLightsOut`) | lights out: the inhale (its warning), `set_light_level(dark_level)` for `dark_seconds` while the other attacks go on, the exhale and the light back; `clear()` brings the light back at once (a phase change, the defeat) |
+| `sleep_taker_tuning.gd`, `data/bosses/dead_zone_boss_tuning.tres` | its numbers (F6 in its fight; all DESIGN-TBD, `docs/questions/e5c.md`) |
+| `data/bosses/dead_zone_boss_skin.tres` | its arena's look: the Dead Zone's, with nothing hung over the street (no skybridges, no hung screens), where it looms |
+| `tools/showcase/sleep_taker_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/front/entrance/slash/hands/lights_out/fight/measure`; `measure` prints the warnings', hazards' and street's colours on screen in the arena's light and at the darkest point) |
+| `tests/helpers/sleep_taker_bot.gd` (`SleepTakerBot`) | a runner who plays its attacks by their warnings, `reaction` seconds late: to a refuge's pad or out of the slash's lanes (`slash_escape`), out of a hand's lane, and through the arena's holes and fences |
 
 ## Cinematics
 
@@ -1433,7 +1455,13 @@ propaganda cut, the glitch, the fall, the wreck with room for a runner in every 
 it without god mode, Reduced flashing, the same every attempt) and plays the whole fight through the
 campaign at 3, 5 and 6 lanes with the bot and no god mode (City 3, the boss intro's slot, the fight,
 its results and stars, the shop, the outro's slot, and the web demo's end screen), checking along the
-way that its propaganda never masks a warning, then that a death restarts the fight. `test_resonator` plays the
+way that its propaganda never masks a warning, then that a death restarts the fight. `test_sleep_taker`
+builds the Sleep Taker at 3, 5 and 6 lanes (a preview in its slot, immune to weapons, its hitboxes, its
+draw budget and colours, its arena's refuges, the entrance, shots and missiles passing through it, lights
+out darkening the scenery and the light always coming back); `test_sleep_taker_attacks` plays its slash
+and hands with `SleepTakerBot` (struck only after the warning and only in the warned lanes, every
+escape from every lane without god mode, the ceiling safe, the same every attempt) and its whole
+pattern on the real arena at 3, 5 and 6 lanes. `test_resonator` plays the
 Resonator in full worlds on real physics (the warning always before the wave, a jump clearing it at 3,
 5 and 6 lanes with its margin measured, walls and the ceiling safe, armor, shield and dash, turns with a
 `TurnDummy`, Reduced flashing), checks its rules over many seeds, and plays the real Golden 1-3 layouts
@@ -1472,7 +1500,7 @@ hosts or aiming, and `lineup_far` at gameplay distance); `octodog_screech`,
 `drone_truck_showcase`, `bad_dream_showcase`, `resonator_showcase`: its model through its warning
 and pulse, or a scripted run where it pulses at a runner who jumps its waves), the Golden Zone's statue
 kit (`statue_showcase`: every pose, a turnaround, and a live statue rigged in its niche and swinging, as
-task C4 would build it), a boss (`floating_head_showcase`), the UI kit, the screens (`screens_showcase`;
+task C4 would build it), the bosses (`floating_head_showcase`, `sleep_taker_showcase`), the UI kit, the screens (`screens_showcase`;
 its `--screen=hud_armor [--tier=N]` takes the HUD's armor through its states: up, broken, its ring
 filling, back), a zone skin
 (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed screens and emblems a

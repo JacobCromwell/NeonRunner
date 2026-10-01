@@ -14,8 +14,9 @@ through zones full of enemies, and a single hit ends the run. Built with Godot 4
 
 Boss fights have their framework (they play in the runner, with phases, a health bar, checkpoints,
 stars and payouts); a test boss shows the framework at work. The Neon City's boss, the Floating Head,
-is built and plays in the campaign after City 3 (debug builds: `--boss=city_boss`); the other zones'
-bosses are still placeholder slots. The short cinematics are built with a code-driven cinematic toolkit
+is built and plays in the campaign after City 3 (debug builds: `--boss=city_boss`); the Dead Zone's
+Sleep Taker is being built (debug builds: `--boss=dead_zone_boss`); the other zones' bosses are still
+placeholder slots. The short cinematics are built with a code-driven cinematic toolkit
 (camera paths, the runner and cyborgs on the humanoid rig, timed events, skippable); until the owner
 describes the story beats, each zone's intro (and the City's boss intro) plays a placeholder arrival flyover
 over the zone, and the outros are placeholder cards.
@@ -50,7 +51,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `corporate`, `corporate_plaza` (Corporate's plaza floor), `dead_zone` or `golden` |
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level |
-| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
+| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head) with the full game flow once it's built, and as quick play while it's being built (`dead_zone_boss`: the Sleep Taker). Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
 
 Example: `./play.sh --lanes=6 --features=octodog,ceilings --god`, or the test boss's last phase:
@@ -150,7 +151,15 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   the propaganda cuts out mid-shout and it crashes into the street ahead: the runner runs over its
   fallen face and through the wreck, on to the zone's outro (in the web demo, the "get the full game"
   screen). About 100 s for a runner who never misses (`--boss=city_boss`, or the campaign's
-  `--level=city/boss`). The other five zone bosses are still to be built.
+  `--level=city/boss`). The Sleep Taker, the Dead Zone's boss, is half built (a preview in debug
+  builds, `--boss=dead_zone_boss`; the campaign still shows its card): a colossal nightmare of fused
+  Bad Dreams with dozens of maws, looming over the darkened street. Weapons can't touch it. As the
+  runner reaches a charred bridge, its belly's great maw opens with a shriek and the three lanes it will
+  slash light up red: take the bridge's pad up onto the ceiling, where it can't reach, or leave those
+  lanes. Purple mist pooling in the runner's lane, with whispering, means a hand is about to burst up:
+  switch lanes. After a deep inhale it swallows the light, and the street goes darker while every
+  hazard keeps glowing. (Hurting it with the fence generators' EMP, its phases and its defeat come next.)
+  The other four zone bosses are still to be built.
 - **Protection:** every level and boss fight starts with free armor: it blocks an enemy attack or an
   electrical hazard (never a crash or a fall) and comes back 30 s after it breaks; the HUD shows its hits
   and a ring filling while it comes back. Armor pickups in boss fights bring it back at once.
@@ -213,9 +222,9 @@ OFL-licensed; licenses are in `assets/LICENSES.md`.
 
 The scenes in `tools/showcase/` show one part of the game up close for visual review (the runner in every pose
 and power-up look, and a scripted run on any zone's skin; ramp launches and blocked wall entries; each enemy
-family, the Floating Head, the UI kit, every screen, a zone skin's fixed review track, the cult's feed, the
-Golden Zone's statues, any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
-lists its options. For example, a zone's arrival flyover rendered to frames on the web / low-end renderer:
+family, the Floating Head, the Sleep Taker (and its readability in the dark, `--scenario=measure`), the UI kit,
+every screen, a zone skin's fixed review track, the cult's feed, the Golden Zone's statues, any campaign slot's
+cinematic and the cinematic toolkit's sampler); each script's header lists its options. For example, a zone's arrival flyover rendered to frames on the web / low-end renderer:
 `godot --path . --rendering-method gl_compatibility --fixed-fps 10 --write-movie build/cine/f.png --quit-after 100
 res://tools/showcase/cinematic_review.tscn -- --slot=golden/intro --once`.
 
@@ -360,7 +369,7 @@ scripts/world/          level layout, generator, track builder, hazards; zone sk
 scripts/campaign/       campaign, zones, bosses (BossDef, BossPhase) and cinematic slots (CinematicDef, Cinematic)
 scripts/cinematics/     the cinematic toolkit (CinematicSequencer, CineTimeline, CineStage, ...) and the flyover
 scripts/bosses/         the boss framework (BossEncounter, BossPart, BossArena, BossProps), the test boss,
-                        and one folder per boss (floating_head/)
+                        and one folder per boss (floating_head/, sleep_taker/)
 scripts/economy/        the shop catalog
 scripts/ui/             theme, icons, widgets, screens, HUD, debug tools
 scripts/audio/          sound library, music player, hazard warning sounds
