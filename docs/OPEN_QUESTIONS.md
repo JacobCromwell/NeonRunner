@@ -1462,7 +1462,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     **Placeholder:** back whole (`Player.revive` in `scripts/player/player.gd`, `DESIGN-TBD`).
 
 **The Floating Head after the playtest** (from E1e; numbers in `data/bosses/city_boss_tuning.tres`; measure the routes with `tools/measure/stomp_routes.gd`; play `--level=city/boss`)
-248. **Should every phase use a ramp?** (GDD §10: (1) the fallen tower as a ramp, (2) a wall jump,
+248. (E1f: at the City's 21 m/s the wall marks sit 15.7 m and 5.2 m before the face, the same seconds as 13 m and 4 m at 18 m/s.) **Should every phase use a ramp?** (GDD §10: (1) the fallen tower as a ramp, (2) a wall jump,
     (3) a pad and the ceiling.) After the first stomp the owner saw no ramp and no way up. The wall route
     showed nothing, and at 5 and 6 lanes a wall jump lands in the outer lane, which has no weak point:
     only a second move inward in the air reached one (measured in the campaign's step and in quick play,
@@ -1478,7 +1478,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     blocks; the window stays open for a runner on the trucks until the lead-in ends (3.5 m before its
     face, not 8 m). The latest switch is now 4.5 m before its face at 3, 5 and 6 lanes. Right share,
     and does the bent slab read as the fallen tower? Alternatives: a slab two lanes wide, a longer ramp.
-250. **Stomp boxes over the outer lanes** (item 160): at 5 and 6 lanes the outermost weak points' stomp
+250. (E1f: the stomp boxes are now 4.6 m deep at 18 m/s, stretched by the pace in the campaign.) **Stomp boxes over the outer lanes** (item 160): at 5 and 6 lanes the outermost weak points' stomp
     boxes now reach over the outer lanes to the walls, at their own height (a jump from the trucks
     still can't reach them), so a wall jump or a ceiling drop there stomps the dome beside it; and every
     box is lower and deeper (0.35 m over its socket, 4 m deep; were 0.55 m and 3 m). One wall jump now

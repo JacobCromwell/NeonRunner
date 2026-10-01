@@ -139,7 +139,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   no time limit and no escalation, stars from par times, a payout, records and a leaderboard per
   boss, and pickups: armor, shield and grapple pickups on the floor ahead, placed where they're fair
   to take, from the standard armor rule (at the start of the final phase, and a while after the
-  player's armor or shield breaks) or offered by the boss itself. The test boss (`--boss=test_boss`),
+  player's armor or shield breaks) or offered by the boss itself. A campaign boss fight runs at its
+  zone's speed, like the zone's levels (quick play's at the base speed). The test boss (`--boss=test_boss`),
   a hovering core that blasts the lane it lights up red and drops dazed into the player's lane to be
   stomped, shows it all (it offers a shield in its second phase). The Floating Head, the Neon City's
   boss, is built on it: a giant ship whose stern is a propaganda face, roaring in overhead, a
@@ -157,7 +158,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   understood, ducking under every warning) with slogans on its face screen. Beaten, its face glitches,
   the propaganda cuts out mid-shout and it crashes into the street ahead: the runner runs over its
   fallen face and through the wreck, on to the zone's outro (in the web demo, the "get the full game"
-  screen). About 100 s for a runner who never misses (`--boss=city_boss`, or the campaign's
+  screen). It runs at the City's 21 m/s and plays as it did at 18 m/s in seconds: its distances follow
+  the pace. About 100 s for a runner who never misses (`--boss=city_boss`, or the campaign's
   `--level=city/boss`). The Sleep Taker, the Dead Zone's boss, is half built (a preview in debug
   builds, `--boss=dead_zone_boss`; the campaign still shows its card): a colossal nightmare of fused
   Bad Dreams with dozens of maws, looming over the darkened street. Weapons can't touch it. As the
@@ -250,10 +252,12 @@ takes), its longest and mean empty stretches in seconds, and its credits; it can
 the old levels byte for byte as they were: `godot --headless -s res://tools/measure/level_pace.gd -- [--seeds=4]
 [--old-data=DIR] [--dump=FILE] [--set=key:value]` (its header lists the options).
 
-`tools/measure/stomp_routes.gd` measures how forgiving the Floating Head's ways onto its head are: the latest lane
-switch onto the ramp that still stomps, the stretch of jump points a single wall jump stomps from, and the ceiling
-from every lane (`godot --headless --fixed-fps 60 -s res://tools/measure/stomp_routes.gd -- [--lanes=3,5,6]
-[--routes=ramp,wall,ceiling] [--e1c]`; `--e1c` measures the numbers from before the owner's playtest fixes).
+`tools/measure/stomp_routes.gd` measures how forgiving the Floating Head's ways onto its head are, at the City's
+speed (21 m/s) in metres and in seconds: the latest lane switch onto the ramp that still stomps, the stretch of jump
+points a single wall jump stomps from, and the ceiling from every lane (`godot --headless --fixed-fps 60 -s
+res://tools/measure/stomp_routes.gd -- [--lanes=3,5,6] [--routes=ramp,wall,ceiling] [--speed=N] [--fine] [--e1c]`;
+`--speed=18` measures at the reference speed, `--fine` finds the wall jump window's ends by bisection, `--e1c`
+measures the numbers from before the owner's playtest fixes).
 
 `tools/measure/level_shape.gd` measures each campaign level's shape: every feature's share of its picks, its
 enemy, host and obstacle counts, what only the every-feature guarantee brings, and The Hush's quiet stretches
