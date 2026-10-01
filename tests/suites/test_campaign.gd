@@ -161,6 +161,8 @@ func _test_slots(campaign: Campaign) -> void:
 	for s: CampaignStep in campaign.steps():
 		if s.kind == CampaignStep.Kind.BOSS and s.zone == campaign.zones[0]:
 			check(s.boss != null and s.boss.is_built(), "the City's boss step plays the Floating Head's fight (task E1d)")
+		elif s.kind == CampaignStep.Kind.BOSS and s.zone.id == &"dead_zone":
+			check(s.boss != null and s.boss.is_built(), "the Dead Zone's boss step plays the Sleep Taker's fight (task E5c-b)")
 		elif s.kind == CampaignStep.Kind.BOSS:
 			check(s.boss != null and not s.boss.is_built(), "boss slot %s is still a placeholder" % s.id)
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id.ends_with("intro"):

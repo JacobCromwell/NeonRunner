@@ -10,6 +10,9 @@ extends RefCounted
 ##   slash hits);
 ## - a hand's mist in its lane: it switches to the lane the fight keeps free (SleepTaker.escape_lane),
 ##   unless `dodges_hands` is off;
+## - a generator in sight (SleepTakerLure): with `smashes` on, it heads for the generator's lane and
+##   stomps it (jumping so it comes down on its top) or, with `dashes` on, dashes into it; with
+##   `smashes` off it keeps out of its lane (a runner who lets every generator go by);
 ## - otherwise it keeps to `home_lane` (if set) and, with `reads_track` on, runs the arena like any
 ##   runner: it jumps the holes and full fences in its lane and slides under gapped ones.
 ## On the ceiling it rides it out.
@@ -31,6 +34,9 @@ var reaction: float = 0.3
 ## The lane it keeps to while nothing threatens it (-1: wherever it is).
 var home_lane: int = -1
 var reads_track: bool = true
+## Goes for each generator (stomps it, or dashes into it with `dashes`), or keeps out of its lane.
+var smashes: bool = true
+var dashes: bool = false
 ## What it did, for tests: {t (fight time), action, why}.
 var log: Array[Dictionary] = []
 
@@ -41,6 +47,9 @@ var _why: String = ""
 var _pending: Array[Dictionary] = []
 ## Until this fight time it holds its dodge (it doesn't walk home).
 var _hold_until: float = -1.0
+## The generator it's going for (the lure's count when it saw it), and whether it has jumped for it.
+var _gen_seen: int = 0
+var _gen_jumped: int = 0
 
 
 func _init(p_boss: SleepTaker, p_escape: StringName = &"pad") -> void:
@@ -61,13 +70,80 @@ func step() -> void:
 			_go(int(_pending[i]["lane"]), String(_pending[i]["why"]))
 			_hold_until = maxf(_hold_until, now + 2.5)
 			_pending.remove_at(i)
-	if home_lane >= 0 and _target < 0 and _pending.is_empty() and now > _hold_until \
+	var gen_lane: int = _read_generator()
+	if gen_lane >= 0 and _target < 0 and _pending.is_empty() and player.surface == Player.Surface.FLOOR \
+			and not boss.slash.warning_on() and not _mist_in(gen_lane):
+		if player.lane != gen_lane:
+			_go(gen_lane, "generator" if smashes else "around a generator")
+	elif home_lane >= 0 and _target < 0 and _pending.is_empty() and now > _hold_until \
 			and player.surface == Player.Surface.FLOOR and not boss.slash.warning_on() and not boss.hands.busy():
 		if player.lane != home_lane:
 			_go(home_lane, "home")
 	_walk()
+	_smash()
 	if reads_track:
 		_read_track()
+
+
+## The lane it wants for the generator in sight: its own (to smash it), or the nearest other whose floor
+## is clear past it (to let it go by); -1 for none.
+func _read_generator() -> int:
+	var lure: SleepTakerLure = boss.lure
+	if lure == null or lure.generator == null or not is_instance_valid(lure.generator) or not lure.generator.alive:
+		return -1
+	if lure.stage != SleepTakerLure.Stage.WAITING and not lure.luring():
+		return -1
+	var lane: int = int(lure.site["lane"])
+	var at: float = float(lure.site["at"])
+	if lure.count != _gen_seen:
+		_gen_seen = lure.count
+		log.append({"t": boss.fight_time(), "action": &"sees", "why": "generator in lane %d at %.0f m" % [lane, at]})
+	if smashes:
+		return lane if _gen_jumped != lure.count else -1
+	var d: float = boss.world.player.distance
+	return _free_lane([lane], lane, d, at + 10.0) if at - d < 40.0 * boss.run_pace() else -1
+
+
+## In the generator's lane as it nears: a jump timed to come down on its top (a stomp), or the dash.
+func _smash() -> void:
+	var lure: SleepTakerLure = boss.lure
+	var player: Player = boss.world.player
+	if not smashes or lure == null or lure.generator == null or not is_instance_valid(lure.generator) \
+			or not lure.generator.alive or _gen_jumped == lure.count:
+		return
+	if player.surface != Player.Surface.FLOOR or player.lane != int(lure.site["lane"]):
+		return
+	var ahead: float = float(lure.site["at"]) - player.distance
+	if dashes:
+		if ahead <= 2.0 * boss.run_pace():
+			_gen_jumped = lure.count
+			_press(&"dash", "generator")
+		return
+	if player.grounded and ahead <= stomp_lead():
+		_gen_jumped = lure.count
+		if ahead >= stomp_lead() - 1.0 * boss.run_pace():
+			_press(&"jump", "stomp the generator")
+		else:
+			# Too late to come down on it: out of its lane instead.
+			var lane: int = int(lure.site["lane"])
+			_go(_free_lane([lane], lane, player.distance, float(lure.site["at"]) + 10.0), "too late for the generator")
+
+
+## How far before a generator to jump so the runner comes down on its top: the time up to the jump's
+## top and back down to the generator's top, at the run speed.
+func stomp_lead() -> float:
+	var t: MovementTuning = boss.world.tuning
+	var top: float = FenceGenerator.TOP_Y
+	var t_down: float = sqrt(2.0 * maxf(t.jump_height - top, 0.0) / (t.gravity() * t.fall_gravity_multiplier))
+	return boss.speed() * (t.jump_time_to_apex + t_down)
+
+
+## True if a hand's mist (or hand) is in `lane` ahead.
+func _mist_in(lane: int) -> bool:
+	for h: Dictionary in boss.hands.active:
+		if int(h["lane"]) == lane and int(h["stage"]) != SleepTakerHands.Stage.SINK:
+			return true
+	return false
 
 
 ## The slash's warning: where to go, once it reacts.

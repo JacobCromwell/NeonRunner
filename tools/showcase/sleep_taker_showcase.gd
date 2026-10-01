@@ -73,7 +73,7 @@ func _ready() -> void:
 		elif arg == "--events":
 			_print_events = true
 	var slot: BossDef = load(BOSS_PATH) as BossDef
-	var def: BossDef = (slot.preview() if slot.preview() != null else slot).duplicate() as BossDef
+	var def: BossDef = slot.duplicate() as BossDef
 	var t: SleepTakerTuning = (def.tuning as SleepTakerTuning).duplicate() as SleepTakerTuning
 	match scenario:
 		"slash":
