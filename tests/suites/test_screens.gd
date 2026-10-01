@@ -383,7 +383,7 @@ func _test_settings() -> void:
 	App.show_settings()
 	await _frames(2)
 	var settings := App.screen as SettingsScreen
-	check(settings.sliders.size() == 3 and settings.toggles.size() == 3, "volumes and comfort options")
+	check(settings.sliders.size() == 3 and settings.toggles.size() == SettingsScreen.TOGGLES.size() and settings.toggles.has("citizens"), "volumes and comfort options (the citizens too)")
 	(settings.sliders["music"] as HSlider).value = 0.3
 	check(is_equal_approx(float(Settings.value(App.profile, "volume_music")), 0.3), "the music slider sets the music volume")
 	var shake := settings.toggles["screen_shake"] as CheckButton

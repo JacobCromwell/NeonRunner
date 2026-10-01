@@ -50,6 +50,10 @@ var is_boss: bool = false
 var is_obstacle: bool = false
 ## Part of a swarm (the swarm boss's clusters): heavy missiles deal bonus damage (GDD §8).
 var is_swarm: bool = false
+## A thief (GDD §9.12, the Tithe Collector): credits it pays out on top of everything it holds when it's
+## caught, by any defeat (a stomp, a shot, the dash, the claws). ScoreKeeper pays them; its hitboxes
+## declare the theft itself (Hazard.steals_share). 0 for every other enemy.
+var jackpot_credits: int = 0
 ## Its major attack (is_major_attack_active) never overlaps those of the types in exclusive_of,
 ## whether or not big attacks take turns (GameRules.big_attacks_take_turns): while it's on, they hold
 ## off starting theirs, and it holds its own while one of theirs is on (the Bad Dream, GDD §9.7:

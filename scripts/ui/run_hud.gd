@@ -13,6 +13,10 @@ extends CanvasLayer
 ## it's broken a ring filling in the kit's calm accent until it's back, when the icon flashes (its
 ## sound is the player's `armor_back`). A pickup taken during the run (GDD §10) flashes its item's
 ## icon, which joins the protections in its place if the run didn't bring that item.
+## A theft (GDD §9.12, ScoreKeeper.stolen) counts the credits down in the loss colour (CreditCounter's
+## drop_on_loss) with a "Robbed" pop-up beside them (its sound is the player's `robbed`; the coins fly
+## to the thief in the world, RunEffects); a caught thief's payback and jackpot pop up as they come
+## in. None of it uses the centre message, where a death shows, or a warning colour.
 
 signal pause_pressed
 
@@ -112,6 +116,7 @@ func _ready() -> void:
 	top.add_child(pause_button)
 	credits_counter = CreditCounter.new()
 	credits_counter.size_flags_horizontal = Control.SIZE_SHRINK_END
+	credits_counter.drop_on_loss = true
 	_right.add_child(credits_counter)
 	_popups = VBoxContainer.new()
 	_popups.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -182,6 +187,10 @@ func bind(p_world: RunWorld, p_context: RunContext) -> void:
 			_score_source.changed.disconnect(_on_score_changed)
 		if _score_source.bonus_awarded.is_connected(_on_bonus):
 			_score_source.bonus_awarded.disconnect(_on_bonus)
+		if _score_source.stolen.is_connected(_on_stolen):
+			_score_source.stolen.disconnect(_on_stolen)
+		if _score_source.recovered.is_connected(_on_recovered):
+			_score_source.recovered.disconnect(_on_recovered)
 	if _pickup_source != null and is_instance_valid(_pickup_source) and _pickup_source.collected.is_connected(_on_pickup_collected):
 		_pickup_source.collected.disconnect(_on_pickup_collected)
 	world = p_world
@@ -190,6 +199,8 @@ func bind(p_world: RunWorld, p_context: RunContext) -> void:
 	_score_source = world.score
 	world.score.changed.connect(_on_score_changed)
 	world.score.bonus_awarded.connect(_on_bonus)
+	world.score.stolen.connect(_on_stolen)
+	world.score.recovered.connect(_on_recovered)
 	_pickup_source = world.pickups
 	if _pickup_source != null:
 		_pickup_source.collected.connect(_on_pickup_collected)
@@ -412,21 +423,59 @@ func _on_score_changed() -> void:
 
 
 func _on_bonus(label: String, points: int) -> void:
+	_popup("%s  +%s" % [label, UiTheme.format_int(points)], UiTheme.style().accent.lerp(Color.WHITE, 0.45))
+
+
+## A thief took credits (GDD §9.12): what went, in the loss colour, with the credit icon (the counter
+## counts down in the same colour).
+func _on_stolen(amount: int, _thief: Node3D) -> void:
+	_popup("Robbed  −%s" % UiTheme.format_int(amount),
+		credits_counter.get_theme_color(&"font_loss_color", &"CreditCounter"), true)
+
+
+## A caught thief paid back what it held, and its jackpot (GDD §9.12): each in the gain colour, with the
+## credit icon (the counter counts up and pops).
+func _on_recovered(amount: int, jackpot: int, _thief: Node3D) -> void:
+	var gain: Color = credits_counter.get_theme_color(&"font_gain_color", &"CreditCounter")
+	if amount > 0:
+		_popup("Recovered  +%s" % UiTheme.format_int(amount), gain, true)
+	if jackpot > 0:
+		_popup("Jackpot  +%s" % UiTheme.format_int(jackpot), gain, true)
+
+
+## A pop-up line under the score and credits that fades after POPUP_TIME (the oldest goes first past
+## MAX_POPUPS). Score bonuses are plain lines; credit lines end with the credit icon.
+func _popup(text: String, color: Color, credit_icon: bool = false) -> void:
 	while _popups.get_child_count() >= MAX_POPUPS:
 		var oldest: Node = _popups.get_child(0)
 		_popups.remove_child(oldest)
 		oldest.queue_free()
 	var l: Label = _label(UiTheme.HUD_TEXT, HORIZONTAL_ALIGNMENT_RIGHT)
-	l.text = "%s  +%s" % [label, UiTheme.format_int(points)]
-	l.add_theme_color_override(&"font_color", UiTheme.style().accent.lerp(Color.WHITE, 0.45))
-	l.size_flags_horizontal = Control.SIZE_SHRINK_END
-	l.modulate.a = 0.0
-	_popups.add_child(l)
-	var tween := l.create_tween()
-	tween.tween_property(l, "modulate:a", 1.0, 0.12)
+	l.text = text
+	l.add_theme_color_override(&"font_color", color)
+	var item: Control = l
+	if credit_icon:
+		var row := HBoxContainer.new()
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.alignment = BoxContainer.ALIGNMENT_END
+		row.add_theme_constant_override(&"separation", roundi(UiTheme.px(6)))
+		row.add_child(l)
+		var icon := TextureRect.new()
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon.texture = IconFactory.texture(IconFactory.credit_icon(1), UiTheme.px(18), Color.WHITE)
+		icon.modulate = color
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(icon)
+		item = row
+	item.size_flags_horizontal = Control.SIZE_SHRINK_END
+	item.modulate.a = 0.0
+	_popups.add_child(item)
+	var tween := item.create_tween()
+	tween.tween_property(item, "modulate:a", 1.0, 0.12)
 	tween.tween_interval(POPUP_TIME)
-	tween.tween_property(l, "modulate:a", 0.0, 0.35)
-	tween.tween_callback(l.queue_free)
+	tween.tween_property(item, "modulate:a", 0.0, 0.35)
+	tween.tween_callback(item.queue_free)
 
 
 func _label(variation: StringName, align: HorizontalAlignment) -> Label:
