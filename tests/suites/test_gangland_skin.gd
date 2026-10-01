@@ -50,6 +50,7 @@ func run() -> void:
 	await _life_and_funding(skin)
 	await _cult_feed(skin)
 	await determinism(skin, GANGLAND_LEVEL_PATH)
+	doodads_ok(skin, "gangland")
 	stop_error_count("building gangland levels")
 
 
