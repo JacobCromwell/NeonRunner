@@ -31,6 +31,11 @@ void fragment() {
 	float body = 1.0 - smoothstep(0.55, 1.0, r + (swirl - 0.5) * 0.35);
 	float core = 1.0 - smoothstep(0.0, 0.55, r);
 	vec3 col = mix(color.rgb, core_color.rgb, core * 0.55) * brightness * (0.75 + 0.5 * swirl + 0.8 * surge);
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+	// No tonemapping here: an over-bright purple would clip channel by channel toward the fences' pink.
+	// Scaled down whole instead, it keeps its hue.
+	col /= max(1.0, max(col.r, max(col.g, col.b)));
+#endif
 	ALBEDO = col;
 	ALPHA = clamp(body * (0.55 + 0.35 * swirl + 0.3 * surge) * min(amount * 1.5, 1.0), 0.0, 0.92);
 }
