@@ -16,7 +16,7 @@ extends Enemy
 ## 4. After its pulses it pulls away ahead, powering down, and is gone.
 ## Dodge: jump the wave, or be on a wall or the ceiling: the wave travels along the floor only, and its
 ## hitbox stops short of a wall runner's body (ResonatorTuning.band_half_width).
-## Kill: weapons (auto-fire targets its core: 15 laser tier 1 shots), or wait it out. It hovers too high
+## Kill: weapons (auto-fire targets its core: 17 laser tier 1 shots), or wait it out. It hovers too high
 ## to stomp and has nothing to touch: no contact hitbox, like the heli drone. Its wave is an enemy
 ## attack: armor and the shield block one (a double's second wave comes within the invulnerability
 ## window that follows), and the dash passes through it (dash_kills is off: a wave isn't its body).
@@ -451,6 +451,8 @@ func _start_leave() -> void:
 	_rel = maxf(_d - world.player.distance, tune.hover_ahead)
 	_set_state(State.LEAVE)
 	_log("leave")
+	# Its pulses are over or dropped: it gives up any turn it was still waiting for (GDD §9).
+	world.director.give_up_turn(self)
 
 
 ## Another Resonator has come to pace the player: this one pulls away as soon as its pulse is over.

@@ -6,7 +6,9 @@
 script = ExtResource("1_sfx")
 folder = "res://assets/sfx"
 volume_db = {
+"armor_back": -9.0,
 "armor_break": -4.0,
+"armor_hit": -6.0,
 "bad_dream_dissolve": -7.0,
 "bad_dream_emerge": -4.0,
 "bad_dream_shriek": -2.5,
@@ -103,7 +105,8 @@ volume_db = {
 "ui_unlock": -5.5,
 "wall_blocked": -5.0,
 "wall_enter": -6.0,
-"wall_jump": -6.0
+"wall_jump": -6.0,
+"wall_marks_light": -4.5
 }
 pitch_variation = {
 "credit_1": 0.03,

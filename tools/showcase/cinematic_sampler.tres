@@ -1,0 +1,342 @@
+[gd_resource type="Resource" script_class="CineTimeline" format=3]
+
+[ext_resource type="Script" path="res://scripts/cinematics/cine_actor.gd" id="1_601jd"]
+[ext_resource type="Script" path="res://scripts/cinematics/cine_actor_key.gd" id="2_55yp6"]
+[ext_resource type="Script" path="res://scripts/cinematics/cine_camera_key.gd" id="3_n22d8"]
+[ext_resource type="Script" path="res://scripts/cinematics/cine_event.gd" id="4_f4su4"]
+[ext_resource type="Script" path="res://scripts/cinematics/cine_timeline.gd" id="5_pa5id"]
+[ext_resource type="Script" path="res://scripts/cinematics/cine_stage_def.gd" id="6_tm2fs"]
+
+[sub_resource type="Resource" id="Resource_1g626"]
+script = ExtResource("2_55yp6")
+position = Vector3(0, 0, -8)
+pose = &"run"
+move = 1
+trans = 0
+
+[sub_resource type="Resource" id="Resource_t11lg"]
+script = ExtResource("2_55yp6")
+position = Vector3(0, 0, 46)
+time = 3.0
+move = 1
+trans = 0
+
+[sub_resource type="Resource" id="Resource_6pttc"]
+script = ExtResource("2_55yp6")
+position = Vector3(0, 1.4, 51.4)
+time = 3.3
+trans = 0
+
+[sub_resource type="Resource" id="Resource_varpt"]
+script = ExtResource("2_55yp6")
+position = Vector3(0, 0, 56.8)
+time = 3.6
+trans = 0
+
+[sub_resource type="Resource" id="Resource_p0m07"]
+script = ExtResource("2_55yp6")
+position = Vector3(0, 0, 82)
+pose = &"slide"
+time = 5.0
+move = 1
+trans = 0
+
+[sub_resource type="Resource" id="Resource_toqks"]
+script = ExtResource("2_55yp6")
+position = Vector3(0, 0, 94)
+pose = &"run"
+time = 5.8
+move = 1
+trans = 0
+
+[sub_resource type="Resource" id="Resource_62ljr"]
+script = ExtResource("2_55yp6")
+position = Vector3(0, 0, 124.6)
+pose = &"dash"
+time = 7.5
+move = 1
+trans = 0
+
+[sub_resource type="Resource" id="Resource_023tt"]
+script = ExtResource("2_55yp6")
+position = Vector3(0, 0, 147)
+pose = &"run"
+time = 8.4
+move = 1
+trans = 0
+
+[sub_resource type="Resource" id="Resource_a1gau"]
+script = ExtResource("2_55yp6")
+position = Vector3(0, 0, 175.8)
+time = 10.0
+move = 1
+trans = 0
+
+[sub_resource type="Resource" id="Resource_lk4kb"]
+script = ExtResource("1_601jd")
+keys = Array[ExtResource("2_55yp6")]([SubResource("Resource_1g626"), SubResource("Resource_t11lg"), SubResource("Resource_6pttc"), SubResource("Resource_varpt"), SubResource("Resource_p0m07"), SubResource("Resource_toqks"), SubResource("Resource_62ljr"), SubResource("Resource_023tt"), SubResource("Resource_a1gau")])
+
+[sub_resource type="Resource" id="Resource_ewmwf"]
+script = ExtResource("2_55yp6")
+position = Vector3(2.4, 0, 62)
+pose = &"idle"
+face_path = false
+yaw = 180.0
+expression = &"neutral"
+move = 1
+trans = 0
+
+[sub_resource type="Resource" id="Resource_q24yv"]
+script = ExtResource("2_55yp6")
+position = Vector3(2.4, 0, 62)
+pose = &"aim"
+face_path = false
+yaw = 180.0
+expression = &"aiming"
+aim_at = &"runner"
+charge = 0.3
+time = 1.5
+move = 1
+trans = 0
+
+[sub_resource type="Resource" id="Resource_am27r"]
+script = ExtResource("2_55yp6")
+position = Vector3(2.4, 0, 62)
+face_path = false
+yaw = 180.0
+charge = 1.0
+time = 2.5
+move = 1
+trans = 0
+
+[sub_resource type="Resource" id="Resource_082il"]
+script = ExtResource("2_55yp6")
+position = Vector3(2.4, 0, 62)
+face_path = false
+yaw = 180.0
+charge = 0.0
+time = 2.9
+move = 1
+trans = 0
+
+[sub_resource type="Resource" id="Resource_38rka"]
+script = ExtResource("2_55yp6")
+position = Vector3(2.4, 0, 62)
+pose = &"run_away"
+expression = &"shocked"
+aim_at = &"none"
+time = 3.4
+move = 1
+trans = 0
+
+[sub_resource type="Resource" id="Resource_cs5dg"]
+script = ExtResource("2_55yp6")
+position = Vector3(3.6, 0, 88)
+time = 5.5
+move = 1
+trans = 0
+
+[sub_resource type="Resource" id="Resource_hntee"]
+script = ExtResource("1_601jd")
+id = &"thug"
+kind = 1
+keys = Array[ExtResource("2_55yp6")]([SubResource("Resource_ewmwf"), SubResource("Resource_q24yv"), SubResource("Resource_am27r"), SubResource("Resource_082il"), SubResource("Resource_38rka"), SubResource("Resource_cs5dg")])
+
+[sub_resource type="Resource" id="Resource_j7tef"]
+script = ExtResource("2_55yp6")
+position = Vector3(-2.4, 0, 128)
+pose = &"walk"
+expression = &"corrupt_grin"
+time = 2.0
+move = 1
+trans = 0
+
+[sub_resource type="Resource" id="Resource_msun6"]
+script = ExtResource("2_55yp6")
+position = Vector3(-2.4, 0, 136)
+time = 7.0
+move = 1
+trans = 0
+
+[sub_resource type="Resource" id="Resource_xvdf6"]
+script = ExtResource("2_55yp6")
+position = Vector3(-2.4, 0, 136)
+pose = &"cower"
+face_path = false
+yaw = 180.0
+time = 7.0
+move = 1
+trans = 0
+
+[sub_resource type="Resource" id="Resource_fgyik"]
+script = ExtResource("2_55yp6")
+position = Vector3(-2.4, 0, 136)
+pose = &"die"
+time = 8.3
+move = 1
+trans = 0
+
+[sub_resource type="Resource" id="Resource_yjabs"]
+script = ExtResource("1_601jd")
+id = &"host"
+kind = 1
+host = true
+enter = 2.0
+keys = Array[ExtResource("2_55yp6")]([SubResource("Resource_j7tef"), SubResource("Resource_msun6"), SubResource("Resource_xvdf6"), SubResource("Resource_fgyik")])
+
+[sub_resource type="Resource" id="Resource_7py02"]
+script = ExtResource("3_n22d8")
+position = Vector3(3.5, 2, 16)
+target = Vector3(0, 1.2, 0)
+
+[sub_resource type="Resource" id="Resource_gapr7"]
+script = ExtResource("3_n22d8")
+position = Vector3(3, 2.4, 36)
+target = Vector3(0, 1, 0)
+watch = &"runner"
+time = 2.4
+
+[sub_resource type="Resource" id="Resource_i4us5"]
+script = ExtResource("3_n22d8")
+position = Vector3(-1.8, 1.4, 55)
+target = Vector3(2.4, 1.4, 62)
+fov = 55.0
+time = 2.5
+move = 2
+
+[sub_resource type="Resource" id="Resource_q7qie"]
+script = ExtResource("3_n22d8")
+position = Vector3(-2.2, 1.8, 58)
+target = Vector3(0, 1, 0)
+watch = &"runner"
+fov = 60.0
+time = 3.4
+move = 1
+
+[sub_resource type="Resource" id="Resource_54jdq"]
+script = ExtResource("3_n22d8")
+position = Vector3(1.6, 3, -6)
+target = Vector3(0, 1, 10)
+follow = &"runner"
+watch = &"runner"
+fov = 66.0
+roll = -4.0
+time = 5.2
+
+[sub_resource type="Resource" id="Resource_ff1eb"]
+script = ExtResource("3_n22d8")
+follow = &"runner"
+watch = &"runner"
+time = 8.0
+
+[sub_resource type="Resource" id="Resource_yl236"]
+script = ExtResource("3_n22d8")
+follow = &"runner"
+watch = &"runner"
+time = 10.0
+
+[sub_resource type="Resource" id="Resource_xvlck"]
+script = ExtResource("4_f4su4")
+kind = 3
+name = &"letterbox_in"
+duration = 0.8
+
+[sub_resource type="Resource" id="Resource_30sap"]
+script = ExtResource("4_f4su4")
+kind = 3
+name = &"fade_in"
+duration = 0.6
+
+[sub_resource type="Resource" id="Resource_uvfoj"]
+script = ExtResource("4_f4su4")
+kind = 1
+name = &"@zone"
+
+[sub_resource type="Resource" id="Resource_10ndk"]
+script = ExtResource("4_f4su4")
+time = 0.5
+kind = 2
+text = "{zone}"
+caption = "the toolkit sampler"
+duration = 2.0
+
+[sub_resource type="Resource" id="Resource_bwncr"]
+script = ExtResource("4_f4su4")
+time = 1.5
+name = &"cyborg_charge"
+
+[sub_resource type="Resource" id="Resource_yeuhk"]
+script = ExtResource("4_f4su4")
+time = 2.9
+name = &"cyborg_shot"
+
+[sub_resource type="Resource" id="Resource_2vft7"]
+script = ExtResource("4_f4su4")
+time = 2.9
+kind = 3
+name = &"flash"
+duration = 0.3
+strength = 0.6
+color = Color(1, 1, 1, 1)
+
+[sub_resource type="Resource" id="Resource_hasky"]
+script = ExtResource("4_f4su4")
+time = 2.9
+kind = 3
+name = &"shake"
+duration = 0.4
+strength = 0.25
+
+[sub_resource type="Resource" id="Resource_7f1ab"]
+script = ExtResource("4_f4su4")
+time = 3.0
+name = &"jump"
+
+[sub_resource type="Resource" id="Resource_tffmq"]
+script = ExtResource("4_f4su4")
+time = 3.6
+name = &"land"
+
+[sub_resource type="Resource" id="Resource_e0tak"]
+script = ExtResource("4_f4su4")
+time = 5.0
+name = &"slide"
+
+[sub_resource type="Resource" id="Resource_pkkey"]
+script = ExtResource("4_f4su4")
+time = 5.0
+kind = 4
+name = &"halfway"
+
+[sub_resource type="Resource" id="Resource_cfbuw"]
+script = ExtResource("4_f4su4")
+time = 7.5
+name = &"dash"
+
+[sub_resource type="Resource" id="Resource_uqg2c"]
+script = ExtResource("4_f4su4")
+time = 9.0
+kind = 3
+name = &"letterbox_out"
+duration = 0.5
+
+[sub_resource type="Resource" id="Resource_jc1bs"]
+script = ExtResource("4_f4su4")
+time = 9.5
+kind = 3
+name = &"fade_out"
+duration = 0.5
+
+[sub_resource type="Resource" id="Resource_jfpxp"]
+script = ExtResource("6_tm2fs")
+ceilings = PackedVector2Array(118, 150)
+gaps = PackedVector3Array(-1, 30, 36, 1, 84, 90)
+pads = PackedVector2Array()
+
+[resource]
+script = ExtResource("5_pa5id")
+letterbox = false
+stage = SubResource("Resource_jfpxp")
+camera = Array[ExtResource("3_n22d8")]([SubResource("Resource_7py02"), SubResource("Resource_gapr7"), SubResource("Resource_i4us5"), SubResource("Resource_q7qie"), SubResource("Resource_54jdq"), SubResource("Resource_ff1eb"), SubResource("Resource_yl236")])
+actors = Array[ExtResource("1_601jd")]([SubResource("Resource_lk4kb"), SubResource("Resource_hntee"), SubResource("Resource_yjabs")])
+events = Array[ExtResource("4_f4su4")]([SubResource("Resource_xvlck"), SubResource("Resource_30sap"), SubResource("Resource_uvfoj"), SubResource("Resource_10ndk"), SubResource("Resource_bwncr"), SubResource("Resource_yeuhk"), SubResource("Resource_2vft7"), SubResource("Resource_hasky"), SubResource("Resource_7f1ab"), SubResource("Resource_tffmq"), SubResource("Resource_e0tak"), SubResource("Resource_pkkey"), SubResource("Resource_cfbuw"), SubResource("Resource_uqg2c"), SubResource("Resource_jc1bs")])

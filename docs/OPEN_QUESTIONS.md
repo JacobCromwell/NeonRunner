@@ -1235,6 +1235,280 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
 216. **The Hush's darkness** on this skin: every piece dims with it; on screen the street goes from about 80 to 56 in grey
     value and the walls from 40 to 20, while hazards, triggers and enemies stay as bright. Dark enough? (Item 155.)
 
+**Narrow ceilings** (from B3; numbers are exports on `LevelConfig`, group "Narrow ceilings", F6, values in
+`data/levels/*.tres`; review with `tools/showcase/skin_review.tscn -- --narrow` (any skin, `--lanes=3`,
+`--view=shot`, `--reduced-flashing`) or play `--level=city/3`, `--level=gangland/1`,
+`--quick --features=ceilings,cyborg --lanes=6`; measured over every campaign level on 9 seeds at 3, 5 and 6 lanes)
+217. **How often, and where they first appear.** Placeholder: `narrow_ceiling_share` 0.5 in every
+    campaign level from City 2 on (half of a level's ceilings are narrow; City 1 has no ceilings) and in
+    quick play's level (`prototype_level.tres`); 0, the default, wherever a level file doesn't set it (a
+    boss arena's laps, for one). City 2, which introduces ceilings, keeps its first
+    half full width (`narrow_ceiling_start` 0.5), so ceilings come first and narrow ones later in the
+    level. Measured: City 2 has 0.6 to 1.0 narrow ceilings a level (13–25% of its ceilings, the first at
+    61–78% of the level, in about half its builds), City 3 1.4 to 1.6 (about 45%), Gangland 1 and 2 1.0
+    to 2.0 (37–60%), and from Gangland 3 on, where ceilings are common, 3 to 6.6 a level (38–52%). A
+    level generates exactly as before with a share of 0. Is City 2's second half the right place to
+    introduce them (GDD §5: each level introduces about one new thing, and City 2's is ceilings and
+    pads), or should they wait for City 3 or Gangland? And is half of a level's ceilings the right
+    amount?
+218. **Widths.** Placeholder: 35% of narrow ceilings cover one lane (`one_lane_ceiling_share`); the others
+    cover from two lanes to all but one (`narrow_ceiling_max_lanes` 0; a number caps it), each width as
+    likely, placed anywhere that holds their pads. At 3 lanes that means one or two lanes; at 5 and 6 lanes
+    every width comes up. Right mix? Should wide streets lean toward some widths (for example no five-lane
+    ceiling on six lanes, which reads almost like a full one: `narrow_ceiling_max_lanes` 4)?
+219. **One-lane ceilings: very short and relatively safe.** Placeholder: 1.6 s from the pad to the end
+    (`one_lane_ceiling_seconds`; a plain pattern's ceiling lasts 4 s). A pattern's ceiling can be one lane
+    only if the pattern puts nothing else on the track (just the ceiling and credits), so a gauntlet's
+    ceiling, which is an escape from what's under it, always keeps a second lane; the rules' ceilings
+    (a drone's pads, a Bad Dream chase's) can be one lane too, over whatever the floor held there (b2's
+    placeholder). No hazards ride on them (GDD §9.8: never a Barnacle Turret on a one-lane ceiling), and
+    the drop lands on safe floor (item 221). Right length? Should a rule's ceiling always keep two
+    lanes as well?
+220. **A move toward a lane the ceiling doesn't cover.** Placeholder (`Player._bump_ceiling_edge`,
+    DESIGN-TBD): blocked, with the same feedback as a lane switch into a solid side: the runner bumps out
+    toward that side and back (stopping short of the ceiling's edge, so it never looks like stepping off)
+    and the blocked wall entry's clank plays (`ceiling_blocked` event, `wall_blocked` sound). A lane
+    switch still under way from the floor when a pad lifts the runner ends in the pad's lane the same
+    way. Right look and sound? Should the edge of a narrow ceiling show something more, such as a lit
+    rim along its sides (today its sides show only the skin's own edge: a hull's side, a slab's broken
+    edge)?
+221. **Landing and the floor around a narrow ceiling.** Placeholder (`CeilingZones`): the safe landing
+    zone (1.2 s after the end, B2's placeholder) keeps holes and fences out of the lanes the ceiling
+    covers, since its rider can only drop from those; the other lanes keep what their patterns put
+    there. Floor enemies still keep off the landing zone in every lane. The floor route under every
+    ceiling stays survivable without the pad (checked on every campaign level). Right?
+222. **The rules' ceilings are narrow too.** Placeholder: a drone wave's pads and a Bad Dream chase's pads
+    get narrow ceilings at the level's share, over the pad's lane. A chase's one-lane ceiling lasts 1.6 s
+    instead of 3 s; its pads still come as often, so the Bad Dream's refuge is there as before. Right?
+223. **Credits on a narrow ceiling.** Placeholder: the usual line along the pad's lane and the rich credit
+    in the ceiling's far lane (the lane of the ceiling furthest from the pad's); a one-lane ceiling has
+    only the line. Credit trails on the floor skip only the lanes a ceiling covers. Right?
+224. **Drones hurled into a narrow ceiling** (GDD §9.6: stepping on a pad hurls every drone on screen up
+    into the ship's hull). Placeholder (`Drone.hurl_x`): a drone not under the ceiling veers into its lanes
+    as it rises and crashes 0.8 m inside its edge. Right, or should a drone that isn't under the ceiling
+    just crash upward into nothing?
+225. **The City's narrow ceilings: a smaller craft** (`CityShip`, `small`). Placeholder: built from its lanes
+    like any ship, with a lower hull (sides rising 30% of its width, 1.3–2.0 m, against a full ship's
+    2.6 m), a deck on top, a shorter, sharper bow with a dark glass canopy over it and a light strip along
+    its rim, smaller headlights, and one engine per lane (two at most). Right look?
+226. **Gangland's narrow ceilings: a slab broken off a building** (the owner's review, P2 18;
+    `GanglandCeiling`, `Kind.SLAB`). Placeholder: a 0.6 m thick floor slab with broken edges, rebar sticking
+    0.5 m out of them, rubble, broken column stubs and a piece of wall still standing on it. A side that
+    reaches the street's edge stays lodged in the building face there; a slab that reaches neither side
+    hangs from torn, bent steel beams of its building's frame, running up to the building faces on both
+    sides 2.4 m above its top. Right look?
+227. **The other zones' narrow ceilings.** Placeholder: each builds its kinds from the ceiling's lanes. In
+    the Marketplace a building bridging the street needs both walls, so over fewer lanes it becomes an
+    overpass; its merchant ships and floating ads just build narrower. In the Corporate zone (and its
+    plaza) a tower across the street becomes a viaduct over fewer lanes; skyways and gunships build
+    narrower. In the Dead Zone (D5, which built its own) a narrow ceiling is a slab broken off the tower on
+    the side it reaches, or a fallen span hanging from its gantry in mid-street. In the Golden Zone (D6a) a
+    bridge over fewer lanes is a gallery hung on gold beams, and the arches stay full width only. The grey
+    box shows a plain slab. The orange end band spans the ceiling's lanes in every zone. Right?
+228. **The camera at a ceiling's end.** Dropping off any ceiling's far end used to flash an orange wash
+    and a glare (about a quarter of a second in a 30 fps capture): the chase camera rose after the
+    falling runner and passed through the ceiling's end, and the end band's glow card reached 1.5 m past
+    the end below the underside. Now the
+    camera stays at least 1 m under any ceiling over it, just beside it, 2.5 m ahead or until 3 m past
+    its end (`MovementTuning.camera_ceiling_clearance`, F6), and every zone keeps what glows past a far
+    end above the underside, fading as the camera comes within 4 m (the band's glow) or 8 m (engine
+    glows). The band itself is unchanged. For a moment after a drop the view sits a little lower than
+    before. OK?
+229. **No hint, no recency boost.** Placeholder: narrow ceilings aren't a feature of their own (they
+    aren't in a level's `features`), so they get no first-encounter hint (`data/hints/hints.json`) and
+    the campaign's recency curve (R5) doesn't boost them after they first appear. Narrowing a ceiling
+    takes nothing from the level: ceilings over two lanes or more leave the patterns as they were (the
+    same ones in the same spots, and a narrow ceiling's landing zone clears only its own lanes), and a
+    one-lane ceiling is shorter, so what follows it comes a little earlier.
+    Should they get a hint (for example "Some ceilings cover only a few lanes: you can only move within
+    them.") or be introduced like a feature?
+
+**Big attacks: a waiting enemy keeps its place** (from R3b; `turn_place_grace` in `data/tuning/game_rules.tres`, F6 "Game rules"; measured with `tools/measure/big_attacks.gd` over 741 runs)
+230. **How long a waiting enemy keeps its place** (GDD §9, "Big attacks take turns"). The enemies waiting go in the
+    order their waits began (R3's rule), but an enemy lost its place as soon as it was told it may go, or two frames
+    after it last asked. An Octodog told it may go while the stretch its wait had moved its charges to wasn't clear
+    yet paced on without charging, and once its 4 s `turn_wait_max` was used up it stopped asking: another type ready
+    again (a drone's next barrage, a hover truck's cannon or lurch) went first, and the dog's slack ran out. On main
+    this kept 3 dogs from ever charging before B3 (Golden 3 at 5 lanes, seed 9004; Dead Zone 1 at 5 lanes, seed 9017;
+    Golden 3 at 6 lanes, seed 9019) and 4 after it (Dead Zone 1 at 3, 5 and 6 lanes, seeds 9007, 9017 and 9001;
+    Golden 3 at 5 lanes, seed 9003).
+    **Placeholder:** a waiting enemy keeps its place until its attack starts or it gives the attack up, as long as it
+    keeps asking: through its turn too (told it may go, one that isn't quite ready and asks again still goes before
+    those that waited less), and through a gap in its asks of up to `turn_place_grace` = 1 s
+    (`data/tuning/game_rules.tres`, F6 "Game rules"; `DESIGN-TBD` in `scripts/core/game_rules.gd` and
+    `scripts/enemies/enemy_director.gd`), while those behind it wait. After a longer gap it loses its place and the
+    others go. An enemy that means to wait longer keeps asking: an Octodog that waited for its turn now asks every
+    frame until it charges or its slack (40 m) runs out. An enemy that gives up says so and leaves the queue at once:
+    an Octodog running off, a hover truck changing state (its pacing ended before its cannon's turn came, and the
+    shot is skipped as before; or it leaves), a Resonator leaving, a dissolving Bad Dream.
+    **Measured:** all those dogs charge now, after waits of 4.4 to 5.7 s. The dogs still without a charge (Gangland 3
+    at 5 lanes, seed 9015; after B3 also Dead Zone 2 at 6 lanes, seed 9003) don't charge with turns off either: not a
+    turn problem. Big attacks still never overlap, and no other enemy newly goes without its attack: run by run, as
+    many drones (10, after B3 12, of about 810), hover trucks (about 20 of 810 never lurch, about 20 never fire) and
+    Resonators (1, after B3 3, of about 350) as on main never get theirs in. 16 of the 741 runs play differently
+    before B3, 17 after. The others lose a little: 7 (after B3: 4) fewer drone barrages of about 4,800, 1 (2) fewer
+    cannon shots of 1,840, 2 (2) fewer lurches of 1,390; Resonators pulse 3 times more and once less before B3, 3
+    times less after (of about 1,050). Waits for a turn barely change (from the first frame an enemy is held for
+    another type's attack until its attack, a dog's until it charges; before B3): dogs' charges 86 → 89 waits, mean
+    1.60 → 1.70 s, longest 5.60 → 5.72 s; drone barrages 853 → 865, mean 1.48 → 1.49 s, longest 7.7 → 9.5 s;
+    Resonator pulses 235 → 236, mean 2.32 → 2.30 s, longest 22.6 s both; the hover trucks' and the Bad Dream's about
+    as before (after B3 only the dogs' change: 88 → 92 waits, mean 1.55 → 1.65 s). A kept place cuts both ways: on
+    Golden 2 at 6 lanes (seed 9014) a Resonator waiting for clear floor held the drones back for its 1 s and pulsed
+    10 s sooner than on main (where two drones' barrages had kept it waiting 14.5 s), and a drone waited 9.5 s
+    instead; but on Golden 1 at 6 lanes (seed 9006), and after B3 on Golden 1 at 3 lanes (seed 9015), the drone a
+    Resonator held back fired that much later, over the Resonator's next clear moment, and the Resonator dropped one
+    pulse of that visit (two after B3).
+    Tried first: a 3 s grace, which fixed the same dogs but changed three times as many runs (12 of the first 489
+    runs measured, against 4) and cost more of the others' attacks there (2 drone barrages, 2 lurches, a cannon shot
+    and a Resonator pulse, against a lurch and a pulse).
+    Right rule? Is 1 s the right "moment"? A longer grace makes the others wait longer for an enemy that isn't ready;
+    a shorter one lets them pass it sooner. Or should an enemy in a gap keep its order without holding the others
+    back (they may go while it isn't ready; when it asks again it still goes before those that began waiting after
+    it)? That should spare the Resonators' pulses above (not measured), and the dogs would still charge (they keep
+    asking), but a turn that comes during the gap would go to the others. And the cost of the dog's place: while it
+    moves its charges on to a clear stretch, the others wait for it, up to its 4 s `turn_wait_max` plus its slack
+    (about 2.2 s at run speed).
+
+**The web demo** (from E2; export and check it with `tools/godot.sh web`, README "The web demo"; the demo is City 1–3 and the Floating Head, then the "get the full game" screen)
+231. **The portals' rules on outbound links** (GDD §2: itch.io, possibly Poki or CrazyGames; "check each
+    portal's rules on outbound links"). I couldn't read the rules: this build machine's network policy blocks
+    itch.io, docs.crazygames.com, developers.poki.com and sdk.poki.com. For each portal the demo goes to:
+    - **itch.io:** the demo's own page, where links to Steam, the App Store and Google Play are the usual
+    thing. Do you want its end screen as it is (three store tiles)?
+    - **Poki** and **CrazyGames:** do their rules allow links out of the game to other stores at all, only to
+    some (for example the game's own Steam page), or none? Do they ask for their own SDK (their ads, their
+    analytics, a "game loading/started" call) even in a game without ads? Is there a size or loading-time
+    limit the demo must meet (it downloads about 14 MB compressed, see the report)?
+    Placeholder: one build for every portal, with the three store tiles; the store links open through the
+    platform layer (`Platform.open_store()` → `PlatformBackend.open_url()`), so a portal that forbids them
+    gets a backend of its own that hides or disables the tiles, without touching the game.
+232. **The store links** (item 108): they still point at the stores' front pages
+    (`data/platform/store_links.json`, marked DESIGN-TBD). Which pages, once they exist? And which order and
+    names on the tiles (now "Steam (PC)", "App Store", "Google Play")?
+233. **A phone held upright** (GDD §2: landscape on every platform; the web demo can be opened on a phone in
+    either orientation, and the game is laid out for landscape only, so upright it shrinks to an unreadable
+    size). Placeholder: on a touch screen held upright the page covers the game with "TURN YOUR PHONE SIDEWAYS
+    TO PLAY" (a style in the preset's `html/head_include`, marked DESIGN-TBD), and a running level pauses
+    (`App._on_window_resized`, DESIGN-TBD); turned back, the pause menu waits. Right, or should the game try to
+    lock the orientation (browsers allow it only in full screen), or offer a full-screen button?
+234. **The demo on a phone plays like the mobile game** (GDD §3, §8): a phone's browser (Android, iPhone) gets
+    the mobile layout: 3 lanes, touch controls and hints, and no slow time (PC only). An iPad's browser says
+    it's a Mac, so it gets the PC layout (5 lanes, keyboard hints) while touch still works. Placeholder: as
+    described (`DeviceProfile.is_mobile()`, from the browser's own platform tags). Right?
+235. **The loading screen** (GDD §11: the look): while the demo downloads (about 14 MB, then the engine starts),
+    the page shows Godot's default splash, the Godot logo on grey, with a progress bar under it. Should it show
+    the game's own title or art instead, on the game's dark violet? Placeholder: Godot's default.
+236. **Sound before the first click** (GDD §11): browsers don't let a page play sound until the player clicks,
+    taps or presses a key, so the title's music starts with the player's first input (Chrome notes this in its
+    console). Placeholder: that. Should the demo instead open on a "click to play" card, so the music is there
+    from the first screen?
+237. **Where the demo's saves live** (GDD §2, §7): in the browser's own storage for the page (IndexedDB), so
+    progress and credits survive a reload but stay in that browser, and a portal's page keeps its own. There is
+    no way to carry them into the full game. Right?
+
+**Cinematics** (from F1; review with `tools/showcase/cinematic_review.tscn`, or play `--level=city/intro`, `--level=city/boss_intro`; numbers in `data/cinematics/`)
+238. **The arrival flyovers' story beats** (GDD §1: a light story told through the zones and 5–15 second
+    cinematics; the owner describes the beats later, task F2). What should each zone's intro show, and should
+    the intros share one form?
+    - *Placeholder:* one arrival flyover for every zone's intro slot (`scripts/cinematics/arrival_flyover.gd`,
+    `ArrivalFlyover`, marked DESIGN-TBD; numbers in `data/cinematics/arrival_flyover.tres`). 9.5 s: the camera
+    opens low in the street looking up at the zone's skyline, tilts down as the runner runs in beneath it,
+    glides over the street behind them, and settles into the run camera's view as they run under one of
+    the zone's ceilings; the zone's music comes in; it fades to black and the level opens on the same view.
+    Built in the zone's own skin, taken from the zone's data.
+239. **A title card naming the zone** (GDD §1: "little or no words"). Should an arrival cinematic name the zone
+    on screen?
+    - *Placeholder:* a card from about 0.9 s to 3.8 s: "ZONE 1" over "NEON CITY" (the zone's number and name,
+    from the zone's data), in the menus' fonts, capitals, fading in and out
+    (`ArrivalFlyover._make_timeline`, `CineOverlay.show_card`).
+240. **The City's boss intro** ("Something big is coming", before the Floating Head): what should it show,
+    and should it tease the boss?
+    - *Placeholder:* the same arrival flyover over the fight's arena look (`city_boss_skin`, taken from the
+    boss's arena data), with a card naming the boss as the level select does ("ZONE 1 · BOSS" over
+    "FLOATING HEAD"), and the fight's music. No glimpse of the ship.
+241. **Skipping.** GDD §1 doesn't say how cinematics are skipped. Should every cinematic be skippable at once,
+    even the first time? Should a seen cinematic play again when a step is replayed from the level select?
+    - *Placeholder:* always skippable at once with the pause action (Esc / P) or a Skip button (bottom right,
+    dim, from 0.4 s; on touch screens it's the only way). A skipped cinematic counts as seen and done, like
+    one played out. Replaying a step from the level select plays it again (nothing is skipped
+    automatically; the App marks each one seen, `cinematic/<step id>`, for later use).
+242. **The outros** stay placeholder cards (the task covered the intros). Should they get a placeholder
+    cinematic too (a departure from the zone, say) until their beats are known? The web demo still ends on
+    its end screen after the City's outro card.
+    - *Placeholder:* unchanged cards (`data/cinematics/*_outro.tres` have no scene).
+243. **The look of every cinematic:** letterbox bars, a fade from black at the start and to black at the end.
+    - *Placeholder:* bars of 10% of the screen's height each (`CineOverlay.BAR_SHARE`); the arrival flyover
+    fades in over 0.8 s and out over 0.45 s (its data).
+
+**Free armor** (from G3; numbers in `data/tuning/game_rules.tres`, F6 "Game rules", Armor; the shop line in `data/shop/catalog.json`; review the HUD with the screens showcase `--screen=hud_armor`)
+244. **Worn armor** (GDD §4, §8). An upgraded armor takes more than one hit. When it has lost some hits
+    but isn't broken, does anything come back?
+    **Placeholder:** nothing comes back until its last hit goes; then it breaks and comes back whole
+    after its tier's wait (`DamageRules.Armor` in `scripts/core/damage_rules.gd`, `DESIGN-TBD`).
+    The alternative: each lost hit comes back on its own after the wait.
+245. **An armor pickup when the armor is whole** (GDD §10, the standard armor rule). A pickup brings
+    broken or worn armor back whole at once. Taken while the armor is already whole, what should it do?
+    **Placeholder:** it adds one hit over the armor's count, up to `armor_pickup_extra_hits` = 1
+    (`data/tuning/game_rules.tres`, F6 "Game rules"; `DESIGN-TBD`). The extra hit is used first and
+    doesn't come back: after a break the armor returns to its own count. The alternative: it gives
+    credits.
+246. **Switching the armor off** (GDD §8, Rules: the equip toggle). The shop's equip toggle switches
+    the armor upgrade off, down to the free armor. Should the free armor be switchable too (a challenge
+    run without it)?
+    **Placeholder:** no, the free armor can't be switched off (`Loadout.from_profile` in
+    `scripts/run/loadout.gd`, `DESIGN-TBD`).
+247. **A revive** (GDD §4). After a revive, is the armor back whole, or as it was when the player died
+    (broken and still coming back)?
+    **Placeholder:** back whole (`Player.revive` in `scripts/player/player.gd`, `DESIGN-TBD`).
+
+**The Floating Head after the playtest** (from E1e; numbers in `data/bosses/city_boss_tuning.tres`; measure the routes with `tools/measure/stomp_routes.gd`; play `--level=city/boss`)
+248. **Should every phase use a ramp?** (GDD §10: (1) the fallen tower as a ramp, (2) a wall jump,
+    (3) a pad and the ceiling.) After the first stomp the owner saw no ramp and no way up. The wall route
+    showed nothing, and at 5 and 6 lanes a wall jump lands in the outer lane, which has no weak point:
+    only a second move inward in the air reached one (measured in the campaign's step and in quick play,
+    before and after a retry: a single wall jump never stomped). Placeholder: the GDD's three ways,
+    made visible and forgiving: green chevron marks light up on both walls as the tower falls, from where
+    to get on (`wall_entry_before`, 13 m before its face) to a tall jump mark (`wall_jump_before`, 4 m),
+    with a new sound (`wall_marks_light`); a first-time hint for each way (`data/hints/hints.json`); and
+    question 3. Alternative: the tower's slab in every phase.
+249. **The ramp's lead-in** (item 158): a lane switch onto the ramp bounced off its side anywhere past its
+    first 2 to 2.75 m (the latest switch that still stomped: 11.3 to 12.0 m before its face). Placeholder:
+    its first 75% (`ramp_board_share`) is a low lead-in rising to 1.0 m (`ramp_board_height`; a lane
+    switch steps up about 1.07 m) with bevelled rubble sides; its last quarter is steeper and still
+    blocks; the window stays open for a runner on the trucks until the lead-in ends (3.5 m before its
+    face, not 8 m). The latest switch is now 4.5 m before its face at 3, 5 and 6 lanes. Right share,
+    and does the bent slab read as the fallen tower? Alternatives: a slab two lanes wide, a longer ramp.
+250. **Stomp boxes over the outer lanes** (item 160): at 5 and 6 lanes the outermost weak points' stomp
+    boxes now reach over the outer lanes to the walls, at their own height (a jump from the trucks
+    still can't reach them), so a wall jump or a ceiling drop there stomps the dome beside it; and every
+    box is lower and deeper (0.35 m over its socket, 4 m deep; were 0.55 m and 3 m). One wall jump now
+    stomps over 4.5 to 7 m of jump points around the mark. Alternative: weak points of their own over
+    the outer lanes (the tower side's would sit near the roofs, in a floor jump's reach).
+251. **Armor for a runner whose armor is down** (GDD §10, the standard armor rule): with no armor and no
+    shield nothing could break, so no pickup came before the final phase, which the owner never
+    reached (the loadout and the flow were fine). G3's free armor now covers the start of every fight.
+    Placeholder on top: a phase that begins with the runner's armor down and no shield (the free armor
+    still coming back) and no pickup on its way counts as a break at its start (an armor pickup 10 to
+    15 s in, the phase's one; `BossDef.armor_when_unprotected`, on for the Floating Head only). Keep it,
+    make it the standard rule, or drop it now that the free armor comes back by itself?
+
+**Laser tier 1** (from G4; `weapon_range` and `tier1_extra_shots` in `data/tuning/powerups.tres`, F6)
+252. **Laser tier 1's exact range** (GDD §8 damage reference, owner's September 30, 2026 playtest: "a
+    shorter range... so enemies get close enough to be a threat before they fall"; the brief set the
+    approach at about 60% of the old range). **Placeholder:** `PowerupTuning.weapon_range` tier 1 is
+    42 m (was 70 m, shared with every tier), about 2.3 s of approach at the 18 m/s base run speed
+    (down from about 3.9 s). Tiers 2–4 keep 70 m, since they shared the old value (GDD's rule: "higher
+    tiers keep their range unless they share the value"). Is 42 m (60%) the right amount, or should it
+    be shorter/longer?
+    **Also applied without a question, since the owner's follow-up already resolved it:** the owner chose
+    "higher tiers keep today's numbers" over raising enemy health (which had also moved tiers 2 and 3),
+    so the two extra tier 1 shots are a weapon-side rule, not a health change. `PowerupTuning.tier1_extra_shots`
+    (2) is one number in data; `WeaponPowerup.damage()` applies it generically, splitting a target's
+    unchanged `max_health` across its plain shot count plus the extra, for any target except one already a
+    one-shot kill (the sewer screech), an `immune_to_weapons` target, or a boss part (`is_boss`; a boss's
+    weapon chip is its own rule, `BossEncounter.weapon_share_cap`). No enemy's `health_early`/`health_late`
+    or any tier's `weapon_damage` changed.
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).

@@ -3,7 +3,9 @@
 *.translation
 export_presets.cfg.local
 /build/
-/exports/
+/exports/*
+# Keeps Godot from importing what an export writes (exports/web/index.png), which would ship in the next export.
+!/exports/.gdignore
 
 # OS / editor
 .DS_Store

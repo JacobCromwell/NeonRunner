@@ -21,7 +21,10 @@
 		{ "id": "bad_dream", "trigger": "enemy:bad_dream", "text": "The Bad Dream slashes the lanes it lights red. Get out of them: another lane, a wall or a pad." },
 		{ "id": "resonator", "trigger": "enemy:resonator", "text": "When the Resonator's chime plays, a red wave rolls along the floor. Jump it ({jump}), or be on a wall or the ceiling." },
 		{ "id": "boss", "trigger": "enemy:boss", "text": "A boss! Only its glowing red weak points and your weapons can hurt it." },
-		{ "id": "pickup_armor", "trigger": "pickup:armor", "text": "Armor pickup ahead: run through it. Armor blocks one enemy attack or electric shock." },
+		{ "id": "city_boss_ramp", "trigger": "boss:city_boss/ramp", "text": "It's pinned! Switch onto the fallen tower's slab anywhere along its low part, run up it and drop onto a red weak point." },
+		{ "id": "city_boss_wall", "trigger": "boss:city_boss/wall", "text": "It's pinned! Run along a lit wall (keep moving past the outer lane), then at the tall mark move back toward the lanes to jump onto a red weak point." },
+		{ "id": "city_boss_ceiling", "trigger": "boss:city_boss/ceiling", "text": "It's pinned! Step on a pad to ride the ceiling over it, then drop off the end onto a red weak point." },
+		{ "id": "pickup_armor", "trigger": "pickup:armor", "text": "Armor pickup ahead: run through it to get your armor back at once. Armor blocks enemy attacks and electric shocks." },
 		{ "id": "pickup_shield", "trigger": "pickup:shield", "text": "Shield pickup ahead: run through it. A shield blocks one hit of anything." },
 		{ "id": "pickup_grapple", "trigger": "pickup:grapple", "text": "Grapple pickup ahead: run through it. The grapple hook saves you from one fall." }
 	]

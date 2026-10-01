@@ -10,7 +10,8 @@ extends Node3D
 ## Big attacks take turns (GDD §9; docs/ARCHITECTURE.md, Enemies): an enemy asks
 ## major_attack_blocked() before its big attack's warning starts and waits (pacing, following) while
 ## the answer is true; its attack is on while it reports Enemy.is_major_attack_active(), and the
-## attack's shots hold its turn until they're behind the player (note_attack_shot).
+## attack's shots hold its turn until they're behind the player (note_attack_shot). A waiting enemy
+## keeps its place in the queue until its attack starts (GameRules.turn_place_grace).
 
 const SCRIPTS_DIR: String = "res://scripts/enemies"
 const TUNING_DIR: String = "res://data/enemies"
@@ -32,17 +33,20 @@ var active: Array[Enemy] = []
 
 var _pending: Array[Dictionary] = []
 var _next: int = 0
-## Physics frames since setup (update() counts them): when each enemy last asked for its turn.
+## Physics frames since setup (update() counts them): the order in which waits began.
 var _frame: int = 0
-## Each enemy's last major_attack_blocked() call, by instance id: {frame, hold, since_frame, since}
-## (since: when its current wait began, as a frame and a level time).
-var _asks: Dictionary = {}
+## The queue for big attacks while they take turns: every enemy waiting for its turn, by instance id:
+## {enemy, since_frame, since, asked_frame, asked, hold}: when its wait began (its place in the queue,
+## as a frame and a level time), when it last asked (a frame and a level time), and the answer then.
+var _waits: Dictionary = {}
 ## The shots of big attacks, until they've passed the player: [{shot: Projectile, type, name}]
 ## (the pool reuses a Projectile, so its name must still match).
 var _shots: Array[Dictionary] = []
 static var _scripts: Dictionary = {}
 static var _tunings: Dictionary = {}
 static var _warned: Dictionary = {}
+## The rules a run without any uses (their defaults).
+static var _default_rules: GameRules = null
 
 
 func setup(p_world: RunWorld) -> void:
@@ -53,7 +57,7 @@ func setup(p_world: RunWorld) -> void:
 	_pending.clear()
 	_next = 0
 	_frame = 0
-	_asks.clear()
+	_waits.clear()
 	_shots.clear()
 	for entry: Dictionary in world.layout.enemies:
 		var e: Dictionary = entry.duplicate()
@@ -66,9 +70,7 @@ func setup(p_world: RunWorld) -> void:
 ## every physics frame.
 func update(player_distance: float) -> void:
 	_frame += 1
-	for id: int in _asks.keys():
-		if int(_asks[id]["frame"]) < _frame - 2:
-			_asks.erase(id)
+	_end_waits()
 	for i: int in range(_shots.size() - 1, -1, -1):
 		if not _on_its_way(_shots[i]):
 			_shots.remove_at(i)
@@ -134,11 +136,20 @@ func targets_ahead(from: Vector3, max_distance: float) -> Array[Enemy]:
 ## - GDD §9, while big attacks take turns (GameRules.big_attacks_take_turns): no big attack starts
 ##   while one of another type is on (Enemy.is_major_attack_active) or its shots are still on their
 ##   way to the player (note_attack_shot). An enemy whose own attack is already on carries on (the
-##   Bad Dream's next slash in its chase). Otherwise, of the enemies of different types waiting for
-##   their turn, the one that has waited longest goes first (then the one spawned first), so no enemy
-##   is kept waiting for ever by others that keep asking (DESIGN-TBD, docs/questions/r3.md: who goes
-##   first). Types space their own attacks themselves (one drone barrage at a time, one Octodog or
-##   hover truck at a time).
+##   Bad Dream's next slash in its chase). Otherwise the enemies of different types waiting for their
+##   turn go in the order their waits began (then the one spawned first), so no enemy is kept waiting
+##   for ever by others that keep asking (DESIGN-TBD, docs/questions/r3.md: who goes first). Types
+##   space their own attacks themselves (one drone barrage at a time, one Octodog or hover truck at a
+##   time).
+## The queue: an enemy's wait begins the first time it's held, and it keeps its place until its
+## attack starts or it gives the attack up (give_up_turn), as long as it keeps asking, even through
+## its turn: told it may go, an enemy that isn't quite ready yet and asks again (an Octodog whose
+## moved-on stretch isn't clear) still goes before those that waited less. A short gap in its asks
+## (its stretch not clear for a moment, its planned point not reached yet) doesn't cost it its place
+## either; it loses its place after turn_place_grace() without asking (it isn't ready, and the others
+## shouldn't wait for it), or when it leaves play. So an enemy that gives up says so, and one that
+## means to wait longer than a moment keeps asking, holding the others back while it does (DESIGN-TBD,
+## docs/questions/r3b.md: how long a waiting enemy keeps its place).
 func major_attack_blocked(enemy: Enemy) -> bool:
 	var hold: Hold = _hold_for(enemy)
 	if big_attacks_take_turns():
@@ -146,32 +157,50 @@ func major_attack_blocked(enemy: Enemy) -> bool:
 	return hold != Hold.NONE
 
 
+## `enemy` gives up the big attack it was waiting for (an Octodog runs off, a hover truck's pacing
+## ends before its cannon's turn came, a Resonator leaves): it leaves the queue at once, so no one
+## waits behind it. Harmless when it isn't waiting; its next held ask starts a new wait.
+func give_up_turn(enemy: Enemy) -> void:
+	_waits.erase(enemy.get_instance_id())
+
+
 ## GameRules.big_attacks_take_turns for this run (on when the run has no rules).
 func big_attacks_take_turns() -> bool:
 	return world == null or world.rules == null or world.rules.big_attacks_take_turns
 
 
-## True if `enemy` asked for its turn this frame or the last and was held (while big attacks take
-## turns; the director doesn't keep track otherwise).
+## GameRules.turn_place_grace for this run: how long a waiting enemy keeps its place in the queue
+## without asking.
+func turn_place_grace() -> float:
+	if world != null and world.rules != null:
+		return world.rules.turn_place_grace
+	if _default_rules == null:
+		_default_rules = GameRules.new()
+	return _default_rules.turn_place_grace
+
+
+## True if `enemy` is waiting for its turn (while big attacks take turns; the director doesn't keep
+## track otherwise): it was held, and it hasn't started its big attack since or lost its place in the
+## queue (turn_place_grace() without asking, or out of play).
 func is_waiting(enemy: Enemy) -> bool:
-	return _waiting(_asks.get(enemy.get_instance_id(), {}))
+	var rec: Dictionary = _waits.get(enemy.get_instance_id(), {})
+	return _holds_place(rec) and not (int(rec["hold"]) == Hold.NONE and enemy.is_major_attack_active())
 
 
 ## True if `enemy` asked for its turn this frame or the last and was held for another type's big
 ## attack (not by GDD §9.7's exclusive rule): an enemy that may only attack within a window (the
 ## Octodog's planned charges) moves the window on while it waits.
 func held_for_turn(enemy: Enemy) -> bool:
-	var rec: Dictionary = _asks.get(enemy.get_instance_id(), {})
-	return _waiting(rec) and int(rec["hold"]) == Hold.TURN
+	var rec: Dictionary = _waits.get(enemy.get_instance_id(), {})
+	return not rec.is_empty() and int(rec["asked_frame"]) >= _frame - 1 and int(rec["hold"]) == Hold.TURN
 
 
-## Seconds `enemy` has been waiting to start its big attack (0 when it isn't waiting): the delay
-## turn-taking adds (tests and tools/measure read it).
+## Seconds `enemy` has been waiting to start its big attack, since its wait began (0 when it isn't
+## waiting): the delay turn-taking adds (tests and tools/measure read it).
 func turn_wait(enemy: Enemy) -> float:
-	var rec: Dictionary = _asks.get(enemy.get_instance_id(), {})
-	if not _waiting(rec) or world == null:
+	if not is_waiting(enemy):
 		return 0.0
-	return maxf(world.level_time() - float(rec["since"]), 0.0)
+	return maxf(_now() - float(_waits[enemy.get_instance_id()]["since"]), 0.0)
 
 
 ## `shot` (what ProjectilePool.fire_enemy returned; null is ignored) is part of `enemy`'s big attack:
@@ -218,16 +247,17 @@ func _hold_for(enemy: Enemy) -> Hold:
 			return Hold.TURN
 	if enemy.is_major_attack_active():
 		return Hold.NONE
-	# Nothing is on: an enemy of another type that has been waiting longer goes first.
-	var mine: Dictionary = _asks.get(enemy.get_instance_id(), {})
-	var my_since: int = int(mine["since_frame"]) if _waiting(mine) else _frame
+	# Nothing is on: an enemy of another type whose wait began earlier goes first, whether or not it
+	# asks this very frame (it keeps its place, _holds_place).
+	var mine: Dictionary = _waits.get(enemy.get_instance_id(), {})
+	var my_since: int = int(mine["since_frame"]) if _holds_place(mine) else _frame
 	var my_index: int = active.find(enemy)
 	for i: int in active.size():
 		var e: Enemy = active[i]
 		if e == enemy or e.type_id == enemy.type_id or not _in_play(e):
 			continue
-		var rec: Dictionary = _asks.get(e.get_instance_id(), {})
-		if not _waiting(rec):
+		var rec: Dictionary = _waits.get(e.get_instance_id(), {})
+		if not _holds_place(rec):
 			continue
 		var since: int = int(rec["since_frame"])
 		if since < my_since or (since == my_since and my_index >= 0 and i < my_index):
@@ -235,19 +265,46 @@ func _hold_for(enemy: Enemy) -> Hold:
 	return Hold.NONE
 
 
+## Notes an ask in the queue: a held enemy's wait begins (if it wasn't waiting), and every ask keeps a
+## waiting enemy's place. An enemy let go that wasn't waiting has no place to keep, and one let go
+## while its own attack is on carries on: its wait is over.
 func _note_ask(enemy: Enemy, hold: Hold) -> void:
 	var id: int = enemy.get_instance_id()
-	var rec: Dictionary = _asks.get(id, {})
-	if hold == Hold.NONE or not _waiting(rec):
-		rec = {"since_frame": _frame, "since": world.level_time() if world != null else 0.0}
-	rec["frame"] = _frame
+	var rec: Dictionary = _waits.get(id, {})
+	if not _holds_place(rec):
+		if hold == Hold.NONE:
+			_waits.erase(id)
+			return
+		rec = {"enemy": enemy, "since_frame": _frame, "since": _now()}
+	elif hold == Hold.NONE and enemy.is_major_attack_active():
+		_waits.erase(id)
+		return
+	rec["asked_frame"] = _frame
+	rec["asked"] = _now()
 	rec["hold"] = hold
-	_asks[id] = rec
+	_waits[id] = rec
 
 
-## An ask record of an enemy that is waiting for its turn: held when it asked, this frame or the last.
-func _waiting(rec: Dictionary) -> bool:
-	return not rec.is_empty() and int(rec["hold"]) != Hold.NONE and int(rec["frame"]) >= _frame - 1
+## A wait ends when its enemy's big attack starts (told it may go, it went), when the enemy leaves
+## play, or when it hasn't asked for turn_place_grace() (it isn't ready for longer than a moment, or it
+## gave up without saying so); give_up_turn() ends one at once.
+func _end_waits() -> void:
+	for id: int in _waits.keys():
+		var rec: Dictionary = _waits[id]
+		var e: Variant = rec["enemy"]
+		if not is_instance_valid(e) or not _in_play(e as Enemy) or not _holds_place(rec) \
+				or (int(rec["hold"]) == Hold.NONE and (e as Enemy).is_major_attack_active()):
+			_waits.erase(id)
+
+
+## A waiting enemy's record that still holds its place in the queue: it asked within
+## turn_place_grace().
+func _holds_place(rec: Dictionary) -> bool:
+	return not rec.is_empty() and _now() - float(rec["asked"]) <= turn_place_grace()
+
+
+func _now() -> float:
+	return world.level_time() if world != null and world.player != null else 0.0
 
 
 ## True if `a`'s exclusive major attack keeps `b`'s apart (GDD §9.7).

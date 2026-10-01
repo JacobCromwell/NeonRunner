@@ -1,8 +1,9 @@
 class_name ShopScreen
 extends ScreenBase
-## The shop (GDD §8): permanent items bought tier by tier and kept, breakable items bought as stock
-## (up to each item's max_stock: every run takes one of each switched-on item, and revives wait in
-## stock for the death screen), and the equip toggle for everything owned. Shown from the menu,
+## The shop (GDD §8): permanent items bought tier by tier and kept (among them the armor, an upgrade
+## to the free armor every run brings: item_text() puts the rules' numbers in its texts), breakable
+## items bought as stock (up to each item's max_stock: every run takes one of each switched-on item,
+## and revives wait in stock for the death screen), and the equip toggle for everything owned. Shown from the menu,
 ## between levels and after every death. On mobile it also sells credit packs when the platform
 ## does (GDD §7). The wallet counts down as items are bought.
 ## Leaving: with a `play_label` the main button ("Next", "Retry", "Play again") runs `on_close` and
@@ -31,7 +32,8 @@ func _ready() -> void:
 	_net_worth = ScreenBase.make_label("", UiTheme.CAPTION)
 	_net_worth.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_net_worth.size_flags_vertical = Control.SIZE_FILL
-	_net_worth.tooltip_text = "Earned credits you haven't spent. Leaderboards rank it."
+	# The web demo has no leaderboards (GDD §2).
+	_net_worth.tooltip_text = "Earned credits you haven't spent." + (" Leaderboards rank it." if BuildFlavor.has_leaderboards() else "")
 	_net_worth.mouse_filter = Control.MOUSE_FILTER_PASS
 	header_right.add_child(_net_worth)
 	wallet = CreditCounter.new()
@@ -131,17 +133,32 @@ func _card_data(item: ShopItem, p: Profile) -> Dictionary:
 		if t > 0 and tiers > 1:
 			d["title"] = item.tier_name(t)
 		if t == 0:
-			d["description"] = item.description
+			d["description"] = ShopScreen.item_text(item, item.description, 0)
 		elif t < tiers:
-			d["description"] = "Next: %s. %s" % [item.tier_name(t + 1), item.tier_description(t + 1)]
+			d["description"] = "Next: %s. %s" % [item.tier_name(t + 1),
+				ShopScreen.item_text(item, item.tier_description(t + 1), t + 1)]
 		else:
-			d["description"] = item.tier_description(t)
+			d["description"] = ShopScreen.item_text(item, item.tier_description(t), t)
 	else:
 		d["stock"] = p.stock(item.id)
 		d["max_stock"] = item.max_stock
 		d["icon_name"] = ShopScreen.icon_for(item.icon)
 		d["description"] = item.description
 	return d
+
+
+## A catalog text with the numbers the game rules give its item at `tier`, so the shop always says
+## what the data does: the armor's {hits} ("2 hits") and {seconds} (the wait before it comes back) at
+## that upgrade tier (0: the free armor, GDD §4). Other items' texts come back as they are.
+static func item_text(item: ShopItem, text: String, tier: int) -> String:
+	if item.id != &"armor" or App.rules == null:
+		return text
+	var hits: int = App.rules.armor_hits_at(tier)
+	var seconds: float = App.rules.armor_recharge_at(tier)
+	return text.format({
+		"hits": "%d hit%s" % [hits, "" if hits == 1 else "s"],
+		"seconds": ("%d" % roundi(seconds)) if is_equal_approx(seconds, roundf(seconds)) else ("%.1f" % seconds),
+	})
 
 
 ## The kit icon for a catalog icon name (the weapon's icon changes with its tier).

@@ -38,39 +38,87 @@ RunWorld (scripts/run/run_world.gd)       one run's gameplay world; everything s
   Projectiles ProjectilePool: every shot, pooled and swept
   Credits    CreditField: every credit as MultiMesh instances; pickup and magnet
   Pickups    PickupField: armor, shield and grapple pickups a boss offers, placed fairly, pooled
-  Effects    RunEffects: particle bursts, glowing lines, camera-shake requests
+  Effects    RunEffects: particle bursts, debris, glowing lines, camera-shake and hit-stop requests,
+             and the shared impact spectacle (kills, blocked hits, hard landings, stomps)
   Score      ScoreKeeper: level score, credits, kills, bonuses, stats
   Sounds     PlayerSfx: non-positional sounds (RunWorld.play_sfx / play_sfx_at)
   Powerups   PowerupController, created if scripts/powerups/powerup_controller.gd exists
 ```
 
-`LevelRun` adds the camera (`RunCamera`), the HUD (`RunHud`) and, in debug builds, the debug HUD and
-the F6 tuning panel. Quick play (`--quick`, or any of `--god --seed=N --lanes=N --difficulty=X
---features=a,b --full-loadout --nofall --skin=<name>`) restarts on death like the grey box did.
-`--level=<step id>` plays a campaign step with the full flow and takes `--lanes`, `--god`, `--nofall`
-and `--full-loadout` for reviews; `--boss=<boss id>` plays a boss fight (a zone's boss with the full
-flow, such as `--boss=city_boss`; any other, such as the test boss, or a zone's boss still being built
-(`BossDef.preview_scene`), as quick play) and also takes `--phase=N`. Command-line starts work in debug builds only, so a
-release build can't skip progression or farm credits with them.
+`LevelRun` adds the camera (`RunCamera`), the speed lines (`SpeedLines`), the HUD (`RunHud`) and, in
+debug builds, the debug HUD and the F6 tuning panel. Quick play (`--quick`, or any of `--god
+--seed=N --lanes=N --difficulty=X --features=a,b --full-loadout --nofall --skin=<name>`) restarts on
+death like the grey box did. `--level=<step id>` plays a campaign step with the full flow and takes
+`--lanes`, `--god`, `--nofall` and `--full-loadout` for reviews; `--boss=<boss id>` plays a boss fight
+(a zone's boss with the full flow, such as `--boss=city_boss`; any other, such as the test boss, or a
+zone's boss still being built (`BossDef.preview_scene`), as quick play) and also takes `--phase=N`.
+Command-line starts work in debug builds only, so a release build can't skip progression or farm
+credits with them.
 
 Physics order each frame: RunWorld (builds chunks, spawns enemies) → Player (moves, checks hazards
 and triggers) → the boss's pattern (a boss fight) → enemies → projectiles → credits → pickups →
 power-ups.
+
+### Speed effects and spectacle (G2, the owner's playtest, September 30, 2026)
+
+"The runner felt slow even though the levels were hard" (GDD §3): G1 raises the run's actual speed;
+these effects make speed and impact *feel* fast and heavy, without changing what the game decides.
+Every number is `SpeedFxTuning` (`scripts/run/speed_fx_tuning.gd`, `data/tuning/speed_fx.tres`, F6
+"Speed effects").
+
+- **The camera's field-of-view kick** (`RunCamera._fov_kick`) widens with `Player.speed` above
+  `fov_reference_speed` - the zone's base (G1) and any ramp, speed-pad or dash boost, since Player
+  already folds them all into `speed` - eased in with `fov_attack_rate` and out with the slower
+  `fov_release_rate`, so a boost's end reads as a settle rather than a snap.
+- **The lane-switch lean** (`RunCamera._lane_lean`) banks the camera a few degrees toward
+  `Player._switch_dir` while a lane switch is under way, through `look_at`'s `up` vector (a rolled
+  camera, not a rotated one, so it never fights `ceiling_limit`).
+- **Speed lines** (`SpeedLines`, a CanvasLayer next to the camera and the HUD): a fixed, angle-free
+  comb of pale vertical streaks on a canvas_item shader, masked clear within `lines_safe_width` of
+  screen centre so a lane's centre - where a hazard's telegraph is read - is never touched, and
+  eased in strength between `lines_min_speed` and `lines_full_speed`. The streak pattern is a
+  stable per-column hash, never re-randomised, so there is nothing in it to flicker: it honours
+  Reduced flashing by construction, and stays cheap enough for the Compatibility renderer (one
+  fullscreen shader pass, no particles).
+- **Impact**: `RunEffects.setup()` (called once by `RunWorld.build`) wires the shared spectacle to
+  the run's own signals, so no enemy or power-up file needs its own copy:
+  - a **shake** on a hard landing (`Player.movement_event` `land`, only past
+    `land_shake_fall_height` of fall - RunEffects tracks the player's own peak air height itself,
+    since `land` fires after `Player.vh` is already reset), a **stomp** (`stomp`, plus hit-stop), and
+    every **kill**, whatever the cause (`EnemyDirector.enemy_defeated`: a small, consistent shake and
+    hit-stop, so a bigger cause-specific shake an enemy or a power-up already plays - a dash kill, a
+    boss hit - is never drowned out, since `shake()` and `freeze()` both keep the stronger of two
+    overlapping requests, never their sum);
+  - a **spark burst** (`RunEffects.burst`) and now also **debris** (`RunEffects.debris`, fewer,
+    heavier, tumbling chunks) on every kill, and a spark burst in the item's own colour
+    (`PlayerSuit.GLOW` / `PlayerSuit.SHIELD`, never a hazard colour) when the armor or the shield
+    blocks a hit (`armor_hit`, `armor_break`, `shield_break`); `WeaponFx.kill_flash` adds a brighter,
+    weapon-tinted flourish on top of a weapon kill specifically (`WeaponPowerup._on_enemy_hit`);
+  - **hit-stop** (`RunEffects.freeze`, a few hundredths of a second on a kill or a stomp): while
+    `RunEffects.freeze_left` counts down, `RunCamera._process` skips `_update` entirely, holding the
+    camera's exact transform and fov while the player, the enemies and the generator keep moving at
+    their own, real delta underneath. It **never touches `Engine.time_scale`** (`SlowTimePowerup`
+    owns that for its own, very different, deliberate slow-down) or pauses anything, so a seeded run
+    plays out identically whether or not it fires (`test_speed_fx`: the same actions on the same
+    layout, with and without a forced freeze, give the same distance, lane and event log).
+  - **Screen shake** (Settings) scales every shake and hit-stop through `RunEffects.shake_scale`
+    (`shake()` and `freeze()` both no-op at 0); the field-of-view kick, the lean and the speed lines
+    stay on regardless, since none of them snap or strobe.
 
 ## Data (tunables live in data, CLAUDE.md principle 7)
 
 | File | What |
 |---|---|
 | `data/tuning/movement.tres` (`MovementTuning`) | run speed, jump, walls (and the blocked entry's bump), ramps and speed pads (their boosts share one fade), ceiling, piece sizes, camera, touch |
-| `data/tuning/game_rules.tres` (`GameRules`) | lanes per device, death share, invulnerability, stomp, whether big attacks take turns, score, economy, stars |
+| `data/tuning/game_rules.tres` (`GameRules`) | lanes per device, death share, invulnerability, the armor (the free armor's hits and wait, the upgrade's per tier, a pickup's extra hit), stomp, whether big attacks take turns, score, economy, stars |
 | `data/tuning/powerups.tres` (`PowerupTuning`) | weapon tiers, claws, dash, magnet, slow time |
 | `data/tuning/pickups.tres` (`PickupTuning`) | in-run pickups: where they appear, taking them, the charge cap, the look |
 | `data/tuning/feature_recency.tres` (`FeatureRecency`) | the campaign's recency curve: how a level's pick weights follow how recently the campaign introduced each feature |
 | `data/enemies/<type>.tres` (`EnemyTuning` subclasses) | per-enemy numbers, early/late pairs for campaign scaling |
-| `data/shop/catalog.json` | shop items, tiers and prices |
+| `data/shop/catalog.json` | shop items, tiers and prices (the armor's texts take `{hits}` and `{seconds}`, filled from `GameRules` by `ShopScreen.item_text()`) |
 | `data/campaign/campaign.tres` → `data/zones/*.tres` → `data/levels/*.tres` | the campaign |
 | `data/bosses/*.tres` | bosses (`BossDef`: slot, health, phases, arena, rewards, par times, armor rule), and a boss script's own tuning (`<id>_tuning.tres`) |
-| `data/cinematics/*.tres` | cinematic slots |
+| `data/cinematics/*.tres` | cinematic slots (`CinematicDef`: each slot's scene), and the arrival flyover's numbers (`arrival_flyover.tres`, `ArrivalFlyoverTuning`) |
 | `data/patterns/*.json` | generator patterns (every file in the folder is loaded) |
 | `data/skins/*.tres` | zone looks |
 | `data/audio/*.tres` | sound and music libraries |
@@ -87,6 +135,23 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   `BLOCKED_ARMOR`, `BLOCKED_SHIELD` (then ~1 s invulnerability), `KILL`, `DEFEAT_ENEMY` (claws or
   dash), `STOMP` (enemy defeated, player bounces). Nothing else hurts the player.
 - Falls aren't hazards: the Player handles them (the grapple hook saves one fall).
+- **The armor** (GDD §4 and §8, owner's playtest, September 30, 2026) is a state with rules of its own,
+  `DamageRules.Armor`: up with its hits left, or broken and coming back. Every run the profile starts
+  (levels, boss fights, retries, quick play, endless, the web demo) carries it free (`Loadout.armor`),
+  and the shop's armor is an upgrade to it (its tier, `tiers[&"armor"]`; the equip toggle switches only
+  the upgrade off). RunWorld makes the run's armor (`Armor.create(rules, tier, carried)`) from
+  `GameRules`' Armor group: the free armor's hits (1) and wait (30 s), and each tier's (placeholders
+  2/30 s, 2/25 s, 3/25 s, 3/20 s: the tiers alternate one more hit and a shorter wait). The Player holds
+  it (`armor_state`; `armor` is its hits left, and setting it, for tests and tools, puts that many hits
+  up) and applies what resolve() says: a blocked hit takes one (`block()`) with the usual
+  invulnerability (event `armor_hit`), the last one breaks it (`item_used(&"armor")`, `armor_break`),
+  and from the Player's physics step its wait runs (`tick()`: the run's clock, so a pause or a death
+  stops it, the same at any frame rate) until it's back whole (`armor_back`). A revive brings it back
+  whole (`restore()`); an armor pickup (`take_pickup()`) does too, at once, and on whole armor adds a
+  hit, up to `armor_pickup_extra_hits` over its count. `armor_changed` tells the HUD and the player
+  model; `ScoreKeeper` counts every blocked hit. A bare `Loadout` (tests, tools) has no armor until a
+  pickup gives it. DESIGN-TBD (`docs/questions/g3.md`): worn armor gets nothing back until it breaks;
+  the pickup's extra hit; the revive; that the free armor can't be switched off.
 - Enemy shots go through `ProjectilePool.fire_enemy()`; the pool sweeps each shot against the
   player's hitbox and calls `receive_hit`, so armor, shield, invulnerability and the dash all apply.
 - **Blocked moves bump, never hurt.** A lane switch into a solid side (a lane blocker: the hover
@@ -95,7 +160,12 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   (`lane_blocked` / `wall_blocked`). The player stays in their lane and can act meanwhile; collision is
   unchanged. The wall's bump (`wall_bump_distance`, `wall_bump_time`) stops short of any hazard or wall
   blocker in its way, so a sign that reaches down to the player stops it at its face, and the model
-  leans away from the wall on the way back.
+  leans away from the wall on the way back. On a ceiling over fewer lanes (a narrow ceiling, GDD §3) a
+  move toward a lane it doesn't cover is blocked the same way (`ceiling_blocked`, the same clank;
+  `Player._bump_ceiling_edge`, a bump that stops short of the ceiling's edge). The player asks the
+  ceilings themselves: a ray on the hull layer over the middle of each lane (`_ceiling_over`), so the
+  track's ceilings and a boss's (`BossProps.ceiling`) hold the player in alike, and a pad lands the
+  player in its own lane even if a switch was under way (`_hold_to_pad_lane`).
 
 ## Enemies
 
@@ -165,14 +235,26 @@ the Tithe Collector) opt in the same way for whichever of their attacks count as
   `world.director.major_attack_blocked(self)`, and while the answer is true it doesn't start, asks
   again next frame, and goes on as it was: the drone keeps following, the truck holds back or keeps
   pacing, the Octodog paces in position. Asking only when ready matters: the director queues those
-  held, and a waiting enemy that stops asking loses its place after a frame. Once a warning has
-  started the attack runs its course; nothing stops it for another's turn.
+  held. Once a warning has started the attack runs its course; nothing stops it for another's turn.
+- **Keep asking to keep your place; give up out loud.** A waiting enemy keeps its place in the queue
+  until its attack starts, as long as it keeps asking: through its turn too (told it may go, one that
+  isn't quite ready and asks again still goes before those that waited less), and through a gap in
+  its asks (its stretch not clear for a moment, its planned point not reached yet) of up to
+  `GameRules.turn_place_grace` (1 s; DESIGN-TBD, `docs/questions/r3b.md`); meanwhile those behind
+  it wait. After a longer gap it loses its place, so the others don't wait long for an enemy that
+  isn't ready (a Resonator waiting for clear floor): an enemy that means to wait longer keeps asking
+  (the Octodog, below). An enemy that gives up the attack it waited for calls
+  `world.director.give_up_turn(self)` and leaves the queue at once: the Octodog runs off, the hover
+  truck changes state (it asks only while pacing, for its cannon, or holding back, for its lurch), the
+  Resonator leaves, the Bad Dream dissolves. One that leaves play loses its place at once.
 - **An attack that may only come within a window** (the Octodog's planned charges) moves the window
   on while `held_for_turn(self)` says it's waiting for another type, up to a limit of its own
   (`OctodogTuning.turn_wait_max`), and keeps every fairness rule it was planned with. Once held it
   keeps asking every frame until its turn comes, whether or not its stretch is clear by then, and if
   the wait made it miss its planned stretch, the window keeps moving on until the stretch ahead is
-  clear again (within the same limit), so waiting for its turn never costs it its charges. The
+  clear again (within the same limit), so waiting for its turn never costs it its charges. After
+  that it still asks every frame while its `charge_slack` lasts, so all along it keeps its place: another
+  type ready again waits for it rather than go first again, until it charges or runs off. The
   Resonator's planned pulses do the same: a pulse held for another type's turn, or for clear floor
   where its wave would meet the player, moves the rest of its visit on; after
   `ResonatorTuning.turn_wait_max` spent waiting for other attacks (waiting for clear floor doesn't
@@ -184,16 +266,23 @@ the Tithe Collector) opt in the same way for whichever of their attacks count as
   warning, which the director can't do yet.)
 
 The director holds a big attack while another type's is on or its shots are still on their way; an
-enemy whose own attack is on carries on (the Bad Dream's next slash in its chase); and of the enemies
-of different types waiting, the one that has waited longest goes next (then the one spawned first),
-so none is kept from its turn by others that keep asking. An attack that is on never waits for another
-(the Bad Dream holds a slash within its chase only for an attack that was already on when the chase
-began, and that one doesn't wait), so two enemies can't wait on each other. Types space their own attacks themselves
-(one drone barrage at a time; one Octodog, one hover truck at a time). GDD §9.7's rule holds with the
-switch off as well: an `exclusive_major_attack` (the Bad Dream's chase) and the attacks of the types in
-its `exclusive_of` (Octodogs', drones') never overlap. `is_waiting()` and `turn_wait()` say whether and
-how long an enemy has been waiting. `tools/measure/big_attacks.gd` measures the overlaps and the delays
-over the campaign (Review tools); `tests/helpers/turn_dummy.gd` is a scripted big attack for tests.
+enemy whose own attack is on carries on (the Bad Dream's next slash in its chase); and the enemies of
+different types waiting go in the order their waits began (then the one spawned first), whether or not
+they're asking at that moment, so none is kept from its turn by others that keep asking: one that
+began waiting later never goes first. An attack that is on never waits for another (the Bad Dream
+holds a slash within its chase only for an attack that was already on when the chase began, and that
+one doesn't wait), and in the queue a waiting enemy is only ever held by those ahead of it, so two
+enemies can't wait on each other; the one at the head starts, gives up, or loses its place a grace
+after it stops asking (asking while it isn't ready holds the others back: only the Octodog does that,
+and only until it charges or runs off, `turn_wait_max` plus its `charge_slack` at most), so nothing
+waits for ever.
+Types space their own attacks themselves (one drone barrage at a time; one Octodog, one hover truck at
+a time). GDD §9.7's rule holds with the switch off as well: an `exclusive_major_attack` (the Bad
+Dream's chase) and the attacks of the types in its `exclusive_of` (Octodogs', drones') never overlap. `is_waiting()` and `turn_wait()` say whether and
+how long an enemy has been waiting (from its first held ask until its attack starts or it loses its
+place). `tools/measure/big_attacks.gd` measures the overlaps, the delays and the enemies that never got
+a big attack in over the campaign (Review tools); `tests/helpers/turn_dummy.gd` is a scripted big
+attack for tests (with pauses in its asks and stalls when it may go).
 
 **Floor use.** The floor under a ceiling may hold enemies (GDD §3, changed September 26, 2026), but
 a ceiling's landing zone and the spot of each of its pads keep off the floor enemies use (see
@@ -213,7 +302,8 @@ below, the Octodog never winds up and a screech stays in its manhole.
 patterns, a difficulty value and a seed, for any lane count. Passes, each with its own random stream:
 patterns (filtered by the level's features) → enemy rules scripts → credits. Helpers for rules
 scripts: `rng_for(name)`, `add_enemy(type, at, lane, side, params)`, `add_hull_with_pad(lane, at,
-seconds)`, `floor_clear(from, to)`, `enemy_floor_span(entry)`, `enemy_uses_floor(entry)`,
+seconds, lanes)`, `ceiling_lanes(pads, at, one_lane_ok)`, `one_lane_seconds(lanes, seconds)`,
+`floor_clear(from, to)`, `enemy_floor_span(entry)`, `enemy_uses_floor(entry)`,
 `difficulty_at(progress)`, `feature_start(feature)`, `feature_started(feature, at)`,
 `feature_active(feature, at)`, `feature_share_at(feature, share)`, `ramp_launch(ramp)`, and for a level
 paced in bursts `quiet_at(at)`, `stretch_end(at)`, `burst_index(at)`, `quiet_stretches()`,
@@ -255,7 +345,8 @@ ceiling may hold gaps, hazards and enemies: the ceiling is the way to escape the
 required. `CeilingZones` (`scripts/world/ceiling_zones.gd`, `gen.zones`) holds the two stretches every
 ceiling keeps safe, and the checks and clearing for them:
 - **The landing zone**: from a section's end, `hull_landing_seconds` at run speed (21.6 m), no lane
-  holds a gap or a fence and no floor enemy's stretch reaches in, so the player always lands safely.
+  the section covers holds a gap or a fence (a narrow ceiling's rider drops only from its lanes) and no
+  floor enemy's stretch reaches in, in any lane, so the player always lands safely.
 - **Each pad's spot**: its lane holds no gap, fence or ramp from a full jump before the pad (a
   player who cleared the lane's last obstacle lands before it) until the lift has carried them up to
   the hull (`rise`), so the pad is never on or at the edge of a gap, never in a fence, and reachable;
@@ -270,10 +361,42 @@ floor under any ceiling holds what patterns put there, with their usual fairness
 floor runner can always pass the pad by. Rules that add floor enemies keep off both stretches: the
 cyborg rules' `obstacle_spans` include every landing zone, and the Octodog's charges and runs keep
 off pads and landings (`Octodog.pad_or_landing_between`), not off the floor under a ceiling.
-Narrow ceilings (B3) and floor cuts planned in advance (B4, which never cut a landing zone or a
-pad's lane) ask `CeilingZones` too. The tests check every generated ceiling with
-`LayoutChecks.check_ceilings`, including a floor route under it that never takes the pad (`FloorRoute`,
-a conservative model of the floor moves; some routes are replayed on real physics).
+Floor cuts planned in advance (B4, which never cut a landing zone or a pad's lane) ask `CeilingZones`
+too. The tests check every generated ceiling with `LayoutChecks.check_ceilings`, including a floor
+route under it that never takes the pad (`FloorRoute`, a conservative model of the floor moves; some
+routes are replayed on real physics).
+
+**Narrow ceilings** (B3; GDD §3, decided September 26, 2026: ceilings don't have to cover every lane,
+and on one the player switches lanes only within its width). A hull in the layout covers a contiguous
+range of lanes: `{start, end}` covers every lane, and a narrow one adds `first_lane` and `last_lane`
+(`LevelLayout.make_hull`, `hull_lanes`, `hull_width`, `hull_covers`, `hull_at(d, lane)`,
+`under_hull(d, lane)`; the keys are left out for every lane, so a level without narrow ceilings is the
+same data as before). Every ceiling, a pattern's or a rule's, gets its lanes from
+`ceiling_lanes(pads, at, one_lane_ok)`: every lane unless the level's `narrow_ceiling_share`
+(`LevelConfig`, group "Narrow ceilings", from `narrow_ceiling_start`) makes it narrow; then one lane
+(`one_lane_ceiling_share` of them) or two lanes up to `narrow_ceiling_max_lanes` (all but one by
+default), anywhere that holds its pads. The draws come from a stream of their own (`_ceiling_rng`), so
+with a share of 0 every level generates byte for byte as before, and ceilings narrowed to two lanes or
+more leave the pattern pass as it was (the same patterns in the same spots; a one-lane ceiling is
+shorter, so what follows it comes a little earlier). A one-lane ceiling
+lasts `one_lane_ceiling_seconds` at most (`one_lane_seconds`) and comes only from a pattern that puts
+nothing but its ceiling on the track (`plain_ceiling`) or from a rule (PadPlacement), never from a
+gauntlet. What follows the lanes:
+- the landing zone is kept (`_secure_ceilings`, `PadPlacement`) and checked (`CeilingZones.landing_clear`,
+  `clear_landing`, both taking the lanes) only over the ceiling's lanes; floor enemies keep off it in
+  every lane, as before, which is safe for any range;
+- a pad is always under its ceiling, in its range (`add_hull_with_pad` refuses one outside it);
+- the credits: the line on the ceiling runs along the pad's lane and the rich one sits in the ceiling's
+  far lane (none on a one-lane ceiling); floor trails skip only the covered lanes;
+- a pad hurls every drone on screen into the ceiling's lanes (`Drone.hurl_x`: it veers in as it rises);
+- the player can't leave the ceiling sideways (Damage and interactions, blocked moves).
+
+`LayoutChecks.check_ceilings` checks each range (pads over their lane, a one-lane ceiling short, the
+landing zone per lane, the floor route, credits within the lanes), and `test_generator` sweeps widths
+at 3, 5 and 6 lanes. Enemies that use ceilings must respect the range: the Barnacle Turret (C1, GDD
+§9.8) never goes on a one-lane ceiling (`layout.hull_width(h) == 1`: no room to dodge) and at most two
+go on one ceiling, mounted over lanes the ceiling covers (`hull_covers`); anything aimed at a ceiling
+rider can only expect them to move within `hull_lanes(h)`.
 
 **Late starts.** `LevelConfig.feature_starts` (feature → share of the level) holds a feature back
 until its start: patterns that require it aren't picked before, and the first pattern picked from
@@ -362,9 +485,11 @@ each feature a pattern can place there is in the finished level, at any lane cou
 
 `PowerupController` (`scripts/powerups/powerup_controller.gd`) runs one `PowerupModule` per owned,
 switched-on permanent item: `WeaponPowerup` (auto-fire, tiers 1–4, enemy health bars), `ClawsPowerup`,
-`DashPowerup`, `MagnetPowerup` and `SlowTimePowerup`. Breakables (armor, shield, grapple) are charges
-on the Player. The controller's header documents its API: `hud_state()` for the HUD (`charges` -1 for
-permanent items), `equipment()` for the player model, and `try_dash()` / `try_slow_time()`.
+`DashPowerup`, `MagnetPowerup` and `SlowTimePowerup`. The armor is the damage rules' (`DamageRules.Armor`,
+see Damage and interactions); the breakables (shield, grapple) are charges on the Player. The
+controller's header documents its API: `hud_state()` for the HUD (`charges` -1 for permanent items; the
+armor's hits, with its return as `ready`), `equipment()` for the player model, and `try_dash()` /
+`try_slow_time()`.
 The player model shows what the run carries (`PlayerAvatar.set_equipment`, looks in `PlayerSuit`): the
 weapon sits over the gold arm's (left) shoulder, so shots leave from there (`Player.weapon_muzzle()`),
 and armor that breaks in play shatters. Effects tied to the runner's own glow (the dash's shell and
@@ -386,9 +511,11 @@ that offer their own), never in levels, so no pattern places one. `PickupField`
   no boss floor warning over it (`BossProps.warned`). `at` and `lane` are requests the rules still
   apply to. `find_spot()` and the static `layout_fair()` answer placement questions for tests.
 - **Taking:** the player's hitbox (swept over the frame) reaching its `take_box()` takes it:
-  `Player.gain_item(item, max_charges)` adds a charge unless the player holds all they may, the
-  `Loadout` counts it in `picked_up` (the App asks `Loadout.costs_stock()` when an item breaks, so a
-  picked-up charge, like a granted one, never costs stock), and `collected(pickup, gained)` fires. The
+  `Player.gain_item(item, max_charges)` adds a shield or grapple charge unless the player holds all they
+  may, the `Loadout` counts it in `picked_up` (the App asks `Loadout.costs_stock()` when an item breaks,
+  so a picked-up charge, like a granted one, never costs stock), and `collected(pickup, gained)` fires.
+  An armor pickup brings the armor back whole at once (`DamageRules.Armor.take_pickup`: on whole armor it
+  adds a hit, up to `GameRules.armor_pickup_extra_hits`), and isn't counted: the armor is no stock. The
   HUD shows the item in its place among the protections and flashes it; the power-up controller lists
   it in `hud_state()` and the player model shows armor and shields. A pickup the player runs past is
   `missed` and gone. `clear()` removes everything (a boss beaten: none after the fight).
@@ -403,9 +530,37 @@ that offer their own), never in levels, so no pattern places one. `PickupField`
 ## Zone skins
 
 A `ZoneSkin` (`scripts/world/skins/zone_skin.gd`) decorates abstract pieces through hooks
-(`floor_segment`, `wall_section`, `fence`, `wall_sign`, `hull`, `pad`, `ramp`, `speed_pad`,
-`finish_line`, `make_environment`). Skins add visuals only, never collision or gameplay. Hazards keep
-one colour and shape language in every zone (pink crackle = electric fence).
+(`floor_segment`, `wall_section`, `fence`, `wall_sign`, `ceiling_section` (by default `hull`), `pad`,
+`ramp`, `speed_pad`, `finish_line`, `make_environment`). Skins add visuals only, never collision or
+gameplay. Hazards keep one colour and shape language in every zone (pink crackle = electric fence).
+
+**Ceilings from their lanes** (B3). `TrackBuilder` (and `BossProps.ceiling`) describe each ceiling as a
+`CeilingSection` (`scripts/world/ceiling_section.gd`): its span along the track, the lanes it covers
+(`first_lane`, `last_lane`, `full()`), its collision box (`center`, `size`), the lane seams inside it
+(`lane_edges_x`), the wall faces' distance (`wall_x`) and whether each side reaches the street's edge
+(`reaches_wall(side)`), and hand it to `ceiling_section(parent, section)`. A skin builds the ceiling from
+those, never from the track's width, so a narrow ceiling is simply a narrower one: the City's is a smaller
+craft (`CityShip`, `small`), Gangland's a slab broken off a building, the Dead Zone's a slab broken off
+the tower it reaches or a fallen span, and the Marketplace's, Corporate zone's and Golden Zone's kinds
+build narrower (a structure that needs both walls, the Marketplace's building bridge, the Corporate
+tower across the street, the Golden arches, becomes another kind over fewer lanes). The default hook
+calls the older `hull(center, size, lane_edges_x)`, which the grey box still uses. Every ceiling's underside covers its footprint and stops at a free side's edge, nothing hangs
+below it, and the orange end band (`MeshKit.ceiling_end`) spans its width.
+
+**Nothing below the underside past a far end.** When the player drops off a ceiling's far end, the chase
+camera follows them down and passes just below the underside there: `RunCamera.ceiling_limit` keeps it
+`camera_ceiling_clearance` (1 m) under any ceiling over it, beside it (a narrow one), just ahead or just
+behind (the review tools' camera copies use it too). Whatever a skin draws below the underside past the
+far end fills the screen for a frame as the camera passes (task B3 found the end band's glow card doing
+it in every zone: an orange wash and a glare), so past a far end glows and faces stay above the
+underside: use `MeshKit.ceiling_end` for the band, `MeshKit.stern_halo` for an engine's halo (cut at the
+underside), and `MeshKit.near_fade(metres)` as a glow card's `param` for any other glow the camera
+passes close to (kit_glow reads a negative UV2.y as "fade out within this many metres of the camera").
+`test_ceilings` builds every skin in `data/skins/` (and the City boss arena's) over full and narrow
+ranges at 3, 5 and 6 lanes and checks all of this, so every zone's skin is held to it, and a new skin
+(a level's own, such as the Golden Palace's) as soon as its file exists: build ceilings through
+`ceiling_section` (or `hull`) from the section, keep the band and every glow past the far end above the
+underside, and check the drop on both renderers (`skin_review --narrow`, Review tools).
 
 Skins: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2), `MarketplaceSkin`
 (Zone 3, the Marketplace), `CorporateSkin` (Zone 4, Corporate), `DeadZoneSkin` (Zone 5, the Dead Zone)
@@ -495,9 +650,13 @@ texture as a mark on a dark panel.
 
 **Gangland's ceilings** (`GanglandCeiling`) take their width from the lanes they cover (the collision
 box), never from the track, and draw each side as anchored (running into the building face) or free
-(an edge face), so narrow ceilings (B3) only need to tell the builder which sides reach a wall. Whatever
-the structure above (an overpass or a bombed-out building), the running surface is a flat slab with lamps
-on every lane seam, nothing hangs below it, and its far end carries the orange band
+(an edge face). A ceiling across the street is an overpass or a bombed-out building (`kind_of`, by
+hashing its start); a narrow one (B3) is always a slab broken off a building (`Kind.SLAB`, the owner's
+review P2 18): broken edges with rebar, rubble, column stubs and a piece of wall on it, lodged in the
+building face on a side that reaches the street's edge, or hung from its building's torn steel frame
+running up to both building faces when it reaches neither (`GanglandSkin.ceiling_section` passes which
+sides reach a wall, and the walls' distance). Whatever the structure, the running surface is a flat
+slab with lamps on every lane seam, nothing hangs below it, and its far end carries the orange band
 (`MeshKit.ceiling_end`, as in every zone).
 
 **The Marketplace** (`scripts/world/skins/marketplace/`): `MarketStalls` (the floor), `MarketFacades`
@@ -521,7 +680,8 @@ on every lane seam, nothing hangs below it, and its far end carries the orange b
 - *Ceilings from their lanes (task B3).* `MarketCeilings` builds every kind (a building bridging the
   street, an overpass, a merchant ship, a floating ad) from the ceiling's collision box and lane
   seams, so a ceiling over fewer lanes just builds narrower; only a full-width ceiling becomes a
-  building bridging the street. `mesh_for(kind, ...)` builds a given kind directly.
+  building bridging the street. `mesh_for(kind, ...)` builds a given kind directly. A ship's engine halos
+  stop at the underside (`MeshKit.stern_halo`).
 - *Decorative signs* (neon, painted blade signs, ad boards, casino bulbs) never sit below
   `decor_min_height` (8 m) and never wear the striped frame, which is reserved for hazard signs.
 - *Futuristic and worn* (GDD §5): `shopfront.gdshader` draws cladding, rounded smart-glass windows,
@@ -600,7 +760,8 @@ lightest surface.
   across every lane (weights `bridge_weight`, `building_weight`), and over fewer lanes a slab broken off
   the tower it reaches (one wall) or a collapsed span hanging from its gantry (neither wall), from the
   collision box and lane seams; `reaches_wall()` decides which sides run into a building face, from the
-  wall face the skin saw last (`wall_section` runs before a chunk's ceilings). Every underside is flat
+  section's wall distance (`DeadZoneSkin.ceiling_section`; `hull()` alone uses the wall face the skin saw
+  last, as `wall_section` runs before a chunk's ceilings). Every underside is flat
   charred concrete with a steel strip and a pale line on each lane seam, and the orange far-end band.
   `mesh_for(kind, ...)` builds a given kind directly.
 
@@ -638,7 +799,8 @@ shader, `golden_facade.gdshader`. White and cream with red and gold accents (GDD
   a marble face with the emblem's crest, water off some into gilded troughs), a gallery of golden arches
   (only across every lane) or a hover-yacht from the ceiling's collision box and lane seams; over fewer
   lanes a bridge becomes a suspended gallery. Water stays above the underside. `mesh_for(kind, ...)`
-  builds a given kind directly.
+  builds a given kind directly. `GoldenSkin.ceiling_section` hands it the section's wall distance, and a
+  yacht's engine halos stop at the underside (`MeshKit.stern_halo`), as every zone's far end must.
 - *Ceilings under the walls' decorations.* The walls build without knowing where ceilings are, so
   `GoldenFacades.clearance_profile()` declares what they hold out over the street, as (reach, lowest
   height) tiers: the statue ledge, the statues, the gilded frames, the banners, and `OVER_STREET` beyond.
@@ -801,7 +963,10 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
     anywhere; gold and chrome only as unlit, polished ornament, the grimy looks dull.
 - **UI:** a theme built in code (`scripts/ui/theme/`: `UiStyle` in `data/ui/ui_style.tres`,
   `UiTheme`), code-drawn icons (`scripts/ui/icons/`) and a widget kit (`scripts/ui/widgets/`). Screens
-  (`scripts/ui/screens/`) extend `ScreenBase`; the HUD is `RunHud`. Orbitron is for titles and Exo 2
+  (`scripts/ui/screens/`) extend `ScreenBase`; the HUD is `RunHud`: its protections show the armor's
+  hits and, while it's broken, the cooldown ring filling in the kit's calm accent until it's back, when
+  the icon flashes and the player's `armor_back` plays (a latch and a low chime; a hit the armor survives
+  plays `armor_hit`). Orbitron is for titles and Exo 2
   for text and numbers. On the HUD, draw icons from `IconFactory.texture()` (cached, tinted with a
   modulate colour) rather than `IconFactory.draw()`: every polygon or polyline command costs its own
   draw call every frame, and the HUD's icons alone were once 220 of about 370.
@@ -871,7 +1036,9 @@ features or their weights, no darkness), so endless in the Dead Zone plays as it
 
 A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, which the player
 continues past. A cinematic is a scene whose root extends `Cinematic` (emit `finished`, support
-`skip()`); a boss is built on the boss framework (Bosses, below). The City's Floating Head is built
+`skip()`), built with the cinematic toolkit (Cinematics, below): every zone's intro and the City's boss
+intro play a placeholder arrival flyover, and the outros are still cards. A boss is built on the boss
+framework (Bosses, below). The City's Floating Head is built
 (its step plays the fight); the other boss slots are still placeholders, holding the phases GDD §10
 gives each designed boss and its armor-rule delay. A fight still being built names its scene in the
 slot's `preview_scene` instead of `scene`: the campaign keeps the card, and debug builds play the
@@ -950,11 +1117,19 @@ encounter.setup(world, context, arena)   joins the world between the player and 
 - **Pickups** (see Pickups): `armor_pickup_due(reason)` follows GDD §10's standard armor rule, at the
   start of the final phase and `armor_delay_min`–`max` seconds after the player's armor or shield
   breaks, at most `armor_pickups_per_phase` per phase, and each time the encounter offers an armor
-  pickup (`_on_armor_pickup_due`, which a boss may override to place it its own way).
+  pickup (`_on_armor_pickup_due`, which a boss may override to place it its own way). With
+  `BossDef.armor_when_unprotected` (E1e, DESIGN-TBD; on for the Floating Head) a phase that begins with
+  the player's armor down and no shield (the free armor still coming back after a break) counts as a
+  break at its start (`player_protected()`: armor up or a shield held, or an armor pickup due, on the
+  track, waiting for a spot or held back by the boss, `armor_pickups_waiting()`), so no phase starts
+  unprotected without a pickup on its way.
   `offer_pickup(item, at, lane)` offers an armor, shield or grapple pickup of the boss's own (GDD §10:
   a section of floor that spawns one; the test boss offers a shield in its second phase), and
   `phase_started` and `protection_broken` are there to time them. The win clears every pickup, and
   nothing is offered after it.
+- **Hints**: `hint_due(key)` asks the run's `HintDirector` for a first-encounter hint of the boss's own
+  (trigger `boss:<key>` in `data/hints/hints.json`, once per profile): the Floating Head asks for its
+  way up's (`boss:city_boss/ramp`, `/wall`, `/ceiling`) as each pin begins.
 - **The light**: `set_light_level(level, seconds)` fades the environment's ambient and sky light and
   the sun, never below `MIN_LIGHT_LEVEL`; glowing things keep their colours, and the light returns
   with the fight.
@@ -975,19 +1150,20 @@ plays it), in `scripts/bosses/floating_head/`:
 
 | File | What |
 |---|---|
-| `floating_head.gd` (`FloatingHead`) | the encounter: each phase's intro (the first is the entrance, overhead from behind; later ones rise), its bombing run if it has one (`run_seconds(phase)`), then the descent in front of the runner (the first time, the reveal: the face powers on) and the face-off until a tower pins it (`begin_pin`: it brakes under the falling tower and lies still on the track, sunk between the trucks until its weak points' sockets are `pin_top_height` up and rolled toward the tower about its crown, `pinned_transform`; the tower breaks behind the weak points as it lands). Then the phase's stomp window (`route`, from `stomp_route(phase)`): `_open_window` switches the weak points and the crown's deck on and the hull hitbox off, and the way up is built in the arena (`_slam_ramp`: the tower's slab, a `FloatingHeadRamp`, in `ramp_lane`; the wall needs nothing; `_light_pads` and `_update_ceiling`: `props.pad` in every lane and a `props.ceiling` that lowers in once the ship is past its end). `_check_window` closes it (`_miss`) when the runner is still on the trucks within `window_release_gap` of its face or past `pass_line()`; a stomp ends the phase instead. Either way it shakes free (`SHAKE`: it lurches ahead of the runner, its deck under a runner still on it until its face has passed them) and rises: to the next phase's station after a stomp (the phase's intro), back in front for the face-off after a miss (`RELEASE`). The ship's `pose` is kept relative to the runner (sideways, belly height, stern ahead) except while pinned, so nothing depends on how long the fight has lasted. The marked towers are planned with each lap (`_plan_lap`: every `tower_spacing`, sides in turn, the track cleared of holes and fences around each) and brought into sight as the runner nears them (`towers_between`, `tower_node`); a tower whose pin would land on a pickup or a dropped cyborg goes by (`pin_zone_blocker`), and armor pickups wait while a pin is under way (`pin_busy`, `_on_armor_pickup_due`). The fairness helpers its attacks share: `escape_lane`, `floor_clear_lane`/`floor_clear_all`, `pickup_near`, `enemy_in_lane`, `ceiling_between` (the arena's ceilings and its window's own: no bomb locks under one, the face-off waits past it). `sound()` plays and logs every warning; `warning_active()` says when one of its attacks warns or strikes, a cue still sounds, a cyborg it dropped is about or a pulsing fence is near (the propaganda gives way). The defeat (`_on_defeated`, then `_defeated_tick`'s steps): the propaganda cuts out (`voice.cut()`), pinned it shakes free (`SHAKE`), then `DYING` (it lurches up to `dying_pose()` in front of the runner, its face glitching: `_defeat_glitch`, steady with Reduced flashing), `FALLING` (it loses power and plunges to `crash_site()`: the first stretch ahead where the floor is clear around its wreck; it limps on until there is one) and `WRECKED` (`_crash`: the dust, its face falls flat before the wreck, `fallen_face()`, and its stern half lies sunk to `wreck_belly()`, a tunnel the lanes run through; `victory_over()` once the runner reaches its face; `wreck_passed()`) |
-| `floating_head_body.gd` (`FloatingHeadBody`) | the body part: the model and its moving parts (face screen, jaw, searchlight gimbal, bay doors, weak-point covers that swing open with the red domes pulsing out: `weak_open`), a solid hull hitbox (`set_hull_solid`: off while pinned), a weak point over each lane near the crown's middle (generous stomp boxes, `stomp_width`/`stomp_depth`/`stomp_top`) and the crown's deck (a concave shape exactly over the drawn hull, `FloatingHeadModel.deck_faces`), both off until a window opens (`set_weak_points_enabled`, `set_top_solid`; `top_height`, `weak_point_world`), the face's state (`screen_power`, `anger`, `eye_charge`, `glitch`, `jaw_open`, and `look_point` for the eyes to watch the laser's aim), where its eyes and mouth are (`eye_world`, `mouth_world`), and `exclusive_major_attack` (its lasers and bombs take turns with other big attacks). The slogan's caption band (`show_slogan`, `caption`: a Label3D in the face's cold white over a dark band the face shader draws across the screen's lower part, under the eyes; Label3D translates its text like the UI's labels). Beaten, it stays and keeps drawing itself: `power` fades its lights (per-instance copies of its kit materials' `state_glow`), `wreck(face_rest)` swaps in the wreck and lays its torn-off face in the street (cracked, framed), `crash_dust` and `start_smoke` (soft grey puffs from a radial `GradientTexture2D`) |
+| `floating_head.gd` (`FloatingHead`) | the encounter: each phase's intro (the first is the entrance, overhead from behind; later ones rise), its bombing run if it has one (`run_seconds(phase)`), then the descent in front of the runner (the first time, the reveal: the face powers on) and the face-off until a tower pins it (`begin_pin`: it brakes under the falling tower and lies still on the track, sunk between the trucks until its weak points' sockets are `pin_top_height` up and rolled toward the tower about its crown, `pinned_transform`; the tower breaks behind the weak points as it lands). Then the phase's stomp window (`route`, from `stomp_route(phase)`): `_open_window` switches the weak points and the crown's deck on and the hull hitbox off, and the way up is built in the arena (`_slam_ramp`: the tower's slab, a `FloatingHeadRamp`, in `ramp_lane`; `_light_wall_marks`: the wall route's cue, a `FloatingHeadWallMarks` on both walls, lit as the tower falls with `wall_marks_light` and cleared when the window closes; `_light_pads` and `_update_ceiling`: `props.pad` in every lane and a `props.ceiling` that lowers in once the ship is past its end), and the way's first-time hint is asked for (`hint_due`). `_check_window` closes it (`_miss`) when the runner is still on the trucks within `release_gap()` of its face (`window_release_gap`, or on the ramp route the end of its lead-in, where a lane switch stops boarding it) or past `pass_line()`; a stomp ends the phase instead (`_on_weak_point_hit` logs the dome's lane and the runner's). Either way it shakes free (`SHAKE`: it lurches ahead of the runner, its deck under a runner still on it until its face has passed them) and rises: to the next phase's station after a stomp (the phase's intro), back in front for the face-off after a miss (`RELEASE`). The ship's `pose` is kept relative to the runner (sideways, belly height, stern ahead) except while pinned, so nothing depends on how long the fight has lasted. The marked towers are planned with each lap (`_plan_lap`: every `tower_spacing`, sides in turn, the track cleared of holes and fences around each) and brought into sight as the runner nears them (`towers_between`, `tower_node`); a tower whose pin would land on a pickup or a dropped cyborg goes by (`pin_zone_blocker`), and armor pickups wait while a pin is under way (`pin_busy`, `_on_armor_pickup_due`). The fairness helpers its attacks share: `escape_lane`, `floor_clear_lane`/`floor_clear_all`, `pickup_near`, `enemy_in_lane`, `ceiling_between` (the arena's ceilings and its window's own: no bomb locks under one, the face-off waits past it). `sound()` plays and logs every warning; `warning_active()` says when one of its attacks warns or strikes, a cue still sounds, a cyborg it dropped is about or a pulsing fence is near (the propaganda gives way). The defeat (`_on_defeated`, then `_defeated_tick`'s steps): the propaganda cuts out (`voice.cut()`), pinned it shakes free (`SHAKE`), then `DYING` (it lurches up to `dying_pose()` in front of the runner, its face glitching: `_defeat_glitch`, steady with Reduced flashing), `FALLING` (it loses power and plunges to `crash_site()`: the first stretch ahead where the floor is clear around its wreck; it limps on until there is one) and `WRECKED` (`_crash`: the dust, its face falls flat before the wreck, `fallen_face()`, and its stern half lies sunk to `wreck_belly()`, a tunnel the lanes run through; `victory_over()` once the runner reaches its face; `wreck_passed()`) |
+| `floating_head_body.gd` (`FloatingHeadBody`) | the body part: the model and its moving parts (face screen, jaw, searchlight gimbal, bay doors, weak-point covers that swing open with the red domes pulsing out: `weak_open`), a solid hull hitbox (`set_hull_solid`: off while pinned), a weak point over each lane near the crown's middle (generous stomp boxes, `stomp_width`/`stomp_depth`/`stomp_top`; at 5 and 6 lanes the outermost ones also reach over the outer lanes out to the walls at their own height, `stomp_outer_reach`, where a wall jump or a drop off the ceiling lands: `stomp_covers_outer_lanes`, E1e) and the crown's deck (a concave shape exactly over the drawn hull, `FloatingHeadModel.deck_faces`), both off until a window opens (`set_weak_points_enabled`, `set_top_solid`; `top_height`, `weak_point_world`), the face's state (`screen_power`, `anger`, `eye_charge`, `glitch`, `jaw_open`, and `look_point` for the eyes to watch the laser's aim), where its eyes and mouth are (`eye_world`, `mouth_world`), and `exclusive_major_attack` (its lasers and bombs take turns with other big attacks). The slogan's caption band (`show_slogan`, `caption`: a Label3D in the face's cold white over a dark band the face shader draws across the screen's lower part, under the eyes; Label3D translates its text like the UI's labels). Beaten, it stays and keeps drawing itself: `power` fades its lights (per-instance copies of its kit materials' `state_glow`), `wreck(face_rest)` swaps in the wreck and lays its torn-off face in the street (cracked, framed), `crash_dust` and `start_smoke` (soft grey puffs from a radial `GradientTexture2D`) |
 | `floating_head_model.gd` (`FloatingHeadModel`) | the low-poly meshes, built in code from a `Shape` sized to the street and its lanes (MeshKit layers merged into a few surfaces: about 13 surfaces and 11k vertices; the weak points over the lanes within `weak_point_reach` of the middle), the bomb, the crown's deck faces, and `ship_transform` (its pitch and its roll about the crown over the weak points). The wreck (`_wreck`): its stern half (`WRECK_LENGTH`), torn open at both ends (the cut plating and flaps peeled outward), plated inside, dark; `wreck_inner_half` is its inside's half width at a height (the runner's room in it, tested at every lane count) |
 | `floating_head_voice.gd` (`FloatingHeadVoice`) | the propaganda: from the reveal on, a phrase every so often (`head_voice_1-4`, a seeded order and pauses of its own) from a positional player at the face, each with the next slogan (`FloatingHeadTuning.slogans`); it ducks `voice_duck_db` at once under `FloatingHead.warning_active()`, the slogan fades, and no phrase starts until the warnings have been over a moment; `cut()` stops it mid-shout for the defeat (`head_voice_cut`) |
 | `floating_head_bombing.gd` (`FloatingHeadBombing`) | the searchlight and the bombs: the lock (the warning: red light, `circle_warning`, lock sound, the bomb falling with its whistle), the fairness rules (`plan`, `fair`, `escape_lane`), and pooled blast hitboxes (enemy attacks) that keep clear of a wall runner |
 | `floating_head_faceoff.gd` (`FloatingHeadFaceOff`) | the face-off: the phase's attacks wait in line (`faceoff_pattern`; the first that can start fairly goes next) with a drag timed for each marked tower. Eye lasers: the warning (the eyes' `eye_charge` and whine, thin aiming beams with a sweep's aim lines or a drag's aiming spot, then the drag's `lane_warning`), a sweep's twin beams (low: both low, jump them; high: one at the waist and one above a jump's reach, like a gapped fence, slide under them) or a drag down the runner's lane leaving a burning line (keeps clear of a wall runner), each with enemy-attack hitboxes. The cyborg drop: the jaw opens (with its sound and `circle_warning`s where they land), then normal cyborgs from the director (`spawn_enemy`) fall from the mouth onto clear roof and fight. A tower's drag is a bait when the runner is in the outer lane on its side as the warning ends, or the fallback after `fallback_after` misses; either calls `FloatingHead.begin_pin`. Lasers wait while its cyborgs are ahead and share the cyborgs' airspace (`CyborgGun.AIRSPACE_META`) |
 | `floating_head_tower.gd` (`FloatingHeadTower`) | a marked tower at the roadside (flush with the facades, its head jutting out over the street above the ship's highest flight so it shows from far along the street; no hitboxes: scenery until it falls): pale concrete with white painted bands and targets, cracks and cold warning lights; the laser's cut glows red-hot as it's clipped, then it topples forward onto the ship (`fall_onto`, `rest_on`), breaks in two as it lands (`break_at`, `tower_mesh`'s sections with torn ends: the lower section drops away), and the rest crumbles away when the ship shakes free |
-| `floating_head_ramp.gd` (`FloatingHeadRamp`) | the first stomp window's way up: the tower's broken slab slammed down in a lane (`ramp_length` long, its top end `ramp_lift` above the crown at the face), its top a floor (a convex slab) and its sides a lane blocker down to the trucks where it stands above a step; green chevrons up it; it sinks away when the ship shakes free |
+| `floating_head_ramp.gd` (`FloatingHeadRamp`) | the first stomp window's way up: the tower's broken slab slammed down in a lane (`ramp_length` long, its top end `ramp_lift` above the crown at the face) in two pieces (E1e): a low lead-in over `ramp_board_share` of it, rising to its knee (`knee_height`: `ramp_board_height`, never above `side_step_limit`, what a lane switch steps up), with bevelled sides a lane switch steps up anywhere along it (`board_until`); then the steeper slab onto the crown, whose sides are a lane blocker down to the trucks. Both tops are floors (convex shapes, where they're drawn); green chevrons up both, the lead-in's edges in the ramp colour; it sinks away when the ship shakes free |
+| `floating_head_wall_marks.gd` (`FloatingHeadWallMarks`) | the second stomp window's cue (E1e): on both walls, a strip of green chevrons at running height from `wall_entry_before` its pinned face (get onto the wall there) to a tall jump mark `wall_jump_before` it (jump off there); scenery, steady (the chevrons only scroll), never a hazard colour |
 | `floating_head_face.gdshader`, `floating_head_light.gdshader`, `floating_head_laser.gdshader` | the face screen (unshaded and procedural: the same on every renderer; still with Reduced flashing; its `glitch`, the `caption` band, and `broken`: the dead screen in the street, cracked, the face burnt in faintly), the searchlight's beam and spot, and the lasers (the beams, the aim lines and the burning line: additive, lifted on the Compatibility renderer; the burn's embers hold still with Reduced flashing) |
 | `floating_head_tuning.gd`, `data/bosses/city_boss_tuning.tres` | its numbers (F6 in its fight) |
 | `data/bosses/city_boss_skin.tres` | its arena's City look: the City's skin without the towers' big screens hung out over the street, where the ship flies |
-| `tools/showcase/floating_head_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/stern/below/entrance/bombing/reveal/faceoff/fallback/missed/pinned/window/mouth/slogans/defeat/wreck`, `--phase=N` for the phase's stomp window) |
-| `tests/helpers/floating_head_bot.gd` (`FloatingHeadBot`) | a runner who plays the fight by its warnings, pressing only named actions: dodges bombs and lasers, baits towers, and takes each stomp window's way up (`routes`; `wrong_route` stays on the trucks); it also runs the arena (`reads_track`: jumps holes and full fences, slides under gapped ones, sidesteps bolts), so it plays the whole fight without god mode (tests and the showcase) |
+| `tools/showcase/floating_head_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/stern/below/entrance/bombing/reveal/faceoff/fallback/missed/pinned/window/mouth/slogans/defeat/wreck`, `--phase=N` for the phase's stomp window, `--board-late` to board the ramp from its side, `--e1c` for E1c's ramp and stomp boxes) |
+| `tests/helpers/floating_head_bot.gd` (`FloatingHeadBot`) | a runner who plays the fight by its warnings, pressing only named actions: dodges bombs and lasers, baits towers, and takes each stomp window's way up (`routes`: the wall by its marks; `ramp_board_at` boards the ramp from its side, `ceiling_moves` off rides straight ahead, `second_move` off never moves inward in the air; `wrong_route` stays on the trucks); it also runs the arena (`reads_track`: jumps holes and full fences, slides under gapped ones, sidesteps bolts), so it plays the whole fight without god mode (tests and the showcase) |
 
 **How the designed bosses fit** (GDD §10; each is a later task):
 - **Floating Head (E1, built):** the City's boss step plays it; `weapon_share_cap` 0.34 keeps
@@ -1018,19 +1194,189 @@ plays it), in `scripts/bosses/floating_head/`:
 - **The final villain:** two stages, the second a `checkpoint` phase, so a death there restarts at the
   second stage.
 
+## Cinematics
+
+GDD §1 tells the story mostly through the zones themselves, plus 5–15 second cinematics between levels and
+zones (their story beats come from the owner later; task F2). The cinematic toolkit (`scripts/cinematics/`,
+task F1) is code-driven: a cinematic is a timeline of camera keys, actors on the humanoid rig and timed
+events, played on a stretch of the slot's zone.
+
+**The flow.** A slot's `CinematicDef.scene` is a scene whose root extends `Cinematic`
+(`scripts/campaign/cinematic.gd`). The App instances it under the world root and calls `play(def, step)`;
+the cinematic knows its `step`, `zone` and `slot` (`&"intro"`, `&"boss_intro"`, `&"outro"`; played on its
+own, it finds the campaign step whose slot holds its def). At its end it emits `finished` once, and the App
+marks the step done and seen and moves on (`advance_from`), so the next step's first frame follows at once.
+**Skipping:** the pause action (Esc / P) or the cinematic's Skip button emits `skip_requested`, the App
+answers with `skip_cinematic()` → `skip()`, and the cinematic ends within the call. `App.playing_cinematic()`
+is the one playing. A cinematic holds while the game is in the background (focus lost, app paused), so it
+never ends, and a level never starts, unattended.
+
+| File | What |
+|---|---|
+| `cinematic_sequencer.gd` (`CinematicSequencer`) | the player: builds the stage, actors, camera and overlay, runs the clock (`advance`), fires the events, emits `finished`; `skip()`; `log_lines` lists every event fired (tests, the review tool) |
+| `cine_timeline.gd` (`CineTimeline`) | one cinematic: `duration`, `letterbox`, `stage`, `camera` keys, `actors`, `events`; helpers to build one in a script (`shot`, `actor`, `sound`, `music`, `card`, `effect`, `cue`); `problems()` checks it; `sort()` |
+| `cine_key.gd`, `cine_path.gd` (`CineKey`, `CinePath`) | a key's time and how the path comes into it: `SMOOTH` (a flight through the keys, velocity carrying on through each), `LINEAR` (a straight move eased by Tween's transition and ease types) or `CUT`; `sample_riding` for keys that ride with an actor |
+| `cine_camera_key.gd` (`CineCameraKey`) | where the camera is (`position`), what it looks at (`target`), `fov`, `roll`; `follow` / `watch` an actor: the point is then an offset from it |
+| `cine_actor.gd`, `cine_actor_key.gd`, `cine_actor_node.gd` | an actor (`RUNNER`: Razor Echo's `PlayerAvatar`; `CYBORG`: a `CyborgBody` in the zone's look or a look of its own, a host or not), its keys (position, pose, heading, a cyborg's face, aim and charge) and its node in play |
+| `cine_event.gd` (`CineEvent`) | `SOUND` (a sound effect), `MUSIC` (a track, `@zone`, or none), `TEXT` (a card), `EFFECT` (`fade_in`, `fade_out`, `flash`, `shake`, `letterbox_in`, `letterbox_out`), `CUE` (a script's own moment) |
+| `cine_stage_def.gd`, `cine_stage.gd` (`CineStageDef`, `CineStage`) | the set: a stretch of track built by the `TrackBuilder` in the zone's skin, with its sky and fog (`ZoneSkin.level_environment(0)`) and the run's sun; ceilings, gaps and pads; streamed in chunks like a run |
+| `cine_overlay.gd` (`CineOverlay`) | the 2D layer: letterbox bars, fades, flashes, text cards (menu fonts, capitals) and the Skip button (showing the pause key), in the safe area |
+| `arrival_flyover.gd`, `arrival_flyover_tuning.gd`, `scenes/cinematics/arrival_flyover.tscn`, `data/cinematics/arrival_flyover.tres` | the placeholder arrival flyover (below) |
+
+**Track space.** Every point is `(x, y, z)`: x metres right of the start lane's centre (the lane a level's
+runner starts in, `lane_count / 2`), y metres up from the floor, z metres along the track. So a point
+at x = 0 is on a lane's centre at 3, 5 and 6 lanes alike; `CineStage.point()` / `to_track()` convert,
+and `lane_x()`, `wall_x()` and `lane_from_start()` give the street's geometry for scripts. Stage lanes are
+counted from the start lane too (a lane past the street's edge is left out).
+
+**The stage picks up the slot's look from the zone's data.** A stage def without a skin of its own takes
+the slot's (`CineStage.skin_for`): the zone's skin (`ZoneDef.skin`), and before a boss the fight's arena's
+(`BossDef.arena.skin`) if it has one. Its lanes default to the device's (`App.lane_count()`), so the street
+matches the level that follows. A `@zone` music cue plays the slot's track (`ZoneDef.music`, or before a
+boss `BossDef.music` if set); a track the music library doesn't list yet is skipped quietly and the music
+playing carries on, so a song the owner adds later under that name just plays (no music is generated for
+cinematics, GDD §11). Text on cards may name `{zone}`, `{zone_number}`, `{boss}` and `{title}`
+(translated, then filled in). So a later change of a zone's skin, music or name reaches its cinematics.
+
+**Cameras.** Keys are sampled with `CinePath`: `SMOOTH` keys make a Hermite spline timed by the keys (a
+Catmull-Rom whose tangents come from the neighbouring keys), with no jolt at any key; `LINEAR` keys ease
+with Tween's curves (`TRANS_SINE` + `EASE_IN_OUT` starts and ends at rest); a `CUT` holds, then jumps. A key
+that follows (or watches) an actor gives an offset from it: between two keys riding with the same actor
+the camera rides along, its offset moving through the keys; between a fixed key and a riding one it flies
+through where each key will be at its own time; the velocity carries on through every key either way.
+Straight up or down, the camera's up is the track's direction. `shake` follows the Screen shake setting.
+A camera flying over a street must keep out of what hangs over it: nothing does below about 10 m in any
+zone except ceilings (6 m up, their structure up to about 13 m), so keep under 9.5 m over open street and,
+over a ceiling or within a few metres of one, at least `camera_ceiling_clearance` (1 m) under its underside,
+as the run camera does (closer, the ceiling's end glow fills the screen); the tests check the flyovers so.
+
+**Actors.** The runner is the real player model (`PlayerAvatar`), driven with the same movement state as
+in play: its stride keeps pace with the ground it covers, it is in the air above the floor (with its jump
+poses), leans into sideways moves like a lane switch, and takes `slide`, `dash`, `stomp` and `dead` from its
+keys. A cyborg (`CyborgBody`) walks or idles by its speed, or takes `aim`, `run_away`, `cower` or `die`;
+its keys set its face, its aim (at another actor) and its charge glow (the red glow is its attack's
+warning in play, so show it only where an attack follows). An actor faces the way it moves, or a heading
+of its keys; it's in the scene from `enter` to `leave`. Actors are visual only: no collision, no gameplay.
+
+**Reduced flashing and comfort.** `flash` becomes a slow, faint glow with Reduced flashing
+(`CineOverlay.SOFT_FLASH_ALPHA`, `SOFT_FLASH_MIN_TIME`); nothing in the overlay blinks; the skins honour it
+as in play; `shake` is scaled by Screen shake (0 when it's off).
+
+**Writing a cinematic.** In data: a scene whose root is `CinematicSequencer` with `timeline` set to a
+`CineTimeline` resource (`tools/showcase/cinematic_sampler.tres` shows every kind of key and event). Or in
+a short script, which can use the stage's geometry:
+
+```gdscript
+extends CinematicSequencer   # the root of scenes/cinematics/<name>.tscn; the slot's CinematicDef.scene
+
+func _stage_def() -> CineStageDef:          # the set; no skin: the zone's (from its data)
+	var d := CineStageDef.new()
+	d.ceilings = PackedVector2Array([Vector2(120.0, 170.0)])
+	return d
+
+func _make_timeline() -> CineTimeline:      # `stage` is built by now
+	var t := CineTimeline.new()
+	t.duration = 8.0
+	var runner: CineActor = t.actor(&"runner")
+	runner.at(0.0, Vector3(0.0, 0.0, 0.0), &"run")
+	runner.at(8.0, Vector3(0.0, 0.0, tuning.run_speed * 8.0))  # LINEAR keys: a steady run
+	t.shot(0.0, Vector3(stage.wall_x(1) - 2.0, 3.0, 10.0), Vector3(0.0, 1.0, 0.0))
+	var ride: CineCameraKey = t.shot(8.0, Vector3(0.0, 4.2, -7.5), Vector3(0.0, 1.0, 14.0))
+	ride.follow = &"runner"                 # the run camera's view of the runner
+	ride.watch = &"runner"
+	t.music(0.0, CineEvent.ZONE_MUSIC, 1.5)
+	t.card(1.0, "{zone}", "ZONE {zone_number}", 3.0)
+	t.effect(0.0, CineEvent.FADE_IN, 0.8)
+	t.effect(7.6, CineEvent.FADE_OUT, 0.4)
+	return t
+
+func _on_cue(cue_name: StringName) -> void:  # a CUE event's moment (the `cue` signal fires too)
+	pass
+```
+
+Then set the slot's `CinematicDef.scene` to the scene. End on the run camera's view of the runner
+(`MovementTuning`'s camera numbers) or on black, since the next step opens on its own view at once.
+`tools/showcase/cinematic_review.tscn` plays any slot's cinematic on its own for renders (`--slot=<step
+id>`, `--sampler`, `--lanes=N`, `--reduced-flashing`, `--once`), printing each event with its frame.
+
+**The arrival flyover** (DESIGN-TBD, `docs/questions/f1.md`; `ArrivalFlyover`, a short script with its
+numbers in `data/cinematics/arrival_flyover.tres`): every zone's intro slot and the City's boss intro play
+it until the owner describes the story beats. It opens low in the street looking up at the zone's skyline
+and tilts down as the runner runs in beneath it, glides over the street behind the runner, and settles into
+the run camera's view as they run under one of the zone's ceilings; a card names the zone ("ZONE 1", "NEON
+CITY"; before a boss, the boss, as the level select does), the slot's music comes in, and it fades to black
+after 9.5 s, as the level (or the fight) opens on the same view. Gaps beside the runner's lane show the
+zone's floor pieces. It sets up in about 15-40 ms and costs about 0.3 ms a frame (headless), so it stays
+cheap on the web, where the demo plays the City's two.
+
 ## Economy and saving
 
 `Profile` (`scripts/app/profile.gd`) keeps earned and purchased credits apart (net worth = earned,
 unspent), item tiers and stock, equip toggles, records per difficulty tier, settings and stats.
 `SaveService` writes it to `user://profile.json` (with a backup). `Loadout` is what one run carries:
-owned, switched-on items; one charge of each breakable per attempt.
+owned, switched-on items; one charge of each breakable per attempt; and the free armor every run
+starts with (GDD §4), whatever the profile, settings or flavor. The shop (`ShopScreen`, the catalog's
+items) sells the permanent items tier by tier, among them the armor upgrade (GDD §8: four tiers; hits
+and waits in `GameRules`, prices in the catalog, both placeholders for R7), and the breakables (shield,
+grapple, revive) as stock.
+
+The save has a version (`Profile.VERSION`, now 2). `Profile.from_dict()` brings an older save up to
+date as it loads (`_migrate`): version 1's armor stock (armor was a breakable then) is paid back in
+earned credits at the 150 each it cost (`V1_ARMOR_PRICE`, the only price it ever had), the purchases
+leave `lifetime_spent`, and its old equip toggle goes, so an upgrade bought later starts switched on.
+A change to the save's format bumps the version and adds its step there, with a test.
 
 ## Platforms and build flavors
 
 `BuildFlavor` (`full_pc`, `full_mobile`, `web_demo`) comes from export feature tags (or
 `--flavor=` for testing). `Platform` (autoload) is the only way to reach ads, purchases,
 leaderboards, achievements, store links and cloud save; `StubBackend` serves the editor, tests and
-the web demo until the real plugins are chosen (risk test R3).
+the web demo until the real plugins are chosen (risk test R3). The store links are data
+(`data/platform/store_links.json`) and open through `Platform.open_store()`, which hands the URL to the
+backend's `open_url()`: a portal that restricts outbound links gets a backend of its own, and the stub
+records what it opened (`opened_urls`; tests switch `open_links` off so nothing leaves the game).
+
+**The web demo** (GDD §2; task E2) is the "Web (demo)" export preset: the `web_demo` feature tag, the
+Compatibility renderer (the web's only one), no thread support (so it needs no cross-origin isolation
+headers, as itch.io and the portals serve it), no GDExtension support, and a canvas that follows the
+window or a portal's frame (`html/canvas_resize_policy` adaptive). `tools/godot.sh web` exports it
+(README, The web demo).
+- *What it plays:* the zones marked `in_demo` (the Neon City and its boss); a step past them leads to the
+  "get the full game" screen (`App.in_demo_scope()`). No endless mode, and no ads, purchases or
+  leaderboards: the platform offers none, and no screen shows any.
+- *What it leaves out* (`tools/web/demo_filter.gd`, worked out from the data): the tests, the tools, the
+  test boss, and the music it never plays: every audio file in the music library's folders that no track
+  the demo plays uses, the files of the tracks it never plays wherever they are, and those tracks'
+  level-complete riffs. The tracks it plays are the menus' (`menu`), the City's (`city`, quick play's too)
+  and each demo zone's and its boss's (`DemoFilter.demo_tracks()`). `tools/web/update_filter.gd` writes
+  the preset's exclude filter from that, `tools/godot.sh web` runs it before every export, and
+  `test_web_demo` fails while the preset doesn't match the data. So when a track is replaced (the owner's
+  songs, GDD §11: the same file name, or a new file named in `data/audio/music_library.tres`), the filter
+  follows the library: a demo track's new file ships, the old file left in its folder doesn't, and another
+  zone's new file stays out.
+- *A build without some sounds:* `SfxLibrary.has_file()`; `PlayerSfx` readies only the sounds the build
+  has, and `MusicDirector.level_complete_sound()` falls back to the E riff when a zone's riff isn't in
+  the build. A sound asked for by name whose file is missing still warns.
+- *Checks:* `test_web_demo` (the preset, the filter from the data and with replaced tracks, everything the
+  demo's scenes, scripts and data reference kept by the filter and loading, the walk from the title to the
+  end screen with the sound library as the export has it, no ads, purchases or leaderboards on any screen,
+  the store links). `tools/web/check_pack.gd` checks an exported pack from the inside, run by the desktop
+  Godot from the pack's folder so `res://` is the pack alone: the demo's music and sounds load, no other
+  music is in it, and `tools/web/demo_walk.gd` walks it from the title to the end screen (the City's three
+  levels and the Floating Head, with the results and the shop between them, in god mode) with no error or
+  warning logged. `tools/web/browser_check.js` drives the release and debug exports in Chromium through
+  Playwright (README).
+- *In the browser:* `user://` is the page's storage (IndexedDB, under `/userfs/godot/app_userdata/Neon
+  Runner/`), written through after each save, so progress survives a reload. Browsers hold sound back until
+  the first click, tap or key: Godot creates its AudioContext at start (Chrome notes it's suspended) and
+  resumes it on the first input. A phone's browser is a mobile device (`DeviceProfile.is_mobile()`, from the
+  engine's `web_android` and `web_ios` tags): 3 lanes, the touch layout and hints. Held upright, the page
+  covers the game with "turn your phone sideways" (a style in the preset's `html/head_include`) and
+  `App._on_window_resized()` pauses a running level (both DESIGN-TBD, `docs/questions/e2.md`).
+- *Touch words:* `DeviceProfile.has_touch()` means a phone, a tablet or a real touch screen. The project lets
+  the mouse stand in for touch (`input_devices/pointing/emulate_touch_from_mouse`), which makes
+  `DisplayServer.is_touchscreen_available()` true on every desktop and in every desktop browser, so the
+  hints go by `has_touch()` and name the keys there.
 
 ## Tests
 
@@ -1048,20 +1394,27 @@ the minimum stays a faithful reading of the skin's real cost. `test_skin_budget`
 checks that check still fails a skin that really is expensive. `LayoutChecks` (`tests/helpers/layout_checks.gd`) holds the
 fairness checks for generated layouts (the generator suite runs them over many seeds, the campaign
 suite over every campaign level at 3, 5 and 6 lanes, the enemy suites over their own levels), among
-them `check_ceilings` (GDD §3: pads that can be stepped on, safe landing zones, and a floor route under
-every ceiling without its pad, found by `FloorRoute`, `tests/helpers/floor_route.gd`), and finds a
+them `check_ceilings` (GDD §3: pads that can be stepped on and under their ceiling, safe landing zones
+over each ceiling's lanes, a one-lane ceiling short, and a floor route under every ceiling without its
+pad, found by `FloorRoute`, `tests/helpers/floor_route.gd`), and finds a
 feature's pieces in a layout with the generator's own `LevelGenerator.feature_positions()`; a task
 that adds a new kind of piece extends it (and `FloorRoute`'s cells, if the piece is on the floor), or
 gives its rules script `positions()`. The generator suite also checks the recency curve's pick weights
 exactly (`pick_weights()`: each kind's share, the caps) and levels paced in bursts; the campaign suite
 checks each kind's share at spots all through every campaign level, The Hush and the darker lighting
 on every skin. `test_enemy_director` checks the turn-taking between big attacks
-with scripted test enemies (`tests/helpers/turn_dummy.gd`) and over simulated runs of campaign levels,
+with scripted test enemies (`tests/helpers/turn_dummy.gd`: the queue's order, a place kept through a gap
+in the asks and through the turn, give-ups and the grace), a real Octodog that another type's repeated
+attacks used to keep from its turn, and simulated runs of campaign levels,
 watched by `tools/measure/attack_watch.gd` (see Review tools). `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
 for framework tests, with `make_def()` for a BossDef from a list of phases; `test_bosses` runs fights
 in bare worlds and, with the test boss in the City's slot, through the App. `test_pickups` checks
 pickup placement against the rules as it writes them itself, over hand-built cases and generated
-tracks at 3, 5 and 6 lanes, and the armor rule end to end on the test boss. `test_floating_head`
+tracks at 3, 5 and 6 lanes, and the armor rule end to end on the test boss. `test_armor` covers the
+free armor and its upgrade (G3): the state's rules, its wait at any frame rate and not while paused,
+each tier's numbers alternating as GDD §8 says, a run's block, revive and pickups, the HUD, the shop
+line and texts, the save migration, and every kind of run through the App (the web demo's too).
+`test_floating_head`
 runs the Floating Head's fight in bare worlds at 3, 5 and 6 lanes with a runner who dodges each lock
 (and one who doesn't), and rechecks its bombs' fairness from the arena's layout;
 `test_floating_head_faceoff` plays its face-off with `FloatingHeadBot` (every laser warned and
@@ -1069,7 +1422,12 @@ escaped without god mode, the cyborg drop, a baited and a fallback tower pinning
 each attack's fairness from the real arena's layout; `test_floating_head_stomps` has the bot take each
 phase's stomp window at 3, 5 and 6 lanes without god mode, checks the ways up are physical, missed
 windows repeat without escalation, the damage and weapon cap, the armor pickups, the window's ceiling
-rules, and plays the whole fight from its entrance to the last stomp; `test_floating_head_defeat`
+rules, and plays the whole fight from its entrance to the last stomp; `test_floating_head_routes` (E1e,
+the owner's playtest) sweeps lane switches alongside the ramp (each boards it or bumps, never into it),
+boards it late in the fight, checks the wall marks and a single wall jump off them from either wall
+(at 5 and 6 lanes too), the ceiling from a pad in any lane, the ways' first-time hints and armor for a
+runner who brings none, and plays the campaign's boss step end to end at 3, 5 and 6 lanes with a death
+and a retry; `test_floating_head_defeat`
 checks its defeat (after the last stomp at 3, 5 and 6 lanes and by weapons in the air: the
 propaganda cut, the glitch, the fall, the wreck with room for a runner in every lane, the run through
 it without god mode, Reduced flashing, the same every attempt) and plays the whole fight through the
@@ -1080,10 +1438,23 @@ Resonator in full worlds on real physics (the warning always before the wave, a 
 5 and 6 lanes with its margin measured, walls and the ceiling safe, armor, shield and dash, turns with a
 `TurnDummy`, Reduced flashing), checks its rules over many seeds, and plays the real Golden 1-3 layouts
 at 3, 5 and 6 lanes, watched by `attack_watch.gd`: no wave meets the runner on a gap or a fence, and no
-big attacks overlap. `test_audio` checks
+big attacks overlap. `test_ceilings` covers narrow ceilings (B3) from the layout to the screen: the
+sections and collision boxes the track builds for each range at 3, 5 and 6 lanes, moves on a ceiling
+(within it, and blocked at its edges with the bump and the clank's event, on real physics), a pad
+holding the player to its lane, a one-lane ceiling ridden and dropped from, the camera kept under a
+ceiling and past its end, and every skin's ceilings (see Zone skins). `test_audio` checks
 the music files (seamless loops, lengths, tempos, size budgets), the Music autoload's fades, duck and
 death dip on its players' levels and the bus's low-pass (headless runs never start a player), and the
-run's music hooks through the App. The runner frees
+run's music hooks through the App. `test_cinematics` checks the cinematic toolkit: its paths (smooth,
+eased and cut moves, cameras riding with an actor), a timeline's `problems()`, a cinematic played to its end
+(events in order, `finished` once, actors on their paths, the camera riding along), `skip()` and the pause
+action and the Skip button, Reduced flashing, holding in the background, the sampler (a cinematic described
+in data), every zone's arrival flyover and the City's boss intro at 3, 5 and 6 lanes (the zone's skin from
+its data, the level's lanes, a camera that never flies into a ceiling or out of the street, a runner that
+never runs over a hole, ending in the run camera's view), and the App's flow through a built slot (the
+next step follows, skipping, the web demo). `test_web_demo` checks the web demo's preset, its export filter against
+the data and everything the demo references, and walks the demo from the title to its end screen (see
+Platforms and build flavors). The runner frees
 anything a suite leaves in the tree, gives suites a fresh, unsaved profile, reports a suite that fails
 to load, and ends a stuck run after 1200 s of real time.
 
@@ -1101,10 +1472,16 @@ hosts or aiming, and `lineup_far` at gameplay distance); `octodog_screech`,
 `drone_truck_showcase`, `bad_dream_showcase`, `resonator_showcase`: its model through its warning
 and pulse, or a scripted run where it pulses at a runner who jumps its waves), the Golden Zone's statue
 kit (`statue_showcase`: every pose, a turnaround, and a live statue rigged in its niche and swinging, as
-task C4 would build it), a boss (`floating_head_showcase`), the UI kit, the screens, a zone skin
+task C4 would build it), a boss (`floating_head_showcase`), the UI kit, the screens (`screens_showcase`;
+its `--screen=hud_armor [--tier=N]` takes the HUD's armor through its states: up, broken, its ring
+filling, back), a zone skin
 (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed screens and emblems a
 skin lists, or a scripted run with a ceiling ride and a wall run, in a level's darker lighting with
-`--darkness=X`), and comparison
+`--darkness=X`; `--narrow` makes three of its ceilings narrow, one lane in the middle, the two leftmost
+lanes and the rightmost lane, with shots riding each, of its far end from below and from beside it, and
+a run that tries moves past their edges; `--from=D` starts the run further on, `--reduced-flashing`
+turns Reduced flashing on), a cinematic (`cinematic_review`: any campaign slot's cinematic on its own, as
+the App plays it, or the toolkit's sampler), and comparison
 sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
 `CLAUDE.md`.
@@ -1112,12 +1489,27 @@ frames on the Compatibility renderer (the web and low-end Android path) with `--
 `tools/measure/big_attacks.gd` measures the big attacks (GDD §9, "Big attacks take turns") over
 simulated runs of the campaign's levels at 3, 5 and 6 lanes, with `GameRules.big_attacks_take_turns` on
 and off: a god-mode runner in the middle lane, stomping every host it passes, while the enemies play as
-in the game. It reports the time big attacks of different types overlap, how many of each kind came, and
-how long attacks waited for their turn (`godot --headless --fixed-fps 60 -s
-res://tools/measure/big_attacks.gd -- --levels=gangland/3 --lanes=3,5,6 --out=build/measure/x.json`; the
-whole campaign takes about ten minutes). `attack_watch.gd` does the watching from the enemies' own states
-and the live shots, never from the turn-taking code, and hashes each run's event log, so two builds (or
-the switch off and a build without the rule) can be compared run by run.
+in the game. It reports the time big attacks of different types overlap, how many of each kind came,
+how long attacks waited for their turn (from the first frame the director holds an enemy for another
+type's turn until its attack, through gaps of up to 3 s, and an Octodog's until it charges, however
+long it moves its charges on; the director answers each ask the same whatever its queue keeps, so two
+builds measure the same asks alike), and the enemies that never got a big attack in (Octodogs
+without a charge, Resonators without a pulse, drones without a barrage, hover trucks without a lurch
+or a cannon shot) (`godot --headless --fixed-fps 60 -s res://tools/measure/big_attacks.gd --
+--levels=gangland/3 --lanes=3,5,6 --out=build/measure/x.json`; the whole campaign on its own seeds takes
+about ten minutes; `--seeds=6` adds six other seeds a level, `--seeds=9007-9020` runs a range, and
+`--features=octodog` keeps the levels that use a feature). `attack_watch.gd` watches the attacks from the
+enemies' own states and the live shots, never from the turn-taking code (only the waits come from the
+director's answers), and hashes each run's event log, so two builds (or the switch off and a build
+without the rule) can be compared run by run.
+
+`tools/measure/stomp_routes.gd` measures how forgiving the Floating Head's ways onto its head are, in its
+fight on a plain street: the ramp's boarding window (the latest lane switch from beside it that still
+stomps, from each side), the stretch of jump points a single wall jump stomps from, getting onto the wall
+at the marks' start or just before the release line, and the ceiling from a pad in each lane
+(`godot --headless --fixed-fps 60 -s res://tools/measure/stomp_routes.gd -- --lanes=3,5,6
+--routes=ramp,wall,ceiling`; `--e1c` measures E1c's numbers, `--second-move` adds the in-air move; the
+default run takes a few minutes).
 
 `tools/measure/level_shape.gd` measures the campaign's shape: for each level at 3, 5 and 6 lanes, on its
 own seed and others, each feature's share of the pattern picks, the enemy, host and obstacle counts, the

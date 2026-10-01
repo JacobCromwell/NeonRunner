@@ -42,7 +42,9 @@ func run() -> void:
 func _loadout(items: Dictionary) -> Loadout:
 	var l := Loadout.new()
 	for k: String in items:
-		if k in ["armor", "shield", "grapple", "revive"]:
+		if k == "armor":
+			l.armor = true
+		elif k in ["shield", "grapple", "revive"]:
 			l.charges[StringName(k)] = items[k]
 		else:
 			l.tiers[StringName(k)] = items[k]
@@ -149,8 +151,9 @@ func _test_numbers() -> void:
 			"%d lanes: the band (%.2f m) and the visible wave (%.2f m) stop short of a wall runner's body (%.2f m)"
 			% [lanes, half, visual_end, wall_body])
 	var powerups := load("res://data/tuning/powerups.tres") as PowerupTuning
-	check(t.hover_ahead < powerups.weapon_range - 5.0, "it hovers within the weapon's reach (%.0f of %.0f m)"
-		% [t.hover_ahead, powerups.weapon_range])
+	var tier1_range: float = PowerupTuning.at_tier(powerups.weapon_range, 1)
+	check(t.hover_ahead < tier1_range - 5.0, "it hovers within tier 1's reach, the shortest (%.0f of %.0f m)"
+		% [t.hover_ahead, tier1_range])
 	var top: float = t.hover_height + ResonatorModel.TOP_Y * t.model_scale
 	var bottom: float = t.hover_height + ResonatorModel.BOTTOM_Y * t.model_scale
 	var halo: float = (ResonatorModel.HALO_RADII[-1] + ResonatorModel.HALO_WIDTH * 0.5) * t.model_scale
@@ -477,8 +480,9 @@ func _test_protection() -> void:
 
 # --- Weapons, no stomp ---------------------------------------------------------------------------------
 
-## Weapons: auto-fire targets it within the weapon's reach, 15 laser tier 1 shots bring it down, and a
-## wave still rolling fizzles out with it (its turn ends too). No stomp: it hovers out of reach ahead of
+## Weapons: auto-fire targets it within the weapon's reach; a direct hit's plain damage (this test
+## fires straight through take_damage, not auto-fire's own laser tier 1) takes 15 shots, and a wave
+## still rolling fizzles out with it (its turn ends too). No stomp: it hovers out of reach ahead of
 ## the player, even when they speed up, and has no body or top to land on.
 func _test_weapons_and_stomp() -> void:
 	var made: Array = await _world(3, 1, {"pulses": 2})
@@ -502,7 +506,8 @@ func _test_weapons_and_stomp() -> void:
 			ahead_ok = ahead_ok and res.track_distance() - w.player.distance > t.hover_ahead - 0.5 \
 				and res.global_position.y > tuning.jump_height + tuning.hurtbox_size.y
 	check(ahead_ok, "it keeps hover_ahead in front of the player, out of reach above a jump, even through a dash")
-	var targets: Array[Enemy] = w.director.targets_ahead(w.player.position + Vector3.UP, w.powerup_tuning.weapon_range)
+	var tier1_range: float = PowerupTuning.at_tier(w.powerup_tuning.weapon_range, 1)
+	var targets: Array[Enemy] = w.director.targets_ahead(w.player.position + Vector3.UP, tier1_range)
 	check(targets.has(r) and r.targetable(), "auto-fire can target it")
 	# Let a wave leave, then shoot it down with laser tier 1 shots.
 	await _until(func() -> bool: return _res(id) != null and _res(id).waves_on_their_way(), 8.0)

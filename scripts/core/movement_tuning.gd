@@ -117,6 +117,11 @@ extends Resource
 ## Camera height while the player is on the ceiling (the camera drops below and looks up).
 @export_range(0.5, 5.0, 0.1, "suffix:m") var camera_ceiling_height: float = 2.4
 @export_range(1.0, 30.0, 0.5) var camera_smoothing: float = 8.0
+## How far below a ceiling's underside the camera stays while a ceiling is over it or just beside it
+## (RunCamera.ceiling_limit). After a drop off a ceiling's far end the camera rises after the falling
+## player; without this it climbed into the ceiling before passing its end, and what's drawn there
+## filled the screen (the orange end band's glow, a flash and a glare).
+@export_range(0.2, 3.0, 0.05, "suffix:m") var camera_ceiling_clearance: float = 1.0
 
 @export_group("Touch")
 ## Swipe length needed, as a fraction of the screen's short side.

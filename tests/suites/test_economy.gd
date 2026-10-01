@@ -25,10 +25,10 @@ func _test_wallet() -> void:
 func _test_items_and_records() -> void:
 	var p := Profile.new()
 	p.set_tier(&"weapon", 2)
-	p.add_stock(&"armor", 2)
-	check(p.tier(&"weapon") == 2 and p.stock(&"armor") == 2, "tiers and stock")
-	check(p.use_stock(&"armor") and p.stock(&"armor") == 1, "using an item takes it out of stock")
-	check(not p.use_stock(&"shield"), "nothing to use")
+	p.add_stock(&"shield", 2)
+	check(p.tier(&"weapon") == 2 and p.stock(&"shield") == 2, "tiers and stock")
+	check(p.use_stock(&"shield") and p.stock(&"shield") == 1, "using an item takes it out of stock")
+	check(not p.use_stock(&"grapple"), "nothing to use")
 	check(p.is_equipped(&"weapon"), "owned items start switched on")
 	p.set_equipped(&"weapon", false)
 	check(not p.is_equipped(&"weapon"), "the equip toggle switches items off (GDD §8)")
@@ -90,18 +90,22 @@ func _test_catalog_and_loadout() -> void:
 	p.set_tier(&"weapon", 2)
 	p.set_tier(&"slow_time", 1)
 	p.set_tier(&"claws", 1)
-	p.add_stock(&"armor", 3)
+	p.add_stock(&"shield", 3)
 	p.add_stock(&"revive", 1)
 	p.set_equipped(&"claws", false)
 	var pc: Loadout = Loadout.from_profile(p, catalog, false)
 	check(pc.tier(&"weapon") == 2 and pc.tier(&"slow_time") == 1, "the loadout carries owned tiers")
 	check(pc.tier(&"claws") == 0, "switched-off items stay home")
-	check(pc.charge(&"armor") == 1, "one armor charge per attempt, spares stay in stock")
+	check(pc.charge(&"shield") == 1, "one shield charge per attempt, spares stay in stock")
 	check(pc.charge(&"revive") == 0, "revives are used from stock on the death screen, not carried")
+	check(pc.has_armor() and pc.armor and pc.tier(&"armor") == 0 and pc.charge(&"armor") == 0,
+		"every run carries the free armor, which is no charge (GDD §4)")
+	check(not Loadout.new().has_armor(), "a bare loadout (tests, tools) carries none")
 	var mob: Loadout = Loadout.from_profile(p, catalog, true)
-	check(mob.tier(&"slow_time") == 0, "no slow time on mobile")
+	check(mob.tier(&"slow_time") == 0 and mob.has_armor(), "no slow time on mobile; the free armor as everywhere")
 	var full: Loadout = Loadout.full(catalog)
-	check(full.tier(&"weapon") == 4 and full.charge(&"shield") == 1, "the full loadout has everything")
+	check(full.tier(&"weapon") == 4 and full.charge(&"shield") == 1 and full.tier(&"armor") == 4 and full.has_armor(),
+		"the full loadout has everything")
 
 
 func _test_app_shop() -> void:
@@ -118,15 +122,15 @@ func _test_app_shop() -> void:
 		check(App.buy(&"weapon"), "buys weapon tier %d" % (t + 1))
 	check(App.profile.tier(&"weapon") == 4 and App.next_price(weapon) == -1, "the weapon maxes out at tier 4")
 	check(not App.buy(&"weapon"), "can't buy past the last tier")
-	var armor: ShopItem = App.catalog.item(&"armor")
-	for i: int in armor.max_stock:
-		App.buy(&"armor")
-	check(App.profile.stock(&"armor") == armor.max_stock and not App.buy(&"armor"), "stock stops at the limit")
+	var shield: ShopItem = App.catalog.item(&"shield")
+	for i: int in shield.max_stock:
+		App.buy(&"shield")
+	check(App.profile.stock(&"shield") == shield.max_stock and not App.buy(&"shield"), "stock stops at the limit")
 	var spent: int = 100000 - App.profile.credits()
 	var expected: int = 0
 	for t: int in 4:
 		expected += weapon.price_of(t + 1, false)
-	expected += armor.price * armor.max_stock
+	expected += shield.price * shield.max_stock
 	check(spent == expected, "prices come from the catalog (%d spent, %d expected)" % [spent, expected])
 	App.set_equipped(&"weapon", false)
 	check(not App.make_loadout().has(&"weapon"), "the equip toggle reaches the next run's loadout")

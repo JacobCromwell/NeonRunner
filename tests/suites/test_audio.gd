@@ -22,7 +22,7 @@ const MUSIC_EXPORT_BUDGET_BYTES: int = 5 * 1024 * 1024
 const SOUNDS: Array[StringName] = [
 	&"ui_move", &"ui_select", &"ui_back", &"ui_buy", &"ui_error", &"ui_equip", &"ui_unlock", &"star", &"countdown", &"go",
 	&"credit_1", &"credit_5", &"credit_25", &"credit_100", &"bonus",
-	&"armor_break", &"shield_break", &"grapple", &"revive",
+	&"armor_break", &"armor_hit", &"armor_back", &"shield_break", &"grapple", &"revive",
 	&"dash", &"dash_ready", &"slow_time_on", &"slow_time_off", &"laser_fire", &"missile_fire", &"missile_explode",
 	&"enemy_hit", &"stomp",
 	&"enemy_death", &"cyborg_charge", &"cyborg_shot", &"truck_bang", &"truck_burst", &"truck_cannon_charge",

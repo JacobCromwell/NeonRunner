@@ -24,6 +24,8 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##                     a heavy stone thud and grit
 ##   pads_light        anti-grav pads lighting up (the third window's way up): a rising electric hum with
 ##                     a shimmer, in the pads' fifths
+##   wall_marks_light  the wall-jump marks lighting up along both walls (the second window's way up): an
+##                     electric zip running up and ahead, then a bright rising "go" figure in fifths
 ##   ceiling_lower     a ceiling section (a ship's underside) lowering in overhead: a descending engine
 ##                     drone and a hydraulic thump as it settles
 ##   head_weak_open    its weak points' covers swinging open for a stomp window: hydraulic hiss, the
@@ -84,6 +86,7 @@ func sounds() -> Dictionary:
 		"tower_crash": _tower_crash,
 		"ramp_slam": _ramp_slam,
 		"pads_light": _pads_light,
+		"wall_marks_light": _wall_marks_light,
 		"ceiling_lower": _ceiling_lower,
 		"head_weak_open": _head_weak_open,
 		"head_shriek": _head_shriek,
@@ -430,6 +433,29 @@ func _pads_light() -> PackedFloat32Array:
 		DSP.shape(zap, 0.002, 0.02)
 		DSP.mix(b, zap, 0.05 + k * 0.09, 0.35)
 	DSP.mix(b, _sparkle(0.6, rng), 0.25, 0.3)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## The wall-jump marks lighting up along both walls (the second stomp window's way up): an electric zip
+## sweeping up as the strips light ahead, then a bright rising "go" figure in fifths (the pads' family,
+## a different shape: pulses leaping up rather than a hum), and a shimmer.
+func _wall_marks_light() -> PackedFloat32Array:
+	var rng := _rng(419)
+	var d: float = 0.95
+	var b := DSP.buffer(d)
+	var zip := DSP.osc(0.3, func(u: float) -> float: return DSP.sweep(260.0, 1500.0, u), &"saw")
+	DSP.filter(zip, &"bandpass", 1100.0, 0.8)
+	DSP.shape(zip, 0.01, 0.12)
+	DSP.mix(b, zip, 0.0, 0.5)
+	var notes: Array[float] = [330.0, 495.0, 660.0, 990.0]
+	for k: int in notes.size():
+		var hz: float = notes[k]
+		var beep := Inst.pulse(0.13, hz, 0.3)
+		DSP.mix(beep, Inst.pulse(0.13, hz * 1.5, 0.5), 0.0, 0.25)
+		DSP.shape(beep, 0.003, 0.05)
+		DSP.mix(b, beep, 0.22 + k * 0.08, 0.5 + 0.08 * k)
+	DSP.mix(b, _sparkle(0.5, rng), 0.4, 0.3)
 	DSP.crush(b, 9, 18000.0)
 	return b
 

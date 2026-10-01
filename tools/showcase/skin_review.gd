@@ -28,10 +28,22 @@ extends Node3D
 ##                   each kind (cult_emblems()), close up. Each shot's number, frame and subject are
 ##                   printed.
 ##                   --shot=N shows only that one.
+##   --narrow        narrow ceilings (task B3; GDD §3): the first ceiling covers every lane, the second
+##                   one lane in the middle, the third the two leftmost lanes, the fourth the rightmost
+##                   lane alone (one-lane ceilings are short, as in the game). The run takes each pad in
+##                   its lane and tries moves past each ceiling's edge (blocked: ceiling_blocked) and
+##                   within it. Shot view adds, for each narrow ceiling, the view riding it (the chase
+##                   camera under it looking up), its far end from below, and the ceiling from the
+##                   floor beside it.
+##   --from=D        the run starts at track distance D (to render only a stretch, such as a drop off
+##                   a far end)
+##   --reduced-flashing  Settings > Reduced flashing on (steady warnings instead of flicker)
 ## The level's ceilings: for the Marketplace skin, one of each kind (building bridge, overpass,
 ## ship, floating ad), for the Corporate skin one of each of its kinds (glass skyway, tower
 ## bridging the street, viaduct, gunship), and for the Dead Zone two charred bridges and two dead
-## buildings, found by asking the skin which kind a spot gets.
+## buildings, found by asking the skin which kind a spot gets (with --narrow, a narrow ceiling can't be
+## a Corporate tower across the street, so that one goes first, and the Dead Zone's narrow ones are its
+## slabs and fallen spans, whatever the spot).
 
 const TUNING_PATH: String = "res://data/tuning/movement.tres"
 const LENGTH: float = 900.0
@@ -40,6 +52,9 @@ const FAR_GAP: float = 830.0
 const FAR_GAP_AHEAD: Array[float] = [150.0, 100.0, 60.0, 30.0]
 ## Where the ceilings start and how long they are (moved a little to get each Marketplace kind).
 const HULLS: Array[Vector2] = [Vector2(196.0, 60.0), Vector2(372.0, 44.0), Vector2(476.0, 40.0), Vector2(576.0, 48.0)]
+## With --narrow: each ceiling's length (the one-lane ones short, as LevelConfig.one_lane_ceiling_seconds
+## makes them).
+const NARROW_LENGTHS: Array[float] = [60.0, 32.0, 44.0, 32.0]
 
 var tuning: MovementTuning
 var skin: ZoneSkin
@@ -54,11 +69,16 @@ var _cam_look_y: float = 1.0
 var _shots: Array = []
 var _hold: int = 3
 var _frame: int = 0
+var _narrow: bool = false
 
 
 func _ready() -> void:
 	tuning = load(TUNING_PATH) as MovementTuning
 	lanes = int(_opt("lanes", "5"))
+	_narrow = _flag("narrow")
+	if _flag("reduced-flashing"):
+		Settings.flashing_reduced = true
+		RenderingServer.global_shader_parameter_set(&"reduced_flashing", 1.0)
 	var skin_name: String = _opt("skin", "city")
 	var path: String = skin_name if skin_name.begins_with("res://") else "res://data/skins/%s_skin.tres" % skin_name
 	skin = load(path) as ZoneSkin
@@ -96,7 +116,13 @@ func _ready() -> void:
 	player.movement_event.connect(func(kind: StringName) -> void:
 		print("%5.2f s  %6.1f m  %s" % [player.elapsed, player.distance, kind]))
 	_pending = _script()
-	track.update(0.0, 0.0)
+	var from: float = float(_opt("from", "0"))
+	if from > 0.0:
+		player.distance = from
+		while not _pending.is_empty() and float(_pending[0][0]) < from:
+			_pending.pop_front()
+		print("the run starts at %.0f m" % from)
+	track.update(player.distance, 0.0)
 	_cam_focus = Vector3(player.position.x, tuning.camera_height, 0.0)
 	_update_camera(1.0)
 
@@ -106,6 +132,35 @@ static func _opt(opt_name: String, default: String) -> String:
 		if arg.begins_with("--%s=" % opt_name):
 			return arg.get_slice("=", 1)
 	return default
+
+
+static func _flag(opt_name: String) -> bool:
+	return OS.get_cmdline_user_args().has("--%s" % opt_name)
+
+
+## The lanes ceiling `i` covers: every lane, or with --narrow the review's narrow ranges.
+func _hull_lanes(i: int) -> Vector2i:
+	if not _narrow:
+		return Vector2i(0, lanes - 1)
+	match i:
+		1:
+			return Vector2i(lanes / 2, lanes / 2)
+		2:
+			return Vector2i(0, 1)
+		3:
+			return Vector2i(lanes - 1, lanes - 1)
+	return Vector2i(0, lanes - 1)
+
+
+## The lane of ceiling `i`'s pad: the middle lane, or the ceiling's lane nearest it.
+func _pad_lane(i: int) -> int:
+	var r: Vector2i = _hull_lanes(i)
+	return clampi(lanes / 2, r.x, r.y)
+
+
+## Ceiling `i`'s length.
+func _hull_length(i: int) -> float:
+	return NARROW_LENGTHS[i] if _narrow else HULLS[i].y
 
 
 func _layout() -> LevelLayout:
@@ -127,12 +182,13 @@ func _layout() -> LevelLayout:
 	out.signs.append({"side": 1, "start": 150.0, "end": 160.0, "bottom": 2.8, "top": 5.5})
 	out.signs.append({"side": -1, "start": 166.0, "end": 174.0, "bottom": 0.0, "top": 1.4})
 	out.speed_pads.append({"lane": mini(mid + 1, lanes - 1), "at": 178.0})
-	# Ceilings, each with a pad at its start in the middle lane; floor gaps under the first one.
+	# Ceilings, each with a pad at its start in the middle lane (with --narrow, in the ceiling's lane
+	# nearest it); floor gaps under the first one.
 	var starts: Array[float] = _hull_starts()
 	for i: int in HULLS.size():
 		var s: float = starts[i]
-		out.hulls.append({"start": s, "end": s + HULLS[i].y})
-		out.pads.append({"lane": mid, "at": s + 3.0})
+		out.hulls.append(LevelLayout.make_hull(s, s + _hull_length(i), _hull_lanes(i), lanes))
+		out.pads.append({"lane": _pad_lane(i), "at": s + 3.0})
 	out.gaps.append({"lane": maxi(mid - 1, 0), "start": starts[0] + 20.0, "end": starts[0] + 26.0})
 	out.gaps.append({"lane": mid, "start": starts[0] + 32.0, "end": starts[0] + 38.0})
 	# A ramp onto the right wall between the first two ceilings.
@@ -169,11 +225,17 @@ func _hull_starts() -> Array[float]:
 	elif corporate != null:
 		wanted = [CorporateCeilings.Kind.SKYWAY, CorporateCeilings.Kind.GATE, CorporateCeilings.Kind.VIADUCT,
 			CorporateCeilings.Kind.SHIP]
+		if _narrow:
+			wanted = [CorporateCeilings.Kind.GATE, CorporateCeilings.Kind.SKYWAY, CorporateCeilings.Kind.SHIP,
+				CorporateCeilings.Kind.VIADUCT]
 		kind_of = corporate.ceilings().kind_of
 	elif dead != null:
 		# Across every lane the Dead Zone has two kinds (its slabs and fallen spans cover fewer lanes).
 		wanted = [DeadCeilings.Kind.BRIDGE, DeadCeilings.Kind.BUILDING, DeadCeilings.Kind.BRIDGE,
 			DeadCeilings.Kind.BUILDING]
+		if _narrow:
+			# A narrow ceiling's kind comes from its lanes: a fallen span in mid-street, a slab at an edge.
+			wanted = [DeadCeilings.Kind.BRIDGE, DeadCeilings.Kind.SPAN, DeadCeilings.Kind.SLAB, DeadCeilings.Kind.SLAB]
 		kind_of = dead.ceilings().kind_of
 	else:
 		return out
@@ -182,9 +244,9 @@ func _hull_starts() -> Array[float]:
 	for i: int in HULLS.size():
 		for step: int in 400:
 			var s: float = HULLS[i].x + step * 0.25
-			var center := Vector3(0.0, tuning.ceiling_height + TrackBuilder.HULL_THICKNESS * 0.5, -(s + HULLS[i].y * 0.5))
-			var size := Vector3(geo.half_width() * 2.0, TrackBuilder.HULL_THICKNESS, HULLS[i].y)
-			if int(kind_of.call(center, size, wall_x)) == wanted[i]:
+			var box := CeilingSection.make(geo, tuning.ceiling_height, TrackBuilder.HULL_THICKNESS, s, s + _hull_length(i),
+				_hull_lanes(i))
+			if int(kind_of.call(box.center, box.size, wall_x)) == wanted[i]:
 				out[i] = s
 				break
 	return out
@@ -192,6 +254,8 @@ func _hull_starts() -> Array[float]:
 
 ## [distance, action]: fired once when the player reaches that distance.
 func _script() -> Array:
+	if _narrow:
+		return _narrow_script()
 	var starts: Array[float] = _hull_starts()
 	var out: Array = [
 		[82.0, &"jump"],
@@ -209,6 +273,50 @@ func _script() -> Array:
 	for i: int in range(1, starts.size()):
 		out.append([starts[i] + 14.0, &"move_left" if i % 2 == 0 else &"move_right"])
 		out.append([starts[i] + 26.0, &"move_right" if i % 2 == 0 else &"move_left"])
+	out.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+	return out
+
+
+## With --narrow: the first ceiling and the ramp as usual, then each narrow ceiling: over to its pad's
+## lane before it, on it a move past its edge (blocked, with the clank) and, where it covers two lanes,
+## a move within it, and back to the middle lane once down.
+func _narrow_script() -> Array:
+	var starts: Array[float] = _hull_starts()
+	var mid: int = lanes / 2
+	var out: Array = [
+		[82.0, &"jump"],
+		[127.5, &"jump"],
+		[starts[0] + 22.0, &"move_right"],
+		[starts[0] + 40.0, &"move_left"],
+	]
+	var to_outer: int = lanes - 1 - mid
+	for i: int in to_outer + 1:
+		out.append([284.0 + 4.0 * i, &"move_right"])
+	for i: int in to_outer:
+		out.append([340.0 + 6.0 * i, &"move_left"])
+	for i: int in range(1, starts.size()):
+		var s: float = starts[i]
+		var r: Vector2i = _hull_lanes(i)
+		var pad: int = _pad_lane(i)
+		# Over to the pad's lane well before its run-up.
+		for k: int in absi(pad - mid):
+			out.append([s - 40.0 + 3.0 * k, &"move_left" if pad < mid else &"move_right"])
+		# On the ceiling: a move past an edge that has a lane beyond it (blocked), then, on a ceiling over
+		# two lanes, over to its other lane and past that edge too where it can.
+		var out_dir: int = -1 if pad > 0 else 1
+		if pad == r.y and pad < lanes - 1:
+			out_dir = 1
+		out.append([s + 10.0, &"move_left" if out_dir < 0 else &"move_right"])
+		if r.y > r.x:
+			var inside: StringName = &"move_left" if pad == r.y else &"move_right"
+			out.append([s + 18.0, inside])
+			out.append([s + 26.0, inside])
+		var down: int = pad
+		if r.y > r.x:
+			down = r.x if pad == r.y else r.y
+		var land: float = s + _hull_length(i) + 14.0
+		for k: int in absi(down - mid):
+			out.append([land + 3.0 * k, &"move_right" if down < mid else &"move_left"])
 	out.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
 	return out
 
@@ -240,9 +348,11 @@ func _update_camera(delta: float) -> void:
 	if player.surface == Player.Surface.CEILING:
 		cam_y = tuning.camera_ceiling_height
 		look_y = tuning.ceiling_height - 1.2
+	var limit: float = RunCamera.ceiling_limit(get_world_3d().direct_space_state,
+		Vector3(_cam_focus.x, _cam_focus.y, p.z + tuning.camera_distance), tuning)
 	var k: float = 1.0 - exp(-tuning.camera_smoothing * delta)
 	_cam_focus.x = lerpf(_cam_focus.x, p.x * tuning.camera_follow_x, k)
-	_cam_focus.y = lerpf(_cam_focus.y, cam_y, k)
+	_cam_focus.y = minf(lerpf(_cam_focus.y, minf(cam_y, limit), k), limit)
 	_cam_look_y = lerpf(_cam_look_y, look_y, k)
 	camera.position = Vector3(_cam_focus.x, _cam_focus.y, p.z + tuning.camera_distance)
 	camera.look_at(Vector3(_cam_focus.x, _cam_look_y, p.z - tuning.camera_look_ahead))
@@ -270,6 +380,26 @@ func _shot_list() -> Array:
 	var starts: Array[float] = _hull_starts()
 	for s: float in starts:
 		out.append([s - 24.0, Vector3(0.0, tuning.camera_height, -(s - 18.0)), Vector3(0.0, 5.5, -(s + 2.0))])
+	if _narrow:
+		# Each narrow ceiling ridden (the chase camera under the rider, looking up), its far end from
+		# below as the rider comes up to it, and the ceiling from the floor beside it.
+		for i: int in range(1, starts.size()):
+			var pad_x: float = geo.lane_x(_pad_lane(i))
+			var x: float = pad_x * tuning.camera_follow_x
+			var s: float = starts[i]
+			var e: float = s + _hull_length(i)
+			out.append([s, Vector3(x, tuning.camera_ceiling_height, -(s + 4.0)), Vector3(x, h - 1.2, -(s + 18.0)),
+				"riding narrow ceiling %d (lanes %s)" % [i, _hull_lanes(i)]])
+			out.append([s, Vector3(x, tuning.camera_ceiling_height, -(e - 12.0)), Vector3(x, h - 0.6, -(e + 6.0)),
+				"narrow ceiling %d's far end from below" % i])
+			var beside: float = geo.lane_x(0) if _pad_lane(i) >= lanes / 2 else geo.lane_x(lanes - 1)
+			out.append([s - 30.0, Vector3(beside * 0.8, tuning.camera_height, -(s - 10.0)), Vector3(pad_x, 5.2, -(s + 14.0)),
+				"narrow ceiling %d from the floor beside it" % i])
+			var r: Vector2i = _hull_lanes(i)
+			var mid_x: float = (geo.lane_x(r.x) + geo.lane_x(r.y)) * 0.5
+			var across: float = -signf(mid_x) if absf(mid_x) > 0.1 else 1.0
+			out.append([s - 30.0, Vector3(across * (geo.wall_x() - 1.0), 3.6, -(s - 8.0)), Vector3(mid_x, h + 0.6, -(s + 6.0)),
+				"narrow ceiling %d, three-quarter view of its near end" % i])
 	# 13-16: a gap coming up, from where the game camera would be with the player in the middle lane.
 	for ahead: float in FAR_GAP_AHEAD:
 		var p: float = FAR_GAP - ahead

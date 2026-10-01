@@ -6,18 +6,24 @@ extends Node3D
 ## over the distance run this frame so nothing is skipped at speed. DamageRules resolves hits.
 ## Input arrives only as named actions (keyboard via the InputMap, touch via TouchInput).
 ## Every contact goes through receive_hit(), which asks DamageRules what happens; the player's
-## protection (armor, shield, grapple, claws, the invulnerability window, the dash) lives here.
+## protection (the armor, whose rules are DamageRules.Armor's; shield, grapple, claws, the
+## invulnerability window, the dash) lives here.
 
 signal died(cause: String)
 ## Something happened that feedback (sound, HUD) may react to: jump, land, slide, wall_enter,
-## wall_jump, wall_exit, wall_blocked, ramp, pad, hull_end, died, stomp, lane_blocked, speed_pad,
-## grapple, armor_break, shield_break, revive, dash, dash_end. The two blocked moves (lane_blocked,
-## wall_blocked) come with a bump: out toward the blocked side and back.
+## wall_jump, wall_exit, wall_blocked, ramp, pad, hull_end, died, stomp, lane_blocked,
+## ceiling_blocked, speed_pad, grapple, armor_hit (a blocked hit the armor survives), armor_break,
+## armor_back (broken armor came back), shield_break, revive, dash, dash_end. The three
+## blocked moves (lane_blocked, wall_blocked, and ceiling_blocked: a move past the edge of a ceiling
+## over fewer lanes) come with a bump: out toward the blocked side and back.
 signal movement_event(kind: StringName)
-## A protective item was used up: &"armor", &"shield" or &"grapple".
+## A protective item was used up: &"armor" (it broke: its last hit went; it comes back), &"shield" or
+## &"grapple".
 signal item_used(item: StringName)
 ## A protective item was picked up during the run (gain_item): &"armor", &"shield" or &"grapple".
 signal item_gained(item: StringName)
+## The armor changed: a hit blocked, broken, back, or restored (a pickup or a revive). See armor_state.
+signal armor_changed
 ## The player's contact defeated an enemy (cause: &"stomp", &"claws" or &"dash").
 signal enemy_contact(enemy: Enemy, cause: StringName)
 signal revived
@@ -38,7 +44,15 @@ var god_mode: bool = false
 var running: bool = false
 
 # Protection, set from the run's loadout (GDD §8). Breakable items are single charges.
-var armor: int = 0
+## The armor (GDD §4, §8): up or coming back; its rules are DamageRules.Armor's.
+var armor_state := DamageRules.Armor.new()
+## Armor hits left right now (0 while it's broken and coming back, or in a run without armor). Setting
+## it (tests, review tools) puts that many hits up at once, or takes the armor away with 0.
+var armor: int:
+	get:
+		return armor_state.hits
+	set(value):
+		armor_state.set_hits(value)
 var shield: int = 0
 var grapples: int = 0
 var claws: bool = false
@@ -175,9 +189,10 @@ func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> v
 	_apply_transform(1.0)
 
 
-## Protection for this run (GDD §8): breakable items are single charges that break when used.
-func apply_loadout(p_armor: int, p_shield: int, p_grapples: int, p_claws: bool, p_wall_time_multiplier: float = 1.0) -> void:
-	armor = p_armor
+## Protection for this run (GDD §8): the armor (DamageRules.Armor.create), and the breakable items as
+## single charges that break when used.
+func apply_loadout(p_armor: DamageRules.Armor, p_shield: int, p_grapples: int, p_claws: bool, p_wall_time_multiplier: float = 1.0) -> void:
+	armor_state = p_armor if p_armor != null else DamageRules.Armor.new()
 	shield = p_shield
 	grapples = p_grapples
 	claws = p_claws
@@ -185,15 +200,20 @@ func apply_loadout(p_armor: int, p_shield: int, p_grapples: int, p_claws: bool, 
 	_avatar.set_equipment({"armor": armor > 0, "shield": shield > 0, "claws": claws})
 
 
-## One more charge of a breakable item picked up during the run (GDD §10: a boss fight's pickups,
-## PickupField): &"armor", &"shield" or &"grapple", up to `cap` charges of it. True if it was added.
+## A pickup taken during the run (GDD §10: a boss fight's pickups, PickupField): one more charge of a
+## breakable item (&"shield" or &"grapple"), up to `cap` charges of it, or the armor back whole
+## (DamageRules.Armor.take_pickup; its own cap). True if it changed anything.
 func gain_item(item: StringName, cap: int = 1) -> bool:
+	if item == &"armor":
+		if not armor_state.take_pickup():
+			return false
+		_armor_changed()
+		item_gained.emit(item)
+		return true
 	var have: int = charges_of(item)
 	if have < 0 or have >= cap:
 		return false
 	match item:
-		&"armor":
-			armor += 1
 		&"shield":
 			shield += 1
 		_:
@@ -203,7 +223,8 @@ func gain_item(item: StringName, cap: int = 1) -> bool:
 	return true
 
 
-## Charges left of a breakable item (&"armor", &"shield" or &"grapple"), or -1 for anything else.
+## Charges left of a breakable item (&"shield" or &"grapple") or the armor's hits left (&"armor"), or
+## -1 for anything else.
 func charges_of(item: StringName) -> int:
 	match item:
 		&"armor":
@@ -222,7 +243,7 @@ func is_invulnerable() -> bool:
 ## What protects the player right now, for DamageRules.
 func defense() -> DamageRules.Defense:
 	var d := DamageRules.Defense.new()
-	d.armor = armor > 0
+	d.armor = armor_state.is_up()
 	d.shield = shield > 0
 	d.invulnerable = invulnerable_left > 0.0
 	d.claws = claws
@@ -240,11 +261,12 @@ func receive_hit(hazard: Hazard, stomping: bool = false) -> DamageRules.Outcome:
 	var outcome: DamageRules.Outcome = DamageRules.resolve(hazard, d, stomping)
 	match outcome:
 		DamageRules.Outcome.BLOCKED_ARMOR:
-			armor -= 1
 			invulnerable_left = rules.hit_invulnerability
-			_avatar.set_equipment({"armor": armor > 0})
-			item_used.emit(&"armor")
-			_event(&"armor_break")
+			var broke: bool = armor_state.block()
+			_armor_changed()
+			if broke:
+				item_used.emit(&"armor")
+			_event(&"armor_break" if broke else &"armor_hit")
 		DamageRules.Outcome.BLOCKED_SHIELD:
 			shield -= 1
 			invulnerable_left = rules.hit_invulnerability
@@ -275,6 +297,9 @@ func revive() -> void:
 	alive = true
 	_show_dead(false)
 	invulnerable_left = rules.revive_invulnerability
+	# DESIGN-TBD (docs/questions/g3.md): the armor comes back whole with a revive.
+	if armor_state.restore():
+		_armor_changed()
 	if _death_cause == "fell" or in_pit:
 		in_pit = false
 		h = maxf(h, -tuning.pit_depth)
@@ -341,6 +366,11 @@ func _physics_process(delta: float) -> void:
 	_coyote -= delta
 	_slide_left -= delta
 	invulnerable_left = maxf(invulnerable_left - delta, 0.0)
+	# Broken armor comes back on the run's clock (GDD §4): it waits while the game is paused or the
+	# player is down.
+	if armor_state.tick(delta):
+		_armor_changed()
+		_event(&"armor_back")
 	if dashing:
 		_dash_left -= delta
 		if _dash_left <= 0.0:
@@ -399,7 +429,12 @@ func _on_move(dir: int) -> void:
 		Surface.CEILING:
 			# DESIGN-TBD: no way from the ceiling onto a wall; the move is ignored at the edge.
 			var target: int = clampi(lane + dir, 0, geo.lane_count - 1)
-			if target != lane:
+			if target == lane:
+				return
+			if _ceiling_ends_before(target):
+				# GDD §3: a ceiling over fewer lanes keeps the player within its lanes.
+				_bump_ceiling_edge(dir)
+			else:
 				_start_switch(target)
 
 
@@ -582,6 +617,51 @@ func _surface_y(height: float) -> float:
 	return height if surface != Surface.CEILING else tuning.ceiling_height - height
 
 
+## GDD §3 (decided September 26, 2026): ceilings don't have to cover every lane, and on one the player
+## switches lanes only within its lanes. True if a ceiling is over the player's lane here but not over
+## `target`, so the move would leave it. With no ceiling over the player's lane at all (a pad with
+## nothing above it), nothing holds them in.
+func _ceiling_ends_before(target: int) -> bool:
+	return _ceiling_over(lane) and not _ceiling_over(target)
+
+
+## True if a ceiling section (anything on the hull layer: the track's ceilings, a boss's) is over the
+## middle of lane `lane_index` at the player's distance, at the ceiling's height. The ceiling's own
+## collision box says where it is, so this follows its lanes exactly.
+func _ceiling_over(lane_index: int) -> bool:
+	var x: float = geo.lane_x(lane_index)
+	var z: float = TrackGeometry.world_z(distance)
+	_ray.collision_mask = TrackBuilder.LAYER_HULL
+	_ray.from = Vector3(x, tuning.ceiling_height - 0.6, z)
+	_ray.to = Vector3(x, tuning.ceiling_height + 0.3, z)
+	return not get_world_3d().direct_space_state.intersect_ray(_ray).is_empty()
+
+
+## A move toward a lane the ceiling doesn't cover (GDD §3): the clank and a bump out toward that side
+## and back, like a lane switch into a solid side (the ceiling_blocked event plays the lane bump's
+## clank), so the player sees why they didn't move. The lane doesn't change, and the bump stops short
+## of the ceiling's edge (the body never passes the last lane's edge), so the player stays on it.
+## DESIGN-TBD (docs/questions/b3.md): how a blocked move on a narrow ceiling looks and sounds.
+func _bump_ceiling_edge(dir: int) -> void:
+	var room: float = minf(rules.lane_bump_fraction * geo.lane_width, (geo.lane_width - tuning.visual_size.x) * 0.5)
+	_start_bump(dir, maxf(room - absf(_x - geo.lane_x(lane)), 0.0), tuning.lane_switch_time, false)
+	_event(&"ceiling_blocked")
+
+
+## An anti-grav pad lands the player on its ceiling in its own lane (GDD §3: a pad sits under its
+## ceiling). A lane switch still under way from the floor toward a lane that ceiling doesn't cover is
+## blocked like any move on it (_bump_ceiling_edge), back into the pad's lane.
+func _hold_to_pad_lane(pad: Area3D) -> void:
+	if _switch_t >= 1.0 or _bumping:
+		return
+	var pad_lane: int = geo.lane_at(pad.global_position.x)
+	if lane == pad_lane or _ceiling_over(lane) or not _ceiling_over(pad_lane):
+		return
+	var dir: int = signi(lane - pad_lane)
+	lane = pad_lane
+	_bump_ceiling_edge(dir)
+
+
 # --- Walls -----------------------------------------------------------------
 
 ## Enters the wall on `side` (a move past the outer lane, or a ramp: `from_ramp`, `ramp` its trigger's
@@ -729,6 +809,7 @@ func _check_triggers(motion: float) -> void:
 			&"pad":
 				_flip(Surface.CEILING, tuning.antigrav_launch_velocity)
 				_event(&"pad")
+				_hold_to_pad_lane(area)
 				return
 			&"ramp":
 				if _try_enter_wall(int(area.get_meta(&"side")), true, area.get_instance_id()):
@@ -794,6 +875,12 @@ func _update_flash() -> void:
 ## shield, weapon_tier, magnet. RunWorld sets it from the loadout; broken items update it.
 func set_equipment_look(eq: Dictionary) -> void:
 	_avatar.set_equipment(eq)
+
+
+## The armor changed: the model wears it while it's up (and sheds it as it breaks), and listeners hear.
+func _armor_changed() -> void:
+	_avatar.set_equipment({"armor": armor_state.is_up()})
+	armor_changed.emit()
 
 
 ## World position the shoulder weapon fires from (the model's emitter).

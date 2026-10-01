@@ -78,6 +78,7 @@ func _ready() -> void:
 				Platform.configure_for(BuildFlavor.current())
 	profile = SaveService.load_profile(save_path)
 	Settings.apply(profile)
+	get_tree().root.size_changed.connect(_on_window_resized)
 
 
 func _notification(what: int) -> void:
@@ -89,6 +90,21 @@ func _notification(what: int) -> void:
 			save()
 		NOTIFICATION_WM_CLOSE_REQUEST:
 			save()
+
+
+## True when the web demo runs on a touch screen held upright. The game is laid out for landscape
+## everywhere (GDD §2), so the page then covers it with "turn your phone sideways" (the web preset's
+## head include). DESIGN-TBD (docs/questions/e2.md): what the web demo does on a phone held upright.
+func web_upright() -> bool:
+	var window: Vector2i = get_tree().root.size
+	return OS.has_feature("web") and DeviceProfile.has_touch() and window.y > window.x
+
+
+## A running level pauses while the web demo's phone is held upright, so nothing happens unseen; the
+## pause menu waits when it's turned back.
+func _on_window_resized() -> void:
+	if web_upright() and run != null and run.state == LevelRun.State.RUNNING and run.context.mode != RunContext.Mode.QUICK:
+		pause_game()
 
 
 ## Main calls this once its layers exist. Starts wherever the command line says.
@@ -541,8 +557,12 @@ func _end_run() -> void:
 
 ## A breakable item broke during a run: it leaves the stock at once (GDD §8), so quitting can't
 ## save it. An item a boss fight granted, or one picked up during the fight, was the fight's, not the
-## player's (Loadout.costs_stock).
+## player's (Loadout.costs_stock). The armor is no stock (GDD §8: a permanent upgrade to the free
+## armor, which comes back), so its breaks cost nothing.
 func _on_item_used(item: StringName) -> void:
+	var shop_item: ShopItem = catalog.item(item)
+	if shop_item == null or shop_item.kind != ShopItem.Kind.BREAKABLE:
+		return
 	if run != null and run.context.loadout != null and not run.context.loadout.costs_stock(item):
 		return
 	profile.use_stock(item)
@@ -732,6 +752,8 @@ func _play_boss(s: CampaignStep, difficulty_tier: int) -> void:
 	start_boss(s, difficulty_tier)
 
 
+## A cinematic step: its scene under the world root (it takes its zone and slot from the step), skippable
+## (skip_cinematic), then on to the next step; or its placeholder card until built.
 func _play_cinematic(s: CampaignStep) -> void:
 	_end_run()
 	if s.cinematic == null or not s.cinematic.is_built():
@@ -747,11 +769,25 @@ func _play_cinematic(s: CampaignStep) -> void:
 	_boss_node = node
 	main.world_root.add_child(node)
 	var c := node as Cinematic
+	c.skip_requested.connect(skip_cinematic)
 	c.finished.connect(func() -> void:
 		profile.mark_seen("cinematic/" + s.id)
 		complete_step(s)
 		advance_from(s), CONNECT_ONE_SHOT)
-	c.play(s.cinematic)
+	c.play(s.cinematic, s)
+
+
+## The cinematic playing (a built cinematic slot), or null.
+func playing_cinematic() -> Cinematic:
+	return _boss_node as Cinematic if _boss_node != null and is_instance_valid(_boss_node) else null
+
+
+## Skips the cinematic playing, if any: the player asked (the pause action, or its skip button). It ends
+## at once and the campaign moves on, as when it plays out.
+func skip_cinematic() -> void:
+	var c: Cinematic = playing_cinematic()
+	if c != null:
+		c.skip()
 
 
 # --- Helpers ----------------------------------------------------------------------------

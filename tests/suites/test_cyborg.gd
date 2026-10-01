@@ -40,7 +40,9 @@ func _spawn(w: RunWorld, at: float, lane: int, params: Dictionary, seed_value: i
 func _loadout(items: Dictionary) -> Loadout:
 	var l := Loadout.new()
 	for k: String in items:
-		if k in ["armor", "shield", "grapple"]:
+		if k == "armor":
+			l.armor = true
+		elif k in ["shield", "grapple"]:
 			l.charges[StringName(k)] = items[k]
 		else:
 			l.tiers[StringName(k)] = items[k]

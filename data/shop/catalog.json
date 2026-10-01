@@ -48,9 +48,16 @@
 			]
 		},
 		{
-			"id": "armor", "kind": "breakable", "icon": "armor",
-			"name": "Armor", "price": 150, "max_stock": 5,
-			"description": "Blocks one enemy attack or electrical hazard. Doesn't stop solid hits or falls."
+			"id": "armor", "kind": "permanent", "icon": "armor",
+			"name": "Armor",
+			"_note": "GDD §4, §8: every run starts with the free armor; these tiers upgrade it, alternating between one more hit and a shorter wait. Hits and waits are in data/tuning/game_rules.tres ({hits}, {seconds}). DESIGN-TBD: prices (R7 balances them).",
+			"description": "Free every run. Takes {hits} from attacks or electricity (not crashes or falls), back {seconds} s after it breaks.",
+			"tiers": [
+				{ "name": "Armor I", "price": 800, "description": "{hits} before it breaks, back {seconds} s after." },
+				{ "name": "Armor II", "price": 1700, "description": "{hits} before it breaks, back {seconds} s after." },
+				{ "name": "Armor III", "price": 3400, "description": "{hits} before it breaks, back {seconds} s after." },
+				{ "name": "Armor IV", "price": 6000, "description": "{hits} before it breaks, back {seconds} s after." }
+			]
 		},
 		{
 			"id": "shield", "kind": "breakable", "icon": "shield",

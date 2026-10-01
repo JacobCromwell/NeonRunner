@@ -18,7 +18,7 @@ Paste this into the main build session:
 | Tier | Model and effort | Use for |
 |---|---|---|
 | **T1** | Opus 5.5, **max** effort | Level generator fairness, runtime track changes, boss fights, anything where a subtle bug makes the game unfair |
-| **T2** | Opus 5.5, **max** effort (raised from high by the owner, September 26, 2026) | New enemies, zone skins (art built in code needs taste), UI features, tools that need judgment |
+| **T2** | Opus 5.5, **max** effort (raised from high by the owner, September 26, 2026) for core, fairness-critical and boss work; **Sonnet 5, high** effort for zone and doodad art, data tuning and well-specified tasks (owner, September 30, 2026, to save tokens) | New enemies, zone skins (art built in code needs taste), UI features, tools that need judgment |
 | **T3** | Sonnet 5, **high** effort | Well-specified, self-contained work: small tools, process docs, option sheets |
 | **T4** | Haiku 4.5 | Pure data entry (numbers in `.tres`/`.json` files), renames, doc touch-ups |
 
@@ -290,7 +290,7 @@ Added September 26, 2026. The owner reviewed every build placeholder (`docs/OPEN
 | R1 | **Ramps' fading speed boost and the blocked-wall bump** (§3). **Core** (player, generator). | B2 | S–M | T2 |
 | R2 | **Small rule changes:** quitting keeps 20% (§4), hosts immune to all weapon damage (§9.7), no screeches in the Neon City (§9.5) | – | S | T3 |
 | R3 | **Big attacks of different enemy types take turns** (§9), behind a data switch | – | M | T1 |
-| R4 | **Endless mode** (§6). **Core** (track builder, run world). | B5 | M–L | T1 |
+| R4 | **Endless mode** (§6). **Core** (track builder, run world). **Deferred** by the owner (September 30, 2026) until the campaign is done. | B5 | M–L | T1 |
 | R5 | **Dead Zone 2's remix** (§5), **the newest features get the most picks**, and **Buzz Overdrive in the Golden Zone** (§9.9). **Core** (generator, level data). | R1 | M | T1 |
 | R6 | **Take the `DESIGN-TBD` markers off approved placeholders** (GDD §12) | a quiet moment | M | T3 |
 | R7 | **Balancing pass** over the 15 levels and the economy | the owner's playtest | M | T2 |
@@ -319,6 +319,23 @@ Added September 26, 2026. The owner reviewed every build placeholder (`docs/OPEN
 **R6: approved placeholders.** Remove the `DESIGN-TBD` markers of every item approved as is. Items listed under "tune after playtesting" or "later design rounds" keep theirs. Run it when few tasks are in flight, or in batches that skip files other agents are changing.
 
 **R7: balancing pass.** After the owner's playtest. The owner's early playtest felt **not very challenging**, so start from a harder baseline: the difficulty curve (P2 8), enemy numbers and the economy (the "tune after playtesting" list).
+
+### G. The owner's playtest (September 30, 2026)
+
+The owner played every zone and the Floating Head. The feedback is in GDD §3 ("Pace and busier levels"), §4 (free armor), §8 (armor as an upgrade; laser tier 1) and §10 (the Floating Head). **The campaign comes first:** endless mode (R4) waits.
+
+| ID | Task | Needs | Size | Tier |
+|---|---|---|---|---|
+| E1e | **Floating Head fixes:** a forgiving ramp boarding, a missing route after the first stomp (the fight couldn't be won), armor pickups for a player who starts without armor | – | M | T1 |
+| G1 | **Pace and busier levels:** run speed about 21 m/s in the City rising to about 25 m/s in the Golden Zone, enemies and attacks sped up to match, more gaps, obstacles and enemies. **Core** (generator, level data, tuning). | – | L | T1 |
+| G2 | **Speed effects and spectacle:** the camera widening at speed, speed lines, camera shake, sparks, a brief freeze on kills, all honouring Reduced flashing | – | M | T2 (Sonnet) |
+| G3 | **Free armor** in every level and boss fight, back 30 s after it breaks; the shop's armor becomes an upgrade whose tiers alternate between an extra hit and a shorter wait. **Core** (damage rules), with the shop, save and HUD. | – | M–L | T1 |
+| G4 | **Laser tier 1:** a shorter range, and two more tier-1 shots for every enemy but the screech (data) | – | S | T3 |
+| G5 | **Zone doodads, the mechanism:** doodads standing in lanes that push the player into a neighbouring lane; placed by the generator so a push never lands on a gap or hazard. **Core** (generator, track builder, player). | G1 | M–L | T1 |
+| G6 | **Zone doodads, the art:** each zone's doodads (City: pillars, small buildings, tiny market stalls; Gangland: burned-out cars, broken-down shops; Marketplace: plants, casino machines; the others in their zone's look) | G5 | L | T2 (Sonnet) |
+
+- **Order:** E1e, G1, G3 and G4 first (G1 and G3 are core but touch different files: G1 the generator and level data, G3 the damage rules). G2 when a slot frees. G5 after G1 (both in the generator), then G6. The core lane's B4, B5 and the rest follow G5.
+- **R7** (the balancing pass) keeps the economy: after G3, since armor as an upgrade changes the shop.
 
 ### E. Bosses and the web demo
 

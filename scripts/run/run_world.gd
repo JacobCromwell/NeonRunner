@@ -10,8 +10,10 @@ extends Node3D
 ## created as a child and given setup(world).
 
 const POWERUPS_SCRIPT: String = "res://scripts/powerups/powerup_controller.gd"
-## Player movement events that play a differently named sound.
-const EVENT_SOUNDS: Dictionary = {&"lane_blocked": &"wall_blocked", &"speed_pad": &"ramp"}
+## Player movement events that play a differently named sound. Every blocked move (a solid side, a
+## ceiling's edge) plays the blocked wall entry's clank.
+const EVENT_SOUNDS: Dictionary = {&"lane_blocked": &"wall_blocked", &"ceiling_blocked": &"wall_blocked",
+	&"speed_pad": &"ramp"}
 
 var config: LevelConfig
 var layout: LevelLayout
@@ -59,7 +61,8 @@ func build(p_config: LevelConfig, p_layout: LevelLayout, p_tuning: MovementTunin
 	player = _add(Player.new(), "Player") as Player
 	player.rules = rules
 	player.setup(tuning, geo, layout.lane_count / 2)
-	player.apply_loadout(loadout.charge(&"armor"), loadout.charge(&"shield"), loadout.charge(&"grapple"),
+	player.apply_loadout(DamageRules.Armor.create(rules, loadout.tier(&"armor"), loadout.has_armor()),
+		loadout.charge(&"shield"), loadout.charge(&"grapple"),
 		loadout.tier(&"claws") > 0,
 		powerup_tuning.claws_wall_time_multiplier if loadout.tier(&"claws") > 0 else 1.0)
 	player.set_equipment_look({"weapon_tier": loadout.tier(&"weapon"), "magnet": loadout.tier(&"magnet") > 0})
@@ -68,6 +71,7 @@ func build(p_config: LevelConfig, p_layout: LevelLayout, p_tuning: MovementTunin
 	credits = _add(CreditField.new(), "Credits") as CreditField
 	pickups = _add(PickupField.new(), "Pickups") as PickupField
 	effects = _add(RunEffects.new(), "Effects") as RunEffects
+	effects.setup(self)  # G2: the shared impact spectacle (RunEffects, Speed effects).
 	score = _add(ScoreKeeper.new(), "Score") as ScoreKeeper
 	sounds = _add(PlayerSfx.new(), "Sounds") as PlayerSfx
 	if p_sfx != null:

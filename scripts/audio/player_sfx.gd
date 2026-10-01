@@ -6,8 +6,12 @@ extends Node
 var _players: Dictionary = {}
 
 
+## Readies a player for every sound the library lists and this build has (the web demo leaves out
+## sounds it never plays; asking for one of those by name still warns).
 func setup(library: SfxLibrary) -> void:
 	for sound: String in library.names():
+		if not library.has_file(StringName(sound)):
+			continue
 		var stream: AudioStream = library.stream(sound)
 		if stream == null:
 			continue

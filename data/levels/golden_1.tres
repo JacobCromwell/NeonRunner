@@ -14,3 +14,4 @@ guarantee_features = true
 feature_starts = Dictionary[String, float]({
 "resonator": 0.1
 })
+narrow_ceiling_share = 0.5
