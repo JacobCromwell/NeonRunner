@@ -180,7 +180,8 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
     lane it aims at when the runner arrives; one hitbox, its stomp part, so from above it's a stomp and
     any other touch robs; after a theft it makes off ahead and up (`Hazard.contacted`). Quick play's
     `--thief` sends one after another (`StandInThief.start_review`, loaded by path from `LevelRun`), its
-    numbers in F6.
+    numbers in F6, and starts the runner with a purse (`review_purse`, 400) so the first theft has
+    something to take.
   - *For C5* (the Tithe Collector): extend `ThiefTuning`; set `steals_share` on the collector's
     hitboxes and `jackpot_credits` on it; fly off after a theft (`Hazard.contacted` with `ROBBED`); for
     its vacuum, take each credit off the track (`CreditField` needs a small hook for it: hide an idle
