@@ -44,7 +44,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 |---|---|
 | `--quick` | Quick play: the prototype level, restarting on death, with the debug keys and HUD |
 | `--seed=N --lanes=N --difficulty=X` | Quick play with that seed, lane count (3, 5 or 6) or difficulty (0–1) |
-| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `barnacle_turret` (with `ceilings`), `resonator`), or `floor_cutter` (a grey-box stand-in that cuts a lane's floor into a gap during play, for review until the Buzz Overdrive). The full list is in `LevelConfig` |
+| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `barnacle_turret` (with `ceilings`), `resonator`, `buzz_overdrive`), or `floor_cutter` (a grey-box stand-in that cuts a lane's floor into a gap during play, for review). The full list is in `LevelConfig` |
 | `--god` | Hits don't kill (falls still do) |
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
@@ -106,8 +106,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   and a level's newest things get the most of its picks, taken from older things of their kind (enemies from
   enemies, obstacles from obstacles), so no level gets easier; enemies whose rules keep only so many (hosts,
   hover trucks, drones, Octodogs, Resonators) and the rare vent screech aren't boosted (the campaign's recency
-  curve, `data/tuning/feature_recency.tres`). Wall fences, the Buzz Overdrive, the Tithe Collector and the
-  Gilded Sentinels aren't built yet: their levels already list them, and they appear once their code exists.
+  curve, `data/tuning/feature_recency.tres`). Wall fences, the Tithe Collector and the Gilded Sentinels
+  aren't built yet: their levels already list them, and they appear once their code exists.
   Level names are placeholders, except the Golden Palace.
 - **Movement:** floor lanes, side-wall runs and wall jumps (a sign blocking the wall bumps you back with a
   clank), anti-grav pads onto the ceiling, ramps (higher onto the wall, with a speed boost that fades like
@@ -116,8 +116,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   back with the clank), and a one-lane ceiling is short.
 - **Obstacles:** gaps, signs, and electric fences (full-height or gapped, always-on or pulsing), some with a
   generator that switches them off. Floors that turn into gaps during play: after a warning, a lane's floor
-  is cut away from ahead of you back past you, its edges glowing the gap orange (the mechanism for the Buzz
-  Overdrive; in quick play a grey-box stand-in, `--features=floor_cutter`).
+  is cut away from ahead of you back past you, its edges glowing the gap orange (the Buzz Overdrive's cuts;
+  in quick play also a grey-box stand-in, `--features=floor_cutter`).
 - **Enemies:**
   - cyborgs, with the panic variant and hosts
   - window cyborgs
@@ -135,6 +135,11 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   - the Resonator (from Golden 1): a golden broadcast spire hovering far ahead. When its halos line up
     and its three-note chime plays, a red wave rolls along the floor across every lane: jump it, or be
     on a wall or the ceiling. Shoot it down or wait until it leaves (in quick play, `--features=resonator`)
+  - the Buzz Overdrive (from Corporate 1): a buzzsaw tank parked in its lane far ahead. It rolls ahead of
+    you, then revs (the spin-up, its eyes flaring, a red line over its lane) and charges back down its lane,
+    cutting the floor into a gap behind it: leave its lane. The armor or shield blocks it and the floor holds
+    a second; the missile tiers can usually shoot it before it charges, which saves the floor; the dash
+    smashes it (in quick play, `--features=buzz_overdrive`)
 - **Bosses:** a framework for runner-style boss fights (GDD §10): the fight plays in the normal run on
   an arena track that keeps going for as long as it lasts, with the boss's health bar and phase
   markers on the HUD, weak points to stomp and weapon chip damage, a checkpoint for the final fight,
@@ -239,7 +244,8 @@ OFL-licensed; licenses are in `assets/LICENSES.md`.
 
 The scenes in `tools/showcase/` show one part of the game up close for visual review (the runner in every pose
 and power-up look, and a scripted run on any zone's skin; ramp launches and blocked wall entries; each enemy
-family, the Barnacle Turret's looks and a ride past it, a floor cut in any zone's look, the Floating Head, the Sleep Taker (its lure and defeat, `--scenario=lure`, and its readability
+family, the Barnacle Turret's looks and a ride past it, a floor cut in any zone's look, the Buzz Overdrive's
+model and an encounter with it, the Floating Head, the Sleep Taker (its lure and defeat, `--scenario=lure`, and its readability
 in the dark, `--scenario=measure`), the UI kit, every screen, a zone skin's fixed review track, the cult's feed,
 the Golden Zone's statues, any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
 lists its options. For example, a zone's arrival flyover rendered to frames on the web / low-end renderer:
@@ -326,7 +332,8 @@ On a debug build, the options go into the page's engine settings: in `exports/we
   the floor gone exactly behind the cutter, a runner in the lane falling as into any gap, leaving in time
   from every lane, wall runners and ceiling riders untouched, the floor holding a second after a block, a
   kill stopping the cut, the same at 30 and 60 frames a second, cuts added during a boss fight, and every
-  zone's look.
+  zone's look. The Buzz Overdrive's encounter the same way at every zone's speed, and the shots each weapon
+  tier needs to stop it in time.
 - **Movement:** scenarios on real physics, among them a ramp's boost against a speed pad's, a ramp's wall run
   and its credits against the generator's prediction, the bump of a blocked wall entry, and moves on a
   ceiling over fewer lanes (blocked at its edges, a pad holding you to its lane, the camera kept under the

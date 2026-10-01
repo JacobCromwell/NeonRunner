@@ -401,9 +401,10 @@ the player's distance like the cut, so it does the same on every attempt and at 
   runs on `run_past` metres past them, off the screen, gone (retired only then: its cut runs to its
   start). Its distances follow the pace (the charge's from `charge_distance()`), its seconds don't.
 - **Its warning.** The rev: the spin-up (`buzz_rev`, as long as Corporate 1's rev), its eyes flaring and a
-  red line over the lane it's about to cut, from the cut's start to its blade (the Octodog's lunge-line
-  red; it widens over the rev and pulses, only widening with Reduced flashing). Sparks fly from the blade
-  as it cuts (none with Reduced flashing).
+  red line over the lane it's about to cut, from just behind the player to its blade (then, as it
+  charges, the stretch it still has to cut; the Octodog's lunge-line red, widening over the rev and
+  pulsing, only widening with Reduced flashing). Sparks fly from the blade as it cuts (none with Reduced
+  flashing).
 - **Contact and kills.** Its blade is an `attack` hitbox, narrow and centred on its lane (0.7 m wide, 2.4 m
   tall: a jump doesn't clear it), so wall and ceiling riders are never touched; no other part hurts. The
   armor and the shield block it, and then `FloorCut.hold_under` holds the floor under the player for
@@ -2077,6 +2078,18 @@ Reduced flashing); and that the stand-in stays out of the campaign. `test_genera
 difficulties and lane counts, under narrow ceilings and in busy levels with every built feature
 (`LayoutChecks.check_cuts`), checks each of GDD §9.9's limits by hand and `CutPlacement`'s clearing, and
 shows a level whose rules plan no cut is the same data as one without them.
+`test_buzz_overdrive` checks the Buzz Overdrive (C2; GDD §9.9): its numbers (health 20 everywhere, a rev
+a little shorter level by level, its warning and charge in seconds at every zone's speed), its look
+(every variant within an enemy's budget, only hazard colours glowing), its plan, every campaign level
+that lists it at 3, 5 and 6 lanes (each tank with its cut, the same every build, Corporate 1's
+introduction soon after its start; it prints the counts) and quick play with every built feature;
+then on real physics at 3, 5 and 6 lanes and every zone's speed: the warning (line and sound) before
+the charge and only its own lane cut, a runner who leaves at the warning never touched, one who stays
+hit, wall and ceiling riders beside it safe, a block holding the floor for about a second (staying falls,
+a lane switch escapes), kills while it rolls, revs and charges (the floor saved, the cut stopped), the
+shots each weapon tier needs and when it stops it (laser tier 1 never before it meets the runner, the
+missile tiers before it charges), the claws doing nothing, the dash smashing it, no stomp, the same
+encounter on every attempt and at 30 and 60 Hz, and its rev and charge as a big attack.
 `test_web_demo` checks the web demo's preset, its export filter against
 the data and everything the demo references, and walks the demo from the title to its end screen (see
 Platforms and build flavors). The runner frees
@@ -2104,7 +2117,10 @@ hosts or aiming, and `lineup_far` at gameplay distance); `octodog_screech`,
 `drone_truck_showcase`, `bad_dream_showcase`, `resonator_showcase`: its model through its warning
 and pulse, or a scripted run where it pulses at a runner who jumps its waves; `barnacle_turret_showcase`:
 both looks at rest and charging, and a scripted run under a ceiling with turrets or riding it past one,
-through the run camera or a close one, on any zone's skin), the Golden Zone's statue
+through the run camera or a close one, on any zone's skin; `buzz_overdrive_showcase`: its model turning
+and revving, or a scripted run through one encounter on any zone's skin, lane count and speed, through
+the run camera, a high one or a low one beside its lane, with `--stay`, `--kill=D` and
+`--reduced-flashing` as for the floor cuts), the Golden Zone's statue
 kit (`statue_showcase`: every pose, a turnaround, and a live statue rigged in its niche and swinging, as
 task C4 would build it), the bosses (`floating_head_showcase`, `sleep_taker_showcase`), the UI kit, the screens (`screens_showcase`;
 its `--screen=hud_armor [--tier=N]` takes the HUD's armor through its states: up, broken, its ring
