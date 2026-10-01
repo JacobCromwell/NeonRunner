@@ -898,25 +898,25 @@ and keeps to:
 **Floor cuts' looks** (B4; GDD §9.9: the floor a cut takes "becomes a gap ... The cut edges glow the
 usual gap-edge orange"). The track draws a cut lane's floor itself, in slices of the skin's own
 `floor_segment` it hides and shortens as the cut runs (The generator, Floor cuts on the track), so the
-hook `floor_cut(parent, cut)` draws only the hole, from a `FloorCutSection` (`scripts/world/
-floor_cut_section.gd`: the lane, its floor's edges, the stretch, the wall faces) in four kinds of part
-the cut then moves: `add_static` (the inside over the whole stretch, below the floor, never moved),
-`add_span` (the orange lips along the neighbouring lanes' edges, built over the whole stretch and scaled
-to what's cut), `add_front` (the lip on the whole floor's far edge, moved with the front) and `add_far`
-(the far side: the lip on the floor beyond, a strip along its face, a halo). It must read as a hole at
-a glance like any gap: orange edges right on the collision edge, a dark inside, nothing else glowing,
-nothing flickering. `ZoneSkin.standard_floor_cut(parent, cut, solid, glow, style)` builds all of it from a
-style (the edge and inside colours, the inside's darkening pattern, depth, lip sizes and glows, a dark
-line beside the lips, the inside's walls and ribs); the default hook uses it with the skin's
-`gap_edge_color` and `gap_inside_color`. The zones where the Buzz Overdrive appears draw their own floor's
-cut: Corporate's maglev a carriage roof sliced open down to its frame (`CorporateTrains.cut`), its plaza
-the deck split over the lower level (`CorporatePlaza.cut`), the Dead Zone's street split with broken
-plates hanging into the void (`DeadStreet.cut`), the Golden Zone's walkway cut over the canal
-(`GoldenWalkways.cut`) and the Golden Palace's marble floor broken into the well
-(`GoldenPalaceFloor.cut`). `test_floor_cuts` builds every skin in `data/skins/` (and the grey box and the
-plain `ZoneSkin`) at 3 and 5 lanes, in an outer and a middle lane, and checks the orange edges on the
-collision edge, a dark inside, nothing else glowing, and the build cost against the same chunks without
-a cut; review a new look with `floor_cut_review` (Review tools) on both renderers.
+hook `floor_cut(parent, cut)` draws only the hole, from a `FloorCutSection`
+(`scripts/world/floor_cut_section.gd`: the lane, its floor's edges, the stretch, the wall faces) in four
+kinds of part the cut then moves: `add_static` (the inside over the whole stretch, below the floor,
+never moved), `add_span` (the orange lips along the neighbouring lanes' edges, built over the whole
+stretch and scaled to what's cut), `add_front` (the lip on the whole floor's far edge, moved with the
+front) and `add_far` (the far side: the lip on the floor beyond, a strip along its face, a halo). It
+must read as a hole at a glance like any gap: orange edges right on the collision edge, a dark inside,
+nothing else glowing, nothing flickering. `ZoneSkin.standard_floor_cut(parent, cut, solid, glow, style)`
+builds all of it from a style (the edge and inside colours, the inside's darkening pattern, depth, lip
+sizes and glows, a dark line beside the lips, the inside's walls and ribs); the default hook uses it
+with the skin's `gap_edge_color` and `gap_inside_color`. The zones where the Buzz Overdrive appears draw
+their own floor's cut: Corporate's maglev a carriage roof sliced open down to its frame
+(`CorporateTrains.cut`), its plaza the deck split over the lower level (`CorporatePlaza.cut`), the Dead
+Zone's street split with broken plates hanging into the void (`DeadStreet.cut`), the Golden Zone's
+walkway cut over the canal (`GoldenWalkways.cut`) and the Golden Palace's marble floor broken into the
+well (`GoldenPalaceFloor.cut`). `test_floor_cuts` builds every skin in `data/skins/` (and the grey box
+and the plain `ZoneSkin`) at 3 and 5 lanes, in an outer and a middle lane, and checks the orange edges
+on the collision edge, a dark inside, nothing else glowing, and the build cost against the same chunks
+without a cut; review a new look with `floor_cut_review` (Review tools) on both renderers.
 
 **Ceilings from their lanes** (B3). `TrackBuilder` (and `BossProps.ceiling`) describe each ceiling as a
 `CeilingSection` (`scripts/world/ceiling_section.gd`): its span along the track, the lanes it covers
