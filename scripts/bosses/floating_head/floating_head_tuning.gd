@@ -244,8 +244,11 @@ extends Resource
 ## coming down with their feet within GameRules.stomp_tolerance under its top stomps it. Generous: the
 ## red dome is 1.7 m across. E1e (the owner's playtest) made it lower and deeper (it was 0.55 m and
 ## 3 m), so a wall jump lands on it over a longer stretch of the wall (tools/measure/stomp_routes.gd).
+## E1f made it deeper still (4.6 m at 18 m/s, stretched by the run's pace; it was 4 m): E1e's wall jump a
+## metre late from the tower's wall had less than a physics frame to spare, so at the City's 21 m/s it
+## missed whenever the frames fell badly against the ship; now it stomps with a frame to spare.
 @export_range(1.0, 2.4, 0.05, "suffix:m") var stomp_width: float = 2.0
-@export_range(1.0, 6.0, 0.1, "suffix:m") var stomp_depth: float = 4.0
+@export_range(1.0, 6.0, 0.1, "suffix:m") var stomp_depth: float = 4.6
 @export_range(0.2, 1.2, 0.05, "suffix:m") var stomp_top: float = 0.35
 ## DESIGN-TBD (docs/questions/e1e.md; the owner's playtest): a wall jump lands in the outer lane, and a
 ## drop off the third window's ceiling in the lane it was ridden in; at 5 and 6 lanes the outer lanes
