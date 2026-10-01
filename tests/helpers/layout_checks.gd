@@ -13,8 +13,8 @@ extends RefCounted
 ## - check_rules: the enemy rules still hold when many features share a level: drones get 10 s before
 ##   their first pad and then pads 8–10 s apart (GDD §9.6), a Bad Dream's chase has pads at most
 ##   10 s apart and keeps off Octodog runs (GDD §9.7), Octodog runs stay off pads and ceiling
-##   landings, cyborgs keep their margin from floor obstacles, and every fence generator powers a
-##   fence.
+##   landings, cyborgs keep their margin from floor obstacles, every fence generator powers a
+##   fence, and Barnacle Turrets keep their limits (check_turrets, GDD §9.8).
 ## Each check goes through `suite.check()`, so failures are reported by the suite that called.
 ## Every check runs at the level's own run speed (level_tuning: a campaign level's is its zone's), with
 ## the margins in metres stretched by its pace, as the generator builds it (GDD §3: a faster zone keeps
@@ -245,6 +245,77 @@ static func check_rules(suite: TestSuite, layout: LevelLayout, config: LevelConf
 			"generator":
 				suite.check(not FenceGenerator.fences_in_reach(layout, geo, float(e["at"]), int(e["lane"]), gt.emp_radius).is_empty(),
 					"a fence generator powers a fence (at %.0f) %s" % [e["at"], tag])
+	check_turrets(suite, layout, config, speed, tag)
+
+
+## Barnacle Turrets (GDD §9.8; barnacle_turret_rules.gd), at run speed `speed`: only in a level with the
+## feature and never before its start; each under the ceiling its params name, over a lane that ceiling
+## covers but no pad's, never on a one-lane ceiling, at most 2 per ceiling and those spaced apart, past
+## the ceiling's pads and before its end by the tuning's times, off every credit on the ceiling in its
+## lane, and never using the floor.
+static func check_turrets(suite: TestSuite, layout: LevelLayout, config: LevelConfig, speed: float, tag: String) -> void:
+	var t := EnemyDirector.tuning_for("barnacle_turret") as BarnacleTurretTuning
+	var per_ceiling: Dictionary = {}
+	for e: Dictionary in layout.enemies:
+		if String(e["type"]) != "barnacle_turret":
+			continue
+		var at: float = e["at"]
+		var lane: int = e["lane"]
+		var where: String = "(at %.0f, lane %d) %s" % [at, lane, tag]
+		suite.check(config.has_feature("barnacle_turret"), "a Barnacle Turret only in a level with the feature " + where)
+		suite.check(at >= config.feature_start("barnacle_turret") * layout.length - 0.01,
+			"no Barnacle Turret before the feature's start " + where)
+		suite.check(not LevelGenerator.enemy_uses_floor(e), "a Barnacle Turret never uses the floor " + where)
+		var params: Dictionary = e.get("params", {})
+		var h: Dictionary = {}
+		for hull: Dictionary in layout.hulls:
+			if absf(float(hull["start"]) - float(params.get("hull_start", -INF))) < 0.01:
+				h = hull
+		suite.check(not h.is_empty() and absf(float(h["end"]) - float(params.get("hull_end", INF))) < 0.01,
+			"a Barnacle Turret's params name its ceiling " + where)
+		if h.is_empty() or t == null:
+			continue
+		var lanes: Vector2i = layout.hull_lanes(h)
+		suite.check(at >= float(h["start"]) and at <= float(h["end"]) and layout.hull_covers(h, lane),
+			"a Barnacle Turret hangs under its ceiling, over a lane it covers " + where)
+		suite.check(int(params.get("first_lane", -1)) == lanes.x and int(params.get("last_lane", -1)) == lanes.y,
+			"a Barnacle Turret's params give its ceiling's lanes " + where)
+		suite.check(layout.hull_width(h) >= 2, "never a Barnacle Turret on a one-lane ceiling " + where)
+		var last_pad: float = -INF
+		var after: float = t.after_pad_seconds
+		for p: Dictionary in layout.pads:
+			if float(p["at"]) >= float(h["start"]) and float(p["at"]) <= float(h["end"]):
+				last_pad = maxf(last_pad, float(p["at"]))
+				var pad_lane: int = p["lane"]
+				suite.check(pad_lane != lane, "a Barnacle Turret never hangs over a pad's lane " + where)
+				# In the only lane beside a pad's, the rider's only lane to dodge into: more room.
+				var others: bool = (pad_lane - 1 >= lanes.x and pad_lane - 1 != lane) or (pad_lane + 1 <= lanes.y and pad_lane + 1 != lane)
+				if absi(pad_lane - lane) == 1 and not others:
+					after = maxf(after, t.tight_after_pad_seconds)
+		suite.check(at >= last_pad + after * speed - 0.01
+			and at <= float(h["end"]) - t.before_end_seconds * speed + 0.01,
+			"a Barnacle Turret stands past its ceiling's pads (%.1f s) and before its end %s" % [after, where])
+		for c: Dictionary in layout.credits:
+			if String(c["surface"]) == "ceiling" and int(c["lane"]) == lane:
+				suite.check(absf(float(c["at"]) - at) >= t.credit_margin - 0.01,
+					"a Barnacle Turret keeps off the ceiling's credits in its lane (credit at %.1f) %s" % [c["at"], where])
+		var key: String = "%.2f" % float(h["start"])
+		if not per_ceiling.has(key):
+			per_ceiling[key] = {"ats": [], "free": 0}
+			var pad_lanes: Array[int] = []
+			for p: Dictionary in layout.pads:
+				if float(p["at"]) >= float(h["start"]) and float(p["at"]) <= float(h["end"]) and not pad_lanes.has(int(p["lane"])):
+					pad_lanes.append(int(p["lane"]))
+			per_ceiling[key]["free"] = layout.hull_width(h) - pad_lanes.size()
+		(per_ceiling[key]["ats"] as Array).append(at)
+	for key: String in per_ceiling:
+		var ats: Array = per_ceiling[key]["ats"]
+		suite.check(ats.size() <= 2, "at most 2 Barnacle Turrets per ceiling (%d on the one at %s) %s" % [ats.size(), key, tag])
+		if ats.size() == 2 and t != null:
+			suite.check(absf(float(ats[1]) - float(ats[0])) >= t.spacing_seconds * speed - 0.01,
+				"two Barnacle Turrets on one ceiling stand apart (%.1f m) %s" % [absf(float(ats[1]) - float(ats[0])), tag])
+			suite.check(int(per_ceiling[key]["free"]) >= 2,
+				"two Barnacle Turrets only where two of the ceiling's lanes are free of pads %s" % tag)
 
 
 ## A feature the game knows (LevelConfig.features): one feature_positions() can find, an enemy type
