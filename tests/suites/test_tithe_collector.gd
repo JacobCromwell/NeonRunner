@@ -10,7 +10,9 @@ extends TestSuite
 ##   one is more dangerous, and settles over the player's lane when nothing is;
 ## - anti-grav pads don't affect it, unlike the heli drone;
 ## - the approach cue plays once it exists;
-## - every catch (stomp, dash, claws, a weapon, caught mid-flight) pays what it holds plus the jackpot;
+## - a catch (any defeat, including caught mid-flight after a theft) pays what it holds plus the
+##   jackpot: test_theft.gd already covers every way to catch a thief (stomp, dash, claws, a weapon)
+##   on the shared contract, which this declares identically;
 ## - it's spawned through the director, with no big-attack turn (it isn't an attack);
 ## - it plays out identically on every attempt;
 ## - the campaign: corporate/2 introduces it, it's left out of the Dead Zone, and it's out of
