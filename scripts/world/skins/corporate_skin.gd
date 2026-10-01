@@ -289,6 +289,15 @@ func floor_segment(parent: Node3D, center: Vector3, size: Vector3, lane_x: float
 	batch.commit(parent)
 
 
+## A floor cut (task B4; GDD §9.9: the Buzz Overdrive first appears in Corporate 1): on the trains, the
+## lane's carriage roof sliced open (CorporateTrains.cut), on the plaza the deck (CorporatePlaza.cut).
+func floor_cut(parent: Node3D, cut: FloorCutSection) -> void:
+	if floor_style == FloorStyle.PLAZA:
+		plaza().cut(parent, cut)
+	else:
+		trains().cut(parent, cut)
+
+
 func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: float) -> void:
 	_wall_x = absf(face_x)
 	var batch := MeshBatch.new()

@@ -160,7 +160,13 @@ func floor_cut(parent: Node3D, cut: FloorCutSection) -> void:
 ##   lip, lip_glow, strip_glow, halo (floats; halo 0: none);
 ##   side_from (Array[float], [left, right]): where the neighbouring lanes' visible floor ends on each
 ##     side, if short of the cut's edge (a train roof's shoulder: the side lips run from there to the
-##     edge).
+##     edge);
+##   wall_x (Array[float], [left, right]): where the inside's side walls stand (by default just inside
+##     the lane's edges; a carriage's sides, inside its lane);
+##   ribs (float, 0: none), rib_param (float): ribs on the side walls every so many metres, in the
+##     inside's pattern with this param (a carriage's frame);
+##   dark_line (Color), dark (float): a dark line on the floor just outside each lip, this wide (the
+##     Golden Zone's edges, so the orange pops against its gold).
 ## Returns the four MeshInstance3Ds it adds ({static, span, front, far}), for a skin that adds to them.
 static func standard_floor_cut(parent: Node3D, cut: FloorCutSection, solid: Material, glow: Material,
 		style: Dictionary) -> Dictionary:
@@ -183,15 +189,21 @@ static func standard_floor_cut(parent: Node3D, cut: FloorCutSection, solid: Mate
 	var top: float = -CUT_STRIP_TOP
 	var y: float = CUT_LIP_LIFT
 	var inset: float = CUT_WALL_INSET
+	var walls: Array = style.get("wall_x", [x0 + inset, x1 - inset])
+	var w0: float = float(walls[0])
+	var w1: float = float(walls[1])
+	var has_dark: bool = style.has("dark_line")
+	var dark_color: Color = style.get("dark_line", Color.BLACK)
+	var dark: float = float(style.get("dark", 0.0)) if has_dark else 0.0
 	var out: Dictionary = {}
 
 	# The inside, below the floor over the whole stretch: hidden under the floor until it goes.
 	var inner := MeshBatch.new()
 	var s: MeshLayer = inner.layer(solid)
 	var wall: float = depth + top
-	s.rect(Vector3(x0 + inset, -depth, z0), Vector3(0, 0, -length), Vector3(0, wall, 0), inside, 0.0, pattern,
+	s.rect(Vector3(w0, -depth, z0), Vector3(0, 0, -length), Vector3(0, wall, 0), inside, 0.0, pattern,
 		Vector2.ZERO, Vector2.ONE, float(params[1]))
-	s.rect(Vector3(x1 - inset, -depth, z1), Vector3(0, 0, length), Vector3(0, wall, 0), inside, 0.0, pattern,
+	s.rect(Vector3(w1, -depth, z1), Vector3(0, 0, length), Vector3(0, wall, 0), inside, 0.0, pattern,
 		Vector2.ZERO, Vector2.ONE, float(params[1]))
 	s.rect(Vector3(x0 + inset, -depth, z1 + inset), Vector3(w - 2.0 * inset, 0, 0), Vector3(0, wall, 0), inside, 0.0,
 		pattern, Vector2.ZERO, Vector2.ONE, float(params[0]))
@@ -200,11 +212,21 @@ static func standard_floor_cut(parent: Node3D, cut: FloorCutSection, solid: Mate
 	if bool(style.get("bottom", true)):
 		s.rect(Vector3(x0, -depth, z0), Vector3(w, 0, 0), Vector3(0, 0, -length), inside, 0.0, pattern,
 			Vector2.ZERO, Vector2.ONE, float(params[2]))
+	var ribs: float = float(style.get("ribs", 0.0))
+	if ribs > 0.0:
+		var rib_param: float = float(style.get("rib_param", params[1]))
+		var d: float = cut.start + ribs * 0.5
+		while d < cut.end - 0.3:
+			for x: float in [w0 + 0.06, w1 - 0.06]:
+				s.box(Vector3(x, (top - depth) * 0.5, -d), Vector3(0.12, depth + top, 0.16), inside, 0.0, pattern,
+					MeshKit.FACE_PX | MeshKit.FACE_NX | MeshKit.FACE_PZ, rib_param)
+			d += ribs
 	out["static"] = _commit_part(inner, parent, "CutInside")
 	cut.add_static(out["static"])
 
 	# Along the cut, built over the whole stretch and shown over [front, end]: the lips on the
-	# neighbouring lanes' floor right at the cut's edges, and a strip along the top of each wall.
+	# neighbouring lanes' floor right at the cut's edges (a dark line outside them if the style has
+	# one), and a strip along the top of each wall.
 	var along := MeshBatch.new()
 	var a: MeshLayer = along.layer(solid)
 	for side: int in [-1, 1]:
@@ -215,8 +237,11 @@ static func standard_floor_cut(parent: Node3D, cut: FloorCutSection, solid: Mate
 		var reach: float = maxf(absf(ex - from), 0.0) + lip
 		var lx: float = ex - reach if side < 0 else ex
 		a.rect(Vector3(lx, y, z0), Vector3(reach, 0, 0), Vector3(0, 0, -length), edge, lip_glow)
+		if has_dark:
+			var dx: float = lx - dark if side < 0 else ex + reach
+			a.rect(Vector3(dx, y, z0), Vector3(dark, 0, 0), Vector3(0, 0, -length), dark_color)
 		# Just in front of the inside's wall, facing into the hole.
-		var sx: float = ex - side * (inset + 0.004)
+		var sx: float = (w0 + 0.004) if side < 0 else (w1 - 0.004)
 		if side < 0:
 			a.rect(Vector3(sx, top - CUT_STRIP_HEIGHT, z0), Vector3(0, 0, -length), Vector3(0, CUT_STRIP_HEIGHT, 0), edge, strip_glow)
 		else:
@@ -227,7 +252,10 @@ static func standard_floor_cut(parent: Node3D, cut: FloorCutSection, solid: Mate
 
 	# The floor's far end where the cut has got to (built at the cut's end, moved to its front): its lip.
 	var near_edge := MeshBatch.new()
-	near_edge.layer(solid).rect(Vector3(x0, y, z1 + lip), Vector3(w, 0, 0), Vector3(0, 0, -lip), edge, lip_glow)
+	var n: MeshLayer = near_edge.layer(solid)
+	n.rect(Vector3(x0, y, z1 + lip), Vector3(w, 0, 0), Vector3(0, 0, -lip), edge, lip_glow)
+	if has_dark:
+		n.rect(Vector3(x0, y, z1 + lip + dark), Vector3(w, 0, 0), Vector3(0, 0, -dark), dark_color)
 	out["front"] = _commit_part(near_edge, parent, "CutFront")
 	cut.add_front(out["front"])
 
@@ -236,6 +264,8 @@ static func standard_floor_cut(parent: Node3D, cut: FloorCutSection, solid: Mate
 	var far := MeshBatch.new()
 	var f: MeshLayer = far.layer(solid)
 	f.rect(Vector3(x0, y, z1), Vector3(w, 0, 0), Vector3(0, 0, -lip), edge, lip_glow)
+	if has_dark:
+		f.rect(Vector3(x0, y, z1 - lip), Vector3(w, 0, 0), Vector3(0, 0, -dark), dark_color)
 	f.rect(Vector3(x0, top - CUT_STRIP_HEIGHT, z1 + inset + 0.004), Vector3(w, 0, 0), Vector3(0, CUT_STRIP_HEIGHT, 0), edge,
 		strip_glow)
 	if halo > 0.0:

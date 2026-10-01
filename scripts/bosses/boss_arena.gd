@@ -84,7 +84,7 @@ static func plan(def: BossDef, p_config: LevelConfig, p_tuning: MovementTuning,
 
 
 ## A copy of `source` moved `offset` metres along the track: every piece's at, start and end, and an
-## enemy's planned floor span.
+## enemy's planned floor span (a floor cut's other distances are relative to its end, so it moves whole).
 static func shifted(source: LevelLayout, offset: float) -> LevelLayout:
 	var out := LevelLayout.new()
 	out.lane_count = source.lane_count
@@ -95,6 +95,11 @@ static func shifted(source: LevelLayout, offset: float) -> LevelLayout:
 		if from[key] is Array and to.get(key) is Array:
 			for item: Dictionary in from[key]:
 				(to[key] as Array).append(_shift(item, offset))
+	# Lists to_dict() leaves out while they're empty.
+	for d: Dictionary in source.doodads:
+		out.doodads.append(_shift(d, offset))
+	for c: Dictionary in source.cuts:
+		out.cuts.append(_shift(c, offset))
 	return out
 
 

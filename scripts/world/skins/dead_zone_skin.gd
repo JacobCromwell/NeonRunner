@@ -261,6 +261,12 @@ func floor_segment(parent: Node3D, center: Vector3, size: Vector3, lane_x: float
 	batch.commit(parent)
 
 
+## A floor cut (task B4; GDD §9.9: the Buzz Overdrive appears in the Dead Zone too): the rubble street
+## split open down the lane (DeadStreet.cut).
+func floor_cut(parent: Node3D, cut: FloorCutSection) -> void:
+	street().cut(parent, cut)
+
+
 func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: float) -> void:
 	_wall_x = absf(face_x)
 	var batch := MeshBatch.new()
