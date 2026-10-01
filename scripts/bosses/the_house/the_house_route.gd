@@ -108,9 +108,8 @@ func find(start_lane: int, d0: float, act_at: float, d_end: float, obstacles: Ar
 	var act: int = clampi(ceili((act_at - d0) / STEP), 0, n - 1)
 	var k: int = maxi(ceili(switch_m / STEP), 1)
 	# The fewest switches to be settled in each lane at each step (cost), and where it came from (parent:
-	# prev_step * 16 + prev_lane; -2 marks the start). Steps are taken in order, so a state reached by an
-	# earlier switch keeps it over a later one with as few switches: the route moves out of a lane as soon
-	# as it can and never zigzags.
+	# prev_step * 16 + prev_lane; -2 marks the start). Of two ways with as few switches, the one that
+	# switched earlier wins: the route moves out of a lane as soon as it can, and never zigzags.
 	var cost: Array[PackedInt32Array] = []
 	var parent: Array[PackedInt32Array] = []
 	for i: int in n:
@@ -138,8 +137,8 @@ func find(start_lane: int, d0: float, act_at: float, d_end: float, obstacles: Ar
 			var c: int = cost[i][l]
 			if c >= UNREACHED:
 				continue
-			# Stay in the lane.
-			if blocked[l][i + 1] == 0 and c < cost[i + 1][l]:
+			# Stay in the lane: on a tie with a later switch into it, staying wins (its switch came earlier).
+			if blocked[l][i + 1] == 0 and (c < cost[i + 1][l] or (c == cost[i + 1][l] and parent[i + 1][l] % 16 != l)):
 				cost[i + 1][l] = c
 				parent[i + 1][l] = i * 16 + l
 			if i < act:
@@ -157,7 +156,8 @@ func find(start_lane: int, d0: float, act_at: float, d_end: float, obstacles: Ar
 						break
 					if no_switch[l][s] != 0 or no_switch[l2][s] != 0:
 						ok = false
-					elif s > i and s < j and at_step.has(s):
+					elif s < j and at_step.has(s):
+						# Settled in a button's lane as it passes over it: no switch starts there or spans it.
 						ok = false
 					elif s == j and at_step.has(s) and int(at_step[s]) != l2:
 						ok = false

@@ -33,6 +33,11 @@ const REELS_BOTTOM_SHARE: float = 0.38
 const HOPPER_DEPTH: float = 0.3
 ## How many symbols a reel's window shows (the middle one whole, halves above and below).
 const WINDOW_SYMBOLS: float = 1.45
+## The reels' drums stand out of the face: the middle of each window this far in front of it, curving
+## back toward the face at the window's top and bottom; their frame stands out further.
+const REEL_Z: float = FACE_Z + 0.62
+const FRAME_Z: float = FACE_Z + 0.85
+const REEL_CURVE_DEGREES: float = 30.0
 const BULB: float = 0.24
 
 ## The machine's size and where its parts are, in its own space (see the header).
@@ -97,13 +102,15 @@ static func shape_for(street_width: float, t: TheHouseTuning, hopper_length: flo
 	s.depth = maxf(t.depth, -s.hopper_back + t.deck_back_margin)
 	s.hopper_half_width = maxf(s.width * 0.5 - 0.55, 1.0)
 	var area: float = s.width * 0.8
-	var gap: float = clampf(s.width * 0.03, 0.15, 0.35)
+	var gap: float = clampf(s.width * 0.025, 0.15, 0.3)
 	s.reel_width = (area - 2.0 * gap) / 3.0
-	s.reel_height = minf(s.reel_width * 1.4, s.height * 0.36)
+	s.reel_height = minf(s.reel_width * 1.45, s.height * 0.38)
 	s.reel_bottom = s.height * REELS_BOTTOM_SHARE
 	s.reel_x = PackedFloat32Array([-(s.reel_width + gap), 0.0, s.reel_width + gap])
-	s.lever_length = clampf(s.height * 0.32, 2.4, 4.0)
-	s.lever_pivot = Vector3(s.width * 0.5 + 0.25, s.height * 0.52, FACE_Z - 2.2)
+	# The lever stands at the face's right edge, outside the reels' frame, its ball above the cabinet's
+	# shoulder; pulled, it swings down toward the runner.
+	s.lever_length = clampf(s.height * 0.36, 2.6, 5.0)
+	s.lever_pivot = Vector3(s.width * 0.5 - 0.32, s.height * 0.6, FACE_Z + 0.3)
 	return s
 
 
@@ -173,7 +180,7 @@ func animate() -> void:
 	_hopper_mat.set_shader_parameter(&"open", hopper_open * power)
 	_tread_mat.set_shader_parameter(&"scroll", tread_scroll)
 	# Up and leaning back a little at rest; pulled, it swings down toward the runner.
-	_lever.rotation = Vector3(lerpf(-0.22, 1.45, clampf(lever, 0.0, 1.0)), 0.0, -0.18)
+	_lever.rotation = Vector3(lerpf(-0.12, 1.75, clampf(lever, 0.0, 1.0)), 0.0, 0.0)
 	var lid: float = clampf(hopper_open, 0.0, 1.0)
 	var angle: float = deg_to_rad(118.0) * (1.0 - pow(1.0 - lid, 3.0))
 	_lid_left.rotation = Vector3(0.0, 0.0, angle)
@@ -229,8 +236,8 @@ func _cabinet(m: MeshLayer) -> void:
 	for side: int in [-1, 1]:
 		var c := Vector3(side * (hw - 0.55), s.height, FACE_Z - 0.5)
 		m.box(c + Vector3(0.0, 0.25, 0.0), Vector3(0.7, 0.5, 0.7), CHROME, 0.0, MeshKit.PAT_PLAIN, MeshKit.NO_BOTTOM)
-	# The lever's hub on the right side.
-	m.box(shape.lever_pivot + Vector3(-0.2, 0.0, 0.0), Vector3(0.5, 1.1, 1.1), CHROME)
+	# The lever's hub on the face's right edge.
+	m.box(shape.lever_pivot + Vector3(0.0, 0.0, -0.15), Vector3(0.6, 1.0, 0.6), CHROME)
 
 
 ## The top deck round the hopper's opening (the hopper's own inside is drawn by its shader).
@@ -268,9 +275,9 @@ func _reel_frame(m: MeshLayer) -> void:
 	var x1: float = s.reel_x[2] + s.reel_width * 0.5
 	var b: float = 0.28
 	var z0: float = FACE_Z
-	var z1: float = FACE_Z + 0.32
+	var z1: float = FRAME_Z
 	# The dark well the reels turn in.
-	m.box_between(Vector3(x0 - b, y0 - b, z0 - 0.02), Vector3(x1 + b, y1 + b, z0 + 0.01), DARK, 0.0, MeshKit.PAT_PLAIN,
+	m.box_between(Vector3(x0 - b, y0 - b, z0), Vector3(x1 + b, y1 + b, z0 + 0.03), DARK, 0.0, MeshKit.PAT_PLAIN,
 		MeshKit.FACE_PZ)
 	m.box_between(Vector3(x0 - b, y1, z0), Vector3(x1 + b, y1 + b, z1), CHROME)
 	m.box_between(Vector3(x0 - b, y0 - b, z0), Vector3(x1 + b, y0, z1), CHROME)
@@ -364,7 +371,7 @@ func _reels_mesh() -> ArrayMesh:
 	var uvs := PackedVector2Array()
 	var uv2s := PackedVector2Array()
 	var rows: int = 8
-	var half_angle: float = deg_to_rad(42.0)
+	var half_angle: float = deg_to_rad(REEL_CURVE_DEGREES)
 	var radius: float = s.reel_height * 0.5 / sin(half_angle)
 	for reel: int in 3:
 		var x0: float = s.reel_x[reel] - s.reel_width * 0.5
@@ -375,8 +382,8 @@ func _reels_mesh() -> ArrayMesh:
 			var a0: float = lerpf(half_angle, -half_angle, v0)
 			var a1: float = lerpf(half_angle, -half_angle, v1)
 			var mid: float = s.reel_bottom + s.reel_height * 0.5
-			var p0 := Vector3(0.0, mid + sin(a0) * radius, FACE_Z - 0.05 - (radius - cos(a0) * radius))
-			var p1 := Vector3(0.0, mid + sin(a1) * radius, FACE_Z - 0.05 - (radius - cos(a1) * radius))
+			var p0 := Vector3(0.0, mid + sin(a0) * radius, REEL_Z - (radius - cos(a0) * radius))
+			var p1 := Vector3(0.0, mid + sin(a1) * radius, REEL_Z - (radius - cos(a1) * radius))
 			var quad: Array[Vector3] = [Vector3(x0, p0.y, p0.z), Vector3(x1, p0.y, p0.z), Vector3(x1, p1.y, p1.z),
 				Vector3(x0, p1.y, p1.z)]
 			var quv: Array[Vector2] = [Vector2(0.0, v0), Vector2(1.0, v0), Vector2(1.0, v1), Vector2(0.0, v1)]
@@ -394,7 +401,7 @@ func _lights_mesh() -> ArrayMesh:
 	var verts := PackedVector3Array()
 	var uvs := PackedVector2Array()
 	var uv2s := PackedVector2Array()
-	var z: float = FACE_Z + 0.36
+	var z: float = FRAME_Z + 0.04
 	var x0: float = s.reel_x[0] - s.reel_width * 0.5 - 0.42
 	var x1: float = s.reel_x[2] + s.reel_width * 0.5 + 0.42
 	var y0: float = s.reel_bottom - 0.42

@@ -142,7 +142,7 @@ func hopper_world() -> Vector3:
 func aim_point() -> Vector3:
 	if _sunk or sag > 0.5:
 		return global_transform * Vector3(0.0, _shape.height + 0.6, _shape.hopper_front - 1.0)
-	return reels_world() + Vector3(0.0, 0.0, 0.4)
+	return reels_world() + Vector3(0.0, 0.0, TheHouseModel.REEL_Z - TheHouseModel.FACE_Z)
 
 
 func hit_radius() -> float:

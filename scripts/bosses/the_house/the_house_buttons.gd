@@ -22,6 +22,8 @@ signal missed(reel: int)
 ## The floating 7's height over the button (above head height and a jump's reach), and its size.
 const SIGN_HEIGHT: float = 3.1
 const SIGN_SIZE: float = 1.25
+## The sign shrinks away over the last this many metres (at 18 m/s) before the runner reaches its button.
+const SIGN_FADE_NEAR: float = 9.0
 ## How long a button takes to grow in, and to sink away once pressed or passed.
 const APPEAR_SECONDS: float = 0.3
 const GONE_SECONDS: float = 0.6
@@ -225,9 +227,13 @@ func _draw(b: Dictionary) -> void:
 		dim = clampf(t / 0.25, 0.0, 1.0)
 	var bob: float = 0.12 * sin(clock * 2.2 + at)
 	var sign_y: float = SIGN_HEIGHT + bob + sink * 2.5
-	sign_node.global_transform = Transform3D(Basis.from_scale(Vector3.ONE * SIGN_SIZE * maxf(appear, 0.05) * (1.0 - 0.6 * sink)),
+	# It marks the button from afar, then shrinks away as the runner nears it (it would fill the view as it
+	# passes over the run camera).
+	var near: float = clampf((at - world.player.distance) / (SIGN_FADE_NEAR * boss.run_pace()), 0.0, 1.0)
+	var sign_scale: float = SIGN_SIZE * maxf(appear, 0.05) * (1.0 - 0.6 * sink) * near
+	sign_node.global_transform = Transform3D(Basis.from_scale(Vector3.ONE * maxf(sign_scale, 0.001)),
 		Vector3(x, sign_y, TrackGeometry.world_z(at)))
-	sign_node.visible = sink < 0.99
+	sign_node.visible = sink < 0.99 and sign_scale > 0.02
 	for m: ShaderMaterial in [look["disc_mat"], look["sign_mat"]]:
 		m.set_shader_parameter(&"appear", appear)
 		m.set_shader_parameter(&"pressed", press * (1.0 - 0.5 * sink))

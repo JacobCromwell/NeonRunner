@@ -21,7 +21,7 @@ extends Resource
 ## at least `depth` long along the street (its tread chassis; longer when the stomp box needs it,
 ## TheHouseBody.depth_for).
 @export_range(0.0, 2.0, 0.05, "suffix:m") var street_margin: float = 0.35
-@export_range(6.0, 14.0, 0.25, "suffix:m") var height: float = 11.5
+@export_range(6.0, 14.0, 0.25, "suffix:m") var height: float = 13.5
 @export_range(6.0, 30.0, 0.5, "suffix:m") var depth: float = 14.0
 ## DESIGN-TBD: where it paces: its face this far ahead of the runner (framing, kept in metres: tier 1's
 ## shots reach 42 m), or further at a faster run, so every attack lands between it and the runner

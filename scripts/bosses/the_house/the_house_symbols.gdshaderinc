@@ -112,12 +112,12 @@ vec4 symbol_color(int id, vec2 p, float aa) {
 		float shine = min(length(p - vec2(-0.21, -0.11)), length(p - vec2(0.1, -0.17))) - 0.035;
 		c = paint(c, vec3(1.0, 0.75, 0.75), shine, aa);
 	} else if (id == SYMBOL_BAR) {
-		float plate = sd_box(p, vec2(0.39, 0.2), 0.06);
+		float plate = sd_box(p, vec2(0.45, 0.25), 0.07);
 		c = paint(c, BAR_INK, plate - 0.035, aa);
 		c = paint(c, BAR_GOLD, plate, aa);
-		c = paint(c, BAR_INK, sd_bar_letters(p), aa);
+		c = paint(c, BAR_INK, sd_bar_letters(p / 1.25) * 1.25, aa);
 	} else {
-		float d = sd_bolt(p);
+		float d = sd_bolt(p * vec2(0.85, 1.0));
 		c = paint(c, vec3(0.25, 0.02, 0.12), d - 0.04, aa);
 		c = paint(c, BOLT_PINK, d, aa);
 	}
