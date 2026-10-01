@@ -117,9 +117,11 @@ var _blocked_ramp: int = 0
 var _bump_shape := BoxShape3D.new()
 var _bump_query := PhysicsShapeQueryParameters3D.new()
 ## A zone doodad's push (GDD §3, _check_doodads) is playing out (the lane switch machinery carries it,
-## over doodad_push_time), and the doodad's instance id: it pushes once.
+## over doodad_push_time), and the doodad's instance id with how long it's still ignored: it pushes once,
+## even if a move cuts its push short.
 var _pushing: bool = false
 var _push_doodad: int = 0
+var _push_ignore_left: float = 0.0
 ## How many times zone doodads have pushed the player this run (tests and tools).
 var pushes: int = 0
 var _doodad_shape := BoxShape3D.new()
@@ -200,6 +202,7 @@ func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> v
 	_blocked_ramp = 0
 	_pushing = false
 	_push_doodad = 0
+	_push_ignore_left = 0.0
 	pushes = 0
 	invulnerable_left = 0.0
 	dashing = false
@@ -388,6 +391,7 @@ func _physics_process(delta: float) -> void:
 	_jump_buffer -= delta
 	_coyote -= delta
 	_slide_left -= delta
+	_push_ignore_left -= delta
 	invulnerable_left = maxf(invulnerable_left - delta, 0.0)
 	# Broken armor comes back on the run's clock (GDD §4): it waits while the game is paused or the
 	# player is down.
@@ -869,7 +873,7 @@ func _check_doodads(motion: float) -> void:
 		var area := hit["collider"] as Area3D
 		if area == null or not area.has_meta(&"doodad"):
 			continue
-		if _pushing and area.get_instance_id() == _push_doodad:
+		if area.get_instance_id() == _push_doodad and (_pushing or _push_ignore_left > 0.0):
 			continue
 		var d: Dictionary = area.get_meta(&"doodad")
 		var width: float = tuning.doodad_size(StringName(d["size"])).x
@@ -911,6 +915,7 @@ func _start_push(area: Area3D, doodad_lane: int, dir: int, own_side: int) -> voi
 	_bumping = false
 	_pushing = true
 	_push_doodad = area.get_instance_id()
+	_push_ignore_left = tuning.doodad_push_time
 	lane = target
 	_switch_from = _x
 	_switch_to = geo.lane_x(target)
