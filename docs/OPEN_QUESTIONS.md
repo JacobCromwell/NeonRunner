@@ -1832,6 +1832,18 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     (score). The alternative is credits scattered on the track to collect, with the risk that brings.
     *Placeholder:* `ScoreKeeper.pay_out`, `ThiefTuning.jackpot_credits = 100` (DESIGN-TBD: its size).
 
+**The economy after the playtest** (from R7; measure with `tools/measure/economy.gd`; prices in `data/shop/catalog.json`)
+293. **Armor I's new price (GDD §4, §8).** 350, reachable after one clean run of City 1 (or ~5 deaths).
+    **Alternative:** cheaper still (so even a first attempt's partial credits cover it), or a flat
+    starting discount instead of a price cut.
+294. **Weapon IV only comes into reach in the Golden Zone (level 13 of 15)** under a single clean
+    playthrough. Nothing needs it (every boss is beatable with what it grants), so it reads as an
+    end-game capstone purchase. **Is that the intended feel, or should Heavy missile be reachable
+    earlier** (e.g. by Corporate, where Buzz Overdrive first makes a weapon's damage matter)?
+295. **The armor tiers' price curve after Armor I's cut**: Armor I is now a cheap starter (350) and
+    Armor II is 4.9x that (1,700), versus 2.1x before. **Leave II–IV as the existing escalating sink
+    they already were, or pull them down too to keep a smoother step?**
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
