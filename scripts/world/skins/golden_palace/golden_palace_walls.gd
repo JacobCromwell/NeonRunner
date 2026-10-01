@@ -37,8 +37,6 @@ const PILASTER_CAP: float = 0.26
 const RELIEF_PANEL: float = 1.3
 const RIM_DEPTH: float = 0.08
 const STANDOFF: float = 0.04
-## How far a statue's feet (and a gallery's or relief's middle) stand proud of the panel.
-const CONTENT_OUT: float = 0.03
 
 ## Weak: the skin owns this builder, so a strong reference back would keep both alive forever.
 var skin: GoldenPalaceSkin:
