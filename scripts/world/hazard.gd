@@ -26,6 +26,10 @@ var enemy: Enemy = null
 var part: StringName = &""
 ## The hitbox size (box shape), used for stomp checks and debug drawing.
 var size: Vector3 = Vector3.ONE
+## Hangs from a ceiling (a Barnacle Turret, GDD §9.8): its top, the part a stomp lands on, faces down,
+## toward a rider on the ceiling, who stomps it by dropping back onto its underside
+## (Player._is_stomping, bottom_y()).
+var upside_down: bool = false
 var state: State = State.ON
 
 var _pulse_on: float = 0.0
@@ -56,6 +60,12 @@ func set_enabled(on: bool) -> void:
 ## World-space height of the top of the hitbox.
 func top_y() -> float:
 	return global_position.y + size.y * 0.5
+
+
+## World-space height of the bottom of the hitbox (an upside_down hitbox's top, as a ceiling rider
+## sees it).
+func bottom_y() -> float:
+	return global_position.y - size.y * 0.5
 
 
 ## Makes the hazard switch on and off, driven by the level clock so every attempt

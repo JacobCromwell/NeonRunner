@@ -43,7 +43,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 |---|---|
 | `--quick` | Quick play: the prototype level, restarting on death, with the debug keys and HUD |
 | `--seed=N --lanes=N --difficulty=X` | Quick play with that seed, lane count (3, 5 or 6) or difficulty (0–1) |
-| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `resonator`). The full list is in `LevelConfig` |
+| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `barnacle_turret` (with `ceilings`), `resonator`). The full list is in `LevelConfig` |
 | `--god` | Hits don't kill (falls still do) |
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
@@ -104,9 +104,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   and a level's newest things get the most of its picks, taken from older things of their kind (enemies from
   enemies, obstacles from obstacles), so no level gets easier; enemies whose rules keep only so many (hosts,
   hover trucks, drones, Octodogs, Resonators) and the rare vent screech aren't boosted (the campaign's recency
-  curve, `data/tuning/feature_recency.tres`). The Barnacle Turret, wall fences, Buzz Overdrive, Tithe
-  Collector and Gilded Sentinels aren't built yet: their levels already list them, and they appear once
-  their code exists. Level names are placeholders, except the Golden Palace.
+  curve, `data/tuning/feature_recency.tres`). Wall fences, the Buzz Overdrive, the Tithe Collector and the
+  Gilded Sentinels aren't built yet: their levels already list them, and they appear once their code exists.
+  Level names are placeholders, except the Golden Palace.
 - **Movement:** floor lanes, side-wall runs and wall jumps (a sign blocking the wall bumps you back with a
   clank), anti-grav pads onto the ceiling, ramps (higher onto the wall, with a speed boost that fades like
   a speed pad's), speed pads. From the second half of City 2 on, about half the ceilings cover only some of
@@ -123,6 +123,11 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   - the heli drone
   - the Cyborg's Bad Dream, released by killing a host cyborg (from Dead Zone 1; in quick play, try
     `--features=cyborg,host,ceilings`)
+  - the Barnacle Turret (from Marketplace 1): a dome with a chest cannon that pops out of a ceiling's
+    underside and shoots only at a rider on that ceiling, the cyborgs' way (its muzzle glows red with a
+    charge-up sound, then a short burst: switch lanes). Running into it is deadly; claws, the dash, a stomp
+    (jump on the ceiling and drop back onto it) or weapons kill it. Mechanical in most zones, a furry
+    creature in Gangland and the Marketplace (in quick play, `--features=ceilings,barnacle_turret`)
   - the Resonator (from Golden 1): a golden broadcast spire hovering far ahead. When its halos line up
     and its three-note chime plays, a red wave rolls along the floor across every lane: jump it, or be
     on a wall or the ceiling. Shoot it down or wait until it leaves (in quick play, `--features=resonator`)
@@ -215,8 +220,9 @@ OFL-licensed; licenses are in `assets/LICENSES.md`.
 
 The scenes in `tools/showcase/` show one part of the game up close for visual review (the runner in every pose
 and power-up look, and a scripted run on any zone's skin; ramp launches and blocked wall entries; each enemy
-family, the Floating Head, the UI kit, every screen, a zone skin's fixed review track, the cult's feed, the
-Golden Zone's statues, any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
+family, the Barnacle Turret's looks and a ride past it, the Floating Head, the UI kit, every screen, a zone
+skin's fixed review track, the cult's feed, the Golden Zone's statues, any campaign slot's cinematic and the
+cinematic toolkit's sampler); each script's header
 lists its options. For example, a zone's arrival flyover rendered to frames on the web / low-end renderer:
 `godot --path . --rendering-method gl_compatibility --fixed-fps 10 --write-movie build/cine/f.png --quit-after 100
 res://tools/showcase/cinematic_review.tscn -- --slot=golden/intro --once`.
