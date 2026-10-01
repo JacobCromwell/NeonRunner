@@ -1961,16 +1961,17 @@ and a hover truck holding their fire while a doodad is in reach. The simulated r
 `test_enemy_director` and `tools/measure/big_attacks.gd` keep their runner in the middle lane: it steps
 back after a doodad's push (`AttackWatch.keep_lane`).
 `test_floor_cuts` checks floor cuts (B4; GDD §9.9) with the grey-box stand-in: the plan's geometry and
-the layout data; the track's piece (its slices, its collision, built once per chunk set); on real
+the layout data; the track's piece (its slices, its collision, a hold and a stop); on real
 physics at 3, 5 and 6 lanes, the floor gone exactly behind the cause and whole ahead of it, a runner in
 the lane falling frame for frame as into a normal gap, one who reacts to the warning leaving in time
-from every lane (the outer ones too), one who stays hit by the cause, a wall runner and a ceiling rider
+from middle and outer lanes, one who stays hit by the cause, a wall runner and a ceiling rider
 untouched; the floor holding for `cut_hold_seconds` after an armor or shield block (staying falls once
 it's over, switching lanes or jumping inside it is safe); a kill stopping the cut where it dies (mid-
 charge, during the warning, by the dash); the same cut at 30 and 60 physics frames a second, through
 pauses and uneven steps; a cut added during a boss fight (`arena.cut_problem`, `add_pieces`) and on a
-track extended during play; every skin's look and build cost (Zone skins, Floor cuts' looks); and that
-the stand-in stays out of the campaign. `test_generator` sweeps the stand-in's cuts over seeds,
+track extended during play; every skin's look and build cost (Zone skins, Floor cuts' looks); the
+stand-in's warning (a red line from the warning point, never before, and a sound; the line steady with
+Reduced flashing); and that the stand-in stays out of the campaign. `test_generator` sweeps the stand-in's cuts over seeds,
 difficulties and lane counts, under narrow ceilings and in busy levels with every built feature
 (`LayoutChecks.check_cuts`), checks each of GDD §9.9's limits by hand and `CutPlacement`'s clearing, and
 shows a level whose rules plan no cut is the same data as one without them.

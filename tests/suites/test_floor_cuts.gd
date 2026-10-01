@@ -10,9 +10,10 @@ extends TestSuite
 ## - On real physics: a player in the lane falls through it exactly as through a normal gap; the floor
 ##   is removed exactly behind the stand-in cause; a player who leaves the lane after the warning is
 ##   never touched (3, 5 and 6 lanes, middle and edge lanes); one who stays is hit; a wall runner beside
-##   it and a ceiling rider over it are safe; after the armor blocks the blade the floor holds for
-##   GameRules.cut_hold_seconds (a switch saves the player, a jump lands back in the lane, staying
-##   falls); killing the cause stops the cut where it dies (weapons, before the charge, the dash).
+##   it and a ceiling rider over it are safe; after the armor or the shield blocks the blade the floor
+##   holds for GameRules.cut_hold_seconds (a switch saves the player, a jump lands back in the lane,
+##   staying falls); killing the cause stops the cut where it dies (weapons, before the charge, the
+##   dash).
 ## - The same at 30 and 60 Hz, under uneven steps and through a pause.
 ## - Runtime cuts: added in a boss arena (BossArena.cut_problem, add_pieces) and to a track that keeps
 ##   extending (TrackBuilder.extend_layout, endless mode).
@@ -469,15 +470,18 @@ func _test_wall_runner_and_rider() -> void:
 func _test_hold_after_block() -> void:
 	var hold: float = rules.cut_hold_seconds
 	var dt: float = 1.0 / Engine.physics_ticks_per_second
-	for plan: String in ["stay", "switch", "jump"]:
+	for plan: String in ["stay", "switch", "jump", "shield"]:
 		var cut: Dictionary = _cut(1, 240.0)
 		var w: RunWorld = _world(_layout(3, cut), 1, FloorCutPlan.warn_at(cut) - 10.0, Loadout.new())
-		w.player.armor = 1
+		if plan == "shield":
+			w.player.shield = 1
+		else:
+			w.player.armor = 1
 		var blocked: Array[float] = [-1.0]
 		var fell: Array[float] = [-1.0]
 		var landed: Array[bool] = [false]
 		w.player.movement_event.connect(func(kind: StringName) -> void:
-			if (kind == &"armor_break" or kind == &"armor_hit") and blocked[0] < 0.0:
+			if (kind == &"armor_break" or kind == &"armor_hit" or kind == &"shield_break") and blocked[0] < 0.0:
 				blocked[0] = w.player.elapsed
 				if plan == "jump":
 					w.player.press(&"jump")
@@ -490,12 +494,13 @@ func _test_hold_after_block() -> void:
 				fell[0] = w.player.elapsed
 			return not w.player.alive or (blocked[0] >= 0.0 and w.player.elapsed > blocked[0] + hold + 1.5))
 		var tag: String = "(%s)" % plan
-		check(blocked[0] >= 0.0, "the armor blocks the blade " + tag)
+		check(blocked[0] >= 0.0, "the %s blocks the blade %s" % ["shield" if plan == "shield" else "armor", tag])
 		match plan:
-			"stay":
+			"stay", "shield":
 				check(fell[0] >= blocked[0] + hold - dt and fell[0] <= blocked[0] + hold + 0.2,
-					"the floor under the player holds for %.1f s, then they fall (%.3f s after the block)" % [hold, fell[0] - blocked[0]])
-				check(not w.player.alive, "staying in the lane ends the run")
+					"the floor under the player holds for %.1f s, then they fall (%.3f s after the block) %s" % [hold,
+					fell[0] - blocked[0], tag])
+				check(not w.player.alive, "staying in the lane ends the run " + tag)
 			"switch":
 				check(w.player.alive and w.player.lane == 0 and fell[0] < 0.0, "switching lanes within the hold saves the player")
 			"jump":
