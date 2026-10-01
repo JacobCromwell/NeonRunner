@@ -1568,6 +1568,28 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     | golden/3 | 18 → 25.0 | 37.9 → 40.7 (+7%) | 7.3 / 8.9 → 4.1 / 5.1 | 1.63 → 1.27 | 774 → 771 (0%) |
     -->
 
+**The Marketplace citizens** (from D3; regenerate the sheets with `tools/godot.sh citizens`; review with `tools/showcase/skin_review.tscn -- --skin=marketplace`)
+258. **How a citizen's window should read apart from a window cyborg's** (GDD §5, §9.2;
+    `OPEN_QUESTIONS.md` §D item 46 already raises this). The placeholder: citizens never glow and
+    their windows stay as bright and lit as any other shop's (`MarketplaceSkin`'s own window look,
+    unchanged); a window cyborg always darkens its own window on top, so the two never show at once.
+    For *position*, `MarketplaceSkin.note_wall_enemies()` (a new, generic `ZoneSkin` hook) tells the
+    skin which window cyborgs the level is about to place, and `MarketCitizens` keeps a
+    `CYBORG_MARGIN` (2.2 m) clear of each one's track position on its side. 2.2 m is a guess, wider
+    than a window cyborg's own drawn window (`WindowCyborgTuning.window_length`, 1.5 m by default) but
+    not measured against real levels. Alternative: let window cyborgs themselves prefer the skin's
+    own shop windows (closer coordination, more shared code, touches a shared enemy every zone uses).
+259. **What counts as "low-end"** (task plan: "nothing decides low-end yet"). The placeholder:
+    `DeviceProfile.is_low_end()` is a mobile device still rendering with the Compatibility renderer.
+    `Settings.citizens_enabled` (a new setting, default on, no UI toggle built yet) is off whenever
+    that's true or the player turns the setting off directly. Alternative: a frame-time budget probed
+    at runtime, or a tier list by `OS.get_video_adapter_name()`.
+260. **How many windows should host a citizen** (not in the GDD at all). Placeholder:
+    `MarketCitizens.CITIZEN_SHARE` = 0.16 of eligible windows, picked to keep the chunk's draw calls
+    and build time inside `SkinSuite`'s existing budgets (see `tests/suites/test_marketplace_skin.gd`
+    for the measured numbers with citizens on and off). The owner can judge this by playing, so it's a
+    tunable, not really an open question, but the share needed real measurement to pick.
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
