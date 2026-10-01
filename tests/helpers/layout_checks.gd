@@ -59,6 +59,163 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 		suite.check(s["end"] <= finish_buffer, "sign before the end-clear stretch " + tag)
 	check_doodads(suite, layout, config, tag)
 	check_cuts(suite, layout, config, tag)
+	check_wall_fences(suite, layout, config, tag)
+
+
+## Wall fences (task B5; GDD §9.1: "never where a ramp launches the player into one while it's on, and
+## never on the same wall section as a sign or a window cyborg"; a player on the wall always sees the
+## warning in time to drop off or time it), wherever the generator puts one (WallFencePlacement), at any
+## lane count, at the level's own run speed (WallFenceTuning's times are seconds at it, so they hold at
+## every zone's speed):
+## - on a real wall, over a known band, pulsing (on, and off long enough to hold its whole warning, the
+##   floor fence's), a phase within its cycle; only in a level with its feature (full-height ones
+##   `wall_fences`, partial ones `wall_fences_partial`), never before that feature's start;
+## - its drop window (drop_before_seconds before it to drop_after_seconds after it) between the run-up
+##   and the end-clear stretch;
+## - nothing else on its wall section: no sign or window cyborg within wall_clear_seconds of it on its
+##   wall, no wall vent's screech from vent_before_seconds before it to vent_after_seconds after;
+## - never where a ramp launches the player along its wall: off the whole wall run a ramp on its wall
+##   launches (RampLaunch, with R1's fading boost; also the longest one, with claws and a speed pad's
+##   boost carried onto it), and the tuning's margins around it;
+## - the floor beside it clear to drop off into: over its drop window the outer lane on its side holds
+##   no hole, fence, floor cut, pad, speed pad, ramp or floor enemy, and no hover truck keeps that lane;
+## - nothing running meanwhile: no floor cut's window, drone wave (to its first pad), hover truck's
+##   stay, Octodog run, Resonator visit or Bad Dream chase reaches its drop window;
+## - spaced from the other wall fences: same_side_gap_seconds on its wall, gap_seconds on either.
+static func check_wall_fences(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
+	if layout.wall_fences.is_empty():
+		return
+	var tuning: MovementTuning = level_tuning(suite, config)
+	var speed: float = tuning.run_speed
+	var pace: float = tuning.pace()
+	var t: WallFenceTuning = WallFencePlacement.tuning()
+	var half: float = tuning.fence_depth * 0.5
+	var before: float = t.drop_before_seconds * speed
+	var after: float = t.drop_after_seconds * speed
+	var clear: float = t.wall_clear_seconds * speed
+	var pt := load("res://data/tuning/powerups.tres") as PowerupTuning
+	var bt := EnemyDirector.tuning_for("bad_dream") as BadDreamTuning
+	var tt := EnemyDirector.tuning_for("hover_truck") as HoverTruckTuning
+	var dt := EnemyDirector.tuning_for("drone") as DroneTuning
+	var wt := EnemyDirector.tuning_for("window_cyborg") as WindowCyborgTuning
+	var resonator: GDScript = load("res://scripts/enemies/resonator_rules.gd") as GDScript
+	var gen: LevelGenerator = LevelGenerator.for_layout(config, tuning, layout)
+	var partial_start: float = config.feature_start("wall_fences_partial") * layout.length
+	var full_start: float = config.feature_start("wall_fences") * layout.length
+	for w: Dictionary in layout.wall_fences:
+		var side: int = int(w["side"])
+		var at: float = float(w["at"])
+		var band: String = String(w["band"])
+		var lane: int = layout.outer_lane(side)
+		var drop := Vector2(at - before, at + after)
+		var x: String = "(wall fence on side %d at %.1f, %s) %s" % [side, at, band, tag]
+		var meets := func(from: float, to: float) -> bool: return from <= drop.y and to >= drop.x
+		# What it is.
+		suite.check(side == -1 or side == 1, "a wall fence is on a wall " + x)
+		suite.check(WallFencePlan.BANDS.has(band), "a wall fence covers a known band " + x)
+		suite.check(float(w["pulse_on"]) > 0.0 and float(w["pulse_off"]) >= tuning.fence_pulse_warning + 0.1,
+			"a wall fence switches on and off, its whole warning within its off time (on %.2f s, off %.2f s) %s" % [
+				w["pulse_on"], w["pulse_off"], x])
+		suite.check(float(w["phase"]) >= 0.0 and float(w["phase"]) < 1.0, "its phase lies in its cycle " + x)
+		if band == "full":
+			suite.check(config.has_feature("wall_fences") and at >= full_start - 0.01,
+				"a full-height wall fence only with `wall_fences`, after its start (%.0f m) %s" % [full_start, x])
+		else:
+			suite.check(config.has_feature("wall_fences_partial") and at >= partial_start - 0.01 and at >= full_start - 0.01,
+				"a partial wall fence only with `wall_fences_partial`, after its start (%.0f m) %s" % [partial_start, x])
+		suite.check(drop.x >= config.start_clear_distance - 0.01 and drop.y <= layout.length - config.end_clear_distance + 0.01,
+			"a wall fence lies between the run-up and the end-clear stretch " + x)
+		# Its wall section.
+		for s: Dictionary in layout.signs:
+			if int(s["side"]) == side:
+				suite.check(float(s["end"]) < at - half - clear + 0.01 or float(s["start"]) > at + half + clear - 0.01,
+					"no sign on a wall fence's wall section (sign %.1f-%.1f) %s" % [s["start"], s["end"], x])
+		for e: Dictionary in layout.enemies:
+			if int(e.get("side", 0)) != side:
+				continue
+			var e_at: float = float(e["at"])
+			match String(e["type"]):
+				"window_cyborg":
+					suite.check(absf(e_at - at) >= wt.window_length * 0.5 + half + clear - 0.01,
+						"no window cyborg on a wall fence's wall section (%.1f) %s" % [e_at, x])
+				"screech":
+					if String((e.get("params", {}) as Dictionary).get("source", "vent")) == "vent":
+						suite.check(at < e_at - t.vent_before_seconds * speed - half + 0.01 or at > e_at + t.vent_after_seconds * speed + half - 0.01,
+							"no wall vent's screech by a wall fence on its wall (vent at %.1f) %s" % [e_at, x])
+		# Ramps: never where one launches the player along its wall.
+		for r: Dictionary in layout.ramps:
+			if int(r["side"]) != side:
+				continue
+			var plain: RampLaunch = RampLaunch.of(r, tuning, speed)
+			var longest: RampLaunch = RampLaunch.of(r, tuning, speed, tuning.speed_pad_boost, pt.claws_wall_time_multiplier)
+			suite.check(at + half < float(r["at"]) or at - half > plain.end(),
+				"a ramp never launches the player into a wall fence (ramp at %.1f, its wall run to %.1f) %s" % [r["at"], plain.end(), x])
+			suite.check(at < float(r["at"]) - t.ramp_before_seconds * speed - half + 0.01
+				or at > longest.end() + t.ramp_after_seconds * speed + half - 0.01,
+				"nor along the longest wall run it launches, with the margins (ramp at %.1f, to %.1f) %s" % [r["at"], longest.end(), x])
+		# The outer lane beside it, clear to drop off into.
+		for g: Dictionary in layout.gaps:
+			suite.check(int(g["lane"]) != lane or not meets.call(float(g["start"]), float(g["end"])),
+				"no hole where a wall runner drops off a wall fence's wall (%.1f) %s" % [g["start"], x])
+		for f: Dictionary in layout.fences:
+			suite.check(int(f["lane"]) != lane or not meets.call(float(f["at"]) - half, float(f["at"]) + half),
+				"no fence where a wall runner drops off (%.1f) %s" % [f["at"], x])
+		for p: Dictionary in layout.pads:
+			suite.check(int(p["lane"]) != lane or not meets.call(float(p["at"]), float(p["at"]) + tuning.pad_length),
+				"no pad where a wall runner drops off (%.1f) %s" % [p["at"], x])
+		for p: Dictionary in layout.speed_pads:
+			suite.check(int(p["lane"]) != lane or not meets.call(float(p["at"]), float(p["at"]) + tuning.speed_pad_length),
+				"no speed pad where a wall runner drops off (%.1f) %s" % [p["at"], x])
+		for r: Dictionary in layout.ramps:
+			suite.check(layout.outer_lane(int(r["side"])) != lane or not meets.call(float(r["at"]), float(r["at"]) + tuning.ramp_length),
+				"no ramp where a wall runner drops off (%.1f) %s" % [r["at"], x])
+		for c: Dictionary in layout.cuts:
+			var lw: Vector2 = FloorCutPlan.lane_window(c)
+			suite.check(int(c["lane"]) != lane or not meets.call(lw.x, lw.y), "no floor cut where a wall runner drops off " + x)
+			var cw: Vector2 = FloorCutPlan.window(c, speed)
+			suite.check(not meets.call(cw.x, cw.y), "no floor cut runs by a wall fence (one thing at a time) " + x)
+		# Enemies: none on the floor beside it, and no big attack meanwhile.
+		for e: Dictionary in layout.enemies:
+			var e_at: float = float(e["at"])
+			var type: String = String(e["type"])
+			if int(e.get("side", 0)) == 0 and int(e.get("lane", -1)) == lane:
+				var span: Vector2 = LevelGenerator.enemy_floor_span(e, pace)
+				suite.check(span.y < span.x or not meets.call(span.x, span.y),
+					"no floor enemy where a wall runner drops off (%s at %.0f) %s" % [type, e_at, x])
+			var busy: Array[Vector2] = []
+			match type:
+				"cyborg":
+					if bool((e.get("params", {}) as Dictionary).get("host", false)):
+						busy.append(bt.chase_stretch(e_at, speed))
+				"drone":
+					busy.append(Vector2(e_at, e_at + dt.first_pad_seconds * speed))
+				"hover_truck":
+					busy.append(Vector2(HoverTruckRules.window_start(tt, e_at, pace), e_at + tt.stay_min_seconds * speed))
+					if int(e.get("lane", -1)) == lane:
+						busy.append(Vector2(HoverTruckRules.window_start(tt, e_at, pace), HoverTruckRules.window_end(tt, e_at, speed)))
+				"octodog":
+					busy.append(LevelGenerator.enemy_floor_span(e, pace))
+				"resonator":
+					busy.append(resonator.call("keep_out", gen, e))
+			for b: Vector2 in busy:
+				var s: Vector2 = b
+				# A drone wave ends at its first pad when that comes sooner.
+				if type == "drone":
+					for p: Dictionary in layout.pads:
+						if float(p["at"]) > e_at + 0.01 and float(p["at"]) < s.y:
+							s.y = float(p["at"])
+				suite.check(s.y < s.x or not meets.call(s.x, s.y),
+					"no big attack runs by a wall fence (%s at %.0f: %.1f-%.1f) %s" % [type, e_at, s.x, s.y, x])
+		# Other wall fences.
+		for o: Dictionary in layout.wall_fences:
+			if is_same(o, w):
+				continue
+			var apart: float = absf(float(o["at"]) - at)
+			suite.check(apart >= t.gap_seconds * speed - 0.02, "wall fences stand %.1f s apart at least (%.1f m) %s" % [
+				t.gap_seconds, apart, x])
+			if int(o["side"]) == side:
+				suite.check(apart >= t.same_side_gap_seconds * speed - 0.02,
+					"wall fences on one wall stand %.1f s apart at least (%.1f m) %s" % [t.same_side_gap_seconds, apart, x])
 
 
 ## Floor cuts (task B4; GDD §9.9, the Buzz Overdrive's: "it never cuts a lane holding a ramp, a pad or
@@ -557,11 +714,11 @@ static func boss_arena_features() -> PackedStringArray:
 	return out
 
 
-## True if feature_positions() can find `feature`'s pieces or enemies: the mechanics, hosts, vent
-## screeches, any enemy type with a script (a planned feature once its enemy is built), and a
-## feature whose rules script answers for itself (`positions`, e.g. wall fences once B5 adds them).
+## True if feature_positions() can find `feature`'s pieces or enemies: the mechanics, the wall fences
+## (full-height and partial), hosts, vent screeches, any enemy type with a script (a planned feature
+## once its enemy is built), and a feature whose rules script answers for itself (`positions`).
 static func can_locate(feature: String) -> bool:
-	if feature in ["ramps", "ceilings", "speed_pads", "pulsing", "host", "screech_vents"]:
+	if feature in ["ramps", "ceilings", "speed_pads", "pulsing", "wall_fences", "wall_fences_partial", "host", "screech_vents"]:
 		return true
 	var rules: String = "res://scripts/enemies/%s_rules.gd" % feature
 	if ResourceLoader.exists(rules) and (load(rules) as GDScript).has_method("positions"):

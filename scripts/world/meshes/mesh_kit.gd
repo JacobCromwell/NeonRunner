@@ -217,6 +217,9 @@ const CEILING_END_NEAR: float = 4.0
 ## A ship's engine glows at its stern (stern_halo, beams) fade out this close to the camera: it passes
 ## right under them after the player drops off the ship's end.
 const STERN_NEAR: float = 8.0
+## How far a wall fence's drawn field reaches past its hitbox, out toward the lanes and past each end of
+## its band (dress_wall_fence: the visual errs on the side of looking bigger than what hurts).
+const WALL_FIELD_GROW: float = 0.06
 
 static var _boxes: Dictionary = {}
 static var _prisms: Dictionary = {}
@@ -466,6 +469,50 @@ static func dress_fence(hazard: Hazard, size: Vector3, mounts: ArrayMesh, field_
 		if mounts.surface_get_material(s) == part_materials[0]:
 			visual.add_target(parts, s, part_materials)
 	visual.bind(hazard)
+
+
+## Dresses a wall fence (task B5; GDD §9.1) like dress_fence() a floor fence: its energy field
+## (wall_field_mesh, reaching a little further out from the facade than the hitbox, and a little past
+## its band's ends: hitboxes err in the player's favour) and the zone's `mounts` mesh (the emitters on
+## the facade), whose glowing parts use part_materials[0]. Field and glowing parts follow the hazard's
+## state (HazardStateVisual). `size` is the hitbox (x out from the wall face on `side`, y up its band, z
+## along the track), centred on the hazard.
+static func dress_wall_fence(hazard: Hazard, size: Vector3, side: int, mounts: ArrayMesh, field_materials: Array[Material],
+		part_materials: Array[Material]) -> void:
+	var field: MeshInstance3D = MeshBatch.add_instance(hazard, wall_field_mesh(size, side, WALL_FIELD_GROW))
+	var parts: MeshInstance3D = MeshBatch.add_instance(hazard, mounts)
+	var visual := HazardStateVisual.new()
+	hazard.add_child(visual)
+	visual.add_target(field, -1, field_materials)
+	for s: int in mounts.get_surface_count():
+		if mounts.surface_get_material(s) == part_materials[0]:
+			visual.add_target(parts, s, part_materials)
+	visual.bind(hazard)
+
+
+## A wall fence's energy field (task B5; GDD §9.1: "the same pink crackle, strung across the wall-run
+## path between emitters on the facade, the way a floor fence crosses a lane"): three cards through the
+## depth of `size` (hazard-local, centred: x from the wall face on `side` out toward the lanes, y up its
+## band, z along the track), from the face out `grow` metres past the hitbox and `grow` past each end of
+## its band. UV.x runs up the band, so the energy_field.gdshader arcs run from one emitter to the other,
+## and UV.y from the facade out, so its bright edges lie along the facade and along the line where the
+## field ends toward the lanes. Use it with the fence's field materials (one per state).
+static func wall_field_mesh(size: Vector3, side: int, grow: float) -> ArrayMesh:
+	var id: String = "wall_field_%s_%d_%s" % [size, side, grow]
+	if _templates.has(id):
+		return _templates[id]
+	var t := MeshLayer.new()
+	var half: Vector3 = size * 0.5
+	var face: float = side * half.x
+	var zs: Array[float] = [half.z, 0.0, -half.z]
+	for i: int in zs.size():
+		t.rect(Vector3(face, -half.y - grow, zs[i]), Vector3(0, size.y + grow * 2.0, 0), Vector3(-side * (size.x + grow), 0, 0),
+			Color.WHITE, 0.0, 0, Vector2.ZERO, Vector2.ONE, float(i))
+	var batch := MeshBatch.new()
+	batch.layer(null).append(t)
+	var mesh: ArrayMesh = batch.to_mesh()
+	_templates[id] = mesh
+	return mesh
 
 
 ## The glowing parts every electric fence shares, on the `hot` layer (hazard-local, ground_y = the
