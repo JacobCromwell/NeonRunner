@@ -72,6 +72,7 @@ func build(p_config: LevelConfig, p_layout: LevelLayout, p_tuning: MovementTunin
 	credits = _add(CreditField.new(), "Credits") as CreditField
 	pickups = _add(PickupField.new(), "Pickups") as PickupField
 	effects = _add(RunEffects.new(), "Effects") as RunEffects
+	effects.setup(self)  # G2: the shared impact spectacle (RunEffects, Speed effects).
 	score = _add(ScoreKeeper.new(), "Score") as ScoreKeeper
 	sounds = _add(PlayerSfx.new(), "Sounds") as PlayerSfx
 	if p_sfx != null:

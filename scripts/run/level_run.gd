@@ -40,6 +40,8 @@ var world: RunWorld
 var encounter: BossEncounter
 var camera: RunCamera
 var hud: RunHud
+## Screen-space speed lines (G2, Speed effects): a thin CanvasLayer, cheap enough to leave running.
+var speed_lines: SpeedLines
 var state: State = State.RUNNING
 var death_cause: String = ""
 ## Debug readout and live tuning, only in debug builds.
@@ -116,6 +118,10 @@ func _build() -> void:
 		add_child(camera)
 	camera.make_current()
 	camera.follow(world)
+	if speed_lines == null:
+		speed_lines = SpeedLines.new()
+		add_child(speed_lines)
+	speed_lines.setup(world, world.effects.tuning)
 	if hud == null:
 		hud = RunHud.new()
 		add_child(hud)
@@ -340,6 +346,7 @@ func _build_debug_tools() -> void:
 		{"title": "Power-ups", "resource": App.powerup_tuning, "path": App.POWERUPS_PATH},
 		{"title": "Runner animation", "resource": load(PlayerAvatar.ANIM_TUNING_PATH), "path": PlayerAvatar.ANIM_TUNING_PATH},
 		{"title": "Pickups", "resource": world.pickups.tuning, "path": PickupField.TUNING_PATH},
+		{"title": "Speed effects", "resource": world.effects.tuning, "path": RunEffects.DEFAULT_TUNING_PATH},
 		{"title": "Music", "resource": load(MusicDirector.LIBRARY_PATH), "path": MusicDirector.LIBRARY_PATH},
 		{"title": "Level pacing", "resource": context.config, "path": context.config.resource_path},
 	]

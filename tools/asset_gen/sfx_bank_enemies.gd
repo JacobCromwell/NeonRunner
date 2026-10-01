@@ -44,6 +44,9 @@ func sounds() -> Dictionary:
 
 
 ## Generic robot death: a glitchy falling blip that pops and fizzles out.
+## G2 (September 30, 2026): punchier than the first pass, for the owner's "flashier, more
+## action-packed" playtest note - a heavier kick up front and a touch more drive, the fall and
+## crackle kept as they were so a kill still reads as this same sound, just with more weight behind it.
 func _enemy_death() -> PackedFloat32Array:
 	var rng := _rng(301)
 	var b := DSP.buffer(0.5)
@@ -57,7 +60,8 @@ func _enemy_death() -> PackedFloat32Array:
 	DSP.envelope(pop, 0.0005, 0.02)
 	DSP.mix(b, pop, 0.0, 1.0)
 	DSP.mix(b, _crackle(0.4, 25, 0.15, 4000.0, rng), 0.08, 0.5)
-	DSP.mix(b, DSP.kick(0.15, 180.0, 80.0, rng), 0.0, 0.4)
+	DSP.mix(b, DSP.kick(0.18, 170.0, 60.0, rng), 0.0, 0.75)
+	DSP.drive(b, 1.4)
 	return b
 
 

@@ -38,15 +38,17 @@ RunWorld (scripts/run/run_world.gd)       one run's gameplay world; everything s
   Projectiles ProjectilePool: every shot, pooled and swept
   Credits    CreditField: every credit as MultiMesh instances; pickup and magnet
   Pickups    PickupField: armor, shield and grapple pickups a boss offers, placed fairly, pooled
-  Effects    RunEffects: particle bursts, glowing lines, camera-shake requests
+  Effects    RunEffects: particle bursts, debris, glowing lines, camera-shake and hit-stop requests,
+             and the shared impact spectacle (kills, blocked hits, hard landings, stomps)
   Score      ScoreKeeper: level score, credits, kills, bonuses, stats
   Sounds     PlayerSfx: non-positional sounds (RunWorld.play_sfx / play_sfx_at)
   Powerups   PowerupController, created if scripts/powerups/powerup_controller.gd exists
 ```
 
-`LevelRun` adds the camera (`RunCamera`), the HUD (`RunHud`) and, in debug builds, the debug HUD and
-the F6 tuning panel. Quick play (`--quick`, or any of `--god --seed=N --lanes=N --difficulty=X
---features=a,b --full-loadout --nofall --skin=<name> --speed=N`) restarts on death like the grey box did.
+`LevelRun` adds the camera (`RunCamera`), the speed lines (`SpeedLines`), the HUD (`RunHud`) and, in
+debug builds, the debug HUD and the F6 tuning panel. Quick play (`--quick`, or any of `--god
+--seed=N --lanes=N --difficulty=X --features=a,b --full-loadout --nofall --skin=<name> --speed=N`)
+restarts on death like the grey box did.
 A campaign level runs at its zone's speed (Pace, under The generator): `App` gives the run the level's
 movement tuning (`LevelConfig.movement_for`), and `RunWorld.build` and the generator ask the same, so a
 level is always built and played at one speed; quick play, the tests and boss fights run at the base
@@ -56,12 +58,58 @@ live, and its Save leaves the base run speed alone when the run's comes from its
 `--level=<step id>` plays a campaign step with the full flow and takes `--lanes`, `--god`, `--nofall`
 and `--full-loadout` for reviews; `--boss=<boss id>` plays a boss fight (a zone's boss with the full
 flow, such as `--boss=city_boss`; any other, such as the test boss, or a zone's boss still being built
-(`BossDef.preview_scene`), as quick play) and also takes `--phase=N`. Command-line starts work in debug builds only, so a
-release build can't skip progression or farm credits with them.
+(`BossDef.preview_scene`), as quick play) and also takes `--phase=N`. Command-line starts work in debug
+builds only, so a release build can't skip progression or farm credits with them.
 
 Physics order each frame: RunWorld (builds chunks, spawns enemies) → Player (moves, checks hazards
 and triggers) → the boss's pattern (a boss fight) → enemies → projectiles → credits → pickups →
 power-ups.
+
+### Speed effects and spectacle (G2, the owner's playtest, September 30, 2026)
+
+"The runner felt slow even though the levels were hard" (GDD §3): G1 raises the run's actual speed;
+these effects make speed and impact *feel* fast and heavy, without changing what the game decides.
+Every number is `SpeedFxTuning` (`scripts/run/speed_fx_tuning.gd`, `data/tuning/speed_fx.tres`, F6
+"Speed effects").
+
+- **The camera's field-of-view kick** (`RunCamera._fov_kick`) widens with `Player.speed` above
+  `fov_reference_speed` - the zone's base (G1) and any ramp, speed-pad or dash boost, since Player
+  already folds them all into `speed` - eased in with `fov_attack_rate` and out with the slower
+  `fov_release_rate`, so a boost's end reads as a settle rather than a snap.
+- **The lane-switch lean** (`RunCamera._lane_lean`) banks the camera a few degrees toward
+  `Player._switch_dir` while a lane switch is under way, through `look_at`'s `up` vector (a rolled
+  camera, not a rotated one, so it never fights `ceiling_limit`).
+- **Speed lines** (`SpeedLines`, a CanvasLayer next to the camera and the HUD): a fixed, angle-free
+  comb of pale vertical streaks on a canvas_item shader, masked clear within `lines_safe_width` of
+  screen centre so a lane's centre - where a hazard's telegraph is read - is never touched, and
+  eased in strength between `lines_min_speed` and `lines_full_speed`. The streak pattern is a
+  stable per-column hash, never re-randomised, so there is nothing in it to flicker: it honours
+  Reduced flashing by construction, and stays cheap enough for the Compatibility renderer (one
+  fullscreen shader pass, no particles).
+- **Impact**: `RunEffects.setup()` (called once by `RunWorld.build`) wires the shared spectacle to
+  the run's own signals, so no enemy or power-up file needs its own copy:
+  - a **shake** on a hard landing (`Player.movement_event` `land`, only past
+    `land_shake_fall_height` of fall - RunEffects tracks the player's own peak air height itself,
+    since `land` fires after `Player.vh` is already reset), a **stomp** (`stomp`, plus hit-stop), and
+    every **kill**, whatever the cause (`EnemyDirector.enemy_defeated`: a small, consistent shake and
+    hit-stop, so a bigger cause-specific shake an enemy or a power-up already plays - a dash kill, a
+    boss hit - is never drowned out, since `shake()` and `freeze()` both keep the stronger of two
+    overlapping requests, never their sum);
+  - a **spark burst** (`RunEffects.burst`) and now also **debris** (`RunEffects.debris`, fewer,
+    heavier, tumbling chunks) on every kill, and a spark burst in the item's own colour
+    (`PlayerSuit.GLOW` / `PlayerSuit.SHIELD`, never a hazard colour) when the armor or the shield
+    blocks a hit (`armor_hit`, `armor_break`, `shield_break`); `WeaponFx.kill_flash` adds a brighter,
+    weapon-tinted flourish on top of a weapon kill specifically (`WeaponPowerup._on_enemy_hit`);
+  - **hit-stop** (`RunEffects.freeze`, a few hundredths of a second on a kill or a stomp): while
+    `RunEffects.freeze_left` counts down, `RunCamera._process` skips `_update` entirely, holding the
+    camera's exact transform and fov while the player, the enemies and the generator keep moving at
+    their own, real delta underneath. It **never touches `Engine.time_scale`** (`SlowTimePowerup`
+    owns that for its own, very different, deliberate slow-down) or pauses anything, so a seeded run
+    plays out identically whether or not it fires (`test_speed_fx`: the same actions on the same
+    layout, with and without a forced freeze, give the same distance, lane and event log).
+  - **Screen shake** (Settings) scales every shake and hit-stop through `RunEffects.shake_scale`
+    (`shake()` and `freeze()` both no-op at 0); the field-of-view kick, the lean and the speed lines
+    stay on regardless, since none of them snap or strobe.
 
 ## Data (tunables live in data, CLAUDE.md principle 7)
 

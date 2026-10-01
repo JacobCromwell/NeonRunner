@@ -184,8 +184,10 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 ## Tuning while you play (F6)
 
 F6 pauses the game and opens a panel with sections for movement, game rules, power-ups, the runner's animation,
-the music's pause duck and death dip, level pacing, the campaign's recency curve for pick weights (in a campaign
-level) and each enemy type in the level. Changes apply immediately; pacing, pick weights, speed, jump and size
+pickups, speed effects (the camera's field-of-view kick and lane lean, speed lines, shake, hit-stop and the
+sparks and debris on kills and blocked hits), the music's pause duck and death dip, level pacing, the campaign's
+recency curve for pick weights (in a campaign level) and each enemy type in the level. Changes apply immediately;
+pacing, pick weights, speed, jump and size
 changes also reshape the level, so press **Restart level** to rebuild it. **Save** writes the values back to
 their files in `data/`; **Reload files** undoes unsaved changes. Every other number is in `data/` too: enemy
 tunings in `data/enemies/`, prices in
