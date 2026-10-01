@@ -278,14 +278,14 @@ On a debug build, the options go into the page's engine settings: in `exports/we
 
 ## Tests
 
-`tools/godot.sh test` runs 46 suites with about 3,250,000 checks:
+`tools/godot.sh test` runs 48 suites with about 3,700,000 checks:
 - **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds, and every campaign level
   (each with every feature it lists, on its own seed and on others), at the base speed and at the zones' speeds
-  (21 to 25 m/s, with the fill pass that makes campaign levels busier), each reaction window in seconds. Under every ceiling the floor may be
-  dangerous, so each one's pads, landing zone and a floor route that never takes the pad are checked, and
-  some of those routes are run on real physics; ceilings over fewer lanes too, at every width, with their
-  pads under them, their landing zone over their lanes, and one-lane ceilings short. Also the recency
-  curve's pick weights, and levels paced in quiet stretches and bursts (The Hush).
+  (21 to 25 m/s, with the fill pass that makes campaign levels busier), each reaction window in seconds. Under
+  every ceiling the floor may be dangerous, so each one's pads, landing zone and a floor route that never takes
+  the pad are checked, and some of those routes are run on real physics; ceilings over fewer lanes too, at every
+  width, with their pads under them, their landing zone over their lanes, and one-lane ceilings short. Also the
+  recency curve's pick weights, and levels paced in quiet stretches and bursts (The Hush).
 - **Movement:** scenarios on real physics, among them a ramp's boost against a speed pad's, a ramp's wall run
   and its credits against the generator's prediction, the bump of a blocked wall entry, and moves on a
   ceiling over fewer lanes (blocked at its edges, a pad holding you to its lane, the camera kept under the
