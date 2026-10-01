@@ -1590,6 +1590,32 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     for the measured numbers with citizens on and off). The owner can judge this by playing, so it's a
     tunable, not really an open question, but the share needed real measurement to pick.
 
+**The Barnacle Turret** (from C1; numbers in `data/enemies/barnacle_turret.tres`; review with `tools/showcase/barnacle_turret_showcase.tscn` or play `--level=marketplace/1`)
+261. **How does a stomp reach it?** GDD §9.8 lists "a stomp" among its kills, but it hangs from the ceiling,
+    out of a floor runner's reach (it must be: the floor route under its ceiling stays as it was).
+    - **Placeholder:** a rider on its ceiling jumps and drops back onto its crown, the top of the dome as
+    the rider sees it (`Player._is_stomping` on the ceiling, `Hazard.upside_down`). It bounces the
+    rider like any stomp. Only a turret's crown can be stomped from a ceiling.
+    - **Alternative:** no stomp for the turret (claws, the dash and weapons only).
+262. **When does it pop out?** GDD §9.8: it "pops out of the ceiling's underside".
+    - **Placeholder:** 3.5 s before the player reaches it (`emerge_seconds`), so a floor runner sees it
+    before taking the pad, and the choice to ride is an informed one. Until then it's a closed hatch
+    on the underside, harmless and untargeted.
+    - **Alternative:** it pops out only once the player rides its ceiling, as a surprise.
+263. **May it hang over the pad's lane?** GDD §9.8: "mounted only over lanes the ceiling covers".
+    - **Placeholder:** never over a pad's lane. A rider who stays in the lane they landed in never meets a
+    turret's body, only its bolts, which keeps the ceiling the easier route (GDD §3), and the ceiling's
+    line of credits (along that lane) never leads into one.
+    - **Alternative:** any lane the ceiling covers, so a rider sometimes has to switch lanes after landing.
+264. **Marketplace 1's introduction needs a ceiling.** The level's own ceilings come late (none within
+    about 20 s of the turret's start at 10% on its seeds), so placed on them alone the turret would show
+    up long after its hint.
+    - **Placeholder:** when no ceiling it fits on lies within 8 s of the start (`intro_seconds`), the
+    rules add a plain full-width ceiling for it, only where one fits without clearing anything and
+    before the level's first drone; the rest of the level is unchanged.
+    - **Alternative:** move Marketplace 1's start for the turret to where its first ceiling is, or let the
+    introduction wait for the level's first ceiling.
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
