@@ -136,6 +136,12 @@ extends ZoneSkin
 ## Glow of its warm-white neon.
 @export_range(0.0, 1.5, 0.05) var emblem_glow: float = 0.6
 
+@export_group("Doodads")
+## Market-stall canopy colours for the City's doodads (GDD §3, task G6): muted, non-hazard tones, well
+## apart from every hazard hue (pink, yellow and black, red, orange, green, cyan).
+@export var doodad_stall_colors: PackedColorArray = PackedColorArray([
+	Color(0.4, 0.3, 0.22), Color(0.3, 0.33, 0.4), Color(0.26, 0.28, 0.24)])
+
 @export_group("Pads, ramps, finish")
 @export var pad_color: Color = Color(0.1, 1.0, 0.95)
 ## Height of the anti-grav pad's light column.
@@ -151,6 +157,7 @@ var _trucks: CityTrucks
 var _towers: CityTowers
 var _ship: CityShip
 var _props: CityProps
+var _doodads: CityDoodads
 
 
 func make_environment() -> Environment:
@@ -210,6 +217,11 @@ func speed_pad(trigger: Area3D, size: Vector3) -> void:
 
 func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	props().finish_line(parent, width, distance)
+
+
+## A pillar (small), a tiny market stall (medium) or a small storefront (large): CityDoodads.
+func doodad(body: Node3D, size: Vector3, size_class: StringName, side: int, look_seed: int) -> void:
+	doodads().build(body, size, size_class, side, look_seed)
 
 
 # --- The cult's feed and emblem ------------------------------------------------------------
@@ -322,3 +334,9 @@ func props() -> CityProps:
 	if _props == null:
 		_props = CityProps.new(self)
 	return _props
+
+
+func doodads() -> CityDoodads:
+	if _doodads == null:
+		_doodads = CityDoodads.new(self)
+	return _doodads

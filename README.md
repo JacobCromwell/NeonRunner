@@ -14,8 +14,8 @@ through zones full of enemies, and a single hit ends the run. Built with Godot 4
 
 Boss fights have their framework (they play in the runner, with phases, a health bar, checkpoints,
 stars and payouts); a test boss shows the framework at work. The Neon City's boss, the Floating Head,
-is built and plays in the campaign after City 3 (debug builds: `--boss=city_boss`); the Dead Zone's
-Sleep Taker is being built (debug builds: `--boss=dead_zone_boss`); the other zones' bosses are still
+is built and plays in the campaign after City 3 (debug builds: `--boss=city_boss`), and so is the Dead
+Zone's Sleep Taker after Dead Zone 2 (`--boss=dead_zone_boss`); the other zones' bosses are still
 placeholder slots. The short cinematics are built with a code-driven cinematic toolkit
 (camera paths, the runner and cyborgs on the humanoid rig, timed events, skippable); until the owner
 describes the story beats, each zone's intro (and the City's boss intro) plays a placeholder arrival flyover
@@ -48,12 +48,12 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--god` | Hits don't kill (falls still do) |
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
-| `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `corporate`, `corporate_plaza` (Corporate's plaza floor), `dead_zone` or `golden` |
+| `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `corporate`, `corporate_plaza` (Corporate's plaza floor), `dead_zone`, `golden` or `golden_palace` (Golden 3's interior) |
 | `--speed=25` | Quick play at another run speed (m/s): a zone's pace, from 21 in the Neon City to 25 in the Golden Zone. The level keeps its timing in seconds (campaign levels already run at their zone's speed) |
 | `--doodads=0.6` | Quick play with zone doodads (scenery in lanes that pushes you aside, never hurts): the chance each stretch with room for one gets one. Campaign levels have their own share |
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level |
-| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head) with the full game flow once it's built, and as quick play while it's being built (`dead_zone_boss`: the Sleep Taker). Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
+| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
 
 Example: `./play.sh --lanes=6 --features=octodog,ceilings --god`, or the test boss's last phase:
@@ -139,7 +139,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   no time limit and no escalation, stars from par times, a payout, records and a leaderboard per
   boss, and pickups: armor, shield and grapple pickups on the floor ahead, placed where they're fair
   to take, from the standard armor rule (at the start of the final phase, and a while after the
-  player's armor or shield breaks) or offered by the boss itself. The test boss (`--boss=test_boss`),
+  player's armor or shield breaks) or offered by the boss itself. A campaign boss fight runs at its
+  zone's speed, like the zone's levels (quick play's at the base speed). The test boss (`--boss=test_boss`),
   a hovering core that blasts the lane it lights up red and drops dazed into the player's lane to be
   stomped, shows it all (it offers a shield in its second phase). The Floating Head, the Neon City's
   boss, is built on it: a giant ship whose stern is a propaganda face, roaring in overhead, a
@@ -157,16 +158,22 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   understood, ducking under every warning) with slogans on its face screen. Beaten, its face glitches,
   the propaganda cuts out mid-shout and it crashes into the street ahead: the runner runs over its
   fallen face and through the wreck, on to the zone's outro (in the web demo, the "get the full game"
-  screen). About 100 s for a runner who never misses (`--boss=city_boss`, or the campaign's
-  `--level=city/boss`). The Sleep Taker, the Dead Zone's boss, is half built (a preview in debug
-  builds, `--boss=dead_zone_boss`; the campaign still shows its card): a colossal nightmare of fused
-  Bad Dreams with dozens of maws, looming over the darkened street. Weapons can't touch it. As the
-  runner reaches a charred bridge, its belly's great maw opens with a shriek and the three lanes it will
-  slash light up red: take the bridge's pad up onto the ceiling, where it can't reach, or leave those
-  lanes. Purple mist pooling in the runner's lane, with whispering, means a hand is about to burst up:
-  switch lanes. After a deep inhale it swallows the light, and the street goes darker while every
-  hazard keeps glowing. (Hurting it with the fence generators' EMP, its phases and its defeat come next.)
-  The other four zone bosses are still to be built.
+  screen). It runs at the City's 21 m/s and plays as it did at 18 m/s in seconds: its distances follow
+  the pace. About 100 s for a runner who never misses (`--boss=city_boss`, or the campaign's
+  `--level=city/boss`). The Sleep Taker, the Dead Zone's boss, plays after Dead Zone 2, at the Dead
+  Zone's 24.2 m/s (its distances follow the pace too): a colossal nightmare of fused Bad Dreams with
+  dozens of maws, looming over the darkened street. Weapons can't touch it. As the runner reaches a
+  charred bridge, its belly's great maw opens with a shriek and the three lanes it will slash light up
+  red: take the bridge's pad up onto the ceiling, where it can't reach, or leave those lanes. Purple
+  mist pooling in the runner's lane, with whispering, means a hand is about to burst up: switch lanes.
+  After a deep inhale it swallows the light, and the street goes darker while every hazard keeps
+  glowing. Only a fence generator's EMP hurts it: a generator comes into sight far ahead, its pink
+  beacon showing through the nightmare; as the runner nears it the nightmare lunges in after them, and
+  once arcs leap from the generator into it, a stomp on the generator (or the dash) tears a chunk of
+  the nightmare away. Three EMPs, three phases, each hungrier; the last bursts it into hundreds of faint
+  faces and figures rising into the dark, the music falls silent and a grey dawn breaks over the Dead
+  Zone. About 80 s for a runner who never misses (`--boss=dead_zone_boss`, or the campaign's
+  `--level=dead_zone/boss`). The other four zone bosses are still to be built.
 - **Protection:** every level and boss fight starts with free armor: it blocks an enemy attack or an
   electrical hazard (never a crash or a fall) and comes back 30 s after it breaks; the HUD shows its hits
   and a ring filling while it comes back. Armor pickups in boss fights bring it back at once.
@@ -230,7 +237,7 @@ OFL-licensed; licenses are in `assets/LICENSES.md`.
 
 The scenes in `tools/showcase/` show one part of the game up close for visual review (the runner in every pose
 and power-up look, and a scripted run on any zone's skin; ramp launches and blocked wall entries; each enemy
-family, the Barnacle Turret's looks and a ride past it, the Floating Head, the Sleep Taker (and its readability
+family, the Barnacle Turret's looks and a ride past it, the Floating Head, the Sleep Taker (its lure and defeat, `--scenario=lure`, and its readability
 in the dark, `--scenario=measure`), the UI kit, every screen, a zone skin's fixed review track, the cult's feed,
 the Golden Zone's statues, any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
 lists its options. For example, a zone's arrival flyover rendered to frames on the web / low-end renderer:
@@ -250,10 +257,12 @@ takes), its longest and mean empty stretches in seconds, and its credits; it can
 the old levels byte for byte as they were: `godot --headless -s res://tools/measure/level_pace.gd -- [--seeds=4]
 [--old-data=DIR] [--dump=FILE] [--set=key:value]` (its header lists the options).
 
-`tools/measure/stomp_routes.gd` measures how forgiving the Floating Head's ways onto its head are: the latest lane
-switch onto the ramp that still stomps, the stretch of jump points a single wall jump stomps from, and the ceiling
-from every lane (`godot --headless --fixed-fps 60 -s res://tools/measure/stomp_routes.gd -- [--lanes=3,5,6]
-[--routes=ramp,wall,ceiling] [--e1c]`; `--e1c` measures the numbers from before the owner's playtest fixes).
+`tools/measure/stomp_routes.gd` measures how forgiving the Floating Head's ways onto its head are, at the City's
+speed (21 m/s) in metres and in seconds: the latest lane switch onto the ramp that still stomps, the stretch of jump
+points a single wall jump stomps from, and the ceiling from every lane (`godot --headless --fixed-fps 60 -s
+res://tools/measure/stomp_routes.gd -- [--lanes=3,5,6] [--routes=ramp,wall,ceiling] [--speed=N] [--fine] [--e1c]`;
+`--speed=18` measures at the reference speed, `--fine` finds the wall jump window's ends by bisection, `--e1c`
+measures the numbers from before the owner's playtest fixes).
 
 `tools/measure/level_shape.gd` measures each campaign level's shape: every feature's share of its picks, its
 enemy, host and obstacle counts, what only the every-feature guarantee brings, and The Hush's quiet stretches

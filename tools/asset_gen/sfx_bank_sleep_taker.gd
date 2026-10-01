@@ -18,6 +18,14 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##                        light"): a long, rising, rasping inhale through dozens of maws over a moan,
 ##                        ending in a deep gulp as the light goes
 ##   sleep_taker_exhale   the light coming back: a long, sinking sigh that dies away
+##   sleep_taker_lure     lured, it lunges toward the runner: a deep growl rising under a chorus of
+##                        hungry moans climbing in pitch, and the rush of its vast body surging in
+##   sleep_taker_crackle  close enough: the generator's arcs leaping into it, a crackling buzz of
+##                        electricity with sharp zaps, fading
+##   sleep_taker_torn     an EMP tears a chunk away: the choir's howl of pain falling, a wet rip and a
+##                        deep thud
+##   sleep_taker_wisps    the last EMP releases the dreams: soft, airy voices sighing upward with a faint
+##                        shimmer, fading into the silence that follows
 
 
 func sounds() -> Dictionary:
@@ -29,6 +37,10 @@ func sounds() -> Dictionary:
 		"sleep_taker_hand": _hand,
 		"sleep_taker_inhale": _inhale,
 		"sleep_taker_exhale": _exhale,
+		"sleep_taker_lure": _lure,
+		"sleep_taker_crackle": _crackle_arcs,
+		"sleep_taker_torn": _torn,
+		"sleep_taker_wisps": _wisps,
 	}
 
 
@@ -208,4 +220,107 @@ func _exhale() -> PackedFloat32Array:
 	DSP.envelope(moan, 0.1, 0.7, 0.2)
 	DSP.mix(b, moan, 0.0, 0.5)
 	DSP.crush(b, 10, 20000.0)
+	return b
+
+
+## Lured, it lunges toward the runner: a deep growl rising, hungry moans climbing, and the rush of its
+## body surging in.
+func _lure() -> PackedFloat32Array:
+	var rng := _rng(508)
+	var d: float = 1.15
+	var b := DSP.buffer(d)
+	var growl := DSP.osc(d, func(u: float) -> float: return DSP.sweep(46.0, 68.0, u), &"saw")
+	DSP.drive(growl, 4.5, 0.12)
+	DSP.filter(growl, &"lowpass", 650.0)
+	DSP.adsr(growl, 0.12, 0.3, 0.8, 0.35)
+	DSP.mix(b, growl, 0.0, 0.7)
+	var pitches: Array = [174.61, 196.0, 233.08, 261.63]
+	for k: int in pitches.size():
+		var p0: float = float(pitches[k])
+		var moan := _voice(0.95, func(u: float) -> float: return DSP.sweep(p0, p0 * 1.35, u), Vector2(500.0, 750.0),
+			Vector2(1100.0, 1400.0), 5.0 + k * 0.7, 0.6, rng)
+		DSP.adsr(moan, 0.15, 0.3, 0.75, 0.3)
+		DSP.mix(b, moan, 0.04 * k, 0.32)
+	var rush := _whoosh(0.7, 2200.0, 260.0, 0.9, rng)
+	DSP.mix(b, rush, 0.0, 0.8)
+	DSP.drive(b, 1.6)
+	DSP.filter(b, &"highpass", 60.0)
+	DSP.crush(b, 10, 20000.0)
+	return b
+
+
+## Close enough: the generator's arcs crackling into it, a buzzing hum with sharp zaps, fading.
+func _crackle_arcs() -> PackedFloat32Array:
+	var rng := _rng(509)
+	var d: float = 1.4
+	var b := DSP.buffer(d)
+	var hum := DSP.osc(d, func(u: float) -> float: return 120.0 + 6.0 * sin(TAU * 9.0 * u), &"square")
+	DSP.filter(hum, &"bandpass", 900.0, 1.2)
+	DSP.adsr(hum, 0.03, 0.2, 0.7, 0.5)
+	DSP.mix(b, hum, 0.0, 0.45)
+	DSP.mix(b, _crackle(d, 70, 0.7, 3600.0, rng), 0.0, 1.0)
+	for k: int in 6:
+		var zap := DSP.noise(0.05, rng)
+		DSP.filter(zap, &"highpass", 2500.0)
+		DSP.envelope(zap, 0.001, 0.015)
+		DSP.mix(b, zap, rng.randf_range(0.0, d * 0.7), rng.randf_range(0.5, 1.0))
+	var n: int = b.size()
+	for i: int in n:
+		var u: float = float(i) / n
+		b[i] *= 1.0 - smoothstep(0.6, 1.0, u)
+	DSP.drive(b, 1.5)
+	DSP.crush(b, 9, 20000.0)
+	return b
+
+
+## An EMP tears a chunk away: the choir's howl of pain falling, a wet rip and a deep thud.
+func _torn() -> PackedFloat32Array:
+	var rng := _rng(510)
+	var d: float = 1.6
+	var b := DSP.buffer(d)
+	var voices: Array = [[880.0, 0.5], [622.25, 0.7], [440.0, 0.6], [311.13, 0.45]]
+	for k: int in voices.size():
+		var hz: float = float(voices[k][0])
+		var v := _voice(1.4, func(u: float) -> float: return DSP.sweep(hz, hz * 0.55, u), Vector2(800.0, 500.0),
+			Vector2(2200.0, 1300.0), 6.0 + k, 0.8, rng)
+		DSP.adsr(v, 0.02, 0.4, 0.7, 0.5)
+		DSP.mix(b, v, 0.03 * k, float(voices[k][1]))
+	var rip := DSP.noise(0.45, rng)
+	DSP.filter_sweep(rip, &"bandpass", 3800.0, 500.0, 1.5)
+	var m: int = rip.size()
+	for i: int in m:
+		# A rough, tearing amplitude.
+		rip[i] *= (0.55 + 0.45 * signf(sin(TAU * 38.0 * float(i) / RATE))) * (1.0 - float(i) / m)
+	DSP.mix(b, rip, 0.0, 0.9)
+	DSP.mix(b, DSP.kick(0.4, 85.0, 34.0, rng), 0.0, 1.0)
+	DSP.drive(b, 2.0)
+	DSP.filter(b, &"highpass", 50.0)
+	DSP.crush(b, 9, 20000.0)
+	return b
+
+
+## The dreams released: soft, airy voices sighing upward with a faint shimmer, fading into silence.
+func _wisps() -> PackedFloat32Array:
+	var rng := _rng(511)
+	var d: float = 2.4
+	var b := DSP.buffer(d)
+	for k: int in 7:
+		var p0: float = 261.63 * pow(2.0, float([0, 3, 7, 10, 12, 15, 19][k]) / 12.0)
+		var at: float = 0.12 * k + rng.randf_range(0.0, 0.2)
+		var length: float = d - at - 0.2
+		var sigh := _voice(length, func(u: float) -> float: return p0 * pow(2.0, 2.0 * u / 12.0), Vector2(320.0, 300.0),
+			Vector2(800.0, 900.0), 2.5 + 0.3 * k, 0.25, rng)
+		DSP.filter(sigh, &"lowpass", 2200.0)
+		DSP.adsr(sigh, 0.6, 0.5, 0.6, length * 0.5)
+		DSP.mix(b, sigh, at, 0.16)
+	var air := DSP.noise(d, rng)
+	DSP.filter_sweep(air, &"bandpass", 900.0, 4500.0, 1.2)
+	DSP.adsr(air, 0.4, 1.0, 0.5, 1.8)
+	DSP.mix(b, air, 0.0, 0.35)
+	DSP.mix(b, _sparkle(d * 0.7, rng), 0.3, 0.12)
+	var n: int = b.size()
+	for i: int in n:
+		var u: float = float(i) / n
+		b[i] *= 1.0 - smoothstep(0.55, 1.0, u)
+	DSP.crush(b, 11, 22000.0)
 	return b

@@ -19,19 +19,25 @@ extends Node3D
 ##   hands       through the run camera, hands only (no refuges), the runner switching lanes at each
 ##               mist (--escape=none: it stays and is grasped)
 ##   lights_out  through the run camera: the inhale, the dark with hands coming, the light back
-##   fight       the fight as it comes, with a runner who reads it (pad escapes)
+##   lure        through the run camera: a generator in sight, the nightmare lunging in after the runner,
+##               the arcs as it's in reach, the stomp, the EMP tearing a chunk away and the recoil;
+##               nothing else attacks (--phase=2: the last EMP, its wisps, the silence and the dawn)
+##   fight       the fight as it comes, with a runner who reads it (pad escapes) and stomps each generator
 ##   measure     readability in numbers (GDD §10: hazards keep glowing; the arena never pitch black):
 ##               a fence, a slash's lane marks, a hand's mist, a refuge's pad, its bridge's end band,
-##               a gap's edge, a fence generator and the street in view, through the run camera in
+##               a gap's edge, the fight's generator (with its beacon) and the street in view, through the run camera in
 ##               the arena's light and at the darkest point of lights out; prints each one's brightness
 ##               on screen (the mean of its brightest pixels, 0-255) in both lights
 ## Options: --lanes=N (3, 5 or 6; 5 by default), --phase=N (start at phase N, as a checkpoint would),
 ## --pose=..., --escape=pad|lanes|none, --reduced-flashing, --events (prints each of the boss's events
-## with its frame, for picking frames).
+## with its frame, for picking frames), --dark (lure: lights out as each generator comes into sight).
 ## Frames worth a look (at --fixed-fps 10): entrance 0-45; slash, the warning from about frame 80 and
 ## the strike about 100; hands, a mist about 63 and its hand about 75, then every 3 s or so; lights_out,
 ## the inhale about 60-80, the dark 80-168 (hands rising in it about 113 and 143), the light back by
-## about 185; measure, the arena's light about frame 55 and the darkest point about frame 85.
+## about 185; lure, the generator in sight about frame 50, the lunge about 64, the arcs from about 79, the
+## stomp and the chunk torn about 94, the recoil to about 119 (with --phase=2: the stomp about 74, the
+## wisps 76-120, the dawn 92-124); measure, the arena's light about frame 55 and the darkest point about
+## frame 85.
 
 const BOSS_PATH: String = "res://data/bosses/dead_zone_boss.tres"
 
@@ -48,6 +54,8 @@ var _probes: Dictionary = {}
 var _frame: int = 0
 ## --events: print each of the boss's events with the frame it came on (for picking review frames).
 var _print_events: bool = false
+## --dark (lure): lights out as each generator comes into sight, so its lure happens in the dark.
+var _dark_lure: bool = false
 var _events_seen: int = 0
 
 
@@ -72,8 +80,10 @@ func _ready() -> void:
 			Settings.flashing_reduced = true
 		elif arg == "--events":
 			_print_events = true
+		elif arg == "--dark":
+			_dark_lure = true
 	var slot: BossDef = load(BOSS_PATH) as BossDef
-	var def: BossDef = (slot.preview() if slot.preview() != null else slot).duplicate() as BossDef
+	var def: BossDef = slot.duplicate() as BossDef
 	var t: SleepTakerTuning = (def.tuning as SleepTakerTuning).duplicate() as SleepTakerTuning
 	match scenario:
 		"slash":
@@ -86,6 +96,13 @@ func _ready() -> void:
 		"lights_out":
 			t.refuge_first = 100000.0
 			t.attack_patterns = PackedStringArray(["lights_out,hands,hands,hands,hands"])
+		"lure":
+			# A generator soon after the entrance, nothing else coming: the lure, the stomp, the chunk
+			# torn away and the recoil (with --phase=2: the last EMP and the defeat).
+			t.refuge_first = 100000.0
+			t.attack_gap = 1000.0
+			t.generator_delay = 0.5
+			t.generator_sight = 80.0
 		"measure":
 			# A short refuge just ahead of the spot, the nightmare further off so it hides nothing.
 			t.refuge_first = 116.0
@@ -93,6 +110,7 @@ func _ready() -> void:
 			t.refuge_spacing = 1000.0
 			t.attack_gap = 1000.0
 			t.hover_ahead = 60.0
+			t.generator_delay = 100000.0
 	def.tuning = t
 	var tuning := load("res://data/tuning/movement.tres") as MovementTuning
 	var ctx := RunContext.new()
@@ -115,7 +133,7 @@ func _ready() -> void:
 	world.player.god_mode = true
 	world.player.grapples = 1_000_000
 	boss.setup(world, ctx, arena)
-	if scenario in ["slash", "hands", "lights_out", "fight"]:
+	if scenario in ["slash", "hands", "lights_out", "fight", "lure"]:
 		bot = SleepTakerBot.new(boss, escape)
 		if scenario == "hands" and escape == &"none":
 			bot.dodges_hands = false
@@ -155,6 +173,8 @@ func _physics_process(delta: float) -> void:
 				bot.step()
 	if scenario == "measure":
 		_measure_tick()
+	if _dark_lure and boss.lure.stage == SleepTakerLure.Stage.WAITING and boss.dark.idle():
+		boss.dark.start()
 
 
 func _process(_delta: float) -> void:
@@ -212,14 +232,14 @@ var _sampling: bool = false
 
 
 ## The measure scenario's track: in the left outer lane a hand's mist (held) and a gap, in the right
-## one a fence generator, a fence and plain street, the refuge's pads in the middle; the refuge's
-## clearing has already left the stretch empty.
+## one a fence and plain street, the refuge's pads in the middle; the refuge's clearing has already left
+## the stretch empty. The fight's own generator (its beacon and halo) stands in the right outer lane too,
+## placed once the runner stops (_measure_tick).
 func _stage_measure(arena: BossArena, _tuning: MovementTuning) -> void:
 	var lap: LevelLayout = arena.layout
 	var n: int = lap.lane_count
 	lap.fences.append(RunSim.fence(n - 1, MEASURE_FENCE, "full"))
 	lap.gaps.append({"lane": 0, "start": MEASURE_GAP, "end": MEASURE_GAP + 3.0})
-	lap.enemies.append({"type": "generator", "at": MEASURE_GENERATOR, "lane": n - 1, "side": 0, "seed": 7, "params": {}})
 
 
 ## Runs to the spot and stops; shows a slash's warning and a hand's mist and holds them; measures the
@@ -237,6 +257,7 @@ func _measure_tick() -> void:
 		if not boss.slash.busy():
 			boss.slash.start(-1.0)
 		boss.hands.start({"lane": 0, "at": MEASURE_MIST})
+		boss.lure.place_at(MEASURE_GENERATOR, boss.lane_count() - 1)
 		_probes = {"stopped": _frame}
 	# Hold the warnings where they are: the slash's lanes mid-warning, the mist pooled.
 	boss.slash.step_time = 0.5
@@ -281,6 +302,7 @@ func _sample() -> Dictionary:
 		"hand's mist (purple)": Vector3(geo.lane_x(0), 0.05, TrackGeometry.world_z(MEASURE_MIST)),
 		"fence (pink)": Vector3(geo.lane_x(n - 1), 0.55, TrackGeometry.world_z(MEASURE_FENCE)),
 		"generator (pink)": Vector3(geo.lane_x(n - 1), 0.5, TrackGeometry.world_z(MEASURE_GENERATOR)),
+		"generator's beacon": Vector3(geo.lane_x(n - 1), 3.0, TrackGeometry.world_z(MEASURE_GENERATOR)),
 		"gap's edge (orange)": Vector3(geo.lane_x(0), 0.02, TrackGeometry.world_z(MEASURE_GAP)),
 		"refuge's pad (cyan)": Vector3(geo.lane_x(n / 2), 0.05, TrackGeometry.world_z(pad + 1.0)),
 		"bridge's end (orange)": Vector3(geo.lane_x(n / 2), world.tuning.ceiling_height - 0.1, TrackGeometry.world_z(end)),

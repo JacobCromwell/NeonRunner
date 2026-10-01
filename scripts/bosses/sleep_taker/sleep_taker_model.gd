@@ -25,7 +25,8 @@ extends Node3D
 ##
 ## Vertex data: COLOR.rgb albedo, COLOR.a glow (liquid) or opacity (vapour); UV.x the part (Part) plus a
 ## small id (a maw's or a tendril's, its fraction * 64); UV.y the weight along a part (0 at its root, 1 at
-## its tip; 2 marks a maw's throat); UV2 a maw vertex's offset from its maw's centre.
+## its tip; 2 marks a maw's throat) plus 10 times its chunk (CHUNK_HEADS: 1 or 2 for a head that an EMP
+## tears away, and its maws; 0 for the rest); UV2 a maw vertex's offset from its maw's centre.
 
 const PURPLE := BadDreamModel.PURPLE
 const ATTACK_RED := BadDreamModel.ATTACK_RED
@@ -81,6 +82,10 @@ const TENDRILS: Array = [[Vector3(-2.4, 9.2, 2.6), Vector3(-2.8, 5.2, 3.6)], [Ve
 	[Vector3(-4.2, 7.3, 1.2), Vector3(-4.6, 3.8, 2.4)], [Vector3(4.4, 7.0, 1.1), Vector3(4.8, 3.6, 2.3)]]
 ## How far in front of its centre its claws reach at rest (the lunge brings them to the runner).
 const CLAW_REACH: float = 6.8
+## DESIGN-TBD (GDD §10: "the EMP rips a chunk of the nightmare away"; three phases, three EMP hits): the
+## small heads (HEADS indexes) the first and the second EMP tear away with their maws, its left side's
+## then its right side's; the third bursts the whole nightmare into wisps.
+const CHUNK_HEADS: Array = [[0, 3, 7], [1, 4, 8]]
 
 const BLACK := Color(0.012, 0.007, 0.02, 0.0)
 const SHEEN := Color(0.06, 0.018, 0.1, 0.06)
@@ -103,6 +108,8 @@ static var _vapor_mesh: ArrayMesh
 static var _hand_mesh: ArrayMesh
 static var _maws: PackedVector3Array = PackedVector3Array()
 static var _shaders: Dictionary = {}
+## The chunk the builder is tagging now (CHUNK_HEADS: 0 for none), added to UV.y as 10 times it.
+static var _chunk: int = 0
 
 ## Animation inputs, set by the body each frame (see sleep_taker_liquid.gdshader).
 var shriek: float = 0.0
@@ -115,11 +122,14 @@ var reach: float = 1.0
 var attack: float = 0.0
 var lunge: float = 0.0
 var fade: float = 0.0
+## How far each chunk (CHUNK_HEADS) has been torn away (0 = there, 1 = gone).
+var torn := Vector2.ZERO
 
 var _liquid: MeshInstance3D
 var _vapor: MeshInstance3D
 var _drips: CPUParticles3D
 var _streams: CPUParticles3D
+var _chunk_bursts: Array[CPUParticles3D] = []
 var _liquid_material: ShaderMaterial
 var _vapor_material: ShaderMaterial
 
@@ -176,6 +186,29 @@ func build(p_seed: float) -> void:
 	_streams.mesh = wisp
 	_streams.material_override = wisp_material(Color(0.42, 0.24, 0.85, 0.55))
 	_streams.emitting = false
+	# A torn chunk's wisps: a one-shot burst from where it rips away.
+	for chunk: int in CHUNK_HEADS.size():
+		var burst: CPUParticles3D = _particles("Torn%d" % (chunk + 1), 70, 1.6, chunk_centre(chunk), Vector3.ZERO)
+		burst.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+		burst.emission_sphere_radius = 1.6
+		burst.one_shot = true
+		burst.explosiveness = 0.85
+		burst.direction = Vector3(signf(chunk_centre(chunk).x), 0.4, 0.5).normalized()
+		burst.spread = 55.0
+		burst.initial_velocity_min = 3.0
+		burst.initial_velocity_max = 8.0
+		burst.gravity = Vector3(0.0, 2.5, 0.0)
+		burst.damping_min = 1.5
+		burst.damping_max = 3.0
+		var mote := QuadMesh.new()
+		mote.size = Vector2(0.7, 0.7)
+		burst.mesh = mote
+		burst.material_override = wisp_material(Color(0.55, 0.32, 1.0, 0.7))
+		burst.emitting = false
+		# Drawn only while its burst plays (the draw budget at rest stays four draws).
+		burst.visible = false
+		burst.finished.connect(burst.hide)
+		_chunk_bursts.append(burst)
 	animate()
 
 
@@ -185,7 +218,7 @@ func animate() -> void:
 		return
 	for pair: Array in [[&"shriek", shriek], [&"maws", maws], [&"inhale", inhale], [&"swallowed", swallowed],
 			[&"raise", raise], [&"slash", slash], [&"reach", reach], [&"attack", attack], [&"lunge", lunge],
-			[&"fade", fade]]:
+			[&"fade", fade], [&"torn", torn]]:
 		_liquid_material.set_shader_parameter(pair[0], pair[1])
 	for pair: Array in [[&"inhale", inhale], [&"lunge", lunge], [&"fade", fade], [&"attack", attack]]:
 		_vapor_material.set_shader_parameter(pair[0], pair[1])
@@ -204,6 +237,30 @@ func vapor_material() -> ShaderMaterial:
 
 func streams() -> CPUParticles3D:
 	return _streams
+
+
+## A chunk rips away: its burst of wisps (the shader tears it off and dissolves it with `torn`).
+func burst_chunk(chunk: int) -> void:
+	if chunk >= 0 and chunk < _chunk_bursts.size():
+		_chunk_bursts[chunk].visible = true
+		_chunk_bursts[chunk].restart()
+
+
+## The middle of chunk `chunk`'s heads, in the model's space.
+static func chunk_centre(chunk: int) -> Vector3:
+	var sum := Vector3.ZERO
+	var heads: Array = CHUNK_HEADS[chunk]
+	for i: int in heads:
+		sum += (HEADS[i][0] as Vector3)
+	return sum / maxf(heads.size(), 1)
+
+
+## The chunk head `head` (a HEADS index) belongs to: 1 or 2, or 0 for none.
+static func chunk_of(head: int) -> int:
+	for c: int in CHUNK_HEADS.size():
+		if (CHUNK_HEADS[c] as Array).has(head):
+			return c + 1
+	return 0
 
 
 func _particles(node_name: String, amount: int, lifetime: float, at: Vector3, box: Vector3) -> CPUParticles3D:
@@ -297,16 +354,22 @@ static func liquid_mesh() -> ArrayMesh:
 	_ellipsoid(st, head_c, head_r, 12, 8, Part.HEAD, BLACK, SHEEN)
 	_ellipsoid(st, CHEST[0], CHEST[1], 11, 7, Part.TORSO, BLACK, SHEEN)
 	_ellipsoid(st, WAIST[0], WAIST[1], 9, 6, Part.TORSO, BLACK, BLACK)
-	for h: Array in HEADS:
+	for i: int in HEADS.size():
+		var h: Array = HEADS[i]
+		_chunk = chunk_of(i)
 		_ellipsoid(st, h[0], h[1], 9, 6, Part.HEAD, BLACK, SHEEN)
+	_chunk = 0
 	# The great maw, then a maw on every small head's front, more scattered over the main head and the
 	# chest, and second maws on some heads.
 	_maw(st, BIG_MAW_CENTER, BIG_MAW_RADIUS, 16, 14, Part.BIG_MAW, 0)
 	var id: int = 1
-	for h: Array in HEADS:
+	for i: int in HEADS.size():
+		var h: Array = HEADS[i]
 		var off: Vector2 = h[2]
+		_chunk = chunk_of(i)
 		_maw(st, _front_point(h[0], h[1], off), float(h[3]), 9, 7, Part.MAW, id)
 		id += 1
+	_chunk = 0
 	for m: Array in HEAD_MAWS:
 		_maw(st, _front_point(head_c, head_r, m[0]), float(m[1]), 8, 6, Part.MAW, id)
 		id += 1
@@ -315,8 +378,10 @@ static func liquid_mesh() -> ArrayMesh:
 		id += 1
 	for m: Array in SECOND_MAWS:
 		var h: Array = HEADS[int(m[0])]
+		_chunk = chunk_of(int(m[0]))
 		_maw(st, _front_point(h[0], h[1], m[1]), float(m[2]), 8, 6, Part.MAW, id)
 		id += 1
+	_chunk = 0
 	# The two long arms with their long clawed fingers.
 	for sx: float in [-1.0, 1.0]:
 		_arm(st, sx)
@@ -572,6 +637,6 @@ static func _tri_tagged(st: SurfaceTool, p: Array, c: Array, tag: float, w: Arra
 		var v: Vector3 = p[i]
 		st.set_normal(n)
 		st.set_color(c[i])
-		st.set_uv(Vector2(tag, float(w[i])))
+		st.set_uv(Vector2(tag, float(w[i]) + 10.0 * _chunk))
 		st.set_uv2(Vector2(v.x - maw_c.x, v.y - maw_c.y) if maw else Vector2.ZERO)
 		st.add_vertex(v)

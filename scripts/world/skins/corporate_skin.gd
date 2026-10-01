@@ -232,6 +232,15 @@ enum FloorStyle { MAGLEV, PLAZA }
 @export_range(0.2, 1.0, 0.01) var street_screen_reach: float = 0.7
 @export_range(9.0, 40.0, 0.5, "suffix:m") var street_screen_bottom: float = 12.5
 
+@export_group("Doodads")
+## Generic corporate doodads (GDD §3, task G6: "security barriers, kiosks, planters and sculpture
+## plinths in steel and the brand colour"): a planter's trimmed topiary, kept cold and desaturated,
+## well apart from the ramps' and speed pads' hazard green.
+@export var doodad_topiary_color: Color = Color(0.25, 0.3, 0.26)
+## Whether a medium doodad is a security barrier or a kiosk: the share that are barriers.
+@export_range(0.0, 1.0, 0.01) var doodad_barrier_share: float = 0.5
+@export var doodad_kiosk_color: Color = Color(0.16, 0.17, 0.2)
+
 @export_group("Pads, ramps, finish")
 @export var pad_color: Color = Color(0.1, 1.0, 0.95)
 ## Height of the anti-grav pad's light column.
@@ -250,6 +259,7 @@ var _plaza: CorporatePlaza
 var _towers: CorporateTowers
 var _ceilings: CorporateCeilings
 var _props: CorporateProps
+var _doodads: CorporateDoodads
 ## The latest wall face seen (wall_section runs before a chunk's ceilings): a tower bridging the
 ## street reaches from wall to wall.
 var _wall_x: float = 0.0
@@ -341,6 +351,11 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	var batch := MeshBatch.new()
 	MeshKit.finish_gate(batch, solid_material(), glow_material(), width, distance, finish_color, metal_color)
 	batch.commit(parent)
+
+
+## A planter (small), a security barrier or a glass kiosk (medium) or a sculpture plinth (large): CorporateDoodads.
+func doodad(body: Node3D, size: Vector3, size_class: StringName, side: int, look_seed: int) -> void:
+	doodads().build(body, size, size_class, side, look_seed)
 
 
 # --- The cult's feed and emblem ------------------------------------------------------------
@@ -470,3 +485,9 @@ func props() -> CorporateProps:
 	if _props == null:
 		_props = CorporateProps.new(self)
 	return _props
+
+
+func doodads() -> CorporateDoodads:
+	if _doodads == null:
+		_doodads = CorporateDoodads.new(self)
+	return _doodads

@@ -67,6 +67,7 @@ func run() -> void:
 	await _cult_feed(skin)
 	_stall_layout(skin)
 	await determinism(skin, MARKET_LEVEL_PATH)
+	doodads_ok(skin, "marketplace")
 	stop_error_count("building marketplace levels")
 
 

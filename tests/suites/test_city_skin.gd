@@ -35,6 +35,7 @@ func run() -> void:
 	await _greybox_still_works()
 	await _cult_feed(skin)
 	await _cult_emblem(skin)
+	doodads_ok(skin, "city")
 	stop_error_count("building city levels")
 
 

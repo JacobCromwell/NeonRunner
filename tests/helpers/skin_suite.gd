@@ -3,7 +3,7 @@ extends TestSuite
 ## Shared checks for zone skin suites (test_city_skin, test_gangland_skin): whole levels build for
 ## 3, 5 and 6 lanes without errors, the skin adds no collision, hazard visuals cover their hitboxes,
 ## gapped fences are open underneath, pulsing fences show their state, triggers are drawn, the same
-## chunk always looks the same, and chunk builds stay cheap.
+## chunk always looks the same, and chunk builds stay cheap; and each zone's doodad looks (doodads_ok).
 
 ## One chunk build, headless (no GPU upload). Measured ~1 ms on a dev machine; the budget leaves room
 ## for slower CI machines but catches a skin that got expensive.
@@ -469,6 +469,45 @@ func determinism(skin: ZoneSkin, level_path: String) -> void:
 	var a: Array = await _mesh_signature(layout, skin)
 	var b: Array = await _mesh_signature(layout, skin)
 	check(not a.is_empty() and a == b, "rebuilding the same level gives the same meshes (%d meshes)" % a.size())
+
+
+## A zone's doodad looks (ZoneSkin.doodad; GDD §3, owner's playtest September 30, 2026; task G6):
+## dressed, inside their box, lit and never glowing (GDD §5's colour rule: only hazards glow in
+## hazard colours, so a zone's own matte reds and golds are fine; test_doodads' _test_skins already
+## checks every skin's plain default look stays muted besides), and the same mesh every time the same
+## size, side and seed are drawn again (variety comes from hashing look_seed, never a random number
+## generator), over more seeds and both push sides than that generic check runs. A zone's own suite
+## calls this with its skin.
+func doodads_ok(skin: ZoneSkin, name: String, seeds: Array[int] = [2, 9, 17, 41]) -> void:
+	for size: StringName in LevelLayout.DOODAD_SIZES:
+		var box: Vector3 = tuning.doodad_size(size)
+		var half: Vector3 = box * 0.5 + Vector3.ONE * 0.001
+		for side: int in [-1, 1]:
+			for look_seed: int in seeds:
+				var tag: String = "%s %s doodad (side %+d, seed %d)" % [name, size, side, look_seed]
+				var a := Node3D.new()
+				skin.doodad(a, box, size, side, look_seed)
+				var meshes: Array[Node] = a.find_children("*", "MeshInstance3D", true, false)
+				check(not meshes.is_empty(), "%s is dressed" % tag)
+				var b := Node3D.new()
+				skin.doodad(b, box, size, side, look_seed)
+				var again: Array[Node] = b.find_children("*", "MeshInstance3D", true, false)
+				check(meshes.size() == again.size(), "%s builds the same number of meshes every time" % tag)
+				for i: int in mini(meshes.size(), again.size()):
+					var inst := meshes[i] as MeshInstance3D
+					check(inst.material_override == MeshKit.solid(), "%s uses the shared solid material" % tag)
+					var aabb: AABB = inst.mesh.get_aabb()
+					check(aabb.position.x >= -half.x and aabb.position.y >= -half.y and aabb.position.z >= -half.z
+						and aabb.end.x <= half.x and aabb.end.y <= half.y and aabb.end.z <= half.z,
+						"%s stays inside its box (%s in %s)" % [tag, aabb, box])
+					var again_inst := again[i] as MeshInstance3D
+					check(again_inst.mesh == inst.mesh, "%s builds the identical (cached) mesh every time" % tag)
+					for surf: int in inst.mesh.get_surface_count():
+						var arrays: Array = inst.mesh.surface_get_arrays(surf)
+						for col: Color in arrays[Mesh.ARRAY_COLOR]:
+							check(col.a == 0.0, "%s never glows" % tag)
+				a.free()
+				b.free()
 
 
 func _mesh_signature(layout: LevelLayout, skin: ZoneSkin) -> Array:

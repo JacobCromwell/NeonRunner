@@ -19,6 +19,8 @@ extends TestSuite
 ##   and the slogan fades while an attack warns or strikes, and no phrase starts then); it crashes where
 ##   the arena's floor is clear;
 ## - a death restarts the fight from its start (no checkpoint).
+## Every fight here runs at the City's speed (21 m/s), as the campaign plays it (GDD §3; task E1f:
+## FloatingHeadBot.campaign_tuning).
 
 const BOSS_PATH: String = "res://data/bosses/city_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
@@ -32,6 +34,8 @@ var def: BossDef
 
 
 func run() -> void:
+	# The fight at the City's speed, as the campaign plays it (GDD §3; E1f).
+	tuning = FloatingHeadBot.campaign_tuning(tuning)
 	sim = RunSim.new(tree, tuning)
 	def = load(BOSS_PATH) as BossDef
 	check(def != null and def.is_built(), "the Floating Head's fight exists")
@@ -455,8 +459,8 @@ func _campaign_flow(lanes: int, demo: bool) -> void:
 				p["room"] = minf(float(p["room"]), _room(head))
 				p["live"] = bool(p["live"]) or _live_hitbox(head.body)
 				if not bool(p["crash_clear"]) and head.arena != null:
-					p["crash_clear"] = head.arena.floor_clear(head.crash_at - head.face_lead() - t.crash_clear_before,
-						head.crash_at + head.wreck_length() + t.crash_clear_after)
+					p["crash_clear"] = head.arena.floor_clear(head.crash_at - head.face_lead() - head.metres(t.crash_clear_before),
+						head.crash_at + head.wreck_length() + head.metres(t.crash_clear_after))
 			p["wreck_passed"] = head.wreck_passed()
 		await tree.physics_frame
 	await tree.process_frame

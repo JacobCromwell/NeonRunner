@@ -40,12 +40,13 @@ extends Node3D
 ## (entrance and transitions), _on_pattern_started(i) and _pattern_tick(delta) (the pattern),
 ## _on_weak_point_hit(part, hazard), _on_part_defeated(part, cause), _on_part_emp(part, center, radius),
 ## _on_phase_ended(i), _on_defeated(), _defeated_tick(delta), victory_over() (when a defeat that plays
-## out on the track is over) and _on_armor_pickup_due(reason) (where the armor rule's pickup goes).
+## out on the track is over), victory_riff() (false for a defeat that ends in silence) and
+## _on_armor_pickup_due(reason) (where the armor rule's pickup goes).
 ## Helpers: add_part(), spawn_enemy() (normal enemies: a cyborg drop, a
 ## Buzz Overdrive onto the roof), offer_pickup() (an armor, shield or grapple pickup on the floor),
 ## damage() (a boss's own causes: a cluster shocked by a fence, an EMP), hit_damage(),
-## set_light_level(), arena queries (floor_clear, live_fence_between, hole_between), pace(), phase(),
-## is_final_phase(), player_distance(), log_event().
+## set_light_level() and set_scenery_light(), arena queries (floor_clear, live_fence_between,
+## hole_between), pace(), phase(), is_final_phase(), player_distance(), log_event().
 
 ## A phase begins: its intro starts (the entrance for the first phase, the transition for later ones).
 signal phase_started(index: int)
@@ -402,6 +403,15 @@ func light_level() -> float:
 	return _light
 
 
+## Sets the scenery's own light (ZoneSkin's `scenery_light`) directly, for a lighting moment of the
+## boss's own beyond set_light_level's range (the Sleep Taker's defeat: the first grey dawn); like
+## set_light_level's, it's put back when the fight ends.
+func set_scenery_light(light: float) -> void:
+	_capture_light()
+	_scenery_set = light
+	ZoneSkin.set_scenery_light(light)
+
+
 ## Adds an entry to `events` (for tests and the debug readout).
 func log_event(event: StringName, extra: Dictionary = {}) -> void:
 	var entry := {"t": fight_time(), "event": event, "phase": phase_index}
@@ -479,6 +489,12 @@ func _defeated_tick(_delta: float) -> void:
 ## track holds the results until then (the Floating Head crashes into the street ahead, and the runner
 ## runs through its wreck first). LevelRun waits at most LevelRun.BOSS_VICTORY_MAX seconds.
 func victory_over() -> bool:
+	return true
+
+
+## True if the win plays the victory riff (LevelRun: the level-complete riff in the music's key, GDD
+## §11), as by default; a boss whose defeat ends in silence says no (the Sleep Taker, GDD §10).
+func victory_riff() -> bool:
 	return true
 
 
