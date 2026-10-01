@@ -49,9 +49,6 @@ const KINDS: PackedStringArray = ["hands", "lights_out"]
 const REFUGE_HINT_LEAD: float = 4.0
 ## How far ahead it looks for the track's refuges (metres at 18 m/s, times run_pace()).
 const SIGHT: float = 400.0
-## DESIGN-TBD (task E5c-b brings its defeat: the wisps, the silence, the grey dawn): beaten, it dissolves
-## over this long, and the run may end.
-const DEFEAT_SECONDS: float = 1.6
 
 var body: SleepTakerBody
 var tuning: SleepTakerTuning
@@ -59,6 +56,7 @@ var slash: SleepTakerSlash
 var hands: SleepTakerHands
 var dark: SleepTakerLightsOut
 var lure: SleepTakerLure
+var defeat: SleepTakerDefeat
 var step: Step = Step.ENTER
 var step_time: float = 0.0
 ## Where it looms, relative to the runner: its middle's world x, its base's height, metres ahead.
@@ -100,6 +98,9 @@ func _build_boss() -> void:
 	lure = SleepTakerLure.new()
 	add_child(lure)
 	lure.setup(self)
+	defeat = SleepTakerDefeat.new()
+	add_child(defeat)
+	defeat.setup(self)
 	var resume: int = int(context.boss_resume.get("phase", 0))
 	if resume > 0:
 		# Resuming at a later phase (a review's --phase=N): it's already here, its chunks already torn.
@@ -388,27 +389,35 @@ func _on_part_emp(_part: BossPart, center: Vector3, _radius: float) -> void:
 	damage(hit_damage(), &"emp")
 
 
+## The last EMP: it bursts into its wisps, the music fades to silence and the grey dawn breaks
+## (SleepTakerDefeat); every attack stops, and the light comes back first.
 func _on_defeated() -> void:
 	slash.clear()
 	hands.clear()
 	dark.clear()
+	lure.clear()
 	set_light_level(1.0, tuning.return_seconds)
 	log_event(&"defeat")
-	# DESIGN-TBD (task E5c-b brings the wisps, the silence and the grey dawn): it dissolves.
-	sound(&"bad_dream_dissolve", body.mouth_world())
+	defeat.start()
 
 
 func _defeated_tick(delta: float) -> void:
 	_bob += delta
 	slash.tick(delta)
-	body.fade = clampf(state_time / DEFEAT_SECONDS, 0.0, 1.0)
+	defeat.tick(delta)
 	_place()
 
 
+## Once its wisps have risen and the dawn has broken (or at once if the runner is gone).
 func victory_over() -> bool:
 	if world == null or world.player == null or not world.player.alive:
 		return true
-	return state_time >= DEFEAT_SECONDS
+	return defeat.over()
+
+
+## Its defeat ends in silence (GDD §10): no victory riff.
+func victory_riff() -> bool:
+	return false
 
 
 # --- The pattern -----------------------------------------------------------------------------------

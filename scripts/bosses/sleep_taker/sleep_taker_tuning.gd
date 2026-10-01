@@ -147,6 +147,25 @@ extends Resource
 ## Lured, it's lure_gap plus its claws' reach (8-12 m) ahead of the runner; hovering, hover_ahead.
 @export_range(4.0, 40.0, 0.5, "suffix:m") var emp_reach: float = 18.0
 
+@export_group("Defeat")
+## DESIGN-TBD (GDD §10: "the last EMP bursts it into hundreds of wisps, each a faint face or figure that
+## drifts upward and fades as the dreams are released. Then silence, and the first grey dawn light breaks
+## over the Dead Zone"): wisp_count wisps burst out of it as it dissolves and rise for wisp_seconds; the
+## music fades out over silence_fade (no victory riff); dawn_delay after the burst the sky and the light
+## turn to a grey dawn over dawn_seconds (the sky's zenith, horizon and haze colours, the fog's colour,
+## and the light: dawn_light times the zone's own, never darker than it). The fight's results follow
+## once the dawn has broken.
+@export_range(50, 600, 10) var wisp_count: int = 260
+@export_range(1.0, 10.0, 0.25, "suffix:s") var wisp_seconds: float = 4.5
+@export_range(0.0, 6.0, 0.1, "suffix:s") var silence_fade: float = 2.0
+@export_range(0.0, 6.0, 0.1, "suffix:s") var dawn_delay: float = 1.8
+@export_range(0.5, 10.0, 0.1, "suffix:s") var dawn_seconds: float = 3.2
+@export_range(1.0, 2.5, 0.05) var dawn_light: float = 1.4
+@export var dawn_zenith: Color = Color(0.34, 0.36, 0.42)
+@export var dawn_horizon: Color = Color(0.66, 0.62, 0.6)
+@export var dawn_haze: Color = Color(0.8, 0.74, 0.7)
+@export var dawn_fog: Color = Color(0.5, 0.48, 0.47)
+
 @export_group("Lights out")
 ## DESIGN-TBD: the warning: a deep inhale (every maw opens, the street's light streams into them) for
 ## inhale_seconds, then the light sinks to dark_level (of the arena's own light: BossEncounter.
