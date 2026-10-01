@@ -133,10 +133,13 @@ func _place() -> void:
 
 func _build_model() -> void:
 	if _material == null:
+		# Lit by the scene, not shining by itself: mostly diffuse, so the night's dark reflections don't
+		# turn it brown.
 		_material = StandardMaterial3D.new()
 		_material.albedo_color = GOLD
-		_material.metallic = 0.85
-		_material.roughness = 0.3
+		_material.metallic = 0.3
+		_material.metallic_specular = 0.8
+		_material.roughness = 0.35
 	var mesh := BoxMesh.new()
 	mesh.size = tune.block_size
 	_model = MeshInstance3D.new()
@@ -148,8 +151,12 @@ func _build_model() -> void:
 
 ## Quick play's review aid (--thief, debug builds; LevelRun loads this script by path): stand-ins one
 ## after another in `world`, each aimed at the runner's lane, a moment after the last one is gone
-## (caught, or away). Returns the spawner node.
+## (caught, or away), and a purse to start with (review_purse) so the first theft has something to take.
+## Returns the spawner node.
 static func start_review(world: RunWorld) -> Node:
+	var tuning: StandInThiefTuning = EnemyDirector.tuning_for(TYPE) as StandInThiefTuning
+	if tuning != null and tuning.review_purse > 0:
+		world.score.add_credit(tuning.review_purse)
 	var review := Review.new()
 	review.name = "ThiefReview"
 	review.world = world

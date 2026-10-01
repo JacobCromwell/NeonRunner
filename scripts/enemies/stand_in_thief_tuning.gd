@@ -23,3 +23,6 @@ extends ThiefTuning
 @export_range(10.0, 200.0, 5.0, "suffix:m") var gone_ahead: float = 70.0
 ## Quick play's --thief: seconds from one stand-in gone (caught, or away) to the next.
 @export_range(0.0, 10.0, 0.25, "suffix:s") var review_interval: float = 1.5
+## Quick play's --thief: credits the runner starts with, so the first theft has something to take (quick
+## play never pays the wallet).
+@export_range(0, 5000, 10) var review_purse: int = 400

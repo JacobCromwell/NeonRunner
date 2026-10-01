@@ -587,6 +587,9 @@ func _test_quick_play() -> void:
 	var world: RunWorld = run.world if run != null else null
 	var spawned: Array[int] = [0]
 	if world != null:
+		var purse: int = (EnemyDirector.tuning_for(THIEF) as StandInThiefTuning).review_purse
+		check(world.score.credits >= purse and run.hud.credits_counter.value == world.score.credits,
+			"the review's runner starts with its purse (%d), so the first theft has something to take" % purse)
 		world.director.enemy_spawned.connect(func(e: Enemy) -> void:
 			if e.type_id == &"stand_in_thief":
 				spawned[0] += 1)

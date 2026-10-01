@@ -21,3 +21,4 @@ flee_rise = 3.0
 flee_height = 4.5
 gone_ahead = 70.0
 review_interval = 1.5
+review_purse = 400
