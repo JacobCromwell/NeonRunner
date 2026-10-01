@@ -11,9 +11,9 @@ extends RefCounted
 ## - Limits (GDD §9.8): never on a one-lane ceiling (no room to dodge); at most 2 per ceiling; mounted
 ##   over lanes the ceiling covers, never over a pad's lane (the rider lands there and can ride on past
 ##   every turret; the ceiling's line of credits runs along it; DESIGN-TBD, docs/questions/c1.md 3),
-##   and off the ceiling's credits in its
-##   lane (credit_margin; also the rich credit the generator adds in the far lane afterwards); nothing
-##   before the feature's start (LevelConfig.feature_starts).
+##   and off the ceiling's credits in its lane (credit_margin, off_credits; also the rich credit the
+##   generator adds in the far lane afterwards); nothing before the feature's start
+##   (LevelConfig.feature_starts).
 ## - Where: at least after_pad_seconds past its ceiling's last pad (the rider sees it pop out before
 ##   taking the pad, and its first burst fits in), or tight_after_pad_seconds in the only lane beside a
 ##   pad's lane (tight_lane: a two-lane ceiling, or next to a pad at the edge, where the rider can only
@@ -57,10 +57,10 @@ const PadPlacement = preload("res://scripts/enemies/pad_placement.gd")
 ## and the room its shortest keeps for the turret's spot beyond after_pad_seconds and
 ## before_end_seconds.
 const INTRO_STEP: float = 4.0
-## Metres between the spots tried for a turret that its first spot puts by a ceiling credit (off_credits).
-const CREDIT_STEP: float = 0.5
 const INTRO_SHORTER_SECONDS: float = 0.5
 const INTRO_SPARE_SECONDS: float = 0.3
+## Metres between the spots tried for a turret whose first spot is by a ceiling credit (off_credits).
+const CREDIT_STEP: float = 0.5
 
 
 static func apply(gen: LevelGenerator) -> void:
