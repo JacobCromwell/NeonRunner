@@ -44,6 +44,8 @@ play it with `./play.sh --boss=dead_zone_boss` (debug builds; a preview until E5
 5. **Its rhythm, and lights out with the other attacks** (GDD §10: hands and slashes keep coming in the
    dark). **Placeholder:** each phase's list (`attack_patterns`; the first: hands, hands, lights out,
    hands, hands, hands), one attack at a time, 1.3 s apart (`attack_gap`), never one that would still be
-   on when the next refuge's slash is due; the dark lasts while the next attacks come. A perfect run
-   meets about a slash every 13 s, a hand every 3 s and lights out about every 20 s. Right amount?
-   (E5c-b makes the later phases hungrier: faster hands, more lights out.)
+   on when the next refuge's slash is due; the dark lasts while the next attacks come. Measured on its
+   arena at 5 lanes (`test_sleep_taker_attacks`): 61 s of pattern bring 4 slashes, 9 hands and 2 lights
+   outs (a slash about every 15 s, a hand every 7 s, lights out every 30 s); fewer hands than the list
+   asks for, since a hand only comes where its lane and the next are clear of the arena's holes and
+   fences. Right amount? (E5c-b makes the later phases hungrier: faster hands, more lights out.)
