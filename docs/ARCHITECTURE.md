@@ -140,6 +140,11 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   stomping)`, which asks `DamageRules.resolve()` and applies the outcome: `IGNORE`,
   `BLOCKED_ARMOR`, `BLOCKED_SHIELD` (then ~1 s invulnerability), `KILL`, `DEFEAT_ENEMY` (claws or
   dash), `STOMP` (enemy defeated, player bounces). Nothing else hurts the player.
+- **A stomp on the ceiling** (C1): a hitbox that hangs from a ceiling (`Hazard.upside_down`, the
+  Barnacle Turret's crown) has its top facing down, toward a rider on the ceiling, who stomps it by
+  dropping back onto it after a jump (`Player._is_stomping`: on the ceiling, falling back toward it with
+  the feet within `GameRules.stomp_tolerance` of the hazard's `bottom_y()`). Only such hitboxes can be
+  stomped from the ceiling; on the floor nothing changed.
 - Falls aren't hazards: the Player handles them (the grapple hook saves one fall).
 - **The armor** (GDD §4 and §8, owner's playtest, September 30, 2026) is a state with rules of its own,
   `DamageRules.Armor`: up with its hits left, or broken and coming back. Every run the profile starts
@@ -216,8 +221,9 @@ heli drone, the Cyborg's Bad Dream (released by a killed host, spawned by the di
 time rather than placed by the generator), and the Resonator (GDD §9.10, the Golden Zone: a golden
 broadcast spire hovering far ahead whose red waves roll along the floor across every lane; its model,
 `resonator_model.gd`, is built in code, and `resonator_rules.gd` plans each pulse where its wave meets
-the player on clear floor). `scripts/enemies/mesh_batch.gd` merges an enemy's low-poly
-parts into one mesh per material to keep draw calls down.
+the player on clear floor), and the Barnacle Turret (GDD §9.8, from Marketplace 1: a ceiling enemy, see
+below). `scripts/enemies/mesh_batch.gd` merges an enemy's low-poly parts into one mesh per material to
+keep draw calls down.
 
 **Big attacks take turns through the director** (GDD §9, decided September 26, 2026). The big attacks
 of different enemy types never overlap, so the player never has to dodge two at once. The owner may
@@ -227,8 +233,8 @@ default, in the F6 panel); switched off, the game plays exactly as before the ru
 up), the drone's wind-up and barrage, the hover truck's rev and forward lurch and its cannon's charge
 and volley, the Bad Dream's chase, and the Resonator's pulse (its warning until its last wave has
 passed the player; DESIGN-TBD, `docs/questions/c3.md`). Small attacks (a cyborg's burst, a window
-cyborg's shot, a screech's swipe) and the hover truck's entrance don't take part. An enemy takes part
-like this, and the enemies still to come (the Barnacle Turret, Buzz Overdrive, the Gilded Sentinels,
+cyborg's shot, a Barnacle Turret's burst, a screech's swipe) and the hover truck's entrance don't take
+part. An enemy takes part like this, and the enemies still to come (Buzz Overdrive, the Gilded Sentinels,
 the Tithe Collector) opt in the same way for whichever of their attacks count as big:
 - **Report it.** `is_major_attack_active()` is true from the start of the attack's warning until its
   last hazard is over (the lunge has passed, the lurch has ended). Each shot fired in it goes to
@@ -312,7 +318,8 @@ set a warning or a dodge window follows the pace the same way.
 **Floor use.** The floor under a ceiling may hold enemies (GDD §3, changed September 26, 2026), but
 a ceiling's landing zone and the spot of each of its pads keep off the floor enemies use (see
 Ceilings under The generator). A type's tuning says whether it uses the floor (`uses_floor`: false
-for fliers like drones and hover trucks, and wall-only enemies like window cyborgs) and how much of
+for fliers like drones and hover trucks, wall-only enemies like window cyborgs, and the Barnacle Turret,
+which hangs from a ceiling) and how much of
 it around its spot (`floor_reach_before`/`_after`: where it stands, moves and attacks a player in its
 lane; the screech's 30 m before covers where it springs out). Rules that plan a longer run for one
 enemy store it in `params.floor_span` (the Octodog's charges). `LevelGenerator.enemy_floor_span(entry)`
@@ -320,6 +327,41 @@ and `enemy_uses_floor(entry)` read all of this; `CeilingZones`, `floor_clear` an
 respect it. An enemy that can't reach the ceiling stays consistent with it at run time: cyborgs, window
 cyborgs and hover trucks hold fire at a player riding a ceiling, the drone and the Bad Dream wait
 below, the Octodog never winds up and a screech stays in its manhole.
+
+**A ceiling enemy: the Barnacle Turret** (C1, GDD §9.8). `barnacle_turret.gd` (`BarnacleTurret`), its
+tuning (`BarnacleTurretTuning`, `data/enemies/barnacle_turret.tres`), its model
+(`barnacle_turret_model.gd`) and its rules (`barnacle_turret_rules.gd`, The generator):
+- **Where.** Its node sits at its mount point on a ceiling's underside (`tuning.ceiling_height`, over
+  its lane); it hangs toward -y and faces +z, the player. Its params carry its ceiling (`hull_start`,
+  `hull_end`, `first_lane`, `last_lane`); without them it takes the layout's ceiling over its spot. It
+  stays in its hatch (hitboxes off, never targeted) until the player is `emerge_seconds` away at their
+  speed, then pops out (`barnacle_emerge`; a floor runner sees it too) and stays put.
+- **Its gun is the cyborgs'.** `CyborgGun` takes any `GunModel` (`scripts/enemies/gun_model.gd`: the
+  three calls it makes on a model, `set_charge`, `aim_at`, `clear_aim`; `CyborgBody` extends it), a
+  shooter's own sounds and bolt name (`charge_sound`, `shot_sound`, `shot_name`), and a `path_rule` that
+  replaces the floor's check (`path_clear`: fences and gaps) for a target that isn't on the floor. The
+  turret's `may_attack`: a rider on its own ceiling (on the ceiling, within its span), ahead, within
+  `engage_distance`; never the floor. Its path rule (`_path_fair`): the rider is still on the ceiling past
+  each bolt's clear stretch (`end_margin`), and a lane beside the rider's, within the ceiling, has no
+  turret body from where the rider is to past the stretch (`body_reach`): there's always a lane to dodge
+  into, on a two-lane ceiling (where it's the turret's own) the bolts come well before it, and a second
+  turret never fires while the first stands in that lane between the rider and its bolts. One burst at
+  a time with the cyborgs (their airspace, `CyborgGun.AIRSPACE_META`; GDD §9.8, proposed). Its burst is
+  a small attack: it doesn't take turns with the big ones. Slightly more accurate than the cyborg
+  (`aim_error`, `shot_jitter`), with faster bolts (so they can meet a rider closing in at run speed well
+  before the turret); the dodge window is `min_warning_time` either way.
+- **Body.** A solid `body` hitbox from the underside to the stomp line and its crown below it, a `top`
+  that is `upside_down` (Damage and interactions): running into it is deadly unless shielded, clawed or
+  dashing, armor doesn't help; claws, the dash, a stomp from the ceiling or weapons kill it. Its health is
+  in plain laser tier 1 shots rounded to whole shots at the level's `enemy_scaling`
+  (`whole_health_at`): 5 (7 at laser tier 1, with `PowerupTuning.tier1_extra_shots`) through the Corporate
+  zone, 6 (8) in the Dead Zone and the Golden Zone. Nothing of it reaches more than `REACH_BELOW` (0.8 m)
+  under the underside: above a jump from a hover truck's roof and the top of a wall run.
+- **Looks.** `BarnacleTurretModel` builds both looks from the same dome, chest cannon and size: mechanical
+  (armour plates, a riveted band, a dim cold-white sensor), or a furry creature (low-poly tufts, googly
+  eyes, floppy ears) on `&"scavenger"` and `&"casino"` (Gangland, the Marketplace; `is_creature`), with a
+  palette per zone variant. Only its muzzle ever glows a hazard colour: enemy-fire red, swelling over the
+  charge-up and the burst (a steady swell, nothing strobes). A hit's flash is softer with Reduced flashing.
 
 ## The generator
 
@@ -419,10 +461,33 @@ gauntlet. What follows the lanes:
 
 `LayoutChecks.check_ceilings` checks each range (pads over their lane, a one-lane ceiling short, the
 landing zone per lane, the floor route, credits within the lanes), and `test_generator` sweeps widths
-at 3, 5 and 6 lanes. Enemies that use ceilings must respect the range: the Barnacle Turret (C1, GDD
-§9.8) never goes on a one-lane ceiling (`layout.hull_width(h) == 1`: no room to dodge) and at most two
-go on one ceiling, mounted over lanes the ceiling covers (`hull_covers`); anything aimed at a ceiling
-rider can only expect them to move within `hull_lanes(h)`.
+at 3, 5 and 6 lanes. Enemies that use ceilings respect the range: the Barnacle Turret (C1, GDD §9.8)
+never goes on a one-lane ceiling (`layout.hull_width(h) == 1`: no room to dodge) and at most two go on
+one ceiling, mounted over lanes the ceiling covers (`hull_covers`); anything aimed at a ceiling rider can
+only expect them to move within `hull_lanes(h)` (the turret's path rule, Enemies).
+
+**Barnacle Turrets** (C1, GDD §9.8; `barnacle_turret_rules.gd`). The turret has no patterns: its rules
+hang turrets from the level's own ceilings, after every rule that adds or takes away ceilings
+(`RUN_AFTER`), with seeds of their own (not `add_enemy`'s running count) and no floor use, so the pattern
+pass, the recency curve, the guarantee's forced picks and every other rule see the same level with or
+without the feature: a level differs only by its turrets (and, below, an introduction's ceiling). On each
+ceiling: never a one-lane one; never over a pad's lane (the rider lands there and can ride on past every
+turret; the line of ceiling credits runs along it); off the ceiling's credits in its lane, the rich one
+the credit pass adds later included (`credit_near`); at least `after_pad_seconds` past the last pad, or
+`tight_after_pad_seconds` in the only lane beside a pad's lane (`tight_lane`: a two-lane ceiling, or
+next to a pad at an edge, where its bolts must come well before it), and `before_end_seconds` before the
+end. The first ceiling past the feature's start where one fits always gets one, alone; later ones get
+turrets at `ceiling_share`, and a second one (`spacing_seconds` apart) at `pair_share` from
+`pair_min_scaling` on and only where two lanes are free of pads. In a level that gives the feature a
+start (Marketplace 1) the first comes within `intro_seconds`; where no ceiling it fits on lies there (or
+a level has none at all), the rules add a plain full-width one (`intro_ceiling_seconds`, or shorter where
+that doesn't fit, but long enough to hold a turret) at the first spot where `add_hull_with_pad` fits it
+without clearing anything and off every Octodog's planned run (the Octodog's own checks), its pad before
+the level's first drone (whose rules own every pad from its wave on; the pad may come before the
+feature's start, the turret never does) and off hover trucks' lanes (`PadPlacement.pad_lane`). The fill
+pass (G1) keeps nothing for a turret (`keep_out`: it never uses the floor), so it fills a level the same
+with or without turrets; it keeps off an introduction's ceiling like any other.
+`LayoutChecks.check_turrets` (from `check_rules`) checks every turret in every generated level.
 
 **Late starts.** `LevelConfig.feature_starts` (feature → share of the level) holds a feature back
 until its start: patterns that require it aren't picked before, and the first pattern picked from
@@ -602,6 +667,10 @@ A `ZoneSkin` (`scripts/world/skins/zone_skin.gd`) decorates abstract pieces thro
 (`floor_segment`, `wall_section`, `fence`, `wall_sign`, `ceiling_section` (by default `hull`), `pad`,
 `ramp`, `speed_pad`, `finish_line`, `make_environment`). Skins add visuals only, never collision or
 gameplay. Hazards keep one colour and shape language in every zone (pink crackle = electric fence).
+`TrackBuilder` also calls `note_wall_enemies(side, start, end, enemies)` just before `wall_section()`
+for each side (a no-op default): the chunk's wall enemy layout entries (type, at, side, ...), for a
+skin whose own scenery would otherwise double up with one (the Marketplace's citizens, task D3, kept
+clear of window cyborgs); read-only and visual only, like every other hook.
 
 **Ceilings from their lanes** (B3). `TrackBuilder` (and `BossProps.ceiling`) describe each ceiling as a
 `CeilingSection` (`scripts/world/ceiling_section.gd`): its span along the track, the lanes it covers
@@ -653,6 +722,11 @@ value, the one thing a new zone's skin sets for its enemies:
 | Corporate (D4) | `&"vr_runner"` | the Wide-Aspect VR Runner | clean |
 | Dead Zone (D5) | `&"burned"` | the base, burned out | clean |
 | Golden Zone (D6a) | `&"golden"` | the ceremonial enforcer | clean |
+
+The Barnacle Turret wears its furry creature look on `&"scavenger"` and `&"casino"` (Gangland, the
+Marketplace) and its mechanical look on every other value (`BarnacleTurretModel.is_creature`), with its
+colours from the zone variant (`BarnacleTurretModel.PALETTES`; a new zone's variant gets the default
+gunmetal until it has its own).
 
 The City and Gangland keep their older names because they also pick the other enemies' weathering
 (`CyborgSuit.VARIANT_LOOKS` maps them); every other zone sets its cyborg look's own name. A zone that
@@ -746,6 +820,29 @@ slab with lamps on every lane seam, nothing hangs below it, and its far end carr
   between two track distances (position on the glass, width, bottom, top, depth into the building,
   kind), computed from track positions alone, so it can be asked before or after a chunk exists.
   Citizens stand inside, between the glass plane and `face_x + side * depth`.
+- *The Marketplace citizens (task D3, GDD §5 "Citizens"; scenery only, never real 3D characters).*
+  `tools/asset_gen/citizen_sheet_gen.gd` bakes a few archetypes (`CitizenRig`, on the same shared
+  `HumanoidRig` the player and cyborgs use, GDD §9.2) into flipbook sprite sheets
+  (`CitizenSheet`: a fixed grid, one row per clip: idle, startled, cheer) at
+  `assets/sprites/citizens/*.png` (`tools/godot.sh citizens` regenerates them). `MarketCitizens`
+  (`scripts/world/skins/marketplace/`), called from `wall_section()`, seeds which eligible
+  `shop_windows()` get one (never a feed window, `screen`) from the window's own track position, so
+  a chunk builds the same citizens every time. `MarketCitizen` plays the baked sheet back as one
+  cheap unlit, double-sided quad (a `StandardMaterial3D.duplicate()` per card, its `uv1_offset` the
+  only thing that changes, driven in GDScript, not a shader) and reacts (startled or cheering) once
+  the player's own track distance comes within range of its window, easing back to idle on its own;
+  every live one joins the `"market_citizens"` group with a public `react(kind)`, the hook for The
+  House (E5a, GDD §10: "the citizens in the shop windows cheer and duck throughout") to use later.
+  Kept apart from window cyborgs (GDD §9.2; `docs/questions/d3.md`): citizens never glow and their
+  windows stay lit, and `ZoneSkin.note_wall_enemies(side, start, end, enemies)` (a small, generic
+  hook `TrackBuilder` calls just before `wall_section()`, a no-op for every other skin) tells
+  `MarketplaceSkin` which window cyborgs the chunk is about to place, so `MarketCitizens` keeps
+  `CYBORG_MARGIN` clear of each one's track position (`MarketplaceSkin.reserved_near()`). Switched
+  off by `Settings.citizens_enabled` (`DeviceProfile.is_low_end()`, DESIGN-TBD: nothing decides
+  "low-end" project-wide yet) and `Settings.DEFAULTS["citizens"]`, kept current by `apply_visuals()`
+  like `flashing_reduced`, so the skin never needs a `Profile`. `test_marketplace_citizens` and
+  `test_marketplace_skin`'s existing budgets (`SkinSuite`) cover it; with `CITIZEN_SHARE` at 0.16 it
+  adds about 2 surfaces and under 10 vertices per 5-lane chunk on top of the Marketplace's own ~21.
 - *Ceilings from their lanes (task B3).* `MarketCeilings` builds every kind (a building bridging the
   street, an overpass, a merchant ship, a floating ad) from the ceiling's collision box and lane
   seams, so a ceiling over fewer lanes just builds narrower; only a full-width ceiling becomes a
@@ -1251,7 +1348,9 @@ plays it), in `scripts/bosses/floating_head/`:
 - **The House:** its reels are a telegraph; cherry bombs are `circle_warning`s and blast hitboxes,
   the lightning a `props.fence` moved across the lanes, gold blocks `props.block`. The 7 buttons are
   spots the boss script checks against the player's surface, lane and distance (a wall button needs
-  wall fences, B5; a ceiling button a pad and ceiling, and Barnacle Turrets through `spawn_enemy`,
+  wall fences, B5; a ceiling button a pad and ceiling, and Barnacle Turrets through `spawn_enemy`
+(`"barnacle_turret"`, with its params `hull_start`, `hull_end`, `first_lane`, `last_lane` naming the
+arena's own `props.ceiling`),
   C1). The jackpot's hopper is a weak point switched on after all three buttons; its credit fountain
   needs credits placed during a run, which the credit field can't do yet (shared with the Tithe
   Collector's burst, B6/C5).
@@ -1535,7 +1634,15 @@ Resonator in full worlds on real physics (the warning always before the wave, a 
 5 and 6 lanes with its margin measured, walls and the ceiling safe, armor, shield and dash, turns with a
 `TurnDummy`, Reduced flashing), checks its rules over many seeds, and plays the real Golden 1-3 layouts
 at 3, 5 and 6 lanes, watched by `attack_watch.gd`: no wave meets the runner on a gap or a fence, and no
-big attacks overlap. `test_ceilings` covers narrow ceilings (B3) from the layout to the screen: the
+big attacks overlap. `test_barnacle_turret` covers the Barnacle Turret (C1): its numbers against the
+cyborg's and GDD §8's 7 laser tier 1 shots, hitboxes out of reach of anyone off its ceiling, both looks
+(no hazard glow but the charging muzzle), placement over every campaign level and narrow-ceiling sweeps
+(`LayoutChecks.check_turrets`, which `check_rules` runs on every generated level), a level unchanged
+without it, and on real physics: popping out, firing only at a rider on its own ceiling after its
+charge-up, dodging, two-lane ceilings at 3, 5 and 6 lanes with one turret and two, contact (armor, shield,
+claws, dash, a stomp from the ceiling), 7 laser tier 1 shots, armor and the shield against its bolts,
+determinism, and generated levels ridden through with every burst checked. `test_ceilings` covers narrow
+ceilings (B3) from the layout to the screen: the
 sections and collision boxes the track builds for each range at 3, 5 and 6 lanes, moves on a ceiling
 (within it, and blocked at its edges with the bump and the clank's event, on real physics), a pad
 holding the player to its lane, a one-lane ceiling ridden and dropped from, the camera kept under a
@@ -1574,7 +1681,9 @@ cyborgs, and a far view through the run camera where the expressions must read, 
 (`--variant=`, or ui_left / ui_right live), and every look side by side (`lineup`, front, back, as
 hosts or aiming, and `lineup_far` at gameplay distance); `octodog_screech`,
 `drone_truck_showcase`, `bad_dream_showcase`, `resonator_showcase`: its model through its warning
-and pulse, or a scripted run where it pulses at a runner who jumps its waves), the Golden Zone's statue
+and pulse, or a scripted run where it pulses at a runner who jumps its waves; `barnacle_turret_showcase`:
+both looks at rest and charging, and a scripted run under a ceiling with turrets or riding it past one,
+through the run camera or a close one, on any zone's skin), the Golden Zone's statue
 kit (`statue_showcase`: every pose, a turnaround, and a live statue rigged in its niche and swinging, as
 task C4 would build it), the bosses (`floating_head_showcase`, `sleep_taker_showcase`), the UI kit, the screens (`screens_showcase`;
 its `--screen=hud_armor [--tier=N]` takes the HUD's armor through its states: up, broken, its ring

@@ -9,6 +9,7 @@ extends SceneTree
 ##   sfx_bank_enemies.gd  enemies: every attack's warning, the attacks, hits and deaths
 ##   sfx_bank_bosses.gd   bosses: their entrances, warnings and attacks
 ##   sfx_bank_resonator.gd  the Resonator: its chime (the warning), its pulse and its death
+##   sfx_bank_barnacle.gd   the Barnacle Turret: popping out, its charge-up (the warning), its bolts, its death
 ##   sfx_bank_sleep_taker.gd  the Sleep Taker: its rise, its attacks' warnings (the shriek, the
 ##                        whispering, the inhale) and the attacks
 ## Run: tools/godot.sh sfx   (--only=jump,land renders just those; --review also writes
@@ -27,6 +28,7 @@ const BANKS: Array = [
 	preload("res://tools/asset_gen/sfx_bank_enemies.gd"),
 	preload("res://tools/asset_gen/sfx_bank_bosses.gd"),
 	preload("res://tools/asset_gen/sfx_bank_resonator.gd"),
+	preload("res://tools/asset_gen/sfx_bank_barnacle.gd"),
 	preload("res://tools/asset_gen/sfx_bank_sleep_taker.gd"),
 ]
 const OUT_DIR: String = "res://assets/sfx"

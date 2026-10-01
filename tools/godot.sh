@@ -9,6 +9,8 @@
 #   tools/godot.sh sfx [--review]     regenerate assets/sfx/*.wav from tools/asset_gen/sfx_gen.gd
 #   tools/godot.sh music [--review]   regenerate assets/music/*.wav from tools/asset_gen/music_gen.gd
 #                                     (--review writes images to build/sfx_review/, build/music_review/)
+#   tools/godot.sh citizens           regenerate assets/sprites/citizens/*.png (the Marketplace
+#                                     citizens' flipbooks) from tools/asset_gen/citizen_sheet_gen.gd
 #   tools/godot.sh web [--debug] [--serve]  export the web demo to exports/web/ (--debug: a debug build to
 #                                     exports/web_debug/) and check its pack; --serve then serves it at
 #                                     http://localhost:8060 (needs python3 and the web export templates)
@@ -136,6 +138,19 @@ case "$command" in
 	music)
 		import_if_stale
 		"$GODOT_BIN" --headless --path "$PROJECT" -s res://tools/asset_gen/music_gen.gd -- "$@" 2>&1 | quiet
+		run_import
+		;;
+	citizens)
+		# Renders real 3D frames (the Marketplace citizens' flipbooks, task D3), so --headless won't
+		# do: use Xvfb when there's no real display.
+		import_if_stale
+		if [[ -z "${DISPLAY:-}" ]] && command -v xvfb-run >/dev/null 2>&1; then
+			xvfb-run -a -s "-screen 0 320x240x24" "$GODOT_BIN" --path "$PROJECT" --rendering-method gl_compatibility \
+				-s res://tools/asset_gen/citizen_sheet_gen.gd -- "$@" 2>&1 | quiet
+		else
+			"$GODOT_BIN" --path "$PROJECT" --rendering-method gl_compatibility \
+				-s res://tools/asset_gen/citizen_sheet_gen.gd -- "$@" 2>&1 | quiet
+		fi
 		run_import
 		;;
 	web)

@@ -39,12 +39,22 @@ var shooter: Enemy
 var world: RunWorld
 var tuning: CyborgGunTuning
 var rng: RandomNumberGenerator
-var body: CyborgBody
+## The shooter's model, which shows the telegraph: a CyborgBody, or another enemy's (GunModel).
+var body: GunModel
 ## Wild fire (the panic variant): each bolt goes to a random spot around the player, up to
 ## wild_spread sideways.
 var wild: bool = false
 var wild_spread: float = 2.0
 var enabled: bool = true
+## The charge-up's and each bolt's sounds, and the bolts' name (a death's cause): the cyborgs' own
+## unless the shooter has its own (the Barnacle Turret, GDD §9.8).
+var charge_sound: StringName = &"cyborg_charge"
+var shot_sound: StringName = &"cyborg_shot"
+var shot_name: String = SHOT_NAME
+## The shooter's own rule for the player's path around a bolt's arrival, in place of the floor's
+## (path_clear): Callable(from_d: float, to_d: float) -> bool. Unset for the cyborgs; the Barnacle
+## Turret, which fires only at a ceiling rider, sets one for the ceiling (GDD §9.8).
+var path_rule: Callable
 ## Where bolts leave the cannon, from the enemy's origin (gameplay: the visual cannon animates, the
 ## shots never depend on it). Bolts start muzzle_reach further along their line.
 var muzzle_offset: Vector3 = Vector3(0.0, 1.12, 0.0)
@@ -68,7 +78,7 @@ var _lock := Vector2.ZERO
 
 
 func _init(p_shooter: Enemy, p_world: RunWorld, p_tuning: CyborgGunTuning, p_rng: RandomNumberGenerator,
-		p_body: CyborgBody) -> void:
+		p_body: GunModel) -> void:
 	shooter = p_shooter
 	world = p_world
 	tuning = p_tuning
@@ -177,7 +187,7 @@ func _start_charge() -> void:
 	world.set_meta(AIRSPACE_META, world.level_time() + tuning.charge_time
 		+ (_burst - 1) * tuning.shot_interval + tuning.burst_gap)
 	var at: Vector3 = _muzzle_base()
-	world.play_sfx_at(&"cyborg_charge", at)
+	world.play_sfx_at(charge_sound, at)
 	events.append({"t": world.level_time(), "event": &"charge", "shots": _burst,
 		"player_d": world.player.distance, "shooter_d": shooter.track_distance(), "from": at})
 
@@ -239,8 +249,8 @@ func _fire(player: Player) -> void:
 		return
 	aim = target + Vector3(0.0, 0.0, -v * t)
 	var velocity: Vector3 = (aim - from).normalized() * speed
-	world.projectiles.fire_enemy(from, velocity, LOOK, SHOT_NAME, tuning.bolt_life)
-	world.play_sfx_at(&"cyborg_shot", from)
+	world.projectiles.fire_enemy(from, velocity, LOOK, shot_name, tuning.bolt_life)
+	world.play_sfx_at(shot_sound, from)
 	events.append({"t": world.level_time(), "event": &"shot", "impact": player.distance + v * t,
 		"arrive": world.level_time() + t, "from": from, "velocity": velocity,
 		"player_d": player.distance, "shooter_d": shooter.track_distance()})
@@ -269,8 +279,10 @@ func _burst_fair(lead: float, shots: int) -> bool:
 
 
 ## True if the player's path between two track distances has no live fence and no gap in any lane
-## (and, for a player on a wall, no sign on that wall).
+## (and, for a player on a wall, no sign on that wall). A shooter's own path_rule decides instead.
 func path_clear(from_d: float, to_d: float) -> bool:
+	if path_rule.is_valid():
+		return bool(path_rule.call(from_d, to_d))
 	var layout: LevelLayout = world.layout
 	for f: Dictionary in layout.fences:
 		var at: float = f["at"]
