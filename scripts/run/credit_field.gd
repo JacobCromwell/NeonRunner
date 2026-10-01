@@ -45,6 +45,9 @@ void fragment() {
 
 enum State { IDLE, PULLED, GONE }
 
+## Credits placed during the run (place()) share MultiMeshes of this many instances.
+const PLACE_CHUNK: int = 32
+
 var world: RunWorld
 ## Magnet pull radius in metres (0 = off). The magnet power-up sets it.
 var magnet_radius: float = 0.0
@@ -55,6 +58,8 @@ var _entries: Array[Dictionary] = []
 var _pulled: Array[Dictionary] = []
 var _next: int = 0
 var _multimeshes: Dictionary = {}
+## Placed credits' MultiMeshes (place()): denomination → [MultiMesh], the last one filling.
+var _placed: Dictionary = {}
 static var _meshes: Dictionary = {}
 static var _materials: Dictionary = {}
 
@@ -66,6 +71,7 @@ func setup(p_world: RunWorld) -> void:
 	_entries.clear()
 	_pulled.clear()
 	_multimeshes.clear()
+	_placed.clear()
 	_next = 0
 	var by_value: Dictionary = {}
 	for c: Dictionary in world.layout.credits:
@@ -103,6 +109,41 @@ func remaining() -> int:
 		if e["state"] != State.GONE:
 			n += 1
 	return n
+
+
+## Places credits during the run (GDD §10, The House's jackpot: "a fountain of real credits to grab"):
+## entries like LevelLayout.credits' ({surface, lane, side, at, value, height}), collected (and pulled
+## by the magnet) like the level's own from now on. Each denomination's placed credits share MultiMeshes
+## of PLACE_CHUNK instances, so a fountain costs a draw or two. Returns how many were placed.
+func place(credits: Array[Dictionary]) -> int:
+	for c: Dictionary in credits:
+		var value: int = denomination(int(c["value"]))
+		var e := {"value": value, "surface": String(c.get("surface", "floor")), "lane": int(c.get("lane", 0)),
+			"side": int(c.get("side", 0)), "at": float(c["at"]), "state": State.IDLE, "pos": _world_pos(c)}
+		var chunks: Array = _placed.get(value, [])
+		_placed[value] = chunks
+		if chunks.is_empty() or (chunks[-1] as MultiMesh).visible_instance_count >= PLACE_CHUNK:
+			var mm := MultiMesh.new()
+			mm.transform_format = MultiMesh.TRANSFORM_3D
+			mm.mesh = mesh_for(value)
+			mm.instance_count = PLACE_CHUNK
+			mm.visible_instance_count = 0
+			var inst := MultiMeshInstance3D.new()
+			inst.multimesh = mm
+			inst.material_override = material_for(value)
+			inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			add_child(inst)
+			chunks.append(mm)
+		var chunk: MultiMesh = chunks[-1]
+		e["mm"] = chunk
+		e["idx"] = chunk.visible_instance_count
+		chunk.set_instance_transform(e["idx"], Transform3D(Basis.IDENTITY, e["pos"]))
+		chunk.visible_instance_count += 1
+		# The field walks its credits in track order from _next: keep that order.
+		var i: int = _entries.bsearch_custom(e, func(a: Dictionary, b: Dictionary) -> bool:
+			return float(a["at"]) < float(b["at"]), false)
+		_entries.insert(maxi(i, _next), e)
+	return credits.size()
 
 
 func _physics_process(delta: float) -> void:
