@@ -58,6 +58,7 @@ var tuning: SleepTakerTuning
 var slash: SleepTakerSlash
 var hands: SleepTakerHands
 var dark: SleepTakerLightsOut
+var lure: SleepTakerLure
 var step: Step = Step.ENTER
 var step_time: float = 0.0
 ## Where it looms, relative to the runner: its middle's world x, its base's height, metres ahead.
@@ -76,6 +77,12 @@ var _to := Vector3.ZERO
 var _seconds: float = 1.0
 var _bob: float = 0.0
 var _hinted: Dictionary = {}
+## Seconds until the next generator may come (generator_delay into a phase's pattern, generator_again
+## after a miss).
+var _generator_wait: float = 0.0
+var _lure_was_busy: bool = false
+## How far ahead of the runner it's drawn now (its pose, the slash's lunge and the lure's pull), metres.
+var _ahead: float = 0.0
 
 
 func _build_boss() -> void:
@@ -90,10 +97,16 @@ func _build_boss() -> void:
 	dark = SleepTakerLightsOut.new()
 	add_child(dark)
 	dark.setup(self)
-	if int(context.boss_resume.get("phase", 0)) > 0:
-		# Resuming at a later phase: it's already here.
+	lure = SleepTakerLure.new()
+	add_child(lure)
+	lure.setup(self)
+	var resume: int = int(context.boss_resume.get("phase", 0))
+	if resume > 0:
+		# Resuming at a later phase (a review's --phase=N): it's already here, its chunks already torn.
 		pose = hover_pose()
 		body.fade = 0.0
+		for chunk: int in mini(resume, SleepTakerModel.CHUNK_HEADS.size()):
+			body.tear(chunk, true)
 	else:
 		pose = enter_pose()
 		body.fade = 1.0
@@ -183,7 +196,7 @@ func refuges_between(from: float, to: float) -> Array[Dictionary]:
 ## {} for none within sight. One whose moment has passed unused is logged (refuge_missed) and skipped.
 func next_refuge() -> Dictionary:
 	var d: float = player_distance()
-	var v: float = _speed()
+	var v: float = speed()
 	for r: Dictionary in refuges_between(d - 5.0, d + SIGHT * run_pace()):
 		if _used.has(r["key"]):
 			continue
@@ -200,7 +213,7 @@ func next_refuge() -> Dictionary:
 ## Where the runner is when a refuge's slash warns: its strike lands strike_after_pad after they reach
 ## the pads at `pad`.
 func refuge_warn_at(pad: float) -> float:
-	var v: float = _speed()
+	var v: float = speed()
 	return pad + v * tuning.strike_after_pad - v * tuning.slash_warning()
 
 
@@ -299,6 +312,7 @@ func _on_phase_started(index: int) -> void:
 	slash.clear()
 	hands.clear()
 	dark.clear()
+	lure.clear()
 	line = _pattern(index)
 	if index == 0 and carried_time <= 0.0 and body.fade > 0.0:
 		# Its entrance: it rises out of the street far ahead and drifts in.
@@ -306,7 +320,8 @@ func _on_phase_started(index: int) -> void:
 		sound(&"sleep_taker_rise", world.lane_point(lane_count() / 2, player_distance() + tuning.enter_ahead, 4.0))
 		log_event(&"enter")
 	else:
-		# DESIGN-TBD (task E5c-b: an EMP tore a chunk away): it re-forms where it hovers.
+		# An EMP tore a chunk away (the phase before ended): it recoils from where it was lured in,
+		# howling, and re-forms where it hovers, hungrier (the phase's pace and list).
 		_move(Step.REFORM, pose, hover_pose(), phase().intro_seconds)
 		log_event(&"reform")
 
@@ -323,7 +338,9 @@ func _intro_tick(delta: float) -> void:
 		if step_time < delta * 1.5:
 			world.effects.shake(0.2, 1.2)
 	else:
+		# Torn (a phase after an EMP): it recoils to where it hovers, every maw gaping in pain.
 		pose = _from.lerp(_to, smoothstep(0.0, 1.0, k))
+		body.inhale = 0.7 * sin(PI * minf(k * 1.3, 1.0))
 	_place()
 
 
@@ -334,6 +351,8 @@ func _on_pattern_started(_index: int) -> void:
 	pose = hover_pose()
 	_gap_left = tuning.first_attack_delay
 	_was_busy = false
+	_generator_wait = tuning.generator_delay
+	_lure_was_busy = false
 
 
 func _pattern_tick(delta: float) -> void:
@@ -342,8 +361,31 @@ func _pattern_tick(delta: float) -> void:
 	slash.tick(delta)
 	hands.tick(delta)
 	dark.tick(delta)
+	lure.tick(delta)
 	_schedule(delta)
 	_place()
+
+
+## A generator's EMP went off (RunWorld.emp reaches every enemy, so every EMP calls this): within
+## emp_reach of the nightmare during its pattern (SleepTakerLure.reaches), it tears a chunk of it away,
+## the phase's big hit (damage(hit_damage(), &"emp"): GDD §10, three phases, three EMP hits); otherwise
+## nothing happens to it.
+func _on_part_emp(_part: BossPart, center: Vector3, _radius: float) -> void:
+	var gap: float = absf(body.global_position.z - center.z)
+	if state != State.FIGHT:
+		log_event(&"emp_missed", {"why": &"not_vulnerable", "gap": gap})
+		return
+	if not lure.reaches(center):
+		log_event(&"emp_missed", {"why": &"out_of_reach", "gap": gap})
+		return
+	# It recoils from where it is now (lured in close).
+	pose.z = _ahead
+	log_event(&"emp_hit", {"gap": gap})
+	if not is_final_phase():
+		body.tear(phase_index)
+		sound(&"sleep_taker_torn", body.mouth_world())
+		world.effects.shake(0.3, 0.6)
+	damage(hit_damage(), &"emp")
 
 
 func _on_defeated() -> void:
@@ -385,17 +427,20 @@ func _pattern(index: int) -> PackedStringArray:
 
 
 ## One attack at a time, attack_gap apart: a refuge's slash when its moment comes, otherwise the
-## phase's next attack that can start fairly and be over before the next refuge's slash.
+## phase's next attack that can start fairly and be over before the next refuge's slash and before a
+## generator's lure; none while the nightmare is lured. A generator comes when one is due and nothing
+## warns or strikes (_update_generator); its lure follows by itself (SleepTakerLure).
 func _schedule(delta: float) -> void:
 	var busy: bool = slash.busy() or hands.busy() or dark.warning_on()
 	if _was_busy and not busy:
 		_gap_left = tuning.attack_gap / pace()
 	_was_busy = busy
 	var d: float = player_distance()
-	var v: float = _speed()
+	var v: float = speed()
 	var refuge: Dictionary = next_refuge()
 	if not refuge.is_empty() and not _hinted.has("refuge") and (float(refuge["warn_at"]) - d) / v <= REFUGE_HINT_LEAD:
 		_hint("refuge")
+	_update_generator(delta, busy)
 	if busy:
 		return
 	_gap_left = maxf(_gap_left - delta, 0.0)
@@ -404,9 +449,11 @@ func _schedule(delta: float) -> void:
 		slash.start(float(refuge["pad"]))
 		_was_busy = true
 		return
-	if _gap_left > 0.0:
+	if _gap_left > 0.0 or lure.luring() or lure.stage == SleepTakerLure.Stage.RELEASE:
 		return
 	var until_refuge: float = INF if refuge.is_empty() else (float(refuge["warn_at"]) - d) / v
+	if lure.stage == SleepTakerLure.Stage.WAITING:
+		until_refuge = minf(until_refuge, (lure.lure_at(float(lure.site["at"]), v) - d) / v)
 	for i: int in line.size():
 		if _try_start(line[i], until_refuge):
 			line.remove_at(i)
@@ -416,8 +463,25 @@ func _schedule(delta: float) -> void:
 			return
 
 
+## Brings the next generator when one is due: generator_delay into the phase's pattern, or
+## generator_again after the last one's lure ended without its EMP reaching the nightmare; only while
+## nothing warns or strikes, and never while one is still in play.
+func _update_generator(delta: float, busy: bool) -> void:
+	if lure.busy():
+		_lure_was_busy = true
+		return
+	if _lure_was_busy:
+		_lure_was_busy = false
+		_generator_wait = maxf(_generator_wait, tuning.generator_again)
+	_generator_wait = maxf(_generator_wait - delta, 0.0)
+	if _generator_wait > 0.0 or busy or world.player.surface != Player.Surface.FLOOR:
+		return
+	if lure.place():
+		_hint("generator")
+
+
 ## Starts an attack of `kind` if it can start fairly now and be over (with the gap after it) before the
-## next refuge's slash, `until_refuge` seconds away.
+## next refuge's slash or the next lure, `until_refuge` seconds away.
 func _try_start(kind: String, until_refuge: float) -> bool:
 	var gap: float = tuning.attack_gap / pace()
 	match kind:
@@ -425,7 +489,7 @@ func _try_start(kind: String, until_refuge: float) -> bool:
 			var plan: Dictionary = hands.plan()
 			if plan.is_empty():
 				return false
-			var over: float = hands.warning_seconds() + hands.over_distance() / _speed()
+			var over: float = hands.warning_seconds() + hands.over_distance() / speed()
 			if over + gap > until_refuge:
 				return false
 			hands.start(plan)
@@ -447,7 +511,8 @@ func _hint(key: String) -> void:
 	hint_due.emit("%s/%s" % [def.id, key])
 
 
-func _speed() -> float:
+## The runner's speed now (m/s).
+func speed() -> float:
 	return maxf(world.player.speed, 1.0) if world != null and world.player != null else MovementTuning.REFERENCE_SPEED
 
 
@@ -470,6 +535,8 @@ func _place() -> void:
 		var target: float = p.position.x * tuning.drift_share
 		pose.x = move_toward(pose.x, target, tuning.drift_speed * get_physics_process_delta_time())
 	var ahead: float = lerpf(pose.z, tuning.lunge_gap + body.claw_reach(), slash.pull())
+	ahead = lerpf(ahead, lure.lure_ahead(), lure.pull())
+	_ahead = ahead
 	var bob: float = 0.25 * sin(_bob * 0.8)
 	var lean: float = atan2(p.position.x - pose.x, maxf(ahead, 1.0)) * 0.6
 	body.set_pose(Vector3(pose.x, pose.y + bob, TrackGeometry.world_z(player_distance() + ahead)), lean)

@@ -121,6 +121,32 @@ extends Resource
 @export_range(0.0, 30.0, 0.5, "suffix:m") var escape_clear_after: float = 6.0
 @export_range(1, 3) var max_escape_lanes: int = 1
 
+@export_group("Generators and the lure")
+## DESIGN-TBD (GDD §10: "glowing fence generators stand along the route. The player lures it close
+## (it lunges toward them), then destroys the generator with a stomp or the dash; the EMP rips a chunk
+## of the nightmare away"; "a missed generator is followed by another"): one generator at a time, in
+## sight generator_sight ahead (at 18 m/s), in a lane whose floor is clear generator_clear_before it to
+## generator_clear_after past it (at 18 m/s), away from the refuges' slashes and from ceilings. A
+## phase's first comes generator_delay into its pattern; after a miss, the next generator_again later.
+@export_range(0.0, 60.0, 0.5, "suffix:s") var generator_delay: float = 6.0
+@export_range(0.0, 60.0, 0.5, "suffix:s") var generator_again: float = 2.0
+@export_range(40.0, 300.0, 5.0, "suffix:m") var generator_sight: float = 110.0
+@export_range(10.0, 80.0, 1.0, "suffix:m") var generator_clear_before: float = 30.0
+@export_range(2.0, 30.0, 1.0, "suffix:m") var generator_clear_after: float = 8.0
+## DESIGN-TBD: the lure: lure_seconds before the runner reaches a generator, the nightmare lunges toward
+## them over lure_lunge_seconds (with its hungry roar), reaching for them, and holds there, its claws
+## lure_gap in front of them, until they're lure_release past the generator (at 18 m/s); then it pulls
+## back to hover over lure_back_seconds. It doesn't attack while lured.
+@export_range(1.0, 8.0, 0.1, "suffix:s") var lure_seconds: float = 3.0
+@export_range(0.1, 2.0, 0.05, "suffix:s") var lure_lunge_seconds: float = 0.6
+@export_range(0.5, 10.0, 0.25, "suffix:m") var lure_gap: float = 3.5
+@export_range(0.0, 20.0, 0.5, "suffix:m") var lure_release: float = 6.0
+@export_range(0.2, 3.0, 0.05, "suffix:s") var lure_back_seconds: float = 1.0
+## DESIGN-TBD: close enough: a generator's EMP tears a chunk away when its centre is within this far
+## (along the street) of the nightmare's middle; while it is, arcs crackle from the generator into it.
+## Lured, it's lure_gap plus its claws' reach (8-12 m) ahead of the runner; hovering, hover_ahead.
+@export_range(4.0, 40.0, 0.5, "suffix:m") var emp_reach: float = 18.0
+
 @export_group("Lights out")
 ## DESIGN-TBD: the warning: a deep inhale (every maw opens, the street's light streams into them) for
 ## inhale_seconds, then the light sinks to dark_level (of the arena's own light: BossEncounter.

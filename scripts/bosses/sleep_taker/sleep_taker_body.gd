@@ -21,6 +21,9 @@ const CORE_SIZE := Vector3(7.0, 12.0, 3.6)
 const CORE_CENTER := Vector3(0.0, 12.0, 0.2)
 ## How fast its animation eases toward what the encounter asks (per second, exponential).
 const EASE: float = 10.0
+## How long a chunk takes to rip away and dissolve once an EMP tears it (GDD §10: "the EMP rips a chunk
+## of the nightmare away").
+const TEAR_SECONDS: float = 1.4
 
 var tuning: SleepTakerTuning
 ## Its uniform scale (the model's size over the street: SleepTakerModel.REF_WIDTH wide at 1).
@@ -38,6 +41,8 @@ var swallowed: float = 0.0
 var reach: float = 1.0
 ## Materializing (1 = not there yet) and dissolving: set directly, not eased.
 var fade: float = 0.0
+## Seconds since each chunk (SleepTakerModel.CHUNK_HEADS) was torn away; -1 while it's still there.
+var tear_time := PackedFloat32Array([-1.0, -1.0])
 
 var _core: Hazard
 
@@ -92,6 +97,23 @@ func claw_reach() -> float:
 
 func core_hitbox() -> Hazard:
 	return _core
+
+
+## An EMP tore chunk `chunk` away (SleepTakerModel.CHUNK_HEADS): it rips off in a burst of wisps and
+## dissolves over TEAR_SECONDS (`instant`: already gone, for a fight resumed at a later phase).
+func tear(chunk: int, instant: bool = false) -> void:
+	if chunk < 0 or chunk >= tear_time.size() or tear_time[chunk] >= 0.0:
+		return
+	tear_time[chunk] = TEAR_SECONDS if instant else 0.0
+	if not instant and model != null:
+		model.burst_chunk(chunk)
+
+
+## How far chunk `chunk` has been torn away (0 = still there, 1 = gone).
+func torn(chunk: int) -> float:
+	if chunk < 0 or chunk >= tear_time.size() or tear_time[chunk] < 0.0:
+		return 0.0
+	return clampf(tear_time[chunk] / TEAR_SECONDS, 0.0, 1.0)
 
 
 func aim_point() -> Vector3:
@@ -156,4 +178,8 @@ func _animate(delta: float) -> void:
 	model.swallowed = lerpf(model.swallowed, swallowed, 1.0 - exp(-3.0 * delta))
 	model.reach = lerpf(model.reach, reach, k)
 	model.fade = fade
+	for i: int in tear_time.size():
+		if tear_time[i] >= 0.0:
+			tear_time[i] += delta
+	model.torn = Vector2(torn(0), torn(1))
 	model.animate()
