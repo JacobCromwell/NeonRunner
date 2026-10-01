@@ -540,7 +540,11 @@ func speed() -> float:
 ## for a time are written at 18 m/s and multiplied by it, so the fight keeps its seconds at any speed.
 ## (Not the phase's pace(): that one makes a phase hungrier.)
 func run_pace() -> float:
-	return world.tuning.pace() if world != null and world.tuning != null else 1.0
+	if world != null and world.tuning != null:
+		return world.tuning.pace()
+	if arena != null and arena.tuning != null:
+		return arena.tuning.pace()
+	return 1.0
 
 
 # --- Placing it --------------------------------------------------------------------------------------

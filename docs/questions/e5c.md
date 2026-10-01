@@ -15,12 +15,12 @@ below is `DESIGN-TBD`.
    at 3, 5 and 6 lanes). Hovering, it's never in reach. **Alternative:** lure it with its own slash (a
    generator by a refuge, smashed while it lunges in to strike).
 2. **The generators** (GDD §10: they "stand along the route"; "a missed generator is followed by
-   another"). **Placeholder:** one at a time, from 6 s into each phase's pattern (`generator_delay`),
-   placed in sight 110 m ahead (at 18 m/s) in the runner's lane, or the nearest lane whose floor is clear
-   around it, never near a refuge's slash or under a ceiling; another 2 s after a miss. They power no
-   fences of their own, and a pink beacon rising from each shows through the nightmare, which looms
-   between the runner and it. In practice one comes into sight about 12 s before its lure.
-   **Alternative:** fixed spots in the arena, each powering a fence or two.
+   another"). **Placeholder:** one at a time, from 9 s into each phase's pattern (`generator_delay`),
+   placed in sight 160 m ahead (at 18 m/s: about 9 s, at any speed) in the runner's lane, or the nearest
+   lane whose floor is clear around it, never near a refuge's slash or under a ceiling; another 3 s after
+   a miss. They power no fences of their own, and a pink beacon rising from each shows through the
+   nightmare, which looms between the runner and it. **Alternative:** fixed spots in the arena, each
+   powering a fence or two.
 3. **Its phases** (GDD §10: three EMP hits, hungrier each phase: faster hands, more lights out).
    **Placeholder:** each EMP tears a chunk away (its left cluster of heads, then its right, ripping off in
    a burst of wisps), and it recoils howling and re-forms over 2.5 s. Phases 2 and 3 run at pace 1.15 and
@@ -33,5 +33,6 @@ below is `DESIGN-TBD`.
    the night sky turns to a grey dawn over 3.2 s (the light up to 1.25 times the zone's own), and the
    results follow. **Alternative:** keep the victory riff, as after every other win.
 5. **Its length and par times** (GDD §10: 60-120 s; stars from par times).
-   **Placeholder:** a runner who never misses wins in about 79 s (measured at every lane count and both
-   speeds). Three stars at 90 s or less, two at 110 s or less; a missed generator costs about 13-25 s.
+   **Placeholder:** a runner who never misses wins in about 78 s (measured at every lane count and at
+   18 and 24.2 m/s); a missed generator costs about 12 s. Three stars at 86 s or less, two at 110 s or
+   less (up to two misses).

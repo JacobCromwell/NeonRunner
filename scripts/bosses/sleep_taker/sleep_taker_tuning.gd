@@ -128,7 +128,7 @@ extends Resource
 ## sight generator_sight ahead (at 18 m/s), in a lane whose floor is clear generator_clear_before it to
 ## generator_clear_after past it (at 18 m/s), away from the refuges' slashes and from ceilings. A
 ## phase's first comes generator_delay into its pattern; after a miss, the next generator_again later.
-@export_range(0.0, 60.0, 0.5, "suffix:s") var generator_delay: float = 13.0
+@export_range(0.0, 60.0, 0.5, "suffix:s") var generator_delay: float = 9.0
 @export_range(0.0, 60.0, 0.5, "suffix:s") var generator_again: float = 3.0
 @export_range(40.0, 300.0, 5.0, "suffix:m") var generator_sight: float = 160.0
 @export_range(10.0, 80.0, 1.0, "suffix:m") var generator_clear_before: float = 30.0

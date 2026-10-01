@@ -33,6 +33,8 @@ const ARC_SEGMENTS: int = 12
 const ARC_FLICKER: float = 0.07
 ## Seconds kept clear between a lure's stretch and a refuge's slash, either way round.
 const LURE_MARGIN: float = 0.5
+## A generator's spot is looked for this far past generator_sight (metres at 18 m/s).
+const SPOT_SEARCH: float = 30.0
 ## Where the arcs reach into the nightmare (model space: its belly and waist, below its great maw).
 const ARC_TARGETS: Array[Vector3] = [Vector3(-1.6, 4.4, 1.8), Vector3(0.0, 3.4, 2.0), Vector3(1.6, 4.4, 1.8)]
 const PINK := Color(1.0, 0.3, 0.75)
@@ -183,8 +185,9 @@ func place_at(at: float, lane: int) -> bool:
 	return true
 
 
-## The first fair spot for a generator from generator_sight ahead: {at, lane}, or {} for none within a
-## stretch past it. Its lane (the runner's, else the nearest) has its floor clear of holes and fences
+## The first fair spot for a generator from generator_sight ahead to SPOT_SEARCH past it: {at, lane}, or
+## {} for none (the encounter tries again a moment later, so a generator never shows up much further
+## off than the others). Its lane (the runner's, else the nearest) has its floor clear of holes and fences
 ## generator_clear_before it to generator_clear_after past it, no pad or ramp there and no pickup on
 ## it; the lure's stretch is clear of ceilings (the runner on the street the whole way) and of every
 ## refuge's slash, with LURE_MARGIN's room on either side.
@@ -204,7 +207,7 @@ func find_spot() -> Dictionary:
 	var from: float = d + t.generator_sight * k
 	var step: float = 3.0 * k
 	var at: float = from
-	while at <= from + 160.0 * k:
+	while at <= from + SPOT_SEARCH * k:
 		if _stretch_fair(at, v, k):
 			for lane: int in lanes:
 				if _lane_fair(lane, at, k):
@@ -239,7 +242,7 @@ func _lane_fair(lane: int, at: float, k: float) -> bool:
 	var layout: LevelLayout = boss.arena.layout if boss.arena != null else null
 	if layout == null:
 		return true
-	for list: Array in [layout.pads, layout.ramps]:
+	for list: Array in [layout.pads, layout.ramps, layout.doodads]:
 		for p: Dictionary in list:
 			var p_at: float = float(p.get("at", p.get("start", 0.0)))
 			if int(p.get("lane", -1)) == lane and p_at >= from and p_at <= to:

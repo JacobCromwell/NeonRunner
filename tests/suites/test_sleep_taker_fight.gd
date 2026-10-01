@@ -300,11 +300,6 @@ func _test_missed_generator() -> void:
 	check(def.stars_for(true, fight) == 2 and (_clean <= 0.0 or def.stars_for(true, _clean) == 3),
 		"three stars without a miss (%.1f s), two with one (%.1f s)" % [_clean, fight])
 	print("  Sleep Taker: one missed generator costs %.1f s (%.1f s against %.1f s)" % [fight - _clean, fight, _clean])
-	var line: PackedStringArray = []
-	for e: Dictionary in boss.events:
-		if e["event"] in [&"phase", &"generator", &"lure", &"lure_missed", &"emp_hit", &"defeated"]:
-			line.append("%s %.1f" % [e["event"], float(e["t"])])
-	print("    ", ", ".join(line))
 	await sim.free_world(world)
 
 
