@@ -22,10 +22,10 @@ extends Node3D
 ##   lure        through the run camera: a generator in sight, the nightmare lunging in after the runner,
 ##               the arcs as it's in reach, the stomp, the EMP tearing a chunk away and the recoil;
 ##               nothing else attacks (--phase=2: the last EMP, its wisps, the silence and the dawn)
-##   fight       the fight as it comes, with a runner who reads it (pad escapes)
+##   fight       the fight as it comes, with a runner who reads it (pad escapes) and stomps each generator
 ##   measure     readability in numbers (GDD §10: hazards keep glowing; the arena never pitch black):
 ##               a fence, a slash's lane marks, a hand's mist, a refuge's pad, its bridge's end band,
-##               a gap's edge, a fence generator and the street in view, through the run camera in
+##               a gap's edge, the fight's generator (with its beacon) and the street in view, through the run camera in
 ##               the arena's light and at the darkest point of lights out; prints each one's brightness
 ##               on screen (the mean of its brightest pixels, 0-255) in both lights
 ## Options: --lanes=N (3, 5 or 6; 5 by default), --phase=N (start at phase N, as a checkpoint would),
@@ -103,6 +103,7 @@ func _ready() -> void:
 			t.refuge_spacing = 1000.0
 			t.attack_gap = 1000.0
 			t.hover_ahead = 60.0
+			t.generator_delay = 100000.0
 	def.tuning = t
 	var tuning := load("res://data/tuning/movement.tres") as MovementTuning
 	var ctx := RunContext.new()
@@ -222,14 +223,14 @@ var _sampling: bool = false
 
 
 ## The measure scenario's track: in the left outer lane a hand's mist (held) and a gap, in the right
-## one a fence generator, a fence and plain street, the refuge's pads in the middle; the refuge's
-## clearing has already left the stretch empty.
+## one a fence and plain street, the refuge's pads in the middle; the refuge's clearing has already left
+## the stretch empty. The fight's own generator (its beacon and halo) stands in the right outer lane too,
+## placed once the runner stops (_measure_tick).
 func _stage_measure(arena: BossArena, _tuning: MovementTuning) -> void:
 	var lap: LevelLayout = arena.layout
 	var n: int = lap.lane_count
 	lap.fences.append(RunSim.fence(n - 1, MEASURE_FENCE, "full"))
 	lap.gaps.append({"lane": 0, "start": MEASURE_GAP, "end": MEASURE_GAP + 3.0})
-	lap.enemies.append({"type": "generator", "at": MEASURE_GENERATOR, "lane": n - 1, "side": 0, "seed": 7, "params": {}})
 
 
 ## Runs to the spot and stops; shows a slash's warning and a hand's mist and holds them; measures the
@@ -247,6 +248,7 @@ func _measure_tick() -> void:
 		if not boss.slash.busy():
 			boss.slash.start(-1.0)
 		boss.hands.start({"lane": 0, "at": MEASURE_MIST})
+		boss.lure.place_at(MEASURE_GENERATOR, boss.lane_count() - 1)
 		_probes = {"stopped": _frame}
 	# Hold the warnings where they are: the slash's lanes mid-warning, the mist pooled.
 	boss.slash.step_time = 0.5
@@ -291,6 +293,7 @@ func _sample() -> Dictionary:
 		"hand's mist (purple)": Vector3(geo.lane_x(0), 0.05, TrackGeometry.world_z(MEASURE_MIST)),
 		"fence (pink)": Vector3(geo.lane_x(n - 1), 0.55, TrackGeometry.world_z(MEASURE_FENCE)),
 		"generator (pink)": Vector3(geo.lane_x(n - 1), 0.5, TrackGeometry.world_z(MEASURE_GENERATOR)),
+		"generator's beacon": Vector3(geo.lane_x(n - 1), 3.0, TrackGeometry.world_z(MEASURE_GENERATOR)),
 		"gap's edge (orange)": Vector3(geo.lane_x(0), 0.02, TrackGeometry.world_z(MEASURE_GAP)),
 		"refuge's pad (cyan)": Vector3(geo.lane_x(n / 2), 0.05, TrackGeometry.world_z(pad + 1.0)),
 		"bridge's end (orange)": Vector3(geo.lane_x(n / 2), world.tuning.ceiling_height - 0.1, TrackGeometry.world_z(end)),

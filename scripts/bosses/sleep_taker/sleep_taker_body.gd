@@ -104,7 +104,8 @@ func core_hitbox() -> Hazard:
 func tear(chunk: int, instant: bool = false) -> void:
 	if chunk < 0 or chunk >= tear_time.size() or tear_time[chunk] >= 0.0:
 		return
-	tear_time[chunk] = TEAR_SECONDS if instant else 0.0
+	# (Already gone: well past its tear, clear of float32 rounding.)
+	tear_time[chunk] = TEAR_SECONDS + 1.0 if instant else 0.0
 	if not instant and model != null:
 		model.burst_chunk(chunk)
 

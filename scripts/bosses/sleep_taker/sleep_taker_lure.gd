@@ -11,9 +11,10 @@ extends Node3D
 ## - the lure: lure_seconds before the runner reaches it, the nightmare lunges toward them (its hungry
 ##   roar, sleep_taker_lure), arms reaching and maws gaping, and holds close in front of them (its claws
 ##   lure_gap away) until they're past the generator. It doesn't attack while lured;
-## - close enough: while the generator is within emp_reach of the nightmare (in_reach()), pink arcs
+## - close enough: while it's lured and the generator is within emp_reach of it (in_reach()), pink arcs
 ##   crackle from its coils into the nightmare (sleep_taker_crackle): smash it now, and its EMP tears a
-##   chunk away (SleepTaker._on_part_emp). With Reduced flashing the arcs hold still;
+##   chunk away (SleepTaker._on_part_emp). Hovering, it's never in reach. With Reduced flashing the arcs
+##   hold still;
 ## - missed (the runner passes it), it pulls back to hover, and the encounter brings another
 ##   generator_again later. Nothing changes with the misses (GDD §10: no escalation).
 ## Numbers: SleepTakerTuning ("Generators and the lure"), all DESIGN-TBD (docs/questions/e5c.md).
@@ -134,12 +135,13 @@ func in_reach() -> bool:
 	return reaches(generator.global_position)
 
 
-## True if an EMP at `center` reaches the nightmare (within emp_reach of its middle, along the street).
+## True if an EMP at `center` reaches the nightmare: only while it's lured in, within emp_reach (at the
+## run's pace) of its middle along the street. Hovering, it's out of reach.
 func reaches(center: Vector3) -> bool:
 	var body: SleepTakerBody = boss.body
-	if body == null or not is_instance_valid(body):
+	if body == null or not is_instance_valid(body) or not luring():
 		return false
-	return absf(body.global_position.z - center.z) <= boss.tuning.emp_reach
+	return absf(body.global_position.z - center.z) <= boss.tuning.emp_reach * boss.run_pace()
 
 
 # --- Placing a generator ------------------------------------------------------------------------
@@ -151,7 +153,16 @@ func place() -> bool:
 	var spot: Dictionary = find_spot()
 	if spot.is_empty():
 		return false
-	var enemy: Enemy = boss.spawn_enemy("generator", float(spot["at"]), int(spot["lane"]))
+	return place_at(float(spot["at"]), int(spot["lane"]))
+
+
+## Puts a generator at track distance `at` in `lane` (find_spot()'s spot; reviews stage one where they
+## want it), with its beacon and halo; the lure follows as the runner nears it.
+func place_at(at: float, lane: int) -> bool:
+	if busy():
+		return false
+	var spot := {"at": at, "lane": lane}
+	var enemy: Enemy = boss.spawn_enemy("generator", at, lane)
 	generator = enemy as FenceGenerator
 	if generator == null:
 		if enemy != null:
@@ -160,7 +171,7 @@ func place() -> bool:
 	site = spot
 	count += 1
 	generator.defeated.connect(_on_generator_defeated)
-	var pos: Vector3 = boss.world.lane_point(int(spot["lane"]), float(spot["at"]))
+	var pos: Vector3 = boss.world.lane_point(lane, at)
 	_beacon.global_position = pos
 	_halo.global_position = pos + Vector3(0.0, 0.03, 0.0)
 	_beacon.visible = true

@@ -142,10 +142,11 @@ extends Resource
 @export_range(0.5, 10.0, 0.25, "suffix:m") var lure_gap: float = 3.5
 @export_range(0.0, 20.0, 0.5, "suffix:m") var lure_release: float = 6.0
 @export_range(0.2, 3.0, 0.05, "suffix:s") var lure_back_seconds: float = 1.0
-## DESIGN-TBD: close enough: a generator's EMP tears a chunk away when its centre is within this far
-## (along the street) of the nightmare's middle; while it is, arcs crackle from the generator into it.
-## Lured, it's lure_gap plus its claws' reach (8-12 m) ahead of the runner; hovering, hover_ahead.
-@export_range(4.0, 40.0, 0.5, "suffix:m") var emp_reach: float = 18.0
+## DESIGN-TBD: close enough: while it's lured, a generator's EMP tears a chunk away when its centre is
+## within this far (along the street, at 18 m/s) of the nightmare's middle; meanwhile arcs crackle from
+## the generator into it. Lured, it's lure_gap plus its claws' reach (8-12 m) ahead of the runner, so the
+## arcs show for about 1.8 s before the runner reaches the generator. Hovering, it's never in reach.
+@export_range(4.0, 40.0, 0.5, "suffix:m") var emp_reach: float = 24.0
 
 @export_group("Defeat")
 ## DESIGN-TBD (GDD §10: "the last EMP bursts it into hundreds of wisps, each a faint face or figure that
