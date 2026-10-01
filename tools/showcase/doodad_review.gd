@@ -126,8 +126,9 @@ func _process(_delta: float) -> void:
 		_update_close_camera()
 
 
-## Low behind the runner and over the middle of the track, so a push moves the runner across the frame.
+## Low behind the runner (above the doodads) and over the middle of the track, so a push moves the
+## runner across the frame.
 func _update_close_camera() -> void:
 	var p: Player = world.player
-	camera.position = Vector3(0.0, 2.6, p.position.z + 6.5)
+	camera.position = Vector3(0.0, 3.4, p.position.z + 6.5)
 	camera.look_at(Vector3(0.0, 1.2, p.position.z - 8.0))
