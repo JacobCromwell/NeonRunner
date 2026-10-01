@@ -1566,6 +1566,20 @@ func doodad_keep_outs(patterns: Array, lane_keeps: Array[Dictionary] = []) -> Ar
 	for c: Dictionary in layout.cuts:
 		var span: Vector2 = FloorCutPlan.lane_window(c)
 		lane_keeps.append({"lane": int(c["lane"]), "from": span.x, "to": span.y})
+	for k: Dictionary in rules_doodad_keep_outs():
+		if k.has("lane"):
+			lane_keeps.append(k)
+		else:
+			out.append(Vector2(float(k["from"]), float(k["to"])))
+	return out
+
+
+## What the level's features' rules keep zone doodads off (`static func doodad_keep_outs(gen:
+## LevelGenerator) -> Array[Dictionary]` on a feature's rules script), in the order of the features:
+## the lane-bound attacks while they run, {from, to} in every lane (a Bad Dream's chase) or {lane, from,
+## to} in one (a hover truck's lane for its whole stay). Floor cuts keep off them too (cut_problem).
+func rules_doodad_keep_outs() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
 	for feature: String in config.features:
 		var path: String = RULES_DIR.path_join("%s_rules.gd" % feature)
 		if not ResourceLoader.exists(path):
@@ -1574,10 +1588,7 @@ func doodad_keep_outs(patterns: Array, lane_keeps: Array[Dictionary] = []) -> Ar
 		if script == null or not script.has_method("doodad_keep_outs"):
 			continue
 		for k: Dictionary in script.call("doodad_keep_outs", self):
-			if k.has("lane"):
-				lane_keeps.append(k)
-			else:
-				out.append(Vector2(float(k["from"]), float(k["to"])))
+			out.append(k)
 	return out
 
 
@@ -1620,7 +1631,9 @@ func add_cut(cut: Dictionary) -> bool:
 ## - the other lanes stay whole enough along its stretch: holes (and other cuts) in at most
 ##   lane_count - 1 - whole_lanes_for_cut() of them (GDD §9.9: on 3 lanes two lanes always stay whole);
 ## - nothing else goes on meanwhile: no enemy's keep-out (what the fill pass keeps for it,
-##   _enemy_keep_out) reaches its window, bar its own cause (an entry at its `end` in its lane);
+##   _enemy_keep_out) reaches its window, bar its own cause (an entry at its `end` in its lane), nor
+##   does a lane-bound attack the rules keep doodads off (rules_doodad_keep_outs, read from the
+##   level's own enemies: a Bad Dream's chase in any lane, a hover truck's stay in its lane);
 ## - a player in its lane when the warning starts can leave it (cut_escape_clear).
 ## Wall runners and ceiling riders are safe without a rule: the cut is a hole in its own lane only.
 func cut_problem(cut: Dictionary, p_layout: LevelLayout = null) -> String:
@@ -1682,6 +1695,9 @@ func cut_problem(cut: Dictionary, p_layout: LevelLayout = null) -> String:
 		var k: Vector2 = _enemy_keep_out(e, hooks)
 		if k.x <= span.y and k.y >= span.x:
 			return "an enemy (%s at %.0f) is about meanwhile" % [e.get("type", "?"), float(e["at"])]
+	for k: Dictionary in rules_doodad_keep_outs():
+		if (not k.has("lane") or int(k["lane"]) == lane) and float(k["from"]) <= span.y and float(k["to"]) >= span.x:
+			return "an attack runs meanwhile (%.0f-%.0f)" % [float(k["from"]), float(k["to"])]
 	if not cut_escape_clear(cut, lay):
 		return "no room to leave its lane after the warning"
 	return ""

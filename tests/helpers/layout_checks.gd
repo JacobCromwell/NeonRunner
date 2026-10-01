@@ -74,7 +74,8 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 ## - the other lanes whole along its stretch: on 3 lanes no hole in either (GDD §9.9), on more holes in
 ##   at most LevelConfig.cut_holes_beside of them (and two always whole);
 ## - nothing else going on meanwhile: no floor enemy's stretch (its own cause aside), Bad Dream chase,
-##   drone wave before its first pad or hover truck's shortest stay reaches its window;
+##   drone wave before its first pad or hover truck's shortest stay reaches its window, nor a truck's
+##   whole stay in its lane;
 ## - a floor route (FloorRoute, which keeps out of a cut's lane from where it would reach a player in
 ##   it) from its lane, LevelConfig.cut_reaction_seconds after its warning starts, to past its cause's
 ##   spot: a player who reacts can always leave the lane.
@@ -161,6 +162,8 @@ static func check_cuts(suite: TestSuite, layout: LevelLayout, config: LevelConfi
 					busy.append(Vector2(at, at + dt.first_pad_seconds * speed))
 				"hover_truck":
 					busy.append(Vector2(HoverTruckRules.window_start(tt, at, pace), at + tt.stay_min_seconds * speed))
+					if int(e.get("lane", -1)) == lane:
+						busy.append(Vector2(HoverTruckRules.window_start(tt, at, pace), HoverTruckRules.window_end(tt, at, speed)))
 			for b: Vector2 in busy:
 				suite.check(b.y < b.x or b.x > span.y or b.y < span.x,
 					"nothing else goes on during a cut (%s at %.0f: %.1f-%.1f) %s" % [e["type"], at, b.x, b.y, t])
