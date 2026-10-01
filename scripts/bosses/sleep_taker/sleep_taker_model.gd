@@ -487,7 +487,9 @@ static func hand_mesh() -> ArrayMesh:
 		_cone_tagged(st, knuckle, p1, 0.13, 0.11, 5, BLACK, SHEEN, 2, k, 0.0, 0.35)
 		_cone_tagged(st, p1, p2, 0.11, 0.09, 5, BLACK, SHEEN, 2, k, 0.35, 0.6)
 		_cone_tagged(st, p2, p3, 0.09, 0.07, 5, BLACK, SHEEN, 2, k, 0.6, 0.8)
-		_cone_tagged(st, p3, claw, 0.07, 0.0, 4, CLAW, Color(CLAW, 1.0), 2, k, 0.8, 1.0)
+		# The claw's weight starts just above the finger's end, so the whole claw heats up (the
+		# shader's step at 0.8) and the finger stays black.
+		_cone_tagged(st, p3, claw, 0.07, 0.0, 4, CLAW, Color(CLAW, 1.0), 2, k, 0.81, 1.0)
 	_hand_mesh = st.commit()
 	return _hand_mesh
 

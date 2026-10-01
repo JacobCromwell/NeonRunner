@@ -131,9 +131,17 @@ void fragment() {
 	// A throat lights up as its maw opens, and glows with the light it has swallowed.
 	float lit = clamp(0.2 + v_open, 0.0, 1.0) * (1.0 + 0.8 * swallowed);
 	glow *= mix(1.0, lit, v_throat);
-	ALBEDO = COLOR.rgb * 0.3;
+	// The hot parts (its throat, its claws) lose their pale sheen, so they read red, not pink.
+	float hot = attack * v_hot;
+	ALBEDO = mix(COLOR.rgb * 0.3, vec3(0.05, 0.0, 0.0), hot);
 	ROUGHNESS = 0.12;
-	SPECULAR = 0.85;
-	EMISSION = rim_color.rgb * rim * rim_energy * (1.0 - 0.6 * glitch) * (1.0 - attack * v_hot)
+	SPECULAR = mix(0.85, 0.2, hot);
+	vec3 e = rim_color.rgb * rim * rim_energy * (1.0 - 0.6 * glitch) * (1.0 - attack * v_hot)
 		+ glow * COLOR.a * glow_energy * (1.0 + attack * v_hot * (0.3 - 0.7 * v_throat));
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+	// No tonemapping here: over-bright, its purple would clip toward the fences' pink and its red claws
+	// and throat toward salmon. Scaled down whole instead, each keeps its hue.
+	e /= max(1.0, max(e.r, max(e.g, e.b)));
+#endif
+	EMISSION = e;
 }

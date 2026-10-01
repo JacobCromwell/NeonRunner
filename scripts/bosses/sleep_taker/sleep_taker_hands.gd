@@ -27,6 +27,9 @@ const POOL_SECONDS: float = 0.4
 const SINK_SECONDS: float = 0.45
 ## The hand reaches its full grasp this long after it's up.
 const GRASP_SECONDS: float = 0.35
+## How much of the mist is left once the hand is up (it drew the rest up into itself; less purple
+## glow around its red claws, which would otherwise bloom pink over them).
+const MIST_LEFT: float = 0.6
 ## A hand's attack is over once the runner is this far past it (then the next may come).
 const PASSED: float = 1.0
 
@@ -176,7 +179,9 @@ func tick(delta: float) -> void:
 					h["t"] = 0.0
 			Stage.UP:
 				hand_mat.set_shader_parameter(&"grasp", clampf(st / GRASP_SECONDS, 0.0, 1.0))
-				mist_mat.set_shader_parameter(&"surge", maxf(0.0, 1.0 - st * 2.0))
+				var drawn: float = clampf(st * 2.0, 0.0, 1.0)
+				mist_mat.set_shader_parameter(&"surge", 1.0 - drawn)
+				mist_mat.set_shader_parameter(&"amount", lerpf(1.0, MIST_LEFT, drawn))
 				var past: float = float(h["at"]) + t.hand_depth * 0.5 + PASSED
 				if d >= past and not h.has("passed"):
 					h["passed"] = st
@@ -188,7 +193,7 @@ func tick(delta: float) -> void:
 				var k: float = clampf(st / SINK_SECONDS, 0.0, 1.0)
 				hand_mat.set_shader_parameter(&"rise", 1.0 - k)
 				hand_mat.set_shader_parameter(&"attack", 1.0 - k)
-				mist_mat.set_shader_parameter(&"amount", 1.0 - k)
+				mist_mat.set_shader_parameter(&"amount", MIST_LEFT * (1.0 - k))
 				if k >= 1.0:
 					_release(h)
 					active.remove_at(i)

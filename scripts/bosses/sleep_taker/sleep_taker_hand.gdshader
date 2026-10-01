@@ -40,7 +40,8 @@ void vertex() {
 		float a = (grasp * 1.25 + 0.08 * sin(t * 3.0 + id)) * w;
 		vec3 pivot = vec3(v.x, KNUCKLE_Y, 0.05);
 		v = pivot + rot_x(v - pivot, a);
-		v_hot = smoothstep(0.78, 0.9, w);
+		// The claws (weight 0.81 to 1) heat up whole; the fingers (up to 0.8) stay black.
+		v_hot = smoothstep(0.8, 0.81, w);
 	}
 	v.y -= (1.0 - rise) * depth;
 	v.y -= fade * fade * 1.5;
@@ -52,10 +53,18 @@ void fragment() {
 	if (n < fade * 1.2 - 0.1) {
 		discard;
 	}
-	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.2);
-	vec3 glow = mix(COLOR.rgb, attack_color.rgb, clamp(attack * v_hot * 1.3, 0.0, 1.0));
-	ALBEDO = COLOR.rgb * 0.3;
+	// Its purple sheen calms as the claws heat up, so the claws' red isn't washed pink by purple bloom.
+	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.2) * (1.0 - 0.6 * attack);
+	float hot = attack * v_hot;
+	vec3 glow = mix(COLOR.rgb, attack_color.rgb, clamp(hot * 1.3, 0.0, 1.0));
+	ALBEDO = mix(COLOR.rgb * 0.3, vec3(0.05, 0.0, 0.0), hot);
 	ROUGHNESS = 0.12;
-	SPECULAR = 0.85;
-	EMISSION = rim_color.rgb * rim * rim_energy * (1.0 - attack * v_hot) + glow * COLOR.a * glow_energy * (1.0 + attack * v_hot * 0.3);
+	SPECULAR = mix(0.85, 0.2, hot);
+	vec3 e = rim_color.rgb * rim * rim_energy * (1.0 - hot) + glow * COLOR.a * glow_energy * (1.0 + hot * 0.3);
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+	// No tonemapping here: over-bright, its purple would clip toward the fences' pink and its red claws
+	// toward white. Scaled down whole instead, each keeps its hue.
+	e /= max(1.0, max(e.r, max(e.g, e.b)));
+#endif
+	EMISSION = e;
 }
