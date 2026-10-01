@@ -58,8 +58,9 @@ const TUNING_PATH: String = "res://data/tuning/wall_fences.tres"
 ## Claws lengthen wall runs (PowerupTuning.claws_wall_time_multiplier): a ramp's longest wall run.
 const POWERUPS_PATH: String = "res://data/tuning/powerups.tres"
 ## Enemy types whose attacks are big ones (their rules scripts' keep_out, LevelGenerator.enemy_keep_out):
-## a wall fence's drop window keeps off them.
-const BIG_ATTACKS: PackedStringArray = ["drone", "hover_truck", "octodog", "resonator", "floor_cutter"]
+## a wall fence's drop window keeps off them. (A floor cut's own window is kept too, whatever its cause:
+## the floor cutter stand-in, task C2's Buzz Overdrive.)
+const BIG_ATTACKS: PackedStringArray = ["drone", "hover_truck", "octodog", "resonator", "floor_cutter", "buzz_overdrive"]
 ## Metres past the end of a stretch it may not stand in where a wall fence may stand again.
 const EPSILON: float = 0.01
 
