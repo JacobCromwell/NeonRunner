@@ -17,6 +17,7 @@ tagline = "Rubble, embers, smoke and silence in the city's burnt-out husk."
 music = &"dead_zone"
 skin = ExtResource("skin")
 levels = Array[ExtResource("2_levelscript")]([ExtResource("lvl_dead_zone_1"), ExtResource("lvl_dead_zone_2")])
+run_speed = 24.2
 intro = ExtResource("c_intro")
 outro = ExtResource("c_outro")
 boss = ExtResource("boss")

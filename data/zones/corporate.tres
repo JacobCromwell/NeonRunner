@@ -17,6 +17,7 @@ tagline = "Maglev roofs and sterile plazas, under corporate and military rule."
 music = &"corporate"
 skin = ExtResource("skin")
 levels = Array[ExtResource("2_levelscript")]([ExtResource("lvl_corporate_1"), ExtResource("lvl_corporate_2")])
+run_speed = 23.4
 intro = ExtResource("c_intro")
 outro = ExtResource("c_outro")
 boss = ExtResource("boss")

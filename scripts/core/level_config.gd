@@ -30,6 +30,13 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 ## GDD §4: levels last 90–150 seconds. DESIGN-TBD: each campaign level's length (together they make
 ## GDD §5's "a flawless run through every level takes about 35 minutes").
 @export_range(30.0, 150.0, 1.0, "suffix:s") var duration_seconds: float = 120.0
+## The run speed this level is built and played at (GDD §3, owner's playtest September 30, 2026: it
+## rises zone by zone). 0: its zone's (ZoneDef.run_speed) in the campaign, else the movement tuning's
+## base run speed (quick play, tests). Campaign.configure writes the level's own speed, its zone's or
+## 0 into its copy, times the difficulty tier's speed multiplier. The generator, the run's world and
+## the enemies all take their movement tuning from movement_for(), so they agree on it; the level
+## keeps its duration in seconds and gets longer in metres.
+@export_range(0.0, 40.0, 0.1, "suffix:m/s") var run_speed: float = 0.0
 ## 0 = easiest, 1 = hardest. In the campaign this is the campaign curve plus difficulty_bias.
 @export_range(0.0, 1.0, 0.05) var difficulty: float = 0.3
 ## Added to the campaign's automatic difficulty curve for this level (GDD §6: each level can be
@@ -101,9 +108,20 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 @export_range(0.0, 200.0, 1.0, "suffix:m") var start_clear_distance: float = 60.0
 ## Clear track kept before the finish line.
 @export_range(0.0, 200.0, 1.0, "suffix:m") var end_clear_distance: float = 40.0
-## Seconds of clear track between patterns at difficulty 0 and 1.
+## Seconds of clear track between patterns at difficulty 0 and 1. DESIGN-TBD (docs/questions/g1.md):
+## campaign levels set their own, closer than these defaults, for busier levels (GDD §3, owner's
+## playtest September 30, 2026); the hard spacing stays the fairness floor (a switch across every lane
+## between two patterns, at 6 lanes).
 @export_range(0.2, 4.0, 0.05, "suffix:s") var spacing_seconds_easy: float = 1.8
 @export_range(0.2, 4.0, 0.05, "suffix:s") var spacing_seconds_hard: float = 0.9
+## Busier levels (GDD §3, owner's playtest September 30, 2026: "more gaps, obstacles and enemies ... so
+## there is always something going on"): after the patterns and the rules, every stretch where nothing
+## is going on or kept (LevelGenerator.fill_keep_outs) longer than this many seconds at run speed gets
+## more of the level's plain obstacle patterns (holes and fences), spaced like the pattern pass places
+## them (LevelGenerator._fill_empty_stretches): more patterns, never harder ones. 0 turns it off: the
+## level is built exactly as before (quick play, the tests, boss arenas). DESIGN-TBD
+## (docs/questions/g1.md): each campaign level's value.
+@export_range(0.0, 10.0, 0.1, "suffix:s") var fill_empty_seconds: float = 0.0
 ## Quiet stretches and bursts (GDD §5, The Hush: long silent stretches broken by sudden threats).
 ## With quiet_seconds above 0, the level after its run-up alternates a quiet stretch of that many
 ## seconds at run speed with a burst of burst_seconds, quiet first. In a quiet stretch patterns are
@@ -161,6 +179,11 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 ## patterns; high-value credits sit in risky spots (gap edges, by fences, far along wall runs).
 @export_range(1.0, 10.0, 0.25, "suffix:m") var credit_trail_spacing: float = 3.0
 @export_range(0, 20) var credit_trail_count: int = 6
+## A clear stretch too short for a full trail gets a shorter one, down to this many credits (0: only
+## full trails, as before). Busier levels leave fewer long clear stretches (GDD §3, owner's playtest
+## September 30, 2026), so campaign levels take shorter trails to keep their credits about where they
+## were (the economy is task R7's). DESIGN-TBD (docs/questions/g1.md).
+@export_range(0, 20) var credit_trail_min: int = 0
 ## Chance that a clear stretch gets a trail.
 @export_range(0.0, 1.0, 0.05) var credit_trail_chance: float = 0.8
 ## Chance that a gap gets an arc of credits over it and a richer credit right at its edge.
@@ -174,6 +197,17 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 
 func has_feature(feature: String) -> bool:
 	return features.has(feature)
+
+
+## The movement tuning this level runs on: `base` itself unless the level has a run speed of its own
+## (run_speed above 0, and not base's already), else a copy of `base` at that speed. The generator,
+## RunWorld and App all ask this, so a level is built and played at the same speed.
+func movement_for(base: MovementTuning) -> MovementTuning:
+	if base == null or run_speed <= 0.0 or is_equal_approx(base.run_speed, run_speed):
+		return base
+	var out: MovementTuning = base.duplicate() as MovementTuning
+	out.run_speed = run_speed
+	return out
 
 
 ## Share of the level (0–1) where `feature` starts: 0 unless feature_starts lists it.

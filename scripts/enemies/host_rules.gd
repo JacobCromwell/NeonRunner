@@ -122,7 +122,7 @@ static func _add_guaranteed(gen: LevelGenerator, t: BadDreamTuning, rng: RandomN
 	var layout: LevelLayout = gen.layout
 	var speed: float = gen.speed
 	var ct := load(CyborgRules.TUNING_PATH) as CyborgTuning
-	var margin: float = ct.obstacle_margin if ct != null else 10.0
+	var margin: float = CyborgRules.obstacle_margin_at(ct, gen.pace) if ct != null else gen.metres(10.0)
 	var spans: Array[Vector2] = CyborgRules.obstacle_spans(layout, gen.tuning, gen.zones)
 	var clearance: float = gen.config.spacing_seconds_hard * speed
 	var spots: Array[float] = []

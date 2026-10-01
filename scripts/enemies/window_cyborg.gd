@@ -108,7 +108,7 @@ func _may_attack() -> bool:
 	if player.surface == Player.Surface.WALL and player.wall_side == side:
 		return false
 	var ahead: float = track_distance() - player.distance
-	return ahead > 0.0 and ahead <= tuning.engage_distance
+	return ahead > 0.0 and ahead <= gun.engage_distance()
 
 
 ## The window: a dark opening lit from inside by the cold, dim light of a screen (the cult's feed,

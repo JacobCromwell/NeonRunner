@@ -47,13 +47,19 @@ RunWorld (scripts/run/run_world.gd)       one run's gameplay world; everything s
 
 `LevelRun` adds the camera (`RunCamera`), the speed lines (`SpeedLines`), the HUD (`RunHud`) and, in
 debug builds, the debug HUD and the F6 tuning panel. Quick play (`--quick`, or any of `--god
---seed=N --lanes=N --difficulty=X --features=a,b --full-loadout --nofall --skin=<name>`) restarts on
-death like the grey box did. `--level=<step id>` plays a campaign step with the full flow and takes
-`--lanes`, `--god`, `--nofall` and `--full-loadout` for reviews; `--boss=<boss id>` plays a boss fight
-(a zone's boss with the full flow, such as `--boss=city_boss`; any other, such as the test boss, or a
-zone's boss still being built (`BossDef.preview_scene`), as quick play) and also takes `--phase=N`.
-Command-line starts work in debug builds only, so a release build can't skip progression or farm
-credits with them.
+--seed=N --lanes=N --difficulty=X --features=a,b --full-loadout --nofall --skin=<name> --speed=N`)
+restarts on death like the grey box did.
+A campaign level runs at its zone's speed (Pace, under The generator): `App` gives the run the level's
+movement tuning (`LevelConfig.movement_for`), and `RunWorld.build` and the generator ask the same, so a
+level is always built and played at one speed; quick play, the tests and boss fights run at the base
+`MovementTuning.run_speed` (`--speed=N` sets quick play's). F6's Movement section changes the run's copy
+live, and its Save leaves the base run speed alone when the run's comes from its level (the section's
+`keep` list, `TuningPanel`).
+`--level=<step id>` plays a campaign step with the full flow and takes `--lanes`, `--god`, `--nofall`
+and `--full-loadout` for reviews; `--boss=<boss id>` plays a boss fight (a zone's boss with the full
+flow, such as `--boss=city_boss`; any other, such as the test boss, or a zone's boss still being built
+(`BossDef.preview_scene`), as quick play) and also takes `--phase=N`. Command-line starts work in debug
+builds only, so a release build can't skip progression or farm credits with them.
 
 Physics order each frame: RunWorld (builds chunks, spawns enemies) → Player (moves, checks hazards
 and triggers) → the boss's pattern (a boss fight) → enemies → projectiles → credits → pickups →
@@ -109,14 +115,14 @@ Every number is `SpeedFxTuning` (`scripts/run/speed_fx_tuning.gd`, `data/tuning/
 
 | File | What |
 |---|---|
-| `data/tuning/movement.tres` (`MovementTuning`) | run speed, jump, walls (and the blocked entry's bump), ramps and speed pads (their boosts share one fade), ceiling, piece sizes, camera, touch |
+| `data/tuning/movement.tres` (`MovementTuning`) | the base run speed (quick play, tests, boss fights; `REFERENCE_SPEED` and `pace()`, see Pace), jump, walls (and the blocked entry's bump), ramps and speed pads (their boosts share one fade), ceiling, piece sizes, camera, touch |
 | `data/tuning/game_rules.tres` (`GameRules`) | lanes per device, death share, invulnerability, the armor (the free armor's hits and wait, the upgrade's per tier, a pickup's extra hit), stomp, whether big attacks take turns, score, economy, stars |
 | `data/tuning/powerups.tres` (`PowerupTuning`) | weapon tiers, claws, dash, magnet, slow time |
 | `data/tuning/pickups.tres` (`PickupTuning`) | in-run pickups: where they appear, taking them, the charge cap, the look |
 | `data/tuning/feature_recency.tres` (`FeatureRecency`) | the campaign's recency curve: how a level's pick weights follow how recently the campaign introduced each feature |
 | `data/enemies/<type>.tres` (`EnemyTuning` subclasses) | per-enemy numbers, early/late pairs for campaign scaling |
 | `data/shop/catalog.json` | shop items, tiers and prices (the armor's texts take `{hits}` and `{seconds}`, filled from `GameRules` by `ShopScreen.item_text()`) |
-| `data/campaign/campaign.tres` → `data/zones/*.tres` → `data/levels/*.tres` | the campaign |
+| `data/campaign/campaign.tres` → `data/zones/*.tres` → `data/levels/*.tres` | the campaign; each zone's run speed (`ZoneDef.run_speed`, a level may set its own), each level's pacing, fill pass and credits |
 | `data/bosses/*.tres` | bosses (`BossDef`: slot, health, phases, arena, rewards, par times, armor rule), and a boss script's own tuning (`<id>_tuning.tres`) |
 | `data/cinematics/*.tres` | cinematic slots (`CinematicDef`: each slot's scene), and the arrival flyover's numbers (`arrival_flyover.tres`, `ArrivalFlyoverTuning`) |
 | `data/patterns/*.json` | generator patterns (every file in the folder is loaded) |
@@ -290,6 +296,25 @@ place). `tools/measure/big_attacks.gd` measures the overlaps, the delays and the
 a big attack in over the campaign (Review tools); `tests/helpers/turn_dummy.gd` is a scripted big
 attack for tests (with pauses in its asks and stalls when it may go).
 
+**Pace** (GDD §3, owner's playtest September 30, 2026: the runner rises from about 21 m/s in the
+Neon City to about 25 m/s in the Golden Zone, and enemies and their attacks speed up to match, never
+with shorter warnings). An enemy that stands or moves in the world's frame gives its distances along
+the track and its speeds at `MovementTuning.REFERENCE_SPEED` (18 m/s) and stretches them by the level's
+pace (`world.tuning.pace()`; its rules by `LevelGenerator.pace`): in a faster zone it moves, lunges and
+fires faster from further out, and every wind-up, flight and dodge takes the seconds it took at 18 m/s.
+So far: the cyborgs' gun (engage distance, bolt speed, the clear path around an impact, `CyborgGun.pace`)
+and their walk, flight and margin; the Octodog (its tuning's helpers take the pace: the lunge's start
+and speed, the sprint, the run's margins, `charge_slack`, `appear_distance`); the Resonator (its
+easing in and its margins; it hovers `hover_ahead` ahead at every pace, within laser tier 1's reach, so
+the runner closes in on its waves as fast as at 18 m/s instead: they roll slower along the floor and take
+as long to arrive, `ResonatorTuning.wave_speed_at`); the screech's dash; and every floor enemy's reach
+(`LevelGenerator.enemy_floor_span` takes the pace; `CeilingZones.pace`). Warnings, charge-ups and wind-ups are seconds and stay what they
+were. Enemies that move with the player (the drone, the hover truck once it's out, the Bad Dream) fire in
+the player's frame, so nothing of theirs depends on the run speed. Boss fights run at the base speed,
+pace 1. What made the enemies livelier is data: less idle time between attacks (reloads, follow and
+pacing times, cannon intervals, rests; DESIGN-TBD, `docs/questions/g1.md`). A new enemy whose distances
+set a warning or a dodge window follows the pace the same way.
+
 **Floor use.** The floor under a ceiling may hold enemies (GDD §3, changed September 26, 2026), but
 a ceiling's landing zone and the spot of each of its pads keep off the floor enemies use (see
 Ceilings under The generator). A type's tuning says whether it uses the floor (`uses_floor`: false
@@ -351,7 +376,8 @@ seconds, lanes)`, `ceiling_lanes(pads, at, one_lane_ok)`, `one_lane_seconds(lane
 paced in bursts `quiet_at(at)`, `stretch_end(at)`, `burst_index(at)`, `quiet_stretches()`,
 `burst_spans(lo, hi)`, `prefers_bursts(feature)`, `burst_spot(rng, lo, hi, feature)` and
 `pacing_pools(spots, feature)`, plus
-`layout`, `config`, `tuning`, `speed`, `jump_distance` and `zones` (the level's `CeilingZones`).
+`layout`, `config`, `tuning` (the level's own, `LevelConfig.movement_for`), `speed`, `jump_distance`,
+`pace` and `metres(m)` (Pace, below) and `zones` (the level's `CeilingZones`).
 `pick_weights(patterns, difficulty, at)` gives the weights a pick draws from (the static
 `pattern_kind(pattern)` and `enemy_count(pattern, lanes)` say how the recency curve counts a pattern),
 and `picks` lists the patterns the last build placed (id, features, spot, length, due or not), for
@@ -386,7 +412,7 @@ host out. The Octodog rules keep each dog's charges off every stretch a chase ca
 ceiling may hold gaps, hazards and enemies: the ceiling is the way to escape them, and it's never
 required. `CeilingZones` (`scripts/world/ceiling_zones.gd`, `gen.zones`) holds the two stretches every
 ceiling keeps safe, and the checks and clearing for them:
-- **The landing zone**: from a section's end, `hull_landing_seconds` at run speed (21.6 m), no lane
+- **The landing zone**: from a section's end, `hull_landing_seconds` at run speed (21.6 m at 18 m/s), no lane
   the section covers holds a gap or a fence (a narrow ceiling's rider drops only from its lanes) and no
   floor enemy's stretch reaches in, in any lane, so the player always lands safely.
 - **Each pad's spot**: its lane holds no gap, fence or ramp from a full jump before the pad (a
@@ -541,6 +567,49 @@ each feature a pattern can place there is in the finished level, at any lane cou
   without any, which saves a build: a drone wave and a hover truck in any level (their tunings'
   `guarantee_one_wave` and `guarantee_one`), and a host, an Octodog and a Resonator in a level with
   `guarantee_features`.
+
+**Pace** (GDD §3, owner's playtest September 30, 2026: about 21 m/s in the Neon City rising zone by
+zone to about 25 m/s in the Golden Zone). A level's run speed is its own `LevelConfig.run_speed`, which
+`Campaign.configure` fills in from its zone (`ZoneDef.run_speed`; DESIGN-TBD, a straight rise from 21 to
+25 m/s) times a harder tier's speed multiplier; 0 is the movement tuning's base speed (quick play, the
+tests, boss arenas). The level keeps its duration in seconds and gets longer in metres. Everything the
+patterns and rules measure in metres was written for `MovementTuning.REFERENCE_SPEED` (18 m/s), so the
+generator stretches it by the level's pace (`pace = run speed / 18`, `metres()`): a pattern's `length`
+and its elements' `at`, a sign's length, credit spacing (the patterns' and the trails'), and the rules'
+margins (the cyborg's obstacle margin, `CyborgRules.obstacle_margin_at`; the Octodog's; a hover truck's
+`clear_before`; a pad's keep-out around a truck; the Resonator's). Seconds (`at_seconds`, spacing, a
+ceiling's `length_seconds`, the landing zone) and jumps (a hole's `jump_frac`, a pad's run-up) follow
+the run speed already, and physical sizes (pieces, lanes, a hull's lead-in, the physical margins of a
+few metres around a piece) don't change. So every reaction window keeps its seconds at every zone's
+speed and at any lane count: a faster zone is never secretly tighter. At the reference speed the pace
+is exactly 1 and every level is built byte for byte as before (`tools/measure/level_pace.gd --old-data`
+proves it against main's data). A harder tier's faster speed stretches the patterns too, so it's harder
+by its difficulty bonus, not by tighter timing (a question, `docs/questions/g1.md`). The Hush's quiet
+stretches end exactly where `stretch_end()` says (`quiet_at` uses its sums).
+
+**Busier levels: the fill pass** (GDD §3: "more gaps, obstacles and enemies than the first build had
+(to an extent), so there is always something going on"). Campaign levels space their patterns closer
+at low difficulty (`spacing_seconds_easy` 1.1 s against the default 1.8; the hard spacing, 0.9 s, stays
+the floor that lets a player switch across six lanes between two patterns), and after the rules a fill
+pass (`LevelConfig.fill_empty_seconds`, 2 s in campaign levels, 0 = off and exactly as before)
+puts more of the level's own plain obstacle patterns (`is_filler`: holes and fences, no feature, no
+sign, no enemy) into every stretch where nothing goes on for longer than that. `fill_keep_outs()` says
+what's going on and what's kept, each with how far a filler keeps from it (the level's spacing there
+plus a pattern's tail, `FILL_TAIL_SECONDS`): every piece, each ramp's wall run to where it drops the
+player back (`RampLaunch`), each pad's zone and ceiling's landing zone, the floor under a ceiling
+(but where the level already picks gauntlets over two lanes or more: there fillers may go under it,
+timed like a gauntlet's pieces, `FILL_CEILING_AFTER_PAD_SECONDS` after its pad to
+`FILL_CEILING_BEFORE_END_SECONDS` before its end), every enemy from `FILL_ENEMY_LEAD_SECONDS` before it to
+the end of the floor it uses, and the quiet stretches. A rules script may say what its enemy keeps
+(`static func keep_out(gen, entry) -> Vector2`: the cyborg's lead and margin, a hover truck while it's
+surely there, a Resonator's planned visit, a drone wave until its first pad) and keep fillers out of
+what it keeps only partly (`static func after_fill(gen)`: a hover truck's lane until it has left).
+Fillers are picked like the pattern pass's picks, from a stream of their own (`rng_for("fill")`), and
+recorded in `fills`; the pattern pass, the rules and the guarantee are untouched. Credits: fillers take the clear stretches they
+stand in from the credit trails, and a stretch too short for a full trail gets a shorter one
+(`credit_trail_min`, 5 in campaign levels, 0 = as before), with a lower trail chance, so each level's
+credits stay about where they were (task R7 owns the economy). `tools/measure/level_pace.gd` measures
+each level's pace and density (Review tools).
 
 ## Power-ups
 
@@ -1528,7 +1597,14 @@ action and the Skip button, Reduced flashing, holding in the background, the sam
 in data), every zone's arrival flyover and the City's boss intro at 3, 5 and 6 lanes (the zone's skin from
 its data, the level's lanes, a camera that never flies into a ceiling or out of the street, a runner that
 never runs over a hole, ending in the run camera's view), and the App's flow through a built slot (the
-next step follows, skipping, the web demo). `test_web_demo` checks the web demo's preset, its export filter against
+next step follows, skipping, the web demo). `test_pace` checks the pace and busier levels (G1): the zones' speeds in data and each campaign level at
+its zone's speed (boss fights at the base), `movement_for`, a pattern's timing in seconds at 18 and 25
+m/s, the generator's fairness at 21, 23.4 and 25 m/s at 3, 5 and 6 lanes with every built feature and
+the fill pass (`LayoutChecks` checks each level at its own speed: `level_tuning()`), the fill pass's
+rules on campaign levels, the Octodog's and Resonator's windows in seconds, a cyborg and a screech on
+real physics at 25 m/s (the charge-up, the bolt's flight, the dodge; the shake), floor routes under a
+Golden level's ceilings run on physics at 25 m/s, and F6's Save keeping the base run speed.
+`test_web_demo` checks the web demo's preset, its export filter against
 the data and everything the demo references, and walks the demo from the title to its end screen (see
 Platforms and build flavors). The runner frees
 anything a suite leaves in the tree, gives suites a fresh, unsaved profile, reports a suite that fails
@@ -1595,3 +1671,13 @@ features that appear only thanks to the every-feature guarantee, and for a level
 Hush) its quiet stretches against its bursts, with the recency curve on and off and a level's remix
 settings on or off (`godot --headless -s res://tools/measure/level_shape.gd -- --levels=dead_zone/2
 --curve=on,off`; the whole campaign both ways takes about a minute and a half).
+
+`tools/measure/level_pace.gd` measures each campaign level's pace and density (G1; GDD §3): its run
+speed and length, and per minute its obstacle rows (and rows of holes), enemies, big attacks (Octodog
+charges and Resonator pulses as planned, drone waves, hover trucks), mechanics and all events; its
+empty stretches in seconds (the longest and the mean; what counts as going on is in its header); and
+its credits. `--old-data=DIR` builds the levels with another version's data (the .tres files of
+`data/tuning`, `enemies`, `levels`, `zones`, `campaign` and the patterns, e.g. main's exported with
+`git archive`), `--dump=FILE` writes every layout as JSON, so the new code with the old data can be
+compared byte for byte with the old build's dump, and `--set=key:value` tries level values before they go
+in the files (`godot --headless -s res://tools/measure/level_pace.gd -- --seeds=4`; about half a minute).
