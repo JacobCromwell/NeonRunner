@@ -12,8 +12,8 @@ extends Node3D
 ##   ride             the same ceiling, ridden: the runner takes the pad, a turret charges up and fires,
 ##                    the runner switches lanes once the charge-up is over, and rides on past it (god
 ##                    mode, so nothing ends the run)
-## Options: --close (floor and ride: a camera beside and behind the player, looking ahead at the next
-## turret, instead of the run camera), --skin=<zone id> (data/skins/<id>_skin.tres; default
+## Options: --close (floor and ride: a camera beside the next turret on the player's side, below the ceiling,
+## three-quarter on to its face, instead of the run camera), --skin=<zone id> (data/skins/<id>_skin.tres; default
 ## marketplace), --lanes=N (default 3),
 ## --variant=<name> (another look: a skin's enemy_variant such as casino or vr_runner), --pair (a second
 ## turret on the ceiling), --reduced (Reduced flashing on), --nolabel.
@@ -148,15 +148,21 @@ func _process(delta: float) -> void:
 		for m: BarnacleTurretModel in _models:
 			m.watch(p)
 	elif _close and _world != null:
-		# Beside and behind the player, below the ceiling, looking ahead at the next turret.
+		# Beside the next turret on the player's side, below the ceiling, three-quarter on to its face (its
+		# charge-up and its bolts leaving); behind the player once none is left ahead.
 		var player: Vector3 = _world.player.global_position
-		var target: Vector3 = player + Vector3(0.0, 0.0, -20.0)
+		var turret: BarnacleTurret = null
 		for e: Enemy in _world.director.active:
-			if e is BarnacleTurret and e.alive and e.track_distance() > _world.player.distance + 2.0:
-				target = (e as BarnacleTurret).aim_point()
+			if e is BarnacleTurret and e.alive and e.track_distance() > _world.player.distance - 1.0:
+				turret = e as BarnacleTurret
 				break
-		_camera.position = Vector3(player.x + 2.2, 3.4, player.z + 6.0)
-		_camera.look_at(target.lerp(player, 0.25))
+		if turret != null:
+			var at: Vector3 = turret.aim_point()
+			_camera.position = at + Vector3(3.0, -2.3, 6.0)
+			_camera.look_at(at + Vector3(0.0, -0.3, 1.5))
+		else:
+			_camera.position = player + Vector3(1.5, -1.5, 6.0)
+			_camera.look_at(player + Vector3(0.0, 0.0, -20.0))
 
 
 ## The floor view: the runner passes the pad by, into the first turret's lane, and runs right under it.
