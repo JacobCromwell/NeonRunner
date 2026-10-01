@@ -7,17 +7,20 @@ extends Node3D
 ## Input arrives only as named actions (keyboard via the InputMap, touch via TouchInput).
 ## Every contact goes through receive_hit(), which asks DamageRules what happens; the player's
 ## protection (the armor, whose rules are DamageRules.Armor's; shield, grapple, claws, the
-## invulnerability window, the dash) lives here.
+## invulnerability window, the dash, and the moment after a theft when no theft can happen) lives here.
 
 signal died(cause: String)
 ## Something happened that feedback (sound, HUD) may react to: jump, land, slide, wall_enter,
 ## wall_jump, wall_exit, wall_blocked, ramp, pad, hull_end, died, stomp, lane_blocked,
 ## ceiling_blocked, speed_pad, grapple, armor_hit (a blocked hit the armor survives), armor_break,
 ## armor_back (broken armor came back), shield_break, revive, dash, dash_end, doodad_push (a zone
-## doodad shoved the player into a neighbouring lane). The three blocked moves (lane_blocked,
-## wall_blocked, and ceiling_blocked: a move past the edge of a ceiling over fewer lanes) come with a
-## bump: out toward the blocked side and back.
+## doodad shoved the player into a neighbouring lane), robbed (a thief's touch took credits, GDD §9.12).
+## The three blocked moves (lane_blocked, wall_blocked, and ceiling_blocked: a move past the edge of a
+## ceiling over fewer lanes) come with a bump: out toward the blocked side and back.
 signal movement_event(kind: StringName)
+## A thief's touch robbed the player (DamageRules.Outcome.ROBBED, GDD §9.12): the ScoreKeeper takes the
+## thief's share of the run's credits (Hazard.steals_share). The `robbed` movement event follows.
+signal robbed(hazard: Hazard)
 ## A protective item was used up: &"armor" (it broke: its last hit went; it comes back), &"shield" or
 ## &"grapple".
 signal item_used(item: StringName)
@@ -68,6 +71,8 @@ var claws: bool = false
 var wall_time_multiplier: float = 1.0
 ## Seconds of invulnerability left (after a block or a revive; the character flashes).
 var invulnerable_left: float = 0.0
+## Seconds left in which no theft can happen (after one, GameRules.theft_grace): one touch robs once.
+var theft_immune_left: float = 0.0
 var dashing: bool = false
 ## Accessibility (reduced flashing): the invulnerability tint holds steady instead of flickering.
 var steady_flash: bool = false
@@ -205,6 +210,7 @@ func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> v
 	_push_ignore_left = 0.0
 	pushes = 0
 	invulnerable_left = 0.0
+	theft_immune_left = 0.0
 	dashing = false
 	_dash_left = 0.0
 	_dash_bonus = 0.0
@@ -275,6 +281,7 @@ func defense() -> DamageRules.Defense:
 	d.claws = claws
 	d.dashing = dashing
 	d.god_mode = god_mode
+	d.theft_immune = theft_immune_left > 0.0
 	return d
 
 
@@ -308,6 +315,11 @@ func receive_hit(hazard: Hazard, stomping: bool = false) -> DamageRules.Outcome:
 				_event(&"stomp")
 			hazard.enemy.defeat(cause)
 			enemy_contact.emit(hazard.enemy, cause)
+		DamageRules.Outcome.ROBBED:
+			# GDD §9.12: no hit; the thief takes its share (the ScoreKeeper hears `robbed`).
+			theft_immune_left = rules.theft_grace
+			robbed.emit(hazard)
+			_event(&"robbed")
 		DamageRules.Outcome.KILL:
 			_die(hazard.hazard_name)
 	if outcome != DamageRules.Outcome.IGNORE:
@@ -393,6 +405,7 @@ func _physics_process(delta: float) -> void:
 	_slide_left -= delta
 	_push_ignore_left -= delta
 	invulnerable_left = maxf(invulnerable_left - delta, 0.0)
+	theft_immune_left = maxf(theft_immune_left - delta, 0.0)
 	# Broken armor comes back on the run's clock (GDD §4): it waits while the game is paused or the
 	# player is down.
 	if armor_state.tick(delta):

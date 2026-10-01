@@ -69,7 +69,7 @@ func setup(p_world: RunWorld) -> void:
 	_next = 0
 	var by_value: Dictionary = {}
 	for c: Dictionary in world.layout.credits:
-		var value: int = _denomination(int(c["value"]))
+		var value: int = denomination(int(c["value"]))
 		var e := {"value": value, "surface": String(c["surface"]), "lane": int(c.get("lane", 0)),
 			"side": int(c.get("side", 0)), "at": float(c["at"]), "state": State.IDLE,
 			"pos": _world_pos(c)}
@@ -81,7 +81,7 @@ func setup(p_world: RunWorld) -> void:
 		var list: Array = by_value[value]
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.mesh = _mesh_for(value)
+		mm.mesh = mesh_for(value)
 		mm.instance_count = list.size()
 		for i: int in list.size():
 			var e: Dictionary = list[i]
@@ -90,7 +90,7 @@ func setup(p_world: RunWorld) -> void:
 			mm.set_instance_transform(i, Transform3D(Basis.IDENTITY, e["pos"]))
 		var inst := MultiMeshInstance3D.new()
 		inst.multimesh = mm
-		inst.material_override = _material_for(value)
+		inst.material_override = material_for(value)
 		inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(inst)
 		_multimeshes[value] = inst
@@ -191,7 +191,32 @@ func _world_pos(c: Dictionary) -> Vector3:
 	return Vector3(world.geo.lane_x(int(c["lane"])), height, z)
 
 
-static func _denomination(value: int) -> int:
+## A thief's vacuum (GDD §9.12, the Tithe Collector; task C5): the floor credit in `lane`, still idle,
+## closest to `at` metres along the track, within `reach` either way. Hides it (collected, never freed:
+## it never reaches the player) and returns `{value, pos}`, or `{}` when there is none in reach, so a
+## thief only ever takes the credits in its own path.
+func take_near(lane: int, at: float, reach: float) -> Dictionary:
+	var best: int = -1
+	var best_d: float = reach
+	for i: int in _entries.size():
+		var e: Dictionary = _entries[i]
+		if e["state"] != State.IDLE or e["surface"] != "floor" or int(e["lane"]) != lane:
+			continue
+		var d: float = absf(float(e["at"]) - at)
+		if d <= best_d:
+			best = i
+			best_d = d
+	if best < 0:
+		return {}
+	var e: Dictionary = _entries[best]
+	var out: Dictionary = {"value": e["value"], "pos": e["pos"]}
+	e["state"] = State.GONE
+	(e["mm"] as MultiMesh).set_instance_transform(e["idx"], Transform3D(Basis().scaled(Vector3.ZERO), e["pos"]))
+	return out
+
+
+## The denomination a credit worth `value` shows as: the largest one not above it.
+static func denomination(value: int) -> int:
 	var best: int = 1
 	for v: int in LOOKS:
 		if value >= v:
@@ -204,7 +229,9 @@ static func color_of(value: int) -> Color:
 	return UiTheme.credit_color(value)
 
 
-static func _material_for(value: int) -> Material:
+## A denomination's spinning, glowing material (one per denomination, shared by every credit drawn in
+## its look: the field's, and RunEffects' coin streams).
+static func material_for(value: int) -> Material:
 	if not _materials.has(value):
 		var shader := Shader.new()
 		shader.code = SPIN_SHADER
@@ -217,7 +244,8 @@ static func _material_for(value: int) -> Material:
 	return _materials[value]
 
 
-static func _mesh_for(value: int) -> Mesh:
+## A denomination's mesh (LOOKS: its shape and size).
+static func mesh_for(value: int) -> Mesh:
 	if _meshes.has(value):
 		return _meshes[value]
 	var look: Dictionary = LOOKS[value]

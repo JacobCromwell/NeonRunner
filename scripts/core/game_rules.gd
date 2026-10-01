@@ -39,6 +39,12 @@ extends Resource
 ## does nothing then).
 @export_range(0, 3) var armor_pickup_extra_hits: int = 1
 
+@export_group("Thefts")
+## GDD §9.12 (the Tithe Collector, task C5): a thief's touch isn't deadly, it robs (DamageRules ROBBED).
+## For this long after a theft no theft can happen again, so one touch robs once (the player's other
+## protection is untouched: a theft is no hit). DESIGN-TBD (docs/questions/b6.md): the length.
+@export_range(0.2, 5.0, 0.1, "suffix:s") var theft_grace: float = 1.5
+
 @export_group("Interactions")
 ## Upward speed after stomping an enemy.
 @export_range(0.0, 15.0, 0.25, "suffix:m/s") var stomp_bounce_velocity: float = 7.5

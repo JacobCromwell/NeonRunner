@@ -168,13 +168,16 @@ func _new_best_chip() -> Control:
 	return chip
 
 
-## Collected (+ bonus) = earned on completion; collected and the share kept after a death.
+## Collected (+ bonus) = earned on completion; collected and the share kept after a death. What thieves
+## took and kept (GDD §9.12) shows under what was collected, as it leaves the pay.
 func _credit_table() -> Control:
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override(&"h_separation", roundi(UiTheme.px(16)))
 	grid.add_theme_constant_override(&"v_separation", roundi(UiTheme.px(4)))
 	_table_row(grid, "Credits collected", UiTheme.format_int(result.credits_collected))
+	if result.credits_stolen > 0:
+		_table_row(grid, "Stolen", "−" + UiTheme.format_int(result.credits_stolen))
 	if result.completed:
 		if result.completion_bonus > 0:
 			_table_row(grid, "Boss payout" if result.context.is_boss() else "Completion bonus",

@@ -1,0 +1,14 @@
+{
+	"version": 1,
+	"patterns": [
+		{
+			"id": "tithe_collector",
+			"min_difficulty": 0.0, "weight": 0.8,
+			"requires": ["tithe_collector"],
+			"length": 10,
+			"elements": [
+				{ "kind": "enemy", "type": "tithe_collector", "at": 3, "lanes": { "mode": "center" } }
+			]
+		}
+	]
+}

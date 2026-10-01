@@ -20,6 +20,10 @@ var is_enemy_attack: bool = false
 var is_solid: bool = false
 ## DESIGN-TBD: the juggernaut dash passes through every hazard except falls unless this is false.
 var dash_passes: bool = true
+## A thief's touch (GDD §9.12, the Tithe Collector): touching this robs instead of hurting
+## (DamageRules.Outcome.ROBBED): it takes this share of the run's credits (ScoreKeeper.rob), held by its
+## enemy. 0 for every other hazard. A thief sets it on its hitboxes from its data (ThiefTuning).
+var steals_share: float = 0.0
 ## The enemy this hitbox belongs to, or null for obstacles and projectiles.
 var enemy: Enemy = null
 ## Which part of an enemy this is: &"body", &"top" (stomp zone), &"weak_point", &"attack".

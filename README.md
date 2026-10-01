@@ -52,6 +52,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--speed=25` | Quick play at another run speed (m/s): a zone's pace, from 21 in the Neon City to 25 in the Golden Zone. The level keeps its timing in seconds (campaign levels already run at their zone's speed) |
 | `--doodads=0.6` | Quick play with zone doodads (scenery in lanes that pushes you aside, never hurts): the chance each stretch with room for one gets one. Campaign levels have their own share |
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
+| `--thief` | Quick play with stand-in thieves, one after another: a gold block that crosses the lanes and robs 25% of the run's credits from a runner who touches it (it doesn't kill, even without `--god`); catch it (stomp it, shoot it, dash or claw through it) for what it took plus a jackpot. The runner starts with 400 credits, so the first theft has something to take. A review aid for the Tithe Collector's mechanism; no level has one |
 | `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level |
 | `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
@@ -106,8 +107,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   and a level's newest things get the most of its picks, taken from older things of their kind (enemies from
   enemies, obstacles from obstacles), so no level gets easier; enemies whose rules keep only so many (hosts,
   hover trucks, drones, Octodogs, Resonators) and the rare vent screech aren't boosted (the campaign's recency
-  curve, `data/tuning/feature_recency.tres`). The Buzz Overdrive, the Tithe Collector and the Gilded
-  Sentinels aren't built yet: their levels already list them, and they appear once their code exists.
+  curve, `data/tuning/feature_recency.tres`). The Buzz Overdrive and the Gilded Sentinels aren't built yet:
+  their levels already list them, and they appear once their code exists.
   Level names are placeholders, except the Golden Palace.
 - **Movement:** floor lanes, side-wall runs and wall jumps (a sign blocking the wall bumps you back with a
   clank), anti-grav pads onto the ceiling, ramps (higher onto the wall, with a speed boost that fades like
@@ -142,6 +143,13 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   - the Resonator (from Golden 1): a golden broadcast spire hovering far ahead. When its halos line up
     and its three-note chime plays, a red wave rolls along the floor across every lane: jump it, or be
     on a wall or the ceiling. Shoot it down or wait until it leaves (in quick play, `--features=resonator`)
+  - the Tithe Collector (from Corporate 2, skipping the Dead Zone, back in the Golden Zone): a small gold
+    drone with a collection plate, smug and gaudy (plain metal, no rotors; anti-grav pads don't affect
+    it). It appears ahead of you and closes in slowly, sucking up the credits in its lane along the way
+    and weaving toward whichever lane has the most hazards ahead, so chasing it is the risk. Touching it
+    isn't deadly: it grabs 25% of the credits you've collected and flies off. Catch it (stomp, shoot, or
+    dash through it) for everything it took, plus a jackpot (in quick play, `--features=tithe_collector`,
+    or review its shared mechanism with `--thief`)
 - **Bosses:** a framework for runner-style boss fights (GDD §10): the fight plays in the normal run on
   an arena track that keeps going for as long as it lasts, with the boss's health bar and phase
   markers on the HUD, weak points to stomp and weapon chip damage, a checkpoint for the final fight,
@@ -277,6 +285,14 @@ measures the numbers from before the owner's playtest fixes).
 enemy, host and obstacle counts, what only the every-feature guarantee brings, and The Hush's quiet stretches
 against its bursts, with the recency curve on and off:
 `godot --headless -s res://tools/measure/level_shape.gd -- [--levels=dead_zone/2] [--curve=on,off]`.
+
+`tools/measure/economy.gd` measures the campaign's economy (task R7): per level and zone, the credits
+available, what a good run collects (a stand-in share, default 0.7), the payout for finishing, and what a
+death or quit pays (GDD §4); then lays the shop's prices (`data/shop/catalog.json`) against the running
+wallet of a player who finishes every level once, in order, with nothing bought along the way: the first
+level each price is in reach of, and how many of that level's finish payouts it costs:
+`godot --headless -s res://tools/measure/economy.gd -- [--share=0.7] [--mobile=true] [--packs]` (its header
+lists the options; `--packs` also checks the mobile credit packs' sizes against the curve).
 
 ## The web demo
 

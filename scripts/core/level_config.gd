@@ -11,12 +11,13 @@ extends Resource
 ## - barnacle_turret: the Barnacle Turret, a ceiling hazard (GDD §9.8), from Marketplace 1
 ## - buzz_overdrive: the Buzz Overdrive (GDD §9.9), from Corporate 1 through the Dead Zone and the
 ##   Golden Zone (the Golden Palace included)
-## - tithe_collector: the Tithe Collector (GDD §9.12), Corporate 2, then the Golden Zone
 ## - resonator: the Resonator (GDD §9.10), from Golden 1
 ## - gilded_sentinel: the Gilded Sentinels (GDD §9.11), from Golden 2
-## (The wall fences, `wall_fences` and `wall_fences_partial`, are built: task B5.)
-const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "buzz_overdrive", "tithe_collector", "resonator",
-	"gilded_sentinel"]
+## tithe_collector (GDD §9.12, Corporate 2, then the Golden Zone) is built (task C5): its own script,
+## tuning and pattern (data/patterns/tithe_collector.json) place it, so it's out of this list. So are the
+## wall fences, `wall_fences` and `wall_fences_partial` (task B5: the generator places them,
+## WallFencePlacement).
+const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "buzz_overdrive", "resonator", "gilded_sentinel"]
 
 @export var id: StringName = &"prototype"
 ## DESIGN-TBD: campaign level names are placeholders (GDD §5 names only the Golden Palace).

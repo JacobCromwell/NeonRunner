@@ -7,10 +7,13 @@ var completed: bool = false
 ## Why the player died ("fell", a hazard's name), empty on completion.
 var cause: String = ""
 var score: int = 0
-## Value of the credits picked up during the run.
+## Value of the credits picked up during the run (a caught thief's jackpot too), before thefts.
 var credits_collected: int = 0
-## Credits paid into the wallet: everything collected plus the completion bonus on completion,
-## a share of what was collected on death (GDD §4).
+## Credits thieves took and kept (GDD §9.12: a thief that leaves uncaught keeps what it took): part
+## of credits_collected, and never paid.
+var credits_stolen: int = 0
+## Credits paid into the wallet: everything collected (less what thieves kept) plus the completion
+## bonus on completion, a share of that on death (GDD §4).
 var credits_earned: int = 0
 ## What completing paid on top of the credits collected: a level's completion bonus, a boss's payout.
 var completion_bonus: int = 0
@@ -35,7 +38,7 @@ static func from_boss(world: RunWorld, encounter: BossEncounter, context: RunCon
 	r.completed = won
 	r.cause = death_cause
 	r.score = world.score.score
-	r.credits_collected = world.score.credits
+	r._count_credits(world.score)
 	r.distance = world.player.distance
 	r.stats = world.score.stats()
 	var def: BossDef = context.boss
@@ -44,9 +47,7 @@ static func from_boss(world: RunWorld, encounter: BossEncounter, context: RunCon
 		r.stats.merge(encounter.stats(), true)
 	if won:
 		r.completion_bonus = def.payout_credits if context.mode != RunContext.Mode.QUICK else 0
-		r.credits_earned = r.credits_collected + r.completion_bonus
-	else:
-		r.credits_earned = floori(r.credits_collected * rules.death_credit_keep_fraction)
+	r._pay(won, rules)
 	r.stars = def.stars_for(won, r.time)
 	return r
 
@@ -59,14 +60,32 @@ static func from_world(world: RunWorld, context: RunContext, completed_run: bool
 	r.completed = completed_run
 	r.cause = death_cause
 	r.score = world.score.score
-	r.credits_collected = world.score.credits
+	r._count_credits(world.score)
 	r.time = world.player.elapsed
 	r.distance = world.player.distance
 	r.stats = world.score.stats()
 	if completed_run:
 		r.completion_bonus = rules.completion_bonus(maxi(context.level_index, 0)) if context.mode != RunContext.Mode.QUICK else 0
-		r.credits_earned = r.credits_collected + r.completion_bonus
-	else:
-		r.credits_earned = floori(r.credits_collected * rules.death_credit_keep_fraction)
+	r._pay(completed_run, rules)
+	# Stars measure the score, which a theft never lowers (ScoreKeeper): a theft costs no star.
 	r.stars = rules.stars_for(completed_run, r.score, world.score.max_credit_score)
 	return r
+
+
+## Credits the run holds at its end, as paid from: collected, less what thieves kept.
+func credits_kept() -> int:
+	return credits_collected - credits_stolen
+
+
+func _count_credits(keeper: ScoreKeeper) -> void:
+	credits_stolen = keeper.stolen_kept()
+	credits_collected = keeper.credits + credits_stolen
+
+
+## Completion pays the credits the run kept plus the bonus; a death (or quitting) a share of them (GDD
+## §4: after a theft, a share of what's left).
+func _pay(completed_run: bool, rules: GameRules) -> void:
+	if completed_run:
+		credits_earned = credits_kept() + completion_bonus
+	else:
+		credits_earned = floori(credits_kept() * rules.death_credit_keep_fraction)
