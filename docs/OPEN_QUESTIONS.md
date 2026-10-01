@@ -1462,7 +1462,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     **Placeholder:** back whole (`Player.revive` in `scripts/player/player.gd`, `DESIGN-TBD`).
 
 **The Floating Head after the playtest** (from E1e; numbers in `data/bosses/city_boss_tuning.tres`; measure the routes with `tools/measure/stomp_routes.gd`; play `--level=city/boss`)
-248. **Should every phase use a ramp?** (GDD §10: (1) the fallen tower as a ramp, (2) a wall jump,
+248. (E1f: at the City's 21 m/s the wall marks sit 15.7 m and 5.2 m before the face, the same seconds as 13 m and 4 m at 18 m/s.) **Should every phase use a ramp?** (GDD §10: (1) the fallen tower as a ramp, (2) a wall jump,
     (3) a pad and the ceiling.) After the first stomp the owner saw no ramp and no way up. The wall route
     showed nothing, and at 5 and 6 lanes a wall jump lands in the outer lane, which has no weak point:
     only a second move inward in the air reached one (measured in the campaign's step and in quick play,
@@ -1478,7 +1478,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     blocks; the window stays open for a runner on the trucks until the lead-in ends (3.5 m before its
     face, not 8 m). The latest switch is now 4.5 m before its face at 3, 5 and 6 lanes. Right share,
     and does the bent slab read as the fallen tower? Alternatives: a slab two lanes wide, a longer ramp.
-250. **Stomp boxes over the outer lanes** (item 160): at 5 and 6 lanes the outermost weak points' stomp
+250. (E1f: the stomp boxes are now 4.6 m deep at 18 m/s, stretched by the pace in the campaign.) **Stomp boxes over the outer lanes** (item 160): at 5 and 6 lanes the outermost weak points' stomp
     boxes now reach over the outer lanes to the walls, at their own height (a jump from the trucks
     still can't reach them), so a wall jump or a ceiling drop there stomps the dome beside it; and every
     box is lower and deeper (0.35 m over its socket, 4 m deep; were 0.55 m and 3 m). One wall jump now
@@ -1709,6 +1709,24 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     stand. The alternative: keep doodads out of every drone's and hover truck's whole stay.
     *Placeholder:* `drone.gd` and `hover_truck.gd` (`_doodad_in_reach`), `Octodog.window_clear`,
     `Resonator.pulse_clear`, `CyborgGun.path_clear`.
+
+**The Golden Palace** (from D6b; numbers and colours are exports on `GoldenPalaceSkin`, F6; play `--level=golden/3` or `--quick --skin=golden_palace`)
+275. **The floor's gold inlay runner** (GDD §5: "a palace floor (marble, inlay, gold runners)"): how
+    wide. **Placeholder:** `GoldenPalaceSkin.runner_half_width` (0.2 m, a roughly 0.4 m runner down
+    each lane's centre), `## DESIGN-TBD` in `scripts/world/skins/golden_palace_skin.gd`.
+276. **How tall the colonnade rises** above its entablature (frieze_top) before the hall reads as
+    receding into haze, comfortably clear of an alcove's statue and a hung tapestry. **Placeholder:**
+    `GoldenPalaceSkin.pilaster_height` (15 m), `## DESIGN-TBD` in the same file.
+277. **How far a ceiling piece's structure may rise** above its underside (GDD §5: "the vast hall's
+    ceiling stays far above") before the hall's haze would hide it anyway. **Placeholder:**
+    `GoldenPalaceSkin.hall_clear_height` (7.5 m, close to the Corporate zone's and the Dead Zone's own
+    ~7.4 m ceiling-structure budgets), `## DESIGN-TBD` in the same file.
+278. **The vault above the colonnade** (GDD §5: "an enormous vaulted space, perhaps with distant halls
+    and light shafts"): whether it should look like the Golden Zone's own dusk sky with the moon and
+    stars turned off (what's built: `GoldenPalaceSkin.make_environment()` reuses
+    `GoldenSkin.make_environment()` wholesale, its warm haze and dimmed "skyline" standing in for
+    distant halls glimpsed through light shafts), or something explicitly interior instead (a painted
+    or coffered ceiling glimpsed above the colonnade, a true horizon never showing).
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).

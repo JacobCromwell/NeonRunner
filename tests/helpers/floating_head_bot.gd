@@ -27,8 +27,12 @@ extends RefCounted
 ## the holes and full fences in its lane (timed to clear them) and slides under gapped ones; and it
 ## watches bolts in the air (_dodge_bolts: a dropped cyborg's, wild ones too) and sidesteps one that
 ## would reach its lane.
+## Its distances along the track are metres at 18 m/s, stretched by the run's pace
+## (FloatingHead.run_pace; GDD §3), like the fight's: at a zone's speed it reads the track as many
+## seconds ahead (a jump's arc is longer in metres at speed).
 
-## The wall route: onto the wall this far past where its marks start.
+## The wall route: onto the wall this far past where its marks start (metres at 18 m/s, like the
+## distances below: at the run's pace).
 const ENTER_INTO: float = 1.0
 ## The second move inward comes this long after the wall jump.
 const SECOND_MOVE: float = 0.1
@@ -81,6 +85,14 @@ func _init(p_head: FloatingHead, p_baits: bool = true) -> void:
 	baits = p_baits
 
 
+## The City boss step's movement tuning as the campaign plays it (its zone's speed, 21 m/s:
+## Campaign.configure_boss, LevelConfig.movement_for), from `base`: the Floating Head's suites fight at it.
+static func campaign_tuning(base: MovementTuning) -> MovementTuning:
+	var campaign := load("res://data/campaign/campaign.tres") as Campaign
+	var step: CampaignStep = campaign.step("city/boss") if campaign != null else null
+	return campaign.configure_boss(step, 3).movement_for(base) if step != null else base
+
+
 func step() -> void:
 	var world: RunWorld = head.world
 	var player: Player = world.player
@@ -126,13 +138,13 @@ func _take_route() -> bool:
 		# with a jump (a pad only lifts a runner on the ground).
 		var p: Player = head.world.player
 		var ahead: float = head.pad_at - p.distance
-		if head.route == &"ceiling" and ahead > 0.0 and ahead < 3.5 and p.grounded \
+		if head.route == &"ceiling" and ahead > 0.0 and ahead < _m(3.5) and p.grounded \
 				and not _handled.has("pads %s" % head.pin_stern):
 			_handled["pads %s" % head.pin_stern] = true
 			_press(&"jump", "over the pads")
 		if head.route == &"ramp":
 			var ramp_lane: int = head.ramp_lane if head.ramp_lane >= 0 else head.ramp_lane_for(head.pin_side)
-			if p.lane == ramp_lane and p.distance < head.pin_stern - head.tuning.ramp_length:
+			if p.lane == ramp_lane and p.distance < head.pin_stern - head.metres(head.tuning.ramp_length):
 				_go(ramp_lane + (1 if ramp_lane < head.lane_count() / 2 else -1), "off the ramp")
 		return false
 	var player: Player = head.world.player
@@ -190,9 +202,10 @@ func _board_late(lane: int, burning: int) -> void:
 		_dodge_lane(burning, "burn")
 
 
-## The wall route, by the wall marks: to the outer lane by the nearer wall (or `wall_side`), onto the
-## wall ENTER_INTO past where the marks start, and a wall jump at the jump mark, inward; one lane further
-## in the air only where the outer lane has no weak point and no stomp box reaches it.
+## The wall route, by the wall marks (FloatingHeadWallMarks, where they are on the wall): to the outer
+## lane by the nearer wall (or `wall_side`), onto the wall ENTER_INTO past where the marks start, and a
+## wall jump at the jump mark, inward; one lane further in the air only where the outer lane has no weak
+## point and no stomp box reaches it.
 func _wall_route(to_face: float, burning: int) -> void:
 	var player: Player = head.world.player
 	var n: int = head.lane_count()
@@ -211,12 +224,12 @@ func _wall_route(to_face: float, burning: int) -> void:
 			elif player.lane == burning:
 				_dodge_lane(burning, "burn")
 			if player.lane == outer and player.surface == Player.Surface.FLOOR and player.grounded \
-					and to_face <= head.tuning.wall_entry_before - ENTER_INTO and outer != burning:
+					and to_face <= _marks_start() - _m(ENTER_INTO) and outer != burning:
 				_target = -1
 				_press(&"move_left" if side < 0 else &"move_right", "wall enter")
 				_route["stage"] = &"wall"
 		&"wall":
-			if player.surface == Player.Surface.WALL and to_face <= head.tuning.wall_jump_before:
+			if player.surface == Player.Surface.WALL and to_face <= _jump_mark():
 				_press(inward, "wall jump")
 				_route["stage"] = &"jumped"
 				_route["t"] = head.fight_time()
@@ -225,6 +238,27 @@ func _wall_route(to_face: float, burning: int) -> void:
 					and head.fight_time() - float(_route["t"]) >= SECOND_MOVE:
 				_press(inward, "onto the weak point")
 				_route["stage"] = &"done"
+
+
+## Where the wall marks start, and their jump mark, as metres before the pinned ship's face (from the
+## marks on the wall; the fight's numbers if they aren't lit).
+func _marks_start() -> float:
+	var marks: FloatingHeadWallMarks = head.wall_marks
+	if marks != null and is_instance_valid(marks):
+		return head.pin_stern - marks.start
+	return head.before_face(head.tuning.wall_entry_before)
+
+
+func _jump_mark() -> float:
+	var marks: FloatingHeadWallMarks = head.wall_marks
+	if marks != null and is_instance_valid(marks):
+		return head.pin_stern - marks.jump_at
+	return head.before_face(head.tuning.wall_jump_before)
+
+
+## `reference` metres (at 18 m/s) at the run's pace.
+func _m(reference: float) -> float:
+	return head.metres(reference)
 
 
 ## The lane of the drag's burning line while it still reaches ahead of the runner (-1: none).
@@ -303,7 +337,7 @@ func _dodge_lane(lane: int, why: String) -> void:
 		return
 	var d0: float = head.world.player.distance
 	var lanes: Array[int] = [lane]
-	var e: int = head.escape_lane(lanes, pl, d0, d0 + 45.0, true)
+	var e: int = head.escape_lane(lanes, pl, d0, d0 + _m(45.0), true)
 	if e < 0:
 		e = pl + (1 if pl < head.lane_count() - 1 else -1)
 	_go(e, why)
@@ -338,16 +372,16 @@ func _avoid_cyborgs() -> void:
 			var n: int = head.lane_count()
 			for s: int in [1, -1]:
 				var to: int = player.lane + s
-				if to >= 0 and to < n and not _cyborg_in(to, player.distance, player.distance + 30.0):
+				if to >= 0 and to < n and not _cyborg_in(to, player.distance, player.distance + _m(30.0)):
 					_go(to, "bolts")
 					break
 	var lane: int = _target if _target >= 0 else player.lane
-	if not _cyborg_in(lane, player.distance, player.distance + 30.0):
+	if not _cyborg_in(lane, player.distance, player.distance + _m(30.0)):
 		return
 	var n: int = head.lane_count()
 	for s: int in [1, -1, 2, -2]:
 		var to: int = lane + s
-		if to >= 0 and to < n and not _cyborg_in(to, player.distance, player.distance + 30.0):
+		if to >= 0 and to < n and not _cyborg_in(to, player.distance, player.distance + _m(30.0)):
 			_go(to, "cyborg")
 			return
 
@@ -371,7 +405,7 @@ func _read_track() -> void:
 			can_jump = false
 	for g: Dictionary in layout.gaps:
 		var ahead: float = float(g["start"]) - d
-		if lanes.has(int(g["lane"])) and ahead > -0.2 and ahead <= HOLE_LEAD:
+		if lanes.has(int(g["lane"])) and ahead > -0.2 and ahead <= _m(HOLE_LEAD):
 			if can_jump:
 				_press(&"jump", "hole")
 			return
@@ -380,10 +414,10 @@ func _read_track() -> void:
 			continue
 		var ahead: float = float(f["at"]) - d
 		if f["variant"] == "gapped":
-			if ahead > 0.0 and ahead <= FENCE_SLIDE_LEAD and not player.is_sliding():
+			if ahead > 0.0 and ahead <= _m(FENCE_SLIDE_LEAD) and not player.is_sliding():
 				_press(&"slide", "gapped fence")
 				return
-		elif ahead > FENCE_JUMP_LAST and ahead <= FENCE_JUMP_LEAD:
+		elif ahead > _m(FENCE_JUMP_LAST) and ahead <= _m(FENCE_JUMP_LEAD):
 			if can_jump:
 				_press(&"jump", "fence")
 			return
@@ -403,7 +437,7 @@ func _dodge_bolts() -> void:
 	for s: int in [1, -1, 2, -2]:
 		var to: int = lane + s
 		if to >= 0 and to < head.lane_count() and not _bolt_toward(to) \
-				and head.floor_clear_lane(to, player.distance, player.distance + 12.0):
+				and head.floor_clear_lane(to, player.distance, player.distance + _m(12.0)):
 			_go(to, "bolt")
 			return
 
