@@ -1,31 +1,42 @@
 extends SceneTree
 ## Measures how forgiving the Floating Head's ways onto its head are (GDD §10; task E1e, from the
-## owner's playtest), in its fight on a plain street, a runner playing the face-off by its warnings
-## (FloatingHeadBot) until a tower pins the ship. From the project folder (with XDG_DATA_HOME set as for
-## the tests):
+## owner's playtest, and E1f: the fight at its zone's speed, GDD §3), in its fight on a plain street, a
+## runner playing the face-off by its warnings (FloatingHeadBot) until a tower pins the ship. From the
+## project folder (with XDG_DATA_HOME set as for the tests):
 ##   godot --headless --fixed-fps 60 -s res://tools/measure/stomp_routes.gd -- [options]
 ## Options:
 ##   --lanes=3,5,6          lane counts (default 3,5,6)
 ##   --routes=ramp,wall,ceiling   which ways up (default all)
+##   --speed=N              the run speed in m/s (default: the City boss step's through the campaign,
+##                          Campaign.configure_boss: 21 m/s; 18 is the reference speed E1e measured at)
 ##   --e1c                  E1c's numbers instead of the tuning's: one straight ramp slab whose sides
 ##                          block from a step high (ramp_board_share 0), stomp boxes 3 m deep reaching
 ##                          0.55 m over their sockets and not over the outer lanes, the jump 3 m before
 ##                          its face (E1c's bot)
 ##   --second-move          on the wall route, one more move inward in the air 0.1 s after the wall jump
-## What it prints:
+## What it prints, in metres at the run speed and in seconds of running (what stays the same at every
+## speed: the fight's distances follow the pace, FloatingHead.run_pace):
 ##   ramp     the boarding window: the latest lane switch into the ramp's lane from the lane beside it
-##            (on each side) that still ends in a stomp, as metres before the ship's face and past the
-##            ramp's foot (a binary search to about 0.15 m);
-##   wall     the jump points that stomp (metres before the face, 10 to -2 in 0.5 m steps: X stomps) for
-##            a runner who gets onto the wall at the marks' start, and just before the window's release
-##            line, and jumps off it once toward the ship;
+##            (on each side) that still ends in a stomp, before the ship's face and past the ramp's foot
+##            (a binary search to about 0.15 m at 18 m/s);
+##   wall     the jump points that stomp (X), from 6 m before the jump mark to 6 m past it in 0.5 m steps
+##            (at 18 m/s; stretched by the pace at another speed), for a runner who gets onto the wall
+##            where the marks start, and just before the window's release line, and jumps off it once
+##            toward the ship: where they lie before the face, the window's length and how far the
+##            mark is from either end of it;
 ##   ceiling  from a pad in each lane, riding straight ahead and dropping off the end: a stomp or not.
 ## The whole default run takes a few minutes.
+
+## The wall route's sweep: jump points this many steps either side of the jump mark, each this long
+## (metres at 18 m/s).
+const WALL_STEPS: int = 12
+const WALL_STEP: float = 0.5
 
 var _lanes: Array[int] = [3, 5, 6]
 var _routes: PackedStringArray = ["ramp", "wall", "ceiling"]
 var _e1c: bool = false
 var _second_move: bool = false
+var _speed: float = 0.0
 var _tuning: MovementTuning
 var _sim: RunSim
 var _def: BossDef
@@ -43,6 +54,8 @@ func _run() -> void:
 				_lanes.append(int(s))
 		elif arg.begins_with("--routes="):
 			_routes = arg.get_slice("=", 1).split(",", false)
+		elif arg.begins_with("--speed="):
+			_speed = float(arg.get_slice("=", 1))
 		elif arg == "--e1c":
 			_e1c = true
 		elif arg == "--second-move":
@@ -51,13 +64,14 @@ func _run() -> void:
 	if app != null:
 		app.set(&"autosave", false)
 		app.set(&"save_path", "user://measure_profile.json")
-	_tuning = load("res://data/tuning/movement.tres") as MovementTuning
+	_tuning = _fight_tuning(load("res://data/tuning/movement.tres") as MovementTuning)
 	_sim = RunSim.new(self, _tuning)
 	_def = _make_def()
 	var t := _def.tuning as FloatingHeadTuning
-	print("Floating Head's ways up (%s numbers): ramp %.1f m (lead-in %.0f%% of it, %.2f m high), stomp boxes %.1f m deep and %.2f m over their sockets%s; wall marks %.1f to %.1f m before its face" % [
-		"E1c's" if _e1c else "the tuning's", t.ramp_length, t.ramp_board_share * 100.0, t.ramp_board_height, t.stomp_depth, t.stomp_top,
-		", covering the outer lanes" if t.stomp_covers_outer_lanes else "", t.wall_entry_before, t.wall_jump_before])
+	print("Floating Head's ways up at %.1f m/s (pace %.3f; %s numbers, metres at 18 m/s): ramp %.1f m (lead-in %.0f%% of it, %.2f m high), stomp boxes %.1f m deep and %.2f m over their sockets%s; wall marks %.1f to %.1f m before its face" % [
+		_tuning.run_speed, _tuning.pace(), "E1c's" if _e1c else "the tuning's", t.ramp_length, t.ramp_board_share * 100.0,
+		t.ramp_board_height, t.stomp_depth, t.stomp_top, ", covering the outer lanes" if t.stomp_covers_outer_lanes else "",
+		t.wall_entry_before, t.wall_jump_before])
 	for lanes: int in _lanes:
 		if _routes.has("ramp"):
 			await _measure_ramp(lanes)
@@ -66,6 +80,22 @@ func _run() -> void:
 		if _routes.has("ceiling"):
 			await _measure_ceiling(lanes)
 	quit(0)
+
+
+## The movement tuning at the measured speed: --speed's, or the City boss step's as the campaign plays it
+## (its zone's speed: Campaign.configure_boss, LevelConfig.movement_for).
+func _fight_tuning(base: MovementTuning) -> MovementTuning:
+	var speed: float = _speed
+	if speed <= 0.0:
+		var campaign := load("res://data/campaign/campaign.tres") as Campaign
+		var step: CampaignStep = campaign.step("city/boss") if campaign != null else null
+		if step != null:
+			speed = campaign.configure_boss(step, 3).movement_for(base).run_speed
+	if speed <= 0.0 or is_equal_approx(speed, base.run_speed):
+		return base
+	var out: MovementTuning = base.duplicate() as MovementTuning
+	out.run_speed = speed
+	return out
 
 
 ## The fight on a plain street, straight into the face-off with a tower lined up at once.
@@ -135,14 +165,20 @@ static func _steer(p: Player, lane: int) -> void:
 		p.press(&"move_right" if lane > p.lane else &"move_left")
 
 
+## `metres` at the run speed as seconds of running.
+func _s(metres: float) -> float:
+	return metres / _tuning.run_speed
+
+
 # --- The ramp --------------------------------------------------------------------------------------
 
 func _measure_ramp(lanes: int) -> void:
 	var t := _def.tuning as FloatingHeadTuning
+	var pace: float = _tuning.pace()
 	for side: int in [1, -1]:
 		# side 1: from the lane nearer the middle; -1: from the lane nearer the wall.
 		var lo: float = 0.0
-		var hi: float = t.ramp_length + 6.0
+		var hi: float = (t.ramp_length + 6.0) * pace
 		var first: Dictionary = await _ramp_try(lanes, side, hi)
 		if int(first["from"]) < 0:
 			continue
@@ -155,9 +191,10 @@ func _measure_ramp(lanes: int) -> void:
 				hi = mid
 			else:
 				lo = mid
-		print("  ramp, %d lanes, from lane %d (%s side): the latest switch that stomps is %.2f m before its face, %.2f m past its foot (%.0f%% of its %.1f m)" % [
-			lanes, int(first["from"]), "inner" if side > 0 else "outer", hi, t.ramp_length - hi,
-			(t.ramp_length - hi) / t.ramp_length * 100.0, t.ramp_length])
+		var length: float = float(first.get("length", t.ramp_length * pace))
+		print("  ramp, %d lanes, from lane %d (%s side): the latest switch that stomps is %.2f m (%.3f s) before its face, %.2f m (%.3f s) past its foot (%.0f%% of its %.1f m)" % [
+			lanes, int(first["from"]), "inner" if side > 0 else "outer", hi, _s(hi), length - hi, _s(length - hi),
+			(length - hi) / length * 100.0, length])
 
 
 func _ramp_try(lanes: int, side: int, gap: float) -> Dictionary:
@@ -171,6 +208,8 @@ func _ramp_try(lanes: int, side: int, gap: float) -> Dictionary:
 			out["from"] = -2
 			return
 		out["from"] = from
+		if head.ramp != null and is_instance_valid(head.ramp):
+			out["length"] = head.pin_stern - head.ramp.foot
 		if state["switched"]:
 			return
 		if p.lane != from:
@@ -184,23 +223,48 @@ func _ramp_try(lanes: int, side: int, gap: float) -> Dictionary:
 # --- The wall ----------------------------------------------------------------------------------------
 
 func _measure_wall(lanes: int) -> void:
-	var t := _def.tuning as FloatingHeadTuning
+	var pace: float = _tuning.pace()
+	var marks: Dictionary = await _wall_marks(lanes)
+	if marks.is_empty():
+		print("  wall, %d lanes: no wall marks" % lanes)
+		return
+	var mark: float = marks["jump"]
+	var step: float = WALL_STEP * pace
 	for wall: int in [-1, 1]:
-		for entry: float in [t.wall_entry_before, t.window_release_gap + 0.8]:
+		for entry: float in [float(marks["start"]), float(marks["release"]) + 0.8 * pace]:
 			var row: String = ""
-			var ok: PackedStringArray = []
-			for k: int in 25:
-				var jump: float = 10.0 - k * 0.5
-				if jump >= entry - 1.0:
+			var ok: Array[float] = []
+			for k: int in 2 * WALL_STEPS + 1:
+				var jump: float = mark + (WALL_STEPS - k) * step
+				if jump >= entry - 1.0 * pace:
 					row += " "
 					continue
 				var r: Dictionary = await _wall_try(lanes, wall, entry, jump)
 				row += "X" if r["stomped"] else "."
 				if r["stomped"]:
-					ok.append("%.1f" % jump)
-			print("  wall, %d lanes, %s wall, onto it %.1f m before its face%s: jumps 10..-2 m [%s] stomp at %s" % [lanes,
-				"left" if wall < 0 else "right", entry, ", a second move" if _second_move else "", row,
-				(ok[0] + " to " + ok[ok.size() - 1]) if not ok.is_empty() else "none"])
+					ok.append(jump)
+			var found: String = "none"
+			if not ok.is_empty():
+				var early: float = ok[0]
+				var late: float = ok[ok.size() - 1]
+				found = "%.1f to %.1f m before its face: a window of %.1f m, %.3f s; the mark %.3f s from its early end and %.3f s from its late end" % [
+					early, late, early - late, _s(early - late), _s(early - mark), _s(mark - late)]
+			print("  wall, %d lanes, %s wall, onto it %.1f m before its face%s: jumps %.1f..%.1f m [%s] stomp at %s" % [lanes,
+				"left" if wall < 0 else "right", entry, ", a second move" if _second_move else "",
+				mark + WALL_STEPS * step, mark - WALL_STEPS * step, row, found])
+
+
+## Where the second window's wall marks start and where their jump mark is, and the window's release
+## line, as metres before the pinned ship's face: {start, jump, release} (empty: no marks).
+func _wall_marks(lanes: int) -> Dictionary:
+	var found := {}
+	var drive := func(head: FloatingHead, _out: Dictionary) -> void:
+		if found.is_empty() and head.wall_marks != null and is_instance_valid(head.wall_marks):
+			found["start"] = head.pin_stern - head.wall_marks.start
+			found["jump"] = head.pin_stern - head.wall_marks.jump_at
+			found["release"] = head.release_gap()
+	await _play(1, lanes, drive)
+	return found
 
 
 func _wall_try(lanes: int, wall: int, entry: float, jump: float) -> Dictionary:
