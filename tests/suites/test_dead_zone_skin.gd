@@ -66,6 +66,7 @@ func run() -> void:
 	await _cult_emblem(skin)
 	await _cult_feed(skin)
 	await determinism(skin, DZ_LEVEL_PATH)
+	doodads_ok(skin, "dead zone")
 	stop_error_count("building dead zone levels")
 
 

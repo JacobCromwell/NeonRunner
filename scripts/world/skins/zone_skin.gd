@@ -66,8 +66,10 @@ static var _doodad_meshes: Dictionary = {}
 @export_group("Doodads")
 ## The colours of the default doodad look (doodad()), sRGB: its body, its top and its base plinth. The
 ## zone's own non-hazard colours, never glowing: a doodad is solid, safe scenery (GDD §5's colour rule:
-## only hazards glow in hazard colours). Each zone's skin file sets its own until task G6 gives the zone
-## its doodads' real looks.
+## only hazards glow in hazard colours). Set from each zone's own export (task G5); every zone but the
+## grey box and the Golden Palace (which keep this plain default) now overrides doodad() with its own
+## look (task G6), so this array is otherwise unused there but stays as a fallback and a record of the
+## zone's doodad palette.
 @export var doodad_palette: PackedColorArray = PackedColorArray([Color(0.3, 0.31, 0.35), Color(0.43, 0.44, 0.48),
 	Color(0.17, 0.17, 0.2)])
 
