@@ -897,8 +897,8 @@ full-height one (or a partial one, with that feature) gets one at the first fair
 with no fair spot at all a warning (the campaign tests fail on any). `feature_positions` finds full-height ones
 for `wall_fences` and partial ones for `wall_fences_partial`. Measured on each level's own seed and nine others
 at 3, 5 and 6 lanes: about 10 to 14 a level, 4 to 6 a minute (Marketplace 2 about 12, the Corporate zone about
-14, the Dead Zone and the Golden Zone about 11 to 12, where big attacks leave less room), half of them partial
-past `wall_fences_partial`'s start (a third of Corporate 1's, which brings them in halfway).
+14, the Dead Zone about 12, the Golden Zone about 10 to 12, where big attacks leave less room), half of them
+partial past `wall_fences_partial`'s start (a third of Corporate 1's, which brings them in halfway).
 `LevelGenerator.wall_fence_problem(entry)` (`WallFencePlacement.problem`) says why one can't stand somewhere,
 and `cut_problem` refuses a floor cut whose window reaches a wall fence's drop window (a boss arena's; a
 level's wall fences come after its cuts). `LayoutChecks.check_wall_fences` (from `check_layout`) holds every
