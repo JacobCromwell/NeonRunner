@@ -335,8 +335,13 @@ func _build_debug_tools() -> void:
 	debug_hud.visible = context.mode == RunContext.Mode.QUICK
 	tuning_panel = TuningPanel.new()
 	add_child(tuning_panel)
+	var movement := {"title": "Movement", "resource": context.tuning, "path": App.TUNING_PATH}
+	if context.config.run_speed > 0.0:
+		# A campaign level runs at its zone's speed (data/zones/*.tres, GDD §3): the slider changes the
+		# run live, and Save leaves the base run speed in the movement tuning as it is.
+		movement["keep"] = PackedStringArray(["run_speed"])
 	var sections: Array[Dictionary] = [
-		{"title": "Movement", "resource": context.tuning, "path": App.TUNING_PATH},
+		movement,
 		{"title": "Game rules", "resource": rules, "path": App.RULES_PATH},
 		{"title": "Power-ups", "resource": App.powerup_tuning, "path": App.POWERUPS_PATH},
 		{"title": "Runner animation", "resource": load(PlayerAvatar.ANIM_TUNING_PATH), "path": PlayerAvatar.ANIM_TUNING_PATH},

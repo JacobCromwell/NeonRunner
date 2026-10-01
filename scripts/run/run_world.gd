@@ -47,7 +47,8 @@ func build(p_config: LevelConfig, p_layout: LevelLayout, p_tuning: MovementTunin
 		p_powerups: PowerupTuning = null, p_loadout: Loadout = null, p_sfx: SfxLibrary = null) -> void:
 	config = p_config
 	layout = p_layout
-	tuning = p_tuning
+	# The level's own run speed, if it has one (its zone's, GDD §3), as the generator built it with.
+	tuning = config.movement_for(p_tuning)
 	rules = p_rules
 	powerup_tuning = p_powerups if p_powerups != null else PowerupTuning.new()
 	loadout = p_loadout if p_loadout != null else Loadout.new()

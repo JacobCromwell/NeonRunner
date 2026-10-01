@@ -15,6 +15,13 @@ extends Resource
 ## track is made, the Music player skips the name quietly and the menu music carries on.
 @export var music: StringName = &""
 @export var levels: Array[LevelConfig] = []
+## The run speed of the zone's levels (GDD §3, owner's playtest September 30, 2026: about 21 m/s in
+## the Neon City, rising zone by zone to about 25 m/s in the Golden Zone). A level may set its own
+## (LevelConfig.run_speed); 0: the movement tuning's base run speed. Boss fights keep the base speed.
+## The generator stretches its patterns and margins with it, and the enemies their along-track
+## distances and speeds, so every warning and reaction window keeps its seconds
+## (MovementTuning.pace). DESIGN-TBD: each zone's value (a straight rise from 21 to 25 m/s).
+@export_range(0.0, 40.0, 0.1, "suffix:m/s") var run_speed: float = 0.0
 ## Optional cinematic before the first level.
 @export var intro: CinematicDef
 ## Optional cinematic before the boss.

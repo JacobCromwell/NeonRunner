@@ -84,8 +84,8 @@ func tier_count() -> int:
 
 
 ## A copy of the step's level, ready to generate: lane count, difficulty (curve + bias + tier),
-## enemy scaling, the zone's skin if the level has none, and the recency curve with its features'
-## ages (feature_ages).
+## enemy scaling, its run speed (run_speed_for), the zone's skin if the level has none, and the
+## recency curve with its features' ages (feature_ages).
 func configure(s: CampaignStep, lane_count: int, difficulty_tier: int = 0) -> LevelConfig:
 	var config: LevelConfig = s.level.duplicate() as LevelConfig
 	config.lane_count = lane_count
@@ -93,6 +93,7 @@ func configure(s: CampaignStep, lane_count: int, difficulty_tier: int = 0) -> Le
 		if not tier_difficulty_bonus.is_empty() else 0.0
 	config.difficulty = clampf(curve_difficulty(s.level_index) + s.level.difficulty_bias + bonus, 0.0, 1.0)
 	config.enemy_scaling = level_progress(s.level_index)
+	config.run_speed = run_speed_for(s, difficulty_tier)
 	if config.skin == null and s.zone.skin != null:
 		config.skin = s.zone.skin
 	config.feature_ages = feature_ages(s)
@@ -145,6 +146,19 @@ func speed_multiplier(difficulty_tier: int) -> float:
 	if tier_speed_multiplier.is_empty():
 		return 1.0
 	return tier_speed_multiplier[clampi(difficulty_tier, 0, tier_speed_multiplier.size() - 1)]
+
+
+## The run speed of level step `s` (GDD §3, owner's playtest September 30, 2026: it rises zone by
+## zone): the level's own (LevelConfig.run_speed) or its zone's (ZoneDef.run_speed), times the
+## difficulty tier's speed multiplier. 0 when neither sets one: the run then takes the movement
+## tuning's base speed, and App applies the tier's multiplier to that.
+func run_speed_for(s: CampaignStep, difficulty_tier: int = 0) -> float:
+	if s == null or s.level == null:
+		return 0.0
+	var speed: float = s.level.run_speed
+	if speed <= 0.0 and s.zone != null:
+		speed = s.zone.run_speed
+	return speed * speed_multiplier(difficulty_tier) if speed > 0.0 else 0.0
 
 
 func _build_steps() -> void:

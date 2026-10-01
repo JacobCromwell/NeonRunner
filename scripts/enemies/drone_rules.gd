@@ -139,6 +139,18 @@ static func _add_guaranteed(gen: LevelGenerator, t: DroneTuning, earliest: float
 	return gen.add_enemy(TYPE, at, lane, 0, {"slot": 0})
 
 
+## What the generator's fill pass (LevelGenerator.fill_keep_outs) keeps off around drone entry `e`: its
+## wave, from its arrival until its first pad (it follows the player and fires its barrages until a
+## pad hurls it into the ceiling): the fill pass never adds obstacles to a barrage's zigzag.
+static func keep_out(gen: LevelGenerator, e: Dictionary) -> Vector2:
+	var at: float = float(e["at"])
+	var until: float = at + tuning().first_pad_seconds * gen.speed
+	for p: Dictionary in gen.layout.pads:
+		if float(p["at"]) > at + 0.01 and float(p["at"]) < until:
+			until = float(p["at"])
+	return Vector2(at, until)
+
+
 static func tuning() -> DroneTuning:
 	var res: Resource = EnemyDirector.tuning_for(TYPE)
 	return res as DroneTuning if res is DroneTuning else DroneTuning.new()

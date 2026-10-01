@@ -19,6 +19,12 @@ extends RefCounted
 ## - no other cyborg's burst is in the air (one attacker at a time, via RunWorld metadata).
 ## Everything runs in the physics step from the enemy's seeded random stream, so every attempt at a
 ## seed plays out the same way.
+##
+## Pace (GDD §3, owner's playtest September 30, 2026: enemies speed up to match the runner): the
+## engage distance, the bolt speed and the clear path around an impact are given at
+## MovementTuning.REFERENCE_SPEED and stretched by the level's pace (`pace`), so in a faster zone the
+## bolts fly faster from further out and every burst keeps its seconds; the charge-up and
+## min_warning_time are seconds already and never get shorter.
 
 enum State { READY, CHARGING, FIRING, RELOADING }
 
@@ -45,6 +51,8 @@ var muzzle_offset: Vector3 = Vector3(0.0, 1.12, 0.0)
 var muzzle_reach: float = 0.45
 ## The shooter's own speed along the track (m/s, + = forward, away from the player), for predictions.
 var track_velocity: float = 0.0
+## The level's pace (MovementTuning.pace; 1 at the reference speed, and in boss fights).
+var pace: float = 1.0
 ## Returns whether the shooter may attack right now (the enemy's own rules).
 var may_attack: Callable
 var state: State = State.READY
@@ -66,6 +74,18 @@ func _init(p_shooter: Enemy, p_world: RunWorld, p_tuning: CyborgGunTuning, p_rng
 	tuning = p_tuning
 	rng = p_rng
 	body = p_body
+	if world != null and world.tuning != null:
+		pace = world.tuning.pace()
+
+
+## How close the player must be before a burst may start (engage_distance at the level's pace).
+func engage_distance() -> float:
+	return tuning.engage_distance * pace
+
+
+## The bolts' speed over the ground at the level's scaling and pace.
+func bolt_speed() -> float:
+	return tuning.bolt_speed_at(_scaling()) * pace
 
 
 ## Charging or firing a burst (the enemy shows its aiming pose and face).
@@ -206,7 +226,7 @@ func _fire(player: Player) -> void:
 	else:
 		target.x += rng.randf_range(-tuning.shot_jitter, tuning.shot_jitter)
 		target.y += rng.randf_range(-tuning.shot_jitter, tuning.shot_jitter) * 0.5
-	var speed: float = tuning.bolt_speed_at(_scaling())
+	var speed: float = bolt_speed()
 	var v: float = player.speed
 	var base: Vector3 = _muzzle_base()
 	var t: float = intercept_time(base, target, v, speed)
@@ -231,7 +251,7 @@ func _fire(player: Player) -> void:
 func _burst_fair(lead: float, shots: int) -> bool:
 	var player: Player = world.player
 	var v: float = player.speed
-	var speed: float = tuning.bolt_speed_at(_scaling())
+	var speed: float = bolt_speed()
 	var c: Vector3 = player.hurtbox_aabb().get_center()
 	for k: int in maxi(shots, 1):
 		var tau: float = lead + k * tuning.shot_interval
@@ -243,7 +263,7 @@ func _burst_fair(lead: float, shots: int) -> bool:
 		if k == 0 and t < tuning.min_warning_time:
 			return false
 		var impact: float = player.distance + v * (tau + t)
-		if not path_clear(impact - tuning.clear_before_impact, impact + tuning.clear_after_impact):
+		if not path_clear(impact - tuning.clear_before_impact * pace, impact + tuning.clear_after_impact * pace):
 			return false
 	return true
 
@@ -269,8 +289,7 @@ func path_clear(from_d: float, to_d: float) -> bool:
 
 ## Seconds a bolt fired now would need to reach the player (-1 if it can't).
 func _time_to_player(player: Player) -> float:
-	return intercept_time(_muzzle_base(), player.hurtbox_aabb().get_center(), player.speed,
-		tuning.bolt_speed_at(_scaling()))
+	return intercept_time(_muzzle_base(), player.hurtbox_aabb().get_center(), player.speed, bolt_speed())
 
 
 ## Points the body's cannon at the player while charging, then along the locked line while firing.

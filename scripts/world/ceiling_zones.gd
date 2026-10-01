@@ -40,6 +40,9 @@ var rise: float = 0.0
 var pad_length: float = 2.0
 ## A ramp's length along its lane (ramps sit in the outer lanes).
 var ramp_length: float = 4.0
+## The level's pace (MovementTuning.pace): floor enemies' reach (LevelGenerator.enemy_floor_span) is
+## stretched by it.
+var pace: float = 1.0
 ## Half a fence's depth along the track: a fence is in a stretch if any of it is.
 var fence_half_depth: float = 0.15
 
@@ -48,7 +51,7 @@ var fence_half_depth: float = 0.15
 ## one) at `speed` (`tuning`'s run speed when 0).
 static func make(config: LevelConfig, tuning: MovementTuning, speed: float = 0.0) -> CeilingZones:
 	var c: LevelConfig = config if config != null else LevelConfig.new()
-	var v: float = speed if speed > 0.0 else tuning.run_speed
+	var v: float = speed if speed > 0.0 else c.movement_for(tuning).run_speed
 	var z := CeilingZones.new()
 	z.landing = c.hull_landing_seconds * v
 	z.run_up = tuning.jump_distance(v)
@@ -56,6 +59,7 @@ static func make(config: LevelConfig, tuning: MovementTuning, speed: float = 0.0
 	z.pad_length = tuning.pad_length
 	z.ramp_length = tuning.ramp_length
 	z.fence_half_depth = tuning.fence_depth * 0.5
+	z.pace = v / MovementTuning.REFERENCE_SPEED
 	return z
 
 
@@ -205,9 +209,10 @@ func ramp_in(layout: LevelLayout, r: Dictionary, zone: Vector2, lane: int = -1) 
 		and float(r["at"]) + ramp_length >= zone.x
 
 
-## True if enemy entry `e` uses the floor (LevelGenerator.enemy_floor_span) anywhere in `zone`.
-static func enemy_in(e: Dictionary, zone: Vector2) -> bool:
-	var span: Vector2 = LevelGenerator.enemy_floor_span(e)
+## True if enemy entry `e` uses the floor (LevelGenerator.enemy_floor_span, at the level's pace)
+## anywhere in `zone`.
+func enemy_in(e: Dictionary, zone: Vector2) -> bool:
+	var span: Vector2 = LevelGenerator.enemy_floor_span(e, pace)
 	return span.x <= zone.y and span.y >= zone.x
 
 

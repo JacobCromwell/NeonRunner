@@ -48,6 +48,8 @@ const LINE_UP_BEFORE: float = 0.1
 const LINE_UP_AFTER: float = 0.2
 ## pulse_clear(): metres kept between a wave's meeting stretch and an anti-grav pad (the player may be
 ## stepping onto it), and before a ceiling's end (where its rider drops back to the floor).
+## (Like every margin here, metres at MovementTuning.REFERENCE_SPEED, stretched by the level's pace:
+## CeilingZones.pace.)
 const PAD_MARGIN: float = 6.0
 const LANDING_LEAD: float = 2.0
 const WAVE_NAME: String = "Resonator's wave"
@@ -122,6 +124,10 @@ var wait_reason: StringName = &""
 var waited_for: Dictionary = {}
 
 var _scaling: float = 0.0
+## The level's pace (MovementTuning.pace): its waves keep the speed the runner closes in on them at
+## (ResonatorTuning.wave_speed_at), and its easing in and its margins are stretched by it. It hovers
+## hover_ahead ahead at every pace.
+var _run_pace: float = 1.0
 ## Track distance of the Resonator (its core), and where the generator put it.
 var _d: float = 0.0
 var _at: float = 0.0
@@ -161,6 +167,7 @@ func _build() -> void:
 		max_health = tune.health_early
 		score_value = tune.score_value
 	_scaling = world.config.enemy_scaling if world.config != null else 0.0
+	_run_pace = world.tuning.pace()
 	_at = float(spawn.get("at", 0.0))
 	_d = _at
 	var p: Dictionary = spawn.get("params", {})
@@ -260,14 +267,14 @@ func _set_state(next: State) -> void:
 ## Where the player is when it has eased into pacing them (it hovers still at its spot until
 ## approach_ease before that).
 func visit_start() -> float:
-	return _at - tune.hover_ahead + tune.approach_ease
+	return _at - tune.hover_ahead + tune.approach_ease * _run_pace
 
 
 ## Hovering still at its spot until the player comes within hover_ahead + approach_ease, then easing
 ## into pacing them: its speed rises steadily from nothing to theirs over 2 × approach_ease of their
 ## run, so it settles hover_ahead ahead of them exactly as they reach visit_start().
 func _approach(p: float) -> void:
-	var e: float = tune.approach_ease
+	var e: float = tune.approach_ease * _run_pace
 	var u: float = p - (_at - tune.hover_ahead - e)
 	if u <= 0.0:
 		_d = _at
@@ -328,7 +335,7 @@ func _why_not_ready() -> StringName:
 	if waves_on_their_way() or _other_pulsing():
 		return &"busy"
 	var v: float = maxf(pl.speed, 1.0)
-	var stretch: Vector2 = tune.meeting_stretch(pl.distance, _double_for(pulses_done), v, _scaling)
+	var stretch: Vector2 = tune.meeting_stretch(pl.distance, _double_for(pulses_done), v, _scaling, _run_pace)
 	if stretch.y > _last_ok() or not pulse_clear(world.layout, _zones, pl.distance, stretch):
 		return &"floor"
 	return &"turn" if world.director.major_attack_blocked(self) else &""
@@ -336,7 +343,7 @@ func _why_not_ready() -> StringName:
 
 ## True while the next pulse could still meet the player before the level's end-clear stretch.
 func _fits_before_end(p: float) -> bool:
-	var stretch: Vector2 = tune.meeting_stretch(p, _double_for(pulses_done), world.tuning.run_speed, _scaling)
+	var stretch: Vector2 = tune.meeting_stretch(p, _double_for(pulses_done), world.tuning.run_speed, _scaling, _run_pace)
 	return stretch.y <= _last_ok()
 
 
@@ -354,7 +361,7 @@ func _start_warning() -> void:
 	double_now = _double_for(pulses_done)
 	pulses_done += 1
 	_next_free = pl.distance + (tune.pulse_seconds(double_now, v, _scaling, world.tuning.hurtbox_size.z,
-		EnemyDirector.SHOT_PASS_MARGIN) + tune.pulse_rest_at(_scaling)) * v
+		EnemyDirector.SHOT_PASS_MARGIN, _run_pace) + tune.pulse_rest_at(_scaling)) * v
 	_set_state(State.WARNING)
 	charge = 0.0
 	_log("warning")
@@ -374,7 +381,7 @@ func _warning(p: float) -> void:
 func _emit_wave() -> void:
 	var w: Wave = _free_wave()
 	w.d = _d
-	w.speed = tune.wave_speed_at(_scaling)
+	w.speed = tune.wave_speed_at(_scaling, _run_pace)
 	w.age = 0.0
 	w.fading = -1.0
 	w.rolling = true
@@ -629,14 +636,14 @@ static func pulse_clear(layout: LevelLayout, zones: CeilingZones, warn_at: float
 		if not f.get("disabled", false) and zones.fence_in(f, stretch):
 			return false
 	for p: Dictionary in layout.pads:
-		if float(p["at"]) >= stretch.x - PAD_MARGIN and float(p["at"]) <= stretch.y + PAD_MARGIN:
+		if float(p["at"]) >= stretch.x - PAD_MARGIN * zones.pace and float(p["at"]) <= stretch.y + PAD_MARGIN * zones.pace:
 			return false
 	for h: Dictionary in layout.hulls:
 		var landing: Vector2 = zones.landing_zone(h)
-		if landing.x - LANDING_LEAD <= stretch.y and landing.y >= stretch.x:
+		if landing.x - LANDING_LEAD * zones.pace <= stretch.y and landing.y >= stretch.x:
 			return false
 	for e: Dictionary in layout.enemies:
-		if CeilingZones.enemy_in(e, stretch):
+		if zones.enemy_in(e, stretch):
 			return false
 	for s: Dictionary in layout.speed_pads:
 		if float(s["at"]) >= warn_at - 1.0 and float(s["at"]) <= stretch.y:
