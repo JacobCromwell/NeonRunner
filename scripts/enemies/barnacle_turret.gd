@@ -183,15 +183,18 @@ func _may_attack() -> bool:
 
 ## The rider's path around a bolt's arrival (`from_d` to `to_d`, CyborgGun's clear stretch around the
 ## impact) is fair on the ceiling: the rider is still on it past the stretch, and a lane beside theirs
-## within the ceiling has no turret body near the stretch, to dodge into (GDD §9.8).
+## within the ceiling has no turret body from where the rider is now to past the stretch, to dodge
+## into and ride along until the bolts have passed (GDD §9.8). So a second turret never fires while the
+## first still stands in the only lane to dodge into, between the rider and its bolts.
 func _path_fair(from_d: float, to_d: float) -> bool:
 	if to_d > hull_end - tuning.end_margin:
 		return false
-	var rider_lane: int = world.player.lane
-	for n: int in [rider_lane - 1, rider_lane + 1]:
+	var player: Player = world.player
+	var from_here: float = minf(from_d, player.distance)
+	for n: int in [player.lane - 1, player.lane + 1]:
 		if n < first_lane or n > last_lane:
 			continue
-		if not body_in_lane(n, from_d - tuning.body_reach, to_d + tuning.body_reach):
+		if not body_in_lane(n, from_here - tuning.body_reach, to_d + tuning.body_reach):
 			return true
 	return false
 

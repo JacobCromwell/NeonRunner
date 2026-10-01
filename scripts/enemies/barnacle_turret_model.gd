@@ -269,11 +269,16 @@ func die(cause: StringName) -> void:
 		_body.material_override = Kit.part_material(&"dead")
 
 
-## Draw calls of the visible model.
+## Draw calls of the visible model (one per visible mesh; each has one surface).
 func draw_call_count() -> int:
 	var n: int = 0
 	for mi: Node in find_children("*", "MeshInstance3D", true, false):
-		if (mi as MeshInstance3D).is_visible_in_tree():
+		var shown: bool = true
+		var node: Node = mi
+		while node != self and node != null:
+			shown = shown and (node as Node3D).visible
+			node = node.get_parent()
+		if shown:
 			n += 1
 	return n
 
@@ -554,20 +559,21 @@ static func _creature_mesh(pal: Dictionary, scruffy: bool) -> ArrayMesh:
 			var n: Vector3 = dome_normal(phi, theta)
 			var dir: Vector3 = (n + Vector3(0.0, -0.45, 0.0) + Vector3(rng.randf_range(-0.25, 0.25), 0.0,
 				rng.randf_range(-0.25, 0.25))).normalized()
-			var length: float = rng.randf_range(0.12, 0.2) * (1.3 if scruffy else 1.0)
+			# Shorter toward the crown, so the fur never hangs much below it (BarnacleTurret.REACH_BELOW).
+			var length: float = rng.randf_range(0.12, 0.2) * (1.3 if scruffy else 1.0) * (1.0 - 0.55 * smoothstep(0.9, 1.4, phi))
 			var tip_col: Color = pal["tip"] if rng.randf() < 0.6 else fur.lerp(pal["tip"], 0.5)
 			var base_col: Color = belly if cos(theta) > 0.75 and phi > 0.35 and phi < 1.25 else fur
 			_add_cone(st, p, dir, length, rng.randf_range(0.07, 0.1), 4, base_col, tip_col, rng.randf() * TAU)
-	# The cowlick: a few long tufts on the crown, curling forward.
+	# The cowlick: a few tufts on the crown, curling forward and out.
 	for k: int in 5:
 		var a: float = TAU * k / 5.0
-		var p := Vector3(sin(a) * 0.08, DOME_TOP - DOME_DEPTH + 0.02, cos(a) * 0.08)
-		_add_cone(st, p, Vector3(sin(a) * 0.4, -1.0, cos(a) * 0.4 + 0.35), 0.24, 0.07, 4, fur, pal["tip"], a)
+		var p := Vector3(sin(a) * 0.1, DOME_TOP - DOME_DEPTH + 0.03, cos(a) * 0.1)
+		_add_cone(st, p, Vector3(sin(a) * 0.9, -0.8, cos(a) * 0.9 + 0.5), 0.17, 0.07, 4, fur, pal["tip"], a)
 	# Floppy ears on the sides, near the top.
 	for side: float in [-1.0, 1.0]:
 		var p: Vector3 = dome_point(0.22, side * PI * 0.5, -0.02)
-		_add_cone(st, p, Vector3(side * 1.0, -0.75, 0.15), 0.32, 0.13, 5, fur, pal["accent"], 0.4)
-		_add_cone(st, p + Vector3(0.0, -0.02, 0.03), Vector3(side * 1.0, -0.8, 0.25), 0.22, 0.07, 5, pal["belly"],
+		_add_cone(st, p, Vector3(side * 1.0, -0.75, 0.15), 0.27, 0.13, 5, fur, pal["accent"], 0.4)
+		_add_cone(st, p + Vector3(0.0, -0.02, 0.03), Vector3(side * 1.0, -0.8, 0.25), 0.19, 0.07, 5, pal["belly"],
 			pal["belly"], 0.4)
 	# The nose: a small dark nub between the eyes and the cannon.
 	_add_prism_z(st, Vector3(0.0, -0.3, 0.55), 0.045, 0.06, 6, pal["dark"])

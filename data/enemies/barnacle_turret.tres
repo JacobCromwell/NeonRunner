@@ -37,6 +37,7 @@ pair_share_early = 0.3
 pair_share_late = 0.5
 pair_min_scaling = 0.45
 after_pad_seconds = 2.2
+tight_after_pad_seconds = 3.0
 before_end_seconds = 0.2
 spacing_seconds = 1.2
 credit_margin = 3.0

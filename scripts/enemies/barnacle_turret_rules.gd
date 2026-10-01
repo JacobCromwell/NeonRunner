@@ -14,12 +14,16 @@ extends RefCounted
 ##   lane (credit_margin; also the rich credit the generator adds in the far lane afterwards); nothing
 ##   before the feature's start (LevelConfig.feature_starts).
 ## - Where: at least after_pad_seconds past its ceiling's last pad (the rider sees it pop out before
-##   taking the pad, and its first burst fits in), before_end_seconds before the ceiling's end; two on
-##   one ceiling at least spacing_seconds apart.
+##   taking the pad, and its first burst fits in), or tight_after_pad_seconds in the only lane beside a
+##   pad's lane (tight_lane: a two-lane ceiling, or next to a pad at the edge, where the rider can only
+##   dodge into the turret's own lane, so its bolts must come well before it); before_end_seconds
+##   before the ceiling's end; two on one ceiling at least spacing_seconds apart.
 ## - How many: the first ceiling past the feature's start where one fits always gets one, alone (its
 ##   introduction: Marketplace 1 meets it gently, and every level that lists the feature has one);
 ##   each later one gets turrets at ceiling_share, a second one at pair_share from pair_min_scaling on
-##   (so none in Marketplace 1). DESIGN-TBD (docs/questions/c1.md).
+##   (so none in Marketplace 1) and only where two lanes are free of pads (never on a two-lane ceiling,
+##   where a second turret in the same lane could hardly ever fire fairly). DESIGN-TBD
+##   (docs/questions/c1.md).
 ## - The introduction comes soon after the feature's start (intro_seconds), in a level that gives the
 ##   feature one (LevelConfig.feature_starts); and a level that lists the feature always has a turret.
 ##   Where no ceiling it fits on lies in time, the rules add a plain ceiling for it
@@ -54,42 +58,56 @@ static func apply(gen: LevelGenerator) -> void:
 	hulls.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
 	var placed: int = 0
 	var introduced: bool = false
+	var spacing: float = t.spacing_seconds * gen.speed
 	for h: Dictionary in hulls:
-		var spot: Dictionary = mount_window(gen, h, t)
-		if spot.is_empty():
+		var spots: Array[Dictionary] = mount_lanes(gen, h, t)
+		if spots.is_empty():
 			continue
 		var count: int = 1
 		if introduced:
 			if rng.randf() >= t.ceiling_share_at(scaling):
 				continue
-			if rng.randf() < t.pair_share_at(scaling) and float(spot["hi"]) - float(spot["lo"]) >= t.spacing_seconds * gen.speed:
+			# A second one only where two lanes are free of pads (never on a two-lane ceiling).
+			if rng.randf() < t.pair_share_at(scaling) and spots.size() >= 2:
 				count = 2
-		var lo: float = spot["lo"]
-		var hi: float = spot["hi"]
-		var spacing: float = t.spacing_seconds * gen.speed
-		var ats: Array[float] = []
-		if count == 2:
-			var first: float = rng.randf_range(lo, hi - spacing)
-			ats = [first, rng.randf_range(first + spacing, hi)]
-		else:
-			ats = [rng.randf_range(lo, hi)]
-		var on_this: int = 0
-		for at: float in ats:
-			var lanes: Array[int] = []
-			for lane: int in spot["lanes"]:
-				if not credit_near(layout, h, lane, at, t.credit_margin):
-					lanes.append(lane)
-			if lanes.is_empty():
+		# The introduction stands within its reach of the feature's start when it can.
+		var cap: float = INF if introduced else intro_by(gen, t)
+		var order: Array[Dictionary] = spots.duplicate()
+		for i: int in range(order.size() - 1, 0, -1):
+			var j: int = rng.randi_range(0, i)
+			var tmp: Dictionary = order[i]
+			order[i] = order[j]
+			order[j] = tmp
+		var taken: Array[float] = []
+		for spot: Dictionary in order:
+			if taken.size() >= count:
+				break
+			var lo: float = spot["lo"]
+			var hi: float = spot["hi"]
+			if not taken.is_empty():
+				# Spaced from the first: after it if there's room, else before it.
+				if hi >= taken[0] + spacing:
+					lo = maxf(lo, taken[0] + spacing)
+				else:
+					hi = minf(hi, taken[0] - spacing)
+			elif count == 2 and hi - spacing >= lo:
+				# The first of two leaves room for the second after it.
+				hi -= spacing
+			if hi < lo:
 				continue
-			var lane: int = lanes[rng.randi_range(0, lanes.size() - 1)]
+			hi = maxf(lo, minf(hi, cap))
+			var at: float = rng.randf_range(lo, hi)
+			var lane: int = spot["lane"]
+			if credit_near(layout, h, lane, at, t.credit_margin):
+				continue
 			var lane_span: Vector2i = layout.hull_lanes(h)
 			layout.enemies.append({"type": TYPE, "at": at, "lane": lane, "side": 0,
 				"seed": hash([gen.config.level_seed, TYPE, placed]),
 				"params": {"hull_start": float(h["start"]), "hull_end": float(h["end"]),
 					"first_lane": lane_span.x, "last_lane": lane_span.y}})
 			placed += 1
-			on_this += 1
-		introduced = introduced or on_this > 0
+			taken.append(at)
+		introduced = introduced or not taken.is_empty()
 
 
 ## Adds a plain ceiling for the turret's introduction when the level has none it fits on in time (see
@@ -98,13 +116,11 @@ static func apply(gen: LevelGenerator) -> void:
 static func _ensure_introduction(gen: LevelGenerator, t: BarnacleTurretTuning, rng: RandomNumberGenerator) -> bool:
 	var layout: LevelLayout = gen.layout
 	var start: float = gen.feature_start(TYPE)
-	var timed: bool = gen.config.feature_starts.has(TYPE)
-	var by: float = start + t.intro_seconds * gen.speed if timed else INF
+	var by: float = intro_by(gen, t)
 	var first_fit: float = INF
 	for h: Dictionary in layout.hulls:
-		var w: Dictionary = mount_window(gen, h, t)
-		if not w.is_empty():
-			first_fit = minf(first_fit, float(w["lo"]))
+		for spot: Dictionary in mount_lanes(gen, h, t):
+			first_fit = minf(first_fit, float(spot["lo"]))
 	if first_fit < INF and first_fit <= by:
 		return false
 	# Before the first drone: its rules own every pad from its wave on (GDD §9.6).
@@ -123,13 +139,24 @@ static func _ensure_introduction(gen: LevelGenerator, t: BarnacleTurretTuning, r
 	return false
 
 
-## Where turrets may hang under ceiling `h`: {lanes (the lanes it covers but no pad's), lo, hi (track
-## distances)}, or {} if none may (a one-lane ceiling, every lane a pad's, no pad, too short, or wholly
-## before the feature's start).
-static func mount_window(gen: LevelGenerator, h: Dictionary, t: BarnacleTurretTuning) -> Dictionary:
+## The track distance the level's first turret comes by: intro_seconds past the feature's start in a
+## level that gives it one (LevelConfig.feature_starts), INF in one that doesn't.
+static func intro_by(gen: LevelGenerator, t: BarnacleTurretTuning) -> float:
+	if not gen.config.feature_starts.has(TYPE):
+		return INF
+	return gen.feature_start(TYPE) + t.intro_seconds * gen.speed
+
+
+## Where turrets may hang under ceiling `h`: one {lane, lo, hi} per lane it covers that no pad is in,
+## lo and hi the track distances between which a turret there may stand (after_pad_seconds past the
+## ceiling's last pad, or tight_after_pad_seconds where that lane is the only one beside a pad's lane,
+## see tight_lane(); before_end_seconds before its end; never before the feature's start); [] if none
+## may (a one-lane ceiling, every lane a pad's, no pad, or too short).
+static func mount_lanes(gen: LevelGenerator, h: Dictionary, t: BarnacleTurretTuning) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
 	var layout: LevelLayout = gen.layout
 	if layout.hull_width(h) < 2:
-		return {}
+		return out
 	var span: Vector2i = layout.hull_lanes(h)
 	var pad_lanes: Array[int] = []
 	var last_pad: float = -INF
@@ -140,18 +167,31 @@ static func mount_window(gen: LevelGenerator, h: Dictionary, t: BarnacleTurretTu
 			if not pad_lanes.has(int(p["lane"])):
 				pad_lanes.append(int(p["lane"]))
 	if last_pad == -INF:
-		return {}
-	var lanes: Array[int] = []
-	for lane: int in range(span.x, span.y + 1):
-		if not pad_lanes.has(lane):
-			lanes.append(lane)
-	if lanes.is_empty():
-		return {}
-	var lo: float = maxf(last_pad + t.after_pad_seconds * gen.speed, gen.feature_start(TYPE))
+		return out
 	var hi: float = float(h["end"]) - t.before_end_seconds * gen.speed
-	if hi < lo:
-		return {}
-	return {"lanes": lanes, "lo": lo, "hi": hi}
+	for lane: int in range(span.x, span.y + 1):
+		if pad_lanes.has(lane):
+			continue
+		var after: float = t.tight_after_pad_seconds if tight_lane(span, pad_lanes, lane) else t.after_pad_seconds
+		var lo: float = maxf(last_pad + after * gen.speed, gen.feature_start(TYPE))
+		if hi >= lo:
+			out.append({"lane": lane, "lo": lo, "hi": hi})
+	return out
+
+
+## True if a turret in `lane` would stand in the only lane beside a pad's lane (`span` the ceiling's
+## lanes): a rider riding on from that pad can only dodge into the turret's own lane (always so on a
+## two-lane ceiling), so its bolts may only come well before it (BarnacleTurret._path_fair), and it
+## needs more room after the pad to fire at all.
+static func tight_lane(span: Vector2i, pad_lanes: Array[int], lane: int) -> bool:
+	for p: int in pad_lanes:
+		var others: int = 0
+		for n: int in [p - 1, p + 1]:
+			if n >= span.x and n <= span.y and n != lane:
+				others += 1
+		if absi(p - lane) == 1 and others == 0:
+			return true
+	return false
 
 
 ## True if a credit on ceiling `h` lies in `lane` within `margin` of track distance `at`: one already in

@@ -49,6 +49,11 @@ extends CyborgGunTuning
 ## pop out before taking the pad, and its first burst fits in (a charge-up from the pad, then
 ## min_warning_time of flight).
 @export_range(0.5, 5.0, 0.05, "suffix:s") var after_pad_seconds: float = 2.2
+## ... and at least this long where its lane is the only one beside the pad's (a two-lane ceiling, or
+## the lane next to a pad at the ceiling's edge): a rider riding on from the pad can only dodge into
+## the turret's own lane, so its bolts may only come well before it (Ceiling fairness), which takes
+## more room to fit a burst in.
+@export_range(0.5, 6.0, 0.05, "suffix:s") var tight_after_pad_seconds: float = 3.0
 ## ... and at least this long before the ceiling's far end.
 @export_range(0.0, 3.0, 0.05, "suffix:s") var before_end_seconds: float = 0.2
 ## Two turrets on one ceiling stand at least this long apart (at run speed).
