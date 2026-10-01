@@ -111,20 +111,20 @@ const REFERENCE_SPEED: float = 18.0
 @export_range(0.1, 1.0, 0.05, "suffix:s") var fence_pulse_warning: float = 0.35
 ## Wall fences (task B5; GDD §9.1): an electric fence across the wall-run path, as deep as a fence
 ## (fence_depth), its field reaching out from the facade over the wall runner's body, with the floor
-## fences' warning (fence_pulse_warning) before it switches on. DESIGN-TBD (docs/questions/b5.md): the
-## heights and the reach. The top of a full-height one: above the highest a wall run goes
-## (wall_max_height, and half the body over it).
+## fences' warning (fence_pulse_warning) before it switches on.
+## DESIGN-TBD: the top of a full-height one, above the highest a wall run goes (wall_max_height, and
+## half the body over it).
 @export_range(3.0, 8.0, 0.05, "suffix:m") var wall_fence_top: float = 5.0
-## A partial wall fence's bands (from the Corporate zone): the low one covers the wall from the floor up
-## to wall_fence_low_top (passed above by entering the wall high: jumping onto it), the high one from
-## wall_fence_high_bottom up to wall_fence_top (passed below by entering low: stepping onto the wall
-## without a jump, or later in a wall run). A free entry (wall_entry_height, the body half a hurtbox's
-## width either side of it) runs between the two.
+## DESIGN-TBD: a partial wall fence's bands (from the Corporate zone): the low one covers the wall from
+## the floor up to wall_fence_low_top (passed above by entering the wall high: jumping onto it), the high
+## one from wall_fence_high_bottom up to wall_fence_top (passed below by entering low: stepping onto the
+## wall without a jump, or later in a wall run). A free entry (wall_entry_height, the body half a
+## hurtbox's width either side of it) runs between the two.
 @export_range(0.5, 3.0, 0.05, "suffix:m") var wall_fence_low_top: float = 1.8
 @export_range(1.5, 4.5, 0.05, "suffix:m") var wall_fence_high_bottom: float = 2.8
-## How far a wall fence's field reaches out from the facade toward the lanes: over a wall runner's body
-## (which reaches about a hurtbox height out), never as far as a floor runner in the middle of the outer
-## lane (WallFencePlan.reach holds it short of them).
+## DESIGN-TBD: how far a wall fence's field reaches out from the facade toward the lanes: over a wall
+## runner's body (which reaches about a hurtbox height out), never as far as a floor runner in the middle
+## of the outer lane (WallFencePlan.reach holds it short of them).
 @export_range(0.2, 1.5, 0.05, "suffix:m") var wall_fence_reach: float = 0.9
 ## How far a sign sticks out from the wall face.
 @export_range(0.3, 1.5, 0.05, "suffix:m") var sign_depth: float = 0.9

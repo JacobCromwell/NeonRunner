@@ -111,7 +111,8 @@ func _test_plan() -> void:
 	var body: float = t.hurtbox_size.x * 0.5
 	check(is_zero_approx(full.x) and full.y >= t.wall_max_height + body and full.y >= t.ramp_entry_height + body,
 		"a full-height wall fence covers the whole wall-run path, from the floor to above the highest wall run (%.2f m)" % full.y)
-	check(is_zero_approx(low.x) and low.y < high.x and is_equal_approx(high.y, full.y), "the low band is the bottom of the wall, the high band its top")
+	check(is_zero_approx(low.x) and low.y < high.x and is_equal_approx(high.y, full.y),
+		"the low band is the bottom of the wall, the high band its top")
 	var entry := Vector2(t.wall_entry_height - body, t.wall_entry_height + body)
 	check(entry.x > low.y and entry.y < high.x,
 		"a free wall entry's body (%.2f-%.2f m) runs between the two bands (low up to %.2f, high from %.2f)" % [entry.x, entry.y, low.y, high.x])
@@ -228,7 +229,7 @@ static func _onto_wall(entry: float, high: bool = false) -> Array:
 
 
 func _test_wall_runner() -> void:
-	for lanes: int in [3, 5]:
+	for lanes: int in [3, 5, 6]:
 		var tag: String = "(%d lanes)" % lanes
 		var right: int = lanes - 1
 		# On: a wall runner meets it and is hit.
@@ -246,17 +247,19 @@ func _test_wall_runner() -> void:
 		check(r["alive"], "on the left wall too (%s) %s" % [r["cause"], tag])
 		# Stepping onto the wall into a live one hits.
 		r = await sim.run(_layout(lanes, [_live(1, 40.0)]), right, 3.0, [[39.0, &"move_right"]])
-		check(not r["alive"] and String(r["cause"]).begins_with("wall fence"), "stepping onto the wall into a live one is a hit (%s) %s" % [r["cause"], tag])
+		check(not r["alive"] and String(r["cause"]).begins_with("wall fence"),
+			"stepping onto the wall into a live one is a hit (%s) %s" % [r["cause"], tag])
 		# A wall runner who jumps off before it passes it on the floor.
 		r = await sim.run(_layout(lanes, [_live(1, 70.0)]), right, 5.0, _onto_wall(40.0) + [[60.0, &"jump"]], [75.0])
-		check(r["alive"] and r["at"][75.0]["surface"] == "floor", "a wall runner who jumps off the wall before it passes it (%s) %s" % [r["cause"], tag])
+		check(r["alive"] and r["at"][75.0]["surface"] == "floor",
+			"a wall runner who jumps off the wall before it passes it (%s) %s" % [r["cause"], tag])
 
 
 ## GDD §9.1: partial ones are passed by entering the wall high or low. The low band: a runner who jumps
 ## onto the wall passes above it; one who steps on and has come down by then is hit. The high band: a
 ## runner who steps on passes below it; one who jumps on is hit.
 func _test_partial_bands() -> void:
-	for lanes: int in [3, 6]:
+	for lanes: int in [3, 5, 6]:
 		var tag: String = "(%d lanes)" % lanes
 		var right: int = lanes - 1
 		var low: LevelLayout = _layout(lanes, [_live(1, 62.0, "low")])
@@ -305,7 +308,8 @@ func _test_warning_first() -> void:
 			dropped_hit += 1
 			print("    dropped off %.2f s after the warning started %.1f m before it, and was hit (%s)" % [REACTION, at - d, drop["cause"]])
 	check(cases >= 4, "the warning starts while the runner is on the wall in several cases (%d)" % cases)
-	check(dropped_hit == 0, "a wall runner who jumps off %.2f s after the warning starts is never hit (%d of %d were)" % [REACTION, dropped_hit, cases])
+	check(dropped_hit == 0, "a wall runner who jumps off %.2f s after the warning starts is never hit (%d of %d were)" % [
+		REACTION, dropped_hit, cases])
 	check(hits_staying > 0, "while one who stays on the wall runs into it at some phases (%d of %d)" % [hits_staying, cases])
 
 
