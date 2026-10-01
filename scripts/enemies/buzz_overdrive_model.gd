@@ -3,8 +3,8 @@ extends Node3D
 ## The Buzz Overdrive's look (GDD §9.9: "a truck-sized buzzsaw tank with a giant, vertical buzzsaw
 ## blade. Militaristic. A red, angry eye on each side"). Low-poly and merged (PartBatch): a tracked hull
 ## with skirt armour, a sloped glacis, a low angular turret with a slanted red eye slit on each side
-## (narrowed like a frown), exhaust stacks at the back, and in front a giant vertical saw blade on two
-## arms under an armoured hood. Safe parts are matte; only what hurts or warns glows in a hazard colour:
+## under a hard dark brow, exhaust stacks at the back, and in front a giant vertical saw blade on two
+## braced arms. Safe parts are matte; only what hurts or warns glows in a hazard colour:
 ## the blade's teeth (hot orange-red, the one deadly part) and the eyes (red). The hull's paint follows
 ## the zone: a clean military gunmetal, or scorched and rusted where enemies weather (the Dead Zone's
 ## burned look, Gangland's scavengers). The shape and every hazard colour are the same everywhere.
@@ -160,21 +160,24 @@ static func _hull(weathered: bool, size: Vector3, radius: float) -> ArrayMesh:
 	b.box(plate_m, Vector3(0.0, tur_y + tur_h * 0.5, tur_z + tur_l * 0.5 + 0.14), Vector3(W * 0.64, 0.08, tur_h * 1.2),
 		Vector3(0.6, 0.0, 0.0))
 	b.box(plate_m, Vector3(0.0, H + 0.03, tur_z - 0.1), Vector3(W * 0.5, 0.06, tur_l * 0.7))
+	# A hard dark brow over each eye (the eyes themselves: _eye_slits), slanting down to the front.
+	for sx: float in [-1.0, 1.0]:
+		b.box(dark_m, Vector3(sx * (W * 0.33 + 0.02), tur_y + tur_h * 0.5 + 0.14, tur_z + tur_l * 0.2 + 0.05),
+			Vector3(0.05, 0.07, 0.86), Vector3(-0.42, 0.0, 0.0))
 	# Exhaust stacks and a rear rack.
 	for sx: float in [-1.0, 1.0]:
 		b.cylinder(dark_m, Vector3(sx * W * 0.32, tur_y + 0.35, z0 - L + 0.55), Vector3(0.2, 0.75, 0.2))
 	b.box(dark_m, Vector3(0.0, deck_y + upper_h + 0.12, z0 - L + 0.35), Vector3(W * 0.8, 0.24, 0.5))
-	# The blade's arms, from the hub back into the glacis, and the armoured hood over its back half.
+	# The blade's arms, from the hub back into the glacis, and a brace from the hub up to the deck.
 	var hub_y: float = radius - BLADE_SINK
 	for sx: float in [-1.0, 1.0]:
-		b.box(steel_m, Vector3(sx * 0.17, hub_y, (z0 + 0.2) * 0.5 - 0.1), Vector3(0.1, 0.28, absf(z0) + 0.5))
-	b.cylinder(dark_m, Vector3(0.0, hub_y, 0.0), Vector3(0.42, 0.46, 0.42), Vector3(0.0, 0.0, PI * 0.5))
-	var hood_r: float = radius + 0.16
-	for k: int in 4:
-		var a: float = lerpf(PI * 0.62, PI * 0.98, float(k) / 3.0)
-		var hz: float = cos(a) * hood_r
-		var hy: float = hub_y + sin(a) * hood_r
-		b.box(plate_m, Vector3(0.0, hy, hz), Vector3(0.5, 0.08, 0.62), Vector3(a - PI * 0.5, 0.0, 0.0))
+		b.box(steel_m, Vector3(sx * 0.2, hub_y, (z0 + 0.2) * 0.5 - 0.1), Vector3(0.14, 0.34, absf(z0) + 0.5))
+		var brace_from := Vector3(sx * 0.2, hub_y + 0.1, -0.2)
+		var brace_to := Vector3(sx * 0.32, deck_y + upper_h - 0.05, z0 - 0.6)
+		var mid: Vector3 = (brace_from + brace_to) * 0.5
+		var dir: Vector3 = brace_to - brace_from
+		b.box(dark_m, mid, Vector3(0.12, 0.14, dir.length()), Vector3(atan2(dir.y, -dir.z), 0.0, 0.0))
+	b.cylinder(dark_m, Vector3(0.0, hub_y, 0.0), Vector3(0.46, 0.56, 0.46), Vector3(0.0, 0.0, PI * 0.5))
 	if weathered:
 		# Scorch marks and rust patches on the hull's sides (in the plates' rusty brown and the dark).
 		for sx: float in [-1.0, 1.0]:
@@ -198,10 +201,10 @@ static func _eye_slits(size: Vector3, radius: float) -> ArrayMesh:
 	var b := PartBatch.new()
 	var eye_m: Material = GreyboxMaterials.glow(EYE, 2.2)
 	for sx: float in [-1.0, 1.0]:
-		var x: float = sx * (W * 0.33 + 0.012)
-		var y: float = tur_y + (H - tur_y) * 0.55
-		var z: float = tur_z + tur_l * 0.22
-		b.box(eye_m, Vector3(x, y, z), Vector3(0.03, 0.09, 0.62), Vector3(-0.32, 0.0, 0.0))
+		var x: float = sx * (W * 0.33 + 0.014)
+		var y: float = tur_y + (H - tur_y) * 0.5
+		var z: float = tur_z + tur_l * 0.2
+		b.box(eye_m, Vector3(x, y, z), Vector3(0.03, 0.13, 0.78), Vector3(-0.3, 0.0, 0.0))
 	return b.commit()
 
 
