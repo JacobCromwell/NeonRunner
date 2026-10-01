@@ -190,13 +190,13 @@ func _test_data() -> void:
 func _test_side_boarding() -> void:
 	var t := def.tuning as FloatingHeadTuning
 	# The fight's ramp at its run's pace (GDD §3): as long as its lead-in takes to run at 18 m/s.
-	var p: float = tuning.pace()
+	var pace: float = tuning.pace()
 	for top: float in [1.9, 2.8]:
 		var world: RunWorld = sim.build_world(RunSim.layout(3, 400.0))
 		world.player.god_mode = true
 		var ramp := FloatingHeadRamp.new()
 		world.add_child(ramp)
-		ramp.setup(world, 1, 100.0, 100.0 + t.ramp_length * p, top, t.ramp_overhang, 0.05, Color(0.3, 1.0, 0.35),
+		ramp.setup(world, 1, 100.0, 100.0 + t.ramp_length * pace, top, t.ramp_overhang, 0.05, Color(0.3, 1.0, 0.35),
 			t.ramp_board_share, t.ramp_board_height)
 		await physics_frames(6)
 		var tag: String = "(a ramp %.1f m up at the face)" % top
@@ -243,7 +243,7 @@ func _test_side_boarding() -> void:
 		check(int(s["inside"]) == 0, "a lane switch never takes the runner into it %s" % tag)
 		check((s["odd"] as Array).is_empty(), "every switch alongside it boards it or bumps (odd at %s m past its foot) %s" % [
 			", ".join(s["odd"]), tag])
-		check(float(s["latest"]) >= ramp.knee - 1.5 * p,
+		check(float(s["latest"]) >= ramp.knee - 1.5 * pace,
 			"a switch boards it up to %.1f m before its knee (%.1f m past its foot of %.1f) %s" % [ramp.knee - float(s["latest"]),
 			float(s["latest"]) - ramp.foot, ramp.face - ramp.foot, tag])
 		await sim.free_world(world)
@@ -351,13 +351,13 @@ func _test_wall_marks() -> void:
 ## as long to run.)
 func _test_wall_forgiveness() -> void:
 	var t := def.tuning as FloatingHeadTuning
-	var p: float = tuning.pace()
-	var mark: float = FloatingHeadTuning.before_face_at(t.wall_jump_before, p)
+	var pace: float = tuning.pace()
+	var mark: float = FloatingHeadTuning.before_face_at(t.wall_jump_before, pace)
 	for lanes: int in LANES:
 		for wall: int in [-1, 1]:
-			for entry: float in [FloatingHeadTuning.before_face_at(t.wall_entry_before, p) - 0.5 * p,
-					FloatingHeadTuning.before_face_at(t.window_release_gap, p) + 0.8 * p]:
-				for jump: float in [mark + 1.0 * p, mark - 1.0 * p]:
+			for entry: float in [FloatingHeadTuning.before_face_at(t.wall_entry_before, pace) - 0.5 * pace,
+					FloatingHeadTuning.before_face_at(t.window_release_gap, pace) + 0.8 * pace]:
+				for jump: float in [mark + 1.0 * pace, mark - 1.0 * pace]:
 					var s := {"stage": &"lane"}
 					var drive := func(head: FloatingHead) -> void:
 						var p: Player = head.world.player

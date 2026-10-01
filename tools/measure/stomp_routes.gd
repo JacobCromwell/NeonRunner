@@ -14,8 +14,15 @@ extends SceneTree
 ##                          0.55 m over their sockets and not over the outer lanes, the jump 3 m before
 ##                          its face (E1c's bot)
 ##   --second-move          on the wall route, one more move inward in the air 0.1 s after the wall jump
-##   --fine                 on the wall route, also finds each end of the window to about 0.02 m (at
-##                          18 m/s) by bisection between the sweep's points
+##   --fine                 on the wall route, also finds each end of the window by bisection between
+##                          the sweep's points; the window is then where the jumps that stomp were
+##                          pressed (a press is read on the next physics frame, a 60th of a second, at
+##                          any speed)
+##   --phases=N             with --fine, the bisections again with the runner nudged by N-ths of a
+##                          frame's run as the pin begins, so the window's ends are found to a frame's
+##                          N-th whatever the frames' phase against the ship (default 1)
+##   --set=key:value        tries a tuning number before it goes in the data (FloatingHeadTuning's
+##                          names, e.g. --set=stomp_depth:4.5; several --set may be given)
 ## What it prints, in metres at the run speed and in seconds of running (what stays the same at every
 ## speed: the fight's distances follow the pace, FloatingHead.run_pace):
 ##   ramp     the boarding window: the latest lane switch into the ramp's lane from the lane beside it
@@ -39,7 +46,9 @@ var _routes: PackedStringArray = ["ramp", "wall", "ceiling"]
 var _e1c: bool = false
 var _second_move: bool = false
 var _fine: bool = false
+var _phases: int = 1
 var _speed: float = 0.0
+var _sets: Dictionary = {}
 var _tuning: MovementTuning
 var _sim: RunSim
 var _def: BossDef
@@ -65,6 +74,11 @@ func _run() -> void:
 			_second_move = true
 		elif arg == "--fine":
 			_fine = true
+		elif arg.begins_with("--phases="):
+			_phases = maxi(int(arg.get_slice("=", 1)), 1)
+		elif arg.begins_with("--set="):
+			var kv: String = arg.get_slice("=", 1)
+			_sets[kv.get_slice(":", 0)] = float(kv.get_slice(":", 1))
 	var app: Node = root.get_node_or_null(^"App")
 	if app != null:
 		app.set(&"autosave", false)
@@ -119,14 +133,21 @@ func _make_def() -> BossDef:
 		t.stomp_depth = 3.0
 		t.stomp_top = 0.55
 		t.wall_jump_before = 3.0
+	for key: String in _sets:
+		if not key in t:
+			push_warning("stomp_routes: no tuning number '%s'" % key)
+			continue
+		t.set(key, _sets[key])
+		print("  (trying %s = %s)" % [key, _sets[key]])
 	out.tuning = t
 	out.arena = null
 	return out
 
 
 ## Plays phase `phase` at `lanes` until the pin, then calls `drive` every frame until a stomp or a
-## missed window: {stomped, from (the lane driven from, -1 none)}.
-func _play(phase: int, lanes: int, drive: Callable) -> Dictionary:
+## missed window: {stomped, from (the lane driven from, -1 none)}. `nudge`: the runner moves on this far
+## as the pin begins (a fraction of a frame's run: another phase of the frames against the ship).
+func _play(phase: int, lanes: int, drive: Callable, nudge: float = 0.0) -> Dictionary:
 	var head := BossEncounter.create(_def) as FloatingHead
 	var ctx := RunContext.new()
 	ctx.mode = RunContext.Mode.QUICK
@@ -146,7 +167,9 @@ func _play(phase: int, lanes: int, drive: Callable) -> Dictionary:
 	var out := {"stomped": false, "from": -1}
 	var pinned: bool = false
 	for i: int in 60 * 60:
-		pinned = pinned or head.step == FloatingHead.Step.PIN_FALL or head.step == FloatingHead.Step.PINNED
+		if not pinned and (head.step == FloatingHead.Step.PIN_FALL or head.step == FloatingHead.Step.PINNED):
+			pinned = true
+			world.player.distance += nudge
 		if pinned:
 			drive.call(head, out)
 		else:
@@ -240,6 +263,8 @@ func _measure_wall(lanes: int) -> void:
 			var row: String = ""
 			var ok: Array[float] = []
 			var tried: Array[float] = []
+			# Where the jumps that stomped were pressed (--fine).
+			var pressed: Array[float] = []
 			for k: int in 2 * WALL_STEPS + 1:
 				var jump: float = mark + (WALL_STEPS - k) * step
 				if jump >= entry - 1.0 * pace:
@@ -250,16 +275,23 @@ func _measure_wall(lanes: int) -> void:
 				row += "X" if r["stomped"] else "."
 				if r["stomped"]:
 					ok.append(jump)
+					pressed.append(float(r["pressed"]))
 			var found: String = "none"
 			if not ok.is_empty():
 				var early: float = ok[0]
 				var late: float = ok[ok.size() - 1]
 				if _fine:
-					# Each end between its last stomping point and the next one tried (if any was).
-					if tried.has(early + step):
-						early = await _wall_edge(lanes, wall, entry, early, early + step)
-					if tried.has(late - step):
-						late = await _wall_edge(lanes, wall, entry, late, late - step)
+					# Each end between its last stomping point and the next one tried (if any was), at
+					# each phase of the frames.
+					var frame: float = _tuning.run_speed / Engine.physics_ticks_per_second
+					for n: int in _phases:
+						var nudge: float = frame * n / _phases
+						if tried.has(ok[0] + step):
+							pressed.append_array(await _wall_edge(lanes, wall, entry, ok[0], ok[0] + step, nudge))
+						if tried.has(ok[ok.size() - 1] - step):
+							pressed.append_array(await _wall_edge(lanes, wall, entry, ok[ok.size() - 1], ok[ok.size() - 1] - step, nudge))
+					early = pressed.max()
+					late = pressed.min()
 				found = "%.2f to %.2f m before its face: a window of %.2f m, %.3f s; the mark %.3f s from its early end and %.3f s from its late end" % [
 					early, late, early - late, _s(early - late), _s(early - mark), _s(mark - late)]
 			print("  wall, %d lanes, %s wall, onto it %.1f m before its face%s: jumps %.1f..%.1f m [%s] stomp at %s" % [lanes,
@@ -268,15 +300,19 @@ func _measure_wall(lanes: int) -> void:
 
 
 ## The end of a wall jump's window between `inside` (a jump point that stomps) and `outside` (one that
-## doesn't), to about 0.02 m at 18 m/s: the last jump point found that stomps.
-func _wall_edge(lanes: int, wall: int, entry: float, inside: float, outside: float) -> float:
+## doesn't), by bisection with the runner nudged `nudge` as the pin begins: where each jump that stomped
+## was pressed (metres before the face).
+func _wall_edge(lanes: int, wall: int, entry: float, inside: float, outside: float, nudge: float) -> Array[float]:
+	var out: Array[float] = []
 	for i: int in 5:
 		var mid: float = (inside + outside) * 0.5
-		if (await _wall_try(lanes, wall, entry, mid))["stomped"]:
+		var r: Dictionary = await _wall_try(lanes, wall, entry, mid, nudge)
+		if r["stomped"]:
 			inside = mid
+			out.append(float(r["pressed"]))
 		else:
 			outside = mid
-	return inside
+	return out
 
 
 ## Where the second window's wall marks start and where their jump mark is, and the window's release
@@ -292,8 +328,10 @@ func _wall_marks(lanes: int) -> Dictionary:
 	return found
 
 
-func _wall_try(lanes: int, wall: int, entry: float, jump: float) -> Dictionary:
-	var state := {"stage": &"lane", "t": 0.0}
+## A wall jump: onto the wall `entry` and off it `jump` metres before the face (with the runner nudged
+## `nudge` as the pin begins): {stomped, pressed (where the jump was pressed, metres before the face)}.
+func _wall_try(lanes: int, wall: int, entry: float, jump: float, nudge: float = 0.0) -> Dictionary:
+	var state := {"stage": &"lane", "t": 0.0, "pressed": jump}
 	var drive := func(head: FloatingHead, _out: Dictionary) -> void:
 		var p: Player = head.world.player
 		var outer: int = 0 if wall < 0 else lanes - 1
@@ -310,11 +348,14 @@ func _wall_try(lanes: int, wall: int, entry: float, jump: float) -> Dictionary:
 					p.press(inward)
 					state["stage"] = &"jumped"
 					state["t"] = p.elapsed
+					state["pressed"] = gap
 			&"jumped":
 				if _second_move and p.elapsed - float(state["t"]) >= 0.1:
 					p.press(inward)
 					state["stage"] = &"done"
-	return await _play(1, lanes, drive)
+	var out: Dictionary = await _play(1, lanes, drive, nudge)
+	out["pressed"] = state["pressed"]
+	return out
 
 
 # --- The ceiling -------------------------------------------------------------------------------------

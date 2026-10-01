@@ -94,6 +94,8 @@ const SHUDDER: float = 0.2
 const FENCE_EARSHOT: float = 45.0
 ## Its torn-off face lies this far before the wreck.
 const FACE_GAP: float = 0.8
+## The pinning tower breaks at least this far before where it rests on the crown.
+const REST_MARGIN: float = 0.5
 ## The defeat: its nose dips this far (radians) as it plunges; a crash site is looked for every this
 ## many metres; smoke rises from the wreck and sparks spit from it every so often (seconds).
 const FALL_DIVE: float = 0.16
@@ -820,6 +822,9 @@ func _on_impact(side: int) -> void:
 		var along: float = -pinned_tower.axis_world().z
 		if along > 0.1:
 			var cut: float = pin_stern - FloatingHeadModel.WEAK_Z + body.stomp_depth() * 0.5 + tuning.tower_break_after
+			# Never past where it rests on the crown (deep stomp boxes at a fast run's pace), so what stays
+			# lies on the ship.
+			cut = minf(cut, pin_stern + tuning.pin_rest_offset - REST_MARGIN)
 			pinned_tower.break_at((cut - pinned_tower.at) / along)
 	if route == &"ramp":
 		_slam_ramp(side)

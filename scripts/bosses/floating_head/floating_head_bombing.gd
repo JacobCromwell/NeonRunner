@@ -34,7 +34,8 @@ const FIRE := Color(1.0, 0.36, 0.12)
 const FIRE_HOT := Color(1.0, 0.8, 0.5)
 ## Bombs, blasts and fireballs kept ready (two locks' worth, one of them a straddle).
 const POOL: int = 4
-## How fast the spot catches up along the track after a blast, beyond the runner's own speed.
+## How fast the spot catches up along the track after a blast, beyond the runner's own speed (at
+## 18 m/s; at the run's pace, so it takes as long at any speed).
 const CATCH_UP: float = 60.0
 ## The spot counts as on the runner's lane within this of its centre.
 const ON_LANE: float = 0.2
@@ -241,7 +242,7 @@ func _update_light(delta: float) -> void:
 	_swept += delta
 	match step:
 		Step.SWEEP_OUT, Step.SWEEP_IN:
-			spot_d = move_toward(spot_d, ahead, (world.player.speed + CATCH_UP) * delta)
+			spot_d = move_toward(spot_d, ahead, (world.player.speed + head.metres(CATCH_UP)) * delta)
 			var lane: int = _out_lane if step == Step.SWEEP_OUT else head.player_lane()
 			spot_x = move_toward(spot_x, geo.lane_x(lane), sweep)
 			if step == Step.SWEEP_OUT:
