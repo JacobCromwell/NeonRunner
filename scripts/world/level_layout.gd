@@ -45,11 +45,22 @@ var doodads: Array[Dictionary] = []
 ## §9.9's limits allow), the track builder builds them as pieces of their own (FloorCut), and a cause
 ## runs each (FloorCut.advance_to).
 var cuts: Array[Dictionary] = []
+## {side, at, band ("full" | "low" | "high"), pulse_on, pulse_off, phase}: a wall fence (task B5; GDD
+## §9.1): an electric fence across the wall-run path on wall `side` at track distance `at`, between
+## emitters on the facade, that switches off and on on the level clock (pulse_on seconds on, pulse_off
+## off, the floor fences' flicker and crackle before it switches on; `phase` 0–1 offsets it within its
+## cycle). `band` is how much of the wall it covers: all of it ("full", passed by timing), or only the
+## low or the high part (passed by entering the wall high or low). Its field reaches out from the
+## facade over the wall runner's path only, never as far as a floor runner in the outer lane. Its
+## fields and geometry: WallFencePlan. The generator places them (WallFencePlacement, only where
+## they're fair), the track builder builds them as hazards (TrackBuilder), and the skin draws them
+## (ZoneSkin.wall_fence).
+var wall_fences: Array[Dictionary] = []
 
 
-## Every list of pieces, by name. A level without doodads has no "doodads" key, and one without
-## floor cuts no "cuts" key, so its dictionary (and every hash or dump of it) is the same as before
-## those existed.
+## Every list of pieces, by name. A level without doodads has no "doodads" key, one without floor
+## cuts no "cuts" key and one without wall fences no "wall_fences" key, so its dictionary (and every
+## hash or dump of it) is the same as before those existed.
 func to_dict() -> Dictionary:
 	var out := {
 		"lane_count": lane_count,
@@ -68,11 +79,13 @@ func to_dict() -> Dictionary:
 		out["doodads"] = doodads
 	if not cuts.is_empty():
 		out["cuts"] = cuts
+	if not wall_fences.is_empty():
+		out["wall_fences"] = wall_fences
 	return out
 
 
-## Appends every list of `other`'s pieces to this layout's (doodads and floor cuts included, whether
-## or not this layout has any yet), and moves its end to other's if that's further.
+## Appends every list of `other`'s pieces to this layout's (doodads, floor cuts and wall fences
+## included, whether or not this layout has any yet), and moves its end to other's if that's further.
 func append_pieces(other: LevelLayout) -> void:
 	var lists: Dictionary = to_dict()
 	var more: Dictionary = other.to_dict()
@@ -84,6 +97,8 @@ func append_pieces(other: LevelLayout) -> void:
 		doodads.append_array(other.doodads)
 	if not lists.has("cuts"):
 		cuts.append_array(other.cuts)
+	if not lists.has("wall_fences"):
+		wall_fences.append_array(other.wall_fences)
 	length = maxf(length, other.length)
 
 
@@ -102,6 +117,7 @@ func copy() -> LevelLayout:
 	out.enemies = enemies.duplicate(true)
 	out.doodads = doodads.duplicate(true)
 	out.cuts = cuts.duplicate(true)
+	out.wall_fences = wall_fences.duplicate(true)
 	return out
 
 
@@ -141,6 +157,15 @@ func doodad_between(from: float, to: float, lane: int = -1) -> bool:
 func cut_between(from: float, to: float, lane: int = -1) -> bool:
 	for c: Dictionary in cuts:
 		if FloorCutPlan.lane_window_in(c, from, to, lane):
+			return true
+	return false
+
+
+## True if a wall fence stands within [from, to] (its `at`): on wall `side` (-1 left, 1 right), or on
+## either wall with 0. A wall enemy's rules (task C4's Gilded Sentinels) and a boss's wall pieces ask it.
+func wall_fence_between(from: float, to: float, side: int = 0) -> bool:
+	for w: Dictionary in wall_fences:
+		if float(w["at"]) >= from and float(w["at"]) <= to and (side == 0 or int(w["side"]) == side):
 			return true
 	return false
 

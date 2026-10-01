@@ -216,7 +216,7 @@ func _test_arena_and_model() -> void:
 		var layout: LevelLayout = boss.arena.layout
 		var other: int = layout.gaps.size() + layout.fences.size() + layout.signs.size() + layout.hulls.size() + layout.pads.size() \
 			+ layout.ramps.size() + layout.speed_pads.size() + layout.enemies.size() + layout.doodads.size() + layout.cuts.size() \
-			+ layout.credits.size()
+			+ layout.wall_fences.size() + layout.credits.size()
 		check(other == 0, "its arena is a plain street: the danger is the machine's own %s" % tag)
 		var s: TheHouseModel.Shape = boss.body.shape()
 		check(s.width <= world.geo.wall_x() * 2.0 - 2.0 * t.street_margin + 0.01, "the machine fills the street between the walls %s" % tag)

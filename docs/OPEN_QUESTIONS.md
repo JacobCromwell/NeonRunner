@@ -1844,6 +1844,31 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     Armor II is 4.9x that (1,700), versus 2.1x before. **Leave II–IV as the existing escalating sink
     they already were, or pull them down too to keep a smoother step?**
 
+**Wall fences** (from B5; numbers in `data/tuning/wall_fences.tres`, F6 "Wall fences"; review with `tools/showcase/wall_fence_review.tscn` or play `--level=marketplace/2`)
+296. **Do partial wall fences pulse too?** (GDD §9.1: wall fences "turn off and on"; partial ones "are passed
+    by entering the wall high or low".) Placeholder: every wall fence pulses on the level clock, partial ones
+    included, so a partial one is passed either by timing or by entering high or low
+    (`WallFencePlacement`, `scripts/world/wall_fence_placement.gd`). The alternative: partial ones always on,
+    passed only by height.
+297. **Is the floor fence's warning long enough on a wall?** (GDD §9.1: "the same flicker and crackle before
+    switching on"; the brief: a player already on the wall always sees the warning in time to drop off.)
+    Placeholder: the floor fence's own 0.35 s (`MovementTuning.fence_pulse_warning`, and its 0.35 s crackle).
+    Jumping off a wall takes about 0.1 s to clear the field, so a wall runner has about 0.24 s to react, the
+    same as dodging a pulsing floor fence; the tests hold a runner who jumps off 0.2 s after the warning starts
+    to never being hit. The alternative: a longer warning for wall fences only (about 0.5 s, with a longer
+    crackle).
+298. **Where may they stand?** (GDD §9.1's fairness rules, read for the drop-off.) Placeholder: besides the GDD's
+    rules (no ramp launching the player along their wall, no sign or window cyborg on their wall section),
+    a wall fence keeps the outer lane beside it clear to drop into (no hole, fence, floor cut, anti-grav pad or
+    floor enemy from 0.6 s before it to 0.8 s after), keeps off wall vents' screeches, and never stands during a
+    big attack (a drone wave, a hover truck, an Octodog's run, a Resonator's pulse, a Bad Dream chase) or a
+    floor cut, the way the fill pass keeps its extra obstacles off them (`WallFenceTuning`, "Fairness"). So
+    they come where the floor beside the wall is calm, and catch players who stay on a wall from earlier; a
+    long big attack can also hold Marketplace 2's or Corporate 1's introduction back past its 10 s (about one
+    seed in six; never on the levels' own seeds). The alternative: let them stand during big attacks (more of
+    them, and introductions always on time, but the wall is one of the escapes from the Resonator's wave and
+    the Bad Dream's slash).
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).

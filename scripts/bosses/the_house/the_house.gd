@@ -111,8 +111,9 @@ func _tuning() -> TheHouseTuning:
 # --- The arena -----------------------------------------------------------------------------------
 
 ## GDD §10's arena, kept plain (DESIGN-TBD, docs/questions/e5a.md): the Marketplace's stall roofs with no
-## holes, fences, signs, ceilings, pads, ramps, speed pads, doodads, floor cuts or enemies: the machine's
-## attacks are the danger (phases 2 and 3 add a wall's fences and a guarded ceiling, task E5a-b).
+## holes, fences, wall fences, signs, ceilings, pads, ramps, speed pads, doodads, floor cuts or enemies:
+## the machine's attacks are the danger (phases 2 and 3 add a wall's fences and a guarded ceiling, task
+## E5a-b).
 func _plan_lap(lap: LevelLayout, _index: int, _arena: BossArena) -> void:
 	lap.gaps.clear()
 	lap.fences.clear()
@@ -124,6 +125,7 @@ func _plan_lap(lap: LevelLayout, _index: int, _arena: BossArena) -> void:
 	lap.enemies.clear()
 	lap.doodads.clear()
 	lap.cuts.clear()
+	lap.wall_fences.clear()
 	lap.credits.clear()
 
 
