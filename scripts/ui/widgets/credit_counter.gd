@@ -68,7 +68,8 @@ func _init() -> void:
 ## Counts to `target` (or jumps there when `animate` is false).
 func set_value(target: int, animate: bool = true) -> void:
 	var gain: bool = target > roundi(shown)
-	var loss: bool = target < roundi(shown)
+	# A drop from the value it had (even while it was still counting up to it).
+	var loss: bool = target < _target
 	_target = target
 	if not animate or not is_inside_tree():
 		shown = target
