@@ -6,9 +6,10 @@ extends RefCounted
 ## lane at a time on the ground, a full jump (over holes, and over full-height fences only where the
 ## arc clears them), and slides under gapped fences (pressed again to slide on). It never uses a wall,
 ## a lane switch in the air, coyote time or a jump out of a slide, never steps on a pad, ramp or speed
-## pad, treats pulsing fences as always on, and keeps a margin at every edge, so a route it finds is
-## one the real Player can run (test_generator replays some on real physics); it may miss some that
-## exist. Enemies aren't in it: each keeps to its own fairness rules.
+## pad, treats pulsing fences as always on, keeps out of a zone doodad's lane where it stands (no push,
+## and no jump over it: it's too tall), and keeps a margin at every edge, so a route it finds is one the
+## real Player can run (test_generator replays some on real physics); it may miss some that exist.
+## Enemies aren't in it: each keeps to its own fairness rules.
 ##   var floor := FloorRoute.new(layout, tuning)      the layout's grid, built once
 ##   var route: Dictionary = floor.find(from, to)
 ##   route: {ok, start_lane, end_lane, actions: [[distance, action]], reason, from, to}
@@ -20,6 +21,8 @@ const STEP: float = 0.5
 const GAP_MARGIN: float = 0.6
 const FENCE_MARGIN: float = 0.9
 const TRIGGER_MARGIN: float = 0.6
+## Kept off a zone doodad's lane before its front (where its push would start) and after its end.
+const DOODAD_MARGIN: float = 1.5
 ## Height kept between the feet and a full-height fence's top when jumping it.
 const CLEAR_HEIGHT: float = 0.15
 ## Slides in one go (each press of slide before the last ends keeps the player down).
@@ -227,8 +230,9 @@ func _free(kind: int, lane: int, a: int, b: int) -> bool:
 
 
 ## The kinds of cell per lane and step: STAND_BAD where the player can't stand (a hole under the feet,
-## a fence, a trigger), SLIDE_BAD where they can't slide (a hole, a full fence, a trigger), GAPPED and
-## FULL where a gapped or full-height fence is near.
+## a fence, a trigger, a zone doodad), SLIDE_BAD where they can't slide (a hole, a full fence, a
+## trigger, a doodad), GAPPED and FULL where a gapped or full-height fence is near (and GAPPED where a
+## doodad stands: no jump's arc may pass it).
 func _build_cells() -> void:
 	cells.resize(lanes * size)
 	var marks: Array[Array] = []  # [lane, from, to, flags]
@@ -246,6 +250,10 @@ func _build_cells() -> void:
 	for r: Dictionary in layout.ramps:
 		marks.append([layout.outer_lane(int(r["side"])), float(r["at"]) - TRIGGER_MARGIN,
 			float(r["at"]) + tuning.ramp_length + TRIGGER_MARGIN, STAND_BAD | SLIDE_BAD])
+	for d: Dictionary in layout.doodads:
+		# Nowhere to stand or slide, and no jump over it (GAPPED keeps any arc off it).
+		marks.append([int(d["lane"]), float(d["start"]) - DOODAD_MARGIN, float(d["end"]) + DOODAD_MARGIN,
+			STAND_BAD | SLIDE_BAD | GAPPED])
 	for m: Array in marks:
 		var lane: int = m[0]
 		if lane < 0 or lane >= lanes:

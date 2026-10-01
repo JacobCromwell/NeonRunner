@@ -40,10 +40,13 @@ static func apply(gen: LevelGenerator) -> void:
 
 
 ## Every floor obstacle's [start, end] along the track, any lane: gaps, fences, ramps, anti-grav
-## pads, speed pads, and every ceiling section's landing zone (`zones`, CeilingZones; the level's
+## pads, speed pads, zone doodads (GDD §3; placed after these rules, so only the Cyborg's walk and
+## panic run meet them), and every ceiling section's landing zone (`zones`, CeilingZones; the level's
 ## pacing at run speed). The floor under a ceiling isn't one (GDD §3).
 static func obstacle_spans(layout: LevelLayout, t: MovementTuning, zones: CeilingZones) -> Array[Vector2]:
 	var out: Array[Vector2] = []
+	for d: Dictionary in layout.doodads:
+		out.append(Vector2(d["start"], d["end"]))
 	for g: Dictionary in layout.gaps:
 		out.append(Vector2(g["start"], g["end"]))
 	for f: Dictionary in layout.fences:

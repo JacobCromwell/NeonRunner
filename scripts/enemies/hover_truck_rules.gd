@@ -105,6 +105,20 @@ static func after_fill(gen: LevelGenerator) -> void:
 			_clear_lane(gen.layout, int(e.get("lane", -1)), window_start(t, at, gen.pace), window_end(t, at, gen.speed))
 
 
+## What the generator's zone doodads keep off (LevelGenerator.doodad_keep_outs): every truck's lane for
+## its whole stay (window_start to window_end), where none stands and none pushes the player into it
+## (its sides are solid, and its forward lurch is deadly in its lane). keep_out() already keeps them
+## off every lane while it's surely there.
+static func doodad_keep_outs(gen: LevelGenerator) -> Array[Dictionary]:
+	var t: HoverTruckTuning = tuning()
+	var out: Array[Dictionary] = []
+	for e: Dictionary in gen.layout.enemies:
+		if String(e.get("type", "")) == TYPE:
+			var at: float = float(e["at"])
+			out.append({"lane": int(e.get("lane", -1)), "from": window_start(t, at, gen.pace), "to": window_end(t, at, gen.speed)})
+	return out
+
+
 ## The lanes at track distance `at` that no hover truck keeps free (its lane, from window_start to
 ## window_end): where another rule may still add a floor enemy (the host and Octodog guarantees).
 static func open_lanes(gen: LevelGenerator, at: float) -> Array[int]:
