@@ -10,9 +10,13 @@ extends RefCounted
 ## same on every attempt. A boss without an arena config fights on a plain track (floor and walls).
 ##
 ## During the fight a boss script adds track pieces of its own with add_pieces(): holes, fences, pads
-## with ceilings, ramps, signs and enemies, planned past the built track (stream_from()), then built
-## and brought into play like the rest of the arena. Things that appear within sight (a fence rolled
-## across the lanes, a block slammed down, a wall taken away) are BossProps instead.
+## with ceilings, ramps, signs, floor cuts and enemies, planned past the built track (stream_from()),
+## then built and brought into play like the rest of the arena. Things that appear within sight (a fence
+## rolled across the lanes, a block slammed down, a wall taken away) are BossProps instead. A floor cut
+## (task B4; GDD §10, Hostile Takeover: the gunship drops a Buzz Overdrive onto the roof ahead, which
+## cuts a carriage lane) comes with its cause as an enemy at the cut's end, in its lane (FloorCutPlan;
+## task C2's saw, or the floor cutter stand-in); cut_problem() holds it to GDD §9.9's limits on the
+## arena's track before it's added.
 ##
 ## Nothing in a lap ramps up (GDD §10: no escalation), and laps carry no credits (DESIGN-TBD: in a
 ## fight with no time limit, credits along the track would pay players for stalling; beating the boss
@@ -128,10 +132,10 @@ func stream_from() -> float:
 
 
 ## Adds a boss script's own pieces to the track during the fight (track distances; build them with
-## the LevelLayout lists: gaps, fences, signs, hulls, pads, ramps, speed_pads, enemies). Track pieces
-## must start at or past stream_from(); nearer ones are left out with a warning (use BossProps within
-## sight). Enemies come into play at their type's spawn lead like the rest. Returns how many pieces
-## were added.
+## the LevelLayout lists: gaps, fences, signs, hulls, pads, ramps, speed_pads, cuts, enemies). Track
+## pieces must start at or past stream_from() (a floor cut's whole stretch, from its start); nearer ones
+## are left out with a warning (use BossProps within sight). Enemies come into play at their type's
+## spawn lead like the rest. Returns how many pieces were added.
 func add_pieces(extra: LevelLayout) -> int:
 	var from: float = stream_from()
 	var kept := LevelLayout.new()
@@ -148,12 +152,29 @@ func add_pieces(extra: LevelLayout) -> int:
 				continue
 			(into[key] as Array).append(item)
 			count += 1
+	for c: Dictionary in extra.cuts:
+		if float(c["start"]) < from - 0.001:
+			push_warning("BossArena: a floor cut from %.0f m is within the built track (from %.0f m); left out" % [
+				float(c["start"]), from])
+			continue
+		kept.cuts.append(c)
+		count += 1
 	for e: Dictionary in extra.enemies:
 		kept.enemies.append(e)
 		count += 1
 	kept.length = maxf(layout.length, extra.length)
 	_join_pieces(kept)
 	return count
+
+
+## Why floor cut `cut` (FloorCutPlan.make, at the arena's run speed) can't go where it lies on the
+## arena's track, or "" if it can: GDD §9.9's limits, as the generator holds a level's cuts to them
+## (LevelGenerator.cut_problem: one at a time, never through a ramp, a pad or a ceiling's landing zone,
+## nothing else in its lane, the other lanes whole enough, nothing else going on, room to leave its
+## lane). Ask before add_pieces(); a boss's own attacks the generator doesn't know (its props) are the
+## boss script's to keep off it.
+func cut_problem(cut: Dictionary) -> String:
+	return LevelGenerator.for_layout(config, tuning, layout).cut_problem(cut)
 
 
 ## True if the floor between two track distances has no hole and no working fence, in `lane` or, with
@@ -163,10 +184,14 @@ func floor_clear(from: float, to: float, lane: int = -1) -> bool:
 	return not hole_between(from, to, lane) and not live_fence_between(from, to, lane)
 
 
-## True if a hole in `lane` (every lane with -1) reaches into [from, to] (a cluster baited into it).
+## True if a hole in `lane` (every lane with -1) reaches into [from, to] (a cluster baited into it). A
+## floor cut's stretch counts as one (it is one, or soon will be).
 func hole_between(from: float, to: float, lane: int = -1) -> bool:
 	for g: Dictionary in layout.gaps:
 		if (lane < 0 or int(g["lane"]) == lane) and float(g["start"]) <= to and float(g["end"]) >= from:
+			return true
+	for c: Dictionary in layout.cuts:
+		if (lane < 0 or int(c["lane"]) == lane) and float(c["start"]) <= to and float(c["end"]) >= from:
 			return true
 	return false
 
@@ -212,12 +237,7 @@ func _join(next: LevelLayout) -> void:
 func _join_pieces(next: LevelLayout) -> void:
 	if world == null:
 		# Before the world is built: straight into the layout it's built from.
-		var to: Dictionary = layout.to_dict()
-		var from: Dictionary = next.to_dict()
-		for key: String in from:
-			if from[key] is Array and to.get(key) is Array:
-				(to[key] as Array).append_array(from[key])
-		layout.length = maxf(layout.length, next.length)
+		layout.append_pieces(next)
 		return
 	var enemies: Array[Dictionary] = next.enemies.duplicate()
 	world.track.extend_layout(next)

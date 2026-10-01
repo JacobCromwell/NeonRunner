@@ -150,6 +150,17 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 ## DESIGN-TBD: seconds of gap-free floor after a ceiling section ends, so the drop never lands in a hole.
 @export_range(0.0, 3.0, 0.1, "suffix:s") var hull_landing_seconds: float = 1.2
 
+@export_group("Floor cuts")
+## GDD §9.9 (the Buzz Overdrive's cuts, task B4): "on 3 lanes, two lanes always stay whole": along a
+## cut's stretch no other lane holds a hole. On more lanes, at most this many lanes besides the cut's
+## own may hold holes there (LevelGenerator.whole_lanes_for_cut: 3 of 5 lanes and 4 of 6 stay whole
+## with 1). DESIGN-TBD (docs/questions/b4.md): the limit at 5 and 6 lanes.
+@export_range(0, 4) var cut_holes_beside: int = 1
+## A player in a cut's lane when its warning starts can always leave it: from this long after the
+## warning starts, a neighbouring lane has room to switch into before the cut meets the player
+## (LevelGenerator.cut_escape_clear). DESIGN-TBD (docs/questions/b4.md).
+@export_range(0.0, 2.0, 0.05, "suffix:s") var cut_reaction_seconds: float = 0.5
+
 @export_group("Narrow ceilings")
 ## GDD §3 (decided September 26, 2026): ceilings don't have to cover every lane, and on one the player
 ## switches lanes only within its lanes. The share of this level's ceilings that cover a range of its
