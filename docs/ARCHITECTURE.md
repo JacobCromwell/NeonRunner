@@ -229,8 +229,8 @@ A level uses an enemy only if its `features` list has the type's name (GDD §6: 
 time), from the feature's start if the level gives it one (The generator). Quick play can add
 features: `./play.sh --features=cyborg,drone`. The campaign already lists the enemies still to be
 built under the names their tasks must use (`LevelConfig.PLANNED_FEATURES`: `barnacle_turret`,
-`buzz_overdrive`, `tithe_collector`, `resonator`, `gilded_sentinel`), so a new enemy's own files are
-all it takes to bring it into its levels.
+`tithe_collector`, `resonator`, `gilded_sentinel`), so a new enemy's own files are all it takes to bring
+it into its levels.
 
 Built so far: cyborg (with its panic variant and hosts), window cyborg, fence generator, hover
 truck, Octodog, sewer screech (manholes, and wall vents; `screech_vents` is wall vents only, for zones
@@ -239,8 +239,9 @@ heli drone, the Cyborg's Bad Dream (released by a killed host, spawned by the di
 time rather than placed by the generator), and the Resonator (GDD §9.10, the Golden Zone: a golden
 broadcast spire hovering far ahead whose red waves roll along the floor across every lane; its model,
 `resonator_model.gd`, is built in code, and `resonator_rules.gd` plans each pulse where its wave meets
-the player on clear floor), and the Barnacle Turret (GDD §9.8, from Marketplace 1: a ceiling enemy, see
-below). `scripts/enemies/mesh_batch.gd` merges an enemy's low-poly parts into one mesh per material to
+the player on clear floor), the Barnacle Turret (GDD §9.8, from Marketplace 1: a ceiling enemy, see
+below), and the Buzz Overdrive (GDD §9.9, from Corporate 1: a buzzsaw tank that cuts its lane's floor
+into a gap, see below). `scripts/enemies/mesh_batch.gd` merges an enemy's low-poly parts into one mesh per material to
 keep draw calls down.
 
 **Big attacks take turns through the director** (GDD §9, decided September 26, 2026). The big attacks
@@ -249,11 +250,12 @@ revert this after playtesting, so it sits behind one switch, `GameRules.big_atta
 default, in the F6 panel); switched off, the game plays exactly as before the rule. The big attacks
 (DESIGN-TBD, `docs/questions/r3.md`): the Octodog's charge sequence (its first wind-up until it gives
 up), the drone's wind-up and barrage, the hover truck's rev and forward lurch and its cannon's charge
-and volley, the Bad Dream's chase, and the Resonator's pulse (its warning until its last wave has
-passed the player; DESIGN-TBD, `docs/questions/c3.md`). Small attacks (a cyborg's burst, a window
+and volley, the Bad Dream's chase, the Resonator's pulse (its warning until its last wave has passed
+the player; DESIGN-TBD, `docs/questions/c3.md`), and the Buzz Overdrive's rev and charge (its warning
+until it has passed the player and gone; it never waits, below). Small attacks (a cyborg's burst, a window
 cyborg's shot, a Barnacle Turret's burst, a screech's swipe) and the hover truck's entrance don't take
-part. An enemy takes part like this, and the enemies still to come (Buzz Overdrive, the Gilded Sentinels,
-the Tithe Collector) opt in the same way for whichever of their attacks count as big:
+part. An enemy takes part like this, and the enemies still to come (the Gilded Sentinels, the Tithe
+Collector) opt in the same way for whichever of their attacks count as big:
 - **Report it.** `is_major_attack_active()` is true from the start of the attack's warning until its
   last hazard is over (the lunge has passed, the lurch has ended). Each shot fired in it goes to
   `world.director.note_attack_shot(self, shot)` (the Projectile `fire_enemy()` returned): the attack's
@@ -293,7 +295,7 @@ the Tithe Collector) opt in the same way for whichever of their attacks count as
   host) or the generator planned its moment still reports itself: the others wait for it. It can
   overlap an attack that was already on when it came; the Bad Dream holds its slash until that one
   is over. A planned floor cut (B4's stand-in, C2's Buzz Overdrive) reports itself from its warning
-  until its charge ends; the generator keeps every other attack off its whole window (Floor cuts,
+  until its charge ends; the generator keeps every other attack off its attack window (Floor cuts,
   under The generator), so only an attack moved on at runtime can meet it, and that one waits.
 
 The director holds a big attack while another type's is on or its shots are still on their way; an
@@ -381,6 +383,48 @@ tuning (`BarnacleTurretTuning`, `data/enemies/barnacle_turret.tres`), its model
   eyes, floppy ears) on `&"scavenger"` and `&"casino"` (Gangland, the Marketplace; `is_creature`), with a
   palette per zone variant. Only its muzzle ever glows a hazard colour: enemy-fire red, swelling over the
   charge-up and the burst (a steady swell, nothing strobes). A hit's flash is softer with Reduced flashing.
+
+**A floor cutter: the Buzz Overdrive** (C2, GDD §9.9; from Corporate 1 through the Dead Zone and the
+Golden Zone). `buzz_overdrive.gd`, its tuning (`BuzzOverdriveTuning`, `data/enemies/buzz_overdrive.tres`),
+its model (`buzz_overdrive_model.gd`), its rules (`buzz_overdrive_rules.gd`, The generator, Floor cuts),
+its pattern (`data/patterns/buzz_overdrive.json`) and its sounds (`tools/asset_gen/
+sfx_bank_buzz_overdrive.gd`: `buzz_rev`, `buzz_charge`; its death is the hover truck's `truck_explode`).
+It is the visible cause of a floor cut the generator planned (B4's `FloorCutPlan`, `FloorCut`), keyed to
+the player's distance like the cut, so it does the same on every attempt and at every frame rate:
+- **Its encounter.** Its entry stands at its cut's end, in its lane (`cut_of`). It shows parked in its lane
+  `appear_distance` ahead (the director spawns it far ahead, `spawn_lead` 300 m, hidden until then; its
+  hint shows as it spawns). When the player is a charge's distance from it (`FloorCutPlan.lead_at`) it
+  rolls ahead of them at that distance for `roll_seconds`, revs for its rev (`rev_at`: its warning, the
+  level's enemy scaling from 2.93 s in Corporate 1 to 2.5 s in the Golden Palace, the only thing that
+  scales; its health stays 20) while it keeps rolling, then charges back at the player (`charge_seconds`
+  to meet them, at `charge_speed` stretched by the pace), cutting the floor behind it (`advance_to`), and
+  runs on `run_past` metres past them, off the screen, gone (retired only then: its cut runs to its
+  start). Its distances follow the pace (the charge's from `charge_distance()`), its seconds don't.
+- **Its warning.** The rev: the spin-up (`buzz_rev`, as long as Corporate 1's rev), its eyes flaring and a
+  red line over the lane it's about to cut, from the cut's start to its blade (the Octodog's lunge-line
+  red; it widens over the rev and pulses, only widening with Reduced flashing). Sparks fly from the blade
+  as it cuts (none with Reduced flashing).
+- **Contact and kills.** Its blade is an `attack` hitbox, narrow and centred on its lane (0.7 m wide, 2.4 m
+  tall: a jump doesn't clear it), so wall and ceiling riders are never touched; no other part hurts. The
+  armor and the shield block it, and then `FloorCut.hold_under` holds the floor under the player for
+  `GameRules.cut_hold_seconds`: its cut runs on 1.5 s ahead of where it meets the player (0.6 s at 2.5
+  times the run speed), so a player who stays falls once the hold is over. Claw-immune, not stompable (no
+  `top`); the dash smashes it (`dash_kills`), into the cut lane, where only the grapple hook saves the
+  runner. Weapons: health 20, so 22 laser tier 1 shots (G4's rule) and 15, 10 and 7 at tiers 2-4; a kill
+  before its charge saves the floor, mid-charge `stop()` ends the cut where it dies. It rolls in 50-60 m
+  ahead: beyond laser tier 1's 42 m and within the other tiers' 70 m, so on a plain track tier 1 never
+  stops it before it has passed the runner and tiers 2-4 kill it during its rev at the zones' speeds
+  (23.4-25 m/s); at the harder tiers' 28-30 m/s tier 3 (and tier 4 at 30) stop it mid-charge
+  (`test_buzz_overdrive`; DESIGN-TBD, `docs/questions/c2.md`).
+- **A big attack that never waits.** Its rev and charge are one big attack (`is_major_attack_active` from
+  the rev until it's gone): the generator planned its moment, so it never asks for a turn and the others
+  wait for it; while it only rolls ahead it attacks nobody and holds nobody up.
+- **Looks.** `BuzzOverdriveModel`: a tracked hull with skirt armour, a sloped glacis, a low turret with a
+  slanted red eye slit under a dark brow on each side, exhaust stacks, and a giant vertical saw on braced
+  arms whose teeth glow hot orange-red (the deadly part); matte military gunmetal and olive, scorched and
+  rusted where enemies weather (`&"burned"`, `&"scavenger"`). Seven draw calls within 2,400 triangles.
+- **The Resonator** keeps its pulses off every cut (its rules run after these: `busy_stretches` holds each
+  cut's whole window, and `Resonator.pulse_clear` counts a cut's stretch as a gap).
 
 ## The generator
 
@@ -750,17 +794,16 @@ it:
   hitbox's `contacted` with `BLOCKED_ARMOR`/`BLOCKED_SHIELD`): the floor from just behind the player to
   as far as they run meanwhile holds for about a second (1 s, game rules), then goes at once
   (DESIGN-TBD: the held floor's look).
-For task C2 (the Buzz Overdrive): plan its cuts in its rules like `floor_cutter_rules.gd` (`plan()`,
-`CutPlacement.place`, the entry at `end`), with its own warn and charge times and speed in its tuning;
-its enemy finds its cut (as `floor_cutter_rules.cut_of` does), its `FloorCut` once built, starts its
-warning (GDD §9.9's rev and the red line over the lane, both placeholders in the stand-in's `_warn()`
-and `_update_line()`) at `warn_at`, its charge at `charge_at`, and calls the three above; it reports its
-big attack from the warning until it's gone (`is_major_attack_active`), keeps its hitbox narrow and in
-its lane, and flies its sparks only without Reduced flashing. For a boss fight (E5b's Hostile Takeover):
+The Buzz Overdrive (C2, under Enemies) is the cause the campaign uses, and the stand-in stays for
+reviews. A cause that sets off before its warning (the Buzz Overdrive rolls ahead of the player) gives its
+cut a `lead`: its lane window and its window start there (`FloorCutPlan.lead_at`: its lane is clear
+wherever it drives, and no other cut's encounter overlaps it), while its attack window
+(`attack_window`, when nothing else may go on) and its warned lane (`warned_lane`, which no ceiling's
+landing zone may reach) start at its warning. For a boss fight (E5b's Hostile Takeover):
 plan the cut at the arena's speed (`arena.tuning`), ask `arena.cut_problem(cut)` (the generator's rules
 on the arena's track), and add it with its cause through `arena.add_pieces()` (its `cuts` and
 `enemies`), its whole stretch past `stream_from()`, so about ten seconds ahead at the stand-in's
-numbers. A track that grows during play (`TrackBuilder.extend_layout`, endless mode's R4 too) takes cuts
+numbers (the Buzz Overdrive's own plan: `buzz_overdrive_rules.plan_for`). A track that grows during play (`TrackBuilder.extend_layout`, endless mode's R4 too) takes cuts
 the same way.
 
 ## Power-ups

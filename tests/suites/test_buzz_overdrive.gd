@@ -166,7 +166,7 @@ func _test_numbers() -> void:
 	check(t.rev_at(8.0 / 14.0) >= 2.5 and t.rev_at(1.0) >= 2.0 and t.rev_at(8.0 / 14.0) - t.rev_at(1.0) <= 0.8,
 		"it revs for a few seconds, slightly faster by the Golden Zone, never too fast (%.2f s to %.2f s)" % [
 		t.rev_at(8.0 / 14.0), t.rev_at(1.0)])
-	check(t.hitbox_size.x < tuning.lane_width * 0.4 and t.body_size.x <= tuning.lane_width - 0.3,
+	check(t.hitbox_size.x < tuning.lane_width * 0.4 and t.body_size.x <= tuning.lane_width - 0.15,
 		"its blade's hitbox is narrow and its body inside its lane (wall runners beside it are never touched)")
 	# Its rev and charge keep their seconds at every zone's speed (G1: distances stretch with the pace).
 	var secs: Array[float] = []

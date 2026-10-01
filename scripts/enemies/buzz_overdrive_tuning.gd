@@ -21,7 +21,8 @@ extends EnemyTuning
 @export_range(1.0, 6.0, 0.05, "suffix:s") var rev_seconds_late: float = 2.5
 ## Seconds it rolls ahead of the player, in view and in its lane, before it starts revving (GDD
 ## §9.9: "the player sees it in the distance, in its lane"): within the missiles' reach and beyond
-## laser tier 1's, so the missile tiers usually stop it before it charges and tier 1 can't.
+## laser tier 1's, so the missile tiers usually stop it before it charges and tier 1 can't. DESIGN-TBD
+## (docs/questions/c2.md): the roll, and "in time" read as "before it charges".
 @export_range(0.0, 8.0, 0.1, "suffix:s") var roll_seconds: float = 4.0
 ## Seconds from the start of its charge until it reaches a player running at the run speed.
 @export_range(0.3, 3.0, 0.05, "suffix:s") var charge_seconds: float = 0.6
@@ -30,7 +31,8 @@ extends EnemyTuning
 ## this over the run speed (1.5 s of running), longer than the floor holds after a block
 ## (GameRules.cut_hold_seconds), so a player who stays in its lane after a block falls once the hold is
 ## over (GDD §9.9: "a jump would land back in the cut lane"); and it starts from charge_distance()
-## ahead, within the missiles' 70 m and beyond laser tier 1's 42 m at every zone's speed.
+## ahead, within the missiles' 70 m and beyond laser tier 1's 42 m at every zone's speed. DESIGN-TBD
+## (docs/questions/c2.md): the charge's time and speed.
 @export_range(5.0, 90.0, 0.5, "suffix:m/s") var charge_speed: float = 45.0
 ## How far past the player it runs, still cutting, before it's gone (off the screen behind them; plain
 ## metres: the camera's view behind the player doesn't change with the speed).
@@ -39,16 +41,16 @@ extends EnemyTuning
 @export_group("Placement")
 ## In a level that gives the feature a start (Corporate 1 introduces it), the first one sets off within
 ## this many seconds of the start where a cut fits, even if the pattern picked there didn't fit
-## (buzz_overdrive_rules.gd).
+## (buzz_overdrive_rules.gd). DESIGN-TBD (docs/questions/c2.md).
 @export_range(0.0, 60.0, 1.0, "suffix:s") var intro_seconds: float = 15.0
 
 @export_group("Look")
 ## How far ahead it shows up, parked in its lane (plain metres: within the track built ahead).
 @export_range(40.0, 170.0, 5.0, "suffix:m") var appear_distance: float = 150.0
 ## The tank's size: width (inside its lane), height and length behind its blade.
-@export var body_size: Vector3 = Vector3(2.0, 2.0, 5.2)
+@export var body_size: Vector3 = Vector3(2.2, 2.2, 5.6)
 ## Its vertical blade: a disc along the lane, its lowest point on the floor at its front.
-@export_range(0.6, 2.0, 0.05, "suffix:m") var blade_radius: float = 1.3
+@export_range(0.6, 2.0, 0.05, "suffix:m") var blade_radius: float = 1.5
 ## The blade's hitbox (an enemy attack: the armor and the shield block it): narrow and centred on its
 ## lane, so a player beside it or a wall runner next to it is never touched (GDD §9.9, GB 6).
 @export var hitbox_size: Vector3 = Vector3(0.7, 2.4, 2.4)

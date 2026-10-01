@@ -8,8 +8,9 @@ extends Enemy
 ## 2. When the player is a charge's distance from it (FloorCutPlan.lead_at), it rolls ahead of them,
 ##    keeping that distance (within the missiles' reach, beyond laser tier 1's) for roll_seconds.
 ## 3. The rev (the warning, from warn_at): its blade spins up with the spin-up whine (buzz_rev), its
-##    eyes flare and a red line lights the lane it is about to cut (like the Octodog's lunge line: it
-##    pulses and widens, and only widens with Reduced flashing), while it keeps rolling.
+##    eyes flare and a red line lights the lane it is about to cut, from the player to its blade (like
+##    the Octodog's lunge line: it pulses and widens, and only widens with Reduced flashing), while it
+##    keeps rolling.
 ## 4. The charge (from charge_at, where it has reached the cut's end): it charges along its lane at the
 ##    player (buzz_charge), its blade biting into the floor, which becomes a gap behind it (FloorCut:
 ##    advance_to), sparks flying (none with Reduced flashing); it meets the player charge_seconds after
@@ -33,6 +34,8 @@ const SPARK_COLOR := Color(1.0, 0.6, 0.2)
 ## The warning line's width, as a share of the lane, as the rev starts and at its end.
 const LINE_WIDTH_START: float = 0.2
 const LINE_WIDTH_END: float = 0.4
+## While it revs, its line starts this far behind the player (metres).
+const LINE_BEHIND: float = 2.0
 ## The blade's spin (radians a second): idling, and full (the end of the rev and the charge).
 const SPIN_IDLE: float = 2.5
 const SPIN_FULL: float = 34.0
@@ -204,13 +207,16 @@ func _on_contacted(outcome: int) -> void:
 		floor_cut.hold_under(world.player, world.rules.cut_hold_seconds if world.rules != null else 1.0)
 
 
-## The red line down the lane it's about to cut: from the cut's start to its blade, widening over the
-## rev and pulsing (only widening with Reduced flashing).
+## The red line down the lane it's about to cut, widening over the rev and pulsing (only widening with
+## Reduced flashing): while it revs, from just behind the player (or the cut's start, if that's further
+## back) to its blade, the whole lane between them; while it charges, the stretch it still has to cut.
 func _update_line(delta: float, p: float) -> void:
 	if not _line.visible:
 		return
 	_rev_t += delta
 	var from: float = float(cut["start"])
+	if state == State.REV:
+		from = minf(from, p - LINE_BEHIND)
 	var to: float = front
 	if to - from < 0.05:
 		_line.visible = false

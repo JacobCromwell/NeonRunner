@@ -9,8 +9,8 @@ extends Node3D
 ## the zone: a clean military gunmetal, or scorched and rusted where enemies weather (the Dead Zone's
 ## burned look, Gangland's scavengers). The shape and every hazard colour are the same everywhere.
 ## Model space: it faces +z (toward the player, who runs toward -z); the origin is on the floor where
-## the blade bites into it (the cut's front). Six draw calls (hull: 4 materials; blade: 2) and about
-## 1,700 triangles, built once per look and shared.
+## the blade bites into it (the cut's front). Seven draw calls (hull: 4 materials; eyes: 1; blade: 2),
+## within an enemy's 2,400 triangles, built once per look and shared. DESIGN-TBD (docs/questions/c2.md): the look.
 
 ## The enemies' merger of primitives (one surface per material; not the track kit's MeshBatch).
 const PartBatch := preload("res://scripts/enemies/mesh_batch.gd")
