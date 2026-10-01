@@ -1908,9 +1908,22 @@ the checks every zone skin must pass, and helpers to inspect what a skin builds 
 `BUILD_BUDGET_MEAN_MS`/`BUILD_BUDGET_MAX_MS`) time the dressed build over `build_all()`'s
 `timing_passes` (`BUILD_TIMING_PASSES`, 3) fresh builds and keep, per build step, the fastest seen:
 OS preemption on a loaded machine only ever adds wall-clock time to one pass, never removes it, so
-the minimum stays a faithful reading of the skin's real cost. `test_skin_budget` (with the test-only
-`SlowTestSkin`, `tests/helpers/slow_test_skin.gd`, which busy-waits a few real milliseconds per lane)
-checks that check still fails a skin that really is expensive. `LayoutChecks` (`tests/helpers/layout_checks.gd`) holds the
+the minimum stays a faithful reading of the skin's real cost even when a single pass gets paused
+mid-build. That alone doesn't help when *every* pass is slow -- several agents' test runs and
+renders sharing the CPUs at once (T-BUDGET2) -- so each timed pass also drives a reference
+`TrackBuilder`, in `GreyboxSkin` over a plain `REFERENCE_LANES`-lane layout as long as the one under
+test, one chunk-step at a time right alongside the skin's own (same process, same moment, the whole
+build through, not a snapshot at its edges). `load_factor()` reads that reference's own inflation
+over its quiet-machine baseline (`REFERENCE_IDLE_MS`) and scales the budget by it, each direction
+with its own safety margin and cap on how far a single pathological moment may widen it
+(`MEAN_SAFETY_MARGIN`/`MEAN_FACTOR_CAP` for the mean budget, `MAX_SAFETY_MARGIN`/`MAX_FACTOR_CAP`,
+wider, for the max budget, which a single loaded chunk can spike well past the mean's own inflation);
+at load factor 1.0 (an unloaded machine) neither margin nor cap changes anything, so a real
+regression still fails exactly as before. `test_skin_budget` (with the test-only `SlowTestSkin`,
+`tests/helpers/slow_test_skin.gd`, which busy-waits a few real milliseconds per lane, a cost that
+grows with load more slowly than a real skin's own) checks that check still fails a skin that really
+is expensive, at whatever load this run measures, including the heaviest load the mean cap still lets
+through. `LayoutChecks` (`tests/helpers/layout_checks.gd`) holds the
 fairness checks for generated layouts (the generator suite runs them over many seeds, the campaign
 suite over every campaign level at 3, 5 and 6 lanes, the enemy suites over their own levels), among
 them `check_ceilings` (GDD §3: pads that can be stepped on and under their ceiling, safe landing zones
@@ -2038,7 +2051,7 @@ shows a level whose rules plan no cut is the same data as one without them.
 the data and everything the demo references, and walks the demo from the title to its end screen (see
 Platforms and build flavors). The runner frees
 anything a suite leaves in the tree, gives suites a fresh, unsaved profile, reports a suite that fails
-to load, and ends a stuck run after 1200 s of real time.
+to load, and ends a stuck run after 2400 s of real time.
 
 ## Review tools
 
