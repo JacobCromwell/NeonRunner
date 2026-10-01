@@ -667,6 +667,10 @@ A `ZoneSkin` (`scripts/world/skins/zone_skin.gd`) decorates abstract pieces thro
 (`floor_segment`, `wall_section`, `fence`, `wall_sign`, `ceiling_section` (by default `hull`), `pad`,
 `ramp`, `speed_pad`, `finish_line`, `make_environment`). Skins add visuals only, never collision or
 gameplay. Hazards keep one colour and shape language in every zone (pink crackle = electric fence).
+`TrackBuilder` also calls `note_wall_enemies(side, start, end, enemies)` just before `wall_section()`
+for each side (a no-op default): the chunk's wall enemy layout entries (type, at, side, ...), for a
+skin whose own scenery would otherwise double up with one (the Marketplace's citizens, task D3, kept
+clear of window cyborgs); read-only and visual only, like every other hook.
 
 **Ceilings from their lanes** (B3). `TrackBuilder` (and `BossProps.ceiling`) describe each ceiling as a
 `CeilingSection` (`scripts/world/ceiling_section.gd`): its span along the track, the lanes it covers
@@ -816,6 +820,29 @@ slab with lamps on every lane seam, nothing hangs below it, and its far end carr
   between two track distances (position on the glass, width, bottom, top, depth into the building,
   kind), computed from track positions alone, so it can be asked before or after a chunk exists.
   Citizens stand inside, between the glass plane and `face_x + side * depth`.
+- *The Marketplace citizens (task D3, GDD §5 "Citizens"; scenery only, never real 3D characters).*
+  `tools/asset_gen/citizen_sheet_gen.gd` bakes a few archetypes (`CitizenRig`, on the same shared
+  `HumanoidRig` the player and cyborgs use, GDD §9.2) into flipbook sprite sheets
+  (`CitizenSheet`: a fixed grid, one row per clip: idle, startled, cheer) at
+  `assets/sprites/citizens/*.png` (`tools/godot.sh citizens` regenerates them). `MarketCitizens`
+  (`scripts/world/skins/marketplace/`), called from `wall_section()`, seeds which eligible
+  `shop_windows()` get one (never a feed window, `screen`) from the window's own track position, so
+  a chunk builds the same citizens every time. `MarketCitizen` plays the baked sheet back as one
+  cheap unlit, double-sided quad (a `StandardMaterial3D.duplicate()` per card, its `uv1_offset` the
+  only thing that changes, driven in GDScript, not a shader) and reacts (startled or cheering) once
+  the player's own track distance comes within range of its window, easing back to idle on its own;
+  every live one joins the `"market_citizens"` group with a public `react(kind)`, the hook for The
+  House (E5a, GDD §10: "the citizens in the shop windows cheer and duck throughout") to use later.
+  Kept apart from window cyborgs (GDD §9.2; `docs/questions/d3.md`): citizens never glow and their
+  windows stay lit, and `ZoneSkin.note_wall_enemies(side, start, end, enemies)` (a small, generic
+  hook `TrackBuilder` calls just before `wall_section()`, a no-op for every other skin) tells
+  `MarketplaceSkin` which window cyborgs the chunk is about to place, so `MarketCitizens` keeps
+  `CYBORG_MARGIN` clear of each one's track position (`MarketplaceSkin.reserved_near()`). Switched
+  off by `Settings.citizens_enabled` (`DeviceProfile.is_low_end()`, DESIGN-TBD: nothing decides
+  "low-end" project-wide yet) and `Settings.DEFAULTS["citizens"]`, kept current by `apply_visuals()`
+  like `flashing_reduced`, so the skin never needs a `Profile`. `test_marketplace_citizens` and
+  `test_marketplace_skin`'s existing budgets (`SkinSuite`) cover it; with `CITIZEN_SHARE` at 0.16 it
+  adds about 2 surfaces and under 10 vertices per 5-lane chunk on top of the Marketplace's own ~21.
 - *Ceilings from their lanes (task B3).* `MarketCeilings` builds every kind (a building bridging the
   street, an overpass, a merchant ship, a floating ad) from the ceiling's collision box and lane
   seams, so a ceiling over fewer lanes just builds narrower; only a full-width ceiling becomes a
