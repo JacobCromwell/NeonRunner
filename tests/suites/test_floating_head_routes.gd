@@ -18,6 +18,8 @@ extends TestSuite
 ##   takes each route the forgiving way (boarding the ramp late from its side, one wall jump at the
 ##   mark, a pad and no move on the ceiling) stomps in every phase; a death restarts the fight (it has
 ##   no checkpoint, GDD §10) and the retry plays all three routes again, to the win.
+## Every fight here runs at the City's speed (21 m/s), as the campaign plays it (GDD §3; task E1f:
+## FloatingHeadBot.campaign_tuning).
 
 const BOSS_PATH: String = "res://data/bosses/city_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
@@ -28,6 +30,8 @@ var def: BossDef
 
 
 func run() -> void:
+	# The fight at the City's speed, as the campaign plays it (GDD §3; E1f).
+	tuning = FloatingHeadBot.campaign_tuning(tuning)
 	sim = RunSim.new(tree, tuning)
 	def = load(BOSS_PATH) as BossDef
 	check(def != null and def.is_built(), "the Floating Head's fight exists")
@@ -185,12 +189,14 @@ func _test_data() -> void:
 ## Boarding reaches to within about a metre of its knee.
 func _test_side_boarding() -> void:
 	var t := def.tuning as FloatingHeadTuning
+	# The fight's ramp at its run's pace (GDD §3): as long as its lead-in takes to run at 18 m/s.
+	var pace: float = tuning.pace()
 	for top: float in [1.9, 2.8]:
 		var world: RunWorld = sim.build_world(RunSim.layout(3, 400.0))
 		world.player.god_mode = true
 		var ramp := FloatingHeadRamp.new()
 		world.add_child(ramp)
-		ramp.setup(world, 1, 100.0, 100.0 + t.ramp_length, top, t.ramp_overhang, 0.05, Color(0.3, 1.0, 0.35),
+		ramp.setup(world, 1, 100.0, 100.0 + t.ramp_length * pace, top, t.ramp_overhang, 0.05, Color(0.3, 1.0, 0.35),
 			t.ramp_board_share, t.ramp_board_height)
 		await physics_frames(6)
 		var tag: String = "(a ramp %.1f m up at the face)" % top
@@ -237,15 +243,16 @@ func _test_side_boarding() -> void:
 		check(int(s["inside"]) == 0, "a lane switch never takes the runner into it %s" % tag)
 		check((s["odd"] as Array).is_empty(), "every switch alongside it boards it or bumps (odd at %s m past its foot) %s" % [
 			", ".join(s["odd"]), tag])
-		check(float(s["latest"]) >= ramp.knee - 1.5,
+		check(float(s["latest"]) >= ramp.knee - 1.5 * pace,
 			"a switch boards it up to %.1f m before its knee (%.1f m past its foot of %.1f) %s" % [ramp.knee - float(s["latest"]),
 			float(s["latest"]) - ramp.foot, ramp.face - ramp.foot, tag])
 		await sim.free_world(world)
 
 
 ## In the fight: a runner beside the ramp switches onto it late, halfway along its lead-in and 1.5 m
-## before its knee, and stomps, at every lane count and from either side. (Past the knee the window
-## closes for a runner still on the trucks: test_floating_head_stomps.gd's missed windows.)
+## (at 18 m/s; as long to run at the fight's pace) before its knee, and stomps, at every lane count and
+## from either side. (Past the knee the window closes for a runner still on the trucks:
+## test_floating_head_stomps.gd's missed windows.)
 func _test_late_boarding() -> void:
 	for lanes: int in LANES:
 		for side: int in [1, -1]:
@@ -264,7 +271,7 @@ func _test_late_boarding() -> void:
 					var ramp: FloatingHeadRamp = head.ramp
 					var go: float = INF
 					if ramp != null and is_instance_valid(ramp):
-						go = lerpf(ramp.foot, ramp.knee, 0.5) if at == &"half" else ramp.knee - 1.5
+						go = lerpf(ramp.foot, ramp.knee, 0.5) if at == &"half" else ramp.knee - 1.5 * head.run_pace()
 					if p.distance >= go and p.lane == from:
 						_steer(p, lane)
 						s["switched"] = true
@@ -303,8 +310,12 @@ func _test_wall_marks() -> void:
 		var tag: String = "(%d lanes)" % lanes
 		check(s["seen"] and s["step"] == FloatingHead.Step.PIN_FALL, "the wall marks light up as the tower falls %s" % tag)
 		if s["seen"]:
-			check(absf(float(s["start"]) - t.wall_entry_before) < 0.01 and absf(float(s["jump"]) - t.wall_jump_before) < 0.01,
-				"from %.0f m before its face to the jump mark %.0f m before it %s" % [float(s["start"]), float(s["jump"]), tag])
+			# At the fight's pace (GDD §3), stretched about its weak points: as long to run to them as at 18 m/s.
+			check(absf(float(s["start"]) - head.before_face(t.wall_entry_before)) < 0.01
+				and absf(float(s["jump"]) - head.before_face(t.wall_jump_before)) < 0.01
+				and float(s["start"]) > t.wall_entry_before and float(s["jump"]) > t.wall_jump_before,
+				"from %.1f m before its face to the jump mark %.1f m before it, at its run's pace %s" % [float(s["start"]),
+				float(s["jump"]), tag])
 		check(_sounds(head, &"wall_marks_light") == 1 and not _events(head, &"wall_marks").is_empty(), "with their sound %s" % tag)
 		check(r["missed"] and (head.wall_marks == null or not is_instance_valid(head.wall_marks)),
 			"and they go once the window closes %s" % tag)
@@ -336,13 +347,17 @@ func _test_wall_marks() -> void:
 
 ## A runner who follows the marks: to the outer lane, onto the wall anywhere along the marks before the
 ## release line, and one wall jump inward within a metre either side of the jump mark (no second move):
-## a stomp, at every lane count and from either wall.
+## a stomp, at every lane count and from either wall. (Metres at 18 m/s: at the fight's pace they take
+## as long to run.)
 func _test_wall_forgiveness() -> void:
 	var t := def.tuning as FloatingHeadTuning
+	var pace: float = tuning.pace()
+	var mark: float = FloatingHeadTuning.before_face_at(t.wall_jump_before, pace)
 	for lanes: int in LANES:
 		for wall: int in [-1, 1]:
-			for entry: float in [t.wall_entry_before - 0.5, t.window_release_gap + 0.8]:
-				for jump: float in [t.wall_jump_before + 1.0, t.wall_jump_before - 1.0]:
+			for entry: float in [FloatingHeadTuning.before_face_at(t.wall_entry_before, pace) - 0.5 * pace,
+					FloatingHeadTuning.before_face_at(t.window_release_gap, pace) + 0.8 * pace]:
+				for jump: float in [mark + 1.0 * pace, mark - 1.0 * pace]:
 					var s := {"stage": &"lane"}
 					var drive := func(head: FloatingHead) -> void:
 						var p: Player = head.world.player

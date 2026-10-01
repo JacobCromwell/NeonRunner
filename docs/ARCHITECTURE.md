@@ -52,7 +52,8 @@ debug builds, the debug HUD and the F6 tuning panel. Quick play (`--quick`, or a
 restarts on death like the grey box did.
 A campaign level runs at its zone's speed (Pace, under The generator): `App` gives the run the level's
 movement tuning (`LevelConfig.movement_for`), and `RunWorld.build` and the generator ask the same, so a
-level is always built and played at one speed; quick play, the tests and boss fights run at the base
+level is always built and played at one speed; a campaign boss fight runs at its zone's speed the same way
+(E1f: `Campaign.configure_boss`, Bosses); quick play (a boss's too) and the tests run at the base
 `MovementTuning.run_speed` (`--speed=N` sets quick play's). F6's Movement section changes the run's copy
 live, and its Save leaves the base run speed alone when the run's comes from its level (the section's
 `keep` list, `TuningPanel`).
@@ -116,7 +117,7 @@ Every number is `SpeedFxTuning` (`scripts/run/speed_fx_tuning.gd`, `data/tuning/
 
 | File | What |
 |---|---|
-| `data/tuning/movement.tres` (`MovementTuning`) | the base run speed (quick play, tests, boss fights; `REFERENCE_SPEED` and `pace()`, see Pace), jump, walls (and the blocked entry's bump), ramps and speed pads (their boosts share one fade), ceiling, piece sizes, zone doodads' sizes and push, camera, touch |
+| `data/tuning/movement.tres` (`MovementTuning`) | the base run speed (quick play, tests; `REFERENCE_SPEED` and `pace()`, see Pace), jump, walls (and the blocked entry's bump), ramps and speed pads (their boosts share one fade), ceiling, piece sizes, zone doodads' sizes and push, camera, touch |
 | `data/tuning/game_rules.tres` (`GameRules`) | lanes per device, death share, invulnerability, the armor (the free armor's hits and wait, the upgrade's per tier, a pickup's extra hit), stomp, whether big attacks take turns, score, economy, stars |
 | `data/tuning/powerups.tres` (`PowerupTuning`) | weapon tiers, claws, dash, magnet, slow time |
 | `data/tuning/pickups.tres` (`PickupTuning`) | in-run pickups: where they appear, taking them, the charge cap, the look |
@@ -327,8 +328,8 @@ the runner closes in on its waves as fast as at 18 m/s instead: they roll slower
 as long to arrive, `ResonatorTuning.wave_speed_at`); the screech's dash; and every floor enemy's reach
 (`LevelGenerator.enemy_floor_span` takes the pace; `CeilingZones.pace`). Warnings, charge-ups and wind-ups are seconds and stay what they
 were. Enemies that move with the player (the drone, the hover truck once it's out, the Bad Dream) fire in
-the player's frame, so nothing of theirs depends on the run speed. Boss fights run at the base speed,
-pace 1. What made the enemies livelier is data: less idle time between attacks (reloads, follow and
+the player's frame, so nothing of theirs depends on the run speed. Boss fights run at their zone's speed
+too (E1f), so the enemies a boss brings in follow its pace like a level's. What made the enemies livelier is data: less idle time between attacks (reloads, follow and
 pacing times, cannon intervals, rests; DESIGN-TBD, `docs/questions/g1.md`). A new enemy whose distances
 set a warning or a dodge window follows the pace the same way.
 
@@ -593,7 +594,8 @@ each feature a pattern can place there is in the finished level, at any lane cou
 zone to about 25 m/s in the Golden Zone). A level's run speed is its own `LevelConfig.run_speed`, which
 `Campaign.configure` fills in from its zone (`ZoneDef.run_speed`; DESIGN-TBD, a straight rise from 21 to
 25 m/s) times a harder tier's speed multiplier; 0 is the movement tuning's base speed (quick play, the
-tests, boss arenas). The level keeps its duration in seconds and gets longer in metres. Everything the
+tests). A campaign boss arena gets its zone's speed the same way (`Campaign.configure_boss`, E1f; see
+Bosses). The level keeps its duration in seconds and gets longer in metres. Everything the
 patterns and rules measure in metres was written for `MovementTuning.REFERENCE_SPEED` (18 m/s), so the
 generator stretches it by the level's pace (`pace = run speed / 18`, `metres()`): a pattern's `length`
 and its elements' `at`, a sign's length, credit spacing (the patterns' and the trails'), and the rules'
@@ -1312,8 +1314,9 @@ A boss fight (GDD §10) is a run like a level's, so it plays like the runner: th
 camera, movement, HUD, power-ups, damage rules, pause, hints, death flow (revive offer → summary →
 shop → retry) and debug tools. `App.start_boss()` builds its `RunContext`: `boss` set, `config` the
 boss's arena (`Campaign.configure_boss`: the arena config with the lane count, the tier's difficulty
-bonus, the zone's enemy scaling and skin), a tuning that never speeds up, and the loadout plus
-`BossDef.granted_items` (`Loadout.grant`: granted charges never cost stock). LevelRun then:
+bonus, its run speed, the zone's enemy scaling and skin), a tuning at that speed that never speeds up
+(`LevelConfig.movement_for`, as for a level), and the loadout plus `BossDef.granted_items`
+(`Loadout.grant`: granted charges never cost stock). LevelRun then:
 
 ```
 BossEncounter.create(def)            the boss's scene (BossDef.scene; its root extends BossEncounter)
@@ -1344,6 +1347,23 @@ encounter.setup(world, context, arena)   joins the world between the player and 
   ceilings, ramps, signs, enemies) past `stream_from()`, the end of the built track; they're built and
   brought in like the rest. `floor_clear`, `hole_between`, `live_fence_between`, `ceiling_between` and
   `pieces_between` answer questions about the track.
+- **Pace** (GDD §3, owner's playtest September 30, 2026; task E1f): a campaign boss fight runs at its
+  zone's speed, like the zone's levels (21 m/s in the Neon City; `Campaign.configure_boss` gives the
+  arena config its zone's `run_speed` times the tier's multiplier through `run_speed_for`, and
+  `App.start_boss` takes the run's tuning from it with `LevelConfig.movement_for`); quick play
+  (`--boss=<id>` for a boss outside the campaign, such as the test boss) and the tests keep the base
+  18 m/s. The arena is planned at its config's speed (`BossArena.plan`: `arena.tuning`), so its patterns
+  keep their seconds as a level's do, and a lap's clear start and end (the entrance) are stretched by the
+  pace too. **A boss's own numbers in metres must follow the pace** (the note for every boss still to
+  come, the Sleep Taker included): a distance along the track that stands for a time (where an attack
+  lands ahead of the runner, a fairness margin, a way up, the spacing of set pieces) is metres at
+  `MovementTuning.REFERENCE_SPEED` in its tuning and is stretched by the run's pace
+  (`world.tuning.pace()`, or `arena.tuning.pace()` in `_plan_lap` before the world is built), so the fight
+  plays the same in seconds at every zone's speed; warnings, wind-ups and every timing in seconds stay as
+  they are. Things that keep pace with the runner (where the boss flies relative to them), sideways
+  speeds and sizes, heights and the sizes of things don't change. Not to be confused with
+  `BossEncounter.pace()`, a phase's speed-up. The Floating Head shows how (`run_pace`, `metres`,
+  `before_face`, below); `tools/measure/stomp_routes.gd --speed=N` measures its ways up at any speed.
 - **Props** (`encounter.props`): things placed within sight, with the track's collision layers and the
   zone's looks, freed once passed: `fence` (normal fence rules; it can flicker in first, and a boss
   may move it), `block` (solid; the player can't switch into it), `pad` and `ceiling`, `block_wall`
@@ -1413,12 +1433,13 @@ time from the physics step. The test boss (`TestBoss`) is a small example.
 **The Floating Head** (GDD §10, task E1: E1a, the ship and face, the entrance, the bombing run and
 the reveal; E1b, the face-off with its eye lasers and cyborg drop, and the marked towers that pin it;
 E1c, the stomp windows while it's pinned; E1d, its propaganda and its defeat, and the City's boss step
-plays it), in `scripts/bosses/floating_head/`:
+plays it; E1e, the owner's playtest fixes; E1f, the fight at the City's speed), in
+`scripts/bosses/floating_head/`:
 
 | File | What |
 |---|---|
-| `floating_head.gd` (`FloatingHead`) | the encounter: each phase's intro (the first is the entrance, overhead from behind; later ones rise), its bombing run if it has one (`run_seconds(phase)`), then the descent in front of the runner (the first time, the reveal: the face powers on) and the face-off until a tower pins it (`begin_pin`: it brakes under the falling tower and lies still on the track, sunk between the trucks until its weak points' sockets are `pin_top_height` up and rolled toward the tower about its crown, `pinned_transform`; the tower breaks behind the weak points as it lands). Then the phase's stomp window (`route`, from `stomp_route(phase)`): `_open_window` switches the weak points and the crown's deck on and the hull hitbox off, and the way up is built in the arena (`_slam_ramp`: the tower's slab, a `FloatingHeadRamp`, in `ramp_lane`; `_light_wall_marks`: the wall route's cue, a `FloatingHeadWallMarks` on both walls, lit as the tower falls with `wall_marks_light` and cleared when the window closes; `_light_pads` and `_update_ceiling`: `props.pad` in every lane and a `props.ceiling` that lowers in once the ship is past its end), and the way's first-time hint is asked for (`hint_due`). `_check_window` closes it (`_miss`) when the runner is still on the trucks within `release_gap()` of its face (`window_release_gap`, or on the ramp route the end of its lead-in, where a lane switch stops boarding it) or past `pass_line()`; a stomp ends the phase instead (`_on_weak_point_hit` logs the dome's lane and the runner's). Either way it shakes free (`SHAKE`: it lurches ahead of the runner, its deck under a runner still on it until its face has passed them) and rises: to the next phase's station after a stomp (the phase's intro), back in front for the face-off after a miss (`RELEASE`). The ship's `pose` is kept relative to the runner (sideways, belly height, stern ahead) except while pinned, so nothing depends on how long the fight has lasted. The marked towers are planned with each lap (`_plan_lap`: every `tower_spacing`, sides in turn, the track cleared of holes and fences around each) and brought into sight as the runner nears them (`towers_between`, `tower_node`); a tower whose pin would land on a pickup or a dropped cyborg goes by (`pin_zone_blocker`), and armor pickups wait while a pin is under way (`pin_busy`, `_on_armor_pickup_due`). The fairness helpers its attacks share: `escape_lane`, `floor_clear_lane`/`floor_clear_all`, `pickup_near`, `enemy_in_lane`, `ceiling_between` (the arena's ceilings and its window's own: no bomb locks under one, the face-off waits past it). `sound()` plays and logs every warning; `warning_active()` says when one of its attacks warns or strikes, a cue still sounds, a cyborg it dropped is about or a pulsing fence is near (the propaganda gives way). The defeat (`_on_defeated`, then `_defeated_tick`'s steps): the propaganda cuts out (`voice.cut()`), pinned it shakes free (`SHAKE`), then `DYING` (it lurches up to `dying_pose()` in front of the runner, its face glitching: `_defeat_glitch`, steady with Reduced flashing), `FALLING` (it loses power and plunges to `crash_site()`: the first stretch ahead where the floor is clear around its wreck; it limps on until there is one) and `WRECKED` (`_crash`: the dust, its face falls flat before the wreck, `fallen_face()`, and its stern half lies sunk to `wreck_belly()`, a tunnel the lanes run through; `victory_over()` once the runner reaches its face; `wreck_passed()`) |
-| `floating_head_body.gd` (`FloatingHeadBody`) | the body part: the model and its moving parts (face screen, jaw, searchlight gimbal, bay doors, weak-point covers that swing open with the red domes pulsing out: `weak_open`), a solid hull hitbox (`set_hull_solid`: off while pinned), a weak point over each lane near the crown's middle (generous stomp boxes, `stomp_width`/`stomp_depth`/`stomp_top`; at 5 and 6 lanes the outermost ones also reach over the outer lanes out to the walls at their own height, `stomp_outer_reach`, where a wall jump or a drop off the ceiling lands: `stomp_covers_outer_lanes`, E1e) and the crown's deck (a concave shape exactly over the drawn hull, `FloatingHeadModel.deck_faces`), both off until a window opens (`set_weak_points_enabled`, `set_top_solid`; `top_height`, `weak_point_world`), the face's state (`screen_power`, `anger`, `eye_charge`, `glitch`, `jaw_open`, and `look_point` for the eyes to watch the laser's aim), where its eyes and mouth are (`eye_world`, `mouth_world`), and `exclusive_major_attack` (its lasers and bombs take turns with other big attacks). The slogan's caption band (`show_slogan`, `caption`: a Label3D in the face's cold white over a dark band the face shader draws across the screen's lower part, under the eyes; Label3D translates its text like the UI's labels). Beaten, it stays and keeps drawing itself: `power` fades its lights (per-instance copies of its kit materials' `state_glow`), `wreck(face_rest)` swaps in the wreck and lays its torn-off face in the street (cracked, framed), `crash_dust` and `start_smoke` (soft grey puffs from a radial `GradientTexture2D`) |
+| `floating_head.gd` (`FloatingHead`) | the encounter: each phase's intro (the first is the entrance, overhead from behind; later ones rise), its bombing run if it has one (`run_seconds(phase)`), then the descent in front of the runner (the first time, the reveal: the face powers on) and the face-off until a tower pins it (`begin_pin`: it brakes under the falling tower and lies still on the track, sunk between the trucks until its weak points' sockets are `pin_top_height` up and rolled toward the tower about its crown, `pinned_transform`; the tower breaks behind the weak points as it lands). Then the phase's stomp window (`route`, from `stomp_route(phase)`): `_open_window` switches the weak points and the crown's deck on and the hull hitbox off, and the way up is built in the arena (`_slam_ramp`: the tower's slab, a `FloatingHeadRamp`, in `ramp_lane`; `_light_wall_marks`: the wall route's cue, a `FloatingHeadWallMarks` on both walls, lit as the tower falls with `wall_marks_light` and cleared when the window closes; `_light_pads` and `_update_ceiling`: `props.pad` in every lane and a `props.ceiling` that lowers in once the ship is past its end), and the way's first-time hint is asked for (`hint_due`). `_check_window` closes it (`_miss`) when the runner is still on the trucks within `release_gap()` of its face (`window_release_gap`, or on the ramp route the end of its lead-in, where a lane switch stops boarding it) or past `pass_line()`; a stomp ends the phase instead (`_on_weak_point_hit` logs the dome's lane and the runner's). Either way it shakes free (`SHAKE`: it lurches ahead of the runner, its deck under a runner still on it until its face has passed them) and rises: to the next phase's station after a stomp (the phase's intro), back in front for the face-off after a miss (`RELEASE`). The ship's `pose` is kept relative to the runner (sideways, belly height, stern ahead) except while pinned, so nothing depends on how long the fight has lasted. Its distances along the track that stand for a time follow the run's pace (E1f; `run_pace()`, `metres()`, and `before_face()` for the ways up's distances before the pinned face, stretched about its weak points; which ones: `FloatingHeadTuning`'s header), so at the City's 21 m/s (or a harder tier's speed) it plays as it did at 18 m/s in seconds. The marked towers are planned with each lap (`_plan_lap`: every `tower_spacing`, sides in turn, the track cleared of holes and fences around each) and brought into sight as the runner nears them (`towers_between`, `tower_node`); a tower whose pin would land on a pickup or a dropped cyborg goes by (`pin_zone_blocker`), and armor pickups wait while a pin is under way (`pin_busy`, `_on_armor_pickup_due`). The fairness helpers its attacks share: `escape_lane`, `floor_clear_lane`/`floor_clear_all`, `pickup_near`, `enemy_in_lane`, `ceiling_between` (the arena's ceilings and its window's own: no bomb locks under one, the face-off waits past it). `sound()` plays and logs every warning; `warning_active()` says when one of its attacks warns or strikes, a cue still sounds, a cyborg it dropped is about or a pulsing fence is near (the propaganda gives way). The defeat (`_on_defeated`, then `_defeated_tick`'s steps): the propaganda cuts out (`voice.cut()`), pinned it shakes free (`SHAKE`), then `DYING` (it lurches up to `dying_pose()` in front of the runner, its face glitching: `_defeat_glitch`, steady with Reduced flashing), `FALLING` (it loses power and plunges to `crash_site()`: the first stretch ahead where the floor is clear around its wreck; it limps on until there is one) and `WRECKED` (`_crash`: the dust, its face falls flat before the wreck, `fallen_face()`, and its stern half lies sunk to `wreck_belly()`, a tunnel the lanes run through; `victory_over()` once the runner reaches its face; `wreck_passed()`) |
+| `floating_head_body.gd` (`FloatingHeadBody`) | the body part: the model and its moving parts (face screen, jaw, searchlight gimbal, bay doors, weak-point covers that swing open with the red domes pulsing out: `weak_open`), a solid hull hitbox (`set_hull_solid`: off while pinned), a weak point over each lane near the crown's middle (generous stomp boxes, `stomp_width`/`stomp_depth`/`stomp_top`, as deep as the run's pace makes them, `stomp_depth()`; at 5 and 6 lanes the outermost ones also reach over the outer lanes out to the walls at their own height, `stomp_outer_reach`, where a wall jump or a drop off the ceiling lands: `stomp_covers_outer_lanes`, E1e) and the crown's deck (a concave shape exactly over the drawn hull, `FloatingHeadModel.deck_faces`), both off until a window opens (`set_weak_points_enabled`, `set_top_solid`; `top_height`, `weak_point_world`), the face's state (`screen_power`, `anger`, `eye_charge`, `glitch`, `jaw_open`, and `look_point` for the eyes to watch the laser's aim), where its eyes and mouth are (`eye_world`, `mouth_world`), and `exclusive_major_attack` (its lasers and bombs take turns with other big attacks). The slogan's caption band (`show_slogan`, `caption`: a Label3D in the face's cold white over a dark band the face shader draws across the screen's lower part, under the eyes; Label3D translates its text like the UI's labels). Beaten, it stays and keeps drawing itself: `power` fades its lights (per-instance copies of its kit materials' `state_glow`), `wreck(face_rest)` swaps in the wreck and lays its torn-off face in the street (cracked, framed), `crash_dust` and `start_smoke` (soft grey puffs from a radial `GradientTexture2D`) |
 | `floating_head_model.gd` (`FloatingHeadModel`) | the low-poly meshes, built in code from a `Shape` sized to the street and its lanes (MeshKit layers merged into a few surfaces: about 13 surfaces and 11k vertices; the weak points over the lanes within `weak_point_reach` of the middle), the bomb, the crown's deck faces, and `ship_transform` (its pitch and its roll about the crown over the weak points). The wreck (`_wreck`): its stern half (`WRECK_LENGTH`), torn open at both ends (the cut plating and flaps peeled outward), plated inside, dark; `wreck_inner_half` is its inside's half width at a height (the runner's room in it, tested at every lane count) |
 | `floating_head_voice.gd` (`FloatingHeadVoice`) | the propaganda: from the reveal on, a phrase every so often (`head_voice_1-4`, a seeded order and pauses of its own) from a positional player at the face, each with the next slogan (`FloatingHeadTuning.slogans`); it ducks `voice_duck_db` at once under `FloatingHead.warning_active()`, the slogan fades, and no phrase starts until the warnings have been over a moment; `cut()` stops it mid-shout for the defeat (`head_voice_cut`) |
 | `floating_head_bombing.gd` (`FloatingHeadBombing`) | the searchlight and the bombs: the lock (the warning: red light, `circle_warning`, lock sound, the bomb falling with its whistle), the fairness rules (`plan`, `fair`, `escape_lane`), and pooled blast hitboxes (enemy attacks) that keep clear of a wall runner |
@@ -1427,10 +1448,10 @@ plays it), in `scripts/bosses/floating_head/`:
 | `floating_head_ramp.gd` (`FloatingHeadRamp`) | the first stomp window's way up: the tower's broken slab slammed down in a lane (`ramp_length` long, its top end `ramp_lift` above the crown at the face) in two pieces (E1e): a low lead-in over `ramp_board_share` of it, rising to its knee (`knee_height`: `ramp_board_height`, never above `side_step_limit`, what a lane switch steps up), with bevelled sides a lane switch steps up anywhere along it (`board_until`); then the steeper slab onto the crown, whose sides are a lane blocker down to the trucks. Both tops are floors (convex shapes, where they're drawn); green chevrons up both, the lead-in's edges in the ramp colour; it sinks away when the ship shakes free |
 | `floating_head_wall_marks.gd` (`FloatingHeadWallMarks`) | the second stomp window's cue (E1e): on both walls, a strip of green chevrons at running height from `wall_entry_before` its pinned face (get onto the wall there) to a tall jump mark `wall_jump_before` it (jump off there); scenery, steady (the chevrons only scroll), never a hazard colour |
 | `floating_head_face.gdshader`, `floating_head_light.gdshader`, `floating_head_laser.gdshader` | the face screen (unshaded and procedural: the same on every renderer; still with Reduced flashing; its `glitch`, the `caption` band, and `broken`: the dead screen in the street, cracked, the face burnt in faintly), the searchlight's beam and spot, and the lasers (the beams, the aim lines and the burning line: additive, lifted on the Compatibility renderer; the burn's embers hold still with Reduced flashing) |
-| `floating_head_tuning.gd`, `data/bosses/city_boss_tuning.tres` | its numbers (F6 in its fight) |
+| `floating_head_tuning.gd`, `data/bosses/city_boss_tuning.tres` | its numbers (F6 in its fight): metres at 18 m/s, stretched by the run's pace where they stand for a time (its header's Pace; `before_face_at`) |
 | `data/bosses/city_boss_skin.tres` | its arena's City look: the City's skin without the towers' big screens hung out over the street, where the ship flies |
-| `tools/showcase/floating_head_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/stern/below/entrance/bombing/reveal/faceoff/fallback/missed/pinned/window/mouth/slogans/defeat/wreck`, `--phase=N` for the phase's stomp window, `--board-late` to board the ramp from its side, `--e1c` for E1c's ramp and stomp boxes) |
-| `tests/helpers/floating_head_bot.gd` (`FloatingHeadBot`) | a runner who plays the fight by its warnings, pressing only named actions: dodges bombs and lasers, baits towers, and takes each stomp window's way up (`routes`: the wall by its marks; `ramp_board_at` boards the ramp from its side, `ceiling_moves` off rides straight ahead, `second_move` off never moves inward in the air; `wrong_route` stays on the trucks); it also runs the arena (`reads_track`: jumps holes and full fences, slides under gapped ones, sidesteps bolts), so it plays the whole fight without god mode (tests and the showcase) |
+| `tools/showcase/floating_head_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/stern/below/entrance/bombing/reveal/faceoff/fallback/missed/pinned/window/mouth/slogans/defeat/wreck`, `--phase=N` for the phase's stomp window, `--board-late` to board the ramp from its side, `--e1c` for E1c's ramp and stomp boxes, `--speed=N`: the City boss step's 21 m/s by default) |
+| `tests/helpers/floating_head_bot.gd` (`FloatingHeadBot`) | a runner who plays the fight by its warnings, pressing only named actions: dodges bombs and lasers, baits towers, and takes each stomp window's way up (`routes`: the wall by its marks; `ramp_board_at` boards the ramp from its side, `ceiling_moves` off rides straight ahead, `second_move` off never moves inward in the air; `wrong_route` stays on the trucks); it also runs the arena (`reads_track`: jumps holes and full fences, slides under gapped ones, sidesteps bolts), so it plays the whole fight without god mode (tests and the showcase). Its distances are metres at 18 m/s at the run's pace, and it takes the wall route by the marks where they are; `campaign_tuning()` is the City boss step's tuning (21 m/s), which the Floating Head's suites fight at |
 
 **How the designed bosses fit** (GDD §10; each is a later task):
 - **Floating Head (E1, built):** the City's boss step plays it; `weapon_share_cap` 0.34 keeps
@@ -1465,7 +1486,10 @@ arena's own `props.ceiling`),
 **The Sleep Taker** (GDD §10, task E5c: E5c-a, the nightmare, its arena, its entrance and its three
 attacks, weapons having no effect; E5c-b, hurting it by the generators' EMP, the phases, the defeat
 and its campaign slot). Until E5c-b its slot names the fight in `preview_scene`: the campaign keeps the
-card, and `--boss=dead_zone_boss` plays it in debug builds. In `scripts/bosses/sleep_taker/`:
+card, and `--boss=dead_zone_boss` plays it in debug builds. Once its slot plays it, the fight runs at
+the Dead Zone's speed (24.2 m/s, Bosses: Pace), so by then its tuning's metres that stand for a time
+(`refuge_first`, `refuge_spacing`, the mist's and hands' clear stretches, `escape_clear_after`, ...)
+must follow the run's pace, as the Floating Head's do. In `scripts/bosses/sleep_taker/`:
 
 | File | What |
 |---|---|
@@ -1696,15 +1720,19 @@ in the asks and through the turn, give-ups and the grace), a real Octodog that a
 attacks used to keep from its turn, and simulated runs of campaign levels,
 watched by `tools/measure/attack_watch.gd` (see Review tools). `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
 for framework tests, with `make_def()` for a BossDef from a list of phases; `test_bosses` runs fights
-in bare worlds and, with the test boss in the City's slot, through the App. `test_pickups` checks
+in bare worlds and, with the test boss in the City's slot, through the App (at the City's speed there,
+in quick play at the base speed; and an arena planned at 25 m/s keeps its laps' seconds). `test_pickups` checks
 pickup placement against the rules as it writes them itself, over hand-built cases and generated
 tracks at 3, 5 and 6 lanes, and the armor rule end to end on the test boss. `test_armor` covers the
 free armor and its upgrade (G3): the state's rules, its wait at any frame rate and not while paused,
 each tier's numbers alternating as GDD §8 says, a run's block, revive and pickups, the HUD, the shop
 line and texts, the save migration, and every kind of run through the App (the web demo's too).
+The Floating Head's suites fight at the City's speed, 21 m/s, as the campaign plays it (E1f:
+`FloatingHeadBot.campaign_tuning`), and recheck its fairness with its margins at that pace.
 `test_floating_head`
 runs the Floating Head's fight in bare worlds at 3, 5 and 6 lanes with a runner who dodges each lock
-(and one who doesn't), and rechecks its bombs' fairness from the arena's layout;
+(and one who doesn't), rechecks its bombs' fairness from the arena's layout, and checks the campaign's
+fight runs at the City's speed (a harder tier's faster);
 `test_floating_head_faceoff` plays its face-off with `FloatingHeadBot` (every laser warned and
 escaped without god mode, the cyborg drop, a baited and a fallback tower pinning it) and rechecks
 each attack's fairness from the real arena's layout; `test_floating_head_stomps` has the bot take each
@@ -1755,7 +1783,7 @@ in data), every zone's arrival flyover and the City's boss intro at 3, 5 and 6 l
 its data, the level's lanes, a camera that never flies into a ceiling or out of the street, a runner that
 never runs over a hole, ending in the run camera's view), and the App's flow through a built slot (the
 next step follows, skipping, the web demo). `test_pace` checks the pace and busier levels (G1): the zones' speeds in data and each campaign level at
-its zone's speed (boss fights at the base), `movement_for`, a pattern's timing in seconds at 18 and 25
+its zone's speed (and each boss fight, E1f; quick play's at the base), `movement_for`, a pattern's timing in seconds at 18 and 25
 m/s, the generator's fairness at 21, 23.4 and 25 m/s at 3, 5 and 6 lanes with every built feature and
 the fill pass (`LayoutChecks` checks each level at its own speed: `level_tuning()`), the fill pass's
 rules on campaign levels, the Octodog's and Resonator's windows in seconds, a cyborg and a screech on
@@ -1833,9 +1861,12 @@ director's answers), and hashes each run's event log, so two builds (or the swit
 without the rule) can be compared run by run.
 
 `tools/measure/stomp_routes.gd` measures how forgiving the Floating Head's ways onto its head are, in its
-fight on a plain street: the ramp's boarding window (the latest lane switch from beside it that still
-stomps, from each side), the stretch of jump points a single wall jump stomps from, getting onto the wall
-at the marks' start or just before the release line, and the ceiling from a pad in each lane
+fight on a plain street at the City boss step's speed (21 m/s; `--speed=N` for another, 18 for the
+reference speed): the ramp's boarding window (the latest lane switch from beside it that still
+stomps, from each side), the stretch of jump points a single wall jump stomps from (swept about the jump
+mark at the run's pace; `--fine` finds each end of it by bisection), getting onto the wall at the marks'
+start or just before the release line, and the ceiling from a pad in each lane, in metres and in seconds
+of running (what stays the same at every speed)
 (`godot --headless --fixed-fps 60 -s res://tools/measure/stomp_routes.gd -- --lanes=3,5,6
 --routes=ramp,wall,ceiling`; `--e1c` measures E1c's numbers, `--second-move` adds the in-air move; the
 default run takes a few minutes).

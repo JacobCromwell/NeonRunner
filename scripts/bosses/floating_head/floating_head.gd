@@ -68,6 +68,13 @@ extends BossEncounter
 ## nothing in it hurts, and anything left where it landed is crushed. The results wait until the runner
 ## reaches it (victory_over), and LevelRun keeps the runner safe meanwhile. Numbers: FloatingHeadTuning,
 ## groups Propaganda and Defeat.
+##
+## Pace (GDD §3; task E1f): the fight runs at its zone's speed (21 m/s in the Neon City, more on a harder
+## tier; Campaign.configure_boss), and plays the same in seconds as at 18 m/s: its tuning's distances
+## that stand for a time are stretched by the run's pace (run_pace, metres, before_face; which ones:
+## FloatingHeadTuning's header), from the towers' spacing to the ways up and the stomp boxes' depth,
+## and every timing in seconds stays as it is. (Not to be confused with the phase's pace(), which speeds
+## its timings up in the later phases.)
 
 enum Step { ENTER, RISE, BOMBING, DESCEND, FACE_OFF, PIN_FALL, PINNED, SHAKE, RELEASE, DYING, FALLING, WRECKED }
 
@@ -87,6 +94,8 @@ const SHUDDER: float = 0.2
 const FENCE_EARSHOT: float = 45.0
 ## Its torn-off face lies this far before the wreck.
 const FACE_GAP: float = 0.8
+## The pinning tower breaks at least this far before where it rests on the crown.
+const REST_MARGIN: float = 0.5
 ## The defeat: its nose dips this far (radians) as it plunges; a crash site is looked for every this
 ## many metres; smoke rises from the wreck and sparks spit from it every so often (seconds).
 const FALL_DIVE: float = 0.16
@@ -211,13 +220,15 @@ func _plan_lap(lap: LevelLayout, index: int, p_arena: BossArena) -> void:
 	var t: FloatingHeadTuning = (def.tuning as FloatingHeadTuning) if def != null else null
 	if t == null:
 		t = FloatingHeadTuning.new()
+	# The arena's pace (the world isn't built yet): towers as many seconds apart at any speed.
+	var p: float = p_arena.tuning.pace() if p_arena.tuning != null else 1.0
 	var plan: Array[Dictionary] = []
-	var at: float = t.tower_first
+	var at: float = t.tower_first * p
 	var k: int = 0
-	while at <= p_arena.lap_length - t.tower_clear_after:
+	while at <= p_arena.lap_length - t.tower_clear_after * p:
 		plan.append({"at": at, "side": -1 if (k + index) % 2 == 0 else 1})
-		_clear_track(lap, at - t.tower_clear_before, at + t.tower_clear_after)
-		at += t.tower_spacing
+		_clear_track(lap, at - t.tower_clear_before * p, at + t.tower_clear_after * p)
+		at += t.tower_spacing * p
 		k += 1
 	_tower_plan[index] = plan
 
@@ -247,6 +258,29 @@ func run_seconds(index: int) -> float:
 	if index <= tuning.later_runs:
 		return tuning.later_run_seconds
 	return 0.0
+
+
+## The run's pace (MovementTuning.pace: its run speed over the reference speed, 18 m/s): 1 in quick
+## play and the tests, 21/18 in the Neon City's campaign fight (GDD §3). Not the phase's pace().
+func run_pace() -> float:
+	if world != null and world.tuning != null:
+		return world.tuning.pace()
+	if arena != null and arena.tuning != null:
+		return arena.tuning.pace()
+	return 1.0
+
+
+## `reference` metres of its tuning along the track (written for MovementTuning.REFERENCE_SPEED) at the
+## run's speed: stretched by run_pace(), so what they stand for takes as long to run (the header's Pace).
+func metres(reference: float) -> float:
+	return reference * run_pace()
+
+
+## `reference` metres before the pinned ship's face where a way up sets the runner off onto its weak
+## points (the wall marks, the pads and the ceiling's end, the window's release line) at the run's
+## speed: stretched about its weak points (FloatingHeadTuning.before_face_at).
+func before_face(reference: float) -> float:
+	return FloatingHeadTuning.before_face_at(reference, run_pace())
 
 
 ## The lane the runner is in or over (a wall runner counts as the outer lane on that side).
@@ -392,7 +426,7 @@ func tower_node(tower: Dictionary) -> FloatingHeadTower:
 ## passes the tower as the drag clips it, then brakes to a stop under the falling tower.
 func pin_zone(tower_at: float) -> Vector2:
 	var stern: float = tower_at + world.player.speed * tuning.tower_fall_seconds / pace() * 0.5
-	var lead: float = maxf(tuning.ramp_length, tuning.pad_before_face + _hull_lead_in())
+	var lead: float = maxf(metres(tuning.ramp_length), before_face(tuning.pad_before_face) + _hull_lead_in())
 	return Vector2(stern - lead - 2.0, stern + body.shape.length + 2.0)
 
 
@@ -731,7 +765,7 @@ func ramp_lane_for(side: int) -> int:
 
 ## The track distance past which a runner has passed its weak points (the window closes).
 func pass_line() -> float:
-	return pin_stern - FloatingHeadModel.WEAK_Z + tuning.stomp_depth * 0.5 + tuning.window_pass_margin
+	return pin_stern - FloatingHeadModel.WEAK_Z + body.stomp_depth() * 0.5 + tuning.window_pass_margin
 
 
 func _pin_tick(delta: float) -> void:
@@ -787,7 +821,10 @@ func _on_impact(side: int) -> void:
 	if pinned_tower != null and is_instance_valid(pinned_tower):
 		var along: float = -pinned_tower.axis_world().z
 		if along > 0.1:
-			var cut: float = pin_stern - FloatingHeadModel.WEAK_Z + tuning.stomp_depth * 0.5 + tuning.tower_break_after
+			var cut: float = pin_stern - FloatingHeadModel.WEAK_Z + body.stomp_depth() * 0.5 + tuning.tower_break_after
+			# Never past where it rests on the crown (deep stomp boxes at a fast run's pace), so what stays
+			# lies on the ship.
+			cut = minf(cut, pin_stern + tuning.pin_rest_offset - REST_MARGIN)
 			pinned_tower.break_at((cut - pinned_tower.at) / along)
 	if route == &"ramp":
 		_slam_ramp(side)
@@ -795,29 +832,30 @@ func _on_impact(side: int) -> void:
 
 
 ## The first way up: the tower's broken slab slams down in the weak point's lane nearest its wall, its
-## foot ramp_length before the ship's face and its top end resting on the crown there, ramp_lift above
-## it.
+## foot ramp_length before the ship's face (stretched by the run's pace: its lead-in takes as long to
+## run at any speed) and its top end resting on the crown there, ramp_lift above it.
 func _slam_ramp(side: int) -> void:
 	ramp_lane = ramp_lane_for(side)
 	var x: float = world.geo.lane_x(ramp_lane)
 	var top: float = pinned_crown(x, 0.0).y + tuning.ramp_lift
 	var color: Color = ramp_color()
+	var length: float = metres(tuning.ramp_length)
 	ramp = FloatingHeadRamp.new()
 	add_child(ramp)
-	ramp.setup(world, ramp_lane, pin_stern - tuning.ramp_length, pin_stern, top, tuning.ramp_overhang,
+	ramp.setup(world, ramp_lane, pin_stern - length, pin_stern, top, tuning.ramp_overhang,
 		tuning.ramp_slam_seconds / pace(), color, tuning.ramp_board_share, tuning.ramp_board_height)
-	_crush(pin_stern - tuning.ramp_length - 1.0, pin_stern, ramp_lane)
+	_crush(pin_stern - length - 1.0, pin_stern, ramp_lane)
 	sound(&"ramp_slam", ramp.end_world())
 	log_event(&"ramp", {"lane": ramp_lane, "foot": ramp.foot, "top": top})
 
 
 ## The second way up's cue (GDD §10: "wall-jump onto it"): both walls light up where a wall run leads
 ## onto its head (FloatingHeadWallMarks: a strip from wall_entry_before where it will lie to the jump
-## mark wall_jump_before it), with its sound, as the tower falls.
+## mark wall_jump_before it, both at the run's pace: before_face), with its sound, as the tower falls.
 func _light_wall_marks() -> void:
 	_clear_wall_marks()
-	var jump_at: float = pin_stern - tuning.wall_jump_before
-	var start: float = pin_stern - maxf(tuning.wall_entry_before, tuning.wall_jump_before + 1.0)
+	var jump_at: float = pin_stern - before_face(tuning.wall_jump_before)
+	var start: float = pin_stern - maxf(before_face(tuning.wall_entry_before), before_face(tuning.wall_jump_before) + 1.0)
 	wall_marks = FloatingHeadWallMarks.new()
 	props.keep(wall_marks, jump_at + FloatingHeadWallMarks.MARK_LENGTH)
 	wall_marks.setup(world, start, jump_at, ramp_color())
@@ -839,15 +877,16 @@ func ramp_color() -> Color:
 
 
 ## The third way up: anti-grav pads light up in every lane pad_before_face before where the ship will
-## lie; the ceiling over them follows once the ship is past its end (_update_ceiling).
+## lie; the ceiling over them follows once the ship is past its end (_update_ceiling), which is
+## ceiling_end_before_face before it (both at the run's pace: before_face).
 func _light_pads() -> void:
 	# A ceiling from an earlier window, if any is left, stays a prop until the runner is past it.
 	_ceiling = null
 	_pads.clear()
-	pad_at = pin_stern - tuning.pad_before_face
+	pad_at = pin_stern - before_face(tuning.pad_before_face)
 	for l: int in lane_count():
 		_pads.append(props.pad(l, pad_at))
-	ceiling_span = Vector2(pad_at - _hull_lead_in(), pin_stern - tuning.ceiling_end_before_face)
+	ceiling_span = Vector2(pad_at - _hull_lead_in(), pin_stern - before_face(tuning.ceiling_end_before_face))
 	sound(&"pads_light", Vector3(0.0, 0.5, TrackGeometry.world_z(pad_at)))
 	log_event(&"pads", {"at": pad_at, "ceiling": ceiling_span})
 
@@ -903,12 +942,14 @@ func _check_window() -> void:
 
 
 ## How close to its face a runner still down on the trucks may come before the window closes:
-## window_release_gap, or while the fallen tower's ramp is the way up, the gap at the end of its lead-in
-## (a lane switch boards it up to there: the window stays open for a runner who boards late).
+## window_release_gap (at the run's pace: before_face), or while the fallen tower's ramp is the way up,
+## the gap at the end of its lead-in (a lane switch boards it up to there: the window stays open for a
+## runner who boards late).
 func release_gap() -> float:
+	var gap: float = before_face(tuning.window_release_gap)
 	if route == &"ramp" and ramp != null and is_instance_valid(ramp):
-		return clampf(pin_stern - ramp.board_until(), 0.0, tuning.window_release_gap)
-	return tuning.window_release_gap
+		return clampf(pin_stern - ramp.board_until(), 0.0, gap)
+	return gap
 
 
 func _miss(why: StringName, gap: float) -> void:
@@ -997,9 +1038,11 @@ func _end_pin(quiet: bool) -> void:
 func _remove_way_up() -> void:
 	_clear_wall_marks()
 	if ceiling_span != Vector2.ZERO:
-		for pad: Node3D in _pads:
-			props.remove(pad)
-		if _ceiling != null:
+		# Pads and a ceiling the runner is well past are already gone (BossProps frees what's behind).
+		for pad: Variant in _pads:
+			if is_instance_valid(pad):
+				props.remove(pad as Node3D)
+		if is_instance_valid(_ceiling):
 			props.remove(_ceiling)
 		_ceiling = null
 		ceiling_span = Vector2.ZERO
@@ -1045,13 +1088,15 @@ func face_lead() -> float:
 
 ## Where it can come down: the first spot from crash_ahead to crash_ahead + crash_search ahead of the
 ## runner where the street is clear of holes and fences (and ceilings) in every lane from
-## crash_clear_before its fallen face to crash_clear_after past the wreck; -1 if there's none.
+## crash_clear_before its fallen face to crash_clear_after past the wreck (all at the run's pace); -1 if
+## there's none.
 func crash_site() -> float:
 	var d: float = player_distance()
-	var at: float = d + tuning.crash_ahead
-	while at <= d + tuning.crash_ahead + tuning.crash_search + 0.001:
-		var from: float = at - face_lead() - tuning.crash_clear_before
-		var to: float = at + wreck_length() + tuning.crash_clear_after
+	var ahead: float = metres(tuning.crash_ahead)
+	var at: float = d + ahead
+	while at <= d + ahead + metres(tuning.crash_search) + 0.001:
+		var from: float = at - face_lead() - metres(tuning.crash_clear_before)
+		var to: float = at + wreck_length() + metres(tuning.crash_clear_after)
 		if floor_clear_all(from, to) and not ceiling_between(from, to):
 			return at
 		at += CRASH_STEP
@@ -1092,7 +1137,7 @@ func _dying_tick(delta: float) -> void:
 	var at: float = crash_site()
 	if at < 0.0 and _limp < tuning.crash_limp_max:
 		return
-	_start_fall(at if at >= 0.0 else player_distance() + tuning.crash_ahead)
+	_start_fall(at if at >= 0.0 else player_distance() + metres(tuning.crash_ahead))
 
 
 ## It loses power and plunges forward into the street, its face at `at` when it lands.
