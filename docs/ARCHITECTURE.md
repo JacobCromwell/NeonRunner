@@ -298,10 +298,11 @@ pace (`world.tuning.pace()`; its rules by `LevelGenerator.pace`): in a faster zo
 fires faster from further out, and every wind-up, flight and dodge takes the seconds it took at 18 m/s.
 So far: the cyborgs' gun (engage distance, bolt speed, the clear path around an impact, `CyborgGun.pace`)
 and their walk, flight and margin; the Octodog (its tuning's helpers take the pace: the lunge's start
-and speed, the sprint, the run's margins, `charge_slack`, `appear_distance`); the Resonator (how far
-ahead it hovers and eases in, its waves' speed, its margins: `ResonatorTuning.hover_ahead_at`,
-`wave_speed_at`); the screech's dash; and every floor enemy's reach (`LevelGenerator.enemy_floor_span`
-takes the pace; `CeilingZones.pace`). Warnings, charge-ups and wind-ups are seconds and stay what they
+and speed, the sprint, the run's margins, `charge_slack`, `appear_distance`); the Resonator (its
+easing in and its margins; it hovers `hover_ahead` ahead at every pace, within laser tier 1's reach, so
+the runner closes in on its waves as fast as at 18 m/s instead: they roll slower along the floor and take
+as long to arrive, `ResonatorTuning.wave_speed_at`); the screech's dash; and every floor enemy's reach
+(`LevelGenerator.enemy_floor_span` takes the pace; `CeilingZones.pace`). Warnings, charge-ups and wind-ups are seconds and stay what they
 were. Enemies that move with the player (the drone, the hover truck once it's out, the Bad Dream) fire in
 the player's frame, so nothing of theirs depends on the run speed. Boss fights run at the base speed,
 pace 1. What made the enemies livelier is data: less idle time between attacks (reloads, follow and
@@ -527,7 +528,7 @@ stretches end exactly where `stretch_end()` says (`quiet_at` uses its sums).
 
 **Busier levels: the fill pass** (GDD §3: "more gaps, obstacles and enemies than the first build had
 (to an extent), so there is always something going on"). Campaign levels space their patterns closer
-at low difficulty (`spacing_seconds_easy` 1.3 s against the default 1.8; the hard spacing, 0.9 s, stays
+at low difficulty (`spacing_seconds_easy` 1.1 s against the default 1.8; the hard spacing, 0.9 s, stays
 the floor that lets a player switch across six lanes between two patterns), and after the rules a fill
 pass (`LevelConfig.fill_empty_seconds`, 2 s in campaign levels, 0 = off and exactly as before)
 puts more of the level's own plain obstacle patterns (`is_filler`: holes and fences, no feature, no

@@ -125,11 +125,12 @@ func _test_pattern_timing() -> void:
 			% [what[i], times[0][i], times[1][i]])
 
 
-## The generator's fairness at the zones' speeds: every built feature, the fill pass on, at 3, 5 and 6
-## lanes, at three difficulties and many seeds: no warnings, the shared layout and rule checks, and the
-## same level every time.
+## The generator's fairness at the zones' speeds: every built feature, the campaign's spacing and fill
+## pass (the Neon City's first level's), at 3, 5 and 6 lanes, at three difficulties and many seeds: no
+## warnings, the shared layout and rule checks, and the same level every time.
 func _test_fairness_at_speed() -> void:
 	var base := load(LEVEL_PATH) as LevelConfig
+	var campaign_level := load("res://data/levels/city_1.tres") as LevelConfig
 	var levels: int = 0
 	var fills: int = 0
 	for speed: float in SPEEDS:
@@ -143,8 +144,9 @@ func _test_fairness_at_speed() -> void:
 					config.enemy_scaling = difficulty
 					config.level_seed = level_seed
 					config.features = EVERY_FEATURE
-					config.spacing_seconds_easy = 1.3
-					config.fill_empty_seconds = 2.0
+					config.spacing_seconds_easy = campaign_level.spacing_seconds_easy
+					config.spacing_seconds_hard = campaign_level.spacing_seconds_hard
+					config.fill_empty_seconds = campaign_level.fill_empty_seconds
 					var tag: String = "speed=%.1f lanes=%d diff=%.1f seed=%d" % [speed, lanes, difficulty, level_seed]
 					var patterns: Array = LevelGenerator.load_for(config)
 					var gen := LevelGenerator.new()

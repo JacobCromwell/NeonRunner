@@ -54,6 +54,9 @@ var _dump: String = ""
 var _measure_on: bool = true
 var _patterns_dir: String = ""
 var _set: Dictionary = {}
+## The live resources --old-data changed: held so the resource cache keeps them (a resource nothing
+## holds is freed, and the next load() would read the new file again).
+var _kept: Array[Resource] = []
 
 
 func _initialize() -> void:
@@ -165,6 +168,7 @@ func _apply_old_data(dir: String) -> void:
 						return typeof(v) == TYPE_OBJECT)):
 					continue
 				live.set(name, value)
+			_kept.append(live)
 	if DirAccess.dir_exists_absolute(dir.path_join("patterns")):
 		_patterns_dir = dir.path_join("patterns")
 
