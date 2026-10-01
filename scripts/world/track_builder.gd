@@ -17,8 +17,15 @@ const LAYER_HULL: int = 2
 const LAYER_HAZARD: int = 4
 const LAYER_WALL_BLOCKER: int = 8
 const LAYER_TRIGGER: int = 16
-## Solid sides the player can't switch lanes into (GDD §9.3: the hover truck's sides).
+## Solid sides the player can't switch lanes into (GDD §9.3: the hover truck's sides; a zone doodad's).
 const LAYER_LANE_BLOCKER: int = 64
+## Zone doodads' bodies (GDD §3, owner's playtest September 30, 2026): running into one's front
+## pushes the player into a neighbouring lane (Player). Never a hazard: no hit, and shots and
+## weapons never see it.
+const LAYER_DOODAD: int = 128
+## A doodad's body in the hitbox view (debug_toggle_hitboxes): see-through blue, apart from the
+## hazards' red.
+const DOODAD_DEBUG := Color(0.2, 0.55, 1.0, 0.3)
 
 var layout: LevelLayout
 var tuning: MovementTuning
@@ -67,6 +74,9 @@ func extend_layout(extra: LevelLayout) -> void:
 	for key: String in more:
 		if more[key] is Array and lists.get(key) is Array:
 			(lists[key] as Array).append_array(more[key])
+	# A level without doodads leaves them out of to_dict(): its list joins here.
+	if not lists.has("doodads"):
+		layout.doodads.append_array(extra.doodads)
 	layout.length = maxf(layout.length, extra.length)
 	_add_pieces(extra, first_fence)
 
@@ -140,6 +150,7 @@ func _add_pieces(pieces: LevelLayout, first_fence: int) -> void:
 	_bucket("pads", pieces.pads, "at", tuning.pad_length)
 	_bucket("ramps", pieces.ramps, "at", tuning.ramp_length)
 	_bucket("speed_pads", pieces.speed_pads, "at", tuning.speed_pad_length)
+	_bucket("doodads", pieces.doodads, "start", 0.0, "end")
 
 
 ## Groups items by the chunk they start in. An item spanning several chunks keeps its
@@ -189,6 +200,8 @@ func _build_chunk(index: int) -> void:
 		_build_ramp(root, r)
 	for sp: Dictionary in bucket.get("speed_pads", []):
 		_build_speed_pad(root, sp)
+	for d: Dictionary in bucket.get("doodads", []):
+		_build_doodad(root, d)
 
 
 ## Returns the [start, end] distance ranges of solid floor for one lane within [c0, c1).
@@ -277,6 +290,40 @@ func _build_speed_pad(root: Node3D, p: Dictionary) -> void:
 	var size := Vector3(geo.lane_width * 0.7, 0.5, tuning.speed_pad_length)
 	var area := _trigger(root, &"speed_pad", Vector3(geo.lane_x(p["lane"]), size.y * 0.5, -float(p["at"]) - size.z * 0.5), size)
 	skin.speed_pad(area, size)
+
+
+## A zone doodad (GDD §3, owner's playtest September 30, 2026): a solid scenery piece standing in its
+## lane that never hurts. Its box (the size class's width and height, MovementTuning.doodad_size, over
+## the layout's start to end) is two things in the physics world: a body on the doodad and
+## lane-blocker layers, which the player's push contact meets at its front (Player) and a lane switch
+## meets at its sides (blocked, with the bump and the clank); and a top on the floor layer, so a
+## player who comes down on it from above (off a wall jump) lands and runs along it, like a hover
+## truck's roof. It's no hazard: nothing hurts there, and shots and weapons never see it. The node
+## carries its layout entry (meta "doodad"); the skin dresses it (ZoneSkin.doodad).
+func _build_doodad(root: Node3D, d: Dictionary) -> void:
+	var start: float = float(d["start"])
+	var end: float = float(d["end"])
+	var box: Vector3 = tuning.doodad_size(StringName(d["size"]))
+	var size := Vector3(box.x, box.y, end - start)
+	var area := Area3D.new()
+	area.name = "Doodad"
+	area.collision_layer = LAYER_DOODAD | LAYER_LANE_BLOCKER
+	area.collision_mask = 0
+	area.monitoring = false
+	area.position = Vector3(geo.lane_x(int(d["lane"])), size.y * 0.5, -(start + end) * 0.5)
+	area.set_meta(&"doodad", d)
+	root.add_child(area)
+	_add_shape(area, size)
+	var top := StaticBody3D.new()
+	top.collision_layer = LAYER_FLOOR
+	top.collision_mask = 0
+	area.add_child(top)
+	_add_shape(top, size)
+	# In the hitbox view a doodad's body shows in a safe blue, never a hazard's red.
+	var debug := GreyboxMaterials.add_box(area, Vector3.ZERO, size * 1.01, GreyboxMaterials.overlay(DOODAD_DEBUG, true))
+	debug.add_to_group(&"debug_hitbox")
+	debug.visible = show_hitboxes
+	skin.doodad(area, size, StringName(d["size"]), int(d["side"]), int(d.get("seed", 0)))
 
 
 func _hazard(root: Node3D, center: Vector3, size: Vector3, layers: int) -> Hazard:

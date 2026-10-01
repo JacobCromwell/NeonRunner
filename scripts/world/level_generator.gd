@@ -11,7 +11,11 @@ extends RefCounted
 ## 2. Enemy rules: for every feature with a script at res://scripts/enemies/<feature>_rules.gd,
 ##    its static `apply(gen: LevelGenerator)` runs (e.g. drone anti-grav pad schedules). Rules that
 ##    add a feature's enemies or pieces keep them after its start (feature_active, feature_share_at).
-## 3. Credits (GDD §7): trails in the clear stretches, rich credits in risky spots.
+## 3. The fill pass (LevelConfig.fill_empty_seconds): more plain obstacle patterns in long empty
+##    stretches.
+## 4. Zone doodads (LevelConfig.doodad_share): scenery standing in lanes, in the stretches where
+##    nothing else goes on (_place_doodads).
+## 5. Credits (GDD §7): trails in the clear stretches, rich credits in risky spots.
 ## Fairness rules (longest gap, hull lead-in and landing) come from LevelConfig, so they are data.
 ##
 ## Ceilings (GDD §3, changed September 26, 2026): the floor under a ceiling may be dangerous, since the
@@ -58,6 +62,13 @@ extends RefCounted
 ## reaction window keeps its seconds. After the rules, a fill pass (LevelConfig.fill_empty_seconds)
 ## puts more of the level's plain obstacle patterns into its long empty stretches, off everything the
 ## rules and ceilings keep (fill_keep_outs), spaced like the pattern pass: busier, never tighter.
+##
+## Zone doodads (GDD §3, same playtest): scenery pieces standing in lanes that never hurt; running into
+## one pushes the player into a neighbouring lane. After the fill pass, a level's doodad_share of the
+## stretches where nothing else goes on (doodad_keep_outs) get one, in an inner lane, with room to push
+## into and the level's spacing after it: they add to what the patterns, the rules and the fill pass
+## put there (nothing moves or goes for them, and nothing comes after them to undo or crowd them), so
+## a level looks busier without needing a reaction or narrowing one.
 
 const DENOMINATIONS: Array[int] = [1, 5, 25, 100]
 const RULES_DIR: String = "res://scripts/enemies"
@@ -89,6 +100,8 @@ const FILL_ENEMY_LEAD_SECONDS: float = 2.0
 const FILL_CEILING_AFTER_PAD_SECONDS: float = 1.0
 ## ... until this long before the ceiling's end (its landing zone follows).
 const FILL_CEILING_BEFORE_END_SECONDS: float = 0.6
+## A floor credit this close to a zone doodad in its lane (or inside it) is dropped (metres).
+const DOODAD_CREDIT_MARGIN: float = 1.0
 
 var layout: LevelLayout
 var config: LevelConfig
@@ -245,6 +258,7 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 
 	_apply_enemy_rules()
 	_fill_empty_stretches(patterns)
+	_place_doodads(patterns)
 	_place_credits()
 	layout.enemies.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["at"] < b["at"])
 	return layout
@@ -1203,7 +1217,8 @@ static func is_filler(pattern: Dictionary) -> bool:
 ## before its end); every enemy from FILL_ENEMY_LEAD_SECONDS before it to the end of the floor it uses
 ## (LevelGenerator.enemy_floor_span), or what its rules script keeps for it (`static func keep_out(gen:
 ## LevelGenerator, entry: Dictionary) -> Vector2`: a cyborg's margin, a hover truck's lane window, a
-## Resonator's visit, a drone wave until its first pad); and a level's quiet stretches.
+## Resonator's visit, a drone wave until its first pad); and a level's quiet stretches. (Zone doodads
+## come after the fill pass, into what it leaves: _place_doodads.)
 func fill_keep_outs(patterns: Array) -> Dictionary:
 	var out: Array[Vector4] = []
 	var half: float = tuning.fence_depth * 0.5
@@ -1370,6 +1385,164 @@ func _trim_clear_stretches(span: Vector2) -> void:
 		if s.y > span.y:
 			out.append(Vector2(span.y, s.y))
 	_clear_stretches = out
+
+
+# --- Zone doodads (GDD §3, owner's playtest September 30, 2026) -----------------------------------
+
+## Puts the level's zone doodads (LevelConfig.doodad_share; LevelLayout.doodads) where nothing else
+## goes on, after the rules and the fill pass: they add to the level, and nothing after them can undo or
+## crowd them (only the credits come later, and keep out of them). A doodad never hurts: a player who
+## runs into its front is pushed into the neighbouring lane on its side (Player), and its sides block a
+## lane switch like a solid side. It stands in an inner lane, never the outermost one: a wall runner's
+## body reaches into the outer lane, and the wall-runner collision stays as it is. It's fair wherever it
+## stands (LayoutChecks.check_doodads, at 3, 5 and 6 lanes):
+## - nothing else goes on in any lane from doodad_lead() before its front (so the push lands on clear
+##   floor, whichever lane it's in) until the level's spacing after its end (the player can cross its
+##   lane again before whatever comes next, as between two patterns): no piece, no enemy's stretch, no
+##   ramp's wall run, no pad's zone, no ceiling from its start to the end of its landing zone (the
+##   chase camera rides below a ceiling, lower than a doodad's top), no quiet stretch, nothing a
+##   rule keeps (doodad_keep_outs: the fill pass's keep-outs and the rules' own, a Bad Dream's chase);
+## - neither its lane nor the lane it pushes into is one a rule keeps for an enemy there (the rules'
+##   doodad_keep_outs with a lane: a hover truck's, for its whole stay); it pushes into a side with
+##   room, a seeded choice when both have it;
+## - one at a time: doodad_gap_seconds from one's end to the next one's front, so a few in a row never
+##   make a slalom.
+## Each stretch with room for one gets one with the level's doodad_share, at a seeded spot in it, and
+## the next spot in a long stretch another with the same chance; a size class (doodad_*_weight) that
+## fits. Its own random stream (rng_for("doodads")): with doodad_share 0 nothing is drawn and the
+## level is built exactly as before.
+func _place_doodads(patterns: Array) -> void:
+	if config.doodad_share <= 0.0 or layout.lane_count < 3:
+		return
+	var weights: Array[float] = [config.doodad_small_weight, config.doodad_medium_weight, config.doodad_large_weight]
+	var smallest: float = INF
+	for i: int in weights.size():
+		if weights[i] > 0.0:
+			smallest = minf(smallest, tuning.doodad_size(LevelLayout.DOODAD_SIZES[i]).z)
+	if smallest == INF:
+		return
+	var rng: RandomNumberGenerator = rng_for("doodads")
+	var lane_keeps: Array[Dictionary] = []
+	var busy: Array[Vector2] = doodad_keep_outs(patterns, lane_keeps)
+	var lead: float = doodad_lead_for(tuning)
+	var gap: float = config.doodad_gap_seconds * speed
+	var from: float = maxf(config.start_clear_distance, config.doodad_start * layout.length)
+	var to: float = layout.length - config.end_clear_distance
+	var last_end: float = -INF
+	for region: Vector2 in free_stretches(busy, from, to):
+		var cursor: float = maxf(region.x + lead, last_end + gap)
+		while true:
+			# The spacing after it, taken where it may start: no less than at its end, as the
+			# difficulty only rises along a level.
+			var room: float = region.y - doodad_after(cursor) - cursor
+			if room < smallest or rng.randf() >= config.doodad_share:
+				break
+			var size: StringName = _pick_doodad_size(rng, weights, room)
+			var length: float = tuning.doodad_size(size).z
+			var start: float = cursor + rng.randf() * (room - length)
+			var placed: Dictionary = _add_doodad(rng, size, start, start + length, lane_keeps)
+			if placed.is_empty():
+				break
+			last_end = float(placed["end"])
+			cursor = last_end + gap
+
+
+## A doodad's size class, drawn by `weights` (LevelConfig.doodad_*_weight, smallest first) among the
+## classes no longer than `room` metres. One at least fits (the caller checks the smallest).
+func _pick_doodad_size(rng: RandomNumberGenerator, weights: Array[float], room: float) -> StringName:
+	var total: float = 0.0
+	var fits: Array[float] = []
+	for i: int in weights.size():
+		var ok: bool = weights[i] > 0.0 and tuning.doodad_size(LevelLayout.DOODAD_SIZES[i]).z <= room
+		fits.append(weights[i] if ok else 0.0)
+		total += fits[i]
+	var roll: float = rng.randf() * total
+	for i: int in fits.size():
+		roll -= fits[i]
+		if fits[i] > 0.0 and roll <= 0.0:
+			return LevelLayout.DOODAD_SIZES[i]
+	for i: int in range(fits.size() - 1, -1, -1):
+		if fits[i] > 0.0:
+			return LevelLayout.DOODAD_SIZES[i]
+	return LevelLayout.DOODAD_SIZES[0]
+
+
+## Adds a doodad of `size` from `start` to `end` in an inner lane (a seeded pick among those it fits
+## in) pushing into a side with room (seeded when both have it), off every lane `lane_keeps` keeps
+## (doodad_keep_outs). Returns its entry, or {} (adding nothing) when no lane fits.
+func _add_doodad(rng: RandomNumberGenerator, size: StringName, start: float, end: float,
+		lane_keeps: Array[Dictionary]) -> Dictionary:
+	var span := Vector2(start - doodad_lead_for(tuning), end + doodad_after(end))
+	var lanes: Array[int] = []
+	var sides: Array[Array] = []
+	for lane: int in range(1, layout.lane_count - 1):
+		if _lane_kept(lane_keeps, lane, span):
+			continue
+		var room: Array[int] = []
+		for side: int in [-1, 1]:
+			if not _lane_kept(lane_keeps, lane + side, span):
+				room.append(side)
+		if not room.is_empty():
+			lanes.append(lane)
+			sides.append(room)
+	if lanes.is_empty():
+		return {}
+	var pick: int = rng.randi_range(0, lanes.size() - 1)
+	var room_sides: Array = sides[pick]
+	var entry := {"lane": lanes[pick], "start": start, "end": end, "size": size,
+		"side": room_sides[rng.randi_range(0, room_sides.size() - 1)],
+		"seed": hash([config.level_seed, "doodad", layout.doodads.size()])}
+	layout.doodads.append(entry)
+	return entry
+
+
+## True if one of `lane_keeps` ({lane, from, to}) keeps `lane` anywhere in `span`.
+static func _lane_kept(lane_keeps: Array[Dictionary], lane: int, span: Vector2) -> bool:
+	for k: Dictionary in lane_keeps:
+		if int(k["lane"]) == lane and float(k["from"]) <= span.y and float(k["to"]) >= span.x:
+			return true
+	return false
+
+
+## What doodads keep off, in every lane: the fill pass's keep-outs as they stand (fill_keep_outs,
+## without its margins: every piece, the fillers' too, each ramp's wall run, each pad's zone, every
+## enemy's stretch or what its rules keep, a level's quiet stretches), every ceiling whole from its
+## start to the end of its landing zone (the chase camera rides below a ceiling, lower than a doodad's
+## top), and what the rules keep from doodads in every lane: `static func doodad_keep_outs(gen:
+## LevelGenerator) -> Array[Dictionary]` on a feature's rules script, entries {from, to} (a Bad
+## Dream's chase). Entries that also name a lane ({lane, from, to}: a hover truck's, for its whole
+## stay) go into `lane_keeps`: no doodad stands in that lane there, nor pushes into it.
+func doodad_keep_outs(patterns: Array, lane_keeps: Array[Dictionary] = []) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for k: Vector4 in fill_keep_outs(patterns)["keep"]:
+		out.append(Vector2(k.x, k.y))
+	for h: Dictionary in layout.hulls:
+		out.append(Vector2(float(h["start"]), zones.landing_zone(h).y))
+	for feature: String in config.features:
+		var path: String = RULES_DIR.path_join("%s_rules.gd" % feature)
+		if not ResourceLoader.exists(path):
+			continue
+		var script := load(path) as GDScript
+		if script == null or not script.has_method("doodad_keep_outs"):
+			continue
+		for k: Dictionary in script.call("doodad_keep_outs", self):
+			if k.has("lane"):
+				lane_keeps.append(k)
+			else:
+				out.append(Vector2(float(k["from"]), float(k["to"])))
+	return out
+
+
+## How far before a doodad's front nothing else goes on (_place_doodads): the stretch its push
+## crosses into the neighbouring lane, the doodad_push_time at the level's run speed (`t`'s).
+static func doodad_lead_for(t: MovementTuning) -> float:
+	return t.doodad_push_time * t.run_speed
+
+
+## How far after a doodad that ends at `at` nothing else goes on (_place_doodads): the level's spacing
+## there, as between two patterns, so the player can cross its lane again before what comes next.
+func doodad_after(at: float) -> float:
+	return _spacing_seconds(at, difficulty_at(clampf(at / layout.length, 0.0, 1.0))) * speed
 
 
 # --- Enemy rules ---------------------------------------------------------------
@@ -1561,7 +1734,8 @@ func _place_ceiling_credits(rng: RandomNumberGenerator) -> void:
 			_add_credit(far_d, "ceiling", far_lane, 0, 0.6, 25 if rng.randf() < 0.7 else 5, true)
 
 
-## Drops credits that would sit inside a hazard or over a hole the player can't reach.
+## Drops credits that would sit inside a hazard or a zone doodad, or over a hole the player can't
+## reach.
 func _drop_unsafe_credits() -> void:
 	var kept: Array[Dictionary] = []
 	for c: Dictionary in layout.credits:
@@ -1573,6 +1747,9 @@ func _drop_unsafe_credits() -> void:
 			if not c["risky"] and layout.gapped_between(lane, d - 0.5, d + 0.5):
 				continue
 			if not c["risky"] and _fence_near(lane, d, 1.5):
+				continue
+			# Inside a zone doodad (or just at its ends): a trail that runs into one stops there.
+			if layout.doodad_between(d - DOODAD_CREDIT_MARGIN, d + DOODAD_CREDIT_MARGIN, lane):
 				continue
 			if d > layout.length - 5.0:
 				continue

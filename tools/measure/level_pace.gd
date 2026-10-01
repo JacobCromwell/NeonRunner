@@ -25,11 +25,14 @@ extends SceneTree
 ## Per level (the average over its lane counts and seeds) it prints the run speed, the level's length,
 ## and per minute of play: obstacle rows (a row of holes or fences at one spot, and each sign), of which
 ## rows of holes; enemies; big attacks (each Octodog charge and Resonator pulse the generator planned,
-## each drone wave and each hover truck); mechanics (ramps, anti-grav pads, speed pads); and all events
-## (rows, enemies, big attacks and mechanics). Then its empty stretches, in seconds at its run speed: the longest
+## each drone wave and each hover truck); mechanics (ramps, anti-grav pads, speed pads); zone doodads
+## (task G5), and the pushes a runner who ignores them takes (one who keeps to a lane of their own and
+## goes back to it after each push: averaged over the lanes, and in the middle lane, where a three-lane
+## runner meets every doodad); and all events (rows, enemies, big attacks, mechanics and doodads). Then its empty stretches, in seconds at its run speed: the longest
 ## (the mean of each layout's longest, and the longest of all) and the mean, over the level between its
 ## run-up and its end-clear stretch. What counts as going on (the rest is empty):
-## - every hole, fence and sign; every ramp, pad and speed pad; a ceiling ride isn't (it's optional);
+## - every hole, fence and sign; every ramp, pad and speed pad; every doodad; a ceiling ride isn't (it's
+##   optional);
 ## - a floor or window cyborg (host too) for 2 s before its spot (its charge-up and bolts come as the
 ##   player closes in), a screech for its trigger time (1.6 s), a fence generator at its spot;
 ## - an Octodog over the run its charges use (its floor_span), a Resonator over its visit (from its
@@ -76,9 +79,9 @@ func _run() -> void:
 	var started: int = Time.get_ticks_msec()
 	var dump: Dictionary = {}
 	if _measure_on:
-		print("%-14s %5s %5s %6s | per min: %5s %5s %5s %5s %5s %6s | empty s: %5s %5s %5s | %6s %5s" % ["level",
-			"m/s", "s", "m", "rows", "holes", "enem", "big", "mech", "events", "max", "worst", "mean", "credit",
-			"count"])
+		print("%-14s %5s %5s %6s | per min: %5s %5s %5s %5s %5s %5s %5s %5s %6s | empty s: %5s %5s %5s | %6s %5s" % [
+			"level", "m/s", "s", "m", "rows", "holes", "enem", "big", "mech", "dood", "push", "pmid", "events", "max",
+			"worst", "mean", "credit", "count"])
 	for id: String in _levels:
 		var step: CampaignStep = campaign.step(id)
 		if step == null or not step.is_level():
@@ -201,8 +204,8 @@ func _dump_quick_play(tuning: MovementTuning, dump: Dictionary) -> void:
 						level_seed]] = layout.to_dict()
 
 
-## One layout's numbers: {speed, seconds, length, rows, holes, enemies, big, mechanics, longest, gaps
-## (every empty stretch, s), burst_longest, credits, count}.
+## One layout's numbers: {speed, seconds, length, rows, holes, enemies, big, mechanics, doodads, pushes,
+## pushes_mid, longest, gaps (every empty stretch, s), burst_longest, credits, count}.
 func _measure(gen: LevelGenerator, layout: LevelLayout, config: LevelConfig) -> Dictionary:
 	var speed: float = gen.speed
 	var rows: Dictionary = {}
@@ -243,12 +246,24 @@ func _measure(gen: LevelGenerator, layout: LevelLayout, config: LevelConfig) -> 
 			for b: Vector2 in gen.burst_spans(empty[i], empty[i + 1]):
 				burst_longest = maxf(burst_longest, (b.y - b.x) / speed)
 	var minutes: float = (to - from) / speed / 60.0
+	var doodads: int = layout.doodads.size()
 	return {"speed": speed, "seconds": layout.length / speed, "length": layout.length,
 		"rows": row_count / minutes, "holes": holes.size() / minutes, "enemies": layout.enemies.size() / minutes,
-		"big": big / minutes, "mechanics": mechanics / minutes,
-		"events": (row_count + layout.enemies.size() + big + mechanics) / minutes,
+		"big": big / minutes, "mechanics": mechanics / minutes, "doodads": doodads / minutes,
+		"pushes": blind_pushes(layout) / minutes, "pushes_mid": blind_pushes(layout, layout.lane_count / 2) / minutes,
+		"events": (row_count + layout.enemies.size() + big + mechanics + doodads) / minutes,
 		"longest": longest, "gaps": gaps_s, "burst_longest": burst_longest,
 		"credits": layout.total_credit_value(), "count": layout.credits.size()}
+
+
+## The pushes a runner who ignores the zone doodads takes in `layout`, keeping to `lane` and going back
+## to it after each push (every doodad standing in that lane), or with -1 averaged over the lanes.
+static func blind_pushes(layout: LevelLayout, lane: int = -1) -> float:
+	var total: int = 0
+	for d: Dictionary in layout.doodads:
+		if lane < 0 or int(d["lane"]) == lane:
+			total += 1
+	return float(total) / (maxf(layout.lane_count, 1.0) if lane < 0 else 1.0)
 
 
 ## The stretches of track [from, to] where something is going on (see the header).
@@ -256,6 +271,8 @@ static func activity(gen: LevelGenerator, layout: LevelLayout, config: LevelConf
 	var speed: float = gen.speed
 	var t: MovementTuning = gen.tuning
 	var out: Array[Vector2] = []
+	for d: Dictionary in layout.doodads:
+		out.append(Vector2(d["start"], d["end"]))
 	for g: Dictionary in layout.gaps:
 		out.append(Vector2(g["start"], g["end"]))
 	for f: Dictionary in layout.fences:
@@ -332,8 +349,8 @@ func _print_level(id: String, rows: Array[Dictionary]) -> void:
 	var burst_worst: float = 0.0
 	var all_gaps: Array[float] = []
 	for r: Dictionary in rows:
-		for key: String in ["speed", "seconds", "length", "rows", "holes", "enemies", "big", "mechanics", "events",
-				"longest", "credits", "count"]:
+		for key: String in ["speed", "seconds", "length", "rows", "holes", "enemies", "big", "mechanics", "doodads",
+				"pushes", "pushes_mid", "events", "longest", "credits", "count"]:
 			sums[key] = float(sums.get(key, 0.0)) + float(r[key])
 		worst = maxf(worst, float(r["longest"]))
 		burst_worst = maxf(burst_worst, float(r["burst_longest"]))
@@ -342,8 +359,9 @@ func _print_level(id: String, rows: Array[Dictionary]) -> void:
 	for g: float in all_gaps:
 		mean_gap += g
 	mean_gap /= maxf(all_gaps.size(), 1.0)
-	print("%-14s %5.1f %5.0f %6.0f | per min: %5.1f %5.1f %5.1f %5.1f %5.1f %6.1f | empty s: %5.2f %5.2f %5.2f | %6.0f %5.0f%s" % [
+	print("%-14s %5.1f %5.0f %6.0f | per min: %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %6.1f | empty s: %5.2f %5.2f %5.2f | %6.0f %5.0f%s" % [
 		id, sums["speed"] / n, sums["seconds"] / n, sums["length"] / n, sums["rows"] / n, sums["holes"] / n,
-		sums["enemies"] / n, sums["big"] / n, sums["mechanics"] / n, sums["events"] / n, sums["longest"] / n, worst,
+		sums["enemies"] / n, sums["big"] / n, sums["mechanics"] / n, sums["doodads"] / n, sums["pushes"] / n,
+		sums["pushes_mid"] / n, sums["events"] / n, sums["longest"] / n, worst,
 		mean_gap, sums["credits"] / n, sums["count"] / n,
 		("  (bursts: longest empty %.2f s)" % burst_worst) if burst_worst > 0.0 else ""])

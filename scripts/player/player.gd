@@ -13,9 +13,10 @@ signal died(cause: String)
 ## Something happened that feedback (sound, HUD) may react to: jump, land, slide, wall_enter,
 ## wall_jump, wall_exit, wall_blocked, ramp, pad, hull_end, died, stomp, lane_blocked,
 ## ceiling_blocked, speed_pad, grapple, armor_hit (a blocked hit the armor survives), armor_break,
-## armor_back (broken armor came back), shield_break, revive, dash, dash_end. The three
-## blocked moves (lane_blocked, wall_blocked, and ceiling_blocked: a move past the edge of a ceiling
-## over fewer lanes) come with a bump: out toward the blocked side and back.
+## armor_back (broken armor came back), shield_break, revive, dash, dash_end, doodad_push (a zone
+## doodad shoved the player into a neighbouring lane). The three blocked moves (lane_blocked,
+## wall_blocked, and ceiling_blocked: a move past the edge of a ceiling over fewer lanes) come with a
+## bump: out toward the blocked side and back.
 signal movement_event(kind: StringName)
 ## A protective item was used up: &"armor" (it broke: its last hit went; it comes back), &"shield" or
 ## &"grapple".
@@ -35,6 +36,13 @@ const ACTIONS: Array[StringName] = [&"move_left", &"move_right", &"jump", &"slid
 const SENSOR_SIZE := Vector3(0.4, 0.3, 0.4)
 ## Room a blocked wall entry's bump leaves between the body and whatever stopped it (metres).
 const BUMP_CLEARANCE: float = 0.02
+## A zone doodad's push (GDD §3) goes to the doodad's own side for a player within this share of a lane
+## of its middle (running into it head-on); one further off (caught by its front corner mid-switch)
+## goes back the way they came.
+const PUSH_HEAD_ON_SHARE: float = 0.15
+## The doodad contact starts this far above the feet, so a player standing on a doodad's top (it's
+## solid) isn't pushed by it (metres).
+const DOODAD_FEET_CLEARANCE: float = 0.05
 
 var tuning: MovementTuning
 var geo: TrackGeometry
@@ -108,6 +116,14 @@ var _bump_off_wall: bool = false
 var _blocked_ramp: int = 0
 var _bump_shape := BoxShape3D.new()
 var _bump_query := PhysicsShapeQueryParameters3D.new()
+## A zone doodad's push (GDD §3, _check_doodads) is playing out (the lane switch machinery carries it,
+## over doodad_push_time), and the doodad's instance id: it pushes once.
+var _pushing: bool = false
+var _push_doodad: int = 0
+## How many times zone doodads have pushed the player this run (tests and tools).
+var pushes: int = 0
+var _doodad_shape := BoxShape3D.new()
+var _doodad_query := PhysicsShapeQueryParameters3D.new()
 var _dash_left: float = 0.0
 var _dash_bonus: float = 0.0
 var _last_speed_pad: int = 0
@@ -145,6 +161,10 @@ func _ready() -> void:
 	_bump_query.collide_with_areas = true
 	_bump_query.collide_with_bodies = false
 	_bump_query.collision_mask = TrackBuilder.LAYER_HAZARD | TrackBuilder.LAYER_WALL_BLOCKER
+	_doodad_query.shape = _doodad_shape
+	_doodad_query.collide_with_areas = true
+	_doodad_query.collide_with_bodies = false
+	_doodad_query.collision_mask = TrackBuilder.LAYER_DOODAD
 
 
 func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> void:
@@ -178,6 +198,9 @@ func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> v
 	_bump_time = 0.0
 	_bump_off_wall = false
 	_blocked_ramp = 0
+	_pushing = false
+	_push_doodad = 0
+	pushes = 0
 	invulnerable_left = 0.0
 	dashing = false
 	_dash_left = 0.0
@@ -392,6 +415,7 @@ func _physics_process(delta: float) -> void:
 	if not alive:
 		return
 	_apply_transform(delta)
+	_check_doodads(motion)
 	_check_triggers(motion)
 	_check_hazards(motion)
 
@@ -465,6 +489,7 @@ func _start_switch(target: int) -> void:
 		_event(&"lane_blocked")
 		return
 	_bumping = false
+	_pushing = false
 	lane = target
 	_switch_from = _x
 	_switch_to = geo.lane_x(target)
@@ -477,6 +502,7 @@ func _start_switch(target: int) -> void:
 ## pushed the player back (a blocked wall entry).
 func _start_bump(dir: int, reach: float, seconds: float, off_wall: bool) -> void:
 	_bumping = true
+	_pushing = false
 	_bump_dir = dir
 	_bump_reach = dir * maxf(reach, 0.0)
 	_bump_time = seconds
@@ -489,10 +515,15 @@ func _start_bump(dir: int, reach: float, seconds: float, off_wall: bool) -> void
 func _update_lane_switch(delta: float) -> void:
 	if _switch_t >= 1.0:
 		return
-	_switch_t = minf(1.0, _switch_t + delta / (_bump_time if _bumping else tuning.lane_switch_time))
-	_x = _switch_x(_switch_from, _switch_to, _bump_reach if _bumping else 0.0, _switch_t)
-	if _bumping and _switch_t >= 1.0:
+	var seconds: float = _bump_time if _bumping else (tuning.doodad_push_time if _pushing else tuning.lane_switch_time)
+	_switch_t = minf(1.0, _switch_t + delta / seconds)
+	if _pushing:
+		_x = _push_x(_switch_from, _switch_to, _switch_t)
+	else:
+		_x = _switch_x(_switch_from, _switch_to, _bump_reach if _bumping else 0.0, _switch_t)
+	if _switch_t >= 1.0:
 		_bumping = false
+		_pushing = false
 
 
 ## Where a lane switch or a bump puts the player at progress t (0–1): from `from` to `to`, easing out,
@@ -500,6 +531,19 @@ func _update_lane_switch(delta: float) -> void:
 static func _switch_x(from: float, to: float, reach: float, t: float) -> float:
 	var k: float = 1.0 - (1.0 - t) * (1.0 - t)
 	return lerpf(from, to, k) + reach * (1.0 - absf(2.0 * t - 1.0))
+
+
+## Where a zone doodad's push puts the player at progress t (0–1), from `from` to `to`: a shove, fast
+## at first and easing out more sharply than a lane switch, so the body clears the doodad's side soon.
+static func _push_x(from: float, to: float, t: float) -> float:
+	var u: float = 1.0 - t
+	return lerpf(from, to, 1.0 - u * u * u)
+
+
+## The share of a push's way (from where it starts to the middle of the lane it goes to) by progress
+## t, the inverse of what _push_x eases: the progress at which it has come `k` of the way.
+static func _push_progress(k: float) -> float:
+	return 1.0 - pow(1.0 - clampf(k, 0.0, 1.0), 1.0 / 3.0)
 
 
 ## True if a solid side (a lane blocker) fills `target` lane beside the player right now.
@@ -693,6 +737,7 @@ func _try_enter_wall(side: int, from_ramp: bool, ramp: int = 0) -> bool:
 	_slide_on_land = false
 	_switch_t = 1.0
 	_bumping = false
+	_pushing = false
 	if from_ramp:
 		# GDD §3: a ramp adds speed, which fades away like a speed pad's (boost_left).
 		_boost += tuning.ramp_speed_boost
@@ -793,6 +838,90 @@ func _leave_wall(velocity: float, kind: StringName) -> void:
 	vh = velocity
 	grounded = false
 	_event(kind)
+
+
+# --- Zone doodads -----------------------------------------------------------
+
+## GDD §3 (owner's playtest, September 30, 2026): zone doodads never hurt; running into one pushes the
+## player into a neighbouring lane. On the floor, the body (its visual size, as it is now: what looks
+## like contact is contact; sliding, its slide height; from just above the feet, so a player standing
+## on a doodad's top isn't pushed by it) meets a doodad's body (TrackBuilder.LAYER_DOODAD) at its front
+## when it would touch it within the time the shove needs to clear its side (_push_clear_seconds), so
+## the body never sinks into it. In the air it's the same: a jump into one is pushed too (doodads are
+## too tall to jump). The push (_start_push) goes to the doodad's side, or back the way the player came
+## if they caught its front corner mid-switch; a side without room (another lane blocker there) gives
+## way to the other. Ceiling riders and wall runners never meet one (TrackBuilder; the generator keeps
+## doodads off ceilings and out of the outermost lanes).
+func _check_doodads(motion: float) -> void:
+	if surface != Surface.FLOOR or in_pit:
+		return
+	var half: float = tuning.visual_size.x * 0.5
+	var depth: float = tuning.visual_size.z
+	var height: float = _hurtbox_height() * tuning.visual_size.y / maxf(tuning.hurtbox_size.y, 0.01)
+	var front: float = distance + depth * 0.5
+	var widest: float = maxf(tuning.doodad_large_width, maxf(tuning.doodad_medium_width, tuning.doodad_small_width))
+	var reach: float = maxf(speed, 0.0) * _push_clear_seconds(widest, 0.0, geo.lane_width) + motion + 0.05
+	var back: float = distance - depth * 0.5
+	_doodad_shape.size = Vector3(half * 2.0, maxf(height - DOODAD_FEET_CLEARANCE, 0.05), front + reach - back)
+	_doodad_query.transform = Transform3D(Basis.IDENTITY, Vector3(_x, h + DOODAD_FEET_CLEARANCE + _doodad_shape.size.y * 0.5,
+		TrackGeometry.world_z((back + front + reach) * 0.5)))
+	for hit: Dictionary in get_world_3d().direct_space_state.intersect_shape(_doodad_query, 4):
+		var area := hit["collider"] as Area3D
+		if area == null or not area.has_meta(&"doodad"):
+			continue
+		if _pushing and area.get_instance_id() == _push_doodad:
+			continue
+		var d: Dictionary = area.get_meta(&"doodad")
+		var width: float = tuning.doodad_size(StringName(d["size"])).x
+		var centre: float = geo.lane_x(int(d["lane"]))
+		var gap: float = float(d["start"]) - front
+		var off: float = _x - centre
+		var dir: int = int(d["side"])
+		if absf(off) > PUSH_HEAD_ON_SHARE * geo.lane_width:
+			dir = 1 if off > 0.0 else -1
+		var toward: float = off * dir
+		if gap > maxf(speed, 0.0) * _push_clear_seconds(width, toward, absf(geo.lane_x(int(d["lane"]) + dir) - _x)) + motion:
+			continue
+		_start_push(area, int(d["lane"]), dir, int(d["side"]))
+		return
+
+
+## How long into a push the body clears the side of a doodad `width` wide: starting `toward` metres off
+## its middle toward the push's side (negative: on the other side) and going `way` metres to the next
+## lane's middle (_push_x). 0 when it's clear already.
+func _push_clear_seconds(width: float, toward: float, way: float) -> float:
+	var need: float = width * 0.5 + tuning.visual_size.x * 0.5 - toward
+	if need <= 0.0:
+		return 0.0
+	return _push_progress(need / maxf(way, 0.01)) * tuning.doodad_push_time
+
+
+## Starts a doodad's push (_check_doodads) from the doodad's lane `doodad_lane` toward `dir`, or the
+## other way when that side has no room (the track's edge, or a lane blocker there); with neither, the
+## doodad's own way (`own_side`, where the generator always leaves room). The lane switch machinery
+## carries it (doodad_push_time, _push_x), the event plays the thud, and the player can act meanwhile:
+## a move or a jump works as usual.
+func _start_push(area: Area3D, doodad_lane: int, dir: int, own_side: int) -> void:
+	var target: int = doodad_lane + own_side
+	for way: int in [dir, -dir]:
+		if _push_room(doodad_lane + way):
+			target = doodad_lane + way
+			break
+	target = clampi(target, 0, geo.lane_count - 1)
+	_bumping = false
+	_pushing = true
+	_push_doodad = area.get_instance_id()
+	lane = target
+	_switch_from = _x
+	_switch_to = geo.lane_x(target)
+	_switch_t = 0.0
+	pushes += 1
+	_event(&"doodad_push")
+
+
+## True if a push may end in `target`: a lane of the track no solid side fills beside the player.
+func _push_room(target: int) -> bool:
+	return target >= 0 and target < geo.lane_count and not _lane_blocked(target)
 
 
 # --- Triggers & hazards ----------------------------------------------------
