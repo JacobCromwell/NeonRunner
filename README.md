@@ -47,7 +47,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--god` | Hits don't kill (falls still do) |
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
-| `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `corporate`, `corporate_plaza` (Corporate's plaza floor), `dead_zone` or `golden` |
+| `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `corporate`, `corporate_plaza` (Corporate's plaza floor), `dead_zone`, `golden` or `golden_palace` (Golden 3's interior) |
 | `--speed=25` | Quick play at another run speed (m/s): a zone's pace, from 21 in the Neon City to 25 in the Golden Zone. The level keeps its timing in seconds (campaign levels already run at their zone's speed) |
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level |
