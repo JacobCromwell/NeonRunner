@@ -19,6 +19,7 @@ tagline = "Run the roofs of hover-truck convoys under the ships."
 music = &"city"
 skin = ExtResource("skin")
 levels = Array[ExtResource("2_levelscript")]([ExtResource("lvl_city_1"), ExtResource("lvl_city_2"), ExtResource("lvl_city_3")])
+run_speed = 21.0
 intro = ExtResource("c_intro")
 boss_intro = ExtResource("c_bintro")
 outro = ExtResource("c_outro")

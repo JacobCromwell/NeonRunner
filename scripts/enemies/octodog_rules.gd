@@ -28,6 +28,9 @@ extends RefCounted
 ##   has floor under it and that no hover truck keeps free (HoverTruckRules.open_lanes).
 ##   DESIGN-TBD: the spot is picked at random among those that fit (in a level paced in bursts,
 ##   among those in a burst first: LevelGenerator.pacing_pools).
+## - Every margin in metres here (and the dog's own, OctodogTuning, Octodog) is written for
+##   MovementTuning.REFERENCE_SPEED and stretched by the level's pace (LevelGenerator.pace), so a
+##   faster zone keeps every charge's seconds (GDD §3).
 
 const RUN_AFTER: Array[String] = ["drone", "host", "hover_truck"]
 const HostRules = preload("res://scripts/enemies/host_rules.gd")
@@ -43,7 +46,7 @@ static func apply(gen: LevelGenerator) -> void:
 	var t: OctodogTuning = tuning()
 	var layout: LevelLayout = gen.layout
 	var rng: RandomNumberGenerator = gen.rng_for("octodog")
-	var stop: float = t.stop_distance(gen.speed, gen.config.enemy_scaling)
+	var stop: float = t.stop_distance(gen.speed, gen.config.enemy_scaling, gen.pace)
 	var chases: Array[Vector2] = HostRules.chase_stretches(gen)
 	var busy_until: float = -INF
 	var dropped: Array[Dictionary] = []
@@ -52,7 +55,7 @@ static func apply(gen: LevelGenerator) -> void:
 		if bool(params.get("bait", false)):
 			_align_to_bait_gap(layout, e, t)
 		var at: float = float(e["at"])
-		if at - stop <= busy_until + 10.0 or layout.gapped_between(int(e["lane"]), at - 1.5, at + 1.5) \
+		if at - stop <= busy_until + gen.metres(10.0) or layout.gapped_between(int(e["lane"]), at - 1.5, at + 1.5) \
 				or not _first_charge_fits(gen, t, at, chases):
 			dropped.append(e)
 			continue
@@ -88,11 +91,11 @@ static func dogs_in(layout: LevelLayout) -> Array[Dictionary]:
 ## landing from there to the dog, a clear stretch for the charge, and its run so far off every chase.
 static func _first_charge_fits(gen: LevelGenerator, t: OctodogTuning, at: float, chases: Array[Vector2]) -> bool:
 	var scaling: float = gen.config.enemy_scaling
-	var stop: float = t.stop_distance(gen.speed, scaling)
-	var window: float = t.window_length(gen.speed, scaling)
+	var stop: float = t.stop_distance(gen.speed, scaling, gen.pace)
+	var window: float = t.window_length(gen.speed, scaling, gen.pace)
 	var a0: float = at - stop
-	return a0 > 0.0 and not Octodog.pad_or_landing_between(gen.layout, a0 - 6.0, at + 2.0) \
-		and _window_ok(gen.layout, a0, window) \
+	return a0 > 0.0 and not Octodog.pad_or_landing_between(gen.layout, a0 - gen.metres(6.0), at + gen.metres(2.0), gen.pace) \
+		and _window_ok(gen, a0, window) \
 		and _off_ceiling_zones(gen, _run_start(gen, a0), a0) \
 		and _off_chases(chases, _run_start(gen, a0), a0 + window + stop)
 
@@ -112,9 +115,9 @@ static func _plan_charges(gen: LevelGenerator, t: OctodogTuning, a0: float, want
 		chases: Array[Vector2]) -> Array[float]:
 	var layout: LevelLayout = gen.layout
 	var scaling: float = gen.config.enemy_scaling
-	var stop: float = t.stop_distance(gen.speed, scaling)
-	var window: float = t.window_length(gen.speed, scaling)
-	var cycle: float = t.cycle_distance(gen.speed, scaling)
+	var stop: float = t.stop_distance(gen.speed, scaling, gen.pace)
+	var window: float = t.window_length(gen.speed, scaling, gen.pace)
+	var cycle: float = t.cycle_distance(gen.speed, scaling, gen.pace)
 	var last_ok: float = layout.length - gen.config.end_clear_distance
 	var run_start: float = _run_start(gen, a0)
 	var anchors: Array[float] = [a0]
@@ -122,11 +125,11 @@ static func _plan_charges(gen: LevelGenerator, t: OctodogTuning, a0: float, want
 	while anchors.size() < wanted:
 		var found: float = -1.0
 		var a: float = prev + cycle
-		while a <= prev + cycle + t.charge_slack:
-			if a + window > last_ok or Octodog.pad_or_landing_between(layout, prev, a + stop + 2.0) \
+		while a <= prev + cycle + gen.metres(t.charge_slack):
+			if a + window > last_ok or Octodog.pad_or_landing_between(layout, prev, a + stop + gen.metres(2.0), gen.pace) \
 					or not _off_chases(chases, run_start, a + window + stop):
 				break
-			if _window_ok(layout, a, window):
+			if _window_ok(gen, a, window):
 				found = a
 				break
 			a += 2.0
@@ -141,8 +144,8 @@ static func _plan_charges(gen: LevelGenerator, t: OctodogTuning, a0: float, want
 ## until: the next dog's first charge comes after that.
 static func _commit(gen: LevelGenerator, t: OctodogTuning, dog: Dictionary, anchors: Array[float]) -> float:
 	var scaling: float = gen.config.enemy_scaling
-	var window: float = t.window_length(gen.speed, scaling)
-	var busy_until: float = anchors[-1] + window + t.stop_distance(gen.speed, scaling)
+	var window: float = t.window_length(gen.speed, scaling, gen.pace)
+	var busy_until: float = anchors[-1] + window + t.stop_distance(gen.speed, scaling, gen.pace)
 	var params: Dictionary = dog.get("params", {})
 	params["charges"] = anchors.size()
 	params["charge_at"] = anchors
@@ -158,8 +161,8 @@ static func _commit(gen: LevelGenerator, t: OctodogTuning, dog: Dictionary, anch
 ## The dog keeps the ceilings already there off this stretch too (_off_ceiling_zones).
 static func _run_start(gen: LevelGenerator, a0: float) -> float:
 	var zones: CeilingZones = gen.zones
-	return a0 - Octodog.CEILING_LEAD - maxf(Octodog.CEILING_LEAD - zones.pad_length,
-		Octodog.CEILING_LANDING - zones.landing) - 0.001
+	var lead: float = gen.metres(Octodog.CEILING_LEAD)
+	return a0 - lead - maxf(lead - zones.pad_length, gen.metres(Octodog.CEILING_LANDING) - zones.landing) - 0.001
 
 
 ## True if no pad's zone or ceiling landing zone already in the level (CeilingZones) reaches into
@@ -179,7 +182,7 @@ static func _off_ceiling_zones(gen: LevelGenerator, from: float, to: float) -> b
 
 ## The same for the whole floor stretch a dog with wind-ups at `anchors` would use (floor_span).
 static func _run_off_ceiling_zones(gen: LevelGenerator, t: OctodogTuning, anchors: Array[float]) -> bool:
-	var window: float = t.window_length(gen.speed, gen.config.enemy_scaling)
+	var window: float = t.window_length(gen.speed, gen.config.enemy_scaling, gen.pace)
 	return _off_ceiling_zones(gen, _run_start(gen, anchors[0]), _run_end(anchors[-1], window))
 
 
@@ -198,10 +201,10 @@ static func _off_chases(chases: Array[Vector2], from: float, to: float) -> bool:
 
 
 ## True if the player's stretch [a, a + window] has no fence, ceiling, pad, holes in two or more
-## lanes, and no enemy other than a dog nearby (Octodog.charge_clear: the dog checks a charge the
-## same way when a wait for its turn moves it on).
-static func _window_ok(layout: LevelLayout, a: float, window: float) -> bool:
-	return Octodog.charge_clear(layout, a, window)
+## lanes, and no enemy other than a dog nearby (Octodog.charge_clear, at the level's pace: the dog
+## checks a charge the same way when a wait for its turn moves it on).
+static func _window_ok(gen: LevelGenerator, a: float, window: float) -> bool:
+	return Octodog.charge_clear(gen.layout, a, window, gen.pace)
 
 
 ## One dog where a dog fits every rule (see the header), in a level left without one. The spots
@@ -210,7 +213,7 @@ static func _window_ok(layout: LevelLayout, a: float, window: float) -> bool:
 ## (LevelGenerator.pacing_pools). Returns the dog, or {} if no spot fits.
 static func _add_guaranteed(gen: LevelGenerator, t: OctodogTuning, chases: Array[Vector2]) -> Dictionary:
 	var layout: LevelLayout = gen.layout
-	var stop: float = t.stop_distance(gen.speed, gen.config.enemy_scaling)
+	var stop: float = t.stop_distance(gen.speed, gen.config.enemy_scaling, gen.pace)
 	var rng: RandomNumberGenerator = gen.rng_for("octodog_guarantee")
 	var wanted: int = _roll_charges(gen, t, rng)
 	var spots: Array[float] = []

@@ -18,6 +18,7 @@ tagline = "Golden walkways over water, in the opulent city of the elite."
 music = &"golden"
 skin = ExtResource("skin")
 levels = Array[ExtResource("2_levelscript")]([ExtResource("lvl_golden_1"), ExtResource("lvl_golden_2"), ExtResource("lvl_golden_3")])
+run_speed = 25.0
 intro = ExtResource("c_intro")
 outro = ExtResource("c_outro")
 boss = ExtResource("boss")

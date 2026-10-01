@@ -48,6 +48,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
 | `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `corporate`, `corporate_plaza` (Corporate's plaza floor), `dead_zone` or `golden` |
+| `--speed=25` | Quick play at another run speed (m/s): a zone's pace, from 21 in the Neon City to 25 in the Golden Zone. The level keeps its timing in seconds (campaign levels already run at their zone's speed) |
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level |
 | `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
@@ -226,6 +227,12 @@ F6 panel) and without, how much taking turns delays them, and which enemies neve
 [--seeds=6] [--features=octodog]` (the whole campaign, both ways, takes about ten minutes on the levels' own seeds;
 its header lists the options).
 
+`tools/measure/level_pace.gd` measures each campaign level's pace and density: its run speed, events per minute
+(obstacle rows, holes, enemies, big attacks, mechanics), its longest and mean empty stretches in seconds, and its
+credits; it can also build the levels with another version's data and dump every layout, to prove a change leaves
+the old levels byte for byte as they were: `godot --headless -s res://tools/measure/level_pace.gd -- [--seeds=4]
+[--old-data=DIR] [--dump=FILE] [--set=key:value]` (its header lists the options).
+
 `tools/measure/stomp_routes.gd` measures how forgiving the Floating Head's ways onto its head are: the latest lane
 switch onto the ramp that still stomps, the stretch of jump points a single wall jump stomps from, and the ceiling
 from every lane (`godot --headless --fixed-fps 60 -s res://tools/measure/stomp_routes.gd -- [--lanes=3,5,6]
@@ -271,13 +278,14 @@ On a debug build, the options go into the page's engine settings: in `exports/we
 
 ## Tests
 
-`tools/godot.sh test` runs 46 suites with about 3,250,000 checks:
+`tools/godot.sh test` runs 48 suites with about 3,700,000 checks:
 - **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds, and every campaign level
-  (each with every feature it lists, on its own seed and on others). Under every ceiling the floor may be
-  dangerous, so each one's pads, landing zone and a floor route that never takes the pad are checked, and
-  some of those routes are run on real physics; ceilings over fewer lanes too, at every width, with their
-  pads under them, their landing zone over their lanes, and one-lane ceilings short. Also the recency
-  curve's pick weights, and levels paced in quiet stretches and bursts (The Hush).
+  (each with every feature it lists, on its own seed and on others), at the base speed and at the zones' speeds
+  (21 to 25 m/s, with the fill pass that makes campaign levels busier), each reaction window in seconds. Under
+  every ceiling the floor may be dangerous, so each one's pads, landing zone and a floor route that never takes
+  the pad are checked, and some of those routes are run on real physics; ceilings over fewer lanes too, at every
+  width, with their pads under them, their landing zone over their lanes, and one-lane ceilings short. Also the
+  recency curve's pick weights, and levels paced in quiet stretches and bursts (The Hush).
 - **Movement:** scenarios on real physics, among them a ramp's boost against a speed pad's, a ramp's wall run
   and its credits against the generator's prediction, the bump of a blocked wall entry, and moves on a
   ceiling over fewer lanes (blocked at its edges, a pad holding you to its lane, the camera kept under the

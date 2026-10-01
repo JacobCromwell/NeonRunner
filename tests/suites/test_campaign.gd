@@ -51,7 +51,9 @@ const SWEEP_LEVELS: Array = ["gangland/3", "corporate/2", "dead_zone/1", "dead_z
 const SWEEP_SEEDS: int = 8
 ## How far past its start a new feature's first piece or enemy may be: the first pattern picked
 ## from the start uses it, and the pick can wait for the longest pattern before it (an Octodog's
-## 120 m) and the widest spacing; the enemy then stands up to 45 m into its own pattern.
+## 120 m) and the widest spacing; the enemy then stands up to 45 m into its own pattern. Metres at
+## MovementTuning.REFERENCE_SPEED: a level at its zone's speed stretches them by its pace
+## (LevelGenerator.pace), as it stretches the patterns.
 const INTRODUCTION_REACH: float = 210.0
 ## Features that are enemies (for "every zone introduces at least one new enemy").
 const ENEMIES: Array = ["cyborg", "window_cyborg", "hover_truck", "screech", "octodog", "generator", "drone",
@@ -385,7 +387,7 @@ func _check_level(s: CampaignStep, config: LevelConfig, tag: String, stats: Dict
 		var start: float = gen.feature_start(f)
 		check(at[0] >= start - 0.01, "nothing of `%s` before its start (%.0f m) %s" % [f, start, tag])
 		stats["introductions"] = int(stats["introductions"]) + 1
-		if at[0] > start + INTRODUCTION_REACH:
+		if at[0] > start + INTRODUCTION_REACH * gen.pace:
 			(stats["late"] as Array).append("%s %s (%.2f)" % [tag, f, at[0] / layout.length])
 
 

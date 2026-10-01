@@ -17,3 +17,7 @@ feature_starts = Dictionary[String, float]({
 "window_cyborg": 0.35
 })
 narrow_ceiling_share = 0.5
+spacing_seconds_easy = 1.1
+fill_empty_seconds = 2.0
+credit_trail_chance = 0.6
+credit_trail_min = 5

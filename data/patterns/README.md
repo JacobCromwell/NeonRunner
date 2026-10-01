@@ -52,6 +52,21 @@ patterns of its kind, feature and age; a pattern that combines an old feature wi
 the new one, and adding an `enemy` element to a pattern moves it to the enemies' kind. Quick play
 and tests have no curve. See `docs/ARCHITECTURE.md`, The generator.
 
+**Metres are at the reference speed.** Every distance a pattern gives in metres (a pattern's
+`length`, an element's `at`, a sign's `length`, credits' `spacing`) is written for 18 m/s
+(`MovementTuning.REFERENCE_SPEED`), and a level at another speed stretches it by its pace (its run
+speed over 18: 21 m/s in the Neon City to 25 m/s in the Golden Zone, GDD §3), so every pattern keeps
+its timing in seconds at every zone's speed (`docs/ARCHITECTURE.md`, Pace). Write a pattern as it should
+play at 18 m/s. `at_seconds`, `length_seconds` and `jump_frac` follow the run speed on their own.
+
+**Fillers.** Campaign levels are busier (GDD §3): after the patterns and the rules, the generator's fill
+pass puts more of the level's plain obstacle patterns into its long empty stretches
+(`LevelConfig.fill_empty_seconds`). A filler is any pattern that `requires` nothing and has only `gap`
+and `fence` elements (`LevelGenerator.is_filler`); it's picked by its difficulty range and `weight` like
+any pick, and spaced from everything around it as the pattern pass spaces patterns. So a new plain
+obstacle pattern can also come as a filler; one that needs a feature, a sign, a ceiling or an enemy
+never does.
+
 A level may be paced in quiet stretches and bursts (`LevelConfig.quiet_seconds`; The Hush): a quiet
 stretch picks only patterns without enemies (sparse obstacles, and safe mechanics such as a plain
 ceiling, a ramp or a speed pad) and those of the level's `quiet_features`, which belong there (their
@@ -74,15 +89,16 @@ pattern like the Octodog's fits when its dog does). Patterns need nothing specia
 
 ## Element kinds
 
-`at` is the offset in metres from the pattern's start. `at_seconds` adds an offset in seconds at run speed,
-so pieces keep their timing against a hull when run speed changes.
+`at` is the offset in metres (at the reference speed, stretched by the level's pace) from the pattern's
+start. `at_seconds` adds an offset in seconds at run speed, so pieces keep their timing against a hull
+when run speed changes.
 
 | Kind | Fields |
 |---|---|
 | `gap` | `lanes`, `jump_frac` (gap length as a fraction of a full jump's distance, capped by the level's `max_gap_jump_fraction`) |
 | `fence` | `lanes`, `variant` (`full` = jump or switch lanes; `gapped` = slide under), `pulse_chance`, `pulse_on`, `pulse_off` (seconds) |
 | `sign` | `side` (`left`/`right`/`random`/`both`/`same`), `length`, `bottom`, `top` (height band on the wall, in metres) |
-| `ramp` | `side`. The ramp sits in the outermost lane on that side and launches the player onto the wall, higher than a free entry and with a speed boost that fades like a speed pad's (GDD §3): its wall run covers about 43 m at run speed, against 39 m for a free entry. A wall piece after it meets a faster, higher runner; `RampLaunch` says where the runner is and how high (see Ramps in `docs/ARCHITECTURE.md`) |
+| `ramp` | `side`. The ramp sits in the outermost lane on that side and launches the player onto the wall, higher than a free entry and with a speed boost that fades like a speed pad's (GDD §3): its wall run covers about 43 m at 18 m/s, against 39 m for a free entry. A wall piece after it meets a faster, higher runner; `RampLaunch` says where the runner is and how high (see Ramps in `docs/ARCHITECTURE.md`) |
 | `hull` | `lanes` (where the anti-grav pad goes), `length_seconds` (how long the ceiling lasts at run speed). The pattern's other elements may lie under it (see Ceilings below); its landing zone and its pad's spot stay clear, and the generator drops (with a warning) what the pattern puts there. The ceiling covers every lane, or in a level with narrow ceilings a range of lanes holding its pads (see Narrow ceilings below) |
 | `speed_pad` | `lanes`. A speed pad in each lane (DESIGN-TBD: GDD §6 only names speed pads) |
 | `enemy` | `type` (the enemy type name), `lanes` (floor enemies; one per lane) **or** `side` (wall enemies, e.g. window cyborgs: `left`/`right`/`random`/`same`), `params` (passed to the enemy as `spawn.params`). An enemy may stand under a ceiling; one whose type uses the floor (its tuning's `uses_floor` and reach, wall vents included) keeps off a ceiling's landing zone and its pads' spots |
@@ -101,9 +117,9 @@ stretches safe all the same (`CeilingZones`, `docs/ARCHITECTURE.md`):
 - **Its landing zone:** from the ceiling's end, `hull_landing_seconds` (1.2 s) at run speed, no gap or
   fence in any lane the ceiling covers and no floor enemy's reach in any lane, so the player always
   lands safely. A pattern's `used` length includes it, so the next pattern starts past it.
-- **Its pad's spot:** in the pad's lane, no gap, fence or ramp from a full jump (about 12 m) before
-  the pad until its lift reaches the hull (about 8 m after it), and no floor enemy's reach (any lane)
-  where the pad lies.
+- **Its pad's spot:** in the pad's lane, no gap, fence or ramp from a full jump (about 12 m at 18 m/s)
+  before the pad until its lift reaches the hull (about 8 m after it), and no floor enemy's reach (any
+  lane) where the pad lies.
 
 What a pattern puts in those stretches is dropped, with a warning. Writing a gauntlet:
 - Time its pieces with `at_seconds` against the hull, from about 1 s after the pad to the ceiling's
