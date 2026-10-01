@@ -38,10 +38,18 @@ var enemies: Array[Dictionary] = []
 ## movement tuning its width and height), `seed` varies the look. The generator plans them
 ## (LevelGenerator: doodads), the track builder builds them (TrackBuilder, ZoneSkin.doodad).
 var doodads: Array[Dictionary] = []
+## {lane, start, end, warn, charge, keep, speed}: a floor cut planned in advance (task B4; GDD §9.9,
+## the Buzz Overdrive's): the floor of `lane` from `start` to `end` turns into a gap during play, run
+## from `end` back toward and past the player by its cause, keyed to the player's distance. Its fields
+## and geometry: FloorCutPlan. The generator plans them (LevelGenerator.add_cut, only where GDD
+## §9.9's limits allow), the track builder builds them as pieces of their own (FloorCut), and a cause
+## runs each (FloorCut.advance_to).
+var cuts: Array[Dictionary] = []
 
 
-## Every list of pieces, by name. A level without doodads has no "doodads" key, so its dictionary
-## (and every hash or dump of it) is the same as before doodads existed.
+## Every list of pieces, by name. A level without doodads has no "doodads" key, and one without
+## floor cuts no "cuts" key, so its dictionary (and every hash or dump of it) is the same as before
+## those existed.
 func to_dict() -> Dictionary:
 	var out := {
 		"lane_count": lane_count,
@@ -58,7 +66,25 @@ func to_dict() -> Dictionary:
 	}
 	if not doodads.is_empty():
 		out["doodads"] = doodads
+	if not cuts.is_empty():
+		out["cuts"] = cuts
 	return out
+
+
+## Appends every list of `other`'s pieces to this layout's (doodads and floor cuts included, whether
+## or not this layout has any yet), and moves its end to other's if that's further.
+func append_pieces(other: LevelLayout) -> void:
+	var lists: Dictionary = to_dict()
+	var more: Dictionary = other.to_dict()
+	for key: String in more:
+		if more[key] is Array and lists.get(key) is Array:
+			(lists[key] as Array).append_array(more[key])
+	# Lists to_dict() leaves out while they're empty join here.
+	if not lists.has("doodads"):
+		doodads.append_array(other.doodads)
+	if not lists.has("cuts"):
+		cuts.append_array(other.cuts)
+	length = maxf(length, other.length)
 
 
 func copy() -> LevelLayout:
@@ -75,6 +101,7 @@ func copy() -> LevelLayout:
 	out.credits = credits.duplicate(true)
 	out.enemies = enemies.duplicate(true)
 	out.doodads = doodads.duplicate(true)
+	out.cuts = cuts.duplicate(true)
 	return out
 
 
@@ -105,6 +132,15 @@ func gapped_between(lane: int, from: float, to: float) -> bool:
 func doodad_between(from: float, to: float, lane: int = -1) -> bool:
 	for d: Dictionary in doodads:
 		if float(d["start"]) <= to and float(d["end"]) >= from and (lane < 0 or int(d["lane"]) == lane):
+			return true
+	return false
+
+
+## True if a floor cut keeps its lane clear anywhere in [from, to] (FloorCutPlan.lane_window: from
+## where its warning starts to past its cause's spot): in `lane`, or in any lane with -1.
+func cut_between(from: float, to: float, lane: int = -1) -> bool:
+	for c: Dictionary in cuts:
+		if FloorCutPlan.lane_window_in(c, from, to, lane):
 			return true
 	return false
 
