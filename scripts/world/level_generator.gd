@@ -69,6 +69,18 @@ extends RefCounted
 ## into and the level's spacing after it: they add to what the patterns, the rules and the fill pass
 ## put there (nothing moves or goes for them, and nothing comes after them to undo or crowd them), so
 ## a level looks busier without needing a reaction or narrowing one.
+##
+## Floor cuts (task B4; GDD §9.9, the Buzz Overdrive's): floors that turn into gaps during play are
+## planned in advance as data (LevelLayout.cuts; FloorCutPlan: lane, start, end, and when it runs,
+## keyed to the player's distance), so a level stays fair and the same on every attempt. A rules
+## script plans them (add_cut; CutPlacement clears the way), only where GDD §9.9's limits allow
+## (cut_problem): one at a time, never through a ramp, a pad or the safe landing zone after a ceiling,
+## its lane free of everything else from its warning to past its cause, the other lanes whole enough
+## (on 3 lanes two stay whole; LevelConfig.cut_holes_beside on more), nothing else going on meanwhile,
+## and room to leave its lane after the warning (cut_escape_clear). Everything planned after a cut
+## keeps off it: the fill pass and zone doodads (fill_keep_outs, doodad_keep_outs), floor_clear,
+## ceilings added later (CeilingZones) and floor credits in its lane. A level without cuts is built
+## exactly as before.
 
 const DENOMINATIONS: Array[int] = [1, 5, 25, 100]
 const RULES_DIR: String = "res://scripts/enemies"
@@ -102,6 +114,12 @@ const FILL_CEILING_AFTER_PAD_SECONDS: float = 1.0
 const FILL_CEILING_BEFORE_END_SECONDS: float = 0.6
 ## A floor credit this close to a zone doodad in its lane (or inside it) is dropped (metres).
 const DOODAD_CREDIT_MARGIN: float = 1.0
+## A player leaving a floor cut's lane is out of it by the time the cut's front is this many metres
+## ahead of them (cut_escape_clear): the cause's reach, the body's and a frame of closing in.
+const CUT_CONTACT_METRES: float = 4.0
+## Clear floor around a switch into a neighbouring lane that a floor cut's escape needs, beyond the
+## switch itself (cut_escape_clear), and the most a piece's edge may come near (metres).
+const CUT_SWITCH_MARGIN: float = 1.0
 
 var layout: LevelLayout
 var config: LevelConfig
@@ -207,6 +225,21 @@ func generate(p_config: LevelConfig, p_tuning: MovementTuning, patterns: Array) 
 	warnings.append("guarantee: after %d builds the level still has no %s (every feature should appear, GDD §5)"
 		% [GUARANTEE_ATTEMPTS, ", ".join(best_missing)])
 	return layout
+
+
+## A generator over a layout that already exists, for the checks its helpers make during a run (a boss
+## arena's track, BossArena.cut_problem; endless mode's next stretch): `p_config`'s level at
+## `p_tuning`'s speed (LevelConfig.movement_for), with `p_layout` as its layout. Nothing is generated.
+static func for_layout(p_config: LevelConfig, p_tuning: MovementTuning, p_layout: LevelLayout) -> LevelGenerator:
+	var gen := LevelGenerator.new()
+	gen.config = p_config
+	gen.tuning = p_config.movement_for(p_tuning)
+	gen.speed = gen.tuning.run_speed
+	gen.pace = gen.tuning.pace()
+	gen.jump_distance = gen.tuning.jump_distance(gen.speed)
+	gen.zones = CeilingZones.make(p_config, gen.tuning, gen.speed)
+	gen.layout = p_layout
+	return gen
 
 
 ## One build of the level: the pattern pass (with the introductions and the guarantee's forced
@@ -543,8 +576,9 @@ func one_lane_seconds(lanes: Vector2i, seconds: float) -> float:
 	return seconds
 
 
-## True if nothing on the floor touches any lane between two track distances: no gap, no fence,
-## and no floor enemy's stretch (enemy_floor_span).
+## True if nothing on the floor touches any lane between two track distances: no gap, no fence, no
+## floor cut (its lane's window, FloorCutPlan.lane_window) and no floor enemy's stretch
+## (enemy_floor_span).
 func floor_clear(from: float, to: float) -> bool:
 	for g: Dictionary in layout.gaps:
 		if g["start"] <= to and g["end"] >= from:
@@ -552,6 +586,8 @@ func floor_clear(from: float, to: float) -> bool:
 	for f: Dictionary in layout.fences:
 		if f["at"] >= from and f["at"] <= to:
 			return false
+	if layout.cut_between(from, to):
+		return false
 	for e: Dictionary in layout.enemies:
 		var span: Vector2 = enemy_floor_span(e, pace)
 		if span.x <= to and span.y >= from:
@@ -1217,8 +1253,9 @@ static func is_filler(pattern: Dictionary) -> bool:
 ## before its end); every enemy from FILL_ENEMY_LEAD_SECONDS before it to the end of the floor it uses
 ## (LevelGenerator.enemy_floor_span), or what its rules script keeps for it (`static func keep_out(gen:
 ## LevelGenerator, entry: Dictionary) -> Vector2`: a cyborg's margin, a hover truck's lane window, a
-## Resonator's visit, a drone wave until its first pad); and a level's quiet stretches. (Zone doodads
-## come after the fill pass, into what it leaves: _place_doodads.)
+## Resonator's visit, a drone wave until its first pad); a level's quiet stretches; and every floor
+## cut, in every lane, from its warning to its end (FloorCutPlan.window). (Zone doodads come after the
+## fill pass, into what it leaves: _place_doodads.)
 func fill_keep_outs(patterns: Array) -> Dictionary:
 	var out: Array[Vector4] = []
 	var half: float = tuning.fence_depth * 0.5
@@ -1238,6 +1275,11 @@ func fill_keep_outs(patterns: Array) -> Dictionary:
 	for e: Dictionary in layout.enemies:
 		var k: Vector2 = _enemy_keep_out(e, hooks)
 		out.append(_keep(k.x, k.y))
+	# A floor cut, in every lane, from its warning to its end or past its cause, whichever is later
+	# (GDD §9.9: nothing else in its lane, its neighbours kept whole, nothing else going on).
+	for c: Dictionary in layout.cuts:
+		var w: Vector2 = FloorCutPlan.window(c, speed)
+		out.append(_keep(w.x, w.y))
 	var activity: Array[Vector2] = []
 	for k: Vector4 in out:
 		activity.append(Vector2(k.x, k.y))
@@ -1512,13 +1554,32 @@ static func _lane_kept(lane_keeps: Array[Dictionary], lane: int, span: Vector2) 
 ## top), and what the rules keep from doodads in every lane: `static func doodad_keep_outs(gen:
 ## LevelGenerator) -> Array[Dictionary]` on a feature's rules script, entries {from, to} (a Bad
 ## Dream's chase). Entries that also name a lane ({lane, from, to}: a hover truck's, for its whole
-## stay) go into `lane_keeps`: no doodad stands in that lane there, nor pushes into it.
+## stay) go into `lane_keeps`: no doodad stands in that lane there, nor pushes into it. A floor cut's
+## lane is kept that way over its lane window (FloorCutPlan.lane_window), so a push never lands the
+## player in a cut (and its whole window is a fill keep-out, in every lane, already).
 func doodad_keep_outs(patterns: Array, lane_keeps: Array[Dictionary] = []) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	for k: Vector4 in fill_keep_outs(patterns)["keep"]:
 		out.append(Vector2(k.x, k.y))
 	for h: Dictionary in layout.hulls:
 		out.append(Vector2(float(h["start"]), zones.landing_zone(h).y))
+	for c: Dictionary in layout.cuts:
+		var span: Vector2 = FloorCutPlan.lane_window(c)
+		lane_keeps.append({"lane": int(c["lane"]), "from": span.x, "to": span.y})
+	for k: Dictionary in rules_doodad_keep_outs():
+		if k.has("lane"):
+			lane_keeps.append(k)
+		else:
+			out.append(Vector2(float(k["from"]), float(k["to"])))
+	return out
+
+
+## What the level's features' rules keep zone doodads off (`static func doodad_keep_outs(gen:
+## LevelGenerator) -> Array[Dictionary]` on a feature's rules script), in the order of the features:
+## the lane-bound attacks while they run, {from, to} in every lane (a Bad Dream's chase) or {lane, from,
+## to} in one (a hover truck's lane for its whole stay). Floor cuts keep off them too (cut_problem).
+func rules_doodad_keep_outs() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
 	for feature: String in config.features:
 		var path: String = RULES_DIR.path_join("%s_rules.gd" % feature)
 		if not ResourceLoader.exists(path):
@@ -1527,10 +1588,7 @@ func doodad_keep_outs(patterns: Array, lane_keeps: Array[Dictionary] = []) -> Ar
 		if script == null or not script.has_method("doodad_keep_outs"):
 			continue
 		for k: Dictionary in script.call("doodad_keep_outs", self):
-			if k.has("lane"):
-				lane_keeps.append(k)
-			else:
-				out.append(Vector2(float(k["from"]), float(k["to"])))
+			out.append(k)
 	return out
 
 
@@ -1544,6 +1602,173 @@ static func doodad_lead_for(t: MovementTuning) -> float:
 ## there, as between two patterns, so the player can cross its lane again before what comes next.
 func doodad_after(at: float) -> float:
 	return _spacing_seconds(at, difficulty_at(clampf(at / layout.length, 0.0, 1.0))) * speed
+
+
+# --- Floor cuts (task B4; GDD §9.9, the Buzz Overdrive's) -----------------------------------------
+
+## Adds floor cut `cut` (a LevelLayout.cuts entry, FloorCutPlan.make) where GDD §9.9's limits allow it
+## (cut_problem). Returns true if it was added. A rules script that plans cuts clears the way first
+## (CutPlacement, scripts/enemies/cut_placement.gd) and adds the cut's cause as an entry at the cut's
+## `end`, in its lane (the stand-in's floor_cutter_rules.gd; task C2's saw).
+func add_cut(cut: Dictionary) -> bool:
+	if cut_problem(cut) != "":
+		return false
+	layout.cuts.append(cut)
+	return true
+
+
+## Why floor cut `cut` can't go where it lies in `p_layout` (the level's by default), or "" if it can.
+## GDD §9.9's limits and the readability rules:
+## - it lies in a real lane, between the level's run-up and its end-clear stretch, its warning before
+##   its charge and both before its cause's spot, its stretch around where it meets the player;
+## - one at a time: no other cut's window (FloorCutPlan.window: from its warning to its end) reaches
+##   this one's;
+## - never a lane holding a ramp, a pad or the safe landing zone after a ceiling (CeilingZones.cut_clear:
+##   no landing zone over its lane and no pad's zone in its lane reaches its lane window; no ramp in
+##   its lane, nor the wall run it launches, until it drops the player back);
+## - nothing else in its lane over its lane window (FloorCutPlan.lane_window: from the warning to past
+##   its cause's spot): no hole, fence, speed pad or zone doodad, and no other cut;
+## - the other lanes stay whole enough along its stretch: holes (and other cuts) in at most
+##   lane_count - 1 - whole_lanes_for_cut() of them (GDD §9.9: on 3 lanes two lanes always stay whole);
+## - nothing else goes on meanwhile: no enemy's keep-out (what the fill pass keeps for it,
+##   _enemy_keep_out) reaches its window, bar its own cause (an entry at its `end` in its lane), nor
+##   does a lane-bound attack the rules keep doodads off (rules_doodad_keep_outs, read from the
+##   level's own enemies: a Bad Dream's chase in any lane, a hover truck's stay in its lane);
+## - a player in its lane when the warning starts can leave it (cut_escape_clear).
+## Wall runners and ceiling riders are safe without a rule: the cut is a hole in its own lane only.
+## DESIGN-TBD (docs/questions/b4.md): keeping everything else off a cut's whole window, and letting
+## cuts run in the outer lanes (beside a wall runner).
+func cut_problem(cut: Dictionary, p_layout: LevelLayout = null) -> String:
+	var lay: LevelLayout = p_layout if p_layout != null else layout
+	var n: int = lay.lane_count
+	var lane: int = int(cut.get("lane", -1))
+	if lane < 0 or lane >= n:
+		return "lane %d out of range" % lane
+	var start: float = float(cut["start"])
+	var end: float = float(cut["end"])
+	var meet: float = FloorCutPlan.meet(cut, speed)
+	var charge_at: float = FloorCutPlan.charge_at(cut)
+	var lane_span: Vector2 = FloorCutPlan.lane_window(cut)
+	var span: Vector2 = FloorCutPlan.window(cut, speed)
+	if float(cut["speed"]) <= 0.0 or float(cut["charge"]) <= 0.0 or float(cut["warn"]) < float(cut["charge"]) \
+			or not (start < meet and meet < end and charge_at < meet):
+		return "its warning, charge, stretch and meeting point don't line up"
+	if lane_span.x < config.start_clear_distance or span.y > lay.length - config.end_clear_distance:
+		return "it doesn't fit between the run-up and the end-clear stretch"
+	for other: Dictionary in lay.cuts:
+		if is_same(other, cut):
+			continue
+		var w: Vector2 = FloorCutPlan.window(other, speed)
+		if w.x <= span.y and w.y >= span.x:
+			return "another cut is on meanwhile (one at a time)"
+	if not zones.cut_clear(lay, cut):
+		return "a ceiling's landing zone or a pad's zone is in its lane"
+	for r: Dictionary in lay.ramps:
+		if lay.outer_lane(int(r["side"])) == lane and float(r["at"]) <= lane_span.y \
+				and maxf(ramp_launch(r).end(), float(r["at"]) + tuning.ramp_length) >= lane_span.x:
+			return "a ramp (or the wall run it launches) is in its lane"
+	var half: float = tuning.fence_depth * 0.5
+	for g: Dictionary in lay.gaps:
+		if int(g["lane"]) == lane and float(g["start"]) <= lane_span.y and float(g["end"]) >= lane_span.x:
+			return "a hole is in its lane"
+	for f: Dictionary in lay.fences:
+		if int(f["lane"]) == lane and float(f["at"]) - half <= lane_span.y and float(f["at"]) + half >= lane_span.x:
+			return "a fence is in its lane"
+	for p: Dictionary in lay.speed_pads:
+		if int(p["lane"]) == lane and float(p["at"]) <= lane_span.y and float(p["at"]) + tuning.speed_pad_length >= lane_span.x:
+			return "a speed pad is in its lane"
+	if lay.doodad_between(lane_span.x, lane_span.y, lane):
+		return "a zone doodad is in its lane"
+	var holed: Dictionary = {}
+	for g: Dictionary in lay.gaps:
+		if int(g["lane"]) != lane and float(g["start"]) <= end and float(g["end"]) >= start:
+			holed[int(g["lane"])] = true
+	for other: Dictionary in lay.cuts:
+		if not is_same(other, cut) and float(other["start"]) <= end and float(other["end"]) >= start:
+			if int(other["lane"]) == lane:
+				return "another cut's stretch is in its lane"
+			holed[int(other["lane"])] = true
+	if holed.size() > n - 1 - whole_lanes_for_cut(n):
+		return "%d other lanes hold holes along it (%d must stay whole)" % [holed.size(), whole_lanes_for_cut(n)]
+	var hooks: Dictionary = {}
+	for e: Dictionary in lay.enemies:
+		if int(e.get("lane", -1)) == lane and absf(float(e["at"]) - end) < 0.01:
+			continue  # Its own cause, waiting at its end.
+		var k: Vector2 = _enemy_keep_out(e, hooks)
+		if k.x <= span.y and k.y >= span.x:
+			return "an enemy (%s at %.0f) is about meanwhile" % [e.get("type", "?"), float(e["at"])]
+	for k: Dictionary in rules_doodad_keep_outs():
+		if (not k.has("lane") or int(k["lane"]) == lane) and float(k["from"]) <= span.y and float(k["to"]) >= span.x:
+			return "an attack runs meanwhile (%.0f-%.0f)" % [float(k["from"]), float(k["to"])]
+	if not cut_escape_clear(cut, lay):
+		return "no room to leave its lane after the warning"
+	return ""
+
+
+## How many lanes besides a floor cut's own stay whole along its stretch at `lanes` lanes (GDD §9.9: on
+## 3 lanes two lanes always stay whole, every lane but the cut's; on more, all but
+## LevelConfig.cut_holes_beside of them, and never fewer than two).
+func whole_lanes_for_cut(lanes: int) -> int:
+	if lanes <= 3:
+		return lanes - 1
+	return maxi(lanes - 1 - config.cut_holes_beside, mini(2, lanes - 1))
+
+
+## True if a player in floor cut `cut`'s lane when its warning starts can leave it in time (GDD §9.9:
+## "leave its lane before it arrives"): from LevelConfig.cut_reaction_seconds after the warning starts
+## until the cut is CUT_CONTACT_METRES from them, a neighbouring lane has a stretch clear of holes,
+## fences, pads, speed pads, ramps, zone doodads and other cuts long enough to switch into it (a lane
+## switch at run speed, CUT_SWITCH_MARGIN either side). Its own lane is clear over all of it
+## (cut_problem). In `p_layout` (the level's by default).
+func cut_escape_clear(cut: Dictionary, p_layout: LevelLayout = null) -> bool:
+	var lay: LevelLayout = p_layout if p_layout != null else layout
+	var lane: int = int(cut["lane"])
+	var r: float = FloorCutPlan.ratio(cut, speed)
+	var from: float = FloorCutPlan.warn_at(cut) + config.cut_reaction_seconds * speed
+	# The last spot from which the player is out of the lane before the cut's front is CUT_CONTACT_METRES
+	# away: the front is at end - (p - charge_at) * r.
+	var to: float = (float(cut["end"]) + r * FloorCutPlan.charge_at(cut) - CUT_CONTACT_METRES) / (1.0 + r)
+	var need: float = tuning.lane_switch_time * speed + 2.0 * CUT_SWITCH_MARGIN
+	for side: int in [-1, 1]:
+		var other: int = lane + side
+		if other < 0 or other >= lay.lane_count:
+			continue
+		var busy: Array[Vector2] = _lane_busy(lay, other)
+		for free: Vector2 in free_stretches(busy, from, to):
+			if free.y - free.x >= need:
+				return true
+	return false
+
+
+## The stretches of `lane` in `lay` where a player can't switch in: holes, fences, pads, speed pads,
+## ramps, zone doodads and floor cuts' lane windows, each with CUT_SWITCH_MARGIN around it.
+func _lane_busy(lay: LevelLayout, lane: int) -> Array[Vector2]:
+	var m: float = CUT_SWITCH_MARGIN
+	var half: float = tuning.fence_depth * 0.5
+	var out: Array[Vector2] = []
+	for g: Dictionary in lay.gaps:
+		if int(g["lane"]) == lane:
+			out.append(Vector2(float(g["start"]) - m, float(g["end"]) + m))
+	for f: Dictionary in lay.fences:
+		if int(f["lane"]) == lane:
+			out.append(Vector2(float(f["at"]) - half - m, float(f["at"]) + half + m))
+	for p: Dictionary in lay.pads:
+		if int(p["lane"]) == lane:
+			out.append(Vector2(float(p["at"]) - m, float(p["at"]) + tuning.pad_length + m))
+	for p: Dictionary in lay.speed_pads:
+		if int(p["lane"]) == lane:
+			out.append(Vector2(float(p["at"]) - m, float(p["at"]) + tuning.speed_pad_length + m))
+	for rp: Dictionary in lay.ramps:
+		if lay.outer_lane(int(rp["side"])) == lane:
+			out.append(Vector2(float(rp["at"]) - m, float(rp["at"]) + tuning.ramp_length + m))
+	for d: Dictionary in lay.doodads:
+		if int(d["lane"]) == lane:
+			out.append(Vector2(float(d["start"]) - m, float(d["end"]) + m))
+	for c: Dictionary in lay.cuts:
+		if int(c["lane"]) == lane:
+			var w: Vector2 = FloorCutPlan.lane_window(c)
+			out.append(Vector2(w.x - m, w.y + m))
+	return out
 
 
 # --- Enemy rules ---------------------------------------------------------------
@@ -1735,8 +1960,9 @@ func _place_ceiling_credits(rng: RandomNumberGenerator) -> void:
 			_add_credit(far_d, "ceiling", far_lane, 0, 0.6, 25 if rng.randf() < 0.7 else 5, true)
 
 
-## Drops credits that would sit inside a hazard or a zone doodad, or over a hole the player can't
-## reach.
+## Drops credits that would sit inside a hazard or a zone doodad, over a hole the player can't reach,
+## or in a floor cut's lane while it's on (they'd lure the player into its way, then hang over the
+## gap it leaves).
 func _drop_unsafe_credits() -> void:
 	var kept: Array[Dictionary] = []
 	for c: Dictionary in layout.credits:
@@ -1751,6 +1977,8 @@ func _drop_unsafe_credits() -> void:
 				continue
 			# Inside a zone doodad (or just at its ends): a trail that runs into one stops there.
 			if layout.doodad_between(d - DOODAD_CREDIT_MARGIN, d + DOODAD_CREDIT_MARGIN, lane):
+				continue
+			if layout.cut_between(d - 0.5, d + 0.5, lane):
 				continue
 			if d > layout.length - 5.0:
 				continue

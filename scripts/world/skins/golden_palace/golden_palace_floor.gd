@@ -104,6 +104,21 @@ func _edge(s: MeshLayer, x0: float, x1: float, d: float, lip: float, dark: float
 		s.rect(Vector3(x1, strip_y, z - 0.004), Vector3(-w, 0, 0), Vector3(0, STRIP_HEIGHT, 0), edge, STRIP_GLOW)
 
 
+## A floor cut through the hall (task B4; GDD §9.9): the marble floor split open down the lane (the
+## track hides the floor as the cut runs, FloorCutSection), drawn like any break in it: the floor beside
+## and beyond it ends in the zone's edge (a dark line, then the orange lip right on the collision edge,
+## a strip along the top of the cut and the soft halo on its far side), and below is the well's deep
+## shade dropping into the dark (below() draws its bottom across the hall). Nothing in it is marble,
+## gold or lit.
+func cut(parent: Node3D, section: FloorCutSection) -> void:
+	ZoneSkin.standard_floor_cut(parent, section, skin.solid_material(), skin.glow_material(), {
+		"edge": skin.gap_edge_color, "inside": skin.gap_inside_color, "pattern": MeshKit.PAT_PALACE_WELL,
+		"params": [0.0, 0.0, 0.0], "depth": skin.canal_depth, "bottom": false,
+		"lip": EDGE_LIP, "lip_glow": LIP_GLOW, "strip_glow": STRIP_GLOW, "halo": EDGE_HALO,
+		"dark_line": skin.vein_color.darkened(0.4), "dark": EDGE_DARK,
+	})
+
+
 ## The bottom of a break in the floor far below, and the dust motes and speed streaks drifting over
 ## the hall's floor (the still floor's motion cue, the owner's review: GDD §5), for one chunk. Neither
 ## belongs to a lane, so the skin adds them to the left wall's mesh.

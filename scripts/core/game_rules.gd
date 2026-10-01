@@ -54,6 +54,10 @@ extends Resource
 @export_range(4.0, 20.0, 0.5, "suffix:m/s") var grapple_pull_velocity: float = 10.0
 ## Share of a lane switch the player travels before being bumped back by a solid side.
 @export_range(0.1, 0.6, 0.05) var lane_bump_fraction: float = 0.3
+## GDD §9.9 (task B4): after the shield or the armor blocks what cuts the floor (the Buzz Overdrive's
+## saw), the floor under the player holds for about a second, just enough to switch lanes
+## (FloorCut.hold_under).
+@export_range(0.2, 3.0, 0.05, "suffix:s") var cut_hold_seconds: float = 1.0
 
 @export_group("Enemies")
 ## GDD §9 (decided September 26, 2026): the big attacks of different enemy types take turns, so the

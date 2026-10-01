@@ -30,8 +30,8 @@ and hosts its `BossEncounter` (see Bosses).
 ```
 RunWorld (scripts/run/run_world.gd)       one run's gameplay world; everything shares it
   Track      TrackBuilder: floor/hull collision, obstacles (fences, signs), triggers (pads, ramps,
-             speed pads), zone doodads, built in 40 m chunks around the player; the zone skin
-             decorates it
+             speed pads), zone doodads, floor cuts (FloorCut: a lane's floor that turns into a hole
+             during play), built in 40 m chunks around the player; the zone skin decorates it
   Player     movement on floor, walls and ceiling; protection; receive_hit()
   Boss       BossEncounter, in a boss fight only: the fight and the boss's pattern (its parts are
              enemies, under Enemies)
@@ -337,8 +337,9 @@ the Tithe Collector) opt in the same way for whichever of their attacks count as
 - **An attack that can't wait** because the player sets it off (the Bad Dream bursts out of a killed
   host) or the generator planned its moment still reports itself: the others wait for it. It can
   overlap an attack that was already on when it came; the Bad Dream holds its slash until that one
-  is over. (A planned one, like the Buzz Overdrive's cut, would need the others held off before its
-  warning, which the director can't do yet.)
+  is over. A planned floor cut (B4's stand-in, C2's Buzz Overdrive) reports itself from its warning
+  until its charge ends; the generator keeps every other attack off its whole window (Floor cuts,
+  under The generator), so only an attack moved on at runtime can meet it, and that one waits.
 
 The director holds a big attack while another type's is on or its shots are still on their way; an
 enemy whose own attack is on carries on (the Bad Dream's next slash in its chase); and the enemies of
@@ -729,6 +730,84 @@ empty stretch down from 1.2–1.45 s to 1.0–1.3 s. The longest empty stretches
 they lie under ceilings or around enemies, where doodads never stand. A runner who keeps to the middle
 lane at 3 lanes meets every doodad (they all stand there); at 5 and 6 lanes about a third of them.
 
+**Floor cuts** (B4; GDD §9.9, the Buzz Overdrive's: "the generator plans each cut in advance (lane,
+start and end), so levels stay fair and identical on every attempt; the saw is just the visible cause").
+`LevelLayout.cuts` holds {lane, start, end, warn, charge, keep, speed}; `FloorCutPlan`
+(`scripts/world/floor_cut_plan.gd`) has the geometry: the cause waits at `end`, its warning starts when
+the player is `warn` metres before it (`warn_at`), the cut starts running at `charge_at` and runs back
+along its lane toward and past the player, keyed to the player's distance (at distance p its front is at
+`end - (p - charge_at) * speed / run_speed`, `front_at`), meets them at `meet()` and ends at `start`
+(`done_at`). Its lane window (`lane_window`: the warning to `keep` metres past `end`) is what its lane
+keeps clear, its window (`window`: the warning to the end of the cut) what the level keeps calm. The
+list is left out of `to_dict()` when it's empty, so a level without cuts is the same data as before (B4
+checked 1,269 layouts byte for byte against the build before it: every campaign level at 3, 5 and 6
+lanes on ten seeds, quick play with and without every built feature, busy levels with the fill pass and
+doodads, the generator suite's sweep and the boss arenas). A rules script plans a cut with
+`FloorCutPlan.make()` (metres through the pace), makes room with `CutPlacement.place(gen, cut)`
+(`scripts/enemies/cut_placement.gd`: on a copy it clears the cut lane's holes, fences and speed pads
+over its lane window and the holes beside it beyond what may stay, the nearest lanes first, and asks
+`cut_problem`; only a cut that then fits changes the level), and adds the cut's cause as an enemy entry
+at `end`, in its lane. `LevelGenerator.add_cut()` takes a cut only if `cut_problem()` finds nothing
+against it:
+- one at a time: no other cut's window reaches its window;
+- never a lane holding a ramp (or the wall run it launches, until it drops the player back), a pad's
+  zone or the safe landing zone after a ceiling (`CeilingZones.cut_clear`; a narrow ceiling's covers
+  only its own lanes, B3), and nothing else in its lane over its lane window: no hole, fence, speed pad,
+  zone doodad or other cut;
+- the other lanes whole along its stretch: on 3 lanes no hole in either (GDD §9.9: two lanes always stay
+  whole); on 5 and 6 lanes holes in at most `LevelConfig.cut_holes_beside` of them (1: 3 of 5 and 4 of 6
+  lanes stay whole, `whole_lanes_for_cut()`);
+- nothing else going on meanwhile: no enemy's keep-out (`_enemy_keep_out`, the fill pass's) and nothing
+  the rules keep doodads off (`rules_doodad_keep_outs()`: a Bad Dream's chase, a hover truck's stay in
+  its lane) reaches its window, bar its own cause;
+- a way out: from `LevelConfig.cut_reaction_seconds` (0.5 s) after its warning starts until the cut is
+  `CUT_CONTACT_METRES` from a player still in its lane, a neighbouring lane has room to switch into
+  (`cut_escape_clear()`).
+Wall runners and ceiling riders need no rule: a cut only takes floor away, in its own lane, and its
+cause's hitbox stays in its lane. What comes after the rules keeps off cuts too: the fill pass keeps off
+a cut's whole window in every lane (`fill_keep_outs`), doodads off its lane window, never pushing into
+it (`doodad_keep_outs`' lane keeps), floor credits skip it, and `floor_clear()` counts it as a hole.
+`LayoutChecks.check_cuts` holds every generated layout to all of it at 3, 5 and 6 lanes, with a
+`FloorRoute` out of the cut's lane from the reaction time on (`FloorRoute` keeps out of a cut's lane
+from where it would reach a player in it). The stand-in cause (`floor_cutter`, a debug-only quick-play
+feature, never in the campaign; `floor_cutter_rules.gd`, after every other feature's rules) plans cuts
+through a level in seeded lanes. DESIGN-TBD (`docs/questions/b4.md`): the limit at 5 and 6 lanes,
+keeping everything else off a cut's window, and cuts in the outer lanes.
+
+**Floor cuts on the track.** `TrackBuilder` builds each cut as a piece of its own (`FloorCut`,
+`scripts/world/floor_cut.gd`) in the chunk where its stretch starts, and leaves the lane's floor out of
+the chunks there as it does a gap's, without edges: it draws that floor in `CUT_SLICE` (4 m) slices with
+the skin's own `floor_segment`, each chunk's as it's built, and hands them to the cut (`add_slice`); the
+cut asks the skin's `floor_cut()` for the hole (Zone skins, Floor cuts' looks). Its collision is one
+static body on the floor layer whose two convex shapes (the floor not yet cut, and the floor held after
+a block) change their points at once, so the player falls through a cut floor by the same physics as a
+normal gap, the same frame. As the cut runs, slices behind its front hide, the one it's in shrinks to it
+and the hole's parts move along: a handful of transforms a frame and no chunk rebuild (a chunk with a
+cut costs at most about 1.5 ms more to build, measured per skin by `test_floor_cuts`), on any renderer.
+`track.floor_cut(lane, end)` finds a built cut, `track.floor_cuts()` lists them. The cut's cause drives
+it:
+- `advance_to(d)`: the cause is at track distance d; the front follows it toward `start`, never back.
+  The stand-in moves with `FloorCutPlan.front_at`; a cause that moves its own way (C2's saw) passes its
+  own position, and the floor ahead of it stays whole.
+- `stop()`: the cause died (GDD §9.9: "killing it mid-charge stops the cut where it dies"): the floor
+  from `start` to the front stays whole for good.
+- `hold_under(player, GameRules.cut_hold_seconds)`: the shield or the armor blocked the cause (its
+  hitbox's `contacted` with `BLOCKED_ARMOR`/`BLOCKED_SHIELD`): the floor from just behind the player to
+  as far as they run meanwhile holds for about a second (1 s, game rules), then goes at once
+  (DESIGN-TBD: the held floor's look).
+For task C2 (the Buzz Overdrive): plan its cuts in its rules like `floor_cutter_rules.gd` (`plan()`,
+`CutPlacement.place`, the entry at `end`), with its own warn and charge times and speed in its tuning;
+its enemy finds its cut (as `floor_cutter_rules.cut_of` does), its `FloorCut` once built, starts its
+warning (GDD §9.9's rev and the red line over the lane, both placeholders in the stand-in's `_warn()`
+and `_update_line()`) at `warn_at`, its charge at `charge_at`, and calls the three above; it reports its
+big attack from the warning until it's gone (`is_major_attack_active`), keeps its hitbox narrow and in
+its lane, and flies its sparks only without Reduced flashing. For a boss fight (E5b's Hostile Takeover):
+plan the cut at the arena's speed (`arena.tuning`), ask `arena.cut_problem(cut)` (the generator's rules
+on the arena's track), and add it with its cause through `arena.add_pieces()` (its `cuts` and
+`enemies`), its whole stretch past `stream_from()`, so about ten seconds ahead at the stand-in's
+numbers. A track that grows during play (`TrackBuilder.extend_layout`, endless mode's R4 too) takes cuts
+the same way.
+
 ## Power-ups
 
 `PowerupController` (`scripts/powerups/powerup_controller.gd`) runs one `PowerupModule` per owned,
@@ -778,9 +857,10 @@ that offer their own), never in levels, so no pattern places one. `PickupField`
 ## Zone skins
 
 A `ZoneSkin` (`scripts/world/skins/zone_skin.gd`) decorates abstract pieces through hooks
-(`floor_segment`, `wall_section`, `fence`, `wall_sign`, `ceiling_section` (by default `hull`), `pad`,
-`ramp`, `speed_pad`, `doodad`, `finish_line`, `make_environment`). Skins add visuals only, never collision or
-gameplay. Hazards keep one colour and shape language in every zone (pink crackle = electric fence).
+(`floor_segment`, `floor_cut`, `wall_section`, `fence`, `wall_sign`, `ceiling_section` (by default
+`hull`), `pad`, `ramp`, `speed_pad`, `doodad`, `finish_line`, `make_environment`). Skins add visuals
+only, never collision or gameplay. Hazards keep one colour and shape language in every zone (pink
+crackle = electric fence).
 `TrackBuilder` also calls `note_wall_enemies(side, start, end, enemies)` just before `wall_section()`
 for each side (a no-op default): the chunk's wall enemy layout entries (type, at, side, ...), for a
 skin whose own scenery would otherwise double up with one (the Marketplace's citizens, task D3, kept
@@ -859,6 +939,29 @@ and keeps to:
   name)` (`tests/helpers/skin_suite.gd`), which every zone's own suite calls, extends this over several
   seeds and both push sides: dressed, inside the box, on the shared `MeshKit.solid()` alone, never
   glowing, and the identical (cached) mesh every time the same size, side and seed are drawn again.
+
+**Floor cuts' looks** (B4; GDD §9.9: the floor a cut takes "becomes a gap ... The cut edges glow the
+usual gap-edge orange"). The track draws a cut lane's floor itself, in slices of the skin's own
+`floor_segment` it hides and shortens as the cut runs (The generator, Floor cuts on the track), so the
+hook `floor_cut(parent, cut)` draws only the hole, from a `FloorCutSection`
+(`scripts/world/floor_cut_section.gd`: the lane, its floor's edges, the stretch, the wall faces) in four
+kinds of part the cut then moves: `add_static` (the inside over the whole stretch, below the floor,
+never moved), `add_span` (the orange lips along the neighbouring lanes' edges, built over the whole
+stretch and scaled to what's cut), `add_front` (the lip on the whole floor's far edge, moved with the
+front) and `add_far` (the far side: the lip on the floor beyond, a strip along its face, a halo). It
+must read as a hole at a glance like any gap: orange edges right on the collision edge, a dark inside,
+nothing else glowing, nothing flickering. `ZoneSkin.standard_floor_cut(parent, cut, solid, glow, style)`
+builds all of it from a style (the edge and inside colours, the inside's darkening pattern, depth, lip
+sizes and glows, a dark line beside the lips, the inside's walls and ribs); the default hook uses it
+with the skin's `gap_edge_color` and `gap_inside_color`. The zones where the Buzz Overdrive appears draw
+their own floor's cut: Corporate's maglev a carriage roof sliced open down to its frame
+(`CorporateTrains.cut`), its plaza the deck split over the lower level (`CorporatePlaza.cut`), the Dead
+Zone's street split with broken plates hanging into the void (`DeadStreet.cut`), the Golden Zone's
+walkway cut over the canal (`GoldenWalkways.cut`) and the Golden Palace's marble floor broken into the
+well (`GoldenPalaceFloor.cut`). `test_floor_cuts` builds every skin in `data/skins/` (and the grey box
+and the plain `ZoneSkin`) at 3 and 5 lanes, in an outer and a middle lane, and checks the orange edges
+on the collision edge, a dark inside, nothing else glowing, and the build cost against the same chunks
+without a cut; review a new look with `floor_cut_review` (Review tools) on both renderers.
 
 **Ceilings from their lanes** (B3). `TrackBuilder` (and `BossProps.ceiling`) describe each ceiling as a
 `CeilingSection` (`scripts/world/ceiling_section.gd`): its span along the track, the lanes it covers
@@ -1482,9 +1585,11 @@ encounter.setup(world, context, arena)   joins the world between the player and 
   lap ahead through `TrackBuilder.extend_layout()`, so the track keeps going for as long as the fight
   lasts and is the same on every attempt. Nothing in it ramps up, and it carries no credits
   (DESIGN-TBD). During the fight, `arena.add_pieces()` adds track pieces (holes, fences, pads with
-  ceilings, ramps, signs, enemies) past `stream_from()`, the end of the built track; they're built and
-  brought in like the rest. `floor_clear`, `hole_between`, `live_fence_between`, `ceiling_between` and
-  `pieces_between` answer questions about the track.
+  ceilings, ramps, signs, floor cuts, enemies) past `stream_from()`, the end of the built track; they're
+  built and brought in like the rest. A floor cut (B4) goes in only after `arena.cut_problem(cut)` says
+  it fits (the generator's rules for cuts, on the arena's track; The generator, Floor cuts), with its
+  cause among the enemies. `floor_clear`, `hole_between` (a cut's stretch counts as a hole),
+  `live_fence_between`, `ceiling_between` and `pieces_between` answer questions about the track.
 - **Pace** (GDD §3, owner's playtest September 30, 2026; task E1f): a campaign boss fight runs at its
   zone's speed, like the zone's levels (21 m/s in the Neon City; `Campaign.configure_boss` gives the
   arena config its zone's `run_speed` times the tier's multiplier through `run_speed_for`, and
@@ -1616,7 +1721,10 @@ arena's own `props.ceiling`),
   `require`) cut every lane at the carriage gaps, and a train skin on the arena config; couplings are
   weak points on a part placed over each gap. Carriages breaking away behind the player are looks.
   The gunship is a part whose belly is a ceiling (`add_surface(..., true)`); the Buzz Overdrive
-  (C2) is `spawn_enemy` with its planned cut, which needs B4's floors turning into gaps during play.
+  (C2) comes with its planned cut: `FloorCutPlan.make` at the arena's speed, `arena.cut_problem(cut)`,
+  then `arena.add_pieces()` with the cut and the saw's entry at its end, its stretch past
+  `stream_from()` (The generator, Floor cuts on the track); the gunship's drop is the look before its
+  warning.
   The docking clamps are phase 3's three hits.
 - **Sleep Taker (E5c, built, see below):** the Dead Zone's boss step plays it; its generators come
   through `spawn_enemy("generator", ...)`, a destroyed one's EMP reaches the part (`_on_part_emp`:
@@ -1845,9 +1953,22 @@ the checks every zone skin must pass, and helpers to inspect what a skin builds 
 `BUILD_BUDGET_MEAN_MS`/`BUILD_BUDGET_MAX_MS`) time the dressed build over `build_all()`'s
 `timing_passes` (`BUILD_TIMING_PASSES`, 3) fresh builds and keep, per build step, the fastest seen:
 OS preemption on a loaded machine only ever adds wall-clock time to one pass, never removes it, so
-the minimum stays a faithful reading of the skin's real cost. `test_skin_budget` (with the test-only
-`SlowTestSkin`, `tests/helpers/slow_test_skin.gd`, which busy-waits a few real milliseconds per lane)
-checks that check still fails a skin that really is expensive. `LayoutChecks` (`tests/helpers/layout_checks.gd`) holds the
+the minimum stays a faithful reading of the skin's real cost even when a single pass gets paused
+mid-build. That alone doesn't help when *every* pass is slow -- several agents' test runs and
+renders sharing the CPUs at once (T-BUDGET2) -- so each timed pass also drives a reference
+`TrackBuilder`, in `GreyboxSkin` over a plain `REFERENCE_LANES`-lane layout as long as the one under
+test, one chunk-step at a time right alongside the skin's own (same process, same moment, the whole
+build through, not a snapshot at its edges). `load_factor()` reads that reference's own inflation
+over its quiet-machine baseline (`REFERENCE_IDLE_MS`) and scales the budget by it, each direction
+with its own safety margin and cap on how far a single pathological moment may widen it
+(`MEAN_SAFETY_MARGIN`/`MEAN_FACTOR_CAP` for the mean budget, `MAX_SAFETY_MARGIN`/`MAX_FACTOR_CAP`,
+wider, for the max budget, which a single loaded chunk can spike well past the mean's own inflation);
+at load factor 1.0 (an unloaded machine) neither margin nor cap changes anything, so a real
+regression still fails exactly as before. `test_skin_budget` (with the test-only `SlowTestSkin`,
+`tests/helpers/slow_test_skin.gd`, which busy-waits a few real milliseconds per lane, a cost that
+grows with load more slowly than a real skin's own) checks that check still fails a skin that really
+is expensive, at whatever load this run measures, including the heaviest load the mean cap still lets
+through. `LayoutChecks` (`tests/helpers/layout_checks.gd`) holds the
 fairness checks for generated layouts (the generator suite runs them over many seeds, the campaign
 suite over every campaign level at 3, 5 and 6 lanes, the enemy suites over their own levels), among
 them `check_ceilings` (GDD §3: pads that can be stepped on and under their ceiling, safe landing zones
@@ -1966,11 +2087,26 @@ a few of every campaign level's doodads run into at the level's speed and onto s
 and a hover truck holding their fire while a doodad is in reach. The simulated runs of
 `test_enemy_director` and `tools/measure/big_attacks.gd` keep their runner in the middle lane: it steps
 back after a doodad's push (`AttackWatch.keep_lane`).
+`test_floor_cuts` checks floor cuts (B4; GDD §9.9) with the grey-box stand-in: the plan's geometry and
+the layout data; the track's piece (its slices, its collision, a hold and a stop); on real
+physics at 3, 5 and 6 lanes, the floor gone exactly behind the cause and whole ahead of it, a runner in
+the lane falling frame for frame as into a normal gap, one who reacts to the warning leaving in time
+from middle and outer lanes, one who stays hit by the cause, a wall runner and a ceiling rider
+untouched; the floor holding for `cut_hold_seconds` after an armor or shield block (staying falls once
+it's over, switching lanes or jumping inside it is safe); a kill stopping the cut where it dies (mid-
+charge, during the warning, by the dash); the same cut at 30 and 60 physics frames a second, through
+pauses and uneven steps; a cut added during a boss fight (`arena.cut_problem`, `add_pieces`) and on a
+track extended during play; every skin's look and build cost (Zone skins, Floor cuts' looks); the
+stand-in's warning (a red line from the warning point, never before, and a sound; the line steady with
+Reduced flashing); and that the stand-in stays out of the campaign. `test_generator` sweeps the stand-in's cuts over seeds,
+difficulties and lane counts, under narrow ceilings and in busy levels with every built feature
+(`LayoutChecks.check_cuts`), checks each of GDD §9.9's limits by hand and `CutPlacement`'s clearing, and
+shows a level whose rules plan no cut is the same data as one without them.
 `test_web_demo` checks the web demo's preset, its export filter against
 the data and everything the demo references, and walks the demo from the title to its end screen (see
 Platforms and build flavors). The runner frees
 anything a suite leaves in the tree, gives suites a fresh, unsaved profile, reports a suite that fails
-to load, and ends a stuck run after 1200 s of real time.
+to load, and ends a stuck run after 2400 s of real time.
 
 ## Review tools
 
@@ -1981,7 +2117,11 @@ power-up look), ramps and walls (`ramp_wall_review`: a ramp launch with the cred
 run, and blocked wall entries at a low and a high sign, through the game camera or a close one),
 zone doodads (`doodad_review`: the runner pushed by a small, a medium and a large one, both ways, and a
 switch into one's side blocked, with others standing in the other inner lanes at five lanes or more, in
-any zone's look, through the game camera or a close one, `--hitboxes` for their bodies),
+any zone's look, through the game camera or a close one, `--hitboxes` for their bodies), floor cuts
+(`floor_cut_review`: the stand-in's warning, charge and the gap it leaves beside a runner who switched
+out, in any zone's look at any lane count and speed, through the game camera or a high one; `--stay`
+for an armor block and the floor's hold, `--kill=D` for a cut stopped where its cause dies,
+`--reduced-flashing`),
 the enemies (`enemy_showcase` for the cyborg family: poses, the faces close up, a turnaround, window
 cyborgs, and a far view through the run camera where the expressions must read, in any zone's look
 (`--variant=`, or ui_left / ui_right live), and every look side by side (`lineup`, front, back, as

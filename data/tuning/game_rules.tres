@@ -21,6 +21,7 @@ stomp_bounce_velocity = 7.5
 stomp_tolerance = 0.45
 grapple_pull_velocity = 10.0
 lane_bump_fraction = 0.3
+cut_hold_seconds = 1.0
 big_attacks_take_turns = true
 turn_place_grace = 1.0
 ramp_score_multiplier = 2.0

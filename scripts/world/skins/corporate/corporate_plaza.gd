@@ -110,6 +110,18 @@ func _edge(s: MeshLayer, x0: float, x1: float, d: float, lip: float, facing: flo
 		s.rect(Vector3(x1, strip_y, z - 0.004), Vector3(-w, 0, 0), Vector3(0, STRIP_HEIGHT, 0), edge, STRIP_GLOW)
 
 
+## A floor cut through the plaza (task B4; GDD §9.9): the deck sliced open down the lane (the track hides
+## the paving as the cut runs, FloorCutSection), an open shaft to the lower level like any gap: the
+## deck's cut faces in the shade down to the lower level, the orange lips on the paving right at the
+## cut's edges and a strip along the top of each cut face. Nothing in it is lit.
+func cut(parent: Node3D, section: FloorCutSection) -> void:
+	ZoneSkin.standard_floor_cut(parent, section, skin.solid_material(), skin.glow_material(), {
+		"edge": skin.gap_edge_color, "inside": skin.gap_inside_color, "pattern": MeshKit.PAT_CORP_UNDER,
+		"params": [0.0, 1.0, 2.0], "depth": skin.trench_depth, "bottom": false,
+		"lip": EDGE_LIP, "lip_glow": LIP_GLOW, "strip_glow": STRIP_GLOW, "halo": 0.0,
+	})
+
+
 ## The lower level far below the plaza, lost in the dark, its walls at the building faces, and the
 ## drifting grit, drizzle and speed streaks over the deck (GDD §5 motion effects), for one chunk. None
 ## of it belongs to a lane, so the skin adds it to the left wall's mesh.

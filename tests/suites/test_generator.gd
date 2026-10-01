@@ -6,7 +6,10 @@ extends TestSuite
 ## (introductions, and every rules script that adds a feature's enemies or pieces keeping to the
 ## start), per-level feature weights, and the guarantee that every feature appears
 ## (LevelConfig.guarantee_features, and the host and Octodog rules' own); the campaign's recency
-## curve for pick weights (FeatureRecency); quiet stretches and bursts (LevelConfig.quiet_seconds).
+## curve for pick weights (FeatureRecency); quiet stretches and bursts (LevelConfig.quiet_seconds);
+## floors that turn into gaps during play (task B4; GDD §9.9): cuts planned only where its limits allow
+## (sweeps at 3, 5 and 6 lanes, under narrow ceilings and with every built feature, each limit by hand,
+## the clearing, and nothing changed without cuts).
 
 const HostRules := preload("res://scripts/enemies/host_rules.gd")
 
@@ -52,6 +55,9 @@ func run() -> void:
 	_test_recency(base)
 	_test_pacing(base)
 	_test_pacing_introductions(base)
+	_test_floor_cuts(base)
+	_test_cut_limits(base)
+	_test_cut_placement(base)
 	await _test_floor_routes_on_physics(base)
 
 
@@ -1228,3 +1234,257 @@ func _replay(sim: RunSim, layout: LevelLayout, route: Dictionary) -> Dictionary:
 	var r: Dictionary = await sim.run(part, int(route["start_lane"]), seconds, actions)
 	r["reached"] = float(r["distance"]) >= to + offset
 	return r
+
+
+# --- Floor cuts (task B4; GDD §9.9) ---------------------------------------------------------------
+
+const FloorCutterRules := preload("res://scripts/enemies/floor_cutter_rules.gd")
+const CutPlacementScript := preload("res://scripts/enemies/cut_placement.gd")
+const EVERY_BUILT_FEATURE: PackedStringArray = ["ramps", "ceilings", "pulsing", "speed_pads", "cyborg", "window_cyborg",
+	"hover_truck", "octodog", "screech", "drone", "generator", "host", "resonator", "barnacle_turret"]
+
+
+## Cuts are planned only where GDD §9.9's limits allow (LayoutChecks.check_cuts, through check_layout),
+## at 3, 5 and 6 lanes, deterministic: over seeds and difficulties with the stand-in (the floor_cutter
+## feature, quick play's), under narrow ceilings (their landing zones cover only their own lanes, B3),
+## and in busy levels with every built feature, the fill pass and zone doodads; and a level whose rules
+## plan no cut is the same data as one without them.
+func _test_floor_cuts(base: LevelConfig) -> void:
+	var patterns: Array = LevelGenerator.load_for(base)
+	var levels: int = 0
+	var cuts: int = 0
+	var lanes_used: Dictionary = {}
+	for lanes: int in [3, 5, 6]:
+		for difficulty: float in [0.0, 0.5, 1.0]:
+			for level_seed: int in range(1, 6):
+				var config: LevelConfig = base.duplicate() as LevelConfig
+				config.lane_count = lanes
+				config.difficulty = difficulty
+				config.level_seed = level_seed
+				config.features = PackedStringArray(["ramps", "ceilings", "pulsing", "floor_cutter"])
+				var tag: String = "(cuts) lanes=%d diff=%.1f seed=%d" % [lanes, difficulty, level_seed]
+				var gen := LevelGenerator.new()
+				var a: LevelLayout = gen.generate(config, tuning, patterns)
+				check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
+				var b: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
+				check(JSON.stringify(a.to_dict()) == JSON.stringify(b.to_dict()), "deterministic " + tag)
+				check(a.cuts.size() >= 4, "the stand-in's cuts are planned through the level (%d) %s" % [a.cuts.size(), tag])
+				LayoutChecks.check_layout(self, a, config, tag)
+				levels += 1
+				cuts += a.cuts.size()
+				for c: Dictionary in a.cuts:
+					lanes_used["%d:%d" % [lanes, int(c["lane"])]] = true
+	print("  floor cuts: %d in %d levels" % [cuts, levels])
+	for lanes: int in [3, 5, 6]:
+		var all: bool = true
+		for lane: int in lanes:
+			all = all and lanes_used.has("%d:%d" % [lanes, lane])
+		check(all, "cuts come in every lane at %d lanes, the outer ones too" % lanes)
+
+	# Under narrow ceilings: a cut may run beside one whose landing zone covers only other lanes.
+	var beside: int = 0
+	for lanes: int in [3, 5, 6]:
+		for level_seed: int in range(1, 7):
+			var config: LevelConfig = base.duplicate() as LevelConfig
+			config.lane_count = lanes
+			config.difficulty = 0.6
+			config.level_seed = level_seed
+			config.narrow_ceiling_share = 1.0
+			config.one_lane_ceiling_share = 0.4
+			config.features = PackedStringArray(["ramps", "ceilings", "pulsing", "floor_cutter"])
+			var tag: String = "(cuts, narrow ceilings) lanes=%d seed=%d" % [lanes, level_seed]
+			var gen := LevelGenerator.new()
+			var layout: LevelLayout = gen.generate(config, tuning, patterns)
+			check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
+			LayoutChecks.check_layout(self, layout, config, tag)
+			for c: Dictionary in layout.cuts:
+				var span: Vector2 = FloorCutPlan.lane_window(c)
+				for h: Dictionary in layout.hulls:
+					var landing: Vector2 = gen.zones.landing_zone(h)
+					if not layout.hull_covers(h, int(c["lane"])) and landing.x <= span.y and landing.y >= span.x:
+						beside += 1
+	check(beside > 0, "cuts run beside narrow ceilings whose landing zones cover only their own lanes (%d)" % beside)
+
+	# Busy levels: every built feature, the fill pass and zone doodads.
+	var busy_cuts: int = 0
+	for lanes: int in [3, 5, 6]:
+		for level_seed: int in range(1, 4):
+			var config: LevelConfig = base.duplicate() as LevelConfig
+			config.lane_count = lanes
+			config.difficulty = 0.6
+			config.enemy_scaling = 0.6
+			config.level_seed = level_seed
+			config.fill_empty_seconds = 2.0
+			config.doodad_share = 0.5
+			var features := PackedStringArray(EVERY_BUILT_FEATURE)
+			features.append("floor_cutter")
+			config.features = features
+			var tag: String = "(cuts, every feature) lanes=%d seed=%d" % [lanes, level_seed]
+			var gen := LevelGenerator.new()
+			var layout: LevelLayout = gen.generate(config, tuning, patterns)
+			check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
+			LayoutChecks.check_layout(self, layout, config, tag)
+			LayoutChecks.check_rules(self, layout, config, tag)
+			busy_cuts += layout.cuts.size()
+	check(busy_cuts > 0, "cuts find room in busy levels too (%d)" % busy_cuts)
+
+	# Nothing changes without cuts: with the stand-in's rules planning none, the level is the same data.
+	var t: FloorCutterTuning = FloorCutterRules.tuning()
+	var first: float = t.first_seconds
+	t.first_seconds = 1.0e5
+	for lanes: int in [3, 5, 6]:
+		var config: LevelConfig = base.duplicate() as LevelConfig
+		config.lane_count = lanes
+		config.level_seed = 4
+		config.fill_empty_seconds = 2.0
+		config.doodad_share = 0.5
+		config.features = PackedStringArray(["ramps", "ceilings", "pulsing", "cyborg", "drone"])
+		var without: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
+		var with_feature: LevelConfig = config.duplicate() as LevelConfig
+		var features := PackedStringArray(config.features)
+		features.append("floor_cutter")
+		with_feature.features = features
+		var none: LevelLayout = LevelGenerator.new().generate(with_feature, tuning, patterns)
+		check(none.cuts.is_empty() and JSON.stringify(none.to_dict()) == JSON.stringify(without.to_dict()),
+			"a level whose rules plan no cut is the same data as one without them (%d lanes)" % lanes)
+	t.first_seconds = first
+
+
+## A plain track for checking one floor cut's limits by hand: `lanes` lanes, a generator over it
+## (LevelGenerator.for_layout) with `holes_beside` (LevelConfig.cut_holes_beside), and the stand-in's cut
+## in `lane` waiting at 320 m. Returns [layout, cut, gen].
+func _cut_case(base: LevelConfig, lanes: int, lane: int, holes_beside: int = 1) -> Array:
+	var config: LevelConfig = base.duplicate() as LevelConfig
+	config.lane_count = lanes
+	config.cut_holes_beside = holes_beside
+	var layout := RunSim.layout(lanes, 700.0)
+	var gen := LevelGenerator.for_layout(config, tuning, layout)
+	return [layout, FloorCutterRules.plan(gen, FloorCutterRules.tuning(), lane, 320.0), gen]
+
+
+## Each of GDD §9.9's limits, by hand (LevelGenerator.cut_problem, CeilingZones.cut_clear), on a plain
+## track: a cut fits there; a pad or a ramp in its lane, a ceiling's landing zone over its lane, a hole
+## beside it on 3 lanes (or more than LevelConfig.cut_holes_beside on more), another cut meanwhile, an
+## enemy about, anything in its lane up to past its cause and no room to leave the lane each keep it
+## out; a narrow ceiling's landing zone over other lanes, a ramp on the other side, a hole beside it on
+## 5 and 6 lanes, its own cause and one neighbour with room don't.
+func _test_cut_limits(base: LevelConfig) -> void:
+	var fits: Array[bool] = []
+	for setup: Array in [[3, 1], [5, 0], [6, 5]]:
+		var c: Array = _cut_case(base, setup[0], setup[1])
+		fits.append((c[2] as LevelGenerator).cut_problem(c[1]) == "")
+	check(not fits.has(false), "on a plain track a cut fits in any lane, the outer ones too")
+	var c: Array = _cut_case(base, 3, 1)
+	(c[0] as LevelLayout).pads.append({"lane": 1, "at": FloorCutPlan.warn_at(c[1]) + 20.0})
+	check((c[2] as LevelGenerator).cut_problem(c[1]) != "", "never a lane holding a pad")
+	c = _cut_case(base, 3, 1)
+	var landing_end: float = FloorCutPlan.warn_at(c[1]) + 10.0
+	(c[0] as LevelLayout).hulls.append({"start": landing_end - 80.0, "end": landing_end})
+	(c[0] as LevelLayout).pads.append({"lane": 0, "at": landing_end - 77.0})
+	check((c[2] as LevelGenerator).cut_problem(c[1]) != "", "never the safe landing zone after a ceiling over its lane")
+	c = _cut_case(base, 3, 1)
+	(c[0] as LevelLayout).hulls.append(LevelLayout.make_hull(landing_end - 40.0, landing_end, Vector2i(2, 2), 3))
+	(c[0] as LevelLayout).pads.append({"lane": 2, "at": landing_end - 37.0})
+	check((c[2] as LevelGenerator).cut_problem(c[1]) == "", "a narrow ceiling's landing zone over other lanes only doesn't keep it out (B3)")
+	c = _cut_case(base, 3, 0)
+	(c[0] as LevelLayout).ramps.append({"side": -1, "at": FloorCutPlan.warn_at(c[1]) - 30.0})
+	check((c[2] as LevelGenerator).cut_problem(c[1]) != "",
+		"never a lane holding a ramp, or where the wall run it launches drops the player back")
+	c = _cut_case(base, 3, 0)
+	(c[0] as LevelLayout).ramps.append({"side": 1, "at": FloorCutPlan.warn_at(c[1]) + 20.0})
+	check((c[2] as LevelGenerator).cut_problem(c[1]) == "", "a ramp on the other side doesn't keep it out")
+	check(_holed_cut(base, 3, 1, [0], 1) != "" and _holed_cut(base, 3, 0, [2], 1) != "",
+		"on 3 lanes two lanes always stay whole: no hole beside a cut")
+	check(_holed_cut(base, 5, 2, [0], 1) == "" and _holed_cut(base, 5, 2, [0, 4], 1) != "" and _holed_cut(base, 5, 2, [0], 0) != "",
+		"on 5 lanes holes in at most LevelConfig.cut_holes_beside other lanes (3 stay whole)")
+	check(_holed_cut(base, 6, 1, [3], 1) == "" and _holed_cut(base, 6, 1, [3, 5], 1) != "", "on 6 lanes likewise (4 stay whole)")
+	c = _cut_case(base, 3, 1)
+	var other: Dictionary = (c[1] as Dictionary).duplicate()
+	other["lane"] = 2
+	other["start"] = float(other["start"]) + 30.0
+	other["end"] = float(other["end"]) + 30.0
+	(c[0] as LevelLayout).cuts.append(other)
+	check((c[2] as LevelGenerator).cut_problem(c[1]) != "", "only one cut at a time")
+	c = _cut_case(base, 3, 1)
+	(c[0] as LevelLayout).enemies.append({"type": "cyborg", "at": float(c[1]["end"]) - 5.0, "lane": 0, "side": 0, "seed": 1, "params": {}})
+	check((c[2] as LevelGenerator).cut_problem(c[1]) != "", "nothing else goes on meanwhile: an enemy about keeps it out")
+	c = _cut_case(base, 3, 1)
+	(c[0] as LevelLayout).enemies.append({"type": "floor_cutter", "at": float(c[1]["end"]), "lane": 1, "side": 0, "seed": 1, "params": {}})
+	check((c[2] as LevelGenerator).cut_problem(c[1]) == "", "its own cause waiting at its end is no other enemy")
+	# A host far back: its own spot is long gone, but its Bad Dream's chase can still be on (the host
+	# rules' doodad_keep_outs, in every lane).
+	c = _cut_case(base, 3, 1)
+	(c[2] as LevelGenerator).config.features = PackedStringArray(["host"])
+	(c[0] as LevelLayout).enemies.append({"type": "cyborg", "at": FloorCutPlan.warn_at(c[1]) - 150.0, "lane": 0, "side": 0,
+		"seed": 1, "params": {"host": true}})
+	check((c[2] as LevelGenerator).cut_problem(c[1]).begins_with("an attack runs meanwhile"),
+		"nothing else goes on meanwhile: a Bad Dream's chase keeps it out")
+	c = _cut_case(base, 3, 1)
+	(c[0] as LevelLayout).gaps.append({"lane": 1, "start": float(c[1]["end"]) + 2.0, "end": float(c[1]["end"]) + 6.0})
+	check((c[2] as LevelGenerator).cut_problem(c[1]) != "", "nothing else in its lane, up to past its cause's spot")
+	check(_fenced_cut(base, [0, 2]) != "", "with no room to switch out of its lane after the warning it doesn't fit")
+	check(_fenced_cut(base, [0]) == "", "one neighbour with room is enough")
+
+
+## cut_problem() for the stand-in's cut in `lane` of `lanes` with a hole beside it in each of `holed`.
+func _holed_cut(base: LevelConfig, lanes: int, lane: int, holed: Array, holes_beside: int) -> String:
+	var c: Array = _cut_case(base, lanes, lane, holes_beside)
+	for other: int in holed:
+		(c[0] as LevelLayout).gaps.append({"lane": other, "start": float(c[1]["start"]) + 10.0, "end": float(c[1]["start"]) + 15.0})
+	return (c[2] as LevelGenerator).cut_problem(c[1])
+
+
+## cut_problem() for the stand-in's cut in the middle of 3 lanes, with full fences every 1.5 m through
+## its window in each of `lanes`.
+func _fenced_cut(base: LevelConfig, lanes: Array) -> String:
+	var c: Array = _cut_case(base, 3, 1)
+	var d: float = FloorCutPlan.warn_at(c[1])
+	while d < float(c[1]["end"]):
+		for other: int in lanes:
+			(c[0] as LevelLayout).fences.append(RunSim.fence(other, d, "full"))
+		d += 1.5
+	return (c[2] as LevelGenerator).cut_problem(c[1])
+
+
+## CutPlacement makes room by taking out only what may go: holes, fences and speed pads in the cut's
+## lane over its window, and holes beside it beyond what may stay (the nearest lanes first), keeping
+## what lies beyond. A cut it can't make room for (a pad in its lane) changes nothing.
+func _test_cut_placement(base: LevelConfig) -> void:
+	for lanes: int in [3, 5]:
+		var c: Array = _cut_case(base, lanes, 1)
+		var layout: LevelLayout = c[0]
+		var cut: Dictionary = c[1]
+		var gen: LevelGenerator = c[2]
+		var mid: float = (float(cut["start"]) + float(cut["end"])) * 0.5
+		layout.gaps.append({"lane": 1, "start": mid, "end": mid + 4.0})
+		layout.fences.append(RunSim.fence(1, FloorCutPlan.warn_at(cut) + 5.0, "full"))
+		layout.speed_pads.append({"lane": 1, "at": mid - 15.0})
+		for other: int in lanes:
+			if other != 1:
+				layout.gaps.append({"lane": other, "start": mid + 6.0, "end": mid + 10.0})
+		layout.gaps.append({"lane": 0, "start": float(cut["end"]) + 60.0, "end": float(cut["end"]) + 64.0})
+		var tag: String = "(%d lanes)" % lanes
+		check(CutPlacementScript.place(gen, cut) and layout.cuts.size() == 1, "room is made for a cut and it's added " + tag)
+		var in_lane: int = 0
+		var beside: Array[int] = []
+		var beyond: int = 0
+		for g: Dictionary in layout.gaps:
+			if float(g["start"]) > float(cut["end"]) + 30.0:
+				beyond += 1
+			elif int(g["lane"]) == 1:
+				in_lane += 1
+			elif float(g["start"]) <= float(cut["end"]) and float(g["end"]) >= float(cut["start"]):
+				beside.append(int(g["lane"]))
+		check(in_lane == 0 and layout.fences.is_empty() and layout.speed_pads.is_empty(), "its lane is cleared over its window " + tag)
+		check(beside.size() == lanes - 1 - gen.whole_lanes_for_cut(lanes) and not beside.has(0) and not beside.has(2),
+			"holes beside it stay only where they may, the lanes nearest it cleared first (%s) %s" % [beside, tag])
+		check(beyond == 1, "what lies beyond it stays " + tag)
+	var b: Array = _cut_case(base, 3, 1)
+	var blocked_layout: LevelLayout = b[0]
+	var blocked: Dictionary = b[1]
+	blocked_layout.gaps.append({"lane": 1, "start": float(blocked["start"]) + 5.0, "end": float(blocked["start"]) + 9.0})
+	blocked_layout.pads.append({"lane": 1, "at": FloorCutPlan.warn_at(blocked) + 10.0})
+	blocked_layout.hulls.append({"start": FloorCutPlan.warn_at(blocked) + 7.0, "end": FloorCutPlan.warn_at(blocked) + 300.0})
+	var before: String = JSON.stringify(blocked_layout.to_dict())
+	check(not CutPlacementScript.place(b[2], blocked) and JSON.stringify(blocked_layout.to_dict()) == before,
+		"a cut that can't be made to fit (a pad in its lane) changes nothing")

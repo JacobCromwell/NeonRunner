@@ -26,6 +26,10 @@ const LAYER_DOODAD: int = 128
 ## A doodad's body in the hitbox view (debug_toggle_hitboxes): see-through blue, apart from the
 ## hazards' red.
 const DOODAD_DEBUG := Color(0.2, 0.55, 1.0, 0.3)
+## A floor cut's lane is drawn in slices this long (and cut at chunk cuts), which it hides as its front
+## passes them and shortens the one its front is in (FloorCut): short enough that one shortened slice
+## barely shows, long enough to keep a chunk's build cheap.
+const CUT_SLICE: float = 4.0
 
 var layout: LevelLayout
 var tuning: MovementTuning
@@ -36,6 +40,10 @@ var sfx: SfxLibrary
 var show_hitboxes: bool = false
 
 var _lane_gaps: Array = []
+## The layout's floor cuts by lane, in track order (LevelLayout.cuts).
+var _lane_cuts: Array = []
+## Built floor cuts (FloorCut nodes) by FloorCut.key_for(lane, end).
+var _cut_nodes: Dictionary = {}
 var _buckets: Dictionary = {}
 var _chunks: Dictionary = {}
 var _next_chunk: int = 0
@@ -56,28 +64,24 @@ func set_layout(p_layout: LevelLayout, p_tuning: MovementTuning, p_skin: ZoneSki
 	_chunks.clear()
 	_buckets.clear()
 	_fence_nodes.clear()
+	_cut_nodes.clear()
 	_next_chunk = 0
 	_lane_gaps.clear()
+	_lane_cuts.clear()
 	for lane: int in layout.lane_count:
 		_lane_gaps.append([])
+		_lane_cuts.append([])
 	_add_pieces(layout, 0)
 
 
-## Lengthens the track while it runs (a boss arena's next lap, BossArena): appends every list of
-## `extra` to the layout and moves its end to extra.length. The pieces must lie past built_until():
+## Lengthens the track while it runs (a boss arena's next lap, BossArena; endless mode's next stretch):
+## appends every list of `extra` to the layout (LevelLayout.append_pieces: floor cuts too, so a cut can
+## be added during a run) and moves its end to extra.length. The pieces must lie past built_until():
 ## chunks already built don't change. Credits and enemies only join the layout's lists; the credit
 ## field and the enemy director don't pick them up.
 func extend_layout(extra: LevelLayout) -> void:
 	var first_fence: int = layout.fences.size()
-	var lists: Dictionary = layout.to_dict()
-	var more: Dictionary = extra.to_dict()
-	for key: String in more:
-		if more[key] is Array and lists.get(key) is Array:
-			(lists[key] as Array).append_array(more[key])
-	# A level without doodads leaves them out of to_dict(): its list joins here.
-	if not lists.has("doodads"):
-		layout.doodads.append_array(extra.doodads)
-	layout.length = maxf(layout.length, extra.length)
+	layout.append_pieces(extra)
 	_add_pieces(extra, first_fence)
 
 
@@ -98,6 +102,32 @@ func update(player_distance: float, level_time: float) -> void:
 		if chunk["max_end"] < player_distance - KEEP_BEHIND:
 			(chunk["node"] as Node3D).queue_free()
 			_chunks.erase(index)
+	# Floor cuts: a hold after a block that's over lets go (FloorCut.tick), before the player moves.
+	for key: String in _cut_nodes.keys():
+		var cut: Variant = _cut_nodes[key]
+		if not is_instance_valid(cut) or (cut as Node).is_queued_for_deletion():
+			_cut_nodes.erase(key)
+		else:
+			(cut as FloorCut).tick(level_time)
+
+
+## The floor cut built for the layout's cut in `lane` whose cause waits at `end` (LevelLayout.cuts), or
+## null until the chunk where its stretch starts is built (and once it's freed behind the player).
+## Its cause runs it (FloorCut.advance_to, stop, hold_under).
+func floor_cut(lane: int, end: float) -> FloorCut:
+	var cut: Variant = _cut_nodes.get(FloorCut.key_for(lane, end))
+	if cut == null or not is_instance_valid(cut) or (cut as Node).is_queued_for_deletion():
+		return null
+	return cut as FloorCut
+
+
+## Every floor cut built and still on the track (tests and review tools).
+func floor_cuts() -> Array[FloorCut]:
+	var out: Array[FloorCut] = []
+	for cut: Variant in _cut_nodes.values():
+		if is_instance_valid(cut) and not (cut as Node).is_queued_for_deletion():
+			out.append(cut as FloorCut)
+	return out
 
 
 ## Switches off, for the rest of the level, every fence within `radius` of `center` (world space),
@@ -151,6 +181,20 @@ func _add_pieces(pieces: LevelLayout, first_fence: int) -> void:
 	_bucket("ramps", pieces.ramps, "at", tuning.ramp_length)
 	_bucket("speed_pads", pieces.speed_pads, "at", tuning.speed_pad_length)
 	_bucket("doodads", pieces.doodads, "start", 0.0, "end")
+	# A floor cut is built in the chunk where its stretch starts, which stays until the player is past
+	# its cause's spot; each chunk draws the slices of its lane's floor within it.
+	for c: Dictionary in pieces.cuts:
+		_lane_cuts[int(c["lane"])].append(c)
+		var index: int = maxi(0, int(floor(float(c["start"]) / CHUNK_LENGTH)))
+		if not _buckets.has(index):
+			_buckets[index] = {"max_end": 0.0}
+		var bucket: Dictionary = _buckets[index]
+		if not bucket.has("cuts"):
+			bucket["cuts"] = []
+		bucket["cuts"].append(c)
+		bucket["max_end"] = maxf(bucket["max_end"], FloorCutPlan.lane_window(c).y)
+	for list: Array in _lane_cuts:
+		list.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["start"] < b["start"])
 
 
 ## Groups items by the chunk they start in. An item spanning several chunks keeps its
@@ -180,9 +224,15 @@ func _build_chunk(index: int) -> void:
 	var bucket: Dictionary = _buckets.get(index, {})
 	_chunks[index] = {"node": root, "max_end": maxf(c1, float(bucket.get("max_end", 0.0)))}
 
+	# Floor cuts whose stretch starts here, before the floor slices that register with them.
+	for c: Dictionary in bucket.get("cuts", []):
+		_build_cut(root, c)
 	for lane: int in layout.lane_count:
-		for piece: Vector2 in _floor_pieces(lane, c0, c1):
-			_build_floor_piece(root, lane, piece, piece.x > c0, piece.y < c1)
+		for piece: Vector4 in _floor_pieces(lane, c0, c1):
+			_build_floor_piece(root, lane, Vector2(piece.x, piece.y), piece.z > 0.5, piece.w > 0.5)
+		for c: Dictionary in _lane_cuts[lane]:
+			if float(c["start"]) < c1 and float(c["end"]) > c0:
+				_build_cut_slices(root, c, c0, c1)
 	var wall_enemies: Array[Dictionary] = _enemies_between(c0, c1)
 	for side: int in [-1, 1]:
 		skin.note_wall_enemies(side, c0, c1, wall_enemies)
@@ -216,23 +266,74 @@ func _enemies_between(c0: float, c1: float) -> Array[Dictionary]:
 	return out
 
 
-## Returns the [start, end] distance ranges of solid floor for one lane within [c0, c1).
-func _floor_pieces(lane: int, c0: float, c1: float) -> Array[Vector2]:
-	var pieces: Array[Vector2] = []
-	var cursor: float = c0
+## The ranges of one lane's floor within [c0, c1) the chunk builds as pieces: Vector4(start, end,
+## edge_start, edge_end), the edges 1 where a gap borders the piece there (0 elsewhere). A floor cut's
+## stretch (LevelLayout.cuts) is left out like a gap, but borders the pieces beside it with no edge:
+## its own slices carry the floor on (_build_cut_slices).
+func _floor_pieces(lane: int, c0: float, c1: float) -> Array[Vector4]:
+	# [start, end, a gap (or a cut)], in track order.
+	var holes: Array[Array] = []
 	for g: Dictionary in _lane_gaps[lane]:
-		var gs: float = g["start"]
-		var ge: float = g["end"]
-		if ge <= cursor:
+		if float(g["end"]) > c0 and float(g["start"]) < c1:
+			holes.append([float(g["start"]), float(g["end"]), true])
+	if not _lane_cuts[lane].is_empty():
+		for c: Dictionary in _lane_cuts[lane]:
+			if float(c["end"]) > c0 and float(c["start"]) < c1:
+				holes.append([float(c["start"]), float(c["end"]), false])
+		holes.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+	var pieces: Array[Vector4] = []
+	var cursor: float = c0
+	var edge_start: bool = false
+	for h: Array in holes:
+		var hs: float = h[0]
+		var he: float = h[1]
+		if he <= cursor:
 			continue
-		if gs >= c1:
-			break
-		if gs > cursor:
-			pieces.append(Vector2(cursor, gs))
-		cursor = maxf(cursor, ge)
+		if hs > cursor:
+			pieces.append(Vector4(cursor, hs, 1.0 if edge_start else 0.0, 1.0 if h[2] else 0.0))
+		if he > cursor:
+			cursor = he
+			edge_start = h[2]
 	if cursor < c1:
-		pieces.append(Vector2(cursor, c1))
+		pieces.append(Vector4(cursor, c1, 1.0 if edge_start else 0.0, 0.0))
 	return pieces
+
+
+## Floor cut `c` (LevelLayout.cuts), in the chunk `root` where its stretch starts: its collision and
+## the skin's look of the hole (FloorCut).
+func _build_cut(root: Node3D, c: Dictionary) -> void:
+	var cut := FloorCut.new()
+	root.add_child(cut)
+	cut.setup(geo, c, FLOOR_THICKNESS, skin)
+	_cut_nodes[FloorCut.key_for(int(c["lane"]), float(c["end"]))] = cut
+
+
+## The lane's floor over floor cut `c`'s stretch within [c0, c1), as the skin draws any floor
+## (floor_segment, with no gap edges: the floor runs on), in slices of CUT_SLICE metres from the cut's
+## start, each under a node of its own the cut hides or shortens as it runs (FloorCut.add_slice).
+## No collision: the cut holds the stretch's.
+func _build_cut_slices(root: Node3D, c: Dictionary, c0: float, c1: float) -> void:
+	var lane: int = int(c["lane"])
+	var start: float = float(c["start"])
+	var lo: float = maxf(start, c0)
+	var hi: float = minf(float(c["end"]), c1)
+	var cut: FloorCut = floor_cut(lane, float(c["end"]))
+	var span: Vector2 = geo.lane_floor_span(lane)
+	var k: int = maxi(0, floori((lo - start) / CUT_SLICE))
+	var a: float = lo
+	while a < hi - 0.0005:
+		var b: float = minf(start + (k + 1) * CUT_SLICE, hi)
+		k += 1
+		if b <= a + 0.0005:
+			continue
+		var slice := Node3D.new()
+		slice.name = "CutSlice"
+		root.add_child(slice)
+		var center := Vector3((span.x + span.y) * 0.5, -FLOOR_THICKNESS * 0.5, -(a + b) * 0.5)
+		skin.floor_segment(slice, center, Vector3(span.y - span.x, FLOOR_THICKNESS, b - a), geo.lane_x(lane), false, false)
+		if cut != null:
+			cut.add_slice(slice, a, b)
+		a = b
 
 
 func _build_floor_piece(root: Node3D, lane: int, piece: Vector2, edge_start: bool, edge_end: bool) -> void:

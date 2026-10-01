@@ -161,6 +161,20 @@ func _edge(s: MeshLayer, x0: float, x1: float, d: float, lip: float, dark: float
 		s.rect(Vector3(x1, strip_y, z - 0.004), Vector3(-w, 0, 0), Vector3(0, STRIP_HEIGHT, 0), edge, STRIP_GLOW)
 
 
+## A floor cut through a walkway (task B4; GDD §9.9): the gold walkway cut open down the lane (the track
+## hides the deck as the cut runs, FloorCutSection). The decks beside it and beyond it end in the zone's
+## edge (a dark line, then the orange lip right on the collision edge, a strip along the top of the cut
+## and the soft halo on its far side), and below everything is the deep shade under the decks dropping
+## to the canal, like any gap: nothing in it is gold, lit or deck-like.
+func cut(parent: Node3D, section: FloorCutSection) -> void:
+	ZoneSkin.standard_floor_cut(parent, section, skin.solid_material(), skin.glow_material(), {
+		"edge": skin.gap_edge_color, "inside": skin.gap_inside_color, "pattern": MeshKit.PAT_UNDERDECK,
+		"params": [0.0, 0.0, 0.0], "depth": skin.canal_depth, "bottom": false,
+		"lip": EDGE_LIP, "lip_glow": LIP_GLOW, "strip_glow": STRIP_GLOW, "halo": EDGE_HALO,
+		"dark_line": skin.joint_color, "dark": EDGE_DARK,
+	})
+
+
 ## The canal far below the walkways, flowing toward the player, and the mist, gold leaf and speed
 ## streaks drifting over the decks (the still floor's motion cues), for one chunk. Neither belongs to
 ## a lane, so the skin adds them to the left wall's mesh.

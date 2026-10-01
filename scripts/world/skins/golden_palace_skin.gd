@@ -14,9 +14,9 @@ extends GoldenSkin
 ## sets moon_radius to 0 (no moon indoors) and make_environment() below turns the stars off too (the
 ## one export make_environment() doesn't expose); the far "skyline" and its warm haze carry over
 ## unchanged, read as distant halls glimpsed through the haze.
-## Only floor_segment(), wall_section() and ceiling_section()/hull() are overridden, replacing the
-## Golden Zone's walkways-over-water, opulent facades and bridges with the palace's own floor
-## (GoldenPalaceFloor), colonnade (GoldenPalaceWalls) and ceilings (GoldenPalaceCeilings). Every
+## Only floor_segment() (and floor_cut(), task B4), wall_section() and ceiling_section()/hull() are
+## overridden, replacing the Golden Zone's walkways-over-water, opulent facades and bridges with the
+## palace's own floor (GoldenPalaceFloor), colonnade (GoldenPalaceWalls) and ceilings (GoldenPalaceCeilings). Every
 ## other export carries over unchanged (GDScript can't redeclare an exported property in a
 ## subclass, CLAUDE.md principle 7: tunable numbers live in data, not code), so the palace's own
 ## data file (data/skins/golden_palace_skin.tres) sets fresh values for the ones its colonnade and
@@ -72,6 +72,12 @@ func floor_segment(parent: Node3D, center: Vector3, size: Vector3, lane_x: float
 	var batch := MeshBatch.new()
 	palace_floor().build(batch, center, size, lane_x, edge_start, edge_end)
 	batch.commit(parent)
+
+
+## A floor cut (task B4; GDD §9.9: the Buzz Overdrive appears in the Golden Zone): the hall's marble
+## floor split open down the lane like any break in it (GoldenPalaceFloor.cut), not the walkways'.
+func floor_cut(parent: Node3D, cut: FloorCutSection) -> void:
+	palace_floor().cut(parent, cut)
 
 
 func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: float) -> void:
