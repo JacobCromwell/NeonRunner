@@ -17,3 +17,11 @@ static func is_mobile() -> bool:
 ## reports a touch screen; that doesn't count.
 static func has_touch() -> bool:
 	return is_mobile() or (DisplayServer.is_touchscreen_available() and not Input.is_emulating_touch_from_mouse())
+
+
+## DESIGN-TBD (docs/questions/d3.md): nothing decides "low-end" across the project yet (task D3's
+## brief: "nothing decides low-end yet; add the smallest clean switch"). Placeholder: a mobile device
+## still rendering with the Compatibility renderer, which stands in for an actual low-end phone (a
+## desktop preview of the web build reports mobile only through OS.has_feature, never this).
+static func is_low_end() -> bool:
+	return is_mobile() and RenderingServer.get_current_rendering_method() == "gl_compatibility"

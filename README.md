@@ -203,6 +203,7 @@ tools/godot.sh test             all tests, under two minutes; exit code 0 = pass
 tools/godot.sh smoke [options]  40 s of the real game, headless; prints only problems
 tools/godot.sh sfx [--review]   regenerate the sound effects (assets/sfx/) from tools/asset_gen/
 tools/godot.sh music [--review] regenerate the music (assets/music/)
+tools/godot.sh citizens         regenerate the Marketplace citizens' sprite sheets (assets/sprites/citizens/)
 tools/godot.sh web [--debug] [--serve]  export the web demo and check it (see The web demo)
 tools/godot.sh import           force a resource import
 ```

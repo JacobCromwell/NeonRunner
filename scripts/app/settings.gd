@@ -13,6 +13,9 @@ const DEFAULTS: Dictionary = {
 	"reduced_flashing": false,
 	## DESIGN-TBD: first-encounter hints (the tutorial approach is open, OPEN_QUESTIONS §5).
 	"hints": true,
+	## The Marketplace citizens (GDD §5, task D3): scenery only, off on a low-end device regardless
+	## of this (DeviceProfile.is_low_end(), citizens_enabled()).
+	"citizens": true,
 	"bindings": {},
 }
 ## The actions a player can rebind, in menu order (CLAUDE.md principle 1: gameplay uses only these).
@@ -25,6 +28,11 @@ const ACTION_LABELS: Dictionary = {
 ## The profile's Reduced flashing, for visuals that aren't shaders (shaders read the global uniform
 ## `reduced_flashing`). Kept current by apply_visuals().
 static var flashing_reduced: bool = false
+
+## Whether the Marketplace citizens (task D3) build at all: the player's own setting, and off on a
+## low-end device regardless (CLAUDE.md: "added only if they don't noticeably cost performance...").
+## Kept current by apply_visuals(), like flashing_reduced, so scenery code never needs a Profile.
+static var citizens_enabled: bool = true
 
 
 static func value(profile: Profile, key: String) -> Variant:
@@ -54,6 +62,7 @@ static func apply(profile: Profile) -> void:
 static func apply_visuals(profile: Profile) -> void:
 	flashing_reduced = reduced_flashing(profile)
 	RenderingServer.global_shader_parameter_set(&"reduced_flashing", 1.0 if flashing_reduced else 0.0)
+	citizens_enabled = bool(value(profile, "citizens")) and not DeviceProfile.is_low_end()
 
 
 static func apply_bindings(profile: Profile) -> void:
