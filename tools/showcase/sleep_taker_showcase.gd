@@ -197,7 +197,6 @@ func _hold_still() -> void:
 
 
 # --- measure -------------------------------------------------------------------------------------
-# --- measure -------------------------------------------------------------------------------------
 
 ## Where the runner stops to measure (in the middle lane, so the slash it holds lights the middle three)
 ## and the staged pieces ahead of it, outside those lanes (track distances).
