@@ -470,20 +470,22 @@ func _rob_run(lanes: int, lane: int, seed: int, dodge: bool) -> Dictionary:
 		out["taken"] = amount
 		out["at"] = p.elapsed)
 	var moved: Array[bool] = [false]
+	var ref: WeakRef = weakref(thief)
 	await _until(world, func() -> bool:
-		if is_instance_valid(thief):
-			(out["trace"] as Array).append(snappedf(thief.position.x, 0.001))
-			if thief.state == StandInThief.State.FLEE:
+		var t := ref.get_ref() as StandInThief
+		if t != null:
+			(out["trace"] as Array).append(snappedf(t.position.x, 0.001))
+			if t.state == StandInThief.State.FLEE:
 				out["fled"] = true
-			if dodge and not moved[0] and thief.rel_ahead < thief.tune.approach_speed:
+			if dodge and not moved[0] and t.rel_ahead < t.tune.approach_speed:
 				p.press(&"move_right" if lane < lanes - 1 else &"move_left")
 				moved[0] = true
-		return not is_instance_valid(thief), 16.0)
+		return t == null, 16.0)
 	out["thefts"] = world.score.thefts
 	out["alive"] = p.alive
 	out["kept"] = world.score.stolen_kept()
 	out["credits"] = world.score.credits
-	out["gone"] = not is_instance_valid(thief) and world.score.jackpots == 0
+	out["gone"] = ref.get_ref() == null and world.score.jackpots == 0
 	await sim.free_world(world)
 	return out
 
@@ -497,14 +499,16 @@ func _test_catches_on_physics() -> void:
 	await _until(world, func() -> bool: return p.elapsed > 0.05, 1.0)
 	world.score.add_credit(400)
 	var thief: StandInThief = _spawn(world, p.lane)
+	var ref: WeakRef = weakref(thief)
 	var causes: Array[StringName] = []
 	world.director.enemy_defeated.connect(func(_e: Enemy, cause: StringName) -> void: causes.append(cause))
 	var jumped: Array[bool] = [false]
 	await _until(world, func() -> bool:
-		if not jumped[0] and is_instance_valid(thief) and thief.rel_ahead <= 3.3:
+		var t := ref.get_ref() as StandInThief
+		if not jumped[0] and t != null and t.rel_ahead <= 3.3:
 			p.press(&"jump")
 			jumped[0] = true
-		return not is_instance_valid(thief), 12.0)
+		return t == null, 12.0)
 	check(causes == [&"stomp"] and world.score.thefts == 0 and world.score.credits == 500 and world.score.jackpots == 100,
 		"dropping onto it catches it: its jackpot, no theft (%s, %d credits)" % [causes, world.score.credits])
 	await sim.free_world(world)
@@ -515,17 +519,18 @@ func _test_catches_on_physics() -> void:
 		p = world.player
 		await _until(world, func() -> bool: return p.elapsed > 0.05, 1.0)
 		world.score.add_credit(400)
-		thief = _spawn(world, p.lane)
+		ref = weakref(_spawn(world, p.lane))
 		causes.clear()
 		world.director.enemy_defeated.connect(func(_e: Enemy, cause: StringName) -> void: causes.append(cause))
 		if way == "claws":
 			p.claws = true
 		var dashed: Array[bool] = [false]
 		await _until(world, func() -> bool:
-			if way == "dash" and not dashed[0] and is_instance_valid(thief) and thief.rel_ahead <= 2.0:
+			var t := ref.get_ref() as StandInThief
+			if way == "dash" and not dashed[0] and t != null and t.rel_ahead <= 2.0:
 				p.start_dash(1.0, 0.0)
 				dashed[0] = true
-			return not is_instance_valid(thief), 12.0)
+			return t == null, 12.0)
 		check(causes == [StringName(way)] and world.score.thefts == 0 and world.score.credits == 500,
 			"the %s catches it: its jackpot, no theft (%s)" % [way, causes])
 		await sim.free_world(world)
@@ -536,8 +541,8 @@ func _test_catches_on_physics() -> void:
 	world = sim.build_world(RunSim.layout(5, 2000.0), armed)
 	p = world.player
 	await _until(world, func() -> bool: return p.elapsed > 0.05, 1.0)
-	thief = _spawn(world, p.lane)
-	await _until(world, func() -> bool: return not is_instance_valid(thief), 12.0)
+	ref = weakref(_spawn(world, p.lane))
+	await _until(world, func() -> bool: return ref.get_ref() == null, 12.0)
 	check(world.score.thefts == 0 and world.score.jackpots == 100 and world.score.credits == 100,
 		"shot on its way in: caught, its jackpot (%d credits)" % world.score.credits)
 	await sim.free_world(world)
