@@ -15,7 +15,7 @@ extends Enemy
 ##    left behind.
 ##
 ## Every contact is its tentacles (an enemy attack): the lunge, or the grab when the player lands on
-## it without claws. Armor or the shield blocks one; claws and the dash kill it; weapons need 5 laser
+## it without claws. Armor or the shield blocks one; claws and the dash kill it; weapons need 7 laser
 ## tier 1 shots (health in data/enemies/octodog.tres).
 ##
 ## Charges are planned by the generator (octodog_rules.gd: params "charges" and "charge_at", the

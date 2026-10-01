@@ -298,7 +298,10 @@ func _test_pad_narrow() -> void:
 			await sim.free_world(w)
 
 
-## GDD §8 damage reference: 15 shots at laser tier 1, 5 at missile tier 4. Claws don't work.
+## GDD §8 damage reference: a direct hit's plain damage (this test fires straight through the
+## projectile pool, not through auto-fire): 15 shots at laser tier 1, 5 at missile tier 4. (Auto-fire's
+## own laser tier 1 takes 2 more, via PowerupTuning.tier1_extra_shots: see test_powerups.gd.) Claws
+## don't work.
 func _test_weapons() -> void:
 	var w: RunWorld = sim.build_world(RunSim.layout(3, 600.0))
 	w.player.god_mode = true

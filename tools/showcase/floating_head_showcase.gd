@@ -43,7 +43,10 @@ extends Node3D
 ## --towers-after=N (the attacks it shows before it takes aim at a tower; 0 baits the first tower at
 ## once, about 11 s in), --phase=N (start at phase N, as a checkpoint would: 1 or 2 drop two cyborgs;
 ## with no bombing run first in faceoff, fallback and missed), --wall=left|right (the wall the wall
-## jump takes; the nearer one by default).
+## jump takes; the nearer one by default), --board-late[=S] (task E1e: in the first window the runner
+## waits beside the ramp and switches onto it once a share S of it is behind it, 0.4 by default, the way
+## the owner's playtest met it), --e1c (E1c's ramp, one straight slab whose sides block from a step
+## high, and its smaller stomp boxes: the before of E1e's reviews).
 ## Frames worth a look (at --fixed-fps 10): faceoff at 3 lanes, a low sweep 78-95, a drag 106-128 (its
 ## aiming spot, then the lane warning and the burning line), a high sweep 138-160; faceoff with
 ## --towers-after=0, the bait and the pin about 85-125, then the stomp window: the ramp (phase 0),
@@ -76,6 +79,8 @@ func _ready() -> void:
 	var towers_after: int = -1
 	var phase: int = 0
 	var wall: int = 0
+	var board_late: float = -1.0
+	var e1c: bool = false
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--scenario="):
 			scenario = arg.get_slice("=", 1)
@@ -101,6 +106,12 @@ func _ready() -> void:
 			phase = int(v)
 		elif arg.begins_with("--wall="):
 			wall = -1 if v == "left" else 1
+		elif arg == "--board-late":
+			board_late = 0.4
+		elif arg.begins_with("--board-late="):
+			board_late = float(v)
+		elif arg == "--e1c":
+			e1c = true
 	var def: BossDef = (load(BOSS_PATH) as BossDef).duplicate() as BossDef
 	var t: FloatingHeadTuning = (def.tuning as FloatingHeadTuning).duplicate() as FloatingHeadTuning
 	if scenario == "reveal":
@@ -116,6 +127,11 @@ func _ready() -> void:
 		t.tower_first = 100000.0
 	if towers_after >= 0:
 		t.towers_after = towers_after
+	if e1c:
+		t.ramp_board_share = 0.0
+		t.stomp_covers_outer_lanes = false
+		t.stomp_depth = 3.0
+		t.stomp_top = 0.55
 	def.tuning = t
 	var tuning := load("res://data/tuning/movement.tres") as MovementTuning
 	var ctx := RunContext.new()
@@ -142,6 +158,7 @@ func _ready() -> void:
 		bot = FloatingHeadBot.new(head, scenario != "fallback")
 		bot.wrong_route = scenario == "missed"
 		bot.wall_side = wall
+		bot.ramp_board_at = board_late
 
 	var env := WorldEnvironment.new()
 	env.environment = world.skin.make_environment()

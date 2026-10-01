@@ -148,7 +148,9 @@ func take_damage(amount: float, source: StringName, splash: bool = false) -> voi
 		return
 	health -= amount
 	health_changed.emit(self)
-	if health <= 0.0:
+	# A small tolerance: weapon_damage is a PackedFloat32Array, so a shot count meant to land exactly
+	# on 0 (GDD §8's shots to kill) can leave a hair of float32 rounding error above it.
+	if health <= 0.001:
 		defeat(source)
 
 

@@ -5,7 +5,7 @@ extends Resource
 ## The GDD fixes the first bombing run's length (about 15-20 s), the searchlight that warns where the
 ## bombs fall and their falling whistle; every other number here is a placeholder (DESIGN-TBD,
 ## docs/OPEN_QUESTIONS.md §D, items 83-92, 113-123 and the stomp windows' 158-170; the propaganda and
-## the defeat: docs/questions/e1.md, From E1d).
+## the defeat: docs/questions/e1.md, From E1d; the owner's playtest fixes: docs/questions/e1e.md).
 ## The fight's length (GDD §10: 60-120 s; item 169) comes from the bombing runs, the attacks before a
 ## tower and the towers' spacing. DESIGN-TBD (docs/questions/e1.md, From E1d, item 4): placeholders
 ## that bring a runner who never misses to about 100 s (a 16 s first run, two 8 s later runs, towers
@@ -216,13 +216,20 @@ extends Resource
 ## centre lies within this share of the ship's width from its centre line (3, 3 and 4 of them at 3, 5
 ## and 6 lanes).
 @export_range(0.2, 0.45, 0.01) var weak_point_reach: float = 0.38
-## DESIGN-TBD (item 160): where a stomp counts: a box over each weak point this wide and this deep
-## (along the track), from a little under its socket to stomp_top above it; a runner coming down with
-## their feet within GameRules.stomp_tolerance under its top stomps it. Generous: the red dome is
-## 1.7 m across.
+## DESIGN-TBD (item 160; docs/questions/e1e.md): where a stomp counts: a box over each weak point this
+## wide and this deep (along the track), from a little under its socket to stomp_top above it; a runner
+## coming down with their feet within GameRules.stomp_tolerance under its top stomps it. Generous: the
+## red dome is 1.7 m across. E1e (the owner's playtest) made it lower and deeper (it was 0.55 m and
+## 3 m), so a wall jump lands on it over a longer stretch of the wall (tools/measure/stomp_routes.gd).
 @export_range(1.0, 2.4, 0.05, "suffix:m") var stomp_width: float = 2.0
-@export_range(1.0, 5.0, 0.1, "suffix:m") var stomp_depth: float = 3.0
-@export_range(0.3, 1.2, 0.05, "suffix:m") var stomp_top: float = 0.55
+@export_range(1.0, 6.0, 0.1, "suffix:m") var stomp_depth: float = 4.0
+@export_range(0.2, 1.2, 0.05, "suffix:m") var stomp_top: float = 0.35
+## DESIGN-TBD (docs/questions/e1e.md; the owner's playtest): a wall jump lands in the outer lane, and a
+## drop off the third window's ceiling in the lane it was ridden in; at 5 and 6 lanes the outer lanes
+## have no weak point of their own (weak_point_reach). With this on, the outermost weak point's stomp box
+## also reaches over the lanes beside it out to the wall, at its own height (so a jump from the trucks
+## still can't reach it): the wall jump and the drop stomp from the outer lane too.
+@export var stomp_covers_outer_lanes: bool = true
 ## DESIGN-TBD (item 162): the window closes (a miss) when the runner is still down on the trucks (feet
 ## under window_floor_height) within window_release_gap of its face, or has run window_pass_margin past
 ## its weak points without a stomp. Then it shakes free: no time limit, no escalation (GDD §10).
@@ -250,6 +257,27 @@ extends Resource
 @export_range(0.2, 2.0, 0.05, "suffix:m") var ramp_lift: float = 0.8
 @export_range(0.0, 2.0, 0.05, "suffix:m") var ramp_overhang: float = 0.8
 @export_range(0.1, 1.0, 0.05, "suffix:s") var ramp_slam_seconds: float = 0.3
+## DESIGN-TBD (docs/questions/e1e.md; the owner's playtest, September 30, 2026: a lane switch onto the
+## ramp anywhere but its very foot bounced off its side): the ramp's first ramp_board_share (from its
+## foot) is a low lead-in rising to ramp_board_height, with bevelled sides that a lane switch into its
+## lane steps up anywhere along it (never higher than a lane switch can step up them:
+## FloatingHeadRamp.side_step_limit, about 1.07 m with the movement tuning's lanes); from there the slab
+## rises more steeply onto the crown, and its sides block. While the ramp is the way up, the window
+## stays open for a runner down on the trucks until they pass the lead-in's end (instead of
+## window_release_gap). 0 = one straight slab whose sides block from a step high (E1c's).
+@export_range(0.0, 0.9, 0.05) var ramp_board_share: float = 0.75
+@export_range(0.0, 1.2, 0.05, "suffix:m") var ramp_board_height: float = 1.0
+
+@export_group("Wall window")
+## DESIGN-TBD (docs/questions/e1e.md; the owner's playtest: after the first stomp nothing showed a way
+## onto its head): the second way up's cue. As the tower falls, both walls light up
+## (FloatingHeadWallMarks, with a sound): a strip of green chevrons at running height from
+## wall_entry_before the pinned ship's face (get onto the wall along its first part, before
+## window_release_gap) to a tall mark wall_jump_before its face (jump off the wall there, toward the
+## ship). A wall jump off the marks lands on a weak point at every lane count (the outermost stomp boxes
+## reach the outer lanes: stomp_covers_outer_lanes).
+@export_range(4.0, 30.0, 0.5, "suffix:m") var wall_entry_before: float = 13.0
+@export_range(0.0, 10.0, 0.25, "suffix:m") var wall_jump_before: float = 4.0
 
 @export_group("Ceiling window")
 ## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 165): the third way up. As the tower falls,

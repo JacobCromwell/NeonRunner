@@ -25,7 +25,8 @@ extends EnemyTuning
 
 @export_group("Hovering")
 ## DESIGN-TBD: how far ahead of the player it hovers while it pulses ("far ahead", GDD §9.10). Kept
-## within the weapon's range (PowerupTuning.weapon_range) so auto-fire can target it.
+## within the weapon's shortest range (PowerupTuning.weapon_range, tier 1's) so auto-fire can target
+## it at any tier.
 @export_range(20.0, 65.0, 1.0, "suffix:m") var hover_ahead: float = 34.0
 ## DESIGN-TBD: the height of its red core above the floor: out of reach of a stomp, under the ceiling.
 @export_range(2.0, 3.6, 0.05, "suffix:m") var hover_height: float = 3.1
