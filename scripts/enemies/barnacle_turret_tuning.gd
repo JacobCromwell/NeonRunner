@@ -55,6 +55,11 @@ extends CyborgGunTuning
 @export_range(0.3, 4.0, 0.05, "suffix:s") var spacing_seconds: float = 1.2
 ## A turret keeps this far from a credit on the ceiling in its lane.
 @export_range(0.0, 10.0, 0.5, "suffix:m") var credit_margin: float = 3.0
+## In the level that introduces it (a feature start, LevelConfig.feature_starts), the first turret
+## comes within this long (at run speed) of the start. When no ceiling it fits on lies there, the
+## rules add a plain one this long for it (BarnacleTurretRules).
+@export_range(2.0, 30.0, 0.5, "suffix:s") var intro_seconds: float = 8.0
+@export_range(2.5, 6.0, 0.1, "suffix:s") var intro_ceiling_seconds: float = 4.0
 
 
 ## Plain laser tier 1 shots to kill it at a level's enemy_scaling `t`: health_at(t) rounded to a
