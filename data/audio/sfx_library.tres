@@ -106,6 +106,7 @@ volume_db = {
 "slow_time_on": -1.0,
 "star": -6.0,
 "stomp": -2.0,
+"tithe_collector_cue": -5.0,
 "tower_crack": -2.0,
 "tower_crash": -1.5,
 "truck_bang": -1.0,
