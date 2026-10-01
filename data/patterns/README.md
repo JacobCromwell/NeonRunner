@@ -83,7 +83,7 @@ pattern like the Octodog's fits when its dog does). Patterns need nothing specia
 | `min_difficulty` / `max_difficulty` | The pattern can be picked only while the current difficulty (0–1) is in this range |
 | `weight` | Relative pick chance among the patterns that qualify |
 | `min_lanes` | Optional. Skip on devices with fewer lanes |
-| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`, `resonator`), `screech_vents` (wall-vent screeches only, rare, for zones whose floor has no manholes, GDD §9.5), or a planned one: `barnacle_turret`, `wall_fences`, `wall_fences_partial` (with `wall_fences`: low or high wall fences), `buzz_overdrive`, `tithe_collector`, `gilded_sentinel` |
+| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`, `resonator`), `screech_vents` (wall-vent screeches only, rare, for zones whose floor has no manholes, GDD §9.5), or a planned one: `wall_fences`, `wall_fences_partial` (with `wall_fences`: low or high wall fences), `buzz_overdrive`, `tithe_collector`, `gilded_sentinel` |
 | `length` | Metres of track the pattern takes (the generator extends it for long gaps and hulls) |
 | `elements` | The pieces to place (see below) |
 
@@ -191,3 +191,12 @@ is clear in every lane (no gap, fence, floor enemy, pad or ceiling landing, and 
 run), move a Resonator whose visit doesn't fit a little earlier or later, keep one visit at a time, and
 drop what still doesn't fit. Other patterns need nothing for it: the Resonator only uses floor that's
 clear already.
+
+The Barnacle Turret (`barnacle_turret`) has no patterns, and no pattern should require it: its rules
+(`barnacle_turret_rules.gd`, after every rule that adds or takes away ceilings) hang turrets from the
+ceilings the level already has (never a one-lane one, at most 2, off the pads' lanes and the ceiling's
+credits), so the pattern pass, the recency curve and the guarantee's forced picks never count it, and a
+level is the same with or without it bar its turrets. Its introduction (Marketplace 1) comes soon after the
+feature's start: where no ceiling it fits on lies there, the rules add a plain one, only where one fits
+without clearing anything. For patterns this means only that their ceilings may get turrets: a ceiling's
+landing zone, pads and floor stay exactly as the pattern made them.

@@ -665,6 +665,9 @@ func _test_light() -> void:
 	var sun := DirectionalLight3D.new()
 	sun.light_energy = 0.8
 	tree.root.add_child(sun)
+	env.fog_light_energy = 1.0
+	# The arena's own darker light (LevelConfig.darkness, as LevelRun sets it).
+	ZoneSkin.set_scenery_light(0.8)
 	var enc := DummyBoss.new()
 	var world: RunWorld = _fight(enc, DummyBoss.make_def([[1, 1, false, 0.1]]), 5)
 	await _until(world, func() -> bool: return enc.is_vulnerable(), 1.0)
@@ -673,11 +676,27 @@ func _test_light() -> void:
 	check(is_equal_approx(enc.light_level(), BossEncounter.MIN_LIGHT_LEVEL), "the light never goes below its floor (%.2f)" % enc.light_level())
 	check(is_equal_approx(env.ambient_light_energy, BossEncounter.MIN_LIGHT_LEVEL) and is_equal_approx(sun.light_energy, 0.8 * BossEncounter.MIN_LIGHT_LEVEL),
 		"the ambient light and the sun dim (%.2f, %.2f)" % [env.ambient_light_energy, sun.light_energy])
+	# The skins' scenery is unshaded: its own light (scenery_light) dims too, never below its floor.
+	check(is_equal_approx(ZoneSkin.scenery_light_now, ZoneSkin.MIN_SCENERY_LIGHT) and is_equal_approx(env.fog_light_energy, BossEncounter.MIN_LIGHT_LEVEL),
+		"the scenery's light and the fog's dim, never below the scenery's floor (%.2f, %.2f)" % [ZoneSkin.scenery_light_now, env.fog_light_energy])
+	enc.set_light_level(0.9, 0.0)
+	check(is_equal_approx(ZoneSkin.scenery_light_now, 0.72), "the scenery's light follows the arena's own (0.8 × 0.9: %.2f)" % ZoneSkin.scenery_light_now)
 	enc.set_light_level(1.0, 0.0)
-	check(is_equal_approx(env.ambient_light_energy, 1.0), "and come back")
+	check(is_equal_approx(env.ambient_light_energy, 1.0) and is_equal_approx(ZoneSkin.scenery_light_now, 0.8), "and come back")
 	enc.set_light_level(0.5, 0.0)
 	await sim.free_world(world)
-	check(is_equal_approx(sun.light_energy, 0.8) and is_equal_approx(env.ambient_light_energy, 1.0), "the fight gives the light back when it ends")
+	check(is_equal_approx(sun.light_energy, 0.8) and is_equal_approx(env.ambient_light_energy, 1.0)
+		and is_equal_approx(env.fog_light_energy, 1.0) and is_equal_approx(ZoneSkin.scenery_light_now, 0.8),
+		"the fight gives the light back when it ends")
+	# A newer run's own light stays: the fight only gives back the light it set.
+	var enc2 := DummyBoss.new()
+	world = _fight(enc2, DummyBoss.make_def([[1, 1, false, 0.1]]), 5)
+	await _until(world, func() -> bool: return enc2.is_vulnerable(), 1.0)
+	enc2.set_light_level(0.5, 0.0)
+	ZoneSkin.set_scenery_light(0.6)
+	await sim.free_world(world)
+	check(is_equal_approx(ZoneSkin.scenery_light_now, 0.6), "a newer run's scenery light stays when the old fight ends (%.2f)" % ZoneSkin.scenery_light_now)
+	ZoneSkin.set_scenery_light(1.0)
 	we.queue_free()
 	sun.queue_free()
 	await tree.process_frame

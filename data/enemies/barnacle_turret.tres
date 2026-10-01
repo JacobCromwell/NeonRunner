@@ -1,0 +1,45 @@
+[gd_resource type="Resource" script_class="BarnacleTurretTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/barnacle_turret_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+spawn_lead = 110.0
+score_value = 200
+health_early = 4.5
+health_late = 6.0
+uses_floor = false
+floor_reach_before = 0.0
+floor_reach_after = 0.0
+engage_distance = 80.0
+charge_time = 0.75
+burst_min = 2
+burst_max = 3
+shot_interval = 0.18
+reload_early = 2.4
+reload_late = 1.8
+bolt_speed_early = 16.0
+bolt_speed_late = 18.0
+aim_error = 0.1
+shot_jitter = 0.07
+bolt_life = 3.5
+min_warning_time = 0.75
+clear_before_impact = 12.0
+clear_after_impact = 10.0
+burst_gap = 0.5
+emerge_seconds = 3.5
+emerge_time = 0.4
+body_reach = 1.0
+end_margin = 1.0
+ceiling_share_early = 0.45
+ceiling_share_late = 0.65
+pair_share_early = 0.3
+pair_share_late = 0.5
+pair_min_scaling = 0.45
+after_pad_seconds = 2.2
+tight_after_pad_seconds = 3.0
+before_end_seconds = 0.2
+spacing_seconds = 1.2
+credit_margin = 3.0
+intro_seconds = 8.0
+intro_ceiling_seconds = 4.0

@@ -17,6 +17,7 @@
 		{ "id": "octodog", "trigger": "enemy:octodog", "text": "Octodogs lunge in straight lines. Sidestep, jump, or bait them into a gap." },
 		{ "id": "screech", "trigger": "enemy:screech", "text": "A rattling cover means a sewer screech. Leave its lane or jump it." },
 		{ "id": "generator", "trigger": "enemy:generator", "text": "Weapons won't touch a generator. Stomp it or dash through it to knock out the fences around it." },
+		{ "id": "barnacle_turret", "trigger": "enemy:barnacle_turret", "text": "A Barnacle Turret clings to the ceiling and shoots only at riders. When its cannon glows red, switch lanes, and don't run into it." },
 		{ "id": "host", "trigger": "enemy:host", "text": "Glitching cyborgs carry something worse. Think before you stomp one." },
 		{ "id": "bad_dream", "trigger": "enemy:bad_dream", "text": "The Bad Dream slashes the lanes it lights red. Get out of them: another lane, a wall or a pad." },
 		{ "id": "resonator", "trigger": "enemy:resonator", "text": "When the Resonator's chime plays, a red wave rolls along the floor. Jump it ({jump}), or be on a wall or the ceiling." },
@@ -24,6 +25,10 @@
 		{ "id": "city_boss_ramp", "trigger": "boss:city_boss/ramp", "text": "It's pinned! Switch onto the fallen tower's slab anywhere along its low part, run up it and drop onto a red weak point." },
 		{ "id": "city_boss_wall", "trigger": "boss:city_boss/wall", "text": "It's pinned! Run along a lit wall (keep moving past the outer lane), then at the tall mark move back toward the lanes to jump onto a red weak point." },
 		{ "id": "city_boss_ceiling", "trigger": "boss:city_boss/ceiling", "text": "It's pinned! Step on a pad to ride the ceiling over it, then drop off the end onto a red weak point." },
+		{ "id": "dead_zone_boss", "trigger": "enemy:dead_zone_boss", "text": "The Sleep Taker! Weapons can't touch it. When it shrieks, leave the lanes it lights red, or ride a pad up onto the ceiling: it can't reach you there." },
+		{ "id": "dead_zone_boss_refuge", "trigger": "boss:dead_zone_boss/refuge", "text": "A bridge ahead: its giant slash comes as you reach it. Step on the pad to ride the ceiling, out of its reach." },
+		{ "id": "dead_zone_boss_hands", "trigger": "boss:dead_zone_boss/hands", "text": "Purple mist in your lane: a hand is rising from it. Switch lanes!" },
+		{ "id": "dead_zone_boss_lights_out", "trigger": "boss:dead_zone_boss/lights_out", "text": "It's swallowing the light! Hazards and warnings still glow in the dark: keep reading them." },
 		{ "id": "pickup_armor", "trigger": "pickup:armor", "text": "Armor pickup ahead: run through it to get your armor back at once. Armor blocks enemy attacks and electric shocks." },
 		{ "id": "pickup_shield", "trigger": "pickup:shield", "text": "Shield pickup ahead: run through it. A shield blocks one hit of anything." },
 		{ "id": "pickup_grapple", "trigger": "pickup:grapple", "text": "Grapple pickup ahead: run through it. The grapple hook saves you from one fall." }
