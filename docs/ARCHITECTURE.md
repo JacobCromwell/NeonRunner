@@ -445,11 +445,13 @@ the player's distance like the cut, so it does the same on every attempt and at 
   to meet them, at `charge_speed` stretched by the pace), cutting the floor behind it (`advance_to`), and
   runs on `run_past` metres past them, off the screen, gone (retired only then: its cut runs to its
   start). Its distances follow the pace (the charge's from `charge_distance()`), its seconds don't.
-- **Its warning.** The rev: the spin-up (`buzz_rev`, as long as Corporate 1's rev), its eyes flaring and a
-  red line over the lane it's about to cut, from just behind the player to its blade (then, as it
-  charges, the stretch it still has to cut; the Octodog's lunge-line red, widening over the rev and
-  pulsing, only widening with Reduced flashing). Sparks fly from the blade as it cuts (none with Reduced
-  flashing).
+- **Its warning.** The rev: the spin-up (`buzz_rev`), its eyes flaring and a red line over the lane it's
+  about to cut, from just behind the player to its blade (then, as it charges, the stretch it still has
+  to cut; the Octodog's lunge-line red, widening over the rev and pulsing, only widening with Reduced
+  flashing). Sparks fly from the blade as it cuts (none with Reduced flashing). Its rev and charge play
+  on its own voice, which moves with it (the world's voices stay where a sound starts), at full volume
+  from a charge's distance (`sound_full_volume_distance`); the 2.45 s spin-up (under the library's 2.5 s
+  a sound) is stretched over the rev by pitch (`rev_pitch`), so it always ends as the charge starts.
 - **Contact and kills.** Its blade is an `attack` hitbox, narrow and centred on its lane (0.7 m wide, 2.4 m
   tall: a jump doesn't clear it), so wall and ceiling riders are never touched; no other part hurts. The
   armor and the shield block it, and then `FloorCut.hold_under` holds the floor under the player for

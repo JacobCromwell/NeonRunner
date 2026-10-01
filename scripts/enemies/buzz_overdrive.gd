@@ -23,6 +23,10 @@ extends Enemy
 ## lane: only survivable with the grapple hook); it can't be stomped (the player would land on the
 ## blade). Its rev and charge are one big attack (GDD §9: big attacks take turns): the generator planned
 ## its moment, so it never waits; it reports itself and the others wait for it.
+## Its rev and charge sound from its own voice on the blade, so they come from where it is as it rolls
+## and charges past (the world's voices stay where a sound started), at full volume from a charge's
+## distance (sound_full_volume_distance); the spin-up is stretched over its rev by pitch (rev_pitch:
+## lower where it revs longest), and it's kept until its charge has died away.
 ## Numbers: BuzzOverdriveTuning (data/enemies/buzz_overdrive.tres). Look: BuzzOverdriveModel.
 
 enum State { PARKED, ROLL, REV, CHARGE, GONE }
@@ -36,6 +40,8 @@ const LINE_WIDTH_START: float = 0.2
 const LINE_WIDTH_END: float = 0.4
 ## While it revs, its line starts this far behind the player (metres).
 const LINE_BEHIND: float = 2.0
+## Its voice's height over the floor at the blade (metres).
+const VOICE_HEIGHT: float = 1.2
 ## The blade's spin (radians a second): idling, and full (the end of the rev and the charge).
 const SPIN_IDLE: float = 2.5
 const SPIN_FULL: float = 34.0
@@ -52,6 +58,8 @@ var model: BuzzOverdriveModel
 
 var _run_speed: float = 18.0
 var _line: MeshInstance3D
+## Its own positional voice (the rev, the charge), moving with it.
+var _voice: AudioStreamPlayer3D
 var _hitbox: Hazard
 var _rev_t: float = 0.0
 var _spark_left: float = 0.0
@@ -84,6 +92,17 @@ func _build() -> void:
 	_line.top_level = true
 	_line.visible = false
 	add_child(_line)
+	_voice = AudioStreamPlayer3D.new()
+	_voice.name = "Voice"
+	_voice.position = Vector3(0.0, VOICE_HEIGHT, 0.0)
+	var library: SfxLibrary = world.sfx_library
+	if library != null:
+		_voice.unit_size = tuning.sound_full_volume_distance
+		_voice.max_distance = library.warning_max_distance * tuning.sound_full_volume_distance \
+			/ maxf(library.warning_full_volume_distance, 1.0)
+	if AudioServer.get_bus_index(SfxLibrary.BUS) >= 0:
+		_voice.bus = SfxLibrary.BUS
+	add_child(_voice)
 	if cut.is_empty():
 		state = State.GONE
 		front = float(spawn.get("at", 0.0))
@@ -149,9 +168,17 @@ func is_major_attack_active() -> bool:
 
 
 ## Gone once its charge has run past the player (off the screen behind them), or if it had no cut. (Not
-## sooner: its cut runs on behind the player to its start, wherever the player has got to.)
+## sooner: its cut runs on behind the player to its start, wherever the player has got to.) Hidden and
+## behind the player by then, it stays until its charge's sound has died away.
 func should_retire() -> bool:
-	return state == State.GONE
+	return state == State.GONE and not (_voice != null and _voice.playing)
+
+
+## The pitch its spin-up (a sound `sound_seconds` long) plays at to last its rev (`rev_seconds`), ending
+## as the charge starts: a little lower where it revs longest (Corporate 1), about its own in the
+## Golden Zone.
+static func rev_pitch(sound_seconds: float, rev_seconds: float) -> float:
+	return clampf(sound_seconds / maxf(rev_seconds, 0.01), 0.5, 2.0)
 
 
 ## Auto-fire picks it only while it's in view.
@@ -184,12 +211,29 @@ func _rev() -> void:
 	_rev_t = 0.0
 	model.set_flare(true)
 	_line.visible = true
-	world.play_sfx_at(&"buzz_rev", global_position)
+	_play(&"buzz_rev", (float(cut["warn"]) - float(cut["charge"])) / _run_speed)
 
 
 func _charge() -> void:
 	state = State.CHARGE
-	world.play_sfx_at(&"buzz_charge", global_position)
+	_play(&"buzz_charge")
+
+
+## Plays `sound` on its own voice (cutting off what it played before: the charge cuts the rev short when
+## the player runs faster than the run speed), stretched over `seconds` by pitch where given (rev_pitch).
+## Silent in headless runs.
+func _play(sound: StringName, seconds: float = 0.0) -> void:
+	var library: SfxLibrary = world.sfx_library
+	if library == null or not SfxLibrary.audible():
+		return
+	var stream: AudioStream = library.stream(sound)
+	if stream == null:
+		return
+	var length: float = stream.get_length()
+	_voice.stream = stream
+	_voice.volume_db = library.volume(sound)
+	_voice.pitch_scale = rev_pitch(length, seconds) if seconds > 0.0 and length > 0.0 else 1.0
+	_voice.play()
 
 
 func _gone() -> void:

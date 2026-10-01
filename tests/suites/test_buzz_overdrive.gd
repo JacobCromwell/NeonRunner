@@ -661,6 +661,14 @@ func _test_data() -> void:
 	var rev: AudioStream = library.stream(&"buzz_rev")
 	check(rev != null and library.stream(&"buzz_charge") != null and library.stream(&"truck_explode") != null,
 		"its warning, its charge and its explosion have sounds")
-	check(rev != null and absf(rev.get_length() - t.rev_at(8.0 / 14.0)) < 0.15,
-		"its spin-up lasts its rev where it first appears (%.2f s, the rev %.2f s)" % [rev.get_length() if rev != null else 0.0,
-		t.rev_at(8.0 / 14.0)])
+	# The spin-up stays under the library's 2.5 s (test_units) and plays stretched over the rev by pitch,
+	# ending as the charge starts, from Corporate 1's long rev to the Golden Palace's short one.
+	var length: float = rev.get_length() if rev != null else 0.0
+	var spans: bool = length > 2.0 and length < 2.5
+	var pitches: PackedStringArray = []
+	for scaling: float in [8.0 / 14.0, 10.0 / 14.0, 12.0 / 14.0, 1.0]:
+		var pitch: float = TankScript.rev_pitch(length, t.rev_at(scaling))
+		spans = spans and absf(length / pitch - t.rev_at(scaling)) < 0.01 and pitch >= 0.8 and pitch <= 1.0
+		pitches.append("%.2f" % pitch)
+	check(spans, "its spin-up (%.2f s) lasts its rev at every level, played at a pitch near its own (%s)" % [length,
+		", ".join(pitches)])

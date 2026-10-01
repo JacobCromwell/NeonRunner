@@ -57,6 +57,13 @@ extends EnemyTuning
 ## Sparks from the blade while it cuts, a burst every this many seconds (none with Reduced flashing).
 @export_range(0.02, 1.0, 0.01, "suffix:s") var spark_every: float = 0.06
 
+@export_group("Sound")
+## Its rev and charge come from its own voice, at full volume within this distance (plain metres), fading
+## out at the same multiple of the library's warning distances (SfxLibrary). Its rev plays a charge's
+## distance ahead (about 50-60 m), where the library's distances, made for hazards close by, would leave
+## it about 16 dB quieter than up close.
+@export_range(10.0, 120.0, 5.0, "suffix:m") var sound_full_volume_distance: float = 60.0
+
 
 ## Its rev (the warning) at a level's enemy_scaling `t`.
 func rev_at(t: float) -> float:

@@ -2,16 +2,17 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ## The Buzz Overdrive's sounds (GDD §9.9), in the game's 16-bit style:
 ##   buzz_rev     the warning: its diesel coughs and climbs while the giant blade spins up, a metallic
 ##                whine rising from a low hum to a scream (GDD §9.9: "a spin-up noise as its blade spins
-##                up"). It lasts its rev where it first appears (Corporate 1, BuzzOverdriveTuning.rev_at
-##                at that level's enemy scaling), so it ends as the charge starts there; later levels
-##                rev a little faster and the charge comes in over its last moments.
+##                up"). REV_LENGTH long (the library keeps each sound under 2.5 s, test_units); the tank
+##                plays it stretched over its rev by pitch (BuzzOverdrive.rev_pitch: 2.5-2.93 s, a
+##                little lower where it revs longest), so it always ends as the charge starts.
 ##   buzz_charge  the attack: the blade at full speed tearing into the floor, a grinding shriek over the
-##                engine's roar, dropping in pitch as it passes the player
+##                engine's roar, dropping in pitch as it passes the player (charge_seconds in, from
+##                BuzzOverdriveTuning)
 ## Its death is the hover truck's explosion (truck_explode): vehicles blow up alike.
 
 const TUNING_PATH: String = "res://data/enemies/buzz_overdrive.tres"
-## Corporate 1's enemy scaling (level 9 of 15): where the rev is heard first and longest.
-const FIRST_SCALING: float = 8.0 / 14.0
+## The spin-up's length (seconds), just under the library's limit for one sound.
+const REV_LENGTH: float = 2.45
 
 
 func sounds() -> Dictionary:
@@ -21,19 +22,19 @@ func sounds() -> Dictionary:
 	}
 
 
-## The rev's length where the tank first appears (2.93 s if the tuning can't be read).
-static func rev_time() -> float:
+## Seconds from the start of its charge until it meets the player (0.6 s if the tuning can't be read).
+static func charge_time() -> float:
 	var t: Resource = load(TUNING_PATH) if ResourceLoader.exists(TUNING_PATH) else null
-	if t == null or t.get("rev_seconds_early") == null:
-		return 2.93
-	return lerpf(float(t.get("rev_seconds_early")), float(t.get("rev_seconds_late")), FIRST_SCALING)
+	if t == null or t.get("charge_seconds") == null:
+		return 0.6
+	return float(t.get("charge_seconds"))
 
 
 ## The warning: a diesel cough and a climbing growl under the blade's whine, which rises from a hum to
 ## a scream and swells, with a ringing metallic edge (inharmonic partials) as it reaches speed.
 func _buzz_rev() -> PackedFloat32Array:
 	var rng := _rng(1201)
-	var d: float = rev_time() + 0.05
+	var d: float = REV_LENGTH
 	var b := DSP.buffer(d)
 	var n: int = b.size()
 	# The engine: firing strokes from a lumpy idle up to a hard rev, barking through the exhaust.
@@ -81,13 +82,14 @@ func _buzz_rev() -> PackedFloat32Array:
 ## noise bursts), the engine roaring under it, and the whole sound dropping in pitch as it passes.
 func _buzz_charge() -> PackedFloat32Array:
 	var rng := _rng(1202)
-	var d: float = 1.6
+	var d: float = 1.4
 	var b := DSP.buffer(d)
 	var n: int = b.size()
-	# The pass: full pitch until it reaches the player (about 1 s), then a drop of a fifth.
+	# The pass: full pitch until it reaches the player, then a drop of a fifth.
+	var pass_t: float = charge_time()
 	var pitch := func(u: float) -> float:
 		var t: float = u * d
-		return 1.0 if t < 0.95 else lerpf(1.0, 0.66, smoothstep(0.95, 1.35, t))
+		return 1.0 if t < pass_t else lerpf(1.0, 0.66, smoothstep(pass_t, pass_t + 0.4, t))
 	var scream := DSP.osc(d, func(u: float) -> float: return 1700.0 * float(pitch.call(u)), &"saw")
 	var upper := DSP.osc(d, func(u: float) -> float: return 2550.0 * float(pitch.call(u)), &"square")
 	DSP.mix(scream, upper, 0.0, 0.3)
@@ -113,7 +115,7 @@ func _buzz_charge() -> PackedFloat32Array:
 	# Swell in, and fade away behind the player.
 	for i: int in n:
 		var t: float = float(i) / RATE
-		b[i] *= smoothstep(0.0, 0.08, t) * (1.0 - smoothstep(1.05, d, t) * 0.92)
+		b[i] *= smoothstep(0.0, 0.08, t) * (1.0 - smoothstep(pass_t + 0.1, d, t) * 0.92)
 	DSP.drive(b, 1.8)
 	DSP.crush(b, 9, 18000.0)
 	return b
