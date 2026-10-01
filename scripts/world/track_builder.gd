@@ -172,7 +172,9 @@ func _build_chunk(index: int) -> void:
 	for lane: int in layout.lane_count:
 		for piece: Vector2 in _floor_pieces(lane, c0, c1):
 			_build_floor_piece(root, lane, piece, piece.x > c0, piece.y < c1)
+	var wall_enemies: Array[Dictionary] = _enemies_between(c0, c1)
 	for side: int in [-1, 1]:
+		skin.note_wall_enemies(side, c0, c1, wall_enemies)
 		skin.wall_section(root, side, side * geo.wall_x(), c0, c1)
 	if layout.length >= c0 and layout.length < c1:
 		skin.finish_line(root, geo.half_width() * 2.0, layout.length)
@@ -189,6 +191,16 @@ func _build_chunk(index: int) -> void:
 		_build_ramp(root, r)
 	for sp: Dictionary in bucket.get("speed_pads", []):
 		_build_speed_pad(root, sp)
+
+
+## The layout's enemy entries whose track distance falls in [c0, c1) (ZoneSkin.note_wall_enemies()).
+func _enemies_between(c0: float, c1: float) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for e: Dictionary in layout.enemies:
+		var at: float = float(e.get("at", 0.0))
+		if at >= c0 and at < c1:
+			out.append(e)
+	return out
 
 
 ## Returns the [start, end] distance ranges of solid floor for one lane within [c0, c1).
