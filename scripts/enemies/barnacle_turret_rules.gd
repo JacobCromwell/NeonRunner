@@ -10,7 +10,8 @@ extends RefCounted
 ## route along it, is untouched.
 ## - Limits (GDD §9.8): never on a one-lane ceiling (no room to dodge); at most 2 per ceiling; mounted
 ##   over lanes the ceiling covers, never over a pad's lane (the rider lands there and can ride on past
-##   every turret; the ceiling's line of credits runs along it), and off the ceiling's credits in its
+##   every turret; the ceiling's line of credits runs along it; DESIGN-TBD, docs/questions/c1.md 3),
+##   and off the ceiling's credits in its
 ##   lane (credit_margin; also the rich credit the generator adds in the far lane afterwards); nothing
 ##   before the feature's start (LevelConfig.feature_starts).
 ## - Where: at least after_pad_seconds past its ceiling's last pad (the rider sees it pop out before
@@ -32,6 +33,7 @@ extends RefCounted
 ##   floor enemy's stretch reaches them), before the level's first drone (the drone rules own every
 ##   pad after it, GDD §9.6) and in a lane no hover truck holds (PadPlacement.pad_lane). Only then does
 ##   a level differ from the same level without the feature: by that ceiling and its credits.
+##   DESIGN-TBD (docs/questions/c1.md 4).
 ## Each entry's params carry its ceiling: hull_start, hull_end, first_lane, last_lane.
 
 const TYPE: String = "barnacle_turret"

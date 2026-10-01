@@ -54,7 +54,7 @@ render_mode cull_back;
 uniform vec4 charge_color : source_color = vec4(1.0, 0.15, 0.1, 1.0);
 uniform vec4 rest_color : source_color = vec4(0.1, 0.1, 0.11, 1.0);
 uniform float charge = 0.0;
-uniform float energy = 4.5;
+uniform float energy = 2.6;
 uniform float orb = 0.0;
 void fragment() {
 	float c = clamp(charge, 0.0, 1.0);
@@ -162,7 +162,7 @@ func build(p_variant: StringName, visual_seed: int) -> void:
 		_eyes = MeshInstance3D.new()
 		_eyes.name = "Eyes"
 		_eyes.mesh = Kit.mesh("barnacle/eyes", _eyes_mesh)
-		_eyes.material_override = Kit.part_material(&"normal")
+		_eyes.material_override = _matte_material()
 		_head.add_child(_eyes)
 		_pupils = Node3D.new()
 		_pupils.name = "PupilPivot"
@@ -170,7 +170,7 @@ func build(p_variant: StringName, visual_seed: int) -> void:
 		_head.add_child(_pupils)
 		var pupils := MeshInstance3D.new()
 		pupils.mesh = Kit.mesh("barnacle/pupils", _pupils_mesh)
-		pupils.material_override = Kit.part_material(&"normal")
+		pupils.material_override = _matte_material()
 		pupils.position = -_pupils.position
 		_pupils.add_child(pupils)
 	_barrel = Node3D.new()
@@ -226,7 +226,7 @@ func set_charge(amount: float) -> void:
 		return
 	_charge_mat.set_shader_parameter(&"charge", charge)
 	_orb.visible = charge > 0.02
-	_orb.scale = Vector3.ONE * lerpf(0.25, 1.4, charge)
+	_orb.scale = Vector3.ONE * lerpf(0.3, 1.2, charge)
 
 
 ## The muzzle's red glow now (0 at rest): what the telegraph shows.
@@ -360,6 +360,17 @@ func _animate_death(delta: float) -> void:
 
 
 static var _shader: Shader = null
+static var _matte: ShaderMaterial = null
+
+
+## The creature's eyes: the kit's part material made matte, so the eyes never mirror the charge orb's
+## red (a red glint there would read as glowing red eyes).
+static func _matte_material() -> ShaderMaterial:
+	if _matte == null:
+		_matte = Kit.part_material(&"normal").duplicate() as ShaderMaterial
+		_matte.set_shader_parameter(&"roughness", 1.0)
+		_matte.set_shader_parameter(&"metallic", 0.0)
+	return _matte
 
 
 ## The muzzle's charge shader, shared by every turret (each has its own material for its own charge).
@@ -514,7 +525,7 @@ static func _mechanical_mesh(pal: Dictionary) -> ArrayMesh:
 			return trim
 		if ring >= 5:
 			return pal["dark"].lerp(base, 0.35)
-		return base if (seg + ring) % 2 == 0 else alt)
+		return base if (seg + ring) % 2 == 0 else base.lerp(alt, 0.45))
 	# Rivets along the band.
 	for k: int in 14:
 		var th: float = TAU * (k + 0.5) / 14.0
@@ -548,22 +559,23 @@ static func _creature_mesh(pal: Dictionary, scruffy: bool) -> ArrayMesh:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7729
 	# Tufts all over, leaving the face (eyes, nose, cannon) clear.
-	for i: int in 7:
-		var phi: float = lerpf(0.1, 1.42, (float(i) + 0.5) / 7.0)
-		var count: int = maxi(4, int(round(18.0 * cos(phi) + 3.0)))
+	for i: int in 10:
+		var phi: float = lerpf(0.08, 1.45, (float(i) + 0.5) / 10.0)
+		var count: int = maxi(5, int(round(24.0 * cos(phi) + 4.0)))
 		for j: int in count:
 			var theta: float = TAU * (float(j) + rng.randf_range(-0.35, 0.35)) / count + i * 0.37
 			var p: Vector3 = dome_point(phi, theta, -0.015)
 			if _in_face(p):
 				continue
 			var n: Vector3 = dome_normal(phi, theta)
-			var dir: Vector3 = (n + Vector3(0.0, -0.45, 0.0) + Vector3(rng.randf_range(-0.25, 0.25), 0.0,
+			var dir: Vector3 = (n + Vector3(0.0, -0.75, 0.0) + Vector3(rng.randf_range(-0.25, 0.25), 0.0,
 				rng.randf_range(-0.25, 0.25))).normalized()
 			# Shorter toward the crown, so the fur never hangs much below it (BarnacleTurret.REACH_BELOW).
-			var length: float = rng.randf_range(0.12, 0.2) * (1.3 if scruffy else 1.0) * (1.0 - 0.55 * smoothstep(0.9, 1.4, phi))
-			var tip_col: Color = pal["tip"] if rng.randf() < 0.6 else fur.lerp(pal["tip"], 0.5)
+			var length: float = rng.randf_range(0.08, 0.13) * (1.3 if scruffy else 1.0) * (1.0 - 0.45 * smoothstep(0.9, 1.4, phi))
+			var tip_col: Color = fur.lerp(pal["tip"], rng.randf_range(0.25, 0.6))
 			var base_col: Color = belly if cos(theta) > 0.75 and phi > 0.35 and phi < 1.25 else fur
-			_add_cone(st, p, dir, length, rng.randf_range(0.07, 0.1), 4, base_col, tip_col, rng.randf() * TAU)
+			_add_cone(st, p, dir, length, rng.randf_range(0.075, 0.105), 5, base_col.darkened(rng.randf_range(0.0, 0.12)),
+				tip_col, rng.randf() * TAU)
 	# The cowlick: a few tufts on the crown, curling forward and out.
 	for k: int in 5:
 		var a: float = TAU * k / 5.0
@@ -627,7 +639,7 @@ static func _muzzle_mesh() -> ArrayMesh:
 ## The charge orb at the muzzle (grown by set_charge).
 static func _orb_mesh() -> ArrayMesh:
 	var st := _begin()
-	_add_ball(st, Vector3.ZERO, 0.1, 8, 5, Color(1.0, 1.0, 1.0))
+	_add_ball(st, Vector3.ZERO, 0.065, 8, 5, Color(1.0, 1.0, 1.0))
 	return st.commit()
 
 

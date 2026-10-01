@@ -839,7 +839,8 @@ func _check_hazards(motion: float) -> void:
 
 ## Dropping onto the hazard from above: on the floor, descending, feet near its top. On the ceiling the
 ## same upside down, onto a hazard that hangs from it (Hazard.upside_down, a Barnacle Turret, GDD
-## §9.8): falling back toward the ceiling after a jump, feet near its underside.
+## §9.8): falling back toward the ceiling after a jump, feet near its underside. DESIGN-TBD
+## (docs/questions/c1.md 1): how a stomp reaches a ceiling enemy.
 func _is_stomping(hazard: Hazard) -> bool:
 	if grounded or vh > 0.0:
 		return false

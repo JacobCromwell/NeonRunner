@@ -18,7 +18,8 @@ extends CyborgGunTuning
 
 @export_group("Emerging")
 ## It pops out of the ceiling's underside this long before the player reaches it at their speed (so a
-## floor runner sees it too, before its ceiling's pad), and stays put.
+## floor runner sees it too, before its ceiling's pad), and stays put. DESIGN-TBD
+## (docs/questions/c1.md 2): when it pops out.
 @export_range(1.0, 8.0, 0.1, "suffix:s") var emerge_seconds: float = 3.5
 ## How long the pop takes.
 @export_range(0.1, 1.5, 0.05, "suffix:s") var emerge_time: float = 0.4
