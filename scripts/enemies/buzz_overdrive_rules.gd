@@ -79,10 +79,6 @@ static func place_at(gen: LevelGenerator, t: BuzzOverdriveTuning, rng: RandomNum
 		e["lane"] = l
 		if CutPlacement.place(gen, cut):
 			return true
-		if OS.has_environment("BUZZ_DEBUG"):
-			var trial: LevelLayout = gen.layout.copy()
-			CutPlacement.clear(gen, trial, cut)
-			print("  buzz at %.0f lane %d: %s" % [anchor, l, gen.cut_problem(cut, trial)])
 	e["at"] = was[0]
 	e["lane"] = was[1]
 	return false

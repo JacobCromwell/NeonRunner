@@ -145,9 +145,10 @@ func is_major_attack_active() -> bool:
 	return alive and (state == State.REV or state == State.CHARGE)
 
 
-## Gone once its charge has run past the player (off the screen behind them), or if it had no cut.
+## Gone once its charge has run past the player (off the screen behind them), or if it had no cut. (Not
+## sooner: its cut runs on behind the player to its start, wherever the player has got to.)
 func should_retire() -> bool:
-	return state == State.GONE or super.should_retire()
+	return state == State.GONE
 
 
 ## Auto-fire picks it only while it's in view.

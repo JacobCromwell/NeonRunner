@@ -22,11 +22,16 @@ extends EnemyTuning
 ## Seconds it rolls ahead of the player, in view and in its lane, before it starts revving (GDD
 ## §9.9: "the player sees it in the distance, in its lane"): within the missiles' reach and beyond
 ## laser tier 1's, so the missile tiers usually stop it before it charges and tier 1 can't.
-@export_range(0.0, 8.0, 0.1, "suffix:s") var roll_seconds: float = 3.0
+@export_range(0.0, 8.0, 0.1, "suffix:s") var roll_seconds: float = 4.0
 ## Seconds from the start of its charge until it reaches a player running at the run speed.
-@export_range(0.4, 3.0, 0.05, "suffix:s") var charge_seconds: float = 1.0
-## How fast it charges along its lane toward the player, m/s at the reference speed.
-@export_range(5.0, 40.0, 0.5, "suffix:m/s") var charge_speed: float = 18.0
+@export_range(0.3, 3.0, 0.05, "suffix:s") var charge_seconds: float = 0.6
+## How fast it charges along its lane toward the player, m/s at the reference speed (45: two and a half
+## times the runner's). Its cut runs on ahead of where it meets the player for charge_seconds times
+## this over the run speed (1.5 s of running), longer than the floor holds after a block
+## (GameRules.cut_hold_seconds), so a player who stays in its lane after a block falls once the hold is
+## over (GDD §9.9: "a jump would land back in the cut lane"); and it starts from charge_distance()
+## ahead, within the missiles' 70 m and beyond laser tier 1's 42 m at every zone's speed.
+@export_range(5.0, 90.0, 0.5, "suffix:m/s") var charge_speed: float = 45.0
 ## How far past the player it runs, still cutting, before it's gone (off the screen behind them; plain
 ## metres: the camera's view behind the player doesn't change with the speed).
 @export_range(5.0, 60.0, 1.0, "suffix:m") var run_past: float = 22.0
