@@ -16,6 +16,8 @@ extends Node
 ##   --skin=gangland         quick play in another zone's look (data/skins/<name>_skin.tres)
 ##   --speed=25              quick play at another run speed (a zone's: 21 in the City to 25 in the
 ##                           Golden Zone, GDD §3); the level keeps its timing in seconds
+##   --doodads=0.6           quick play with zone doodads (GDD §3; LevelConfig.doodad_share: the chance
+##                           each stretch with room for one gets one)
 ##   --level=city/2          a campaign level, with the full flow (also takes --lanes=N, --god,
 ##                           --nofall and --full-loadout, for reviews)
 ##   --boss=city_boss        a boss fight by its BossDef id: a zone's boss with the full flow (like
@@ -130,7 +132,7 @@ func boot(p_main: Node) -> void:
 		if arg == "--quick" or arg == "--god" or arg.begins_with("--seed=") or arg.begins_with("--lanes=") \
 				or arg.begins_with("--difficulty=") or arg.begins_with("--features=") or arg == "--full-loadout" \
 				or arg == "--nofall" or arg.begins_with("--skin=") or arg.begins_with("--pickups") \
-				or arg.begins_with("--speed="):
+				or arg.begins_with("--speed=") or arg.begins_with("--doodads="):
 			start_quick(args)
 			return
 	show_title()
@@ -311,8 +313,9 @@ func start_level(s: CampaignStep, difficulty_tier: int = 0) -> void:
 	_start_run(ctx, s.zone.music)
 
 
-## A campaign boss fight (GDD §10): it plays in the run world like a level, on the boss's own arena,
-## with its granted items, and goes through the same flow (death screen, results, shop, retry).
+## A campaign boss fight (GDD §10): it plays in the run world like a level, on the boss's own arena at
+## its zone's speed (GDD §3), with its granted items, and goes through the same flow (death screen,
+## results, shop, retry).
 func start_boss(s: CampaignStep, difficulty_tier: int = 0) -> void:
 	var ctx := RunContext.new()
 	ctx.mode = RunContext.Mode.CAMPAIGN
@@ -320,7 +323,8 @@ func start_boss(s: CampaignStep, difficulty_tier: int = 0) -> void:
 	ctx.boss = s.boss
 	ctx.difficulty_tier = difficulty_tier
 	ctx.config = campaign.configure_boss(s, lane_count(), difficulty_tier)
-	ctx.tuning = _boss_tuning(_tuning_for_tier(difficulty_tier))
+	# Its zone's speed, like the zone's levels (GDD §3), and it never rises during the fight.
+	ctx.tuning = _boss_tuning(ctx.config.movement_for(_tuning_for_tier(difficulty_tier)))
 	ctx.loadout = make_loadout(s.boss)
 	_apply_review_args(ctx)
 	_start_run(ctx, _music_for(ctx))
@@ -419,6 +423,9 @@ func start_quick(args: PackedStringArray = PackedStringArray()) -> void:
 			# Review aid: quick play at a zone's run speed (GDD §3: 21 m/s in the City to 25 in the
 			# Golden Zone); the level stretches its patterns to keep their timing (MovementTuning.pace).
 			ctx.config.run_speed = maxf(float(v), 0.0)
+		elif arg.begins_with("--doodads="):
+			# Review aid: the prototype level has no doodads (GDD §3); this gives it a share of them.
+			ctx.config.doodad_share = clampf(float(v), 0.0, 1.0)
 		elif arg == "--god":
 			ctx.god_mode = true
 		elif arg == "--nofall":

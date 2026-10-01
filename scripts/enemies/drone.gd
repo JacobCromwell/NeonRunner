@@ -254,6 +254,9 @@ func _update_follow(p: Player, delta: float) -> void:
 	# Settle over the lane first (it waits no more than 1.5 s for a player who keeps moving).
 	if absf(rel_x - tx) >= 0.35 and _follow_left >= -1.5:
 		return
+	# GDD §3: never at a player a zone doodad hems in (asked before its turn, so it never holds one).
+	if _doodad_in_reach(p):
+		return
 	# GDD §9.7: no barrage starts while the Cyborg's Bad Dream chases; GDD §9: nor while another
 	# type's big attack is on (it keeps following and waits for its turn).
 	if world.director.major_attack_blocked(self):
@@ -263,6 +266,21 @@ func _update_follow(p: Player, delta: float) -> void:
 
 func _can_attack(p: Player) -> bool:
 	return p.alive and p.running and p.surface != Player.Surface.CEILING
+
+
+## GDD §3 (zone doodads): a barrage is never fired at a player a doodad hems in (its side blocks the
+## dodge, its push moves them into the stream). True while a doodad stands, in any lane, along the
+## stretch the player runs from now until a barrage started now would have passed them: its wind-up,
+## its bullets and their flight. The generator keeps doodads off a wave until its first pad, so this
+## holds back only a drone that outlived its pads. DESIGN-TBD (docs/questions/g5.md 5).
+func _doodad_in_reach(p: Player) -> bool:
+	if world.layout.doodads.is_empty():
+		return false
+	var window: float = world.rules.hit_invulnerability if world.rules != null else 1.0
+	var flight: float = _hover_ahead() / maxf(tune.bullet_speed_at(_scaling), 1.0) + tune.bullet_overshoot
+	var seconds: float = tune.windup_at(_scaling) + tune.barrage_count(_scaling, window) * tune.bullet_interval_at(_scaling) \
+		+ flight
+	return world.layout.doodad_between(p.distance - 1.0, p.distance + maxf(p.speed, 1.0) * seconds)
 
 
 ## A wind-up and its barrage are a big attack (GDD §9, §9.7): the Cyborg's Bad Dream never slashes

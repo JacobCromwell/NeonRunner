@@ -114,6 +114,26 @@ const REFERENCE_SPEED: float = 18.0
 @export_range(0.5, 5.0, 0.1, "suffix:m") var pad_length: float = 2.0
 @export_range(1.0, 8.0, 0.1, "suffix:m") var ramp_length: float = 4.0
 
+@export_group("Doodads")
+## Zone doodads (GDD §3, owner's playtest September 30, 2026): scenery standing in a lane that never
+## hurts; running into one pushes the player into a neighbouring lane. Their collision box, per size
+## class (LevelLayout.DOODAD_SIZES; the zone's skin picks the look and keeps it inside the box).
+## DESIGN-TBD (docs/questions/g5.md): the height, one for every class: too tall to jump (a jump's feet
+## reach jump_height, 1.6 m) and low enough that a ceiling rider passes over it even mid-jump (the
+## rider's head comes down to ceiling_height - jump_height - visual_size.y, about 3.1 m).
+@export_range(1.8, 3.0, 0.05, "suffix:m") var doodad_height: float = 2.6
+## DESIGN-TBD: each class's length along the lane and width across it (at most lane_width less a
+## margin, so a neighbour passes it and a blocked switch's bump never reaches it).
+@export_range(0.5, 4.0, 0.1, "suffix:m") var doodad_small_length: float = 1.4
+@export_range(0.5, 2.2, 0.05, "suffix:m") var doodad_small_width: float = 1.3
+@export_range(1.0, 8.0, 0.1, "suffix:m") var doodad_medium_length: float = 3.6
+@export_range(0.5, 2.2, 0.05, "suffix:m") var doodad_medium_width: float = 1.9
+@export_range(2.0, 12.0, 0.1, "suffix:m") var doodad_large_length: float = 6.5
+@export_range(0.5, 2.2, 0.05, "suffix:m") var doodad_large_width: float = 2.0
+## How long the push takes, from the doodad's lane to the neighbouring one: a quick shove (a lane
+## switch takes lane_switch_time). DESIGN-TBD.
+@export_range(0.05, 0.4, 0.01, "suffix:s") var doodad_push_time: float = 0.13
+
 @export_group("Camera")
 @export_range(3.0, 15.0, 0.1, "suffix:m") var camera_distance: float = 7.5
 @export_range(1.0, 8.0, 0.1, "suffix:m") var camera_height: float = 4.2
@@ -167,6 +187,17 @@ func jump_distance(speed: float) -> float:
 ## The Player fades its boost with this each physics frame.
 func boost_left(boost: float, seconds: float) -> float:
 	return maxf(boost - boost_decay_per_second * maxf(seconds, 0.0), 0.0)
+
+
+## A doodad's collision box for size class `size` (LevelLayout.DOODAD_SIZES): Vector3(width, height,
+## length), the length along the lane. An unknown class is the medium one.
+func doodad_size(size: StringName) -> Vector3:
+	match size:
+		&"small":
+			return Vector3(doodad_small_width, doodad_height, doodad_small_length)
+		&"large":
+			return Vector3(doodad_large_width, doodad_height, doodad_large_length)
+	return Vector3(doodad_medium_width, doodad_height, doodad_medium_length)
 
 
 ## The extra track distance a boost of `boost` m/s adds over `seconds` while it fades (boost_left).

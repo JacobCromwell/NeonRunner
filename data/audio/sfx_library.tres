@@ -32,6 +32,7 @@ volume_db = {
 "dash": -2.0,
 "dash_ready": -8.0,
 "died": -2.0,
+"doodad_push": -4.0,
 "drone_crash": -5.0,
 "drone_fire": -4.5,
 "drone_swoop": -5.5,

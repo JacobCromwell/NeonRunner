@@ -19,6 +19,8 @@ extends TestSuite
 ## - the whole fight in its preview, from the entrance to the last stomp, at 3, 5 and 6 lanes; and on a
 ##   plain street without god mode;
 ## - every attempt plays out the same way.
+## Every fight here runs at the City's speed (21 m/s), as the campaign plays it (GDD §3; task E1f:
+## FloatingHeadBot.campaign_tuning).
 
 const BOSS_PATH: String = "res://data/bosses/city_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
@@ -31,6 +33,8 @@ var def: BossDef
 
 
 func run() -> void:
+	# The fight at the City's speed, as the campaign plays it (GDD §3; E1f).
+	tuning = FloatingHeadBot.campaign_tuning(tuning)
 	sim = RunSim.new(tree, tuning)
 	def = load(BOSS_PATH) as BossDef
 	check(def != null and def.is_built(), "the Floating Head's fight exists")
@@ -207,8 +211,16 @@ func _test_data() -> void:
 	check(tuning.jump_height < t.pin_top_height - 0.3 and wall_jump_peak > t.pin_top_height - 0.2,
 		"a jump from the trucks (%.1f m) can't reach its weak points (%.1f m); a wall jump (%.1f m) can" % [
 		tuning.jump_height, t.pin_top_height, wall_jump_peak])
-	check(t.shake_ahead > t.stomp_depth * 0.5 - FloatingHeadModel.WEAK_Z + t.window_pass_margin,
-		"shaking free, its face always ends ahead of a runner on its crown (%.1f m)" % t.shake_ahead)
+	# Its stomp boxes are as deep as the run's pace makes them (GDD §3): at the City's speed, and on the
+	# hardest tier's.
+	var campaign := load("res://data/campaign/campaign.tres") as Campaign
+	var fastest: float = 1.0
+	for m: float in campaign.tier_speed_multiplier:
+		fastest = maxf(fastest, m)
+	for pace: float in [tuning.pace(), tuning.pace() * fastest]:
+		check(t.shake_ahead > t.stomp_depth * pace * 0.5 - FloatingHeadModel.WEAK_Z + t.window_pass_margin,
+			"shaking free, its face always ends ahead of a runner on its crown (%.1f m, at %.1f m/s)" % [t.shake_ahead,
+			MovementTuning.REFERENCE_SPEED * pace])
 
 
 # --- The ways onto its head ------------------------------------------------------------------------
@@ -424,9 +436,9 @@ func _test_missed_windows() -> void:
 			continue
 		# E1e: while the ramp is the way up, the window stays open until a lane switch can't board it any
 		# more (the end of its lead-in).
-		var release: float = t.window_release_gap
+		var release: float = head.before_face(t.window_release_gap)
 		if ROUTES[phase] == &"ramp":
-			release = t.ramp_length * (1.0 - t.ramp_board_share)
+			release = head.metres(t.ramp_length) * (1.0 - t.ramp_board_share)
 		check(misses[0]["why"] == &"floor" and float(misses[0]["gap"]) <= release + 0.01
 			and float(misses[0]["gap"]) > release - 1.0,
 			"the window closes as they come within %.1f m of its face on the trucks (%.1f m) %s" % [release,
@@ -552,7 +564,8 @@ func _test_armor_pickups() -> void:
 			if head.props.warned(p.lane, p.at - 0.5, p.at + 0.5):
 				s["in_circle"] += 1
 			if head.step == FloatingHead.Step.PINNED:
-				var zone := Vector2(head.pin_stern - maxf(head.tuning.ramp_length, head.tuning.pad_before_face + 3.0), head.pin_stern + head.body.shape.length)
+				var zone := Vector2(head.pin_stern - maxf(head.metres(head.tuning.ramp_length), head.before_face(head.tuning.pad_before_face) + 3.0),
+					head.pin_stern + head.body.shape.length)
 				if p.at > zone.x and p.at < zone.y:
 					s["in_pin"] += 1
 		return not world.player.alive or head.is_defeated(), 300.0)

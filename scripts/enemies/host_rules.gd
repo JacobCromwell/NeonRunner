@@ -114,6 +114,16 @@ static func chase_stretches(gen: LevelGenerator) -> Array[Vector2]:
 	return out
 
 
+## What the generator's zone doodads keep off (LevelGenerator.doodad_keep_outs), in every lane: each
+## host's chase (chase_stretches). The Bad Dream's slash covers three lanes and the way out is two lane
+## switches away, which a doodad's side could block, or its push undo.
+static func doodad_keep_outs(gen: LevelGenerator) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for s: Vector2 in chase_stretches(gen):
+		out.append({"from": s.x, "to": s.y})
+	return out
+
+
 ## One host where a host fits every rule (see the header), in a level left without one. The
 ## spots that pass the quick checks are tried in random order until one's pads can be planned; its
 ## pads are placed with it. Returns the host, or {} if no spot fits.

@@ -5,3 +5,4 @@
 [resource]
 script = ExtResource("1_skin")
 enemy_variant = &"burned"
+doodad_palette = PackedColorArray(0.18, 0.18, 0.19, 1, 0.44, 0.43, 0.42, 1, 0.08, 0.08, 0.085, 1)

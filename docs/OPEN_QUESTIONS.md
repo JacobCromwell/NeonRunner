@@ -1462,7 +1462,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     **Placeholder:** back whole (`Player.revive` in `scripts/player/player.gd`, `DESIGN-TBD`).
 
 **The Floating Head after the playtest** (from E1e; numbers in `data/bosses/city_boss_tuning.tres`; measure the routes with `tools/measure/stomp_routes.gd`; play `--level=city/boss`)
-248. **Should every phase use a ramp?** (GDD §10: (1) the fallen tower as a ramp, (2) a wall jump,
+248. (E1f: at the City's 21 m/s the wall marks sit 15.7 m and 5.2 m before the face, the same seconds as 13 m and 4 m at 18 m/s.) **Should every phase use a ramp?** (GDD §10: (1) the fallen tower as a ramp, (2) a wall jump,
     (3) a pad and the ceiling.) After the first stomp the owner saw no ramp and no way up. The wall route
     showed nothing, and at 5 and 6 lanes a wall jump lands in the outer lane, which has no weak point:
     only a second move inward in the air reached one (measured in the campaign's step and in quick play,
@@ -1478,7 +1478,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     blocks; the window stays open for a runner on the trucks until the lead-in ends (3.5 m before its
     face, not 8 m). The latest switch is now 4.5 m before its face at 3, 5 and 6 lanes. Right share,
     and does the bent slab read as the fallen tower? Alternatives: a slab two lanes wide, a longer ramp.
-250. **Stomp boxes over the outer lanes** (item 160): at 5 and 6 lanes the outermost weak points' stomp
+250. (E1f: the stomp boxes are now 4.6 m deep at 18 m/s, stretched by the pace in the campaign.) **Stomp boxes over the outer lanes** (item 160): at 5 and 6 lanes the outermost weak points' stomp
     boxes now reach over the outer lanes to the walls, at their own height (a jump from the trucks
     still can't reach them), so a wall jump or a ceiling drop there stomps the dome beside it; and every
     box is lower and deeper (0.35 m over its socket, 4 m deep; were 0.55 m and 3 m). One wall jump now
@@ -1661,6 +1661,54 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     outs (a slash about every 15 s, a hand every 7 s, lights out every 30 s); fewer hands than the list
     asks for, since a hand only comes where its lane and the next are clear of the arena's holes and
     fences. Right amount? (E5c-b makes the later phases hungrier: faster hands, more lights out.)
+
+**Zone doodads** (from G5; the share per level in `data/levels/*.tres`, sizes in `data/tuning/movement.tres`; quick play `--doodads=X`; review with the `doodad_review` showcase)
+270. **Which lanes doodads stand in** (GDD §3, Side walls and Collision rules). Doodads stand only in the
+    inner lanes, never the outermost one: a wall runner's body reaches 1.28 m into the street, so a doodad
+    in the outer lane would meet wall runners, and the wall-runner collision would have to change. At
+    3 lanes that leaves the middle lane only (pushing left or right). The alternative: doodads in the
+    outer lanes too, either narrowed to the lane's inner half (leaving a gap by the wall that looks
+    passable but isn't) or blocking wall entry around them.
+    *Placeholder:* `LevelGenerator._add_doodad` (inner lanes only); `LayoutChecks.check_doodads` checks it.
+271. **How tall a doodad is, and its top** (GDD §3). Every doodad's collision box is 2.6 m tall
+    (`MovementTuning.doodad_height`): far above a jump (the feet reach 1.6 m) and below a ceiling rider's
+    head even mid-jump (about 3.1 m). Its top is solid: a player who comes down on one from above (after a
+    wall jump) lands and runs along it, then drops off its end into its lane, like a hover truck's roof.
+    The alternative: a top that pushes the player off sideways.
+    *Placeholder:* `data/tuning/movement.tres` defaults (`doodad_height`, the size classes' lengths and
+    widths); `TrackBuilder._build_doodad` (the top on the floor layer).
+272. **Which way a push goes when the player catches a corner** (GDD §3: "if both sides have room, a side
+    chosen per doodad"). Running into a doodad head-on pushes the player to the doodad's side, a seeded
+    choice that's the same on every attempt. A player who catches its front corner while switching lanes
+    into it is pushed back the way they came, never through the doodad to its far side. The push is a
+    0.13 s shove (a lane switch takes 0.14 s) with a dull thud, the runner leaning into it and a small
+    camera shake; it costs nothing (no damage, no speed). The alternative: always the doodad's side.
+    *Placeholder:* `Player._check_doodads` (`PUSH_HEAD_ON_SHARE`), `MovementTuning.doodad_push_time`,
+    `SpeedFxTuning.push_shake_*`, `assets/sfx/doodad_push.wav`.
+273. **Where doodads stand, and how many** (GDD §3: busier levels, "without turning them into a slalom").
+    A doodad stands only where nothing else goes on in any lane, from just before its push to the level's
+    spacing after it (so the player can cross its lane again before the next obstacle, as between two
+    patterns), never under a ceiling (the camera rides below a ceiling, lower than a doodad), off every
+    enemy's stretch, at least 2.5 s from the next doodad. They're placed after the fill pass, into what it
+    leaves, so they add to a level rather than replace obstacles: 3 to 15% more events a minute, about
+    3 doodads a minute in City 1 (only the smaller ones, from a fifth of the way in), 4.5 to 5.3 in the
+    City's other levels, 2.7 to 4.4 in Gangland and the Marketplace, and 2.3 to 3.2 later, where enemies
+    leave less room; The Hush keeps its quiet stretches empty (as the fill pass does) and gets about 1 a
+    minute (`tools/measure/level_pace.gd`). The longest empty stretches barely change: they lie under ceilings
+    or around enemies. The alternative, for more of them: let them stand beside obstacle rows in lanes
+    those rows leave free, and in The Hush's quiet stretches as silent wreckage.
+    *Placeholder:* each level's `doodad_share` (and City 1's `doodad_start` and size weights) in
+    `data/levels/*.tres`; `LevelConfig.doodad_gap_seconds`.
+274. **Aimed attacks near a doodad** (GDD §9: every attack is fair; a doodad's side blocks a dodge and its
+    push moves the player). The generator keeps doodads off every planned attack (an Octodog's run, a
+    Resonator's visit, a drone wave until its first pad, a hover truck's stay in its lane and its first
+    20 s in every lane, a Bad Dream's chase). At runtime an attack that could still come later never comes
+    with a doodad in reach: a drone's barrage and the truck's cannon wait, an Octodog charge or Resonator
+    pulse moved on by a wait for its turn waits, cyborg bolts never land by one, and a truck only lurches
+    at a player who can leave its lane. So a drone that outlives its pads fires a little less where doodads
+    stand. The alternative: keep doodads out of every drone's and hover truck's whole stay.
+    *Placeholder:* `drone.gd` and `hover_truck.gd` (`_doodad_in_reach`), `Octodog.window_clear`,
+    `Resonator.pulse_clear`, `CyborgGun.path_clear`.
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).

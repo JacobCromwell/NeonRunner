@@ -67,6 +67,11 @@ any pick, and spaced from everything around it as the pattern pass spaces patter
 obstacle pattern can also come as a filler; one that needs a feature, a sign, a ceiling or an enemy
 never does.
 
+**Zone doodads** aren't patterns: after the fill pass the generator stands them (scenery that pushes the
+player into the next lane, never hurts; GDD §3) in whatever stretches nothing else uses, with the
+level's spacing after them (`LevelConfig.doodad_share`, `docs/ARCHITECTURE.md`, The generator). A pattern
+needs nothing for them, and a doodad never comes near a pattern's pieces or enemies.
+
 A level may be paced in quiet stretches and bursts (`LevelConfig.quiet_seconds`; The Hush): a quiet
 stretch picks only patterns without enemies (sparse obstacles, and safe mechanics such as a plain
 ceiling, a ramp or a speed pad) and those of the level's `quiet_features`, which belong there (their

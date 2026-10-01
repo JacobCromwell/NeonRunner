@@ -1,6 +1,6 @@
 extends "res://tools/asset_gen/sfx_bank.gd"
-## Player movement and level sounds: jump, land, slide, wall runs, ramps, pads, the hull, death and the
-## pulsing fence's warning. The level-complete riffs are in sfx_bank_riffs.gd.
+## Player movement and level sounds: jump, land, slide, wall runs, ramps, pads, the hull, death, the
+## pulsing fence's warning and a zone doodad's push. The level-complete riffs are in sfx_bank_riffs.gd.
 
 const E2: float = 82.41
 const A2: float = 110.0
@@ -19,6 +19,7 @@ func sounds() -> Dictionary:
 		"hull_end": _hull_end,
 		"died": _died,
 		"fence_warning": _fence_warning,
+		"doodad_push": _doodad_push,
 	}
 
 
@@ -178,4 +179,21 @@ func _fence_warning() -> PackedFloat32Array:
 	DSP.filter(b, &"bandpass", 1800.0, 0.6)
 	DSP.drive(b, 5.0)
 	DSP.crush(b, 6, 11025.0)
+	return b
+
+
+## A zone doodad pushes the runner into the next lane (GDD §3): a dull, heavy thud, a shoulder into
+## something solid. Lower and softer than the blocked move's clank, with no metal ring: it never hurts.
+## DESIGN-TBD (docs/questions/g5.md 3): the push's sound.
+func _doodad_push() -> PackedFloat32Array:
+	var b := DSP.tom(0.24, 150.0, _rng(30))
+	DSP.mix(b, DSP.kick(0.2, 170.0, 75.0, _rng(31)), 0.0, 0.6)
+	var body := DSP.noise(0.14, _rng(32))
+	DSP.filter(body, &"bandpass", 650.0, 0.9)
+	DSP.envelope(body, 0.001, 0.03)
+	DSP.mix(b, body, 0.0, 0.9)
+	DSP.drive(b, 2.2)
+	DSP.filter(b, &"lowpass", 3200.0)
+	DSP.envelope(b, 0.001, 0.1)
+	DSP.crush(b, 10, 18000.0)
 	return b
