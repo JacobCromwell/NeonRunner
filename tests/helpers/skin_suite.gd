@@ -12,10 +12,51 @@ const BUILD_BUDGET_MAX_MS: float = 16.0
 ## Timed builds of the dressed level whole_level() takes, keeping the fastest of the three per build
 ## step (T-BUDGET): several agents' test runs can share this machine's CPUs, and OS preemption only
 ## ever adds wall-clock time to a build, never removes it, so the minimum across a few fresh builds
-## stays a faithful reading of the skin's real cost even when one pass gets paused mid-build.
+## stays a faithful reading of the skin's real cost even when one pass gets paused mid-build. That
+## stops one slow pass from failing a skin that is as cheap as ever, but it does nothing when every
+## pass is slow -- a sustained load of several agents' test runs and renders at once (T-BUDGET2) --
+## which is why build_all() also measures load_factor() below.
 const BUILD_TIMING_PASSES: int = 3
 ## Visible mesh surfaces (one draw call each when on screen) a 5-lane chunk may add on average.
 const SURFACE_BUDGET_PER_CHUNK: float = 32.0
+
+## T-BUDGET2: when build_all() times more than one pass, it also drives a second, reference
+## TrackBuilder in GreyboxSkin over a plain layout as long as the one under test, one chunk-step at a
+## time right alongside the skin's own -- in the same process, at the same moment, for the whole
+## build, not just a snapshot at its edges. REFERENCE_LANES is picked high on purpose, not to match
+## whatever lane count is under test: a build that finishes inside a single scheduling slice barely
+## notices a loaded machine, while a build that straddles several slices pays for each handoff, so a
+## reference close in per-chunk cost to a skin near its own budget (REFERENCE_IDLE_MS, below) is felt
+## by the same kind of contention a slower build is, where a much cheaper one (plain GreyboxSkin at
+## the tested lane count) is not. See load_factor().
+const REFERENCE_LANES: int = 40
+## REFERENCE_LANES's own mean per-chunk build time that way, on a quiet dev machine (no other
+## agent's test run or render sharing the CPUs). load_factor() divides a fresh reading of the same
+## build by this number, so a reading taken while the machine is just as quiet comes back near 1.0
+## and leaves the budgets alone, and a reading taken under load scales them up by about how much
+## slower everything got.
+const REFERENCE_IDLE_MS: float = 2.7
+## Even REFERENCE_LANES's heavier reference still under-reads how much a dressed zone skin's own,
+## heavier build pays in scheduling handoffs on a loaded machine (measured empirically: real zone
+## skins running comfortably under budget still came in 10-20% over a load_factor-scaled budget
+## under sustained heavy load). load_factor() amplifies the *excess* over 1.0 by MEAN_SAFETY_MARGIN
+## (for BUILD_BUDGET_MEAN_MS) or MAX_SAFETY_MARGIN (for BUILD_BUDGET_MAX_MS, which a single loaded
+## chunk can spike well past the mean's own inflation) to cover that gap, each capped at its own
+## MEAN_FACTOR_CAP/MAX_FACTOR_CAP so a pathologically loaded moment can't widen a budget past what
+## SlowTestSkin (tests/helpers/slow_test_skin.gd) still clearly fails -- chosen from several runs of
+## every skin suite under 8 concurrent `yes` processes on top of this machine's usual load from other
+## agents (see docs/ARCHITECTURE.md). Neither margin nor cap touches the idle (load_factor 1.0) case,
+## so a real regression still fails on a quiet machine exactly as before. MEAN_SAFETY_MARGIN is kept
+## modest on purpose: SlowTestSkin's own cost is not purely load-independent (a busy-wait still pays
+## for each scheduling handoff it wakes up into), so a few runs showed it growing with load almost as
+## fast as a real skin's mean; a margin generous enough to clear every real skin's worst measured
+## moment would, at that same moment, occasionally let SlowTestSkin's budget outrun it too. Favouring
+## SlowTestSkin's must-fail guarantee over a perfect zero false-failure rate at the heaviest loads
+## tested is the deliberate tradeoff (see the T-BUDGET2 report for the numbers behind it).
+const MEAN_SAFETY_MARGIN: float = 1.2
+const MEAN_FACTOR_CAP: float = 7.0
+const MAX_SAFETY_MARGIN: float = 2.5
+const MAX_FACTOR_CAP: float = 15.0
 
 
 ## Collects engine and script errors (not warnings) while a suite builds levels.
@@ -75,17 +116,20 @@ func whole_level(skin: ZoneSkin, name: String, level_path: String, lanes: int) -
 		dressed["chunks_without_visuals"]])
 	check(dressed["bare_triggers"] == 0, "every pad, ramp and speed pad is drawn %s (%d bare of %d)" % [tag,
 		dressed["bare_triggers"], dressed["triggers"]])
-	var times: Array = dressed["times"]
-	var mean: float = 0.0
-	var worst: float = 0.0
-	for t: float in times:
-		mean += t / times.size()
-		worst = maxf(worst, t)
+	var mean: float = mean_ms(dressed["times"])
+	var worst: float = max_ms(dressed["times"])
+	var mean_factor: float = load_factor(dressed["reference_times"], MEAN_SAFETY_MARGIN, MEAN_FACTOR_CAP)
+	var max_factor: float = load_factor(dressed["reference_times"], MAX_SAFETY_MARGIN, MAX_FACTOR_CAP)
+	var budget_mean: float = BUILD_BUDGET_MEAN_MS * mean_factor
+	var budget_max: float = BUILD_BUDGET_MAX_MS * max_factor
 	var surfaces: float = float(dressed["surfaces"]) / dressed["chunks"]
-	print("  %s skin %s: %d chunks, build mean %.2f ms, max %.2f ms, %.1f surfaces and %d vertices per chunk" % [
-		name, tag, dressed["chunks"], mean, worst, surfaces, dressed["vertices"] / dressed["chunks"]])
-	check(mean < BUILD_BUDGET_MEAN_MS, "chunk build time %s: mean %.2f ms (budget %.1f)" % [tag, mean, BUILD_BUDGET_MEAN_MS])
-	check(worst < BUILD_BUDGET_MAX_MS, "chunk build time %s: max %.2f ms (budget %.1f)" % [tag, worst, BUILD_BUDGET_MAX_MS])
+	print(("  %s skin %s: %d chunks, build mean %.2f ms, max %.2f ms, load factor %.2fx/%.2fx, %.1f " +
+		"surfaces and %d vertices per chunk") % [name, tag, dressed["chunks"], mean, worst, mean_factor,
+		max_factor, surfaces, dressed["vertices"] / dressed["chunks"]])
+	check(mean < budget_mean, "chunk build time %s: mean %.2f ms (budget %.1f at load factor %.2fx)" % [
+		tag, mean, budget_mean, mean_factor])
+	check(worst < budget_max, "chunk build time %s: max %.2f ms (budget %.1f at load factor %.2fx)" % [
+		tag, worst, budget_max, max_factor])
 	if lanes == 5:
 		check(surfaces < SURFACE_BUDGET_PER_CHUNK, "mesh surfaces per chunk %s: %.1f (budget %.0f)" % [
 			tag, surfaces, SURFACE_BUDGET_PER_CHUNK])
@@ -95,28 +139,90 @@ func whole_level(skin: ZoneSkin, name: String, level_path: String, lanes: int) -
 ## builds the level this many times over (a fresh TrackBuilder and world each time, as a single pass
 ## always did) and keeps, per build step, the minimum time seen across passes -- see
 ## BUILD_TIMING_PASSES. The tallies (surfaces, vertices, collision, triggers) come from the first
-## pass only; only its "times" differ from a single pass's own.
+## pass only; only its "times" differ from a single pass's own. When there is more than one pass,
+## each one also drives a reference TrackBuilder (T-BUDGET2, see REFERENCE_LANES/REFERENCE_IDLE_MS),
+## so stats["reference_times"] reads the machine's load across the same build -- see load_factor().
+## With one pass, "reference_times" is empty.
 func build_all(layout: LevelLayout, skin: ZoneSkin, timing_passes: int = 1) -> Dictionary:
-	var stats: Dictionary = await _build_once(layout, skin)
-	for _p: int in (timing_passes - 1):
-		var extra: Dictionary = await _build_once(layout, skin)
-		var times: Array = stats["times"]
-		var extra_times: Array = extra["times"]
-		for i: int in mini(times.size(), extra_times.size()):
-			times[i] = minf(times[i], extra_times[i])
+	var with_reference: bool = timing_passes > 1
+	var stats: Dictionary = {}
+	var reference_times: Array = []
+	for p: int in timing_passes:
+		var pass_stats: Dictionary = await _build_once(layout, skin, with_reference)
+		if p == 0:
+			stats = pass_stats
+		else:
+			_fold_min(stats["times"], pass_stats["times"])
+		if with_reference:
+			_fold_min(reference_times, pass_stats["reference_times"])
+	stats["reference_times"] = reference_times
 	return stats
 
 
-## One build of a whole level, chunk by chunk, tallying what each new chunk contains.
-func _build_once(layout: LevelLayout, skin: ZoneSkin) -> Dictionary:
+## Keeps, element by element, the smaller of `dest`'s and `src`'s times (see BUILD_TIMING_PASSES);
+## `dest` starts empty on the first pass, so that pass's times become the running minimum outright.
+func _fold_min(dest: Array, src: Array) -> void:
+	if dest.is_empty():
+		dest.append_array(src)
+		return
+	for i: int in mini(dest.size(), src.size()):
+		dest[i] = minf(dest[i], src[i])
+
+
+## How much slower the machine is right now than the quiet dev machine REFERENCE_IDLE_MS was
+## measured on, from a build_all() reading of the reference build (T-BUDGET2), with the gap over 1.0
+## widened by `margin` and the result held to at most `cap` (MEAN_SAFETY_MARGIN/MEAN_FACTOR_CAP for
+## BUILD_BUDGET_MEAN_MS, MAX_SAFETY_MARGIN/MAX_FACTOR_CAP for BUILD_BUDGET_MAX_MS). Never below 1.0,
+## so a reading that happens to come back faster than idle never tightens a budget past its own
+## value. Pass build_all()'s "reference_times" (empty when it ran a single pass, which then reads as
+## no load, i.e. 1.0 -- single-pass checks compare against the raw budget already).
+func load_factor(reference_times: Array, margin: float, cap: float) -> float:
+	if reference_times.is_empty():
+		return 1.0
+	var raw: float = mean_ms(reference_times) / REFERENCE_IDLE_MS
+	return clampf(1.0 + (raw - 1.0) * margin, 1.0, cap)
+
+
+## The mean of a build_all() "times" (or "reference_times") array, in ms.
+func mean_ms(times: Array) -> float:
+	var mean: float = 0.0
+	for t: float in times:
+		mean += t / times.size()
+	return mean
+
+
+## The worst (highest) of a build_all() "times" array, in ms.
+func max_ms(times: Array) -> float:
+	var worst: float = 0.0
+	for t: float in times:
+		worst = maxf(worst, t)
+	return worst
+
+
+## One build of a whole level, chunk by chunk, tallying what each new chunk contains. When
+## `with_reference` is true (T-BUDGET2), a second TrackBuilder also builds, in GreyboxSkin, a plain
+## REFERENCE_LANES-lane layout as long as `layout`, one chunk-step at a time right next to the skin's
+## own -- so stats["reference_times"] is exposed to the same moments of CPU contention as "times",
+## across the whole build, not only a sample taken at its edges.
+func _build_once(layout: LevelLayout, skin: ZoneSkin, with_reference: bool = false) -> Dictionary:
 	var world := Node3D.new()
 	tree.root.add_child(world)
 	var track := TrackBuilder.new()
 	world.add_child(track)
 	track.set_layout(layout, tuning, skin)
+	var reference_world: Node3D = null
+	var reference_track: TrackBuilder = null
+	if with_reference:
+		reference_world = Node3D.new()
+		tree.root.add_child(reference_world)
+		reference_track = TrackBuilder.new()
+		reference_world.add_child(reference_track)
+		reference_track.set_layout(RunSim.layout(REFERENCE_LANES, layout.length), tuning, GreyboxSkin.new())
 	var stats := {"chunks": 0, "collision_objects": 0, "collision_shapes": 0, "physics_under_visuals": 0,
-		"chunks_without_visuals": 0, "surfaces": 0, "vertices": 0, "times": [], "triggers": 0, "bare_triggers": 0}
+		"chunks_without_visuals": 0, "surfaces": 0, "vertices": 0, "times": [], "triggers": 0,
+		"bare_triggers": 0, "reference_times": []}
 	var seen: Dictionary = {}
+	var reference_seen: Dictionary = {}
 	var d: float = 0.0
 	while d <= layout.length + TrackBuilder.RUN_OUT + TrackBuilder.CHUNK_LENGTH:
 		var t0: int = Time.get_ticks_usec()
@@ -131,9 +237,22 @@ func _build_once(layout: LevelLayout, skin: ZoneSkin) -> Dictionary:
 		# The first update builds several chunks and the shared templates; time the steady state.
 		if d > 0.0 and fresh > 0:
 			stats["times"].append(ms / fresh)
+		if reference_track != null:
+			var rt0: int = Time.get_ticks_usec()
+			reference_track.update(d, d / tuning.run_speed)
+			var rms: float = (Time.get_ticks_usec() - rt0) / 1000.0
+			var rfresh: int = 0
+			for chunk: Node in reference_track.get_children():
+				if not reference_seen.has(chunk):
+					reference_seen[chunk] = true
+					rfresh += 1
+			if d > 0.0 and rfresh > 0:
+				stats["reference_times"].append(rms / rfresh)
 		d += TrackBuilder.CHUNK_LENGTH
 	stats["chunks"] = seen.size()
 	world.queue_free()
+	if reference_world != null:
+		reference_world.queue_free()
 	await tree.process_frame
 	return stats
 
