@@ -109,6 +109,14 @@ func muzzle_flash(dir: Vector3) -> void:
 	world.effects.burst(weapon.muzzle_point() + dir * 0.25, _look_color(), 8 if missile else 4, 0.3 if missile else 0.12)
 
 
+## A brighter burst in the weapon's own colour where a shot kills an enemy (GDD §3, the owner's
+## playtest, September 30, 2026: "sparks and debris on kills"). RunEffects already plays the shared,
+## cause-neutral kill spark and shake for every defeat (EnemyDirector.enemy_defeated); this is the
+## weapon's own flourish on top, so a weapon kill reads in its own cool colour rather than plain white.
+func kill_flash(pos: Vector3) -> void:
+	world.effects.burst(pos, _look_color().lerp(Color.WHITE, 0.5), 14, 0.55)
+
+
 ## The heavy missile's blast at `pos`, growing to `radius` (the splash reach).
 func blast(pos: Vector3, radius: float) -> void:
 	if _blasts.is_empty():

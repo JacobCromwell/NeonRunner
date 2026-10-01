@@ -6,15 +6,28 @@ extends Resource
 
 @export_group("Weapon")
 ## GDD §8: 4 tiers (laser, enhanced laser, missile, heavy missile). Damage is in laser tier 1 shots
-## (GDD damage reference: tier 1 = 1, tier 4 kills a hover truck in 5 shots = 3).
+## (GDD damage reference: tier 1 = 1, tier 4 kills a hover truck or heli drone in 5 shots = 3).
 ## DESIGN-TBD: tiers 2 and 3.
 @export var weapon_damage: PackedFloat32Array = PackedFloat32Array([1.0, 1.4, 2.0, 3.0])
+## GDD §8 damage reference (owner's September 30, 2026 playtest): "higher tiers keep today's
+## numbers, so upgrades feel like a bigger jump" (decided over raising enemy health, which would
+## have changed every tier). Laser tier 1 alone takes this many more shots to kill every enemy
+## except the sewer screech, which stays a one-hit kill at any tier. WeaponPowerup.damage() applies
+## it as a smaller per-shot tier 1 hit against each target (max_health split across its base shot
+## count plus this many), so health and tiers 2-4 are untouched.
+@export_range(0, 10, 1) var tier1_extra_shots: int = 2
 ## DESIGN-TBD: seconds between shots per tier (fire rate is open).
 @export var weapon_fire_interval: PackedFloat32Array = PackedFloat32Array([0.32, 0.3, 0.55, 0.65])
 ## Shot speed per tier (m/s, relative to the track). Lasers are fast, missiles slower.
 @export var weapon_shot_speed: PackedFloat32Array = PackedFloat32Array([90.0, 95.0, 55.0, 50.0])
-## How far ahead auto-fire looks for targets.
-@export_range(10.0, 150.0, 1.0, "suffix:m") var weapon_range: float = 70.0
+## How far ahead auto-fire looks for targets, per tier. GDD §8 damage reference (owner's playtest,
+## September 30, 2026): "the level one laser is too powerful, it kills all enemies too quickly," so
+## tier 1's range is shorter, giving enemies room to close in before they fall; tiers 2-4 share
+## today's 70 m unchanged (the GDD's rule: higher tiers keep their range unless they share the
+## value, in which case it stays as it is).
+## DESIGN-TBD (docs/questions/g4.md): the exact tier 1 distance. Placeholder: 42 m, about 60% of the
+## old 70 m shared range (roughly 2.3 s of approach at the 18 m/s base run speed, down from 3.9 s).
+@export var weapon_range: PackedFloat32Array = PackedFloat32Array([42.0, 70.0, 70.0, 70.0])
 ## DESIGN-TBD: the heavy missile's splash radius (GDD §8: exact radius open).
 @export_range(0.5, 10.0, 0.25, "suffix:m") var splash_radius: float = 3.5
 ## Share of a heavy missile's damage dealt as splash to other enemies nearby.
