@@ -194,6 +194,8 @@ func _on_player_event(kind: StringName) -> void:
 			_block_fx(PlayerSuit.GLOW, tuning.block_break_shake_strength)
 		&"shield_break":
 			_block_fx(PlayerSuit.SHIELD, tuning.block_break_shake_strength)
+		&"doodad_push":
+			shake(tuning.push_shake_strength, tuning.push_shake_time)
 
 
 func _block_fx(color: Color, shake_strength: float) -> void:

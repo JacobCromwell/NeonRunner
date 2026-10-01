@@ -79,3 +79,10 @@ extends Resource
 @export_range(0.0, 1.0, 0.01) var block_break_shake_strength: float = 0.16
 @export_range(0.05, 1.0, 0.01, "suffix:s") var block_shake_time: float = 0.18
 @export_range(2, 40, 1) var block_spark_amount: int = 10
+
+@export_group("Doodad pushes")
+## A zone doodad shoves the runner into the next lane (GDD §3; Player.movement_event doodad_push): a
+## small, short shake with the thud, so the shove reads as a bump, never as a hit (no sparks, no
+## hit-stop). DESIGN-TBD.
+@export_range(0.0, 1.0, 0.01) var push_shake_strength: float = 0.05
+@export_range(0.05, 1.0, 0.01, "suffix:s") var push_shake_time: float = 0.14

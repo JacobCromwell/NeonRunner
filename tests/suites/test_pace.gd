@@ -422,8 +422,8 @@ func _test_floor_routes_at_speed() -> void:
 			if not bool(route["ok"]):
 				continue
 			var r: Dictionary = await _replay(sim, fast, layout, route)
-			check(bool(r["alive"]) and not (r["events"] as Array).has(&"pad") and bool(r["reached"]),
-				"the player runs it at 25 m/s: %s, %s" % [tag, r["cause"]])
+			check(bool(r["alive"]) and not (r["events"] as Array).has(&"pad") and bool(r["reached"])
+				and not (r["events"] as Array).has(&"doodad_push"), "the player runs it at 25 m/s: %s, %s" % [tag, r["cause"]])
 			runs += 1
 			ran += 1
 	check(ran >= 6, "floor routes run at 25 m/s: %d" % ran)
@@ -449,6 +449,14 @@ func _replay(sim: RunSim, t: MovementTuning, layout: LevelLayout, route: Diction
 				if moved.has(k):
 					moved[k] = float(moved[k]) + offset
 			(into[key] as Array).append(moved)
+	# Zone doodads too (G5): the route keeps out of their lanes where they stand (FloorRoute).
+	for d: Dictionary in layout.doodads:
+		if float(d["end"]) < from - 1.0 or float(d["start"]) > to:
+			continue
+		var moved_doodad: Dictionary = d.duplicate()
+		moved_doodad["start"] = float(d["start"]) + offset
+		moved_doodad["end"] = float(d["end"]) + offset
+		part.doodads.append(moved_doodad)
 	var actions: Array = []
 	for a: Array in route["actions"]:
 		actions.append([float(a[0]) + offset - t.run_speed / Engine.physics_ticks_per_second, a[1]])
