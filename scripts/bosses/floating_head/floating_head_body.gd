@@ -9,7 +9,9 @@ extends BossPart
 ## Hitboxes: the hull is solid (a boss's body: claws never defeat it, the dash passes through), out of
 ## reach while it flies and off while it's pinned (set_hull_solid: the pinned ship is the floor of the
 ## ways onto its head). A weak point over each lane near the crown's middle (a generous stomp box over
-## each red dome, the outermost reaching over the outer lanes: stomp_outer_reach) and the crown's deck (a surface to stand on, exactly where the hull is drawn) stay off
+## each red dome, as deep along the track as the run's pace makes it: stomp_depth(); the outermost
+## reaching over the outer lanes: stomp_outer_reach) and the crown's deck (a surface to stand on,
+## exactly where the hull is drawn) stay off
 ## until a stomp window opens (set_weak_points_enabled, set_top_solid). Weapons aim at its face.
 ## Its propaganda's slogans show on a caption band across the bottom of its face screen (show_slogan:
 ## a Label3D in the face's cold white; FloatingHeadVoice says when). Beaten, it stays: the encounter
@@ -182,7 +184,7 @@ func _build() -> void:
 		dome.visible = false
 		_domes.append(dome)
 		var reach: Vector2 = stomp_outer_reach(i)
-		add_weak_point(Vector3(tuning.stomp_width + reach.x + reach.y, stomp_height, tuning.stomp_depth),
+		add_weak_point(Vector3(tuning.stomp_width + reach.x + reach.y, stomp_height, stomp_depth()),
 			p + Vector3((reach.y - reach.x) * 0.5, stomp_height * 0.5 - STOMP_BELOW, 0.0), _ship)
 	set_weak_points_enabled(false)
 	# The hull: solid, like any enemy's body. The crown's deck: a surface to land on once it's pinned.
@@ -221,6 +223,13 @@ func set_hull_solid(on: bool) -> void:
 
 func hull_solid() -> bool:
 	return _hull_box.is_active()
+
+
+## How deep a weak point's stomp box is along the track: stomp_depth at the run's pace (GDD §3: a wall
+## jump or a drop off the ceiling lands on it over as long at any run speed; FloatingHeadTuning, Pace).
+func stomp_depth() -> float:
+	var pace: float = world.tuning.pace() if world != null and world.tuning != null else 1.0
+	return tuning.stomp_depth * pace
 
 
 ## How high the crown is (world) on its centre line over the weak points.

@@ -26,7 +26,9 @@ extends Node3D
 ##   pin).
 ## The attacks wait in line in the phase's order (FloatingHeadTuning.faceoff_pattern): the first that
 ## can start fairly goes next, then to the back of the line. Every timing is at the phase's pace, and
-## none depends on how long the fight has lasted (GDD §10: no escalation). Big attacks never overlap
+## none depends on how long the fight has lasted (GDD §10: no escalation); its distances along the
+## track (where it drops cyborgs and takes aim at a tower, the fairness margins) are at the run's pace
+## (FloatingHead.metres; GDD §3), so they take as long to run at any speed. Big attacks never overlap
 ## (GDD §9): its lasers wait while a cyborg it dropped is still ahead of the runner (drop_hold_max at
 ## most), and share the cyborgs' "airspace" (CyborgGun.AIRSPACE_META), so no cyborg's burst starts
 ## during a laser attack and no laser attack during a burst.
@@ -40,6 +42,8 @@ extends Node3D
 
 enum Step { IDLE, MOVE, WAIT_TOWER, CHARGE, FIRE, RECOVER, MOUTH, DROPPING, CLOSING, PINNED }
 
+const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
+
 const LASER_NAME: String = "Floating Head's eye laser"
 const BURN_NAME: String = "Floating Head's laser burn"
 const LASER_RED := Color(1.0, 0.12, 0.08)
@@ -49,7 +53,8 @@ const RECOVER_SECONDS: float = 0.35
 const CLOSE_SECONDS: float = 0.35
 ## A drop that finds no clear roof for this long gives up.
 const STUCK_SECONDS: float = 2.5
-## A sweep's floor stays clear from this far before where the runner is when its beams fire.
+## A sweep's floor stays clear from this far before where the runner is when its beams fire (metres at
+## 18 m/s, like CEILING_REACH: at the run's pace).
 const SWEEP_CLEAR_BEFORE: float = 6.0
 ## Seconds of slack a tower's sequence keeps before it.
 const TOWER_SLACK: float = 0.4
@@ -66,7 +71,8 @@ const SWING_SECONDS: float = 0.2
 const DROP_MARK_RADIUS: float = 0.9
 ## A dropped cyborg leaps out this far in front of the face (clear of the open jaw) and lands there.
 const DROP_FRONT: float = 3.0
-## No attack starts while a ceiling lies within this far ahead of the runner (_fair_to_start).
+## No attack starts while a ceiling lies within this far ahead of the runner (_fair_to_start; metres at
+## 18 m/s, at the run's pace).
 const CEILING_REACH: float = 60.0
 
 var head: FloatingHead
@@ -250,9 +256,9 @@ func lasering() -> bool:
 func station(kind: StringName) -> Vector3:
 	match kind:
 		&"drop":
-			return Vector3(0.0, tuning.drop_height, tuning.drop_ahead)
+			return Vector3(0.0, tuning.drop_height, head.metres(tuning.drop_ahead))
 		&"tower":
-			return Vector3(0.0, tuning.face_height, tuning.tower_ahead)
+			return Vector3(0.0, tuning.face_height, head.metres(tuning.tower_ahead))
 	return head.face_pose()
 
 
@@ -295,7 +301,7 @@ func _run(delta: float) -> void:
 		Step.WAIT_TOWER:
 			_follow_move(delta)
 			var t: Dictionary = attack["tower"]
-			if float(t["at"]) - world.player.distance <= tuning.tower_ahead + v * _charge_time() + 0.001:
+			if float(t["at"]) - world.player.distance <= head.metres(tuning.tower_ahead) + v * _charge_time() + 0.001:
 				_begin_charge()
 		Step.CHARGE:
 			_follow_move(delta)
@@ -345,7 +351,7 @@ func _choose_next() -> void:
 	var tower: Dictionary = _next_tower() if shown >= tuning.towers_after else {}
 	if not tower.is_empty():
 		until = (float(tower["at"]) - world.player.distance
-			- (tuning.tower_ahead + v * (_charge_time() + _move_time() + TOWER_SLACK))) / v
+			- (head.metres(tuning.tower_ahead) + v * (_charge_time() + _move_time() + TOWER_SLACK))) / v
 		if until <= 0.0:
 			# Seconds until it takes aim (at least the move to the tower station, _next_tower).
 			var lead: float = maxf(until + _move_time() + TOWER_SLACK, 0.0)
@@ -479,9 +485,11 @@ func _end_attack() -> void:
 ## it or dropping from it; a drop waits until the runner is past the cyborgs of the last one; lasers
 ## wait for the airspace; a sweep needs the floor clear in every lane where the runner will be while its
 ## beams cross the street (from SWEEP_CLEAR_BEFORE before where they are when it fires to
-## sweep_clear_after past where they are when it's done); a drag a lane to switch into.
+## sweep_clear_after past where they are when it's done); a drag a lane to switch into. Its margins
+## along the track are at the run's pace (FloatingHead.metres: as long to run at any speed).
 func _fair_to_start(kind: StringName) -> bool:
-	if head.ceiling_between(world.player.distance - SWEEP_CLEAR_BEFORE, world.player.distance + CEILING_REACH):
+	var before: float = head.metres(SWEEP_CLEAR_BEFORE)
+	if head.ceiling_between(world.player.distance - before, world.player.distance + head.metres(CEILING_REACH)):
 		return false
 	if kind == &"drop":
 		return not _cyborgs_ahead()
@@ -492,12 +500,12 @@ func _fair_to_start(kind: StringName) -> bool:
 	var move: float = _move_time() if head.pose.distance_to(station(kind)) > 0.05 else 0.0
 	if kind == &"low" or kind == &"high":
 		var fire: float = move + _charge_time()
-		return head.floor_clear_all(d0 + v * fire - SWEEP_CLEAR_BEFORE,
-			d0 + v * (fire + _sweep_time()) + tuning.sweep_clear_after)
+		return head.floor_clear_all(d0 + v * fire - before,
+			d0 + v * (fire + _sweep_time()) + head.metres(tuning.sweep_clear_after))
 	var pl: int = head.player_lane()
 	var lanes: Array[int] = [pl]
 	return head.escape_lane(lanes, pl, d0, d0 + v * (move + _charge_time() + _drag_time()
-		+ tuning.burn_seconds / head.pace()) + tuning.escape_clear_after, true) >= 0
+		+ tuning.burn_seconds / head.pace()) + head.metres(tuning.escape_clear_after), true) >= 0
 
 
 # --- Lasers ----------------------------------------------------------------------------------------
@@ -558,7 +566,7 @@ func _commit() -> void:
 	var start: float = d0 + head.pose.z - 1.0
 	var lanes: Array[int] = [lane]
 	var fair: bool = head.escape_lane(lanes, lane, d0, d0 + world.player.speed * (_drag_time()
-		+ tuning.burn_seconds / head.pace()) + tuning.escape_clear_after, true) >= 0
+		+ tuning.burn_seconds / head.pace()) + head.metres(tuning.escape_clear_after), true) >= 0
 	if not fair:
 		# No lane to switch into any more: it powers down without firing.
 		head.log_event(&"laser_cancel", {"kind": kind, "lane": lane})
@@ -842,9 +850,11 @@ func _drop_at() -> float:
 	return world.player.distance + head.pose.z - DROP_FRONT
 
 
+## A cyborg's own obstacle margin at the run's pace (CyborgRules.obstacle_margin_at: how the cyborg it
+## drops keeps clear of holes and fences at this speed).
 func _cyborg_margin() -> float:
-	var t: Resource = EnemyDirector.tuning_for("cyborg")
-	return float(t.get("obstacle_margin")) if t != null and t.get("obstacle_margin") != null else 10.0
+	var t := EnemyDirector.tuning_for("cyborg") as CyborgTuning
+	return CyborgRules.obstacle_margin_at(t, head.run_pace()) if t != null else head.metres(10.0)
 
 
 func _update_dropping() -> void:
@@ -963,7 +973,7 @@ func falling() -> Array[Enemy]:
 ## or empty.
 func _next_tower() -> Dictionary:
 	var v: float = world.player.speed
-	var from: float = world.player.distance + tuning.tower_ahead + v * (_charge_time() + _move_time())
+	var from: float = world.player.distance + head.metres(tuning.tower_ahead) + v * (_charge_time() + _move_time())
 	for t: Dictionary in head.towers_between(from, from + 800.0):
 		if not _towers_done.has(t["key"]):
 			return t
@@ -973,7 +983,7 @@ func _next_tower() -> Dictionary:
 ## Towers it can no longer time a drag for go by as scenery (not counted as missed).
 func _skip_passed_towers() -> void:
 	var v: float = world.player.speed
-	var until: float = world.player.distance + tuning.tower_ahead + v * (_charge_time() + _move_time())
+	var until: float = world.player.distance + head.metres(tuning.tower_ahead) + v * (_charge_time() + _move_time())
 	for t: Dictionary in head.towers_between(world.player.distance - 50.0, until):
 		if not _towers_done.has(t["key"]):
 			_towers_done[t["key"]] = true
@@ -1014,7 +1024,7 @@ func _estimate(kind: StringName) -> float:
 			# Its lasers then wait until the runner is past the cyborgs it dropped.
 			return _move_time() * 2.0 + (tuning.mouth_seconds + tuning.drop_interval * 2.0
 				+ tuning.drop_fall_seconds) / head.pace() + CLOSE_SECONDS \
-				+ minf(tuning.drop_hold_max, tuning.drop_ahead / maxf(world.player.speed, 1.0))
+				+ minf(tuning.drop_hold_max, head.metres(tuning.drop_ahead) / maxf(world.player.speed, 1.0))
 	return 1.0
 
 

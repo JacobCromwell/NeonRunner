@@ -1,7 +1,7 @@
 extends Node3D
 ## The Floating Head up close and in scripted runs, for visual review (GDD §10, task E1; not part of
 ## the game). It builds the fight the way the game does (its arena on the City's truck roofs, in its
-## arena's City look) with the runner in god mode. The fight itself: ./play.sh --boss=city_boss (debug
+## arena's City look, at the City boss step's speed: 21 m/s, GDD §3) with the runner in god mode. The fight itself: ./play.sh --boss=city_boss (debug
 ## builds). Render frames on both renderers, e.g.:
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot4 --path . --resolution 960x540 --fixed-fps 10 \
 ##     --write-movie build/fh/f.png --quit-after 60 res://tools/showcase/floating_head_showcase.tscn \
@@ -46,7 +46,8 @@ extends Node3D
 ## jump takes; the nearer one by default), --board-late[=S] (task E1e: in the first window the runner
 ## waits beside the ramp and switches onto it once a share S of it is behind it, 0.4 by default, the way
 ## the owner's playtest met it), --e1c (E1c's ramp, one straight slab whose sides block from a step
-## high, and its smaller stomp boxes: the before of E1e's reviews).
+## high, and its smaller stomp boxes: the before of E1e's reviews), --speed=N (the run speed in m/s;
+## the campaign's City boss step's by default, 18 for the reference speed the fight was first built at).
 ## Frames worth a look (at --fixed-fps 10): faceoff at 3 lanes, a low sweep 78-95, a drag 106-128 (its
 ## aiming spot, then the lane warning and the burning line), a high sweep 138-160; faceoff with
 ## --towers-after=0, the bait and the pin about 85-125, then the stomp window: the ramp (phase 0),
@@ -81,6 +82,7 @@ func _ready() -> void:
 	var wall: int = 0
 	var board_late: float = -1.0
 	var e1c: bool = false
+	var speed: float = 0.0
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--scenario="):
 			scenario = arg.get_slice("=", 1)
@@ -112,6 +114,8 @@ func _ready() -> void:
 			board_late = float(v)
 		elif arg == "--e1c":
 			e1c = true
+		elif arg.begins_with("--speed="):
+			speed = float(v)
 	var def: BossDef = (load(BOSS_PATH) as BossDef).duplicate() as BossDef
 	var t: FloatingHeadTuning = (def.tuning as FloatingHeadTuning).duplicate() as FloatingHeadTuning
 	if scenario == "reveal":
@@ -133,7 +137,7 @@ func _ready() -> void:
 		t.stomp_depth = 3.0
 		t.stomp_top = 0.55
 	def.tuning = t
-	var tuning := load("res://data/tuning/movement.tres") as MovementTuning
+	var tuning: MovementTuning = _tuning_at(load("res://data/tuning/movement.tres") as MovementTuning, speed)
 	var ctx := RunContext.new()
 	ctx.mode = RunContext.Mode.QUICK
 	ctx.boss = def
@@ -190,6 +194,20 @@ func _ready() -> void:
 	if scenario in ["model", "below", "stern", "mouth", "slogans"]:
 		# The runner stands still: nothing moves but the ship's own parts.
 		world.player.running = false
+
+
+## The movement tuning at `speed` m/s, or (0) at the City boss step's speed as the campaign plays it
+## (Campaign.configure_boss: its zone's).
+func _tuning_at(base: MovementTuning, speed: float) -> MovementTuning:
+	if speed <= 0.0:
+		var campaign := load("res://data/campaign/campaign.tres") as Campaign
+		var step: CampaignStep = campaign.step("city/boss") if campaign != null else null
+		speed = campaign.configure_boss(step, 3).movement_for(base).run_speed if step != null else base.run_speed
+	if is_equal_approx(speed, base.run_speed):
+		return base
+	var out: MovementTuning = base.duplicate() as MovementTuning
+	out.run_speed = speed
+	return out
 
 
 func _physics_process(delta: float) -> void:

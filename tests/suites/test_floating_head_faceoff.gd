@@ -22,6 +22,8 @@ extends TestSuite
 ##   fallback_after misses (no bonus);
 ## - its real arena at 3, 5 and 6 lanes: every attack keeps the fairness rules (rechecked from the
 ##   layout), and every attempt plays out the same way.
+## Every fight here runs at the City's speed (21 m/s), as the campaign plays it (GDD §3; task E1f:
+## FloatingHeadBot.campaign_tuning).
 
 const BOSS_PATH: String = "res://data/bosses/city_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
@@ -34,6 +36,8 @@ var def: BossDef
 
 
 func run() -> void:
+	# The fight at the City's speed, as the campaign plays it (GDD §3; E1f).
+	tuning = FloatingHeadBot.campaign_tuning(tuning)
 	sim = RunSim.new(tree, tuning)
 	def = load(BOSS_PATH) as BossDef
 	check(def != null and def.is_built(), "the Floating Head's fight exists")
@@ -244,11 +248,13 @@ func _test_towers() -> void:
 		var towers: Array[Dictionary] = head.towers_between(0.0, arena.lap_length * arena.laps.size() - 1.0)
 		var blocked: int = 0
 		var sides: Dictionary = {}
+		# At the fight's pace (the City's speed: GDD §3), its clear stretches take as long to run as at 18 m/s.
+		var p: float = arena.tuning.pace()
 		for tower: Dictionary in towers:
 			var k: int = arena.lap_at(float(tower["at"]))
 			var at: float = float(tower["at"]) - k * arena.lap_length
 			sides[int(tower["side"])] = true
-			if not _all_clear(arena.laps[k], lanes, at - t.tower_clear_before, at + t.tower_clear_after):
+			if not _all_clear(arena.laps[k], lanes, at - t.tower_clear_before * p, at + t.tower_clear_after * p):
 				blocked += 1
 		check(towers.size() >= 2 * arena.laps.size() and sides.size() == 2,
 			"marked towers stand along its arena on both sides (%d, %d lanes)" % [towers.size(), lanes])
@@ -612,6 +618,8 @@ func _test_real_arena() -> void:
 		var layout: LevelLayout = world.layout
 		var v: float = world.player.speed
 		var pace: float = head.phase().pace
+		# Its margins along the track at the run's pace (the City's speed, GDD §3).
+		var rp: float = head.run_pace()
 		var fires: Array[Dictionary] = _events(head, &"laser_fire")
 		var ends: Array[Dictionary] = _events(head, &"laser_end")
 		var sweeps: int = 0
@@ -623,11 +631,11 @@ func _test_real_arena() -> void:
 			if e["kind"] == &"low" or e["kind"] == &"high":
 				sweeps += 1
 				var d1: float = float(ends[i]["d"]) if i < ends.size() else d0
-				if not _all_clear(layout, lanes, d0 - 5.0, d1 + t.sweep_clear_after - 1.0):
+				if not _all_clear(layout, lanes, d0 - 5.0 * rp, d1 + t.sweep_clear_after * rp - 1.0):
 					unfair.append("sweep at %.0f" % d0)
 			else:
 				drags += 1
-				var until: float = d0 + v * (t.drag_seconds + t.burn_seconds) / pace + t.escape_clear_after - 1.0
+				var until: float = d0 + v * (t.drag_seconds + t.burn_seconds) / pace + t.escape_clear_after * rp - 1.0
 				var lane: int = int(e["lane"])
 				var free: bool = false
 				for dist: int in range(1, t.max_escape_lanes + 1):
@@ -641,7 +649,7 @@ func _test_real_arena() -> void:
 						free = free or ok
 				if not free:
 					unfair.append("drag at %.0f" % d0)
-		var margin: float = float(EnemyDirector.tuning_for("cyborg").get("obstacle_margin"))
+		var margin: float = float(EnemyDirector.tuning_for("cyborg").get("obstacle_margin")) * rp
 		var lands: Array[Dictionary] = _events(head, &"cyborg_land")
 		for e: Dictionary in lands:
 			if not _all_clear(layout, lanes, float(e["at"]) - margin + 0.5, float(e["at"]) + margin - 0.5):
@@ -659,11 +667,12 @@ func _test_real_arena() -> void:
 ## Drops again and again on the real arena in a later phase (two cyborgs each): every cyborg lands on
 ## clear roof, rechecked from the layout, each drop in lanes of its own with a lane left free.
 func _test_real_arena_drops() -> void:
-	var margin: float = float(EnemyDirector.tuning_for("cyborg").get("obstacle_margin"))
 	for lanes: int in LANES:
 		var pair: Array = _fight(_def("drop,low", false, false), lanes, {"phase": 1})
 		var world: RunWorld = pair[0]
 		var head: FloatingHead = pair[1]
+		# The cyborg's own margin at the run's pace (the City's speed, GDD §3).
+		var margin: float = float(EnemyDirector.tuning_for("cyborg").get("obstacle_margin")) * head.run_pace()
 		var tag: String = "(phase 2, %d lanes)" % lanes
 		world.player.god_mode = true
 		world.player.grapples = 1_000_000

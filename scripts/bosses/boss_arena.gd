@@ -18,6 +18,15 @@ extends RefCounted
 ## fight with no time limit, credits along the track would pay players for stalling; beating the boss
 ## pays instead). Enemies a lap lists come into play like a level's: the director spawns those of the
 ## laps planned before the world was built, the arena those added later, each at its type's lead.
+##
+## Pace (GDD §3: the run speed rises zone by zone, and a boss fight runs at its zone's speed like the
+## zone's levels): the arena is planned at its config's run speed (LevelConfig.movement_for: its zone's
+## in the campaign, Campaign.configure_boss; the base speed in quick play and the tests), as the
+## generator builds a level, so its patterns keep their seconds; the clear stretches at a lap's start
+## and end are metres at MovementTuning.REFERENCE_SPEED like the patterns, stretched by the pace too
+## (the first lap's start is the boss's entrance). A boss script's own numbers in metres follow the
+## same pace (tuning.pace(), the run's: world.tuning.pace() once the world is built), so its fight
+## plays the same in seconds at every zone's speed.
 
 ## Laps kept on the track beyond the one the player is in.
 const LAPS_AHEAD: int = 1
@@ -26,6 +35,8 @@ const TRACK_PIECES: PackedStringArray = ["gaps", "fences", "signs", "hulls", "pa
 
 ## One lap's generator settings, ready to generate (base_config, then lane count and difficulty).
 var config: LevelConfig
+## The fight's movement tuning, at the arena's run speed (config.movement_for): its pace() stretches
+## the arena's and the boss's metres.
 var tuning: MovementTuning
 ## Metres per lap: the lap's duration at run speed.
 var lap_length: float = 0.0
@@ -43,7 +54,9 @@ var _next_enemy: int = 0
 
 
 ## The arena's generator settings for `def`: a copy of its arena config (a plain one without), with
-## nothing ramping within the fight and every feature there from the start.
+## nothing ramping within the fight and every feature there from the start. Its run speed is the
+## arena config's own (0, the usual: the movement tuning's base speed, as in quick play and the tests);
+## the campaign gives it its zone's (Campaign.configure_boss).
 static func base_config(def: BossDef) -> LevelConfig:
 	var out: LevelConfig = def.arena.duplicate() as LevelConfig if def.arena != null else LevelConfig.new()
 	if def.arena == null:
@@ -57,14 +70,15 @@ static func base_config(def: BossDef) -> LevelConfig:
 
 
 ## Plans the arena for a fight against `def`: the distinct laps, from `p_config` (base_config with the
-## lane count and difficulty set) at `p_tuning`'s run speed, each shaped by `encounter`'s _plan_lap if
-## given, and the first laps of the track.
+## lane count and difficulty set) at its run speed (p_config.movement_for(p_tuning): its own, its
+## zone's in the campaign, else `p_tuning`'s), each shaped by `encounter`'s _plan_lap if given, and the
+## first laps of the track.
 static func plan(def: BossDef, p_config: LevelConfig, p_tuning: MovementTuning,
 		encounter: BossEncounter = null) -> BossArena:
 	var arena := BossArena.new()
 	arena.config = p_config
-	arena.tuning = p_tuning
-	arena.lap_length = maxf(p_tuning.run_speed * p_config.duration_seconds, TrackBuilder.BUILD_AHEAD * 2.0)
+	arena.tuning = p_config.movement_for(p_tuning)
+	arena.lap_length = maxf(arena.tuning.run_speed * p_config.duration_seconds, TrackBuilder.BUILD_AHEAD * 2.0)
 	var generated: bool = def.arena != null
 	var patterns: Array = LevelGenerator.load_for(p_config) if generated else []
 	for i: int in (maxi(def.arena_laps, 1) if generated else 1):
@@ -234,6 +248,9 @@ func _join_pieces(next: LevelLayout) -> void:
 func _generate(index: int, patterns: Array) -> LevelLayout:
 	var lap_config: LevelConfig = config.duplicate() as LevelConfig
 	lap_config.level_seed = hash([config.level_seed, index])
+	# The clear stretches at its start and end keep their seconds (the header's Pace).
+	lap_config.start_clear_distance = config.start_clear_distance * tuning.pace()
+	lap_config.end_clear_distance = config.end_clear_distance * tuning.pace()
 	var gen := LevelGenerator.new()
 	var out: LevelLayout = gen.generate(lap_config, tuning, patterns)
 	for line: String in gen.warnings:

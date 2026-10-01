@@ -2,9 +2,9 @@ extends TestSuite
 ## GDD §3, "Pace and busier levels" (owner's playtest, September 30, 2026): the run speed rises zone
 ## by zone (about 21 m/s in the Neon City to about 25 m/s in the Golden Zone), enemies and their
 ## attacks speed up to match, and the levels get busier.
-## - Speeds in data: each zone's, a level's own, the tier's multiplier, the base speed for quick play,
-##   tests and boss fights; the generator, RunWorld and App run a level at the same speed, and a level
-##   keeps its duration in seconds.
+## - Speeds in data: each zone's, a level's own, the tier's multiplier, the base speed for quick play
+##   and the tests; a boss fight at its zone's speed like the zone's levels (E1f); the generator,
+##   RunWorld and App run a level at the same speed, and a level keeps its duration in seconds.
 ## - Pace (MovementTuning.pace): a pattern keeps its timing in seconds at any speed; the generator's
 ##   fairness at 21, 23.4 and 25 m/s, at 3, 5 and 6 lanes, with every built feature and the fill pass,
 ##   on many seeds (the campaign suite does the campaign's levels at their zones' speeds); floor routes
@@ -46,8 +46,8 @@ func _fast(speed: float) -> MovementTuning:
 
 
 ## GDD §3: about 21 m/s in the Neon City, rising zone by zone to about 25 m/s in the Golden Zone. Every
-## campaign level takes its zone's speed (times a harder tier's multiplier); boss fights, quick play and
-## the tests keep the base speed; a level lasts as many seconds as before and gets longer in metres.
+## campaign level and boss fight takes its zone's speed (times a harder tier's multiplier); quick play
+## and the tests keep the base speed; a level lasts as many seconds as before and gets longer in metres.
 func _test_speed_data() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var last: float = 0.0
@@ -58,7 +58,7 @@ func _test_speed_data() -> void:
 		"about 21 m/s in the Neon City and about 25 m/s in the Golden Zone (%.1f, %.1f)" % [campaign.zones[0].run_speed,
 			campaign.zones[-1].run_speed])
 	check(is_equal_approx(tuning.run_speed, MovementTuning.REFERENCE_SPEED) and is_equal_approx(tuning.pace(), 1.0),
-		"the base speed (quick play, tests, boss fights) is the reference speed, pace 1")
+		"the base speed (quick play, the tests) is the reference speed, pace 1")
 	var quick := load(LEVEL_PATH) as LevelConfig
 	check(quick.run_speed == 0.0 and quick.fill_empty_seconds == 0.0, "quick play's level keeps the base speed and no fill pass")
 	for s: CampaignStep in campaign.steps():
@@ -71,8 +71,14 @@ func _test_speed_data() -> void:
 			check(is_equal_approx(layout.length, config.run_speed * config.duration_seconds),
 				"%s lasts %.0f s: %.0f m at %.1f m/s" % [s.id, config.duration_seconds, layout.length, config.run_speed])
 			check(config.fill_empty_seconds > 0.0, "%s fills its long empty stretches" % s.id)
-		elif s.kind == CampaignStep.Kind.BOSS and s.boss != null and s.boss.arena != null:
-			check(campaign.configure_boss(s, 3).run_speed == 0.0, "%s keeps the base speed" % s.id)
+		elif s.kind == CampaignStep.Kind.BOSS and s.boss != null:
+			# E1f: a boss fight runs at its zone's speed, like the zone's levels; quick play's keeps the base.
+			var arena: LevelConfig = campaign.configure_boss(s, 3)
+			check(is_equal_approx(arena.run_speed, s.zone.run_speed) and is_equal_approx(arena.movement_for(tuning).run_speed,
+				s.zone.run_speed), "%s fights at its zone's speed (%.1f)" % [s.id, arena.run_speed])
+			check(is_equal_approx(campaign.configure_boss(s, 3, 2).run_speed, s.zone.run_speed * campaign.speed_multiplier(2)),
+				"%s: a harder tier multiplies its speed" % s.id)
+			check(BossArena.base_config(s.boss).run_speed == 0.0, "%s in quick play keeps the base speed" % s.id)
 	# A level's own speed wins over its zone's.
 	var step: CampaignStep = campaign.step("city/1")
 	var own := CampaignStep.new()

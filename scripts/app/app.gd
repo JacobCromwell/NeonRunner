@@ -311,8 +311,9 @@ func start_level(s: CampaignStep, difficulty_tier: int = 0) -> void:
 	_start_run(ctx, s.zone.music)
 
 
-## A campaign boss fight (GDD §10): it plays in the run world like a level, on the boss's own arena,
-## with its granted items, and goes through the same flow (death screen, results, shop, retry).
+## A campaign boss fight (GDD §10): it plays in the run world like a level, on the boss's own arena at
+## its zone's speed (GDD §3), with its granted items, and goes through the same flow (death screen,
+## results, shop, retry).
 func start_boss(s: CampaignStep, difficulty_tier: int = 0) -> void:
 	var ctx := RunContext.new()
 	ctx.mode = RunContext.Mode.CAMPAIGN
@@ -320,7 +321,8 @@ func start_boss(s: CampaignStep, difficulty_tier: int = 0) -> void:
 	ctx.boss = s.boss
 	ctx.difficulty_tier = difficulty_tier
 	ctx.config = campaign.configure_boss(s, lane_count(), difficulty_tier)
-	ctx.tuning = _boss_tuning(_tuning_for_tier(difficulty_tier))
+	# Its zone's speed, like the zone's levels (GDD §3), and it never rises during the fight.
+	ctx.tuning = _boss_tuning(ctx.config.movement_for(_tuning_for_tier(difficulty_tier)))
 	ctx.loadout = make_loadout(s.boss)
 	_apply_review_args(ctx)
 	_start_run(ctx, _music_for(ctx))

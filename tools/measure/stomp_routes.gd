@@ -14,6 +14,8 @@ extends SceneTree
 ##                          0.55 m over their sockets and not over the outer lanes, the jump 3 m before
 ##                          its face (E1c's bot)
 ##   --second-move          on the wall route, one more move inward in the air 0.1 s after the wall jump
+##   --fine                 on the wall route, also finds each end of the window to about 0.02 m (at
+##                          18 m/s) by bisection between the sweep's points
 ## What it prints, in metres at the run speed and in seconds of running (what stays the same at every
 ## speed: the fight's distances follow the pace, FloatingHead.run_pace):
 ##   ramp     the boarding window: the latest lane switch into the ramp's lane from the lane beside it
@@ -36,6 +38,7 @@ var _lanes: Array[int] = [3, 5, 6]
 var _routes: PackedStringArray = ["ramp", "wall", "ceiling"]
 var _e1c: bool = false
 var _second_move: bool = false
+var _fine: bool = false
 var _speed: float = 0.0
 var _tuning: MovementTuning
 var _sim: RunSim
@@ -60,6 +63,8 @@ func _run() -> void:
 			_e1c = true
 		elif arg == "--second-move":
 			_second_move = true
+		elif arg == "--fine":
+			_fine = true
 	var app: Node = root.get_node_or_null(^"App")
 	if app != null:
 		app.set(&"autosave", false)
@@ -234,11 +239,13 @@ func _measure_wall(lanes: int) -> void:
 		for entry: float in [float(marks["start"]), float(marks["release"]) + 0.8 * pace]:
 			var row: String = ""
 			var ok: Array[float] = []
+			var tried: Array[float] = []
 			for k: int in 2 * WALL_STEPS + 1:
 				var jump: float = mark + (WALL_STEPS - k) * step
 				if jump >= entry - 1.0 * pace:
 					row += " "
 					continue
+				tried.append(jump)
 				var r: Dictionary = await _wall_try(lanes, wall, entry, jump)
 				row += "X" if r["stomped"] else "."
 				if r["stomped"]:
@@ -247,11 +254,29 @@ func _measure_wall(lanes: int) -> void:
 			if not ok.is_empty():
 				var early: float = ok[0]
 				var late: float = ok[ok.size() - 1]
-				found = "%.1f to %.1f m before its face: a window of %.1f m, %.3f s; the mark %.3f s from its early end and %.3f s from its late end" % [
+				if _fine:
+					# Each end between its last stomping point and the next one tried (if any was).
+					if tried.has(early + step):
+						early = await _wall_edge(lanes, wall, entry, early, early + step)
+					if tried.has(late - step):
+						late = await _wall_edge(lanes, wall, entry, late, late - step)
+				found = "%.2f to %.2f m before its face: a window of %.2f m, %.3f s; the mark %.3f s from its early end and %.3f s from its late end" % [
 					early, late, early - late, _s(early - late), _s(early - mark), _s(mark - late)]
 			print("  wall, %d lanes, %s wall, onto it %.1f m before its face%s: jumps %.1f..%.1f m [%s] stomp at %s" % [lanes,
 				"left" if wall < 0 else "right", entry, ", a second move" if _second_move else "",
 				mark + WALL_STEPS * step, mark - WALL_STEPS * step, row, found])
+
+
+## The end of a wall jump's window between `inside` (a jump point that stomps) and `outside` (one that
+## doesn't), to about 0.02 m at 18 m/s: the last jump point found that stomps.
+func _wall_edge(lanes: int, wall: int, entry: float, inside: float, outside: float) -> float:
+	for i: int in 5:
+		var mid: float = (inside + outside) * 0.5
+		if (await _wall_try(lanes, wall, entry, mid))["stomped"]:
+			inside = mid
+		else:
+			outside = mid
+	return inside
 
 
 ## Where the second window's wall marks start and where their jump mark is, and the window's release

@@ -122,14 +122,16 @@ func feature_ages(s: CampaignStep) -> Dictionary[String, int]:
 
 ## The boss step's arena, ready to plan (BossArena.base_config): lane count, the arena's own
 ## difficulty plus the tier's bonus (bosses keep their own difficulty rather than the level curve),
-## enemy scaling as in the zone's last level (enemies a boss brings in fight like the zone's), and the
-## zone's skin unless the arena has its own.
+## its run speed like a level's (run_speed_for: its zone's, times the tier's multiplier; GDD §3, the
+## fight is as fast as the zone's levels), enemy scaling as in the zone's last level (enemies a boss
+## brings in fight like the zone's), and the zone's skin unless the arena has its own.
 func configure_boss(s: CampaignStep, lane_count: int, difficulty_tier: int = 0) -> LevelConfig:
 	var config: LevelConfig = BossArena.base_config(s.boss)
 	config.lane_count = lane_count
 	var bonus: float = tier_difficulty_bonus[clampi(difficulty_tier, 0, tier_difficulty_bonus.size() - 1)] \
 		if not tier_difficulty_bonus.is_empty() else 0.0
 	config.difficulty = clampf(config.difficulty + bonus, 0.0, 1.0)
+	config.run_speed = run_speed_for(s, difficulty_tier)
 	var last_level: int = 0
 	for other: CampaignStep in steps():
 		if other.index >= s.index:
@@ -148,14 +150,20 @@ func speed_multiplier(difficulty_tier: int) -> float:
 	return tier_speed_multiplier[clampi(difficulty_tier, 0, tier_speed_multiplier.size() - 1)]
 
 
-## The run speed of level step `s` (GDD §3, owner's playtest September 30, 2026: it rises zone by
-## zone): the level's own (LevelConfig.run_speed) or its zone's (ZoneDef.run_speed), times the
-## difficulty tier's speed multiplier. 0 when neither sets one: the run then takes the movement
+## The run speed of level or boss step `s` (GDD §3, owner's playtest September 30, 2026: it rises zone
+## by zone, and a boss fight runs at its zone's speed like the levels before it): the level's own
+## (LevelConfig.run_speed; a boss's arena config's, BossDef.arena) or its zone's (ZoneDef.run_speed),
+## times the difficulty tier's speed multiplier. 0 when none sets one: the run then takes the movement
 ## tuning's base speed, and App applies the tier's multiplier to that.
 func run_speed_for(s: CampaignStep, difficulty_tier: int = 0) -> float:
-	if s == null or s.level == null:
+	if s == null:
 		return 0.0
-	var speed: float = s.level.run_speed
+	var own: LevelConfig = s.level
+	if own == null and s.boss != null:
+		own = s.boss.arena
+	if own == null and s.boss == null:
+		return 0.0
+	var speed: float = own.run_speed if own != null else 0.0
 	if speed <= 0.0 and s.zone != null:
 		speed = s.zone.run_speed
 	return speed * speed_multiplier(difficulty_tier) if speed > 0.0 else 0.0
