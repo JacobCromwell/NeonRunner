@@ -742,8 +742,10 @@ skin whose own scenery would otherwise double up with one (the Marketplace's cit
 clear of window cyborgs); read-only and visual only, like every other hook.
 
 **Zone doodads' looks** (task G5 built the mechanism and a plain default; task G6 gives each zone its
-own, except the grey box and the Golden Palace, which keep the plain default until the Golden Palace
-gets its own in a follow-up). What a look gets and keeps to:
+own, except the grey box, which keeps the plain default. `GoldenPalaceSkin` (D6b) extends `GoldenSkin`
+and doesn't override `doodad()`, so the Golden Palace inherits the Golden Zone's gilded planters,
+fountains and statues for free, unless a follow-up gives it its own interior ones.) What a look gets
+and keeps to:
 - *The hook*: `doodad(body, size, size_class, side, look_seed)`. `body` is the doodad's node, centred on
   its collision box `size` (width, height, length): the floor is at -size.y / 2 and its front, where the
   player meets it, at +size.z / 2; add meshes as its children. `size_class` is `&"small"`, `&"medium"` or
