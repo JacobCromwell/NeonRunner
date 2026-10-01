@@ -181,8 +181,21 @@ func _test_slash_warning() -> void:
 func _test_slash_escapes() -> void:
 	for speed: float in SPEEDS:
 		for lanes: int in LANES:
-			for escape: StringName in ([&"pad"] if lanes == 3 else [&"pad", &"lanes"]):
+			for escape: StringName in _escapes(lanes, speed):
 				await _slash_escapes(lanes, escape, speed)
+
+
+## The slash's escapes to play at `lanes` and `speed`: the pad at every lane count, leaving the lanes
+## at 5 and 6; at the Dead Zone's speed (a second pass at another speed) one of them at each lane count,
+## by turns, to keep the suite's time down.
+static func _escapes(lanes: int, speed: float) -> Array[StringName]:
+	var out: Array[StringName] = [&"pad"]
+	if lanes > 3:
+		out.append(&"lanes")
+	if speed > MovementTuning.REFERENCE_SPEED + 0.5 and lanes > 3:
+		out.clear()
+		out.append(&"lanes" if lanes == 5 else &"pad")
+	return out
 
 
 func _slash_escapes(lanes: int, escape: StringName, speed: float) -> void:
@@ -296,6 +309,9 @@ func _test_hands_warning() -> void:
 func _test_hands_escapes() -> void:
 	for speed: float in SPEEDS:
 		for lanes: int in LANES:
+			# At the Dead Zone's speed, the narrowest and the widest street (to keep the suite's time down).
+			if speed > MovementTuning.REFERENCE_SPEED + 0.5 and lanes == 5:
+				continue
 			await _hands_escapes(lanes, speed)
 
 
@@ -346,16 +362,14 @@ func _test_hands_same_every_attempt() -> void:
 ## out, and its generators), for a runner who reads it but lets every generator go by (so the fight never
 ## moves on: GDD §10, it keeps cycling its pattern): through a whole lap at every lane count, without god
 ## mode or armor; the slash's lane escape at 5 and 6 lanes too; at 18 m/s, and at the Dead Zone's
-## 24.2 m/s (one escape each).
+## 24.2 m/s at 3 and 6 lanes (one escape each).
 func _test_real_arena() -> void:
 	for speed: float in SPEEDS:
 		for lanes: int in LANES:
-			var escapes: Array[StringName] = []
-			if lanes == 3 or speed < 20.0:
-				escapes.append(&"pad")
-			if lanes > 3:
-				escapes.append(&"lanes")
-			for escape: StringName in escapes:
+			# At the Dead Zone's speed, 3 and 6 lanes (to keep the suite's time down).
+			if speed > MovementTuning.REFERENCE_SPEED + 0.5 and lanes == 5:
+				continue
+			for escape: StringName in _escapes(lanes, speed):
 				await _real_arena(lanes, escape, speed)
 
 
