@@ -363,6 +363,8 @@ func _test_weapons() -> void:
 func _test_lights_out() -> void:
 	var t := def.tuning as SleepTakerTuning
 	check(t.dark_level >= BossEncounter.MIN_LIGHT_LEVEL, "GDD §10: lights out is darker still, never pitch black (%.2f)" % t.dark_level)
+	# The zone's own light, as a run sets it (a bare test world has no level to set it).
+	ZoneSkin.set_scenery_light(1.0)
 	var pair: Array = _fight(_def_with("lights_out", true, false), 5)
 	var world: RunWorld = pair[0]
 	var boss: SleepTaker = pair[1]
@@ -380,11 +382,13 @@ func _test_lights_out() -> void:
 	await _until(world, func() -> bool: return boss.light_level() <= t.dark_level + 0.001, 2.0)
 	var lowest: float = boss.light_level()
 	check(is_equal_approx(lowest, maxf(t.dark_level, BossEncounter.MIN_LIGHT_LEVEL)), "at its darkest the light is %.2f of the arena's" % lowest)
+	check(ZoneSkin.scenery_light_now < 0.999 and ZoneSkin.scenery_light_now >= ZoneSkin.MIN_SCENERY_LIGHT - 0.001,
+		"the street and the ruins darken with it, never below the scenery's floor (%.2f)" % ZoneSkin.scenery_light_now)
 	check(boss.body.swallowed > 0.5, "the swallowed light glows in its throats")
 	# The light always comes back.
 	await _until(world, func() -> bool: return boss.dark.idle(), t.dark_seconds + t.return_seconds + 2.0)
-	check(is_equal_approx(boss.light_level(), 1.0) and _sounds(boss, &"sleep_taker_exhale").size() == 1,
-		"after the dark it breathes out and the light comes back whole")
+	check(is_equal_approx(boss.light_level(), 1.0) and _sounds(boss, &"sleep_taker_exhale").size() == 1
+		and is_equal_approx(ZoneSkin.scenery_light_now, 1.0), "after the dark it breathes out and the light comes back whole")
 	# ... at once on a phase change, and with the defeat.
 	await _until(world, func() -> bool: return boss.dark.stage == SleepTakerLightsOut.Stage.DARK, 14.0)
 	boss.damage(boss.hit_damage(), &"emp")
