@@ -111,6 +111,57 @@ func _edge(s: MeshLayer, x0: float, x1: float, d: float, lip: float, facing: flo
 		s.rect(Vector3(x1, strip_y, z - 0.004), Vector3(-w, 0, 0), Vector3(0, STRIP_HEIGHT, 0), edge, STRIP_GLOW)
 
 
+## A floor cut through the street (task B4; GDD §9.9): the rubble street split open down the lane (the
+## track hides the street as the cut runs, FloorCutSection). The street ends in the zone's orange edge
+## right on the collision edge (the lips on the neighbouring lanes and the strips along the tops of the
+## cut, the halo on its far side), and below it only deep shade dropping into the void, like any hole:
+## the split plates hang broken from both sides, tilted down into the dark (in the same shade, never
+## lit, never level: nothing in the hole looks like floor).
+func cut(parent: Node3D, section: FloorCutSection) -> void:
+	ZoneSkin.standard_floor_cut(parent, section, skin.solid_material(), skin.glow_material(), {
+		"edge": skin.gap_edge_color, "inside": skin.gap_inside_color, "pattern": MeshKit.PAT_DZ_UNDER,
+		"params": [0.0, 1.0, 2.0], "depth": skin.void_depth, "bottom": false,
+		"lip": EDGE_LIP, "lip_glow": LIP_GLOW, "strip_glow": STRIP_GLOW, "halo": skin.edge_halo,
+	})
+	# The broken plates, hanging from both sides of the split (seeded from where they hang, so a cut
+	# looks the same on every attempt).
+	var batch := MeshBatch.new()
+	var s: MeshLayer = batch.layer(skin.solid_material())
+	var shade: Color = skin.gap_inside_color
+	var lane_key: int = MeshKit.key(section.lane_x)
+	var d: float = section.start + 1.0
+	var k: int = 0
+	while d < section.end - 1.5:
+		var length: float = 1.4 + 1.6 * MeshKit.hash01(lane_key, k, 71)
+		for side: int in [-1, 1]:
+			if MeshKit.hash01(lane_key, k, 72 + side) < 0.35:
+				continue
+			var x: float = section.edge_x(side) - side * (ZoneSkin.CUT_WALL_INSET + 0.02)
+			var reach: float = 0.35 + 0.45 * MeshKit.hash01(lane_key, k, 74 + side)
+			var drop: float = 0.5 + 0.9 * MeshKit.hash01(lane_key, k, 76 + side)
+			_broken_plate(s, x, -side, d, minf(d + length, section.end - 1.0), reach, drop, shade)
+		d += length + 0.6 + 1.5 * MeshKit.hash01(lane_key, k, 78)
+		k += 1
+	var plates: MeshInstance3D = batch.commit(parent, "CutPlates")
+	if plates != null:
+		section.add_static(plates)
+
+
+## One broken plate hanging from the side of a split at x, leaning `inward` (+1 toward +x): from just
+## below the street's edge, `reach` metres in and `drop` metres down, between track distances d0 and d1,
+## both faces in the shade.
+func _broken_plate(s: MeshLayer, x: float, inward: float, d0: float, d1: float, reach: float, drop: float,
+		shade: Color) -> void:
+	var top := -0.06
+	var a := Vector3(x, top, -d0)
+	var b := Vector3(x, top, -d1)
+	var c := Vector3(x + inward * reach, top - drop, -d1 + 0.2)
+	var e := Vector3(x + inward * reach * 0.8, top - drop * 0.8, -d0 - 0.15)
+	# Both faces: seen from above through the hole, and from below.
+	s.quad(a, b, c, e, shade, 0.0, MeshKit.PAT_DZ_UNDER, 1.0)
+	s.quad(a, e, c, b, shade, 0.0, MeshKit.PAT_DZ_UNDER, 1.0)
+
+
 ## The void's floor, dark and deep below the street, and the ash, smoke and speed streaks drifting over
 ## the street (the still floor's motion cues), for one chunk. Neither belongs to a lane, so the skin
 ## adds them to the left wall's mesh.

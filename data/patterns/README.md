@@ -205,3 +205,14 @@ level is the same with or without it bar its turrets. Its introduction (Marketpl
 feature's start: where no ceiling it fits on lies there, the rules add a plain one, only where one fits
 without clearing anything. For patterns this means only that their ceilings may get turrets: a ceiling's
 landing zone, pads and floor stay exactly as the pattern made them.
+
+Floor cuts (task B4; GDD §9.9, the Buzz Overdrive's: a lane's floor that turns into a hole during play)
+have no patterns either: a rules script plans them after the patterns and every other rule
+(`floor_cutter_rules.gd`, the debug-only stand-in; task C2's Buzz Overdrive will do the same). It plans a
+cut with `FloorCutPlan.make()`, makes room with `scripts/enemies/cut_placement.gd` (only holes, fences
+and speed pads in the cut's lane over its window, and holes beside it beyond what may stay, go) and adds
+the cut's cause at its end; `LevelGenerator.add_cut()` refuses any cut that breaks GDD §9.9's limits
+(one at a time, never a lane with a ramp, a pad or a ceiling's landing zone, the other lanes whole
+enough, nothing else going on, a way out). For patterns this means only that a cut never runs where a
+pad, a ramp or a ceiling's landing zone is in its lane, and that a pattern's holes, fences and speed pads
+may make way for one. See `docs/ARCHITECTURE.md`, The generator, Floor cuts.

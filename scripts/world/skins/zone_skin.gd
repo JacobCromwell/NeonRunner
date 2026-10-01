@@ -36,6 +36,25 @@ const DOODAD_INSET: float = 0.07
 ## How far back the default look's front slants toward the side it pushes to, at most (metres).
 const DOODAD_SLANT: float = 0.55
 
+## A floor cut's standard look (floor_cut, standard_floor_cut; task B4): the orange lip on the floor
+## right at the cut's edge (metres, and its glow), the strip along the top of the far end's face, the
+## soft halo along it, how far down the hole's inside goes and how far its walls sit inside the lane's
+## edges (so they never fight with a neighbour's side), and how far above the floor the lips are
+## drawn (they lie over floor the track draws whole, and must win over it at a distance on every
+## renderer).
+const CUT_LIP: float = 0.18
+const CUT_LIP_GLOW: float = 0.4
+const CUT_STRIP_TOP: float = 0.02
+const CUT_STRIP_HEIGHT: float = 0.1
+const CUT_STRIP_GLOW: float = 0.6
+const CUT_HALO: float = 0.35
+const CUT_DEPTH: float = 8.0
+const CUT_WALL_INSET: float = 0.03
+const CUT_LIP_LIFT: float = 0.02
+## The default look's inside and edge when the skin names neither (gap_inside_color, gap_edge_color).
+const CUT_INSIDE_COLOR := Color(0.035, 0.035, 0.042)
+const CUT_EDGE_COLOR := Color(1.0, 0.25, 0.04)
+
 ## The default doodad meshes, by size, push side and palette (built once each).
 static var _doodad_meshes: Dictionary = {}
 
@@ -100,10 +119,168 @@ static func set_scenery_light(light: float) -> void:
 
 
 ## One lane's solid floor. center/size describe the collision box, whose top is at y = 0.
-## edge_start/edge_end say whether a gap borders the segment at that end.
+## edge_start/edge_end say whether a gap borders the segment at that end. A floor cut's lane (task B4)
+## is drawn with this too, in short slices with no edges (FloorCut hides and shortens them as the cut
+## runs), so a skin's floor needs nothing for cuts: its slices must simply join seamlessly, as pieces
+## cut at chunk boundaries already do.
 func floor_segment(_parent: Node3D, _center: Vector3, _size: Vector3, _lane_x: float,
 		_edge_start: bool, _edge_end: bool) -> void:
 	pass
+
+
+## A floor cut's hole (task B4; GDD §9.9: the floor the Buzz Overdrive's saw cuts "becomes a gap ... The
+## cut edges glow the usual gap-edge orange"): the stretch of one lane's floor from cut.start to
+## cut.end that turns into a gap during play, as the cut runs from its end back to its start. The track
+## draws the floor itself (floor_segment, in slices it hides as the cut passes), so this draws only
+## the hole: its dark inside, and the orange edges right on the collision edge (the lips on the
+## neighbouring lanes' floor along the cut, on the floor's far end where the cut has got to, and on the
+## floor beyond the cut's end, with a strip and a halo there), registered on `cut` as parts the cut
+## moves as it runs (FloorCutSection: static, span, front, far). It must read as a hole at a glance,
+## like any gap, in every zone; nothing in it glows but the orange edges, and nothing flickers.
+## Build every part with an identity transform, in `parent`'s (world) space, where the section says.
+## The default (standard_floor_cut) is a plain dark hole with the skin's gap_edge_color and
+## gap_inside_color if it has them. The zones where the Buzz Overdrive appears give it their own floor's
+## look (a train roof sliced open, rubble split, a gold walkway or the palace's marble cut) by passing
+## their own style and adding parts of their own.
+func floor_cut(parent: Node3D, cut: FloorCutSection) -> void:
+	var edge: Variant = get("gap_edge_color")
+	var inside: Variant = get("gap_inside_color")
+	standard_floor_cut(parent, cut, MeshKit.solid(), MeshKit.glow(), {
+		"edge": edge if edge is Color else CUT_EDGE_COLOR,
+		"inside": inside if inside is Color else CUT_INSIDE_COLOR,
+	})
+
+
+## The standard floor cut look (floor_cut), drawn with `solid` (the kit's solid shader: vertex colour,
+## glow in its alpha, patterns) and `glow` (the kit's additive glow, for the halo), in a skin's `style`
+## (every key optional):
+##   edge (Color): the orange edges, the skin's gap_edge_color;
+##   inside (Color), pattern (int, a MeshKit.PAT_* that only darkens), params ([across, along, bottom]:
+##     its param on a face across the lane, along it and the bottom): the hole's inside;
+##   depth (float): how far down its inside goes; bottom (bool, true): draw its bottom (false where the
+##     skin draws a void below the whole street already);
+##   lip, lip_glow, strip_glow, halo (floats; halo 0: none);
+##   side_from (Array[float], [left, right]): where the neighbouring lanes' visible floor ends on each
+##     side, if short of the cut's edge (a train roof's shoulder: the side lips run from there to the
+##     edge);
+##   wall_x (Array[float], [left, right]): where the inside's side walls stand (by default just inside
+##     the lane's edges; a carriage's sides, inside its lane);
+##   ribs (float, 0: none), rib_param (float): ribs on the side walls every so many metres, in the
+##     inside's pattern with this param (a carriage's frame);
+##   dark_line (Color), dark (float): a dark line on the floor just outside each lip, this wide (the
+##     Golden Zone's edges, so the orange pops against its gold).
+## Returns the four MeshInstance3Ds it adds ({static, span, front, far}), for a skin that adds to them.
+static func standard_floor_cut(parent: Node3D, cut: FloorCutSection, solid: Material, glow: Material,
+		style: Dictionary) -> Dictionary:
+	var edge: Color = style.get("edge", CUT_EDGE_COLOR)
+	var inside: Color = style.get("inside", CUT_INSIDE_COLOR)
+	var pattern: int = int(style.get("pattern", MeshKit.PAT_PLAIN))
+	var params: Array = style.get("params", [0.0, 0.0, 0.0])
+	var depth: float = float(style.get("depth", CUT_DEPTH))
+	var lip: float = float(style.get("lip", CUT_LIP))
+	var lip_glow: float = float(style.get("lip_glow", CUT_LIP_GLOW))
+	var strip_glow: float = float(style.get("strip_glow", CUT_STRIP_GLOW))
+	var halo: float = float(style.get("halo", CUT_HALO))
+	var side_from: Array = style.get("side_from", [cut.x0, cut.x1])
+	var x0: float = cut.x0
+	var x1: float = cut.x1
+	var w: float = x1 - x0
+	var z0: float = -cut.start
+	var z1: float = -cut.end
+	var length: float = cut.length()
+	var top: float = -CUT_STRIP_TOP
+	var y: float = CUT_LIP_LIFT
+	var inset: float = CUT_WALL_INSET
+	var walls: Array = style.get("wall_x", [x0 + inset, x1 - inset])
+	var w0: float = float(walls[0])
+	var w1: float = float(walls[1])
+	var has_dark: bool = style.has("dark_line")
+	var dark_color: Color = style.get("dark_line", Color.BLACK)
+	var dark: float = float(style.get("dark", 0.0)) if has_dark else 0.0
+	var out: Dictionary = {}
+
+	# The inside, below the floor over the whole stretch: hidden under the floor until it goes.
+	var inner := MeshBatch.new()
+	var s: MeshLayer = inner.layer(solid)
+	var wall: float = depth + top
+	s.rect(Vector3(w0, -depth, z0), Vector3(0, 0, -length), Vector3(0, wall, 0), inside, 0.0, pattern,
+		Vector2.ZERO, Vector2.ONE, float(params[1]))
+	s.rect(Vector3(w1, -depth, z1), Vector3(0, 0, length), Vector3(0, wall, 0), inside, 0.0, pattern,
+		Vector2.ZERO, Vector2.ONE, float(params[1]))
+	s.rect(Vector3(x0 + inset, -depth, z1 + inset), Vector3(w - 2.0 * inset, 0, 0), Vector3(0, wall, 0), inside, 0.0,
+		pattern, Vector2.ZERO, Vector2.ONE, float(params[0]))
+	s.rect(Vector3(x1 - inset, -depth, z0 - inset), Vector3(-(w - 2.0 * inset), 0, 0), Vector3(0, wall, 0), inside, 0.0,
+		pattern, Vector2.ZERO, Vector2.ONE, float(params[0]))
+	if bool(style.get("bottom", true)):
+		s.rect(Vector3(x0, -depth, z0), Vector3(w, 0, 0), Vector3(0, 0, -length), inside, 0.0, pattern,
+			Vector2.ZERO, Vector2.ONE, float(params[2]))
+	var ribs: float = float(style.get("ribs", 0.0))
+	if ribs > 0.0:
+		var rib_param: float = float(style.get("rib_param", params[1]))
+		var d: float = cut.start + ribs * 0.5
+		while d < cut.end - 0.3:
+			for x: float in [w0 + 0.06, w1 - 0.06]:
+				s.box(Vector3(x, (top - depth) * 0.5, -d), Vector3(0.12, depth + top, 0.16), inside, 0.0, pattern,
+					MeshKit.FACE_PX | MeshKit.FACE_NX | MeshKit.FACE_PZ, rib_param)
+			d += ribs
+	out["static"] = _commit_part(inner, parent, "CutInside")
+	cut.add_static(out["static"])
+
+	# Along the cut, built over the whole stretch and shown over [front, end]: the lips on the
+	# neighbouring lanes' floor right at the cut's edges (a dark line outside them if the style has
+	# one), and a strip along the top of each wall.
+	var along := MeshBatch.new()
+	var a: MeshLayer = along.layer(solid)
+	for side: int in [-1, 1]:
+		if not cut.has_neighbour(side):
+			continue
+		var ex: float = cut.edge_x(side)
+		var from: float = float(side_from[0 if side < 0 else 1])
+		var reach: float = maxf(absf(ex - from), 0.0) + lip
+		var lx: float = ex - reach if side < 0 else ex
+		a.rect(Vector3(lx, y, z0), Vector3(reach, 0, 0), Vector3(0, 0, -length), edge, lip_glow)
+		if has_dark:
+			var dx: float = lx - dark if side < 0 else ex + reach
+			a.rect(Vector3(dx, y, z0), Vector3(dark, 0, 0), Vector3(0, 0, -length), dark_color)
+		# Just in front of the inside's wall, facing into the hole.
+		var sx: float = (w0 + 0.004) if side < 0 else (w1 - 0.004)
+		if side < 0:
+			a.rect(Vector3(sx, top - CUT_STRIP_HEIGHT, z0), Vector3(0, 0, -length), Vector3(0, CUT_STRIP_HEIGHT, 0), edge, strip_glow)
+		else:
+			a.rect(Vector3(sx, top - CUT_STRIP_HEIGHT, z1), Vector3(0, 0, length), Vector3(0, CUT_STRIP_HEIGHT, 0), edge, strip_glow)
+	out["span"] = _commit_part(along, parent, "CutEdges")
+	if out["span"] != null:
+		cut.add_span(out["span"])
+
+	# The floor's far end where the cut has got to (built at the cut's end, moved to its front): its lip.
+	var near_edge := MeshBatch.new()
+	var n: MeshLayer = near_edge.layer(solid)
+	n.rect(Vector3(x0, y, z1 + lip), Vector3(w, 0, 0), Vector3(0, 0, -lip), edge, lip_glow)
+	if has_dark:
+		n.rect(Vector3(x0, y, z1 + lip + dark), Vector3(w, 0, 0), Vector3(0, 0, -dark), dark_color)
+	out["front"] = _commit_part(near_edge, parent, "CutFront")
+	cut.add_front(out["front"])
+
+	# The far side of the hole, facing the player: the lip on the floor beyond it, the strip along the top
+	# of its face, and the halo that carries it from afar.
+	var far := MeshBatch.new()
+	var f: MeshLayer = far.layer(solid)
+	f.rect(Vector3(x0, y, z1), Vector3(w, 0, 0), Vector3(0, 0, -lip), edge, lip_glow)
+	if has_dark:
+		f.rect(Vector3(x0, y, z1 - lip), Vector3(w, 0, 0), Vector3(0, 0, -dark), dark_color)
+	f.rect(Vector3(x0, top - CUT_STRIP_HEIGHT, z1 + inset + 0.004), Vector3(w, 0, 0), Vector3(0, CUT_STRIP_HEIGHT, 0), edge,
+		strip_glow)
+	if halo > 0.0:
+		far.layer(glow).rect(Vector3(x0 - 0.15, top - CUT_STRIP_HEIGHT - 0.25, z1 + 0.05), Vector3(w + 0.3, 0, 0),
+			Vector3(0, CUT_STRIP_HEIGHT + 0.5, 0), edge, halo, MeshKit.SHAPE_STREAK)
+	out["far"] = _commit_part(far, parent, "CutFar")
+	cut.add_far(out["far"])
+	return out
+
+
+## Commits one part of a floor cut's look under `parent` (null if it's empty).
+static func _commit_part(batch: MeshBatch, parent: Node3D, node_name: String) -> MeshInstance3D:
+	return batch.commit(parent, node_name)
 
 
 ## One side wall between two track distances. face_x is the wall face's signed world x.
