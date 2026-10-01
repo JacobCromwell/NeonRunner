@@ -107,15 +107,14 @@ func _rubble_heap(s: MeshLayer, size: Vector3, look_seed: int) -> void:
 func _masonry(s: MeshLayer, size: Vector3, look_seed: int) -> void:
 	var sk: DeadZoneSkin = skin
 	var hy: float = size.y * 0.5
-	var hx: float = size.x * 0.5
 	var hz: float = size.z * 0.5
 	var angle: float = lerpf(0.2, 0.34, MeshKit.hash01(look_seed, 1)) * (1.0 if MeshKit.hash_i(look_seed, 2) % 2 == 0 else -1.0)
 	var thickness: float = 0.24
 	var length: float = size.y * 0.9
 	var half_len: float = length * 0.5
-	# The slab's own bounding half-extents once tilted (its long axis starts near vertical).
+	# The slab's own bounding half-extent once tilted (its long axis starts near vertical, so its
+	# sideways reach stays small next to `hz` and never needs budgeting against it).
 	var half_y_eff: float = half_len * cos(angle) + thickness * 0.5 * sin(absf(angle))
-	var half_z_eff: float = half_len * sin(absf(angle)) + thickness * 0.5 * cos(angle)
 	var basis := Basis(Vector3.RIGHT, angle)
 	# Its low end rests near the floor; the lean leaves clear margin at the top.
 	var center_y: float = -hy + 0.06 + half_y_eff

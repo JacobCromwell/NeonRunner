@@ -112,8 +112,6 @@ func _kiosk(s: MeshLayer, size: Vector3, look_seed: int) -> void:
 func _plinth(s: MeshLayer, size: Vector3, look_seed: int) -> void:
 	var sk: CorporateSkin = skin
 	var hy: float = size.y * 0.5
-	var hx: float = size.x * 0.5
-	var hz: float = size.z * 0.5
 	var colors: PackedColorArray = sk.podium_colors
 	var plinth_h: float = minf(0.5, size.y * 0.2)
 	s.box(Vector3(0, -hy + plinth_h * 0.5, 0), Vector3(size.x * 0.94, plinth_h, size.z * 0.9), colors[posmod(

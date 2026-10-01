@@ -54,7 +54,6 @@ func _mesh_for(size: Vector3, size_class: StringName, side: int, look_seed: int)
 func _car(s: MeshLayer, size: Vector3, look_seed: int, count: int) -> void:
 	var sk: GanglandSkin = skin
 	var hy: float = size.y * 0.5
-	var hx: float = size.x * 0.5
 	var hz: float = size.z * 0.5
 	var car_h: float = minf(0.95, size.y * 0.42)
 	var cab_h: float = minf(0.55, size.y * 0.22)
