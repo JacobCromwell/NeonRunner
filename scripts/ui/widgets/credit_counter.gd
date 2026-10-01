@@ -8,8 +8,15 @@ extends Control
 ## Under the HUD theme it draws a lighter chip and outlined digits. With show_icon and show_chip off
 ## it is a plain counting number (scores); theme overrides on the node work as usual, e.g.
 ## add_theme_font_size_override(&"font_size", 56).
+## With drop_on_loss, a value that goes down (the run's credits after a theft, GDD §9.12) counts down
+## with its digits in the theme's font_loss_color, dipped a little, fading back once: never a blink,
+## and softer with Reduced flashing.
 
 signal count_finished
+
+## How long the loss look takes to fade (seconds), and its strength with Reduced flashing (1 without).
+const LOSS_TIME: float = 0.9
+const LOSS_REDUCED: float = 0.5
 
 ## The target value. Setting it counts to it (same as set_value(v)).
 @export var value: int = 0:
@@ -37,6 +44,8 @@ signal count_finished
 		queue_redraw()
 ## Flash and pop when the value goes up.
 @export var pop_on_gain: bool = true
+## Tint and dip when the value goes down (see the header).
+@export var drop_on_loss: bool = false
 
 ## The number on screen right now (moves towards `value`).
 var shown: float = 0.0
@@ -45,6 +54,8 @@ var _from: float = 0.0
 var _progress: float = 1.0
 var _duration: float = 0.0
 var _pop: float = 0.0
+## The loss look's strength now: its peak when the value drops, fading to 0.
+var _loss: float = 0.0
 
 
 func _init() -> void:
@@ -57,20 +68,28 @@ func _init() -> void:
 ## Counts to `target` (or jumps there when `animate` is false).
 func set_value(target: int, animate: bool = true) -> void:
 	var gain: bool = target > roundi(shown)
+	var loss: bool = target < roundi(shown)
 	_target = target
 	if not animate or not is_inside_tree():
 		shown = target
 		_progress = 1.0
-		set_process(_pop > 0.0)
+		set_process(_pop > 0.0 or _loss > 0.0)
 	else:
 		_from = shown
 		_progress = 0.0
 		_duration = clampf(0.25 + absf(target - shown) / 600.0, 0.25, count_time)
 		if gain and pop_on_gain:
 			_pop = 1.0
+		if loss and drop_on_loss:
+			_loss = LOSS_REDUCED if Settings.flashing_reduced else 1.0
 		set_process(true)
 	update_minimum_size()
 	queue_redraw()
+
+
+## The loss look's strength now (0 when it isn't showing): tests and tools.
+func loss_look() -> float:
+	return _loss
 
 
 func add(amount: int) -> void:
@@ -112,7 +131,8 @@ func _process(delta: float) -> void:
 			shown = _target
 			count_finished.emit()
 	_pop = maxf(0.0, _pop - delta * 2.5)
-	if _progress >= 1.0 and _pop <= 0.0:
+	_loss = maxf(0.0, _loss - delta / LOSS_TIME)
+	if _progress >= 1.0 and _pop <= 0.0 and _loss <= 0.0:
 		set_process(false)
 	queue_redraw()
 
@@ -163,5 +183,9 @@ func _draw() -> void:
 	var font_size: int = get_theme_font_size(&"font_size")
 	var baseline: float = rect.get_center().y + (font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5
 	var color: Color = get_theme_color(&"font_color").lerp(get_theme_color(&"font_gain_color"), _pop)
+	if _loss > 0.0:
+		# The loss look: the digits dip and take the loss colour, rising back as it fades.
+		color = color.lerp(get_theme_color(&"font_loss_color"), _loss)
+		baseline += font_size * 0.12 * _loss
 	UiTheme.draw_tabular(self, font, Vector2(text_x, baseline), _text_for(shown), font_size, color,
 		get_theme_constant(&"outline_size"), get_theme_color(&"font_outline_color"))

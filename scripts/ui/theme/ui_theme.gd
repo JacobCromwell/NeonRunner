@@ -812,6 +812,9 @@ class _Builder:
 		theme.set_font_size(&"font_size", t, px(s.value_size))
 		theme.set_color(&"font_color", t, s.text)
 		theme.set_color(&"font_gain_color", t, a.lerp(Color.WHITE, 0.35))
+		# Credits lost to a thief (GDD §9.12): the secondary accent's violet, never a hazard colour or the
+		# warning red (a theft is no hit and no warning).
+		theme.set_color(&"font_loss_color", t, s.accent_2.lerp(Color.WHITE, 0.2))
 		theme.set_color(&"font_outline_color", t, s.outline)
 		theme.set_constant(&"outline_size", t, 0)
 		theme.set_constant(&"icon_size", t, px(s.value_size + 4))

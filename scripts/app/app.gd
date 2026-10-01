@@ -18,6 +18,8 @@ extends Node
 ##                           Golden Zone, GDD §3); the level keeps its timing in seconds
 ##   --doodads=0.6           quick play with zone doodads (GDD §3; LevelConfig.doodad_share: the chance
 ##                           each stretch with room for one gets one)
+##   --thief                 quick play with stand-in thieves, one after another: a gold block that
+##                           crosses the lanes and robs a runner who touches it (GDD §9.12; StandInThief)
 ##   --level=city/2          a campaign level, with the full flow (also takes --lanes=N, --god,
 ##                           --nofall and --full-loadout, for reviews)
 ##   --boss=city_boss        a boss fight by its BossDef id: a zone's boss with the full flow (like
@@ -132,7 +134,7 @@ func boot(p_main: Node) -> void:
 		if arg == "--quick" or arg == "--god" or arg.begins_with("--seed=") or arg.begins_with("--lanes=") \
 				or arg.begins_with("--difficulty=") or arg.begins_with("--features=") or arg == "--full-loadout" \
 				or arg == "--nofall" or arg.begins_with("--skin=") or arg.begins_with("--pickups") \
-				or arg.begins_with("--speed=") or arg.begins_with("--doodads="):
+				or arg.begins_with("--speed=") or arg.begins_with("--doodads=") or arg == "--thief":
 			start_quick(args)
 			return
 	show_title()
@@ -445,6 +447,9 @@ func start_quick(args: PackedStringArray = PackedStringArray()) -> void:
 		elif arg == "--pickups" or arg.begins_with("--pickups="):
 			# Review aid: pickups in turn (all three, or the ones listed), though levels have none.
 			ctx.review_pickups = v.split(",", false) if arg.contains("=") else PackedStringArray(PickupField.ITEMS)
+		elif arg == "--thief":
+			# Review aid: stand-in thieves (GDD §9.12, task B6), though the prototype level has none.
+			ctx.review_thief = true
 	ctx.tuning = ctx.config.movement_for(tuning)
 	_start_run(ctx, &"city")
 

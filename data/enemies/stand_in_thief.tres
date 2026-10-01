@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="StandInThiefTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/stand_in_thief_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+spawn_lead = 10.0
+score_value = 100
+health_early = 3.0
+health_late = 3.0
+uses_floor = false
+steals_share = 0.25
+jackpot_credits = 100
+start_ahead = 32.0
+approach_speed = 6.0
+cross_speed = 3.5
+block_size = Vector3(1, 0.8, 1)
+hover = 0.2
+flee_speed = 16.0
+flee_rise = 3.0
+flee_height = 4.5
+gone_ahead = 70.0
+review_interval = 1.5

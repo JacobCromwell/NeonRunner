@@ -9,7 +9,8 @@ extends RefCounted
 ##
 ## The demo is the zones marked in_demo (GDD §2: the Neon City and its boss). What it leaves out:
 ## - the tests, the tools and scratch files, as every preset does;
-## - the test boss (outside the campaign; debug builds play it with --boss=test_boss);
+## - the test boss (outside the campaign; debug builds play it with --boss=test_boss), and the stand-in
+##   thief (outside the campaign; debug builds' quick play sends it with --thief);
 ## - music it never plays: every audio file in the music library's folders that no track it plays
 ##   uses, and the files of the tracks it never plays, wherever they are;
 ## - the level-complete riffs of the tracks it never plays (a level ends on the riff of the music
@@ -26,8 +27,10 @@ const MUSIC_PATH: String = "res://data/audio/music_library.tres"
 const SFX_PATH: String = "res://data/audio/sfx_library.tres"
 ## Left out of every export, as in the other presets: the tests, the tools and scratch files.
 const SHARED: PackedStringArray = ["tests/*", "tools/*", "build/*"]
-## Left out of the demo: the test boss, which is outside the campaign (debug builds only).
-const DEBUG_ONLY: PackedStringArray = ["data/bosses/test_boss*", "scenes/bosses/test_boss*", "scripts/bosses/test_boss*"]
+## Left out of the demo: the test boss and the stand-in thief, which are outside the campaign (debug
+## builds only).
+const DEBUG_ONLY: PackedStringArray = ["data/bosses/test_boss*", "scenes/bosses/test_boss*", "scripts/bosses/test_boss*",
+	"data/enemies/stand_in_thief*", "scripts/enemies/stand_in_thief*"]
 ## The files counted as music in the music library's folders.
 const AUDIO_EXTENSIONS: PackedStringArray = ["wav", "ogg", "mp3"]
 ## The menus' track (App plays it by name) and the City's (quick play's and a boss fight's default).
