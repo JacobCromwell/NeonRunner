@@ -15,7 +15,7 @@ uniform vec4 rim_color : source_color = vec4(0.58, 0.28, 1.0, 1.0);
 const float SHROUD = 8.0;
 const float SKIRT = 9.0;
 const float POOL = 10.0;
-const vec3 CLUSTER = vec3(0.0, 10.6, 0.0);
+const vec3 CLUSTER = vec3(0.0, 13.0, 0.0);
 
 varying float v_kind;
 
@@ -36,7 +36,7 @@ void vertex() {
 		// The pool on the street creeps and swells.
 		v.xz *= 1.0 + 0.05 * sin(t * 0.8 + atan(v.z, v.x) * 3.0) + 0.08 * inhale;
 	}
-	v.z += lunge * 1.6 * smoothstep(3.0, 9.0, VERTEX.y);
+	v.z += lunge * 1.8 * smoothstep(4.0, 12.0, VERTEX.y);
 	v.y -= fade * fade * 1.5;
 	VERTEX = v;
 }

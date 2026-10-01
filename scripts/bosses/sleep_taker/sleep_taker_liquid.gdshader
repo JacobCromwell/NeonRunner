@@ -24,7 +24,7 @@ uniform float fade = 0.0;      // 0 = solid, 1 = gone (it materializes through i
 uniform float seed = 0.0;
 uniform vec4 rim_color : source_color = vec4(0.58, 0.28, 1.0, 1.0);
 uniform vec4 attack_color : source_color = vec4(1.0, 0.12, 0.08, 1.0);
-uniform float rim_energy = 1.8;
+uniform float rim_energy = 1.3;
 uniform float glow_energy = 2.6;
 
 // Part ids (SleepTakerModel.Part).
@@ -37,8 +37,8 @@ const float ARM_R = 5.0;
 const float TENDRIL = 6.0;
 const float DRIP = 7.0;
 // Where the arms hang from (the right shoulder; the left mirrors it), and the heads' middle.
-const vec3 SHOULDER = vec3(4.4, 8.0, 0.6);
-const vec3 CLUSTER = vec3(0.0, 10.6, 0.0);
+const vec3 SHOULDER = vec3(4.9, 11.0, 0.4);
+const vec3 CLUSTER = vec3(0.0, 13.0, 0.0);
 
 varying vec3 v_rest;
 varying float v_hot;
@@ -73,16 +73,18 @@ void vertex() {
 		float open;
 		if (part < 1.5) {
 			open = max(shriek, inhale * 0.85);
-			v_hot = mix(0.35, 1.0, throat);
+			v_hot = throat;
 		} else {
 			float breath = 0.5 + 0.5 * sin(t * (0.9 + 0.05 * id) + id * 2.3);
 			open = clamp(maws * (0.55 + 0.45 * breath) + inhale, 0.0, 1.0);
 		}
 		v_open = open;
 		v_throat = throat;
-		v.xy += UV2 * (mix(0.45, 1.28, open) - 1.0);
-		// The teeth splay forward as it opens.
-		v.z += open * 0.08 * w * (1.0 - throat);
+		// It opens around its centre; the teeth's tips pull back toward the lip and splay forward, so
+		// the lit throat shows.
+		float tip = w * (1.0 - throat);
+		v.xy += UV2 * (mix(0.45, 1.28, open) * (1.0 + open * tip) - 1.0);
+		v.z += open * 0.25 * tip;
 	} else if (part > 3.5 && part < 5.5) {
 		float sx = part < 4.5 ? -1.0 : 1.0;
 		vec3 pivot = vec3(sx * SHOULDER.x, SHOULDER.y, SHOULDER.z);
@@ -97,7 +99,7 @@ void vertex() {
 		p = rot_z(p, -sx * 1.15 * slash);
 		p = rot_y(p, -sx * 0.85 * slash);
 		v = pivot + p;
-		v_hot = smoothstep(0.8, 0.9, w);
+		v_hot = smoothstep(0.8, 0.85, w);
 	} else if (part > 5.5 && part < 6.5) {
 		// The tendrils' long fingers sway and curl in as it inhales.
 		v.x += sin(t * 1.4 + id * 1.7) * 0.3 * w * w;
@@ -110,7 +112,7 @@ void vertex() {
 		v.x += w * 0.08 * sin(t * 1.8 + v_rest.z * 4.0);
 	}
 	// The lunge thrusts its heads and shoulders at the runner.
-	v.z += lunge * 1.6 * smoothstep(3.0, 9.0, v_rest.y);
+	v.z += lunge * 1.8 * smoothstep(4.0, 12.0, v_rest.y);
 	// Dissolving (or materializing), it melts and drips away.
 	v.y -= fade * fade * (1.2 + 0.8 * sin(v_rest.x * 3.0 + seed));
 	VERTEX = v;
@@ -119,10 +121,10 @@ void vertex() {
 void fragment() {
 	// Dissolve (and materialize): cells of the surface vanish at random, the bottom first.
 	float n = hash(floor(v_rest * 3.0) + vec3(seed));
-	if (n < fade * 1.25 - 0.12 + (1.0 - clamp(v_rest.y / 17.0, 0.0, 1.0)) * fade * 0.3) {
+	if (n < fade * 1.25 - 0.12 + (1.0 - clamp(v_rest.y / 20.0, 0.0, 1.0)) * fade * 0.3) {
 		discard;
 	}
-	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.4);
+	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.6);
 	// A rare glitch in its glow; none with Reduced flashing.
 	float glitch = (1.0 - reduced_flashing) * step(0.95, hash(vec3(floor(TIME * 11.0), seed, 1.0)));
 	vec3 glow = mix(COLOR.rgb, attack_color.rgb, clamp(attack * v_hot * 1.3, 0.0, 1.0));
@@ -133,5 +135,5 @@ void fragment() {
 	ROUGHNESS = 0.12;
 	SPECULAR = 0.85;
 	EMISSION = rim_color.rgb * rim * rim_energy * (1.0 - 0.6 * glitch)
-		+ glow * COLOR.a * glow_energy * (1.0 + attack * v_hot * 1.5);
+		+ glow * COLOR.a * glow_energy * (1.0 + attack * v_hot * (0.8 - 1.2 * v_throat));
 }

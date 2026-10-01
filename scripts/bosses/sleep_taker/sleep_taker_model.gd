@@ -30,8 +30,8 @@ extends Node3D
 const PURPLE := BadDreamModel.PURPLE
 const ATTACK_RED := BadDreamModel.ATTACK_RED
 ## The reference size the meshes are built at: its width across the arms at rest, and its height.
-const REF_WIDTH: float = 12.0
-const REF_HEIGHT: float = 16.8
+const REF_WIDTH: float = 12.8
+const REF_HEIGHT: float = 20.0
 
 const LIQUID_SHADER: String = "res://scripts/bosses/sleep_taker/sleep_taker_liquid.gdshader"
 const VAPOR_SHADER: String = "res://scripts/bosses/sleep_taker/sleep_taker_vapor.gdshader"
@@ -40,53 +40,59 @@ const MIST_SHADER: String = "res://scripts/bosses/sleep_taker/sleep_taker_mist.g
 
 enum Part { HEAD, BIG_MAW, MAW, TORSO, ARM_L, ARM_R, TENDRIL, DRIP, SHROUD, SKIRT, POOL }
 
-## The great maw (the giant slash's warning): its centre and radius, facing the runner.
-const BIG_MAW_CENTER := Vector3(0.0, 10.3, 2.66)
-const BIG_MAW_RADIUS: float = 1.35
-## The main head (the great maw's) and the smaller fused heads around it, each with a maw on its front:
-## [centre, radii, the maw's offset from the head's front point (a share of its radii), maw radius].
-const MAIN_HEAD: Array = [Vector3(0.0, 10.8, 0.0), Vector3(3.3, 3.1, 2.7)]
+## The great maw (the giant slash's warning) gapes in its belly, low enough to show under a refuge's
+## bridge as the runner nears it: its centre and radius, facing the runner.
+const BIG_MAW_CENTER := Vector3(0.0, 5.0, 2.16)
+const BIG_MAW_RADIUS: float = 1.3
+## The main head, hunched over its chest and waist, and the smaller fused heads around it, each with
+## a maw on its front: [centre, radii, the maw's offset from the head's front point
+## (a share of its radii), maw radius].
+const MAIN_HEAD: Array = [Vector3(0.0, 14.2, 0.2), Vector3(3.3, 3.5, 2.9)]
+const CHEST: Array = [Vector3(0.0, 9.6, 0.3), Vector3(3.7, 3.4, 2.6)]
+const WAIST: Array = [Vector3(0.0, 5.6, 0.2), Vector3(2.5, 2.6, 2.0)]
 const HEADS: Array = [
-	[Vector3(-3.8, 8.4, 0.7), Vector3(1.8, 1.7, 1.6), Vector2(0.12, -0.12), 0.55],
-	[Vector3(3.9, 8.6, 0.6), Vector3(1.9, 1.8, 1.6), Vector2(-0.12, -0.06), 0.6],
-	[Vector3(-2.9, 13.6, -0.2), Vector3(1.7, 1.6, 1.5), Vector2(0.06, 0.0), 0.48],
-	[Vector3(3.1, 13.4, -0.1), Vector3(1.8, 1.7, 1.5), Vector2(-0.06, 0.06), 0.5],
-	[Vector3(0.0, 14.9, -0.7), Vector3(1.6, 1.5, 1.4), Vector2(0.0, 0.12), 0.42],
-	[Vector3(-4.9, 11.4, -0.5), Vector3(1.3, 1.3, 1.2), Vector2(0.22, 0.0), 0.36],
-	[Vector3(5.0, 11.2, -0.6), Vector3(1.3, 1.25, 1.2), Vector2(-0.22, 0.0), 0.36],
-	[Vector3(-1.9, 6.9, 1.3), Vector3(1.4, 1.3, 1.3), Vector2(0.0, -0.12), 0.42],
-	[Vector3(2.0, 6.7, 1.2), Vector3(1.3, 1.25, 1.2), Vector2(0.0, -0.12), 0.4],
-	[Vector3(0.0, 5.6, 1.0), Vector3(1.2, 1.1, 1.1), Vector2(0.0, -0.18), 0.36],
+	[Vector3(-3.4, 16.6, -0.6), Vector3(1.8, 1.7, 1.6), Vector2(0.15, -0.1), 0.5],
+	[Vector3(3.0, 17.4, -0.9), Vector3(1.6, 1.5, 1.4), Vector2(-0.1, -0.05), 0.45],
+	[Vector3(0.4, 18.6, -1.4), Vector3(1.5, 1.4, 1.3), Vector2(0.0, 0.1), 0.4],
+	[Vector3(-4.6, 12.6, 0.0), Vector3(1.9, 1.8, 1.7), Vector2(0.2, -0.05), 0.55],
+	[Vector3(4.8, 13.2, -0.2), Vector3(1.8, 1.7, 1.6), Vector2(-0.2, 0.0), 0.52],
+	[Vector3(-2.4, 10.4, 2.0), Vector3(1.4, 1.3, 1.3), Vector2(0.05, -0.1), 0.42],
+	[Vector3(2.7, 9.8, 1.9), Vector3(1.5, 1.4, 1.3), Vector2(-0.05, -0.08), 0.44],
+	[Vector3(-4.2, 8.4, 0.8), Vector3(1.2, 1.2, 1.1), Vector2(0.2, 0.0), 0.34],
+	[Vector3(4.4, 8.0, 0.7), Vector3(1.25, 1.2, 1.1), Vector2(-0.2, 0.0), 0.35],
+	[Vector3(0.0, 7.9, 2.2), Vector3(1.3, 1.2, 1.2), Vector2(0.0, 0.05), 0.4],
+	[Vector3(-2.7, 5.0, 1.2), Vector3(1.0, 1.0, 1.0), Vector2(0.0, -0.1), 0.3],
+	[Vector3(2.8, 4.6, 1.1), Vector3(1.0, 0.95, 0.95), Vector2(0.0, -0.1), 0.3],
 ]
-## More maws: on the main head around the great one ([angle in degrees, distance, radius]) and second
-## ones on some of the small heads ([head index, offset (share of its radii), radius]).
-const RING_MAWS: Array = [[18.0, 2.2, 0.36], [62.0, 2.25, 0.32], [108.0, 2.2, 0.38], [150.0, 2.3, 0.3],
-	[200.0, 2.15, 0.34], [242.0, 2.2, 0.3], [298.0, 2.25, 0.33], [338.0, 2.2, 0.3], [90.0, 2.75, 0.28],
-	[132.0, 2.75, 0.26], [48.0, 2.75, 0.26]]
-const SECOND_MAWS: Array = [[0, Vector2(-0.5, 0.42), 0.27], [1, Vector2(0.5, 0.45), 0.28],
-	[2, Vector2(-0.5, -0.45), 0.25], [3, Vector2(0.5, -0.45), 0.25], [7, Vector2(-0.45, 0.4), 0.22],
-	[8, Vector2(0.45, 0.4), 0.22]]
-## The torso under the heads, and where the arms hang from (the right one; the left mirrors it).
-const TORSO_CENTER := Vector3(0.0, 6.8, 0.3)
-const TORSO_RADII := Vector3(3.0, 2.5, 2.2)
-const SHOULDER := Vector3(4.4, 8.0, 0.6)
-const ELBOW := Vector3(5.4, 5.4, 2.0)
-const WRIST := Vector3(4.9, 3.7, 4.0)
+## More maws, scattered: on the main head and on the chest ([offset (a share of its radii), radius]),
+## and second ones on some of the small heads ([head index, offset, radius]).
+const HEAD_MAWS: Array = [[Vector2(0.0, -0.12), 0.8], [Vector2(-0.55, 0.35), 0.38], [Vector2(0.5, 0.42), 0.34],
+	[Vector2(-0.62, -0.35), 0.3], [Vector2(0.6, -0.3), 0.36], [Vector2(0.05, 0.62), 0.3], [Vector2(-0.3, 0.68), 0.25], [Vector2(0.33, -0.66), 0.26]]
+const CHEST_MAWS: Array = [[Vector2(-0.35, 0.25), 0.34], [Vector2(0.38, 0.3), 0.3], [Vector2(-0.12, -0.22), 0.36],
+	[Vector2(0.45, -0.35), 0.28], [Vector2(-0.5, -0.3), 0.3]]
+const SECOND_MAWS: Array = [[0, Vector2(-0.5, 0.42), 0.27], [3, Vector2(-0.5, 0.45), 0.28], [4, Vector2(0.5, -0.4), 0.27]]
+## Where the arms hang from (the right one; the left mirrors it): long, hanging wide of the middle lanes
+## down to the street, their claws in front of it.
+const SHOULDER := Vector3(4.9, 11.0, 0.4)
+const ELBOW := Vector3(5.8, 6.6, 1.8)
+const WRIST := Vector3(5.2, 3.0, 4.2)
 ## The tendrils of clawed fingers hanging below the heads: [root, end].
-const TENDRILS: Array = [[Vector3(-3.6, 7.0, 1.4), Vector3(-3.9, 3.4, 2.7)], [Vector3(3.7, 7.1, 1.3), Vector3(4.0, 3.5, 2.6)],
-	[Vector3(-1.6, 5.4, 2.0), Vector3(-1.8, 2.6, 3.4)], [Vector3(1.7, 5.3, 1.9), Vector3(1.9, 2.5, 3.3)]]
+const TENDRILS: Array = [[Vector3(-2.4, 9.2, 2.6), Vector3(-2.8, 5.2, 3.6)], [Vector3(2.7, 8.6, 2.5), Vector3(3.0, 4.8, 3.4)],
+	[Vector3(-4.2, 7.3, 1.2), Vector3(-4.6, 3.8, 2.4)], [Vector3(4.4, 7.0, 1.1), Vector3(4.8, 3.6, 2.3)]]
 ## How far in front of its centre its claws reach at rest (the lunge brings them to the runner).
-const CLAW_REACH: float = 6.6
+const CLAW_REACH: float = 6.8
 
 const BLACK := Color(0.012, 0.007, 0.02, 0.0)
 const SHEEN := Color(0.06, 0.018, 0.1, 0.06)
 const HIGHLIGHT := Color(0.34, 0.2, 1.0, 1.0)
+## A maw's lip: the purple highlight, dimmer (dozens of them).
+const LIP := Color(0.34, 0.2, 1.0, 0.5)
 const BONE := Color(0.72, 0.66, 0.82, 0.12)
 const CLAW := Color(0.8, 0.7, 1.0, 0.75)
 const THROAT := Color(0.2, 0.08, 0.72, 1.0)
 const THROAT_RIM := Color(0.07, 0.025, 0.24, 1.0)
 const VAPOR := Color(0.06, 0.02, 0.12, 0.8)
-const SHROUD := Color(0.24, 0.1, 0.5, 0.7)
+const SHROUD := Color(0.2, 0.08, 0.42, 0.16)
 const POOL_COLOR := Color(0.07, 0.025, 0.14, 0.42)
 ## The mist's purple (the nightmare's own, never a hazard colour) and its darker core.
 const MIST_COLOR := Color(0.6, 0.3, 1.0)
@@ -140,7 +146,7 @@ func build(p_seed: float) -> void:
 	_vapor.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_vapor.extra_cull_margin = 4.0
 	add_child(_vapor)
-	_drips = _particles("Drips", 26, 1.2, Vector3(0.0, 9.0, 0.6), Vector3(4.2, 3.4, 1.6))
+	_drips = _particles("Drips", 26, 1.2, Vector3(0.0, 11.0, 1.2), Vector3(4.4, 4.6, 1.6))
 	_drips.direction = Vector3(0.0, -1.0, 0.0)
 	_drips.spread = 20.0
 	_drips.gravity = Vector3(0.0, -7.0, 0.0)
@@ -155,9 +161,9 @@ func build(p_seed: float) -> void:
 	_drips.material_override = GreyboxMaterials.glow(PURPLE, 2.0)
 	# The light streaming into its maws as it inhales (lights out's warning): wisps drawn in from all
 	# around it.
-	_streams = _particles("Inhale", 90, 1.4, Vector3(0.0, 9.5, 2.0), Vector3.ZERO)
+	_streams = _particles("Inhale", 90, 1.4, Vector3(0.0, 12.5, 2.5), Vector3.ZERO)
 	_streams.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE_SURFACE
-	_streams.emission_sphere_radius = 12.0
+	_streams.emission_sphere_radius = 13.0
 	_streams.gravity = Vector3.ZERO
 	_streams.radial_accel_min = -16.0
 	_streams.radial_accel_max = -11.0
@@ -286,25 +292,26 @@ static func liquid_mesh() -> ArrayMesh:
 	_maws = PackedVector3Array()
 	var head_c: Vector3 = MAIN_HEAD[0]
 	var head_r: Vector3 = MAIN_HEAD[1]
-	# The heads: the main one, a little sheen on its crown, and the smaller ones fused around it.
+	# The heads: the main one, a little sheen on its crown, hunched over its chest and waist, and the
+	# smaller ones fused all over it.
 	_ellipsoid(st, head_c, head_r, 12, 8, Part.HEAD, BLACK, SHEEN)
+	_ellipsoid(st, CHEST[0], CHEST[1], 11, 7, Part.TORSO, BLACK, SHEEN)
+	_ellipsoid(st, WAIST[0], WAIST[1], 9, 6, Part.TORSO, BLACK, BLACK)
 	for h: Array in HEADS:
 		_ellipsoid(st, h[0], h[1], 9, 6, Part.HEAD, BLACK, SHEEN)
-	_ellipsoid(st, TORSO_CENTER, TORSO_RADII, 10, 6, Part.TORSO, BLACK, BLACK)
-	# The great maw, then a maw on every small head's front, the ring around the great one and the
-	# second maws.
+	# The great maw, then a maw on every small head's front, more scattered over the main head and the
+	# chest, and second maws on some heads.
 	_maw(st, BIG_MAW_CENTER, BIG_MAW_RADIUS, 16, 14, Part.BIG_MAW, 0)
 	var id: int = 1
 	for h: Array in HEADS:
 		var off: Vector2 = h[2]
 		_maw(st, _front_point(h[0], h[1], off), float(h[3]), 9, 7, Part.MAW, id)
 		id += 1
-	for m: Array in RING_MAWS:
-		var a: float = deg_to_rad(float(m[0]))
-		var x: float = BIG_MAW_CENTER.x + cos(a) * float(m[1])
-		var y: float = BIG_MAW_CENTER.y + sin(a) * float(m[1])
-		var off := Vector2((x - head_c.x) / head_r.x, (y - head_c.y) / head_r.y)
-		_maw(st, _front_point(head_c, head_r, off), float(m[2]), 8, 6, Part.MAW, id)
+	for m: Array in HEAD_MAWS:
+		_maw(st, _front_point(head_c, head_r, m[0]), float(m[1]), 8, 6, Part.MAW, id)
+		id += 1
+	for m: Array in CHEST_MAWS:
+		_maw(st, _front_point(CHEST[0], CHEST[1], m[0]), float(m[1]), 8, 6, Part.MAW, id)
 		id += 1
 	for m: Array in SECOND_MAWS:
 		var h: Array = HEADS[int(m[0])]
@@ -317,8 +324,8 @@ static func liquid_mesh() -> ArrayMesh:
 	for i: int in TENDRILS.size():
 		_tendril(st, TENDRILS[i][0], TENDRILS[i][1], i)
 	# Liquid dripping off the heads.
-	var drips: Array = [[-2.6, 7.6, 1.6, 1.2], [-0.9, 7.9, 2.2, 0.9], [1.1, 7.8, 2.1, 1.4], [2.7, 7.5, 1.5, 1.0],
-		[-4.6, 10.0, 0.4, 1.1], [4.7, 9.9, 0.3, 1.3], [-0.4, 4.6, 1.6, 1.0], [0.6, 4.5, 1.5, 1.2]]
+	var drips: Array = [[-2.4, 9.1, 2.6, 1.2], [2.7, 8.4, 2.5, 1.0], [0.0, 6.4, 3.0, 1.4], [-4.6, 10.8, 0.9, 1.1],
+		[4.8, 11.5, 0.7, 1.3], [-1.6, 4.2, 2.0, 1.0], [1.8, 3.9, 1.9, 1.2], [0.0, 11.4, 3.0, 0.9]]
 	for d: Array in drips:
 		var top := Vector3(float(d[0]), float(d[1]), float(d[2]))
 		_cone(st, top, top + Vector3(0.0, -float(d[3]), 0.05), 0.09, 0.0, 4, BLACK, HIGHLIGHT, Part.DRIP, 0.0, 1.0)
@@ -333,10 +340,10 @@ static func vapor_mesh() -> ArrayMesh:
 		return _vapor_mesh
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	_ellipsoid(st, Vector3(0.0, 10.8, -0.4), Vector3(6.0, 5.6, 4.0), 12, 7, Part.SHROUD, SHROUD, SHROUD)
+	_ellipsoid(st, Vector3(0.0, 13.0, -0.4), Vector3(6.6, 7.4, 4.4), 12, 7, Part.SHROUD, SHROUD, SHROUD)
 	# The skirt, from under the torso down to just above the street, thinning out as it goes, so the
 	# street beyond shows through it.
-	var rings: Array = [[5.4, 2.9, 0.8], [4.0, 3.4, 0.62], [2.6, 3.9, 0.42], [1.4, 4.5, 0.24], [0.4, 5.0, 0.08]]
+	var rings: Array = [[5.0, 2.6, 0.8], [3.8, 3.1, 0.6], [2.6, 3.6, 0.4], [1.4, 4.1, 0.22], [0.4, 4.6, 0.06]]
 	for i: int in rings.size() - 1:
 		var a: Array = rings[i]
 		var b: Array = rings[i + 1]
@@ -386,9 +393,9 @@ static func _maw(st: SurfaceTool, c: Vector3, r: float, segs: int, teeth: int, p
 		var r_in: float = r
 		var r_out: float = r * 1.2
 		var lip := Vector3(0.0, 0.0, 0.03)
-		_maw_tri(st, [m + d0 * r_in + lip, m + d0 * r_out, m + d1 * r_out], [HIGHLIGHT, HIGHLIGHT, HIGHLIGHT], tag,
+		_maw_tri(st, [m + d0 * r_in + lip, m + d0 * r_out, m + d1 * r_out], [LIP, LIP, LIP], tag,
 			[0.0, 0.0, 0.0], c, inside)
-		_maw_tri(st, [m + d0 * r_in + lip, m + d1 * r_out, m + d1 * r_in + lip], [HIGHLIGHT, HIGHLIGHT, HIGHLIGHT], tag,
+		_maw_tri(st, [m + d0 * r_in + lip, m + d1 * r_out, m + d1 * r_in + lip], [LIP, LIP, LIP], tag,
 			[0.0, 0.0, 0.0], c, inside)
 	for i: int in teeth:
 		var a: float = TAU * (i + 0.5) / teeth

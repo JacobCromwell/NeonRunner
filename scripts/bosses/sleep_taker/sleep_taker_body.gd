@@ -17,8 +17,8 @@ extends BossPart
 ## attacks: the giant slash's box (SleepTakerSlash) and each grasping hand's (SleepTakerHands).
 
 ## Its touch: the core of its heads and torso, in the model's space (scaled with it).
-const CORE_SIZE := Vector3(7.0, 9.0, 3.6)
-const CORE_CENTER := Vector3(0.0, 10.0, 0.0)
+const CORE_SIZE := Vector3(7.0, 12.0, 3.6)
+const CORE_CENTER := Vector3(0.0, 12.0, 0.2)
 ## How fast its animation eases toward what the encounter asks (per second, exponential).
 const EASE: float = 10.0
 

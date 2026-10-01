@@ -19,7 +19,7 @@ extends Resource
 @export_range(1.0, 2.0, 0.01) var max_scale: float = 1.2
 ## DESIGN-TBD: where it looms: its centre this far ahead of the runner, keeping pace, its vapour
 ## touching the street.
-@export_range(10.0, 80.0, 0.5, "suffix:m") var hover_ahead: float = 34.0
+@export_range(10.0, 80.0, 0.5, "suffix:m") var hover_ahead: float = 26.0
 ## It leans toward the runner's side of the street (it fills the street, so only a little): this
 ## share of the runner's sideways position, at most drift_speed.
 @export_range(0.0, 1.0, 0.05) var drift_share: float = 0.25

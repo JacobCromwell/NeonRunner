@@ -123,7 +123,7 @@ func start(refuge: float = -1.0) -> void:
 		var marker := Node3D.new()
 		marker.name = "SlashWarning"
 		_warned.append(boss.props.floor_warning(marker, lane, p.distance - 2.0,
-			float(attack["strike_at"]) + t.slash_depth))
+			float(attack["strike_at"]) + v * t.slash_active + t.slash_depth))
 	_set_step(Step.TELEGRAPH)
 	boss.sound(&"sleep_taker_shriek", boss.body.mouth_world())
 	boss.log_event(&"slash_warning", {"n": count, "first": band.x, "last": band.y, "at": p.distance,
@@ -162,6 +162,11 @@ func pull() -> float:
 
 func hitbox() -> Hazard:
 	return _hitbox
+
+
+## True while its lanes are lit on the floor (the warning's look).
+func marks_shown() -> bool:
+	return _marks.visible
 
 
 ## The lanes it's slashing now (or slashed last), first to last.
