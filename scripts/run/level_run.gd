@@ -28,8 +28,8 @@ const COMPLETE_PAUSE: float = 2.0
 const QUICK_DEATH_PAUSE: float = 1.2
 ## The longest a beaten boss's defeat may hold the results (BossEncounter.victory_over).
 const BOSS_VICTORY_MAX: float = 20.0
-## Quick play's stand-in thief (--thief, debug builds; GDD §9.12): loaded by path, since the web demo
-## leaves it out.
+## Quick play's stand-in thief (--thief, debug builds; GDD §9.12): a review aid, loaded by path only when
+## asked for, so the game never depends on it.
 const STAND_IN_THIEF: String = "res://scripts/enemies/stand_in_thief.gd"
 
 ## The run whose level set the scenery light last (ZoneSkin.apply_darkness, a global uniform): only it

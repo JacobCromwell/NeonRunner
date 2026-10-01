@@ -1,6 +1,6 @@
 class_name StandInThief
 extends Enemy
-## A stand-in thief for tests and review (task B6; never in the campaign, and left out of the web demo):
+## A stand-in thief for tests and review (task B6; never in the campaign: no level or pattern names it):
 ## a plain gold block that crosses the lanes ahead of the runner while the runner closes in. It carries
 ## the whole theft contract that the Tithe Collector (GDD §9.12, task C5) builds its own look and
 ## behaviour on:
