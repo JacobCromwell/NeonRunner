@@ -837,10 +837,15 @@ func _check_hazards(motion: float) -> void:
 			return
 
 
-## Dropping onto the hazard from above: on the floor, descending, feet near its top.
+## Dropping onto the hazard from above: on the floor, descending, feet near its top. On the ceiling the
+## same upside down, onto a hazard that hangs from it (Hazard.upside_down, a Barnacle Turret, GDD
+## §9.8): falling back toward the ceiling after a jump, feet near its underside.
 func _is_stomping(hazard: Hazard) -> bool:
-	return surface == Surface.FLOOR and not grounded and vh <= 0.0 \
-		and position.y >= hazard.top_y() - rules.stomp_tolerance
+	if grounded or vh > 0.0:
+		return false
+	if surface == Surface.CEILING:
+		return hazard.upside_down and position.y <= hazard.bottom_y() + rules.stomp_tolerance
+	return surface == Surface.FLOOR and position.y >= hazard.top_y() - rules.stomp_tolerance
 
 
 func _hurtbox_height() -> float:

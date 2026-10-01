@@ -1,5 +1,5 @@
 class_name CyborgBody
-extends Node3D
+extends GunModel
 ## The cyborgs' body (GDD §9.2) on the shared HumanoidRig (scripts/characters/), with CyborgSuit's
 ## parts: one skeleton for every cyborg, the look switched in as an attachment set (the zone's look:
 ## the ragged "Static TV Head" base or one of its zone variants, CyborgSuit.look_for), the screen's
