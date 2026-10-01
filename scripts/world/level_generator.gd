@@ -1636,6 +1636,8 @@ func add_cut(cut: Dictionary) -> bool:
 ##   level's own enemies: a Bad Dream's chase in any lane, a hover truck's stay in its lane);
 ## - a player in its lane when the warning starts can leave it (cut_escape_clear).
 ## Wall runners and ceiling riders are safe without a rule: the cut is a hole in its own lane only.
+## DESIGN-TBD (docs/questions/b4.md): keeping everything else off a cut's whole window, and letting
+## cuts run in the outer lanes (beside a wall runner).
 func cut_problem(cut: Dictionary, p_layout: LevelLayout = null) -> String:
 	var lay: LevelLayout = p_layout if p_layout != null else layout
 	var n: int = lay.lane_count

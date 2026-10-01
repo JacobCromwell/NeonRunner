@@ -2,10 +2,11 @@ class_name FloorCutterTuning
 extends EnemyTuning
 ## The floor cutter's numbers (data/enemies/floor_cutter.tres; F6 "Enemy: Floor Cutter" in a quick play
 ## with it): the plain stand-in that runs floor cuts for review until task C2's Buzz Overdrive exists
-## (task B4; GDD §9.9 has the real one's). Every number here is a placeholder for review (DESIGN-TBD,
-## docs/questions/b4.md), never the Buzz Overdrive's: C2 brings its rev time, speed and the rest.
-## Seconds are at the level's run speed and metres at MovementTuning.REFERENCE_SPEED stretched by the
-## level's pace, so a cut keeps its timing in every zone (GDD §3).
+## (task B4; GDD §9.9 has the real one's). Every number here is a placeholder for review (DESIGN-TBD),
+## never the Buzz Overdrive's: C2 brings its rev time, speed and the rest.
+## Seconds are at the level's run speed and its charge speed at MovementTuning.REFERENCE_SPEED,
+## stretched by the level's pace, so a cut keeps its timing in every zone (GDD §3); its sizes and
+## run_past (where it's off the screen behind the player) are plain metres.
 ## It never "uses the floor" as the generator counts floor enemies (uses_floor false): its floor is its
 ## cut's (LevelLayout.cuts), which the generator keeps everything off already.
 

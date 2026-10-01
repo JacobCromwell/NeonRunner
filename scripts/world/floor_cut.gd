@@ -141,7 +141,9 @@ func hold(from: float, to: float, until: float) -> void:
 ## After the shield or the armor blocked the cut's cause (GDD §9.9: "after a block, the floor under the
 ## player holds for about a second, just enough to switch lanes"): the floor under `player` holds for
 ## `seconds` on the level clock, from just behind them to as far as they run meanwhile at their speed
-## now (a jump lands back in the cut lane, and falls once the hold is over).
+## now (a jump lands back in the cut lane, and falls once the hold is over). DESIGN-TBD
+## (docs/questions/b4.md): the held floor's look, the lane's own floor shown again with the cut's
+## edges along it until it goes all at once.
 func hold_under(player: Player, seconds: float) -> void:
 	var reach: float = maxf(player.speed, 0.0) * seconds + 2.0
 	hold(player.distance - 1.0, player.distance + reach, player.elapsed + seconds)

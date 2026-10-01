@@ -16,12 +16,14 @@ extends TestSuite
 ## - The same at 30 and 60 Hz, under uneven steps and through a pause.
 ## - Runtime cuts: added in a boss arena (BossArena.cut_problem, add_pieces) and to a track that keeps
 ##   extending (TrackBuilder.extend_layout, endless mode).
-## - Every skin's look (ZoneSkin.floor_cut; the Corporate trains and plaza, the Dead Zone and the Golden
-##   Zone their own): parts registered, no collision added, a dark inside, nothing glowing but the
-##   orange edges right on the collision edges, cheap to build.
-## - The stand-in: out of the campaign, its warning (a red line and a sound), Reduced flashing.
+## - Every skin's look (ZoneSkin.floor_cut; the Corporate trains and plaza, the Dead Zone, the Golden
+##   Zone and the Golden Palace their own): parts registered, no collision added, a dark inside,
+##   nothing glowing but the orange edges right on the collision edges, cheap to build.
+## - The stand-in: its warning (a red line and a sound) only from its warning point, Reduced flashing,
+##   and out of the campaign.
 
 const Rules = preload("res://scripts/enemies/floor_cutter_rules.gd")
+const CutterScript = preload("res://scripts/enemies/floor_cutter.gd")
 const SKINS_DIR: String = "res://data/skins"
 ## The darkest a cut's inside may be drawn (linear luminance): far below any zone's floor.
 const INSIDE_MAX_LUMINANCE: float = 0.012
@@ -61,6 +63,7 @@ func run() -> void:
 	await _test_boss_runtime_cut()
 	await _test_extending_track()
 	await _test_skins()
+	await _test_warning()
 	_test_stand_in()
 
 
@@ -697,8 +700,8 @@ func _test_extending_track() -> void:
 
 # --- Every skin's look ---------------------------------------------------------------------------
 
-## ZoneSkin.floor_cut for every skin (the default, and the Corporate trains and plaza, the Dead Zone and
-## the Golden Zone their own): it reads as a hole like any gap (CLAUDE.md readability rules): a dark
+## ZoneSkin.floor_cut for every skin (the default, and the Corporate trains and plaza, the Dead Zone, the
+## Golden Zone and the Golden Palace their own): it reads as a hole like any gap (CLAUDE.md readability rules): a dark
 ## inside, nothing glowing but the orange edges, those right on the collision edges, no collision, the
 ## same every build, and cheap.
 func _test_skins() -> void:
@@ -706,8 +709,8 @@ func _test_skins() -> void:
 	for file: String in DirAccess.get_files_at(SKINS_DIR):
 		if file.ends_with("_skin.tres"):
 			skins[file.trim_suffix("_skin.tres")] = load(SKINS_DIR.path_join(file)) as ZoneSkin
-	check(skins.has("corporate") and skins.has("corporate_plaza") and skins.has("dead_zone") and skins.has("golden"),
-		"the zones where the Buzz Overdrive appears are among the skins")
+	check(skins.has("corporate") and skins.has("corporate_plaza") and skins.has("dead_zone") and skins.has("golden")
+		and skins.has("golden_palace"), "the zones where the Buzz Overdrive appears are among the skins")
 	for skin_name: String in skins:
 		var skin: ZoneSkin = skins[skin_name]
 		for lanes: int in [3, 5]:
@@ -831,6 +834,56 @@ static func _luminance(c: Color) -> float:
 
 
 # --- The stand-in ---------------------------------------------------------------------------------
+
+## The stand-in's warning (a placeholder until C2's, CLAUDE.md readability rules: a visual and an audio
+## warning): from its warning point, never before, and before its charge, a red line down the lane it's
+## about to cut, from the cut's start to where its blade is, and a sound the library has (the hover
+## truck's rev). The line pulses; with Reduced flashing it holds still.
+func _test_warning() -> void:
+	var library := load("res://data/audio/sfx_library.tres") as SfxLibrary
+	check(library != null and library.stream(&"truck_rev") != null, "the stand-in's warning sound is in the library")
+	var saved: bool = Settings.flashing_reduced
+	for reduced: bool in [false, true]:
+		Settings.flashing_reduced = reduced
+		var tag: String = "(Reduced flashing %s)" % ("on" if reduced else "off")
+		var cut: Dictionary = _cut(1, 300.0)
+		var w: RunWorld = _world(_layout(3, cut), 0, FloorCutPlan.warn_at(cut) - 25.0)
+		w.player.god_mode = true
+		var warn_at: float = FloorCutPlan.warn_at(cut)
+		# [shown early, shown in its warning, red, reaches from the start to the blade]
+		var seen: Array[bool] = [false, false, true, true]
+		var widths: Array[float] = []
+		await _run_until(w, 8.0, func() -> bool:
+			var e: Enemy = _cutter(w)
+			if e == null:
+				return false
+			var line := e.find_child("WarningLine", false, false) as MeshInstance3D
+			var p: float = w.player.distance
+			var state: int = int(e.get("state"))
+			if line == null:
+				return false
+			if line.visible and p < warn_at - 0.01:
+				seen[0] = true
+			if state == CutterScript.State.WARN and line.visible:
+				seen[1] = true
+				var m := line.material_override as StandardMaterial3D
+				seen[2] = seen[2] and m != null and m.emission.r > 0.9 and m.emission.g < 0.3 and m.emission.b < 0.3
+				var reach: float = line.global_transform.basis.z.length()
+				seen[3] = seen[3] and absf(reach - (float(cut["end"]) - float(cut["start"]))) < 0.05
+				# Past the line's first grow.
+				if p > warn_at + 0.9 * w.tuning.run_speed:
+					widths.append(line.global_transform.basis.x.length())
+			return state == CutterScript.State.CHARGE)
+		check(not seen[0] and seen[1], "the warning line shows from the warning point on, never before %s" % tag)
+		check(seen[2] and seen[3], "it's red and runs down the lane from the cut's start to the blade %s" % tag)
+		var spread: float = (widths.max() - widths.min()) if widths.size() > 10 else -1.0
+		if reduced:
+			check(spread >= 0.0 and spread < 0.0001, "with Reduced flashing the line holds still (%.4f) %s" % [spread, tag])
+		else:
+			check(spread > 0.02, "without it the line pulses (%.4f) %s" % [spread, tag])
+		await sim.free_world(w)
+	Settings.flashing_reduced = saved
+
 
 func _test_stand_in() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign

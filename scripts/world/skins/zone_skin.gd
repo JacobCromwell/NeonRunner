@@ -138,8 +138,8 @@ func floor_segment(_parent: Node3D, _center: Vector3, _size: Vector3, _lane_x: f
 ## Build every part with an identity transform, in `parent`'s (world) space, where the section says.
 ## The default (standard_floor_cut) is a plain dark hole with the skin's gap_edge_color and
 ## gap_inside_color if it has them. The zones where the Buzz Overdrive appears give it their own floor's
-## look (a train roof sliced open, rubble split, a gold walkway cut) by passing their own style and
-## adding parts of their own.
+## look (a train roof sliced open, rubble split, a gold walkway or the palace's marble cut) by passing
+## their own style and adding parts of their own.
 func floor_cut(parent: Node3D, cut: FloorCutSection) -> void:
 	var edge: Variant = get("gap_edge_color")
 	var inside: Variant = get("gap_inside_color")

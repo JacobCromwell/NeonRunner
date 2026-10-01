@@ -44,7 +44,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 |---|---|
 | `--quick` | Quick play: the prototype level, restarting on death, with the debug keys and HUD |
 | `--seed=N --lanes=N --difficulty=X` | Quick play with that seed, lane count (3, 5 or 6) or difficulty (0–1) |
-| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `barnacle_turret` (with `ceilings`), `resonator`). The full list is in `LevelConfig` |
+| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `barnacle_turret` (with `ceilings`), `resonator`), or `floor_cutter` (a grey-box stand-in that cuts a lane's floor into a gap during play, for review until the Buzz Overdrive). The full list is in `LevelConfig` |
 | `--god` | Hits don't kill (falls still do) |
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
@@ -115,7 +115,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   the lanes (a placeholder amount): on one you switch lanes only within it (a move past its edge bumps you
   back with the clank), and a one-lane ceiling is short.
 - **Obstacles:** gaps, signs, and electric fences (full-height or gapped, always-on or pulsing), some with a
-  generator that switches them off.
+  generator that switches them off. Floors that turn into gaps during play: after a warning, a lane's floor
+  is cut away from ahead of you back past you, its edges glowing the gap orange (the mechanism for the Buzz
+  Overdrive; in quick play a grey-box stand-in, `--features=floor_cutter`).
 - **Enemies:**
   - cyborgs, with the panic variant and hosts
   - window cyborgs
@@ -232,7 +234,7 @@ OFL-licensed; licenses are in `assets/LICENSES.md`.
 
 The scenes in `tools/showcase/` show one part of the game up close for visual review (the runner in every pose
 and power-up look, and a scripted run on any zone's skin; ramp launches and blocked wall entries; each enemy
-family, the Barnacle Turret's looks and a ride past it, the Floating Head, the Sleep Taker (and its readability
+family, the Barnacle Turret's looks and a ride past it, a floor cut in any zone's look, the Floating Head, the Sleep Taker (and its readability
 in the dark, `--scenario=measure`), the UI kit, every screen, a zone skin's fixed review track, the cult's feed,
 the Golden Zone's statues, any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
 lists its options. For example, a zone's arrival flyover rendered to frames on the web / low-end renderer:
@@ -313,6 +315,13 @@ On a debug build, the options go into the page's engine settings: in `exports/we
   lanes, jumping or sliding into one, a corner caught mid-switch, a blocked side entry, landing on top, a
   ceiling rider passing over, shots passing through), with campaign doodads run into at their level's speed
   and always onto safe floor, and drones and hover trucks holding fire while one is in reach.
+- **Floor cuts:** cuts planned only where they're fair (one at a time, never through a ramp, a pad or a
+  ceiling's landing zone, the other lanes whole, room to leave the lane after the warning; hundreds of
+  levels at 3, 5 and 6 lanes), a level without them built byte for byte as before, and on real physics:
+  the floor gone exactly behind the cutter, a runner in the lane falling as into any gap, leaving in time
+  from every lane, wall runners and ceiling riders untouched, the floor holding a second after a block, a
+  kill stopping the cut, the same at 30 and 60 frames a second, cuts added during a boss fight, and every
+  zone's look.
 - **Movement:** scenarios on real physics, among them a ramp's boost against a speed pad's, a ramp's wall run
   and its credits against the generator's prediction, the bump of a blocked wall entry, and moves on a
   ceiling over fewer lanes (blocked at its edges, a pad holding you to its lane, the camera kept under the
