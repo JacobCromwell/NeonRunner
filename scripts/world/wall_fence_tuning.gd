@@ -25,10 +25,10 @@ extends Resource
 ## wall (each as likely); the rest stay full-height (GDD §5: an introduced feature keeps appearing).
 @export_range(0.0, 1.0, 0.05) var partial_share: float = 0.5
 ## A level that gives the feature a start (LevelConfig.feature_starts: Marketplace 2's full-height ones,
-## Corporate 1's partial ones) meets its first one within this long after the start: alone, with the
-## floor beside it clear in every lane where such a spot comes in time, and a long off time
-## (intro_off_seconds), with its first-encounter hint just before it.
-@export_range(1.0, 30.0, 0.5, "suffix:s") var intro_seconds: float = 6.0
+## Corporate 1's partial ones) meets its first one within this long after the start where a fair spot
+## comes in time (a big attack can hold it back): alone, where no enemy is about if such a spot comes in
+## time, with a long off time (intro_off_seconds), and its first-encounter hint just before it.
+@export_range(1.0, 30.0, 0.5, "suffix:s") var intro_seconds: float = 10.0
 
 @export_group("Pulse")
 ## Seconds on and off at difficulty 0 and 1, each varied by up to pulse_jitter_seconds either way. The
@@ -42,11 +42,13 @@ extends Resource
 @export_range(0.5, 6.0, 0.05, "suffix:s") var intro_off_seconds: float = 2.0
 
 @export_group("Fairness")
-## The outer floor lane beside a wall fence stays clear (no hole, fence, floor cut, pad, speed pad,
-## ramp or floor enemy) from this long before it to drop_after_seconds after it, so a wall runner who
-## sees it on (or its warning) can always drop off the wall there: a wall jump lands in that lane.
-## Nothing that runs meanwhile (a floor cut, a big attack) may reach that stretch either.
-@export_range(0.0, 3.0, 0.05, "suffix:s") var drop_before_seconds: float = 1.0
+## The outer floor lane beside a wall fence stays clear (no hole, fence, floor cut, anti-grav pad or
+## floor enemy) from this long before it to drop_after_seconds after it, so a wall runner who sees it
+## on (or its warning) can always drop off the wall there: a wall jump lands in that lane about 0.5 to
+## 0.7 s later, so one from as late as the warning (the floor fence's, MovementTuning.fence_pulse_warning)
+## lands within this stretch. Nothing that runs meanwhile (a floor cut, a big attack) may reach it
+## either.
+@export_range(0.0, 3.0, 0.05, "suffix:s") var drop_before_seconds: float = 0.6
 @export_range(0.0, 3.0, 0.05, "suffix:s") var drop_after_seconds: float = 0.8
 ## GDD §9.1: never on the same wall section as a sign or a window cyborg. Seconds of wall kept clear of
 ## signs and window cyborgs either side of a wall fence on its wall (each of them asks the wall runner

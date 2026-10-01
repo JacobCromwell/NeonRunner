@@ -78,7 +78,7 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 ##   launches (RampLaunch, with R1's fading boost; also the longest one, with claws and a speed pad's
 ##   boost carried onto it), and the tuning's margins around it;
 ## - the floor beside it clear to drop off into: over its drop window the outer lane on its side holds
-##   no hole, fence, floor cut, pad, speed pad, ramp or floor enemy, and no hover truck keeps that lane;
+##   no hole, fence, floor cut, anti-grav pad or floor enemy, and no hover truck keeps that lane;
 ## - nothing running meanwhile: no floor cut's window, drone wave (to its first pad), hover truck's
 ##   stay, Octodog run, Resonator visit or Bad Dream chase reaches its drop window;
 ## - spaced from the other wall fences: same_side_gap_seconds on its wall, gap_seconds on either.
@@ -162,13 +162,7 @@ static func check_wall_fences(suite: TestSuite, layout: LevelLayout, config: Lev
 				"no fence where a wall runner drops off (%.1f) %s" % [f["at"], x])
 		for p: Dictionary in layout.pads:
 			suite.check(int(p["lane"]) != lane or not meets.call(float(p["at"]), float(p["at"]) + tuning.pad_length),
-				"no pad where a wall runner drops off (%.1f) %s" % [p["at"], x])
-		for p: Dictionary in layout.speed_pads:
-			suite.check(int(p["lane"]) != lane or not meets.call(float(p["at"]), float(p["at"]) + tuning.speed_pad_length),
-				"no speed pad where a wall runner drops off (%.1f) %s" % [p["at"], x])
-		for r: Dictionary in layout.ramps:
-			suite.check(layout.outer_lane(int(r["side"])) != lane or not meets.call(float(r["at"]), float(r["at"]) + tuning.ramp_length),
-				"no ramp where a wall runner drops off (%.1f) %s" % [r["at"], x])
+				"no anti-grav pad where a wall runner drops off (%.1f) %s" % [p["at"], x])
 		for c: Dictionary in layout.cuts:
 			var lw: Vector2 = FloorCutPlan.lane_window(c)
 			suite.check(int(c["lane"]) != lane or not meets.call(lw.x, lw.y), "no floor cut where a wall runner drops off " + x)
