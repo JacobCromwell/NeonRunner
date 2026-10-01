@@ -4,9 +4,9 @@ extends RefCounted
 ## HumanoidRig (scripts/characters/): plain, unarmed, ordinary people, built the same way the player
 ## and the cyborgs are (CLAUDE.md: "one shared body and skeleton with swappable parts"), but simpler
 ## (no equipment, no weapon) since they are never seen in 3D at runtime. `tools/asset_gen/
-## citizen_sheet_gen.gd` is the only thing that builds this rig: it poses it through idle_pose() and
-## reaction_pose() and bakes the frames into a flipbook (MarketCitizen plays the baked sheet back as
-## a cheap textured card, never the rig itself).
+## citizen_sheet_gen.gd` is the only thing that builds this rig: it poses it through pose_at() and
+## bakes the frames into a flipbook (MarketCitizen plays the baked sheet back as a cheap textured
+## card, never the rig itself).
 ##
 ## Colour rule (GDD §5: "they must never read as a threat", kept apart from window cyborgs, GDD
 ## §9.2): skin tones and plain, lit clothing only, never a hazard colour, never glowing (glow is

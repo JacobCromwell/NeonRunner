@@ -12,9 +12,9 @@ extends Node3D
 ## gameplay state on purpose: CLAUDE.md principle 1, "no new collision or gameplay").
 ##
 ## Hook for E5a (GDD §10, The House: "the citizens in the shop windows cheer and duck throughout"):
-## every live citizen joins the GROUP group, and react(kind) can be called on any of them directly
-## (kind: &"startled" or &"cheer"), so the boss can make every citizen in view react without this
-## file changing.
+## every live citizen joins the "market_citizens" group (GROUP), and react(kind) can be called on
+## any of them directly (kind: &"startled" or &"cheer"), so the boss can make every citizen in view
+## react without this file changing.
 
 const GROUP := &"market_citizens"
 ## How far ahead of (and past) the citizen the player triggers its own reaction, in metres.
