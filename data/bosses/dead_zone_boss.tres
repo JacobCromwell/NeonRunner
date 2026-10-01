@@ -2,12 +2,15 @@
 
 [ext_resource type="Script" path="res://scripts/campaign/boss_def.gd" id="1_script"]
 [ext_resource type="Script" path="res://scripts/campaign/boss_phase.gd" id="2_phase"]
+[ext_resource type="Script" path="res://scripts/core/level_config.gd" id="3_level"]
+[ext_resource type="Resource" path="res://data/bosses/dead_zone_boss_tuning.tres" id="4_tuning"]
+[ext_resource type="Resource" path="res://data/bosses/dead_zone_boss_skin.tres" id="5_skin"]
 
 [sub_resource type="Resource" id="phase_1"]
 script = ExtResource("2_phase")
 health_share = 1.0
 hits = 1
-intro_seconds = 2.0
+intro_seconds = 4.5
 
 [sub_resource type="Resource" id="phase_2"]
 script = ExtResource("2_phase")
@@ -21,12 +24,33 @@ health_share = 1.0
 hits = 1
 intro_seconds = 2.0
 
+[sub_resource type="Resource" id="arena"]
+script = ExtResource("3_level")
+id = &"dead_zone_boss_arena"
+display_name = "Sleep Taker arena"
+level_seed = 1501
+duration_seconds = 60.0
+difficulty = 0.25
+difficulty_ramp = 0.0
+features = PackedStringArray("pulsing")
+skin = ExtResource("5_skin")
+darkness = 0.4
+start_clear_distance = 90.0
+spacing_seconds_easy = 2.6
+spacing_seconds_hard = 1.9
+
 [resource]
 script = ExtResource("1_script")
 id = &"dead_zone_boss"
 display_name = "Sleep Taker"
-notes = "Designed, not built yet (GDD §10): the Dead Zone's Bad Dreams fused into one colossal nightmare. Weapons can't touch it and it swallows the light, but it can't reach the ceiling. Lure it close to a glowing fence generator, then smash the generator with a stomp or the dash: its EMP tears a chunk of the nightmare away, three times."
+preview_scene = "res://scenes/bosses/sleep_taker.tscn"
+notes = "Designed, being built (GDD §10): the Dead Zone's Bad Dreams fused into one colossal nightmare. Weapons can't touch it and it swallows the light, but it can't reach the ceiling. Lure it close to a glowing fence generator, then smash the generator with a stomp or the dash: its EMP tears a chunk of the nightmare away, three times."
+weapon_share_cap = 0.0
 phases = Array[ExtResource("2_phase")]([SubResource("phase_1"), SubResource("phase_2"), SubResource("phase_3")])
+arena = SubResource("arena")
+arena_laps = 3
+tuning = ExtResource("4_tuning")
+music = &"dead_zone"
 armor_rule = true
 armor_delay_min = 15.0
 armor_delay_max = 17.0
