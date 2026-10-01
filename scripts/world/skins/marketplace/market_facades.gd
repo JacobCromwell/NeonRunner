@@ -5,7 +5,7 @@ extends RefCounted
 ## casino or a market hall. Every building face is flush with the wall face from the market floor up
 ## past the wall-run band: that plane is the wall-run surface. Low on it, just above a tiled plinth,
 ## runs a row of shop windows: real openings with a display of goods behind them under a warm lamp,
-## where the Marketplace citizens will play (task D3: windows() lists them). Above them the band
+## where the Marketplace citizens play (task D3, MarketCitizens: windows() lists them). Above them the band
 ## stays calm (shutters closed, no signs, no lights), and nothing but a hazard sign ever sticks out
 ## of the wall below `decor_min_height`. Higher up the market gets busy and plainly futuristic (GDD
 ## §5: the same future as every zone): lit and frosted smart-glass windows, blue awnings on slim

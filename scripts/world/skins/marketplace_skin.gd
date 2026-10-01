@@ -7,10 +7,12 @@ extends ZoneSkin
 ## (canvas, blue awnings, corrugated tin) with the market floor far below; gaps are the drops between
 ## the stalls, with the orange edge glow right on the collision edge. Walls are shopfronts and
 ## casinos: sun-bleached stucco with a row of lit shop windows at the low part of the wall (where the
-## Marketplace citizens will play, task D3: see shop_windows()), a calm band above them, and busy upper
+## Marketplace citizens play, task D3: see shop_windows()), a calm band above them, and busy upper
 ## floors with shutters, awnings and decorative signs. Signs are shop signs in the yellow/black hazard
 ## frame; decorative signs are never framed and never below `decor_min_height`, so they can't be
-## mistaken for hazard signs. Electric fences are the same pink field, strung between poles standing
+## mistaken for hazard signs. Some shop windows hold a Marketplace citizen (task D3, MarketCitizens,
+## scripts/world/skins/marketplace/): scenery only, warm and lit, never a window cyborg's dark glass.
+## Electric fences are the same pink field, strung between poles standing
 ## in market crates. Ceilings are the undersides of buildings bridging the street, overpasses running
 ## along it, a few merchant ships and floating advertisements, each built from the lanes it covers.
 ## The stall roofs stand still, so dust, paper scraps and speed streaks, the seams between stalls and
@@ -235,9 +237,13 @@ var _stalls: MarketStalls
 var _facades: MarketFacades
 var _ceilings: MarketCeilings
 var _props: MarketProps
+var _citizens: MarketCitizens
 ## The latest wall face seen (wall_section runs before a chunk's ceilings): a building bridging the
 ## street reaches from wall to wall.
 var _wall_x: float = 0.0
+## Window cyborgs due in the chunk now building, by side (note_wall_enemies(), task D3): their
+## track distance, so the citizens never share a window with one (GDD §9.2).
+var _reserved: Dictionary = {-1: PackedFloat32Array(), 1: PackedFloat32Array()}
 
 
 func _init() -> void:
@@ -270,6 +276,25 @@ func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: f
 		stalls().below(batch, absf(face_x), start, end)
 		facades().overhead(batch, absf(face_x), start, end)
 	batch.commit(parent)
+	citizens().build(parent, side, face_x, start, end)
+
+
+## The window cyborgs TrackBuilder is about to build on `side` in [start, end) (ZoneSkin hook, task
+## D3): kept so citizens() never places one in a window a window cyborg stands in.
+func note_wall_enemies(side: int, _start: float, _end: float, enemies: Array[Dictionary]) -> void:
+	var spans := PackedFloat32Array()
+	for e: Dictionary in enemies:
+		if String(e.get("type", "")) == "window_cyborg" and int(e.get("side", 0)) == side:
+			spans.append(float(e.get("at", 0.0)))
+	_reserved[side] = spans
+
+
+## True if a window cyborg on `side` stands within `margin` of track distance `at` (MarketCitizens).
+func reserved_near(side: int, at: float, margin: float) -> bool:
+	for a: float in _reserved.get(side, PackedFloat32Array()):
+		if absf(a - at) <= margin:
+			return true
+	return false
 
 
 func fence(hazard: Hazard, size: Vector3, ground_y: float, gapped: bool) -> void:
@@ -476,3 +501,9 @@ func props() -> MarketProps:
 	if _props == null:
 		_props = MarketProps.new(self)
 	return _props
+
+
+func citizens() -> MarketCitizens:
+	if _citizens == null:
+		_citizens = MarketCitizens.new(self)
+	return _citizens
