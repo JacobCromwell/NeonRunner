@@ -856,8 +856,9 @@ patterns: the generator adds them after the zone doodads and before the credits 
 (`rng_for("wall_fences")`), for a level with `wall_fences` or `wall_fences_partial`. So they only add to the
 walls: the pattern picks, the rules, the fillers, the doodads and the credits come out exactly as without
 them (`test_wall_fences` compares every campaign level with and without the features; a level without them
-draws nothing, and the old dump of 570 layouts, `tools/measure/level_pace.gd --dump`, matched byte for byte
-but for the wall fences). Where they may stand is one list of keep-outs per wall (`WallFencePlacement.keep_outs`,
+draws nothing; `tools/measure/level_pace.gd --dump` of 570 layouts, every campaign level on its own seed and
+nine others at 3, 5 and 6 lanes and quick play, against main's: the 330 of levels without them byte for byte
+the same, the 240 of levels with them the same but for their wall fences). Where they may stand is one list of keep-outs per wall (`WallFencePlacement.keep_outs`,
 times from `WallFenceTuning`, `data/tuning/wall_fences.tres`, seconds at the level's run speed, so they keep
 their seconds at every zone's pace):
 - its wall: no sign or window cyborg within `wall_clear_seconds` of it on its wall (GDD §9.1: never on the
@@ -872,9 +873,10 @@ their seconds at every zone's pace):
   to `drop_after_seconds` after: where a drop-off from as late as its warning lands), and no hover truck keeps
   that lane meanwhile;
 - what runs meanwhile: no floor cut's window (B4: nothing else goes on during a cut) and no big attack (the
-  keep-out of a drone wave, a hover truck, an Octodog, a Resonator or a floor cut's cause,
-  `LevelGenerator.enemy_keep_out`, and every Bad Dream chase) reaches its drop window (the wall is one of their
-  escapes; the fill pass keeps off them the same way);
+  keep-out of a drone wave, a hover truck, an Octodog or a floor cut's cause, `LevelGenerator.enemy_keep_out`;
+  each of a Resonator's pulses, from its warning until its wave has passed the player, `resonator_pulses`,
+  since between its pulses nothing asks for the wall; and every Bad Dream chase) reaches its drop window (the
+  wall is one of their escapes; the fill pass keeps its extra obstacles off them the same way);
 - the level: its drop window between the run-up and the end-clear stretch; other wall fences
   `same_side_gap_seconds` apart on one wall (a wall run meets one at a time) and `gap_seconds` on either.
 Zone doodads need no rule: they stand in inner lanes and push only into neighbouring lanes, never onto a wall,
@@ -893,9 +895,9 @@ before it (HintDirector: `wall_fence`, `wall_fence_low`, `wall_fence_high`). Eve
 full-height one (or a partial one, with that feature) gets one at the first fair spot past its start, and one
 with no fair spot at all a warning (the campaign tests fail on any). `feature_positions` finds full-height ones
 for `wall_fences` and partial ones for `wall_fences_partial`. Measured on each level's own seed and nine others
-at 3, 5 and 6 lanes: about 10 to 14 a level (Marketplace 2 about 12, the Corporate zone about 14, the Dead Zone
-about 12, the Golden Zone about 10, where big attacks leave less room), half of them partial past
-`wall_fences_partial`'s start (a third of Corporate 1's, which brings them in halfway).
+at 3, 5 and 6 lanes: about 10 to 14 a level, 4 to 6 a minute (Marketplace 2 about 12, the Corporate zone about
+14, the Dead Zone and the Golden Zone about 11 to 12, where big attacks leave less room), half of them partial
+past `wall_fences_partial`'s start (a third of Corporate 1's, which brings them in halfway).
 `LevelGenerator.wall_fence_problem(entry)` (`WallFencePlacement.problem`) says why one can't stand somewhere,
 and `cut_problem` refuses a floor cut whose window reaches a wall fence's drop window (a boss arena's; a
 level's wall fences come after its cuts). `LayoutChecks.check_wall_fences` (from `check_layout`) holds every

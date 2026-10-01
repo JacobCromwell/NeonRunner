@@ -24,9 +24,9 @@ extends RefCounted
 ##   where a drop-off from as late as its warning lands), and no hover truck keeps that lane meanwhile
 ##   (a ramp there launches along its wall, which the ramp rule keeps clear anyway);
 ## - what runs meanwhile: no floor cut's window (B4: nothing else goes on during a cut), no big attack
-##   (an enemy keep-out of the drone's, the hover truck's, the Octodog's, the Resonator's or a floor
-##   cut's cause) and no Bad Dream chase reaches its drop window (the wall is one of their escapes; one
-##   big thing at a time);
+##   (an enemy keep-out of the drone's, the hover truck's, the Octodog's or a floor cut's cause; each of
+##   a Resonator's pulses, from its warning until its wave has passed the player) and no Bad Dream chase
+##   reaches its drop window (the wall is one of their escapes; one big thing at a time);
 ## - the level: its drop window between the run-up and the end-clear stretch;
 ## - other wall fences: same_side_gap_seconds apart on one wall (a wall run meets one at a time), and
 ##   gap_seconds apart on either.
@@ -234,7 +234,10 @@ static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallF
 		busy.append(FloorCutPlan.window(c, v))
 	var hooks: Dictionary = {}
 	for e: Dictionary in lay.enemies:
-		if BIG_ATTACKS.has(String(e.get("type", ""))):
+		var pulses: Array[Vector2] = resonator_pulses(gen, e)
+		if not pulses.is_empty():
+			busy.append_array(pulses)
+		elif BIG_ATTACKS.has(String(e.get("type", ""))):
 			busy.append(gen.enemy_keep_out(e, hooks))
 	for k: Dictionary in attacks:
 		if not k.has("lane"):
@@ -242,6 +245,28 @@ static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallF
 	for s: Vector2 in busy:
 		if s.y >= s.x:
 			out.append({"from": s.x - after, "to": s.y + before, "why": "a floor cut or a big attack runs meanwhile"})
+	return out
+
+
+## A Resonator's planned pulses (GDD §9.10; resonator_rules.gd plans them, "pulse_at" and "double"):
+## for each, the stretch from where its warning starts to where its wave has passed the player
+## (ResonatorTuning.meeting_stretch), when the wall is one of the escapes from it. Between its pulses
+## nothing asks for the wall. [] for any other entry, or a Resonator without a plan (its whole keep-out
+## then counts, as a big attack's).
+static func resonator_pulses(gen: LevelGenerator, e: Dictionary) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	if String(e.get("type", "")) != "resonator":
+		return out
+	var rt := EnemyDirector.tuning_for("resonator") as ResonatorTuning
+	var params: Dictionary = e.get("params", {})
+	var anchors: Array = params.get("pulse_at", [])
+	var doubles: Array = params.get("double", [])
+	if rt == null:
+		return out
+	for i: int in anchors.size():
+		var double: bool = i < doubles.size() and bool(doubles[i])
+		var meeting: Vector2 = rt.meeting_stretch(float(anchors[i]), double, gen.speed, gen.config.enemy_scaling, gen.pace)
+		out.append(Vector2(float(anchors[i]), meeting.y))
 	return out
 
 

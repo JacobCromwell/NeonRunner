@@ -80,7 +80,8 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 ## - the floor beside it clear to drop off into: over its drop window the outer lane on its side holds
 ##   no hole, fence, floor cut, anti-grav pad or floor enemy, and no hover truck keeps that lane;
 ## - nothing running meanwhile: no floor cut's window, drone wave (to its first pad), hover truck's
-##   stay, Octodog run, Resonator visit or Bad Dream chase reaches its drop window;
+##   stay, Octodog run, Resonator pulse (from its warning until its wave has passed the player) or Bad
+##   Dream chase reaches its drop window;
 ## - spaced from the other wall fences: same_side_gap_seconds on its wall, gap_seconds on either.
 static func check_wall_fences(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
 	if layout.wall_fences.is_empty():
@@ -98,6 +99,7 @@ static func check_wall_fences(suite: TestSuite, layout: LevelLayout, config: Lev
 	var tt := EnemyDirector.tuning_for("hover_truck") as HoverTruckTuning
 	var dt := EnemyDirector.tuning_for("drone") as DroneTuning
 	var wt := EnemyDirector.tuning_for("window_cyborg") as WindowCyborgTuning
+	var rt := EnemyDirector.tuning_for("resonator") as ResonatorTuning
 	var resonator: GDScript = load("res://scripts/enemies/resonator_rules.gd") as GDScript
 	var gen: LevelGenerator = LevelGenerator.for_layout(config, tuning, layout)
 	var partial_start: float = config.feature_start("wall_fences_partial") * layout.length
@@ -190,7 +192,17 @@ static func check_wall_fences(suite: TestSuite, layout: LevelLayout, config: Lev
 				"octodog":
 					busy.append(LevelGenerator.enemy_floor_span(e, pace))
 				"resonator":
-					busy.append(resonator.call("keep_out", gen, e))
+					# Each pulse, from its warning to where its wave has passed the player (the wall is an
+					# escape from it); a Resonator without a plan, its whole visit.
+					var params: Dictionary = e.get("params", {})
+					var anchors: Array = params.get("pulse_at", [])
+					var doubles: Array = params.get("double", [])
+					if anchors.is_empty():
+						busy.append(resonator.call("keep_out", gen, e))
+					for i: int in anchors.size():
+						var meeting: Vector2 = rt.meeting_stretch(float(anchors[i]), i < doubles.size() and bool(doubles[i]), speed,
+							config.enemy_scaling, pace)
+						busy.append(Vector2(float(anchors[i]), meeting.y))
 			for b: Vector2 in busy:
 				var s: Vector2 = b
 				# A drone wave ends at its first pad when that comes sooner.
