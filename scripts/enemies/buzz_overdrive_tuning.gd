@@ -31,6 +31,12 @@ extends EnemyTuning
 ## metres: the camera's view behind the player doesn't change with the speed).
 @export_range(5.0, 60.0, 1.0, "suffix:m") var run_past: float = 22.0
 
+@export_group("Placement")
+## In a level that gives the feature a start (Corporate 1 introduces it), the first one sets off within
+## this many seconds of the start where a cut fits, even if the pattern picked there didn't fit
+## (buzz_overdrive_rules.gd).
+@export_range(0.0, 60.0, 1.0, "suffix:s") var intro_seconds: float = 15.0
+
 @export_group("Look")
 ## How far ahead it shows up, parked in its lane (plain metres: within the track built ahead).
 @export_range(40.0, 170.0, 5.0, "suffix:m") var appear_distance: float = 150.0

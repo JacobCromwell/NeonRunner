@@ -16,7 +16,9 @@ extends RefCounted
 ## - `lead` (optional, 0 without it): metres before the warning point where the player is when the
 ##   cause is already on its way in its lane (task C2: the Buzz Overdrive rolls ahead of the player
 ##   before it revs). Its lane window and its window then start there (lead_at), so its lane is clear
-##   wherever the cause drives and nothing else goes on meanwhile; the warning stays at warn_at.
+##   wherever the cause drives and no other cut's encounter overlaps it; the warning stays at warn_at,
+##   and so do its attack window (nothing else goes on meanwhile) and its warned lane (no ceiling's
+##   landing zone over it).
 ## Distances are relative to `end`, so a copy moved along the track (BossArena.shifted) only moves
 ## `start` and `end`.
 ##
@@ -88,6 +90,19 @@ static func lane_window(cut: Dictionary) -> Vector2:
 static func window(cut: Dictionary, run_speed: float) -> Vector2:
 	var lane_span: Vector2 = lane_window(cut)
 	return Vector2(lane_span.x, maxf(lane_span.y, done_at(cut, run_speed)))
+
+
+## The track the player runs from the cut's warning to its end (or past its cause's spot): its big
+## attack, when nothing else may go on (GDD §9). The same as window() for a cut without a lead.
+static func attack_window(cut: Dictionary, run_speed: float) -> Vector2:
+	return Vector2(warn_at(cut), window(cut, run_speed).y)
+
+
+## The stretch of its lane from where its warning starts to `keep` past `end`: where a player who comes
+## down into the lane (a ceiling's landing zone) would meet its warning, its charge or its hole. The
+## same as lane_window() for a cut without a lead.
+static func warned_lane(cut: Dictionary) -> Vector2:
+	return Vector2(warn_at(cut), float(cut["end"]) + float(cut["keep"]))
 
 
 ## True if `cut`'s lane window reaches into [from, to], in `lane` (any lane with -1).

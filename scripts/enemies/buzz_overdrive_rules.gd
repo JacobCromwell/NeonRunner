@@ -13,7 +13,14 @@ extends RefCounted
 ##   one at a time, never a lane with a ramp, a pad or a ceiling's landing zone, the other lanes whole,
 ##   nothing else going on, room to leave its lane). The entry then moves to the cut's end, in the cut's
 ##   lane: where its cause is when the charge starts (FloorCutPlan, cut_of).
-## - One that fits in no lane is dropped, and the stretch its pattern held is left to the fill pass.
+## - One that fits in no lane where its pattern put it tries a little earlier or later (MOVE_SECONDS:
+##   around a ceiling's landing zone, say: from a level's first drone on, a pad and its ceiling come
+##   every 8–10 s), never before the feature's start; one that fits nowhere is dropped, and the stretch
+##   its pattern held is left to the fill pass.
+## - Its introduction (a level that gives the feature a start, LevelConfig.feature_starts: Corporate 1):
+##   if no Buzz Overdrive sets off within intro_seconds of the start (the pattern picked there didn't fit:
+##   a hover truck's stay, a drone wave, a ceiling's landing zone), one is added at the first spot there
+##   where a cut fits, so the player meets it soon after its hint as the schedule means.
 ## - In a level that guarantees its features (LevelConfig.guarantee_features), if none is left, one is
 ##   added at the first spot past the feature's start where a cut fits (in a level paced in bursts, in
 ##   a burst first: LevelGenerator.pacing_pools), so the level needn't be built again.
@@ -24,6 +31,9 @@ const TYPE: String = "buzz_overdrive"
 const CutPlacement = preload("res://scripts/enemies/cut_placement.gd")
 ## Metres (at the reference speed, stretched by the pace) between the spots tried for a guaranteed one.
 const GUARANTEE_STEP: float = 12.0
+## Where an entry's cut doesn't fit where its pattern put it, the moves tried, in this order (seconds at
+## run speed; DESIGN-TBD, docs/questions/c2.md).
+const MOVE_SECONDS: Array[float] = [-1.0, 1.0, -2.0, 2.0, 3.0]
 
 
 static func apply(gen: LevelGenerator) -> void:
@@ -31,11 +41,21 @@ static func apply(gen: LevelGenerator) -> void:
 	var layout: LevelLayout = gen.layout
 	var rng: RandomNumberGenerator = gen.rng_for(TYPE)
 	var dropped: Array[Dictionary] = []
+	var earliest: float = maxf(gen.feature_start(TYPE), gen.config.start_clear_distance)
 	for e: Dictionary in tanks_in(layout):
-		if not place_at(gen, t, rng, e, float(e["at"]), int(e.get("lane", 0))):
+		var at: float = float(e["at"])
+		var placed: bool = place_at(gen, t, rng, e, at, int(e.get("lane", 0)))
+		for move: float in MOVE_SECONDS:
+			if placed:
+				break
+			if at + move * gen.speed >= earliest:
+				placed = place_at(gen, t, rng, e, at + move * gen.speed, int(e.get("lane", 0)))
+		if not placed:
 			dropped.append(e)
 	for e: Dictionary in dropped:
 		layout.enemies.erase(e)
+	if gen.config.feature_starts.has(TYPE):
+		_introduce(gen, t, rng, earliest)
 	if gen.config.guarantee_features and tanks_in(layout).is_empty():
 		_add_guaranteed(gen, t, rng)
 
@@ -59,6 +79,10 @@ static func place_at(gen: LevelGenerator, t: BuzzOverdriveTuning, rng: RandomNum
 		e["lane"] = l
 		if CutPlacement.place(gen, cut):
 			return true
+		if OS.has_environment("BUZZ_DEBUG"):
+			var trial: LevelLayout = gen.layout.copy()
+			CutPlacement.clear(gen, trial, cut)
+			print("  buzz at %.0f lane %d: %s" % [anchor, l, gen.cut_problem(cut, trial)])
 	e["at"] = was[0]
 	e["lane"] = was[1]
 	return false
@@ -113,6 +137,22 @@ static func cut_of(layout: LevelLayout, e: Dictionary) -> Dictionary:
 	for c: Dictionary in layout.cuts:
 		if int(c["lane"]) == int(e.get("lane", -1)) and absf(float(c["end"]) - float(e["at"])) < 0.01:
 			return c
+	return {}
+
+
+## In a level that introduces the feature: one setting off within intro_seconds of `start` where a cut
+## fits, unless one already does. Returns the entry added, or {}.
+static func _introduce(gen: LevelGenerator, t: BuzzOverdriveTuning, rng: RandomNumberGenerator, start: float) -> Dictionary:
+	var by: float = start + t.intro_seconds * gen.speed
+	for c: Dictionary in gen.layout.cuts:
+		if FloorCutPlan.lead_at(c) <= by:
+			return {}
+	var at: float = start
+	while at <= by:
+		var e := {"lane": rng.randi_range(0, gen.layout.lane_count - 1)}
+		if place_at(gen, t, rng, e, at, int(e["lane"])):
+			return gen.add_enemy(TYPE, float(e["at"]), int(e["lane"]))
+		at += gen.metres(GUARANTEE_STEP)
 	return {}
 
 
