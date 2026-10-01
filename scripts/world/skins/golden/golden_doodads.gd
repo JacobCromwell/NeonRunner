@@ -100,6 +100,9 @@ func _fountain(s: MeshLayer, size: Vector3, look_seed: int) -> void:
 ## A robed statue on a plinth: a tapered gold figure with a rounded cowl, hands clasped at the chest
 ## and a red sash, deliberately not the Gilded Sentinels' armoured guard with a raised halberd (see
 ## the header): nothing here is held or raised.
+## DESIGN-TBD (docs/questions/g6.md): this shape is a proposal; the alternative is a scaled-down
+## GoldenStatue pose (the same kit the ledges use), closer to "a statue" at the cost of standing
+## closer to the Sentinel's own silhouette.
 func _statue(s: MeshLayer, size: Vector3, look_seed: int) -> void:
 	var sk: GoldenSkin = skin
 	var hy: float = size.y * 0.5
