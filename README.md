@@ -44,7 +44,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 |---|---|
 | `--quick` | Quick play: the prototype level, restarting on death, with the debug keys and HUD |
 | `--seed=N --lanes=N --difficulty=X` | Quick play with that seed, lane count (3, 5 or 6) or difficulty (0–1) |
-| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `barnacle_turret` (with `ceilings`), `resonator`, `buzz_overdrive`), or `floor_cutter` (a grey-box stand-in that cuts a lane's floor into a gap during play, for review). The full list is in `LevelConfig` |
+| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `barnacle_turret` (with `ceilings`), `resonator`, `buzz_overdrive`, `tithe_collector`), or `floor_cutter` (a grey-box stand-in that cuts a lane's floor into a gap during play, for review). The full list is in `LevelConfig` |
 | `--god` | Hits don't kill (falls still do) |
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
@@ -107,8 +107,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   and a level's newest things get the most of its picks, taken from older things of their kind (enemies from
   enemies, obstacles from obstacles), so no level gets easier; enemies whose rules keep only so many (hosts,
   hover trucks, drones, Octodogs, Resonators) and the rare vent screech aren't boosted (the campaign's recency
-  curve, `data/tuning/feature_recency.tres`). Wall fences, the Tithe Collector and the Gilded Sentinels
-  aren't built yet: their levels already list them, and they appear once their code exists.
+  curve, `data/tuning/feature_recency.tres`). Wall fences and the Gilded Sentinels aren't built yet: their
+  levels already list them, and they appear once their code exists.
   Level names are placeholders, except the Golden Palace.
 - **Movement:** floor lanes, side-wall runs and wall jumps (a sign blocking the wall bumps you back with a
   clank), anti-grav pads onto the ceiling, ramps (higher onto the wall, with a speed boost that fades like
@@ -141,6 +141,13 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     cutting the floor into a gap behind it: leave its lane. The armor or shield blocks it and the floor holds
     a second; the missile tiers can usually shoot it before it charges, which saves the floor; the dash
     smashes it (in quick play, `--features=buzz_overdrive`)
+  - the Tithe Collector (from Corporate 2, skipping the Dead Zone, back in the Golden Zone): a small gold
+    drone with a collection plate, smug and gaudy (plain metal, no rotors; anti-grav pads don't affect
+    it). It appears ahead of you and closes in slowly, sucking up the credits in its lane along the way
+    and weaving toward whichever lane has the most hazards ahead, so chasing it is the risk. Touching it
+    isn't deadly: it grabs 25% of the credits you've collected and flies off. Catch it (stomp, shoot, or
+    dash through it) for everything it took, plus a jackpot (in quick play, `--features=tithe_collector`,
+    or review its shared mechanism with `--thief`)
 - **Bosses:** a framework for runner-style boss fights (GDD §10): the fight plays in the normal run on
   an arena track that keeps going for as long as it lasts, with the boss's health bar and phase
   markers on the HUD, weak points to stomp and weapon chip damage, a checkpoint for the final fight,

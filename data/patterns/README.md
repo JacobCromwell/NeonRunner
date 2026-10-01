@@ -88,7 +88,7 @@ pattern like the Octodog's fits when its dog does). Patterns need nothing specia
 | `min_difficulty` / `max_difficulty` | The pattern can be picked only while the current difficulty (0–1) is in this range |
 | `weight` | Relative pick chance among the patterns that qualify |
 | `min_lanes` | Optional. Skip on devices with fewer lanes |
-| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`, `resonator`, `buzz_overdrive`), `screech_vents` (wall-vent screeches only, rare, for zones whose floor has no manholes, GDD §9.5), or a planned one: `wall_fences`, `wall_fences_partial` (with `wall_fences`: low or high wall fences), `tithe_collector`, `gilded_sentinel` |
+| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`, `resonator`, `buzz_overdrive`, `tithe_collector`), `screech_vents` (wall-vent screeches only, rare, for zones whose floor has no manholes, GDD §9.5), or a planned one: `wall_fences`, `wall_fences_partial` (with `wall_fences`: low or high wall fences), `gilded_sentinel` |
 | `length` | Metres of track the pattern takes (the generator extends it for long gaps and hulls) |
 | `elements` | The pieces to place (see below) |
 
@@ -196,6 +196,14 @@ is clear in every lane (no gap, fence, floor enemy, pad or ceiling landing, and 
 run), move a Resonator whose visit doesn't fit a little earlier or later, keep one visit at a time, and
 drop what still doesn't fit. Other patterns need nothing for it: the Resonator only uses floor that's
 clear already.
+
+The Tithe Collector's pattern (`tithe_collector.json`, GDD §9.12, task C5) places one Tithe Collector
+over the middle lane, the same shape as the drone's: a short `length` (10 m), picked many times across
+a level, each its own approach (it's a flier, `uses_floor` false, that appears ahead of the player and
+closes in on its own, like the stand-in thief's). It needs no rules script: it decides which lane to
+weave toward live, from the layout already around it (gaps, fences, floor cuts, other floor enemies),
+so other patterns need nothing for it either, and it can never make a lane unfair (touching it is never
+a hit, CLAUDE.md principle 4).
 
 The Barnacle Turret (`barnacle_turret`) has no patterns, and no pattern should require it: its rules
 (`barnacle_turret_rules.gd`, after every rule that adds or takes away ceilings) hang turrets from the

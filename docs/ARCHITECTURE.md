@@ -182,11 +182,32 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
     `--thief` sends one after another (`StandInThief.start_review`, loaded by path from `LevelRun`), its
     numbers in F6, and starts the runner with a purse (`review_purse`, 400) so the first theft has
     something to take.
-  - *For C5* (the Tithe Collector): extend `ThiefTuning`; set `steals_share` on the collector's
-    hitboxes and `jackpot_credits` on it; fly off after a theft (`Hazard.contacted` with `ROBBED`); for
-    its vacuum, take each credit off the track (`CreditField` needs a small hook for it: hide an idle
-    credit and give its value) and call `world.score.hold(self, value)`, with `RunEffects.coin_stream`
-    for the visible stream into it; give it the warnings its own design asks for.
+  - **The Tithe Collector** (GDD §9.12, task C5, from Corporate 2, skipping the Dead Zone, back in the
+    Golden Zone): `scripts/enemies/tithe_collector.gd`, `tithe_collector_tuning.gd` (extends
+    `ThiefTuning`), `data/enemies/tithe_collector.tres`, one pattern
+    (`data/patterns/tithe_collector.json`, `"requires": ["tithe_collector"]`, placed many times across
+    a level like the drone's, each its own approach); it's out of `LevelConfig.PLANNED_FEATURES`. A
+    small, fast gold drone with a collection plate (plain metal, never glowing, unlike a heli drone: no
+    rotors, and anti-grav pads don't affect it, since it never connects to `Player.movement_event`).
+    *Approach*: like the stand-in thief (task B6), it appears `start_ahead` ahead of the player and
+    closes in at `approach_speed`, slower than the runner, low to the floor the whole way in, so an
+    ordinary run brings it into stomp and dash reach without a boost; a player who leaves its lane
+    before it arrives is never touched. It sets `steals_share` on its one hitbox and `jackpot_credits`
+    on itself from its tuning, and flees ahead and up on a theft (`Hazard.contacted` with `ROBBED`),
+    exactly like the stand-in thief. *Weaving* ("the most dangerous lanes"): every `weave_interval` it
+    counts gaps, fences, floor cuts and other floor enemies in each lane over `weave_lookahead` ahead of
+    its own track position and eases toward the lane with the most (ties keep its current lane; with
+    nothing dangerous ahead it settles over the player's own lane) — not the player's lane outright, so
+    catching it means following it into the risk; it's a body to touch, not a hazard, so this can never
+    make a lane unfair, it only ever changes where the 25% risk or the catch's reward sits. *The
+    vacuum*: `CreditField.take_near(lane, at, reach)` is the small hook (hide an idle floor credit in
+    `lane` within `reach` of `at` and return its value and position, or `{}`); every `vacuum_interval`
+    the collector calls it for its own lane and position, `world.score.hold(self, value)`s what it
+    gets, and flies it in with `RunEffects.coin_stream` for the visible stream GDD §9.12 asks for. *The
+    approach cue*: not a hazard warning (touching it isn't an attack), but still noticeable: a smug
+    chuckle plays for everyone to hear (`world.play_sfx`, like the Resonator's chime) as soon as it
+    exists. It reports no big attack (`is_major_attack_active` stays false): it isn't an attack, so it
+    never takes a turn.
 - **A stomp on the ceiling** (C1): a hitbox that hangs from a ceiling (`Hazard.upside_down`, the
   Barnacle Turret's crown) has its top facing down, toward a rider on the ceiling, who stomps it by
   dropping back onto it after a jump (`Player._is_stomping`: on the ceiling, falling back toward it with
@@ -274,20 +295,21 @@ A level uses an enemy only if its `features` list has the type's name (GDD §6: 
 time), from the feature's start if the level gives it one (The generator). Quick play can add
 features: `./play.sh --features=cyborg,drone`. The campaign already lists the enemies still to be
 built under the names their tasks must use (`LevelConfig.PLANNED_FEATURES`: `barnacle_turret`,
-`tithe_collector`, `resonator`, `gilded_sentinel`), so a new enemy's own files are all it takes to bring
-it into its levels.
+`resonator`, `gilded_sentinel`), so a new enemy's own files are all it takes to bring it into its
+levels.
 
 Built so far: cyborg (with its panic variant and hosts), window cyborg, fence generator, hover
 truck, Octodog, sewer screech (manholes, and wall vents; `screech_vents` is wall vents only, for zones
 whose floor has no manholes),
 heli drone, the Cyborg's Bad Dream (released by a killed host, spawned by the director at run
-time rather than placed by the generator), and the Resonator (GDD §9.10, the Golden Zone: a golden
+time rather than placed by the generator), the Resonator (GDD §9.10, the Golden Zone: a golden
 broadcast spire hovering far ahead whose red waves roll along the floor across every lane; its model,
 `resonator_model.gd`, is built in code, and `resonator_rules.gd` plans each pulse where its wave meets
 the player on clear floor), the Barnacle Turret (GDD §9.8, from Marketplace 1: a ceiling enemy, see
-below), and the Buzz Overdrive (GDD §9.9, from Corporate 1: a buzzsaw tank that cuts its lane's floor
-into a gap, see below). `scripts/enemies/mesh_batch.gd` merges an enemy's low-poly parts into one mesh per material to
-keep draw calls down.
+below), the Buzz Overdrive (GDD §9.9, from Corporate 1: a buzzsaw tank that cuts its lane's floor into
+a gap, see below), and the Tithe Collector (GDD §9.12, from Corporate 2, skipping the Dead Zone, back in
+the Golden Zone: see Thefts above). `scripts/enemies/mesh_batch.gd` merges an enemy's low-poly parts into
+one mesh per material to keep draw calls down.
 
 **Big attacks take turns through the director** (GDD §9, decided September 26, 2026). The big attacks
 of different enemy types never overlap, so the player never has to dodge two at once. The owner may
