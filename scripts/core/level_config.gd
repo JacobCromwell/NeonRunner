@@ -12,13 +12,11 @@ extends Resource
 ## - wall_fences: full-height wall fences (GDD §9.1), from Marketplace 2
 ## - wall_fences_partial: wall fences over the low or the high part of the wall only (GDD §9.1),
 ##   from Corporate 1 (their patterns require both wall_fences and wall_fences_partial)
-## - buzz_overdrive: the Buzz Overdrive (GDD §9.9), from Corporate 1 through the Dead Zone and the
-##   Golden Zone (the Golden Palace included)
 ## - tithe_collector: the Tithe Collector (GDD §9.12), Corporate 2, then the Golden Zone
 ## - resonator: the Resonator (GDD §9.10), from Golden 1
 ## - gilded_sentinel: the Gilded Sentinels (GDD §9.11), from Golden 2
 const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "wall_fences_partial",
-	"buzz_overdrive", "tithe_collector", "resonator", "gilded_sentinel"]
+	"tithe_collector", "resonator", "gilded_sentinel"]
 
 @export var id: StringName = &"prototype"
 ## DESIGN-TBD: campaign level names are placeholders (GDD §5 names only the Golden Palace).

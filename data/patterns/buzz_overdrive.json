@@ -1,0 +1,14 @@
+{
+	"version": 1,
+	"patterns": [
+		{
+			"id": "buzz_overdrive",
+			"min_difficulty": 0.0, "weight": 1.0,
+			"requires": ["buzz_overdrive"],
+			"length": 160,
+			"elements": [
+				{ "kind": "enemy", "type": "buzz_overdrive", "at": 0, "lanes": { "mode": "random", "count": 1 } }
+			]
+		}
+	]
+}
