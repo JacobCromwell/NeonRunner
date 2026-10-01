@@ -45,6 +45,10 @@ var history: Array = []
 
 var _t: ScreechTuning
 var _scaling: float = 0.0
+## The level's pace (MovementTuning.pace): its dash (speed and length, given at the reference speed)
+## is stretched by it, so in a faster zone it dashes faster, as far in time (GDD §3). Its warning and
+## trigger are seconds already.
+var _run_pace: float = 1.0
 ## Track distance and world position of the creature.
 var _d: float = 0.0
 var _x: float = 0.0
@@ -73,6 +77,7 @@ func _build() -> void:
 	immune_to_weapons = true  # hidden until it bursts out
 	_t = tuning_res as ScreechTuning if tuning_res is ScreechTuning else ScreechTuning.new()
 	_scaling = world.config.enemy_scaling if world.config != null else 0.0
+	_run_pace = world.tuning.pace()
 	var p: Dictionary = spawn.get("params", {})
 	var geo: TrackGeometry = world.geo
 	side = signi(int(spawn.get("side", 0)))
@@ -227,7 +232,7 @@ func _dash(delta: float, rel: float, v: float) -> void:
 	if rel < -1.0:
 		_set_phase(Phase.DONE)  # the player got past before it could swipe
 		return
-	var step: float = minf(_t.dash_speed(_scaling) * delta, _t.dash_max_distance - _dashed)
+	var step: float = minf(_t.dash_speed(_scaling) * _run_pace * delta, _t.dash_max_distance * _run_pace - _dashed)
 	# DESIGN-TBD: it stops at the edge of a hole rather than dashing into it.
 	if step > 0.0 and not world.layout.gapped_between(lane, _d - step - BODY_SIZE.z * 0.5, _d):
 		_d -= step

@@ -18,6 +18,7 @@ tagline = "Bombed-out streets, craters and things in the sewers."
 music = &"gangland"
 skin = ExtResource("skin")
 levels = Array[ExtResource("2_levelscript")]([ExtResource("lvl_gangland_1"), ExtResource("lvl_gangland_2"), ExtResource("lvl_gangland_3")])
+run_speed = 21.8
 intro = ExtResource("c_intro")
 outro = ExtResource("c_outro")
 boss = ExtResource("boss")

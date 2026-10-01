@@ -12,3 +12,7 @@ difficulty_bias = -0.05
 features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "ramps", "octodog", "speed_pads", "generator", "drone", "barnacle_turret", "wall_fences", "screech_vents", "buzz_overdrive", "wall_fences_partial", "tithe_collector", "host", "resonator", "gilded_sentinel")
 guarantee_features = true
 narrow_ceiling_share = 0.5
+spacing_seconds_easy = 1.1
+fill_empty_seconds = 2.0
+credit_trail_chance = 0.6
+credit_trail_min = 5

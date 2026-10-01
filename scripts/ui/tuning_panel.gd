@@ -17,7 +17,9 @@ var _status: Label
 
 
 ## `sections`: [{"title": String, "resource": Resource, "path": String}]. `path` is the file that
-## Save and Reload use; the live resource may be an unsaved copy of it.
+## Save and Reload use; the live resource may be an unsaved copy of it. A section may add "keep": the
+## properties Save and Reload leave alone (the live copy's value isn't the file's: a campaign level's
+## run speed comes from its zone, so Save never writes it into the movement tuning).
 func setup(sections: Array[Dictionary]) -> void:
 	_sections = sections
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -212,7 +214,7 @@ func _save() -> void:
 		if target == null:
 			lines.append("Could not read %s" % path)
 			continue
-		_copy_shown(section["resource"], target)
+		_copy_shown(section["resource"], target, section.get("keep", PackedStringArray()))
 		var err: Error = ResourceSaver.save(target, path)
 		if err != OK:
 			path = "user://" + path.get_file()
@@ -225,14 +227,14 @@ func _reload() -> void:
 	for section: Dictionary in _sections:
 		var fresh: Resource = ResourceLoader.load(section["path"], "", ResourceLoader.CACHE_MODE_IGNORE)
 		if fresh != null:
-			_copy_shown(fresh, section["resource"])
+			_copy_shown(fresh, section["resource"], section.get("keep", PackedStringArray()))
 	_refresh()
 	_status.text = "Reloaded from the saved files."
 
 
-func _copy_shown(from: Resource, to: Resource) -> void:
+func _copy_shown(from: Resource, to: Resource, keep: PackedStringArray = PackedStringArray()) -> void:
 	for prop: Dictionary in _editable_props(from):
-		if not prop.has("group"):
+		if not prop.has("group") and not keep.has(String(prop["name"])):
 			to.set(prop["name"], from.get(prop["name"]))
 
 
