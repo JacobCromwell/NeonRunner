@@ -261,8 +261,9 @@ func _measure_wall(lanes: int) -> void:
 	for wall: int in [-1, 1]:
 		for entry: float in [float(marks["start"]), float(marks["release"]) + 0.8 * pace]:
 			var row: String = ""
-			var ok: Array[float] = []
-			var tried: Array[float] = []
+			# The sweep's points by index (jump points mark + (WALL_STEPS - k) * step): tried, and stomped.
+			var tried: Array[int] = []
+			var ok: Array[int] = []
 			# Where the jumps that stomped were pressed (--fine).
 			var pressed: Array[float] = []
 			for k: int in 2 * WALL_STEPS + 1:
@@ -270,26 +271,26 @@ func _measure_wall(lanes: int) -> void:
 				if jump >= entry - 1.0 * pace:
 					row += " "
 					continue
-				tried.append(jump)
+				tried.append(k)
 				var r: Dictionary = await _wall_try(lanes, wall, entry, jump)
 				row += "X" if r["stomped"] else "."
 				if r["stomped"]:
-					ok.append(jump)
+					ok.append(k)
 					pressed.append(float(r["pressed"]))
 			var found: String = "none"
 			if not ok.is_empty():
-				var early: float = ok[0]
-				var late: float = ok[ok.size() - 1]
+				var early: float = mark + (WALL_STEPS - ok[0]) * step
+				var late: float = mark + (WALL_STEPS - ok[ok.size() - 1]) * step
 				if _fine:
 					# Each end between its last stomping point and the next one tried (if any was), at
 					# each phase of the frames.
 					var frame: float = _tuning.run_speed / Engine.physics_ticks_per_second
 					for n: int in _phases:
 						var nudge: float = frame * n / _phases
-						if tried.has(ok[0] + step):
-							pressed.append_array(await _wall_edge(lanes, wall, entry, ok[0], ok[0] + step, nudge))
-						if tried.has(ok[ok.size() - 1] - step):
-							pressed.append_array(await _wall_edge(lanes, wall, entry, ok[ok.size() - 1], ok[ok.size() - 1] - step, nudge))
+						if tried.has(ok[0] - 1):
+							pressed.append_array(await _wall_edge(lanes, wall, entry, early, early + step, nudge))
+						if tried.has(ok[ok.size() - 1] + 1):
+							pressed.append_array(await _wall_edge(lanes, wall, entry, late, late - step, nudge))
 					early = pressed.max()
 					late = pressed.min()
 				found = "%.2f to %.2f m before its face: a window of %.2f m, %.3f s; the mark %.3f s from its early end and %.3f s from its late end" % [
