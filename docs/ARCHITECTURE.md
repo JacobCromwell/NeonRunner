@@ -858,9 +858,10 @@ walls: the pattern picks, the rules, the fillers, the doodads and the credits co
 them (`test_wall_fences` compares every campaign level with and without the features; a level without them
 draws nothing; `tools/measure/level_pace.gd --dump` of 570 layouts, every campaign level on its own seed and
 nine others at 3, 5 and 6 lanes and quick play, against main's: the 330 of levels without them byte for byte
-the same, the 240 of levels with them the same but for their wall fences). Where they may stand is one list of keep-outs per wall (`WallFencePlacement.keep_outs`,
-times from `WallFenceTuning`, `data/tuning/wall_fences.tres`, seconds at the level's run speed, so they keep
-their seconds at every zone's pace):
+the same, the 240 of levels with them the same but for their wall fences). Where they may stand is one list
+of keep-outs per wall (`WallFencePlacement.keep_outs`, times from `WallFenceTuning`,
+`data/tuning/wall_fences.tres`, seconds at the level's run speed, so they keep their seconds at every zone's
+pace):
 - its wall: no sign or window cyborg within `wall_clear_seconds` of it on its wall (GDD §9.1: never on the
   same wall section), no wall vent's screech from `vent_before_seconds` before it to `vent_after_seconds` after,
   and never where a ramp launches the player along its wall (GDD §9.1), from just before the ramp to past the
