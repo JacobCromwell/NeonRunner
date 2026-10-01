@@ -26,11 +26,12 @@ extends Node3D
 ##               the arena's light and at the darkest point of lights out; prints each one's brightness
 ##               on screen (the mean of its brightest pixels, 0-255) in both lights
 ## Options: --lanes=N (3, 5 or 6; 5 by default), --phase=N (start at phase N, as a checkpoint would),
-## --pose=..., --escape=pad|lanes|none, --reduced-flashing.
-## Frames worth a look (at --fixed-fps 10): entrance 0-50; slash, the warning about 95-115 and the
-## strike about 112-118; hands, a mist and its hand about 70-90 and every 3 s after; lights_out, the
-## inhale about 60-80, the dark 80-160, the light back about 160-175; measure, the arena's light
-## about frame 20 and the darkest point about frame 60.
+## --pose=..., --escape=pad|lanes|none, --reduced-flashing, --events (prints each of the boss's events
+## with its frame, for picking frames).
+## Frames worth a look (at --fixed-fps 10): entrance 0-45; slash, the warning from about frame 80 and
+## the strike about 100; hands, a mist about 63 and its hand about 75, then every 3 s or so; lights_out,
+## the inhale about 60-80, the dark 80-168 (hands rising in it about 113 and 143), the light back by
+## about 185; measure, the arena's light about frame 55 and the darkest point about frame 85.
 
 const BOSS_PATH: String = "res://data/bosses/dead_zone_boss.tres"
 
@@ -45,6 +46,9 @@ var _pose: String = ""
 var _measured: Dictionary = {}
 var _probes: Dictionary = {}
 var _frame: int = 0
+## --events: print each of the boss's events with the frame it came on (for picking review frames).
+var _print_events: bool = false
+var _events_seen: int = 0
 
 
 func _ready() -> void:
@@ -66,6 +70,8 @@ func _ready() -> void:
 		elif arg == "--reduced-flashing":
 			RenderingServer.global_shader_parameter_set(&"reduced_flashing", 1.0)
 			Settings.flashing_reduced = true
+		elif arg == "--events":
+			_print_events = true
 	var slot: BossDef = load(BOSS_PATH) as BossDef
 	var def: BossDef = (slot.preview() if slot.preview() != null else slot).duplicate() as BossDef
 	var t: SleepTakerTuning = (def.tuning as SleepTakerTuning).duplicate() as SleepTakerTuning
@@ -151,6 +157,16 @@ func _physics_process(delta: float) -> void:
 		_measure_tick()
 
 
+func _process(_delta: float) -> void:
+	if not _print_events or boss == null:
+		return
+	while _events_seen < boss.events.size():
+		var e: Dictionary = boss.events[_events_seen]
+		_events_seen += 1
+		if e["event"] != &"sound":
+			print("frame %d: %s" % [Engine.get_process_frames(), e])
+
+
 ## The nightmare where it looms, out of the fight's hands: in front of the still runner, the camera
 ## circling it (model) or at the runner's eye height (front).
 func _hold_still() -> void:
@@ -218,7 +234,9 @@ func _measure_tick() -> void:
 	if p.running or boss.state != BossEncounter.State.FIGHT:
 		return
 	if _probes.is_empty():
-		boss.slash.start(-1.0)
+		# The refuge's own slash may have just started here; one is enough.
+		if not boss.slash.busy():
+			boss.slash.start(-1.0)
 		boss.hands.start({"lane": 0, "at": MEASURE_MIST})
 		_probes = {"stopped": _frame}
 	# Hold the warnings where they are: the slash's lanes mid-warning, the mist pooled.
