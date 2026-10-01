@@ -47,6 +47,8 @@ const BODY_SCRIPT: Script = preload("res://scripts/bosses/sleep_taker/sleep_take
 const KINDS: PackedStringArray = ["hands", "lights_out"]
 ## A refuge's hint shows this long before its slash's warning.
 const REFUGE_HINT_LEAD: float = 4.0
+## How far ahead it looks for the track's refuges (metres at 18 m/s, times run_pace()).
+const SIGHT: float = 400.0
 ## DESIGN-TBD (task E5c-b brings its defeat: the wisps, the silence, the grey dawn): beaten, it dissolves
 ## over this long, and the run may end.
 const DEFEAT_SECONDS: float = 1.6
@@ -114,12 +116,13 @@ func _plan_lap(lap: LevelLayout, index: int, p_arena: BossArena) -> void:
 	lap.signs.clear()
 	var t: SleepTakerTuning = _tuning()
 	var v: float = p_arena.tuning.run_speed
+	var k: float = p_arena.tuning.pace()
 	var n: int = lap.lane_count
 	var zones: CeilingZones = CeilingZones.make(p_arena.config, p_arena.tuning)
 	var lead_in: float = p_arena.config.hull_lead_in
 	var span: Vector2 = refuge_clear_span(t, p_arena.tuning, v)
 	var plan: Array[Dictionary] = []
-	var pad: float = t.refuge_first
+	var pad: float = t.refuge_first * k
 	while true:
 		var end: float = pad + t.refuge_seconds * v
 		var landing: Vector2 = zones.landing_zone({"start": pad - lead_in, "end": end})
@@ -134,7 +137,7 @@ func _plan_lap(lap: LevelLayout, index: int, p_arena: BossArena) -> void:
 		for lane: int in pad_lanes(n, t):
 			lap.pads.append({"lane": lane, "at": pad})
 		plan.append({"pad": pad, "end": end})
-		pad += t.refuge_spacing
+		pad += t.refuge_spacing * k
 	_refuge_plan[index] = plan
 
 
@@ -143,7 +146,7 @@ func _plan_lap(lap: LevelLayout, index: int, p_arena: BossArena) -> void:
 ## runner's way to a pad, or to a lane outside the slash, and the pad's run-up and rise).
 static func refuge_clear_span(t: SleepTakerTuning, movement: MovementTuning, v: float) -> Vector2:
 	var before: float = v * (t.slash_warning() - t.strike_after_pad) + movement.jump_distance(v)
-	var after: float = v * t.strike_after_pad + t.slash_depth + t.escape_clear_after
+	var after: float = v * t.strike_after_pad + t.slash_depth + t.escape_clear_after * movement.pace()
 	return Vector2(-before, after)
 
 
@@ -181,7 +184,7 @@ func refuges_between(from: float, to: float) -> Array[Dictionary]:
 func next_refuge() -> Dictionary:
 	var d: float = player_distance()
 	var v: float = _speed()
-	for r: Dictionary in refuges_between(d - 5.0, d + 400.0):
+	for r: Dictionary in refuges_between(d - 5.0, d + SIGHT * run_pace()):
 		if _used.has(r["key"]):
 			continue
 		var warn_at: float = refuge_warn_at(float(r["pad"]))
@@ -422,7 +425,7 @@ func _try_start(kind: String, until_refuge: float) -> bool:
 			var plan: Dictionary = hands.plan()
 			if plan.is_empty():
 				return false
-			var over: float = hands.warning_seconds() + (tuning.hand_depth * 0.5 + SleepTakerHands.PASSED) / _speed()
+			var over: float = hands.warning_seconds() + hands.over_distance() / _speed()
 			if over + gap > until_refuge:
 				return false
 			hands.start(plan)
@@ -445,7 +448,14 @@ func _hint(key: String) -> void:
 
 
 func _speed() -> float:
-	return maxf(world.player.speed, 1.0) if world != null and world.player != null else 18.0
+	return maxf(world.player.speed, 1.0) if world != null and world.player != null else MovementTuning.REFERENCE_SPEED
+
+
+## The run's speed over the reference 18 m/s (MovementTuning.pace()): the tuning's distances that stand
+## for a time are written at 18 m/s and multiplied by it, so the fight keeps its seconds at any speed.
+## (Not the phase's pace(): that one makes a phase hungrier.)
+func run_pace() -> float:
+	return world.tuning.pace() if world != null and world.tuning != null else 1.0
 
 
 # --- Placing it --------------------------------------------------------------------------------------

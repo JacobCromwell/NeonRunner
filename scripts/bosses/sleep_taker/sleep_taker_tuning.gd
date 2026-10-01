@@ -2,6 +2,11 @@ class_name SleepTakerTuning
 extends Resource
 ## The Sleep Taker's numbers (GDD §10; data/bosses/dead_zone_boss_tuning.tres, F6 in its fight). Timings
 ## are at pace 1: each phase divides them by its BossPhase.pace (GDD §10: it gets hungrier each phase).
+## Distances that stand for a time (marked "at 18 m/s": the refuges' spacing, the fairness margins, the
+## generators' spacing) are written for the reference run speed (MovementTuning.REFERENCE_SPEED) and
+## multiplied by the run's pace (MovementTuning.pace(), SleepTaker.run_pace()), so the fight keeps its
+## seconds at any run speed (GDD §3: the run speed rises zone by zone, 24.2 m/s in the Dead Zone).
+## Distances that are sizes or framing (where it looms, the mist's pool, hitboxes) stay as they are.
 ## The GDD fixes what it is (the Dead Zone's Bad Dreams fused into one colossal nightmare, dozens of
 ## maws, long clawed fingers), its three attacks and their warnings (the giant slash across three lanes
 ## after its maw opens with a shriek; grasping hands after purple mist pools in the lane, with
@@ -51,7 +56,8 @@ extends Resource
 ## slashes"): a charred bridge across the street (the Dead Zone's ceiling look) with pads before it
 ## stands every refuge_spacing metres of each lap from refuge_first on, and the giant slash comes at
 ## each one, timed to strike while a runner who took its pad rides the ceiling. A three-lane slash
-## covers the whole street at 3 lanes, so this is how the mobile runner always has an escape.
+## covers the whole street at 3 lanes, so this is how the mobile runner always has an escape. Both at
+## 18 m/s (multiplied by the run's pace).
 @export_range(60.0, 1000.0, 5.0, "suffix:m") var refuge_first: float = 200.0
 @export_range(120.0, 1000.0, 5.0, "suffix:m") var refuge_spacing: float = 240.0
 ## How long the bridge's ceiling lasts past its pads, at run speed.
@@ -108,7 +114,8 @@ extends Resource
 @export_range(0.5, 4.0, 0.1, "suffix:m") var hand_depth: float = 1.6
 ## Fairness: a hand only rises where its lane's floor is clear of holes and fences this far before and
 ## after it, and only while a lane at most max_escape_lanes away is clear from the runner to
-## escape_clear_after past the hand.
+## escape_clear_after past the hand (the slash's escape keeps that much clear past its strike too). All
+## three at 18 m/s (multiplied by the run's pace).
 @export_range(0.0, 20.0, 0.5, "suffix:m") var hand_clear_before: float = 6.0
 @export_range(0.0, 20.0, 0.5, "suffix:m") var hand_clear_after: float = 4.0
 @export_range(0.0, 30.0, 0.5, "suffix:m") var escape_clear_after: float = 6.0

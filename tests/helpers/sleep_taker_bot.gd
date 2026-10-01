@@ -16,6 +16,8 @@ extends RefCounted
 
 ## Reading the track (as FloatingHeadBot): a hole is jumped this far before its edge, a full fence this
 ## far before it, no later than FENCE_JUMP_LAST before it; a gapped fence slid under from this far.
+## Metres at 18 m/s: it multiplies them by the run's pace (MovementTuning.pace()), like the game's own
+## distances that stand for a time.
 const HOLE_LEAD: float = 1.6
 const FENCE_JUMP_LEAD: float = 6.2
 const FENCE_JUMP_LAST: float = 3.6
@@ -103,7 +105,8 @@ func _read_hands() -> void:
 		if lane != mine:
 			continue
 		var struck: Array[int] = [lane]
-		var e: int = boss.escape_lane(struck, lane, player.distance, float(h["at"]) + boss.tuning.escape_clear_after)
+		var e: int = boss.escape_lane(struck, lane, player.distance,
+			float(h["at"]) + boss.tuning.escape_clear_after * boss.run_pace())
 		if e < 0:
 			e = lane + (1 if lane < boss.lane_count() - 1 else -1)
 		_pending.append({"at": boss.fight_time() + reaction, "lane": e, "why": "hand"})
@@ -140,17 +143,18 @@ func _read_track() -> void:
 	if boss.arena == null or player.surface != Player.Surface.FLOOR or not player.grounded:
 		return
 	var d: float = player.distance
+	var k: float = boss.run_pace()
 	var lanes: Array[int] = [player.lane]
 	if _target >= 0 and _target != player.lane:
 		lanes.append(_target)
 	var layout: LevelLayout = boss.arena.layout
 	var can_jump: bool = not player.is_sliding()
 	for f: Dictionary in layout.fences:
-		if lanes.has(int(f["lane"])) and f["variant"] == "gapped" and absf(float(f["at"]) - d - 0.5) <= 1.5:
+		if lanes.has(int(f["lane"])) and f["variant"] == "gapped" and absf(float(f["at"]) - d - 0.5 * k) <= 1.5 * k:
 			can_jump = false
 	for g: Dictionary in layout.gaps:
 		var ahead: float = float(g["start"]) - d
-		if lanes.has(int(g["lane"])) and ahead > -0.2 and ahead <= HOLE_LEAD:
+		if lanes.has(int(g["lane"])) and ahead > -0.2 and ahead <= HOLE_LEAD * k:
 			if can_jump:
 				_press(&"jump", "hole")
 			return
@@ -159,10 +163,10 @@ func _read_track() -> void:
 			continue
 		var ahead: float = float(f["at"]) - d
 		if f["variant"] == "gapped":
-			if ahead > 0.0 and ahead <= FENCE_SLIDE_LEAD and not player.is_sliding():
+			if ahead > 0.0 and ahead <= FENCE_SLIDE_LEAD * k and not player.is_sliding():
 				_press(&"slide", "gapped fence")
 				return
-		elif ahead > FENCE_JUMP_LAST and ahead <= FENCE_JUMP_LEAD:
+		elif ahead > FENCE_JUMP_LAST * k and ahead <= FENCE_JUMP_LEAD * k:
 			if can_jump:
 				_press(&"jump", "fence")
 			return

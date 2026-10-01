@@ -11,6 +11,9 @@ extends TestSuite
 
 const BOSS_PATH: String = "res://data/bosses/dead_zone_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
+## The run speeds it's played at: the reference 18 m/s (quick play) and the Dead Zone's (GDD §3:
+## ZoneDef.run_speed, which its campaign fight runs at).
+const SPEEDS: Array[float] = [18.0, 24.2]
 ## A player's reaction: the runner moves this long after a warning starts.
 const REACTION: float = 0.35
 
@@ -36,16 +39,21 @@ func run() -> void:
 
 # --- Helpers -------------------------------------------------------------------------------
 
-func _fight(p_def: BossDef, lanes: int) -> Array:
+## The fight at `lanes`, at `speed` m/s (0: the suite's tuning, 18 m/s).
+func _fight(p_def: BossDef, lanes: int, speed: float = 0.0) -> Array:
 	var boss := BossEncounter.create(p_def) as SleepTaker
+	var t: MovementTuning = tuning
+	if speed > 0.0 and not is_equal_approx(speed, tuning.run_speed):
+		t = tuning.duplicate() as MovementTuning
+		t.run_speed = speed
 	var ctx := RunContext.new()
 	ctx.mode = RunContext.Mode.QUICK
 	ctx.boss = p_def
 	ctx.config = BossArena.base_config(p_def)
 	ctx.config.lane_count = lanes
-	ctx.tuning = tuning
+	ctx.tuning = t
 	var arena: BossArena = boss.plan_arena(ctx)
-	var world: RunWorld = sim.build_world(arena.layout, null, tuning, ctx.config)
+	var world: RunWorld = sim.build_world(arena.layout, null, t, ctx.config)
 	boss.setup(world, ctx, arena)
 	return [world, boss]
 
@@ -169,38 +177,44 @@ func _test_slash_warning() -> void:
 ## to the refuge's nearest pad and up onto the ceiling, or (at 5 and 6 lanes) to a lane outside the slash.
 ## No god mode and no armor: a hit ends the run. On the ceiling as it strikes, it's always safe.
 func _test_slash_escapes() -> void:
-	for lanes: int in LANES:
-		for escape: StringName in ([&"pad"] if lanes == 3 else [&"pad", &"lanes"]):
-			var survived: int = 0
-			var ceiling_ok: bool = true
-			var strikes: int = 0
-			for start: int in lanes:
-				var pair: Array = _fight(_plain_def("hands", true, true), lanes)
-				var world: RunWorld = pair[0]
-				var boss: SleepTaker = pair[1]
-				var bot := SleepTakerBot.new(boss, escape)
-				bot.home_lane = start
-				bot.reaction = REACTION
-				boss.slash.hitbox()
-				var surfaces: Array = []
-				var counted: Array = [0]
-				await _run(world, 40.0, func() -> bool: return _events(boss, &"slash_over").size() >= 2, func() -> void:
-					bot.step()
-					if boss.slash.strikes > int(counted[0]):
-						counted[0] = boss.slash.strikes
-						surfaces.append(world.player.surface))
-				strikes += boss.slash.strikes
-				if world.player.alive and boss.slash.strikes >= 2:
-					survived += 1
-				if escape == &"pad":
-					for s: Variant in surfaces:
-						ceiling_ok = ceiling_ok and int(s) == Player.Surface.CEILING
-				await sim.free_world(world)
-			check(survived == lanes, "a runner reacting %.2f s into the warning escapes by %s from every lane (%d of %d) (%d lanes)" % [
-				REACTION, escape, survived, lanes, lanes])
-			check(strikes >= 2 * lanes, "two slashes struck in every run (%d) (%d lanes, %s)" % [strikes, lanes, escape])
-			if escape == &"pad":
-				check(ceiling_ok, "taking the pad, it rides the ceiling as every slash strikes: the ceiling is safe (%d lanes)" % lanes)
+	for speed: float in SPEEDS:
+		for lanes: int in LANES:
+			for escape: StringName in ([&"pad"] if lanes == 3 else [&"pad", &"lanes"]):
+				await _slash_escapes(lanes, escape, speed)
+
+
+func _slash_escapes(lanes: int, escape: StringName, speed: float) -> void:
+	var tag: String = "(%d lanes, %.1f m/s)" % [lanes, speed]
+	var survived: int = 0
+	var ceiling_ok: bool = true
+	var strikes: int = 0
+	for start: int in lanes:
+		var pair: Array = _fight(_plain_def("hands", true, true), lanes, speed)
+		var world: RunWorld = pair[0]
+		var boss: SleepTaker = pair[1]
+		var bot := SleepTakerBot.new(boss, escape)
+		bot.home_lane = start
+		bot.reaction = REACTION
+		boss.slash.hitbox()
+		var surfaces: Array = []
+		var counted: Array = [0]
+		await _run(world, 40.0, func() -> bool: return _events(boss, &"slash_over").size() >= 2, func() -> void:
+			bot.step()
+			if boss.slash.strikes > int(counted[0]):
+				counted[0] = boss.slash.strikes
+				surfaces.append(world.player.surface))
+		strikes += boss.slash.strikes
+		if world.player.alive and boss.slash.strikes >= 2:
+			survived += 1
+		if escape == &"pad":
+			for s: Variant in surfaces:
+				ceiling_ok = ceiling_ok and int(s) == Player.Surface.CEILING
+		await sim.free_world(world)
+	check(survived == lanes, "a runner reacting %.2f s into the warning escapes by %s from every lane (%d of %d) %s" % [
+		REACTION, escape, survived, lanes, tag])
+	check(strikes >= 2 * lanes, "two slashes struck in every run (%d) (%s) %s" % [strikes, escape, tag])
+	if escape == &"pad":
+		check(ceiling_ok, "taking the pad, it rides the ceiling as every slash strikes: the ceiling is safe %s" % tag)
 
 
 ## The same runner on the same fight sees the same slashes, every attempt.
@@ -278,27 +292,33 @@ func _test_hands_warning() -> void:
 ## A runner who reacts as the mist appears always gets away by one lane switch, from every lane, at every
 ## lane count. No god mode and no armor.
 func _test_hands_escapes() -> void:
-	for lanes: int in LANES:
-		var survived: int = 0
-		var hands: int = 0
-		var adjacent: bool = true
-		for start: int in lanes:
-			var pair: Array = _fight(_plain_def("hands", false), lanes)
-			var world: RunWorld = pair[0]
-			var boss: SleepTaker = pair[1]
-			var bot := SleepTakerBot.new(boss)
-			bot.home_lane = start
-			bot.reaction = REACTION
-			await _run(world, 40.0, func() -> bool: return boss.hands.count >= 4 and not boss.hands.busy(), func() -> void: bot.step())
-			hands += boss.hands.count
-			if world.player.alive and boss.hands.count >= 4:
-				survived += 1
-			for m: Dictionary in _events(boss, &"mist"):
-				adjacent = adjacent and absi(int(m["escape"]) - int(m["lane"])) == 1
-			await sim.free_world(world)
-		check(survived == lanes, "a runner reacting %.2f s into the mist escapes every hand from every lane (%d of %d, %d hands) (%d lanes)" % [
-			REACTION, survived, lanes, hands, lanes])
-		check(adjacent, "each hand leaves the next lane free: one switch is always enough (%d lanes)" % lanes)
+	for speed: float in SPEEDS:
+		for lanes: int in LANES:
+			await _hands_escapes(lanes, speed)
+
+
+func _hands_escapes(lanes: int, speed: float) -> void:
+	var tag: String = "(%d lanes, %.1f m/s)" % [lanes, speed]
+	var survived: int = 0
+	var hands: int = 0
+	var adjacent: bool = true
+	for start: int in lanes:
+		var pair: Array = _fight(_plain_def("hands", false), lanes, speed)
+		var world: RunWorld = pair[0]
+		var boss: SleepTaker = pair[1]
+		var bot := SleepTakerBot.new(boss)
+		bot.home_lane = start
+		bot.reaction = REACTION
+		await _run(world, 40.0, func() -> bool: return boss.hands.count >= 4 and not boss.hands.busy(), func() -> void: bot.step())
+		hands += boss.hands.count
+		if world.player.alive and boss.hands.count >= 4:
+			survived += 1
+		for m: Dictionary in _events(boss, &"mist"):
+			adjacent = adjacent and absi(int(m["escape"]) - int(m["lane"])) == 1
+		await sim.free_world(world)
+	check(survived == lanes, "a runner reacting %.2f s into the mist escapes every hand from every lane (%d of %d, %d hands) %s" % [
+		REACTION, survived, lanes, hands, tag])
+	check(adjacent, "each hand leaves the next lane free: one switch is always enough %s" % tag)
 
 
 func _test_hands_same_every_attempt() -> void:
