@@ -10,19 +10,22 @@
 script = ExtResource("2_phase")
 health_share = 1.0
 hits = 1
+pace = 1.0
 intro_seconds = 4.5
 
 [sub_resource type="Resource" id="phase_2"]
 script = ExtResource("2_phase")
 health_share = 1.0
 hits = 1
-intro_seconds = 2.0
+pace = 1.15
+intro_seconds = 2.5
 
 [sub_resource type="Resource" id="phase_3"]
 script = ExtResource("2_phase")
 health_share = 1.0
 hits = 1
-intro_seconds = 2.0
+pace = 1.3
+intro_seconds = 2.5
 
 [sub_resource type="Resource" id="arena"]
 script = ExtResource("3_level")
@@ -43,15 +46,18 @@ spacing_seconds_hard = 1.9
 script = ExtResource("1_script")
 id = &"dead_zone_boss"
 display_name = "Sleep Taker"
-preview_scene = "res://scenes/bosses/sleep_taker.tscn"
-notes = "Designed, being built (GDD §10): the Dead Zone's Bad Dreams fused into one colossal nightmare. Weapons can't touch it and it swallows the light, but it can't reach the ceiling. Lure it close to a glowing fence generator, then smash the generator with a stomp or the dash: its EMP tears a chunk of the nightmare away, three times."
+scene = "res://scenes/bosses/sleep_taker.tscn"
+notes = "GDD §10: the Dead Zone's Bad Dreams fused into one colossal nightmare. Weapons can't touch it and it swallows the light, but it can't reach the ceiling. Lure it close to a glowing fence generator, then smash the generator with a stomp or the dash: its EMP tears a chunk of the nightmare away, three times."
 weapon_share_cap = 0.0
 phases = Array[ExtResource("2_phase")]([SubResource("phase_1"), SubResource("phase_2"), SubResource("phase_3")])
 arena = SubResource("arena")
 arena_laps = 3
 tuning = ExtResource("4_tuning")
 music = &"dead_zone"
+two_star_seconds = 110.0
+three_star_seconds = 86.0
 armor_rule = true
 armor_delay_min = 15.0
 armor_delay_max = 17.0
 armor_pickups_per_phase = 1
+armor_when_unprotected = true

@@ -1,8 +1,8 @@
 extends TestSuite
 ## The Sleep Taker, the Dead Zone's boss (GDD §10; task E5c-a; its attacks' fairness in
 ## test_sleep_taker_attacks.gd):
-## - its data: the slot holds it as a preview (not in the campaign until E5c-b), its own tuning, the Dead
-##   Zone's existing music, weapons capped at nothing, its sounds;
+## - its data: the slot holds its fight (the campaign's Dead Zone boss step plays it), its own tuning, the
+##   Dead Zone's existing music, weapons capped at nothing, its sounds;
 ## - its build: the scene makes the fight and the nightmare, a boss's body immune to weapons with no weak
 ##   points and its touch out of reach, its attacks' hitboxes off until they strike, dozens of maws, the
 ##   colour rule, it fits the street at 3, 5 and 6 lanes, and a draw budget;
@@ -28,7 +28,7 @@ var def: BossDef
 func run() -> void:
 	sim = RunSim.new(tree, tuning)
 	slot = load(BOSS_PATH) as BossDef
-	def = slot.preview() if slot != null else null
+	def = slot if slot != null and slot.is_built() else null
 	_test_data()
 	if def == null:
 		return
@@ -57,12 +57,13 @@ func _fight(p_def: BossDef, lanes: int, resume: Dictionary = {}, loadout: Loadou
 	return [world, boss]
 
 
-## The Sleep Taker with its attack list `pattern` in every phase (and its numbers otherwise), on its
-## own arena or, with `plain`, a plain street (floor and walls only); with `refuges` off, no refuges
-## (so no slash) either.
+## The Sleep Taker with its attack list `pattern` in every phase (and its numbers otherwise) and no
+## generators, on its own arena or, with `plain`, a plain street (floor and walls only); with `refuges`
+## off, no refuges (so no slash) either.
 func _def_with(pattern: String, plain: bool = false, refuges: bool = true) -> BossDef:
 	var out: BossDef = def.duplicate() as BossDef
 	var t: SleepTakerTuning = (def.tuning as SleepTakerTuning).duplicate() as SleepTakerTuning
+	t.generator_delay = 100000.0
 	if pattern != "":
 		t.attack_patterns = PackedStringArray([pattern, pattern, pattern])
 	if not refuges:
@@ -108,12 +109,11 @@ func _test_data() -> void:
 		"the Dead Zone's boss slot holds the Sleep Taker")
 	if slot == null:
 		return
-	check(not slot.is_built() and slot.scene == "" and slot.preview_scene == "res://scenes/bosses/sleep_taker.tscn",
-		"until E5c-b, the campaign keeps its card: the fight is its preview scene, not its scene")
-	check(def != null and def.scene == slot.preview_scene, "debug builds play the preview (--boss=dead_zone_boss)")
+	check(slot.is_built() and slot.scene == "res://scenes/bosses/sleep_taker.tscn" and slot.preview() == null,
+		"the slot holds the fight itself (E5c-b), no preview")
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var step: CampaignStep = campaign.step("dead_zone/boss") if campaign != null else null
-	check(step != null and step.boss == slot and not step.boss.is_built(), "the campaign's Dead Zone boss step still shows its card")
+	check(step != null and step.boss == slot and step.boss.is_built(), "the campaign's Dead Zone boss step plays it")
 	if def == null:
 		return
 	var made: BossEncounter = BossEncounter.create(def)

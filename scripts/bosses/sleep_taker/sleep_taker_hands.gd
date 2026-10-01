@@ -30,7 +30,8 @@ const GRASP_SECONDS: float = 0.35
 ## How much of the mist is left once the hand is up (it drew the rest up into itself; less purple
 ## glow around its red claws, which would otherwise bloom pink over them).
 const MIST_LEFT: float = 0.6
-## A hand's attack is over once the runner is this far past it (then the next may come).
+## A hand's attack is over once the runner is this far past it (then the next may come; metres at
+## 18 m/s, times the run's pace).
 const PASSED: float = 1.0
 
 var boss: SleepTaker
@@ -57,17 +58,24 @@ func plan() -> Dictionary:
 	if not p.alive or p.surface != Player.Surface.FLOOR or p.in_pit:
 		return {}
 	var t: SleepTakerTuning = boss.tuning
+	var k: float = boss.run_pace()
 	var lane: int = clampi(p.lane, 0, boss.lane_count() - 1)
 	var d: float = p.distance
 	var at: float = d + maxf(p.speed, 1.0) * warning_seconds()
-	if not boss.floor_clear_lane(lane, at - t.hand_clear_before, at + t.hand_clear_after):
+	if not boss.floor_clear_lane(lane, at - t.hand_clear_before * k, at + t.hand_clear_after * k):
 		return {}
-	if boss.ceiling_between(d, at + t.hand_clear_after) or boss.pickup_near(lane, at, t.mist_length):
+	if boss.ceiling_between(d, at + t.hand_clear_after * k) or boss.pickup_near(lane, at, t.mist_length):
 		return {}
-	var escape: int = boss.escape_lane([lane], lane, d, at + t.escape_clear_after)
+	var escape: int = boss.escape_lane([lane], lane, d, at + t.escape_clear_after * k)
 	if escape < 0:
 		return {}
 	return {"lane": lane, "at": at, "escape": escape}
+
+
+## How far past a hand the runner is when its attack is over (its depth's far half and PASSED, at the
+## run's pace).
+func over_distance() -> float:
+	return boss.tuning.hand_depth * 0.5 + PASSED * boss.run_pace()
 
 
 ## Seconds from the mist appearing to the runner reaching the hand (at the phase's pace): the warning.
@@ -109,7 +117,7 @@ func start(plan: Dictionary) -> void:
 func busy() -> bool:
 	var d: float = boss.player_distance()
 	for h: Dictionary in active:
-		if int(h["stage"]) != Stage.SINK and float(h["at"]) + boss.tuning.hand_depth * 0.5 + PASSED > d:
+		if int(h["stage"]) != Stage.SINK and float(h["at"]) + over_distance() > d:
 			return true
 	return false
 
@@ -182,7 +190,7 @@ func tick(delta: float) -> void:
 				var drawn: float = clampf(st * 2.0, 0.0, 1.0)
 				mist_mat.set_shader_parameter(&"surge", 1.0 - drawn)
 				mist_mat.set_shader_parameter(&"amount", lerpf(1.0, MIST_LEFT, drawn))
-				var past: float = float(h["at"]) + t.hand_depth * 0.5 + PASSED
+				var past: float = float(h["at"]) + over_distance()
 				if d >= past and not h.has("passed"):
 					h["passed"] = st
 				if h.has("passed") and st - float(h["passed"]) >= t.hand_linger / p:

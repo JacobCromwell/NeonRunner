@@ -11,6 +11,9 @@ extends TestSuite
 
 const BOSS_PATH: String = "res://data/bosses/dead_zone_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
+## The run speeds it's played at: the reference 18 m/s (quick play) and the Dead Zone's (GDD §3:
+## ZoneDef.run_speed, which its campaign fight runs at).
+const SPEEDS: Array[float] = [18.0, 24.2]
 ## A player's reaction: the runner moves this long after a warning starts.
 const REACTION: float = 0.35
 
@@ -21,9 +24,9 @@ var def: BossDef
 func run() -> void:
 	sim = RunSim.new(tree, tuning)
 	var slot := load(BOSS_PATH) as BossDef
-	def = slot.preview() if slot != null else null
+	def = slot if slot != null and slot.is_built() else null
 	if def == null:
-		check(false, "the Sleep Taker's preview loads")
+		check(false, "the Sleep Taker's fight loads")
 		return
 	await _test_slash_warning()
 	await _test_slash_escapes()
@@ -36,26 +39,33 @@ func run() -> void:
 
 # --- Helpers -------------------------------------------------------------------------------
 
-func _fight(p_def: BossDef, lanes: int) -> Array:
+## The fight at `lanes`, at `speed` m/s (0: the suite's tuning, 18 m/s).
+func _fight(p_def: BossDef, lanes: int, speed: float = 0.0) -> Array:
 	var boss := BossEncounter.create(p_def) as SleepTaker
+	var t: MovementTuning = tuning
+	if speed > 0.0 and not is_equal_approx(speed, tuning.run_speed):
+		t = tuning.duplicate() as MovementTuning
+		t.run_speed = speed
 	var ctx := RunContext.new()
 	ctx.mode = RunContext.Mode.QUICK
 	ctx.boss = p_def
 	ctx.config = BossArena.base_config(p_def)
 	ctx.config.lane_count = lanes
-	ctx.tuning = tuning
+	ctx.tuning = t
 	var arena: BossArena = boss.plan_arena(ctx)
-	var world: RunWorld = sim.build_world(arena.layout, null, tuning, ctx.config)
+	var world: RunWorld = sim.build_world(arena.layout, null, t, ctx.config)
 	boss.setup(world, ctx, arena)
 	return [world, boss]
 
 
-## The Sleep Taker on a plain street (floor and walls), with its attack list `pattern` in every phase;
-## `refuges` off takes its refuges away, and with `quiet` nothing but the refuges' slashes comes.
+## The Sleep Taker on a plain street (floor and walls), with its attack list `pattern` in every phase and
+## no generators (its attacks alone); `refuges` off takes its refuges away, and with `quiet` nothing but
+## the refuges' slashes comes.
 func _plain_def(pattern: String, refuges: bool = true, quiet: bool = false) -> BossDef:
 	var out: BossDef = def.duplicate() as BossDef
 	var t: SleepTakerTuning = (def.tuning as SleepTakerTuning).duplicate() as SleepTakerTuning
 	t.attack_patterns = PackedStringArray([pattern, pattern, pattern])
+	t.generator_delay = 100000.0
 	if not refuges:
 		t.refuge_first = 100000.0
 	if quiet:
@@ -169,38 +179,58 @@ func _test_slash_warning() -> void:
 ## to the refuge's nearest pad and up onto the ceiling, or (at 5 and 6 lanes) to a lane outside the slash.
 ## No god mode and no armor: a hit ends the run. On the ceiling as it strikes, it's always safe.
 func _test_slash_escapes() -> void:
-	for lanes: int in LANES:
-		for escape: StringName in ([&"pad"] if lanes == 3 else [&"pad", &"lanes"]):
-			var survived: int = 0
-			var ceiling_ok: bool = true
-			var strikes: int = 0
-			for start: int in lanes:
-				var pair: Array = _fight(_plain_def("hands", true, true), lanes)
-				var world: RunWorld = pair[0]
-				var boss: SleepTaker = pair[1]
-				var bot := SleepTakerBot.new(boss, escape)
-				bot.home_lane = start
-				bot.reaction = REACTION
-				boss.slash.hitbox()
-				var surfaces: Array = []
-				var counted: Array = [0]
-				await _run(world, 40.0, func() -> bool: return _events(boss, &"slash_over").size() >= 2, func() -> void:
-					bot.step()
-					if boss.slash.strikes > int(counted[0]):
-						counted[0] = boss.slash.strikes
-						surfaces.append(world.player.surface))
-				strikes += boss.slash.strikes
-				if world.player.alive and boss.slash.strikes >= 2:
-					survived += 1
-				if escape == &"pad":
-					for s: Variant in surfaces:
-						ceiling_ok = ceiling_ok and int(s) == Player.Surface.CEILING
-				await sim.free_world(world)
-			check(survived == lanes, "a runner reacting %.2f s into the warning escapes by %s from every lane (%d of %d) (%d lanes)" % [
-				REACTION, escape, survived, lanes, lanes])
-			check(strikes >= 2 * lanes, "two slashes struck in every run (%d) (%d lanes, %s)" % [strikes, lanes, escape])
-			if escape == &"pad":
-				check(ceiling_ok, "taking the pad, it rides the ceiling as every slash strikes: the ceiling is safe (%d lanes)" % lanes)
+	for speed: float in SPEEDS:
+		for lanes: int in LANES:
+			for escape: StringName in _escapes(lanes, speed):
+				await _slash_escapes(lanes, escape, speed)
+
+
+## The slash's escapes to play at `lanes` and `speed`: the pad at every lane count, leaving the lanes
+## at 5 and 6; at the Dead Zone's speed only the tightest case, the pad at 3 lanes (the whole fight at
+## both speeds, test_sleep_taker_fight, plays the rest), to keep the suite's time down.
+static func _escapes(lanes: int, speed: float) -> Array[StringName]:
+	var out: Array[StringName] = [&"pad"]
+	if speed > MovementTuning.REFERENCE_SPEED + 0.5:
+		if lanes > 3:
+			out.clear()
+		return out
+	if lanes > 3:
+		out.append(&"lanes")
+	return out
+
+
+func _slash_escapes(lanes: int, escape: StringName, speed: float) -> void:
+	var tag: String = "(%d lanes, %.1f m/s)" % [lanes, speed]
+	var survived: int = 0
+	var ceiling_ok: bool = true
+	var strikes: int = 0
+	for start: int in lanes:
+		var pair: Array = _fight(_plain_def("hands", true, true), lanes, speed)
+		var world: RunWorld = pair[0]
+		var boss: SleepTaker = pair[1]
+		var bot := SleepTakerBot.new(boss, escape)
+		bot.home_lane = start
+		bot.reaction = REACTION
+		boss.slash.hitbox()
+		var surfaces: Array = []
+		var counted: Array = [0]
+		await _run(world, 40.0, func() -> bool: return _events(boss, &"slash_over").size() >= 2, func() -> void:
+			bot.step()
+			if boss.slash.strikes > int(counted[0]):
+				counted[0] = boss.slash.strikes
+				surfaces.append(world.player.surface))
+		strikes += boss.slash.strikes
+		if world.player.alive and boss.slash.strikes >= 2:
+			survived += 1
+		if escape == &"pad":
+			for s: Variant in surfaces:
+				ceiling_ok = ceiling_ok and int(s) == Player.Surface.CEILING
+		await sim.free_world(world)
+	check(survived == lanes, "a runner reacting %.2f s into the warning escapes by %s from every lane (%d of %d) %s" % [
+		REACTION, escape, survived, lanes, tag])
+	check(strikes >= 2 * lanes, "two slashes struck in every run (%d) (%s) %s" % [strikes, escape, tag])
+	if escape == &"pad":
+		check(ceiling_ok, "taking the pad, it rides the ceiling as every slash strikes: the ceiling is safe %s" % tag)
 
 
 ## The same runner on the same fight sees the same slashes, every attempt.
@@ -278,27 +308,37 @@ func _test_hands_warning() -> void:
 ## A runner who reacts as the mist appears always gets away by one lane switch, from every lane, at every
 ## lane count. No god mode and no armor.
 func _test_hands_escapes() -> void:
-	for lanes: int in LANES:
-		var survived: int = 0
-		var hands: int = 0
-		var adjacent: bool = true
-		for start: int in lanes:
-			var pair: Array = _fight(_plain_def("hands", false), lanes)
-			var world: RunWorld = pair[0]
-			var boss: SleepTaker = pair[1]
-			var bot := SleepTakerBot.new(boss)
-			bot.home_lane = start
-			bot.reaction = REACTION
-			await _run(world, 40.0, func() -> bool: return boss.hands.count >= 4 and not boss.hands.busy(), func() -> void: bot.step())
-			hands += boss.hands.count
-			if world.player.alive and boss.hands.count >= 4:
-				survived += 1
-			for m: Dictionary in _events(boss, &"mist"):
-				adjacent = adjacent and absi(int(m["escape"]) - int(m["lane"])) == 1
-			await sim.free_world(world)
-		check(survived == lanes, "a runner reacting %.2f s into the mist escapes every hand from every lane (%d of %d, %d hands) (%d lanes)" % [
-			REACTION, survived, lanes, hands, lanes])
-		check(adjacent, "each hand leaves the next lane free: one switch is always enough (%d lanes)" % lanes)
+	for speed: float in SPEEDS:
+		for lanes: int in LANES:
+			# At the Dead Zone's speed, the narrowest street (to keep the suite's time down; the whole
+			# fight at both speeds, test_sleep_taker_fight, plays the rest).
+			if speed > MovementTuning.REFERENCE_SPEED + 0.5 and lanes > 3:
+				continue
+			await _hands_escapes(lanes, speed)
+
+
+func _hands_escapes(lanes: int, speed: float) -> void:
+	var tag: String = "(%d lanes, %.1f m/s)" % [lanes, speed]
+	var survived: int = 0
+	var hands: int = 0
+	var adjacent: bool = true
+	for start: int in lanes:
+		var pair: Array = _fight(_plain_def("hands", false), lanes, speed)
+		var world: RunWorld = pair[0]
+		var boss: SleepTaker = pair[1]
+		var bot := SleepTakerBot.new(boss)
+		bot.home_lane = start
+		bot.reaction = REACTION
+		await _run(world, 40.0, func() -> bool: return boss.hands.count >= 4 and not boss.hands.busy(), func() -> void: bot.step())
+		hands += boss.hands.count
+		if world.player.alive and boss.hands.count >= 4:
+			survived += 1
+		for m: Dictionary in _events(boss, &"mist"):
+			adjacent = adjacent and absi(int(m["escape"]) - int(m["lane"])) == 1
+		await sim.free_world(world)
+	check(survived == lanes, "a runner reacting %.2f s into the mist escapes every hand from every lane (%d of %d, %d hands) %s" % [
+		REACTION, survived, lanes, hands, tag])
+	check(adjacent, "each hand leaves the next lane free: one switch is always enough %s" % tag)
 
 
 func _test_hands_same_every_attempt() -> void:
@@ -321,27 +361,38 @@ func _test_hands_same_every_attempt() -> void:
 # --- The real arena ----------------------------------------------------------------------------
 
 ## The whole pattern as it comes, on its real arena (its holes and fences, the refuges, hands and lights
-## out), for a runner who reads it: through a whole lap at every lane count, without god mode or armor;
-## the slash's lane escape at 5 and 6 lanes too.
+## out, and its generators), for a runner who reads it but lets every generator go by (so the fight never
+## moves on: GDD §10, it keeps cycling its pattern): through a whole lap at every lane count, without god
+## mode or armor; the slash's lane escape at 5 and 6 lanes too. (At the Dead Zone's 24.2 m/s, the whole
+## fight on its arena at every lane count: test_sleep_taker_fight.)
 func _test_real_arena() -> void:
 	for lanes: int in LANES:
-		for escape: StringName in ([&"pad"] if lanes == 3 else [&"pad", &"lanes"]):
-			var pair: Array = _fight(def, lanes)
-			var world: RunWorld = pair[0]
-			var boss: SleepTaker = pair[1]
-			var bot := SleepTakerBot.new(boss, escape)
-			bot.reaction = REACTION
-			var lap: float = boss.arena.lap_length
-			var cause: Array = [""]
-			world.player.died.connect(func(c: String) -> void: cause[0] = c)
-			await _run(world, 90.0, func() -> bool: return world.player.distance >= lap + 100.0, func() -> void: bot.step())
-			var tag: String = "(%d lanes, %s)" % [lanes, escape]
-			check(world.player.alive, "a runner who reads it gets through a whole lap and more %s%s" % [tag,
-				"" if world.player.alive else ": %s at %.0f m, %.1f s" % [cause[0], world.player.distance, boss.fight_time()]])
-			check(boss.slash.strikes >= 4 and boss.hands.count >= 6 and boss.dark.count >= 1,
-				"every attack came: %d slashes, %d hands, %d lights out %s" % [boss.slash.strikes, boss.hands.count, boss.dark.count, tag])
-			check(_events(boss, &"refuge_missed").is_empty(), "no refuge went by without its slash %s" % tag)
-			if lanes == 5 and escape == &"pad":
-				print("  Sleep Taker on its arena (5 lanes): %.0f s of pattern, %d slashes, %d hands, %d lights out" % [
-					boss.fight_time() - boss.phase().intro_seconds, boss.slash.count, boss.hands.count, boss.dark.count])
-			await sim.free_world(world)
+		for escape: StringName in _escapes(lanes, MovementTuning.REFERENCE_SPEED):
+			await _real_arena(lanes, escape, MovementTuning.REFERENCE_SPEED)
+
+
+func _real_arena(lanes: int, escape: StringName, speed: float) -> void:
+	var pair: Array = _fight(def, lanes, speed)
+	var world: RunWorld = pair[0]
+	var boss: SleepTaker = pair[1]
+	var bot := SleepTakerBot.new(boss, escape)
+	bot.reaction = REACTION
+	bot.smashes = false
+	var lap: float = boss.arena.lap_length
+	var cause: Array = [""]
+	world.player.died.connect(func(c: String) -> void: cause[0] = c)
+	await _run(world, 90.0, func() -> bool: return world.player.distance >= lap + 100.0 * boss.run_pace(),
+		func() -> void: bot.step())
+	var tag: String = "(%d lanes, %s, %.1f m/s)" % [lanes, escape, speed]
+	check(world.player.alive, "a runner who reads it gets through a whole lap and more %s%s" % [tag,
+		"" if world.player.alive else ": %s at %.0f m, %.1f s" % [cause[0], world.player.distance, boss.fight_time()]])
+	check(boss.slash.strikes >= 4 and boss.hands.count >= 4 and boss.dark.count >= 1,
+		"every attack came: %d slashes, %d hands, %d lights out %s" % [boss.slash.strikes, boss.hands.count, boss.dark.count, tag])
+	check(_events(boss, &"refuge_missed").is_empty(), "no refuge went by without its slash %s" % tag)
+	check(boss.lure.count >= 2 and boss.lure.missed == boss.lure.lures and boss.phase_index == 0,
+		"generators keep coming while it lets them go by (%d, %d lures), and the fight stays where it is %s" % [
+		boss.lure.count, boss.lure.lures, tag])
+	if lanes == 5 and escape == &"pad":
+		print("  Sleep Taker on its arena (5 lanes, %.1f m/s, generators let go by): %.0f s of pattern, %d slashes, %d hands, %d lights out, %d generators" % [
+			speed, boss.fight_time() - boss.phase().intro_seconds, boss.slash.count, boss.hands.count, boss.dark.count, boss.lure.count])
+	await sim.free_world(world)

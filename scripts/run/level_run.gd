@@ -252,7 +252,8 @@ func _on_boss_defeated() -> void:
 	_victory_time = 0.0
 	world.player.god_mode = true
 	hud.set_message("BOSS DEFEATED")
-	world.play_sfx(_complete_riff())
+	if encounter == null or encounter.victory_riff():
+		world.play_sfx(_complete_riff())
 
 
 func _on_player_died(cause: String) -> void:

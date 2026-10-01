@@ -5,8 +5,9 @@
 // from plain uniforms, so the whole body is one draw call on every renderer.
 // Vertex data (SleepTakerModel): COLOR.rgb albedo, COLOR.a glow; UV.x the part (Part, rounded) plus a
 // small id (its fraction * 64, for each maw's own breathing); UV.y the weight along a part (0 at its
-// root, 1 at its tip; 2 marks a maw's throat); UV2 a maw vertex's offset from its maw's centre (the
-// maws face +Z).
+// root, 1 at its tip; 2 marks a maw's throat) plus 10 times its chunk (SleepTakerModel.CHUNK_HEADS: the
+// heads an EMP tears away, with their maws); UV2 a maw vertex's offset from its maw's centre (the maws
+// face +Z).
 shader_type spatial;
 render_mode cull_disabled;
 #include "res://scripts/world/meshes/shaders/kit_flash.gdshaderinc"
@@ -21,6 +22,7 @@ uniform float reach = 1.0;     // arm stretch (1 = rest length)
 uniform float attack = 0.0;    // the great maw's throat and the claws heat up to enemy-attack red
 uniform float lunge = 0.0;     // the upper body thrusts toward the runner
 uniform float fade = 0.0;      // 0 = solid, 1 = gone (it materializes through it too)
+uniform vec2 torn = vec2(0.0); // each chunk ripped away by an EMP: 0 = there, 1 = gone
 uniform float seed = 0.0;
 uniform vec4 rim_color : source_color = vec4(0.58, 0.28, 1.0, 1.0);
 uniform vec4 attack_color : source_color = vec4(1.0, 0.12, 0.08, 1.0);
@@ -44,6 +46,7 @@ varying vec3 v_rest;
 varying float v_hot;
 varying float v_throat;
 varying float v_open;
+varying float v_torn;
 
 vec3 rot_x(vec3 p, float a) { return vec3(p.x, p.y * cos(a) - p.z * sin(a), p.y * sin(a) + p.z * cos(a)); }
 vec3 rot_y(vec3 p, float a) { return vec3(p.x * cos(a) + p.z * sin(a), p.y, -p.x * sin(a) + p.z * cos(a)); }
@@ -53,13 +56,16 @@ float hash(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.
 void vertex() {
 	float part = floor(UV.x + 0.5);
 	float id = floor((UV.x - part) * 64.0 + 0.5);
-	float w = UV.y;
+	float chunk = floor(UV.y * 0.1 + 0.01);
+	float w = UV.y - chunk * 10.0;
+	float tear = chunk < 0.5 ? 0.0 : (chunk < 1.5 ? torn.x : torn.y);
 	float t = TIME + seed * 7.3;
 	vec3 v = VERTEX;
 	v_rest = v;
 	v_hot = 0.0;
 	v_throat = 0.0;
 	v_open = 0.0;
+	v_torn = tear;
 	// A slow liquid wobble over the whole body.
 	v += vec3(sin(t * 1.3 + v.y * 0.9), 0.5 * sin(t * 1.1 + v.x * 1.2), cos(t * 1.2 + v.y * 0.8)) * 0.07;
 	if (part < 3.5) {
@@ -115,6 +121,13 @@ void vertex() {
 	v.z += lunge * 1.8 * smoothstep(4.0, 12.0, v_rest.y);
 	// Dissolving (or materializing), it melts and drips away.
 	v.y -= fade * fade * (1.2 + 0.8 * sin(v_rest.x * 3.0 + seed));
+	// A torn chunk rips outward and up, away from the heads' middle, dissolving as it goes; gone, its
+	// vertices fold into one point (nothing left to draw).
+	if (tear > 0.0) {
+		vec3 away = normalize(v_rest - CLUSTER + vec3(0.0, 2.0, 1.5));
+		v += away * (tear * tear * 9.0) + vec3(0.0, tear * 3.0, 0.0);
+		v = mix(v, CLUSTER, step(0.999, tear));
+	}
 	VERTEX = v;
 }
 
@@ -122,6 +135,10 @@ void fragment() {
 	// Dissolve (and materialize): cells of the surface vanish at random, the bottom first.
 	float n = hash(floor(v_rest * 3.0) + vec3(seed));
 	if (n < fade * 1.25 - 0.12 + (1.0 - clamp(v_rest.y / 20.0, 0.0, 1.0)) * fade * 0.3) {
+		discard;
+	}
+	// A torn chunk falls apart cell by cell as it rips away.
+	if (v_torn > 0.0 && n < v_torn * 1.5 - 0.3) {
 		discard;
 	}
 	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.6);
@@ -137,7 +154,9 @@ void fragment() {
 	ROUGHNESS = 0.12;
 	SPECULAR = mix(0.85, 0.2, hot);
 	vec3 e = rim_color.rgb * rim * rim_energy * (1.0 - 0.6 * glitch) * (1.0 - attack * v_hot)
-		+ glow * COLOR.a * glow_energy * (1.0 + attack * v_hot * (0.3 - 0.7 * v_throat));
+		+ glow * COLOR.a * glow_energy * (1.0 + attack * v_hot * (0.3 - 0.7 * v_throat))
+		// Ripping away, a chunk flares with its purple.
+		+ rim_color.rgb * v_torn * (1.0 - v_torn) * 3.0;
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
 	// No tonemapping here: over-bright, its purple would clip toward the fences' pink and its red claws
 	// and throat toward salmon. Scaled down whole instead, each keeps its hue.
