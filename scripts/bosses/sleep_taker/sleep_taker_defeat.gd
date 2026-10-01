@@ -202,7 +202,7 @@ static func wisp_material() -> StandardMaterial3D:
 	m.particles_anim_v_frames = FRAMES
 	m.particles_anim_loop = false
 	m.vertex_color_use_as_albedo = true
-	m.albedo_color = Color(0.86, 0.82, 1.0, 0.62)
+	m.albedo_color = Color(0.84, 0.8, 1.0, 0.42)
 	m.albedo_texture = atlas()
 	return m
 
@@ -247,14 +247,22 @@ static func _wisp_alpha(frame: int, p: Vector2) -> float:
 			var body: float = _soft(Vector2(p.x / 0.78, (p.y - 0.62) / 0.5).length(), 1.0, 0.3) * (1.0 if p.y > 0.12 else 0.0)
 			return maxf(head, body)
 		_:
-			# A whole figure, arms a little out, rising.
-			var head: float = _soft(Vector2(p.x / 0.17, (p.y + 0.66) / 0.19).length(), 1.0, 0.35)
-			var torso: float = _soft(Vector2(p.x / 0.24, (p.y + 0.05) / 0.48).length(), 1.0, 0.35)
-			var arms: float = _soft(Vector2(p.x / 0.62, (p.y + 0.22) / 0.09).length(), 1.0, 0.45)
-			var legs: float = _soft(Vector2(p.x / 0.16, (p.y - 0.6) / 0.36).length(), 1.0, 0.4)
-			return maxf(maxf(head, torso), maxf(arms * 0.8, legs * 0.7))
+			# A whole figure rising, arms raised over its head, its body trailing away like vapour.
+			var head: float = _soft(Vector2(p.x / 0.17, (p.y + 0.42) / 0.19).length(), 1.0, 0.35)
+			var torso: float = _soft(Vector2(p.x / 0.26, (p.y - 0.12) / 0.42).length(), 1.0, 0.35)
+			var arm_l: float = _segment(p, Vector2(-0.18, -0.2), Vector2(-0.5, -0.82), 0.08)
+			var arm_r: float = _segment(p, Vector2(0.18, -0.2), Vector2(0.5, -0.82), 0.08)
+			var trail: float = _soft(Vector2(p.x / (0.2 - 0.12 * clampf(p.y, 0.0, 1.0)), (p.y - 0.62) / 0.36).length(), 1.0, 0.5)
+			return maxf(maxf(head, torso), maxf(maxf(arm_l, arm_r) * 0.85, trail * 0.6))
 
 
 ## 1 inside `r`, fading out to 0 over `soft` of it.
 static func _soft(d: float, r: float, soft: float) -> float:
 	return 1.0 - smoothstep(r * (1.0 - soft), r, d)
+
+
+## A soft stroke from `a` to `b`, `r` thick.
+static func _segment(p: Vector2, a: Vector2, b: Vector2, r: float) -> float:
+	var ab: Vector2 = b - a
+	var k: float = clampf((p - a).dot(ab) / maxf(ab.length_squared(), 0.0001), 0.0, 1.0)
+	return _soft(p.distance_to(a + ab * k), r, 0.6)

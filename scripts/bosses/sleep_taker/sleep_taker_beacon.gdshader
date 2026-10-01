@@ -1,9 +1,11 @@
 // A generator's beacon in the Sleep Taker's fight (SleepTakerLure): a soft column of the generator's
-// pink rising from it, so it reads from far along the street and over the nightmare's heads, and in the
-// dark of lights out. Turned toward the camera about its upright axis; unshaded, additive, no fog (it
-// must show from afar). A slow breath in its glow, held still with Reduced flashing.
+// pink rising from it, so it reads from far along the street, and in the dark of lights out. The
+// nightmare looms between the runner and the generators ahead, so the column shows through it (drawn
+// over everything, a light seen through its vapour). Turned toward the camera about its upright axis;
+// unshaded, additive, no fog (it must show from afar). A slow breath in its glow, held still with
+// Reduced flashing.
 shader_type spatial;
-render_mode unshaded, blend_add, cull_disabled, depth_draw_never, shadows_disabled, fog_disabled;
+render_mode unshaded, blend_add, cull_disabled, depth_draw_never, depth_test_disabled, shadows_disabled, fog_disabled;
 #include "res://scripts/world/meshes/shaders/kit_flash.gdshaderinc"
 
 uniform vec4 color : source_color = vec4(1.0, 0.3, 0.75, 1.0);

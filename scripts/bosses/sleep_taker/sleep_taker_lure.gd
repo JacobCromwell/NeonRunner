@@ -22,7 +22,7 @@ enum Stage { IDLE, WAITING, LUNGE, HOLD, RELEASE }
 
 ## The beacon's height and width, and the halo's size on the street (metres).
 const BEACON_HEIGHT: float = 42.0
-const BEACON_WIDTH: float = 1.8
+const BEACON_WIDTH: float = 3.0
 const HALO_SIZE: float = 5.0
 ## Where the arcs leave the generator (its coils' top) and how many there are.
 const ARC_FROM := Vector3(0.0, 1.0, 0.0)

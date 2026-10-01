@@ -160,11 +160,11 @@ extends Resource
 @export_range(0.0, 6.0, 0.1, "suffix:s") var silence_fade: float = 2.0
 @export_range(0.0, 6.0, 0.1, "suffix:s") var dawn_delay: float = 1.8
 @export_range(0.5, 10.0, 0.1, "suffix:s") var dawn_seconds: float = 3.2
-@export_range(1.0, 2.5, 0.05) var dawn_light: float = 1.4
-@export var dawn_zenith: Color = Color(0.34, 0.36, 0.42)
-@export var dawn_horizon: Color = Color(0.66, 0.62, 0.6)
-@export var dawn_haze: Color = Color(0.8, 0.74, 0.7)
-@export var dawn_fog: Color = Color(0.5, 0.48, 0.47)
+@export_range(1.0, 2.5, 0.05) var dawn_light: float = 1.25
+@export var dawn_zenith: Color = Color(0.28, 0.3, 0.35)
+@export var dawn_horizon: Color = Color(0.52, 0.5, 0.5)
+@export var dawn_haze: Color = Color(0.64, 0.6, 0.58)
+@export var dawn_fog: Color = Color(0.42, 0.41, 0.41)
 
 @export_group("Lights out")
 ## DESIGN-TBD: the warning: a deep inhale (every maw opens, the street's light streams into them) for

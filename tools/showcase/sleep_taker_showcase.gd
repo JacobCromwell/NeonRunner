@@ -19,6 +19,9 @@ extends Node3D
 ##   hands       through the run camera, hands only (no refuges), the runner switching lanes at each
 ##               mist (--escape=none: it stays and is grasped)
 ##   lights_out  through the run camera: the inhale, the dark with hands coming, the light back
+##   lure        through the run camera: a generator in sight, the nightmare lunging in after the runner,
+##               the arcs as it's in reach, the stomp, the EMP tearing a chunk away and the recoil;
+##               nothing else attacks (--phase=2: the last EMP, its wisps, the silence and the dawn)
 ##   fight       the fight as it comes, with a runner who reads it (pad escapes)
 ##   measure     readability in numbers (GDD §10: hazards keep glowing; the arena never pitch black):
 ##               a fence, a slash's lane marks, a hand's mist, a refuge's pad, its bridge's end band,
@@ -86,6 +89,13 @@ func _ready() -> void:
 		"lights_out":
 			t.refuge_first = 100000.0
 			t.attack_patterns = PackedStringArray(["lights_out,hands,hands,hands,hands"])
+		"lure":
+			# A generator soon after the entrance, nothing else coming: the lure, the stomp, the chunk
+			# torn away and the recoil (with --phase=2: the last EMP and the defeat).
+			t.refuge_first = 100000.0
+			t.attack_gap = 1000.0
+			t.generator_delay = 0.5
+			t.generator_sight = 80.0
 		"measure":
 			# A short refuge just ahead of the spot, the nightmare further off so it hides nothing.
 			t.refuge_first = 116.0
@@ -115,7 +125,7 @@ func _ready() -> void:
 	world.player.god_mode = true
 	world.player.grapples = 1_000_000
 	boss.setup(world, ctx, arena)
-	if scenario in ["slash", "hands", "lights_out", "fight"]:
+	if scenario in ["slash", "hands", "lights_out", "fight", "lure"]:
 		bot = SleepTakerBot.new(boss, escape)
 		if scenario == "hands" and escape == &"none":
 			bot.dodges_hands = false
