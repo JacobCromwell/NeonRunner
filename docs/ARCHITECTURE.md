@@ -41,15 +41,15 @@ RunWorld (scripts/run/run_world.gd)       one run's gameplay world; everything s
   Pickups    PickupField: armor, shield and grapple pickups a boss offers, placed fairly, pooled
   Effects    RunEffects: particle bursts, debris, glowing lines, camera-shake and hit-stop requests,
              and the shared impact spectacle (kills, blocked hits, hard landings, stomps)
-  Score      ScoreKeeper: level score, credits, kills, bonuses, stats
+  Score      ScoreKeeper: level score, credits, kills, bonuses, stats, and what thieves hold
   Sounds     PlayerSfx: non-positional sounds (RunWorld.play_sfx / play_sfx_at)
   Powerups   PowerupController, created if scripts/powerups/powerup_controller.gd exists
 ```
 
 `LevelRun` adds the camera (`RunCamera`), the speed lines (`SpeedLines`), the HUD (`RunHud`) and, in
 debug builds, the debug HUD and the F6 tuning panel. Quick play (`--quick`, or any of `--god
---seed=N --lanes=N --difficulty=X --features=a,b --full-loadout --nofall --skin=<name> --speed=N`)
-restarts on death like the grey box did.
+--seed=N --lanes=N --difficulty=X --features=a,b --full-loadout --nofall --skin=<name> --speed=N
+--thief`) restarts on death like the grey box did.
 A campaign level runs at its zone's speed (Pace, under The generator): `App` gives the run the level's
 movement tuning (`LevelConfig.movement_for`), and `RunWorld.build` and the generator ask the same, so a
 level is always built and played at one speed; a campaign boss fight runs at its zone's speed the same way
@@ -118,7 +118,7 @@ Every number is `SpeedFxTuning` (`scripts/run/speed_fx_tuning.gd`, `data/tuning/
 | File | What |
 |---|---|
 | `data/tuning/movement.tres` (`MovementTuning`) | the base run speed (quick play, tests; `REFERENCE_SPEED` and `pace()`, see Pace), jump, walls (and the blocked entry's bump), ramps and speed pads (their boosts share one fade), ceiling, piece sizes, zone doodads' sizes and push, camera, touch |
-| `data/tuning/game_rules.tres` (`GameRules`) | lanes per device, death share, invulnerability, the armor (the free armor's hits and wait, the upgrade's per tier, a pickup's extra hit), stomp, whether big attacks take turns, score, economy, stars |
+| `data/tuning/game_rules.tres` (`GameRules`) | lanes per device, death share, invulnerability, the armor (the free armor's hits and wait, the upgrade's per tier, a pickup's extra hit), the window after a theft, stomp, whether big attacks take turns, score, economy, stars |
 | `data/tuning/powerups.tres` (`PowerupTuning`) | weapon tiers, claws, dash, magnet, slow time |
 | `data/tuning/pickups.tres` (`PickupTuning`) | in-run pickups: where they appear, taking them, the charge cap, the look |
 | `data/tuning/feature_recency.tres` (`FeatureRecency`) | the campaign's recency curve: how a level's pick weights follow how recently the campaign introduced each feature |
@@ -137,11 +137,56 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
 
 - **Hazards declare, `DamageRules` decides.** A `Hazard` (`scripts/world/hazard.gd`) is an Area3D on
   the hazard layer with properties: `is_electrical`, `is_enemy_attack`, `is_solid`, `dash_passes`,
-  `enemy` (owning enemy or null) and `part` (`&"body"`, `&"top"`, `&"weak_point"`, `&"attack"`).
+  `steals_share` (a thief's touch, below), `enemy` (owning enemy or null) and `part` (`&"body"`,
+  `&"top"`, `&"weak_point"`, `&"attack"`).
 - The player checks contacts each frame (a swept shape query) and calls `Player.receive_hit(hazard,
   stomping)`, which asks `DamageRules.resolve()` and applies the outcome: `IGNORE`,
   `BLOCKED_ARMOR`, `BLOCKED_SHIELD` (then ~1 s invulnerability), `KILL`, `DEFEAT_ENEMY` (claws or
-  dash), `STOMP` (enemy defeated, player bounces). Nothing else hurts the player.
+  dash), `STOMP` (enemy defeated, player bounces), `ROBBED` (a thief's touch, below). Nothing else
+  hurts the player.
+- **Thefts: the robbed hit** (GDD §9.12, the Tithe Collector; task B6 built the mechanism, task C5 the
+  collector). The game's first non-lethal hit:
+  - *The rule.* A hazard with `steals_share` > 0 resolves to `ROBBED` instead of hurting: after the
+    dash, a stomp and the claws (which catch the thief: `DEFEAT_ENEMY`, `STOMP`), before everything
+    that protects from harm. It's no hit, so armor, the shield, the invulnerability window and god mode
+    don't stop it and nothing is used up; only the moment after a theft does (`Defense.theft_immune`:
+    `Player.theft_immune_left`, `GameRules.theft_grace`), so one touch robs once. The player emits
+    `robbed(hazard)` and the `robbed` event (its sound). DESIGN-TBD (`docs/questions/b6.md` 1, 2).
+  - *The books* (`ScoreKeeper`). `rob(thief, share)` takes the share of the run's credits as they stand
+    (collected, less what thieves hold), rounded down, and the thief holds it (`held_by`); a second
+    theft takes a share of what's left. The level score never drops (GDD §7: never spent), so a theft
+    never costs a star or a leaderboard place. `hold(thief, value)` is for credits a thief takes off the
+    track before the player gets them (C5's collector sucks them up): it holds them, and the stars' best
+    score (`max_credit_score`) leaves them out while it does. Any defeat of a thief is a catch: the
+    director's `enemy_defeated` calls `pay_out(thief, enemy.jackpot_credits)`, which pays everything it
+    holds plus its jackpot straight into the run's credits (with the `jackpot` sound; what it took off the
+    track and the jackpot count as collected, score and best score). A thief must be spawned through the
+    director. One that leaves uncaught keeps it: `stolen_kept()`, which `RunResult` takes out of the pay
+    (`credits_stolen`; completion pays what's left plus the bonus, a death or a quit 20% of what's left)
+    and the results screen shows as "Stolen". Signals `stolen(amount, thief)` and
+    `recovered(amount, jackpot, thief)`; stats `thefts`, `credits_stolen`, `credits_recovered`,
+    `jackpots`, `stolen_kept`. DESIGN-TBD (`docs/questions/b6.md` 3, 4).
+  - *The feedback.* The HUD's credits count down in the loss colour, dipped (`CreditCounter.drop_on_loss`,
+    the theme's `font_loss_color`: the violet accent, no hazard colour and not the warning red), with a
+    "Robbed −N" pop-up; a payout pops "Recovered +N" and "Jackpot +N". Never the centre message, where a
+    death shows. `RunEffects.coin_stream` flies coins in the credit look from the runner to the thief,
+    and out of a caught thief into the runner (numbers in `SpeedFxTuning`, "Thefts"); no shake, no
+    hit-stop, nothing flashes, and the loss look is a single fade, softer with Reduced flashing. Sounds
+    `robbed` (coins tumbling away) and `jackpot` (a slot machine's payout), in `sfx_bank_ui.gd`.
+  - *A thief declares* `Hazard.steals_share` on its hitboxes and `Enemy.jackpot_credits`, from a
+    `ThiefTuning` (`scripts/enemies/thief_tuning.gd`: `steals_share` 0.25, GDD §9.12; `jackpot_credits`).
+    The stand-in thief (`scripts/enemies/stand_in_thief.gd`, `data/enemies/stand_in_thief.tres`; never in
+    the campaign) is a plain gold block that crosses the lanes ahead of the runner, planned to be over the
+    lane it aims at when the runner arrives; one hitbox, its stomp part, so from above it's a stomp and
+    any other touch robs; after a theft it makes off ahead and up (`Hazard.contacted`). Quick play's
+    `--thief` sends one after another (`StandInThief.start_review`, loaded by path from `LevelRun`), its
+    numbers in F6, and starts the runner with a purse (`review_purse`, 400) so the first theft has
+    something to take.
+  - *For C5* (the Tithe Collector): extend `ThiefTuning`; set `steals_share` on the collector's
+    hitboxes and `jackpot_credits` on it; fly off after a theft (`Hazard.contacted` with `ROBBED`); for
+    its vacuum, take each credit off the track (`CreditField` needs a small hook for it: hide an idle
+    credit and give its value) and call `world.score.hold(self, value)`, with `RunEffects.coin_stream`
+    for the visible stream into it; give it the warnings its own design asks for.
 - **A stomp on the ceiling** (C1): a hitbox that hangs from a ceiling (`Hazard.upside_down`, the
   Barnacle Turret's crown) has its top facing down, toward a rider on the ceiling, who stomps it by
   dropping back onto it after a jump (`Player._is_stomping`: on the ceiling, falling back toward it with
@@ -1953,6 +1998,16 @@ tracks at 3, 5 and 6 lanes, and the armor rule end to end on the test boss. `tes
 free armor and its upgrade (G3): the state's rules, its wait at any frame rate and not while paused,
 each tier's numbers alternating as GDD §8 says, a run's block, revive and pickups, the HUD, the shop
 line and texts, the save migration, and every kind of run through the App (the web demo's too).
+`test_theft` covers the robbed hit (B6; GDD §9.12): a thief's touch resolving to `ROBBED` over every
+combination of protections (never hurt, nothing used up; caught by the dash, a stomp, the claws), every
+other hazard resolving exactly as before (a copy of the rules before B6, over every hazard kind, enemy
+part and flag), the player's theft window, the books (25% of what the run holds, rounded down, held;
+a second thief; the payout with the jackpot; credits held off the track and the best score), the pay
+(a death after a theft, completion, a boss fight), stars equal to a clean run's, the results' "Stolen",
+the HUD (the count down in the loss colour, its fade, the pop-ups, never the death message), the coin
+streams, the sounds, Reduced flashing, and the stand-in on real physics at 3, 5 and 6 lanes (robbing a
+runner who keeps to its lane once, missing one who moves aside, caught by a stomp, the dash, the claws
+and a weapon, the same every attempt) and quick play's `--thief`.
 The Floating Head's suites fight at the City's speed, 21 m/s, as the campaign plays it (E1f:
 `FloatingHeadBot.campaign_tuning`), and recheck its fairness with its margins at that pace.
 `test_floating_head`

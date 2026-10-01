@@ -1804,6 +1804,34 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     of the outer lanes.
     *Placeholder:* `LevelGenerator.cut_problem` (DESIGN-TBD).
 
+**The robbed hit** (from B6; `theft_grace` in `data/tuning/game_rules.tres`; quick play `--thief`)
+289. **Does anything protect against a theft?** (GDD §9.12: touching the Tithe Collector isn't deadly;
+    §8: armor blocks an enemy attack or electrical hazard, the shield one hit of anything.) A theft is
+    no hit, so armor, the shield, the invulnerability window after a hit and god mode don't stop it, and
+    nothing is used up; only a short window after a theft stops a second one, so one touch robs once.
+    The alternative is that the shield (one hit of anything), or the invulnerability window, also
+    blocks a theft.
+    *Placeholder:* `DamageRules.resolve` (DESIGN-TBD), `GameRules.theft_grace = 1.5` s.
+290. **Do the claws catch the collector?** GDD §9.12 names a stomp, a shot and the dash; GDD §8 says the
+    claws kill any enemy on contact. I let the claws catch it like any enemy, so a runner with claws is
+    never robbed by a touch. The alternative is a claw-immune collector (a runner with claws who touches
+    it is robbed; only a stomp, a shot or the dash catch it), which task C5 would declare
+    (`claw_immune`).
+    *Placeholder:* the stand-in's `claw_immune = false` (DESIGN-TBD, `scripts/enemies/stand_in_thief.gd`).
+291. **What does "25% of the credits collected this run" take, and does the score drop?** A theft takes
+    25% of the credits the run holds at the touch (everything collected so far, less what thieves hold
+    now), rounded down, so a second theft takes 25% of what's left. The level score is never lowered
+    (GDD §7: it's never spent), so stars and leaderboards never feel a theft; only the pay does. The
+    alternatives: 25% of everything collected this run, even what an earlier thief already took (two
+    thefts take half); or a score that drops with the credits, with stars counted from a score kept
+    before thefts.
+    *Placeholder:* `ScoreKeeper.rob` (DESIGN-TBD).
+292. **How does a caught collector "burst into everything it took plus a jackpot"?** It pays straight
+    into the run's credits, shown as coins flying out of it into the runner (and pop-ups), so nothing
+    lands over a gap or a hazard; the jackpot, and anything it took off the track, count as collected
+    (score). The alternative is credits scattered on the track to collect, with the risk that brings.
+    *Placeholder:* `ScoreKeeper.pay_out`, `ThiefTuning.jackpot_credits = 100` (DESIGN-TBD: its size).
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).

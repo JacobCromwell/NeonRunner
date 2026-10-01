@@ -12,10 +12,13 @@ extends RefCounted
 ## 3. Dropping onto an enemy's top stomps it if it's stompable; claws beat spines and tentacles.
 ##    A weak point stomped from above defeats its enemy and is harmless otherwise.
 ## 4. Claws defeat any enemy on body contact, except claw-immune ones (bosses, the Bad Dream).
-## 5. Invulnerability (after a block or revive) and god mode ignore everything harmful.
-## 6. Armor that is up blocks an electrical hazard or an enemy attack, never a solid collision.
-## 7. The shield blocks one hit of anything.
-## 8. Otherwise the player dies (one hit ends the run, GDD §4).
+## 5. A thief's touch (Hazard.steals_share, GDD §9.12) robs instead of hurting: ROBBED, or nothing
+##    in the moment after a theft (Defense.theft_immune), so one touch robs once. It isn't damage, so
+##    nothing below stops it. (Steps 2–4 still come first: the dash, a stomp and the claws catch it.)
+## 6. Invulnerability (after a block or revive) and god mode ignore everything harmful.
+## 7. Armor that is up blocks an electrical hazard or an enemy attack, never a solid collision.
+## 8. The shield blocks one hit of anything.
+## 9. Otherwise the player dies (one hit ends the run, GDD §4).
 ##
 ## The armor itself (GDD §4, §8) is a state with rules of its own, below (Armor): up with its hits left,
 ## or broken and coming back. The Player holds one and applies what resolve() says to it.
@@ -27,6 +30,10 @@ enum Outcome {
 	KILL,            ## The player dies.
 	DEFEAT_ENEMY,    ## The contact defeats the enemy (claws or dash); the player is unharmed.
 	STOMP,           ## The player stomped the enemy: it's defeated and the player bounces.
+	## A thief's touch (GDD §9.12, the game's first non-lethal hit): the player lives and nothing is used
+	## up; the thief takes its share of the run's credits (ScoreKeeper.rob) and holds it, and for a
+	## moment no theft can happen again (GameRules.theft_grace).
+	ROBBED,
 }
 
 
@@ -39,6 +46,8 @@ class Defense:
 	var claws: bool = false
 	var dashing: bool = false
 	var god_mode: bool = false
+	## Just robbed: no theft can happen again for a moment (GameRules.theft_grace).
+	var theft_immune: bool = false
 
 
 ## `stomping`: the player is dropping onto the hazard from above (the Player decides that from
@@ -65,6 +74,12 @@ static func resolve(hazard: Hazard, defense: Defense, stomping: bool = false) ->
 				return Outcome.DEFEAT_ENEMY
 		if defense.claws and not enemy.claw_immune and hazard.part != &"attack":
 			return Outcome.DEFEAT_ENEMY
+
+	# GDD §9.12: touching a thief isn't deadly, it robs. A theft is no hit, so neither armor, the shield,
+	# the invulnerability window nor god mode (a review aid) stops it; only the moment after a theft does.
+	# DESIGN-TBD (docs/questions/b6.md 1): nothing protects against a theft.
+	if hazard.steals_share > 0.0:
+		return Outcome.IGNORE if defense.theft_immune else Outcome.ROBBED
 
 	if defense.invulnerable or defense.god_mode:
 		return Outcome.IGNORE

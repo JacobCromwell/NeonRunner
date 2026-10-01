@@ -22,6 +22,9 @@ var no_fall: bool = false
 ## Quick play review aid (--pickups): pickups of these items appear in turn, to review their look.
 ## Levels never place pickups in the game (GDD §10 puts them in boss fights).
 var review_pickups: PackedStringArray = []
+## Quick play review aid (--thief): stand-in thieves (a gold block that robs, GDD §9.12) come one after
+## another (StandInThief.start_review). Levels never have one.
+var review_thief: bool = false
 ## Campaign position for the completion bonus (0-based level index), -1 outside the campaign.
 var level_index: int = -1
 ## A boss fight (GDD §10): the boss, whose arena `config` describes (BossArena.base_config). Null for
@@ -76,6 +79,7 @@ func retry() -> RunContext:
 	next.god_mode = god_mode
 	next.no_fall = no_fall
 	next.review_pickups = review_pickups
+	next.review_thief = review_thief
 	next.level_index = level_index
 	next.boss = boss
 	next.boss_resume = boss_resume.duplicate()
