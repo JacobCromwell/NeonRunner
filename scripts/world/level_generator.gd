@@ -1203,7 +1203,7 @@ static func is_filler(pattern: Dictionary) -> bool:
 ## before its end); every enemy from FILL_ENEMY_LEAD_SECONDS before it to the end of the floor it uses
 ## (LevelGenerator.enemy_floor_span), or what its rules script keeps for it (`static func keep_out(gen:
 ## LevelGenerator, entry: Dictionary) -> Vector2`: a cyborg's margin, a hover truck's lane window, a
-## Resonator's visit); and a level's quiet stretches.
+## Resonator's visit, a drone wave until its first pad); and a level's quiet stretches.
 func fill_keep_outs(patterns: Array) -> Dictionary:
 	var out: Array[Vector4] = []
 	var half: float = tuning.fence_depth * 0.5

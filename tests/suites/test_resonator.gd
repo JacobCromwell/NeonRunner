@@ -681,7 +681,8 @@ func _test_generator() -> void:
 	var layout: LevelLayout = LevelGenerator.new().generate(plain, tuning, LevelGenerator.load_for(plain))
 	check(Rules.resonators_in(layout).is_empty(), "no Resonators without the feature")
 	# The Golden levels: on their own seeds, Golden 1 introduces it right after the feature's start (within
-	# test_campaign's INTRODUCTION_REACH); on other seeds almost always.
+	# test_campaign's INTRODUCTION_REACH, stretched by the level's pace like its patterns); on other seeds
+	# almost always.
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var late: Array = []
 	for id: String in ["golden/1", "golden/2", "golden/3"]:
@@ -702,10 +703,11 @@ func _test_generator() -> void:
 					var start: float = gen.feature_start("resonator")
 					var first: float = float(found[0]["at"])
 					check(first >= start, "%s: nothing of it before the feature's start (%.0f m, start %.0f m)" % [tag, first, start])
-					if first > start + 210.0:
+					var reach: float = 210.0 * gen.pace
+					if first > start + reach:
 						late.append(tag)
 					if extra == 0:
-						check(first <= start + 210.0, "%s: its first comes right after the feature's start (%.0f m, start %.0f m)"
+						check(first <= start + reach, "%s: its first comes right after the feature's start (%.0f m, start %.0f m)"
 							% [tag, first, start])
 	check(late.size() <= 1, "Golden 1 introduces it right after its start on other seeds too (late: %s)" % [late])
 	# The campaign's recency curve never boosts it (FeatureRecency.max_factor): its rules keep one visit at

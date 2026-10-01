@@ -541,10 +541,10 @@ timed like a gauntlet's pieces, `FILL_CEILING_AFTER_PAD_SECONDS` after its pad t
 `FILL_CEILING_BEFORE_END_SECONDS` before its end), every enemy from `FILL_ENEMY_LEAD_SECONDS` before it to
 the end of the floor it uses, and the quiet stretches. A rules script may say what its enemy keeps
 (`static func keep_out(gen, entry) -> Vector2`: the cyborg's lead and margin, a hover truck while it's
-surely there, a Resonator's planned visit) and keep fillers out of what it keeps only partly
-(`static func after_fill(gen)`: a hover truck's lane until it has left). Fillers are picked like the
-pattern pass's picks, from a stream of their own (`rng_for("fill")`), and recorded in `fills`; the
-pattern pass, the rules and the guarantee are untouched. Credits: fillers take the clear stretches they
+surely there, a Resonator's planned visit, a drone wave until its first pad) and keep fillers out of
+what it keeps only partly (`static func after_fill(gen)`: a hover truck's lane until it has left).
+Fillers are picked like the pattern pass's picks, from a stream of their own (`rng_for("fill")`), and
+recorded in `fills`; the pattern pass, the rules and the guarantee are untouched. Credits: fillers take the clear stretches they
 stand in from the credit trails, and a stretch too short for a full trail gets a shorter one
 (`credit_trail_min`, 5 in campaign levels, 0 = as before), with a lower trail chance, so each level's
 credits stay about where they were (task R7 owns the economy). `tools/measure/level_pace.gd` measures
