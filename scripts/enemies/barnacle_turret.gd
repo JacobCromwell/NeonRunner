@@ -118,7 +118,7 @@ func _find_ceiling(p: Dictionary, at: float) -> void:
 		first_lane = lanes.x
 		last_lane = lanes.y
 	else:
-		hull_start = at - tuning.engage_distance
+		hull_start = at - tuning.engage_distance * world.tuning.pace()
 		hull_end = at + 1.0
 		first_lane = 0
 		last_lane = n - 1
@@ -178,7 +178,7 @@ func _may_attack() -> bool:
 	if player.distance < hull_start - 0.5 or player.distance > hull_end + 0.5:
 		return false
 	var ahead: float = track_distance() - player.distance
-	return ahead > 0.0 and ahead <= tuning.engage_distance
+	return ahead > 0.0 and ahead <= gun.engage_distance()
 
 
 ## The rider's path around a bolt's arrival (`from_d` to `to_d`, CyborgGun's clear stretch around the

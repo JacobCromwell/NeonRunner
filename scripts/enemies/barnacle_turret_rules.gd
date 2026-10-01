@@ -27,13 +27,19 @@ extends RefCounted
 ##   (docs/questions/c1.md).
 ## - The introduction comes soon after the feature's start (intro_seconds), in a level that gives the
 ##   feature one (LevelConfig.feature_starts); and a level that lists the feature always has a turret.
-##   Where no ceiling it fits on lies in time, the rules add a plain ceiling for it
-##   (intro_ceiling_seconds long, over every lane) at the first spot where one fits without clearing
-##   anything (LevelGenerator.add_hull_with_pad: its pad and its landing zone are already safe, and no
-##   floor enemy's stretch reaches them), before the level's first drone (the drone rules own every
-##   pad after it, GDD §9.6) and in a lane no hover truck holds (PadPlacement.pad_lane). Only then does
-##   a level differ from the same level without the feature: by that ceiling and its credits.
+##   Where no ceiling it fits on lies in time, the rules add a plain ceiling for it over every lane
+##   (intro_ceiling_seconds long, or shorter where that doesn't fit, but long enough to hold a turret)
+##   at the first spot where one fits without clearing anything (LevelGenerator.add_hull_with_pad: its
+##   pad and its landing zone are already safe, and no floor enemy's stretch reaches them; nor an
+##   Octodog's planned run, _octodogs_clear), its pad before the level's first drone (the drone rules
+##   own every pad after it, GDD §9.6) and in a lane no hover truck holds (PadPlacement.pad_lane); its
+##   pad may come before the feature's start, its turret never does. Only then does a level differ from
+##   the same level without the feature: by that ceiling, its credits, and the fill pass's fillers
+##   (which keep off its landing and pad).
 ##   DESIGN-TBD (docs/questions/c1.md 4).
+## The generator's fill pass (LevelConfig.fill_empty_seconds, after the rules) keeps nothing for a turret
+## (keep_out): it never uses the floor, and the ceiling it hangs from keeps its own floor already, so a
+## level is filled the same with or without turrets.
 ## Each entry's params carry its ceiling: hull_start, hull_end, first_lane, last_lane.
 
 const TYPE: String = "barnacle_turret"
@@ -46,8 +52,13 @@ const RUN_AFTER: Array[String] = ["drone", "host", "hover_truck", "octodog", "cy
 const FAR_CREDIT_SHARE: float = 0.7
 ## Shared with the drone and host rules: a pad's lane away from hover trucks.
 const PadPlacement = preload("res://scripts/enemies/pad_placement.gd")
-## Metres between the spots tried for an introduction's ceiling.
+## Metres (at MovementTuning.REFERENCE_SPEED, stretched by the level's pace) between the spots tried for
+## an introduction's ceiling; how much shorter each next length tried there is (seconds at run speed);
+## and the room its shortest keeps for the turret's spot beyond after_pad_seconds and
+## before_end_seconds.
 const INTRO_STEP: float = 4.0
+const INTRO_SHORTER_SECONDS: float = 0.5
+const INTRO_SPARE_SECONDS: float = 0.3
 
 
 static func apply(gen: LevelGenerator) -> void:
@@ -125,20 +136,67 @@ static func _ensure_introduction(gen: LevelGenerator, t: BarnacleTurretTuning, r
 			first_fit = minf(first_fit, float(spot["lo"]))
 	if first_fit < INF and first_fit <= by:
 		return false
-	# Before the first drone: its rules own every pad from its wave on (GDD §9.6).
-	var limit: float = minf(minf(by, first_fit), layout.length - gen.config.end_clear_distance)
+	# The turret comes by then, and before any ceiling it already fits on.
+	var turret_by: float = minf(minf(by, first_fit), layout.length - gen.config.end_clear_distance)
+	# Its pad before the first drone: the drone's rules own every pad from its wave on (GDD §9.6).
+	var pad_by: float = turret_by
 	for e: Dictionary in layout.enemies:
 		if String(e.get("type", "")) == "drone":
-			limit = minf(limit, float(e["at"]) - 1.0)
+			pad_by = minf(pad_by, float(e["at"]) - 1.0)
+	# Its length: intro_ceiling_seconds, or shorter where that doesn't fit, down to the shortest that
+	# still holds a turret past its pad (after_pad_seconds) and before its end. Its pad may come before
+	# the feature's start, as long as the turret stands past it.
+	var lengths: Array[float] = [t.intro_ceiling_seconds]
+	var shortest: float = t.after_pad_seconds + t.before_end_seconds + INTRO_SPARE_SECONDS
+	while lengths[-1] - INTRO_SHORTER_SECONDS >= shortest:
+		lengths.append(lengths[-1] - INTRO_SHORTER_SECONDS)
 	var lead: float = t.after_pad_seconds * gen.speed
-	var at: float = maxf(start - lead, gen.config.start_clear_distance)
+	var tail: float = t.before_end_seconds * gen.speed
+	var at: float = maxf(start - (t.intro_ceiling_seconds * gen.speed - tail), gen.config.start_clear_distance)
 	var full := Vector2i(0, layout.lane_count - 1)
-	while at + lead <= limit:
+	while at <= pad_by and maxf(at + lead, start) <= turret_by:
 		var lane: int = PadPlacement.pad_lane(gen, rng, at)
-		if gen.add_hull_with_pad(lane, at, t.intro_ceiling_seconds, full):
-			return true
-		at += INTRO_STEP
+		for seconds: float in lengths:
+			# Room for the turret on it, past the feature's start.
+			if maxf(at + lead, start) > at + seconds * gen.speed - tail:
+				continue
+			if gen.add_hull_with_pad(lane, at, seconds, full):
+				if _octodogs_clear(gen):
+					return true
+				PadPlacement.remove_hull(layout, layout.hulls[-1])
+		at += gen.metres(INTRO_STEP)
 	return false
+
+
+## True if every Octodog's planned charges still have their clear stretch and its whole run still keeps
+## off pads and ceiling landings, as the Octodog's rules planned them (Octodog.window_clear,
+## pad_or_landing_between, at the level's pace): an introduction's ceiling never lands on a dog's run.
+static func _octodogs_clear(gen: LevelGenerator) -> bool:
+	var ot := EnemyDirector.tuning_for("octodog") as OctodogTuning
+	if ot == null:
+		return true
+	var window: float = ot.window_length(gen.speed, gen.config.enemy_scaling, gen.pace)
+	var stop: float = ot.stop_distance(gen.speed, gen.config.enemy_scaling, gen.pace)
+	for e: Dictionary in gen.layout.enemies:
+		if String(e.get("type", "")) != "octodog":
+			continue
+		var charges: Array = (e.get("params", {}) as Dictionary).get("charge_at", [])
+		if charges.is_empty():
+			continue
+		for a: Variant in charges:
+			if not Octodog.window_clear(gen.layout, float(a), float(a) + window, gen.pace):
+				return false
+		if Octodog.pad_or_landing_between(gen.layout, float(charges[0]) - gen.metres(6.0),
+				float(charges[-1]) + stop + gen.metres(2.0), gen.pace):
+			return false
+	return true
+
+
+## What the generator's fill pass keeps off around turret entry `e` (LevelGenerator.fill_keep_outs):
+## nothing (an empty span). It never touches the floor, and its ceiling keeps the floor under it and its
+## landing zone and pads' spots already.
+static func keep_out(_gen: LevelGenerator, _e: Dictionary) -> Vector2:
+	return Vector2(INF, -INF)
 
 
 ## The track distance the level's first turret comes by: intro_seconds past the feature's start in a

@@ -331,11 +331,16 @@ func _test_placement() -> void:
 			check(extra == 0 or (extra == 1 and config.feature_starts.has(TYPE)),
 				"only the introduction may add a ceiling (%d added) %s" % [extra, tag])
 			if extra == 1:
+				# The introduction's ceiling, its pad and credits, and (the fill pass keeps off its
+				# landing and pad, after the rules, on a random stream of its own) the fillers from there on.
 				added += 1
-				for key: String in ["hulls", "pads", "credits"]:
+				for key: String in ["hulls", "pads", "credits", "gaps", "fences"]:
 					a.erase(key)
 					b.erase(key)
 			check(_canon(a) == _canon(b), "the rest of the level is what it is without turrets " + tag)
+			for e: Dictionary in turrets:
+				var k: Vector2 = Rules.keep_out(gen, e)
+				check(k.x > k.y, "the fill pass keeps nothing for a turret (it never uses the floor) " + tag)
 	check(pairs >= 1, "some ceilings get a second turret later in the campaign (%d)" % pairs)
 	print("  turret placement: %d pairs over the campaign levels, %d introduction ceilings added" % [pairs, added])
 

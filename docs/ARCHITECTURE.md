@@ -480,9 +480,13 @@ end. The first ceiling past the feature's start where one fits always gets one, 
 turrets at `ceiling_share`, and a second one (`spacing_seconds` apart) at `pair_share` from
 `pair_min_scaling` on and only where two lanes are free of pads. In a level that gives the feature a
 start (Marketplace 1) the first comes within `intro_seconds`; where no ceiling it fits on lies there (or
-a level has none at all), the rules add a plain full-width one (`intro_ceiling_seconds`) at the first spot
-where `add_hull_with_pad` fits it without clearing anything, before the level's first drone (whose rules
-own every pad from its wave on) and off hover trucks' lanes (`PadPlacement.pad_lane`).
+a level has none at all), the rules add a plain full-width one (`intro_ceiling_seconds`, or shorter where
+that doesn't fit, but long enough to hold a turret) at the first spot where `add_hull_with_pad` fits it
+without clearing anything and off every Octodog's planned run (the Octodog's own checks), its pad before
+the level's first drone (whose rules own every pad from its wave on; the pad may come before the
+feature's start, the turret never does) and off hover trucks' lanes (`PadPlacement.pad_lane`). The fill
+pass (G1) keeps nothing for a turret (`keep_out`: it never uses the floor), so it fills a level the same
+with or without turrets; it keeps off an introduction's ceiling like any other.
 `LayoutChecks.check_turrets` (from `check_rules`) checks every turret in every generated level.
 
 **Late starts.** `LevelConfig.feature_starts` (feature → share of the level) holds a feature back

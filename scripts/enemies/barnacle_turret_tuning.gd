@@ -63,7 +63,7 @@ extends CyborgGunTuning
 @export_range(0.0, 10.0, 0.5, "suffix:m") var credit_margin: float = 3.0
 ## In the level that introduces it (a feature start, LevelConfig.feature_starts), the first turret
 ## comes within this long (at run speed) of the start. When no ceiling it fits on lies there, the
-## rules add a plain one this long for it (BarnacleTurretRules).
+## rules add a plain one for it, this long, or shorter where that doesn't fit (barnacle_turret_rules.gd).
 @export_range(2.0, 30.0, 0.5, "suffix:s") var intro_seconds: float = 8.0
 @export_range(2.5, 6.0, 0.1, "suffix:s") var intro_ceiling_seconds: float = 4.0
 
