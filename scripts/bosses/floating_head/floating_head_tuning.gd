@@ -11,6 +11,29 @@ extends Resource
 ## that bring a runner who never misses to about 100 s (a 16 s first run, two 8 s later runs, towers
 ## every 240 m, two attacks before one, and the laser clipping every other tower on its own for a
 ## runner who doesn't bait them).
+##
+## Pace (GDD §3, owner's playtest September 30, 2026: the run speed rises zone by zone, and the fight
+## runs at its zone's speed, 21 m/s in the Neon City, more on a harder tier; task E1f). Its distances
+## are metres at MovementTuning.REFERENCE_SPEED (18 m/s). Every one that stands for a time, along the
+## track to something the runner reaches at run speed, is stretched by the run's pace
+## (FloatingHead.run_pace, metres, before_face), as the generator stretches its patterns, so the fight
+## plays the same in seconds at any speed, and its warnings keep their seconds:
+## - the fairness margins (clear_before_impact, clear_after_impact, escape_clear_after,
+##   sweep_clear_after), where the cyborgs drop (drop_ahead), the towers (tower_spacing, tower_first,
+##   tower_clear_before, tower_clear_after, tower_ahead: the time from the clip to the pin), and the
+##   crash (crash_ahead, crash_search, crash_clear_before, crash_clear_after);
+## - the ways up: ramp_length (its lead-in with it; its top end stays on the ship's face), and the
+##   distances before the pinned ship's face where a way up sets the runner off onto its weak points
+##   (wall_entry_before, wall_jump_before, pad_before_face, ceiling_end_before_face and the window's
+##   release line, window_release_gap), stretched about the weak points (before_face_at), so the run and
+##   the jump or drop from there onto them take as long as at 18 m/s;
+## - the stomp boxes' depth along the track (stomp_depth), about their weak points: a wall jump or a
+##   drop lands on them over as long as at 18 m/s.
+## The rest stays: where the ship flies relative to the runner (enter_behind, station_ahead, face_ahead,
+## defeat_ahead, shake_ahead: it keeps pace with them, so what it does there takes the same seconds at
+## any speed), sideways speeds and sizes (the lanes don't change), heights, and the sizes of things (the
+## ship, its weak points, the hitboxes, the towers, the room kept around a pickup, the margin past the
+## weak points).
 
 @export_group("Ship")
 ## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, items 83-84): the hull fills the street between the walls (a
@@ -221,8 +244,11 @@ extends Resource
 ## coming down with their feet within GameRules.stomp_tolerance under its top stomps it. Generous: the
 ## red dome is 1.7 m across. E1e (the owner's playtest) made it lower and deeper (it was 0.55 m and
 ## 3 m), so a wall jump lands on it over a longer stretch of the wall (tools/measure/stomp_routes.gd).
+## E1f made it deeper still (4.6 m at 18 m/s, stretched by the run's pace; it was 4 m): E1e's wall jump a
+## metre late from the tower's wall had less than a physics frame to spare, so at the City's 21 m/s it
+## missed whenever the frames fell badly against the ship; now it stomps with a frame to spare.
 @export_range(1.0, 2.4, 0.05, "suffix:m") var stomp_width: float = 2.0
-@export_range(1.0, 6.0, 0.1, "suffix:m") var stomp_depth: float = 4.0
+@export_range(1.0, 6.0, 0.1, "suffix:m") var stomp_depth: float = 4.6
 @export_range(0.2, 1.2, 0.05, "suffix:m") var stomp_top: float = 0.35
 ## DESIGN-TBD (docs/questions/e1e.md; the owner's playtest): a wall jump lands in the outer lane, and a
 ## drop off the third window's ceiling in the lane it was ridden in; at 5 and 6 lanes the outer lanes
@@ -358,6 +384,16 @@ func cyborgs_in_drop(index: int) -> int:
 	if cyborgs_per_drop.is_empty():
 		return 1
 	return maxi(cyborgs_per_drop[clampi(index, 0, cyborgs_per_drop.size() - 1)], 1)
+
+
+## `reference` metres before the pinned ship's face where a way up sets the runner off onto its weak
+## points (wall_entry_before, wall_jump_before, pad_before_face, ceiling_end_before_face,
+## window_release_gap; written for MovementTuning.REFERENCE_SPEED) at a run's `pace`: stretched about
+## its weak points, which sit FloatingHeadModel.WEAK_Z behind its face, so the run from there and the
+## jump or drop onto them take as long as at 18 m/s (the header's Pace). The same at pace 1.
+static func before_face_at(reference: float, pace: float) -> float:
+	var behind: float = -FloatingHeadModel.WEAK_Z
+	return (reference + behind) * pace - behind
 
 
 ## The way onto its head in phase `index`'s stomp windows (Stomp windows): &"ramp", &"wall" or

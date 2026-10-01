@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="GoldenPalaceSkin" format=3]
+
+[ext_resource type="Script" path="res://scripts/world/skins/golden_palace_skin.gd" id="1_skin"]
+
+[resource]
+script = ExtResource("1_skin")
+enemy_variant = &"golden"
+moon_radius = 0.0
+lot_length = 8.0
+gallery_share = 0.3
+statue_share = 0.25
+banner_share = 0.15
+relief_share = 0.1
+banner_width = 2.2
+banner_length = 4.0
+bridge_weight = 3.0
+archway_weight = 2.5
+yacht_weight = 3.0

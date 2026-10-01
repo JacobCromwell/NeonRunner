@@ -17,7 +17,8 @@ extends Node3D
 ## Fairness: a lock happens only where the lanes it strikes are free of holes and fences around the
 ## blast (it lands on a roof), where a lane it doesn't strike lies at most max_escape_lanes away with
 ## it and every lane on the way free of holes and fences from the player to past the blast (the dodge is
-## a plain lane switch), with no ceiling over it and no pickup waiting in it; the warning always lasts
+## a plain lane switch), with no ceiling over it and no pickup waiting in it (the margins along the track
+## at the run's pace, FloatingHead.metres: as long to run at any speed, GDD §3); the warning always lasts
 ## lock_seconds / pace. Otherwise the light keeps hunting. The blast's hitbox is a little smaller than
 ## the fireball and, in an outer lane, keeps clear of a wall runner beside it.
 ## Nothing depends on how long the fight has lasted: random picks come from the fight's seeded rng and
@@ -33,7 +34,8 @@ const FIRE := Color(1.0, 0.36, 0.12)
 const FIRE_HOT := Color(1.0, 0.8, 0.5)
 ## Bombs, blasts and fireballs kept ready (two locks' worth, one of them a straddle).
 const POOL: int = 4
-## How fast the spot catches up along the track after a blast, beyond the runner's own speed.
+## How fast the spot catches up along the track after a blast, beyond the runner's own speed (at
+## 18 m/s; at the run's pace, so it takes as long at any speed).
 const CATCH_UP: float = 60.0
 ## The spot counts as on the runner's lane within this of its centre.
 const ON_LANE: float = 0.2
@@ -43,6 +45,10 @@ const FIRE_SECONDS: float = 0.6
 const SECOND_BOMB_DELAY: float = 0.07
 ## The falling whistle's length, if the sound library doesn't say.
 const WHISTLE_SECONDS: float = 0.9
+## No lock where a ceiling reaches within this far before the blast or this far after it (metres at
+## 18 m/s, at the run's pace).
+const CEILING_BEFORE: float = 8.0
+const CEILING_AFTER: float = 4.0
 
 var head: FloatingHead
 var tuning: FloatingHeadTuning
@@ -236,7 +242,7 @@ func _update_light(delta: float) -> void:
 	_swept += delta
 	match step:
 		Step.SWEEP_OUT, Step.SWEEP_IN:
-			spot_d = move_toward(spot_d, ahead, (world.player.speed + CATCH_UP) * delta)
+			spot_d = move_toward(spot_d, ahead, (world.player.speed + head.metres(CATCH_UP)) * delta)
 			var lane: int = _out_lane if step == Step.SWEEP_OUT else head.player_lane()
 			spot_x = move_toward(spot_x, geo.lane_x(lane), sweep)
 			if step == Step.SWEEP_OUT:
@@ -303,22 +309,25 @@ func plan(pl: int, at: float) -> Array[int]:
 	return none
 
 
-## The fairness rules for bombs on `lanes` at `at` while the runner is in lane `pl` (see the header).
+## The fairness rules for bombs on `lanes` at `at` while the runner is in lane `pl` (see the header);
+## their margins along the track at the run's pace (FloatingHead.metres: as long to run at any speed).
 func fair(lanes: Array[int], pl: int, at: float) -> bool:
 	for l: int in lanes:
-		if not _clear(l, at - tuning.clear_before_impact, at + tuning.clear_after_impact) or _pickup_near(l, at):
+		if not _clear(l, at - head.metres(tuning.clear_before_impact), at + head.metres(tuning.clear_after_impact)) \
+				or _pickup_near(l, at):
 			return false
 	# No lock under a ceiling: the arena's, or the third stomp window's own (FloatingHead.ceiling_between).
-	if head.ceiling_between(at - 8.0, at + 4.0):
+	if head.ceiling_between(at - head.metres(CEILING_BEFORE), at + head.metres(CEILING_AFTER)):
 		return false
 	return escape_lane(lanes, pl, world.player.distance, at) >= 0
 
 
 ## The nearest lane a runner in `pl` at `d0` can switch to out of bombs on `lanes` at `at`: not struck,
 ## at most max_escape_lanes away, and it and every lane on the way free of holes and fences from `d0`
-## to escape_clear_after past the blast (FloatingHead.escape_lane). -1 if there is none.
+## to escape_clear_after past the blast (FloatingHead.escape_lane; at the run's pace). -1 if there is
+## none.
 func escape_lane(lanes: Array[int], pl: int, d0: float, at: float) -> int:
-	return head.escape_lane(lanes, pl, d0, at + tuning.escape_clear_after)
+	return head.escape_lane(lanes, pl, d0, at + head.metres(tuning.escape_clear_after))
 
 
 func _clear(lane: int, from: float, to: float) -> bool:
