@@ -628,8 +628,9 @@ func _process(delta: float) -> void:
 ## drops back) reaches it; no speed pad lies between the warning's start and the stretch's end (a
 ## boost there would move where the wave meets the player); and no zone doodad stands between the
 ## warning's start and the stretch's end (GDD §3: its push moves the player; the generator keeps them
-## off a planned visit, so this holds back only a pulse a wait moved on). The generator plans every
-## pulse with it, and the Resonator asks it again just before each warning.
+## off a planned visit, so this holds back only a pulse a wait moved on; DESIGN-TBD,
+## docs/questions/g5.md 5). The generator plans every pulse with it, and the Resonator asks it again
+## just before each warning.
 static func pulse_clear(layout: LevelLayout, zones: CeilingZones, warn_at: float, stretch: Vector2) -> bool:
 	if layout.doodad_between(warn_at - 1.0, stretch.y):
 		return false

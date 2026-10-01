@@ -625,9 +625,10 @@ func hit_radius() -> float:
 ## switched it off), no anti-grav pad or ceiling landing (pad_or_landing_between), holes in at most
 ## one lane (a single hole can be switched away from or jumped, and may be the bait for a gap kill),
 ## and no zone doodad (GDD §3: its side would block the dodge, its push move the player; the generator
-## keeps doodads off a dog's planned run, so this holds back only a charge a wait moved on). The floor
-## under a ceiling is fair game (GDD §3): a floor runner can be charged there, a player riding the
-## ceiling above can't (_can_wind_up). `pace`: the level's (MovementTuning.pace).
+## keeps doodads off a dog's planned run, so this holds back only a charge a wait moved on;
+## DESIGN-TBD, docs/questions/g5.md 5). The floor under a ceiling is fair game (GDD §3): a floor
+## runner can be charged there, a player riding the ceiling above can't (_can_wind_up). `pace`: the
+## level's (MovementTuning.pace).
 static func window_clear(layout: LevelLayout, from: float, to: float, pace: float = 1.0) -> bool:
 	if layout.doodad_between(from - 1.0, to):
 		return false

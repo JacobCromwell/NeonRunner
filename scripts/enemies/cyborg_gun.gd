@@ -281,7 +281,7 @@ func _burst_fair(lead: float, shots: int) -> bool:
 
 ## True if the player's path between two track distances has no live fence, no gap and no zone
 ## doodad in any lane (and, for a player on a wall, no sign on that wall). A shooter's own path_rule
-## decides instead.
+## decides instead. The doodads: DESIGN-TBD (docs/questions/g5.md 5).
 func path_clear(from_d: float, to_d: float) -> bool:
 	if path_rule.is_valid():
 		return bool(path_rule.call(from_d, to_d))

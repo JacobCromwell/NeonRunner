@@ -184,6 +184,7 @@ func _fence_warning() -> PackedFloat32Array:
 
 ## A zone doodad pushes the runner into the next lane (GDD §3): a dull, heavy thud, a shoulder into
 ## something solid. Lower and softer than the blocked move's clank, with no metal ring: it never hurts.
+## DESIGN-TBD (docs/questions/g5.md 3): the push's sound.
 func _doodad_push() -> PackedFloat32Array:
 	var b := DSP.tom(0.24, 150.0, _rng(30))
 	DSP.mix(b, DSP.kick(0.2, 170.0, 75.0, _rng(31)), 0.0, 0.6)

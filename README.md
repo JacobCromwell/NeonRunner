@@ -303,6 +303,12 @@ On a debug build, the options go into the page's engine settings: in `exports/we
   the pad are checked, and some of those routes are run on real physics; ceilings over fewer lanes too, at every
   width, with their pads under them, their landing zone over their lanes, and one-lane ceilings short. Also the
   recency curve's pick weights, and levels paced in quiet stretches and bursts (The Hush).
+- **Zone doodads:** scenery standing in lanes that pushes you into the next lane and never hurts: placed only
+  where every lane around it is clear (hundreds of levels at 3, 5 and 6 lanes, and every campaign level), a
+  level without them built byte for byte as before, and the push on real physics (both ways, into the edge
+  lanes, jumping or sliding into one, a corner caught mid-switch, a blocked side entry, landing on top, a
+  ceiling rider passing over, shots passing through), with campaign doodads run into at their level's speed
+  and always onto safe floor, and drones and hover trucks holding fire while one is in reach.
 - **Movement:** scenarios on real physics, among them a ramp's boost against a speed pad's, a ramp's wall run
   and its credits against the generator's prediction, the bump of a blocked wall entry, and moves on a
   ceiling over fewer lanes (blocked at its edges, a pad holding you to its lane, the camera kept under the

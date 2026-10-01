@@ -547,6 +547,7 @@ func _can_fire() -> bool:
 ## stretch the player runs from now until a shot charged now, and its gunners' bolts, have passed
 ## them. The generator keeps doodads off every lane while a truck is surely there (its shortest stay)
 ## and out of its lane until it has left, so this holds back only a truck that stays longer.
+## DESIGN-TBD (docs/questions/g5.md 5).
 func _doodad_in_reach() -> bool:
 	if world.layout.doodads.is_empty():
 		return false

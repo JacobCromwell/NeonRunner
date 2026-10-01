@@ -1394,8 +1394,9 @@ func _trim_clear_stretches(span: Vector2) -> void:
 ## crowd them (only the credits come later, and keep out of them). A doodad never hurts: a player who
 ## runs into its front is pushed into the neighbouring lane on its side (Player), and its sides block a
 ## lane switch like a solid side. It stands in an inner lane, never the outermost one: a wall runner's
-## body reaches into the outer lane, and the wall-runner collision stays as it is. It's fair wherever it
-## stands (LayoutChecks.check_doodads, at 3, 5 and 6 lanes):
+## body reaches into the outer lane, and the wall-runner collision stays as it is. DESIGN-TBD
+## (docs/questions/g5.md 1 and 4): the inner lanes only, and where doodads stand and how many. It's
+## fair wherever it stands (LayoutChecks.check_doodads, at 3, 5 and 6 lanes):
 ## - nothing else goes on in any lane from doodad_lead() before its front (so the push lands on clear
 ##   floor, whichever lane it's in) until the level's spacing after its end (the player can cross its
 ##   lane again before whatever comes next, as between two patterns): no piece, no enemy's stretch, no

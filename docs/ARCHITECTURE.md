@@ -673,10 +673,14 @@ stands in the stretch the attack would take (`_doodad_in_reach`), an Octodog cha
 moved on by a wait for its turn waits (`Octodog.window_clear`, `Resonator.pulse_clear`), cyborg bolts
 never land by one (`CyborgGun.path_clear`), a cyborg's walk and panic run keep their margin from one
 (`CyborgRules.obstacle_spans`), and a hover truck only lurches at a player who can leave its lane
-(`_escape_ok`). Measured with the level data (`tools/measure/level_pace.gd`, four other seeds a level at
-3, 5 and 6 lanes): every row, enemy and credit as before, 6 to 15% more events a minute (City 1 about 3
-doodads a minute, the rest of the City, Gangland and the Marketplace 4 to 5, later zones 2.5 to 3, The
-Hush under 1), the mean empty stretch from about 1.25 s to 1.1 s.
+(`_escape_ok`). Measured with the level data (`tools/measure/level_pace.gd`, each level's own seed and
+four others at 3, 5 and 6 lanes, against the same levels with `--set=doodad_share:0`): every row, enemy
+and big attack as before (a credit inside a doodad goes, one or none a level), 3 to 15% more events a
+minute (doodads a minute: City 1 2.8, the rest of the City 4.5 to 5.3, Gangland 2.7 to 4.4, the
+Marketplace about 4, Corporate about 3, Dead Zone 1 2.3, The Hush 1, the Golden Zone 2.5 to 3), the mean
+empty stretch down from 1.2–1.45 s to 1.0–1.3 s. The longest empty stretches stay about as they were:
+they lie under ceilings or around enemies, where doodads never stand. A runner who keeps to the middle
+lane at 3 lanes meets every doodad (they all stand there); at 5 and 6 lanes about a third of them.
 
 ## Power-ups
 
@@ -1678,7 +1682,9 @@ fairness checks for generated layouts (the generator suite runs them over many s
 suite over every campaign level at 3, 5 and 6 lanes, the enemy suites over their own levels), among
 them `check_ceilings` (GDD §3: pads that can be stepped on and under their ceiling, safe landing zones
 over each ceiling's lanes, a one-lane ceiling short, and a floor route under every ceiling without its
-pad, found by `FloorRoute`, `tests/helpers/floor_route.gd`), and finds a
+pad, found by `FloorRoute`, `tests/helpers/floor_route.gd`, which keeps out of a zone doodad's lane where
+it stands) and `check_doodads` (G5: every doodad in an inner lane, one at a time, with nothing else in
+any lane from its push to the spacing after it and off every lane-bound attack), and finds a
 feature's pieces in a layout with the generator's own `LevelGenerator.feature_positions()`; a task
 that adds a new kind of piece extends it (and `FloorRoute`'s cells, if the piece is on the floor), or
 gives its rules script `positions()`. The generator suite also checks the recency curve's pick weights
@@ -1755,6 +1761,21 @@ the fill pass (`LayoutChecks` checks each level at its own speed: `level_tuning(
 rules on campaign levels, the Octodog's and Resonator's windows in seconds, a cyborg and a screech on
 real physics at 25 m/s (the charge-up, the bolt's flight, the dodge; the shake), floor routes under a
 Golden level's ceilings run on physics at 25 m/s, and F6's Save keeping the base run speed.
+`test_doodads` checks zone doodads (G5; GDD §3): a level without them is the same data as before and a
+share of 0 changes nothing (every piece, enemy, pick and fill stays with a share; only credits inside a
+doodad go), placement over 216 levels at 3, 5 and 6 lanes (every difficulty, with and without every
+built feature, at the highest share: `check_doodads`, `check_layout` and `check_rules`, deterministic),
+every campaign level's doodads and City 1's gentle start, the rules' keep-outs (a Bad Dream's chase, a
+hover truck's lane) and the enemies' own checks, the track's bodies (never a hazard, a standable top,
+the skin's hook) and every skin's default look (inside its box, never glowing, muted colours); then the
+push on real physics at 3, 5 and 6 lanes (head-on into the lane on its side in every inner lane, both
+ways, quick, with the lean, costing nothing, the body never sinking in; a jump and a slide into one; a
+corner caught mid-switch pushing back the way the player came; a blocked side entry with the clank and
+the bump; landing on its top; a ceiling rider passing over it even mid-jump; a shot passing through it),
+a few of every campaign level's doodads run into at the level's speed and onto safe floor, and a drone
+and a hover truck holding their fire while a doodad is in reach. The simulated runs of
+`test_enemy_director` and `tools/measure/big_attacks.gd` keep their runner in the middle lane: it steps
+back after a doodad's push (`AttackWatch.keep_lane`).
 `test_web_demo` checks the web demo's preset, its export filter against
 the data and everything the demo references, and walks the demo from the title to its end screen (see
 Platforms and build flavors). The runner frees
@@ -1768,6 +1789,9 @@ game): the avatar (`avatar_showcase`: every pose, power-up and concept-sheet vie
 side; `avatar_run_review`: a scripted run through the game camera on any zone's skin, with any
 power-up look), ramps and walls (`ramp_wall_review`: a ramp launch with the credits along its wall
 run, and blocked wall entries at a low and a high sign, through the game camera or a close one),
+zone doodads (`doodad_review`: the runner pushed by a small, a medium and a large one, both ways, and a
+switch into one's side blocked, with others standing in the other inner lanes at five lanes or more, in
+any zone's look, through the game camera or a close one, `--hitboxes` for their bodies),
 the enemies (`enemy_showcase` for the cyborg family: poses, the faces close up, a turnaround, window
 cyborgs, and a far view through the run camera where the expressions must read, in any zone's look
 (`--variant=`, or ui_left / ui_right live), and every look side by side (`lineup`, front, back, as
@@ -1825,7 +1849,9 @@ settings on or off (`godot --headless -s res://tools/measure/level_shape.gd -- -
 
 `tools/measure/level_pace.gd` measures each campaign level's pace and density (G1; GDD §3): its run
 speed and length, and per minute its obstacle rows (and rows of holes), enemies, big attacks (Octodog
-charges and Resonator pulses as planned, drone waves, hover trucks), mechanics and all events; its
+charges and Resonator pulses as planned, drone waves, hover trucks), mechanics, zone doodads (G5) and the
+pushes a runner who keeps to a lane and ignores them takes (averaged over the lanes, and in the middle
+one), and all events, doodads among them; its
 empty stretches in seconds (the longest and the mean; what counts as going on is in its header); and
 its credits. `--old-data=DIR` builds the levels with another version's data (the .tres files of
 `data/tuning`, `enemies`, `levels`, `zones`, `campaign` and the patterns, e.g. main's exported with

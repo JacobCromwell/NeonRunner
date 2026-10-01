@@ -38,7 +38,7 @@ const SENSOR_SIZE := Vector3(0.4, 0.3, 0.4)
 const BUMP_CLEARANCE: float = 0.02
 ## A zone doodad's push (GDD §3) goes to the doodad's own side for a player within this share of a lane
 ## of its middle (running into it head-on); one further off (caught by its front corner mid-switch)
-## goes back the way they came.
+## goes back the way they came. DESIGN-TBD (docs/questions/g5.md 3): which way a caught corner pushes.
 const PUSH_HEAD_ON_SHARE: float = 0.15
 ## The doodad contact starts this far above the feet, so a player standing on a doodad's top (it's
 ## solid) isn't pushed by it (metres).

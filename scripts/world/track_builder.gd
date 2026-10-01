@@ -310,8 +310,9 @@ func _build_speed_pad(root: Node3D, p: Dictionary) -> void:
 ## lane-blocker layers, which the player's push contact meets at its front (Player) and a lane switch
 ## meets at its sides (blocked, with the bump and the clank); and a top on the floor layer, so a
 ## player who comes down on it from above (off a wall jump) lands and runs along it, like a hover
-## truck's roof. It's no hazard: nothing hurts there, and shots and weapons never see it. The node
-## carries its layout entry (meta "doodad"); the skin dresses it (ZoneSkin.doodad).
+## truck's roof (DESIGN-TBD, docs/questions/g5.md 2: a solid top). It's no hazard: nothing hurts
+## there, and shots and weapons never see it. The node carries its layout entry (meta "doodad"); the
+## skin dresses it (ZoneSkin.doodad).
 func _build_doodad(root: Node3D, d: Dictionary) -> void:
 	var start: float = float(d["start"])
 	var end: float = float(d["end"])

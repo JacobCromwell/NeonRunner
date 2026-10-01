@@ -272,7 +272,7 @@ func _can_attack(p: Player) -> bool:
 ## dodge, its push moves them into the stream). True while a doodad stands, in any lane, along the
 ## stretch the player runs from now until a barrage started now would have passed them: its wind-up,
 ## its bullets and their flight. The generator keeps doodads off a wave until its first pad, so this
-## holds back only a drone that outlived its pads.
+## holds back only a drone that outlived its pads. DESIGN-TBD (docs/questions/g5.md 5).
 func _doodad_in_reach(p: Player) -> bool:
 	if world.layout.doodads.is_empty():
 		return false
