@@ -109,6 +109,16 @@ func wall_section(_parent: Node3D, _side: int, _face_x: float, _start: float, _e
 	pass
 
 
+## The wall enemies TrackBuilder is about to build on `side` in [start, end) (GDD §9.2: window
+## cyborgs and the like), as layout entries exactly like LevelLayout.enemies holds them (type, at,
+## side, ...). Called just before wall_section() for the same span, so a skin whose own scenery
+## would otherwise double up with one (the Marketplace's citizens, task D3: never in a window a
+## window cyborg stands in) can skip the overlap. Read-only and visual only, never collision or
+## gameplay; the default skin needs nothing here.
+func note_wall_enemies(_side: int, _start: float, _end: float, _enemies: Array[Dictionary]) -> void:
+	pass
+
+
 ## An electric fence's energy field, the size of its hitbox and centred on the hazard.
 ## ground_y is the floor height in hazard-local space; gapped fences are open underneath.
 func fence(_hazard: Hazard, _size: Vector3, _ground_y: float, _gapped: bool) -> void:

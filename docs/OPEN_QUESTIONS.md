@@ -1568,6 +1568,100 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     | golden/3 | 18 → 25.0 | 37.9 → 40.7 (+7%) | 7.3 / 8.9 → 4.1 / 5.1 | 1.63 → 1.27 | 774 → 771 (0%) |
     -->
 
+**The Marketplace citizens** (from D3; regenerate the sheets with `tools/godot.sh citizens`; review with `tools/showcase/skin_review.tscn -- --skin=marketplace`)
+258. **How a citizen's window should read apart from a window cyborg's** (GDD §5, §9.2;
+    `OPEN_QUESTIONS.md` §D item 46 already raises this). The placeholder: citizens never glow and
+    their windows stay as bright and lit as any other shop's (`MarketplaceSkin`'s own window look,
+    unchanged); a window cyborg always darkens its own window on top, so the two never show at once.
+    For *position*, `MarketplaceSkin.note_wall_enemies()` (a new, generic `ZoneSkin` hook) tells the
+    skin which window cyborgs the level is about to place, and `MarketCitizens` keeps a
+    `CYBORG_MARGIN` (2.2 m) clear of each one's track position on its side. 2.2 m is a guess, wider
+    than a window cyborg's own drawn window (`WindowCyborgTuning.window_length`, 1.5 m by default) but
+    not measured against real levels. Alternative: let window cyborgs themselves prefer the skin's
+    own shop windows (closer coordination, more shared code, touches a shared enemy every zone uses).
+259. **What counts as "low-end"** (task plan: "nothing decides low-end yet"). The placeholder:
+    `DeviceProfile.is_low_end()` is a mobile device still rendering with the Compatibility renderer.
+    `Settings.citizens_enabled` (a new setting, default on, no UI toggle built yet) is off whenever
+    that's true or the player turns the setting off directly. Alternative: a frame-time budget probed
+    at runtime, or a tier list by `OS.get_video_adapter_name()`.
+260. **How many windows should host a citizen** (not in the GDD at all). Placeholder:
+    `MarketCitizens.CITIZEN_SHARE` = 0.16 of eligible windows, picked to keep the chunk's draw calls
+    and build time inside `SkinSuite`'s existing budgets (see `tests/suites/test_marketplace_skin.gd`
+    for the measured numbers with citizens on and off). The owner can judge this by playing, so it's a
+    tunable, not really an open question, but the share needed real measurement to pick.
+
+**The Barnacle Turret** (from C1; numbers in `data/enemies/barnacle_turret.tres`; review with `tools/showcase/barnacle_turret_showcase.tscn` or play `--level=marketplace/1`)
+261. **How does a stomp reach it?** GDD §9.8 lists "a stomp" among its kills, but it hangs from the ceiling,
+    out of a floor runner's reach (it must be: the floor route under its ceiling stays as it was).
+    - **Placeholder:** a rider on its ceiling jumps and drops back onto its crown, the top of the dome as
+    the rider sees it (`Player._is_stomping` on the ceiling, `Hazard.upside_down`). It bounces the
+    rider like any stomp. Only a turret's crown can be stomped from a ceiling.
+    - **Alternative:** no stomp for the turret (claws, the dash and weapons only).
+262. **When does it pop out?** GDD §9.8: it "pops out of the ceiling's underside".
+    - **Placeholder:** 3.5 s before the player reaches it (`emerge_seconds`), so a floor runner sees it
+    before taking the pad, and the choice to ride is an informed one. Until then it's a closed hatch
+    on the underside, harmless and untargeted.
+    - **Alternative:** it pops out only once the player rides its ceiling, as a surprise.
+263. **May it hang over the pad's lane?** GDD §9.8: "mounted only over lanes the ceiling covers".
+    - **Placeholder:** never over a pad's lane. A rider who stays in the lane they landed in never meets a
+    turret's body, only its bolts, which keeps the ceiling the easier route (GDD §3), and the ceiling's
+    line of credits (along that lane) never leads into one.
+    - **Alternative:** any lane the ceiling covers, so a rider sometimes has to switch lanes after landing.
+264. **Marketplace 1's introduction needs a ceiling.** The level's own ceilings come late (none within
+    about 20 s of the turret's start at 10% on its seeds), so placed on them alone the turret would show
+    up long after its hint.
+    - **Placeholder:** when no ceiling it fits on lies within 8 s of the start (`intro_seconds`), the
+    rules add a plain full-width ceiling for it, only where one fits without clearing anything and
+    before the level's first drone; the rest of the level is unchanged.
+    - **Alternative:** move Marketplace 1's start for the turret to where its first ceiling is, or let the
+    introduction wait for the level's first ceiling.
+
+**The Sleep Taker: the nightmare and its attacks** (from E5c-a; numbers in `data/bosses/dead_zone_boss_tuning.tres`; play `--boss=dead_zone_boss`, review with `tools/showcase/sleep_taker_showcase.tscn`)
+265. **The refuge from the giant slash** (GDD §10: "get out of those lanes, or up onto the ceiling"; at
+    3 lanes a three-lane slash covers the whole street).
+    **Placeholder:** every slash comes at a refuge: every 240 m (`refuge_spacing`, about 13 s) a charred
+    bridge crosses the street (the Dead Zone's ceiling look) with a pad in the middle lane (both middle
+    lanes at 6), at most one lane switch away at 3 lanes and two at 5 and 6; the slash's warning
+    (1.9 s) starts 1.1 s before the runner reaches the pads and it strikes 0.8 s after, while a runner who
+    took a pad rides the ceiling. At 5 and 6 lanes, leaving its three lanes dodges it as well, and a wall
+    is always safe from it. The street is kept clear of holes and fences from the warning to the strike.
+    **Alternatives:** a pad in every lane (`refuge_pads_every_lane`: a runner can't miss one, so the
+    slash never threatens anyone who doesn't jump the pad); or, at 5 and 6 lanes, more slashes between
+    the bridges, dodged only by leaving the lanes.
+266. **Its look and size** (GDD §10: one colossal nightmare, black with purple highlights, dozens of
+    circular maws and long clawed fingers).
+    **Placeholder:** a hunched mass of fused Bad Dream heads over a chest and waist, trailing vapour to
+    the street, 28 maws all facing the runner, two long arms hanging wide of the middle lanes and four
+    tendrils of clawed fingers; about 12 m tall over 3 lanes, 18 m over 5 and 22 m over 6, filling the
+    street 26 m ahead. Its great maw (the slash's warning) gapes in its belly, about 5 m up, so it shows
+    under a refuge's bridge; the bridges cut through its upper body like a ghost's. Its throat and claws
+    heat to enemy-attack red as it shrieks and slashes. **Alternative:** the great maw in its head (hidden
+    by the bridge during a slash, leaving the red lanes and its rising arms as the warning's look).
+267. **How dark** (GDD §10: darker than normal, never pitch black; lights out darker still).
+    **Placeholder:** the arena at `darkness` 0.4 (the scenery at 72% of the Dead Zone's light); lights
+    out, after a 2 s inhale, brings the arena's light down to 45% for 8 s, the scenery to 32% (its floor
+    is 30%), then it breathes out and the light comes back over 1.6 s. Measured on screen at 5 lanes
+    (`--scenario=measure`, grey value 0-255, the arena's light → the darkest point): the street 80 → 50,
+    the walls 34 → 25 on Forward+, the same on the Compatibility renderer; the slash's red lanes, the
+    hand's purple mist, the pink fence and generator, the cyan pad and its maws keep their colours and
+    stand out from the street as much or more (their colour distance from it: red lanes 101 → 96, fence
+    148 → 224, pad 194 → 233 on Forward+; red lanes 64 → 41 on Compatibility, where their bright edges
+    carry them). Dark enough, or darker (it would need a lower floor than The Hush's 30%)?
+268. **The hands** (GDD §10: purple mist pools in the lane, with whispering; switch lanes).
+    **Placeholder:** one hand at a time, in the runner's lane: the mist pools 1.2 s before the hand bursts
+    up, 0.45 s before the runner would reach it, about one every 3 s between the refuges; the hand reaches
+    above a jump, so only a lane switch (or a wall or the ceiling) dodges it, and one only comes while the
+    next lane is clear. The mist is the nightmare's own purple; only the hand's claws heat red as it
+    rises. **Alternative:** a red line under the mist, like the other bosses' floor warnings.
+269. **Its rhythm, and lights out with the other attacks** (GDD §10: hands and slashes keep coming in the
+    dark). **Placeholder:** each phase's list (`attack_patterns`; the first: hands, hands, lights out,
+    hands, hands, hands), one attack at a time, 1.3 s apart (`attack_gap`), never one that would still be
+    on when the next refuge's slash is due; the dark lasts while the next attacks come. Measured on its
+    arena at 5 lanes (`test_sleep_taker_attacks`): 61 s of pattern bring 4 slashes, 9 hands and 2 lights
+    outs (a slash about every 15 s, a hand every 7 s, lights out every 30 s); fewer hands than the list
+    asks for, since a hand only comes where its lane and the next are clear of the arena's holes and
+    fences. Right amount? (E5c-b makes the later phases hungrier: faster hands, more lights out.)
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).

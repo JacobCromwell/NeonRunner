@@ -15,6 +15,8 @@ extends Node3D
 ## - lane_warning(lane, from, to) and circle_warning(at, lane, radius): the red floor warnings of an
 ##   attack (a lane about to be struck, a bomb's target circle), pulsing, or glowing steadily with
 ##   Reduced flashing (Settings); warned() says where they are (pickups keep off them);
+## - floor_warning(node, lane, from, to): a boss's own floor warning, drawn its own way (Sleep Taker's
+##   purple mist), counted by warned() like the red ones;
 ## - keep(node, until): anything else, freed once the player is past `until`.
 ## The node sits at the world origin whatever its parent does (top_level).
 
@@ -139,10 +141,18 @@ func lane_warning(lane: int, from: float, to: float) -> MeshInstance3D:
 	mesh.transform = base
 	add_child(mesh)
 	_pulsing.append({"node": mesh, "base": base, "t": 0.0})
-	_warned.append({"node": mesh, "from": minf(from, to), "to": maxf(from, to),
-		"x0": world.geo.lane_x(lane) - world.geo.lane_width * 0.5, "x1": world.geo.lane_x(lane) + world.geo.lane_width * 0.5})
-	keep(mesh, maxf(from, to))
+	floor_warning(mesh, lane, from, to)
 	return mesh
+
+
+## Marks `node`, a boss's own floor warning drawn its own way (Sleep Taker's mist pooling in a lane),
+## as a floor warning over `lane` between track distances `from` and `to`, like lane_warning: warned()
+## counts it while it's shown (pickups keep off it), and it's freed once the player is past `to`.
+func floor_warning(node: Node3D, lane: int, from: float, to: float) -> Node3D:
+	var half: float = world.geo.lane_width * 0.5
+	_warned.append({"node": node, "from": minf(from, to), "to": maxf(from, to),
+		"x0": world.geo.lane_x(lane) - half, "x1": world.geo.lane_x(lane) + half})
+	return keep(node, maxf(from, to))
 
 
 ## A red target circle on the floor at track distance `at` over `lane` (x offset `x` from the lane's
