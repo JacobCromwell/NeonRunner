@@ -302,7 +302,7 @@ func _torn() -> PackedFloat32Array:
 ## The dreams released: soft, airy voices sighing upward with a faint shimmer, fading into silence.
 func _wisps() -> PackedFloat32Array:
 	var rng := _rng(511)
-	var d: float = 3.6
+	var d: float = 2.4
 	var b := DSP.buffer(d)
 	for k: int in 7:
 		var p0: float = 261.63 * pow(2.0, float([0, 3, 7, 10, 12, 15, 19][k]) / 12.0)

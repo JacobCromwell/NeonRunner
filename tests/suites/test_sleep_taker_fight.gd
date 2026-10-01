@@ -285,6 +285,27 @@ func _test_missed_generator() -> void:
 		gaps_ok = gaps_ok and float(gens[i]["t"]) - float(missed[i - 1]["t"]) >= t.generator_again - 0.01
 	check(same and gaps_ok, "each comes generator_again after the last miss, and plays like the first: nothing escalates")
 	await sim.free_world(world)
+	# On its real arena: the first generator let go by, then a win; what the miss cost, against the par
+	# times.
+	pair = _fight(def, 5)
+	world = pair[0]
+	boss = pair[1]
+	bot = SleepTakerBot.new(boss, &"pad")
+	bot.reaction = REACTION
+	bot.skips = 1
+	await _run(world, 200.0, func() -> bool: return boss.is_defeated(), func() -> void: bot.step())
+	var fight: float = boss.fight_time()
+	check(boss.is_defeated() and world.player.alive and _events(boss, &"lure_missed").size() == 1,
+		"on its arena, a runner who lets the first generator go by still wins (%.1f s)" % fight)
+	check(def.stars_for(true, fight) == 2 and (_clean <= 0.0 or def.stars_for(true, _clean) == 3),
+		"three stars without a miss (%.1f s), two with one (%.1f s)" % [_clean, fight])
+	print("  Sleep Taker: one missed generator costs %.1f s (%.1f s against %.1f s)" % [fight - _clean, fight, _clean])
+	var line: PackedStringArray = []
+	for e: Dictionary in boss.events:
+		if e["event"] in [&"phase", &"generator", &"lure", &"lure_missed", &"emp_hit", &"defeated"]:
+			line.append("%s %.1f" % [e["event"], float(e["t"])])
+	print("    ", ", ".join(line))
+	await sim.free_world(world)
 
 
 # --- Out of reach ----------------------------------------------------------------------------------

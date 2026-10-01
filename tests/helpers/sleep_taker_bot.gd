@@ -34,9 +34,11 @@ var reaction: float = 0.3
 ## The lane it keeps to while nothing threatens it (-1: wherever it is).
 var home_lane: int = -1
 var reads_track: bool = true
-## Goes for each generator (stomps it, or dashes into it with `dashes`), or keeps out of its lane.
+## Goes for each generator (stomps it, or dashes into it with `dashes`), or keeps out of its lane; it
+## lets the first `skips` generators go by either way.
 var smashes: bool = true
 var dashes: bool = false
+var skips: int = 0
 ## What it did, for tests: {t (fight time), action, why}.
 var log: Array[Dictionary] = []
 
@@ -98,7 +100,7 @@ func _read_generator() -> int:
 	if lure.count != _gen_seen:
 		_gen_seen = lure.count
 		log.append({"t": boss.fight_time(), "action": &"sees", "why": "generator in lane %d at %.0f m" % [lane, at]})
-	if smashes:
+	if _goes_for(lure):
 		return lane if _gen_jumped != lure.count else -1
 	var d: float = boss.world.player.distance
 	return _free_lane([lane], lane, d, at + 10.0) if at - d < 40.0 * boss.run_pace() else -1
@@ -108,7 +110,7 @@ func _read_generator() -> int:
 func _smash() -> void:
 	var lure: SleepTakerLure = boss.lure
 	var player: Player = boss.world.player
-	if not smashes or lure == null or lure.generator == null or not is_instance_valid(lure.generator) \
+	if lure == null or not _goes_for(lure) or lure.generator == null or not is_instance_valid(lure.generator) \
 			or not lure.generator.alive or _gen_jumped == lure.count:
 		return
 	if player.surface != Player.Surface.FLOOR or player.lane != int(lure.site["lane"]):
@@ -127,6 +129,11 @@ func _smash() -> void:
 			# Too late to come down on it: out of its lane instead.
 			var lane: int = int(lure.site["lane"])
 			_go(_free_lane([lane], lane, player.distance, float(lure.site["at"]) + 10.0), "too late for the generator")
+
+
+## True if it goes for the lure's generator now (smashes on, and past the ones it lets go by).
+func _goes_for(lure: SleepTakerLure) -> bool:
+	return smashes and lure.count > skips
 
 
 ## How far before a generator to jump so the runner comes down on its top: the time up to the jump's

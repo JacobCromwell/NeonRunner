@@ -31,6 +31,8 @@ const ARC_COUNT: int = 3
 const ARC_SEGMENTS: int = 12
 ## The arcs' jags change this often (none with Reduced flashing: they hold their shape).
 const ARC_FLICKER: float = 0.07
+## Seconds kept clear between a lure's stretch and a refuge's slash, either way round.
+const LURE_MARGIN: float = 0.5
 ## Where the arcs reach into the nightmare (model space: its belly and waist, below its great maw).
 const ARC_TARGETS: Array[Vector3] = [Vector3(-1.6, 4.4, 1.8), Vector3(0.0, 3.4, 2.0), Vector3(1.6, 4.4, 1.8)]
 const PINK := Color(1.0, 0.3, 0.75)
@@ -185,7 +187,7 @@ func place_at(at: float, lane: int) -> bool:
 ## stretch past it. Its lane (the runner's, else the nearest) has its floor clear of holes and fences
 ## generator_clear_before it to generator_clear_after past it, no pad or ramp there and no pickup on
 ## it; the lure's stretch is clear of ceilings (the runner on the street the whole way) and of every
-## refuge's slash, with an attack gap's room on either side.
+## refuge's slash, with LURE_MARGIN's room on either side.
 func find_spot() -> Dictionary:
 	var t: SleepTakerTuning = boss.tuning
 	var k: float = boss.run_pace()
@@ -211,18 +213,18 @@ func find_spot() -> Dictionary:
 	return {}
 
 
-## The lure's stretch around a generator at `at`: no ceiling, and no refuge's slash (from an attack gap
-## before its warning to an attack gap after its claws pull back).
+## The lure's stretch around a generator at `at`: no ceiling, and no refuge's slash (from LURE_MARGIN
+## before its warning to LURE_MARGIN after its claws pull back).
 func _stretch_fair(at: float, v: float, k: float) -> bool:
 	var t: SleepTakerTuning = boss.tuning
-	var from: float = lure_at(at, v) - v * t.attack_gap
-	var to: float = at + t.lure_release * k + v * (t.lure_back_seconds + t.attack_gap)
+	var from: float = lure_at(at, v) - v * LURE_MARGIN
+	var to: float = at + t.lure_release * k + v * (t.lure_back_seconds + LURE_MARGIN)
 	if boss.ceiling_between(from, to):
 		return false
 	for r: Dictionary in boss.refuges_between(from - 200.0 * k, to + 200.0 * k):
 		var warn: float = boss.refuge_warn_at(float(r["pad"]))
-		var r_from: float = warn - v * t.attack_gap
-		var r_to: float = float(r["pad"]) + v * (t.strike_after_pad + t.slash_active + t.slash_recover + t.attack_gap)
+		var r_from: float = warn - v * LURE_MARGIN
+		var r_to: float = float(r["pad"]) + v * (t.strike_after_pad + t.slash_active + t.slash_recover + LURE_MARGIN)
 		if r_from <= to and r_to >= from:
 			return false
 	return true

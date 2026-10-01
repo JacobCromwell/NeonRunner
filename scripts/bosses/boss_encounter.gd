@@ -40,12 +40,13 @@ extends Node3D
 ## (entrance and transitions), _on_pattern_started(i) and _pattern_tick(delta) (the pattern),
 ## _on_weak_point_hit(part, hazard), _on_part_defeated(part, cause), _on_part_emp(part, center, radius),
 ## _on_phase_ended(i), _on_defeated(), _defeated_tick(delta), victory_over() (when a defeat that plays
-## out on the track is over) and _on_armor_pickup_due(reason) (where the armor rule's pickup goes).
+## out on the track is over), victory_riff() (false for a defeat that ends in silence) and
+## _on_armor_pickup_due(reason) (where the armor rule's pickup goes).
 ## Helpers: add_part(), spawn_enemy() (normal enemies: a cyborg drop, a
 ## Buzz Overdrive onto the roof), offer_pickup() (an armor, shield or grapple pickup on the floor),
 ## damage() (a boss's own causes: a cluster shocked by a fence, an EMP), hit_damage(),
-## set_light_level(), arena queries (floor_clear, live_fence_between, hole_between), pace(), phase(),
-## is_final_phase(), player_distance(), log_event().
+## set_light_level() and set_scenery_light(), arena queries (floor_clear, live_fence_between,
+## hole_between), pace(), phase(), is_final_phase(), player_distance(), log_event().
 
 ## A phase begins: its intro starts (the entrance for the first phase, the transition for later ones).
 signal phase_started(index: int)

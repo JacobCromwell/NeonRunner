@@ -30,11 +30,14 @@ extends Node3D
 ##               on screen (the mean of its brightest pixels, 0-255) in both lights
 ## Options: --lanes=N (3, 5 or 6; 5 by default), --phase=N (start at phase N, as a checkpoint would),
 ## --pose=..., --escape=pad|lanes|none, --reduced-flashing, --events (prints each of the boss's events
-## with its frame, for picking frames).
+## with its frame, for picking frames), --dark (lure: lights out as each generator comes into sight).
 ## Frames worth a look (at --fixed-fps 10): entrance 0-45; slash, the warning from about frame 80 and
 ## the strike about 100; hands, a mist about 63 and its hand about 75, then every 3 s or so; lights_out,
 ## the inhale about 60-80, the dark 80-168 (hands rising in it about 113 and 143), the light back by
-## about 185; measure, the arena's light about frame 55 and the darkest point about frame 85.
+## about 185; lure, the generator in sight about frame 50, the lunge about 64, the arcs from about 79, the
+## stomp and the chunk torn about 94, the recoil to about 119 (with --phase=2: the stomp about 74, the
+## wisps 76-120, the dawn 92-124); measure, the arena's light about frame 55 and the darkest point about
+## frame 85.
 
 const BOSS_PATH: String = "res://data/bosses/dead_zone_boss.tres"
 
@@ -51,6 +54,8 @@ var _probes: Dictionary = {}
 var _frame: int = 0
 ## --events: print each of the boss's events with the frame it came on (for picking review frames).
 var _print_events: bool = false
+## --dark (lure): lights out as each generator comes into sight, so its lure happens in the dark.
+var _dark_lure: bool = false
 var _events_seen: int = 0
 
 
@@ -75,6 +80,8 @@ func _ready() -> void:
 			Settings.flashing_reduced = true
 		elif arg == "--events":
 			_print_events = true
+		elif arg == "--dark":
+			_dark_lure = true
 	var slot: BossDef = load(BOSS_PATH) as BossDef
 	var def: BossDef = slot.duplicate() as BossDef
 	var t: SleepTakerTuning = (def.tuning as SleepTakerTuning).duplicate() as SleepTakerTuning
@@ -166,6 +173,8 @@ func _physics_process(delta: float) -> void:
 				bot.step()
 	if scenario == "measure":
 		_measure_tick()
+	if _dark_lure and boss.lure.stage == SleepTakerLure.Stage.WAITING and boss.dark.idle():
+		boss.dark.start()
 
 
 func _process(_delta: float) -> void:

@@ -2,14 +2,16 @@ class_name SleepTaker
 extends BossEncounter
 ## The Sleep Taker, the Dead Zone's boss (GDD §10): in the Dead Zone, a dead cyborg's Bad Dream doesn't
 ## dissolve; over the years they drifted together through the ruins and fused into one colossal
-## nightmare haunting the silent city (SleepTakerBody, SleepTakerModel). Task E5c, in two steps: E5c-a
-## (this) builds the nightmare, its arena, its entrance and its three attacks, with weapons having no
-## effect; E5c-b brings hurting it (the fence generators along the route, luring it close, the EMP
-## tearing a chunk away: _on_part_emp), the three phases, the defeat and its campaign slot. Until then
-## the slot plays it only as a preview (BossDef.preview_scene; debug builds: --boss=dead_zone_boss).
+## nightmare haunting the silent city (SleepTakerBody, SleepTakerModel). Task E5c: E5c-a built the
+## nightmare, its arena, its entrance and its three attacks, with weapons having no effect; E5c-b hurting
+## it (the generators, the lure, the EMP tearing a chunk away), the three phases, the defeat, and its place
+## in the campaign (the Dead Zone's boss step; debug builds also: --boss=dead_zone_boss).
 ##
 ## Weapons have no effect (GDD §10: immune to weapons, like every Bad Dream): its body is immune_to_weapons
 ## (no targeting, no damage, direct or splash: R2's rule for hosts) and its BossDef's weapon_share_cap is 0.
+## Only an EMP hurts it: GDD §10, "glowing fence generators stand along the route. The player lures it
+## close (it lunges toward them), then destroys the generator with a stomp or the dash; the EMP rips a
+## chunk of the nightmare away" (SleepTakerLure; weapons never set a generator off, GDD §9.1).
 ##
 ## The arena (BossDef.arena, data/bosses/dead_zone_boss.tres): the Dead Zone's rubble street with holes
 ## and fences, in the Dead Zone's look with nothing hung over the street where it looms
@@ -20,10 +22,12 @@ extends BossEncounter
 ## every lane's: SleepTakerTuning.refuge_pads_every_lane), the track kept clear of holes and fences
 ## where the slash's warning and escape happen and where its riders land.
 ##
-## Each phase:
+## Each phase (GDD §10: three phases, three EMP hits, hungrier each time):
 ## 1. Its intro. The first phase's is its entrance: it rises out of the street far ahead, materializing
 ##    with a swelling chorus of moans (sleep_taker_rise), and drifts in to loom over the street ahead of
-##    the runner. Later phases (E5c-b: after an EMP tore a chunk away) re-form where it hovers.
+##    the runner. Later ones follow an EMP that tore a chunk away (SleepTakerBody.tear: its left cluster
+##    of heads, then its right): it recoils from where it was lured in, howling, and re-forms where it
+##    hovers.
 ## 2. Its pattern: it hovers hover_ahead in front of the runner, keeping pace, and attacks. The giant
 ##    slash (SleepTakerSlash) comes at every refuge, timed so its claws strike while a runner who took a
 ##    pad rides the ceiling: GDD §10, it can't reach the ceiling, so the pads are the refuge from the big
@@ -31,14 +35,21 @@ extends BossEncounter
 ##    it too). Between refuges the phase's attack list (SleepTakerTuning.attack_patterns) runs in order,
 ##    the first attack that can start fairly going next: grasping hands (SleepTakerHands) and lights out
 ##    (SleepTakerLightsOut), one at a time, attack_gap apart, never one that would still be on when the
-##    next refuge's slash is due. Lights out's darkness lasts while the next attacks come.
+##    next refuge's slash or the next lure is due. Lights out's darkness lasts while the next attacks
+##    come. generator_delay into the pattern a generator comes into sight (_update_generator,
+##    SleepTakerLure.place), and as the runner nears it the nightmare lunges in after them (the lure,
+##    attacking nothing); smashed while it's in reach, the generator's EMP ends the phase
+##    (_on_part_emp); missed, another follows generator_again later.
+## 3. The last EMP beats it (SleepTakerDefeat): it bursts into hundreds of wisps, the music fades to
+##    silence (no victory riff: victory_riff), and the first grey dawn breaks before the results.
 ## Every attack has its visual and audio warning (sound() plays and logs each), none overlaps another's,
 ## and nothing depends on how long the fight has lasted (GDD §10: no escalation): the refuges are the
-## track's and the lists the phase's, so every attempt plays the same way for the same runner. The phase's
-## pace speeds up the hands and the gaps (GDD §10: hungrier each phase: faster hands, more lights out in
-## the later lists); the slash and lights out keep their timings (the slash's warning is what gets a
-## runner to a pad). Numbers: SleepTakerTuning (data/bosses/dead_zone_boss_tuning.tres), all DESIGN-TBD
-## (docs/questions/e5c.md).
+## track's, the lists and generators the phase's, so every attempt plays the same way for the same
+## runner. The phase's pace speeds up the hands and the gaps (GDD §10: hungrier each phase: faster hands,
+## more lights out in the later lists); the slash and lights out keep their timings (the slash's warning
+## is what gets a runner to a pad). Distances that stand for a time follow the run's pace (run_pace()),
+## so the fight keeps its seconds at the Dead Zone's 24.2 m/s. Numbers: SleepTakerTuning
+## (data/bosses/dead_zone_boss_tuning.tres), all DESIGN-TBD (docs/questions/e5c.md).
 
 enum Step { ENTER, HOVER, REFORM }
 
