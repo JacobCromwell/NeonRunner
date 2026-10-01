@@ -10,8 +10,9 @@ extends TestSuite
 ##   on many seeds (the campaign suite does the campaign's levels at their zones' speeds); floor routes
 ##   under ceilings run on real physics at 25 m/s.
 ## - The world-frame enemies keep every warning and dodge window in seconds at 25 m/s: the Octodog's
-##   wind-up and lunge, the Resonator's warning and wave, the cyborg's charge-up and bolts (a burst still
-##   hits a player who stays and misses one who switches lanes), the screech's shake.
+##   wind-up and lunge, the Resonator's warning and wave (and it stays within laser tier 1's reach), the
+##   cyborg's charge-up and bolts (a burst still hits a player who stays and misses one who switches
+##   lanes), the screech's shake.
 ## - The fill pass (LevelConfig.fill_empty_seconds): off, a level is as it was; on, only plain obstacle
 ##   patterns, only in stretches empty for longer than its threshold, spaced from everything around
 ##   them, never under a ceiling below the level's gauntlets or over one lane, never in a hover truck's
@@ -33,6 +34,7 @@ func run() -> void:
 	await _test_world_speed()
 	await _test_cyborg_at_speed()
 	await _test_screech_at_speed()
+	await _test_resonator_at_speed()
 	await _test_floor_routes_at_speed()
 	await _test_tuning_panel_keeps_speed()
 
@@ -223,8 +225,9 @@ func _test_fill_pass() -> void:
 
 
 ## The world-frame enemies' warnings and dodge windows keep their seconds at the fastest zone's pace
-## (the Golden Zone, 25 m/s): the Octodog's wind-up and lunge, the Resonator's warning and wave. The
-## warnings themselves are seconds and never change.
+## (the Golden Zone, 25 m/s): the Octodog's wind-up and lunge, the Resonator's warning and wave (it
+## hovers as far ahead in every zone, within laser tier 1's reach, and the runner closes in on its
+## waves as fast). The warnings themselves are seconds and never change.
 func _test_enemy_windows() -> void:
 	var ot := EnemyDirector.tuning_for("octodog") as OctodogTuning
 	var rt := EnemyDirector.tuning_for("resonator") as ResonatorTuning
@@ -239,11 +242,14 @@ func _test_enemy_windows() -> void:
 			check(absf(rt.travel_seconds(speed, s, p) - rt.travel_seconds(18.0, s)) < 0.0001
 				and absf(rt.meet_offset(speed, s, p) / speed - rt.meet_offset(18.0, s) / 18.0) < 0.0001,
 				"a Resonator's wave takes as long to reach the player at %.1f m/s" % speed)
-			check(rt.wave_speed_at(s, p) > rt.wave_speed_at(s), "its waves roll faster at %.1f m/s" % speed)
+			check(absf(speed + rt.wave_speed_at(s, p) - (18.0 + rt.wave_speed_at(s))) < 0.0001 and rt.wave_speed_at(s, p) > 0.0,
+				"the runner closes in on its waves as fast at %.1f m/s, and they still roll toward them (%.1f m/s)"
+				% [speed, rt.wave_speed_at(s, p)])
 	var powerups := load("res://data/tuning/powerups.tres") as PowerupTuning
-	check(rt.hover_ahead_at(25.0 / MovementTuning.REFERENCE_SPEED) < powerups.weapon_range - 5.0,
-		"at the Golden Zone's pace the Resonator still hovers within the weapon's reach (%.0f of %.0f m)"
-		% [rt.hover_ahead_at(25.0 / MovementTuning.REFERENCE_SPEED), powerups.weapon_range])
+	var tier1_range: float = PowerupTuning.at_tier(powerups.weapon_range, 1)
+	check(rt.hover_ahead < tier1_range - 5.0,
+		"in every zone the Resonator hovers within laser tier 1's reach, the shortest (%.0f of %.0f m)"
+		% [rt.hover_ahead, tier1_range])
 
 
 ## RunWorld runs a level at its own speed whatever tuning it's handed, as the generator built it.
@@ -331,6 +337,57 @@ func _test_screech_at_speed() -> void:
 		check((150.0 - shook_at) / 25.0 >= st.min_warning_seconds - 0.02,
 			"at least %.2f s before the player reaches it (%.2f s)" % [st.min_warning_seconds, (150.0 - shook_at) / 25.0])
 	await sim.free_world(w)
+
+
+## GDD §9.10 at the Golden Zone's speed, on real physics: the Resonator paces the runner hover_ahead
+## ahead, where laser tier 1's auto-fire targets it, its warning lasts as long, and its wave takes as long
+## from leaving it to passing the runner as at 18 m/s.
+func _test_resonator_at_speed() -> void:
+	var rt := EnemyDirector.tuning_for("resonator") as ResonatorTuning
+	var pt := load("res://data/tuning/powerups.tres") as PowerupTuning
+	var dt: float = 1.0 / Engine.physics_ticks_per_second
+	var flights: Array[float] = []
+	for speed: float in [MovementTuning.REFERENCE_SPEED, 25.0]:
+		var tag: String = "at %.0f m/s" % speed
+		var fast: MovementTuning = _fast(speed)
+		var sim := RunSim.new(tree, fast)
+		var w: RunWorld = sim.build_world(RunSim.layout(3, 900.0), null, fast)
+		w.player.god_mode = true
+		var r := w.director.spawn({"type": "resonator", "at": 80.0, "lane": 1, "side": 0, "seed": 5,
+			"params": {"pulses": 1}}) as Resonator
+		await tree.physics_frame
+		w.player.running = true
+		var id: int = r.get_instance_id()
+		var ahead_ok: bool = true
+		var targeted: bool = false
+		var paced: int = 0
+		for i: int in 12 * Engine.physics_ticks_per_second:
+			await tree.physics_frame
+			var o: Object = instance_from_id(id)
+			var res: Resonator = o as Resonator if is_instance_valid(o) else null
+			if res == null or res.state == Resonator.State.LEAVE:
+				break
+			if res.state in [Resonator.State.PACE, Resonator.State.WARNING, Resonator.State.PULSE]:
+				paced += 1
+				ahead_ok = ahead_ok and absf(res.track_distance() - w.player.distance - rt.hover_ahead) < 0.5
+				var range_1: float = PowerupTuning.at_tier(pt.weapon_range, 1)
+				targeted = targeted or (res.targetable()
+					and w.director.targets_ahead(w.player.position + Vector3.UP, range_1).has(res))
+		check(paced > 0 and ahead_ok, "it paces the runner hover_ahead (%.0f m) ahead %s" % [rt.hover_ahead, tag])
+		check(targeted, "laser tier 1's auto-fire can target it " + tag)
+		var o2: Object = instance_from_id(id)
+		var done: Resonator = o2 as Resonator if is_instance_valid(o2) else null
+		var warning: Array = done.events(PackedStringArray(["warning"])) if done != null else []
+		var wave: Array = done.events(PackedStringArray(["wave"])) if done != null else []
+		var passed: Array = done.events(PackedStringArray(["pass"])) if done != null else []
+		check(warning.size() == 1 and wave.size() == 1 and passed.size() == 1, "one warning, one wave, and it passes " + tag)
+		if warning.size() == 1 and wave.size() == 1 and passed.size() == 1:
+			check(absf(float(wave[0][1]) - float(warning[0][1]) - rt.warning_seconds) <= dt * 1.5,
+				"the whole warning (%.2f s) comes before its wave %s" % [rt.warning_seconds, tag])
+			flights.append(float(passed[0][1]) - float(wave[0][1]))
+		await sim.free_world(w)
+	check(flights.size() == 2 and absf(flights[1] - flights[0]) <= dt * 2.5,
+		"its wave takes as long from leaving it to passing the runner at 25 m/s as at 18 (%s s)" % str(flights))
 
 
 ## GDD §3 at the Golden Zone's speed: the floor routes FloorRoute finds under a level's ceilings (with

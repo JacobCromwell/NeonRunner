@@ -5,11 +5,12 @@ extends EnemyTuning
 ## Zone (scaling_from to scaling_to; see zone_t). The helper functions turn them into times and track
 ## distances at a given run speed; the Resonator (resonator.gd) and its generator rules
 ## (resonator_rules.gd) both use them, so a pulse is planned with the numbers it's played with.
-## Its distances along the track and its wave's speed are given at MovementTuning.REFERENCE_SPEED:
-## the helpers take the level's pace (MovementTuning.pace) and stretch them by it, so in a faster zone
-## it hovers further ahead and its waves roll faster, and each wave still takes as long to reach the
-## runner (GDD §3, owner's playtest September 30, 2026: enemies speed up to match, never with shorter
-## warnings).
+## A faster zone (GDD §3, owner's playtest September 30, 2026: enemies speed up to match, never with
+## shorter warnings): the helpers take the level's pace (MovementTuning.pace). It hovers hover_ahead
+## ahead at every pace (within laser tier 1's reach), and the runner closes in on its waves as fast as
+## at MovementTuning.REFERENCE_SPEED (wave_speed_at), so each wave takes as long to reach them in every
+## zone; its easing in (approach_ease) and its generator margins are metres at that speed, stretched by
+## the pace (DESIGN-TBD, docs/questions/g1.md).
 ## Values marked DESIGN-TBD are placeholders, not design decisions (docs/questions/c3.md): GDD §9.10
 ## fixes only the sequence (warning with halos and chime, then a red wave along the floor across every
 ## lane, a few pulses, then it leaves), the dodges (jump, a wall, the ceiling) and that it pulses faster
@@ -26,7 +27,8 @@ extends EnemyTuning
 @export_group("Hovering")
 ## DESIGN-TBD: how far ahead of the player it hovers while it pulses ("far ahead", GDD §9.10). Kept
 ## within the weapon's shortest range (PowerupTuning.weapon_range, tier 1's) so auto-fire can target
-## it at any tier.
+## it at any tier. The same in every zone: at a faster zone's speed its waves keep their timing
+## instead (wave_speed_at).
 @export_range(20.0, 65.0, 1.0, "suffix:m") var hover_ahead: float = 34.0
 ## DESIGN-TBD: the height of its red core above the floor: out of reach of a stomp, under the ceiling.
 @export_range(2.0, 3.6, 0.05, "suffix:m") var hover_height: float = 3.1
@@ -75,7 +77,8 @@ extends EnemyTuning
 
 @export_group("Wave")
 ## DESIGN-TBD: the wave's speed along the floor toward the player (the player closes in at this plus
-## their own speed).
+## their own speed), at MovementTuning.REFERENCE_SPEED; in a faster zone the runner closes in on it
+## just as fast, so it rolls slower along the floor (wave_speed_at).
 @export_range(4.0, 30.0, 0.5, "suffix:m/s") var wave_speed_early: float = 11.0
 @export_range(4.0, 30.0, 0.5, "suffix:m/s") var wave_speed_late: float = 14.0
 ## DESIGN-TBD: the height of the wave's hitbox, a low band along the floor: a jump's feet stay above
@@ -130,19 +133,18 @@ func double_share_at(t: float) -> float:
 	return scaled(double_share_early, double_share_late, zone_t(t))
 
 
+## The wave's speed along the floor in a level at `pace` (MovementTuning.pace): a runner at the level's
+## run speed closes in on it as fast as one at MovementTuning.REFERENCE_SPEED does at pace 1, so from
+## hover_ahead (the same at every pace: within laser tier 1's reach) it takes as long to reach them in
+## every zone. In a faster zone it rolls slower along the floor, toward a faster runner.
 func wave_speed_at(t: float, pace: float = 1.0) -> float:
-	return scaled(wave_speed_early, wave_speed_late, zone_t(t)) * pace
-
-
-## How far ahead of the player it hovers in a level at `pace` (MovementTuning.pace).
-func hover_ahead_at(pace: float = 1.0) -> float:
-	return hover_ahead * pace
+	return scaled(wave_speed_early, wave_speed_late, zone_t(t)) + MovementTuning.REFERENCE_SPEED * (1.0 - pace)
 
 
 ## Seconds a wave takes from leaving (under the Resonator, hover_ahead ahead) to reaching a player
 ## running at `speed`. At the level's own run speed it's the same at any pace.
 func travel_seconds(speed: float, t: float, pace: float = 1.0) -> float:
-	return hover_ahead * pace / maxf(speed + wave_speed_at(t, pace), 1.0)
+	return hover_ahead / maxf(speed + wave_speed_at(t, pace), 1.0)
 
 
 ## Metres the player runs from a pulse's warning start to where its (first) wave meets them.

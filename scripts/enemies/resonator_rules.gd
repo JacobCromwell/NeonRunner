@@ -27,9 +27,9 @@ extends RefCounted
 ##   one is added (guarantee_one) at the first spot after the feature's start where its pulses fit
 ##   (DESIGN-TBD, docs/questions/c3.md).
 ## Each Resonator's params get "pulses", "pulse_at" and "double"; it rechecks every pulse at run time.
-## Its distances (hover_ahead, approach_ease, pulse_slack) and the search's steps and offsets here are
-## metres at MovementTuning.REFERENCE_SPEED, stretched by the level's pace (LevelGenerator.pace), like
-## the Resonator's own at run time.
+## Its distances (approach_ease, pulse_slack) and the search's steps and offsets here are metres at
+## MovementTuning.REFERENCE_SPEED, stretched by the level's pace (LevelGenerator.pace), like the
+## Resonator's own at run time; hover_ahead is the same at every pace (ResonatorTuning.wave_speed_at).
 
 const RUN_AFTER: Array[String] = ["drone", "host", "hover_truck", "octodog", "cyborg", "window_cyborg",
 	"screech", "screech_vents", "generator", "barnacle_turret", "wall_fences", "wall_fences_partial",
@@ -58,7 +58,7 @@ static func apply(gen: LevelGenerator) -> void:
 	var dropped: Array[Dictionary] = []
 	for e: Dictionary in resonators_in(layout):
 		# One at a time: a Resonator that would arrive before the last visit is over waits until then.
-		var lowest: float = maxf(free_from + gen.metres(t.hover_ahead) - gen.metres(t.approach_ease), gen.feature_start(TYPE))
+		var lowest: float = maxf(free_from + t.hover_ahead - gen.metres(t.approach_ease), gen.feature_start(TYPE))
 		var base: float = maxf(float(e["at"]), lowest)
 		var at: float = base
 		var plan: Dictionary = plan_visit(gen, t, rng, at, busy, first)
@@ -121,7 +121,7 @@ static func resonators_in(layout: LevelLayout) -> Array[Dictionary]:
 ## Where the player is when a Resonator placed at `at` has eased into pacing them (Resonator.visit_start),
 ## in a level at `pace` (MovementTuning.pace).
 static func visit_start(t: ResonatorTuning, at: float, pace: float = 1.0) -> float:
-	return at - t.hover_ahead_at(pace) + t.approach_ease * pace
+	return at - t.hover_ahead + t.approach_ease * pace
 
 
 ## The stretches no pulse may overlap (from its warning until its wave has met the player): every
@@ -223,7 +223,7 @@ static func visit_end(gen: LevelGenerator, t: ResonatorTuning, last: float, doub
 static func _add_guaranteed(gen: LevelGenerator, t: ResonatorTuning, busy: Array[Vector2]) -> Dictionary:
 	var layout: LevelLayout = gen.layout
 	var rng: RandomNumberGenerator = gen.rng_for("resonator_guarantee")
-	var at: float = maxf(gen.feature_start(TYPE), gen.config.start_clear_distance) + t.hover_ahead_at(gen.pace)
+	var at: float = maxf(gen.feature_start(TYPE), gen.config.start_clear_distance) + t.hover_ahead
 	while visit_start(t, at, gen.pace) < layout.length - gen.config.end_clear_distance:
 		var plan: Dictionary = plan_visit(gen, t, rng, at, busy, true)
 		if not plan.is_empty():
