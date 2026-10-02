@@ -44,6 +44,10 @@ static func make(p_kind: Kind, p_count: int, seed_value: int, grime: float = 1.0
 	crowd.material_override = crowd.material
 	crowd.multimesh = MultiMesh.new()
 	crowd.multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	# White instance colours, never changed: the Compatibility renderer multiplies a MultiMesh's vertex
+	# colours (the screech's colours and glow mask) by its instance colour even when it has none, which is
+	# then zero (a crowd with custom data only drew colourless there, its glow gone).
+	crowd.multimesh.use_colors = true
 	crowd.multimesh.use_custom_data = true
 	crowd.multimesh.mesh = ScreechModel.crowd_mesh()
 	crowd.resize(p_count, seed_value)
@@ -74,6 +78,7 @@ func resize(p_count: int, seed_value: int) -> void:
 	var hidden := Transform3D(Basis.IDENTITY, Vector3(0.0, -100.0, 0.0))
 	for i: int in count:
 		multimesh.set_instance_transform(i, hidden if kind == Kind.SPILL else Transform3D.IDENTITY)
+		multimesh.set_instance_color(i, Color.WHITE)
 		var rank: float = (float(i) + 0.5) / maxf(count, 1)
 		if kind == Kind.SPILL:
 			# Not out of any lair yet: its burst clock long past.
@@ -120,10 +125,12 @@ func set_life(alive: float, formed: float, death: int, death_seconds: float, spe
 
 
 ## A band: in the gutter at `wall_x` (signed) on `side`, from `ahead` metres ahead of the node to `behind`
-## behind it, `depth` out from the wall, clinging up to `climb`, drifting back at `drift` m/s.
-func set_band(wall_x: float, side: int, ahead: float, behind: float, depth: float, climb: float, drift: float) -> void:
+## behind it, `depth` out from the wall, clinging up to `climb`, drifting back at `drift` m/s, most of it
+## gathered in heaps every `heap` metres.
+func set_band(wall_x: float, side: int, ahead: float, behind: float, depth: float, climb: float, drift: float,
+		heap: float = 7.0) -> void:
 	set_param(&"band", Vector4(wall_x, ahead, behind, drift))
-	set_param(&"band_shape", Vector4(depth, climb, float(side), 0.0))
+	set_param(&"band_shape", Vector4(depth, climb, float(side), heap))
 
 
 ## Places spill instance `i` at a lair (world position `at`, on `side`), coming out from `burst_clock`.

@@ -85,6 +85,8 @@ func _make(kind: Kind) -> MultiMeshInstance3D:
 	mmi.material_override = mat
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
+	# White instance colours (see SwarmCrowd.make: the Compatibility renderer would zero the vertex colours).
+	mm.use_colors = true
 	mm.use_custom_data = true
 	mm.mesh = mesh(kind)
 	mm.instance_count = _per_kind
@@ -94,6 +96,7 @@ func _make(kind: Kind) -> MultiMeshInstance3D:
 	var sent := PackedColorArray()
 	for i: int in _per_kind:
 		mm.set_instance_transform(i, hidden)
+		mm.set_instance_color(i, Color.WHITE)
 		mm.set_instance_custom_data(i, Color(0.0, 0.0, 0.0, float(i) * 0.37))
 		shown.append(-1)
 		left_out.append(0)
