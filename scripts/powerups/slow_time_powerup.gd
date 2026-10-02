@@ -3,7 +3,7 @@ extends PowerupModule
 ## Slow time (GDD §3, §8): PC only (the controller never creates it on mobile), on the `slow_time`
 ## action (E), cooldown-based. It slows the whole world, player included, through
 ## Engine.time_scale for slow_time_duration real seconds, then cools down for slow_time_cooldown.
-## DESIGN-TBD (OPEN_QUESTIONS §4): strength, duration and cooldown are placeholders.
+## Strength, duration and cooldown: FB 25.
 ##
 ## Engine.time_scale is global, so this module must never leave the game slowed:
 ## - the player dies or the run ends (the player stops running): slow time ends at once;

@@ -10,8 +10,8 @@ extends Enemy
 ##   whether a wall runner passes above (a jump or ramp entry) or below (entering early enough to
 ##   have slid down), GDD §3.
 ## - Skins don't know about it, so it draws its own window frame on the facade.
-## - DESIGN-TBD: it holds fire at a player on the ceiling or running along its own wall (there its
-##   body is the hazard); the GDD only says it shoots at the player.
+## - It holds fire at a player on the ceiling or running along its own wall (there its
+##   body is the hazard; FB 70); the GDD only says it shoots at the player.
 ## Once defeated, its body slumps over the sill and stays until the player is far past.
 ##
 ## Spawn params: fires (bool, default true; tests), health (float).

@@ -4,8 +4,8 @@ extends Control
 ## (they light up once passed) and a finish post. Values are fractions of the level, 0–1.
 ##   meter.markers = PackedFloat32Array([0.25, 0.5, 0.8])
 ##   meter.value = player.distance / layout.length
-## DESIGN-TBD: what the markers stand for (hull sections, drone waves, the boss...) and whether the
-## HUD has a progress bar at all are open (OPEN_QUESTIONS §5); this only draws them.
+## The HUD shows a progress bar (FB 58); what the markers stand for (hull sections, drone waves, the
+## boss...) stays undecided. This only draws them.
 
 @export_range(0.0, 1.0, 0.001) var value: float = 0.0:
 	set(v):

@@ -11,7 +11,7 @@ const DEFAULTS: Dictionary = {
 	"volume_sfx": 0.9,
 	"screen_shake": true,
 	"reduced_flashing": false,
-	## DESIGN-TBD: first-encounter hints (the tutorial approach is open, OPEN_QUESTIONS §5).
+	## First-encounter hints can be turned off here (FB 7).
 	"hints": true,
 	## The Marketplace citizens (GDD §5, task D3): scenery only, off on a low-end device regardless
 	## of this (DeviceProfile.is_low_end(), citizens_enabled()).
