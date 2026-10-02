@@ -15,7 +15,9 @@ extends RefCounted
 ##   before it to jump_after past it), so nothing solid may stand in that stretch of its lane;
 ## - GAPPED: a gapped fence, slid under the same way (slide_before, slide_after).
 ## A lane switch takes `switch_m` of track (the real one times a margin), and the runner is in both lanes
-## meanwhile. A waypoint {lane, at} (a button) is reached when the runner is settled in its lane there.
+## meanwhile. A waypoint {lane, at} (a button) is reached when the runner is settled in its lane there;
+## one with a `to` holds the runner in its lane from `at` to `to` (a wall run, from the outer lane: it
+## stays on the wall over the stretch and comes back to that lane).
 ## Distances are discretised every STEP metres; the route is the first found (staying put first, then the
 ## nearer switches), so the same track always gives the same route.
 
@@ -58,9 +60,9 @@ static func obstacle(lane: int, from: float, to: float, kind: Kind = Kind.SOLID)
 
 
 ## A route for a runner in `start_lane` at `d0`, who can first move at `act_at`, to `d_end`, through
-## `obstacles` (obstacle()) and over `waypoints` ({lane, at}, in any order). Returns {ok, moves: [{at,
-## from, to}] (each switch's start), lane_at: Callable(d) -> int (the lane settled in, or heading for, at
-## track distance d), end_lane}; ok false when there is none.
+## `obstacles` (obstacle()) and over `waypoints` ({lane, at}, or {lane, at, to} for a hold; in any
+## order). Returns {ok, moves: [{at, from, to}] (each switch's start), end_lane}; ok false when there is
+## none. lane_at() reads the lane a route has the runner in at a track distance.
 func find(start_lane: int, d0: float, act_at: float, d_end: float, obstacles: Array, waypoints: Array = []) -> Dictionary:
 	var none := {"ok": false, "moves": [], "end_lane": -1}
 	if d_end <= d0:
@@ -105,7 +107,10 @@ func find(start_lane: int, d0: float, act_at: float, d_end: float, obstacles: Ar
 	button_lane.resize(n)
 	button_lane.fill(-1)
 	for w: Dictionary in waypoints:
-		button_lane[clampi(roundi((float(w["at"]) - d0) / STEP), 0, n - 1)] = int(w["lane"])
+		var first: int = clampi(roundi((float(w["at"]) - d0) / STEP), 0, n - 1)
+		var last: int = clampi(roundi((float(w["to"]) - d0) / STEP), first, n - 1) if w.has("to") else first
+		for i: int in range(first, last + 1):
+			button_lane[i] = int(w["lane"])
 	# A switch's whole span is checked at once, by counts from the start: no_switch steps in each lane
 	# (no_switch_before[i * lanes + l]: in steps 0 to i - 1), and buttons (buttons_before[i]).
 	var no_switch_before := PackedInt32Array()

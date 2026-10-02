@@ -4,15 +4,15 @@ extends BossEncounter
 ## market street on treads, lights blazing and jingling. Loud, gaudy and a little ridiculous", secretly the
 ## cult's casino (its emblem is worked into the machine's marquee). Task E5a: E5a-a built the machine, its
 ## arena, the spin with its three attacks and their bigger versions, the 7 buttons on the floor, the jackpot
-## (the credit fountain and the hopper stomped) and weapons chipping it; E5a-b brings phases 2 and 3 (a
-## button on a wall with wall fences, then one on a ceiling guarded by Barnacle Turrets), the defeat, the
-## par times and the campaign's slot. Until then it plays as a preview (BossDef.preview_scene:
-## ./play.sh --boss=marketplace_boss), every phase as phase 1, with a placeholder defeat.
+## (the credit fountain and the hopper stomped) and weapons chipping it; E5a-b phases 2 and 3 (a button on
+## a wall with wall fences in play, then one on a ceiling reached by a pad and guarded by Barnacle
+## Turrets), the defeat, the par times and its slot in the campaign (after Marketplace 2, at its 22.6 m/s).
 ##
 ## The arena (BossDef.arena, data/bosses/marketplace_boss.tres): the Marketplace's stall roofs in its look
 ## with nothing hung low over the street where the machine rolls (data/bosses/marketplace_boss_skin.tres),
 ## kept plain (_plan_lap: no holes, fences, signs, ceilings, pads, ramps or doodads; DESIGN-TBD), so the
-## danger is the machine's own.
+## danger is the machine's own: its attacks, phase 2's wall fences (TheHouseWalls) and phase 3's ceiling
+## with its turrets (TheHouseCeiling).
 ##
 ## Each phase (GDD §10: three phases, one stomp each):
 ## 1. Its intro. The first phase's is its entrance: it rolls in from far ahead, lights blazing and its
@@ -26,12 +26,18 @@ extends BossEncounter
 ##    fence, gold blocks; two or three of a kind a bigger version). The phase's first opening_spins spins
 ##    offer no buttons; every one after does (TheHouseButtons): a 7 button for each reel still spinning,
 ##    lighting up along the route; run over one and its reel stops on 7 and stays locked there
-##    (locks_persist); pass it by and the reel stops on its symbol. Three 7s: JACKPOT (TheHouseJackpot:
+##    (locks_persist); pass it by and the reel stops on its symbol. Phase 2 puts its special reel's button on
+##    a wall, with wall fences along both walls; phase 3 on a floating billboard's underside, reached by an
+##    anti-grav pad, guarded by Barnacle Turrets: the machine squats under the billboard while it's over it
+##    (it's taller than a ceiling). While the runner goes for a wall or ceiling button, its attacks wait
+##    until they're back on the street (attacks_held). Three 7s: JACKPOT (TheHouseJackpot:
 ##    the sirens, the fountain of credits, the hopper bursting open as it sinks; stomp it). A miss, of a
 ##    button or of the hopper, just means more spins (no time limit, no escalation).
 ## 3. A stomp on the hopper is the phase's hit (BossEncounter.stomp_weak_point: hit_damage()); weapons chip
 ##    at it up to BossDef.weapon_share_cap (GDD §10: "weapons chip away at it; stomps do the real damage").
-##    The last stomp beats it (a placeholder defeat until E5a-b: the power dies and it sinks away).
+##    The last stomp beats it: it lurches out from under the runner and rises, its reels spin wildly and
+##    jam, TILT flashes (steady with Reduced flashing), and it collapses into the street in an explosion of
+##    coins while the shops cheer (GDD §10); then the results.
 ## Every attack and every button is fair by TheHouseRoute (route_through): a way exists for a runner who
 ## reads the warnings and moves a reaction time after them, at every lane count, through everything else
 ## still on the track. Nothing depends on how long the fight has lasted; random choices come from `rng`.
@@ -42,10 +48,14 @@ extends BossEncounter
 
 enum Step { ENTER, PACE, JACKPOT, DEFEAT }
 enum Spin { IDLE, LEVER, SPINNING }
+## Its defeat's steps: rising after the last stomp, the wild spin, the jam with TILT, the collapse.
+enum Defeat { RECOVER, WILD, JAM, COLLAPSE, DONE }
 
 const BODY_SCRIPT: Script = preload("res://scripts/bosses/the_house/the_house_body.gd")
-## The placeholder defeat (until E5a-b) plays out this long before the results.
-const DEFEAT_SECONDS: float = 1.8
+## Its reels' speed in the defeat's wild spin, over a normal spin's.
+const WILD_SPIN: float = 2.6
+## Squatting under a billboard, it stays down until its face is this far past the billboard's end.
+const DUCK_CLEAR: float = 2.0
 ## The "market_citizens" group (MarketCitizen.GROUP, task D3).
 const CITIZENS: StringName = &"market_citizens"
 
@@ -54,7 +64,11 @@ var tuning: TheHouseTuning
 var attacks: TheHouseAttacks
 var buttons: TheHouseButtons
 var jackpot: TheHouseJackpot
+var walls: TheHouseWalls
+var ceiling: TheHouseCeiling
 var step: Step = Step.ENTER
+var defeat_step: Defeat = Defeat.RECOVER
+var defeat_time: float = 0.0
 var step_time: float = 0.0
 ## Its face's track distance (where its front stands on the street).
 var front_at: float = 0.0
@@ -78,6 +92,9 @@ var _route: TheHouseRoute
 var _route_speed: float = -1.0
 var _enter_from: float = 0.0
 var _button_plan: Array[Dictionary] = []
+## While the runner goes for a wall button, the street is theirs again past here.
+var _segment_end: float = -INF
+var _shake_t: float = 0.0
 
 
 func _build_boss() -> void:
@@ -98,10 +115,16 @@ func _build_boss() -> void:
 	add_child(jackpot)
 	jackpot.setup(self)
 	jackpot.finished.connect(_on_jackpot_finished)
+	walls = TheHouseWalls.new(self)
+	ceiling = TheHouseCeiling.new()
+	ceiling.name = "Ceiling"
+	add_child(ceiling)
+	ceiling.setup(self)
 	# Everything the fight shows is pooled and made now, not mid-fight (no hitch at a first attack).
 	attacks.prewarm()
 	buttons.prewarm()
 	jackpot.prewarm()
+	ceiling.prewarm()
 	var resume: int = int(context.boss_resume.get("phase", 0))
 	front_at = player_distance() + (stand_distance() if resume > 0 else tuning.enter_ahead)
 	_place()
@@ -186,6 +209,20 @@ func hint(key: String) -> void:
 	hint_due.emit("%s/%s" % [def.id, key])
 
 
+## Where the street is the runner's again after a wall or ceiling button's run (-INF without one).
+func segment_end() -> float:
+	return maxf(_segment_end, ceiling.landing_end())
+
+
+## True while its attacks wait: the runner goes for a wall or ceiling button (from the lever's pull until
+## they're back on the street past its run), or is on a wall or a ceiling.
+func attacks_held() -> bool:
+	var p: Player = world.player
+	if p.surface != Player.Surface.FLOOR:
+		return true
+	return p.distance < segment_end()
+
+
 ## True while one of its attacks warns or strikes: its big attack, for the director.
 func attack_on() -> bool:
 	return attacks != null and attacks.warning_on()
@@ -220,9 +257,23 @@ func route_through(extra: Array[Dictionary], waypoints: Array = [], until: float
 	for o: Dictionary in obs:
 		end = maxf(end, float(o["to"]))
 	for w: Dictionary in waypoints:
-		end = maxf(end, float(w["at"]))
+		end = maxf(end, float(w.get("to", w["at"])))
 	end += tuning.escape_clear_after * run_pace()
 	return route().find(player_lane(), d0, d0 + v * (delay + tuning.reaction), end, obs, waypoints)
+
+
+## A way for a runner in `lane` at track distance `from` (to come: where they'll be when something new
+## shows, a reaction time on), moving from there, through everything of its attacks still ahead, over
+## `waypoints`, to `until` or past the last obstacle by escape_clear_after.
+func route_from(lane: int, from: float, waypoints: Array, until: float = -1.0) -> Dictionary:
+	var obs: Array[Dictionary] = attacks.obstacles(from - 3.0)
+	var end: float = maxf(until, from)
+	for o: Dictionary in obs:
+		end = maxf(end, float(o["to"]))
+	for w: Dictionary in waypoints:
+		end = maxf(end, float(w.get("to", w["at"])))
+	end += tuning.escape_clear_after * run_pace()
+	return route().find(lane, from, from, end, obs, waypoints)
 
 
 # --- Phases --------------------------------------------------------------------------------------
@@ -230,6 +281,9 @@ func route_through(extra: Array[Dictionary], waypoints: Array = [], until: float
 func _on_phase_started(index: int) -> void:
 	attacks.clear()
 	buttons.clear()
+	ceiling.clear()
+	_segment_end = -INF
+	walls.set_active(tuning.wall_fences_in(index))
 	spin = Spin.IDLE
 	spins_this_phase = 0
 	spin_index = 0
@@ -253,6 +307,7 @@ func _on_phase_started(index: int) -> void:
 
 func _intro_tick(delta: float) -> void:
 	step_time += delta
+	walls.tick()
 	match step:
 		Step.ENTER:
 			var k: float = clampf(step_time / maxf(phase().intro_seconds, 0.05), 0.0, 1.0)
@@ -277,8 +332,10 @@ func _on_pattern_started(_index: int) -> void:
 
 func _pattern_tick(delta: float) -> void:
 	step_time += delta
+	walls.tick()
 	attacks.tick(delta)
 	buttons.tick(delta)
+	ceiling.tick(delta)
 	jackpot.tick(delta)
 	if jackpot.busy():
 		_set_step(Step.JACKPOT)
@@ -287,45 +344,136 @@ func _pattern_tick(delta: float) -> void:
 	if step == Step.PACE:
 		front_at = player_distance() + stand_distance()
 		body.track_speed = speed()
+		_duck(delta)
 		_spin_tick(delta)
 	_place()
+
+
+## How far it sags to squat under a ceiling: its top at duck_top.
+func duck_sag() -> float:
+	var s: TheHouseModel.Shape = body.shape()
+	return clampf((s.height - tuning.duck_top) / maxf(s.height - tuning.deck_height, 0.1), 0.0, 1.0)
+
+
+## The machine is taller than a ceiling (GDD §3's ceilings hang 6 m up): it squats on its treads, its top
+## under duck_top, from the lever's pull of a set with a ceiling button until it has rolled past the
+## billboard's end, then rises again.
+func _duck(delta: float) -> void:
+	var under: bool = not ceiling.segment.is_empty() and front_at < float(ceiling.segment["end"]) + DUCK_CLEAR
+	var target: float = duck_sag() if under else 0.0
+	body.sag = move_toward(body.sag, target, delta * duck_sag() / maxf(tuning.duck_seconds / pace(), 0.05))
 
 
 func _on_weak_point_hit(_part: BossPart, _hazard: Hazard) -> void:
 	jackpot.on_stomp()
 
 
-## The last stomp: a placeholder defeat until task E5a-b (GDD §10's: the reels spin wildly and jam, "TILT"
-## flashes, it collapses in an explosion of coins while the shops erupt in cheers). Its attacks stop, its
-## power dies and it sinks away into the street, coins bursting from it.
+## The last stomp (GDD §10: "the reels spin wildly and jam, 'TILT' flashes, and it collapses in an explosion
+## of coins while the shops erupt in cheers"): its attacks, buttons and ceiling stop; it lurches out from
+## under the runner and rises as after any stomp (TheHouseJackpot's own steps), then its reels spin
+## wildly (tilt_spin_seconds) and jam, TILT flashes (tilt_seconds; steady with Reduced flashing), and it
+## collapses into the street (collapse_seconds), coins bursting out of it, keeping ahead of the runner.
 func _on_defeated() -> void:
 	attacks.clear()
 	buttons.clear()
+	ceiling.clear()
+	walls.set_active(false)
+	_segment_end = -INF
 	spin = Spin.IDLE
 	_set_step(Step.DEFEAT)
-	body.power = 0.0
-	body.jackpot = 0.0
-	world.effects.burst(body.hopper_world(), Color(0.86, 0.66, 0.24), 60, 1.6)
+	defeat_step = Defeat.RECOVER
+	defeat_time = 0.0
 	react_citizens(&"cheer")
 	log_event(&"defeat")
+	if not jackpot.busy():
+		_defeat_wild()
 
 
 func _defeated_tick(delta: float) -> void:
 	step_time += delta
-	# It sinks the rest of the way (its deck under a runner still on it until it has gone by).
-	if front_at < player_distance() + 3.0:
-		front_at += (speed() + tuning.lurch_speed) * delta
-	else:
-		body.sag = minf(body.sag + delta / 1.2, 1.25)
-		front_at = maxf(front_at, player_distance() + 3.0)
+	defeat_time += delta
+	jackpot.tick(delta)
+	match defeat_step:
+		Defeat.RECOVER:
+			if not jackpot.busy():
+				_defeat_wild()
+		Defeat.WILD:
+			_pace_defeat()
+			if defeat_time >= tuning.tilt_spin_seconds:
+				_defeat_jam()
+		Defeat.JAM:
+			_pace_defeat()
+			body.tilt = 1.0
+			if defeat_time >= tuning.tilt_seconds:
+				_defeat_collapse()
+		Defeat.COLLAPSE:
+			_pace_defeat()
+			var k: float = clampf(defeat_time / maxf(tuning.collapse_seconds, 0.05), 0.0, 1.0)
+			body.collapse = smoothstep(0.0, 1.0, k)
+			body.sag = lerpf(0.0, 1.3, k * k)
+			body.power = 1.0 - k
+			_shake_t += delta
+			body.shake = 0.18 * (1.0 - k) * sin(_shake_t * 41.0)
+			if k >= 1.0:
+				body.shake = 0.0
+				defeat_step = Defeat.DONE
+				log_event(&"collapsed")
+		Defeat.DONE:
+			_pace_defeat()
 	_place()
 
 
-## Once its placeholder defeat has played out (or at once if the runner is gone).
+## It keeps where it paces, ahead of the runner, through its defeat (never in their way).
+func _pace_defeat() -> void:
+	front_at = player_distance() + stand_distance()
+	body.track_speed = speed()
+
+
+func _defeat_wild() -> void:
+	defeat_step = Defeat.WILD
+	defeat_time = 0.0
+	body.jackpot = 1.0
+	body.lever = 1.0
+	body.reels.unlock()
+	body.reels.wild = WILD_SPIN
+	for i: int in 3:
+		body.reels.spin(i)
+	sound(&"house_spin", body.reels_world())
+	log_event(&"tilt_spin")
+
+
+func _defeat_jam() -> void:
+	defeat_step = Defeat.JAM
+	defeat_time = 0.0
+	body.lever = 0.0
+	for i: int in 3:
+		body.reels.jam(i)
+	body.tilt = 1.0
+	sound(&"house_tilt", body.reels_world())
+	react_citizens(&"cheer")
+	log_event(&"tilt")
+
+
+func _defeat_collapse() -> void:
+	defeat_step = Defeat.COLLAPSE
+	defeat_time = 0.0
+	_shake_t = 0.0
+	body.jackpot = 0.0
+	var top: Vector3 = body.hopper_world()
+	world.effects.burst(top, Color(0.86, 0.66, 0.24), 70, 1.8)
+	world.effects.burst(body.reels_world(), Color(1.0, 0.85, 0.5), 40, 1.4)
+	world.effects.shake(0.5, 0.6)
+	jackpot.burst_coins(tuning.collapse_coins, top, 9.0)
+	sound(&"house_collapse", body.reels_world())
+	react_citizens(&"cheer")
+	log_event(&"collapse")
+
+
+## Once its defeat has played out (or at once if the runner is gone).
 func victory_over() -> bool:
 	if world == null or world.player == null or not world.player.alive:
 		return true
-	return step == Step.DEFEAT and step_time >= DEFEAT_SECONDS
+	return step == Step.DEFEAT and defeat_step == Defeat.DONE
 
 
 # --- The spin ------------------------------------------------------------------------------------
@@ -418,6 +566,14 @@ func _try_pull() -> void:
 	if not _button_plan.is_empty():
 		buttons.start(_button_plan)
 		hint("buttons")
+		for b: Dictionary in _button_plan:
+			match String(b["kind"]):
+				"wall":
+					_segment_end = float(b["at"]) + speed() * tuning.wall_after / pace()
+					hint("wall_button")
+				"ceiling":
+					ceiling.start(b["segment"])
+					hint("ceiling_button")
 
 
 func _stop_reel(i: int, symbol: int, lock: bool) -> void:
