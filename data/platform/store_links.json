@@ -1,5 +1,5 @@
 {
-	"_note": "Point at the stores' front pages until the game has store pages (FB 108). Replace these with the real URLs before release. Portals may restrict outbound links (GDD §2).",
+	"_note": "DESIGN-TBD: point at the stores' front pages until the game has store pages (FB 108; approved as is). Replace these with the real URLs before release. Portals may restrict outbound links (GDD §2).",
 	"steam": "https://store.steampowered.com/",
 	"app_store": "https://www.apple.com/app-store/",
 	"google_play": "https://play.google.com/store/games"
