@@ -37,7 +37,7 @@ extends Enemy
 ##   chance as the runner passes): it asks the director once, as its warning would start, and if another
 ##   type's big attack is on then, it lets the runner pass (no warning, no swing). The generator keeps the
 ##   Octodog's planned charges and floor cuts off its stretch, and every big attack off the level's first
-##   (gilded_sentinel_rules.gd), so that one always swings.
+##   (gilded_sentinel_rules.gd), so that one always swings (DESIGN-TBD, docs/questions/c4.md).
 ## - Cheap: the statue is one mesh of two surfaces (the gold, and the eyes' own glowing material), its
 ##   frames baked once from the kit and shared by every Sentinel; the marks and slashes are a few quads;
 ##   it does constant work a frame (where the runner is against its trigger) and hears a wall jump as an

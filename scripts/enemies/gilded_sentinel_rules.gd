@@ -47,7 +47,8 @@ const RUN_AFTER: Array[String] = ["cyborg", "window_cyborg", "hover_truck", "oct
 ## Enemy types whose big attacks (their keep_out, LevelGenerator.enemy_keep_out) every Sentinel's window
 ## keeps off: the Octodog's planned charges and a floor cut's cause. The introduction keeps off
 ## STRICT_ATTACKS too. (Resonators plan their pulses after the Sentinels, off their floor_span, and wait
-## for them at run time.)
+## for them at run time.) DESIGN-TBD (docs/questions/c4.md): its attack counts as a big attack, and only
+## these keep off it when the level is built (the rest meet it at run time, where it lets the runner pass).
 const BIG_ATTACKS: PackedStringArray = ["octodog", "floor_cutter", "buzz_overdrive"]
 const STRICT_ATTACKS: PackedStringArray = ["drone", "hover_truck"]
 ## Where a Sentinel that doesn't fit at its pattern's spot tries instead, in order: metres at
