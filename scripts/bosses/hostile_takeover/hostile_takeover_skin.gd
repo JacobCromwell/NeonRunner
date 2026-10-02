@@ -12,7 +12,9 @@ extends CorporateSkin
 ##   drives: the carriages behind a stomped coupling tumble away (set_breakaway).
 ## - The walls are the track's sound barriers: flush gunmetal panels between flush posts, faint marks at
 ##   the wall-run heights (wall_height_marks), a pale coping on top with lamps above the calm band, and
-##   nothing glowing, lit or sticking out below band_top (the wall fences, B5, sit there).
+##   nothing glowing, lit or sticking out below band_top (the wall fences, B5, sit there). DESIGN-TBD
+##   (docs/questions/e5b.md): they're the run's walls, so they stay put beside the runner like any level's
+##   (they don't rush past with the scenery), plain enough not to show it.
 ## - The sense of speed (GDD §10: "the scenery streaming past", the City's moving road turned onto the
 ##   scenery): beyond the barriers the city's towers rush back toward the runner at scenery_speed (the
 ##   train's speed over the ground; hostile_takeover_towers.gdshader moves them, so nothing is made while
