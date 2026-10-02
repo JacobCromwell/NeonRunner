@@ -11,12 +11,13 @@ seconds below hold at both. Everything below is `DESIGN-TBD`.
    Tithe Collector skims credits, and partial wall fences run along the track's sound barriers. Each
    carriage coupling glows red and sits in one lane above the gap"; no numbers).
    **Placeholder:** a gap across every lane every 3.2 s (carriages 50 m at 18 m/s, gaps half a jump); the
-   phase opens with 4 dark gaps (about 13 s of guards before the first coupling glows; later phases 1),
-   then every gap's coupling glows, in a lane of its own (never the last one's, at most 2 lanes from it);
-   1 or 2 guards a carriage from the third on (never more than the lanes less one, never near a coupling's
-   run-up or landing), a partial wall fence on 70% of the carriages, a Tithe Collector every fifth
-   carriage. A runner who never misses stomps the first coupling 18.5 s in. **Alternative:** fewer dark
-   gaps, or a coupling lit only on some gaps (one at a time, as The House's buttons).
+   fight opens with its 3 s entrance and then 4 more dark gaps past the one in sight, so the first
+   coupling glows over the sixth gap (a later phase keeps 1 dark), then every gap's coupling glows, in a
+   lane of its own (never the last one's, at most 2 lanes from it); 1 or 2 guards a carriage from the
+   third on (never more than the lanes less one, never near a coupling's run-up or landing), a partial
+   wall fence on 70% of the carriages, a Tithe Collector every fifth carriage. A runner who never misses
+   stomps the first coupling 18.5 s in. **Alternative:** fewer dark gaps, or a coupling lit only on some
+   gaps (one at a time, as The House's buttons).
 2. **What counts as landing on a coupling** (GDD §10: "the player stomps it by landing on it while jumping
    the gap").
    **Placeholder:** its stomp box covers its lane over the whole gap and 1 m (at 18 m/s) past either edge,
