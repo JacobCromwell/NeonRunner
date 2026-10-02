@@ -17,8 +17,9 @@ extends Node3D
 ##   edges and the finish line.
 ## They sit in front of the camera, far too small to see (SCALE), for DRAWN_FRAMES drawn frames, then go;
 ## their materials stay kept until the next level's stage (_kept), so their shaders stay built.
-## Visual only: nothing in it collides, plays or moves the run on. A headless run draws nothing, so
-## LevelRun only adds it when the game renders (needed()).
+## Visual only: nothing in it collides, plays or moves the run on, and it never frees a physics object
+## (the track samples' hazards and areas, _hazards and _areas). A headless run draws nothing, so LevelRun
+## only adds it when the game renders (needed()).
 
 ## Frames the samples stay drawn: the first compiles, the second catches what a renderer defers by one.
 const DRAWN_FRAMES: int = 2
@@ -32,10 +33,19 @@ const AHEAD: float = 2.0
 ## last material holding it), then builds and compiles it again for the next one, so a look first met
 ## after the stage had gone (the finish line, a rare enemy) compiled mid-run after all.
 static var _kept: Array[Material] = []
+## The hazards and trigger areas the track samples are dressed on (_sample_track), made once a process,
+## taken in the same order by every stage, never in the tree, and freed only when the game quits: a freed
+## physics object lets the next one made take its place in the physics server's tables, which can change
+## the order of contacts in a frame (a warm-up that freed its own moved a kill in a seeded boss fight by a
+## frame). The skin's look on each is moved onto a plain node in the stage (_adopt).
+static var _hazards: Array[Hazard] = []
+static var _areas: Array[Area3D] = []
 
 ## Samples made so far, by what they draw (shader key, mesh kind, instancing).
 var keys: Dictionary = {}
 var _frames_left: int = DRAWN_FRAMES
+var _hazards_taken: int = 0
+var _areas_taken: int = 0
 
 
 ## True when the game renders (not a headless run): only then is there anything to compile.
@@ -194,18 +204,27 @@ func _sample_track(world: RunWorld) -> void:
 			var hazard := _hazard_look(Vector3(0.0, (bottom + top) * 0.5, 0.0), size)
 			skin.fence(hazard, size, -(bottom + top) * 0.5, gapped)
 			_show_state(hazard, state)
+			_adopt(hazard)
 	for band: String in WallFencePlan.BANDS:
 		var box: AABB = WallFencePlan.hitbox({"side": 1, "band": band, "at": 0.0}, t, geo)
 		for state: Hazard.State in [Hazard.State.ON, Hazard.State.WARNING]:
 			var wall_hazard := _hazard_look(box.get_center(), box.size)
 			skin.wall_fence(wall_hazard, box.size, 1, StringName(band), -box.get_center().y)
 			_show_state(wall_hazard, state)
+			_adopt(wall_hazard)
 	var sign_size := Vector3(t.sign_depth, 2.0, 4.0)
-	skin.wall_sign(_hazard_look(Vector3.ZERO, sign_size), sign_size)
-	var pad_size := Vector3(geo.lane_width * 0.7, 0.5, t.pad_length)
-	skin.pad(_area_look(), pad_size)
-	skin.ramp(_area_look(), Vector3(geo.lane_width * 0.8, 1.0, t.ramp_length), 1)
-	skin.speed_pad(_area_look(), Vector3(geo.lane_width * 0.7, 0.5, t.speed_pad_length))
+	var sign := _hazard_look(Vector3.ZERO, sign_size)
+	skin.wall_sign(sign, sign_size)
+	_adopt(sign)
+	var pad := _area_look()
+	skin.pad(pad, Vector3(geo.lane_width * 0.7, 0.5, t.pad_length))
+	_adopt(pad)
+	var ramp := _area_look()
+	skin.ramp(ramp, Vector3(geo.lane_width * 0.8, 1.0, t.ramp_length), 1)
+	_adopt(ramp)
+	var speed_pad := _area_look()
+	skin.speed_pad(speed_pad, Vector3(geo.lane_width * 0.7, 0.5, t.speed_pad_length))
+	_adopt(speed_pad)
 	for lanes: Vector2i in [Vector2i(0, geo.lane_count - 1), Vector2i(0, 0)]:
 		var root := Node3D.new()
 		add_child(root)
@@ -225,28 +244,62 @@ func _sample_track(world: RunWorld) -> void:
 	skin.finish_line(finish, geo.half_width() * 2.0, 0.0)
 
 
-## A hazard to dress that collides with nothing.
+## The next hazard to dress (_hazards: made the first time, out of the tree, colliding with nothing), on
+## at `at`, `size` big.
 func _hazard_look(at: Vector3, size: Vector3) -> Hazard:
-	var hazard := Hazard.new()
+	if _hazards_taken == _hazards.size():
+		_hazards.append(_quiet(Hazard.new()) as Hazard)
+	var hazard: Hazard = _hazards[_hazards_taken]
+	_hazards_taken += 1
+	hazard.state = Hazard.State.ON
 	hazard.size = size
-	hazard.collision_layer = 0
-	hazard.collision_mask = 0
-	hazard.monitoring = false
-	hazard.monitorable = false
 	hazard.position = at
-	add_child(hazard)
 	return hazard
 
 
-## A trigger's place to dress that collides with nothing.
+## The next trigger's place to dress (_areas), as _hazard_look.
 func _area_look() -> Area3D:
-	var area := Area3D.new()
+	if _areas_taken == _areas.size():
+		_areas.append(_quiet(Area3D.new()))
+	var area: Area3D = _areas[_areas_taken]
+	_areas_taken += 1
+	return area
+
+
+## `area` with no layers and no monitoring, freed when the game quits (_free_holders).
+static func _quiet(area: Area3D) -> Area3D:
 	area.collision_layer = 0
 	area.collision_mask = 0
 	area.monitoring = false
 	area.monitorable = false
-	add_child(area)
+	var root: Window = (Engine.get_main_loop() as SceneTree).root
+	var free_holders := Callable(ShaderWarmup, &"_free_holders")
+	if not root.tree_exiting.is_connected(free_holders):
+		root.tree_exiting.connect(free_holders)
 	return area
+
+
+## Frees the track samples' hazards and areas (the game is quitting).
+static func _free_holders() -> void:
+	for hazard: Hazard in _hazards:
+		if is_instance_valid(hazard):
+			hazard.free()
+	for area: Area3D in _areas:
+		if is_instance_valid(area):
+			area.free()
+	_hazards.clear()
+	_areas.clear()
+
+
+## Moves the look the skin dressed on `holder` onto a plain node in the stage, where the holder stands.
+func _adopt(holder: Node3D) -> void:
+	var look := Node3D.new()
+	look.name = "Sample"
+	look.position = holder.position
+	add_child(look)
+	for child: Node in holder.get_children():
+		holder.remove_child(child)
+		look.add_child(child)
 
 
 ## Shows a hazard's look in `state` (its warning flicker, off), as its HazardStateVisual follows it.

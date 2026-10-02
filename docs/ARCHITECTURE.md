@@ -140,7 +140,12 @@ after, run by run: `frame_times.gd --log`, and `test_perf`).
   each track piece the zone skin dresses (fences in each state, wall fences, a sign, pads, ramps, speed pads,
   ceilings, doodads, gap edges, the finish line). It keeps the samples' materials until the next level's
   stage, so their shaders stay built for a look first met later. After it no shader on Gangland 3 is first
-  drawn mid-run.
+  drawn mid-run. The track pieces are dressed on hazards and trigger areas made once a process and never
+  freed while the game runs (out of the tree; their looks move onto plain nodes in the stage): **a warm-up
+  never frees a physics object**, since the next one made takes its place in the physics server's tables,
+  which can change the order of contacts in a frame (two throwaway hazards made and freed at a boss fight's
+  load moved one kill in Hostile Takeover's seeded event log by a frame; made and kept, they changed
+  nothing).
 - **Hit-stops** (G2's brief freeze on every kill and stomp): none in the build before the playtest work, now 4
   to 24 a level (about 6 a minute with a full loadout). Each holds the camera still for three frames while the run
   goes on, so the view jumps 1.0 to 1.25 m when it lets go: on screen, exactly what a dropped frame looks like.
@@ -155,13 +160,14 @@ after, run by run: `frame_times.gd --log`, and `test_perf`).
   frame as before and queues the skin's calls, which `update()` makes in order, about the budget a frame (at
   least one call), finishing a chunk's whatever the time once the player is `DRESS_BY` (120 m) from it.
 - **Boss props**: every target circle built a torus mesh and a boss's first row of fences built the kit's
-  fence look in its frame (3.8 ms for The House's first lightning row); `BossProps` shares rings by radius and
-  builds the skin's fence looks during the fight's load (a later fence costs about 0.2 ms, a Barnacle
-  Turret's later spawn 0.2 to 0.3 ms: neither shows among the slow frames). The House also re-plans a strike
-  waiting for fair lanes every frame (a route search per candidate lane set, `TheHouseAttacks._try_strike`) for
-  up to `strike_wait`: 5 to 10 ms frames for about 0.3 s on the dev machine in the preview fight's runs (none in
-  the finished fight's 240 s run). Re-planning less often would change when strikes come, so it's left to a
-  task on The House.
+  fence look in its frame (3.8 ms for The House's first lightning row); `BossProps` shares rings by radius, and
+  when the game renders the shader warm-up's fence samples build the skin kit's fence look during the
+  fight's load (headless runs, the measuring tool's, still show that first row; a later fence costs about
+  0.2 ms, a Barnacle Turret's later spawn 0.2 to 0.3 ms: neither shows among the slow frames). The House
+  also re-plans a strike waiting for fair lanes every frame (a route search per candidate lane set,
+  `TheHouseAttacks._try_strike`) for up to `strike_wait`: 5 to 10 ms frames for about 0.3 s on the dev
+  machine in the preview fight's runs (none in the finished fight's 240 s run). Re-planning less often
+  would change when strikes come, so it's left to a task on The House.
 
 Ruled out by measuring: physics bodies (a chunk's are 0.1 to 0.3 ms in all), effects (bursts, debris, lines,
 coin streams and shots are pooled; the speed lines are one canvas pass), and the per-frame checks (the median
@@ -410,7 +416,8 @@ own frame (compiling its scripts and building the meshes, materials and shaders 
 engine frees a standard material's shader with the last material using it and generates and compiles it
 again for the next, so a kind that makes its own material at each spawn (a Gilded Sentinel's eyes) paid
 about 1 ms (and a compile on a real renderer) at every spawn with none of its kind left. The hook builds
-the visual model only, as `entry`'s would be, outside the tree, with every part the enemy may show later
+the visual model only (never a physics object: see Smooth frames), as `entry`'s would be, outside the tree,
+with every part the enemy may show later
 (a muzzle's charge, a lunge line, a wave), since `ShaderWarmup` draws the same looks once during the load
 (`warm_looks()`, A run). A type whose enemies bring others into play names them with a static
 `brings(entry: Dictionary) -> Array[Dictionary]` (a host cyborg's Bad Dream). The cyborg, window cyborg,

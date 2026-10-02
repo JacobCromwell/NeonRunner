@@ -13,7 +13,9 @@ extends TestSuite
 ## - Hit-stops that never stack or chain (RunEffects.freeze, SpeedFxTuning.freeze_gap).
 ## - BossProps' target rings shared by radius.
 ## - The shader warm-up stage (ShaderWarmup): samples of the hidden materials, the effects' glow, every
-##   enemy kind's look and each track piece, nothing in it colliding, lit or out of its tiny space.
+##   enemy kind's look and each track piece, nothing in it colliding, lit or out of its tiny space, and no
+##   physics object made or freed by a warm-up (the stage's track holders are made once and reused; the
+##   enemy looks have none).
 ## - The frame monitor's tags, holds and summaries, and the frame graph's spikes and holds.
 
 const AttackWatch = preload("res://tools/measure/attack_watch.gd")
@@ -239,10 +241,14 @@ func _test_enemy_warm_up() -> void:
 	check(EnemyDirector._warmed.size() == count, "once a process: a second level with the same kinds readies nothing again")
 	var looks: Array[Node] = director.warm_looks()
 	var empty: int = 0
+	var physics: PackedStringArray = []
 	for look: Node in looks:
 		if look.is_inside_tree() or _count(look, "GeometryInstance3D") == 0:
 			empty += 1
+		if _count(look, "CollisionObject3D") > 0 or look is CollisionObject3D:
+			physics.append(String(look.name))
 		look.free()
+	check(physics.is_empty(), "a look has no physics object (freeing one would reorder later contacts): %s" % ", ".join(physics))
 	check(looks.size() == 11 and empty == 0, "warm_looks() gives one look of each kind, built outside the tree (%d, %d empty)" % [
 		looks.size(), empty])
 	await sim.free_world(world)
@@ -330,9 +336,17 @@ func _test_shader_warmup() -> void:
 			stray.append("%s is top-level" % n3.name)
 		if node is Light3D and n3.visible:
 			stray.append("%s is a light" % n3.name)
-		if node is CollisionObject3D and (node as CollisionObject3D).collision_layer != 0:
-			stray.append("%s collides" % n3.name)
+		if node is CollisionObject3D:
+			stray.append("%s is a physics object" % n3.name)
 	check(stray.is_empty(), "nothing in it collides, lights the street or leaves its tiny space: %s" % ", ".join(stray.slice(0, 4)))
+	var all_holders: Array[Area3D] = []
+	all_holders.append_array(ShaderWarmup._hazards)
+	all_holders.append_array(ShaderWarmup._areas)
+	var holders: int = all_holders.size()
+	var outside: bool = true
+	for holder: Area3D in all_holders:
+		outside = outside and not holder.is_inside_tree() and holder.get_child_count() == 0
+	check(holders > 0 and outside, "the track samples are dressed on hazards and areas kept out of the tree (%d)" % holders)
 	for i: int in 3:
 		await tree.process_frame
 	var big: PackedStringArray = []
@@ -350,9 +364,9 @@ func _test_shader_warmup() -> void:
 			cuts += 1
 	check(cuts >= 1, "it draws a Gilded Sentinel's cut marks (their shader came first at its first warning)")
 	var states: Dictionary = {}
-	for h: Node in stage.find_children("*", "Area3D", true, false):
-		if h is Hazard:
-			states[(h as Hazard).state] = true
+	for v: Node in stage.find_children("*", "Node", true, false):
+		if v is HazardStateVisual:
+			states[(v as HazardStateVisual).state] = true
 	check(states.size() == 3, "it draws fence looks in every state (on, warning, off)")
 	var particles: int = 0
 	for mm: Node in stage.find_children("*", "MultiMeshInstance3D", true, false):
@@ -366,6 +380,12 @@ func _test_shader_warmup() -> void:
 	check(hidden > 0 and stage.keys.size() > 0, "it samples the run's hidden looks (%d samples of %d hidden nodes)" % [
 		stage.keys.size(), hidden])
 	stage.queue_free()
+	await tree.process_frame
+	var again := ShaderWarmup.new()
+	again.setup(world, camera)
+	check(ShaderWarmup._hazards.size() + ShaderWarmup._areas.size() == holders,
+		"the next level's stage dresses the same hazards and areas again (no physics object made or freed)")
+	again.queue_free()
 	camera.queue_free()
 	await sim.free_world(world)
 

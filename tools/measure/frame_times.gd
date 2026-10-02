@@ -419,6 +419,7 @@ func _measure(campaign: Object, key: String) -> Dictionary:
 		log.sort()
 		r["log_hash"] = "\n".join(log).md5_text()
 		r["log_lines"] = log.size()
+		r["log"] = Array(log)
 	if _reference:
 		r["reference_times"] = Array(_ref_times)
 	if _shaders_scan:
