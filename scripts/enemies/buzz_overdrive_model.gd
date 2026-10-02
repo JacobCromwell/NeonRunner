@@ -1,7 +1,7 @@
 class_name BuzzOverdriveModel
 extends Node3D
 ## The Buzz Overdrive's look (GDD §9.9: "a truck-sized buzzsaw tank with a giant, vertical buzzsaw
-## blade. Militaristic. A red, angry eye on each side"). Low-poly and merged (PartBatch): a tracked hull
+## blade. Militaristic. A red, angry eye on each side"). Low-poly and merged (HullBatch): a tracked hull
 ## with skirt armour, a sloped glacis, a low angular turret with a slanted red eye slit on each side
 ## under a hard dark brow, exhaust stacks at the back, and in front a giant vertical saw blade on two
 ## braced arms. Safe parts are matte; only what hurts or warns glows in a hazard colour:
@@ -9,10 +9,11 @@ extends Node3D
 ## the zone: a clean military gunmetal, or scorched and rusted where enemies weather (the Dead Zone's
 ## burned look, Gangland's scavengers). The shape and every hazard colour are the same everywhere.
 ## Model space: it faces +z (toward the player, who runs toward -z); the origin is on the floor where
-## the blade bites into it (the cut's front). Seven draw calls (hull: 4 materials; eyes: 1; blade: 2),
-## within an enemy's 2,400 triangles, built once per look and shared. DESIGN-TBD (docs/questions/c2.md): the look.
+## the blade bites into it (the cut's front). Four draw calls (the hull, one surface in vertex colours;
+## the eyes; the blade's disc and its teeth), within an enemy's 2,400 triangles, built once per look and
+## shared. DESIGN-TBD (docs/questions/c2.md): the look.
 
-## The enemies' merger of primitives (one surface per material; not the track kit's MeshBatch).
+## The enemies' merger of primitives (one surface per material; not the track kit's MeshBatch): the eyes.
 const PartBatch := preload("res://scripts/enemies/mesh_batch.gd")
 ## The blade's centre above the floor: sunk a little into it, so it cuts.
 const BLADE_SINK: float = 0.12
@@ -24,6 +25,9 @@ const EYE := Color(1.0, 0.08, 0.05)
 
 ## Meshes per look and size, built once.
 static var _meshes: Dictionary = {}
+## The hull's one matte material (its colours are the vertices'), and the unit primitives it's built from.
+static var _hull_material: StandardMaterial3D
+static var _prims: Dictionary = {}
 
 var blade: Node3D
 var _body: MeshInstance3D
@@ -126,13 +130,12 @@ static func _hull(weathered: bool, size: Vector3, radius: float) -> ArrayMesh:
 	var L: float = size.z
 	var z0: float = hull_front(radius)
 	var zc: float = z0 - L * 0.5
-	var paint: Color = Color(0.34, 0.27, 0.2) if weathered else Color(0.28, 0.31, 0.27)
-	var plate: Color = Color(0.26, 0.2, 0.16) if weathered else Color(0.36, 0.39, 0.35)
-	var hull_m: Material = GreyboxMaterials.flat(paint)
-	var plate_m: Material = GreyboxMaterials.flat(plate)
-	var dark_m: Material = GreyboxMaterials.flat(Color(0.08, 0.08, 0.09))
-	var steel_m: Material = GreyboxMaterials.flat(Color(0.5, 0.48, 0.45) if weathered else Color(0.62, 0.64, 0.66))
-	var b := PartBatch.new()
+	# The parts' colours (vertex colours under one matte material).
+	var hull_m: Color = Color(0.34, 0.27, 0.2) if weathered else Color(0.28, 0.31, 0.27)
+	var plate_m: Color = Color(0.26, 0.2, 0.16) if weathered else Color(0.36, 0.39, 0.35)
+	var dark_m := Color(0.08, 0.08, 0.09)
+	var steel_m: Color = Color(0.5, 0.48, 0.45) if weathered else Color(0.62, 0.64, 0.66)
+	var b := HullBatch.new()
 	var track_w: float = W * 0.22
 	var track_h: float = H * 0.36
 	# Tracks and road wheels, under skirt armour.
@@ -184,7 +187,70 @@ static func _hull(weathered: bool, size: Vector3, radius: float) -> ArrayMesh:
 			for k: int in 3:
 				b.box(plate_m if k % 2 == 0 else dark_m, Vector3(sx * (W * 0.49 + 0.01), deck_y + 0.25 + 0.1 * k,
 					zc + 1.4 - k * 1.3), Vector3(0.02, 0.32, 0.7))
-	return b.commit()
+	return b.commit(hull_material())
+
+
+## The hull's matte material: lit like GreyboxMaterials.flat, its colour from the vertices.
+static func hull_material() -> StandardMaterial3D:
+	if _hull_material == null:
+		_hull_material = StandardMaterial3D.new()
+		_hull_material.vertex_color_use_as_albedo = true
+		_hull_material.vertex_color_is_srgb = true
+		_hull_material.roughness = 0.8
+	return _hull_material
+
+
+## A unit primitive (1 x 1 x 1): a box, or a cylinder along y.
+static func unit_prim(kind: StringName) -> Mesh:
+	if not _prims.has(kind):
+		if kind == &"box":
+			var b := BoxMesh.new()
+			b.size = Vector3.ONE
+			_prims[kind] = b
+		else:
+			var c := CylinderMesh.new()
+			c.top_radius = 0.5
+			c.bottom_radius = 0.5
+			c.height = 1.0
+			c.radial_segments = 10
+			c.rings = 1
+			_prims[kind] = c
+	return _prims[kind]
+
+
+## Merges the hull's primitives into one surface, each part in its own colour (vertex colours under one
+## matte material, hull_material()): one draw call for the whole hull, whatever its colours.
+class HullBatch:
+	var _st := SurfaceTool.new()
+
+	func _init() -> void:
+		_st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+	## A box of `size` centred at `center`, rotated by `rotation` (Euler, radians).
+	func box(color: Color, center: Vector3, size: Vector3, rotation: Vector3 = Vector3.ZERO) -> void:
+		_add(color, BuzzOverdriveModel.unit_prim(&"box"),
+			Transform3D(Basis.from_euler(rotation) * Basis.from_scale(size), center))
+
+	## A cylinder along y, `size` = (diameter x, height, diameter z).
+	func cylinder(color: Color, center: Vector3, size: Vector3, rotation: Vector3 = Vector3.ZERO) -> void:
+		_add(color, BuzzOverdriveModel.unit_prim(&"cylinder"),
+			Transform3D(Basis.from_euler(rotation) * Basis.from_scale(size), center))
+
+	func commit(material: Material) -> ArrayMesh:
+		var mesh: ArrayMesh = _st.commit()
+		mesh.surface_set_material(0, material)
+		return mesh
+
+	func _add(color: Color, mesh: Mesh, xform: Transform3D) -> void:
+		var arrays: Array = mesh.surface_get_arrays(0)
+		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+		var idx: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+		var normal_basis: Basis = xform.basis.inverse().transposed()
+		_st.set_color(color)
+		for i: int in idx:
+			_st.set_normal((normal_basis * normals[i]).normalized())
+			_st.add_vertex(xform * verts[i])
 
 
 ## The red, angry eyes: on each side of the turret, a slit slanted down toward the front like a frown,

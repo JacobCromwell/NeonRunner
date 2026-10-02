@@ -35,6 +35,8 @@ const Rules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
 ## The red of every floor warning (the Octodog's lunge line, BossProps.WARNING_COLOR).
 const WARNING_COLOR := Color(1.0, 0.12, 0.08)
 const SPARK_COLOR := Color(1.0, 0.6, 0.2)
+## How long each spark flies (seconds).
+const SPARK_LIFETIME: float = 0.3
 ## The warning line's width, as a share of the lane, as the rev starts and at its end.
 const LINE_WIDTH_START: float = 0.2
 const LINE_WIDTH_END: float = 0.4
@@ -62,7 +64,11 @@ var _line: MeshInstance3D
 var _voice: AudioStreamPlayer3D
 var _hitbox: Hazard
 var _rev_t: float = 0.0
-var _spark_left: float = 0.0
+## Its own spark emitter at the blade (built once, emitting only while it cuts): no particle nodes
+## per spark, and none of the shared bursts (RunEffects) taken from kills and hits.
+var _sparks: CPUParticles3D
+## The sparks' shared mesh.
+static var _spark_mesh: BoxMesh
 
 
 func _build() -> void:
@@ -103,6 +109,7 @@ func _build() -> void:
 	if AudioServer.get_bus_index(SfxLibrary.BUS) >= 0:
 		_voice.bus = SfxLibrary.BUS
 	add_child(_voice)
+	_sparks = _make_sparks()
 	if cut.is_empty():
 		state = State.GONE
 		front = float(spawn.get("at", 0.0))
@@ -115,8 +122,6 @@ func _build() -> void:
 func _tick(delta: float) -> void:
 	if cut.is_empty():
 		return
-	if floor_cut == null:
-		floor_cut = world.track.floor_cut(lane, float(cut["end"]))
 	var p: float = world.player_distance()
 	if state == State.PARKED and p >= FloorCutPlan.lead_at(cut):
 		state = State.ROLL
@@ -124,12 +129,18 @@ func _tick(delta: float) -> void:
 		_rev()
 	if state == State.REV and p >= FloorCutPlan.charge_at(cut):
 		_charge()
+	# The track's piece of its cut: looked up from its rev on (built by then, the cut lying well inside
+	# the track built ahead), not every frame of its long approach.
+	if floor_cut == null and (state == State.REV or state == State.CHARGE):
+		floor_cut = world.track.floor_cut(lane, float(cut["end"]))
 	front = _front_for(p)
 	position = world.lane_point(lane, front)
 	if state == State.CHARGE:
 		if floor_cut != null:
 			floor_cut.advance_to(front)
-		_sparks(delta)
+		var sparking: bool = not Settings.flashing_reduced
+		if _sparks.emitting != sparking:
+			_sparks.emitting = sparking
 		if front <= float(cut["start"]) + 0.001:
 			_gone()
 	if state != State.GONE:
@@ -197,6 +208,8 @@ func hit_radius() -> float:
 func _on_defeated(_cause: StringName) -> void:
 	# GDD §9.9: "killing it before it charges saves the floor; killing it mid-charge stops the cut where
 	# it dies". A cut whose chunk isn't built yet never begins.
+	if floor_cut == null and not cut.is_empty():
+		floor_cut = world.track.floor_cut(lane, float(cut["end"]))
 	if floor_cut != null:
 		floor_cut.stop()
 	_line.visible = false
@@ -239,6 +252,7 @@ func _play(sound: StringName, seconds: float = 0.0) -> void:
 func _gone() -> void:
 	state = State.GONE
 	_line.visible = false
+	_sparks.emitting = false
 	visible = false
 
 
@@ -272,12 +286,27 @@ func _update_line(delta: float, p: float) -> void:
 		Vector3(world.geo.lane_x(lane), 0.03, TrackGeometry.world_z((from + to) * 0.5)))
 
 
-## Sparks where the blade bites into the floor (none with Reduced flashing).
-func _sparks(delta: float) -> void:
-	if Settings.flashing_reduced:
-		return
-	_spark_left -= delta
-	if _spark_left > 0.0:
-		return
-	_spark_left = tuning.spark_every
-	world.effects.burst(global_position + Vector3(0.0, 0.15, 0.4), SPARK_COLOR, 6, 0.3)
+## Its spark emitter, where the blade bites into the floor: sparks_per_second while it cuts (none with
+## Reduced flashing), left behind in the world as it charges on.
+func _make_sparks() -> CPUParticles3D:
+	if _spark_mesh == null:
+		_spark_mesh = BoxMesh.new()
+		_spark_mesh.size = Vector3.ONE * 0.09
+	var p := CPUParticles3D.new()
+	p.name = "Sparks"
+	p.emitting = false
+	p.amount = maxi(2, roundi(tuning.sparks_per_second * SPARK_LIFETIME))
+	p.lifetime = SPARK_LIFETIME
+	p.mesh = _spark_mesh
+	p.material_override = GreyboxMaterials.glow(SPARK_COLOR, 3.0)
+	p.direction = Vector3.UP
+	p.spread = 70.0
+	p.gravity = Vector3(0.0, -9.0, 0.0)
+	p.initial_velocity_min = 2.5
+	p.initial_velocity_max = 6.5
+	p.scale_amount_min = 0.6
+	p.scale_amount_max = 1.4
+	p.local_coords = false
+	p.position = Vector3(0.0, 0.15, 0.4)
+	add_child(p)
+	return p

@@ -42,6 +42,7 @@ func run() -> void:
 	_test_campaign()
 	_test_quick_play()
 	await _test_warning_first()
+	await _test_sparks_and_reduced_flashing()
 	await _test_leave_at_warning()
 	await _test_staying_is_hit()
 	await _test_wall_and_ceiling()
@@ -340,6 +341,41 @@ func _test_warning_first() -> void:
 	var fc: FloorCut = w.track.floor_cut(2, float(cut["end"]))
 	check(fc != null and fc.done(), "its whole stretch is a gap once it's gone")
 	await sim.free_world(w)
+
+
+## Its sparks come from its own emitter (one per tank, never the shared bursts), only while it cuts; with
+## Reduced flashing there are none, and its warning line only widens (no pulse).
+func _test_sparks_and_reduced_flashing() -> void:
+	var was: bool = Settings.flashing_reduced
+	for reduced: bool in [false, true]:
+		Settings.flashing_reduced = reduced
+		var cut: Dictionary = _cut(1, 200.0)
+		var w: RunWorld = _world(_layout(3, cut), 0, 200.0 - 20.0)
+		w.player.god_mode = true
+		# [sparks only while charging, sparked at all, line never narrower than the frame before]
+		var ok: Array[bool] = [true, false, true]
+		var last_width: float = 0.0
+		await _run_until(w, 15.0, func() -> bool:
+			var e: Enemy = _tank(w)
+			if e == null:
+				return w.player.distance > FloorCutPlan.window(cut, tuning.run_speed).y
+			var sparks := e.find_child("Sparks", false, false) as CPUParticles3D
+			var charging: bool = _state(e) == TankScript.State.CHARGE
+			ok[0] = ok[0] and sparks != null and (not sparks.emitting or charging)
+			ok[1] = ok[1] or (sparks != null and sparks.emitting)
+			var line := e.find_child("WarningLine", false, false) as MeshInstance3D
+			if _state(e) == TankScript.State.REV and line.visible:
+				var width: float = line.global_transform.basis.get_scale().x
+				ok[2] = ok[2] and width >= last_width - 0.0001
+				last_width = width
+			return false)
+		var mode: String = "with Reduced flashing" if reduced else "normally"
+		check(ok[0], "%s: its sparks fly only while it cuts" % mode)
+		check(ok[1] != reduced, "%s: %s" % [mode, "no sparks at all" if reduced else "sparks fly as it cuts"])
+		if reduced:
+			check(ok[2], "with Reduced flashing its warning line widens without pulsing")
+		await sim.free_world(w)
+	Settings.flashing_reduced = was
 
 
 ## GDD §9.9: "leave its lane before it arrives". At every zone's speed and 3, 5 and 6 lanes, from the

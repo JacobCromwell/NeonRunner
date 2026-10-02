@@ -54,8 +54,9 @@ extends EnemyTuning
 ## The blade's hitbox (an enemy attack: the armor and the shield block it): narrow and centred on its
 ## lane, so a player beside it or a wall runner next to it is never touched (GDD §9.9, GB 6).
 @export var hitbox_size: Vector3 = Vector3(0.7, 2.4, 2.4)
-## Sparks from the blade while it cuts, a burst every this many seconds (none with Reduced flashing).
-@export_range(0.02, 1.0, 0.01, "suffix:s") var spark_every: float = 0.06
+## Sparks from the blade while it cuts, from its own emitter (none with Reduced flashing). Read when it's
+## built: the next one shows a change.
+@export_range(10.0, 200.0, 5.0) var sparks_per_second: float = 90.0
 
 @export_group("Sound")
 ## Its rev and charge come from its own voice, at full volume within this distance (plain metres), fading

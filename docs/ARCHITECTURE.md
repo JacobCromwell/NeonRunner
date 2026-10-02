@@ -502,7 +502,12 @@ the player's distance like the cut, so it does the same on every attempt and at 
 - **Looks.** `BuzzOverdriveModel`: a tracked hull with skirt armour, a sloped glacis, a low turret with a
   slanted red eye slit under a dark brow on each side, exhaust stacks, and a giant vertical saw on braced
   arms whose teeth glow hot orange-red (the deadly part); matte military gunmetal and olive, scorched and
-  rusted where enemies weather (`&"burned"`, `&"scavenger"`). Seven draw calls within 2,400 triangles.
+  rusted where enemies weather (`&"burned"`, `&"scavenger"`). Four draw calls, about 1,300 triangles: the
+  hull is one surface in vertex colours under one matte material (`HullBatch`), then the eyes, the blade's
+  disc and its teeth; the meshes are built once per look (about 1 ms, at the first one's spawn) and shared.
+- **Cheap to run.** Its sparks come from its own emitter (one `CPUParticles3D`, `sparks_per_second`, only
+  while it cuts), never the shared bursts; its sounds from its own voice; it looks up its cut's track piece
+  only from its rev on; everything else a frame is a few transforms.
 - **The Resonator** keeps its pulses off every cut (its rules run after these: `busy_stretches` holds each
   cut's whole window, and `Resonator.pulse_clear` counts a cut's stretch as a gap).
 
@@ -2309,7 +2314,8 @@ hit, wall and ceiling riders beside it safe, a block holding the floor for about
 a lane switch escapes), kills while it rolls, revs and charges (the floor saved, the cut stopped), the
 shots each weapon tier needs and when it stops it (laser tier 1 never before it meets the runner, the
 missile tiers before it charges), the claws doing nothing, the dash smashing it, no stomp, the same
-encounter on every attempt and at 30 and 60 Hz, and its rev and charge as a big attack.
+encounter on every attempt and at 30 and 60 Hz, and its rev and charge as a big attack; its sparks only
+while it cuts, none and a line that only widens with Reduced flashing.
 
 `test_wall_fences` checks wall fences (B5; GDD §9.1): the layout data (left out of a level without them) and
 `WallFencePlan`'s bands, reach (a floor runner in the middle of the outer lane never touches one, a wall runner
