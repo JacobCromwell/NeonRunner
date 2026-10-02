@@ -10,6 +10,7 @@ extends Node3D
 ##   play (default)  the run camera behind the runner
 ##   close           a camera across the street from the next Sentinel, looking at its niche as the runner
 ##                   comes: the warning (its eyes flare, the marks of its cut light up), the swing
+##   front           a camera in the street just short of the next Sentinel, looking into its niche
 ##   wall            a camera low on the far side, looking along the Sentinel's wall as the runner passes it
 ## Routes (--route=): floor (stays in the outer lane: the cut passes through the god-mode runner), lane
 ## (the lane beside it, safe), high (jumps onto its wall just before it and runs above the band; --kick

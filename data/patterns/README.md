@@ -245,3 +245,17 @@ another, a second or two earlier or later if it doesn't fit, and move the entry 
 fits nowhere is dropped and its stretch left to the fill pass. Other patterns needn't leave room for it:
 the rules clear the holes, fences and speed pads in its cut's lane themselves, and move or drop it where a
 pad, a ramp or a ceiling's landing zone is in the way.
+
+The Gilded Sentinels' patterns (`gilded_sentinel.json`, `requires` `gilded_sentinel`; GDD §9.11, task C4)
+stand one on a wall (`side`; its `at` is its niche): one that swings once, and from difficulty 0.95 one
+that swings twice (`params.swings` 2: the stretch before its niche, then the stretch past it) or a pair
+facing each other across the street (the later ones in Golden 2, and the Palace). Its rules
+(`gilded_sentinel_rules.gd`, after the other enemies' rules) keep one only where it's fair, moving it a
+few metres along its wall or dropping it: its wall section free of signs, wall fences, window cyborgs,
+wall vents and other Sentinels from its wall-run approach to past its cut, no ramp launching a runner
+into its band, the lane beside the outer one (the escape) clear of holes, fences, floor cuts, pads and
+floor enemies, and no floor cut, Octodog run, ceiling's landing or other Sentinel's attack meanwhile
+(unless they're a pair). A level's first one swings once, alone, with no big attack around it, and
+Golden 2 adds one near the feature's start when no pattern put one there. Other patterns need nothing
+for them: their signs, ramps and outer-lane pieces simply leave the Sentinels fewer spots. See
+`docs/ARCHITECTURE.md`, The generator, Gilded Sentinels.

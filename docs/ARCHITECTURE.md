@@ -306,8 +306,7 @@ A level uses an enemy only if its `features` list has the type's name (GDD §6: 
 time), from the feature's start if the level gives it one (The generator). Quick play can add
 features: `./play.sh --features=cyborg,drone`. The campaign already lists the enemies still to be
 built under the names their tasks must use (`LevelConfig.PLANNED_FEATURES`: `barnacle_turret`,
-`resonator`, `gilded_sentinel`), so a new enemy's own files are all it takes to bring it into its
-levels.
+`resonator`), so a new enemy's own files are all it takes to bring it into its levels.
 
 Built so far: cyborg (with its panic variant and hosts), window cyborg, fence generator, hover
 truck, Octodog, sewer screech (manholes, and wall vents; `screech_vents` is wall vents only, for zones
@@ -318,9 +317,11 @@ broadcast spire hovering far ahead whose red waves roll along the floor across e
 `resonator_model.gd`, is built in code, and `resonator_rules.gd` plans each pulse where its wave meets
 the player on clear floor), the Barnacle Turret (GDD §9.8, from Marketplace 1: a ceiling enemy, see
 below), the Buzz Overdrive (GDD §9.9, from Corporate 1: a buzzsaw tank that cuts its lane's floor into
-a gap, see below), and the Tithe Collector (GDD §9.12, from Corporate 2, skipping the Dead Zone, back in
-the Golden Zone: see Thefts above). `scripts/enemies/mesh_batch.gd` merges an enemy's low-poly parts into
-one mesh per material to keep draw calls down.
+a gap, see below), the Tithe Collector (GDD §9.12, from Corporate 2, skipping the Dead Zone, back in
+the Golden Zone: see Thefts above), and the Gilded Sentinels (GDD §9.11, from Golden 2: live statues in
+wall niches whose halberd cuts their wall section and the outer lane, see below).
+`scripts/enemies/mesh_batch.gd` merges an enemy's low-poly parts into one mesh per material to keep draw
+calls down.
 
 **Big attacks take turns through the director** (GDD §9, decided September 26, 2026). The big attacks
 of different enemy types never overlap, so the player never has to dodge two at once. The owner may
@@ -329,11 +330,12 @@ default, in the F6 panel); switched off, the game plays exactly as before the ru
 (DESIGN-TBD, `docs/questions/r3.md`): the Octodog's charge sequence (its first wind-up until it gives
 up), the drone's wind-up and barrage, the hover truck's rev and forward lurch and its cannon's charge
 and volley, the Bad Dream's chase, the Resonator's pulse (its warning until its last wave has passed
-the player; DESIGN-TBD, `docs/questions/c3.md`), and the Buzz Overdrive's rev and charge (its warning
-until it has passed the player and gone; it never waits, below). Small attacks (a cyborg's burst, a window
+the player; DESIGN-TBD, `docs/questions/c3.md`), the Buzz Overdrive's rev and charge (its warning
+until it has passed the player and gone; it never waits, below), and a Gilded Sentinel's attack (its
+eyes' flare until its last swing is over; it can't wait either, so with another's on it lets the runner
+pass, below; DESIGN-TBD, `docs/questions/c4.md`). Small attacks (a cyborg's burst, a window
 cyborg's shot, a Barnacle Turret's burst, a screech's swipe) and the hover truck's entrance don't take
-part. An enemy takes part like this, and the enemies still to come (the Gilded Sentinels, the Tithe
-Collector) opt in the same way for whichever of their attacks count as big:
+part. An enemy takes part like this, opting in for whichever of its attacks count as big:
 - **Report it.** `is_major_attack_active()` is true from the start of the attack's warning until its
   last hazard is over (the lunge has passed, the lurch has ended). Each shot fired in it goes to
   `world.director.note_attack_shot(self, shot)` (the Projectile `fire_enemy()` returned): the attack's
@@ -512,6 +514,59 @@ the player's distance like the cut, so it does the same on every attempt and at 
 - **The Resonator** keeps its pulses off every cut (its rules run after these: `busy_stretches` holds each
   cut's whole window, and `Resonator.pulse_clear` counts a cut's stretch as a gap).
 
+**A wall enemy in a niche: the Gilded Sentinels** (C4, GDD §9.11; Golden 2 brings them in, the Golden
+Palace keeps them). `gilded_sentinel.gd` (`GildedSentinel`), its tuning (`GildedSentinelTuning`,
+`data/enemies/gilded_sentinel.tres`, F6 "Enemy: Gilded Sentinel"), its rules (`gilded_sentinel_rules.gd`,
+The generator), its patterns (`data/patterns/gilded_sentinel.json`: one, one that swings twice, a pair
+across the street), its cut's shader (`gilded_sentinel_cut.gdshader`), its sounds
+(`tools/asset_gen/sfx_bank_sentinel.gd`: `gilded_sentinel_grind`, `_swing`, `_break`) and its hint
+(`enemy:gilded_sentinel`). DESIGN-TBD throughout (`docs/questions/c4.md`):
+- **In its niche.** A wall enemy (`side`), standing in a niche set into the wall at wall-run height: a
+  2.6 m statue standing out from the wall would block a wall run at all of its heights, so the statue (the
+  Golden Zone's kit, `GoldenStatue`, at `statue_scale`) stands in the recess with its front
+  `statue_inset` behind the face. Nothing of it reaches over the wall-run path (a wall runner's body lies
+  along the face); only its swing does. The Golden Zone's skins open the niche (Zone skins: the statue
+  kit's `recess()`, `GoldenSkin.note_wall_enemies`); in any other skin (quick play) it stands in front of
+  the wall in the kit's `niche()` as a review stand-in, its hitboxes the same. At rest it holds its
+  halberd upright at its side, the blade turned along the wall, so it fits the niche whole.
+- **The attack**, once, as the runner comes: when they're `warning_seconds` (and `strike_lead_seconds`) at
+  their speed from the stretch it guards, it asks the director (below), then warns: its eyes flare (their
+  own material, and their red light filling the niche, what a runner sees from far down the street where
+  the wall is seen edge-on), stone grinds, it draws its halberd back, and the red marks of its cut light
+  up, filling toward the runner (the band on its wall, on the face; the outer lane's floor). Then it
+  swings as the runner reaches the stretch (`section_length`, around its niche; a slower runner: it holds,
+  raised, up to `hold_max_seconds`; a faster one may get past, since the warning always runs its whole
+  length): for `strike_seconds` its cut is live, two `attack` boxes over the stretch, the band on its wall
+  (`band()`: the heights around the free wall-entry height, from the face out over a wall runner's whole
+  body, `wall_reach`) and the outer lane (from `wall_reach` out to `lane_margin` short of its inner edge,
+  from the floor up to the band's top, above any jump), with a red slash through both. One that swings
+  twice (`params.swings` 2) cuts the stretch before its niche, then swings back across the stretch past
+  it, each as the runner reaches it. So: on the wall, stepping on right before it is hit, a jump onto the
+  wall (or a ramp) runs above the band and an early entry slides below it; on the floor, anywhere but the
+  outer lane is safe.
+- **Protection.** Its cut is an enemy attack: armor and the shield block it; the dash passes through
+  unharmed and leaves it standing (`dash_kills` off, as for the Resonator's wave). Its body is a solid
+  `body` box in the niche, behind the face, where nothing in play reaches.
+- **Killing it.** Weapons (health 15: 17 laser tier 1 shots with G4's rule; auto-fire picks it out in its
+  niche), or a kick: a wall jump made right by its head on its wall (`can_kick`: the runner's height from
+  `kick_below` under its helmet's base to `kick_above` over its crest, within `kick_along` of it along the
+  track) stomps its `top` through DamageRules (`Player.receive_hit(top, true)`: it's defeated, the runner
+  bounces). A wall jump leaps out to the outer lane and never comes down on a statue in the wall, so the
+  push-off is the stomp; it hears the wall jump as `Player.movement_event`, never by checking each frame.
+  Down, its eyes go dark and it slumps in its niche until the runner is far past.
+- **Big attacks.** Its attack counts as one, from its eyes' flare until its last swing's cut is over
+  (`is_major_attack_active`), so the others wait for it. A statue can't wait (the runner is gone by then):
+  it asks `major_attack_blocked` once, as its warning would start, and with another type's attack on it
+  gives up its turn and lets the runner pass, with no warning and no swing (`history` "pass"). The
+  generator keeps floor cuts, Octodog runs and ceilings' landings off it, and every big attack off a
+  level's first, so that one always swings.
+- **Cheap.** The statue is one mesh of two surfaces (the gold on the skin's solid material, the eyes on
+  each Sentinel's own), its frames baked once from the kit (`frames_for`: rest to wind-up, the swing, the
+  recovery, the husk; mirrored on the left wall so it swings toward the runner on both) and shared by
+  every Sentinel, so animating it is a mesh swap when the frame changes; the marks and slashes are a few
+  quads on one small shader; its bursts are the shared ones. Reduced flashing: the eyes rise steadily
+  (no throb) and a swing's flash is a single, softer fade.
+
 ## The generator
 
 `LevelGenerator` (`scripts/world/level_generator.gd`) builds a `LevelLayout` (pure data) from
@@ -637,6 +692,40 @@ feature's start, the turret never does) and off hover trucks' lanes (`PadPlaceme
 pass (G1) keeps nothing for a turret (`keep_out`: it never uses the floor), so it fills a level the same
 with or without turrets; it keeps off an introduction's ceiling like any other.
 `LayoutChecks.check_turrets` (from `check_rules`) checks every turret in every generated level.
+
+**Gilded Sentinels** (C4, GDD §9.11; `gilded_sentinel_rules.gd`). Patterns stand them on a wall; the rules
+run after every feature's that puts things on the floor or the walls before them, the Buzz Overdrive's
+floor cuts included (`RUN_AFTER`), and the Resonator's, the Barnacle Turret's and the floor cutter's run
+after these. Each one's attack, at the level's run speed, is its window
+(`GildedSentinelTuning.attack_window`: from where the runner is as its eyes flare to the end of the stretch
+it cuts), and where it may stand is `problem()`:
+- the level: its window past the run-up and the feature's start, its stretch before the end-clear stretch,
+  and its niche within one of the track's chunks (`in_chunk`, `TrackBuilder.CHUNK_LENGTH`: the skin opens
+  it in that chunk's wall);
+- its wall: no sign, window cyborg, wall vent's screech, wall fence or other Sentinel on it from
+  `approach_seconds` before its stretch (a runner entering early to pass below needs the wall from there)
+  to `wall_clear_seconds` past it (GDD §9.11 with §9.1); a ramp on that wall only where the wall run it
+  launches (`RampLaunch`, and its longest, with claws and a speed pad's boost) passes the stretch wholly
+  above the band, or is over before it, and none in the outer lane by the stretch;
+- never when the outer lane is the only safe lane: the lane beside it holds no hole, fence, floor cut,
+  anti-grav pad, floor enemy or hover truck's lane from `escape_lead_seconds` before its first swing to
+  the end of its stretch, and no hover truck holds the outer lane itself meanwhile (`HoverTruckRules`
+  clears its lane of floor enemies, Sentinels included);
+- what runs meanwhile: no floor cut's window, Octodog run or ceiling's landing zone reaches its window, and
+  its cut (its `params.floor_span`, `floor_use`) keeps off every pad's way (`CeilingZones.enemy_clear`);
+  the level's first keeps off every big attack and Bad Dream chase too (`STRICT_ATTACKS`), so it always
+  swings; the others may meet a drone wave or a hover truck's stay and let the runner pass at run time if
+  their attack is on (Enemies);
+- other Sentinels: windows `gap_seconds` apart unless they are a pair (the same spot on both walls).
+One that doesn't fit where its pattern put it tries a few spots around it (`MOVE_OFFSETS`), one that swings
+twice then once, and one that still doesn't is left out. The level's first (its introduction) swings once,
+alone; in a level that gives the feature a start (Golden 2), if none is left within `INTRO_REACH` of it
+(earlier rules took it out: a hover truck clears its wall and lane, a drone's pads their stretch), one is
+added at the first spot there, calm where it can be. It uses the floor (`uses_floor`, its tuning's reach;
+its rules set `params.floor_span` to what its cut uses), so ceilings' pads and landings, the Resonator's
+waves and everything that asks the floor keep off it; `keep_out()` (its window) keeps the fill pass and
+floor cuts off it, and `doodad_keep_outs()` (its window in every lane, marked `type`) the zone doodads, floor
+cuts and the wall fences' drop windows. `problems()` re-checks every one for the tests.
 
 **Late starts.** `LevelConfig.feature_starts` (feature → share of the level) holds a feature back
 until its start: patterns that require it aren't picked before, and the first pattern picked from
@@ -967,13 +1056,11 @@ within its radius, measured from their wall face, built or not yet built), and d
 play (`extend_layout`) takes wall fences too, and a boss arena carries them (`BossArena.shifted`, `add_pieces`,
 `wall_fence_problem`).
 
-For task C4 (the Gilded Sentinels, GDD §9.11: live statues in wall niches at wall-run height, swinging a halberd
-across their wall section and the outer lane): a sentinel is one more thing on its wall section, so keep wall
-fences and sentinels apart. The sentinels come from patterns or rules, before the wall fences, so the simplest
-way is to add the sentinel to `WallFencePlacement.keep_outs` like a window cyborg (its swing's stretch on its
-wall, `wall_clear_seconds` either side, and its swing over the outer lane as a big attack's keep-out if it
-counts as one); `LayoutChecks.check_wall_fences` then needs the same check. Ask `layout.wall_fence_between`
-if a sentinel's rules ever run after the wall fences (they don't today).
+The Gilded Sentinels (task C4) come before the wall fences: `WallFencePlacement.keep_outs` keeps a wall fence
+off a Sentinel's wall section (`sentinel_wall_section`: its wall-run approach to past what it cuts), and its
+whole attack is in the rules' keep-outs in every lane (`gilded_sentinel_rules.gd`'s `doodad_keep_outs`), which
+every drop window keeps off like a Bad Dream's chase; `LayoutChecks.check_wall_fences` checks both. A
+Sentinel's own rules also refuse a wall fence on its wall section, for a track where one came first.
 
 For task E5a (The House, GDD §10: phase 2 puts one 7 button on a wall "with wall fences in play"): plan the
 phase's wall fences as `WallFencePlan.make` entries at the arena's speed (`arena.tuning`), ask
@@ -1042,7 +1129,8 @@ crackle = electric fence).
 `TrackBuilder` also calls `note_wall_enemies(side, start, end, enemies)` just before `wall_section()`
 for each side (a no-op default): the chunk's wall enemy layout entries (type, at, side, ...), for a
 skin whose own scenery would otherwise double up with one (the Marketplace's citizens, task D3, kept
-clear of window cyborgs); read-only and visual only, like every other hook.
+clear of window cyborgs) or make room for one (the Golden Zone's skins open a Gilded Sentinel's niche,
+task C4); read-only and visual only, like every other hook.
 
 **Zone doodads' looks** (task G5 built the mechanism and a plain default; task G6 gives each zone its
 own, except the grey box, which keeps the plain default. `GoldenPalaceSkin` (D6b) extends `GoldenSkin`
@@ -1450,7 +1538,12 @@ shader, `golden_facade.gdshader`. White and cream with red and gold accents (GDD
   Sentinel, `rig(parent, pose)` builds it as nodes and returns them by name (`root`, `body`, `pedestal`,
   `head`, `eyes`, `arm_r`, `arm_l`, `elbow_r`, `elbow_l`, `grip`, `halberd`): turn the pivots with
   `apply_pose(nodes, pose)` or directly, and give `eyes` (a MeshInstance3D) a glowing red material of
-  its own. `niche(width, height)` is the niche it stands in, proud of any wall. The skin's kit is
+  its own. `niche(width, height)` is a niche proud of any wall; `recess(width, height, depth)` the one a
+  live Sentinel stands in, set into the wall (task C4): the skin learns where one stands
+  (`note_wall_enemies`, `GildedSentinel.niche_rect`), leaves its opening out of the plinth and the calm
+  band (`open_rects`: the face's pieces around it, sharing their edges exactly) and appends the recess
+  there (`add_niches`: a dark back and sides, a marble floor, a flush gold frame whose spandrels round it
+  into an arch); the Golden Palace's walls do the same with their panel. The skin's kit is
   `GoldenSkin.statues()` (its gold and solid material). Decorative statues stand only on the ledge, at
   `statue_min_height` (8.8 m) or higher; `GoldenSkin.statue_spots()` lists them.
 - *Ceilings from their lanes (task B3).* `GoldenCeilings` builds a golden bridge (a coffered underside,
@@ -1497,7 +1590,8 @@ same script, different values). Only `floor_segment()`, `wall_section()` and `ce
   calm as every zone's band; gilded pilasters stand above it, every `lot_length` metres, up to
   `pilaster_height`. Between two pilasters, a bay (GDD §5) holds a gallery (a gold-framed opening
   showing the cult's feed or its emblem, `gallery_share`), an alcove (a decorative statue in the same
-  niche shape a live Gilded Sentinel's uses, `GoldenStatue.niche()`, task C4, `statue_share`, always at
+  niche shape of the statue kit, `GoldenStatue.niche()` (a live Gilded Sentinel's is set into the wall,
+  `recess()`, task C4), `statue_share`, always at
   or above `statue_min_height`), a tapestry (`banner_share`) or a relief (`relief_share`); otherwise
   the flush panel simply carries on. `statue_spots()`, `feed_boards()` and `cult_emblems()` list a
   bay's content the same way the Golden Zone's `GoldenFacades` lists its ledges, frames and banners.
@@ -2299,7 +2393,17 @@ cyborg's and GDD §8's 7 laser tier 1 shots, hitboxes out of reach of anyone off
 without it, and on real physics: popping out, firing only at a rider on its own ceiling after its
 charge-up, dodging, two-lane ceilings at 3, 5 and 6 lanes with one turret and two, contact (armor, shield,
 claws, dash, a stomp from the ceiling), 7 laser tier 1 shots, armor and the shield against its bolts,
-determinism, and generated levels ridden through with every burst checked. `test_ceilings` covers narrow
+determinism, and generated levels ridden through with every burst checked. `test_gilded_sentinel` plays
+the Gilded Sentinels (C4) in full worlds on real physics at 18 and 25 m/s: the warning always first, for
+its whole time; wall runners stepping on right before it (cut), jumping on (above) and stepping on early
+(below) on both walls; floor runners in and out of the outer lane at 3, 5 and 6 lanes, jumping and
+sliding; armor, the shield and the dash; its solid body back in its niche; 17 laser tier 1 shots through
+the real weapon; the kick; twice and pairs; turns with a `TurnDummy` (it lets the runner pass when one is
+on); Reduced flashing; the same every attempt. It also checks its look (one shared mesh, the eyes' own
+material, the statue inside its niche), the Golden skins opening the niche, decorative statues never at
+wall-run height, its placement rules on hand-built layouts at 3, 5 and 6 lanes, the wall fences keeping off
+it, and Golden 2 and the Palace's real layouts (its rules, `LayoutChecks.check_layout`, the introduction,
+the same build twice). `test_ceilings` covers narrow
 ceilings (B3) from the layout to the screen: the
 sections and collision boxes the track builds for each range at 3, 5 and 6 lanes, moves on a ceiling
 (within it, and blocked at its edges with the bump and the clank's event, on real physics), a pad
@@ -2416,9 +2520,11 @@ both looks at rest and charging, and a scripted run under a ceiling with turrets
 through the run camera or a close one, on any zone's skin; `buzz_overdrive_showcase`: its model turning
 and revving, or a scripted run through one encounter on any zone's skin, lane count and speed, through
 the run camera, a high one or a low one beside its lane, with `--stay`, `--kill=D` and
-`--reduced-flashing` as for the floor cuts), the Golden Zone's statue
-kit (`statue_showcase`: every pose, a turnaround, and a live statue rigged in its niche and swinging, as
-task C4 would build it), the bosses (`floating_head_showcase`, `sleep_taker_showcase`, `the_house_showcase`), the UI kit, the screens (`screens_showcase`;
+`--reduced-flashing` as for the floor cuts); `gilded_sentinel_showcase`: a Golden street with Sentinels in
+their niches and a runner taking a route past each (`--route=lane|floor|high|low`, `--kick`), through the
+run camera or a camera across the street, straight at a niche or along its wall (`--view=play|close|front|
+wall`), with `--double`, `--pair`, `--skin=golden_palace`, `--speed=N`, `--reduced`), the Golden Zone's statue
+kit (`statue_showcase`: every pose, a turnaround, and a statue rigged in the kit's niche and swinging), the bosses (`floating_head_showcase`, `sleep_taker_showcase`, `the_house_showcase`), the UI kit, the screens (`screens_showcase`;
 its `--screen=hud_armor [--tier=N]` takes the HUD's armor through its states: up, broken, its ring
 filling, back), a zone skin
 (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed screens and emblems a
