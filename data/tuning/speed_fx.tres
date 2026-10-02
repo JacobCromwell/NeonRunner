@@ -25,6 +25,7 @@ stomp_freeze_time = 0.07
 kill_shake_strength = 0.05
 kill_shake_time = 0.14
 kill_freeze_time = 0.05
+freeze_gap = 0.3
 kill_spark_amount = 12
 kill_debris_amount = 6
 block_shake_strength = 0.08
