@@ -33,9 +33,11 @@ extends Enemy
 ##   toward the lanes and never comes down on a statue in the wall, so the kick is the push-off itself
 ##   (DESIGN-TBD, docs/questions/c4.md). Defeated, its eyes go dark and it slumps in its niche.
 ## - Big attacks take turns (GDD §9): its attack counts as one, from its eyes' flare until its last swing
-##   is over (is_major_attack_active). Like a planned floor cut it can't wait (a statue gets one chance as
-##   the runner passes), so it never asks: the others wait for it, and the generator keeps every planned
-##   big attack off its stretch (gilded_sentinel_rules.gd).
+##   is over (is_major_attack_active), so the others wait for it. It can't wait itself (a statue gets one
+##   chance as the runner passes): it asks the director once, as its warning would start, and if another
+##   type's big attack is on then, it lets the runner pass (no warning, no swing). The generator keeps the
+##   Octodog's planned charges and floor cuts off its stretch, and every big attack off the level's first
+##   (gilded_sentinel_rules.gd), so that one always swings.
 ## - Cheap: the statue is one mesh of two surfaces (the gold, and the eyes' own glowing material), its
 ##   frames baked once from the kit and shared by every Sentinel; the marks and slashes are a few quads;
 ##   it does constant work a frame (where the runner is against its trigger) and hears a wall jump as an
@@ -93,7 +95,7 @@ var side: int = 1
 var swings: int = 1
 var state: State = State.IDLE
 ## What happened: [event, level time, player distance]. Events: warning, hold, swing (each, with its
-## index), recover, done, kick, down.
+## index), recover, done, pass (another big attack was on: it let the runner pass), kick, down.
 var history: Array = []
 ## Every sound it played: [name, level time].
 var sounds: Array = []
@@ -389,7 +391,14 @@ func _tick(delta: float) -> void:
 				_set_state(State.DONE)
 				_log("done")
 			elif pl.alive and pl.running and d >= tune.warn_at(_at, swings, v):
-				_start_warning()
+				# GDD §9: big attacks take turns. A statue can't wait for one (the runner is gone by then):
+				# with another type's big attack on, it lets the runner pass instead of overlapping it.
+				if world.director.major_attack_blocked(self):
+					world.director.give_up_turn(self)
+					_set_state(State.DONE)
+					_log("pass")
+				else:
+					_start_warning()
 		State.WARNING:
 			if _state_time >= tune.warning_seconds:
 				if d >= _trigger(0, v):

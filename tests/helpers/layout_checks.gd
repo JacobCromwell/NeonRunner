@@ -80,8 +80,9 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 ## - the floor beside it clear to drop off into: over its drop window the outer lane on its side holds
 ##   no hole, fence, floor cut, anti-grav pad or floor enemy, and no hover truck keeps that lane;
 ## - nothing running meanwhile: no floor cut's window, drone wave (to its first pad), hover truck's
-##   stay, Octodog run, Resonator pulse (from its warning until its wave has passed the player) or Bad
-##   Dream chase reaches its drop window;
+##   stay, Octodog run, Resonator pulse (from its warning until its wave has passed the player), Bad
+##   Dream chase or Gilded Sentinel's attack (from its eyes' flare to its last swing) reaches its drop
+##   window; and never on a Gilded Sentinel's wall section (task C4);
 ## - spaced from the other wall fences: same_side_gap_seconds on its wall, gap_seconds on either.
 static func check_wall_fences(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
 	if layout.wall_fences.is_empty():
@@ -100,6 +101,7 @@ static func check_wall_fences(suite: TestSuite, layout: LevelLayout, config: Lev
 	var dt := EnemyDirector.tuning_for("drone") as DroneTuning
 	var wt := EnemyDirector.tuning_for("window_cyborg") as WindowCyborgTuning
 	var rt := EnemyDirector.tuning_for("resonator") as ResonatorTuning
+	var st := EnemyDirector.tuning_for("gilded_sentinel") as GildedSentinelTuning
 	var resonator: GDScript = load("res://scripts/enemies/resonator_rules.gd") as GDScript
 	var gen: LevelGenerator = LevelGenerator.for_layout(config, tuning, layout)
 	var partial_start: float = config.feature_start("wall_fences_partial") * layout.length
@@ -144,6 +146,12 @@ static func check_wall_fences(suite: TestSuite, layout: LevelLayout, config: Lev
 					if String((e.get("params", {}) as Dictionary).get("source", "vent")) == "vent":
 						suite.check(at < e_at - t.vent_before_seconds * speed - half + 0.01 or at > e_at + t.vent_after_seconds * speed + half - 0.01,
 							"no wall vent's screech by a wall fence on its wall (vent at %.1f) %s" % [e_at, x])
+				"gilded_sentinel":
+					# Task C4: off a Gilded Sentinel's wall section (its wall-run approach to past what it cuts).
+					var e_swings: int = int((e.get("params", {}) as Dictionary).get("swings", 1))
+					var guard: Vector2 = st.guarded_stretch(e_at, e_swings)
+					suite.check(at < guard.x - st.approach_seconds * speed - half + 0.01 or at > guard.y + st.wall_clear_seconds * speed + half - 0.01,
+						"no wall fence on a Gilded Sentinel's wall section (Sentinel at %.1f) %s" % [e_at, x])
 		# Ramps: never where one launches the player along its wall.
 		for r: Dictionary in layout.ramps:
 			if int(r["side"]) != side:
@@ -191,6 +199,9 @@ static func check_wall_fences(suite: TestSuite, layout: LevelLayout, config: Lev
 						busy.append(Vector2(HoverTruckRules.window_start(tt, e_at, pace), HoverTruckRules.window_end(tt, e_at, speed)))
 				"octodog":
 					busy.append(LevelGenerator.enemy_floor_span(e, pace))
+				"gilded_sentinel":
+					# Its whole attack, from its eyes' flare to the end of its last swing (task C4).
+					busy.append(st.attack_window(e_at, int((e.get("params", {}) as Dictionary).get("swings", 1)), speed))
 				"resonator":
 					# Each pulse, from its warning to where its wave has passed the player (the wall is an
 					# escape from it); a Resonator without a plan, its whole visit.
