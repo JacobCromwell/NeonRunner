@@ -488,7 +488,7 @@ func _reference_step() -> void:
 		root.add_child(_ref_world)
 		_ref_track = TrackBuilder.new()
 		_ref_world.add_child(_ref_track)
-		_ref_track.set_layout(RunSim.layout(SkinSuite.REFERENCE_LANES, 4000.0), load(TestSuite.TUNING_PATH) as MovementTuning,
+		_ref_track.set_layout(RunSim.layout(_reference_lanes(), 4000.0), load(TestSuite.TUNING_PATH) as MovementTuning,
 			GreyboxSkin.new())
 		_ref_track.update(0.0, 0.0)
 		_ref_d = 0.0
@@ -501,6 +501,15 @@ func _reference_step() -> void:
 	for chunk: Node in _ref_track.get_children():
 		if chunk.is_queued_for_deletion():
 			chunk.free()
+
+
+## SkinSuite.REFERENCE_LANES, looked up by name so the tool still loads in a tree without it (an older
+## build measured for comparison).
+static func _reference_lanes() -> int:
+	for c: Dictionary in ProjectSettings.get_global_class_list():
+		if StringName(c["class"]) == &"SkinSuite":
+			return int((load(String(c["path"])) as GDScript).get_script_constant_map().get("REFERENCE_LANES", 40))
+	return 40
 
 
 ## One move of the scripted runner: mostly lane switches (one onto a wall now and then), some jumps and
