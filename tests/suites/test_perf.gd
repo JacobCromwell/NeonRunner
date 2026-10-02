@@ -301,6 +301,15 @@ func _test_shader_warmup() -> void:
 		if node is CollisionObject3D and (node as CollisionObject3D).collision_layer != 0:
 			stray.append("%s collides" % n3.name)
 	check(stray.is_empty(), "nothing in it collides, lights the street or leaves its tiny space: %s" % ", ".join(stray.slice(0, 4)))
+	for i: int in 3:
+		await tree.process_frame
+	var big: PackedStringArray = []
+	for node: Node in stage.find_children("*", "Node3D", true, false):
+		var n3 := node as Node3D
+		if n3.global_transform.basis.get_scale().x > ShaderWarmup.SCALE * 100.0:
+			big.append("%s (%s)" % [stage.get_path_to(n3), node.get_script().resource_path.get_file() if node.get_script() else node.get_class()])
+	check(big.is_empty(), "a few frames on, every sample is still too small to see (none at full size in the world): %s" %
+		", ".join(big.slice(0, 4)))
 	check(_count_script(stage, CyborgBody) >= 3, "it draws the cyborgs' looks (a cyborg, a host, a window cyborg)")
 	var states: Dictionary = {}
 	for h: Node in stage.find_children("*", "Area3D", true, false):

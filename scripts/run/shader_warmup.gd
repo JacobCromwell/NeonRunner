@@ -160,7 +160,11 @@ func _show_all() -> void:
 		var node3d := node as Node3D
 		if node3d == null:
 			continue
-		node3d.top_level = false
+		if node3d.top_level:
+			# Turned off in the tree, a top-level node keeps its place in the world (and its size): put it
+			# back in the stage's tiny space.
+			node3d.top_level = false
+			node3d.transform = Transform3D.IDENTITY
 		node3d.visible = not node is Light3D
 		if node is CPUParticles3D:
 			_sample_geometry(node as CPUParticles3D)
