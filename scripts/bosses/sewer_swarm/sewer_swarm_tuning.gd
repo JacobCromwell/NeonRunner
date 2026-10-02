@@ -19,8 +19,8 @@ extends Resource
 @export_range(10, 600, 10) var cluster_creatures_low_end: int = 60
 ## DESIGN-TBD (E3): the roadside horde, both gutters together (GDD §10: "it builds up on both sides of the
 ## street"). Scenery: it never touches the lanes.
-@export_range(0, 1200, 20) var horde_creatures: int = 260
-@export_range(0, 1200, 20) var horde_creatures_low_end: int = 100
+@export_range(0, 1200, 20) var horde_creatures: int = 400
+@export_range(0, 1200, 20) var horde_creatures_low_end: int = 160
 ## DESIGN-TBD (E3): phase 2's wall climb (task E4b: GDD §10, "the swarm also climbs the walls, ... one wall at
 ## a time"), here so every crowd size lives in one place and the stress scene can draw it.
 @export_range(0, 800, 20) var climb_creatures: int = 200
@@ -29,7 +29,7 @@ extends Resource
 @export_range(0, 40, 1) var spill_creatures: int = 10
 @export_range(0, 40, 1) var spill_creatures_low_end: int = 4
 ## DESIGN-TBD: a swarm screech's size against a sewer screech's (1): smaller, so hundreds fit the street.
-@export_range(0.3, 1.2, 0.01) var creature_scale: float = 0.62
+@export_range(0.3, 1.2, 0.01) var creature_scale: float = 0.7
 
 @export_group("Clusters")
 ## GDD §10: 4-5 clusters. Phase 1 ends when two are destroyed, phase 2 when the rest are (the BossDef's
@@ -49,18 +49,18 @@ extends Resource
 @export_range(0.5, 10.0, 0.1, "suffix:s") var reform_seconds: float = 3.0
 ## Its mound at the roadside: this long, piled this far out from the wall's foot (never into the outer
 ## lane's runner), clinging this high up the wall.
-@export_range(1.0, 10.0, 0.1, "suffix:m") var mound_length: float = 4.6
-@export_range(0.3, 1.2, 0.05, "suffix:m") var mound_depth: float = 0.9
-@export_range(0.2, 4.0, 0.1, "suffix:m") var mound_climb: float = 1.7
+@export_range(1.0, 10.0, 0.1, "suffix:m") var mound_length: float = 5.5
+@export_range(0.3, 1.2, 0.05, "suffix:m") var mound_depth: float = 1.0
+@export_range(0.2, 4.0, 0.1, "suffix:m") var mound_climb: float = 2.6
 ## The surging mass: this long, this share of a lane wide, piled this high.
-@export_range(1.0, 10.0, 0.1, "suffix:m") var mass_length: float = 5.2
-@export_range(0.3, 1.0, 0.01) var mass_width_share: float = 0.85
-@export_range(0.3, 2.0, 0.05, "suffix:m") var mass_height: float = 0.95
+@export_range(1.0, 10.0, 0.1, "suffix:m") var mass_length: float = 6.5
+@export_range(0.3, 1.0, 0.01) var mass_width_share: float = 0.9
+@export_range(0.3, 2.0, 0.05, "suffix:m") var mass_height: float = 1.15
 ## Its damage hitbox (GDD §3: slightly smaller than the look, so it errs in the runner's favour): this
 ## share of a lane wide, this high, this share of the mass long, starting this far behind its front.
 @export_range(0.2, 0.9, 0.01) var hit_width_share: float = 0.55
-@export_range(0.2, 2.0, 0.05, "suffix:m") var hit_height: float = 0.8
-@export_range(0.2, 1.0, 0.01) var hit_length_share: float = 0.8
+@export_range(0.2, 2.0, 0.05, "suffix:m") var hit_height: float = 0.9
+@export_range(0.2, 1.0, 0.01) var hit_length_share: float = 0.75
 @export_range(0.0, 1.5, 0.05, "suffix:m") var hit_front_inset: float = 0.35
 
 @export_group("Surges")
@@ -77,7 +77,7 @@ extends Resource
 ## It pours out of the roadside into the lane over this long before the lock (toward the line's lane).
 @export_range(0.1, 1.5, 0.05, "suffix:s") var pour_seconds: float = 0.55
 ## How fast it charges down the lane toward the runner (at 18 m/s).
-@export_range(4.0, 30.0, 0.5, "suffix:m/s") var charge_speed: float = 14.0
+@export_range(4.0, 30.0, 0.5, "suffix:m/s") var charge_speed: float = 18.0
 ## Where an unbaited surge would meet the runner: this far before its bait spot (at 18 m/s). The cluster
 ## lands charge_speed × lock_seconds further on (past the bait), so a baited one reaches its fence or hole
 ## a moment before the runner does, in plain view.
@@ -98,7 +98,7 @@ extends Resource
 ## jump before where its surge's warning finds the runner to clear_after past where the cluster lands. A
 ## surge comes at every spot the pattern reaches in time; between them the street is the generator's.
 @export_range(60.0, 1000.0, 5.0, "suffix:m") var bait_first: float = 170.0
-@export_range(80.0, 1000.0, 5.0, "suffix:m") var bait_spacing: float = 150.0
+@export_range(80.0, 1000.0, 5.0, "suffix:m") var bait_spacing: float = 200.0
 ## The kinds, in turn: "fence" (a live full-height fence: GDD §10, "hits a live electric fence and is
 ## shocked") or "hole" (GDD §10: "baiting a cluster into a hole also works").
 @export var bait_kinds: PackedStringArray = PackedStringArray(["fence", "hole"])
@@ -123,7 +123,7 @@ extends Resource
 @export_range(0.0, 1.0, 0.05) var lair_burst_share: float = 0.4
 ## The roadside horde: from horde_behind behind the runner to horde_ahead ahead, piled horde_depth out from
 ## the wall's foot and clinging up to horde_climb, drifting back past the runner this fast.
-@export_range(20.0, 200.0, 1.0, "suffix:m") var horde_ahead: float = 110.0
+@export_range(20.0, 200.0, 1.0, "suffix:m") var horde_ahead: float = 70.0
 @export_range(0.0, 40.0, 1.0, "suffix:m") var horde_behind: float = 14.0
 @export_range(0.2, 1.2, 0.05, "suffix:m") var horde_depth: float = 0.8
 @export_range(0.0, 2.0, 0.05, "suffix:m") var horde_climb: float = 0.75

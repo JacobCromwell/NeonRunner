@@ -24,9 +24,11 @@ extends RefCounted
 enum Stage { IDLE, WARN, POUR, CHARGE }
 
 const STAGE_NAMES: PackedStringArray = ["idle", "warn", "pour", "charge"]
-## The aim line's width (a share of a lane: thinner than the locked lane warning's 0.34) and its height.
-const AIM_WIDTH: float = 0.2
+## The aim line's width (a share of a lane: a little thinner than the locked lane warning's 0.34) and its height.
+const AIM_WIDTH: float = 0.28
 const AIM_Y: float = 0.03
+## How fast (m/s) a gathering cluster makes for where it will pour in, from its station.
+const GATHER_SPEED: float = 45.0
 
 var boss: SewerSwarm
 var stage: Stage = Stage.IDLE
@@ -102,12 +104,19 @@ func clear() -> void:
 	stage = Stage.IDLE
 
 
+## A cluster was destroyed (weapons thinned it to nothing, or the fight was won): if it was surging, its surge
+## ends now, its lines with it. (A baited one's surge has ended already.)
+func cluster_destroyed(cluster: SwarmCluster) -> void:
+	if not surge.is_empty() and surge["cluster"] == cluster:
+		_end("destroyed")
+
+
 func _try_start() -> void:
 	var spot: Dictionary = boss.next_spot()
 	if spot.is_empty() or boss.player_distance() < float(spot["warn_at"]):
 		return
 	boss.use_spot(spot)
-	var cluster: SwarmCluster = boss.next_cluster()
+	var cluster: SwarmCluster = boss.next_cluster(boss.side_of_lane(int(spot["lane"])))
 	if cluster == null:
 		boss.log_event(&"bait_missed", {"at": spot["at"], "lane": spot["lane"], "why": "no cluster"})
 		return
@@ -139,6 +148,8 @@ func _warn(delta: float) -> void:
 	var lock_t: float = t.warning_seconds - t.lock_seconds
 	var pour_t: float = lock_t - t.pour_seconds
 	surge["lane"] = boss.player_lane()
+	# It holds where it will pour in (from the next station along, if it's the bait's side's).
+	c.at = move_toward(c.at, float(surge["entry"]), GATHER_SPEED * delta)
 	c.rear = minf(c.rear + delta * 2.5, 1.0)
 	c.bristle = minf(c.bristle + delta * 2.0, 1.0)
 	if now >= pour_t and stage == Stage.WARN:

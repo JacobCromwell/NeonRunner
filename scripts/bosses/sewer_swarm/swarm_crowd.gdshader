@@ -13,17 +13,27 @@
 //   1 a roadside band: the horde in a gutter, from `band`.y ahead to `band`.z behind, drifting back;
 //   2 a spill: screeches pouring out of a lair as it bursts (INSTANCE_CUSTOM = (burst clock, side, w, rank)).
 // The look is the screech's (its vertex colours: skin, belly, the red-orange spine tips and the yellow
-// eyes glowing), weathered for the zone (`grime`). Nothing here flashes: a shock's crackle is a steady glow
-// with Reduced flashing. On the Compatibility renderer (no tonemapping) an over-bright glow is scaled down
-// whole, so the spines' red-orange never clips toward yellow.
+// eyes glowing), weathered for the zone (`grime`), its skin lifted toward a sickly pale (`skin_lift`: the
+// screech's dark olive on Gangland's dark asphalt would vanish in a crowd). Its colours are authored in
+// sRGB, so they're taken to linear light on Forward+ and Mobile (to_linear), and the crowd looks the same on
+// every renderer. A massed crowd glows less per creature than a lone screech (emission_strength). Only an
+// attack heats it to enemy-attack red (motion.z, bristle: a cluster's surge, from its warning on): its spines
+// and eyes burn red and its silhouette glows red, so the cluster coming down a lane stands out from the
+// harmless horde at the roadside, whose spines only smoulder. Nothing here flashes: a shock's crackle is a steady glow with Reduced flashing. On
+// the Compatibility renderer (no tonemapping) an over-bright glow is scaled down whole, so the spines'
+// red-orange never clips toward yellow.
 shader_type spatial;
 render_mode cull_disabled;
 #include "res://scripts/world/meshes/shaders/kit_flash.gdshaderinc"
+#include "res://scripts/world/meshes/shaders/kit_common.gdshaderinc"
 
 uniform int kind = 0;
 // Zone weathering: 0 = city (dark and slick), 1 = scavenger zones (grimier, more diseased).
 uniform float grime = 1.0;
-uniform float emission_strength = 2.4;
+uniform float emission_strength = 2.0;
+// How far the skin is lifted toward skin_pale (0: the screech's own).
+uniform float skin_lift = 0.45;
+uniform vec4 skin_pale : source_color = vec4(0.5, 0.47, 0.36, 1.0);
 uniform float creature_scale = 0.62;
 // The fight's clock (seconds): a spill's creatures come out by it.
 uniform float clock = 0.0;
@@ -49,6 +59,9 @@ uniform vec4 band = vec4(-4.0, 110.0, 14.0, 2.5);
 uniform vec4 band_shape = vec4(0.8, 0.75, -1.0, 0.0);
 // A shocked creature's glow: the fence's pink, burnt white.
 uniform vec4 shock_color : source_color = vec4(1.0, 0.62, 0.86, 1.0);
+// An attack's heat: enemy-attack red (BossProps.WARNING_COLOR), and how bright its silhouette glows.
+uniform vec4 attack_color : source_color = vec4(1.0, 0.12, 0.08, 1.0);
+uniform float heat_energy = 1.6;
 
 varying float v_bristle;
 varying float v_lesion;
@@ -253,11 +266,18 @@ void fragment() {
 	vec3 sore = mix(vec3(0.55, 0.5, 0.12), vec3(0.45, 0.14, 0.3), grime);
 	skin = mix(skin, sore, v_lesion * is_skin * (0.35 + 0.45 * grime));
 	skin *= mix(vec3(1.0), vec3(0.85, 0.75, 0.6), grime * is_skin);
+	skin = mix(skin, skin_pale.rgb, skin_lift * is_skin);
+	skin = to_linear(skin);
 	ALBEDO = mix(skin, skin * 0.4, v_shock);
 	ROUGHNESS = mix(0.15, 0.45, grime);
-	SPECULAR = 0.85;
-	vec3 glow = COLOR.rgb * COLOR.a * emission_strength * (1.0 + 1.5 * v_bristle);
-	glow += shock_color.rgb * v_shock * 2.6;
+	SPECULAR = 0.6;
+	// An attack's heat: 0 at rest (bristle 0.25) and for the horde, 1 at a surge's height.
+	float heat = clamp((v_bristle - 0.25) / 0.75, 0.0, 1.0) * (1.0 - v_shock);
+	vec3 hot = to_linear(attack_color.rgb);
+	vec3 glow = mix(to_linear(COLOR.rgb), hot, heat) * COLOR.a * emission_strength * (1.0 + 1.2 * v_bristle);
+	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 1.5);
+	glow += hot * heat * (0.2 + 0.8 * rim) * heat_energy;
+	glow += to_linear(shock_color.rgb) * v_shock * 2.6;
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
 	glow /= max(1.0, max(glow.r, max(glow.g, glow.b)));
 #endif

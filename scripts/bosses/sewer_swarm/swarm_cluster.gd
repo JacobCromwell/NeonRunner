@@ -102,10 +102,10 @@ func form(seconds: float, delay: float = 0.0) -> void:
 	form_speed = 1.0 / maxf(seconds, 0.05)
 
 
-## Its surge's warning: it holds at `p_at` at the roadside, rearing up.
-func gather(p_at: float) -> void:
+## Its surge's warning: it makes for `p_at` at the roadside (SwarmSurges eases it there: it's at most a
+## station away) and holds there, rearing up.
+func gather(_p_at: float) -> void:
 	stage = Stage.GATHER
-	at = p_at
 	formed = maxf(formed, 0.0)
 
 
@@ -142,6 +142,14 @@ func place() -> void:
 ## Weapons target it only while it surges: waiting at the roadside it's part of the horde.
 func targetable() -> bool:
 	return super.targetable() and surging()
+
+
+## Weapon damage thins it only while it surges, like its targeting (a stray shot or a splash reaching it at
+## the roadside does nothing); its health is its own (BossPart, shares_health off).
+func take_damage(amount: float, source: StringName, splash: bool = false) -> void:
+	if not surging():
+		return
+	super.take_damage(amount, source, splash)
 
 
 func is_major_attack_active() -> bool:

@@ -3,11 +3,13 @@
 // built like the sewer screech's own (ScreechLair: a rusted cover with four slots, a grille over a dark
 // opening with red eyes behind it). UV.x is the part: 0 still (the rim, the hole, the vent's frame and
 // eyes), 1 the lid (the cover with its slots, the grille). Vertex colours: rgb albedo, a glow.
+// Colours are sRGB (taken to linear light on Forward+ and Mobile).
 // INSTANCE_CUSTOM = (rattle 0-1, open 0-1, unused, seed): the lid rattles (the screech's warning: its
 // slots glow brighter, steadily, never blinking), then bursts open: a cover flips up and clangs back down
 // askew over the hole (no open hole is left to look like a gap), a grille flies out and is gone.
 shader_type spatial;
 render_mode cull_disabled;
+#include "res://scripts/world/meshes/shaders/kit_common.gdshaderinc"
 
 // 0 a manhole, 1 a vent (built for the right wall: its face at x = 0, the street toward -x).
 uniform int kind = 0;
@@ -51,10 +53,11 @@ void vertex() {
 }
 
 void fragment() {
-	ALBEDO = COLOR.rgb;
+	// Authored in sRGB, like the screech's lair (ScreechLair's StandardMaterial3D colours).
+	ALBEDO = to_linear(COLOR.rgb);
 	ROUGHNESS = 0.8;
 	METALLIC = 0.35;
-	vec3 glow = COLOR.rgb * v_glow * glow_energy;
+	vec3 glow = to_linear(COLOR.rgb) * v_glow * glow_energy;
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
 	glow /= max(1.0, max(glow.r, max(glow.g, glow.b)));
 #endif

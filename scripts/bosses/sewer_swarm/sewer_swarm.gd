@@ -400,14 +400,22 @@ func station_offset(slot: int) -> float:
 	return surge_reach() + slot * tuning.station_spacing
 
 
-## The next cluster to surge (taken out of the line), or null.
-func next_cluster() -> SwarmCluster:
-	for i: int in queue.size():
-		var c: SwarmCluster = queue[i]
-		if is_instance_valid(c) and c.ready_to_surge():
-			queue.remove_at(i)
-			return c
+## The next cluster to surge (taken out of the line), or null: the first in line on `side` (the bait's side
+## of the street, so it pours in close to it), or the first on either side (`side` 0, or none on that side).
+func next_cluster(side: int = 0) -> SwarmCluster:
+	for pass_side: int in ([side, 0] if side != 0 else [0]):
+		for i: int in queue.size():
+			var c: SwarmCluster = queue[i]
+			if is_instance_valid(c) and c.ready_to_surge() and (pass_side == 0 or c.side == pass_side):
+				queue.remove_at(i)
+				return c
 	return null
+
+
+## The side of the street nearer `lane` (-1 left, +1 right; 0 for the middle lane at an odd count).
+func side_of_lane(lane: int) -> int:
+	var mid: float = (lane_count() - 1) * 0.5
+	return 0 if is_equal_approx(float(lane), mid) else (-1 if float(lane) < mid else 1)
 
 
 ## A cluster whose surge missed: it re-forms at the back of the line.
@@ -508,6 +516,7 @@ func _on_part_defeated(part: BossPart, cause: StringName) -> void:
 	var cluster := part as SwarmCluster
 	if cluster == null:
 		return
+	surges.cluster_destroyed(cluster)
 	queue.erase(cluster)
 	destroyed += 1
 	destroyed_by[cause] = int(destroyed_by.get(cause, 0)) + 1
