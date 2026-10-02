@@ -13,7 +13,8 @@ extends Resource
 ## across some lanes, gold blocks slammed into lanes; two or three of a kind a bigger version), the 7
 ## buttons that lock their reels on 7, the jackpot (sirens, a fountain of real credits, the hopper bursting
 ## open on top as a red weak point while it sags low, stomped), three phases and the standard armor rule.
-## Every number here is a placeholder (DESIGN-TBD, docs/questions/e5a.md).
+## Every number here is a placeholder (DESIGN-TBD: docs/OPEN_QUESTIONS.md items 299-303,
+## docs/questions/e5a.md).
 
 @export_group("Machine")
 ## DESIGN-TBD: its cabinet fills the street between the walls less this on each side; it stands

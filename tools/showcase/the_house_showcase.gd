@@ -16,6 +16,12 @@ extends Node3D
 ##             with the bot dodging (--still: the runner stands in the middle lane, god mode)
 ##   buttons   through the run camera, a spin with buttons, the bot running over them
 ##   jackpot   through the run camera, a spin with buttons, the jackpot, the fountain and the stomp
+##   wall      phase 2 through the run camera: wall fences along the walls, a set with a wall button, the
+##             bot running along the wall over it
+##   ceiling   phase 3 through the run camera: the machine squats, the billboard comes down with its pad
+##             and turrets, the bot takes the pad and runs over the ceiling button, dodging bolts
+##   defeat    phase 3 to its end: the last jackpot and stomp, then the wild spin, the jam and TILT, the
+##             collapse in coins
 ##   fight     the fight as it comes, with the bot
 ## Options: --lanes=N (3, 5 or 6; 5 by default), --speed=N (18 by default; the campaign's 22.6),
 ## --symbols=a,b,c (the spin's three symbols: cherry, bar, lightning), --phase=N, --reduced-flashing,
@@ -23,7 +29,7 @@ extends Node3D
 ## Frames worth a look (at --fixed-fps 10): entrance 0-45; spin: the lever about frame 53, the reels
 ## stopping 61-72, the attacks' warnings from about 75 and their strikes to about 110; buttons: the buttons
 ## lighting up from about frame 53 and pressed about 66-79; jackpot: the jackpot about frame 80, the
-## fountain and the sag 83-92, the stomp about 102.
+## fountain and the sag 83-92, the stomp about 102; wall, ceiling, defeat: print --events and pick.
 
 const BOSS_PATH: String = "res://data/bosses/marketplace_boss.tres"
 
@@ -70,8 +76,12 @@ func _ready() -> void:
 		"spin":
 			t.spin_patterns = PackedStringArray([symbols.replace(",", ",")])
 			t.opening_spins = PackedInt32Array([100])
-		"buttons", "jackpot":
-			t.opening_spins = PackedInt32Array([0])
+		"buttons", "jackpot", "wall", "ceiling", "defeat":
+			# The wall's set after one spin, once the phase's wall fences are near.
+			var opening: int = 1 if scenario == "wall" else 0
+			t.opening_spins = PackedInt32Array([opening, opening, opening])
+			if phase == 0:
+				phase = 2 if scenario == "wall" else (3 if scenario in ["ceiling", "defeat"] else 0)
 	def.tuning = t
 	var tuning := (load("res://data/tuning/movement.tres") as MovementTuning).duplicate() as MovementTuning
 	tuning.run_speed = speed
@@ -91,7 +101,7 @@ func _ready() -> void:
 	world.build(ctx.config, arena.layout, tuning, load("res://data/tuning/game_rules.tres") as GameRules,
 		load("res://data/tuning/powerups.tres") as PowerupTuning, null, load("res://data/audio/sfx_library.tres") as SfxLibrary)
 	boss.setup(world, ctx, arena)
-	if scenario in ["spin", "buttons", "jackpot", "fight"] and not _still:
+	if scenario in ["spin", "buttons", "jackpot", "wall", "ceiling", "defeat", "fight"] and not _still:
 		bot = TheHouseBot.new(boss)
 	else:
 		world.player.god_mode = true
