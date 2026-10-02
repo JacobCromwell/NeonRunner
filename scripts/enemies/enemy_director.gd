@@ -81,12 +81,8 @@ func setup(p_world: RunWorld) -> void:
 ## Dream). Once a process for each type, zone look and kind (a host). Nothing here spawns, shows or
 ## decides anything: the run plays exactly as without it. setup() calls it.
 func warm_up() -> void:
-	var todo: Array[Dictionary] = []
-	var seen: Dictionary = {}
-	for entry: Dictionary in world.layout.enemies:
-		_note_for_warm_up(entry, todo, seen)
 	var variant: String = String(world.skin.enemy_variant) if world.skin != null else ""
-	for entry: Dictionary in todo:
+	for entry: Dictionary in warm_entries():
 		var type: String = String(entry["type"])
 		var script: GDScript = script_for(type)
 		tuning_for(type)
@@ -99,6 +95,30 @@ func warm_up() -> void:
 		var look: Variant = script.call(&"warm_up", world, entry.duplicate(true))
 		if look is Node and is_instance_valid(look):
 			(look as Node).free()
+
+
+## One layout entry for each enemy type and kind the level brings, and for those they bring (warm_up).
+func warm_entries() -> Array[Dictionary]:
+	var todo: Array[Dictionary] = []
+	var seen: Dictionary = {}
+	for entry: Dictionary in world.layout.enemies:
+		_note_for_warm_up(entry, todo, seen)
+	return todo
+
+
+## A look of every kind of enemy the level brings that has a warm_up hook, built now for the caller to
+## show and free: ShaderWarmup draws each once while the level loads, so the renderer has its shaders
+## ready before the first one comes (task PERF1).
+func warm_looks() -> Array[Node]:
+	var out: Array[Node] = []
+	for entry: Dictionary in warm_entries():
+		var script: GDScript = script_for(String(entry["type"]))
+		if script == null or not _has_hook(script, &"warm_up"):
+			continue
+		var look: Variant = script.call(&"warm_up", world, entry.duplicate(true))
+		if look is Node and is_instance_valid(look):
+			out.append(look)
+	return out
 
 
 ## Adds `entry` to the warm-up list (one entry for each type and kind), and what it brings.

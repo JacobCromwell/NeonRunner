@@ -128,6 +128,10 @@ func _build() -> void:
 		add_child(camera)
 	camera.make_current()
 	camera.follow(world)
+	# Task PERF1: every look the level may show later is drawn once now, too small to see, so the renderer
+	# compiles its shaders during the load rather than in the frame it first appears.
+	if ShaderWarmup.needed():
+		ShaderWarmup.new().setup(world, camera)
 	if speed_lines == null:
 		speed_lines = SpeedLines.new()
 		add_child(speed_lines)

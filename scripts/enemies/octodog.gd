@@ -99,13 +99,16 @@ var _telegraph: MeshInstance3D
 var _doghouse: Node3D
 
 
-## An Octodog's look, its lunge line and its doghouse, for EnemyDirector.warm_up (which frees them):
-## the first builds the meshes and materials every later Octodog shares.
+## An Octodog's look, its lunge line and its doghouse, for EnemyDirector.warm_up (which frees them)
+## and ShaderWarmup: the first builds the meshes and materials every later Octodog shares.
 static func warm_up(world: RunWorld, _entry: Dictionary) -> Node:
 	var variant: StringName = world.skin.enemy_variant if world.skin != null else &"city"
 	var model := OctodogModel.new()
 	model.build(variant, 0.5)
-	OctodogModel.telegraph_mesh()
+	var line := MeshInstance3D.new()
+	line.mesh = OctodogModel.telegraph_mesh()
+	line.material_override = GreyboxMaterials.glow(Color(1.0, 0.12, 0.08), 3.0, 0.5)
+	model.add_child(line)
 	model.add_child(OctodogModel.build_doghouse(variant))
 	return model
 
