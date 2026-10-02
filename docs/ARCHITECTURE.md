@@ -371,7 +371,9 @@ the visual model only, as `entry`'s would be, outside the tree, with every part 
 (a muzzle's charge, a lunge line, a wave), since `ShaderWarmup` draws the same looks once during the load
 (`warm_looks()`, A run). A type whose enemies bring others into play names them with a static
 `brings(entry: Dictionary) -> Array[Dictionary]` (a host cyborg's Bad Dream). The cyborg, window cyborg,
-screech, Octodog, Resonator, Barnacle Turret, Bad Dream and fence generator have hooks; a new enemy whose
+screech, Octodog, Resonator, Barnacle Turret, Bad Dream, fence generator and Buzz Overdrive have hooks, and a
+boss fight names the enemies it brings itself with `BossEncounter.warm_enemies()` (the Floating Head's dropped
+cyborgs, the Sleep Taker's generators); a new enemy whose
 first spawn builds anything costly adds one (`test_perf` checks every hooked kind is readied and nothing
 of it stays).
 Enemy fire uses the pool's red "enemy_*" looks in every zone. `world.skin.enemy_variant` picks the

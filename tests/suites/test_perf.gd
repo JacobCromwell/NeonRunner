@@ -26,6 +26,7 @@ const WARM_ENTRIES: Array[Dictionary] = [
 	{"type": "resonator", "at": 500.0, "lane": 1, "seed": 8, "params": {}},
 	{"type": "barnacle_turret", "at": 520.0, "lane": 1, "seed": 9, "params": {}},
 	{"type": "generator", "at": 540.0, "lane": 2, "seed": 10, "params": {}},
+	{"type": "buzz_overdrive", "at": 560.0, "lane": 1, "seed": 11, "params": {}},
 ]
 
 var sim: RunSim
@@ -216,7 +217,8 @@ func _test_enemy_warm_up() -> void:
 	var missing: PackedStringArray = []
 	for key: String in ["cyborg|%s|" % variant, "cyborg|%s|host" % variant, "window_cyborg|%s|" % variant,
 			"screech|%s|" % variant, "octodog|%s|" % variant, "resonator|%s|" % variant,
-			"barnacle_turret|%s|" % variant, "generator|%s|" % variant, "bad_dream|%s|" % variant]:
+			"barnacle_turret|%s|" % variant, "generator|%s|" % variant, "buzz_overdrive|%s|" % variant,
+			"bad_dream|%s|" % variant]:
 		if not EnemyDirector._warmed.has(key):
 			missing.append(key)
 	check(missing.is_empty(), "every kind the level brings is readied, a host's Bad Dream too (missing: %s)" % ", ".join(missing))
@@ -224,7 +226,7 @@ func _test_enemy_warm_up() -> void:
 	for e: Dictionary in director.warm_entries():
 		if not EnemyDirector._scripts.has(String(e["type"])) or EnemyDirector._scripts[String(e["type"])] == null:
 			unloaded.append(String(e["type"]))
-	check(unloaded.is_empty() and director.warm_entries().size() == 9,
+	check(unloaded.is_empty() and director.warm_entries().size() == 10,
 		"each type's script is loaded with the level (%d kinds; not loaded: %s)" % [director.warm_entries().size(), ", ".join(unloaded)])
 	check(int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)) == nodes_before and director.get_child_count() == children_before
 		and director.active.is_empty(), "nothing it built stays: no node in the tree, no enemy in play")
@@ -238,7 +240,7 @@ func _test_enemy_warm_up() -> void:
 		if look.is_inside_tree() or _count(look, "GeometryInstance3D") == 0:
 			empty += 1
 		look.free()
-	check(looks.size() == 9 and empty == 0, "warm_looks() gives one look of each kind, built outside the tree (%d, %d empty)" % [
+	check(looks.size() == 10 and empty == 0, "warm_looks() gives one look of each kind, built outside the tree (%d, %d empty)" % [
 		looks.size(), empty])
 	await sim.free_world(world)
 
