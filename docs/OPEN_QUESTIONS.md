@@ -142,6 +142,47 @@ The owner reviewed every placeholder below. **GB** means "From the R1 core-movem
 - title and brand: FB 109
 - other: FB 111 (achievements)
 
+**R6 (October 2, 2026): markers taken off the items approved as is.** The `DESIGN-TBD` markers of these items
+are now plain doc comments naming the item; every other item keeps its marker (changes until their value is in place,
+tune after playtesting, later design rounds, and every item from build phase 2).
+
+| Item | What | Files |
+|---|---|---|
+| GB 8 | Air-slide fast fall is a kept feel addition | 1 |
+| FB 5 | The Normal/Hard/Insane tiers (FB 4, the difficulty curve, keeps its marker: reopened by the playtests and G1) | 1 |
+| FB 7 | First-encounter hints, togglable in Settings | 3 |
+| FB 8 | Credit denominations: look, colours, sound | 3 |
+| FB 9 | Credit placement (trails, risky-spot big credits) | 1 |
+| FB 12 | Purchases spend bought credits first | 1 |
+| FB 13 | One breakable charge per attempt | 1 |
+| FB 16 | Revives: one per attempt, 2 s invulnerability | 1 |
+| FB 17 | Juggernaut dash: duration/cooldown/speed, passes every hazard but falls | 3 |
+| FB 18 | Grapple hook pull velocity | 1 |
+| FB 20 | Ramp score multiplier (x2) | 1 |
+| FB 21, FB 49 | Speed pads: green "safe boost" family, +6 m/s decaying | 11 |
+| FB 23 | Magnet radius per tier | 2 |
+| FB 24 | Claws extend wall runs 1.5x | 1 |
+| FB 25 | Slow time: 0.5x for 3 s, 20 s cooldown | 2 |
+| FB 26, FB 29 | Weapon tiers 2–3, fire rate, splash radius, swarm bonus on splash | 2 |
+| FB 34 | Enemy health bars read in the red family | 1 |
+| FB 36, FB 37 | Invulnerability flash and death flash look | 1 |
+| FB 40 | Yellow/black hazard sign frame, every zone | 1 |
+| FB 42 | Ships fly toward the player, like the trucks | 1 |
+| FB 58 | HUD shows a progress bar (markers still undecided) | 2 |
+| FB 60 | Level-complete stats screen | 1 |
+| FB 61 | Revive offer waits for a choice, no countdown | 1 |
+| FB 70 | Cyborgs/window cyborgs hold fire at a ceiling or own-wall rider | 1 |
+| FB 73 | Fence generator: claws/contact don't destroy it, body solid | 1 |
+| FB 76, FB 77 | Octodog diagonal aim and between-charges pass clearance | 1 |
+| FB 79 | Octodog doghouse (first 3, burst at 55 m) | 2 |
+| FB 83, FB 84 | Screech spines are a body collision; stops at a hole's edge | 1 |
+| FB 86, FB 88 | Drone has no contact hitbox; "on screen" definition | 1 |
+| FB 89, FB 90 | Drone wave pairing/gap and pad schedule | 2 |
+| FB 91, FB 92, FB 93 | Hover truck lane/pacing, warnings, kill rules | 1 |
+| FB 94 | Trucks per level (1 early to 3 late, always one) | 1 |
+| FB 99, FB 100, FB 101, FB 103 | Bad Dream: wall slash, escape fairness, body touch, EMP dissolve | 2 |
+| FB 104, FB 105 | Bad Dream survival bonus and chase pad schedule | 1 |
+
 ### From the R1 core-movement grey box (September 25, 2026)
 Each item has a placeholder in code marked `DESIGN-TBD` and, where it's a number, a value in `data/tuning/movement.tres` or `data/levels/`. Answer them after playtesting the grey box.
 
@@ -1868,6 +1909,45 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     seed in six; never on the levels' own seeds). The alternative: let them stand during big attacks (more of
     them, and introductions always on time, but the wall is one of the escapes from the Resonator's wave and
     the Bad Dream's slash).
+
+**The House** (from E5a-a; numbers in `data/bosses/marketplace_boss_tuning.tres`; play `--boss=marketplace_boss`, review with `tools/showcase/the_house_showcase.tscn`)
+299. **The 7 buttons' look** (GDD §10: "big glowing 7 buttons appear along the route. Running over one
+    locks its reel on 7"; they must read as safe to run over).
+    **Placeholder:** a big round ivory button flat on the floor, ringed in white with warm bulbs chasing
+    round it, the reels' own 7 in royal blue in its middle, and the same 7 floating upright above head
+    height over it (it marks the button from far along the street, and shrinks away as the runner nears).
+    Why: white and ivory are the pickups' "safe" neutrals; royal blue is no hazard's colour and not the
+    pads' cyan; round is no pad's or ramp's shape; the 7 ties it to the reels. Each lights up 1.35 s
+    before the runner reaches it, with a soft chime. **Alternative:** a gold coin-shaped button (gold reads
+    as the BAR blocks' colour, so we kept it off).
+300. **Do locked reels stay locked?** (GDD §10: "With all three locked: JACKPOT"; "missed buttons: it just
+    spins again").
+    **Placeholder:** yes, until the jackpot (`locks_persist`): a missed button only means its reel shows its
+    symbol and that attack comes; the next spin offers buttons for the reels still spinning, so a runner
+    rigs the machine a reel at a time (a missed jackpot clears them). **Alternative:** all three in one spin
+    (`locks_persist` off), much harder once phases 2 and 3 put a button on a wall or a ceiling.
+301. **How the player reaches the hopper** (GDD §10: "its coin hopper bursts open on top as a glowing red
+    weak point while it sags low. The player stomps it").
+    **Placeholder:** at the jackpot it rolls to a stop where the runner reaches it 2.6 s later (at any
+    speed), and sinks into the street until its top is a low deck (0.35 m) the runner can run onto. The
+    hopper is open in that deck across the whole street, glowing red, its stomp box 12 m long at 18 m/s
+    (stretched with the speed): any jump that comes down on it stomps it, from the street or from the deck
+    (the box is longer than a jump). A runner who doesn't jump runs over it unhurt; then it lurches out
+    from under them, rises and spins again. The hopper opens about 1.5 s before the runner reaches it, at
+    18 and 22.6 m/s. **Alternative:** it stays standing and its payout chute drops to the street as a ramp
+    up to the hopper on its top.
+302. **How long a phase lasts before the buttons come** (GDD §10: a fight of about 60-120 s).
+    **Placeholder:** each phase opens with two spins without buttons (`opening_spins`: only attacks, about
+    6 s each), then every spin offers buttons. A runner who never misses wins a phase in about 20 s (the
+    whole fight about 64 s with phases 2 and 3 still played as phase 1). The spins' symbols follow a list
+    per phase (`spin_patterns`, with pairs and triples) rather than chance. **Alternative:** buttons from
+    the first spin, with fewer buttons per spin.
+303. **The arena** (GDD §10: "unique scripted encounters"; the Marketplace's floor is stall roofs with gaps
+    between the stalls).
+    **Placeholder:** a plain street: the arena's laps keep no holes, fences, signs, ceilings, pads or
+    doodads of their own, so every danger is the machine's (its attacks are planned around each other
+    and every button and the hopper are always reachable). **Alternative:** the Marketplace's own gaps
+    and fences between spins, which the machine's attacks and buttons would keep clear of.
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).

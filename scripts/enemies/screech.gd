@@ -109,7 +109,7 @@ func _build() -> void:
 	else:
 		_x = geo.lane_x(lane)
 		_y = -0.7
-	# Spines and body: a solid collision (armor doesn't block it; DESIGN-TBD). The swipe: an attack.
+	# Spines and body: a solid collision, armor doesn't block it (FB 83). The swipe: an attack.
 	_body = add_hitbox(&"body", BODY_SIZE, Vector3(0.0, BODY_SIZE.y * 0.5 + 0.03, 0.0))
 	_top = add_hitbox(&"top", TOP_SIZE, Vector3(0.0, BODY_SIZE.y + TOP_SIZE.y * 0.5 - 0.02, 0.0))
 	_claw_floor = add_hitbox(&"body", Vector3(0.9, _t.swipe_height, _t.swipe_reach),
@@ -249,7 +249,7 @@ func _dash(delta: float, rel: float, v: float) -> void:
 		_set_phase(Phase.DONE)  # the player got past before it could swipe
 		return
 	var step: float = minf(_t.dash_speed(_scaling) * _run_pace * delta, _t.dash_max_distance * _run_pace - _dashed)
-	# DESIGN-TBD: it stops at the edge of a hole rather than dashing into it.
+	# It stops at the edge of a hole rather than dashing into it (FB 84).
 	if step > 0.0 and not world.layout.gapped_between(lane, _d - step - BODY_SIZE.z * 0.5, _d):
 		_d -= step
 		_dashed += step

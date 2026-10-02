@@ -15,7 +15,8 @@ through zones full of enemies, and a single hit ends the run. Built with Godot 4
 Boss fights have their framework (they play in the runner, with phases, a health bar, checkpoints,
 stars and payouts); a test boss shows the framework at work. The Neon City's boss, the Floating Head,
 is built and plays in the campaign after City 3 (debug builds: `--boss=city_boss`), and so is the Dead
-Zone's Sleep Taker after Dead Zone 2 (`--boss=dead_zone_boss`); the other zones' bosses are still
+Zone's Sleep Taker after Dead Zone 2 (`--boss=dead_zone_boss`). The Marketplace's boss, The House, is
+being built and plays as a preview (`--boss=marketplace_boss`); the other zones' bosses are still
 placeholder slots. The short cinematics are built with a code-driven cinematic toolkit
 (camera paths, the runner and cyborgs on the humanoid rig, timed events, skippable); until the owner
 describes the story beats, each zone's intro (and the City's boss intro) plays a placeholder arrival flyover
@@ -54,7 +55,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--thief` | Quick play with stand-in thieves, one after another: a gold block that crosses the lanes and robs 25% of the run's credits from a runner who touches it (it doesn't kill, even without `--god`); catch it (stomp it, shoot it, dash or claw through it) for what it took plus a jackpot. The runner starts with 400 credits, so the first theft has something to take. A review aid for the Tithe Collector's mechanism; no level has one |
 | `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level |
-| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
+| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker; `marketplace_boss`: The House, still being built) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
 
 Example: `./play.sh --lanes=6 --features=octodog,ceilings --god`, or the test boss's last phase:
@@ -190,7 +191,16 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   the nightmare away. Three EMPs, three phases, each hungrier; the last bursts it into hundreds of faint
   faces and figures rising into the dark, the music falls silent and a grey dawn breaks over the Dead
   Zone. About 80 s for a runner who never misses (`--boss=dead_zone_boss`, or the campaign's
-  `--level=dead_zone/boss`). The other four zone bosses are still to be built.
+  `--level=dead_zone/boss`). The House, the Marketplace's boss, is being built (`--boss=marketplace_boss`
+  plays it as a preview; its three phases still play alike): a towering slot machine on treads rolling
+  down the market street ahead of the runner. It pulls its lever and spins its three reels, and each
+  symbol they stop on is an attack: cherries lob cherry bombs whose landing circles light up first, a
+  lightning bolt rolls a pink fence across lanes (jump or slide it like any fence), a BAR slams heavy
+  gold blocks into lanes; two or three of a kind make it bigger. Big glowing 7 buttons light up along the
+  street: running over one locks a reel on 7, and with all three locked it hits the JACKPOT (sirens, a
+  fountain of real credits) and sags low with its coin hopper burst open on top, glowing red: stomp it.
+  A missed button only means it spins again. Weapons chip it a little. About 64 s for a runner who never
+  misses. The other three zone bosses are still to be built.
 - **Protection:** every level and boss fight starts with free armor: it blocks an enemy attack or an
   electrical hazard (never a crash or a fall) and comes back 30 s after it breaks; the HUD shows its hits
   and a ring filling while it comes back. Armor pickups in boss fights bring it back at once.
@@ -255,7 +265,7 @@ OFL-licensed; licenses are in `assets/LICENSES.md`.
 The scenes in `tools/showcase/` show one part of the game up close for visual review (the runner in every pose
 and power-up look, and a scripted run on any zone's skin; ramp launches and blocked wall entries; each enemy
 family, the Barnacle Turret's looks and a ride past it, a floor cut in any zone's look, wall fences in any zone's look, the Floating Head, the Sleep Taker (its lure and defeat, `--scenario=lure`, and its readability
-in the dark, `--scenario=measure`), the UI kit, every screen, a zone skin's fixed review track, the cult's feed,
+in the dark, `--scenario=measure`), The House (`--scenario=spin|buttons|jackpot|fight`), the UI kit, every screen, a zone skin's fixed review track, the cult's feed,
 the Golden Zone's statues, any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
 lists its options. For example, a zone's arrival flyover rendered to frames on the web / low-end renderer:
 `godot --path . --rendering-method gl_compatibility --fixed-fps 10 --write-movie build/cine/f.png --quit-after 100
@@ -440,7 +450,7 @@ scripts/world/          level layout, generator, track builder, hazards; zone sk
 scripts/campaign/       campaign, zones, bosses (BossDef, BossPhase) and cinematic slots (CinematicDef, Cinematic)
 scripts/cinematics/     the cinematic toolkit (CinematicSequencer, CineTimeline, CineStage, ...) and the flyover
 scripts/bosses/         the boss framework (BossEncounter, BossPart, BossArena, BossProps), the test boss,
-                        and one folder per boss (floating_head/, sleep_taker/)
+                        and one folder per boss (floating_head/, sleep_taker/, the_house/)
 scripts/economy/        the shop catalog
 scripts/ui/             theme, icons, widgets, screens, HUD, debug tools
 scripts/audio/          sound library, music player, hazard warning sounds

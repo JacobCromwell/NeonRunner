@@ -336,6 +336,7 @@ The owner played every zone and the Floating Head. The feedback is in GDD §3 ("
 
 - **Order:** E1e, G1, G3 and G4 first (G1 and G3 are core but touch different files: G1 the generator and level data, G3 the damage rules). G2 when a slot frees. G5 after G1 (both in the generator), then G6. The core lane's B4, B5 and the rest follow G5.
 - **R7** (the balancing pass) keeps the economy: after G3, since armor as an upgrade changes the shop.
+- **PERF1, lag spikes** (owner, October 2, 2026: "the overall performance of the game is getting worse; lag spikes are more common"): measure each level's frame times against the build before the playtest work, fix the biggest causes without changing what the game decides, add a frame-time overlay for the owner and a frame-time regression suite. T1, ahead of the remaining content.
 
 ### E. Bosses and the web demo
 

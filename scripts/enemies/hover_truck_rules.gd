@@ -5,14 +5,14 @@ extends RefCounted
 ## - One at a time: a truck placed while another's lane is still reserved is dropped (with
 ##   min_gap_seconds between them), and so is one too close to the end for its shortest stay.
 ## - Rare early, more frequent later: at most max_per_level_at(enemy_scaling) trucks in a level
-##   (DESIGN-TBD: 1 early, up to 3 by the last levels); the earliest are kept.
+##   (FB 94: 1 early, up to 3 by the last levels); the earliest are kept.
 ## - Its lane (the outer lane on its side) is kept free while it's around: no gaps, fences or other
 ##   floor enemies there from just before its burst point until it has left (stay_max + leave).
 ##   It hovers over such things anyway, and the player needs that lane for route (b).
 ## - The wall section it bursts through keeps no sign and no wall enemy.
 ## - With the `ramps` feature, route (a) gets a ramp on its side ramp_after_seconds after the burst
 ##   (unless one is there already), clear of signs, and not before the ramps' start.
-## - DESIGN-TBD: a level with the feature always gets at least one truck (the patterns may pick
+## - A level with the feature always gets at least one truck (FB 94; the patterns may pick
 ##   none, and the level that introduces the truck should show it).
 ## - Late starts (LevelConfig.feature_starts): no truck before the `hover_truck` feature's start; the
 ##   guaranteed one falls in the same share of the stretch where trucks are active.

@@ -170,7 +170,7 @@ func _go() -> PackedFloat32Array:
 	return b
 
 
-# DESIGN-TBD: the credit denominations (1, 5, 25, 100) come from the build brief; the GDD (§7) only
+# The credit denominations (1, 5, 25, 100; FB 8) come from the build brief; the GDD (§7) only
 # asks for several clearly distinguishable ones. A new denomination needs a sound here.
 ## A run of quick pulse notes up E major, with an FM bell on the last note for the bigger coins.
 func _coin(seconds: float, notes: Array[float], bell: float, rng: RandomNumberGenerator) -> PackedFloat32Array:

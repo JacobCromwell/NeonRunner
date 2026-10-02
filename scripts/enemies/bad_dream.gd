@@ -3,16 +3,15 @@ extends Enemy
 ## The Cyborg's Bad Dream (GDD §9.7): a ghostly apparition of vapour and liquid (BadDreamModel).
 ##
 ## - Origin: it bursts out of a host cyborg when the host is killed (Cyborg._release_bad_dream
-##   spawns it where the host stood). GDD §9.7: only one on screen at a time. DESIGN-TBD: one
-##   released while another is still around never appears (the host's own purple burst is all the
-##   player sees).
+##   spawns it where the host stood). GDD §9.7: only one on screen at a time: one released while
+##   another is still around never appears (the host's own purple burst is all the player sees).
 ## - Movement: it floats ahead of the player, facing them and keeping pace, inside the camera's view.
 ##   It passes through fences, signs and every other barrier (it ignores the level's pieces). It
 ##   drifts toward the player's lane at a limited sideways speed and follows onto a wall slowly. It
 ##   can't reach a ship's hull: while the player rides a ceiling it waits below, ahead of them, and
 ##   attacks again once they're back down.
 ## - Attack: a telegraphed lunging slash across three lanes: the player's lane and the lanes on
-##   either side, clamped at the edges (DESIGN-TBD: on a wall, the wall and the outer lane). The
+##   either side, clamped at the edges (on a wall, the wall and the outer lane; FB 99). The
 ##   telegraph locks those lanes and lights them on the floor in enemy-attack red, filling toward
 ##   the player as the lunge nears; the maw opens and it shrieks (bad_dream_shriek). Then it lunges
 ##   (bad_dream_slash) and its claws sweep the locked lanes; a player who has left them is safe.
@@ -20,13 +19,13 @@ extends Enemy
 ##   (20–30 s), then it dissolves (bad_dream_dissolve) and a player who survived earns the survival
 ##   bonus. DESIGN-TBD: the chase clock runs from the moment it bursts out, also while it holds its
 ##   slash (the player on a ceiling, another enemy's attack), so a chase never outlasts the pads the
-##   generator planned for it. DESIGN-TBD: the claws sweep higher than a jump reaches, so only
-##   leaving the lanes (to a lane, a wall or a ceiling) dodges the slash.
+##   generator planned for it. The claws sweep higher than a jump reaches, so only
+##   leaving the lanes (to a lane, a wall or a ceiling) dodges the slash (FB 99).
 ## - Immune to weapons (auto-fire never targets it), stomping and claws. Its slash is an enemy
 ##   attack, so armor or the shield blocks one; the juggernaut dash passes through it safely and
-##   doesn't hurt it (DamageRules; declared properties only). DESIGN-TBD: touching its body (it never
-##   comes within reach anyway) is an enemy attack too. A fence generator's EMP dissolves it early.
-## - Fairness (DESIGN-TBD, not in the GDD): it lines up with the player's lane before a telegraph
+##   doesn't hurt it (DamageRules; declared properties only). Touching its body (it never
+##   comes within reach anyway) is an enemy attack too (FB 101). A fence generator's EMP dissolves it early.
+## - Fairness (not in the GDD; FB 100): it lines up with the player's lane before a telegraph
 ##   (waiting at most max_align_wait for a player who keeps moving; a wall only once it has followed
 ##   them there). It only telegraphs with the player on the floor or a wall (not falling into a hole
 ##   or dropping from a ceiling), never when the slash couldn't land before its chase ends, and never
@@ -154,7 +153,7 @@ func _build() -> void:
 	_build_visuals()
 	world.player.movement_event.connect(_on_player_event)
 	history.append(["emerge", world.level_time()])
-	# GDD §9.7: only one on screen at a time. DESIGN-TBD: a second one never appears.
+	# GDD §9.7: only one on screen at a time; a second one never appears.
 	for e: Enemy in world.director.active:
 		if e != self and is_instance_valid(e) and e.alive and e is BadDream:
 			_fizzle()
@@ -250,7 +249,7 @@ func _drift(p: Player, delta: float) -> void:
 	if chase_time < _next_slash or not _may_slash(p):
 		_align_wait = 0.0
 		return
-	# DESIGN-TBD: line up with the player's lane first; a player who keeps moving is attacked anyway
+	# Lines up with the player's lane first; a player who keeps moving is attacked anyway (FB 100)
 	# after max_align_wait, but one on a wall only once it has followed them there.
 	_align_wait += delta
 	var lined_up: bool = absf(rel_x - _target_x(p)) <= _t.align_tolerance
@@ -343,8 +342,8 @@ func _fizzle() -> void:
 	state = State.DISSOLVE
 
 
-## GDD §9.7: a fence generator's EMP dissolves it early. DESIGN-TBD: wherever it is (the EMP's radius
-## only limits the fences it switches off), and without the survival bonus.
+## GDD §9.7: a fence generator's EMP dissolves it early, wherever it is (the EMP's radius
+## only limits the fences it switches off), and without the survival bonus (FB 103).
 func on_emp(_center: Vector3, _radius: float) -> void:
 	if _done or state == State.DISSOLVE:
 		return
@@ -418,7 +417,7 @@ func _place_slash(p: Player) -> void:
 # --- The slash's lanes -------------------------------------------------------------------------
 
 ## The lanes a slash at `p` would cover now (GDD §9.7): their lane and the lanes on either side,
-## clamped at the edges. DESIGN-TBD: on a wall, the wall and the outer floor lane beside it.
+## clamped at the edges. On a wall, the wall and the outer floor lane beside it (FB 99).
 ## Extended lane numbers: -1 is the left wall, lane_count the right wall.
 func band_for(p: Player) -> Vector2i:
 	var n: int = world.geo.lane_count
@@ -459,7 +458,7 @@ func slash_box_for(b: Vector2i) -> AABB:
 	return AABB(Vector3(x0, 0.0, -_t.slash_depth * 0.5), Vector3(x1 - x0, top, _t.slash_depth))
 
 
-## DESIGN-TBD (fairness, not in the GDD): a slash over `b` must leave the player somewhere to go: a
+## Fairness, not in the GDD (FB 100): a slash over `b` must leave the player somewhere to go: a
 ## floor lane outside it that no solid side fills (a hover truck), or a wall beside it that no sign
 ## blocks until the slash has passed. With three lanes and the player in the middle, the band covers
 ## the whole floor.

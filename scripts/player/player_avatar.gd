@@ -41,12 +41,12 @@ extends Node3D
 ##   rig: the HumanoidRig (joint(&"hand_r") etc. for attaching effects), anim_tuning: its tuning.
 
 const ANIM_TUNING_PATH: String = "res://data/tuning/avatar_animation.tres"
-# DESIGN-TBD: the invulnerability flash is a bright tint over the body (not a blink on and off), in
-# a pale copper white so it belongs to the player's glow.
+# The invulnerability flash is a bright tint over the body (not a blink on and off), in
+# a pale copper white so it belongs to the player's glow (FB 36).
 const FLASH_COLOR := Color(1.0, 0.88, 0.77)
 const FLASH_STRENGTH: float = 0.55
-# DESIGN-TBD: death feedback: a red flash (as the grey box turned red) that fades while the copper
-# conduits and the implant power down and go dark.
+# Death feedback: a red flash (as the grey box turned red) that fades while the copper
+# conduits and the implant power down and go dark (FB 37).
 const DEATH_COLOR := Color(1.0, 0.15, 0.1)
 const DEATH_FLASH_TIME: float = 0.6
 const DEAD_GLOW: float = 0.06

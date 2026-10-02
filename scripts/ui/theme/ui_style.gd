@@ -32,9 +32,9 @@ extends Resource
 @export var outline: Color = Color(0.0, 0.01, 0.04, 0.92)
 ## Earned stars: white-hot with an accent glow (yellow is the sign colour).
 @export var star: Color = Color(0.97, 0.98, 1.0)
-## DESIGN-TBD: the credit denominations' colours (1, 5, 25, 100). The in-world credits use these too
-## (CreditField), so the world and the UI always match. Placeholder: silver, azure, violet, ice-white;
-## the shapes differ too.
+## The credit denominations' colours (1, 5, 25, 100; FB 8): silver, azure, violet, ice-white; the
+## shapes differ too. The in-world credits use these too (CreditField), so the world and the UI
+## always match.
 @export var credit_colors: PackedColorArray = PackedColorArray([
 	Color(0.72, 0.78, 0.88), Color(0.3, 0.68, 1.0), Color(0.64, 0.5, 1.0), Color(0.86, 0.95, 1.0)])
 

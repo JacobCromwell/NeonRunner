@@ -4,7 +4,7 @@ extends ScreenBase
 ## over the stopped run: what hit the player, how far they got, and the ways back in. With nothing
 ## to offer it goes straight on to the run summary. The buttons wake up after a moment, so keys
 ## still being mashed from the run can't spend a revive by accident.
-## DESIGN-TBD: whether the offer times out on its own (a countdown) is open; it waits for a choice.
+## The offer waits for a choice; no countdown (FB 61).
 
 ## How long the buttons ignore input after the offer appears (real seconds; the game is paused).
 const ARM_TIME: float = 0.5
