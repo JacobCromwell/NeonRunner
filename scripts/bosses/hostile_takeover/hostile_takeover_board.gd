@@ -12,17 +12,19 @@ extends RefCounted
 ##   panic run could reach a coupling's lane in its run-up (approach_clear before the gap) or where the
 ##   coupling's bounce comes down (landing_clear after it), and guard_spacing from the carriage's other
 ##   guard, so a way through is always open;
-## - a Tithe Collector on every tithe_every-th carriage (its own approach and weaving: TitheCollector) and,
-##   as it comes into play, the credits it skims: a short trail on the roof ahead of it in its lane
-##   (lay_tithe; a boss's track carries no credits of its own, docs/questions/e5b.md);
+## - a Tithe Collector on every tithe_every-th carriage, with no guards (its own approach and weaving:
+##   TitheCollector, which heads for the lanes with the most hazards ahead and, with none, the runner's):
+##   brought into play in the runner's lane as they reach its spot (tick: BossEncounter.spawn_enemy, so it
+##   keeps to that lane over its roof) and, as it comes, the credits it skims: a short trail on the roof
+##   ahead of it in its lane (lay_tithe; a boss's track carries no credits of its own, docs/questions/e5b.md);
 ## - a partial wall fence on its middle (the low band or the high one in turn, a seeded side), only where
 ##   the level's rules allow one on the arena's track (BossArena.wall_fence_problem: B5's keep-outs, among
 ##   them the drop window clear of gaps and floor enemies in the outer lane beside it), pulsing as the
 ##   zone's do at the arena's difficulty.
-## Guards and Collectors go onto the track as enemies (BossArena.add_pieces: they come into play at their
-## spawn lead like a level's); wall fences as track pieces past the built track (stream_from). Every choice
-## comes from a seed of its carriage, so the fight plays the same on every attempt. In E5b-a every phase
-## plays The Board (phases 2 and 3 are steps E5b-b and E5b-c).
+## Guards go onto the track as enemies (BossArena.add_pieces: they come into play at their spawn lead like
+## a level's); wall fences as track pieces past the built track (stream_from). Every choice comes from a
+## seed of its carriage (a Collector's lane from where the runner is), so the fight plays the same on every
+## attempt. In E5b-a every phase plays The Board (phases 2 and 3 are steps E5b-b and E5b-c).
 
 ## A carriage is planned once the built track reaches within this of its roof's start (so the whole of
 ## it, its wall fence too, is still ahead of the built track: stream_from moves on a chunk at a time).
@@ -51,6 +53,8 @@ var refused_fences: int = 0
 ## Trails laid for Collectors (their credits), and credits laid in all.
 var trails: int = 0
 var credits_laid: int = 0
+## Collectors planned and not yet in play: {k, at: their layout spot}, in order.
+var tithes_due: Array[Dictionary] = []
 
 var _cyborg: CyborgTuning
 
@@ -63,11 +67,17 @@ func _init(p_boss: HostileTakeover) -> void:
 	_cyborg = res as CyborgTuning if res is CyborgTuning else CyborgTuning.new()
 
 
-## Plans every carriage the built track is about to reach (see PLAN_MARGIN), in order.
+## Plans every carriage the built track is about to reach (see PLAN_MARGIN), in order, and brings in the
+## Collectors the runner has reached (as the director would at their spawn lead), in the runner's lane.
 func tick() -> void:
 	var limit: float = boss.arena.stream_from() + PLAN_MARGIN
 	while train.roof(planned + 1).x < limit:
 		plan(planned + 1)
+	var d: float = boss.player_distance()
+	var lead: float = EnemyDirector.lead_for("tithe_collector")
+	while not tithes_due.is_empty() and d >= float(tithes_due[0]["at"]) - lead:
+		var due: Dictionary = tithes_due.pop_front()
+		boss.spawn_enemy("tithe_collector", float(due["at"]), boss.world.player.lane)
 
 
 ## Plans carriage `k` (see the header).
@@ -84,8 +94,7 @@ func plan(k: int) -> void:
 	if tuning.tithe_on(k):
 		var at: float = tithe_spot(k)
 		rec["tithe"] = at
-		extra.enemies.append({"type": "tithe_collector", "at": at, "lane": boss.lane_count() / 2, "side": 0,
-			"seed": hash([String(boss.def.id), "tithe", k, boss.rng.seed]), "params": {}})
+		tithes_due.append({"k": k, "at": at})
 	if not extra.enemies.is_empty():
 		boss.arena.add_pieces(extra)
 	var fence: Dictionary = _wall_fence(k)
@@ -100,9 +109,9 @@ func plan(k: int) -> void:
 		"tithe": float(rec["tithe"]) >= 0.0, "wall_fence": not fence.is_empty()})
 
 
-## Where carriage `k`'s Tithe Collector is placed (its layout entry's track distance) so that it appears
-## (its start_ahead in front of the runner, once they're within its spawn lead of it) TITHE_SPOT of the
-## way along the roof, with the roof ahead of it for its trail.
+## Where carriage `k`'s Tithe Collector is placed (its entry's track distance) so that it appears (its
+## start_ahead in front of the runner, once they're within its spawn lead of it) TITHE_SPOT of the way
+## along the roof, with the roof ahead of it for its trail.
 func tithe_spot(k: int) -> float:
 	var roof: Vector2 = train.roof(k)
 	var appear: float = lerpf(maxf(roof.x, 0.0), roof.y, TITHE_SPOT)

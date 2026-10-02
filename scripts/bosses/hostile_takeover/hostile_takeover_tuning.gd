@@ -58,14 +58,16 @@ extends Resource
 @export_group("The Board")
 ## DESIGN-TBD (GDD §10: "security cyborgs guard the roofs"): the cyborgs on each carriage, a list taken in
 ## order and repeated (at most one fewer than the lanes), from carriage `guards_from` on (the rear
-## carriages are the entrance's). Two on one carriage stand at least guard_spacing apart (at 18 m/s).
+## carriages are the entrance's), none on a Tithe Collector's carriage (it weaves toward the lanes with the
+## most hazards ahead: with none on its roof it keeps to the runner's lane, over its trail). Two on one
+## carriage stand at least guard_spacing apart (at 18 m/s).
 @export var guards: PackedInt32Array = PackedInt32Array([1, 2, 1, 1, 2, 1])
 @export_range(0, 6) var guards_from: int = 2
 @export_range(4.0, 30.0, 0.5, "suffix:m") var guard_spacing: float = 14.0
 ## DESIGN-TBD (GDD §10: "a Tithe Collector skims credits"): one on every tithe_every-th carriage from
-## tithe_first on, with a trail of tithe_credits credits (each worth tithe_value, tithe_spacing apart at
-## 18 m/s) laid on the roof ahead of it as it comes, in its lane, for it to skim (a boss's track carries
-## no credits of its own).
+## tithe_first on, coming in the runner's lane, with a trail of tithe_credits credits (each worth
+## tithe_value, tithe_spacing apart at 18 m/s) laid on the roof ahead of it as it comes, in its lane, for
+## it to skim (a boss's track carries no credits of its own).
 @export_range(1, 20) var tithe_every: int = 5
 @export_range(0, 20) var tithe_first: int = 3
 @export_range(0, 20) var tithe_credits: int = 6
@@ -116,9 +118,10 @@ func opening_for(phase: int) -> int:
 	return maxi(opening_gaps[clampi(phase, 0, opening_gaps.size() - 1)], 0)
 
 
-## The guards on carriage `k` at `lanes` lanes (guards in turn, at most lanes - 1), none before guards_from.
+## The guards on carriage `k` at `lanes` lanes (guards in turn, at most lanes - 1), none before guards_from
+## and none on a Tithe Collector's carriage.
 func guards_on(k: int, lanes: int) -> int:
-	if guards.is_empty() or k < guards_from:
+	if guards.is_empty() or k < guards_from or tithe_on(k):
 		return 0
 	return clampi(guards[(k - guards_from) % guards.size()], 0, maxi(lanes - 1, 0))
 

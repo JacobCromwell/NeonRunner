@@ -278,8 +278,9 @@ func _test_run_off_the_edge() -> void:
 
 # --- The Tithe Collector ---------------------------------------------------------------------------
 
-## GDD §10: "a Tithe Collector skims credits": as one comes into play a trail of credits is laid on the roof
-## ahead of it in its lane, and it vacuums them up (TitheCollector).
+## GDD §10: "a Tithe Collector skims credits": one comes into play in the runner's lane on a carriage of its
+## own (no guards: nothing draws it off), a trail of credits is laid on the roof ahead of it in its lane, and
+## it vacuums them up (TitheCollector).
 func _test_tithe() -> void:
 	var pair: Array = _fight(5, 18.0)
 	var world: RunWorld = pair[0]
@@ -292,15 +293,21 @@ func _test_tithe() -> void:
 	world.director.enemy_spawned.connect(func(e: Enemy) -> void:
 		if e.type_id == &"tithe_collector":
 			collectors.append(e))
-	var held := {"most": 0}
-	await _run(world, bot, 45.0, func() -> bool: return int(held["most"]) >= t.tithe_value * 2, func() -> void:
+	var held := {"most": 0, "lane": -1}
+	world.director.enemy_spawned.connect(func(e: Enemy) -> void:
+		if e.type_id == &"tithe_collector" and int(held["lane"]) < 0:
+			held["lane"] = world.player.lane)
+	await _run(world, bot, 45.0, func() -> bool: return int(held["most"]) >= t.tithe_value * t.tithe_credits, func() -> void:
 		for c: Enemy in collectors:
 			if is_instance_valid(c):
 				held["most"] = maxi(int(held["most"]), world.score.held_by(c)))
 	var trails: Array[Dictionary] = _events(boss, &"tithe_trail")
-	check(not collectors.is_empty() and trails.size() >= 1 and int(trails[0]["count"]) >= 3,
-		"a Tithe Collector comes with a trail of credits laid ahead of it (%d)" % (int(trails[0]["count"]) if not trails.is_empty() else 0))
-	check(int(held["most"]) >= t.tithe_value * 2, "and skims them (it holds %d)" % held["most"])
+	var first: Dictionary = trails[0] if not trails.is_empty() else {}
+	check(not collectors.is_empty() and int(first.get("count", 0)) == t.tithe_credits and int(first.get("lane", -2)) == int(held["lane"]),
+		"a Tithe Collector comes in the runner's lane, a trail of %d credits laid ahead of it" % int(first.get("count", 0)))
+	check(int(held["most"]) >= t.tithe_value * (t.tithe_credits / 2), "and skims them (it holds %d of %d)" % [
+		held["most"], t.tithe_value * t.tithe_credits])
+	print("  Hostile Takeover's Tithe Collector skims %d of its trail's %d credits" % [int(held["most"]) / t.tithe_value, t.tithe_credits])
 	await sim.free_world(world)
 
 

@@ -109,8 +109,9 @@ func _test_slot() -> void:
 		check(triggers.has(trigger), "a first-time hint for %s" % trigger)
 	var t := def.tuning as HostileTakeoverTuning
 	check(t.opening_for(0) >= 1 and t.opening_for(7) == t.opening_gaps[-1], "each phase opens with dark gaps (the last entry's for later ones)")
-	check(t.guards_on(0, 5) == 0 and t.guards_on(t.guards_from, 3) <= 2 and t.guards_on(t.guards_from + 1, 6) >= 1,
-		"guards from their carriage on, at most one fewer than the lanes")
+	check(t.guards_on(0, 5) == 0 and t.guards_on(t.guards_from, 3) <= 2 and t.guards_on(t.guards_from, 6) >= 1
+		and not t.tithe_on(t.guards_from), "guards from their carriage on, at most one fewer than the lanes")
+	check(t.tithe_on(t.tithe_first) and t.guards_on(t.tithe_first, 6) == 0, "none on a Tithe Collector's carriage")
 
 
 # --- The train -----------------------------------------------------------------------------------
@@ -261,6 +262,7 @@ func _test_board(lanes: int, speed: float) -> void:
 	var spacing_ok: bool = true
 	var guard_count: int = 0
 	var tithes: Array[int] = []
+	var lone_tithes: bool = true
 	var bands: Array[String] = []
 	var why: String = ""
 	for k: int in range(0, PLANNED + 1):
@@ -291,21 +293,29 @@ func _test_board(lanes: int, speed: float) -> void:
 					spacing_ok = false
 		if float(rec["tithe"]) >= 0.0:
 			tithes.append(k)
+			if not guards.is_empty():
+				lone_tithes = false
 		if not (rec["wall_fence"] as Dictionary).is_empty():
 			bands.append(String(rec["wall_fence"]["band"]))
 	check(lanes_ok, "each coupling in a lane of its own, at most %d from the last %s" % [t.coupling_max_shift, tag])
 	check(guards_ok, "guards fewer than the lanes on every carriage, never within the cyborgs' margin of a gap %s %s" % [tag, why])
 	check(corridors_ok, "no guard can reach a coupling's run-up or its bounce's landing in its lane %s" % tag)
 	check(spacing_ok, "two guards on a carriage stand apart %s" % tag)
-	check(guard_count >= PLANNED, "the roofs are guarded (%d cyborgs over %d carriages) %s" % [guard_count, PLANNED, tag])
+	var listed: int = 0
 	var expected: int = 0
 	for k: int in range(0, PLANNED + 1):
+		listed += t.guards_on(k, lanes)
 		if t.tithe_on(k):
 			expected += 1
+	check(guard_count <= listed and guard_count >= listed * 9 / 10 and guard_count >= PLANNED * 2 / 3,
+		"the roofs are guarded as the tuning lists, a guard that fits nowhere left out (%d cyborgs of %d over %d carriages) %s" % [
+			guard_count, listed, PLANNED, tag])
 	check(tithes.size() == expected and expected >= 3, "a Tithe Collector every %d carriages (%d) %s" % [t.tithe_every, tithes.size(), tag])
+	check(lone_tithes, "no guards on a Tithe Collector's carriage: it keeps to the runner's lane over its trail %s" % tag)
 	check(bands.size() >= PLANNED / 3 and not bands.has("full") and bands.has("low") and bands.has("high"),
 		"partial wall fences along the barriers, low and high (%d, %d refused) %s" % [bands.size(), board.refused_fences, tag])
-	# The guards and Collectors on the track as the arena's enemies, the wall fences as its pieces.
+	# The guards on the track as the arena's enemies, the Collectors brought in as the runner reaches them
+	# (in the runner's lane), the wall fences as track pieces.
 	var cyborgs: int = 0
 	var collectors: int = 0
 	for e: Dictionary in boss.arena.layout.enemies:
@@ -314,7 +324,9 @@ func _test_board(lanes: int, speed: float) -> void:
 				cyborgs += 1
 			"tithe_collector":
 				collectors += 1
-	check(cyborgs == guard_count and collectors == tithes.size(), "they come onto the track as its enemies %s" % tag)
+	var due: Array = board.tithes_due.map(func(d: Dictionary) -> int: return int(d["k"]))
+	check(cyborgs == guard_count and collectors == 0 and due == tithes,
+		"the guards come onto the track as its enemies, the Collectors wait for the runner %s" % tag)
 	check(boss.arena.layout.wall_fences.size() == bands.size(), "and the wall fences as its pieces %s" % tag)
 	# A level's rules for its wall fences, all but the feature's: the encounter places them itself, so its
 	# arena's config lists no feature for the generator to place its own.
