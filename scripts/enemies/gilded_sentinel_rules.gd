@@ -54,7 +54,7 @@ const MOVE_OFFSETS: Array[float] = [6.0, -6.0, 12.0, -12.0, 20.0, -20.0, 32.0, -
 ## The introduction, where its pattern's spot isn't calm, looks this far further on (metres at the
 ## reference speed, stretched by the pace, in INTRO_STEP steps) for a calm one before it settles for a
 ## spot where it may have to let the runner pass.
-const INTRO_REACH: float = 110.0
+const INTRO_REACH: float = 190.0
 const INTRO_STEP: float = 10.0
 ## Two Sentinels this close along the track on opposite walls are a pair.
 const PAIR_TOLERANCE: float = 0.5
