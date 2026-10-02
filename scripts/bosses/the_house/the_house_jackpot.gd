@@ -52,12 +52,16 @@ var misses: int = 0
 ## The fountain: coins in flight {value, lane, at, from: Vector3, t0, t1, idx, mm} and those placed.
 var coins: Array[Dictionary] = []
 var placed: int = 0
+## Coins flung out for show (its defeat's explosion of coins): {pos, vel, t, mm, idx, free}.
+var debris: Array[Dictionary] = []
 var stomped: bool = false
 
 var _from_front: float = 0.0
 var _from_sag: float = 0.0
 var _coin_meshes: Dictionary = {}
 var _brake_from: float = 0.0
+## How low it already squatted when the JACKPOT came (under a ceiling): it sinks on from there.
+var _sag_start: float = 0.0
 
 
 func setup(p_boss: TheHouse) -> void:
@@ -92,10 +96,12 @@ func start() -> void:
 	var front: float = boss.front_at
 	# It stops where its approach is clear of the last attack's hazards, rolling on while it brakes.
 	var v: float = boss.speed()
-	var clear_from: float = boss.attacks.hazards_end() + tuning.approach_clear * boss.run_pace()
+	# (and past a wall run's or a ceiling's end: the runner is back on the street there).
+	var clear_from: float = maxf(boss.attacks.hazards_end(), boss.segment_end()) + tuning.approach_clear * boss.run_pace()
 	var approach: float = world.player.distance + v * tuning.jackpot_approach
 	stall_front = maxf(maxf(front + v * tuning.sag_seconds * 0.5, approach), clear_from)
 	_brake_from = front
+	_sag_start = body.sag
 	front_speed = v
 	body.jackpot = 1.0
 	body.track_speed = v
@@ -125,6 +131,9 @@ func clear() -> void:
 	for c: Dictionary in coins:
 		_hide_coin(c)
 	coins.clear()
+	for c: Dictionary in debris:
+		_hide_coin(c)
+	debris.clear()
 	if stage != Stage.IDLE:
 		_set_stage(Stage.IDLE)
 	var body: TheHouseBody = boss.body
@@ -140,8 +149,26 @@ func hopper_span() -> Vector2:
 	return boss.body.hopper_span(boss.front_at)
 
 
+## Flings `count` coins out of `from` for show (its defeat's explosion of coins: no credits), every way
+## and up, carried along at the runner's pace; they fall back to the street and are gone. From the
+## fountain's pool.
+func burst_coins(count: int, from: Vector3, spread: float) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([count, roundi(from.z)])
+	for i: int in count:
+		var c := {"value": COIN_RICH if i % 5 == 0 else COIN_FIVE, "from": from}
+		_coin_look(c)
+		var ang: float = rng.randf() * TAU
+		var out: float = rng.randf_range(1.5, spread)
+		c["pos"] = from + Vector3(rng.randf_range(-1.0, 1.0), rng.randf_range(-0.5, 0.5), 0.0)
+		c["vel"] = Vector3(cos(ang) * out, rng.randf_range(6.0, 14.0), sin(ang) * out * 0.5 - boss.speed() * 0.85)
+		c["t"] = 0.0
+		debris.append(c)
+
+
 func tick(delta: float) -> void:
 	_update_coins(delta)
+	_update_debris(delta)
 	if stage == Stage.IDLE:
 		return
 	stage_time += delta
@@ -162,7 +189,7 @@ func tick(delta: float) -> void:
 				boss.sound(&"house_coins", body.hopper_world())
 				_fountain()
 			var sag_t: float = clampf((stage_time - BURST_AFTER) / maxf(tuning.sag_seconds, 0.05), 0.0, 1.0)
-			body.sag = smoothstep(0.0, 1.0, sag_t)
+			body.sag = lerpf(_sag_start, 1.0, smoothstep(0.0, 1.0, sag_t))
 			if sag_t >= 1.0 and brake >= 1.0:
 				body.sag = 1.0
 				boss.front_at = stall_front
@@ -295,6 +322,22 @@ func _update_coins(delta: float) -> void:
 			placed += 1
 
 
+func _update_debris(delta: float) -> void:
+	for i: int in range(debris.size() - 1, -1, -1):
+		var c: Dictionary = debris[i]
+		c["t"] = float(c["t"]) + delta
+		var vel: Vector3 = c["vel"]
+		vel.y -= 24.0 * delta
+		c["vel"] = vel
+		var pos: Vector3 = (c["pos"] as Vector3) + vel * delta
+		c["pos"] = pos
+		if pos.y < 0.12 or float(c["t"]) > 3.0:
+			_hide_coin(c)
+			debris.remove_at(i)
+			continue
+		_place_coin(c, pos, float(c["t"]) * 1.7)
+
+
 ## A flying coin in the credits' own look (CreditField's mesh and spinning material): one MultiMesh per
 ## denomination, an instance per coin.
 func _coin_look(c: Dictionary) -> void:
@@ -324,7 +367,7 @@ func _coin_mesh(value: int) -> Dictionary:
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
 		mm.mesh = CreditField.mesh_for(value)
-		mm.instance_count = 64
+		mm.instance_count = 96
 		mm.visible_instance_count = 0
 		var inst := MultiMeshInstance3D.new()
 		inst.name = "Fountain%d" % value

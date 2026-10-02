@@ -1,14 +1,16 @@
 extends TestSuite
-## The House, the Marketplace's boss (GDD §10; task E5a-a): its slot and data, its arena, the machine's
-## model and budget, its reels, how a spin's symbols become attacks, and the lane routes every attack and
-## button is held to (TheHouseRoute). Its attacks: test_the_house_attacks.gd; its buttons, jackpot and
+## The House, the Marketplace's boss (GDD §10; tasks E5a-a and E5a-b): its slot and data (built, par times,
+## the phases' special buttons), its arena, the machine's model and budget (the squat under a ceiling, the
+## TILT sign), its reels (the defeat's wild spin and jam), how a spin's symbols become attacks, the lane
+## routes every attack and button is held to (TheHouseRoute, with holds), and phase 3's ceiling plan
+## (C1's limits on its turrets). Its attacks: test_the_house_attacks.gd; its buttons, jackpot and
 ## fight: test_the_house_fight.gd.
 
 const BOSS_PATH: String = "res://data/bosses/marketplace_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
 const NEW_SOUNDS: Array[StringName] = [&"house_roll", &"house_lever", &"house_spin", &"house_ding", &"house_lock",
 	&"house_button", &"house_cherry", &"house_lightning", &"house_bar", &"house_slam", &"house_jackpot", &"house_coins",
-	&"house_sag", &"house_hit"]
+	&"house_sag", &"house_hit", &"house_billboard", &"house_tilt", &"house_collapse"]
 ## The Marketplace's cables slung across the street hang no lower than this (MarketFacades.overhead:
 ## 15.5 m less their sag), and the machine stands under them.
 const CABLES_LOWEST: float = 14.4
@@ -21,15 +23,17 @@ var def: BossDef
 func run() -> void:
 	sim = RunSim.new(tree, tuning)
 	slot = load(BOSS_PATH) as BossDef
-	def = slot.preview() if slot != null else null
+	def = slot if slot != null and slot.is_built() else null
 	if def == null:
-		check(false, "The House's fight loads as a preview")
+		check(false, "The House's fight loads")
 		return
 	_test_slot()
 	_test_reels()
 	_test_attacks_for()
 	_test_route()
+	_test_phases()
 	await _test_arena_and_model()
+	await _test_ceiling_plan()
 	await _test_placed_credits()
 
 
@@ -56,8 +60,10 @@ func _fight(p_def: BossDef, lanes: int, speed: float = 0.0) -> Array:
 
 func _test_slot() -> void:
 	check(slot.display_name == "The House" and slot.id == &"marketplace_boss", "the Marketplace's slot is The House (GDD §10)")
-	check(not slot.is_built() and slot.preview_scene == "res://scenes/bosses/the_house.tscn" and slot.preview() != null,
-		"step 1 of 2: the campaign keeps its card; debug builds play the fight as a preview (--boss=marketplace_boss)")
+	check(slot.is_built() and slot.scene == "res://scenes/bosses/the_house.tscn" and slot.preview_scene == ""
+		and slot.preview() == null, "the campaign plays the fight in the Marketplace's boss slot (task E5a-b)")
+	check(slot.three_star_seconds < slot.two_star_seconds and slot.three_star_seconds >= 60.0 and slot.two_star_seconds <= 120.0,
+		"par times: %.0f s for three stars, %.0f s for two (GDD §10: 60-120 s)" % [slot.three_star_seconds, slot.two_star_seconds])
 	var list: Array[BossPhase] = def.phase_list()
 	check(list.size() == 3 and list[0].hits == 1 and list[1].hits == 1 and list[2].hits == 1,
 		"three phases, one stomp each (GDD §10)")
@@ -82,7 +88,8 @@ func _test_slot() -> void:
 	var triggers: Array = []
 	for h: Dictionary in (hints as Dictionary)["hints"]:
 		triggers.append(h["trigger"])
-	for trigger: String in ["enemy:marketplace_boss", "boss:marketplace_boss/buttons", "boss:marketplace_boss/jackpot"]:
+	for trigger: String in ["enemy:marketplace_boss", "boss:marketplace_boss/buttons", "boss:marketplace_boss/jackpot",
+			"boss:marketplace_boss/wall_button", "boss:marketplace_boss/ceiling_button"]:
 		check(triggers.has(trigger), "a first-time hint for %s" % trigger)
 	# Its tuning's lists.
 	for phase: int in 3:
@@ -205,6 +212,38 @@ func _test_route() -> void:
 	check(fast.switch_m > r.switch_m and fast.jump_before > r.jump_before, "the margins follow the run speed")
 
 
+# --- The phases ----------------------------------------------------------------------------------
+
+## GDD §10: "three phases, with the buttons getting harder to reach: (1) all three on the floor; (2) one on
+## a wall, with wall fences in play; (3) one on a ceiling reached by an anti-grav pad, guarded by Barnacle
+## Turrets".
+func _test_phases() -> void:
+	var t := def.tuning as TheHouseTuning
+	check(t.special_for(0) == "floor" and t.special_for(1) == "wall" and t.special_for(2) == "ceiling",
+		"phase 1's buttons are all on the floor, phase 2 puts one on a wall, phase 3 one on a ceiling")
+	check(not t.wall_fences_in(0) and t.wall_fences_in(1) and not t.wall_fences_in(2), "phase 2 has wall fences in play")
+	check(t.special_reel >= 0 and t.special_reel <= 2, "one reel's button is the special one")
+	# The reels' defeat: a wild spin, then a jam between symbols.
+	var reels := TheHouseReels.new()
+	reels.wild = 2.6
+	for i: int in 3:
+		reels.spin(i)
+	for k: int in 60:
+		reels.tick(1.0 / 60.0)
+	check(reels.blur().x > 1.5, "its reels spin wildly at its defeat (%.1f times a spin)" % reels.blur().x)
+	for i: int in 3:
+		reels.jam(i)
+	for k: int in 30:
+		reels.tick(1.0 / 60.0)
+	var jammed: bool = true
+	for i: int in 3:
+		var off: float = fposmod(reels.angle[i], 1.0)
+		jammed = jammed and reels.jammed[i] == 1 and off > 0.2 and off < 0.8 and reels.state[i] == TheHouseReels.State.IDLE
+	check(jammed, "and jam between two symbols")
+	var shader: Shader = load("res://scripts/bosses/the_house/the_house_tilt.gdshader") as Shader
+	check(shader != null and shader.code.contains("reduced_flashing"), "TILT flashes, steady with Reduced flashing")
+
+
 # --- Arena and model -----------------------------------------------------------------------------
 
 func _test_arena_and_model() -> void:
@@ -244,6 +283,12 @@ func _test_arena_and_model() -> void:
 			"a boss's body: claws never kill it, the dash passes through it %s" % tag)
 		check(boss.body.core_hitbox().is_active() and boss.body.core_hitbox().is_solid and not boss.body.weak_points_enabled(),
 			"standing, it's solid and its hopper is shut %s" % tag)
+		# It's taller than a ceiling: squatting, its top is under one.
+		var squat_top: float = s.height - boss.duck_sag() * (s.height - t.deck_height)
+		check(s.height > world.tuning.ceiling_height and squat_top <= world.tuning.ceiling_height - 0.5,
+			"taller than a ceiling (%.1f m), it squats under one (%.1f m) %s" % [s.height, squat_top, tag])
+		var tilt := boss.body.model.get_node_or_null("Tilt") as MeshInstance3D
+		check(tilt != null and not tilt.visible, "its TILT sign is there, dark until its defeat %s" % tag)
 		await sim.free_world(world)
 
 
@@ -283,3 +328,55 @@ func _credit_row(n: int, from: float) -> Array[Dictionary]:
 	for i: int in n:
 		out.append({"surface": "floor", "lane": i % 3, "at": from + i * 0.5, "value": 5})
 	return out
+
+
+# --- The ceiling's plan --------------------------------------------------------------------------
+
+## Phase 3's ceiling (TheHouseCeiling.plan) at 3, 5 and 6 lanes and both speeds, for every pad lane it
+## allows: never at an edge; the button in the pad's lane, past the pad and before the first turret; one
+## or two turrets (GDD §9.8: at most two on a ceiling), never in the pad's lane, the first at least C1's
+## after_pad_seconds past the pad (tight_after_pad_seconds where it's the only lane beside it), the next
+## spacing_seconds on, the end before_end_seconds past the last at least; a free lane beside the pad's all
+## along (to dodge into); its route along the ceiling over the button.
+func _test_ceiling_plan() -> void:
+	var bt: BarnacleTurretTuning = TheHouseCeiling.turret_tuning()
+	for lanes: int in LANES:
+		for speed: float in [18.0, 22.6]:
+			var tag: String = "(%d lanes, %.1f m/s)" % [lanes, speed]
+			var pair: Array = _fight(def, lanes, speed)
+			var world: RunWorld = pair[0]
+			var boss: TheHouse = pair[1]
+			var c: TheHouseCeiling = boss.ceiling
+			check(not c.pad_lane_ok(0) and not c.pad_lane_ok(lanes - 1) and c.pad_lane_ok(1), "a pad is never at an edge %s" % tag)
+			var ok: bool = true
+			var why: String = ""
+			for lane: int in range(1, lanes - 1):
+				for side: int in [-1, 1]:
+					var seg: Dictionary = c.plan(lane, 100.0, 3.0, speed, side)
+					var pad: float = float(seg["pad_at"])
+					var ats: Array = seg["turret_ats"]
+					var lt: int = int(seg["turret_lane"])
+					var free_side: int = lane - side
+					if ats.size() < 1 or ats.size() > 2 or lt == lane or lt == int(seg["button_lane"]):
+						ok = false
+						why = "turrets %d in lane %d" % [ats.size(), lt]
+					if int(seg["button_lane"]) != lane or float(seg["button_at"]) <= pad or float(seg["button_at"]) >= float(ats[0]):
+						ok = false
+						why = "the button"
+					if float(ats[0]) - pad < bt.after_pad_seconds * speed - 0.01:
+						ok = false
+						why = "the first turret too near the pad"
+					if ats.size() == 2 and float(ats[1]) - float(ats[0]) < bt.spacing_seconds * speed - 0.01:
+						ok = false
+						why = "the turrets too close"
+					if float(seg["end"]) - float(ats[-1]) < bt.before_end_seconds * speed - 0.01:
+						ok = false
+						why = "the end too near a turret"
+					if free_side < 0 or free_side >= lanes or free_side == lt:
+						ok = false
+						why = "no free lane beside the pad's"
+					if not c.route(seg)["ok"]:
+						ok = false
+						why = "no way along it"
+			check(ok, "its turrets keep to C1's limits, its button in reach %s %s" % [tag, why])
+			await sim.free_world(world)

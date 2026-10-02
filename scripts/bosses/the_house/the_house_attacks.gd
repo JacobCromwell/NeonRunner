@@ -19,10 +19,12 @@ extends Node3D
 ## Each strike is planned as it's revealed, from where the runner is: its lanes are the first of a seeded
 ## list (those holding the runner first: the attack aims at them) through which TheHouseRoute finds a way,
 ## with everything else still ahead on the track, for a runner who moves a reaction time after the warning
-## (TheHouse.route_through). A strike with no fair lanes now waits up to strike_wait, then is left out
-## (logged). So every attack has an escape at every lane count, and what strikes is exactly what its
-## warning showed (lanes, place and time; the tests check both). Timings are at the phase's pace; where a
-## strike lands is its warning times the run speed.
+## (TheHouse.route_through), and off phase 2's wall fences' drop windows (TheHouseWalls.in_drop_window). A
+## strike with no fair lanes now waits up to strike_wait, then is left out (logged). So every attack has
+## an escape at every lane count, and what strikes is exactly what its warning showed (lanes, place and
+## time; the tests check both). A new attack waits while the runner goes for a wall or ceiling button
+## (TheHouse.attacks_held). Timings are at the phase's pace; where a strike lands is its warning times
+## the run speed.
 
 enum Kind { CHERRY, LIGHTNING, BAR }
 
@@ -227,7 +229,8 @@ func tick(delta: float) -> void:
 	clock += delta
 	_update_strikes()
 	_update_blasts()
-	if current.is_empty() and not queue.is_empty() and clock >= _next_attack_at:
+	# A new attack waits while the runner goes for a wall or ceiling button (TheHouse.attacks_held).
+	if current.is_empty() and not queue.is_empty() and clock >= _next_attack_at and not boss.attacks_held():
 		var a: Dictionary = queue.pop_front()
 		_attacks_started += 1
 		current = {"kind": a["kind"], "size": a["size"], "reel": a["reel"], "strikes": strikes_in(int(a["kind"]),
@@ -308,6 +311,9 @@ func plan_strike(kind: int, size: int, index: int) -> Dictionary:
 	for lanes: Array in candidates:
 		var plan := {"kind": kind, "size": size, "lanes": lanes.duplicate(), "at": at, "variant": variant}
 		var extra: Array[Dictionary] = strike_obstacles(plan)
+		# Off the wall fences' drop windows (B5: no big attack reaches the outer lane a wall runner drops into).
+		if boss.walls.in_drop_window(extra):
+			continue
 		var route: Dictionary = boss.route_through(extra)
 		if route["ok"]:
 			plan["route"] = route

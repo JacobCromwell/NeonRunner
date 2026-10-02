@@ -37,9 +37,9 @@ var def: BossDef
 func run() -> void:
 	sim = RunSim.new(tree, tuning)
 	var slot := load(BOSS_PATH) as BossDef
-	def = slot.preview() if slot != null else null
+	def = slot if slot != null and slot.is_built() else null
 	if def == null:
-		check(false, "The House's fight loads as a preview")
+		check(false, "The House's fight loads")
 		return
 	for lanes: int in LANES:
 		for speed: float in SPEEDS:
