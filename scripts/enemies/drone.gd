@@ -93,8 +93,8 @@ func _build() -> void:
 	tune = tuning_res as DroneTuning if tuning_res is DroneTuning else DroneTuning.new()
 	display_name = "heli drone"
 	claw_immune = true  # GDD §9.6: claws don't work.
-	# DESIGN-TBD: no contact hitbox (it flies out of reach; GDD §9.6 names only its bullets), so
-	# touching, stomping or dashing into it does nothing.
+	# No contact hitbox (it flies out of reach; GDD §9.6 names only its bullets), so touching,
+	# stomping or dashing into it does nothing (FB 86).
 	if not (tuning_res is EnemyTuning):
 		max_health = tune.health_early
 		score_value = tune.score_value
@@ -165,7 +165,7 @@ func hit_radius() -> float:
 
 ## In play and within sight of the player: an anti-grav pad hurls it into the hull.
 func on_screen() -> bool:
-	# DESIGN-TBD: "on screen" = swooped in, from 12 m behind the player to 120 m ahead.
+	# "On screen" = swooped in, from 12 m behind the player to 120 m ahead (FB 88).
 	return alive and state != State.WAITING and rel_ahead > -12.0 and rel_ahead < 120.0
 
 

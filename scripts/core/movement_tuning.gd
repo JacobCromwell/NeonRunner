@@ -36,7 +36,8 @@ const REFERENCE_SPEED: float = 18.0
 
 @export_group("Slide")
 @export_range(0.2, 1.5, 0.05, "suffix:s") var slide_duration: float = 0.7
-## DESIGN-TBD: pressing slide in the air to drop fast is not in the design doc.
+## A feel addition, not in the design doc: pressing slide in the air drops fast and slides on
+## landing. Approved as is (owner's placeholder review, September 26, 2026).
 @export var air_slide_fast_fall: bool = true
 @export_range(5.0, 40.0, 0.5, "suffix:m/s") var fast_fall_speed: float = 22.0
 
@@ -76,8 +77,8 @@ const REFERENCE_SPEED: float = 18.0
 ## How fast a speed boost fades away, a ramp's and a speed pad's alike (GDD §3): the extra speed
 ## drops by this much every second until it's gone (boost_left).
 @export_range(0.5, 20.0, 0.5, "suffix:m/s per s") var boost_decay_per_second: float = 4.0
-## DESIGN-TBD: speed pads are only named in the GDD (§6: they arrive a few levels in). A pad in a
-## floor lane adds this much speed, which then fades like a ramp's.
+## Speed pads are only named in the GDD (§6: they arrive a few levels in). A pad in a floor lane
+## adds this much speed, which then fades like a ramp's (approved as is, FB 21).
 @export_range(0.0, 20.0, 0.5, "suffix:m/s") var speed_pad_boost: float = 6.0
 @export_range(0.5, 5.0, 0.1, "suffix:m") var speed_pad_length: float = 2.5
 

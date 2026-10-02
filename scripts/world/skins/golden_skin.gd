@@ -253,7 +253,7 @@ extends ZoneSkin
 ## Height of the anti-grav pad's light column.
 @export_range(1.0, 10.0, 0.1, "suffix:m") var pad_beam_height: float = 5.8
 @export var ramp_color: Color = Color(0.3, 1.0, 0.35)
-## DESIGN-TBD: speed pads share the ramps' green "safe boost" family (MeshKit.speed_strip).
+## Speed pads share the ramps' green "safe boost" family (MeshKit.speed_strip; FB 49).
 @export var speed_pad_color: Color = Color(0.45, 1.0, 0.55)
 @export var finish_color: Color = Color(1.0, 1.0, 1.0)
 ## Dark graphite under pads, ramps and the finish gantry, so their glows read on the gold.

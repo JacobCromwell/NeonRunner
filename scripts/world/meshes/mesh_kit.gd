@@ -486,7 +486,7 @@ static func fence_bars(hot: MeshLayer, size: Vector3, ground_y: float, gapped: b
 ## A sign jutting out of the wall on `side`, the size of its hitbox (hazard-local): the yellow/black
 ## hazard frame around a content panel facing the track, drawn with `content_pattern` (PAT_GLYPHS
 ## neon, PAT_POSTER billboards, ...). `halo` > 0 adds a soft glow card in front of the panel.
-## DESIGN-TBD: the yellow/black hazard frame is the proposed sign language for every zone.
+## The yellow/black hazard frame is the sign language for every zone (FB 40).
 static func hazard_sign(size: Vector3, side: int, frame_color: Color, content_color: Color, content_glow: float,
 		content_pattern: int, content_param: float, halo: float, solid_material: Material, glow_material: Material) -> ArrayMesh:
 	var id: String = "sign_%s_%d_%s_%s_%s_%d_%s_%s_%d_%d" % [size, side, frame_color, content_color, content_glow,
@@ -546,7 +546,7 @@ static func energy_field_mesh(size: Vector3) -> ArrayMesh:
 
 ## A hazard frame around a box of `size` centred on `center`: striped top and bottom rails along z
 ## and striped end caps, leaving both x faces open for the zone's content panel. Rails are `rail` thick.
-## DESIGN-TBD: the yellow/black striped frame is the proposed cross-zone sign language.
+## The yellow/black striped frame is the cross-zone sign language (FB 40).
 static func hazard_frame(layer: MeshLayer, center: Vector3, size: Vector3, rail: float, color: Color,
 		glow_amount: float) -> void:
 	var h: Vector3 = size * 0.5
@@ -659,8 +659,8 @@ static func kicker_ramp(size: Vector3, side: int, color: Color, metal: Color, so
 
 ## A speed pad, the size of its trigger volume and centred on it (the floor at -size.y / 2): a flush
 ## plate of arrows streaming down the track between two glowing rails.
-## DESIGN-TBD: the GDD doesn't describe speed pads; green arrows put them in the ramps' "safe boost"
-## family (like the grey box).
+## The GDD doesn't describe speed pads; green arrows put them in the ramps' "safe boost" family
+## (like the grey box; FB 49).
 static func speed_strip(size: Vector3, color: Color, plate_color: Color, solid_material: Material,
 		glow_material: Material) -> ArrayMesh:
 	var id: String = "speed_%s_%s_%s_%d_%d" % [size, color, plate_color, solid_material.get_instance_id(),

@@ -1,5 +1,5 @@
 {
-	"_note": "DESIGN-TBD: the first-time tutorial approach is open (OPEN_QUESTIONS §5). These are short first-encounter hints: each shows once per profile, just before the player first meets the thing. {action} is replaced by the player's key (PC) or gesture (touch).",
+	"_note": "Short first-encounter hints (FB 7): each shows once per profile, just before the player first meets the thing. {action} is replaced by the player's key (PC) or gesture (touch).",
 	"hints": [
 		{ "id": "lanes", "trigger": "start", "text": "Switch lanes with {move_left} and {move_right}." },
 		{ "id": "gap", "trigger": "gap", "text": "Gaps: jump with {jump}, or switch lanes." },

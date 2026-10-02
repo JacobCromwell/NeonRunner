@@ -1,6 +1,6 @@
 class_name HintDirector
 extends Node
-## First-encounter hints (DESIGN-TBD: the tutorial approach is open, OPEN_QUESTIONS §5). Each hint in
+## First-encounter hints (FB 7). Each hint in
 ## data/hints/hints.json shows once per profile, a moment before the player first meets its trigger:
 ## "start" (level start), a piece ("gap", "fence_full", "fence_gapped", "fence_pulsing", "sign",
 ## "pad", "ramp", "speed_pad"), an enemy ("enemy:<type>", when one spawns; "enemy:boss" for any

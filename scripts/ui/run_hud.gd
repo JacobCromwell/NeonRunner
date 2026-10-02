@@ -132,7 +132,7 @@ func _ready() -> void:
 	_top_center.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_frame.add_child(_top_center)
 	progress = ProgressMeter.new()
-	# DESIGN-TBD: what progress markers stand for (OPEN_QUESTIONS §5); none are shown yet.
+	# The bar shows with no markers (FB 58; what markers would stand for stays undecided).
 	progress.custom_minimum_size.x = UiTheme.px(420)
 	_top_center.add_child(progress)
 	boss_bar = BossBar.new()

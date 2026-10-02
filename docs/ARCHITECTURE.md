@@ -1533,9 +1533,9 @@ The campaign (GDD §5) has six zones, with ids other tasks rely on: `city`, `gan
 `data/levels/<zone id>_<n>.tres` (Golden 3 is the Golden Palace). Every zone has intro and outro
 cinematic slots (the City also a boss intro) and a boss slot from GDD §10's roster. A zone's music
 track is named after its id, and every zone has one (a track the music library doesn't list is skipped
-quietly and the menu music carries on). Only the City is in the web demo. Placeholders (all DESIGN-TBD): the curve
-runs 0.1 → 0.9 over the 15 levels, with Golden 2 the peak and Golden 3 a little below it; level
-lengths run 110–150 s and add up to 35 minutes.
+quietly and the menu music carries on). Only the City is in the web demo. The curve runs 0.1 → 0.9
+over the 15 levels (FB 4, FB 5); which level is the peak (proposed: Golden 2, with Golden 3 a little
+below it) and the level lengths (DESIGN-TBD, run 110–150 s and add up to 35 minutes) stay open.
 
 **The schedule** (GDD §5) is each level's `features` list, in the order the campaign introduces them:
 a feature once introduced stays in every later level, bar the exceptions the design gives (screeches
