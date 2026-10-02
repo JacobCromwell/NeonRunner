@@ -7,8 +7,10 @@ extends RefCounted
 ## - a live coupling (glowing red over the gap it comes to next): it heads for its lane, a lane at a time
 ##   and never across a guard, and jumps so it comes down on it (HostileTakeoverCouplings.descent_lead: up
 ##   to the jump's top and back down to the stomp box's top, at its speed), aiming `aim` of the way along
-##   the box; `stomps` off, or the first `misses` live ones, it lets go by (it jumps the gap as any);
-##   `side_lane` (-1 or 1) runs up in the lane beside the coupling's and moves in while in the air;
+##   the box; `stomps` off, or the first `misses` live ones, it lets go by (it jumps the gap as any: from
+##   the coupling's own lane with `skip_in_lane`); `side_lane` (-1 or 1) runs up in the lane beside the
+##   coupling's (the other side at the edge) and moves in while in the air; `drops` runs off the roof's
+##   edge in the first live coupling's lane without jumping;
 ## - the guards: out of a cyborg's lane ahead, and out of the line of a bolt about to reach it (unless it's
 ##   in a coupling's run-up, where no bolt lands: CyborgGun's clear path around a gap);
 ## - it never goes onto a wall (the wall fences never reach it); a Tithe Collector may rob it.
@@ -35,8 +37,14 @@ var misses: int = 0
 var side_lane: int = 0
 ## Where in the coupling's stomp box it means to come down (a share of the box from its near end).
 var aim: float = 0.55
+## A coupling it lets go by, it still runs up in its lane (and jumps the gap the usual way).
+var skip_in_lane: bool = false
+## At the first live coupling it heads for its lane and never jumps that gap.
+var drops: bool = false
 ## What it did, for tests: {t (fight time), action, why}.
 var log: Array[Dictionary] = []
+## The lane it took off from for each gap it jumped (gap index -> lane).
+var takeoffs: Dictionary = {}
 
 var _seen: Dictionary = {}
 var _skipped: Dictionary = {}
@@ -58,13 +66,25 @@ func step() -> void:
 	var k: int = boss.train.next_gap(d)
 	var going: int = _coupling_target(k)
 	if going >= 0:
-		var lane: int = clampi(going + side_lane, 0, boss.lane_count() - 1)
-		_head_for(lane, "coupling")
+		_head_for(_runup_lane(going), "coupling")
+	elif skip_in_lane and _skipped.has(k) and boss.board.lanes.has(k):
+		_head_for(int(boss.board.lanes[k]), "the lane of a coupling it lets go by")
 	else:
 		_avoid_cyborgs()
 		_dodge_bolts()
 	_walk()
 	_jump(k, going)
+
+
+## The lane it runs up in for a coupling in `lane`: its own, or the one beside it on side_lane's side
+## (the other side at the track's edge).
+func _runup_lane(lane: int) -> int:
+	if side_lane == 0:
+		return lane
+	var to: int = lane + side_lane
+	if to < 0 or to >= boss.lane_count():
+		to = lane - side_lane
+	return clampi(to, 0, boss.lane_count() - 1)
 
 
 ## The coupling over gap `k` it goes for: its lane, or -1 (none live, not seen long enough, or let go by).
@@ -92,19 +112,22 @@ func _jump(k: int, coupling_lane: int) -> void:
 		return
 	var d: float = p.distance
 	if coupling_lane >= 0:
+		if drops:
+			return
 		var span: Vector2 = boss.couplings.box_span(k)
 		var at: float = lerpf(span.x, span.y, aim)
 		var lead: float = stomp_lead()
 		if d >= at - lead:
 			_jumped[k] = true
-			_press(&"jump", "coupling %d" % k)
-			if side_lane != 0:
-				_move_in = -side_lane
+			takeoffs[k] = p.lane
+			_press(&"jump", "coupling %d from lane %d" % [k, p.lane])
+			_move_in = signi(coupling_lane - p.lane)
 			return
 	var edge: float = boss.train.gap_start(k)
 	if edge - d <= HOLE_LEAD * boss.run_pace():
 		_jumped[k] = true
-		_press(&"jump", "gap %d" % k)
+		takeoffs[k] = p.lane
+		_press(&"jump", "gap %d from lane %d" % [k, p.lane])
 
 
 ## How far before the point it means to come down on a coupling it jumps (at its speed now).
@@ -169,9 +192,9 @@ func _bolt_toward(lane: int) -> bool:
 ## True if a live cyborg stands in `lane` between track distances `from` and `to`.
 func _cyborg_in(lane: int, from: float, to: float) -> bool:
 	for e: Enemy in boss.world.director.active:
-		var c := e as Cyborg
-		if c == null or not is_instance_valid(c) or not c.alive:
+		if not is_instance_valid(e) or not e.alive or not e is Cyborg:
 			continue
+		var c := e as Cyborg
 		var at: float = c.track_distance()
 		if c.lane == lane and at >= from and at <= to:
 			return true
@@ -190,7 +213,7 @@ func _walk() -> void:
 	if p.surface != Player.Surface.FLOOR:
 		return
 	if _move_in != 0 and not p.grounded:
-		_press(&"move_right" if _move_in > 0 else &"move_left", "into the coupling's lane")
+		_press(&"move_right" if _move_in > 0 else &"move_left", "into the coupling's lane %d" % (p.lane + _move_in))
 		_move_in = 0
 		_target = -1
 		return

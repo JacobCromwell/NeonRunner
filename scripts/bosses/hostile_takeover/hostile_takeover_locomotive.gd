@@ -46,3 +46,8 @@ func track_distance() -> float:
 ## Far ahead in phase 1: never a weapon's target there.
 func targetable() -> bool:
 	return false
+
+
+## The fight is won: the encounter plays the defeat, so it stays.
+func _on_defeated(_cause: StringName) -> void:
+	pass

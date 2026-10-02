@@ -247,6 +247,11 @@ func targetable() -> bool:
 	return false
 
 
+## The fight is won: the encounter plays the defeat (its couplings dark, their weak points off), so they stay.
+func _on_defeated(_cause: StringName) -> void:
+	pass
+
+
 func _set_live(rig: Dictionary, live: bool) -> void:
 	rig["live"] = live and not rig["broken"]
 	var on: bool = rig["live"]

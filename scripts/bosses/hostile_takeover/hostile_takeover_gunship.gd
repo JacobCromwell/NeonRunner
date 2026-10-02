@@ -43,3 +43,9 @@ func hit_radius() -> float:
 ## Where it is along the track (its middle).
 func track_distance() -> float:
 	return -global_position.z
+
+
+## The fight is won: the encounter plays the defeat (a placeholder until task E5b-c: it climbs away), so
+## it stays.
+func _on_defeated(_cause: StringName) -> void:
+	pass

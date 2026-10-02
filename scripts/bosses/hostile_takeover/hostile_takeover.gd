@@ -243,7 +243,8 @@ func _defeated_tick(delta: float) -> void:
 	step_time += delta
 	_update_breakaway(delta)
 	_place_gunship()
-	locomotive.set_front(player_distance() + tuning.loco_ahead)
+	if is_instance_valid(locomotive):
+		locomotive.set_front(player_distance() + tuning.loco_ahead)
 
 
 ## Once its placeholder defeat has played out (or at once if the runner is gone).
@@ -315,7 +316,7 @@ func _apply_breakaway() -> void:
 ## the entrance it eases in from behind and above; in a later intro it lurches up and rolls; beaten, it
 ## climbs away.
 func _place_gunship() -> void:
-	if gunship == null:
+	if not is_instance_valid(gunship):
 		return
 	var t: float = fight_time()
 	var half: float = HostileTakeoverModel.GUNSHIP_LENGTH * 0.5
