@@ -15,6 +15,8 @@ extends SceneTree
 ##   sfx_bank_buzz_overdrive.gd  the Buzz Overdrive: its rev (the warning: the blade spinning up) and its
 ##                        charge
 ##   sfx_bank_tithe_collector.gd  the Tithe Collector: its approach cue (a smug chuckle and a cash-register ding)
+##   sfx_bank_the_house.gd  The House: its entrance, the spin (the lever, the reels, the dings), the 7
+##                        buttons, its attacks' warnings, the jackpot and the hopper's stomp
 ## Run: tools/godot.sh sfx   (--only=jump,land renders just those; --review also writes
 ## build/sfx_review/<name>.png: waveform on top, spectrogram (40 Hz–16 kHz, time left to right) below).
 ## Each line of the report ends with the sound's loudest 400 ms as heard on headphones (K-weighted) and
@@ -35,6 +37,7 @@ const BANKS: Array = [
 	preload("res://tools/asset_gen/sfx_bank_sleep_taker.gd"),
 	preload("res://tools/asset_gen/sfx_bank_buzz_overdrive.gd"),
 	preload("res://tools/asset_gen/sfx_bank_tithe_collector.gd"),
+	preload("res://tools/asset_gen/sfx_bank_the_house.gd"),
 ]
 const OUT_DIR: String = "res://assets/sfx"
 const REVIEW_DIR: String = "res://build/sfx_review"
