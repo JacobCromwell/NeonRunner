@@ -692,8 +692,10 @@ func _test_generator() -> void:
 				if extra > 0:
 					config.level_seed = 8100 + extra
 				var tag: String = "%s lanes=%d seed=%d" % [id, lanes, config.level_seed]
-				var gen := LevelGenerator.new()
-				var l: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+				# T-SPEED: shared across the run (LayoutCache); at extra==0 this is the level's own
+				# default build, shared with other suites too.
+				var gen: LevelGenerator = LayoutCache.generator(config, tuning, LevelGenerator.load_for(config))
+				var l: LevelLayout = gen.layout
 				check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
 				var problems: PackedStringArray = Rules.problems(l, config, tuning)
 				check(problems.is_empty(), "every pulse is fair %s: %s" % [tag, problems])
@@ -736,7 +738,8 @@ func _test_campaign() -> void:
 		config.skin = null  # the grey box: skins never change gameplay
 		zones = CeilingZones.make(config, tuning)
 		var speed: float = config.movement_for(tuning).run_speed  # the Golden Zone's
-		var layout: LevelLayout = LevelGenerator.new().generate(config, tuning, LevelGenerator.load_for(config))
+		# T-SPEED: this level's own default build (LayoutCache), shared with other suites.
+		var layout: LevelLayout = LayoutCache.generate(config, tuning, LevelGenerator.load_for(config))
 		# Played until the last Resonator's visit is well over (its pulses may wait at run time).
 		var until: float = 0.0
 		for e: Dictionary in Rules.resonators_in(layout):

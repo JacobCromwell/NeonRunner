@@ -3,8 +3,11 @@
 #
 #   tools/godot.sh play [game args]   play the current working tree (e.g. play --lanes=6 --god)
 #   tools/godot.sh edit               open the Godot editor on this project
-#   tools/godot.sh test [--suite=x]   run the headless tests (exit code 0 = pass); --suite=x runs only
-#                                     the suites whose file name contains x
+#   tools/godot.sh test [--suite=x] [--jobs=N]   run the headless tests (exit code 0 = pass); --suite=x
+#                                     runs only the suites whose file name contains x. --jobs=N (default 1,
+#                                     unchanged behaviour) splits the suites across N Godot processes,
+#                                     balanced by each suite's last measured time: use it on a machine with
+#                                     CPUs to spare, since the suites are not otherwise run in parallel
 #   tools/godot.sh smoke [game args]  40 s headless quick play; prints only problems (exit code 1 if any)
 #   tools/godot.sh sfx [--review]     regenerate assets/sfx/*.wav from tools/asset_gen/sfx_gen.gd
 #   tools/godot.sh music [--review]   regenerate assets/music/*.wav from tools/asset_gen/music_gen.gd
@@ -102,6 +105,109 @@ quiet() {
 	tr -d '\r' | grep -vE '^Godot Engine v|^\s*$|^\[ *[0-9]+% \]|^\[ DONE \]' || true
 }
 
+# T-SPEED: `tools/godot.sh test --jobs=N [--suite=x]` runs the matching suites across N separate
+# Godot processes, balanced by each suite's last measured time (tests/.suite_times.json, refreshed by
+# every run of tests/run_tests.gd; a suite with no measurement yet is weighted as 1 s). Each process
+# gets its own XDG_DATA_HOME (so its own user:// folder: saves and the test profile never collide
+# between processes) and runs its own balanced slice (run_tests.gd's --files=, an exact file list, not
+# --suite=x's substring match). Exit code is 0 only if every process passed; a failing suite's "FAIL:"
+# lines are gathered at the end so they stay visible among several processes' interleaved output.
+run_tests_parallel() {
+	local jobs="$1"
+	shift
+	local suite_filter=""
+	for arg in "$@"; do
+		case "$arg" in
+			--suite=*) suite_filter="${arg#--suite=}" ;;
+		esac
+	done
+	local suites=()
+	while IFS= read -r f; do
+		[[ -z "$suite_filter" || "$f" == *"$suite_filter"* ]] && suites+=("$f")
+	done < <(cd "$ROOT/tests/suites" && ls test_*.gd 2>/dev/null | sort)
+	if [[ ${#suites[@]} -eq 0 ]]; then
+		echo "No test suites matched '$suite_filter'." >&2
+		exit 1
+	fi
+	local times_file="$ROOT/tests/.suite_times.json"
+	local groups=()
+	mapfile -t groups < <(python3 - "$jobs" "$times_file" "${suites[@]}" <<'PYEOF'
+import json, sys
+jobs = int(sys.argv[1])
+times = {}
+try:
+	times = json.load(open(sys.argv[2]))
+except Exception:
+	pass
+suites = sys.argv[3:]
+default = 1.0
+order = sorted(suites, key=lambda s: -float(times.get(s, default)))
+bins = [[] for _ in range(jobs)]
+loads = [0.0] * jobs
+for s in order:
+	i = min(range(jobs), key=lambda k: loads[k])
+	bins[i].append(s)
+	loads[i] += float(times.get(s, default))
+for b in bins:
+	print(",".join(b))
+PYEOF
+	)
+	mkdir -p "$ROOT/build"
+	local tmp_dir; tmp_dir="$(mktemp -d "$ROOT/build/test_jobs.XXXXXX")"
+	local pids=() outs=() n=0
+	local started; started="$(date +%s)"
+	for group in "${groups[@]}"; do
+		[[ -z "$group" ]] && continue
+		local out="$tmp_dir/job$n.log"
+		outs+=("$out")
+		(
+			export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/godot_test_jobs/job$n"
+			mkdir -p "$XDG_DATA_HOME"
+			"$GODOT_BIN" --headless --path "$PROJECT" --fixed-fps 60 -s res://tests/run_tests.gd -- "--files=$group" \
+				>"$out" 2>&1
+			echo $? >"$out.status"
+		) &
+		pids+=("$!")
+		n=$((n + 1))
+	done
+	local pid
+	for pid in "${pids[@]}"; do
+		wait "$pid"
+	done
+	local ended; ended="$(date +%s)"
+	local total_suites=0 total_checks=0 overall=0
+	local fail_lines=()
+	local out
+	for out in "${outs[@]}"; do
+		quiet <"$out"
+		local st; st="$(cat "$out.status" 2>/dev/null || echo 1)"
+		[[ "$st" != "0" ]] && overall=1
+		local line; line="$(grep -E '^ALL TESTS PASSED' "$out" | tail -1)"
+		if [[ -n "$line" ]]; then
+			local s c
+			s="$(sed -E 's/.*\(([0-9]+) suites.*/\1/' <<<"$line")"
+			c="$(sed -E 's/.*, ([0-9]+) checks.*/\1/' <<<"$line")"
+			total_suites=$((total_suites + s))
+			total_checks=$((total_checks + c))
+		fi
+		while IFS= read -r fl; do
+			fail_lines+=("$fl")
+		done < <(grep '^FAIL: ' "$out")
+	done
+	echo ""
+	if [[ $overall -eq 0 ]]; then
+		echo "ALL TESTS PASSED (${#suites[@]} suites, $total_checks checks, $((ended - started)) s wall, $n jobs)"
+	else
+		local fl
+		for fl in "${fail_lines[@]}"; do
+			echo "$fl"
+		done
+		echo "FAILED across $n jobs (${#fail_lines[@]} failing check line(s) above; see the suite(s) named)"
+	fi
+	rm -rf "$tmp_dir"
+	exit "$overall"
+}
+
 command="${1:-play}"
 [[ $# -gt 0 ]] && shift
 
@@ -117,10 +223,21 @@ case "$command" in
 		;;
 	test)
 		import_if_stale
-		set +e
-		"$GODOT_BIN" --headless --path "$PROJECT" --fixed-fps 60 -s res://tests/run_tests.gd -- "$@" 2>&1 | quiet
-		status=${PIPESTATUS[0]}
-		exit "$status"
+		jobs=1
+		rest=()
+		for arg in "$@"; do
+			case "$arg" in
+				--jobs=*) jobs="${arg#--jobs=}" ;;
+				*) rest+=("$arg") ;;
+			esac
+		done
+		if [[ "$jobs" -le 1 ]]; then
+			set +e
+			"$GODOT_BIN" --headless --path "$PROJECT" --fixed-fps 60 -s res://tests/run_tests.gd -- "${rest[@]}" 2>&1 | quiet
+			status=${PIPESTATUS[0]}
+			exit "$status"
+		fi
+		run_tests_parallel "$jobs" "${rest[@]}"
 		;;
 	smoke)
 		import_if_stale

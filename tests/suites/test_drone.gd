@@ -447,8 +447,9 @@ func _test_rules() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	for lanes: int in [3, 5, 6]:
 		var config: LevelConfig = campaign.configure(campaign.step("gangland/3"), lanes)
-		var gen := LevelGenerator.new()
-		var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+		# T-SPEED: gangland/3's own default build (LayoutCache), shared with other suites.
+		var gen: LevelGenerator = LayoutCache.generator(config, tuning, LevelGenerator.load_for(config))
+		var layout: LevelLayout = gen.layout
 		var n: int = _check_rules(layout, config, t, "gangland/3 lanes=%d" % lanes)
 		check(gen.warnings.is_empty() and n > 0, "gangland/3 has drones and follows the rules (%d drones, %d lanes)" % [n, lanes])
 

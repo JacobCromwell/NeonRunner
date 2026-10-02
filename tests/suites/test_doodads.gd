@@ -250,8 +250,10 @@ func _test_campaign() -> void:
 		for lanes: int in [3, 5, 6]:
 			var config: LevelConfig = campaign.configure(s, lanes)
 			var tag: String = "%s lanes=%d" % [s.id, lanes]
-			var gen := LevelGenerator.new()
-			var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+			# T-SPEED: a campaign level's own default build (LayoutCache), the same one test_campaign.gd,
+			# test_wall_fences.gd and _test_safe_floor_every_time below all build to run their own checks.
+			var gen: LevelGenerator = LayoutCache.generator(config, tuning, LevelGenerator.load_for(config))
+			var layout: LevelLayout = gen.layout
 			# A level paced in bursts keeps its quiet stretches empty, as the fill pass does, and its
 			# dense bursts leave little room: it may have none at one lane count.
 			check(not layout.doodads.is_empty() or config.paced_in_bursts(), "%s has doodads (%d)" % [tag, layout.doodads.size()])
@@ -610,8 +612,8 @@ func _test_safe_floor_every_time() -> void:
 		for lanes: int in [3, 5, 6]:
 			var config: LevelConfig = campaign.configure(s, lanes)
 			var fast: MovementTuning = config.movement_for(tuning)
-			var gen := LevelGenerator.new()
-			var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+			# T-SPEED: the same default build as _test_campaign above (LayoutCache).
+			var layout: LevelLayout = LayoutCache.generate(config, tuning, LevelGenerator.load_for(config))
 			var geo := TrackGeometry.new(lanes, fast)
 			var lead: float = LevelGenerator.doodad_lead_for(fast)
 			var after: float = config.spacing_seconds_hard * fast.run_speed
