@@ -49,6 +49,11 @@ static var _warned: Dictionary = {}
 static var _default_rules: GameRules = null
 ## The enemy kinds whose shared look this process has built (warm_up), by warm_key().
 static var _warmed: Dictionary = {}
+## The materials of the looks warm_up() built, kept for the process (ShaderWarmup.materials_of): the
+## engine frees a standard material's shader with the last material using it and generates (about 1 ms)
+## and compiles it again for the next, so a kind that makes its own material at each spawn (a Gilded
+## Sentinel's eyes) paid that at every spawn with none of its kind left.
+static var _kept: Array[Material] = []
 ## Per script: whether it has a static warm_up() and brings() (warm_up).
 static var _hooks: Dictionary = {}
 ## Entries to ready besides the layout's (warm_up_entries): a boss fight's own enemies.
@@ -79,10 +84,11 @@ func setup(p_world: RunWorld) -> void:
 ## took up to 200 ms in the frame its first one spawned) and, for a type whose script has a static
 ## `warm_up(world: RunWorld, entry: Dictionary) -> Node`, its look: what every enemy of its kind shares
 ## (the kit's meshes, materials and shaders, built once and kept in its caches), from a look built as
-## `entry`'s would be, which is freed at once. A type may name the enemies its own bring into play with
-## a static `brings(entry: Dictionary) -> Array[Dictionary]` (layout-like entries: a host cyborg's Bad
-## Dream). Once a process for each type, skin and kind (warm_key). Nothing here spawns, shows or
-## decides anything: the run plays exactly as without it. setup() calls it.
+## `entry`'s would be, which is freed at once (its materials are kept, _kept). A type may name the
+## enemies its own bring into play with a static `brings(entry: Dictionary) -> Array[Dictionary]`
+## (layout-like entries: a host cyborg's Bad Dream). Once a process for each type, skin and kind
+## (warm_key). Nothing here spawns, shows or decides anything: the run plays exactly as without it.
+## setup() calls it.
 func warm_up() -> void:
 	_warm()
 
@@ -118,6 +124,7 @@ func _warm() -> void:
 		_warmed[key] = true
 		var look: Variant = script.call(&"warm_up", world, entry.duplicate(true))
 		if look is Node and is_instance_valid(look):
+			_kept.append_array(ShaderWarmup.materials_of(look as Node))
 			(look as Node).free()
 
 

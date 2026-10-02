@@ -15,7 +15,8 @@ extends Node3D
 ## - one of each track piece the zone skin dresses: fences full and gapped in each of their states,
 ##   wall fences, a sign, a pad, a ramp, a speed pad, full and narrow ceilings, every doodad size, gap
 ##   edges and the finish line.
-## They sit in front of the camera, far too small to see (SCALE), for DRAWN_FRAMES drawn frames, then go.
+## They sit in front of the camera, far too small to see (SCALE), for DRAWN_FRAMES drawn frames, then go;
+## their materials stay kept until the next level's stage (_kept), so their shaders stay built.
 ## Visual only: nothing in it collides, plays or moves the run on. A headless run draws nothing, so
 ## LevelRun only adds it when the game renders (needed()).
 
@@ -25,6 +26,12 @@ const DRAWN_FRAMES: int = 2
 const SCALE: float = 0.00001
 ## How far in front of the camera they sit.
 const AHEAD: float = 2.0
+
+## The latest stage's materials, kept until the next level's stage (setup): the engine frees a standard
+## material's shader with the last material that uses it (and a shader material's shader goes with the
+## last material holding it), then builds and compiles it again for the next one, so a look first met
+## after the stage had gone (the finish line, a rare enemy) compiled mid-run after all.
+static var _kept: Array[Material] = []
 
 ## Samples made so far, by what they draw (shader key, mesh kind, instancing).
 var keys: Dictionary = {}
@@ -48,6 +55,7 @@ func setup(world: RunWorld, camera: Camera3D) -> void:
 		add_child(look)
 	_sample_track(world)
 	_show_all()
+	_kept = materials_of(self)
 	RenderingServer.frame_post_draw.connect(_on_drawn)
 
 
@@ -246,6 +254,42 @@ static func _show_state(hazard: Hazard, state: Hazard.State) -> void:
 	if state != hazard.state:
 		hazard.state = state
 		hazard.state_changed.emit(state)
+
+
+## Every material drawn under `root`, each once: overrides, surface overrides, the meshes' own (of mesh,
+## multimesh and particle nodes) and their next passes. What keeps their shaders built (_kept,
+## EnemyDirector.warm_up).
+static func materials_of(root: Node) -> Array[Material]:
+	var out: Array[Material] = []
+	var seen: Dictionary = {}
+	var stack: Array[Node] = [root]
+	while not stack.is_empty():
+		var node: Node = stack.pop_back()
+		stack.append_array(node.get_children())
+		var geometry := node as GeometryInstance3D
+		if geometry == null:
+			continue
+		var found: Array[Material] = [geometry.material_override, geometry.material_overlay]
+		var mesh: Mesh = null
+		var mesh_node := node as MeshInstance3D
+		if mesh_node != null:
+			mesh = mesh_node.mesh
+			for s: int in (mesh.get_surface_count() if mesh != null else 0):
+				found.append(mesh_node.get_surface_override_material(s))
+		elif node is MultiMeshInstance3D and (node as MultiMeshInstance3D).multimesh != null:
+			mesh = (node as MultiMeshInstance3D).multimesh.mesh
+		elif node is CPUParticles3D:
+			mesh = (node as CPUParticles3D).mesh
+		if mesh != null:
+			for s: int in mesh.get_surface_count():
+				found.append(mesh.surface_get_material(s))
+		for m: Material in found:
+			var current: Material = m
+			while current != null and not seen.has(current.get_instance_id()):
+				seen[current.get_instance_id()] = true
+				out.append(current)
+				current = current.next_pass
+	return out
 
 
 ## What makes a material's shader: a shader material's own shader, or a standard material's features

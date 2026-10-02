@@ -93,6 +93,8 @@ const HUSK_KEEP: float = 40.0
 static var _frames: Dictionary = {}
 ## The statue kit outside the Golden Zone's skins (quick play's review stand-in).
 static var _plain_kit: GoldenStatue = null
+## The cut's shader (cut_shader()).
+static var _cut_shader: Shader = null
 
 var tune: GildedSentinelTuning
 var side: int = 1
@@ -308,8 +310,12 @@ static func _cut_material() -> ShaderMaterial:
 	return m
 
 
+## The marks' and slashes' shader, loaded once and kept (task PERF1: loaded afresh, it was parsed again by
+## the first Sentinel after the level's warm-up had let it go).
 static func cut_shader() -> Shader:
-	return load("res://scripts/enemies/gilded_sentinel_cut.gdshader") as Shader
+	if _cut_shader == null:
+		_cut_shader = load("res://scripts/enemies/gilded_sentinel_cut.gdshader") as Shader
+	return _cut_shader
 
 
 ## A strip in local space: from `a` along `along` (the stretch) and `across`; UV.x 0 at the end nearest

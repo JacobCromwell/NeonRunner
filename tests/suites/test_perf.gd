@@ -7,8 +7,9 @@ extends TestSuite
 ##   out the same with and without it (the runner's trace and the enemies' event log).
 ## - Enemy types readied with the level (EnemyDirector.warm_up): every type's script loaded, each kind's
 ##   look built and freed once a process (and skin) with nothing left in the tree and nothing heard, a
-##   host's Bad Dream among them, warm_looks() handing out one look of each kind, and a Gilded Sentinel's
-##   statue frames baked for both walls with each Golden skin's own kit.
+##   host's Bad Dream among them, warm_looks() handing out one look of each kind, their materials kept
+##   (so their shaders stay built), and a Gilded Sentinel's statue frames baked for both walls with each
+##   Golden skin's own kit.
 ## - Hit-stops that never stack or chain (RunEffects.freeze, SpeedFxTuning.freeze_gap).
 ## - BossProps' target rings shared by radius.
 ## - The shader warm-up stage (ShaderWarmup): samples of the hidden materials, the effects' glow, every
@@ -211,6 +212,7 @@ func _test_enemy_warm_up() -> void:
 	var director: EnemyDirector = world.director
 	# Again, from scratch: what this process readied before doesn't count here.
 	EnemyDirector._warmed.clear()
+	EnemyDirector._kept.clear()
 	var heard: Array[StringName] = []
 	world.sounds.requested.connect(func(sound: StringName) -> void: heard.append(sound))
 	var nodes_before: int = int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
@@ -231,6 +233,7 @@ func _test_enemy_warm_up() -> void:
 	check(int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)) == nodes_before and director.get_child_count() == children_before
 		and director.active.is_empty(), "nothing it built stays: no node in the tree, no enemy in play")
 	check(heard.is_empty(), "nothing is heard while it readies them (%s)" % ", ".join(heard))
+	check(EnemyDirector._kept.size() >= 11, "the looks' materials are kept, so their shaders stay built (%d)" % EnemyDirector._kept.size())
 	var count: int = EnemyDirector._warmed.size()
 	director.warm_up()
 	check(EnemyDirector._warmed.size() == count, "once a process: a second level with the same kinds readies nothing again")
@@ -264,6 +267,11 @@ func _test_sentinel_frames() -> void:
 				walls += 1
 		check(walls == 2, "%s: the Sentinels' frames are baked for both walls with the level (%d)" % [path.get_file(), walls])
 		await sim.free_world(world)
+	var kept: Dictionary = {}
+	for m: Material in EnemyDirector._kept:
+		kept[ShaderWarmup.shader_key(m)] = true
+	check(kept.has(ShaderWarmup.shader_key(GildedSentinel._eyes_material())),
+		"a material like a Sentinel's eyes is kept (each Sentinel makes its own, which built its shader again)")
 
 
 # --- Hit-stop -------------------------------------------------------------------------------------
@@ -312,6 +320,9 @@ func _test_shader_warmup() -> void:
 	var stage := ShaderWarmup.new()
 	stage.setup(world, camera)
 	check(stage.get_parent() == camera and stage.scale.x <= 0.01, "the stage sits in front of the camera, tiny")
+	var drawn: Array[Material] = ShaderWarmup.materials_of(stage)
+	check(drawn.size() > 0 and ShaderWarmup._kept == drawn,
+		"the stage's materials are kept past it, until the next level's stage (%d)" % drawn.size())
 	var stray: PackedStringArray = []
 	for node: Node in stage.find_children("*", "Node3D", true, false):
 		var n3 := node as Node3D

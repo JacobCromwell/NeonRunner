@@ -138,7 +138,9 @@ after, run by run: `frame_times.gd --log`, and `test_perf`).
   for the level's first two drawn frames: every material on the run's hidden nodes (pools, the weapon's
   effects), the effects' glow, one look of each enemy kind (`EnemyDirector.warm_looks()`, every part shown) and
   each track piece the zone skin dresses (fences in each state, wall fences, a sign, pads, ramps, speed pads,
-  ceilings, doodads, gap edges, the finish line). After it no shader on Gangland 3 is first drawn mid-run.
+  ceilings, doodads, gap edges, the finish line). It keeps the samples' materials until the next level's
+  stage, so their shaders stay built for a look first met later. After it no shader on Gangland 3 is first
+  drawn mid-run.
 - **Hit-stops** (G2's brief freeze on every kill and stomp): none in the build before the playtest work, now 4
   to 24 a level (about 6 a minute with a full loadout). Each holds the camera still for three frames while the run
   goes on, so the view jumps 1.0 to 1.25 m when it lets go: on screen, exactly what a dropped frame looks like.
@@ -400,18 +402,24 @@ damage and no health bar; only a stomp, the claws or the dash still kill it, wit
 Every attack needs a visual **and** audio warning before it can hurt (CLAUDE.md readability rules).
 **Readied with the level** (task PERF1): `EnemyDirector.warm_up()` (from `setup()`, during the load) loads
 the script and tuning of every type the layout names, and for a type whose script has a static
-`warm_up(world: RunWorld, entry: Dictionary) -> Node` builds one look of each kind (type, zone look, host)
-and frees it, once a process: what a type's first spawn used to do in its own frame (compiling its scripts
-and building the meshes, materials and shaders its kind shares; up to 290 ms for a cyborg). The hook builds
+`warm_up(world: RunWorld, entry: Dictionary) -> Node` builds one look of each kind (type, skin, host:
+`warm_key()`; a zone's skin counts by its resource, since the Golden Zone and the Golden Palace share a zone
+look but not their statue kits) and frees it, once a process: what a type's first spawn used to do in its
+own frame (compiling its scripts and building the meshes, materials and shaders its kind shares; up to
+290 ms for a cyborg). It keeps the look's materials for the process (`ShaderWarmup.materials_of()`): the
+engine frees a standard material's shader with the last material using it and generates and compiles it
+again for the next, so a kind that makes its own material at each spawn (a Gilded Sentinel's eyes) paid
+about 1 ms (and a compile on a real renderer) at every spawn with none of its kind left. The hook builds
 the visual model only, as `entry`'s would be, outside the tree, with every part the enemy may show later
 (a muzzle's charge, a lunge line, a wave), since `ShaderWarmup` draws the same looks once during the load
 (`warm_looks()`, A run). A type whose enemies bring others into play names them with a static
 `brings(entry: Dictionary) -> Array[Dictionary]` (a host cyborg's Bad Dream). The cyborg, window cyborg,
-screech, Octodog, Resonator, Barnacle Turret, Bad Dream, fence generator and Buzz Overdrive have hooks, and a
-boss fight names the enemies it brings itself with `BossEncounter.warm_enemies()` (the Floating Head's dropped
-cyborgs, the Sleep Taker's generators); a new enemy whose
-first spawn builds anything costly adds one (`test_perf` checks every hooked kind is readied and nothing
-of it stays).
+screech, Octodog, Resonator, Barnacle Turret, Bad Dream, fence generator, Buzz Overdrive and Gilded Sentinel
+(its statue's frames for both walls, its eyes, its cut marks' shader) have hooks, and a boss fight names the
+enemies it brings itself with `BossEncounter.warm_enemies()` (the Floating Head's dropped cyborgs, the Sleep
+Taker's generators); a new enemy whose first spawn builds anything costly adds one, and a kit keeps the
+shaders it loads (a static cache, as the kits do) rather than loading them per spawn (`test_perf` checks
+every hooked kind is readied and nothing of it stays).
 Enemy fire uses the pool's red "enemy_*" looks in every zone. `world.skin.enemy_variant` picks the
 zone look: the cyborgs (window cyborgs and hosts too) dress in the zone variant
 `CyborgSuit.look_for()` finds for it (see Zone skins for each zone's value, and Characters), and the
