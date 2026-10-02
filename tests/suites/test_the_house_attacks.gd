@@ -15,7 +15,9 @@ extends TestSuite
 ##   god mode, no armor) gets through every spin alive, always finding a way;
 ## - the 3-lane mix of cherry bombs and BAR blocks leaves a way through;
 ## - the citizens duck at a big attack;
-## - the spin lists of all three phases, over a few seeds, at every lane count and speed: the runner lives.
+## - the spin lists of all three phases, over a few seeds, at every lane count and speed: the runner lives;
+## - a volley's bombs and a row's blocks are each their own, and what attacks show is pooled: bombs,
+##   blocks, spools and blasts are reused from strike to strike, nothing made anew once the pools fit a spin.
 
 const BOSS_PATH: String = "res://data/bosses/marketplace_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
@@ -135,6 +137,7 @@ func _play(p_def: BossDef, lanes: int, speed: float, spins: int, watch: bool = t
 	for e: Dictionary in _events(boss, &"sound"):
 		(out["sounds"] as Array).append(e["name"])
 	out["distance"] = world.player.distance
+	out["pools"] = boss.attacks.pool_stats()
 	await sim.free_world(world)
 	return out
 
@@ -148,6 +151,16 @@ func _check_warning(boss: TheHouse, world: RunWorld, s: Dictionary, problems: Ar
 		problems.append("strike %d reaches the runner %.2f s after its warning" % [int(s["n"]), reach])
 	if float(s["land"]) - float(s["reveal"]) < MIN_TELEGRAPH:
 		problems.append("strike %d hits %.2f s after its warning" % [int(s["n"]), float(s["land"]) - float(s["reveal"])])
+	# Each lane's bomb or block is its own, shown from the reveal (one per lane, never shared).
+	var own: Dictionary = {}
+	for b: Dictionary in s.get("bombs", []):
+		if (b["bomb"] as Node3D).visible:
+			own[b["bomb"]] = true
+	for b: Dictionary in s.get("blocks", []):
+		if (b["block"]["look"] as Node3D).visible:
+			own[b["block"]["look"]] = true
+	if int(s["kind"]) != TheHouseAttacks.Kind.LIGHTNING and own.size() != (s["lanes"] as Array).size():
+		problems.append("strike %d shows %d bombs or blocks for %d lanes" % [int(s["n"]), own.size(), (s["lanes"] as Array).size()])
 	for lane: int in s["lanes"]:
 		match int(s["kind"]):
 			TheHouseAttacks.Kind.CHERRY:
@@ -170,6 +183,9 @@ func _check_hazards(boss: TheHouse, world: RunWorld, problems: Array) -> void:
 	for h: Hazard in boss.attacks.blast_hazards():
 		if not _warned_by(boss, world, h, TheHouseAttacks.Kind.CHERRY):
 			problems.append("a blast where no strike warned (x %.1f, at %.1f)" % [h.global_position.x, -h.global_position.z])
+	for h: Hazard in boss.attacks.block_hazards():
+		if not _warned_by(boss, world, h, TheHouseAttacks.Kind.BAR):
+			problems.append("a gold block where no strike warned (x %.1f, at %.1f)" % [h.global_position.x, -h.global_position.z])
 	for node: Node in boss.props.get_children():
 		var h := node as Hazard
 		if h == null or not h.is_active():
@@ -269,6 +285,15 @@ func _test_every_size(lanes: int, speed: float) -> void:
 		and sounds.count(&"house_ding") >= 21 and sounds.count(&"house_lever") >= 7,
 		"each strike sounds its warning, each reel its ding, each spin its lever %s" % tag)
 	check(int((r["reactions"] as Dictionary).get(&"startled", 0)) >= 6, "the citizens duck at each big attack %s" % tag)
+	# Pooled: every pool is drawn on more often than it has things in it (strikes reuse them).
+	var pools: Dictionary = r["pools"]
+	var reused: bool = true
+	for key: String in ["bombs", "fires", "blast_boxes", "blocks", "spools"]:
+		var made: int = int(pools[key][0])
+		var taken: int = int(pools[key][1])
+		if made <= 0 or made >= taken:
+			reused = false
+	check(reused, "its bombs, blasts, blocks and spools are pooled, reused from strike to strike %s: %s" % [tag, pools])
 
 
 ## The strike numbered `n` among those recorded.

@@ -30,6 +30,7 @@ func run() -> void:
 	_test_attacks_for()
 	_test_route()
 	await _test_arena_and_model()
+	await _test_placed_credits()
 
 
 ## The fight at `lanes` and `speed` m/s (0: 18): [world, boss].
@@ -244,3 +245,41 @@ func _test_arena_and_model() -> void:
 		check(boss.body.core_hitbox().is_active() and boss.body.core_hitbox().is_solid and not boss.body.weak_points_enabled(),
 			"standing, it's solid and its hopper is shut %s" % tag)
 		await sim.free_world(world)
+
+
+# --- The fountain's credits ----------------------------------------------------------------------
+
+## Its fountain's real credits (CreditField.place) are pooled: a new one takes the slot of one passed for
+## good or collected, so a fight's fountains keep to a chunk or two however many come; never the slot of
+## one still ahead.
+func _test_placed_credits() -> void:
+	var pair: Array = _fight(def, 5)
+	var world: RunWorld = pair[0]
+	var field: CreditField = world.credits
+	var d: float = world.player.distance
+	var n: int = CreditField.PLACE_CHUNK
+	field.place(_credit_row(1, d - 60.0))
+	field.place(_credit_row(1, d + 30.0))
+	var chunk := field.get_child(0) as MultiMeshInstance3D if field.get_child_count() > 0 else null
+	check(field.get_child_count() == 1 and chunk.multimesh.visible_instance_count == 1 and field.remaining() == 1,
+		"a credit placed during a run takes the slot of one the runner has passed")
+	var row: Array[Dictionary] = _credit_row(n - 1, d + 31.0)
+	field.place(row)
+	row.append(_credit_row(1, d + 30.0)[0])
+	for c: Dictionary in row:
+		field.take_near(int(c["lane"]), float(c["at"]), 0.01)
+	field.place(_credit_row(n, d + 60.0))
+	check(field.get_child_count() == 1 and field.remaining() == n,
+		"or of one collected: fountain after fountain, no new draw (%d chunks, %d left)" % [field.get_child_count(), field.remaining()])
+	field.place(_credit_row(n, d + 90.0))
+	check(field.get_child_count() == 2 and field.remaining() == n * 2,
+		"and never the slot of one still ahead (%d chunks, %d left)" % [field.get_child_count(), field.remaining()])
+	await sim.free_world(world)
+
+
+## `n` floor credits worth 5 from `from` on, half a metre apart, across the lanes.
+func _credit_row(n: int, from: float) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for i: int in n:
+		out.append({"surface": "floor", "lane": i % 3, "at": from + i * 0.5, "value": 5})
+	return out

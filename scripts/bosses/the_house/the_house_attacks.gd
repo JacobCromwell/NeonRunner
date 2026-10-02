@@ -65,10 +65,18 @@ var skipped: int = 0
 var _attacks_started: int = 0
 var _next_attack_at: float = 0.0
 var _whistle: float = WHISTLE_SECONDS
+# Everything an attack shows is pooled, so a fight allocates nothing once its pools have grown to
+# what one spin needs: bombs, blasts' boxes and fireballs, gold blocks and spools.
 var _bombs: Array[MeshInstance3D] = []
 var _blast_boxes: Array[Hazard] = []
 var _fires: Array[MeshInstance3D] = []
 var _blasts: Array[Dictionary] = []
+## Gold blocks: {hazard, blocker, look, used}. Each hazard is BossProps.block's kind (solid: deadly to
+## run into, a lane blocker to switch into), on from the slam; put away, both its layers are cleared.
+var _blocks: Array[Dictionary] = []
+var _spools: Array[MeshInstance3D] = []
+## How many times each pool was drawn on, for pool_stats().
+var _taken: Dictionary = {}
 
 static var _bomb_mesh: ArrayMesh
 static var _block_mesh_cache: Dictionary = {}
@@ -388,10 +396,11 @@ func _reveal(plan: Dictionary) -> void:
 			s["land"] = clock + (tuning.cherry_warning - tuning.arrival_seconds)
 			s["circles"] = []
 			s["bombs"] = []
+			var chute: Vector3 = boss.body.chute_world()
 			for lane: int in s["lanes"]:
 				(s["circles"] as Array).append(boss.props.circle_warning(at, lane, tuning.blast_radius))
-				(s["bombs"] as Array).append({"bomb": _free_bomb(), "lane": lane, "from": boss.body.chute_world()})
-			boss.sound(&"house_cherry", boss.body.chute_world())
+				(s["bombs"] as Array).append({"bomb": _free_bomb(chute), "lane": lane, "from": chute})
+			boss.sound(&"house_cherry", chute)
 			s["whistle_at"] = maxf(clock, float(s["land"]) - _whistle)
 			s["whistled"] = false
 		Kind.LIGHTNING:
@@ -402,7 +411,8 @@ func _reveal(plan: Dictionary) -> void:
 			for lane: int in lanes:
 				(s["fences"] as Array).append(boss.props.fence(lane, at, String(s["variant"]),
 					maxf(float(s["land"]) - clock, 0.05)))
-			s["spool"] = _spool_node()
+			s["spool"] = _free_spool()
+			_update_fence(s)
 			boss.sound(&"house_lightning", world.lane_point(int(lanes[0]), at, 1.0))
 		Kind.BAR:
 			s["land"] = clock + (tuning.bar_warning - tuning.bar_slam_lead)
@@ -410,7 +420,10 @@ func _reveal(plan: Dictionary) -> void:
 			s["blocks"] = []
 			for lane: int in s["lanes"]:
 				(s["warnings"] as Array).append(boss.props.lane_warning(lane, at - 0.5, at + tuning.block_depth + 0.5))
-				(s["blocks"] as Array).append({"lane": lane, "node": _block_node(), "hazard": null})
+				var block: Dictionary = _free_block()
+				(block["look"] as Node3D).global_position = Vector3(world.geo.lane_x(lane), DROP_HEIGHT,
+					TrackGeometry.world_z(at + tuning.block_depth * 0.5))
+				(s["blocks"] as Array).append({"lane": lane, "block": block})
 			boss.sound(&"house_bar", boss.body.chute_world())
 	strikes.append(s)
 	boss.log_event(&"strike", {"kind": kind_name(kind), "size": int(s["size"]), "lanes": (s["lanes"] as Array).duplicate(),
@@ -450,16 +463,17 @@ func _update_cherry(s: Dictionary) -> void:
 			s["state"] = "struck"
 			for c: Node in s["circles"]:
 				boss.props.remove(c)
+			# The bombs go back to the pool (another volley may take them before this strike retires).
 			for b: Dictionary in s["bombs"]:
 				(b["bomb"] as Node3D).visible = false
+			s["bombs"] = []
 			for lane: int in s["lanes"]:
 				_blast(lane, at, int(s["n"]))
 
 
 func _update_fence(s: Dictionary) -> void:
 	var land: float = float(s["land"])
-	var held: Variant = s.get("spool")
-	var spool: Node3D = held as Node3D if is_instance_valid(held) else null
+	var spool: MeshInstance3D = s.get("spool")
 	if s["state"] == "warn":
 		var k: float = clampf((clock - float(s["reveal"])) / maxf(land - float(s["reveal"]), 0.05), 0.0, 1.0)
 		if spool != null:
@@ -476,7 +490,7 @@ func _update_fence(s: Dictionary) -> void:
 			s["state"] = "struck"
 			boss.log_event(&"fence_on", {"n": int(s["n"]), "at": float(s["at"])})
 			if spool != null:
-				spool.queue_free()
+				spool.visible = false
 			s["spool"] = null
 
 
@@ -488,20 +502,15 @@ func _update_bar(s: Dictionary) -> void:
 	# The blocks fall from high above, ever faster, landing at the slam.
 	var fall: float = clampf((clock - float(s["reveal"])) / maxf(land - float(s["reveal"]), 0.05), 0.0, 1.0)
 	for b: Dictionary in s["blocks"]:
-		var node: Node3D = b["node"]
-		node.global_position = Vector3(world.geo.lane_x(int(b["lane"])), DROP_HEIGHT * (1.0 - fall * fall),
-			TrackGeometry.world_z(at + tuning.block_depth * 0.5))
+		(b["block"]["look"] as Node3D).global_position = Vector3(world.geo.lane_x(int(b["lane"])),
+			DROP_HEIGHT * (1.0 - fall * fall), TrackGeometry.world_z(at + tuning.block_depth * 0.5))
 	if clock >= land - 0.0001:
 		s["state"] = "struck"
 		for w: Node in s["warnings"]:
 			boss.props.remove(w)
 		var size := Vector3(world.geo.lane_width * tuning.block_width_share, tuning.block_height, tuning.block_depth)
 		for b: Dictionary in s["blocks"]:
-			var hazard: Hazard = boss.props.block(int(b["lane"]), at, size, BLOCK_NAME)
-			var node: Node3D = b["node"]
-			node.reparent(hazard, false)
-			node.position = Vector3(0.0, -size.y * 0.5, 0.0)
-			b["hazard"] = hazard
+			_slam_block(b["block"], int(b["lane"]), at, size)
 			world.effects.burst(world.lane_point(int(b["lane"]), at + size.z * 0.5, 0.3), GOLD, 18, 0.7)
 		var near: float = clampf(1.0 - (at - world.player.distance) / 40.0, 0.25, 1.0)
 		world.effects.shake(0.35 * near, 0.3)
@@ -517,13 +526,11 @@ func _retire(s: Dictionary) -> void:
 	for b: Dictionary in s.get("bombs", []):
 		(b["bomb"] as Node3D).visible = false
 	for b: Dictionary in s.get("blocks", []):
-		if is_instance_valid(b["hazard"]):
-			boss.props.remove(b["hazard"] as Node)
-		elif is_instance_valid(b["node"]):
-			(b["node"] as Node).queue_free()
-	var spool: Variant = s.get("spool")
-	if is_instance_valid(spool):
-		(spool as Node).queue_free()
+		_put_away_block(b["block"])
+	var spool: MeshInstance3D = s.get("spool")
+	if spool != null:
+		spool.visible = false
+	s["spool"] = null
 
 
 # --- Bombs and blasts ----------------------------------------------------------------------------
@@ -596,22 +603,51 @@ func blast_hazards() -> Array[Hazard]:
 	return out
 
 
-func _free_bomb() -> MeshInstance3D:
+## The gold blocks standing now (tests).
+func block_hazards() -> Array[Hazard]:
+	var out: Array[Hazard] = []
+	for b: Dictionary in _blocks:
+		if b["used"] and (b["hazard"] as Hazard).is_active():
+			out.append(b["hazard"])
+	return out
+
+
+## The pools: what each holds and how many times it was drawn on ({bombs, fires, blast_boxes, blocks,
+## spools: [made, taken]}).
+func pool_stats() -> Dictionary:
+	return {"bombs": [_bombs.size(), int(_taken.get(&"bombs", 0))], "fires": [_fires.size(), int(_taken.get(&"fires", 0))],
+		"blast_boxes": [_blast_boxes.size(), int(_taken.get(&"blast_boxes", 0))],
+		"blocks": [_blocks.size(), int(_taken.get(&"blocks", 0))], "spools": [_spools.size(), int(_taken.get(&"spools", 0))]}
+
+
+func _took(pool: StringName) -> void:
+	_taken[pool] = int(_taken.get(pool, 0)) + 1
+
+
+## A cherry bomb from the pool, shown at `from` (the coin chute): shown, it's taken (a volley's bombs are
+## each its own) until its strike puts it away.
+func _free_bomb(from: Vector3) -> MeshInstance3D:
+	_took(&"bombs")
+	var bomb: MeshInstance3D = null
 	for b: MeshInstance3D in _bombs:
 		if not b.visible:
-			return b
-	var bomb := MeshInstance3D.new()
-	bomb.name = "CherryBomb"
-	bomb.mesh = bomb_mesh()
-	bomb.material_override = TheHouseModel.solid_material()
-	bomb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	bomb.visible = false
-	add_child(bomb)
-	_bombs.append(bomb)
+			bomb = b
+			break
+	if bomb == null:
+		bomb = MeshInstance3D.new()
+		bomb.name = "CherryBomb"
+		bomb.mesh = bomb_mesh()
+		bomb.material_override = TheHouseModel.solid_material()
+		bomb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(bomb)
+		_bombs.append(bomb)
+	bomb.global_position = from
+	bomb.visible = true
 	return bomb
 
 
 func _free_hazard() -> Hazard:
+	_took(&"blast_boxes")
 	for h: Hazard in _blast_boxes:
 		if not h.is_active() and not _burning(h):
 			return h
@@ -642,6 +678,7 @@ func _burning(h: Hazard) -> bool:
 
 
 func _free_fire() -> MeshInstance3D:
+	_took(&"fires")
 	for f: MeshInstance3D in _fires:
 		if not f.visible:
 			return f
@@ -688,9 +725,79 @@ static func bomb_mesh() -> ArrayMesh:
 	return _bomb_mesh
 
 
-## A gold block's look, sized by tuning (a heavy ingot with red-hot edges: deadly, never a doodad).
-func _block_node() -> Node3D:
+## A gold block from the pool, its look sized by tuning (shown, falling from high above), its hazard
+## still off.
+func _free_block() -> Dictionary:
+	_took(&"blocks")
 	var size := Vector3(world.geo.lane_width * tuning.block_width_share, tuning.block_height, tuning.block_depth)
+	var block: Dictionary = {}
+	for b: Dictionary in _blocks:
+		if not b["used"]:
+			block = b
+			break
+	if block.is_empty():
+		var hazard := Hazard.new()
+		hazard.name = "GoldBlock"
+		hazard.hazard_name = BLOCK_NAME
+		hazard.is_solid = true
+		hazard.collision_layer = 0
+		hazard.collision_mask = 0
+		hazard.monitoring = false
+		var shape := CollisionShape3D.new()
+		shape.shape = BoxShape3D.new()
+		hazard.add_child(shape)
+		var blocker := Area3D.new()
+		blocker.collision_layer = 0
+		blocker.collision_mask = 0
+		blocker.monitoring = false
+		var blocker_shape := CollisionShape3D.new()
+		blocker_shape.shape = BoxShape3D.new()
+		blocker.add_child(blocker_shape)
+		hazard.add_child(blocker)
+		add_child(hazard)
+		hazard.set_enabled(false)
+		var look := MeshInstance3D.new()
+		look.name = "GoldBlockLook"
+		look.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(look)
+		block = {"hazard": hazard, "blocker": blocker, "look": look}
+		_blocks.append(block)
+	block["used"] = true
+	var look: MeshInstance3D = block["look"]
+	look.mesh = _block_mesh(size)
+	look.visible = true
+	return block
+
+
+## Slams a block down in `lane` at `at`: its look at rest, its hazard (and lane blocker) on where it stands.
+func _slam_block(block: Dictionary, lane: int, at: float, size: Vector3) -> void:
+	var center := Vector3(world.geo.lane_x(lane), size.y * 0.5, TrackGeometry.world_z(at + size.z * 0.5))
+	var hazard: Hazard = block["hazard"]
+	var blocker: Area3D = block["blocker"]
+	hazard.size = size
+	((hazard.get_child(0) as CollisionShape3D).shape as BoxShape3D).size = size
+	((blocker.get_child(0) as CollisionShape3D).shape as BoxShape3D).size = size
+	hazard.global_position = center
+	hazard.collision_layer = TrackBuilder.LAYER_HAZARD
+	blocker.collision_layer = TrackBuilder.LAYER_LANE_BLOCKER
+	hazard.set_enabled(true)
+	(block["look"] as Node3D).global_position = Vector3(center.x, 0.0, center.z)
+
+
+## Puts a block back in the pool: off, out of every query, hidden.
+func _put_away_block(block: Dictionary) -> void:
+	if not block.get("used", false):
+		return
+	block["used"] = false
+	var hazard: Hazard = block["hazard"]
+	hazard.set_enabled(false)
+	hazard.collision_layer = 0
+	(block["blocker"] as Area3D).collision_layer = 0
+	(block["look"] as Node3D).visible = false
+
+
+## A gold block's look (a heavy ingot with red-hot edges: deadly, never a doodad), one mesh per size.
+static func _block_mesh(size: Vector3) -> ArrayMesh:
 	var key: String = str(size)
 	if not _block_mesh_cache.has(key):
 		var batch := MeshBatch.new()
@@ -710,17 +817,17 @@ func _block_node() -> Node3D:
 		for k: int in 3:
 			m.box(Vector3(0.0, size.y * (0.35 + 0.15 * k), hd * 0.93), Vector3(size.x * 0.5, 0.12, 0.03), Color(0.3, 0.2, 0.05))
 		_block_mesh_cache[key] = batch.to_mesh()
-	var node := MeshInstance3D.new()
-	node.name = "GoldBlock"
-	node.mesh = _block_mesh_cache[key]
-	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(node)
-	node.global_position = Vector3(0.0, DROP_HEIGHT, 0.0)
-	return node
+	return _block_mesh_cache[key]
 
 
-## The fence's spool: a drum with fence-pink glowing caps that rolls across the lanes unrolling it.
-func _spool_node() -> Node3D:
+## The fence's spool from the pool (shown, it's taken): a drum with fence-pink glowing caps that rolls
+## across the lanes unrolling it.
+func _free_spool() -> MeshInstance3D:
+	_took(&"spools")
+	for sp: MeshInstance3D in _spools:
+		if not sp.visible:
+			sp.visible = true
+			return sp
 	if _spool_mesh == null:
 		var batch := MeshBatch.new()
 		var m: MeshLayer = batch.layer(TheHouseModel.solid_material())
@@ -735,4 +842,5 @@ func _spool_node() -> Node3D:
 	node.mesh = _spool_mesh
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(node)
+	_spools.append(node)
 	return node
