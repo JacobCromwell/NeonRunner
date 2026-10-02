@@ -42,7 +42,8 @@ func active() -> bool:
 	return _active
 
 
-## Plans the next ones past the built track, up to wall_fence_ahead seconds ahead of the runner.
+## Plans the next ones past the built track, up to wall_fence_ahead seconds ahead of the runner, a batch
+## at a time.
 func tick() -> void:
 	if not _active or boss.arena == null:
 		return
@@ -51,7 +52,8 @@ func tick() -> void:
 	var from: float = boss.arena.stream_from() + 1.0
 	var until: float = d + tuning.wall_fence_ahead * v
 	var at: float = maxf(_next_at, from)
-	if at > until:
+	# A batch at a time: once less than half the stretch ahead is planned.
+	if at > d + tuning.wall_fence_ahead * v * 0.5:
 		return
 	var extra := LevelLayout.new()
 	extra.lane_count = boss.lane_count()

@@ -60,10 +60,21 @@ func setup(p_boss: TheHouse) -> void:
 	transform = Transform3D.IDENTITY
 
 
-## Makes its billboard before the fight (pooled).
+## Makes its billboard before the fight (pooled), with the mesh of a ceiling at the run's speed.
 func prewarm() -> void:
 	if _boards.is_empty():
 		_new_board()
+	if boss.lane_count() >= 2 and world.tuning != null:
+		var seg: Dictionary = plan(1, 0.0, 0.0, world.tuning.run_speed, 1)
+		_mesh(world.geo, float(seg["end"]) - float(seg["start"]))
+	# The turrets' script, numbers and look, loaded and built once now, not at the first one's spawn.
+	if tuning.special_buttons.has("ceiling"):
+		EnemyDirector.script_for("barnacle_turret")
+		EnemyDirector.tuning_for("barnacle_turret")
+		var look := BarnacleTurretModel.new()
+		add_child(look)
+		look.build(world.skin.enemy_variant if world.skin != null else &"", 0)
+		look.queue_free()
 
 
 ## C1's limits and timings (data/enemies/barnacle_turret.tres).
@@ -131,6 +142,8 @@ func start(seg: Dictionary) -> void:
 	segment = seg.duplicate()
 	segment["drop_at"] = clock + tuning.duck_seconds / boss.pace()
 	segment["shown"] = false
+	segment["spawned"] = 0
+	turrets.clear()
 	count += 1
 	boss.log_event(&"ceiling_planned", {"pad_lane": int(seg["pad_lane"]), "pad_at": float(seg["pad_at"]),
 		"start": float(seg["start"]), "end": float(seg["end"]), "button_lane": int(seg["button_lane"]),
@@ -173,7 +186,18 @@ func tick(delta: float) -> void:
 	clock += delta
 	if segment.is_empty():
 		return
-	if not bool(segment["shown"]) and clock >= float(segment["drop_at"]):
+	# Its turrets, one a frame from the frame after the pull (each stays in its hatch until the runner is
+	# near), then the billboard and its pad once the machine has squatted.
+	var ats: Array = segment["turret_ats"]
+	if int(segment["spawned"]) < ats.size():
+		var at: float = float(ats[int(segment["spawned"])])
+		segment["spawned"] = int(segment["spawned"]) + 1
+		var params := {"hull_start": float(segment["start"]), "hull_end": float(segment["end"]), "first_lane": 0,
+			"last_lane": boss.lane_count() - 1}
+		var e: Enemy = boss.spawn_enemy("barnacle_turret", at, int(segment["turret_lane"]), 0, params)
+		if e != null:
+			turrets.append(e)
+	elif not bool(segment["shown"]) and clock >= float(segment["drop_at"]):
 		_show()
 	if not _board.is_empty():
 		var k: float = clampf((clock - float(segment["drop_at"])) / maxf(tuning.billboard_drop_seconds, 0.05), 0.0, 1.0)
@@ -200,13 +224,6 @@ func _show() -> void:
 	look.position = Vector3(0.0, DROP_FROM, 0.0)
 	root.visible = true
 	boss.props.pad(int(seg["pad_lane"]), float(seg["pad_at"]))
-	var params := {"hull_start": float(seg["start"]), "hull_end": float(seg["end"]), "first_lane": 0,
-		"last_lane": boss.lane_count() - 1}
-	turrets.clear()
-	for at: float in seg["turret_ats"]:
-		var e: Enemy = boss.spawn_enemy("barnacle_turret", at, int(seg["turret_lane"]), 0, params)
-		if e != null:
-			turrets.append(e)
 	boss.sound(&"house_billboard", world.lane_point(int(seg["pad_lane"]), float(seg["pad_at"]), 8.0))
 	boss.log_event(&"ceiling_shown", {"start": float(seg["start"]), "end": float(seg["end"]),
 		"turrets": turrets.size()})

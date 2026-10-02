@@ -45,8 +45,9 @@ const GONE_SECONDS: float = 0.6
 ## A wall button's sign floats this far out from the facade, and a ceiling button's this far under it.
 const WALL_SIGN_OUT: float = 0.6
 const CEILING_SIGN_DROP: float = 1.7
-## At most this many routes are tried for one set (a set that finds none now waits for the next frame).
-const MAX_TRIES: int = 16
+## At most this many sets are tried a frame (each one or two routes); the next frame tries on down the
+## same seeded list (a planning spread over a few frames, never a hitch in one).
+const MAX_TRIES: int = 4
 const BUTTON_SHADER: Shader = preload("res://scripts/bosses/the_house/the_house_button.gdshader")
 
 var boss: TheHouse
@@ -63,6 +64,10 @@ var missed_count: int = 0
 
 var _pool: Array[Dictionary] = []
 var _prev_d: float = 0.0
+## A plan under way: its seeded list of lane runs, the next to try, and what it's for.
+var _plan_combos: Array = []
+var _plan_next: int = 0
+var _plan_key: String = ""
 
 
 func setup(p_boss: TheHouse) -> void:
@@ -94,8 +99,9 @@ func special_kind() -> String:
 
 ## A set of buttons for `reels` (the reels still unlocked, in order; a special one's button last), the lever
 ## pulled now: [{reel, kind, lane, side, at, show, segment}] (show: seconds from now), or [] when no set
-## gives a fair way over them all now. The lanes are the first of a seeded order that keep to the shift rules and through which a
-## route runs (and, for a wall or ceiling button, whose wall run or ceiling is fair).
+## gives a fair way over them all now. The lanes are the first of a seeded order that keep to the shift
+## rules and through which a route runs (and, for a wall or ceiling button, whose wall run or ceiling is
+## fair), MAX_TRIES a frame.
 func plan(reels: Array[int]) -> Array[Dictionary]:
 	var none: Array[Dictionary] = []
 	if reels.is_empty():
@@ -114,17 +120,23 @@ func plan(reels: Array[int]) -> Array[Dictionary]:
 	if order.size() < reels.size():
 		order.append(tuning.special_reel)
 		special = order.size() - 1
-	var combos: Array = []
-	_combos(order, special, kind, n, start, [], combos)
-	_shuffle(combos)
+	var key: String = "%s %s %d %d" % [order, kind, start, boss.phase_index]
+	if key != _plan_key or _plan_next >= _plan_combos.size():
+		_plan_key = key
+		_plan_combos = []
+		_plan_next = 0
+		_combos(order, special, kind, n, start, [], _plan_combos)
+		_shuffle(_plan_combos)
 	var first_show: float = maxf(_reach(0, special, kind) - _lead(0, special, kind), 0.0)
 	var tries: int = 0
-	for lanes: Array in combos:
-		if tries >= MAX_TRIES:
-			break
-		var set_plan: Array[Dictionary] = _try(order, special, kind, lanes, d0, v, first_show)
+	while _plan_next < _plan_combos.size() and tries < MAX_TRIES:
+		var lanes: Array = _plan_combos[_plan_next]
+		_plan_next += 1
 		tries += 1
+		var set_plan: Array[Dictionary] = _try(order, special, kind, lanes, d0, v, first_show)
 		if not set_plan.is_empty():
+			_plan_key = ""
+			_plan_combos = []
 			return set_plan
 	return none
 
