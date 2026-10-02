@@ -94,9 +94,10 @@ extends Resource
 
 @export_group("Locomotive")
 ## DESIGN-TBD (GDD §10: "the player gets a glimpse of him: in the locomotive's window"): the locomotive
-## leads the train this far ahead of the runner (its rear face; framing, in metres): past the guards'
-## spawn lead, inside the built track, with the Chairman standing at its rear window.
-@export_range(60.0, 220.0, 1.0, "suffix:m") var loco_ahead: float = 150.0
+## leads the train this far ahead of the runner (its rear face; framing, in metres): at the end of the
+## view, near enough through the haze for the Chairman to show at its rear window (the arena's skin keeps
+## its fog thinner: data/bosses/corporate_boss_skin.tres), inside the built track.
+@export_range(60.0, 220.0, 1.0, "suffix:m") var loco_ahead: float = 125.0
 
 @export_group("Breakaway")
 ## The carriages behind a stomped coupling break away and tumble off the track (GDD §10), looks only:

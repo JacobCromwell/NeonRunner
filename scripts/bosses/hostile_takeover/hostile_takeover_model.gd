@@ -47,14 +47,14 @@ const HAIR := Color(0.06, 0.055, 0.05)
 const GUNSHIP_LENGTH: float = 30.0
 const GUNSHIP_HULL_HEIGHT: float = 3.4
 ## The locomotive's height over the roofs, its length, and its rear window (bottom, top).
-const LOCO_HEIGHT: float = 5.2
+const LOCO_HEIGHT: float = 6.6
 const LOCO_LENGTH: float = 40.0
-const LOCO_WINDOW := Vector2(0.9, 3.5)
+const LOCO_WINDOW := Vector2(1.0, 4.6)
 ## The suite behind the window: how deep it is, and where the Chairman stands in it (from the window).
-const SUITE_DEPTH: float = 3.2
-const CHAIRMAN_BACK: float = 1.1
-## The Chairman's height (a little over life size: he's seen from far down the train).
-const CHAIRMAN_HEIGHT: float = 2.15
+const SUITE_DEPTH: float = 3.4
+const CHAIRMAN_BACK: float = 1.2
+## The Chairman's height (over life size: he's seen from far down the train).
+const CHAIRMAN_HEIGHT: float = 2.4
 
 static var _cache: Dictionary = {}
 
@@ -142,35 +142,40 @@ static func gunship(belly_width: float, skin: ZoneSkin = null) -> ArrayMesh:
 		s.box(Vector3(sx, 1.2, -1.0), Vector3(1.8, 1.4, 16.0), OLIVE_DARK, 0.0, MeshKit.PAT_PLAIN)
 		s.box(Vector3(sx, 0.7, -9.6), Vector3(1.1, 0.9, 2.0), STEEL_DARK, 0.0, MeshKit.PAT_PLAIN)
 		s.box(Vector3(sx, 0.7, -11.6), Vector3(0.24, 0.24, 2.4), GUNMETAL, 0.0, MeshKit.PAT_PLAIN)
-		# A running light at each sponson's tail and nose: steady cold white.
-		s.box(Vector3(sx, 0.4, 7.2), Vector3(0.3, 0.3, 0.3), COLD_WHITE, 1.0)
-		g.rect(Vector3(sx - 1.0, -0.6, 7.4), Vector3(2.0, 0.0, 0.0), Vector3(0.0, 2.0, 0.0), COLD_WHITE, 0.35, MeshKit.SHAPE_RADIAL)
-	# Stub wings at the hull's shoulders, an engine pod at each tip glowing cold blue toward the runner.
-	for xs: float in [-1.0, 1.0]:
-		var wing_x: float = xs * (hw * 0.5 + 2.3)
-		s.box(Vector3(wing_x, 0.9 + h * 0.62, 2.0), Vector3(4.6, 0.4, 4.0), GUNMETAL, 0.0, MeshKit.PAT_PLAIN)
-		var pod := Vector3(xs * (hw * 0.5 + 4.8), 0.9 + h * 0.62, 2.0)
-		s.prism_xform(Transform3D(Basis(Vector3(1.2, 0.0, 0.0), Vector3(0.0, 0.0, 6.0), Vector3(0.0, 1.2, 0.0)), pod + Vector3(0.0, 0.0, -3.0)),
-			8, GUNMETAL_LIGHT, 0.0, MeshKit.PAT_PLAIN)
-		s.prism_xform(Transform3D(Basis(Vector3(0.9, 0.0, 0.0), Vector3(0.0, 0.0, 0.06), Vector3(0.0, 0.9, 0.0)), pod + Vector3(0.0, 0.0, 3.0)),
-			8, ENGINE, 1.0)
-		g.rect(pod + Vector3(-2.4, -2.4, 3.1), Vector3(4.8, 0.0, 0.0), Vector3(0.0, 4.8, 0.0), ENGINE, 0.5, MeshKit.SHAPE_RADIAL)
-		s.box(pod + Vector3(xs * 1.3, 0.0, -2.6), Vector3(0.25, 0.25, 0.25), COLD_WHITE, 1.0)
-	# The stern: an engine block with three exhausts toward the runner, their cores glowing cold blue.
+		# A running light at each sponson's tail: steady cold white.
+		s.box(Vector3(sx, 0.4, 7.2), Vector3(0.24, 0.24, 0.24), COLD_WHITE, 0.8)
+		g.rect(Vector3(sx - 0.6, -0.2, 7.4), Vector3(1.2, 0.0, 0.0), Vector3(0.0, 1.2, 0.0), COLD_WHITE, 0.22, MeshKit.SHAPE_RADIAL)
+	# The stern: the hull narrowing to a sloped tail over the belly's end.
 	var stern_z: float = z_stern
-	s.box(Vector3(0.0, 0.9 + h * 0.5, stern_z + 1.0), Vector3(hw * 0.9, h * 0.9, 2.0), GUNMETAL, 0.0, MeshKit.PAT_PLAIN)
-	for xs: float in [-0.3, 0.0, 0.3]:
-		var ex := Vector3(xs * hw, 0.9 + h * 0.45, stern_z + 2.0)
-		s.prism_xform(Transform3D(Basis(Vector3(0.75, 0.0, 0.0), Vector3(0.0, 0.0, 1.0), Vector3(0.0, 0.75, 0.0)), ex), 8, STEEL_DARK, 0.0,
-			MeshKit.PAT_PLAIN)
-		s.prism_xform(Transform3D(Basis(Vector3(0.55, 0.0, 0.0), Vector3(0.0, 0.0, 0.05), Vector3(0.0, 0.55, 0.0)), ex + Vector3(0.0, 0.0, 1.0)),
-			8, ENGINE, 1.1)
-		g.rect(ex + Vector3(-1.8, -1.8, 1.1), Vector3(3.6, 0.0, 0.0), Vector3(0.0, 3.6, 0.0), ENGINE, 0.45, MeshKit.SHAPE_RADIAL)
-	# Twin tail fins, and a light on each.
+	var tail_y: float = 0.9 + h
+	var low: float = 0.9 + h * 0.45
+	var end_z: float = stern_z + 2.4
+	s.quad(Vector3(hw * 0.5, tail_y, stern_z), Vector3(hw * 0.3, low, end_z), Vector3(-hw * 0.3, low, end_z),
+		Vector3(-hw * 0.5, tail_y, stern_z), OLIVE_DARK)
+	s.quad(Vector3(hw * 0.3, low, end_z), Vector3(hw * 0.3, 0.9, end_z), Vector3(-hw * 0.3, 0.9, end_z), Vector3(-hw * 0.3, low, end_z),
+		GUNMETAL)
+	s.quad(Vector3(hw * 0.5, tail_y, stern_z), Vector3(hw * 0.5, 0.9, stern_z), Vector3(hw * 0.3, 0.9, end_z),
+		Vector3(hw * 0.3, low, end_z), OLIVE)
+	s.quad(Vector3(-hw * 0.3, low, end_z), Vector3(-hw * 0.3, 0.9, end_z), Vector3(-hw * 0.5, 0.9, stern_z),
+		Vector3(-hw * 0.5, tail_y, stern_z), OLIVE)
+	# Two big engine nacelles along its shoulders on stub wings, their exhausts glowing a dim cold blue
+	# toward the runner behind it.
 	for xs: float in [-1.0, 1.0]:
-		var fin := Vector3(xs * hw * 0.3, 0.9 + h + 1.4, stern_z - 1.0)
-		s.box(fin, Vector3(0.3, 2.8, 3.6), OLIVE, 0.0, MeshKit.PAT_PLAIN)
-		s.box(fin + Vector3(0.0, 1.5, 1.2), Vector3(0.24, 0.24, 0.24), COLD_WHITE, 1.0)
+		var nx: float = xs * (hw * 0.5 + 1.7)
+		var ny: float = 0.9 + h * 0.55
+		s.box(Vector3(xs * (hw * 0.5 + 0.8), ny, 3.0), Vector3(1.8, 0.5, 5.0), GUNMETAL, 0.0, MeshKit.PAT_PLAIN)
+		s.prism_xform(Transform3D(Basis(Vector3(1.35, 0.0, 0.0), Vector3(0.0, 0.0, 13.0), Vector3(0.0, 1.35, 0.0)),
+			Vector3(nx, ny, stern_z - 9.5)), 10, OLIVE_DARK, 0.0, MeshKit.PAT_PLAIN)
+		s.prism_xform(Transform3D(Basis(Vector3(1.15, 0.0, 0.0), Vector3(0.0, 0.0, 0.8), Vector3(0.0, 1.15, 0.0)),
+			Vector3(nx, ny, stern_z + 3.5)), 10, STEEL_DARK, 0.0, MeshKit.PAT_PLAIN, false)
+		s.prism_xform(Transform3D(Basis(Vector3(0.85, 0.0, 0.0), Vector3(0.0, 0.0, 0.05), Vector3(0.0, 0.85, 0.0)),
+			Vector3(nx, ny, stern_z + 3.6)), 10, ENGINE, 0.35)
+		g.rect(Vector3(nx - 1.3, ny - 1.3, stern_z + 3.8), Vector3(2.6, 0.0, 0.0), Vector3(0.0, 2.6, 0.0), ENGINE, 0.16, MeshKit.SHAPE_RADIAL)
+		# The V-tail's fin on this side, leaning out, a small cold-white light at its tip.
+		var fin := Transform3D(Basis(Vector3.BACK, -xs * 0.42) * Basis.from_scale(Vector3(0.3, 3.4, 3.6)),
+			Vector3(xs * hw * 0.32, tail_y + 1.5, stern_z - 1.2))
+		s.box_xform(fin, OLIVE, 0.0, MeshKit.PAT_PLAIN)
+		s.box(fin * Vector3(0.0, 0.5, 0.3), Vector3(0.2, 0.2, 0.2), COLD_WHITE, 0.6)
 	# A searchlight on the nose, pointing ahead along the line (never down at the lanes).
 	s.box(Vector3(0.0, tip_b.y - 0.1, z_nose + 0.6), Vector3(0.5, 0.4, 0.5), COLD_WHITE, 0.9)
 	var mesh: ArrayMesh = batch.to_mesh()
@@ -353,6 +358,21 @@ static func coupling_dome() -> ArrayMesh:
 	s.box(Vector3(0.0, 0.02, 0.0), Vector3(1.06, 0.12, 1.12), WEAK, 0.8, MeshKit.PAT_PLAIN, MeshKit.ALL_FACES & ~MeshKit.FACE_NY)
 	var mesh: ArrayMesh = batch.to_mesh()
 	_cache["coupling_dome"] = mesh
+	return mesh
+
+
+## The same dome dark (a coupling not live: plain steel, nothing glowing). Cached.
+static func coupling_dome_dark(skin: ZoneSkin = null) -> ArrayMesh:
+	var key: String = "coupling_dome_dark_%d" % (skin.get_instance_id() if skin != null else 0)
+	if _cache.has(key):
+		return _cache[key]
+	var batch := MeshBatch.new()
+	var s: MeshLayer = batch.layer(solid_material(skin))
+	s.prism(Vector3(0.0, 0.23, 0.0), 0.42, 0.12, 10, STEEL_DARK, 0.0, MeshKit.PAT_PLAIN, true)
+	s.prism(Vector3(0.0, 0.35, 0.0), 0.3, 0.1, 10, GUNMETAL, 0.0, MeshKit.PAT_PLAIN, true)
+	s.box(Vector3(0.0, 0.02, 0.0), Vector3(1.06, 0.12, 1.12), STEEL_DARK, 0.0, MeshKit.PAT_PLAIN, MeshKit.ALL_FACES & ~MeshKit.FACE_NY)
+	var mesh: ArrayMesh = batch.to_mesh()
+	_cache[key] = mesh
 	return mesh
 
 

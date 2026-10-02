@@ -18,6 +18,9 @@ func run() -> void:
 		check(false, "Hostile Takeover's fight loads as a preview")
 		return
 	await _test_smoke()
+	for lanes: int in LANES:
+		for speed: float in SPEEDS:
+			await _test_bot(lanes, speed)
 
 
 func _fight(p_def: BossDef, lanes: int, speed: float, loadout: Loadout = null) -> Array:
@@ -51,4 +54,27 @@ func _test_smoke() -> void:
 	for e: Dictionary in boss.events.filter(func(x: Dictionary) -> bool: return x["event"] != &"carriage_planned").slice(0, 40):
 		print("   ", e)
 	check(boss.shown.size() > 0, "couplings light up")
+	await sim.free_world(world)
+
+
+func _test_bot(lanes: int, speed: float) -> void:
+	var tag: String = "(%d lanes, %.1f m/s)" % [lanes, speed]
+	var pair: Array = _fight(def, lanes, speed)
+	var world: RunWorld = pair[0]
+	var boss: HostileTakeover = pair[1]
+	var bot := HostileTakeoverBot.new(boss)
+	await tree.physics_frame
+	world.player.running = true
+	for i: int in 60 * 60:
+		bot.step()
+		if boss.phase_index >= 1 or not world.player.alive:
+			break
+		await tree.physics_frame
+	var stomps: Array = boss.events.filter(func(e: Dictionary) -> bool: return e["event"] == &"coupling_stomped")
+	print("  bot %s: alive %s phase %d stomps %s t %.1f cause %s" % [tag, world.player.alive, boss.phase_index, stomps, boss.fight_time(),
+		world.player.last_event])
+	if not world.player.alive:
+		for l: Dictionary in bot.log.slice(-12):
+			print("    ", l)
+	check(world.player.alive and boss.phase_index == 1, "the bot wins phase 1 %s" % tag)
 	await sim.free_world(world)

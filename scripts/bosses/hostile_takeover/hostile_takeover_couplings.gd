@@ -43,7 +43,8 @@ var box_offset := Vector3.ZERO
 var takeoff := Vector2.ZERO
 
 var _live_mat: ShaderMaterial
-var _dark_mat: ShaderMaterial
+var _live_dome: ArrayMesh
+var _dark_dome: ArrayMesh
 var _pulse: float = 0.0
 
 
@@ -67,11 +68,11 @@ func _build() -> void:
 	var lead: float = descent_lead(world.tuning, tuning.stomp_top)
 	takeoff = Vector2(lead - gap - after, lead + before)
 	_live_mat = _kit_material(1.0)
-	_dark_mat = _kit_material(0.05)
 	var skin: ZoneSkin = world.skin
 	var front_mesh: ArrayMesh = HostileTakeoverModel.coupling_half(gap, lane_w, false, skin)
 	var rear_mesh: ArrayMesh = HostileTakeoverModel.coupling_half(gap, lane_w, true, skin)
-	var dome_mesh: ArrayMesh = HostileTakeoverModel.coupling_dome()
+	_live_dome = HostileTakeoverModel.coupling_dome()
+	_dark_dome = HostileTakeoverModel.coupling_dome_dark(skin)
 	var halo_mesh: ArrayMesh = HostileTakeoverModel.coupling_halo(skin)
 	var trim: float = (takeoff.y - takeoff.x) * CUE_TRIM
 	var cue_color: Color = skin.get("ramp_color") if skin != null and skin.get("ramp_color") is Color else Color(0.3, 1.0, 0.35)
@@ -87,8 +88,7 @@ func _build() -> void:
 		var rig := {"node": node, "rear": rear, "gap": -1, "lane": 0, "live": false, "broken": false, "t": 0.0}
 		rig["front"] = MeshBatch.add_instance(node, front_mesh, "Front")
 		MeshBatch.add_instance(rear, rear_mesh, "Half")
-		var dome: MeshInstance3D = MeshBatch.add_instance(node, dome_mesh, "Dome")
-		dome.material_override = _dark_mat
+		var dome: MeshInstance3D = MeshBatch.add_instance(node, _dark_dome, "Dome")
 		rig["dome"] = dome
 		var halo: MeshInstance3D = MeshBatch.add_instance(node, halo_mesh, "Halo", Vector3(0.0, 0.25, 0.7))
 		halo.visible = false
@@ -250,7 +250,9 @@ func targetable() -> bool:
 func _set_live(rig: Dictionary, live: bool) -> void:
 	rig["live"] = live and not rig["broken"]
 	var on: bool = rig["live"]
-	(rig["dome"] as MeshInstance3D).material_override = _live_mat if on else _dark_mat
+	var dome: MeshInstance3D = rig["dome"]
+	dome.mesh = _live_dome if on else _dark_dome
+	dome.material_override = _live_mat if on else null
 	(rig["halo"] as MeshInstance3D).visible = on
 	(rig["cue"] as MeshInstance3D).visible = on
 	if not on:

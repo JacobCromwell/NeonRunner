@@ -38,11 +38,14 @@ const SLICE: float = 40.0
 ## livery painted on them (CorporateSkin.livery_color), faint seams between the lanes.
 @export var train_roof_color: Color = Color(0.6, 0.62, 0.66)
 @export var lane_seam_color: Color = Color(0.4, 0.42, 0.46)
-## The sound barriers (the walls): their height over the roofs, their panels, posts and coping, and the
-## lamps on top (cold white, above the calm band: CorporateSkin.decor_min_height).
-@export_range(7.5, 12.0, 0.1, "suffix:m") var barrier_height: float = 8.4
-@export var barrier_color: Color = Color(0.25, 0.26, 0.28)
-@export var barrier_post_color: Color = Color(0.19, 0.2, 0.22)
+## The sound barriers (the walls): their height over the roofs (above every wall run and wall fence:
+## MovementTuning.wall_max_height and the body, wall_fence_top), their steel panels over a concrete
+## plinth, flush posts, the coping and the lamps on it (cold white, steady).
+@export_range(6.0, 12.0, 0.1, "suffix:m") var barrier_height: float = 6.6
+@export var barrier_color: Color = Color(0.27, 0.285, 0.31)
+@export var barrier_plinth_color: Color = Color(0.36, 0.36, 0.35)
+@export_range(0.0, 2.0, 0.05, "suffix:m") var barrier_plinth_height: float = 0.8
+@export var barrier_post_color: Color = Color(0.22, 0.23, 0.25)
 @export var barrier_cap_color: Color = Color(0.46, 0.47, 0.48)
 @export_range(2.0, 12.0, 0.5, "suffix:m") var barrier_post_spacing: float = 4.0
 @export_range(4.0, 40.0, 1.0, "suffix:m") var barrier_lamp_spacing: float = 16.0
@@ -53,15 +56,19 @@ const SLICE: float = 40.0
 ## The towers beyond the barriers: their pattern repeats every tower_period metres; near ones stand
 ## near_towers_from-to beyond the barrier, far ones far_towers_from-to, with these heights.
 @export_range(80.0, 480.0, 40.0, "suffix:m") var tower_period: float = 240.0
-@export_range(0, 24) var near_towers: int = 9
-@export_range(0, 24) var far_towers: int = 8
-@export var near_towers_from_to: Vector2 = Vector2(9.0, 22.0)
-@export var far_towers_from_to: Vector2 = Vector2(34.0, 80.0)
-@export var near_tower_heights: Vector2 = Vector2(22.0, 70.0)
-@export var far_tower_heights: Vector2 = Vector2(50.0, 165.0)
+@export_range(0, 24) var near_towers: int = 8
+@export_range(0, 24) var far_towers: int = 9
+@export var near_towers_from_to: Vector2 = Vector2(14.0, 30.0)
+@export var far_towers_from_to: Vector2 = Vector2(42.0, 95.0)
+@export var near_tower_heights: Vector2 = Vector2(24.0, 62.0)
+@export var far_tower_heights: Vector2 = Vector2(55.0, 150.0)
 @export var tower_colors: PackedColorArray = PackedColorArray([
-	Color(0.18, 0.19, 0.22), Color(0.22, 0.23, 0.26), Color(0.15, 0.16, 0.19), Color(0.24, 0.24, 0.23)])
-@export_range(0.0, 3.0, 0.05) var tower_window_glow: float = 1.15
+	Color(0.16, 0.17, 0.2), Color(0.2, 0.21, 0.24), Color(0.13, 0.14, 0.17), Color(0.22, 0.22, 0.21)])
+## The towers' windows: how brightly the lit ones glow, the share lit, and of those the share in the
+## brand's blue (the rest cold white).
+@export_range(0.0, 3.0, 0.05) var tower_window_glow: float = 0.85
+@export_range(0.0, 1.0, 0.01) var tower_lit_share: float = 0.3
+@export_range(0.0, 1.0, 0.01) var tower_brand_share: float = 0.07
 ## The street far below the gaps, and the guideway the train rides on.
 @export_range(8.0, 40.0, 0.5, "suffix:m") var street_depth: float = 18.0
 @export var street_color: Color = Color(0.03, 0.032, 0.04)
@@ -209,28 +216,27 @@ func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: f
 		s += SLICE
 
 
-## One sound barrier: its face toward the track from below the roofs to barrier_height, flush posts,
-## faint marks at the wall-run heights, the coping and its lamps (above the calm band).
+## One sound barrier: its face toward the track from below the roofs to barrier_height (steel panels with
+## hairline joints, kit_corporate's plating, over a concrete plinth), flush posts, faint marks at the
+## wall-run heights, the coping and its lamps. Nothing on its face glows, lights up or sticks out
+## (CorporateSkin's calm band: the wall fences sit there).
 func _barrier(s: MeshLayer, g: MeshLayer, side: int, x: float, start: float, end: float) -> void:
 	var length: float = end - start
 	var h: float = barrier_height
 	var fx: float = side * x
-	# The face toward the track (+x on the left wall, -x on the right).
-	if side < 0:
-		s.rect(Vector3(fx, -BARRIER_FOOT, -start), Vector3(0.0, 0.0, -length), Vector3(0.0, h + BARRIER_FOOT, 0.0), barrier_color)
-	else:
-		s.rect(Vector3(fx, -BARRIER_FOOT, -end), Vector3(0.0, 0.0, length), Vector3(0.0, h + BARRIER_FOOT, 0.0), barrier_color)
+	var plinth: float = barrier_plinth_height
+	# The face toward the track (+x on the left wall, -x on the right): the panels, and the plinth under them.
+	_face(s, side, fx, -BARRIER_FOOT, plinth, start, end, barrier_plinth_color, MeshKit.PAT_CORP_PLATE, 3.0)
+	_face(s, side, fx, plinth, h, start, end, barrier_color, MeshKit.PAT_CORP_PLATE, 0.0)
 	var inward: float = -side * 0.01
 	# Posts, flush (a hair proud so they draw over the face), on a grid along the track.
 	var p: float = ceilf(start / barrier_post_spacing) * barrier_post_spacing
 	while p < end:
 		var z: float = -p
 		if side < 0:
-			s.rect(Vector3(fx + inward, -BARRIER_FOOT, z + 0.14), Vector3(0.0, 0.0, -0.28), Vector3(0.0, h + BARRIER_FOOT, 0.0),
-				barrier_post_color)
+			s.rect(Vector3(fx + inward, plinth, z + 0.18), Vector3(0.0, 0.0, -0.36), Vector3(0.0, h - plinth, 0.0), barrier_post_color)
 		else:
-			s.rect(Vector3(fx + inward, -BARRIER_FOOT, z - 0.14), Vector3(0.0, 0.0, 0.28), Vector3(0.0, h + BARRIER_FOOT, 0.0),
-				barrier_post_color)
+			s.rect(Vector3(fx + inward, plinth, z - 0.18), Vector3(0.0, 0.0, 0.36), Vector3(0.0, h - plinth, 0.0), barrier_post_color)
 		p += barrier_post_spacing
 	# The wall-run heights (CorporateSkin.wall_height_marks), as on the zone's facades.
 	for mark: float in wall_height_marks:
@@ -238,16 +244,28 @@ func _barrier(s: MeshLayer, g: MeshLayer, side: int, x: float, start: float, end
 			s.rect(Vector3(fx + inward * 2.0, mark - 0.03, -start), Vector3(0.0, 0.0, -length), Vector3(0.0, 0.06, 0.0), wall_mark_color)
 		else:
 			s.rect(Vector3(fx + inward * 2.0, mark - 0.03, -end), Vector3(0.0, 0.0, length), Vector3(0.0, 0.06, 0.0), wall_mark_color)
-	# The coping, and lamps on it every barrier_lamp_spacing: cold white, steady, above the calm band.
+	# The coping, and lamps on it every barrier_lamp_spacing: cold white and steady.
 	s.box(Vector3(side * (x + 0.2), h + 0.15, -(start + end) * 0.5), Vector3(0.6, 0.3, length), barrier_cap_color, 0.0,
 		MeshKit.PAT_PLAIN, MeshKit.ALL_FACES & ~MeshKit.FACE_NY)
 	var l: float = ceilf(start / barrier_lamp_spacing) * barrier_lamp_spacing
 	while l < end:
-		var lamp := Vector3(side * (x + 0.05), h + 0.45, -l)
-		s.box(lamp, Vector3(0.18, 0.3, 0.18), barrier_post_color)
-		s.box(lamp + Vector3(0.0, 0.22, 0.0), Vector3(0.22, 0.12, 0.22), flood_color, 0.9)
-		g.rect(lamp + Vector3(-0.7, -0.5, 0.0), Vector3(1.4, 0.0, 0.0), Vector3(0.0, 1.4, 0.0), flood_color, 0.25, MeshKit.SHAPE_RADIAL)
+		var lamp := Vector3(side * (x + 0.25), h + 0.4, -l)
+		s.box(lamp, Vector3(0.16, 0.24, 0.16), barrier_post_color)
+		s.box(lamp + Vector3(0.0, 0.17, 0.0), Vector3(0.2, 0.1, 0.2), flood_color, 0.6)
+		g.rect(lamp + Vector3(-0.5, -0.33, 0.0), Vector3(1.0, 0.0, 0.0), Vector3(0.0, 1.0, 0.0), flood_color, 0.16, MeshKit.SHAPE_RADIAL)
 		l += barrier_lamp_spacing
+
+
+## A band of a barrier's face toward the track, from y0 to y1 between two track distances.
+func _face(s: MeshLayer, side: int, fx: float, y0: float, y1: float, start: float, end: float, color: Color, pattern: int,
+		param: float) -> void:
+	var length: float = end - start
+	if side < 0:
+		s.rect(Vector3(fx, y0, -start), Vector3(0.0, 0.0, -length), Vector3(0.0, y1 - y0, 0.0), color, 0.0, pattern, Vector2.ZERO,
+			Vector2.ONE, param)
+	else:
+		s.rect(Vector3(fx, y0, -end), Vector3(0.0, 0.0, length), Vector3(0.0, y1 - y0, 0.0), color, 0.0, pattern, Vector2.ZERO,
+			Vector2.ONE, param)
 
 
 ## Under the train, for one chunk (both walls' worth, built with the left one): the guideway's beam down
@@ -279,7 +297,8 @@ func towers_material() -> ShaderMaterial:
 		var m := ShaderMaterial.new()
 		m.shader = load("res://scripts/bosses/hostile_takeover/hostile_takeover_towers.gdshader") as Shader
 		var params: Dictionary = {"speed": scenery_speed, "period": tower_period, "slice_length": SLICE,
-			"window_cold": window_color, "window_brand": brand_color, "window_glow": tower_window_glow}
+			"window_cold": window_color, "window_brand": brand_color, "window_glow": tower_window_glow,
+			"lit_share": tower_lit_share, "brand_share": tower_brand_share}
 		for p: String in params:
 			m.set_shader_parameter(p, params[p])
 		_materials[&"towers"] = m

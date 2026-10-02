@@ -20,10 +20,10 @@ uniform float period = 240.0;
 uniform float slice_length = 40.0;
 uniform vec3 window_cold : source_color = vec3(0.78, 0.86, 0.98);
 uniform vec3 window_brand : source_color = vec3(0.14, 0.27, 1.0);
-uniform float window_glow = 1.6;
+uniform float window_glow = 0.85;
 // The share of windows lit, and of those in the brand's blue.
-uniform float lit_share = 0.42;
-uniform float brand_share = 0.18;
+uniform float lit_share = 0.3;
+uniform float brand_share = 0.07;
 
 varying vec2 v_face;
 varying float v_seed;
@@ -53,10 +53,10 @@ void fragment() {
 		col = base * 0.55 * light_factor(scenery_light);
 	} else {
 		// Storeys of glass behind steel mullions; a pixel covering many windows shows their average.
-		vec2 cell_size = vec2(2.7, 3.6);
+		vec2 cell_size = vec2(1.9, 3.4);
 		vec2 q = p / cell_size;
 		vec2 fq = fw / cell_size;
-		float win = filtered_pulse(q.x, fq.x, 0.16, 0.84) * filtered_pulse(q.y, fq.y, 0.22, 0.8);
+		float win = filtered_pulse(q.x, fq.x, 0.12, 0.88) * filtered_pulse(q.y, fq.y, 0.3, 0.82);
 		vec2 cell = floor(q);
 		float lit = step(1.0 - lit_share, hash12(cell + v_seed * 97.0));
 		float far = smoothstep(0.25, 0.8, max(fq.x, fq.y));
