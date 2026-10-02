@@ -114,6 +114,8 @@ static func shifted(source: LevelLayout, offset: float) -> LevelLayout:
 		out.doodads.append(_shift(d, offset))
 	for c: Dictionary in source.cuts:
 		out.cuts.append(_shift(c, offset))
+	for w: Dictionary in source.wall_fences:
+		out.wall_fences.append(_shift(w, offset))
 	return out
 
 
@@ -151,10 +153,10 @@ func stream_from() -> float:
 
 
 ## Adds a boss script's own pieces to the track during the fight (track distances; build them with
-## the LevelLayout lists: gaps, fences, signs, hulls, pads, ramps, speed_pads, cuts, enemies). Track
-## pieces must start at or past stream_from() (a floor cut's whole stretch, from its start); nearer ones
-## are left out with a warning (use BossProps within sight). Enemies come into play at their type's
-## spawn lead like the rest. Returns how many pieces were added.
+## the LevelLayout lists: gaps, fences, signs, hulls, pads, ramps, speed_pads, cuts, wall_fences,
+## enemies). Track pieces must start at or past stream_from() (a floor cut's whole stretch, from its
+## start); nearer ones are left out with a warning (use BossProps within sight). Enemies come into play
+## at their type's spawn lead like the rest. Returns how many pieces were added.
 func add_pieces(extra: LevelLayout) -> int:
 	var from: float = stream_from()
 	var kept := LevelLayout.new()
@@ -178,6 +180,13 @@ func add_pieces(extra: LevelLayout) -> int:
 			continue
 		kept.cuts.append(c)
 		count += 1
+	for w: Dictionary in extra.wall_fences:
+		if float(w["at"]) < from - 0.001:
+			push_warning("BossArena: a wall fence at %.0f m is within the built track (from %.0f m); left out" % [
+				float(w["at"]), from])
+			continue
+		kept.wall_fences.append(w)
+		count += 1
 	for e: Dictionary in extra.enemies:
 		kept.enemies.append(e)
 		count += 1
@@ -194,6 +203,16 @@ func add_pieces(extra: LevelLayout) -> int:
 ## boss script's to keep off it.
 func cut_problem(cut: Dictionary) -> String:
 	return LevelGenerator.for_layout(config, tuning, layout).cut_problem(cut)
+
+
+## Why wall fence `entry` (WallFencePlan.make, task B5) can't stand where it lies on the arena's track, or
+## "" if it can: the fairness rules a level's wall fences keep (LevelGenerator.wall_fence_problem,
+## WallFencePlacement: never on a wall section with a sign or a window cyborg, never where a ramp
+## launches the player along its wall, the outer lane beside it clear to drop off into, no floor cut or
+## big attack meanwhile, spaced from the other wall fences). Ask before add_pieces(); a boss's own attacks
+## the generator doesn't know (its props) are the boss script's to keep off it.
+func wall_fence_problem(entry: Dictionary) -> String:
+	return LevelGenerator.for_layout(config, tuning, layout).wall_fence_problem(entry)
 
 
 ## True if the floor between two track distances has no hole and no working fence, in `lane` or, with

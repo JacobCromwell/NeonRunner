@@ -3,7 +3,8 @@ extends Node
 ## First-encounter hints (FB 7). Each hint in
 ## data/hints/hints.json shows once per profile, a moment before the player first meets its trigger:
 ## "start" (level start), a piece ("gap", "fence_full", "fence_gapped", "fence_pulsing", "sign",
-## "pad", "ramp", "speed_pad"), an enemy ("enemy:<type>", when one spawns; "enemy:boss" for any
+## "pad", "ramp", "speed_pad", and the wall fences' "wall_fence" (full-height), "wall_fence_low" and
+## "wall_fence_high"), an enemy ("enemy:<type>", when one spawns; "enemy:boss" for any
 ## boss without a hint of its own), a pickup ("pickup:<item>", when one appears ahead; "pickup" for
 ## any item without a hint of its own) or something of a boss's own ("boss:<key>", when the fight says
 ## so: BossEncounter.hint_due, such as a way onto its head). "{action}" in the text becomes the player's
@@ -155,6 +156,12 @@ func _first_at(trigger: String) -> float:
 		"sign":
 			for sg: Dictionary in layout.signs:
 				found.append(float(sg["start"]))
+		"wall_fence", "wall_fence_low", "wall_fence_high":
+			# Task B5: the first full-height wall fence, or the first low or high one.
+			var band: String = "full" if trigger == "wall_fence" else trigger.trim_prefix("wall_fence_")
+			for w: Dictionary in layout.wall_fences:
+				if String(w["band"]) == band:
+					found.append(float(w["at"]))
 		"pad":
 			for pd: Dictionary in layout.pads:
 				found.append(float(pd["at"]))

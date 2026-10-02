@@ -57,6 +57,13 @@ const CUT_EDGE_COLOR := Color(1.0, 0.25, 0.04)
 
 ## The default doodad meshes, by size, push side and palette (built once each).
 static var _doodad_meshes: Dictionary = {}
+## The standard wall fence look's emitter meshes (wall_fence_mounts), built once each.
+static var _wall_fence_meshes: Dictionary = {}
+
+## The wall fence pink of a skin without a fence_color of its own (the grey box's, the City's).
+const WALL_FENCE_COLOR := Color(1.0, 0.18, 0.62)
+## How thick a wall fence's emitter arm is (standard_wall_fence).
+const WALL_EMITTER_THICKNESS: float = 0.1
 
 ## Which zone variant enemies dress in: the cyborgs' zone look (GDD §9.2, CyborgSuit.look_for) and the
 ## other enemies' weathering (&"scavenger" weathered, anything else clean). Each zone's value is listed
@@ -72,6 +79,12 @@ static var _doodad_meshes: Dictionary = {}
 ## zone's doodad palette.
 @export var doodad_palette: PackedColorArray = PackedColorArray([Color(0.3, 0.31, 0.35), Color(0.43, 0.44, 0.48),
 	Color(0.17, 0.17, 0.2)])
+
+@export_group("Wall fences")
+## The default wall fence look's emitter housings (wall_fence(), task B5): the arms and plates on the
+## facade that hold the field, in a dark, unlit metal (sRGB) so only the pink glows. A zone may set its
+## own, or draw its own emitters by overriding wall_fence().
+@export var wall_fence_mount_color: Color = Color(0.2, 0.21, 0.24)
 
 
 func make_environment() -> Environment:
@@ -307,6 +320,96 @@ func fence(_hazard: Hazard, _size: Vector3, _ground_y: float, _gapped: bool) -> 
 ## A sign on a wall, the size of its hitbox and centred on the hazard.
 func wall_sign(_hazard: Hazard, _size: Vector3) -> void:
 	pass
+
+
+## A wall fence (task B5; GDD §9.1: "the same pink crackle, strung across the wall-run path between
+## emitters on the facade, the way a floor fence crosses a lane"): its energy field and the emitters
+## that hold it, in hazard-local space, centred on its hitbox `size`: x from the wall face (on `side`,
+## -1 left, 1 right: the face is at x = side * size.x / 2) out toward the lanes, y up its band (`band`:
+## &"full", or a partial one's &"low" or &"high"; `floor_y` is the floor's height), z along the track.
+## It pulses (ON, WARNING, OFF): follow the hazard's state as a floor fence does (HazardStateVisual,
+## through MeshKit.dress_wall_fence), and honour Reduced flashing (the fence shaders do). It must read as
+## the floor fence's pink crackle turned onto the wall, in every zone: the same field, an emitter at
+## each end of its band on the facade, the band's edges marked by the glowing emitters (the line a
+## partial one is passed above or below), and nothing else glowing; the emitters stay within the
+## field's reach from the facade, never out into the outer lane. Visual only, like every hook.
+## The default (standard_wall_fence) works for every zone: the zone's own fence materials when it has
+## them (fence_field_materials(), fence_part_materials(), solid_material(): the pink field, the glowing
+## parts and its lit metal), else the kit's with its fence_color, and emitter housings in
+## wall_fence_mount_color. A zone may override this to draw its own emitters around the same field.
+func wall_fence(hazard: Hazard, size: Vector3, side: int, band: StringName, floor_y: float) -> void:
+	var look: Dictionary = wall_fence_look()
+	standard_wall_fence(hazard, size, side, band, floor_y, look["field"], look["parts"], look["solid"],
+		wall_fence_mount_color, look["color"])
+
+
+## The materials and colour the default wall fence look (wall_fence()) draws with: {field (ON, WARNING
+## and OFF materials for the energy field), parts (the same for the glowing emitters), solid (the lit
+## material of the housings), color (the fence pink)}: the zone's own fence materials when it has them
+## (fence_field_materials(), fence_part_materials(), solid_material(), fence_color), the kit's otherwise.
+func wall_fence_look() -> Dictionary:
+	var c: Variant = get("fence_color")
+	var color: Color = c if c is Color else WALL_FENCE_COLOR
+	var field: Array[Material] = []
+	if has_method("fence_field_materials"):
+		field.assign(call("fence_field_materials"))
+	else:
+		field = MeshKit.fence_field_materials(color, 70.0, 210.0)
+	var parts: Array[Material] = []
+	if has_method("fence_part_materials"):
+		parts.assign(call("fence_part_materials"))
+	else:
+		parts = MeshKit.hazard_part_materials({})
+	var solid: Material = call("solid_material") if has_method("solid_material") else MeshKit.solid()
+	return {"field": field, "parts": parts, "solid": solid, "color": color}
+
+
+## The standard wall fence look (wall_fence()): the field (MeshKit.dress_wall_fence) and an emitter at
+## each end of its band, mounted on the facade: a plate on the wall, an arm reaching out over the field
+## (in `mount_color`, lit by `solid`) with a glowing strip along the side facing the field and a glowing
+## cap at its tip (in `color`, with part_materials[0], so they follow the hazard's state). The emitter
+## at the floor (a full or a low band) lies along the foot of the wall as a sill.
+static func standard_wall_fence(hazard: Hazard, size: Vector3, side: int, band: StringName, floor_y: float,
+		field_materials: Array[Material], part_materials: Array[Material], solid: Material, mount_color: Color,
+		color: Color) -> void:
+	MeshKit.dress_wall_fence(hazard, size, side,
+		wall_fence_mounts(size, side, floor_y, part_materials[0], solid, mount_color, color), field_materials, part_materials)
+
+
+## The emitter housings of the standard wall fence look (standard_wall_fence), cached by their sizes,
+## side, materials and colours. `hot` is the glowing parts' material, `solid` the housings'.
+static func wall_fence_mounts(size: Vector3, side: int, floor_y: float, hot_material: Material, solid: Material,
+		mount_color: Color, color: Color) -> ArrayMesh:
+	var key: String = "wall_mounts_%s_%d_%s_%d_%d_%s_%s" % [size, side, floor_y, hot_material.get_instance_id(),
+		solid.get_instance_id(), mount_color, color]
+	var mesh: ArrayMesh = _wall_fence_meshes.get(key)
+	if mesh != null:
+		return mesh
+	var batch := MeshBatch.new()
+	var metal: MeshLayer = batch.layer(solid)
+	var hot: MeshLayer = batch.layer(hot_material)
+	var half: Vector3 = size * 0.5
+	var face: float = side * half.x
+	var reach: float = size.x + MeshKit.WALL_FIELD_GROW
+	var out: float = -side
+	for end: int in [-1, 1]:
+		# -1: the emitter at the bottom of the band, 1: at its top. Each lies just outside the field, with
+		# its glowing strip along the side facing it.
+		var on_floor: bool = end < 0 and absf(-half.y - floor_y) < 0.01
+		var y: float = floor_y + WALL_EMITTER_THICKNESS * 0.5 if on_floor else end * (half.y + WALL_EMITTER_THICKNESS * 0.5)
+		var toward: float = -end
+		# The plate on the facade (not for the sill at the foot of the wall).
+		if not on_floor:
+			metal.box(Vector3(face + out * 0.025, y, 0.0), Vector3(0.05, 0.42, 0.52), mount_color.darkened(0.25))
+		# The arm, from the facade out over the field.
+		metal.box(Vector3(face + out * reach * 0.5, y, 0.0), Vector3(reach, WALL_EMITTER_THICKNESS, 0.18), mount_color)
+		# Its glowing strip, along the side facing the field, and the cap at its tip.
+		hot.box(Vector3(face + out * reach * 0.5, y + toward * (WALL_EMITTER_THICKNESS * 0.5 + 0.012), 0.0),
+			Vector3(reach - 0.04, 0.024, 0.08), color, 0.9)
+		hot.box(Vector3(face + out * (reach + 0.04), y, 0.0), Vector3(0.08, WALL_EMITTER_THICKNESS + 0.06, 0.22), color, 1.0)
+	mesh = batch.to_mesh()
+	_wall_fence_meshes[key] = mesh
+	return mesh
 
 
 ## A ceiling section (TrackBuilder, and a boss's BossProps.ceiling). `section` covers a contiguous

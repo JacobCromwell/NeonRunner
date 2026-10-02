@@ -29,8 +29,8 @@ and hosts its `BossEncounter` (see Bosses).
 
 ```
 RunWorld (scripts/run/run_world.gd)       one run's gameplay world; everything shares it
-  Track      TrackBuilder: floor/hull collision, obstacles (fences, signs), triggers (pads, ramps,
-             speed pads), zone doodads, floor cuts (FloorCut: a lane's floor that turns into a hole
+  Track      TrackBuilder: floor/hull collision, obstacles (fences, wall fences, signs), triggers (pads,
+             ramps, speed pads), zone doodads, floor cuts (FloorCut: a lane's floor that turns into a hole
              during play), built in 40 m chunks around the player; the zone skin decorates it
   Player     movement on floor, walls and ceiling; protection; receive_hit()
   Boss       BossEncounter, in a boss fight only: the fight and the boss's pattern (its parts are
@@ -122,6 +122,7 @@ Every number is `SpeedFxTuning` (`scripts/run/speed_fx_tuning.gd`, `data/tuning/
 | `data/tuning/powerups.tres` (`PowerupTuning`) | weapon tiers, claws, dash, magnet, slow time |
 | `data/tuning/pickups.tres` (`PickupTuning`) | in-run pickups: where they appear, taking them, the charge cap, the look |
 | `data/tuning/feature_recency.tres` (`FeatureRecency`) | the campaign's recency curve: how a level's pick weights follow how recently the campaign introduced each feature |
+| `data/tuning/wall_fences.tres` (`WallFenceTuning`) | wall fences (B5): how often, how they pulse, their introduction, and the fairness margins (their sizes are the movement tuning's) |
 | `data/enemies/<type>.tres` (`EnemyTuning` subclasses) | per-enemy numbers, early/late pairs for campaign scaling |
 | `data/shop/catalog.json` | shop items, tiers and prices (the armor's texts take `{hits}` and `{seconds}`, filled from `GameRules` by `ShopScreen.item_text()`) |
 | `data/campaign/campaign.tres` → `data/zones/*.tres` → `data/levels/*.tres` | the campaign; each zone's run speed (`ZoneDef.run_speed`, a level may set its own), each level's pacing, fill pass, zone doodads and credits |
@@ -245,6 +246,15 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   ceilings themselves: a ray on the hull layer over the middle of each lane (`_ceiling_over`), so the
   track's ceilings and a boss's (`BossProps.ceiling`) hold the player in alike, and a pad lands the
   player in its own lane even if a switch was under way (`_hold_to_pad_lane`).
+- **Wall fences are fences** (task B5; GDD §9.1: "the same rules as floor fences"). A wall fence's field is
+  an electrical Hazard like a floor fence's (TrackBuilder._build_wall_fence), so DamageRules lets armor, the
+  shield and the dash through and never claws, and weapons never see it (it's no enemy). It's on the
+  hazard layer only, never a wall blocker: the wall is open to enter, and a live field just hurts. Its
+  field reaches out from the facade over the wall runner's body (on a wall the hurtbox lies along the wall
+  and reaches out by its height, Player.hurtbox_aabb) and stops short of a floor runner in the middle of
+  the outer lane (WallFencePlan.reach), so a wall runner within its band is hit while it's on, a floor
+  runner beside it never is, stepping onto the wall into a live one is a hit, and a blocked entry's bump
+  never reaches into one (Player._bump_room). The Player needed no change.
 - **Zone doodads push, never hurt** (GDD §3, owner's playtest September 30, 2026; task G5). A doodad is
   no hazard: the track builds it as a body on a layer of its own (`TrackBuilder.LAYER_DOODAD`) that is
   also a lane blocker, with a standable top on the floor layer (`_build_doodad`). On the floor, the
@@ -476,8 +486,8 @@ one. `RampLaunch` (`scripts/world/ramp_launch.gd`; `gen.ramp_launch(ramp)`) pred
 Player moves: where the player is on the wall and when (`distance_at`, `time_at`), how high
 (`height_at`, `body_at`: the heights the body spans) and how fast (`speed_at`), from the launch
 (`start`) to the drop back into the ramp's lane (`end()`). Every rule that predicts a ramp's wall run
-uses it: the credits along it (`LevelGenerator.wall_run_credits`), and task B5's wall fences, which
-must never put a live wall fence where a ramp launches the player into it. `test_movement` holds it
+uses it: the credits along it (`LevelGenerator.wall_run_credits`), and the wall fences (B5), which keep
+off the longest wall run a ramp can launch along their wall (Wall fences, below). `test_movement` holds it
 to the real Player at 3, 5 and 6 lanes, and `test_interactions` rides the credits on real physics.
 
 Rules scripts run in the order of the level's `features` list, except that a script declaring
@@ -639,9 +649,10 @@ each feature a pattern can place there is in the finished level, at any lane cou
 (GDD §5: an introduced feature keeps appearing). Rules drop or clear what doesn't fit fairly, so
 `generate()` checks the finished layout and builds the level again until nothing is missing:
 - `feature_positions(layout, feature)` finds a feature's pieces: enemies by type, hosts, wall-vent
-  screeches, and the mechanics by their ramps, pads, speed pads or pulsing fences. A rules script
-  that declares `static func positions(layout: LevelLayout) -> Array[float]` answers for its own
-  feature (a new kind of piece, such as wall fences).
+  screeches, the mechanics by their ramps, pads, speed pads or pulsing fences, and the wall fences by
+  theirs (full-height ones `wall_fences`, partial ones `wall_fences_partial`). A rules script that
+  declares `static func positions(layout: LevelLayout) -> Array[float]` answers for its own feature (a
+  new kind of piece).
 - Only the features some pattern can place in the level are required (`placeable_features()`: in its
   lane count and difficulty, with pick weight), so a planned feature isn't, and a new enemy's
   patterns bring it under the guarantee.
@@ -830,6 +841,99 @@ on the arena's track), and add it with its cause through `arena.add_pieces()` (i
 numbers. A track that grows during play (`TrackBuilder.extend_layout`, endless mode's R4 too) takes cuts
 the same way.
 
+**Wall fences** (B5; GDD §9.1: "electric fences that span a side wall and turn off and on from time to time,
+to make the walls less safe"; full-height ones from Marketplace 2, passed by timing; from the Corporate zone
+partial ones over the low or the high part of the wall, passed by entering the wall high or low).
+`LevelLayout.wall_fences` holds {side, at, band, pulse_on, pulse_off, phase} (left out of `to_dict()` when
+empty, so a level without them is the same data as before); `WallFencePlan` (`scripts/world/wall_fence_plan.gd`)
+has the geometry and timing: a band's heights (`band_heights`: the whole wall-run path from the floor to
+`MovementTuning.wall_fence_top`, or the low band up to `wall_fence_low_top`, or the high band from
+`wall_fence_high_bottom`; a free entry's body runs between the two), the field's reach out from the facade
+(`reach`: over a wall runner's body, never as far as a floor runner in the middle of the outer lane), its
+hitbox, and its state at any level time (`state_at`, `next_on`: exactly what its Hazard shows). They have no
+patterns: the generator adds them after the zone doodads and before the credits (`_place_wall_fences`,
+`WallFencePlacement` in `scripts/world/wall_fence_placement.gd`), from a stream of their own
+(`rng_for("wall_fences")`), for a level with `wall_fences` or `wall_fences_partial`. So they only add to the
+walls: the pattern picks, the rules, the fillers, the doodads and the credits come out exactly as without
+them (`test_wall_fences` compares every campaign level with and without the features; a level without them
+draws nothing; `tools/measure/level_pace.gd --dump` of 570 layouts, every campaign level on its own seed and
+nine others at 3, 5 and 6 lanes and quick play, against main's: the 330 of levels without them byte for byte
+the same, the 240 of levels with them the same but for their wall fences). Where they may stand is one list
+of keep-outs per wall (`WallFencePlacement.keep_outs`, times from `WallFenceTuning`,
+`data/tuning/wall_fences.tres`, seconds at the level's run speed, so they keep their seconds at every zone's
+pace):
+- its wall: no sign or window cyborg within `wall_clear_seconds` of it on its wall (GDD §9.1: never on the
+  same wall section), no wall vent's screech from `vent_before_seconds` before it to `vent_after_seconds` after,
+  and never where a ramp launches the player along its wall (GDD §9.1), from just before the ramp to past the
+  end of the longest wall run it can launch: `RampLaunch` with R1's fading boost, claws' longer wall runs and
+  a speed pad's boost carried onto it (`ramp_run_end`), plus `ramp_after_seconds`;
+- the floor beside it: a player already on the wall sees it on, or its warning, in time to drop off or time it
+  (the brief). Its warning is the floor fence's (the same flicker and crackle, `fence_pulse_warning`), and a
+  drop-off is a wall jump into the outer lane on its side, landing about 0.5 to 0.7 s later, so that lane holds
+  no hole, fence, floor cut, anti-grav pad or floor enemy over its drop window (`drop_before_seconds` before it
+  to `drop_after_seconds` after: where a drop-off from as late as its warning lands), and no hover truck keeps
+  that lane meanwhile;
+- what runs meanwhile: no floor cut's window (B4: nothing else goes on during a cut) and no big attack (the
+  keep-out of a drone wave, a hover truck, an Octodog or a floor cut's cause, `LevelGenerator.enemy_keep_out`;
+  each of a Resonator's pulses, from its warning until its wave has passed the player, `resonator_pulses`,
+  since between its pulses nothing asks for the wall; and every Bad Dream chase) reaches its drop window (the
+  wall is one of their escapes; the fill pass keeps its extra obstacles off them the same way);
+- the level: its drop window between the run-up and the end-clear stretch; other wall fences
+  `same_side_gap_seconds` apart on one wall (a wall run meets one at a time) and `gap_seconds` on either.
+Zone doodads need no rule: they stand in inner lanes and push only into neighbouring lanes, never onto a wall,
+and a wall fence never reaches a floor runner, so the two never meet (G5's keep-outs stand as they were).
+How many: from the feature's start a spot every `spacing_seconds_easy` to `_hard` of run (by the difficulty
+there, `spacing_jitter` either way), on a random wall (the other if it has no fair spot within
+`search_seconds`), at the first fair spot from there; past `wall_fences_partial`'s start `partial_share` of them
+cover the low or the high band. Each pulses with on and off times from easy to hard and a random phase. A level
+that gives a feature a start introduces it gently (Marketplace 2's full-height ones at 10%, Corporate 1's partial
+ones at 50%, `feature_starts`): its first one is the introduction, at the earliest fair spot on either wall within
+`intro_seconds` of the start where no enemy is about (else the earliest fair one there, and only if none comes in
+time, a later one; a long big attack can hold it back, which stays rare), alone (no other wall fence within
+`same_side_gap_seconds` on either wall) and off for `intro_off_seconds`, with its first-encounter hint just
+before it (HintDirector: `wall_fence`, `wall_fence_low`, `wall_fence_high`). Every feature appears: the guarantee
+(`placeable_features`) counts only features with patterns, so the placement keeps its own: a level left without a
+full-height one (or a partial one, with that feature) gets one at the first fair spot past its start, and one
+with no fair spot at all a warning (the campaign tests fail on any). `feature_positions` finds full-height ones
+for `wall_fences` and partial ones for `wall_fences_partial`. Measured on each level's own seed and nine others
+at 3, 5 and 6 lanes: about 10 to 14 a level, 4 to 6 a minute (Marketplace 2 about 12, the Corporate zone about
+14, the Dead Zone about 12, the Golden Zone about 10 to 12, where big attacks leave less room), half of them
+partial past `wall_fences_partial`'s start (a third of Corporate 1's, which brings them in halfway).
+`LevelGenerator.wall_fence_problem(entry)` (`WallFencePlacement.problem`) says why one can't stand somewhere,
+and `cut_problem` refuses a floor cut whose window reaches a wall fence's drop window (a boss arena's; a
+level's wall fences come after its cuts). `LayoutChecks.check_wall_fences` (from `check_layout`) holds every
+generated layout to all of it independently, at 3, 5 and 6 lanes. DESIGN-TBD (`docs/questions/b5.md`): every
+number in `WallFenceTuning`, the bands and the reach, partial ones pulsing too, and keeping off big attacks.
+
+**Wall fences on the track.** `TrackBuilder._build_wall_fence` builds each as a Hazard in the chunk where it
+stands: its hitbox `WallFencePlan.hitbox` (from the wall face out by the reach, over its band, a fence deep),
+electrical, on the hazard layer only (Damage and interactions), pulsing on the level clock like a pulsing floor
+fence (`Hazard.setup_pulsing` with its on and off times and the floor fence's warning, and the floor fence's
+crackle from `HazardTelegraph`), switched off for good by an EMP (`disable_fences_near` also reaches wall fences
+within its radius, measured from their wall face, built or not yet built), and dressed by the skin
+(`ZoneSkin.wall_fence`, Zone skins). `track.wall_fence_hazards()` lists the built ones. A track that grows during
+play (`extend_layout`) takes wall fences too, and a boss arena carries them (`BossArena.shifted`, `add_pieces`,
+`wall_fence_problem`).
+
+For task C4 (the Gilded Sentinels, GDD §9.11: live statues in wall niches at wall-run height, swinging a halberd
+across their wall section and the outer lane): a sentinel is one more thing on its wall section, so keep wall
+fences and sentinels apart. The sentinels come from patterns or rules, before the wall fences, so the simplest
+way is to add the sentinel to `WallFencePlacement.keep_outs` like a window cyborg (its swing's stretch on its
+wall, `wall_clear_seconds` either side, and its swing over the outer lane as a big attack's keep-out if it
+counts as one); `LayoutChecks.check_wall_fences` then needs the same check. Ask `layout.wall_fence_between`
+if a sentinel's rules ever run after the wall fences (they don't today).
+
+For task E5a (The House, GDD §10: phase 2 puts one 7 button on a wall "with wall fences in play"): plan the
+phase's wall fences as `WallFencePlan.make` entries at the arena's speed (`arena.tuning`), ask
+`arena.wall_fence_problem(entry)` for each (the level's rules on the arena's track; a button on a wall is the
+boss's own business: keep the button off a live wall fence's band and timing, and its approach off its drop
+window), and add them with `arena.add_pieces()` (their `wall_fences`), past `stream_from()`. A wall fence on
+the button's wall should let the player reach the button by timing or by entering high or low (a partial one
+over the band the button isn't in). The wall fences pulse on the level clock like any; one the fight must
+switch on or off at a moment of its own can be found with `world.track.wall_fence_hazards()` and held with
+`Hazard.set_enabled()` (the EMP's way), never by another path, so DamageRules and the looks stay as they are.
+Task E5b (Hostile Takeover, phase 1's partial wall fences along the sound barriers) does the same.
+
 ## Power-ups
 
 `PowerupController` (`scripts/powerups/powerup_controller.gd`) runs one `PowerupModule` per owned,
@@ -879,8 +983,8 @@ that offer their own), never in levels, so no pattern places one. `PickupField`
 ## Zone skins
 
 A `ZoneSkin` (`scripts/world/skins/zone_skin.gd`) decorates abstract pieces through hooks
-(`floor_segment`, `floor_cut`, `wall_section`, `fence`, `wall_sign`, `ceiling_section` (by default
-`hull`), `pad`, `ramp`, `speed_pad`, `doodad`, `finish_line`, `make_environment`). Skins add visuals
+(`floor_segment`, `floor_cut`, `wall_section`, `fence`, `wall_fence`, `wall_sign`, `ceiling_section` (by
+default `hull`), `pad`, `ramp`, `speed_pad`, `doodad`, `finish_line`, `make_environment`). Skins add visuals
 only, never collision or gameplay. Hazards keep one colour and shape language in every zone (pink
 crackle = electric fence).
 `TrackBuilder` also calls `note_wall_enemies(side, start, end, enemies)` just before `wall_section()`
@@ -984,6 +1088,26 @@ well (`GoldenPalaceFloor.cut`). `test_floor_cuts` builds every skin in `data/ski
 and the plain `ZoneSkin`) at 3 and 5 lanes, in an outer and a middle lane, and checks the orange edges
 on the collision edge, a dark inside, nothing else glowing, and the build cost against the same chunks
 without a cut; review a new look with `floor_cut_review` (Review tools) on both renderers.
+
+**Wall fences' looks** (B5; GDD §9.1: "the same pink crackle, strung across the wall-run path between emitters
+on the facade, the way a floor fence crosses a lane"). The hook `wall_fence(hazard, size, side, band, floor_y)`
+draws one in hazard-local space, centred on its hitbox `size` (x from the wall face on `side` out toward the
+lanes, y up its band, z along the track), and `band` (&"full", &"low", &"high") says which part of the wall it
+covers. It must read as the floor fence turned onto the wall, in every zone: the same pink field (the zone's
+`fence_field_materials()`), an emitter at each end of its band on the facade whose glowing strip marks the
+band's edge (the line a partial one is passed above or below), nothing else glowing, the look within the
+field's reach of the facade (never out over the outer lane's runner), following the hazard's state (ON,
+WARNING with the flicker, OFF with no field: `HazardStateVisual`, steady with Reduced flashing as the fence
+shaders are). The default (`standard_wall_fence`) works for every zone, the grey box included:
+`MeshKit.dress_wall_fence` with `wall_field_mesh` (three cards through the field's depth, UV.x up the band so the
+energy field shader's arcs run from one emitter to the other, its bright edges along the facade and along the
+field's outer edge) and `wall_fence_mounts` (a plate on the facade and an arm out over the field at each end of
+the band, a sill at the foot of the wall for a band that starts at the floor, in `wall_fence_mount_color`, an
+export on ZoneSkin, with the zone's `fence_part_materials()` for the glowing strips and caps and its
+`solid_material()` for the housings; `wall_fence_look()` falls back to the kit's own materials and pink for a
+skin without them). A zone may override `wall_fence()` to draw its own emitters around the same field.
+`test_wall_fences` builds every skin in `data/skins/` (and the grey box) at 3 and 5 lanes on both walls in every
+band; review a look with `wall_fence_review` (Review tools) on both renderers.
 
 **Ceilings from their lanes** (B3). `TrackBuilder` (and `BossProps.ceiling`) describe each ceiling as a
 `CeilingSection` (`scripts/world/ceiling_section.gd`): its span along the track, the lanes it covers
@@ -1547,9 +1671,9 @@ generator; City 1's cyborgs come late in the level), and its newest features get
 (the campaign's recency curve, under The generator). `test_campaign` holds the schedule table and its
 exceptions, checks the features' order, and checks that every level has each of its features at 3, 5
 and 6 lanes, on its own seed and over a seed sweep (Every feature appears, under The generator).
-Features of enemies and mechanics still to be built (`LevelConfig.PLANNED_FEATURES`, with the wall
-fences' `wall_fences` and `wall_fences_partial`) are listed already and do nothing until their code and
-patterns exist.
+Features of enemies and mechanics still to be built (`LevelConfig.PLANNED_FEATURES`) are listed already
+and do nothing until their code and patterns exist. The wall fences' `wall_fences` and
+`wall_fences_partial` are built (B5; The generator, Wall fences).
 
 **The Hush** (Dead Zone 2; GDD §5: "a quiet, eerie remix: fewer enemies but more hosts and Bad Dream
 chases, darker lighting, and long silent stretches broken by sudden threats") brings nothing new; its
@@ -2128,6 +2252,25 @@ Reduced flashing); and that the stand-in stays out of the campaign. `test_genera
 difficulties and lane counts, under narrow ceilings and in busy levels with every built feature
 (`LayoutChecks.check_cuts`), checks each of GDD §9.9's limits by hand and `CutPlacement`'s clearing, and
 shows a level whose rules plan no cut is the same data as one without them.
+
+`test_wall_fences` checks wall fences (B5; GDD §9.1): the layout data (left out of a level without them) and
+`WallFencePlan`'s bands, reach (a floor runner in the middle of the outer lane never touches one, a wall runner
+in its band does, at 3, 5 and 6 lanes) and state on the level clock (never off to on without the warning); the
+track's hazard (WallFencePlan's hitbox, electrical, never a wall blocker, the crackle, following `state_at`
+frame by frame, and picking up the level clock when built late); on real physics at 3, 5 and 6 lanes, a wall
+runner hit while one is on and safe while it's off, a floor runner beside a live one never touched, stepping
+onto the wall into a live one a hit, jumping off before one passing it, a low one passed by jumping onto the
+wall and a high one by stepping on (and each hit the other way), a runner who jumps off 0.2 s after the warning
+starts never hit wherever they are then (one who stays is hit at some phases), armor, the shield and the dash
+through and claws not, the weapon finding nothing to shoot at, and an EMP switching them off, built or not;
+every campaign level with them (own seed and others, 3, 5 and 6 lanes) placing them fairly
+(`LayoutChecks.check_wall_fences`), keeping both kinds, the same on every attempt; Marketplace 2's and Corporate
+1's introductions (first of their kind, alone, off long, within `intro_seconds` on the levels' own seeds and on
+most others, mostly where no enemy is about); Marketplace 2 at 18 and 25 m/s (the margins in seconds); every
+campaign level exactly the same without the features but for its wall fences (pattern picks, fillers and
+guarantee builds too), and the levels without them having none; quick play with them among every rule's pieces
+(`LayoutChecks.check_layout`); `wall_fence_problem` naming each rule; the hints; every skin's look; and a boss
+arena carrying them.
 `test_web_demo` checks the web demo's preset, its export filter against
 the data and everything the demo references, and walks the demo from the title to its end screen (see
 Platforms and build flavors). The runner frees
@@ -2147,7 +2290,10 @@ any zone's look, through the game camera or a close one, `--hitboxes` for their 
 (`floor_cut_review`: the stand-in's warning, charge and the gap it leaves beside a runner who switched
 out, in any zone's look at any lane count and speed, through the game camera or a high one; `--stay`
 for an armor block and the floor's hold, `--kill=D` for a cut stopped where its cause dies,
-`--reduced-flashing`),
+`--reduced-flashing`), wall fences (`wall_fence_review`: full-height ones held off, in their warning and on,
+then low and high ones on both walls, in any zone's look at any lane count, through the game camera with a
+runner beside them or along the wall (`--wall`), or a fixed one beside the track (`--camera=side --at=D`);
+`--cycle` lets them pulse on the level clock, `--reduced-flashing`),
 the enemies (`enemy_showcase` for the cyborg family: poses, the faces close up, a turnaround, window
 cyborgs, and a far view through the run camera where the expressions must read, in any zone's look
 (`--variant=`, or ui_left / ui_right live), and every look side by side (`lineup`, front, back, as

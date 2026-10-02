@@ -9,17 +9,15 @@ extends Resource
 ## generator rules go in scripts/enemies/<name>_rules.gd, and an enemy type of that name is found by
 ## EnemyDirector. So those tasks add their own files and never edit level data.
 ## - barnacle_turret: the Barnacle Turret, a ceiling hazard (GDD §9.8), from Marketplace 1
-## - wall_fences: full-height wall fences (GDD §9.1), from Marketplace 2
-## - wall_fences_partial: wall fences over the low or the high part of the wall only (GDD §9.1),
-##   from Corporate 1 (their patterns require both wall_fences and wall_fences_partial)
 ## - buzz_overdrive: the Buzz Overdrive (GDD §9.9), from Corporate 1 through the Dead Zone and the
 ##   Golden Zone (the Golden Palace included)
 ## - resonator: the Resonator (GDD §9.10), from Golden 1
 ## - gilded_sentinel: the Gilded Sentinels (GDD §9.11), from Golden 2
 ## tithe_collector (GDD §9.12, Corporate 2, then the Golden Zone) is built (task C5): its own script,
-## tuning and pattern (data/patterns/tithe_collector.json) place it, so it's out of this list.
-const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "wall_fences_partial",
-	"buzz_overdrive", "resonator", "gilded_sentinel"]
+## tuning and pattern (data/patterns/tithe_collector.json) place it, so it's out of this list. So are the
+## wall fences, `wall_fences` and `wall_fences_partial` (task B5: the generator places them,
+## WallFencePlacement).
+const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "buzz_overdrive", "resonator", "gilded_sentinel"]
 
 @export var id: StringName = &"prototype"
 ## DESIGN-TBD: campaign level names are placeholders (GDD §5 names only the Golden Palace).
@@ -57,6 +55,9 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 ##   octodog, screech (from manholes and wall vents), drone, generator (fence generators)
 ## - screech_vents: sewer screeches from wall vents only (rare), for zones whose floor has no
 ##   manholes (GDD §9.5)
+## - wall_fences: full-height wall fences (GDD §9.1), from Marketplace 2; wall_fences_partial: wall
+##   fences over the low or the high part of the wall only, from Corporate 1 (task B5; no patterns: the
+##   generator places them, WallFencePlacement)
 ## - the planned ones in PLANNED_FEATURES
 ## Rules scripts run in this list's order (see LevelGenerator), so the campaign keeps the order in
 ## which the schedule introduces features.

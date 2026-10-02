@@ -15,7 +15,9 @@ extends RefCounted
 ##    stretches.
 ## 4. Zone doodads (LevelConfig.doodad_share): scenery standing in lanes, in the stretches where
 ##    nothing else goes on (_place_doodads).
-## 5. Credits (GDD §7): trails in the clear stretches, rich credits in risky spots.
+## 5. Wall fences (the `wall_fences` and `wall_fences_partial` features; WallFencePlacement): electric
+##    fences across the wall-run path, only where they're fair (_place_wall_fences).
+## 6. Credits (GDD §7): trails in the clear stretches, rich credits in risky spots.
 ## Fairness rules (longest gap, hull lead-in and landing) come from LevelConfig, so they are data.
 ##
 ## Ceilings (GDD §3, changed September 26, 2026): the floor under a ceiling may be dangerous, since the
@@ -81,6 +83,15 @@ extends RefCounted
 ## keeps off it: the fill pass and zone doodads (fill_keep_outs, doodad_keep_outs), floor_clear,
 ## ceilings added later (CeilingZones) and floor credits in its lane. A level without cuts is built
 ## exactly as before.
+##
+## Wall fences (task B5; GDD §9.1: electric fences that span a side wall and switch off and on, to make
+## the walls less safe; full-height ones from Marketplace 2, partial ones over the low or the high part
+## of the wall from the Corporate zone): after the doodads, from a random stream of their own, they're
+## added to the walls only where they're fair (WallFencePlacement: never on a wall section with a sign
+## or a window cyborg, never where a ramp launches the player along their wall, the outer lane beside
+## them clear to drop off into, no floor cut or big attack meanwhile), so everything else in a level is
+## built exactly as without them. A level that brings them in meets its first one soon after the
+## feature's start, alone, with a long off time.
 
 const DENOMINATIONS: Array[int] = [1, 5, 25, 100]
 const RULES_DIR: String = "res://scripts/enemies"
@@ -292,6 +303,7 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	_apply_enemy_rules()
 	_fill_empty_stretches(patterns)
 	_place_doodads(patterns)
+	_place_wall_fences()
 	_place_credits()
 	layout.enemies.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["at"] < b["at"])
 	return layout
@@ -890,11 +902,12 @@ func missing_features(needed: PackedStringArray) -> PackedStringArray:
 
 
 ## Track distances of everything `feature` placed in `layout`, in order: ramps (ramps), anti-grav
-## pads (ceilings), speed pads (speed_pads), pulsing fences (pulsing), host cyborgs (host), cyborgs
-## that aren't hosts (cyborg), screeches from wall vents (screech_vents), and otherwise the enemies
-## of that type, which covers every enemy type. A feature whose rules script declares
+## pads (ceilings), speed pads (speed_pads), pulsing fences (pulsing), full-height wall fences
+## (wall_fences) and partial ones (wall_fences_partial), host cyborgs (host), cyborgs that aren't hosts
+## (cyborg), screeches from wall vents (screech_vents), and otherwise the enemies of that type, which
+## covers every enemy type. A feature whose rules script declares
 ## `static func positions(layout: LevelLayout) -> Array[float]` answers for itself (a new kind of
-## piece, such as wall fences).
+## piece).
 static func feature_positions(p_layout: LevelLayout, feature: String) -> Array[float]:
 	var out: Array[float] = []
 	var path: String = RULES_DIR.path_join("%s_rules.gd" % feature)
@@ -918,6 +931,11 @@ static func feature_positions(p_layout: LevelLayout, feature: String) -> Array[f
 			for f: Dictionary in p_layout.fences:
 				if bool(f["pulsing"]):
 					out.append(float(f["at"]))
+		"wall_fences", "wall_fences_partial":
+			# Full-height wall fences, or the partial ones (task B5, WallFencePlacement).
+			for w: Dictionary in p_layout.wall_fences:
+				if WallFencePlan.is_partial(w) == (feature == "wall_fences_partial"):
+					out.append(float(w["at"]))
 		_:
 			for e: Dictionary in p_layout.enemies:
 				var type: String = String(e.get("type", ""))
@@ -1633,7 +1651,9 @@ func add_cut(cut: Dictionary) -> bool:
 ## - nothing else goes on meanwhile: no enemy's keep-out (what the fill pass keeps for it,
 ##   _enemy_keep_out) reaches its window, bar its own cause (an entry at its `end` in its lane), nor
 ##   does a lane-bound attack the rules keep doodads off (rules_doodad_keep_outs, read from the
-##   level's own enemies: a Bad Dream's chase in any lane, a hover truck's stay in its lane);
+##   level's own enemies: a Bad Dream's chase in any lane, a hover truck's stay in its lane), nor a wall
+##   fence's drop window (task B5: a boss arena's wall fences; a level's come after its cuts and keep
+##   off them, WallFencePlacement);
 ## - a player in its lane when the warning starts can leave it (cut_escape_clear).
 ## Wall runners and ceiling riders are safe without a rule: the cut is a hole in its own lane only.
 ## DESIGN-TBD (docs/questions/b4.md): keeping everything else off a cut's whole window, and letting
@@ -1700,6 +1720,9 @@ func cut_problem(cut: Dictionary, p_layout: LevelLayout = null) -> String:
 	for k: Dictionary in rules_doodad_keep_outs():
 		if (not k.has("lane") or int(k["lane"]) == lane) and float(k["from"]) <= span.y and float(k["to"]) >= span.x:
 			return "an attack runs meanwhile (%.0f-%.0f)" % [float(k["from"]), float(k["to"])]
+	var wall_fence: String = _wall_fence_in(lay, span)
+	if wall_fence != "":
+		return wall_fence
 	if not cut_escape_clear(cut, lay):
 		return "no room to leave its lane after the warning"
 	return ""
@@ -1769,6 +1792,46 @@ func _lane_busy(lay: LevelLayout, lane: int) -> Array[Vector2]:
 			var w: Vector2 = FloorCutPlan.lane_window(c)
 			out.append(Vector2(w.x - m, w.y + m))
 	return out
+
+
+# --- Wall fences (task B5; GDD §9.1) --------------------------------------------------------------
+
+## Places the level's wall fences (LevelLayout.wall_fences; GDD §9.1: full-height ones from Marketplace
+## 2, partial ones over the low or the high part of the wall from the Corporate zone), after the zone
+## doodads and before the credits, from a random stream of their own (WallFencePlacement has the rules):
+## they only add to the walls, so the rest of a level comes out exactly as it does without them, and a
+## level without the `wall_fences` and `wall_fences_partial` features draws nothing and is built byte
+## for byte as before.
+func _place_wall_fences() -> void:
+	if config.has_feature(WallFencePlacement.FEATURE) or config.has_feature(WallFencePlacement.PARTIAL):
+		WallFencePlacement.place(self)
+
+
+## Why wall fence `entry` (WallFencePlan.make) can't stand where it lies in `p_layout` (the level's by
+## default), or "" if it can (WallFencePlacement.problem: its wall's signs, window cyborgs, wall vents
+## and ramps, the outer lane beside it, floor cuts and big attacks meanwhile, other wall fences).
+func wall_fence_problem(entry: Dictionary, p_layout: LevelLayout = null) -> String:
+	return WallFencePlacement.problem(self, entry, p_layout)
+
+
+## What the fill pass keeps off around enemy entry `e` (fill_keep_outs: its rules script's keep_out, or
+## from FILL_ENEMY_LEAD_SECONDS before it to the end of the floor it uses), for rules that keep off
+## enemies the same way (WallFencePlacement: big attacks). `hooks` caches each type's rules script.
+func enemy_keep_out(e: Dictionary, hooks: Dictionary = {}) -> Vector2:
+	return _enemy_keep_out(e, hooks)
+
+
+## Why a floor cut whose window is `span` can't run in `lay` because of a wall fence there: "" if no wall
+## fence's drop window (WallFencePlacement.drop_window) reaches it (cut_problem).
+func _wall_fence_in(lay: LevelLayout, span: Vector2) -> String:
+	if lay.wall_fences.is_empty():
+		return ""
+	var t: WallFenceTuning = WallFencePlacement.tuning()
+	for w: Dictionary in lay.wall_fences:
+		var drop: Vector2 = WallFencePlacement.drop_window(self, float(w["at"]), t)
+		if drop.x <= span.y and drop.y >= span.x:
+			return "a wall fence stands meanwhile (at %.0f)" % float(w["at"])
+	return ""
 
 
 # --- Enemy rules ---------------------------------------------------------------
