@@ -15,8 +15,9 @@ extends RefCounted
 ##   waves, only where their longer stretch is clear (else a single one goes), and never the level's
 ##   first pulse (GDD §6: one new thing at a time).
 ## - Big attacks (GDD §9): no pulse comes during an Octodog's run (its charges are one big attack, so
-##   it would keep the pulse waiting). Drones and hover trucks, which stay for a while, and a Bad
-##   Dream's chase, which only comes if the player kills its host, take turns with it through the
+##   it would keep the pulse waiting), a floor cut's encounter (task C2) or a Gilded Sentinel's turn
+##   (task C4: from its claim to its last swing). Drones and hover trucks, which stay for a while, and
+##   a Bad Dream's chase, which only comes if the player kills its host, take turns with it through the
 ##   director at run time (DESIGN-TBD, docs/questions/c3.md: a chase's stretch, 20–30 s, would leave
 ##   few places for a visit in the Golden levels).
 ## - One at a time: a Resonator whose visit would begin before the last one's could end (its last
@@ -125,11 +126,13 @@ static func visit_start(t: ResonatorTuning, at: float, pace: float = 1.0) -> flo
 
 
 ## The stretches no pulse may overlap (from its warning until its wave has met the player): every
-## Octodog's run (its params.floor_span, octodog_rules.gd) and every floor cut's whole encounter (task C2:
-## a Buzz Overdrive's, FloorCutPlan.window; its rules run before these).
+## Octodog's run (its params.floor_span, octodog_rules.gd), every floor cut's whole encounter (task C2:
+## a Buzz Overdrive's, FloorCutPlan.window; its rules run before these) and every Gilded Sentinel's turn
+## (task C4: from its claim to its last swing, sentinel_turns; its rules run before these too).
 static func busy_stretches(gen: LevelGenerator) -> Array[Vector2]:
 	var out: Array[Vector2] = octodog_runs(gen.layout)
 	out.append_array(cut_windows(gen.layout, gen.speed))
+	out.append_array(sentinel_turns(gen.layout, gen.speed))
 	return out
 
 
@@ -139,6 +142,20 @@ static func cut_windows(layout: LevelLayout, speed: float) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	for c: Dictionary in layout.cuts:
 		out.append(FloorCutPlan.window(c, speed))
+	return out
+
+
+## Every Gilded Sentinel's turn in `layout` at run speed `speed` (GildedSentinelTuning.claim_window: a big
+## attack that can't wait claims its turn before its warning, so a pulse due then would be held for it).
+static func sentinel_turns(layout: LevelLayout, speed: float) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	var st := EnemyDirector.tuning_for("gilded_sentinel") as GildedSentinelTuning
+	if st == null:
+		return out
+	for e: Dictionary in layout.enemies:
+		if String(e.get("type", "")) == "gilded_sentinel":
+			var swings: int = int((e.get("params", {}) as Dictionary).get("swings", 1))
+			out.append(st.claim_window(float(e["at"]), swings, speed))
 	return out
 
 
@@ -292,6 +309,9 @@ static func problems(layout: LevelLayout, config: LevelConfig, base: MovementTun
 			for b: Vector2 in cut_windows(layout, speed):
 				if b.x <= stretch.y and b.y >= a:
 					out.append("%s: pulse %d overlaps a floor cut (%.0f-%.0f)" % [tag, i, b.x, b.y])
+			for b: Vector2 in sentinel_turns(layout, speed):
+				if b.x <= stretch.y and b.y >= a:
+					out.append("%s: pulse %d overlaps a Gilded Sentinel's turn (%.0f-%.0f)" % [tag, i, b.x, b.y])
 			free = a + (t.pulse_seconds(dbl, speed, scaling, movement.hurtbox_size.z, EnemyDirector.SHOT_PASS_MARGIN,
 				pace) + t.pulse_rest_at(scaling)) * speed
 		prev_end = float(anchors[-1]) + t.pulse_seconds(bool(doubles[-1]), speed, scaling, movement.hurtbox_size.z,

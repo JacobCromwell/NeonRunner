@@ -89,7 +89,7 @@ pattern like the Octodog's fits when its dog does). Patterns need nothing specia
 | `min_difficulty` / `max_difficulty` | The pattern can be picked only while the current difficulty (0–1) is in this range |
 | `weight` | Relative pick chance among the patterns that qualify |
 | `min_lanes` | Optional. Skip on devices with fewer lanes |
-| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`, `resonator`, `buzz_overdrive`, `tithe_collector`), `screech_vents` (wall-vent screeches only, rare, for zones whose floor has no manholes, GDD §9.5), or a planned one: `gilded_sentinel`. (The wall fences, `wall_fences` and `wall_fences_partial`, and the Barnacle Turret have no patterns: see below) |
+| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`, `resonator`, `buzz_overdrive`, `tithe_collector`, `gilded_sentinel`), or `screech_vents` (wall-vent screeches only, rare, for zones whose floor has no manholes, GDD §9.5). (The wall fences, `wall_fences` and `wall_fences_partial`, and the Barnacle Turret have no patterns: see below) |
 | `length` | Metres of track the pattern takes (the generator extends it for long gaps and hulls) |
 | `elements` | The pieces to place (see below) |
 
@@ -245,3 +245,17 @@ another, a second or two earlier or later if it doesn't fit, and move the entry 
 fits nowhere is dropped and its stretch left to the fill pass. Other patterns needn't leave room for it:
 the rules clear the holes, fences and speed pads in its cut's lane themselves, and move or drop it where a
 pad, a ramp or a ceiling's landing zone is in the way.
+
+The Gilded Sentinels' patterns (`gilded_sentinel.json`, `requires` `gilded_sentinel`; GDD §9.11, task C4)
+stand one on a wall (`side`; its `at` is its niche): one that swings once, and from difficulty 0.95 one
+that swings twice (`params.swings` 2: the stretch before its niche, then the stretch past it) or a pair
+facing each other across the street (the later ones in Golden 2, and the Palace; DESIGN-TBD,
+`docs/questions/c4.md`). Its rules (`gilded_sentinel_rules.gd`, after the other enemies' rules) keep one
+only where it's fair, moving it a few metres along its wall or dropping it: its wall section free of
+signs, wall fences, window cyborgs, wall vents and other Sentinels from its wall-run approach to past its
+cut, no ramp launching a runner into its band, the lane beside the outer one (the escape) clear of holes,
+fences, floor cuts, pads and floor enemies, and no floor cut, Octodog run, ceiling's landing or other
+Sentinel's attack meanwhile (unless they're a pair). A level's first one swings once, alone, with no big
+attack around it, and Golden 2 adds one near the feature's start when no pattern put one there. Other
+patterns need nothing for them: their signs, ramps and outer-lane pieces simply leave the Sentinels fewer
+spots. See `docs/ARCHITECTURE.md`, The generator, Gilded Sentinels.

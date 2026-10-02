@@ -44,7 +44,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 |---|---|
 | `--quick` | Quick play: the prototype level, restarting on death, with the debug keys and HUD |
 | `--seed=N --lanes=N --difficulty=X` | Quick play with that seed, lane count (3, 5 or 6) or difficulty (0–1) |
-| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `barnacle_turret` (with `ceilings`), `resonator`, `buzz_overdrive`, `tithe_collector`), wall fences (`wall_fences`, and `wall_fences_partial` for partial ones), or `floor_cutter` (a grey-box stand-in that cuts a lane's floor into a gap during play, for review). The full list is in `LevelConfig` |
+| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `barnacle_turret` (with `ceilings`), `resonator`, `buzz_overdrive`, `tithe_collector`, `gilded_sentinel` (with `--skin=golden` or `golden_palace`, whose walls open its niche)), wall fences (`wall_fences`, and `wall_fences_partial` for partial ones), or `floor_cutter` (a grey-box stand-in that cuts a lane's floor into a gap during play, for review). The full list is in `LevelConfig` |
 | `--god` | Hits don't kill (falls still do) |
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
@@ -108,8 +108,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   and a level's newest things get the most of its picks, taken from older things of their kind (enemies from
   enemies, obstacles from obstacles), so no level gets easier; enemies whose rules keep only so many (hosts,
   hover trucks, drones, Octodogs, Resonators) and the rare vent screech aren't boosted (the campaign's recency
-  curve, `data/tuning/feature_recency.tres`). The Gilded Sentinels aren't built yet: their levels already
-  list them, and they appear once their code exists.
+  curve, `data/tuning/feature_recency.tres`).
   Level names are placeholders, except the Golden Palace.
 - **Movement:** floor lanes, side-wall runs and wall jumps (a sign blocking the wall bumps you back with a
   clank), anti-grav pads onto the ceiling, ramps (higher onto the wall, with a speed boost that fades like
@@ -156,6 +155,13 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     isn't deadly: it grabs 25% of the credits you've collected and flies off. Catch it (stomp, shoot, or
     dash through it) for everything it took, plus a jackpot (in quick play, `--features=tithe_collector`,
     or review its shared mechanism with `--thief`)
+  - the Gilded Sentinels (from Golden 2): golden statues with halberds in niches set into the walls at
+    wall-run height, their eyes red. When its eyes flare and stone grinds, a Sentinel's halberd cuts what
+    lights up red: a band of its wall around the height where you step onto it, and the outer lane. Leave
+    the lane, or on the wall pass above the band (jump onto the wall) or below it (onto the wall early).
+    Later ones swing twice or stand in pairs across the street. The armor or shield blocks the cut;
+    weapons or a wall jump off the wall right by its head kill it (in quick play,
+    `--features=gilded_sentinel --skin=golden`)
 - **Bosses:** a framework for runner-style boss fights (GDD §10): the fight plays in the normal run on
   an arena track that keeps going for as long as it lasts, with the boss's health bar and phase
   markers on the HUD, weak points to stomp and weapon chip damage, a checkpoint for the final fight,
@@ -300,7 +306,7 @@ and power-up look, and a scripted run on any zone's skin; ramp launches and bloc
 family, the Barnacle Turret's looks and a ride past it, a floor cut in any zone's look, wall fences in any zone's look, the Buzz Overdrive's
 model and an encounter with it, the Floating Head, the Sleep Taker (its lure and defeat, `--scenario=lure`, and its readability
 in the dark, `--scenario=measure`), The House (`--scenario=spin|buttons|jackpot|wall|ceiling|defeat|fight`), the UI kit, every screen, a zone skin's fixed review track, the cult's feed,
-the Golden Zone's statues, any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
+the Golden Zone's statues, the Gilded Sentinels (each route past one, and its kick), any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
 lists its options. For example, a zone's arrival flyover rendered to frames on the web / low-end renderer:
 `godot --path . --rendering-method gl_compatibility --fixed-fps 10 --write-movie build/cine/f.png --quit-after 100
 res://tools/showcase/cinematic_review.tscn -- --slot=golden/intro --once`.
@@ -382,7 +388,7 @@ On a debug build, the options go into the page's engine settings: in `exports/we
 
 ## Tests
 
-`tools/godot.sh test` runs 66 suites with about 6,000,000 checks:
+`tools/godot.sh test` runs 67 suites with about 6,000,000 checks:
 - **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds, and every campaign level
   (each with every feature it lists, on its own seed and on others), at the base speed and at the zones' speeds
   (21 to 25 m/s, with the fill pass that makes campaign levels busier), each reaction window in seconds. Under
@@ -464,8 +470,8 @@ On a debug build, the options go into the page's engine settings: in `exports/we
   across chunk cuts, every kind of ceiling at one to six lanes and a boss arena's clear sky, the Dead Zone's
   near-black palette (ash-grey haze behind the Bad Dream's silhouette, embers dim and far above the play
   field, smoke only from tall ruins) and its ceilings at every width and position, the Golden Zone's gold
-  (never glowing, never sign yellow or gap orange), its statues far above the wall-run band and the
-  statue kit for the Gilded Sentinels, and for all six where the cult's emblem hides (or, in the Golden
+  (never glowing, never sign yellow or gap orange), its statues far above the wall-run band, the
+  statue kit and the Gilded Sentinels' niches set into its walls, and for all six where the cult's emblem hides (or, in the Golden
   Zone, is shown openly) and where its feed plays, never in the wall-run band (the feed's shared material
   has a suite of its own). Every skin builds its ceilings from the lanes they cover, with the orange end
   band across them and nothing below the underside past the far end, where the camera passes as you drop.
