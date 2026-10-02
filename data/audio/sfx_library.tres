@@ -20,6 +20,8 @@ volume_db = {
 "bomb_blast": -2.0,
 "bomb_whistle": -3.5,
 "bonus": -6.5,
+"buzz_charge": -3.0,
+"buzz_rev": -1.5,
 "ceiling_lower": -3.5,
 "countdown": -3.0,
 "credit_1": -11.5,

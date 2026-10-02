@@ -12,6 +12,8 @@ extends SceneTree
 ##   sfx_bank_barnacle.gd   the Barnacle Turret: popping out, its charge-up (the warning), its bolts, its death
 ##   sfx_bank_sleep_taker.gd  the Sleep Taker: its rise, its attacks' warnings (the shriek, the
 ##                        whispering, the inhale) and the attacks
+##   sfx_bank_buzz_overdrive.gd  the Buzz Overdrive: its rev (the warning: the blade spinning up) and its
+##                        charge
 ##   sfx_bank_tithe_collector.gd  the Tithe Collector: its approach cue (a smug chuckle and a cash-register ding)
 ##   sfx_bank_the_house.gd  The House: its entrance, the spin (the lever, the reels, the dings), the 7
 ##                        buttons, its attacks' warnings, the jackpot and the hopper's stomp
@@ -33,6 +35,7 @@ const BANKS: Array = [
 	preload("res://tools/asset_gen/sfx_bank_resonator.gd"),
 	preload("res://tools/asset_gen/sfx_bank_barnacle.gd"),
 	preload("res://tools/asset_gen/sfx_bank_sleep_taker.gd"),
+	preload("res://tools/asset_gen/sfx_bank_buzz_overdrive.gd"),
 	preload("res://tools/asset_gen/sfx_bank_tithe_collector.gd"),
 	preload("res://tools/asset_gen/sfx_bank_the_house.gd"),
 ]
