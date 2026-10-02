@@ -32,7 +32,7 @@ extends EnemyTuning
 @export_range(0.5, 1.5, 0.05, "suffix:m") var niche_depth: float = 0.8
 ## How far the front of the statue stands behind the wall face (a little, so its glowing eyes and gold
 ## catch the light from far down the street, where the wall is seen almost edge-on).
-@export_range(0.0, 0.3, 0.01, "suffix:m") var statue_inset: float = 0.05
+@export_range(0.0, 0.3, 0.01, "suffix:m") var statue_inset: float = 0.03
 ## DESIGN-TBD: how far it turns from the street toward the approaching runner (radians; the
 ## decorative statues on the ledges turn the same way, GoldenFacades.STATUE_TURN).
 @export_range(0.0, 0.8, 0.01) var statue_turn: float = 0.3

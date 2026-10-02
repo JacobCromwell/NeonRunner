@@ -51,11 +51,12 @@ const CUT_NAME: String = "Gilded Sentinel's halberd"
 ## Enemy-attack red (every zone): the eyes, the marks and the slashes.
 const RED := Color(1.0, 0.12, 0.08)
 ## The statue's poses (GoldenStatue's joints, in degrees; see its notes). At rest it holds its halberd
-## upright at its side, close in, so nothing of it reaches out of the niche; the swing's wind-up and
+## upright at its side, its forearm drawn back and the blade turned out along the wall, so nothing of it
+## reaches far forward and the whole statue fits in its niche; the swing's wind-up and
 ## strike are the kit's (D6a's proposals for this task): drawn back high over its right shoulder, then
 ## chopped down in front of it and across toward its left (toward the approaching runner on either wall:
 ## the statue is mirrored on the left wall). Defeated, it slumps.
-const POSE_REST: Dictionary = {"shoulder_r": Vector3(8.0, 0.0, 9.0), "elbow_r": 58.0, "grip": Vector3(90.0, 0.0, 0.0),
+const POSE_REST: Dictionary = {"shoulder_r": Vector3(-8.0, 0.0, 8.0), "elbow_r": 92.0, "grip": Vector3(0.0, 90.0, 84.0),
 	"shoulder_l": Vector3(4.0, 0.0, 7.0), "elbow_l": 14.0, "head": Vector3(4.0, 0.0, 0.0)}
 const POSE_RAISE: Dictionary = {"shoulder_r": Vector3(150.0, 20.0, 18.0), "elbow_r": 40.0, "grip": Vector3(60.0, 0.0, 0.0),
 	"shoulder_l": Vector3(30.0, 0.0, 12.0), "elbow_l": 40.0, "head": Vector3(-4.0, -12.0, 0.0)}
@@ -116,6 +117,9 @@ var _statue: MeshInstance3D
 var _statue_root: Node3D
 var _eyes: StandardMaterial3D
 var _marks: Array[MeshInstance3D] = []
+## The eyes' red light in the niche (its far side and back), rising with their flare: what a runner sees
+## of the warning from far down the street, where the wall is seen almost edge-on.
+var _glow: MeshInstance3D
 var _slashes: Array[MeshInstance3D] = []
 var _mark_strength: float = 0.0
 var _mark_fill: float = 0.0
@@ -181,6 +185,14 @@ func _build_statue() -> void:
 	_statue.set_surface_override_material(1, _eyes)
 	_statue_root.add_child(_statue)
 	_frame_key = Vector2i(Move.RAISE, 0)
+	if opens:
+		_glow = MeshInstance3D.new()
+		_glow.name = "NicheGlow"
+		_glow.mesh = _niche_glow_mesh()
+		_glow.material_override = _cut_material()
+		_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_glow.visible = false
+		add_child(_glow)
 	if not opens:
 		var niche := MeshBatch.new()
 		niche.layer(kit.material).append(kit.niche(tune.niche_width, tune.niche_height),
@@ -284,6 +296,23 @@ func _marks_mesh(stretch: Vector2) -> ArrayMesh:
 		Vector3(0.0, _band.y - _band.x + MARK_MARGIN * 2.0, 0.0))
 	_strip(st, Vector3(out.x * (tune.wall_reach - MARK_MARGIN), 0.03, near_z), along,
 		out * (_lane_end - tune.wall_reach + MARK_MARGIN * 2.0))
+	return st.commit()
+
+
+## The niche's far side (the one a runner coming down the street sees, edge-on) and its back, a few
+## centimetres inside, where the eyes' light falls.
+func _niche_glow_mesh() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var inward := Vector3(side, 0.0, 0.0)
+	var y0: float = tune.niche_sill + 0.08
+	var tall: float = tune.niche_height - 0.16
+	var deep: float = tune.niche_depth - 0.04
+	var far_z: float = -(tune.niche_width * 0.5 - 0.03)
+	# The far side: from the face into the wall (UV.x 0 at the face), UV.y up it.
+	_strip(st, Vector3(side * 0.02, y0, far_z), inward * (deep - 0.02), Vector3(0.0, tall, 0.0))
+	# The back.
+	_strip(st, Vector3(side * deep, y0, far_z), Vector3(0.0, 0.0, tune.niche_width - 0.06), Vector3(0.0, tall, 0.0))
 	return st.commit()
 
 
@@ -546,6 +575,8 @@ func _process(delta: float) -> void:
 		_show_frame(Move.HUSK, 0.0)
 		_eyes.emission_energy_multiplier = 0.0
 		_eyes.albedo_color = Color(0.05, 0.04, 0.04)
+		if _glow != null:
+			_glow.visible = false
 		_fade_marks(delta)
 		if world.player != null and world.player_distance() - track_distance() > HUSK_KEEP:
 			queue_free()
@@ -592,6 +623,11 @@ func _process(delta: float) -> void:
 	if (state == State.WARNING or state == State.HOLD) and not reduced:
 		throb = 0.8 + 0.2 * sin(TAU * _clock * lerpf(2.5, 6.0, flare))
 	_eyes.emission_energy_multiplier = lerpf(EYES_IDLE, EYES_FULL, flare) * throb
+	if _glow != null:
+		_glow.visible = flare > 0.01
+		var gm := _glow.material_override as ShaderMaterial
+		gm.set_shader_parameter(&"strength", 0.9 * flare * throb)
+		gm.set_shader_parameter(&"fill", 1.0)
 	_update_marks(delta, reduced)
 
 
