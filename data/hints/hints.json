@@ -40,6 +40,8 @@
 		{ "id": "marketplace_boss_jackpot", "trigger": "boss:marketplace_boss/jackpot", "text": "JACKPOT! Its hopper burst open: jump onto the glowing red hopper on its top to stomp it." },
 		{ "id": "marketplace_boss_wall_button", "trigger": "boss:marketplace_boss/wall_button", "text": "A 7 button on the wall! Run along the wall over it. Time the wall fences: they crackle before they switch on." },
 		{ "id": "marketplace_boss_ceiling_button", "trigger": "boss:marketplace_boss/ceiling_button", "text": "A 7 button on the ceiling! Take the anti-grav pad, ride under the billboard over it, and dodge the turrets' shots." },
+		{ "id": "gangland_boss", "trigger": "enemy:gangland_boss", "text": "The Sewer Swarm! Its clusters surge down the lanes. The street is your weapon: lure them into live fences and holes." },
+		{ "id": "gangland_boss_bait", "trigger": "boss:gangland_boss/bait", "text": "A red line down your lane: a cluster is coming down it. Stand in a lane with a fence or a hole on the line, then get out of the way as it charges: it runs straight into it." },
 		{ "id": "pickup_armor", "trigger": "pickup:armor", "text": "Armor pickup ahead: run through it to get your armor back at once. Armor blocks enemy attacks and electric shocks." },
 		{ "id": "pickup_shield", "trigger": "pickup:shield", "text": "Shield pickup ahead: run through it. A shield blocks one hit of anything." },
 		{ "id": "pickup_grapple", "trigger": "pickup:grapple", "text": "Grapple pickup ahead: run through it. The grapple hook saves you from one fall." }
