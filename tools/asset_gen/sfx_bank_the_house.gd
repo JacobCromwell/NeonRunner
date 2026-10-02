@@ -226,7 +226,7 @@ func _slam() -> PackedFloat32Array:
 ## JACKPOT: two-tone sirens wailing over a fanfare of bells.
 func _jackpot() -> PackedFloat32Array:
 	var rng := _rng(610)
-	var d: float = 2.6
+	var d: float = 2.35
 	var b := DSP.buffer(d)
 	var siren := DSP.osc(d, func(u: float) -> float: return 880.0 if fmod(u * d * 2.2, 1.0) < 0.5 else 660.0, &"square")
 	DSP.filter(siren, &"lowpass", 3000.0)
