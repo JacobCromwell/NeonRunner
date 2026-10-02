@@ -357,7 +357,8 @@ func _test_board(lanes: int, speed: float) -> void:
 ## Budgets and the colour rule (GDD §5: only hazards glow in hazard colours; the weak points' red, the gaps'
 ## orange and the way-up's green chevrons are the fight's): the gunship, the locomotive and the Chairman
 ## glow only in cold white and the brand's blue; the train's material breaks away and comes back whole; the
-## streaming city makes no nodes while the runner goes on.
+## streaming city makes no nodes while the runner goes on; the live couplings' pulse is steady with Reduced
+## flashing.
 func _test_look() -> void:
 	var pair: Array = _fight(def, 6, 23.4)
 	var world: RunWorld = pair[0]
@@ -409,6 +410,20 @@ func _test_look() -> void:
 	check(peak <= most + 4 and chunks <= window and _count(boss) == parts_before,
 		"the city streams past without new nodes: a chunk's %d → at most %d, %d chunks at most (%d), the boss's %d → %d" % [
 			most, peak, chunks, window, parts_before, _count(boss)])
+	# The live couplings pulse (the weak points' language), steady with Reduced flashing.
+	var was: bool = Settings.flashing_reduced
+	for reduced: bool in [false, true]:
+		Settings.flashing_reduced = reduced
+		var glows: Array[float] = []
+		for i: int in 12:
+			await physics_frames(3)
+			glows.append(boss.couplings.live_glow())
+		var spread: float = float(glows.max()) - float(glows.min())
+		if reduced:
+			check(is_zero_approx(spread) and is_equal_approx(glows[0], 1.0), "a live coupling glows steady with Reduced flashing")
+		else:
+			check(spread > 0.1, "a live coupling's glow pulses (%.2f)" % spread)
+	Settings.flashing_reduced = was
 	var towers: Dictionary = skin.towers_for(1, world.geo.wall_x())
 	var verts: PackedVector3Array = towers["verts"]
 	var inside: bool = false

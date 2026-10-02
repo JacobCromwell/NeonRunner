@@ -242,6 +242,11 @@ func _tick(delta: float) -> void:
 			Vector3(0.0, -2.5 * t * t, 4.5 * t * t))
 
 
+## The live couplings' glow now (their pulse; steady at 1 with Reduced flashing), for tests and reviews.
+func live_glow() -> float:
+	return float(_live_mat.get_shader_parameter(&"state_glow"))
+
+
 ## Never a target, never retired with the fight on (a boss's part).
 func targetable() -> bool:
 	return false
