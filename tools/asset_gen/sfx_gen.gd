@@ -18,6 +18,8 @@ extends SceneTree
 ##   sfx_bank_the_house.gd  The House: its entrance, the spin (the lever, the reels, the dings), the 7
 ##                        buttons, its attacks' warnings, the jackpot and the hopper's stomp
 ##   sfx_bank_sentinel.gd  the Gilded Sentinels: the stone grind (the warning), the swing and the break
+##   sfx_bank_hostile_takeover.gd  Hostile Takeover: the gunship's entrance, the couplings going live, a
+##                        coupling stomped and the carriages breaking away
 ##   sfx_bank_sewer_swarm.gd  the Sewer Swarm: the Rising, a surge's rising chitter (the warning) and its
 ##                        rush, a cluster shocked by a fence, falling into a hole, scattering
 ## Run: tools/godot.sh sfx   (--only=jump,land renders just those; --review also writes
@@ -42,6 +44,7 @@ const BANKS: Array = [
 	preload("res://tools/asset_gen/sfx_bank_tithe_collector.gd"),
 	preload("res://tools/asset_gen/sfx_bank_the_house.gd"),
 	preload("res://tools/asset_gen/sfx_bank_sentinel.gd"),
+	preload("res://tools/asset_gen/sfx_bank_hostile_takeover.gd"),
 	preload("res://tools/asset_gen/sfx_bank_sewer_swarm.gd"),
 ]
 const OUT_DIR: String = "res://assets/sfx"
