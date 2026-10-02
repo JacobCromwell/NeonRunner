@@ -32,12 +32,37 @@ var _placed: Array[Dictionary] = []
 var _pulsing: Array[Dictionary] = []
 ## Floor warnings, for warned(): {node, from, to, x0, x1} (track distances, world x).
 var _warned: Array[Dictionary] = []
+## Target circles' rings by radius (circle_warning): one mesh for every circle of a size (task PERF1).
+static var _rings: Dictionary = {}
+## The skins whose fence looks this process has built (setup): their kit's first build is the costly one.
+static var _warmed_skins: Dictionary = {}
 
 
 func setup(p_world: RunWorld) -> void:
 	world = p_world
 	top_level = true
 	transform = Transform3D.IDENTITY
+	_warm_up()
+
+
+## Builds the zone skin's fence looks (full and gapped) once a process, during the fight's load, and
+## frees them (task PERF1: a boss's first row of fences built the kit's meshes and materials in the
+## frame it came, 3.8 ms on the dev machine for The House's first lightning row, about 1 ms after).
+func _warm_up() -> void:
+	var skin: ZoneSkin = world.skin if world != null else null
+	if skin == null or _warmed_skins.has(skin.get_instance_id()):
+		return
+	_warmed_skins[skin.get_instance_id()] = true
+	var t: MovementTuning = world.tuning
+	for gapped: bool in [false, true]:
+		var bottom: float = t.fence_gapped_bottom if gapped else 0.0
+		var top: float = t.fence_gapped_top if gapped else t.fence_full_top
+		# A look only: no layers, never in the tree, so nothing can touch it.
+		var hazard := Hazard.new()
+		hazard.collision_layer = 0
+		hazard.monitorable = false
+		skin.fence(hazard, Vector3(world.geo.lane_width - 0.2, top - bottom, t.fence_depth), -(bottom + top) * 0.5, gapped)
+		hazard.free()
 
 
 ## A pink electric fence across `lane` at track distance `at`: "full" (jump it or switch lanes) or
@@ -158,13 +183,8 @@ func floor_warning(node: Node3D, lane: int, from: float, to: float) -> Node3D:
 ## A red target circle on the floor at track distance `at` over `lane` (x offset `x` from the lane's
 ## centre): where a bomb or a blow will land.
 func circle_warning(at: float, lane: int, radius: float = 1.0, x: float = 0.0) -> MeshInstance3D:
-	var ring := TorusMesh.new()
-	ring.inner_radius = radius * 0.78
-	ring.outer_radius = radius
-	ring.rings = 24
-	ring.ring_segments = 6
 	var mesh := MeshInstance3D.new()
-	mesh.mesh = ring
+	mesh.mesh = _ring(radius)
 	mesh.material_override = GreyboxMaterials.glow(WARNING_COLOR, 2.6, 0.85)
 	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var base := Transform3D(Basis.from_scale(Vector3(1.0, 0.25, 1.0)),
@@ -176,6 +196,19 @@ func circle_warning(at: float, lane: int, radius: float = 1.0, x: float = 0.0) -
 	_warned.append({"node": mesh, "from": at - radius, "to": at + radius, "x0": cx - radius, "x1": cx + radius})
 	keep(mesh, at + radius)
 	return mesh
+
+
+## A target circle's ring of `radius`, shared by every circle that size.
+static func _ring(radius: float) -> TorusMesh:
+	var key: float = snappedf(radius, 0.001)
+	if not _rings.has(key):
+		var ring := TorusMesh.new()
+		ring.inner_radius = key * 0.78
+		ring.outer_radius = key
+		ring.rings = 24
+		ring.ring_segments = 6
+		_rings[key] = ring
+	return _rings[key]
 
 
 ## Keeps `node` (added here if it has no parent) until the player is KEEP_BEHIND past `until`.
