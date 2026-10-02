@@ -109,10 +109,74 @@ Every number is `SpeedFxTuning` (`scripts/run/speed_fx_tuning.gd`, `data/tuning/
     their own, real delta underneath. It **never touches `Engine.time_scale`** (`SlowTimePowerup`
     owns that for its own, very different, deliberate slow-down) or pauses anything, so a seeded run
     plays out identically whether or not it fires (`test_speed_fx`: the same actions on the same
-    layout, with and without a forced freeze, give the same distance, lane and event log).
+    layout, with and without a forced freeze, give the same distance, lane and event log). Freezes
+    never stack or chain (task PERF1): requests in the frame a freeze begins keep the longer one, and
+    one asked for less than `SpeedFxTuning.freeze_gap` (0.3 s) after the last one began is left out,
+    so a run of kills never holds the camera again and again (Smooth frames, below).
   - **Screen shake** (Settings) scales every shake and hit-stop through `RunEffects.shake_scale`
     (`shake()` and `freeze()` both no-op at 0); the field-of-view kick, the lean and the speed lines
     stay on regardless, since none of them snap or strobe.
+
+### Smooth frames (task PERF1, the owner's report, October 2, 2026)
+
+"The overall performance of the game is getting worse. Lag spikes are more common." Measured, the spikes had
+five sources; every fix leaves what the game decides alone (a seeded run's event log is the same before and
+after, run by run: `frame_times.gd --log`, and `test_perf`).
+
+- **An enemy type's first spawn** (the largest frames on the CPU, already there before the playtest work): it
+  loaded and compiled the type's scripts and built the look its kind shares in that frame, 120 to 290 ms for a
+  cyborg or a window cyborg on the dev machine (the Golden look the most), 30 to 70 ms for a hover truck, a
+  Barnacle Turret, a screech or a drone. The director readies every type the level brings during the load
+  (Enemies, Readied with the level).
+- **Shaders first drawn mid-run** (the GPU side; there are more of them since the playtest work: doodads,
+  wall fences, the Resonator, the Barnacle Turret, the weapon's effects): 4 to 16 shaders a level were first
+  drawn after the load (`frame_times.gd --shaders`), each a long frame on a real renderer while it compiles
+  them (Compatibility, the web demo) or builds their pipelines (Forward+: 48 surface and 35 specialization
+  pipelines during 25 s of Gangland 3; under xvfb's software renderers a first screech, generator, missile or
+  window cyborg took 0.3 to 3 s). `ShaderWarmup` (`scripts/run/shader_warmup.gd`; LevelRun adds it whenever the
+  game renders) draws one copy of each look the level may show later, too small to see in front of the camera,
+  for the level's first two drawn frames: every material on the run's hidden nodes (pools, the weapon's
+  effects), the effects' glow, one look of each enemy kind (`EnemyDirector.warm_looks()`, every part shown) and
+  each track piece the zone skin dresses (fences in each state, wall fences, a sign, pads, ramps, speed pads,
+  ceilings, doodads, gap edges, the finish line). After it no shader on Gangland 3 is first drawn mid-run.
+- **Hit-stops** (G2's brief freeze on every kill and stomp): none in the build before the playtest work, now 4
+  to 26 a level (6.6 a minute with a full loadout). Each holds the camera still for three frames while the run
+  goes on, so the view jumps 1.0 to 1.25 m when it lets go: on screen, exactly what a dropped frame looks like.
+  They never stack or chain now (`freeze_gap`, Speed effects above); whether every kill should keep one is the
+  owner's call (`docs/questions/perf1.md`). The frame graph marks the frames a hit-stop holds.
+- **Chunk builds**: a chunk's build is almost all the zone skin's dressing (1.4 to 3.7 ms a chunk on the dev
+  machine, `wall_section` the most; the collision, hazards, triggers, doodads' bodies, wall fences and cuts 0.1
+  to 0.3 ms), all in one frame every 1.6 to 1.9 s, and up 5 to 15% since `a5e691b` in the Marketplace and
+  Corporate (the citizens, busier facades). `TrackBuilder.dress_budget_usec` (LevelRun sets it from
+  `PerformanceTuning.chunk_dress_budget_ms`, 1 ms, F6 "Performance") builds a chunk's gameplay nodes in its
+  frame as before and queues the skin's calls, which `update()` makes in order, about the budget a frame (at
+  least one call), finishing a chunk's whatever the time once the player is `DRESS_BY` (120 m) from it.
+- **Boss props**: every target circle built a torus mesh and a boss's first row of fences built the kit's
+  fence look in its frame (3.8 ms for The House's first lightning row); `BossProps` shares rings by radius and
+  builds the skin's fence looks during the fight's load. The House also re-plans a strike waiting for fair lanes
+  every frame (a route search per candidate lane set, `TheHouseAttacks._try_strike`) for up to `strike_wait`:
+  5 to 10 ms frames for about 0.3 s on the dev machine. Re-planning less often would change when strikes come,
+  so it's left to The House's next task.
+
+Ruled out by measuring: physics bodies (a chunk's are 0.1 to 0.3 ms in all), effects (bursts, debris, lines,
+coin streams and shots are pooled; the speed lines are one canvas pass), and the per-frame checks (the median
+frame is about 1 ms headless, up 2 to 13% since `a5e691b` with the faster, busier levels; the 99th percentile
+up 10 to 35%).
+
+**Measuring.** `FrameMonitor` (`scripts/run/frame_monitor.gd`) times every frame (its whole time; the game's
+work before the renderer draws; its physics steps) and tags it from the run's own signals and a look at its
+state once a frame (chunks built and freed, spawns, kills, hit-stops and the frames they hold, bursts, credits,
+pickups, sounds, big changes in the tree, objects made, pipelines compiled), so nothing in the game reports to
+it. In debug builds LevelRun keeps one, and `FrameGraph` (`scripts/ui/frame_graph.gd`, F7 or `--frame-graph`)
+draws its last 300 frames: each frame's time and the game's part, spikes (over 1.6 times the median and 8 ms)
+in their own colour, the frames a hit-stop holds, and the latest of both listed with their tags.
+`tools/measure/frame_times.gd` plays every level and boss fight headless and reports per run (Review tools);
+under xvfb it counts draw calls, primitives and pipelines. `test_frame_times` holds three levels to budgets.
+
+The numbers (`frame_times.gd`, 5 lanes, full loadout, headless on the dev machine, two passes each in a fresh
+process, each frame's faster time; times in ms of CPU; `a5e691b` / today's main / with PERF1):
+
+TABLE_PLACEHOLDER
 
 ## Data (tunables live in data, CLAUDE.md principle 7)
 
@@ -124,6 +188,7 @@ Every number is `SpeedFxTuning` (`scripts/run/speed_fx_tuning.gd`, `data/tuning/
 | `data/tuning/pickups.tres` (`PickupTuning`) | in-run pickups: where they appear, taking them, the charge cap, the look |
 | `data/tuning/feature_recency.tres` (`FeatureRecency`) | the campaign's recency curve: how a level's pick weights follow how recently the campaign introduced each feature |
 | `data/tuning/wall_fences.tres` (`WallFenceTuning`) | wall fences (B5): how often, how they pulse, their introduction, and the fairness margins (their sizes are the movement tuning's) |
+| `data/tuning/performance.tres` (`PerformanceTuning`) | smooth frames (PERF1): how long a frame may spend dressing built chunks, and `test_frame_times`' frame-time budgets |
 | `data/enemies/<type>.tres` (`EnemyTuning` subclasses) | per-enemy numbers, early/late pairs for campaign scaling |
 | `data/shop/catalog.json` | shop items, tiers and prices (the armor's texts take `{hits}` and `{seconds}`, filled from `GameRules` by `ShopScreen.item_text()`) |
 | `data/campaign/campaign.tres` → `data/zones/*.tres` → `data/levels/*.tres` | the campaign; each zone's run speed (`ZoneDef.run_speed`, a level may set its own), each level's pacing, fill pass, zone doodads and credits |
@@ -297,6 +362,18 @@ every attempt at a seed plays out the same way. Setting `is_host` also sets `imm
 splash, the same way a fence generator declares its own immunity (GDD §9.1), so no targeting, no
 damage and no health bar; only a stomp, the claws or the dash still kill it, with the host bonus.
 Every attack needs a visual **and** audio warning before it can hurt (CLAUDE.md readability rules).
+**Readied with the level** (task PERF1): `EnemyDirector.warm_up()` (from `setup()`, during the load) loads
+the script and tuning of every type the layout names, and for a type whose script has a static
+`warm_up(world: RunWorld, entry: Dictionary) -> Node` builds one look of each kind (type, zone look, host)
+and frees it, once a process: what a type's first spawn used to do in its own frame (compiling its scripts
+and building the meshes, materials and shaders its kind shares; up to 290 ms for a cyborg). The hook builds
+the visual model only, as `entry`'s would be, outside the tree, with every part the enemy may show later
+(a muzzle's charge, a lunge line, a wave), since `ShaderWarmup` draws the same looks once during the load
+(`warm_looks()`, A run). A type whose enemies bring others into play names them with a static
+`brings(entry: Dictionary) -> Array[Dictionary]` (a host cyborg's Bad Dream). The cyborg, window cyborg,
+screech, Octodog, Resonator, Barnacle Turret, Bad Dream and fence generator have hooks; a new enemy whose
+first spawn builds anything costly adds one (`test_perf` checks every hooked kind is readied and nothing
+of it stays).
 Enemy fire uses the pool's red "enemy_*" looks in every zone. `world.skin.enemy_variant` picks the
 zone look: the cyborgs (window cyborgs and hosts too) dress in the zone variant
 `CyborgSuit.look_for()` finds for it (see Zone skins for each zone's value, and Characters), and the
@@ -992,6 +1069,10 @@ crackle = electric fence).
 for each side (a no-op default): the chunk's wall enemy layout entries (type, at, side, ...), for a
 skin whose own scenery would otherwise double up with one (the Marketplace's citizens, task D3, kept
 clear of window cyborgs); read-only and visual only, like every other hook.
+In a run, a chunk's hooks come over the few frames after its gameplay nodes are built, in order, each
+side's `note_wall_enemies` and `wall_section` in one go (`TrackBuilder.dress_budget_usec`, task PERF1;
+A run, Smooth frames): a hook never counts on the frame it's called in, and a hazard's look shows the
+hazard's state when it binds (`HazardStateVisual.bind`). Tests and review tools dress each chunk at once.
 
 **Zone doodads' looks** (task G5 built the mechanism and a plain default; task G6 gives each zone its
 own, except the grey box, which keeps the plain default. `GoldenPalaceSkin` (D6b) extends `GoldenSkin`
@@ -2319,6 +2400,20 @@ campaign level exactly the same without the features but for its wall fences (pa
 guarantee builds too), and the levels without them having none; quick play with them among every rule's pieces
 (`LayoutChecks.check_layout`); `wall_fence_problem` naming each rule; the hints; every skin's look; and a boss
 arena carrying them.
+`test_perf` checks what keeps frames smooth (task PERF1; A run, Smooth frames) and that none of it changes the
+game: a chunk's dressing spread over frames (the same gameplay nodes in each chunk's frame, the same look once
+dressed, every chunk dressed before the player is `DRESS_BY` from it, a chunk freed undressed skipped without
+errors, and a seeded run on Gangland 2 with its enemies giving the same trace, events and enemy log at budgets of
+0, 1 µs and 1 ms), enemy types readied with the level (every hooked kind and a host's Bad Dream, scripts loaded,
+nothing left in the tree or heard, once a process, `warm_looks()`), hit-stops that never stack or chain, BossProps'
+shared rings, the shader warm-up stage (the cyborgs' looks, fences in every state, particles as particles, the
+run's hidden looks, nothing colliding, lit or top-level), the frame monitor's tags (chunks, a spawn, a kill and
+its hit-stop, the held frames) and summaries, and the frame graph's spikes and holds. `test_frame_times` plays
+City 3, Marketplace 2 and Golden 2 for 40 s each as the game does (`frame_times.gd --child`, two passes, each in
+a fresh process, each frame's faster time) and holds their 99th percentile and worst frame to
+`PerformanceTuning`'s test budgets, scaled by load the way the skin suites' chunk budgets are: each pass times
+`SkinSuite`'s reference build every 60 frames alongside the run (`--reference`, far off to one side, left out of
+the frames), and `SkinSuite.load_factor()` widens the budgets by how slow the machine is right then.
 `test_web_demo` checks the web demo's preset, its export filter against
 the data and everything the demo references, and walks the demo from the title to its end screen (see
 Platforms and build flavors). The runner frees
@@ -2381,6 +2476,25 @@ about ten minutes; `--seeds=6` adds six other seeds a level, `--seeds=9007-9020`
 enemies' own states and the live shots, never from the turn-taking code (only the waits come from the
 director's answers), and hashes each run's event log, so two builds (or the switch off and a build
 without the rule) can be compared run by run.
+
+`tools/measure/frame_times.gd` measures frame times (task PERF1; A run, Smooth frames): it plays campaign
+levels and boss fights (built ones, and ones still being built through their preview scene) through the App
+as the game does, without App.boot (a stand-in for the main scene), with a scripted runner (god mode, no
+falls, the zone's speed; the level's seed picks a lane switch, a jump or a slide every 0.5 to 1.25 s; a boss's
+test bot where there is one), and times every frame with a `FrameMonitor`. Each pass runs in a fresh Godot
+process (`--child`), so it pays what a session starting there pays, and each frame keeps its fastest time over
+the passes (`--passes=N`, 2), since another process taking the CPU shows in one pass only; `--session` plays
+everything in one process instead. Per run: the median, 95th and 99th percentile and worst frame, frames over
+8 and 16 ms, the load, kills and hit-stops (begun, frames held, the longest hold, holds that ran into the
+next), and the causes of the frames over 4 ms by time over the median; `--log` hashes an event log (AttackWatch's,
+every kill, the runner's place each second), `--shaders` lists the shaders first drawn after the load (always on
+under xvfb, where it also counts draw calls, primitives, objects and compiled pipelines by source), and
+`--reference` times SkinSuite's reference build alongside (`test_frame_times`). The headless run is the CPU
+only (the dummy renderer); xvfb's software renderers give valid counts, not times
+(`godot --headless --fixed-fps 60 -s res://tools/measure/frame_times.gd -- [--levels=city/1] [--bosses=]
+[--frames] [--out=build/measure/x.json]`; the whole campaign and its bosses take about fifteen minutes). It
+runs on older builds too (it reads them by property names): copy it and `scripts/run/frame_monitor.gd` into
+a `git archive` of the build.
 
 `tools/measure/stomp_routes.gd` measures how forgiving the Floating Head's ways onto its head are, in its
 fight on a plain street at the City boss step's speed (21 m/s; `--speed=N` for another, 18 for the
