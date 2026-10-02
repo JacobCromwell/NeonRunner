@@ -7,7 +7,8 @@ extends SceneTree
 ##   godot --headless --fixed-fps 60 -s res://tools/measure/frame_times.gd -- [options]
 ## Options:
 ##   --levels=city/1,gangland/2    campaign levels (default: every level); --levels= for none
-##   --bosses=city_boss            built zone bosses (default: every one); --bosses= for none
+##   --bosses=city_boss            zone bosses (default: every built one, and every one still being built
+##                                 that has a preview scene, played as --boss= plays it); --bosses= for none
 ##   --lanes=5                     the lane count (default: a PC's, GameRules.lanes_pc)
 ##   --loadout=full|none           what the runner brings (default full: its weapon fires and kills as a
 ##                                 stocked-up player's does, so kills and their hit-stops happen)
@@ -140,7 +141,7 @@ func _run_all() -> void:
 	if not _bosses_given:
 		for s: Object in campaign.call(&"steps"):
 			var def: Object = s.get(&"boss")
-			if def != null and bool(def.call(&"is_built")):
+			if def != null and (bool(def.call(&"is_built")) or (def.has_method(&"preview") and def.call(&"preview") != null)):
 				_bosses.append(String(def.get(&"id")))
 	var ids: Array[String] = []
 	for id: String in _levels:
@@ -322,7 +323,13 @@ func _measure(campaign: Object, key: String) -> Dictionary:
 	_monitor.set(&"world", null)
 	await physics_frame
 	var t0: int = Time.get_ticks_usec()
-	_app.call(&"play_step", step, 0)
+	var boss_def: Object = step.get(&"boss") if is_boss else null
+	var preview: Object = boss_def.call(&"preview") if boss_def != null and boss_def.has_method(&"preview") else null
+	if preview != null:
+		# A fight still being built plays its preview scene as quick play, as --boss= does.
+		_app.call(&"start_boss_quick", preview, args)
+	else:
+		_app.call(&"play_step", step, 0)
 	var load_ms: float = (Time.get_ticks_usec() - t0) / 1000.0
 	_run = _app.get(&"run")
 	if _run == null:
@@ -531,11 +538,19 @@ func _scan_materials(during_play: bool = true) -> void:
 				fresh += 1
 				var where: Node = shaders[k]
 				_firsts.append({"frame": int(_monitor.call(&"frame_count")), "shader": k,
-					"node": String(_run.get_path_to(where)).get_slice("/", 0) + "/.../" + String(where.name)})
+					"node": _short_path(where)})
 	if fresh > 0:
 		_monitor.call(&"tag", "shader+%d" % fresh)
 	_peak_materials = maxi(_peak_materials, materials.size())
 	_peak_shaders = maxi(_peak_shaders, shaders.size())
+
+
+## Where a node is in the run, short: its first two and last two names (World/Enemies/.../Body/Part).
+func _short_path(node: Node) -> String:
+	var parts: PackedStringArray = String(_run.get_path_to(node)).split("/")
+	if parts.size() > 4:
+		parts = PackedStringArray([parts[0], parts[1], "...", parts[-2], parts[-1]])
+	return "/".join(parts)
 
 
 ## What makes a material's shader, by name: a shader material's own shader (its file, or a hash of its
