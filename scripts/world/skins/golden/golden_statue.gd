@@ -16,7 +16,9 @@ extends RefCounted
 ##   shoulder pivot with the forearm on the elbow pivot; the halberd on the right hand's grip pivot),
 ##   so the enemy can pose and animate it (apply_pose() with a pose or a blend_poses() of two, or turn
 ##   the pivots itself) and give the eyes a glowing material of its own (the decorative eyes are dark
-##   and unlit). niche() is the niche it stands in, in the facades' look.
+##   and unlit). niche() is a niche in the facades' look standing proud of any wall; recess() is the
+##   one set into the wall that the Golden Zone's skins open where a live one stands
+##   (GoldenSkin.note_wall_enemies), so nothing of the statue reaches out over the wall-run path.
 ##
 ## Statue space: the pedestal's foot at the origin (the statue's feet, without a pedestal), facing +Z,
 ## +Y up, metres at scale 1: the figure is STATURE tall (feet to crest), the halberd HALBERD_LENGTH
@@ -283,6 +285,55 @@ func niche(width: float, height: float) -> MeshLayer:
 	# The sill.
 	t.box(Vector3(0.0, -0.06, z + 0.12), Vector3(width + f * 2.0 + 0.1, 0.12, 0.3), stone, 0.0, MeshKit.PAT_MARBLE,
 		MeshKit.ALL_FACES & ~MeshKit.FACE_NZ, 1.0)
+	_merged[key] = t
+	return t
+
+
+## The niche a live Gilded Sentinel stands in, set into the wall (task C4; GildedSentinel): the Golden
+## Zone's skins leave its opening out of the wall face (GoldenSkin.note_wall_enemies) and append this
+## there. Niche space as niche(): the wall face at z = 0, the opening facing +Z, `width` wide and from
+## its floor (y = 0) up `height`, the recess `depth` deep behind the face (-Z): a dark back and sides, a
+## marble floor, and on the face a polished gold frame whose spandrels round the opening's top into an
+## arch, and a marble sill line. Everything on the face stands at most a few centimetres proud, so
+## nothing of it reaches out over the wall-run path. One template per size, for the solid material.
+func recess(width: float, height: float, depth: float) -> MeshLayer:
+	var key: String = "recess_%s_%s_%s" % [width, height, depth]
+	if _merged.has(key):
+		return _merged[key]
+	var t := MeshLayer.new()
+	var hw: float = width * 0.5
+	var back := Color(0.07, 0.06, 0.055)
+	var sides := Color(0.15, 0.13, 0.11)
+	# The recess: back, sides, ceiling (all facing the opening) and the marble floor.
+	t.rect(Vector3(-hw, 0.0, -depth), Vector3(width, 0.0, 0.0), Vector3(0.0, height, 0.0), back, 0.0, MeshKit.PAT_MARBLE)
+	t.rect(Vector3(-hw, 0.0, -depth), Vector3(0.0, height, 0.0), Vector3(0.0, 0.0, depth), sides, 0.0, MeshKit.PAT_MARBLE)
+	t.rect(Vector3(hw, 0.0, -depth), Vector3(0.0, 0.0, depth), Vector3(0.0, height, 0.0), sides, 0.0, MeshKit.PAT_MARBLE)
+	t.rect(Vector3(-hw, height, -depth), Vector3(width, 0.0, 0.0), Vector3(0.0, 0.0, depth), back, 0.0, MeshKit.PAT_MARBLE)
+	t.rect(Vector3(-hw, 0.0, -depth), Vector3(0.0, 0.0, depth), Vector3(width, 0.0, 0.0), stone * Color(0.7, 0.7, 0.7), 0.0,
+		MeshKit.PAT_MARBLE)
+	# The gold frame on the face: jambs and lintel, a few centimetres proud.
+	var f: float = 0.12
+	var z: float = 0.012
+	for sx: float in [-1.0, 1.0]:
+		t.box(Vector3(sx * (hw + f * 0.5), (height + f) * 0.5 - f * 0.5, z), Vector3(f, height + f, 0.024), gold, 0.0,
+			MeshKit.PAT_GOLD, MeshKit.FACE_PZ | MeshKit.FACE_PX | MeshKit.FACE_NX | MeshKit.FACE_PY, POLISH_TRIM)
+	t.box(Vector3(0.0, height + f * 0.5, z), Vector3(width + f * 2.0, f, 0.024), gold, 0.0, MeshKit.PAT_GOLD,
+		MeshKit.FACE_PZ | MeshKit.FACE_PY | MeshKit.FACE_NY, POLISH_TRIM)
+	# The spandrels: gold filling the opening's top corners outside a half circle, so it reads as an arch.
+	var spring: float = maxf(height - hw, 0.0)
+	var steps: int = 8
+	for sx: float in [-1.0, 1.0]:
+		var corner := Vector3(sx * hw, height, z)
+		for i: int in steps:
+			var a0: float = PI * 0.5 * float(i) / steps
+			var a1: float = PI * 0.5 * float(i + 1) / steps
+			var p0 := Vector3(sx * cos(a0) * hw, spring + sin(a0) * hw, z)
+			var p1 := Vector3(sx * cos(a1) * hw, spring + sin(a1) * hw, z)
+			_tri(t, corner, p0, p1, gold)
+			_tri(t, corner, p1, p0, gold)
+	# The sill line under the opening.
+	t.box(Vector3(0.0, -0.05, z), Vector3(width + f * 2.0, 0.1, 0.024), stone, 0.0, MeshKit.PAT_MARBLE,
+		MeshKit.FACE_PZ | MeshKit.FACE_PY, 1.0)
 	_merged[key] = t
 	return t
 
