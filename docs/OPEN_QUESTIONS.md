@@ -142,7 +142,7 @@ The owner reviewed every placeholder below. **GB** means "From the R1 core-movem
 - title and brand: FB 109
 - other: FB 111 (achievements)
 
-**R6 (October 2, 2026): markers taken off the items approved as is.** The  markers of these items
+**R6 (October 2, 2026): markers taken off the items approved as is.** The `DESIGN-TBD` markers of these items
 are now plain doc comments naming the item; every other item keeps its marker (changes until their value is in place,
 tune after playtesting, later design rounds, and every item from build phase 2).
 
