@@ -2,8 +2,9 @@ extends RefCounted
 ## Generator rules for the Gilded Sentinels (GDD §9.11; GildedSentinel). Patterns place them on a wall
 ## (data/patterns/gilded_sentinel.json: one, one that swings twice, a pair facing each other across the
 ## street); LevelGenerator runs apply() after the rules of every feature that puts things on the floor or
-## the walls before them (RUN_AFTER), and the Resonator's, the Barnacle Turret's and the floor cutter's
-## rules run after these (theirs name this feature), so those plan around the Sentinels.
+## the walls before them, the Buzz Overdrive's floor cuts included (RUN_AFTER, whatever the order of the
+## level's features), and the Resonator's, the Barnacle Turret's and the floor cutter's rules run after
+## these (theirs name this feature), so those plan around the Sentinels.
 ## Each Sentinel's attack, at the level's run speed (GildedSentinelTuning: seconds at that speed, so
 ## they hold at every zone's pace, GDD §3), is its window (attack_window: from where the runner is when
 ## its eyes flare to the end of the stretch its swings cut), and where it may stand (problem()):
@@ -42,7 +43,7 @@ extends RefCounted
 
 const TYPE: String = "gilded_sentinel"
 const RUN_AFTER: Array[String] = ["cyborg", "window_cyborg", "hover_truck", "octodog", "generator", "drone", "host",
-	"screech", "screech_vents", "tithe_collector"]
+	"screech", "screech_vents", "tithe_collector", "buzz_overdrive"]
 ## Enemy types whose big attacks (their keep_out, LevelGenerator.enemy_keep_out) every Sentinel's window
 ## keeps off: the Octodog's planned charges and a floor cut's cause. The introduction keeps off
 ## STRICT_ATTACKS too. (Resonators plan their pulses after the Sentinels, off their floor_span, and wait
