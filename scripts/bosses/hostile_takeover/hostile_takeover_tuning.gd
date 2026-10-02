@@ -9,17 +9,28 @@ extends Resource
 ## locomotive fly and stand (framing) stay as they are.
 ## The GDD fixes the train (the Chairman's armored maglev express, run from its rear roof toward the
 ## locomotive: carriage roofs are the floor, the gaps between carriages are the gaps), the gunship pacing it
-## overhead, the Chairman glimpsed in the locomotive's window, and phase 1 (The Board): security cyborgs on
-## the roofs, a Tithe Collector skimming credits, partial wall fences along the sound barriers, and a
-## glowing red coupling in one lane above each gap, stomped by landing on it while jumping the gap, which
-## sends the carriages behind tumbling off the track. Every number here is a placeholder (DESIGN-TBD,
-## docs/questions/e5b.md).
+## overhead, the Chairman glimpsed in the locomotive's window, phase 1 (The Board: security cyborgs on the
+## roofs, a Tithe Collector skimming credits, partial wall fences along the sound barriers, and a glowing
+## red coupling in one lane above each gap, stomped by landing on it while jumping the gap, which sends the
+## carriages behind tumbling off the track) and phase 2 (The Contract: the gunship strafes the lanes, warned
+## by a line and a rising whine, drops a Buzz Overdrive onto the roof ahead, and an armored carriage with
+## no roof access blocks the way, ridden over on the gunship's belly from an anti-grav pad). Every number
+## here is a placeholder (DESIGN-TBD, docs/questions/e5b.md and OPEN_QUESTIONS items 319-323).
 
 @export_group("Train")
-## DESIGN-TBD: a carriage's roof between two gaps (at 18 m/s): a gap every 3 s or so, so each carriage has
-## room for its guards between the cyborgs' margins from both gaps. Every lap holds a whole number of
-## carriages (HostileTakeoverTrain), so this is rounded to fit.
+## DESIGN-TBD: a corporate carriage's roof between two gaps (at 18 m/s): a gap every 3 s or so, so each
+## carriage has room for its guards between the cyborgs' margins from both gaps. Every lap holds a whole
+## number of consists (HostileTakeoverTrain), so the roofs stretch a little to fit; the arena's lap
+## (data/bosses/corporate_boss.tres, duration_seconds) is three consists long, so they hardly do.
 @export_range(30.0, 90.0, 0.5, "suffix:m") var carriage_length: float = 50.0
+## DESIGN-TBD: a military flatcar's roof (at 18 m/s), long enough for the Buzz Overdrive the gunship drops
+## onto one in phase 2 (GDD §10: it "cuts a carriage lane"): its whole encounter, from its rev to its
+## charge past the runner, needs its lane whole (GDD §9.9, LevelGenerator.cut_problem), so a flatcar
+## carries no guards and no wall fence; in phase 1 it brings a Tithe Collector instead.
+@export_range(90.0, 220.0, 1.0, "suffix:m") var flatcar_length: float = 130.0
+## DESIGN-TBD: the carriages in turn behind the rear roof (0: a corporate carriage, 1: a flatcar),
+## repeated along the whole train.
+@export var consist: PackedInt32Array = PackedInt32Array([0, 0, 1, 0, 0, 0])
 ## DESIGN-TBD: the gap between two carriages, as a share of a full jump at the run speed (a level's gap
 ## pattern's jump_frac; at most LevelConfig.max_gap_jump_fraction, and short enough that a stomp's bounce
 ## from the stomp box's near end clears the rest: HostileTakeoverTrain.bounce_clears).
@@ -30,11 +41,11 @@ extends Resource
 
 @export_group("Couplings")
 ## DESIGN-TBD (GDD §10: "each carriage coupling glows red and sits in one lane above the gap between
-## carriages"): every gap's coupling glows red once a phase's first `opening_gaps` gaps are passed (by
-## phase: phase 1's guards show up first; a phase's intro and those gaps keep them dark), in a lane of
-## its own: never the last one's lane (`coupling_same_lane` off) and at most `coupling_max_shift` lanes
-## from it.
-@export var opening_gaps: PackedInt32Array = PackedInt32Array([4, 1, 1])
+## carriages"): in a phase that plays The Board, every gap's coupling glows red once its first
+## `opening_gaps` gaps are passed (by phase: phase 1's guards show up first; a phase's intro and those
+## gaps keep them dark; phase 2 plays The Contract, its couplings dark), in a lane of its own: never the
+## last one's lane (`coupling_same_lane` off) and at most `coupling_max_shift` lanes from it.
+@export var opening_gaps: PackedInt32Array = PackedInt32Array([2, 1, 1])
 @export_range(1, 5) var coupling_max_shift: int = 2
 @export var coupling_same_lane: bool = false
 ## A coupling lights up for good no later than this long before the runner reaches its gap (a lit one
@@ -56,27 +67,29 @@ extends Resource
 @export_range(10.0, 60.0, 0.5, "suffix:m") var landing_clear: float = 24.0
 
 @export_group("The Board")
-## DESIGN-TBD (GDD §10: "security cyborgs guard the roofs"): the cyborgs on each carriage, a list taken in
-## order and repeated (at most one fewer than the lanes), from carriage `guards_from` on (the rear
-## carriages are the entrance's), none on a Tithe Collector's carriage (it weaves toward the lanes with the
-## most hazards ahead: with none on its roof it keeps to the runner's lane, over its trail). Two on one
-## carriage stand at least guard_spacing apart (at 18 m/s).
+## DESIGN-TBD (GDD §10: "security cyborgs guard the roofs"): the cyborgs on each corporate carriage, a list
+## taken in order and repeated (at most one fewer than the lanes), from carriage `guards_from` on (the rear
+## carriages are the entrance's), none on a flatcar (a Tithe Collector's: it weaves toward the lanes with
+## the most hazards ahead, so with none on its roof it keeps to the runner's lane, over its trail; and phase
+## 2's Buzz Overdrive's). Two on one carriage stand at least guard_spacing apart (at 18 m/s).
 @export var guards: PackedInt32Array = PackedInt32Array([1, 2, 1, 1, 2, 1])
 @export_range(0, 6) var guards_from: int = 2
 @export_range(4.0, 30.0, 0.5, "suffix:m") var guard_spacing: float = 14.0
-## DESIGN-TBD (GDD §10: "a Tithe Collector skims credits"): one on every tithe_every-th carriage from
+## DESIGN-TBD (GDD §10: "a Tithe Collector skims credits"): one on every flatcar from carriage
 ## tithe_first on, coming in the runner's lane, with a trail of tithe_credits credits (each worth
 ## tithe_value, tithe_spacing apart at 18 m/s) laid on the roof ahead of it as it comes, in its lane, for
-## it to skim (a boss's track carries no credits of its own).
-@export_range(1, 20) var tithe_every: int = 5
+## it to skim (a boss's track carries no credits of its own); at most tithe_visits_per_phase in a phase
+## (OPEN_QUESTIONS item 321: a player who lets the couplings go by could otherwise farm them without end),
+## so a phase drawn out earns nothing more from them.
 @export_range(0, 20) var tithe_first: int = 3
+@export_range(0, 8) var tithe_visits_per_phase: int = 2
 @export_range(0, 20) var tithe_credits: int = 6
 @export_range(1, 100) var tithe_value: int = 5
 @export_range(1.0, 8.0, 0.25, "suffix:m") var tithe_spacing: float = 3.0
 ## DESIGN-TBD (GDD §10: "partial wall fences run along the track's sound barriers"): a partial wall fence
-## (the low or the high band, in turn) on wall_fence_share of the carriages from wall_fences_from on, on a
-## seeded side, where the level's rules allow one (BossArena.wall_fence_problem); its pulse is the zone's
-## (data/tuning/wall_fences.tres at the arena's difficulty).
+## (the low or the high band, in turn) on wall_fence_share of the corporate carriages from wall_fences_from
+## on, on a seeded side, where the level's rules allow one (BossArena.wall_fence_problem); its pulse is the
+## zone's (data/tuning/wall_fences.tres at the arena's difficulty).
 @export_range(0.0, 1.0, 0.05) var wall_fence_share: float = 0.7
 @export_range(0, 10) var wall_fences_from: int = 2
 
@@ -101,6 +114,60 @@ extends Resource
 ## its fog thinner: data/bosses/corporate_boss_skin.tres), inside the built track.
 @export_range(60.0, 220.0, 1.0, "suffix:m") var loco_ahead: float = 125.0
 
+@export_group("The Contract: strafes")
+## DESIGN-TBD (GDD §10, phase 2: "the gunship strafes the lanes (a warning line and a rising whine)"): a
+## red line lights up along the struck lanes from just behind the runner (strafe_behind) to strafe_length
+## ahead (at 18 m/s) with the rising whine for strafe_warning seconds; then the gunship's guns rake each
+## line from its far end back toward the runner and past them at rake_speed (at 18 m/s), hurting anyone in
+## the lane, on the roof or in the air (leave the lane: a jump doesn't dodge it; the walls are safe). It
+## strikes at most strafe_lanes lanes (never more than the lanes less two, never all of them), each next
+## to a lane left free, strafe_gap seconds after the last one, never within strafe_clear seconds of the
+## Buzz Overdrive's attack or the belly ride, and not while phase 1's guards are still about.
+@export_range(0.6, 3.0, 0.05, "suffix:s") var strafe_warning: float = 1.2
+@export_range(15.0, 80.0, 1.0, "suffix:m") var strafe_length: float = 40.0
+@export_range(0.0, 10.0, 0.5, "suffix:m") var strafe_behind: float = 3.0
+@export_range(20.0, 120.0, 1.0, "suffix:m/s") var rake_speed: float = 55.0
+@export_range(1, 3) var strafe_lanes: int = 2
+@export_range(0.3, 6.0, 0.1, "suffix:s") var strafe_gap: float = 1.0
+@export_range(0.0, 4.0, 0.1, "suffix:s") var strafe_clear: float = 0.5
+
+@export_group("The Contract: the drop")
+## DESIGN-TBD (GDD §10: the gunship "drops a Buzz Overdrive onto the roof ahead, which cuts a carriage
+## lane"): one on each flatcar, its cut planned as a level's (FloorCutPlan at the run speed, without the
+## roll that brings it into view: the drop does; LevelGenerator.cut_problem's limits) with its rev, its
+## line and its block-then-hold rule (the Buzz Overdrive's own); the gunship flies out over its spot,
+## lowers to drop_height and lets it fall (drop_fall seconds) so it lands drop_before seconds before its rev
+## starts, moving out and back over drop_move seconds.
+@export_range(0.3, 3.0, 0.05, "suffix:s") var drop_before: float = 0.6
+@export_range(0.3, 1.5, 0.05, "suffix:s") var drop_fall: float = 0.7
+@export_range(6.0, 14.0, 0.25, "suffix:m") var drop_height: float = 9.0
+@export_range(0.5, 3.0, 0.1, "suffix:s") var drop_move: float = 1.0
+
+@export_group("The Contract: the ride")
+## DESIGN-TBD (GDD §10: "an armored carriage with no roof access blocks the way, so the player takes an
+## anti-grav pad and rides the gunship's belly over it (the gunship is the ceiling)"): after each drop, the
+## second carriage past the flatcar is armored (armored_height tall: no jump reaches its roof, and its
+## front is a solid wall), with pad_rows rows of anti-grav pads in every lane before the gap in front of
+## it (the nearest pad_before short of the gap, the rows pad_row_spacing apart, at 18 m/s). The gunship
+## comes down over descend_seconds to the ceiling's height, its belly's stern ride_rear_margin behind the
+## runner as they reach the pads, and flies on slower than the runner, so its nose passes over them
+## landing_after past the armored carriage's far gap (at 18 m/s), where they drop back onto the roof; then
+## it climbs back over climb_seconds.
+@export_range(1.6, 2.3, 0.05, "suffix:m") var armored_height: float = 2.1
+@export_range(4.0, 20.0, 0.5, "suffix:m") var pad_before: float = 9.0
+@export_range(1, 3) var pad_rows: int = 2
+@export_range(3.0, 12.0, 0.5, "suffix:m") var pad_row_spacing: float = 6.0
+@export_range(4.0, 25.0, 0.5, "suffix:m") var landing_after: float = 10.0
+@export_range(1.0, 8.0, 0.25, "suffix:m") var ride_rear_margin: float = 4.0
+@export_range(1.0, 5.0, 0.1, "suffix:s") var descend_seconds: float = 1.8
+@export_range(1.0, 5.0, 0.1, "suffix:s") var climb_seconds: float = 1.2
+## DESIGN-TBD (phase 2's weak point; GDD §10 names none for it, docs/questions/e5b.md): the gunship's drop
+## bay, open and glowing red on its belly during the ride (the empty bay its Buzz Overdrive dropped from):
+## a stomp from the ceiling (a jump on the belly that comes back up onto it) is the phase's hit. Its stomp
+## box spans the belly's width, bay_length along it, hanging bay_depth below it.
+@export_range(2.0, 8.0, 0.25, "suffix:m") var bay_length: float = 4.0
+@export_range(0.3, 1.0, 0.05, "suffix:m") var bay_depth: float = 0.55
+
 @export_group("Breakaway")
 ## The carriages behind a stomped coupling break away and tumble off the track (GDD §10), looks only:
 ## they fall behind at break_recede m/s² and drop at break_drop m/s², each rolling over at break_roll
@@ -118,14 +185,31 @@ func opening_for(phase: int) -> int:
 	return maxi(opening_gaps[clampi(phase, 0, opening_gaps.size() - 1)], 0)
 
 
-## The guards on carriage `k` at `lanes` lanes (guards in turn, at most lanes - 1), none before guards_from
-## and none on a Tithe Collector's carriage.
-func guards_on(k: int, lanes: int) -> int:
-	if guards.is_empty() or k < guards_from or tithe_on(k):
+## The consist's kinds (HostileTakeoverTrain.Kind), never empty.
+func consist_kinds() -> PackedInt32Array:
+	var out := PackedInt32Array()
+	for kind: int in consist:
+		out.append(clampi(kind, 0, 1))
+	if out.is_empty():
+		out.append(0)
+	return out
+
+
+## The guards on carriage `k` of kind `kind` at `lanes` lanes (guards in turn, at most lanes - 1): none
+## before guards_from and none on a flatcar.
+func guards_on(k: int, lanes: int, kind: int = 0) -> int:
+	if guards.is_empty() or k < guards_from or kind == HostileTakeoverTrain.Kind.FLATCAR:
 		return 0
 	return clampi(guards[(k - guards_from) % guards.size()], 0, maxi(lanes - 1, 0))
 
 
-## True if carriage `k` brings a Tithe Collector.
-func tithe_on(k: int) -> bool:
-	return tithe_every > 0 and k >= tithe_first and (k - tithe_first) % tithe_every == 0
+## True if carriage `k` of kind `kind` brings a Tithe Collector (a flatcar from tithe_first on; the
+## Board counts them against tithe_visits_per_phase).
+func tithe_on(k: int, kind: int) -> bool:
+	return kind == HostileTakeoverTrain.Kind.FLATCAR and k >= tithe_first
+
+
+## How many lanes a strafe strikes at `lanes` lanes: strafe_lanes, never more than the lanes less two
+## (one at three lanes), at least one.
+func struck_lanes(lanes: int) -> int:
+	return clampi(strafe_lanes, 1, maxi(lanes - 2, 1))

@@ -9,6 +9,12 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##                       and a ringing snap
 ##   takeover_breakaway  the carriages behind breaking away: steel shrieking on the guideway, scraping, and
 ##                       two crashes falling away behind
+##   takeover_whine      a strafe's warning (phase 2): the gunship's guns spinning up, a rising whine under a
+##                       servo whirr, as long as the warning (1.2 s)
+##   takeover_strafe     the strafe: a rattling cannon burst raking down the lane, with ricochets
+##   takeover_drop       the Buzz Overdrive landing on the roof: a huge steel slam, a crunch and a clatter
+##   takeover_bay        the drop bay opening as the gunship comes down for the ride: a pneumatic hiss, two
+##                       heavy clunks and a low warning tone
 
 
 func sounds() -> Dictionary:
@@ -17,6 +23,10 @@ func sounds() -> Dictionary:
 		"takeover_couplings": _couplings,
 		"takeover_decouple": _decouple,
 		"takeover_breakaway": _breakaway,
+		"takeover_whine": _whine,
+		"takeover_strafe": _strafe,
+		"takeover_drop": _drop,
+		"takeover_bay": _bay,
 	}
 
 
@@ -102,5 +112,98 @@ func _breakaway() -> PackedFloat32Array:
 	var far := _explosion(0.9, 0.6, rng)
 	DSP.filter(far, &"lowpass", 900.0)
 	DSP.mix(b, far, 1.4, 0.4)
+	DSP.crush(b, 10, 22000.0)
+	return b
+
+
+## A strafe's warning: the guns' barrels spinning up (a whine rising over the warning), a servo whirr and a
+## pulsing tick that speeds up, ending as the burst starts.
+func _whine() -> PackedFloat32Array:
+	var rng := _rng(705)
+	var d: float = 1.2
+	var b := DSP.buffer(d)
+	var whine := DSP.osc(d, func(u: float) -> float: return DSP.sweep(380.0, 2100.0, u * u), &"saw")
+	DSP.filter(whine, &"bandpass", 1400.0, 1.2)
+	DSP.adsr(whine, 0.15, 0.1, 0.9, 0.05)
+	DSP.mix(b, whine, 0.0, 0.5)
+	var tone := DSP.osc(d, func(u: float) -> float: return DSP.sweep(760.0, 1520.0, u), &"square")
+	DSP.filter(tone, &"lowpass", 2600.0)
+	DSP.adsr(tone, 0.2, 0.1, 0.7, 0.05)
+	DSP.mix(b, tone, 0.0, 0.18)
+	var whirr := DSP.noise(d, rng)
+	DSP.filter_sweep(whirr, &"bandpass", 600.0, 2400.0, 2.0)
+	DSP.adsr(whirr, 0.1, 0.2, 0.6, 0.1)
+	DSP.mix(b, whirr, 0.0, 0.25)
+	var t: float = 0.0
+	var gap: float = 0.16
+	while t < d - 0.05:
+		DSP.mix(b, _blip(0.03, 2400.0, 0.2, 0.02), t, 0.3)
+		t += gap
+		gap = maxf(gap * 0.8, 0.045)
+	DSP.crush(b, 10, 22000.0)
+	return b
+
+
+## The strafe: a rattling burst of heavy cannon rounds (shots a little irregular, each a crack and a thump),
+## ricochets whining off the steel, a low rumble under it.
+func _strafe() -> PackedFloat32Array:
+	var rng := _rng(706)
+	var d: float = 0.95
+	var b := DSP.buffer(d)
+	var t: float = 0.0
+	while t < 0.62:
+		var shot := DSP.noise(0.09, rng)
+		DSP.filter(shot, &"bandpass", 1500.0 + rng.randf_range(-300.0, 300.0), 0.8)
+		DSP.envelope(shot, 0.001, 0.06)
+		DSP.mix(b, shot, t, 0.6)
+		DSP.mix(b, DSP.kick(0.08, 140.0, 60.0, rng), t, 0.45)
+		t += 0.055 + rng.randf_range(0.0, 0.02)
+	for i: int in 3:
+		var at: float = rng.randf_range(0.1, 0.6)
+		var ric := DSP.osc(0.22, func(u: float) -> float: return DSP.sweep(3200.0, 1700.0, u), &"triangle")
+		DSP.envelope(ric, 0.002, 0.16)
+		DSP.mix(b, ric, at, 0.16)
+	var rumble := DSP.osc(d, func(u: float) -> float: return 55.0 - 12.0 * u, &"saw")
+	DSP.filter(rumble, &"lowpass", 220.0)
+	DSP.adsr(rumble, 0.02, 0.2, 0.6, 0.3)
+	DSP.mix(b, rumble, 0.0, 0.4)
+	DSP.drive(b, 1.5)
+	DSP.crush(b, 9, 21000.0)
+	return b
+
+
+## The Buzz Overdrive landing on the roof: a huge steel slam (a low boom and a metal hit), a crunch of grit
+## and a clatter of its tracks settling.
+func _drop() -> PackedFloat32Array:
+	var rng := _rng(707)
+	var d: float = 0.95
+	var b := _boom(d, 95.0, 34.0, 0.2, rng)
+	DSP.mix(b, DSP.metal_hit(0.7, 96.0, 0.3, rng), 0.0, 0.9)
+	DSP.mix(b, DSP.metal_hit(0.5, 181.0, 0.18, rng), 0.01, 0.45)
+	var crunch := DSP.noise(0.4, rng)
+	DSP.filter(crunch, &"bandpass", 900.0, 0.7)
+	DSP.adsr(crunch, 0.005, 0.12, 0.3, 0.2)
+	DSP.mix(b, crunch, 0.0, 0.5)
+	DSP.mix(b, _crackle(0.5, 18, 0.16, 1800.0, rng), 0.12, 0.45)
+	DSP.drive(b, 1.5)
+	DSP.crush(b, 9, 21000.0)
+	return b
+
+
+## The drop bay opening: a pneumatic hiss, two heavy clunks as the doors part, and a low two-note warning
+## tone (the bay glows red: the weak point).
+func _bay() -> PackedFloat32Array:
+	var rng := _rng(708)
+	var d: float = 1.0
+	var b := DSP.buffer(d)
+	var hiss := DSP.noise(0.7, rng)
+	DSP.filter(hiss, &"highpass", 3000.0)
+	DSP.adsr(hiss, 0.02, 0.2, 0.5, 0.35)
+	DSP.mix(b, hiss, 0.0, 0.45)
+	DSP.mix(b, DSP.metal_hit(0.35, 132.0, 0.1, rng), 0.05, 0.8)
+	DSP.mix(b, DSP.kick(0.2, 100.0, 45.0, rng), 0.05, 0.45)
+	DSP.mix(b, DSP.metal_hit(0.3, 158.0, 0.08, rng), 0.24, 0.6)
+	DSP.mix(b, _blip(0.2, 392.0, 0.25, 0.1), 0.5, 0.4)
+	DSP.mix(b, _blip(0.26, 330.0, 0.25, 0.12), 0.7, 0.45)
 	DSP.crush(b, 10, 22000.0)
 	return b
