@@ -563,7 +563,8 @@ across the street), its cut's shader (`gilded_sentinel_cut.gdshader`), its sound
   another big attack. The generator keeps floor cuts, Octodog runs and ceilings' landings off it, and
   every big attack off a level's first, so that one always swings. In simulated runs of Golden 2 and the
   Palace (god mode, the middle lane, at 3, 5 and 6 lanes) 32 of 36 Sentinels swung with the claim (the
-  rest met a long attack begun before it), 21 without; the other types' big attacks went from 148 to 140.
+  rest met a long attack begun before it), 21 without; the other types' big attacks went from 148 to 135
+  (the Resonator's pulses also keep off the Sentinels' turns, so a busy level may get one visit fewer).
 - **Cheap.** The statue is one mesh of two surfaces (the gold on the skin's solid material, the eyes on
   each Sentinel's own), its frames baked once from the kit (`frames_for`: rest to wind-up, the swing, the
   recovery, the husk; mirrored on the left wall so it swings toward the runner on both) and shared by
@@ -608,7 +609,8 @@ the cyborg rules, and the host rules that start with them, after the hover truck
 their margin from the ramp a truck adds; the Octodog rules after the drone's, the host's and the
 hover truck's, so each dog is planned around the level's final ceilings, chases and truck lanes and
 nothing clears it afterwards; the Resonator rules after every feature that puts things on the floor or
-plans a big attack, so each pulse is planned on the level's final floor and off every Octodog's run).
+plans a big attack, so each pulse is planned on the level's final floor and off every Octodog's run,
+floor cut and Gilded Sentinel's turn).
 When a rule needs room for one of its guarantees, it removes what's
 in the way rather than moving it (taking content out never makes a level unfair). Guaranteed pads
 come from `scripts/enemies/pad_placement.gd`, shared by the drone and host rules: the drone's pad
@@ -730,7 +732,10 @@ added at the first spot there, calm where it can be. It uses the floor (`uses_fl
 its rules set `params.floor_span` to what its cut uses), so ceilings' pads and landings, the Resonator's
 waves and everything that asks the floor keep off it; `keep_out()` (its window) keeps the fill pass and
 floor cuts off it, and `doodad_keep_outs()` (its window in every lane, marked `type`) the zone doodads, floor
-cuts and the wall fences' drop windows. `problems()` re-checks every one for the tests.
+cuts and the wall fences' drop windows. The Resonator's rules (after these) plan its pulses off every
+Sentinel's whole turn, from its claim to its last swing (`resonator_rules.gd`'s `sentinel_turns`,
+`GildedSentinelTuning.claim_window`), so a planned pulse is never held for one at run time (one that
+was could be pushed on past the level's end). `problems()` re-checks every one for the tests.
 
 **Late starts.** `LevelConfig.feature_starts` (feature → share of the level) holds a feature back
 until its start: patterns that require it aren't picked before, and the first pattern picked from

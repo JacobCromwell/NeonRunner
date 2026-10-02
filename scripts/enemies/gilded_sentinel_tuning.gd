@@ -139,6 +139,13 @@ func attack_window(at: float, swings: int, speed: float) -> Vector2:
 	return Vector2(warn_at(at, swings, speed), guarded_stretch(at, swings).y)
 
 
+## Its whole turn among the big attacks along the track (Vector2(from, to)) at `speed`: from where the
+## runner is as it claims its turn (claim_seconds before its warning) to the end of its last stretch.
+## Another planned big attack (a Resonator's pulse) kept off it is never held for it at run time.
+func claim_window(at: float, swings: int, speed: float) -> Vector2:
+	return Vector2(warn_at(at, swings, speed) - claim_seconds * speed, guarded_stretch(at, swings).y)
+
+
 ## The floor its cut uses (params.floor_span; LevelGenerator.enemy_floor_span): the outer lane, from
 ## escape_lead_seconds before its first swing starts to the end of its last stretch.
 func floor_use(at: float, swings: int, speed: float) -> Vector2:
