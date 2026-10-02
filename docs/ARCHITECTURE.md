@@ -207,9 +207,12 @@ The first spawns' and first looks' costs now come during the load (a fresh proce
 session's later levels find them built), so a level's first frame takes 0.1 to 0.9 s longer on the dev
 machine; whether a level should open behind a loading card is an open question (`docs/questions/perf1.md`).
 The median frame is up by about 0.03 ms in debug builds (the frame monitor itself; release builds have none).
-Under xvfb on Gangland 3 (25 s), 12 shaders were first drawn after the load before (300 to 750 ms frames in
-software on Compatibility, 1 to 3 s on Forward+, with 48 surface and 35 specialization pipelines built
-mid-run) and none after; draw calls (265 to 279 a frame), primitives (44,000) and objects (382) are the same.
+Under xvfb (25 s of a level; software rendering, so the counts mean something and the times only show the
+shape), 12, 8 and 9 shaders were first drawn after the load on Gangland 3, Marketplace 2 and Golden 2 before
+(Forward+ built 35 to 48 surface and specialization pipelines mid-run; the worst mid-run frames were 3.1, 2.9
+and 2.1 s on Forward+ and 0.75, 0.36 and 0.59 s on Compatibility) and none after (0.11 to 0.38 s); the median
+draw calls (248 to 279 a frame), primitives (44,000 to 49,000) and objects (336 to 404) are the same, the
+most in a frame higher by the warm-up's samples in the level's first two frames.
 
 ## Data (tunables live in data, CLAUDE.md principle 7)
 
