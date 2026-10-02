@@ -20,8 +20,13 @@ const SPIKE_FLOOR_MS: float = 8.0
 ## The graph's full height, in ms.
 const SCALE_MS: float = 50.0
 const LISTED: int = 6
-const GRAPH_SIZE := Vector2(420.0, 110.0)
+## In the bottom-right corner, clear of the HUD (its score and pause button are top right, its items
+## bottom left).
+const GRAPH_SIZE := Vector2(480.0, 110.0)
 const MARGIN: float = 16.0
+const LINE_HEIGHT: float = 16.0
+## The longest line of text shown (the panel's width at its font size).
+const LINE_CHARS: int = 74
 const BACK := Color(0.02, 0.02, 0.05, 0.78)
 const LOGIC := Color(0.45, 0.8, 1.0)
 const REST := Color(0.35, 0.4, 0.55)
@@ -43,7 +48,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_view = Control.new()
 	_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_view.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_view.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
 	_view.custom_minimum_size = GRAPH_SIZE
 	_view.draw.connect(_draw_graph)
 	add_child(_view)
@@ -110,9 +115,9 @@ func _tags_near(i: int) -> PackedStringArray:
 func _draw_graph() -> void:
 	if monitor == null:
 		return
-	var origin := Vector2(-GRAPH_SIZE.x - MARGIN, MARGIN)
 	var listed: Array[Dictionary] = events().slice(0, LISTED)
-	var text_height: float = 16.0 * (listed.size() + 1) + 8.0
+	var text_height: float = LINE_HEIGHT * (listed.size() + 1) + 8.0
+	var origin := Vector2(-GRAPH_SIZE.x - MARGIN, -GRAPH_SIZE.y - text_height - MARGIN)
 	_view.draw_rect(Rect2(origin - Vector2(6.0, 6.0), GRAPH_SIZE + Vector2(12.0, 12.0 + text_height)), BACK)
 	var n: int = monitor.frame_count()
 	var from: int = maxi(n - SHOWN_FRAMES, 0)
@@ -137,13 +142,13 @@ func _draw_graph() -> void:
 		var y: float = origin.y + GRAPH_SIZE.y * (1.0 - ms / SCALE_MS)
 		_view.draw_line(Vector2(origin.x, y), Vector2(origin.x + GRAPH_SIZE.x, y), GUIDE)
 	var shown: int = n - from
-	var head: String = "Frame times (F7)   mean %.1f ms   worst %.1f ms   spike over %.1f ms" % [
+	var head: String = "Frame times (F7)   mean %.1f ms   worst %.1f ms   spikes over %.1f ms" % [
 		sum / maxf(shown, 1), worst, limit]
 	var y_text: float = origin.y + GRAPH_SIZE.y + 22.0
-	_view.draw_string(_font, Vector2(origin.x, y_text), head, HORIZONTAL_ALIGNMENT_LEFT, -1, 13)
+	_view.draw_string(_font, Vector2(origin.x, y_text), head.left(LINE_CHARS), HORIZONTAL_ALIGNMENT_LEFT, -1, 13)
 	var newest: int = monitor.starts[n - 1] if n > 0 else 0
 	for e: Dictionary in listed:
-		y_text += 16.0
+		y_text += LINE_HEIGHT
 		var ago: float = (newest - monitor.starts[int(e["frame"])]) / 1000000.0
 		var line: String
 		if int(e["held"]) > 0:
@@ -152,7 +157,7 @@ func _draw_graph() -> void:
 		else:
 			line = "%4.1f s ago  %5.1f ms (game %4.1f)  %s" % [ago, float(e["total_ms"]), float(e["logic_ms"]),
 				_short_tags(e["tags"])]
-		_view.draw_string(_font, Vector2(origin.x, y_text), line, HORIZONTAL_ALIGNMENT_LEFT, -1, 13,
+		_view.draw_string(_font, Vector2(origin.x, y_text), line.left(LINE_CHARS), HORIZONTAL_ALIGNMENT_LEFT, -1, 13,
 			HELD if int(e["held"]) > 0 else SPIKE)
 
 
