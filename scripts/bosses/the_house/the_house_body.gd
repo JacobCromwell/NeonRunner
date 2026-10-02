@@ -34,6 +34,10 @@ var hopper: float = 0.0
 var power: float = 1.0
 ## Its speed along the track (m/s), for the treads.
 var track_speed: float = 0.0
+## Its defeat (the encounter's): TILT shown (0-1), how far it has collapsed (0-1), its shake (metres).
+var tilt: float = 0.0
+var collapse: float = 0.0
+var shake: float = 0.0
 
 var _core: Hazard
 var _hopper: Hazard
@@ -190,6 +194,9 @@ func _animate(delta: float) -> void:
 	model.jackpot = lerpf(model.jackpot, jackpot, k)
 	model.hopper_open = lerpf(model.hopper_open, hopper, 1.0 - exp(-14.0 * delta))
 	model.power = lerpf(model.power, power, 1.0 - exp(-3.0 * delta))
+	model.tilt = lerpf(model.tilt, tilt, 1.0 - exp(-20.0 * delta))
+	model.collapse = collapse
+	model.shake = shake
 	_scroll += track_speed * delta
 	model.tread_scroll = _scroll
 	model.animate()

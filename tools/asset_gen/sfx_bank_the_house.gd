@@ -19,6 +19,10 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##   house_coins      the fountain: a cascade of coins tinkling and clattering
 ##   house_sag        it overloads and sags into the street: groaning metal and a hydraulic hiss
 ##   house_hit        the hopper stomped: a crunching crash, a burst of coins and its jingle dying away
+##   house_billboard  phase 3's floating billboard coming down from the sky: a falling whoosh, hover jets
+##                    settling, a hum
+##   house_tilt       its defeat's jam: the reels clunk to a stop, and the TILT buzzer blares
+##   house_collapse   its defeat's collapse: groaning, crashing metal and a cascade of coins
 
 const C5: float = 523.25
 const E5: float = 659.26
@@ -45,6 +49,9 @@ func sounds() -> Dictionary:
 		"house_coins": _coins,
 		"house_sag": _sag,
 		"house_hit": _hit,
+		"house_billboard": _billboard,
+		"house_tilt": _tilt,
+		"house_collapse": _collapse,
 	}
 
 
@@ -288,4 +295,62 @@ func _hit() -> PackedFloat32Array:
 		DSP.mix(b, _blip(0.12, float(down[k]) * (1.0 - 0.02 * k), 0.25, 0.05), 0.25 + 0.1 * k, 0.4)
 	DSP.drive(b, 1.5)
 	DSP.crush(b, 9, 22000.0)
+	return b
+
+
+## The floating billboard comes down from the sky: a falling whoosh, its hover jets settling, a hum.
+func _billboard() -> PackedFloat32Array:
+	var rng := _rng(614)
+	var d: float = 1.6
+	var b := DSP.buffer(d)
+	var whoosh := DSP.noise(0.9, rng)
+	DSP.filter(whoosh, &"bandpass", 900.0, 1.2)
+	DSP.adsr(whoosh, 0.35, 0.2, 0.6, 0.35)
+	DSP.mix(b, whoosh, 0.0, 0.7)
+	var jets := DSP.noise(1.1, rng)
+	DSP.filter(jets, &"lowpass", 420.0)
+	DSP.adsr(jets, 0.08, 0.3, 0.6, 0.5)
+	DSP.mix(b, jets, 0.5, 0.8)
+	var hum := DSP.osc(1.1, func(u: float) -> float: return DSP.sweep(140.0, 96.0, minf(u * 2.0, 1.0)), &"triangle")
+	DSP.adsr(hum, 0.1, 0.3, 0.6, 0.5)
+	DSP.mix(b, hum, 0.5, 0.35)
+	DSP.mix(b, DSP.metal_hit(0.4, 160.0, 0.2, rng), 0.62, 0.4)
+	DSP.crush(b, 10, 22000.0)
+	return b
+
+
+## The jam: the reels clunk to a stop one after another, and the TILT buzzer blares.
+func _tilt() -> PackedFloat32Array:
+	var rng := _rng(615)
+	var d: float = 1.4
+	var b := DSP.buffer(d)
+	for k: int in 3:
+		DSP.mix(b, DSP.metal_hit(0.25, 180.0 - 25.0 * k, 0.2, rng), 0.04 * k, 0.6)
+	var buzz := DSP.osc(1.1, func(_u: float) -> float: return 233.0, &"square")
+	DSP.filter(buzz, &"lowpass", 2400.0)
+	var gate := DSP.osc(1.1, func(_u: float) -> float: return 5.0, &"square")
+	for i: int in buzz.size():
+		buzz[i] *= 0.6 + 0.4 * gate[i]
+	DSP.adsr(buzz, 0.01, 0.2, 0.8, 0.3)
+	DSP.mix(b, buzz, 0.18, 0.32)
+	DSP.drive(b, 1.4)
+	DSP.crush(b, 9, 22000.0)
+	return b
+
+
+## The collapse: groaning, crashing metal and a cascade of coins.
+func _collapse() -> PackedFloat32Array:
+	var rng := _rng(616)
+	var d: float = 2.3
+	var b := DSP.buffer(d)
+	var groan := DSP.osc(1.4, func(u: float) -> float: return DSP.sweep(160.0, 45.0, u), &"saw")
+	DSP.filter(groan, &"bandpass", 380.0, 2.0)
+	DSP.drive(groan, 2.4)
+	DSP.adsr(groan, 0.05, 0.4, 0.6, 0.5)
+	DSP.mix(b, groan, 0.0, 0.55)
+	DSP.mix(b, DSP.crash(1.2, rng), 0.25, 0.7)
+	DSP.mix(b, DSP.metal_hit(0.9, 85.0, 0.35, rng), 0.3, 0.8)
+	DSP.mix(b, DSP.kick(0.4, 90.0, 35.0, rng), 0.3, 0.9)
+	DSP.mix(b, _tinks(1.8, 90, rng), 0.35, 0.8)
+	DSP.crush(b, 10, 22000.0)
 	return b

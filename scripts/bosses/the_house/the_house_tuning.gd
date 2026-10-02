@@ -165,6 +165,75 @@ extends Resource
 @export_range(5.0, 40.0, 0.5, "suffix:m") var fountain_near: float = 14.0
 @export_range(10.0, 60.0, 0.5, "suffix:m") var fountain_far: float = 30.0
 
+@export_group("Phases 2 and 3")
+## DESIGN-TBD (GDD §10: "three phases, with the buttons getting harder to reach, as the Marketplace's final
+## exam: (1) all three on the floor; (2) one on a wall, with wall fences in play; (3) one on a ceiling
+## reached by an anti-grav pad, guarded by Barnacle Turrets"): where each phase puts special_reel's button
+## ("floor", "wall" or "ceiling"); the other reels' stay on the floor. A locked reel keeps its 7
+## (locks_persist), so a phase's special button is run over once.
+@export var special_buttons: PackedStringArray = PackedStringArray(["floor", "wall", "ceiling"])
+@export_range(0, 2) var special_reel: int = 2
+
+@export_group("Wall button")
+## DESIGN-TBD: a wall button stands on a side wall's facade, its middle wall_button_height up, as tall as
+## the wall-run path (wall_button_size) and wall_button_length along the wall (at 18 m/s): a wall runner
+## passing it at any height runs over it. The runner reaches it wall_extra later than a floor button in its
+## place; it lights up wall_lead before. Its plan has the runner onto the wall wall_entry_before it (any
+## entry from a wall run's length before it works) and back in the outer lane wall_after past it; a wall
+## fence on its wall between the entry and the button is off as the runner passes it, with
+## fence_pass_margin either side.
+@export_range(0.0, 2.0, 0.05, "suffix:s") var wall_extra: float = 0.7
+@export_range(0.6, 3.0, 0.05, "suffix:s") var wall_lead: float = 1.6
+@export_range(0.3, 1.8, 0.05, "suffix:s") var wall_entry_before: float = 0.8
+@export_range(0.3, 2.5, 0.05, "suffix:s") var wall_after: float = 1.1
+@export_range(1.0, 8.0, 0.1, "suffix:m") var wall_button_length: float = 4.0
+@export_range(1.0, 4.0, 0.05, "suffix:m") var wall_button_size: float = 2.5
+@export_range(0.5, 3.0, 0.05, "suffix:m") var wall_button_height: float = 1.35
+@export_range(0.0, 1.0, 0.05, "suffix:s") var fence_pass_margin: float = 0.3
+
+@export_group("Wall fences")
+## DESIGN-TBD (GDD §10, phase 2: "with wall fences in play"; GDD §9.1, full-height ones from Marketplace 2):
+## in the phases listed (0-based), full-height wall fences (task B5) stand along both walls, one every
+## wall_fence_every seconds of run on alternating walls, wall_fence_on seconds on and wall_fence_off off on
+## the level clock (with the fence's warning before each switch on), planned wall_fence_ahead seconds
+## ahead at a time past the built track. The machine's strikes keep off their drop windows (B5).
+@export var wall_fence_phases: PackedInt32Array = PackedInt32Array([1])
+@export_range(1.0, 10.0, 0.1, "suffix:s") var wall_fence_every: float = 2.2
+@export_range(0.3, 3.0, 0.05, "suffix:s") var wall_fence_on: float = 1.0
+@export_range(0.5, 4.0, 0.05, "suffix:s") var wall_fence_off: float = 1.4
+@export_range(4.0, 30.0, 0.5, "suffix:s") var wall_fence_ahead: float = 12.0
+
+@export_group("Ceiling button")
+## DESIGN-TBD: phase 3's special button is on the underside of a floating billboard over every lane (a
+## Marketplace ceiling, GDD §5: "floating advertisements"), reached by an anti-grav pad in its lane: the
+## runner reaches the pad pad_extra later than a floor button in its place. The button is
+## ceiling_button_after past the pad, in the pad's lane (ceiling_button_shift lanes over); Barnacle
+## Turrets guard the ceiling past it in a lane beside the pad's (turrets_by_lanes at 3, 5 and 6 lanes;
+## C1's limits: at most two, never over the pad's lane, at least its after_pad_seconds past the pad and
+## spacing_seconds apart, before_end_seconds before the end), and the billboard ends ceiling_end_after past
+## the last. The machine is taller than a ceiling: at the lever's pull it squats on its treads over
+## duck_seconds until its top is duck_top up, and the billboard comes down from the sky over it (over
+## billboard_drop_seconds) with its pad; it rises again once it has rolled past the billboard's end.
+@export_range(0.0, 2.0, 0.05, "suffix:s") var pad_extra: float = 0.35
+@export_range(0.6, 2.0, 0.05, "suffix:s") var ceiling_button_after: float = 1.1
+@export_range(0, 2) var ceiling_button_shift: int = 0
+@export var turrets_by_lanes: PackedInt32Array = PackedInt32Array([1, 2, 2])
+@export_range(0.2, 2.0, 0.05, "suffix:s") var ceiling_end_after: float = 0.6
+@export_range(2.0, 5.5, 0.05, "suffix:m") var duck_top: float = 4.9
+@export_range(0.2, 2.0, 0.05, "suffix:s") var duck_seconds: float = 0.7
+@export_range(0.2, 2.0, 0.05, "suffix:s") var billboard_drop_seconds: float = 0.7
+
+@export_group("Defeat")
+## DESIGN-TBD (GDD §10: "the reels spin wildly and jam, TILT flashes, and it collapses in an explosion of
+## coins while the shops erupt in cheers"): after the last stomp it lurches out from under the runner and
+## rises as after any stomp; then its reels spin wildly for tilt_spin_seconds and jam, TILT flashes for
+## tilt_seconds (a steady glow with Reduced flashing), and it collapses into the street over
+## collapse_seconds, collapse_coins coins bursting out of it.
+@export_range(0.2, 3.0, 0.05, "suffix:s") var tilt_spin_seconds: float = 1.0
+@export_range(0.3, 4.0, 0.05, "suffix:s") var tilt_seconds: float = 1.4
+@export_range(0.3, 4.0, 0.05, "suffix:s") var collapse_seconds: float = 1.8
+@export_range(0, 120) var collapse_coins: int = 90
+
 @export_group("Fairness")
 ## A player's reaction: every route (through an attack, to a button, the jackpot's approach) is checked
 ## for a runner who moves this long after its warning starts (TheHouseRoute).
@@ -219,3 +288,16 @@ static func per_lanes(list: PackedInt32Array, lanes: int) -> int:
 		return 1
 	var i: int = 0 if lanes <= 3 else (1 if lanes <= 5 else 2)
 	return clampi(list[mini(i, list.size() - 1)], 1, maxi(lanes - 1, 1))
+
+
+## Where phase `phase`'s special reel's button goes: "floor", "wall" or "ceiling".
+func special_for(phase: int) -> String:
+	if special_buttons.is_empty():
+		return "floor"
+	var kind: String = special_buttons[clampi(phase, 0, special_buttons.size() - 1)]
+	return kind if kind in ["floor", "wall", "ceiling"] else "floor"
+
+
+## True if phase `phase` has wall fences along its walls.
+func wall_fences_in(phase: int) -> bool:
+	return wall_fence_phases.has(phase)

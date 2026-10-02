@@ -39,6 +39,7 @@ const REEL_Z: float = FACE_Z + 0.62
 const FRAME_Z: float = FACE_Z + 0.85
 const REEL_CURVE_DEGREES: float = 30.0
 const BULB: float = 0.24
+const TILT_SHADER: Shader = preload("res://scripts/bosses/the_house/the_house_tilt.gdshader")
 
 ## The machine's size and where its parts are, in its own space (see the header).
 class Shape:
@@ -80,11 +81,18 @@ var jackpot: float = 0.0
 var hopper_open: float = 0.0
 var tread_scroll: float = 0.0
 var power: float = 1.0
+## Its defeat: TILT shown over the reels (0-1), and how far it has collapsed (0-1: tipping forward and
+## over as it sinks), with a shake (metres, side to side).
+var tilt: float = 0.0
+var collapse: float = 0.0
+var shake: float = 0.0
 
 var _reels_mat: ShaderMaterial
 var _lights_mat: ShaderMaterial
 var _hopper_mat: ShaderMaterial
 var _tread_mat: ShaderMaterial
+var _tilt_mat: ShaderMaterial
+var _tilt: MeshInstance3D
 var _lever: Node3D
 var _lid_left: Node3D
 var _lid_right: Node3D
@@ -149,6 +157,17 @@ func build(p_shape: Shape) -> void:
 	_hopper_mat.set_shader_parameter(&"cells", Vector2(maxf(roundf(shape.hopper_half_width * 2.0 / 0.55), 4.0),
 		maxf(roundf(hl / 0.55), 4.0)))
 	_add_mesh("Hopper", _hopper_mesh(), _hopper_mat)
+	# TILT over the reels' window (its defeat; hidden until then).
+	var tilt_w: float = shape.reel_x[2] - shape.reel_x[0] + shape.reel_width
+	var tilt_h: float = minf(shape.reel_height * 0.5, tilt_w / 3.2)
+	var tilt_quad := QuadMesh.new()
+	tilt_quad.size = Vector2(tilt_w, tilt_h)
+	_tilt_mat = ShaderMaterial.new()
+	_tilt_mat.shader = TILT_SHADER
+	_tilt_mat.set_shader_parameter(&"aspect", tilt_w / tilt_h)
+	_tilt = _add_mesh("Tilt", tilt_quad, _tilt_mat)
+	_tilt.position = Vector3(0.0, shape.reel_bottom + shape.reel_height * 0.5, FRAME_Z + 0.08)
+	_tilt.visible = false
 	_lever = Node3D.new()
 	_lever.name = "Lever"
 	_lever.position = shape.lever_pivot
@@ -179,6 +198,12 @@ func animate() -> void:
 	_lights_mat.set_shader_parameter(&"jackpot", jackpot * power)
 	_hopper_mat.set_shader_parameter(&"open", hopper_open * power)
 	_tread_mat.set_shader_parameter(&"scroll", tread_scroll)
+	_tilt.visible = tilt > 0.01
+	_tilt_mat.set_shader_parameter(&"on", tilt)
+	# Collapsing, it tips forward toward the street and over to one side, shaking.
+	var c: float = clampf(collapse, 0.0, 1.0)
+	rotation = Vector3(0.38 * c * c, 0.0, 0.16 * c)
+	position = Vector3(shake, 0.0, 0.0)
 	# Up and leaning back a little at rest; pulled, it swings down toward the runner.
 	_lever.rotation = Vector3(lerpf(-0.12, 1.75, clampf(lever, 0.0, 1.0)), 0.0, 0.0)
 	var lid: float = clampf(hopper_open, 0.0, 1.0)
