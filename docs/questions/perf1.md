@@ -4,7 +4,8 @@
    the camera still for about three frames (0.05 s) while the run goes on underneath, so the runner moves
    1.0 to 1.25 m away from the camera and the view catches up in one frame: on screen that is exactly what
    a dropped frame looks like. A stocked-up player's run has 4 to 24 of them a level, about 6 a minute
-   (`tools/measure/frame_times.gd`, the whole campaign); the build before the playtest had none, so they
+   (`tools/measure/frame_times.gd`, the whole campaign), and 23 a minute in Hostile Takeover's preview,
+   where the weapon meets a guard every few seconds; the build before the playtest had none, so they
    may be most of what reads as "more lag spikes". Freezes no longer chain (below). Should every kill keep
    it, or only stomps and big kills (a host, a hover truck, a boss's part), or a shorter one (one or two
    frames), or a freeze of a different kind (the enemy and the runner's animation held for a moment, the
