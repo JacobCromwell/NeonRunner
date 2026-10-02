@@ -358,6 +358,7 @@ func _build_debug_tools() -> void:
 	add_child(frame_monitor)
 	frame_graph = FrameGraph.new()
 	frame_graph.monitor = frame_monitor
+	frame_graph.visible = OS.get_cmdline_user_args().has("--frame-graph")
 	add_child(frame_graph)
 	tuning_panel = TuningPanel.new()
 	add_child(tuning_panel)

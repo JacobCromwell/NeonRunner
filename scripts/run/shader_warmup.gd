@@ -21,8 +21,8 @@ extends Node3D
 
 ## Frames the samples stay drawn: the first compiles, the second catches what a renderer defers by one.
 const DRAWN_FRAMES: int = 2
-## How small the samples are drawn (a 2 m piece is a few thousandths of a pixel).
-const SCALE: float = 0.001
+## How small the samples are drawn: the widest, a ceiling across the street, is a hundredth of a pixel.
+const SCALE: float = 0.00001
 ## How far in front of the camera they sit.
 const AHEAD: float = 2.0
 
