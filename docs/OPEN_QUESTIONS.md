@@ -2015,6 +2015,46 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     **Placeholder:** a clean fight takes 66-68 s at 3, 5 and 6 lanes and both speeds; three stars at 72 s
     and two at 92 s (the Sleep Taker's margins over its clean run).
 
+**The Gilded Sentinels** (from C4; numbers in `data/enemies/gilded_sentinel.tres`, F6 "Enemy: Gilded Sentinel"; play `--level=golden/2` (3–11 Sentinels per build) or `--level=golden/3` (1–5), review with `tools/showcase/gilded_sentinel_showcase.tscn`)
+314. **Its niche goes into the wall** (GDD §9.11: "stands in a niche at wall-run height"; "pass above or
+    below the swing"). A 2.6 m statue standing out from the wall would block a wall run at all of its
+    heights, leaving no way above or below. So the statue (at 0.85 the kit's size) stands in a recess
+    with its front just behind the wall face. Nothing of it reaches over the wall-run path; only its
+    swing does. The Golden skins open the niche in their walls. Since a niche seen almost edge-on
+    from down the street hides what's inside, its eyes' red light fills the niche while they flare.
+    *Alternative:* a smaller statue standing proud of the wall, its solid body filling the band like a
+    window cyborg's. **Placeholder:** `GildedSentinelTuning` (Statue and niche), `GoldenStatue.recess()`,
+    `GoldenSkin.note_wall_enemies`.
+315. **What it cuts.** On its wall, a band of heights centred on the free wall-entry height (as for
+    window cyborgs): stepping onto the wall right before it is hit, a jump onto the wall (or a ramp)
+    passes above, an early entry slides below. On the floor, the whole outer lane up to the band's top,
+    so no jump clears it. Both run over a 5 m stretch, marked in red during the warning. *Alternative:*
+    a band below the entry height, so a late step onto the wall passes above and timing alone decides.
+    **Placeholder:** `band_offset`, `band_height`, `section_length`, `DESIGN-TBD` in
+    `gilded_sentinel_tuning.gd`.
+316. **The stomp from a wall jump** (proposed). A wall jump leaps out to the outer lane and never comes
+    down on a statue in the wall. So the kick is the push-off itself: a wall jump made right by its head
+    (feet from just under its helmet to half a metre over its crest, within about a metre of it along
+    the track) stomps it. *Alternative:* weapons only. **Placeholder:** `kick_below`, `kick_above`,
+    `kick_along`; `GildedSentinel.can_kick()`.
+317. **"Later ones swing twice."** It swings forward across the stretch before its niche as the runner
+    reaches it, then back across the stretch past it, so it guards twice the length. A runner sliding
+    down the wall must stay clear of the band for longer. Doubles and pairs (one on each wall at the
+    same spot) come from difficulty 0.95: the later ones in Golden 2, and in the Palace.
+    *Alternative:* two swings over the same stretch a moment apart. **Placeholder:**
+    `data/patterns/gilded_sentinel.json`.
+318. **A big attack that can't wait** (GDD §9, R3). Its warning and swings count as a big attack, so the
+    others wait for it, and its cut never overlaps another. A statue gets one chance as the runner
+    passes, so it claims its turn 2.5 s before its warning (other types' attacks that get ready from then
+    on wait), and if one begun before that is still on as its warning would start, it lets the runner
+    pass, without warning or swinging. The generator keeps floor cuts, Octodog runs and ceilings'
+    landings off it, and every big attack off the level's first. In simulated runs of Golden 2 and the
+    Palace, 32 of 36 Sentinels swung (21 without the claim), and the other types' big attacks went from
+    148 to 135 (Resonators plan their pulses off the Sentinels' turns). *Alternative:* count it as a
+    small attack (like a screech's swipe), which never takes turns and always swings, sometimes during
+    another big attack. **Placeholder:** `claim_seconds`, `GildedSentinel._tick`,
+    `gilded_sentinel_rules.gd` (`BIG_ATTACKS`, `STRICT_ATTACKS`).
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
