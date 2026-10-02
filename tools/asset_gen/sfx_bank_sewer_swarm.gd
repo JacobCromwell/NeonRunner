@@ -56,7 +56,8 @@ func _skitter(seconds: float, count: int, density: Callable, rng: RandomNumberGe
 ## The Rising: covers rattling, then the horde squealing up out of the sewers over a rumble.
 func _rise() -> PackedFloat32Array:
 	var rng := _rng(611)
-	var d: float = 2.6
+	# Under the sound library's 2.5 s limit (test_units).
+	var d: float = 2.4
 	var b := DSP.buffer(d)
 	var rumble := DSP.noise(d, rng)
 	DSP.filter(rumble, &"lowpass", 140.0, 0.9)
