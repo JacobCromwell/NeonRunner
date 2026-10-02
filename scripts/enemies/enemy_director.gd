@@ -47,7 +47,7 @@ static var _tunings: Dictionary = {}
 static var _warned: Dictionary = {}
 ## The rules a run without any uses (their defaults).
 static var _default_rules: GameRules = null
-## The enemy kinds whose shared look this process has built (warm_up): type, zone look and kind.
+## The enemy kinds whose shared look this process has built (warm_up), by warm_key().
 static var _warmed: Dictionary = {}
 ## Per script: whether it has a static warm_up() and brings() (warm_up).
 static var _hooks: Dictionary = {}
@@ -81,28 +81,38 @@ func setup(p_world: RunWorld) -> void:
 ## (the kit's meshes, materials and shaders, built once and kept in its caches), from a look built as
 ## `entry`'s would be, which is freed at once. A type may name the enemies its own bring into play with
 ## a static `brings(entry: Dictionary) -> Array[Dictionary]` (layout-like entries: a host cyborg's Bad
-## Dream). Once a process for each type, zone look and kind (a host). Nothing here spawns, shows or
+## Dream). Once a process for each type, skin and kind (warm_key). Nothing here spawns, shows or
 ## decides anything: the run plays exactly as without it. setup() calls it.
 func warm_up() -> void:
-	var variant: String = String(world.skin.enemy_variant) if world.skin != null else ""
-	_warm(variant)
+	_warm()
 
 
 ## Readies `entries` (layout-like) too, as warm_up() does the layout's: the enemies a boss fight brings into
 ## play itself (BossEncounter.warm_enemies), which aren't in its arena's layout. warm_looks() includes them.
 func warm_up_entries(entries: Array[Dictionary]) -> void:
 	_extra_warm.append_array(entries)
-	_warm(String(world.skin.enemy_variant) if world.skin != null else "")
+	_warm()
 
 
-func _warm(variant: String) -> void:
+## What warm_up() readies `entry`'s look for, once a process: its type, the run's skin and its kind (a
+## host). A zone's skin counts by its resource: two skins may share a zone look but not their kits (the
+## Golden Zone's and the Golden Palace's statues, a Gilded Sentinel's); a skin made in code (quick play's
+## grey box, tests) by its zone look.
+func warm_key(entry: Dictionary) -> String:
+	var skin: String = ""
+	if world.skin != null:
+		skin = world.skin.resource_path if world.skin.resource_path != "" else String(world.skin.enemy_variant)
+	return "%s|%s|%s" % [String(entry.get("type", "")), skin, _warm_kind(entry)]
+
+
+func _warm() -> void:
 	for entry: Dictionary in warm_entries():
 		var type: String = String(entry["type"])
 		var script: GDScript = script_for(type)
 		tuning_for(type)
 		if script == null or not _has_hook(script, &"warm_up"):
 			continue
-		var key: String = "%s|%s|%s" % [type, variant, _warm_kind(entry)]
+		var key: String = warm_key(entry)
 		if _warmed.has(key):
 			continue
 		_warmed[key] = true

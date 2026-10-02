@@ -6,8 +6,9 @@ extends TestSuite
 ##   player is DRESS_BY from it, a chunk freed before it was dressed is skipped, and a seeded run plays
 ##   out the same with and without it (the runner's trace and the enemies' event log).
 ## - Enemy types readied with the level (EnemyDirector.warm_up): every type's script loaded, each kind's
-##   look built and freed once a process with nothing left in the tree and nothing heard, a host's Bad
-##   Dream among them, and warm_looks() handing out one look of each kind.
+##   look built and freed once a process (and skin) with nothing left in the tree and nothing heard, a
+##   host's Bad Dream among them, warm_looks() handing out one look of each kind, and a Gilded Sentinel's
+##   statue frames baked for both walls with each Golden skin's own kit.
 ## - Hit-stops that never stack or chain (RunEffects.freeze, SpeedFxTuning.freeze_gap).
 ## - BossProps' target rings shared by radius.
 ## - The shader warm-up stage (ShaderWarmup): samples of the hidden materials, the effects' glow, every
@@ -27,6 +28,7 @@ const WARM_ENTRIES: Array[Dictionary] = [
 	{"type": "barnacle_turret", "at": 520.0, "lane": 1, "seed": 9, "params": {}},
 	{"type": "generator", "at": 540.0, "lane": 2, "seed": 10, "params": {}},
 	{"type": "buzz_overdrive", "at": 560.0, "lane": 1, "seed": 11, "params": {}},
+	{"type": "gilded_sentinel", "at": 580.0, "lane": 0, "side": 1, "seed": 12, "params": {}},
 ]
 
 var sim: RunSim
@@ -40,6 +42,7 @@ func run() -> void:
 	await _test_dressing_freed_chunk()
 	await _test_dressing_keeps_the_game()
 	await _test_enemy_warm_up()
+	await _test_sentinel_frames()
 	await _test_freeze_never_chains()
 	_test_boss_props_share_rings()
 	await _test_shader_warmup()
@@ -213,12 +216,9 @@ func _test_enemy_warm_up() -> void:
 	var nodes_before: int = int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
 	var children_before: int = director.get_child_count()
 	director.warm_up()
-	var variant: String = String(config.skin.enemy_variant)
 	var missing: PackedStringArray = []
-	for key: String in ["cyborg|%s|" % variant, "cyborg|%s|host" % variant, "window_cyborg|%s|" % variant,
-			"screech|%s|" % variant, "octodog|%s|" % variant, "resonator|%s|" % variant,
-			"barnacle_turret|%s|" % variant, "generator|%s|" % variant, "buzz_overdrive|%s|" % variant,
-			"bad_dream|%s|" % variant]:
+	for e: Dictionary in WARM_ENTRIES + [{"type": "bad_dream"}]:
+		var key: String = director.warm_key(e)
 		if not EnemyDirector._warmed.has(key):
 			missing.append(key)
 	check(missing.is_empty(), "every kind the level brings is readied, a host's Bad Dream too (missing: %s)" % ", ".join(missing))
@@ -226,7 +226,7 @@ func _test_enemy_warm_up() -> void:
 	for e: Dictionary in director.warm_entries():
 		if not EnemyDirector._scripts.has(String(e["type"])) or EnemyDirector._scripts[String(e["type"])] == null:
 			unloaded.append(String(e["type"]))
-	check(unloaded.is_empty() and director.warm_entries().size() == 10,
+	check(unloaded.is_empty() and director.warm_entries().size() == 11,
 		"each type's script is loaded with the level (%d kinds; not loaded: %s)" % [director.warm_entries().size(), ", ".join(unloaded)])
 	check(int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)) == nodes_before and director.get_child_count() == children_before
 		and director.active.is_empty(), "nothing it built stays: no node in the tree, no enemy in play")
@@ -240,9 +240,30 @@ func _test_enemy_warm_up() -> void:
 		if look.is_inside_tree() or _count(look, "GeometryInstance3D") == 0:
 			empty += 1
 		look.free()
-	check(looks.size() == 10 and empty == 0, "warm_looks() gives one look of each kind, built outside the tree (%d, %d empty)" % [
+	check(looks.size() == 11 and empty == 0, "warm_looks() gives one look of each kind, built outside the tree (%d, %d empty)" % [
 		looks.size(), empty])
 	await sim.free_world(world)
+
+
+## A Gilded Sentinel's statue frames come with the level for both walls, with the skin's own kit: the
+## Golden Zone's and the Golden Palace's share a zone look, not their statues, so each readies its own.
+func _test_sentinel_frames() -> void:
+	EnemyDirector._warmed.clear()
+	GildedSentinel._frames.clear()
+	var tune := EnemyDirector.tuning_for("gilded_sentinel") as GildedSentinelTuning
+	for path: String in ["res://data/skins/golden_skin.tres", "res://data/skins/golden_palace_skin.tres"]:
+		var layout := RunSim.layout(5, 800.0)
+		layout.enemies.append({"type": "gilded_sentinel", "at": 400.0, "lane": 0, "side": -1, "seed": 1, "params": {}})
+		var config := LevelConfig.new()
+		config.skin = load(path) as ZoneSkin
+		var world := sim.build_world(layout, null, null, config)
+		var kit: GoldenStatue = (config.skin as GoldenSkin).statues()
+		var walls: int = 0
+		for mirrored: bool in [false, true]:
+			if GildedSentinel._frames.has([kit.get_instance_id(), snappedf(tune.statue_scale, 0.001), mirrored]):
+				walls += 1
+		check(walls == 2, "%s: the Sentinels' frames are baked for both walls with the level (%d)" % [path.get_file(), walls])
+		await sim.free_world(world)
 
 
 # --- Hit-stop -------------------------------------------------------------------------------------
@@ -311,6 +332,12 @@ func _test_shader_warmup() -> void:
 	check(big.is_empty(), "a few frames on, every sample is still too small to see (none at full size in the world): %s" %
 		", ".join(big.slice(0, 4)))
 	check(_count_script(stage, CyborgBody) >= 3, "it draws the cyborgs' looks (a cyborg, a host, a window cyborg)")
+	var cuts: int = 0
+	for node: Node in stage.find_children("*", "MeshInstance3D", true, false):
+		var cut := (node as MeshInstance3D).material_override as ShaderMaterial
+		if cut != null and cut.shader == GildedSentinel.cut_shader():
+			cuts += 1
+	check(cuts >= 1, "it draws a Gilded Sentinel's cut marks (their shader came first at its first warning)")
 	var states: Dictionary = {}
 	for h: Node in stage.find_children("*", "Area3D", true, false):
 		if h is Hazard:
