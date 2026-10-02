@@ -140,7 +140,7 @@ after, run by run: `frame_times.gd --log`, and `test_perf`).
   each track piece the zone skin dresses (fences in each state, wall fences, a sign, pads, ramps, speed pads,
   ceilings, doodads, gap edges, the finish line). After it no shader on Gangland 3 is first drawn mid-run.
 - **Hit-stops** (G2's brief freeze on every kill and stomp): none in the build before the playtest work, now 4
-  to 26 a level (6.6 a minute with a full loadout). Each holds the camera still for three frames while the run
+  to 24 a level (about 6 a minute with a full loadout). Each holds the camera still for three frames while the run
   goes on, so the view jumps 1.0 to 1.25 m when it lets go: on screen, exactly what a dropped frame looks like.
   They never stack or chain now (`freeze_gap`, Speed effects above); whether every kill should keep one is the
   owner's call (`docs/questions/perf1.md`). The frame graph marks the frames a hit-stop holds.
@@ -153,10 +153,12 @@ after, run by run: `frame_times.gd --log`, and `test_perf`).
   least one call), finishing a chunk's whatever the time once the player is `DRESS_BY` (120 m) from it.
 - **Boss props**: every target circle built a torus mesh and a boss's first row of fences built the kit's
   fence look in its frame (3.8 ms for The House's first lightning row); `BossProps` shares rings by radius and
-  builds the skin's fence looks during the fight's load. The House also re-plans a strike waiting for fair lanes
-  every frame (a route search per candidate lane set, `TheHouseAttacks._try_strike`) for up to `strike_wait`:
-  5 to 10 ms frames for about 0.3 s on the dev machine. Re-planning less often would change when strikes come,
-  so it's left to The House's next task.
+  builds the skin's fence looks during the fight's load (a later fence costs about 0.2 ms, a Barnacle
+  Turret's later spawn 0.2 to 0.3 ms: neither shows among the slow frames). The House also re-plans a strike
+  waiting for fair lanes every frame (a route search per candidate lane set, `TheHouseAttacks._try_strike`) for
+  up to `strike_wait`: 5 to 10 ms frames for about 0.3 s on the dev machine in the preview fight's runs (none in
+  the finished fight's 240 s run). Re-planning less often would change when strikes come, so it's left to a
+  task on The House.
 
 Ruled out by measuring: physics bodies (a chunk's are 0.1 to 0.3 ms in all), effects (bursts, debris, lines,
 coin streams and shots are pooled; the speed lines are one canvas pass), and the per-frame checks (the median
@@ -174,9 +176,39 @@ in their own colour, the frames a hit-stop holds, and the latest of both listed 
 under xvfb it counts draw calls, primitives and pipelines. `test_frame_times` holds three levels to budgets.
 
 The numbers (`frame_times.gd`, 5 lanes, full loadout, headless on the dev machine, two passes each in a fresh
-process, each frame's faster time; times in ms of CPU; `a5e691b` / today's main / with PERF1):
+process, each frame's faster time; CPU times in ms; `a5e691b` (the build before the playtest work, at 18 m/s,
+without the Sleep Taker and The House) / today's main / with PERF1; The House is its finished fight, 240 s
+without a bot; a seeded run's event log is the same on main and with PERF1 in every run):
 
-TABLE_PLACEHOLDER
+| Run | Median ms | 99th pct ms | Worst ms | Frames > 16 ms | Frames > 8 ms | Load ms | Hit-stops |
+|---|---|---|---|---|---|---|---|
+| city/1 | 0.84 / 0.87 / 0.81 | 1.59 / 1.93 / 1.75 | 162.1 / 156.4 / 4.0 | 1 / 1 / 0 | 1 / 1 / 0 | 342 / 386 / 492 | 0 / 4 / 4 |
+| city/2 | 0.87 / 0.86 / 0.88 | 1.79 / 2.01 / 2.10 | 4.7 / 6.4 / 5.4 | 0 / 0 / 0 | 0 / 0 / 0 | 300 / 284 / 446 | 0 / 8 / 8 |
+| city/3 | 0.88 / 0.91 / 0.95 | 1.97 / 2.21 / 2.35 | 157.1 / 140.9 / 5.6 | 3 / 2 / 0 | 3 / 2 / 0 | 402 / 457 / 674 | 0 / 13 / 13 |
+| gangland/1 | 0.83 / 0.89 / 0.95 | 1.85 / 2.32 / 2.42 | 165.5 / 165.7 / 4.9 | 4 / 3 / 0 | 4 / 3 / 0 | 403 / 557 / 718 | 0 / 14 / 14 |
+| gangland/2 | 0.89 / 0.89 / 0.92 | 1.90 / 2.32 / 2.27 | 169.0 / 141.4 / 6.2 | 4 / 3 / 0 | 4 / 3 / 0 | 570 / 604 / 852 | 0 / 15 / 15 |
+| gangland/3 | 0.89 / 0.90 / 0.96 | 2.18 / 2.40 / 2.50 | 152.3 / 146.6 / 4.3 | 5 / 3 / 0 | 6 / 3 / 0 | 693 / 701 / 993 | 0 / 16 / 16 |
+| marketplace/1 | 0.94 / 0.99 / 1.00 | 2.23 / 3.12 / 2.65 | 168.4 / 134.0 / 6.9 | 4 / 3 / 0 | 4 / 4 / 0 | 638 / 673 / 867 | 0 / 19 / 19 |
+| marketplace/2 | 0.90 / 0.92 / 1.01 | 2.17 / 2.71 / 2.78 | 185.7 / 138.3 / 4.7 | 5 / 4 / 0 | 5 / 4 / 0 | 783 / 797 / 1109 | 0 / 18 / 18 |
+| corporate/1 | 0.89 / 0.86 / 0.87 | 2.30 / 2.63 / 2.42 | 136.6 / 143.2 / 3.8 | 5 / 3 / 0 | 5 / 4 / 0 | 558 / 1045 / 1127 | 0 / 16 / 16 |
+| corporate/2 | 0.88 / 0.94 / 1.00 | 1.93 / 2.55 / 2.51 | 161.2 / 150.0 / 4.8 | 4 / 5 / 0 | 4 / 6 / 0 | 637 / 887 / 1280 | 0 / 24 / 24 |
+| dead_zone/1 | 0.86 / 0.92 / 0.93 | 2.08 / 2.78 / 2.52 | 165.2 / 128.3 / 4.0 | 5 / 4 / 0 | 5 / 4 / 0 | 732 / 1817 / 2178 | 0 / 14 / 14 |
+| dead_zone/2 | 0.89 / 0.90 / 0.95 | 2.16 / 2.56 / 2.50 | 136.1 / 156.5 / 4.6 | 6 / 4 / 0 | 7 / 5 / 0 | 653 / 820 / 1126 | 0 / 13 / 13 |
+| golden/1 | 0.96 / 0.97 / 0.99 | 2.28 / 2.55 / 2.60 | 57.8 / 40.9 / 4.7 | 4 / 4 / 0 | 5 / 8 / 0 | 680 / 1016 / 1550 | 0 / 23 / 21 |
+| golden/2 | 0.94 / 0.87 / 0.89 | 2.24 / 2.41 / 2.44 | 257.6 / 195.2 / 4.6 | 4 / 5 / 0 | 6 / 7 / 0 | 854 / 970 / 1668 | 0 / 17 / 17 |
+| golden/3 | 0.98 / 0.94 / 0.99 | 2.48 / 2.58 / 2.64 | 285.4 / 254.8 / 5.8 | 6 / 5 / 0 | 7 / 6 / 0 | 1061 / 913 / 1872 | 0 / 23 / 23 |
+| boss city_boss | 1.10 / 1.16 / 1.20 | 2.25 / 2.38 / 2.56 | 14.3 / 17.5 / 4.8 | 0 / 1 / 0 | 1 / 1 / 0 | 783 / 709 / 747 | 0 / 4 / 4 |
+| boss marketplace_boss | - / 1.07 / 1.09 | - / 3.06 / 3.04 | - / 8.1 / 6.6 | - / 0 / 0 | - / 2 / 0 | - / 552 / 511 | - / 0 / 0 |
+| boss dead_zone_boss | - / 1.04 / 1.07 | - / 2.59 / 2.62 | - / 5.9 / 5.7 | - / 0 / 0 | - / 0 / 0 | - / 520 / 528 | - / 3 / 3 |
+| all | | | | 60 / 50 / 0 | 67 / 63 / 0 | | 0 / 244 / 242 |
+
+The first spawns' and first looks' costs now come during the load (a fresh process pays them once: a
+session's later levels find them built), so a level's first frame takes 0.1 to 0.9 s longer on the dev
+machine; whether a level should open behind a loading card is an open question (`docs/questions/perf1.md`).
+The median frame is up by about 0.03 ms in debug builds (the frame monitor itself; release builds have none).
+Under xvfb on Gangland 3 (25 s), 12 shaders were first drawn after the load before (300 to 750 ms frames in
+software on Compatibility, 1 to 3 s on Forward+, with 48 surface and 35 specialization pipelines built
+mid-run) and none after; draw calls (265 to 279 a frame), primitives (44,000) and objects (382) are the same.
 
 ## Data (tunables live in data, CLAUDE.md principle 7)
 
