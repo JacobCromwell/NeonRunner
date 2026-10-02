@@ -60,7 +60,7 @@ func _fight(p_def: BossDef, lanes: int, speed: float, loadout: Loadout = null) -
 	return [world, boss]
 
 
-## The arena alone (planned, no world): [arena, boss].
+## The arena alone (planned, no world): [arena, boss]; the caller frees the boss (not in the tree).
 func _arena(lanes: int, speed: float) -> Array:
 	var boss := BossEncounter.create(def) as HostileTakeover
 	var ctx := RunContext.new()
@@ -175,11 +175,13 @@ func _test_train(speed: float) -> void:
 		for lane: int in lanes:
 			routes_ok = routes_ok and bool(grid.find(1.0, arena.lap_length * 1.6, lane)["ok"])
 		check(routes_ok, "a floor route jumps every gap from every lane %s" % lane_tag)
+		boss.free()
 	# The player's real jump, from every lane, over the first gaps.
 	for lanes: int in LANES:
 		var pair: Array = _arena(lanes, speed)
 		var arena: BossArena = pair[0]
 		var train: HostileTakeoverTrain = (pair[1] as HostileTakeover).train
+		(pair[1] as Node).free()
 		var movement: MovementTuning = arena.tuning
 		var actions: Array = []
 		for k: int in 6:
