@@ -6,7 +6,7 @@ extends Resource
 ## from their position (GDD §6).
 
 @export var zones: Array[ZoneDef] = []
-## Difficulty of the first and last campaign levels (FB 4); levels in between follow the curve,
+## DESIGN-TBD: difficulty of the first and last campaign levels (FB 4, reopened by the owner's playtests and G1); levels in between follow the curve,
 ## so each level is slightly harder than the last (GDD §6). Levels add their difficulty_bias on top:
 ## Golden 2's makes it the campaign's peak (GDD §5, proposed), with Golden 3 a little below it.
 @export_range(0.0, 1.0, 0.05) var difficulty_start: float = 0.1
