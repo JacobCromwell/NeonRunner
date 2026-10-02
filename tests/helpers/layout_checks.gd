@@ -230,15 +230,17 @@ static func check_wall_fences(suite: TestSuite, layout: LevelLayout, config: Lev
 ## at any lane count:
 ## - in a real lane, its warning before its charge, its stretch around where it meets the player, all
 ##   between the run-up and the end-clear stretch, and its cause standing at its end, in its lane;
-## - one at a time: no two windows (from the warning to the cut's end) overlap;
-## - nothing else in its lane from the warning to past its cause's spot: no hole, fence, pad's zone,
-##   speed pad, ramp (or the wall run one launches until it drops the player back), zone doodad or
-##   floor credit; no landing zone of a ceiling over its lane reaches there;
+## - one at a time: no two windows (from the warning, or where a cause on its way before it sets off,
+##   to the cut's end) overlap;
+## - nothing else in its lane from the warning (or where its cause sets off) to past its cause's spot:
+##   no hole, fence, pad's zone, speed pad, ramp (or the wall run one launches until it drops the
+##   player back), zone doodad or floor credit; no landing zone of a ceiling over its lane reaches its
+##   warned lane (from the warning on);
 ## - the other lanes whole along its stretch: on 3 lanes no hole in either (GDD §9.9), on more holes in
 ##   at most LevelConfig.cut_holes_beside of them (and two always whole);
 ## - nothing else going on meanwhile: no floor enemy's stretch (its own cause aside), Bad Dream chase,
-##   drone wave before its first pad or hover truck's shortest stay reaches its window, nor a truck's
-##   whole stay in its lane;
+##   drone wave before its first pad or hover truck's shortest stay reaches its attack window (from the
+##   warning on), nor a truck's whole stay in its lane;
 ## - a floor route (FloorRoute, which keeps out of a cut's lane from where it would reach a player in
 ##   it) from its lane, LevelConfig.cut_reaction_seconds after its warning starts, to past its cause's
 ##   spot: a player who reacts can always leave the lane.
@@ -267,6 +269,8 @@ static func check_cuts(suite: TestSuite, layout: LevelLayout, config: LevelConfi
 		var meet: float = FloorCutPlan.meet(c, speed)
 		var lane_span: Vector2 = FloorCutPlan.lane_window(c)
 		var span: Vector2 = FloorCutPlan.window(c, speed)
+		var attack: Vector2 = FloorCutPlan.attack_window(c, speed)
+		var warned: Vector2 = FloorCutPlan.warned_lane(c)
 		suite.check(lane >= 0 and lane < n, "a cut is in a real lane " + t)
 		suite.check(FloorCutPlan.warn_at(c) < FloorCutPlan.charge_at(c) and FloorCutPlan.charge_at(c) < meet
 			and start < meet and meet < end, "a cut warns, then runs from its end to past where it meets the player " + t)
@@ -303,8 +307,8 @@ static func check_cuts(suite: TestSuite, layout: LevelLayout, config: LevelConfi
 				or not inside.call(float(credit["at"]), float(credit["at"])), "no floor credit in a cut's lane (%.1f) %s" % [credit["at"], t])
 		for h: Dictionary in layout.hulls:
 			var landing: Vector2 = zones.landing_zone(h)
-			suite.check(not layout.hull_covers(h, lane) or not inside.call(landing.x, landing.y),
-				"no ceiling's landing zone over a cut's lane (ceiling ending %.1f) %s" % [h["end"], t])
+			suite.check(not layout.hull_covers(h, lane) or landing.x > warned.y or landing.y < warned.x,
+				"no ceiling's landing zone over a cut's lane from its warning on (ceiling ending %.1f) %s" % [h["end"], t])
 		# The other lanes whole along its stretch.
 		var holed: Dictionary = {}
 		for g: Dictionary in layout.gaps:
@@ -328,7 +332,7 @@ static func check_cuts(suite: TestSuite, layout: LevelLayout, config: LevelConfi
 					if int(e.get("lane", -1)) == lane:
 						busy.append(Vector2(HoverTruckRules.window_start(tt, at, pace), HoverTruckRules.window_end(tt, at, speed)))
 			for b: Vector2 in busy:
-				suite.check(b.y < b.x or b.x > span.y or b.y < span.x,
+				suite.check(b.y < b.x or b.x > attack.y or b.y < attack.x,
 					"nothing else goes on during a cut (%s at %.0f: %.1f-%.1f) %s" % [e["type"], at, b.x, b.y, t])
 		# A player in its lane when it warns can leave it.
 		var from: float = FloorCutPlan.warn_at(c) + config.cut_reaction_seconds * speed

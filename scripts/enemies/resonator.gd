@@ -644,11 +644,15 @@ func _process(delta: float) -> void:
 ## boost there would move where the wave meets the player); and no zone doodad stands between the
 ## warning's start and the stretch's end (GDD §3: its push moves the player; the generator keeps them
 ## off a planned visit, so this holds back only a pulse a wait moved on; DESIGN-TBD,
-## docs/questions/g5.md 5). The generator plans every pulse with it, and the Resonator asks it again
-## just before each warning.
+## docs/questions/g5.md 5). A floor cut's stretch counts as a gap (it is one, or soon will be: task
+## C2's Buzz Overdrive). The generator plans every pulse with it, and the Resonator asks it again just
+## before each warning.
 static func pulse_clear(layout: LevelLayout, zones: CeilingZones, warn_at: float, stretch: Vector2) -> bool:
 	if layout.doodad_between(warn_at - 1.0, stretch.y):
 		return false
+	for c: Dictionary in layout.cuts:
+		if float(c["start"]) <= stretch.y and float(c["end"]) >= stretch.x:
+			return false
 	for g: Dictionary in layout.gaps:
 		if float(g["start"]) <= stretch.y and float(g["end"]) >= stretch.x:
 			return false

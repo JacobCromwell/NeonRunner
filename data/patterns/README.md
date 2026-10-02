@@ -89,7 +89,7 @@ pattern like the Octodog's fits when its dog does). Patterns need nothing specia
 | `min_difficulty` / `max_difficulty` | The pattern can be picked only while the current difficulty (0–1) is in this range |
 | `weight` | Relative pick chance among the patterns that qualify |
 | `min_lanes` | Optional. Skip on devices with fewer lanes |
-| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`, `resonator`, `tithe_collector`), `screech_vents` (wall-vent screeches only, rare, for zones whose floor has no manholes, GDD §9.5), or a planned one: `buzz_overdrive`, `gilded_sentinel`. (The wall fences, `wall_fences` and `wall_fences_partial`, and the Barnacle Turret have no patterns: see below) |
+| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`, `resonator`, `buzz_overdrive`, `tithe_collector`), `screech_vents` (wall-vent screeches only, rare, for zones whose floor has no manholes, GDD §9.5), or a planned one: `gilded_sentinel`. (The wall fences, `wall_fences` and `wall_fences_partial`, and the Barnacle Turret have no patterns: see below) |
 | `length` | Metres of track the pattern takes (the generator extends it for long gaps and hulls) |
 | `elements` | The pieces to place (see below) |
 
@@ -227,8 +227,8 @@ nothing for them: a pattern's signs, window cyborgs, wall vents, ramps and outer
 less of the wall to them. See `docs/ARCHITECTURE.md`, The generator, Wall fences.
 
 Floor cuts (task B4; GDD §9.9, the Buzz Overdrive's: a lane's floor that turns into a hole during play)
-have no patterns either: a rules script plans them after the patterns and every other rule
-(`floor_cutter_rules.gd`, the debug-only stand-in; task C2's Buzz Overdrive will do the same). It plans a
+have no patterns of their own: a rules script plans them after the patterns and every other rule
+(`buzz_overdrive_rules.gd`, and `floor_cutter_rules.gd` for the debug-only stand-in). It plans a
 cut with `FloorCutPlan.make()`, makes room with `scripts/enemies/cut_placement.gd` (only holes, fences
 and speed pads in the cut's lane over its window, and holes beside it beyond what may stay, go) and adds
 the cut's cause at its end; `LevelGenerator.add_cut()` refuses any cut that breaks GDD §9.9's limits
@@ -236,3 +236,12 @@ the cut's cause at its end; `LevelGenerator.add_cut()` refuses any cut that brea
 enough, nothing else going on, a way out). For patterns this means only that a cut never runs where a
 pad, a ramp or a ceiling's landing zone is in its lane, and that a pattern's holes, fences and speed pads
 may make way for one. See `docs/ARCHITECTURE.md`, The generator, Floor cuts.
+
+The Buzz Overdrive's pattern (`buzz_overdrive.json`, `requires` `buzz_overdrive`) only marks where an
+encounter begins: its enemy's `at` is where the player is when the tank sets off, rolling ahead of them,
+and the pattern's 200 m (about 11 s at any speed: pattern metres stretch with the pace) hold the whole
+encounter (its roll, rev and charge, about 9 s). Its rules plan the cut from there, in the entry's lane or
+another, a second or two earlier or later if it doesn't fit, and move the entry to the cut's end; one that
+fits nowhere is dropped and its stretch left to the fill pass. Other patterns needn't leave room for it:
+the rules clear the holes, fences and speed pads in its cut's lane themselves, and move or drop it where a
+pad, a ramp or a ceiling's landing zone is in the way.

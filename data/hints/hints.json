@@ -21,6 +21,7 @@
 		{ "id": "screech", "trigger": "enemy:screech", "text": "A rattling cover means a sewer screech. Leave its lane or jump it." },
 		{ "id": "generator", "trigger": "enemy:generator", "text": "Weapons won't touch a generator. Stomp it or dash through it to knock out the fences around it." },
 		{ "id": "barnacle_turret", "trigger": "enemy:barnacle_turret", "text": "A Barnacle Turret clings to the ceiling and shoots only at riders. When its cannon glows red, switch lanes, and don't run into it." },
+		{ "id": "buzz_overdrive", "trigger": "enemy:buzz_overdrive", "text": "A Buzz Overdrive! When its saw revs and its lane lights red, leave that lane: it charges and cuts the floor away." },
 		{ "id": "host", "trigger": "enemy:host", "text": "Glitching cyborgs carry something worse. Think before you stomp one." },
 		{ "id": "bad_dream", "trigger": "enemy:bad_dream", "text": "The Bad Dream slashes the lanes it lights red. Get out of them: another lane, a wall or a pad." },
 		{ "id": "resonator", "trigger": "enemy:resonator", "text": "When the Resonator's chime plays, a red wave rolls along the floor. Jump it ({jump}), or be on a wall or the ceiling." },

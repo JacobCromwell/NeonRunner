@@ -666,6 +666,13 @@ func _test_fair_play() -> void:
 		var config: LevelConfig = campaign.configure(campaign.step(String(c[0])), int(c[1]))
 		var layout: LevelLayout = LevelGenerator.new().generate(config, tuning, LevelGenerator.load_for(config))
 		var tag: String = "%s lanes=%d" % [c[0], c[1]]
+		# Far enough to meet turrets: 1500 m, or past the first one where the level puts it later (a level's
+		# layout moves with the features it has, e.g. Corporate 2's Buzz Overdrives).
+		var first_turret: float = INF
+		for e: Dictionary in layout.enemies:
+			if String(e["type"]) == "barnacle_turret":
+				first_turret = minf(first_turret, float(e["at"]))
+		var run_to: float = 1500.0 if first_turret == INF else maxf(1500.0, minf(first_turret + 150.0, layout.length - 50.0))
 		var w: RunWorld = sim.build_world(layout, _loadout({"grapple": 999}), null, config)
 		w.player.god_mode = true
 		# Each turret's gun and ceiling (turrets leave play, freed, once the player is well past).
@@ -692,8 +699,8 @@ func _test_fair_play() -> void:
 							p.press(&"move_right" if int(pad["lane"]) > p.lane else &"move_left")
 							state["last_press"] = state["frame"]
 						break
-			return p.distance > 1500.0
-		await _step_until(w, bot, 90.0)
+			return p.distance > run_to
+		await _step_until(w, bot, run_to / tuning.run_speed + 7.0)
 		check(int(state["off_ceiling"]) == 0, "it never charges or fires at a player off its ceiling %s" % tag)
 		var bursts: Array = []
 		for m: Dictionary in met:

@@ -1949,6 +1949,40 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     and every button and the hopper are always reachable). **Alternative:** the Marketplace's own gaps
     and fences between spins, which the machine's attacks and buttons would keep clear of.
 
+**The Buzz Overdrive** (from C2; numbers in `data/enemies/buzz_overdrive.tres`; play `--level=corporate/1`, review with `tools/showcase/buzz_overdrive_showcase.tscn`)
+304. **What does "stop it in time" mean, and may it roll ahead first?** (GDD §9.9: "tuned so laser tier 1
+    can't stop it in time, but the missile tiers usually can".) I read it as killing it before it charges,
+    which saves the floor. A tank parked in its lane is in missile range (70 m) for well under the 5–7 s the
+    missiles need, so it rolls ahead of the runner for 4 s, about 50–60 m in front, before it revs. Measured
+    on a plain track: laser tier 1 never stops it; tiers 2–4 kill it during its rev at the zones' speeds
+    (23.4–25 m/s); at the harder tiers' 28–30 m/s, tier 3 (and tier 4 at 30) only stop it mid-charge. The
+    alternative is that it waits parked until it charges, and no weapon tier can stop it in time.
+    *Placeholder:* `BuzzOverdriveTuning.roll_seconds = 4.0` (DESIGN-TBD).
+305. **How fast does it charge?** It reaches the runner 0.6 s after it starts charging, at 2.5 times the run
+    speed, so its cut runs on 1.5 s ahead of where it meets them: after a block, the floor holds for 1 s and
+    then the runner falls unless they switched lanes (GDD §9.9: "a jump would land back in the cut lane").
+    The alternative is a slower charge, which starts further away (out of missile range at the zones'
+    speeds) or leaves too little cut ahead for the hold to matter.
+    *Placeholder:* `charge_seconds = 0.6`, `charge_speed = 45` (DESIGN-TBD).
+306. **How many per level?** Corporate 1: 1–4 (about 2.5 on average over seeds and lane counts), Corporate 2
+    about 2.6, the Dead Zone and the Golden Zone about 1 each. In Corporate 1 the recency curve picks it
+    four times as often (not capped), and about a third of its picks are dropped because nothing fits around
+    them (a drone's pad and ceiling come every 8–10 s, a hover truck stays 20 s or more). Its introduction
+    comes within 15 s of Corporate 1's 10% start in about two thirds of the layouts, later in the rest. The
+    alternative is capping its pick boost at 1 like the other big enemies (fewer wasted picks, fewer tanks).
+    *Placeholder:* no cap in `data/tuning/feature_recency.tres`; `intro_seconds = 15` (DESIGN-TBD).
+307. **What else may happen while it rolls in?** Only its rev and charge are kept clear of every other attack
+    (B4's "nothing else goes on"); while it rolls ahead before its warning, other enemies may still act, and
+    only its lane is kept clear. One Buzz Overdrive at a time counts its roll too. The alternative is to keep
+    everything off its roll as well (calmer, but it fits in fewer places).
+    *Placeholder:* `FloorCutPlan.attack_window` (DESIGN-TBD).
+308. **Its look.** A tracked tank in military gunmetal and olive (scorched and rusted in the Dead Zone), a
+    giant vertical saw whose teeth glow hot orange-red (the deadly part), and a red slit eye under a dark brow
+    on each side. Its blade runs along its lane like a real saw's, so head-on (the runner's view) it shows as
+    a glowing edge and its eyes only from the side; at 50 m it is small, and the red line over its lane is
+    what reads. The alternatives are a blade facing the runner, a zone-tinted body (gold trim in the Golden
+    Zone) or a hover tank. *Placeholder:* `BuzzOverdriveModel` (DESIGN-TBD).
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).

@@ -145,15 +145,18 @@ func pad_lane_clear(layout: LevelLayout, lane: int, at: float) -> bool:
 
 ## True if floor cut `cut` (LevelLayout.cuts; GDD §9.9: "it never cuts a lane holding ... a pad or the
 ## safe landing zone after a ceiling") keeps off every ceiling's safe floor in its lane: no landing
-## zone of a ceiling that covers its lane, and no pad's zone in its lane, reaches its lane window
-## (FloorCutPlan.lane_window: from where its warning starts to past its cause's spot), so a rider never
-## drops in front of a cut or into one, and every pad in its lane can be stepped on.
+## zone of a ceiling that covers its lane reaches its warned lane (FloorCutPlan.warned_lane: from where
+## its warning starts to past its cause's spot), so a rider never drops in front of a cut or into one,
+## and no pad's zone in its lane reaches its lane window (FloorCutPlan.lane_window: from where its cause
+## sets off, if it's on its way before its warning), so every pad in its lane can be stepped on and no
+## cause drives over one.
 func cut_clear(layout: LevelLayout, cut: Dictionary) -> bool:
 	var lane: int = int(cut["lane"])
 	var span: Vector2 = FloorCutPlan.lane_window(cut)
+	var warned: Vector2 = FloorCutPlan.warned_lane(cut)
 	for h: Dictionary in layout.hulls:
 		var zone: Vector2 = landing_zone(h)
-		if layout.hull_covers(h, lane) and zone.x <= span.y and zone.y >= span.x:
+		if layout.hull_covers(h, lane) and zone.x <= warned.y and zone.y >= warned.x:
 			return false
 	for p: Dictionary in layout.pads:
 		var zone: Vector2 = pad_zone(float(p["at"]))
