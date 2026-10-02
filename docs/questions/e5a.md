@@ -18,10 +18,10 @@ is `DESIGN-TBD`; step 1's questions are OPEN_QUESTIONS items 299-303.
    pad, guarded by Barnacle Turrets").
    **Placeholder:** a floating billboard (GDD §5: the Marketplace's ceilings include "floating
    advertisements") comes down from the sky over every lane with a pad under it; the button is on its
-   underside 1.1 s past the pad, in the pad's lane;
-   one turret (3 lanes) or two (5-6 lanes) hang further along in a lane beside the pad's (C1's limits
-   keep them at least 2.2 s past a pad, so they can't stand before the button) and fire at the rider,
-   who dodges a lane over. **Alternative:** a longer ceiling with the button past the turrets.
+   underside 1.1 s past the pad, in the pad's lane; one turret (3 lanes) or two (5-6 lanes) hang further
+   along in a lane beside the pad's (C1's limits keep them at least 2.2 s past a pad, so they come after
+   the button) and fire at the rider, who dodges a lane over. **Alternative:** a longer ceiling with the
+   button past the turrets.
 3. **The machine is taller than a ceiling** (GDD §10 gives it a building's height; a ceiling is 6 m up).
    **Placeholder:** at the lever's pull it squats on its treads to 4.9 m and stays down until it has rolled
    past the billboard's end, then rises. **Alternative:** it drops back further while a ceiling is over
