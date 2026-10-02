@@ -45,6 +45,11 @@ void fragment() {
 
 enum State { IDLE, PULLED, GONE }
 
+## Credits placed during the run (place()) share MultiMeshes of this many instances.
+const PLACE_CHUNK: int = 32
+## A credit this far behind the player is passed for good: the field never walks back to it.
+const PASSED_BEHIND: float = 3.0
+
 var world: RunWorld
 ## Magnet pull radius in metres (0 = off). The magnet power-up sets it.
 var magnet_radius: float = 0.0
@@ -55,6 +60,10 @@ var _entries: Array[Dictionary] = []
 var _pulled: Array[Dictionary] = []
 var _next: int = 0
 var _multimeshes: Dictionary = {}
+## Placed credits' MultiMeshes (place()): denomination → [MultiMesh], the last one filling.
+var _placed: Dictionary = {}
+## Placed credits by denomination: a later place() takes back the slot of one collected or passed.
+var _placed_entries: Dictionary = {}
 static var _meshes: Dictionary = {}
 static var _materials: Dictionary = {}
 
@@ -66,6 +75,8 @@ func setup(p_world: RunWorld) -> void:
 	_entries.clear()
 	_pulled.clear()
 	_multimeshes.clear()
+	_placed.clear()
+	_placed_entries.clear()
 	_next = 0
 	var by_value: Dictionary = {}
 	for c: Dictionary in world.layout.credits:
@@ -105,6 +116,76 @@ func remaining() -> int:
 	return n
 
 
+## Places credits during the run (GDD §10, The House's jackpot: "a fountain of real credits to grab"):
+## entries like LevelLayout.credits' ({surface, lane, side, at, value, height}), collected (and pulled
+## by the magnet) like the level's own from now on. Each denomination's placed credits share MultiMeshes
+## of PLACE_CHUNK instances, so a fountain costs a draw or two, and they're pooled: a new one takes the
+## slot of one collected or passed (_reuse_slot), so a fight's fountains keep to a chunk or two however
+## many come. Returns how many were placed.
+func place(credits: Array[Dictionary]) -> int:
+	for c: Dictionary in credits:
+		var value: int = denomination(int(c["value"]))
+		var e := {"value": value, "surface": String(c.get("surface", "floor")), "lane": int(c.get("lane", 0)),
+			"side": int(c.get("side", 0)), "at": float(c["at"]), "state": State.IDLE, "pos": _world_pos(c)}
+		var mine: Array = _placed_entries.get(value, [])
+		_placed_entries[value] = mine
+		if _reuse_slot(e, mine):
+			(e["mm"] as MultiMesh).set_instance_transform(e["idx"], Transform3D(Basis.IDENTITY, e["pos"]))
+			mine.append(e)
+			_insert(e)
+			continue
+		var chunks: Array = _placed.get(value, [])
+		_placed[value] = chunks
+		if chunks.is_empty() or (chunks[-1] as MultiMesh).visible_instance_count >= PLACE_CHUNK:
+			var mm := MultiMesh.new()
+			mm.transform_format = MultiMesh.TRANSFORM_3D
+			mm.mesh = mesh_for(value)
+			mm.instance_count = PLACE_CHUNK
+			mm.visible_instance_count = 0
+			var inst := MultiMeshInstance3D.new()
+			inst.multimesh = mm
+			inst.material_override = material_for(value)
+			inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			add_child(inst)
+			chunks.append(mm)
+		var chunk: MultiMesh = chunks[-1]
+		e["mm"] = chunk
+		e["idx"] = chunk.visible_instance_count
+		chunk.set_instance_transform(e["idx"], Transform3D(Basis.IDENTITY, e["pos"]))
+		chunk.visible_instance_count += 1
+		mine.append(e)
+		_insert(e)
+	return credits.size()
+
+
+## Gives placed credit `e` the MultiMesh slot of one in `mine` (its denomination's placed credits) that's
+## done with: collected, or passed for good. That one leaves the field. False if none is.
+func _reuse_slot(e: Dictionary, mine: Array) -> bool:
+	var passed: float = world.player.distance - PASSED_BEHIND if world != null and world.player != null else -INF
+	for i: int in mine.size():
+		var old: Dictionary = mine[i]
+		if old["state"] != State.GONE and not (old["state"] == State.IDLE and float(old["at"]) < passed):
+			continue
+		mine.remove_at(i)
+		old["state"] = State.GONE
+		var at: int = _entries.find(old)
+		if at >= 0:
+			_entries.remove_at(at)
+			if at < _next:
+				_next -= 1
+		e["mm"] = old["mm"]
+		e["idx"] = old["idx"]
+		return true
+	return false
+
+
+## Adds placed credit `e` to the field's walk, which goes in track order from _next: keeps that order.
+func _insert(e: Dictionary) -> void:
+	var i: int = _entries.bsearch_custom(e, func(a: Dictionary, b: Dictionary) -> bool:
+		return float(a["at"]) < float(b["at"]), false)
+	_entries.insert(maxi(i, _next), e)
+
+
 func _physics_process(delta: float) -> void:
 	if world == null or world.player == null or not world.player.alive or not world.player.running:
 		return
@@ -116,7 +197,7 @@ func _physics_process(delta: float) -> void:
 	var reach: float = maxf(magnet_radius * 2.5, 2.0)
 	var d: float = player.distance
 
-	while _next < _entries.size() and float(_entries[_next]["at"]) < d - 3.0:
+	while _next < _entries.size() and float(_entries[_next]["at"]) < d - PASSED_BEHIND:
 		_next += 1
 	var i: int = _next
 	while i < _entries.size() and float(_entries[i]["at"]) <= d + reach:

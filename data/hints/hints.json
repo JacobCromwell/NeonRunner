@@ -34,6 +34,9 @@
 		{ "id": "dead_zone_boss_refuge", "trigger": "boss:dead_zone_boss/refuge", "text": "A bridge ahead: its giant slash comes as you reach it. Step on the pad to ride the ceiling, out of its reach." },
 		{ "id": "dead_zone_boss_hands", "trigger": "boss:dead_zone_boss/hands", "text": "Purple mist in your lane: a hand is rising from it. Switch lanes!" },
 		{ "id": "dead_zone_boss_lights_out", "trigger": "boss:dead_zone_boss/lights_out", "text": "It's swallowing the light! Hazards and warnings still glow in the dark: keep reading them." },
+		{ "id": "marketplace_boss", "trigger": "enemy:marketplace_boss", "text": "The House! Its reels say what's coming: cherries throw bombs, lightning rolls out a fence, BAR drops gold blocks. Then dodge by the warnings on the floor." },
+		{ "id": "marketplace_boss_buttons", "trigger": "boss:marketplace_boss/buttons", "text": "Glowing 7 buttons! Run over one to lock its reel on 7. Lock all three for the JACKPOT." },
+		{ "id": "marketplace_boss_jackpot", "trigger": "boss:marketplace_boss/jackpot", "text": "JACKPOT! Its hopper burst open: jump onto the glowing red hopper on its top to stomp it." },
 		{ "id": "pickup_armor", "trigger": "pickup:armor", "text": "Armor pickup ahead: run through it to get your armor back at once. Armor blocks enemy attacks and electric shocks." },
 		{ "id": "pickup_shield", "trigger": "pickup:shield", "text": "Shield pickup ahead: run through it. A shield blocks one hit of anything." },
 		{ "id": "pickup_grapple", "trigger": "pickup:grapple", "text": "Grapple pickup ahead: run through it. The grapple hook saves you from one fall." }
