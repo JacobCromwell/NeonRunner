@@ -195,13 +195,13 @@ extends Resource
 ## DESIGN-TBD (GDD §10, phase 2: "with wall fences in play"; GDD §9.1, full-height ones from Marketplace 2):
 ## in the phases listed (0-based), full-height wall fences (task B5) stand along both walls, one every
 ## wall_fence_every seconds of run on alternating walls, wall_fence_on seconds on and wall_fence_off off on
-## the level clock (with the fence's warning before each switch on), planned wall_fence_ahead seconds
-## ahead at a time past the built track. The machine's strikes keep off their drop windows (B5).
+## the level clock (with the fence's warning before each switch on), planned wall_fence_ahead seconds of
+## run past the built track at a time. The machine's strikes keep off their drop windows (B5).
 @export var wall_fence_phases: PackedInt32Array = PackedInt32Array([1])
 @export_range(1.0, 10.0, 0.1, "suffix:s") var wall_fence_every: float = 2.2
 @export_range(0.3, 3.0, 0.05, "suffix:s") var wall_fence_on: float = 1.0
 @export_range(0.5, 4.0, 0.05, "suffix:s") var wall_fence_off: float = 1.4
-@export_range(4.0, 30.0, 0.5, "suffix:s") var wall_fence_ahead: float = 12.0
+@export_range(2.0, 20.0, 0.5, "suffix:s") var wall_fence_ahead: float = 6.0
 
 @export_group("Ceiling button")
 ## DESIGN-TBD: phase 3's special button is on the underside of a floating billboard over every lane (a

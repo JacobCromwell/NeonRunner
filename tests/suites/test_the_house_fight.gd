@@ -1,5 +1,5 @@
 extends TestSuite
-## The House's fight (GDD §10; task E5a-a), its 7 buttons, its jackpot and its first phase, at 3, 5 and 6
+## The House's fight (GDD §10; tasks E5a-a and E5a-b), its 7 buttons, its jackpot and its phases, at 3, 5 and 6
 ## lanes, at the reference 18 m/s and the Marketplace's 22.6 m/s, with a runner who plays it by what it
 ## shows (TheHouseBot, reacting REACTION late; no god mode, no armor):
 ## - the buttons: each lights up in plain view before the runner reaches it, in its own lane (never the
@@ -14,8 +14,9 @@ extends TestSuite
 ##   under the runner and rises back to where it paces; a missed hopper means it spins again, at full health;
 ## - weapons chip at it only while it can be hurt, and never past its cap (at most one stomp saved);
 ## - it plays the same on every attempt;
-## - the scripted runner wins phase 1 at every lane count and both speeds, in quick play (--boss=), and
-##   again after a death and the retry that starts the fight over.
+## - the scripted runner wins phase 1 at every lane count and both speeds, in quick play, dies, and wins
+##   the whole fight in the retry that starts it over (all three phases: test_the_house_phases.gd plays
+##   phases 2 and 3 and the campaign on their own).
 
 const BOSS_PATH: String = "res://data/bosses/marketplace_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
@@ -35,9 +36,9 @@ var def: BossDef
 func run() -> void:
 	sim = RunSim.new(tree, tuning)
 	var slot := load(BOSS_PATH) as BossDef
-	def = slot.preview() if slot != null else null
+	def = slot if slot != null and slot.is_built() else null
 	if def == null:
-		check(false, "The House's fight loads as a preview")
+		check(false, "The House's fight loads")
 		return
 	for lanes: int in LANES:
 		for speed: float in SPEEDS:
@@ -314,24 +315,25 @@ func _test_same_every_attempt() -> void:
 		var boss: TheHouse = pair[1]
 		var bot := TheHouseBot.new(boss)
 		bot.reaction = REACTION
-		await _run(world, bot, 60.0, func() -> bool: return boss.phase_index >= 1)
+		await _run(world, bot, 160.0, func() -> bool: return boss.is_defeated())
 		var parts := PackedStringArray()
 		for e: Dictionary in boss.events:
-			if e["event"] in [&"spin", &"strike", &"button_planned", &"button_pressed", &"result", &"jackpot", &"weak_point"]:
+			if e["event"] in [&"spin", &"strike", &"button_planned", &"button_pressed", &"result", &"jackpot", &"weak_point",
+					&"wall_fences", &"ceiling_planned", &"ceiling_shown", &"defeat"]:
 				var copy: Dictionary = e.duplicate()
 				copy.erase("t")
 				parts.append("%.2f %s" % [float(e["t"]), copy])
 		logs.append("\n".join(parts))
 		await sim.free_world(world)
-	check(logs.size() == 2 and logs[0] == logs[1] and logs[0].length() > 200,
-		"it plays the same on every attempt: the same spins, strikes, buttons and jackpot at the same times")
+	check(logs.size() == 2 and logs[0] == logs[1] and logs[0].length() > 200 and logs[0].contains("ceiling_shown"),
+		"it plays the same on every attempt: the same spins, strikes, buttons, wall fences, ceilings and jackpots at the same times")
 
 
 # --- Quick play, a death and the retry -----------------------------------------------------------
 
-## Through the game itself (quick play, as ./play.sh --boss=marketplace_boss): the runner wins phase 1 at
-## every lane count and both speeds; then dies; quick play retries, starting the fight over; and the runner
-## wins phase 1 again.
+## Through the game itself (quick play, as App.start_boss_quick): at every lane count and both speeds the
+## runner wins phase 1, then dies; quick play retries, starting the fight over; and the runner plays all
+## three phases to the win (its wall and ceiling buttons included).
 func _test_quick_play_and_retry() -> void:
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	tree.root.add_child(main)
@@ -382,9 +384,20 @@ func _quick_flow(lanes: int, speed: float) -> void:
 		return
 	bot = TheHouseBot.new(boss)
 	bot.reaction = REACTION
-	for i: int in 90 * 60:
-		if boss.phase_index >= 1 or not run.world.player.alive:
+	var phases: Dictionary = {}
+	for i: int in 160 * 60:
+		if boss.is_defeated() or not run.world.player.alive:
 			break
+		phases[boss.phase_index] = true
 		bot.step()
 		await tree.physics_frame
-	check(boss.phase_index == 1 and run.world.player.alive, "and the runner wins phase 1 again %s" % tag)
+	var stomps: int = _events(boss, &"weak_point").size()
+	check(boss.is_defeated() and run.world.player.alive and phases.size() == 3 and stomps == 3,
+		"and the retry plays all three phases to the win (%.0f s) %s" % [boss.fight_time(), tag])
+	var kinds: Dictionary = {}
+	for e: Dictionary in _events(boss, &"button_pressed"):
+		kinds[e["kind"]] = true
+	check(kinds.has("floor") and kinds.has("wall") and kinds.has("ceiling"),
+		"its buttons on the floor, on a wall and on a ceiling all run over %s" % tag)
+	check(bot.stuck == 0 and boss.fight_time() >= 60.0 and boss.fight_time() <= def.three_star_seconds,
+		"a clean fight in %.0f s: in GDD §10's 60-120 s, within three stars' par %s" % [boss.fight_time(), tag])

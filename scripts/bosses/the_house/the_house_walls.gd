@@ -5,8 +5,7 @@ extends RefCounted
 ## full-height wall fences (task B5: LevelLayout.wall_fences entries, WallFencePlan) stand along both walls,
 ## one every wall_fence_every seconds of run on alternating walls, pulsing wall_fence_on on and
 ## wall_fence_off off on the level clock with the floor fence's warning before each switch on. They're
-## track pieces: planned wall_fence_ahead seconds ahead at a time past the built track (BossArena.stream_from,
-## add_pieces), each held to the level's rules on the arena's track first (BossArena.wall_fence_problem),
+## track pieces: planned past the built track a batch at a time (BossArena.stream_from, add_pieces), each held to the level's rules on the arena's track first (BossArena.wall_fence_problem),
 ## built and pulsing like a level's (TrackBuilder), so DamageRules and their looks are B5's.
 ## The fight reads them here: the wall button's plan passes a wall fence only while it's off (passage_off),
 ## and the machine's strikes keep off their drop windows (in_drop_window: B5's rule that no big attack
@@ -42,19 +41,17 @@ func active() -> bool:
 	return _active
 
 
-## Plans the next ones past the built track, up to wall_fence_ahead seconds ahead of the runner, a batch
-## at a time.
+## Plans the next ones past the built track (wall_fence_ahead seconds of run past it), a batch at a time:
+## once the track is built up to within a spacing of the next one to plan.
 func tick() -> void:
 	if not _active or boss.arena == null:
 		return
 	var v: float = boss.speed()
-	var d: float = world.player.distance
 	var from: float = boss.arena.stream_from() + 1.0
-	var until: float = d + tuning.wall_fence_ahead * v
-	var at: float = maxf(_next_at, from)
-	# A batch at a time: once less than half the stretch ahead is planned.
-	if at > d + tuning.wall_fence_ahead * v * 0.5:
+	if _next_at > from + tuning.wall_fence_every * v:
 		return
+	var at: float = maxf(_next_at, from)
+	var until: float = from + tuning.wall_fence_ahead * v
 	var extra := LevelLayout.new()
 	extra.lane_count = boss.lane_count()
 	while at <= until:

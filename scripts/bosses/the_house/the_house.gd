@@ -307,6 +307,7 @@ func _on_phase_started(index: int) -> void:
 
 func _intro_tick(delta: float) -> void:
 	step_time += delta
+	walls.tick()
 	match step:
 		Step.ENTER:
 			var k: float = clampf(step_time / maxf(phase().intro_seconds, 0.05), 0.0, 1.0)
