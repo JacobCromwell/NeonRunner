@@ -36,6 +36,14 @@ var band_top: float = 0.0
 var _husk: bool = false
 
 
+## A window cyborg's body as `entry`'s would be, for EnemyDirector.warm_up (which frees it): its upper
+## body builds what the cyborg kit shares (Cyborg.warm_up).
+static func warm_up(world: RunWorld, entry: Dictionary) -> Node:
+	var body := CyborgBody.new()
+	body.build(world.skin.enemy_variant, false, true, int(entry.get("seed", 0)))
+	return body
+
+
 func _build() -> void:
 	tuning = tuning_res as WindowCyborgTuning
 	if tuning == null:

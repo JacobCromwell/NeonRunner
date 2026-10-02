@@ -155,6 +155,15 @@ var _model: ResonatorModel
 var _waves: Array[Wave] = []
 
 
+## A Resonator's look, for EnemyDirector.warm_up (which frees it): the first builds the meshes and
+## shaders every later one shares.
+static func warm_up(_world: RunWorld, _entry: Dictionary) -> Node:
+	var tune: ResonatorTuning = EnemyDirector.tuning_for("resonator") as ResonatorTuning
+	var model := ResonatorModel.new()
+	model.build(tune.model_scale if tune != null else 1.0)
+	return model
+
+
 func _build() -> void:
 	tune = tuning_res as ResonatorTuning if tuning_res is ResonatorTuning else ResonatorTuning.new()
 	display_name = "Resonator"

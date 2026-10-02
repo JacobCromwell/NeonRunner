@@ -47,6 +47,10 @@ static var _tunings: Dictionary = {}
 static var _warned: Dictionary = {}
 ## The rules a run without any uses (their defaults).
 static var _default_rules: GameRules = null
+## The enemy kinds whose shared look this process has built (warm_up): type, zone look and kind.
+static var _warmed: Dictionary = {}
+## Per script: whether it has a static warm_up() and brings() (warm_up).
+static var _hooks: Dictionary = {}
 
 
 func setup(p_world: RunWorld) -> void:
@@ -64,6 +68,69 @@ func setup(p_world: RunWorld) -> void:
 		e["spawn_at"] = float(entry["at"]) - lead_for(String(entry["type"]))
 		_pending.append(e)
 	_pending.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["spawn_at"] < b["spawn_at"])
+	warm_up()
+
+
+## Readies every enemy type the level brings while it loads (task PERF1), so the first of a type met in
+## play costs no more than any other: its script and tuning (loading and compiling an enemy's scripts
+## took up to 200 ms in the frame its first one spawned) and, for a type whose script has a static
+## `warm_up(world: RunWorld, entry: Dictionary) -> Node`, its look: what every enemy of its kind shares
+## (the kit's meshes, materials and shaders, built once and kept in its caches), from a look built as
+## `entry`'s would be, which is freed at once. A type may name the enemies its own bring into play with
+## a static `brings(entry: Dictionary) -> Array[Dictionary]` (layout-like entries: a host cyborg's Bad
+## Dream). Once a process for each type, zone look and kind (a host). Nothing here spawns, shows or
+## decides anything: the run plays exactly as without it. setup() calls it.
+func warm_up() -> void:
+	var todo: Array[Dictionary] = []
+	var seen: Dictionary = {}
+	for entry: Dictionary in world.layout.enemies:
+		_note_for_warm_up(entry, todo, seen)
+	var variant: String = String(world.skin.enemy_variant) if world.skin != null else ""
+	for entry: Dictionary in todo:
+		var type: String = String(entry["type"])
+		var script: GDScript = script_for(type)
+		tuning_for(type)
+		if script == null or not _has_hook(script, &"warm_up"):
+			continue
+		var key: String = "%s|%s|%s" % [type, variant, _warm_kind(entry)]
+		if _warmed.has(key):
+			continue
+		_warmed[key] = true
+		var look: Variant = script.call(&"warm_up", world, entry.duplicate(true))
+		if look is Node and is_instance_valid(look):
+			(look as Node).free()
+
+
+## Adds `entry` to the warm-up list (one entry for each type and kind), and what it brings.
+func _note_for_warm_up(entry: Dictionary, todo: Array[Dictionary], seen: Dictionary) -> void:
+	var type: String = String(entry.get("type", ""))
+	var key: String = type + "|" + _warm_kind(entry)
+	if type == "" or seen.has(key) or entry.has("script"):
+		return
+	seen[key] = true
+	todo.append(entry)
+	var script: GDScript = script_for(type)
+	if script != null and _has_hook(script, &"brings"):
+		for brought: Dictionary in script.call(&"brings", entry):
+			_note_for_warm_up(brought, todo, seen)
+
+
+## A layout entry's kind for the warm-up: a host cyborg looks unlike the others.
+static func _warm_kind(entry: Dictionary) -> String:
+	return "host" if bool((entry.get("params", {}) as Dictionary).get("host", false)) else ""
+
+
+## True if `script` defines the static function `hook` (warm_up's hooks).
+static func _has_hook(script: GDScript, hook: StringName) -> bool:
+	var key: String = "%d|%s" % [script.get_instance_id(), hook]
+	if not _hooks.has(key):
+		var found: bool = false
+		for m: Dictionary in script.get_script_method_list():
+			if StringName(m["name"]) == hook:
+				found = true
+				break
+		_hooks[key] = found
+	return _hooks[key]
 
 
 ## Spawns what the player has come close to and retires enemies that are done. RunWorld calls this
