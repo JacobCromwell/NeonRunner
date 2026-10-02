@@ -34,10 +34,13 @@ extends Enemy
 ##   (DESIGN-TBD, docs/questions/c4.md). Defeated, its eyes go dark and it slumps in its niche.
 ## - Big attacks take turns (GDD §9): its attack counts as one, from its eyes' flare until its last swing
 ##   is over (is_major_attack_active), so the others wait for it. It can't wait itself (a statue gets one
-##   chance as the runner passes): it asks the director once, as its warning would start, and if another
-##   type's big attack is on then, it lets the runner pass (no warning, no swing). The generator keeps the
-##   Octodog's planned charges and floor cuts off its stretch, and every big attack off the level's first
-##   (gilded_sentinel_rules.gd), so that one always swings (DESIGN-TBD, docs/questions/c4.md).
+##   chance as the runner passes), so it claims its turn claim_seconds before its warning (claiming(): it
+##   reports itself from then on, and another type's attack that gets ready meanwhile waits), then asks
+##   the director as its warning would start: if another type's big attack begun before its claim is
+##   still on, it lets the runner pass (no warning, no swing), so its cut never overlaps another's. The
+##   generator keeps the Octodog's planned charges and floor cuts off its stretch, and every big attack
+##   off the level's first (gilded_sentinel_rules.gd), so that one always swings (DESIGN-TBD,
+##   docs/questions/c4.md).
 ## - Cheap: the statue is one mesh of two surfaces (the gold, and the eyes' own glowing material), its
 ##   frames baked once from the kit and shared by every Sentinel; the marks and slashes are a few quads;
 ##   it does constant work a frame (where the runner is against its trigger) and hears a wall jump as an
@@ -421,7 +424,8 @@ func _tick(delta: float) -> void:
 				_log("done")
 			elif pl.alive and pl.running and d >= tune.warn_at(_at, swings, v):
 				# GDD §9: big attacks take turns. A statue can't wait for one (the runner is gone by then):
-				# with another type's big attack on, it lets the runner pass instead of overlapping it.
+				# its claim has held back the attacks that got ready since; with one begun before its claim
+				# still on, it lets the runner pass instead of overlapping it.
 				if world.director.major_attack_blocked(self):
 					world.director.give_up_turn(self)
 					_set_state(State.DONE)
@@ -496,10 +500,25 @@ func _update_swings(d: float, v: float) -> void:
 		_log("recover")
 
 
-## GDD §9: its attack is a big one, from its eyes' flare until its last swing's cut is over. It never
-## asks to start (it can't wait, like a planned floor cut): the others wait for it.
+## GDD §9: its attack is a big one, from its eyes' flare until its last swing's cut is over, and it
+## claims its turn claim_seconds before that (claiming()), so the others hold theirs meanwhile.
 func is_major_attack_active() -> bool:
-	return alive and (state == State.WARNING or state == State.HOLD or state == State.STRIKE)
+	if not alive:
+		return false
+	return state == State.WARNING or state == State.HOLD or state == State.STRIKE \
+		or (state == State.IDLE and claiming())
+
+
+## True while it claims its turn before its warning: the runner, running, is within claim_seconds (at
+## their speed) of where its warning starts. It stays true until the warning starts (or it lets the
+## runner pass), so its own ask then finds its turn already held.
+func claiming() -> bool:
+	var pl: Player = world.player if world != null else null
+	if pl == null or not pl.alive or not pl.running or state != State.IDLE:
+		return false
+	var v: float = maxf(pl.speed, 1.0)
+	return pl.distance >= tune.warn_at(_at, swings, v) - tune.claim_seconds * v \
+		and pl.distance <= tune.guarded_stretch(_at, swings).y
 
 
 ## True while swing `index`'s cut is live (tests).

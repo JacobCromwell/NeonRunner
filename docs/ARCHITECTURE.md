@@ -332,8 +332,8 @@ up), the drone's wind-up and barrage, the hover truck's rev and forward lurch an
 and volley, the Bad Dream's chase, the Resonator's pulse (its warning until its last wave has passed
 the player; DESIGN-TBD, `docs/questions/c3.md`), the Buzz Overdrive's rev and charge (its warning
 until it has passed the player and gone; it never waits, below), and a Gilded Sentinel's attack (its
-eyes' flare until its last swing is over; it can't wait either, so with another's on it lets the runner
-pass, below; DESIGN-TBD, `docs/questions/c4.md`). Small attacks (a cyborg's burst, a window
+eyes' flare until its last swing is over; it can't wait either, so it claims its turn a moment before
+and lets the runner pass if another's is still on, below; DESIGN-TBD, `docs/questions/c4.md`). Small attacks (a cyborg's burst, a window
 cyborg's shot, a Barnacle Turret's burst, a screech's swipe) and the hover truck's entrance don't take
 part. An enemy takes part like this, opting in for whichever of its attacks count as big:
 - **Report it.** `is_major_attack_active()` is true from the start of the attack's warning until its
@@ -555,11 +555,15 @@ across the street), its cut's shader (`gilded_sentinel_cut.gdshader`), its sound
   push-off is the stomp; it hears the wall jump as `Player.movement_event`, never by checking each frame.
   Down, its eyes go dark and it slumps in its niche until the runner is far past.
 - **Big attacks.** Its attack counts as one, from its eyes' flare until its last swing's cut is over
-  (`is_major_attack_active`), so the others wait for it. A statue can't wait (the runner is gone by then):
-  it asks `major_attack_blocked` once, as its warning would start, and with another type's attack on it
-  gives up its turn and lets the runner pass, with no warning and no swing (`history` "pass"). The
-  generator keeps floor cuts, Octodog runs and ceilings' landings off it, and every big attack off a
-  level's first, so that one always swings.
+  (`is_major_attack_active`), so the others wait for it. A statue can't wait (the runner is gone by then),
+  so it claims its turn `claim_seconds` before its warning (`claiming()`: it reports itself from then on,
+  and another type's attack that gets ready meanwhile waits), then asks `major_attack_blocked` as its
+  warning would start: with another type's attack begun before its claim still on, it gives up its turn
+  and lets the runner pass, with no warning and no swing (`history` "pass"). So its cut never overlaps
+  another big attack. The generator keeps floor cuts, Octodog runs and ceilings' landings off it, and
+  every big attack off a level's first, so that one always swings. In simulated runs of Golden 2 and the
+  Palace (god mode, the middle lane, at 3, 5 and 6 lanes) 32 of 36 Sentinels swung with the claim (the
+  rest met a long attack begun before it), 21 without; the other types' big attacks went from 148 to 140.
 - **Cheap.** The statue is one mesh of two surfaces (the gold on the skin's solid material, the eyes on
   each Sentinel's own), its frames baked once from the kit (`frames_for`: rest to wind-up, the swing, the
   recovery, the husk; mirrored on the left wall so it swings toward the runner on both) and shared by
@@ -714,8 +718,9 @@ it cuts), and where it may stand is `problem()`:
 - what runs meanwhile: no floor cut's window, Octodog run or ceiling's landing zone reaches its window, and
   its cut (its `params.floor_span`, `floor_use`) keeps off every pad's way (`CeilingZones.enemy_clear`);
   the level's first keeps off every big attack and Bad Dream chase too (`STRICT_ATTACKS`), so it always
-  swings; the others may meet a drone wave or a hover truck's stay and let the runner pass at run time if
-  their attack is on (Enemies);
+  swings; the others may meet a drone wave or a hover truck's stay, whose attacks wait for theirs at run
+  time (each claims its turn shortly before its warning) or, begun before, make it let the runner pass
+  (Enemies);
 - other Sentinels: windows `gap_seconds` apart unless they are a pair (the same spot on both walls).
 One that doesn't fit where its pattern put it tries a few spots around it (`MOVE_OFFSETS`), one that swings
 twice then once, and one that still doesn't is left out. The level's first (its introduction) swings once,
@@ -2398,8 +2403,8 @@ the Gilded Sentinels (C4) in full worlds on real physics at 18 and 25 m/s: the w
 its whole time; wall runners stepping on right before it (cut), jumping on (above) and stepping on early
 (below) on both walls; floor runners in and out of the outer lane at 3, 5 and 6 lanes, jumping and
 sliding; armor, the shield and the dash; its solid body back in its niche; 17 laser tier 1 shots through
-the real weapon; the kick; twice and pairs; turns with a `TurnDummy` (it lets the runner pass when one is
-on); Reduced flashing; the same every attempt. It also checks its look (one shared mesh, the eyes' own
+the real weapon; the kick; twice and pairs; turns with a `TurnDummy` (its claim holds another back, and it
+lets the runner pass when one begun before is on); Reduced flashing; the same every attempt. It also checks its look (one shared mesh, the eyes' own
 material, the statue inside its niche), the Golden skins opening the niche, decorative statues never at
 wall-run height, its placement rules on hand-built layouts at 3, 5 and 6 lanes, the wall fences keeping off
 it, and Golden 2 and the Palace's real layouts (its rules, `LayoutChecks.check_layout`, the introduction,

@@ -71,6 +71,12 @@ extends EnemyTuning
 @export_range(0.0, 3.0, 0.05, "suffix:s") var hold_max_seconds: float = 0.8
 ## Seconds from its last swing back to rest.
 @export_range(0.2, 3.0, 0.05, "suffix:s") var recover_seconds: float = 0.8
+## DESIGN-TBD (docs/questions/c4.md): its turn among the big attacks (GDD §9: they take turns). A
+## statue can't wait for one, so it claims its turn this long (at the runner's speed) before its
+## warning: from then on it counts as a big attack, so the others hold theirs and its warning finds
+## the way clear. One begun before its claim and still on as its warning would start makes it let the
+## runner pass instead (no warning, no swing). 0: it claims its turn only as its warning starts.
+@export_range(0.0, 6.0, 0.25, "suffix:s") var claim_seconds: float = 2.5
 
 @export_group("Stomp")
 ## DESIGN-TBD (GDD §9.11, proposed: a stomp from a wall jump): a wall jump from right by its head kicks

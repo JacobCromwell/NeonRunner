@@ -26,10 +26,11 @@ extends RefCounted
 ##   run (its charges are planned on a clear floor, BIG_ATTACKS) reaches its window, and no ceiling's
 ##   landing zone either (a rider dropping into the cut); its cut keeps off every anti-grav pad's way, like
 ##   any floor enemy's stretch (CeilingZones.enemy_clear). Its attack is a big one that can't wait (GDD §9):
-##   at run time, if another type's big attack is on as its warning would start, it lets the runner pass
-##   (GildedSentinel), so drone waves and hover trucks, which stay a while and attack now and then, may be
-##   about. Its introduction (the level's first) keeps off every big attack's keep-out and Bad Dream
-##   chase too (strict), so the player's first meeting always comes;
+##   at run time it claims its turn shortly before its warning, and if another type's big attack begun
+##   before that is still on as its warning would start, it lets the runner pass (GildedSentinel), so
+##   drone waves and hover trucks, which stay a while and attack now and then, may be about. Its
+##   introduction (the level's first) keeps off every big attack's keep-out and Bad Dream chase too
+##   (strict), so the player's first meeting always comes;
 ## - other Sentinels: windows gap_seconds apart, unless they are a pair (the same spot on both walls,
 ##   swinging together: a pattern's pair).
 ## A Sentinel that doesn't fit where its pattern put it tries a few spots around it (MOVE_OFFSETS), one
@@ -48,7 +49,9 @@ const RUN_AFTER: Array[String] = ["cyborg", "window_cyborg", "hover_truck", "oct
 ## keeps off: the Octodog's planned charges and a floor cut's cause. The introduction keeps off
 ## STRICT_ATTACKS too. (Resonators plan their pulses after the Sentinels, off their floor_span, and wait
 ## for them at run time.) DESIGN-TBD (docs/questions/c4.md): its attack counts as a big attack, and only
-## these keep off it when the level is built (the rest meet it at run time, where it lets the runner pass).
+## these keep off it when the level is built (the rest meet it at run time: its claim holds back those
+## that get ready shortly before its warning, and one begun earlier and still on makes it let the runner
+## pass).
 const BIG_ATTACKS: PackedStringArray = ["octodog", "floor_cutter", "buzz_overdrive"]
 const STRICT_ATTACKS: PackedStringArray = ["drone", "hover_truck"]
 ## Where a Sentinel that doesn't fit at its pattern's spot tries instead, in order: metres at

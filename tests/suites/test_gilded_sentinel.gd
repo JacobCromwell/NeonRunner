@@ -567,41 +567,58 @@ func _test_twice_and_pair() -> void:
 
 # --- Big attacks take turns ---------------------------------------------------------------------------
 
-## GDD §9: its attack is a big one, from its eyes' flare until its last swing is over: another type's
-## waits meanwhile. It can't wait itself: with another's attack on as its warning would start, it lets the
-## runner pass (no warning, no swing). With the switch off it attacks regardless.
+## GDD §9: its attack is a big one, from its eyes' flare until its last swing is over, and it can't wait,
+## so it claims its turn claim_seconds before its warning: another type's attack that gets ready from
+## then on waits for it. One already on before its claim and still on as its warning would start makes
+## it let the runner pass (no warning, no swing); its cut never overlaps another's attack. With the
+## switch off it attacks regardless.
 func _test_takes_turns() -> void:
 	var speed: float = 25.0
-	var warn_s: float = t.warn_at(AT, 1, speed) / speed
+	# Far enough along that its claim starts well into the run.
+	var at: float = AT + 100.0
+	var warn_s: float = t.warn_at(at, 1, speed) / speed
+	var claim_s: float = warn_s - t.claim_seconds
+	check(t.claim_seconds > 0.0, "it claims its turn before its warning (%.2f s)" % t.claim_seconds)
 	# [name, the other's first ready (s), its warning + attack (s), turns on]
-	var cases: Array = [["passes", warn_s - 0.6, 2.5, true], ["the other waits", warn_s + 0.3, 0.4, true],
-		["switch off", warn_s - 0.6, 2.5, false]]
+	var cases: Array = [["claims its turn", claim_s + 0.5, 1.0, true], ["the other waits", warn_s + 0.3, 0.4, true],
+		["passes", claim_s - 0.5, t.claim_seconds + 1.5, true], ["switch off", warn_s - 0.6, 2.5, false]]
 	for case: Array in cases:
 		var config := LevelConfig.new()
-		var made: Array = await _world(3, 1, speed, [{"side": -1}], null, "", config)
+		var made: Array = await _world(3, 1, speed, [{"side": -1, "at": at}], null, "", config)
 		var w: RunWorld = made[0]
 		var s: GildedSentinel = made[1][0]
 		w.rules = w.rules.duplicate() as GameRules
 		w.rules.big_attacks_take_turns = case[3]
-		var dummy := w.director.spawn({"type": "turn_dummy", "script": TURN_DUMMY, "at": 300.0, "lane": 1, "seed": 2,
+		var dummy := w.director.spawn({"type": "turn_dummy", "script": TURN_DUMMY, "at": 400.0, "lane": 1, "seed": 2,
 			"params": {"first": case[1], "interval": 100.0, "warning": float(case[2]) * 0.4, "attack": float(case[2]) * 0.6}})
 		var overlap: bool = false
-		var active_seen: bool = false
+		var claimed_at: float = -1.0
+		var claim_early: bool = false
 		w.player.running = true
-		for i: int in int(_seconds_to(AT + 6.0, speed) * 60.0):
+		for i: int in int(_seconds_to(at + 6.0, speed) * 60.0):
 			await tree.physics_frame
-			overlap = overlap or (s.is_major_attack_active() and dummy.is_major_attack_active())
-			active_seen = active_seen or s.is_major_attack_active()
+			# Its own attack, not its claim: the cut and its warning.
+			var attacking: bool = s.is_major_attack_active() and not s.claiming()
+			overlap = overlap or (attacking and dummy.is_major_attack_active())
+			if s.claiming() and claimed_at < 0.0:
+				claimed_at = w.level_time()
+			claim_early = claim_early or (s.is_major_attack_active() and w.level_time() < claim_s - 0.1)
 		var tag: String = "(%s)" % case[0]
+		var held: bool = false
+		for h: Array in dummy.history:
+			held = held or String(h[0]) == "held"
 		match case[0]:
-			"passes":
-				check(_count(s, "pass") == 1 and _count(s, "swing") == 0 and not active_seen and not overlap,
-					"with another's attack on, it lets the runner pass %s" % [s.history])
+			"claims its turn":
+				check(absf(claimed_at - claim_s) < 0.1 and not claim_early,
+					"it claims its turn claim_seconds before its warning (at %.2f s, %.2f s expected)" % [claimed_at, claim_s])
+				check(_count(s, "swing") == 1 and held and not overlap,
+					"another type's attack that gets ready during its claim waits for it %s %s" % [s.history, dummy.history])
 			"the other waits":
-				var held: bool = false
-				for h: Array in dummy.history:
-					held = held or String(h[0]) == "held"
 				check(_count(s, "swing") == 1 and held and not overlap, "its attack goes, and the other waits for it " + tag)
+			"passes":
+				check(_count(s, "pass") == 1 and _count(s, "warning") == 0 and _count(s, "swing") == 0 and not overlap
+					and not held, "with another's attack on since before its claim, it lets the runner pass %s" % [s.history])
+				check(not s.is_major_attack_active(), "and its claim is over " + tag)
 			"switch off":
 				check(_count(s, "swing") == 1 and _count(s, "pass") == 0, "with turns off it attacks regardless " + tag)
 		await sim.free_world(w)

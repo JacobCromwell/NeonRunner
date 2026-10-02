@@ -28,6 +28,7 @@ strike_lead_seconds = 0.06
 strike_seconds = 0.3
 hold_max_seconds = 0.8
 recover_seconds = 0.8
+claim_seconds = 2.5
 kick_below = 0.25
 kick_above = 0.55
 kick_along = 0.45
