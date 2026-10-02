@@ -151,8 +151,8 @@ func _build_visuals(p: Dictionary) -> void:
 		_model.visible = false
 
 
-## GDD §9.4: only the first appearances get the doghouse hint. DESIGN-TBD: the player's first
-## `doghouse_appearances` Octodogs ever, counted in the profile's `seen` list. No App (tests): none.
+## GDD §9.4: only the first appearances get the doghouse hint: the player's first
+## `doghouse_appearances` Octodogs ever, counted in the profile's `seen` list (FB 79). No App (tests): none.
 func _profile_wants_doghouse() -> bool:
 	if not is_inside_tree():
 		return false

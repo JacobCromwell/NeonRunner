@@ -15,7 +15,7 @@ signal collected(value: int, position: Vector3)
 
 ## Pickup reach beyond the damage hitbox (generous: credits should feel easy to grab).
 const PICKUP_MARGIN := Vector3(0.45, 0.35, 0.35)
-## DESIGN-TBD: the credit look per denomination (shape and size here, colour in the UI style):
+## The credit look per denomination (shape and size here, colour in the UI style; FB 8):
 ## a silver chip, an azure ringed chip, a violet diamond and an ice-white gem.
 const LOOKS: Dictionary = {
 	1: {"shape": "coin", "radius": 0.2},

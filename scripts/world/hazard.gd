@@ -18,7 +18,7 @@ var is_electrical: bool = false
 var is_enemy_attack: bool = false
 ## A solid collision (signs, trucks, walls, enemy bodies). Armor does not block these.
 var is_solid: bool = false
-## DESIGN-TBD: the juggernaut dash passes through every hazard except falls unless this is false.
+## The juggernaut dash passes through every hazard except falls unless this is false (FB 17).
 var dash_passes: bool = true
 ## A thief's touch (GDD §9.12, the Tithe Collector): touching this robs instead of hurting
 ## (DamageRules.Outcome.ROBBED): it takes this share of the run's credits (ScoreKeeper.rob), held by its

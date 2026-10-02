@@ -10,9 +10,8 @@ extends RefCounted
 ## Past the stern's far end nothing glows below the underside: the chase camera passes just below it
 ## as the player drops off (RunCamera.ceiling_limit), and the engines' wash that hung below the stern
 ## there flashed across the screen (task B3). The engines glow above the underside only.
-## DESIGN-TBD: the GDD doesn't say which way the ships fly; like the trucks, they come toward the
-## player, which puts the engines' glow at the far end where the player drops. The smaller craft's
-## look is a proposal (docs/questions/b3.md).
+## The ships come toward the player, like the trucks (FB 42), which puts the engines' glow at the far
+## end where the player drops. The smaller craft's look is a proposal (docs/questions/b3.md).
 ## Ship space: origin at the centre of the underside (the ceiling surface), z = -distance.
 
 ## A smaller craft's hull: its sides rise this share of its width, between these heights.

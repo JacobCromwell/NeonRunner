@@ -142,6 +142,47 @@ The owner reviewed every placeholder below. **GB** means "From the R1 core-movem
 - title and brand: FB 109
 - other: FB 111 (achievements)
 
+**R6 (October 2, 2026): markers taken off the items approved as is.** The `DESIGN-TBD` markers of these items
+are now plain doc comments naming the item; every other item keeps its marker (changes until their value is in place,
+tune after playtesting, later design rounds, and every item from build phase 2).
+
+| Item | What | Files |
+|---|---|---|
+| GB 8 | Air-slide fast fall is a kept feel addition | 1 |
+| FB 5 | The Normal/Hard/Insane tiers (FB 4, the difficulty curve, keeps its marker: reopened by the playtests and G1) | 1 |
+| FB 7 | First-encounter hints, togglable in Settings | 3 |
+| FB 8 | Credit denominations: look, colours, sound | 3 |
+| FB 9 | Credit placement (trails, risky-spot big credits) | 1 |
+| FB 12 | Purchases spend bought credits first | 1 |
+| FB 13 | One breakable charge per attempt | 1 |
+| FB 16 | Revives: one per attempt, 2 s invulnerability | 1 |
+| FB 17 | Juggernaut dash: duration/cooldown/speed, passes every hazard but falls | 3 |
+| FB 18 | Grapple hook pull velocity | 1 |
+| FB 20 | Ramp score multiplier (x2) | 1 |
+| FB 21, FB 49 | Speed pads: green "safe boost" family, +6 m/s decaying | 11 |
+| FB 23 | Magnet radius per tier | 2 |
+| FB 24 | Claws extend wall runs 1.5x | 1 |
+| FB 25 | Slow time: 0.5x for 3 s, 20 s cooldown | 2 |
+| FB 26, FB 29 | Weapon tiers 2–3, fire rate, splash radius, swarm bonus on splash | 2 |
+| FB 34 | Enemy health bars read in the red family | 1 |
+| FB 36, FB 37 | Invulnerability flash and death flash look | 1 |
+| FB 40 | Yellow/black hazard sign frame, every zone | 1 |
+| FB 42 | Ships fly toward the player, like the trucks | 1 |
+| FB 58 | HUD shows a progress bar (markers still undecided) | 2 |
+| FB 60 | Level-complete stats screen | 1 |
+| FB 61 | Revive offer waits for a choice, no countdown | 1 |
+| FB 70 | Cyborgs/window cyborgs hold fire at a ceiling or own-wall rider | 1 |
+| FB 73 | Fence generator: claws/contact don't destroy it, body solid | 1 |
+| FB 76, FB 77 | Octodog diagonal aim and between-charges pass clearance | 1 |
+| FB 79 | Octodog doghouse (first 3, burst at 55 m) | 2 |
+| FB 83, FB 84 | Screech spines are a body collision; stops at a hole's edge | 1 |
+| FB 86, FB 88 | Drone has no contact hitbox; "on screen" definition | 1 |
+| FB 89, FB 90 | Drone wave pairing/gap and pad schedule | 2 |
+| FB 91, FB 92, FB 93 | Hover truck lane/pacing, warnings, kill rules | 1 |
+| FB 94 | Trucks per level (1 early to 3 late, always one) | 1 |
+| FB 99, FB 100, FB 101, FB 103 | Bad Dream: wall slash, escape fairness, body touch, EMP dissolve | 2 |
+| FB 104, FB 105 | Bad Dream survival bonus and chase pad schedule | 1 |
+
 ### From the R1 core-movement grey box (September 25, 2026)
 Each item has a placeholder in code marked `DESIGN-TBD` and, where it's a number, a value in `data/tuning/movement.tres` or `data/levels/`. Answer them after playtesting the grey box.
 

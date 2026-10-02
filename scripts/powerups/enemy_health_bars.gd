@@ -14,7 +14,7 @@ const QUADS_PER_BAR: int = 4
 const FRAME_COLOR := Color(0.92, 0.95, 1.0, 0.9)
 const BACK_COLOR := Color(0.03, 0.03, 0.07, 0.9)
 const DRAIN_COLOR := Color(1.0, 1.0, 1.0, 0.95)
-## DESIGN-TBD: enemy health reads in the enemy-fire red family (yellow and orange are hazard colours).
+## Enemy health reads in the enemy-fire red family (yellow and orange are hazard colours; FB 34).
 const FULL_COLOR := Color(1.0, 0.32, 0.26)
 const LOW_COLOR := Color(0.7, 0.06, 0.08)
 ## Bar width grows with distance so far bars stay readable: metres per metre of camera distance,

@@ -5,7 +5,7 @@ extends RefCounted
 ##
 ## Wallet (GDD §7): credits earned in play and credits bought with real money are kept apart.
 ## Net worth is the earned credits never spent; purchased credits never count toward it.
-## DESIGN-TBD: purchases spend bought credits first, so buying credits never lowers net worth.
+## Purchases spend bought credits first, so buying credits never lowers net worth (FB 12).
 
 ## The save format. Older saves are brought up to date as they load (_migrate).
 ## 2 (September 30, 2026): armor became a permanent upgrade to the free armor (GDD §4, §8).
