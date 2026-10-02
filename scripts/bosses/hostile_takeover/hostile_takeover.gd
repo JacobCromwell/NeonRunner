@@ -107,6 +107,14 @@ func _plan_lap(lap: LevelLayout, _index: int, p_arena: BossArena) -> void:
 	lap.gaps.append_array(train.lap_gaps(lap.lane_count))
 
 
+## The enemies The Board brings onto the roofs itself, readied with the fight's load (task PERF1,
+## EnemyDirector.warm_up): its guards, the zone's cyborgs (the first one's look took 230 ms in its spawn's
+## frame), and the Tithe Collector.
+func warm_enemies() -> Array[Dictionary]:
+	return [{"type": "cyborg", "at": 0.0, "lane": 0, "side": 0, "seed": 1, "params": {}},
+		{"type": "tithe_collector", "at": 0.0, "lane": 0, "side": 0, "seed": 1, "params": {}}]
+
+
 func _build_boss() -> void:
 	tuning = _tuning()
 	if train == null:
