@@ -17,6 +17,10 @@ const WIND_UP: float = 0.25
 const SETTLE: float = 0.34
 ## A stop always turns the drum at least this far, so the reel visibly lands.
 const STOP_MIN: float = 1.5
+## A jam (its defeat: GDD §10, "the reels spin wildly and jam") stops a reel this far between two
+## symbols, after this long.
+const JAM_OFFSET: float = 0.42
+const JAM_SETTLE: float = 0.12
 
 ## Per reel: its angle, speed, state, the symbol it shows (or will, once stopping), locked on 7, and its
 ## stop's ease {from, to, t}.
@@ -25,6 +29,10 @@ var speed := PackedFloat32Array([0.0, 0.0, 0.0])
 var state: Array[int] = [State.IDLE, State.IDLE, State.IDLE]
 var shown: Array[int] = [Symbol.SEVEN, Symbol.BAR, Symbol.CHERRY]
 var locked := PackedByteArray([0, 0, 0])
+## How fast a spinning reel turns, over its usual speed (its defeat's wild spin: more).
+var wild: float = 1.0
+## Reels jammed between symbols (its defeat).
+var jammed := PackedByteArray([0, 0, 0])
 var _from := PackedFloat32Array([0.0, 0.0, 0.0])
 var _to := PackedFloat32Array([0.0, 0.0, 0.0])
 var _t := PackedFloat32Array([0.0, 0.0, 0.0])
@@ -63,6 +71,16 @@ func stop(i: int, symbol: int, lock: bool = false) -> void:
 	state[i] = State.STOPPING
 
 
+## Jams reel `i` at once between two symbols (its defeat): no landing bounce, no symbol.
+func jam(i: int) -> void:
+	var a: float = angle[i]
+	_from[i] = a
+	_to[i] = ceilf(a + 0.6) + JAM_OFFSET + 0.13 * i
+	_t[i] = 0.0
+	jammed[i] = 1
+	state[i] = State.STOPPING
+
+
 ## Every reel's lock off (a new rigging after the jackpot).
 func unlock() -> void:
 	locked = PackedByteArray([0, 0, 0])
@@ -85,11 +103,16 @@ func tick(delta: float) -> void:
 	for i: int in 3:
 		match state[i]:
 			State.SPINNING:
-				speed[i] = move_toward(speed[i], SPIN_SPEED, SPIN_SPEED / WIND_UP * delta)
+				var top: float = SPIN_SPEED * wild * (1.0 + 0.18 * sin(angle[i] * 1.7 + i * 2.0) * (wild - 1.0))
+				speed[i] = move_toward(speed[i], top, SPIN_SPEED * wild / WIND_UP * delta)
 				angle[i] += speed[i] * delta
 			State.STOPPING:
-				_t[i] = minf(_t[i] + delta / SETTLE, 1.0)
-				angle[i] = lerpf(_from[i], _to[i], _back_out(_t[i]))
+				if jammed[i] != 0:
+					_t[i] = minf(_t[i] + delta / JAM_SETTLE, 1.0)
+					angle[i] = lerpf(_from[i], _to[i], _t[i])
+				else:
+					_t[i] = minf(_t[i] + delta / SETTLE, 1.0)
+					angle[i] = lerpf(_from[i], _to[i], _back_out(_t[i]))
 				speed[i] = (1.0 - _t[i]) * SPIN_SPEED
 				if _t[i] >= 1.0:
 					angle[i] = _to[i]

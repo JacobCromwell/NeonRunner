@@ -15,9 +15,8 @@ through zones full of enemies, and a single hit ends the run. Built with Godot 4
 Boss fights have their framework (they play in the runner, with phases, a health bar, checkpoints,
 stars and payouts); a test boss shows the framework at work. The Neon City's boss, the Floating Head,
 is built and plays in the campaign after City 3 (debug builds: `--boss=city_boss`), and so is the Dead
-Zone's Sleep Taker after Dead Zone 2 (`--boss=dead_zone_boss`). The Marketplace's boss, The House, is
-being built and plays as a preview (`--boss=marketplace_boss`); the other zones' bosses are still
-placeholder slots. The short cinematics are built with a code-driven cinematic toolkit
+Zone's Sleep Taker after Dead Zone 2 (`--boss=dead_zone_boss`), and the Marketplace's House after
+Marketplace 2 (`--boss=marketplace_boss`); the other zones' bosses are still placeholder slots. The short cinematics are built with a code-driven cinematic toolkit
 (camera paths, the runner and cyborgs on the humanoid rig, timed events, skippable); until the owner
 describes the story beats, each zone's intro (and the City's boss intro) plays a placeholder arrival flyover
 over the zone, and the outros are placeholder cards.
@@ -55,7 +54,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--thief` | Quick play with stand-in thieves, one after another: a gold block that crosses the lanes and robs 25% of the run's credits from a runner who touches it (it doesn't kill, even without `--god`); catch it (stomp it, shoot it, dash or claw through it) for what it took plus a jackpot. The runner starts with 400 credits, so the first theft has something to take. A review aid for the Tithe Collector's mechanism; no level has one |
 | `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level |
-| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker; `marketplace_boss`: The House, still being built) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
+| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker; `marketplace_boss`: The House) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
 | `--frame-graph` | Show the frame-time graph (F7, see Smooth frames) from the start of every run |
 
@@ -197,16 +196,22 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   the nightmare away. Three EMPs, three phases, each hungrier; the last bursts it into hundreds of faint
   faces and figures rising into the dark, the music falls silent and a grey dawn breaks over the Dead
   Zone. About 80 s for a runner who never misses (`--boss=dead_zone_boss`, or the campaign's
-  `--level=dead_zone/boss`). The House, the Marketplace's boss, is being built (`--boss=marketplace_boss`
-  plays it as a preview; its three phases still play alike): a towering slot machine on treads rolling
+  `--level=dead_zone/boss`). The House, the Marketplace's boss, plays after Marketplace 2, at the
+  Marketplace's 22.6 m/s (its distances follow the pace too): a towering slot machine on treads rolling
   down the market street ahead of the runner. It pulls its lever and spins its three reels, and each
   symbol they stop on is an attack: cherries lob cherry bombs whose landing circles light up first, a
   lightning bolt rolls a pink fence across lanes (jump or slide it like any fence), a BAR slams heavy
   gold blocks into lanes; two or three of a kind make it bigger. Big glowing 7 buttons light up along the
   street: running over one locks a reel on 7, and with all three locked it hits the JACKPOT (sirens, a
   fountain of real credits) and sags low with its coin hopper burst open on top, glowing red: stomp it.
-  A missed button only means it spins again. Weapons chip it a little. About 64 s for a runner who never
-  misses. The other three zone bosses are still to be built.
+  A missed button only means it spins again. Weapons chip it a little. Each stomp is a phase, and its
+  buttons get harder to reach: in phase 2 one stands on a wall, with wall fences pulsing along both
+  walls (run along the wall over it while they're off); in phase 3 a billboard comes down from the sky
+  over the street with an anti-grav pad, the machine squats under it, and the button hangs under it in
+  the pad's lane, Barnacle Turrets further along. Beaten, its reels spin wildly and jam, TILT flashes
+  over them, and it collapses into the street in an explosion of coins while the citizens cheer. About
+  67 s for a runner who never misses (`--boss=marketplace_boss`, or the campaign's
+  `--level=marketplace/boss`). The other three zone bosses are still to be built.
 - **Protection:** every level and boss fight starts with free armor: it blocks an enemy attack or an
   electrical hazard (never a crash or a fall) and comes back 30 s after it breaks; the HUD shows its hits
   and a ring filling while it comes back. Armor pickups in boss fights bring it back at once.
@@ -294,7 +299,7 @@ The scenes in `tools/showcase/` show one part of the game up close for visual re
 and power-up look, and a scripted run on any zone's skin; ramp launches and blocked wall entries; each enemy
 family, the Barnacle Turret's looks and a ride past it, a floor cut in any zone's look, wall fences in any zone's look, the Buzz Overdrive's
 model and an encounter with it, the Floating Head, the Sleep Taker (its lure and defeat, `--scenario=lure`, and its readability
-in the dark, `--scenario=measure`), The House (`--scenario=spin|buttons|jackpot|fight`), the UI kit, every screen, a zone skin's fixed review track, the cult's feed,
+in the dark, `--scenario=measure`), The House (`--scenario=spin|buttons|jackpot|wall|ceiling|defeat|fight`), the UI kit, every screen, a zone skin's fixed review track, the cult's feed,
 the Golden Zone's statues, any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
 lists its options. For example, a zone's arrival flyover rendered to frames on the web / low-end renderer:
 `godot --path . --rendering-method gl_compatibility --fixed-fps 10 --write-movie build/cine/f.png --quit-after 100
@@ -377,7 +382,7 @@ On a debug build, the options go into the page's engine settings: in `exports/we
 
 ## Tests
 
-`tools/godot.sh test` runs 65 suites with about 6,000,000 checks:
+`tools/godot.sh test` runs 66 suites with about 6,000,000 checks:
 - **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds, and every campaign level
   (each with every feature it lists, on its own seed and on others), at the base speed and at the zones' speeds
   (21 to 25 m/s, with the fill pass that makes campaign levels busier), each reaction window in seconds. Under
