@@ -54,9 +54,9 @@ uniform vec4 life = vec4(1.0, 1.0, 0.0, 0.0);
 // death_at: x = the charge's speed (m/s) when it died.
 uniform vec4 death_at = vec4(0.0);
 // A band. band: x = its wall's x (signed), y = metres ahead, z = metres behind, w = drift back (m/s).
-// band_shape: x = depth out from the wall, y = climb, z = its side.
+// band_shape: x = depth out from the wall, y = climb, z = its side, w = the spacing of its heaps (metres).
 uniform vec4 band = vec4(-4.0, 110.0, 14.0, 2.5);
-uniform vec4 band_shape = vec4(0.8, 0.75, -1.0, 0.0);
+uniform vec4 band_shape = vec4(0.8, 0.75, -1.0, 7.0);
 // A shocked creature's glow: the fence's pink, burnt white.
 uniform vec4 shock_color : source_color = vec4(1.0, 0.62, 0.86, 1.0);
 // An attack's heat: enemy-attack red (BossProps.WARNING_COLOR), and how bright its silhouette glows.
@@ -136,16 +136,21 @@ void vertex() {
 	float bristle = 0.25;
 	v_shock = 0.0;
 	if (kind == 1) {
-		// The roadside horde: running with the runner, drifting back past them (wrapping out of sight).
+		// The roadside horde: running with the runner, drifting back past them (wrapping out of sight). Most of
+		// it is gathered in heaps every band_shape.w metres, drifting with it, piled higher up the wall.
 		float span = band.y + band.z;
-		float z = -band.y + mod(c.x * span + band.w * TIME, span);
+		float base = c.x * span;
+		float heap = max(band_shape.w, 1.0);
+		float centre = (floor(base / heap) + 0.5) * heap + (rnd(c.w, 21.0) - 0.5) * heap * 0.35;
+		float in_heap = step(0.35, rnd(c.w, 20.0));
+		float z = -band.y + mod(mix(base, centre, in_heap * 0.75) + band.w * TIME, span);
 		float side = band_shape.z;
 		float t = TIME * 1.1 + c.w * 29.0;
 		if (c.z < 0.62) {
-			pos = vec3(band.x - side * (0.08 + c.y * band_shape.x), c.z * 0.3, z + sin(t) * 0.2);
+			pos = vec3(band.x - side * (0.08 + c.y * band_shape.x), c.z * (0.3 + 0.45 * in_heap), z + sin(t) * 0.2);
 			fwd = vec3((rnd(c.w, 6.0) - 0.5) * 0.8, 0.0, -1.0);
 		} else {
-			float h = 0.14 + (c.z - 0.62) / 0.38 * band_shape.y;
+			float h = 0.14 + (c.z - 0.62) / 0.38 * band_shape.y * (1.0 + 0.8 * in_heap);
 			pos = vec3(band.x - side * 0.07, h, z + sin(t) * 0.2);
 			fwd = vec3(0.0, 0.5, -1.0);
 			up = vec3(-side, 0.3, 0.0);

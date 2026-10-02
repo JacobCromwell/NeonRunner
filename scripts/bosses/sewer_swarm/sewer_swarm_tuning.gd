@@ -26,7 +26,7 @@ extends Resource
 @export_range(0, 800, 20) var climb_creatures: int = 200
 @export_range(0, 800, 20) var climb_creatures_low_end: int = 80
 ## DESIGN-TBD (E3): screeches pouring out of each manhole or vent as it bursts open (the Rising).
-@export_range(0, 40, 1) var spill_creatures: int = 10
+@export_range(0, 40, 1) var spill_creatures: int = 14
 @export_range(0, 40, 1) var spill_creatures_low_end: int = 4
 ## DESIGN-TBD: a swarm screech's size against a sewer screech's (1): smaller, so hundreds fit the street.
 @export_range(0.3, 1.2, 0.01) var creature_scale: float = 0.7
@@ -122,12 +122,14 @@ extends Resource
 @export_range(10.0, 180.0, 1.0, "suffix:m") var burst_ahead: float = 75.0
 @export_range(0.0, 1.0, 0.05) var lair_burst_share: float = 0.4
 ## The roadside horde: from horde_behind behind the runner to horde_ahead ahead, piled horde_depth out from
-## the wall's foot and clinging up to horde_climb, drifting back past the runner this fast.
+## the wall's foot and clinging up to horde_climb, drifting back past the runner this fast, most of it gathered
+## in heaps every horde_heap_spacing metres.
 @export_range(20.0, 200.0, 1.0, "suffix:m") var horde_ahead: float = 70.0
 @export_range(0.0, 40.0, 1.0, "suffix:m") var horde_behind: float = 14.0
 @export_range(0.2, 1.2, 0.05, "suffix:m") var horde_depth: float = 0.8
 @export_range(0.0, 2.0, 0.05, "suffix:m") var horde_climb: float = 0.75
 @export_range(0.0, 10.0, 0.25, "suffix:m/s") var horde_drift: float = 2.5
+@export_range(2.0, 30.0, 0.5, "suffix:m") var horde_heap_spacing: float = 7.0
 @export_range(0.5, 15.0, 0.25, "suffix:s") var horde_fill_seconds: float = 5.0
 
 

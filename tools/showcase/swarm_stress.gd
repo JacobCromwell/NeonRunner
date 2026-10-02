@@ -133,7 +133,7 @@ func _build_crowds() -> void:
 		var band := SwarmCrowd.make(SwarmCrowd.Kind.BAND, horde_size / 2, hash(["stress band", side]), 1.0,
 			tuning.creature_scale)
 		band.set_band(side * _geo.wall_x(), side, tuning.horde_ahead, tuning.horde_behind, tuning.horde_depth,
-			tuning.horde_climb, tuning.horde_drift)
+			tuning.horde_climb, tuning.horde_drift, tuning.horde_heap_spacing)
 		add_child(band)
 		bands.append(band)
 	spill = SwarmCrowd.make(SwarmCrowd.Kind.SPILL, spill_each * 16, hash(["stress spill"]), 1.0, tuning.creature_scale)
