@@ -12,6 +12,7 @@ extends Node3D
 ## - the spill: a SwarmCrowd whose creatures pour out of each lair as it bursts and run into the gutter.
 ## Everything is made in setup(), before the fight begins. The crowd sizes are the tuning's (smaller on a
 ## low-end device). Only the look: it runs from _process.
+## DESIGN-TBD (docs/questions/e4.md, 5): a harmless horde in plain view at the walls' feet.
 
 var world: RunWorld
 var tuning: SewerSwarmTuning
@@ -45,7 +46,7 @@ func setup(p_world: RunWorld, p_tuning: SewerSwarmTuning, horde_count: int, spil
 			tuning.creature_scale)
 		band.name = "BandLeft" if side < 0 else "BandRight"
 		band.set_band(side * wall_x, side, tuning.horde_ahead, tuning.horde_behind, tuning.horde_depth,
-			tuning.horde_climb, tuning.horde_drift)
+			tuning.horde_climb, tuning.horde_drift, tuning.horde_heap_spacing)
 		band.set_life(1.0, fill, 0, 0.0)
 		add_child(band)
 		bands.append(band)

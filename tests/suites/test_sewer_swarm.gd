@@ -164,6 +164,21 @@ func _test_crowds() -> void:
 	await _steps(world, 1.0)
 	check(boss.horde.lairs.shown_count() > 6 and boss.horde.lairs.manholes.multimesh.instance_count > 0,
 		"manholes and vents line both sides (%d in sight), drawn as two MultiMeshes" % boss.horde.lairs.shown_count())
+	# The Compatibility renderer multiplies vertex colours (the screech's colours and glow) by the instance
+	# colour, zero in a MultiMesh without colours: every MultiMesh of the swarm carries white ones (set where
+	# they're made: a headless run's rendering server keeps no instance data to read back).
+	var coloured: bool = true
+	var meshes: Array[MultiMesh] = [boss.horde.spill.multimesh, boss.horde.lairs.manholes.multimesh,
+		boss.horde.lairs.vents.multimesh]
+	for b: SwarmCrowd in boss.horde.bands:
+		meshes.append(b.multimesh)
+	for c: SwarmCluster in boss.clusters:
+		meshes.append(c.crowd.multimesh)
+	for mm: MultiMesh in meshes:
+		coloured = coloured and mm.use_colors
+	for path: String in ["res://scripts/bosses/sewer_swarm/swarm_crowd.gd", "res://scripts/bosses/sewer_swarm/swarm_lairs.gd"]:
+		coloured = coloured and FileAccess.get_file_as_string(path).contains("set_instance_color(i, Color.WHITE)")
+	check(coloured, "its MultiMeshes carry white instance colours (its colours and glow on the Compatibility renderer)")
 	# Draws: one a crowd, whatever its size.
 	var draws: int = boss.clusters.size() + boss.horde.draw_calls()
 	check(draws <= 12, "the swarm draws in %d calls (%d clusters, two bands, the spill, two kinds of lair)" % [draws, boss.clusters.size()])

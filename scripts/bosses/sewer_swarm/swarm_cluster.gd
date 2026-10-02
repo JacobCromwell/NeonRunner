@@ -146,6 +146,7 @@ func targetable() -> bool:
 
 ## Weapon damage thins it only while it surges, like its targeting (a stray shot or a splash reaching it at
 ## the roadside does nothing); its health is its own (BossPart, shares_health off).
+## DESIGN-TBD (docs/questions/e4.md, 3): a cluster thinned to nothing by weapons counts like a baited one.
 func take_damage(amount: float, source: StringName, splash: bool = false) -> void:
 	if not surging():
 		return

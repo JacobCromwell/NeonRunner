@@ -94,6 +94,8 @@ func _tuning() -> SewerSwarmTuning:
 
 ## GDD §10's arena: Gangland's street with the generator's holes and fences, nothing else on the track, and
 ## the lap's bait spots, each in a stretch kept clear of every other hole and fence.
+## DESIGN-TBD (docs/questions/e4.md, 2): bait spots every bait_spacing, a surge at each, rather than surges
+## at the generator's own fences and holes wherever they fall.
 func _plan_lap(lap: LevelLayout, index: int, p_arena: BossArena) -> void:
 	var t: SewerSwarmTuning = _tuning()
 	lap.signs.clear()
@@ -347,7 +349,7 @@ func _build_boss() -> void:
 
 
 ## Crowds the fight may need at once: every cluster, and the stand-in phase 3's re-formed ones (task E4b
-## replaces it).
+## replaces it). DESIGN-TBD (docs/questions/e4.md, 4): which clusters the Host flings in phase 3.
 func crowd_pool_size() -> int:
 	return tuning.cluster_count + def.phase_list()[phase_count() - 1].hits
 
@@ -452,7 +454,7 @@ func _update_stations(delta: float) -> void:
 
 
 ## The stand-in phases (task E4b replaces them): a phase that needs more clusters than are left has them
-## rise at the back of the line.
+## rise at the back of the line. DESIGN-TBD (docs/questions/e4.md, 4): phase 3's clusters re-formed.
 func _ensure_clusters() -> void:
 	var alive: int = 0
 	for c: SwarmCluster in clusters:

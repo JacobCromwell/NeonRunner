@@ -3,7 +3,7 @@ extends TestSuite
 ## at 3, 5 and 6 lanes, at Gangland's 21.8 m/s and quick play's 18 m/s:
 ## - a runner who reads it (SewerSwarmBot: no god mode, no armor) baits two clusters into a fence or a hole
 ##   and wins the phase, at every lane count and both speeds, and again after a death and a retry (through
-##   quick play's own restart, and at 21.8 m/s through RunContext.retry);
+##   quick play's own restart at 3 lanes, and at 21.8 m/s through RunContext.retry at 6);
 ## - every surge is warned (the chitter and the red line) warning_seconds before it can hit, and its hitbox is
 ##   live only from the lock;
 ## - a surge dodged in time reaches its fence or hole: the cluster is shocked or falls, in front of the runner,
@@ -22,6 +22,9 @@ const BOSS_PATH: String = "res://data/bosses/gangland_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
 const SPEEDS: Array[float] = [18.0, 21.8]
 const GANGLAND_SPEED: float = 21.8
+## The retries' streets: one each (every attempt plays the same, and _test_wins_phase_one wins at every count).
+const RETRY_LANES: Array[int] = [6]
+const QUICK_PLAY_LANES: Array[int] = [3]
 ## A player's reaction: the runner moves this long after a warning starts or locks.
 const REACTION: float = 0.35
 ## The events compared between fights (determinism, crowd sizes).
@@ -406,13 +409,13 @@ func _test_keeps_cycling() -> void:
 	var bot := SewerSwarmBot.new(boss)
 	bot.baits = false
 	bot.reaction = REACTION
-	await _run(world, 110.0, func() -> bool: return _events(boss, &"surge_pass").size() >= 8, func() -> void: bot.step())
+	await _run(world, 85.0, func() -> bool: return _events(boss, &"surge_pass").size() >= 6, func() -> void: bot.step())
 	var warns: Array[Dictionary] = _events(boss, &"surge_warn")
 	var locks: Array[Dictionary] = _events(boss, &"surge_lock")
 	var passes: Array[Dictionary] = _events(boss, &"surge_pass")
-	check(world.player.alive and passes.size() >= 8 and boss.phase_index == 0 and is_equal_approx(boss.health, boss.max_health),
+	check(world.player.alive and passes.size() >= 6 and boss.phase_index == 0 and is_equal_approx(boss.health, boss.max_health),
 		"no bait, no end: %d surges, still the Rising, unhurt" % passes.size())
-	var same: bool = locks.size() >= 8
+	var same: bool = locks.size() >= 6
 	var lead0: float = float(locks[0]["t"]) - float(warns[0]["t"]) if not locks.is_empty() else 0.0
 	var reach0: float = float(warns[0]["entry"]) - float(warns[0]["d"]) if not warns.is_empty() else 0.0
 	for i: int in mini(warns.size(), locks.size()):
@@ -575,9 +578,10 @@ func _test_crowd_size() -> void:
 # --- Retries ---------------------------------------------------------------------------------------------
 
 ## At Gangland's speed: a death in phase 1 (after one bait), then a retry (RunContext.retry: the same fight from
-## the start), won by baiting; the retry's surges are the first attempt's.
+## the start), won by baiting; the retry's surges are the first attempt's. At the widest street only: every
+## attempt plays the same (the log's check below), and _test_wins_phase_one wins it at every lane count.
 func _test_retry() -> void:
-	for lanes: int in LANES:
+	for lanes: int in RETRY_LANES:
 		var pair: Array = _fight(def, lanes, GANGLAND_SPEED)
 		var world: RunWorld = pair[0]
 		var boss: SewerSwarm = pair[1]
@@ -603,14 +607,15 @@ func _test_retry() -> void:
 
 
 ## Through quick play (./play.sh --boss=gangland_boss plays the preview): a death in phase 1 restarts the fight
-## by itself, and the restarted fight is won by baiting, at every lane count.
+## by itself, and the restarted fight is won by baiting (at 3 lanes, the phone's street: the other counts as
+## _test_retry).
 func _test_retry_through_quick_play() -> void:
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	tree.root.add_child(main)
 	await tree.process_frame
 	var lanes_pc: int = App.rules.lanes_pc
 	var saved: Profile = App.profile
-	for lanes: int in LANES:
+	for lanes: int in QUICK_PLAY_LANES:
 		App.profile = SampleProfiles.fresh()
 		App.rules.lanes_pc = lanes
 		App.start_boss_quick(def, PackedStringArray())

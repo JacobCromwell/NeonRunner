@@ -18,6 +18,8 @@ extends RefCounted
 ##   destroyed), or passes the runner and scatters out of sight (SewerSwarm.requeue).
 ## The lane is the runner's at the lock: a runner who holds a bait's lane until then and gets out of it
 ## after (or jumps the fence or the hole) baits it; one who leaves it before has the line follow them.
+## DESIGN-TBD (docs/questions/e4.md, 1): how a cluster is baited (the line following the runner until the
+## lock is this task's reading of "the player baits the swarm into attacking, dodges in time").
 ## Everything is logged (SewerSwarm.events: surge_warn, surge_lock, surge_hit, surge_pass, and the encounter's
 ## cluster_destroyed and sounds) for the tests.
 
