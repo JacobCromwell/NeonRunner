@@ -1,0 +1,30 @@
+{
+	"version": 1,
+	"patterns": [
+		{
+			"id": "gilded_sentinel",
+			"min_difficulty": 0.0, "weight": 1.6, "requires": ["gilded_sentinel"],
+			"length": 40,
+			"elements": [
+				{ "kind": "enemy", "type": "gilded_sentinel", "at": 30, "side": "random" }
+			]
+		},
+		{
+			"id": "gilded_sentinel_twice",
+			"min_difficulty": 0.95, "weight": 0.9, "requires": ["gilded_sentinel"],
+			"length": 44,
+			"elements": [
+				{ "kind": "enemy", "type": "gilded_sentinel", "at": 32, "side": "random", "params": { "swings": 2 } }
+			]
+		},
+		{
+			"id": "gilded_sentinel_pair",
+			"min_difficulty": 0.95, "weight": 0.8, "requires": ["gilded_sentinel"],
+			"length": 40,
+			"elements": [
+				{ "kind": "enemy", "type": "gilded_sentinel", "at": 30, "side": "left" },
+				{ "kind": "enemy", "type": "gilded_sentinel", "at": 30, "side": "right" }
+			]
+		}
+	]
+}

@@ -13,7 +13,8 @@ extends RefCounted
 ## (keep_outs(); the times are WallFenceTuning's, seconds at the level's run speed, so they keep their
 ## seconds at every zone's speed, GDD §3):
 ## - its wall: never on the same wall section as a sign or a window cyborg (GDD §9.1; wall_clear_seconds
-##   either side), nor where a wall vent's screech swipes up that wall (vent_before/after_seconds), nor
+##   either side), nor a Gilded Sentinel's (task C4: its wall-run approach and what it cuts,
+##   sentinel_wall_section), nor where a wall vent's screech swipes up that wall (vent_before/after_seconds), nor
 ##   where a ramp launches the player along that wall (GDD §9.1: never where a ramp launches the player
 ##   into one while it's on), from just before the ramp to past the end of the longest wall run it can
 ##   launch (RampLaunch with its fading boost, R1, plus claws' longer wall runs and a speed pad's boost
@@ -26,7 +27,8 @@ extends RefCounted
 ## - what runs meanwhile: no floor cut's window (B4: nothing else goes on during a cut), no big attack
 ##   (an enemy keep-out of the drone's, the hover truck's, the Octodog's or a floor cut's cause; each of
 ##   a Resonator's pulses, from its warning until its wave has passed the player) and no Bad Dream chase
-##   reaches its drop window (the wall is one of their escapes; one big thing at a time);
+##   or Gilded Sentinel's attack (both the rules' keep-outs in every lane) reaches its drop window (the
+##   wall is one of their escapes; one big thing at a time);
 ## - the level: its drop window between the run-up and the end-clear stretch;
 ## - other wall fences: same_side_gap_seconds apart on one wall (a wall run meets one at a time), and
 ##   gap_seconds apart on either.
@@ -193,6 +195,11 @@ static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallF
 				if String((e.get("params", {}) as Dictionary).get("source", "vent")) == "vent":
 					out.append({"from": at - t.vent_before_seconds * v - half, "to": at + t.vent_after_seconds * v + half,
 						"why": "a wall vent's screech swipes up its wall there"})
+			"gilded_sentinel":
+				# Task C4 (GDD §9.11 with §9.1): never on a Sentinel's wall section, from the approach a runner
+				# entering early to pass below its band needs, to past what it cuts (sentinel_wall_section).
+				var section: Vector2 = sentinel_wall_section(gen, e)
+				out.append({"from": section.x - half, "to": section.y + half, "why": "a Gilded Sentinel guards its wall section"})
 	for r: Dictionary in lay.ramps:
 		if int(r["side"]) == side:
 			out.append({"from": float(r["at"]) - t.ramp_before_seconds * v - half,
@@ -246,6 +253,19 @@ static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallF
 		if s.y >= s.x:
 			out.append({"from": s.x - after, "to": s.y + before, "why": "a floor cut or a big attack runs meanwhile"})
 	return out
+
+
+## The wall section a Gilded Sentinel (task C4, GDD §9.11) keeps to itself on its wall: from its wall-run
+## approach (GildedSentinelTuning.approach_seconds before the stretch its swings cut) to wall_clear_seconds
+## past it, at the generator's run speed. Its whole attack is also a big attack's keep-out in every lane
+## (gilded_sentinel_rules.gd's doodad_keep_outs), which the drop windows keep off with the others below.
+static func sentinel_wall_section(gen: LevelGenerator, e: Dictionary) -> Vector2:
+	var st := EnemyDirector.tuning_for("gilded_sentinel") as GildedSentinelTuning
+	if st == null:
+		st = GildedSentinelTuning.new()
+	var swings: int = int((e.get("params", {}) as Dictionary).get("swings", 1))
+	var guard: Vector2 = st.guarded_stretch(float(e["at"]), swings)
+	return Vector2(guard.x - st.approach_seconds * gen.speed, guard.y + st.wall_clear_seconds * gen.speed)
 
 
 ## A Resonator's planned pulses (GDD §9.10; resonator_rules.gd plans them, "pulse_at" and "double"):
