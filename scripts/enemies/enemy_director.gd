@@ -51,6 +51,8 @@ static var _default_rules: GameRules = null
 static var _warmed: Dictionary = {}
 ## Per script: whether it has a static warm_up() and brings() (warm_up).
 static var _hooks: Dictionary = {}
+## Entries to ready besides the layout's (warm_up_entries): a boss fight's own enemies.
+var _extra_warm: Array[Dictionary] = []
 
 
 func setup(p_world: RunWorld) -> void:
@@ -62,6 +64,7 @@ func setup(p_world: RunWorld) -> void:
 	_next = 0
 	_frame = 0
 	_waits.clear()
+	_extra_warm.clear()
 	_shots.clear()
 	for entry: Dictionary in world.layout.enemies:
 		var e: Dictionary = entry.duplicate()
@@ -82,6 +85,17 @@ func setup(p_world: RunWorld) -> void:
 ## decides anything: the run plays exactly as without it. setup() calls it.
 func warm_up() -> void:
 	var variant: String = String(world.skin.enemy_variant) if world.skin != null else ""
+	_warm(variant)
+
+
+## Readies `entries` (layout-like) too, as warm_up() does the layout's: the enemies a boss fight brings into
+## play itself (BossEncounter.warm_enemies), which aren't in its arena's layout. warm_looks() includes them.
+func warm_up_entries(entries: Array[Dictionary]) -> void:
+	_extra_warm.append_array(entries)
+	_warm(String(world.skin.enemy_variant) if world.skin != null else "")
+
+
+func _warm(variant: String) -> void:
 	for entry: Dictionary in warm_entries():
 		var type: String = String(entry["type"])
 		var script: GDScript = script_for(type)
@@ -102,6 +116,8 @@ func warm_entries() -> Array[Dictionary]:
 	var todo: Array[Dictionary] = []
 	var seen: Dictionary = {}
 	for entry: Dictionary in world.layout.enemies:
+		_note_for_warm_up(entry, todo, seen)
+	for entry: Dictionary in _extra_warm:
 		_note_for_warm_up(entry, todo, seen)
 	return todo
 

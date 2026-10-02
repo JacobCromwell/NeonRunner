@@ -215,6 +215,11 @@ func _build_boss() -> void:
 ## docs/OPEN_QUESTIONS.md §D, item 84). Each lap's towers stand every tower_spacing metres from
 ## tower_first on, on alternate sides, with the track clear of holes and fences around each (the pin,
 ## the ways onto its head and the run up to it).
+## The cyborgs it drops from its mouth (FloatingHeadFaceoff), readied during the fight's load (task PERF1).
+func warm_enemies() -> Array[Dictionary]:
+	return [{"type": "cyborg", "at": 0.0, "lane": 0, "side": 0, "seed": 1, "params": {"fires": false}}]
+
+
 func _plan_lap(lap: LevelLayout, index: int, p_arena: BossArena) -> void:
 	lap.signs.clear()
 	var t: FloatingHeadTuning = (def.tuning as FloatingHeadTuning) if def != null else null
