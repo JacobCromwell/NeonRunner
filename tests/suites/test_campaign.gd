@@ -497,6 +497,12 @@ func _test_recency(campaign: Campaign) -> void:
 	var core: Array[int] = [0, 0]
 	var total: Array[int] = [0, 0]
 	var spots: int = 0
+	# The features some pattern requires (planned ones have none yet, and the wall fences and the Barnacle
+	# Turret have none at all: their pieces come from the generator and their rules).
+	var with_patterns: Dictionary = {}
+	for p: Dictionary in LevelGenerator.load_for(load(LEVEL_PATH) as LevelConfig):
+		for need: Variant in p.get("requires", []):
+			with_patterns[String(need)] = true
 	for s: CampaignStep in campaign.steps():
 		if not s.is_level():
 			continue
@@ -504,7 +510,7 @@ func _test_recency(campaign: Campaign) -> void:
 		# own seed alone is too few picks to see the curve in.
 		var sweep: int = 0
 		for f: String in s.level.features:
-			if FIRST_LEVEL.get(f, "") == s.id and not curve.max_factor.has(f) and not LevelConfig.PLANNED_FEATURES.has(f):
+			if FIRST_LEVEL.get(f, "") == s.id and not curve.max_factor.has(f) and with_patterns.has(f):
 				sweep = 8
 		for lanes: int in [3, 5, 6]:
 			for seed_k: int in sweep + 1:

@@ -35,9 +35,10 @@ patterns:
   (like an introduction) waits until one of the feature's patterns fits the difficulty there.
 - The check finds a feature by its pieces (`LevelGenerator.feature_positions`): an enemy type by its
   enemies, `ramps`, `ceilings`, `speed_pads` and `pulsing` by their ramps, pads, speed pads and
-  pulsing fences. A feature with a new kind of piece (e.g. wall fences) needs its rules script to
-  declare `static func positions(layout: LevelLayout) -> Array[float]` (the track distances of its
-  pieces), or an entry in `feature_positions`.
+  pulsing fences, and the wall fences by theirs (full-height ones for `wall_fences`, partial ones for
+  `wall_fences_partial`). A feature with a new kind of piece needs its rules script to declare
+  `static func positions(layout: LevelLayout) -> Array[float]` (the track distances of its pieces), or
+  an entry in `feature_positions`.
 
 Beyond that guarantee, a campaign level's newest things get the most picks (GDD §5; the campaign's
 recency curve, `data/tuning/feature_recency.tres`): a pattern's `weight` is multiplied by the curve's
@@ -88,7 +89,7 @@ pattern like the Octodog's fits when its dog does). Patterns need nothing specia
 | `min_difficulty` / `max_difficulty` | The pattern can be picked only while the current difficulty (0–1) is in this range |
 | `weight` | Relative pick chance among the patterns that qualify |
 | `min_lanes` | Optional. Skip on devices with fewer lanes |
-| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`, `resonator`, `buzz_overdrive`, `tithe_collector`), `screech_vents` (wall-vent screeches only, rare, for zones whose floor has no manholes, GDD §9.5), or a planned one: `wall_fences`, `wall_fences_partial` (with `wall_fences`: low or high wall fences), `gilded_sentinel` |
+| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`, `resonator`, `buzz_overdrive`, `tithe_collector`), `screech_vents` (wall-vent screeches only, rare, for zones whose floor has no manholes, GDD §9.5), or a planned one: `gilded_sentinel`. (The wall fences, `wall_fences` and `wall_fences_partial`, and the Barnacle Turret have no patterns: see below) |
 | `length` | Metres of track the pattern takes (the generator extends it for long gaps and hulls) |
 | `elements` | The pieces to place (see below) |
 
@@ -213,6 +214,17 @@ level is the same with or without it bar its turrets. Its introduction (Marketpl
 feature's start: where no ceiling it fits on lies there, the rules add a plain one, only where one fits
 without clearing anything. For patterns this means only that their ceilings may get turrets: a ceiling's
 landing zone, pads and floor stay exactly as the pattern made them.
+
+Wall fences (task B5; GDD §9.1: electric fences across the wall-run path that switch off and on; full-height
+ones, `wall_fences`, from Marketplace 2, and from the Corporate zone partial ones over the low or the high part
+of the wall, `wall_fences_partial`) have no patterns either, and no pattern should require them: the generator
+adds them after the zone doodads, from a random stream of their own (`scripts/world/wall_fence_placement.gd`),
+only where they're fair (never on a wall section with a sign or a window cyborg, never where a wall vent's
+screech swipes up the wall, never where a ramp launches the player along their wall, the outer lane beside
+them clear of holes, fences, floor cuts, anti-grav pads and floor enemies to drop into, no floor cut or big
+attack meanwhile). So a level is built exactly as without them but for its wall fences, and patterns need
+nothing for them: a pattern's signs, window cyborgs, wall vents, ramps and outer-lane pieces simply leave
+less of the wall to them. See `docs/ARCHITECTURE.md`, The generator, Wall fences.
 
 Floor cuts (task B4; GDD §9.9, the Buzz Overdrive's: a lane's floor that turns into a hole during play)
 have no patterns of their own: a rules script plans them after the patterns and every other rule
