@@ -221,12 +221,12 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   `--level=marketplace/boss`). Hostile Takeover, the Corporate zone's boss, is being built (step 1 of 3,
   a preview with `--boss=corporate_boss`): the runner lands on the rear roof of the Chairman's armored
   maglev train and runs forward along it, jumping the gaps between its carriages, the track's sound
-  barriers on either side and the city streaming past below; a military gunship paces the train
-  overhead, and far ahead the Chairman watches from the locomotive's window. In phase 1 (The Board)
-  security cyborgs guard the roofs, a Tithe Collector skims a trail of credits and partial wall fences
-  pulse along the barriers; the coupling over each gap glows red in one lane: land on it while jumping
-  the gap and the carriages behind break away and tumble off the track. Until its next steps every phase
-  plays The Board. The other two zone bosses are still to be built.
+  barriers on either side and the city streaming past beyond them and far below; a military gunship
+  paces the train overhead, and far ahead the Chairman watches from the locomotive's window. In phase 1
+  (The Board) security cyborgs guard the roofs, a Tithe Collector skims a trail of credits and partial
+  wall fences pulse along the barriers; the coupling over each gap glows red in one lane: land on it
+  while jumping the gap and the carriages behind break away and tumble off the track. Until its next
+  steps every phase plays The Board. The other two zone bosses are still to be built.
 - **Protection:** every level and boss fight starts with free armor: it blocks an enemy attack or an
   electrical hazard (never a crash or a fall) and comes back 30 s after it breaks; the HUD shows its hits
   and a ring filling while it comes back. Armor pickups in boss fights bring it back at once.
