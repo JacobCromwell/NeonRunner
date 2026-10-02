@@ -30,6 +30,10 @@ extends SceneTree
 ##                                 own time left out of the frames) and list the shaders first drawn
 ##                                 after the level's load, with what drew them (always on under xvfb)
 ##   --out=build/measure/x.json    write every run's numbers, frame times and tags there
+##   --reference                   also time a reference build every REFERENCE_EVERY frames (SkinSuite's:
+##                                 a REFERENCE_LANES-lane grey-box chunk, far off to one side, its time left
+##                                 out of the frames), whose times tell how loaded the machine is
+##                                 (SkinSuite.load_factor; test_frame_times)
 ## The headless run uses the dummy renderer: times are the CPU's (scripts, physics, building and freeing
 ## nodes), never the GPU's. Under xvfb (a real renderer, in software) the times mean nothing, but each run
 ## also counts what the renderer draws: draw calls, primitives and objects a frame, the render pipelines
@@ -59,6 +63,10 @@ const ATTACK_WATCH: String = "res://tools/measure/attack_watch.gd"
 const PASS_DIR: String = "res://build/measure/passes"
 ## Frames between two looks at the materials on screen (--shaders, and under xvfb).
 const SHADER_SCAN_FRAMES: int = 20
+## Frames between two reference builds (--reference).
+const REFERENCE_EVERY: int = 60
+## Where the reference track is built: far from the run, so nothing in it ever meets the run's.
+const REFERENCE_AT := Vector3(100000.0, -100000.0, 0.0)
 
 
 ## Stands in for scenes/main.tscn: the App plays runs under its world root (App.boot is left out, so the
@@ -94,6 +102,7 @@ var _session: bool = false
 var _log: bool = false
 var _print_frames: bool = false
 var _shaders_scan: bool = false
+var _reference: bool = false
 var _out: String = ""
 ## A pass in its own process: the run to play and where to write it.
 var _child: String = ""
@@ -119,6 +128,11 @@ var _peak_materials: int = 0
 var _peak_shaders: int = 0
 ## Shaders first drawn after the level's load: {frame, shader, node}.
 var _firsts: Array[Dictionary] = []
+## The reference build (--reference): its track, how far it's built, and each chunk's build time (ms).
+var _ref_world: Node3D
+var _ref_track: TrackBuilder
+var _ref_d: float = 0.0
+var _ref_times := PackedFloat32Array()
 
 
 func _initialize() -> void:
@@ -213,6 +227,8 @@ func _parse_args() -> void:
 			_print_frames = true
 		elif arg == "--shaders":
 			_shaders_scan = true
+		elif arg == "--reference":
+			_reference = true
 		elif arg.begins_with("--out="):
 			_out = value
 		elif arg.begins_with("--child="):
@@ -256,6 +272,8 @@ func _pass_in_process(key: String, index: int) -> Dictionary:
 		args.append("--log")
 	if _shaders_scan:
 		args.append("--shaders")
+	if _reference:
+		args.append("--reference")
 	var output: Array = []
 	OS.execute(OS.get_executable_path(), args, output, true)
 	var path: String = ProjectSettings.globalize_path(file)
@@ -364,6 +382,7 @@ func _measure(campaign: Object, key: String) -> Dictionary:
 	_peak_materials = 0
 	_peak_shaders = 0
 	_firsts.clear()
+	_ref_times.clear()
 	_shaders_scan = _shaders_scan or _rendering
 	var compiles_before: Array[int] = _compiles()
 	var speed: float = float((world.get(&"tuning") as Object).get(&"run_speed"))
@@ -400,6 +419,8 @@ func _measure(campaign: Object, key: String) -> Dictionary:
 		log.sort()
 		r["log_hash"] = "\n".join(log).md5_text()
 		r["log_lines"] = log.size()
+	if _reference:
+		r["reference_times"] = Array(_ref_times)
 	if _shaders_scan:
 		_scan_materials()
 		r["shader_firsts"] = _firsts.duplicate()
@@ -450,8 +471,36 @@ func _physics_process(_delta: float) -> bool:
 			_objects.append(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME))
 		if _shaders_scan and _frame % SHADER_SCAN_FRAMES == 0:
 			_scan_materials()
+		if _reference and _frame % REFERENCE_EVERY == 0:
+			_reference_step()
 	_monitor.call(&"discount", Time.get_ticks_usec() - t0)
 	return false
+
+
+## Builds the reference track's next chunk and times it (--reference): SkinSuite's reference, a
+## REFERENCE_LANES-lane grey-box layout one chunk-step at a time, started afresh when it runs out.
+func _reference_step() -> void:
+	if _ref_track == null or _ref_d > 3800.0:
+		if _ref_world != null:
+			_ref_world.queue_free()
+		_ref_world = Node3D.new()
+		_ref_world.position = REFERENCE_AT
+		root.add_child(_ref_world)
+		_ref_track = TrackBuilder.new()
+		_ref_world.add_child(_ref_track)
+		_ref_track.set_layout(RunSim.layout(SkinSuite.REFERENCE_LANES, 4000.0), load(TestSuite.TUNING_PATH) as MovementTuning,
+			GreyboxSkin.new())
+		_ref_track.update(0.0, 0.0)
+		_ref_d = 0.0
+		return
+	_ref_d += TrackBuilder.CHUNK_LENGTH
+	var t0: int = Time.get_ticks_usec()
+	_ref_track.update(_ref_d, 0.0)
+	_ref_times.append((Time.get_ticks_usec() - t0) / 1000.0)
+	# The chunks it left behind go now, inside the time left out of the frame, not at the frame's end.
+	for chunk: Node in _ref_track.get_children():
+		if chunk.is_queued_for_deletion():
+			chunk.free()
 
 
 ## One move of the scripted runner: mostly lane switches (one onto a wall now and then), some jumps and
@@ -541,8 +590,10 @@ func _scan_materials(during_play: bool = true) -> void:
 					"node": _short_path(where)})
 	if fresh > 0:
 		_monitor.call(&"tag", "shader+%d" % fresh)
-	_peak_materials = maxi(_peak_materials, materials.size())
-	_peak_shaders = maxi(_peak_shaders, shaders.size())
+	# The most at once during play: the look at the load also sees the shader warm-up's samples (ShaderWarmup).
+	if during_play:
+		_peak_materials = maxi(_peak_materials, materials.size())
+		_peak_shaders = maxi(_peak_shaders, shaders.size())
 
 
 ## Where a node is in the run, short: its first two and last two names (World/Enemies/.../Body/Part).

@@ -5,5 +5,5 @@
 [resource]
 script = ExtResource("1_perf")
 chunk_dress_budget_ms = 1.0
-test_p99_ms = 6.0
-test_worst_ms = 16.0
+test_p99_ms = 4.5
+test_worst_ms = 12.0
