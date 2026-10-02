@@ -23,7 +23,8 @@ extends RefCounted
 ##   window (the truck's route past it; HoverTruckRules clears that lane of floor enemies);
 ## - what runs meanwhile: no floor cut's window (B4: nothing else goes on during a cut) and no Octodog
 ##   run (its charges are planned on a clear floor, BIG_ATTACKS) reaches its window, and no ceiling's
-##   landing zone either (a rider dropping into the cut). Its attack is a big one that can't wait (GDD §9):
+##   landing zone either (a rider dropping into the cut); its cut keeps off every anti-grav pad's way, like
+##   any floor enemy's stretch (CeilingZones.enemy_clear). Its attack is a big one that can't wait (GDD §9):
 ##   at run time, if another type's big attack is on as its warning would start, it lets the runner pass
 ##   (GildedSentinel), so drone waves and hover trucks, which stay a while and attack now and then, may be
 ##   about. Its introduction (the level's first) keeps off every big attack's keep-out and Bad Dream
@@ -302,6 +303,11 @@ static func problem(gen: LevelGenerator, side: int, at: float, swings: int, lay:
 		var landing: Vector2 = gen.zones.landing_zone(h)
 		if landing.x <= window.y and landing.y >= window.x:
 			return "a ceiling's landing zone lies in its window"
+	# Its cut keeps off every pad's way, like any floor enemy (CeilingZones.enemy_clear: a pad in its lane,
+	# or the spot where one lies, from any lane).
+	var candidate := {"type": TYPE, "at": at, "lane": outer, "side": side, "params": {"floor_span": use}}
+	if not gen.zones.enemy_clear(lay, candidate):
+		return "its cut would be in an anti-grav pad's way"
 	if lay.doodad_between(window.x, window.y):
 		return "a zone doodad stands in its window"
 	return ""
