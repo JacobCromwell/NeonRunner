@@ -31,10 +31,10 @@ extends EnemyTuning
 @export_range(0.0, 30.0, 0.5, "suffix:m/s") var lunge_speed_late: float = 11.0
 ## The lunge carries on in its straight line until it's this far behind the player.
 @export_range(0.5, 10.0, 0.5, "suffix:m") var lunge_overshoot: float = 3.0
-## DESIGN-TBD: how many lanes one lunge may cut across diagonally.
+## How many lanes one lunge may cut across diagonally (FB 76).
 @export_range(0, 5) var max_lanes_across: int = 1
-## DESIGN-TBD: chance that a charge comes from a lane beside the player's (a diagonal lunge)
-## rather than head-on.
+## Chance that a charge comes from a lane beside the player's (a diagonal lunge)
+## rather than head-on (FB 76: 40%).
 @export_range(0.0, 1.0, 0.05) var diagonal_chance: float = 0.4
 ## Height of the leap's arc (visual only: the hitbox stays low enough to jump over).
 @export_range(0.0, 1.0, 0.05, "suffix:m") var lunge_hop_height: float = 0.3
@@ -46,8 +46,8 @@ extends EnemyTuning
 @export_range(0.0, 1.0, 0.05, "suffix:s") var turnaround_time: float = 0.3
 ## Sideways speed when changing lanes.
 @export_range(1.0, 30.0, 0.5, "suffix:m/s") var lateral_speed: float = 9.0
-## DESIGN-TBD: it runs past the player in another lane and can't hurt them until it's this far
-## ahead (never from behind or beside, where the player can't see it coming).
+## It runs past the player in another lane and can't hurt them until it's this far
+## ahead (never from behind or beside, where the player can't see it coming; FB 77).
 @export_range(0.0, 10.0, 0.5, "suffix:m") var pass_clearance: float = 3.0
 ## Seconds of clear floor needed after a lunge would meet the player (a jump's landing), used by the
 ## generator and before every wind-up.
@@ -62,7 +62,7 @@ extends EnemyTuning
 ## charge_slack starts to run out. A charge moved on this way still needs a clear stretch, with the
 ## generator's margins.
 @export_range(0.0, 10.0, 0.25, "suffix:s") var turn_wait_max: float = 4.0
-## DESIGN-TBD: distance at which a dog hiding in its doghouse bursts out; beyond it no dog can be
+## Distance at which a dog hiding in its doghouse bursts out (FB 79: 55 m); beyond it no dog can be
 ## targeted by auto-fire, doghouse or not (so the hint never changes gameplay).
 @export_range(20.0, 120.0, 5.0, "suffix:m") var appear_distance: float = 55.0
 
@@ -74,8 +74,8 @@ extends EnemyTuning
 @export_range(1.0, 8.0, 0.25, "suffix:m") var bait_distance: float = 3.0
 
 @export_group("Doghouse")
-## DESIGN-TBD (GDD §9.4: a doghouse warns of the first appearances only): this many Octodogs, counted
-## over the player's whole profile, come with a doghouse.
+## GDD §9.4: a doghouse warns of the first appearances only: this many Octodogs, counted
+## over the player's whole profile, come with a doghouse (FB 79: 3).
 @export_range(0, 10) var doghouse_appearances: int = 3
 
 

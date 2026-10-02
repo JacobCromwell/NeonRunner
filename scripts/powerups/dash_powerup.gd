@@ -3,8 +3,8 @@ extends PowerupModule
 ## The juggernaut dash (GDD §8): the `dash` action (a tap on mobile via TouchInput) barrels through
 ## enemies and obstacles, then recharges. The Player does the dash itself (start_dash: faster, and
 ## DamageRules lets it pass hazards and smash enemies); this module owns the cooldown and the look.
-## DESIGN-TBD (OPEN_QUESTIONS §4): duration, cooldown and speed are placeholders in PowerupTuning,
-## and the cooldown runs from the moment the dash starts. It works on any surface.
+## Duration, cooldown and speed are in PowerupTuning (FB 17), and the cooldown runs from the moment
+## the dash starts. It works on any surface.
 ##
 ## The look, while dashing: an energy shell around the player and speed lines streaming past; a
 ## camera kick when it starts and a bigger hit when it smashes an enemy. (No afterimages: seen from

@@ -24,7 +24,7 @@ var hulls: Array[Dictionary] = []
 var pads: Array[Dictionary] = []
 ## {side, at}: ramp in the outermost lane on that side, launching onto the wall.
 var ramps: Array[Dictionary] = []
-## {lane, at}: speed pad in a floor lane (DESIGN-TBD: GDD §6 only names them).
+## {lane, at}: speed pad in a floor lane (GDD §6 only names them; FB 21).
 var speed_pads: Array[Dictionary] = []
 ## {at, surface ("floor" | "wall" | "ceiling"), lane (floor/ceiling), side (wall), height, value}.
 ## `height` is the distance from the surface (floor/ceiling) or the height on the wall.

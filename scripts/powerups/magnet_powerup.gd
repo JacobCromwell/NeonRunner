@@ -2,7 +2,7 @@ class_name MagnetPowerup
 extends PowerupModule
 ## The magnet (GDD §8): pulls in nearby credits. It only sets the credit field's pull radius (from
 ## the tier) and speed; CreditField enforces the GDD cap (the player's lane plus the adjacent
-## lanes, same surface only). DESIGN-TBD (OPEN_QUESTIONS §4): tier count and radii.
+## lanes, same surface only). Tier count and radii: FB 23.
 ##
 ## The look: a faint field in the credits' gold on the player's surface, covering roughly what the
 ## magnet reaches, with rings flowing in toward the player; it brightens for a moment on a pickup.

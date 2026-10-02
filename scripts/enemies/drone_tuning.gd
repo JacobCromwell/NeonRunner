@@ -1,9 +1,10 @@
 class_name DroneTuning
 extends EnemyTuning
 ## Numbers for the heli drone (GDD §9.6), in data/enemies/drone.tres. Pairs named _early/_late scale
-## across the campaign with the level's enemy_scaling (GDD §6). Values marked DESIGN-TBD are
-## placeholders, not design decisions; the GDD fixes only the 10 s / 8–10 s / ~15 s pad rules and the
-## health (15, laser tier 1 shots). Laser tier 1's actual shots to kill are 17
+## across the campaign with the level's enemy_scaling (GDD §6). The GDD fixes the 10 s / 8–10 s /
+## ~15 s pad rules and the health (15, laser tier 1 shots); the owner's placeholder review approved
+## the wave and pad schedule as is (FB 89, FB 90). Values still marked DESIGN-TBD are placeholders,
+## not design decisions. Laser tier 1's actual shots to kill are 17
 ## (PowerupTuning.tier1_extra_shots stretches its tier 1 hit, GDD §8's September 30, 2026 playtest).
 
 @export_group("Hovering")
@@ -61,21 +62,21 @@ extends EnemyTuning
 @export_group("Generator rules")
 ## GDD §9.6: at least 10 s of dodging before a pad appears ...
 @export_range(0.0, 30.0, 0.5, "suffix:s") var first_pad_seconds: float = 10.0
-## DESIGN-TBD: the first pad lands within this many seconds after that minimum.
+## The first pad lands within this many seconds after that minimum (FB 90).
 @export_range(0.0, 5.0, 0.25, "suffix:s") var first_pad_slack_seconds: float = 1.0
 ## ... then another 8–10 s after each pad, repeating ...
 @export_range(2.0, 30.0, 0.5, "suffix:s") var pad_repeat_min_seconds: float = 8.0
 @export_range(2.0, 30.0, 0.5, "suffix:s") var pad_repeat_max_seconds: float = 10.0
 ## ... and no drone appears in the last ~15 s of a level.
 @export_range(0.0, 60.0, 1.0, "suffix:s") var no_spawn_last_seconds: float = 15.0
-## DESIGN-TBD: how long the ceiling above each scheduled pad lasts.
+## How long the ceiling above each scheduled pad lasts (FB 90).
 @export_range(1.0, 8.0, 0.5, "suffix:s") var pad_ceiling_seconds: float = 3.0
-## DESIGN-TBD: a wave can bring a second drone (extra attackers, GDD §6) only from this
-## enemy_scaling on, and never as a level's first wave (one new thing at a time).
+## A wave can bring a second drone (extra attackers, GDD §6) only from this
+## enemy_scaling on, and never as a level's first wave (one new thing at a time; FB 89).
 @export_range(0.0, 1.0, 0.05) var pair_min_scaling: float = 0.5
-## DESIGN-TBD: a new wave of drones comes at least this long after the previous one.
+## A new wave of drones comes at least this long after the previous one (FB 89).
 @export_range(0.0, 120.0, 1.0, "suffix:s") var min_wave_gap_seconds: float = 20.0
-## DESIGN-TBD: a level with the drone feature always gets at least one drone (the patterns may pick
+## A level with the drone feature always gets at least one drone (FB 89; the patterns may pick
 ## none); it's placed between these shares of the level.
 @export var guarantee_one_wave: bool = true
 @export_range(0.0, 1.0, 0.05) var guaranteed_wave_from: float = 0.2

@@ -208,7 +208,7 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator", "gi
 @export_range(0.5, 10.0, 0.1, "suffix:s") var doodad_gap_seconds: float = 2.5
 
 @export_group("Credits")
-## DESIGN-TBD (GDD §7): credit placement. Trails of small credits fill the clear stretches between
+## Credit placement (GDD §7; FB 9): trails of small credits fill the clear stretches between
 ## patterns; high-value credits sit in risky spots (gap edges, by fences, far along wall runs).
 @export_range(1.0, 10.0, 0.25, "suffix:m") var credit_trail_spacing: float = 3.0
 @export_range(0, 20) var credit_trail_count: int = 6

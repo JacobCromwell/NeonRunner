@@ -14,9 +14,9 @@ extends Resource
 @export_range(0.0, 1.0, 0.05) var death_credit_keep_fraction: float = 0.2
 ## GDD §4: about 1 second of invulnerability after armor or a shield breaks.
 @export_range(0.2, 3.0, 0.05, "suffix:s") var hit_invulnerability: float = 1.0
-## DESIGN-TBD: invulnerability after a revive, so the player isn't killed again at once.
+## Invulnerability after a revive, so the player isn't killed again at once (FB 16: 2 s).
 @export_range(0.5, 5.0, 0.1, "suffix:s") var revive_invulnerability: float = 2.0
-## DESIGN-TBD: revives allowed per attempt, by item or ad (OPEN_QUESTIONS §7).
+## Revives allowed per attempt, by item or ad (FB 16: at most one).
 @export_range(0, 5) var max_revives_per_attempt: int = 1
 ## Pause before the death screen appears, so the death reads.
 @export_range(0.2, 3.0, 0.1, "suffix:s") var death_screen_delay: float = 1.0
@@ -50,7 +50,7 @@ extends Resource
 @export_range(0.0, 15.0, 0.25, "suffix:m/s") var stomp_bounce_velocity: float = 7.5
 ## A contact counts as a stomp when the player's feet are at most this far below the enemy's top.
 @export_range(0.0, 1.0, 0.05, "suffix:m") var stomp_tolerance: float = 0.45
-## DESIGN-TBD: the grapple hook's pull out of a gap (upward speed).
+## The grapple hook's pull out of a gap it's falling into (upward speed; FB 18).
 @export_range(4.0, 20.0, 0.5, "suffix:m/s") var grapple_pull_velocity: float = 10.0
 ## Share of a lane switch the player travels before being bumped back by a solid side.
 @export_range(0.1, 0.6, 0.05) var lane_bump_fraction: float = 0.3
@@ -74,7 +74,7 @@ extends Resource
 @export_range(0.0, 10.0, 0.1, "suffix:s") var turn_place_grace: float = 1.0
 
 @export_group("Score")
-## DESIGN-TBD: score multiplier on credits collected during a ramp-launched wall run (GDD §3).
+## Score multiplier on credits collected during a ramp-launched wall run (GDD §3; FB 20: x2).
 @export_range(1.0, 5.0, 0.25) var ramp_score_multiplier: float = 2.0
 ## DESIGN-TBD: bonus score per stomp, on top of the enemy's own score.
 @export_range(0, 1000, 10) var stomp_bonus: int = 50

@@ -45,7 +45,7 @@ func has_armor() -> bool:
 
 ## Builds the loadout from what the profile owns and has switched on, and the free armor every run
 ## starts with (GDD §4; the web demo's too), whatever the profile and the settings. Breakable items
-## bring one charge each (DESIGN-TBD: one of each breakable per attempt; spares stay in stock).
+## bring one charge each (FB 13: one of each breakable per attempt; spares stay in stock).
 ## Revives are used from stock on the death screen, not carried as a charge. Items not sold on this
 ## platform (slow time on mobile, GDD §3) are left out.
 ## DESIGN-TBD (docs/questions/g3.md): the equip toggle switches the armor upgrade off, never the free
