@@ -98,6 +98,10 @@ func _build_boss() -> void:
 	add_child(jackpot)
 	jackpot.setup(self)
 	jackpot.finished.connect(_on_jackpot_finished)
+	# Everything the fight shows is pooled and made now, not mid-fight (no hitch at a first attack).
+	attacks.prewarm()
+	buttons.prewarm()
+	jackpot.prewarm()
 	var resume: int = int(context.boss_resume.get("phase", 0))
 	front_at = player_distance() + (stand_distance() if resume > 0 else tuning.enter_ahead)
 	_place()

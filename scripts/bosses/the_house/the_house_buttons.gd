@@ -27,6 +27,7 @@ const SIGN_FADE_NEAR: float = 9.0
 ## How long a button takes to grow in, and to sink away once pressed or passed.
 const APPEAR_SECONDS: float = 0.3
 const GONE_SECONDS: float = 0.6
+const BUTTON_SHADER: Shader = preload("res://scripts/bosses/the_house/the_house_button.gdshader")
 
 var boss: TheHouse
 var tuning: TheHouseTuning
@@ -49,6 +50,15 @@ func setup(p_boss: TheHouse) -> void:
 	world = boss.world
 	top_level = true
 	transform = Transform3D.IDENTITY
+
+
+## Makes a set's looks before the fight (pooled; the pool still grows if ever needed).
+func prewarm() -> void:
+	var looks: Array[Dictionary] = []
+	for i: int in 3:
+		looks.append(_free_look())
+	for look: Dictionary in looks:
+		_hide(look)
 
 
 ## Seconds after the lever's pull when the runner reaches the `k`th button of a set (the phase's pace).
@@ -245,12 +255,11 @@ func _free_look() -> Dictionary:
 		if not look["used"]:
 			look["used"] = true
 			return look
-	var shader := load("res://scripts/bosses/the_house/the_house_button.gdshader") as Shader
 	var disc_mat := ShaderMaterial.new()
-	disc_mat.shader = shader
+	disc_mat.shader = BUTTON_SHADER
 	disc_mat.set_shader_parameter(&"part", 0)
 	var sign_mat := ShaderMaterial.new()
-	sign_mat.shader = shader
+	sign_mat.shader = BUTTON_SHADER
 	sign_mat.set_shader_parameter(&"part", 1)
 	var quad := QuadMesh.new()
 	quad.size = Vector2.ONE

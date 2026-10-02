@@ -68,6 +68,12 @@ func setup(p_boss: TheHouse) -> void:
 	transform = Transform3D.IDENTITY
 
 
+## Makes the fountain's flying coins (one MultiMesh per denomination) before the fight.
+func prewarm() -> void:
+	for value: int in [COIN_FIVE, COIN_RICH]:
+		_coin_mesh(value)
+
+
 func busy() -> bool:
 	return stage != Stage.IDLE
 
@@ -292,7 +298,28 @@ func _update_coins(delta: float) -> void:
 ## A flying coin in the credits' own look (CreditField's mesh and spinning material): one MultiMesh per
 ## denomination, an instance per coin.
 func _coin_look(c: Dictionary) -> void:
-	var value: int = CreditField.denomination(int(c["value"]))
+	var entry: Dictionary = _coin_mesh(CreditField.denomination(int(c["value"])))
+	var mm: MultiMesh = entry["mm"]
+	var free: Array = entry["free"]
+	var idx: int
+	if not free.is_empty():
+		idx = free.pop_back()
+	else:
+		idx = mm.visible_instance_count
+		if idx >= mm.instance_count:
+			# Every instance in flight (more coins than fountain_count allows): the first one's.
+			idx = 0
+		else:
+			mm.visible_instance_count = idx + 1
+	c["mm"] = mm
+	c["idx"] = idx
+	c["free"] = free
+	mm.set_instance_transform(idx, Transform3D(Basis().scaled(Vector3.ZERO), c["from"]))
+
+
+## The flying coins' MultiMesh of denomination `value` ({mm, free: its instances free for a coin}), made
+## the first time.
+func _coin_mesh(value: int) -> Dictionary:
 	if not _coin_meshes.has(value):
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
@@ -306,21 +333,7 @@ func _coin_look(c: Dictionary) -> void:
 		inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(inst)
 		_coin_meshes[value] = {"mm": mm, "free": []}
-	var entry: Dictionary = _coin_meshes[value]
-	var mm: MultiMesh = entry["mm"]
-	var free: Array = entry["free"]
-	var idx: int
-	if not free.is_empty():
-		idx = free.pop_back()
-	else:
-		idx = mm.visible_instance_count
-		if idx >= mm.instance_count:
-			idx = 0
-		mm.visible_instance_count = mini(idx + 1, mm.instance_count)
-	c["mm"] = mm
-	c["idx"] = idx
-	c["free"] = free
-	mm.set_instance_transform(idx, Transform3D(Basis().scaled(Vector3.ZERO), c["from"]))
+	return _coin_meshes[value]
 
 
 func _place_coin(c: Dictionary, pos: Vector3, t: float) -> void:

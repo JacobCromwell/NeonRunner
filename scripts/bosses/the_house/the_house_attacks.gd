@@ -93,6 +93,21 @@ func setup(p_boss: TheHouse) -> void:
 		_whistle = world.sfx_library.stream(&"bomb_whistle").get_length()
 
 
+## Fills the pools for a spin at this lane count before the fight (and builds the looks' meshes), so the
+## first attacks make nothing either: a volley's bombs, blasts' boxes and fireballs, BAR rows' blocks,
+## spools. They still grow if a spin ever needs more.
+func prewarm() -> void:
+	var n: int = boss.lane_count()
+	for i: int in n + 2:
+		_new_bomb()
+		_new_fire()
+		_new_blast_box()
+	for i: int in 3 * maxi(n - 1, 1):
+		_new_block()
+	for i: int in 2:
+		_new_spool()
+
+
 static func kind_name(kind: int) -> String:
 	return KIND_NAMES[clampi(kind, 0, KIND_NAMES.size() - 1)]
 
@@ -201,6 +216,7 @@ func clear() -> void:
 	strikes.clear()
 	for b: Dictionary in _blasts:
 		(b["hazard"] as Hazard).set_enabled(false)
+		(b["hazard"] as Hazard).collision_layer = 0
 		(b["fire"] as Node3D).visible = false
 	_blasts.clear()
 	for bomb: MeshInstance3D in _bombs:
@@ -559,6 +575,7 @@ func _blast(lane: int, at: float, n: int) -> void:
 	hazard.size = size
 	((hazard.get_child(0) as CollisionShape3D).shape as BoxShape3D).size = size
 	hazard.global_position = Vector3((x0 + x1) * 0.5, size.y * 0.5, TrackGeometry.world_z(at))
+	hazard.collision_layer = TrackBuilder.LAYER_HAZARD
 	hazard.set_enabled(true)
 	var fire: MeshInstance3D = _free_fire()
 	fire.global_position = Vector3(x, 0.6, TrackGeometry.world_z(at))
@@ -580,6 +597,7 @@ func _update_blasts() -> void:
 		var hazard: Hazard = b["hazard"]
 		if hazard.is_active() and age >= tuning.blast_seconds - 0.0001:
 			hazard.set_enabled(false)
+			hazard.collision_layer = 0
 		var fire: MeshInstance3D = b["fire"]
 		if age >= FIRE_SECONDS:
 			fire.visible = false
@@ -634,15 +652,21 @@ func _free_bomb(from: Vector3) -> MeshInstance3D:
 			bomb = b
 			break
 	if bomb == null:
-		bomb = MeshInstance3D.new()
-		bomb.name = "CherryBomb"
-		bomb.mesh = bomb_mesh()
-		bomb.material_override = TheHouseModel.solid_material()
-		bomb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(bomb)
-		_bombs.append(bomb)
+		bomb = _new_bomb()
 	bomb.global_position = from
 	bomb.visible = true
+	return bomb
+
+
+func _new_bomb() -> MeshInstance3D:
+	var bomb := MeshInstance3D.new()
+	bomb.name = "CherryBomb"
+	bomb.mesh = bomb_mesh()
+	bomb.material_override = TheHouseModel.solid_material()
+	bomb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	bomb.visible = false
+	add_child(bomb)
+	_bombs.append(bomb)
 	return bomb
 
 
@@ -651,12 +675,17 @@ func _free_hazard() -> Hazard:
 	for h: Hazard in _blast_boxes:
 		if not h.is_active() and not _burning(h):
 			return h
+	return _new_blast_box()
+
+
+## A blast's box: off, and out of every query (no layer), until a blast burns in it.
+func _new_blast_box() -> Hazard:
 	var hazard := Hazard.new()
 	hazard.name = "Blast"
 	hazard.hazard_name = BOMB_NAME
 	hazard.is_enemy_attack = true
 	hazard.part = &"attack"
-	hazard.collision_layer = TrackBuilder.LAYER_HAZARD
+	hazard.collision_layer = 0
 	hazard.collision_mask = 0
 	hazard.monitoring = false
 	var shape := CollisionShape3D.new()
@@ -682,6 +711,10 @@ func _free_fire() -> MeshInstance3D:
 	for f: MeshInstance3D in _fires:
 		if not f.visible:
 			return f
+	return _new_fire()
+
+
+func _new_fire() -> MeshInstance3D:
 	var fire := MeshInstance3D.new()
 	fire.name = "Fireball"
 	var sphere := SphereMesh.new()
@@ -736,36 +769,44 @@ func _free_block() -> Dictionary:
 			block = b
 			break
 	if block.is_empty():
-		var hazard := Hazard.new()
-		hazard.name = "GoldBlock"
-		hazard.hazard_name = BLOCK_NAME
-		hazard.is_solid = true
-		hazard.collision_layer = 0
-		hazard.collision_mask = 0
-		hazard.monitoring = false
-		var shape := CollisionShape3D.new()
-		shape.shape = BoxShape3D.new()
-		hazard.add_child(shape)
-		var blocker := Area3D.new()
-		blocker.collision_layer = 0
-		blocker.collision_mask = 0
-		blocker.monitoring = false
-		var blocker_shape := CollisionShape3D.new()
-		blocker_shape.shape = BoxShape3D.new()
-		blocker.add_child(blocker_shape)
-		hazard.add_child(blocker)
-		add_child(hazard)
-		hazard.set_enabled(false)
-		var look := MeshInstance3D.new()
-		look.name = "GoldBlockLook"
-		look.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(look)
-		block = {"hazard": hazard, "blocker": blocker, "look": look}
-		_blocks.append(block)
+		block = _new_block()
 	block["used"] = true
 	var look: MeshInstance3D = block["look"]
 	look.mesh = _block_mesh(size)
 	look.visible = true
+	return block
+
+
+## A gold block for the pool: its hazard off with no layers, its look hidden (its mesh built now).
+func _new_block() -> Dictionary:
+	var hazard := Hazard.new()
+	hazard.name = "GoldBlock"
+	hazard.hazard_name = BLOCK_NAME
+	hazard.is_solid = true
+	hazard.collision_layer = 0
+	hazard.collision_mask = 0
+	hazard.monitoring = false
+	var shape := CollisionShape3D.new()
+	shape.shape = BoxShape3D.new()
+	hazard.add_child(shape)
+	var blocker := Area3D.new()
+	blocker.collision_layer = 0
+	blocker.collision_mask = 0
+	blocker.monitoring = false
+	var blocker_shape := CollisionShape3D.new()
+	blocker_shape.shape = BoxShape3D.new()
+	blocker.add_child(blocker_shape)
+	hazard.add_child(blocker)
+	add_child(hazard)
+	hazard.set_enabled(false)
+	var look := MeshInstance3D.new()
+	look.name = "GoldBlockLook"
+	look.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	look.mesh = _block_mesh(Vector3(world.geo.lane_width * tuning.block_width_share, tuning.block_height, tuning.block_depth))
+	look.visible = false
+	add_child(look)
+	var block := {"hazard": hazard, "blocker": blocker, "look": look, "used": false}
+	_blocks.append(block)
 	return block
 
 
@@ -828,6 +869,12 @@ func _free_spool() -> MeshInstance3D:
 		if not sp.visible:
 			sp.visible = true
 			return sp
+	var spool: MeshInstance3D = _new_spool()
+	spool.visible = true
+	return spool
+
+
+func _new_spool() -> MeshInstance3D:
 	if _spool_mesh == null:
 		var batch := MeshBatch.new()
 		var m: MeshLayer = batch.layer(TheHouseModel.solid_material())
@@ -841,6 +888,7 @@ func _free_spool() -> MeshInstance3D:
 	node.name = "Spool"
 	node.mesh = _spool_mesh
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	node.visible = false
 	add_child(node)
 	_spools.append(node)
 	return node

@@ -66,17 +66,14 @@ func find(start_lane: int, d0: float, act_at: float, d_end: float, obstacles: Ar
 	if d_end <= d0:
 		return {"ok": true, "moves": [], "end_lane": start_lane}
 	var n: int = ceili((d_end - d0) / STEP) + 1
-	var blocked: Array[PackedByteArray] = []
-	var no_switch: Array[PackedByteArray] = []
-	for l: int in lanes:
-		var b := PackedByteArray()
-		b.resize(n)
-		b.fill(0)
-		blocked.append(b)
-		var s := PackedByteArray()
-		s.resize(n)
-		s.fill(0)
-		no_switch.append(s)
+	# Every per-step array is flat, step * lanes + lane (fast in GDScript; the solver runs as attacks
+	# are revealed and buttons planned, within a frame).
+	var blocked := PackedByteArray()
+	blocked.resize(n * lanes)
+	blocked.fill(0)
+	var no_switch := PackedByteArray()
+	no_switch.resize(n * lanes)
+	no_switch.fill(0)
 	# Solids first: a fence is only crossable where no solid stands in its jump.
 	for o: Dictionary in obstacles:
 		if int(o["kind"]) != Kind.SOLID:
@@ -84,8 +81,8 @@ func find(start_lane: int, d0: float, act_at: float, d_end: float, obstacles: Ar
 		var l: int = int(o["lane"])
 		if l < 0 or l >= lanes:
 			continue
-		_mark(blocked[l], d0, float(o["from"]) - body, float(o["to"]) + body, n)
-		_mark(no_switch[l], d0, float(o["from"]) - body, float(o["to"]) + body, n)
+		_mark(blocked, l, d0, float(o["from"]) - body, float(o["to"]) + body, n)
+		_mark(no_switch, l, d0, float(o["from"]) - body, float(o["to"]) + body, n)
 	for o: Dictionary in obstacles:
 		var kind: int = int(o["kind"])
 		if kind == Kind.SOLID:
@@ -97,89 +94,97 @@ func find(start_lane: int, d0: float, act_at: float, d_end: float, obstacles: Ar
 		var after: float = jump_after if kind == Kind.FENCE else slide_after
 		var from: float = float(o["from"]) - before
 		var to: float = float(o["to"]) + after
-		if _any(blocked[l], d0, from, to, n):
+		if _any(blocked, l, d0, from, to, n):
 			# Something solid in the jump (or the slide): the fence can't be crossed in this lane.
-			_mark(blocked[l], d0, float(o["from"]) - body, float(o["to"]) + body, n)
-		_mark(no_switch[l], d0, from, to, n)
-	var at_step: Dictionary = {}
-	for w: Dictionary in waypoints:
-		var i: int = clampi(roundi((float(w["at"]) - d0) / STEP), 0, n - 1)
-		at_step[i] = int(w["lane"])
+			_mark(blocked, l, d0, float(o["from"]) - body, float(o["to"]) + body, n)
+		_mark(no_switch, l, d0, from, to, n)
 	var act: int = clampi(ceili((act_at - d0) / STEP), 0, n - 1)
 	var k: int = maxi(ceili(switch_m / STEP), 1)
+	# The buttons: button_lane[i] is the lane of the one at step i, or -1.
+	var button_lane := PackedInt32Array()
+	button_lane.resize(n)
+	button_lane.fill(-1)
+	for w: Dictionary in waypoints:
+		button_lane[clampi(roundi((float(w["at"]) - d0) / STEP), 0, n - 1)] = int(w["lane"])
+	# A switch's whole span is checked at once, by counts from the start: no_switch steps in each lane
+	# (no_switch_before[i * lanes + l]: in steps 0 to i - 1), and buttons (buttons_before[i]).
+	var no_switch_before := PackedInt32Array()
+	no_switch_before.resize((n + 1) * lanes)
+	no_switch_before.fill(0)
+	var buttons_before := PackedInt32Array()
+	buttons_before.resize(n + 1)
+	buttons_before[0] = 0
+	for i: int in n:
+		var row: int = i * lanes
+		for l: int in lanes:
+			no_switch_before[row + lanes + l] = no_switch_before[row + l] + no_switch[row + l]
+		buttons_before[i + 1] = buttons_before[i] + (1 if button_lane[i] >= 0 else 0)
 	# The fewest switches to be settled in each lane at each step (cost), and where it came from (parent:
 	# prev_step * 16 + prev_lane; -2 marks the start). Of two ways with as few switches, the one that
 	# switched earlier wins: the route moves out of a lane as soon as it can, and never zigzags.
-	var cost: Array[PackedInt32Array] = []
-	var parent: Array[PackedInt32Array] = []
-	for i: int in n:
-		var c := PackedInt32Array()
-		c.resize(lanes)
-		c.fill(UNREACHED)
-		cost.append(c)
-		var p := PackedInt32Array()
-		p.resize(lanes)
-		p.fill(-1)
-		parent.append(p)
-	if start_lane < 0 or start_lane >= lanes or blocked[start_lane][0] != 0:
+	var cost := PackedInt32Array()
+	cost.resize(n * lanes)
+	cost.fill(UNREACHED)
+	var parent := PackedInt32Array()
+	parent.resize(n * lanes)
+	parent.fill(-1)
+	if start_lane < 0 or start_lane >= lanes or blocked[start_lane] != 0:
 		return none
-	cost[0][start_lane] = 0
-	parent[0][start_lane] = -2
+	cost[start_lane] = 0
+	parent[start_lane] = -2
 	for i: int in n:
-		if at_step.has(i):
-			var keep: int = at_step[i]
+		var row: int = i * lanes
+		var keep: int = button_lane[i]
+		if keep >= 0:
 			for l: int in lanes:
 				if l != keep:
-					cost[i][l] = UNREACHED
+					cost[row + l] = UNREACHED
 		if i == n - 1:
 			break
+		var next: int = row + lanes
+		var j: int = i + k
+		var land: int = j * lanes
+		# A switch starting here spans steps i to j. Settled in a button's lane as it passes over it, no
+		# switch starts there or spans it; one landing on a button lands in its lane.
+		var can_switch: bool = i >= act and j < n and buttons_before[j] == buttons_before[i]
+		var land_lane: int = button_lane[j] if j < n else -1
 		for l: int in lanes:
-			var c: int = cost[i][l]
+			var c: int = cost[row + l]
 			if c >= UNREACHED:
 				continue
 			# Stay in the lane: on a tie with a later switch into it, staying wins (its switch came earlier).
-			if blocked[l][i + 1] == 0 and (c < cost[i + 1][l] or (c == cost[i + 1][l] and parent[i + 1][l] % 16 != l)):
-				cost[i + 1][l] = c
-				parent[i + 1][l] = i * 16 + l
-			if i < act:
+			if blocked[next + l] == 0 and (c < cost[next + l] or (c == cost[next + l] and parent[next + l] % 16 != l)):
+				cost[next + l] = c
+				parent[next + l] = i * 16 + l
+			if not can_switch or no_switch_before[land + lanes + l] != no_switch_before[row + l]:
 				continue
-			# Switch to a neighbouring lane over the next k steps (both lanes clear meanwhile, no button
-			# passed mid-switch).
-			for dir: int in [-1, 1]:
-				var l2: int = l + dir
-				var j: int = i + k
-				if l2 < 0 or l2 >= lanes or j >= n or c + 1 >= cost[j][l2]:
+			# Switch to a neighbouring lane over the next k steps (both lanes clear meanwhile).
+			for l2: int in range(l - 1, l + 2, 2):
+				if l2 < 0 or l2 >= lanes or c + 1 >= cost[land + l2] or blocked[land + l2] != 0:
 					continue
-				var ok: bool = blocked[l2][j] == 0
-				for s: int in range(i, j + 1):
-					if not ok:
-						break
-					if no_switch[l][s] != 0 or no_switch[l2][s] != 0:
-						ok = false
-					elif s < j and at_step.has(s):
-						# Settled in a button's lane as it passes over it: no switch starts there or spans it.
-						ok = false
-					elif s == j and at_step.has(s) and int(at_step[s]) != l2:
-						ok = false
-				if ok:
-					cost[j][l2] = c + 1
-					parent[j][l2] = i * 16 + l
+				if no_switch_before[land + lanes + l2] != no_switch_before[row + l2]:
+					continue
+				if land_lane >= 0 and land_lane != l2:
+					continue
+				cost[land + l2] = c + 1
+				parent[land + l2] = i * 16 + l
 	# The route ends in the lane reached with the fewest switches (then the nearest the start lane).
+	var last: int = (n - 1) * lanes
 	var end_lane: int = -1
 	for dist: int in lanes:
 		for s: int in [-1, 1]:
 			var l: int = start_lane + s * dist
-			if l < 0 or l >= lanes or cost[n - 1][l] >= UNREACHED:
+			if l < 0 or l >= lanes or cost[last + l] >= UNREACHED:
 				continue
-			if end_lane < 0 or cost[n - 1][l] < cost[n - 1][end_lane]:
+			if end_lane < 0 or cost[last + l] < cost[last + end_lane]:
 				end_lane = l
 	if end_lane < 0:
 		return none
 	var moves: Array[Dictionary] = []
 	var i: int = n - 1
 	var lane: int = end_lane
-	while parent[i][lane] >= 0:
-		var code: int = parent[i][lane]
+	while parent[i * lanes + lane] >= 0:
+		var code: int = parent[i * lanes + lane]
 		var pi: int = code / 16
 		var pl: int = code % 16
 		if pl != lane:
@@ -199,17 +204,17 @@ static func lane_at(route: Dictionary, start_lane: int, d: float) -> int:
 	return lane
 
 
-func _mark(arr: PackedByteArray, d0: float, from: float, to: float, n: int) -> void:
+func _mark(arr: PackedByteArray, lane: int, d0: float, from: float, to: float, n: int) -> void:
 	var i0: int = maxi(floori((from - d0) / STEP), 0)
 	var i1: int = mini(ceili((to - d0) / STEP), n - 1)
 	for i: int in range(i0, i1 + 1):
-		arr[i] = 1
+		arr[i * lanes + lane] = 1
 
 
-func _any(arr: PackedByteArray, d0: float, from: float, to: float, n: int) -> bool:
+func _any(arr: PackedByteArray, lane: int, d0: float, from: float, to: float, n: int) -> bool:
 	var i0: int = maxi(floori((from - d0) / STEP), 0)
 	var i1: int = mini(ceili((to - d0) / STEP), n - 1)
 	for i: int in range(i0, i1 + 1):
-		if arr[i] != 0:
+		if arr[i * lanes + lane] != 0:
 			return true
 	return false
