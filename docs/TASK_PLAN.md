@@ -345,7 +345,7 @@ The owner played every zone and the Floating Head. The feedback is in GDD §3 ("
 | E1 | **Floating Head** (GDD §10). XL, split into steps. | B7, B8 | XL | T1 |
 | E2 | **Web demo release candidate** (GDD §2) | E1, P1, P2 | M | T2 |
 | E3 | **Swarm rendering risk test (R4)** | owner's phone | M | T2 |
-| E4 | **Sewer Swarm** | E3, B7, B8 | XL | T1 |
+| E4 | **Sewer Swarm** | B7, B8 (E3 sets its crowd sizes later) | XL | T1 |
 | E5a | **The House** (Marketplace boss) | B5, B7, B8, C1, D2 (D3 for the cheering citizens) | XL | T1 |
 | E5b | **Hostile Takeover** (Corporate boss) | B4, B5, B7, B8, C2, C5, D4 | XL | T1 |
 | E5c | **Sleep Taker** (Dead Zone boss) | B7, B8, B9, D5 | XL | T1 |
@@ -371,7 +371,7 @@ The owner played every zone and the Floating Head. The feedback is in GDD §3 ("
 - MultiMesh clusters of hundreds of screeches on a mid-range Android phone.
 - Needs an Android export and the owner's device.
 
-**E4: Sewer Swarm.** Designed (GDD §10, September 26, 2026). Waits for the phone test R4 (E3), which must come before this boss is built, and the boss framework.
+**E4: Sewer Swarm.** Designed (GDD §10, September 26, 2026). The owner decided on October 2, 2026 to build it now with crowd sizes that scale and to size them down later: the phone test R4 (E3) no longer comes first, and later sets the sizes. Two steps: E4a (the clusters, the arena and phase 1), then E4b (phases 2 and 3, the Host, the defeat, the slot).
 
 **E5: the other bosses.** The House, Hostile Takeover and Sleep Taker are designed (GDD §10, September 26, 2026); each is XL, split into steps like E1, and waits for the enemies, mechanics and skin its fight uses. The final villain (E5d) still needs its design.
 
@@ -426,7 +426,7 @@ The owner played every zone and the Floating Head. The feedback is in GDD §3 ("
 - E2 (web demo release candidate), after E1, P1 and P2
 - R4 endless mode (after B5), R6 approved placeholders (at a quiet moment), R7 balancing (after the owner's playtest)
 
-**Blocked on design:** E5d (the final villain), F2 (cinematic content). **Blocked on the owner's phone:** E3, and so E4.
+**Blocked on design:** E5d (the final villain), F2 (cinematic content). **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
 
 **The critical path to the web demo:** B1 → B8 and B7 → E1 → E2. The demo depends on the Floating Head more than on anything else, so keep that path moving first. P1 → P2 (the new player and cyborg looks) must also be done before E2.
 

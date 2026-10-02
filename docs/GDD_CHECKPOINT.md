@@ -557,7 +557,7 @@ Shared interaction rules apply unless stated otherwise:
   - **The Host's weak points:** its fused implants, glowing **red** (the same language as other bosses' weak points). The player reaches them by a ramp and a wall jump, Gangland's big new move. **Three stomps**, each knocking screeches off and revealing more of the person. Its lunge can also be baited into a fence.
   - **Pickups:** the standard armor rule, with the 15–17 second delay.
   - **Implementation:** 4–5 gameplay entities ("clusters"), each rendered as many screech-variant creatures using MultiMesh plus a shader for per-creature motion. It looks like hundreds, but only 4–5 are simulated. The Host is one more entity.
-  - Needs early performance testing on mid-range phones (risk test R4, before this boss is built).
+  - **Performance on phones** (owner, October 2, 2026): build it now with crowd sizes that scale (set in data, and smaller on low-end devices); the phone test (risk test R4, task E3) comes later and sets the sizes.
   - **Defeat: the Host is freed.** The screeches scatter, the implants short out, and the person slumps free.
 - **The House** (Marketplace). The design round's pitch, approved by the owner (September 26, 2026). The owner will playtest it once built and may revisit it.
   - **What it is:** a **slot machine the size of a building**, rolling down the market street on treads, lights blazing and jingling. Loud, gaudy and a little ridiculous, to match the Marketplace's happy mood. The citizens in the shop windows cheer and duck throughout.
