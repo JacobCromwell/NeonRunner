@@ -17,7 +17,8 @@ extends RefCounted
 ## only the gold inlay lines of the wall-run height marks; nothing but a hazard sign ever sticks out
 ## of the wall below the entablature, no decorative statue stands lower than statue_min_height (a
 ## statue at wall-run height is a live Gilded Sentinel), and nothing vent-like or niche-like is drawn
-## (wall vents are sewer-screech lairs, niches are the Sentinels').
+## (wall vents are sewer-screech lairs, niches are the Sentinels': a live Sentinel's niche opens only
+## where one stands, GoldenSkin.note_wall_enemies).
 ## Overhead, sky bridges are slung between towers high over the street, their faces carrying the
 ## emblem toward the approach.
 ## Faces seen only from behind (turned away from the runner, who always looks down the track) are left
@@ -339,8 +340,10 @@ func _building(batch: MeshBatch, b: Building, face_x: float, start: float, end: 
 	# Below the walkways the face is in deep shade (seen only through gaps, which must read as holes);
 	# above them the plinth, the calm band and the entablature, flush with the wall face.
 	_face(facade, side, face_x, u0, u1, -skin.canal_depth, 0.0, skin.gap_inside_color, 0.0, STYLE_DEEP, b.seed)
-	_face(facade, side, face_x, u0, u1, 0.0, skin.plinth_top, b.wall, 0.0, STYLE_PLINTH, b.seed)
-	_face(facade, side, face_x, u0, u1, skin.plinth_top, skin.band_top, b.wall, 0.0, STYLE_BAND, b.seed)
+	# A Gilded Sentinel's niche opens in the plinth and the calm band (GoldenSkin.note_wall_enemies).
+	var holes: Array[Rect2] = skin.niches(side)
+	_open_face(facade, side, face_x, u0, u1, 0.0, skin.plinth_top, b.wall, STYLE_PLINTH, b.seed, holes)
+	_open_face(facade, side, face_x, u0, u1, skin.plinth_top, skin.band_top, b.wall, STYLE_BAND, b.seed, holes)
 	_face(facade, side, face_x, u0, u1, skin.band_top, skin.frieze_top, b.wall, 0.0, STYLE_FRIEZE, b.seed)
 	match b.kind:
 		Kind.PALACE:
@@ -743,6 +746,17 @@ func _face(layer: MeshLayer, side: int, x: float, u0: float, u1: float, y0: floa
 	if u1 <= u0 + 0.0005 or y1 <= y0 + 0.0005:
 		return
 	MeshKit.facade_quad(layer, side, x, u0, u1, y0, y1, y1, color, lit, style, float(seed))
+
+
+## A facade piece like _face(), with the Gilded Sentinels' niches (`holes`) left out of it
+## (GoldenSkin.open_rects; task C4).
+func _open_face(layer: MeshLayer, side: int, x: float, u0: float, u1: float, y0: float, y1: float, color: Color,
+		style: int, seed: int, holes: Array[Rect2]) -> void:
+	if holes.is_empty():
+		_face(layer, side, x, u0, u1, y0, y1, color, 0.0, style, seed)
+		return
+	for r: PackedFloat64Array in GoldenSkin.open_rects(u0, u1, y0, y1, holes):
+		_face(layer, side, x, r[0], r[1], r[2], r[3], color, 0.0, style, seed)
 
 
 ## The box faces of something on the wall on `side` that the runner can see: toward the street and

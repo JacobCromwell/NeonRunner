@@ -84,6 +84,7 @@ func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: f
 	_wall_x = absf(face_x)
 	var batch := MeshBatch.new()
 	walls().build(batch, side, face_x, start, end)
+	add_niches(batch, side, face_x)
 	if side < 0:
 		palace_floor().below(batch, absf(face_x), start, end)
 	batch.commit(parent)

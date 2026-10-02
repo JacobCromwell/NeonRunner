@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="GildedSentinelTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/gilded_sentinel_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+spawn_lead = 120.0
+score_value = 350
+health_early = 15.0
+health_late = 15.0
+uses_floor = true
+floor_reach_before = 30.0
+floor_reach_after = 3.0
+statue_scale = 0.85
+niche_width = 1.4
+niche_sill = 0.75
+niche_height = 2.7
+niche_depth = 0.8
+statue_inset = 0.05
+statue_turn = 0.3
+band_offset = 0.0
+band_height = 0.9
+wall_reach = 1.2
+lane_margin = 0.15
+section_length = 5.0
+warning_seconds = 1.2
+strike_lead_seconds = 0.06
+strike_seconds = 0.3
+hold_max_seconds = 0.8
+recover_seconds = 0.8
+kick_below = 0.25
+kick_above = 0.55
+kick_along = 0.45
+approach_seconds = 2.2
+wall_clear_seconds = 0.6
+escape_lead_seconds = 0.7
+gap_seconds = 1.5

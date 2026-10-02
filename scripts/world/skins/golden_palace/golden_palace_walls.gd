@@ -53,8 +53,15 @@ func _init(p_skin: GoldenPalaceSkin) -> void:
 ## every bay's content.
 func build(batch: MeshBatch, side: int, face_x: float, start: float, end: float) -> void:
 	var s: MeshLayer = batch.layer(skin.solid_material())
-	MeshKit.facade_quad(s, side, face_x, start, end, 0.0, skin.frieze_top, skin.frieze_top, skin.stone_colors[0], 0.0,
-		MeshKit.PAT_PALACE_PANEL, 0.0)
+	# A Gilded Sentinel's niche opens in the panel where one stands (GoldenSkin.note_wall_enemies, task C4).
+	var holes: Array[Rect2] = skin.niches(side)
+	if holes.is_empty():
+		MeshKit.facade_quad(s, side, face_x, start, end, 0.0, skin.frieze_top, skin.frieze_top, skin.stone_colors[0], 0.0,
+			MeshKit.PAT_PALACE_PANEL, 0.0)
+	else:
+		for r: PackedFloat64Array in GoldenSkin.open_rects(start, end, 0.0, skin.frieze_top, holes):
+			MeshKit.facade_quad(s, side, face_x, r[0], r[1], r[2], r[3], r[3], skin.stone_colors[0], 0.0,
+				MeshKit.PAT_PALACE_PANEL, 0.0)
 	# A gold cornice where the colonnade's upper zone begins.
 	s.box(Vector3(face_x - side * 0.06, skin.frieze_top + 0.07, -(start + end) * 0.5), Vector3(0.12, 0.1, end - start),
 		skin.gold_color, 0.0, MeshKit.PAT_GOLD, _street_faces(side), 0.9)

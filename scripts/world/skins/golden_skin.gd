@@ -277,6 +277,9 @@ var _statues: GoldenStatue
 ## The latest wall face seen (wall_section runs before a chunk's ceilings): bridges and archways reach
 ## from wall to wall.
 var _wall_x: float = 0.0
+## The Gilded Sentinels' niches in the wall about to be built, by side (note_wall_enemies, task C4):
+## Rect2 over (track distance, height).
+var _niches: Dictionary = {}
 
 
 func _init() -> void:
@@ -313,10 +316,73 @@ func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: f
 	_wall_x = absf(face_x)
 	var batch := MeshBatch.new()
 	facades().build(batch, side, face_x, start, end)
+	add_niches(batch, side, face_x)
 	if side < 0:
 		walkways().below(batch, absf(face_x), start, end)
 		facades().overhead(batch, absf(face_x), start, end)
 	batch.commit(parent)
+
+
+## The wall enemies TrackBuilder is about to build on `side` (ZoneSkin.note_wall_enemies): each Gilded
+## Sentinel's niche (GildedSentinel.niche_rect, task C4; GDD §9.11: a live one stands in a niche at
+## wall-run height) is left out of the wall face here (niches(), open_rects()) and its recess appended
+## (add_niches), so the statue stands back in the wall, clear of the wall-run path. Visual only.
+func note_wall_enemies(side: int, _start: float, _end: float, enemies: Array[Dictionary]) -> void:
+	var rects: Array[Rect2] = []
+	for e: Dictionary in enemies:
+		if String(e.get("type", "")) == "gilded_sentinel" and int(e.get("side", 0)) == side:
+			rects.append(GildedSentinel.niche_rect(e))
+	_niches[side] = rects
+
+
+## The Gilded Sentinels' niches in the wall on `side` being built now (note_wall_enemies): Rect2 over
+## (track distance, height).
+func niches(side: int) -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	out.assign(_niches.get(side, []))
+	return out
+
+
+## Appends each niche's recess and frame (GoldenStatue.recess) for the wall on `side` at `face_x`.
+func add_niches(batch: MeshBatch, side: int, face_x: float) -> void:
+	var rects: Array[Rect2] = niches(side)
+	if rects.is_empty():
+		return
+	var layer: MeshLayer = batch.layer(solid_material())
+	var depth: float = GildedSentinel.niche_depth()
+	var turn := Basis(Vector3.UP, -side * PI * 0.5)
+	for r: Rect2 in rects:
+		layer.append(statues().recess(r.size.x, r.size.y, depth),
+			Transform3D(turn, Vector3(face_x, r.position.y, -(r.position.x + r.size.x * 0.5))))
+
+
+## The pieces of the wall face [u0, u1] x [y0, y1] (track distance x height) left once `holes` (niches,
+## Rect2 over the same axes, apart along the track) are taken out: whole strips between them, and the
+## parts below and above each, in track order, as [u0, u1, y0, y1] (plain floats, so neighbouring pieces
+## share their edges exactly). Without a hole there, the whole face.
+static func open_rects(u0: float, u1: float, y0: float, y1: float, holes: Array[Rect2]) -> Array[PackedFloat64Array]:
+	var out: Array[PackedFloat64Array] = []
+	var cuts: Array[Rect2] = []
+	for h: Rect2 in holes:
+		if h.position.x < u1 and h.end.x > u0 and h.position.y < y1 and h.end.y > y0:
+			cuts.append(h)
+	cuts.sort_custom(func(a: Rect2, b: Rect2) -> bool: return a.position.x < b.position.x)
+	var at: float = u0
+	for h: Rect2 in cuts:
+		var h0: float = maxf(h.position.x, u0)
+		var h1: float = minf(h.end.x, u1)
+		if h0 > at:
+			out.append(PackedFloat64Array([at, h0, y0, y1]))
+		var lo: float = maxf(h.position.y, y0)
+		var hi: float = minf(h.end.y, y1)
+		if lo > y0:
+			out.append(PackedFloat64Array([h0, h1, y0, lo]))
+		if hi < y1:
+			out.append(PackedFloat64Array([h0, h1, hi, y1]))
+		at = maxf(at, h1)
+	if u1 > at:
+		out.append(PackedFloat64Array([at, u1, y0, y1]))
+	return out
 
 
 func fence(hazard: Hazard, size: Vector3, ground_y: float, gapped: bool) -> void:
