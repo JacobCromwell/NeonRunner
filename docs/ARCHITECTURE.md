@@ -37,7 +37,8 @@ RunWorld (scripts/run/run_world.gd)       one run's gameplay world; everything s
              enemies, under Enemies)
   Enemies    EnemyDirector: spawns layout enemies as the player approaches, retires them
   Projectiles ProjectilePool: every shot, pooled and swept
-  Credits    CreditField: every credit as MultiMesh instances; pickup and magnet
+  Credits    CreditField: every credit as MultiMesh instances; pickup and magnet; place() adds credits
+             during a run (The House's jackpot fountain), pooled: a slot collected or passed is reused
   Pickups    PickupField: armor, shield and grapple pickups a boss offers, placed fairly, pooled
   Effects    RunEffects: particle bursts, debris, glowing lines, camera-shake and hit-stop requests,
              and the shared impact spectacle (kills, blocked hits, hard landings, stomps)
@@ -305,8 +306,8 @@ A level uses an enemy only if its `features` list has the type's name (GDD §6: 
 time), from the feature's start if the level gives it one (The generator). Quick play can add
 features: `./play.sh --features=cyborg,drone`. The campaign already lists the enemies still to be
 built under the names their tasks must use (`LevelConfig.PLANNED_FEATURES`: `barnacle_turret`,
-`buzz_overdrive`, `resonator`, `gilded_sentinel`), so a new enemy's own files are all it takes to
-bring it into its levels.
+`resonator`, `gilded_sentinel`), so a new enemy's own files are all it takes to bring it into its
+levels.
 
 Built so far: cyborg (with its panic variant and hosts), window cyborg, fence generator, hover
 truck, Octodog, sewer screech (manholes, and wall vents; `screech_vents` is wall vents only, for zones
@@ -316,8 +317,9 @@ time rather than placed by the generator), the Resonator (GDD §9.10, the Golden
 broadcast spire hovering far ahead whose red waves roll along the floor across every lane; its model,
 `resonator_model.gd`, is built in code, and `resonator_rules.gd` plans each pulse where its wave meets
 the player on clear floor), the Barnacle Turret (GDD §9.8, from Marketplace 1: a ceiling enemy, see
-below), and the Tithe Collector (GDD §9.12, from Corporate 2, skipping the Dead Zone, back in the
-Golden Zone: see Thefts above). `scripts/enemies/mesh_batch.gd` merges an enemy's low-poly parts into
+below), the Buzz Overdrive (GDD §9.9, from Corporate 1: a buzzsaw tank that cuts its lane's floor into
+a gap, see below), and the Tithe Collector (GDD §9.12, from Corporate 2, skipping the Dead Zone, back in
+the Golden Zone: see Thefts above). `scripts/enemies/mesh_batch.gd` merges an enemy's low-poly parts into
 one mesh per material to keep draw calls down.
 
 **Big attacks take turns through the director** (GDD §9, decided September 26, 2026). The big attacks
@@ -326,11 +328,12 @@ revert this after playtesting, so it sits behind one switch, `GameRules.big_atta
 default, in the F6 panel); switched off, the game plays exactly as before the rule. The big attacks
 (DESIGN-TBD, `docs/questions/r3.md`): the Octodog's charge sequence (its first wind-up until it gives
 up), the drone's wind-up and barrage, the hover truck's rev and forward lurch and its cannon's charge
-and volley, the Bad Dream's chase, and the Resonator's pulse (its warning until its last wave has
-passed the player; DESIGN-TBD, `docs/questions/c3.md`). Small attacks (a cyborg's burst, a window
+and volley, the Bad Dream's chase, the Resonator's pulse (its warning until its last wave has passed
+the player; DESIGN-TBD, `docs/questions/c3.md`), and the Buzz Overdrive's rev and charge (its warning
+until it has passed the player and gone; it never waits, below). Small attacks (a cyborg's burst, a window
 cyborg's shot, a Barnacle Turret's burst, a screech's swipe) and the hover truck's entrance don't take
-part. An enemy takes part like this, and the enemies still to come (Buzz Overdrive, the Gilded Sentinels,
-the Tithe Collector) opt in the same way for whichever of their attacks count as big:
+part. An enemy takes part like this, and the enemies still to come (the Gilded Sentinels, the Tithe
+Collector) opt in the same way for whichever of their attacks count as big:
 - **Report it.** `is_major_attack_active()` is true from the start of the attack's warning until its
   last hazard is over (the lunge has passed, the lurch has ended). Each shot fired in it goes to
   `world.director.note_attack_shot(self, shot)` (the Projectile `fire_enemy()` returned): the attack's
@@ -370,7 +373,7 @@ the Tithe Collector) opt in the same way for whichever of their attacks count as
   host) or the generator planned its moment still reports itself: the others wait for it. It can
   overlap an attack that was already on when it came; the Bad Dream holds its slash until that one
   is over. A planned floor cut (B4's stand-in, C2's Buzz Overdrive) reports itself from its warning
-  until its charge ends; the generator keeps every other attack off its whole window (Floor cuts,
+  until its charge ends; the generator keeps every other attack off its attack window (Floor cuts,
   under The generator), so only an attack moved on at runtime can meet it, and that one waits.
 
 The director holds a big attack while another type's is on or its shots are still on their way; an
@@ -458,6 +461,56 @@ tuning (`BarnacleTurretTuning`, `data/enemies/barnacle_turret.tres`), its model
   eyes, floppy ears) on `&"scavenger"` and `&"casino"` (Gangland, the Marketplace; `is_creature`), with a
   palette per zone variant. Only its muzzle ever glows a hazard colour: enemy-fire red, swelling over the
   charge-up and the burst (a steady swell, nothing strobes). A hit's flash is softer with Reduced flashing.
+
+**A floor cutter: the Buzz Overdrive** (C2, GDD §9.9; from Corporate 1 through the Dead Zone and the
+Golden Zone). `buzz_overdrive.gd`, its tuning (`BuzzOverdriveTuning`, `data/enemies/buzz_overdrive.tres`),
+its model (`buzz_overdrive_model.gd`), its rules (`buzz_overdrive_rules.gd`, The generator, Floor cuts),
+its pattern (`data/patterns/buzz_overdrive.json`) and its sounds (`tools/asset_gen/
+sfx_bank_buzz_overdrive.gd`: `buzz_rev`, `buzz_charge`; its death is the hover truck's `truck_explode`).
+It is the visible cause of a floor cut the generator planned (B4's `FloorCutPlan`, `FloorCut`), keyed to
+the player's distance like the cut, so it does the same on every attempt and at every frame rate:
+- **Its encounter.** Its entry stands at its cut's end, in its lane (`cut_of`). It shows parked in its lane
+  `appear_distance` ahead (the director spawns it far ahead, `spawn_lead` 300 m, hidden until then; its
+  hint shows as it spawns). When the player is a charge's distance from it (`FloorCutPlan.lead_at`) it
+  rolls ahead of them at that distance for `roll_seconds`, revs for its rev (`rev_at`: its warning, the
+  level's enemy scaling from 2.93 s in Corporate 1 to 2.5 s in the Golden Palace, the only thing that
+  scales; its health stays 20) while it keeps rolling, then charges back at the player (`charge_seconds`
+  to meet them, at `charge_speed` stretched by the pace), cutting the floor behind it (`advance_to`), and
+  runs on `run_past` metres past them, off the screen, gone (retired only then: its cut runs to its
+  start). Its distances follow the pace (the charge's from `charge_distance()`), its seconds don't.
+- **Its warning.** The rev: the spin-up (`buzz_rev`), its eyes flaring and a red line over the lane it's
+  about to cut, from just behind the player to its blade (then, as it charges, the stretch it still has
+  to cut; the Octodog's lunge-line red, widening over the rev and pulsing, only widening with Reduced
+  flashing). Sparks fly from the blade as it cuts (none with Reduced flashing). Its rev and charge play
+  on its own voice, which moves with it (the world's voices stay where a sound starts), at full volume
+  from a charge's distance (`sound_full_volume_distance`); the 2.45 s spin-up (under the library's 2.5 s
+  a sound) is stretched over the rev by pitch (`rev_pitch`), so it always ends as the charge starts.
+- **Contact and kills.** Its blade is an `attack` hitbox, narrow and centred on its lane (0.7 m wide, 2.4 m
+  tall: a jump doesn't clear it), so wall and ceiling riders are never touched; no other part hurts. The
+  armor and the shield block it, and then `FloorCut.hold_under` holds the floor under the player for
+  `GameRules.cut_hold_seconds`: its cut runs on 1.5 s ahead of where it meets the player (0.6 s at 2.5
+  times the run speed), so a player who stays falls once the hold is over. Claw-immune, not stompable (no
+  `top`); the dash smashes it (`dash_kills`), into the cut lane, where only the grapple hook saves the
+  runner. Weapons: health 20, so 22 laser tier 1 shots (G4's rule) and 15, 10 and 7 at tiers 2-4; a kill
+  before its charge saves the floor, mid-charge `stop()` ends the cut where it dies. It rolls in 50-60 m
+  ahead: beyond laser tier 1's 42 m and within the other tiers' 70 m, so on a plain track tier 1 never
+  stops it before it has passed the runner and tiers 2-4 kill it during its rev at the zones' speeds
+  (23.4-25 m/s); at the harder tiers' 28-30 m/s tier 3 (and tier 4 at 30) stop it mid-charge
+  (`test_buzz_overdrive`; DESIGN-TBD, `docs/questions/c2.md`).
+- **A big attack that never waits.** Its rev and charge are one big attack (`is_major_attack_active` from
+  the rev until it's gone): the generator planned its moment, so it never asks for a turn and the others
+  wait for it; while it only rolls ahead it attacks nobody and holds nobody up.
+- **Looks.** `BuzzOverdriveModel`: a tracked hull with skirt armour, a sloped glacis, a low turret with a
+  slanted red eye slit under a dark brow on each side, exhaust stacks, and a giant vertical saw on braced
+  arms whose teeth glow hot orange-red (the deadly part); matte military gunmetal and olive, scorched and
+  rusted where enemies weather (`&"burned"`, `&"scavenger"`). Four draw calls, about 1,300 triangles: the
+  hull is one surface in vertex colours under one matte material (`HullBatch`), then the eyes, the blade's
+  disc and its teeth; the meshes are built once per look (about 1 ms, at the first one's spawn) and shared.
+- **Cheap to run.** Its sparks come from its own emitter (one `CPUParticles3D`, `sparks_per_second`, only
+  while it cuts), never the shared bursts; its sounds from its own voice; it looks up its cut's track piece
+  only from its rev on; everything else a frame is a few transforms.
+- **The Resonator** keeps its pulses off every cut (its rules run after these: `busy_stretches` holds each
+  cut's whole window, and `Resonator.pulse_clear` counts a cut's stretch as a gap).
 
 ## The generator
 
@@ -828,17 +881,16 @@ it:
   hitbox's `contacted` with `BLOCKED_ARMOR`/`BLOCKED_SHIELD`): the floor from just behind the player to
   as far as they run meanwhile holds for about a second (1 s, game rules), then goes at once
   (DESIGN-TBD: the held floor's look).
-For task C2 (the Buzz Overdrive): plan its cuts in its rules like `floor_cutter_rules.gd` (`plan()`,
-`CutPlacement.place`, the entry at `end`), with its own warn and charge times and speed in its tuning;
-its enemy finds its cut (as `floor_cutter_rules.cut_of` does), its `FloorCut` once built, starts its
-warning (GDD §9.9's rev and the red line over the lane, both placeholders in the stand-in's `_warn()`
-and `_update_line()`) at `warn_at`, its charge at `charge_at`, and calls the three above; it reports its
-big attack from the warning until it's gone (`is_major_attack_active`), keeps its hitbox narrow and in
-its lane, and flies its sparks only without Reduced flashing. For a boss fight (E5b's Hostile Takeover):
+The Buzz Overdrive (C2, under Enemies) is the cause the campaign uses, and the stand-in stays for
+reviews. A cause that sets off before its warning (the Buzz Overdrive rolls ahead of the player) gives its
+cut a `lead`: its lane window and its window start there (`FloorCutPlan.lead_at`: its lane is clear
+wherever it drives, and no other cut's encounter overlaps it), while its attack window
+(`attack_window`, when nothing else may go on) and its warned lane (`warned_lane`, which no ceiling's
+landing zone may reach) start at its warning. For a boss fight (E5b's Hostile Takeover):
 plan the cut at the arena's speed (`arena.tuning`), ask `arena.cut_problem(cut)` (the generator's rules
 on the arena's track), and add it with its cause through `arena.add_pieces()` (its `cuts` and
 `enemies`), its whole stretch past `stream_from()`, so about ten seconds ahead at the stand-in's
-numbers. A track that grows during play (`TrackBuilder.extend_layout`, endless mode's R4 too) takes cuts
+numbers (the Buzz Overdrive's own plan: `buzz_overdrive_rules.plan_for`). A track that grows during play (`TrackBuilder.extend_layout`, endless mode's R4 too) takes cuts
 the same way.
 
 **Wall fences** (B5; GDD §9.1: "electric fences that span a side wall and turn off and on from time to time,
@@ -1723,6 +1775,7 @@ encounter.setup(world, context, arena)   joins the world between the player and 
 | `scripts/bosses/test_boss*.gd`, `data/bosses/test_boss*.tres`, `scenes/bosses/test_boss.tscn` | the test boss, outside the campaign (`./play.sh --boss=test_boss`) |
 | `scripts/bosses/floating_head/`, `scenes/bosses/floating_head.tscn`, `data/bosses/city_boss*.tres` | the Floating Head, the City's boss (see below; `./play.sh --boss=city_boss` or `--level=city/boss`) |
 | `scripts/bosses/sleep_taker/`, `scenes/bosses/sleep_taker.tscn`, `data/bosses/dead_zone_boss*.tres` | the Sleep Taker, the Dead Zone's boss (see below; `./play.sh --boss=dead_zone_boss` or `--level=dead_zone/boss`) |
+| `scripts/bosses/the_house/`, `scenes/bosses/the_house.tscn`, `data/bosses/marketplace_boss*.tres` | The House, the Marketplace's boss, being built (see below; a preview: `./play.sh --boss=marketplace_boss`) |
 
 - **The arena** (`BossArena`): the generator plans `BossDef.arena_laps` laps from the boss's arena
   config (one lap's seed, features, difficulty, pacing and skin; `duration_seconds` is the lap's
@@ -1854,15 +1907,18 @@ plays it; E1e, the owner's playtest fixes; E1f, the fight at the City's speed), 
   `hole_between`) then `part.defeat(&"fence")`, and `_on_part_defeated` deals `hit_damage()`. The
   swarm on a wall is `props.block_wall`, one side at a time. The Host is the body part with three
   weak points.
-- **The House:** its reels are a telegraph; cherry bombs are `circle_warning`s and blast hitboxes,
-  the lightning a `props.fence` moved across the lanes, gold blocks `props.block`. The 7 buttons are
-  spots the boss script checks against the player's surface, lane and distance (a wall button needs
-  wall fences, B5; a ceiling button a pad and ceiling, and Barnacle Turrets through `spawn_enemy`
-(`"barnacle_turret"`, with its params `hull_start`, `hull_end`, `first_lane`, `last_lane` naming the
-arena's own `props.ceiling`),
-  C1). The jackpot's hopper is a weak point switched on after all three buttons; its credit fountain
-  needs credits placed during a run, which the credit field can't do yet (shared with the Tithe
-  Collector's burst, B6/C5).
+- **The House (E5a-a, built as a preview, see below):** its reels are its spin's telegraph; cherry bombs
+  are `circle_warning`s and blast hitboxes, the lightning one `props.fence` a lane rolled out by a
+  spool, gold blocks of `props.block`'s kind (pooled in its own script) under `lane_warning`s. The 7
+  buttons are spots the boss script checks against the player's surface, lane and distance; phase 1's
+  are on the floor. For task E5a-b: a wall button with wall fences in play (B5's notes for The House
+  under The generator, Wall fences: `WallFencePlan.make`, `arena.wall_fence_problem`,
+  `arena.add_pieces`, `Hazard.set_enabled`, and the wall's danger added to `TheHouseRoute`); a ceiling
+  button a pad and a `props.ceiling`, and Barnacle Turrets through `spawn_enemy` (`"barnacle_turret"`,
+  with its params `hull_start`, `hull_end`, `first_lane`, `last_lane` naming that ceiling, C1); the
+  machine stands taller than a ceiling's 6 m, so a ceiling must end before it, or it must stand further
+  off while one is over the street. The jackpot's hopper is a weak point switched on once the machine
+  has sunk; its credit fountain lands as real credits (`CreditField.place`).
 - **Hostile Takeover:** the train is the arena: an arena config whose patterns (a boss feature they
   `require`) cut every lane at the carriage gaps, and a train skin on the arena config; couplings are
   weak points on a part placed over each gap. Carriages breaking away behind the player are looks.
@@ -1903,6 +1959,37 @@ Floating Head's are, so the fight keeps its seconds at any speed. In `scripts/bo
 | `data/bosses/dead_zone_boss_skin.tres` | its arena's look: the Dead Zone's, with nothing hung over the street (no skybridges, no hung screens), where it looms |
 | `tools/showcase/sleep_taker_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/front/entrance/slash/hands/lights_out/lure/fight/measure`, `--phase=2` with `lure` for the defeat, `--dark` for a lure in the dark of lights out, `--events` for the frames; `measure` prints the warnings', hazards', the generator's and the street's colours on screen in the arena's light and at the darkest point) |
 | `tests/helpers/sleep_taker_bot.gd` (`SleepTakerBot`) | a runner who plays the fight by its warnings, `reaction` seconds late: to a refuge's pad or out of the slash's lanes (`slash_escape`), out of a hand's lane, to each generator's lane and onto its top (`stomp_lead()`; or the dash, `dashes`; or out of its way, `smashes` off), and through the arena's holes and fences |
+
+**The House** (GDD §10, task E5a: E5a-a, the machine, its arena, the spin with its three attacks and their
+bigger versions, the 7 buttons on the floor, the jackpot with its credit fountain and the hopper stomped,
+weapons chipping it; E5a-b, phases 2 and 3, the defeat, par times and its campaign slot). Until E5a-b it
+is the slot's `preview_scene` (the campaign keeps its card; debug builds play it with
+`--boss=marketplace_boss`, at 18 m/s), every phase played as phase 1, with a placeholder defeat (its
+power dies and it sinks away). In the campaign it will run at the Marketplace's 22.6 m/s: its tuning's
+distances that stand for a time (the buttons' and the stomp box's depth, the margins) are written at
+18 m/s and multiplied by the run's pace (`TheHouse.run_pace()`), and where an attack, a button or its
+jackpot stop lands is a time at the run speed, so the fight keeps its seconds. Every strike, every set
+of buttons and the jackpot's approach is planned only where a route exists (`TheHouseRoute`) for a
+runner who reads the warnings and moves a reaction time after them, through everything else still on
+the track, at any lane count: that's how every attack has an escape and every button is reachable while
+dodging. In `scripts/bosses/the_house/`:
+
+| File | What |
+|---|---|
+| `the_house.gd` (`TheHouse`) | the encounter: its arena kept plain (`_plan_lap`: no holes, fences, wall fences, signs, ceilings, pads, ramps, doodads, cuts or enemies of its own); where it stands (`front_at`, its face's track distance: `stand_distance()` ahead of the runner, keeping pace, or further at a speed where its longest warning would land near it); the entrance (it rolls in from `enter_ahead` and brakes, with its jingle); the spin (`_spin_tick`: the lever's pull, the reels spinning and stopping on the phase's next symbols from `spin_patterns`, each with its ding; the phase's first `opening_spins` spins offer no buttons, every later one a button for each reel still unlocked, `_try_pull` waiting for a fair set); the result (three 7s start the jackpot, otherwise `TheHouseAttacks.queue_spin`); a stomp is the phase's hit (`_on_weak_point_hit`); a missed jackpot clears the locks and it spins again. Fairness: `route_through()` (from the runner's lane, through everything of its attacks still ahead, over any buttons). `react_citizens()` calls D3's `react` on the `"market_citizens"` group (cheer at a jackpot or a stomp, duck at a big attack); `sound()` plays and logs every warning; first-time hints `enemy:marketplace_boss`, `boss:marketplace_boss/buttons` and `/jackpot` |
+| `the_house_route.gd` (`TheHouseRoute`) | the lane routes: the track ahead as SOLID stretches (blocks, blasts), FENCE (jumped, settled in its lane, nothing solid where the jump takes off or lands) and GAPPED (slid under) in each lane; a lane switch takes `switch_m` (the real one times `switch_margin`, plus a margin) with the runner in both lanes meanwhile; a body reaching `body` either side; waypoints (buttons) held in their lane as the runner passes. `find()` keeps the fewest switches, each as early as it can (no zigzag), and returns the moves; it runs within a frame as attacks are revealed and buttons planned (flat arrays, each switch's span checked at once: about 1 ms for 100 m at 6 lanes). The bot follows the same routes |
+| `the_house_attacks.gd` (`TheHouseAttacks`) | the three attacks (`Kind`: CHERRY, LIGHTNING, BAR), grouped by kind in reel order (`attacks_for`: a kind's count is its size; a 7 brings none), each revealing its strikes in turn (`strikes_in`: cherry volleys and BAR rows by size; three lightnings, two rows across every lane, full then gapped), each strike planned as it shows (`plan_strike`: the first lane set of a seeded order, the runner's lane first, with a route), waiting up to `strike_wait` for a fair moment, else left out (`strike_skipped`). Cherry: `circle_warning`s, bombs lobbed from the coin chute, the whistle, blasts (pooled enemy-attack boxes) as the runner would arrive. BAR: `lane_warning`s and gold blocks falling from high above, slammed down `bar_slam_lead` before the runner arrives as solid hazards of `props.block`'s kind with a lane blocker (gold with red-hot seams: deadly, never a doodad). Lightning: `props.fence`s flickering with their crackle while a pink-capped spool rolls across, on `fence_on_lead` before the runner arrives. `obstacles()` and `hazards_end()` describe what's still on the track; `strikes` lists them for tests and the bot. Everything an attack shows is pooled and made before the fight (`prewarm()`: bombs, blast boxes, fireballs, blocks with their hazards, spools; `pool_stats()`), as are the buttons' looks and the fountain's coins, so a fight makes nothing of its own mid-fight; the warnings and fences are BossProps' (made per strike) |
+| `the_house_buttons.gd` (`TheHouseButtons`), `the_house_button.gdshader` | the 7 buttons: `plan()` (a lane for each, at most `button_max_shift` from the one before and never the same, the first set of a seeded order with a route over them all), each lighting up `button_lead` before the runner reaches it (`house_button`), `pressed` or `missed` as the runner passes (on the floor, low, their middle within the button's width); the look: an ivory disc with chasing bulbs and the reels' blue 7, and the 7 floating overhead, shrinking away as the runner nears it; pooled |
+| `the_house_jackpot.gd` (`TheHouseJackpot`) | the jackpot: SAG (sirens, lights flashing, the citizens cheer; it rolls on, braking, to where the runner reaches it `jackpot_approach` later with its approach clear, `approach_clear`; the hopper bursts open with the fountain, `fountain_count` credits flung out and landing ahead of the runner, off the attacks' hazards, as `CreditField.place` credits; it sinks so its top is a deck `deck_height` up: `set_sunk`), OPEN (the hopper is its weak point; passed without a stomp, a miss), LURCH (it shoots ahead out from under the runner) and RECOVER (it rises and rolls back to where it paces; `finished(stomped)`) |
+| `the_house_body.gd` (`TheHouseBody`) | the body part: its cabinet a solid body hitbox while it stands; the hopper's weak point (across the street wall to wall, `stomp_depth` at the run's pace: `hopper_length`); its top deck a floor while it's sunk (`set_sunk`, the cabinet's hitbox off); `aim_point()` (its reels, its hopper once sunk); what it's doing (`sag`, `lever`, `lights`, `jackpot`, `hopper`, `power`, `track_speed`) eased onto the model; its reels (`TheHouseReels`) |
+| `the_house_model.gd` (`TheHouseModel`), `the_house_reels.gdshader`, `the_house_symbols.gdshaderinc`, `the_house_lights.gdshader`, `the_house_hopper.gdshader`, `the_house_treads.gdshader` | the machine, built in code from a `Shape` sized to the street (`shape_for`: the street less `street_margin`, `height` under the cables across the street, as deep as the stomp box needs): the cabinet and its trim (one kit mesh: purple paint, chrome, unlit gold; nothing on it glows), the cult's emblem in brushed bronze at the heart of its marquee's sunburst, the three reels standing out of its face (one draw: drums whose symbols are drawn as distances, each in its attack's colour: a red cherry, a gold BAR plate, a pink bolt, and the buttons' royal blue 7; smeared while spinning, a lock glowing), its bulbs and sirens (one draw: warm and cold whites, chasing and strobing, steady with Reduced flashing), its rolling treads, its lever on the face's edge, the hopper's two lids and its red-hot inside: 9 draws, under 3k vertices. On the Compatibility renderer its shaders scale an over-bright colour down whole (the 7's blue never clips toward the pads' cyan) |
+| `the_house_reels.gd` (`TheHouseReels`) | the reels' symbols and drums: `spin`, `stop` (the symbol known at once; the drum eases onto it with a bounce), locks on 7 (`unlock`) |
+| `the_house_tuning.gd`, `data/bosses/marketplace_boss_tuning.tres` | its numbers (F6 in its fight; all DESIGN-TBD, `docs/questions/e5a.md`) |
+| `data/bosses/marketplace_boss.tres` | its slot: `preview_scene`, three phases (one stomp each), weapons capped at 0.34 of its health, the standard armor rule with `armor_when_unprotected`, the Marketplace's music, its arena (two plain laps) |
+| `data/bosses/marketplace_boss_skin.tres` | its arena's look: the Marketplace's, its pennants strung high above the street where it rolls |
+| `tools/asset_gen/sfx_bank_the_house.gd` | its sounds (`house_*`: the entrance, the lever, the reels, the ding and the lock, a button, each attack's warning, the slam, the jackpot, the coins, the sag, the stomp); its bombs fall and blow with the Floating Head's `bomb_whistle` and `bomb_blast` |
+| `tools/showcase/the_house_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/front/entrance/spin/buttons/jackpot/fight`, `--symbols=a,b,c` for the spin's symbols, `--lanes`, `--speed`, `--events`) |
+| `tests/helpers/the_house_bot.gd` (`TheHouseBot`) | a runner who plays the fight by what it shows, `reaction` seconds late: a route (TheHouseRoute) through every warning on the track and over the lit buttons (`takes_buttons`, `avoids_buttons`, `skip_reels`), fences jumped or slid under, and a jump timed to come down on the hopper (`stomp_lead()`; `stomps` off lets it pass) |
 
 ## Cinematics
 
@@ -2188,7 +2275,19 @@ EMPs in 60-120 s, every lure on time with the arcs showing it's in reach well be
 attacking while lured, the chunks torn, the same every attempt), a missed generator followed by another
 with nothing escalating, EMPs out of reach, the defeat (the wisps, the silence, the dawn, the lights back
 after), and the campaign's flow at every lane count (the Dead Zone's last level, a death in the fight's
-second phase, the retry won with three stars, the shop, the outro). `test_resonator` plays the
+second phase, the retry won with three stars, the shop, the outro). `test_the_house` builds The House at
+3, 5 and 6 lanes (its slot and data, its plain arena, its size under the street's cables and its draw
+budget, a cabinet that doesn't glow, its reels, how symbols become attacks, and the route solver's rows,
+walls, fences, slaloms and buttons); `test_the_house_attacks` plays every attack at every size with
+`TheHouseBot` at 3, 5 and 6 lanes and 18 and 22.6 m/s (each strike's warning on the track where it then
+hits and nothing hitting anywhere else, the bigger versions, the 3-lane mix of bombs and blocks always
+leaving a way, the citizens ducking, every phase's spins survived over a few seeds without god mode);
+`test_the_house_fight` plays its buttons and jackpot at every lane count and both speeds (buttons in
+plain view and in lanes of their own, locking their reels; the sirens, the fountain's real credits, the
+hopper open well ahead of the runner as the machine sinks; the stomp's big hit and its recovery), a
+missed button, a missed set and a missed hopper (it just spins again, nothing escalating), weapons up to
+their cap, the same fight every attempt, and phase 1 won in quick play at every lane count and both
+speeds, then again after a death and the retry. `test_resonator` plays the
 Resonator in full worlds on real physics (the warning always before the wave, a jump clearing it at 3,
 5 and 6 lanes with its margin measured, walls and the ceiling safe, armor, shield and dash, turns with a
 `TurnDummy`, Reduced flashing), checks its rules over many seeds, and plays the real Golden 1-3 layouts
@@ -2252,6 +2351,19 @@ Reduced flashing); and that the stand-in stays out of the campaign. `test_genera
 difficulties and lane counts, under narrow ceilings and in busy levels with every built feature
 (`LayoutChecks.check_cuts`), checks each of GDD §9.9's limits by hand and `CutPlacement`'s clearing, and
 shows a level whose rules plan no cut is the same data as one without them.
+`test_buzz_overdrive` checks the Buzz Overdrive (C2; GDD §9.9): its numbers (health 20 everywhere, a rev
+a little shorter level by level, its warning and charge in seconds at every zone's speed), its look
+(every variant within an enemy's budget, only hazard colours glowing), its plan, every campaign level
+that lists it at 3, 5 and 6 lanes (each tank with its cut, the same every build, Corporate 1's
+introduction soon after its start; it prints the counts) and quick play with every built feature;
+then on real physics at 3, 5 and 6 lanes and every zone's speed: the warning (line and sound) before
+the charge and only its own lane cut, a runner who leaves at the warning never touched, one who stays
+hit, wall and ceiling riders beside it safe, a block holding the floor for about a second (staying falls,
+a lane switch escapes), kills while it rolls, revs and charges (the floor saved, the cut stopped), the
+shots each weapon tier needs and when it stops it (laser tier 1 never before it meets the runner, the
+missile tiers before it charges), the claws doing nothing, the dash smashing it, no stomp, the same
+encounter on every attempt and at 30 and 60 Hz, and its rev and charge as a big attack; its sparks only
+while it cuts, none and a line that only widens with Reduced flashing.
 
 `test_wall_fences` checks wall fences (B5; GDD §9.1): the layout data (left out of a level without them) and
 `WallFencePlan`'s bands, reach (a floor runner in the middle of the outer lane never touches one, a wall runner
@@ -2301,9 +2413,12 @@ hosts or aiming, and `lineup_far` at gameplay distance); `octodog_screech`,
 `drone_truck_showcase`, `bad_dream_showcase`, `resonator_showcase`: its model through its warning
 and pulse, or a scripted run where it pulses at a runner who jumps its waves; `barnacle_turret_showcase`:
 both looks at rest and charging, and a scripted run under a ceiling with turrets or riding it past one,
-through the run camera or a close one, on any zone's skin), the Golden Zone's statue
+through the run camera or a close one, on any zone's skin; `buzz_overdrive_showcase`: its model turning
+and revving, or a scripted run through one encounter on any zone's skin, lane count and speed, through
+the run camera, a high one or a low one beside its lane, with `--stay`, `--kill=D` and
+`--reduced-flashing` as for the floor cuts), the Golden Zone's statue
 kit (`statue_showcase`: every pose, a turnaround, and a live statue rigged in its niche and swinging, as
-task C4 would build it), the bosses (`floating_head_showcase`, `sleep_taker_showcase`), the UI kit, the screens (`screens_showcase`;
+task C4 would build it), the bosses (`floating_head_showcase`, `sleep_taker_showcase`, `the_house_showcase`), the UI kit, the screens (`screens_showcase`;
 its `--screen=hud_armor [--tier=N]` takes the HUD's armor through its states: up, broken, its ring
 filling, back), a zone skin
 (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed screens and emblems a

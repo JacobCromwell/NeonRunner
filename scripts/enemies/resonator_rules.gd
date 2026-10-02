@@ -125,9 +125,21 @@ static func visit_start(t: ResonatorTuning, at: float, pace: float = 1.0) -> flo
 
 
 ## The stretches no pulse may overlap (from its warning until its wave has met the player): every
-## Octodog's run (its params.floor_span, octodog_rules.gd).
+## Octodog's run (its params.floor_span, octodog_rules.gd) and every floor cut's whole encounter (task C2:
+## a Buzz Overdrive's, FloorCutPlan.window; its rules run before these).
 static func busy_stretches(gen: LevelGenerator) -> Array[Vector2]:
-	return octodog_runs(gen.layout)
+	var out: Array[Vector2] = octodog_runs(gen.layout)
+	out.append_array(cut_windows(gen.layout, gen.speed))
+	return out
+
+
+## Every floor cut's window in `layout` at run speed `speed` (FloorCutPlan.window: from where its cause
+## sets off to the cut's end): a big attack of its own, the one thing going on.
+static func cut_windows(layout: LevelLayout, speed: float) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for c: Dictionary in layout.cuts:
+		out.append(FloorCutPlan.window(c, speed))
+	return out
 
 
 ## Every Octodog's run in `layout` (LevelGenerator.enemy_floor_span).
@@ -277,6 +289,9 @@ static func problems(layout: LevelLayout, config: LevelConfig, base: MovementTun
 			for b: Vector2 in busy:
 				if b.x <= stretch.y and b.y >= a:
 					out.append("%s: pulse %d overlaps an Octodog's run (%.0f-%.0f)" % [tag, i, b.x, b.y])
+			for b: Vector2 in cut_windows(layout, speed):
+				if b.x <= stretch.y and b.y >= a:
+					out.append("%s: pulse %d overlaps a floor cut (%.0f-%.0f)" % [tag, i, b.x, b.y])
 			free = a + (t.pulse_seconds(dbl, speed, scaling, movement.hurtbox_size.z, EnemyDirector.SHOT_PASS_MARGIN,
 				pace) + t.pulse_rest_at(scaling)) * speed
 		prev_end = float(anchors[-1]) + t.pulse_seconds(bool(doubles[-1]), speed, scaling, movement.hurtbox_size.z,

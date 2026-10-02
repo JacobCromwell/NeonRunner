@@ -898,7 +898,7 @@ func _test_stand_in() -> void:
 			if level.has_feature("floor_cutter"):
 				listed.append(String(level.id))
 	check(listed.is_empty(), "no campaign level has the stand-in's cuts (%s)" % ", ".join(listed))
-	check(LevelConfig.PLANNED_FEATURES.has("buzz_overdrive"), "the Buzz Overdrive stays a planned feature (task C2)")
+	check(not LevelConfig.PLANNED_FEATURES.has("floor_cutter"), "the stand-in is no planned feature of the campaign")
 	check(LayoutChecks.known_feature("floor_cutter"), "the stand-in is a known feature (quick play: --features=floor_cutter)")
 	var t := EnemyDirector.tuning_for("floor_cutter") as FloorCutterTuning
 	check(t != null and not t.uses_floor and t.hitbox_size.x < tuning.lane_width * 0.4,

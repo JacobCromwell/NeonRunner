@@ -1639,8 +1639,8 @@ func add_cut(cut: Dictionary) -> bool:
 ## GDD §9.9's limits and the readability rules:
 ## - it lies in a real lane, between the level's run-up and its end-clear stretch, its warning before
 ##   its charge and both before its cause's spot, its stretch around where it meets the player;
-## - one at a time: no other cut's window (FloorCutPlan.window: from its warning to its end) reaches
-##   this one's;
+## - one at a time: no other cut's window (FloorCutPlan.window: from its warning, or where its cause
+##   sets off, to its end) reaches this one's;
 ## - never a lane holding a ramp, a pad or the safe landing zone after a ceiling (CeilingZones.cut_clear:
 ##   no landing zone over its lane and no pad's zone in its lane reaches its lane window; no ramp in
 ##   its lane, nor the wall run it launches, until it drops the player back);
@@ -1649,11 +1649,12 @@ func add_cut(cut: Dictionary) -> bool:
 ## - the other lanes stay whole enough along its stretch: holes (and other cuts) in at most
 ##   lane_count - 1 - whole_lanes_for_cut() of them (GDD §9.9: on 3 lanes two lanes always stay whole);
 ## - nothing else goes on meanwhile: no enemy's keep-out (what the fill pass keeps for it,
-##   _enemy_keep_out) reaches its window, bar its own cause (an entry at its `end` in its lane), nor
-##   does a lane-bound attack the rules keep doodads off (rules_doodad_keep_outs, read from the
-##   level's own enemies: a Bad Dream's chase in any lane, a hover truck's stay in its lane), nor a wall
-##   fence's drop window (task B5: a boss arena's wall fences; a level's come after its cuts and keep
-##   off them, WallFencePlacement);
+##   _enemy_keep_out) reaches its attack window (FloorCutPlan.attack_window: from its warning; a cause
+##   on its way before it, a Buzz Overdrive rolling ahead, attacks nobody yet), bar its own cause (an
+##   entry at its `end` in its lane), nor does a lane-bound attack the rules keep doodads off
+##   (rules_doodad_keep_outs, read from the level's own enemies: a Bad Dream's chase in any lane, a
+##   hover truck's stay in its lane), nor a wall fence's drop window over its whole window (task B5: a
+##   boss arena's wall fences; a level's come after its cuts and keep off them, WallFencePlacement);
 ## - a player in its lane when the warning starts can leave it (cut_escape_clear).
 ## Wall runners and ceiling riders are safe without a rule: the cut is a hole in its own lane only.
 ## DESIGN-TBD (docs/questions/b4.md): keeping everything else off a cut's whole window, and letting
@@ -1670,6 +1671,7 @@ func cut_problem(cut: Dictionary, p_layout: LevelLayout = null) -> String:
 	var charge_at: float = FloorCutPlan.charge_at(cut)
 	var lane_span: Vector2 = FloorCutPlan.lane_window(cut)
 	var span: Vector2 = FloorCutPlan.window(cut, speed)
+	var attack: Vector2 = FloorCutPlan.attack_window(cut, speed)
 	if float(cut["speed"]) <= 0.0 or float(cut["charge"]) <= 0.0 or float(cut["warn"]) < float(cut["charge"]) \
 			or not (start < meet and meet < end and charge_at < meet):
 		return "its warning, charge, stretch and meeting point don't line up"
@@ -1715,10 +1717,10 @@ func cut_problem(cut: Dictionary, p_layout: LevelLayout = null) -> String:
 		if int(e.get("lane", -1)) == lane and absf(float(e["at"]) - end) < 0.01:
 			continue  # Its own cause, waiting at its end.
 		var k: Vector2 = _enemy_keep_out(e, hooks)
-		if k.x <= span.y and k.y >= span.x:
+		if k.x <= attack.y and k.y >= attack.x:
 			return "an enemy (%s at %.0f) is about meanwhile" % [e.get("type", "?"), float(e["at"])]
 	for k: Dictionary in rules_doodad_keep_outs():
-		if (not k.has("lane") or int(k["lane"]) == lane) and float(k["from"]) <= span.y and float(k["to"]) >= span.x:
+		if (not k.has("lane") or int(k["lane"]) == lane) and float(k["from"]) <= attack.y and float(k["to"]) >= attack.x:
 			return "an attack runs meanwhile (%.0f-%.0f)" % [float(k["from"]), float(k["to"])]
 	var wall_fence: String = _wall_fence_in(lay, span)
 	if wall_fence != "":
