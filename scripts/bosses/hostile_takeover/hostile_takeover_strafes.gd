@@ -96,7 +96,7 @@ func set_front(front: float, gun: Vector3) -> void:
 			beam.visible = false
 			continue
 		# A flicker along the tracer (steady with Reduced flashing: the beam just stays on).
-		var width: float = 0.16 if Settings.flashing_reduced else 0.12 + 0.06 * absf(sin(_t * 47.0 + float(rig["lane"])))
+		var width: float = 0.1 if Settings.flashing_reduced else 0.07 + 0.05 * absf(sin(_t * 47.0 + float(rig["lane"])))
 		var basis := Basis.looking_at(along / length, Vector3.UP)
 		beam.global_transform = Transform3D(basis * Basis.from_scale(Vector3(width, width, length)), (gun + to) * 0.5)
 		beam.visible = true

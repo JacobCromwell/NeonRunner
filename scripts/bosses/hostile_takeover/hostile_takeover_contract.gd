@@ -225,6 +225,11 @@ func _tick_drops(delta: float, d: float) -> void:
 	for drop: Dictionary in drops:
 		match int(drop["stage"]):
 			DropStage.PLANNED:
+				if not drop.has("circle") and d >= float(drop["release_p"]) - float(drop["move"]):
+					# Where it will land: a red target on the roof in its lane (BossProps' circle) as the gunship
+					# flies out over it.
+					drop["circle"] = boss.props.circle_warning(float(drop["parked"]) + 1.5, int(drop["lane"]), 1.6)
+					boss.log_event(&"drop_marked", {"lane": drop["lane"], "parked": drop["parked"]})
 				if d >= float(drop["release_p"]):
 					drop["stage"] = DropStage.FALLING
 					drop["t"] = 0.0
@@ -251,6 +256,8 @@ func _tick_drops(delta: float, d: float) -> void:
 func _land(drop: Dictionary, at: Vector3) -> void:
 	drop["stage"] = DropStage.LANDED
 	boss.gunship.end_fall()
+	if drop.has("circle"):
+		boss.props.remove(drop["circle"] as Node)
 	var cut: Dictionary = drop["cut"]
 	drop["saw"] = boss.spawn_enemy(SAW, float(cut["end"]), int(cut["lane"]))
 	boss.sound(&"takeover_drop", at)

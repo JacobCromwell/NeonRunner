@@ -16,11 +16,18 @@ extends Node3D
 ##   coupling    the first coupling lit early (no dark gaps first) and the bot stomping it: --cam=back (the
 ##               default) watches from ahead of the gap, looking back at the runner, the stomp and the
 ##               carriages breaking away; --cam=run through the run camera
+##   contract    phase 2 from its start (The Contract) with the bot: the strafes, the drop and its cut, the
+##               pads and the ride over the armored carriage, the drop bay stomped; --cam=run (the default)
+##               through the run camera, --cam=side from high beside the train ahead of the runner, looking
+##               back at them and the gunship, --cam=ride from low beside the armored carriage
 ## Options: --lanes=N (3, 5 or 6; 5 by default), --speed=N (18 by default; the Corporate zone's 23.4),
-## --reduced-flashing, --still (the runner stands: nothing moves but the scenery), --events (prints each of
-## the boss's events with its frame, for picking frames).
+## --phase=N (start at phase N, as a checkpoint would), --reduced-flashing, --still (the runner stands:
+## nothing moves but the scenery), --events (prints each of the boss's events with its frame, for picking
+## frames).
 ## Frames worth a look (at --fixed-fps 10): run: the entrance 0-30, the first live coupling about 40-60, the
-## stomp about 185; coupling: the stomp about frame 57, the breakaway 57-80.
+## stomp about 185; coupling: the stomp about frame 57, the breakaway 57-80; contract at --speed=23.4: the
+## strafes from frame 20 (warning) and 32 (rake), the drop about 89-97, the gunship coming down 167-185,
+## the ride 185-215 (the bay stomped about 215).
 
 const BOSS_PATH: String = "res://data/bosses/corporate_boss.tres"
 
@@ -35,6 +42,7 @@ var _still: bool = false
 var _print_events: bool = false
 var _events_seen: int = 0
 var _back_at: float = -1.0
+var _phase: int = 0
 
 
 func _ready() -> void:
@@ -57,6 +65,12 @@ func _ready() -> void:
 			_still = true
 		elif arg == "--events":
 			_print_events = true
+		elif arg.begins_with("--phase="):
+			_phase = maxi(int(v) - 1, 0)
+	if scenario == "contract":
+		_phase = maxi(_phase, 1)
+		if cam_mode == "back":
+			cam_mode = "run"
 	var slot: BossDef = load(BOSS_PATH) as BossDef
 	var def: BossDef = slot.preview() if slot.preview() != null else slot.duplicate() as BossDef
 	if scenario == "coupling":
@@ -71,6 +85,7 @@ func _ready() -> void:
 	ctx.config = BossArena.base_config(def)
 	ctx.config.lane_count = lanes
 	ctx.tuning = tuning
+	ctx.boss_resume = {"phase": _phase} if _phase > 0 else {}
 	boss = BossEncounter.create(def) as HostileTakeover
 	var arena: BossArena = boss.plan_arena(ctx)
 	world = RunWorld.new()
@@ -95,7 +110,8 @@ func _ready() -> void:
 	add_child(_run_cam)
 	_run_cam.follow(world)
 	_run_cam.make_current()
-	if scenario in ["train", "gunship", "locomotive"] or (scenario == "coupling" and cam_mode == "back"):
+	if scenario in ["train", "gunship", "locomotive"] or (scenario == "coupling" and cam_mode == "back") \
+			or (scenario == "contract" and cam_mode != "run"):
 		_cam = Camera3D.new()
 		_cam.fov = 62.0
 		_cam.far = 900.0
@@ -146,3 +162,14 @@ func _place_camera() -> void:
 				_back_at = boss.train.gap_start(k)
 			var gap_z: float = TrackGeometry.world_z(_back_at)
 			_cam.look_at_from_position(Vector3(world.geo.wall_x() - 1.0, 6.5, gap_z - 26.0), Vector3(-1.0, 0.0, gap_z + 6.0))
+		"contract":
+			if cam_mode == "ride":
+				# Low beside the next armored carriage (or the runner), looking along it at the runner coming.
+				var ride: Dictionary = boss.contract.next_ride()
+				var at_z: float = p.z
+				if not ride.is_empty():
+					at_z = TrackGeometry.world_z((ride["roof"] as Vector2).x + 20.0)
+				_cam.look_at_from_position(Vector3(world.geo.wall_x() - 0.6, 3.2, at_z - 6.0), Vector3(-1.5, 4.0, at_z + 30.0))
+			else:
+				# High beside the train ahead of the runner, looking back at them and the gunship.
+				_cam.look_at_from_position(Vector3(world.geo.wall_x() - 0.8, 11.0, p.z - 38.0), Vector3(-0.5, 2.5, p.z + 4.0))
