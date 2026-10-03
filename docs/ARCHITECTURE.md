@@ -1121,9 +1121,11 @@ wherever it drives, and no other cut's encounter overlaps it), while its attack 
 (`attack_window`, when nothing else may go on) and its warned lane (`warned_lane`, which no ceiling's
 landing zone may reach) start at its warning. For a boss fight (E5b's Hostile Takeover):
 plan the cut at the arena's speed (`arena.tuning`), ask `arena.cut_problem(cut)` (the generator's rules
-on the arena's track), and add it with its cause through `arena.add_pieces()` (its `cuts` and
-`enemies`), its whole stretch past `stream_from()`, so about ten seconds ahead at the stand-in's
-numbers (the Buzz Overdrive's own plan: `buzz_overdrive_rules.plan_for`). A track that grows during play (`TrackBuilder.extend_layout`, endless mode's R4 too) takes cuts
+on the arena's track), and add it through `arena.add_pieces()`, its whole stretch past `stream_from()`, so
+about ten seconds ahead (the Buzz Overdrive's own plan: `buzz_overdrive_rules.plan_for`), with its cause
+in its `enemies`, or, as Hostile Takeover's drop does, the cut alone and its cause brought into play with
+`spawn_enemy` at the cut's end when it arrives (the tank finds its cut by its lane and end, `cut_of`). A
+cut whose cause never comes stays whole: only its cause runs it. A track that grows during play (`TrackBuilder.extend_layout`, endless mode's R4 too) takes cuts
 the same way.
 
 **Wall fences** (B5; GDD §9.1: "electric fences that span a side wall and turn off and on from time to time,
@@ -2076,8 +2078,11 @@ encounter.setup(world, context, arena)   joins the world between the player and 
 - **Health and phases**: phases end at shares of the health; a big hit (a weak-point stomp, or
   `damage(hit_damage(), cause)` for an EMP, a cluster shocked by a fence, ...) takes a phase's share
   over its `hits`. Weapons chip up to `BossDef.weapon_share_cap` of the health over the whole fight;
-  splash never counts. A hit never takes the boss past the end of the next phase, so every phase gets
-  played. Each phase begins with its intro (`intro_seconds`: the boss can't be hurt and doesn't
+  splash never counts. With `BossDef.weapons_can_end_phase` on (every boss's default: GDD §10's Floating
+  Head rule, the best weapon saves at most one stomp) weapons may end a phase; off (Hostile Takeover's
+  data, DESIGN-TBD), they chip a phase only down to just above its end (`weapon_floor()`, and
+  `weapons_can_hurt()` then turns auto-fire away), so only its big hits end it, the last phase's too. A
+  hit never takes the boss past the end of the next phase, so every phase gets played. Each phase begins with its intro (`intro_seconds`: the boss can't be hurt and doesn't
   attack), then its pattern.
 - **No escalation** (GDD §10): the run speed never rises in a fight, the arena doesn't ramp, and a
   boss script times its pattern only from its phase (`pace()`), so a pattern the player can't beat
@@ -2174,14 +2179,17 @@ plays it; E1e, the owner's playtest fixes; E1f, the fight at the City's speed), 
   hopper is a weak point switched on once the machine has sunk; its credit fountain lands as real
   credits (`CreditField.place`).
 - **Hostile Takeover (E5b, being built, see below):** the train is the arena: `_plan_lap` replaces each
-  lap with the train's carriage gaps across every lane (`HostileTakeoverTrain`), drawn by an arena skin
-  of its own; the couplings are weak points on a part laid over each gap (E5b-a). Carriages breaking
-  away behind the player are looks (the train's material). Still to come: the gunship's belly as a
-  ceiling (`add_surface(..., true)`) and its attacks, the Buzz Overdrive (C2) with its planned cut
-  (`FloorCutPlan.make` at the arena's speed, `arena.cut_problem(cut)`, then `arena.add_pieces()` with
-  the cut and the saw's entry at its end, its stretch past `stream_from()`: The generator, Floor cuts
-  on the track; the gunship's drop is the look before its warning, and the skin's `floor_cut` draws the
-  roof cut), and the docking clamps as phase 3's three hits.
+  lap with the train's carriage gaps across every lane (`HostileTakeoverTrain`: corporate carriages and
+  long flatcars in a repeating consist), drawn by an arena skin of its own; the couplings are weak points
+  on a part laid over each gap (E5b-a). Carriages breaking away behind the player are looks (the train's
+  material). Phase 2 (E5b-b): the gunship's belly is a ceiling (`add_surface(..., true)`) ridden from a
+  runway of pooled pads over an armored carriage, its drop bay a weak point stomped from the ceiling; the
+  Buzz Overdrive (C2) is dropped onto a flatcar with its planned cut (`FloorCutPlan.make` at the arena's
+  speed, `arena.cut_problem(cut)`, then `arena.add_pieces()` with the cut alone, past `stream_from()`;
+  the tank comes into play through `spawn_enemy` at the cut's end as it lands, and finds its cut there,
+  `buzz_overdrive_rules.cut_of`; the skin's `floor_cut` draws the roof cut); the strafes are a part's
+  pooled attack hitboxes after BossProps' lane warnings. Still to come (E5b-c): the docking clamps as
+  phase 3's three hits.
 - **Sleep Taker (E5c, built, see below):** the Dead Zone's boss step plays it; its generators come
   through `spawn_enemy("generator", ...)`, a destroyed one's EMP reaches the part (`_on_part_emp`:
   `damage(hit_damage(), &"emp")` while it's lured in), and its defeat ends in silence and a grey dawn
@@ -2259,18 +2267,22 @@ taller than a ceiling: it squats on its treads under `duck_top` while a billboar
 The Board, with the carriage couplings; E5b-b, phase 2, The Contract; E5b-c, phase 3, The Merger, the
 defeat, the par times and its campaign slot). Until E5b-c the campaign keeps its card (its slot has a
 `preview_scene`, no `scene`), and debug builds play it as quick play with `--boss=corporate_boss` (at quick
-play's 18 m/s; the showcase's `--speed=23.4` for the Corporate zone's), every phase playing The Board and
+play's 18 m/s; the showcase's `--speed=23.4` for the Corporate zone's), phase 3 playing The Board again and
 the last stomp a placeholder defeat (the couplings go dark and the gunship climbs away). Its tuning's
 distances that stand for a time (a carriage's length, the stomp box's reach past a gap, the clear corridors
-around a coupling, the guards' spacing, the tithe trail's spacing) are written at 18 m/s and multiplied by
-the run's pace (`HostileTakeover.run_pace()`), and a gap is a share of a jump at the run speed, like a
-level's, so the fight keeps its seconds at the zone's 23.4 m/s (phase 1's stomp comes at 18.5 s at both);
-where the gunship and the locomotive fly and stand is framing, in metres.
+around a coupling, the guards' spacing, the tithe trail's spacing, a strafe's line, the runway of pads, the
+ride's landing) are written at 18 m/s and multiplied by the run's pace (`HostileTakeover.run_pace()`), and a
+gap is a share of a jump at the run speed, like a level's, so the fight keeps its seconds at the zone's
+23.4 m/s (phase 1's stomp comes at 19.6 s at both, phase 2's 24.8 s later); where the gunship and the
+locomotive fly and stand is framing, in metres. Its data turns `BossDef.weapons_can_end_phase` off
+(DESIGN-TBD): weapons chip it, but only its stomps end a phase.
 - **The train is the arena** (GDD §10: "carriage roofs are the floor and the gaps between carriages are the
   gaps, so it plays like a level"): `_plan_lap` clears each lap the generator made and puts in the train's
   gaps, one across every lane at the end of each carriage (`HostileTakeoverTrain`: `gap_jump_fraction` of
-  a jump at the run speed; a carriage `carriage_length` at the pace, rounded so that a lap holds whole
-  carriages and the laps join without a seam). Gap `k` starts at `offset + k * pitch` over the whole fight.
+  a jump at the run speed; the carriages in the tuning's `consist`, corporate carriages `carriage_length`
+  long and military flatcars `flatcar_length` long, for phase 2's drop, at the pace, stretched a little so a
+  lap holds whole consists and the laps join without a seam). Gap `k` ends carriage `k` (`gap_start`,
+  `roof`, `kind`, `next_flatcar`), the same over the whole fight.
 - **The couplings** (`HostileTakeoverCouplings`): one over every gap, laid by the encounter from just
   behind the runner to the built track's end, each in a lane of its own (`HostileTakeoverBoard.lanes`:
   never the last one's lane, at most `coupling_max_shift` from it). From a phase's pattern on, past its
@@ -2288,39 +2300,68 @@ where the gunship and the locomotive fly and stand is framing, in metres.
   or its bounce's landing (`landing_clear`) in its lane, outside the cyborgs' own margin from a gap
   (`CyborgRules`), `guard_spacing` apart and fewer than the lanes, so a way through is always open; a partial
   wall fence (low and high in turn) on `wall_fence_share` of the carriages where `arena.wall_fence_problem`
-  allows one (B5's rules), pulsing as the zone's do; and a Tithe Collector on every `tithe_every`-th
-  carriage, which carries no guards (it weaves toward the lanes with the most hazards ahead, and with none
-  keeps to the runner's), brought into play in the runner's lane as they reach it (`spawn_enemy`) with a
-  trail of credits laid on the roof ahead of it for it to skim (`lay_tithe`, `CreditField.place`; a boss's
-  track has no credits of its own). Every choice is seeded per carriage, so every attempt plays the same.
+  allows one (B5's rules), pulsing as the zone's do; and on each flatcar from `tithe_first` on a Tithe
+  Collector and nothing else (no guards, no wall fence: it weaves toward the lanes with the most hazards
+  ahead, and with none keeps to the runner's), brought into play in the runner's lane as they reach it
+  (`spawn_enemy`), at most `tithe_visits_per_phase` a phase (OPEN_QUESTIONS item 321: a runner who lets the
+  couplings go by can't farm their jackpots), with a trail of credits laid on the roof ahead of it for it to
+  skim (`lay_tithe`, `CreditField.place`; a boss's track has no credits of its own). Every choice is seeded
+  per carriage, so every attempt plays the same. The Board plans only while a phase plays it
+  (`tick(active)`); as phase 2 begins the encounter stands it down: its guards still to come are retired as
+  they come into play (each guard's entry names its `board_phase`) and its wall fences ahead are switched
+  off the EMP's way (`TrackBuilder.disable_fences_near`).
+- **The Contract** (`HostileTakeoverContract`, phase 2, planned from the phase's start so its first
+  flatcar's cut still finds the track ahead unbuilt), one cycle after another:
+  - the drop, onto the next flatcar: a level's Buzz Overdrive cut (`FloorCutPlan` with the C2 tank's own
+    rev, charge and run past, no roll), in a seeded lane `arena.cut_problem` allows, added to the track;
+    the gunship flies out over its spot (a red target on the roof marks it), lets the tank it carries fall
+    (`drop_fall`) to land `drop_before` its rev, and the real tank comes into play there (`spawn_enemy`:
+    its rev and line, its charge, the block-then-hold rule, all its own);
+  - the ride, over the second carriage past it, armored (`HostileTakeoverArmored`: `armored_height` tall,
+    its front in the solid obstacles' yellow and black, no dash through it), placed `ARMORED_SIGHT` ahead
+    with a runway of pads in every lane before it (`pad_strip` long: no jump clears it, a dash in the air
+    included, `HostileTakeoverContract.strip_clears`); the gunship comes down over the runner to the
+    ceiling's height and flies on slower than them (`belly_front`), so they ride its belly from the runway
+    until `landing_after` past the armored carriage's far gap; its drop bay, open and glowing red with
+    green chevrons before it, is the phase's weak point (DESIGN-TBD), stomped by a jump on the belly that
+    comes back up onto it (`bay_lead`); a bay let go by is missed and the next flatcar's cycle comes;
+  - strafes in between, when nothing else is going on (`strafe_fits`: no drop or ride near, no phase-1
+    guard about): red lines along the runner's lane and the one beside it (`struck_lanes`: never all of
+    them) with the rising whine for `strafe_warning`, then the guns rake each line from its far end back
+    past the runner (`HostileTakeoverStrafes`: an attack hitbox over a jump's reach in each lane; the
+    walls are safe).
+  Pickups keep off a ride (`_pickup_at`: an armor pickup due there goes past it, where the runner lands).
 
 In `scripts/bosses/hostile_takeover/`:
 
 | File | What |
 |---|---|
-| `hostile_takeover.gd` (`HostileTakeover`) | the encounter: the arena (`_plan_lap`), its parts, the phases (phase 1's intro is the entrance: the gunship sweeps in from behind and above the runner with its roar; a later phase's begins with it lurching), each pattern lighting the couplings from `opening_for(phase)` gaps on (`couplings_from`); every frame it lays the couplings over the gaps in sight (`RIG_BEHIND` to `RIG_AHEAD`), lights the live ones (`coupling_lit`; the first brings the `takeover_couplings` cue and the hint `boss:corporate_boss/couplings`) and notes the missed ones; a stomp (`_on_weak_point_hit`: the coupling breaks open, `takeover_decouple` and `takeover_breakaway`, the breakaway's clock); the gunship's flight relative to the runner (`gunship_ahead`, `gunship_height`, swaying and bobbing on the fight's clock), the locomotive `loco_ahead` ahead; the placeholder defeat (`victory_over` after `DEFEAT_SECONDS`). `coupling_live`, `next_live_coupling`, `run_pace`, `sound()` (plays and logs); first-time hints `enemy:corporate_boss` and `boss:corporate_boss/couplings` |
-| `hostile_takeover_train.gd` (`HostileTakeoverTrain`) | the train's plan: `plan()`, `gap_start`, `gap_end`, `next_gap`, `gap_at`, `roof`, `carriage_at`, `lap_gaps()` (a lap's gap entries), `bounce_clears()` |
-| `hostile_takeover_board.gd` (`HostileTakeoverBoard`) | phase 1's plan (`tick`, `plan`): the couplings' lanes, the guards (`guard_fits`, `guard_reach`), the Tithe Collectors (`tithe_spot`, `tithes_due`, `lay_tithe`) and the wall fences (B5's `WallFencePlan.make`, `arena.wall_fence_problem`, `arena.add_pieces`, at the arena's difficulty); a `carriage_planned` event each |
+| `hostile_takeover.gd` (`HostileTakeover`) | the encounter: the arena (`_plan_lap`), its parts, the phases (phase 1's intro is the entrance: the gunship sweeps in from behind and above the runner with its roar; a later phase's begins with it lurching) and their patterns (`pattern_of`: The Board, The Contract), a Board pattern lighting the couplings from `opening_for(phase)` gaps on (`couplings_from`); every frame it lays the couplings over the gaps in sight (`RIG_BEHIND` to `RIG_AHEAD`), lights the live ones (`coupling_lit`; the first brings the `takeover_couplings` cue and the hint `boss:corporate_boss/couplings`) and notes the missed ones; a stomp (`_on_weak_point_hit`: the coupling breaks open, `takeover_decouple` and `takeover_breakaway`, the breakaway's clock; or the drop bay bursts, `_bay_stomped`); phase 2's stand-down (`_stand_down`, `_on_enemy_spawned`), its ride's start and end (`ride_begins`: the bay opens, `takeover_bay`, the hint `boss:corporate_boss/ride`; `ride_ends`), pickups kept off a ride (`_pickup_at`); the gunship's flight relative to the runner (`station_pose`: `gunship_ahead`, `gunship_height`, swaying and bobbing on the fight's clock; the contract's `pose` over it), the locomotive `loco_ahead` ahead; the placeholder defeat (`victory_over` after `DEFEAT_SECONDS`). `coupling_live`, `next_live_coupling`, `run_pace`, `sound()` (plays and logs), `warm_enemies()` (the guards, the Collector and the Buzz Overdrive); first-time hints `enemy:corporate_boss` and `boss:corporate_boss/couplings` |
+| `hostile_takeover_train.gd` (`HostileTakeoverTrain`) | the train's plan: `plan()` (the consist), `gap_start`, `gap_end`, `next_gap`, `gap_at`, `roof`, `kind`, `carriage_at`, `next_flatcar`, `lap_gaps()` (a lap's gap entries), `ends_behind()` (for the breakaway), `bounce_clears()` |
+| `hostile_takeover_board.gd` (`HostileTakeoverBoard`) | phase 1's plan (`tick(active)`, `plan`, `pause`): the couplings' lanes (every phase), the guards (`guard_fits`, `guard_reach`; none on a flatcar), the Tithe Collectors (`tithe_spot`, `tithes_due`, `lay_tithe`; `visits` a phase, capped) and the wall fences (B5's `WallFencePlan.make`, `arena.wall_fence_problem`, `arena.add_pieces`, at the arena's difficulty; none on a flatcar); a `carriage_planned` event each |
+| `hostile_takeover_contract.gd` (`HostileTakeoverContract`) | phase 2's plan and course (`start`, `stop`, `halt`, `tick`): the drops (`plan_drop`, `saw_now`), the rides (`plan_ride`, `ride_now`, `next_ride`, `ride_stretch`, `belly_front`, `bay_lead`, `relative_speed`, `longest_leap`, `strip_clears`), the strafes (`strafe_fits`, `struck_now`) and the gunship's flight for them (`pose`, `riding`); events `contract`, `drop_planned`/`drop_refused`, `drop_marked`, `saw_released`, `saw_landed`, `ride_planned`, `ride_placed`, `ride_begins`, `ride_boarded`, `ride_landed`/`ride_missed`, `strafe_warned`, `strafe_rake`, `strafe_done` |
+| `hostile_takeover_armored.gd` (`HostileTakeoverArmored`) | the armored carriage part, pooled: its body (a solid hitbox a little inside its look, no dash through it) and its runway (a pad trigger the lane's full width in every lane, its tiles one MultiMesh of the skin's lift pad); `place`, `release`, `body_span`, `strip_length` |
+| `hostile_takeover_strafes.gd` (`HostileTakeoverStrafes`) | the strafes' rakes, pooled (`RIGS`): per struck lane an attack hitbox over a jump's reach, the burning streak of its impacts and the tracer from the gunship's guns (a flicker, steady with Reduced flashing); `start`, `set_front`, `stop` |
 | `hostile_takeover_couplings.gd` (`HostileTakeoverCouplings`) | the couplings part: a pool of `POOL` rigs moved from gap to gap (`place`, `release_before`; the coupling's halves, its dome dark or glowing red and pulsing, steady with Reduced flashing, a red halo while live, the take-off chevrons, its weak point), `set_live`, `arm`, `break_open` (its rear half drops away), `box_span`, `takeoff` (where a jump that lands on it leaves from) and `descent_lead()`; immune to weapons, no kill of its own |
-| `hostile_takeover_gunship.gd` (`HostileTakeoverGunship`) | the boss's body: it shares the fight's health (weapons chip it, up to the cap), with no hitboxes in phase 1; `set_pose`, `aim_point`, `hit_radius` |
+| `hostile_takeover_gunship.gd` (`HostileTakeoverGunship`) | the boss's body: it shares the fight's health (weapons chip it, up to the cap); its belly a ceiling (`belly`, the hull layer), its drop bay's weak point (`bay_point`, upside down) with its glow and the green chevrons before it (`set_bay`; the bay's pulse steady with Reduced flashing), the Buzz Overdrive it carries and lets fall (`set_saw`, `saw_world`, `set_fall`, `end_fall`: the C2 tank's own model), its chin gun's muzzle flash (`set_firing`, `gun_point`); `set_pose`, `bay_span`, `aim_point`, `hit_radius` |
 | `hostile_takeover_locomotive.gd` (`HostileTakeoverLocomotive`) | the locomotive leading the train, the Chairman at its rear window (`set_front`, `chairman_head`); never a target |
-| `hostile_takeover_model.gd` (`HostileTakeoverModel`) | the meshes, built once in code, one draw per material: the gunship (about 2,000 vertices; olive and gunmetal, its belly as wide as the train, the three docking clamps folded under it, cold-white lights and blue engines), the locomotive with the Chairman's lit suite (about 560) and the Chairman (about 640), the coupling's parts and the take-off chevrons. Plain colours on everything that moves (the kit's world-space patterns would slide); nothing glows in a hazard colour but the couplings' weak-point red |
-| `hostile_takeover_skin.gd` (`HostileTakeoverSkin`), `hostile_takeover_train.gdshader`, `hostile_takeover_towers.gdshader` | the arena's look, the Corporate zone's (`CorporateSkin`): the floor as one wide train (the express's roof across every lane, the usual orange edge at each gap) in a material of its own whose vertex shader plays the breakaway (`set_breakaway`, `clear_breakaway`); the walls as the track's sound barriers (gunmetal panels between posts, the wall-run marks, nothing lit below the band's top); beyond them the city's towers rushing back at the train's speed (`towers_for`: one mesh per side per chunk, moved by its shader, so nothing is made while the train runs) and far below the street streaming past (the City's road shader in the zone's colours) under the guideway's beam; nothing hangs over the street |
+| `hostile_takeover_model.gd` (`HostileTakeoverModel`) | the meshes, built once in code, one draw per material: the gunship (about 2,000 vertices; olive and gunmetal, its belly flush and as wide as the train, its closed bay doors, the three docking clamps folded under it, cold-white lights and blue engines), its open drop bay (`bay_open`) and the chevrons before it (`belly_cue`), the armored carriage (`armored`), the locomotive with the Chairman's lit suite (about 560) and the Chairman (about 640), the coupling's parts and the take-off chevrons. Plain colours on everything that moves (the kit's world-space patterns would slide); nothing glows in a hazard colour but the weak points' red |
+| `hostile_takeover_skin.gd` (`HostileTakeoverSkin`), `hostile_takeover_train.gdshader`, `hostile_takeover_towers.gdshader` | the arena's look, the Corporate zone's (`CorporateSkin`): the floor as one wide train (the express's roof across every lane, the usual orange edge at each gap, a floor cut sliced down its lane) in a material of its own whose vertex shader plays the breakaway, each carriage tumbling about its own rear end (`set_breakaway`, `clear_breakaway`); the runway's pad tile (`pad_tile`); the walls as the track's sound barriers (gunmetal panels between posts, the wall-run marks, nothing lit below the band's top); beyond them the city's towers rushing back at the train's speed (`towers_for`: one mesh per side per chunk, moved by its shader, so nothing is made while the train runs) and far below the street streaming past (the City's road shader in the zone's colours) under the guideway's beam; nothing hangs over the street |
 | `hostile_takeover_tuning.gd`, `data/bosses/corporate_boss_tuning.tres` | its numbers (F6 in its fight; all DESIGN-TBD, `docs/questions/e5b.md`) |
-| `data/bosses/corporate_boss.tres` | its slot: `preview_scene`, three phases (one stomp, one stomp, the three clamps), weapons capped at 0.34 of its health, the standard armor rule with `armor_when_unprotected`, the Corporate zone's music, its arena (one lap of the train) |
+| `data/bosses/corporate_boss.tres` | its slot: `preview_scene`, three phases (one stomp, one stomp, the three clamps), weapons capped at 0.34 of its health and never ending a phase (`weapons_can_end_phase` off, DESIGN-TBD), the standard armor rule with `armor_when_unprotected`, the Corporate zone's music, its arena (one lap of the train) |
 | `data/bosses/corporate_boss_skin.tres` | its arena's look: the VR runners on the roofs, a thinner fog so the locomotive shows at the end of the view, nothing over the street |
-| `tools/asset_gen/sfx_bank_hostile_takeover.gd` | its sounds (`takeover_*`: the gunship's entrance, the couplings going live, a coupling stomped, the carriages breaking away) |
-| `tools/showcase/hostile_takeover_showcase.tscn` | scripted runs and close-ups for reviews (`--scenario=run/train/gunship/locomotive/coupling`, `--lanes`, `--speed`, `--cam=back/run`, `--still`, `--events`) |
-| `tests/helpers/hostile_takeover_bot.gd` (`HostileTakeoverBot`) | a runner who plays it by what it shows, `reaction` seconds late: every gap jumped, each live coupling's lane reached a lane at a time (never across a guard) and a jump timed to come down on it (`stomp_lead()`; from the lane beside it with `side_lane`; let go by with `misses`, from its own lane with `skip_in_lane`; `drops` runs off the edge), out of the guards' lanes and their bolts' line |
+| `tools/asset_gen/sfx_bank_hostile_takeover.gd` | its sounds (`takeover_*`: the gunship's entrance, the couplings going live, a coupling stomped, the carriages breaking away; the strafe's rising whine and its rake, the tank's drop, the drop bay opening) |
+| `tools/showcase/hostile_takeover_showcase.tscn` | scripted runs and close-ups for reviews (`--scenario=run/train/gunship/locomotive/coupling/contract`, `--lanes`, `--speed`, `--phase`, `--cam=back/run/side/ride`, `--still`, `--events`) |
+| `tests/helpers/hostile_takeover_bot.gd` (`HostileTakeoverBot`) | a runner who plays it by what it shows, `reaction` seconds late: every gap jumped, each live coupling's lane reached a lane at a time (never across a guard) and a jump timed to come down on it (`stomp_lead()`; from the lane beside it with `side_lane`, the other side if a guard stands there; let go by with `misses`, from its own lane with `skip_in_lane`; `drops` runs off the edge), out of the guards' lanes and their bolts' line; in phase 2 out of a strafe's lanes and a landed tank's (`ignores_strafes`, `meets_saw` for tests of a hit), over the runway and on the belly a jump onto the drop bay (`bay_lead`; `bay_misses` lets some go by) |
+| `tools/measure/hostile_takeover.gd` | the fight through quick play at every lane count and speed: its phases won, a death and the retry, whether every attempt played the same (options in its header) |
 
-**Its next steps.** E5b-b: phase 2's pattern begins in `_on_pattern_started(1)` (the Board's carriages are
-planned about ten seconds ahead, so its guards and wall fences already on the track carry into phase 2's
-first seconds unless the encounter retires them); the gunship comes down (its belly a ceiling,
-`add_surface(..., true)`, already the train's width) with its strafes (a warning line and a whine), the
-Buzz Overdrive dropped onto a roof with its planned cut (the skin's `floor_cut` draws the cut roof), and the
-armored carriage. E5b-c: the locomotive comes back (`set_front`) and the gunship docks onto it, its three
-clamps (modelled, folded) the weak points; MERGER COMPLETE screens with the Chairman's face, the defeat,
-the par times, and the slot's `scene` so the campaign plays it after Corporate 2.
+**Its next step.** E5b-c: phase 3's pattern (`pattern_of(2)`, The Board until then; `contract.stop()` already
+lets a ride under way fly through): the locomotive comes back (`set_front`) and the gunship docks onto it,
+its three clamps (modelled, folded) the weak points; MERGER COMPLETE screens with the Chairman's face, the
+defeat, the par times, and the slot's `scene` so the campaign plays it after Corporate 2. Weapons can't end
+its phases (`weapons_can_end_phase` off), and damage carries from one phase into the next, so a runner who
+chipped phase 2 to its floor starts phase 3 a hair above its end: one clamp then ends the fight unless
+phase 3 asks for its three hits another way.
 
 **The Sewer Swarm** (GDD §10, task E4: E4a, the clusters, the arena and phase 1, the Rising; E4b, phase 2
 Surrounded, phase 3 The Host, the defeat, par times and its slot). Until E4b its slot keeps the fight in
@@ -2685,20 +2726,28 @@ dodged, the rider dropping back onto clear floor) and the defeat (the wild spin,
 collapse in coins ahead of the runner, the citizens cheering) at 3, 5 and 6 lanes and both speeds, and
 the campaign's flow at 22.6 m/s at every lane count (Marketplace 2, a death in the fight's second phase,
 the retry won with three stars, the shop, the outro). `test_hostile_takeover` builds Hostile Takeover's
-train (E5b-a) at 3, 5 and 6 lanes and 18 and 23.4 m/s (its preview slot, the laps holding the train alone,
-every gap across every lane, a share of a jump, at a steady pitch, routed and jumped from every lane with
-the real jump; the couplings' stomp box and take-off window at the run's pace, a fall never high enough to
-stomp; the Board's coupling lanes, guards clear of the gaps, of each coupling's run-up and landing and of
-each other, a way through everywhere, Tithe Collectors on carriages of their own, partial wall fences
-keeping a level's rules; its models' budgets and colours, the breakaway on the train's material, nothing
-made while the city streams past); `test_hostile_takeover_fight` plays phase 1 with `HostileTakeoverBot`
-and no god mode at every lane count and both speeds (the entrance, the dark opening gaps, each coupling
-lit in plain view in a lane of its own with its cue and hint, the stomp's big hit and the carriages
-breaking away), a stomp from the lane beside the coupling's, a coupling sailed over from its own lane and
+train (E5b-a, E5b-b) at 3, 5 and 6 lanes and 18 and 23.4 m/s (its preview slot, the laps holding the train
+alone, every gap across every lane, a share of a jump, the carriages in their consist, routed and jumped
+from every lane with the real jump; the couplings' stomp box and take-off window at the run's pace, a fall
+never high enough to stomp; the Board's coupling lanes, guards clear of the gaps, of each coupling's run-up
+and landing and of each other, a way through everywhere, Tithe Collectors alone on the flatcars and capped
+a phase, partial wall fences keeping a level's rules; phase 2's plan: each drop's cut the C2 tank's own and
+keeping a level's rules for cuts, checked independently, the runway longer than any leap in every lane, the
+armored carriage out of a jump's reach both ways, the belly over the runner to past it, the strafes' free
+lane; its models' budgets and colours, the breakaway on the train's material, Reduced flashing, nothing
+made while the city streams past); `test_hostile_takeover_fight` plays phases 1 and 2 with
+`HostileTakeoverBot` and no god mode at every lane count and both speeds (the entrance, the dark opening
+gaps, each coupling lit in plain view in a lane of its own with its cue and hint, the stomp's big hit and the
+carriages breaking away; phase 1 standing down, each strafe warned and raking only its warned lanes after
+the warning, the drop and its tank's rev before its charge, the armored carriage in sight, the ride and the
+drop bay stomped), a stomp from the lane beside the coupling's, a coupling sailed over from its own lane and
 two let go by (each harmless, the next one coming), a run off the edge (a fall, no stomp), the Tithe
-Collector skimming its trail, weapons up to their cap, the armor rule (a break, no armor, the final phase),
-the preview's five stomps to its placeholder defeat the same on every attempt, and quick play at every
-lane count and both speeds won, then a death and the retry (the train whole again, the same plan) won.
+Collector skimming its trail, a runner hit in a strafe's lane only once its warning is over, the dropped
+tank's rules with the armor (its blade blocked, the floor held), the armored carriage impassable without its
+runway, a drop bay let go by and the next cycle's stomped, weapons poured on never ending a phase, the armor
+rule (a break, no armor, the final phase), the preview's five stomps to its placeholder defeat the same on
+every attempt, and quick play at two setups, phases 1 and 2 won, then a death and the retry (the train whole
+again, the same plan) won again (`tools/measure/hostile_takeover.gd` plays every lane count and speed).
 `test_sewer_swarm` builds the Sewer Swarm (E4a) at 3, 5
 and 6 lanes and 18 and 21.8 m/s: its slot (a preview until E4b; phase 1 two clusters, phase 2 the rest), its
 crowd sizes in data and smaller on a low-end device, the screech's crowd mesh, its clusters (simulated

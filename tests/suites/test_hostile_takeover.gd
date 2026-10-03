@@ -1,26 +1,31 @@
 extends TestSuite
-## Hostile Takeover, the Corporate zone's boss (GDD §10; task E5b-a): its slot and data, the train arena
-## (every gap between carriages jumpable from every lane at the Corporate zone's 23.4 m/s and quick play's
-## 18 m/s, with the player's real jump), what counts as landing on a coupling (its stomp box over the gap,
-## the bounce that carries the runner on), phase 1's plan (The Board) at 3, 5 and 6 lanes (the guards, the
-## Tithe Collectors and the partial wall fences always leave a way through, and each coupling's lane stays
-## reachable), and its look (the colour rule, budgets, nothing made while running). The fight itself:
-## test_hostile_takeover_fight.gd.
+## Hostile Takeover, the Corporate zone's boss (GDD §10; tasks E5b-a and E5b-b): its slot and data, the
+## train arena (its consist of carriages and flatcars; every gap between carriages jumpable from every lane
+## at the Corporate zone's 23.4 m/s and quick play's 18 m/s, with the player's real jump), what counts as
+## landing on a coupling (its stomp box over the gap, the bounce that carries the runner on), phase 1's plan
+## (The Board) at 3, 5 and 6 lanes (the guards, the Tithe Collectors and the partial wall fences always
+## leave a way through, and each coupling's lane stays reachable; the Collectors capped a phase), phase 2's
+## plan (The Contract: the dropped Buzz Overdrive's cut as a level's, the runway of pads and the belly ride
+## over the armored carriage, the strafes' free lanes), and its look (the colour rule, budgets, nothing
+## made while running, Reduced flashing). The fight itself: test_hostile_takeover_fight.gd.
 
 const BOSS_PATH: String = "res://data/bosses/corporate_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
 ## Quick play's speed and the Corporate zone's (GDD §3).
 const SPEEDS: Array[float] = [18.0, 23.4]
 const NEW_SOUNDS: Array[StringName] = [&"takeover_gunship", &"takeover_couplings", &"takeover_decouple",
-	&"takeover_breakaway"]
+	&"takeover_breakaway", &"takeover_whine", &"takeover_strafe", &"takeover_drop", &"takeover_bay"]
 ## A jump in a gap's lane takes off this far before its edge (metres at 18 m/s, at the run's pace): the
 ## latest a runner who reads the gap would leave it.
 const HOLE_LEAD: float = 1.6
 ## Carriages the plan checks are planned over (a few laps' worth of the Board).
 const PLANNED: int = 36
+## Flatcars whose drop phase 2's plan check plans.
+const DROPS: int = 3
 ## A saturated colour outside the decorative blue-to-violet band glows only on hazards (GDD §5).
 const GLOW_SATURATION_LIMIT: float = 0.35
 const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
+const BuzzRules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
 
 var sim: RunSim
 var slot: BossDef
@@ -41,11 +46,16 @@ func run() -> void:
 	for lanes: int in LANES:
 		for speed: float in SPEEDS:
 			await _test_board(lanes, speed)
+	await _test_tithe_cap()
+	for lanes: int in LANES:
+		for speed: float in SPEEDS:
+			await _test_contract(lanes, speed)
 	await _test_look()
 
 
-## The fight at `lanes` and `speed` m/s (the arena config at that speed, as the campaign sets it): [world, boss].
-func _fight(p_def: BossDef, lanes: int, speed: float, loadout: Loadout = null) -> Array:
+## The fight at `lanes` and `speed` m/s (the arena config at that speed, as the campaign sets it), from
+## phase `phase` (a checkpoint's resume): [world, boss].
+func _fight(p_def: BossDef, lanes: int, speed: float, loadout: Loadout = null, phase: int = 0) -> Array:
 	var boss := BossEncounter.create(p_def) as HostileTakeover
 	var ctx := RunContext.new()
 	ctx.mode = RunContext.Mode.QUICK
@@ -54,6 +64,7 @@ func _fight(p_def: BossDef, lanes: int, speed: float, loadout: Loadout = null) -
 	ctx.config.lane_count = lanes
 	ctx.config.run_speed = speed
 	ctx.tuning = tuning
+	ctx.boss_resume = {"phase": phase} if phase > 0 else {}
 	var arena: BossArena = boss.plan_arena(ctx)
 	var world: RunWorld = sim.build_world(arena.layout, loadout, tuning, ctx.config)
 	boss.setup(world, ctx, arena)
@@ -105,21 +116,31 @@ func _test_slot() -> void:
 	var triggers: Array = []
 	for h: Dictionary in (hints as Dictionary)["hints"]:
 		triggers.append(h["trigger"])
-	for trigger: String in ["enemy:corporate_boss", "boss:corporate_boss/couplings"]:
+	for trigger: String in ["enemy:corporate_boss", "boss:corporate_boss/couplings", "boss:corporate_boss/strafe",
+			"boss:corporate_boss/ride"]:
 		check(triggers.has(trigger), "a first-time hint for %s" % trigger)
 	var t := def.tuning as HostileTakeoverTuning
+	var flatcar: int = HostileTakeoverTrain.Kind.FLATCAR
+	var corporate: int = HostileTakeoverTrain.Kind.CORPORATE
 	check(t.opening_for(0) >= 1 and t.opening_for(7) == t.opening_gaps[-1], "each phase opens with dark gaps (the last entry's for later ones)")
+	check(t.consist_kinds().has(flatcar) and t.consist_kinds().has(corporate), "the train's consist: corporate carriages and flatcars")
 	check(t.guards_on(0, 5) == 0 and t.guards_on(t.guards_from, 3) <= 2 and t.guards_on(t.guards_from, 6) >= 1
-		and not t.tithe_on(t.guards_from), "guards from their carriage on, at most one fewer than the lanes")
-	check(t.tithe_on(t.tithe_first) and t.guards_on(t.tithe_first, 6) == 0, "none on a Tithe Collector's carriage")
+		and t.guards_on(t.guards_from, 6, flatcar) == 0, "guards from their carriage on, at most one fewer than the lanes, none on a flatcar")
+	check(t.tithe_on(t.tithe_first, flatcar) and not t.tithe_on(t.tithe_first, corporate) and not t.tithe_on(t.tithe_first - 1, flatcar)
+		and t.tithe_visits_per_phase >= 1, "a Tithe Collector on each flatcar from its carriage on, %d a phase at most" % t.tithe_visits_per_phase)
+	check(HostileTakeover.pattern_of(0) == HostileTakeover.Pattern.BOARD and HostileTakeover.pattern_of(1) == HostileTakeover.Pattern.CONTRACT,
+		"phase 1 plays The Board, phase 2 The Contract")
+	check(sfx.stream(&"takeover_whine").get_length() >= t.strafe_warning - 0.05 and sfx.stream(&"takeover_whine").get_length() <= t.strafe_warning + 0.4,
+		"the strafe's rising whine lasts its warning (%.2f s)" % sfx.stream(&"takeover_whine").get_length())
 
 
 # --- The train -----------------------------------------------------------------------------------
 
 ## GDD §10: "carriage roofs are the floor and the gaps between carriages are the gaps". Every lap is the
 ## train: a gap across every lane at the end of each carriage, a level's jump long (a share of a jump at the
-## run speed, within the generator's longest), at a steady pitch that runs on across the laps; nothing else.
-## Every gap is jumpable from every lane with the player's real jump, at this speed.
+## run speed, within the generator's longest), the carriages in the tuning's consist (corporate carriages
+## and long flatcars, each its length in seconds), running on across the laps without a seam; nothing
+## else. Every gap is jumpable from every lane with the player's real jump, at this speed.
 func _test_train(speed: float) -> void:
 	var tag: String = "(%.1f m/s)" % speed
 	var t := def.tuning as HostileTakeoverTuning
@@ -152,14 +173,26 @@ func _test_train(speed: float) -> void:
 			"every gap spans every lane, the same length (%d gaps over two laps) %s" % [starts.size(), lane_tag])
 		var keys: Array = starts.keys().map(func(k: String) -> float: return float(k))
 		keys.sort()
-		var steady: bool = true
-		for i: int in range(1, keys.size()):
-			steady = steady and absf(float(keys[i]) - float(keys[i - 1]) - train.pitch) < 0.01
-		check(steady and is_equal_approx(arena.lap_length, train.pitch * train.per_lap),
-			"carriages at a steady pitch (%.1f m), the laps joining seamlessly %s" % [train.pitch, lane_tag])
-		check(train.pitch - train.gap >= t.carriage_length * arena.tuning.pace() * 0.85,
-			"a carriage keeps its length in seconds (%.1f m) %s" % [train.pitch - train.gap, lane_tag])
-		check(float(keys[0]) >= arena.tuning.pace() * 30.0 and float(keys[0]) < train.pitch,
+		var placed: bool = true
+		var kinds_ok: bool = true
+		var lengths_ok: bool = true
+		var kinds: PackedInt32Array = t.consist_kinds()
+		var pace: float = arena.tuning.pace()
+		for i: int in keys.size():
+			placed = placed and absf(float(keys[i]) - train.gap_start(i)) < 0.01
+			if i == 0:
+				continue
+			var kind: int = train.kind(i)
+			kinds_ok = kinds_ok and kind == kinds[(i - 1) % kinds.size()]
+			var roof: Vector2 = train.roof(i)
+			var wanted: float = (t.flatcar_length if kind == HostileTakeoverTrain.Kind.FLATCAR else t.carriage_length) * pace
+			lengths_ok = lengths_ok and roof.y - roof.x >= wanted * 0.85 and roof.y - roof.x <= wanted * 1.15
+		check(placed and is_equal_approx(arena.lap_length, train.period * train.consists_per_lap)
+			and train.per_lap == train.consists_per_lap * kinds.size(),
+			"the carriages in their consist (%d a lap), the laps joining seamlessly %s" % [train.per_lap, lane_tag])
+		check(kinds_ok and lengths_ok, "each carriage of its kind, keeping its length in seconds (a flatcar %.1f m) %s" % [
+			train.roof(train.next_flatcar(1)).y - train.roof(train.next_flatcar(1)).x, lane_tag])
+		check(float(keys[0]) >= pace * 30.0 and float(keys[0]) < train.roofs[train.roofs.size() - 1] + train.gap,
 			"the rear carriage's roof before the first gap is the entrance's (%.1f m) %s" % [float(keys[0]), lane_tag])
 		check(layout.fences.is_empty() and layout.signs.is_empty() and layout.hulls.is_empty() and layout.pads.is_empty()
 			and layout.ramps.is_empty() and layout.speed_pads.is_empty() and layout.enemies.is_empty() and layout.credits.is_empty()
@@ -241,8 +274,9 @@ func _test_coupling_box() -> void:
 ## last one's, at most coupling_max_shift from it); the guards never within the cyborgs' margin of a gap
 ## (the level's rule), never where they could reach a coupling's run-up or its bounce's landing in its lane,
 ## apart from each other and fewer than the lanes, so a way through is always open and the coupling's lane
-## stays reachable; a Tithe Collector every tithe_every carriages; partial wall fences only where the level's
-## rules allow (LayoutChecks.check_wall_fences, independently), the low and high bands in turn.
+## stays reachable; on each flatcar from tithe_first on a Tithe Collector and nothing else (no guards, no wall
+## fence: phase 2 drops its Buzz Overdrive there); partial wall fences only where the level's rules allow
+## (LayoutChecks.check_wall_fences, independently), the low and high bands in turn.
 func _test_board(lanes: int, speed: float) -> void:
 	var tag: String = "(%d lanes, %.1f m/s)" % [lanes, speed]
 	var t := def.tuning as HostileTakeoverTuning
@@ -293,8 +327,8 @@ func _test_board(lanes: int, speed: float) -> void:
 					spacing_ok = false
 		if float(rec["tithe"]) >= 0.0:
 			tithes.append(k)
-			if not guards.is_empty():
-				lone_tithes = false
+		if train.kind(k) == HostileTakeoverTrain.Kind.FLATCAR and (not guards.is_empty() or not (rec["wall_fence"] as Dictionary).is_empty()):
+			lone_tithes = false
 		if not (rec["wall_fence"] as Dictionary).is_empty():
 			bands.append(String(rec["wall_fence"]["band"]))
 	check(lanes_ok, "each coupling in a lane of its own, at most %d from the last %s" % [t.coupling_max_shift, tag])
@@ -304,15 +338,16 @@ func _test_board(lanes: int, speed: float) -> void:
 	var listed: int = 0
 	var expected: int = 0
 	for k: int in range(0, PLANNED + 1):
-		listed += t.guards_on(k, lanes)
-		if t.tithe_on(k):
+		listed += t.guards_on(k, lanes, train.kind(k))
+		if t.tithe_on(k, train.kind(k)):
 			expected += 1
-	check(guard_count <= listed and guard_count >= listed * 9 / 10 and guard_count >= PLANNED * 2 / 3,
+	check(guard_count <= listed and guard_count >= listed * 9 / 10 and guard_count >= PLANNED / 2,
 		"the roofs are guarded as the tuning lists, a guard that fits nowhere left out (%d cyborgs of %d over %d carriages) %s" % [
 			guard_count, listed, PLANNED, tag])
-	check(tithes.size() == expected and expected >= 3, "a Tithe Collector every %d carriages (%d) %s" % [t.tithe_every, tithes.size(), tag])
-	check(lone_tithes, "no guards on a Tithe Collector's carriage: it keeps to the runner's lane over its trail %s" % tag)
-	check(bands.size() >= PLANNED / 3 and not bands.has("full") and bands.has("low") and bands.has("high"),
+	check(tithes.size() == expected and expected >= 3, "a Tithe Collector on each flatcar from carriage %d on (%d) %s" % [
+		t.tithe_first, tithes.size(), tag])
+	check(lone_tithes, "no guards and no wall fence on a flatcar: its Collector keeps to the runner's lane over its trail %s" % tag)
+	check(bands.size() >= PLANNED / 4 and not bands.has("full") and bands.has("low") and bands.has("high"),
 		"partial wall fences along the barriers, low and high (%d, %d refused) %s" % [bands.size(), board.refused_fences, tag])
 	# The guards on the track as the arena's enemies, the Collectors brought in as the runner reaches them
 	# (in the runner's lane), the wall fences as track pieces.
@@ -352,6 +387,142 @@ func _test_board(lanes: int, speed: float) -> void:
 	await sim.free_world(world)
 
 
+# --- The Collectors' cap -------------------------------------------------------------------------
+
+## OPEN_QUESTIONS item 321: a caught Tithe Collector pays its jackpot and phase 1 has no time limit, so a
+## runner who lets the couplings go by could farm them. The Board brings at most tithe_visits_per_phase
+## into play in a phase (DESIGN-TBD); those due beyond it never come (logged), counted phase by phase.
+func _test_tithe_cap() -> void:
+	var pair: Array = _fight(def, 5, 23.4)
+	var world: RunWorld = pair[0]
+	var boss: HostileTakeover = pair[1]
+	var t: HostileTakeoverTuning = boss.tuning
+	var board: HostileTakeoverBoard = boss.board
+	var came: Array[int] = [0]
+	world.director.enemy_spawned.connect(func(e: Enemy) -> void:
+		if e.type_id == &"tithe_collector":
+			came[0] += 1)
+	board.tithes_due.clear()
+	for i: int in t.tithe_visits_per_phase + 2:
+		board.tithes_due.append({"k": 100 + i * 6, "at": world.player.distance})
+	board.tick()
+	var skipped: int = boss.events.filter(func(e: Dictionary) -> bool: return e["event"] == &"tithe_skipped").size()
+	check(came[0] == t.tithe_visits_per_phase and board.visits_skipped == 2 and skipped == 2 and board.tithes_due.is_empty()
+		and int(board.visits.get(0, 0)) == t.tithe_visits_per_phase,
+		"at most %d Tithe Collectors come in a phase, the rest never do (%d came, %d left out)" % [
+			t.tithe_visits_per_phase, came[0], board.visits_skipped])
+	await sim.free_world(world)
+
+
+# --- Phase 2's plan: The Contract ------------------------------------------------------------------
+
+## GDD §10, phase 2: "the gunship strafes the lanes ... and drops a Buzz Overdrive onto the roof ahead, which
+## cuts a carriage lane. An armored carriage with no roof access blocks the way, so the player takes an
+## anti-grav pad and rides the gunship's belly over it". Planned from phase 2's start (a checkpoint's) at
+## this lane count and speed, over DROPS flatcars:
+## - each drop's cut is a level's (FloorCutPlan with the C2 tank's own rev, charge, charge speed, run past
+##   and keep, and no roll: the drop brings it into view), its lane window on its flatcar's roof, and a
+##   level's rules for cuts hold for it, checked independently (LayoutChecks.check_cuts, its tank standing
+##   at its end as the generator's would: no hole in its lane, the lanes beside it whole, nothing else going
+##   on, a runner in its lane when it warns can leave it);
+## - each ride: a runway of pads the lane's full width in every lane, longer than any leap at this speed (a
+##   jump with a dash: HostileTakeoverContract.longest_leap), on the carriage before the armored one; the
+##   armored carriage too tall to jump onto, and low enough that a jump from the belly never reaches it;
+##   the belly over the runner from the runway's start until past the armored carriage's far gap, its drop
+##   bay passing over them, and the runner back on the next carriage's roof before its gap;
+## - a strafe strikes fewer lanes than there are, so a lane beside its lines is always free.
+func _test_contract(lanes: int, speed: float) -> void:
+	var tag: String = "(%d lanes, %.1f m/s)" % [lanes, speed]
+	var pair: Array = _fight(def, lanes, speed, null, 1)
+	var world: RunWorld = pair[0]
+	var boss: HostileTakeover = pair[1]
+	var t: HostileTakeoverTuning = boss.tuning
+	var c: HostileTakeoverContract = boss.contract
+	var train: HostileTakeoverTrain = boss.train
+	var m: MovementTuning = world.tuning
+	var pace: float = m.pace()
+	var saw := BuzzRules.tuning()
+	var drops: Array[Dictionary] = []
+	var rides: Array[Dictionary] = []
+	var k: int = train.next_flatcar(1)
+	for i: int in DROPS * 3:
+		if drops.size() >= DROPS:
+			break
+		var drop: Dictionary = c.plan_drop(k)
+		if not drop.is_empty():
+			drops.append(drop)
+			var ride: Dictionary = c.plan_ride(k + 2)
+			if not ride.is_empty():
+				rides.append(ride)
+		k = train.next_flatcar(k + 1)
+	check(drops.size() == DROPS and rides.size() == DROPS and int(drops[0]["k"]) == train.next_flatcar(1),
+		"a drop on each flatcar, the first one's planned from the phase's start, and the ride after each %s" % tag)
+	# The drops: a level's cuts, the C2 tank's numbers.
+	var copy: LevelLayout = boss.arena.layout.copy()
+	var numbers_ok: bool = true
+	var on_flatcar: bool = true
+	for drop: Dictionary in drops:
+		var cut: Dictionary = drop["cut"]
+		var v: float = m.run_speed
+		numbers_ok = numbers_ok and is_equal_approx(float(cut["charge"]), saw.charge_distance(v, pace))
+		numbers_ok = numbers_ok and is_equal_approx(float(cut["warn"]), saw.charge_distance(v, pace) + saw.rev_at(boss.arena.config.enemy_scaling) * v)
+		numbers_ok = numbers_ok and is_equal_approx(float(cut["speed"]), saw.charge_speed_at(pace)) and is_equal_approx(float(cut["keep"]), saw.keep())
+		numbers_ok = numbers_ok and not cut.has("lead") and boss.arena.layout.cuts.has(cut)
+		var roof: Vector2 = train.roof(int(drop["k"]))
+		var window: Vector2 = FloorCutPlan.lane_window(cut)
+		on_flatcar = on_flatcar and train.kind(int(drop["k"])) == HostileTakeoverTrain.Kind.FLATCAR and window.x >= roof.x \
+			and window.y <= roof.y + 0.01
+		copy.enemies.append({"type": "buzz_overdrive", "at": cut["end"], "lane": cut["lane"], "side": 0})
+	check(numbers_ok, "each drop's cut is the Buzz Overdrive's own: its rev, charge, speed and keep, no roll %s" % tag)
+	check(on_flatcar, "its lane window on its flatcar's roof %s" % tag)
+	LayoutChecks.check_cuts(self, copy, boss.arena.config, tag)
+	# The rides.
+	var strip_ok: bool = true
+	var cover_ok: bool = true
+	var bay_ok: bool = true
+	var land_ok: bool = true
+	var belly: float = HostileTakeoverModel.BELLY_FRONT + HostileTakeoverModel.BELLY_STERN
+	for ride: Dictionary in rides:
+		var rk: int = int(ride["k"])
+		var strip: Vector2 = ride["strip"]
+		var before: Vector2 = train.roof(rk - 1)
+		strip_ok = strip_ok and strip.x >= before.x and strip.y <= before.y - t.pad_before * pace + 0.01 \
+			and train.kind(rk) == HostileTakeoverTrain.Kind.CORPORATE and float(ride["pad_at"]) == strip.x
+		# Over the runner from the runway's start (its stern well behind them) until the landing point, where
+		# its front reaches them by design (they drop off as it passes): sampled every metre and just short of it.
+		var d: float = float(ride["pad_at"])
+		while d <= float(ride["land_at"]):
+			var at: float = minf(d, float(ride["land_at"]) - 0.05)
+			var front: float = c.belly_front(ride, at)
+			cover_ok = cover_ok and front > at and front - belly < at - 1.0
+			d += 1.0
+		var bay_then: float = c.belly_front(ride, float(ride["pad_at"])) - HostileTakeoverModel.BELLY_FRONT + HostileTakeoverModel.BAY_AHEAD
+		var bay_last: float = c.belly_front(ride, float(ride["land_at"])) - HostileTakeoverModel.BELLY_FRONT + HostileTakeoverModel.BAY_AHEAD
+		bay_ok = bay_ok and bay_then > float(ride["pad_at"]) + 2.0 and bay_last < float(ride["land_at"]) - 2.0 and c.bay_lead(ride) > 0.5
+		var stretch: Vector2 = c.ride_stretch(ride)
+		land_ok = land_ok and float(ride["land_at"]) > train.gap_end(rk) + 1.0 and stretch.y + 2.0 < train.gap_start(rk + 1) \
+			and float(ride["descend_from"]) < float(ride["pad_at"]) and float(ride["climb_to"]) > float(ride["land_at"])
+	var armored: HostileTakeoverArmored = boss.armored
+	var length: float = armored.strip_length()
+	var full_width: bool = armored.pads.size() == lanes
+	for i: int in armored.pads.size():
+		var box := (armored.pads[i].get_child(0) as CollisionShape3D).shape as BoxShape3D
+		full_width = full_width and box.size.x >= world.geo.lane_width - 0.01 and is_equal_approx(armored.pads[i].position.x, world.geo.lane_x(i))
+	check(full_width and strip_ok and HostileTakeoverContract.strip_clears(m, length),
+		"a runway of pads in every lane, its full width, %.1f m long: no leap clears it (%.1f m at the most) %s" % [
+			length, HostileTakeoverContract.longest_leap(m), tag])
+	check(t.armored_height > m.jump_height + 0.2 and m.ceiling_height - m.jump_height - m.visual_size.y > t.armored_height + 0.4,
+		"the armored carriage: too tall to jump onto, below a jump from the belly")
+	check(cover_ok, "the belly is over the runner from the runway to past the armored carriage %s" % tag)
+	check(bay_ok, "its drop bay passes over them on the way %s" % tag)
+	check(land_ok, "they drop off onto the next carriage's roof, before its gap %s" % tag)
+	# The strafes.
+	var struck: int = t.struck_lanes(lanes)
+	check(struck >= 1 and struck < lanes and (lanes <= 3 or struck <= lanes - 2),
+		"a strafe strikes %d of %d lanes: one beside its lines is always free %s" % [struck, lanes, tag])
+	await sim.free_world(world)
+
+
 # --- The look --------------------------------------------------------------------------------------
 
 ## Budgets and the colour rule (GDD §5: only hazards glow in hazard colours; the weak points' red, the gaps'
@@ -385,12 +556,31 @@ func _test_look() -> void:
 					bad.append(str(c))
 	check(bad.is_empty(), "nothing on the gunship or the locomotive glows in a hazard's colour: %s" % ", ".join(bad))
 	check(HostileTakeoverModel.WEAK.h < 0.05 or HostileTakeoverModel.WEAK.h > 0.95, "the couplings glow the weak points' red")
+	# Phase 2's parts: the armored carriage in the solid obstacles' yellow and black, the rakes in the
+	# attacks' red, the runway one draw for every tile.
+	var armored: ArrayMesh = boss.armored.model.mesh as ArrayMesh
+	var yellow: bool = false
+	for i: int in armored.get_surface_count():
+		for col: Color in armored.surface_get_arrays(i)[Mesh.ARRAY_COLOR]:
+			yellow = yellow or (col.s > 0.6 and col.h > 0.1 and col.h < 0.18 and col.v > 0.6)
+	var av: int = HostileTakeoverModel.vertices(armored)
+	check(yellow and av < 4000, "the armored carriage's front is framed in the solid obstacles' yellow and black (%d vertices)" % av)
+	check(_hazard_hue(HostileTakeoverStrafes.RAKE_COLOR) and _hazard_hue(HostileTakeoverStrafes.TRACER_COLOR),
+		"the strafes' rakes and tracers glow in the attacks' red")
+	var tiles := boss.armored.runway.get_node_or_null(^"Tiles") as MultiMeshInstance3D
+	check(tiles != null and tiles.multimesh.instance_count >= 6 * 3 and tiles.multimesh.instance_count % 6 == 0,
+		"the runway's pads are one MultiMesh (%d tiles)" % (tiles.multimesh.instance_count if tiles != null else 0))
 	# The breakaway on the train's material, and back.
 	var m: ShaderMaterial = skin.train_material()
 	check(float(m.get_shader_parameter(&"break_age")) < 0.0, "the train starts whole")
-	skin.set_breakaway(500.0, 1.2, boss.train.pitch, boss.train.pitch - boss.train.gap, boss.tuning)
-	check(is_equal_approx(float(m.get_shader_parameter(&"break_z")), -500.0) and float(m.get_shader_parameter(&"break_age")) > 1.0,
-		"a breakaway sets the line behind which the carriages tumble, and its clock")
+	var k_break: int = boss.train.next_flatcar(1) + 1
+	var ends: PackedFloat32Array = boss.train.ends_behind(k_break, 8)
+	skin.set_breakaway(boss.train.gap_start(k_break), 1.2, ends, boss.tuning)
+	var ends_a: Vector4 = m.get_shader_parameter(&"break_ends_a")
+	check(is_equal_approx(float(m.get_shader_parameter(&"break_z")), TrackGeometry.world_z(boss.train.gap_start(k_break)))
+		and float(m.get_shader_parameter(&"break_age")) > 1.0 and is_equal_approx(ends_a.x, ends[0]) and is_equal_approx(ends_a.y, ends[1])
+		and ends[1] - ends[0] > boss.train.roofs[0] + boss.train.gap - 0.01,
+		"a breakaway sets the line behind which the carriages tumble, each about its own rear end (a flatcar's further back), and its clock")
 	skin.clear_breakaway()
 	check(float(m.get_shader_parameter(&"break_age")) < 0.0 and float(m.get_shader_parameter(&"break_z")) > 1.0e8, "and clears")
 	# The streaming city: no nodes made while the runner goes on, beyond the chunks' own.
@@ -423,6 +613,34 @@ func _test_look() -> void:
 			check(is_zero_approx(spread) and is_equal_approx(glows[0], 1.0), "a live coupling glows steady with Reduced flashing")
 		else:
 			check(spread > 0.1, "a live coupling's glow pulses (%.2f)" % spread)
+	# The open drop bay pulses (the weak points' language), the tracers and the muzzle flicker: all steady
+	# with Reduced flashing.
+	boss.gunship.set_bay(true)
+	boss.strafes.start([0] as Array[int])
+	boss.gunship.set_firing(true)
+	var bay_m := boss.gunship.bay_mesh.material_override as ShaderMaterial
+	var beam: MeshInstance3D = boss.strafes.rigs[0]["beam"]
+	for reduced: bool in [false, true]:
+		Settings.flashing_reduced = reduced
+		var glows: Array[float] = []
+		var widths: Array[float] = []
+		var flashes: Array[float] = []
+		for i: int in 12:
+			await physics_frames(3)
+			boss.strafes.set_front(world.player.distance + 20.0, boss.gunship.gun_point())
+			glows.append(float(bay_m.get_shader_parameter(&"state_glow")))
+			widths.append(beam.global_transform.basis.x.length())
+			flashes.append(boss.gunship.muzzle.scale.x)
+		var spread: float = float(glows.max()) - float(glows.min()) + float(widths.max()) - float(widths.min()) \
+			+ float(flashes.max()) - float(flashes.min())
+		if reduced:
+			check(is_zero_approx(spread), "the open bay, the tracers and the muzzle are steady with Reduced flashing")
+		else:
+			check(float(glows.max()) - float(glows.min()) > 0.1 and float(widths.max()) - float(widths.min()) > 0.01,
+				"the open bay pulses and the tracers flicker")
+	boss.strafes.stop()
+	boss.gunship.set_firing(false)
+	boss.gunship.set_bay(false)
 	Settings.flashing_reduced = was
 	var towers: Dictionary = skin.towers_for(1, world.geo.wall_x())
 	var verts: PackedVector3Array = towers["verts"]
