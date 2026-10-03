@@ -27,8 +27,8 @@ extends Resource
 @export_range(0, 800, 20) var climb_creatures_low_end: int = 90
 ## DESIGN-TBD (E3): the screeches latched onto the Host (GDD §10: "mostly hidden under the screeches latched
 ## onto them"), its body's whole bulk: each hit knocks a share of them off.
-@export_range(20, 800, 10) var host_creatures: int = 300
-@export_range(20, 800, 10) var host_creatures_low_end: int = 130
+@export_range(20, 800, 10) var host_creatures: int = 400
+@export_range(20, 800, 10) var host_creatures_low_end: int = 170
 ## DESIGN-TBD (E3): screeches pouring out of each manhole or vent as it bursts open (the Rising).
 @export_range(0, 40, 1) var spill_creatures: int = 14
 @export_range(0, 40, 1) var spill_creatures_low_end: int = 4
@@ -199,13 +199,14 @@ extends Resource
 ## The pipe's height (its axis) and radius (a look).
 @export_range(4.0, 14.0, 0.25, "suffix:m") var pipe_height: float = 8.0
 @export_range(0.5, 4.0, 0.05, "suffix:m") var pipe_radius: float = 1.6
-## Where it keeps to, pacing the runner (at 18 m/s): this far ahead, in the middle of the street.
-@export_range(15.0, 80.0, 1.0, "suffix:m") var host_ahead: float = 32.0
+## Where it keeps to, pacing the runner (at 18 m/s): this far ahead, in the middle of the street (close
+## enough to stay big on screen).
+@export_range(15.0, 80.0, 1.0, "suffix:m") var host_ahead: float = 26.0
 ## Its bulk standing (a look; its person is a little under human size inside it, held up): width, height
 ## and depth. A leap (to its station, onto its crouch) takes leap_seconds, up to leap_height.
-@export_range(1.0, 6.0, 0.05, "suffix:m") var host_width: float = 2.8
-@export_range(1.5, 7.0, 0.05, "suffix:m") var host_height: float = 4.0
-@export_range(1.0, 6.0, 0.05, "suffix:m") var host_depth: float = 2.4
+@export_range(1.0, 6.0, 0.05, "suffix:m") var host_width: float = 3.4
+@export_range(1.5, 7.0, 0.05, "suffix:m") var host_height: float = 4.8
+@export_range(1.0, 6.0, 0.05, "suffix:m") var host_depth: float = 2.8
 @export_range(0.3, 3.0, 0.05, "suffix:s") var leap_seconds: float = 0.9
 @export_range(1.0, 15.0, 0.25, "suffix:m") var leap_height: float = 6.0
 ## DESIGN-TBD (docs/questions/e4.md, the clusters in phase 3): it flings the swarm at the runner (GDD §10:

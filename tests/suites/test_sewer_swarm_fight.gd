@@ -1,6 +1,7 @@
 extends TestSuite
-## The Sewer Swarm's phase 1, the Rising (GDD §10; task E4a; its data, crowds and arena: test_sewer_swarm.gd),
-## at 3, 5 and 6 lanes, at Gangland's 21.8 m/s and quick play's 18 m/s:
+## The Sewer Swarm's phase 1, the Rising (GDD §10; task E4a; its data, crowds and arena: test_sewer_swarm.gd;
+## phase 2: test_sewer_swarm_surrounded.gd; phase 3: test_sewer_swarm_host.gd; the whole fight and the
+## campaign: test_sewer_swarm_whole.gd), at 3, 5 and 6 lanes, at Gangland's 21.8 m/s and quick play's 18 m/s:
 ## - a runner who reads it (SewerSwarmBot: no god mode, no armor) baits two clusters into a fence or a hole
 ##   and wins the phase, at every lane count and both speeds, and again after a death and a retry (through
 ##   quick play's own restart at 3 lanes, and at 21.8 m/s through RunContext.retry at 6);
@@ -40,9 +41,9 @@ var _log_5: String = ""
 func run() -> void:
 	sim = RunSim.new(tree, tuning)
 	var slot := load(BOSS_PATH) as BossDef
-	def = slot.preview() if slot != null else null
+	def = slot if slot != null and slot.is_built() else null
 	if def == null:
-		check(false, "the Sewer Swarm's fight loads as a preview")
+		check(false, "the Sewer Swarm's fight is built (its slot plays it)")
 		return
 	await _test_wins_phase_one()
 	await _test_same_every_attempt()
@@ -606,8 +607,8 @@ func _test_retry() -> void:
 		await sim.free_world(world)
 
 
-## Through quick play (./play.sh --boss=gangland_boss plays the preview): a death in phase 1 restarts the fight
-## by itself, and the restarted fight is won by baiting (at 3 lanes, the phone's street: the other counts as
+## Through quick play (./play.sh --boss=gangland_boss): a death in phase 1 restarts the fight by itself, and the
+## restarted fight's phase 1 is won by baiting (at 3 lanes, the phone's street: the other counts as
 ## _test_retry).
 func _test_retry_through_quick_play() -> void:
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
@@ -623,7 +624,7 @@ func _test_retry_through_quick_play() -> void:
 		var run: LevelRun = App.run
 		var boss := run.encounter as SewerSwarm if run != null else null
 		check(boss != null and run.world.geo.lane_count == lanes and not run.world.player.god_mode,
-			"quick play plays the preview (%d lanes)" % lanes)
+			"quick play plays the fight (%d lanes)" % lanes)
 		if boss == null:
 			continue
 		var bot := SewerSwarmBot.new(boss)
