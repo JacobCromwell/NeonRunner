@@ -67,7 +67,8 @@ func _test_speed_data() -> void:
 			check(is_equal_approx(config.run_speed, s.zone.run_speed), "%s runs at its zone's speed (%.1f)" % [s.id, config.run_speed])
 			check(is_equal_approx(campaign.configure(s, 3, 1).run_speed, s.zone.run_speed * campaign.speed_multiplier(1)),
 				"%s: a harder tier multiplies its speed" % s.id)
-			var layout: LevelLayout = LevelGenerator.new().generate(config, tuning, LevelGenerator.load_for(config))
+			# T-SPEED: the level's own default build (LayoutCache), shared with test_campaign.gd and others.
+			var layout: LevelLayout = LayoutCache.generate(config, tuning, LevelGenerator.load_for(config))
 			check(is_equal_approx(layout.length, config.run_speed * config.duration_seconds),
 				"%s lasts %.0f s: %.0f m at %.1f m/s" % [s.id, config.duration_seconds, layout.length, config.run_speed])
 			check(config.fill_empty_seconds > 0.0, "%s fills its long empty stretches" % s.id)
@@ -408,8 +409,8 @@ func _test_floor_routes_at_speed() -> void:
 		var config: LevelConfig = campaign.configure(campaign.step("golden/2"), lanes)
 		var fast: MovementTuning = config.movement_for(tuning)
 		var sim := RunSim.new(tree, fast)
-		var gen := LevelGenerator.new()
-		var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+		# T-SPEED: golden/2's own default build (LayoutCache), shared with test_campaign.gd and others.
+		var layout: LevelLayout = LayoutCache.generate(config, tuning, LevelGenerator.load_for(config))
 		var zones := CeilingZones.make(config, fast)
 		var grid := FloorRoute.new(layout, fast)
 		var runs: int = 0

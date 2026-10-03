@@ -236,8 +236,9 @@ func _test_campaign() -> void:
 		for lanes: int in [3, 5, 6]:
 			var config: LevelConfig = campaign.configure(s, lanes)
 			var m: MovementTuning = config.movement_for(tuning)
-			var gen := LevelGenerator.new()
-			var layout: LevelLayout = gen.generate(config, m, LevelGenerator.load_for(config))
+			# T-SPEED: this level's own default build (LayoutCache), shared with other suites; the
+			# "same level every build" check below stays a real, independent second build.
+			var layout: LevelLayout = LayoutCache.generate(config, m, LevelGenerator.load_for(config))
 			var again: LevelLayout = LevelGenerator.new().generate(config, m, LevelGenerator.load_for(config))
 			var tag: String = "(%s, %d lanes)" % [s.id, lanes]
 			check(JSON.stringify(layout.to_dict()) == JSON.stringify(again.to_dict()), "the same level every build " + tag)

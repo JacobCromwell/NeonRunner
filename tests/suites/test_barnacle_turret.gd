@@ -281,8 +281,10 @@ func _test_placement() -> void:
 				continue
 			var config: LevelConfig = campaign.configure(s, lanes)
 			var tag: String = "%s lanes=%d" % [s.id, lanes]
-			var gen := LevelGenerator.new()
-			var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+			# T-SPEED: a campaign level's own default build (LayoutCache), shared with test_campaign.gd
+			# and others; the explicit "again" determinism check below stays a real, independent build.
+			var gen: LevelGenerator = LayoutCache.generator(config, tuning, LevelGenerator.load_for(config))
+			var layout: LevelLayout = gen.layout
 			var turrets: Array[Dictionary] = _turrets(layout)
 			if not has:
 				check(turrets.is_empty(), "no turret in a level without the feature " + tag)
@@ -664,7 +666,8 @@ func _test_fair_play() -> void:
 	var bursts_total: int = 0
 	for c: Array in [["corporate/2", 3], ["corporate/2", 5], ["marketplace/2", 6]]:
 		var config: LevelConfig = campaign.configure(campaign.step(String(c[0])), int(c[1]))
-		var layout: LevelLayout = LevelGenerator.new().generate(config, tuning, LevelGenerator.load_for(config))
+		# T-SPEED: this level's own default build (LayoutCache), shared with other suites.
+		var layout: LevelLayout = LayoutCache.generate(config, tuning, LevelGenerator.load_for(config))
 		var tag: String = "%s lanes=%d" % [c[0], c[1]]
 		# Far enough to meet turrets: 1500 m, or past the first one where the level puts it later (a level's
 		# layout moves with the features it has, e.g. Corporate 2's Buzz Overdrives).

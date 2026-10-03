@@ -109,10 +109,121 @@ Every number is `SpeedFxTuning` (`scripts/run/speed_fx_tuning.gd`, `data/tuning/
     their own, real delta underneath. It **never touches `Engine.time_scale`** (`SlowTimePowerup`
     owns that for its own, very different, deliberate slow-down) or pauses anything, so a seeded run
     plays out identically whether or not it fires (`test_speed_fx`: the same actions on the same
-    layout, with and without a forced freeze, give the same distance, lane and event log).
+    layout, with and without a forced freeze, give the same distance, lane and event log). Freezes
+    never stack or chain (task PERF1): requests in the frame a freeze begins keep the longer one, and
+    one asked for less than `SpeedFxTuning.freeze_gap` (0.3 s) after the last one began is left out,
+    so a run of kills never holds the camera again and again (Smooth frames, below).
   - **Screen shake** (Settings) scales every shake and hit-stop through `RunEffects.shake_scale`
     (`shake()` and `freeze()` both no-op at 0); the field-of-view kick, the lean and the speed lines
     stay on regardless, since none of them snap or strobe.
+
+### Smooth frames (task PERF1, the owner's report, October 2, 2026)
+
+"The overall performance of the game is getting worse. Lag spikes are more common." Measured, the spikes had
+five sources; every fix leaves what the game decides alone (a seeded run's event log is the same before and
+after, run by run: `frame_times.gd --log`, and `test_perf`).
+
+- **An enemy type's first spawn** (the largest frames on the CPU, already there before the playtest work): it
+  loaded and compiled the type's scripts and built the look its kind shares in that frame, 120 to 290 ms for a
+  cyborg or a window cyborg on the dev machine (the Golden look the most), 30 to 70 ms for a hover truck, a
+  Barnacle Turret, a screech or a drone. The director readies every type the level brings during the load
+  (Enemies, Readied with the level).
+- **Shaders first drawn mid-run** (the GPU side; there are more of them since the playtest work: doodads,
+  wall fences, the Resonator, the Barnacle Turret, the weapon's effects): 4 to 16 shaders a level were first
+  drawn after the load (`frame_times.gd --shaders`), each a long frame on a real renderer while it compiles
+  them (Compatibility, the web demo) or builds their pipelines (Forward+: 48 surface and 35 specialization
+  pipelines during 25 s of Gangland 3; under xvfb's software renderers a first screech, generator, missile or
+  window cyborg took 0.3 to 3 s). `ShaderWarmup` (`scripts/run/shader_warmup.gd`; LevelRun adds it whenever the
+  game renders) draws one copy of each look the level may show later, too small to see in front of the camera,
+  for the level's first two drawn frames: every material on the run's hidden nodes (pools, the weapon's
+  effects), the effects' glow, one look of each enemy kind (`EnemyDirector.warm_looks()`, every part shown) and
+  each track piece the zone skin dresses (fences in each state, wall fences, a sign, pads, ramps, speed pads,
+  ceilings, doodads, gap edges, the finish line). It keeps the samples' materials until the next level's
+  stage, so their shaders stay built for a look first met later. After it no shader on Gangland 3 is first
+  drawn mid-run. The track pieces are dressed on hazards and trigger areas made once a process and never
+  freed while the game runs (out of the tree; their looks move onto plain nodes in the stage): **a warm-up
+  never frees a physics object**, since the next one made takes its place in the physics server's tables,
+  which can change the order of contacts in a frame (two throwaway hazards made and freed at a boss fight's
+  load moved one kill in Hostile Takeover's seeded event log by a frame; made and kept, they changed
+  nothing).
+- **Hit-stops** (G2's brief freeze on every kill and stomp): none in the build before the playtest work, now 4
+  to 24 a level (about 6 a minute with a full loadout). Each holds the camera still for three frames while the run
+  goes on, so the view jumps 1.0 to 1.25 m when it lets go: on screen, exactly what a dropped frame looks like.
+  They never stack or chain now (`freeze_gap`, Speed effects above); whether every kill should keep one is the
+  owner's call (`docs/questions/perf1.md`). The frame graph marks the frames a hit-stop holds.
+- **Chunk builds**: a chunk's build is almost all the zone skin's dressing (1.4 to 3.7 ms a chunk on the dev
+  machine, `wall_section` the most; the collision, hazards, triggers, doodads' bodies, wall fences and cuts 0.1
+  to 0.3 ms), all in one frame every 1.6 to 1.9 s, and up 5 to 15% since `a5e691b` in the Marketplace and
+  Corporate (the Marketplace's citizens are about 0.7 ms of its 3.8 ms a chunk, `Settings.citizens_enabled`
+  off). `TrackBuilder.dress_budget_usec` (LevelRun sets it from
+  `PerformanceTuning.chunk_dress_budget_ms`, 1 ms, F6 "Performance") builds a chunk's gameplay nodes in its
+  frame as before and queues the skin's calls, which `update()` makes in order, about the budget a frame (at
+  least one call), finishing a chunk's whatever the time once the player is `DRESS_BY` (120 m) from it.
+- **Boss props**: every target circle built a torus mesh and a boss's first row of fences built the kit's
+  fence look in its frame (3.8 ms for The House's first lightning row); `BossProps` shares rings by radius, and
+  when the game renders the shader warm-up's fence samples build the skin kit's fence look during the
+  fight's load (headless runs, the measuring tool's, still show that first row; a later fence costs about
+  0.2 ms, a Barnacle Turret's later spawn 0.2 to 0.3 ms: neither shows among the slow frames). The House
+  also re-plans a strike waiting for fair lanes every frame (a route search per candidate lane set,
+  `TheHouseAttacks._try_strike`) for up to `strike_wait`: 5 to 10 ms frames for about 0.3 s on the dev
+  machine in the preview fight's runs (none in the finished fight's 240 s run). Re-planning less often
+  would change when strikes come, so it's left to a task on The House.
+
+Ruled out by measuring: physics bodies (a chunk's are 0.1 to 0.3 ms in all), effects (bursts, debris, lines,
+coin streams and shots are pooled; the speed lines are one canvas pass), and the per-frame checks (on a
+quiet machine the median frame is about 1 ms headless, up 2 to 13% since `a5e691b` with the faster, busier
+levels; the 99th percentile up 10 to 35%).
+
+**Measuring.** `FrameMonitor` (`scripts/run/frame_monitor.gd`) times every frame (its whole time; the game's
+work before the renderer draws; its physics steps) and tags it from the run's own signals and a look at its
+state once a frame (chunks built and freed, spawns, kills, hit-stops and the frames they hold, bursts, credits,
+pickups, sounds, big changes in the tree, objects made, pipelines compiled), so nothing in the game reports to
+it. In debug builds LevelRun keeps one, and `FrameGraph` (`scripts/ui/frame_graph.gd`, F7 or `--frame-graph`)
+draws its last 300 frames: each frame's time and the game's part, spikes (over 1.6 times the median and 8 ms)
+in their own colour, the frames a hit-stop holds, and the latest of both listed with their tags.
+`tools/measure/frame_times.gd` plays every level and boss fight headless and reports per run (Review tools);
+under xvfb it counts draw calls, primitives and pipelines. `test_frame_times` holds three levels to budgets.
+
+The numbers (`frame_times.gd`, 5 lanes, full loadout, headless on the dev machine, two passes each in a fresh
+process, each frame's faster time; CPU times in ms; `a5e691b` (the build before the playtest work, at 18 m/s,
+without the Sleep Taker, The House and Hostile Takeover) / today's main (`958169e`) / with PERF1, measured
+back to back on a busy machine (other agents' runs: medians about 1.2 ms, about 0.9 ms on a quiet one); The
+House is its finished fight, 240 s without a bot, and Hostile Takeover E5b-a's preview, 150 s at 18 m/s; a
+seeded run's event log is the same on main and with PERF1 in every run, 19 of 19):
+
+| Run | Median ms | 99th pct ms | Worst ms | Frames > 16 ms | Frames > 8 ms | Load ms | Hit-stops |
+|---|---|---|---|---|---|---|---|
+| city/1 | 1.13 / 1.19 / 1.20 | 1.92 / 2.67 / 2.57 | 248.9 / 231.4 / 6.2 | 1 / 1 / 0 | 2 / 2 / 0 | 536 / 582 / 824 | 0 / 4 / 4 |
+| city/2 | 1.15 / 1.24 / 1.23 | 2.05 / 3.09 / 2.68 | 5.2 / 8.7 / 5.4 | 0 / 0 / 0 | 0 / 1 / 0 | 525 / 644 / 839 | 0 / 8 / 8 |
+| city/3 | 1.15 / 1.26 / 1.29 | 2.02 / 3.01 / 2.91 | 270.2 / 231.8 / 7.0 | 3 / 2 / 0 | 3 / 3 / 0 | 665 / 684 / 1033 | 0 / 13 / 13 |
+| gangland/1 | 1.17 / 1.25 / 1.24 | 2.27 / 3.23 / 2.99 | 242.4 / 228.0 / 7.0 | 4 / 3 / 0 | 4 / 5 / 0 | 745 / 808 / 1175 | 0 / 14 / 14 |
+| gangland/2 | 1.20 / 1.23 / 1.28 | 2.51 / 3.04 / 3.07 | 224.3 / 267.2 / 6.6 | 4 / 3 / 0 | 5 / 4 / 0 | 953 / 934 / 1494 | 0 / 15 / 15 |
+| gangland/3 | 1.20 / 1.24 / 1.29 | 2.80 / 3.39 / 3.11 | 225.7 / 205.3 / 6.6 | 5 / 3 / 0 | 7 / 4 / 0 | 1005 / 1170 / 1525 | 0 / 16 / 16 |
+| marketplace/1 | 1.20 / 1.29 / 1.34 | 2.60 / 3.58 / 3.73 | 230.2 / 200.3 / 8.5 | 4 / 3 / 0 | 6 / 8 / 1 | 978 / 1202 / 1496 | 0 / 19 / 19 |
+| marketplace/2 | 1.18 / 1.27 / 1.28 | 2.26 / 3.62 / 3.65 | 229.6 / 212.7 / 5.7 | 5 / 4 / 0 | 5 / 8 / 0 | 1120 / 1313 / 1966 | 0 / 18 / 18 |
+| corporate/1 | 1.18 / 1.21 / 1.25 | 2.65 / 4.03 / 2.97 | 236.7 / 220.4 / 7.4 | 5 / 4 / 0 | 6 / 5 / 0 | 908 / 1680 / 2325 | 0 / 16 / 16 |
+| corporate/2 | 1.14 / 1.26 / 1.27 | 2.44 / 3.44 / 3.01 | 280.7 / 242.4 / 7.2 | 4 / 6 / 0 | 5 / 7 / 0 | 1063 / 1354 / 2094 | 0 / 24 / 24 |
+| dead_zone/1 | 1.12 / 1.23 / 1.24 | 2.44 / 3.92 / 3.10 | 221.7 / 213.1 / 6.4 | 5 / 4 / 0 | 6 / 6 / 0 | 1046 / 2732 / 3172 | 0 / 14 / 14 |
+| dead_zone/2 | 1.15 / 1.23 / 1.22 | 2.47 / 3.77 / 2.93 | 252.0 / 275.2 / 8.2 | 6 / 5 / 0 | 8 / 8 / 1 | 1123 / 1395 / 2077 | 0 / 13 / 13 |
+| golden/1 | 1.23 / 1.30 / 1.29 | 2.87 / 3.85 / 3.08 | 74.2 / 63.2 / 7.5 | 5 / 6 / 0 | 8 / 9 / 0 | 1215 / 1683 / 2597 | 0 / 23 / 21 |
+| golden/2 | 1.17 / 1.25 / 1.25 | 2.55 / 3.72 / 3.06 | 402.3 / 341.0 / 5.3 | 5 / 6 / 0 | 7 / 11 / 0 | 1352 / 1712 / 2500 | 0 / 19 / 19 |
+| golden/3 | 1.19 / 1.28 / 1.28 | 2.83 / 3.82 / 3.05 | 379.6 / 382.7 / 5.4 | 7 / 6 / 0 | 10 / 10 / 0 | 1548 / 2370 / 3111 | 0 / 26 / 26 |
+| boss city_boss | 1.32 / 1.40 / 1.39 | 2.83 / 3.29 / 2.85 | 25.8 / 26.7 / 7.6 | 1 / 1 / 0 | 1 / 1 / 0 | 1214 / 1135 / 1081 | 0 / 4 / 4 |
+| boss marketplace_boss | - / 1.34 / 1.33 | - / 4.83 / 3.78 | - / 11.5 / 8.2 | - / 0 / 0 | - / 9 / 1 | - / 895 / 1001 | - / 0 / 0 |
+| boss dead_zone_boss | - / 1.34 / 1.32 | - / 3.78 / 3.01 | - / 6.9 / 6.6 | - / 0 / 0 | - / 0 / 0 | - / 831 / 833 | - / 3 / 3 |
+| boss corporate_boss | - / 1.87 / 1.95 | - / 3.99 / 4.16 | - / 244.6 / 8.6 | - / 2 / 0 | - / 3 / 2 | - / 636 / 873 | - / 59 / 58 |
+| all | | | | 64 / 59 / 0 | 83 / 104 / 5 | | 0 / 308 / 305 |
+
+The first spawns' and first looks' costs now come during the load (a fresh process pays them once: a
+session's later levels find them built), so a level's first frame takes 0.2 to 0.9 s longer on the dev
+machine; whether a level should open behind a loading card is an open question (`docs/questions/perf1.md`).
+The median frame is up by about 0.03 ms in debug builds (the frame monitor itself; release builds have none).
+Under xvfb (25 s of a level; software rendering, so the counts mean something and the times only show the
+shape), 12, 8 and 9 shaders were first drawn after the load on Gangland 3, Marketplace 2 and Golden 2 before
+(Forward+ built 35 to 48 surface and specialization pipelines mid-run; the worst mid-run frames were 3.1, 2.9
+and 2.1 s on Forward+ and 0.75, 0.36 and 0.59 s on Compatibility) and none after (0.11 to 0.38 s); the median
+draw calls (248 to 279 a frame), primitives (44,000 to 49,000) and objects (336 to 404) are the same, the
+most in a frame higher by the warm-up's samples in the level's first two frames.
 
 ## Data (tunables live in data, CLAUDE.md principle 7)
 
@@ -124,6 +235,7 @@ Every number is `SpeedFxTuning` (`scripts/run/speed_fx_tuning.gd`, `data/tuning/
 | `data/tuning/pickups.tres` (`PickupTuning`) | in-run pickups: where they appear, taking them, the charge cap, the look |
 | `data/tuning/feature_recency.tres` (`FeatureRecency`) | the campaign's recency curve: how a level's pick weights follow how recently the campaign introduced each feature |
 | `data/tuning/wall_fences.tres` (`WallFenceTuning`) | wall fences (B5): how often, how they pulse, their introduction, and the fairness margins (their sizes are the movement tuning's) |
+| `data/tuning/performance.tres` (`PerformanceTuning`) | smooth frames (PERF1): how long a frame may spend dressing built chunks, and `test_frame_times`' frame-time budgets |
 | `data/enemies/<type>.tres` (`EnemyTuning` subclasses) | per-enemy numbers, early/late pairs for campaign scaling |
 | `data/shop/catalog.json` | shop items, tiers and prices (the armor's texts take `{hits}` and `{seconds}`, filled from `GameRules` by `ShopScreen.item_text()`) |
 | `data/campaign/campaign.tres` → `data/zones/*.tres` → `data/levels/*.tres` | the campaign; each zone's run speed (`ZoneDef.run_speed`, a level may set its own), each level's pacing, fill pass, zone doodads and credits |
@@ -297,6 +409,27 @@ every attempt at a seed plays out the same way. Setting `is_host` also sets `imm
 splash, the same way a fence generator declares its own immunity (GDD §9.1), so no targeting, no
 damage and no health bar; only a stomp, the claws or the dash still kill it, with the host bonus.
 Every attack needs a visual **and** audio warning before it can hurt (CLAUDE.md readability rules).
+**Readied with the level** (task PERF1): `EnemyDirector.warm_up()` (from `setup()`, during the load) loads
+the script and tuning of every type the layout names, and for a type whose script has a static
+`warm_up(world: RunWorld, entry: Dictionary) -> Node` builds one look of each kind (type, skin, host:
+`warm_key()`; a zone's skin counts by its resource, since the Golden Zone and the Golden Palace share a zone
+look but not their statue kits) and frees it, once a process: what a type's first spawn used to do in its
+own frame (compiling its scripts and building the meshes, materials and shaders its kind shares; up to
+290 ms for a cyborg). It keeps the look's materials for the process (`ShaderWarmup.materials_of()`): the
+engine frees a standard material's shader with the last material using it and generates and compiles it
+again for the next, so a kind that makes its own material at each spawn (a Gilded Sentinel's eyes) paid
+about 1 ms (and a compile on a real renderer) at every spawn with none of its kind left. The hook builds
+the visual model only (never a physics object: see Smooth frames), as `entry`'s would be, outside the tree,
+with every part the enemy may show later
+(a muzzle's charge, a lunge line, a wave), since `ShaderWarmup` draws the same looks once during the load
+(`warm_looks()`, A run). A type whose enemies bring others into play names them with a static
+`brings(entry: Dictionary) -> Array[Dictionary]` (a host cyborg's Bad Dream). The cyborg, window cyborg,
+screech, Octodog, Resonator, Barnacle Turret, Bad Dream, fence generator, Buzz Overdrive and Gilded Sentinel
+(its statue's frames for both walls, its eyes, its cut marks' shader) have hooks, and a boss fight names the
+enemies it brings itself with `BossEncounter.warm_enemies()` (the Floating Head's dropped cyborgs, the Sleep
+Taker's generators); a new enemy whose first spawn builds anything costly adds one, and a kit keeps the
+shaders it loads (a static cache, as the kits do) rather than loading them per spawn (`test_perf` checks
+every hooked kind is readied and nothing of it stays).
 Enemy fire uses the pool's red "enemy_*" looks in every zone. `world.skin.enemy_variant` picks the
 zone look: the cyborgs (window cyborgs and hosts too) dress in the zone variant
 `CyborgSuit.look_for()` finds for it (see Zone skins for each zone's value, and Characters), and the
@@ -310,7 +443,8 @@ built under the names their tasks must use (`LevelConfig.PLANNED_FEATURES`: `bar
 
 Built so far: cyborg (with its panic variant and hosts), window cyborg, fence generator, hover
 truck, Octodog, sewer screech (manholes, and wall vents; `screech_vents` is wall vents only, for zones
-whose floor has no manholes),
+whose floor has no manholes; its body, `ScreechModel`, also comes at a lower detail for crowds,
+`crowd_mesh()`, the same parts and colours in about a third of the triangles: the Sewer Swarm's),
 heli drone, the Cyborg's Bad Dream (released by a killed host, spawned by the director at run
 time rather than placed by the generator), the Resonator (GDD §9.10, the Golden Zone: a golden
 broadcast spire hovering far ahead whose red waves roll along the floor across every lane; its model,
@@ -1143,6 +1277,10 @@ for each side (a no-op default): the chunk's wall enemy layout entries (type, at
 skin whose own scenery would otherwise double up with one (the Marketplace's citizens, task D3, kept
 clear of window cyborgs) or make room for one (the Golden Zone's skins open a Gilded Sentinel's niche,
 task C4); read-only and visual only, like every other hook.
+In a run, a chunk's hooks come over the few frames after its gameplay nodes are built, in order, each
+side's `note_wall_enemies` and `wall_section` in one go (`TrackBuilder.dress_budget_usec`, task PERF1;
+A run, Smooth frames): a hook never counts on the frame it's called in, and a hazard's look shows the
+hazard's state when it binds (`HazardStateVisual.bind`). Tests and review tools dress each chunk at once.
 
 **Zone doodads' looks** (task G5 built the mechanism and a plain default; task G6 gives each zone its
 own, except the grey box, which keeps the plain default. `GoldenPalaceSkin` (D6b) extends `GoldenSkin`
@@ -1782,12 +1920,17 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
 - **Audio:** `SfxLibrary` maps sound names to `assets/sfx/*.wav` (volumes in
   `data/audio/sfx_library.tres`); `Music` (`MusicDirector`) plays `assets/music/` (files, levels and
   tempos in `data/audio/music_library.tres`), one looping track at a time with crossfades: the menus'
-  track and one per zone, named after the zone's id (`ZoneDef.music`). Both are generated by code in
+  default track and one default per zone, named after the zone's id (`ZoneDef.music`). Defaults are generated by code in
   `tools/asset_gen/` (`tools/godot.sh sfx` / `music`): a track is composed in `track_<name>.gd` with
   `music_song.gd` (stems on a 16th grid that wrap around the loop, and loop-safe effects) and
   `music_instruments.gd`, and a new one is listed in `music_gen.gd` and the library. **No new tracks are
-  generated** (owner, September 28, 2026): the owner will provide the songs, which replace the generated
-  files one by one (same names, re-levelled in the library); until then new places reuse an existing track. Tracks are
+  generated** (owner, September 28, 2026). Owner-supplied MP3s now replace gameplay in all six zones
+  and the Floating Head fight. `MusicLibrary.zone_tracks` maps a zone's default to its supplied song,
+  and `boss_tracks` maps a boss id to its supplied song. `App._start_run` resolves these for campaign,
+  quick play, endless and retries; cinematics and menus bypass the overrides, and unmatched bosses
+  keep their defaults. All levels within a zone share its song. MP3s loop in full; regeneration
+  leaves them untouched. The web demo keeps the Zone 1 and Boss 1 MP3s plus menu/cinematic defaults.
+  Generated tracks are
   levelled so their K-weighted loudness (400 ms windows: the median, and the energy mean) sits at
   about -26.8 dB, some 10 dB under the attack warnings.
   - **Dips:** `set_ducked()` lowers the music under the pause menu, and `set_dipped()` is the death dip
@@ -1801,7 +1944,9 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
     has one, otherwise the E riff `level_complete` (the City's), and `LevelRun` plays it when a level
     ends or a boss is beaten. The riffs are in `tools/asset_gen/sfx_bank_riffs.gd`, each over within
     `LevelRun.COMPLETE_PAUSE`, when the run and its sounds are freed. A track replaced by a file in
-    another key needs its riff remade to match, or removed.
+    another key needs its riff remade to match, or removed. For now `MusicLibrary.riff_tracks` maps
+    supplied songs back to their original zone's riff, preserving the existing completion sounds;
+    their keys have not been retuned to the supplied songs.
 
 ## Campaign, bosses and cinematics
 
@@ -1883,6 +2028,7 @@ encounter.setup(world, context, arena)   joins the world between the player and 
 | `scripts/bosses/sleep_taker/`, `scenes/bosses/sleep_taker.tscn`, `data/bosses/dead_zone_boss*.tres` | the Sleep Taker, the Dead Zone's boss (see below; `./play.sh --boss=dead_zone_boss` or `--level=dead_zone/boss`) |
 | `scripts/bosses/the_house/`, `scenes/bosses/the_house.tscn`, `data/bosses/marketplace_boss*.tres` | The House, the Marketplace's boss (see below; `./play.sh --boss=marketplace_boss` or `--level=marketplace/boss`) |
 | `scripts/bosses/hostile_takeover/`, `scenes/bosses/hostile_takeover.tscn`, `data/bosses/corporate_boss*.tres` | Hostile Takeover, the Corporate zone's boss, being built (see below; a preview with `./play.sh --boss=corporate_boss`) |
+| `scripts/bosses/sewer_swarm/`, `scenes/bosses/sewer_swarm.tscn`, `data/bosses/gangland_boss*.tres` | the Sewer Swarm, Gangland's boss (see below; E4a: phase 1, played as a preview with `./play.sh --boss=gangland_boss`) |
 
 - **The arena** (`BossArena`): the generator plans `BossDef.arena_laps` laps from the boss's arena
   config (one lap's seed, features, difficulty, pacing and skin; `duration_seconds` is the lap's
@@ -2008,12 +2154,12 @@ plays it; E1e, the owner's playtest fixes; E1f, the fight at the City's speed), 
 **How the designed bosses fit** (GDD §10; each is a later task):
 - **Floating Head (E1, built):** the City's boss step plays it; `weapon_share_cap` 0.34 keeps
   weapons to one stomp, and its defeat plays out on the track before the results (`victory_over`).
-- **Sewer Swarm (E4):** 4–5 clusters are parts with health of their own and `is_swarm` (MultiMesh
-  crowds drawn by the part), moving ahead of and behind the player (parts never retire); baiting one
-  into a live fence or a hole is the boss script's check (`arena.live_fence_between`,
-  `hole_between`) then `part.defeat(&"fence")`, and `_on_part_defeated` deals `hit_damage()`. The
-  swarm on a wall is `props.block_wall`, one side at a time. The Host is the body part with three
-  weak points.
+- **Sewer Swarm (E4; E4a built, see below):** its clusters are parts with health of their own and
+  `is_swarm`, each drawn as a MultiMesh crowd (`SwarmCrowd`); a cluster charging into a live fence or a
+  hole is the surge's own check (`SewerSwarm.bait_between` on the arena's track) then `part.defeat(&"fence")`
+  or `&"hole"`, and `_on_part_defeated` deals `hit_damage()`. Still to come (E4b): phase 2's strikes from
+  behind and the wall climb (`props.block_wall`, one side at a time, its crowd `SewerSwarmTuning.climb_*`),
+  and the Host, the body part with three weak points.
 - **The House (E5a, see below):** its reels are its spin's telegraph; cherry bombs are
   `circle_warning`s and blast hitboxes, the lightning one `props.fence` a lane rolled out by a spool,
   gold blocks of `props.block`'s kind (pooled in its own script) under `lane_warning`s. The 7 buttons
@@ -2175,6 +2321,44 @@ Buzz Overdrive dropped onto a roof with its planned cut (the skin's `floor_cut` 
 armored carriage. E5b-c: the locomotive comes back (`set_front`) and the gunship docks onto it, its three
 clamps (modelled, folded) the weak points; MERGER COMPLETE screens with the Chairman's face, the defeat,
 the par times, and the slot's `scene` so the campaign plays it after Corporate 2.
+
+**The Sewer Swarm** (GDD §10, task E4: E4a, the clusters, the arena and phase 1, the Rising; E4b, phase 2
+Surrounded, phase 3 The Host, the defeat, par times and its slot). Until E4b its slot keeps the fight in
+`preview_scene` (debug builds: `./play.sh --boss=gangland_boss`, quick play's 18 m/s; the campaign shows its
+card), and phases 2 and 3 play the Rising's pattern as a stand-in (phase 3 re-forms its clusters:
+`SewerSwarm._ensure_clusters`). Its tuning's distances that stand for a time (where a surge meets the runner,
+how far it charges, the baits' spacing, the fairness margins) are written at 18 m/s and multiplied by the
+run's pace (`SewerSwarm.run_pace()`), so at Gangland's 21.8 m/s it plays the same in seconds (a clean phase 1
+takes 19.7 s at both speeds). In `scripts/bosses/sewer_swarm/`:
+
+| File | What |
+|---|---|
+| `sewer_swarm.gd` (`SewerSwarm`) | the encounter: its arena (`_plan_lap`: Gangland's generated holes and fences with nothing else on the track, and every `bait_spacing` from `bait_first` a bait spot, a live full-height fence or a hole in one lane in turn, the lane seeded and at most `bait_max_shift` from the last, the street around it, `bait_clear_span()`, clear of every other hole and fence in every lane), its spots' geometry (`spots_between`, `next_spot`: one whose warning point passed unused is logged `bait_missed`; `warn_at`, `strike_at`, `entry_at`, `surge_reach`, `charge_speed`), `bait_between()` (the first live full fence or hole a cluster charging down a lane meets), its clusters (`clusters`, `queue`: waiting at the roadside ahead, sides alternating, the next to surge nearest at `surge_reach()` and the others `station_spacing` behind it, keeping pace and easing up as the line moves; `next_cluster(side)` takes the first on the bait's side; `requeue` sends one that missed to the back, re-forming), its crowds' pool (`crowd_pool_size`, `take_crowd`, `release_crowd`: every cluster's crowd made before the fight), its horde, the Rising's intro (the clusters rise one after another, `swarm_rise`), `_on_part_defeated` (a cluster destroyed: its sound and burst, `bait_score` for a bait, then the phase's `hit_damage()`), the stand-in defeat (the horde drains away). Helpers: `player_lane` (a wall runner's outer lane), `sound` (plays and logs), `sound_point`, `hint` (`boss:gangland_boss/bait`), `low_end` (`DeviceProfile.is_low_end()`: the smaller crowds) |
+| `swarm_surges.gd` (`SwarmSurges`) | the surges, one at a time, one at every bait spot the runner reaches: WARN (`warning_seconds` before the strike the nearest cluster on the bait's side gathers where it will land, `entry_at`, rearing and heating red; `swarm_chitter`; the aim line, a reused node with the lane warning's own material, down the runner's lane from there, following them and ending at a bait on it), POUR (`pour_seconds` before the lock, toward the line's lane), CHARGE (`lock_seconds` before the strike it lands in the runner's lane and charges at `charge_speed`; the line locks as `props.lane_warning` from the bait or the runner to where it landed; `swarm_surge`; its hitbox live): into the first fence or hole on its way (`surge_bait`, then the cluster's defeat) or past the runner (`surge_pass`, out of sight, and `requeue`). Every step logged (`surge_warn`, `surge_lock`, `surge_hit`, `surge_end`). `cluster_destroyed` ends a surge whose cluster weapons destroyed; `clear()` ends one at a phase change |
+| `swarm_cluster.gd` (`SwarmCluster`) | a cluster: a boss part with health of its own (`cluster_health`), `is_swarm` (the heavy missile's bonus, splash included), `is_obstacle`, claw-immune and passed safely by the dash like every boss part; one hitbox, an enemy attack in its lane (armor and the shield block it), smaller than its mass (`hit_*`) and live only while it charges; a target for weapons and hurt by them only while it surges (`targetable`, `take_damage`); its stages (`Stage`: FORMING, WAITING, GATHER, POUR, CHARGE, SHOCKED, FALLING, SCATTER), `at` (its mound's middle, or its mass's front), its look's values (`pour`, `rear`, `bristle`, `formed`) sent to its crowd from `_process`; destroyed, its death plays out and its crowd goes back to the pool |
+| `swarm_crowd.gd` (`SwarmCrowd`), `swarm_crowd.gdshader` | one crowd: ONE MultiMesh of the screech's crowd mesh (`ScreechModel.crowd_mesh()`, about 100 triangles) with ONE material, drawn in one call; per creature only its instance custom data (three random numbers placing it, and its rank); the shader places and animates every creature (a cluster's mound against a wall's foot, rearing; the pour into a lane in rank order; the lane-wide mass charging, heaped in the middle; shocked on a fence (flung back, burning pink, crackling, steady with Reduced flashing), falling into a hole over its far edge, scattering; thinned by its `alive` share, its highest ranks first, and drawn only up to it, `show_up_to`; a band's horde in a gutter, gathered in drifting heaps; a lair's spill) with the screech's legs, spines and tail, from a few uniforms set only when they change (`set_param`). The screech's look in linear light on every renderer, its skin lifted toward a sickly pale (`skin_lift`: dark olive vanishes on Gangland's asphalt), and an attack's heat (`bristle`) burning its spines, eyes and silhouette enemy-attack red; on the Compatibility renderer an over-bright glow is scaled down whole. Every instance carries a white colour, never read: the Compatibility renderer multiplies a MultiMesh's vertex colours by its instance colour, zero in one without colours (the lairs' MultiMeshes too). `made` counts crowds made (tests: none mid-fight) |
+| `swarm_horde.gd` (`SwarmHorde`), `swarm_lairs.gd` (`SwarmLairs`), `swarm_lair.gdshader` | the scenery at the roadsides, never in the lanes and never hurting: a band in each gutter (`horde_*`: from `horde_behind` to `horde_ahead`, following the runner, drifting back, heaped every `horde_heap_spacing`; filling up over `horde_fill_seconds`, draining away at the defeat); the lairs, a manhole at the street's edge or a vent at a wall's foot every `lair_spacing` along both sides, alternating, none over a hole or by a fence (two MultiMeshes, their instances reused as the runner passes: rattling from `rattle_ahead`, the slots glowing steadily brighter, bursting at `burst_ahead`: a cover flips and lands askew over its hole, a grille flies off; every lair in sight bursts at the fight's start and during the Rising, `lair_burst_share` of them after); the spill, `spill_creatures` pouring out of each lair as it bursts. Visual only: it runs from `_process` |
+| `sewer_swarm_tuning.gd`, `data/bosses/gangland_boss_tuning.tres` | its numbers (F6 in its fight): every crowd size (`cluster_creatures`, `horde_creatures`, `climb_creatures` for E4b's wall climb, `spill_creatures`, each with a smaller `_low_end` one: the phone test, E3, sets them; the fight never reads them), the clusters, the surges, the baits, the Rising; all DESIGN-TBD (`docs/questions/e4.md`) |
+| `data/bosses/gangland_boss.tres`, `data/bosses/gangland_boss_skin.tres` | its slot: `preview_scene`, three phases (Rising: two clusters; Surrounded: three; The Host: three stomps), the standard armor rule with `armor_when_unprotected`, Gangland's music; its arena (three laps of Gangland's street, no features) in a skin of its own (Gangland's, its gutters darker where the horde runs) |
+| `tools/asset_gen/sfx_bank_sewer_swarm.gd` | its sounds (`swarm_rise`, `swarm_chitter`: the surge's rising warning, as long as it, `swarm_surge`, `swarm_shock`, `swarm_fall`, `swarm_scatter`); the lairs are the screech's (`ScreechLair`'s look) |
+| `tools/showcase/sewer_swarm_showcase.tscn` | the fight for reviews through the run camera (`--scenario=rising/surge/fence/hole/fight/model`, `--lanes`, `--speed`, `--crowd=N`, `--low-end`, `--stay`, `--reduced-flashing`, `--events`) |
+| `tools/showcase/swarm_stress.tscn` | the rendering stress test for the phone test (task E3): N clusters of C screeches (`--clusters`, `--crowd`, `--horde`, `--spill`, `--low-end`, `--lanes`, sliders live) drawn exactly as the fight draws them, cycling through what a cluster does, with a readout (fps, frame time and its worst, the crowds' CPU time a frame, draw calls, primitives, objects); `--seconds=S` prints a summary line and quits |
+| `tests/helpers/sewer_swarm_bot.gd` (`SewerSwarmBot`) | a runner who plays the fight by what it shows, `reaction` seconds late: to the bait's lane when a surge warns (`baits`), out of the locked lane after the lock (`bait_escape` &"switch", or &"jump" over the bait; `dodges` off stands in it), and the arena's holes and fences read like any runner (`reads_track`), with a `home_lane` |
+
+- **The crowds' cost** (measured with `swarm_stress --seconds=8`, software rendering under a virtual display
+  on a shared 4-CPU machine, so counts, not timings, for the GPU side): one draw call a crowd whatever its
+  size, on both renderers (the fight's five clusters, two bands, the spill and two kinds of lair: ten for the
+  whole swarm), and 102 triangles a screech. The stress scene's eight crowds at the low-end sizes (524
+  screeches), the defaults (1,324) and twice the defaults (2,648): 8 draw calls at every size (30 in all with
+  the street and the readout's 22) and 55,000, 136,000 and 271,000 triangles, on Forward+ and on
+  Compatibility alike; the CPU sets a few uniforms a crowd a frame, 0.16-0.19 ms for all eight in GDScript
+  at every size (it never touches a creature). Software frame times grow with the triangles (llvmpipe);
+  the phone test (E3) measures the real GPU cost and sets the crowd sizes.
+- **Fairness, proven** (`test_sewer_swarm`, `test_sewer_swarm_fight`): every spot's surge window is clear but
+  for its bait; its bait is in reach from any lane before the lock (a reaction and a switch a lane across
+  the street at 6 lanes fit its 1.3 s); every lane has a way out (a clear neighbouring lane, or the wall
+  beside an outer one: the arena has no signs); a baited cluster meets its bait ahead of the runner; the
+  bot wins phase 1 at 3, 5 and 6 lanes at 18 and 21.8 m/s, and after a death and a retry.
 
 ## Cinematics
 
@@ -2367,7 +2551,25 @@ window or a portal's frame (`html/canvas_resize_policy` adaptive). `tools/godot.
 ## Tests
 
 `tools/godot.sh test` runs every `tests/suites/test_*.gd` (a `TestSuite`); `--suite=<name>` runs
-one. `RunSim` (`tests/helpers/run_sim.gd`) runs a Player over a hand-built layout (`run()`), or a
+one; `--jobs=N` (T-SPEED) splits them across N Godot processes instead, balanced by each suite's
+last measured time (`tests/.suite_times.json`, refreshed by every run and git-ignored), each with its
+own `user://` folder so their saves never collide; use it on a machine with CPUs to spare, since the
+default (one process) is unchanged. `LayoutCache` (`tests/helpers/layout_cache.gd`, T-SPEED) shares
+one real build of a level across every suite in a run: `LevelGenerator.generate()` is a pure function
+of (config, tuning, patterns), so the many suites that independently build the same level -- often a
+campaign step's own default build (3/5/6 lanes, its own seed), which several suites generate just to
+run their own checks on it -- ask the cache instead of the generator. `generate()` always hands back a
+fresh `LevelLayout.copy()`, and `generator()` a `LevelGenerator.for_layout` stand-in with the real
+build's `attempts`/`warnings`/`picks`/`fills` restored, for a caller that reads those or calls one of
+the generator's pure, read-only queries (`feature_start`, `quiet_at`, `difficulty_at`,
+`placeable_features`, ...) -- never a method that places something, or `pick_weights` (it needs
+generation-only state, such as `_due`/`_intro_burst`, the stand-in never had set up); its own doc
+comment lists exactly which. A suite's own "does regenerating give the same layout" check keeps its
+second, independent build real and uncached, so the cache can never make such a check trivially pass;
+`test_layout_cache.gd` checks the cache itself (identity with a fresh build, sharing across separately
+`duplicate()`d configs with the same content, never conflating a real difference, independent copies,
+the `generator()` stand-in's queries), and `--no-layout-cache` (read by `tests/run_tests.gd`) turns it
+off for a suite that must prove its checks still pass without it. `RunSim` (`tests/helpers/run_sim.gd`) runs a Player over a hand-built layout (`run()`), or a
 full RunWorld (`build_world()` + `step_world()`); with `trace` on it records the player after every
 physics frame (position, height, speed, surface, lane, lean). `SkinSuite` (`tests/helpers/skin_suite.gd`) holds
 the checks every zone skin must pass, and helpers to inspect what a skin builds over a whole level
@@ -2497,6 +2699,21 @@ two let go by (each harmless, the next one coming), a run off the edge (a fall, 
 Collector skimming its trail, weapons up to their cap, the armor rule (a break, no armor, the final phase),
 the preview's five stomps to its placeholder defeat the same on every attempt, and quick play at every
 lane count and both speeds won, then a death and the retry (the train whole again, the same plan) won.
+`test_sewer_swarm` builds the Sewer Swarm (E4a) at 3, 5
+and 6 lanes and 18 and 21.8 m/s: its slot (a preview until E4b; phase 1 two clusters, phase 2 the rest), its
+crowd sizes in data and smaller on a low-end device, the screech's crowd mesh, its clusters (simulated
+entities with one hitbox each, their crowds one MultiMesh each with no collision and no node per creature, all
+made before the fight and none after a whole phase of surges), the horde and its lairs, its draw count, its
+MultiMeshes' white instance colours (the Compatibility renderer), its arena's every bait spot (a live full fence or a hole in one lane, the street around it clear, in reach from any
+lane before the lock, a way out of every lane, met by a baited cluster ahead of the runner) and the stress scene;
+`test_sewer_swarm_fight` plays phase 1 with `SewerSwarmBot` without god mode or armor: won by baiting at every
+lane count and both speeds, the same every attempt, every surge warned (line and chitter) warning_seconds before
+its hit and its hitbox live only from the lock, a fence and a hole baited by a runner who switches out and by
+one who jumps (the line locked from the bait, never on toward the runner), a hit only through the hitbox (an
+enemy attack armor blocks, once) and never beside it, a way out of every surge from every lane, no bait: no end
+and no escalation, weapons thinning only a surging cluster with the heavy missile's swarm bonus (and a cluster
+thinned to nothing counting), the armor rule with and without armor, the same fight at 30 and 400 screeches a
+cluster, and a death then a retry won at 21.8 m/s (6 lanes) and through quick play's own restart (3 lanes).
 `test_resonator` plays the
 Resonator in full worlds on real physics (the warning always before the wave, a jump clearing it at 3,
 5 and 6 lanes with its margin measured, walls and the ceiling safe, armor, shield and dash, turns with a
@@ -2603,6 +2820,20 @@ campaign level exactly the same without the features but for its wall fences (pa
 guarantee builds too), and the levels without them having none; quick play with them among every rule's pieces
 (`LayoutChecks.check_layout`); `wall_fence_problem` naming each rule; the hints; every skin's look; and a boss
 arena carrying them.
+`test_perf` checks what keeps frames smooth (task PERF1; A run, Smooth frames) and that none of it changes the
+game: a chunk's dressing spread over frames (the same gameplay nodes in each chunk's frame, the same look once
+dressed, every chunk dressed before the player is `DRESS_BY` from it, a chunk freed undressed skipped without
+errors, and a seeded run on Gangland 2 with its enemies giving the same trace, events and enemy log at budgets of
+0, 1 µs and 1 ms), enemy types readied with the level (every hooked kind and a host's Bad Dream, scripts loaded,
+nothing left in the tree or heard, once a process, `warm_looks()`), hit-stops that never stack or chain, BossProps'
+shared rings, the shader warm-up stage (the cyborgs' looks, fences in every state, particles as particles, the
+run's hidden looks, nothing colliding, lit or top-level), the frame monitor's tags (chunks, a spawn, a kill and
+its hit-stop, the held frames) and summaries, and the frame graph's spikes and holds. `test_frame_times` plays
+City 3, Marketplace 2 and Golden 2 for 40 s each as the game does (`frame_times.gd --child`, two passes, each in
+a fresh process, each frame's faster time) and holds their 99th percentile and worst frame to
+`PerformanceTuning`'s test budgets, scaled by load the way the skin suites' chunk budgets are: each pass times
+`SkinSuite`'s reference build every 60 frames alongside the run (`--reference`, far off to one side, left out of
+the frames), and `SkinSuite.load_factor()` widens the budgets by how slow the machine is right then.
 `test_web_demo` checks the web demo's preset, its export filter against
 the data and everything the demo references, and walks the demo from the title to its end screen (see
 Platforms and build flavors). The runner frees
@@ -2640,7 +2871,9 @@ the run camera, a high one or a low one beside its lane, with `--stay`, `--kill=
 their niches and a runner taking a route past each (`--route=lane|floor|high|low`, `--kick`), through the
 run camera or a camera across the street, straight at a niche or along its wall (`--view=play|close|front|
 wall`), with `--double`, `--pair`, `--skin=golden_palace`, `--speed=N`, `--reduced`), the Golden Zone's statue
-kit (`statue_showcase`: every pose, a turnaround, and a statue rigged in the kit's niche and swinging), the bosses (`floating_head_showcase`, `sleep_taker_showcase`, `the_house_showcase`), the UI kit, the screens (`screens_showcase`;
+kit (`statue_showcase`: every pose, a turnaround, and a statue rigged in the kit's niche and swinging), the bosses (`floating_head_showcase`, `sleep_taker_showcase`, `the_house_showcase`, `sewer_swarm_showcase`),
+the swarm's rendering stress test for the phone test (`swarm_stress`: N clusters of C screeches with a frame-time
+and draw-call readout, sliders, `--seconds=S` for a summary line), the UI kit, the screens (`screens_showcase`;
 its `--screen=hud_armor [--tier=N]` takes the HUD's armor through its states: up, broken, its ring
 filling, back), a zone skin
 (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed screens and emblems a
@@ -2670,6 +2903,25 @@ about ten minutes; `--seeds=6` adds six other seeds a level, `--seeds=9007-9020`
 enemies' own states and the live shots, never from the turn-taking code (only the waits come from the
 director's answers), and hashes each run's event log, so two builds (or the switch off and a build
 without the rule) can be compared run by run.
+
+`tools/measure/frame_times.gd` measures frame times (task PERF1; A run, Smooth frames): it plays campaign
+levels and boss fights (built ones, and ones still being built through their preview scene) through the App
+as the game does, without App.boot (a stand-in for the main scene), with a scripted runner (god mode, no
+falls, the zone's speed; the level's seed picks a lane switch, a jump or a slide every 0.5 to 1.25 s; a boss's
+test bot where there is one), and times every frame with a `FrameMonitor`. Each pass runs in a fresh Godot
+process (`--child`), so it pays what a session starting there pays, and each frame keeps its fastest time over
+the passes (`--passes=N`, 2), since another process taking the CPU shows in one pass only; `--session` plays
+everything in one process instead. Per run: the median, 95th and 99th percentile and worst frame, frames over
+8 and 16 ms, the load, kills and hit-stops (begun, frames held, the longest hold, holds that ran into the
+next), and the causes of the frames over 4 ms by time over the median; `--log` hashes an event log (AttackWatch's,
+every kill, the runner's place each second), `--shaders` lists the shaders first drawn after the load (always on
+under xvfb, where it also counts draw calls, primitives, objects and compiled pipelines by source), and
+`--reference` times SkinSuite's reference build alongside (`test_frame_times`). The headless run is the CPU
+only (the dummy renderer); xvfb's software renderers give valid counts, not times
+(`godot --headless --fixed-fps 60 -s res://tools/measure/frame_times.gd -- [--levels=city/1] [--bosses=]
+[--frames] [--out=build/measure/x.json]`; the whole campaign and its bosses take about fifteen minutes). It
+runs on older builds too (it reads them by property names): copy it and `scripts/run/frame_monitor.gd` into
+a `git archive` of the build.
 
 `tools/measure/stomp_routes.gd` measures how forgiving the Floating Head's ways onto its head are, in its
 fight on a plain street at the City boss step's speed (21 m/s; `--speed=N` for another, 18 for the

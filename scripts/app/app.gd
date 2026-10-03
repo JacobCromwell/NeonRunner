@@ -565,7 +565,9 @@ func _start_run(ctx: RunContext, music: StringName) -> void:
 	run.item_used.connect(_on_item_used)
 	run.start(ctx)
 	TouchInput.enabled = true
-	_play_music(music)
+	var director: MusicDirector = MusicDirector.instance()
+	if director != null:
+		_play_music(director.library.run_track(music, ctx.boss.id if ctx.is_boss() else &""))
 
 
 func _end_run() -> void:

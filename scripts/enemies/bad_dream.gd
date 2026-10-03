@@ -105,6 +105,14 @@ var _arc: MeshInstance3D
 var _arc_material: ShaderMaterial
 
 
+## A Bad Dream's look, for EnemyDirector.warm_up (which frees it): the first builds the meshes and
+## shaders every later one shares.
+static func warm_up(_world: RunWorld, _entry: Dictionary) -> Node:
+	var model := BadDreamModel.new()
+	model.build(0.0)
+	return model
+
+
 func _build() -> void:
 	_t = tuning_res as BadDreamTuning if tuning_res is BadDreamTuning else BadDreamTuning.new()
 	display_name = "Bad Dream"

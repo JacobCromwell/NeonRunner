@@ -125,8 +125,8 @@ func _test_preset() -> void:
 
 func _test_filter_from_data() -> void:
 	var tracks: PackedStringArray = DemoFilter.demo_tracks(App.campaign)
-	check(tracks.has("menu") and tracks.has("city") and tracks.size() == 2,
-		"the demo plays the menus' track and the City's (%s)" % ", ".join(tracks))
+	check(tracks.has("menu") and tracks.has("city") and tracks.has("zone_1") and tracks.has("boss_1") and tracks.size() == 4,
+		"the demo keeps menu/cinematic defaults and the supplied Zone 1 and Boss 1 songs (%s)" % ", ".join(tracks))
 	var left_out: PackedStringArray = DemoFilter.left_out_audio(App.campaign, music, sfx)
 	var filter: String = DemoFilter.expected()
 	for track: String in music.names():

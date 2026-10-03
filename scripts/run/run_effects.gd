@@ -54,6 +54,9 @@ var _air_peak_h: float = 0.0
 ## Coin streams (coin_stream), made on first use: {inst: MultiMeshInstance3D, active, t, count, flight,
 ## spread, arc, from: {node, offset, last}, to: {node, offset, last}}.
 var _streams: Array[Dictionary] = []
+## The effects' own clock (seconds of _process), and when the last freeze began on it (freeze).
+var _clock: float = 0.0
+var _freeze_began: float = -INF
 
 
 func _ready() -> void:
@@ -211,14 +214,22 @@ func shake(strength: float, duration: float = 0.25) -> void:
 
 
 ## A brief hit-stop (RunCamera holds its view; see the class doc for why physics and timers never
-## feel it). `duration` is real seconds; overlapping requests keep the longer one, not their sum, so
-## a burst of kills at once (a splash hit, a dash through a cluster) never stacks into a long stall.
+## feel it). `duration` is real seconds. Freezes never stack or chain (task PERF1): requests in the
+## frame a freeze begins keep the longer one, not their sum (a stomp and its kill), and a request less
+## than SpeedFxTuning.freeze_gap after a freeze began is left out, so a run of kills (a splash hit,
+## auto-fire through a cluster, a dash through a row) never holds the camera again and again.
 func freeze(duration: float) -> void:
-	if shake_scale > 0.0:
+	if shake_scale <= 0.0 or duration <= 0.0:
+		return
+	if _clock == _freeze_began:
 		freeze_left = maxf(freeze_left, duration)
+	elif _clock - _freeze_began >= (tuning.freeze_gap if tuning != null else 0.0):
+		_freeze_began = _clock
+		freeze_left = duration
 
 
 func _process(delta: float) -> void:
+	_clock += delta
 	if freeze_left > 0.0:
 		freeze_left = maxf(freeze_left - delta, 0.0)
 	if world != null and world.player != null:

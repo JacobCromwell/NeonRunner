@@ -548,8 +548,9 @@ func _test_rules() -> void:
 	for id: String in ["city/3", "gangland/1", "gangland/2", "gangland/3"]:
 		for lanes: int in [3, 5, 6]:
 			var config: LevelConfig = campaign.configure(campaign.step(id), lanes)
-			var gen := LevelGenerator.new()
-			var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+			# T-SPEED: this level's own default build (LayoutCache), shared with other suites.
+			var gen: LevelGenerator = LayoutCache.generator(config, tuning, LevelGenerator.load_for(config))
+			var layout: LevelLayout = gen.layout
 			var n: int = _check_rules(layout, config, t, "%s lanes=%d" % [id, lanes])
 			check(gen.warnings.is_empty() and n >= 1, "%s has trucks and follows the rules (%d, %d lanes)" % [id, n, lanes])
 			totals[id] = int(totals.get(id, 0)) + n

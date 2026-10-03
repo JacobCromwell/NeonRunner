@@ -35,7 +35,7 @@ func _ready() -> void:
 	_help.modulate = Color(1, 1, 1, 0.7)
 	# The default font has no arrow glyphs, so keys are spelled out.
 	_help.text = "Left/Right: lanes & wall entry   Up/Space: jump   Down: slide   (touch: swipe)   Esc/P: pause\n" \
-		+ "R restart   F1 lanes 3/5/6   F2 next seed   F3 difficulty   F4 god mode   F5 hitboxes   F6 tuning   M mute"
+		+ "R restart   F1 lanes 3/5/6   F2 next seed   F3 difficulty   F4 god mode   F5 hitboxes   F6 tuning   F7 frame times   M mute"
 	add_child(_help)
 
 

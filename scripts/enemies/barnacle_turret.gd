@@ -65,6 +65,14 @@ var _body_box: Hazard
 var _top_box: Hazard
 
 
+## A Barnacle Turret's look as `entry`'s would be, for EnemyDirector.warm_up (which frees it): the first
+## builds the shaders and meshes every later one shares.
+static func warm_up(world: RunWorld, entry: Dictionary) -> Node:
+	var model := BarnacleTurretModel.new()
+	model.build(world.skin.enemy_variant, int(entry.get("seed", 0)))
+	return model
+
+
 func _build() -> void:
 	tuning = tuning_res as BarnacleTurretTuning
 	if tuning == null:

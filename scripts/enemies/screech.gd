@@ -71,6 +71,22 @@ var _mesh: MeshInstance3D
 var _lair: ScreechLair
 
 
+## A screech's look and both its lairs, a vent and a manhole, for EnemyDirector.warm_up (which frees
+## them): the first builds the meshes and materials every later screech shares.
+static func warm_up(world: RunWorld, entry: Dictionary) -> Node:
+	var variant: StringName = world.skin.enemy_variant if world.skin != null else &"city"
+	var root := Node3D.new()
+	var body := MeshInstance3D.new()
+	body.mesh = ScreechModel.mesh()
+	body.material_override = ScreechModel.material(variant)
+	root.add_child(body)
+	for kind: ScreechLair.Kind in [ScreechLair.Kind.VENT, ScreechLair.Kind.MANHOLE]:
+		var lair := ScreechLair.new()
+		root.add_child(lair)
+		lair.build(kind, variant, 1, int(entry.get("seed", 0)))
+	return root
+
+
 func _build() -> void:
 	display_name = "Sewer Screech"
 	stompable = false  # GDD §9.5: landing on its spines without claws hurts.
