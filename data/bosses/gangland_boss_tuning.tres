@@ -1,0 +1,6 @@
+[gd_resource type="Resource" script_class="SewerSwarmTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/bosses/sewer_swarm/sewer_swarm_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
