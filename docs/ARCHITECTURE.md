@@ -650,7 +650,8 @@ the player's distance like the cut, so it does the same on every attempt and at 
   `lead`, and big attacks take turns) claims its turn `claim_seconds` (2.5 s) before its rev
   (`claiming()`: it reports itself from then on, so another type's big attack that gets ready meanwhile
   waits) and asks `major_attack_blocked` as its rev would start: with one begun before its claim still on
-  (or its shots on their way), it gives up its turn and lets the runner pass (`PASS`, last of its states
+  (or its shots on their way, or one that can't wait begun meanwhile: a Bad Dream bursting out of a host
+  killed then), it gives up its turn and lets the runner pass (`PASS`, last of its states
   so the measure tools' event logs keep the others' numbers): no rev, no line, no cut (`FloorCut.stop`, its
   lane stays whole), it speeds off ahead (`_passing_front`, keyed to the runner's distance) and is out of
   view and gone `pass_seconds` (3 s) later. Over the same runs: no overlap; 378 tanks revved and 2 let the

@@ -300,8 +300,9 @@ func _charge() -> void:
 
 ## As its rev would start, a tank that takes turns asks for its turn (EnemyDirector.major_attack_blocked).
 ## Its claim has held back the other types' big attacks that got ready since, so only one begun before
-## its claim and still on (or its shots still on their way) holds it: then it gives up its turn and lets
-## the runner pass (true) rather than rev into that attack.
+## its claim and still on (or its shots still on their way), or one that can't wait begun meanwhile (a
+## Bad Dream bursting out of a host killed then), holds it: then it gives up its turn and lets the runner
+## pass (true) rather than rev into that attack.
 func _lets_runner_pass() -> bool:
 	if not takes_turns() or not world.director.major_attack_blocked(self):
 		return false
