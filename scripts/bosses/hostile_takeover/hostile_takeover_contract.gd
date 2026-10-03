@@ -29,8 +29,16 @@ extends RefCounted
 ##   runner's lane and the one beside it (struck_lanes) with the rising whine for strafe_warning seconds,
 ##   then the guns rake each line from its far end back past the runner (HostileTakeoverStrafes), always
 ##   leaving a free lane beside.
+## Phase 3, The Merger (`merger`: GDD §10, "its attacks combine both"), plays the same drops and strafes
+## from the war engine (the gunship docked onto the locomotive, HostileTakeover), and after each drop a pass
+## instead of a ride (plan_pass): no armored carriage; the runway of pads on the carriage after the
+## flatcar, the war engine coming back and down over the runner there, so they ride its belly forward under
+## its three docking clamps (the phase's weak points, HostileTakeoverGunship.clamp_points: those not yet
+## torn loose live while the runner rides), until it pulls away and they drop back onto a roof clear of the
+## gaps. The Board's guards and wall fences come back in between (HostileTakeoverBoard.merger).
 ## It plans from the phase's start (its intro included: the first flatcar's drop, whose cut has to go
-## onto the track before the built track reaches it); the strafes wait for its pattern (is_vulnerable).
+## onto the track before the built track reaches it; in phase 3 no drop moves out before `not_before`, the
+## docking's end); the strafes wait for its pattern (is_vulnerable), and in phase 3 for the docking.
 ## Everything is keyed to the runner's distance (the gunship's pose: pose()) or to the physics clock (a
 ## strafe's warning and rake, a falling tank) and seeded from the fight, so every attempt plays the same.
 ## Numbers: HostileTakeoverTuning's Contract groups (DESIGN-TBD).
@@ -63,6 +71,10 @@ var tuning: HostileTakeoverTuning
 var train: HostileTakeoverTrain
 ## The phase's pattern is running: it plans drops and rides and strafes.
 var active: bool = false
+## Phase 3's mode: passes under the docked war engine instead of rides (see the header).
+var merger: bool = false
+## No drop's move out starts before the runner is here (phase 3: the docking's end).
+var not_before: float = -INF
 ## Planned drops and rides, in order (see plan_drop and plan_ride for their fields).
 var drops: Array[Dictionary] = []
 var rides: Array[Dictionary] = []
@@ -83,13 +95,41 @@ func _init(p_boss: HostileTakeover) -> void:
 
 
 ## The phase begins: the gunship carries a Buzz Overdrive, and the cycles start from the carriage after
-## the runner's.
-func start() -> void:
+## the runner's; with `p_merger`, phase 3's (passes, no drop before `p_not_before`).
+func start(p_merger: bool = false, p_not_before: float = -INF) -> void:
 	active = true
+	merger = p_merger
+	not_before = p_not_before
 	_next_from = train.carriage_at(boss.player_distance()) + 1
 	_rest = tuning.strafe_gap
 	boss.gunship.set_saw(true)
-	boss.log_event(&"contract", {"from": _next_from})
+	boss.log_event(&"contract", {"from": _next_from, "merger": merger})
+
+
+## Phase 3 begins on from phase 2 (see the header): the drops phase 2 planned stay if the war engine can
+## make them after its docking (no move out before `p_not_before`), each with a pass after it instead of
+## its armored ride; the rest is dropped (a ride whose armored carriage stands flies on).
+func merge(p_not_before: float) -> void:
+	active = true
+	merger = true
+	not_before = p_not_before
+	_rest = tuning.strafe_gap
+	for ride: Dictionary in rides:
+		if int(ride["stage"]) == RideStage.PLANNED:
+			ride["stage"] = RideStage.CANCELLED
+	for drop: Dictionary in drops:
+		if int(drop["stage"]) != DropStage.PLANNED:
+			continue
+		if float(drop["release_p"]) - float(drop["move"]) < not_before:
+			drop["stage"] = DropStage.CANCELLED
+			continue
+		var pass_ride: Dictionary = plan_pass(int(drop["k"]) + 1)
+		if not pass_ride.is_empty():
+			rides.append(pass_ride)
+	_next_from = maxi(_next_from, train.carriage_at(boss.player_distance()) + 1)
+	boss.gunship.set_saw(true)
+	boss.log_event(&"contract", {"from": _next_from, "merger": true, "kept": drops.filter(func(x: Dictionary) -> bool:
+		return int(x["stage"]) == DropStage.PLANNED).size()})
 
 
 ## The phase is over: what isn't under way is dropped (a ride whose armored carriage stands flies on).
@@ -135,7 +175,7 @@ func _plan() -> void:
 		var drop: Dictionary = plan_drop(k)
 		if not drop.is_empty():
 			drops.append(drop)
-			var ride: Dictionary = plan_ride(k + 2)
+			var ride: Dictionary = plan_pass(k + 1) if merger else plan_ride(k + 2)
 			if not ride.is_empty():
 				rides.append(ride)
 			_next_from = k + 1
@@ -177,6 +217,10 @@ func plan_drop(k: int) -> Dictionary:
 		if problem != "":
 			why = problem
 			continue
+		var release: float = FloorCutPlan.warn_at(cut) - (tuning.drop_before + tuning.drop_fall + tuning.drop_move) * v
+		if release < not_before:
+			why = "before the docking's end"
+			break
 		var pieces := LevelLayout.new()
 		pieces.lane_count = boss.lane_count()
 		pieces.cuts.append(cut)
@@ -215,9 +259,80 @@ func plan_ride(k: int) -> Dictionary:
 	var s: float = clampf(1.0 - (belly - tuning.ride_rear_margin) / maxf(span, 1.0), 0.2, 0.98)
 	var ride := {"k": k, "roof": train.roof(k), "strip": strip, "pad_at": pad_at, "land_at": land_at, "s": s,
 		"descend_from": pad_at - tuning.descend_seconds * v, "climb_to": land_at + tuning.climb_seconds * v,
-		"stage": RideStage.PLANNED, "bay": false, "boarded": false, "landed": false, "stomped": false}
+		"stage": RideStage.PLANNED, "bay": false, "boarded": false, "landed": false, "stomped": false, "pass": false}
 	boss.log_event(&"ride_planned", {"carriage": k, "pad_at": pad_at, "land_at": land_at})
 	return ride
+
+
+## Phase 3's pass with its runway on carriage `k` (corporate, the one after a flatcar): {k, roof (the
+## runway's carriage's), strip, pad_at (the runway's near end), pull_at (where the war engine pulls away),
+## land_at (where its stern passes over the runner: they drop), descend_from, climb_to, stage, bay (begun),
+## boarded, landed, stomps (clamps torn loose in it), pass: true}; or {} if carriage k isn't corporate.
+## The runway lies on carriage k's roof, its far end at least pad_before short of its gap, where the runner
+## drops back onto a roof (pass_landing) as far from any gap as it can.
+func plan_pass(k: int) -> Dictionary:
+	if train.kind(k) != HostileTakeoverTrain.Kind.CORPORATE:
+		return {}
+	var movement: MovementTuning = boss.arena.tuning
+	var v: float = movement.run_speed
+	var pace: float = movement.pace()
+	var length: float = boss.armored.strip_length()
+	var roof: Vector2 = train.roof(k)
+	var first: float = maxf(roof.x, 0.0) + 1.0
+	var last: float = roof.y - tuning.pad_before * pace - length
+	if last < first:
+		return {}
+	var ride_len: float = maxf(tuning.pass_release - tuning.pass_rear_margin, 0.5) * v / maxf(tuning.pass_speed, 0.1)
+	var pull_len: float = tuning.pass_release * v / maxf(tuning.pull_speed, 0.1)
+	var fall: float = _fall_length()
+	# The runway's start whose landing lies farthest from any gap.
+	var best: float = first
+	var best_margin: float = -INF
+	var at: float = first
+	while at <= last + 0.001:
+		var margin: float = _roof_margin(at + ride_len + pull_len + fall)
+		if margin > best_margin + 0.01:
+			best_margin = margin
+			best = at
+		at += 1.0
+	var pad_at: float = best
+	var pull_at: float = pad_at + ride_len
+	var land_at: float = pull_at + pull_len
+	var ride := {"k": k, "roof": roof, "strip": Vector2(pad_at, pad_at + length), "pad_at": pad_at, "pull_at": pull_at,
+		"land_at": land_at, "s": 1.0 - tuning.pass_speed / maxf(v, 0.1),
+		"descend_from": pad_at - tuning.pass_descend_seconds * v, "climb_to": land_at + tuning.climb_seconds * v,
+		"stage": RideStage.PLANNED, "bay": false, "boarded": false, "landed": false, "stomped": false, "pass": true,
+		"stomps": []}
+	boss.log_event(&"pass_planned", {"carriage": k, "pad_at": pad_at, "pull_at": pull_at, "land_at": land_at,
+		"landing_margin": best_margin})
+	return ride
+
+
+## How far track distance `d` is from the nearest gap's edge (negative inside a gap).
+func _roof_margin(d: float) -> float:
+	var k: int = train.next_gap(d)
+	var gap := Vector2(train.gap_start(k), train.gap_end(k))
+	if d >= gap.x:
+		return -minf(d - gap.x, gap.y - d)
+	var before: float = d - train.gap_end(k - 1) if k > 0 else INF
+	return minf(gap.x - d, before)
+
+
+## How far along the track a runner travels falling from the ceiling's height to the roof.
+func _fall_length() -> float:
+	var m: MovementTuning = boss.world.tuning
+	return sqrt(2.0 * m.ceiling_height / maxf(m.gravity() * m.fall_gravity_multiplier, 0.01)) * m.run_speed
+
+
+## Where the runner at track distance `d` is along the docked war engine's belly during pass `ride`
+## (metres from its stern): pass_rear_margin at the runway's start, moving forward at pass_speed until
+## pass_release, then back as it pulls away (at pull_speed) until its stern passes them (0) and on.
+func pass_u(ride: Dictionary, d: float) -> float:
+	var v: float = maxf(boss.arena.tuning.run_speed, 0.1)
+	var pull_at: float = float(ride["pull_at"])
+	if d <= pull_at:
+		return tuning.pass_rear_margin + (d - float(ride["pad_at"])) * tuning.pass_speed / v
+	return tuning.pass_release - (d - pull_at) * tuning.pull_speed / v
 
 
 # --- Drops ---------------------------------------------------------------------------------------
@@ -236,6 +351,7 @@ func _tick_drops(delta: float, d: float) -> void:
 					drop["t"] = 0.0
 					var from: Vector3 = boss.gunship.saw_world()
 					drop["y0"] = maxf(from.y, 0.5)
+					drop["x0"] = from.x
 					boss.gunship.set_saw(false)
 					boss.gunship.set_fall(Vector3(boss.world.geo.lane_x(int(drop["lane"])), float(drop["y0"]),
 						TrackGeometry.world_z(float(drop["parked"]))))
@@ -243,8 +359,9 @@ func _tick_drops(delta: float, d: float) -> void:
 			DropStage.FALLING:
 				drop["t"] = float(drop["t"]) + delta
 				var k: float = clampf(float(drop["t"]) / maxf(tuning.drop_fall, 0.05), 0.0, 1.0)
-				var at := Vector3(boss.world.geo.lane_x(int(drop["lane"])), float(drop["y0"]) * (1.0 - k * k),
-					TrackGeometry.world_z(float(drop["parked"])))
+				var lane_x: float = boss.world.geo.lane_x(int(drop["lane"]))
+				var at := Vector3(lerpf(float(drop.get("x0", lane_x)), lane_x, smoothstep(0.0, 1.0, k)),
+					float(drop["y0"]) * (1.0 - k * k), TrackGeometry.world_z(float(drop["parked"])))
 				boss.gunship.set_fall(at)
 				if k >= 1.0:
 					_land(drop, at)
@@ -284,6 +401,9 @@ func _tick_rides(d: float) -> void:
 	var player: Player = boss.world.player
 	var live: bool = false
 	for ride: Dictionary in rides:
+		if ride["pass"]:
+			live = _tick_pass(ride, d) or live
+			continue
 		match int(ride["stage"]):
 			RideStage.PLANNED:
 				if d >= (ride["roof"] as Vector2).x - ARMORED_SIGHT and not armored.in_use():
@@ -308,6 +428,44 @@ func _tick_rides(d: float) -> void:
 					armored.release()
 					ride["stage"] = RideStage.DONE
 	boss.gunship.set_weak_points_enabled(live)
+
+
+## One pass's step (see plan_pass): its runway set out within sight, the war engine coming back
+## (HostileTakeover.pass_begins), the runner boarding, its clamps live while they ride its belly, their
+## drop back onto the roof (HostileTakeover.pass_ends) and the runway put away behind them. True if the
+## clamps are live now. Once the boss is beaten, the pass only waits to put its runway away.
+func _tick_pass(ride: Dictionary, d: float) -> bool:
+	var armored: HostileTakeoverArmored = boss.armored
+	var player: Player = boss.world.player
+	var strip: Vector2 = ride["strip"]
+	match int(ride["stage"]):
+		RideStage.PLANNED:
+			if d >= strip.x - ARMORED_SIGHT and not armored.in_use():
+				armored.place(int(ride["k"]), ride["roof"], strip, false)
+				ride["stage"] = RideStage.PLACED
+				boss.log_event(&"pass_placed", {"carriage": ride["k"], "ahead": strip.x - d})
+		RideStage.PLACED:
+			if boss.is_defeated():
+				if d > strip.y + RELEASE_AFTER:
+					armored.release()
+					ride["stage"] = RideStage.DONE
+				return false
+			if not ride["bay"] and d >= float(ride["descend_from"]):
+				ride["bay"] = true
+				boss.pass_begins(ride)
+			var on_ceiling: bool = player.surface == Player.Surface.CEILING
+			if on_ceiling and not ride["boarded"] and d >= float(ride["pad_at"]) - 1.0:
+				ride["boarded"] = true
+				boss.log_event(&"pass_boarded", {"carriage": ride["k"], "lane": player.lane})
+			var live: bool = on_ceiling and boss.is_vulnerable() and d >= float(ride["pad_at"]) and d <= float(ride["land_at"])
+			if not ride["landed"] and d > float(ride["land_at"]) and not on_ceiling:
+				ride["landed"] = true
+				boss.pass_ends(ride)
+			if ride["landed"] and d > float(ride["climb_to"]) and d > strip.y + RELEASE_AFTER:
+				armored.release()
+				ride["stage"] = RideStage.DONE
+			return live
+	return false
 
 
 ## The ride on now (placed, the runner between where the gunship starts down and where it has climbed
@@ -361,10 +519,20 @@ static func strip_clears(movement: MovementTuning, length: float, margin: float 
 ## How far short of the bay's middle (along the belly) a jump from the belly has to leave to come back
 ## up onto it: its time to fall back to the bay's hanging depth, at the ride's relative speed.
 func bay_lead(ride: Dictionary) -> float:
+	return relative_speed(ride) * up_time(tuning.bay_depth)
+
+
+## How far short of a clamp's middle (along the belly, metres) a jump from it has to leave during a pass to
+## come back up onto the clamp: its time to fall back to the clamp's hanging depth, at pass_speed.
+func clamp_lead() -> float:
+	return tuning.pass_speed * up_time(tuning.clamp_depth)
+
+
+## How long a jump from the ceiling takes to come back up to `depth` under it.
+func up_time(depth: float) -> float:
 	var m: MovementTuning = boss.world.tuning
 	var g_down: float = m.gravity() * m.fall_gravity_multiplier
-	var t: float = m.jump_time_to_apex + sqrt(2.0 * maxf(m.jump_height - tuning.bay_depth, 0.0) / g_down)
-	return relative_speed(ride) * t
+	return m.jump_time_to_apex + sqrt(2.0 * maxf(m.jump_height - depth, 0.0) / g_down)
 
 
 # --- Strafes -------------------------------------------------------------------------------------
@@ -372,7 +540,7 @@ func bay_lead(ride: Dictionary) -> float:
 func _tick_strafe(delta: float, d: float) -> void:
 	if strafe.is_empty():
 		_rest += delta
-		if active and boss.is_vulnerable() and _rest >= tuning.strafe_gap and strafe_fits(d):
+		if active and boss.is_vulnerable() and (not merger or boss.docked) and _rest >= tuning.strafe_gap and strafe_fits(d):
 			_start_strafe(d)
 		return
 	strafe["t"] = float(strafe["t"]) + delta
@@ -445,6 +613,7 @@ func _cut_near(from: float, to: float) -> bool:
 
 
 ## Starts a strafe with the runner at `d`: their lane and (with room) the ones beside it, seeded.
+## (Phase 3: not before the war engine has docked, HostileTakeover.docked.)
 func _start_strafe(d: float) -> void:
 	var lanes: int = boss.lane_count()
 	var n: int = tuning.struck_lanes(lanes)
@@ -492,12 +661,12 @@ func struck_now() -> Array[int]:
 # --- The gunship's flight ------------------------------------------------------------------------
 
 ## The gunship's pose for the runner at `d`, from its pose at its station (`station`: {middle (track
-## distance), y, x, roll, pitch}): a ride's descent, ride and climb first, then a drop's move out and back,
-## then a strafe's bank toward its lines.
+## distance), y, x, roll, pitch}): a ride's or a pass's descent, ride and climb first, then a drop's move
+## out and back, then a strafe's bank toward its lines (not docked: the war engine keeps to the line).
 func pose(station: Dictionary, d: float) -> Dictionary:
 	for ride: Dictionary in rides:
 		if int(ride["stage"]) == RideStage.PLACED and d >= float(ride["descend_from"]) and d <= float(ride["climb_to"]):
-			return _ride_pose(ride, station, d)
+			return _pass_pose(ride, station, d) if ride["pass"] else _ride_pose(ride, station, d)
 	for drop: Dictionary in drops:
 		var stage: int = int(drop["stage"])
 		if stage == DropStage.DONE or stage == DropStage.CANCELLED:
@@ -505,7 +674,7 @@ func pose(station: Dictionary, d: float) -> Dictionary:
 		var move: float = maxf(float(drop["move"]), 0.1)
 		if absf(d - float(drop["release_p"])) < move:
 			return _drop_pose(drop, station, d, move)
-	if not strafe.is_empty():
+	if not strafe.is_empty() and not boss.docked:
 		var out: Dictionary = station.duplicate()
 		var lanes: Array = strafe["lanes"]
 		var mid: float = 0.0
@@ -548,10 +717,34 @@ func _ride_pose(ride: Dictionary, station: Dictionary, d: float) -> Dictionary:
 func _drop_pose(drop: Dictionary, station: Dictionary, d: float, move: float) -> Dictionary:
 	var e: float = smoothstep(0.0, 1.0, 1.0 - absf(d - float(drop["release_p"])) / move)
 	var middle: float = float(drop["parked"]) - HostileTakeoverModel.BAY_AHEAD + (d - float(drop["release_p"]))
+	if boss.docked:
+		# The war engine moves out along the line to let it fall from its bay, at its own height.
+		return {"middle": lerpf(float(station["middle"]), middle, e), "y": float(station["y"]), "x": float(station["x"]),
+			"roll": float(station["roll"]), "pitch": float(station["pitch"])}
 	return {"middle": lerpf(float(station["middle"]), middle, e),
 		"y": lerpf(float(station["y"]), tuning.drop_height, e),
 		"x": lerpf(float(station["x"]), boss.world.geo.lane_x(int(drop["lane"])), e),
 		"roll": lerpf(float(station["roll"]), 0.0, e), "pitch": lerpf(float(station["pitch"]), -0.04, e)}
+
+
+## The docked war engine's pose during pass `ride`: coming back and down from its station over the runway's
+## run-up, its belly the ceiling over the runner (pass_u: its stern pass_u behind them) along the pass,
+## then pulling away and back up to its station.
+func _pass_pose(ride: Dictionary, station: Dictionary, d: float) -> Dictionary:
+	var h: float = boss.world.tuning.ceiling_height
+	var middle: float = d - pass_u(ride, d) + HostileTakeoverModel.BELLY_STERN
+	var pad_at: float = float(ride["pad_at"])
+	var land_at: float = float(ride["land_at"])
+	var e: float = 1.0
+	if d < pad_at:
+		e = smoothstep(0.0, 1.0, (d - float(ride["descend_from"])) / maxf(pad_at - float(ride["descend_from"]), 0.1))
+	elif d > land_at:
+		e = 1.0 - smoothstep(0.0, 1.0, (d - land_at) / maxf(float(ride["climb_to"]) - land_at, 0.1))
+	if e >= 1.0:
+		return {"middle": middle, "y": h, "x": 0.0, "roll": 0.0, "pitch": 0.0}
+	return {"middle": lerpf(float(station["middle"]), middle, e), "y": lerpf(float(station["y"]), h, e),
+		"x": lerpf(float(station["x"]), 0.0, e), "roll": lerpf(float(station["roll"]), 0.0, e),
+		"pitch": lerpf(float(station["pitch"]), 0.0, e)}
 
 
 ## True while a ride's gunship is low over the runner (the encounter keeps its lurch off it).

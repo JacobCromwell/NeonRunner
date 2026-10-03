@@ -15,6 +15,16 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##   takeover_drop       the Buzz Overdrive landing on the roof: a huge steel slam, a crunch and a clatter
 ##   takeover_bay        the drop bay opening as the gunship comes down for the ride: a pneumatic hiss, two
 ##                       heavy clunks and a low warning tone
+##   takeover_clamps     the docking (phase 3): three huge clamps slamming home one after another, hydraulics
+##                       hissing, a deep lock tone
+##   takeover_merger     "MERGER COMPLETE": a corporate broadcast's sting, a cold chord rising to a bright
+##                       three-note fanfare over a hum
+##   takeover_clamp      a docking clamp torn loose: a hydraulic burst, steel snapping with a ringing clank,
+##                       a falling alarm blip
+##   takeover_explode    the gunship exploding (the defeat): a huge boom, a fireball's roar and crackle, its
+##                       turbines winding down, debris raining
+##   takeover_derail     the locomotive derailing into the lobby: a long screech of steel, a crash of glass
+##                       and girders, the sculpture's slab toppling with a deep thud
 
 
 func sounds() -> Dictionary:
@@ -27,6 +37,11 @@ func sounds() -> Dictionary:
 		"takeover_strafe": _strafe,
 		"takeover_drop": _drop,
 		"takeover_bay": _bay,
+		"takeover_clamps": _clamps,
+		"takeover_merger": _merger,
+		"takeover_clamp": _clamp,
+		"takeover_explode": _explode,
+		"takeover_derail": _derail,
 	}
 
 
@@ -206,4 +221,112 @@ func _bay() -> PackedFloat32Array:
 	DSP.mix(b, _blip(0.2, 392.0, 0.25, 0.1), 0.5, 0.4)
 	DSP.mix(b, _blip(0.26, 330.0, 0.25, 0.12), 0.7, 0.45)
 	DSP.crush(b, 10, 22000.0)
+	return b
+
+
+## The docking: three huge clamps slamming home one after another (each a heavy clank over a thud), the
+## hydraulics hissing, a deep lock tone at the end.
+func _clamps() -> PackedFloat32Array:
+	var rng := _rng(709)
+	var d: float = 1.4
+	var b := DSP.buffer(d)
+	for i: int in 3:
+		var at: float = 0.08 + i * 0.26
+		DSP.mix(b, DSP.metal_hit(0.45, 96.0 + i * 14.0, 0.16, rng), at, 0.85)
+		DSP.mix(b, DSP.kick(0.22, 90.0, 40.0, rng), at, 0.6)
+		var hiss := DSP.noise(0.25, rng)
+		DSP.filter(hiss, &"highpass", 2800.0)
+		DSP.adsr(hiss, 0.01, 0.08, 0.4, 0.12)
+		DSP.mix(b, hiss, at + 0.04, 0.3)
+	var lock := DSP.osc(0.6, func(u: float) -> float: return 62.0 - 6.0 * u, &"square")
+	DSP.filter(lock, &"lowpass", 420.0)
+	DSP.adsr(lock, 0.02, 0.15, 0.6, 0.3)
+	DSP.mix(b, lock, 0.78, 0.55)
+	DSP.drive(b, 1.4)
+	DSP.crush(b, 10, 22000.0)
+	return b
+
+
+## "MERGER COMPLETE": a corporate broadcast's sting: a cold chord swelling (square waves through a soft
+## filter), then a bright three-note fanfare, a hum under it.
+func _merger() -> PackedFloat32Array:
+	var d: float = 1.7
+	var b := DSP.buffer(d)
+	for f: float in [196.0, 246.94, 293.66]:
+		var chord := DSP.osc(0.9, func(_u: float) -> float: return f, &"square")
+		DSP.filter(chord, &"lowpass", 1400.0)
+		DSP.adsr(chord, 0.25, 0.2, 0.7, 0.3)
+		DSP.mix(b, chord, 0.0, 0.16)
+	var notes: Array[float] = [392.0, 493.88, 587.33]
+	for i: int in notes.size():
+		var at: float = 0.6 + i * 0.16
+		DSP.mix(b, _blip(0.5 if i == notes.size() - 1 else 0.15, notes[i], 0.3, 0.12 if i == notes.size() - 1 else 0.06), at, 0.4)
+	var hum := DSP.osc(d, func(_u: float) -> float: return 98.0, &"saw")
+	DSP.filter(hum, &"lowpass", 300.0)
+	DSP.adsr(hum, 0.3, 0.3, 0.5, 0.6)
+	DSP.mix(b, hum, 0.0, 0.25)
+	DSP.crush(b, 10, 22000.0)
+	return b
+
+
+## A docking clamp torn loose: a hydraulic burst, steel snapping with a ringing clank, an alarm blip falling.
+func _clamp() -> PackedFloat32Array:
+	var rng := _rng(710)
+	var d: float = 1.0
+	var b := _boom(d, 120.0, 40.0, 0.14, rng)
+	DSP.mix(b, DSP.metal_hit(0.8, 140.0, 0.3, rng), 0.0, 0.9)
+	DSP.mix(b, DSP.metal_hit(0.5, 267.0, 0.18, rng), 0.03, 0.45)
+	var burst := DSP.noise(0.6, rng)
+	DSP.filter(burst, &"highpass", 2000.0)
+	DSP.adsr(burst, 0.005, 0.12, 0.45, 0.35)
+	DSP.mix(b, burst, 0.02, 0.55)
+	var alarm := DSP.osc(0.35, func(u: float) -> float: return DSP.sweep(880.0, 440.0, u), &"square")
+	DSP.filter(alarm, &"lowpass", 2200.0)
+	DSP.envelope(alarm, 0.01, 0.3)
+	DSP.mix(b, alarm, 0.35, 0.22)
+	DSP.drive(b, 1.6)
+	DSP.crush(b, 9, 21000.0)
+	return b
+
+
+## The gunship exploding: a huge boom, a fireball's roar and crackle, its turbines winding down, debris
+## raining.
+func _explode() -> PackedFloat32Array:
+	var rng := _rng(711)
+	var d: float = 2.2
+	var b := DSP.buffer(d)
+	DSP.mix(b, _explosion(1.6, 1.0, rng), 0.0, 1.0)
+	DSP.mix(b, _boom(1.2, 70.0, 28.0, 0.3, rng), 0.0, 0.8)
+	var roar := DSP.noise(1.6, rng)
+	DSP.filter_sweep(roar, &"lowpass", 2400.0, 300.0, 0.7)
+	DSP.adsr(roar, 0.02, 0.4, 0.5, 0.9)
+	DSP.mix(b, roar, 0.05, 0.6)
+	var turbine := DSP.osc(1.4, func(u: float) -> float: return DSP.sweep(1300.0, 180.0, u), &"triangle")
+	DSP.adsr(turbine, 0.02, 0.3, 0.5, 0.8)
+	DSP.mix(b, turbine, 0.1, 0.18)
+	DSP.mix(b, _crackle(1.6, 40, 0.2, 2200.0, rng), 0.3, 0.45)
+	DSP.drive(b, 1.6)
+	DSP.crush(b, 9, 21000.0)
+	return b
+
+
+## The locomotive derailing: a long screech of steel sliding off the guideway, a crash of glass and girders
+## as it ploughs into the lobby, and the sculpture's slab toppling with a deep thud.
+func _derail() -> PackedFloat32Array:
+	var rng := _rng(712)
+	var d: float = 2.8
+	var b := DSP.buffer(d)
+	var screech := DSP.osc(1.4, func(u: float) -> float: return DSP.sweep(2300.0, 700.0, u) * (1.0 + 0.03 * sin(u * 120.0)), &"saw")
+	DSP.filter(screech, &"bandpass", 1500.0, 2.5)
+	DSP.adsr(screech, 0.05, 0.4, 0.6, 0.5)
+	DSP.mix(b, screech, 0.0, 0.4)
+	DSP.mix(b, _explosion(1.2, 0.9, rng), 0.9, 0.85)
+	var glass := DSP.noise(0.9, rng)
+	DSP.filter(glass, &"highpass", 4200.0)
+	DSP.adsr(glass, 0.005, 0.2, 0.4, 0.6)
+	DSP.mix(b, glass, 0.92, 0.5)
+	DSP.mix(b, _crackle(1.0, 30, 0.2, 3400.0, rng), 0.95, 0.4)
+	DSP.mix(b, _boom(0.9, 60.0, 26.0, 0.25, rng), 1.75, 0.8)
+	DSP.drive(b, 1.5)
+	DSP.crush(b, 9, 21000.0)
 	return b

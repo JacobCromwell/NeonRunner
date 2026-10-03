@@ -29,7 +29,9 @@ extends RefCounted
 ## play once the phase is over); wall fences as track pieces past the built track (stream_from). A flatcar
 ## keeps its roof clear (phase 2's Buzz Overdrive drops onto one: HostileTakeoverContract). After a pause
 ## (phase 2), the Board goes on from the first carriage past the built track, so nothing it plans pops up
-## in view. Every choice comes from a seed of its carriage (a Collector's lane from where the runner is),
+## in view. In phase 3 (`merger`: GDD §10, The Merger's attacks "combine both") it plans only the
+## carriages of the consist's slots in HostileTakeoverTuning.merger_board_slots (the others carry the war
+## engine's drops and passes): their guards from merger_guards and their wall fences, no Tithe Collector. Every choice comes from a seed of its carriage (a Collector's lane from where the runner is),
 ## so the fight plays the same on every attempt.
 
 ## A carriage is planned once the built track reaches within this of its roof's start (so the whole of
@@ -66,6 +68,9 @@ var tithes_due: Array[Dictionary] = []
 ## Collectors brought into play by phase (phase index → count), and those left out by the cap.
 var visits: Dictionary = {}
 var visits_skipped: int = 0
+
+## Phase 3's planning (see the header).
+var merger: bool = false
 
 var _cyborg: CyborgTuning
 var _paused: bool = false
@@ -133,13 +138,14 @@ func plan(k: int) -> void:
 		rec["guards"].append(g)
 		extra.enemies.append({"type": "cyborg", "at": g["at"], "lane": g["lane"], "side": 0, "board_phase": boss.phase_index,
 			"seed": hash([String(boss.def.id), "guard", k, g["lane"], boss.rng.seed]), "params": {"panic": g["panic"]}})
-	if tuning.tithe_on(k, kind):
+	if not merger and tuning.tithe_on(k, kind):
 		var at: float = tithe_spot(k)
 		rec["tithe"] = at
 		tithes_due.append({"k": k, "at": at})
 	if not extra.enemies.is_empty():
 		boss.arena.add_pieces(extra)
-	var fence: Dictionary = _wall_fence(k) if kind != HostileTakeoverTrain.Kind.FLATCAR else {}
+	var fenced: bool = kind != HostileTakeoverTrain.Kind.FLATCAR and (not merger or tuning.merger_board_slots.has(train.slot(k)))
+	var fence: Dictionary = _wall_fence(k) if fenced else {}
 	if not fence.is_empty():
 		rec["wall_fence"] = fence
 		var walls := LevelLayout.new()
@@ -187,7 +193,8 @@ func _coupling_lane(k: int) -> int:
 ## Carriage `k`'s guards: [{at, lane, panic}] (see the header).
 func _guards(k: int) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
-	var count: int = tuning.guards_on(k, boss.lane_count(), train.kind(k))
+	var count: int = tuning.merger_guards_on(boss.lane_count(), train.kind(k), train.slot(k)) if merger \
+		else tuning.guards_on(k, boss.lane_count(), train.kind(k))
 	if count <= 0:
 		return out
 	var roof: Vector2 = train.roof(k)

@@ -111,14 +111,16 @@ func _build_runway_look(lane_w: float) -> void:
 
 
 ## Stands it over carriage `k`'s roof `roof` (track distances), its runway of pads from the start of
-## `p_strip` (track distances; as long as the tuning's pad_strip at the run's pace) in every lane.
-func place(k: int, roof: Vector2, p_strip: Vector2) -> void:
+## `p_strip` (track distances; as long as the tuning's pad_strip at the run's pace) in every lane. Without
+## `with_body`, the runway alone (phase 3's passes: no armored carriage).
+func place(k: int, roof: Vector2, p_strip: Vector2, with_body: bool = true) -> void:
 	carriage = k
 	span = roof
 	strip = Vector2(p_strip.x, p_strip.x + _strip_length)
 	global_position = Vector3(0.0, 0.0, TrackGeometry.world_z(roof.x))
 	visible = true
-	body_box.set_enabled(true)
+	model.visible = with_body
+	body_box.set_enabled(with_body)
 	runway.global_position = Vector3(0.0, 0.0, TrackGeometry.world_z(p_strip.x))
 	runway.visible = true
 	for area: Area3D in pads:

@@ -4,8 +4,8 @@ extends RefCounted
 ## - the military gunship pacing the train overhead (gunship()): an armoured olive and gunmetal hull over a
 ##   wide, flat belly (the ceiling the runner rides in phase 2: as wide as the lanes, flush from its stern
 ##   to its front, BELLY_STERN to BELLY_FRONT, nothing hanging below it), sponsons along the belly's sides
-##   with their guns, a chin turret, stub wings with engine pods, twin tail fins, three docking clamps
-##   folded flush into the belly (phase 3's, task E5b-c), the corporation's mark on the belly, steady
+##   with their guns, a chin turret, stub wings with engine pods, twin tail fins, the corporation's mark
+##   on the belly (its three docking clamps are their own meshes: clamp_folded, clamp_body), steady
 ##   cold-white running lights and its engines' cold blue glow toward the runner behind it. Its guns are
 ##   dark: nothing on it glows in a hazard colour (a strafe's tracers are the strafe's own:
 ##   HostileTakeoverStrafes). Its drop bay (bay_open(): the bay open, glowing the weak points' red, phase
@@ -123,12 +123,6 @@ static func gunship(belly_width: float, skin: ZoneSkin = null) -> ArrayMesh:
 	# The corporation's mark on the belly, seen from the train below.
 	s.quad_uv(Vector3(-2.2, -0.06, 2.8), Vector3(-2.2, -0.06, 7.2), Vector3(2.2, -0.06, 7.2), Vector3(2.2, -0.06, 2.8),
 		Vector2(-1.0, 1.0), Vector2(-1.0, -1.0), Vector2(1.0, -1.0), Vector2(1.0, 1.0), BRAND_PAINT, 0.0, MeshKit.PAT_CORP_LOGO, 3.0)
-	# Three docking clamps folded flush into the belly (phase 3 opens them): a hinge block and two jaws.
-	for z: float in [-8.4, 1.0, 9.2]:
-		s.box(Vector3(0.0, -0.04, z), Vector3(1.6, 0.08, 1.4), STEEL_DARK, 0.0, MeshKit.PAT_PLAIN, MeshKit.FACE_NY)
-		for xs: float in [-1.0, 1.0]:
-			s.box(Vector3(xs * 1.1, -0.03, z - 1.1), Vector3(0.5, 0.06, 2.4), GUNMETAL_LIGHT.darkened(0.2), 0.0, MeshKit.PAT_PLAIN,
-				MeshKit.FACE_NY)
 	# The hull over the belly, tapering to its nose.
 	var z_nose: float = -half_l
 	var z_body: float = -half_l + 5.0
@@ -533,6 +527,195 @@ static func coupling_cue(gap: float, from: float, to: float, width: float, color
 	for xs: float in [-1.0, 1.0]:
 		s.box(Vector3(xs * (hw + 0.04), y, (z_near + z_far) * 0.5), Vector3(0.06, 0.02, z_near - z_far), color, 1.0, MeshKit.PAT_PLAIN,
 			MeshKit.FACE_PY)
+	var mesh: ArrayMesh = batch.to_mesh()
+	_cache[key] = mesh
+	return mesh
+
+
+# --- Phase 3: the docking clamps and arms, the screens' pylons, the lobby tower and its sculpture ---
+
+## A docking clamp folded flush into the gunship's belly (until phase 3 opens it), `width` by `length`, in
+## clamp_body's space: a dark hatch with a seam down its middle, nothing below the belly. Cached.
+static func clamp_folded(width: float, length: float, skin: ZoneSkin = null) -> ArrayMesh:
+	var key: String = "clamp_folded_%.2f_%.2f_%d" % [width, length, skin.get_instance_id() if skin != null else 0]
+	if _cache.has(key):
+		return _cache[key]
+	var batch := MeshBatch.new()
+	var s: MeshLayer = batch.layer(solid_material(skin))
+	s.box(Vector3(0.0, -0.02, 0.0), Vector3(width - 0.2, 0.04, length), STEEL_DARK, 0.0, MeshKit.PAT_PLAIN, MeshKit.FACE_NY)
+	for xs: float in [-1.0, 1.0]:
+		s.box(Vector3(xs * (width * 0.25), -0.03, 0.0), Vector3(width * 0.44, 0.04, length - 0.3), GUNMETAL_LIGHT.darkened(0.2), 0.0,
+			MeshKit.PAT_PLAIN, MeshKit.FACE_NY)
+	var mesh: ArrayMesh = batch.to_mesh()
+	_cache[key] = mesh
+	return mesh
+
+
+## One of phase 3's docking clamps hanging under the gunship's belly over a third of it, `width` wide,
+## `length` along the belly and `depth` deep, in its own space: its spot on the belly's underside at the
+## origin, hanging down (-y), the belly's front toward -z. A dark mount plate flush with the belly, a hinge
+## block at each end of its width and two heavy jaws closing across it round its lock (clamp_core: the
+## weak points' red), hydraulic rams along it. Solid kit colours, nothing glowing. Cached.
+static func clamp_body(width: float, length: float, depth: float, skin: ZoneSkin = null) -> ArrayMesh:
+	var key: String = "clamp_%.2f_%.2f_%.2f_%d" % [width, length, depth, skin.get_instance_id() if skin != null else 0]
+	if _cache.has(key):
+		return _cache[key]
+	var batch := MeshBatch.new()
+	var s: MeshLayer = batch.layer(solid_material(skin))
+	var hw: float = width * 0.5
+	var hl: float = length * 0.5
+	s.box(Vector3(0.0, -0.05, 0.0), Vector3(width, 0.1, length), STEEL_DARK, 0.0, MeshKit.PAT_PLAIN, MeshKit.ALL_FACES & ~MeshKit.FACE_PY)
+	for xs: float in [-1.0, 1.0]:
+		s.box(Vector3(xs * (hw - 0.3), -0.3, 0.0), Vector3(0.5, 0.45, length * 0.85), GUNMETAL, 0.0, MeshKit.PAT_PLAIN)
+		# The jaw: a heavy slab from the hinge down and in, its lip under the lock.
+		var jaw := Transform3D(Basis(Vector3.BACK, xs * 0.55) * Basis.from_scale(Vector3(0.32, depth * 0.95, length * 0.72)),
+			Vector3(xs * (hw - 0.75), -depth * 0.5, 0.0))
+		s.box_xform(jaw, OLIVE_DARK, 0.0, MeshKit.PAT_PLAIN)
+		s.box(Vector3(xs * (hw * 0.5), -depth + 0.06, 0.0), Vector3(0.5, 0.12, length * 0.6), GUNMETAL_LIGHT, 0.0, MeshKit.PAT_PLAIN)
+	for z: float in [-hl * 0.62, hl * 0.62]:
+		s.box(Vector3(0.0, -0.2, z), Vector3(width * 0.78, 0.12, 0.14), GUNMETAL_LIGHT, 0.0, MeshKit.PAT_PLAIN)
+	var mesh: ArrayMesh = batch.to_mesh()
+	_cache[key] = mesh
+	return mesh
+
+
+## A docking clamp's lock (clamp_body's own space), glowing the weak points' red: a bar across between
+## its jaws near their lips, and a lamp on each hinge. For a material that pulses (like the drop bay's).
+## Cached.
+static func clamp_core(width: float, length: float, depth: float) -> ArrayMesh:
+	var key: String = "clamp_core_%.2f_%.2f_%.2f" % [width, length, depth]
+	if _cache.has(key):
+		return _cache[key]
+	var batch := MeshBatch.new()
+	var s: MeshLayer = batch.layer(null)
+	var hw: float = width * 0.5
+	s.box(Vector3(0.0, -depth + 0.2, 0.0), Vector3(maxf(width - 1.5, 0.6), 0.26, length * 0.55), WEAK, 1.0, MeshKit.PAT_PLAIN)
+	for xs: float in [-1.0, 1.0]:
+		s.box(Vector3(xs * (hw - 0.3), -0.54, 0.0), Vector3(0.3, 0.06, length * 0.4), WEAK, 1.0, MeshKit.PAT_PLAIN, MeshKit.FACE_NY)
+	var mesh: ArrayMesh = batch.to_mesh()
+	_cache[key] = mesh
+	return mesh
+
+
+## One of the three huge arms the docked gunship grips the locomotive with (they look the part; its weak
+## points are the clamps under its belly), in its own space: its hinge at the origin on the gunship's
+## belly, the arm reaching `out` across (+x; a negative `out` reaches the other way; 0 for the middle one,
+## which reaches ahead, -z) and then `down` over the locomotive's edge, a claw hooked under it. Cached.
+static func dock_arm(out: float, down: float, skin: ZoneSkin = null) -> ArrayMesh:
+	var key: String = "dock_arm_%.2f_%.2f_%d" % [out, down, skin.get_instance_id() if skin != null else 0]
+	if _cache.has(key):
+		return _cache[key]
+	var batch := MeshBatch.new()
+	var s: MeshLayer = batch.layer(solid_material(skin))
+	var middle: bool = is_zero_approx(out)
+	var reach := Vector3(out, 0.0, -4.0 if middle else -0.6)
+	# The hinge, the beam out to the elbow, the arm down, the claw hooked under the edge.
+	s.box(Vector3(0.0, -0.3, 0.0), Vector3(1.1, 0.7, 1.1), STEEL_DARK, 0.0, MeshKit.PAT_PLAIN)
+	s.box_between(Vector3(0.0, -0.65, 0.35), reach + Vector3(0.0, 0.05, -0.35), GUNMETAL, 0.0, MeshKit.PAT_PLAIN)
+	s.box(reach + Vector3(0.0, -down * 0.5, 0.0), Vector3(0.75, down + 0.6, 0.9), OLIVE_DARK, 0.0, MeshKit.PAT_PLAIN)
+	var hook := Vector3(0.0, -down - 0.15, 0.45) if middle else Vector3(-0.55 * signf(out), -down - 0.15, 0.0)
+	s.box(reach + hook, Vector3(0.75 if middle else 0.9, 0.3, 0.9), STEEL_DARK, 0.0, MeshKit.PAT_PLAIN)
+	# A hydraulic ram along the beam.
+	s.box_between(Vector3(0.0, -0.05, 0.25), reach * 0.8 + Vector3(0.0, 0.25, 0.1), GUNMETAL_LIGHT, 0.0, MeshKit.PAT_PLAIN)
+	var mesh: ArrayMesh = batch.to_mesh()
+	_cache[key] = mesh
+	return mesh
+
+
+## A pylon carrying one of the city's ad screens beyond the sound barriers (the merger's screens), in its
+## own space: its foot at the origin (far below, out of sight behind the barrier), its screen's housing a
+## little bigger than `size` (width, height), its middle `y` up, facing +z; a thin cold-white rim round
+## the screen. Cached.
+static func screen_pylon(size: Vector2, y: float, skin: ZoneSkin = null) -> ArrayMesh:
+	var key: String = "pylon_%.2f_%.2f_%.2f_%d" % [size.x, size.y, y, skin.get_instance_id() if skin != null else 0]
+	if _cache.has(key):
+		return _cache[key]
+	var batch := MeshBatch.new()
+	var s: MeshLayer = batch.layer(solid_material(skin))
+	var bottom: float = y - size.y * 0.5
+	s.box(Vector3(0.0, (bottom - 14.0) * 0.5, -0.4), Vector3(0.7, bottom + 14.0, 0.7), GUNMETAL, 0.0, MeshKit.PAT_PLAIN)
+	s.box(Vector3(0.0, y, -0.12), Vector3(size.x + 0.5, size.y + 0.5, 0.3), STEEL_DARK, 0.0, MeshKit.PAT_PLAIN)
+	for ys: float in [-1.0, 1.0]:
+		s.box(Vector3(0.0, y + ys * (size.y * 0.5 + 0.15), 0.06), Vector3(size.x + 0.3, 0.06, 0.04), COLD_WHITE, 0.6, MeshKit.PAT_PLAIN,
+			MeshKit.FACE_PZ)
+	for xs: float in [-1.0, 1.0]:
+		s.box(Vector3(xs * (size.x * 0.5 + 0.15), y, 0.06), Vector3(0.06, size.y + 0.36, 0.04), COLD_WHITE, 0.6, MeshKit.PAT_PLAIN,
+			MeshKit.FACE_PZ)
+	var mesh: ArrayMesh = batch.to_mesh()
+	_cache[key] = mesh
+	return mesh
+
+
+## The corporate tower whose sky lobby the derailed locomotive ploughs through (the defeat), in its own
+## space: the lobby's floor at the origin on the roofs' plane, the lobby facing +z, the tower `width` wide
+## and `depth` deep rising high over it: dark glass with lit floors, the brand's mark near its top, the
+## lobby a tall glass atrium lit cold white; its trunk going on down toward the street far below. Placed
+## once and still (so the kit's world-space patterns stay put). Cached.
+static func lobby_tower(width: float, depth: float, skin: ZoneSkin = null) -> ArrayMesh:
+	var key: String = "lobby_%.2f_%.2f_%d" % [width, depth, skin.get_instance_id() if skin != null else 0]
+	if _cache.has(key):
+		return _cache[key]
+	var batch := MeshBatch.new()
+	var s: MeshLayer = batch.layer(solid_material(skin))
+	var g: MeshLayer = batch.layer(glow_material(skin))
+	var hw: float = width * 0.5
+	var lobby_h: float = 9.0
+	var top: float = 70.0
+	s.box(Vector3(0.0, (lobby_h + top) * 0.5, -depth * 0.5), Vector3(width, top - lobby_h, depth), GLASS, 0.0, MeshKit.PAT_GLASS)
+	s.box(Vector3(0.0, -20.0, -depth * 0.5), Vector3(width * 0.8, 40.0, depth * 0.8), GUNMETAL, 0.0, MeshKit.PAT_PLAIN)
+	for i: int in 12:
+		var fy: float = lobby_h + 4.0 + i * 5.0
+		s.box(Vector3(0.0, fy, 0.03), Vector3(width - 1.0, 0.25, 0.06), COLD_WHITE, 0.35, MeshKit.PAT_PLAIN, MeshKit.FACE_PZ)
+	# The lobby: its floor, its lit back wall, a glass front with mullions, a steel soffit over it.
+	s.box(Vector3(0.0, -0.4, -depth * 0.5), Vector3(width, 0.8, depth), GUNMETAL_LIGHT, 0.0, MeshKit.PAT_PLAIN)
+	s.rect(Vector3(-hw + 0.5, 0.0, -depth + 1.0), Vector3(width - 1.0, 0.0, 0.0), Vector3(0.0, lobby_h, 0.0), COLD_WHITE, 0.5)
+	s.rect(Vector3(-hw + 0.5, 0.0, -1.5), Vector3(width - 1.0, 0.0, 0.0), Vector3(0.0, lobby_h, 0.0), GLASS, 0.0, MeshKit.PAT_GLASS)
+	for i: int in 7:
+		var x: float = lerpf(-hw + 0.5, hw - 0.5, i / 6.0)
+		s.box(Vector3(x, lobby_h * 0.5, -1.45), Vector3(0.25, lobby_h, 0.25), STEEL_DARK, 0.0, MeshKit.PAT_PLAIN)
+	s.box(Vector3(0.0, lobby_h + 0.3, -1.0), Vector3(width, 0.6, 2.0), EXPRESS, 0.0, MeshKit.PAT_PLAIN)
+	g.rect(Vector3(-hw, 0.3, -1.3), Vector3(width, 0.0, 0.0), Vector3(0.0, lobby_h * 0.8, 0.0), COLD_WHITE, 0.18, MeshKit.SHAPE_FLAT)
+	# The brand's mark high on its face, glowing blue.
+	var my: float = top - 9.0
+	s.quad_uv(Vector3(-6.0, my - 6.0, 0.08), Vector3(-6.0, my + 6.0, 0.08), Vector3(6.0, my + 6.0, 0.08), Vector3(6.0, my - 6.0, 0.08),
+		Vector2(-1.0, -1.0), Vector2(-1.0, 1.0), Vector2(1.0, 1.0), Vector2(1.0, -1.0), BRAND_GLOW, 0.9, MeshKit.PAT_CORP_LOGO, 1.0)
+	var mesh: ArrayMesh = batch.to_mesh()
+	_cache[key] = mesh
+	return mesh
+
+
+## The giant, soulless logo sculpture on the lobby's plaza (GDD §10): the brand's mark as a vast polished
+## steel disc standing on a stepped plinth, the mark painted on both its faces, a faint blue glow round it.
+## In its own space: the plinth's front edge (toward +z) at the origin, so it topples forward about it.
+## Cached.
+static func logo_sculpture(skin: ZoneSkin = null) -> ArrayMesh:
+	var key: String = "logo_sculpture_%d" % (skin.get_instance_id() if skin != null else 0)
+	if _cache.has(key):
+		return _cache[key]
+	var batch := MeshBatch.new()
+	var s: MeshLayer = batch.layer(solid_material(skin))
+	var g: MeshLayer = batch.layer(glow_material(skin))
+	s.box(Vector3(0.0, 0.6, -3.0), Vector3(8.0, 1.2, 6.0), GUNMETAL_LIGHT, 0.0, MeshKit.PAT_PLAIN)
+	s.box(Vector3(0.0, 1.5, -3.0), Vector3(6.0, 0.6, 4.4), EXPRESS, 0.0, MeshKit.PAT_PLAIN)
+	var r: float = 6.0
+	var cy: float = 1.8 + r
+	# The disc: an octagonal slab on its edge, its faces toward ±z.
+	var disc := Transform3D(Basis(Vector3.RIGHT, PI * 0.5) * Basis.from_scale(Vector3(r, 0.9, r)), Vector3(0.0, cy, -2.55))
+	s.prism_xform(disc, 8, EXPRESS.lightened(0.1), 0.0, MeshKit.PAT_PLAIN)
+	var k: float = r * 0.7
+	for zs: float in [-1.0, 1.0]:
+		var z: float = -3.0 + zs * 0.47
+		var a := Vector3(-k, cy - k, z)
+		var b := Vector3(-k, cy + k, z)
+		var c := Vector3(k, cy + k, z)
+		var d := Vector3(k, cy - k, z)
+		if zs > 0.0:
+			s.quad_uv(d, c, b, a, Vector2(1.0, -1.0), Vector2(1.0, 1.0), Vector2(-1.0, 1.0), Vector2(-1.0, -1.0), BRAND_PAINT, 0.0,
+				MeshKit.PAT_CORP_LOGO, 2.0)
+		else:
+			s.quad_uv(a, b, c, d, Vector2(-1.0, -1.0), Vector2(-1.0, 1.0), Vector2(1.0, 1.0), Vector2(1.0, -1.0), BRAND_PAINT, 0.0,
+				MeshKit.PAT_CORP_LOGO, 2.0)
+	g.rect(Vector3(-r * 1.1, cy - r * 1.1, -2.0), Vector3(r * 2.2, 0.0, 0.0), Vector3(0.0, r * 2.2, 0.0), BRAND_GLOW, 0.16, MeshKit.SHAPE_RADIAL)
 	var mesh: ArrayMesh = batch.to_mesh()
 	_cache[key] = mesh
 	return mesh
