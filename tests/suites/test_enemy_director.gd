@@ -619,13 +619,14 @@ func _test_campaign() -> void:
 			watch.observe()
 		var a: Dictionary = watch.attacks
 		if case[2]:
-			# FIX1 taught AttackWatch to count the Gilded Sentinel and the Buzz Overdrive (it missed both
-			# before), which turned up a pre-existing turn-taking gap between the Buzz Overdrive and the
-			# hover truck on this level (reported, not fixed here): every other pair still never overlaps.
-			var known: float = float(watch.overlap_pairs.get("buzz_overdrive+hover_truck", 0.0)) if case[0] == "dead_zone/1" else 0.0
-			check(is_zero_approx(watch.overlap - known),
-				"%s: no two types' big attacks overlap, beyond the known buzz_overdrive+hover_truck gap (%.2f s: %s)" %
-				[tag, watch.overlap - known, watch.overlap_pairs])
+			# Dead Zone 1 at 5 lanes is where the Buzz Overdrive's rev met a hover truck's lurch (0.62 s,
+			# found by FIX1); its claim before its rev (task FIX2) keeps them apart.
+			check(is_zero_approx(watch.overlap),
+				"%s: no two types' big attacks overlap (%.2f s: %s)" % [tag, watch.overlap, watch.overlap_pairs])
+			if case[0] == "dead_zone/1":
+				check(watch.tanks_that("rev") > 0 and watch.tanks_that("met") == 0,
+					"%s: its Buzz Overdrives rev, never into another type's attack (%d revved, %d let the runner pass)"
+					% [tag, watch.tanks_that("rev"), watch.tanks_that("pass")])
 			var kinds: Array = ["drone", "truck_lurch", "truck_cannon", "dog_charge"]
 			if case[0] == "dead_zone/1":
 				kinds.append("dream_slash")

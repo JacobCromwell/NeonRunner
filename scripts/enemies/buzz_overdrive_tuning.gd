@@ -8,9 +8,12 @@ extends EnemyTuning
 ## GDD §9.9 says; the higher tiers take 20 / their damage.
 ## Timeline, as the player runs (keyed to the player's distance, so the same on every attempt):
 ## parked in its lane in the distance; rolls ahead of the player `charge_distance()` in front for
-## roll_seconds; revs (the warning: the red line over its lane, the spin-up) for rev_seconds while it
-## keeps rolling; charges back at the player for charge_seconds until it meets them, cutting the floor
-## behind it (B4's FloorCut), and runs on run_past metres past them, off the screen.
+## roll_seconds, claiming its turn among the big attacks claim_seconds before its rev; revs (the
+## warning: the red line over its lane, the spin-up) for rev_seconds while it keeps rolling; charges
+## back at the player for charge_seconds until it meets them, cutting the floor behind it (B4's
+## FloorCut), and runs on run_past metres past them, off the screen. If another type's big attack
+## begun before its claim is still on as its rev would start, it lets the runner pass instead: it
+## speeds off ahead, out of view pass_seconds later, and its floor stays whole.
 
 @export_group("Attack")
 ## How long it revs before it charges: its warning (GDD §9.9: "revs in view for a few seconds"). The
@@ -37,6 +40,19 @@ extends EnemyTuning
 ## How far past the player it runs, still cutting, before it's gone (off the screen behind them; plain
 ## metres: the camera's view behind the player doesn't change with the speed).
 @export_range(5.0, 60.0, 1.0, "suffix:m") var run_past: float = 22.0
+
+@export_group("Turns")
+## GDD §9: big attacks take turns. Its rev and charge can't wait (the generator planned its cut), so,
+## like a Gilded Sentinel, it claims its turn this many seconds (at the run speed) before its rev, while
+## it rolls ahead: from then on it reports its attack (is_major_attack_active), so another type's big
+## attack that gets ready meanwhile waits for it. One begun before its claim and still on as its rev would
+## start makes it let the runner pass instead (no rev, no cut). Longer: fewer passes, others held longer.
+## 0: it claims its turn only as its rev starts. A boss's tank (no roll) neither claims nor passes.
+## DESIGN-TBD (docs/questions/fix2.md).
+@export_range(0.0, 6.0, 0.25, "suffix:s") var claim_seconds: float = 2.5
+## When it lets the runner pass, it speeds off ahead of them, out of view (appear_distance ahead) this
+## many seconds later, and is gone. DESIGN-TBD (docs/questions/fix2.md).
+@export_range(0.5, 6.0, 0.1, "suffix:s") var pass_seconds: float = 3.0
 
 @export_group("Placement")
 ## In a level that gives the feature a start (Corporate 1 introduces it), the first one sets off within
