@@ -11,7 +11,14 @@ files = {
 "gangland": "res://assets/music/gangland.wav",
 "golden": "res://assets/music/golden.wav",
 "marketplace": "res://assets/music/marketplace.wav",
-"menu": "res://assets/music/menu.wav"
+"menu": "res://assets/music/menu.wav",
+"zone_1": "res://assets/music/Zone_1_Under_The_Iron_Sky.mp3",
+"zone_2": "res://assets/music/Zone_2_Alleyway_Ambush.mp3",
+"zone_3": "res://assets/music/Zone_3_Jackpot_Plaza.mp3",
+"zone_4": "res://assets/music/Zone_4_Concrete_Fever.mp3",
+"zone_5": "res://assets/music/Zone_5_Beneath_the_Cracks.mp3",
+"zone_6": "res://assets/music/Zone_6_View_from_the_Zenith.mp3",
+"boss_1": "res://assets/music/Boss_1_Apex_Combat_Maneuver.mp3"
 }
 volume_db = {
 "city": -10.5,
@@ -20,7 +27,14 @@ volume_db = {
 "gangland": -10.0,
 "golden": -10.5,
 "marketplace": -11.0,
-"menu": -11.0
+"menu": -11.0,
+"zone_1": -10.5,
+"zone_2": -10.0,
+"zone_3": -11.0,
+"zone_4": -10.5,
+"zone_5": -10.5,
+"zone_6": -10.5,
+"boss_1": -10.5
 }
 bpm = {
 "city": 160.0,
@@ -30,6 +44,26 @@ bpm = {
 "golden": 132.0,
 "marketplace": 144.0,
 "menu": 100.0
+}
+zone_tracks = {
+"city": "zone_1",
+"gangland": "zone_2",
+"marketplace": "zone_3",
+"corporate": "zone_4",
+"dead_zone": "zone_5",
+"golden": "zone_6"
+}
+boss_tracks = {
+"city_boss": "boss_1"
+}
+riff_tracks = {
+"zone_1": "city",
+"zone_2": "gangland",
+"zone_3": "marketplace",
+"zone_4": "corporate",
+"zone_5": "dead_zone",
+"zone_6": "golden",
+"boss_1": "city"
 }
 duck_db = -8.0
 duck_time = 0.3
