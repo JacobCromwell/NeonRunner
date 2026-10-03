@@ -24,7 +24,8 @@ extends Node3D
 ##               the strafes and the drop, the pass and the three docking clamps stomped; --cam=run (the
 ##               default), --cam=dock from out over the street beside the line, a little ahead of where the war
 ##               engine docks, looking back across at it, --cam=belly from low at the roofs' edge, looking on ahead
-##               under its belly, --cam=side and --cam=ride as in contract
+##               under its belly, --cam=clamp close under the belly beside the runner, looking back up at them
+##               and the clamps, --cam=side and --cam=ride as in contract
 ##   defeat      phase 3 from its start, its three clamps torn loose one after another (a review's shortcut:
 ##               no pass) once the war engine has docked and --defeat-after seconds (1 by default) have passed,
 ##               then the defeat: --cam=chase (the default) from high behind the runner, looking ahead at the
@@ -211,6 +212,11 @@ func _place_camera() -> void:
 					_cam.look_at_from_position(Vector3(-side * 1.5, 9.5, p.z + 8.0), Vector3(side * world.geo.wall_x() * 0.9, 5.5, p.z - 50.0))
 				"ride":
 					_cam.look_at_from_position(Vector3(world.geo.wall_x() - 0.5, 3.4, p.z - 9.0), Vector3(-0.5, 3.6, p.z + 6.0))
+				"clamp":
+					# Close under the belly beside the runner and a little ahead, looking back up at them and the
+					# clamp they go for.
+					var x: float = clampf(p.x + 3.0 * (1.0 if p.x <= 0.0 else -1.0), -world.geo.wall_x() + 0.6, world.geo.wall_x() - 0.6)
+					_cam.look_at_from_position(Vector3(x, 2.4, p.z - 6.0), Vector3(p.x, 4.6, p.z + 1.5))
 				_:
 					_cam.look_at_from_position(Vector3(world.geo.wall_x() - 0.8, 11.0, p.z - 38.0), Vector3(-0.5, 2.5, p.z + 4.0))
 		"contract":
