@@ -15,13 +15,17 @@ extends TestSuite
 ##   laser tier 1 never stops it in time and the missile tiers do (measured at every zone's speed); the
 ##   claws do nothing, the dash smashes it (and only the grapple saves the runner then), and it can't be
 ##   stomped; it plays the same on every attempt and at 30 and 60 Hz; its rev and charge are a big
-##   attack the others wait for.
+##   attack the others wait for, its turn claimed before its rev, and it lets the runner pass rather than
+##   rev into another type's attack still on then (task FIX2: the hover truck's lurch it met in Dead
+##   Zone 1, reproduced with a real truck).
 ## - Its data: the hint, its sounds, Reduced flashing, out of the planned features.
 
 const Rules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
 const TankScript = preload("res://scripts/enemies/buzz_overdrive.gd")
 const AttackWatch = preload("res://tools/measure/attack_watch.gd")
 const DUMMY: String = "res://tests/helpers/dummy_enemy.gd"
+const TURN_DUMMY: String = "res://tests/helpers/turn_dummy.gd"
+const TruckScript = preload("res://scripts/enemies/hover_truck.gd")
 ## The zones' run speeds where it appears (data/zones: Corporate, the Dead Zone, the Golden Zone) and
 ## the enemy scaling of each zone's first level there.
 const ZONES: Array = [["corporate", 23.4, 8.0 / 14.0], ["dead_zone", 24.2, 10.0 / 14.0], ["golden", 25.0, 12.0 / 14.0]]
@@ -53,6 +57,8 @@ func run() -> void:
 	await _test_claws_dash_stomp()
 	await _test_same_every_attempt()
 	await _test_big_attack()
+	await _test_takes_turns()
+	await _test_truck_overlap()
 	await _test_attack_watch()
 	_test_data()
 
@@ -659,8 +665,9 @@ func _expected_front(cut: Dictionary, p: float) -> float:
 	return FloorCutPlan.front_at(cut, p, tuning.run_speed)
 
 
-## GDD §9: its rev and charge are a big attack: on from the warning until it's gone, never before; while
-## it's on another type's big attack waits (it never waits itself: its moment was planned).
+## GDD §9: its rev and charge are a big attack: on from the warning until it's gone, and while it claims
+## its turn for claim_seconds before that (task FIX2), never before; while it's on another type's big
+## attack waits (it never waits itself: its moment was planned).
 func _test_big_attack() -> void:
 	var cut: Dictionary = _cut(1, 300.0)
 	var w: RunWorld = _world(_layout(3, cut), 0, FloorCutPlan.lead_at(cut) - 20.0)
@@ -668,22 +675,176 @@ func _test_big_attack() -> void:
 	# Another type's enemy far ahead, still in play all the while.
 	var other: Enemy = w.director.spawn({"type": "dummy", "script": DUMMY, "at": FloorCutPlan.window(cut, tuning.run_speed).y + 120.0,
 		"lane": 2, "seed": 1, "params": {}})
-	var ok: Array[bool] = [true, false, true]
+	var claim_at: float = FloorCutPlan.warn_at(cut) - t.claim_seconds * tuning.run_speed
+	var ok: Array[bool] = [true, false, true, false]
 	await _run_until(w, 15.0, func() -> bool:
 		var e: Enemy = _tank(w)
 		if e == null:
 			return w.player.distance > FloorCutPlan.lead_at(cut) + 5.0
 		var s: int = _state(e)
 		var on: bool = e.is_major_attack_active()
-		ok[0] = ok[0] and on == (s == TankScript.State.REV or s == TankScript.State.CHARGE)
-		if s == TankScript.State.REV and is_instance_valid(other):
+		var claiming: bool = s == TankScript.State.ROLL and w.player.distance >= claim_at
+		ok[0] = ok[0] and on == (s == TankScript.State.REV or s == TankScript.State.CHARGE or claiming)
+		ok[3] = ok[3] or claiming
+		if (s == TankScript.State.REV or claiming) and is_instance_valid(other):
 			ok[1] = ok[1] or w.director.major_attack_blocked(other)
-		if s == TankScript.State.ROLL and is_instance_valid(other):
+		if s == TankScript.State.ROLL and not claiming and is_instance_valid(other):
 			ok[2] = ok[2] and not w.director.major_attack_blocked(other)
 		return s == TankScript.State.GONE)
-	check(ok[0], "its big attack is on exactly while it revs and charges")
-	check(ok[1] and ok[2], "another type's big attack waits for it then, not while it only rolls ahead")
+	check(ok[0] and ok[3], "its big attack is on exactly while it claims its turn (%.1f s before its rev), revs and charges"
+		% t.claim_seconds)
+	check(ok[1] and ok[2], "another type's big attack waits for it then, not while it only rolls ahead before its claim")
 	await sim.free_world(w)
+
+
+## GDD §9 (task FIX2): it takes its turn like a Gilded Sentinel (C4). Another type's big attack that gets
+## ready during its claim waits until it's gone, and it revs as planned; one begun before its claim and
+## still on as its rev would start makes it let the runner pass: no rev, no warning line, no cut (its
+## lane stays whole), it speeds off ahead out of view and is gone. With the switch off, or for a boss's
+## tank (its cut planned without a roll: Hostile Takeover's drop), it never claims or passes: it revs as
+## planned, whatever else is on, as before.
+func _test_takes_turns() -> void:
+	var v: float = tuning.run_speed
+	var cut: Dictionary = _cut(0, 300.0)
+	var from: float = FloorCutPlan.lead_at(cut) - 20.0
+	# Seconds from the start until its rev would start (the runner keeps the run speed).
+	var rev_s: float = (FloorCutPlan.warn_at(cut) - from) / v
+	# Another type's attack: one that gets ready 0.85 s before its rev, in its claim (as the hover truck in
+	# Dead Zone 1 did), and one begun 0.3 s before its claim and still on 1 s after its rev would start.
+	var soon := {"first": rev_s - 0.85, "interval": 60.0, "warning": 0.8, "attack": 1.0}
+	var early := {"first": rev_s - t.claim_seconds - 0.3, "interval": 60.0, "warning": 0.5,
+		"attack": t.claim_seconds + 0.8}
+	var run: Dictionary = await _turn_run(cut, from, true, soon)
+	check(run["claimed"] and run["revved"] and not run["passed"] and run["held"]
+		and float(run["start"]) >= float(run["gone"]) - 1.5 / Engine.physics_ticks_per_second,
+		("another type's attack that gets ready in its claim waits until it's gone (it starts at %.2f s, the tank "
+		+ "gone at %.2f s), and it revs as planned") % [run["start"], run["gone"]])
+	check(is_zero_approx(float(run["overlap"])), "so the two never overlap (%.2f s)" % run["overlap"])
+	run = await _turn_run(cut, from, true, early)
+	check(run["passed"] and not run["revved"] and not run["line"], "with another type's attack begun before its claim still "
+		+ "on as its rev would start, it lets the runner pass: no rev, no warning line")
+	check(run["sampled"] and run["whole"], "its lane stays whole where its cut would have run")
+	check(run["hidden_ahead"], "it speeds off ahead, out of view (%.0f m ahead), and is gone %.2f s after its rev would have started"
+		% [run["max_ahead"], float(run["gone"]) - rev_s])
+	check(is_zero_approx(float(run["overlap"])), "nothing overlaps (%.2f s)" % run["overlap"])
+	run = await _turn_run(cut, from, false, soon)
+	check(run["revved"] and not run["passed"] and not run["held"] and not run["claimed"],
+		"with big attacks not taking turns it never claims, asks or passes: it revs as planned, as before the rule")
+	var boss_cut: Dictionary = FloorCutPlan.make(0, float(cut["end"]), float(cut["warn"]), float(cut["charge"]),
+		float(cut["speed"]), v, t.run_past, t.keep())
+	run = await _turn_run(boss_cut, from, true, early)
+	check(run["revved"] and not run["passed"] and not run["claimed"],
+		"a boss's tank (its cut planned without a roll) never claims or passes: it revs as planned, as before")
+
+
+## One run of `cut`'s tank (lane 0 of 3; the runner in lane 2 from `from`, god mode) beside a scripted big
+## attack of another type (tests/helpers/turn_dummy.gd with `params`), big attacks taking turns or not.
+## What happened: {claimed (its attack counted as on before its rev), revved, passed, line (its warning
+## line ever showed), held (the other was held for its turn), start (when the other's attack started,
+## level time; -1 never), gone (when the tank was gone or out of play; -1 never), sampled and whole (where
+## its cut would have met the runner, its lane's floor from there to its end, as it stands then),
+## hidden_ahead (gone out of view ahead of the runner), max_ahead, overlap (seconds both were on)}.
+func _turn_run(cut: Dictionary, from: float, turns: bool, params: Dictionary) -> Dictionary:
+	var w: RunWorld = _world(_layout(3, cut), 2, from)
+	w.rules = w.rules.duplicate() as GameRules
+	w.rules.big_attacks_take_turns = turns
+	w.player.god_mode = true
+	var other: Enemy = w.director.spawn({"type": "alpha", "script": TURN_DUMMY, "at": 0.0, "lane": 0, "side": 0,
+		"seed": 1, "params": params})
+	var out := {"claimed": false, "revved": false, "passed": false, "line": false, "held": false, "start": -1.0,
+		"gone": -1.0, "sampled": false, "whole": true, "hidden_ahead": false, "max_ahead": 0.0, "overlap": 0.0,
+		"tank": null}
+	var lane: int = int(cut["lane"])
+	var meet: float = FloorCutPlan.meet(cut, tuning.run_speed)
+	await _run_until(w, 20.0, func() -> bool:
+		if out["tank"] == null:
+			out["tank"] = _tank(w)
+		var tank: Enemy = out["tank"]
+		if not out["sampled"] and w.player.distance >= meet:
+			out["sampled"] = true
+			var d: float = meet - 4.0
+			while d < float(cut["end"]) - 0.5:
+				out["whole"] = bool(out["whole"]) and _floor_at(w, w.geo, lane, d)
+				d += 2.0
+		if tank == null:
+			return false
+		if not is_instance_valid(tank) or tank.is_queued_for_deletion() or not w.director.active.has(tank):
+			if float(out["gone"]) < 0.0:
+				out["gone"] = w.level_time()
+			return w.player.distance > float(cut["end"]) + 2.0
+		var s: int = _state(tank)
+		out["revved"] = bool(out["revved"]) or s == TankScript.State.REV
+		out["passed"] = bool(out["passed"]) or s == TankScript.State.PASS
+		out["claimed"] = bool(out["claimed"]) or ((s == TankScript.State.PARKED or s == TankScript.State.ROLL)
+			and tank.is_major_attack_active())
+		out["line"] = bool(out["line"]) or (tank.get_node("WarningLine") as Node3D).visible
+		out["max_ahead"] = maxf(float(out["max_ahead"]), float(tank.get("front")) - w.player.distance)
+		if (s == TankScript.State.REV or s == TankScript.State.CHARGE) and other.is_major_attack_active():
+			out["overlap"] = float(out["overlap"]) + 1.0 / Engine.physics_ticks_per_second
+		if s == TankScript.State.GONE and float(out["gone"]) < 0.0:
+			out["gone"] = w.level_time()
+			out["hidden_ahead"] = not tank.visible and float(tank.get("front")) - w.player.distance > t.appear_distance
+		return float(out["gone"]) >= 0.0 and w.player.distance > float(cut["end"]) + 2.0)
+	for h: Array in other.get(&"history"):
+		if h[0] == "held":
+			out["held"] = true
+		elif h[0] == "start" and float(out["start"]) < 0.0:
+			out["start"] = float(h[1])
+	out.erase("tank")
+	await sim.free_world(w)
+	return out
+
+
+## The original overlap (task FIX2; Dead Zone 1 at 5 lanes on its own seed): a hover truck holding back
+## asked for its turn 0.85 s before a Buzz Overdrive's rev, while the tank only rolled ahead, so it revved
+## and lurched, and the tank revved into its lurch for 0.62 s (AttackWatch). Now the tank has claimed its
+## turn by then: the truck holds back until the tank is gone, then lurches, and nothing overlaps. A tank
+## that takes no turns (a boss's, its cut planned without a roll) still meets the lurch: the scenario is
+## the original one.
+func _test_truck_overlap() -> void:
+	var v: float = tuning.run_speed
+	var cut: Dictionary = _cut(0, 300.0)
+	var from: float = FloorCutPlan.lead_at(cut) - 20.0
+	var tt := EnemyDirector.tuning_for("hover_truck") as HoverTruckTuning
+	# The truck starts holding back where it will ask for its lurch 0.85 s before the tank's rev.
+	var truck_at: float = FloorCutPlan.warn_at(cut) - (0.85 + tt.hold_back_seconds) * v
+	var boss_cut: Dictionary = FloorCutPlan.make(0, float(cut["end"]), float(cut["warn"]), float(cut["charge"]),
+		float(cut["speed"]), v, t.run_past, t.keep())
+	for c: Dictionary in [cut, boss_cut]:
+		var w: RunWorld = _world(_layout(3, c), 1, from)
+		w.player.god_mode = true
+		var watch := AttackWatch.new(w)
+		var seen := {"truck": null, "tank": null, "revved": false, "gone": -1.0, "lurch": -1.0}
+		await _run_until(w, 25.0, func() -> bool:
+			watch.observe()
+			if seen["truck"] == null and w.player.distance >= truck_at:
+				seen["truck"] = w.director.spawn({"type": "hover_truck", "at": w.player.distance, "lane": 2, "side": 1,
+					"seed": 7, "params": {"skip_entrance": true, "phase": "hold_back", "offset": tt.back_offset,
+					"guns": false, "stay": 60.0}})
+			if seen["tank"] == null:
+				seen["tank"] = _tank(w)
+			var tank: Enemy = seen["tank"]
+			if tank != null and float(seen["gone"]) < 0.0:
+				if not is_instance_valid(tank) or tank.is_queued_for_deletion() or not w.director.active.has(tank) \
+						or _state(tank) == TankScript.State.GONE:
+					seen["gone"] = w.level_time()
+				else:
+					seen["revved"] = bool(seen["revved"]) or _state(tank) == TankScript.State.REV
+			var truck: Enemy = seen["truck"]
+			if truck != null and float(seen["lurch"]) < 0.0 and int(truck.get(&"state")) == TruckScript.State.REV:
+				seen["lurch"] = w.level_time()
+			return float(seen["lurch"]) >= 0.0 and float(seen["gone"]) >= 0.0 \
+				and w.level_time() > maxf(float(seen["lurch"]), float(seen["gone"])) + 1.5)
+		if c == cut:
+			check(seen["revved"] and float(seen["lurch"]) >= float(seen["gone"]) - 1.5 / Engine.physics_ticks_per_second,
+				("the original overlap: a truck ready to lurch 0.85 s before the tank's rev now waits until the tank is "
+				+ "gone (its rev at %.2f s, the tank gone at %.2f s), and the tank revs as planned") % [seen["lurch"], seen["gone"]])
+			check(is_zero_approx(watch.overlap) and int(watch.attacks.get("truck_lurch", 0)) >= 1,
+				"so nothing overlaps (%.2f s: %s; attacks %s)" % [watch.overlap, watch.overlap_pairs, watch.attacks])
+		else:
+			check(float(watch.overlap_pairs.get("buzz_overdrive+hover_truck", 0.0)) > 0.3,
+				"the scenario is the original one: a tank that takes no turns revs into the truck's lurch (%.2f s)" % watch.overlap)
+		await sim.free_world(w)
 
 
 ## R3's turn-taking tool (tools/measure/attack_watch.gd) reads its state, never is_major_attack_active:
