@@ -20,6 +20,7 @@ extends TestSuite
 
 const Rules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
 const TankScript = preload("res://scripts/enemies/buzz_overdrive.gd")
+const AttackWatch = preload("res://tools/measure/attack_watch.gd")
 const DUMMY: String = "res://tests/helpers/dummy_enemy.gd"
 ## The zones' run speeds where it appears (data/zones: Corporate, the Dead Zone, the Golden Zone) and
 ## the enemy scaling of each zone's first level there.
@@ -52,6 +53,7 @@ func run() -> void:
 	await _test_claws_dash_stomp()
 	await _test_same_every_attempt()
 	await _test_big_attack()
+	await _test_attack_watch()
 	_test_data()
 
 
@@ -681,6 +683,38 @@ func _test_big_attack() -> void:
 		return s == TankScript.State.GONE)
 	check(ok[0], "its big attack is on exactly while it revs and charges")
 	check(ok[1] and ok[2], "another type's big attack waits for it then, not while it only rolls ahead")
+	await sim.free_world(w)
+
+
+## R3's turn-taking tool (tools/measure/attack_watch.gd) reads its state, never is_major_attack_active:
+## AttackWatch.open_kinds reports "buzz_charge" exactly while it revs and charges, empty otherwise, and
+## AttackWatch.observe() counts exactly one over the whole run.
+func _test_attack_watch() -> void:
+	var cut: Dictionary = _cut(1, 300.0)
+	var w: RunWorld = _world(_layout(3, cut), 0, FloorCutPlan.lead_at(cut) - 20.0)
+	w.player.god_mode = true
+	var watch := AttackWatch.new(w)
+	var open_before: bool = false
+	var open_during: bool = true
+	var open_after: bool = false
+	await _run_until(w, 15.0, func() -> bool:
+		watch.observe()
+		var e: Enemy = _tank(w)
+		if e == null:
+			return w.player.distance > FloorCutPlan.lead_at(cut) + 5.0
+		var s: int = _state(e)
+		var kinds: Array[String] = AttackWatch.open_kinds(e)
+		if s == TankScript.State.REV or s == TankScript.State.CHARGE:
+			open_during = open_during and kinds == ["buzz_charge"]
+		elif s == TankScript.State.PARKED or s == TankScript.State.ROLL:
+			open_before = open_before or not kinds.is_empty()
+		else:
+			open_after = open_after or not kinds.is_empty()
+		return false)
+	check(not open_before, "AttackWatch sees nothing open before its rev")
+	check(open_during, "AttackWatch sees buzz_charge open exactly while it revs and charges")
+	check(not open_after, "AttackWatch sees nothing open once it's gone")
+	check(int(watch.attacks.get("buzz_charge", 0)) == 1, "AttackWatch counts its one charge (%s)" % watch.attacks)
 	await sim.free_world(w)
 
 
