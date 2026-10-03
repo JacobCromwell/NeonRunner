@@ -2249,6 +2249,48 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     generator keeping every other enemy off its roll too (fewer places fit a tank, and attacks timed at run
     time would still need the claim), or revving anyway (two big attacks at once, as before).
 
+**The Sewer Swarm, phases 2 and 3** (from E4b; numbers in `data/bosses/gangland_boss_tuning.tres`; play `--level=gangland/boss`, review with `tools/showcase/sewer_swarm_showcase.tscn`)
+338. **Strikes from behind** (GDD §10, phase 2: "clusters also strike from behind. The warning is a chittering
+    sound plus a visible rising wave of the swarm on screen, curling like a breaking wave or a scorpion's
+    stinger, about to strike its lane").
+    **Placeholder** (`SwarmSurges`; `SewerSwarmTuning`, "Surrounded"): phase 2's surges alternate, from behind
+    then from ahead (`surge_sides`). From behind: 2.6 s before it would catch the runner
+    (`behind_warning_seconds`) a wave of the swarm rises 9 m behind them in their lane, 6.75 m high, its crest
+    curling over them; its chitter rises and a red line runs down the lane ahead to the first fence or hole.
+    1.2 s before (`behind_lock_seconds`) it locks on their lane; then it crashes down there and surges on ahead,
+    faster than the runner, into that fence or hole (destroyed: a hit) or 30 m on and back into the gutter. A
+    runner who holds the bait's lane until the lock and leaves it then baits it.
+    **Alternatives:** strikes from behind are only dodged (never baited), or the wave covers every lane but one.
+339. **The wall climb** (GDD §10: "the swarm also climbs the walls, taking them away as an escape route, but only
+    temporarily ... one wall at a time for a few seconds, alternating sides, so one wall is always free").
+    **Placeholder** (`SwarmClimb`): both walls free for 2.5 s, then the swarm covers one wall for 4 s, sides
+    alternating (the first seeded). A covered wall refuses entry like a sign (the clank and the bump) and never
+    hurts; the climb waits while the runner is on the wall it's due to climb.
+    **Question:** should a covered wall hurt (an enemy attack) or knock a wall runner off instead?
+340. **The clusters in phase 3** (follows question 327: with five clusters, none are left for phase 3).
+    **Placeholder** (`SwarmHostAttacks`, flings): phase 2 ends with all five destroyed. In phase 3 the Host
+    flings a ball of screeches scooped from the roadside horde at each hole spot: it rears with it (0.7 s, its
+    heave heard) while a red circle marks where it will land in the runner's lane, the ball lands 1.1 s later,
+    splats into a short mass for 0.8 s (an enemy attack) and scatters. A dodge, never a hit on the Host.
+    **Alternatives:** phase 2 ends with one or two clusters left for the Host to fling, or a flung cluster can
+    be baited into a fence or a hole too.
+341. **The Host's way up** (GDD §10: its implants are reached "by a ramp and a wall jump"; "three stomps").
+    **Placeholder** (`SwarmHostAttacks`, crouches; `SwarmJumpMarks`; the arena's host spots): 88 m after each
+    bait spot the arena has a ramp in an outer lane (sides in turn), the street clear around it. When the
+    runner is 55 m before it, the Host leaps into the ramp's lane and crouches 14.5-27 m past the ramp, long and
+    low (2.1 m): solid to run into, its sides bump a lane switch back, its three implants glow red along its
+    back, and green chevrons on the ramp's wall show where to jump. A ramp, a wall run and a wall jump come
+    down on the implants: a stomp, one of the three hits. Missed, it rises and goes back to pacing 26 m ahead.
+    The Host is a mound of screeches (3.4 m wide, 4.8 m tall) around the person, who shows more at each hit.
+    **Question:** is the crouch beside a ramp the right way to reach the implants, and is this the Host's look?
+342. **The lunge into a fence** (GDD §10: "its lunge can also be baited into a fence").
+    **Placeholder** (`SwarmHostAttacks`, lunges): at each fence spot it lunges down the runner's lane like a
+    surge (the same 2.4 s warning with its roar and the red line, locking 1.1 s before). Into the fence it's
+    shocked: a hit like a stomp, down in that lane for 1.2 s; otherwise it charges past and leaps back. A
+    runner who baits every lunge frees the Host with fewer stomps (a clean run: one lunge baited, two stomps).
+    **Question:** should a baited lunge count as a full hit, or only weaken the Host so the stomps are still
+    needed?
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
