@@ -20,6 +20,10 @@ extends RefCounted
 ##   runs on: they're in every lane); on the gunship's belly, a jump timed to come back up onto the open
 ##   drop bay (HostileTakeoverContract.bay_lead), unless `bay_stomps` is off or it lets the first
 ##   `bay_misses` rides go by;
+## - phase 3 (The Merger): on the war engine's belly during a pass, into the third of the lanes under the
+##   next docking clamp still locked ahead of it along the belly, and a jump timed to come back up onto it
+##   (HostileTakeoverContract.clamp_lead), one clamp after another, unless it lets the first `pass_misses`
+##   passes go by (or `clamps_per_pass` stops it);
 ## - it never goes onto a wall (the wall fences never reach it); a Tithe Collector may rob it.
 ## Its distances are metres at 18 m/s, stretched by the run's pace (HostileTakeover.run_pace).
 ## `log` holds what it did.
@@ -54,6 +58,10 @@ var bay_stomps: bool = true
 var bay_misses: int = 0
 ## It ignores the strafes (stays in its lane: for tests of a strike).
 var ignores_strafes: bool = false
+## Passes it lets go by (it rides through without a jump) before it goes for the clamps, and the most
+## clamps it goes for in one pass.
+var pass_misses: int = 0
+var clamps_per_pass: int = 3
 ## Once a dropped Buzz Overdrive lands, it heads into its lane and stays there until its blade has been
 ## blocked (the armor or the shield: it's invulnerable a moment), then leaves it (a test of its rules).
 var meets_saw: bool = false
@@ -71,6 +79,8 @@ var _move_in: int = 0
 var _threat_seen: Dictionary = {}
 var _bay_jumped: Dictionary = {}
 var _met_saw: Dictionary = {}
+var _clamp_jumped: Dictionary = {}
+var _pass_seen: Dictionary = {}
 
 
 func _init(p_boss: HostileTakeover) -> void:
@@ -147,6 +157,9 @@ func _ride() -> void:
 	if c == null or not bay_stomps:
 		return
 	var ride: Dictionary = c.ride_now()
+	if not ride.is_empty() and ride["pass"]:
+		_pass(ride)
+		return
 	if ride.is_empty() or ride["stomped"] or not boss.gunship.bay_open or _bay_jumped.has(int(ride["k"])):
 		return
 	if bay_misses > 0:
@@ -162,6 +175,49 @@ func _ride() -> void:
 	if ahead <= c.bay_lead(ride) and ahead > -0.5:
 		_bay_jumped[int(ride["k"])] = true
 		_press(&"jump", "the drop bay %d" % int(ride["k"]))
+
+
+## On the war engine's belly during `ride` (a pass): the next clamp still locked ahead along the belly,
+## its third of the lanes, and the jump (see the header).
+func _pass(ride: Dictionary) -> void:
+	var c: HostileTakeoverContract = boss.contract
+	var p: Player = boss.world.player
+	var key: int = int(ride["k"])
+	if not _pass_seen.has(key):
+		_pass_seen[key] = {"skip": pass_misses > 0, "jumps": 0}
+		if pass_misses > 0:
+			pass_misses -= 1
+			log.append({"t": boss.fight_time(), "action": &"skip", "why": "lets the pass %d go by" % key})
+	var seen: Dictionary = _pass_seen[key]
+	if seen["skip"] or int(seen["jumps"]) >= clamps_per_pass or p.distance > float(ride["pull_at"]) or not p.grounded:
+		return
+	var u: float = c.pass_u(ride, p.distance)
+	var target: int = -1
+	var ahead: float = INF
+	for i: int in boss.gunship.clamps.size():
+		var clamp: Dictionary = boss.gunship.clamps[i]
+		var to: float = float(clamp["at"]) - u
+		if clamp["torn"] or _clamp_jumped.has("%d:%d" % [key, i]) or to < -0.5:
+			continue
+		if to < ahead:
+			ahead = to
+			target = i
+	if target < 0:
+		return
+	var lane: int = clamp_lane(target)
+	if p.lane != lane:
+		_press(&"move_right" if lane > p.lane else &"move_left", "under clamp %d" % target)
+		return
+	if p.grounded and ahead <= c.clamp_lead():
+		_clamp_jumped["%d:%d" % [key, target]] = true
+		seen["jumps"] = int(seen["jumps"]) + 1
+		_press(&"jump", "clamp %d" % target)
+
+
+## The lane under docking clamp `i`'s middle (the third of the belly it hangs under).
+func clamp_lane(i: int) -> int:
+	var x: float = float(boss.gunship.clamps[i]["side"]) * boss.gunship.belly_width / 3.0
+	return clampi(boss.world.geo.lane_at(x), 0, boss.lane_count() - 1)
 
 
 ## The lane it runs up in for a coupling in `lane`: its own, or the one beside it on side_lane's side

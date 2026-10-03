@@ -4,9 +4,9 @@ extends BossEncounter
 ## same in this zone, so the boss is a merger, literally". Task E5b: E5b-a built the arena (the Chairman's
 ## train), the gunship and the locomotive, and phase 1 (The Board: its guards and the carriage couplings);
 ## E5b-b phase 2 (The Contract: the gunship's strafes, the Buzz Overdrive it drops, the armored carriage
-## passed on its belly, its drop bay the weak point); E5b-c brings phase 3 (The Merger), the defeat, the
-## par times and the campaign's slot. Until then it plays as a preview (BossDef.preview_scene:
-## ./play.sh --boss=corporate_boss), phase 3 playing The Board again, with a placeholder defeat.
+## passed on its belly, its drop bay the weak point); E5b-c phase 3 (The Merger: the gunship docked onto the
+## locomotive, its three docking clamps the weak points), the defeat, the par times and its slot in the
+## campaign (after Corporate 2, at the zone's 23.4 m/s).
 ##
 ## The arena is the boss (GDD §10: "the player lands on the rear roof of the Chairman's armored maglev train
 ## ... and runs forward along it toward the locomotive. Carriage roofs are the floor and the gaps between
@@ -22,7 +22,7 @@ extends BossEncounter
 ## Each phase:
 ## 1. Its intro: the first phase's is the entrance (the gunship sweeps in from behind and over the runner
 ##    with its roar and settles over the train ahead); a later one follows a stomp, the gunship lurching.
-## 2. Its pattern (pattern_of): The Board in phase 1 (and phase 3, until E5b-c), The Contract in phase 2.
+## 2. Its pattern (pattern_of): The Board in phase 1, The Contract in phase 2, The Merger in phase 3.
 ##    - The Board (HostileTakeoverBoard): carriage by carriage the guards come onto the roofs, a Tithe
 ##      Collector on each flatcar (a few a phase), partial wall fences along the barriers; and every gap's
 ##      coupling (HostileTakeoverCouplings) glows red in its lane from the phase's first gaps on
@@ -38,25 +38,43 @@ extends BossEncounter
 ##      stay dark. As it begins, what phase 1 planned ahead stands down: its guards still to come never
 ##      do (retired as they come into play) and its wall fences switch off (the EMP's way,
 ##      TrackBuilder.disable_fences_near).
+##    - The Merger: once phase 2's last ride is over, the docking (Step.DOCK): the locomotive comes back
+##      from far ahead to merger_ahead while the gunship settles onto its rear, its huge arms gripping it and
+##      its three docking clamps unfolding under its belly (HostileTakeoverGunship.set_docked), and
+##      "MERGER COMPLETE" flashes on every screen with the Chairman's face (HostileTakeoverScreens; steady
+##      with Reduced flashing). Then the war engine leads the train (Step.MERGED) and its attacks combine
+##      both phases' (GDD §10): the Board's guards and wall fences on some carriages
+##      (HostileTakeoverBoard.merger), the strafes, a Buzz Overdrive dropped onto each flatcar, and after
+##      each a pass (HostileTakeoverContract.plan_pass): the war engine comes back over the runner, a runway
+##      of pads before it, and they ride its belly forward under its three glowing red clamps; a jump from
+##      the belly that comes back up onto one stomps it and tears it loose. Missed clamps come around in the
+##      next pass (no time limit, no escalation); the third one beats it.
 ##    Weapons chip the gunship up to BossDef.weapon_share_cap, but never end a phase: its data turns
-##    BossDef.weapons_can_end_phase off (DESIGN-TBD, docs/questions/e5b.md), so the stomps do.
-## 3. The last stomp beats it (a placeholder defeat until E5b-c: the couplings go dark and the gunship
-##    climbs away).
+##    BossDef.weapons_can_end_phase off (DESIGN-TBD, docs/questions/e5b.md), so the stomps do, each phase's
+##    hits counted (phase 3 always takes its three clamps).
+## 3. The defeat (GDD §10: "the gunship spins away and explodes; the locomotive derails and ploughs through
+##    the lobby of a corporate tower, bringing down a giant, soulless logo sculpture"): the last clamp torn
+##    loose, the gunship pulls free and spins away, exploding explode_at seconds later; the locomotive
+##    leaves the guideway toward a corporate tower beside the line (HostileTakeoverLobby) and ploughs
+##    through its sky lobby crash_at seconds in, its plaza's logo sculpture toppling; the screens glitch and
+##    go dark (still with Reduced flashing). The results follow defeat_seconds after the stomp.
 ## Distances that stand for a time follow the run's pace (run_pace(): the Corporate zone's 23.4 m/s in the
 ## campaign); where the gunship and the locomotive fly and stand is framing, in metres. Random choices come
 ## from seeds of the fight and of each carriage, time from the physics step, so every attempt plays the
 ## same. Numbers: HostileTakeoverTuning (data/bosses/corporate_boss_tuning.tres), all DESIGN-TBD
 ## (docs/questions/e5b.md).
 
-enum Step { ENTER, FLY, DEFEAT }
+enum Step { ENTER, FLY, DOCK, MERGED, DEFEAT }
 ## A phase's pattern.
-enum Pattern { BOARD, CONTRACT }
+enum Pattern { BOARD, CONTRACT, MERGER }
 
 const GUNSHIP_SCRIPT: Script = preload("res://scripts/bosses/hostile_takeover/hostile_takeover_gunship.gd")
 const LOCOMOTIVE_SCRIPT: Script = preload("res://scripts/bosses/hostile_takeover/hostile_takeover_locomotive.gd")
 const COUPLINGS_SCRIPT: Script = preload("res://scripts/bosses/hostile_takeover/hostile_takeover_couplings.gd")
 const ARMORED_SCRIPT: Script = preload("res://scripts/bosses/hostile_takeover/hostile_takeover_armored.gd")
 const STRAFES_SCRIPT: Script = preload("res://scripts/bosses/hostile_takeover/hostile_takeover_strafes.gd")
+const SCREENS_SCRIPT: Script = preload("res://scripts/bosses/hostile_takeover/hostile_takeover_screens.gd")
+const LOBBY_SCRIPT: Script = preload("res://scripts/bosses/hostile_takeover/hostile_takeover_lobby.gd")
 ## No coupling glows (an intro, or a phase that doesn't play The Board).
 const NONE: int = 1 << 30
 ## Couplings are laid over the gaps from this far behind the runner to this far ahead (the built track).
@@ -64,14 +82,32 @@ const RIG_BEHIND: float = 30.0
 const RIG_AHEAD: float = 230.0
 ## A later phase's intro: the gunship lurches up and rolls over this long.
 const LURCH_SECONDS: float = 1.6
-## The placeholder defeat plays out this long before the results.
-const DEFEAT_SECONDS: float = 2.4
 ## The breakaway stops being drawn once the carriages are this long gone.
 const BREAK_GONE: float = 6.0
 ## Phase 1's wall fences ahead switch off as phase 2 begins: those within this of the stretch ahead.
 const STAND_DOWN_REACH: float = 400.0
 ## A pickup's search is kept this much further off a ride than its own reach (metres): a frame's margin.
 const PICKUP_MARGIN: float = 5.0
+## Docked, the gunship's middle is this far behind the locomotive's rear face (its nose over the
+## locomotive's roof, its belly's front just behind its face).
+const DOCK_OFFSET: float = 12.0
+## The docking's clamps lock this far through it.
+const CLAMPS_LOCK_AT: float = 0.7
+## The defeat: the locomotive ploughs into the lobby this far ahead of the runner (metres at 18 m/s), its
+## rear face ending this far short of the lobby's middle, turned this much, and its middle this far past
+## its own half width beyond the barrier (so none of it stands over the track).
+const LOBBY_AHEAD: float = 28.0
+const DERAIL_SHORT: float = 22.0
+const DERAIL_OUT: float = 1.5
+const DERAIL_YAW: float = 0.6
+## The sculpture topples over this long, and the screens go dark this long into the defeat.
+const TOPPLE_SECONDS: float = 1.1
+const SCREENS_DARK_AT: float = 0.9
+## The gunship's explosion rolls on in blasts this long after it blows (seconds), and the crash's too.
+const BLASTS: Array[float] = [0.0, 0.18, 0.36]
+const CRASHES: Array[float] = [0.0, 0.22]
+## The city's towers keep this far clear of the lobby either side.
+const LOBBY_CLEAR: float = 6.0
 
 var tuning: HostileTakeoverTuning
 var train: HostileTakeoverTrain
@@ -80,6 +116,8 @@ var locomotive: HostileTakeoverLocomotive
 var couplings: HostileTakeoverCouplings
 var armored: HostileTakeoverArmored
 var strafes: HostileTakeoverStrafes
+var screens: HostileTakeoverScreens
+var lobby: HostileTakeoverLobby
 var board: HostileTakeoverBoard
 var contract: HostileTakeoverContract
 var step: Step = Step.ENTER
@@ -96,10 +134,26 @@ var break_age: float = -1.0
 ## Phase 1's guards retired as they came into play once its phase was over, and its wall fences switched off.
 var guards_retired: int = 0
 var fences_stood_down: int = 0
+## Phase 3: the war engine has docked (the contract flies it), and the clamps torn loose so far.
+var docked: bool = false
+var clamps_torn: int = 0
 
 var _hinted: Dictionary = {}
 var _phase_sounded: Dictionary = {}
 var _lurch: float = 0.0
+## The docking's start: how far ahead the locomotive was.
+var _dock_loco: float = 0.0
+## The defeat's start: the runner's distance, the gunship's pose, the locomotive's front; where the lobby
+## stands; what has happened so far.
+var _defeat_d: float = 0.0
+var _defeat_pose: Dictionary = {}
+var _defeat_loco: float = 0.0
+var _lobby_at: float = 0.0
+var _exploded: bool = false
+var _crashed: bool = false
+var _blasts: int = 0
+var _crashes: int = 0
+var _explosion_at: Vector3 = Vector3.ZERO
 
 
 func _tuning() -> HostileTakeoverTuning:
@@ -107,9 +161,11 @@ func _tuning() -> HostileTakeoverTuning:
 	return t if t != null else HostileTakeoverTuning.new()
 
 
-## Phase `index`'s pattern: The Contract in phase 2, The Board otherwise (phase 3's until task E5b-c).
+## Phase `index`'s pattern: The Board in phase 1, The Contract in phase 2, The Merger in phase 3.
 static func pattern_of(index: int) -> Pattern:
-	return Pattern.CONTRACT if index == 1 else Pattern.BOARD
+	if index <= 0:
+		return Pattern.BOARD
+	return Pattern.CONTRACT if index == 1 else Pattern.MERGER
 
 
 # --- The arena: the train ----------------------------------------------------------------------
@@ -117,7 +173,7 @@ static func pattern_of(index: int) -> Pattern:
 ## GDD §10's arena: the Chairman's train. Every lap holds the same carriages: a gap across every lane at
 ## the end of each (HostileTakeoverTrain), and nothing else of the generator's (no holes, fences, signs,
 ## ceilings, pads, ramps, speed pads, doodads, cuts, enemies, wall fences or credits): the phases bring
-## their own (phase 1: HostileTakeoverBoard; phase 2: HostileTakeoverContract).
+## their own (HostileTakeoverBoard, HostileTakeoverContract).
 func _plan_lap(lap: LevelLayout, _index: int, p_arena: BossArena) -> void:
 	if tuning == null:
 		tuning = _tuning()
@@ -139,7 +195,9 @@ func _plan_lap(lap: LevelLayout, _index: int, p_arena: BossArena) -> void:
 
 ## The enemies the fight brings onto the roofs itself, readied with the fight's load (task PERF1,
 ## EnemyDirector.warm_up): The Board's guards, the zone's cyborgs (the first one's look took 230 ms in its
-## spawn's frame), and the Tithe Collector; The Contract's Buzz Overdrive, dropped onto a flatcar.
+## spawn's frame), and the Tithe Collector; The Contract's and The Merger's Buzz Overdrive, dropped onto a
+## flatcar. (Its own parts, phase 3's among them, are built with the fight and hidden till they're needed,
+## so the shader warm-up draws them during the load too.)
 func warm_enemies() -> Array[Dictionary]:
 	return [{"type": "cyborg", "at": 0.0, "lane": 0, "side": 0, "seed": 1, "params": {}},
 		{"type": "tithe_collector", "at": 0.0, "lane": 0, "side": 0, "seed": 1, "params": {}},
@@ -155,6 +213,8 @@ func _build_boss() -> void:
 	couplings = add_part(COUPLINGS_SCRIPT, {"tuning": tuning, "train": train}) as HostileTakeoverCouplings
 	armored = add_part(ARMORED_SCRIPT, {"tuning": tuning, "length": _corporate_roof()}) as HostileTakeoverArmored
 	strafes = add_part(STRAFES_SCRIPT, {"tuning": tuning}) as HostileTakeoverStrafes
+	screens = add_part(SCREENS_SCRIPT, {"tuning": tuning, "locomotive": locomotive}) as HostileTakeoverScreens
+	lobby = add_part(LOBBY_SCRIPT, {}) as HostileTakeoverLobby
 	board = HostileTakeoverBoard.new(self)
 	contract = HostileTakeoverContract.new(self)
 	world.director.enemy_spawned.connect(_on_enemy_spawned)
@@ -163,10 +223,11 @@ func _build_boss() -> void:
 	var skin := world.skin as HostileTakeoverSkin
 	if skin != null:
 		skin.clear_breakaway()
-	board.tick(pattern_of(phase_index) == Pattern.BOARD)
+		skin.clear_clearing()
+	# The phase the fight starts at (a checkpoint's): The Board plans only if it plays it.
+	board.tick(pattern_of(clampi(int(context.boss_resume.get("phase", 0)), 0, phase_count() - 1)) == Pattern.BOARD)
 	_update_couplings()
 	_place_gunship()
-	locomotive.set_front(player_distance() + tuning.loco_ahead)
 
 
 func _exit_tree() -> void:
@@ -174,6 +235,7 @@ func _exit_tree() -> void:
 	var skin := world.skin as HostileTakeoverSkin if world != null else null
 	if skin != null:
 		skin.clear_breakaway()
+		skin.clear_clearing()
 
 
 ## A corporate carriage's roof (the armored carriage covers one).
@@ -242,13 +304,24 @@ func _on_phase_started(index: int) -> void:
 	else:
 		_set_step(Step.FLY)
 		_lurch = LURCH_SECONDS
-	if pattern_of(index) == Pattern.CONTRACT:
-		_stand_down()
-		# Planned from the phase's start, so its first flatcar's drop still finds the track ahead unbuilt;
-		# the strafes wait for its pattern.
-		contract.start()
-	elif contract != null and contract.active:
-		contract.stop()
+	match pattern_of(index):
+		Pattern.CONTRACT:
+			_stand_down()
+			# Planned from the phase's start, so its first flatcar's drop still finds the track ahead unbuilt;
+			# the strafes wait for its pattern.
+			contract.start()
+		Pattern.MERGER:
+			# Phase 2's planned drops stay for the war engine if they come after the docking, with passes for
+			# their rides (a ride under way flies through); the Board comes back for phase 3's carriages; the
+			# war engine's drops and passes are planned from now on (from a checkpoint, from its start).
+			board.merger = true
+			if contract.active:
+				contract.merge(_docking_done_at())
+			else:
+				contract.start(true, _docking_done_at())
+		_:
+			if contract != null and contract.active:
+				contract.stop()
 
 
 ## Phase 2 begins: what phase 1 planned ahead stands down. The Board stops planning, its guards still to
@@ -261,6 +334,16 @@ func _stand_down() -> void:
 	log_event(&"stand_down", {"wall_fences": fences_stood_down})
 
 
+## Where the runner is, at the latest, when phase 3's docking is over: after phase 2's ride still under
+## way, the docking and a second.
+func _docking_done_at() -> float:
+	var from: float = player_distance()
+	var ride: Dictionary = contract.ride_now()
+	if not ride.is_empty():
+		from = maxf(from, float(ride["climb_to"]))
+	return from + (tuning.dock_seconds + 1.0) * world.tuning.run_speed
+
+
 func _intro_tick(delta: float) -> void:
 	_update(delta)
 
@@ -268,7 +351,7 @@ func _intro_tick(delta: float) -> void:
 func _on_pattern_started(index: int) -> void:
 	if step == Step.ENTER:
 		_set_step(Step.FLY)
-	if pattern_of(index) == Pattern.CONTRACT:
+	if pattern_of(index) != Pattern.BOARD:
 		lit_from = NONE
 		return
 	lit_from = train.next_gap(player_distance() + speed() * tuning.lit_sight) + tuning.opening_for(index)
@@ -280,10 +363,14 @@ func _pattern_tick(delta: float) -> void:
 
 
 ## A weak point stomped (its damage applies right after): a coupling breaks, and the carriages behind
-## break away; or the gunship's drop bay bursts.
+## break away; the gunship's drop bay bursts; or one of its docking clamps is torn loose.
 func _on_weak_point_hit(part: BossPart, hazard: Hazard) -> void:
 	if part == gunship:
-		_bay_stomped()
+		var i: int = gunship.clamp_of(hazard)
+		if i >= 0:
+			_clamp_stomped(i)
+		else:
+			_bay_stomped()
 		return
 	var k: int = couplings.gap_of(hazard)
 	if k < 0:
@@ -318,6 +405,24 @@ func _bay_stomped() -> void:
 	log_event(&"bay_stomped", {"carriage": int(ride.get("k", -1)), "runner_lane": world.player.lane, "d": player_distance()})
 
 
+## Phase 3's hit: the runner on the war engine's belly stomped docking clamp `i`. It's torn loose (its lock
+## dark, its arm swung free); a third of the phase each, the last one beats it (the hits are counted:
+## BossEncounter.hit_damage).
+func _clamp_stomped(i: int) -> void:
+	var at: Vector3 = gunship.clamp_world(i)
+	gunship.tear_clamp(i)
+	clamps_torn += 1
+	var ride: Dictionary = contract.ride_now()
+	if not ride.is_empty() and ride.has("stomps"):
+		(ride["stomps"] as Array).append(i)
+	sound(&"takeover_clamp", at)
+	world.effects.burst(at, HostileTakeoverModel.WEAK, 36, 1.1)
+	world.effects.debris(at, HostileTakeoverModel.GUNMETAL_LIGHT, 10, 1.0)
+	world.effects.shake(0.45, 0.35)
+	log_event(&"clamp_stomped", {"clamp": i, "side": int(gunship.clamps[i]["side"]), "left": gunship.clamps_left(),
+		"runner_lane": world.player.lane, "d": player_distance()})
+
+
 ## A ride's gunship starts down (HostileTakeoverContract): in phase 2 its drop bay opens, the weak point.
 func ride_begins(ride: Dictionary) -> void:
 	var open: bool = pattern_of(phase_index) == Pattern.CONTRACT and not is_defeated()
@@ -335,6 +440,22 @@ func ride_ends(ride: Dictionary) -> void:
 	if contract.active:
 		gunship.set_saw(true)
 	log_event(&"ride_landed" if ride["stomped"] else &"ride_missed", {"carriage": ride["k"], "lane": world.player.lane})
+
+
+## Phase 3: the war engine comes back over the runner for a pass (HostileTakeoverContract), its clamps
+## glowing under its belly.
+func pass_begins(ride: Dictionary) -> void:
+	sound(&"takeover_gunship", gunship.global_position)
+	hint("clamps")
+	log_event(&"pass_begins", {"carriage": ride["k"], "clamps": gunship.clamps_left()})
+
+
+## The runner has dropped off the war engine's belly: it takes on a new tank for the next drop.
+func pass_ends(ride: Dictionary) -> void:
+	if contract.active:
+		gunship.set_saw(true)
+	var torn: int = (ride.get("stomps", []) as Array).size()
+	log_event(&"pass_landed" if torn > 0 else &"pass_missed", {"carriage": ride["k"], "torn": torn, "lane": world.player.lane})
 
 
 ## The standard armor rule's pickup: on the floor ahead as any boss's (offer_pickup), but never on a ride's
@@ -371,16 +492,69 @@ func _keep_pickups_off_rides() -> void:
 		offer["at"] = _pickup_at(float(offer["at"]))
 
 
-## The last stomp: a placeholder defeat until task E5b-c (GDD §10's: the gunship spins away and explodes;
-## the locomotive derails and ploughs through the lobby of a corporate tower). The couplings go dark and
-## the gunship climbs away.
+# --- The Merger: the docking ---------------------------------------------------------------------
+
+## Phase 3's docking, once phase 2's last ride is over (see the header): it begins (DOCK), its clamps lock
+## CLAMPS_LOCK_AT through it, and when it's done "MERGER COMPLETE" goes up on every screen (MERGED).
+func _update_merger() -> void:
+	if pattern_of(phase_index) != Pattern.MERGER or is_defeated():
+		return
+	match step:
+		Step.ENTER, Step.FLY:
+			if contract.ride_now().is_empty():
+				_set_step(Step.DOCK)
+				_dock_loco = locomotive.front_at - player_distance()
+				sound(&"takeover_gunship", gunship.global_position)
+				log_event(&"docking")
+		Step.DOCK:
+			if not gunship.docked and step_time >= tuning.dock_seconds * CLAMPS_LOCK_AT:
+				gunship.set_docked(true)
+				sound(&"takeover_clamps", gunship.global_transform * Vector3(0.0, 0.0, -HostileTakeoverModel.BELLY_FRONT))
+				world.effects.shake(0.35, 0.3)
+				log_event(&"clamps_locked")
+			if step_time >= tuning.dock_seconds:
+				_set_step(Step.MERGED)
+				docked = true
+				locomotive.set_chairman_shown(false)
+				screens.set_on(true)
+				sound(&"takeover_merger", locomotive.global_transform * Vector3(0.0, 3.0, 2.0))
+				hint("merger")
+				log_event(&"merger_complete")
+
+
+## Where the docked war engine's gunship flies between passes and drops: the locomotive's rear face
+## merger_ahead ahead of the runner, the gunship's belly dock_height over the roofs, steady on the line.
+func docked_pose() -> Dictionary:
+	return {"middle": player_distance() + tuning.merger_ahead - DOCK_OFFSET, "y": tuning.dock_height, "x": 0.0, "roll": 0.0,
+		"pitch": 0.0}
+
+
+# --- The defeat ----------------------------------------------------------------------------------
+
+## The last clamp torn loose (GDD §10, see the header): everything stops; the lobby is set up ahead beside
+## the line where the locomotive will plough into it, the city's towers keeping clear of it; the screens
+## glitch.
 func _on_defeated() -> void:
 	lit_from = NONE
 	_set_step(Step.DEFEAT)
 	_update_couplings()
 	if contract != null:
 		contract.halt()
-	log_event(&"defeat")
+	var d: float = player_distance()
+	_defeat_d = d
+	_defeat_pose = {"middle": gunship.track_distance(), "y": gunship.global_position.y, "x": gunship.global_position.x}
+	_defeat_loco = locomotive.front_at
+	var v: float = world.tuning.run_speed
+	_lobby_at = d + v * tuning.crash_at + LOBBY_AHEAD * run_pace() + DERAIL_SHORT
+	lobby.place(_lobby_at, tuning.derail_side)
+	var skin := world.skin as HostileTakeoverSkin
+	if skin != null:
+		skin.set_clearing(lobby.span(LOBBY_CLEAR), lobby.side)
+	screens.set_glitch(1.0)
+	gunship.set_saw(false)
+	gunship.end_fall()
+	sound(&"takeover_gunship", gunship.global_position)
+	log_event(&"defeat", {"lobby": _lobby_at})
 
 
 func _defeated_tick(delta: float) -> void:
@@ -388,16 +562,76 @@ func _defeated_tick(delta: float) -> void:
 	_update_breakaway(delta)
 	if contract != null:
 		contract.tick(delta)
+	var t: float = step_time
+	if t >= SCREENS_DARK_AT and screens.on:
+		screens.set_on(false)
+	if not _exploded and t >= tuning.explode_at:
+		_explode()
+	while _exploded and _blasts < BLASTS.size() and t >= tuning.explode_at + BLASTS[_blasts]:
+		_blast(_blasts)
+		_blasts += 1
+	if not _crashed and t >= tuning.crash_at:
+		_crash()
+	while _crashed and _crashes < CRASHES.size() and t >= tuning.crash_at + CRASHES[_crashes]:
+		_crash_blast(_crashes)
+		_crashes += 1
+	if _crashed:
+		lobby.topple((t - tuning.crash_at) / TOPPLE_SECONDS)
 	_place_gunship()
-	if is_instance_valid(locomotive):
-		locomotive.set_front(player_distance() + tuning.loco_ahead)
+	# Beaten, the parts no longer tick: the screens' and the blasts' clocks run from here.
+	screens.step(delta)
+	screens.pace(player_distance())
+	lobby.step(delta)
 
 
-## Once its placeholder defeat has played out (or at once if the runner is gone).
+## The gunship blows up in the sky, away from the line (its blasts roll on: _blast).
+func _explode() -> void:
+	_exploded = true
+	_explosion_at = gunship.global_position + Vector3(0.0, 2.0, 0.0)
+	gunship.visible = false
+	world.effects.debris(_explosion_at, HostileTakeoverModel.OLIVE, 16, 1.8)
+	world.effects.debris(_explosion_at, HostileTakeoverModel.GUNMETAL_LIGHT, 14, 1.5)
+	world.effects.shake(0.55, 0.5)
+	sound(&"takeover_explode", _explosion_at)
+	log_event(&"gunship_exploded")
+
+
+## One of the explosion's blasts (`i`-th), each a little further out: a fireball (HostileTakeoverLobby.blast)
+## on the first, sparks on each.
+func _blast(i: int) -> void:
+	var at: Vector3 = _explosion_at + Vector3((i - 1) * 3.0, i * 1.5, -i * 2.0)
+	if i == 0:
+		lobby.blast(_explosion_at, 16.0)
+	world.effects.burst(at, Color(1.0, 0.86, 0.6), 64, 3.2 - i * 0.4)
+	world.effects.burst(at + Vector3(0.0, 1.0, 0.0), HostileTakeoverModel.ENGINE if i == 0 else Color(1.0, 0.62, 0.3), 40, 2.4)
+
+
+## The locomotive ploughs into the lobby (its blasts: _crash_blast); its sculpture starts to topple.
+func _crash() -> void:
+	_crashed = true
+	var at: Vector3 = lobby.lobby_world()
+	world.effects.debris(at, HostileTakeoverModel.GLASS.lightened(0.4), 16, 1.6)
+	world.effects.debris(at, HostileTakeoverModel.GUNMETAL, 12, 1.8)
+	world.effects.shake(0.6, 0.6)
+	sound(&"takeover_derail", at)
+	log_event(&"locomotive_crashed")
+
+
+## One of the crash's blasts (`i`-th): a fireball out of the lobby's front on the first, glass and sparks
+## bursting out on each.
+func _crash_blast(i: int) -> void:
+	var at: Vector3 = lobby.lobby_world() + Vector3(0.0, i * 2.0, -i * 4.0)
+	if i == 0:
+		lobby.blast(lobby.lobby_world() + Vector3(0.0, 4.0, 0.0), 18.0)
+	world.effects.burst(at, HostileTakeoverModel.COLD_WHITE, 64, 3.0 - i * 0.6)
+	world.effects.burst(at + Vector3(0.0, 1.5, 0.0), Color(1.0, 0.86, 0.6), 40, 2.2)
+
+
+## Once its defeat has played out (or at once if the runner is gone).
 func victory_over() -> bool:
 	if world == null or world.player == null or not world.player.alive:
 		return true
-	return step == Step.DEFEAT and step_time >= DEFEAT_SECONDS
+	return step == Step.DEFEAT and step_time >= tuning.defeat_seconds
 
 
 # --- Every frame -------------------------------------------------------------------------------
@@ -405,13 +639,16 @@ func victory_over() -> bool:
 func _update(delta: float) -> void:
 	step_time += delta
 	_lurch = maxf(_lurch - delta, 0.0)
-	board.tick(pattern_of(phase_index) == Pattern.BOARD)
+	var pattern: Pattern = pattern_of(phase_index)
+	board.merger = pattern == Pattern.MERGER
+	board.tick(pattern != Pattern.CONTRACT)
 	contract.tick(delta)
+	_update_merger()
 	_keep_pickups_off_rides()
 	_update_couplings()
 	_update_breakaway(delta)
 	_place_gunship()
-	locomotive.set_front(player_distance() + tuning.loco_ahead)
+	screens.pace(player_distance())
 
 
 ## Lays the couplings over the gaps in sight (from just behind the runner to the built track's end) and
@@ -461,8 +698,11 @@ func _apply_breakaway() -> void:
 
 
 ## Where the gunship flies at its station (relative to the runner, swaying and bobbing on the fight's
-## clock): {middle (its middle's track distance), y, x, roll, pitch}.
+## clock): {middle (its middle's track distance), y, x, roll, pitch}; docked (phase 3), the war engine's
+## (docked_pose).
 func station_pose() -> Dictionary:
+	if docked:
+		return docked_pose()
 	var t: float = fight_time()
 	return {
 		"middle": player_distance() + tuning.gunship_ahead + HostileTakeoverModel.GUNSHIP_LENGTH * 0.5,
@@ -473,21 +713,27 @@ func station_pose() -> Dictionary:
 	}
 
 
-## Flies the gunship over the train: at its station, or as phase 2's contract flies it (a drop, a ride, a
-## strafe); in the entrance it eases in from behind and above; in a later intro it lurches up and rolls
-## (never while it's low over a ride); beaten, it climbs away.
+## Flies the gunship and sets the locomotive: at its station, or as the contract flies it (a drop, a ride, a
+## strafe, a pass); in the entrance it eases in from behind and above; in a later intro it lurches up and
+## rolls (never while it's low over a ride); docking, it settles onto the locomotive coming back; docked,
+## the locomotive moves with it; beaten, the defeat (_place_defeat).
 func _place_gunship() -> void:
-	if not is_instance_valid(gunship):
+	if not is_instance_valid(gunship) or not is_instance_valid(locomotive):
+		return
+	if step == Step.DEFEAT:
+		_place_defeat()
 		return
 	var d: float = player_distance()
 	var pose: Dictionary = station_pose()
-	if contract != null:
+	if contract != null and step != Step.DOCK:
 		pose = contract.pose(pose, d)
 	var riding: bool = contract != null and contract.riding(d)
 	var middle: float = float(pose["middle"])
 	var y: float = float(pose["y"])
+	var x: float = float(pose["x"])
 	var roll: float = float(pose["roll"])
 	var pitch: float = float(pose["pitch"])
+	var loco: float = d + tuning.loco_ahead
 	match step:
 		Step.ENTER:
 			var k: float = clampf(state_time / maxf(phase().intro_seconds, 0.05), 0.0, 1.0)
@@ -495,18 +741,47 @@ func _place_gunship() -> void:
 			middle -= tuning.gunship_enter_behind * (1.0 - e)
 			y += tuning.gunship_enter_rise * (1.0 - e)
 			pitch -= 0.12 * (1.0 - e)
-		Step.DEFEAT:
-			if not riding:
-				var c: float = minf(step_time / DEFEAT_SECONDS, 1.0)
-				middle += 60.0 * c * c
-				y += 24.0 * c * c
-				roll += 0.5 * c
-				pitch += 0.25 * c
-	if _lurch > 0.0 and not riding:
+		Step.DOCK:
+			var e: float = smoothstep(0.0, 1.0, step_time / maxf(tuning.dock_seconds, 0.1))
+			var to: Dictionary = docked_pose()
+			middle = lerpf(middle, float(to["middle"]), e)
+			y = lerpf(y, float(to["y"]), e)
+			x = lerpf(x, 0.0, e)
+			roll = lerpf(roll, 0.0, e)
+			pitch = lerpf(pitch, 0.0, e)
+			loco = d + lerpf(_dock_loco, tuning.merger_ahead, e)
+		Step.MERGED:
+			loco = middle + DOCK_OFFSET
+	if _lurch > 0.0 and not riding and step != Step.DOCK and step != Step.MERGED:
 		var l: float = sin(PI * (1.0 - _lurch / LURCH_SECONDS))
 		y += 3.0 * l
 		roll += 0.35 * l
-	gunship.set_pose(Vector3(float(pose["x"]), y, TrackGeometry.world_z(middle)), roll, pitch)
+	gunship.set_pose(Vector3(x, y, TrackGeometry.world_z(middle)), roll, pitch)
+	if step == Step.MERGED:
+		# Docked: it sinks into its guideway as the gunship comes down over the runner.
+		locomotive.set_pose(loco, Vector3(0.0, minf(y - tuning.dock_height, 0.0), 0.0))
+	else:
+		locomotive.set_front(loco)
+
+
+## The defeat's motion, on its clock (see the header): the gunship pulling free of the locomotive, up and
+## away from the line on the side away from the lobby, spinning, keeping ahead of the runner until it
+## explodes; the locomotive surging on and veering off the guideway into the lobby, where it stays.
+func _place_defeat() -> void:
+	var t: float = step_time
+	var v: float = world.tuning.run_speed
+	var side: float = float(tuning.derail_side if tuning.derail_side != 0 else 1)
+	if not _exploded:
+		var middle: float = float(_defeat_pose["middle"]) + v * t + 2.0 * t * t
+		var y: float = float(_defeat_pose["y"]) + 2.0 * t + 3.0 * t * t
+		var x: float = float(_defeat_pose["x"]) - side * (2.0 * t + 4.0 * t * t)
+		gunship.set_pose(Vector3(x, y, TrackGeometry.world_z(middle)), -side * 2.4 * t, 0.3 * t)
+	var k: float = clampf(t / maxf(tuning.crash_at, 0.1), 0.0, 1.0)
+	var end_front: float = _lobby_at - DERAIL_SHORT
+	var front: float = lerpf(_defeat_loco, end_front, k)
+	var veer: float = smoothstep(0.15, 1.0, k)
+	var out: float = side * (2.0 * world.geo.wall_x() + DERAIL_OUT) * veer
+	locomotive.set_pose(front, Vector3(out, -0.8 * veer, 0.0), -side * DERAIL_YAW * veer, side * 0.18 * veer)
 
 
 func _set_step(next: Step) -> void:
@@ -515,8 +790,8 @@ func _set_step(next: Step) -> void:
 	step = next
 
 
-## An enemy came into play: a Tithe Collector gets its credits to skim; one of phase 1's guards coming in
-## once its phase is over is retired at once (never seen: it stood beyond the built track).
+## An enemy came into play: a Tithe Collector gets its credits to skim; a guard planned in another phase
+## coming in once that phase is over is retired at once (never seen: it stood beyond the built track).
 func _on_enemy_spawned(enemy: Enemy) -> void:
 	if enemy == null or is_defeated():
 		return

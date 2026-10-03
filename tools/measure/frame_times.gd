@@ -50,13 +50,13 @@ extends SceneTree
 ##
 ## The runner: the level's own seed picks a move every 0.5 to 1.25 s (a lane switch, now and then onto a
 ## wall, a jump or a slide), through the player's named actions; a boss fight is played by its test bot
-## (FloatingHeadBot, SleepTakerBot) when one exists, in god mode too.
+## (FloatingHeadBot, SleepTakerBot, SewerSwarmBot) when one exists, in god mode too.
 
 const SPIKE_MS: float = 4.0
 ## A boss fight that never ends (no bot for it) stops after this long.
 const BOSS_SECONDS: float = 240.0
 const BOTS: Dictionary = {"city_boss": "res://tests/helpers/floating_head_bot.gd",
-	"dead_zone_boss": "res://tests/helpers/sleep_taker_bot.gd"}
+	"dead_zone_boss": "res://tests/helpers/sleep_taker_bot.gd", "gangland_boss": "res://tests/helpers/sewer_swarm_bot.gd"}
 const MONITOR_SCRIPT: String = "res://scripts/run/frame_monitor.gd"
 const ATTACK_WATCH: String = "res://tools/measure/attack_watch.gd"
 ## Where a pass in its own process leaves its numbers for this one.

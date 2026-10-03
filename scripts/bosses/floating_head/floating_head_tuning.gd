@@ -55,12 +55,12 @@ extends Resource
 @export_range(6.0, 30.0, 0.5, "suffix:m") var enter_height: float = 10.5
 
 @export_group("Bombing run")
-## GDD §10: the first run lasts about 15-20 s (from the searchlight switching on to its last bomb).
-@export_range(5.0, 30.0, 0.5, "suffix:s") var first_run_seconds: float = 16.0
+## From the searchlight switching on to its last bomb; shortened 30% by owner request.
+@export_range(5.0, 30.0, 0.1, "suffix:s") var first_run_seconds: float = 11.2
 ## GDD §10: once or twice during the fight it rises for another, shorter run. DESIGN-TBD
 ## (docs/OPEN_QUESTIONS.md §D, item 89): at the start of the next `later_runs` phases, after it rises
 ## back into the sky (0 = never).
-@export_range(0.0, 20.0, 0.5, "suffix:s") var later_run_seconds: float = 8.0
+@export_range(0.0, 20.0, 0.1, "suffix:s") var later_run_seconds: float = 5.6
 @export_range(0, 2) var later_runs: int = 2
 ## DESIGN-TBD (item 85): its station during a run: its stern this far ahead of the player and its
 ## belly this high, so it looms over the top of the screen with its searchlight pointing back at the
@@ -155,6 +155,9 @@ extends Resource
 @export_range(1.2, 2.2, 0.05, "suffix:m") var sweep_high_top: float = 1.9
 ## How fast a sweep crosses the street from wall to wall.
 @export_range(4.0, 40.0, 0.5, "suffix:m/s") var laser_sweep_speed: float = 13.0
+## A low sweep crosses the whole street within one normal jump started when it fires, regardless
+## of lane count or phase pace (the player's jump does not get faster in later phases).
+@export_range(0.4, 0.7, 0.01, "suffix:s") var low_sweep_seconds: float = 0.55
 ## The beams' hitbox radius (thinner than the beams you see).
 @export_range(0.03, 0.3, 0.01, "suffix:m") var beam_radius: float = 0.08
 ## A drag: the beams land under the face in the lane they aimed at and burn down it, reaching the

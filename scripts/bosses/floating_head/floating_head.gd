@@ -16,8 +16,8 @@ extends BossEncounter
 ##    the screen. After a stomp (GDD §10: "it shakes free, shrieks and rises") it lurches free of the
 ##    tower (SHAKE) and rises back to its station, or straight in front of the runner if the phase has
 ##    no run.
-## 2. Its pattern: a bombing run if the phase has one (GDD §10: the first about 15-20 s, and once or
-##    twice later a shorter one; FloatingHeadTuning), then it drops in front of the runner. The first
+## 2. Its pattern: a bombing run if the phase has one (GDD §10: once or twice later a shorter one;
+##    FloatingHeadTuning), then it drops in front of the runner. The first
 ##    time is GDD §10's reveal: its face screen powers on as it settles. Then the face-off, until a
 ##    tower pins it: the tower topples forward onto it as it brakes, slams it down between the trucks
 ##    (its weak points' sockets pin_top_height up) and breaks, and a stomp window opens.
@@ -255,8 +255,8 @@ func face_pose() -> Vector3:
 	return Vector3(0.0, tuning.face_height, tuning.face_ahead)
 
 
-## The bombing run a phase starts its pattern with, in seconds (0: none). GDD §10: the first lasts
-## about 15-20 s; once or twice later it rises for a shorter one.
+## The bombing run a phase starts its pattern with, in seconds (0: none); once or twice later it
+## rises for a shorter one.
 func run_seconds(index: int) -> float:
 	if index == 0:
 		return tuning.first_run_seconds

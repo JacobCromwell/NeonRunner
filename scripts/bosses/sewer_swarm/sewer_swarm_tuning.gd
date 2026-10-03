@@ -10,7 +10,7 @@ extends Resource
 ## Crowd sizes are the look only (GDD §10, owner, October 2, 2026: "build it now and we'll scale it down
 ## later"; the phone test, task E3, sets them): the fight plays the same at any crowd size, and a low-end
 ## device (DeviceProfile.is_low_end()) draws the _low_end ones. Every number here is a placeholder
-## (DESIGN-TBD, docs/questions/e4.md) unless its comment gives the GDD's.
+## (DESIGN-TBD: docs/OPEN_QUESTIONS.md 324-328, docs/questions/e4.md) unless its comment gives the GDD's.
 
 @export_group("Crowds")
 ## DESIGN-TBD (E3 sets it): screeches drawn in each cluster (GDD §10: "each rendered as many screech-variant
@@ -21,10 +21,14 @@ extends Resource
 ## street"). Scenery: it never touches the lanes.
 @export_range(0, 1200, 20) var horde_creatures: int = 400
 @export_range(0, 1200, 20) var horde_creatures_low_end: int = 160
-## DESIGN-TBD (E3): phase 2's wall climb (task E4b: GDD §10, "the swarm also climbs the walls, ... one wall at
-## a time"), here so every crowd size lives in one place and the stress scene can draw it.
-@export_range(0, 800, 20) var climb_creatures: int = 200
-@export_range(0, 800, 20) var climb_creatures_low_end: int = 80
+## DESIGN-TBD (E3): phase 2's wall climb (GDD §10, "the swarm also climbs the walls, ... one wall at a time"):
+## the screeches covering the wall it takes away.
+@export_range(0, 800, 20) var climb_creatures: int = 220
+@export_range(0, 800, 20) var climb_creatures_low_end: int = 90
+## DESIGN-TBD (E3): the screeches latched onto the Host (GDD §10: "mostly hidden under the screeches latched
+## onto them"), its body's whole bulk: each hit knocks a share of them off.
+@export_range(20, 800, 10) var host_creatures: int = 400
+@export_range(20, 800, 10) var host_creatures_low_end: int = 170
 ## DESIGN-TBD (E3): screeches pouring out of each manhole or vent as it bursts open (the Rising).
 @export_range(0, 40, 1) var spill_creatures: int = 14
 @export_range(0, 40, 1) var spill_creatures_low_end: int = 4
@@ -32,14 +36,17 @@ extends Resource
 @export_range(0.3, 1.2, 0.01) var creature_scale: float = 0.7
 
 @export_group("Clusters")
-## GDD §10: 4-5 clusters. Phase 1 ends when two are destroyed, phase 2 when the rest are (the BossDef's
-## phases' hits add up to this; test_sewer_swarm checks it).
+## GDD §10: 4-5 clusters. Phase 1 ends when two are destroyed, phase 2 when the rest are (the BossDef's first
+## two phases' hits add up to this; test_sewer_swarm checks it). A phase still short of its hits re-forms the
+## clusters it needs at the back of the line (weapons may have taken some without ending it: they stay within
+## the BossDef's weapon_share_cap).
 @export_range(1, 8) var cluster_count: int = 5
 ## DESIGN-TBD: a cluster's health in laser tier 1 shots (GDD §10: "weapons thin clusters too, and the heavy
 ## missile gets bonus damage against them"; GDD §8: the heavy missile's swarm bonus). Weapons hurt a cluster
 ## only while it surges (from its warning until it has passed the runner), so a fence or a hole stays the
 ## quick way: the heavy missile (3 a shot, twice against a swarm) destroys one over about two of its surges,
-## laser tier 1 over about seven. A cluster thinned to nothing is destroyed, like a baited one.
+## laser tier 1 over about seven. A cluster thinned to nothing is destroyed, its hit counted as weapon damage
+## (within the BossDef's weapon_share_cap, like every boss's).
 @export_range(1.0, 400.0, 1.0) var cluster_health: float = 36.0
 ## The clusters wait at the roadside ahead of the runner, keeping pace, alternating sides: the next to surge
 ## nearest (where its surge starts), the others this far apart behind it.
@@ -69,7 +76,7 @@ extends Resource
 ## chitter rises (swarm_chitter), and a red line runs down the runner's lane from there, following the
 ## runner from lane to lane, ending at a fence or a hole on it.
 @export_range(1.0, 5.0, 0.05, "suffix:s") var warning_seconds: float = 2.4
-## DESIGN-TBD (docs/questions/e4.md, the bait): this long before it would meet the runner, the cluster lands
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md 324, the bait): this long before it would meet the runner, the cluster lands
 ## in the lane the runner is in (a wall runner's outer lane) and charges down it: the line locks there (the
 ## standard red lane warning) and won't follow any more. A runner who was in a lane with a fence or a hole
 ## on the line then gets out of its way (or jumps it), and the cluster, charging at them, runs into it.
@@ -92,7 +99,7 @@ extends Resource
 @export_range(0, 5000, 50) var bait_score: int = 500
 
 @export_group("Baits")
-## DESIGN-TBD (docs/questions/e4.md, the arena): each lap of the arena carries bait spots, the first this far
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md 325, the arena): each lap of the arena carries bait spots, the first this far
 ## into the lap and then one every bait_spacing (both at 18 m/s): a live full-height fence or a hole in one
 ## lane (bait_kinds in turn), the street clear of every other hole and fence in every lane around it, from a
 ## jump before where its surge's warning finds the runner to clear_after past where the cluster lands. A
@@ -108,6 +115,14 @@ extends Resource
 @export_range(2.0, 8.0, 0.25, "suffix:m") var hole_length: float = 4.5
 ## Clear street kept past where the cluster lands (at 18 m/s), for the runner who dodged.
 @export_range(0.0, 40.0, 0.5, "suffix:m") var clear_after: float = 12.0
+## DESIGN-TBD (docs/questions/e4.md, the Host's way up): a host spot follows each bait spot this far on (at
+## 18 m/s): a ramp onto the wall in one outer lane (sides in turn), the street clear around it in every lane
+## from host_lead_in before the ramp to host_clear_after past where the Host crouches, and the ramp's lane up
+## to where its wall run drops back into it. In phase 3 the Host crouches in that lane just past the ramp: a
+## ramp, a wall run and a wall jump bring the runner down on its implants. In phases 1 and 2 it's a ramp.
+@export_range(40.0, 300.0, 1.0, "suffix:m") var host_after: float = 88.0
+@export_range(5.0, 80.0, 1.0, "suffix:m") var host_lead_in: float = 25.0
+@export_range(0.0, 40.0, 0.5, "suffix:m") var host_clear_after: float = 9.0
 
 @export_group("Rising")
 ## The Rising (GDD §10, phase 1: "manholes and wall vents shake all along both sides, and screeches pour out
@@ -132,6 +147,109 @@ extends Resource
 @export_range(2.0, 30.0, 0.5, "suffix:m") var horde_heap_spacing: float = 7.0
 @export_range(0.5, 15.0, 0.25, "suffix:s") var horde_fill_seconds: float = 5.0
 
+@export_group("Surrounded")
+## DESIGN-TBD (docs/questions/e4.md, strikes from behind): phase 2's surges come in turn from these sides
+## (GDD §10, phase 2: "clusters also strike from behind"): "behind" or "ahead", one surge a bait spot as in
+## phase 1.
+@export var surge_sides: PackedStringArray = PackedStringArray(["behind", "ahead"])
+## A strike from behind (GDD §10: "the warning is a chittering sound plus a visible rising wave of the swarm on
+## screen, curling like a breaking wave or a scorpion's stinger, about to strike its lane"): its warning lasts
+## this long from its start until it would catch the runner. The wave rises behind the runner in their lane,
+## following them from lane to lane, its crest curling over them into view; its chitter (swarm_wave) rises; a
+## red line runs down the lane ahead of them to the fence or the hole it would run into.
+@export_range(1.0, 5.0, 0.05, "suffix:s") var behind_warning_seconds: float = 2.6
+## This long before it would catch the runner the wave crashes down into the lane they're in and charges
+## along it: the line locks there. A runner who leaves the lane then lets it run on past them, into the
+## fence or the hole ahead.
+@export_range(0.5, 3.0, 0.05, "suffix:s") var behind_lock_seconds: float = 1.2
+## How fast it charges along the lane (at 18 m/s): faster than the runner.
+@export_range(20.0, 60.0, 0.5, "suffix:m/s") var behind_charge_speed: float = 30.0
+## Where a strike from behind would catch the runner: this far before its bait spot (at 18 m/s), so a baited
+## one runs past the runner and into its fence or hole in plain view.
+@export_range(2.0, 30.0, 0.5, "suffix:m") var behind_strike_before: float = 12.0
+## A strike that missed runs on this far ahead of the runner (at 18 m/s) and pours back into the gutter.
+@export_range(10.0, 80.0, 1.0, "suffix:m") var behind_run_on: float = 30.0
+## The wave: its foot this far behind the runner, rising this high and curling this far forward over the
+## lane (a look: metres as they are).
+@export_range(4.0, 20.0, 0.5, "suffix:m") var wave_back: float = 9.0
+@export_range(2.0, 12.0, 0.25, "suffix:m") var wave_height: float = 6.75
+@export_range(2.0, 20.0, 0.5, "suffix:m") var wave_reach: float = 11.0
+## DESIGN-TBD (docs/questions/e4.md, the wall climb): the swarm climbs one wall at a time (GDD §10: "one wall
+## at a time for a few seconds, alternating sides, so one wall is always free"): it covers a wall for
+## climb_seconds (rising over climb_rise_seconds, its claws heard: swarm_climb, then sinking back), taking it
+## away (the runner can't get onto it there: a clank and a bump, as at a sign; it never hurts), then both
+## walls are free for climb_gap_seconds before it climbs the other one. It waits while the runner is on the
+## wall it's due to climb.
+@export_range(1.0, 15.0, 0.25, "suffix:s") var climb_seconds: float = 4.0
+@export_range(0.5, 15.0, 0.25, "suffix:s") var climb_gap_seconds: float = 2.5
+@export_range(0.1, 2.0, 0.05, "suffix:s") var climb_rise_seconds: float = 0.7
+## The climb covers its wall up to this high (above a ramp's wall run), from climb_behind behind the runner
+## to climb_ahead ahead (a look: metres as they are), streaming back at climb_drift.
+@export_range(1.0, 8.0, 0.1, "suffix:m") var climb_height: float = 4.8
+@export_range(10.0, 120.0, 1.0, "suffix:m") var climb_ahead: float = 50.0
+@export_range(0.0, 40.0, 1.0, "suffix:m") var climb_behind: float = 12.0
+@export_range(0.0, 10.0, 0.25, "suffix:m/s") var climb_drift: float = 3.0
+
+@export_group("The Host")
+## The Host's entrance (GDD §10, phase 3: "the Host bursts out of a big sewer pipe ahead"): a huge pipe
+## across the street overhead, pipe_ahead ahead of the runner when the phase begins (at 18 m/s), bursting
+## open when the runner is host_burst_at from it; the Host drops out onto the street ahead.
+@export_range(40.0, 200.0, 1.0, "suffix:m") var pipe_ahead: float = 95.0
+@export_range(20.0, 120.0, 1.0, "suffix:m") var host_burst_at: float = 50.0
+## The pipe's height (its axis) and radius (a look).
+@export_range(4.0, 14.0, 0.25, "suffix:m") var pipe_height: float = 8.0
+@export_range(0.5, 4.0, 0.05, "suffix:m") var pipe_radius: float = 1.6
+## Where it keeps to, pacing the runner (at 18 m/s): this far ahead, in the middle of the street (close
+## enough to stay big on screen).
+@export_range(15.0, 80.0, 1.0, "suffix:m") var host_ahead: float = 26.0
+## Its bulk standing (a look; its person is a little under human size inside it, held up): width, height
+## and depth. A leap (to its station, onto its crouch) takes leap_seconds, up to leap_height.
+@export_range(1.0, 6.0, 0.05, "suffix:m") var host_width: float = 3.4
+@export_range(1.5, 7.0, 0.05, "suffix:m") var host_height: float = 4.8
+@export_range(1.0, 6.0, 0.05, "suffix:m") var host_depth: float = 2.8
+@export_range(0.3, 3.0, 0.05, "suffix:s") var leap_seconds: float = 0.9
+@export_range(1.0, 15.0, 0.25, "suffix:m") var leap_height: float = 6.0
+## DESIGN-TBD (docs/questions/e4.md, the clusters in phase 3): it flings the swarm at the runner (GDD §10:
+## "flings the remaining clusters at the player") at each hole spot, the hole kept clear: a cluster scooped
+## from the horde, lobbed into the runner's lane. Its warning: the wind-up (host_fling: it rears with the
+## mass overhead) and a red circle where it lands, fling_windup + fling_flight before it lands
+## fling_lead_seconds before the runner would reach the spot, fling_before before the hole (at 18 m/s). It
+## splats there (an enemy attack, splat_length long, for splat_seconds) and scatters.
+@export_range(0.2, 2.0, 0.05, "suffix:s") var fling_windup: float = 0.7
+@export_range(0.4, 2.5, 0.05, "suffix:s") var fling_flight: float = 1.1
+@export_range(0.0, 1.0, 0.05, "suffix:s") var fling_lead_seconds: float = 0.3
+@export_range(5.0, 60.0, 1.0, "suffix:m") var fling_before: float = 22.0
+@export_range(0.2, 2.0, 0.05, "suffix:s") var splat_seconds: float = 0.8
+@export_range(1.0, 6.0, 0.25, "suffix:m") var splat_length: float = 3.0
+## DESIGN-TBD (docs/questions/e4.md, the lunge): at each fence spot it lunges down the runner's lane like a
+## surge (the same warning_seconds, lock_seconds, charge_speed and line, and its roar, host_roar). Into the
+## fence (GDD §10: "its lunge can also be baited into a fence"): shocked, a hit, and down for stun_seconds;
+## otherwise it charges on past the runner and leaps back over them. Its attack's hitbox while it charges:
+## this share of a lane wide, this high, this long.
+@export_range(0.3, 4.0, 0.05, "suffix:s") var stun_seconds: float = 1.2
+@export_range(0.2, 0.95, 0.01) var lunge_hit_width_share: float = 0.7
+@export_range(0.5, 4.0, 0.05, "suffix:m") var lunge_hit_height: float = 1.9
+@export_range(0.5, 6.0, 0.05, "suffix:m") var lunge_hit_length: float = 2.4
+## DESIGN-TBD (docs/questions/e4.md, the Host's way up): at each host spot it crouches in the ramp's lane,
+## from crouch_from past the ramp, crouch_length long (both at 18 m/s): settling there when the runner is
+## crouch_settle before the ramp (at 18 m/s; not at all once they're past crouch_latest), its implants
+## glowing red along its back. The wall jumps a ramp's wall run allows in its first moments come down on them
+## (green chevrons on the wall show where to jump); its back is crouch_height up, its implants' stomp box
+## implant_rise above it. Its body is solid (deadly to run into, its sides bump a lane switch back).
+@export_range(5.0, 40.0, 0.5, "suffix:m") var crouch_from: float = 14.5
+@export_range(4.0, 30.0, 0.5, "suffix:m") var crouch_length: float = 12.5
+@export_range(20.0, 120.0, 1.0, "suffix:m") var crouch_settle: float = 55.0
+@export_range(10.0, 100.0, 1.0, "suffix:m") var crouch_latest: float = 32.0
+@export_range(1.0, 3.5, 0.05, "suffix:m") var crouch_height: float = 2.1
+@export_range(0.1, 1.0, 0.05, "suffix:m") var implant_rise: float = 0.35
+@export_range(0.3, 1.0, 0.01) var crouch_width_share: float = 0.82
+## The wall's jump marks: from the ramp to this far past it (at 18 m/s), where a wall jump still comes down
+## on the crouching Host.
+@export_range(2.0, 30.0, 0.5, "suffix:m") var jump_mark_until: float = 11.0
+## Its defeat (GDD §10: "the Host is freed. The screeches scatter, the implants short out, and the person
+## slumps free"): the results follow this long after.
+@export_range(1.0, 8.0, 0.25, "suffix:s") var freed_seconds: float = 3.0
+
 
 ## Creatures in a cluster on this device.
 func cluster_size(low_end: bool) -> int:
@@ -146,8 +264,19 @@ func climb_size(low_end: bool) -> int:
 	return climb_creatures_low_end if low_end else climb_creatures
 
 
+func host_size(low_end: bool) -> int:
+	return host_creatures_low_end if low_end else host_creatures
+
+
 func spill_size(low_end: bool) -> int:
 	return spill_creatures_low_end if low_end else spill_creatures
+
+
+## Phase 2's surge `index` (0 first): from "behind" or "ahead" (surge_sides in turn).
+func surge_side(index: int) -> String:
+	if surge_sides.is_empty():
+		return "ahead"
+	return "behind" if surge_sides[posmod(index, surge_sides.size())] == "behind" else "ahead"
 
 
 ## The bait kind of a lap's spot `index` (bait_kinds in turn).

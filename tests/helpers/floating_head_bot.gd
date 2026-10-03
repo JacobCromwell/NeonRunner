@@ -7,7 +7,7 @@ extends RefCounted
 ## player reads the warnings:
 ## - a bomb's lock on its lane: switches to the free lane the fairness rules keep (like any player who
 ##   keeps moving);
-## - a sweep: jumps a low one, slides under a high one, as the beams reach its spot;
+## - a sweep: jumps a low one when it fires, slides under a high one as the beams reach its spot;
 ## - a drag: once its lane is committed (the red lane warning), switches to the free lane the fairness
 ##   rules keep (FloatingHead.escape_lane);
 ## - a marked tower: with `baits` on, moves to the outer lane on the tower's side while the drag aims,
@@ -310,16 +310,16 @@ func _dodge_bombs() -> void:
 
 # --- The face-off --------------------------------------------------------------------------------
 
-## Jumps or slides as the beams reach its spot.
+## Jumps at a low sweep's firing cue or slides as a high sweep reaches its spot.
 func _sweep(attack: Dictionary, kind: StringName, id: int) -> void:
 	var player: Player = head.world.player
 	if player.surface != Player.Surface.FLOOR:
 		return
-	var speed: float = head.tuning.laser_sweep_speed * head.pace()
+	var speed: float = head.faceoff.sweep_speed(kind)
 	var dx: float = absf(float(attack["x"]) - player.global_position.x)
 	# Just before the beams arrive: a jump is up past them in 0.06 s, a slide down at once.
 	var lead: float = 0.3 + speed * (0.16 if kind == &"low" else 0.1)
-	if dx > lead:
+	if kind == &"high" and dx > lead:
 		return
 	_handled[id] = true
 	var jump: bool = kind == &"low"
@@ -437,6 +437,7 @@ func _dodge_bolts() -> void:
 	for s: int in [1, -1, 2, -2]:
 		var to: int = lane + s
 		if to >= 0 and to < head.lane_count() and not _bolt_toward(to) \
+				and not _cyborg_in(to, player.distance, player.distance + _m(30.0)) \
 				and head.floor_clear_lane(to, player.distance, player.distance + _m(12.0)):
 			_go(to, "bolt")
 			return

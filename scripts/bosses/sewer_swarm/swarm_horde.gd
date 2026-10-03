@@ -12,7 +12,7 @@ extends Node3D
 ## - the spill: a SwarmCrowd whose creatures pour out of each lair as it bursts and run into the gutter.
 ## Everything is made in setup(), before the fight begins. The crowd sizes are the tuning's (smaller on a
 ## low-end device). Only the look: it runs from _process.
-## DESIGN-TBD (docs/questions/e4.md, 5): a harmless horde in plain view at the walls' feet.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md 328): a harmless horde in plain view at the walls' feet.
 
 var world: RunWorld
 var tuning: SewerSwarmTuning
