@@ -9,7 +9,7 @@ extends Node3D
 ##   or high: two) and the wall it starts from (the one further from the runner); for a drag, a red
 ##   spot on the lane it will burn, following the runner's lane until the warning ends, then the
 ##   framework's red lane warning. Then the beams fire (head_laser_fire): a sweep crosses the street wall to wall at
-##   laser_sweep_speed; a drag lands under the face in that lane and burns down it to the runner's spot
+## low_sweep_seconds for a low sweep or laser_sweep_speed for a high one; a drag lands under the face in that lane and burns down it to the runner's spot
 ##   in drag_seconds, leaving a burning line;
 ## - the cyborg drop (GDD §10: "its mouth opens and drops 1–2 cyborgs onto the trucks ahead, who then
 ##   fight like normal cyborgs"): it pulls back and opens its mouth (the warning: FloatingHeadBody's
@@ -25,7 +25,8 @@ extends Node3D
 ##   phase, it clips the next one on its own. A clipped tower topples onto the ship (FloatingHead's
 ##   pin).
 ## The attacks wait in line in the phase's order (FloatingHeadTuning.faceoff_pattern): the first that
-## can start fairly goes next, then to the back of the line. Every timing is at the phase's pace, and
+## can start fairly goes next, then to the back of the line. Timings are at the phase's pace except
+## the low sweep's crossing, which fits the player's unchanged jump arc, and
 ## none depends on how long the fight has lasted (GDD §10: no escalation); its distances along the
 ## track (where it drops cyborgs and takes aim at a tower, the fairness margins) are at the run's pace
 ## (FloatingHead.metres; GDD §3), so they take as long to run at any speed. Big attacks never overlap
@@ -271,6 +272,12 @@ func sweep_heights(kind: StringName) -> Array[float]:
 	return out
 
 
+func sweep_speed(kind: StringName) -> float:
+	if kind == &"low":
+		return 2.0 * _sweep_reach() / tuning.low_sweep_seconds
+	return tuning.laser_sweep_speed * head.pace()
+
+
 ## One physics step (FloatingHead's pattern calls it every frame of its fight).
 func tick(delta: float) -> void:
 	clock += delta
@@ -501,7 +508,7 @@ func _fair_to_start(kind: StringName) -> bool:
 	if kind == &"low" or kind == &"high":
 		var fire: float = move + _charge_time()
 		return head.floor_clear_all(d0 + v * fire - before,
-			d0 + v * (fire + _sweep_time()) + head.metres(tuning.sweep_clear_after))
+			d0 + v * (fire + _sweep_time(kind)) + head.metres(tuning.sweep_clear_after))
 	var pl: int = head.player_lane()
 	var lanes: Array[int] = [pl]
 	return head.escape_lane(lanes, pl, d0, d0 + v * (move + _charge_time() + _drag_time()
@@ -514,10 +521,12 @@ func _begin_charge() -> void:
 	var kind: StringName = attack["kind"]
 	_set_step(Step.CHARGE)
 	_charge = 0.0
-	_claim_airspace(_charge_time() + (_sweep_time() if kind == &"low" or kind == &"high" else _drag_time()) + 0.3)
+	_claim_airspace(_charge_time() + (_sweep_time(kind) if kind == &"low" or kind == &"high" else _drag_time()) + 0.3)
 	if kind == &"low" or kind == &"high":
-		# It starts from the wall further from the runner, so the beams cross more of the street first.
 		var dir: int = 1 if world.player.global_position.x <= 0.0 else -1
+		# A low sweep starts at the far wall, giving a normal jump time to rise before contact.
+		if kind == &"low":
+			dir = -dir
 		attack["dir"] = dir
 		attack["start_x"] = -dir * _sweep_reach()
 	else:
@@ -620,7 +629,7 @@ func _update_fire(delta: float) -> void:
 ## hitbox along it there.
 func _update_sweep(delta: float) -> void:
 	var dir: int = attack["dir"]
-	var x: float = float(attack["x"]) + dir * tuning.laser_sweep_speed * head.pace() * delta
+	var x: float = float(attack["x"]) + dir * sweep_speed(attack["kind"]) * delta
 	attack["x"] = x
 	var targets: Array[Vector3] = _sweep_targets(x)
 	_aim = (targets[0] + targets[1]) * 0.5
@@ -1004,8 +1013,8 @@ func _drag_time() -> float:
 	return tuning.drag_seconds / head.pace()
 
 
-func _sweep_time() -> float:
-	return 2.0 * _sweep_reach() / maxf(tuning.laser_sweep_speed * head.pace(), 0.1)
+func _sweep_time(kind: StringName) -> float:
+	return 2.0 * _sweep_reach() / maxf(sweep_speed(kind), 0.1)
 
 
 ## How far a sweep runs to either side: wall to wall.
@@ -1017,7 +1026,7 @@ func _sweep_reach() -> float:
 func _estimate(kind: StringName) -> float:
 	match kind:
 		&"low", &"high":
-			return _move_time() + _charge_time() + _sweep_time() + RECOVER_SECONDS
+			return _move_time() + _charge_time() + _sweep_time(kind) + RECOVER_SECONDS
 		&"drag":
 			return _move_time() + _charge_time() + _drag_time() + RECOVER_SECONDS
 		&"drop":

@@ -181,8 +181,8 @@ func _test_data() -> void:
 		return
 	var t := def.tuning as FloatingHeadTuning
 	check(t != null and t.resource_path == "res://data/bosses/city_boss_tuning.tres", "its numbers are its own tuning resource")
-	check(t.first_run_seconds >= 15.0 and t.first_run_seconds <= 20.0,
-		"GDD §10: the first bombing run lasts about 15-20 s (%.1f s)" % t.first_run_seconds)
+	check(is_equal_approx(t.first_run_seconds, 16.0 * 0.7) and is_equal_approx(t.later_run_seconds, 8.0 * 0.7),
+		"every bombing run is 30%% shorter (%.1f s, %.1f s)" % [t.first_run_seconds, t.later_run_seconds])
 	check(t.later_run_seconds > 0.0 and t.later_run_seconds < t.first_run_seconds and t.later_runs >= 1 and t.later_runs <= 2,
 		"GDD §10: once or twice it rises for a shorter run (%d of %.1f s)" % [t.later_runs, t.later_run_seconds])
 	check(def.phase_count() == 3 and def.phase_list()[0].intro_seconds >= 3.0, "three phases; the first's intro is the entrance")
@@ -358,7 +358,7 @@ func _test_entrance() -> void:
 
 ## On a plain street at every lane count, with a runner who keeps moving (and no god mode): bombs fall
 ## only where the light lingered, after its warning; the runner escapes every one; the run lasts its
-## 15-20 s.
+## configured duration.
 func _test_bombing_run() -> void:
 	for lanes: int in LANES:
 		var pair: Array = _fight(_plain_def(), lanes)
@@ -392,7 +392,7 @@ func _test_bombing_run() -> void:
 		for l: Dictionary in locks:
 			if l["straddle"]:
 				straddles += 1
-		check(locks.size() >= 6, "the light locks on again and again (%d locks) %s" % [locks.size(), tag])
+		check(locks.size() >= 4, "the light locks on again and again (%d locks) %s" % [locks.size(), tag])
 		check(straddles >= 1 and straddles < locks.size(), "some locks straddle two lanes (%d) %s" % [straddles, tag])
 		print("  Floating Head's first run %s: %d locks (%d over two lanes), %d bombs" % [tag, locks.size(), straddles,
 			blasts.size()])
@@ -423,8 +423,8 @@ func _test_bombing_run() -> void:
 		var end: Array[Dictionary] = _events(head, &"run_end")
 		if not start.is_empty() and not end.is_empty():
 			var length: float = float(end[0]["t"]) - float(start[0]["t"])
-			check(length >= 15.0 and length <= 20.0 and absf(length - t.first_run_seconds) < 0.05,
-				"the first run lasts %.2f s (GDD §10: 15-20 s) %s" % [length, tag])
+			check(absf(length - 16.0 * 0.7) < 0.05,
+				"the first run lasts %.2f s (30%% shorter) %s" % [length, tag])
 			var late: bool = false
 			for bl: Dictionary in blasts:
 				late = late or float(bl["t"]) > float(end[0]["t"]) + 0.02
