@@ -380,8 +380,10 @@ func _test_campaign_levels() -> void:
 					config.level_seed = 9100 + k
 				var tag: String = "%s lanes=%d seed=%d" % [id, lanes, config.level_seed]
 				var patterns: Array = LevelGenerator.load_for(config)
-				var gen := LevelGenerator.new()
-				var layout: LevelLayout = gen.generate(config, tuning, patterns)
+				# T-SPEED: shared across the run (LayoutCache); at k==0 this is a campaign level's own
+				# default build, the same one test_campaign.gd's own checks already made.
+				var gen: LevelGenerator = LayoutCache.generator(config, tuning, patterns)
+				var layout: LevelLayout = gen.layout
 				check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
 				LayoutChecks.check_wall_fences(self, layout, config, tag)
 				for w: Dictionary in layout.wall_fences:
@@ -421,8 +423,11 @@ func _test_introductions() -> void:
 				if k > 0:
 					config.level_seed = 9200 + k
 				var tag: String = "%s lanes=%d seed=%d" % [id, lanes, config.level_seed]
-				var gen := LevelGenerator.new()
-				var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+				# T-SPEED: shared across the run (LayoutCache); at k==0 this is the same default build
+				# as _test_campaign_levels' (both marketplace/2 and corporate/1 are in LEVELS) and the
+				# campaign's own.
+				var gen: LevelGenerator = LayoutCache.generator(config, tuning, LevelGenerator.load_for(config))
+				var layout: LevelLayout = gen.layout
 				var start: float = gen.feature_start(feature)
 				check(config.feature_starts.has(feature), "%s gives `%s` a start" % [id, feature])
 				var first: Dictionary = {}

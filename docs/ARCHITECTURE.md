@@ -2551,7 +2551,25 @@ window or a portal's frame (`html/canvas_resize_policy` adaptive). `tools/godot.
 ## Tests
 
 `tools/godot.sh test` runs every `tests/suites/test_*.gd` (a `TestSuite`); `--suite=<name>` runs
-one. `RunSim` (`tests/helpers/run_sim.gd`) runs a Player over a hand-built layout (`run()`), or a
+one; `--jobs=N` (T-SPEED) splits them across N Godot processes instead, balanced by each suite's
+last measured time (`tests/.suite_times.json`, refreshed by every run and git-ignored), each with its
+own `user://` folder so their saves never collide; use it on a machine with CPUs to spare, since the
+default (one process) is unchanged. `LayoutCache` (`tests/helpers/layout_cache.gd`, T-SPEED) shares
+one real build of a level across every suite in a run: `LevelGenerator.generate()` is a pure function
+of (config, tuning, patterns), so the many suites that independently build the same level -- often a
+campaign step's own default build (3/5/6 lanes, its own seed), which several suites generate just to
+run their own checks on it -- ask the cache instead of the generator. `generate()` always hands back a
+fresh `LevelLayout.copy()`, and `generator()` a `LevelGenerator.for_layout` stand-in with the real
+build's `attempts`/`warnings`/`picks`/`fills` restored, for a caller that reads those or calls one of
+the generator's pure, read-only queries (`feature_start`, `quiet_at`, `difficulty_at`,
+`placeable_features`, ...) -- never a method that places something, or `pick_weights` (it needs
+generation-only state, such as `_due`/`_intro_burst`, the stand-in never had set up); its own doc
+comment lists exactly which. A suite's own "does regenerating give the same layout" check keeps its
+second, independent build real and uncached, so the cache can never make such a check trivially pass;
+`test_layout_cache.gd` checks the cache itself (identity with a fresh build, sharing across separately
+`duplicate()`d configs with the same content, never conflating a real difference, independent copies,
+the `generator()` stand-in's queries), and `--no-layout-cache` (read by `tests/run_tests.gd`) turns it
+off for a suite that must prove its checks still pass without it. `RunSim` (`tests/helpers/run_sim.gd`) runs a Player over a hand-built layout (`run()`), or a
 full RunWorld (`build_world()` + `step_world()`); with `trace` on it records the player after every
 physics frame (position, height, speed, surface, lane, lean). `SkinSuite` (`tests/helpers/skin_suite.gd`) holds
 the checks every zone skin must pass, and helpers to inspect what a skin builds over a whole level

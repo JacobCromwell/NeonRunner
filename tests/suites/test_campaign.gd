@@ -376,8 +376,11 @@ func _test_levels_generate(campaign: Campaign) -> void:
 ## late ones, builds and levels in `stats` (its "late" is an Array, so appending to it here sticks).
 func _check_level(s: CampaignStep, config: LevelConfig, tag: String, stats: Dictionary) -> void:
 	var patterns: Array = LevelGenerator.load_for(config)
-	var gen := LevelGenerator.new()
-	var layout: LevelLayout = gen.generate(config, tuning, patterns)
+	# T-SPEED: shared across every suite in the run (LayoutCache) -- several of this suite's own
+	# passes (the seed sweep, the recency curve) build some of these same levels again to check other
+	# things, and so does test_wall_fences.gd's own campaign-level sweep.
+	var gen: LevelGenerator = LayoutCache.generator(config, tuning, patterns)
+	var layout: LevelLayout = gen.layout
 	stats["builds"] = int(stats["builds"]) + gen.attempts
 	stats["levels"] = int(stats["levels"]) + 1
 	check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
@@ -418,8 +421,9 @@ func _test_ceiling_gauntlets(campaign: Campaign) -> void:
 			var config: LevelConfig = campaign.configure(intro, lanes)
 			if level_seed > 0:
 				config.level_seed = 9100 + level_seed
-			var gen := LevelGenerator.new()
-			var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+			# T-SPEED: shared across the run (LayoutCache); the default seed (level_seed == 0 here)
+			# is the same build _check_level ran above, and the one the gauntlet sweep below asks for.
+			var layout: LevelLayout = LayoutCache.generate(config, tuning, LevelGenerator.load_for(config))
 			var tag: String = "%s lanes=%d seed=%d" % [intro.id, lanes, config.level_seed]
 			check(not layout.hulls.is_empty(), "%s has ceilings" % tag)
 			if not layout.hulls.is_empty():
@@ -433,7 +437,8 @@ func _test_ceiling_gauntlets(campaign: Campaign) -> void:
 			continue
 		for lanes: int in [3, 5, 6]:
 			var config: LevelConfig = campaign.configure(s, lanes)
-			var layout: LevelLayout = LevelGenerator.new().generate(config, tuning, LevelGenerator.load_for(config))
+			# T-SPEED: the level's own default build, already made (and cached) by _check_level above.
+			var layout: LevelLayout = LayoutCache.generate(config, tuning, LevelGenerator.load_for(config))
 			for h: Dictionary in layout.hulls:
 				if _floor_under(layout, h) > 0:
 					gauntlets += 1
@@ -629,8 +634,10 @@ func _test_hush(campaign: Campaign) -> void:
 					config.darkness = 0.0
 				var tag: String = "%s lanes=%d seed=%d" % [["The Hush", "The Hush without the remix", "Dead Zone 1"][which], lanes,
 					config.level_seed]
-				var gen := LevelGenerator.new()
-				var layout: LevelLayout = gen.generate(config, tuning, patterns)
+				# T-SPEED: shared across the run (LayoutCache); this uses only gen.warnings/picks and
+				# its pacing queries (quiet_at, quiet_stretches), all pure once a layout exists.
+				var gen: LevelGenerator = LayoutCache.generator(config, tuning, patterns)
+				var layout: LevelLayout = gen.layout
 				check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
 				for e: Dictionary in layout.enemies:
 					var host: bool = String(e["type"]) == "cyborg" and bool((e.get("params", {}) as Dictionary).get("host", false))

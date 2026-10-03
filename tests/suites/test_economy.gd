@@ -176,8 +176,8 @@ func _test_balance_curve() -> void:
 		if not step.is_level():
 			continue
 		var config: LevelConfig = campaign.configure(step, 5)
-		var gen := LevelGenerator.new()
-		var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+		# T-SPEED: this level's own default build (LayoutCache), shared with other suites.
+		var layout: LevelLayout = LayoutCache.generate(config, tuning, LevelGenerator.load_for(config))
 		var available: int = layout.total_credit_value()
 		var good: int = roundi(available * GOOD_RUN_SHARE)
 		var bonus: int = rules.completion_bonus(step.level_index)

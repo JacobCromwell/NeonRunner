@@ -790,8 +790,10 @@ func _test_campaign() -> void:
 			for extra: int in [0, 7]:
 				var config: LevelConfig = campaign.configure(campaign.step(id), lanes)
 				config.level_seed += extra
-				var gen := LevelGenerator.new()
-				var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+				# T-SPEED: shared across the run (LayoutCache); at extra==0 this is the level's own
+				# default build, shared with other suites too.
+				var gen: LevelGenerator = LayoutCache.generator(config, tuning, LevelGenerator.load_for(config))
+				var layout: LevelLayout = gen.layout
 				var tag: String = "%s lanes=%d seed=%d" % [id, lanes, config.level_seed]
 				var sentinels: Array[Dictionary] = Rules.sentinels_in(layout)
 				total += sentinels.size()

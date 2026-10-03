@@ -50,7 +50,8 @@ func _test_late_feature(sim: RunSim) -> void:
 	var lead: float = EnemyDirector.lead_for("cyborg")
 	for lanes: int in [3, 5, 6]:
 		var config: LevelConfig = campaign.configure(campaign.step("city/1"), lanes)
-		var layout: LevelLayout = LevelGenerator.new().generate(config, tuning, LevelGenerator.load_for(config))
+		# T-SPEED: City 1's own default build (LayoutCache), shared with other suites.
+		var layout: LevelLayout = LayoutCache.generate(config, tuning, LevelGenerator.load_for(config))
 		var cyborgs: Array[float] = LayoutChecks.feature_positions(layout, "cyborg")
 		var start: float = config.feature_start("cyborg") * layout.length
 		var tag: String = "(%d lanes)" % lanes

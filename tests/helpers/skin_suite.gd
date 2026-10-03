@@ -89,13 +89,15 @@ func stop_error_count(what: String) -> void:
 	check(_counter.errors.is_empty(), "no errors while %s:\n  %s" % [what, "\n  ".join(_counter.errors.slice(0, 8))])
 
 
-## The level at `level_path`, generated for this many lanes.
+## The level at `level_path`, generated for this many lanes. T-SPEED: shared across every suite in
+## the run through LayoutCache, since many zone-skin and enemy suites ask for the same level this way
+## (same path, lanes, difficulty and seed).
 func level(level_path: String, lanes: int, difficulty: float, level_seed: int = 3) -> LevelLayout:
 	var config := (load(level_path) as LevelConfig).duplicate() as LevelConfig
 	config.lane_count = lanes
 	config.difficulty = difficulty
 	config.level_seed = level_seed
-	return LevelGenerator.new().generate(config, tuning, LevelGenerator.load_patterns(config.patterns_path))
+	return LayoutCache.generate(config, tuning, LevelGenerator.load_patterns(config.patterns_path))
 
 
 ## Builds a whole level with `skin` and with no skin, compares them and checks the budgets.

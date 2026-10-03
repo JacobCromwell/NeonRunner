@@ -602,8 +602,10 @@ func _test_campaign() -> void:
 	for case: Array in cases:
 		var tag: String = "%s lanes=%d turns %s" % [case[0], case[1], "on" if case[2] else "off"]
 		var config: LevelConfig = campaign.configure(campaign.step(case[0]), case[1])
-		config.skin = null  # the grey box: skins never change gameplay
-		var layout: LevelLayout = LevelGenerator.new().generate(config, tuning, LevelGenerator.load_for(config))
+		config.skin = null  # the grey box: skins never change gameplay (LayoutCache's key ignores it too)
+		# T-SPEED: this level's own default build (LayoutCache); the "turns" on/off cases above share
+		# one build (only how the resulting world plays it differs), and so does test_campaign.gd's.
+		var layout: LevelLayout = LayoutCache.generate(config, tuning, LevelGenerator.load_for(config))
 		var w: RunWorld = sim.build_world(layout, null, null, config)
 		w.rules = w.rules.duplicate() as GameRules
 		w.rules.big_attacks_take_turns = case[2]

@@ -338,7 +338,10 @@ What to try:
 ```
 tools/godot.sh play [options]   play (what ./play.sh runs)
 tools/godot.sh edit             open the editor
-tools/godot.sh test             all tests, under two minutes; exit code 0 = pass (--suite=name runs one)
+tools/godot.sh test             all tests; exit code 0 = pass (--suite=name runs one; --jobs=N splits them
+                                 across N Godot processes, balanced by each suite's last measured time --
+                                 use it on a machine with CPUs to spare, since one process is otherwise all
+                                 the suites get)
 tools/godot.sh smoke [options]  40 s of the real game, headless; prints only problems
 tools/godot.sh sfx [--review]   regenerate the sound effects (assets/sfx/) from tools/asset_gen/
 tools/godot.sh music [--review] regenerate default WAV music (leaves supplied MP3s unchanged)
@@ -439,7 +442,12 @@ On a debug build, the options go into the page's engine settings: in `exports/we
 
 ## Tests
 
-`tools/godot.sh test` runs 71 suites with about 6,000,000 checks:
+`tools/godot.sh test` runs 72 suites with about 6,000,000 checks. Many suites independently build the
+same level (often a campaign step's own default build) to run their own checks on it; `LayoutCache`
+(`tests/helpers/layout_cache.gd`) shares one real build of each across the whole run instead of
+repeating it (`--no-layout-cache` turns that off; `tests/suites/test_layout_cache.gd` checks it never
+changes a result). `--jobs=N` splits the suites across N Godot processes on a machine with CPUs to
+spare (see Tools, above). Covered:
 - **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds, and every campaign level
   (each with every feature it lists, on its own seed and on others), at the base speed and at the zones' speeds
   (21 to 25 m/s, with the fill pass that makes campaign levels busier), each reaction window in seconds. Under

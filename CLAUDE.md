@@ -68,7 +68,9 @@ This file is for Claude Code and all sub-agents working on this project. Read it
 ## Commands
 `tools/godot.sh` finds the pinned Godot (via `$GODOT`, PATH, or the Windows user folders under WSL) and re-imports
 resources automatically when files changed. Use it rather than calling Godot directly.
-- Tests: `tools/godot.sh test [--suite=name]` (exit code 0 = pass). It also boots the real game scene.
+- Tests: `tools/godot.sh test [--suite=name] [--jobs=N]` (exit code 0 = pass). It also boots the real
+  game scene. `--jobs=N` (default 1) splits the suites across N Godot processes, balanced by each
+  suite's last measured time (`tests/.suite_times.json`); use it on a machine with CPUs to spare.
 - Smoke run: `tools/godot.sh smoke [game args]` (prints only problems; exit code 1 if any). Without args it runs quick play.
 - Play: `./play.sh` opens the title screen in a game window on the user's desktop. Quick play and review options
   (debug builds only): `--quick --lanes=6 --seed=4 --difficulty=0.6 --god --nofall --full-loadout
