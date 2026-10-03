@@ -12,18 +12,21 @@ extends BossPart
 ##   pacing the runner at its station ahead; harmless, and weapons don't target it (it's part of the horde);
 ## - GATHER: its surge's warning: it holds where it will pour in, rearing, spines up and glowing;
 ## - POUR: pouring out of the roadside into the lane its warning line shows;
-## - CHARGE: down that lane toward the runner as a lane-wide mass; its hitbox is live (an enemy attack:
-##   armor and the shield block it, the dash passes through it safely, claws don't beat it: it's the boss's);
+## - WAVE (phase 2, a strike from behind): its warning: a wave of screeches rising behind the runner in their
+##   lane, its crest curling over them (`rise`), until it crashes down into the lane (POUR from the wave);
+## - CHARGE: down that lane toward the runner as a lane-wide mass (or, from behind, along it past them:
+##   `forward`); its hitbox is live (an enemy attack: armor and the shield block it, the dash passes through
+##   it safely, claws don't beat it: it's the boss's);
 ## - SHOCKED, FALLING, SCATTER: destroyed (a live fence, a hole, weapons or the fight won) and dying away;
-##   a cluster that only missed scatters out of sight behind the runner and FORMING again at the back.
+##   a cluster that only missed scatters out of sight and FORMING again at the back.
 ## Weapons hurt it from its warning until it has passed (targetable): its health thins the crowd (its
 ## highest ranks drop away first), and at nothing it's destroyed like a baited one. Numbers:
 ## SewerSwarmTuning.
 
-enum Stage { FORMING, WAITING, GATHER, POUR, CHARGE, SHOCKED, FALLING, SCATTER }
+enum Stage { FORMING, WAITING, GATHER, POUR, CHARGE, SHOCKED, FALLING, SCATTER, WAVE }
 
 const STAGE_NAMES: PackedStringArray = ["forming", "waiting", "gather", "pour", "charge", "shocked", "falling",
-	"scatter"]
+	"scatter", "wave"]
 
 ## Its place among the swarm's clusters; its side of the street follows it (even: left, odd: right).
 var index: int = 0
@@ -48,6 +51,14 @@ var form_speed: float = 0.5
 var charge_speed: float = 0.0
 var death_seconds: float = 0.0
 var hitbox: Hazard
+## A strike from behind: it charges forward along the lane (toward greater distances), its front ahead.
+var forward: bool = false
+## Its wave (a strike from behind's warning): how far it has risen (0-1), and its foot's track distance (it
+## stays there as the wave crashes into the lane).
+var rise: float = 0.0
+var wave_at: float = 0.0
+## Where it was formed from as it pours into the lane: 0 its mound at the roadside, 1 its wave.
+var pour_from: int = 0
 
 var _alive_shown: float = 1.0
 var _wall_x: float = 4.0
@@ -75,13 +86,14 @@ func _build() -> void:
 		crowd.visible = true
 		crowd.set_shapes(tuning.mound_length, tuning.mound_depth, tuning.mound_climb, tuning.mass_length,
 			world.geo.lane_width * tuning.mass_width_share, tuning.mass_height)
+		crowd.set_wave_shape(tuning.wave_height, tuning.wave_reach, world.geo.lane_width * 0.95)
 	at = float(spawn.get("at", 0.0))
 	place()
 
 
 ## True while it's an attack under way: from its warning until it has passed or died.
 func surging() -> bool:
-	return alive and stage in [Stage.GATHER, Stage.POUR, Stage.CHARGE]
+	return alive and stage in [Stage.GATHER, Stage.POUR, Stage.CHARGE, Stage.WAVE]
 
 
 ## True while it waits at the roadside (or is still rising there): it can be the next to surge.
@@ -96,6 +108,9 @@ func form(seconds: float, delay: float = 0.0) -> void:
 	lane = -1
 	pour = 0.0
 	rear = 0.0
+	rise = 0.0
+	pour_from = 0
+	forward = false
 	bristle = 0.25
 	formed = -delay / maxf(seconds, 0.05)
 	formed_target = 1.0
@@ -109,17 +124,37 @@ func gather(_p_at: float) -> void:
 	formed = maxf(formed, 0.0)
 
 
-## Lands in `p_lane` and charges down it at `speed` m/s: its hitbox goes live.
-func charge(p_lane: int, speed: float) -> void:
+## A strike from behind's warning: it leaves its station (sinking into the gutter there, out of the runner's
+## sight) and rises as a wave behind them, its foot at `p_at` in the lane at `x` (SwarmSurges moves it with
+## the runner and raises it, `rise`).
+func wave(p_at: float, x: float) -> void:
+	stage = Stage.WAVE
+	at = p_at
+	wave_at = p_at
+	lane_x = x
+	rise = 0.0
+	pour = 0.0
+	pour_from = 1
+	formed = 1.0
+	formed_target = 1.0
+
+
+## Lands in `p_lane` and charges down it at `speed` m/s (toward the runner, or with `p_forward` along it
+## past them, a strike from behind): its hitbox goes live, its length behind its front.
+func charge(p_lane: int, speed: float, p_forward: bool = false) -> void:
 	stage = Stage.CHARGE
 	lane = p_lane
 	lane_x = world.geo.lane_x(p_lane)
-	pour = 1.0
 	charge_speed = speed
+	forward = p_forward
+	if not p_forward:
+		pour = 1.0
+	var size: Vector3 = hitbox.size
+	hitbox.position = Vector3(0.0, size.y * 0.5, (1.0 if p_forward else -1.0) * (tuning.hit_front_inset + size.z * 0.5))
 	hitbox.set_enabled(true)
 
 
-## A surge that missed: out of sight behind the runner, it's gone at once (it re-forms at the back).
+## A surge that missed: out of sight, it's gone at once (it re-forms at the back).
 func vanish() -> void:
 	hitbox.set_enabled(false)
 	stage = Stage.FORMING
@@ -127,11 +162,13 @@ func vanish() -> void:
 	formed_target = 0.0
 	lane = -1
 	pour = 0.0
+	rise = 0.0
+	forward = false
 
 
-## Puts it where it is now: its mass's front in its lane, or its mound at its wall's foot.
+## Puts it where it is now: its mass's front in its lane, its wave's foot, or its mound at its wall's foot.
 func place() -> void:
-	if stage in [Stage.POUR, Stage.CHARGE, Stage.SHOCKED, Stage.FALLING]:
+	if stage in [Stage.POUR, Stage.CHARGE, Stage.SHOCKED, Stage.FALLING, Stage.WAVE]:
 		position = Vector3(lane_x, 0.0, TrackGeometry.world_z(at))
 	else:
 		position = Vector3(side * (_wall_x - 0.45), 0.0, TrackGeometry.world_z(at))
@@ -139,14 +176,17 @@ func place() -> void:
 
 # --- Enemy ---------------------------------------------------------------------------------------
 
-## Weapons target it only while it surges: waiting at the roadside it's part of the horde.
+## Weapons target it only while it surges, and only in front of the runner: waiting at the roadside it's
+## part of the horde, and a wave behind them is out of their line of fire until it has charged past.
 func targetable() -> bool:
-	return super.targetable() and surging()
+	if not super.targetable() or not surging() or stage == Stage.WAVE:
+		return false
+	return not forward or world == null or at > world.player.distance + 1.0
 
 
 ## Weapon damage thins it only while it surges, like its targeting (a stray shot or a splash reaching it at
 ## the roadside does nothing); its health is its own (BossPart, shares_health off).
-## DESIGN-TBD (docs/questions/e4.md, 3): a cluster thinned to nothing by weapons counts like a baited one.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md 326): a cluster thinned to nothing by weapons counts like a baited one.
 func take_damage(amount: float, source: StringName, splash: bool = false) -> void:
 	if not surging():
 		return
@@ -159,7 +199,9 @@ func is_major_attack_active() -> bool:
 
 func aim_point() -> Vector3:
 	if stage in [Stage.POUR, Stage.CHARGE]:
-		return Vector3(lane_x, 0.55, TrackGeometry.world_z(at + 1.0))
+		return Vector3(lane_x, 0.55, TrackGeometry.world_z(at + (-1.0 if forward else 1.0)))
+	if stage == Stage.WAVE:
+		return Vector3(lane_x, 1.0, TrackGeometry.world_z(at))
 	return Vector3(side * (_wall_x - 0.45), 0.6, TrackGeometry.world_z(at))
 
 
@@ -209,7 +251,9 @@ func _process(delta: float) -> void:
 			_release()
 			return
 	crowd.global_position = Vector3(0.0, 0.0, TrackGeometry.world_z(at))
-	crowd.set_formation(side * _wall_x, side, 0.0, lane_x, 0.0)
+	crowd.set_formation(side * _wall_x, side, 0.0, lane_x, 0.0, -1.0 if forward else 1.0)
+	# A wave stays where it rose (its foot's track distance) while its mass charges off from the crash.
+	crowd.set_wave(pour_from, lane_x, at - wave_at, rise)
 	crowd.set_motion(pour, rear, bristle, 1.0 if stage == Stage.CHARGE or death > 0 else 0.0)
 	crowd.set_life(_alive_shown, clampf(formed, 0.0, 1.0), death, death_seconds, charge_speed)
 	crowd.show_up_to(minf(clampf(formed, 0.0, 1.0), _alive_shown))

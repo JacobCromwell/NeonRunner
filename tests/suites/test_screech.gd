@@ -23,6 +23,7 @@ func run() -> void:
 	await _test_spines()
 	_test_generator()
 	_test_body()
+	_test_lair_reduced_flashing()
 
 
 # --- Helpers ------------------------------------------------------------------------------------
@@ -434,3 +435,28 @@ func _test_body() -> void:
 	var mm: ShaderMaterial = ScreechModel.multimesh_material(&"scavenger")
 	check(bool(mm.get_shader_parameter(&"use_custom")) and mm.shader == ScreechModel.material(&"scavenger").shader,
 		"a MultiMesh copy of the material reads per-creature state from custom data")
+
+
+## The lair's rattle (its warning) must honour Reduced flashing: a steady glow, never a blink.
+func _test_lair_reduced_flashing() -> void:
+	var was: bool = Settings.flashing_reduced
+	for kind: ScreechLair.Kind in [ScreechLair.Kind.MANHOLE, ScreechLair.Kind.VENT]:
+		for reduced: bool in [false, true]:
+			Settings.flashing_reduced = reduced
+			var lair := ScreechLair.new()
+			tree.root.add_child(lair)
+			lair.build(kind, &"", 1, 3)
+			lair.set_shaking(true)
+			var glow: MeshInstance3D = lair.find_child("Glow", true, false)
+			check(glow != null, "the lair's glow is findable")
+			var seen: Dictionary = {}
+			for i: int in 10:
+				lair._process(0.03)
+				seen[glow.visible] = true
+				OS.delay_msec(15)
+			if reduced:
+				check(seen.size() == 1 and seen.has(true), "Reduced flashing: the lair's %s glows steadily, never blinking" % ScreechLair.Kind.keys()[kind])
+			elif kind == ScreechLair.Kind.MANHOLE:
+				check(seen.has(true) and seen.has(false), "without Reduced flashing the manhole's glow still blinks")
+			lair.free()
+	Settings.flashing_reduced = was

@@ -31,6 +31,11 @@ extends Resource
 ## GDD §10: the Floating Head's weapons chip slowly, so even the best weapon saves at most one of its
 ## three stomps (a third). DESIGN-TBD for the other bosses.
 @export_range(0.0, 1.0, 0.01) var weapon_share_cap: float = 1.0
+## Weapons may end a phase (on): chipped to its end, the phase is over, saving its stomp (GDD §10's rule
+## for the Floating Head: "even the best weapon saves at most one stomp over the whole fight"). Off, they
+## chip a phase only down to just above its end (BossEncounter.weapon_floor), so only its big hits end it.
+## DESIGN-TBD (docs/questions/e5b.md): off for Hostile Takeover only.
+@export var weapons_can_end_phase: bool = true
 ## The phases, in order (GDD §10). Empty = one phase.
 @export var phases: Array[BossPhase] = []
 ## One lap of the fight's track, which the level generator plans like a level (seed, features,

@@ -7,11 +7,17 @@
 // formation, and its rank (evenly spread over [0, 1)): creatures leave the mound for the lane in rank order,
 // and a thinned cluster loses its highest ranks first.
 // Kinds of crowd (`kind`):
-//   0 a cluster: piled against a wall at the roadside (its mound, rearing while it gathers), pouring out
-//     into a lane (`pour`), charging down it as a lane-wide mass, then shocked on a fence, falling into a
-//     hole or scattering (`life`.z); thinned by weapons (`life`.x) and rising as it forms (`life`.y);
+//   0 a cluster: piled against a wall at the roadside (its mound, rearing while it gathers), or risen behind
+//     the runner as a wave curling over their lane (a strike from behind, `form_from` 1, `wave`), pouring out
+//     into a lane (`pour`), charging down it as a lane-wide mass (toward the runner, or along the lane past
+//     them: `mass_dir`), then shocked on a fence, falling into a hole or scattering (`life`.z); thinned by
+//     weapons (`life`.x) and rising as it forms (`life`.y);
 //   1 a roadside band: the horde in a gutter, from `band`.y ahead to `band`.z behind, drifting back;
-//   2 a spill: screeches pouring out of a lair as it bursts (INSTANCE_CUSTOM = (burst clock, side, w, rank)).
+//   2 a spill: screeches pouring out of a lair as it bursts (INSTANCE_CUSTOM = (burst clock, side, w, rank));
+//   3 a climb: the swarm covering a wall (`climb`), rising up it and sinking back (`climb_shape`.z);
+//   4 the Host's bulk: screeches latched over it (`host_shape`), standing, rearing, charging or crouched long
+//     and low (`host`), knocked off a share at each hit (`life`.x), scattering when it's freed (`life`.z).
+// A cluster flung by the Host is a ball (`form_from` 2, `ball`) until it splats into a short mass.
 // The look is the screech's (its vertex colours: skin, belly, the red-orange spine tips and the yellow
 // eyes glowing), weathered for the zone (`grime`), its skin lifted toward a sickly pale (`skin_lift`: the
 // screech's dark olive on Gangland's dark asphalt would vanish in a crowd). Its colours are authored in
@@ -42,9 +48,28 @@ uniform float clock = 0.0;
 // (-1 left, +1 right). mound_shape: length, depth out from the wall, climb up the wall.
 uniform vec4 mound = vec4(-4.0, 0.0, -1.0, 0.0);
 uniform vec4 mound_shape = vec4(4.6, 0.9, 1.7, 0.0);
-// mass: x = its lane's x, y = its front's z, z = its length, w = its width; mass_height: its pile's height.
+// mass: x = its lane's x, y = its front's z, z = its length, w = its width; mass_height: its pile's height;
+// mass_dir: 1 charging toward +z (at the runner, from ahead), -1 toward -z (along the lane, from behind).
 uniform vec4 mass = vec4(0.0, 0.0, 5.2, 2.0);
 uniform float mass_height = 0.95;
+uniform float mass_dir = 1.0;
+// What a cluster pours into its lane from: 0 its mound, 1 its wave (a strike from behind).
+uniform int form_from = 0;
+// A wave: x = its lane's x, y = its foot's z, z = how far it has risen (0-1); wave_shape: its height, how far
+// its crest curls forward (toward -z) and its width.
+uniform vec4 wave = vec4(0.0);
+uniform vec4 wave_shape = vec4(6.75, 11.0, 2.3, 0.0);
+// A climb: x = its wall's x (signed), y = metres ahead, z = metres behind, w = drift back (m/s); climb_shape:
+// x = its height, y = its side, z = how far it has risen (0-1).
+uniform vec4 climb = vec4(-4.0, 50.0, 12.0, 3.0);
+uniform vec4 climb_shape = vec4(4.8, -1.0, 0.0, 0.0);
+// The Host: host_shape = its bulk's width, height and depth (crouched: its crouch's length) and an attack's
+// heat (0-1: only while it attacks, never as it drops, leaps or crouches); host = crouched, rearing, charging
+// (each 0-1) and a shock's glow (0-1). +z faces the runner.
+uniform vec4 host_shape = vec4(2.8, 4.0, 2.4, 0.0);
+uniform vec4 host = vec4(0.0);
+// A flung cluster's ball: its radius (metres).
+uniform float ball = 1.1;
 // motion: x = pour (0 all in the mound .. 1 all in the lane), y = rear (gathering), z = bristle (spines up
 // and glowing: an attack's warning), w = charge (0 still .. 1 charging).
 uniform vec4 motion = vec4(0.0);
@@ -111,19 +136,70 @@ vec3 mound_slot(vec4 c, out vec3 fwd, out vec3 up) {
 	return vec3(mound.x - side * (0.07 + 0.05 * motion.y), h + sin(t * 1.3) * 0.07, z + cos(t) * 0.1);
 }
 
-// A cluster's creature in its lane: a mass heaped in the middle, its front toward the runner (+z).
+// A cluster's creature in its lane: a mass heaped in the middle, its front the way it charges (+z toward the
+// runner, mass_dir 1; -z along the lane, -1).
 vec3 mass_slot(vec4 c, out vec3 fwd, out vec3 up) {
 	float along = c.x;
 	float across = c.y * 2.0 - 1.0;
 	float taper = 0.55 + 0.45 * sin(3.1416 * clamp(along * 0.85 + 0.12, 0.0, 1.0));
 	float t = TIME * 6.0 + c.w * 53.0;
 	float x = mass.x + across * mass.w * 0.5 * taper + sin(t * 0.7) * 0.06;
-	float z = mass.y - along * mass.z + sin(t) * 0.18 * motion.w;
+	float z = mass.y - mass_dir * along * mass.z + sin(t) * 0.18 * motion.w;
 	float hmax = mass_height * (1.0 - across * across) * (1.0 - 0.5 * along);
 	float y = c.z * hmax + abs(sin(t * 1.7)) * 0.07 * motion.w;
-	fwd = vec3((rnd(c.w, 3.0) - 0.5) * 0.7, (rnd(c.w, 4.0) - 0.5) * 0.3 - 0.2 * c.z, 1.0);
+	fwd = vec3((rnd(c.w, 3.0) - 0.5) * 0.7, (rnd(c.w, 4.0) - 0.5) * 0.3 - 0.2 * c.z, mass_dir);
 	up = vec3(0.0, 1.0, 0.0);
 	return vec3(x, y, z);
+}
+
+// A cluster's creature in its wave (a strike from behind): a sheet of screeches rising from its foot behind
+// the runner, over their lane and curling forward and down like a breaking wave or a scorpion's stinger,
+// tapering to its tip; it grows as it rises (wave.z). Its spine is a cubic curve in (z, y).
+vec3 wave_slot(vec4 c, out vec3 fwd, out vec3 up) {
+	float grow = smoothstep(0.0, 1.0, clamp(wave.z, 0.0, 1.0));
+	float height = wave_shape.x * (0.25 + 0.75 * grow);
+	float reach = wave_shape.y * (0.15 + 0.85 * grow);
+	float sway = sin(TIME * 2.3) * 0.3 * grow;
+	vec2 p0 = vec2(0.0, 0.0);
+	vec2 p1 = vec2(0.7, height * 0.78);
+	vec2 p2 = vec2(-reach * 0.32, height * 1.2);
+	vec2 p3 = vec2(-reach, height * 0.58 + sway);
+	float u = pow(c.x, 0.85);
+	float a = 1.0 - u;
+	vec2 sp = a * a * a * p0 + 3.0 * a * a * u * p1 + 3.0 * a * u * u * p2 + u * u * u * p3;
+	vec2 tg = normalize(3.0 * a * a * (p1 - p0) + 6.0 * a * u * (p2 - p1) + 3.0 * u * u * (p3 - p2) + vec2(0.0001, 0.0));
+	// Its outside (behind the foot, above the crest, ahead of the curled tip).
+	vec2 nrm = vec2(tg.y, -tg.x);
+	float across = (c.y - 0.5) * wave_shape.z * (1.0 - 0.7 * u);
+	float thick = (c.z - 0.5) * 1.15 * (1.0 - 0.55 * u);
+	float t = TIME * 1.9 + c.w * 23.0;
+	fwd = normalize(vec3((rnd(c.w, 30.0) - 0.5) * 0.6, tg.y, tg.x));
+	up = vec3(0.0, nrm.y, nrm.x);
+	return vec3(wave.x + across + sin(t) * 0.07, sp.y + nrm.y * thick + sin(t * 1.3) * 0.07,
+		wave.y + sp.x + nrm.x * thick + cos(t) * 0.1);
+}
+
+// A flung cluster's creature: balled up around the node, tumbling.
+vec3 ball_slot(vec4 c, out vec3 fwd, out vec3 up) {
+	float theta = c.x * 6.2832;
+	float phi = acos(1.0 - 2.0 * c.y);
+	vec3 n = vec3(sin(phi) * cos(theta), cos(phi), sin(phi) * sin(theta));
+	n = turn(n, normalize(vec3(1.0, 0.25, 0.1)), TIME * 4.5);
+	float r = ball * (0.45 + 0.55 * pow(c.z, 0.33));
+	fwd = normalize(cross(n, vec3(0.0, 1.0, 0.0)) + vec3(0.0001, 0.0, 0.0));
+	up = n;
+	return n * r;
+}
+
+// Where a cluster's creature starts from as it pours into its lane: its mound, its wave or a flung ball.
+vec3 start_slot(vec4 c, out vec3 fwd, out vec3 up) {
+	if (form_from == 1) {
+		return wave_slot(c, fwd, up);
+	}
+	if (form_from == 2) {
+		return ball_slot(c, fwd, up);
+	}
+	return mound_slot(c, fwd, up);
 }
 
 void vertex() {
@@ -169,8 +245,57 @@ void vertex() {
 			-(rnd(c.w, 7.0) - 0.25) * 3.0 * k);
 		fwd = vec3(side * 0.8, 0.4 * hop, -0.6 - rnd(c.w, 8.0));
 		s *= step(0.0, age) * (1.0 - smoothstep(1.2, 1.6, age));
+	} else if (kind == 3) {
+		// A climb: screeches covering the wall from climb.y ahead to climb.z behind, up to climb_shape.x high,
+		// streaming back past the runner; rising, the high ones arrive last, and sinking they drop away.
+		float span = climb.y + climb.z;
+		float z = -climb.y + mod(c.x * span + climb.w * TIME, span);
+		float side = climb_shape.y;
+		float rise = clamp(climb_shape.z, 0.0, 1.0);
+		float t = TIME * 2.3 + c.w * 31.0;
+		float h = 0.12 + c.z * climb_shape.x * (0.25 + 0.75 * rise);
+		pos = vec3(climb.x - side * (0.05 + 0.14 * c.y), h + sin(t) * 0.06, z + sin(t * 0.7) * 0.25);
+		fwd = vec3(0.0, 0.85, -0.5 + (rnd(c.w, 40.0) - 0.5) * 0.9);
+		up = vec3(-side, 0.0, 0.0);
+		scurry = 1.0;
+		s *= smoothstep(0.0, 0.12, rise) * (1.0 - smoothstep(rise * 1.04, rise * 1.04 + 0.06, c.z));
+	} else if (kind == 4) {
+		// The Host's bulk: screeches latched over an ellipsoid standing (host_shape) or crouched long and low,
+		// its top leaning back as it rears and forward as it charges, crawling over it.
+		vec3 r = host_shape.xyz * 0.5;
+		float theta = c.x * 6.2832;
+		float phi = acos(1.0 - 2.0 * c.y * 0.86);
+		vec3 n = vec3(sin(phi) * cos(theta), cos(phi), sin(phi) * sin(theta));
+		float bump = 1.0 + 0.1 * sin(theta * 3.0 + c.w * 7.0) * sin(phi * 4.0);
+		float t = TIME * 3.1 + c.w * 37.0;
+		vec3 p = vec3(0.0, r.y, 0.0) + n * r * bump * (0.84 + 0.16 * c.z);
+		float top = max(n.y, 0.0);
+		p += vec3(0.0, host.y * 0.45 * top, (host.z * 0.7 - host.y * 0.5) * top);
+		pos = p + n * sin(t) * 0.06;
+		fwd = normalize(cross(vec3(0.0, 1.0, 0.0), n) + vec3(0.0, 0.3 * sin(t * 0.5), 0.0001));
+		up = n;
+		// It heats only while it attacks (a fling's wind-up, a lunge's warning and charge).
+		bristle = 0.25 + 0.75 * host_shape.w;
+		scurry = 0.6 + 0.4 * host.z;
+		// Knocked off: its highest ranks go first.
+		s *= 1.0 - smoothstep(life.x * 1.03 - 0.025, life.x * 1.03 + 0.005, c.w);
+		if (life.z > 0.5) {
+			// Freed: they leap off it and scatter.
+			float dt = life.w - rnd(c.w, 41.0) * 0.4;
+			if (dt > 0.0) {
+				vec3 away = normalize(vec3(n.x, 0.0, n.z) + vec3(0.0001, 0.0, 0.0));
+				pos += away * (3.0 + 3.0 * rnd(c.w, 42.0)) * dt + vec3(0.0, 2.5 * dt - 6.0 * dt * dt, 0.0);
+				pos.y = max(pos.y, 0.05);
+				fwd = vec3(away.x, 0.0, away.z);
+				up = vec3(0.0, 1.0, 0.0);
+				s *= 1.0 - smoothstep(0.5, 1.2, dt);
+			}
+			bristle = 0.25;
+		}
+		// A shock (baited into a fence): burning pink, crackling (steady with Reduced flashing).
+		v_shock = host.w * warning_flicker(step(0.5, fract(TIME * 13.0 + rnd(c.w, 43.0))), 0.35);
 	} else {
-		// A cluster: its mound, the pour, its mass.
+		// A cluster: its mound (or its wave), the pour, its mass.
 		vec3 f0;
 		vec3 u0;
 		vec3 f1;
@@ -178,13 +303,13 @@ void vertex() {
 		float p = clamp((motion.x - c.w * 0.5) / 0.5, 0.0, 1.0);
 		float ps = smoothstep(0.0, 1.0, p);
 		if (motion.x <= 0.0) {
-			pos = mound_slot(c, fwd, up);
-			scurry = 0.3 + 0.7 * motion.y;
+			pos = start_slot(c, fwd, up);
+			scurry = form_from == 1 ? 1.0 : 0.3 + 0.7 * motion.y;
 		} else if (motion.x >= 1.0) {
 			pos = mass_slot(c, fwd, up);
 			scurry = 0.4 + 0.6 * motion.w;
 		} else {
-			vec3 a = mound_slot(c, f0, u0);
+			vec3 a = start_slot(c, f0, u0);
 			vec3 b = mass_slot(c, f1, u1);
 			pos = mix(a, b, ps) + vec3(0.0, sin(3.1416 * p) * 0.55, 0.0);
 			fwd = p <= 0.0 ? f0 : (p >= 1.0 ? f1 : normalize(b - a + vec3(0.0, 0.4, 0.0)) + f1 * 0.2);
@@ -199,14 +324,15 @@ void vertex() {
 		s *= show * kept;
 		if (life.z > 0.5) {
 			float speed = max(death_at.x, 1.0);
+			float d = mass_dir;
 			// Creatures behind the front reach it at the charge's speed.
 			float arrive = (motion.x >= 1.0 ? c.x * mass.z : 0.0) / speed;
 			float dt = life.w - arrive;
 			if (life.z < 1.5) {
 				// Shocked: up against the fence, then flung back, spinning, glowing, burning away.
-				pos.z = min(pos.z + speed * min(life.w, arrive), mass.y);
+				pos.z = mass.y + d * min(d * (pos.z - mass.y) + speed * min(life.w, arrive), 0.0);
 				if (dt > 0.0) {
-					pos += vec3((rnd(c.w, 9.0) - 0.5) * 3.0 * dt, 4.5 * dt - 6.0 * dt * dt, -(2.0 + 3.0 * rnd(c.w, 10.0)) * dt);
+					pos += vec3((rnd(c.w, 9.0) - 0.5) * 3.0 * dt, 4.5 * dt - 6.0 * dt * dt, -d * (2.0 + 3.0 * rnd(c.w, 10.0)) * dt);
 					vec3 axis = normalize(vec3(rnd(c.w, 11.0) - 0.5, 0.3, rnd(c.w, 12.0) - 0.5));
 					fwd = turn(fwd, axis, dt * 9.0);
 					up = turn(up, axis, dt * 9.0);
@@ -216,12 +342,12 @@ void vertex() {
 				}
 			} else if (life.z < 2.5) {
 				// Falling into the hole: on over its edge, then down, tumbling, gone into the dark.
-				pos.z += speed * min(life.w, arrive);
+				pos.z += d * speed * min(life.w, arrive);
 				if (dt > 0.0) {
-					pos.z += speed * dt * 0.3;
+					pos.z += d * speed * dt * 0.3;
 					pos.y -= 8.0 * dt * dt + 0.6 * dt;
-					fwd = turn(fwd, vec3(1.0, 0.0, 0.0), -dt * 4.0);
-					up = turn(up, vec3(1.0, 0.0, 0.0), -dt * 4.0);
+					fwd = turn(fwd, vec3(1.0, 0.0, 0.0), -d * dt * 4.0);
+					up = turn(up, vec3(1.0, 0.0, 0.0), -d * dt * 4.0);
 					s *= 1.0 - smoothstep(-3.5, -2.0, -pos.y);
 				}
 			} else {

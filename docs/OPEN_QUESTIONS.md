@@ -2163,6 +2163,193 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     zone's name on its colour, shown while it loads), or stay as it is?
     - **Placeholder:** no loading card; the screen holds still until the run starts, as before.
 
+**Hostile Takeover, phase 2: The Contract** (from E5b-b; numbers in `data/bosses/corporate_boss_tuning.tres`; play `--boss=corporate_boss --phase=2`, measure with `tools/measure/hostile_takeover.gd`)
+331. **The train's carriages, and the Tithe Collectors** (GDD §10: "carriage roofs are the floor and the gaps
+    between carriages are the gaps"; phase 2's Buzz Overdrive "cuts a carriage lane"; OPEN_QUESTIONS items 319
+    and 321).
+    **Placeholder:** the train repeats corporate carriage, corporate carriage, military flatcar, then three
+    corporate carriages. A corporate carriage is 50 m and a flatcar 130 m (at 18 m/s). A Buzz Overdrive needs
+    about 100 m of whole roof in its lane, from its rev to its charge past the runner, which no corporate
+    carriage has. In phase 1 a Tithe Collector comes on each flatcar from carriage 3, so item 319's "every
+    fifth carriage" is now every flatcar, every sixth carriage. At most 2 come in a phase
+    (`tithe_visits_per_phase`): without a cap, a runner who lets couplings go by could farm their 120-credit
+    jackpots (item 321). Code: `HostileTakeoverTrain`, `HostileTakeoverBoard`.
+    **Alternative:** longer carriages all along (a slower rhythm of gaps), or a cut that may span a gap. For
+    the Collectors: one a phase, or none once the first coupling has been let go by.
+332. **The strafes** (GDD §10, phase 2: "the gunship strafes the lanes (a warning line and a rising whine)").
+    **Placeholder:** red lines light the runner's lane and the one beside it, from 3 m behind them to 40 m
+    ahead, with a 1.2 s rising whine. At 3 lanes it strikes one lane; at 5 or 6 lanes, two; never all. Then
+    the guns rake each line from its far end back past the runner at 55 m/s (at 18 m/s). A rake hits anyone
+    in the lane, a jump included; leaving the lane dodges it, and the walls are safe. Strafes come about a
+    second apart when nothing else is going on: never near the drop or the ride, and never while phase 1's
+    guards are still about. Code: `HostileTakeoverContract`, `HostileTakeoverStrafes`.
+    **Alternative:** a sweep across the lanes that a jump dodges, or a line that follows the runner from lane
+    to lane.
+333. **The drop** (GDD §10: the gunship "drops a Buzz Overdrive onto the roof ahead, which cuts a carriage
+    lane").
+    **Placeholder:** one lands on each flatcar. The gunship flies out over the spot, and a red target marks
+    where it will land. The tank falls for 0.7 s and lands 0.6 s before its rev. From then on it is the C2
+    tank: its rev and red line, its charge cutting the lane past the runner, and the block-then-hold rule. Its
+    cut is planned like a level's (`FloorCutPlan`, `cut_problem`), in a seeded lane. Code:
+    `HostileTakeoverContract.plan_drop`.
+    **Alternative:** it lands further ahead and rolls in, as it does in the levels, or it drops onto a lane
+    chosen from where the runner is.
+334. **The armored carriage and the ride** (GDD §10: "an armored carriage with no roof access blocks the way,
+    so the player takes an anti-grav pad and rides the gunship's belly over it (the gunship is the
+    ceiling)").
+    **Placeholder:** the second carriage after each flatcar is armored. It is 2.1 m tall: too tall to jump
+    onto, and below a belly rider's jump. Its front is framed in the solid obstacles' yellow and black, and
+    it is in sight 240 m ahead. Before it lies a runway of anti-grav pads in every lane, 18 m long at 18 m/s.
+    That is longer than any jump, a dash in the air included, so no runner on the roof can skip it. The
+    gunship comes down over the runner as they reach it and flies on slower than them, so they ride its belly
+    over the armored carriage and drop off 10 m past its far gap. A runner who isn't flipped up (in practice,
+    none) crashes into the armored front; the dash doesn't pass through it. Code:
+    `HostileTakeoverArmored`, `HostileTakeoverContract.plan_ride`.
+    **Alternative:** a single pad in each lane, as "an anti-grav pad" reads, which a jump can skip, or pads
+    in some lanes only.
+335. **Phase 2's weak point** (GDD §10 names none for The Contract).
+    **Placeholder:** the gunship's drop bay, which the Buzz Overdrive fell from. During the ride it is open on
+    the belly, glowing the weak points' red, with green chevrons before it. A jump on the belly that comes
+    back up onto the bay stomps it, a stomp from the ceiling. A missed bay is harmless: the ride ends, and the
+    next flatcar's drop and ride come about 23 s later. Each cycle brings another Buzz Overdrive, worth 600
+    score to kill. Code: `HostileTakeoverGunship.bay_point`, `HostileTakeover._bay_stomped`.
+    **Alternative:** a weak point reached another way (the tank's clamp under the belly, or a part shot
+    off), or the phase's hit for just completing the ride.
+336. **Weapons ending a phase** (GDD §10, the Floating Head: "weapons chip away slowly (tuned so even the
+    best weapon saves at most one stomp over the whole fight)").
+    **Question:** should weapons be able to end a boss's phase (saving one stomp, as the Floating Head's
+    rule says), or should only stomps end phases? And should that be decided per boss?
+    **Placeholder:** `BossDef.weapons_can_end_phase`, checked in `BossEncounter.damage()`. It is on for
+    every boss (the behaviour so far, The House included: a 0.34 cap over three phases of a third each). It
+    is off for Hostile Takeover (`data/bosses/corporate_boss.tres`), whose weapons chip a phase only to just
+    above its end. Damage carries from one phase into the next. So a runner who chipped a phase to its floor
+    starts the next one a hair above that one's end. In the preview, one stomp then ends phase 3 instead of
+    three; phase 3 itself (task E5b-c) can decide how its hits count.
+    **Alternative:** on everywhere (weapons may save a stomp in every fight), or off everywhere.
+
+**The Buzz Overdrive and turn-taking** (from FIX2; numbers in `data/enemies/buzz_overdrive.tres`, F6 "Enemy: buzz_overdrive", Turns; review with `tools/showcase/buzz_overdrive_showcase.tscn -- --pass`)
+337. **What does a Buzz Overdrive do when it can't get its turn?** (GDD §9: "big attacks take turns"; §9.9:
+    its cut is planned in advance.) It never asked for a turn and counted as attacking only from its rev, so
+    another type's attack that started a moment before (when only its roll was on) ran on into its rev: over
+    the seven levels that have it, at 3, 5 and 6 lanes on 13 seeds each, 73 of 380 tanks revved into a drone's
+    barrage, a hover truck's lurch or cannon shot, or a Resonator's pulse (87 s of two big attacks at once).
+    It can't wait (a later cut would run over floor the generator never checked).
+    **Placeholder:** like a Gilded Sentinel (C4), it claims its turn `claim_seconds` = 2.5 s before its rev,
+    while it rolls ahead (other types' big attacks that get ready meanwhile wait for it), and if one begun
+    before its claim is still on as its rev would start, it lets the runner pass: no rev, no red line, no
+    cut (its lane stays whole); it speeds off ahead and is out of view `pass_seconds` = 3 s later (far ahead,
+    in the fog, it may cross a hole or fence in its lane). Measured over the same runs with the claim: no
+    overlap; 378 tanks revved and 2 let the runner pass (both behind a Resonator's pulse); the others lost
+    57 of 2,163 drone barrages, 14 of 632 cannon shots and 7 of 527 lurches, and drones waited 2.05 s on
+    average instead of 1.71 s (`data/enemies/buzz_overdrive.tres`, F6 "Enemy: buzz_overdrive", Turns; `DESIGN-TBD` in
+    `scripts/enemies/buzz_overdrive_tuning.gd`). This also narrows item 307's placeholder: other enemies may
+    still act while it rolls ahead, but not in its last 2.5 s before its rev. A boss's tank (Hostile
+    Takeover's drop, no roll) neither claims nor passes, as before: the boss keeps its own attacks off it.
+    **Alternatives:** a longer claim (up to its whole 4 s roll: fewer passes, the others held longer), the
+    generator keeping every other enemy off its roll too (fewer places fit a tank, and attacks timed at run
+    time would still need the claim), or revving anyway (two big attacks at once, as before).
+
+**The Sewer Swarm, phases 2 and 3** (from E4b; numbers in `data/bosses/gangland_boss_tuning.tres`; play `--level=gangland/boss`, review with `tools/showcase/sewer_swarm_showcase.tscn`)
+338. **Strikes from behind** (GDD §10, phase 2: "clusters also strike from behind. The warning is a chittering
+    sound plus a visible rising wave of the swarm on screen, curling like a breaking wave or a scorpion's
+    stinger, about to strike its lane").
+    **Placeholder** (`SwarmSurges`; `SewerSwarmTuning`, "Surrounded"): phase 2's surges alternate, from behind
+    then from ahead (`surge_sides`). From behind: 2.6 s before it would catch the runner
+    (`behind_warning_seconds`) a wave of the swarm rises 9 m behind them in their lane, 6.75 m high, its crest
+    curling over them; its chitter rises and a red line runs down the lane ahead to the first fence or hole.
+    1.2 s before (`behind_lock_seconds`) it locks on their lane; then it crashes down there and surges on ahead,
+    faster than the runner, into that fence or hole (destroyed: a hit) or 30 m on and back into the gutter. A
+    runner who holds the bait's lane until the lock and leaves it then baits it.
+    **Alternatives:** strikes from behind are only dodged (never baited), or the wave covers every lane but one.
+339. **The wall climb** (GDD §10: "the swarm also climbs the walls, taking them away as an escape route, but only
+    temporarily ... one wall at a time for a few seconds, alternating sides, so one wall is always free").
+    **Placeholder** (`SwarmClimb`): both walls free for 2.5 s, then the swarm covers one wall for 4 s, sides
+    alternating (the first seeded). A covered wall refuses entry like a sign (the clank and the bump) and never
+    hurts; the climb waits while the runner is on the wall it's due to climb.
+    **Question:** should a covered wall hurt (an enemy attack) or knock a wall runner off instead?
+340. **The clusters in phase 3** (follows question 327: with five clusters, none are left for phase 3).
+    **Placeholder** (`SwarmHostAttacks`, flings): phase 2 ends with all five destroyed. In phase 3 the Host
+    flings a ball of screeches scooped from the roadside horde at each hole spot: it rears with it (0.7 s, its
+    heave heard) while a red circle marks where it will land in the runner's lane, the ball lands 1.1 s later,
+    splats into a short mass for 0.8 s (an enemy attack) and scatters. A dodge, never a hit on the Host.
+    **Alternatives:** phase 2 ends with one or two clusters left for the Host to fling, or a flung cluster can
+    be baited into a fence or a hole too.
+341. **The Host's way up** (GDD §10: its implants are reached "by a ramp and a wall jump"; "three stomps").
+    **Placeholder** (`SwarmHostAttacks`, crouches; `SwarmJumpMarks`; the arena's host spots): 88 m after each
+    bait spot the arena has a ramp in an outer lane (sides in turn), the street clear around it. When the
+    runner is 55 m before it, the Host leaps into the ramp's lane and crouches 14.5-27 m past the ramp, long and
+    low (2.1 m): solid to run into, its sides bump a lane switch back, its three implants glow red along its
+    back, and green chevrons on the ramp's wall show where to jump. A ramp, a wall run and a wall jump come
+    down on the implants: a stomp, one of the three hits. Missed, it rises and goes back to pacing 26 m ahead.
+    The Host is a mound of screeches (3.4 m wide, 4.8 m tall) around the person, who shows more at each hit.
+    **Question:** is the crouch beside a ramp the right way to reach the implants, and is this the Host's look?
+342. **The lunge into a fence** (GDD §10: "its lunge can also be baited into a fence").
+    **Placeholder** (`SwarmHostAttacks`, lunges): at each fence spot it lunges down the runner's lane like a
+    surge (the same 2.4 s warning with its roar and the red line, locking 1.1 s before). Into the fence it's
+    shocked: a hit like a stomp, down in that lane for 1.2 s; otherwise it charges past and leaps back. A
+    runner who baits every lunge frees the Host with fewer stomps (a clean run: one lunge baited, two stomps).
+    **Question:** should a baited lunge count as a full hit, or only weaken the Host so the stomps are still
+    needed?
+
+**Hostile Takeover, phase 3 and the defeat** (from E5b-c; numbers in `data/bosses/corporate_boss_tuning.tres`, groups "The Merger" and "The defeat"; play `--level=corporate/boss` or `--boss=corporate_boss --phase=3`)
+343. **The docking and MERGER COMPLETE** (GDD §10, phase 3: "the locomotive comes back and the gunship docks
+    onto it with huge clamps, forming one monstrous war engine, and 'MERGER COMPLETE' flashes on every
+    screen"; the player glimpses the Chairman "as the face on the 'MERGER COMPLETE' screens"). Which screens,
+    and how long does the docking take?
+    **Placeholder:** once phase 2's last ride is over, a 3 s docking: the locomotive comes back from far ahead
+    to 64 m ahead of the runner while the gunship settles onto its rear, three arms gripping it and its three
+    clamps unfolding as they lock. Then MERGER COMPLETE flashes for 5 s (steady with Reduced flashing) on the
+    locomotive's rear window, turned screen, and on two ad screens on pylons that rise beyond the sound
+    barriers and pace the train ahead (the arena has nothing over the street). Each shows the Chairman's face
+    as a corporate broadcast; he leaves his window. The war engine's first strafe waits 1.5 s after the words
+    come up. Code: `HostileTakeover._update_merger`, `HostileTakeoverScreens`, tuning group "The Merger".
+    **Alternative:** the city's own screens on the towers, a longer docking the player watches, or the
+    Chairman staying at his window.
+344. **How the clamps are reached** (GDD §10: "the player stomps the three glowing docking clamps (red weak
+    points) to tear the gunship loose"; it doesn't say where the clamps are or how the runner gets to them).
+    **Placeholder:** after each drop, a pass: a runway of anti-grav pads on the carriage after the flatcar;
+    the war engine comes back down over the runner there, and they ride its belly forward at 3 m/s (at any
+    run speed, 6.3 s) under its three clamps, one under each third of the belly (7, 12.75 and 18.5 m from its
+    stern), each glowing red with green chevrons behind it. A jump from the belly that comes back up onto a
+    clamp stomps it. Then the war engine pulls away and the runner drops back onto a roof clear of the gaps.
+    All three can be torn loose in one pass (1.9 s apart: after a stomp's bounce there is time for a
+    reaction and two lane moves), and clamps missed come around on the next pass, about 25 s later. Code:
+    `HostileTakeoverContract.plan_pass`, `HostileTakeoverGunship.clamps`, tuning group "The Merger".
+    **Alternative:** the clamps reached from the roof (a ramp onto the locomotive), one clamp a pass, or the
+    clamps on the war engine's rear, stomped with a jump from the roofs.
+345. **Phase 3's attacks** (GDD §10: "its attacks combine both"). Which of the earlier phases' attacks come
+    back, and how dense?
+    **Placeholder:** the Board's guards (one on the first carriage of each consist of six) and partial wall
+    fences (on its first two carriages; no Tithe Collector), the war engine's drops (a Buzz Overdrive onto
+    each flatcar, as phase 2's) and its strafes, only when nothing else is going on (one attack at a time, as
+    in phase 2). In a fight without a miss, phase 3 shows the Board's pieces, a drop and the pass; strafes
+    come between later cycles (after a missed pass). Code: `HostileTakeoverBoard.merger`,
+    `HostileTakeoverTuning.merger_board_slots`, `merger_guards`, `merger_hold`.
+    **Alternative:** a strafe guaranteed before the first pass (the phase grows by a few seconds), or a
+    denser Board.
+346. **How phase 3's three hits count** (follows item 336: weapons can't end Hostile Takeover's phases).
+    **Placeholder:** a framework change, `BossEncounter.phase_hits`: while a boss's weapons can't end a phase,
+    its big hits are counted. Each deals an equal part of what's left of the phase for each hit still to
+    land, and only the phase's last one ends it, exactly at its end. So nothing weapons chipped carries into
+    the next phase, and phase 3 always takes its three clamps, however far weapons chipped it (weapons still
+    chip within their 0.34 cap). Code: `BossEncounter.hit_damage`, `BossEncounter.damage`.
+    **Alternative:** damage carrying over (a phase chipped to its floor shortens the next one), or counting
+    only the last phase's hits.
+347. **The defeat** (GDD §10: "the gunship spins away and explodes; the locomotive derails and ploughs
+    through the lobby of a corporate tower, bringing down a giant, soulless logo sculpture").
+    **Placeholder:** the last clamp torn loose, the gunship pulls free, climbs away beside the line spinning
+    and explodes 1.6 s later; the locomotive surges on, veers off the guideway to the right and ploughs into
+    the sky lobby of a corporate tower standing beside the line at the train's level 2.6 s in, the brand's
+    mark (a giant steel sculpture on its plaza) toppling back into the lobby; the screens glitch and go dark.
+    The runner and the rest of the train run on along the guideway past the wreck, and the results come 5.5 s
+    after the stomp. The lobby stands still beside the line while the city streams past (the city's towers
+    keep clear of it), so the crash reads; a lobby moving with the city would rush past in a second. Code:
+    `HostileTakeover._on_defeated`, `_place_defeat`, `HostileTakeoverLobby`, tuning group "The defeat".
+    **Alternative:** the whole train derailing (the runner jumping clear), or a cut to a short cinematic.
+348. **Par times** (GDD §10, proposed: stars for beating par times set per boss).
+    **Placeholder:** 74 s for three stars and 96 s for two. A fight without a miss takes 68.6 s at 3, 5 and 6
+    lanes and at 18 and 23.4 m/s; a missed pass costs about 25 s. Data: `data/bosses/corporate_boss.tres`.
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).

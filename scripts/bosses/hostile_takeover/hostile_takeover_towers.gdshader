@@ -7,6 +7,9 @@
 // start, slice_length long), so the towers flow from slice to slice with no seam and nothing is made
 // while the train runs. VERTEX.z holds a vertex's offset from its tower's near end.
 // Windows glow cold white or in the brand's blue (never a hazard colour); the fog fades the towers away.
+// A stretch beside the line can be kept clear (clear_span, clear_side: the defeat's lobby stands there,
+// HostileTakeoverSkin.set_clearing): a tower on that side whose near end is within clear_reach before it
+// or in it is collapsed out of sight while it's there.
 //   COLOR.rgb  the tower's cladding (sRGB)   COLOR.a  its seed (0-1)   UV  metres on its face
 shader_type spatial;
 render_mode unshaded, cull_back, depth_draw_opaque, world_vertex_coords;
@@ -24,6 +27,11 @@ uniform float window_glow = 0.85;
 // The share of windows lit, and of those in the brand's blue.
 uniform float lit_share = 0.3;
 uniform float brand_share = 0.07;
+// The stretch kept clear (track distances), its side (-1 left, 1 right, 0 none) and how far before it a
+// tower's near end keeps out (its longest length along the track).
+uniform vec2 clear_span = vec2(0.0, 0.0);
+uniform float clear_side = 0.0;
+uniform float clear_reach = 30.0;
 
 varying vec2 v_face;
 varying float v_seed;
@@ -31,11 +39,14 @@ varying float v_seed;
 void vertex() {
 	float now = UV2.x - speed * TIME;
 	float rel = mod(now - UV2.y, period);
-	if (rel >= slice_length) {
-		// Not in this slice now: collapsed out of sight.
+	float near = UV2.y + rel;
+	bool cleared = clear_side != 0.0 && VERTEX.x * clear_side > 0.0 && near > clear_span.x - clear_reach
+		&& near < clear_span.y;
+	if (rel >= slice_length || cleared) {
+		// Not in this slice now, or in the stretch kept clear: collapsed out of sight.
 		VERTEX = vec3(0.0, -1.0e5, 0.0);
 	} else {
-		VERTEX.z -= UV2.y + rel;
+		VERTEX.z -= near;
 	}
 	v_face = UV;
 	v_seed = COLOR.a;

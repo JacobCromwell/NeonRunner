@@ -16,9 +16,8 @@ Boss fights have their framework (they play in the runner, with phases, a health
 stars and payouts); a test boss shows the framework at work. The Neon City's boss, the Floating Head,
 is built and plays in the campaign after City 3 (debug builds: `--boss=city_boss`), and so is the Dead
 Zone's Sleep Taker after Dead Zone 2 (`--boss=dead_zone_boss`), and the Marketplace's House after
-Marketplace 2 (`--boss=marketplace_boss`). The Corporate zone's Hostile Takeover is being built (its train
-and phase 1 so far, as a preview: `--boss=corporate_boss`), and so is Gangland's Sewer Swarm (its first phase
-so far, as a preview: `--boss=gangland_boss`); the campaign shows their cards until they're done, and the
+Marketplace 2 (`--boss=marketplace_boss`), the Corporate zone's Hostile Takeover after Corporate 2
+(`--boss=corporate_boss`), and Gangland's Sewer Swarm after Gangland 3 (`--boss=gangland_boss`); the
 Golden Zone's final villain is still a placeholder slot. The short cinematics are built with a code-driven cinematic toolkit
 (camera paths, the runner and cyborgs on the humanoid rig, timed events, skippable); until the owner
 describes the story beats, each zone's intro (and the City's boss intro) plays a placeholder arrival flyover
@@ -57,7 +56,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--thief` | Quick play with stand-in thieves, one after another: a gold block that crosses the lanes and robs 25% of the run's credits from a runner who touches it (it doesn't kill, even without `--god`); catch it (stomp it, shoot it, dash or claw through it) for what it took plus a jackpot. The runner starts with 400 credits, so the first theft has something to take. A review aid for the Tithe Collector's mechanism; no level has one |
 | `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level |
-| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker; `marketplace_boss`: The House; `corporate_boss`: Hostile Takeover, being built; `gangland_boss`: the Sewer Swarm, being built) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
+| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker; `marketplace_boss`: The House; `corporate_boss`: Hostile Takeover; `gangland_boss`: the Sewer Swarm) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
 | `--frame-graph` | Show the frame-time graph (F7, see Smooth frames) from the start of every run |
 
@@ -172,7 +171,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     you, then revs (the spin-up, its eyes flaring, a red line over its lane) and charges back down its lane,
     cutting the floor into a gap behind it: leave its lane. The armor or shield blocks it and the floor holds
     a second; the missile tiers can usually shoot it before it charges, which saves the floor; the dash
-    smashes it (in quick play, `--features=buzz_overdrive`)
+    smashes it. Big attacks take turns: if another enemy's is still going on when it would rev, it drives
+    off ahead instead and its lane stays whole (in quick play, `--features=buzz_overdrive`)
   - the Tithe Collector (from Corporate 2, skipping the Dead Zone, back in the Golden Zone): a small gold
     drone with a collection plate, smug and gaudy (plain metal, no rotors; anti-grav pads don't affect
     it). It appears ahead of you and closes in slowly, sucking up the credits in its lane along the way
@@ -245,25 +245,43 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   the pad's lane, Barnacle Turrets further along. Beaten, its reels spin wildly and jam, TILT flashes
   over them, and it collapses into the street in an explosion of coins while the citizens cheer. About
   67 s for a runner who never misses (`--boss=marketplace_boss`, or the campaign's
-  `--level=marketplace/boss`). Hostile Takeover, the Corporate zone's boss, is being built (step 1 of 3,
-  a preview with `--boss=corporate_boss`): the runner lands on the rear roof of the Chairman's armored
+  `--level=marketplace/boss`). Hostile Takeover, the Corporate zone's boss, comes after Corporate 2
+  (`--boss=corporate_boss` or `--level=corporate/boss`): the runner lands on the rear roof of the Chairman's armored
   maglev train and runs forward along it, jumping the gaps between its carriages, the track's sound
   barriers on either side and the city streaming past beyond them and far below; a military gunship
   paces the train overhead, and far ahead the Chairman watches from the locomotive's window. In phase 1
   (The Board) security cyborgs guard the roofs, a Tithe Collector skims a trail of credits and partial
   wall fences pulse along the barriers; the coupling over each gap glows red in one lane: land on it
-  while jumping the gap and the carriages behind break away and tumble off the track. Until its next
-  steps every phase plays The Board.
-  The Sewer Swarm, Gangland's boss, is being built (`--boss=gangland_boss`
-  plays its first phase as a preview, at quick play's 18 m/s; the campaign will play it at Gangland's
-  21.8 m/s): a mutant horde of screeches rising from the sewers. As the fight starts, manholes and wall
+  while jumping the gap and the carriages behind break away and tumble off the track. In phase 2 (The
+  Contract) the gunship strafes the lanes after a red line and a rising whine, drops a Buzz Overdrive
+  onto a flatcar ahead, which cuts its lane, and an armored carriage blocks the way: a runway of anti-grav
+  pads flips the runner up onto the gunship's belly, which carries them over it, and its open drop bay,
+  glowing red, is stomped with a jump from the belly. In phase 3 (The Merger) the locomotive comes back
+  and the gunship docks onto it with huge clamps, and MERGER COMPLETE flashes on every screen with the
+  Chairman's face; the war engine's attacks combine both phases (the guards and wall fences, the strafes,
+  the drops), and after each drop it comes back down over a runway of pads: ride its belly and jump to
+  come back up onto its three glowing docking clamps, one under each third of it, to tear them loose
+  (clamps missed come around on the next pass). Weapons chip the gunship but never end a phase, nor save
+  a clamp. Beaten, the gunship spins away and explodes, and the locomotive derails and ploughs through
+  the lobby of a corporate tower, bringing down its giant logo sculpture. About 69 s for a runner who
+  never misses.
+  The Sewer Swarm, Gangland's boss, plays after Gangland 3 at Gangland's 21.8 m/s (`--boss=gangland_boss`
+  plays it at quick play's 18 m/s): a mutant horde of screeches rising from the sewers. As the fight starts, manholes and wall
   vents rattle and burst open all along both sides of the street, screeches pour out, and the horde heaps
   up in the gutters, its clusters waiting at the roadside ahead. A cluster rears up and its chitter rises,
   and a red line runs down the runner's lane to it, following them from lane to lane; then it lands in
   their lane and charges down it as a red-hot mass. Hold a lane with a live fence or a hole ahead until it
   lands, then get out of the way as it charges (or jump the fence or the hole), and it runs straight into
-  it: shocked or swallowed. Two clusters destroyed end the first phase (the rest of the fight comes next);
-  weapons thin a surging cluster too, the heavy missile most of all. Its crowds are hundreds of screeches
+  it: shocked or swallowed. Two clusters destroyed end the Rising. In Surrounded the clusters also strike
+  from behind: a wave of the swarm rises behind the runner, curling over their lane as it chitters, with a
+  red line down the lane ahead; it crashes down and surges on, into that lane's fence or hole if the runner
+  held the lane until it locked. Meanwhile the swarm climbs one wall at a time for a few seconds, taking it
+  away, sides alternating. The rest of the clusters destroyed, the Host bursts out of a big sewer pipe
+  across the street: a person fused with machines, buried in screeches. It flings balls of the swarm (a red
+  circle where each lands), lunges down the runner's lane (bait it into a fence) and crouches beside a ramp
+  with its implants glowing red on its back: up the ramp, a wall run and a wall jump bring the runner down
+  on them. Three hits free the Host: the screeches scatter, the implants short out and the person slumps
+  free. Weapons thin a surging cluster too, the heavy missile most of all. Its crowds are hundreds of screeches
   drawn with a MultiMesh and a shader, their sizes in data for the phone test
   (`res://tools/showcase/swarm_stress.tscn`, a stress scene with a frame-time readout). The Golden Zone's
   final villain is still to be built.
@@ -358,7 +376,7 @@ The scenes in `tools/showcase/` show one part of the game up close for visual re
 and power-up look, and a scripted run on any zone's skin; ramp launches and blocked wall entries; each enemy
 family, the Barnacle Turret's looks and a ride past it, a floor cut in any zone's look, wall fences in any zone's look, the Buzz Overdrive's
 model and an encounter with it, the Floating Head, the Sleep Taker (its lure and defeat, `--scenario=lure`, and its readability
-in the dark, `--scenario=measure`), The House (`--scenario=spin|buttons|jackpot|wall|ceiling|defeat|fight`), Hostile Takeover (`--scenario=run|train|gunship|locomotive|coupling`), the Sewer Swarm (`--scenario=rising|surge|fence|hole|fight|model`) and its crowds' stress test for the phone (`swarm_stress`: N clusters of C screeches with a frame-time and draw-call readout), the UI kit, every screen, a zone skin's fixed review track, the cult's feed,
+in the dark, `--scenario=measure`), The House (`--scenario=spin|buttons|jackpot|wall|ceiling|defeat|fight`), Hostile Takeover (`--scenario=run|train|gunship|locomotive|coupling|contract|merger|defeat`), the Sewer Swarm (`--scenario=rising|surge|fence|hole|fight|model|behind|host|stomp|defeat|hostmodel`) and its crowds' stress test for the phone (`swarm_stress`: N clusters of C screeches with a frame-time and draw-call readout), the UI kit, every screen, a zone skin's fixed review track, the cult's feed,
 the Golden Zone's statues, the Gilded Sentinels (each route past one, and its kick), any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
 lists its options. For example, a zone's arrival flyover rendered to frames on the web / low-end renderer:
 `godot --path . --rendering-method gl_compatibility --fixed-fps 10 --write-movie build/cine/f.png --quit-after 100
@@ -366,7 +384,8 @@ res://tools/showcase/cinematic_review.tscn -- --slot=golden/intro --once`.
 
 `tools/measure/big_attacks.gd` measures how the big attacks of different enemy types overlap over simulated runs of
 the campaign, with big attacks taking turns (GDD §9, the `big_attacks_take_turns` switch in the game rules and the
-F6 panel) and without, how much taking turns delays them, and which enemies never got a big attack in:
+F6 panel) and without, how much taking turns delays them, which enemies never got a big attack in, and how
+many Buzz Overdrives revved or let the runner pass:
 `godot --headless --fixed-fps 60 -s res://tools/measure/big_attacks.gd -- [--levels=gangland/3] [--lanes=3,5,6]
 [--seeds=6] [--features=octodog]` (the whole campaign, both ways, takes about ten minutes on the levels' own seeds;
 its header lists the options).
@@ -407,6 +426,15 @@ level each price is in reach of, and how many of that level's finish payouts it 
 `godot --headless -s res://tools/measure/economy.gd -- [--share=0.7] [--mobile=true] [--packs]` (its header
 lists the options; `--packs` also checks the mobile credit packs' sizes against the curve).
 
+`tools/measure/hostile_takeover.gd` plays Hostile Takeover through quick play at every lane count and speed
+the test suite only samples: a runner who plays it by what it shows dies in phase 3 once the war engine has
+docked, then wins the whole fight in quick play's retry; it prints each stomp's time, the strafes, drops,
+rides, passes and the clamps torn in each, the guards retired at the phase change, the Tithe Collectors and
+those the cap left out, whether the defeat played out, and whether every attempt played the same:
+`godot --headless --fixed-fps 60 -s res://tools/measure/hostile_takeover.gd -- [--lanes=3,5,6] [--speeds=18,23.4]
+[--attempts=2] [--die-in=3] [--misses=N] [--bay-misses=N] [--pass-misses=N] [--clamps-per-pass=N]` (about a
+minute for every setup).
+
 ## The web demo
 
 The web demo (GDD §2) is the "Web (demo)" export preset: the Neon City's three levels and the Floating Head,
@@ -442,7 +470,7 @@ On a debug build, the options go into the page's engine settings: in `exports/we
 
 ## Tests
 
-`tools/godot.sh test` runs 72 suites with about 6,000,000 checks. Many suites independently build the
+`tools/godot.sh test` runs 75 suites with about 6,000,000 checks. Many suites independently build the
 same level (often a campaign step's own default build) to run their own checks on it; `LayoutCache`
 (`tests/helpers/layout_cache.gd`) shares one real build of each across the whole run instead of
 repeating it (`--no-layout-cache` turns that off; `tests/suites/test_layout_cache.gd` checks it never
@@ -502,19 +530,30 @@ spare (see Tools, above). Covered:
   defeat (the propaganda cut, the crash, room for a runner in every lane of its wreck, Reduced
   flashing), and the whole fight through the campaign at 3, 5 and 6 lanes with no god mode, from City 3
   to the outro (and the web demo's end screen), its propaganda never masking a warning, and a death
-  restarting the fight. Hostile Takeover's train so far, at 3, 5 and 6 lanes and at 18 and 23.4 m/s: every
+  restarting the fight. Hostile Takeover, at 3, 5 and 6 lanes and at 18 and 23.4 m/s: every
   gap between carriages jumped from every lane with the real jump, the couplings' stomp box (a jump lands
   on it from its lane or the lane beside it, running off the edge never does), the Board's guards, Tithe
-  Collectors and wall fences always leaving a way through, a runner who reads it winning phase 1 without
-  god mode (also after missing couplings, and in quick play after a death and the retry), weapons within
-  their cap, the armor rule, the same fight on every attempt, and nothing made while the city streams past.
-  The Sewer Swarm's phase 1 so far, at 3, 5 and 6 lanes and at 18 and 21.8 m/s: every bait spot (a live
-  fence or a hole) in reach before the surge locks and a way out of every lane, every surge warned by its
-  red line and chitter before it can hit, a dodged surge always running into its fence or hole, a hit only
-  through the cluster's hitbox, weapons thinning a surging cluster (the heavy missile's swarm bonus), no
-  end and no escalation without a bait, the armor rule, the same fight at any crowd size and on every
-  attempt, its crowds all made before the fight, and a runner who reads it winning phase 1 without god
-  mode (also after a death and the retry, and through quick play).
+  Collectors (capped a phase) and wall fences always leaving a way through, phase 2's dropped Buzz
+  Overdrive keeping a level's rules for its cut and its own rev and block-then-hold, the strafes striking
+  only their warned lanes once warned, the armored carriage passed only from the runway of pads on the
+  gunship's belly, phase 3's docking and MERGER COMPLETE (steady with Reduced flashing), its passes under
+  the war engine's belly with each docking clamp in reach from a lane under it and time to change lanes
+  between them, its defeat played out (the gunship exploding, the locomotive in the lobby), a runner who
+  reads it winning the whole fight without god mode (also after missing couplings, a drop bay, a pass or a
+  clamp, in quick play after a death and the retry, and through the campaign from Corporate 2 to the outro
+  at every lane count), weapons within their cap, never ending a phase nor saving a clamp, the armor rule,
+  the same fight on every attempt, and nothing made while the city streams past or from the docking on.
+  The Sewer Swarm at 3, 5 and 6 lanes and at 18 and 21.8 m/s: every bait spot (a live fence or a hole) in
+  reach before the surge locks and a way out of every lane, every surge warned by its red line and chitter
+  before it can hit, a dodged surge always running into its fence or hole, a hit only through the
+  cluster's hitbox, weapons thinning a surging cluster (the heavy missile's swarm bonus) and staying within
+  their cap, no end and no escalation without a bait, the armor rule, the same fight at any crowd size and
+  on every attempt, its crowds all made before the fight; every strike from behind warned by its wave,
+  chitter and line and escapable from every lane, baited into fences and holes ahead, one wall always free
+  while the swarm climbs; the Host's implants reached by a ramp and a wall jump, its lunge baited into a
+  fence, its flings warned; and a runner who reads it winning each phase and the whole fight without god
+  mode, also after a death and the retry, and through the campaign (Gangland 3, a death, the retry, the
+  win, the stars and the outro).
 - **Cinematics:** the toolkit's camera and actor paths (smooth, eased and cut moves, cameras riding with an
   actor), a timeline's checks, a cinematic played to its end with every event in order, skipping (the pause
   action and the Skip button), Reduced flashing, holding while the game is in the background, a cinematic

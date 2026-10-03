@@ -20,12 +20,13 @@ uniform vec3 sheen_color : source_color = vec3(0.3, 0.34, 0.42);
 uniform float sheen_strength = 0.2;
 uniform vec3 panel_dark : source_color = vec3(0.015, 0.015, 0.03);
 
-// The breakaway: the line (world z) behind which the carriages break away, the seconds since, the
-// carriages' pitch (gap start to gap start) and roof length, and how they go.
+// The breakaway: the line (world z) behind which the carriages break away, the seconds since, how far
+// behind it the carriages behind end (the nearest first; the last stands for any further back), and how
+// they go.
 uniform float break_z = 1.0e9;
 uniform float break_age = -1.0;
-uniform float break_pitch = 56.0;
-uniform float break_roof = 50.0;
+uniform vec4 break_ends_a = vec4(50.0, 106.0, 162.0, 218.0);
+uniform vec4 break_ends_b = vec4(274.0, 330.0, 386.0, 442.0);
 uniform float break_recede = 9.0;
 uniform float break_drop = 5.0;
 uniform float break_roll = 1.2;
@@ -54,8 +55,18 @@ mat3 rotation_z(float a) {
 void vertex() {
 	v_world = VERTEX;
 	if (break_age > 0.0 && VERTEX.z > break_z - 0.05) {
-		// Carriage k behind the break (0: the one the coupling held), each a moment after the one before.
-		float k = floor((VERTEX.z - break_z + 0.05) / break_pitch);
+		// Carriage k behind the break (0: the one the coupling held), each a moment after the one before,
+		// turning about its own rear end, `rear` behind the break.
+		float dz = VERTEX.z - break_z;
+		float k = 7.0;
+		float rear = break_ends_b.w;
+		if (dz <= break_ends_a.x + 1.0) { k = 0.0; rear = break_ends_a.x; }
+		else if (dz <= break_ends_a.y + 1.0) { k = 1.0; rear = break_ends_a.y; }
+		else if (dz <= break_ends_a.z + 1.0) { k = 2.0; rear = break_ends_a.z; }
+		else if (dz <= break_ends_a.w + 1.0) { k = 3.0; rear = break_ends_a.w; }
+		else if (dz <= break_ends_b.x + 1.0) { k = 4.0; rear = break_ends_b.x; }
+		else if (dz <= break_ends_b.y + 1.0) { k = 5.0; rear = break_ends_b.y; }
+		else if (dz <= break_ends_b.z + 1.0) { k = 6.0; rear = break_ends_b.z; }
 		float a = max(break_age - k * 0.14, 0.0);
 		float side = hash11(k * 7.13 + 1.7) < 0.5 ? -1.0 : 1.0;
 		// Turns ease off: a carriage tips its nose down and rolls over onto its side, no further.
@@ -64,7 +75,7 @@ void vertex() {
 		float nose = -min(0.35 * a * a, 0.45);
 		float yaw = side * min(0.12 * a * a, 0.35);
 		// It turns about its rear end, low in its body, on the side it falls to.
-		vec3 pivot = vec3(side * break_half_width * 0.6, -2.0, break_z + k * break_pitch + break_roof);
+		vec3 pivot = vec3(side * break_half_width * 0.6, -2.0, break_z + rear);
 		vec3 p = rotation_y(yaw) * rotation_z(roll) * rotation_x(nose) * (VERTEX - pivot) + pivot;
 		p.z += 0.5 * break_recede * a * a;
 		p.y -= 0.5 * break_drop * a * a;

@@ -13,6 +13,7 @@ extends TestSuite
 ## Golden 2 and the Golden Palace's real layouts.
 
 const Rules = preload("res://scripts/enemies/gilded_sentinel_rules.gd")
+const AttackWatch = preload("res://tools/measure/attack_watch.gd")
 const TURN_DUMMY: String = "res://tests/helpers/turn_dummy.gd"
 const GOLDEN_SKIN: String = "res://data/skins/golden_skin.tres"
 const PALACE_SKIN: String = "res://data/skins/golden_palace_skin.tres"
@@ -46,6 +47,7 @@ func run() -> void:
 	await _test_kick()
 	await _test_twice_and_pair()
 	await _test_takes_turns()
+	await _test_attack_watch()
 	await _test_reduced_flashing()
 	await _test_same_every_attempt()
 	_test_placement()
@@ -622,6 +624,35 @@ func _test_takes_turns() -> void:
 			"switch off":
 				check(_count(s, "swing") == 1 and _count(s, "pass") == 0, "with turns off it attacks regardless " + tag)
 		await sim.free_world(w)
+
+
+## R3's turn-taking tool (tools/measure/attack_watch.gd) reads its state, never is_major_attack_active:
+## AttackWatch.open_kinds reports "sentinel_strike" from its warning through its swing, empty before and
+## after, and AttackWatch.observe() counts exactly one over the whole attack.
+func _test_attack_watch() -> void:
+	var made: Array = await _world(3, 1, 25.0, [{"side": -1}])
+	var w: RunWorld = made[0]
+	var s: GildedSentinel = made[1][0]
+	var watch := AttackWatch.new(w)
+	var open_before: bool = false
+	var open_during: bool = true
+	var open_after: bool = false
+	w.player.running = true
+	for i: int in int(_seconds_to(AT + 5.0, 25.0) * 60.0):
+		await tree.physics_frame
+		watch.observe()
+		var kinds: Array[String] = AttackWatch.open_kinds(s)
+		if s.state == GildedSentinel.State.IDLE:
+			open_before = open_before or not kinds.is_empty()
+		elif s.state in [GildedSentinel.State.WARNING, GildedSentinel.State.HOLD, GildedSentinel.State.STRIKE]:
+			open_during = open_during and kinds == ["sentinel_strike"]
+		elif s.state in [GildedSentinel.State.RECOVER, GildedSentinel.State.DONE]:
+			open_after = open_after or not kinds.is_empty()
+	check(not open_before, "AttackWatch sees nothing open before its warning")
+	check(open_during, "AttackWatch sees sentinel_strike open from the warning through the swing")
+	check(not open_after, "AttackWatch sees nothing open once it's recovered")
+	check(int(watch.attacks.get("sentinel_strike", 0)) == 1, "AttackWatch counts its one strike (%s)" % watch.attacks)
+	await sim.free_world(w)
 
 
 # --- Reduced flashing ---------------------------------------------------------------------------------

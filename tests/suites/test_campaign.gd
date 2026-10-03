@@ -163,8 +163,12 @@ func _test_slots(campaign: Campaign) -> void:
 			check(s.boss != null and s.boss.is_built(), "the City's boss step plays the Floating Head's fight (task E1d)")
 		elif s.kind == CampaignStep.Kind.BOSS and s.zone.id == &"dead_zone":
 			check(s.boss != null and s.boss.is_built(), "the Dead Zone's boss step plays the Sleep Taker's fight (task E5c-b)")
+		elif s.kind == CampaignStep.Kind.BOSS and s.zone.id == &"gangland":
+			check(s.boss != null and s.boss.is_built(), "Gangland's boss step plays the Sewer Swarm's fight (task E4b)")
 		elif s.kind == CampaignStep.Kind.BOSS and s.zone.id == &"marketplace":
 			check(s.boss != null and s.boss.is_built(), "the Marketplace's boss step plays The House's fight (task E5a-b)")
+		elif s.kind == CampaignStep.Kind.BOSS and s.zone.id == &"corporate":
+			check(s.boss != null and s.boss.is_built(), "the Corporate zone's boss step plays Hostile Takeover's fight (task E5b-c)")
 		elif s.kind == CampaignStep.Kind.BOSS:
 			check(s.boss != null and not s.boss.is_built(), "boss slot %s is still a placeholder" % s.id)
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id.ends_with("intro"):

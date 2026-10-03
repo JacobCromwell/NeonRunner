@@ -22,13 +22,18 @@ extends Node3D
 ##                           second, then the runner switches out
 ##     --kill=D              it's killed when the runner reaches distance D (before its charge: the floor
 ##                           is saved; during it: the cut stops there)
+##     --pass                another type's big attack (a stand-in that only reports itself, never seen:
+##                           tests/helpers/turn_dummy.gd) begun before its claim is still on as its rev
+##                           would start, so it lets the runner pass (task FIX2): no rev, no line, it speeds
+##                           off ahead out of view; the runner stays in its lane on the whole floor
 ##     --reduced-flashing    Reduced flashing on (its line holds still, no sparks)
-## The run prints its timeline (where it sets off, warns, charges, meets the runner, ends), and each
-## scripted action and movement event, to find the frames (frame = time × render fps).
+## The run prints its timeline (where it sets off, warns, charges, meets the runner, ends), each scripted
+## action and movement event, and each of its states, to find the frames (frame = time × render fps).
 
 const TUNING_PATH: String = "res://data/tuning/movement.tres"
 const RULES_PATH: String = "res://data/tuning/game_rules.tres"
 const Rules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
+const TankScript = preload("res://scripts/enemies/buzz_overdrive.gd")
 const ZONE_SPEEDS: Dictionary = {"corporate": 23.4, "corporate_plaza": 23.4, "dead_zone": 24.2, "golden": 25.0,
 	"golden_palace": 25.0}
 
@@ -41,6 +46,8 @@ var _pending: Array = []
 var _kill_at: float = INF
 var _model: BuzzOverdriveModel
 var _t: float = 0.0
+## The tank's state last printed.
+var _tank_state: String = ""
 
 
 func _ready() -> void:
@@ -52,6 +59,7 @@ func _ready() -> void:
 	var speed: float = -1.0
 	var scaling: float = 8.0 / 14.0
 	var stay: bool = false
+	var lets_pass: bool = false
 	for arg: String in OS.get_cmdline_user_args():
 		var v: String = arg.get_slice("=", 1)
 		if arg.begins_with("--scenario="):
@@ -74,6 +82,8 @@ func _ready() -> void:
 			stay = true
 		elif arg.begins_with("--kill="):
 			_kill_at = float(v)
+		elif arg == "--pass":
+			lets_pass = true
 		elif arg == "--reduced-flashing":
 			Settings.flashing_reduced = true
 			RenderingServer.global_shader_parameter_set(&"reduced_flashing", 1.0)
@@ -123,7 +133,15 @@ func _ready() -> void:
 		load("res://data/audio/sfx_library.tres") as SfxLibrary)
 	world.player.setup(tuning, world.geo, lane)
 	world.player.distance = start
-	if stay:
+	if lets_pass:
+		# Begun 0.3 s before its claim, on until 1 s after its rev would start.
+		var rev_s: float = (FloorCutPlan.warn_at(cut) - start) / v
+		world.director.spawn({"type": "stand_in_attack", "script": "res://tests/helpers/turn_dummy.gd", "at": 0.0,
+			"lane": 0, "side": 0, "seed": 1, "params": {"first": rev_s - t.claim_seconds - 0.3, "interval": 600.0,
+			"warning": 0.5, "attack": t.claim_seconds + 0.8}})
+		print("another type's big attack from %.2f s to %.2f s; its claim from %.2f s, its rev due at %.2f s" % [
+			rev_s - t.claim_seconds - 0.3, rev_s + 1.0, rev_s - t.claim_seconds, rev_s])
+	elif stay:
 		world.player.armor = 1
 		_pending.append([meet + tuning.run_speed * 0.5, &"move_left" if side < 0 else &"move_right"])
 	else:
@@ -161,6 +179,13 @@ func _physics_process(_delta: float) -> void:
 			if is_instance_valid(e) and e.alive and e.type_id == &"buzz_overdrive":
 				print("%5.2f s  %6.1f m  > the Buzz Overdrive is killed" % [player.elapsed, player.distance])
 				e.take_damage(1000.0, &"weapon")
+	for e: Enemy in world.director.active:
+		if is_instance_valid(e) and e.alive and e.type_id == &"buzz_overdrive":
+			var state: String = String(TankScript.State.find_key(int(e.get(&"state"))))
+			if state != _tank_state:
+				_tank_state = state
+				print("%5.2f s  %6.1f m  the Buzz Overdrive: %s (%.1f m ahead)" % [player.elapsed, player.distance, state,
+					float(e.get(&"front")) - player.distance])
 
 
 func _process(delta: float) -> void:

@@ -17,14 +17,19 @@ extends RefCounted
 ##   Bad Dream: each slash, telegraph to claws
 ##   Resonator: each pulse, from its warning (the halos and the chime) until its last wave has passed
 ##     the player
+##   Gilded Sentinel: each strike, from its eyes' flare (its warning) until its last swing's cut is over
+##   Buzz Overdrive: its charge, from its rev (its warning) until it's gone (its cut has passed the player)
 ## Overlap is the time during which attacks of two or more types are open at once. Also watched
 ## (not a big attack, docs/questions/r3.md): a hover truck's entrance, from its first bang until its
 ## burst stops hurting. The event log lists every state change of every enemy, so two builds can be
 ## compared run by run. A wait for a turn lasts from the first frame the director holds its enemy for
-## another type's turn until the enemy's next big attack starts, through short gaps (WAIT_BRIDGE).
+## another type's turn until the enemy's next big attack starts, through short gaps (WAIT_BRIDGE). Each
+## Buzz Overdrive that sets off rolling is followed to its end (buzz_tanks): it revs (into another
+## type's open big attack, or not), lets the runner pass, or is shot down first.
 
 const DroneScript := preload("res://scripts/enemies/drone.gd")
 const TruckScript := preload("res://scripts/enemies/hover_truck.gd")
+const BuzzScript := preload("res://scripts/enemies/buzz_overdrive.gd")
 ## Enemy shots that belong to a big attack, by name, and the type they belong to.
 const SHOT_TYPES: Dictionary = {"drone gatling": &"drone", "hover truck cannon": &"hover_truck",
 	"hover truck gunner": &"hover_truck"}
@@ -72,6 +77,11 @@ var drone_barrages: Dictionary = {}
 ## Hover trucks by spawn index: the forward lurches (revs) and cannon shots (charges) each started
 ## (from the time it bursts out): {"lurch": n, "cannon": n}.
 var truck_attacks: Dictionary = {}
+## Buzz Overdrives by spawn index, once they set off rolling ahead of the runner (task FIX2): {"rev": it
+## revved (its big attack began), "met": another type's big attack was open as its rev began, "pass": it
+## left its roll another way than its rev while alive (it let the runner pass), "down": shot down before
+## its rev}. Read from its states only, so it measures a build whose tank never passes the same way.
+var buzz_tanks: Dictionary = {}
 var log := PackedStringArray()
 
 var _ids: Dictionary = {}
@@ -85,6 +95,9 @@ var _held_turn: Dictionary = {}
 var _overlapping: bool = false
 ## The level time before which the runner won't step back toward keep_lane again (one move at a time).
 var _next_step: float = 0.0
+## Buzz Overdrives whose rev began this frame (their spawn index), and each one's last state seen.
+var _revs_now: Array[int] = []
+var _tank_state: Dictionary = {}
 
 
 func _init(p_world: RunWorld, p_stomp_hosts: bool = false) -> void:
@@ -94,6 +107,7 @@ func _init(p_world: RunWorld, p_stomp_hosts: bool = false) -> void:
 	for e: Enemy in world.director.active:
 		_on_spawned(e)
 	world.director.enemy_spawned.connect(_on_spawned)
+	world.director.enemy_defeated.connect(_on_defeated)
 
 
 ## Looks at the run once; call it every physics frame.
@@ -132,6 +146,8 @@ func observe() -> void:
 				or (s == TruckScript.State.EMERGE and now - float(e.get(&"burst_time")) < 0.45)
 			if not truck_attacks.has(key) and s != TruckScript.State.HIDDEN and s != TruckScript.State.BANGING:
 				truck_attacks[key] = {"lurch": 0, "cannon": 0}
+		if e.type_id == &"buzz_overdrive" and e.alive:
+			_note_tank(key, int(e.get(&"state")))
 		for kind: String in open_kinds(e):
 			open_types[e.type_id] = true
 			var wk: String = "%d/%s" % [key, kind]
@@ -148,6 +164,8 @@ func observe() -> void:
 					var made: Dictionary = truck_attacks.get_or_add(key, {"lurch": 0, "cannon": 0})
 					var k: String = "lurch" if kind == "truck_lurch" else "cannon"
 					made[k] = int(made[k]) + 1
+				if kind == "buzz_charge":
+					_revs_now.append(key)
 				if _wait_began.has(key) and not _wait_over(e, now - float(_wait_seen[key]) - dt):
 					(waits.get_or_add(kind, []) as Array).append(now - float(_wait_began[key]))
 					(turn_waits.get_or_add(kind, []) as Array).append(float(_held_turn[key]))
@@ -165,6 +183,9 @@ func observe() -> void:
 	for shot: Projectile in world.projectiles.live_shots():
 		if not shot.friendly and shot.in_use and SHOT_TYPES.has(shot.hazard_name) and shot.position.z <= reach + shot.radius:
 			open_types[SHOT_TYPES[shot.hazard_name]] = true
+	for key: int in _revs_now:
+		(buzz_tanks.get_or_add(key, _new_tank()) as Dictionary)["met"] = open_types.size() >= 2
+	_revs_now.clear()
 	for wk: String in _was_open.keys():
 		if float(_was_open[wk]) < now:
 			_was_open.erase(wk)
@@ -213,6 +234,14 @@ static func open_kinds(e: Enemy) -> Array[String]:
 			var s: int = int(e.get(&"state"))
 			if s == Resonator.State.WARNING or s == Resonator.State.PULSE or bool(e.call(&"waves_on_their_way")):
 				out.append("resonator_pulse")
+		&"gilded_sentinel":
+			var s: int = int(e.get(&"state"))
+			if s == GildedSentinel.State.WARNING or s == GildedSentinel.State.HOLD or s == GildedSentinel.State.STRIKE:
+				out.append("sentinel_strike")
+		&"buzz_overdrive":
+			var s: int = int(e.get(&"state"))
+			if s == BuzzScript.State.REV or s == BuzzScript.State.CHARGE:
+				out.append("buzz_charge")
 	return out
 
 
@@ -276,6 +305,17 @@ func trucks_without(kind: String) -> int:
 	return n
 
 
+## Buzz Overdrives that set off rolling ahead of the runner (`what` ""), or those of them that revved
+## ("rev"), revved while another type's big attack was open ("met"), let the runner pass ("pass") or
+## were shot down before their rev ("down").
+func tanks_that(what: String = "") -> int:
+	var n: int = 0
+	for key: int in buzz_tanks:
+		if what == "" or bool((buzz_tanks[key] as Dictionary)[what]):
+			n += 1
+	return n
+
+
 ## The event log's hash: equal for two runs whose enemies did the same things at the same times.
 func log_hash() -> String:
 	return "\n".join(log).md5_text()
@@ -289,12 +329,38 @@ func summary() -> Dictionary:
 		"resonators_no_pulse": resonators_without_a_pulse(), "drones": drone_barrages.size(),
 		"drones_no_barrage": drones_without_a_barrage(), "trucks": truck_attacks.size(),
 		"trucks_no_lurch": trucks_without("lurch"), "trucks_no_cannon": trucks_without("cannon"),
-		"trucks_idle": trucks_without(""), "log_hash": log_hash(), "log_lines": log.size()}
+		"trucks_idle": trucks_without(""), "tanks": tanks_that(), "tanks_rev": tanks_that("rev"),
+		"tanks_met": tanks_that("met"), "tanks_pass": tanks_that("pass"), "tanks_down": tanks_that("down"),
+		"log_hash": log_hash(), "log_lines": log.size()}
 
 
 func _on_spawned(e: Enemy) -> void:
 	if not _ids.has(e.get_instance_id()):
 		_ids[e.get_instance_id()] = _ids.size()
+
+
+## A Buzz Overdrive shot down (or dashed through) before its rev.
+func _on_defeated(e: Enemy, _cause: StringName) -> void:
+	if e.type_id != &"buzz_overdrive" or not _ids.has(e.get_instance_id()):
+		return
+	var rec: Dictionary = buzz_tanks.get_or_add(int(_ids[e.get_instance_id()]), _new_tank())
+	rec["down"] = not bool(rec["rev"])
+
+
+## Follows a living Buzz Overdrive's state (`s`): it counts once it sets off rolling; then it revs (REV,
+## CHARGE), or it leaves its roll another way (it lets the runner pass).
+func _note_tank(key: int, s: int) -> void:
+	var was: int = int(_tank_state.get(key, -1))
+	_tank_state[key] = s
+	if s == BuzzScript.State.ROLL or s == BuzzScript.State.REV or s == BuzzScript.State.CHARGE:
+		var rec: Dictionary = buzz_tanks.get_or_add(key, _new_tank())
+		rec["rev"] = bool(rec["rev"]) or s != BuzzScript.State.ROLL
+	elif was == BuzzScript.State.ROLL and buzz_tanks.has(key):
+		(buzz_tanks[key] as Dictionary)["pass"] = true
+
+
+static func _new_tank() -> Dictionary:
+	return {"rev": false, "met": false, "pass": false, "down": false}
 
 
 ## What the event log records of an enemy: alive, and the states its big attacks come from.
@@ -315,6 +381,10 @@ static func _signature(e: Enemy) -> String:
 				int(e.get(&"waves_sent"))]
 		&"cyborg":
 			return "%s mode=%d" % [base, int(e.get(&"mode"))]
+		&"gilded_sentinel":
+			return "%s state=%d" % [base, int(e.get(&"state"))]
+		&"buzz_overdrive":
+			return "%s state=%d" % [base, int(e.get(&"state"))]
 	return base
 
 
