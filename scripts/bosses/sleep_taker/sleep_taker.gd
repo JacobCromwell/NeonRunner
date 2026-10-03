@@ -137,6 +137,11 @@ func _tuning() -> SleepTakerTuning:
 ## Zone's look) from the arena's hull_lead_in before its pads to refuge_seconds past them, with pads in
 ## refuge_pad_lanes(), and the track kept clear of holes and fences in every lane from where the slash's
 ## warning finds the runner (and a jump before it) to past where it strikes, and where its riders land.
+## The generators its lures bring (SleepTakerLure), readied during the fight's load (task PERF1).
+func warm_enemies() -> Array[Dictionary]:
+	return [{"type": "generator", "at": 0.0, "lane": 0, "side": 0, "seed": 1, "params": {}}]
+
+
 func _plan_lap(lap: LevelLayout, index: int, p_arena: BossArena) -> void:
 	lap.signs.clear()
 	var t: SleepTakerTuning = _tuning()
