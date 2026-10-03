@@ -18,7 +18,7 @@ extends SceneTree
 ## (missed and stomped), phase 1's guards retired at the phase change, the Tithe Collectors that came and
 ## those the cap left out, and the run's credits; for each setup, whether every attempt played the same
 ## (the same plan and course, as the suite's check). A line at the end sums it up. The default run takes
-## a few minutes.
+## under a minute.
 
 const BOSS_PATH: String = "res://data/bosses/corporate_boss.tres"
 ## LevelRun's script, loaded once the autoloads are up (it names the App autoload, which a tool's script

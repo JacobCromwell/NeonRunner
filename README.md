@@ -416,7 +416,7 @@ the test suite only samples: a runner who plays it by what it shows wins its pha
 in quick play's retry; it prints each phase's end, the strafes, drops, rides, the guards retired at the phase
 change, the Tithe Collectors and those the cap left out, and whether every attempt played the same:
 `godot --headless --fixed-fps 60 -s res://tools/measure/hostile_takeover.gd -- [--lanes=3,5,6] [--speeds=18,23.4]
-[--phases=2] [--attempts=2] [--misses=N] [--bay-misses=N]` (about three minutes for every setup).
+[--phases=2] [--attempts=2] [--misses=N] [--bay-misses=N]` (under a minute for every setup).
 
 ## The web demo
 
