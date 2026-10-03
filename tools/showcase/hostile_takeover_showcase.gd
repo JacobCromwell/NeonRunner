@@ -38,10 +38,10 @@ extends Node3D
 ## strafes from frame 20 (warning) and 32 (rake), the drop's spot marked at 79, the tank let go at 89 and
 ## landed at 96 (its rev and charge 100-120), the armored carriage and its runway in sight from 95, the
 ## gunship coming down from 161, the runner on its belly from 179, the bay stomped at 213; merger (either
-## speed): the docking 0-30 (the clamps lock at 21), MERGER COMPLETE from 30 (flashing to 80), the pass's
-## war engine coming down from about 143, the runner on its belly from 169, the clamps stomped at about
-## 190, 209 and 228; defeat: the clamps torn at 40-46, the gunship exploding at 62, the crash at 72, the
-## sculpture down by 83, the results due at 101.
+## speed): the docking 0-30 (the clamps lock at 21), MERGER COMPLETE from 30 (flashing to 80), a strafe
+## 45-65, the drop 78-95, the pass's war engine coming down from 143, the runner on its belly from 169, the
+## clamps stomped at 185, 204 and 224; defeat: the clamps torn at 40-46, the gunship exploding at 62, the
+## crash at 72, the sculpture down by 83, the results due at 101.
 
 const BOSS_PATH: String = "res://data/bosses/corporate_boss.tres"
 

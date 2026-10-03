@@ -8,8 +8,9 @@ extends BossPart
 ## the UI's display face, translated like the UI's text). They're dark and the pylons down until the
 ## war engine has docked (set_on): then the words flash for merger_flash_seconds (a steady glow with
 ## Reduced flashing) and stay; beaten, the screens glitch and go dark (set_glitch, set_on(false)).
-## Built once with the fight (one text mesh for all of them, a face material each for its shape), hidden
-## until then.
+## The words run along a screen's top (the barriers hide the ad screens' lower edge from the runner). Built
+## once with the fight (one text mesh for all of them, a face material each for its shape), hidden until
+## then.
 ## A part of the boss that's no target, no hazard and no kill.
 
 ## The words' font (the UI's display face), its weight, and the size its glyphs are made at.
@@ -115,6 +116,7 @@ func _make_screen(size: Vector2) -> Node3D:
 	var material := ShaderMaterial.new()
 	material.shader = load("res://scripts/bosses/hostile_takeover/hostile_takeover_screen.gdshader") as Shader
 	material.set_shader_parameter(&"band", BAND)
+	material.set_shader_parameter(&"band_top", 1.0)
 	material.set_shader_parameter(&"aspect", size.x / maxf(size.y, 0.01))
 	face.material_override = material
 	face.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -129,7 +131,7 @@ func _make_screen(size: Vector2) -> Node3D:
 	var aabb: AABB = text_mesh.get_aabb()
 	var k: float = minf(size.x * 0.86 / maxf(aabb.size.x, 0.01), size.y * BAND * 0.6 / maxf(aabb.size.y, 0.01))
 	text.scale = Vector3.ONE * k
-	text.position = Vector3(0.0, -size.y * (0.5 - BAND * 0.5), 0.02)
+	text.position = Vector3(0.0, size.y * (0.5 - BAND * 0.5), 0.02)
 	root.add_child(text)
 	screens.append({"root": root, "face": face, "text": text, "size": size, "material": material})
 	return root
