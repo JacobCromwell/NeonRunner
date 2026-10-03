@@ -114,7 +114,7 @@ func _tuning() -> SewerSwarmTuning:
 
 ## GDD §10's arena: Gangland's street with the generator's holes and fences, nothing else on the track, and
 ## the lap's bait spots, each in a stretch kept clear of every other hole and fence.
-## DESIGN-TBD (docs/questions/e4.md, 2): bait spots every bait_spacing, a surge at each, rather than surges
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md 325): bait spots every bait_spacing, a surge at each, rather than surges
 ## at the generator's own fences and holes wherever they fall.
 func _plan_lap(lap: LevelLayout, index: int, p_arena: BossArena) -> void:
 	var t: SewerSwarmTuning = _tuning()

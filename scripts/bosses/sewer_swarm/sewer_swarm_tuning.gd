@@ -10,7 +10,7 @@ extends Resource
 ## Crowd sizes are the look only (GDD §10, owner, October 2, 2026: "build it now and we'll scale it down
 ## later"; the phone test, task E3, sets them): the fight plays the same at any crowd size, and a low-end
 ## device (DeviceProfile.is_low_end()) draws the _low_end ones. Every number here is a placeholder
-## (DESIGN-TBD, docs/questions/e4.md) unless its comment gives the GDD's.
+## (DESIGN-TBD: docs/OPEN_QUESTIONS.md 324-328, docs/questions/e4.md) unless its comment gives the GDD's.
 
 @export_group("Crowds")
 ## DESIGN-TBD (E3 sets it): screeches drawn in each cluster (GDD §10: "each rendered as many screech-variant
@@ -76,7 +76,7 @@ extends Resource
 ## chitter rises (swarm_chitter), and a red line runs down the runner's lane from there, following the
 ## runner from lane to lane, ending at a fence or a hole on it.
 @export_range(1.0, 5.0, 0.05, "suffix:s") var warning_seconds: float = 2.4
-## DESIGN-TBD (docs/questions/e4.md, the bait): this long before it would meet the runner, the cluster lands
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md 324, the bait): this long before it would meet the runner, the cluster lands
 ## in the lane the runner is in (a wall runner's outer lane) and charges down it: the line locks there (the
 ## standard red lane warning) and won't follow any more. A runner who was in a lane with a fence or a hole
 ## on the line then gets out of its way (or jumps it), and the cluster, charging at them, runs into it.
@@ -99,7 +99,7 @@ extends Resource
 @export_range(0, 5000, 50) var bait_score: int = 500
 
 @export_group("Baits")
-## DESIGN-TBD (docs/questions/e4.md, the arena): each lap of the arena carries bait spots, the first this far
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md 325, the arena): each lap of the arena carries bait spots, the first this far
 ## into the lap and then one every bait_spacing (both at 18 m/s): a live full-height fence or a hole in one
 ## lane (bait_kinds in turn), the street clear of every other hole and fence in every lane around it, from a
 ## jump before where its surge's warning finds the runner to clear_after past where the cluster lands. A

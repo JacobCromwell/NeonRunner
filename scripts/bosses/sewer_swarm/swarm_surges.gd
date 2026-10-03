@@ -34,7 +34,8 @@ extends RefCounted
 ## The lane is the runner's at the lock: a runner who holds a bait's lane until then and gets out of it
 ## after (or jumps the fence or the hole, or the crash) baits it; one who leaves it before has the line
 ## follow them.
-## DESIGN-TBD (docs/questions/e4.md, 1 and 2): how a cluster is baited, and its strikes from behind.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md 324; docs/questions/e4.md, 1): how a cluster is baited, and its
+## strikes from behind.
 ## Everything is logged (SewerSwarm.events: surge_warn, surge_lock, surge_hit, surge_pass, surge_bait,
 ## surge_end, and the encounter's cluster_destroyed and sounds) for the tests.
 
