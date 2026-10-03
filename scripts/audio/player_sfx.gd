@@ -3,6 +3,10 @@ extends Node
 ## Plays the sound for each Player.movement_event, plus game-level sounds by name.
 ## Gameplay never waits on audio. Every sound goes to the SFX bus (settings set its volume).
 
+## Every sound asked for, whether or not it plays (headless runs play none, a library may lack it):
+## tests listen.
+signal requested(sound: StringName)
+
 var _players: Dictionary = {}
 
 
@@ -29,6 +33,7 @@ func bind(player: Player) -> void:
 
 
 func play(sound: StringName) -> void:
+	requested.emit(sound)
 	var p: AudioStreamPlayer = _players.get(String(sound))
 	if p != null and SfxLibrary.audible():
 		p.play()

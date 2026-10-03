@@ -4,7 +4,7 @@ extends RefCounted
 ## - No drone appears in the last ~15 s of a level (no_spawn_last_seconds), nor so late that its
 ##   first pad wouldn't fit before the finish.
 ## - Drones placed at the same spot form a wave; a level's first wave is a single drone, and a
-##   second drone joins later waves only from pair_min_scaling on (DESIGN-TBD).
+##   second drone joins later waves only from pair_min_scaling on (FB 89).
 ## - The first anti-grav pad comes at least
 ##   first_pad_seconds (10 s) after a wave appears; after each pad another follows 8–10 s later
 ##   (pad_repeat_*), until the level ends. The schedule is pre-placed: the generator can't know when
@@ -13,7 +13,7 @@ extends RefCounted
 ##   inside the 10 s would break the rule): pattern ceilings after the first wave give way to the
 ##   schedule. A later wave arrives at one of the scheduled pads, as the player steps on it (it isn't
 ##   on screen yet, so that pad doesn't hurl it), so its own 10 s and the earlier drone's 8–10 s both
-##   hold. DESIGN-TBD: waves come at least min_wave_gap_seconds apart; closer ones are dropped.
+##   hold. Waves come at least min_wave_gap_seconds apart; closer ones are dropped (FB 89).
 ## - GDD §3: each scheduled ceiling lies over whatever the floor holds there (the floor under a
 ##   ceiling may be dangerous, and the pad is the way out of it); only its landing zone and its
 ##   pad's spot are cleared (PadPlacement, CeilingZones), and its pad avoids a hover truck's lane.
@@ -137,6 +137,18 @@ static func _add_guaranteed(gen: LevelGenerator, t: DroneTuning, earliest: float
 	if is_nan(at):
 		at = rng.randf_range(lo, hi)
 	return gen.add_enemy(TYPE, at, lane, 0, {"slot": 0})
+
+
+## What the generator's fill pass (LevelGenerator.fill_keep_outs) keeps off around drone entry `e`: its
+## wave, from its arrival until its first pad (it follows the player and fires its barrages until a
+## pad hurls it into the ceiling): the fill pass never adds obstacles to a barrage's zigzag.
+static func keep_out(gen: LevelGenerator, e: Dictionary) -> Vector2:
+	var at: float = float(e["at"])
+	var until: float = at + tuning().first_pad_seconds * gen.speed
+	for p: Dictionary in gen.layout.pads:
+		if float(p["at"]) > at + 0.01 and float(p["at"]) < until:
+			until = float(p["at"])
+	return Vector2(at, until)
 
 
 static func tuning() -> DroneTuning:

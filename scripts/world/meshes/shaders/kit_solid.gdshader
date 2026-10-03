@@ -85,6 +85,9 @@ vec4 cult_mark(vec2 p, float fw) {
 #include "res://scripts/world/meshes/shaders/kit_cult.gdshaderinc"
 // Golden Zone patterns (ids 50-59), after cult_mark(): its emblems use it.
 #include "res://scripts/world/meshes/shaders/kit_golden.gdshaderinc"
+// Golden Palace patterns (ids 70-79, task D6b), after kit_golden: it reuses golden_metal() and
+// golden_marble() rather than inventing new ones.
+#include "res://scripts/world/meshes/shaders/kit_golden_palace.gdshaderinc"
 // Dead Zone patterns (ids 40-49), after cult_mark(): its scorched emblems use it.
 #include "res://scripts/world/meshes/shaders/kit_dead_zone.gdshaderinc"
 
@@ -395,6 +398,11 @@ void fragment() {
 	if (pattern >= 50 && pattern < 60) {
 		// The Golden Zone (kit_golden.gdshaderinc); the eye vector in world space, for reflective gold.
 		base = golden_surface(pattern, UV2.y, base, v_world, n, (INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz, UV, TIME);
+	}
+	if (pattern >= 70 && pattern < 80) {
+		// The Golden Palace (kit_golden_palace.gdshaderinc, task D6b): reuses the Golden Zone's gold
+		// and marble.
+		base = golden_palace_surface(pattern, UV2.y, base, v_world, n, (INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz, UV);
 	}
 
 	vec3 col;

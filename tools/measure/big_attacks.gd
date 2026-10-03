@@ -25,7 +25,8 @@ extends SceneTree
 ## shot); a drone brought down by a pad or a truck that leaves early may have had no chance.
 ##
 ## The simulated runner: god mode and endless grapples (quick play's --god --nofall), in the middle
-## lane all the way (it takes the pads in that lane), stomping every host it passes. The enemies play
+## lane all the way (it takes the pads in that lane, and steps back to it after a zone doodad pushes it
+## out: AttackWatch.keep_lane), stomping every host it passes. The enemies play
 ## as in the game. What counts as a big attack, and as an overlap: tools/measure/attack_watch.gd.
 ## Each run's event log is hashed, so two builds (or the switch off and a build without the rule)
 ## can be compared run by run.

@@ -2,6 +2,9 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ## Menu, results and reward sounds: short, bright 16-bit blips in E major that sit on top of the music.
 ## Credits climb E major by denomination: bigger coins play more notes with a richer tail, so they can
 ## be told apart by ear. The bonus is a brassier fanfare, so it doesn't read as a coin.
+## A thief's theft (GDD §9.12, `robbed`) is the credits running backwards, coins tumbling away down E
+## major after a quick snatch, and a caught thief's payout (`jackpot`) a slot machine's coin shower:
+## neither has the death's guitar dive bomb, a warning's crackle or charge-up, or anything that hurts.
 
 const E2: float = 82.41
 const A2: float = 110.0
@@ -34,6 +37,8 @@ func sounds() -> Dictionary:
 		"credit_25": _credit_25,
 		"credit_100": _credit_100,
 		"bonus": _bonus,
+		"robbed": _robbed,
+		"jackpot": _jackpot,
 	}
 
 
@@ -165,7 +170,7 @@ func _go() -> PackedFloat32Array:
 	return b
 
 
-# DESIGN-TBD: the credit denominations (1, 5, 25, 100) come from the build brief; the GDD (§7) only
+# The credit denominations (1, 5, 25, 100; FB 8) come from the build brief; the GDD (§7) only
 # asks for several clearly distinguishable ones. A new denomination needs a sound here.
 ## A run of quick pulse notes up E major, with an FM bell on the last note for the bigger coins.
 func _coin(seconds: float, notes: Array[float], bell: float, rng: RandomNumberGenerator) -> PackedFloat32Array:
@@ -201,6 +206,46 @@ func _credit_100() -> PackedFloat32Array:
 	DSP.mix(b, Inst.fm_bell(B6, 0.7), 0.12, 0.4)
 	DSP.mix(b, DSP.kick(0.25, 110.0, 55.0, rng), 0.0, 0.5)
 	DSP.mix(b, _sparkle(0.7, rng), 0.12, 0.3)
+	return b
+
+
+## Robbed (GDD §9.12, a thief's touch; DESIGN-TBD): a quick upward snatch of noise, then coins
+## tumbling away, pulse blips running down E major from E7 and fading as they go (a coin pickup
+## backwards), and a purse snapping shut: a small metal click over a soft low pluck. Crunchy and
+## cheeky, short, never low or long enough to sound like the death.
+func _robbed() -> PackedFloat32Array:
+	var rng := _rng(112)
+	var b := DSP.buffer(0.62)
+	var snatch := _whoosh(0.11, 900.0, 5200.0, 2.5, rng)
+	DSP.mix(b, snatch, 0.0, 0.55)
+	var run: Array[float] = [E7, B6, GS6, E6, B5, GS5, E5]
+	for k: int in run.size():
+		var fade: float = 0.75 - 0.07 * k
+		DSP.mix(b, _blip(0.07, run[k], 0.25, 0.022), 0.06 + k * 0.042, fade)
+	var snap_at: float = 0.06 + run.size() * 0.042 + 0.02
+	DSP.mix(b, DSP.metal_hit(0.06, 2400.0, 0.012, rng), snap_at, 0.55)
+	DSP.mix(b, _blip(0.12, E4 * 0.5, 0.5, 0.035), snap_at, 0.45)
+	DSP.filter(b, &"lowpass", 9000.0)
+	DSP.crush(b, 8, 16000.0)
+	return b
+
+
+## Jackpot (GDD §9.12, a caught thief bursts into everything it took plus a jackpot; DESIGN-TBD): a slot
+## machine paying out: a palm-muted chug and a ringing bell under a shower of coin blips climbing E major
+## twice, with a sparkle. Bigger and longer than the 100-credit coin, so it reads as a payout.
+func _jackpot() -> PackedFloat32Array:
+	var rng := _rng(113)
+	var b := DSP.buffer(1.15)
+	var chug := DSP.power_chord(0.22, E2, true, rng)
+	DSP.envelope(chug, 0.002, 0.08, 0.02)
+	DSP.mix(b, chug, 0.0, 0.45)
+	var run: Array[float] = [E6, GS6, B6, E7, GS6, B6, E7, GS6 * 2.0]
+	for k: int in run.size():
+		DSP.mix(b, _blip(0.08, run[k], 0.25, 0.028), 0.03 + k * 0.05, 0.6)
+	DSP.mix(b, Inst.fm_bell(E6, 0.8), 0.1, 0.8)
+	DSP.mix(b, Inst.fm_bell(B6, 0.7), 0.3, 0.5)
+	DSP.mix(b, _sparkle(0.9, rng), 0.1, 0.3)
+	DSP.crush(b, 10, 24000.0)
 	return b
 
 

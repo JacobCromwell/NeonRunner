@@ -35,9 +35,10 @@ patterns:
   (like an introduction) waits until one of the feature's patterns fits the difficulty there.
 - The check finds a feature by its pieces (`LevelGenerator.feature_positions`): an enemy type by its
   enemies, `ramps`, `ceilings`, `speed_pads` and `pulsing` by their ramps, pads, speed pads and
-  pulsing fences. A feature with a new kind of piece (e.g. wall fences) needs its rules script to
-  declare `static func positions(layout: LevelLayout) -> Array[float]` (the track distances of its
-  pieces), or an entry in `feature_positions`.
+  pulsing fences, and the wall fences by theirs (full-height ones for `wall_fences`, partial ones for
+  `wall_fences_partial`). A feature with a new kind of piece needs its rules script to declare
+  `static func positions(layout: LevelLayout) -> Array[float]` (the track distances of its pieces), or
+  an entry in `feature_positions`.
 
 Beyond that guarantee, a campaign level's newest things get the most picks (GDD §5; the campaign's
 recency curve, `data/tuning/feature_recency.tres`): a pattern's `weight` is multiplied by the curve's
@@ -51,6 +52,26 @@ enemies and obstacles as before. So a pattern's `weight` says how often it comes
 patterns of its kind, feature and age; a pattern that combines an old feature with a new one follows
 the new one, and adding an `enemy` element to a pattern moves it to the enemies' kind. Quick play
 and tests have no curve. See `docs/ARCHITECTURE.md`, The generator.
+
+**Metres are at the reference speed.** Every distance a pattern gives in metres (a pattern's
+`length`, an element's `at`, a sign's `length`, credits' `spacing`) is written for 18 m/s
+(`MovementTuning.REFERENCE_SPEED`), and a level at another speed stretches it by its pace (its run
+speed over 18: 21 m/s in the Neon City to 25 m/s in the Golden Zone, GDD §3), so every pattern keeps
+its timing in seconds at every zone's speed (`docs/ARCHITECTURE.md`, Pace). Write a pattern as it should
+play at 18 m/s. `at_seconds`, `length_seconds` and `jump_frac` follow the run speed on their own.
+
+**Fillers.** Campaign levels are busier (GDD §3): after the patterns and the rules, the generator's fill
+pass puts more of the level's plain obstacle patterns into its long empty stretches
+(`LevelConfig.fill_empty_seconds`). A filler is any pattern that `requires` nothing and has only `gap`
+and `fence` elements (`LevelGenerator.is_filler`); it's picked by its difficulty range and `weight` like
+any pick, and spaced from everything around it as the pattern pass spaces patterns. So a new plain
+obstacle pattern can also come as a filler; one that needs a feature, a sign, a ceiling or an enemy
+never does.
+
+**Zone doodads** aren't patterns: after the fill pass the generator stands them (scenery that pushes the
+player into the next lane, never hurts; GDD §3) in whatever stretches nothing else uses, with the
+level's spacing after them (`LevelConfig.doodad_share`, `docs/ARCHITECTURE.md`, The generator). A pattern
+needs nothing for them, and a doodad never comes near a pattern's pieces or enemies.
 
 A level may be paced in quiet stretches and bursts (`LevelConfig.quiet_seconds`; The Hush): a quiet
 stretch picks only patterns without enemies (sparse obstacles, and safe mechanics such as a plain
@@ -68,23 +89,24 @@ pattern like the Octodog's fits when its dog does). Patterns need nothing specia
 | `min_difficulty` / `max_difficulty` | The pattern can be picked only while the current difficulty (0–1) is in this range |
 | `weight` | Relative pick chance among the patterns that qualify |
 | `min_lanes` | Optional. Skip on devices with fewer lanes |
-| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`, `resonator`), `screech_vents` (wall-vent screeches only, rare, for zones whose floor has no manholes, GDD §9.5), or a planned one: `barnacle_turret`, `wall_fences`, `wall_fences_partial` (with `wall_fences`: low or high wall fences), `buzz_overdrive`, `tithe_collector`, `gilded_sentinel` |
+| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`, `resonator`, `buzz_overdrive`, `tithe_collector`, `gilded_sentinel`), or `screech_vents` (wall-vent screeches only, rare, for zones whose floor has no manholes, GDD §9.5). (The wall fences, `wall_fences` and `wall_fences_partial`, and the Barnacle Turret have no patterns: see below) |
 | `length` | Metres of track the pattern takes (the generator extends it for long gaps and hulls) |
 | `elements` | The pieces to place (see below) |
 
 ## Element kinds
 
-`at` is the offset in metres from the pattern's start. `at_seconds` adds an offset in seconds at run speed,
-so pieces keep their timing against a hull when run speed changes.
+`at` is the offset in metres (at the reference speed, stretched by the level's pace) from the pattern's
+start. `at_seconds` adds an offset in seconds at run speed, so pieces keep their timing against a hull
+when run speed changes.
 
 | Kind | Fields |
 |---|---|
 | `gap` | `lanes`, `jump_frac` (gap length as a fraction of a full jump's distance, capped by the level's `max_gap_jump_fraction`) |
 | `fence` | `lanes`, `variant` (`full` = jump or switch lanes; `gapped` = slide under), `pulse_chance`, `pulse_on`, `pulse_off` (seconds) |
 | `sign` | `side` (`left`/`right`/`random`/`both`/`same`), `length`, `bottom`, `top` (height band on the wall, in metres) |
-| `ramp` | `side`. The ramp sits in the outermost lane on that side and launches the player onto the wall, higher than a free entry and with a speed boost that fades like a speed pad's (GDD §3): its wall run covers about 43 m at run speed, against 39 m for a free entry. A wall piece after it meets a faster, higher runner; `RampLaunch` says where the runner is and how high (see Ramps in `docs/ARCHITECTURE.md`) |
+| `ramp` | `side`. The ramp sits in the outermost lane on that side and launches the player onto the wall, higher than a free entry and with a speed boost that fades like a speed pad's (GDD §3): its wall run covers about 43 m at 18 m/s, against 39 m for a free entry. A wall piece after it meets a faster, higher runner; `RampLaunch` says where the runner is and how high (see Ramps in `docs/ARCHITECTURE.md`) |
 | `hull` | `lanes` (where the anti-grav pad goes), `length_seconds` (how long the ceiling lasts at run speed). The pattern's other elements may lie under it (see Ceilings below); its landing zone and its pad's spot stay clear, and the generator drops (with a warning) what the pattern puts there. The ceiling covers every lane, or in a level with narrow ceilings a range of lanes holding its pads (see Narrow ceilings below) |
-| `speed_pad` | `lanes`. A speed pad in each lane (DESIGN-TBD: GDD §6 only names speed pads) |
+| `speed_pad` | `lanes`. A speed pad in each lane (GDD §6 only names speed pads; FB 21, FB 49) |
 | `enemy` | `type` (the enemy type name), `lanes` (floor enemies; one per lane) **or** `side` (wall enemies, e.g. window cyborgs: `left`/`right`/`random`/`same`), `params` (passed to the enemy as `spawn.params`). An enemy may stand under a ceiling; one whose type uses the floor (its tuning's `uses_floor` and reach, wall vents included) keeps off a ceiling's landing zone and its pads' spots |
 | `credits` | `surface` (`floor`/`ceiling`/`wall`), `lanes` or `side`, `count`, `spacing` (m), `value` (1, 5, 25 or 100), `height` (m from the surface, or the height on the wall) |
 
@@ -101,9 +123,9 @@ stretches safe all the same (`CeilingZones`, `docs/ARCHITECTURE.md`):
 - **Its landing zone:** from the ceiling's end, `hull_landing_seconds` (1.2 s) at run speed, no gap or
   fence in any lane the ceiling covers and no floor enemy's reach in any lane, so the player always
   lands safely. A pattern's `used` length includes it, so the next pattern starts past it.
-- **Its pad's spot:** in the pad's lane, no gap, fence or ramp from a full jump (about 12 m) before
-  the pad until its lift reaches the hull (about 8 m after it), and no floor enemy's reach (any lane)
-  where the pad lies.
+- **Its pad's spot:** in the pad's lane, no gap, fence or ramp from a full jump (about 12 m at 18 m/s)
+  before the pad until its lift reaches the hull (about 8 m after it), and no floor enemy's reach (any
+  lane) where the pad lies.
 
 What a pattern puts in those stretches is dropped, with a warning. Writing a gauntlet:
 - Time its pieces with `at_seconds` against the hull, from about 1 s after the pad to the ceiling's
@@ -175,3 +197,65 @@ is clear in every lane (no gap, fence, floor enemy, pad or ceiling landing, and 
 run), move a Resonator whose visit doesn't fit a little earlier or later, keep one visit at a time, and
 drop what still doesn't fit. Other patterns need nothing for it: the Resonator only uses floor that's
 clear already.
+
+The Tithe Collector's pattern (`tithe_collector.json`, GDD §9.12, task C5) places one Tithe Collector
+over the middle lane, the same shape as the drone's: a short `length` (10 m), picked many times across
+a level, each its own approach (it's a flier, `uses_floor` false, that appears ahead of the player and
+closes in on its own, like the stand-in thief's). It needs no rules script: it decides which lane to
+weave toward live, from the layout already around it (gaps, fences, floor cuts, other floor enemies),
+so other patterns need nothing for it either, and it can never make a lane unfair (touching it is never
+a hit, CLAUDE.md principle 4).
+
+The Barnacle Turret (`barnacle_turret`) has no patterns, and no pattern should require it: its rules
+(`barnacle_turret_rules.gd`, after every rule that adds or takes away ceilings) hang turrets from the
+ceilings the level already has (never a one-lane one, at most 2, off the pads' lanes and the ceiling's
+credits), so the pattern pass, the recency curve and the guarantee's forced picks never count it, and a
+level is the same with or without it bar its turrets. Its introduction (Marketplace 1) comes soon after the
+feature's start: where no ceiling it fits on lies there, the rules add a plain one, only where one fits
+without clearing anything. For patterns this means only that their ceilings may get turrets: a ceiling's
+landing zone, pads and floor stay exactly as the pattern made them.
+
+Wall fences (task B5; GDD §9.1: electric fences across the wall-run path that switch off and on; full-height
+ones, `wall_fences`, from Marketplace 2, and from the Corporate zone partial ones over the low or the high part
+of the wall, `wall_fences_partial`) have no patterns either, and no pattern should require them: the generator
+adds them after the zone doodads, from a random stream of their own (`scripts/world/wall_fence_placement.gd`),
+only where they're fair (never on a wall section with a sign or a window cyborg, never where a wall vent's
+screech swipes up the wall, never where a ramp launches the player along their wall, the outer lane beside
+them clear of holes, fences, floor cuts, anti-grav pads and floor enemies to drop into, no floor cut or big
+attack meanwhile). So a level is built exactly as without them but for its wall fences, and patterns need
+nothing for them: a pattern's signs, window cyborgs, wall vents, ramps and outer-lane pieces simply leave
+less of the wall to them. See `docs/ARCHITECTURE.md`, The generator, Wall fences.
+
+Floor cuts (task B4; GDD §9.9, the Buzz Overdrive's: a lane's floor that turns into a hole during play)
+have no patterns of their own: a rules script plans them after the patterns and every other rule
+(`buzz_overdrive_rules.gd`, and `floor_cutter_rules.gd` for the debug-only stand-in). It plans a
+cut with `FloorCutPlan.make()`, makes room with `scripts/enemies/cut_placement.gd` (only holes, fences
+and speed pads in the cut's lane over its window, and holes beside it beyond what may stay, go) and adds
+the cut's cause at its end; `LevelGenerator.add_cut()` refuses any cut that breaks GDD §9.9's limits
+(one at a time, never a lane with a ramp, a pad or a ceiling's landing zone, the other lanes whole
+enough, nothing else going on, a way out). For patterns this means only that a cut never runs where a
+pad, a ramp or a ceiling's landing zone is in its lane, and that a pattern's holes, fences and speed pads
+may make way for one. See `docs/ARCHITECTURE.md`, The generator, Floor cuts.
+
+The Buzz Overdrive's pattern (`buzz_overdrive.json`, `requires` `buzz_overdrive`) only marks where an
+encounter begins: its enemy's `at` is where the player is when the tank sets off, rolling ahead of them,
+and the pattern's 200 m (about 11 s at any speed: pattern metres stretch with the pace) hold the whole
+encounter (its roll, rev and charge, about 9 s). Its rules plan the cut from there, in the entry's lane or
+another, a second or two earlier or later if it doesn't fit, and move the entry to the cut's end; one that
+fits nowhere is dropped and its stretch left to the fill pass. Other patterns needn't leave room for it:
+the rules clear the holes, fences and speed pads in its cut's lane themselves, and move or drop it where a
+pad, a ramp or a ceiling's landing zone is in the way.
+
+The Gilded Sentinels' patterns (`gilded_sentinel.json`, `requires` `gilded_sentinel`; GDD §9.11, task C4)
+stand one on a wall (`side`; its `at` is its niche): one that swings once, and from difficulty 0.95 one
+that swings twice (`params.swings` 2: the stretch before its niche, then the stretch past it) or a pair
+facing each other across the street (the later ones in Golden 2, and the Palace; DESIGN-TBD,
+`docs/questions/c4.md`). Its rules (`gilded_sentinel_rules.gd`, after the other enemies' rules) keep one
+only where it's fair, moving it a few metres along its wall or dropping it: its wall section free of
+signs, wall fences, window cyborgs, wall vents and other Sentinels from its wall-run approach to past its
+cut, no ramp launching a runner into its band, the lane beside the outer one (the escape) clear of holes,
+fences, floor cuts, pads and floor enemies, and no floor cut, Octodog run, ceiling's landing or other
+Sentinel's attack meanwhile (unless they're a pair). A level's first one swings once, alone, with no big
+attack around it, and Golden 2 adds one near the feature's start when no pattern put one there. Other
+patterns need nothing for them: their signs, ramps and outer-lane pieces simply leave the Sentinels fewer
+spots. See `docs/ARCHITECTURE.md`, The generator, Gilded Sentinels.

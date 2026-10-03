@@ -293,6 +293,25 @@ func _edge(s: MeshLayer, e0: float, e1: float, t0: float, t1: float, d: float, l
 				s.rect(Vector3(x[1], -0.3, z), Vector3(-(x[1] - x[0]), 0, 0), Vector3(0, 0.3, 0), shade, 0.0, MeshKit.PAT_CORP_UNDER)
 
 
+## A floor cut through a train (task B4; GDD §9.9: the Buzz Overdrive's saw "slicing the floor in half"):
+## the carriage's roof sliced open down the lane (the track hides the roof as the cut runs,
+## FloorCutSection). Inside, the open carriage: its sides and the ribs of its frame in the shade under
+## the roofs, dropping into the trench; the sliced roof's edges glow the usual orange along the top of
+## its sides, and the lips along the cut lie right on its edge (the collision edge, across the slit
+## between the trains and over the neighbouring roofs' shoulders), so the cut reads as a hole like any
+## gap. Nothing in it is lit.
+func cut(parent: Node3D, section: FloorCutSection) -> void:
+	var hw: float = roof_half_width(section.lane_width)
+	ZoneSkin.standard_floor_cut(parent, section, skin.solid_material(), skin.glow_material(), {
+		"edge": skin.gap_edge_color, "inside": skin.gap_inside_color, "pattern": MeshKit.PAT_CORP_UNDER,
+		"params": [0.0, 1.0, 2.0], "depth": skin.train_depth, "bottom": false,
+		"lip": EDGE_LIP, "lip_glow": LIP_GLOW, "strip_glow": STRIP_GLOW, "halo": 0.0,
+		# The carriage's own sides, inside its lane.
+		"wall_x": [section.lane_x - hw + 0.03, section.lane_x + hw - 0.03],
+		"ribs": skin.carriage_length / 6.0, "rib_param": 3.0,
+	})
+
+
 ## The trench under the trains for one chunk: a guideway beam under every lane on its piers, the
 ## trench's walls and floor far below, all in deep shade, and the drift of grit, drizzle and speed
 ## streaks over the roofs (GDD §5 motion effects). None of it belongs to a lane, so the skin adds it

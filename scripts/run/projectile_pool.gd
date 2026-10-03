@@ -193,7 +193,7 @@ func _splash(p: Projectile, direct: Enemy) -> void:
 		if e == direct or not is_instance_valid(e) or not e.alive or e.immune_to_weapons:
 			continue
 		if e.aim_point().distance_to(p.position) <= p.splash_radius:
-			# DESIGN-TBD: the heavy missile's swarm bonus (GDD §8) applies to its splash as well.
+			# The heavy missile's swarm bonus (GDD §8) also applies to its splash (FB 29).
 			var dmg: float = p.damage * p.splash_share * (p.swarm_multiplier if e.is_swarm else 1.0)
 			e.take_damage(dmg, &"weapon", true)
 			enemy_hit.emit(e, dmg, true)

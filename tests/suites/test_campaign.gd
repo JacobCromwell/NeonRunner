@@ -51,7 +51,9 @@ const SWEEP_LEVELS: Array = ["gangland/3", "corporate/2", "dead_zone/1", "dead_z
 const SWEEP_SEEDS: int = 8
 ## How far past its start a new feature's first piece or enemy may be: the first pattern picked
 ## from the start uses it, and the pick can wait for the longest pattern before it (an Octodog's
-## 120 m) and the widest spacing; the enemy then stands up to 45 m into its own pattern.
+## 120 m) and the widest spacing; the enemy then stands up to 45 m into its own pattern. Metres at
+## MovementTuning.REFERENCE_SPEED: a level at its zone's speed stretches them by its pace
+## (LevelGenerator.pace), as it stretches the patterns.
 const INTRODUCTION_REACH: float = 210.0
 ## Features that are enemies (for "every zone introduces at least one new enemy").
 const ENEMIES: Array = ["cyborg", "window_cyborg", "hover_truck", "screech", "octodog", "generator", "drone",
@@ -159,6 +161,10 @@ func _test_slots(campaign: Campaign) -> void:
 	for s: CampaignStep in campaign.steps():
 		if s.kind == CampaignStep.Kind.BOSS and s.zone == campaign.zones[0]:
 			check(s.boss != null and s.boss.is_built(), "the City's boss step plays the Floating Head's fight (task E1d)")
+		elif s.kind == CampaignStep.Kind.BOSS and s.zone.id == &"dead_zone":
+			check(s.boss != null and s.boss.is_built(), "the Dead Zone's boss step plays the Sleep Taker's fight (task E5c-b)")
+		elif s.kind == CampaignStep.Kind.BOSS and s.zone.id == &"marketplace":
+			check(s.boss != null and s.boss.is_built(), "the Marketplace's boss step plays The House's fight (task E5a-b)")
 		elif s.kind == CampaignStep.Kind.BOSS:
 			check(s.boss != null and not s.boss.is_built(), "boss slot %s is still a placeholder" % s.id)
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id.ends_with("intro"):
@@ -281,15 +287,16 @@ func _test_curve_and_lengths(campaign: Campaign) -> void:
 		"harder tiers raise difficulty")
 
 
-## Levels take their zone's skin, the grey box until a zone has its own; a level's own skin wins (the
-## Golden Palace may get one, GDD §5), and is then a variant of its zone's skin (Corporate 2's plaza).
+## Levels take their zone's skin, the grey box until a zone has its own; a level's own skin wins, and
+## is then a variant of its zone's skin: either the same script with different values (Corporate 2's
+## plaza) or a subclass of it reusing its materials (the Golden Palace, Golden 3, task D6b).
 func _test_skins(campaign: Campaign) -> void:
 	for s: CampaignStep in campaign.steps():
 		if s.is_level():
 			var config: LevelConfig = campaign.configure(s, 3)
 			if s.level.skin != null:
 				check(config.skin == s.level.skin and s.zone.skin != null
-					and config.skin.get_script() == s.zone.skin.get_script(),
+					and _related_skin_scripts(config.skin.get_script(), s.zone.skin.get_script()),
 					"%s takes its own variant of its zone's skin" % s.id)
 			else:
 				check(config.skin != null and config.skin == s.zone.skin, "%s takes its zone's skin" % s.id)
@@ -312,7 +319,18 @@ func _test_skins(campaign: Campaign) -> void:
 	step.level.skin = own_skin
 	step.level_index = palace.level_index
 	check(campaign.configure(step, 3).skin == own_skin, "a level's own skin wins over its zone's")
-	check(palace.level.skin == null, "and the shipped level has none of its own yet")
+	check(palace.level.skin is GoldenPalaceSkin, "and the shipped level (the Golden Palace, task D6b) has its own")
+
+
+## Whether `a` and `b` are the same script, or `a` is a subclass of `b` (GoldenPalaceSkin extends
+## GoldenSkin): how a level's own skin counts as "a variant of its zone's" above.
+static func _related_skin_scripts(a: Script, b: Script) -> bool:
+	var base: Script = a
+	while base != null:
+		if base == b:
+			return true
+		base = base.get_base_script()
+	return false
 
 
 ## Every campaign level generates cleanly and fairly for every lane count, on its own seed and (for
@@ -385,7 +403,7 @@ func _check_level(s: CampaignStep, config: LevelConfig, tag: String, stats: Dict
 		var start: float = gen.feature_start(f)
 		check(at[0] >= start - 0.01, "nothing of `%s` before its start (%.0f m) %s" % [f, start, tag])
 		stats["introductions"] = int(stats["introductions"]) + 1
-		if at[0] > start + INTRODUCTION_REACH:
+		if at[0] > start + INTRODUCTION_REACH * gen.pace:
 			(stats["late"] as Array).append("%s %s (%.2f)" % [tag, f, at[0] / layout.length])
 
 
@@ -481,6 +499,12 @@ func _test_recency(campaign: Campaign) -> void:
 	var core: Array[int] = [0, 0]
 	var total: Array[int] = [0, 0]
 	var spots: int = 0
+	# The features some pattern requires (planned ones have none yet, and the wall fences and the Barnacle
+	# Turret have none at all: their pieces come from the generator and their rules).
+	var with_patterns: Dictionary = {}
+	for p: Dictionary in LevelGenerator.load_for(load(LEVEL_PATH) as LevelConfig):
+		for need: Variant in p.get("requires", []):
+			with_patterns[String(need)] = true
 	for s: CampaignStep in campaign.steps():
 		if not s.is_level():
 			continue
@@ -488,7 +512,7 @@ func _test_recency(campaign: Campaign) -> void:
 		# own seed alone is too few picks to see the curve in.
 		var sweep: int = 0
 		for f: String in s.level.features:
-			if FIRST_LEVEL.get(f, "") == s.id and not curve.max_factor.has(f) and not LevelConfig.PLANNED_FEATURES.has(f):
+			if FIRST_LEVEL.get(f, "") == s.id and not curve.max_factor.has(f) and with_patterns.has(f):
 				sweep = 8
 		for lanes: int in [3, 5, 6]:
 			for seed_k: int in sweep + 1:

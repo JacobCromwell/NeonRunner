@@ -1,5 +1,20 @@
 extends TestSuite
-## Wallet, items, records, saving, the shop catalog, loadouts and the App's buy flow.
+## Wallet, items, records, saving, the shop catalog, loadouts and the App's buy flow. Also the
+## balancing pass (task R7, after the owner's playtest: G1's pace, G3's free armor, G4's weaker laser
+## tier 1): the catalog's prices laid against what `tools/measure/economy.gd` reads from the campaign
+## (the reasoning is in docs/questions/r7.md).
+
+## Mirrors tools/measure/economy.gd's stand-in for a good, not perfect, clean run with no magnet
+## (GDD §7 names no number): see that tool's header.
+const GOOD_RUN_SHARE: float = 0.7
+## The level each item should be in reach by, in a single clean playthrough with nothing bought along
+## the way (campaign order, 0-based; GDD §5's schedule, test_campaign.gd's FIRST_LEVEL): armor I is
+## the owner's "died a lot" note (GDD §4); claws by Octodog's debut (claws beat tentacles, GDD §8);
+## weapon I by the zone that introduces the cyborg.
+const AFFORD_BY: Dictionary = {
+	&"armor:1": "city/1", &"weapon:1": "city/2", &"claws:1": "gangland/2", &"dash:1": "gangland/3",
+	&"slow_time:1": "gangland/3",
+}
 
 
 func run() -> void:
@@ -8,6 +23,7 @@ func run() -> void:
 	_test_save_round_trip()
 	_test_catalog_and_loadout()
 	_test_app_shop()
+	_test_balance_curve()
 
 
 func _test_wallet() -> void:
@@ -135,3 +151,63 @@ func _test_app_shop() -> void:
 	App.set_equipped(&"weapon", false)
 	check(not App.make_loadout().has(&"weapon"), "the equip toggle reaches the next run's loadout")
 	App.profile = saved
+
+
+## R7: builds the same running wallet tools/measure/economy.gd reports (every campaign level
+## finished once, in order, nothing bought along the way, a good run collecting GOOD_RUN_SHARE of a
+## level's credits) and checks the catalog's prices against it: deaths and quits never pay more than
+## finishing (GDD §4), every AFFORD_BY item is in reach by its level, and nothing in the catalog costs
+## more than a single clean playthrough ever earns (CLAUDE.md: nothing a first playthrough can't
+## afford). Also the star thresholds (GDD §6): two_star_share < three_star_share, so they still order
+## correctly, and a clean run (well above the good-run share) clears three stars on credits alone,
+## without needing bonus points. 5 lanes only (PC default): lane count moves each level's credit total
+## a little but not the shape of the curve (see the tool's own README entry for the full sweep).
+func _test_balance_curve() -> void:
+	var campaign := load("res://data/campaign/campaign.tres") as Campaign
+	var tuning := load("res://data/tuning/movement.tres") as MovementTuning
+	var rules := load("res://data/tuning/game_rules.tres") as GameRules
+	var catalog: ShopCatalog = ShopCatalog.load_from()
+	check(rules.two_star_share < rules.three_star_share and rules.three_star_share <= 1.0,
+		"the star shares still order two below three (%.2f < %.2f)" % [rules.two_star_share, rules.three_star_share])
+	var wallet_by_level: Dictionary = {}
+	var wallet: int = 0
+	var max_wallet: int = 0
+	for step: CampaignStep in campaign.steps():
+		if not step.is_level():
+			continue
+		var config: LevelConfig = campaign.configure(step, 5)
+		var gen := LevelGenerator.new()
+		var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+		var available: int = layout.total_credit_value()
+		var good: int = roundi(available * GOOD_RUN_SHARE)
+		var bonus: int = rules.completion_bonus(step.level_index)
+		var finish: int = good + bonus
+		var death: int = floori(good * rules.death_credit_keep_fraction)
+		check(death < finish, "%s: a death or quit never pays more than finishing (%d < %d)" % [step.id, death, finish])
+		# A clean run (well above the good-run share) clears three stars on credits alone: the share
+		# formula is scale-invariant (score and max_credit_score are both counted in credits), so this
+		# holds for every level once it holds for one, but it's checked per level to catch a future
+		# level-specific credit source the generator folds into max_credit_score oddly.
+		check(available > 0 and 0.9 >= rules.three_star_share,
+			"%s: a clean run's share (0.9) still clears three stars (needs %.2f)" % [step.id, rules.three_star_share])
+		wallet += finish
+		wallet_by_level[step.id] = wallet
+		max_wallet = wallet
+	for key: String in AFFORD_BY:
+		var item_id: StringName = StringName(String(key).get_slice(":", 0))
+		var tier: int = int(String(key).get_slice(":", 1))
+		var item: ShopItem = catalog.item(item_id)
+		var price: int = item.price_of(tier, false)
+		var by_wallet: int = int(wallet_by_level[AFFORD_BY[key]])
+		check(price <= by_wallet, "%s is affordable by %s (price %d, wallet %d)" % [
+			item.tier_name(tier), AFFORD_BY[key], price, by_wallet])
+	for item: ShopItem in catalog.items:
+		var prices: Array[int] = []
+		if item.kind == ShopItem.Kind.BREAKABLE:
+			prices.append(item.price)
+		else:
+			for t: int in item.tier_count():
+				prices.append(item.price_of(t + 1, false))
+		for price: int in prices:
+			check(price <= max_wallet, "%s never costs more than one clean playthrough ever earns (%d <= %d)" % [
+				item.display_name, price, max_wallet])

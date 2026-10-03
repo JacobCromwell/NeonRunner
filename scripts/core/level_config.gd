@@ -9,16 +9,15 @@ extends Resource
 ## generator rules go in scripts/enemies/<name>_rules.gd, and an enemy type of that name is found by
 ## EnemyDirector. So those tasks add their own files and never edit level data.
 ## - barnacle_turret: the Barnacle Turret, a ceiling hazard (GDD §9.8), from Marketplace 1
-## - wall_fences: full-height wall fences (GDD §9.1), from Marketplace 2
-## - wall_fences_partial: wall fences over the low or the high part of the wall only (GDD §9.1),
-##   from Corporate 1 (their patterns require both wall_fences and wall_fences_partial)
-## - buzz_overdrive: the Buzz Overdrive (GDD §9.9), from Corporate 1 through the Dead Zone and the
-##   Golden Zone (the Golden Palace included)
-## - tithe_collector: the Tithe Collector (GDD §9.12), Corporate 2, then the Golden Zone
 ## - resonator: the Resonator (GDD §9.10), from Golden 1
-## - gilded_sentinel: the Gilded Sentinels (GDD §9.11), from Golden 2
-const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "wall_fences_partial",
-	"buzz_overdrive", "tithe_collector", "resonator", "gilded_sentinel"]
+## tithe_collector (GDD §9.12, Corporate 2, then the Golden Zone) is built (task C5): its own script,
+## tuning and pattern (data/patterns/tithe_collector.json) place it, so it's out of this list. So are the
+## wall fences, `wall_fences` and `wall_fences_partial` (task B5: the generator places them,
+## WallFencePlacement), buzz_overdrive (GDD §9.9, from Corporate 1 through the Golden Zone; task C2:
+## its pattern, data/patterns/buzz_overdrive.json, and its rules, buzz_overdrive_rules.gd, place it), and
+## gilded_sentinel (GDD §9.11, Golden 2 and the Golden Palace; task C4: data/patterns/gilded_sentinel.json
+## and its rules, gilded_sentinel_rules.gd).
+const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 
 @export var id: StringName = &"prototype"
 ## DESIGN-TBD: campaign level names are placeholders (GDD §5 names only the Golden Palace).
@@ -30,6 +29,13 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 ## GDD §4: levels last 90–150 seconds. DESIGN-TBD: each campaign level's length (together they make
 ## GDD §5's "a flawless run through every level takes about 35 minutes").
 @export_range(30.0, 150.0, 1.0, "suffix:s") var duration_seconds: float = 120.0
+## The run speed this level is built and played at (GDD §3, owner's playtest September 30, 2026: it
+## rises zone by zone). 0: its zone's (ZoneDef.run_speed) in the campaign, else the movement tuning's
+## base run speed (quick play, tests). Campaign.configure writes the level's own speed, its zone's or
+## 0 into its copy, times the difficulty tier's speed multiplier. The generator, the run's world and
+## the enemies all take their movement tuning from movement_for(), so they agree on it; the level
+## keeps its duration in seconds and gets longer in metres.
+@export_range(0.0, 40.0, 0.1, "suffix:m/s") var run_speed: float = 0.0
 ## 0 = easiest, 1 = hardest. In the campaign this is the campaign curve plus difficulty_bias.
 @export_range(0.0, 1.0, 0.05) var difficulty: float = 0.3
 ## Added to the campaign's automatic difficulty curve for this level (GDD §6: each level can be
@@ -49,6 +55,9 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 ##   octodog, screech (from manholes and wall vents), drone, generator (fence generators)
 ## - screech_vents: sewer screeches from wall vents only (rare), for zones whose floor has no
 ##   manholes (GDD §9.5)
+## - wall_fences: full-height wall fences (GDD §9.1), from Marketplace 2; wall_fences_partial: wall
+##   fences over the low or the high part of the wall only, from Corporate 1 (task B5; no patterns: the
+##   generator places them, WallFencePlacement)
 ## - the planned ones in PLANNED_FEATURES
 ## Rules scripts run in this list's order (see LevelGenerator), so the campaign keeps the order in
 ## which the schedule introduces features.
@@ -101,9 +110,20 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 @export_range(0.0, 200.0, 1.0, "suffix:m") var start_clear_distance: float = 60.0
 ## Clear track kept before the finish line.
 @export_range(0.0, 200.0, 1.0, "suffix:m") var end_clear_distance: float = 40.0
-## Seconds of clear track between patterns at difficulty 0 and 1.
+## Seconds of clear track between patterns at difficulty 0 and 1. DESIGN-TBD (docs/questions/g1.md):
+## campaign levels set their own, closer than these defaults, for busier levels (GDD §3, owner's
+## playtest September 30, 2026); the hard spacing stays the fairness floor (a switch across every lane
+## between two patterns, at 6 lanes).
 @export_range(0.2, 4.0, 0.05, "suffix:s") var spacing_seconds_easy: float = 1.8
 @export_range(0.2, 4.0, 0.05, "suffix:s") var spacing_seconds_hard: float = 0.9
+## Busier levels (GDD §3, owner's playtest September 30, 2026: "more gaps, obstacles and enemies ... so
+## there is always something going on"): after the patterns and the rules, every stretch where nothing
+## is going on or kept (LevelGenerator.fill_keep_outs) longer than this many seconds at run speed gets
+## more of the level's plain obstacle patterns (holes and fences), spaced like the pattern pass places
+## them (LevelGenerator._fill_empty_stretches): more patterns, never harder ones. 0 turns it off: the
+## level is built exactly as before (quick play, the tests, boss arenas). DESIGN-TBD
+## (docs/questions/g1.md): each campaign level's value.
+@export_range(0.0, 10.0, 0.1, "suffix:s") var fill_empty_seconds: float = 0.0
 ## Quiet stretches and bursts (GDD §5, The Hush: long silent stretches broken by sudden threats).
 ## With quiet_seconds above 0, the level after its run-up alternates a quiet stretch of that many
 ## seconds at run speed with a burst of burst_seconds, quiet first. In a quiet stretch patterns are
@@ -132,6 +152,17 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 ## DESIGN-TBD: seconds of gap-free floor after a ceiling section ends, so the drop never lands in a hole.
 @export_range(0.0, 3.0, 0.1, "suffix:s") var hull_landing_seconds: float = 1.2
 
+@export_group("Floor cuts")
+## GDD §9.9 (the Buzz Overdrive's cuts, task B4): "on 3 lanes, two lanes always stay whole": along a
+## cut's stretch no other lane holds a hole. On more lanes, at most this many lanes besides the cut's
+## own may hold holes there (LevelGenerator.whole_lanes_for_cut: 3 of 5 lanes and 4 of 6 stay whole
+## with 1). DESIGN-TBD (docs/questions/b4.md): the limit at 5 and 6 lanes.
+@export_range(0, 4) var cut_holes_beside: int = 1
+## A player in a cut's lane when its warning starts can always leave it: from this long after the
+## warning starts, a neighbouring lane has room to switch into before the cut meets the player
+## (LevelGenerator.cut_escape_clear). DESIGN-TBD (docs/questions/b4.md).
+@export_range(0.0, 2.0, 0.05, "suffix:s") var cut_reaction_seconds: float = 0.5
+
 @export_group("Narrow ceilings")
 ## GDD §3 (decided September 26, 2026): ceilings don't have to cover every lane, and on one the player
 ## switches lanes only within its lanes. The share of this level's ceilings that cover a range of its
@@ -156,11 +187,37 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 ## ceiling lasts 4 s). DESIGN-TBD (docs/questions/b3.md).
 @export_range(0.5, 4.0, 0.1, "suffix:s") var one_lane_ceiling_seconds: float = 1.6
 
+@export_group("Doodads")
+## Zone doodads (GDD §3, owner's playtest September 30, 2026: "levels felt barren"): scenery pieces
+## standing in lanes that never hurt; running into one pushes the player into a neighbouring lane.
+## They take a lane rather than needing a reaction, so they make a level look busier without
+## tightening its reaction windows. The generator puts them only where nothing else goes on
+## (LevelGenerator: doodads): this is the chance that each stretch with room for one gets one (and
+## the next spot in a long stretch, doodad_gap_seconds on, another). 0: none, and the level is built
+## exactly as before (quick play, the tests, boss arenas). DESIGN-TBD (docs/questions/g5.md): each
+## level's value.
+@export_range(0.0, 1.0, 0.05) var doodad_share: float = 0.0
+## Share of the level (0–1) from which doodads stand (City 1 introduces them a little way in).
+@export_range(0.0, 1.0, 0.05) var doodad_start: float = 0.0
+## How often each size class is picked (LevelLayout.DOODAD_SIZES; MovementTuning has their sizes); 0
+## leaves a class out (City 1 starts with the smaller ones).
+@export_range(0.0, 1.0, 0.05) var doodad_small_weight: float = 1.0
+@export_range(0.0, 1.0, 0.05) var doodad_medium_weight: float = 1.0
+@export_range(0.0, 1.0, 0.05) var doodad_large_weight: float = 1.0
+## The least time between one doodad's end and the next one's front, at run speed, so a few in a row
+## never make a slalom. DESIGN-TBD.
+@export_range(0.5, 10.0, 0.1, "suffix:s") var doodad_gap_seconds: float = 2.5
+
 @export_group("Credits")
-## DESIGN-TBD (GDD §7): credit placement. Trails of small credits fill the clear stretches between
+## Credit placement (GDD §7; FB 9): trails of small credits fill the clear stretches between
 ## patterns; high-value credits sit in risky spots (gap edges, by fences, far along wall runs).
 @export_range(1.0, 10.0, 0.25, "suffix:m") var credit_trail_spacing: float = 3.0
 @export_range(0, 20) var credit_trail_count: int = 6
+## A clear stretch too short for a full trail gets a shorter one, down to this many credits (0: only
+## full trails, as before). Busier levels leave fewer long clear stretches (GDD §3, owner's playtest
+## September 30, 2026), so campaign levels take shorter trails to keep their credits about where they
+## were (the economy is task R7's). DESIGN-TBD (docs/questions/g1.md).
+@export_range(0, 20) var credit_trail_min: int = 0
 ## Chance that a clear stretch gets a trail.
 @export_range(0.0, 1.0, 0.05) var credit_trail_chance: float = 0.8
 ## Chance that a gap gets an arc of credits over it and a richer credit right at its edge.
@@ -174,6 +231,17 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "wall_fences", "
 
 func has_feature(feature: String) -> bool:
 	return features.has(feature)
+
+
+## The movement tuning this level runs on: `base` itself unless the level has a run speed of its own
+## (run_speed above 0, and not base's already), else a copy of `base` at that speed. The generator,
+## RunWorld and App all ask this, so a level is built and played at the same speed.
+func movement_for(base: MovementTuning) -> MovementTuning:
+	if base == null or run_speed <= 0.0 or is_equal_approx(base.run_speed, run_speed):
+		return base
+	var out: MovementTuning = base.duplicate() as MovementTuning
+	out.run_speed = run_speed
+	return out
 
 
 ## Share of the level (0–1) where `feature` starts: 0 unless feature_starts lists it.

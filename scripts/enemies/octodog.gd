@@ -44,7 +44,8 @@ const BODY_SIZE := Vector3(0.78, 0.72, 0.9)
 const TOP_SIZE := Vector3(0.84, 0.24, 0.96)
 const PHASE_NAMES: PackedStringArray = ["idle", "windup", "lunge", "turn", "sprint", "pace", "give_up", "leave", "falling"]
 ## pad_or_landing_between(): metres kept clear around an anti-grav pad, and after a ceiling section's
-## end for a player dropping off it to land (at least its landing zone, CeilingZones).
+## end for a player dropping off it to land (at least its landing zone, CeilingZones). Like every
+## margin here, metres at MovementTuning.REFERENCE_SPEED, stretched by the level's pace.
 const CEILING_LEAD: float = 6.0
 const CEILING_LANDING: float = 25.0
 ## charge_clear(): metres kept clear of other enemies before and after a charge's stretch.
@@ -66,6 +67,8 @@ var in_doghouse: bool = false
 
 var _t: OctodogTuning
 var _scaling: float = 0.0
+## The level's pace (MovementTuning.pace): its along-track distances and speeds are stretched by it.
+var _run_pace: float = 1.0
 ## Track distance and world x of the dog's centre on the floor.
 var _d: float = 0.0
 var _x: float = 0.0
@@ -96,11 +99,26 @@ var _telegraph: MeshInstance3D
 var _doghouse: Node3D
 
 
+## An Octodog's look, its lunge line and its doghouse, for EnemyDirector.warm_up (which frees them)
+## and ShaderWarmup: the first builds the meshes and materials every later Octodog shares.
+static func warm_up(world: RunWorld, _entry: Dictionary) -> Node:
+	var variant: StringName = world.skin.enemy_variant if world.skin != null else &"city"
+	var model := OctodogModel.new()
+	model.build(variant, 0.5)
+	var line := MeshInstance3D.new()
+	line.mesh = OctodogModel.telegraph_mesh()
+	line.material_override = GreyboxMaterials.glow(Color(1.0, 0.12, 0.08), 3.0, 0.5)
+	model.add_child(line)
+	model.add_child(OctodogModel.build_doghouse(variant))
+	return model
+
+
 func _build() -> void:
 	display_name = "Octodog"
 	stompable = false  # GDD §9.4: landing on it without claws, the tentacles grab the player.
 	_t = tuning_res as OctodogTuning if tuning_res is OctodogTuning else OctodogTuning.new()
 	_scaling = world.config.enemy_scaling if world.config != null else 0.0
+	_run_pace = world.tuning.pace()
 	var p: Dictionary = spawn.get("params", {})
 	var lanes: int = world.geo.lane_count
 	var lane: int = clampi(int(spawn.get("lane", lanes / 2)), 0, lanes - 1)
@@ -147,8 +165,8 @@ func _build_visuals(p: Dictionary) -> void:
 		_model.visible = false
 
 
-## GDD §9.4: only the first appearances get the doghouse hint. DESIGN-TBD: the player's first
-## `doghouse_appearances` Octodogs ever, counted in the profile's `seen` list. No App (tests): none.
+## GDD §9.4: only the first appearances get the doghouse hint: the player's first
+## `doghouse_appearances` Octodogs ever, counted in the profile's `seen` list (FB 79). No App (tests): none.
 func _profile_wants_doghouse() -> bool:
 	if not is_inside_tree():
 		return false
@@ -191,7 +209,7 @@ func _tick(delta: float) -> void:
 			var k: float = maxf(0.0, 1.0 - _phase_time / 0.6)
 			_d += lunge_velocity.y * k * delta
 		Phase.LEAVE:
-			_d += (v + _t.sprint_speed_over_player) * delta
+			_d += (v + _t.sprint_speed_over_player * _run_pace) * delta
 	_update_hop(delta)
 	_place()
 
@@ -206,9 +224,10 @@ func _set_phase(next: Phase) -> void:
 
 
 func _idle(delta: float, rel: float, v: float) -> void:
-	if in_doghouse and rel <= maxf(_t.appear_distance, _t.stop_distance(v, _scaling) + 10.0):
+	var stop: float = _t.stop_distance(v, _scaling, _run_pace)
+	if in_doghouse and rel <= maxf(_t.appear_distance * _run_pace, stop + 10.0 * _run_pace):
 		_burst_out_of_doghouse()
-	if rel > _t.stop_distance(v, _scaling):
+	if rel > stop:
 		return
 	if _can_wind_up(v):
 		_start_windup()
@@ -232,10 +251,10 @@ func _can_wind_up(v: float) -> bool:
 	if world.layout.gapped_between(_lane_at(_x), _d - 0.6, _d + 0.6):
 		return false  # never winds up standing over a hole
 	var from: float = player.distance
-	var window: float = _t.window_length(v, _scaling)
-	if not window_clear(world.layout, from, from + window):
+	var window: float = _t.window_length(v, _scaling, _run_pace)
+	if not window_clear(world.layout, from, from + window, _run_pace):
 		return false
-	if _turn_shift > 0.0 and (not charge_clear(world.layout, from, window) or from + window > _last_window_end()):
+	if _turn_shift > 0.0 and (not charge_clear(world.layout, from, window, _run_pace) or from + window > _last_window_end()):
 		return false
 	# GDD §9.7: no new charge sequence while the Cyborg's Bad Dream chases; GDD §9: nor while another
 	# type's big attack is on (it waits for its turn, _pace).
@@ -280,8 +299,8 @@ func _moves_on(v: float) -> bool:
 		TurnAnswer.HELD_EXCLUSIVE:
 			return false
 	var from: float = world.player.distance
-	var window: float = _t.window_length(v, _scaling)
-	return not charge_clear(world.layout, from, window) and from + window <= _last_window_end()
+	var window: float = _t.window_length(v, _scaling, _run_pace)
+	return not charge_clear(world.layout, from, window, _run_pace) and from + window <= _last_window_end()
 
 
 ## GDD §9, §9.7: its charge sequence, from its first wind-up until it gives up, is a big attack: the
@@ -306,7 +325,7 @@ func _start_windup() -> void:
 func _start_lunge() -> void:
 	var player: Player = world.player
 	var distance: float = maxf(_d - player.distance, 0.5)
-	var speed: float = _t.lunge_speed(_scaling)
+	var speed: float = _t.lunge_speed_at(_scaling, _run_pace)
 	var t_meet: float = maxf(distance / maxf(player.speed + speed, 1.0), 0.15)
 	lunge_velocity = Vector2((world.geo.lane_x(target_lane) - _x) / t_meet, -speed)
 	_lunge_time = 0.0
@@ -323,7 +342,7 @@ func _lunge(delta: float, pd: float) -> void:
 	if world.layout.gapped_between(_lane_at(_x), _d, _d):
 		_fall_into_gap()
 		return
-	if _d <= pd - _t.lunge_overshoot or _lunge_time > 4.0:
+	if _d <= pd - _t.lunge_overshoot * _run_pace or _lunge_time > 4.0:
 		charges_done += 1
 		if charges_done < charges and _next_charge_possible():
 			_set_phase(Phase.TURN)
@@ -338,12 +357,14 @@ func _lunge(delta: float, pd: float) -> void:
 func _next_charge_possible() -> bool:
 	var pd: float = world.player.distance
 	var v: float = maxf(world.player.speed, 1.0)
-	var until: float = pd + _t.cycle_distance(v, _scaling) + _t.stop_distance(v, _scaling) + 10.0
+	var until: float = pd + _t.cycle_distance(v, _scaling, _run_pace) + _t.stop_distance(v, _scaling, _run_pace) \
+		+ 10.0 * _run_pace
 	if charges_done < _anchors.size():
-		until = _anchors[charges_done] + _turn_shift + _t.window_length(v, _scaling) + _t.stop_distance(v, _scaling)
+		until = _anchors[charges_done] + _turn_shift + _t.window_length(v, _scaling, _run_pace) \
+			+ _t.stop_distance(v, _scaling, _run_pace)
 	if until > world.layout.length - 10.0:
 		return false
-	return not pad_or_landing_between(world.layout, pd, until)
+	return not pad_or_landing_between(world.layout, pd, until, _run_pace)
 
 
 func _turn(delta: float) -> void:
@@ -357,19 +378,19 @@ func _turn(delta: float) -> void:
 
 
 func _sprint(delta: float, rel: float, v: float) -> void:
-	_d += (v + _t.sprint_speed_over_player) * delta
+	_d += (v + _t.sprint_speed_over_player * _run_pace) * delta
 	var ahead: bool = rel >= _t.pass_clearance
 	# Passing in another lane and harmless until it's ahead again: never an attack from behind.
 	_set_hitboxes(ahead)
 	_step_toward(_windup_lane() if ahead else _passing_lane(), delta)
-	if rel >= _t.stop_distance(v, _scaling) - 0.5:
+	if rel >= _t.stop_distance(v, _scaling, _run_pace) - 0.5:
 		_pace_since = world.player.distance
 		_set_phase(Phase.PACE)
 
 
 func _pace(delta: float, rel: float, v: float) -> void:
 	# Hold position about halfway up the screen, lined up to charge, until the planned moment.
-	var want: float = _t.stop_distance(v, _scaling)
+	var want: float = _t.stop_distance(v, _scaling, _run_pace)
 	_d += (v + clampf((want - rel) * 4.0, -8.0, 8.0)) * delta
 	var lane: int = _windup_lane()
 	_step_toward(lane, delta)
@@ -383,7 +404,7 @@ func _pace(delta: float, rel: float, v: float) -> void:
 		# pacing in position, and its planned charges move on with the player (the whole sequence
 		# waits), for up to turn_wait_max.
 		_wait_a_frame(delta)
-	elif pd > anchor + _t.charge_slack or not world.player.alive:
+	elif pd > anchor + _t.charge_slack * _run_pace or not world.player.alive:
 		# No clear moment came: it gives up and runs off.
 		_set_phase(Phase.LEAVE)
 		_set_hitboxes(false)
@@ -514,7 +535,7 @@ func _process(delta: float) -> void:
 			# Face along the lunge line: x toward the target lane, z toward the player (+z).
 			var v: float = maxf(world.player.speed, 1.0)
 			var aim := Vector2(world.geo.lane_x(target_lane) - _x,
-				_t.lunge_speed(_scaling) * _t.time_to_meet(v, _scaling) + 0.5)
+				_t.lunge_speed_at(_scaling, _run_pace) * _t.time_to_meet(v, _scaling, _run_pace) + 0.5)
 			target_yaw = atan2(-aim.x, -aim.y)
 		Phase.LUNGE, Phase.FALLING:
 			target_yaw = atan2(-lunge_velocity.x, lunge_velocity.y)
@@ -537,7 +558,7 @@ func _process(delta: float) -> void:
 	_model.sitting = move_toward(_model.sitting, 1.0 if phase == Phase.GIVE_UP else 0.0, delta * 2.0)
 	var y: float = 0.0
 	if lunging:
-		var total: float = _t.lunge_duration(maxf(world.player.speed, 1.0), _scaling)
+		var total: float = _t.lunge_duration(maxf(world.player.speed, 1.0), _scaling, _run_pace)
 		y = _t.lunge_hop_height * sin(PI * clampf(_lunge_time / maxf(total, 0.05), 0.0, 1.0))
 	elif _hop_time >= 0.0:
 		y = 0.45 * sin(PI * clampf(_hop_time / _hop_length, 0.0, 1.0))
@@ -565,9 +586,9 @@ func _process(delta: float) -> void:
 ## frame (the path it will actually take, so a hole on it is a hole it will fall into).
 func _show_telegraph() -> void:
 	var v: float = maxf(world.player.speed, 1.0)
-	var speed: float = _t.lunge_speed(_scaling)
-	var t_meet: float = _t.time_to_meet(v, _scaling)
-	var duration: float = _t.lunge_duration(v, _scaling)
+	var speed: float = _t.lunge_speed_at(_scaling, _run_pace)
+	var t_meet: float = _t.time_to_meet(v, _scaling, _run_pace)
+	var duration: float = _t.lunge_duration(v, _scaling, _run_pace)
 	var start := Vector3(_x, 0.03, TrackGeometry.world_z(_d))
 	var end_x: float = _x + (world.geo.lane_x(target_lane) - _x) * duration / maxf(t_meet, 0.05)
 	var end := Vector3(end_x, 0.03, TrackGeometry.world_z(_d - speed * duration))
@@ -601,7 +622,7 @@ func should_retire() -> bool:
 ## Auto-fire only picks it once it's in view (and out of its doghouse), doghouse or not, so the
 ## hint never changes what the weapon does.
 func targetable() -> bool:
-	return super.targetable() and not in_doghouse and _d - world.player_distance() <= _t.appear_distance
+	return super.targetable() and not in_doghouse and _d - world.player_distance() <= _t.appear_distance * _run_pace
 
 
 func aim_point() -> Vector3:
@@ -615,15 +636,20 @@ func hit_radius() -> float:
 # --- Layout checks (shared with octodog_rules.gd) ---------------------------------------------
 
 ## True if a charge may happen while the player runs from `from` to `to`: no fence (unless an EMP
-## switched it off), no anti-grav pad or ceiling landing (pad_or_landing_between), and holes in at
-## most one lane (a single hole can be switched away from or jumped, and may be the bait for a gap
-## kill). The floor under a ceiling is fair game (GDD §3): a floor runner can be charged there, a
-## player riding the ceiling above can't (_can_wind_up).
-static func window_clear(layout: LevelLayout, from: float, to: float) -> bool:
+## switched it off), no anti-grav pad or ceiling landing (pad_or_landing_between), holes in at most
+## one lane (a single hole can be switched away from or jumped, and may be the bait for a gap kill),
+## and no zone doodad (GDD §3: its side would block the dodge, its push move the player; the generator
+## keeps doodads off a dog's planned run, so this holds back only a charge a wait moved on;
+## DESIGN-TBD, docs/questions/g5.md 5). The floor under a ceiling is fair game (GDD §3): a floor
+## runner can be charged there, a player riding the ceiling above can't (_can_wind_up). `pace`: the
+## level's (MovementTuning.pace).
+static func window_clear(layout: LevelLayout, from: float, to: float, pace: float = 1.0) -> bool:
+	if layout.doodad_between(from - 1.0, to):
+		return false
 	for f: Dictionary in layout.fences:
 		if float(f["at"]) >= from - 1.0 and float(f["at"]) <= to and not f.get("disabled", false):
 			return false
-	if pad_or_landing_between(layout, from, to):
+	if pad_or_landing_between(layout, from, to, pace):
 		return false
 	var holed: Dictionary = {}
 	for g: Dictionary in layout.gaps:
@@ -635,26 +661,27 @@ static func window_clear(layout: LevelLayout, from: float, to: float) -> bool:
 ## True if the generator may plan a charge whose wind-up starts with the player at `from`: the stretch
 ## the player runs through until the lunge has passed them (`window` metres) is clear (window_clear)
 ## and no enemy but a dog stands near it (octodog_rules.gd). A charge that a wait for its turn moved
-## off its planned point needs the same (_can_wind_up).
-static func charge_clear(layout: LevelLayout, from: float, window: float) -> bool:
-	if not window_clear(layout, from, from + window):
+## off its planned point needs the same (_can_wind_up). `pace`: the level's (MovementTuning.pace).
+static func charge_clear(layout: LevelLayout, from: float, window: float, pace: float = 1.0) -> bool:
+	if not window_clear(layout, from, from + window, pace):
 		return false
 	for other: Dictionary in layout.enemies:
 		var d: float = float(other["at"])
-		if String(other["type"]) != "octodog" and d >= from - OTHER_ENEMY_BEFORE \
-				and d <= from + window + OTHER_ENEMY_MARGIN:
+		if String(other["type"]) != "octodog" and d >= from - OTHER_ENEMY_BEFORE * pace \
+				and d <= from + window + OTHER_ENEMY_MARGIN * pace:
 			return false
 	return true
 
 
 ## True if an anti-grav pad (CEILING_LEAD around it) or where the player lands after a ceiling
 ## section (CEILING_LANDING past its end) touches [from, to]: a charge never meets a player stepping
-## onto a pad or dropping back to the floor.
-static func pad_or_landing_between(layout: LevelLayout, from: float, to: float) -> bool:
+## onto a pad or dropping back to the floor. Both margins are stretched by the level's `pace`, so they
+## keep covering a pad's run-up and a landing zone (seconds at run speed) in a faster zone.
+static func pad_or_landing_between(layout: LevelLayout, from: float, to: float, pace: float = 1.0) -> bool:
 	for h: Dictionary in layout.hulls:
-		if float(h["end"]) <= to and float(h["end"]) + CEILING_LANDING >= from:
+		if float(h["end"]) <= to and float(h["end"]) + CEILING_LANDING * pace >= from:
 			return true
 	for p: Dictionary in layout.pads:
-		if float(p["at"]) >= from - CEILING_LEAD and float(p["at"]) <= to + CEILING_LEAD:
+		if float(p["at"]) >= from - CEILING_LEAD * pace and float(p["at"]) <= to + CEILING_LEAD * pace:
 			return true
 	return false

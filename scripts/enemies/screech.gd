@@ -45,6 +45,10 @@ var history: Array = []
 
 var _t: ScreechTuning
 var _scaling: float = 0.0
+## The level's pace (MovementTuning.pace): its dash (speed and length, given at the reference speed)
+## is stretched by it, so in a faster zone it dashes faster, as far in time (GDD §3). Its warning and
+## trigger are seconds already.
+var _run_pace: float = 1.0
 ## Track distance and world position of the creature.
 var _d: float = 0.0
 var _x: float = 0.0
@@ -67,12 +71,29 @@ var _mesh: MeshInstance3D
 var _lair: ScreechLair
 
 
+## A screech's look and both its lairs, a vent and a manhole, for EnemyDirector.warm_up (which frees
+## them): the first builds the meshes and materials every later screech shares.
+static func warm_up(world: RunWorld, entry: Dictionary) -> Node:
+	var variant: StringName = world.skin.enemy_variant if world.skin != null else &"city"
+	var root := Node3D.new()
+	var body := MeshInstance3D.new()
+	body.mesh = ScreechModel.mesh()
+	body.material_override = ScreechModel.material(variant)
+	root.add_child(body)
+	for kind: ScreechLair.Kind in [ScreechLair.Kind.VENT, ScreechLair.Kind.MANHOLE]:
+		var lair := ScreechLair.new()
+		root.add_child(lair)
+		lair.build(kind, variant, 1, int(entry.get("seed", 0)))
+	return root
+
+
 func _build() -> void:
 	display_name = "Sewer Screech"
 	stompable = false  # GDD §9.5: landing on its spines without claws hurts.
 	immune_to_weapons = true  # hidden until it bursts out
 	_t = tuning_res as ScreechTuning if tuning_res is ScreechTuning else ScreechTuning.new()
 	_scaling = world.config.enemy_scaling if world.config != null else 0.0
+	_run_pace = world.tuning.pace()
 	var p: Dictionary = spawn.get("params", {})
 	var geo: TrackGeometry = world.geo
 	side = signi(int(spawn.get("side", 0)))
@@ -88,7 +109,7 @@ func _build() -> void:
 	else:
 		_x = geo.lane_x(lane)
 		_y = -0.7
-	# Spines and body: a solid collision (armor doesn't block it; DESIGN-TBD). The swipe: an attack.
+	# Spines and body: a solid collision, armor doesn't block it (FB 83). The swipe: an attack.
 	_body = add_hitbox(&"body", BODY_SIZE, Vector3(0.0, BODY_SIZE.y * 0.5 + 0.03, 0.0))
 	_top = add_hitbox(&"top", TOP_SIZE, Vector3(0.0, BODY_SIZE.y + TOP_SIZE.y * 0.5 - 0.02, 0.0))
 	_claw_floor = add_hitbox(&"body", Vector3(0.9, _t.swipe_height, _t.swipe_reach),
@@ -227,8 +248,8 @@ func _dash(delta: float, rel: float, v: float) -> void:
 	if rel < -1.0:
 		_set_phase(Phase.DONE)  # the player got past before it could swipe
 		return
-	var step: float = minf(_t.dash_speed(_scaling) * delta, _t.dash_max_distance - _dashed)
-	# DESIGN-TBD: it stops at the edge of a hole rather than dashing into it.
+	var step: float = minf(_t.dash_speed(_scaling) * _run_pace * delta, _t.dash_max_distance * _run_pace - _dashed)
+	# It stops at the edge of a hole rather than dashing into it (FB 84).
 	if step > 0.0 and not world.layout.gapped_between(lane, _d - step - BODY_SIZE.z * 0.5, _d):
 		_d -= step
 		_dashed += step

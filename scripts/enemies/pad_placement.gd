@@ -8,8 +8,10 @@ extends RefCounted
 ## (Not a `<feature>_rules.gd` script: LevelGenerator never runs it on its own.)
 
 const GeneratorRules = preload("res://scripts/enemies/generator_rules.gd")
-## Around each hover truck's burst point, where pads keep out of its lane (metres before, and
-## seconds after as a fallback when its tuning can't be read).
+const HoverTruckRules = preload("res://scripts/enemies/hover_truck_rules.gd")
+## Around each hover truck's burst point, where pads keep out of its lane (metres before, at
+## MovementTuning.REFERENCE_SPEED and stretched by the level's pace, and seconds after), as a fallback
+## when its tuning can't be read (else its own window, HoverTruckRules.window_start and window_end).
 const TRUCK_LANE_BEFORE: float = 30.0
 const TRUCK_LANE_AFTER_SECONDS: float = 40.0
 
@@ -58,16 +60,19 @@ static func place(gen: LevelGenerator, rng: RandomNumberGenerator, at: float, se
 ## whose run-up and rise are already clear (CeilingZones.pad_lane_clear) when there is one, so the
 ## floor loses as little as possible.
 static func pad_lane(gen: LevelGenerator, rng: RandomNumberGenerator, at: float) -> int:
+	var before: float = gen.metres(TRUCK_LANE_BEFORE)
 	var after: float = TRUCK_LANE_AFTER_SECONDS * gen.speed
 	var truck: Resource = EnemyDirector.tuning_for("hover_truck")
 	if truck != null and truck.get("stay_max_seconds") != null:
 		after = (float(truck.get("stay_max_seconds")) + float(truck.get("leave_seconds"))) * gen.speed
+	if truck is HoverTruckTuning:
+		before = 0.0 - HoverTruckRules.window_start(truck as HoverTruckTuning, 0.0, gen.pace)
 	var lanes: Array[int] = []
 	for lane: int in gen.layout.lane_count:
 		var free: bool = true
 		for e: Dictionary in gen.layout.enemies:
 			if String(e.get("type", "")) == "hover_truck" and int(e.get("lane", -1)) == lane \
-					and at >= float(e["at"]) - TRUCK_LANE_BEFORE and at <= float(e["at"]) + after:
+					and at >= float(e["at"]) - before and at <= float(e["at"]) + after:
 				free = false
 				break
 		if free:

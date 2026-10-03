@@ -1,10 +1,11 @@
 class_name BadDreamTuning
 extends EnemyTuning
 ## Numbers for the Cyborg's Bad Dream (GDD §9.7), in data/enemies/bad_dream.tres. The GDD fixes the
-## three-lane slash, a slash every ~3–4 s and a 20–30 s chase; every other number here is a
-## DESIGN-TBD placeholder until playtested. Pairs named _early/_late scale with the level's
-## enemy_scaling (GDD §6). The enemy (bad_dream.gd) and the host rules (host_rules.gd) both read them,
-## so a chase is planned with the same numbers it's played with.
+## three-lane slash, a slash every ~3–4 s and a 20–30 s chase; the owner's placeholder review approved
+## the escape rules, the pad schedule and the survival bonus as is (FB 99, FB 100, FB 104, FB 105).
+## Values still marked DESIGN-TBD are placeholders until playtested (FB 96–98). Pairs named
+## _early/_late scale with the level's enemy_scaling (GDD §6). The enemy (bad_dream.gd) and the host
+## rules (host_rules.gd) both read them, so a chase is planned with the same numbers it's played with.
 
 @export_group("Chase")
 ## GDD §9.7: it slashes for 20–30 s, then dissolves. Each Bad Dream rolls its chase length in this
@@ -14,7 +15,7 @@ extends EnemyTuning
 ## GDD §9.7: a slash every ~3–4 s, from one telegraph's start to the next (rolled for each slash).
 @export_range(1.0, 10.0, 0.1, "suffix:s") var slash_interval_min: float = 3.0
 @export_range(1.0, 10.0, 0.1, "suffix:s") var slash_interval_max: float = 4.0
-## DESIGN-TBD: level score for surviving the whole chase (GDD §9.7 only says "a score bonus").
+## Level score for surviving the whole chase (GDD §9.7 only says "a score bonus"; FB 104: 1,000).
 @export_range(0, 20000, 50) var survival_bonus: int = 1000
 
 @export_group("Emerging and dissolving")
@@ -59,35 +60,36 @@ extends EnemyTuning
 @export_range(0.03, 0.5, 0.01, "suffix:s") var slash_active: float = 0.12
 @export_range(0.1, 2.0, 0.05, "suffix:s") var recover_time: float = 0.7
 @export_range(0.5, 5.0, 0.1, "suffix:m") var lunge_ahead: float = 1.8
-## DESIGN-TBD: it lines up with the player's lane before a telegraph, but waits no longer than this
-## for a player who keeps moving (then telegraphs from where it is: the lanes are still the player's).
+## It lines up with the player's lane before a telegraph, but waits no longer than this
+## for a player who keeps moving (then telegraphs from where it is: the lanes are still the
+## player's; FB 100).
 @export_range(0.0, 5.0, 0.1, "suffix:s") var max_align_wait: float = 1.2
 @export_range(0.05, 2.0, 0.05, "suffix:m") var align_tolerance: float = 0.5
 ## The slash's damage box (GDD §3: slightly smaller than what the player sees): the covered lanes
 ## less side_margin at an edge next to a free lane, and less wall_clearance at an edge by a wall (a
 ## wall runner's body sticks out about 0.8 m from the wall, and the wall is an escape); from the
-## floor up to slash_height. DESIGN-TBD: that's above the top of a jump, so only leaving the lanes
-## dodges it (the GDD doesn't say whether a jump or a slide should).
+## floor up to slash_height, above the top of a jump, so only leaving the lanes dodges it (the GDD
+## doesn't say whether a jump or a slide should; FB 99).
 @export_range(0.5, 3.0, 0.05, "suffix:m") var slash_height: float = 1.75
 @export_range(0.0, 1.0, 0.05, "suffix:m") var side_margin: float = 0.15
 @export_range(0.0, 1.5, 0.05, "suffix:m") var wall_clearance: float = 0.9
 @export_range(0.5, 4.0, 0.1, "suffix:m") var slash_depth: float = 1.6
-## DESIGN-TBD: a slash at a player on a wall covers the wall (up to this height) and the outer lane.
+## A slash at a player on a wall covers the wall (up to this height) and the outer lane (FB 99).
 @export_range(1.0, 6.0, 0.1, "suffix:m") var wall_slash_top: float = 4.8
 
 @export_group("Generator rules")
-## GDD §9.7: anti-grav pads are guaranteed during the chase. DESIGN-TBD: from the host's spot until
-## the longest chase could end, never more than this many seconds without a pad. Pads already there
-## count (a drone's pad schedule keeps its pads 8–10 s apart, so it covers a chase).
+## GDD §9.7: anti-grav pads are guaranteed during the chase: from the host's spot until
+## the longest chase could end, never more than this many seconds without a pad (FB 105). Pads already
+## there count (a drone's pad schedule keeps its pads 8–10 s apart, so it covers a chase).
 @export_range(3.0, 30.0, 0.5, "suffix:s") var pad_gap_seconds: float = 10.0
 ## A pad the rules add lands between pad_gap_seconds minus this and pad_gap_seconds after the last.
 @export_range(0.0, 10.0, 0.5, "suffix:s") var pad_slack_seconds: float = 2.0
-## DESIGN-TBD: how long the ceiling above each added pad lasts.
+## How long the ceiling above each added pad lasts (FB 105).
 @export_range(1.0, 8.0, 0.5, "suffix:s") var pad_ceiling_seconds: float = 3.0
 ## Planning margin after the longest chase (speed boosts and a dash carry the player a little
 ## further in the same time).
 @export_range(0.0, 10.0, 0.5, "suffix:s") var chase_margin_seconds: float = 1.0
-## DESIGN-TBD: the next host comes at least this long after the previous chase could end. Longer than
+## The next host comes at least this long after the previous chase could end (FB 105). Longer than
 ## the cyborg's spawn lead, so the next host isn't even in play before the chase is over.
 @export_range(0.0, 30.0, 0.5, "suffix:s") var host_gap_seconds: float = 7.0
 

@@ -2,32 +2,59 @@
 
 [ext_resource type="Script" path="res://scripts/campaign/boss_def.gd" id="1_script"]
 [ext_resource type="Script" path="res://scripts/campaign/boss_phase.gd" id="2_phase"]
+[ext_resource type="Script" path="res://scripts/core/level_config.gd" id="3_level"]
+[ext_resource type="Resource" path="res://data/bosses/marketplace_boss_tuning.tres" id="4_tuning"]
+[ext_resource type="Resource" path="res://data/bosses/marketplace_boss_skin.tres" id="5_skin"]
 
 [sub_resource type="Resource" id="phase_1"]
 script = ExtResource("2_phase")
 health_share = 1.0
 hits = 1
-intro_seconds = 2.0
+pace = 1.0
+intro_seconds = 4.5
 
 [sub_resource type="Resource" id="phase_2"]
 script = ExtResource("2_phase")
 health_share = 1.0
 hits = 1
-intro_seconds = 2.0
+pace = 1.0
+intro_seconds = 2.6
 
 [sub_resource type="Resource" id="phase_3"]
 script = ExtResource("2_phase")
 health_share = 1.0
 hits = 1
-intro_seconds = 2.0
+pace = 1.0
+intro_seconds = 2.6
+
+[sub_resource type="Resource" id="arena"]
+script = ExtResource("3_level")
+id = &"marketplace_boss_arena"
+display_name = "The House's arena"
+level_seed = 1301
+duration_seconds = 60.0
+difficulty = 0.0
+difficulty_ramp = 0.0
+features = PackedStringArray()
+skin = ExtResource("5_skin")
+start_clear_distance = 90.0
 
 [resource]
 script = ExtResource("1_script")
 id = &"marketplace_boss"
 display_name = "The House"
-notes = "Designed, not built yet (GDD §10): a slot machine the size of a building, rolling down the market street. Each spin of its reels announces the attacks: cherry bombs, a rolling electric fence, gold blocks slammed into the lanes. Run over the glowing 7 buttons while the reels spin to rig a jackpot, then stomp the coin hopper that bursts open on top."
+scene = "res://scenes/bosses/the_house.tscn"
+notes = "GDD §10: a slot machine the size of a building, rolling down the market street. Each spin of its reels announces the attacks: cherry bombs, a rolling electric fence, gold blocks slammed into the lanes. Run over the glowing 7 buttons while the reels spin to rig a jackpot (on the floor, then one on a wall among wall fences, then one under a floating billboard guarded by Barnacle Turrets), then stomp the coin hopper that bursts open on top."
+weapon_share_cap = 0.34
 phases = Array[ExtResource("2_phase")]([SubResource("phase_1"), SubResource("phase_2"), SubResource("phase_3")])
+arena = SubResource("arena")
+arena_laps = 2
+tuning = ExtResource("4_tuning")
+music = &"marketplace"
+two_star_seconds = 92.0
+three_star_seconds = 72.0
 armor_rule = true
 armor_delay_min = 15.0
 armor_delay_max = 17.0
 armor_pickups_per_phase = 1
+armor_when_unprotected = true

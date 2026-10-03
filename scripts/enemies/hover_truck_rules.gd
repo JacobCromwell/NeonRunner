@@ -5,19 +5,23 @@ extends RefCounted
 ## - One at a time: a truck placed while another's lane is still reserved is dropped (with
 ##   min_gap_seconds between them), and so is one too close to the end for its shortest stay.
 ## - Rare early, more frequent later: at most max_per_level_at(enemy_scaling) trucks in a level
-##   (DESIGN-TBD: 1 early, up to 3 by the last levels); the earliest are kept.
+##   (FB 94: 1 early, up to 3 by the last levels); the earliest are kept.
 ## - Its lane (the outer lane on its side) is kept free while it's around: no gaps, fences or other
 ##   floor enemies there from just before its burst point until it has left (stay_max + leave).
 ##   It hovers over such things anyway, and the player needs that lane for route (b).
 ## - The wall section it bursts through keeps no sign and no wall enemy.
 ## - With the `ramps` feature, route (a) gets a ramp on its side ramp_after_seconds after the burst
 ##   (unless one is there already), clear of signs, and not before the ramps' start.
-## - DESIGN-TBD: a level with the feature always gets at least one truck (the patterns may pick
+## - A level with the feature always gets at least one truck (FB 94; the patterns may pick
 ##   none, and the level that introduces the truck should show it).
 ## - Late starts (LevelConfig.feature_starts): no truck before the `hover_truck` feature's start; the
 ##   guaranteed one falls in the same share of the stretch where trucks are active.
 ## - In a level paced in bursts (LevelConfig.quiet_seconds, The Hush), the guaranteed truck bursts in
 ##   during a burst when one lies in its share of the level.
+## - clear_before is metres at MovementTuning.REFERENCE_SPEED, stretched by the level's pace
+##   (LevelGenerator.pace), so its lane is kept clear as long before the burst in a faster zone. The
+##   truck itself moves with the player once it's out (its offsets and burst_lead are the player's
+##   frame), so nothing else of it depends on the run speed.
 
 const TYPE: String = "hover_truck"
 
@@ -39,7 +43,7 @@ static func apply(gen: LevelGenerator) -> void:
 	var most: int = t.max_per_level_at(gen.config.enemy_scaling)
 	for e: Dictionary in trucks:
 		var at: float = e["at"]
-		if at > latest or at < earliest or at - t.burst_lead - t.clear_before < free_from or kept.size() >= most:
+		if at > latest or at < earliest or window_start(t, at, gen.pace) < free_from or kept.size() >= most:
 			removed.append(e)
 			continue
 		kept.append(e)
@@ -58,7 +62,7 @@ static func apply(gen: LevelGenerator) -> void:
 		var lane: int = layout.outer_lane(side)
 		e["lane"] = lane
 		var at: float = e["at"]
-		_clear_lane(layout, lane, window_start(t, at), window_end(t, at, speed))
+		_clear_lane(layout, lane, window_start(t, at, gen.pace), window_end(t, at, speed))
 		_clear_burst_wall(layout, t, side, at)
 		if gen.config.has_feature("ramps"):
 			_ensure_ramp(gen, t, side, lane, at)
@@ -69,14 +73,50 @@ static func tuning() -> HoverTruckTuning:
 	return res as HoverTruckTuning if res is HoverTruckTuning else HoverTruckTuning.new()
 
 
-## Where its lane must be free: from a little before the spot where it lands ...
-static func window_start(t: HoverTruckTuning, at: float) -> float:
-	return at - t.burst_lead - t.clear_before
+## Where its lane must be free: from a little before the spot where it lands (clear_before, stretched
+## by the level's `pace`) ...
+static func window_start(t: HoverTruckTuning, at: float, pace: float = 1.0) -> float:
+	return at - t.burst_lead - t.clear_before * pace
 
 
 ## ... until it has left, even after its longest stay.
 static func window_end(t: HoverTruckTuning, at: float, speed: float) -> float:
 	return at + (t.stay_max_seconds + t.leave_seconds) * speed
+
+
+## What the generator's fill pass (LevelGenerator.fill_keep_outs) keeps off around truck entry `e`, in
+## every lane: from the start of its lane's window until its shortest stay is over (it's surely there,
+## lurching and firing, and that's what goes on). Fillers may come after that, while it may still stay:
+## after_fill() then clears its lane of them, as apply() cleared it of the patterns' pieces.
+static func keep_out(gen: LevelGenerator, e: Dictionary) -> Vector2:
+	var t: HoverTruckTuning = tuning()
+	var at: float = float(e["at"])
+	return Vector2(window_start(t, at, gen.pace), at + t.stay_min_seconds * gen.speed)
+
+
+## After the generator's fill pass (LevelGenerator._fill_empty_stretches): every truck's lane is kept
+## free of the fillers' holes and fences until it has left, as of the patterns' (apply). Taking pieces
+## out of a row never makes it unfair.
+static func after_fill(gen: LevelGenerator) -> void:
+	var t: HoverTruckTuning = tuning()
+	for e: Dictionary in gen.layout.enemies:
+		if String(e.get("type", "")) == TYPE:
+			var at: float = float(e["at"])
+			_clear_lane(gen.layout, int(e.get("lane", -1)), window_start(t, at, gen.pace), window_end(t, at, gen.speed))
+
+
+## What the generator's zone doodads keep off (LevelGenerator.doodad_keep_outs): every truck's lane for
+## its whole stay (window_start to window_end), where none stands and none pushes the player into it
+## (its sides are solid, and its forward lurch is deadly in its lane). keep_out() already keeps them
+## off every lane while it's surely there.
+static func doodad_keep_outs(gen: LevelGenerator) -> Array[Dictionary]:
+	var t: HoverTruckTuning = tuning()
+	var out: Array[Dictionary] = []
+	for e: Dictionary in gen.layout.enemies:
+		if String(e.get("type", "")) == TYPE:
+			var at: float = float(e["at"])
+			out.append({"lane": int(e.get("lane", -1)), "from": window_start(t, at, gen.pace), "to": window_end(t, at, gen.speed)})
+	return out
 
 
 ## The lanes at track distance `at` that no hover truck keeps free (its lane, from window_start to
@@ -88,7 +128,7 @@ static func open_lanes(gen: LevelGenerator, at: float) -> Array[int]:
 		var free: bool = true
 		for e: Dictionary in gen.layout.enemies:
 			if String(e.get("type", "")) == TYPE and int(e.get("lane", -1)) == lane \
-					and at >= window_start(t, float(e["at"])) and at <= window_end(t, float(e["at"]), gen.speed):
+					and at >= window_start(t, float(e["at"]), gen.pace) and at <= window_end(t, float(e["at"]), gen.speed):
 				free = false
 				break
 		if free:
@@ -136,8 +176,9 @@ static func _ensure_ramp(gen: LevelGenerator, t: HoverTruckTuning, side: int, la
 		c += 4.0
 
 
-## Same fairness as pattern ramps: solid floor under it, no sign blocking its wall entry, and no pad
-## sharing its spot.
+## Same fairness as pattern ramps: solid floor under it, no sign blocking its wall entry, no pad
+## sharing its spot, and none in a pad's run-up (CeilingZones.pad_lane_clear: a ramp there would throw
+## the player onto the wall before the pad; the run-up is a full jump, longer at a faster zone's speed).
 static func _ramp_fits(gen: LevelGenerator, side: int, lane: int, at: float) -> bool:
 	var layout: LevelLayout = gen.layout
 	var length: float = gen.tuning.ramp_length
@@ -150,6 +191,11 @@ static func _ramp_fits(gen: LevelGenerator, side: int, lane: int, at: float) -> 
 		for p: Dictionary in list:
 			if int(p["lane"]) == lane and float(p["at"]) >= at - 4.0 and float(p["at"]) <= at + length + 4.0:
 				return false
+	var ramp := {"side": side, "at": at}
+	for p: Dictionary in layout.pads:
+		var pad: float = float(p["at"])
+		if gen.zones.ramp_in(layout, ramp, Vector2(gen.zones.pad_zone(pad).x, pad + gen.zones.pad_length), int(p["lane"])):
+			return false
 	return true
 
 
@@ -160,7 +206,7 @@ static func _ramp_fits(gen: LevelGenerator, side: int, lane: int, at: float) -> 
 static func _add_guaranteed(gen: LevelGenerator, t: HoverTruckTuning, latest: float) -> Dictionary:
 	var rng: RandomNumberGenerator = gen.rng_for("hover_truck_guarantee")
 	var lo: float = maxf(gen.feature_share_at(TYPE, t.guaranteed_from),
-		gen.config.start_clear_distance + t.burst_lead + t.clear_before)
+		gen.config.start_clear_distance + t.burst_lead + t.clear_before * gen.pace)
 	var hi: float = minf(gen.feature_share_at(TYPE, t.guaranteed_to), latest)
 	if hi < lo:
 		return {}

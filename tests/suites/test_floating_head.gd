@@ -15,6 +15,8 @@ extends TestSuite
 ##   run lasts 15-20 s; the rules hold on the real arena at every lane count; every attempt plays out
 ##   the same way; the blast's damage rules, and a wall runner beside it is safe;
 ## - the reveal (its face powers on once) and the later, shorter runs of the faster phases.
+## Every fight here runs at the City's speed (21 m/s), as the campaign plays it (GDD §3; task E1f:
+## FloatingHeadBot.campaign_tuning).
 
 const BOSS_PATH: String = "res://data/bosses/city_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
@@ -24,6 +26,8 @@ var def: BossDef
 
 
 func run() -> void:
+	# The fight at the City's speed, as the campaign plays it (GDD §3; E1f).
+	tuning = FloatingHeadBot.campaign_tuning(tuning)
 	sim = RunSim.new(tree, tuning)
 	def = load(BOSS_PATH) as BossDef
 	_test_data()
@@ -141,21 +145,21 @@ func _floor_clear(layout: LevelLayout, lane: int, from: float, to: float) -> boo
 
 ## The fairness rules for a lock, rechecked from the arena's layout: the lanes struck are clear around
 ## the blast, and a free lane lies within reach, clear (with every lane on the way) from the player to
-## past the blast.
-func _lock_fair(layout: LevelLayout, t: FloatingHeadTuning, lock: Dictionary, lanes_count: int) -> bool:
+## past the blast. Its margins along the track at the run's `pace` (GDD §3: as long to run as at 18 m/s).
+func _lock_fair(layout: LevelLayout, t: FloatingHeadTuning, lock: Dictionary, lanes_count: int, pace: float) -> bool:
 	var lanes: Array = lock["lanes"]
 	var at: float = float(lock["at"])
 	var pl: int = int(lock["player_lane"])
 	var d0: float = float(lock["d0"])
 	for l: int in lanes:
-		if not _floor_clear(layout, l, at - t.clear_before_impact, at + t.clear_after_impact):
+		if not _floor_clear(layout, l, at - t.clear_before_impact * pace, at + t.clear_after_impact * pace):
 			return false
 	for e: int in lanes_count:
 		if lanes.has(e) or absi(e - pl) > t.max_escape_lanes:
 			continue
 		var ok: bool = true
 		for l: int in range(mini(pl, e), maxi(pl, e) + 1):
-			if l != pl and not _floor_clear(layout, l, d0, at + t.escape_clear_after):
+			if l != pl and not _floor_clear(layout, l, d0, at + t.escape_clear_after * pace):
 				ok = false
 		if ok:
 			return true
@@ -468,7 +472,7 @@ func _test_real_arena() -> void:
 		var locks: Array[Dictionary] = _events(head, &"lock")
 		var unfair: int = 0
 		for l: Dictionary in locks:
-			if not _lock_fair(world.layout, head.tuning, l, lanes):
+			if not _lock_fair(world.layout, head.tuning, l, lanes, head.run_pace()):
 				unfair += 1
 		check(locks.size() >= 4, "bombs fall on the real arena too (%d locks, %d lanes)" % [locks.size(), lanes])
 		check(unfair == 0, "every lock leaves a clear way out and lands on clear roof (%d unfair, %d lanes)" % [unfair, lanes])
@@ -630,8 +634,16 @@ func _test_route_in() -> void:
 	check(not App.screen is SlotScreen and run != null and run.encounter is FloatingHead
 		and run.context.mode == RunContext.Mode.CAMPAIGN and run.context.step.id == "city/boss",
 		"the campaign's boss step starts the fight, no placeholder card (E1d)")
+	var city: float = App.campaign.step("city/boss").zone.run_speed
 	if run != null:
 		check(run.world.skin is CitySkin and run.hud.boss_bar.visible, "in the City's look, with the boss bar")
+		# GDD §3 (E1f): as fast as the City's levels, and the fight's distances follow its pace.
+		var head := run.encounter as FloatingHead
+		check(is_equal_approx(run.world.tuning.run_speed, city) and is_equal_approx(run.world.player.speed, city)
+			and head != null and is_equal_approx(head.run_pace(), city / MovementTuning.REFERENCE_SPEED)
+			and is_equal_approx(head.arena.lap_length, city * head.arena.config.duration_seconds),
+			"at the City's speed, like its levels (%.1f m/s, pace %.3f)" % [run.world.tuning.run_speed,
+			head.run_pace() if head != null else 0.0])
 	App.show_title()
 	await tree.process_frame
 	check(App.call(&"_start_boss_arg", "city_boss", PackedStringArray()), "--boss=city_boss starts the fight")
@@ -639,6 +651,17 @@ func _test_route_in() -> void:
 	run = App.run
 	check(run != null and run.encounter is FloatingHead and run.context.mode == RunContext.Mode.CAMPAIGN,
 		"as the campaign's step (the full flow)")
+	check(run != null and is_equal_approx(run.world.tuning.run_speed, city), "at the City's speed too")
+	App.show_title()
+	await tree.process_frame
+	# A harder tier multiplies its speed, as it does a level's (GDD §6); the fight follows that pace too.
+	App.start_boss(App.campaign.step("city/boss"), 2)
+	await physics_frames(3)
+	run = App.run
+	var tier_speed: float = city * App.campaign.speed_multiplier(2)
+	check(run != null and is_equal_approx(run.world.tuning.run_speed, tier_speed)
+		and is_equal_approx((run.encounter as FloatingHead).run_pace(), tier_speed / MovementTuning.REFERENCE_SPEED),
+		"on the hardest tier, %.1f m/s" % tier_speed)
 	App.show_title()
 	await tree.process_frame
 	App.profile = saved

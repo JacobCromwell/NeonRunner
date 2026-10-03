@@ -15,8 +15,9 @@ extends RefCounted
 ##   waves, only where their longer stretch is clear (else a single one goes), and never the level's
 ##   first pulse (GDD §6: one new thing at a time).
 ## - Big attacks (GDD §9): no pulse comes during an Octodog's run (its charges are one big attack, so
-##   it would keep the pulse waiting). Drones and hover trucks, which stay for a while, and a Bad
-##   Dream's chase, which only comes if the player kills its host, take turns with it through the
+##   it would keep the pulse waiting), a floor cut's encounter (task C2) or a Gilded Sentinel's turn
+##   (task C4: from its claim to its last swing). Drones and hover trucks, which stay for a while, and
+##   a Bad Dream's chase, which only comes if the player kills its host, take turns with it through the
 ##   director at run time (DESIGN-TBD, docs/questions/c3.md: a chase's stretch, 20–30 s, would leave
 ##   few places for a visit in the Golden levels).
 ## - One at a time: a Resonator whose visit would begin before the last one's could end (its last
@@ -27,6 +28,9 @@ extends RefCounted
 ##   one is added (guarantee_one) at the first spot after the feature's start where its pulses fit
 ##   (DESIGN-TBD, docs/questions/c3.md).
 ## Each Resonator's params get "pulses", "pulse_at" and "double"; it rechecks every pulse at run time.
+## Its distances (approach_ease, pulse_slack) and the search's steps and offsets here are metres at
+## MovementTuning.REFERENCE_SPEED, stretched by the level's pace (LevelGenerator.pace), like the
+## Resonator's own at run time; hover_ahead is the same at every pace (ResonatorTuning.wave_speed_at).
 
 const RUN_AFTER: Array[String] = ["drone", "host", "hover_truck", "octodog", "cyborg", "window_cyborg",
 	"screech", "screech_vents", "generator", "barnacle_turret", "wall_fences", "wall_fences_partial",
@@ -55,7 +59,7 @@ static func apply(gen: LevelGenerator) -> void:
 	var dropped: Array[Dictionary] = []
 	for e: Dictionary in resonators_in(layout):
 		# One at a time: a Resonator that would arrive before the last visit is over waits until then.
-		var lowest: float = maxf(free_from + t.hover_ahead - t.approach_ease, gen.feature_start(TYPE))
+		var lowest: float = maxf(free_from + t.hover_ahead - gen.metres(t.approach_ease), gen.feature_start(TYPE))
 		var base: float = maxf(float(e["at"]), lowest)
 		var at: float = base
 		var plan: Dictionary = plan_visit(gen, t, rng, at, busy, first)
@@ -65,7 +69,7 @@ static func apply(gen: LevelGenerator) -> void:
 		for offset: float in MOVE_OFFSETS:
 			if not plan.is_empty():
 				break
-			var spot: float = maxf(base + offset, lowest)
+			var spot: float = maxf(base + gen.metres(offset), lowest)
 			if tried.has(spot):
 				continue
 			tried.append(spot)
@@ -88,6 +92,23 @@ static func tuning() -> ResonatorTuning:
 	return res as ResonatorTuning if res is ResonatorTuning else ResonatorTuning.new()
 
 
+## What the generator's fill pass (LevelGenerator.fill_keep_outs) keeps off around Resonator entry `e`:
+## its planned visit, from its first pulse's warning to where its last wave meets the player on the
+## clear floor it was planned on (with PLAN_MARGIN); without a plan, from where it has eased into pacing
+## the player to its spot.
+static func keep_out(gen: LevelGenerator, e: Dictionary) -> Vector2:
+	var t: ResonatorTuning = tuning()
+	var at: float = float(e["at"])
+	var params: Dictionary = e.get("params", {})
+	var anchors: Array = params.get("pulse_at", [])
+	if anchors.is_empty():
+		return Vector2(visit_start(t, at, gen.pace), at)
+	var doubles: Array = params.get("double", [])
+	var double: bool = doubles.size() == anchors.size() and bool(doubles[-1])
+	var last: Vector2 = t.meeting_stretch(float(anchors[-1]), double, gen.speed, gen.config.enemy_scaling, gen.pace)
+	return Vector2(float(anchors[0]), last.y + PLAN_MARGIN)
+
+
 ## Every Resonator in the layout, along the track.
 static func resonators_in(layout: LevelLayout) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
@@ -98,15 +119,44 @@ static func resonators_in(layout: LevelLayout) -> Array[Dictionary]:
 	return out
 
 
-## Where the player is when a Resonator placed at `at` has eased into pacing them (Resonator.visit_start).
-static func visit_start(t: ResonatorTuning, at: float) -> float:
-	return at - t.hover_ahead + t.approach_ease
+## Where the player is when a Resonator placed at `at` has eased into pacing them (Resonator.visit_start),
+## in a level at `pace` (MovementTuning.pace).
+static func visit_start(t: ResonatorTuning, at: float, pace: float = 1.0) -> float:
+	return at - t.hover_ahead + t.approach_ease * pace
 
 
 ## The stretches no pulse may overlap (from its warning until its wave has met the player): every
-## Octodog's run (its params.floor_span, octodog_rules.gd).
+## Octodog's run (its params.floor_span, octodog_rules.gd), every floor cut's whole encounter (task C2:
+## a Buzz Overdrive's, FloorCutPlan.window; its rules run before these) and every Gilded Sentinel's turn
+## (task C4: from its claim to its last swing, sentinel_turns; its rules run before these too).
 static func busy_stretches(gen: LevelGenerator) -> Array[Vector2]:
-	return octodog_runs(gen.layout)
+	var out: Array[Vector2] = octodog_runs(gen.layout)
+	out.append_array(cut_windows(gen.layout, gen.speed))
+	out.append_array(sentinel_turns(gen.layout, gen.speed))
+	return out
+
+
+## Every floor cut's window in `layout` at run speed `speed` (FloorCutPlan.window: from where its cause
+## sets off to the cut's end): a big attack of its own, the one thing going on.
+static func cut_windows(layout: LevelLayout, speed: float) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for c: Dictionary in layout.cuts:
+		out.append(FloorCutPlan.window(c, speed))
+	return out
+
+
+## Every Gilded Sentinel's turn in `layout` at run speed `speed` (GildedSentinelTuning.claim_window: a big
+## attack that can't wait claims its turn before its warning, so a pulse due then would be held for it).
+static func sentinel_turns(layout: LevelLayout, speed: float) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	var st := EnemyDirector.tuning_for("gilded_sentinel") as GildedSentinelTuning
+	if st == null:
+		return out
+	for e: Dictionary in layout.enemies:
+		if String(e.get("type", "")) == "gilded_sentinel":
+			var swings: int = int((e.get("params", {}) as Dictionary).get("swings", 1))
+			out.append(st.claim_window(float(e["at"]), swings, speed))
+	return out
 
 
 ## Every Octodog's run in `layout` (LevelGenerator.enemy_floor_span).
@@ -114,7 +164,7 @@ static func octodog_runs(layout: LevelLayout) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	for e: Dictionary in layout.enemies:
 		if String(e.get("type", "")) == "octodog":
-			var span: Vector2 = LevelGenerator.enemy_floor_span(e)
+			var span: Vector2 = LevelGenerator.enemy_floor_span(e)  # a dog's planned run (params.floor_span)
 			if span.y >= span.x:
 				out.append(span)
 	return out
@@ -129,7 +179,7 @@ static func plan_visit(gen: LevelGenerator, t: ResonatorTuning, rng: RandomNumbe
 	var wanted: int = t.pulses_at(scaling)
 	var share: float = t.double_share_at(scaling)
 	var settle: float = t.settle_seconds * speed
-	var earliest: float = maxf(visit_start(t, at) + settle, gen.config.start_clear_distance)
+	var earliest: float = maxf(visit_start(t, at, gen.pace) + settle, gen.config.start_clear_distance)
 	var anchors: Array[float] = []
 	var doubles: Array[bool] = []
 	for k: int in wanted:
@@ -143,8 +193,8 @@ static func plan_visit(gen: LevelGenerator, t: ResonatorTuning, rng: RandomNumbe
 			break
 		anchors.append(a)
 		doubles.append(dbl)
-		earliest = a + (t.pulse_seconds(dbl, speed, scaling, gen.tuning.hurtbox_size.z, EnemyDirector.SHOT_PASS_MARGIN)
-			+ t.pulse_rest_at(scaling)) * speed
+		earliest = a + (t.pulse_seconds(dbl, speed, scaling, gen.tuning.hurtbox_size.z, EnemyDirector.SHOT_PASS_MARGIN,
+			gen.pace) + t.pulse_rest_at(scaling)) * speed
 	if anchors.is_empty() or anchors.size() < mini(t.min_pulses, wanted):
 		return {}
 	return {"pulse_at": anchors, "double": doubles}
@@ -154,7 +204,7 @@ static func plan_visit(gen: LevelGenerator, t: ResonatorTuning, rng: RandomNumbe
 static func find_pulse(gen: LevelGenerator, t: ResonatorTuning, from: float, double: bool,
 		busy: Array[Vector2]) -> float:
 	var a: float = from
-	while a <= from + t.pulse_slack:
+	while a <= from + gen.metres(t.pulse_slack):
 		if pulse_fits(gen, t, a, double, busy):
 			return a
 		a += STEP
@@ -165,7 +215,7 @@ static func find_pulse(gen: LevelGenerator, t: ResonatorTuning, from: float, dou
 ## floor (Resonator.pulse_clear, with PLAN_MARGIN to spare) before the level's end-clear stretch, after
 ## the feature's start, and nothing of it overlaps a `busy` stretch.
 static func pulse_fits(gen: LevelGenerator, t: ResonatorTuning, a: float, double: bool, busy: Array[Vector2]) -> bool:
-	var stretch: Vector2 = t.meeting_stretch(a, double, gen.speed, gen.config.enemy_scaling)
+	var stretch: Vector2 = t.meeting_stretch(a, double, gen.speed, gen.config.enemy_scaling, gen.pace)
 	if stretch.y + PLAN_MARGIN > gen.layout.length - gen.config.end_clear_distance or not gen.feature_started(TYPE, a):
 		return false
 	for b: Vector2 in busy:
@@ -194,7 +244,7 @@ static func _commit(gen: LevelGenerator, t: ResonatorTuning, e: Dictionary, plan
 ## Where the player is when a visit whose last warning starts at `last` is over (its last wave past them).
 static func visit_end(gen: LevelGenerator, t: ResonatorTuning, last: float, double: bool) -> float:
 	return last + t.pulse_seconds(double, gen.speed, gen.config.enemy_scaling, gen.tuning.hurtbox_size.z,
-		EnemyDirector.SHOT_PASS_MARGIN) * gen.speed
+		EnemyDirector.SHOT_PASS_MARGIN, gen.pace) * gen.speed
 
 
 ## One Resonator at the first spot after the feature's start where a visit fits, in a level left
@@ -203,13 +253,13 @@ static func _add_guaranteed(gen: LevelGenerator, t: ResonatorTuning, busy: Array
 	var layout: LevelLayout = gen.layout
 	var rng: RandomNumberGenerator = gen.rng_for("resonator_guarantee")
 	var at: float = maxf(gen.feature_start(TYPE), gen.config.start_clear_distance) + t.hover_ahead
-	while visit_start(t, at) < layout.length - gen.config.end_clear_distance:
+	while visit_start(t, at, gen.pace) < layout.length - gen.config.end_clear_distance:
 		var plan: Dictionary = plan_visit(gen, t, rng, at, busy, true)
 		if not plan.is_empty():
 			var e: Dictionary = gen.add_enemy(TYPE, at, layout.lane_count / 2, 0, {})
 			_commit(gen, t, e, plan)
 			return e
-		at += GUARANTEE_STEP
+		at += gen.metres(GUARANTEE_STEP)
 	return {}
 
 
@@ -217,10 +267,13 @@ static func _add_guaranteed(gen: LevelGenerator, t: ResonatorTuning, busy: Array
 ## a clear meeting stretch (at run speed, without the plan's margin), before the end-clear stretch,
 ## off every Octodog's run, pulses in order and at least a pulse and a rest apart, and one visit at a
 ## time.
-static func problems(layout: LevelLayout, config: LevelConfig, movement: MovementTuning) -> PackedStringArray:
+static func problems(layout: LevelLayout, config: LevelConfig, base: MovementTuning) -> PackedStringArray:
 	var out := PackedStringArray()
 	var t: ResonatorTuning = tuning()
+	# The level's own run speed (its zone's in the campaign), as the generator built it.
+	var movement: MovementTuning = config.movement_for(base)
 	var speed: float = movement.run_speed
+	var pace: float = movement.pace()
 	var zones := CeilingZones.make(config, movement)
 	var scaling: float = config.enemy_scaling
 	var last_ok: float = layout.length - config.end_clear_distance
@@ -234,16 +287,16 @@ static func problems(layout: LevelLayout, config: LevelConfig, movement: Movemen
 		if anchors.is_empty() or int(params.get("pulses", 0)) != anchors.size() or doubles.size() != anchors.size():
 			out.append("%s has no pulses planned" % tag)
 			continue
-		if visit_start(t, float(e["at"])) < prev_end - 0.01:
+		if visit_start(t, float(e["at"]), pace) < prev_end - 0.01:
 			out.append("%s arrives before the last visit is over" % tag)
 		var free: float = -INF
 		for i: int in anchors.size():
 			var a: float = float(anchors[i])
 			var dbl: bool = bool(doubles[i])
-			var stretch: Vector2 = t.meeting_stretch(a, dbl, speed, scaling)
+			var stretch: Vector2 = t.meeting_stretch(a, dbl, speed, scaling, pace)
 			if a < free - 0.01:
 				out.append("%s: pulse %d comes before the last one and its rest are over" % [tag, i])
-			if i == 0 and a < visit_start(t, float(e["at"])) + t.settle_seconds * speed - 0.01:
+			if i == 0 and a < visit_start(t, float(e["at"]), pace) + t.settle_seconds * speed - 0.01:
 				out.append("%s: its first pulse comes before it has settled" % tag)
 			if stretch.y > last_ok:
 				out.append("%s: pulse %d meets the player in the end-clear stretch" % [tag, i])
@@ -253,8 +306,14 @@ static func problems(layout: LevelLayout, config: LevelConfig, movement: Movemen
 			for b: Vector2 in busy:
 				if b.x <= stretch.y and b.y >= a:
 					out.append("%s: pulse %d overlaps an Octodog's run (%.0f-%.0f)" % [tag, i, b.x, b.y])
-			free = a + (t.pulse_seconds(dbl, speed, scaling, movement.hurtbox_size.z, EnemyDirector.SHOT_PASS_MARGIN)
-				+ t.pulse_rest_at(scaling)) * speed
+			for b: Vector2 in cut_windows(layout, speed):
+				if b.x <= stretch.y and b.y >= a:
+					out.append("%s: pulse %d overlaps a floor cut (%.0f-%.0f)" % [tag, i, b.x, b.y])
+			for b: Vector2 in sentinel_turns(layout, speed):
+				if b.x <= stretch.y and b.y >= a:
+					out.append("%s: pulse %d overlaps a Gilded Sentinel's turn (%.0f-%.0f)" % [tag, i, b.x, b.y])
+			free = a + (t.pulse_seconds(dbl, speed, scaling, movement.hurtbox_size.z, EnemyDirector.SHOT_PASS_MARGIN,
+				pace) + t.pulse_rest_at(scaling)) * speed
 		prev_end = float(anchors[-1]) + t.pulse_seconds(bool(doubles[-1]), speed, scaling, movement.hurtbox_size.z,
-			EnemyDirector.SHOT_PASS_MARGIN) * speed + (t.turn_wait_max + t.visit_gap_seconds) * speed
+			EnemyDirector.SHOT_PASS_MARGIN, pace) * speed + (t.turn_wait_max + t.visit_gap_seconds) * speed
 	return out

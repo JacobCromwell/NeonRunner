@@ -681,7 +681,8 @@ func _test_generator() -> void:
 	var layout: LevelLayout = LevelGenerator.new().generate(plain, tuning, LevelGenerator.load_for(plain))
 	check(Rules.resonators_in(layout).is_empty(), "no Resonators without the feature")
 	# The Golden levels: on their own seeds, Golden 1 introduces it right after the feature's start (within
-	# test_campaign's INTRODUCTION_REACH); on other seeds almost always.
+	# test_campaign's INTRODUCTION_REACH, stretched by the level's pace like its patterns); on other seeds
+	# almost always.
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var late: Array = []
 	for id: String in ["golden/1", "golden/2", "golden/3"]:
@@ -702,10 +703,11 @@ func _test_generator() -> void:
 					var start: float = gen.feature_start("resonator")
 					var first: float = float(found[0]["at"])
 					check(first >= start, "%s: nothing of it before the feature's start (%.0f m, start %.0f m)" % [tag, first, start])
-					if first > start + 210.0:
+					var reach: float = 210.0 * gen.pace
+					if first > start + reach:
 						late.append(tag)
 					if extra == 0:
-						check(first <= start + 210.0, "%s: its first comes right after the feature's start (%.0f m, start %.0f m)"
+						check(first <= start + reach, "%s: its first comes right after the feature's start (%.0f m, start %.0f m)"
 							% [tag, first, start])
 	check(late.size() <= 1, "Golden 1 introduces it right after its start on other seeds too (late: %s)" % [late])
 	# The campaign's recency curve never boosts it (FeatureRecency.max_factor): its rules keep one visit at
@@ -733,11 +735,12 @@ func _test_campaign() -> void:
 		var config: LevelConfig = campaign.configure(campaign.step(case[0]), case[1])
 		config.skin = null  # the grey box: skins never change gameplay
 		zones = CeilingZones.make(config, tuning)
+		var speed: float = config.movement_for(tuning).run_speed  # the Golden Zone's
 		var layout: LevelLayout = LevelGenerator.new().generate(config, tuning, LevelGenerator.load_for(config))
 		# Played until the last Resonator's visit is well over (its pulses may wait at run time).
 		var until: float = 0.0
 		for e: Dictionary in Rules.resonators_in(layout):
-			until = maxf(until, float((e["params"]["pulse_at"] as Array)[-1]) + 20.0 * tuning.run_speed)
+			until = maxf(until, float((e["params"]["pulse_at"] as Array)[-1]) + 20.0 * speed)
 		var w: RunWorld = sim.build_world(layout, null, null, config)
 		w.player.god_mode = true
 		w.player.grapples = 1_000_000
@@ -759,7 +762,7 @@ func _test_campaign() -> void:
 						met.append(w.player.distance)
 					last_rel[key] = rel if wave.rolling else INF
 		var bad: PackedStringArray = []
-		var margin: float = 0.4 * tuning.run_speed
+		var margin: float = 0.4 * speed
 		for d: float in met:
 			var zone := Vector2(d - margin, d + margin)
 			for g: Dictionary in layout.gaps:

@@ -40,12 +40,13 @@ extends Node3D
 ## (entrance and transitions), _on_pattern_started(i) and _pattern_tick(delta) (the pattern),
 ## _on_weak_point_hit(part, hazard), _on_part_defeated(part, cause), _on_part_emp(part, center, radius),
 ## _on_phase_ended(i), _on_defeated(), _defeated_tick(delta), victory_over() (when a defeat that plays
-## out on the track is over) and _on_armor_pickup_due(reason) (where the armor rule's pickup goes).
+## out on the track is over), victory_riff() (false for a defeat that ends in silence) and
+## _on_armor_pickup_due(reason) (where the armor rule's pickup goes).
 ## Helpers: add_part(), spawn_enemy() (normal enemies: a cyborg drop, a
 ## Buzz Overdrive onto the roof), offer_pickup() (an armor, shield or grapple pickup on the floor),
 ## damage() (a boss's own causes: a cluster shocked by a fence, an EMP), hit_damage(),
-## set_light_level(), arena queries (floor_clear, live_fence_between, hole_between), pace(), phase(),
-## is_final_phase(), player_distance(), log_event().
+## set_light_level() and set_scenery_light(), arena queries (floor_clear, live_fence_between,
+## hole_between), pace(), phase(), is_final_phase(), player_distance(), log_event().
 
 ## A phase begins: its intro starts (the entrance for the first phase, the transition for later ones).
 signal phase_started(index: int)
@@ -116,6 +117,8 @@ var _light: float = 1.0
 var _light_target: float = 1.0
 var _light_speed: float = 0.0
 var _light_base: Dictionary = {}
+## The scenery light it set last (scenery_light()).
+var _scenery_set: float = 1.0
 
 
 ## A new encounter from a built boss's scene, or null (with an error) if its root isn't one.
@@ -170,6 +173,7 @@ func setup(p_world: RunWorld, p_context: RunContext, p_arena: BossArena) -> void
 	props.name = "Props"
 	add_child(props)
 	props.setup(world)
+	world.director.warm_up_entries(warm_enemies())
 	world.player.item_used.connect(_on_item_used)
 	var start: int = 0
 	var resume: Dictionary = context.boss_resume
@@ -353,6 +357,14 @@ func add_part(script: Script, params: Dictionary = {}) -> BossPart:
 	return part
 
 
+## The normal enemies this fight brings into play itself (spawn_enemy, add_pieces), as layout-like
+## entries the director readies during the fight's load (EnemyDirector.warm_up_entries, task PERF1): a
+## type's first spawn would otherwise load its scripts and build its look in that frame. A boss script that
+## brings any overrides this; the default brings none.
+func warm_enemies() -> Array[Dictionary]:
+	return []
+
+
 ## Brings a normal enemy into play now (the Floating Head's cyborg drop, GDD §10): a layout entry for
 ## the director, with a seed from the fight's own count so every attempt matches.
 func spawn_enemy(type: String, at: float, lane: int, side: int = 0, params: Dictionary = {}) -> Enemy:
@@ -383,8 +395,10 @@ func set_weak_points_enabled(on: bool) -> void:
 
 ## Dims the arena's light to `level` (1 = the zone's normal light) over `seconds`, or brings it back:
 ## a smooth fade, never a flash, and never below MIN_LIGHT_LEVEL (GDD §10, Sleep Taker: darker, but
-## never pitch black). It scales the environment's ambient and sky light and the directional light;
-## glowing things (hazards, credits, the HUD) keep their colours. The light returns with the fight.
+## never pitch black). It scales the environment's ambient and sky light, its fog's light and the
+## directional light, and the scenery's own light (ZoneSkin's `scenery_light`: the skins' scenery shaders
+## are unshaded, so the lights alone don't dim them), never below ZoneSkin.MIN_SCENERY_LIGHT; glowing
+## things (hazards, credits, the HUD) keep their colours. The light returns with the fight.
 func set_light_level(level: float, seconds: float = 1.0) -> void:
 	_capture_light()
 	_light_target = clampf(level, MIN_LIGHT_LEVEL, 1.0)
@@ -396,6 +410,15 @@ func set_light_level(level: float, seconds: float = 1.0) -> void:
 
 func light_level() -> float:
 	return _light
+
+
+## Sets the scenery's own light (ZoneSkin's `scenery_light`) directly, for a lighting moment of the
+## boss's own beyond set_light_level's range (the Sleep Taker's defeat: the first grey dawn); like
+## set_light_level's, it's put back when the fight ends.
+func set_scenery_light(light: float) -> void:
+	_capture_light()
+	_scenery_set = light
+	ZoneSkin.set_scenery_light(light)
 
 
 ## Adds an entry to `events` (for tests and the debug readout).
@@ -478,6 +501,12 @@ func victory_over() -> bool:
 	return true
 
 
+## True if the win plays the victory riff (LevelRun: the level-complete riff in the music's key, GDD
+## §11), as by default; a boss whose defeat ends in silence says no (the Sleep Taker, GDD §10).
+func victory_riff() -> bool:
+	return true
+
+
 ## The standard armor rule says an armor pickup is due (armor_pickup_due; `reason` as there): by
 ## default one on the floor ahead of the player (offer_pickup). A boss may put it somewhere of its
 ## own (a spot on its arena) with offer_pickup's `at` and `lane`.
@@ -516,10 +545,12 @@ func _physics_process(delta: float) -> void:
 
 
 func _exit_tree() -> void:
-	# The lights are the run's: give them back as they were.
+	# The lights are the run's: give them back as they were (the scenery's only if nothing has set it
+	# since: a new run's own light stays).
 	if not _light_base.is_empty():
+		var scenery_ours: bool = is_equal_approx(ZoneSkin.scenery_light_now, _scenery_set)
 		_light = 1.0
-		_apply_light()
+		_apply_light(scenery_ours)
 
 
 func _begin_phase(index: int) -> void:
@@ -660,16 +691,30 @@ func _capture_light() -> void:
 		lights.append([node, (node as DirectionalLight3D).light_energy])
 	_light_base = {"env": env, "lights": lights,
 		"ambient": env.ambient_light_energy if env != null else 1.0,
-		"sky": env.background_energy_multiplier if env != null else 1.0}
+		"sky": env.background_energy_multiplier if env != null else 1.0,
+		"fog": env.fog_light_energy if env != null else 1.0,
+		"scenery": ZoneSkin.scenery_light_now}
+	_scenery_set = ZoneSkin.scenery_light_now
 
 
-func _apply_light() -> void:
+## The scenery light set_light_level gives the arena now (its own, the level's darkness, times the
+## light), never below ZoneSkin.MIN_SCENERY_LIGHT unless the arena's own is darker still.
+func scenery_light() -> float:
+	var base: float = float(_light_base.get("scenery", ZoneSkin.scenery_light_now))
+	return maxf(base * _light, minf(base, ZoneSkin.MIN_SCENERY_LIGHT))
+
+
+func _apply_light(scenery: bool = true) -> void:
 	if _light_base.is_empty():
 		return
 	var env: Environment = _light_base["env"]
 	if env != null:
 		env.ambient_light_energy = float(_light_base["ambient"]) * _light
 		env.background_energy_multiplier = float(_light_base["sky"]) * _light
+		env.fog_light_energy = float(_light_base["fog"]) * _light
 	for entry: Array in _light_base["lights"]:
 		if is_instance_valid(entry[0]):
 			(entry[0] as DirectionalLight3D).light_energy = float(entry[1]) * _light
+	if scenery:
+		_scenery_set = scenery_light()
+		ZoneSkin.set_scenery_light(_scenery_set)

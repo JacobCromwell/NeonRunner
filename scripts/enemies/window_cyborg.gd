@@ -10,8 +10,8 @@ extends Enemy
 ##   whether a wall runner passes above (a jump or ramp entry) or below (entering early enough to
 ##   have slid down), GDD §3.
 ## - Skins don't know about it, so it draws its own window frame on the facade.
-## - DESIGN-TBD: it holds fire at a player on the ceiling or running along its own wall (there its
-##   body is the hazard); the GDD only says it shoots at the player.
+## - It holds fire at a player on the ceiling or running along its own wall (there its
+##   body is the hazard; FB 70); the GDD only says it shoots at the player.
 ## Once defeated, its body slumps over the sill and stays until the player is far past.
 ##
 ## Spawn params: fires (bool, default true; tests), health (float).
@@ -34,6 +34,14 @@ var band_bottom: float = 0.0
 var band_top: float = 0.0
 
 var _husk: bool = false
+
+
+## A window cyborg's body as `entry`'s would be, for EnemyDirector.warm_up (which frees it): its upper
+## body builds what the cyborg kit shares (Cyborg.warm_up).
+static func warm_up(world: RunWorld, entry: Dictionary) -> Node:
+	var body := CyborgBody.new()
+	body.build(world.skin.enemy_variant, false, true, int(entry.get("seed", 0)))
+	return body
 
 
 func _build() -> void:
@@ -108,7 +116,7 @@ func _may_attack() -> bool:
 	if player.surface == Player.Surface.WALL and player.wall_side == side:
 		return false
 	var ahead: float = track_distance() - player.distance
-	return ahead > 0.0 and ahead <= tuning.engage_distance
+	return ahead > 0.0 and ahead <= gun.engage_distance()
 
 
 ## The window: a dark opening lit from inside by the cold, dim light of a screen (the cult's feed,

@@ -219,7 +219,7 @@ extends ZoneSkin
 ## Height of the anti-grav pad's light column.
 @export_range(1.0, 10.0, 0.1, "suffix:m") var pad_beam_height: float = 5.8
 @export var ramp_color: Color = Color(0.3, 1.0, 0.35)
-## DESIGN-TBD: speed pads share the ramps' green "safe boost" family (MeshKit.speed_strip).
+## Speed pads share the ramps' green "safe boost" family (MeshKit.speed_strip; FB 49).
 @export var speed_pad_color: Color = Color(0.45, 1.0, 0.55)
 @export var finish_color: Color = Color(1.0, 1.0, 1.0)
 ## Scorched steel under pads, ramps and the finish gantry.
@@ -231,6 +231,7 @@ var _street: DeadStreet
 var _towers: DeadTowers
 var _ceilings: DeadCeilings
 var _props: DeadProps
+var _doodads: DeadDoodads
 ## The latest wall face seen (wall_section runs before a chunk's ceilings): a ceiling across every
 ## lane reaches from wall to wall, and a narrow one knows which of its sides reach a wall.
 var _wall_x: float = 0.0
@@ -259,6 +260,12 @@ func floor_segment(parent: Node3D, center: Vector3, size: Vector3, lane_x: float
 	var batch := MeshBatch.new()
 	street().build(batch, center, size, lane_x, edge_start, edge_end)
 	batch.commit(parent)
+
+
+## A floor cut (task B4; GDD §9.9: the Buzz Overdrive appears in the Dead Zone too): the rubble street
+## split open down the lane (DeadStreet.cut).
+func floor_cut(parent: Node3D, cut: FloorCutSection) -> void:
+	street().cut(parent, cut)
 
 
 func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: float) -> void:
@@ -311,6 +318,11 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	var batch := MeshBatch.new()
 	MeshKit.finish_gate(batch, solid_material(), glow_material(), width, distance, finish_color, trigger_metal_color)
 	batch.commit(parent)
+
+
+## A crushed wreck (small), a rubble heap (medium) or fallen masonry (large): DeadDoodads.
+func doodad(body: Node3D, size: Vector3, size_class: StringName, side: int, look_seed: int) -> void:
+	doodads().build(body, size, size_class, side, look_seed)
 
 
 # --- The cult's feed and emblem ------------------------------------------------------------
@@ -434,3 +446,9 @@ func props() -> DeadProps:
 	if _props == null:
 		_props = DeadProps.new(self)
 	return _props
+
+
+func doodads() -> DeadDoodads:
+	if _doodads == null:
+		_doodads = DeadDoodads.new(self)
+	return _doodads

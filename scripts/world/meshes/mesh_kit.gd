@@ -185,6 +185,28 @@ const WALKWAY_MEDALLION: int = 4
 ## COLOR.rgb, glowing at COLOR.a (warm-white neon) or unlit at 0. It fades out below about 24 pixels.
 const PAT_CULT_MARK: int = 60
 
+## The Golden Palace's surface patterns of the solid kit shader (kit_golden_palace.gdshaderinc), ids
+## 70-79 (task D6b): the city-sized palace interior of Golden 3, reusing the Golden Zone's gold and
+## marble (golden_metal(), golden_marble(), golden_light()) rather than inventing new ones (GDD §5:
+## it reuses D6a's materials). None of them glows: gold stays reflective metal.
+## A palace floor's lane (GDD §5: marble, inlay, gold runners): polished marble with a gold inlay
+## runner down the lane's centre. UV.x is metres signed from the lane's centre (so the runner and the
+## joint line up with lane_x, continuous across chunk cuts, since it depends only on world x and the
+## lane's own x); param = palace_floor_param(): flags (a joint on the left, 2 on the right, where a
+## neighbouring lane's floor doesn't carry on) + 8 * the lane's half-width in centimetres.
+const PAT_PALACE_FLOOR: int = 70
+## Everything under a break in the palace floor (a collapsed floor, an open stairwell, a light well),
+## seen only through gaps: deep shade that only darkens with depth, with the faint silhouette of
+## broken stone steps near the top, so a gap reads as a hole at a glance.
+const PAT_PALACE_WELL: int = 71
+## The colonnade's flush wall panel between two pilasters, from the floor to the entablature (world
+## position, the same marble as the floor): the gold wall-run height marks inlaid in it (the
+## material's gp_mark_a/b, from the skin's wall_height_marks), the same language as every zone.
+const PAT_PALACE_PANEL: int = 72
+## PAT_PALACE_FLOOR's flags.
+const PALACE_JOINT_LEFT: int = 1
+const PALACE_JOINT_RIGHT: int = 2
+
 const SHADER_DIR: String = "res://scripts/world/meshes/shaders/"
 ## How far the glow under a ceiling's end band (ceiling_end) reaches back from the band, under the
 ## ceiling. It never reaches past the far end.
@@ -195,6 +217,9 @@ const CEILING_END_NEAR: float = 4.0
 ## A ship's engine glows at its stern (stern_halo, beams) fade out this close to the camera: it passes
 ## right under them after the player drops off the ship's end.
 const STERN_NEAR: float = 8.0
+## How far a wall fence's drawn field reaches past its hitbox, out toward the lanes and past each end of
+## its band (dress_wall_fence: the visual errs on the side of looking bigger than what hurts).
+const WALL_FIELD_GROW: float = 0.06
 
 static var _boxes: Dictionary = {}
 static var _prisms: Dictionary = {}
@@ -248,6 +273,12 @@ static func dz_tower_param(style: int, seed: int) -> float:
 ## The PAT_WALKWAY parameter: `flags` (WALKWAY_*) and the lane's width in metres (to the centimetre).
 static func walkway_param(flags: int, width: float) -> float:
 	return float((flags & 7) + 8 * roundi(width * 100.0))
+
+
+## The PAT_PALACE_FLOOR parameter: `flags` (PALACE_JOINT_*) and the lane's `half_width` in metres (to
+## the centimetre).
+static func palace_floor_param(flags: int, half_width: float) -> float:
+	return float((flags & 3) + 8 * roundi(half_width * 100.0))
 
 
 # --- Unit templates ------------------------------------------------------------
@@ -440,6 +471,50 @@ static func dress_fence(hazard: Hazard, size: Vector3, mounts: ArrayMesh, field_
 	visual.bind(hazard)
 
 
+## Dresses a wall fence (task B5; GDD §9.1) like dress_fence() a floor fence: its energy field
+## (wall_field_mesh, reaching a little further out from the facade than the hitbox, and a little past
+## its band's ends: hitboxes err in the player's favour) and the zone's `mounts` mesh (the emitters on
+## the facade), whose glowing parts use part_materials[0]. Field and glowing parts follow the hazard's
+## state (HazardStateVisual). `size` is the hitbox (x out from the wall face on `side`, y up its band, z
+## along the track), centred on the hazard.
+static func dress_wall_fence(hazard: Hazard, size: Vector3, side: int, mounts: ArrayMesh, field_materials: Array[Material],
+		part_materials: Array[Material]) -> void:
+	var field: MeshInstance3D = MeshBatch.add_instance(hazard, wall_field_mesh(size, side, WALL_FIELD_GROW))
+	var parts: MeshInstance3D = MeshBatch.add_instance(hazard, mounts)
+	var visual := HazardStateVisual.new()
+	hazard.add_child(visual)
+	visual.add_target(field, -1, field_materials)
+	for s: int in mounts.get_surface_count():
+		if mounts.surface_get_material(s) == part_materials[0]:
+			visual.add_target(parts, s, part_materials)
+	visual.bind(hazard)
+
+
+## A wall fence's energy field (task B5; GDD §9.1: "the same pink crackle, strung across the wall-run
+## path between emitters on the facade, the way a floor fence crosses a lane"): three cards through the
+## depth of `size` (hazard-local, centred: x from the wall face on `side` out toward the lanes, y up its
+## band, z along the track), from the face out `grow` metres past the hitbox and `grow` past each end of
+## its band. UV.x runs up the band, so the energy_field.gdshader arcs run from one emitter to the other,
+## and UV.y from the facade out, so its bright edges lie along the facade and along the line where the
+## field ends toward the lanes. Use it with the fence's field materials (one per state).
+static func wall_field_mesh(size: Vector3, side: int, grow: float) -> ArrayMesh:
+	var id: String = "wall_field_%s_%d_%s" % [size, side, grow]
+	if _templates.has(id):
+		return _templates[id]
+	var t := MeshLayer.new()
+	var half: Vector3 = size * 0.5
+	var face: float = side * half.x
+	var zs: Array[float] = [half.z, 0.0, -half.z]
+	for i: int in zs.size():
+		t.rect(Vector3(face, -half.y - grow, zs[i]), Vector3(0, size.y + grow * 2.0, 0), Vector3(-side * (size.x + grow), 0, 0),
+			Color.WHITE, 0.0, 0, Vector2.ZERO, Vector2.ONE, float(i))
+	var batch := MeshBatch.new()
+	batch.layer(null).append(t)
+	var mesh: ArrayMesh = batch.to_mesh()
+	_templates[id] = mesh
+	return mesh
+
+
 ## The glowing parts every electric fence shares, on the `hot` layer (hazard-local, ground_y = the
 ## floor): the bar you jump over (full) or slide under (gapped, with a thinner bar along its top),
 ## and emitters where the field meets its posts at x = ±post_x.
@@ -458,7 +533,7 @@ static func fence_bars(hot: MeshLayer, size: Vector3, ground_y: float, gapped: b
 ## A sign jutting out of the wall on `side`, the size of its hitbox (hazard-local): the yellow/black
 ## hazard frame around a content panel facing the track, drawn with `content_pattern` (PAT_GLYPHS
 ## neon, PAT_POSTER billboards, ...). `halo` > 0 adds a soft glow card in front of the panel.
-## DESIGN-TBD: the yellow/black hazard frame is the proposed sign language for every zone.
+## The yellow/black hazard frame is the sign language for every zone (FB 40).
 static func hazard_sign(size: Vector3, side: int, frame_color: Color, content_color: Color, content_glow: float,
 		content_pattern: int, content_param: float, halo: float, solid_material: Material, glow_material: Material) -> ArrayMesh:
 	var id: String = "sign_%s_%d_%s_%s_%s_%d_%s_%s_%d_%d" % [size, side, frame_color, content_color, content_glow,
@@ -518,7 +593,7 @@ static func energy_field_mesh(size: Vector3) -> ArrayMesh:
 
 ## A hazard frame around a box of `size` centred on `center`: striped top and bottom rails along z
 ## and striped end caps, leaving both x faces open for the zone's content panel. Rails are `rail` thick.
-## DESIGN-TBD: the yellow/black striped frame is the proposed cross-zone sign language.
+## The yellow/black striped frame is the cross-zone sign language (FB 40).
 static func hazard_frame(layer: MeshLayer, center: Vector3, size: Vector3, rail: float, color: Color,
 		glow_amount: float) -> void:
 	var h: Vector3 = size * 0.5
@@ -631,8 +706,8 @@ static func kicker_ramp(size: Vector3, side: int, color: Color, metal: Color, so
 
 ## A speed pad, the size of its trigger volume and centred on it (the floor at -size.y / 2): a flush
 ## plate of arrows streaming down the track between two glowing rails.
-## DESIGN-TBD: the GDD doesn't describe speed pads; green arrows put them in the ramps' "safe boost"
-## family (like the grey box).
+## The GDD doesn't describe speed pads; green arrows put them in the ramps' "safe boost" family
+## (like the grey box; FB 49).
 static func speed_strip(size: Vector3, color: Color, plate_color: Color, solid_material: Material,
 		glow_material: Material) -> ArrayMesh:
 	var id: String = "speed_%s_%s_%s_%d_%d" % [size, color, plate_color, solid_material.get_instance_id(),

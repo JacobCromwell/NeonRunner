@@ -222,7 +222,7 @@ extends ZoneSkin
 ## Height of the anti-grav pad's light column.
 @export_range(1.0, 10.0, 0.1, "suffix:m") var pad_beam_height: float = 5.8
 @export var ramp_color: Color = Color(0.3, 1.0, 0.35)
-## DESIGN-TBD: speed pads share the ramps' green "safe boost" family (MeshKit.speed_strip).
+## Speed pads share the ramps' green "safe boost" family (MeshKit.speed_strip; FB 49).
 @export var speed_pad_color: Color = Color(0.45, 1.0, 0.55)
 @export var finish_color: Color = Color(1.0, 1.0, 1.0)
 ## Scavenged steel under pads, ramps and the finish gantry, and on rails, masts and gantries.
@@ -243,6 +243,7 @@ var _street: GanglandStreet
 var _ruins: GanglandRuins
 var _ceiling: GanglandCeiling
 var _props: GanglandProps
+var _doodads: GanglandDoodads
 
 
 func _init() -> void:
@@ -315,6 +316,11 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	var batch := MeshBatch.new()
 	MeshKit.finish_gate(batch, solid_material(), glow_material(), width, distance, finish_color, scrap_metal_color)
 	batch.commit(parent)
+
+
+## Burned-out car wrecks (small and medium) and a broken-down shop (large): GanglandDoodads.
+func doodad(body: Node3D, size: Vector3, size_class: StringName, side: int, look_seed: int) -> void:
+	doodads().build(body, size, size_class, side, look_seed)
 
 
 # --- The cult's feed ------------------------------------------------------------------------
@@ -441,3 +447,9 @@ func props() -> GanglandProps:
 	if _props == null:
 		_props = GanglandProps.new(self)
 	return _props
+
+
+func doodads() -> GanglandDoodads:
+	if _doodads == null:
+		_doodads = GanglandDoodads.new(self)
+	return _doodads

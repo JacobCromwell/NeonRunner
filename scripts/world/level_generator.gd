@@ -11,7 +11,13 @@ extends RefCounted
 ## 2. Enemy rules: for every feature with a script at res://scripts/enemies/<feature>_rules.gd,
 ##    its static `apply(gen: LevelGenerator)` runs (e.g. drone anti-grav pad schedules). Rules that
 ##    add a feature's enemies or pieces keep them after its start (feature_active, feature_share_at).
-## 3. Credits (GDD §7): trails in the clear stretches, rich credits in risky spots.
+## 3. The fill pass (LevelConfig.fill_empty_seconds): more plain obstacle patterns in long empty
+##    stretches.
+## 4. Zone doodads (LevelConfig.doodad_share): scenery standing in lanes, in the stretches where
+##    nothing else goes on (_place_doodads).
+## 5. Wall fences (the `wall_fences` and `wall_fences_partial` features; WallFencePlacement): electric
+##    fences across the wall-run path, only where they're fair (_place_wall_fences).
+## 6. Credits (GDD §7): trails in the clear stretches, rich credits in risky spots.
 ## Fairness rules (longest gap, hull lead-in and landing) come from LevelConfig, so they are data.
 ##
 ## Ceilings (GDD §3, changed September 26, 2026): the floor under a ceiling may be dangerous, since the
@@ -51,6 +57,41 @@ extends RefCounted
 ## GDD §5, The Hush): quiet stretches pick sparse patterns without enemies (bar quiet_features), bursts
 ## pick threats, densely. Every rule, fairness check and the guarantee apply to it unchanged, and a
 ## burst takes at most one introduction, so it never stacks two new things.
+##
+## Pace and busier levels (GDD §3, owner's playtest September 30, 2026): a level runs at its own speed
+## (LevelConfig.run_speed, its zone's in the campaign), and everything the patterns and rules measure
+## in metres for MovementTuning.REFERENCE_SPEED is stretched by the level's pace (metres()), so every
+## reaction window keeps its seconds. After the rules, a fill pass (LevelConfig.fill_empty_seconds)
+## puts more of the level's plain obstacle patterns into its long empty stretches, off everything the
+## rules and ceilings keep (fill_keep_outs), spaced like the pattern pass: busier, never tighter.
+##
+## Zone doodads (GDD §3, same playtest): scenery pieces standing in lanes that never hurt; running into
+## one pushes the player into a neighbouring lane. After the fill pass, a level's doodad_share of the
+## stretches where nothing else goes on (doodad_keep_outs) get one, in an inner lane, with room to push
+## into and the level's spacing after it: they add to what the patterns, the rules and the fill pass
+## put there (nothing moves or goes for them, and nothing comes after them to undo or crowd them), so
+## a level looks busier without needing a reaction or narrowing one.
+##
+## Floor cuts (task B4; GDD §9.9, the Buzz Overdrive's): floors that turn into gaps during play are
+## planned in advance as data (LevelLayout.cuts; FloorCutPlan: lane, start, end, and when it runs,
+## keyed to the player's distance), so a level stays fair and the same on every attempt. A rules
+## script plans them (add_cut; CutPlacement clears the way), only where GDD §9.9's limits allow
+## (cut_problem): one at a time, never through a ramp, a pad or the safe landing zone after a ceiling,
+## its lane free of everything else from its warning to past its cause, the other lanes whole enough
+## (on 3 lanes two stay whole; LevelConfig.cut_holes_beside on more), nothing else going on meanwhile,
+## and room to leave its lane after the warning (cut_escape_clear). Everything planned after a cut
+## keeps off it: the fill pass and zone doodads (fill_keep_outs, doodad_keep_outs), floor_clear,
+## ceilings added later (CeilingZones) and floor credits in its lane. A level without cuts is built
+## exactly as before.
+##
+## Wall fences (task B5; GDD §9.1: electric fences that span a side wall and switch off and on, to make
+## the walls less safe; full-height ones from Marketplace 2, partial ones over the low or the high part
+## of the wall from the Corporate zone): after the doodads, from a random stream of their own, they're
+## added to the walls only where they're fair (WallFencePlacement: never on a wall section with a sign
+## or a window cyborg, never where a ramp launches the player along their wall, the outer lane beside
+## them clear to drop off into, no floor cut or big attack meanwhile), so everything else in a level is
+## built exactly as without them. A level that brings them in meets its first one soon after the
+## feature's start, alone, with a long off time.
 
 const DENOMINATIONS: Array[int] = [1, 5, 25, 100]
 const RULES_DIR: String = "res://scripts/enemies"
@@ -70,13 +111,42 @@ const GUARANTEE_SHARES: Array[float] = [0.3, 0.0, 0.55, 0.12, 0.4, 0.05, 0.7, 0.
 ## spread over its stretch, so one that rarely survives (a floor enemy where the drone's pads clear
 ## the floor) gets several chances in a build.
 const GUARANTEE_MAX_PICKS: int = 3
+## The fill pass keeps this much more than the level's spacing from everything already there, for a
+## pattern's tail (the pattern pass spaces patterns from the end of the last one's `length`, which
+## runs a little past its last piece).
+const FILL_TAIL_SECONDS: float = 0.25
+## Seconds before its spot an enemy counts as busy for the fill pass (fill_keep_outs), unless its
+## rules script says otherwise (`keep_out`): it winds up, fires or springs out as the player closes in.
+const FILL_ENEMY_LEAD_SECONDS: float = 2.0
+## Under a ceiling the fill pass times its fillers as the gauntlet patterns time their pieces
+## (data/patterns/README.md): from this long after the pad ...
+const FILL_CEILING_AFTER_PAD_SECONDS: float = 1.0
+## ... until this long before the ceiling's end (its landing zone follows).
+const FILL_CEILING_BEFORE_END_SECONDS: float = 0.6
+## A floor credit this close to a zone doodad in its lane (or inside it) is dropped (metres).
+const DOODAD_CREDIT_MARGIN: float = 1.0
+## A player leaving a floor cut's lane is out of it by the time the cut's front is this many metres
+## ahead of them (cut_escape_clear): the cause's reach, the body's and a frame of closing in.
+const CUT_CONTACT_METRES: float = 4.0
+## Clear floor around a switch into a neighbouring lane that a floor cut's escape needs, beyond the
+## switch itself (cut_escape_clear), and the most a piece's edge may come near (metres).
+const CUT_SWITCH_MARGIN: float = 1.0
 
 var layout: LevelLayout
 var config: LevelConfig
+## The level's movement tuning (LevelConfig.movement_for: at its own run speed, its zone's in the
+## campaign).
 var tuning: MovementTuning
 ## Run speed the level is built for, and a full jump's length at that speed.
 var speed: float
 var jump_distance: float
+## How much faster than MovementTuning.REFERENCE_SPEED the level runs (MovementTuning.pace; 1 at
+## 18 m/s). The patterns' metres (an element's `at`, a pattern's `length`, a sign's length, credit
+## spacing) and the rules' margins in metres were written for the reference speed: they're stretched
+## by it (metres()), so every pattern keeps its timing in seconds and a faster zone is never secretly
+## tighter (GDD §3, "Pace and busier levels"). Seconds (`at_seconds`, spacing, ceilings' lengths) and
+## jumps (a gap's jump_frac) follow the run speed already.
+var pace: float = 1.0
 ## Problems found in the pattern data during the last generate(), one line per pattern.
 var warnings: PackedStringArray = []
 ## How many builds the last generate() made: 1, unless guarantee_features had to force a missing
@@ -89,6 +159,9 @@ var zones: CeilingZones
 ## (`used`: the track it took; `due`: an introduction or one of the guarantee's forced picks). For
 ## tests and the level report.
 var picks: Array[Dictionary] = []
+## The patterns the fill pass of the last build placed (LevelConfig.fill_empty_seconds), in order:
+## {id, at, used}. For tests and tools/measure/level_pace.gd.
+var fills: Array[Dictionary] = []
 
 var _rng := RandomNumberGenerator.new()
 ## Which ceilings are narrow, and their lanes (ceiling_lanes): a stream of its own, drawn from only
@@ -132,8 +205,9 @@ static func load_for(p_config: LevelConfig) -> Array:
 
 func generate(p_config: LevelConfig, p_tuning: MovementTuning, patterns: Array) -> LevelLayout:
 	config = p_config
-	tuning = p_tuning
+	tuning = p_config.movement_for(p_tuning)
 	speed = tuning.run_speed
+	pace = tuning.pace()
 	jump_distance = tuning.jump_distance(speed)
 	zones = CeilingZones.make(config, tuning, speed)
 	attempts = 1
@@ -164,6 +238,21 @@ func generate(p_config: LevelConfig, p_tuning: MovementTuning, patterns: Array) 
 	return layout
 
 
+## A generator over a layout that already exists, for the checks its helpers make during a run (a boss
+## arena's track, BossArena.cut_problem; endless mode's next stretch): `p_config`'s level at
+## `p_tuning`'s speed (LevelConfig.movement_for), with `p_layout` as its layout. Nothing is generated.
+static func for_layout(p_config: LevelConfig, p_tuning: MovementTuning, p_layout: LevelLayout) -> LevelGenerator:
+	var gen := LevelGenerator.new()
+	gen.config = p_config
+	gen.tuning = p_config.movement_for(p_tuning)
+	gen.speed = gen.tuning.run_speed
+	gen.pace = gen.tuning.pace()
+	gen.jump_distance = gen.tuning.jump_distance(gen.speed)
+	gen.zones = CeilingZones.make(p_config, gen.tuning, gen.speed)
+	gen.layout = p_layout
+	return gen
+
+
 ## One build of the level: the pattern pass (with the introductions and the guarantee's forced
 ## picks, `forced`: feature → how many builds missed it), the rules, the credits.
 func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
@@ -175,6 +264,7 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	_enemy_count = 0
 	warnings.clear()
 	picks.clear()
+	fills.clear()
 	_intro_burst = -1
 	var accel: float = tuning.speed_gain_per_minute / 60.0
 	layout.length = speed * config.duration_seconds + 0.5 * accel * config.duration_seconds * config.duration_seconds
@@ -211,9 +301,18 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 		cursor = clear_end
 
 	_apply_enemy_rules()
+	_fill_empty_stretches(patterns)
+	_place_doodads(patterns)
+	_place_wall_fences()
 	_place_credits()
 	layout.enemies.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["at"] < b["at"])
 	return layout
+
+
+## `reference_metres` (a distance written for MovementTuning.REFERENCE_SPEED: a pattern's, a rule's
+## margin) at this level's run speed: stretched by `pace`, so it takes as long to run.
+func metres(reference_metres: float) -> float:
+	return reference_metres * pace
 
 
 ## The difficulty at a point of the level (0–1 progress): the level's base plus its ramp.
@@ -231,7 +330,11 @@ func quiet_at(at: float) -> bool:
 		return false
 	if at < config.start_clear_distance:
 		return true
-	return fposmod(at - config.start_clear_distance, _pacing_cycle()) < config.quiet_seconds * speed
+	# The same sums as stretch_end(), so a quiet stretch ends exactly where it says (a cursor it moves
+	# to the next burst's start is in that burst).
+	var from: float = config.start_clear_distance
+	var cycle: float = _pacing_cycle()
+	return at < from + floorf((at - from) / cycle) * cycle + config.quiet_seconds * speed
 
 
 ## The track distance where the quiet stretch or the burst holding `at` ends (INF in a level paced
@@ -354,7 +457,7 @@ func _pacing_allows(pattern: Dictionary, at: float) -> bool:
 	for element: Dictionary in pattern.get("elements", []):
 		var kind: String = String(element.get("kind", ""))
 		if kind == "enemy":
-			last_enemy = maxf(last_enemy, float(element.get("at", 0.0)) + float(element.get("at_seconds", 0.0)) * speed)
+			last_enemy = maxf(last_enemy, metres(float(element.get("at", 0.0))) + float(element.get("at_seconds", 0.0)) * speed)
 		threat = threat or kind in ["gap", "fence", "sign", "enemy"]
 	var quiet: bool = quiet_at(at)
 	if not quiet and not threat:
@@ -485,8 +588,9 @@ func one_lane_seconds(lanes: Vector2i, seconds: float) -> float:
 	return seconds
 
 
-## True if nothing on the floor touches any lane between two track distances: no gap, no fence,
-## and no floor enemy's stretch (enemy_floor_span).
+## True if nothing on the floor touches any lane between two track distances: no gap, no fence, no
+## floor cut (its lane's window, FloorCutPlan.lane_window) and no floor enemy's stretch
+## (enemy_floor_span).
 func floor_clear(from: float, to: float) -> bool:
 	for g: Dictionary in layout.gaps:
 		if g["start"] <= to and g["end"] >= from:
@@ -494,8 +598,10 @@ func floor_clear(from: float, to: float) -> bool:
 	for f: Dictionary in layout.fences:
 		if f["at"] >= from and f["at"] <= to:
 			return false
+	if layout.cut_between(from, to):
+		return false
 	for e: Dictionary in layout.enemies:
-		var span: Vector2 = enemy_floor_span(e)
+		var span: Vector2 = enemy_floor_span(e, pace)
 		if span.x <= to and span.y >= from:
 			return false
 	return true
@@ -503,19 +609,20 @@ func floor_clear(from: float, to: float) -> bool:
 
 ## The stretch of floor [start, end] an enemy entry uses, which a ceiling's landing zone and the
 ## spots of its pads keep off (CeilingZones): its params.floor_span if its rules planned one, else
-## its tuning's reach around its position. Vector2(INF, -INF) (overlapping nothing) for types whose
-## tuning says they don't use the floor.
-static func enemy_floor_span(entry: Dictionary) -> Vector2:
+## its tuning's reach around its position, stretched by the level's `pace` (MovementTuning.pace: in a
+## faster zone the enemies move and reach further in the same time). Vector2(INF, -INF) (overlapping
+## nothing) for types whose tuning says they don't use the floor.
+static func enemy_floor_span(entry: Dictionary, pace: float = 1.0) -> Vector2:
 	var params: Dictionary = entry.get("params", {})
 	if params.get("floor_span") is Vector2:
 		return params["floor_span"]
 	var at: float = float(entry["at"])
 	var t := EnemyDirector.tuning_for(String(entry.get("type", ""))) as EnemyTuning
 	if t == null:
-		return Vector2(at - 10.0, at + 10.0)
+		return Vector2(at - 10.0 * pace, at + 10.0 * pace)
 	if not t.uses_floor:
 		return Vector2(INF, -INF)
-	return Vector2(at - t.floor_reach_before, at + t.floor_reach_after)
+	return Vector2(at - t.floor_reach_before * pace, at + t.floor_reach_after * pace)
 
 
 ## False for enemy types whose tuning says they never come down to the floor lanes (fliers such as
@@ -567,8 +674,9 @@ func _pick_pattern(patterns: Array, difficulty: float, at: float, only: String =
 ## features of the same kind, and the level places as many enemies, obstacles and safe mechanics as
 ## before. In a level paced in bursts, only the patterns _pacing_allows are taken (threats in bursts,
 ## enemies only there bar quiet_features), and a burst that has had its introduction leaves out the
-## features still waiting for theirs (_intro_held).
-func pick_weights(patterns: Array, difficulty: float, at: float, only: String = "") -> Dictionary:
+## features still waiting for theirs (_intro_held). With `fill`, just the patterns the fill pass may
+## place (is_filler).
+func pick_weights(patterns: Array, difficulty: float, at: float, only: String = "", fill: bool = false) -> Dictionary:
 	var candidates: Array = []
 	var weights: Array[float] = []
 	var recency: bool = config.recency_on()
@@ -587,6 +695,8 @@ func pick_weights(patterns: Array, difficulty: float, at: float, only: String = 
 		if difficulty < float(p.get("min_difficulty", 0.0)) or difficulty > float(p.get("max_difficulty", 1.0)):
 			continue
 		if config.lane_count < int(p.get("min_lanes", 1)):
+			continue
+		if fill and not is_filler(p):
 			continue
 		var requires: Array = p.get("requires", [])
 		if only != "" and not requires.has(only):
@@ -792,11 +902,12 @@ func missing_features(needed: PackedStringArray) -> PackedStringArray:
 
 
 ## Track distances of everything `feature` placed in `layout`, in order: ramps (ramps), anti-grav
-## pads (ceilings), speed pads (speed_pads), pulsing fences (pulsing), host cyborgs (host), cyborgs
-## that aren't hosts (cyborg), screeches from wall vents (screech_vents), and otherwise the enemies
-## of that type, which covers every enemy type. A feature whose rules script declares
+## pads (ceilings), speed pads (speed_pads), pulsing fences (pulsing), full-height wall fences
+## (wall_fences) and partial ones (wall_fences_partial), host cyborgs (host), cyborgs that aren't hosts
+## (cyborg), screeches from wall vents (screech_vents), and otherwise the enemies of that type, which
+## covers every enemy type. A feature whose rules script declares
 ## `static func positions(layout: LevelLayout) -> Array[float]` answers for itself (a new kind of
-## piece, such as wall fences).
+## piece).
 static func feature_positions(p_layout: LevelLayout, feature: String) -> Array[float]:
 	var out: Array[float] = []
 	var path: String = RULES_DIR.path_join("%s_rules.gd" % feature)
@@ -820,6 +931,11 @@ static func feature_positions(p_layout: LevelLayout, feature: String) -> Array[f
 			for f: Dictionary in p_layout.fences:
 				if bool(f["pulsing"]):
 					out.append(float(f["at"]))
+		"wall_fences", "wall_fences_partial":
+			# Full-height wall fences, or the partial ones (task B5, WallFencePlacement).
+			for w: Dictionary in p_layout.wall_fences:
+				if WallFencePlan.is_partial(w) == (feature == "wall_fences_partial"):
+					out.append(float(w["at"]))
 		_:
 			for e: Dictionary in p_layout.enemies:
 				var type: String = String(e.get("type", ""))
@@ -844,14 +960,16 @@ static func feature_positions(p_layout: LevelLayout, feature: String) -> Array[f
 ## Places every element of a pattern starting at `origin`. Returns the track length it used (a
 ## ceiling's includes its landing zone, so the next pattern starts past it). GDD §3: floor pieces
 ## and floor enemies may lie under a ceiling (the pattern's own: a gauntlet the ceiling escapes);
-## _secure_ceilings keeps its landing zone and pads' spots safe afterwards.
+## _secure_ceilings keeps its landing zone and pads' spots safe afterwards. The pattern's metres are
+## stretched by the level's pace (metres()), so it keeps its timing at any run speed.
 func _place_pattern(pattern: Dictionary, origin: float) -> float:
-	var used: float = float(pattern.get("length", 8.0))
+	var used: float = metres(float(pattern.get("length", 8.0)))
 	var prev_lanes: Array[int] = []
 	var prev_side: int = 1
 	for element: Dictionary in pattern.get("elements", []):
-		# "at" is in metres; "at_seconds" scales with run speed (for pieces timed against a hull).
-		var at: float = origin + float(element.get("at", 0.0)) + float(element.get("at_seconds", 0.0)) * speed
+		# "at" is in metres at the reference speed (stretched by the pace); "at_seconds" scales with run
+		# speed (for pieces timed against a hull).
+		var at: float = origin + metres(float(element.get("at", 0.0))) + float(element.get("at_seconds", 0.0)) * speed
 		match String(element.get("kind", "")):
 			"gap":
 				var lanes: Array[int] = _pick_lanes(element.get("lanes", {}), prev_lanes)
@@ -880,7 +998,7 @@ func _place_pattern(pattern: Dictionary, origin: float) -> float:
 				var sides: Array[int] = [side]
 				if String(element.get("side", "")) == "both":
 					sides = [-1, 1]
-				var sign_len: float = float(element.get("length", 8.0))
+				var sign_len: float = metres(float(element.get("length", 8.0)))
 				for s: int in sides:
 					layout.signs.append({
 						"side": s,
@@ -1062,6 +1180,662 @@ func _sorted(values: Array[int]) -> Array[int]:
 	return out
 
 
+# --- Busier levels: the fill pass (GDD §3, owner's playtest September 30, 2026) ------------------
+
+## Fills the level's long empty stretches with more of its plain obstacle patterns: where nothing goes
+## on for longer than LevelConfig.fill_empty_seconds at run speed (no piece and no enemy: fill_keep_outs'
+## "activity"), fillers (is_filler: holes and fences, picked by difficulty and weight as the pattern
+## pass picks) go wherever nothing is kept either (its "keep"), as far from everything already there as
+## the pattern pass spaces its patterns (the level's spacing there, plus FILL_TAIL_SECONDS) and as far
+## from each other. It runs after the
+## pattern pass and every rule, so track a rule kept for an enemy that then didn't come (a hover truck
+## too near the end, an Octodog whose charges didn't fit) doesn't stay bare, and it never touches what
+## a rule keeps. More of the same patterns, never harder ones (GDD §3: busier levels, "so there is
+## always something going on"). Its own random stream: with fill_empty_seconds 0 (quick play, tests,
+## boss arenas) a level is built exactly as it was before.
+func _fill_empty_stretches(patterns: Array) -> void:
+	if config.fill_empty_seconds <= 0.0:
+		return
+	var from: float = config.start_clear_distance
+	var to: float = layout.length - config.end_clear_distance
+	var outs: Dictionary = fill_keep_outs(patterns)
+	var blocked: Array[Vector2] = []
+	for k: Vector4 in outs["keep"]:
+		blocked.append(Vector2(k.x - k.z, k.y + k.w))
+	var empties: Array[Vector2] = free_stretches(outs["activity"], from, to)
+	var saved: RandomNumberGenerator = _rng
+	_rng = rng_for("fill")
+	for region: Vector2 in free_stretches(blocked, from, to):
+		# Only where nothing goes on for longer than fill_empty_seconds (every activity is kept, so the
+		# region lies inside one such stretch).
+		var empty := Vector2.ZERO
+		for e: Vector2 in empties:
+			if e.x <= region.x + 0.001 and e.y >= region.y - 0.001:
+				empty = e
+				break
+		if (empty.y - empty.x) / speed <= config.fill_empty_seconds:
+			continue
+		var cursor: float = region.x
+		var last: float = region.y
+		while cursor < last:
+			var difficulty: float = difficulty_at(cursor / layout.length)
+			var pattern: Dictionary = _pick_filler(patterns, difficulty, cursor, last - cursor)
+			if pattern.is_empty():
+				break
+			var used: float = _place_pattern(pattern, cursor)
+			fills.append({"id": String(pattern.get("id", "?")), "at": cursor, "used": used})
+			_trim_clear_stretches(Vector2(cursor, cursor + used))
+			cursor += used + _spacing_seconds(cursor + used, difficulty) * speed
+	_rng = saved
+	if not fills.is_empty():
+		_after_fill_rules()
+
+
+## Runs the `static func after_fill(gen: LevelGenerator)` of every feature's rules script that has one,
+## in the order of the level's features: a rule that keeps floor pieces out of somewhere the fill pass
+## doesn't keep off whole (a hover truck's lane) keeps the fillers out too.
+func _after_fill_rules() -> void:
+	for feature: String in config.features:
+		var path: String = RULES_DIR.path_join("%s_rules.gd" % feature)
+		if not ResourceLoader.exists(path):
+			continue
+		var script := load(path) as GDScript
+		if script != null and script.has_method("after_fill"):
+			script.call("after_fill", self)
+
+
+## True if the fill pass may place `pattern`: plain obstacles, holes and fences only, that need no
+## feature (so nothing new ever comes before its introduction) and put nothing on a wall.
+static func is_filler(pattern: Dictionary) -> bool:
+	if not (pattern.get("requires", []) as Array).is_empty():
+		return false
+	var elements: Array = pattern.get("elements", [])
+	if elements.is_empty():
+		return false
+	for element: Dictionary in elements:
+		if not (String(element.get("kind", "")) in ["gap", "fence"]):
+			return false
+	return true
+
+
+## What the fill pass keeps off: {"keep": Array[Vector4], "activity": Array[Vector2]}. "keep": stretches
+## of track [from, to] where something is going on or kept, as Vector4(from, to, margin before, margin
+## after), with how far a filler stays from each end (_fill_margin: the level's spacing there and a
+## pattern's tail; none where a gauntlet's timing already holds). "activity": what of it is going on
+## (every piece and enemy; not a landing zone, a pad's run-up or a quiet stretch). Kept off:
+## every floor piece (holes, fences, signs, speed pads), each ramp to where its wall run drops the player
+## back (RampLaunch), each pad's zone and each ceiling's landing zone (CeilingZones) and the floor under a
+## ceiling, but where the level already picks gauntlets (a pattern with a ceiling and holes or fences
+## under it, from its min_difficulty) over two lanes or more: there fillers may go under it, timed like
+## a gauntlet's pieces (FILL_CEILING_AFTER_PAD_SECONDS after its pads, FILL_CEILING_BEFORE_END_SECONDS
+## before its end); every enemy from FILL_ENEMY_LEAD_SECONDS before it to the end of the floor it uses
+## (LevelGenerator.enemy_floor_span), or what its rules script keeps for it (`static func keep_out(gen:
+## LevelGenerator, entry: Dictionary) -> Vector2`: a cyborg's margin, a hover truck's lane window, a
+## Resonator's visit, a drone wave until its first pad); a level's quiet stretches; and every floor
+## cut, in every lane, from its warning to its end (FloorCutPlan.window). (Zone doodads come after the
+## fill pass, into what it leaves: _place_doodads.)
+func fill_keep_outs(patterns: Array) -> Dictionary:
+	var out: Array[Vector4] = []
+	var half: float = tuning.fence_depth * 0.5
+	for g: Dictionary in layout.gaps:
+		out.append(_keep(g["start"], g["end"]))
+	for f: Dictionary in layout.fences:
+		out.append(_keep(float(f["at"]) - half, float(f["at"]) + half))
+	for s: Dictionary in layout.signs:
+		out.append(_keep(s["start"], s["end"]))
+	for r: Dictionary in layout.ramps:
+		out.append(_keep(float(r["at"]), maxf(ramp_launch(r).end(), float(r["at"]) + tuning.ramp_length)))
+	for p: Dictionary in layout.speed_pads:
+		out.append(_keep(p["at"], float(p["at"]) + tuning.speed_pad_length))
+	for p: Dictionary in layout.pads:
+		out.append(Vector4(float(p["at"]), float(p["at"]) + tuning.pad_length, 0.0, 0.0))
+	var hooks: Dictionary = {}
+	for e: Dictionary in layout.enemies:
+		var k: Vector2 = _enemy_keep_out(e, hooks)
+		out.append(_keep(k.x, k.y))
+	# A floor cut, in every lane, from its warning to its end or past its cause, whichever is later
+	# (GDD §9.9: nothing else in its lane, its neighbours kept whole, nothing else going on).
+	for c: Dictionary in layout.cuts:
+		var w: Vector2 = FloorCutPlan.window(c, speed)
+		out.append(_keep(w.x, w.y))
+	var activity: Array[Vector2] = []
+	for k: Vector4 in out:
+		activity.append(Vector2(k.x, k.y))
+	var gauntlets: float = gauntlet_difficulty(patterns)
+	var open_hulls: Array[Dictionary] = []
+	for h: Dictionary in layout.hulls:
+		var landing: Vector2 = zones.landing_zone(h)
+		if layout.hull_width(h) >= 2 and difficulty_at(float(h["start"]) / layout.length) >= gauntlets:
+			open_hulls.append(h)
+			out.append(Vector4(float(h["end"]) - FILL_CEILING_BEFORE_END_SECONDS * speed, landing.y, 0.0,
+				_fill_margin(landing.y)))
+		else:
+			out.append(_keep(float(h["start"]), landing.y))
+	for p: Dictionary in layout.pads:
+		var at: float = float(p["at"])
+		var zone: Vector2 = zones.pad_zone(at)
+		var under_open: bool = false
+		for h: Dictionary in open_hulls:
+			under_open = under_open or (at >= float(h["start"]) and at <= float(h["end"]))
+		if under_open:
+			out.append(Vector4(zone.x, maxf(zone.y, at + FILL_CEILING_AFTER_PAD_SECONDS * speed), _fill_margin(zone.x), 0.0))
+		else:
+			out.append(_keep(zone.x, zone.y))
+	for q: Vector2 in quiet_stretches():
+		out.append(_keep(q.x, q.y))
+	return {"keep": out, "activity": activity}
+
+
+## A keep-out [from, to] with the fill pass's usual margin at both ends (_fill_margin).
+func _keep(from: float, to: float) -> Vector4:
+	return Vector4(from, to, _fill_margin(from), _fill_margin(to))
+
+
+## The lowest difficulty at which the level picks a gauntlet: a pattern with a ceiling and holes or
+## fences under it whose features the level has, with pick weight. INF without one.
+func gauntlet_difficulty(patterns: Array) -> float:
+	var out: float = INF
+	for p: Dictionary in patterns:
+		var hull: bool = false
+		var floor_piece: bool = false
+		for element: Dictionary in p.get("elements", []):
+			var kind: String = String(element.get("kind", ""))
+			hull = hull or kind == "hull"
+			floor_piece = floor_piece or kind in ["gap", "fence"]
+		if not (hull and floor_piece) or config.lane_count < int(p.get("min_lanes", 1)):
+			continue
+		var weight: float = float(p.get("weight", 1.0))
+		var ok: bool = true
+		for need: Variant in p.get("requires", []):
+			ok = ok and config.has_feature(String(need))
+			weight *= config.feature_weight(String(need))
+		if ok and weight > 0.0:
+			out = minf(out, float(p.get("min_difficulty", 0.0)))
+	return out
+
+
+## What the fill pass keeps off around enemy entry `e` (fill_keep_outs). `hooks` caches each type's
+## rules script's keep_out, if it has one.
+func _enemy_keep_out(e: Dictionary, hooks: Dictionary) -> Vector2:
+	var type: String = String(e.get("type", ""))
+	if not hooks.has(type):
+		var path: String = RULES_DIR.path_join("%s_rules.gd" % type)
+		var script: GDScript = load(path) as GDScript if ResourceLoader.exists(path) else null
+		hooks[type] = script if script != null and script.has_method("keep_out") else null
+	if hooks[type] != null:
+		return (hooks[type] as GDScript).call("keep_out", self, e)
+	var at: float = float(e["at"])
+	var out := Vector2(at - FILL_ENEMY_LEAD_SECONDS * speed, at)
+	var span: Vector2 = enemy_floor_span(e, pace)
+	if span.y >= span.x:
+		out = Vector2(minf(out.x, span.x), maxf(out.y, span.y))
+	return out
+
+
+## The stretches of [from, to] that none of `busy` covers, in order.
+static func free_stretches(busy: Array[Vector2], from: float, to: float) -> Array[Vector2]:
+	var sorted: Array[Vector2] = busy.duplicate()
+	sorted.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
+	var out: Array[Vector2] = []
+	var cursor: float = from
+	for b: Vector2 in sorted:
+		if b.y <= cursor:
+			continue
+		if b.x > cursor:
+			out.append(Vector2(cursor, minf(b.x, to)))
+		cursor = maxf(cursor, b.y)
+		if cursor >= to:
+			return out
+	if cursor < to:
+		out.append(Vector2(cursor, to))
+	return out
+
+
+## How far the fill pass keeps a filler from what's around track distance `at`: the level's spacing
+## there plus FILL_TAIL_SECONDS, at run speed.
+func _fill_margin(at: float) -> float:
+	var difficulty: float = difficulty_at(clampf(at / layout.length, 0.0, 1.0))
+	return (_spacing_seconds(at, difficulty) + FILL_TAIL_SECONDS) * speed
+
+
+## A weighted pick among the fillers that fit in `room` metres from `at` (is_filler, pattern_extent).
+## {} (drawing nothing) when none fits.
+func _pick_filler(patterns: Array, difficulty: float, at: float, room: float) -> Dictionary:
+	var pool: Dictionary = pick_weights(patterns, difficulty, at, "", true)
+	var candidates: Array = []
+	var weights: Array[float] = []
+	var total: float = 0.0
+	for i: int in (pool["patterns"] as Array).size():
+		var p: Dictionary = pool["patterns"][i]
+		if pattern_extent(p) <= room:
+			candidates.append(p)
+			weights.append(float(pool["weights"][i]))
+			total += weights[-1]
+	if candidates.is_empty() or total <= 0.0:
+		return {}
+	var roll: float = _rng.randf() * total
+	for i: int in candidates.size():
+		roll -= weights[i]
+		if roll <= 0.0:
+			return candidates[i]
+	return candidates[-1]
+
+
+## The track a pattern of holes and fences takes at this level's speed: its length, or its last hole's
+## end (what _place_pattern returns for it).
+func pattern_extent(pattern: Dictionary) -> float:
+	var extent: float = metres(float(pattern.get("length", 8.0)))
+	for element: Dictionary in pattern.get("elements", []):
+		var at: float = metres(float(element.get("at", 0.0))) + float(element.get("at_seconds", 0.0)) * speed
+		if String(element.get("kind", "")) == "gap":
+			at += minf(float(element.get("jump_frac", 0.5)), config.max_gap_jump_fraction) * jump_distance
+		extent = maxf(extent, at)
+	return extent
+
+
+## Takes `span` out of the clear stretches the credit trails go in (a filler now stands there).
+func _trim_clear_stretches(span: Vector2) -> void:
+	var out: Array[Vector2] = []
+	for s: Vector2 in _clear_stretches:
+		if s.y <= span.x or s.x >= span.y:
+			out.append(s)
+			continue
+		if s.x < span.x:
+			out.append(Vector2(s.x, span.x))
+		if s.y > span.y:
+			out.append(Vector2(span.y, s.y))
+	_clear_stretches = out
+
+
+# --- Zone doodads (GDD §3, owner's playtest September 30, 2026) -----------------------------------
+
+## Puts the level's zone doodads (LevelConfig.doodad_share; LevelLayout.doodads) where nothing else
+## goes on, after the rules and the fill pass: they add to the level, and nothing after them can undo or
+## crowd them (only the credits come later, and keep out of them). A doodad never hurts: a player who
+## runs into its front is pushed into the neighbouring lane on its side (Player), and its sides block a
+## lane switch like a solid side. It stands in an inner lane, never the outermost one: a wall runner's
+## body reaches into the outer lane, and the wall-runner collision stays as it is. DESIGN-TBD
+## (docs/questions/g5.md 1 and 4): the inner lanes only, and where doodads stand and how many. It's
+## fair wherever it stands (LayoutChecks.check_doodads, at 3, 5 and 6 lanes):
+## - nothing else goes on in any lane from doodad_lead() before its front (so the push lands on clear
+##   floor, whichever lane it's in) until the level's spacing after its end (the player can cross its
+##   lane again before whatever comes next, as between two patterns): no piece, no enemy's stretch, no
+##   ramp's wall run, no pad's zone, no ceiling from its start to the end of its landing zone (the
+##   chase camera rides below a ceiling, lower than a doodad's top), no quiet stretch, nothing a
+##   rule keeps (doodad_keep_outs: the fill pass's keep-outs and the rules' own, a Bad Dream's chase);
+## - neither its lane nor the lane it pushes into is one a rule keeps for an enemy there (the rules'
+##   doodad_keep_outs with a lane: a hover truck's, for its whole stay); it pushes into a side with
+##   room, a seeded choice when both have it;
+## - one at a time: doodad_gap_seconds from one's end to the next one's front, so a few in a row never
+##   make a slalom.
+## Each stretch with room for one gets one with the level's doodad_share, at a seeded spot in it, and
+## the next spot in a long stretch another with the same chance; a size class (doodad_*_weight) that
+## fits. Its own random stream (rng_for("doodads")): with doodad_share 0 nothing is drawn and the
+## level is built exactly as before.
+func _place_doodads(patterns: Array) -> void:
+	if config.doodad_share <= 0.0 or layout.lane_count < 3:
+		return
+	var weights: Array[float] = [config.doodad_small_weight, config.doodad_medium_weight, config.doodad_large_weight]
+	var smallest: float = INF
+	for i: int in weights.size():
+		if weights[i] > 0.0:
+			smallest = minf(smallest, tuning.doodad_size(LevelLayout.DOODAD_SIZES[i]).z)
+	if smallest == INF:
+		return
+	var rng: RandomNumberGenerator = rng_for("doodads")
+	var lane_keeps: Array[Dictionary] = []
+	var busy: Array[Vector2] = doodad_keep_outs(patterns, lane_keeps)
+	var lead: float = doodad_lead_for(tuning)
+	var gap: float = config.doodad_gap_seconds * speed
+	var from: float = maxf(config.start_clear_distance, config.doodad_start * layout.length)
+	var to: float = layout.length - config.end_clear_distance
+	var last_end: float = -INF
+	for region: Vector2 in free_stretches(busy, from, to):
+		var cursor: float = maxf(region.x + lead, last_end + gap)
+		while true:
+			# The spacing after it, taken where it may start: no less than at its end, as the
+			# difficulty only rises along a level.
+			var room: float = region.y - doodad_after(cursor) - cursor
+			if room < smallest or rng.randf() >= config.doodad_share:
+				break
+			var size: StringName = _pick_doodad_size(rng, weights, room)
+			var length: float = tuning.doodad_size(size).z
+			var start: float = cursor + rng.randf() * (room - length)
+			var placed: Dictionary = _add_doodad(rng, size, start, start + length, lane_keeps)
+			if placed.is_empty():
+				break
+			last_end = float(placed["end"])
+			cursor = last_end + gap
+
+
+## A doodad's size class, drawn by `weights` (LevelConfig.doodad_*_weight, smallest first) among the
+## classes no longer than `room` metres. One at least fits (the caller checks the smallest).
+func _pick_doodad_size(rng: RandomNumberGenerator, weights: Array[float], room: float) -> StringName:
+	var total: float = 0.0
+	var fits: Array[float] = []
+	for i: int in weights.size():
+		var ok: bool = weights[i] > 0.0 and tuning.doodad_size(LevelLayout.DOODAD_SIZES[i]).z <= room
+		fits.append(weights[i] if ok else 0.0)
+		total += fits[i]
+	var roll: float = rng.randf() * total
+	for i: int in fits.size():
+		roll -= fits[i]
+		if fits[i] > 0.0 and roll <= 0.0:
+			return LevelLayout.DOODAD_SIZES[i]
+	for i: int in range(fits.size() - 1, -1, -1):
+		if fits[i] > 0.0:
+			return LevelLayout.DOODAD_SIZES[i]
+	return LevelLayout.DOODAD_SIZES[0]
+
+
+## Adds a doodad of `size` from `start` to `end` in an inner lane (a seeded pick among those it fits
+## in) pushing into a side with room (seeded when both have it), off every lane `lane_keeps` keeps
+## (doodad_keep_outs). Returns its entry, or {} (adding nothing) when no lane fits.
+func _add_doodad(rng: RandomNumberGenerator, size: StringName, start: float, end: float,
+		lane_keeps: Array[Dictionary]) -> Dictionary:
+	var span := Vector2(start - doodad_lead_for(tuning), end + doodad_after(end))
+	var lanes: Array[int] = []
+	var sides: Array[Array] = []
+	for lane: int in range(1, layout.lane_count - 1):
+		if _lane_kept(lane_keeps, lane, span):
+			continue
+		var room: Array[int] = []
+		for side: int in [-1, 1]:
+			if not _lane_kept(lane_keeps, lane + side, span):
+				room.append(side)
+		if not room.is_empty():
+			lanes.append(lane)
+			sides.append(room)
+	if lanes.is_empty():
+		return {}
+	var pick: int = rng.randi_range(0, lanes.size() - 1)
+	var room_sides: Array = sides[pick]
+	var entry := {"lane": lanes[pick], "start": start, "end": end, "size": size,
+		"side": room_sides[rng.randi_range(0, room_sides.size() - 1)],
+		"seed": hash([config.level_seed, "doodad", layout.doodads.size()])}
+	layout.doodads.append(entry)
+	return entry
+
+
+## True if one of `lane_keeps` ({lane, from, to}) keeps `lane` anywhere in `span`.
+static func _lane_kept(lane_keeps: Array[Dictionary], lane: int, span: Vector2) -> bool:
+	for k: Dictionary in lane_keeps:
+		if int(k["lane"]) == lane and float(k["from"]) <= span.y and float(k["to"]) >= span.x:
+			return true
+	return false
+
+
+## What doodads keep off, in every lane: the fill pass's keep-outs as they stand (fill_keep_outs,
+## without its margins: every piece, the fillers' too, each ramp's wall run, each pad's zone, every
+## enemy's stretch or what its rules keep, a level's quiet stretches), every ceiling whole from its
+## start to the end of its landing zone (the chase camera rides below a ceiling, lower than a doodad's
+## top), and what the rules keep from doodads in every lane: `static func doodad_keep_outs(gen:
+## LevelGenerator) -> Array[Dictionary]` on a feature's rules script, entries {from, to} (a Bad
+## Dream's chase). Entries that also name a lane ({lane, from, to}: a hover truck's, for its whole
+## stay) go into `lane_keeps`: no doodad stands in that lane there, nor pushes into it. A floor cut's
+## lane is kept that way over its lane window (FloorCutPlan.lane_window), so a push never lands the
+## player in a cut (and its whole window is a fill keep-out, in every lane, already).
+func doodad_keep_outs(patterns: Array, lane_keeps: Array[Dictionary] = []) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for k: Vector4 in fill_keep_outs(patterns)["keep"]:
+		out.append(Vector2(k.x, k.y))
+	for h: Dictionary in layout.hulls:
+		out.append(Vector2(float(h["start"]), zones.landing_zone(h).y))
+	for c: Dictionary in layout.cuts:
+		var span: Vector2 = FloorCutPlan.lane_window(c)
+		lane_keeps.append({"lane": int(c["lane"]), "from": span.x, "to": span.y})
+	for k: Dictionary in rules_doodad_keep_outs():
+		if k.has("lane"):
+			lane_keeps.append(k)
+		else:
+			out.append(Vector2(float(k["from"]), float(k["to"])))
+	return out
+
+
+## What the level's features' rules keep zone doodads off (`static func doodad_keep_outs(gen:
+## LevelGenerator) -> Array[Dictionary]` on a feature's rules script), in the order of the features:
+## the lane-bound attacks while they run, {from, to} in every lane (a Bad Dream's chase) or {lane, from,
+## to} in one (a hover truck's lane for its whole stay). Floor cuts keep off them too (cut_problem).
+func rules_doodad_keep_outs() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for feature: String in config.features:
+		var path: String = RULES_DIR.path_join("%s_rules.gd" % feature)
+		if not ResourceLoader.exists(path):
+			continue
+		var script := load(path) as GDScript
+		if script == null or not script.has_method("doodad_keep_outs"):
+			continue
+		for k: Dictionary in script.call("doodad_keep_outs", self):
+			out.append(k)
+	return out
+
+
+## How far before a doodad's front nothing else goes on (_place_doodads): the stretch its push
+## crosses into the neighbouring lane, the doodad_push_time at the level's run speed (`t`'s).
+static func doodad_lead_for(t: MovementTuning) -> float:
+	return t.doodad_push_time * t.run_speed
+
+
+## How far after a doodad that ends at `at` nothing else goes on (_place_doodads): the level's spacing
+## there, as between two patterns, so the player can cross its lane again before what comes next.
+func doodad_after(at: float) -> float:
+	return _spacing_seconds(at, difficulty_at(clampf(at / layout.length, 0.0, 1.0))) * speed
+
+
+# --- Floor cuts (task B4; GDD §9.9, the Buzz Overdrive's) -----------------------------------------
+
+## Adds floor cut `cut` (a LevelLayout.cuts entry, FloorCutPlan.make) where GDD §9.9's limits allow it
+## (cut_problem). Returns true if it was added. A rules script that plans cuts clears the way first
+## (CutPlacement, scripts/enemies/cut_placement.gd) and adds the cut's cause as an entry at the cut's
+## `end`, in its lane (the stand-in's floor_cutter_rules.gd; task C2's saw).
+func add_cut(cut: Dictionary) -> bool:
+	if cut_problem(cut) != "":
+		return false
+	layout.cuts.append(cut)
+	return true
+
+
+## Why floor cut `cut` can't go where it lies in `p_layout` (the level's by default), or "" if it can.
+## GDD §9.9's limits and the readability rules:
+## - it lies in a real lane, between the level's run-up and its end-clear stretch, its warning before
+##   its charge and both before its cause's spot, its stretch around where it meets the player;
+## - one at a time: no other cut's window (FloorCutPlan.window: from its warning, or where its cause
+##   sets off, to its end) reaches this one's;
+## - never a lane holding a ramp, a pad or the safe landing zone after a ceiling (CeilingZones.cut_clear:
+##   no landing zone over its lane and no pad's zone in its lane reaches its lane window; no ramp in
+##   its lane, nor the wall run it launches, until it drops the player back);
+## - nothing else in its lane over its lane window (FloorCutPlan.lane_window: from the warning to past
+##   its cause's spot): no hole, fence, speed pad or zone doodad, and no other cut;
+## - the other lanes stay whole enough along its stretch: holes (and other cuts) in at most
+##   lane_count - 1 - whole_lanes_for_cut() of them (GDD §9.9: on 3 lanes two lanes always stay whole);
+## - nothing else goes on meanwhile: no enemy's keep-out (what the fill pass keeps for it,
+##   _enemy_keep_out) reaches its attack window (FloorCutPlan.attack_window: from its warning; a cause
+##   on its way before it, a Buzz Overdrive rolling ahead, attacks nobody yet), bar its own cause (an
+##   entry at its `end` in its lane), nor does a lane-bound attack the rules keep doodads off
+##   (rules_doodad_keep_outs, read from the level's own enemies: a Bad Dream's chase in any lane, a
+##   hover truck's stay in its lane), nor a wall fence's drop window over its whole window (task B5: a
+##   boss arena's wall fences; a level's come after its cuts and keep off them, WallFencePlacement);
+## - a player in its lane when the warning starts can leave it (cut_escape_clear).
+## Wall runners and ceiling riders are safe without a rule: the cut is a hole in its own lane only.
+## DESIGN-TBD (docs/questions/b4.md): keeping everything else off a cut's whole window, and letting
+## cuts run in the outer lanes (beside a wall runner).
+func cut_problem(cut: Dictionary, p_layout: LevelLayout = null) -> String:
+	var lay: LevelLayout = p_layout if p_layout != null else layout
+	var n: int = lay.lane_count
+	var lane: int = int(cut.get("lane", -1))
+	if lane < 0 or lane >= n:
+		return "lane %d out of range" % lane
+	var start: float = float(cut["start"])
+	var end: float = float(cut["end"])
+	var meet: float = FloorCutPlan.meet(cut, speed)
+	var charge_at: float = FloorCutPlan.charge_at(cut)
+	var lane_span: Vector2 = FloorCutPlan.lane_window(cut)
+	var span: Vector2 = FloorCutPlan.window(cut, speed)
+	var attack: Vector2 = FloorCutPlan.attack_window(cut, speed)
+	if float(cut["speed"]) <= 0.0 or float(cut["charge"]) <= 0.0 or float(cut["warn"]) < float(cut["charge"]) \
+			or not (start < meet and meet < end and charge_at < meet):
+		return "its warning, charge, stretch and meeting point don't line up"
+	if lane_span.x < config.start_clear_distance or span.y > lay.length - config.end_clear_distance:
+		return "it doesn't fit between the run-up and the end-clear stretch"
+	for other: Dictionary in lay.cuts:
+		if is_same(other, cut):
+			continue
+		var w: Vector2 = FloorCutPlan.window(other, speed)
+		if w.x <= span.y and w.y >= span.x:
+			return "another cut is on meanwhile (one at a time)"
+	if not zones.cut_clear(lay, cut):
+		return "a ceiling's landing zone or a pad's zone is in its lane"
+	for r: Dictionary in lay.ramps:
+		if lay.outer_lane(int(r["side"])) == lane and float(r["at"]) <= lane_span.y \
+				and maxf(ramp_launch(r).end(), float(r["at"]) + tuning.ramp_length) >= lane_span.x:
+			return "a ramp (or the wall run it launches) is in its lane"
+	var half: float = tuning.fence_depth * 0.5
+	for g: Dictionary in lay.gaps:
+		if int(g["lane"]) == lane and float(g["start"]) <= lane_span.y and float(g["end"]) >= lane_span.x:
+			return "a hole is in its lane"
+	for f: Dictionary in lay.fences:
+		if int(f["lane"]) == lane and float(f["at"]) - half <= lane_span.y and float(f["at"]) + half >= lane_span.x:
+			return "a fence is in its lane"
+	for p: Dictionary in lay.speed_pads:
+		if int(p["lane"]) == lane and float(p["at"]) <= lane_span.y and float(p["at"]) + tuning.speed_pad_length >= lane_span.x:
+			return "a speed pad is in its lane"
+	if lay.doodad_between(lane_span.x, lane_span.y, lane):
+		return "a zone doodad is in its lane"
+	var holed: Dictionary = {}
+	for g: Dictionary in lay.gaps:
+		if int(g["lane"]) != lane and float(g["start"]) <= end and float(g["end"]) >= start:
+			holed[int(g["lane"])] = true
+	for other: Dictionary in lay.cuts:
+		if not is_same(other, cut) and float(other["start"]) <= end and float(other["end"]) >= start:
+			if int(other["lane"]) == lane:
+				return "another cut's stretch is in its lane"
+			holed[int(other["lane"])] = true
+	if holed.size() > n - 1 - whole_lanes_for_cut(n):
+		return "%d other lanes hold holes along it (%d must stay whole)" % [holed.size(), whole_lanes_for_cut(n)]
+	var hooks: Dictionary = {}
+	for e: Dictionary in lay.enemies:
+		if int(e.get("lane", -1)) == lane and absf(float(e["at"]) - end) < 0.01:
+			continue  # Its own cause, waiting at its end.
+		var k: Vector2 = _enemy_keep_out(e, hooks)
+		if k.x <= attack.y and k.y >= attack.x:
+			return "an enemy (%s at %.0f) is about meanwhile" % [e.get("type", "?"), float(e["at"])]
+	for k: Dictionary in rules_doodad_keep_outs():
+		if (not k.has("lane") or int(k["lane"]) == lane) and float(k["from"]) <= attack.y and float(k["to"]) >= attack.x:
+			return "an attack runs meanwhile (%.0f-%.0f)" % [float(k["from"]), float(k["to"])]
+	var wall_fence: String = _wall_fence_in(lay, span)
+	if wall_fence != "":
+		return wall_fence
+	if not cut_escape_clear(cut, lay):
+		return "no room to leave its lane after the warning"
+	return ""
+
+
+## How many lanes besides a floor cut's own stay whole along its stretch at `lanes` lanes (GDD §9.9: on
+## 3 lanes two lanes always stay whole, every lane but the cut's; on more, all but
+## LevelConfig.cut_holes_beside of them, and never fewer than two).
+func whole_lanes_for_cut(lanes: int) -> int:
+	if lanes <= 3:
+		return lanes - 1
+	return maxi(lanes - 1 - config.cut_holes_beside, mini(2, lanes - 1))
+
+
+## True if a player in floor cut `cut`'s lane when its warning starts can leave it in time (GDD §9.9:
+## "leave its lane before it arrives"): from LevelConfig.cut_reaction_seconds after the warning starts
+## until the cut is CUT_CONTACT_METRES from them, a neighbouring lane has a stretch clear of holes,
+## fences, pads, speed pads, ramps, zone doodads and other cuts long enough to switch into it (a lane
+## switch at run speed, CUT_SWITCH_MARGIN either side). Its own lane is clear over all of it
+## (cut_problem). In `p_layout` (the level's by default).
+func cut_escape_clear(cut: Dictionary, p_layout: LevelLayout = null) -> bool:
+	var lay: LevelLayout = p_layout if p_layout != null else layout
+	var lane: int = int(cut["lane"])
+	var r: float = FloorCutPlan.ratio(cut, speed)
+	var from: float = FloorCutPlan.warn_at(cut) + config.cut_reaction_seconds * speed
+	# The last spot from which the player is out of the lane before the cut's front is CUT_CONTACT_METRES
+	# away: the front is at end - (p - charge_at) * r.
+	var to: float = (float(cut["end"]) + r * FloorCutPlan.charge_at(cut) - CUT_CONTACT_METRES) / (1.0 + r)
+	var need: float = tuning.lane_switch_time * speed + 2.0 * CUT_SWITCH_MARGIN
+	for side: int in [-1, 1]:
+		var other: int = lane + side
+		if other < 0 or other >= lay.lane_count:
+			continue
+		var busy: Array[Vector2] = _lane_busy(lay, other)
+		for free: Vector2 in free_stretches(busy, from, to):
+			if free.y - free.x >= need:
+				return true
+	return false
+
+
+## The stretches of `lane` in `lay` where a player can't switch in: holes, fences, pads, speed pads,
+## ramps, zone doodads and floor cuts' lane windows, each with CUT_SWITCH_MARGIN around it.
+func _lane_busy(lay: LevelLayout, lane: int) -> Array[Vector2]:
+	var m: float = CUT_SWITCH_MARGIN
+	var half: float = tuning.fence_depth * 0.5
+	var out: Array[Vector2] = []
+	for g: Dictionary in lay.gaps:
+		if int(g["lane"]) == lane:
+			out.append(Vector2(float(g["start"]) - m, float(g["end"]) + m))
+	for f: Dictionary in lay.fences:
+		if int(f["lane"]) == lane:
+			out.append(Vector2(float(f["at"]) - half - m, float(f["at"]) + half + m))
+	for p: Dictionary in lay.pads:
+		if int(p["lane"]) == lane:
+			out.append(Vector2(float(p["at"]) - m, float(p["at"]) + tuning.pad_length + m))
+	for p: Dictionary in lay.speed_pads:
+		if int(p["lane"]) == lane:
+			out.append(Vector2(float(p["at"]) - m, float(p["at"]) + tuning.speed_pad_length + m))
+	for rp: Dictionary in lay.ramps:
+		if lay.outer_lane(int(rp["side"])) == lane:
+			out.append(Vector2(float(rp["at"]) - m, float(rp["at"]) + tuning.ramp_length + m))
+	for d: Dictionary in lay.doodads:
+		if int(d["lane"]) == lane:
+			out.append(Vector2(float(d["start"]) - m, float(d["end"]) + m))
+	for c: Dictionary in lay.cuts:
+		if int(c["lane"]) == lane:
+			var w: Vector2 = FloorCutPlan.lane_window(c)
+			out.append(Vector2(w.x - m, w.y + m))
+	return out
+
+
+# --- Wall fences (task B5; GDD §9.1) --------------------------------------------------------------
+
+## Places the level's wall fences (LevelLayout.wall_fences; GDD §9.1: full-height ones from Marketplace
+## 2, partial ones over the low or the high part of the wall from the Corporate zone), after the zone
+## doodads and before the credits, from a random stream of their own (WallFencePlacement has the rules):
+## they only add to the walls, so the rest of a level comes out exactly as it does without them, and a
+## level without the `wall_fences` and `wall_fences_partial` features draws nothing and is built byte
+## for byte as before.
+func _place_wall_fences() -> void:
+	if config.has_feature(WallFencePlacement.FEATURE) or config.has_feature(WallFencePlacement.PARTIAL):
+		WallFencePlacement.place(self)
+
+
+## Why wall fence `entry` (WallFencePlan.make) can't stand where it lies in `p_layout` (the level's by
+## default), or "" if it can (WallFencePlacement.problem: its wall's signs, window cyborgs, wall vents
+## and ramps, the outer lane beside it, floor cuts and big attacks meanwhile, other wall fences).
+func wall_fence_problem(entry: Dictionary, p_layout: LevelLayout = null) -> String:
+	return WallFencePlacement.problem(self, entry, p_layout)
+
+
+## What the fill pass keeps off around enemy entry `e` (fill_keep_outs: its rules script's keep_out, or
+## from FILL_ENEMY_LEAD_SECONDS before it to the end of the floor it uses), for rules that keep off
+## enemies the same way (WallFencePlacement: big attacks). `hooks` caches each type's rules script.
+func enemy_keep_out(e: Dictionary, hooks: Dictionary = {}) -> Vector2:
+	return _enemy_keep_out(e, hooks)
+
+
+## Why a floor cut whose window is `span` can't run in `lay` because of a wall fence there: "" if no wall
+## fence's drop window (WallFencePlacement.drop_window) reaches it (cut_problem).
+func _wall_fence_in(lay: LevelLayout, span: Vector2) -> String:
+	if lay.wall_fences.is_empty():
+		return ""
+	var t: WallFenceTuning = WallFencePlacement.tuning()
+	for w: Dictionary in lay.wall_fences:
+		var drop: Vector2 = WallFencePlacement.drop_window(self, float(w["at"]), t)
+		if drop.x <= span.y and drop.y >= span.x:
+			return "a wall fence stands meanwhile (at %.0f)" % float(w["at"])
+	return ""
+
+
 # --- Enemy rules ---------------------------------------------------------------
 
 ## Runs the rules scripts in the order of the level's features. A script may declare
@@ -1105,7 +1879,7 @@ static func _waits_for_others(pending: Array[Array], index: int) -> bool:
 func _place_credit_element(element: Dictionary, at: float, prev_lanes: Array[int], prev_side: int) -> void:
 	var surface: String = String(element.get("surface", "floor"))
 	var count: int = int(element.get("count", 5))
-	var spacing: float = float(element.get("spacing", config.credit_trail_spacing))
+	var spacing: float = metres(float(element.get("spacing", config.credit_trail_spacing)))
 	var value: int = int(element.get("value", 1))
 	var height: float = float(element.get("height", 0.7 if surface != "wall" else 2.0))
 	if surface == "wall":
@@ -1141,12 +1915,20 @@ func _place_credits() -> void:
 
 
 ## Trails of small credits along one lane in the clear stretches between patterns, sometimes
-## shifting one lane halfway so the player has to move.
+## shifting one lane halfway so the player has to move. Their spacing is stretched by the pace, like
+## the patterns', so a trail takes as long to run at any speed. A stretch too short for a full trail
+## gets a shorter one, down to LevelConfig.credit_trail_min credits (0: none).
 func _place_trails(rng: RandomNumberGenerator) -> void:
 	var n: int = layout.lane_count
-	var trail_len: float = (config.credit_trail_count - 1) * config.credit_trail_spacing
+	var spacing: float = metres(config.credit_trail_spacing)
+	var trail_len: float = (config.credit_trail_count - 1) * spacing
 	for stretch: Vector2 in _clear_stretches:
-		if stretch.y - stretch.x < trail_len + 6.0 or rng.randf() >= config.credit_trail_chance:
+		var count: int = config.credit_trail_count
+		if stretch.y - stretch.x < trail_len + metres(6.0):
+			count = mini(count, floori((stretch.y - stretch.x - metres(6.0)) / spacing) + 1)
+			if config.credit_trail_min <= 0 or count < config.credit_trail_min:
+				continue
+		if rng.randf() >= config.credit_trail_chance:
 			continue
 		if config.credit_trail_count <= 0:
 			continue
@@ -1154,10 +1936,10 @@ func _place_trails(rng: RandomNumberGenerator) -> void:
 		var shift: int = 0
 		if rng.randf() < 0.35:
 			shift = -1 if lane == n - 1 else (1 if lane == 0 else (-1 if rng.randf() < 0.5 else 1))
-		var start: float = (stretch.x + stretch.y) * 0.5 - trail_len * 0.5
-		for i: int in config.credit_trail_count:
-			var l: int = lane + (shift if i >= config.credit_trail_count / 2 else 0)
-			var d: float = start + i * config.credit_trail_spacing
+		var start: float = (stretch.x + stretch.y) * 0.5 - (count - 1) * spacing * 0.5
+		for i: int in count:
+			var l: int = lane + (shift if i >= count / 2 else 0)
+			var d: float = start + i * spacing
 			if layout.under_hull(d, l):
 				continue
 			_add_credit(d, "floor", l, 0, 0.7, 1)
@@ -1230,11 +2012,11 @@ func _place_ceiling_credits(rng: RandomNumberGenerator) -> void:
 		if hull.is_empty():
 			continue
 		var lane: int = p["lane"]
-		var d: float = float(p["at"]) + 10.0
+		var d: float = float(p["at"]) + metres(10.0)
 		var placed: int = 0
-		while d < float(hull["end"]) - 8.0 and placed < 10:
+		while d < float(hull["end"]) - metres(8.0) and placed < 10:
 			_add_credit(d, "ceiling", lane, 0, 0.6, 1)
-			d += 4.0
+			d += metres(4.0)
 			placed += 1
 		var lanes: Vector2i = layout.hull_lanes(hull)
 		if lanes.y > lanes.x:
@@ -1243,7 +2025,9 @@ func _place_ceiling_credits(rng: RandomNumberGenerator) -> void:
 			_add_credit(far_d, "ceiling", far_lane, 0, 0.6, 25 if rng.randf() < 0.7 else 5, true)
 
 
-## Drops credits that would sit inside a hazard or over a hole the player can't reach.
+## Drops credits that would sit inside a hazard or a zone doodad, over a hole the player can't reach,
+## or in a floor cut's lane while it's on (they'd lure the player into its way, then hang over the
+## gap it leaves).
 func _drop_unsafe_credits() -> void:
 	var kept: Array[Dictionary] = []
 	for c: Dictionary in layout.credits:
@@ -1255,6 +2039,11 @@ func _drop_unsafe_credits() -> void:
 			if not c["risky"] and layout.gapped_between(lane, d - 0.5, d + 0.5):
 				continue
 			if not c["risky"] and _fence_near(lane, d, 1.5):
+				continue
+			# Inside a zone doodad (or just at its ends): a trail that runs into one stops there.
+			if layout.doodad_between(d - DOODAD_CREDIT_MARGIN, d + DOODAD_CREDIT_MARGIN, lane):
+				continue
+			if layout.cut_between(d - 0.5, d + 0.5, lane):
 				continue
 			if d > layout.length - 5.0:
 				continue

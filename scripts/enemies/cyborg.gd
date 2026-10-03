@@ -18,7 +18,10 @@ extends Enemy
 ## ceiling's landing zone (CyborgRules.obstacle_spans). It may stand under a ceiling (GDD §3: the
 ## floor there may be dangerous) and holds fire while the player rides the ceiling (_may_attack).
 ## Scaling (GDD §6): health, reload time and bolt speed come from early/late values in
-## data/enemies/cyborg.tres and the level's enemy_scaling.
+## data/enemies/cyborg.tres and the level's enemy_scaling. Pace (GDD §3): its distances and speeds
+## along the track are given at MovementTuning.REFERENCE_SPEED and stretched by the level's pace (the
+## gun's `pace`), so in a faster zone it walks, flees and shoots faster, from further out, in the same
+## seconds.
 ##
 ## Spawn params: panic (bool), host (bool), fires (bool, default true; tests), health (float).
 
@@ -51,6 +54,24 @@ var run_limit: float = 0.0
 var _speed: float = 0.0
 var _startle: float = 0.0
 var _yaw: float = 0.0
+
+
+## A cyborg's look as `entry`'s would be, for EnemyDirector.warm_up (which frees it): the first one
+## builds the kit's meshes, materials and shaders that every later cyborg shares.
+static func warm_up(world: RunWorld, entry: Dictionary) -> Node:
+	var body := CyborgBody.new()
+	body.build(world.skin.enemy_variant, bool((entry.get("params", {}) as Dictionary).get("host", false)), false,
+		int(entry.get("seed", 0)))
+	return body
+
+
+## The enemies a cyborg from `entry` brings into play, for EnemyDirector.warm_up: a host's Bad Dream
+## (GDD §9.7), as _release_bad_dream spawns it.
+static func brings(entry: Dictionary) -> Array[Dictionary]:
+	if not bool((entry.get("params", {}) as Dictionary).get("host", false)):
+		return []
+	return [{"type": "bad_dream", "at": float(entry.get("at", 0.0)), "lane": int(entry.get("lane", 0)), "side": 0,
+		"seed": hash([entry.get("seed", 0), "bad_dream"]), "params": {"from_host": true}}]
 
 
 func _build() -> void:
@@ -94,25 +115,25 @@ func _tick(delta: float) -> void:
 		Mode.WAIT:
 			_speed = 0.0
 			if is_panic:
-				if ahead <= tuning.panic_trigger_distance and player.alive:
+				if ahead <= tuning.panic_trigger_distance * gun.pace and player.alive:
 					_enter(Mode.STARTLED)
-			elif ahead <= tuning.walk_start_distance:
+			elif ahead <= tuning.walk_start_distance * gun.pace:
 				_enter(Mode.WALK)
 		Mode.WALK:
-			_speed = 0.0 if gun.is_attacking() or d <= walk_limit + 0.01 else -tuning.walk_speed
+			_speed = 0.0 if gun.is_attacking() or d <= walk_limit + 0.01 else -tuning.walk_speed * gun.pace
 		Mode.STARTLED:
 			_speed = 0.0
 			_startle -= delta
 			if _startle <= 0.0:
 				_enter(Mode.FLEE if run_limit > d + 0.5 else Mode.COWER)
 		Mode.FLEE:
-			_speed = tuning.panic_speed
+			_speed = tuning.panic_speed * gun.pace
 			if d >= run_limit - 0.01:
 				_enter(Mode.COWER)
 		Mode.COWER:
 			_speed = 0.0
 		Mode.PASSED:
-			_speed = -tuning.drop_back_speed
+			_speed = -tuning.drop_back_speed * gun.pace
 	var next: float = d + _speed * delta
 	if mode != Mode.PASSED:
 		next = clampf(next, minf(walk_limit, d), maxf(run_limit, d))
@@ -163,7 +184,7 @@ func _may_attack() -> bool:
 	if mode == Mode.PASSED or mode == Mode.STARTLED or (is_panic and mode == Mode.WAIT):
 		return false
 	var ahead: float = track_distance() - player.distance
-	return ahead > 0.0 and ahead <= tuning.engage_distance
+	return ahead > 0.0 and ahead <= gun.engage_distance()
 
 
 func _enter(next: Mode) -> void:
@@ -178,9 +199,9 @@ func _enter(next: Mode) -> void:
 ## Keeps the walk and the panic run clear of every obstacle (GDD §9 fairness) and of every ceiling's
 ## landing zone (GDD §3: the floor there is safe to land on).
 func _compute_limits() -> void:
-	var margin: float = tuning.obstacle_margin
+	var margin: float = CyborgRules.obstacle_margin_at(tuning, world.tuning.pace())
 	walk_limit = home - tuning.walk_max
-	run_limit = minf(home + tuning.panic_run_max, world.layout.length - margin)
+	run_limit = minf(home + tuning.panic_run_max * world.tuning.pace(), world.layout.length - margin)
 	var zones := CeilingZones.make(world.config, world.tuning)
 	for s: Vector2 in CyborgRules.obstacle_spans(world.layout, world.tuning, zones):
 		if s.y <= home:
@@ -202,7 +223,7 @@ func _update_body(delta: float) -> void:
 	match mode:
 		Mode.FLEE:
 			body.set_pose(CyborgBody.Pose.RUN_AWAY)
-			body.set_move_speed(tuning.panic_speed)
+			body.set_move_speed(tuning.panic_speed * gun.pace)
 		Mode.COWER:
 			body.set_pose(CyborgBody.Pose.AIM if attacking else CyborgBody.Pose.COWER)
 		Mode.WALK, Mode.WAIT:

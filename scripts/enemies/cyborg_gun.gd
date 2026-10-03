@@ -15,10 +15,17 @@ extends RefCounted
 ##   sight), and the enemy's own may_attack() agrees (e.g. not at a player on the ceiling);
 ## - each bolt needs at least min_warning_time to arrive;
 ## - the player's path around every bolt's arrival is free of fences and gaps in all lanes, so a
-##   burst is never timed onto a jump or a full-lane fence;
+##   burst is never timed onto a jump or a full-lane fence, and of zone doodads (GDD §3: a doodad's
+##   side blocks a dodge and its push moves the player);
 ## - no other cyborg's burst is in the air (one attacker at a time, via RunWorld metadata).
 ## Everything runs in the physics step from the enemy's seeded random stream, so every attempt at a
 ## seed plays out the same way.
+##
+## Pace (GDD §3, owner's playtest September 30, 2026: enemies speed up to match the runner): the
+## engage distance, the bolt speed and the clear path around an impact are given at
+## MovementTuning.REFERENCE_SPEED and stretched by the level's pace (`pace`), so in a faster zone the
+## bolts fly faster from further out and every burst keeps its seconds; the charge-up and
+## min_warning_time are seconds already and never get shorter.
 
 enum State { READY, CHARGING, FIRING, RELOADING }
 
@@ -33,18 +40,30 @@ var shooter: Enemy
 var world: RunWorld
 var tuning: CyborgGunTuning
 var rng: RandomNumberGenerator
-var body: CyborgBody
+## The shooter's model, which shows the telegraph: a CyborgBody, or another enemy's (GunModel).
+var body: GunModel
 ## Wild fire (the panic variant): each bolt goes to a random spot around the player, up to
 ## wild_spread sideways.
 var wild: bool = false
 var wild_spread: float = 2.0
 var enabled: bool = true
+## The charge-up's and each bolt's sounds, and the bolts' name (a death's cause): the cyborgs' own
+## unless the shooter has its own (the Barnacle Turret, GDD §9.8).
+var charge_sound: StringName = &"cyborg_charge"
+var shot_sound: StringName = &"cyborg_shot"
+var shot_name: String = SHOT_NAME
+## The shooter's own rule for the player's path around a bolt's arrival, in place of the floor's
+## (path_clear): Callable(from_d: float, to_d: float) -> bool. Unset for the cyborgs; the Barnacle
+## Turret, which fires only at a ceiling rider, sets one for the ceiling (GDD §9.8).
+var path_rule: Callable
 ## Where bolts leave the cannon, from the enemy's origin (gameplay: the visual cannon animates, the
 ## shots never depend on it). Bolts start muzzle_reach further along their line.
 var muzzle_offset: Vector3 = Vector3(0.0, 1.12, 0.0)
 var muzzle_reach: float = 0.45
 ## The shooter's own speed along the track (m/s, + = forward, away from the player), for predictions.
 var track_velocity: float = 0.0
+## The level's pace (MovementTuning.pace; 1 at the reference speed, and in boss fights).
+var pace: float = 1.0
 ## Returns whether the shooter may attack right now (the enemy's own rules).
 var may_attack: Callable
 var state: State = State.READY
@@ -60,12 +79,24 @@ var _lock := Vector2.ZERO
 
 
 func _init(p_shooter: Enemy, p_world: RunWorld, p_tuning: CyborgGunTuning, p_rng: RandomNumberGenerator,
-		p_body: CyborgBody) -> void:
+		p_body: GunModel) -> void:
 	shooter = p_shooter
 	world = p_world
 	tuning = p_tuning
 	rng = p_rng
 	body = p_body
+	if world != null and world.tuning != null:
+		pace = world.tuning.pace()
+
+
+## How close the player must be before a burst may start (engage_distance at the level's pace).
+func engage_distance() -> float:
+	return tuning.engage_distance * pace
+
+
+## The bolts' speed over the ground at the level's scaling and pace.
+func bolt_speed() -> float:
+	return tuning.bolt_speed_at(_scaling()) * pace
 
 
 ## Charging or firing a burst (the enemy shows its aiming pose and face).
@@ -157,7 +188,7 @@ func _start_charge() -> void:
 	world.set_meta(AIRSPACE_META, world.level_time() + tuning.charge_time
 		+ (_burst - 1) * tuning.shot_interval + tuning.burst_gap)
 	var at: Vector3 = _muzzle_base()
-	world.play_sfx_at(&"cyborg_charge", at)
+	world.play_sfx_at(charge_sound, at)
 	events.append({"t": world.level_time(), "event": &"charge", "shots": _burst,
 		"player_d": world.player.distance, "shooter_d": shooter.track_distance(), "from": at})
 
@@ -206,7 +237,7 @@ func _fire(player: Player) -> void:
 	else:
 		target.x += rng.randf_range(-tuning.shot_jitter, tuning.shot_jitter)
 		target.y += rng.randf_range(-tuning.shot_jitter, tuning.shot_jitter) * 0.5
-	var speed: float = tuning.bolt_speed_at(_scaling())
+	var speed: float = bolt_speed()
 	var v: float = player.speed
 	var base: Vector3 = _muzzle_base()
 	var t: float = intercept_time(base, target, v, speed)
@@ -219,8 +250,8 @@ func _fire(player: Player) -> void:
 		return
 	aim = target + Vector3(0.0, 0.0, -v * t)
 	var velocity: Vector3 = (aim - from).normalized() * speed
-	world.projectiles.fire_enemy(from, velocity, LOOK, SHOT_NAME, tuning.bolt_life)
-	world.play_sfx_at(&"cyborg_shot", from)
+	world.projectiles.fire_enemy(from, velocity, LOOK, shot_name, tuning.bolt_life)
+	world.play_sfx_at(shot_sound, from)
 	events.append({"t": world.level_time(), "event": &"shot", "impact": player.distance + v * t,
 		"arrive": world.level_time() + t, "from": from, "velocity": velocity,
 		"player_d": player.distance, "shooter_d": shooter.track_distance()})
@@ -231,7 +262,7 @@ func _fire(player: Player) -> void:
 func _burst_fair(lead: float, shots: int) -> bool:
 	var player: Player = world.player
 	var v: float = player.speed
-	var speed: float = tuning.bolt_speed_at(_scaling())
+	var speed: float = bolt_speed()
 	var c: Vector3 = player.hurtbox_aabb().get_center()
 	for k: int in maxi(shots, 1):
 		var tau: float = lead + k * tuning.shot_interval
@@ -243,15 +274,20 @@ func _burst_fair(lead: float, shots: int) -> bool:
 		if k == 0 and t < tuning.min_warning_time:
 			return false
 		var impact: float = player.distance + v * (tau + t)
-		if not path_clear(impact - tuning.clear_before_impact, impact + tuning.clear_after_impact):
+		if not path_clear(impact - tuning.clear_before_impact * pace, impact + tuning.clear_after_impact * pace):
 			return false
 	return true
 
 
-## True if the player's path between two track distances has no live fence and no gap in any lane
-## (and, for a player on a wall, no sign on that wall).
+## True if the player's path between two track distances has no live fence, no gap and no zone
+## doodad in any lane (and, for a player on a wall, no sign on that wall). A shooter's own path_rule
+## decides instead. The doodads: DESIGN-TBD (docs/questions/g5.md 5).
 func path_clear(from_d: float, to_d: float) -> bool:
+	if path_rule.is_valid():
+		return bool(path_rule.call(from_d, to_d))
 	var layout: LevelLayout = world.layout
+	if layout.doodad_between(from_d, to_d):
+		return false
 	for f: Dictionary in layout.fences:
 		var at: float = f["at"]
 		if at >= from_d and at <= to_d and not f.get("disabled", false):
@@ -269,8 +305,7 @@ func path_clear(from_d: float, to_d: float) -> bool:
 
 ## Seconds a bolt fired now would need to reach the player (-1 if it can't).
 func _time_to_player(player: Player) -> float:
-	return intercept_time(_muzzle_base(), player.hurtbox_aabb().get_center(), player.speed,
-		tuning.bolt_speed_at(_scaling()))
+	return intercept_time(_muzzle_base(), player.hurtbox_aabb().get_center(), player.speed, bolt_speed())
 
 
 ## Points the body's cannon at the player while charging, then along the locked line while firing.

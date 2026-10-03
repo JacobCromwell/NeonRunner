@@ -10,14 +10,27 @@ extends RefCounted
 ## same on every attempt. A boss without an arena config fights on a plain track (floor and walls).
 ##
 ## During the fight a boss script adds track pieces of its own with add_pieces(): holes, fences, pads
-## with ceilings, ramps, signs and enemies, planned past the built track (stream_from()), then built
-## and brought into play like the rest of the arena. Things that appear within sight (a fence rolled
-## across the lanes, a block slammed down, a wall taken away) are BossProps instead.
+## with ceilings, ramps, signs, floor cuts and enemies, planned past the built track (stream_from()),
+## then built and brought into play like the rest of the arena. Things that appear within sight (a fence
+## rolled across the lanes, a block slammed down, a wall taken away) are BossProps instead. A floor cut
+## (task B4; GDD §10, Hostile Takeover: the gunship drops a Buzz Overdrive onto the roof ahead, which
+## cuts a carriage lane) comes with its cause as an enemy at the cut's end, in its lane (FloorCutPlan;
+## task C2's saw, or the floor cutter stand-in); cut_problem() holds it to GDD §9.9's limits on the
+## arena's track before it's added.
 ##
 ## Nothing in a lap ramps up (GDD §10: no escalation), and laps carry no credits (DESIGN-TBD: in a
 ## fight with no time limit, credits along the track would pay players for stalling; beating the boss
 ## pays instead). Enemies a lap lists come into play like a level's: the director spawns those of the
 ## laps planned before the world was built, the arena those added later, each at its type's lead.
+##
+## Pace (GDD §3: the run speed rises zone by zone, and a boss fight runs at its zone's speed like the
+## zone's levels): the arena is planned at its config's run speed (LevelConfig.movement_for: its zone's
+## in the campaign, Campaign.configure_boss; the base speed in quick play and the tests), as the
+## generator builds a level, so its patterns keep their seconds; the clear stretches at a lap's start
+## and end are metres at MovementTuning.REFERENCE_SPEED like the patterns, stretched by the pace too
+## (the first lap's start is the boss's entrance). A boss script's own numbers in metres follow the
+## same pace (tuning.pace(), the run's: world.tuning.pace() once the world is built), so its fight
+## plays the same in seconds at every zone's speed.
 
 ## Laps kept on the track beyond the one the player is in.
 const LAPS_AHEAD: int = 1
@@ -26,6 +39,8 @@ const TRACK_PIECES: PackedStringArray = ["gaps", "fences", "signs", "hulls", "pa
 
 ## One lap's generator settings, ready to generate (base_config, then lane count and difficulty).
 var config: LevelConfig
+## The fight's movement tuning, at the arena's run speed (config.movement_for): its pace() stretches
+## the arena's and the boss's metres.
 var tuning: MovementTuning
 ## Metres per lap: the lap's duration at run speed.
 var lap_length: float = 0.0
@@ -43,7 +58,9 @@ var _next_enemy: int = 0
 
 
 ## The arena's generator settings for `def`: a copy of its arena config (a plain one without), with
-## nothing ramping within the fight and every feature there from the start.
+## nothing ramping within the fight and every feature there from the start. Its run speed is the
+## arena config's own (0, the usual: the movement tuning's base speed, as in quick play and the tests);
+## the campaign gives it its zone's (Campaign.configure_boss).
 static func base_config(def: BossDef) -> LevelConfig:
 	var out: LevelConfig = def.arena.duplicate() as LevelConfig if def.arena != null else LevelConfig.new()
 	if def.arena == null:
@@ -57,14 +74,15 @@ static func base_config(def: BossDef) -> LevelConfig:
 
 
 ## Plans the arena for a fight against `def`: the distinct laps, from `p_config` (base_config with the
-## lane count and difficulty set) at `p_tuning`'s run speed, each shaped by `encounter`'s _plan_lap if
-## given, and the first laps of the track.
+## lane count and difficulty set) at its run speed (p_config.movement_for(p_tuning): its own, its
+## zone's in the campaign, else `p_tuning`'s), each shaped by `encounter`'s _plan_lap if given, and the
+## first laps of the track.
 static func plan(def: BossDef, p_config: LevelConfig, p_tuning: MovementTuning,
 		encounter: BossEncounter = null) -> BossArena:
 	var arena := BossArena.new()
 	arena.config = p_config
-	arena.tuning = p_tuning
-	arena.lap_length = maxf(p_tuning.run_speed * p_config.duration_seconds, TrackBuilder.BUILD_AHEAD * 2.0)
+	arena.tuning = p_config.movement_for(p_tuning)
+	arena.lap_length = maxf(arena.tuning.run_speed * p_config.duration_seconds, TrackBuilder.BUILD_AHEAD * 2.0)
 	var generated: bool = def.arena != null
 	var patterns: Array = LevelGenerator.load_for(p_config) if generated else []
 	for i: int in (maxi(def.arena_laps, 1) if generated else 1):
@@ -80,7 +98,7 @@ static func plan(def: BossDef, p_config: LevelConfig, p_tuning: MovementTuning,
 
 
 ## A copy of `source` moved `offset` metres along the track: every piece's at, start and end, and an
-## enemy's planned floor span.
+## enemy's planned floor span (a floor cut's other distances are relative to its end, so it moves whole).
 static func shifted(source: LevelLayout, offset: float) -> LevelLayout:
 	var out := LevelLayout.new()
 	out.lane_count = source.lane_count
@@ -91,6 +109,13 @@ static func shifted(source: LevelLayout, offset: float) -> LevelLayout:
 		if from[key] is Array and to.get(key) is Array:
 			for item: Dictionary in from[key]:
 				(to[key] as Array).append(_shift(item, offset))
+	# Lists to_dict() leaves out while they're empty.
+	for d: Dictionary in source.doodads:
+		out.doodads.append(_shift(d, offset))
+	for c: Dictionary in source.cuts:
+		out.cuts.append(_shift(c, offset))
+	for w: Dictionary in source.wall_fences:
+		out.wall_fences.append(_shift(w, offset))
 	return out
 
 
@@ -128,10 +153,10 @@ func stream_from() -> float:
 
 
 ## Adds a boss script's own pieces to the track during the fight (track distances; build them with
-## the LevelLayout lists: gaps, fences, signs, hulls, pads, ramps, speed_pads, enemies). Track pieces
-## must start at or past stream_from(); nearer ones are left out with a warning (use BossProps within
-## sight). Enemies come into play at their type's spawn lead like the rest. Returns how many pieces
-## were added.
+## the LevelLayout lists: gaps, fences, signs, hulls, pads, ramps, speed_pads, cuts, wall_fences,
+## enemies). Track pieces must start at or past stream_from() (a floor cut's whole stretch, from its
+## start); nearer ones are left out with a warning (use BossProps within sight). Enemies come into play
+## at their type's spawn lead like the rest. Returns how many pieces were added.
 func add_pieces(extra: LevelLayout) -> int:
 	var from: float = stream_from()
 	var kept := LevelLayout.new()
@@ -148,12 +173,46 @@ func add_pieces(extra: LevelLayout) -> int:
 				continue
 			(into[key] as Array).append(item)
 			count += 1
+	for c: Dictionary in extra.cuts:
+		if float(c["start"]) < from - 0.001:
+			push_warning("BossArena: a floor cut from %.0f m is within the built track (from %.0f m); left out" % [
+				float(c["start"]), from])
+			continue
+		kept.cuts.append(c)
+		count += 1
+	for w: Dictionary in extra.wall_fences:
+		if float(w["at"]) < from - 0.001:
+			push_warning("BossArena: a wall fence at %.0f m is within the built track (from %.0f m); left out" % [
+				float(w["at"]), from])
+			continue
+		kept.wall_fences.append(w)
+		count += 1
 	for e: Dictionary in extra.enemies:
 		kept.enemies.append(e)
 		count += 1
 	kept.length = maxf(layout.length, extra.length)
 	_join_pieces(kept)
 	return count
+
+
+## Why floor cut `cut` (FloorCutPlan.make, at the arena's run speed) can't go where it lies on the
+## arena's track, or "" if it can: GDD §9.9's limits, as the generator holds a level's cuts to them
+## (LevelGenerator.cut_problem: one at a time, never through a ramp, a pad or a ceiling's landing zone,
+## nothing else in its lane, the other lanes whole enough, nothing else going on, room to leave its
+## lane). Ask before add_pieces(); a boss's own attacks the generator doesn't know (its props) are the
+## boss script's to keep off it.
+func cut_problem(cut: Dictionary) -> String:
+	return LevelGenerator.for_layout(config, tuning, layout).cut_problem(cut)
+
+
+## Why wall fence `entry` (WallFencePlan.make, task B5) can't stand where it lies on the arena's track, or
+## "" if it can: the fairness rules a level's wall fences keep (LevelGenerator.wall_fence_problem,
+## WallFencePlacement: never on a wall section with a sign or a window cyborg, never where a ramp
+## launches the player along its wall, the outer lane beside it clear to drop off into, no floor cut or
+## big attack meanwhile, spaced from the other wall fences). Ask before add_pieces(); a boss's own attacks
+## the generator doesn't know (its props) are the boss script's to keep off it.
+func wall_fence_problem(entry: Dictionary) -> String:
+	return LevelGenerator.for_layout(config, tuning, layout).wall_fence_problem(entry)
 
 
 ## True if the floor between two track distances has no hole and no working fence, in `lane` or, with
@@ -163,10 +222,14 @@ func floor_clear(from: float, to: float, lane: int = -1) -> bool:
 	return not hole_between(from, to, lane) and not live_fence_between(from, to, lane)
 
 
-## True if a hole in `lane` (every lane with -1) reaches into [from, to] (a cluster baited into it).
+## True if a hole in `lane` (every lane with -1) reaches into [from, to] (a cluster baited into it). A
+## floor cut's stretch counts as one (it is one, or soon will be).
 func hole_between(from: float, to: float, lane: int = -1) -> bool:
 	for g: Dictionary in layout.gaps:
 		if (lane < 0 or int(g["lane"]) == lane) and float(g["start"]) <= to and float(g["end"]) >= from:
+			return true
+	for c: Dictionary in layout.cuts:
+		if (lane < 0 or int(c["lane"]) == lane) and float(c["start"]) <= to and float(c["end"]) >= from:
 			return true
 	return false
 
@@ -212,12 +275,7 @@ func _join(next: LevelLayout) -> void:
 func _join_pieces(next: LevelLayout) -> void:
 	if world == null:
 		# Before the world is built: straight into the layout it's built from.
-		var to: Dictionary = layout.to_dict()
-		var from: Dictionary = next.to_dict()
-		for key: String in from:
-			if from[key] is Array and to.get(key) is Array:
-				(to[key] as Array).append_array(from[key])
-		layout.length = maxf(layout.length, next.length)
+		layout.append_pieces(next)
 		return
 	var enemies: Array[Dictionary] = next.enemies.duplicate()
 	world.track.extend_layout(next)
@@ -234,6 +292,9 @@ func _join_pieces(next: LevelLayout) -> void:
 func _generate(index: int, patterns: Array) -> LevelLayout:
 	var lap_config: LevelConfig = config.duplicate() as LevelConfig
 	lap_config.level_seed = hash([config.level_seed, index])
+	# The clear stretches at its start and end keep their seconds (the header's Pace).
+	lap_config.start_clear_distance = config.start_clear_distance * tuning.pace()
+	lap_config.end_clear_distance = config.end_clear_distance * tuning.pace()
 	var gen := LevelGenerator.new()
 	var out: LevelLayout = gen.generate(lap_config, tuning, patterns)
 	for line: String in gen.warnings:

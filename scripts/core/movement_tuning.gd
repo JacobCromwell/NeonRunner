@@ -5,8 +5,16 @@ extends Resource
 ## The range hints drive both the inspector sliders and the in-game panel.
 ## Values marked DESIGN-TBD are prototype guesses, not design decisions.
 
+## The run speed the generator's patterns, the enemies' along-track distances and speeds and the
+## rules' margins in metres were written for (18 m/s, the first build's speed everywhere). A faster
+## run stretches them by pace() so every timing stays what it was in seconds (GDD §3, "Pace and busier
+## levels": a faster zone is never secretly tighter). A unit, not a tunable.
+const REFERENCE_SPEED: float = 18.0
+
 @export_group("Run")
-## DESIGN-TBD: base run speed is open (OPEN_QUESTIONS §8).
+## The base run speed: quick play, the tests and boss fights run at it. A campaign level runs at its
+## zone's speed instead (GDD §3, owner's playtest September 30, 2026: about 21 m/s in the Neon City
+## rising to about 25 m/s in the Golden Zone; ZoneDef.run_speed, LevelConfig.run_speed).
 @export_range(5.0, 40.0, 0.5, "suffix:m/s") var run_speed: float = 18.0
 ## DESIGN-TBD: whether speed rises within a level is open. 0 = constant speed.
 @export_range(0.0, 10.0, 0.1, "suffix:m/s per min") var speed_gain_per_minute: float = 0.0
@@ -28,7 +36,8 @@ extends Resource
 
 @export_group("Slide")
 @export_range(0.2, 1.5, 0.05, "suffix:s") var slide_duration: float = 0.7
-## DESIGN-TBD: pressing slide in the air to drop fast is not in the design doc.
+## A feel addition, not in the design doc: pressing slide in the air drops fast and slides on
+## landing. Approved as is (owner's placeholder review, September 26, 2026).
 @export var air_slide_fast_fall: bool = true
 @export_range(5.0, 40.0, 0.5, "suffix:m/s") var fast_fall_speed: float = 22.0
 
@@ -68,8 +77,8 @@ extends Resource
 ## How fast a speed boost fades away, a ramp's and a speed pad's alike (GDD §3): the extra speed
 ## drops by this much every second until it's gone (boost_left).
 @export_range(0.5, 20.0, 0.5, "suffix:m/s per s") var boost_decay_per_second: float = 4.0
-## DESIGN-TBD: speed pads are only named in the GDD (§6: they arrive a few levels in). A pad in a
-## floor lane adds this much speed, which then fades like a ramp's.
+## Speed pads are only named in the GDD (§6: they arrive a few levels in). A pad in a floor lane
+## adds this much speed, which then fades like a ramp's (approved as is, FB 21).
 @export_range(0.0, 20.0, 0.5, "suffix:m/s") var speed_pad_boost: float = 6.0
 @export_range(0.5, 5.0, 0.1, "suffix:m") var speed_pad_length: float = 2.5
 
@@ -101,10 +110,47 @@ extends Resource
 @export_range(0.1, 1.0, 0.05, "suffix:m") var fence_depth: float = 0.3
 ## Seconds of warning (flicker + buzz) before a pulsing fence switches on.
 @export_range(0.1, 1.0, 0.05, "suffix:s") var fence_pulse_warning: float = 0.35
+## Wall fences (task B5; GDD §9.1): an electric fence across the wall-run path, as deep as a fence
+## (fence_depth), its field reaching out from the facade over the wall runner's body, with the floor
+## fences' warning (fence_pulse_warning) before it switches on.
+## DESIGN-TBD: the top of a full-height one, above the highest a wall run goes (wall_max_height, and
+## half the body over it).
+@export_range(3.0, 8.0, 0.05, "suffix:m") var wall_fence_top: float = 5.0
+## DESIGN-TBD: a partial wall fence's bands (from the Corporate zone): the low one covers the wall from
+## the floor up to wall_fence_low_top (passed above by entering the wall high: jumping onto it), the high
+## one from wall_fence_high_bottom up to wall_fence_top (passed below by entering low: stepping onto the
+## wall without a jump, or later in a wall run). A free entry (wall_entry_height, the body half a
+## hurtbox's width either side of it) runs between the two.
+@export_range(0.5, 3.0, 0.05, "suffix:m") var wall_fence_low_top: float = 1.8
+@export_range(1.5, 4.5, 0.05, "suffix:m") var wall_fence_high_bottom: float = 2.8
+## DESIGN-TBD: how far a wall fence's field reaches out from the facade toward the lanes: over a wall
+## runner's body (which reaches about a hurtbox height out), never as far as a floor runner in the middle
+## of the outer lane (WallFencePlan.reach holds it short of them).
+@export_range(0.2, 1.5, 0.05, "suffix:m") var wall_fence_reach: float = 0.9
 ## How far a sign sticks out from the wall face.
 @export_range(0.3, 1.5, 0.05, "suffix:m") var sign_depth: float = 0.9
 @export_range(0.5, 5.0, 0.1, "suffix:m") var pad_length: float = 2.0
 @export_range(1.0, 8.0, 0.1, "suffix:m") var ramp_length: float = 4.0
+
+@export_group("Doodads")
+## Zone doodads (GDD §3, owner's playtest September 30, 2026): scenery standing in a lane that never
+## hurts; running into one pushes the player into a neighbouring lane. Their collision box, per size
+## class (LevelLayout.DOODAD_SIZES; the zone's skin picks the look and keeps it inside the box).
+## DESIGN-TBD (docs/questions/g5.md): the height, one for every class: too tall to jump (a jump's feet
+## reach jump_height, 1.6 m) and low enough that a ceiling rider passes over it even mid-jump (the
+## rider's head comes down to ceiling_height - jump_height - visual_size.y, about 3.1 m).
+@export_range(1.8, 3.0, 0.05, "suffix:m") var doodad_height: float = 2.6
+## DESIGN-TBD: each class's length along the lane and width across it (at most lane_width less a
+## margin, so a neighbour passes it and a blocked switch's bump never reaches it).
+@export_range(0.5, 4.0, 0.1, "suffix:m") var doodad_small_length: float = 1.4
+@export_range(0.5, 2.2, 0.05, "suffix:m") var doodad_small_width: float = 1.3
+@export_range(1.0, 8.0, 0.1, "suffix:m") var doodad_medium_length: float = 3.6
+@export_range(0.5, 2.2, 0.05, "suffix:m") var doodad_medium_width: float = 1.9
+@export_range(2.0, 12.0, 0.1, "suffix:m") var doodad_large_length: float = 6.5
+@export_range(0.5, 2.2, 0.05, "suffix:m") var doodad_large_width: float = 2.0
+## How long the push takes, from the doodad's lane to the neighbouring one: a quick shove (a lane
+## switch takes lane_switch_time). DESIGN-TBD.
+@export_range(0.05, 0.4, 0.01, "suffix:s") var doodad_push_time: float = 0.13
 
 @export_group("Camera")
 @export_range(3.0, 15.0, 0.1, "suffix:m") var camera_distance: float = 7.5
@@ -130,6 +176,13 @@ extends Resource
 @export_range(0.05, 0.5, 0.01, "suffix:s") var tap_max_time: float = 0.22
 
 
+## How much faster than REFERENCE_SPEED this tuning runs (1 at 18 m/s). Metres written for the
+## reference speed (patterns, rules' margins, the enemies' along-track distances and speeds) are
+## multiplied by it, so they keep their timing in seconds at any run speed.
+func pace() -> float:
+	return run_speed / REFERENCE_SPEED
+
+
 func gravity() -> float:
 	return 2.0 * jump_height / (jump_time_to_apex * jump_time_to_apex)
 
@@ -152,6 +205,17 @@ func jump_distance(speed: float) -> float:
 ## The Player fades its boost with this each physics frame.
 func boost_left(boost: float, seconds: float) -> float:
 	return maxf(boost - boost_decay_per_second * maxf(seconds, 0.0), 0.0)
+
+
+## A doodad's collision box for size class `size` (LevelLayout.DOODAD_SIZES): Vector3(width, height,
+## length), the length along the lane. An unknown class is the medium one.
+func doodad_size(size: StringName) -> Vector3:
+	match size:
+		&"small":
+			return Vector3(doodad_small_width, doodad_height, doodad_small_length)
+		&"large":
+			return Vector3(doodad_large_width, doodad_height, doodad_large_length)
+	return Vector3(doodad_medium_width, doodad_height, doodad_medium_length)
 
 
 ## The extra track distance a boost of `boost` m/s adds over `seconds` while it fades (boost_left).

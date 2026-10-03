@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="PerformanceTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/run/performance_tuning.gd" id="1_perf"]
+
+[resource]
+script = ExtResource("1_perf")
+chunk_dress_budget_ms = 1.0
+test_p99_ms = 4.5
+test_worst_ms = 12.0

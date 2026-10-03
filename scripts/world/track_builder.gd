@@ -17,8 +17,23 @@ const LAYER_HULL: int = 2
 const LAYER_HAZARD: int = 4
 const LAYER_WALL_BLOCKER: int = 8
 const LAYER_TRIGGER: int = 16
-## Solid sides the player can't switch lanes into (GDD §9.3: the hover truck's sides).
+## Solid sides the player can't switch lanes into (GDD §9.3: the hover truck's sides; a zone doodad's).
 const LAYER_LANE_BLOCKER: int = 64
+## Zone doodads' bodies (GDD §3, owner's playtest September 30, 2026): running into one's front
+## pushes the player into a neighbouring lane (Player). Never a hazard: no hit, and shots and
+## weapons never see it.
+const LAYER_DOODAD: int = 128
+## A doodad's body in the hitbox view (debug_toggle_hitboxes): see-through blue, apart from the
+## hazards' red.
+const DOODAD_DEBUG := Color(0.2, 0.55, 1.0, 0.3)
+## A floor cut's lane is drawn in slices this long (and cut at chunk cuts), which it hides as its front
+## passes them and shortens the one its front is in (FloorCut): short enough that one shortened slice
+## barely shows, long enough to keep a chunk's build cheap.
+const CUT_SLICE: float = 4.0
+## With a dressing budget (dress_budget_usec), a chunk's look is finished whatever the budget once the
+## player is this close to its start: built BUILD_AHEAD ahead, it has the time of BUILD_AHEAD - DRESS_BY
+## metres of running to be dressed a little at a time.
+const DRESS_BY: float = 120.0
 
 var layout: LevelLayout
 var tuning: MovementTuning
@@ -27,8 +42,21 @@ var skin: ZoneSkin
 ## Optional: hazard warning sounds. Tests leave it empty.
 var sfx: SfxLibrary
 var show_hitboxes: bool = false
+## Spreads each chunk's dressing over frames (task PERF1: the skin's walls, floor and hazard looks for
+## one chunk took most of a chunk's build, 1.5 to 4 ms in one frame on a desktop CPU, several times
+## that on a phone, every 1.6 to 1.9 s of play). Above 0, a chunk's gameplay nodes (collision, hazards,
+## triggers, doodads' bodies) are still all built in the frame it's built, exactly as before, but the
+## skin's calls for it wait in a queue that update() works through in order, for about this many
+## microseconds a frame (at least one call a frame), finishing a chunk's whatever the time once the
+## player is DRESS_BY from it. 0 (tests, review tools) dresses every chunk as it's built. A run sets it
+## (LevelRun, from PerformanceTuning.chunk_dress_budget_ms).
+var dress_budget_usec: int = 0
 
 var _lane_gaps: Array = []
+## The layout's floor cuts by lane, in track order (LevelLayout.cuts).
+var _lane_cuts: Array = []
+## Built floor cuts (FloorCut nodes) by FloorCut.key_for(lane, end).
+var _cut_nodes: Dictionary = {}
 var _buckets: Dictionary = {}
 var _chunks: Dictionary = {}
 var _next_chunk: int = 0
@@ -36,6 +64,13 @@ var _last_chunk: int = 0
 var _level_time: float = 0.0
 ## Built fence hazards by their index in layout.fences, so an EMP can switch them off.
 var _fence_nodes: Dictionary = {}
+## Built wall fence hazards by their index in layout.wall_fences (task B5), likewise.
+var _wall_fence_nodes: Dictionary = {}
+## The skin's calls still to make (dress_budget_usec), in order: [chunk start, chunk root, Callable].
+var _dressing: Array[Array] = []
+## The chunk being built (_build_chunk): its start and root, for the calls it queues.
+var _dress_start: float = 0.0
+var _dress_root: Node3D
 
 
 func set_layout(p_layout: LevelLayout, p_tuning: MovementTuning, p_skin: ZoneSkin = null) -> void:
@@ -49,31 +84,44 @@ func set_layout(p_layout: LevelLayout, p_tuning: MovementTuning, p_skin: ZoneSki
 	_chunks.clear()
 	_buckets.clear()
 	_fence_nodes.clear()
+	_wall_fence_nodes.clear()
+	_cut_nodes.clear()
+	_dressing.clear()
 	_next_chunk = 0
 	_lane_gaps.clear()
+	_lane_cuts.clear()
 	for lane: int in layout.lane_count:
 		_lane_gaps.append([])
-	_add_pieces(layout, 0)
+		_lane_cuts.append([])
+	_add_pieces(layout, 0, 0)
 
 
-## Lengthens the track while it runs (a boss arena's next lap, BossArena): appends every list of
-## `extra` to the layout and moves its end to extra.length. The pieces must lie past built_until():
-## chunks already built don't change. Credits and enemies only join the layout's lists; the credit
-## field and the enemy director don't pick them up.
+## Lengthens the track while it runs (a boss arena's next lap, BossArena; endless mode's next stretch):
+## appends every list of `extra` to the layout (LevelLayout.append_pieces: floor cuts and wall fences
+## too, so either can be added during a run) and moves its end to extra.length. The pieces must lie past
+## built_until(): chunks already built don't change. Credits and enemies only join the layout's lists;
+## the credit field and the enemy director don't pick them up.
 func extend_layout(extra: LevelLayout) -> void:
 	var first_fence: int = layout.fences.size()
-	var lists: Dictionary = layout.to_dict()
-	var more: Dictionary = extra.to_dict()
-	for key: String in more:
-		if more[key] is Array and lists.get(key) is Array:
-			(lists[key] as Array).append_array(more[key])
-	layout.length = maxf(layout.length, extra.length)
-	_add_pieces(extra, first_fence)
+	var first_wall_fence: int = layout.wall_fences.size()
+	layout.append_pieces(extra)
+	_add_pieces(extra, first_fence, first_wall_fence)
 
 
 ## Track distance up to which chunks are built.
 func built_until() -> float:
 	return _next_chunk * CHUNK_LENGTH
+
+
+## The skin's calls still waiting to dress built chunks (dress_budget_usec; 0 without a budget).
+func dressing_left() -> int:
+	return _dressing.size()
+
+
+## Dresses every built chunk now (tests and tools that look at a chunk right after it's built).
+func dress_all() -> void:
+	while not _dressing.is_empty():
+		_dress_next()
 
 
 ## Builds chunks ahead of `player_distance` and frees chunks that are fully behind it.
@@ -88,10 +136,39 @@ func update(player_distance: float, level_time: float) -> void:
 		if chunk["max_end"] < player_distance - KEEP_BEHIND:
 			(chunk["node"] as Node3D).queue_free()
 			_chunks.erase(index)
+	_dress_some(player_distance)
+	# Floor cuts: a hold after a block that's over lets go (FloorCut.tick), before the player moves.
+	for key: String in _cut_nodes.keys():
+		var cut: Variant = _cut_nodes[key]
+		if not is_instance_valid(cut) or (cut as Node).is_queued_for_deletion():
+			_cut_nodes.erase(key)
+		else:
+			(cut as FloorCut).tick(level_time)
+
+
+## The floor cut built for the layout's cut in `lane` whose cause waits at `end` (LevelLayout.cuts), or
+## null until the chunk where its stretch starts is built (and once it's freed behind the player).
+## Its cause runs it (FloorCut.advance_to, stop, hold_under).
+func floor_cut(lane: int, end: float) -> FloorCut:
+	var cut: Variant = _cut_nodes.get(FloorCut.key_for(lane, end))
+	if cut == null or not is_instance_valid(cut) or (cut as Node).is_queued_for_deletion():
+		return null
+	return cut as FloorCut
+
+
+## Every floor cut built and still on the track (tests and review tools).
+func floor_cuts() -> Array[FloorCut]:
+	var out: Array[FloorCut] = []
+	for cut: Variant in _cut_nodes.values():
+		if is_instance_valid(cut) and not (cut as Node).is_queued_for_deletion():
+			out.append(cut as FloorCut)
+	return out
 
 
 ## Switches off, for the rest of the level, every fence within `radius` of `center` (world space),
-## including fences not built yet (GDD §9.1: a destroyed generator's EMP). Returns how many.
+## including fences not built yet (GDD §9.1: a destroyed generator's EMP): floor fences, and wall fences
+## (task B5; GDD §9.1: "a generator's EMP switches them off"), each measured from where its field meets
+## the track (a floor fence's lane, a wall fence's wall face) at the EMP's height. Returns how many.
 func disable_fences_near(center: Vector3, radius: float) -> int:
 	var count: int = 0
 	for f: Dictionary in layout.fences:
@@ -105,6 +182,17 @@ func disable_fences_near(center: Vector3, radius: float) -> int:
 		var node: Variant = _fence_nodes.get(f["index"])
 		if node != null and is_instance_valid(node):
 			(node as Hazard).set_enabled(false)
+	for w: Dictionary in layout.wall_fences:
+		if w.get("disabled", false):
+			continue
+		var at := Vector3(int(w["side"]) * geo.wall_x(), center.y, TrackGeometry.world_z(w["at"]))
+		if at.distance_to(center) > radius:
+			continue
+		w["disabled"] = true
+		count += 1
+		var wall_node: Variant = _wall_fence_nodes.get(w.get("index", -1))
+		if wall_node != null and is_instance_valid(wall_node):
+			(wall_node as Hazard).set_enabled(false)
 	return count
 
 
@@ -117,6 +205,18 @@ func fence_hazards() -> Array[Hazard]:
 	return out
 
 
+## Built wall fence hazards (task B5; for tests, review tools and effects), in layout order.
+func wall_fence_hazards() -> Array[Hazard]:
+	var out: Array[Hazard] = []
+	var keys: Array = _wall_fence_nodes.keys()
+	keys.sort()
+	for k: Variant in keys:
+		var h: Variant = _wall_fence_nodes[k]
+		if is_instance_valid(h) and not (h as Node).is_queued_for_deletion():
+			out.append(h)
+	return out
+
+
 func set_hitboxes_visible(on: bool) -> void:
 	show_hitboxes = on
 	for node: Node in get_tree().get_nodes_in_group(&"debug_hitbox"):
@@ -125,8 +225,9 @@ func set_hitboxes_visible(on: bool) -> void:
 
 
 ## Sorts the track pieces of `pieces` (the whole layout, or an extension of it) into the chunks that
-## build them. `first_fence` is the layout index of its first fence.
-func _add_pieces(pieces: LevelLayout, first_fence: int) -> void:
+## build them. `first_fence` and `first_wall_fence` are the layout indices of its first fence and wall
+## fence.
+func _add_pieces(pieces: LevelLayout, first_fence: int, first_wall_fence: int) -> void:
 	_last_chunk = int(ceil((layout.length + RUN_OUT) / CHUNK_LENGTH))
 	for g: Dictionary in pieces.gaps:
 		_lane_gaps[g["lane"]].append(g)
@@ -135,11 +236,29 @@ func _add_pieces(pieces: LevelLayout, first_fence: int) -> void:
 	for i: int in pieces.fences.size():
 		pieces.fences[i]["index"] = first_fence + i
 	_bucket("fences", pieces.fences, "at", tuning.fence_depth)
+	for i: int in pieces.wall_fences.size():
+		pieces.wall_fences[i]["index"] = first_wall_fence + i
+	_bucket("wall_fences", pieces.wall_fences, "at", tuning.fence_depth)
 	_bucket("signs", pieces.signs, "start", 0.0, "end")
 	_bucket("hulls", pieces.hulls, "start", 0.0, "end")
 	_bucket("pads", pieces.pads, "at", tuning.pad_length)
 	_bucket("ramps", pieces.ramps, "at", tuning.ramp_length)
 	_bucket("speed_pads", pieces.speed_pads, "at", tuning.speed_pad_length)
+	_bucket("doodads", pieces.doodads, "start", 0.0, "end")
+	# A floor cut is built in the chunk where its stretch starts, which stays until the player is past
+	# its cause's spot; each chunk draws the slices of its lane's floor within it.
+	for c: Dictionary in pieces.cuts:
+		_lane_cuts[int(c["lane"])].append(c)
+		var index: int = maxi(0, int(floor(float(c["start"]) / CHUNK_LENGTH)))
+		if not _buckets.has(index):
+			_buckets[index] = {"max_end": 0.0}
+		var bucket: Dictionary = _buckets[index]
+		if not bucket.has("cuts"):
+			bucket["cuts"] = []
+		bucket["cuts"].append(c)
+		bucket["max_end"] = maxf(bucket["max_end"], FloorCutPlan.lane_window(c).y)
+	for list: Array in _lane_cuts:
+		list.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["start"] < b["start"])
 
 
 ## Groups items by the chunk they start in. An item spanning several chunks keeps its
@@ -168,17 +287,32 @@ func _build_chunk(index: int) -> void:
 		c0 = -KEEP_BEHIND - 10.0
 	var bucket: Dictionary = _buckets.get(index, {})
 	_chunks[index] = {"node": root, "max_end": maxf(c1, float(bucket.get("max_end", 0.0)))}
+	_dress_start = c0
+	_dress_root = root
 
+	# Floor cuts whose stretch starts here, before the floor slices that register with them.
+	for c: Dictionary in bucket.get("cuts", []):
+		_build_cut(root, c)
 	for lane: int in layout.lane_count:
-		for piece: Vector2 in _floor_pieces(lane, c0, c1):
-			_build_floor_piece(root, lane, piece, piece.x > c0, piece.y < c1)
+		for piece: Vector4 in _floor_pieces(lane, c0, c1):
+			_build_floor_piece(root, lane, Vector2(piece.x, piece.y), piece.z > 0.5, piece.w > 0.5)
+		for c: Dictionary in _lane_cuts[lane]:
+			if float(c["start"]) < c1 and float(c["end"]) > c0:
+				_build_cut_slices(root, c, c0, c1)
+	var wall_enemies: Array[Dictionary] = _enemies_between(c0, c1)
 	for side: int in [-1, 1]:
-		skin.wall_section(root, side, side * geo.wall_x(), c0, c1)
+		# The skin notes a side's wall enemies just before it draws that side (one call, so nothing comes
+		# between them in the queue).
+		_dress(func() -> void:
+			skin.note_wall_enemies(side, c0, c1, wall_enemies)
+			skin.wall_section(root, side, side * geo.wall_x(), c0, c1))
 	if layout.length >= c0 and layout.length < c1:
-		skin.finish_line(root, geo.half_width() * 2.0, layout.length)
+		_dress(skin.finish_line.bind(root, geo.half_width() * 2.0, layout.length))
 
 	for f: Dictionary in bucket.get("fences", []):
 		_build_fence(root, f)
+	for w: Dictionary in bucket.get("wall_fences", []):
+		_build_wall_fence(root, w)
 	for s: Dictionary in bucket.get("signs", []):
 		_build_sign(root, s)
 	for h: Dictionary in bucket.get("hulls", []):
@@ -189,25 +323,117 @@ func _build_chunk(index: int) -> void:
 		_build_ramp(root, r)
 	for sp: Dictionary in bucket.get("speed_pads", []):
 		_build_speed_pad(root, sp)
+	for d: Dictionary in bucket.get("doodads", []):
+		_build_doodad(root, d)
 
 
-## Returns the [start, end] distance ranges of solid floor for one lane within [c0, c1).
-func _floor_pieces(lane: int, c0: float, c1: float) -> Array[Vector2]:
-	var pieces: Array[Vector2] = []
-	var cursor: float = c0
+## A skin call for the chunk being built: made now, or queued with a dressing budget (dress_budget_usec).
+func _dress(work: Callable) -> void:
+	if dress_budget_usec <= 0:
+		work.call()
+	else:
+		_dressing.append([_dress_start, _dress_root, work])
+
+
+## Makes queued skin calls for about dress_budget_usec (at least one), and every call for a chunk the
+## player is within DRESS_BY of.
+func _dress_some(player_distance: float) -> void:
+	var t0: int = Time.get_ticks_usec()
+	var made: int = 0
+	while not _dressing.is_empty():
+		var urgent: bool = float(_dressing[0][0]) < player_distance + DRESS_BY
+		if made > 0 and not urgent and Time.get_ticks_usec() - t0 >= dress_budget_usec:
+			return
+		_dress_next()
+		made += 1
+
+
+func _dress_next() -> void:
+	var item: Array = _dressing.pop_front()
+	# A chunk freed before it was dressed (a test that jumps ahead) needs no look.
+	if is_instance_valid(item[1]) and not (item[1] as Node).is_queued_for_deletion():
+		(item[2] as Callable).call()
+
+
+## The layout's enemy entries whose track distance falls in [c0, c1) (ZoneSkin.note_wall_enemies()).
+func _enemies_between(c0: float, c1: float) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for e: Dictionary in layout.enemies:
+		var at: float = float(e.get("at", 0.0))
+		if at >= c0 and at < c1:
+			out.append(e)
+	return out
+
+
+## The ranges of one lane's floor within [c0, c1) the chunk builds as pieces: Vector4(start, end,
+## edge_start, edge_end), the edges 1 where a gap borders the piece there (0 elsewhere). A floor cut's
+## stretch (LevelLayout.cuts) is left out like a gap, but borders the pieces beside it with no edge:
+## its own slices carry the floor on (_build_cut_slices).
+func _floor_pieces(lane: int, c0: float, c1: float) -> Array[Vector4]:
+	# [start, end, a gap (or a cut)], in track order.
+	var holes: Array[Array] = []
 	for g: Dictionary in _lane_gaps[lane]:
-		var gs: float = g["start"]
-		var ge: float = g["end"]
-		if ge <= cursor:
+		if float(g["end"]) > c0 and float(g["start"]) < c1:
+			holes.append([float(g["start"]), float(g["end"]), true])
+	if not _lane_cuts[lane].is_empty():
+		for c: Dictionary in _lane_cuts[lane]:
+			if float(c["end"]) > c0 and float(c["start"]) < c1:
+				holes.append([float(c["start"]), float(c["end"]), false])
+		holes.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+	var pieces: Array[Vector4] = []
+	var cursor: float = c0
+	var edge_start: bool = false
+	for h: Array in holes:
+		var hs: float = h[0]
+		var he: float = h[1]
+		if he <= cursor:
 			continue
-		if gs >= c1:
-			break
-		if gs > cursor:
-			pieces.append(Vector2(cursor, gs))
-		cursor = maxf(cursor, ge)
+		if hs > cursor:
+			pieces.append(Vector4(cursor, hs, 1.0 if edge_start else 0.0, 1.0 if h[2] else 0.0))
+		if he > cursor:
+			cursor = he
+			edge_start = h[2]
 	if cursor < c1:
-		pieces.append(Vector2(cursor, c1))
+		pieces.append(Vector4(cursor, c1, 1.0 if edge_start else 0.0, 0.0))
 	return pieces
+
+
+## Floor cut `c` (LevelLayout.cuts), in the chunk `root` where its stretch starts: its collision and
+## the skin's look of the hole (FloorCut).
+func _build_cut(root: Node3D, c: Dictionary) -> void:
+	var cut := FloorCut.new()
+	root.add_child(cut)
+	cut.setup(geo, c, FLOOR_THICKNESS, skin)
+	_cut_nodes[FloorCut.key_for(int(c["lane"]), float(c["end"]))] = cut
+
+
+## The lane's floor over floor cut `c`'s stretch within [c0, c1), as the skin draws any floor
+## (floor_segment, with no gap edges: the floor runs on), in slices of CUT_SLICE metres from the cut's
+## start, each under a node of its own the cut hides or shortens as it runs (FloorCut.add_slice).
+## No collision: the cut holds the stretch's.
+func _build_cut_slices(root: Node3D, c: Dictionary, c0: float, c1: float) -> void:
+	var lane: int = int(c["lane"])
+	var start: float = float(c["start"])
+	var lo: float = maxf(start, c0)
+	var hi: float = minf(float(c["end"]), c1)
+	var cut: FloorCut = floor_cut(lane, float(c["end"]))
+	var span: Vector2 = geo.lane_floor_span(lane)
+	var k: int = maxi(0, floori((lo - start) / CUT_SLICE))
+	var a: float = lo
+	while a < hi - 0.0005:
+		var b: float = minf(start + (k + 1) * CUT_SLICE, hi)
+		k += 1
+		if b <= a + 0.0005:
+			continue
+		var slice := Node3D.new()
+		slice.name = "CutSlice"
+		root.add_child(slice)
+		var center := Vector3((span.x + span.y) * 0.5, -FLOOR_THICKNESS * 0.5, -(a + b) * 0.5)
+		_dress(skin.floor_segment.bind(slice, center, Vector3(span.y - span.x, FLOOR_THICKNESS, b - a), geo.lane_x(lane),
+			false, false))
+		if cut != null:
+			cut.add_slice(slice, a, b)
+		a = b
 
 
 func _build_floor_piece(root: Node3D, lane: int, piece: Vector2, edge_start: bool, edge_end: bool) -> void:
@@ -215,7 +441,7 @@ func _build_floor_piece(root: Node3D, lane: int, piece: Vector2, edge_start: boo
 	var center := Vector3((span.x + span.y) * 0.5, -FLOOR_THICKNESS * 0.5, -(piece.x + piece.y) * 0.5)
 	var size := Vector3(span.y - span.x, FLOOR_THICKNESS, piece.y - piece.x)
 	_static_box(root, center, size, LAYER_FLOOR)
-	skin.floor_segment(root, center, size, geo.lane_x(lane), edge_start, edge_end)
+	_dress(skin.floor_segment.bind(root, center, size, geo.lane_x(lane), edge_start, edge_end))
 
 
 func _build_fence(root: Node3D, f: Dictionary) -> void:
@@ -233,9 +459,39 @@ func _build_fence(root: Node3D, f: Dictionary) -> void:
 			hazard.add_child(telegraph)
 			telegraph.bind(hazard, sfx.stream(&"fence_warning"), sfx.volume(&"fence_warning"),
 				sfx.warning_full_volume_distance, sfx.warning_max_distance)
-	skin.fence(hazard, size, -(bottom + top) * 0.5, gapped)
+	_dress(skin.fence.bind(hazard, size, -(bottom + top) * 0.5, gapped))
 	_fence_nodes[f["index"]] = hazard
 	if f.get("disabled", false):
+		hazard.set_enabled(false)
+
+
+## A wall fence (task B5; GDD §9.1; LevelLayout.wall_fences, WallFencePlan): an electric field across the
+## wall-run path on its wall, from the wall face out toward the lanes (WallFencePlan.reach: over a wall
+## runner's body, short of a floor runner in the outer lane), over its band's heights, a fence deep. It's
+## a hazard like a floor fence (electrical: DamageRules lets armor, the shield and the dash through,
+## never claws), never a wall blocker (the wall is open to enter; a live field just hurts), pulsing on
+## the level clock with a floor fence's warning (its flicker, and the crackle from HazardTelegraph), and
+## switched off for good by an EMP (disable_fences_near). The skin draws its emitters and field
+## (ZoneSkin.wall_fence).
+func _build_wall_fence(root: Node3D, w: Dictionary) -> void:
+	var side: int = int(w["side"])
+	var band_name: String = String(w["band"])
+	var box: AABB = WallFencePlan.hitbox(w, tuning, geo)
+	var center: Vector3 = box.get_center()
+	var hazard := _hazard(root, center, box.size, LAYER_HAZARD)
+	hazard.hazard_name = "wall fence (%s)" % band_name
+	hazard.is_electrical = true
+	if float(w["pulse_on"]) > 0.0 and float(w["pulse_off"]) > 0.0:
+		hazard.setup_pulsing(float(w["pulse_on"]), float(w["pulse_off"]), tuning.fence_pulse_warning, float(w["phase"]),
+			_level_time)
+		if sfx != null and sfx.stream(&"fence_warning") != null:
+			var telegraph := HazardTelegraph.new()
+			hazard.add_child(telegraph)
+			telegraph.bind(hazard, sfx.stream(&"fence_warning"), sfx.volume(&"fence_warning"),
+				sfx.warning_full_volume_distance, sfx.warning_max_distance)
+	_dress(skin.wall_fence.bind(hazard, box.size, side, StringName(band_name), -center.y))
+	_wall_fence_nodes[int(w.get("index", _wall_fence_nodes.size()))] = hazard
+	if w.get("disabled", false):
 		hazard.set_enabled(false)
 
 
@@ -247,7 +503,7 @@ func _build_sign(root: Node3D, s: Dictionary) -> void:
 		size, LAYER_HAZARD | LAYER_WALL_BLOCKER)
 	hazard.hazard_name = "sign"
 	hazard.is_solid = true
-	skin.wall_sign(hazard, size)
+	_dress(skin.wall_sign.bind(hazard, size))
 
 
 ## A ceiling section: its collision box over the lanes it covers (all of them, or a narrow ceiling's
@@ -256,13 +512,13 @@ func _build_hull(root: Node3D, h: Dictionary) -> void:
 	var section := CeilingSection.make(geo, tuning.ceiling_height, HULL_THICKNESS, float(h["start"]), float(h["end"]),
 		layout.hull_lanes(h))
 	_static_box(root, section.center, section.size, LAYER_HULL)
-	skin.ceiling_section(root, section)
+	_dress(skin.ceiling_section.bind(root, section))
 
 
 func _build_pad(root: Node3D, p: Dictionary) -> void:
 	var size := Vector3(geo.lane_width * 0.7, 0.5, tuning.pad_length)
 	var area := _trigger(root, &"pad", Vector3(geo.lane_x(p["lane"]), size.y * 0.5, -float(p["at"]) - size.z * 0.5), size)
-	skin.pad(area, size)
+	_dress(skin.pad.bind(area, size))
 
 
 func _build_ramp(root: Node3D, r: Dictionary) -> void:
@@ -270,13 +526,48 @@ func _build_ramp(root: Node3D, r: Dictionary) -> void:
 	var size := Vector3(geo.lane_width * 0.8, 1.0, tuning.ramp_length)
 	var area := _trigger(root, &"ramp", Vector3(geo.lane_x(layout.outer_lane(side)), size.y * 0.5, -float(r["at"]) - size.z * 0.5), size)
 	area.set_meta(&"side", side)
-	skin.ramp(area, size, side)
+	_dress(skin.ramp.bind(area, size, side))
 
 
 func _build_speed_pad(root: Node3D, p: Dictionary) -> void:
 	var size := Vector3(geo.lane_width * 0.7, 0.5, tuning.speed_pad_length)
 	var area := _trigger(root, &"speed_pad", Vector3(geo.lane_x(p["lane"]), size.y * 0.5, -float(p["at"]) - size.z * 0.5), size)
-	skin.speed_pad(area, size)
+	_dress(skin.speed_pad.bind(area, size))
+
+
+## A zone doodad (GDD §3, owner's playtest September 30, 2026): a solid scenery piece standing in its
+## lane that never hurts. Its box (the size class's width and height, MovementTuning.doodad_size, over
+## the layout's start to end) is two things in the physics world: a body on the doodad and
+## lane-blocker layers, which the player's push contact meets at its front (Player) and a lane switch
+## meets at its sides (blocked, with the bump and the clank); and a top on the floor layer, so a
+## player who comes down on it from above (off a wall jump) lands and runs along it, like a hover
+## truck's roof (DESIGN-TBD, docs/questions/g5.md 2: a solid top). It's no hazard: nothing hurts
+## there, and shots and weapons never see it. The node carries its layout entry (meta "doodad"); the
+## skin dresses it (ZoneSkin.doodad).
+func _build_doodad(root: Node3D, d: Dictionary) -> void:
+	var start: float = float(d["start"])
+	var end: float = float(d["end"])
+	var box: Vector3 = tuning.doodad_size(StringName(d["size"]))
+	var size := Vector3(box.x, box.y, end - start)
+	var area := Area3D.new()
+	area.name = "Doodad"
+	area.collision_layer = LAYER_DOODAD | LAYER_LANE_BLOCKER
+	area.collision_mask = 0
+	area.monitoring = false
+	area.position = Vector3(geo.lane_x(int(d["lane"])), size.y * 0.5, -(start + end) * 0.5)
+	area.set_meta(&"doodad", d)
+	root.add_child(area)
+	_add_shape(area, size)
+	var top := StaticBody3D.new()
+	top.collision_layer = LAYER_FLOOR
+	top.collision_mask = 0
+	area.add_child(top)
+	_add_shape(top, size)
+	# In the hitbox view a doodad's body shows in a safe blue, never a hazard's red.
+	var debug := GreyboxMaterials.add_box(area, Vector3.ZERO, size * 1.01, GreyboxMaterials.overlay(DOODAD_DEBUG, true))
+	debug.add_to_group(&"debug_hitbox")
+	debug.visible = show_hitboxes
+	_dress(skin.doodad.bind(area, size, StringName(d["size"]), int(d["side"]), int(d.get("seed", 0))))
 
 
 func _hazard(root: Node3D, center: Vector3, size: Vector3, layers: int) -> Hazard:

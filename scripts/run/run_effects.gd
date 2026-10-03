@@ -12,6 +12,9 @@ extends Node3D
 ## consistent shake and hit-stop, so a bigger cause-specific shake an enemy or a power-up plays of
 ## its own is never drowned out: shake() and freeze() both keep the stronger of two overlapping
 ## requests), and a spark burst in the item's own colour when the armor or the shield blocks a hit.
+## A theft (GDD §9.12, ScoreKeeper.stolen) sends a stream of coins from the runner to the thief, and a
+## caught thief's payout (ScoreKeeper.recovered) bursts out of it into the runner (coin_stream): no
+## shake, no hit-stop and no flashing, so it never reads as a hit.
 ## All the numbers are SpeedFxTuning's (data/tuning/speed_fx.tres, F6 "Speed effects").
 
 signal shake_requested(strength: float, duration: float)
@@ -19,6 +22,11 @@ signal shake_requested(strength: float, duration: float)
 const BURST_POOL: int = 12
 const DEBRIS_POOL: int = 8
 const LINE_POOL: int = 4
+## Coin streams in flight at once (a theft's and a payout's may overlap), and the most coins in one.
+const STREAM_POOL: int = 3
+const STREAM_COINS: int = 16
+## The runner's chest, where a theft's coins leave and a payout's arrive (above the feet).
+const CHEST := Vector3(0.0, 0.8, 0.0)
 ## Fallback if RunWorld.build is given no SpeedFxTuning (tests that build a bare RunEffects).
 const DEFAULT_TUNING_PATH: String = "res://data/tuning/speed_fx.tres"
 
@@ -43,6 +51,12 @@ var _line_life: Array[float] = []
 var _mesh: SphereMesh
 ## The highest the player has been above the floor since the last landing (Landings, land_shake).
 var _air_peak_h: float = 0.0
+## Coin streams (coin_stream), made on first use: {inst: MultiMeshInstance3D, active, t, count, flight,
+## spread, arc, from: {node, offset, last}, to: {node, offset, last}}.
+var _streams: Array[Dictionary] = []
+## The effects' own clock (seconds of _process), and when the last freeze began on it (freeze).
+var _clock: float = 0.0
+var _freeze_began: float = -INF
 
 
 func _ready() -> void:
@@ -99,6 +113,9 @@ func setup(p_world: RunWorld, p_tuning: SpeedFxTuning = null) -> void:
 		tuning = load(DEFAULT_TUNING_PATH) as SpeedFxTuning if ResourceLoader.exists(DEFAULT_TUNING_PATH) else SpeedFxTuning.new()
 	world.player.movement_event.connect(_on_player_event)
 	world.director.enemy_defeated.connect(_on_enemy_defeated)
+	# The score keeper is built after the effects (RunWorld.build): its thefts are wired a moment later,
+	# long before the run starts.
+	_watch_score.call_deferred()
 
 
 ## A burst of glowing particles at `pos`. `size` scales the spread and speed (1 = explosion).
@@ -151,6 +168,45 @@ func line(a: Vector3, b: Vector3, color: Color, duration: float = 0.3, thickness
 		return
 
 
+## A stream of `count` coins (at most STREAM_COINS) flying from one end to the other, in the credit
+## look of denomination `value` (CreditField's mesh and spinning material): they leave one after
+## another over `spread` seconds, and each flies for `flight` seconds, arcing `arc` metres up at its
+## middle and fanning out a little sideways. Each end is a node, followed while it moves (its last
+## place once it's freed), plus an offset; or a fixed point: a null node, the point as the offset. A
+## thief's theft and payout use it (GDD §9.12); so may a thief sucking up credits (task C5). Visual only:
+## it never touches the credits themselves. Never flashes.
+func coin_stream(from_node: Node3D, from_offset: Vector3, to_node: Node3D, to_offset: Vector3, count: int,
+		value: int = 5, flight: float = 0.4, spread: float = 0.45, arc: float = 1.2) -> void:
+	count = mini(count, STREAM_COINS)
+	if count <= 0:
+		return
+	var s: Dictionary = _free_stream()
+	var inst: MultiMeshInstance3D = s["inst"]
+	var look: int = CreditField.denomination(value)
+	inst.multimesh.mesh = CreditField.mesh_for(look)
+	inst.material_override = CreditField.material_for(look)
+	inst.multimesh.visible_instance_count = count
+	s["active"] = true
+	s["t"] = 0.0
+	s["count"] = count
+	s["flight"] = maxf(flight, 0.05)
+	s["spread"] = maxf(spread, 0.0)
+	s["arc"] = arc
+	s["from"] = {"node": from_node, "offset": from_offset, "last": from_offset}
+	s["to"] = {"node": to_node, "offset": to_offset, "last": to_offset}
+	inst.visible = true
+	_update_stream(s, 0.0)
+
+
+## Coins of every stream still in flight (tests and tools).
+func coins_in_flight() -> int:
+	var n: int = 0
+	for s: Dictionary in _streams:
+		if s["active"]:
+			n += int(s["count"])
+	return n
+
+
 ## Asks the camera to shake (hits, explosions, trucks bursting through walls).
 func shake(strength: float, duration: float = 0.25) -> void:
 	if shake_scale > 0.0:
@@ -158,14 +214,22 @@ func shake(strength: float, duration: float = 0.25) -> void:
 
 
 ## A brief hit-stop (RunCamera holds its view; see the class doc for why physics and timers never
-## feel it). `duration` is real seconds; overlapping requests keep the longer one, not their sum, so
-## a burst of kills at once (a splash hit, a dash through a cluster) never stacks into a long stall.
+## feel it). `duration` is real seconds. Freezes never stack or chain (task PERF1): requests in the
+## frame a freeze begins keep the longer one, not their sum (a stomp and its kill), and a request less
+## than SpeedFxTuning.freeze_gap after a freeze began is left out, so a run of kills (a splash hit,
+## auto-fire through a cluster, a dash through a row) never holds the camera again and again.
 func freeze(duration: float) -> void:
-	if shake_scale > 0.0:
+	if shake_scale <= 0.0 or duration <= 0.0:
+		return
+	if _clock == _freeze_began:
 		freeze_left = maxf(freeze_left, duration)
+	elif _clock - _freeze_began >= (tuning.freeze_gap if tuning != null else 0.0):
+		_freeze_began = _clock
+		freeze_left = duration
 
 
 func _process(delta: float) -> void:
+	_clock += delta
 	if freeze_left > 0.0:
 		freeze_left = maxf(freeze_left - delta, 0.0)
 	if world != null and world.player != null:
@@ -177,6 +241,115 @@ func _process(delta: float) -> void:
 			_line_life[i] -= delta
 			if _line_life[i] <= 0.0:
 				_lines[i].visible = false
+	for s: Dictionary in _streams:
+		if s["active"]:
+			_update_stream(s, delta)
+
+
+## A stream from the pool: a free one, or the one furthest through its flight.
+func _free_stream() -> Dictionary:
+	if _streams.is_empty():
+		for i: int in STREAM_POOL:
+			var mm := MultiMesh.new()
+			mm.transform_format = MultiMesh.TRANSFORM_3D
+			mm.instance_count = STREAM_COINS
+			var inst := MultiMeshInstance3D.new()
+			inst.multimesh = mm
+			inst.top_level = true
+			inst.visible = false
+			inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			add_child(inst)
+			_streams.append({"inst": inst, "active": false, "t": 0.0, "count": 0})
+	var best: Dictionary = _streams[0]
+	for s: Dictionary in _streams:
+		if not s["active"]:
+			return s
+		if float(s["t"]) > float(best["t"]):
+			best = s
+	return best
+
+
+## Moves a stream's coins on by `delta` seconds; it ends once its last coin has landed.
+func _update_stream(s: Dictionary, delta: float) -> void:
+	s["t"] = float(s["t"]) + delta
+	var t: float = s["t"]
+	var count: int = s["count"]
+	var flight: float = s["flight"]
+	var spread: float = s["spread"]
+	var inst: MultiMeshInstance3D = s["inst"]
+	if t >= spread + flight:
+		s["active"] = false
+		inst.visible = false
+		return
+	var a: Vector3 = _end_point(s["from"])
+	var b: Vector3 = _end_point(s["to"])
+	var side: Vector3 = (b - a).cross(Vector3.UP)
+	side = side.normalized() if side.length_squared() > 0.0001 else Vector3.RIGHT
+	var hidden := Transform3D(Basis().scaled(Vector3.ZERO), a)
+	for i: int in count:
+		var start: float = spread * float(i) / float(maxi(count - 1, 1))
+		var u: float = (t - start) / flight
+		if u <= 0.0 or u >= 1.0:
+			inst.multimesh.set_instance_transform(i, hidden)
+			continue
+		var e: float = u * u * (3.0 - 2.0 * u)
+		var lift: float = 4.0 * u * (1.0 - u)
+		# Each coin fans out to its own side (a fixed spread per coin, so a stream looks the same every time).
+		var fan: float = sin(float(i) * 2.39996) * 0.5
+		var pos: Vector3 = a.lerp(b, e) + Vector3.UP * float(s["arc"]) * lift + side * fan * lift
+		inst.multimesh.set_instance_transform(i, Transform3D(Basis.IDENTITY, pos))
+
+
+## Where a stream's end is now: its node's place plus the offset, or its last place once the node is gone.
+func _end_point(end: Dictionary) -> Vector3:
+	var node: Variant = end["node"]
+	if node != null and is_instance_valid(node) and (node as Node3D).is_inside_tree():
+		end["last"] = (node as Node3D).global_position + (end["offset"] as Vector3)
+	return end["last"]
+
+
+## The score keeper's thefts (GDD §9.12), once it exists (see setup).
+func _watch_score() -> void:
+	if world == null or not is_instance_valid(world) or world.score == null:
+		return
+	if not world.score.stolen.is_connected(_on_stolen):
+		world.score.stolen.connect(_on_stolen)
+		world.score.recovered.connect(_on_recovered)
+
+
+## A theft: coins pop out of the runner and stream into the thief as it makes off.
+func _on_stolen(amount: int, thief: Node3D) -> void:
+	if world == null or world.player == null or not is_instance_valid(thief):
+		return
+	var from: Vector3 = world.player.global_position + CHEST
+	burst(from, CreditField.color_of(5), tuning.theft_spark_amount, 0.3)
+	var count: int = _stream_coins(amount)
+	coin_stream(world.player, CHEST, thief, _aim_offset(thief), count, amount / maxi(count, 1),
+		tuning.coin_stream_flight, tuning.coin_stream_spread, tuning.coin_stream_arc)
+
+
+## A caught thief's payout: what it held and its jackpot burst out of it into the runner.
+func _on_recovered(amount: int, jackpot: int, thief: Node3D) -> void:
+	if world == null or world.player == null or not is_instance_valid(thief):
+		return
+	var at: Vector3 = thief.global_position + _aim_offset(thief)
+	burst(at, CreditField.color_of(25), tuning.theft_spark_amount * 2, 0.6)
+	var count: int = _stream_coins(amount + jackpot)
+	coin_stream(null, at, world.player, CHEST, count, (amount + jackpot) / maxi(count, 1),
+		tuning.coin_stream_flight, tuning.coin_stream_spread, tuning.coin_stream_arc)
+
+
+## Coins in a stream for `credits` credits: one per coin_stream_credits_per_coin, at least 4.
+func _stream_coins(credits: int) -> int:
+	if credits <= 0:
+		return 0
+	return clampi(ceili(float(credits) / float(maxi(tuning.coin_stream_credits_per_coin, 1))), 4, STREAM_COINS)
+
+
+## Where a thief's coins aim, from its origin: an enemy's aim point.
+static func _aim_offset(thief: Node3D) -> Vector3:
+	var enemy := thief as Enemy
+	return enemy.aim_point() - enemy.global_position if enemy != null else Vector3.ZERO
 
 
 func _on_player_event(kind: StringName) -> void:
@@ -194,6 +367,8 @@ func _on_player_event(kind: StringName) -> void:
 			_block_fx(PlayerSuit.GLOW, tuning.block_break_shake_strength)
 		&"shield_break":
 			_block_fx(PlayerSuit.SHIELD, tuning.block_break_shake_strength)
+		&"doodad_push":
+			shake(tuning.push_shake_strength, tuning.push_shake_time)
 
 
 func _block_fx(color: Color, shake_strength: float) -> void:

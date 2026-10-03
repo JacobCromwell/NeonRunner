@@ -6,8 +6,8 @@ extends ScreenBase
 ## its stars against the par times (listed under them), the boss's payout, and the fight's own stats
 ## (time, weak points, the phase reached, the time bonus). Then on to the shop and the next step or
 ## a retry (GDD §4, §8), a retry now, or the menu.
-## DESIGN-TBD: which stats the level-complete screen shows (OPEN_QUESTIONS §5); these are the
-## ScoreKeeper's, and a boss fight's own (docs/questions/b8.md).
+## The level-complete screen's stats (FB 60): the ScoreKeeper's, and a boss fight's own
+## (DESIGN-TBD, docs/questions/b8.md).
 
 ## Wait before the reveal starts, so the screen has settled.
 const REVEAL_DELAY: float = 0.25
@@ -168,13 +168,16 @@ func _new_best_chip() -> Control:
 	return chip
 
 
-## Collected (+ bonus) = earned on completion; collected and the share kept after a death.
+## Collected (+ bonus) = earned on completion; collected and the share kept after a death. What thieves
+## took and kept (GDD §9.12) shows under what was collected, as it leaves the pay.
 func _credit_table() -> Control:
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override(&"h_separation", roundi(UiTheme.px(16)))
 	grid.add_theme_constant_override(&"v_separation", roundi(UiTheme.px(4)))
 	_table_row(grid, "Credits collected", UiTheme.format_int(result.credits_collected))
+	if result.credits_stolen > 0:
+		_table_row(grid, "Stolen", "−" + UiTheme.format_int(result.credits_stolen))
 	if result.completed:
 		if result.completion_bonus > 0:
 			_table_row(grid, "Boss payout" if result.context.is_boss() else "Completion bonus",

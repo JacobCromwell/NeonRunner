@@ -26,7 +26,7 @@ extends ZoneSkin
 @export var hull_seam_color: Color = Color(0.7, 0.4, 1.0)
 @export var pad_color: Color = Color(0.1, 1.0, 0.95)
 @export var ramp_color: Color = Color(0.3, 1.0, 0.35)
-## DESIGN-TBD: speed pads share the ramps' green "safe boost" family, drawn as chevrons.
+## Speed pads share the ramps' green "safe boost" family, drawn as chevrons (FB 49).
 @export var speed_pad_color: Color = Color(0.45, 1.0, 0.55)
 @export var finish_color: Color = Color(1.0, 1.0, 1.0)
 

@@ -7,10 +7,12 @@ extends ZoneSkin
 ## (canvas, blue awnings, corrugated tin) with the market floor far below; gaps are the drops between
 ## the stalls, with the orange edge glow right on the collision edge. Walls are shopfronts and
 ## casinos: sun-bleached stucco with a row of lit shop windows at the low part of the wall (where the
-## Marketplace citizens will play, task D3: see shop_windows()), a calm band above them, and busy upper
+## Marketplace citizens play, task D3: see shop_windows()), a calm band above them, and busy upper
 ## floors with shutters, awnings and decorative signs. Signs are shop signs in the yellow/black hazard
 ## frame; decorative signs are never framed and never below `decor_min_height`, so they can't be
-## mistaken for hazard signs. Electric fences are the same pink field, strung between poles standing
+## mistaken for hazard signs. Some shop windows hold a Marketplace citizen (task D3, MarketCitizens,
+## scripts/world/skins/marketplace/): scenery only, warm and lit, never a window cyborg's dark glass.
+## Electric fences are the same pink field, strung between poles standing
 ## in market crates. Ceilings are the undersides of buildings bridging the street, overpasses running
 ## along it, a few merchant ships and floating advertisements, each built from the lanes it covers.
 ## The stall roofs stand still, so dust, paper scraps and speed streaks, the seams between stalls and
@@ -215,12 +217,25 @@ extends ZoneSkin
 @export_range(0.0, 1.0, 0.05) var feed_board_brightness: float = 1.0
 @export_range(0.0, 1.0, 0.05) var feed_window_brightness: float = 0.45
 
+@export_group("Doodads")
+## The nice plants' pot (GDD §3, task G6: the owner's "plenty of nice plants") and their foliage, kept
+## well apart from the ramps' and speed pads' hazard green.
+@export var doodad_pot_color: Color = Color(0.56, 0.42, 0.33)
+@export var doodad_plant_colors: PackedColorArray = PackedColorArray([
+	Color(0.3, 0.38, 0.28), Color(0.36, 0.44, 0.3), Color(0.26, 0.33, 0.24)])
+## The casino machines' cabinets (GDD §3: the owner's "casino machines") and their dim screen face,
+## in the Marketplace's own casino-light white, never the bright glow of a real screen.
+@export var doodad_cabinet_colors: PackedColorArray = PackedColorArray([
+	Color(0.24, 0.18, 0.15), Color(0.2, 0.22, 0.27)])
+@export var doodad_cabinet_trim_color: Color = Color(0.62, 0.52, 0.3)
+@export var doodad_screen_color: Color = Color(0.48, 0.46, 0.42)
+
 @export_group("Pads, ramps, finish")
 @export var pad_color: Color = Color(0.1, 1.0, 0.95)
 ## Height of the anti-grav pad's light column.
 @export_range(1.0, 10.0, 0.1, "suffix:m") var pad_beam_height: float = 5.8
 @export var ramp_color: Color = Color(0.3, 1.0, 0.35)
-## DESIGN-TBD: speed pads share the ramps' green "safe boost" family (MeshKit.speed_strip).
+## Speed pads share the ramps' green "safe boost" family (MeshKit.speed_strip; FB 49).
 @export var speed_pad_color: Color = Color(0.45, 1.0, 0.55)
 @export var finish_color: Color = Color(1.0, 1.0, 1.0)
 ## Painted steel under pads, ramps and the finish gantry.
@@ -235,9 +250,14 @@ var _stalls: MarketStalls
 var _facades: MarketFacades
 var _ceilings: MarketCeilings
 var _props: MarketProps
+var _citizens: MarketCitizens
+var _doodads: MarketDoodads
 ## The latest wall face seen (wall_section runs before a chunk's ceilings): a building bridging the
 ## street reaches from wall to wall.
 var _wall_x: float = 0.0
+## Window cyborgs due in the chunk now building, by side (note_wall_enemies(), task D3): their
+## track distance, so the citizens never share a window with one (GDD §9.2).
+var _reserved: Dictionary = {-1: PackedFloat32Array(), 1: PackedFloat32Array()}
 
 
 func _init() -> void:
@@ -270,6 +290,25 @@ func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: f
 		stalls().below(batch, absf(face_x), start, end)
 		facades().overhead(batch, absf(face_x), start, end)
 	batch.commit(parent)
+	citizens().build(parent, side, face_x, start, end)
+
+
+## The window cyborgs TrackBuilder is about to build on `side` in [start, end) (ZoneSkin hook, task
+## D3): kept so citizens() never places one in a window a window cyborg stands in.
+func note_wall_enemies(side: int, _start: float, _end: float, enemies: Array[Dictionary]) -> void:
+	var spans := PackedFloat32Array()
+	for e: Dictionary in enemies:
+		if String(e.get("type", "")) == "window_cyborg" and int(e.get("side", 0)) == side:
+			spans.append(float(e.get("at", 0.0)))
+	_reserved[side] = spans
+
+
+## True if a window cyborg on `side` stands within `margin` of track distance `at` (MarketCitizens).
+func reserved_near(side: int, at: float, margin: float) -> bool:
+	for a: float in _reserved.get(side, PackedFloat32Array()):
+		if absf(a - at) <= margin:
+			return true
+	return false
 
 
 func fence(hazard: Hazard, size: Vector3, ground_y: float, gapped: bool) -> void:
@@ -311,6 +350,11 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	var batch := MeshBatch.new()
 	MeshKit.finish_gate(batch, solid_material(), glow_material(), width, distance, finish_color, market_metal_color)
 	batch.commit(parent)
+
+
+## A potted plant (small), a bank of casino machines (medium) or a planted hedge row (large): MarketDoodads.
+func doodad(body: Node3D, size: Vector3, size_class: StringName, side: int, look_seed: int) -> void:
+	doodads().build(body, size, size_class, side, look_seed)
 
 
 ## The shop windows at the low part of the wall on `side` (face at face_x) whose centres lie between
@@ -476,3 +520,15 @@ func props() -> MarketProps:
 	if _props == null:
 		_props = MarketProps.new(self)
 	return _props
+
+
+func citizens() -> MarketCitizens:
+	if _citizens == null:
+		_citizens = MarketCitizens.new(self)
+	return _citizens
+
+
+func doodads() -> MarketDoodads:
+	if _doodads == null:
+		_doodads = MarketDoodads.new(self)
+	return _doodads

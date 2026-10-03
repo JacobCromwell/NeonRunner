@@ -15,6 +15,8 @@ extends Node3D
 ## - lane_warning(lane, from, to) and circle_warning(at, lane, radius): the red floor warnings of an
 ##   attack (a lane about to be struck, a bomb's target circle), pulsing, or glowing steadily with
 ##   Reduced flashing (Settings); warned() says where they are (pickups keep off them);
+## - floor_warning(node, lane, from, to): a boss's own floor warning, drawn its own way (Sleep Taker's
+##   purple mist), counted by warned() like the red ones;
 ## - keep(node, until): anything else, freed once the player is past `until`.
 ## The node sits at the world origin whatever its parent does (top_level).
 
@@ -30,6 +32,11 @@ var _placed: Array[Dictionary] = []
 var _pulsing: Array[Dictionary] = []
 ## Floor warnings, for warned(): {node, from, to, x0, x1} (track distances, world x).
 var _warned: Array[Dictionary] = []
+## Target circles' rings by radius (circle_warning): one mesh for every circle of a size (task PERF1).
+## (A boss's first row of fences built the skin kit's fence look in its frame, 3.8 ms on the dev machine
+## for The House's first lightning row: when the game renders, ShaderWarmup's fence samples build it with
+## the fight's load.)
+static var _rings: Dictionary = {}
 
 
 func setup(p_world: RunWorld) -> void:
@@ -139,22 +146,25 @@ func lane_warning(lane: int, from: float, to: float) -> MeshInstance3D:
 	mesh.transform = base
 	add_child(mesh)
 	_pulsing.append({"node": mesh, "base": base, "t": 0.0})
-	_warned.append({"node": mesh, "from": minf(from, to), "to": maxf(from, to),
-		"x0": world.geo.lane_x(lane) - world.geo.lane_width * 0.5, "x1": world.geo.lane_x(lane) + world.geo.lane_width * 0.5})
-	keep(mesh, maxf(from, to))
+	floor_warning(mesh, lane, from, to)
 	return mesh
+
+
+## Marks `node`, a boss's own floor warning drawn its own way (Sleep Taker's mist pooling in a lane),
+## as a floor warning over `lane` between track distances `from` and `to`, like lane_warning: warned()
+## counts it while it's shown (pickups keep off it), and it's freed once the player is past `to`.
+func floor_warning(node: Node3D, lane: int, from: float, to: float) -> Node3D:
+	var half: float = world.geo.lane_width * 0.5
+	_warned.append({"node": node, "from": minf(from, to), "to": maxf(from, to),
+		"x0": world.geo.lane_x(lane) - half, "x1": world.geo.lane_x(lane) + half})
+	return keep(node, maxf(from, to))
 
 
 ## A red target circle on the floor at track distance `at` over `lane` (x offset `x` from the lane's
 ## centre): where a bomb or a blow will land.
 func circle_warning(at: float, lane: int, radius: float = 1.0, x: float = 0.0) -> MeshInstance3D:
-	var ring := TorusMesh.new()
-	ring.inner_radius = radius * 0.78
-	ring.outer_radius = radius
-	ring.rings = 24
-	ring.ring_segments = 6
 	var mesh := MeshInstance3D.new()
-	mesh.mesh = ring
+	mesh.mesh = _ring(radius)
 	mesh.material_override = GreyboxMaterials.glow(WARNING_COLOR, 2.6, 0.85)
 	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var base := Transform3D(Basis.from_scale(Vector3(1.0, 0.25, 1.0)),
@@ -166,6 +176,19 @@ func circle_warning(at: float, lane: int, radius: float = 1.0, x: float = 0.0) -
 	_warned.append({"node": mesh, "from": at - radius, "to": at + radius, "x0": cx - radius, "x1": cx + radius})
 	keep(mesh, at + radius)
 	return mesh
+
+
+## A target circle's ring of `radius`, shared by every circle that size.
+static func _ring(radius: float) -> TorusMesh:
+	var key: float = snappedf(radius, 0.001)
+	if not _rings.has(key):
+		var ring := TorusMesh.new()
+		ring.inner_radius = key * 0.78
+		ring.outer_radius = key
+		ring.rings = 24
+		ring.ring_segments = 6
+		_rings[key] = ring
+	return _rings[key]
 
 
 ## Keeps `node` (added here if it has no parent) until the player is KEEP_BEHIND past `until`.

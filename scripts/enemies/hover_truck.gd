@@ -141,7 +141,7 @@ func _build() -> void:
 	side = int(spawn.get("side", 0))
 	if side == 0:
 		side = 1 if rng.randf() < 0.5 else -1
-	# DESIGN-TBD: it holds the outer lane on the side it burst from and never changes lanes (both
+	# It holds the outer lane on the side it burst from and never changes lanes (FB 91; both
 	# roof routes of GDD §9.3 go through the wall beside it).
 	lane = world.layout.outer_lane(side)
 	_lane_x = world.geo.lane_x(lane)
@@ -344,8 +344,8 @@ func _emerged(at_offset: float) -> void:
 
 
 # --- Pacing and lurches ----------------------------------------------------------------------------
-# DESIGN-TBD: the pacing cycle (GDD §9.3 only says it paces the player and lurches backward and
-# forward): pace ahead (cannon) -> lurch back -> hold behind -> rev -> lurch forward -> alongside.
+# The pacing cycle (GDD §9.3 only says it paces the player and lurches backward and forward; FB 91):
+# pace ahead (cannon) -> lurch back -> hold behind -> rev -> lurch forward -> alongside.
 
 func _update_cycle(delta: float) -> void:
 	_active_time += delta
@@ -476,7 +476,8 @@ func _player_inside() -> bool:
 
 
 ## A player in its lane ahead of it must be able to get out before the forward lurch arrives:
-## onto the wall beside it (no sign in the way) or into the next lane (no gap or fence there).
+## onto the wall beside it (no sign in the way) or into the next lane (no gap, fence or zone doodad
+## there: a doodad's side would block the switch).
 func _escape_ok() -> bool:
 	var p: Player = world.player
 	if not player_in_lane() or offset + tune.length * 0.5 > 0.0:
@@ -491,7 +492,7 @@ func _escape_ok() -> bool:
 			break
 	var inward: int = lane - side
 	var lane_ok: bool = inward >= 0 and inward < layout.lane_count \
-		and not layout.gapped_between(inward, d - 1.0, reach + 3.0)
+		and not layout.gapped_between(inward, d - 1.0, reach + 3.0) and not layout.doodad_between(d - 1.0, reach + 3.0, inward)
 	if lane_ok:
 		for f: Dictionary in layout.fences:
 			if int(f["lane"]) == inward and float(f["at"]) >= d - 1.0 and float(f["at"]) <= reach + 3.0:
@@ -506,8 +507,8 @@ func _update_leaving(delta: float) -> void:
 		return
 	_aim_for(-RETIRE_BEHIND - 20.0, tune.leave_speed, tune.drift_accel)
 	if player_in_lane() and offset - tune.length * 0.5 > 0.0:
-		# DESIGN-TBD: with the player in its lane behind it, it speeds off ahead instead of backing
-		# into them.
+		# With the player in its lane behind it, it speeds off ahead instead of backing
+		# into them (FB 91).
 		_blocked_time += delta
 		if _blocked_time > 1.5:
 			_leave_ahead = true
@@ -524,8 +525,10 @@ func _update_guns(delta: float) -> void:
 		if _charge_left < 0.0:
 			_fire_cannon()
 		return
-	if _cannon_timer <= 0.0 and _volley.is_empty() and _can_fire() and not world.director.major_attack_blocked(self):
-		# GDD §9: the charge (the shot's warning) waits until no other type's big attack is on.
+	if _cannon_timer <= 0.0 and _volley.is_empty() and _can_fire() and not _doodad_in_reach() \
+			and not world.director.major_attack_blocked(self):
+		# GDD §9: the charge (the shot's warning) waits until no other type's big attack is on; GDD §3:
+		# nor is it fired at a player a zone doodad hems in (asked first, so it never holds a turn).
 		_charge_left = tune.cannon_charge_seconds
 		world.play_sfx_at(&"truck_cannon_charge", _cannon_muzzle.global_position)
 
@@ -533,10 +536,25 @@ func _update_guns(delta: float) -> void:
 ## Only while pacing ahead of the player, with a clear shot back at them (not at a rider or a
 ## player up on the ceiling).
 func _can_fire() -> bool:
-	# DESIGN-TBD: when it fires, and that it holds fire at a ceiling runner or a rider.
+	# When it fires, and that it holds fire at a ceiling runner or a rider (FB 92).
 	var p: Player = world.player
 	return p.alive and p.running and p.surface != Player.Surface.CEILING and state == State.PACE \
 		and offset - tune.length * 0.5 > 2.0 and absf(offset - tune.pace_offset) < 2.5 and not player_riding()
+
+
+## GDD §3 (zone doodads): the cannon never fires at a player a doodad hems in (its side blocks the
+## dodge, its push moves them into the shot). True while a doodad stands, in any lane, along the
+## stretch the player runs from now until a shot charged now, and its gunners' bolts, have passed
+## them. The generator keeps doodads off every lane while a truck is surely there (its shortest stay)
+## and out of its lane until it has left, so this holds back only a truck that stays longer.
+## DESIGN-TBD (docs/questions/g5.md 5).
+func _doodad_in_reach() -> bool:
+	if world.layout.doodads.is_empty():
+		return false
+	var p: Player = world.player
+	var seconds: float = tune.cannon_charge_seconds + maxf(offset, 0.0) / maxf(tune.shell_speed_at(_scaling), 1.0) \
+		+ shooters * tune.shooter_delay + 0.5
+	return world.layout.doodad_between(p.distance - 1.0, p.distance + maxf(p.speed, 1.0) * seconds)
 
 
 func _fire_cannon() -> void:
@@ -553,7 +571,7 @@ func _fire_cannon() -> void:
 		_volley.append(tune.shooter_delay * (i + 1))
 
 
-# DESIGN-TBD: the window shooters fire bolts just after the cannon, in its telegraphed volley.
+# The window shooters fire bolts just after the cannon, in its telegraphed volley (FB 92).
 func _update_volley(delta: float) -> void:
 	for i: int in _volley.size():
 		_volley[i] -= delta
@@ -762,8 +780,8 @@ func _build_hitboxes() -> void:
 		Vector3(0.0, t.roof_height - 0.15, t.cab_length * 0.5)))
 	_roofs.append(_roof(Vector3(t.width - 0.1, 0.3, t.cab_length), Vector3(0.0, t.cab_roof_height - 0.15, cab_z)))
 	# The weak point: stomping it defeats the truck; touching it any other way is harmless.
-	# DESIGN-TBD: it sits on a cab roof lower than the cargo roof, so a rider carried forward drops
-	# onto it.
+	# It sits on a cab roof lower than the cargo roof, so a rider carried forward drops
+	# onto it (FB 93).
 	_weak = add_hitbox(&"weak_point", Vector3(t.width * 0.7, 0.4, t.cab_length - 0.4),
 		Vector3(0.0, t.cab_roof_height + 0.2, cab_z))
 	_weak.hazard_name = "hover truck weak point"
@@ -776,8 +794,8 @@ func _build_hitboxes() -> void:
 		Vector3(0.0, (top + 0.3) * 0.5, -t.length * 0.5 - t.nose_length * 0.5 + 0.075))
 	_spikes.hazard_name = SPIKES_NAME
 	_spikes.set_enabled(false)
-	# DESIGN-TBD: claw_immune and dash_kills keep the shared rules, so claws or the dash defeat it on
-	# contact with its (live) spikes; GDD §9.3 names only the weak point and weapons.
+	# claw_immune and dash_kills keep the shared rules, so claws or the dash defeat it on
+	# contact with its (live) spikes (FB 93); GDD §9.3 names only the weak point and weapons.
 	# Solid sides: switching lanes into it bumps the player back (GDD §9.3).
 	_blocker = add_lane_blocker(Vector3(world.geo.lane_width * 0.9, t.roof_height, t.length + t.nose_length),
 		Vector3(0.0, t.roof_height * 0.5, -t.nose_length * 0.5))
@@ -871,7 +889,7 @@ func _build_wall_fx() -> void:
 		_rubble_v.append(Vector3.ZERO)
 	# The burst: an attack on the wall face over the truck's length and a little beyond, live for a
 	# moment. A player on the floor beside it is out of its reach.
-	# DESIGN-TBD: the burst is an enemy attack, so armor blocks it (not a solid collision).
+	# The burst is an enemy attack, so armor blocks it, not a solid collision (FB 93).
 	var section: float = t.length + t.burst_section_before + t.burst_section_after
 	_burst_hazard = add_hitbox(&"attack", Vector3(0.9, 5.6, section),
 		Vector3(-side * 0.45, 2.8, (t.burst_section_before - t.burst_section_after) * 0.5), true, _wall_fx)

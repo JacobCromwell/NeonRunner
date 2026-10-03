@@ -8,7 +8,7 @@ extends Enemy
 ##   September 26, 2026): immune_to_weapons keeps it off auto-fire's target list and blocks all
 ##   weapon damage (a direct hit, a stray shot aimed elsewhere, a homing missile, or splash); the
 ##   same rule as for hosts, whom auto-fire never targets (GDD §9.7), so an EMP is always the
-##   player's choice. DESIGN-TBD: claws and plain contact don't destroy it; its body is solid, so
+##   player's choice. Claws and plain contact don't destroy it (FB 73); its body is solid, so
 ##   running into it hurts like any solid obstacle (armor doesn't help).
 ## - Destroying it sets off an EMP (RunWorld.emp): every fence within emp_radius (DESIGN-TBD, in
 ##   data/enemies/generator.tres) switches off for the rest of the level, and every enemy hears it
@@ -34,6 +34,32 @@ var _body: MeshInstance3D
 var _energy: MeshInstance3D
 var _cable_core: MeshInstance3D
 var _husk: bool = false
+
+
+## A fence generator's look (its body, energy rings and a stretch of cable), for EnemyDirector.warm_up
+## (which frees it) and ShaderWarmup: the first builds the kit's meshes and shaders it uses.
+static func warm_up(world: RunWorld, _entry: Dictionary) -> Node:
+	var c: Variant = world.skin.get(&"fence_color") if world.skin != null else null
+	var pink: Color = c if c is Color else Kit.FENCE_PINK
+	var root := Node3D.new()
+	var body := MeshInstance3D.new()
+	body.mesh = Kit.mesh("generator/body", _body_mesh)
+	body.material_override = Kit.part_material(&"normal")
+	root.add_child(body)
+	var energy := MeshInstance3D.new()
+	energy.mesh = Kit.mesh("generator/energy", _energy_mesh)
+	energy.material_override = Kit.energy_material(pink)
+	root.add_child(energy)
+	var core := Kit.Builder.new()
+	core.box(Vector3.ZERO, Vector3(0.5, 0.02, 0.035), Color.WHITE)
+	var cable := MeshInstance3D.new()
+	cable.mesh = core.commit()
+	var material := ShaderMaterial.new()
+	material.shader = Kit.shader("cable")
+	material.set_shader_parameter(&"color", pink)
+	cable.material_override = material
+	root.add_child(cable)
+	return root
 
 
 func _build() -> void:

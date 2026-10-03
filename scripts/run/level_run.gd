@@ -28,6 +28,9 @@ const COMPLETE_PAUSE: float = 2.0
 const QUICK_DEATH_PAUSE: float = 1.2
 ## The longest a beaten boss's defeat may hold the results (BossEncounter.victory_over).
 const BOSS_VICTORY_MAX: float = 20.0
+## Quick play's stand-in thief (--thief, debug builds; GDD §9.12): a review aid, loaded by path only when
+## asked for, so the game never depends on it.
+const STAND_IN_THIEF: String = "res://scripts/enemies/stand_in_thief.gd"
 
 ## The run whose level set the scenery light last (ZoneSkin.apply_darkness, a global uniform): only it
 ## sets the light back when it ends, so a run freed after the next one started leaves that one's alone.
@@ -47,6 +50,9 @@ var death_cause: String = ""
 ## Debug readout and live tuning, only in debug builds.
 var debug_hud: DebugHud
 var tuning_panel: TuningPanel
+## Debug builds: every frame's time and what happened in it (task PERF1), and its graph (F7).
+var frame_monitor: FrameMonitor
+var frame_graph: FrameGraph
 
 var _timer: float = 0.0
 ## Seconds a beaten boss's defeat has been playing out, while it holds the results (-1: not holding).
@@ -88,6 +94,8 @@ func _build() -> void:
 	world.name = "World"
 	add_child(world)
 	world.build(context.config, layout, context.tuning, rules, App.powerup_tuning, context.loadout, App.sfx_library)
+	# Task PERF1: a chunk built during the run gets its look over the next few frames, not all in one.
+	world.track.dress_budget_usec = roundi(PerformanceTuning.load_default().chunk_dress_budget_ms * 1000.0)
 	world.player.god_mode = context.god_mode
 	if context.no_fall:
 		world.player.grapples = 1_000_000
@@ -101,6 +109,8 @@ func _build() -> void:
 		encounter.defeated.connect(_on_boss_defeated)
 	if not context.review_pickups.is_empty():
 		world.pickups.start_review(context.review_pickups)
+	if context.review_thief and ResourceLoader.exists(STAND_IN_THIEF):
+		load(STAND_IN_THIEF).call(&"start_review", world)
 
 	if _env == null:
 		_env = WorldEnvironment.new()
@@ -118,6 +128,10 @@ func _build() -> void:
 		add_child(camera)
 	camera.make_current()
 	camera.follow(world)
+	# Task PERF1: every look the level may show later is drawn once now, too small to see, so the renderer
+	# compiles its shaders during the load rather than in the frame it first appears.
+	if ShaderWarmup.needed():
+		ShaderWarmup.new().setup(world, camera)
 	if speed_lines == null:
 		speed_lines = SpeedLines.new()
 		add_child(speed_lines)
@@ -138,6 +152,10 @@ func _build() -> void:
 		_hints.hint_shown.connect(func(_id: String, text: String) -> void: hud.show_hint(text))
 	if OS.is_debug_build() and debug_hud == null:
 		_build_debug_tools()
+	if frame_monitor != null:
+		frame_monitor.watch(world)
+		if encounter != null:
+			frame_monitor.watch_boss(encounter)
 	state = State.RUNNING
 	death_cause = ""
 	_victory_time = -1.0
@@ -252,7 +270,8 @@ func _on_boss_defeated() -> void:
 	_victory_time = 0.0
 	world.player.god_mode = true
 	hud.set_message("BOSS DEFEATED")
-	world.play_sfx(_complete_riff())
+	if encounter == null or encounter.victory_riff():
+		world.play_sfx(_complete_riff())
 
 
 func _on_player_died(cause: String) -> void:
@@ -315,6 +334,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		world.player.set_hitbox_visible(_show_hitboxes)
 	elif event.is_action_pressed(&"debug_mute"):
 		AudioServer.set_bus_mute(0, not AudioServer.is_bus_mute(0))
+	elif event.is_action_pressed(&"debug_frame_graph") and frame_graph != null:
+		frame_graph.toggle()
 
 
 ## A different level (seed, lanes or difficulty; debug keys and quick play): counts start over, and a
@@ -333,15 +354,27 @@ func _build_debug_tools() -> void:
 	debug_hud = DebugHud.new()
 	add_child(debug_hud)
 	debug_hud.visible = context.mode == RunContext.Mode.QUICK
+	frame_monitor = FrameMonitor.new()
+	add_child(frame_monitor)
+	frame_graph = FrameGraph.new()
+	frame_graph.monitor = frame_monitor
+	frame_graph.visible = OS.get_cmdline_user_args().has("--frame-graph")
+	add_child(frame_graph)
 	tuning_panel = TuningPanel.new()
 	add_child(tuning_panel)
+	var movement := {"title": "Movement", "resource": context.tuning, "path": App.TUNING_PATH}
+	if context.config.run_speed > 0.0:
+		# A campaign level runs at its zone's speed (data/zones/*.tres, GDD §3): the slider changes the
+		# run live, and Save leaves the base run speed in the movement tuning as it is.
+		movement["keep"] = PackedStringArray(["run_speed"])
 	var sections: Array[Dictionary] = [
-		{"title": "Movement", "resource": context.tuning, "path": App.TUNING_PATH},
+		movement,
 		{"title": "Game rules", "resource": rules, "path": App.RULES_PATH},
 		{"title": "Power-ups", "resource": App.powerup_tuning, "path": App.POWERUPS_PATH},
 		{"title": "Runner animation", "resource": load(PlayerAvatar.ANIM_TUNING_PATH), "path": PlayerAvatar.ANIM_TUNING_PATH},
 		{"title": "Pickups", "resource": world.pickups.tuning, "path": PickupField.TUNING_PATH},
 		{"title": "Speed effects", "resource": world.effects.tuning, "path": RunEffects.DEFAULT_TUNING_PATH},
+		{"title": "Performance", "resource": PerformanceTuning.load_default(), "path": PerformanceTuning.PATH},
 		{"title": "Music", "resource": load(MusicDirector.LIBRARY_PATH), "path": MusicDirector.LIBRARY_PATH},
 		{"title": "Level pacing", "resource": context.config, "path": context.config.resource_path},
 	]
@@ -351,6 +384,11 @@ func _build_debug_tools() -> void:
 	var recency: FeatureRecency = context.config.feature_recency
 	if recency != null and recency.resource_path != "":
 		sections.append({"title": "Feature picks (campaign)", "resource": recency, "path": recency.resource_path})
+	# Where wall fences go and how they pulse (task B5), in a level that has them; Restart level rebuilds.
+	if context.config.has_feature(WallFencePlacement.FEATURE) or context.config.has_feature(WallFencePlacement.PARTIAL):
+		var wall_fences: WallFenceTuning = WallFencePlacement.tuning()
+		if wall_fences.resource_path != "":
+			sections.append({"title": "Wall fences", "resource": wall_fences, "path": wall_fences.resource_path})
 	if context.is_boss():
 		# The boss's numbers (health, rewards, par times) and its script's own tuning.
 		var def: BossDef = context.boss
@@ -366,6 +404,8 @@ func _build_debug_tools() -> void:
 		for type: String in (["cyborg", "bad_dream"] if feature == "host" else [feature]):
 			if not types.has(type):
 				types.append(type)
+	if context.review_thief:
+		types.append("stand_in_thief")
 	for type: String in types:
 		var enemy_tuning: Resource = EnemyDirector.tuning_for(type)
 		if enemy_tuning != null and enemy_tuning.resource_path != "":

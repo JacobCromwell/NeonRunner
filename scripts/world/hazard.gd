@@ -18,14 +18,22 @@ var is_electrical: bool = false
 var is_enemy_attack: bool = false
 ## A solid collision (signs, trucks, walls, enemy bodies). Armor does not block these.
 var is_solid: bool = false
-## DESIGN-TBD: the juggernaut dash passes through every hazard except falls unless this is false.
+## The juggernaut dash passes through every hazard except falls unless this is false (FB 17).
 var dash_passes: bool = true
+## A thief's touch (GDD §9.12, the Tithe Collector): touching this robs instead of hurting
+## (DamageRules.Outcome.ROBBED): it takes this share of the run's credits (ScoreKeeper.rob), held by its
+## enemy. 0 for every other hazard. A thief sets it on its hitboxes from its data (ThiefTuning).
+var steals_share: float = 0.0
 ## The enemy this hitbox belongs to, or null for obstacles and projectiles.
 var enemy: Enemy = null
 ## Which part of an enemy this is: &"body", &"top" (stomp zone), &"weak_point", &"attack".
 var part: StringName = &""
 ## The hitbox size (box shape), used for stomp checks and debug drawing.
 var size: Vector3 = Vector3.ONE
+## Hangs from a ceiling (a Barnacle Turret, GDD §9.8): its top, the part a stomp lands on, faces down,
+## toward a rider on the ceiling, who stomps it by dropping back onto its underside
+## (Player._is_stomping, bottom_y()).
+var upside_down: bool = false
 var state: State = State.ON
 
 var _pulse_on: float = 0.0
@@ -56,6 +64,12 @@ func set_enabled(on: bool) -> void:
 ## World-space height of the top of the hitbox.
 func top_y() -> float:
 	return global_position.y + size.y * 0.5
+
+
+## World-space height of the bottom of the hitbox (an upside_down hitbox's top, as a ceiling rider
+## sees it).
+func bottom_y() -> float:
+	return global_position.y - size.y * 0.5
 
 
 ## Makes the hazard switch on and off, driven by the level clock so every attempt

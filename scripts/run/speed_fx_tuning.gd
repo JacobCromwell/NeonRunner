@@ -68,6 +68,11 @@ extends Resource
 @export_range(0.0, 1.0, 0.01) var kill_shake_strength: float = 0.05
 @export_range(0.05, 1.0, 0.01, "suffix:s") var kill_shake_time: float = 0.14
 @export_range(0.0, 0.3, 0.005, "suffix:s") var kill_freeze_time: float = 0.05
+## Hit-stops never chain (task PERF1): a freeze asked for less than this long after the last one began
+## is left out (one asked in the same frame as it, a stomp's and its kill's, still keeps the longer of
+## the two). Kills in quick succession, auto-fire through a cluster or a dash through a row, would
+## otherwise hold the camera again and again, which reads as the game stuttering.
+@export_range(0.0, 1.0, 0.01, "suffix:s") var freeze_gap: float = 0.3
 @export_range(2, 40, 1) var kill_spark_amount: int = 12
 @export_range(2, 40, 1) var kill_debris_amount: int = 6
 
@@ -79,3 +84,24 @@ extends Resource
 @export_range(0.0, 1.0, 0.01) var block_break_shake_strength: float = 0.16
 @export_range(0.05, 1.0, 0.01, "suffix:s") var block_shake_time: float = 0.18
 @export_range(2, 40, 1) var block_spark_amount: int = 10
+
+@export_group("Doodad pushes")
+## A zone doodad shoves the runner into the next lane (GDD §3; Player.movement_event doodad_push): a
+## small, short shake with the thud, so the shove reads as a bump, never as a hit (no sparks, no
+## hit-stop). DESIGN-TBD.
+@export_range(0.0, 1.0, 0.01) var push_shake_strength: float = 0.05
+@export_range(0.05, 1.0, 0.01, "suffix:s") var push_shake_time: float = 0.14
+
+@export_group("Thefts")
+## A thief's theft and payout (GDD §9.12; ScoreKeeper.stolen / recovered): a stream of coins in the
+## credit look flies from the runner to the thief, or bursts out of a caught thief into the runner
+## (RunEffects.coin_stream). No shake and no hit-stop: a theft is no hit. DESIGN-TBD (the look).
+## One coin per this many credits taken or paid (at least 4 coins, at most RunEffects.STREAM_COINS).
+@export_range(1, 100, 1) var coin_stream_credits_per_coin: int = 10
+## Seconds over which the coins leave, one after another.
+@export_range(0.0, 2.0, 0.05, "suffix:s") var coin_stream_spread: float = 0.45
+## Seconds each coin takes to fly from one end to the other.
+@export_range(0.1, 2.0, 0.05, "suffix:s") var coin_stream_flight: float = 0.4
+## How high a coin arcs over the straight line, at its middle.
+@export_range(0.0, 4.0, 0.1, "suffix:m") var coin_stream_arc: float = 1.2
+@export_range(2, 40, 1) var theft_spark_amount: int = 10

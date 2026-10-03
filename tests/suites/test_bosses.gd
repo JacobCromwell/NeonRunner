@@ -160,6 +160,38 @@ func _test_arena() -> void:
 	var plain: BossArena = BossArena.plan(_plain_test_def(), config, tuning)
 	check(plain.laps.size() == 1 and plain.layout.gaps.is_empty() and plain.layout.fences.is_empty(),
 		"a boss without an arena config fights on a plain track")
+	# GDD §3 (E1f): an arena at a zone's speed (its config's run_speed: the campaign's, Campaign.configure_boss)
+	# is planned at that speed, as the generator builds a level: its laps last as many seconds, and the
+	# clear stretches at a lap's start and end (the boss's entrance) keep theirs too. Quick play's and the
+	# tests' arena keeps the base speed.
+	check(config.run_speed == 0.0 and config.movement_for(tuning) == tuning and is_equal_approx(a.tuning.run_speed, tuning.run_speed),
+		"quick play's arena runs at the base speed (%.1f m/s)" % a.tuning.run_speed)
+	var fast_config: LevelConfig = config.duplicate() as LevelConfig
+	fast_config.run_speed = 25.0
+	var fast: BossArena = BossArena.plan(test_def, fast_config, tuning)
+	var p: float = 25.0 / MovementTuning.REFERENCE_SPEED
+	check(is_equal_approx(fast.tuning.run_speed, 25.0) and is_equal_approx(fast.tuning.pace(), p)
+		and is_equal_approx(fast.lap_length, 25.0 * test_def.arena.duration_seconds),
+		"an arena at 25 m/s is planned at its speed: a lap lasts its %.0f s (%.0f m)" % [test_def.arena.duration_seconds, fast.lap_length])
+	var first_piece: float = INF
+	var last_piece: float = -INF
+	for lap: LevelLayout in fast.laps:
+		for g: Dictionary in lap.gaps:
+			first_piece = minf(first_piece, float(g["start"]))
+			last_piece = maxf(last_piece, float(g["end"]))
+		for f: Dictionary in lap.fences:
+			first_piece = minf(first_piece, float(f["at"]))
+			last_piece = maxf(last_piece, float(f["at"]))
+	check(first_piece >= test_def.arena.start_clear_distance * p - 0.01
+		and last_piece <= fast.lap_length - test_def.arena.end_clear_distance * p + 0.01,
+		"its laps' clear start and end keep their seconds (pieces from %.0f m to %.0f m of %.0f)" % [first_piece, last_piece,
+			fast.lap_length])
+	for lanes: int in [3, 6]:
+		var fc: LevelConfig = fast_config.duplicate() as LevelConfig
+		fc.lane_count = lanes
+		var fast_arena: BossArena = BossArena.plan(test_def, fc, tuning)
+		for i: int in fast_arena.laps.size():
+			LayoutChecks.check_layout(self, fast_arena.laps[i], fc, "(test boss arena at 25 m/s, lap %d, %d lanes)" % [i, lanes])
 
 
 ## During the fight the next laps join the track ahead of the player, for as long as it lasts; the
@@ -633,6 +665,9 @@ func _test_light() -> void:
 	var sun := DirectionalLight3D.new()
 	sun.light_energy = 0.8
 	tree.root.add_child(sun)
+	env.fog_light_energy = 1.0
+	# The arena's own darker light (LevelConfig.darkness, as LevelRun sets it).
+	ZoneSkin.set_scenery_light(0.8)
 	var enc := DummyBoss.new()
 	var world: RunWorld = _fight(enc, DummyBoss.make_def([[1, 1, false, 0.1]]), 5)
 	await _until(world, func() -> bool: return enc.is_vulnerable(), 1.0)
@@ -641,11 +676,27 @@ func _test_light() -> void:
 	check(is_equal_approx(enc.light_level(), BossEncounter.MIN_LIGHT_LEVEL), "the light never goes below its floor (%.2f)" % enc.light_level())
 	check(is_equal_approx(env.ambient_light_energy, BossEncounter.MIN_LIGHT_LEVEL) and is_equal_approx(sun.light_energy, 0.8 * BossEncounter.MIN_LIGHT_LEVEL),
 		"the ambient light and the sun dim (%.2f, %.2f)" % [env.ambient_light_energy, sun.light_energy])
+	# The skins' scenery is unshaded: its own light (scenery_light) dims too, never below its floor.
+	check(is_equal_approx(ZoneSkin.scenery_light_now, ZoneSkin.MIN_SCENERY_LIGHT) and is_equal_approx(env.fog_light_energy, BossEncounter.MIN_LIGHT_LEVEL),
+		"the scenery's light and the fog's dim, never below the scenery's floor (%.2f, %.2f)" % [ZoneSkin.scenery_light_now, env.fog_light_energy])
+	enc.set_light_level(0.9, 0.0)
+	check(is_equal_approx(ZoneSkin.scenery_light_now, 0.72), "the scenery's light follows the arena's own (0.8 × 0.9: %.2f)" % ZoneSkin.scenery_light_now)
 	enc.set_light_level(1.0, 0.0)
-	check(is_equal_approx(env.ambient_light_energy, 1.0), "and come back")
+	check(is_equal_approx(env.ambient_light_energy, 1.0) and is_equal_approx(ZoneSkin.scenery_light_now, 0.8), "and come back")
 	enc.set_light_level(0.5, 0.0)
 	await sim.free_world(world)
-	check(is_equal_approx(sun.light_energy, 0.8) and is_equal_approx(env.ambient_light_energy, 1.0), "the fight gives the light back when it ends")
+	check(is_equal_approx(sun.light_energy, 0.8) and is_equal_approx(env.ambient_light_energy, 1.0)
+		and is_equal_approx(env.fog_light_energy, 1.0) and is_equal_approx(ZoneSkin.scenery_light_now, 0.8),
+		"the fight gives the light back when it ends")
+	# A newer run's own light stays: the fight only gives back the light it set.
+	var enc2 := DummyBoss.new()
+	world = _fight(enc2, DummyBoss.make_def([[1, 1, false, 0.1]]), 5)
+	await _until(world, func() -> bool: return enc2.is_vulnerable(), 1.0)
+	enc2.set_light_level(0.5, 0.0)
+	ZoneSkin.set_scenery_light(0.6)
+	await sim.free_world(world)
+	check(is_equal_approx(ZoneSkin.scenery_light_now, 0.6), "a newer run's scenery light stays when the old fight ends (%.2f)" % ZoneSkin.scenery_light_now)
+	ZoneSkin.set_scenery_light(1.0)
 	we.queue_free()
 	sun.queue_free()
 	await tree.process_frame
@@ -733,6 +784,12 @@ func _test_app_flow() -> void:
 	App.profile = Profile.new()
 	await _app_demo(step)
 	step.boss = slot
+	# Quick play (--boss=test_boss) keeps the base speed; the campaign's fights run at their zone's (GDD §3).
+	App.start_boss_quick(test_def)
+	await physics_frames(3)
+	check(App.run != null and App.run.context.mode == RunContext.Mode.QUICK
+		and is_equal_approx(App.run.world.tuning.run_speed, App.tuning.run_speed),
+		"quick play's fight keeps the base speed (%.1f m/s)" % (App.run.world.tuning.run_speed if App.run != null else 0.0))
 	App.show_title()
 	await tree.process_frame
 	App.profile = saved
@@ -776,6 +833,9 @@ func _app_win(step: CampaignStep) -> void:
 		and run.world.player.armor == App.rules.armor_hits_at(1),
 		"with the items the boss grants (GDD §8; its armor: the upgrade's first tier over the free armor)")
 	check(is_zero_approx(run.context.tuning.speed_gain_per_minute) and run.hud.boss_bar.visible, "no speed-up, and the boss bar shows")
+	check(is_equal_approx(run.world.tuning.run_speed, step.zone.run_speed) and is_equal_approx(run.context.tuning.run_speed,
+		step.zone.run_speed) and is_equal_approx(run.encounter.arena.tuning.run_speed, step.zone.run_speed),
+		"at its zone's speed, like the zone's levels (GDD §3: %.1f m/s)" % run.world.tuning.run_speed)
 	check(run.world.skin is CitySkin, "the arena wears the zone's look")
 	await _beat(run.encounter)
 	var results: ResultsScreen = await _results_after_win()

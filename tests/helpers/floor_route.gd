@@ -6,11 +6,14 @@ extends RefCounted
 ## lane at a time on the ground, a full jump (over holes, and over full-height fences only where the
 ## arc clears them), and slides under gapped fences (pressed again to slide on). It never uses a wall,
 ## a lane switch in the air, coyote time or a jump out of a slide, never steps on a pad, ramp or speed
-## pad, treats pulsing fences as always on, and keeps a margin at every edge, so a route it finds is
-## one the real Player can run (test_generator replays some on real physics); it may miss some that
-## exist. Enemies aren't in it: each keeps to its own fairness rules.
+## pad, treats pulsing fences as always on, keeps out of a zone doodad's lane where it stands (no push,
+## and no jump over it: it's too tall), keeps out of a floor cut's lane from where the cut would reach a
+## player still in it (FloorCutPlan, keyed to the player's distance: the floor there is whole only
+## while the cut is still ahead of them) to past its cause's spot, and keeps a margin at every edge, so
+## a route it finds is one the real Player can run (test_generator replays some on real physics); it
+## may miss some that exist. Enemies aren't in it: each keeps to its own fairness rules.
 ##   var floor := FloorRoute.new(layout, tuning)      the layout's grid, built once
-##   var route: Dictionary = floor.find(from, to)
+##   var route: Dictionary = floor.find(from, to)     (find(from, to, lane): starting in that lane)
 ##   route: {ok, start_lane, end_lane, actions: [[distance, action]], reason, from, to}
 
 ## Metres per step of the model.
@@ -20,6 +23,8 @@ const STEP: float = 0.5
 const GAP_MARGIN: float = 0.6
 const FENCE_MARGIN: float = 0.9
 const TRIGGER_MARGIN: float = 0.6
+## Kept off a zone doodad's lane before its front (where its push would start) and after its end.
+const DOODAD_MARGIN: float = 1.5
 ## Height kept between the feet and a full-height fence's top when jumping it.
 const CLEAR_HEIGHT: float = 0.15
 ## Slides in one go (each press of slide before the last ends keeps the player down).
@@ -89,8 +94,8 @@ func _init(p_layout: LevelLayout, p_tuning: MovementTuning) -> void:
 
 
 ## A floor route from `from` to `to` (track distances), starting in any lane where the player can
-## stand at `from`. See the header for the result.
-func find(from: float, to: float) -> Dictionary:
+## stand at `from` (or only in `start_lane`, if it's one). See the header for the result.
+func find(from: float, to: float, start_lane: int = -1) -> Dictionary:
 	var first: int = maxi(int(ceil(from / STEP)), 0)
 	var goal: int = mini(int(ceil(to / STEP)), size - 1)
 	var last: int = mini(goal + int(ceil(LOOK_PAST / STEP)), size - 1)
@@ -105,7 +110,7 @@ func find(from: float, to: float) -> Dictionary:
 	var move := PackedInt32Array()
 	move.resize(lanes * span)
 	for lane: int in lanes:
-		if _free(0, lane, first, first):
+		if (start_lane < 0 or lane == start_lane) and _free(0, lane, first, first):
 			reach[lane * span] = 1
 			move[lane * span] = Move.START
 	var found: int = -1
@@ -227,8 +232,9 @@ func _free(kind: int, lane: int, a: int, b: int) -> bool:
 
 
 ## The kinds of cell per lane and step: STAND_BAD where the player can't stand (a hole under the feet,
-## a fence, a trigger), SLIDE_BAD where they can't slide (a hole, a full fence, a trigger), GAPPED and
-## FULL where a gapped or full-height fence is near.
+## a fence, a trigger, a zone doodad), SLIDE_BAD where they can't slide (a hole, a full fence, a
+## trigger, a doodad), GAPPED and FULL where a gapped or full-height fence is near (and GAPPED where a
+## doodad stands: no jump's arc may pass it).
 func _build_cells() -> void:
 	cells.resize(lanes * size)
 	var marks: Array[Array] = []  # [lane, from, to, flags]
@@ -246,6 +252,17 @@ func _build_cells() -> void:
 	for r: Dictionary in layout.ramps:
 		marks.append([layout.outer_lane(int(r["side"])), float(r["at"]) - TRIGGER_MARGIN,
 			float(r["at"]) + tuning.ramp_length + TRIGGER_MARGIN, STAND_BAD | SLIDE_BAD])
+	for d: Dictionary in layout.doodads:
+		# Nowhere to stand or slide, and no jump over it (GAPPED keeps any arc off it).
+		marks.append([int(d["lane"]), float(d["start"]) - DOODAD_MARGIN, float(d["end"]) + DOODAD_MARGIN,
+			STAND_BAD | SLIDE_BAD | GAPPED])
+	for c: Dictionary in layout.cuts:
+		# A floor cut's lane is whole until the cut reaches the player (keyed to their distance): out of
+		# it from where its front is LevelGenerator.CUT_CONTACT_METRES ahead of them, to past its cause's
+		# spot (a hole by then, or its cause).
+		var r: float = FloorCutPlan.ratio(c, tuning.run_speed)
+		var leave: float = (float(c["end"]) + r * FloorCutPlan.charge_at(c) - LevelGenerator.CUT_CONTACT_METRES) / (1.0 + r)
+		marks.append([int(c["lane"]), leave, FloorCutPlan.lane_window(c).y + GAP_MARGIN, STAND_BAD | SLIDE_BAD])
 	for m: Array in marks:
 		var lane: int = m[0]
 		if lane < 0 or lane >= lanes:

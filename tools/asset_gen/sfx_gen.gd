@@ -9,6 +9,19 @@ extends SceneTree
 ##   sfx_bank_enemies.gd  enemies: every attack's warning, the attacks, hits and deaths
 ##   sfx_bank_bosses.gd   bosses: their entrances, warnings and attacks
 ##   sfx_bank_resonator.gd  the Resonator: its chime (the warning), its pulse and its death
+##   sfx_bank_barnacle.gd   the Barnacle Turret: popping out, its charge-up (the warning), its bolts, its death
+##   sfx_bank_sleep_taker.gd  the Sleep Taker: its rise, its attacks' warnings (the shriek, the
+##                        whispering, the inhale) and the attacks
+##   sfx_bank_buzz_overdrive.gd  the Buzz Overdrive: its rev (the warning: the blade spinning up) and its
+##                        charge
+##   sfx_bank_tithe_collector.gd  the Tithe Collector: its approach cue (a smug chuckle and a cash-register ding)
+##   sfx_bank_the_house.gd  The House: its entrance, the spin (the lever, the reels, the dings), the 7
+##                        buttons, its attacks' warnings, the jackpot and the hopper's stomp
+##   sfx_bank_sentinel.gd  the Gilded Sentinels: the stone grind (the warning), the swing and the break
+##   sfx_bank_hostile_takeover.gd  Hostile Takeover: the gunship's entrance, the couplings going live, a
+##                        coupling stomped and the carriages breaking away
+##   sfx_bank_sewer_swarm.gd  the Sewer Swarm: the Rising, a surge's rising chitter (the warning) and its
+##                        rush, a cluster shocked by a fence, falling into a hole, scattering
 ## Run: tools/godot.sh sfx   (--only=jump,land renders just those; --review also writes
 ## build/sfx_review/<name>.png: waveform on top, spectrogram (40 Hz–16 kHz, time left to right) below).
 ## Each line of the report ends with the sound's loudest 400 ms as heard on headphones (K-weighted) and
@@ -25,6 +38,14 @@ const BANKS: Array = [
 	preload("res://tools/asset_gen/sfx_bank_enemies.gd"),
 	preload("res://tools/asset_gen/sfx_bank_bosses.gd"),
 	preload("res://tools/asset_gen/sfx_bank_resonator.gd"),
+	preload("res://tools/asset_gen/sfx_bank_barnacle.gd"),
+	preload("res://tools/asset_gen/sfx_bank_sleep_taker.gd"),
+	preload("res://tools/asset_gen/sfx_bank_buzz_overdrive.gd"),
+	preload("res://tools/asset_gen/sfx_bank_tithe_collector.gd"),
+	preload("res://tools/asset_gen/sfx_bank_the_house.gd"),
+	preload("res://tools/asset_gen/sfx_bank_sentinel.gd"),
+	preload("res://tools/asset_gen/sfx_bank_hostile_takeover.gd"),
+	preload("res://tools/asset_gen/sfx_bank_sewer_swarm.gd"),
 ]
 const OUT_DIR: String = "res://assets/sfx"
 const REVIEW_DIR: String = "res://build/sfx_review"

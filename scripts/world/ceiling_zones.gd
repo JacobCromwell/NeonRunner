@@ -20,8 +20,10 @@ extends RefCounted
 ## add floor enemies keep off them too (CyborgRules.obstacle_spans, Octodog.pad_or_landing_between).
 ## A narrow ceiling (B3) covers a range of lanes (LevelLayout.hull_lanes): its pads lie in that range
 ## and its landing zone covers those lanes; the rules that keep off landing zones in every lane (the
-## cyborgs', the Octodog's) still do, which is safe for any range. Floor cuts planned in advance (B4)
-## ask their questions here as well.
+## cyborgs', the Octodog's) still do, which is safe for any range. Floor cuts planned in advance (B4;
+## GDD §9.9: a cut never runs through a lane holding a pad or the safe landing zone after a ceiling)
+## ask their questions here as well (cut_clear), and a cut counts in landing_clear and pad_lane_clear
+## for whatever is planned after it.
 
 ## Every lane, for the `lanes` of landing_clear() and clear_landing().
 const ALL_LANES := Vector2i(0, 1 << 30)
@@ -40,6 +42,9 @@ var rise: float = 0.0
 var pad_length: float = 2.0
 ## A ramp's length along its lane (ramps sit in the outer lanes).
 var ramp_length: float = 4.0
+## The level's pace (MovementTuning.pace): floor enemies' reach (LevelGenerator.enemy_floor_span) is
+## stretched by it.
+var pace: float = 1.0
 ## Half a fence's depth along the track: a fence is in a stretch if any of it is.
 var fence_half_depth: float = 0.15
 
@@ -48,7 +53,7 @@ var fence_half_depth: float = 0.15
 ## one) at `speed` (`tuning`'s run speed when 0).
 static func make(config: LevelConfig, tuning: MovementTuning, speed: float = 0.0) -> CeilingZones:
 	var c: LevelConfig = config if config != null else LevelConfig.new()
-	var v: float = speed if speed > 0.0 else tuning.run_speed
+	var v: float = speed if speed > 0.0 else c.movement_for(tuning).run_speed
 	var z := CeilingZones.new()
 	z.landing = c.hull_landing_seconds * v
 	z.run_up = tuning.jump_distance(v)
@@ -56,6 +61,7 @@ static func make(config: LevelConfig, tuning: MovementTuning, speed: float = 0.0
 	z.pad_length = tuning.pad_length
 	z.ramp_length = tuning.ramp_length
 	z.fence_half_depth = tuning.fence_depth * 0.5
+	z.pace = v / MovementTuning.REFERENCE_SPEED
 	return z
 
 
@@ -92,15 +98,18 @@ func landing_zones(layout: LevelLayout) -> Array[Vector2]:
 	return out
 
 
-## True if the floor in `zone` is safe to land on: no gap or fence in `lanes` (Vector2i(first, last);
-## every lane by default, as under a ceiling over every lane), and no floor enemy's stretch, in any
-## lane, reaches into it.
+## True if the floor in `zone` is safe to land on: no gap, fence or floor cut (its lane's whole window,
+## FloorCutPlan.lane_window) in `lanes` (Vector2i(first, last); every lane by default, as under a
+## ceiling over every lane), and no floor enemy's stretch, in any lane, reaches into it.
 func landing_clear(layout: LevelLayout, zone: Vector2, lanes: Vector2i = ALL_LANES) -> bool:
 	for g: Dictionary in layout.gaps:
 		if gap_in(g, zone) and in_lanes(int(g["lane"]), lanes):
 			return false
 	for f: Dictionary in layout.fences:
 		if fence_in(f, zone) and in_lanes(int(f["lane"]), lanes):
+			return false
+	for c: Dictionary in layout.cuts:
+		if in_lanes(int(c["lane"]), lanes) and FloorCutPlan.lane_window_in(c, zone.x, zone.y):
 			return false
 	for e: Dictionary in layout.enemies:
 		if enemy_in(e, zone):
@@ -114,8 +123,9 @@ func pad_clear(layout: LevelLayout, lane: int, at: float) -> bool:
 	return pad_lane_clear(layout, lane, at) and pad_enemies_clear(layout, lane, at)
 
 
-## True if `lane` holds no gap or fence in the pad's zone (pad_zone), and no ramp from the zone's
-## start to the pad's end (a ramp would throw the player onto the wall before they reach the pad).
+## True if `lane` holds no gap, fence or floor cut (its lane window) in the pad's zone (pad_zone), and
+## no ramp from the zone's start to the pad's end (a ramp would throw the player onto the wall before
+## they reach the pad).
 func pad_lane_clear(layout: LevelLayout, lane: int, at: float) -> bool:
 	var zone: Vector2 = pad_zone(at)
 	for g: Dictionary in layout.gaps:
@@ -124,8 +134,33 @@ func pad_lane_clear(layout: LevelLayout, lane: int, at: float) -> bool:
 	for f: Dictionary in layout.fences:
 		if fence_in(f, zone, lane):
 			return false
+	for c: Dictionary in layout.cuts:
+		if FloorCutPlan.lane_window_in(c, zone.x, zone.y, lane):
+			return false
 	for r: Dictionary in layout.ramps:
 		if ramp_in(layout, r, Vector2(zone.x, at + pad_length), lane):
+			return false
+	return true
+
+
+## True if floor cut `cut` (LevelLayout.cuts; GDD §9.9: "it never cuts a lane holding ... a pad or the
+## safe landing zone after a ceiling") keeps off every ceiling's safe floor in its lane: no landing
+## zone of a ceiling that covers its lane reaches its warned lane (FloorCutPlan.warned_lane: from where
+## its warning starts to past its cause's spot), so a rider never drops in front of a cut or into one,
+## and no pad's zone in its lane reaches its lane window (FloorCutPlan.lane_window: from where its cause
+## sets off, if it's on its way before its warning), so every pad in its lane can be stepped on and no
+## cause drives over one.
+func cut_clear(layout: LevelLayout, cut: Dictionary) -> bool:
+	var lane: int = int(cut["lane"])
+	var span: Vector2 = FloorCutPlan.lane_window(cut)
+	var warned: Vector2 = FloorCutPlan.warned_lane(cut)
+	for h: Dictionary in layout.hulls:
+		var zone: Vector2 = landing_zone(h)
+		if layout.hull_covers(h, lane) and zone.x <= warned.y and zone.y >= warned.x:
+			return false
+	for p: Dictionary in layout.pads:
+		var zone: Vector2 = pad_zone(float(p["at"]))
+		if int(p["lane"]) == lane and zone.x <= span.y and zone.y >= span.x:
 			return false
 	return true
 
@@ -205,9 +240,10 @@ func ramp_in(layout: LevelLayout, r: Dictionary, zone: Vector2, lane: int = -1) 
 		and float(r["at"]) + ramp_length >= zone.x
 
 
-## True if enemy entry `e` uses the floor (LevelGenerator.enemy_floor_span) anywhere in `zone`.
-static func enemy_in(e: Dictionary, zone: Vector2) -> bool:
-	var span: Vector2 = LevelGenerator.enemy_floor_span(e)
+## True if enemy entry `e` uses the floor (LevelGenerator.enemy_floor_span, at the level's pace)
+## anywhere in `zone`.
+func enemy_in(e: Dictionary, zone: Vector2) -> bool:
+	var span: Vector2 = LevelGenerator.enemy_floor_span(e, pace)
 	return span.x <= zone.y and span.y >= zone.x
 
 

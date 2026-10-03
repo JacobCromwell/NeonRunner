@@ -142,6 +142,47 @@ The owner reviewed every placeholder below. **GB** means "From the R1 core-movem
 - title and brand: FB 109
 - other: FB 111 (achievements)
 
+**R6 (October 2, 2026): markers taken off the items approved as is.** The `DESIGN-TBD` markers of these items
+are now plain doc comments naming the item; every other item keeps its marker (changes until their value is in place,
+tune after playtesting, later design rounds, and every item from build phase 2).
+
+| Item | What | Files |
+|---|---|---|
+| GB 8 | Air-slide fast fall is a kept feel addition | 1 |
+| FB 5 | The Normal/Hard/Insane tiers (FB 4, the difficulty curve, keeps its marker: reopened by the playtests and G1) | 1 |
+| FB 7 | First-encounter hints, togglable in Settings | 3 |
+| FB 8 | Credit denominations: look, colours, sound | 3 |
+| FB 9 | Credit placement (trails, risky-spot big credits) | 1 |
+| FB 12 | Purchases spend bought credits first | 1 |
+| FB 13 | One breakable charge per attempt | 1 |
+| FB 16 | Revives: one per attempt, 2 s invulnerability | 1 |
+| FB 17 | Juggernaut dash: duration/cooldown/speed, passes every hazard but falls | 3 |
+| FB 18 | Grapple hook pull velocity | 1 |
+| FB 20 | Ramp score multiplier (x2) | 1 |
+| FB 21, FB 49 | Speed pads: green "safe boost" family, +6 m/s decaying | 11 |
+| FB 23 | Magnet radius per tier | 2 |
+| FB 24 | Claws extend wall runs 1.5x | 1 |
+| FB 25 | Slow time: 0.5x for 3 s, 20 s cooldown | 2 |
+| FB 26, FB 29 | Weapon tiers 2–3, fire rate, splash radius, swarm bonus on splash | 2 |
+| FB 34 | Enemy health bars read in the red family | 1 |
+| FB 36, FB 37 | Invulnerability flash and death flash look | 1 |
+| FB 40 | Yellow/black hazard sign frame, every zone | 1 |
+| FB 42 | Ships fly toward the player, like the trucks | 1 |
+| FB 58 | HUD shows a progress bar (markers still undecided) | 2 |
+| FB 60 | Level-complete stats screen | 1 |
+| FB 61 | Revive offer waits for a choice, no countdown | 1 |
+| FB 70 | Cyborgs/window cyborgs hold fire at a ceiling or own-wall rider | 1 |
+| FB 73 | Fence generator: claws/contact don't destroy it, body solid | 1 |
+| FB 76, FB 77 | Octodog diagonal aim and between-charges pass clearance | 1 |
+| FB 79 | Octodog doghouse (first 3, burst at 55 m) | 2 |
+| FB 83, FB 84 | Screech spines are a body collision; stops at a hole's edge | 1 |
+| FB 86, FB 88 | Drone has no contact hitbox; "on screen" definition | 1 |
+| FB 89, FB 90 | Drone wave pairing/gap and pad schedule | 2 |
+| FB 91, FB 92, FB 93 | Hover truck lane/pacing, warnings, kill rules | 1 |
+| FB 94 | Trucks per level (1 early to 3 late, always one) | 1 |
+| FB 99, FB 100, FB 101, FB 103 | Bad Dream: wall slash, escape fairness, body touch, EMP dissolve | 2 |
+| FB 104, FB 105 | Bad Dream survival bonus and chase pad schedule | 1 |
+
 ### From the R1 core-movement grey box (September 25, 2026)
 Each item has a placeholder in code marked `DESIGN-TBD` and, where it's a number, a value in `data/tuning/movement.tres` or `data/levels/`. Answer them after playtesting the grey box.
 
@@ -1462,7 +1503,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     **Placeholder:** back whole (`Player.revive` in `scripts/player/player.gd`, `DESIGN-TBD`).
 
 **The Floating Head after the playtest** (from E1e; numbers in `data/bosses/city_boss_tuning.tres`; measure the routes with `tools/measure/stomp_routes.gd`; play `--level=city/boss`)
-248. **Should every phase use a ramp?** (GDD §10: (1) the fallen tower as a ramp, (2) a wall jump,
+248. (E1f: at the City's 21 m/s the wall marks sit 15.7 m and 5.2 m before the face, the same seconds as 13 m and 4 m at 18 m/s.) **Should every phase use a ramp?** (GDD §10: (1) the fallen tower as a ramp, (2) a wall jump,
     (3) a pad and the ceiling.) After the first stomp the owner saw no ramp and no way up. The wall route
     showed nothing, and at 5 and 6 lanes a wall jump lands in the outer lane, which has no weak point:
     only a second move inward in the air reached one (measured in the campaign's step and in quick play,
@@ -1478,7 +1519,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     blocks; the window stays open for a runner on the trucks until the lead-in ends (3.5 m before its
     face, not 8 m). The latest switch is now 4.5 m before its face at 3, 5 and 6 lanes. Right share,
     and does the bent slab read as the fallen tower? Alternatives: a slab two lanes wide, a longer ramp.
-250. **Stomp boxes over the outer lanes** (item 160): at 5 and 6 lanes the outermost weak points' stomp
+250. (E1f: the stomp boxes are now 4.6 m deep at 18 m/s, stretched by the pace in the campaign.) **Stomp boxes over the outer lanes** (item 160): at 5 and 6 lanes the outermost weak points' stomp
     boxes now reach over the outer lanes to the walls, at their own height (a jump from the trucks
     still can't reach them), so a wall jump or a ceiling drop there stomps the dome beside it; and every
     box is lower and deeper (0.35 m over its socket, 4 m deep; were 0.55 m and 3 m). One wall jump now
@@ -1508,6 +1549,619 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     one-shot kill (the sewer screech), an `immune_to_weapons` target, or a boss part (`is_boss`; a boss's
     weapon chip is its own rule, `BossEncounter.weapon_share_cap`). No enemy's `health_early`/`health_late`
     or any tier's `weapon_damage` changed.
+
+**A faster pace and busier levels** (from G1; speeds in `data/zones/*.tres` `run_speed`, density in `data/levels/*.tres`; measure with `tools/measure/level_pace.gd`)
+253. **How busy the campaign levels get** (GDD §3, busier levels: "more gaps, obstacles and enemies ...
+    (to an extent)"). **Placeholder:** campaign levels space their patterns 1.1 s apart at low
+    difficulty (`spacing_seconds_easy`, default 1.8 s), and a fill pass adds more of the level's plain
+    hole and fence patterns wherever nothing goes on for over 2 s (`fill_empty_seconds`), all in
+    `data/levels/*.tres`. Events per minute rise 23–37% in the Neon City and Gangland but only 7–16%
+    from the Marketplace on: there the hard spacing (0.9 s, about the time to switch across six lanes)
+    and the room kept around enemies already set the pace. The longest quiet stretch is about 4 s,
+    except under the Neon City's first ceilings (about 6 s, a bare floor while ceilings are new) and
+    in The Hush. **Alternatives:** a closer hard spacing (0.75 s gives the later zones about +16–22%, but
+    is too short to cross six lanes), or more enemies per level.
+254. **Livelier enemies: how much less idle time** (GDD §3: enemies and their attacks speed up to
+    match). **Placeholder:** enemies that move in the world's frame move, lunge and fire faster from
+    further out at a faster zone's speed, with every warning and dodge window in the same seconds; and
+    the idle time between attacks is about 15–20% shorter in `data/enemies/*.tres`: cyborg and window
+    cyborg reloads 1.8/1.1 s (were 2.2/1.3), drone follow times 1.0, 2.5/1.6 s and cooldown 0.4 s
+    (were 1.2, 3.0/2.0 and 0.5), hover truck pacing 3.0/3.8 s, hold back 1.3 s, cannon interval
+    3.8/2.5 s and first shot 0.5 s (were 3.5/4.5, 1.6, 4.5/3.0 and 0.6), Octodog turnaround 0.25 s
+    (was 0.3), Resonator settle 0.5 s and rests 1.8/1.0 s (were 0.6 and 2.2/1.2). **Alternative:**
+    shorter still, or only the faster motion.
+255. **The Resonator at a faster zone's speed** (GDD §9.10 and §3). **Placeholder:** it hovers 34 m ahead
+    in every zone, inside laser tier 1's 42 m reach, and the runner closes in on its waves as fast as at
+    18 m/s, so each wave takes as long to arrive; at 25 m/s a wave rolls along the floor at 4–7 m/s
+    instead of 11–14 (`ResonatorTuning.wave_speed_at`). **Alternatives:** hover further ahead with
+    faster waves (47 m at 25 m/s, out of laser tier 1's reach), or faster waves from 34 m (0.3 s less
+    to react).
+256. **Harder tiers' extra speed** (GDD §6, replay: harder difficulty tiers; `Campaign.tier_speed_multiplier`,
+    1.1 and 1.2). **Placeholder:** a tier's faster run stretches the patterns like a faster zone does,
+    so every reaction window keeps its seconds and a harder tier is harder only through its difficulty
+    bonus (`Campaign.run_speed_for`). **Alternative:** as before, a tier's extra speed tightens the
+    patterns' timing.
+257. **Each zone's speed** (GDD §3: about 21 m/s in the Neon City, rising zone by zone to about 25 m/s
+    in the Golden Zone). **Placeholder:** a straight rise, 21.0, 21.8, 22.6, 23.4, 24.2 and 25.0 m/s
+    (`run_speed` in `data/zones/*.tres`); boss fights, quick play and the tests keep the base 18 m/s.
+    **Alternative:** another curve, such as a bigger step at the start of each act.
+    <!-- Measurements for question 1 (tools/measure/level_pace.gd --seeds=4: each level on its own seed and
+    4 others, at 3, 5 and 6 lanes). "Before" is main's data built by this branch's code (byte for byte the
+    old layouts, --old-data); "after" is this branch. Events: obstacle rows, enemies, big attacks and
+    mechanics. Empty: seconds with nothing going on (a ceiling ride doesn't count; The Hush is quiet by
+    design, its bursts' longest empty stretch 6.0 s before and after). Credits in total: 11,571 → 11,638.
+    | Level | m/s | Events/min | Longest empty, s (mean / worst) | Mean empty, s | Credits |
+    |---|---|---|---|---|---|
+    | city/1 | 18 → 21.0 | 28.3 → 38.8 (+37%) | 2.0 / 2.3 → 1.4 / 1.9 | 1.81 → 1.25 | 506 → 542 (+7%) |
+    | city/2 | 18 → 21.0 | 26.2 → 34.1 (+30%) | 6.8 / 7.7 → 6.2 / 6.2 | 2.04 → 1.45 | 550 → 611 (+11%) |
+    | city/3 | 18 → 21.0 | 27.7 → 35.5 (+28%) | 6.1 / 6.8 → 5.3 / 6.2 | 1.91 → 1.34 | 605 → 649 (+7%) |
+    | gangland/1 | 18 → 21.8 | 30.8 → 38.1 (+24%) | 5.2 / 6.6 → 4.0 / 6.2 | 1.56 → 1.21 | 827 → 843 (+2%) |
+    | gangland/2 | 18 → 21.8 | 30.9 → 38.4 (+24%) | 5.6 / 10.5 → 3.4 / 4.2 | 1.60 → 1.17 | 761 → 821 (+8%) |
+    | gangland/3 | 18 → 21.8 | 35.3 → 43.4 (+23%) | 6.6 / 7.9 → 3.8 / 4.7 | 1.59 → 1.18 | 921 → 947 (+3%) |
+    | marketplace/1 | 18 → 22.6 | 37.0 → 42.5 (+15%) | 6.4 / 9.4 → 4.2 / 5.3 | 1.54 → 1.29 | 971 → 868 (-11%) |
+    | marketplace/2 | 18 → 22.6 | 36.3 → 42.1 (+16%) | 7.3 / 9.0 → 4.3 / 5.2 | 1.60 → 1.23 | 942 → 819 (-13%) |
+    | corporate/1 | 18 → 23.4 | 36.8 → 42.2 (+15%) | 6.8 / 9.2 → 4.3 / 6.8 | 1.48 → 1.24 | 862 → 810 (-6%) |
+    | corporate/2 | 18 → 23.4 | 36.8 → 41.9 (+14%) | 6.6 / 9.0 → 4.2 / 4.9 | 1.52 → 1.29 | 872 → 822 (-6%) |
+    | dead_zone/1 | 18 → 24.2 | 35.4 → 40.2 (+14%) | 6.3 / 9.5 → 4.4 / 7.1 | 1.63 → 1.33 | 818 → 900 (+10%) |
+    | dead_zone/2 (The Hush) | 18 → 24.2 | 29.2 → 28.6 (-2%) | 8.4 / 10.1 → 8.1 / 10.1 | 2.16 → 2.14 | 732 → 669 (-9%) |
+    | golden/1 | 18 → 25.0 | 37.2 → 40.1 (+8%) | 6.8 / 8.8 → 4.0 / 4.8 | 1.59 → 1.32 | 701 → 738 (+5%) |
+    | golden/2 | 18 → 25.0 | 36.6 → 40.9 (+12%) | 7.7 / 13.6 → 4.3 / 6.4 | 1.59 → 1.30 | 729 → 828 (+14%) |
+    | golden/3 | 18 → 25.0 | 37.9 → 40.7 (+7%) | 7.3 / 8.9 → 4.1 / 5.1 | 1.63 → 1.27 | 774 → 771 (0%) |
+    -->
+
+**The Marketplace citizens** (from D3; regenerate the sheets with `tools/godot.sh citizens`; review with `tools/showcase/skin_review.tscn -- --skin=marketplace`)
+258. **How a citizen's window should read apart from a window cyborg's** (GDD §5, §9.2;
+    `OPEN_QUESTIONS.md` §D item 46 already raises this). The placeholder: citizens never glow and
+    their windows stay as bright and lit as any other shop's (`MarketplaceSkin`'s own window look,
+    unchanged); a window cyborg always darkens its own window on top, so the two never show at once.
+    For *position*, `MarketplaceSkin.note_wall_enemies()` (a new, generic `ZoneSkin` hook) tells the
+    skin which window cyborgs the level is about to place, and `MarketCitizens` keeps a
+    `CYBORG_MARGIN` (2.2 m) clear of each one's track position on its side. 2.2 m is a guess, wider
+    than a window cyborg's own drawn window (`WindowCyborgTuning.window_length`, 1.5 m by default) but
+    not measured against real levels. Alternative: let window cyborgs themselves prefer the skin's
+    own shop windows (closer coordination, more shared code, touches a shared enemy every zone uses).
+259. **What counts as "low-end"** (task plan: "nothing decides low-end yet"). The placeholder:
+    `DeviceProfile.is_low_end()` is a mobile device still rendering with the Compatibility renderer.
+    `Settings.citizens_enabled` (a new setting, default on, no UI toggle built yet) is off whenever
+    that's true or the player turns the setting off directly. Alternative: a frame-time budget probed
+    at runtime, or a tier list by `OS.get_video_adapter_name()`.
+260. **How many windows should host a citizen** (not in the GDD at all). Placeholder:
+    `MarketCitizens.CITIZEN_SHARE` = 0.16 of eligible windows, picked to keep the chunk's draw calls
+    and build time inside `SkinSuite`'s existing budgets (see `tests/suites/test_marketplace_skin.gd`
+    for the measured numbers with citizens on and off). The owner can judge this by playing, so it's a
+    tunable, not really an open question, but the share needed real measurement to pick.
+
+**The Barnacle Turret** (from C1; numbers in `data/enemies/barnacle_turret.tres`; review with `tools/showcase/barnacle_turret_showcase.tscn` or play `--level=marketplace/1`)
+261. **How does a stomp reach it?** GDD §9.8 lists "a stomp" among its kills, but it hangs from the ceiling,
+    out of a floor runner's reach (it must be: the floor route under its ceiling stays as it was).
+    - **Placeholder:** a rider on its ceiling jumps and drops back onto its crown, the top of the dome as
+    the rider sees it (`Player._is_stomping` on the ceiling, `Hazard.upside_down`). It bounces the
+    rider like any stomp. Only a turret's crown can be stomped from a ceiling.
+    - **Alternative:** no stomp for the turret (claws, the dash and weapons only).
+262. **When does it pop out?** GDD §9.8: it "pops out of the ceiling's underside".
+    - **Placeholder:** 3.5 s before the player reaches it (`emerge_seconds`), so a floor runner sees it
+    before taking the pad, and the choice to ride is an informed one. Until then it's a closed hatch
+    on the underside, harmless and untargeted.
+    - **Alternative:** it pops out only once the player rides its ceiling, as a surprise.
+263. **May it hang over the pad's lane?** GDD §9.8: "mounted only over lanes the ceiling covers".
+    - **Placeholder:** never over a pad's lane. A rider who stays in the lane they landed in never meets a
+    turret's body, only its bolts, which keeps the ceiling the easier route (GDD §3), and the ceiling's
+    line of credits (along that lane) never leads into one.
+    - **Alternative:** any lane the ceiling covers, so a rider sometimes has to switch lanes after landing.
+264. **Marketplace 1's introduction needs a ceiling.** The level's own ceilings come late (none within
+    about 20 s of the turret's start at 10% on its seeds), so placed on them alone the turret would show
+    up long after its hint.
+    - **Placeholder:** when no ceiling it fits on lies within 8 s of the start (`intro_seconds`), the
+    rules add a plain full-width ceiling for it, only where one fits without clearing anything and
+    before the level's first drone; the rest of the level is unchanged.
+    - **Alternative:** move Marketplace 1's start for the turret to where its first ceiling is, or let the
+    introduction wait for the level's first ceiling.
+
+**The Sleep Taker: the nightmare and its attacks** (from E5c-a; numbers in `data/bosses/dead_zone_boss_tuning.tres`; play `--boss=dead_zone_boss`, review with `tools/showcase/sleep_taker_showcase.tscn`)
+265. **The refuge from the giant slash** (GDD §10: "get out of those lanes, or up onto the ceiling"; at
+    3 lanes a three-lane slash covers the whole street).
+    **Placeholder:** every slash comes at a refuge: every 240 m (`refuge_spacing`, about 13 s) a charred
+    bridge crosses the street (the Dead Zone's ceiling look) with a pad in the middle lane (both middle
+    lanes at 6), at most one lane switch away at 3 lanes and two at 5 and 6; the slash's warning
+    (1.9 s) starts 1.1 s before the runner reaches the pads and it strikes 0.8 s after, while a runner who
+    took a pad rides the ceiling. At 5 and 6 lanes, leaving its three lanes dodges it as well, and a wall
+    is always safe from it. The street is kept clear of holes and fences from the warning to the strike.
+    **Alternatives:** a pad in every lane (`refuge_pads_every_lane`: a runner can't miss one, so the
+    slash never threatens anyone who doesn't jump the pad); or, at 5 and 6 lanes, more slashes between
+    the bridges, dodged only by leaving the lanes.
+266. **Its look and size** (GDD §10: one colossal nightmare, black with purple highlights, dozens of
+    circular maws and long clawed fingers).
+    **Placeholder:** a hunched mass of fused Bad Dream heads over a chest and waist, trailing vapour to
+    the street, 28 maws all facing the runner, two long arms hanging wide of the middle lanes and four
+    tendrils of clawed fingers; about 12 m tall over 3 lanes, 18 m over 5 and 22 m over 6, filling the
+    street 26 m ahead. Its great maw (the slash's warning) gapes in its belly, about 5 m up, so it shows
+    under a refuge's bridge; the bridges cut through its upper body like a ghost's. Its throat and claws
+    heat to enemy-attack red as it shrieks and slashes. **Alternative:** the great maw in its head (hidden
+    by the bridge during a slash, leaving the red lanes and its rising arms as the warning's look).
+267. **How dark** (GDD §10: darker than normal, never pitch black; lights out darker still).
+    **Placeholder:** the arena at `darkness` 0.4 (the scenery at 72% of the Dead Zone's light); lights
+    out, after a 2 s inhale, brings the arena's light down to 45% for 8 s, the scenery to 32% (its floor
+    is 30%), then it breathes out and the light comes back over 1.6 s. Measured on screen at 5 lanes
+    (`--scenario=measure`, grey value 0-255, the arena's light → the darkest point): the street 80 → 50,
+    the walls 34 → 25 on Forward+, the same on the Compatibility renderer; the slash's red lanes, the
+    hand's purple mist, the pink fence and generator, the cyan pad and its maws keep their colours and
+    stand out from the street as much or more (their colour distance from it: red lanes 101 → 96, fence
+    148 → 224, pad 194 → 233 on Forward+; red lanes 64 → 41 on Compatibility, where their bright edges
+    carry them). Dark enough, or darker (it would need a lower floor than The Hush's 30%)?
+268. **The hands** (GDD §10: purple mist pools in the lane, with whispering; switch lanes).
+    **Placeholder:** one hand at a time, in the runner's lane: the mist pools 1.2 s before the hand bursts
+    up, 0.45 s before the runner would reach it, about one every 3 s between the refuges; the hand reaches
+    above a jump, so only a lane switch (or a wall or the ceiling) dodges it, and one only comes while the
+    next lane is clear. The mist is the nightmare's own purple; only the hand's claws heat red as it
+    rises. **Alternative:** a red line under the mist, like the other bosses' floor warnings.
+269. **Its rhythm, and lights out with the other attacks** (GDD §10: hands and slashes keep coming in the
+    dark). **Placeholder:** each phase's list (`attack_patterns`; the first: hands, hands, lights out,
+    hands, hands, hands), one attack at a time, 1.3 s apart (`attack_gap`), never one that would still be
+    on when the next refuge's slash is due; the dark lasts while the next attacks come. Measured on its
+    arena at 5 lanes (`test_sleep_taker_attacks`): 61 s of pattern bring 4 slashes, 9 hands and 2 lights
+    outs (a slash about every 15 s, a hand every 7 s, lights out every 30 s); fewer hands than the list
+    asks for, since a hand only comes where its lane and the next are clear of the arena's holes and
+    fences. Right amount? (E5c-b makes the later phases hungrier: faster hands, more lights out.)
+
+**Zone doodads** (from G5; the share per level in `data/levels/*.tres`, sizes in `data/tuning/movement.tres`; quick play `--doodads=X`; review with the `doodad_review` showcase)
+270. **Which lanes doodads stand in** (GDD §3, Side walls and Collision rules). Doodads stand only in the
+    inner lanes, never the outermost one: a wall runner's body reaches 1.28 m into the street, so a doodad
+    in the outer lane would meet wall runners, and the wall-runner collision would have to change. At
+    3 lanes that leaves the middle lane only (pushing left or right). The alternative: doodads in the
+    outer lanes too, either narrowed to the lane's inner half (leaving a gap by the wall that looks
+    passable but isn't) or blocking wall entry around them.
+    *Placeholder:* `LevelGenerator._add_doodad` (inner lanes only); `LayoutChecks.check_doodads` checks it.
+271. **How tall a doodad is, and its top** (GDD §3). Every doodad's collision box is 2.6 m tall
+    (`MovementTuning.doodad_height`): far above a jump (the feet reach 1.6 m) and below a ceiling rider's
+    head even mid-jump (about 3.1 m). Its top is solid: a player who comes down on one from above (after a
+    wall jump) lands and runs along it, then drops off its end into its lane, like a hover truck's roof.
+    The alternative: a top that pushes the player off sideways.
+    *Placeholder:* `data/tuning/movement.tres` defaults (`doodad_height`, the size classes' lengths and
+    widths); `TrackBuilder._build_doodad` (the top on the floor layer).
+272. **Which way a push goes when the player catches a corner** (GDD §3: "if both sides have room, a side
+    chosen per doodad"). Running into a doodad head-on pushes the player to the doodad's side, a seeded
+    choice that's the same on every attempt. A player who catches its front corner while switching lanes
+    into it is pushed back the way they came, never through the doodad to its far side. The push is a
+    0.13 s shove (a lane switch takes 0.14 s) with a dull thud, the runner leaning into it and a small
+    camera shake; it costs nothing (no damage, no speed). The alternative: always the doodad's side.
+    *Placeholder:* `Player._check_doodads` (`PUSH_HEAD_ON_SHARE`), `MovementTuning.doodad_push_time`,
+    `SpeedFxTuning.push_shake_*`, `assets/sfx/doodad_push.wav`.
+273. **Where doodads stand, and how many** (GDD §3: busier levels, "without turning them into a slalom").
+    A doodad stands only where nothing else goes on in any lane, from just before its push to the level's
+    spacing after it (so the player can cross its lane again before the next obstacle, as between two
+    patterns), never under a ceiling (the camera rides below a ceiling, lower than a doodad), off every
+    enemy's stretch, at least 2.5 s from the next doodad. They're placed after the fill pass, into what it
+    leaves, so they add to a level rather than replace obstacles: 3 to 15% more events a minute, about
+    3 doodads a minute in City 1 (only the smaller ones, from a fifth of the way in), 4.5 to 5.3 in the
+    City's other levels, 2.7 to 4.4 in Gangland and the Marketplace, and 2.3 to 3.2 later, where enemies
+    leave less room; The Hush keeps its quiet stretches empty (as the fill pass does) and gets about 1 a
+    minute (`tools/measure/level_pace.gd`). The longest empty stretches barely change: they lie under ceilings
+    or around enemies. The alternative, for more of them: let them stand beside obstacle rows in lanes
+    those rows leave free, and in The Hush's quiet stretches as silent wreckage.
+    *Placeholder:* each level's `doodad_share` (and City 1's `doodad_start` and size weights) in
+    `data/levels/*.tres`; `LevelConfig.doodad_gap_seconds`.
+274. **Aimed attacks near a doodad** (GDD §9: every attack is fair; a doodad's side blocks a dodge and its
+    push moves the player). The generator keeps doodads off every planned attack (an Octodog's run, a
+    Resonator's visit, a drone wave until its first pad, a hover truck's stay in its lane and its first
+    20 s in every lane, a Bad Dream's chase). At runtime an attack that could still come later never comes
+    with a doodad in reach: a drone's barrage and the truck's cannon wait, an Octodog charge or Resonator
+    pulse moved on by a wait for its turn waits, cyborg bolts never land by one, and a truck only lurches
+    at a player who can leave its lane. So a drone that outlives its pads fires a little less where doodads
+    stand. The alternative: keep doodads out of every drone's and hover truck's whole stay.
+    *Placeholder:* `drone.gd` and `hover_truck.gd` (`_doodad_in_reach`), `Octodog.window_clear`,
+    `Resonator.pulse_clear`, `CyborgGun.path_clear`.
+
+**The Golden Palace** (from D6b; numbers and colours are exports on `GoldenPalaceSkin`, F6; play `--level=golden/3` or `--quick --skin=golden_palace`)
+275. **The floor's gold inlay runner** (GDD §5: "a palace floor (marble, inlay, gold runners)"): how
+    wide. **Placeholder:** `GoldenPalaceSkin.runner_half_width` (0.2 m, a roughly 0.4 m runner down
+    each lane's centre), `## DESIGN-TBD` in `scripts/world/skins/golden_palace_skin.gd`.
+276. **How tall the colonnade rises** above its entablature (frieze_top) before the hall reads as
+    receding into haze, comfortably clear of an alcove's statue and a hung tapestry. **Placeholder:**
+    `GoldenPalaceSkin.pilaster_height` (15 m), `## DESIGN-TBD` in the same file.
+277. **How far a ceiling piece's structure may rise** above its underside (GDD §5: "the vast hall's
+    ceiling stays far above") before the hall's haze would hide it anyway. **Placeholder:**
+    `GoldenPalaceSkin.hall_clear_height` (7.5 m, close to the Corporate zone's and the Dead Zone's own
+    ~7.4 m ceiling-structure budgets), `## DESIGN-TBD` in the same file.
+278. **The vault above the colonnade** (GDD §5: "an enormous vaulted space, perhaps with distant halls
+    and light shafts"): whether it should look like the Golden Zone's own dusk sky with the moon and
+    stars turned off (what's built: `GoldenPalaceSkin.make_environment()` reuses
+    `GoldenSkin.make_environment()` wholesale, its warm haze and dimmed "skyline" standing in for
+    distant halls glimpsed through light shafts), or something explicitly interior instead (a painted
+    or coffered ceiling glimpsed above the colonnade, a true horizon never showing).
+
+**Zone doodads: the looks** (from G6; colours in each skin's "Doodads" group, F6; review with `tools/showcase/doodad_review.tscn -- --skin=<zone>`)
+279. **What the Golden Zone's statue doodad looks like** (GDD §3, owner's playtest September 30, 2026:
+    "statues on plinths, never at wall-run height (the Gilded Sentinels' language)"). The large doodad
+    never stands at wall-run height anyway (it's a floor piece, far below `GoldenSkin.statue_min_height`),
+    so the instruction read as: don't give it the Gilded Sentinels' specific shape language either (the
+    armoured guard holding a halberd, `GoldenStatue`, task C4), so a statue in a lane is never mistaken
+    for the live enemy even up close. Built it as a plain, faceless, robed figure instead: tapered gold
+    tiers, a rounded cowl, hands clasped, a red sash, nothing raised or held. The alternative: reuse
+    `GoldenStatue`'s decorative poses (`&"guard"`, `&"vigil"`, `&"salute"`) scaled down to fit the box,
+    which would read as more clearly "a statue" (the same kit as the ledges') at the cost of standing
+    closer to the Sentinel's own silhouette.
+    *Placeholder:* `scripts/world/skins/golden/golden_doodads.gd` (`_statue`); `test_golden_skin`'s
+    `_doodad_statue_not_sentinel` guards against the doodad ever building from `GoldenStatue`.
+
+**The Sleep Taker: hurting it, the phases and the defeat** (from E5c-b; numbers in `data/bosses/dead_zone_boss_tuning.tres`; play `--level=dead_zone/boss`, review with `tools/showcase/sleep_taker_showcase.tscn -- --scenario=lure`)
+280. **The lure** (GDD §10: "the player lures it close (it lunges toward them), then destroys the generator
+    with a stomp or the dash").
+    **Placeholder:** going for a generator is the lure. 3 s before the runner reaches one
+    (`lure_seconds`), the nightmare lunges in after them with a hungry roar and holds its claws 3.5 m in
+    front of them, attacking nothing, until they're past it. While it's lured and within 24 m of the
+    generator (`emp_reach`, at 18 m/s; it scales with the run speed), pink arcs crackle from the generator
+    into it: smash the generator now. The arcs show 1.7-1.8 s before a stomp lands (at 18 and 24.2 m/s,
+    at 3, 5 and 6 lanes). Hovering, it's never in reach. **Alternative:** lure it with its own slash (a
+    generator by a refuge, smashed while it lunges in to strike).
+281. **The generators** (GDD §10: they "stand along the route"; "a missed generator is followed by
+    another"). **Placeholder:** one at a time, from 9 s into each phase's pattern (`generator_delay`),
+    placed in sight 160 m ahead (at 18 m/s: about 9 s, at any speed) in the runner's lane, or the nearest
+    lane whose floor is clear around it, never near a refuge's slash or under a ceiling; another 3 s after
+    a miss. They power no fences of their own, and a pink beacon rising from each shows through the
+    nightmare, which looms between the runner and it. **Alternative:** fixed spots in the arena, each
+    powering a fence or two.
+282. **Its phases** (GDD §10: three EMP hits, hungrier each phase: faster hands, more lights out).
+    **Placeholder:** each EMP tears a chunk away (its left cluster of heads, then its right, ripping off in
+    a burst of wisps), and it recoils howling and re-forms over 2.5 s. Phases 2 and 3 run at pace 1.15 and
+    1.3 (shorter hand warnings and gaps) with more lights out in their lists. A phase begun with the armor
+    down counts as a break (`armor_when_unprotected`, as for the Floating Head).
+283. **The defeat** (GDD §10: hundreds of wisps, faint faces or figures drifting upward; "then silence, and
+    the first grey dawn light").
+    **Placeholder:** 260 wisps (faces with open mouths, sleeping faces, figures with raised arms) rise and
+    fade over 4.5 s as it dissolves. The music fades out over 2 s, and the win plays no victory riff. Then
+    the night sky turns to a grey dawn over 3.2 s (the light up to 1.25 times the zone's own), and the
+    results follow. **Alternative:** keep the victory riff, as after every other win.
+284. **Its length and par times** (GDD §10: 60-120 s; stars from par times).
+    **Placeholder:** a runner who never misses wins in about 78 s (measured at every lane count and at
+    18 and 24.2 m/s); a missed generator costs about 12 s. Three stars at 86 s or less, two at 110 s or
+    less (up to two misses).
+
+**Floors that turn into gaps** (from B4; the stand-in in `data/enemies/floor_cutter.tres`; quick play `--features=floor_cutter`; review with `tools/showcase/floor_cut_review.tscn`)
+285. **How many lanes stay whole beside a cut at 5 and 6 lanes?** (GDD §9.9: "On 3 lanes, two lanes
+    always stay whole.") Along a cut's stretch, at most one lane besides the cut's own may hold holes
+    at 5 and 6 lanes, so 3 of 5 and 4 of 6 lanes always stay whole; the generator clears the holes
+    nearest the cut first, so its neighbours stay whole. The alternative is the 3-lane rule at every
+    lane count: no hole in any other lane beside a cut.
+    *Placeholder:* `LevelConfig.cut_holes_beside = 1` (DESIGN-TBD; `LevelGenerator.whole_lanes_for_cut`).
+286. **What does the floor that "holds for about a second" after a block look like?** (GDD §9.9: "After a
+    block, the floor under the player holds for about a second, just enough to switch lanes.") The floor
+    ahead of the player was already cut behind the saw when it reached them, so the held floor (from just
+    behind the player to as far as they can run in that second) shows again as the lane's own floor,
+    with the cut's orange edges along it, and then goes all at once. The alternative is a held stretch
+    drawn as cracked, sagging plates (a look task C2 could add with the saw's own effects).
+    *Placeholder:* `GameRules.cut_hold_seconds = 1.0` (the GDD's "about a second") and
+    `FloorCut.hold_under` (DESIGN-TBD: the look).
+287. **Does anything else go on during a cut?** The brief and GDD §9.9 keep everything else out of the
+    cut's lane. I also kept every other enemy's attack, the fill pass's extra holes and fences, and zone
+    doodads out of a cut's whole window (from its warning until it ends, about 5 s), so a cut is the one
+    thing going on, like a big attack taking its turn. The alternative is to let the other lanes keep
+    their fillers and doodads during a cut (busier, but less room to dodge sideways).
+    *Placeholder:* `LevelGenerator.cut_problem`, `fill_keep_outs`, `doodad_keep_outs` (DESIGN-TBD).
+288. **May a cut run through an outer lane beside a wall runner?** GDD §9.9 says wall runners are safe
+    "even beside it", and they are: the cut never reaches the wall. But a wall run ends by dropping back
+    into the outer lane, which is a hole there once the cut has passed, as it would be for any hole in
+    the outer lane; a wall jump with a lane switch in the air reaches the next lane. I allowed outer-lane
+    cuts (only never where a ramp's wall run drops the player back). The alternative is to keep cuts out
+    of the outer lanes.
+    *Placeholder:* `LevelGenerator.cut_problem` (DESIGN-TBD).
+
+**The robbed hit** (from B6; `theft_grace` in `data/tuning/game_rules.tres`; quick play `--thief`)
+289. **Does anything protect against a theft?** (GDD §9.12: touching the Tithe Collector isn't deadly;
+    §8: armor blocks an enemy attack or electrical hazard, the shield one hit of anything.) A theft is
+    no hit, so armor, the shield, the invulnerability window after a hit and god mode don't stop it, and
+    nothing is used up; only a short window after a theft stops a second one, so one touch robs once.
+    The alternative is that the shield (one hit of anything), or the invulnerability window, also
+    blocks a theft.
+    *Placeholder:* `DamageRules.resolve` (DESIGN-TBD), `GameRules.theft_grace = 1.5` s.
+290. **Do the claws catch the collector?** GDD §9.12 names a stomp, a shot and the dash; GDD §8 says the
+    claws kill any enemy on contact. I let the claws catch it like any enemy, so a runner with claws is
+    never robbed by a touch. The alternative is a claw-immune collector (a runner with claws who touches
+    it is robbed; only a stomp, a shot or the dash catch it), which task C5 would declare
+    (`claw_immune`).
+    *Placeholder:* the stand-in's `claw_immune = false` (DESIGN-TBD, `scripts/enemies/stand_in_thief.gd`).
+291. **What does "25% of the credits collected this run" take, and does the score drop?** A theft takes
+    25% of the credits the run holds at the touch (everything collected so far, less what thieves hold
+    now), rounded down, so a second theft takes 25% of what's left. The level score is never lowered
+    (GDD §7: it's never spent), so stars and leaderboards never feel a theft; only the pay does. The
+    alternatives: 25% of everything collected this run, even what an earlier thief already took (two
+    thefts take half); or a score that drops with the credits, with stars counted from a score kept
+    before thefts.
+    *Placeholder:* `ScoreKeeper.rob` (DESIGN-TBD).
+292. **How does a caught collector "burst into everything it took plus a jackpot"?** It pays straight
+    into the run's credits, shown as coins flying out of it into the runner (and pop-ups), so nothing
+    lands over a gap or a hazard; the jackpot, and anything it took off the track, count as collected
+    (score). The alternative is credits scattered on the track to collect, with the risk that brings.
+    *Placeholder:* `ScoreKeeper.pay_out`, `ThiefTuning.jackpot_credits = 100` (DESIGN-TBD: its size).
+
+**The economy after the playtest** (from R7; measure with `tools/measure/economy.gd`; prices in `data/shop/catalog.json`)
+293. **Armor I's new price (GDD §4, §8).** 350, reachable after one clean run of City 1 (or ~5 deaths).
+    **Alternative:** cheaper still (so even a first attempt's partial credits cover it), or a flat
+    starting discount instead of a price cut.
+294. **Weapon IV only comes into reach in the Golden Zone (level 13 of 15)** under a single clean
+    playthrough. Nothing needs it (every boss is beatable with what it grants), so it reads as an
+    end-game capstone purchase. **Is that the intended feel, or should Heavy missile be reachable
+    earlier** (e.g. by Corporate, where Buzz Overdrive first makes a weapon's damage matter)?
+295. **The armor tiers' price curve after Armor I's cut**: Armor I is now a cheap starter (350) and
+    Armor II is 4.9x that (1,700), versus 2.1x before. **Leave II–IV as the existing escalating sink
+    they already were, or pull them down too to keep a smoother step?**
+
+**Wall fences** (from B5; numbers in `data/tuning/wall_fences.tres`, F6 "Wall fences"; review with `tools/showcase/wall_fence_review.tscn` or play `--level=marketplace/2`)
+296. **Do partial wall fences pulse too?** (GDD §9.1: wall fences "turn off and on"; partial ones "are passed
+    by entering the wall high or low".) Placeholder: every wall fence pulses on the level clock, partial ones
+    included, so a partial one is passed either by timing or by entering high or low
+    (`WallFencePlacement`, `scripts/world/wall_fence_placement.gd`). The alternative: partial ones always on,
+    passed only by height.
+297. **Is the floor fence's warning long enough on a wall?** (GDD §9.1: "the same flicker and crackle before
+    switching on"; the brief: a player already on the wall always sees the warning in time to drop off.)
+    Placeholder: the floor fence's own 0.35 s (`MovementTuning.fence_pulse_warning`, and its 0.35 s crackle).
+    Jumping off a wall takes about 0.1 s to clear the field, so a wall runner has about 0.24 s to react, the
+    same as dodging a pulsing floor fence; the tests hold a runner who jumps off 0.2 s after the warning starts
+    to never being hit. The alternative: a longer warning for wall fences only (about 0.5 s, with a longer
+    crackle).
+298. **Where may they stand?** (GDD §9.1's fairness rules, read for the drop-off.) Placeholder: besides the GDD's
+    rules (no ramp launching the player along their wall, no sign or window cyborg on their wall section),
+    a wall fence keeps the outer lane beside it clear to drop into (no hole, fence, floor cut, anti-grav pad or
+    floor enemy from 0.6 s before it to 0.8 s after), keeps off wall vents' screeches, and never stands during a
+    big attack (a drone wave, a hover truck, an Octodog's run, a Resonator's pulse, a Bad Dream chase) or a
+    floor cut, the way the fill pass keeps its extra obstacles off them (`WallFenceTuning`, "Fairness"). So
+    they come where the floor beside the wall is calm, and catch players who stay on a wall from earlier; a
+    long big attack can also hold Marketplace 2's or Corporate 1's introduction back past its 10 s (about one
+    seed in six; never on the levels' own seeds). The alternative: let them stand during big attacks (more of
+    them, and introductions always on time, but the wall is one of the escapes from the Resonator's wave and
+    the Bad Dream's slash).
+
+**The House** (from E5a-a; numbers in `data/bosses/marketplace_boss_tuning.tres`; play `--boss=marketplace_boss`, review with `tools/showcase/the_house_showcase.tscn`)
+299. **The 7 buttons' look** (GDD §10: "big glowing 7 buttons appear along the route. Running over one
+    locks its reel on 7"; they must read as safe to run over).
+    **Placeholder:** a big round ivory button flat on the floor, ringed in white with warm bulbs chasing
+    round it, the reels' own 7 in royal blue in its middle, and the same 7 floating upright above head
+    height over it (it marks the button from far along the street, and shrinks away as the runner nears).
+    Why: white and ivory are the pickups' "safe" neutrals; royal blue is no hazard's colour and not the
+    pads' cyan; round is no pad's or ramp's shape; the 7 ties it to the reels. Each lights up 1.35 s
+    before the runner reaches it, with a soft chime. **Alternative:** a gold coin-shaped button (gold reads
+    as the BAR blocks' colour, so we kept it off).
+300. **Do locked reels stay locked?** (GDD §10: "With all three locked: JACKPOT"; "missed buttons: it just
+    spins again").
+    **Placeholder:** yes, until the jackpot (`locks_persist`): a missed button only means its reel shows its
+    symbol and that attack comes; the next spin offers buttons for the reels still spinning, so a runner
+    rigs the machine a reel at a time (a missed jackpot clears them). **Alternative:** all three in one spin
+    (`locks_persist` off), much harder once phases 2 and 3 put a button on a wall or a ceiling.
+301. **How the player reaches the hopper** (GDD §10: "its coin hopper bursts open on top as a glowing red
+    weak point while it sags low. The player stomps it").
+    **Placeholder:** at the jackpot it rolls to a stop where the runner reaches it 2.6 s later (at any
+    speed), and sinks into the street until its top is a low deck (0.35 m) the runner can run onto. The
+    hopper is open in that deck across the whole street, glowing red, its stomp box 12 m long at 18 m/s
+    (stretched with the speed): any jump that comes down on it stomps it, from the street or from the deck
+    (the box is longer than a jump). A runner who doesn't jump runs over it unhurt; then it lurches out
+    from under them, rises and spins again. The hopper opens about 1.5 s before the runner reaches it, at
+    18 and 22.6 m/s. **Alternative:** it stays standing and its payout chute drops to the street as a ramp
+    up to the hopper on its top.
+302. **How long a phase lasts before the buttons come** (GDD §10: a fight of about 60-120 s).
+    **Placeholder:** each phase opens with two spins without buttons (`opening_spins`: only attacks, about
+    6 s each), then every spin offers buttons. A runner who never misses wins a phase in about 20 s (the
+    whole fight about 64 s with phases 2 and 3 still played as phase 1). The spins' symbols follow a list
+    per phase (`spin_patterns`, with pairs and triples) rather than chance. **Alternative:** buttons from
+    the first spin, with fewer buttons per spin.
+303. **The arena** (GDD §10: "unique scripted encounters"; the Marketplace's floor is stall roofs with gaps
+    between the stalls).
+    **Placeholder:** a plain street: the arena's laps keep no holes, fences, signs, ceilings, pads or
+    doodads of their own, so every danger is the machine's (its attacks are planned around each other
+    and every button and the hopper are always reachable). **Alternative:** the Marketplace's own gaps
+    and fences between spins, which the machine's attacks and buttons would keep clear of.
+
+**The Buzz Overdrive** (from C2; numbers in `data/enemies/buzz_overdrive.tres`; play `--level=corporate/1`, review with `tools/showcase/buzz_overdrive_showcase.tscn`)
+304. **What does "stop it in time" mean, and may it roll ahead first?** (GDD §9.9: "tuned so laser tier 1
+    can't stop it in time, but the missile tiers usually can".) I read it as killing it before it charges,
+    which saves the floor. A tank parked in its lane is in missile range (70 m) for well under the 5–7 s the
+    missiles need, so it rolls ahead of the runner for 4 s, about 50–60 m in front, before it revs. Measured
+    on a plain track: laser tier 1 never stops it; tiers 2–4 kill it during its rev at the zones' speeds
+    (23.4–25 m/s); at the harder tiers' 28–30 m/s, tier 3 (and tier 4 at 30) only stop it mid-charge. The
+    alternative is that it waits parked until it charges, and no weapon tier can stop it in time.
+    *Placeholder:* `BuzzOverdriveTuning.roll_seconds = 4.0` (DESIGN-TBD).
+305. **How fast does it charge?** It reaches the runner 0.6 s after it starts charging, at 2.5 times the run
+    speed, so its cut runs on 1.5 s ahead of where it meets them: after a block, the floor holds for 1 s and
+    then the runner falls unless they switched lanes (GDD §9.9: "a jump would land back in the cut lane").
+    The alternative is a slower charge, which starts further away (out of missile range at the zones'
+    speeds) or leaves too little cut ahead for the hold to matter.
+    *Placeholder:* `charge_seconds = 0.6`, `charge_speed = 45` (DESIGN-TBD).
+306. **How many per level?** Corporate 1: 1–4 (about 2.5 on average over seeds and lane counts), Corporate 2
+    about 2.6, the Dead Zone and the Golden Zone about 1 each. In Corporate 1 the recency curve picks it
+    four times as often (not capped), and about a third of its picks are dropped because nothing fits around
+    them (a drone's pad and ceiling come every 8–10 s, a hover truck stays 20 s or more). Its introduction
+    comes within 15 s of Corporate 1's 10% start in about two thirds of the layouts, later in the rest. The
+    alternative is capping its pick boost at 1 like the other big enemies (fewer wasted picks, fewer tanks).
+    *Placeholder:* no cap in `data/tuning/feature_recency.tres`; `intro_seconds = 15` (DESIGN-TBD).
+307. **What else may happen while it rolls in?** Only its rev and charge are kept clear of every other attack
+    (B4's "nothing else goes on"); while it rolls ahead before its warning, other enemies may still act, and
+    only its lane is kept clear. One Buzz Overdrive at a time counts its roll too. The alternative is to keep
+    everything off its roll as well (calmer, but it fits in fewer places).
+    *Placeholder:* `FloorCutPlan.attack_window` (DESIGN-TBD).
+308. **Its look.** A tracked tank in military gunmetal and olive (scorched and rusted in the Dead Zone), a
+    giant vertical saw whose teeth glow hot orange-red (the deadly part), and a red slit eye under a dark brow
+    on each side. Its blade runs along its lane like a real saw's, so head-on (the runner's view) it shows as
+    a glowing edge and its eyes only from the side; at 50 m it is small, and the red line over its lane is
+    what reads. The alternatives are a blade facing the runner, a zone-tinted body (gold trim in the Golden
+    Zone) or a hover tank. *Placeholder:* `BuzzOverdriveModel` (DESIGN-TBD).
+
+**The House, phases 2 and 3** (from E5a-b; numbers in `data/bosses/marketplace_boss_tuning.tres`; play `--level=marketplace/boss` or `--boss=marketplace_boss --phase=2`, review with `tools/showcase/the_house_showcase.tscn -- --scenario=wall|ceiling|defeat`)
+309. **Phase 2's wall button** (GDD §10: "(2) one on a wall, with wall fences in play").
+    **Placeholder:** the last button of the set (reel 3's, `special_reel`) stands upright on a side wall's
+    facade at wall-run height, the same ivory disc and blue 7 as the floor's, reached by a wall run from
+    the outer lane and passed at any height. Full-height wall fences pulse along both walls all phase (one
+    every 2.2 s of run on alternating walls, on 1.0 s, off 1.4 s); a set is offered only where the wall run
+    passes every fence while it's off, so the player wins it by timing. The machine's new attacks wait
+    while the player goes for it. **Alternative:** partial-height fences, the button reached by entering
+    high or low (B5's other way).
+310. **Phase 3's ceiling button and its turrets** (GDD §10: "(3) one on a ceiling reached by an anti-grav
+    pad, guarded by Barnacle Turrets").
+    **Placeholder:** a floating billboard (GDD §5: the Marketplace's ceilings include "floating
+    advertisements") comes down from the sky over every lane with a pad under it; the button is on its
+    underside 1.1 s past the pad, in the pad's lane; one turret (3 lanes) or two (5-6 lanes) hang further
+    along in a lane beside the pad's (C1's limits keep them at least 2.2 s past a pad, so they come after
+    the button) and fire at the rider, who dodges a lane over. **Alternative:** a longer ceiling with the
+    button past the turrets.
+311. **The machine is taller than a ceiling** (GDD §10 gives it a building's height; a ceiling is 6 m up).
+    **Placeholder:** at the lever's pull it squats on its treads to 4.9 m and stays down until it has rolled
+    past the billboard's end, then rises. **Alternative:** it drops back further while a ceiling is over
+    the street (smaller on screen for that stretch).
+312. **The defeat** (GDD §10: "the reels spin wildly and jam, TILT flashes, and it collapses in an explosion
+    of coins while the shops erupt in cheers").
+    **Placeholder:** after the last stomp it lurches out and rises as after any stomp; its reels spin
+    wildly for 1.0 s and jam between symbols, TILT flashes over them for 1.4 s (steady with Reduced
+    flashing), and it tips over into the street ahead over 1.8 s while 90 coins burst out (for show: the
+    fight's credits are the fountains') and the citizens cheer. **Alternative:** the coins land as real
+    credits to collect.
+313. **Par times** (GDD §10: "two and three stars for beating par times set per boss in data").
+    **Placeholder:** a clean fight takes 66-68 s at 3, 5 and 6 lanes and both speeds; three stars at 72 s
+    and two at 92 s (the Sleep Taker's margins over its clean run).
+
+**The Gilded Sentinels** (from C4; numbers in `data/enemies/gilded_sentinel.tres`, F6 "Enemy: Gilded Sentinel"; play `--level=golden/2` (3–11 Sentinels per build) or `--level=golden/3` (1–5), review with `tools/showcase/gilded_sentinel_showcase.tscn`)
+314. **Its niche goes into the wall** (GDD §9.11: "stands in a niche at wall-run height"; "pass above or
+    below the swing"). A 2.6 m statue standing out from the wall would block a wall run at all of its
+    heights, leaving no way above or below. So the statue (at 0.85 the kit's size) stands in a recess
+    with its front just behind the wall face. Nothing of it reaches over the wall-run path; only its
+    swing does. The Golden skins open the niche in their walls. Since a niche seen almost edge-on
+    from down the street hides what's inside, its eyes' red light fills the niche while they flare.
+    *Alternative:* a smaller statue standing proud of the wall, its solid body filling the band like a
+    window cyborg's. **Placeholder:** `GildedSentinelTuning` (Statue and niche), `GoldenStatue.recess()`,
+    `GoldenSkin.note_wall_enemies`.
+315. **What it cuts.** On its wall, a band of heights centred on the free wall-entry height (as for
+    window cyborgs): stepping onto the wall right before it is hit, a jump onto the wall (or a ramp)
+    passes above, an early entry slides below. On the floor, the whole outer lane up to the band's top,
+    so no jump clears it. Both run over a 5 m stretch, marked in red during the warning. *Alternative:*
+    a band below the entry height, so a late step onto the wall passes above and timing alone decides.
+    **Placeholder:** `band_offset`, `band_height`, `section_length`, `DESIGN-TBD` in
+    `gilded_sentinel_tuning.gd`.
+316. **The stomp from a wall jump** (proposed). A wall jump leaps out to the outer lane and never comes
+    down on a statue in the wall. So the kick is the push-off itself: a wall jump made right by its head
+    (feet from just under its helmet to half a metre over its crest, within about a metre of it along
+    the track) stomps it. *Alternative:* weapons only. **Placeholder:** `kick_below`, `kick_above`,
+    `kick_along`; `GildedSentinel.can_kick()`.
+317. **"Later ones swing twice."** It swings forward across the stretch before its niche as the runner
+    reaches it, then back across the stretch past it, so it guards twice the length. A runner sliding
+    down the wall must stay clear of the band for longer. Doubles and pairs (one on each wall at the
+    same spot) come from difficulty 0.95: the later ones in Golden 2, and in the Palace.
+    *Alternative:* two swings over the same stretch a moment apart. **Placeholder:**
+    `data/patterns/gilded_sentinel.json`.
+318. **A big attack that can't wait** (GDD §9, R3). Its warning and swings count as a big attack, so the
+    others wait for it, and its cut never overlaps another. A statue gets one chance as the runner
+    passes, so it claims its turn 2.5 s before its warning (other types' attacks that get ready from then
+    on wait), and if one begun before that is still on as its warning would start, it lets the runner
+    pass, without warning or swinging. The generator keeps floor cuts, Octodog runs and ceilings'
+    landings off it, and every big attack off the level's first. In simulated runs of Golden 2 and the
+    Palace, 32 of 36 Sentinels swung (21 without the claim), and the other types' big attacks went from
+    148 to 135 (Resonators plan their pulses off the Sentinels' turns). *Alternative:* count it as a
+    small attack (like a screech's swipe), which never takes turns and always swings, sometimes during
+    another big attack. **Placeholder:** `claim_seconds`, `GildedSentinel._tick`,
+    `gilded_sentinel_rules.gd` (`BIG_ATTACKS`, `STRICT_ATTACKS`).
+
+**Hostile Takeover, the train and The Board** (from E5b-a; numbers in `data/bosses/corporate_boss_tuning.tres`; play `--boss=corporate_boss`, review with `tools/showcase/hostile_takeover_showcase.tscn`)
+319. **The train's rhythm and The Board's density** (GDD §10, phase 1: "security cyborgs guard the roofs, a
+    Tithe Collector skims credits, and partial wall fences run along the track's sound barriers. Each
+    carriage coupling glows red and sits in one lane above the gap"; no numbers).
+    **Placeholder:** a gap across every lane every 3.2 s (carriages 50 m at 18 m/s, gaps half a jump); the
+    fight opens with its 3 s entrance and then 4 more dark gaps past the one in sight, so the first
+    coupling glows over the sixth gap (a later phase keeps 1 dark), then every gap's coupling glows, in a
+    lane of its own (never the last one's, at most 2 lanes from it); 1 or 2 guards a carriage from the
+    third on (never more than the lanes less one, never near a coupling's run-up or landing), a partial
+    wall fence on 70% of the carriages, a Tithe Collector every fifth carriage. A runner who never misses
+    stomps the first coupling 18.5 s in. **Alternative:** fewer dark gaps, or a coupling lit only on some
+    gaps (one at a time, as The House's buttons).
+320. **What counts as landing on a coupling** (GDD §10: "the player stomps it by landing on it while jumping
+    the gap").
+    **Placeholder:** its stomp box covers its lane over the whole gap and 1 m (at 18 m/s) past either edge,
+    up to 0.55 m above the roofs: any jump that comes down over the gap in that lane stomps it, also from the
+    lane beside it with a move in mid-air. That takes an early jump, from 4 to 12 m before the gap (a 0.45 s
+    window); green chevrons (the Floating Head's way-up language) mark it on the roof in the coupling's lane
+    while it glows. A jump from the edge sails over it (a harmless miss), and running off the edge isn't a
+    stomp: the runner falls as in any gap. **Alternative:** only the coupling's dome counts (a smaller
+    target), or no chevrons (the red coupling as the only cue).
+321. **Credits for the Tithe Collector in a boss fight** (GDD §10: "a Tithe Collector skims credits"; a
+    boss's track carries no credits of its own).
+    **Placeholder:** each Collector comes in the runner's lane on a carriage with no guards (it weaves toward
+    the lanes with the most hazards, so guards would draw it off), and a trail of 6 credits worth 5 is laid
+    on the roof ahead of it to skim. Catching it pays what it holds plus its 120-credit jackpot, and phase 1
+    has no time limit, so a player who lets couplings go by can catch one every 16 s or so. **Alternative:**
+    no trail (it only robs on a touch), one Collector a phase, or a smaller jackpot in a boss fight.
+322. **The sound barriers and the sense of speed** (GDD §10: "the track's sound barriers act as walls"; "the
+    sense of speed comes from the scenery streaming past").
+    **Placeholder:** the barriers are the run's walls, so they stay put beside the runner as in any level
+    (plain gunmetal panels with nothing to show they should be rushing past); beyond them the city's towers,
+    and far below the gaps the street, stream back at the train's 45 m/s on top of the runner's pace.
+    **Alternative:** the barriers' panels stream past too (a wall run along a moving wall).
+323. **Where the gunship and the locomotive are, and the Chairman's glimpse** (GDD §10: "a military gunship
+    paces the train overhead"; "the player gets a glimpse of him: in the locomotive's window during the
+    fight").
+    **Placeholder:** the gunship flies 22 m ahead of the runner and 13.5 m over the roofs, swaying 2.4 m
+    over 9 s (it sweeps in from behind and above as the entrance); the locomotive leads the train 125 m
+    ahead at the end of the view, and the Chairman stands at its lit rear window the whole fight, small
+    but clear (2.4 m tall, the window 4.6 m wide). **Alternative:** the Chairman shows only at moments (a
+    stomp, a phase change), with the locomotive nearer then.
+
+**The Sewer Swarm, the clusters and the Rising** (from E4a; numbers in `data/bosses/gangland_boss_tuning.tres`; play `--boss=gangland_boss`, review with `tools/showcase/sewer_swarm_showcase.tscn` and the stress scene `tools/showcase/swarm_stress.tscn`)
+324. **How a cluster is baited** (GDD §10: "the player baits the swarm into attacking, dodges in time, and the
+    swarm hits a live electric fence and is shocked"; phase 1: "a cluster surges down a lane ahead of the
+    player, with a red lane line and a rising chitter").
+    **Placeholder:** a surge comes down the runner's lane. For 2.4 s before it would meet them
+    (`warning_seconds`) its cluster rears at the roadside ahead, its chitter rises and a red line runs down
+    the runner's lane to it, following them from lane to lane and ending at any fence or hole on it. 1.1 s
+    before (`lock_seconds`) the cluster lands in the runner's lane and charges; the line locks there. A runner
+    who held a lane with a fence or a hole on the line until then, and gets out of it after (or jumps the
+    fence or the hole), has the cluster charge into it in front of them: shocked or falling, destroyed. One
+    who leaves too early has the line follow them; one with no bait in their lane dodges it.
+    **Alternatives:** the line locks as the warning starts (the runner must already stand in the bait's lane),
+    or the cluster always goes for the bait's lane (no luring, just dodging).
+325. **The arena** (GDD §10: "the street is the weapon"; the fight is "Gangland's final exam").
+    **Placeholder:** Gangland's generated street (its holes and fences only: no signs, ceilings, pads or
+    doodads) with a bait spot every 200 m at 18 m/s (`bait_spacing`, about 11 s at any speed): a live
+    full-height fence or a hole in one lane in turn, the street around it clear, and a surge at each one. A
+    runner who baits every surge ends phase 1 in about 20 s.
+    **Alternatives:** surges at the generator's own fences and holes wherever they fall (more varied, less
+    predictable), or a plain street with only the baits (as The House's).
+326. **Weapons against the clusters** (GDD §10: "weapons thin clusters too, and the heavy missile gets bonus
+    damage against them").
+    **Placeholder:** a cluster is a target only while it surges (from its warning until it has passed), with
+    36 laser tier 1 shots of health (`cluster_health`); its crowd thins as it's hit, and one thinned to
+    nothing is destroyed and counts like a baited one (the heavy missile does it over about two of its surges,
+    laser tier 1 over about seven).
+    **Alternatives:** weapons only thin a cluster (it never dies to them), or a cap like the other bosses'
+    `weapon_share_cap`.
+327. **The clusters in phase 3** (GDD §10: phase 2 ends "when the rest are" destroyed, yet in phase 3 the Host
+    "flings the remaining clusters at the player"). With 5 clusters (2 + 3) none remain for phase 3.
+    **Placeholder (E4a's stand-in until E4b builds the Host):** phase 3 re-forms clusters. Does the Host fling
+    re-formed clusters, does phase 2 end with some left, or does it fling something else?
+328. **A horde that never hurts** (GDD §10: "it builds up on both sides of the street"; CLAUDE.md: safe things
+    look safe, deadly parts look deadly).
+    **Placeholder:** heaps of screeches line both gutters from the fight's start (scenery: never in the lanes,
+    never hurting), and the waiting clusters are heaps at the roadside ahead; only a surging cluster heats to
+    enemy-attack red and hurts. Is a harmless horde at the walls' feet the right read?
+    **Alternative:** the horde stays down in the manholes and vents until it surges (an emptier street).
+
+**Lag spikes** (from PERF1; numbers in `data/tuning/speed_fx.tres` and `data/tuning/performance.tres`, F6; the frame-time graph is F7 in debug builds, or `--frame-graph`)
+329. **The hit-stop on every kill** (GDD §3, "a brief freeze on kills"; G2's `RunEffects.freeze`). It holds
+    the camera still for about three frames (0.05 s) while the run goes on underneath, so the runner moves
+    1.0 to 1.25 m away from the camera and the view catches up in one frame: on screen that is exactly what
+    a dropped frame looks like. A stocked-up player's run has 4 to 24 of them a level, about 6 a minute
+    (`tools/measure/frame_times.gd`, the whole campaign), and 23 a minute in Hostile Takeover's preview,
+    where the weapon meets a guard every few seconds; the build before the playtest had none, so they
+    may be most of what reads as "more lag spikes". Freezes no longer chain (below). Should every kill keep
+    it, or only stomps and big kills (a host, a hover truck, a boss's part), or a shorter one (one or two
+    frames), or a freeze of a different kind (the enemy and the runner's animation held for a moment, the
+    camera moving on)?
+    - **Placeholder:** every kill keeps it, as G2 built it. Freezes never stack or chain:
+    `SpeedFxTuning.freeze_gap` (0.3 s, `data/tuning/speed_fx.tres`, F6 "Speed effects") leaves out a
+    freeze asked for within 0.3 s of the last one's start. Setting `kill_freeze_time` to 0 in F6 turns
+    the kills' freeze off while keeping the stomps'; Settings > Screen shake off turns every freeze off.
+    The frame-time graph (F7) marks every frame a hit-stop holds the camera, so a "spike" that is one
+    shows as one.
+330. **A level's start** (GDD §4, the flow into a run). A level is generated and built in the frame after
+    the player picks it (0.3 to 1.8 s on the dev machine, the first level of a session the longest), and
+    now also readies what it will need later instead of hitching mid-run (its enemy types' scripts and
+    looks, 0.1 to 0.9 s more on the dev machine the first time in a session, and on a real renderer its
+    shaders, drawn once in its first frame); a phone takes several times longer. The level select holds
+    still meanwhile, then the run starts at once. Should a level open behind a short loading card (the
+    zone's name on its colour, shown while it loads), or stay as it is?
+    - **Placeholder:** no loading card; the screen holds still until the run starts, as before.
 
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).

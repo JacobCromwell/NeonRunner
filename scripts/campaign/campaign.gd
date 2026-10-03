@@ -6,7 +6,7 @@ extends Resource
 ## from their position (GDD §6).
 
 @export var zones: Array[ZoneDef] = []
-## DESIGN-TBD: difficulty of the first and last campaign levels; levels in between follow the curve,
+## DESIGN-TBD: difficulty of the first and last campaign levels (FB 4, reopened by the owner's playtests and G1); levels in between follow the curve,
 ## so each level is slightly harder than the last (GDD §6). Levels add their difficulty_bias on top:
 ## Golden 2's makes it the campaign's peak (GDD §5, proposed), with Golden 3 a little below it.
 @export_range(0.0, 1.0, 0.05) var difficulty_start: float = 0.1
@@ -16,7 +16,7 @@ extends Resource
 ## Levels each placeholder zone will have once designed (GDD §6: 1–3 per zone). The curve spans the
 ## planned campaign, so the first zones don't jump to end-game difficulty while later zones are missing.
 @export_range(1, 3) var planned_levels_per_placeholder_zone: int = 3
-## DESIGN-TBD: the harder difficulty tiers unlocked after finishing the game (GDD §6).
+## The harder difficulty tiers unlocked after finishing the game (GDD §6; FB 5).
 ## Index 0 is the normal game.
 @export var tier_names: PackedStringArray = PackedStringArray(["Normal", "Hard", "Insane"])
 @export var tier_difficulty_bonus: PackedFloat32Array = PackedFloat32Array([0.0, 0.15, 0.3])
@@ -84,8 +84,8 @@ func tier_count() -> int:
 
 
 ## A copy of the step's level, ready to generate: lane count, difficulty (curve + bias + tier),
-## enemy scaling, the zone's skin if the level has none, and the recency curve with its features'
-## ages (feature_ages).
+## enemy scaling, its run speed (run_speed_for), the zone's skin if the level has none, and the
+## recency curve with its features' ages (feature_ages).
 func configure(s: CampaignStep, lane_count: int, difficulty_tier: int = 0) -> LevelConfig:
 	var config: LevelConfig = s.level.duplicate() as LevelConfig
 	config.lane_count = lane_count
@@ -93,6 +93,7 @@ func configure(s: CampaignStep, lane_count: int, difficulty_tier: int = 0) -> Le
 		if not tier_difficulty_bonus.is_empty() else 0.0
 	config.difficulty = clampf(curve_difficulty(s.level_index) + s.level.difficulty_bias + bonus, 0.0, 1.0)
 	config.enemy_scaling = level_progress(s.level_index)
+	config.run_speed = run_speed_for(s, difficulty_tier)
 	if config.skin == null and s.zone.skin != null:
 		config.skin = s.zone.skin
 	config.feature_ages = feature_ages(s)
@@ -121,14 +122,16 @@ func feature_ages(s: CampaignStep) -> Dictionary[String, int]:
 
 ## The boss step's arena, ready to plan (BossArena.base_config): lane count, the arena's own
 ## difficulty plus the tier's bonus (bosses keep their own difficulty rather than the level curve),
-## enemy scaling as in the zone's last level (enemies a boss brings in fight like the zone's), and the
-## zone's skin unless the arena has its own.
+## its run speed like a level's (run_speed_for: its zone's, times the tier's multiplier; GDD §3, the
+## fight is as fast as the zone's levels), enemy scaling as in the zone's last level (enemies a boss
+## brings in fight like the zone's), and the zone's skin unless the arena has its own.
 func configure_boss(s: CampaignStep, lane_count: int, difficulty_tier: int = 0) -> LevelConfig:
 	var config: LevelConfig = BossArena.base_config(s.boss)
 	config.lane_count = lane_count
 	var bonus: float = tier_difficulty_bonus[clampi(difficulty_tier, 0, tier_difficulty_bonus.size() - 1)] \
 		if not tier_difficulty_bonus.is_empty() else 0.0
 	config.difficulty = clampf(config.difficulty + bonus, 0.0, 1.0)
+	config.run_speed = run_speed_for(s, difficulty_tier)
 	var last_level: int = 0
 	for other: CampaignStep in steps():
 		if other.index >= s.index:
@@ -145,6 +148,25 @@ func speed_multiplier(difficulty_tier: int) -> float:
 	if tier_speed_multiplier.is_empty():
 		return 1.0
 	return tier_speed_multiplier[clampi(difficulty_tier, 0, tier_speed_multiplier.size() - 1)]
+
+
+## The run speed of level or boss step `s` (GDD §3, owner's playtest September 30, 2026: it rises zone
+## by zone, and a boss fight runs at its zone's speed like the levels before it): the level's own
+## (LevelConfig.run_speed; a boss's arena config's, BossDef.arena) or its zone's (ZoneDef.run_speed),
+## times the difficulty tier's speed multiplier. 0 when none sets one: the run then takes the movement
+## tuning's base speed, and App applies the tier's multiplier to that.
+func run_speed_for(s: CampaignStep, difficulty_tier: int = 0) -> float:
+	if s == null:
+		return 0.0
+	var own: LevelConfig = s.level
+	if own == null and s.boss != null:
+		own = s.boss.arena
+	if own == null and s.boss == null:
+		return 0.0
+	var speed: float = own.run_speed if own != null else 0.0
+	if speed <= 0.0 and s.zone != null:
+		speed = s.zone.run_speed
+	return speed * speed_multiplier(difficulty_tier) if speed > 0.0 else 0.0
 
 
 func _build_steps() -> void:
