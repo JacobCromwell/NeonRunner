@@ -39,6 +39,10 @@ var avoids_baits: bool = true
 ## Not baiting (`baits` off), it keeps out of the bait spot's lane while a surge warns too (nobody baits: no
 ## surge ever meets a fence or a hole); off (the default), it keeps to its lane.
 var avoids_surge_baits: bool = false
+## Chances it lets go by in each phase before it takes them (a runner who misses some: the par times): its
+## first `skips` surges in a phase it keeps out of the bait's lane, and in the Host's phase its first `skips`
+## lunges or crouches it neither baits nor climbs to.
+var skips: int = 0
 ## The wall jump comes this far past the ramp's start (metres at 18 m/s, at the run's pace): in the green
 ## chevrons' window.
 var jump_after: float = 6.0
@@ -56,6 +60,9 @@ var _why: String = ""
 var _pending: Array[Dictionary] = []
 ## The crouch it's taking (a host spot), {} none.
 var _route: Dictionary = {}
+## Chances let go by so far, by phase, and each chance's verdict (by its key: true if let go by).
+var _skipped: Dictionary = {}
+var _skip_of: Dictionary = {}
 
 
 func _init(p_boss: SewerSwarm) -> void:
@@ -91,9 +98,10 @@ func _read_surge() -> void:
 	var behind: bool = bool(s.surge["behind"])
 	if not _handled.has("warn%d" % n):
 		_handled["warn%d" % n] = true
-		if baits:
+		var skip: bool = _skip("surge%d" % n)
+		if baits and not skip:
 			_pending.append({"at": boss.fight_time() + reaction, "lane": int(spot["lane"]), "why": "bait"})
-		elif avoids_surge_baits:
+		elif avoids_surge_baits or skip:
 			var player: Player = boss.world.player
 			var spot_lane: int = int(spot["lane"])
 			if player.lane == spot_lane or _target == spot_lane:
@@ -151,9 +159,10 @@ func _read_host() -> void:
 				_handled["lunge%d" % n] = true
 				var fence_lane: int = int((e["spot"] as Dictionary)["lane"])
 				var player: Player = boss.world.player
-				if baits:
+				var skip: bool = _skip("lunge%d" % n)
+				if baits and not skip:
 					_pending.append({"at": boss.fight_time() + reaction, "lane": fence_lane, "why": "bait"})
-				elif avoids_baits and (player.lane == fence_lane or _target == fence_lane):
+				elif (avoids_baits or skip) and (player.lane == fence_lane or _target == fence_lane):
 					# Not baiting it: out of the fence's lane, so the lunge locks elsewhere.
 					_pending.append({"at": boss.fight_time() + reaction, "lane": fence_lane + (1 if fence_lane == 0 else -1),
 						"why": "away from the fence"})
@@ -165,7 +174,7 @@ func _read_host() -> void:
 			if not _handled.has("crouch%d" % n):
 				_handled["crouch%d" % n] = true
 				_pending.clear()
-				if stomps:
+				if stomps and not _skip("crouch%d" % n):
 					_route = spot
 					_go(int(spot["lane"]), "ramp")
 				else:
@@ -174,6 +183,17 @@ func _read_host() -> void:
 					if player.lane == lane or _target == lane:
 						_go(lane + (1 if lane == 0 else -1), "off the ramp")
 	_wall_jump()
+
+
+## True if the chance `key` (a surge, a lunge, a crouch) is one it lets go by: one of the first `skips` of its
+## phase. Decided once a chance.
+func _skip(key: String) -> bool:
+	if not _skip_of.has(key):
+		var used: int = int(_skipped.get(boss.phase_index, 0))
+		_skip_of[key] = used < skips
+		if used < skips:
+			_skipped[boss.phase_index] = used + 1
+	return bool(_skip_of[key])
 
 
 ## On the ramp's wall: the wall jump, jump_after past the ramp.
