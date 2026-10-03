@@ -16,5 +16,8 @@ Thumbs.db
 .godot-path
 .godot-path-windows
 
+# T-SPEED: a local, disposable timing hint for tools/godot.sh test --jobs=N (tests/run_tests.gd)
+/tests/.suite_times.json
+
 # Agent worktrees (Claude Code)
 .claude/worktrees/
