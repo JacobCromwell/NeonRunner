@@ -319,6 +319,19 @@ func towers_material() -> ShaderMaterial:
 	return _materials[&"towers"]
 
 
+## Keeps the towers on `side` (-1 left, 1 right) clear of the stretch `span` beside the line (track
+## distances): the defeat's lobby stands there (HostileTakeoverLobby).
+func set_clearing(span: Vector2, side: int) -> void:
+	var m: ShaderMaterial = towers_material()
+	m.set_shader_parameter(&"clear_span", span)
+	m.set_shader_parameter(&"clear_side", float(signi(side)))
+
+
+## The towers stand everywhere again.
+func clear_clearing() -> void:
+	towers_material().set_shader_parameter(&"clear_side", 0.0)
+
+
 ## One slice of the streaming city on `side`, from track distance `start` (SLICE long): every tower of the
 ## side's pattern, which the shader shows in this slice while its near end is in it.
 func _towers_slice(parent: Node3D, side: int, face_x: float, start: float) -> void:

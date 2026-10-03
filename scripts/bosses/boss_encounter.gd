@@ -97,6 +97,9 @@ var state_time: float = 0.0
 ## The boss's parts (add_part), the first one being its body.
 var parts: Array[BossPart] = []
 var weak_points_hit: int = 0
+## Big hits (anything but weapons) landed in the current phase: counted while weapons can't end a phase
+## (BossDef.weapons_can_end_phase off), so its last one ends it (hit_damage).
+var phase_hits: int = 0
 ## Weapon damage dealt over the fight (with what a checkpoint carried), against BossDef.weapon_share_cap.
 var weapon_damage: float = 0.0
 ## Fight time carried over from the attempt that reached the checkpoint this one resumes at.
@@ -272,8 +275,14 @@ func lane_count() -> int:
 
 
 ## The damage one big hit deals in the current phase (a weak-point stomp, an EMP, a cluster destroyed):
-## the phase's share of health over its BossPhase.hits.
+## the phase's share of health over its BossPhase.hits. While weapons can't end a phase
+## (BossDef.weapons_can_end_phase off), an equal part of what's left of the phase for each hit still to
+## land, so its BossPhase.hits big hits always end it, however much weapons chipped it, and nothing
+## carries into the next phase (DESIGN-TBD, docs/questions/e5b.md).
 func hit_damage() -> float:
+	if not def.weapons_can_end_phase:
+		var left: float = maxf(health - max_health * _ends[phase_index], 0.0)
+		return left / maxf(phase().hits - phase_hits, 1)
 	var share: float = (1.0 if phase_index == 0 else _ends[phase_index - 1]) - _ends[phase_index]
 	return max_health * share / maxf(phase().hits, 1)
 
@@ -305,13 +314,21 @@ func damage(amount: float, cause: StringName) -> float:
 			return 0.0
 	var before: float = health
 	health = maxf(health - amount, _lowest_after_hit())
+	var counted: bool = cause != &"weapon" and not def.weapons_can_end_phase
+	if counted:
+		# Counted big hits (hit_damage): only the phase's last one ends it, exactly at its end.
+		phase_hits += 1
+		var end: float = max_health * _ends[phase_index]
+		health = end if phase_hits >= phase().hits else maxf(health, end + max_health * EPSILON * 2.0)
 	var dealt: float = before - health
-	if dealt <= 0.0:
+	if dealt <= 0.0 and not counted:
 		return 0.0
 	if cause == &"weapon":
 		weapon_damage += dealt
 	health_changed.emit(health, max_health)
 	_sync_parts()
+	if counted and phase_hits < phase().hits:
+		return dealt
 	if health <= max_health * EPSILON:
 		health = 0.0
 		_defeat(cause)
@@ -570,6 +587,7 @@ func _exit_tree() -> void:
 
 func _begin_phase(index: int) -> void:
 	phase_index = index
+	phase_hits = 0
 	state = State.INTRO
 	state_time = 0.0
 	set_weak_points_enabled(false)

@@ -116,6 +116,13 @@ func carriage_at(d: float) -> int:
 	return k + 1 if k >= 0 else next_gap(d)
 
 
+## Carriage `k`'s slot in the consist (0 to its size less one; the rear roof counts as the last).
+func slot(k: int) -> int:
+	if k <= 0:
+		return kinds.size() - 1
+	return (k - 1) % kinds.size()
+
+
 ## The first flatcar at or after carriage `k`.
 func next_flatcar(k: int) -> int:
 	var i: int = maxi(k, 1)
