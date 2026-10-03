@@ -2400,7 +2400,10 @@ at both speeds (the Rising ends at 19.7 s, Surrounded at 53.6 s), one that lets 
 "flings the remaining clusters": DESIGN-TBD, docs/questions/e4.md): the Host flings balls of screeches
 scooped from the horde, from the clusters' crowd pool. The boss brings no normal enemies (`warm_enemies()`
 is empty): every crowd, the Host, the pipe and the jump marks are made with the fight and drawn hidden at the
-load, so its look compiles nothing mid-fight. In `scripts/bosses/sewer_swarm/`:
+load, so its look compiles nothing mid-fight (`frame_times.gd --bosses=gangland_boss --shaders` under xvfb, on
+both renderers: 23 shaders at the load, and only the framework's armor pickup, first offered at the final
+phase's start, first drawn later: `ShaderWarmup` doesn't sample a pickup's look). In
+`scripts/bosses/sewer_swarm/`:
 
 | File | What |
 |---|---|
