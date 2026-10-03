@@ -20,13 +20,19 @@ extends BossPart
 ## HostileTakeover.DOCK_OFFSET): three huge arms grip the locomotive (looks only) and its three docking
 ## clamps unfold under its belly (clamps: each over a third of its width, HostileTakeoverTuning.clamp_at
 ## along it from its stern), their locks glowing the weak points' red and pulsing (steady with Reduced
-## flashing); a clamp's weak point (upside down: a stomp from the ceiling) is live while the runner rides
-## under it and it isn't torn loose yet (the contract switches them); a stomp tears it loose (tear_clamp:
-## its lock goes dark, its jaws fall open, its arm swings free).
+## flashing), the green chevrons of the ways up on the belly just behind each (clamp_cue: a jump from there
+## comes back up onto it); a clamp's weak point (upside down: a stomp from the ceiling) is live while the
+## runner rides under it and it isn't torn loose yet (the contract switches them); a stomp tears it loose
+## (tear_clamp: its lock goes dark, its cue goes, its jaws fall open, its arm swings free).
 ## Declared, never special-cased (CLAUDE.md principle 8): a boss's part, claw-immune, the dash passes it.
 
 ## Its chin turret's muzzle (own space): where its strafes' tracers start.
 const MUZZLE := Vector3(0.0, 0.15, -14.6)
+## A clamp's take-off cue ends this far short of the clamp (metres along the belly), a jump from its start
+## comes up this far onto the clamp, and it's at least this long.
+const CUE_GAP: float = 0.1
+const CUE_MARGIN: float = 0.3
+const CUE_MIN: float = 1.0
 
 var tuning: HostileTakeoverTuning
 var model: MeshInstance3D
@@ -43,7 +49,7 @@ var muzzle: MeshInstance3D
 var bay_open: bool = false
 var saw_loaded: bool = false
 var firing: bool = false
-## Phase 3: docked onto the locomotive; its clamps {point (the weak point), root, folded, body, core,
+## Phase 3: docked onto the locomotive; its clamps {point (the weak point), root, folded, body, core, cue,
 ## side (-1, 0, 1: its third of the belly), at (metres from the belly's stern), torn}, and the arms'
 ## hinges (left, middle, right).
 var docked: bool = false
@@ -116,6 +122,7 @@ func _build_clamps(skin: ZoneSkin) -> void:
 	var third: float = belly_width / 3.0
 	var width: float = third - 0.3
 	var count: int = mini(tuning.clamp_at.size(), 3)
+	var cue_color: Color = skin.get("ramp_color") if skin != null and skin.get("ramp_color") is Color else Color(0.3, 1.0, 0.35)
 	for i: int in count:
 		var side: int = clampi(tuning.clamp_side[i], -1, 1) if i < tuning.clamp_side.size() else i - 1
 		var u: float = tuning.clamp_at[i]
@@ -133,12 +140,19 @@ func _build_clamps(skin: ZoneSkin) -> void:
 		core.material_override = _clamp_material
 		core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		root.add_child(core)
+		# The cue along the belly behind it (own space of its root: toward the stern is +z).
+		var cue_span: Vector2 = _cue_span(u)
+		var cue := MeshInstance3D.new()
+		cue.name = "Cue"
+		cue.mesh = HostileTakeoverModel.belly_cue(width - 0.6, u - cue_span.x, u - cue_span.y, cue_color, skin)
+		cue.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(cue)
 		var point: Hazard = add_weak_point(Vector3(width, tuning.clamp_depth, tuning.clamp_length),
 			spot + Vector3(0.0, -tuning.clamp_depth * 0.5, 0.0))
 		point.upside_down = true
 		point.hazard_name = "a docking clamp"
-		clamps.append({"point": point, "root": root, "folded": folded, "body": body, "core": core, "side": side, "at": u,
-			"torn": false})
+		clamps.append({"point": point, "root": root, "folded": folded, "body": body, "core": core, "cue": cue, "side": side,
+			"at": u, "torn": false})
 	# The arms: one each side over the locomotive's flanks, one over its roof ahead, gripping its rear.
 	var loco_half: float = maxf(world.geo.wall_x() - 0.2, 2.5)
 	var front: float = -HostileTakeoverModel.BELLY_FRONT
@@ -161,6 +175,7 @@ func set_docked(on: bool) -> void:
 		(c["folded"] as Node3D).visible = not on
 		(c["body"] as Node3D).visible = on
 		(c["core"] as Node3D).visible = on and not c["torn"]
+		(c["cue"] as Node3D).visible = on and not c["torn"]
 	for i: int in arms.size():
 		arms[i].visible = on
 	if not on:
@@ -176,6 +191,7 @@ func tear_clamp(i: int) -> void:
 	c["torn"] = true
 	(c["point"] as Hazard).set_enabled(false)
 	(c["core"] as Node3D).visible = false
+	(c["cue"] as Node3D).visible = false
 	(c["body"] as Node3D).rotation = Vector3(0.0, 0.0, 0.0)
 	(c["body"] as Node3D).position = Vector3(0.0, -0.35, 0.0)
 	var arm_i: int = clampi(int(c["side"]) + 1, 0, arms.size() - 1)
@@ -205,6 +221,28 @@ func clamp_of(hazard: Hazard) -> int:
 func clamp_span(i: int) -> Vector2:
 	var mid: float = track_distance() - HostileTakeoverModel.BELLY_STERN + float(clamps[i]["at"])
 	return Vector2(mid - tuning.clamp_length * 0.5, mid + tuning.clamp_length * 0.5)
+
+
+## How far short of a clamp's middle (along the belly, metres) a jump from the belly has to leave during a
+## pass to come back up onto the clamp: its time to fall back to the clamp's hanging depth
+## (HostileTakeoverContract.up_time_for), at pass_speed.
+func clamp_lead() -> float:
+	return tuning.pass_speed * HostileTakeoverContract.up_time_for(world.tuning, tuning.clamp_depth)
+
+
+## Where clamp `i`'s take-off cue runs along the belly (Vector2(from, to), metres from its stern; see
+## _cue_span).
+func clamp_cue(i: int) -> Vector2:
+	return _cue_span(float(clamps[i]["at"]))
+
+
+## The take-off cue of a clamp whose middle is `at` metres from the belly's stern: from where a jump comes
+## back up CUE_MARGIN onto the clamp's near edge (clamp_lead short of it) to CUE_GAP short of the clamp, at
+## least CUE_MIN long.
+func _cue_span(at: float) -> Vector2:
+	var near_edge: float = at - tuning.clamp_length * 0.5
+	var to: float = near_edge - CUE_GAP
+	return Vector2(minf(near_edge - clamp_lead() + CUE_MARGIN, to - CUE_MIN), to)
 
 
 ## Where clamp `i`'s lock is, in world space.

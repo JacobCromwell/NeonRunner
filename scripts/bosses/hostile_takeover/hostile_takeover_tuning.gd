@@ -196,13 +196,14 @@ extends Resource
 ## clamp_depth below it, glowing red: a jump from the belly that comes back up onto one stomps it. Once they
 ## are pass_release along it, the war engine pulls away (its belly sliding on over them at pull_speed m/s)
 ## and they drop back onto the roof, on a carriage's roof clear of its gaps. Clamps missed stay for the next
-## pass; each stomped one is a third of the phase.
+## pass; each stomped one is a third of the phase. The clamps are spaced so a runner who stomps one has, after
+## the stomp's bounce, a reaction time and two lane moves before the next one's take-off cue ends.
 @export_range(1.0, 6.0, 0.1, "suffix:m/s") var pass_speed: float = 3.0
 @export_range(0.5, 6.0, 0.25, "suffix:m") var pass_rear_margin: float = 1.5
-@export_range(10.0, 21.5, 0.25, "suffix:m") var pass_release: float = 19.5
+@export_range(10.0, 21.5, 0.25, "suffix:m") var pass_release: float = 20.5
 @export_range(4.0, 30.0, 0.5, "suffix:m/s") var pull_speed: float = 14.0
 @export_range(1.0, 5.0, 0.1, "suffix:s") var pass_descend_seconds: float = 2.4
-@export var clamp_at: PackedFloat32Array = PackedFloat32Array([8.0, 12.5, 17.0])
+@export var clamp_at: PackedFloat32Array = PackedFloat32Array([7.0, 12.75, 18.5])
 @export var clamp_side: PackedInt32Array = PackedInt32Array([-1, 0, 1])
 @export_range(1.5, 6.0, 0.25, "suffix:m") var clamp_length: float = 3.0
 @export_range(0.3, 1.0, 0.05, "suffix:m") var clamp_depth: float = 0.6

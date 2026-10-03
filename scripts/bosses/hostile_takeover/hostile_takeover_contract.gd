@@ -523,14 +523,19 @@ func bay_lead(ride: Dictionary) -> float:
 
 
 ## How far short of a clamp's middle (along the belly, metres) a jump from it has to leave during a pass to
-## come back up onto the clamp: its time to fall back to the clamp's hanging depth, at pass_speed.
+## come back up onto the clamp: its time to fall back to the clamp's hanging depth, at pass_speed
+## (HostileTakeoverGunship.clamp_lead).
 func clamp_lead() -> float:
-	return tuning.pass_speed * up_time(tuning.clamp_depth)
+	return boss.gunship.clamp_lead()
 
 
 ## How long a jump from the ceiling takes to come back up to `depth` under it.
 func up_time(depth: float) -> float:
-	var m: MovementTuning = boss.world.tuning
+	return up_time_for(boss.world.tuning, depth)
+
+
+## How long a jump from the ceiling takes to come back up to `depth` under it, with `m`'s jump.
+static func up_time_for(m: MovementTuning, depth: float) -> float:
 	var g_down: float = m.gravity() * m.fall_gravity_multiplier
 	return m.jump_time_to_apex + sqrt(2.0 * maxf(m.jump_height - depth, 0.0) / g_down)
 

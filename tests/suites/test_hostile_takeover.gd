@@ -1,20 +1,24 @@
 extends TestSuite
-## Hostile Takeover, the Corporate zone's boss (GDD §10; tasks E5b-a and E5b-b): its slot and data, the
-## train arena (its consist of carriages and flatcars; every gap between carriages jumpable from every lane
-## at the Corporate zone's 23.4 m/s and quick play's 18 m/s, with the player's real jump), what counts as
-## landing on a coupling (its stomp box over the gap, the bounce that carries the runner on), phase 1's plan
-## (The Board) at 3, 5 and 6 lanes (the guards, the Tithe Collectors and the partial wall fences always
-## leave a way through, and each coupling's lane stays reachable; the Collectors capped a phase), phase 2's
-## plan (The Contract: the dropped Buzz Overdrive's cut as a level's, the runway of pads and the belly ride
-## over the armored carriage, the strafes' free lanes), and its look (the colour rule, budgets, nothing
-## made while running, Reduced flashing). The fight itself: test_hostile_takeover_fight.gd.
+## Hostile Takeover, the Corporate zone's boss (GDD §10; task E5b): its slot in the campaign and its data
+## (par times, sounds, hints), the train arena (its consist of carriages and flatcars; every gap between
+## carriages jumpable from every lane at the Corporate zone's 23.4 m/s and quick play's 18 m/s, with the
+## player's real jump), what counts as landing on a coupling (its stomp box over the gap, the bounce that
+## carries the runner on), phase 1's plan (The Board) at 3, 5 and 6 lanes (the guards, the Tithe Collectors
+## and the partial wall fences always leave a way through, and each coupling's lane stays reachable; the
+## Collectors capped a phase), phase 2's plan (The Contract: the dropped Buzz Overdrive's cut as a level's,
+## the runway of pads and the belly ride over the armored carriage, the strafes' free lanes), phase 3's plan
+## (The Merger: the drops after the docking, the passes under the war engine's belly and its three docking
+## clamps within reach, the Board back on its carriages), and its look (the colour rule, budgets, nothing
+## made while running, phase 3's parts built with the fight, Reduced flashing). The fight itself:
+## test_hostile_takeover_fight.gd.
 
 const BOSS_PATH: String = "res://data/bosses/corporate_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
 ## Quick play's speed and the Corporate zone's (GDD §3).
 const SPEEDS: Array[float] = [18.0, 23.4]
 const NEW_SOUNDS: Array[StringName] = [&"takeover_gunship", &"takeover_couplings", &"takeover_decouple",
-	&"takeover_breakaway", &"takeover_whine", &"takeover_strafe", &"takeover_drop", &"takeover_bay"]
+	&"takeover_breakaway", &"takeover_whine", &"takeover_strafe", &"takeover_drop", &"takeover_bay", &"takeover_clamps",
+	&"takeover_merger", &"takeover_clamp", &"takeover_explode", &"takeover_derail"]
 ## A jump in a gap's lane takes off this far before its edge (metres at 18 m/s, at the run's pace): the
 ## latest a runner who reads the gap would leave it.
 const HOLE_LEAD: float = 1.6
@@ -22,6 +26,15 @@ const HOLE_LEAD: float = 1.6
 const PLANNED: int = 36
 ## Flatcars whose drop phase 2's plan check plans.
 const DROPS: int = 3
+## Phase 3's passes its plan check plans.
+const PASSES: int = 3
+## A runner back on the roof after a pass has at least this long before the next gap (seconds).
+const LANDING_SECONDS: float = 0.5
+## A clamp's take-off window and its landing keep this far inside the clamp's ends (metres along the belly).
+const CLAMP_MARGIN: float = 0.2
+## A runner's reaction time (the bot's), and how long the runway's pad takes to flip them up onto the belly.
+const REACTION: float = 0.35
+const BOARD_SECONDS: float = 0.3
 ## A saturated colour outside the decorative blue-to-violet band glows only on hazards (GDD §5).
 const GLOW_SATURATION_LIMIT: float = 0.35
 const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
@@ -35,9 +48,9 @@ var def: BossDef
 func run() -> void:
 	sim = RunSim.new(tree, tuning)
 	slot = load(BOSS_PATH) as BossDef
-	def = slot.preview() if slot != null else null
+	def = slot if slot != null and slot.is_built() else null
 	if def == null:
-		check(false, "Hostile Takeover's fight loads as a preview")
+		check(false, "Hostile Takeover's fight loads")
 		return
 	_test_slot()
 	for speed: float in SPEEDS:
@@ -50,7 +63,11 @@ func run() -> void:
 	for lanes: int in LANES:
 		for speed: float in SPEEDS:
 			await _test_contract(lanes, speed)
+	for lanes: int in LANES:
+		for speed: float in SPEEDS:
+			await _test_merger_plan(lanes, speed)
 	await _test_look()
+	await _test_merger_look()
 
 
 ## The fight at `lanes` and `speed` m/s (the arena config at that speed, as the campaign sets it), from
@@ -87,8 +104,19 @@ func _arena(lanes: int, speed: float) -> Array:
 
 func _test_slot() -> void:
 	check(slot.display_name == "Hostile Takeover" and slot.id == &"corporate_boss", "the Corporate zone's slot is Hostile Takeover (GDD §10)")
-	check(not slot.is_built() and slot.preview_scene == "res://scenes/bosses/hostile_takeover.tscn" and slot.preview() != null,
-		"step 1 of 3: the campaign keeps its card; debug builds play the fight as a preview (--boss=corporate_boss)")
+	check(slot.is_built() and slot.scene == "res://scenes/bosses/hostile_takeover.tscn" and slot.preview_scene == ""
+		and slot.preview() == null, "the campaign plays the fight in the Corporate zone's boss slot (task E5b-c)")
+	var campaign := load("res://data/campaign/campaign.tres") as Campaign
+	var step: CampaignStep = campaign.step("corporate/boss") if campaign != null else null
+	var ids: Array[String] = []
+	if campaign != null:
+		for s: CampaignStep in campaign.steps():
+			ids.append(s.id)
+	check(step != null and step.boss == slot and is_equal_approx(step.zone.run_speed, 23.4)
+		and ids.find("corporate/boss") == ids.find("corporate/2") + 1 and ids.find("corporate/outro") == ids.find("corporate/boss") + 1,
+		"after Corporate 2 and before its outro, at the zone's 23.4 m/s")
+	check(slot.three_star_seconds < slot.two_star_seconds and slot.three_star_seconds >= 60.0 and slot.two_star_seconds <= 120.0,
+		"par times: %.0f s for three stars, %.0f s for two (GDD §10: 60-120 s)" % [slot.three_star_seconds, slot.two_star_seconds])
 	var list: Array[BossPhase] = def.phase_list()
 	check(list.size() == 3 and list[0].display_name == "The Board" and list[1].display_name == "The Contract"
 		and list[2].display_name == "The Merger", "three phases: The Board, The Contract, The Merger (GDD §10)")
@@ -117,7 +145,7 @@ func _test_slot() -> void:
 	for h: Dictionary in (hints as Dictionary)["hints"]:
 		triggers.append(h["trigger"])
 	for trigger: String in ["enemy:corporate_boss", "boss:corporate_boss/couplings", "boss:corporate_boss/strafe",
-			"boss:corporate_boss/ride"]:
+			"boss:corporate_boss/ride", "boss:corporate_boss/merger", "boss:corporate_boss/clamps"]:
 		check(triggers.has(trigger), "a first-time hint for %s" % trigger)
 	var t := def.tuning as HostileTakeoverTuning
 	var flatcar: int = HostileTakeoverTrain.Kind.FLATCAR
@@ -128,10 +156,16 @@ func _test_slot() -> void:
 		and t.guards_on(t.guards_from, 6, flatcar) == 0, "guards from their carriage on, at most one fewer than the lanes, none on a flatcar")
 	check(t.tithe_on(t.tithe_first, flatcar) and not t.tithe_on(t.tithe_first, corporate) and not t.tithe_on(t.tithe_first - 1, flatcar)
 		and t.tithe_visits_per_phase >= 1, "a Tithe Collector on each flatcar from its carriage on, %d a phase at most" % t.tithe_visits_per_phase)
-	check(HostileTakeover.pattern_of(0) == HostileTakeover.Pattern.BOARD and HostileTakeover.pattern_of(1) == HostileTakeover.Pattern.CONTRACT,
-		"phase 1 plays The Board, phase 2 The Contract")
+	check(HostileTakeover.pattern_of(0) == HostileTakeover.Pattern.BOARD and HostileTakeover.pattern_of(1) == HostileTakeover.Pattern.CONTRACT
+		and HostileTakeover.pattern_of(2) == HostileTakeover.Pattern.MERGER, "phase 1 plays The Board, phase 2 The Contract, phase 3 The Merger")
 	check(sfx.stream(&"takeover_whine").get_length() >= t.strafe_warning - 0.05 and sfx.stream(&"takeover_whine").get_length() <= t.strafe_warning + 0.4,
 		"the strafe's rising whine lasts its warning (%.2f s)" % sfx.stream(&"takeover_whine").get_length())
+	check(sfx.stream(&"takeover_clamps").get_length() <= t.dock_seconds and sfx.stream(&"takeover_merger").get_length() <= t.merger_flash_seconds,
+		"the docking's clamps lock and MERGER COMPLETE's sting within the docking and the flashing")
+	check(t.explode_at + sfx.stream(&"takeover_explode").get_length() <= t.defeat_seconds + 0.05
+		and t.crash_at + sfx.stream(&"takeover_derail").get_length() <= t.defeat_seconds + 0.05 and t.explode_at < t.crash_at,
+		"the defeat's explosion, then the crash, both heard out before the results (%.1f s)" % t.defeat_seconds)
+	check(t.clamp_at.size() == 3 and t.clamp_side.size() == 3 and t.merger_text != "", "three docking clamps; the screens' words")
 
 
 # --- The train -----------------------------------------------------------------------------------
@@ -523,6 +557,172 @@ func _test_contract(lanes: int, speed: float) -> void:
 	await sim.free_world(world)
 
 
+# --- Phase 3's plan: The Merger --------------------------------------------------------------------
+
+## GDD §10, phase 3: "the locomotive comes back and the gunship docks onto it ... its attacks combine both
+## phases' ... the player stomps the three glowing docking clamps to tear the gunship loose". Planned from
+## phase 3's start (a checkpoint's) at this lane count and speed:
+## - the drops as phase 2's (a level's cuts, checked independently), none moving out before the docking is
+##   over, over PASSES flatcars;
+## - after each, a pass: a runway of pads in every lane on the corporate carriage after the flatcar, longer
+##   than any leap, its far end pad_before short of the carriage's gap; the war engine's belly over the
+##   runner from the runway's start until its stern passes over them (they ride along it at pass_speed, so
+##   the ride takes the same seconds at every speed), and their drop back onto a roof at least
+##   LANDING_SECONDS short of the next gap;
+## - the three docking clamps along the belly, one under each third of it with a lane under it; for each, a
+##   jump from anywhere on its take-off cue comes back up onto it (clamp_lead, CLAMP_MARGIN inside its ends),
+##   the cue just short of it, before the war engine pulls away; the first one's cue ends long enough after
+##   the runner boards for a reaction and two lane moves, and each next one's after the last one's stomp
+##   has bounced them back onto the belly;
+## - The Board back: guards and wall fences only on merger_board_slots' carriages (none on a pass's runway or
+##   landing carriage or on a flatcar, no Tithe Collector), fewer guards than lanes, the wall fences a level's
+##   (LayoutChecks.check_wall_fences, independently);
+## - a strafe strikes fewer lanes than there are.
+func _test_merger_plan(lanes: int, speed: float) -> void:
+	var tag: String = "(%d lanes, %.1f m/s)" % [lanes, speed]
+	var pair: Array = _fight(def, lanes, speed, null, 2)
+	var world: RunWorld = pair[0]
+	var boss: HostileTakeover = pair[1]
+	var t: HostileTakeoverTuning = boss.tuning
+	var c: HostileTakeoverContract = boss.contract
+	var train: HostileTakeoverTrain = boss.train
+	var board: HostileTakeoverBoard = boss.board
+	var m: MovementTuning = world.tuning
+	var pace: float = m.pace()
+	var v: float = m.run_speed
+	check(c.active and c.merger and board.merger and c.not_before >= world.player.distance + t.dock_seconds * v,
+		"phase 3: the war engine's drops and passes, none before its docking is over, the Board back %s" % tag)
+	# The drops and the passes.
+	var drops: Array[Dictionary] = []
+	var passes: Array[Dictionary] = []
+	var k: int = train.next_flatcar(1)
+	for i: int in PASSES * 4:
+		if drops.size() >= PASSES:
+			break
+		var drop: Dictionary = c.plan_drop(k)
+		if not drop.is_empty():
+			drops.append(drop)
+			var ride: Dictionary = c.plan_pass(k + 1)
+			if not ride.is_empty():
+				passes.append(ride)
+		k = train.next_flatcar(k + 1)
+	check(drops.size() == PASSES and passes.size() == PASSES, "a drop on each flatcar after the docking and a pass after each %s" % tag)
+	var early: bool = false
+	var copy: LevelLayout = boss.arena.layout.copy()
+	for drop: Dictionary in drops:
+		early = early or float(drop["release_p"]) - float(drop["move"]) < c.not_before
+		var cut: Dictionary = drop["cut"]
+		copy.enemies.append({"type": "buzz_overdrive", "at": cut["end"], "lane": cut["lane"], "side": 0})
+	check(not early, "no drop moves out before the docking is over %s" % tag)
+	LayoutChecks.check_cuts(self, copy, boss.arena.config, tag)
+	var length: float = boss.armored.strip_length()
+	var belly: float = HostileTakeoverModel.BELLY_FRONT + HostileTakeoverModel.BELLY_STERN
+	var strip_ok: bool = true
+	var cover_ok: bool = true
+	var seconds_ok: bool = true
+	var land_ok: bool = true
+	var least: float = INF
+	var pass_carriages: Array[int] = []
+	for ride: Dictionary in passes:
+		var rk: int = int(ride["k"])
+		var strip: Vector2 = ride["strip"]
+		var roof: Vector2 = train.roof(rk)
+		strip_ok = strip_ok and ride["pass"] and train.kind(rk) == HostileTakeoverTrain.Kind.CORPORATE \
+			and train.kind(rk - 1) == HostileTakeoverTrain.Kind.FLATCAR and strip.x >= roof.x and strip.y <= roof.y - t.pad_before * pace + 0.01 \
+			and is_equal_approx(strip.y - strip.x, length) and is_equal_approx(float(ride["pad_at"]), strip.x) \
+			and float(ride["descend_from"]) < strip.x
+		var d: float = float(ride["pad_at"])
+		while d < float(ride["land_at"]):
+			var u: float = c.pass_u(ride, d)
+			cover_ok = cover_ok and u > 0.0 and u < belly
+			d += 0.5
+		cover_ok = cover_ok and absf(c.pass_u(ride, float(ride["land_at"]))) < 0.01
+		seconds_ok = seconds_ok and absf((float(ride["pull_at"]) - float(ride["pad_at"])) / v
+			- (t.pass_release - t.pass_rear_margin) / t.pass_speed) < 0.01
+		var landing: float = c.ride_stretch(ride).y
+		var g: int = train.next_gap(landing)
+		var margin: float = minf(train.gap_start(g) - landing, landing - train.gap_end(g - 1))
+		least = minf(least, margin / v)
+		land_ok = land_ok and margin >= LANDING_SECONDS * v
+		pass_carriages.append(rk)
+		pass_carriages.append(train.carriage_at(landing))
+	check(strip_ok and HostileTakeoverContract.strip_clears(m, length),
+		"each pass's runway of pads on the carriage after the flatcar, %.1f m long: no leap clears it %s" % [length, tag])
+	check(cover_ok, "the war engine's belly over the runner from the runway until its stern passes them %s" % tag)
+	check(seconds_ok, "they ride its belly %.1f s, at every speed %s" % [(t.pass_release - t.pass_rear_margin) / t.pass_speed, tag])
+	check(land_ok, "and drop back onto a roof, %.2f s at the least before the next gap %s" % [least, tag])
+	# The clamps: one under each third of the belly, a lane under each, each within reach on the ride.
+	var g_ship: HostileTakeoverGunship = boss.gunship
+	var sides: Array[int] = []
+	var under_ok: bool = g_ship.clamps.size() == 3
+	for cl: Dictionary in g_ship.clamps:
+		sides.append(int(cl["side"]))
+		var width: float = (cl["point"] as Hazard).size.x
+		var mid_x: float = float(cl["side"]) * g_ship.belly_width / 3.0
+		var under: int = 0
+		for lane: int in lanes:
+			if absf(world.geo.lane_x(lane) - mid_x) <= width * 0.5:
+				under += 1
+		under_ok = under_ok and under >= 1
+	sides.sort()
+	check(under_ok and sides == [-1, 0, 1], "three docking clamps, one under each third of the belly, a lane under each %s" % tag)
+	var lead: float = g_ship.clamp_lead()
+	var rules := load("res://data/tuning/game_rules.tres") as GameRules
+	var g_up: float = m.gravity()
+	var bounce_h: float = rules.stomp_bounce_velocity * rules.stomp_bounce_velocity / (2.0 * g_up)
+	var bounce: float = rules.stomp_bounce_velocity / g_up + sqrt(2.0 * bounce_h / (g_up * m.fall_gravity_multiplier))
+	var ready: float = REACTION + 2.0 * m.lane_switch_time
+	var reach_ok: bool = true
+	var soonest: float = INF
+	var back_at: float = t.pass_rear_margin + BOARD_SECONDS * t.pass_speed
+	var order: Array[int] = [0, 1, 2]
+	order.sort_custom(func(a: int, b: int) -> bool: return float(g_ship.clamps[a]["at"]) < float(g_ship.clamps[b]["at"]))
+	for i: int in order:
+		var at: float = float(g_ship.clamps[i]["at"])
+		var span := Vector2(at - t.clamp_length * 0.5, at + t.clamp_length * 0.5)
+		var cue: Vector2 = g_ship.clamp_cue(i)
+		reach_ok = reach_ok and cue.x + lead >= span.x + CLAMP_MARGIN and cue.y + lead <= span.y - CLAMP_MARGIN \
+			and cue.y < span.x and cue.y + lead <= t.pass_release
+		soonest = minf(soonest, (cue.y - back_at) / t.pass_speed)
+		# Stomped on its middle, the bounce brings them back onto the belly this far on.
+		back_at = at + bounce * t.pass_speed
+	check(reach_ok and lead > 0.5, "a jump from anywhere on a clamp's cue comes back up onto it (%.2f m on), before the war engine pulls away %s" % [
+		lead, tag])
+	check(soonest >= ready, "from boarding, and from each stomp's bounce, %.2f s at the least to the next clamp's cue's end (a reaction and two lane moves: %.2f s) %s" % [
+		soonest, ready, tag])
+	# The Board, back on its slots' carriages.
+	var from: int = maxi(board.planned + 1, 0)
+	while board.planned < from + 18:
+		board.plan(board.planned + 1)
+	var board_ok: bool = true
+	var fences: int = 0
+	var guards: int = 0
+	for j: int in range(from, board.planned + 1):
+		var rec: Dictionary = board.carriages[j]
+		var slot_j: int = train.slot(j)
+		var n: int = (rec["guards"] as Array).size()
+		guards += n
+		var on_slot: bool = t.merger_board_slots.has(slot_j) and train.kind(j) != HostileTakeoverTrain.Kind.FLATCAR
+		board_ok = board_ok and float(rec["tithe"]) < 0.0 and n <= t.merger_guards_on(lanes, train.kind(j), slot_j) and n < lanes
+		board_ok = board_ok and (on_slot or (n == 0 and (rec["wall_fence"] as Dictionary).is_empty()))
+		if not (rec["wall_fence"] as Dictionary).is_empty():
+			fences += 1
+	var clear_ok: bool = true
+	for j: int in pass_carriages:
+		if board.carriages.has(j):
+			clear_ok = clear_ok and (board.carriages[j]["guards"] as Array).is_empty()
+		clear_ok = clear_ok and not t.merger_board_slots.has(train.slot(j))
+	check(board_ok and guards >= 1 and fences >= 1,
+		"the Board's guards (%d) and wall fences (%d) only on its slots' carriages, no Tithe Collector %s" % [guards, fences, tag])
+	check(clear_ok, "never on a pass's runway or landing carriage %s" % tag)
+	var fenced: LevelConfig = boss.arena.config.duplicate() as LevelConfig
+	fenced.features = PackedStringArray(["wall_fences_partial"])
+	LayoutChecks.check_wall_fences(self, boss.arena.layout, fenced, tag)
+	var struck: int = t.struck_lanes(lanes)
+	check(struck >= 1 and struck < lanes, "a strafe strikes %d of %d lanes %s" % [struck, lanes, tag])
+	await sim.free_world(world)
+
+
 # --- The look --------------------------------------------------------------------------------------
 
 ## Budgets and the colour rule (GDD §5: only hazards glow in hazard colours; the weak points' red, the gaps'
@@ -649,6 +849,117 @@ func _test_look() -> void:
 		inside = inside or absf(v.x) < world.geo.wall_x() + skin.near_towers_from_to.x - 0.01
 	check(not inside and verts.size() > 0, "the towers stand beyond the barriers, never over the street")
 	await sim.free_world(world)
+
+
+## Phase 3's look (GDD §5's colour rule; Reduced flashing; task PERF1): its parts are built with the fight
+## and hidden (the clamps folded, the screens dark, the lobby away); the clamps' locks glow the weak points'
+## red with the green chevrons of the ways up behind them, while the rest of the clamps, the arms, the
+## screens' words, the lobby tower and its sculpture glow in no hazard colour, all of it low-poly; MERGER
+## COMPLETE flashes and the clamps pulse, both steady with Reduced flashing; and from the docking through
+## a pass to the defeat, the boss's parts make no node.
+func _test_merger_look() -> void:
+	var pair: Array = _fight(def, 5, 23.4, null, 2)
+	var world: RunWorld = pair[0]
+	var boss: HostileTakeover = pair[1]
+	var g: HostileTakeoverGunship = boss.gunship
+	var t: HostileTakeoverTuning = boss.tuning
+	var first: Dictionary = g.clamps[0]
+	check(not g.docked and (first["folded"] as Node3D).visible and not (first["body"] as Node3D).visible
+		and not (first["cue"] as Node3D).visible and not boss.screens.on and not boss.lobby.visible and boss.screens.screens.size() == 3,
+		"phase 3's parts are built with the fight and hidden: the clamps folded, three screens dark, the lobby away")
+	var parts_before: int = _parts(boss)
+	# Colours.
+	var bad: Array[String] = []
+	var meshes: Array[Mesh] = [(first["body"] as MeshInstance3D).mesh, (first["folded"] as MeshInstance3D).mesh,
+		(boss.lobby.tower as MeshInstance3D).mesh]
+	for node: Node in boss.lobby.sculpture.get_children():
+		if node is MeshInstance3D:
+			meshes.append((node as MeshInstance3D).mesh)
+	for arm: Node3D in g.arms:
+		for node: Node in arm.get_children():
+			if node is MeshInstance3D:
+				meshes.append((node as MeshInstance3D).mesh)
+	var verts: int = 0
+	for mesh: Mesh in meshes:
+		var array_mesh := mesh as ArrayMesh
+		if array_mesh == null:
+			continue
+		verts = maxi(verts, HostileTakeoverModel.vertices(array_mesh))
+		for i: int in array_mesh.get_surface_count():
+			for col: Color in array_mesh.surface_get_arrays(i)[Mesh.ARRAY_COLOR]:
+				if col.a > 0.0 and _hazard_hue(Color(col.r, col.g, col.b)) and bad.size() < 3:
+					bad.append(str(col))
+	check(bad.is_empty() and not _hazard_hue(HostileTakeoverScreens.TEXT_COLOR),
+		"nothing on the clamps' bodies, the arms, the screens' words, the tower or its sculpture glows in a hazard's colour: %s" % ", ".join(bad))
+	print("  Hostile Takeover's phase 3 models: the largest %d vertices (the lobby tower %d, its sculpture %d)" % [verts,
+		HostileTakeoverModel.vertices((boss.lobby.tower as MeshInstance3D).mesh as ArrayMesh),
+		HostileTakeoverModel.vertices(((boss.lobby.sculpture.get_child(0) as MeshInstance3D).mesh) as ArrayMesh)])
+	check(verts < 6000, "low-poly (%d vertices at the most)" % verts)
+	var core := (first["core"] as MeshInstance3D).mesh as ArrayMesh
+	var red: bool = true
+	for i: int in core.get_surface_count():
+		for col: Color in core.surface_get_arrays(i)[Mesh.ARRAY_COLOR]:
+			red = red and (col.h < 0.05 or col.h > 0.95) and col.s > 0.5
+	var cue := (first["cue"] as MeshInstance3D).mesh as ArrayMesh
+	var green: bool = cue != null
+	for i: int in (cue.get_surface_count() if cue != null else 0):
+		for col: Color in cue.surface_get_arrays(i)[Mesh.ARRAY_COLOR]:
+			green = green and col.h > 0.2 and col.h < 0.45
+	check(red and green, "the clamps' locks glow the weak points' red, the chevrons behind them the ways up's green")
+	# Through the docking (god mode: the runner just runs on).
+	world.player.god_mode = true
+	world.player.grapples = 1_000_000
+	var bot := HostileTakeoverBot.new(boss)
+	bot.reaction = 0.35
+	await tree.physics_frame
+	world.player.running = true
+	for i: int in 12 * 60:
+		bot.step()
+		if boss.docked:
+			break
+		await tree.physics_frame
+	check(boss.docked and g.docked and boss.screens.on and boss.step == HostileTakeover.Step.MERGED and (first["body"] as Node3D).visible
+		and (first["cue"] as Node3D).visible and not boss.locomotive.chairman.visible,
+		"docked: the clamps unfolded with their cues, the screens on, the Chairman gone from his window")
+	# MERGER COMPLETE flashes and the clamps pulse; both steady with Reduced flashing.
+	var was: bool = Settings.flashing_reduced
+	var lock := (first["core"] as MeshInstance3D).material_override as ShaderMaterial
+	for reduced: bool in [false, true]:
+		Settings.flashing_reduced = reduced
+		boss.screens.set_on(true)
+		var words: Array[float] = []
+		var glows: Array[float] = []
+		for i: int in 16:
+			await physics_frames(3)
+			bot.step()
+			words.append(boss.screens.text_material.emission_energy_multiplier)
+			glows.append(float(lock.get_shader_parameter(&"state_glow")))
+		var flash: float = float(words.max()) - float(words.min())
+		var pulse: float = float(glows.max()) - float(glows.min())
+		if reduced:
+			check(is_zero_approx(flash) and float(words.min()) > 0.5 and is_zero_approx(pulse),
+				"MERGER COMPLETE glows steady, and the clamps too, with Reduced flashing")
+		else:
+			check(flash > 0.5 and pulse > 0.1, "MERGER COMPLETE flashes and the clamps pulse (%.2f, %.2f)" % [flash, pulse])
+	Settings.flashing_reduced = was
+	# On through a pass to the defeat: the boss's parts make no node.
+	for i: int in 60 * 60:
+		bot.step()
+		if boss.victory_over():
+			break
+		await tree.physics_frame
+	check(boss.is_defeated() and boss.victory_over() and _parts(boss) == parts_before,
+		"from the docking through its passes to the defeat, its parts make no node (%d → %d)" % [parts_before, _parts(boss)])
+	await sim.free_world(world)
+
+
+## The nodes the boss's parts hold.
+func _parts(boss: BossEncounter) -> int:
+	var n: int = 0
+	for part: BossPart in boss.parts:
+		if is_instance_valid(part):
+			n += _count(part)
+	return n
 
 
 func _count(node: Node) -> int:
