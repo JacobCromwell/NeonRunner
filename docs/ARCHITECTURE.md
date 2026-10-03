@@ -2992,7 +2992,14 @@ City 3, Marketplace 2 and Golden 2 for 40 s each as the game does (`frame_times.
 a fresh process, each frame's faster time) and holds their 99th percentile and worst frame to
 `PerformanceTuning`'s test budgets, scaled by load the way the skin suites' chunk budgets are: each pass times
 `SkinSuite`'s reference build every 60 frames alongside the run (`--reference`, far off to one side, left out of
-the frames), and `SkinSuite.load_factor()` widens the budgets by how slow the machine is right then.
+the frames), and `SkinSuite.load_factor()` widens the budgets by how slow the machine is right then. Unlike the
+skin suites, it pools the passes' reference readings instead of folding them to their per-index minimum (FIX3):
+the reference only samples ~40 times in the 40 s a frame-time pass plays (against the frames' own 2400), so
+folding two such sparse passes needed both slow at the same one-in-forty moment to register, which a busy
+machine's bursty load cleared far less often than it cleared the frames' own tail statistic (p99 needs only 1%
+of 2400 chances) -- read as load factor 1.00x on a machine other agents' test runs kept busy, while the level's
+own p99 and worst frame were plainly slower, failing under real `--jobs` load that a true reading would have
+covered.
 `test_web_demo` checks the web demo's preset, its export filter against
 the data and everything the demo references, and walks the demo from the title to its end screen (see
 Platforms and build flavors). The runner frees
