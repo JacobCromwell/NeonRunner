@@ -19,15 +19,16 @@ extends Node3D
 ##   contract    phase 2 from its start (The Contract) with the bot: the strafes, the drop and its cut, the
 ##               pads and the ride over the armored carriage, the drop bay stomped; --cam=run (the default)
 ##               through the run camera, --cam=side from high beside the train ahead of the runner, looking
-##               back at them and the gunship, --cam=ride from low beside the armored carriage
+##               back at them and the gunship, --cam=ride from low beside the runner, looking back at them
 ## Options: --lanes=N (3, 5 or 6; 5 by default), --speed=N (18 by default; the Corporate zone's 23.4),
 ## --phase=N (start at phase N, as a checkpoint would), --reduced-flashing, --still (the runner stands:
 ## nothing moves but the scenery), --events (prints each of the boss's events with its frame, for picking
 ## frames).
 ## Frames worth a look (at --fixed-fps 10): run: the entrance 0-30, the first live coupling about 40-60, the
 ## stomp about 185; coupling: the stomp about frame 57, the breakaway 57-80; contract at --speed=23.4: the
-## strafes from frame 20 (warning) and 32 (rake), the drop about 89-97, the gunship coming down 167-185,
-## the ride 185-215 (the bay stomped about 215).
+## strafes from frame 20 (warning) and 32 (rake), the drop's spot marked at 79, the tank let go at 89 and
+## landed at 96 (its rev and charge 100-120), the armored carriage and its runway in sight from 95, the
+## gunship coming down from 161, the runner on its belly from 179, the bay stomped at 213.
 
 const BOSS_PATH: String = "res://data/bosses/corporate_boss.tres"
 
@@ -164,12 +165,9 @@ func _place_camera() -> void:
 			_cam.look_at_from_position(Vector3(world.geo.wall_x() - 1.0, 6.5, gap_z - 26.0), Vector3(-1.0, 0.0, gap_z + 6.0))
 		"contract":
 			if cam_mode == "ride":
-				# Low beside the next armored carriage (or the runner), looking along it at the runner coming.
-				var ride: Dictionary = boss.contract.next_ride()
-				var at_z: float = p.z
-				if not ride.is_empty():
-					at_z = TrackGeometry.world_z((ride["roof"] as Vector2).x + 20.0)
-				_cam.look_at_from_position(Vector3(world.geo.wall_x() - 0.6, 3.2, at_z - 6.0), Vector3(-1.5, 4.0, at_z + 30.0))
+				# Low beside the runner and a little ahead of them, looking back: the runway, the gunship coming
+				# down over them, the ride on its belly with the armored carriage below.
+				_cam.look_at_from_position(Vector3(world.geo.wall_x() - 0.5, 3.4, p.z - 9.0), Vector3(-0.5, 3.6, p.z + 6.0))
 			else:
 				# High beside the train ahead of the runner, looking back at them and the gunship.
 				_cam.look_at_from_position(Vector3(world.geo.wall_x() - 0.8, 11.0, p.z - 38.0), Vector3(-0.5, 2.5, p.z + 4.0))
