@@ -54,13 +54,17 @@ func build(p_kind: Kind, variant: StringName, side: int, p_seed: int) -> void:
 		_lid.position = Vector3(0.0, 0.035, 0.0)
 		# The cover with its raised cross, and four slots with red eyes glowing through them.
 		_add_mesh(_lid, _manhole_cover_mesh(), Vector3.ZERO, metal)
-		_glow.append(_add_mesh(_lid, _manhole_slots_mesh(), Vector3.ZERO, _glow_dim))
+		var slots: MeshInstance3D = _add_mesh(_lid, _manhole_slots_mesh(), Vector3.ZERO, _glow_dim)
+		slots.name = "Glow"
+		_glow.append(slots)
 	else:
 		# Built for the right wall (face at local x = 0, the track toward -x); turned for the left.
 		rotation.y = 0.0 if side > 0 else PI
 		_warn.append(GreyboxMaterials.add_box(self, Vector3(-0.03, 0.35, 0.0), Vector3(0.06, 0.68, 1.16), metal))
 		GreyboxMaterials.add_box(self, Vector3(-0.064, 0.35, 0.0), Vector3(0.012, 0.54, 1.0), dark)
-		_glow.append(_add_mesh(self, _vent_eyes_mesh(), Vector3.ZERO, _glow_dim))
+		var eyes: MeshInstance3D = _add_mesh(self, _vent_eyes_mesh(), Vector3.ZERO, _glow_dim)
+		eyes.name = "Glow"
+		_glow.append(eyes)
 		_lid.position = Vector3(-0.09, 0.35, 0.0)
 		_add_mesh(_lid, _vent_grille_mesh(), Vector3.ZERO, metal)
 	_lid_rest = _lid.transform
@@ -119,7 +123,7 @@ func _process(delta: float) -> void:
 		if kind == Kind.VENT:
 			t.origin = Vector3(_rng.randf() * -0.04 * j, _rng.randf_range(-0.015, 0.015), _rng.randf_range(-0.02, 0.02))
 		_lid.transform = _lid_rest * t
-		var pulse: bool = int(Time.get_ticks_msec() / 70) % 2 == 0
+		var pulse: bool = Settings.flashing_reduced or int(Time.get_ticks_msec() / 70) % 2 == 0
 		for g: MeshInstance3D in _glow:
 			g.visible = pulse or kind == Kind.VENT
 	elif _lid.transform != _lid_rest:
