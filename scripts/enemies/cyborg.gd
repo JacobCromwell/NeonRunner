@@ -56,6 +56,24 @@ var _startle: float = 0.0
 var _yaw: float = 0.0
 
 
+## A cyborg's look as `entry`'s would be, for EnemyDirector.warm_up (which frees it): the first one
+## builds the kit's meshes, materials and shaders that every later cyborg shares.
+static func warm_up(world: RunWorld, entry: Dictionary) -> Node:
+	var body := CyborgBody.new()
+	body.build(world.skin.enemy_variant, bool((entry.get("params", {}) as Dictionary).get("host", false)), false,
+		int(entry.get("seed", 0)))
+	return body
+
+
+## The enemies a cyborg from `entry` brings into play, for EnemyDirector.warm_up: a host's Bad Dream
+## (GDD §9.7), as _release_bad_dream spawns it.
+static func brings(entry: Dictionary) -> Array[Dictionary]:
+	if not bool((entry.get("params", {}) as Dictionary).get("host", false)):
+		return []
+	return [{"type": "bad_dream", "at": float(entry.get("at", 0.0)), "lane": int(entry.get("lane", 0)), "side": 0,
+		"seed": hash([entry.get("seed", 0), "bad_dream"]), "params": {"from_host": true}}]
+
+
 func _build() -> void:
 	tuning = tuning_res as CyborgTuning
 	if tuning == null:

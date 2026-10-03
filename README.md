@@ -59,6 +59,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level |
 | `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker; `marketplace_boss`: The House; `corporate_boss`: Hostile Takeover, being built; `gangland_boss`: the Sewer Swarm, being built) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
+| `--frame-graph` | Show the frame-time graph (F7, see Smooth frames) from the start of every run |
 
 Example: `./play.sh --lanes=6 --features=octodog,ceilings --god`, or the test boss's last phase:
 `./play.sh --boss=test_boss --phase=3 --god --nofall`.
@@ -78,7 +79,7 @@ Every key can be rebound in Settings. PC runs use 5 lanes and mobile runs use 3 
 open: 5 or 6).
 
 Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2** next seed, **F3** difficulty,
-**F4** god mode, **F5** show hitboxes, **F6** tuning panel, **M** mute.
+**F4** god mode, **F5** show hitboxes, **F6** tuning panel, **F7** frame-time graph, **M** mute.
 
 ## What's in the game
 
@@ -274,7 +275,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 
 F6 pauses the game and opens a panel with sections for movement, game rules, power-ups, the runner's animation,
 pickups, speed effects (the camera's field-of-view kick and lane lean, speed lines, shake, hit-stop and the
-sparks and debris on kills and blocked hits), the music's pause duck and death dip, level pacing, the campaign's
+sparks and debris on kills and blocked hits), performance (how long a frame may spend dressing the track; see
+Smooth frames), the music's pause duck and death dip, level pacing, the campaign's
 recency curve for pick weights (in a campaign level) and each enemy type in the level. Changes apply immediately;
 pacing, pick weights, speed, jump and size
 changes also reshape the level, so press **Restart level** to rebuild it. **Save** writes the values back to
@@ -283,6 +285,27 @@ tunings in `data/enemies/`, prices in
 `data/shop/catalog.json`, patterns in `data/patterns/` (format: `data/patterns/README.md`), sound volumes in
 `data/audio/sfx_library.tres`, music levels and tempos in `data/audio/music_library.tres`, and UI colours and
 sizes in `data/ui/ui_style.tres`.
+
+## Smooth frames (F7)
+
+In a debug build, **F7** shows a graph of the last five seconds of frames (`--frame-graph` shows it from the
+start): each bar is one frame, as tall as its time, its lower part the game's own work and the rest the
+renderer and the wait for the screen; the two lines are 60 and 30 fps. A spike (a frame well over the others)
+is drawn in red and listed under the graph with how long ago it was and what happened in it (a chunk of track
+built, an enemy spawned, shaders compiled, ...). The frames a kill's hit-stop holds the camera still are
+marked in violet under the graph and listed too: a held camera looks like a hitch even when every frame is on
+time. To report a lag spike, press F7 right after it and note (or screenshot) its line.
+
+What to try:
+- **Settings > Screen shake off** turns off every hit-stop, and the shake. To keep the shake and drop only the
+  kills' freeze, set **F6 > Speed effects > Kill freeze time** to 0. If the spikes you saw go away, they were
+  hit-stops (an open question for you: `docs/questions/perf1.md`). A kill's freeze no longer follows another
+  within 0.3 s (**Freeze gap**, same section).
+- **F6 > Performance > Chunk dress budget** (1 ms): how long a frame may spend dressing the track ahead; 0
+  dresses each 40 m chunk in one frame, as before.
+- A level's first frame now draws, too small to see, every look the level may need later (each enemy kind,
+  the weapon's effects, every track piece), so their shaders compile there and not mid-run. The first run of
+  a new build can still hitch once while the graphics driver fills its shader cache; the runs after it don't.
 
 ## Tools
 
@@ -337,6 +360,16 @@ enemy, host and obstacle counts, what only the every-feature guarantee brings, a
 against its bursts, with the recency curve on and off:
 `godot --headless -s res://tools/measure/level_shape.gd -- [--levels=dead_zone/2] [--curve=on,off]`.
 
+`tools/measure/frame_times.gd` measures the game's frame times (task PERF1): it plays every campaign level and
+boss fight through the game's own flow with a scripted runner (god mode, no falls, the zone's speed), each pass in
+a fresh process, and prints per run the median, 95th and 99th percentile and worst frame, the frames over 8 and
+16 ms, the load, the kills and hit-stops, and what the slow frames were doing; `--log` adds an event-log hash (two
+builds that decide the same print the same hash; the JSON keeps the log's lines to compare), `--shaders` the
+shaders first drawn after the load, and under xvfb it also counts draw calls and compiled pipelines:
+`godot --headless --fixed-fps 60 -s
+res://tools/measure/frame_times.gd -- [--levels=city/1] [--bosses=city_boss] [--passes=2] [--frames] [--log]`
+(the whole campaign takes about fifteen minutes; its header lists the options).
+
 `tools/measure/economy.gd` measures the campaign's economy (task R7): per level and zone, the credits
 available, what a good run collects (a stand-in share, default 0.7), the payout for finishing, and what a
 death or quit pays (GDD §4); then lays the shop's prices (`data/shop/catalog.json`) against the running
@@ -380,7 +413,7 @@ On a debug build, the options go into the page's engine settings: in `exports/we
 
 ## Tests
 
-`tools/godot.sh test` runs 69 suites with about 6,000,000 checks:
+`tools/godot.sh test` runs 71 suites with about 6,000,000 checks:
 - **Generator fairness:** hundreds of levels over 3/5/6 lanes, difficulties and seeds, and every campaign level
   (each with every feature it lists, on its own seed and on others), at the base speed and at the zones' speeds
   (21 to 25 m/s, with the fill pass that makes campaign levels busier), each reaction window in seconds. Under
@@ -481,6 +514,11 @@ On a debug build, the options go into the page's engine settings: in `exports/we
   band across them and nothing below the underside past the far end, where the camera passes as you drop.
 - **Sounds and music:** every sound and track loads (the tracks loop seamlessly, one per zone), the death dip
   and how it combines with the pause duck, and the level-complete riff in each zone's key.
+- **Frame times:** City 3, Marketplace 2 and Golden 2 played as the game plays them, each pass in a fresh
+  process, their 99th percentile and worst frame held to budgets in `data/tuning/performance.tres` (scaled by
+  how busy the machine is, like the skins' chunk budgets); and what keeps frames smooth without changing the
+  game: a chunk's look spread over frames (the same run, frame for frame), enemy types readied with the level,
+  hit-stops that never chain, the shader warm-up's samples, and the frame-time graph.
 - **Boot:** the real game scene.
 
 Headless runs skip sounds, because the dummy audio driver never finishes a playback.

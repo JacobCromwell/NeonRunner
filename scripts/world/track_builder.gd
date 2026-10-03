@@ -30,6 +30,10 @@ const DOODAD_DEBUG := Color(0.2, 0.55, 1.0, 0.3)
 ## passes them and shortens the one its front is in (FloorCut): short enough that one shortened slice
 ## barely shows, long enough to keep a chunk's build cheap.
 const CUT_SLICE: float = 4.0
+## With a dressing budget (dress_budget_usec), a chunk's look is finished whatever the budget once the
+## player is this close to its start: built BUILD_AHEAD ahead, it has the time of BUILD_AHEAD - DRESS_BY
+## metres of running to be dressed a little at a time.
+const DRESS_BY: float = 120.0
 
 var layout: LevelLayout
 var tuning: MovementTuning
@@ -38,6 +42,15 @@ var skin: ZoneSkin
 ## Optional: hazard warning sounds. Tests leave it empty.
 var sfx: SfxLibrary
 var show_hitboxes: bool = false
+## Spreads each chunk's dressing over frames (task PERF1: the skin's walls, floor and hazard looks for
+## one chunk took most of a chunk's build, 1.5 to 4 ms in one frame on a desktop CPU, several times
+## that on a phone, every 1.6 to 1.9 s of play). Above 0, a chunk's gameplay nodes (collision, hazards,
+## triggers, doodads' bodies) are still all built in the frame it's built, exactly as before, but the
+## skin's calls for it wait in a queue that update() works through in order, for about this many
+## microseconds a frame (at least one call a frame), finishing a chunk's whatever the time once the
+## player is DRESS_BY from it. 0 (tests, review tools) dresses every chunk as it's built. A run sets it
+## (LevelRun, from PerformanceTuning.chunk_dress_budget_ms).
+var dress_budget_usec: int = 0
 
 var _lane_gaps: Array = []
 ## The layout's floor cuts by lane, in track order (LevelLayout.cuts).
@@ -53,6 +66,11 @@ var _level_time: float = 0.0
 var _fence_nodes: Dictionary = {}
 ## Built wall fence hazards by their index in layout.wall_fences (task B5), likewise.
 var _wall_fence_nodes: Dictionary = {}
+## The skin's calls still to make (dress_budget_usec), in order: [chunk start, chunk root, Callable].
+var _dressing: Array[Array] = []
+## The chunk being built (_build_chunk): its start and root, for the calls it queues.
+var _dress_start: float = 0.0
+var _dress_root: Node3D
 
 
 func set_layout(p_layout: LevelLayout, p_tuning: MovementTuning, p_skin: ZoneSkin = null) -> void:
@@ -68,6 +86,7 @@ func set_layout(p_layout: LevelLayout, p_tuning: MovementTuning, p_skin: ZoneSki
 	_fence_nodes.clear()
 	_wall_fence_nodes.clear()
 	_cut_nodes.clear()
+	_dressing.clear()
 	_next_chunk = 0
 	_lane_gaps.clear()
 	_lane_cuts.clear()
@@ -94,6 +113,17 @@ func built_until() -> float:
 	return _next_chunk * CHUNK_LENGTH
 
 
+## The skin's calls still waiting to dress built chunks (dress_budget_usec; 0 without a budget).
+func dressing_left() -> int:
+	return _dressing.size()
+
+
+## Dresses every built chunk now (tests and tools that look at a chunk right after it's built).
+func dress_all() -> void:
+	while not _dressing.is_empty():
+		_dress_next()
+
+
 ## Builds chunks ahead of `player_distance` and frees chunks that are fully behind it.
 ## `level_time` is the level clock, which keeps pulsing hazards in sync with it.
 func update(player_distance: float, level_time: float) -> void:
@@ -106,6 +136,7 @@ func update(player_distance: float, level_time: float) -> void:
 		if chunk["max_end"] < player_distance - KEEP_BEHIND:
 			(chunk["node"] as Node3D).queue_free()
 			_chunks.erase(index)
+	_dress_some(player_distance)
 	# Floor cuts: a hold after a block that's over lets go (FloorCut.tick), before the player moves.
 	for key: String in _cut_nodes.keys():
 		var cut: Variant = _cut_nodes[key]
@@ -256,6 +287,8 @@ func _build_chunk(index: int) -> void:
 		c0 = -KEEP_BEHIND - 10.0
 	var bucket: Dictionary = _buckets.get(index, {})
 	_chunks[index] = {"node": root, "max_end": maxf(c1, float(bucket.get("max_end", 0.0)))}
+	_dress_start = c0
+	_dress_root = root
 
 	# Floor cuts whose stretch starts here, before the floor slices that register with them.
 	for c: Dictionary in bucket.get("cuts", []):
@@ -268,10 +301,13 @@ func _build_chunk(index: int) -> void:
 				_build_cut_slices(root, c, c0, c1)
 	var wall_enemies: Array[Dictionary] = _enemies_between(c0, c1)
 	for side: int in [-1, 1]:
-		skin.note_wall_enemies(side, c0, c1, wall_enemies)
-		skin.wall_section(root, side, side * geo.wall_x(), c0, c1)
+		# The skin notes a side's wall enemies just before it draws that side (one call, so nothing comes
+		# between them in the queue).
+		_dress(func() -> void:
+			skin.note_wall_enemies(side, c0, c1, wall_enemies)
+			skin.wall_section(root, side, side * geo.wall_x(), c0, c1))
 	if layout.length >= c0 and layout.length < c1:
-		skin.finish_line(root, geo.half_width() * 2.0, layout.length)
+		_dress(skin.finish_line.bind(root, geo.half_width() * 2.0, layout.length))
 
 	for f: Dictionary in bucket.get("fences", []):
 		_build_fence(root, f)
@@ -289,6 +325,34 @@ func _build_chunk(index: int) -> void:
 		_build_speed_pad(root, sp)
 	for d: Dictionary in bucket.get("doodads", []):
 		_build_doodad(root, d)
+
+
+## A skin call for the chunk being built: made now, or queued with a dressing budget (dress_budget_usec).
+func _dress(work: Callable) -> void:
+	if dress_budget_usec <= 0:
+		work.call()
+	else:
+		_dressing.append([_dress_start, _dress_root, work])
+
+
+## Makes queued skin calls for about dress_budget_usec (at least one), and every call for a chunk the
+## player is within DRESS_BY of.
+func _dress_some(player_distance: float) -> void:
+	var t0: int = Time.get_ticks_usec()
+	var made: int = 0
+	while not _dressing.is_empty():
+		var urgent: bool = float(_dressing[0][0]) < player_distance + DRESS_BY
+		if made > 0 and not urgent and Time.get_ticks_usec() - t0 >= dress_budget_usec:
+			return
+		_dress_next()
+		made += 1
+
+
+func _dress_next() -> void:
+	var item: Array = _dressing.pop_front()
+	# A chunk freed before it was dressed (a test that jumps ahead) needs no look.
+	if is_instance_valid(item[1]) and not (item[1] as Node).is_queued_for_deletion():
+		(item[2] as Callable).call()
 
 
 ## The layout's enemy entries whose track distance falls in [c0, c1) (ZoneSkin.note_wall_enemies()).
@@ -365,7 +429,8 @@ func _build_cut_slices(root: Node3D, c: Dictionary, c0: float, c1: float) -> voi
 		slice.name = "CutSlice"
 		root.add_child(slice)
 		var center := Vector3((span.x + span.y) * 0.5, -FLOOR_THICKNESS * 0.5, -(a + b) * 0.5)
-		skin.floor_segment(slice, center, Vector3(span.y - span.x, FLOOR_THICKNESS, b - a), geo.lane_x(lane), false, false)
+		_dress(skin.floor_segment.bind(slice, center, Vector3(span.y - span.x, FLOOR_THICKNESS, b - a), geo.lane_x(lane),
+			false, false))
 		if cut != null:
 			cut.add_slice(slice, a, b)
 		a = b
@@ -376,7 +441,7 @@ func _build_floor_piece(root: Node3D, lane: int, piece: Vector2, edge_start: boo
 	var center := Vector3((span.x + span.y) * 0.5, -FLOOR_THICKNESS * 0.5, -(piece.x + piece.y) * 0.5)
 	var size := Vector3(span.y - span.x, FLOOR_THICKNESS, piece.y - piece.x)
 	_static_box(root, center, size, LAYER_FLOOR)
-	skin.floor_segment(root, center, size, geo.lane_x(lane), edge_start, edge_end)
+	_dress(skin.floor_segment.bind(root, center, size, geo.lane_x(lane), edge_start, edge_end))
 
 
 func _build_fence(root: Node3D, f: Dictionary) -> void:
@@ -394,7 +459,7 @@ func _build_fence(root: Node3D, f: Dictionary) -> void:
 			hazard.add_child(telegraph)
 			telegraph.bind(hazard, sfx.stream(&"fence_warning"), sfx.volume(&"fence_warning"),
 				sfx.warning_full_volume_distance, sfx.warning_max_distance)
-	skin.fence(hazard, size, -(bottom + top) * 0.5, gapped)
+	_dress(skin.fence.bind(hazard, size, -(bottom + top) * 0.5, gapped))
 	_fence_nodes[f["index"]] = hazard
 	if f.get("disabled", false):
 		hazard.set_enabled(false)
@@ -424,7 +489,7 @@ func _build_wall_fence(root: Node3D, w: Dictionary) -> void:
 			hazard.add_child(telegraph)
 			telegraph.bind(hazard, sfx.stream(&"fence_warning"), sfx.volume(&"fence_warning"),
 				sfx.warning_full_volume_distance, sfx.warning_max_distance)
-	skin.wall_fence(hazard, box.size, side, StringName(band_name), -center.y)
+	_dress(skin.wall_fence.bind(hazard, box.size, side, StringName(band_name), -center.y))
 	_wall_fence_nodes[int(w.get("index", _wall_fence_nodes.size()))] = hazard
 	if w.get("disabled", false):
 		hazard.set_enabled(false)
@@ -438,7 +503,7 @@ func _build_sign(root: Node3D, s: Dictionary) -> void:
 		size, LAYER_HAZARD | LAYER_WALL_BLOCKER)
 	hazard.hazard_name = "sign"
 	hazard.is_solid = true
-	skin.wall_sign(hazard, size)
+	_dress(skin.wall_sign.bind(hazard, size))
 
 
 ## A ceiling section: its collision box over the lanes it covers (all of them, or a narrow ceiling's
@@ -447,13 +512,13 @@ func _build_hull(root: Node3D, h: Dictionary) -> void:
 	var section := CeilingSection.make(geo, tuning.ceiling_height, HULL_THICKNESS, float(h["start"]), float(h["end"]),
 		layout.hull_lanes(h))
 	_static_box(root, section.center, section.size, LAYER_HULL)
-	skin.ceiling_section(root, section)
+	_dress(skin.ceiling_section.bind(root, section))
 
 
 func _build_pad(root: Node3D, p: Dictionary) -> void:
 	var size := Vector3(geo.lane_width * 0.7, 0.5, tuning.pad_length)
 	var area := _trigger(root, &"pad", Vector3(geo.lane_x(p["lane"]), size.y * 0.5, -float(p["at"]) - size.z * 0.5), size)
-	skin.pad(area, size)
+	_dress(skin.pad.bind(area, size))
 
 
 func _build_ramp(root: Node3D, r: Dictionary) -> void:
@@ -461,13 +526,13 @@ func _build_ramp(root: Node3D, r: Dictionary) -> void:
 	var size := Vector3(geo.lane_width * 0.8, 1.0, tuning.ramp_length)
 	var area := _trigger(root, &"ramp", Vector3(geo.lane_x(layout.outer_lane(side)), size.y * 0.5, -float(r["at"]) - size.z * 0.5), size)
 	area.set_meta(&"side", side)
-	skin.ramp(area, size, side)
+	_dress(skin.ramp.bind(area, size, side))
 
 
 func _build_speed_pad(root: Node3D, p: Dictionary) -> void:
 	var size := Vector3(geo.lane_width * 0.7, 0.5, tuning.speed_pad_length)
 	var area := _trigger(root, &"speed_pad", Vector3(geo.lane_x(p["lane"]), size.y * 0.5, -float(p["at"]) - size.z * 0.5), size)
-	skin.speed_pad(area, size)
+	_dress(skin.speed_pad.bind(area, size))
 
 
 ## A zone doodad (GDD §3, owner's playtest September 30, 2026): a solid scenery piece standing in its
@@ -502,7 +567,7 @@ func _build_doodad(root: Node3D, d: Dictionary) -> void:
 	var debug := GreyboxMaterials.add_box(area, Vector3.ZERO, size * 1.01, GreyboxMaterials.overlay(DOODAD_DEBUG, true))
 	debug.add_to_group(&"debug_hitbox")
 	debug.visible = show_hitboxes
-	skin.doodad(area, size, StringName(d["size"]), int(d["side"]), int(d.get("seed", 0)))
+	_dress(skin.doodad.bind(area, size, StringName(d["size"]), int(d["side"]), int(d.get("seed", 0))))
 
 
 func _hazard(root: Node3D, center: Vector3, size: Vector3, layers: int) -> Hazard:

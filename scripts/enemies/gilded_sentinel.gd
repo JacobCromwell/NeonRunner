@@ -93,6 +93,8 @@ const HUSK_KEEP: float = 40.0
 static var _frames: Dictionary = {}
 ## The statue kit outside the Golden Zone's skins (quick play's review stand-in).
 static var _plain_kit: GoldenStatue = null
+## The cut's shader (cut_shader()).
+static var _cut_shader: Shader = null
 
 var tune: GildedSentinelTuning
 var side: int = 1
@@ -131,6 +133,34 @@ var _frame_key: Vector2i = Vector2i(-1, -1)
 var _move_set: Array = []
 var _husk: bool = false
 var _down_t: float = 0.0
+
+
+## A Gilded Sentinel's look, for EnemyDirector.warm_up (which frees it) and ShaderWarmup (task PERF1):
+## bakes the statue's frames for both walls with the skin's kit (the first Sentinel on each wall baked
+## them in its spawn's frame) and shows the statue with its eyes, and a strip of its cut's red marks
+## (their shader was first drawn at the first warning).
+static func warm_up(world: RunWorld, _entry: Dictionary) -> Node:
+	var tune := EnemyDirector.tuning_for("gilded_sentinel") as GildedSentinelTuning
+	if tune == null:
+		tune = GildedSentinelTuning.new()
+	var kit: GoldenStatue = (world.skin as GoldenSkin).statues() if world.skin is GoldenSkin else plain_kit()
+	var root := Node3D.new()
+	for mirrored: bool in [false, true]:
+		var statue := MeshInstance3D.new()
+		statue.mesh = (frames_for(kit, tune.statue_scale, mirrored)[Move.RAISE] as Array)[0]
+		statue.set_surface_override_material(1, _eyes_material())
+		statue.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(statue)
+	# The marks' own vertex format (positions and UVs, _strip), so the sample matches what they draw.
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_strip(st, Vector3.ZERO, Vector3(0.0, 0.0, -1.0), Vector3(0.0, 1.0, 0.0))
+	var cut := MeshInstance3D.new()
+	cut.mesh = st.commit()
+	cut.material_override = _cut_material()
+	cut.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(cut)
+	return root
 
 
 func _build() -> void:
@@ -180,11 +210,7 @@ func _build_statue() -> void:
 	_statue.name = "Body"
 	_statue.mesh = rest
 	_statue.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_eyes = StandardMaterial3D.new()
-	_eyes.albedo_color = Color(0.12, 0.02, 0.02)
-	_eyes.emission_enabled = true
-	_eyes.emission = RED
-	_eyes.emission_energy_multiplier = EYES_IDLE
+	_eyes = _eyes_material()
 	_statue.set_surface_override_material(1, _eyes)
 	_statue_root.add_child(_statue)
 	_frame_key = Vector2i(Move.RAISE, 0)
@@ -268,14 +294,28 @@ func _build_marks() -> void:
 		_slashes.append(slash)
 
 
+## The eyes' own material at rest (each Sentinel flares its own, _process).
+static func _eyes_material() -> StandardMaterial3D:
+	var eyes := StandardMaterial3D.new()
+	eyes.albedo_color = Color(0.12, 0.02, 0.02)
+	eyes.emission_enabled = true
+	eyes.emission = RED
+	eyes.emission_energy_multiplier = EYES_IDLE
+	return eyes
+
+
 static func _cut_material() -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = cut_shader()
 	return m
 
 
+## The marks' and slashes' shader, loaded once and kept (task PERF1: loaded afresh, it was parsed again by
+## the first Sentinel after the level's warm-up had let it go).
 static func cut_shader() -> Shader:
-	return load("res://scripts/enemies/gilded_sentinel_cut.gdshader") as Shader
+	if _cut_shader == null:
+		_cut_shader = load("res://scripts/enemies/gilded_sentinel_cut.gdshader") as Shader
+	return _cut_shader
 
 
 ## A strip in local space: from `a` along `along` (the stretch) and `across`; UV.x 0 at the end nearest

@@ -71,6 +71,23 @@ var _sparks: CPUParticles3D
 static var _spark_mesh: BoxMesh
 
 
+## A Buzz Overdrive's look with its eyes flaring too, for EnemyDirector.warm_up (which frees it) and
+## ShaderWarmup (task PERF1): the first builds the meshes and materials every later one shares.
+static func warm_up(world: RunWorld, _entry: Dictionary) -> Node:
+	var t: BuzzOverdriveTuning = EnemyDirector.tuning_for("buzz_overdrive") as BuzzOverdriveTuning
+	if t == null:
+		t = BuzzOverdriveTuning.new()
+	var variant: StringName = world.skin.enemy_variant if world.skin != null else &"city"
+	var look := BuzzOverdriveModel.new()
+	look.build(variant, t.body_size, t.blade_radius)
+	var meshes: Dictionary = BuzzOverdriveModel.meshes_for(variant, t.body_size, t.blade_radius)
+	var flare := MeshInstance3D.new()
+	flare.mesh = meshes["eyes"]
+	flare.material_override = meshes["eye_flare"]
+	look.add_child(flare)
+	return look
+
+
 func _build() -> void:
 	tuning = tuning_res as BuzzOverdriveTuning
 	if tuning == null:
