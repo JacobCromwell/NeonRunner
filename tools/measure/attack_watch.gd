@@ -17,6 +17,8 @@ extends RefCounted
 ##   Bad Dream: each slash, telegraph to claws
 ##   Resonator: each pulse, from its warning (the halos and the chime) until its last wave has passed
 ##     the player
+##   Gilded Sentinel: each strike, from its eyes' flare (its warning) until its last swing's cut is over
+##   Buzz Overdrive: its charge, from its rev (its warning) until it's gone (its cut has passed the player)
 ## Overlap is the time during which attacks of two or more types are open at once. Also watched
 ## (not a big attack, docs/questions/r3.md): a hover truck's entrance, from its first bang until its
 ## burst stops hurting. The event log lists every state change of every enemy, so two builds can be
@@ -25,6 +27,7 @@ extends RefCounted
 
 const DroneScript := preload("res://scripts/enemies/drone.gd")
 const TruckScript := preload("res://scripts/enemies/hover_truck.gd")
+const BuzzScript := preload("res://scripts/enemies/buzz_overdrive.gd")
 ## Enemy shots that belong to a big attack, by name, and the type they belong to.
 const SHOT_TYPES: Dictionary = {"drone gatling": &"drone", "hover truck cannon": &"hover_truck",
 	"hover truck gunner": &"hover_truck"}
@@ -213,6 +216,14 @@ static func open_kinds(e: Enemy) -> Array[String]:
 			var s: int = int(e.get(&"state"))
 			if s == Resonator.State.WARNING or s == Resonator.State.PULSE or bool(e.call(&"waves_on_their_way")):
 				out.append("resonator_pulse")
+		&"gilded_sentinel":
+			var s: int = int(e.get(&"state"))
+			if s == GildedSentinel.State.WARNING or s == GildedSentinel.State.HOLD or s == GildedSentinel.State.STRIKE:
+				out.append("sentinel_strike")
+		&"buzz_overdrive":
+			var s: int = int(e.get(&"state"))
+			if s == BuzzScript.State.REV or s == BuzzScript.State.CHARGE:
+				out.append("buzz_charge")
 	return out
 
 
@@ -315,6 +326,10 @@ static func _signature(e: Enemy) -> String:
 				int(e.get(&"waves_sent"))]
 		&"cyborg":
 			return "%s mode=%d" % [base, int(e.get(&"mode"))]
+		&"gilded_sentinel":
+			return "%s state=%d" % [base, int(e.get(&"state"))]
+		&"buzz_overdrive":
+			return "%s state=%d" % [base, int(e.get(&"state"))]
 	return base
 
 
