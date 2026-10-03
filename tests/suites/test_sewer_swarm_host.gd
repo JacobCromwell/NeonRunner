@@ -270,12 +270,12 @@ func _test_defeat() -> void:
 	var boss: SewerSwarm = pair[1]
 	world.player.god_mode = true
 	# One hit left.
-	boss.health = boss.hit_damage() * 1.001
+	boss.health = boss.hit_damage()
 	var bot := SewerSwarmBot.new(boss)
 	bot.reaction = REACTION
 	await _run(world, 60.0, func() -> bool: return boss.is_defeated(), func() -> void: bot.step())
-	check(boss.is_defeated() and boss.host.pose == SwarmHost.Pose.FREED and boss.host_attacks.step == SwarmHostAttacks.Step.FREED,
-		"the third hit frees the Host")
+	check(boss.is_defeated() and boss.host.pose == SwarmHost.Pose.FREED and boss.host_attacks.step == SwarmHostAttacks.Step.FREED
+		and boss.host_attacks.stomps + boss.host_attacks.shocked == 1, "the last hit frees the Host")
 	check(_sounds(boss, &"host_short").size() >= 1 and boss.host.implants_left == 0, "its implants short out (host_short)")
 	var person_y0: float = boss.host.person.global_position.y
 	await _run(world, 1.2, func() -> bool: return false)

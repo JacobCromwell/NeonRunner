@@ -109,7 +109,7 @@ func _ready() -> void:
 	boss.setup(world, ctx, arena)
 	world.player.god_mode = true
 	if scenario == "defeat":
-		boss.health = boss.hit_damage() * 1.001
+		boss.health = boss.hit_damage()
 	if scenario not in ["model", "hostmodel"]:
 		bot = SewerSwarmBot.new(boss)
 		bot.baits = scenario in ["fence", "hole", "fight", "behind", "host", "defeat"]
