@@ -219,9 +219,22 @@ func is_defeated() -> bool:
 	return state == State.DEFEATED
 
 
-## True while weapon hits still count (below BossDef.weapon_share_cap).
+## True while weapon hits still count (below BossDef.weapon_share_cap and, if weapons may not end a
+## phase, above weapon_floor()).
 func weapons_can_hurt() -> bool:
-	return weapon_damage < max_health * def.weapon_share_cap - EPSILON * max_health
+	var under_cap: bool = weapon_damage < max_health * def.weapon_share_cap - EPSILON * max_health
+	if def.weapons_can_end_phase:
+		return under_cap
+	return under_cap and health > weapon_floor() + EPSILON * max_health
+
+
+## The lowest health weapon hits may take the boss to now: 0 if weapons may end a phase
+## (BossDef.weapons_can_end_phase), else just above where the current phase ends (the last one's end
+## too: the fight), so only its big hits end it.
+func weapon_floor() -> float:
+	if def.weapons_can_end_phase:
+		return 0.0
+	return max_health * (_ends[phase_index] + 3.0 * EPSILON)
 
 
 func health_ratio() -> float:
@@ -286,6 +299,8 @@ func damage(amount: float, cause: StringName) -> float:
 		return 0.0
 	if cause == &"weapon":
 		amount = minf(amount, max_health * def.weapon_share_cap - weapon_damage)
+		if not def.weapons_can_end_phase:
+			amount = minf(amount, health - weapon_floor())
 		if amount <= 0.0:
 			return 0.0
 	var before: float = health

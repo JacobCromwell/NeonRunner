@@ -47,6 +47,8 @@
 		{ "id": "gangland_boss_host", "trigger": "boss:gangland_boss/host", "text": "The Host crouches by a ramp, its implants glowing red! Take the ramp onto the wall, then wall-jump by the green chevrons to come down on them." },
 		{ "id": "corporate_boss", "trigger": "enemy:corporate_boss", "text": "Hostile Takeover! You're on the Chairman's train: jump the gaps between its carriages and watch the security on its roofs." },
 		{ "id": "corporate_boss_couplings", "trigger": "boss:corporate_boss/couplings", "text": "A coupling glows red in the gap! Jump from the green chevrons in its lane to come down on it: the carriages behind break away." },
+		{ "id": "corporate_boss_strafe", "trigger": "boss:corporate_boss/strafe", "text": "The gunship is strafing! A red line and a rising whine mark the lanes its guns will rake: get out of them." },
+		{ "id": "corporate_boss_ride", "trigger": "boss:corporate_boss/ride", "text": "An armored carriage blocks the way! Step on an anti-grav pad to ride the gunship's belly over it, and jump from the green chevrons to come back up onto its red drop bay." },
 		{ "id": "pickup_armor", "trigger": "pickup:armor", "text": "Armor pickup ahead: run through it to get your armor back at once. Armor blocks enemy attacks and electric shocks." },
 		{ "id": "pickup_shield", "trigger": "pickup:shield", "text": "Shield pickup ahead: run through it. A shield blocks one hit of anything." },
 		{ "id": "pickup_grapple", "trigger": "pickup:grapple", "text": "Grapple pickup ahead: run through it. The grapple hook saves you from one fall." }

@@ -166,6 +166,13 @@ func floor_cut(parent: Node3D, section: FloorCutSection) -> void:
 	})
 
 
+## One tile of phase 2's runway of anti-grav pads (HostileTakeoverArmored), `size` like a pad's trigger:
+## the zone's lift pad, its light rising `beam` high (lower than a lone pad's, so a runway of them leaves
+## the armored carriage in plain view).
+func pad_tile(size: Vector3, beam: float) -> Mesh:
+	return MeshKit.lift_pad(size, pad_color, metal_color, beam, solid_material(), glow_material())
+
+
 ## The train's material (hostile_takeover_train.gdshader): the solid kit's look with the zone's
 ## patterns, and the breakaway.
 func train_material() -> ShaderMaterial:
@@ -183,13 +190,18 @@ func train_material() -> ShaderMaterial:
 
 ## The breakaway (GDD §10: "the carriages behind break away and tumble off the track"): everything of
 ## the train behind track distance `from` tumbles away, `age` seconds after the break (below 0: none),
-## carriage by carriage (`pitch` gap start to gap start, `roof` long), as `t` says.
-func set_breakaway(from: float, age: float, pitch: float, roof: float, t: HostileTakeoverTuning) -> void:
+## carriage by carriage, each about its own rear end (`ends`: how far behind `from` the carriages behind
+## end, the nearest first: HostileTakeoverTrain.ends_behind; the last one stands for any further back),
+## as `t` says.
+func set_breakaway(from: float, age: float, ends: PackedFloat32Array, t: HostileTakeoverTuning) -> void:
 	var m: ShaderMaterial = train_material()
 	m.set_shader_parameter(&"break_z", TrackGeometry.world_z(from) if age >= 0.0 else 1.0e9)
 	m.set_shader_parameter(&"break_age", age)
-	m.set_shader_parameter(&"break_pitch", pitch)
-	m.set_shader_parameter(&"break_roof", roof)
+	var e: Array[float] = []
+	for i: int in 8:
+		e.append(ends[mini(i, ends.size() - 1)] if not ends.is_empty() else 50.0 + i * 56.0)
+	m.set_shader_parameter(&"break_ends_a", Vector4(e[0], e[1], e[2], e[3]))
+	m.set_shader_parameter(&"break_ends_b", Vector4(e[4], e[5], e[6], e[7]))
 	if t != null:
 		m.set_shader_parameter(&"break_recede", t.break_recede)
 		m.set_shader_parameter(&"break_drop", t.break_drop)

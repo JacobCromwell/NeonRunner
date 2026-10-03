@@ -22,6 +22,7 @@ func run() -> void:
 	await _test_arena()
 	await _test_arena_during_fight()
 	await _test_health_and_phases()
+	await _test_weapons_ending_a_phase()
 	await _test_checkpoint_resume()
 	await _test_damage_rules()
 	await _test_stomp_on_real_physics()
@@ -323,6 +324,37 @@ func _test_health_and_phases() -> void:
 	check(is_equal_approx(enc.fight_time(), frozen), "the fight time stops at the defeat")
 	check(is_zero_approx(enc.damage(10.0, &"weapon")), "a beaten boss takes no more damage")
 	await sim.free_world(world)
+
+
+## BossDef.weapons_can_end_phase: on (every boss's default, GDD §10's Floating Head rule: the best weapon
+## may save a stomp), weapon hits chipped to a phase's end end it; off (DESIGN-TBD, Hostile Takeover's),
+## they chip it only to just above its end, auto-fire then leaves the boss alone, and only a big hit ends
+## the phase, the last one's too.
+func _test_weapons_ending_a_phase() -> void:
+	for can_end: bool in [true, false]:
+		var tag: String = "(weapons_can_end_phase %s)" % ("on" if can_end else "off")
+		var def: BossDef = DummyBoss.make_def([[1, 1, false, 0.2], [1, 1, false, 0.2]], 100.0)
+		def.weapon_share_cap = 1.0
+		def.weapons_can_end_phase = can_end
+		var enc := DummyBoss.new()
+		var world: RunWorld = _fight(enc, def, 5)
+		await _until(world, func() -> bool: return enc.is_vulnerable(), 2.0)
+		for i: int in 6:
+			enc.body.take_damage(10.0, &"weapon")
+		if can_end:
+			check(enc.phase_index == 1 and is_equal_approx(enc.health, 50.0), "weapons alone end a phase (%.1f) %s" % [enc.health, tag])
+		else:
+			check(enc.phase_index == 0 and enc.health > 50.0 and enc.health < 50.1 and not enc.weapons_can_hurt()
+				and not enc.body.targetable(), "weapons chip a phase only to just above its end (%.3f) %s" % [enc.health, tag])
+			enc.damage(enc.hit_damage(), &"stomp")
+			await _until(world, func() -> bool: return enc.is_vulnerable(), 2.0)
+			for i: int in 8:
+				enc.body.take_damage(10.0, &"weapon")
+			check(enc.phase_index == 1 and not enc.is_defeated() and enc.health > 0.0 and enc.health < 0.1,
+				"a big hit ends it; in the last phase weapons never beat the boss (%.3f) %s" % [enc.health, tag])
+			enc.damage(enc.hit_damage(), &"stomp")
+			check(enc.is_defeated(), "its big hit does %s" % tag)
+		await sim.free_world(world)
 
 
 ## A retry after a checkpoint starts at that phase, with the fight so far carried.
