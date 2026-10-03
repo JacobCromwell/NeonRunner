@@ -470,7 +470,7 @@ On a debug build, the options go into the page's engine settings: in `exports/we
 
 ## Tests
 
-`tools/godot.sh test` runs 72 suites with about 6,000,000 checks. Many suites independently build the
+`tools/godot.sh test` runs 75 suites with about 6,000,000 checks. Many suites independently build the
 same level (often a campaign step's own default build) to run their own checks on it; `LayoutCache`
 (`tests/helpers/layout_cache.gd`) shares one real build of each across the whole run instead of
 repeating it (`--no-layout-cache` turns that off; `tests/suites/test_layout_cache.gd` checks it never
