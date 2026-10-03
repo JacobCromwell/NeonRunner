@@ -158,9 +158,9 @@ func set_band(wall_x: float, side: int, ahead: float, behind: float, depth: floa
 
 
 ## The Host's bulk: its `size` (width, height, depth or a crouch's length), crouched (0-1), rearing (0-1),
-## charging (0-1), and a shock's glow (0-1).
-func set_host(size: Vector4, crouch: float, rear: float, charge: float, shock: float) -> void:
-	set_param(&"host_shape", Vector4(_q(size.x), _q(size.y), _q(size.z), 0.0))
+## charging (0-1), a shock's glow (0-1), and an attack's heat (0-1: enemy-attack red, only while it attacks).
+func set_host(size: Vector4, crouch: float, rear: float, charge: float, shock: float, heat: float) -> void:
+	set_param(&"host_shape", Vector4(_q(size.x), _q(size.y), _q(size.z), _q(heat)))
 	set_param(&"host", Vector4(_q(crouch), _q(rear), _q(charge), _q(shock)))
 
 

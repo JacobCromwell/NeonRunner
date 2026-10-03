@@ -1,17 +1,22 @@
 class_name SwarmPipe
 extends Node3D
 ## The big sewer pipe the Host bursts out of (GDD §10, phase 3: "the Host bursts out of a big sewer pipe
-## ahead"): a huge rusted pipe slung across the street overhead from wall to wall on brackets, high above
-## anything the runner does (SewerSwarmTuning.pipe_height), its middle bulging and dripping sludge. When the
-## Host bursts out (burst()) its middle section tears open: the torn ring shows, debris and screeches spill.
-## Scenery: no collision, no hazard colours. Made with the fight (hidden), placed ahead as phase 3 begins.
+## ahead"): a huge pale steel pipe ringed with rust, slung across the street overhead from wall to wall on
+## brackets (pale against the brick, so it's seen from far off), high above anything the runner does
+## (SewerSwarmTuning.pipe_height), its rusted middle bulging and dripping sludge, small warm work lamps on
+## its brackets. When the Host bursts out (burst()) its middle section tears open: the torn ring shows,
+## debris and screeches spill. Scenery: no collision, no hazard colours. Made with the fight (hidden), placed
+## ahead as phase 3 begins.
 ## World space (top_level): place() puts it across the street at a track distance.
 
+const STEEL := Color(0.52, 0.53, 0.5)
 const RUST := Color(0.38, 0.24, 0.15)
 const RUST_DARK := Color(0.22, 0.15, 0.1)
 const METAL := Color(0.3, 0.29, 0.27)
 const SLUDGE := Color(0.32, 0.27, 0.12)
 const INSIDE := Color(0.04, 0.035, 0.03)
+## The brackets' work lamps: small and warm white (never a hazard colour).
+const LAMP := Color(1.0, 0.86, 0.66)
 
 var world: RunWorld
 ## Its track distance, and whether it has burst.
@@ -82,7 +87,7 @@ static func _mesh(material: Material, half: float, height: float, radius: float,
 		var length: float = x1 - x0
 		var xform := Transform3D(Basis(Vector3(0.0, radius, 0.0), Vector3(length, 0.0, 0.0), Vector3(0.0, 0.0, radius)),
 			Vector3(x0, height, 0.0))
-		m.prism_xform(xform, sides, RUST)
+		m.prism_xform(xform, sides, STEEL)
 	if torn:
 		# The torn lips: jagged plates curling out round the hole, its dark inside.
 		for side: float in [-1.0, 1.0]:
@@ -95,7 +100,7 @@ static func _mesh(material: Material, half: float, height: float, radius: float,
 	else:
 		# The bulging middle, sludge dripping from its seams.
 		m.prism_xform(Transform3D(Basis(Vector3(0.0, radius * 1.18, 0.0), Vector3(gap * 2.0, 0.0, 0.0),
-			Vector3(0.0, 0.0, radius * 1.18)), Vector3(-gap, height, 0.0)), sides, RUST_DARK)
+			Vector3(0.0, 0.0, radius * 1.18)), Vector3(-gap, height, 0.0)), sides, RUST)
 		for i: int in 5:
 			var dx: float = (float(i) - 2.0) * gap * 0.4
 			m.box(Vector3(dx, height - radius * 1.25 - 0.4 - 0.15 * (i % 2), 0.1 * (i % 3)), Vector3(0.12, 0.8 + 0.3 * (i % 2), 0.12),
@@ -107,10 +112,11 @@ static func _mesh(material: Material, half: float, height: float, radius: float,
 		if torn and absf(fx) < gap + 0.3:
 			continue
 		m.prism_xform(Transform3D(Basis(Vector3(0.0, radius * 1.1, 0.0), Vector3(0.22, 0.0, 0.0),
-			Vector3(0.0, 0.0, radius * 1.1)), Vector3(fx - 0.11, height, 0.0)), sides, METAL)
+			Vector3(0.0, 0.0, radius * 1.1)), Vector3(fx - 0.11, height, 0.0)), sides, RUST_DARK)
 	# Brackets bolted into the walls either side (nothing reaches down into the street).
 	for side: float in [-1.0, 1.0]:
 		var bx: float = side * (half - 1.2)
 		m.box(Vector3(bx, height - radius - 0.2, 0.0), Vector3(0.6, 0.35, radius * 2.4), METAL)
 		m.box(Vector3(bx, height + radius + 0.2, 0.0), Vector3(0.6, 0.35, radius * 2.4), METAL)
+		m.box(Vector3(bx - side * 0.5, height - radius - 0.5, radius * 0.9), Vector3(0.34, 0.16, 0.34), LAMP, 2.2)
 	return batch.to_mesh()

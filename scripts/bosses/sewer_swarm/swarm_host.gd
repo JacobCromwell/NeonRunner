@@ -36,11 +36,14 @@ var pose: Pose = Pose.HIDDEN
 var at: float = 0.0
 var x: float = 0.0
 var lift: float = 0.0
-## Its look, eased by SwarmHostAttacks: crouched (0-1), rearing (0-1), charging (0-1), and a shock's glow.
+## Its look, eased by SwarmHostAttacks: crouched (0-1), rearing (0-1), charging (0-1), a shock's glow, and an
+## attack's heat (0-1: enemy-attack red, only while it attacks: a fling's wind-up, a lunge's warning and
+## charge; rearing to drop or leap is no attack).
 var crouch: float = 0.0
 var rear: float = 0.0
 var charge: float = 0.0
 var shock: float = 0.0
+var heat: float = 0.0
 ## Hits taken (stomps on its implants and lunges into fences), and its implants still glowing.
 var hits_taken: int = 0
 var implants_left: int = IMPLANTS
@@ -308,7 +311,7 @@ func _process(delta: float) -> void:
 	var w: float = lerpf(tuning.host_width, world.geo.lane_width * tuning.crouch_width_share, crouch)
 	var h: float = lerpf(tuning.host_height, tuning.crouch_height, crouch)
 	var d: float = lerpf(tuning.host_depth, crouch_length, crouch)
-	crowd.set_host(Vector4(w, h, d, 0.0), crouch, rear, charge, shock)
+	crowd.set_host(Vector4(w, h, d, 0.0), crouch, rear, charge, shock, heat)
 	crowd.set_life(_shown if not dying else 1.0, 1.0, 3 if dying else 0, freed_seconds, 6.0)
 	crowd.show_up_to(1.0)
 	_pose_person(delta, w, h, d)

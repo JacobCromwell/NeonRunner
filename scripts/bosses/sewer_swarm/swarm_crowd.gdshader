@@ -63,8 +63,9 @@ uniform vec4 wave_shape = vec4(6.75, 11.0, 2.3, 0.0);
 // x = its height, y = its side, z = how far it has risen (0-1).
 uniform vec4 climb = vec4(-4.0, 50.0, 12.0, 3.0);
 uniform vec4 climb_shape = vec4(4.8, -1.0, 0.0, 0.0);
-// The Host: host_shape = its bulk's width, height and depth (crouched: its crouch's length); host = crouched,
-// rearing, charging (each 0-1) and a shock's glow (0-1). +z faces the runner.
+// The Host: host_shape = its bulk's width, height and depth (crouched: its crouch's length) and an attack's
+// heat (0-1: only while it attacks, never as it drops, leaps or crouches); host = crouched, rearing, charging
+// (each 0-1) and a shock's glow (0-1). +z faces the runner.
 uniform vec4 host_shape = vec4(2.8, 4.0, 2.4, 0.0);
 uniform vec4 host = vec4(0.0);
 // A flung cluster's ball: its radius (metres).
@@ -273,8 +274,8 @@ void vertex() {
 		pos = p + n * sin(t) * 0.06;
 		fwd = normalize(cross(vec3(0.0, 1.0, 0.0), n) + vec3(0.0, 0.3 * sin(t * 0.5), 0.0001));
 		up = n;
-		// It heats only while it attacks (rearing to fling or lunge, charging).
-		bristle = 0.25 + 0.75 * max(host.y, host.z);
+		// It heats only while it attacks (a fling's wind-up, a lunge's warning and charge).
+		bristle = 0.25 + 0.75 * host_shape.w;
 		scurry = 0.6 + 0.4 * host.z;
 		// Knocked off: its highest ranks go first.
 		s *= 1.0 - smoothstep(life.x * 1.03 - 0.025, life.x * 1.03 + 0.005, c.w);

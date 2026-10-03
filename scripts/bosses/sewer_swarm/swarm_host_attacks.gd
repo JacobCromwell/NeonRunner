@@ -206,6 +206,7 @@ func _pace(delta: float) -> void:
 	host.rear = move_toward(host.rear, 0.0, delta * 2.0)
 	host.charge = move_toward(host.charge, 0.0, delta * 2.0)
 	host.crouch = move_toward(host.crouch, 0.0, delta * 2.5)
+	host.heat = move_toward(host.heat, 0.0, delta * 3.0)
 
 
 ## A leap to `to_at` (a track distance, or its station while `to_station`) and `to_x`, over leap_seconds,
@@ -232,6 +233,7 @@ func _tick_leap(delta: float) -> void:
 	host.x = lerpf(float(_leap["from_x"]), float(_leap["to_x"]), e)
 	host.lift = lerpf(float(_leap["from_lift"]), 0.0, k) + 4.0 * boss.tuning.leap_height * k * (1.0 - k)
 	host.rear = 0.4 * sin(PI * k)
+	host.heat = move_toward(host.heat, 0.0, delta * 3.0)
 	if k >= 1.0:
 		host.lift = 0.0
 		var then: Callable = _leap["then"]
@@ -315,6 +317,7 @@ func _tick_fling(delta: float) -> void:
 	var t_: SewerSwarmTuning = boss.tuning
 	_pace(delta)
 	host.rear = minf(host.rear + delta * 3.0, 1.0) if t < t_.fling_windup else move_toward(host.rear, 0.0, delta * 3.0)
+	host.heat = host.rear
 	var lane: int = int(event["lane"])
 	var land: float = float(event["land"])
 	var lane_x: float = boss.world.geo.lane_x(lane)
@@ -399,6 +402,7 @@ func _tick_lunge(delta: float) -> void:
 	host.at = move_toward(host.at, float(event["entry"]), 45.0 * delta)
 	host.x = move_toward(host.x, lane_x * 0.5, 8.0 * delta)
 	host.rear = minf(host.rear + delta * 2.5, 1.0)
+	host.heat = host.rear
 	_update_aim(delta, lane)
 	if t >= t_.warning_seconds - t_.lock_seconds - 0.0001:
 		_lock_lunge()
@@ -417,6 +421,7 @@ func _lock_lunge() -> void:
 	host.lunge(boss.world.geo.lane_x(lane))
 	host.rear = 0.0
 	host.charge = 1.0
+	host.heat = 1.0
 	step = Step.CHARGE
 	t = 0.0
 	boss.sound(&"swarm_surge", host.aim_point())
@@ -438,6 +443,7 @@ func _tick_charge(delta: float) -> void:
 		_drop_warnings()
 		event = {}
 		host.charge = 0.0
+		host.heat = 0.0
 		_leap_to_station()
 
 
@@ -445,6 +451,7 @@ func _tick_charge(delta: float) -> void:
 func _shocked(fence_at: float, lane: int) -> void:
 	shocked += 1
 	_drop_warnings()
+	host.heat = 0.0
 	host.stunned(boss.world.geo.lane_x(lane), fence_at + 2.4)
 	host.knock(false)
 	step = Step.STUNNED
@@ -506,6 +513,7 @@ func _land_crouch() -> void:
 func _tick_crouch(delta: float) -> void:
 	host.crouch = minf(host.crouch + delta / SETTLE_SECONDS, 1.0)
 	host.rear = move_toward(host.rear, 0.0, delta * 3.0)
+	host.heat = move_toward(host.heat, 0.0, delta * 3.0)
 	var h: Dictionary = event["spot"]
 	if not bool(event["settled"]) and t >= SETTLE_SECONDS:
 		event["settled"] = true
@@ -522,6 +530,7 @@ func _tick_crouch(delta: float) -> void:
 # --- Freed ---------------------------------------------------------------------------------------------
 
 func _tick_freed(delta: float) -> void:
+	host.heat = 0.0
 	host.rear = move_toward(host.rear, 0.0, delta * 2.0)
 	host.charge = move_toward(host.charge, 0.0, delta * 2.0)
 	# Its back stays under a runner still on it until they've run off it.
