@@ -43,7 +43,7 @@ extends BossEncounter
 ## 3. The last EMP beats it (SleepTakerDefeat): it bursts into hundreds of wisps, the music fades to
 ##    silence (no victory riff: victory_riff), and the first grey dawn breaks before the results.
 ## Every attack has its visual and audio warning (sound() plays and logs each), none overlaps another's,
-## and nothing depends on how long the fight has lasted (GDD §10: no escalation): the refuges are the
+## and the hand volleys progress from one to two to three hands, capped there. The refuges are the
 ## track's, the lists and generators the phase's, so every attempt plays the same way for the same
 ## runner. The phase's pace speeds up the hands and the gaps (GDD §10: hungrier each phase: faster hands,
 ## more lights out in the later lists); the slash and lights out keep their timings (the slash's warning

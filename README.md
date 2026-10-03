@@ -9,7 +9,7 @@ through zones full of enemies, and a single hit ends the run. Built with Godot 4
 - the shop, power-ups and economy
 - every screen and the HUD
 - all six zone looks (the Neon City, Gangland, the Marketplace, Corporate, the Dead Zone and the Golden Zone),
-  generated music and sound effects
+  owner-supplied zone music, generated default music and sound effects
 - all three build flavors
 
 Boss fights have their framework (they play in the runner, with phases, a health bar, checkpoints,
@@ -63,6 +63,28 @@ Options for testing (debug builds only, the same with `play.cmd`):
 
 Example: `./play.sh --lanes=6 --features=octodog,ceilings --god`, or the test boss's last phase:
 `./play.sh --boss=test_boss --phase=3 --god --nofall`.
+
+## Music
+
+Every level within a zone shares that zone's song; there are no level-specific tracks.
+The owner-supplied MP3s are copied unmodified into `assets/music/`:
+
+| Gameplay | Song |
+|---|---|
+| Zone 1 - Neon City | Under the Iron Sky |
+| Zone 2 - Gangland | Alleyway Ambush |
+| Zone 3 - Marketplace | Jackpot Plaza |
+| Zone 4 - Corporate | Concrete Fever |
+| Zone 5 - Dead Zone | Beneath the Cracks |
+| Zone 6 - Golden Zone | View from the Zenith |
+| Boss 1 - Floating Head | Apex Combat Maneuver |
+
+Menus, cutscenes (including the Boss 1 intro), and unmatched bosses keep their generated default
+music. `Horizon_Of_Glass.mp3` is intentionally unused. Gameplay replacements are selected through
+`zone_tracks` and `boss_tracks` in `data/audio/music_library.tres`; the original track entries remain
+available for cinematics. Songs loop in full and retain the existing pause duck, death dip and
+zone completion sounds (`riff_tracks`), whose keys have not been retuned to the supplied songs.
+`tools/godot.sh music` regenerates only the default WAVs, not the supplied MP3s.
 
 ## Controls
 
@@ -198,6 +220,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   charred bridge, its belly's great maw opens with a shriek and the three lanes it will slash light up
   red: take the bridge's pad up onto the ceiling, where it can't reach, or leave those lanes. Purple
   mist pooling in the runner's lane, with whispering, means a hand is about to burst up: switch lanes.
+  Hand volleys progress from one hand to two, then stay at three across phase changes. Later volleys
+  can reach inward from either side wall, with mist on the wall warning each spot. An adjacent floor
+  lane always stays safe, including on the three-lane playfield.
   After a deep inhale it swallows the light, and the street goes darker while every hazard keeps
   glowing. Only a fence generator's EMP hurts it: a generator comes into sight far ahead, its pink
   beacon showing through the nightmare; as the runner nears it the nightmare lunges in after them, and
@@ -262,7 +287,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   - the City, Gangland and Marketplace zone looks, with the cult's feed on screens and its emblem hidden
     in ads in all three
   - neon UI screens and HUD
-  - generated music for the menus and each of the six zones (it dips when the runner dies), and 76 sound
+  - supplied music for all six zones and Boss 1, generated defaults for menus/cutscenes/unmatched bosses
+    (music dips when the runner dies), and 76 sound
     effects, among them the level-complete riff in each zone's key
   - first-encounter hints
 - **Settings:** volumes, key rebinding, screen shake, reduced flashing, hints.
@@ -315,7 +341,7 @@ tools/godot.sh edit             open the editor
 tools/godot.sh test             all tests, under two minutes; exit code 0 = pass (--suite=name runs one)
 tools/godot.sh smoke [options]  40 s of the real game, headless; prints only problems
 tools/godot.sh sfx [--review]   regenerate the sound effects (assets/sfx/) from tools/asset_gen/
-tools/godot.sh music [--review] regenerate the music (assets/music/)
+tools/godot.sh music [--review] regenerate default WAV music (leaves supplied MP3s unchanged)
 tools/godot.sh citizens         regenerate the Marketplace citizens' sprite sheets (assets/sprites/citizens/)
 tools/godot.sh web [--debug] [--serve]  export the web demo and check it (see The web demo)
 tools/godot.sh import           force a resource import
@@ -512,8 +538,9 @@ On a debug build, the options go into the page's engine settings: in `exports/we
   Zone, is shown openly) and where its feed plays, never in the wall-run band (the feed's shared material
   has a suite of its own). Every skin builds its ceilings from the lanes they cover, with the orange end
   band across them and nothing below the underside past the far end, where the camera passes as you drop.
-- **Sounds and music:** every sound and track loads (the tracks loop seamlessly, one per zone), the death dip
-  and how it combines with the pause duck, and the level-complete riff in each zone's key.
+- **Sounds and music:** every sound and track loads, generated defaults loop seamlessly, supplied songs
+  loop in full and match all 15 levels and Boss 1, unmatched scenes retain defaults, the death dip
+  combines with the pause duck, and the original zone completion riffs remain available.
 - **Frame times:** City 3, Marketplace 2 and Golden 2 played as the game plays them, each pass in a fresh
   process, their 99th percentile and worst frame held to budgets in `data/tuning/performance.tres` (scaled by
   how busy the machine is, like the skins' chunk budgets); and what keeps frames smooth without changing the
@@ -551,7 +578,7 @@ scripts/platform/       the platform services layer and its stub
 scripts/core/           tunable resources and DamageRules (the single damage/interaction rule set)
 scripts/input/          TouchInput (swipes/taps → named input actions)
 data/                   every tunable number, level, zone, pattern, skin, catalog and library
-assets/                 generated sounds and music, fonts, icon (licenses: assets/LICENSES.md)
+assets/                 supplied music, generated sounds/default music, fonts, icon (licenses: assets/LICENSES.md)
 tests/                  headless tests
 ```
 

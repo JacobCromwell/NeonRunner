@@ -11,7 +11,8 @@ extends Node3D
 ##   it, its claws heating to enemy-attack red, and grasps: an enemy attack (armor or a shield blocks
 ##   it, the dash passes through) a little smaller than the hand, from the floor to hand_height, above
 ##   a jump's reach: one lane switch dodges it. Once the runner is past it, it lingers a moment, then
-##   sinks back as the mist fades;
+##   sinks back as the mist fades. Successive volleys have one, two, then up to three hands, including
+##   hands reaching inward from either wall. Every volley keeps an adjacent floor lane safe;
 ## - fairness (plan()): a hand comes only at a runner on the floor, where its lane's floor is clear of
 ##   holes and fences around the hand (no dodge needed during a jump), under no ceiling, with no pickup
 ##   in the way, and while a lane max_escape_lanes away is clear from the runner to past the hand.
@@ -20,7 +21,7 @@ extends Node3D
 
 enum Stage { MIST, RISE, UP, SINK }
 
-## Rigs kept ready (more than are ever out at once).
+## Rigs kept ready, enough for the largest volley.
 const POOL: int = 3
 ## How long the mist takes to pool, and a sinking hand to go.
 const POOL_SECONDS: float = 0.4
@@ -39,6 +40,8 @@ var boss: SleepTaker
 var active: Array[Dictionary] = []
 ## Hands started so far.
 var count: int = 0
+## Volleys started so far, preserved across phase changes.
+var volleys: int = 0
 
 var _free: Array[Dictionary] = []
 
@@ -51,7 +54,7 @@ func setup(p_boss: SleepTaker) -> void:
 		_free.append(_make_rig(i))
 
 
-## Where a hand could rise fairly now (see the header): {lane, at, escape}, or {} for none.
+## A fair volley: {lane, at, escape, spots}, or {} while no safe volley can start.
 func plan() -> Dictionary:
 	var world: RunWorld = boss.world
 	var p: Player = world.player
@@ -69,7 +72,29 @@ func plan() -> Dictionary:
 	var escape: int = boss.escape_lane([lane], lane, d, at + t.escape_clear_after * k)
 	if escape < 0:
 		return {}
-	return {"lane": lane, "at": at, "escape": escape}
+	var amount: int = mini(volleys + 1, clampi(t.hand_max_count, 1, POOL))
+	if _free.size() < amount:
+		return {}
+	var spots: Array[Dictionary] = [{"lane": lane, "side": 0}]
+	var floors: Array[Dictionary] = []
+	for offset: int in boss.lane_count():
+		var other: int = (offset + volleys) % boss.lane_count()
+		if other == lane or other == escape:
+			continue
+		if boss.floor_clear_lane(other, at - t.hand_clear_before * k, at + t.hand_clear_after * k) \
+				and not boss.pickup_near(other, at, t.mist_length):
+			floors.append({"lane": other, "side": 0})
+	# The second volley introduces another floor hand; later volleys add a wall hand too.
+	if amount == 2 and floors.is_empty():
+		return {}
+	if amount >= 2 and not floors.is_empty():
+		spots.append(floors.pop_front())
+	var side: int = -1 if volleys % 2 == 0 else 1
+	for wall: int in [side, -side]:
+		if spots.size() >= amount:
+			break
+		spots.append({"lane": 0 if wall < 0 else boss.lane_count() - 1, "side": wall})
+	return {"lane": lane, "at": at, "escape": escape, "spots": spots}
 
 
 ## How far past a hand the runner is when its attack is over (its depth's far half and PASSED, at the
@@ -84,17 +109,38 @@ func warning_seconds() -> float:
 	return (t.mist_seconds + t.hand_rise_lead) / boss.pace()
 
 
-## Starts a hand at `plan` (plan()'s answer): the mist and the whispering.
+## Starts a volley at `plan` (or a single staged hand for a review).
 func start(plan: Dictionary) -> void:
-	if _free.is_empty():
+	var spots: Array[Dictionary] = []
+	if plan.has("spots"):
+		spots.assign(plan["spots"])
+	else:
+		spots.append(plan)
+	if spots.is_empty() or spots.size() > _free.size() or spots.size() > POOL:
+		push_error("SleepTakerHands: cannot start a volley without enough pooled hands")
 		return
+	volleys += 1
+	for spot: Dictionary in spots:
+		_start_hand(spot, float(plan["at"]), int(plan.get("escape", -1)))
+
+
+func _start_hand(spot: Dictionary, at: float, escape: int) -> void:
 	var t: SleepTakerTuning = boss.tuning
 	var rig: Dictionary = _free.pop_back()
-	var lane: int = int(plan["lane"])
-	var at: float = float(plan["at"])
+	var lane: int = int(spot["lane"])
+	var side: int = int(spot.get("side", 0))
 	count += 1
 	var root: Node3D = rig["root"]
-	root.global_position = boss.world.lane_point(lane, at)
+	var visual: Node3D = rig["visual"]
+	visual.rotation.z = float(side) * PI * 0.5
+	root.global_position = boss.world.lane_point(lane, at) if side == 0 else \
+		Vector3(side * boss.world.geo.wall_x(), t.hand_wall_height, TrackGeometry.world_z(at))
+	var size := Vector3(boss.world.geo.lane_width * t.hand_width_share, t.hand_height, t.hand_depth)
+	var hazard: Hazard = rig["hazard"]
+	hazard.size = size if side == 0 else Vector3(size.y, size.x, size.z)
+	hazard.position = Vector3(0.0, size.y * 0.5, 0.0) if side == 0 else \
+		Vector3(-side * size.y * 0.5, 0.0, 0.0)
+	((hazard.get_child(0) as CollisionShape3D).shape as BoxShape3D).size = hazard.size
 	root.visible = true
 	(rig["hand_mat"] as ShaderMaterial).set_shader_parameter(&"rise", 0.0)
 	(rig["hand_mat"] as ShaderMaterial).set_shader_parameter(&"grasp", 0.0)
@@ -105,12 +151,16 @@ func start(plan: Dictionary) -> void:
 	(rig["wisps"] as CPUParticles3D).emitting = true
 	var marker := Node3D.new()
 	marker.name = "MistWarning"
-	boss.props.floor_warning(marker, lane, at - t.mist_length * 0.5, at + t.mist_length * 0.5)
-	var hand := {"n": count, "lane": lane, "at": at, "stage": Stage.MIST, "t": 0.0, "rig": rig, "marker": marker}
+	if side == 0:
+		boss.props.floor_warning(marker, lane, at - t.mist_length * 0.5, at + t.mist_length * 0.5)
+	else:
+		boss.props.keep(marker, at + t.mist_length * 0.5)
+	var hand := {"n": count, "volley": volleys, "lane": lane, "side": side, "escape": escape,
+		"at": at, "stage": Stage.MIST, "t": 0.0, "rig": rig, "marker": marker}
 	active.append(hand)
 	boss.sound(&"sleep_taker_whisper", root.global_position + Vector3(0.0, 0.5, 0.0))
-	boss.log_event(&"mist", {"n": count, "lane": lane, "at": at, "d": boss.player_distance(),
-		"escape": plan.get("escape", -1)})
+	boss.log_event(&"mist", {"n": count, "volley": volleys, "lane": lane, "side": side, "at": at,
+		"d": boss.player_distance(), "escape": escape})
 
 
 ## True while a hand's warning shows or it can still reach the runner (until they're past it).
@@ -173,7 +223,8 @@ func tick(delta: float) -> void:
 					h["stage"] = Stage.RISE
 					h["t"] = 0.0
 					boss.sound(&"sleep_taker_hand", (rig["root"] as Node3D).global_position + Vector3(0.0, 1.0, 0.0))
-					boss.log_event(&"hand", {"n": h["n"], "lane": h["lane"], "at": h["at"], "d": d})
+					boss.log_event(&"hand", {"n": h["n"], "volley": h["volley"], "lane": h["lane"],
+						"side": h["side"], "at": h["at"], "d": d})
 			Stage.RISE:
 				var k: float = clampf(st * p / maxf(t.hand_rise_seconds, 0.01), 0.0, 1.0)
 				hand_mat.set_shader_parameter(&"rise", 1.0 - (1.0 - k) * (1.0 - k))
@@ -227,6 +278,9 @@ func _make_rig(index: int) -> Dictionary:
 	root.top_level = true
 	root.visible = false
 	add_child(root)
+	var visual := Node3D.new()
+	visual.name = "Visual"
+	root.add_child(visual)
 	var hand_mat: ShaderMaterial = SleepTakerModel.hand_material(float(index) * 3.1 + 0.7)
 	var hand := MeshInstance3D.new()
 	hand.name = "Hand"
@@ -235,7 +289,7 @@ func _make_rig(index: int) -> Dictionary:
 	hand.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# The shader lifts it up from below the street: keep it from being culled.
 	hand.extra_cull_margin = 4.0
-	root.add_child(hand)
+	visual.add_child(hand)
 	var mist_mat: ShaderMaterial = SleepTakerModel.mist_material(float(index) * 1.7)
 	var quad := QuadMesh.new()
 	quad.size = Vector2(geo.lane_width * 0.92, t.mist_length)
@@ -246,7 +300,7 @@ func _make_rig(index: int) -> Dictionary:
 	mist.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mist.rotation.x = -PI * 0.5
 	mist.position = Vector3(0.0, 0.05, 0.0)
-	root.add_child(mist)
+	visual.add_child(mist)
 	var wisps := CPUParticles3D.new()
 	wisps.name = "Wisps"
 	wisps.amount = 14
@@ -271,10 +325,10 @@ func _make_rig(index: int) -> Dictionary:
 	wisps.mesh = puff
 	wisps.material_override = SleepTakerModel.wisp_material(Color(SleepTakerModel.MIST_COLOR, 0.32))
 	wisps.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	root.add_child(wisps)
+	visual.add_child(wisps)
 	var size := Vector3(geo.lane_width * t.hand_width_share, t.hand_height, t.hand_depth)
 	var hazard: Hazard = boss.body.add_hitbox(&"attack", size, Vector3(0.0, size.y * 0.5, 0.0), true, root)
 	hazard.hazard_name = "Sleep Taker's hand"
 	hazard.set_enabled(false)
-	return {"root": root, "hand": hand, "hand_mat": hand_mat, "mist": mist, "mist_mat": mist_mat, "wisps": wisps,
+	return {"root": root, "visual": visual, "hand": hand, "hand_mat": hand_mat, "mist": mist, "mist_mat": mist_mat, "wisps": wisps,
 		"hazard": hazard}
