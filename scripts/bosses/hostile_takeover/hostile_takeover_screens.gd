@@ -29,8 +29,10 @@ const PYLON_OUT: float = 7.0
 const PYLON_Y: float = 11.5
 const PYLON_AHEAD: float = 30.0
 const RISE_SECONDS: float = 1.0
-## The words' band, as the face shader's `band`: a share of a screen's height.
+## The words' band, as the face shader's `band`: a share of a screen's height; the words stand this far
+## in front of the face.
 const BAND: float = 0.28
+const WORDS_OFF: float = 0.12
 
 var tuning: HostileTakeoverTuning
 ## The screens: {root (Node3D), face (MeshInstance3D), text (MeshInstance3D), size (Vector2)}.
@@ -131,7 +133,9 @@ func _make_screen(size: Vector2) -> Node3D:
 	var aabb: AABB = text_mesh.get_aabb()
 	var k: float = minf(size.x * 0.86 / maxf(aabb.size.x, 0.01), size.y * BAND * 0.6 / maxf(aabb.size.y, 0.01))
 	text.scale = Vector3.ONE * k
-	text.position = Vector3(0.0, size.y * (0.5 - BAND * 0.5), 0.02)
+	# A hand's breadth in front of the face, so the words never sink into it far off (the Compatibility
+	# renderer's depth is coarser).
+	text.position = Vector3(0.0, size.y * (0.5 - BAND * 0.5), WORDS_OFF)
 	root.add_child(text)
 	screens.append({"root": root, "face": face, "text": text, "size": size, "material": material})
 	return root
