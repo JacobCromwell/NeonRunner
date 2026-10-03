@@ -17,10 +17,11 @@ extends Node3D
 signal died(run: LevelRun)
 signal finished(result: RunResult)
 signal pause_requested
+signal intro_requested
 ## A breakable item broke (armor, shield, grapple): passed on from the current world's player.
 signal item_used(item: StringName)
 
-enum State { RUNNING, DEAD, COMPLETE }
+enum State { RUNNING, DEAD, COMPLETE, READY }
 
 const LANE_OPTIONS: Array[int] = [3, 5, 6]
 const DIFFICULTY_OPTIONS: Array[float] = [0.0, 0.3, 0.6, 0.9]
@@ -61,10 +62,13 @@ var _show_hitboxes: bool = false
 var _env: WorldEnvironment
 var _deaths_by_cause: Dictionary = {}
 var _hints: HintDirector
+var _start_immediately: bool = true
+var _intro_colliders: Array[Dictionary] = []
 
 
-func start(p_context: RunContext) -> void:
+func start(p_context: RunContext, start_immediately: bool = true) -> void:
 	context = p_context
+	_start_immediately = start_immediately
 	rules = App.rules
 	process_mode = Node.PROCESS_MODE_PAUSABLE
 	_build()
@@ -72,6 +76,7 @@ func start(p_context: RunContext) -> void:
 
 ## Builds (or rebuilds) the world for the current context.
 func _build() -> void:
+	_intro_colliders.clear()
 	if world != null:
 		world.queue_free()
 		remove_child(world)
@@ -148,8 +153,7 @@ func _build() -> void:
 		_hints = HintDirector.new()
 		add_child(_hints)
 		# Touch words ("swipe left") only where the player touches the screen, not in a desktop browser.
-		_hints.setup(world, App.profile, App.mobile or DeviceProfile.has_touch())
-		_hints.hint_shown.connect(func(_id: String, text: String) -> void: hud.show_hint(text))
+		_hints.setup(world, App.profile, App.mobile or DeviceProfile.has_touch(), context)
 	if OS.is_debug_build() and debug_hud == null:
 		_build_debug_tools()
 	if frame_monitor != null:
@@ -158,8 +162,49 @@ func _build() -> void:
 			frame_monitor.watch_boss(encounter)
 	state = State.RUNNING
 	death_cause = ""
+	_timer = 0.0
 	_victory_time = -1.0
 	_dip_music(false)
+	if _start_immediately:
+		world.start()
+	else:
+		state = State.READY
+		# Disabling processing normally removes collision objects from physics. Keep the prepared
+		# floor registered, so PLAY cannot start a boss on a temporarily missing floor.
+		for node: Node in world.find_children("*", "CollisionObject3D", true, false):
+			var collider := node as CollisionObject3D
+			_intro_colliders.append({"collider": collider, "mode": collider.disable_mode})
+			collider.disable_mode = CollisionObject3D.DISABLE_MODE_KEEP_ACTIVE
+		process_mode = Node.PROCESS_MODE_DISABLED
+		hud.visible = false
+		speed_lines.visible = false
+
+
+func intro_hints() -> Array[Dictionary]:
+	var entries: Array[Dictionary] = []
+	if _hints != null:
+		entries.assign(_hints.intro_hints.duplicate(true))
+	return entries
+
+
+func acknowledge_intro_hints(entries: Array[Dictionary]) -> void:
+	if _hints != null:
+		_hints.acknowledge(entries)
+
+
+## Starts the already-built world; there is no second generation or loadout purchase.
+func begin() -> void:
+	if state != State.READY:
+		return
+	_start_immediately = true
+	process_mode = Node.PROCESS_MODE_PAUSABLE
+	for entry: Dictionary in _intro_colliders:
+		var collider: CollisionObject3D = entry["collider"]
+		collider.disable_mode = int(entry["mode"])
+	_intro_colliders.clear()
+	hud.visible = true
+	speed_lines.visible = true
+	state = State.RUNNING
 	world.start()
 
 
@@ -208,7 +253,10 @@ func quit_result() -> RunResult:
 ## Starts the same level again in place (debug restart and quick play).
 func restart(next_context: RunContext = null) -> void:
 	context = next_context if next_context != null else context.retry()
+	_start_immediately = context.mode == RunContext.Mode.QUICK
 	_build()
+	if not _start_immediately:
+		intro_requested.emit()
 
 
 func _physics_process(delta: float) -> void:
@@ -390,6 +438,11 @@ func _build_debug_tools() -> void:
 		var wall_fences: WallFenceTuning = WallFencePlacement.tuning()
 		if wall_fences.resource_path != "":
 			sections.append({"title": "Wall fences", "resource": wall_fences, "path": wall_fences.resource_path})
+	# How often and how long side walls break (WallGapPlacement), in a level that has them; Restart level rebuilds.
+	if context.config.has_feature(WallGapPlacement.FEATURE):
+		var wall_gaps: WallGapTuning = WallGapPlacement.tuning()
+		if wall_gaps.resource_path != "":
+			sections.append({"title": "Wall gaps", "resource": wall_gaps, "path": wall_gaps.resource_path})
 	if context.is_boss():
 		# The boss's numbers (health, rewards, par times) and its script's own tuning.
 		var def: BossDef = context.boss

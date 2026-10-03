@@ -396,6 +396,7 @@ func _campaign_flow(lanes: int, demo: bool) -> void:
 	var tag: String = "(%d lanes%s)" % [lanes, ", web demo" if demo else ""]
 	# The City's last level, finished.
 	App.play_step(App.campaign.step("city/3"))
+	App.begin_run()
 	await physics_frames(10)
 	check(App.run != null and App.run.world.geo.lane_count == lanes, "the City's last level starts %s" % tag)
 	if App.run == null:
@@ -416,6 +417,7 @@ func _campaign_flow(lanes: int, demo: bool) -> void:
 	if intro == null:
 		return
 	App.skip_cinematic()
+	App.begin_run()
 	await physics_frames(3)
 	var run: LevelRun = App.run
 	check(run != null and run.encounter is FloatingHead and run.context.step.id == "city/boss"
@@ -523,6 +525,7 @@ func _test_death_restarts() -> void:
 	var saved: Profile = App.profile
 	App.profile = SampleProfiles.fresh()
 	App.play_step(App.campaign.step("city/boss"))
+	App.begin_run()
 	await physics_frames(3)
 	var run: LevelRun = App.run
 	var head := run.encounter as FloatingHead if run != null else null

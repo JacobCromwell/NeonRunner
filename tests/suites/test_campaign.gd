@@ -10,13 +10,22 @@ extends TestSuite
 ## The zones in order and their level counts (GDD §5). Other tasks rely on these ids: skins at
 ## data/skins/<id>_skin.tres, music tracks named after them.
 const ZONES: Array = [["city", 3], ["gangland", 3], ["marketplace", 2], ["corporate", 2], ["dead_zone", 2], ["golden", 3]]
+## Zone & Levels 1: halve City 1's former 110 s, without retiming any other level.
+const LEVEL_DURATIONS: Dictionary[String, float] = {
+	"city/1": 55.0, "city/2": 120.0, "city/3": 130.0,
+	"gangland/1": 135.0, "gangland/2": 140.0, "gangland/3": 145.0,
+	"marketplace/1": 140.0, "marketplace/2": 145.0,
+	"corporate/1": 145.0, "corporate/2": 150.0,
+	"dead_zone/1": 145.0, "dead_zone/2": 150.0,
+	"golden/1": 145.0, "golden/2": 150.0, "golden/3": 150.0,
+}
 ## The level each feature first appears in (GDD §5's schedule; `screech_vents`, the shopfront vents
 ## of Marketplace 2, and `wall_fences_partial`, from the Corporate zone, are GDD §9.1 and §9.5).
 const FIRST_LEVEL: Dictionary = {
 	"cyborg": "city/1",
 	"ceilings": "city/2",
 	"pulsing": "city/3", "window_cyborg": "city/3", "hover_truck": "city/3",
-	"screech": "gangland/1", "ramps": "gangland/1",
+	"screech": "gangland/1", "ramps": "gangland/1", "wall_gaps": "gangland/1",
 	"octodog": "gangland/2", "speed_pads": "gangland/2",
 	"generator": "gangland/3", "drone": "gangland/3",
 	"barnacle_turret": "marketplace/1",
@@ -30,6 +39,8 @@ const FIRST_LEVEL: Dictionary = {
 ## The documented exceptions to "anything introduced earlier keeps appearing later" (GDD §5): the
 ## levels that leave a feature out once it's introduced.
 const LEFT_OUT: Dictionary = {
+	# Zone & Levels 2: Octodogs stop at the Golden Zone, including the Golden Palace.
+	"octodog": ["golden/1", "golden/2", "golden/3"],
 	# Manholes need a street: zones with other floors get wall-vent screeches (screech_vents) instead,
 	# from Marketplace 2's shopfront vents on (GDD §5, proposed); Marketplace 1 has none (DESIGN-TBD).
 	"screech": ["marketplace/1", "marketplace/2", "corporate/1", "corporate/2", "golden/1", "golden/2", "golden/3"],
@@ -47,7 +58,7 @@ const BUZZ_OVERDRIVE_LEVELS: Array = ["corporate/1", "corporate/2", "dead_zone/1
 const NOTHING_NEW: Array = ["dead_zone/2", "golden/3"]
 ## The seed sweep: the levels with the most features, and The Hush (paced in bursts), on this many
 ## seeds each at 3, 5 and 6 lanes.
-const SWEEP_LEVELS: Array = ["gangland/3", "corporate/2", "dead_zone/1", "dead_zone/2", "golden/1", "golden/3"]
+const SWEEP_LEVELS: Array = ["gangland/3", "corporate/2", "dead_zone/1", "dead_zone/2", "golden/1", "golden/2", "golden/3"]
 const SWEEP_SEEDS: int = 8
 ## How far past its start a new feature's first piece or enemy may be: the first pattern picked
 ## from the start uses it, and the pick can wait for the longest pattern before it (an Octodog's
@@ -224,6 +235,11 @@ func _test_schedule(campaign: Campaign) -> void:
 		var listed: bool = BUZZ_OVERDRIVE_LEVELS.has(s.id)
 		check(s.level.has_feature("buzz_overdrive") == listed,
 			"%s %s the Buzz Overdrive (GDD §9.9)" % [s.id, "lists" if listed else "doesn't list"])
+	for s: CampaignStep in levels:
+		var has_octodogs: bool = s.level_index >= campaign.step("gangland/2").level_index \
+			and s.zone.id != &"golden"
+		check(s.level.has_feature("octodog") == has_octodogs,
+			"%s keeps Octodogs only from Gangland 2 through the Dead Zone (Zone & Levels 2)" % s.id)
 	# Every level lists its features in the order the campaign introduces them (the generator runs the
 	# rules scripts in that order).
 	var order: PackedStringArray = []
@@ -244,8 +260,8 @@ func _test_schedule(campaign: Campaign) -> void:
 
 
 ## Each level is slightly harder than the last (GDD §6), up to Golden 2's peak (GDD §5, proposed);
-## enemy scaling runs 0 → 1 across the campaign; levels last 90–150 s and add up to about 35 minutes
-## (GDD §5).
+## enemy scaling runs 0 → 1 across the campaign; City 1 lasts 55 s (Zone & Levels 1), the other
+## levels keep their durations within 90–150 s, and together take about 35 minutes (GDD §5).
 func _test_curve_and_lengths(campaign: Campaign) -> void:
 	var last_curve: float = -1.0
 	for i: int in campaign.level_count():
@@ -263,8 +279,14 @@ func _test_curve_and_lengths(campaign: Campaign) -> void:
 			difficulties.append(config.difficulty)
 			scaling.append(config.enemy_scaling)
 			total += s.level.duration_seconds
-			check(s.level.duration_seconds >= 90.0 and s.level.duration_seconds <= 150.0,
-				"%s lasts 90–150 s (GDD §4): %.0f s" % [s.id, s.level.duration_seconds])
+			check(is_equal_approx(s.level.duration_seconds, LEVEL_DURATIONS[s.id]),
+				"%s lasts %.0f s (only City 1 is halved): %.0f s"
+					% [s.id, LEVEL_DURATIONS[s.id], s.level.duration_seconds])
+			check(is_equal_approx(config.duration_seconds, s.level.duration_seconds),
+				"%s keeps its duration when configured" % s.id)
+			if s.id != "city/1":
+				check(s.level.duration_seconds >= 90.0 and s.level.duration_seconds <= 150.0,
+					"%s lasts 90–150 s (GDD §4): %.0f s" % [s.id, s.level.duration_seconds])
 	var peak: int = steps.find(campaign.step("golden/2"))
 	for i: int in range(1, difficulties.size()):
 		if i <= peak:
@@ -381,6 +403,12 @@ func _check_level(s: CampaignStep, config: LevelConfig, tag: String, stats: Dict
 	# things, and so does test_wall_fences.gd's own campaign-level sweep.
 	var gen: LevelGenerator = LayoutCache.generator(config, tuning, patterns)
 	var layout: LevelLayout = gen.layout
+	var movement: MovementTuning = config.movement_for(tuning)
+	var seconds: float = LEVEL_DURATIONS[s.id]
+	var expected_length: float = movement.run_speed * seconds \
+		+ 0.5 * movement.speed_gain_per_minute / 60.0 * seconds * seconds
+	check(is_equal_approx(layout.length, expected_length),
+		"%s finish line matches %.0f s: %.1f m" % [tag, seconds, layout.length])
 	stats["builds"] = int(stats["builds"]) + gen.attempts
 	stats["levels"] = int(stats["levels"]) + 1
 	check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
@@ -395,6 +423,14 @@ func _check_level(s: CampaignStep, config: LevelConfig, tag: String, stats: Dict
 		if not config.has_feature(f):
 			check(LayoutChecks.feature_positions(layout, f).is_empty(), "no `%s` before they're introduced %s" % [f, tag])
 	var placeable: PackedStringArray = gen.placeable_features(patterns)
+	if s.zone.id == &"golden":
+		check(not config.has_feature("octodog") and not placeable.has("octodog"),
+			"%s cannot pick or guarantee Octodog patterns" % tag)
+		check(LayoutChecks.feature_positions(layout, "octodog").is_empty(),
+			"%s has no Octodogs after all generator rules" % tag)
+		for pick: Dictionary in gen.picks:
+			check(not (pick["requires"] as Array).has("octodog"),
+				"%s never picks an Octodog encounter" % tag)
 	for f: String in config.features:
 		if not LayoutChecks.can_locate(f):
 			check(not placeable.has(f), "`%s` is planned: nothing places it yet %s" % [f, tag])

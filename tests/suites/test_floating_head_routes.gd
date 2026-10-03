@@ -420,8 +420,7 @@ func _test_ceiling_any_lane() -> void:
 
 # --- Hints -------------------------------------------------------------------------------------
 
-## The first time each way up comes, a hint says how to take it, and only that once (a runner who
-## misses the window sees the next pin without it).
+## All ways up are introduced before the first fight; later pins and retries never interrupt it.
 func _test_route_hints() -> void:
 	var profile := Profile.new()
 	for phase: int in 3:
@@ -434,14 +433,17 @@ func _test_route_hints() -> void:
 		hints.setup(world, profile, false)
 		var shown: Array[String] = []
 		hints.hint_shown.connect(func(id: String, _text: String) -> void: shown.append(id))
+		hints.acknowledge(hints.intro_hints)
+		var intro_count: int = shown.size()
 		var bot := FloatingHeadBot.new(head, true)
 		bot.wrong_route = true
 		await _until(world, func() -> bool:
 			bot.step()
 			return _events(head, &"pin_start").size() >= 2, 120.0)
 		var id: String = "city_boss_%s" % ROUTES[phase]
-		check(_events(head, &"pin_start").size() >= 2 and shown.count(id) == 1,
-			"the first %s window shows its hint, and the next doesn't (%s)" % [ROUTES[phase], shown])
+		check(_events(head, &"pin_start").size() >= 2 and shown.count(id) == (1 if phase == 0 else 0),
+			"the %s hint is shown only on the first fight's intro (%s)" % [ROUTES[phase], shown])
+		check(shown.size() == intro_count, "pin events do not show hints during play")
 		await sim.free_world(world)
 
 
@@ -522,6 +524,7 @@ func _test_end_to_end() -> void:
 		App.profile = SampleProfiles.fresh()
 		App.rules.lanes_pc = lanes
 		App.play_step(App.campaign.step("city/boss"))
+		App.begin_run()
 		await physics_frames(3)
 		var tag: String = "(%d lanes)" % lanes
 		var first: Dictionary = await _campaign_attempt(lanes, true)
@@ -541,6 +544,7 @@ func _test_end_to_end() -> void:
 		if shop == null:
 			continue
 		shop.on_close.call()
+		App.begin_run()
 		await physics_frames(3)
 		var again: LevelRun = App.run
 		var head := again.encounter as FloatingHead if again != null else null

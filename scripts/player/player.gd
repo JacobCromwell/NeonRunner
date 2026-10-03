@@ -14,7 +14,9 @@ signal died(cause: String)
 ## wall_jump, wall_exit, wall_blocked, ramp, pad, hull_end, died, stomp, lane_blocked,
 ## ceiling_blocked, speed_pad, grapple, armor_hit (a blocked hit the armor survives), armor_break,
 ## armor_back (broken armor came back), shield_break, revive, dash, dash_end, doodad_push (a zone
-## doodad shoved the player into a neighbouring lane), robbed (a thief's touch took credits, GDD §9.12).
+## doodad shoved the player into a neighbouring lane), robbed (a thief's touch took credits, GDD §9.12),
+## wall_missing (a wall entry refused where a wall gap leaves no wall: no bump, there's nothing to
+## bump against), wall_gap_drop (a wall runner reached a wall gap and dropped off into the outer lane).
 ## The three blocked moves (lane_blocked, wall_blocked, and ceiling_blocked: a move past the edge of a
 ## ceiling over fewer lanes) come with a bump: out toward the blocked side and back.
 signal movement_event(kind: StringName)
@@ -49,6 +51,9 @@ const DOODAD_FEET_CLEARANCE: float = 0.05
 
 var tuning: MovementTuning
 var geo: TrackGeometry
+## The level's side wall gaps (LevelLayout.wall_gaps, the world's own list, so gaps a longer track adds
+## count too): where a wall has no wall-running surface (wall_supported).
+var wall_gaps: Array[Dictionary] = []
 ## Game-wide rules (stomp bounce, invulnerability windows, ...). A default copy if none is set.
 var rules: GameRules
 var god_mode: bool = false
@@ -726,13 +731,21 @@ func _hold_to_pad_lane(pad: Area3D) -> void:
 # --- Walls -----------------------------------------------------------------
 
 ## Enters the wall on `side` (a move past the outer lane, or a ramp: `from_ramp`, `ramp` its trigger's
-## instance id). Refused while falling into a gap, and where the wall is blocked (a sign, or a wall a
-## boss takes away), which clanks and bumps instead (_bump_wall; a ramp only once).
+## instance id). Refused while falling into a gap, where a wall gap leaves no wall (wall_missing, a
+## ramp's only once), and where the wall is blocked (a sign, or a wall a boss takes away), which clanks
+## and bumps instead (_bump_wall; a ramp only once).
 func _try_enter_wall(side: int, from_ramp: bool, ramp: int = 0) -> bool:
 	if surface != Surface.FLOOR or in_pit:
 		return false
 	if not grounded and h < 0.0 and _coyote <= 0.0:
 		return false  # Already dropping into a gap; like a jump, the wall is out of reach.
+	if not wall_supported(side, distance):
+		# DESIGN-TBD (docs/questions/wall_gaps.md): no bump or clank, since nothing is there to hit.
+		if ramp == 0 or ramp != _blocked_ramp:
+			if ramp != 0:
+				_blocked_ramp = ramp
+			_event(&"wall_missing")
+		return false
 	if _wall_blocked(side):
 		if ramp == 0 or ramp != _blocked_ramp:
 			if ramp != 0:
@@ -830,7 +843,17 @@ func _wall_blocked(side: int) -> bool:
 	return not get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty()
 
 
+## True if wall `side` has its wall-running surface at track distance `d`: no wall gap
+## (LevelLayout.wall_gaps) holds it. A plain interval check on the layout, no physics.
+func wall_supported(side: int, d: float) -> bool:
+	return LevelLayout.wall_supported_in(wall_gaps, side, d)
+
+
 func _update_wall(delta: float) -> void:
+	if not wall_supported(wall_side, distance):
+		# A wall gap: the wall runner drops off into the outer lane, falling from where they were.
+		_leave_wall(0.0, &"wall_gap_drop")
+		return
 	_wall_t += delta
 	var wall_x: float = wall_side * geo.wall_x()
 	if _wall_t < tuning.wall_entry_time:

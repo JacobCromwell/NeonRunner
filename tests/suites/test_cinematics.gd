@@ -499,6 +499,9 @@ func _test_app_flow() -> void:
 		"once it has played out (%d frames for %.1f s), City 1 starts" % [frames, duration])
 	check(App.profile.is_completed("city/intro") and App.profile.has_seen("cinematic/city/intro") and App.playing_cinematic() == null,
 		"the slot counts as done and seen, and the cinematic is gone")
+	check(App.screen is LevelIntroScreen and App.run.state == LevelRun.State.READY,
+		"the cinematic leads into the level introduction without starting gameplay")
+	App.begin_run()
 	await physics_frames(3)
 	check(App.run != null and App.run.camera.current and App.run.world.player.running, "the level plays under its own camera")
 

@@ -54,6 +54,17 @@ const CUT_LIP_LIFT: float = 0.02
 ## The default look's inside and edge when the skin names neither (gap_inside_color, gap_edge_color).
 const CUT_INSIDE_COLOR := Color(0.035, 0.035, 0.042)
 const CUT_EDGE_COLOR := Color(1.0, 0.25, 0.04)
+## A side wall gap's standard look (standard_wall_gap; metres, glow): its edge marks run from the floor
+## (never below it: under the floor stays the skins' own shade) to WALL_GAP_EDGE_HEIGHT (above the wall-run band and a ramp's launch), each
+## WALL_GAP_EDGE_WIDTH wide, the leading one brighter; the cut wall's ends go WALL_GAP_DEPTH back from
+## its face; the floor's edge across the gap has a WALL_GAP_LIP wide orange lip.
+const WALL_GAP_EDGE_HEIGHT: float = 7.0
+const WALL_GAP_EDGE_WIDTH: float = 0.45
+const WALL_GAP_EDGE_INSET: float = 0.03
+const WALL_GAP_DEPTH: float = 6.0
+const WALL_GAP_LIP: float = 0.3
+const WALL_GAP_LEADING_GLOW: float = 0.9
+const WALL_GAP_TRAILING_GLOW: float = 0.5
 
 ## The default doodad meshes, by size, push side and palette (built once each).
 static var _doodad_meshes: Dictionary = {}
@@ -298,6 +309,66 @@ static func _commit_part(batch: MeshBatch, parent: Node3D, node_name: String) ->
 
 ## One side wall between two track distances. face_x is the wall face's signed world x.
 func wall_section(_parent: Node3D, _side: int, _face_x: float, _start: float, _end: float) -> void:
+	pass
+
+
+## A side wall gap's part between two track distances (LevelLayout.wall_gaps; the whole gap is
+## `gap`, Vector2(start, end)): TrackBuilder draws no wall_section there. Visual only. It must read at
+## a glance, at speed, in every zone, that the wall-running surface stops: the default
+## (standard_wall_gap) closes the cut wall's two ends with dark faces and marks them with the floor
+## cut's orange (the skin's gap_edge_color if it has one) from the floor to above the wall-run band,
+## the leading edge brightest, with an orange lip along the floor's edge across the gap. Nothing
+## flickers, so it needs nothing for reduced flashing. A skin that draws more than the wall itself in
+## wall_section (the street below, things across the street, built with the left wall) draws those
+## here too where they don't hang off the wall.
+func wall_gap(parent: Node3D, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+	wall_gap_marks(parent, side, face_x, start, end, gap)
+
+
+## The default wall_gap()'s look alone (standard_wall_gap in the skin's gap colours), for a skin whose
+## parent class adds more than it wants.
+func wall_gap_marks(parent: Node3D, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+	var edge: Variant = get("gap_edge_color")
+	var inside: Variant = get("gap_inside_color")
+	var batch := MeshBatch.new()
+	standard_wall_gap(batch.layer(MeshKit.solid()), side, face_x, start, end, gap,
+		edge if edge is Color else CUT_EDGE_COLOR, inside if inside is Color else CUT_INSIDE_COLOR)
+	batch.commit(parent)
+
+
+## The standard wall gap look (wall_gap), into `s` (the kit's solid shader): for the part [start, end]
+## of the gap `gap` on wall `side`, its ends where they fall in that part.
+static func standard_wall_gap(s: MeshLayer, side: int, face_x: float, start: float, end: float, gap: Vector2,
+		edge: Color, inside: Color) -> void:
+	var out: float = float(side)
+	var inward: float = -out * WALL_GAP_EDGE_INSET
+	var top: float = WALL_GAP_EDGE_HEIGHT
+	var bottom: float = 0.0
+	# The lip along the floor's edge, across the part of the gap here.
+	s.box(Vector3(face_x - out * WALL_GAP_LIP * 0.5, CUT_LIP_LIFT, -(start + end) * 0.5),
+		Vector3(WALL_GAP_LIP, 0.02, end - start), edge, CUT_LIP_GLOW)
+	for at: float in [gap.x, gap.y]:
+		if at < start - 0.001 or at > end + 0.001:
+			continue
+		var leading: bool = is_equal_approx(at, gap.x)
+		# Toward the solid wall: before the gap's start, past its end.
+		var dir: float = -1.0 if leading else 1.0
+		# The cut wall's end, dark, from its face back into the block.
+		s.box(Vector3(face_x + out * WALL_GAP_DEPTH * 0.5, (top + bottom) * 0.5, -(at + dir * 0.05)),
+			Vector3(WALL_GAP_DEPTH, top - bottom, 0.1), inside)
+		# The orange edge on the wall's face, and up the end's corner.
+		var glow: float = WALL_GAP_LEADING_GLOW if leading else WALL_GAP_TRAILING_GLOW
+		s.box(Vector3(face_x + inward, (top + bottom) * 0.5, -(at + dir * WALL_GAP_EDGE_WIDTH * 0.5)),
+			Vector3(0.06, top - bottom, WALL_GAP_EDGE_WIDTH), edge, glow)
+		s.box(Vector3(face_x + out * WALL_GAP_EDGE_WIDTH * 0.5, (top + bottom) * 0.5, -(at - dir * 0.02)),
+			Vector3(WALL_GAP_EDGE_WIDTH, top - bottom, 0.04), edge, glow)
+
+
+## The wall gaps (LevelLayout.wall_gaps, whole, as Vector2(start, end)) on `side` near the chunk
+## TrackBuilder is about to draw [start, end) (within a chunk's length of it), noted just before its
+## wall_section() and wall_gap() calls, so a skin that draws a wall element whole by its centre (a
+## shop window) can leave out one that would reach into a gap. Visual only; the default needs nothing.
+func note_wall_gaps(_side: int, _gaps: Array[Vector2]) -> void:
 	pass
 
 

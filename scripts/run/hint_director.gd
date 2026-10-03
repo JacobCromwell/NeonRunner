@@ -1,20 +1,12 @@
 class_name HintDirector
 extends Node
-## First-encounter hints (FB 7). Each hint in
-## data/hints/hints.json shows once per profile, a moment before the player first meets its trigger:
-## "start" (level start), a piece ("gap", "fence_full", "fence_gapped", "fence_pulsing", "sign",
-## "pad", "ramp", "speed_pad", and the wall fences' "wall_fence" (full-height), "wall_fence_low" and
-## "wall_fence_high"), an enemy ("enemy:<type>", when one spawns; "enemy:boss" for any
-## boss without a hint of its own), a pickup ("pickup:<item>", when one appears ahead; "pickup" for
-## any item without a hint of its own) or something of a boss's own ("boss:<key>", when the fight says
-## so: BossEncounter.hint_due, such as a way onto its head). "{action}" in the text becomes the player's
-## key on PC or the gesture on touch screens.
+## First-encounter hints collected before play for LevelIntroScreen. The catalog's existing
+## triggers select unseen hints from the generated layout, plus a boss's hints and actual pickups.
+## No runtime events present hints. Only acknowledge() marks displayed entries seen.
 
 signal hint_shown(id: String, text: String)
 
 const PATH: String = "res://data/hints/hints.json"
-## How long before reaching a piece its hint appears.
-const LEAD_SECONDS: float = 1.6
 const TOUCH_WORDS: Dictionary = {
 	"move_left": "swipe left", "move_right": "swipe right", "jump": "swipe up",
 	"slide": "swipe down", "dash": "tap",
@@ -23,54 +15,113 @@ const TOUCH_WORDS: Dictionary = {
 var world: RunWorld
 var profile: Profile
 var touch: bool = false
-## Hints waiting on a piece: {id, text, at}.
-var _pending: Array[Dictionary] = []
-var _enemy_hints: Dictionary = {}
-## Item ("" for the one every item shares) -> its hint.
-var _pickup_hints: Dictionary = {}
-## A boss's own key (BossEncounter.hint_due) -> its hint.
-var _boss_hints: Dictionary = {}
-var _start_hints: Array[Dictionary] = []
+## Ordered {id: String, text: String} entries for the intro; collecting never changes the profile.
+var intro_hints: Array[Dictionary] = []
+var context: RunContext
 
 
-func setup(p_world: RunWorld, p_profile: Profile, p_touch: bool) -> void:
+func setup(p_world: RunWorld, p_profile: Profile, p_touch: bool, p_context: RunContext = null) -> void:
 	world = p_world
 	profile = p_profile
 	touch = p_touch
+	context = p_context
+	intro_hints.clear()
+	if not bool(Settings.value(profile, "hints")):
+		return
+	var enemies: PackedStringArray = []
+	for e: Dictionary in world.layout.enemies:
+		var host: bool = bool((e.get("params", {}) as Dictionary).get("host", false))
+		enemies.append("host" if host else String(e.get("type", "")))
+		if host:
+			enemies.append("bad_dream")
+	var encounter: BossEncounter = BossEncounter.of(world)
+	var boss_id: String = String(encounter.def.id) if encounter != null else ""
+	for enemy: Enemy in world.director.active:
+		enemies.append("host" if enemy.is_host else String(enemy.type_id))
+	var pickups: PackedStringArray = []
+	if encounter != null:
+		pickups.append("armor")
+		if encounter is TestBoss:
+			var test_tuning: TestBossTuning = (encounter as TestBoss).tuning
+			if test_tuning != null and test_tuning.bonus_pickup_phase > 0 \
+					and not test_tuning.bonus_pickup.is_empty():
+				pickups.append(test_tuning.bonus_pickup)
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(PATH))
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return
+	var new_hints: Array[Dictionary] = []
+	var reminders: Array[Dictionary] = []
 	for h: Dictionary in parsed.get("hints", []):
 		var id: String = String(h.get("id", ""))
 		if id == "" or profile.has_seen("hint/" + id):
 			continue
 		var trigger: String = String(h.get("trigger", ""))
-		var entry := {"id": id, "text": format_text(String(h.get("text", "")))}
-		if trigger == "start":
-			_start_hints.append(entry)
-		elif trigger.begins_with("enemy:"):
-			_enemy_hints[trigger.get_slice(":", 1)] = entry
-		elif trigger == "pickup" or trigger.begins_with("pickup:"):
-			_pickup_hints[trigger.get_slice(":", 1) if trigger.contains(":") else ""] = entry
+		var include: bool = trigger == "start" and encounter == null \
+			and (context == null or not context.is_campaign() or context.level_index == 0)
+		if trigger.begins_with("enemy:"):
+			var key: String = trigger.trim_prefix("enemy:")
+			include = enemies.has(key) or key == boss_id
+			if key == "boss" and boss_id != "":
+				include = not _has_boss_hint(parsed.get("hints", []), boss_id)
 		elif trigger.begins_with("boss:"):
-			_boss_hints[trigger.trim_prefix("boss:")] = entry
-		else:
-			var at: float = _first_at(trigger)
-			if at >= 0.0:
-				entry["at"] = at
-				_pending.append(entry)
-	_pending.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["at"] < b["at"])
-	world.director.enemy_spawned.connect(_on_enemy_spawned)
-	if world.pickups != null:
-		world.pickups.spawned.connect(_on_pickup_spawned)
-	var encounter: BossEncounter = BossEncounter.of(world)
-	if encounter != null:
-		encounter.hint_due.connect(_on_boss_hint)
-	# Enemies already in play (a boss's body, there from the fight's start) get their hint first thing.
-	for e: Enemy in world.director.active:
-		var entry: Dictionary = _take_enemy_hint(e)
-		if not entry.is_empty():
-			_start_hints.append(entry)
+			include = boss_id != "" and trigger.begins_with("boss:" + boss_id + "/")
+		elif trigger == "pickup" or trigger.begins_with("pickup:"):
+			include = not pickups.is_empty() if trigger == "pickup" \
+				else pickups.has(trigger.trim_prefix("pickup:"))
+		elif trigger != "start":
+			include = _first_at(trigger) >= 0.0
+		if include:
+			var entry: Dictionary = {"id": id, "text": format_text(String(h.get("text", "")))}
+			if _is_introduced(trigger, boss_id):
+				new_hints.append(entry)
+			else:
+				reminders.append(entry)
+	intro_hints.append_array(new_hints)
+	intro_hints.append_array(reminders)
+
+
+## Campaign recency is already derived from the actual ordered level configs. Older unseen
+## encounters remain eligible (skipped pages or hints disabled), but new concepts come first.
+func _is_introduced(trigger: String, boss_id: String) -> bool:
+	if boss_id != "":
+		return trigger == "enemy:" + boss_id or trigger == "enemy:boss" \
+			or trigger.begins_with("boss:" + boss_id + "/")
+	if world.config.feature_ages.is_empty():
+		return true
+	var feature: String = trigger.trim_prefix("enemy:")
+	match trigger:
+		"pad": feature = "ceilings"
+		"ramp": feature = "ramps"
+		"speed_pad": feature = "speed_pads"
+		"fence_pulsing": feature = "pulsing"
+		"wall_fence": feature = "wall_fences"
+		"wall_gap": feature = "wall_gaps"
+		"wall_fence_low", "wall_fence_high": feature = "wall_fences_partial"
+		"enemy:bad_dream": feature = "host"
+	if feature == "screech" and not world.config.feature_ages.has(feature):
+		feature = "screech_vents"
+	if world.config.feature_ages.has(feature):
+		return world.config.feature_ages[feature] == 0
+	return context != null and context.level_index == 0
+
+
+func _has_boss_hint(catalog: Array, boss_id: String) -> bool:
+	for hint: Dictionary in catalog:
+		if String(hint.get("trigger", "")) == "enemy:" + boss_id:
+			return true
+	return false
+
+
+## Called by the intro once its entries have been displayed, not when the world is prepared.
+func acknowledge(entries: Array[Dictionary]) -> void:
+	if not bool(Settings.value(profile, "hints")):
+		return
+	for entry: Dictionary in entries:
+		var id: String = String(entry.get("id", ""))
+		if not intro_hints.has(entry) or profile.has_seen("hint/" + id):
+			continue
+		profile.mark_seen("hint/" + id)
+		hint_shown.emit(id, String(entry["text"]))
 
 
 ## Replaces {action} with the player's key or touch gesture.
@@ -84,58 +135,6 @@ func format_text(text: String) -> String:
 			else " / ".join(Settings.key_names(StringName(action)))
 		out = out.replace(token, word)
 	return out
-
-
-func _process(_delta: float) -> void:
-	if world == null or world.player == null or not world.player.running:
-		return
-	if not _start_hints.is_empty():
-		_show(_start_hints.pop_front())
-		return
-	if _pending.is_empty():
-		return
-	var lead: float = world.player.speed * LEAD_SECONDS
-	if world.player.distance >= float(_pending[0]["at"]) - lead:
-		_show(_pending.pop_front())
-
-
-## A boss says one of its own hints is due (BossEncounter.hint_due): shown the first time.
-func _on_boss_hint(key: String) -> void:
-	var entry: Dictionary = _boss_hints.get(key, {})
-	_boss_hints.erase(key)
-	if not entry.is_empty():
-		_show(entry)
-
-
-func _on_enemy_spawned(enemy: Enemy) -> void:
-	var entry: Dictionary = _take_enemy_hint(enemy)
-	if not entry.is_empty():
-		_show(entry)
-
-
-## A pickup appeared ahead: the hint for its item (or the one every item shares), the first time.
-func _on_pickup_spawned(pickup: Pickup) -> void:
-	var key: String = String(pickup.item) if _pickup_hints.has(String(pickup.item)) else ""
-	var entry: Dictionary = _pickup_hints.get(key, {})
-	_pickup_hints.erase(key)
-	if not entry.is_empty():
-		_show(entry)
-
-
-## The hint waiting for this kind of enemy, taken off the list ({} if none): a boss's own hint
-## ("enemy:<boss id>") if it has one, else the one every boss shares ("enemy:boss").
-func _take_enemy_hint(enemy: Enemy) -> Dictionary:
-	var key: String = "host" if enemy.is_host else String(enemy.type_id)
-	if enemy.is_boss and not _enemy_hints.has(key):
-		key = "boss"
-	var entry: Dictionary = _enemy_hints.get(key, {})
-	_enemy_hints.erase(key)
-	return entry
-
-
-func _show(entry: Dictionary) -> void:
-	profile.mark_seen("hint/" + String(entry["id"]))
-	hint_shown.emit(entry["id"], entry["text"])
 
 
 ## Track distance of the first piece of a kind, or -1 if the level has none.
@@ -162,6 +161,9 @@ func _first_at(trigger: String) -> float:
 			for w: Dictionary in layout.wall_fences:
 				if String(w["band"]) == band:
 					found.append(float(w["at"]))
+		"wall_gap":
+			for wg: Dictionary in layout.wall_gaps:
+				found.append(float(wg["start"]))
 		"pad":
 			for pd: Dictionary in layout.pads:
 				found.append(float(pd["at"]))

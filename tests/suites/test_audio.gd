@@ -398,15 +398,18 @@ func _test_run_hooks() -> void:
 		var expected: StringName = library.run_track(zone.music)
 		for index: int in zone.levels.size():
 			App.start_level(App.campaign.step("%s/%d" % [zone.id, index + 1]))
+			App.begin_run()
 			App.run.world.player.god_mode = true
 			App.run.world.player.grapples = 1_000_000
 			await physics_frames(2)
 			check(music.current() == expected, "%s level %d shares its zone's supplied song" % [zone.id, index + 1])
 	App.start_boss(App.campaign.step("city/boss"))
+	App.begin_run()
 	await physics_frames(2)
 	check(music.current() == &"boss_1", "the Floating Head fight plays the supplied Boss 1 song")
 	App.profile.add_stock(&"revive", 1)
 	App.start_level(App.campaign.step("gangland/1"))
+	App.begin_run()
 	App.run.world.player.god_mode = true
 	App.run.world.player.grapples = 1_000_000
 	await _frames(70)

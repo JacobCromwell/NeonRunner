@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="WallGapTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/wall_gap_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+spacing_seconds_easy = 32.0
+spacing_seconds_hard = 24.0
+spacing_jitter = 0.35
+search_seconds = 6.0
+bilateral_share = 0.12
+length_seconds_min = 0.6
+length_seconds_max = 1.1
+clear_seconds = 0.5
+ramp_before_seconds = 0.6
+ramp_after_seconds = 0.4
+wall_enemy_seconds = 1.0

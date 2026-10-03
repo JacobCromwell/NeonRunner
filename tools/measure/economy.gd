@@ -17,6 +17,8 @@ extends SceneTree
 ##   --mobile=true|false          lane count and prices for mobile's catalog prices (default false, PC)
 ##   --packs                      also print the mobile credit packs (StubBackend.FAKE_PRODUCTS,
 ##                                OPEN_QUESTIONS §7) against the curve
+## Use --lanes=5 --seeds=0 --share=0.7 to reproduce test_economy.gd's affordability curve.
+## Its wallet excludes boss payouts; the separate zone summary includes built bosses.
 ##
 ## Per level: run speed, length, credits available (a layout's total_credit_value(), averaged over
 ## lane counts and seeds), a good run's share of them, the completion bonus (GameRules.
@@ -70,7 +72,7 @@ func _run() -> void:
 		var finish: int = good + bonus
 		var death: int = floori(float(good) * rules.death_credit_keep_fraction)
 		wallet += finish
-		r.merge({"good": good, "bonus": bonus, "finish": finish, "death": death, "wallet": wallet,
+		r.merge({"id": id, "good": good, "bonus": bonus, "finish": finish, "death": death, "wallet": wallet,
 			"zone": step.zone.display_name, "zone_id": _zone_id(step), "level_index": step.level_index})
 		rows.append(r)
 		print("%-16s %5.1f %5.0f %6s | %8.0f %6.0f %8.0f %8.0f | %6.0f %8.0f" % [
@@ -160,7 +162,7 @@ func _print_afford(label: String, price: int, rows: Array[Dictionary]) -> void:
 
 
 func _level_label(r: Dictionary) -> String:
-	return "%s" % r.get("zone", "")
+	return "%s" % r.get("id", "")
 
 
 ## The mobile credit packs (StubBackend.FAKE_PRODUCTS; OPEN_QUESTIONS §7, placeholder) against the

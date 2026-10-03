@@ -631,25 +631,29 @@ func _test_hud() -> void:
 	await sim.free_world(world)
 
 
-## The first pickup of each item gets its hint, once per profile.
+## Boss pickups are explained on the intro, once per profile, never on spawning.
 func _test_hints() -> void:
 	var profile := Profile.new()
 	for pass_index: int in 2:
-		var world: RunWorld = await _world(RunSim.layout(5, 600.0))
+		var boss := BossEncounter.create(test_def) as TestBoss
+		var world: RunWorld = _fight(boss, test_def, 5, null)
 		var hints := HintDirector.new()
 		world.add_child(hints)
 		hints.setup(world, profile, false)
 		var shown: Array = []
 		hints.hint_shown.connect(func(id: String, text: String) -> void: shown.append([id, text]))
+		hints.acknowledge(hints.intro_hints)
+		var intro_count: int = shown.size()
 		world.pickups.offer(&"shield")
 		await _until(world, func() -> bool: return false, 0.2)
+		check(shown.size() == intro_count, "a spawning pickup never interrupts play")
 		if pass_index == 0:
 			var ids: Array = shown.map(func(s: Array) -> String: return s[0])
 			check(ids.has("pickup_shield"), "a shield pickup's first appearance brings its hint (%s)" % [ids])
 			for s: Array in shown:
 				if s[0] == "pickup_shield":
 					check(String(s[1]).contains("shield") and String(s[1]).contains("run through"), "saying what it does and how to take it")
-			check(profile.has_seen("hint/pickup_shield") and not profile.has_seen("hint/pickup_armor"), "remembered for that item only")
+			check(profile.has_seen("hint/pickup_shield") and profile.has_seen("hint/pickup_armor"), "boss pickup hints are remembered from the intro")
 		else:
 			check(not shown.map(func(s: Array) -> String: return s[0]).has("pickup_shield"), "never twice")
 		await sim.free_world(world)

@@ -35,6 +35,7 @@ class _Entry:
 	var attempts: int
 	var picks: Array[Dictionary]
 	var fills: Array[Dictionary]
+	var gap_density_result: Dictionary
 
 
 static var _cache: Dictionary = {}  ## String signature (_key) -> _Entry
@@ -74,6 +75,7 @@ static func generator(config: LevelConfig, tuning: MovementTuning, patterns: Arr
 	gen.warnings = entry.warnings.duplicate()
 	gen.picks = entry.picks.duplicate(true)
 	gen.fills = entry.fills.duplicate(true)
+	gen.gap_density_result = entry.gap_density_result.duplicate(true)
 	return gen
 
 
@@ -99,6 +101,7 @@ static func _build(config: LevelConfig, tuning: MovementTuning, patterns: Array)
 	e.attempts = gen.attempts
 	e.picks = gen.picks.duplicate(true)
 	e.fills = gen.fills.duplicate(true)
+	e.gap_density_result = gen.gap_density_result.duplicate(true)
 	return e
 
 

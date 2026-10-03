@@ -302,10 +302,18 @@ func _build_chunk(index: int) -> void:
 	var wall_enemies: Array[Dictionary] = _enemies_between(c0, c1)
 	for side: int in [-1, 1]:
 		# The skin notes a side's wall enemies just before it draws that side (one call, so nothing comes
-		# between them in the queue).
+		# between them in the queue). A wall gap (LevelLayout.wall_gaps) leaves the wall out: the skin
+		# draws the solid stretches only, and the gap's look (its edges) where it is.
+		var solid: Array[Vector2] = layout.wall_solid_pieces(side, c0, c1)
+		var gaps: Array[Vector2] = layout.wall_gap_spans(side, c0, c1)
+		var near_gaps: Array[Vector2] = layout.wall_gap_spans(side, c0 - CHUNK_LENGTH, c1 + CHUNK_LENGTH)
 		_dress(func() -> void:
+			skin.note_wall_gaps(side, near_gaps)
 			skin.note_wall_enemies(side, c0, c1, wall_enemies)
-			skin.wall_section(root, side, side * geo.wall_x(), c0, c1))
+			for piece: Vector2 in solid:
+				skin.wall_section(root, side, side * geo.wall_x(), piece.x, piece.y)
+			for gap: Vector2 in gaps:
+				skin.wall_gap(root, side, side * geo.wall_x(), maxf(gap.x, c0), minf(gap.y, c1), gap))
 	if layout.length >= c0 and layout.length < c1:
 		_dress(skin.finish_line.bind(root, geo.half_width() * 2.0, layout.length))
 

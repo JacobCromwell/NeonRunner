@@ -28,6 +28,8 @@ func run() -> void:
 	await _test_level_select()
 	await _test_shop()
 	await _test_settings()
+	await _test_hint_paging()
+	await _test_intro()
 	await _test_pause()
 	await _test_death()
 	await _test_results()
@@ -90,7 +92,159 @@ func _show_boss_result(won: bool) -> ResultsScreen:
 
 func _start_level(id: String) -> void:
 	App.start_level(App.campaign.step(id))
+	App.begin_run()
 	await physics_frames(10)
+
+
+func _test_intro() -> void:
+	App.profile = SampleProfiles.fresh()
+	App.start_level(App.campaign.step("city/1"))
+	await _frames(3)
+	var intro := App.screen as LevelIntroScreen
+	check(intro != null and App.run.state == LevelRun.State.READY, "campaign starts on its level introduction")
+	if intro == null:
+		return
+	_check_fits(intro, "level intro")
+	await _check_focus(intro, "level intro")
+	var world: RunWorld = App.run.world
+	await physics_frames(10)
+	check(is_zero_approx(world.player.distance) and not world.player.running and not TouchInput.enabled,
+		"the intro holds gameplay and touch input at the start")
+	check(not App.profile.has_seen("hint/lanes"), "unconfirmed intro does not consume hints")
+	intro.back_button.pressed.emit()
+	await _frames(3)
+	check(App.run == null and not App.profile.has_seen("hint/lanes"), "back discards the prepared run without losing hints")
+	App.start_level(App.campaign.step("city/1"))
+	intro = App.screen as LevelIntroScreen
+	world = App.run.world
+	var entries: Array[Dictionary] = intro.hints.duplicate(true)
+	await _frames(3)
+	for i: int in range(1, entries.size()):
+		_tap(&"move_right")
+		await _frames(2)
+	intro.play_button.pressed.emit()
+	await physics_frames(10)
+	check(App.screen == null and App.run.world == world and world.player.running and world.player.distance > 0.0,
+		"PLAY starts the same prepared world")
+	check(App.profile.has_seen("hint/lanes") and App.run.hud.hint_text() == "", "intro hints are remembered without HUD popups")
+	App.retry(App.run.context)
+	intro = App.screen as LevelIntroScreen
+	check(intro != null and intro.hints.is_empty(), "retry retains first-encounter history")
+	intro.play_button.pressed.emit()
+	App.run.restart()
+	check(App.screen is LevelIntroScreen and App.run.state == LevelRun.State.READY,
+		"campaign debug restart returns to the reusable introduction")
+	Settings.set_value(App.profile, "hints", false)
+	App.start_level(App.campaign.step("city/2"))
+	intro = App.screen as LevelIntroScreen
+	check(intro != null and intro.hints.is_empty(), "hints off keeps the intro but hides hints")
+	for entry: Dictionary in entries:
+		check(App.profile.has_seen("hint/" + String(entry["id"])), "intro presentation persists " + String(entry["id"]))
+	Settings.set_value(App.profile, "hints", true)
+	App.start_boss(App.campaign.step("city/boss"))
+	intro = App.screen as LevelIntroScreen
+	var boss: BossEncounter = App.run.encounter
+	var held_time: float = boss.state_time
+	await physics_frames(20)
+	check(intro != null and is_equal_approx(boss.state_time, held_time),
+		"boss introduction holds the fight clock too")
+	check(intro != null and intro.hints.any(func(entry: Dictionary) -> bool: return entry["id"] == "city_boss_ceiling"),
+		"boss route hints are not lost when runtime cues are suppressed")
+	check(intro.hints[0]["id"] == "boss", "new boss concepts precede any unseen arena reminders")
+	for id: String in ["lanes", "pickup_shield", "pickup_grapple"]:
+		check(not intro.hints.any(func(entry: Dictionary) -> bool: return entry["id"] == id),
+			"City boss excludes unrelated " + id)
+	App.start_quick()
+	check(App.screen == null and App.run.state == LevelRun.State.RUNNING and App.run.intro_hints().is_empty(),
+		"debug quick play still starts immediately without hints")
+	App.show_title()
+
+
+func _test_hint_paging() -> void:
+	App.profile = SampleProfiles.fresh()
+	App.start_level(App.campaign.step("city/1"))
+	await _frames(3)
+	var intro := App.screen as LevelIntroScreen
+	var original_focus: Control = _focus()
+	check(intro.page_index == 0 and intro.previous_button.disabled and not intro.next_button.disabled,
+		"intro opens on its first page with correct button boundaries")
+	check(intro.hint_list.get_child_count() == 2 and intro.page_label.text == "1 / %d" % intro.hints.size(),
+		"only one hint and the page counter are presented")
+	_tap(&"move_left")
+	await _frames(2)
+	check(intro.page_index == 0 and _focus() == original_focus, "left boundary clamps without moving PLAY focus")
+	tree.root.push_input(_key(KEY_RIGHT))
+	await _frames(2)
+	check(intro.page_index == 1 and _focus() == original_focus and App.run.state == LevelRun.State.READY,
+		"right arrow pages without activating PLAY or moving focus")
+	var repeat := _key(KEY_RIGHT)
+	repeat.echo = true
+	tree.root.push_input(repeat)
+	await _frames(2)
+	check(intro.page_index == 1, "held-arrow echoes do not skip hint pages")
+	_tap(&"move_left")
+	await _frames(2)
+	check(intro.page_index == 0, "left action returns to the previous page")
+	var rebound := _key(KEY_ENTER)
+	Settings.bind_key(App.profile, &"move_right", rebound)
+	tree.root.push_input(_key(KEY_RIGHT))
+	await _frames(2)
+	check(intro.page_index == 0, "old arrow binding no longer pages after rebinding")
+	intro.play_button.grab_focus()
+	tree.root.push_input(rebound)
+	await _frames(2)
+	check(intro.page_index == 1 and App.screen == intro and App.run.state == LevelRun.State.READY,
+		"rebound paging takes precedence over ui_accept on focused PLAY")
+	InputMap.load_from_project_settings()
+	Settings.reset_bindings(App.profile)
+	# Skip several pages in one frame: only the rendered destination becomes presented.
+	for i: int in range(2, intro.hints.size()):
+		intro.next_button.pressed.emit()
+	await _frames(2)
+	check(intro.page_index == intro.hints.size() - 1 and intro.next_button.disabled,
+		"click/touch NEXT reaches the last page and disables its boundary")
+	_tap(&"move_right")
+	await _frames(2)
+	check(intro.page_index == intro.hints.size() - 1, "right boundary does not wrap")
+	intro.previous_button.pressed.emit()
+	await _frames(2)
+	check(intro.page_index == intro.hints.size() - 2, "click/touch PREVIOUS pages back")
+	var expected_seen: Array[String] = []
+	for i: int in [0, 1, intro.hints.size() - 2, intro.hints.size() - 1]:
+		var id: String = String(intro.hints[i]["id"])
+		if not expected_seen.has(id):
+			expected_seen.append(id)
+	var entries: Array[Dictionary] = intro.hints.duplicate(true)
+	var lane: int = App.run.world.player.lane
+	intro.play_button.pressed.emit()
+	await physics_frames(2)
+	check(App.run.world.player.lane == lane, "consumed paging input does not leak into gameplay")
+	for entry: Dictionary in entries:
+		var id: String = String(entry["id"])
+		check(App.profile.has_seen("hint/" + id) == expected_seen.has(id),
+			"history includes truly presented pages only: " + id)
+	App.retry(App.run.context)
+	await _frames(3)
+	intro = App.screen as LevelIntroScreen
+	check(intro.hints.size() == entries.size() - expected_seen.size(), "retry offers only unvisited pages")
+	App.show_title()
+	# Empty and single-page cases use the same screen and never navigate into a missing page.
+	for count: int in [0, 1]:
+		var screen := LevelIntroScreen.new()
+		screen.context = RunContext.new()
+		screen.context.config = LevelConfig.new()
+		if count == 1:
+			screen.hints = [{"id": "gap", "text": "Jump the gap."}]
+		App.show_screen(screen)
+		await _frames(3)
+		_tap(&"move_left")
+		_tap(&"move_right")
+		await _frames(2)
+		check(screen.page_index == 0, "%d-page intro safely consumes navigation" % count)
+		if count == 1:
+			check(screen.previous_button.disabled and screen.next_button.disabled,
+				"single-page intro disables both paging buttons")
+	App.show_title()
 
 
 func _die() -> void:
@@ -143,6 +297,7 @@ func _test_every_screen(tag: String) -> void:
 		["shop", func() -> void: App.show_shop(), ShopScreen],
 		["shop between levels", func() -> void: App.show_shop(App.show_title, "Next"), ShopScreen],
 		["settings", func() -> void: App.show_settings(), SettingsScreen],
+		["level intro", func() -> void: App.start_level(App.campaign.step("city/1")), LevelIntroScreen],
 		["results", func() -> void: _show_result(true), ResultsScreen],
 		["run summary", func() -> void: _show_result(false), ResultsScreen],
 		["boss results", func() -> void: _show_boss_result(true), ResultsScreen],
@@ -446,6 +601,7 @@ func _test_pause() -> void:
 	pause = App.overlay as PauseScreen
 	check(pause != null and tree.paused, "back from the settings to the pause menu, still paused")
 	(pause.buttons["restart"] as BaseButton).pressed.emit()
+	App.begin_run()
 	await physics_frames(3)
 	check(App.run != null and App.run.context.attempt == 2 and not tree.paused and App.overlay == null, "Restart starts the level again")
 	App.pause_game()

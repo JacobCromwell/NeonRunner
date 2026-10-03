@@ -62,6 +62,8 @@ func build(p_config: LevelConfig, p_layout: LevelLayout, p_tuning: MovementTunin
 	player = _add(Player.new(), "Player") as Player
 	player.rules = rules
 	player.setup(tuning, geo, layout.lane_count / 2)
+	# The layout's own list: wall gaps the track gains later (extend_layout) count too.
+	player.wall_gaps = layout.wall_gaps
 	player.apply_loadout(DamageRules.Armor.create(rules, loadout.tier(&"armor"), loadout.has_armor()),
 		loadout.charge(&"shield"), loadout.charge(&"grapple"),
 		loadout.tier(&"claws") > 0,

@@ -224,7 +224,7 @@ func set_message(text: String) -> void:
 			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
-## A first-encounter hint under the progress meter for a few seconds (HintDirector).
+## A brief run-status notice (e.g. a boss checkpoint). Tutorial hints belong on LevelIntroScreen.
 func show_hint(text: String, seconds: float = 3.5) -> void:
 	_hint_label.text = text
 	# One line when it fits, wrapped at a readable width when it doesn't.
