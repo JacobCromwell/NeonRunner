@@ -31,8 +31,9 @@ extends RefCounted
 ## (phase 2), the Board goes on from the first carriage past the built track, so nothing it plans pops up
 ## in view. In phase 3 (`merger`: GDD §10, The Merger's attacks "combine both") it plans only the
 ## carriages of the consist's slots in HostileTakeoverTuning.merger_board_slots (the others carry the war
-## engine's drops and passes): their guards from merger_guards and their wall fences, no Tithe Collector. Every choice comes from a seed of its carriage (a Collector's lane from where the runner is),
-## so the fight plays the same on every attempt.
+## engine's drops and passes): their guards from merger_guards and their wall fences, no Tithe Collector.
+## Every choice comes from a seed of its carriage (a Collector's lane from where the runner is), so the
+## fight plays the same on every attempt.
 
 ## A carriage is planned once the built track reaches within this of its roof's start (so the whole of
 ## it, its wall fence too, is still ahead of the built track: stream_from moves on a chunk at a time).

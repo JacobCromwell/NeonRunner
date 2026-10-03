@@ -545,6 +545,9 @@ static func up_time_for(m: MovementTuning, depth: float) -> float:
 func _tick_strafe(delta: float, d: float) -> void:
 	if strafe.is_empty():
 		_rest += delta
+		if merger and not boss.docked:
+			# The war engine's first strafe waits merger_hold after the docking (MERGER COMPLETE reads first).
+			_rest = tuning.strafe_gap - tuning.merger_hold
 		if active and boss.is_vulnerable() and (not merger or boss.docked) and _rest >= tuning.strafe_gap and strafe_fits(d):
 			_start_strafe(d)
 		return

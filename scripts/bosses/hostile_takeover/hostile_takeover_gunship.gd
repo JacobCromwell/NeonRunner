@@ -357,7 +357,7 @@ func _bay_material() -> ShaderMaterial:
 	return m
 
 
-## The fight is won: the encounter plays the defeat (a placeholder until task E5b-c: it climbs away), so
-## it stays.
+## The fight is won: the encounter plays the defeat (it pulls free, spins away and explodes:
+## HostileTakeover._place_defeat), so it stays.
 func _on_defeated(_cause: StringName) -> void:
 	pass

@@ -175,12 +175,14 @@ extends Resource
 ## in metres) while the gunship settles onto its rear, its belly dock_height over the roofs, over
 ## dock_seconds; its clamps lock and merger_text flashes on every screen (the locomotive's rear screen and
 ## the ad screens pacing the train) with the Chairman's face for merger_flash_seconds (steady with Reduced
-## flashing), the face staying on them after.
+## flashing), the face staying on them after; the war engine's first strafe waits merger_hold after that (the
+## screens read first).
 @export_range(30.0, 120.0, 1.0, "suffix:m") var merger_ahead: float = 64.0
 @export_range(6.4, 12.0, 0.1, "suffix:m") var dock_height: float = 7.0
 @export_range(1.0, 8.0, 0.1, "suffix:s") var dock_seconds: float = 3.0
 @export var merger_text: String = "MERGER COMPLETE"
 @export_range(1.0, 10.0, 0.5, "suffix:s") var merger_flash_seconds: float = 5.0
+@export_range(0.0, 6.0, 0.25, "suffix:s") var merger_hold: float = 1.5
 ## DESIGN-TBD (GDD §10: "its attacks combine both"): after each flatcar's drop the war engine comes back
 ## over the runner for a pass (a runway of pads before it, as phase 2's ride); between, the Board's guards
 ## and partial wall fences come back on the carriages of the consist's slots in merger_board_slots (their
