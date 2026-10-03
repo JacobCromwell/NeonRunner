@@ -46,6 +46,7 @@ func run() -> void:
 	_test_data()
 	_test_towers()
 	await _test_lasers()
+	await _test_jump_on_fire()
 	await _test_standing_still()
 	await _test_wrong_answers()
 	await _test_laser_rules()
@@ -324,6 +325,35 @@ func _test_lasers() -> void:
 		check(jumps == int(kinds.get(&"low", 0)) and slides == int(kinds.get(&"high", 0)),
 			"it jumped every low sweep and slid under every high one %s" % tag)
 		await sim.free_world(world)
+
+
+## A normal jump at the firing cue clears the low sweep in every lane, without a dash or defenses.
+func _test_jump_on_fire() -> void:
+	for phase: int in def.phase_count():
+		for lanes: int in LANES:
+			for lane: int in lanes:
+				for delay: float in [0.0, 0.05, 0.1]:
+					var pair: Array = _fight(_def("low", false, true), lanes, {"phase": phase})
+					var world: RunWorld = pair[0]
+					var head: FloatingHead = pair[1]
+					world.player.lane = lane
+					world.player.set(&"_x", world.geo.lane_x(lane))
+					world.player.set(&"_switch_t", 1.0)
+					world.player.global_position.x = world.geo.lane_x(lane)
+					var state: Dictionary = {"jumped": false, "touches": 0}
+					var cause: Array[String] = _watch_death(world)
+					var done: bool = await _until(world, func() -> bool:
+						if head.faceoff.step == FloatingHeadFaceOff.Step.FIRE and head.faceoff.step_time >= delay and not state["jumped"]:
+							world.player.press(&"jump")
+							state["jumped"] = true
+						if _touching_laser(head):
+							state["touches"] += 1
+						return not _events(head, &"laser_end").is_empty() or not world.player.alive, 15.0)
+					check(done and state["jumped"] and world.player.alive and state["touches"] == 0
+							and is_equal_approx(world.player.global_position.x, world.geo.lane_x(lane)),
+						"a jump %.2f s after firing clears the low sweep without power-ups (phase %d, %d lanes, lane %d, %s)" % [
+						delay, phase + 1, lanes, lane, cause[0]])
+					await sim.free_world(world)
 
 
 ## A runner who stands still is hit by each kind of laser.

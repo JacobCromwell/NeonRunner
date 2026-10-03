@@ -679,7 +679,7 @@ func _test_plain_fight() -> void:
 			bot.step()
 			var hit: String = _touching_attack(head)
 			if hit != "" and touches.size() < 4:
-				touches.append("%s at %.1f s" % [hit, head.fight_time()])
+				touches.append("%s (%s) at %.1f s" % [hit, head.faceoff.attack.get("kind", &""), head.fight_time()])
 			return head.is_defeated(), 400.0)
 		check(head.is_defeated() and touches.is_empty(),
 			"a runner who reads it beats the whole fight untouched by its attacks and its hull (%s) (%d lanes)" % [
