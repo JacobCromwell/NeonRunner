@@ -70,6 +70,23 @@ static var _mesh: ArrayMesh
 static var _gold_mat: StandardMaterial3D
 
 
+## A Tithe Collector's look, for EnemyDirector.warm_up (which frees it) and ShaderWarmup: the first
+## builds its gold body's mesh and material (static, cached in _mesh and _gold_mat by _model_mesh
+## and _gold_material) every later one shares, the same look everywhere (GDD §9.12: gold stays plain
+## metal in every zone). It builds no physics object (Smooth frames, docs/ARCHITECTURE.md).
+static func warm_up(_world: RunWorld, _entry: Dictionary) -> Node:
+	var t: TitheCollectorTuning = EnemyDirector.tuning_for("tithe_collector") as TitheCollectorTuning
+	if t == null:
+		t = TitheCollectorTuning.new()
+	var pivot := Node3D.new()
+	pivot.scale = Vector3.ONE * t.model_scale
+	var mesh_inst := MeshInstance3D.new()
+	mesh_inst.mesh = _model_mesh()
+	mesh_inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	pivot.add_child(mesh_inst)
+	return pivot
+
+
 func _build() -> void:
 	tune = tuning_res as TitheCollectorTuning if tuning_res is TitheCollectorTuning else TitheCollectorTuning.new()
 	display_name = "Tithe Collector"

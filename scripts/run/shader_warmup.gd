@@ -14,7 +14,10 @@ extends Node3D
 ##   (a muzzle's charge, a lunge line);
 ## - one of each track piece the zone skin dresses: fences full and gapped in each of their states,
 ##   wall fences, a sign, a pad, a ramp, a speed pad, full and narrow ceilings, every doodad size, gap
-##   edges and the finish line.
+##   edges and the finish line;
+## - every credit denomination's look (CreditField.mesh_for/material_for), since a level's own layout
+##   may carry only some of them, or none at all (a boss's track, Hostile Takeover's) and still drop
+##   one later (a Tithe Collector's trail, a jackpot's fountain, CreditField.place).
 ## They sit in front of the camera, far too small to see (SCALE), for DRAWN_FRAMES drawn frames, then go;
 ## their materials stay kept until the next level's stage (_kept), so their shaders stay built.
 ## Visual only: nothing in it collides, plays or moves the run on, and it never frees a physics object
@@ -61,6 +64,7 @@ func setup(world: RunWorld, camera: Camera3D) -> void:
 	scale = Vector3.ONE * SCALE
 	_sample_hidden(world)
 	_sample_effects()
+	_sample_credits()
 	for look: Node in world.director.warm_looks():
 		add_child(look)
 	_sample_track(world)
@@ -150,6 +154,15 @@ func _sample_effects() -> void:
 		box.mesh = GreyboxMaterials.unit_box()
 		box.material_override = glow
 		add_child(box)
+
+
+## Every credit denomination's look, one instance each, matching CreditField's own placed-credit
+## MultiMeshes (no use_colors or use_custom_data): a level's layout may carry only some denominations,
+## or (a boss's track) none at all, and still place one later (lay_tithe, a jackpot's fountain), which
+## would otherwise compile its shader the first time it's dropped mid-run.
+func _sample_credits() -> void:
+	for value: int in CreditField.LOOKS:
+		_add_multimesh(CreditField.mesh_for(value), CreditField.material_for(value), false, false)
 
 
 ## A one-instance multimesh of `mesh` in `material` (a particle system draws as one).

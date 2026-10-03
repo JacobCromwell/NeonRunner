@@ -32,6 +32,7 @@ const WARM_ENTRIES: Array[Dictionary] = [
 	{"type": "generator", "at": 540.0, "lane": 2, "seed": 10, "params": {}},
 	{"type": "buzz_overdrive", "at": 560.0, "lane": 1, "seed": 11, "params": {}},
 	{"type": "gilded_sentinel", "at": 580.0, "lane": 0, "side": 1, "seed": 12, "params": {}},
+	{"type": "tithe_collector", "at": 600.0, "lane": 1, "seed": 13, "params": {}},
 ]
 
 var sim: RunSim
@@ -230,12 +231,12 @@ func _test_enemy_warm_up() -> void:
 	for e: Dictionary in director.warm_entries():
 		if not EnemyDirector._scripts.has(String(e["type"])) or EnemyDirector._scripts[String(e["type"])] == null:
 			unloaded.append(String(e["type"]))
-	check(unloaded.is_empty() and director.warm_entries().size() == 11,
+	check(unloaded.is_empty() and director.warm_entries().size() == 12,
 		"each type's script is loaded with the level (%d kinds; not loaded: %s)" % [director.warm_entries().size(), ", ".join(unloaded)])
 	check(int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)) == nodes_before and director.get_child_count() == children_before
 		and director.active.is_empty(), "nothing it built stays: no node in the tree, no enemy in play")
 	check(heard.is_empty(), "nothing is heard while it readies them (%s)" % ", ".join(heard))
-	check(EnemyDirector._kept.size() >= 11, "the looks' materials are kept, so their shaders stay built (%d)" % EnemyDirector._kept.size())
+	check(EnemyDirector._kept.size() >= 12, "the looks' materials are kept, so their shaders stay built (%d)" % EnemyDirector._kept.size())
 	var count: int = EnemyDirector._warmed.size()
 	director.warm_up()
 	check(EnemyDirector._warmed.size() == count, "once a process: a second level with the same kinds readies nothing again")
@@ -249,7 +250,7 @@ func _test_enemy_warm_up() -> void:
 			physics.append(String(look.name))
 		look.free()
 	check(physics.is_empty(), "a look has no physics object (freeing one would reorder later contacts): %s" % ", ".join(physics))
-	check(looks.size() == 11 and empty == 0, "warm_looks() gives one look of each kind, built outside the tree (%d, %d empty)" % [
+	check(looks.size() == 12 and empty == 0, "warm_looks() gives one look of each kind, built outside the tree (%d, %d empty)" % [
 		looks.size(), empty])
 	await sim.free_world(world)
 
@@ -379,6 +380,13 @@ func _test_shader_warmup() -> void:
 			hidden += 1
 	check(hidden > 0 and stage.keys.size() > 0, "it samples the run's hidden looks (%d samples of %d hidden nodes)" % [
 		stage.keys.size(), hidden])
+	var credit_shaders: int = 0
+	for value: int in CreditField.LOOKS:
+		if drawn.has(CreditField.material_for(value)):
+			credit_shaders += 1
+	check(credit_shaders == CreditField.LOOKS.size(),
+		"it draws every credit denomination's look, even a boss's whose track carries none of its own (%d of %d)" %
+		[credit_shaders, CreditField.LOOKS.size()])
 	stage.queue_free()
 	await tree.process_frame
 	var again := ShaderWarmup.new()
