@@ -595,7 +595,8 @@ static func _all_overlaps(dummies: Array[Enemy]) -> Vector2i:
 ## attacks of different types never overlap, every type still attacks and every Octodog charges;
 ## with it off the old overlaps are back. Gangland 3 is item 27's level (drones, Octodogs, hover
 ## trucks), at 3 lanes and at 6; at its zone's speed (G1) its layout at 3 lanes is the one with the
-## overlaps (3.9 s with the switch off; 6 lanes', 0.2 s); Dead Zone 1 adds hosts and the Bad Dream.
+## overlaps (3.9 s with the switch off; 6 lanes', 0.2 s); Dead Zone 1 adds hosts and the Bad Dream, and
+## at 5 lanes a Buzz Overdrive whose rev met a hover truck's lurch until it claimed its turn (task FIX2).
 func _test_campaign() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var cases: Array = [["gangland/3", 3, true], ["gangland/3", 6, true], ["gangland/3", 3, false], ["dead_zone/1", 5, true]]
