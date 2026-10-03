@@ -148,7 +148,7 @@ func stomp_lead() -> float:
 ## True if a hand's mist (or hand) is in `lane` ahead.
 func _mist_in(lane: int) -> bool:
 	for h: Dictionary in boss.hands.active:
-		if int(h["lane"]) == lane and int(h["stage"]) != SleepTakerHands.Stage.SINK:
+		if int(h["side"]) == 0 and int(h["lane"]) == lane and int(h["stage"]) != SleepTakerHands.Stage.SINK:
 			return true
 	return false
 
@@ -180,16 +180,14 @@ func _read_hands() -> void:
 	var player: Player = boss.world.player
 	for h: Dictionary in boss.hands.active:
 		var id: String = "hand%d" % int(h["n"])
-		if _handled.has(id) or int(h["stage"]) != SleepTakerHands.Stage.MIST:
+		if _handled.has(id) or int(h["stage"]) != SleepTakerHands.Stage.MIST or int(h["side"]) != 0:
 			continue
 		_handled[id] = true
 		var lane: int = int(h["lane"])
 		var mine: int = _target if _target >= 0 else player.lane
 		if lane != mine:
 			continue
-		var struck: Array[int] = [lane]
-		var e: int = boss.escape_lane(struck, lane, player.distance,
-			float(h["at"]) + boss.tuning.escape_clear_after * boss.run_pace())
+		var e: int = int(h["escape"])
 		if e < 0:
 			e = lane + (1 if lane < boss.lane_count() - 1 else -1)
 		_pending.append({"at": boss.fight_time() + reaction, "lane": e, "why": "hand"})

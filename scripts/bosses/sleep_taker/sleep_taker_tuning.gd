@@ -97,6 +97,10 @@ extends Resource
 @export_range(0.0, 10.0, 0.25, "suffix:m") var lunge_gap: float = 1.5
 
 @export_group("Grasping hands")
+## One hand on the first volley, two on the second, then this many, including side-wall hands.
+@export_range(1, 3) var hand_max_count: int = 3
+## Wall hands reach inward at this height, leaving grounded floor runners clear.
+@export_range(2.5, 4.0, 0.05, "suffix:m") var hand_wall_height: float = 3.0
 ## DESIGN-TBD: the warning: purple mist pools in the runner's lane ahead, with whispering, where the
 ## runner will be once it has shown mist_seconds and the hand has been up hand_rise_lead; the hand
 ## bursts up out of the mist as the runner comes within hand_rise_lead of it. One lane switch dodges it.

@@ -1,7 +1,8 @@
 class_name MusicLibrary
 extends Resource
-## Which file plays for each music track, and how loud. The current files are seamless loops made by
-## tools/asset_gen/music_gen.gd (tools/godot.sh music). To replace a track, point its entry in
+## Which file plays for each music track, and how loud. Generated defaults are seamless loops made by
+## tools/asset_gen/music_gen.gd (tools/godot.sh music); owner-supplied songs override gameplay only.
+## To replace a track, point its entry in
 ## `files` at the new file (WAV, Ogg Vorbis or MP3) and set its level: a file that isn't marked as a
 ## loop is looped as a whole. A level ends on a riff in the key of the track playing
 ## (MusicDirector.level_complete_sound(): the sound effect level_complete_<track>, or the E riff, the
@@ -15,8 +16,14 @@ const BUS: StringName = &"Music"
 @export var files: Dictionary = {}
 ## Mix level per track in dB, so every track sits at the same loudness under the sound effects.
 @export var volume_db: Dictionary = {}
-## Tempo per track in beats per minute (4/4). Each loop is a whole number of bars at this tempo.
+## Tempo of generated loops in beats per minute (4/4). Owner-supplied songs need not list a tempo.
 @export var bpm: Dictionary = {}
+## Default zone track -> replacement for levels, quick play and endless; cinematics keep the default.
+@export var zone_tracks: Dictionary = {}
+## Boss id -> replacement for that fight only. Unmatched bosses keep their default track.
+@export var boss_tracks: Dictionary = {}
+## Replacement track -> original track whose level-complete sound should be retained.
+@export var riff_tracks: Dictionary = {}
 
 @export_group("Pause duck")
 ## How far Music.set_ducked(true) lowers the music (pause menus), and how long it takes to go down
@@ -59,6 +66,19 @@ func volume(track: StringName) -> float:
 
 func path(track: StringName) -> String:
 	return String(files.get(String(track), ""))
+
+
+func run_track(default_track: StringName, boss_id: StringName = &"") -> StringName:
+	var overrides: Dictionary = zone_tracks if boss_id == &"" else boss_tracks
+	var key: String = String(default_track if boss_id == &"" else boss_id)
+	var track := StringName(overrides.get(key, default_track))
+	if not has(track):
+		push_error("MusicLibrary: run track '%s' for '%s' is not in the library" % [track, key])
+	return track
+
+
+func riff_track(track: StringName) -> StringName:
+	return StringName(riff_tracks.get(String(track), track))
 
 
 ## The looping stream for a track, or null (with a warning) if the track or its file is missing.

@@ -1,6 +1,6 @@
 extends TestSuite
-## Audio: the buses, the music files (they load, loop seamlessly, have the expected length and fit the
-## size budget), the Music autoload's API, the death dip and how it combines with the pause duck, the
+## Audio: the buses, seamless generated loops, supplied MP3s (matching, looping and size budgets),
+## the Music autoload's API, the death dip and how it combines with the pause duck, the
 ## level-complete riff in each zone's key, and every sound effect the game calls by name; then the
 ## run's hooks through the App on the real main scene (the dip on a death, lifted by a revive or a
 ## restart; the riff for the music playing). Headless, so nothing is heard: the checks use the
@@ -14,7 +14,17 @@ const TRACKS: Dictionary = {
 	&"menu": 100.0, &"city": 160.0, &"gangland": 120.0, &"marketplace": 144.0, &"corporate": 112.0,
 	&"dead_zone": 84.0, &"golden": 132.0,
 }
-## All music together must stay under this in the repo (about 3 MB per 40–60 s loop of 32 kHz PCM).
+const SONGS: Dictionary = {
+	&"zone_1": "Zone_1_Under_The_Iron_Sky.mp3",
+	&"zone_2": "Zone_2_Alleyway_Ambush.mp3",
+	&"zone_3": "Zone_3_Jackpot_Plaza.mp3",
+	&"zone_4": "Zone_4_Concrete_Fever.mp3",
+	&"zone_5": "Zone_5_Beneath_the_Cracks.mp3",
+	&"zone_6": "Zone_6_View_from_the_Zenith.mp3",
+	&"boss_1": "Boss_1_Apex_Combat_Maneuver.mp3",
+}
+const SONG_BUDGET_BYTES: int = 30 * 1024 * 1024
+## Generated defaults must stay under this in the repo (about 3 MB per 40–60 s loop of 32 kHz PCM).
 const MUSIC_BUDGET_BYTES: int = 21 * 1024 * 1024
 ## And in an exported build, where the loops are QOA-compressed.
 const MUSIC_EXPORT_BUDGET_BYTES: int = 5 * 1024 * 1024
@@ -38,11 +48,53 @@ const WARNINGS: Array[StringName] = [&"fence_warning", &"cyborg_charge", &"truck
 func run() -> void:
 	_test_buses()
 	_test_music_files()
+	_test_supplied_songs()
 	await _test_music_api()
 	await _test_death_dip()
 	_test_level_complete_riffs()
 	_test_sound_effects()
 	await _test_run_hooks()
+
+
+func _test_supplied_songs() -> void:
+	var library := load(MUSIC_LIBRARY_PATH) as MusicLibrary
+	var total_bytes: int = 0
+	for track: StringName in SONGS:
+		check(library.path(track) == "res://assets/music/" + String(SONGS[track]),
+			"'%s' uses the matching supplied file" % track)
+		var stream := library.stream(track) as AudioStreamMP3
+		check(stream != null, "'%s' loads as an MP3" % track)
+		if stream == null:
+			continue
+		total_bytes += FileAccess.get_file_as_bytes(library.path(track)).size()
+		check(stream.loop and is_zero_approx(stream.loop_offset) and stream.get_length() > 1.0,
+			"'%s' loops the complete supplied song (%.2f s)" % [track, stream.get_length()])
+		check(library.volume_db.has(String(track)) and library.volume(track) < -6.0,
+			"'%s' keeps a mix level under the sound effects" % track)
+		var playback: AudioStreamPlayback = stream.instantiate_playback()
+		playback.start(stream.get_length() - 0.5)
+		playback.mix_audio(1.0, int(AudioServer.get_mix_rate()))
+		check(playback.is_playing() and absf(playback.get_playback_position() - 0.5) < 0.1,
+			"'%s' keeps playing across the end of the song" % track)
+		playback.stop()
+	check(total_bytes <= SONG_BUDGET_BYTES, "supplied MP3s fit in 30 MB (%.2f MB)" % (total_bytes / 1048576.0))
+	check(library.zone_tracks.size() == App.campaign.zones.size(), "one supplied song per campaign zone")
+	for index: int in App.campaign.zones.size():
+		var zone: ZoneDef = App.campaign.zones[index]
+		var expected := StringName("zone_%d" % (index + 1))
+		check(library.run_track(zone.music) == expected, "zone %d (%s) uses its matching song" % [index + 1, zone.id])
+		check(library.riff_track(expected) == zone.music, "zone %d retains its original completion sound" % (index + 1))
+		check(library.stream(zone.music) is AudioStreamWAV, "%s cinematics keep the generated default" % zone.id)
+		if zone.boss != null:
+			var default_track: StringName = zone.boss.music if zone.boss.music != &"" else zone.music
+			var boss_track: StringName = library.run_track(default_track, zone.boss.id)
+			check(boss_track == (&"boss_1" if index == 0 else default_track),
+				"%s gets a supplied song only when one matches" % zone.boss.id)
+	check(library.boss_tracks.size() == 1 and library.riff_track(&"boss_1") == &"city",
+		"only Boss 1 is replaced, retaining its original completion sound")
+	check(library.run_track(&"city", &"test_boss") == &"city", "the test boss keeps its default song")
+	check(library.path(&"menu") == "res://assets/music/menu.wav", "menus keep their original song")
+	check(not library.files.values().has("res://assets/music/Horizon_Of_Glass.mp3"), "Horizon of Glass remains unused")
 
 
 func _test_buses() -> void:
@@ -80,7 +132,8 @@ func _test_music_files() -> void:
 		return
 	var total_bytes: int = 0
 	var export_bytes: int = 0
-	check(library.names().size() == TRACKS.size(), "the music library lists the menus' track and one per zone (%s)" % ", ".join(library.names()))
+	check(library.names().size() == TRACKS.size() + SONGS.size(),
+		"the library lists seven defaults and seven supplied songs (%s)" % ", ".join(library.names()))
 	for track: StringName in TRACKS:
 		check(library.has(track), "music library has '%s'" % track)
 		check(is_equal_approx(float(library.bpm.get(String(track), 0.0)), TRACKS[track]),
@@ -133,8 +186,8 @@ func _test_music_files() -> void:
 				linear_to_db(head), linear_to_db(tail), linear_to_db(whole)])
 		var seam: float = absf(float(pcm.decode_s16(0) - pcm.decode_s16((n - 2) * 2))) / 32768.0
 		check(seam < _step_percentile(pcm, 0.999), "'%s' has no click at the loop point (step %.3f)" % [track, seam])
-	check(total_bytes <= MUSIC_BUDGET_BYTES, "all music fits in %d MB (%.2f MB)" % [MUSIC_BUDGET_BYTES / 1048576, total_bytes / 1048576.0])
-	check(export_bytes <= MUSIC_EXPORT_BUDGET_BYTES, "all music fits in %d MB in an exported build (%.2f MB)" % [
+	check(total_bytes <= MUSIC_BUDGET_BYTES, "generated defaults fit in %d MB (%.2f MB)" % [MUSIC_BUDGET_BYTES / 1048576, total_bytes / 1048576.0])
+	check(export_bytes <= MUSIC_EXPORT_BUDGET_BYTES, "generated defaults fit in %d MB in an exported build (%.2f MB)" % [
 		MUSIC_EXPORT_BUDGET_BYTES / 1048576, export_bytes / 1048576.0])
 
 
@@ -341,14 +394,25 @@ func _test_run_hooks() -> void:
 	await tree.process_frame
 	var saved: Profile = App.profile
 	App.profile = Profile.new()
+	for zone: ZoneDef in App.campaign.zones:
+		var expected: StringName = library.run_track(zone.music)
+		for index: int in zone.levels.size():
+			App.start_level(App.campaign.step("%s/%d" % [zone.id, index + 1]))
+			App.run.world.player.god_mode = true
+			App.run.world.player.grapples = 1_000_000
+			await physics_frames(2)
+			check(music.current() == expected, "%s level %d shares its zone's supplied song" % [zone.id, index + 1])
+	App.start_boss(App.campaign.step("city/boss"))
+	await physics_frames(2)
+	check(music.current() == &"boss_1", "the Floating Head fight plays the supplied Boss 1 song")
 	App.profile.add_stock(&"revive", 1)
 	App.start_level(App.campaign.step("gangland/1"))
 	App.run.world.player.god_mode = true
 	App.run.world.player.grapples = 1_000_000
 	await _frames(70)
-	var full_db: float = library.volume(&"gangland")
-	var track: AudioStreamPlayer = _player(music, &"gangland")
-	check(music.current() == &"gangland" and track != null and absf(track.volume_db - full_db) < 0.05,
+	var full_db: float = library.volume(&"zone_2")
+	var track: AudioStreamPlayer = _player(music, &"zone_2")
+	check(music.current() == &"zone_2" and track != null and absf(track.volume_db - full_db) < 0.05,
 		"a Gangland level plays the Gangland track at its level")
 	check(App.run.call(&"_complete_riff") == &"level_complete_gangland", "and would end on Gangland's riff")
 	if App.run.tuning_panel != null:
@@ -365,7 +429,7 @@ func _test_run_hooks() -> void:
 	# The HUD's pause button still works in the moment before the revive offer.
 	App.pause_game()
 	await _frames(roundi(maxf(library.dip_time, library.duck_time) * 60.0) + 5)
-	var paused_db: float = _player(music, &"gangland").volume_db
+	var paused_db: float = _player(music, &"zone_2").volume_db
 	check(App.overlay is PauseScreen and absf(paused_db - (full_db + library.dip_db)) < 0.05,
 		"paused while dead, the music sits at the dip, not the dip and the duck (%.1f dB)" % paused_db)
 	App.resume_game()
@@ -376,7 +440,7 @@ func _test_run_hooks() -> void:
 	await physics_frames(3)
 	check(App.run != null and App.run.world.player.alive and not music.is_dipped(), "a revive lifts the dip")
 	await _frames(roundi(library.dip_recover_time * 60.0) + 5)
-	check(absf(_player(music, &"gangland").volume_db - full_db) < 0.05 and not _filter_on(music),
+	check(absf(_player(music, &"zone_2").volume_db - full_db) < 0.05 and not _filter_on(music),
 		"and the track comes back in full")
 	App.run.world.player._die("again")
 	await physics_frames(roundi((App.rules.death_screen_delay + 0.3) * 60.0))

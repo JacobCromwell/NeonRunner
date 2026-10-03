@@ -294,10 +294,11 @@ func _dip_music(on: bool) -> void:
 		music.set_dipped(on)
 
 
-## The riff that ends the level or the fight, in the key of the music playing (GDD §11).
+## The riff that ends the level or the fight; supplied songs retain the original zone's riff.
 func _complete_riff() -> StringName:
 	var music: MusicDirector = MusicDirector.instance()
-	return MusicDirector.level_complete_sound(music.current() if music != null else &"", App.sfx_library)
+	var track: StringName = music.library.riff_track(music.current()) if music != null else &""
+	return MusicDirector.level_complete_sound(track, App.sfx_library)
 
 
 func _unhandled_input(event: InputEvent) -> void:

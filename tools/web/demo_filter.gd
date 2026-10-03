@@ -38,10 +38,19 @@ const ALWAYS_PLAYED: PackedStringArray = ["menu", "city"]
 ## Music only starts through App._play_music, with these names.
 static func demo_tracks(campaign: Campaign) -> PackedStringArray:
 	var out := PackedStringArray(ALWAYS_PLAYED)
+	var music := load(MUSIC_PATH) as MusicLibrary
+	var quick_track: String = String(music.run_track(&"city"))
+	if not out.has(quick_track):
+		out.append(quick_track)
 	for zone: ZoneDef in campaign.zones:
 		if not zone.in_demo:
 			continue
-		for track: StringName in [zone.music, zone.boss.music if zone.boss != null else &""]:
+		var tracks: Array[StringName] = [zone.music, music.run_track(zone.music)]
+		if zone.boss != null:
+			var default_track: StringName = zone.boss.music if zone.boss.music != &"" else zone.music
+			tracks.append(default_track)
+			tracks.append(music.run_track(default_track, zone.boss.id))
+		for track: StringName in tracks:
 			if track != &"" and not out.has(String(track)):
 				out.append(String(track))
 	return out
