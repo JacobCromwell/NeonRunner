@@ -465,7 +465,8 @@ default, in the F6 panel); switched off, the game plays exactly as before the ru
 up), the drone's wind-up and barrage, the hover truck's rev and forward lurch and its cannon's charge
 and volley, the Bad Dream's chase, the Resonator's pulse (its warning until its last wave has passed
 the player; DESIGN-TBD, `docs/questions/c3.md`), the Buzz Overdrive's rev and charge (its warning
-until it has passed the player and gone; it never waits, below), and a Gilded Sentinel's attack (its
+until it has passed the player and gone; it never waits, so it claims its turn a moment before and lets
+the runner pass if another's is still on, below; DESIGN-TBD, `docs/questions/fix2.md`), and a Gilded Sentinel's attack (its
 eyes' flare until its last swing is over; it can't wait either, so it claims its turn a moment before
 and lets the runner pass if another's is still on, below; DESIGN-TBD, `docs/questions/c4.md`). Small attacks (a cyborg's burst, a window
 cyborg's shot, a Barnacle Turret's burst, a screech's swipe) and the hover truck's entrance don't take
@@ -509,8 +510,13 @@ part. An enemy takes part like this, opting in for whichever of its attacks coun
   host) or the generator planned its moment still reports itself: the others wait for it. It can
   overlap an attack that was already on when it came; the Bad Dream holds its slash until that one
   is over. A planned floor cut (B4's stand-in, C2's Buzz Overdrive) reports itself from its warning
-  until its charge ends; the generator keeps every other attack off its attack window (Floor cuts,
-  under The generator), so only an attack moved on at runtime can meet it, and that one waits.
+  until its charge ends; the generator keeps every other enemy's planned stretch off its attack window
+  (Floor cuts, under The generator), but not the attacks enemies time themselves at run time (a drone's
+  barrage, a hover truck's lurch or cannon shot, a pulse or a charge moved on): one that asked a moment
+  before the cut's warning, when nothing was on yet, went, and the warning then started on top of it.
+  So an attack that can't wait claims its turn a moment before its warning and lets the runner pass if
+  one begun before its claim is still on then: the Gilded Sentinel (C4) and the Buzz Overdrive (task
+  FIX2, below; the stand-in cut, a review tool, doesn't).
 
 The director holds a big attack while another type's is on or its shots are still on their way; an
 enemy whose own attack is on carries on (the Bad Dream's next slash in its chase); and the enemies of
@@ -634,8 +640,27 @@ the player's distance like the cut, so it does the same on every attempt and at 
   (23.4-25 m/s); at the harder tiers' 28-30 m/s tier 3 (and tier 4 at 30) stop it mid-charge
   (`test_buzz_overdrive`; DESIGN-TBD, `docs/questions/c2.md`).
 - **A big attack that never waits.** Its rev and charge are one big attack (`is_major_attack_active` from
-  the rev until it's gone): the generator planned its moment, so it never asks for a turn and the others
-  wait for it; while it only rolls ahead it attacks nobody and holds nobody up.
+  the rev until it's gone): the generator planned its moment, so it never waits and the others wait for
+  it. **It claims its turn** (task FIX2). Reporting itself only from its rev, it let another type's attack
+  that asked a moment before (when only its roll was on) start and run on into its rev: over the seven
+  levels that have it, at 3, 5 and 6 lanes on 13 seeds each (273 runs of `big_attacks.gd`), 73 of 380
+  tanks revved into a drone's barrage, a hover truck's lurch or cannon shot or a Resonator's pulse, 87 s
+  of two big attacks at once (FIX1's 0.62 s in Dead Zone 1 at 5 lanes: a truck's lurch asked for 0.85 s
+  before its rev). So, like a Gilded Sentinel, a tank that rolls in (`takes_turns()`: its cut has a roll,
+  `lead`, and big attacks take turns) claims its turn `claim_seconds` (2.5 s) before its rev
+  (`claiming()`: it reports itself from then on, so another type's big attack that gets ready meanwhile
+  waits) and asks `major_attack_blocked` as its rev would start: with one begun before its claim still on
+  (or its shots on their way, or one that can't wait begun meanwhile: a Bad Dream bursting out of a host
+  killed then), it gives up its turn and lets the runner pass (`PASS`, last of its states
+  so the measure tools' event logs keep the others' numbers): no rev, no line, no cut (`FloorCut.stop`, its
+  lane stays whole), it speeds off ahead (`_passing_front`, keyed to the runner's distance) and is out of
+  view and gone `pass_seconds` (3 s) later. Over the same runs: no overlap; 378 tanks revved and 2 let the
+  runner pass (both behind a Resonator's pulse), none revved into another attack; the others lost 57 of
+  2,163 drone barrages, 14 of 632 cannon shots and 7 of 527 lurches (no Octodog charge, Bad Dream slash or
+  Resonator pulse, and no enemy went without its attack); event logs stayed identical in 199 runs, and the
+  other 74 first differ within a tank's turn (its claim until it's gone). A boss's tank (its cut planned
+  without a roll: Hostile Takeover's drop, whose boss keeps its own attacks off it) and every tank with the
+  switch off rev as planned, as before (DESIGN-TBD, `docs/questions/fix2.md`).
 - **Looks.** `BuzzOverdriveModel`: a tracked hull with skirt armour, a sloped glacis, a low turret with a
   slanted red eye slit under a dark brow on each side, exhaust stacks, and a giant vertical saw on braced
   arms whose teeth glow hot orange-red (the deadly part); matte military gunmetal and olive, scorched and
@@ -2901,7 +2926,13 @@ a lane switch escapes), kills while it rolls, revs and charges (the floor saved,
 shots each weapon tier needs and when it stops it (laser tier 1 never before it meets the runner, the
 missile tiers before it charges), the claws doing nothing, the dash smashing it, no stomp, the same
 encounter on every attempt and at 30 and 60 Hz, and its rev and charge as a big attack; its sparks only
-while it cuts, none and a line that only widens with Reduced flashing.
+while it cuts, none and a line that only widens with Reduced flashing. Its turns (task FIX2): its claim
+before its rev (another type's attack that gets ready then waits until it's gone, and it revs), its pass
+(with one begun before its claim still on: no rev, no line, its lane whole, out of view ahead), none of
+it with the switch off or for a boss's tank (no roll), and Dead Zone 1's original overlap rebuilt with a
+real hover truck ready to lurch 0.85 s before its rev (0.62 s for a tank that takes no turns; now the
+truck waits and nothing overlaps). `test_enemy_director`'s campaign runs hold Dead Zone 1 at 5 lanes to
+no overlap at all.
 
 `test_wall_fences` checks wall fences (B5; GDD §9.1): the layout data (left out of a level without them) and
 `WallFencePlan`'s bands, reach (a floor runner in the middle of the outer lane never touches one, a wall runner
@@ -2968,7 +2999,8 @@ both looks at rest and charging, and a scripted run under a ceiling with turrets
 through the run camera or a close one, on any zone's skin; `buzz_overdrive_showcase`: its model turning
 and revving, or a scripted run through one encounter on any zone's skin, lane count and speed, through
 the run camera, a high one or a low one beside its lane, with `--stay`, `--kill=D` and
-`--reduced-flashing` as for the floor cuts); `gilded_sentinel_showcase`: a Golden street with Sentinels in
+`--reduced-flashing` as for the floor cuts, and `--pass`: another type's big attack still on as its rev
+would start, so it speeds off ahead instead, task FIX2); `gilded_sentinel_showcase`: a Golden street with Sentinels in
 their niches and a runner taking a route past each (`--route=lane|floor|high|low`, `--kick`), through the
 run camera or a camera across the street, straight at a niche or along its wall (`--view=play|close|front|
 wall`), with `--double`, `--pair`, `--skin=golden_palace`, `--speed=N`, `--reduced`), the Golden Zone's statue
@@ -2995,9 +3027,11 @@ in the game. It reports the time big attacks of different types overlap, how man
 how long attacks waited for their turn (from the first frame the director holds an enemy for another
 type's turn until its attack, through gaps of up to 3 s, and an Octodog's until it charges, however
 long it moves its charges on; the director answers each ask the same whatever its queue keeps, so two
-builds measure the same asks alike), and the enemies that never got a big attack in (Octodogs
+builds measure the same asks alike), the enemies that never got a big attack in (Octodogs
 without a charge, Resonators without a pulse, drones without a barrage, hover trucks without a lurch
-or a cannon shot) (`godot --headless --fixed-fps 60 -s res://tools/measure/big_attacks.gd --
+or a cannon shot), and what each Buzz Overdrive did once it set off (`AttackWatch.buzz_tanks`: revved,
+revved into another type's open attack, let the runner pass, or was shot down first; task FIX2)
+(`godot --headless --fixed-fps 60 -s res://tools/measure/big_attacks.gd --
 --levels=gangland/3 --lanes=3,5,6 --out=build/measure/x.json`; the whole campaign on its own seeds takes
 about ten minutes; `--seeds=6` adds six other seeds a level, `--seeds=9007-9020` runs a range, and
 `--features=octodog` keeps the levels that use a feature). `attack_watch.gd` watches the attacks from the

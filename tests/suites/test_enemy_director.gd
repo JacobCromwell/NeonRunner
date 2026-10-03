@@ -595,7 +595,8 @@ static func _all_overlaps(dummies: Array[Enemy]) -> Vector2i:
 ## attacks of different types never overlap, every type still attacks and every Octodog charges;
 ## with it off the old overlaps are back. Gangland 3 is item 27's level (drones, Octodogs, hover
 ## trucks), at 3 lanes and at 6; at its zone's speed (G1) its layout at 3 lanes is the one with the
-## overlaps (3.9 s with the switch off; 6 lanes', 0.2 s); Dead Zone 1 adds hosts and the Bad Dream.
+## overlaps (3.9 s with the switch off; 6 lanes', 0.2 s); Dead Zone 1 adds hosts and the Bad Dream, and
+## at 5 lanes a Buzz Overdrive whose rev met a hover truck's lurch until it claimed its turn (task FIX2).
 func _test_campaign() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var cases: Array = [["gangland/3", 3, true], ["gangland/3", 6, true], ["gangland/3", 3, false], ["dead_zone/1", 5, true]]
@@ -619,13 +620,14 @@ func _test_campaign() -> void:
 			watch.observe()
 		var a: Dictionary = watch.attacks
 		if case[2]:
-			# FIX1 taught AttackWatch to count the Gilded Sentinel and the Buzz Overdrive (it missed both
-			# before), which turned up a pre-existing turn-taking gap between the Buzz Overdrive and the
-			# hover truck on this level (reported, not fixed here): every other pair still never overlaps.
-			var known: float = float(watch.overlap_pairs.get("buzz_overdrive+hover_truck", 0.0)) if case[0] == "dead_zone/1" else 0.0
-			check(is_zero_approx(watch.overlap - known),
-				"%s: no two types' big attacks overlap, beyond the known buzz_overdrive+hover_truck gap (%.2f s: %s)" %
-				[tag, watch.overlap - known, watch.overlap_pairs])
+			# Dead Zone 1 at 5 lanes is where the Buzz Overdrive's rev met a hover truck's lurch (0.62 s,
+			# found by FIX1); its claim before its rev (task FIX2) keeps them apart.
+			check(is_zero_approx(watch.overlap),
+				"%s: no two types' big attacks overlap (%.2f s: %s)" % [tag, watch.overlap, watch.overlap_pairs])
+			if case[0] == "dead_zone/1":
+				check(watch.tanks_that("rev") > 0 and watch.tanks_that("met") == 0,
+					"%s: its Buzz Overdrives rev, never into another type's attack (%d revved, %d let the runner pass)"
+					% [tag, watch.tanks_that("rev"), watch.tanks_that("pass")])
 			var kinds: Array = ["drone", "truck_lurch", "truck_cannon", "dog_charge"]
 			if case[0] == "dead_zone/1":
 				kinds.append("dream_slash")
