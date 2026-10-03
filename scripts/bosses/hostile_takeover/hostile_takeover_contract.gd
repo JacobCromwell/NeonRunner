@@ -14,7 +14,8 @@ extends RefCounted
 ##   starts, and the real tank comes into play there (BossEncounter.spawn_enemy: its rev and line, its
 ##   charge cutting the lane, the block-then-hold rule, all its own);
 ## - the ride (plan_ride): the second carriage past that flatcar is armored (HostileTakeoverArmored, shown
-##   once it's within ARMORED_SIGHT, with its pads in every lane on the carriage before it); the gunship
+##   once it's within ARMORED_SIGHT, with its runway of pads in every lane on the carriage before it, longer
+##   than any jump: strip_clears); the gunship
 ##   comes down over descend_seconds to the ceiling's height with its drop bay open (the weak point:
 ##   HostileTakeoverGunship.bay_point, live while the runner rides under it), its stern ride_rear_margin
 ##   behind the runner as they reach the pads, and flies on more slowly than the runner, so its nose
@@ -28,6 +29,8 @@ extends RefCounted
 ##   runner's lane and the one beside it (struck_lanes) with the rising whine for strafe_warning seconds,
 ##   then the guns rake each line from its far end back past the runner (HostileTakeoverStrafes), always
 ##   leaving a free lane beside.
+## It plans from the phase's start (its intro included: the first flatcar's drop, whose cut has to go
+## onto the track before the built track reaches it); the strafes wait for its pattern (is_vulnerable).
 ## Everything is keyed to the runner's distance (the gunship's pose: pose()) or to the physics clock (a
 ## strafe's warning and rake, a falling tank) and seeded from the fight, so every attempt plays the same.
 ## Numbers: HostileTakeoverTuning's Contract groups (DESIGN-TBD).
@@ -79,8 +82,8 @@ func _init(p_boss: HostileTakeover) -> void:
 	train = boss.train
 
 
-## The phase's pattern begins: the gunship carries a Buzz Overdrive, and the cycles start from the
-## carriage after the runner's.
+## The phase begins: the gunship carries a Buzz Overdrive, and the cycles start from the carriage after
+## the runner's.
 func start() -> void:
 	active = true
 	_next_from = train.carriage_at(boss.player_distance()) + 1
@@ -192,10 +195,10 @@ func plan_drop(k: int) -> Dictionary:
 	return {}
 
 
-## The ride over armored carriage `k` (the pads on carriage k - 1, the landing on carriage k + 1): {k,
-## roof, pads (each row's near end), pad_at (the first), land_at, s (the gunship's speed along the track
-## per metre of the runner's), descend_from, climb_to, stage, bay, boarded, landed, stomped}; or {} if
-## those carriages aren't corporate ones.
+## The ride over armored carriage `k` (the runway of pads on carriage k - 1, the landing on carriage
+## k + 1): {k, roof, strip (the runway's stretch), pad_at (its near end), land_at, s (the gunship's speed
+## along the track per metre of the runner's), descend_from, climb_to, stage, bay, boarded, landed,
+## stomped}; or {} if those carriages aren't corporate ones.
 func plan_ride(k: int) -> Dictionary:
 	for i: int in [-1, 0, 1]:
 		if train.kind(k + i) != HostileTakeoverTrain.Kind.CORPORATE:
@@ -203,16 +206,14 @@ func plan_ride(k: int) -> Dictionary:
 	var movement: MovementTuning = boss.arena.tuning
 	var v: float = movement.run_speed
 	var pace: float = movement.pace()
-	var pads := PackedFloat32Array()
-	var near: float = train.gap_start(k - 1) - tuning.pad_before * pace - movement.pad_length
-	for r: int in tuning.pad_rows:
-		pads.append(near - (tuning.pad_rows - 1 - r) * tuning.pad_row_spacing * pace)
-	var pad_at: float = pads[0]
+	var far: float = train.gap_start(k - 1) - tuning.pad_before * pace
+	var strip := Vector2(maxf(far - tuning.pad_strip * pace, train.roof(k - 1).x + 1.0), far)
+	var pad_at: float = strip.x
 	var land_at: float = train.gap_end(k) + tuning.landing_after * pace
 	var belly: float = HostileTakeoverModel.BELLY_FRONT + HostileTakeoverModel.BELLY_STERN
 	var span: float = land_at - pad_at
 	var s: float = clampf(1.0 - (belly - tuning.ride_rear_margin) / maxf(span, 1.0), 0.2, 0.98)
-	var ride := {"k": k, "roof": train.roof(k), "pads": pads, "pad_at": pad_at, "land_at": land_at, "s": s,
+	var ride := {"k": k, "roof": train.roof(k), "strip": strip, "pad_at": pad_at, "land_at": land_at, "s": s,
 		"descend_from": pad_at - tuning.descend_seconds * v, "climb_to": land_at + tuning.climb_seconds * v,
 		"stage": RideStage.PLANNED, "bay": false, "boarded": false, "landed": false, "stomped": false}
 	boss.log_event(&"ride_planned", {"carriage": k, "pad_at": pad_at, "land_at": land_at})
@@ -286,7 +287,7 @@ func _tick_rides(d: float) -> void:
 		match int(ride["stage"]):
 			RideStage.PLANNED:
 				if d >= (ride["roof"] as Vector2).x - ARMORED_SIGHT and not armored.in_use():
-					armored.place(int(ride["k"]), ride["roof"], ride["pads"])
+					armored.place(int(ride["k"]), ride["roof"], ride["strip"])
 					ride["stage"] = RideStage.PLACED
 					boss.log_event(&"ride_placed", {"carriage": ride["k"], "ahead": (ride["roof"] as Vector2).x - d})
 			RideStage.PLACED:
@@ -329,9 +330,32 @@ func next_ride() -> Dictionary:
 	return {}
 
 
+## The track `ride` keeps to itself: from its runway's start to where the runner, dropping off the belly
+## at its landing point, is back on the roof (track distances). No pickup goes there (HostileTakeover).
+func ride_stretch(ride: Dictionary) -> Vector2:
+	var m: MovementTuning = boss.world.tuning
+	var fall: float = sqrt(2.0 * m.ceiling_height / maxf(m.gravity() * m.fall_gravity_multiplier, 0.01)) * m.run_speed
+	return Vector2(float(ride["pad_at"]), float(ride["land_at"]) + fall)
+
+
 ## How fast the runner moves along the gunship's belly during `ride` (m/s at the run speed).
 func relative_speed(ride: Dictionary) -> float:
 	return boss.arena.tuning.run_speed * (1.0 - float(ride["s"]))
+
+
+## The longest a runner can be in the air over the roof at `movement`'s run speed: a full jump with a dash
+## (PowerupTuning) through the whole of it. A runway of pads longer than this can't be jumped over.
+static func longest_leap(movement: MovementTuning) -> float:
+	var powerups := load("res://data/tuning/powerups.tres") as PowerupTuning
+	var bonus: float = powerups.dash_speed_bonus if powerups != null else 0.0
+	var air: float = movement.jump_distance(movement.run_speed) / maxf(movement.run_speed, 0.01)
+	return movement.jump_distance(movement.run_speed) + bonus * minf(air, powerups.dash_duration if powerups != null else 0.0)
+
+
+## True if a runway `length` long clears `movement`'s longest leap with `margin` to spare: no runner on
+## the roof gets past it without touching a pad.
+static func strip_clears(movement: MovementTuning, length: float, margin: float = 1.0) -> bool:
+	return length >= longest_leap(movement) + margin
 
 
 ## How far short of the bay's middle (along the belly) a jump from the belly has to leave to come back
@@ -348,7 +372,7 @@ func bay_lead(ride: Dictionary) -> float:
 func _tick_strafe(delta: float, d: float) -> void:
 	if strafe.is_empty():
 		_rest += delta
-		if active and _rest >= tuning.strafe_gap and strafe_fits(d):
+		if active and boss.is_vulnerable() and _rest >= tuning.strafe_gap and strafe_fits(d):
 			_start_strafe(d)
 		return
 	strafe["t"] = float(strafe["t"]) + delta
@@ -499,14 +523,14 @@ func pose(station: Dictionary, d: float) -> Dictionary:
 
 ## The belly's front, as the ride flies it: over the runner at the landing point, moving `s` metres for
 ## each of theirs.
-func _ride_front(ride: Dictionary, d: float) -> float:
+func belly_front(ride: Dictionary, d: float) -> float:
 	var land: float = float(ride["land_at"])
 	return land - float(ride["s"]) * (land - d)
 
 
 func _ride_pose(ride: Dictionary, station: Dictionary, d: float) -> Dictionary:
 	var h: float = boss.world.tuning.ceiling_height
-	var middle: float = _ride_front(ride, d) - HostileTakeoverModel.BELLY_FRONT
+	var middle: float = belly_front(ride, d) - HostileTakeoverModel.BELLY_FRONT
 	var pad_at: float = float(ride["pad_at"])
 	var land_at: float = float(ride["land_at"])
 	var e: float = 1.0

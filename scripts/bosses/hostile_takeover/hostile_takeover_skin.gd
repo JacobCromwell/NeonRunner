@@ -166,6 +166,13 @@ func floor_cut(parent: Node3D, section: FloorCutSection) -> void:
 	})
 
 
+## One tile of phase 2's runway of anti-grav pads (HostileTakeoverArmored), `size` like a pad's trigger:
+## the zone's lift pad, its light rising `beam` high (lower than a lone pad's, so a runway of them leaves
+## the armored carriage in plain view).
+func pad_tile(size: Vector3, beam: float) -> Mesh:
+	return MeshKit.lift_pad(size, pad_color, metal_color, beam, solid_material(), glow_material())
+
+
 ## The train's material (hostile_takeover_train.gdshader): the solid kit's look with the zone's
 ## patterns, and the breakaway.
 func train_material() -> ShaderMaterial:

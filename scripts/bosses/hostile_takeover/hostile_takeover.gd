@@ -69,6 +69,8 @@ const DEFEAT_SECONDS: float = 2.4
 const BREAK_GONE: float = 6.0
 ## Phase 1's wall fences ahead switch off as phase 2 begins: those within this of the stretch ahead.
 const STAND_DOWN_REACH: float = 400.0
+## A pickup's search is kept this much further off a ride than its own reach (metres): a frame's margin.
+const PICKUP_MARGIN: float = 5.0
 
 var tuning: HostileTakeoverTuning
 var train: HostileTakeoverTrain
@@ -257,6 +259,9 @@ func _on_phase_started(index: int) -> void:
 		_lurch = LURCH_SECONDS
 	if pattern_of(index) == Pattern.CONTRACT:
 		_stand_down()
+		# Planned from the phase's start, so its first flatcar's drop still finds the track ahead unbuilt;
+		# the strafes wait for its pattern.
+		contract.start()
 	elif contract != null and contract.active:
 		contract.stop()
 
@@ -280,7 +285,6 @@ func _on_pattern_started(index: int) -> void:
 		_set_step(Step.FLY)
 	if pattern_of(index) == Pattern.CONTRACT:
 		lit_from = NONE
-		contract.start()
 		return
 	lit_from = train.next_gap(player_distance() + speed() * tuning.lit_sight) + tuning.opening_for(index)
 	log_event(&"couplings_from", {"gap": lit_from, "at": train.gap_start(lit_from)})
@@ -348,6 +352,40 @@ func ride_ends(ride: Dictionary) -> void:
 	log_event(&"ride_landed" if ride["stomped"] else &"ride_missed", {"carriage": ride["k"], "lane": world.player.lane})
 
 
+## The standard armor rule's pickup: on the floor ahead as any boss's (offer_pickup), but never on a ride's
+## runway of pads, under its belly or before the runner is back on the roof (they can't take it there:
+## missed, it's gone), so past the ride if the pickup's search would reach into it (_pickup_at; an offer
+## still waiting for a fair spot is moved on the same way, _keep_pickups_off_rides).
+func _on_armor_pickup_due(_reason: StringName) -> void:
+	offer_pickup(&"armor", _pickup_at(-1.0))
+
+
+## Where a pickup asked for at or after `at` may go: `at`, or past the next ride if the pickup's search
+## (PickupField: lead_distance ahead of the runner, over search_window) would reach into its stretch
+## (HostileTakeoverContract.ride_stretch).
+func _pickup_at(at: float) -> float:
+	if contract == null or world.pickups == null or world.pickups.tuning == null:
+		return at
+	var ride: Dictionary = contract.next_ride()
+	if ride.is_empty():
+		return at
+	var t: PickupTuning = world.pickups.tuning
+	var first: float = maxf(player_distance() + t.lead_distance, at)
+	var last: float = first + t.search_window + t.clear_after + PICKUP_MARGIN
+	var stretch: Vector2 = contract.ride_stretch(ride)
+	if first - t.clear_before <= stretch.y and last >= stretch.x:
+		return maxf(at, stretch.y + t.clear_before)
+	return at
+
+
+## Every frame: a pickup offer still waiting for a fair spot keeps off the rides too.
+func _keep_pickups_off_rides() -> void:
+	if world.pickups == null:
+		return
+	for offer: Dictionary in world.pickups.pending:
+		offer["at"] = _pickup_at(float(offer["at"]))
+
+
 ## The last stomp: a placeholder defeat until task E5b-c (GDD §10's: the gunship spins away and explodes;
 ## the locomotive derails and ploughs through the lobby of a corporate tower). The couplings go dark and
 ## the gunship climbs away.
@@ -384,6 +422,7 @@ func _update(delta: float) -> void:
 	_lurch = maxf(_lurch - delta, 0.0)
 	board.tick(pattern_of(phase_index) == Pattern.BOARD)
 	contract.tick(delta)
+	_keep_pickups_off_rides()
 	_update_couplings()
 	_update_breakaway(delta)
 	_place_gunship()

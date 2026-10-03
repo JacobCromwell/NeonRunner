@@ -15,9 +15,11 @@ extends RefCounted
 ##   in a coupling's run-up, where no bolt lands: CyborgGun's clear path around a gap);
 ## - phase 2 (HostileTakeoverContract): out of a strafe's struck lanes (`reaction` after its line shows)
 ##   and out of a dropped Buzz Overdrive's lane (after it lands, until its attack is over), into the
-##   nearest lane neither threatens; onto the pads before the armored carriage (it just runs on: they're
-##   in every lane); on the gunship's belly, a jump timed to come back up onto the open drop bay
-##   (HostileTakeoverContract.bay_lead), unless `bay_stomps` is off;
+##   nearest lane neither threatens (`ignores_strafes` stays put for a strafe, `meets_saw` heads into the
+##   tank's lane instead: tests of a hit); onto the runway of pads before the armored carriage (it just
+##   runs on: they're in every lane); on the gunship's belly, a jump timed to come back up onto the open
+##   drop bay (HostileTakeoverContract.bay_lead), unless `bay_stomps` is off or it lets the first
+##   `bay_misses` rides go by;
 ## - it never goes onto a wall (the wall fences never reach it); a Tithe Collector may rob it.
 ## Its distances are metres at 18 m/s, stretched by the run's pace (HostileTakeover.run_pace).
 ## `log` holds what it did.
@@ -48,8 +50,12 @@ var skip_in_lane: bool = false
 var drops: bool = false
 ## On the gunship's belly, it jumps to stomp the open drop bay.
 var bay_stomps: bool = true
+## Rides whose drop bay it lets go by (it rides on without jumping) before it stomps one.
+var bay_misses: int = 0
 ## It ignores the strafes (stays in its lane: for tests of a strike).
 var ignores_strafes: bool = false
+## Once a dropped Buzz Overdrive lands, it heads into its lane and stays there (a test of its blade).
+var meets_saw: bool = false
 ## What it did, for tests: {t (fight time), action, why}.
 var log: Array[Dictionary] = []
 ## The lane it took off from for each gap it jumped (gap index -> lane).
@@ -112,6 +118,9 @@ func _avoid_threats() -> bool:
 		if not _threat_seen.has(key2):
 			_threat_seen[key2] = now
 		if now - float(_threat_seen[key2]) >= reaction:
+			if meets_saw:
+				_head_for(int(saw["lane"]), "into the Buzz Overdrive's lane")
+				return true
 			bad.append(int(saw["lane"]))
 	if bad.is_empty():
 		return false
@@ -135,6 +144,11 @@ func _ride() -> void:
 	var ride: Dictionary = c.ride_now()
 	if ride.is_empty() or ride["stomped"] or not boss.gunship.bay_open or _bay_jumped.has(int(ride["k"])):
 		return
+	if bay_misses > 0:
+		bay_misses -= 1
+		_bay_jumped[int(ride["k"])] = true
+		log.append({"t": boss.fight_time(), "action": &"skip", "why": "lets the drop bay %d go by" % int(ride["k"])})
+		return
 	var p: Player = boss.world.player
 	if not p.grounded:
 		return
@@ -146,14 +160,18 @@ func _ride() -> void:
 
 
 ## The lane it runs up in for a coupling in `lane`: its own, or the one beside it on side_lane's side
-## (the other side at the track's edge).
+## (the other side at the track's edge, or where a guard stands in it before the gap: the guards keep only
+## the coupling's own lane clear over its run-up).
 func _runup_lane(lane: int) -> int:
 	if side_lane == 0:
 		return lane
-	var to: int = lane + side_lane
-	if to < 0 or to >= boss.lane_count():
-		to = lane - side_lane
-	return clampi(to, 0, boss.lane_count() - 1)
+	var p: Player = boss.world.player
+	var edge: float = boss.train.gap_start(boss.train.next_gap(p.distance))
+	for side: int in [side_lane, -side_lane]:
+		var to: int = lane + side
+		if to >= 0 and to < boss.lane_count() and not _cyborg_in(to, p.distance - 1.0, edge):
+			return to
+	return lane
 
 
 ## The coupling over gap `k` it goes for: its lane, or -1 (none live, not seen long enough, or let go by).

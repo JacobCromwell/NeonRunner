@@ -147,16 +147,16 @@ extends Resource
 ## DESIGN-TBD (GDD §10: "an armored carriage with no roof access blocks the way, so the player takes an
 ## anti-grav pad and rides the gunship's belly over it (the gunship is the ceiling)"): after each drop, the
 ## second carriage past the flatcar is armored (armored_height tall: no jump reaches its roof, and its
-## front is a solid wall), with pad_rows rows of anti-grav pads in every lane before the gap in front of
-## it (the nearest pad_before short of the gap, the rows pad_row_spacing apart, at 18 m/s). The gunship
-## comes down over descend_seconds to the ceiling's height, its belly's stern ride_rear_margin behind the
-## runner as they reach the pads, and flies on slower than the runner, so its nose passes over them
-## landing_after past the armored carriage's far gap (at 18 m/s), where they drop back onto the roof; then
-## it climbs back over climb_seconds.
+## front is a solid wall), with a runway of anti-grav pads end to end in every lane before the gap in front
+## of it, pad_strip long, its far end pad_before short of the gap (at 18 m/s): longer than any jump, a dash
+## in the air included (HostileTakeoverContract.strip_clears), so a runner on the roof can't pass it
+## without being flipped up. The gunship comes down over descend_seconds to the ceiling's height, its
+## belly's stern ride_rear_margin behind the runner as they reach the pads, and flies on slower than the
+## runner, so its nose passes over them landing_after past the armored carriage's far gap (at 18 m/s),
+## where they drop back onto the roof; then it climbs back over climb_seconds.
 @export_range(1.6, 2.3, 0.05, "suffix:m") var armored_height: float = 2.1
 @export_range(4.0, 20.0, 0.5, "suffix:m") var pad_before: float = 9.0
-@export_range(1, 3) var pad_rows: int = 2
-@export_range(3.0, 12.0, 0.5, "suffix:m") var pad_row_spacing: float = 6.0
+@export_range(8.0, 30.0, 0.5, "suffix:m") var pad_strip: float = 18.0
 @export_range(4.0, 25.0, 0.5, "suffix:m") var landing_after: float = 10.0
 @export_range(1.0, 8.0, 0.25, "suffix:m") var ride_rear_margin: float = 4.0
 @export_range(1.0, 5.0, 0.1, "suffix:s") var descend_seconds: float = 1.8
