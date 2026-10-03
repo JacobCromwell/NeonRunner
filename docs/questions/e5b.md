@@ -45,11 +45,13 @@
   only the last phase's hits.
 - **The defeat** (GDD §10: "the gunship spins away and explodes; the locomotive derails and ploughs
   through the lobby of a corporate tower, bringing down a giant, soulless logo sculpture").
-  **Placeholder:** the last clamp torn loose, the gunship pulls free, climbs away spinning and explodes
-  1.6 s later; the locomotive surges on, veers off the guideway to the right and ploughs into the sky lobby
-  of a corporate tower standing beside the line at the train's level 2.6 s in, the brand's mark (a giant
-  steel sculpture on its plaza) toppling; the screens glitch and go dark. The runner and the rest of the
-  train run on along the guideway, and the results come 5.5 s after the stomp. Code:
+  **Placeholder:** the last clamp torn loose, the gunship pulls free, climbs away beside the line spinning
+  and explodes 1.6 s later; the locomotive surges on, veers off the guideway to the right and ploughs into
+  the sky lobby of a corporate tower standing beside the line at the train's level 2.6 s in, the brand's
+  mark (a giant steel sculpture on its plaza) toppling back into the lobby; the screens glitch and go dark.
+  The runner and the rest of the train run on along the guideway past the wreck, and the results come 5.5 s
+  after the stomp. The lobby stands still beside the line while the city streams past (the city's towers
+  keep clear of it), so the crash reads; a lobby moving with the city would rush past in a second. Code:
   `HostileTakeover._on_defeated`, `_place_defeat`, `HostileTakeoverLobby`, tuning group "The defeat".
   **Alternative:** the whole train derailing (the runner jumping clear), or a cut to a short cinematic.
 - **Par times** (GDD §10, proposed: stars for beating par times set per boss).

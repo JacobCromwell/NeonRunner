@@ -48,7 +48,7 @@
 		{ "id": "corporate_boss_strafe", "trigger": "boss:corporate_boss/strafe", "text": "The gunship is strafing! A red line and a rising whine mark the lanes its guns will rake: get out of them." },
 		{ "id": "corporate_boss_ride", "trigger": "boss:corporate_boss/ride", "text": "An armored carriage blocks the way! Step on an anti-grav pad to ride the gunship's belly over it, and jump from the green chevrons to come back up onto its red drop bay." },
 		{ "id": "corporate_boss_merger", "trigger": "boss:corporate_boss/merger", "text": "MERGER COMPLETE! The gunship has docked onto the locomotive: one war engine, with every attack of both." },
-		{ "id": "corporate_boss_clamps", "trigger": "boss:corporate_boss/clamps", "text": "Its three docking clamps glow red under the gunship's belly! Take the anti-grav pads, ride the belly under them and jump to come back up onto one. Tear all three loose." },
+		{ "id": "corporate_boss_clamps", "trigger": "boss:corporate_boss/clamps", "text": "Three docking clamps glow red under the war engine's belly! Take the anti-grav pads, ride its belly, and jump from the green chevrons in a clamp's lane to come back up onto it. Tear all three loose." },
 		{ "id": "pickup_armor", "trigger": "pickup:armor", "text": "Armor pickup ahead: run through it to get your armor back at once. Armor blocks enemy attacks and electric shocks." },
 		{ "id": "pickup_shield", "trigger": "pickup:shield", "text": "Shield pickup ahead: run through it. A shield blocks one hit of anything." },
 		{ "id": "pickup_grapple", "trigger": "pickup:grapple", "text": "Grapple pickup ahead: run through it. The grapple hook saves you from one fall." }
