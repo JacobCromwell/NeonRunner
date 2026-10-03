@@ -49,6 +49,7 @@ display_name = "Hostile Takeover"
 preview_scene = "res://scenes/bosses/hostile_takeover.tscn"
 notes = "Designed, being built (GDD §10): the Chairman's armored maglev train, run from the rear roof toward the locomotive while a military gunship paces it. Stomp the glowing couplings while jumping the gaps between carriages, ride the gunship's belly over an armored carriage, then stomp the three docking clamps when the gunship merges with the locomotive."
 weapon_share_cap = 0.34
+weapons_can_end_phase = false
 phases = Array[ExtResource("2_phase")]([SubResource("phase_1"), SubResource("phase_2"), SubResource("phase_3")])
 arena = SubResource("arena")
 arena_laps = 1

@@ -488,10 +488,13 @@ func _test_contract(lanes: int, speed: float) -> void:
 		var before: Vector2 = train.roof(rk - 1)
 		strip_ok = strip_ok and strip.x >= before.x and strip.y <= before.y - t.pad_before * pace + 0.01 \
 			and train.kind(rk) == HostileTakeoverTrain.Kind.CORPORATE and float(ride["pad_at"]) == strip.x
+		# Over the runner from the runway's start (its stern well behind them) until the landing point, where
+		# its front reaches them by design (they drop off as it passes): sampled every metre and just short of it.
 		var d: float = float(ride["pad_at"])
-		while d < float(ride["land_at"]) - 0.5:
-			var front: float = c.belly_front(ride, d)
-			cover_ok = cover_ok and front > d + 0.5 and front - belly < d - 1.0
+		while d <= float(ride["land_at"]):
+			var at: float = minf(d, float(ride["land_at"]) - 0.05)
+			var front: float = c.belly_front(ride, at)
+			cover_ok = cover_ok and front > at and front - belly < at - 1.0
 			d += 1.0
 		var bay_then: float = c.belly_front(ride, float(ride["pad_at"])) - HostileTakeoverModel.BELLY_FRONT + HostileTakeoverModel.BAY_AHEAD
 		var bay_last: float = c.belly_front(ride, float(ride["land_at"])) - HostileTakeoverModel.BELLY_FRONT + HostileTakeoverModel.BAY_AHEAD

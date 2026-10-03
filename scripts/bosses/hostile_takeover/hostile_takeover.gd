@@ -38,7 +38,8 @@ extends BossEncounter
 ##      stay dark. As it begins, what phase 1 planned ahead stands down: its guards still to come never
 ##      do (retired as they come into play) and its wall fences switch off (the EMP's way,
 ##      TrackBuilder.disable_fences_near).
-##    Weapons chip the gunship up to BossDef.weapon_share_cap, but never end a phase (damage): the stomps do.
+##    Weapons chip the gunship up to BossDef.weapon_share_cap, but never end a phase: its data turns
+##    BossDef.weapons_can_end_phase off (DESIGN-TBD, docs/questions/e5b.md), so the stomps do.
 ## 3. The last stomp beats it (a placeholder defeat until E5b-c: the couplings go dark and the gunship
 ##    climbs away).
 ## Distances that stand for a time follow the run's pace (run_pace(): the Corporate zone's 23.4 m/s in the
@@ -136,12 +137,13 @@ func _plan_lap(lap: LevelLayout, _index: int, p_arena: BossArena) -> void:
 	lap.gaps.append_array(train.lap_gaps(lap.lane_count))
 
 
-## The enemies The Board brings onto the roofs itself, readied with the fight's load (task PERF1,
-## EnemyDirector.warm_up): its guards, the zone's cyborgs (the first one's look took 230 ms in its spawn's
-## frame), and the Tithe Collector.
+## The enemies the fight brings onto the roofs itself, readied with the fight's load (task PERF1,
+## EnemyDirector.warm_up): The Board's guards, the zone's cyborgs (the first one's look took 230 ms in its
+## spawn's frame), and the Tithe Collector; The Contract's Buzz Overdrive, dropped onto a flatcar.
 func warm_enemies() -> Array[Dictionary]:
 	return [{"type": "cyborg", "at": 0.0, "lane": 0, "side": 0, "seed": 1, "params": {}},
-		{"type": "tithe_collector", "at": 0.0, "lane": 0, "side": 0, "seed": 1, "params": {}}]
+		{"type": "tithe_collector", "at": 0.0, "lane": 0, "side": 0, "seed": 1, "params": {}},
+		{"type": "buzz_overdrive", "at": 0.0, "lane": 0, "side": 0, "seed": 1, "params": {}}]
 
 
 func _build_boss() -> void:
@@ -226,31 +228,6 @@ func next_live_coupling() -> int:
 		if coupling_live(k + i) and couplings.box_span(k + i).y > d:
 			return k + i
 	return -1
-
-
-# --- Weapons ------------------------------------------------------------------------------------
-
-## GDD §10: "weapons chip; stomps do the real damage". On top of BossDef.weapon_share_cap, a weapon's hit
-## never ends a phase (nor the fight): it chips down to just above where the phase ends and no further, so
-## each phase's end is its stomp's. DESIGN-TBD (docs/questions/e5b.md): with weapon_share_cap 0.34 over
-## phases of a third each, weapons alone could otherwise have ended a phase.
-func damage(amount: float, cause: StringName) -> float:
-	if cause == &"weapon":
-		amount = minf(amount, health - weapon_floor())
-		if amount <= 0.0:
-			return 0.0
-	return super.damage(amount, cause)
-
-
-## The lowest weapons may take the boss in this phase: a hair above where it ends.
-func weapon_floor() -> float:
-	var end: float = phase_start_health(phase_index + 1) if not is_final_phase() else 0.0
-	return end + max_health * EPSILON * 3.0
-
-
-## Weapon hits count only while they're under the cap and the phase has health left above its floor.
-func weapons_can_hurt() -> bool:
-	return super.weapons_can_hurt() and health > weapon_floor() + max_health * EPSILON
 
 
 # --- Phases ------------------------------------------------------------------------------------
