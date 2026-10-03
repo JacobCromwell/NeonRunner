@@ -21,14 +21,15 @@ const TEXT_GLOW: float = 2.4
 const FLASH_HZ: float = 2.6
 const TEXT_COLOR := Color(0.86, 0.92, 1.0)
 ## The pylons' screens: their size, how far beyond the barriers they stand, how high their middle is, how far
-## ahead of the runner, and how long they take to rise.
-const PYLON_SCREEN := Vector2(9.0, 5.0)
-const PYLON_OUT: float = 5.0
+## ahead of the runner (close enough for the words to read from the run camera), and how long they take to
+## rise.
+const PYLON_SCREEN := Vector2(12.0, 6.75)
+const PYLON_OUT: float = 7.0
 const PYLON_Y: float = 11.5
-const PYLON_AHEAD: float = 48.0
+const PYLON_AHEAD: float = 30.0
 const RISE_SECONDS: float = 1.0
 ## The words' band, as the face shader's `band`: a share of a screen's height.
-const BAND: float = 0.24
+const BAND: float = 0.28
 
 var tuning: HostileTakeoverTuning
 ## The screens: {root (Node3D), face (MeshInstance3D), text (MeshInstance3D), size (Vector2)}.
@@ -134,11 +135,11 @@ func _make_screen(size: Vector2) -> Node3D:
 	return root
 
 
-## Switches the screens on (the words flashing from now) or off (dark, the pylons down).
+## Switches the screens on (the words flashing from now) or off (fading dark, the pylons going down).
 func set_on(p_on: bool) -> void:
 	on = p_on
 	on_time = 0.0
-	if not on:
+	if on:
 		glitch = 0.0
 	_apply()
 
@@ -166,6 +167,13 @@ func _text_on() -> bool:
 
 
 func _tick(delta: float) -> void:
+	step(delta)
+
+
+## Runs the screens' clock (the words' flashing, the faces powering up or down, the pylons rising or going
+## down): every frame from the part's own tick, and through the defeat (when a part no longer ticks) from
+## the encounter's.
+func step(delta: float) -> void:
 	if on:
 		on_time += delta
 	_rise = move_toward(_rise, 1.0 if on else 0.0, delta / RISE_SECONDS)

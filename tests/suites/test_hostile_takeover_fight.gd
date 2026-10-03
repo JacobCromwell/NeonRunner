@@ -462,7 +462,7 @@ func _defeat_plays_out(world: RunWorld, boss: HostileTakeover, bot: HostileTakeo
 	check(absf(float(w["crashed"]) - t.crash_at) <= step and _sounded(boss, &"takeover_derail") and float(w["ahead"]) > 0.0
 		and absf(loco.x) > wall and absf(boss.locomotive.front_at - (lobby_at - HostileTakeover.DERAIL_SHORT)) < 0.5,
 		"the locomotive leaves the guideway and ploughs into the lobby ahead of the runner %.1f s on, with its sound %s" % [float(w["crashed"]), tag])
-	check(boss.lobby.sculpture.rotation.x > 1.4 and float(w["dark"]) >= 0.0 and float(w["dark"]) <= HostileTakeover.SCREENS_DARK_AT + step,
+	check(absf(boss.lobby.sculpture.rotation.x) > 1.4 and float(w["dark"]) >= 0.0 and float(w["dark"]) <= HostileTakeover.SCREENS_DARK_AT + step,
 		"the sculpture comes down, the screens go dark %s" % tag)
 	check(boss.victory_over() and absf(boss.step_time - t.defeat_seconds) <= step and world.player.alive,
 		"and %.1f s after the last stomp it's over, the runner running on %s" % [t.defeat_seconds, tag])

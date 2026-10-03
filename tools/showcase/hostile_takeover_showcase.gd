@@ -208,7 +208,7 @@ func _place_camera() -> void:
 				"chase":
 					# High behind the runner, looking ahead and over to the derailing side.
 					var side: float = float(boss.tuning.derail_side if boss.tuning.derail_side != 0 else 1)
-					_cam.look_at_from_position(Vector3(-side * 2.0, 8.0, p.z + 16.0), Vector3(side * world.geo.wall_x() * 0.8, 7.0, p.z - 75.0))
+					_cam.look_at_from_position(Vector3(-side * 1.5, 9.5, p.z + 8.0), Vector3(side * world.geo.wall_x() * 0.9, 5.5, p.z - 50.0))
 				"ride":
 					_cam.look_at_from_position(Vector3(world.geo.wall_x() - 0.5, 3.4, p.z - 9.0), Vector3(-0.5, 3.6, p.z + 6.0))
 				_:

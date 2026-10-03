@@ -94,14 +94,20 @@ const DOCK_OFFSET: float = 12.0
 ## The docking's clamps lock this far through it.
 const CLAMPS_LOCK_AT: float = 0.7
 ## The defeat: the locomotive ploughs into the lobby this far ahead of the runner (metres at 18 m/s), its
-## rear face ending this far short of the lobby's middle and this far past the barrier, turned this much.
-const LOBBY_AHEAD: float = 40.0
+## rear face ending this far short of the lobby's middle, turned this much, and its middle this far past
+## its own half width beyond the barrier (so none of it stands over the track).
+const LOBBY_AHEAD: float = 28.0
 const DERAIL_SHORT: float = 22.0
-const DERAIL_OUT: float = 3.0
+const DERAIL_OUT: float = 1.5
 const DERAIL_YAW: float = 0.6
 ## The sculpture topples over this long, and the screens go dark this long into the defeat.
 const TOPPLE_SECONDS: float = 1.1
 const SCREENS_DARK_AT: float = 0.9
+## The gunship's explosion rolls on in blasts this long after it blows (seconds), and the crash's too.
+const BLASTS: Array[float] = [0.0, 0.18, 0.36]
+const CRASHES: Array[float] = [0.0, 0.22]
+## The city's towers keep this far clear of the lobby either side.
+const LOBBY_CLEAR: float = 6.0
 
 var tuning: HostileTakeoverTuning
 var train: HostileTakeoverTrain
@@ -145,6 +151,9 @@ var _defeat_loco: float = 0.0
 var _lobby_at: float = 0.0
 var _exploded: bool = false
 var _crashed: bool = false
+var _blasts: int = 0
+var _crashes: int = 0
+var _explosion_at: Vector3 = Vector3.ZERO
 
 
 func _tuning() -> HostileTakeoverTuning:
@@ -214,6 +223,7 @@ func _build_boss() -> void:
 	var skin := world.skin as HostileTakeoverSkin
 	if skin != null:
 		skin.clear_breakaway()
+		skin.clear_clearing()
 	# The phase the fight starts at (a checkpoint's): The Board plans only if it plays it.
 	board.tick(pattern_of(clampi(int(context.boss_resume.get("phase", 0)), 0, phase_count() - 1)) == Pattern.BOARD)
 	_update_couplings()
@@ -225,6 +235,7 @@ func _exit_tree() -> void:
 	var skin := world.skin as HostileTakeoverSkin if world != null else null
 	if skin != null:
 		skin.clear_breakaway()
+		skin.clear_clearing()
 
 
 ## A corporate carriage's roof (the armored carriage covers one).
@@ -521,7 +532,8 @@ func docked_pose() -> Dictionary:
 # --- The defeat ----------------------------------------------------------------------------------
 
 ## The last clamp torn loose (GDD §10, see the header): everything stops; the lobby is set up ahead beside
-## the line where the locomotive will plough into it; the screens glitch.
+## the line where the locomotive will plough into it, the city's towers keeping clear of it; the screens
+## glitch.
 func _on_defeated() -> void:
 	lit_from = NONE
 	_set_step(Step.DEFEAT)
@@ -535,6 +547,9 @@ func _on_defeated() -> void:
 	var v: float = world.tuning.run_speed
 	_lobby_at = d + v * tuning.crash_at + LOBBY_AHEAD * run_pace() + DERAIL_SHORT
 	lobby.place(_lobby_at, tuning.derail_side)
+	var skin := world.skin as HostileTakeoverSkin
+	if skin != null:
+		skin.set_clearing(lobby.span(LOBBY_CLEAR), lobby.side)
 	screens.set_glitch(1.0)
 	gunship.set_saw(false)
 	gunship.end_fall()
@@ -552,38 +567,64 @@ func _defeated_tick(delta: float) -> void:
 		screens.set_on(false)
 	if not _exploded and t >= tuning.explode_at:
 		_explode()
+	while _exploded and _blasts < BLASTS.size() and t >= tuning.explode_at + BLASTS[_blasts]:
+		_blast(_blasts)
+		_blasts += 1
 	if not _crashed and t >= tuning.crash_at:
 		_crash()
+	while _crashed and _crashes < CRASHES.size() and t >= tuning.crash_at + CRASHES[_crashes]:
+		_crash_blast(_crashes)
+		_crashes += 1
 	if _crashed:
 		lobby.topple((t - tuning.crash_at) / TOPPLE_SECONDS)
 	_place_gunship()
+	# Beaten, the parts no longer tick: the screens' and the blasts' clocks run from here.
+	screens.step(delta)
 	screens.pace(player_distance())
+	lobby.step(delta)
 
 
-## The gunship blows up in the sky, away from the line.
+## The gunship blows up in the sky, away from the line (its blasts roll on: _blast).
 func _explode() -> void:
 	_exploded = true
-	var at: Vector3 = gunship.global_position + Vector3(0.0, 2.0, 0.0)
+	_explosion_at = gunship.global_position + Vector3(0.0, 2.0, 0.0)
 	gunship.visible = false
-	world.effects.burst(at, Color(1.0, 0.86, 0.6), 60, 2.6)
-	world.effects.burst(at, HostileTakeoverModel.ENGINE, 30, 2.0)
-	world.effects.debris(at, HostileTakeoverModel.OLIVE, 14, 1.6)
-	world.effects.debris(at, HostileTakeoverModel.GUNMETAL_LIGHT, 12, 1.3)
+	world.effects.debris(_explosion_at, HostileTakeoverModel.OLIVE, 16, 1.8)
+	world.effects.debris(_explosion_at, HostileTakeoverModel.GUNMETAL_LIGHT, 14, 1.5)
 	world.effects.shake(0.55, 0.5)
-	sound(&"takeover_explode", at)
+	sound(&"takeover_explode", _explosion_at)
 	log_event(&"gunship_exploded")
 
 
-## The locomotive ploughs into the lobby; its sculpture starts to topple.
+## One of the explosion's blasts (`i`-th), each a little further out: a fireball (HostileTakeoverLobby.blast)
+## on the first, sparks on each.
+func _blast(i: int) -> void:
+	var at: Vector3 = _explosion_at + Vector3((i - 1) * 3.0, i * 1.5, -i * 2.0)
+	if i == 0:
+		lobby.blast(_explosion_at, 16.0)
+	world.effects.burst(at, Color(1.0, 0.86, 0.6), 64, 3.2 - i * 0.4)
+	world.effects.burst(at + Vector3(0.0, 1.0, 0.0), HostileTakeoverModel.ENGINE if i == 0 else Color(1.0, 0.62, 0.3), 40, 2.4)
+
+
+## The locomotive ploughs into the lobby (its blasts: _crash_blast); its sculpture starts to topple.
 func _crash() -> void:
 	_crashed = true
 	var at: Vector3 = lobby.lobby_world()
-	world.effects.burst(at, HostileTakeoverModel.COLD_WHITE, 50, 2.2)
-	world.effects.debris(at, HostileTakeoverModel.GLASS.lightened(0.4), 16, 1.4)
-	world.effects.debris(at, HostileTakeoverModel.GUNMETAL, 12, 1.6)
+	world.effects.debris(at, HostileTakeoverModel.GLASS.lightened(0.4), 16, 1.6)
+	world.effects.debris(at, HostileTakeoverModel.GUNMETAL, 12, 1.8)
 	world.effects.shake(0.6, 0.6)
 	sound(&"takeover_derail", at)
 	log_event(&"locomotive_crashed")
+
+
+## One of the crash's blasts (`i`-th): a fireball out of the lobby's front on the first, glass and sparks
+## bursting out on each.
+func _crash_blast(i: int) -> void:
+	var at: Vector3 = lobby.lobby_world() + Vector3(0.0, i * 2.0, -i * 4.0)
+	if i == 0:
+		lobby.blast(lobby.lobby_world() + Vector3(0.0, 4.0, 0.0), 18.0)
+	world.effects.burst(at, HostileTakeoverModel.COLD_WHITE, 64, 3.0 - i * 0.6)
+	world.effects.burst(at + Vector3(0.0, 1.5, 0.0), Color(1.0, 0.86, 0.6), 40, 2.2)
 
 
 ## Once its defeat has played out (or at once if the runner is gone).
@@ -724,22 +765,22 @@ func _place_gunship() -> void:
 
 
 ## The defeat's motion, on its clock (see the header): the gunship pulling free of the locomotive, up and
-## away from the line, spinning, until it explodes; the locomotive surging on and veering off the guideway
-## into the lobby, where it stays.
+## away from the line on the side away from the lobby, spinning, keeping ahead of the runner until it
+## explodes; the locomotive surging on and veering off the guideway into the lobby, where it stays.
 func _place_defeat() -> void:
 	var t: float = step_time
 	var v: float = world.tuning.run_speed
 	var side: float = float(tuning.derail_side if tuning.derail_side != 0 else 1)
 	if not _exploded:
-		var middle: float = float(_defeat_pose["middle"]) + v * t + 9.0 * t * t
-		var y: float = float(_defeat_pose["y"]) + 1.5 * t + 5.0 * t * t
-		var x: float = float(_defeat_pose["x"]) - side * 4.0 * t * t
+		var middle: float = float(_defeat_pose["middle"]) + v * t + 2.0 * t * t
+		var y: float = float(_defeat_pose["y"]) + 2.0 * t + 3.0 * t * t
+		var x: float = float(_defeat_pose["x"]) - side * (2.0 * t + 4.0 * t * t)
 		gunship.set_pose(Vector3(x, y, TrackGeometry.world_z(middle)), -side * 2.4 * t, 0.3 * t)
 	var k: float = clampf(t / maxf(tuning.crash_at, 0.1), 0.0, 1.0)
 	var end_front: float = _lobby_at - DERAIL_SHORT
 	var front: float = lerpf(_defeat_loco, end_front, k)
 	var veer: float = smoothstep(0.15, 1.0, k)
-	var out: float = side * (world.geo.wall_x() + DERAIL_OUT) * veer
+	var out: float = side * (2.0 * world.geo.wall_x() + DERAIL_OUT) * veer
 	locomotive.set_pose(front, Vector3(out, -0.8 * veer, 0.0), -side * DERAIL_YAW * veer, side * 0.18 * veer)
 
 
