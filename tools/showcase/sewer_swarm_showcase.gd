@@ -1,5 +1,5 @@
 extends Node3D
-## The Sewer Swarm up close and in scripted runs, for visual review (GDD §10, task E4a; not part of the game).
+## The Sewer Swarm up close and in scripted runs, for visual review (GDD §10, task E4; not part of the game).
 ## It builds the fight the way the game does (its arena on Gangland's street, in its arena's look), with a
 ## runner who plays it by its warnings (SewerSwarmBot). The fight itself: ./play.sh --boss=gangland_boss
 ## (debug builds). Render frames on both renderers, e.g.:
@@ -18,9 +18,17 @@ extends Node3D
 ##   fight   the fight as it comes, the runner baiting every surge
 ##   model   a close-up beside the street: a cluster heaped at the wall's foot, rearing, then pouring into
 ##           the lane and charging past
+##   behind  phase 2 from its start, the runner baiting: a strike from behind first (the wave rising behind
+##           the runner and curling over their lane, its crash, its surge on into the fence), then the climbs
+##   host    phase 3 from its start: the pipe across the street ahead, the Host bursting out of it, then its
+##           fight (the runner baits its lunges into fences and takes the ramps onto its implants)
+##   stomp   phase 3, the runner only stomping (its lunges dodged, never baited)
+##   defeat  phase 3 with one hit left: the first hit frees the Host
+##   hostmodel  a close-up of the Host beside the street (phase 3), from the side
 ## Options: --lanes=N (3, 5 or 6; 5 by default), --speed=N (18 by default; the campaign's 21.8), --crowd=N
 ## (screeches a cluster), --low-end (the tuning's low-end crowds), --reduced-flashing, --events (prints each of
-## the boss's events with its frame, for picking frames), --stay (the runner stands in the surge: it hits).
+## the boss's events with its frame, for picking frames), --stay (the runner stands in the surge: it hits),
+## --phase=N (start at phase N: 1 Surrounded, 2 The Host).
 ## Frames worth a look (at --fixed-fps 10, 18 m/s): rising 0-50; the first surge's warning from about frame
 ## 67, its lock about 80 and its bait or pass about 87; at 21.8 m/s about the same (its times are seconds).
 
@@ -44,6 +52,7 @@ func _ready() -> void:
 	var crowd: int = -1
 	var low_end: bool = false
 	var stay: bool = false
+	var phase: int = -1
 	for arg: String in OS.get_cmdline_user_args():
 		var v: String = arg.get_slice("=", 1)
 		if arg.begins_with("--scenario="):
@@ -63,6 +72,8 @@ func _ready() -> void:
 			_print_events = true
 		elif arg == "--stay":
 			stay = true
+		elif arg.begins_with("--phase="):
+			phase = int(v)
 	var slot: BossDef = load(BOSS_PATH) as BossDef
 	var def: BossDef = slot.preview() if slot.preview() != null else slot.duplicate() as BossDef
 	var t: SewerSwarmTuning = (def.tuning as SewerSwarmTuning).duplicate() as SewerSwarmTuning
@@ -83,6 +94,10 @@ func _ready() -> void:
 	ctx.config = BossArena.base_config(def)
 	ctx.config.lane_count = lanes
 	ctx.tuning = tuning
+	if phase < 0:
+		phase = 1 if scenario == "behind" else (2 if scenario in ["host", "stomp", "defeat", "hostmodel"] else 0)
+	if phase > 0:
+		ctx.boss_resume = {"phase": phase}
 	boss = BossEncounter.create(def) as SewerSwarm
 	boss.low_end = low_end
 	var arena: BossArena = boss.plan_arena(ctx)
@@ -93,9 +108,11 @@ func _ready() -> void:
 		load("res://data/tuning/powerups.tres") as PowerupTuning, null, load("res://data/audio/sfx_library.tres") as SfxLibrary)
 	boss.setup(world, ctx, arena)
 	world.player.god_mode = true
-	if scenario != "model":
+	if scenario == "defeat":
+		boss.health = boss.hit_damage() * 1.001
+	if scenario not in ["model", "hostmodel"]:
 		bot = SewerSwarmBot.new(boss)
-		bot.baits = scenario in ["fence", "hole", "fight"]
+		bot.baits = scenario in ["fence", "hole", "fight", "behind", "host", "defeat"]
 		bot.dodges = not stay
 	var env := WorldEnvironment.new()
 	env.environment = world.skin.level_environment(ctx.config.darkness)
@@ -109,7 +126,7 @@ func _ready() -> void:
 	add_child(_run_cam)
 	_run_cam.follow(world)
 	_run_cam.make_current()
-	if scenario == "model":
+	if scenario in ["model", "hostmodel"]:
 		_cam = Camera3D.new()
 		_cam.fov = 55.0
 		_cam.far = 400.0
@@ -125,6 +142,8 @@ func _physics_process(delta: float) -> void:
 		bot.step()
 	if scenario == "model":
 		_model_camera()
+	elif scenario == "hostmodel":
+		_host_camera()
 	if _print_events:
 		while _events_seen < boss.events.size():
 			var e: Dictionary = boss.events[_events_seen]
@@ -144,4 +163,17 @@ func _model_camera() -> void:
 		return
 	var target := Vector3(c.side * (world.geo.wall_x() - 1.5), 0.6, TrackGeometry.world_z(c.at))
 	_cam.global_position = target + Vector3(-c.side * 6.5, 2.4, 6.0)
+	_cam.look_at(target, Vector3.UP)
+
+
+## The Host's close-up: a camera at the far side of the street, between it and the runner, looking at it.
+func _host_camera() -> void:
+	var h: SwarmHost = boss.host
+	if h == null or not h.visible:
+		_cam.global_position = _run_cam.global_position
+		_cam.global_rotation = _run_cam.global_rotation
+		return
+	var target := Vector3(h.x, h.lift + 1.8, TrackGeometry.world_z(h.at))
+	var side: float = -1.0 if h.x >= 0.0 else 1.0
+	_cam.global_position = Vector3(side * (world.geo.wall_x() - 0.4), 2.4, target.z + 8.5)
 	_cam.look_at(target, Vector3.UP)

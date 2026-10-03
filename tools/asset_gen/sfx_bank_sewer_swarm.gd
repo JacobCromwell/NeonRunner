@@ -13,6 +13,15 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##   swarm_fall     a cluster pouring into a hole: squeals falling away into the dark, scrabbling claws, a
 ##                  distant thud
 ##   swarm_scatter  a cluster thinned to nothing (or beaten): squeals and claws scattering away
+##   swarm_wave     a strike from behind's warning (GDD §10: "a chittering sound plus a visible rising wave"):
+##                  a chitter rising over a swelling surf of claws and squeals, the wave about to break
+##   swarm_climb    the swarm climbing a wall: claws scrabbling up brick, rising, squeaks
+##   host_burst     the Host bursting out of the pipe: tearing metal, a heavy drop, a groaning roar, the swarm
+##                  spilling
+##   host_roar      the Host's lunge warning: a deep, ragged roar with the swarm shrieking in it
+##   host_fling     the Host flinging a cluster: a heave, a whoosh, squeals flung away
+##   host_crouch    the Host crouching by a ramp: a heavy thud, its implants humming up (its weak points)
+##   host_short     an implant shorting out (a stomp, the defeat): crackling zaps, a buzz dying away
 
 
 func sounds() -> Dictionary:
@@ -23,6 +32,13 @@ func sounds() -> Dictionary:
 		"swarm_shock": _shock,
 		"swarm_fall": _fall,
 		"swarm_scatter": _scatter,
+		"swarm_wave": _wave,
+		"swarm_climb": _climb,
+		"host_burst": _host_burst,
+		"host_roar": _host_roar,
+		"host_fling": _host_fling,
+		"host_crouch": _host_crouch,
+		"host_short": _host_short,
 	}
 
 
@@ -195,4 +211,165 @@ func _scatter() -> PackedFloat32Array:
 	DSP.mix(b, _skitter(d, 300, func(u: float) -> float: return 1.0 - u * 0.8, rng), 0.0, 0.8)
 	DSP.drive(b, 1.5)
 	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## A strike from behind's warning: a chitter rising over a swelling surf of claws and squeals (just under the
+## sound library's 2.5 s: its crash has its own sound, swarm_surge).
+func _wave() -> PackedFloat32Array:
+	var rng := _rng(617)
+	var d: float = 2.45
+	var b := DSP.buffer(d)
+	# The surf: noise swelling through a rising band-pass, the wave building.
+	var surf := DSP.noise(d, rng)
+	DSP.filter_sweep(surf, &"bandpass", 300.0, 2600.0, 0.6)
+	DSP.adsr(surf, 2.0, 0.2, 0.9, 0.25)
+	DSP.mix(b, surf, 0.0, 1.1)
+	# Clicking teeth speeding up, as the chitter's.
+	var phase: float = 0.0
+	var i: int = 0
+	while i < b.size():
+		var u: float = float(i) / b.size()
+		phase += lerpf(10.0, 40.0, u * u) / RATE
+		if phase >= 1.0:
+			phase -= 1.0
+			var level: float = 0.3 + 0.6 * u
+			for j: int in mini(40, b.size() - i):
+				b[i + j] += rng.randf_range(-1.0, 1.0) * level * exp(-j / 7.0)
+		i += 1
+	var squeals := DSP.buffer(d)
+	for k: int in 60:
+		var u: float = pow(rng.randf(), 0.6)
+		var hz: float = lerpf(1500.0, 4200.0, u) * rng.randf_range(0.85, 1.15)
+		DSP.mix(squeals, _squeak(rng.randf_range(0.05, 0.12), hz, hz * rng.randf_range(0.9, 1.4)), u * (d - 0.15),
+			rng.randf_range(0.08, 0.2) * (0.3 + 0.7 * u))
+	DSP.mix(b, squeals, 0.0, 1.0)
+	DSP.mix(b, _skitter(d, 600, func(u: float) -> float: return smoothstep(0.0, 0.9, u), rng), 0.0, 0.6)
+	DSP.drive(b, 1.6)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## Climbing a wall: claws scrabbling up brick, the band rising, squeaks.
+func _climb() -> PackedFloat32Array:
+	var rng := _rng(618)
+	var d: float = 1.3
+	var b := _skitter(d, 1100, func(u: float) -> float: return sin(PI * clampf(u * 1.15, 0.0, 1.0)), rng)
+	DSP.filter_sweep(b, &"bandpass", 1800.0, 5200.0, 0.8)
+	for k: int in 18:
+		var hz: float = rng.randf_range(2600.0, 4800.0)
+		DSP.mix(b, _squeak(rng.randf_range(0.05, 0.1), hz, hz * 1.25), rng.randf_range(0.0, d - 0.2), rng.randf_range(0.12, 0.25))
+	var scrape := DSP.noise(d, rng)
+	DSP.filter(scrape, &"bandpass", 900.0, 1.2)
+	DSP.adsr(scrape, 0.2, 0.3, 0.6, 0.4)
+	DSP.mix(b, scrape, 0.0, 0.5)
+	DSP.drive(b, 1.5)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## A deep, ragged roar: a growling saw with a throaty band, wobbling, under the swarm's shrieks.
+func _roar(seconds: float, from_hz: float, to_hz: float, rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var b := DSP.osc(seconds, func(u: float) -> float: return lerpf(from_hz, to_hz, u) * (1.0 + 0.06 * sin(u * 70.0)), &"saw")
+	var rasp := DSP.noise(seconds, rng)
+	for i: int in b.size():
+		b[i] = b[i] * 0.8 + rasp[i] * 0.35 * absf(b[i])
+	DSP.filter(b, &"bandpass", 520.0, 0.9)
+	DSP.filter(b, &"lowpass", 2400.0)
+	DSP.adsr(b, 0.12, 0.3, 0.75, 0.35)
+	DSP.drive(b, 2.2)
+	return b
+
+
+## The Host bursting out of the pipe: tearing metal, the drop's thud, a groaning roar, the swarm spilling.
+func _host_burst() -> PackedFloat32Array:
+	var rng := _rng(619)
+	var d: float = 1.9
+	var b := DSP.buffer(d)
+	var t: float = 0.0
+	while t < 0.45:
+		DSP.mix(b, DSP.metal_hit(0.18, rng.randf_range(300.0, 700.0), 0.06, rng), t, rng.randf_range(0.35, 0.7))
+		t += rng.randf_range(0.03, 0.07)
+	var tear := DSP.noise(0.5, rng)
+	DSP.filter_sweep(tear, &"bandpass", 3000.0, 600.0, 1.4)
+	DSP.envelope(tear, 0.005, 0.25)
+	DSP.mix(b, tear, 0.0, 0.9)
+	DSP.mix(b, _boom(1.0, 90.0, 38.0, 0.3, rng), 0.55, 0.9)
+	DSP.mix(b, _roar(1.1, 70.0, 52.0, rng), 0.7, 0.7)
+	for k: int in 40:
+		var hz: float = rng.randf_range(2200.0, 4600.0)
+		DSP.mix(b, _squeak(rng.randf_range(0.05, 0.14), hz, hz * rng.randf_range(0.8, 1.3)), rng.randf_range(0.2, d - 0.2),
+			rng.randf_range(0.08, 0.2))
+	DSP.mix(b, _skitter(d, 500, func(u: float) -> float: return 1.0 - u * 0.7, rng), 0.0, 0.5)
+	DSP.drive(b, 1.6)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## The Host's lunge warning: a deep, rising roar, the swarm shrieking in it.
+func _host_roar() -> PackedFloat32Array:
+	var rng := _rng(620)
+	var d: float = 1.5
+	var b := _roar(d, 58.0, 82.0, rng)
+	for k: int in 34:
+		var u: float = pow(rng.randf(), 0.7)
+		var hz: float = lerpf(1800.0, 4400.0, u)
+		DSP.mix(b, _squeak(rng.randf_range(0.05, 0.12), hz, hz * 1.3), u * (d - 0.15), rng.randf_range(0.06, 0.16))
+	DSP.drive(b, 1.4)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## The Host flinging a cluster: a heave, a whoosh, squeals flung away.
+func _host_fling() -> PackedFloat32Array:
+	var rng := _rng(621)
+	var d: float = 1.0
+	var b := _roar(0.45, 64.0, 92.0, rng)
+	var out := DSP.buffer(d)
+	DSP.mix(out, b, 0.0, 0.7)
+	DSP.mix(out, _whoosh(0.6, 500.0, 3000.0, 0.8, rng), 0.35, 1.0)
+	for k: int in 20:
+		var hz: float = rng.randf_range(2600.0, 4800.0)
+		DSP.mix(out, _squeak(rng.randf_range(0.08, 0.2), hz, hz * 0.6), rng.randf_range(0.4, 0.8), rng.randf_range(0.1, 0.22))
+	DSP.drive(out, 1.5)
+	DSP.crush(out, 9, 18000.0)
+	return out
+
+
+## The Host crouching by a ramp: a heavy thud, its implants humming up.
+func _host_crouch() -> PackedFloat32Array:
+	var rng := _rng(622)
+	var d: float = 1.0
+	var b := DSP.buffer(d)
+	DSP.mix(b, _boom(0.6, 80.0, 40.0, 0.18, rng), 0.0, 0.9)
+	var hum := DSP.osc(0.8, func(u: float) -> float: return lerpf(110.0, 220.0, u), &"square")
+	DSP.filter(hum, &"lowpass", 1800.0)
+	DSP.adsr(hum, 0.4, 0.2, 0.7, 0.2)
+	DSP.mix(b, hum, 0.18, 0.35)
+	var buzz := DSP.osc(0.8, func(u: float) -> float: return lerpf(880.0, 1320.0, u), &"sine")
+	DSP.adsr(buzz, 0.5, 0.1, 0.8, 0.2)
+	DSP.mix(b, buzz, 0.18, 0.18)
+	DSP.drive(b, 1.4)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## An implant shorting out: crackling zaps, a buzz dying away.
+func _host_short() -> PackedFloat32Array:
+	var rng := _rng(623)
+	var d: float = 1.2
+	var b := DSP.buffer(d)
+	var zap := DSP.noise(0.3, rng)
+	for i: int in zap.size():
+		zap[i] *= 0.5 + 0.5 * sign(sin(TAU * 90.0 * i / RATE))
+	DSP.filter(zap, &"bandpass", 2200.0, 0.8)
+	DSP.envelope(zap, 0.002, 0.1)
+	DSP.mix(b, zap, 0.0, 1.4)
+	DSP.mix(b, _crackle(d, 70, 0.35, 4200.0, rng), 0.0, 0.9)
+	var buzz := DSP.osc(d, func(u: float) -> float: return lerpf(240.0, 60.0, u), &"square")
+	DSP.filter(buzz, &"lowpass", 1600.0)
+	DSP.envelope(buzz, 0.005, 0.4)
+	DSP.mix(b, buzz, 0.05, 0.45)
+	DSP.drive(b, 1.8)
+	DSP.crush(b, 8, 16000.0)
 	return b

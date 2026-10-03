@@ -9,12 +9,14 @@ extends MultiMeshInstance3D
 ## - CLUSTER: a swarm cluster's creatures (SwarmCluster: its mound at the roadside, the pour into a lane,
 ##   the charging mass, its death; thinned by weapons, rising as it forms);
 ## - BAND: the roadside horde in one gutter (SwarmHorde), following the runner;
-## - SPILL: screeches pouring out of the lairs as they burst (SwarmHorde), each instance placed at its lair.
+## - SPILL: screeches pouring out of the lairs as they burst (SwarmHorde), each instance placed at its lair;
+## - CLIMB: phase 2's wall climb (SwarmClimb), covering a wall beside the runner;
+## - HOST: the screeches latched onto the Host (SwarmHost), its bulk, thinned as it's hit.
 ## Crowds are made before the fight (SewerSwarm's pool, SwarmHorde) and reused, so a fight makes no mesh or
 ## material mid-fight; `made` counts the crowds made (tests). The crowd size is the look only: the fight
 ## never reads it.
 
-enum Kind { CLUSTER, BAND, SPILL }
+enum Kind { CLUSTER, BAND, SPILL, CLIMB, HOST }
 
 const SHADER: Shader = preload("res://scripts/bosses/sewer_swarm/swarm_crowd.gdshader")
 
@@ -54,14 +56,21 @@ static func make(p_kind: Kind, p_count: int, seed_value: int, grime: float = 1.0
 	crowd.set_param(&"kind", int(p_kind))
 	crowd.set_param(&"grime", grime)
 	crowd.set_param(&"creature_scale", scale)
-	if p_kind != Kind.SPILL:
-		# Its creatures are placed by the shader around the node, never by their instance transforms (the
-		# identity), so it can't work out its own bounds: these hold every formation (a cluster pouring
-		# across the widest street, flung by a shock; a band's length).
-		crowd.custom_aabb = AABB(Vector3(-12.0, -6.0, -12.0), Vector3(24.0, 12.0, 24.0)) if p_kind == Kind.CLUSTER \
-			else AABB(Vector3(-12.0, -1.0, -200.0), Vector3(24.0, 4.0, 240.0))
-	else:
-		crowd.extra_cull_margin = 3.0
+	# Its creatures are placed by the shader around the node, never by their instance transforms (the
+	# identity), so it can't work out its own bounds: these hold every formation (a cluster pouring across the
+	# widest street, rising as a wave, flung by a shock; a band's or a climb's length; the Host's bulk, flung
+	# off it).
+	match p_kind:
+		Kind.CLUSTER:
+			crowd.custom_aabb = AABB(Vector3(-12.0, -6.0, -24.0), Vector3(24.0, 18.0, 48.0))
+		Kind.BAND:
+			crowd.custom_aabb = AABB(Vector3(-12.0, -1.0, -200.0), Vector3(24.0, 4.0, 240.0))
+		Kind.CLIMB:
+			crowd.custom_aabb = AABB(Vector3(-12.0, -1.0, -200.0), Vector3(24.0, 10.0, 240.0))
+		Kind.HOST:
+			crowd.custom_aabb = AABB(Vector3(-10.0, -2.0, -20.0), Vector3(20.0, 14.0, 40.0))
+		_:
+			crowd.extra_cull_margin = 3.0
 	made += 1
 	return crowd
 
@@ -97,10 +106,25 @@ func set_param(param: StringName, value: Variant) -> void:
 
 
 ## A cluster's formation (see swarm_crowd.gdshader): its mound against the wall at `wall_x` (signed) with its
-## middle at local z `mound_z`; its mass in the lane at `lane_x` with its front at local z `front_z`.
-func set_formation(wall_x: float, side: int, mound_z: float, lane_x: float, front_z: float) -> void:
+## middle at local z `mound_z`; its mass in the lane at `lane_x` with its front at local z `front_z`, charging
+## toward +z (`dir` 1: at the runner, from ahead) or -z (-1: along the lane past them, from behind).
+func set_formation(wall_x: float, side: int, mound_z: float, lane_x: float, front_z: float, dir: float = 1.0) -> void:
 	set_param(&"mound", Vector4(wall_x, mound_z, float(side), 0.0))
 	set_param(&"mass", Vector4(lane_x, front_z, _mass_length, _mass_width))
+	set_param(&"mass_dir", dir)
+
+
+## What a cluster pours into its lane from (`from`: 0 its mound, 1 its wave, 2 a flung ball) and, for a wave,
+## its lane's x, its foot's local z and how far it has risen (0-1).
+func set_wave(from: int, lane_x: float, foot_z: float, rise: float) -> void:
+	set_param(&"form_from", from)
+	if from == 1:
+		set_param(&"wave", Vector4(lane_x, foot_z, _q(rise), 0.0))
+
+
+## A wave's shape: its height, how far its crest curls forward, and its width (a share of the lane's).
+func set_wave_shape(height: float, reach: float, width: float) -> void:
+	set_param(&"wave_shape", Vector4(height, reach, width, 0.0))
 
 
 ## A cluster's shapes: its mound's length, depth and climb; its mass's length, width and height.
@@ -131,6 +155,26 @@ func set_band(wall_x: float, side: int, ahead: float, behind: float, depth: floa
 		heap: float = 7.0) -> void:
 	set_param(&"band", Vector4(wall_x, ahead, behind, drift))
 	set_param(&"band_shape", Vector4(depth, climb, float(side), heap))
+
+
+## The Host's bulk: its `size` (width, height, depth or a crouch's length), crouched (0-1), rearing (0-1),
+## charging (0-1), and a shock's glow (0-1).
+func set_host(size: Vector4, crouch: float, rear: float, charge: float, shock: float) -> void:
+	set_param(&"host_shape", Vector4(_q(size.x), _q(size.y), _q(size.z), 0.0))
+	set_param(&"host", Vector4(_q(crouch), _q(rear), _q(charge), _q(shock)))
+
+
+## A flung ball (form_from 2) of `radius` metres, tumbling.
+func set_ball(radius: float) -> void:
+	set_param(&"form_from", 2)
+	set_param(&"ball", radius)
+
+
+## A climb: on the wall at `wall_x` (signed) on `side`, from `ahead` metres ahead of the node to `behind`
+## behind it, streaming back at `drift` m/s, up to `height` once it has risen (`rise`, 0-1).
+func set_climb(wall_x: float, side: int, ahead: float, behind: float, drift: float, height: float, rise: float) -> void:
+	set_param(&"climb", Vector4(wall_x, ahead, behind, drift))
+	set_param(&"climb_shape", Vector4(height, float(side), _q(rise), 0.0))
 
 
 ## Places spill instance `i` at a lair (world position `at`, on `side`), coming out from `burst_clock`.
