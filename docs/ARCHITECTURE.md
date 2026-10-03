@@ -443,7 +443,8 @@ built under the names their tasks must use (`LevelConfig.PLANNED_FEATURES`: `bar
 
 Built so far: cyborg (with its panic variant and hosts), window cyborg, fence generator, hover
 truck, Octodog, sewer screech (manholes, and wall vents; `screech_vents` is wall vents only, for zones
-whose floor has no manholes),
+whose floor has no manholes; its body, `ScreechModel`, also comes at a lower detail for crowds,
+`crowd_mesh()`, the same parts and colours in about a third of the triangles: the Sewer Swarm's),
 heli drone, the Cyborg's Bad Dream (released by a killed host, spawned by the director at run
 time rather than placed by the generator), the Resonator (GDD §9.10, the Golden Zone: a golden
 broadcast spire hovering far ahead whose red waves roll along the floor across every lane; its model,
@@ -2020,6 +2021,7 @@ encounter.setup(world, context, arena)   joins the world between the player and 
 | `scripts/bosses/sleep_taker/`, `scenes/bosses/sleep_taker.tscn`, `data/bosses/dead_zone_boss*.tres` | the Sleep Taker, the Dead Zone's boss (see below; `./play.sh --boss=dead_zone_boss` or `--level=dead_zone/boss`) |
 | `scripts/bosses/the_house/`, `scenes/bosses/the_house.tscn`, `data/bosses/marketplace_boss*.tres` | The House, the Marketplace's boss (see below; `./play.sh --boss=marketplace_boss` or `--level=marketplace/boss`) |
 | `scripts/bosses/hostile_takeover/`, `scenes/bosses/hostile_takeover.tscn`, `data/bosses/corporate_boss*.tres` | Hostile Takeover, the Corporate zone's boss, being built (see below; a preview with `./play.sh --boss=corporate_boss`) |
+| `scripts/bosses/sewer_swarm/`, `scenes/bosses/sewer_swarm.tscn`, `data/bosses/gangland_boss*.tres` | the Sewer Swarm, Gangland's boss (see below; E4a: phase 1, played as a preview with `./play.sh --boss=gangland_boss`) |
 
 - **The arena** (`BossArena`): the generator plans `BossDef.arena_laps` laps from the boss's arena
   config (one lap's seed, features, difficulty, pacing and skin; `duration_seconds` is the lap's
@@ -2145,12 +2147,12 @@ plays it; E1e, the owner's playtest fixes; E1f, the fight at the City's speed), 
 **How the designed bosses fit** (GDD §10; each is a later task):
 - **Floating Head (E1, built):** the City's boss step plays it; `weapon_share_cap` 0.34 keeps
   weapons to one stomp, and its defeat plays out on the track before the results (`victory_over`).
-- **Sewer Swarm (E4):** 4–5 clusters are parts with health of their own and `is_swarm` (MultiMesh
-  crowds drawn by the part), moving ahead of and behind the player (parts never retire); baiting one
-  into a live fence or a hole is the boss script's check (`arena.live_fence_between`,
-  `hole_between`) then `part.defeat(&"fence")`, and `_on_part_defeated` deals `hit_damage()`. The
-  swarm on a wall is `props.block_wall`, one side at a time. The Host is the body part with three
-  weak points.
+- **Sewer Swarm (E4; E4a built, see below):** its clusters are parts with health of their own and
+  `is_swarm`, each drawn as a MultiMesh crowd (`SwarmCrowd`); a cluster charging into a live fence or a
+  hole is the surge's own check (`SewerSwarm.bait_between` on the arena's track) then `part.defeat(&"fence")`
+  or `&"hole"`, and `_on_part_defeated` deals `hit_damage()`. Still to come (E4b): phase 2's strikes from
+  behind and the wall climb (`props.block_wall`, one side at a time, its crowd `SewerSwarmTuning.climb_*`),
+  and the Host, the body part with three weak points.
 - **The House (E5a, see below):** its reels are its spin's telegraph; cherry bombs are
   `circle_warning`s and blast hitboxes, the lightning one `props.fence` a lane rolled out by a spool,
   gold blocks of `props.block`'s kind (pooled in its own script) under `lane_warning`s. The 7 buttons
@@ -2312,6 +2314,44 @@ Buzz Overdrive dropped onto a roof with its planned cut (the skin's `floor_cut` 
 armored carriage. E5b-c: the locomotive comes back (`set_front`) and the gunship docks onto it, its three
 clamps (modelled, folded) the weak points; MERGER COMPLETE screens with the Chairman's face, the defeat,
 the par times, and the slot's `scene` so the campaign plays it after Corporate 2.
+
+**The Sewer Swarm** (GDD §10, task E4: E4a, the clusters, the arena and phase 1, the Rising; E4b, phase 2
+Surrounded, phase 3 The Host, the defeat, par times and its slot). Until E4b its slot keeps the fight in
+`preview_scene` (debug builds: `./play.sh --boss=gangland_boss`, quick play's 18 m/s; the campaign shows its
+card), and phases 2 and 3 play the Rising's pattern as a stand-in (phase 3 re-forms its clusters:
+`SewerSwarm._ensure_clusters`). Its tuning's distances that stand for a time (where a surge meets the runner,
+how far it charges, the baits' spacing, the fairness margins) are written at 18 m/s and multiplied by the
+run's pace (`SewerSwarm.run_pace()`), so at Gangland's 21.8 m/s it plays the same in seconds (a clean phase 1
+takes 19.7 s at both speeds). In `scripts/bosses/sewer_swarm/`:
+
+| File | What |
+|---|---|
+| `sewer_swarm.gd` (`SewerSwarm`) | the encounter: its arena (`_plan_lap`: Gangland's generated holes and fences with nothing else on the track, and every `bait_spacing` from `bait_first` a bait spot, a live full-height fence or a hole in one lane in turn, the lane seeded and at most `bait_max_shift` from the last, the street around it, `bait_clear_span()`, clear of every other hole and fence in every lane), its spots' geometry (`spots_between`, `next_spot`: one whose warning point passed unused is logged `bait_missed`; `warn_at`, `strike_at`, `entry_at`, `surge_reach`, `charge_speed`), `bait_between()` (the first live full fence or hole a cluster charging down a lane meets), its clusters (`clusters`, `queue`: waiting at the roadside ahead, sides alternating, the next to surge nearest at `surge_reach()` and the others `station_spacing` behind it, keeping pace and easing up as the line moves; `next_cluster(side)` takes the first on the bait's side; `requeue` sends one that missed to the back, re-forming), its crowds' pool (`crowd_pool_size`, `take_crowd`, `release_crowd`: every cluster's crowd made before the fight), its horde, the Rising's intro (the clusters rise one after another, `swarm_rise`), `_on_part_defeated` (a cluster destroyed: its sound and burst, `bait_score` for a bait, then the phase's `hit_damage()`), the stand-in defeat (the horde drains away). Helpers: `player_lane` (a wall runner's outer lane), `sound` (plays and logs), `sound_point`, `hint` (`boss:gangland_boss/bait`), `low_end` (`DeviceProfile.is_low_end()`: the smaller crowds) |
+| `swarm_surges.gd` (`SwarmSurges`) | the surges, one at a time, one at every bait spot the runner reaches: WARN (`warning_seconds` before the strike the nearest cluster on the bait's side gathers where it will land, `entry_at`, rearing and heating red; `swarm_chitter`; the aim line, a reused node with the lane warning's own material, down the runner's lane from there, following them and ending at a bait on it), POUR (`pour_seconds` before the lock, toward the line's lane), CHARGE (`lock_seconds` before the strike it lands in the runner's lane and charges at `charge_speed`; the line locks as `props.lane_warning` from the bait or the runner to where it landed; `swarm_surge`; its hitbox live): into the first fence or hole on its way (`surge_bait`, then the cluster's defeat) or past the runner (`surge_pass`, out of sight, and `requeue`). Every step logged (`surge_warn`, `surge_lock`, `surge_hit`, `surge_end`). `cluster_destroyed` ends a surge whose cluster weapons destroyed; `clear()` ends one at a phase change |
+| `swarm_cluster.gd` (`SwarmCluster`) | a cluster: a boss part with health of its own (`cluster_health`), `is_swarm` (the heavy missile's bonus, splash included), `is_obstacle`, claw-immune and passed safely by the dash like every boss part; one hitbox, an enemy attack in its lane (armor and the shield block it), smaller than its mass (`hit_*`) and live only while it charges; a target for weapons and hurt by them only while it surges (`targetable`, `take_damage`); its stages (`Stage`: FORMING, WAITING, GATHER, POUR, CHARGE, SHOCKED, FALLING, SCATTER), `at` (its mound's middle, or its mass's front), its look's values (`pour`, `rear`, `bristle`, `formed`) sent to its crowd from `_process`; destroyed, its death plays out and its crowd goes back to the pool |
+| `swarm_crowd.gd` (`SwarmCrowd`), `swarm_crowd.gdshader` | one crowd: ONE MultiMesh of the screech's crowd mesh (`ScreechModel.crowd_mesh()`, about 100 triangles) with ONE material, drawn in one call; per creature only its instance custom data (three random numbers placing it, and its rank); the shader places and animates every creature (a cluster's mound against a wall's foot, rearing; the pour into a lane in rank order; the lane-wide mass charging, heaped in the middle; shocked on a fence (flung back, burning pink, crackling, steady with Reduced flashing), falling into a hole over its far edge, scattering; thinned by its `alive` share, its highest ranks first, and drawn only up to it, `show_up_to`; a band's horde in a gutter, gathered in drifting heaps; a lair's spill) with the screech's legs, spines and tail, from a few uniforms set only when they change (`set_param`). The screech's look in linear light on every renderer, its skin lifted toward a sickly pale (`skin_lift`: dark olive vanishes on Gangland's asphalt), and an attack's heat (`bristle`) burning its spines, eyes and silhouette enemy-attack red; on the Compatibility renderer an over-bright glow is scaled down whole. Every instance carries a white colour, never read: the Compatibility renderer multiplies a MultiMesh's vertex colours by its instance colour, zero in one without colours (the lairs' MultiMeshes too). `made` counts crowds made (tests: none mid-fight) |
+| `swarm_horde.gd` (`SwarmHorde`), `swarm_lairs.gd` (`SwarmLairs`), `swarm_lair.gdshader` | the scenery at the roadsides, never in the lanes and never hurting: a band in each gutter (`horde_*`: from `horde_behind` to `horde_ahead`, following the runner, drifting back, heaped every `horde_heap_spacing`; filling up over `horde_fill_seconds`, draining away at the defeat); the lairs, a manhole at the street's edge or a vent at a wall's foot every `lair_spacing` along both sides, alternating, none over a hole or by a fence (two MultiMeshes, their instances reused as the runner passes: rattling from `rattle_ahead`, the slots glowing steadily brighter, bursting at `burst_ahead`: a cover flips and lands askew over its hole, a grille flies off; every lair in sight bursts at the fight's start and during the Rising, `lair_burst_share` of them after); the spill, `spill_creatures` pouring out of each lair as it bursts. Visual only: it runs from `_process` |
+| `sewer_swarm_tuning.gd`, `data/bosses/gangland_boss_tuning.tres` | its numbers (F6 in its fight): every crowd size (`cluster_creatures`, `horde_creatures`, `climb_creatures` for E4b's wall climb, `spill_creatures`, each with a smaller `_low_end` one: the phone test, E3, sets them; the fight never reads them), the clusters, the surges, the baits, the Rising; all DESIGN-TBD (`docs/questions/e4.md`) |
+| `data/bosses/gangland_boss.tres`, `data/bosses/gangland_boss_skin.tres` | its slot: `preview_scene`, three phases (Rising: two clusters; Surrounded: three; The Host: three stomps), the standard armor rule with `armor_when_unprotected`, Gangland's music; its arena (three laps of Gangland's street, no features) in a skin of its own (Gangland's, its gutters darker where the horde runs) |
+| `tools/asset_gen/sfx_bank_sewer_swarm.gd` | its sounds (`swarm_rise`, `swarm_chitter`: the surge's rising warning, as long as it, `swarm_surge`, `swarm_shock`, `swarm_fall`, `swarm_scatter`); the lairs are the screech's (`ScreechLair`'s look) |
+| `tools/showcase/sewer_swarm_showcase.tscn` | the fight for reviews through the run camera (`--scenario=rising/surge/fence/hole/fight/model`, `--lanes`, `--speed`, `--crowd=N`, `--low-end`, `--stay`, `--reduced-flashing`, `--events`) |
+| `tools/showcase/swarm_stress.tscn` | the rendering stress test for the phone test (task E3): N clusters of C screeches (`--clusters`, `--crowd`, `--horde`, `--spill`, `--low-end`, `--lanes`, sliders live) drawn exactly as the fight draws them, cycling through what a cluster does, with a readout (fps, frame time and its worst, the crowds' CPU time a frame, draw calls, primitives, objects); `--seconds=S` prints a summary line and quits |
+| `tests/helpers/sewer_swarm_bot.gd` (`SewerSwarmBot`) | a runner who plays the fight by what it shows, `reaction` seconds late: to the bait's lane when a surge warns (`baits`), out of the locked lane after the lock (`bait_escape` &"switch", or &"jump" over the bait; `dodges` off stands in it), and the arena's holes and fences read like any runner (`reads_track`), with a `home_lane` |
+
+- **The crowds' cost** (measured with `swarm_stress --seconds=8`, software rendering under a virtual display
+  on a shared 4-CPU machine, so counts, not timings, for the GPU side): one draw call a crowd whatever its
+  size, on both renderers (the fight's five clusters, two bands, the spill and two kinds of lair: ten for the
+  whole swarm), and 102 triangles a screech. The stress scene's eight crowds at the low-end sizes (524
+  screeches), the defaults (1,324) and twice the defaults (2,648): 8 draw calls at every size (30 in all with
+  the street and the readout's 22) and 55,000, 136,000 and 271,000 triangles, on Forward+ and on
+  Compatibility alike; the CPU sets a few uniforms a crowd a frame, 0.16-0.19 ms for all eight in GDScript
+  at every size (it never touches a creature). Software frame times grow with the triangles (llvmpipe);
+  the phone test (E3) measures the real GPU cost and sets the crowd sizes.
+- **Fairness, proven** (`test_sewer_swarm`, `test_sewer_swarm_fight`): every spot's surge window is clear but
+  for its bait; its bait is in reach from any lane before the lock (a reaction and a switch a lane across
+  the street at 6 lanes fit its 1.3 s); every lane has a way out (a clear neighbouring lane, or the wall
+  beside an outer one: the arena has no signs); a baited cluster meets its bait ahead of the runner; the
+  bot wins phase 1 at 3, 5 and 6 lanes at 18 and 21.8 m/s, and after a death and a retry.
 
 ## Cinematics
 
@@ -2634,6 +2674,21 @@ two let go by (each harmless, the next one coming), a run off the edge (a fall, 
 Collector skimming its trail, weapons up to their cap, the armor rule (a break, no armor, the final phase),
 the preview's five stomps to its placeholder defeat the same on every attempt, and quick play at every
 lane count and both speeds won, then a death and the retry (the train whole again, the same plan) won.
+`test_sewer_swarm` builds the Sewer Swarm (E4a) at 3, 5
+and 6 lanes and 18 and 21.8 m/s: its slot (a preview until E4b; phase 1 two clusters, phase 2 the rest), its
+crowd sizes in data and smaller on a low-end device, the screech's crowd mesh, its clusters (simulated
+entities with one hitbox each, their crowds one MultiMesh each with no collision and no node per creature, all
+made before the fight and none after a whole phase of surges), the horde and its lairs, its draw count, its
+MultiMeshes' white instance colours (the Compatibility renderer), its arena's every bait spot (a live full fence or a hole in one lane, the street around it clear, in reach from any
+lane before the lock, a way out of every lane, met by a baited cluster ahead of the runner) and the stress scene;
+`test_sewer_swarm_fight` plays phase 1 with `SewerSwarmBot` without god mode or armor: won by baiting at every
+lane count and both speeds, the same every attempt, every surge warned (line and chitter) warning_seconds before
+its hit and its hitbox live only from the lock, a fence and a hole baited by a runner who switches out and by
+one who jumps (the line locked from the bait, never on toward the runner), a hit only through the hitbox (an
+enemy attack armor blocks, once) and never beside it, a way out of every surge from every lane, no bait: no end
+and no escalation, weapons thinning only a surging cluster with the heavy missile's swarm bonus (and a cluster
+thinned to nothing counting), the armor rule with and without armor, the same fight at 30 and 400 screeches a
+cluster, and a death then a retry won at 21.8 m/s (6 lanes) and through quick play's own restart (3 lanes).
 `test_resonator` plays the
 Resonator in full worlds on real physics (the warning always before the wave, a jump clearing it at 3,
 5 and 6 lanes with its margin measured, walls and the ceiling safe, armor, shield and dash, turns with a
@@ -2791,7 +2846,9 @@ the run camera, a high one or a low one beside its lane, with `--stay`, `--kill=
 their niches and a runner taking a route past each (`--route=lane|floor|high|low`, `--kick`), through the
 run camera or a camera across the street, straight at a niche or along its wall (`--view=play|close|front|
 wall`), with `--double`, `--pair`, `--skin=golden_palace`, `--speed=N`, `--reduced`), the Golden Zone's statue
-kit (`statue_showcase`: every pose, a turnaround, and a statue rigged in the kit's niche and swinging), the bosses (`floating_head_showcase`, `sleep_taker_showcase`, `the_house_showcase`), the UI kit, the screens (`screens_showcase`;
+kit (`statue_showcase`: every pose, a turnaround, and a statue rigged in the kit's niche and swinging), the bosses (`floating_head_showcase`, `sleep_taker_showcase`, `the_house_showcase`, `sewer_swarm_showcase`),
+the swarm's rendering stress test for the phone test (`swarm_stress`: N clusters of C screeches with a frame-time
+and draw-call readout, sliders, `--seconds=S` for a summary line), the UI kit, the screens (`screens_showcase`;
 its `--screen=hud_armor [--tier=N]` takes the HUD's armor through its states: up, broken, its ring
 filling, back), a zone skin
 (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed screens and emblems a
