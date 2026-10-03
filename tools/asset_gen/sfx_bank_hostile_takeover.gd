@@ -314,7 +314,7 @@ func _explode() -> PackedFloat32Array:
 ## as it ploughs into the lobby, and the sculpture's slab toppling with a deep thud.
 func _derail() -> PackedFloat32Array:
 	var rng := _rng(712)
-	var d: float = 2.8
+	var d: float = 2.4
 	var b := DSP.buffer(d)
 	var screech := DSP.osc(1.4, func(u: float) -> float: return DSP.sweep(2300.0, 700.0, u) * (1.0 + 0.03 * sin(u * 120.0)), &"saw")
 	DSP.filter(screech, &"bandpass", 1500.0, 2.5)
@@ -326,7 +326,7 @@ func _derail() -> PackedFloat32Array:
 	DSP.adsr(glass, 0.005, 0.2, 0.4, 0.6)
 	DSP.mix(b, glass, 0.92, 0.5)
 	DSP.mix(b, _crackle(1.0, 30, 0.2, 3400.0, rng), 0.95, 0.4)
-	DSP.mix(b, _boom(0.9, 60.0, 26.0, 0.25, rng), 1.75, 0.8)
+	DSP.mix(b, _boom(0.9, 60.0, 26.0, 0.25, rng), 1.45, 0.8)
 	DSP.drive(b, 1.5)
 	DSP.crush(b, 9, 21000.0)
 	return b
