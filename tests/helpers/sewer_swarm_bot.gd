@@ -5,7 +5,7 @@ extends RefCounted
 ## named actions and reacts `reaction` seconds after a warning starts or locks, like a player:
 ## - a surge's warning (the red line down its lane, the chitter; from behind, the wave): with `baits` on it
 ##   heads for the lane of the fence or the hole on the street ahead (the bait spot's), so the line follows
-##   it there; with `baits` off it keeps to its lane;
+##   it there; with `baits` off it keeps to its lane (or out of the bait's, `avoids_surge_baits`);
 ## - the lock (the cluster lands and charges; from behind, the wave locks over the lane): in the locked lane
 ##   it gets out of the way: out of the bait's lane to the nearest lane whose floor is clear (`bait_escape`
 ##   &"switch"), or (a surge from ahead) it stays and jumps the fence or the hole (&"jump"); out of an
@@ -36,6 +36,9 @@ var stomps: bool = true
 ## Not baiting (`baits` off), it keeps out of the fence's lane when the Host's lunge warns (so only stomps hurt
 ## it); off, it keeps to its lane whatever.
 var avoids_baits: bool = true
+## Not baiting (`baits` off), it keeps out of the bait spot's lane while a surge warns too (nobody baits: no
+## surge ever meets a fence or a hole); off (the default), it keeps to its lane.
+var avoids_surge_baits: bool = false
 ## The wall jump comes this far past the ramp's start (metres at 18 m/s, at the run's pace): in the green
 ## chevrons' window.
 var jump_after: float = 6.0
@@ -90,6 +93,12 @@ func _read_surge() -> void:
 		_handled["warn%d" % n] = true
 		if baits:
 			_pending.append({"at": boss.fight_time() + reaction, "lane": int(spot["lane"]), "why": "bait"})
+		elif avoids_surge_baits:
+			var player: Player = boss.world.player
+			var spot_lane: int = int(spot["lane"])
+			if player.lane == spot_lane or _target == spot_lane:
+				_pending.append({"at": boss.fight_time() + reaction, "lane": spot_lane + (1 if spot_lane == 0 else -1),
+					"why": "away from the bait"})
 	if int(s.surge["locked"]) >= 0 and not _handled.has("lock%d" % n):
 		_handled["lock%d" % n] = true
 		var baited: bool = not (s.surge["bait"] as Dictionary).is_empty()
