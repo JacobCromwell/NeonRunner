@@ -72,6 +72,16 @@ func _init(p_boss: SewerSwarm, p_host: SwarmHost, p_pipe: SwarmPipe, p_marks: Sw
 	host = p_host
 	pipe = p_pipe
 	marks = p_marks
+	# Every contact with its attacks and its body is logged (tests: a hit only through a hitbox, and only when
+	# the runner stayed in its way).
+	host.lunge_box.contacted.connect(_on_contact.bind("lunge"))
+	host.splat_box.contacted.connect(_on_contact.bind("splat"))
+	host.body.contacted.connect(_on_contact.bind("body"))
+
+
+func _on_contact(outcome: int, what: String) -> void:
+	boss.log_event(&"host_hit", {"what": what, "outcome": outcome, "d": snappedf(boss.player_distance(), 0.01),
+		"lane": boss.player_lane()})
 
 
 func step_name() -> String:

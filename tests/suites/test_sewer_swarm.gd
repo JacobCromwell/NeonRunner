@@ -1,17 +1,20 @@
 extends TestSuite
-## The Sewer Swarm, Gangland's boss (GDD §10; task E4a): its slot and data, its crowds (MultiMesh plus a
-## shader: hundreds of creatures, a few simulated clusters; crowd sizes in data, smaller on a low-end
-## device; nothing per creature on the CPU; no mesh or material made mid-fight), its sounds and hints, its
-## arena (the bait spots: a live fence or a hole in one lane, the street around it clear) and the fairness
-## of every surge on it at 3, 5 and 6 lanes and both speeds (GDD §3: Gangland's 21.8 m/s, quick play's 18):
-## every surge's warning is long enough, its bait is in reach from any lane before the lock, and every lane
-## has a way out; and the stress scene for the phone test. The fight itself: test_sewer_swarm_fight.gd.
+## The Sewer Swarm, Gangland's boss (GDD §10; task E4): its slot and data, its crowds (MultiMesh plus a
+## shader: hundreds of creatures, a few simulated clusters and the Host; crowd sizes in data, smaller on a
+## low-end device; nothing per creature on the CPU; no mesh or material made mid-fight, over the whole fight),
+## its sounds and hints, its arena (the bait spots: a live fence or a hole in one lane, the street around it
+## clear; the host spots: a ramp in an outer lane, the street around it clear) and the fairness of every surge
+## on it at 3, 5 and 6 lanes and both speeds (GDD §3: Gangland's 21.8 m/s, quick play's 18): every surge's
+## warning is long enough, its bait is in reach from any lane before the lock, and every lane has a way out;
+## and the stress scene for the phone test. The fight itself: test_sewer_swarm_fight.gd (phase 1),
+## test_sewer_swarm_surrounded.gd (phase 2), test_sewer_swarm_host.gd (phase 3) and test_sewer_swarm_whole.gd.
 
 const BOSS_PATH: String = "res://data/bosses/gangland_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
 const SPEEDS: Array[float] = [18.0, 21.8]
 const NEW_SOUNDS: Array[StringName] = [&"swarm_rise", &"swarm_chitter", &"swarm_surge", &"swarm_shock", &"swarm_fall",
-	&"swarm_scatter"]
+	&"swarm_scatter", &"swarm_wave", &"swarm_climb", &"host_burst", &"host_roar", &"host_fling", &"host_crouch",
+	&"host_short"]
 ## A player's reaction to a warning, and the margins a lane switch keeps.
 const REACTION: float = 0.35
 
@@ -23,9 +26,9 @@ var def: BossDef
 func run() -> void:
 	sim = RunSim.new(tree, tuning)
 	slot = load(BOSS_PATH) as BossDef
-	def = slot.preview() if slot != null else null
+	def = slot if slot != null and slot.is_built() else null
 	if def == null:
-		check(false, "the Sewer Swarm's fight loads as a preview")
+		check(false, "the Sewer Swarm's fight is built")
 		return
 	_test_slot()
 	_test_tuning()
@@ -58,14 +61,20 @@ func _fight(p_def: BossDef, lanes: int, speed: float = 0.0) -> Array:
 
 func _test_slot() -> void:
 	check(slot.display_name == "Sewer Swarm" and slot.id == &"gangland_boss", "Gangland's slot is the Sewer Swarm (GDD §10)")
-	check(not slot.is_built() and slot.preview_scene == "res://scenes/bosses/sewer_swarm.tscn" and slot.preview() != null,
-		"its fight plays as a preview (debug builds: --boss=gangland_boss) and the campaign keeps its card until E4b")
+	check(slot.is_built() and slot.scene == "res://scenes/bosses/sewer_swarm.tscn" and slot.preview() == null,
+		"its fight is built: the campaign plays it after Gangland 3 (task E4b)")
+	var step: CampaignStep = (load("res://data/campaign/campaign.tres") as Campaign).step("gangland/boss")
+	check(step != null and step.boss == slot and step.boss.is_built(), "the campaign's Gangland boss step plays it")
+	check(slot.two_star_seconds > slot.three_star_seconds and slot.three_star_seconds >= 60.0 and slot.two_star_seconds <= 200.0,
+		"its par times: three stars under %.0f s, two under %.0f s" % [slot.three_star_seconds, slot.two_star_seconds])
+	check(slot.weapon_share_cap <= 1.0 / 3.0 + 0.01, "weapons can save at most one phase's worth of hits (the framework's cap)")
 	var list: Array[BossPhase] = def.phase_list()
 	var t := def.tuning as SewerSwarmTuning
 	check(list.size() == 3 and list[0].display_name == "Rising" and list[1].display_name == "Surrounded"
 		and list[2].display_name == "The Host", "three phases: Rising, Surrounded, The Host (GDD §10)")
 	check(t != null and list[0].hits == 2 and list[0].hits + list[1].hits == t.cluster_count,
 		"phase 1 ends when two clusters are destroyed, phase 2 when the rest are (%d clusters)" % (t.cluster_count if t else 0))
+	check(list[2].hits == 3, "the Host takes three hits (GDD §10: three stomps)")
 	check(t.cluster_count >= 4 and t.cluster_count <= 5, "GDD §10: 4-5 clusters (%d)" % t.cluster_count)
 	check(def.armor_rule and def.armor_delay_min == 15.0 and def.armor_delay_max == 17.0 and def.armor_pickups_per_phase == 1,
 		"the standard armor rule, 15-17 s (GDD §10)")
@@ -78,11 +87,14 @@ func _test_slot() -> void:
 		check(sfx.names().has(String(sound)) and sfx.stream(sound) != null, "its sound %s exists" % sound)
 	check(sfx.stream(&"swarm_chitter").get_length() >= t.warning_seconds - 0.05,
 		"the rising chitter lasts the whole warning (%.2f s)" % sfx.stream(&"swarm_chitter").get_length())
+	check(sfx.stream(&"swarm_wave").get_length() >= t.behind_warning_seconds - 0.2,
+		"the wave's chitter lasts its warning (%.2f s)" % sfx.stream(&"swarm_wave").get_length())
 	var hints: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/hints/hints.json"))
 	var triggers: Array = []
 	for h: Dictionary in (hints as Dictionary)["hints"]:
 		triggers.append(h["trigger"])
-	for trigger: String in ["enemy:gangland_boss", "boss:gangland_boss/bait"]:
+	for trigger: String in ["enemy:gangland_boss", "boss:gangland_boss/bait", "boss:gangland_boss/behind",
+			"boss:gangland_boss/host"]:
 		check(triggers.has(trigger), "a first-time hint for %s" % trigger)
 
 
@@ -90,12 +102,19 @@ func _test_tuning() -> void:
 	var t := def.tuning as SewerSwarmTuning
 	check(t.resource_path == "res://data/bosses/gangland_boss_tuning.tres", "its numbers are a tuning of its own (F6)")
 	check(t.cluster_size(true) < t.cluster_size(false) and t.horde_size(true) < t.horde_size(false)
-		and t.climb_size(true) < t.climb_size(false) and t.spill_size(true) < t.spill_size(false),
-		"every crowd size is data, and a low-end device draws smaller crowds (clusters %d/%d, horde %d/%d, climb %d/%d)" % [
-		t.cluster_size(false), t.cluster_size(true), t.horde_size(false), t.horde_size(true), t.climb_size(false), t.climb_size(true)])
+		and t.climb_size(true) < t.climb_size(false) and t.spill_size(true) < t.spill_size(false)
+		and t.host_size(true) < t.host_size(false),
+		"every crowd size is data, and a low-end device draws smaller crowds (clusters %d/%d, horde %d/%d, climb %d/%d, host %d/%d)" % [
+		t.cluster_size(false), t.cluster_size(true), t.horde_size(false), t.horde_size(true), t.climb_size(false), t.climb_size(true),
+		t.host_size(false), t.host_size(true)])
 	check(t.cluster_size(false) >= 100 and t.horde_size(false) >= 200, "it looks like hundreds (GDD §10)")
 	check(t.warning_seconds > t.lock_seconds and t.lock_seconds > t.pour_seconds, "the warning, then the pour, then the lock")
 	check(t.bait_kind(0) == "fence" and t.bait_kind(1) == "hole", "bait spots take turns: a live fence, then a hole")
+	check(t.surge_side(0) == "behind" and t.surge_side(1) == "ahead", "phase 2's surges take turns: from behind, then ahead")
+	check(t.behind_warning_seconds > t.behind_lock_seconds and t.behind_charge_speed > MovementTuning.REFERENCE_SPEED * 1.2,
+		"a strike from behind warns, locks, then surges on faster than the runner")
+	check(t.climb_gap_seconds > 0.0 and t.climb_height > tuning.ramp_entry_height,
+		"the climbs leave both walls free between them, and cover a wall above a ramp's wall run")
 	# The cluster lands past its bait: a baited one always meets it before the runner does.
 	var past: float = t.charge_speed * t.lock_seconds - t.strike_before
 	check(past > t.hole_length + 2.0, "a cluster lands %.1f m past its bait spot (beyond a %.1f m hole)" % [past, t.hole_length])
@@ -143,9 +162,15 @@ func _test_crowds() -> void:
 	check(boss.clusters.size() == t.cluster_count, "the swarm's %d clusters are in play" % t.cluster_count)
 	var simulated: int = 0
 	for e: Enemy in world.director.active:
-		if e is SwarmCluster:
+		if e is SwarmCluster or e is SwarmHost:
 			simulated += 1
-	check(simulated == t.cluster_count, "only the clusters are simulated: %d entities for hundreds of creatures" % simulated)
+	check(simulated == t.cluster_count + 1, "only the clusters and the Host are simulated: %d entities for hundreds of creatures" % simulated)
+	var host: SwarmHost = boss.host
+	check(host != null and boss.parts[0] == host and host.shares_health and not host.visible and host.pose == SwarmHost.Pose.HIDDEN,
+		"the Host is the boss's body, made with the fight, hidden until phase 3")
+	check(host.crowd != null and host.crowd.multimesh.instance_count == t.host_size(false) and host.implants.size() == 3
+		and host.person != null and host.person.parts == SwarmHostPerson.parts(),
+		"its look: %d screeches latched onto it, the person inside, three implants" % t.host_size(false))
 	for c: SwarmCluster in boss.clusters:
 		check(c.is_swarm and not c.shares_health and c.is_boss and c.claw_immune and not c.dash_kills and c.is_obstacle,
 			"cluster %d: a swarm, health of its own, the boss's (claws never beat it, the dash passes)" % c.index)
@@ -182,15 +207,19 @@ func _test_crowds() -> void:
 	# Draws: one a crowd, whatever its size.
 	var draws: int = boss.clusters.size() + boss.horde.draw_calls()
 	check(draws <= 12, "the swarm draws in %d calls (%d clusters, two bands, the spill, two kinds of lair)" % [draws, boss.clusters.size()])
-	# Nothing made once the fight has begun: a whole phase of surges makes no crowd or material.
+	# Nothing made once the fight has begun: the whole fight (its surges, climbs and the Host) makes no crowd,
+	# mesh or material.
 	var made_mid: int = SwarmCrowd.made
+	var nodes_mid: int = _meshes_under(boss)
 	var bot := SewerSwarmBot.new(boss)
 	world.player.god_mode = true
-	await _steps(world, 40.0, func() -> void: bot.step())
-	check(boss.destroyed >= 2 and SwarmCrowd.made == made_mid,
-		"its crowds are all made before the fight: %d at setup (the clusters' pool and the horde), none in %d surges" % [
-		made_at_start, boss.surges.count])
-	check(made_at_start == boss.crowd_pool_size() + 3, "the pool covers every cluster the fight can have (%d)" % boss.crowd_pool_size())
+	await _steps(world, 160.0, func() -> void: bot.step(), func() -> bool: return boss.is_defeated())
+	check(boss.is_defeated() and boss.destroyed >= t.cluster_count and boss.climb.count >= 2 and boss.host_attacks.stomps >= 1,
+		"(the whole fight played: %d clusters destroyed, %d climbs, %d stomps)" % [boss.destroyed, boss.climb.count,
+		boss.host_attacks.stomps])
+	check(SwarmCrowd.made == made_mid and _meshes_under(boss) == nodes_mid,
+		"its crowds and looks are all made before the fight: %d crowds at setup (the clusters' pool, the climb, the Host, the horde), none after" % made_at_start)
+	check(made_at_start == boss.crowd_pool_size() + 5, "the pool covers every cluster and flung ball the fight can have (%d)" % boss.crowd_pool_size())
 	await sim.free_world(world)
 	# A low-end device draws fewer.
 	var forced := BossEncounter.create(def) as SewerSwarm
@@ -210,14 +239,21 @@ func _test_crowds() -> void:
 	await sim.free_world(w2)
 
 
-func _steps(world: RunWorld, seconds: float, each: Callable = Callable()) -> void:
+func _steps(world: RunWorld, seconds: float, each: Callable = Callable(), done: Callable = Callable()) -> void:
 	if not world.player.running:
 		await tree.physics_frame
 		world.player.running = true
 	for i: int in int(seconds * Engine.physics_ticks_per_second):
 		if each.is_valid():
 			each.call()
+		if done.is_valid() and done.call():
+			return
 		await tree.physics_frame
+
+
+## The mesh and MultiMesh nodes under a node (a look made mid-fight would add some).
+static func _meshes_under(node: Node) -> int:
+	return node.find_children("*", "MeshInstance3D", true, false).size() + node.find_children("*", "MultiMeshInstance3D", true, false).size()
 
 
 # --- The arena and fairness ------------------------------------------------------------------------
@@ -257,7 +293,8 @@ func _arena_at(lanes: int, speed: float) -> void:
 	for li: int in arena.laps.size():
 		var lap: LevelLayout = arena.laps[li]
 		nothing_else = nothing_else and lap.signs.is_empty() and lap.hulls.is_empty() and lap.pads.is_empty() \
-			and lap.ramps.is_empty() and lap.doodads.is_empty() and lap.enemies.is_empty() and lap.credits.is_empty()
+			and lap.ramps.size() == (boss._host_plan.get(li, []) as Array).size() and lap.doodads.is_empty() \
+			and lap.enemies.is_empty() and lap.credits.is_empty()
 		var plan: Array = boss._spot_plan.get(li, [])
 		for s: Dictionary in plan:
 			spots += 1
@@ -318,10 +355,45 @@ func _arena_at(lanes: int, speed: float) -> void:
 	check(reach_ok, "its bait is in reach from any lane before the lock (%.2f s to cross the street) %s" % [
 		st.warning_seconds - st.lock_seconds, tag])
 	check(escape_ok, "and every lane has a way out of its surge %s" % tag)
-	check(nothing_else, "the arena has no signs, ceilings, pads, ramps, doodads, enemies or credits %s" % tag)
+	check(nothing_else, "the arena has no signs, ceilings, pads, doodads, enemies or credits, and only its host spots' ramps %s" % tag)
+	_host_spots_at(boss, arena, t, tag)
 	check(st.warning_seconds >= 2.0 and (st.warning_seconds - st.lock_seconds) >= 1.0,
 		"its warning (%.1f s) is as long in seconds at every speed %s" % [st.warning_seconds, tag])
 	boss.free()
+
+
+## Every lap's host spots: a ramp in the outer lane on its side (sides in turn), the street clear in every lane
+## around it, the ramp's lane on to where its wall run drops back, and the crouch past the ramp within it.
+func _host_spots_at(boss: SewerSwarm, arena: BossArena, t: MovementTuning, tag: String) -> void:
+	var st: SewerSwarmTuning = def.tuning as SewerSwarmTuning
+	var k: float = t.pace()
+	var count: int = 0
+	var ok: bool = true
+	var sides: Dictionary = {}
+	var outer: bool = true
+	for li: int in arena.laps.size():
+		var lap: LevelLayout = arena.laps[li]
+		var hosts: Array = boss._host_plan.get(li, [])
+		count += hosts.size()
+		for i: int in hosts.size():
+			var h: Dictionary = hosts[i]
+			var ramp_at: float = float(h["at"])
+			var side: int = int(h["side"])
+			sides[side] = true
+			outer = outer and int(h["lane"]) == lap.outer_lane(side)
+			var found: bool = false
+			for r: Dictionary in lap.ramps:
+				found = found or (int(r["side"]) == side and is_equal_approx(float(r["at"]), ramp_at))
+			ok = ok and found
+			var reach: Vector2 = SewerSwarm.host_clear_span(st, t, ramp_at)
+			for l: int in lap.lane_count:
+				ok = ok and _floor_clear(lap, l, reach.x, minf(reach.y, lap.length))
+			ok = ok and _floor_clear(lap, int(h["lane"]), ramp_at, minf(float(h["drop"]), lap.length))
+			ok = ok and float(h["from"]) > ramp_at + 6.0 * k and float(h["to"]) < reach.y
+			if i > 0:
+				ok = ok and int(hosts[i - 1]["side"]) != side
+	check(count >= arena.laps.size() * 3 and ok and outer and sides.size() == 2,
+		"each lap carries host spots (%d): a ramp in an outer lane, sides in turn, the street clear around it %s" % [count, tag])
 
 
 ## True if `lane` of a lap has no hole and no fence between two track distances.

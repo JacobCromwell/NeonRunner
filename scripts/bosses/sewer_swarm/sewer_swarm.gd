@@ -175,7 +175,8 @@ func _plan_host_spots(lap: LevelLayout, index: int, p_arena: BossArena, baits: A
 		var ramp_at: float = float(baits[i]["at"]) + t.host_after * k
 		var reach: Vector2 = host_clear_span(t, p_arena.tuning, ramp_at)
 		# The lap's last one may run into the next lap's clear start (every lap begins clear).
-		var limit: float = p_arena.lap_length - 1.0 + p_arena.config.start_clear_distance * k * 0.9
+		var lap_room: float = p_arena.lap_length - 1.0 + p_arena.config.start_clear_distance * k * 0.9
+		var limit: float = lap_room
 		var next_bait: float = INF
 		if i + 1 < baits.size():
 			next_bait = float(baits[i + 1]["at"])
@@ -184,7 +185,9 @@ func _plan_host_spots(lap: LevelLayout, index: int, p_arena: BossArena, baits: A
 		var ramp := {"side": side, "at": ramp_at}
 		# Where its wall run drops back into its lane (a wall run never jumped off), with a margin.
 		var drop: float = RampLaunch.of(ramp, p_arena.tuning, v).end() + 4.0 * k
-		if reach.x < float(baits[i]["at"]) + span.y + 0.5 or reach.y > limit or drop >= minf(next_bait - 2.0 * k, limit):
+		# Its ramp's lane stays clear to the drop, which may reach into the next spot's clear stretch (clear
+		# but for its bait, further on).
+		if reach.x < float(baits[i]["at"]) + span.y + 0.5 or reach.y > limit or drop >= minf(next_bait - 2.0 * k, lap_room):
 			continue
 		_clear_track(lap, reach.x, reach.y)
 		_clear_lane(lap, lap.outer_lane(side), reach.y, drop)

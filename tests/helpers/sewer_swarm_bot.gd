@@ -33,6 +33,9 @@ var dodges: bool = true
 var reads_track: bool = true
 ## The Host's crouches: take the ramp and wall-jump onto its implants (off: keep out of the ramp's lane).
 var stomps: bool = true
+## Not baiting (`baits` off), it keeps out of the fence's lane when the Host's lunge warns (so only stomps hurt
+## it); off, it keeps to its lane whatever.
+var avoids_baits: bool = true
 ## The wall jump comes this far past the ramp's start (metres at 18 m/s, at the run's pace): in the green
 ## chevrons' window.
 var jump_after: float = 6.0
@@ -137,8 +140,14 @@ func _read_host() -> void:
 		"lunge":
 			if not _handled.has("lunge%d" % n):
 				_handled["lunge%d" % n] = true
+				var fence_lane: int = int((e["spot"] as Dictionary)["lane"])
+				var player: Player = boss.world.player
 				if baits:
-					_pending.append({"at": boss.fight_time() + reaction, "lane": int((e["spot"] as Dictionary)["lane"]), "why": "bait"})
+					_pending.append({"at": boss.fight_time() + reaction, "lane": fence_lane, "why": "bait"})
+				elif avoids_baits and (player.lane == fence_lane or _target == fence_lane):
+					# Not baiting it: out of the fence's lane, so the lunge locks elsewhere.
+					_pending.append({"at": boss.fight_time() + reaction, "lane": fence_lane + (1 if fence_lane == 0 else -1),
+						"why": "away from the fence"})
 			if int(e["locked"]) >= 0 and not _handled.has("lunge_lock%d" % n):
 				_handled["lunge_lock%d" % n] = true
 				_dodge(int(e["locked"]), not (e["fence"] as Dictionary).is_empty(), false, float(e["entry"]) + 4.0 * boss.run_pace())
