@@ -172,7 +172,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     you, then revs (the spin-up, its eyes flaring, a red line over its lane) and charges back down its lane,
     cutting the floor into a gap behind it: leave its lane. The armor or shield blocks it and the floor holds
     a second; the missile tiers can usually shoot it before it charges, which saves the floor; the dash
-    smashes it (in quick play, `--features=buzz_overdrive`)
+    smashes it. Big attacks take turns: if another enemy's is still going on when it would rev, it drives
+    off ahead instead and its lane stays whole (in quick play, `--features=buzz_overdrive`)
   - the Tithe Collector (from Corporate 2, skipping the Dead Zone, back in the Golden Zone): a small gold
     drone with a collection plate, smug and gaudy (plain metal, no rotors; anti-grav pads don't affect
     it). It appears ahead of you and closes in slowly, sucking up the credits in its lane along the way
@@ -377,7 +378,8 @@ res://tools/showcase/cinematic_review.tscn -- --slot=golden/intro --once`.
 
 `tools/measure/big_attacks.gd` measures how the big attacks of different enemy types overlap over simulated runs of
 the campaign, with big attacks taking turns (GDD §9, the `big_attacks_take_turns` switch in the game rules and the
-F6 panel) and without, how much taking turns delays them, and which enemies never got a big attack in:
+F6 panel) and without, how much taking turns delays them, which enemies never got a big attack in, and how
+many Buzz Overdrives revved or let the runner pass:
 `godot --headless --fixed-fps 60 -s res://tools/measure/big_attacks.gd -- [--levels=gangland/3] [--lanes=3,5,6]
 [--seeds=6] [--features=octodog]` (the whole campaign, both ways, takes about ten minutes on the levels' own seeds;
 its header lists the options).

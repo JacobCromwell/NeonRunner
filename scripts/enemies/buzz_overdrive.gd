@@ -22,14 +22,21 @@ extends Enemy
 ## stops where it dies: FloorCut.stop); the claws don't (claw-immune); the dash smashes it (into the cut
 ## lane: only survivable with the grapple hook); it can't be stomped (the player would land on the
 ## blade). Its rev and charge are one big attack (GDD §9: big attacks take turns): the generator planned
-## its moment, so it never waits; it reports itself and the others wait for it.
+## its moment, so it never waits; it reports itself and the others wait for it. Like a Gilded Sentinel
+## (task FIX2), a tank that rolls in claims its turn claim_seconds before its rev (claiming(): another
+## type's big attack that gets ready meanwhile waits), then asks as its rev would start: with another
+## type's attack begun before its claim still on, it lets the runner pass (no rev, no warning, no cut:
+## it speeds off ahead, out of view, and its floor stays whole), so it never revs into another big
+## attack. A boss's tank (no roll: Hostile Takeover's drop) and every tank with the switch off
+## (GameRules.big_attacks_take_turns) rev as planned, as before (takes_turns()).
 ## Its rev and charge sound from its own voice on the blade, so they come from where it is as it rolls
 ## and charges past (the world's voices stay where a sound started), at full volume from a charge's
 ## distance (sound_full_volume_distance); the spin-up is stretched over its rev by pitch (rev_pitch:
 ## lower where it revs longest), and it's kept until its charge has died away.
 ## Numbers: BuzzOverdriveTuning (data/enemies/buzz_overdrive.tres). Look: BuzzOverdriveModel.
 
-enum State { PARKED, ROLL, REV, CHARGE, GONE }
+## PASS (task FIX2) comes last, so the others keep their numbers in event logs (tools/measure).
+enum State { PARKED, ROLL, REV, CHARGE, GONE, PASS }
 
 const Rules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
 ## The red of every floor warning (the Octodog's lunge line, BossProps.WARNING_COLOR).
@@ -64,6 +71,8 @@ var _line: MeshInstance3D
 var _voice: AudioStreamPlayer3D
 var _hitbox: Hazard
 var _rev_t: float = 0.0
+## It let the runner pass (PASS, then GONE): it speeds off ahead (_passing_front).
+var _passed: bool = false
 ## Its own spark emitter at the blade (built once, emitting only while it cuts): no particle nodes
 ## per spark, and none of the shared bursts (RunEffects) taken from kills and hits.
 var _sparks: CPUParticles3D
@@ -143,7 +152,10 @@ func _tick(delta: float) -> void:
 	if state == State.PARKED and p >= FloorCutPlan.lead_at(cut):
 		state = State.ROLL
 	if state == State.ROLL and p >= FloorCutPlan.warn_at(cut):
-		_rev()
+		if _lets_runner_pass():
+			_pass()
+		else:
+			_rev()
 	if state == State.REV and p >= FloorCutPlan.charge_at(cut):
 		_charge()
 	# The track's piece of its cut: looked up from its rev on (built by then, the cut lying well inside
@@ -152,6 +164,8 @@ func _tick(delta: float) -> void:
 		floor_cut = world.track.floor_cut(lane, float(cut["end"]))
 	front = _front_for(p)
 	position = world.lane_point(lane, front)
+	if state == State.PASS and front - p > tuning.appear_distance:
+		_gone()
 	if state == State.CHARGE:
 		if floor_cut != null:
 			floor_cut.advance_to(front)
@@ -168,8 +182,11 @@ func _tick(delta: float) -> void:
 
 ## Where its blade is when the player is at `p`: parked a charge's distance past where it sets off,
 ## then that far ahead of the player while it rolls and revs (at the cut's end when the charge
-## starts), then the cut's front, charging back past the player (FloorCutPlan.front_at).
+## starts), then the cut's front, charging back past the player (FloorCutPlan.front_at). Once it has
+## let the runner pass, speeding off ahead of them (_passing_front).
 func _front_for(p: float) -> float:
+	if _passed:
+		return _passing_front(p)
 	var ahead: float = float(cut["charge"])
 	if p < FloorCutPlan.lead_at(cut):
 		return FloorCutPlan.lead_at(cut) + ahead
@@ -188,11 +205,43 @@ func _spin_rate(p: float) -> float:
 	return SPIN_IDLE
 
 
+## Where its blade is when the player is at `p` after it let the runner pass (from its warning point,
+## keyed to the player's distance like the rest): it speeds off ahead of them, from a charge's distance
+## to appear_distance ahead (out of view) in pass_seconds at the run speed.
+func _passing_front(p: float) -> float:
+	var ahead: float = float(cut["charge"])
+	var k: float = maxf(p - FloorCutPlan.warn_at(cut), 0.0) / maxf(_run_speed * tuning.pass_seconds, 0.01)
+	return p + ahead + maxf(tuning.appear_distance - ahead, 1.0) * k * k
+
+
 ## Its big attack (GDD §9: big attacks take turns) is on from the rev until its charge has passed the
-## player and it's gone. The generator planned nothing else to go on meanwhile, and its moment can't
-## move, so it never asks for a turn: the others wait for it.
+## player and it's gone, and while it claims its turn before that (claiming()). The generator planned
+## nothing else to go on meanwhile, and its moment can't move, so it never waits: the others wait for it.
 func is_major_attack_active() -> bool:
-	return alive and (state == State.REV or state == State.CHARGE)
+	return alive and (state == State.REV or state == State.CHARGE or claiming())
+
+
+## True if it takes its turn among the big attacks itself (GDD §9; task FIX2): while big attacks take
+## turns (GameRules.big_attacks_take_turns), a tank that rolls in ahead of the runner (its cut planned
+## with a roll, `lead`: a level's, BuzzOverdriveRules.plan_for) claims its turn before its rev and lets
+## the runner pass if another type's big attack is still on then. A tank a boss brings in itself (its
+## cut planned without a roll: Hostile Takeover's drop, the boss keeping its own attacks off it) revs as
+## planned, as before; so does every tank with the switch off.
+func takes_turns() -> bool:
+	return cut.has("lead") and world.director.big_attacks_take_turns()
+
+
+## Where the player is when it claims its turn: claim_seconds (at the run speed) before its rev.
+func claim_at() -> float:
+	return FloorCutPlan.warn_at(cut) - tuning.claim_seconds * _run_speed
+
+
+## True while it claims its turn before its rev (takes_turns()): from claim_at() until it revs or lets
+## the runner pass. Its attack counts as on meanwhile, so another type's big attack that gets ready
+## then waits, and its own ask finds its turn already held.
+func claiming() -> bool:
+	return alive and not cut.is_empty() and (state == State.PARKED or state == State.ROLL) and takes_turns() \
+		and world.player_distance() >= claim_at()
 
 
 ## Gone once its charge has run past the player (off the screen behind them), or if it had no cut. (Not
@@ -247,6 +296,29 @@ func _rev() -> void:
 func _charge() -> void:
 	state = State.CHARGE
 	_play(&"buzz_charge")
+
+
+## As its rev would start, a tank that takes turns asks for its turn (EnemyDirector.major_attack_blocked).
+## Its claim has held back the other types' big attacks that got ready since, so only one begun before
+## its claim and still on (or its shots still on their way), or one that can't wait begun meanwhile (a
+## Bad Dream bursting out of a host killed then), holds it: then it gives up its turn and lets the runner
+## pass (true) rather than rev into that attack.
+func _lets_runner_pass() -> bool:
+	if not takes_turns() or not world.director.major_attack_blocked(self):
+		return false
+	world.director.give_up_turn(self)
+	return true
+
+
+## It lets the runner pass (GDD §9; task FIX2): no rev, no warning, no cut (its floor stays whole for
+## good, FloorCut.stop); it speeds off ahead of them (_passing_front) and is gone once out of view.
+func _pass() -> void:
+	state = State.PASS
+	_passed = true
+	if floor_cut == null:
+		floor_cut = world.track.floor_cut(lane, float(cut["end"]))
+	if floor_cut != null:
+		floor_cut.stop()
 
 
 ## Plays `sound` on its own voice (cutting off what it played before: the charge cuts the rev short when

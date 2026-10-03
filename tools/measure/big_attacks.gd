@@ -22,7 +22,8 @@ extends SceneTree
 ##
 ## Each run's line ends with the enemies that never made a big attack (Octodogs without a charge,
 ## Resonators without a pulse, drones without a barrage, hover trucks without a lurch or a cannon
-## shot); a drone brought down by a pad or a truck that leaves early may have had no chance.
+## shot; a drone brought down by a pad or a truck that leaves early may have had no chance), and the
+## Buzz Overdrives that revved and that let the runner pass (AttackWatch.buzz_tanks).
 ##
 ## The simulated runner: god mode and endless grapples (quick play's --god --nofall), in the middle
 ## lane all the way (it takes the pads in that lane, and steps back to it after a zone doodad pushes it
@@ -63,7 +64,7 @@ func _run() -> void:
 		app.set(&"save_path", "user://measure_profile.json")
 	var runs: Array[Dictionary] = []
 	print("level          lanes  seed turns   secs  attacks: drone lurch cannon  dog dream  reso  overlap s events"
-		+ "  waited s (mean/max, n)  idle dog/reso/drone/truck  log")
+		+ "  waited s (mean/max, n)  idle dog/reso/drone/truck  tanks rev/pass  log")
 	for id: String in _levels:
 		var step: CampaignStep = campaign.step(id)
 		if step == null or not step.is_level():
@@ -178,11 +179,12 @@ func _line(r: Dictionary) -> String:
 		most = maxf(most, w)
 	var idle: String = "%d/%d/%d/%d" % [int(r["dogs_no_charge"]), int(r["resonators_no_pulse"]),
 		int(r["drones_no_barrage"]), int(r["trucks_idle"])]
-	return "%-14s %d     %5d %-5s %6.1f         %5d %5d %6d %4d %5d %5d  %9.2f %6d  %5.2f/%5.2f (%2d)        %-9s  %s" % [
+	var tanks: String = "%d/%d" % [int(r["tanks_rev"]), int(r["tanks_pass"])]
+	return "%-14s %d     %5d %-5s %6.1f         %5d %5d %6d %4d %5d %5d  %9.2f %6d  %5.2f/%5.2f (%2d)        %-9s  %-14s %s" % [
 		r["level"], r["lanes"], r["seed"], "on" if r["turns"] else "off", r["seconds"], int(a.get("drone", 0)),
 		int(a.get("truck_lurch", 0)), int(a.get("truck_cannon", 0)), int(a.get("dog_charge", 0)),
 		int(a.get("dream_slash", 0)), int(a.get("resonator_pulse", 0)), r["overlap"], r["events"],
-		total / maxf(waits.size(), 1), most, waits.size(), idle, String(r["log_hash"]).substr(0, 8)]
+		total / maxf(waits.size(), 1), most, waits.size(), idle, tanks, String(r["log_hash"]).substr(0, 8)]
 
 
 func _print_totals(runs: Array[Dictionary], turns: bool) -> void:
@@ -210,6 +212,7 @@ func _print_totals(runs: Array[Dictionary], turns: bool) -> void:
 	var trucks_no_lurch: int = 0
 	var trucks_no_cannon: int = 0
 	var trucks_idle: int = 0
+	var tanks: Dictionary = {"tanks": 0, "tanks_rev": 0, "tanks_met": 0, "tanks_pass": 0, "tanks_down": 0}
 	var starved: PackedStringArray = []
 	for r: Dictionary in runs:
 		if bool(r["turns"]) != turns:
@@ -230,6 +233,8 @@ func _print_totals(runs: Array[Dictionary], turns: bool) -> void:
 		trucks_no_lurch += int(r["trucks_no_lurch"])
 		trucks_no_cannon += int(r["trucks_no_cannon"])
 		trucks_idle += int(r["trucks_idle"])
+		for k: String in tanks:
+			tanks[k] = int(tanks[k]) + int(r.get(k, 0))
 		if int(r["dogs_no_charge"]) + int(r.get("resonators_no_pulse", 0)) > 0:
 			starved.append("%s at %d lanes, seed %d (%d dogs, %d Resonators)" % [r["level"], r["lanes"], r["seed"],
 				int(r["dogs_no_charge"]), int(r.get("resonators_no_pulse", 0))])
@@ -278,5 +283,7 @@ func _print_totals(runs: Array[Dictionary], turns: bool) -> void:
 	print("  Drones: %d swooped in, %d never fired a barrage" % [drones, drones_idle])
 	print("  Hover trucks: %d burst out, %d never lurched, %d never fired the cannon, %d did neither"
 		% [trucks, trucks_no_lurch, trucks_no_cannon, trucks_idle])
+	print("  Buzz Overdrives: %d set off rolling, %d revved (%d into another type's open big attack), %d let the runner pass, %d shot down first"
+		% [tanks["tanks"], tanks["tanks_rev"], tanks["tanks_met"], tanks["tanks_pass"], tanks["tanks_down"]])
 	for s: String in starved:
 		print("    never charged or pulsed: %s" % s)
