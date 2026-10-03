@@ -107,11 +107,11 @@ static func _build(config: LevelConfig, tuning: MovementTuning, patterns: Array)
 ## field (_sig) instead of by path, so two separately-duplicated configs with the same content still
 ## share one build.
 const _RESOURCE_SKIP: PackedStringArray = ["resource_path", "resource_name", "resource_local_to_scene", "script"]
-## `skin` and `display_name` never reach the generator (level_generator.gd never mentions either --
-## CLAUDE.md's "gameplay pieces are abstract; zones are skins" -- so two configs that differ only
-## there still build the same layout); leaving them out of the key also dodges signing a whole zone
-## skin's resource tree on every call.
-const _CONFIG_SKIP: PackedStringArray = ["resource_path", "resource_name", "resource_local_to_scene", "script", "skin", "display_name"]
+## `id`, `display_name` and `skin` never reach the generator (level_generator.gd never mentions any
+## of the three -- CLAUDE.md's "gameplay pieces are abstract; zones are skins" -- so two configs that
+## differ only there still build the same layout); leaving `skin` out of the key also dodges signing a
+## whole zone skin's resource tree on every call.
+const _CONFIG_SKIP: PackedStringArray = ["resource_path", "resource_name", "resource_local_to_scene", "script", "skin", "display_name", "id"]
 
 
 ## A string that identifies everything (config, tuning, patterns) LevelGenerator.generate()'s result

@@ -172,7 +172,7 @@ PYEOF
 	done
 	local pid
 	for pid in "${pids[@]}"; do
-		wait "$pid"
+		wait "$pid" || true  # its own exit status is read from out.status below; set -e must not abort here
 	done
 	local ended; ended="$(date +%s)"
 	local total_suites=0 total_checks=0 overall=0
@@ -182,7 +182,7 @@ PYEOF
 		quiet <"$out"
 		local st; st="$(cat "$out.status" 2>/dev/null || echo 1)"
 		[[ "$st" != "0" ]] && overall=1
-		local line; line="$(grep -E '^ALL TESTS PASSED' "$out" | tail -1)"
+		local line; line="$(grep -E '^ALL TESTS PASSED' "$out" | tail -1 || true)"
 		if [[ -n "$line" ]]; then
 			local s c
 			s="$(sed -E 's/.*\(([0-9]+) suites.*/\1/' <<<"$line")"

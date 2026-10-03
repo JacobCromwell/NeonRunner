@@ -40,28 +40,34 @@ func _test_identical_to_fresh() -> void:
 	check(LayoutCache.hits == 1, "the second ask for the same content is a hit (%d)" % LayoutCache.hits)
 
 
-## Building the same level 100 times through the cache takes less real time than building it for
-## real just 3 times (a loose bound on purpose: this runs on a machine several agents' test runs and
-## renders may be sharing at once, T-BUDGET2, so it compares the *minimum* of a few timed passes of
-## each side, as skin_suite.gd's own build-time budgets do, rather than a single, noise-prone sample).
+## Reading the same level through the cache costs less, per call, than building it for real (a loose
+## bound on purpose: this runs on a machine several agents' test runs and renders may be sharing at
+## once, T-BUDGET2, so it compares *per-call* averages from the minimum of a few timed passes of each
+## side, as skin_suite.gd's own build-time budgets do, rather than a single, noise-prone sample --
+## comparing batch totals at different batch sizes, as an earlier version of this check did, let a
+## heavily loaded machine's fixed per-call scheduling overhead -- paid by every call, cached or not --
+## swamp the signal, since 100 cheap calls then pay that fixed cost 100 times over to 1 real build's
+## once).
 func _test_cheaper_than_building() -> void:
 	LayoutCache.clear()
 	var config := _config(5, 0.6, 12)
 	var patterns: Array = LevelGenerator.load_patterns(config.patterns_path)
-	var build_usec: int = INT_MAX
+	var huge: int = 1 << 30  # far beyond any plausible build time, in microseconds
+	var build_usec: int = huge
 	for pass_i: int in 3:
 		var t0: int = Time.get_ticks_usec()
 		LevelGenerator.new().generate(config.duplicate() as LevelConfig, tuning, patterns)
 		build_usec = mini(build_usec, Time.get_ticks_usec() - t0)
 	LayoutCache.generate(config, tuning, patterns)  # primes the cache (one real build; not timed)
-	var cached_usec: int = INT_MAX
+	const READS: int = 100
+	var cached_usec_per_read: float = huge
 	for pass_i: int in 3:
 		var t1: int = Time.get_ticks_usec()
-		for i: int in 100:
+		for i: int in READS:
 			LayoutCache.generate(config, tuning, patterns)
-		cached_usec = mini(cached_usec, Time.get_ticks_usec() - t1)
-	check(cached_usec < build_usec * 3, "100 cached reads (%d us, best of 3) cost less than 3 real builds (%d us, best of 3)" %
-		[cached_usec, build_usec * 3])
+		cached_usec_per_read = minf(cached_usec_per_read, float(Time.get_ticks_usec() - t1) / READS)
+	check(cached_usec_per_read < float(build_usec), "a cached read (%.1f us, best of 3) costs less than a real build (%d us, best of 3)" %
+		[cached_usec_per_read, build_usec])
 
 
 ## Two LevelConfigs duplicated separately (as every suite does to set lane count, seed and
