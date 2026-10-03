@@ -173,6 +173,7 @@ func setup(p_world: RunWorld, p_context: RunContext, p_arena: BossArena) -> void
 	props.name = "Props"
 	add_child(props)
 	props.setup(world)
+	world.director.warm_up_entries(warm_enemies())
 	world.player.item_used.connect(_on_item_used)
 	var start: int = 0
 	var resume: Dictionary = context.boss_resume
@@ -354,6 +355,14 @@ func add_part(script: Script, params: Dictionary = {}) -> BossPart:
 	part.sync_health()
 	parts.append(part)
 	return part
+
+
+## The normal enemies this fight brings into play itself (spawn_enemy, add_pieces), as layout-like
+## entries the director readies during the fight's load (EnemyDirector.warm_up_entries, task PERF1): a
+## type's first spawn would otherwise load its scripts and build its look in that frame. A boss script that
+## brings any overrides this; the default brings none.
+func warm_enemies() -> Array[Dictionary]:
+	return []
 
 
 ## Brings a normal enemy into play now (the Floating Head's cyborg drop, GDD §10): a layout entry for

@@ -2098,6 +2098,71 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     but clear (2.4 m tall, the window 4.6 m wide). **Alternative:** the Chairman shows only at moments (a
     stomp, a phase change), with the locomotive nearer then.
 
+**The Sewer Swarm, the clusters and the Rising** (from E4a; numbers in `data/bosses/gangland_boss_tuning.tres`; play `--boss=gangland_boss`, review with `tools/showcase/sewer_swarm_showcase.tscn` and the stress scene `tools/showcase/swarm_stress.tscn`)
+324. **How a cluster is baited** (GDD §10: "the player baits the swarm into attacking, dodges in time, and the
+    swarm hits a live electric fence and is shocked"; phase 1: "a cluster surges down a lane ahead of the
+    player, with a red lane line and a rising chitter").
+    **Placeholder:** a surge comes down the runner's lane. For 2.4 s before it would meet them
+    (`warning_seconds`) its cluster rears at the roadside ahead, its chitter rises and a red line runs down
+    the runner's lane to it, following them from lane to lane and ending at any fence or hole on it. 1.1 s
+    before (`lock_seconds`) the cluster lands in the runner's lane and charges; the line locks there. A runner
+    who held a lane with a fence or a hole on the line until then, and gets out of it after (or jumps the
+    fence or the hole), has the cluster charge into it in front of them: shocked or falling, destroyed. One
+    who leaves too early has the line follow them; one with no bait in their lane dodges it.
+    **Alternatives:** the line locks as the warning starts (the runner must already stand in the bait's lane),
+    or the cluster always goes for the bait's lane (no luring, just dodging).
+325. **The arena** (GDD §10: "the street is the weapon"; the fight is "Gangland's final exam").
+    **Placeholder:** Gangland's generated street (its holes and fences only: no signs, ceilings, pads or
+    doodads) with a bait spot every 200 m at 18 m/s (`bait_spacing`, about 11 s at any speed): a live
+    full-height fence or a hole in one lane in turn, the street around it clear, and a surge at each one. A
+    runner who baits every surge ends phase 1 in about 20 s.
+    **Alternatives:** surges at the generator's own fences and holes wherever they fall (more varied, less
+    predictable), or a plain street with only the baits (as The House's).
+326. **Weapons against the clusters** (GDD §10: "weapons thin clusters too, and the heavy missile gets bonus
+    damage against them").
+    **Placeholder:** a cluster is a target only while it surges (from its warning until it has passed), with
+    36 laser tier 1 shots of health (`cluster_health`); its crowd thins as it's hit, and one thinned to
+    nothing is destroyed and counts like a baited one (the heavy missile does it over about two of its surges,
+    laser tier 1 over about seven).
+    **Alternatives:** weapons only thin a cluster (it never dies to them), or a cap like the other bosses'
+    `weapon_share_cap`.
+327. **The clusters in phase 3** (GDD §10: phase 2 ends "when the rest are" destroyed, yet in phase 3 the Host
+    "flings the remaining clusters at the player"). With 5 clusters (2 + 3) none remain for phase 3.
+    **Placeholder (E4a's stand-in until E4b builds the Host):** phase 3 re-forms clusters. Does the Host fling
+    re-formed clusters, does phase 2 end with some left, or does it fling something else?
+328. **A horde that never hurts** (GDD §10: "it builds up on both sides of the street"; CLAUDE.md: safe things
+    look safe, deadly parts look deadly).
+    **Placeholder:** heaps of screeches line both gutters from the fight's start (scenery: never in the lanes,
+    never hurting), and the waiting clusters are heaps at the roadside ahead; only a surging cluster heats to
+    enemy-attack red and hurts. Is a harmless horde at the walls' feet the right read?
+    **Alternative:** the horde stays down in the manholes and vents until it surges (an emptier street).
+
+**Lag spikes** (from PERF1; numbers in `data/tuning/speed_fx.tres` and `data/tuning/performance.tres`, F6; the frame-time graph is F7 in debug builds, or `--frame-graph`)
+329. **The hit-stop on every kill** (GDD §3, "a brief freeze on kills"; G2's `RunEffects.freeze`). It holds
+    the camera still for about three frames (0.05 s) while the run goes on underneath, so the runner moves
+    1.0 to 1.25 m away from the camera and the view catches up in one frame: on screen that is exactly what
+    a dropped frame looks like. A stocked-up player's run has 4 to 24 of them a level, about 6 a minute
+    (`tools/measure/frame_times.gd`, the whole campaign), and 23 a minute in Hostile Takeover's preview,
+    where the weapon meets a guard every few seconds; the build before the playtest had none, so they
+    may be most of what reads as "more lag spikes". Freezes no longer chain (below). Should every kill keep
+    it, or only stomps and big kills (a host, a hover truck, a boss's part), or a shorter one (one or two
+    frames), or a freeze of a different kind (the enemy and the runner's animation held for a moment, the
+    camera moving on)?
+    - **Placeholder:** every kill keeps it, as G2 built it. Freezes never stack or chain:
+    `SpeedFxTuning.freeze_gap` (0.3 s, `data/tuning/speed_fx.tres`, F6 "Speed effects") leaves out a
+    freeze asked for within 0.3 s of the last one's start. Setting `kill_freeze_time` to 0 in F6 turns
+    the kills' freeze off while keeping the stomps'; Settings > Screen shake off turns every freeze off.
+    The frame-time graph (F7) marks every frame a hit-stop holds the camera, so a "spike" that is one
+    shows as one.
+330. **A level's start** (GDD §4, the flow into a run). A level is generated and built in the frame after
+    the player picks it (0.3 to 1.8 s on the dev machine, the first level of a session the longest), and
+    now also readies what it will need later instead of hitching mid-run (its enemy types' scripts and
+    looks, 0.1 to 0.9 s more on the dev machine the first time in a session, and on a real renderer its
+    shaders, drawn once in its first frame); a phone takes several times longer. The level select holds
+    still meanwhile, then the run starts at once. Should a level open behind a short loading card (the
+    zone's name on its colour, shown while it loads), or stay as it is?
+    - **Placeholder:** no loading card; the screen holds still until the run starts, as before.
+
 ### Answered (recorded in GDD_CHECKPOINT.md)
 - Wall entry follows the jump grace rule (§3, September 25, 2026).
 - ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).

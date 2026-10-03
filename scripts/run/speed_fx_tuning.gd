@@ -68,6 +68,11 @@ extends Resource
 @export_range(0.0, 1.0, 0.01) var kill_shake_strength: float = 0.05
 @export_range(0.05, 1.0, 0.01, "suffix:s") var kill_shake_time: float = 0.14
 @export_range(0.0, 0.3, 0.005, "suffix:s") var kill_freeze_time: float = 0.05
+## Hit-stops never chain (task PERF1): a freeze asked for less than this long after the last one began
+## is left out (one asked in the same frame as it, a stomp's and its kill's, still keeps the longer of
+## the two). Kills in quick succession, auto-fire through a cluster or a dash through a row, would
+## otherwise hold the camera again and again, which reads as the game stuttering.
+@export_range(0.0, 1.0, 0.01, "suffix:s") var freeze_gap: float = 0.3
 @export_range(2, 40, 1) var kill_spark_amount: int = 12
 @export_range(2, 40, 1) var kill_debris_amount: int = 6
 

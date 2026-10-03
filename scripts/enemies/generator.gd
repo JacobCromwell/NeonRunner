@@ -36,6 +36,32 @@ var _cable_core: MeshInstance3D
 var _husk: bool = false
 
 
+## A fence generator's look (its body, energy rings and a stretch of cable), for EnemyDirector.warm_up
+## (which frees it) and ShaderWarmup: the first builds the kit's meshes and shaders it uses.
+static func warm_up(world: RunWorld, _entry: Dictionary) -> Node:
+	var c: Variant = world.skin.get(&"fence_color") if world.skin != null else null
+	var pink: Color = c if c is Color else Kit.FENCE_PINK
+	var root := Node3D.new()
+	var body := MeshInstance3D.new()
+	body.mesh = Kit.mesh("generator/body", _body_mesh)
+	body.material_override = Kit.part_material(&"normal")
+	root.add_child(body)
+	var energy := MeshInstance3D.new()
+	energy.mesh = Kit.mesh("generator/energy", _energy_mesh)
+	energy.material_override = Kit.energy_material(pink)
+	root.add_child(energy)
+	var core := Kit.Builder.new()
+	core.box(Vector3.ZERO, Vector3(0.5, 0.02, 0.035), Color.WHITE)
+	var cable := MeshInstance3D.new()
+	cable.mesh = core.commit()
+	var material := ShaderMaterial.new()
+	material.shader = Kit.shader("cable")
+	material.set_shader_parameter(&"color", pink)
+	cable.material_override = material
+	root.add_child(cable)
+	return root
+
+
 func _build() -> void:
 	tuning = tuning_res as FenceGeneratorTuning
 	if tuning == null:

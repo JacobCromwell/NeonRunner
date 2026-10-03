@@ -102,6 +102,7 @@ const EAR := Color(0.45, 0.2, 0.25, 0.0)
 enum Part { TORSO, HEAD, SPINE, SWIPE_ARM, OTHER_ARM, LEG_FL, LEG_FR, LEG_BL, LEG_BR, TAIL }
 
 static var _mesh: ArrayMesh
+static var _crowd_mesh: ArrayMesh
 static var _materials: Dictionary = {}
 
 
@@ -138,16 +139,36 @@ static func _shader() -> Shader:
 
 ## The one body mesh, built once.
 static func mesh() -> ArrayMesh:
-	if _mesh != null:
-		return _mesh
+	if _mesh == null:
+		_mesh = _build(false)
+	return _mesh
+
+
+## The same body at a lower detail, for crowds (the Sewer Swarm's clusters and horde, GDD §10: drawn
+## hundreds at a time with a MultiMesh): fewer sides and rings, fewer spines, no whiskers, ears or
+## talons, a shorter tail; the same parts, colours and part ids (UV.x), so the same animation and
+## look apply. Built once, about 120 triangles (the full body has about 310).
+static func crowd_mesh() -> ArrayMesh:
+	if _crowd_mesh == null:
+		_crowd_mesh = _build(true)
+	return _crowd_mesh
+
+
+static func _build(crowd: bool) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	# Hunched torso: an ellipsoid pushed up in the middle of the back.
-	_blob(st, Vector3(0.0, 0.26, 0.05), Vector3(0.19, 0.15, 0.36), 8, 5, Part.TORSO, 0.07)
+	_blob(st, Vector3(0.0, 0.26, 0.05), Vector3(0.19, 0.15, 0.36), 5 if crowd else 8, 3 if crowd else 5, Part.TORSO, 0.07)
 	# Head and snout.
-	_blob(st, Vector3(0.0, 0.25, -0.36), Vector3(0.12, 0.1, 0.16), 6, 4, Part.HEAD, 0.0)
-	_cone(st, Vector3(0.0, 0.23, -0.46), Vector3(0.0, 0.2, -0.62), 0.07, 5, SKIN, SKIN, Part.HEAD, 0.0)
+	_blob(st, Vector3(0.0, 0.25, -0.36), Vector3(0.12, 0.1, 0.16), 4 if crowd else 6, 2 if crowd else 4, Part.HEAD, 0.0)
+	_cone(st, Vector3(0.0, 0.23, -0.46), Vector3(0.0, 0.2, -0.62), 0.07, 3 if crowd else 5, SKIN, SKIN, Part.HEAD, 0.0)
 	for sx: float in [-1.0, 1.0]:
+		if crowd:
+			# A glowing eye: one small triangle facing ahead.
+			var e := Vector3(sx * 0.07, 0.31, -0.45)
+			_tri(st, [e + Vector3(-0.03, -0.02, 0.0), e + Vector3(0.03, -0.02, 0.0), e + Vector3(0.0, 0.03, 0.0)],
+				[Color(EYE, 1.0), Color(EYE, 1.0), Color(EYE, 1.0)], Part.HEAD, [0.0, 0.0, 0.0], e + Vector3(0.0, 0.0, 0.1))
+			continue
 		_octa(st, Vector3(sx * 0.07, 0.31, -0.44), 0.03, Color(EYE, 1.0), Part.HEAD)
 		_cone(st, Vector3(sx * 0.03, 0.2, -0.55), Vector3(sx * 0.03, 0.12, -0.56), 0.014, 3,
 			TALON, TALON, Part.HEAD, 0.0)
@@ -156,40 +177,43 @@ static func mesh() -> ArrayMesh:
 	# Rows of spines along the back (GDD §9.5), tallest down the middle.
 	for row: int in 3:
 		var x: float = (row - 1) * 0.09
-		for i: int in 6:
-			var z: float = -0.2 + i * 0.1
+		var count: int = (3 if row == 1 else 2) if crowd else 6
+		for i: int in count:
+			var z: float = (-0.2 + (i + 0.5) * 0.6 / count - 0.05) if crowd else -0.2 + i * 0.1
 			var hump: float = 0.07 * cos(z * 3.0)
 			var base := Vector3(x, 0.26 + 0.14 * sqrt(maxf(0.0, 1.0 - pow(x / 0.19, 2.0))) + hump - 0.02, z)
 			var h: float = (0.2 if row == 1 else 0.14) * (0.8 + 0.4 * sin(float(i) * 1.7 + row))
 			var tip: Vector3 = base + Vector3(x * 0.8, 1.0, 0.45).normalized() * h
-			_cone(st, base, tip, 0.028, 4, SPINE_BASE, Color(SPINE_TIP, 0.9), Part.SPINE, 1.0)
+			_cone(st, base, tip, 0.034 if crowd else 0.028, 3 if crowd else 4, SPINE_BASE, Color(SPINE_TIP, 0.9), Part.SPINE, 1.0)
 	# Legs.
 	var legs: Array = [[Part.LEG_FL, -1.0, -0.17], [Part.LEG_FR, 1.0, -0.17], [Part.LEG_BL, -1.0, 0.22],
 		[Part.LEG_BR, 1.0, 0.22]]
 	for leg: Array in legs:
 		var hip := Vector3(float(leg[1]) * 0.13, 0.22, float(leg[2]))
 		var paw := Vector3(float(leg[1]) * 0.16, 0.02, float(leg[2]) - 0.03)
-		_cone(st, hip, paw, 0.05, 4, SKIN, BELLY, int(leg[0]), 1.0, 0.03)
+		_cone(st, hip, paw, 0.05, 3 if crowd else 4, SKIN, BELLY, int(leg[0]), 1.0, 0.03)
 	# Arms: the right one swipes; hooked talons glow at the tips.
 	for arm: Array in [[Part.SWIPE_ARM, 1.0], [Part.OTHER_ARM, -1.0]]:
 		var sx: float = float(arm[1])
 		var shoulder := Vector3(sx * 0.13, 0.27, -0.25)
 		var wrist := Vector3(sx * 0.19, 0.12, -0.47)
-		_cone(st, shoulder, wrist, 0.045, 4, SKIN, BELLY, int(arm[0]), 0.7, 0.03)
+		_cone(st, shoulder, wrist, 0.045, 3 if crowd else 4, SKIN, BELLY, int(arm[0]), 0.7, 0.03)
+		if crowd:
+			continue
 		for k: int in 3:
 			var off := Vector3(sx * (0.035 * (k - 1)), 0.0, 0.0)
 			_cone(st, wrist + off, wrist + off + Vector3(sx * 0.02, -0.07, -0.13), 0.018, 3, TALON,
 				Color(SPINE_TIP, 0.8), int(arm[0]), 1.0, 0.0, 0.7)
 	# Long tail.
 	var prev := Vector3(0.0, 0.24, 0.38)
-	for i: int in 5:
-		var s0: float = float(i) / 5.0
-		var s1: float = float(i + 1) / 5.0
+	var segments: int = 2 if crowd else 5
+	for i: int in segments:
+		var s0: float = float(i) / segments
+		var s1: float = float(i + 1) / segments
 		var next := Vector3(0.0, 0.24 - 0.17 * s1, 0.38 + 0.6 * s1)
-		_cone(st, prev, next, lerpf(0.045, 0.01, s0), 4, SKIN, SKIN, Part.TAIL, s1, lerpf(0.045, 0.01, s1), s0)
+		_cone(st, prev, next, lerpf(0.045, 0.01, s0), 3 if crowd else 4, SKIN, SKIN, Part.TAIL, s1, lerpf(0.045, 0.01, s1), s0)
 		prev = next
-	_mesh = st.commit()
-	return _mesh
+	return st.commit()
 
 
 ## An ellipsoid (the torso or head), pushed up by `hump` along the middle of the back.

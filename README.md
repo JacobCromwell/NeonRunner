@@ -17,8 +17,9 @@ stars and payouts); a test boss shows the framework at work. The Neon City's bos
 is built and plays in the campaign after City 3 (debug builds: `--boss=city_boss`), and so is the Dead
 Zone's Sleep Taker after Dead Zone 2 (`--boss=dead_zone_boss`), and the Marketplace's House after
 Marketplace 2 (`--boss=marketplace_boss`). The Corporate zone's Hostile Takeover is being built (its train
-and phase 1 so far, as a preview: `--boss=corporate_boss`); the other zones' bosses are still placeholder
-slots. The short cinematics are built with a code-driven cinematic toolkit
+and phase 1 so far, as a preview: `--boss=corporate_boss`), and so is Gangland's Sewer Swarm (its first phase
+so far, as a preview: `--boss=gangland_boss`); the campaign shows their cards until they're done, and the
+Golden Zone's final villain is still a placeholder slot. The short cinematics are built with a code-driven cinematic toolkit
 (camera paths, the runner and cyborgs on the humanoid rig, timed events, skippable); until the owner
 describes the story beats, each zone's intro (and the City's boss intro) plays a placeholder arrival flyover
 over the zone, and the outros are placeholder cards.
@@ -56,8 +57,9 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--thief` | Quick play with stand-in thieves, one after another: a gold block that crosses the lanes and robs 25% of the run's credits from a runner who touches it (it doesn't kill, even without `--god`); catch it (stomp it, shoot it, dash or claw through it) for what it took plus a jackpot. The runner starts with 400 credits, so the first theft has something to take. A review aid for the Tithe Collector's mechanism; no level has one |
 | `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level |
-| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker; `marketplace_boss`: The House; `corporate_boss`: Hostile Takeover, being built) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
+| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker; `marketplace_boss`: The House; `corporate_boss`: Hostile Takeover, being built; `gangland_boss`: the Sewer Swarm, being built) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
+| `--frame-graph` | Show the frame-time graph (F7, see Smooth frames) from the start of every run |
 
 Example: `./play.sh --lanes=6 --features=octodog,ceilings --god`, or the test boss's last phase:
 `./play.sh --boss=test_boss --phase=3 --god --nofall`.
@@ -77,7 +79,7 @@ Every key can be rebound in Settings. PC runs use 5 lanes and mobile runs use 3 
 open: 5 or 6).
 
 Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2** next seed, **F3** difficulty,
-**F4** god mode, **F5** show hitboxes, **F6** tuning panel, **M** mute.
+**F4** god mode, **F5** show hitboxes, **F6** tuning panel, **F7** frame-time graph, **M** mute.
 
 ## What's in the game
 
@@ -226,7 +228,20 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   (The Board) security cyborgs guard the roofs, a Tithe Collector skims a trail of credits and partial
   wall fences pulse along the barriers; the coupling over each gap glows red in one lane: land on it
   while jumping the gap and the carriages behind break away and tumble off the track. Until its next
-  steps every phase plays The Board. The other two zone bosses are still to be built.
+  steps every phase plays The Board.
+  The Sewer Swarm, Gangland's boss, is being built (`--boss=gangland_boss`
+  plays its first phase as a preview, at quick play's 18 m/s; the campaign will play it at Gangland's
+  21.8 m/s): a mutant horde of screeches rising from the sewers. As the fight starts, manholes and wall
+  vents rattle and burst open all along both sides of the street, screeches pour out, and the horde heaps
+  up in the gutters, its clusters waiting at the roadside ahead. A cluster rears up and its chitter rises,
+  and a red line runs down the runner's lane to it, following them from lane to lane; then it lands in
+  their lane and charges down it as a red-hot mass. Hold a lane with a live fence or a hole ahead until it
+  lands, then get out of the way as it charges (or jump the fence or the hole), and it runs straight into
+  it: shocked or swallowed. Two clusters destroyed end the first phase (the rest of the fight comes next);
+  weapons thin a surging cluster too, the heavy missile most of all. Its crowds are hundreds of screeches
+  drawn with a MultiMesh and a shader, their sizes in data for the phone test
+  (`res://tools/showcase/swarm_stress.tscn`, a stress scene with a frame-time readout). The Golden Zone's
+  final villain is still to be built.
 - **Protection:** every level and boss fight starts with free armor: it blocks an enemy attack or an
   electrical hazard (never a crash or a fall) and comes back 30 s after it breaks; the HUD shows its hits
   and a ring filling while it comes back. Armor pickups in boss fights bring it back at once.
@@ -260,7 +275,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 
 F6 pauses the game and opens a panel with sections for movement, game rules, power-ups, the runner's animation,
 pickups, speed effects (the camera's field-of-view kick and lane lean, speed lines, shake, hit-stop and the
-sparks and debris on kills and blocked hits), the music's pause duck and death dip, level pacing, the campaign's
+sparks and debris on kills and blocked hits), performance (how long a frame may spend dressing the track; see
+Smooth frames), the music's pause duck and death dip, level pacing, the campaign's
 recency curve for pick weights (in a campaign level) and each enemy type in the level. Changes apply immediately;
 pacing, pick weights, speed, jump and size
 changes also reshape the level, so press **Restart level** to rebuild it. **Save** writes the values back to
@@ -269,6 +285,27 @@ tunings in `data/enemies/`, prices in
 `data/shop/catalog.json`, patterns in `data/patterns/` (format: `data/patterns/README.md`), sound volumes in
 `data/audio/sfx_library.tres`, music levels and tempos in `data/audio/music_library.tres`, and UI colours and
 sizes in `data/ui/ui_style.tres`.
+
+## Smooth frames (F7)
+
+In a debug build, **F7** shows a graph of the last five seconds of frames (`--frame-graph` shows it from the
+start): each bar is one frame, as tall as its time, its lower part the game's own work and the rest the
+renderer and the wait for the screen; the two lines are 60 and 30 fps. A spike (a frame well over the others)
+is drawn in red and listed under the graph with how long ago it was and what happened in it (a chunk of track
+built, an enemy spawned, shaders compiled, ...). The frames a kill's hit-stop holds the camera still are
+marked in violet under the graph and listed too: a held camera looks like a hitch even when every frame is on
+time. To report a lag spike, press F7 right after it and note (or screenshot) its line.
+
+What to try:
+- **Settings > Screen shake off** turns off every hit-stop, and the shake. To keep the shake and drop only the
+  kills' freeze, set **F6 > Speed effects > Kill freeze time** to 0. If the spikes you saw go away, they were
+  hit-stops (an open question for you: `docs/questions/perf1.md`). A kill's freeze no longer follows another
+  within 0.3 s (**Freeze gap**, same section).
+- **F6 > Performance > Chunk dress budget** (1 ms): how long a frame may spend dressing the track ahead; 0
+  dresses each 40 m chunk in one frame, as before.
+- A level's first frame now draws, too small to see, every look the level may need later (each enemy kind,
+  the weapon's effects, every track piece), so their shaders compile there and not mid-run. The first run of
+  a new build can still hitch once while the graphics driver fills its shader cache; the runs after it don't.
 
 ## Tools
 
@@ -295,7 +332,7 @@ The scenes in `tools/showcase/` show one part of the game up close for visual re
 and power-up look, and a scripted run on any zone's skin; ramp launches and blocked wall entries; each enemy
 family, the Barnacle Turret's looks and a ride past it, a floor cut in any zone's look, wall fences in any zone's look, the Buzz Overdrive's
 model and an encounter with it, the Floating Head, the Sleep Taker (its lure and defeat, `--scenario=lure`, and its readability
-in the dark, `--scenario=measure`), The House (`--scenario=spin|buttons|jackpot|wall|ceiling|defeat|fight`), Hostile Takeover (`--scenario=run|train|gunship|locomotive|coupling`), the UI kit, every screen, a zone skin's fixed review track, the cult's feed,
+in the dark, `--scenario=measure`), The House (`--scenario=spin|buttons|jackpot|wall|ceiling|defeat|fight`), Hostile Takeover (`--scenario=run|train|gunship|locomotive|coupling`), the Sewer Swarm (`--scenario=rising|surge|fence|hole|fight|model`) and its crowds' stress test for the phone (`swarm_stress`: N clusters of C screeches with a frame-time and draw-call readout), the UI kit, every screen, a zone skin's fixed review track, the cult's feed,
 the Golden Zone's statues, the Gilded Sentinels (each route past one, and its kick), any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
 lists its options. For example, a zone's arrival flyover rendered to frames on the web / low-end renderer:
 `godot --path . --rendering-method gl_compatibility --fixed-fps 10 --write-movie build/cine/f.png --quit-after 100
@@ -325,6 +362,16 @@ measures the numbers from before the owner's playtest fixes).
 enemy, host and obstacle counts, what only the every-feature guarantee brings, and The Hush's quiet stretches
 against its bursts, with the recency curve on and off:
 `godot --headless -s res://tools/measure/level_shape.gd -- [--levels=dead_zone/2] [--curve=on,off]`.
+
+`tools/measure/frame_times.gd` measures the game's frame times (task PERF1): it plays every campaign level and
+boss fight through the game's own flow with a scripted runner (god mode, no falls, the zone's speed), each pass in
+a fresh process, and prints per run the median, 95th and 99th percentile and worst frame, the frames over 8 and
+16 ms, the load, the kills and hit-stops, and what the slow frames were doing; `--log` adds an event-log hash (two
+builds that decide the same print the same hash; the JSON keeps the log's lines to compare), `--shaders` the
+shaders first drawn after the load, and under xvfb it also counts draw calls and compiled pipelines:
+`godot --headless --fixed-fps 60 -s
+res://tools/measure/frame_times.gd -- [--levels=city/1] [--bosses=city_boss] [--passes=2] [--frames] [--log]`
+(the whole campaign takes about fifteen minutes; its header lists the options).
 
 `tools/measure/economy.gd` measures the campaign's economy (task R7): per level and zone, the credits
 available, what a good run collects (a stand-in share, default 0.7), the payout for finishing, and what a
@@ -369,7 +416,7 @@ On a debug build, the options go into the page's engine settings: in `exports/we
 
 ## Tests
 
-`tools/godot.sh test` runs 68 suites with about 6,000,000 checks. Many suites independently build the
+`tools/godot.sh test` runs 72 suites with about 6,000,000 checks. Many suites independently build the
 same level (often a campaign step's own default build) to run their own checks on it; `LayoutCache`
 (`tests/helpers/layout_cache.gd`) shares one real build of each across the whole run instead of
 repeating it (`--no-layout-cache` turns that off; `tests/suites/test_layout_cache.gd` checks it never
@@ -435,6 +482,13 @@ spare (see Tools, above). Covered:
   Collectors and wall fences always leaving a way through, a runner who reads it winning phase 1 without
   god mode (also after missing couplings, and in quick play after a death and the retry), weapons within
   their cap, the armor rule, the same fight on every attempt, and nothing made while the city streams past.
+  The Sewer Swarm's phase 1 so far, at 3, 5 and 6 lanes and at 18 and 21.8 m/s: every bait spot (a live
+  fence or a hole) in reach before the surge locks and a way out of every lane, every surge warned by its
+  red line and chitter before it can hit, a dodged surge always running into its fence or hole, a hit only
+  through the cluster's hitbox, weapons thinning a surging cluster (the heavy missile's swarm bonus), no
+  end and no escalation without a bait, the armor rule, the same fight at any crowd size and on every
+  attempt, its crowds all made before the fight, and a runner who reads it winning phase 1 without god
+  mode (also after a death and the retry, and through quick play).
 - **Cinematics:** the toolkit's camera and actor paths (smooth, eased and cut moves, cameras riding with an
   actor), a timeline's checks, a cinematic played to its end with every event in order, skipping (the pause
   action and the Skip button), Reduced flashing, holding while the game is in the background, a cinematic
@@ -468,6 +522,11 @@ spare (see Tools, above). Covered:
   band across them and nothing below the underside past the far end, where the camera passes as you drop.
 - **Sounds and music:** every sound and track loads (the tracks loop seamlessly, one per zone), the death dip
   and how it combines with the pause duck, and the level-complete riff in each zone's key.
+- **Frame times:** City 3, Marketplace 2 and Golden 2 played as the game plays them, each pass in a fresh
+  process, their 99th percentile and worst frame held to budgets in `data/tuning/performance.tres` (scaled by
+  how busy the machine is, like the skins' chunk budgets); and what keeps frames smooth without changing the
+  game: a chunk's look spread over frames (the same run, frame for frame), enemy types readied with the level,
+  hit-stops that never chain, the shader warm-up's samples, and the frame-time graph.
 - **Boot:** the real game scene.
 
 Headless runs skip sounds, because the dummy audio driver never finishes a playback.
@@ -491,7 +550,8 @@ scripts/world/          level layout, generator, track builder, hazards; zone sk
 scripts/campaign/       campaign, zones, bosses (BossDef, BossPhase) and cinematic slots (CinematicDef, Cinematic)
 scripts/cinematics/     the cinematic toolkit (CinematicSequencer, CineTimeline, CineStage, ...) and the flyover
 scripts/bosses/         the boss framework (BossEncounter, BossPart, BossArena, BossProps), the test boss,
-                        and one folder per boss (floating_head/, sleep_taker/, the_house/, hostile_takeover/)
+                        and one folder per boss (floating_head/, sleep_taker/, the_house/, hostile_takeover/,
+                        sewer_swarm/)
 scripts/economy/        the shop catalog
 scripts/ui/             theme, icons, widgets, screens, HUD, debug tools
 scripts/audio/          sound library, music player, hazard warning sounds
