@@ -54,7 +54,8 @@ var bay_stomps: bool = true
 var bay_misses: int = 0
 ## It ignores the strafes (stays in its lane: for tests of a strike).
 var ignores_strafes: bool = false
-## Once a dropped Buzz Overdrive lands, it heads into its lane and stays there (a test of its blade).
+## Once a dropped Buzz Overdrive lands, it heads into its lane and stays there until its blade has been
+## blocked (the armor or the shield: it's invulnerable a moment), then leaves it (a test of its rules).
 var meets_saw: bool = false
 ## What it did, for tests: {t (fight time), action, why}.
 var log: Array[Dictionary] = []
@@ -69,6 +70,7 @@ var _why: String = ""
 var _move_in: int = 0
 var _threat_seen: Dictionary = {}
 var _bay_jumped: Dictionary = {}
+var _met_saw: Dictionary = {}
 
 
 func _init(p_boss: HostileTakeover) -> void:
@@ -118,9 +120,12 @@ func _avoid_threats() -> bool:
 		if not _threat_seen.has(key2):
 			_threat_seen[key2] = now
 		if now - float(_threat_seen[key2]) >= reaction:
-			if meets_saw:
-				_head_for(int(saw["lane"]), "into the Buzz Overdrive's lane")
-				return true
+			if meets_saw and not _met_saw.has(key2):
+				if boss.world.player.invulnerable_left > 0.0:
+					_met_saw[key2] = true
+				else:
+					_head_for(int(saw["lane"]), "into the Buzz Overdrive's lane")
+					return true
 			bad.append(int(saw["lane"]))
 	if bad.is_empty():
 		return false
