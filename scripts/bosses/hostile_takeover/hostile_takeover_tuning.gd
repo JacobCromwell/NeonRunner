@@ -168,6 +168,57 @@ extends Resource
 @export_range(2.0, 8.0, 0.25, "suffix:m") var bay_length: float = 4.0
 @export_range(0.3, 1.0, 0.05, "suffix:m") var bay_depth: float = 0.55
 
+@export_group("The Merger")
+## DESIGN-TBD (GDD §10, phase 3: "the gunship docks onto the locomotive with huge clamps, forming one
+## monstrous war engine, and 'MERGER COMPLETE' flashes on every screen"): once phase 2's last ride is over,
+## the locomotive comes back from loco_ahead to merger_ahead ahead of the runner (its rear face; framing,
+## in metres) while the gunship settles onto its rear, its belly dock_height over the roofs, over
+## dock_seconds; its clamps lock and merger_text flashes on every screen (the locomotive's rear screen and
+## the ad screens pacing the train) with the Chairman's face for merger_flash_seconds (steady with Reduced
+## flashing), the face staying on them after.
+@export_range(30.0, 120.0, 1.0, "suffix:m") var merger_ahead: float = 64.0
+@export_range(6.4, 12.0, 0.1, "suffix:m") var dock_height: float = 7.0
+@export_range(1.0, 8.0, 0.1, "suffix:s") var dock_seconds: float = 3.0
+@export var merger_text: String = "MERGER COMPLETE"
+@export_range(1.0, 10.0, 0.5, "suffix:s") var merger_flash_seconds: float = 5.0
+## DESIGN-TBD (GDD §10: "its attacks combine both"): after each flatcar's drop the war engine comes back
+## over the runner for a pass (a runway of pads before it, as phase 2's ride); between, the Board's guards
+## and partial wall fences come back on the carriages of the consist's slots in merger_board_slots (their
+## guards from merger_guards, slot by slot; no Tithe Collector), and the strafes come where nothing else is.
+@export var merger_board_slots: PackedInt32Array = PackedInt32Array([0, 1])
+@export var merger_guards: PackedInt32Array = PackedInt32Array([1, 0])
+## DESIGN-TBD (GDD §10: "the player stomps the three glowing docking clamps to tear the gunship loose";
+## "missed weak points come around again"): in a pass the war engine comes down (pass_descend_seconds) so
+## its belly is the ceiling over the runner as they reach the runway, its stern pass_rear_margin behind
+## them, and moves on slower than them: they ride forward along its belly at pass_speed (m/s, at any run
+## speed), under its three docking clamps, which hang from it in turn (clamp_at: metres from its stern), each
+## under a third of its width (clamp_side: -1 left, 0 the middle, 1 right), clamp_length along it and
+## clamp_depth below it, glowing red: a jump from the belly that comes back up onto one stomps it. Once they
+## are pass_release along it, the war engine pulls away (its belly sliding on over them at pull_speed m/s)
+## and they drop back onto the roof, on a carriage's roof clear of its gaps. Clamps missed stay for the next
+## pass; each stomped one is a third of the phase.
+@export_range(1.0, 6.0, 0.1, "suffix:m/s") var pass_speed: float = 3.0
+@export_range(0.5, 6.0, 0.25, "suffix:m") var pass_rear_margin: float = 1.5
+@export_range(10.0, 21.5, 0.25, "suffix:m") var pass_release: float = 19.5
+@export_range(4.0, 30.0, 0.5, "suffix:m/s") var pull_speed: float = 14.0
+@export_range(1.0, 5.0, 0.1, "suffix:s") var pass_descend_seconds: float = 2.4
+@export var clamp_at: PackedFloat32Array = PackedFloat32Array([8.0, 12.5, 17.0])
+@export var clamp_side: PackedInt32Array = PackedInt32Array([-1, 0, 1])
+@export_range(1.5, 6.0, 0.25, "suffix:m") var clamp_length: float = 3.0
+@export_range(0.3, 1.0, 0.05, "suffix:m") var clamp_depth: float = 0.6
+
+@export_group("The defeat")
+## DESIGN-TBD (GDD §10: "the gunship spins away and explodes; the locomotive derails and ploughs through
+## the lobby of a corporate tower, bringing down a giant, soulless logo sculpture"): the last clamp torn
+## loose, the gunship pulls free, spins away and explodes explode_at seconds later; the locomotive leaves
+## the guideway toward derail_side (-1 left, 1 right) and ploughs into the lobby of a corporate tower beside
+## the line crash_at seconds in, its plaza's logo sculpture toppling; the results come defeat_seconds after
+## the last stomp.
+@export_range(2.0, 10.0, 0.1, "suffix:s") var defeat_seconds: float = 5.5
+@export_range(0.5, 4.0, 0.1, "suffix:s") var explode_at: float = 1.6
+@export_range(1.0, 5.0, 0.1, "suffix:s") var crash_at: float = 2.6
+@export_range(-1, 1, 2) var derail_side: int = 1
+
 @export_group("Breakaway")
 ## The carriages behind a stomped coupling break away and tumble off the track (GDD §10), looks only:
 ## they fall behind at break_recede m/s² and drop at break_drop m/s², each rolling over at break_roll
@@ -207,6 +258,15 @@ func guards_on(k: int, lanes: int, kind: int = 0) -> int:
 ## Board counts them against tithe_visits_per_phase).
 func tithe_on(k: int, kind: int) -> bool:
 	return kind == HostileTakeoverTrain.Kind.FLATCAR and k >= tithe_first
+
+
+## The guards on a carriage of kind `kind` in the consist's slot `slot` at `lanes` lanes in phase 3: the
+## merger_guards entry of its place in merger_board_slots (none off those slots, none on a flatcar).
+func merger_guards_on(lanes: int, kind: int, slot: int) -> int:
+	var i: int = merger_board_slots.find(slot)
+	if i < 0 or merger_guards.is_empty() or kind == HostileTakeoverTrain.Kind.FLATCAR:
+		return 0
+	return clampi(merger_guards[i % merger_guards.size()], 0, maxi(lanes - 1, 0))
 
 
 ## How many lanes a strafe strikes at `lanes` lanes: strafe_lanes, never more than the lanes less two

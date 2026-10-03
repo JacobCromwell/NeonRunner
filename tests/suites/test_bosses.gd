@@ -328,12 +328,13 @@ func _test_health_and_phases() -> void:
 
 ## BossDef.weapons_can_end_phase: on (every boss's default, GDD §10's Floating Head rule: the best weapon
 ## may save a stomp), weapon hits chipped to a phase's end end it; off (DESIGN-TBD, Hostile Takeover's),
-## they chip it only to just above its end, auto-fire then leaves the boss alone, and only a big hit ends
-## the phase, the last one's too.
+## they chip it only to just above its end, auto-fire then leaves the boss alone, and its big hits are
+## counted: each takes an equal part of what's left, and only its last one ends the phase (exactly at its
+## end, nothing carried), the last phase's too, however much weapons chipped it.
 func _test_weapons_ending_a_phase() -> void:
 	for can_end: bool in [true, false]:
 		var tag: String = "(weapons_can_end_phase %s)" % ("on" if can_end else "off")
-		var def: BossDef = DummyBoss.make_def([[1, 1, false, 0.2], [1, 1, false, 0.2]], 100.0)
+		var def: BossDef = DummyBoss.make_def([[1, 1, false, 0.2], [1, 3, false, 0.2]], 100.0)
 		def.weapon_share_cap = 1.0
 		def.weapons_can_end_phase = can_end
 		var enc := DummyBoss.new()
@@ -347,13 +348,19 @@ func _test_weapons_ending_a_phase() -> void:
 			check(enc.phase_index == 0 and enc.health > 50.0 and enc.health < 50.1 and not enc.weapons_can_hurt()
 				and not enc.body.targetable(), "weapons chip a phase only to just above its end (%.3f) %s" % [enc.health, tag])
 			enc.damage(enc.hit_damage(), &"stomp")
+			check(enc.phase_index == 1 and is_equal_approx(enc.health, 50.0), "its big hit ends it exactly at its end (%.3f) %s" % [enc.health, tag])
 			await _until(world, func() -> bool: return enc.is_vulnerable(), 2.0)
+			check(is_equal_approx(enc.hit_damage(), 50.0 / 3.0), "unchipped, a hit is the phase's share over its hits %s" % tag)
 			for i: int in 8:
 				enc.body.take_damage(10.0, &"weapon")
 			check(enc.phase_index == 1 and not enc.is_defeated() and enc.health > 0.0 and enc.health < 0.1,
-				"a big hit ends it; in the last phase weapons never beat the boss (%.3f) %s" % [enc.health, tag])
-			enc.damage(enc.hit_damage(), &"stomp")
-			check(enc.is_defeated(), "its big hit does %s" % tag)
+				"in the last phase weapons never beat the boss (%.3f) %s" % [enc.health, tag])
+			var beaten_after: int = 0
+			for i: int in 3:
+				enc.damage(enc.hit_damage(), &"stomp")
+				if enc.is_defeated() and beaten_after == 0:
+					beaten_after = i + 1
+			check(beaten_after == 3, "chipped to its floor, the last phase still takes all three of its hits (%d) %s" % [beaten_after, tag])
 		await sim.free_world(world)
 
 
