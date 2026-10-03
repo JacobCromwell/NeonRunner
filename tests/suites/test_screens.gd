@@ -147,8 +147,8 @@ func _test_every_screen(tag: String) -> void:
 		["run summary", func() -> void: _show_result(false), ResultsScreen],
 		["boss results", func() -> void: _show_boss_result(true), ResultsScreen],
 		["boss run summary", func() -> void: _show_boss_result(false), ResultsScreen],
-		# The City's boss is built (task E1d); Gangland's is still a placeholder card.
-		["boss slot", func() -> void: App.play_step(App.campaign.step("gangland/boss")), SlotScreen],
+		# The City's boss is built (task E1d), and Gangland's (E4b); the Golden Palace's is still a placeholder card.
+		["boss slot", func() -> void: App.play_step(App.campaign.step("golden/boss")), SlotScreen],
 		# The zones' intros play their arrival flyovers (task F1); the outros are still placeholder cards.
 		["cinematic slot", func() -> void: App.play_step(App.campaign.step("city/outro")), SlotScreen],
 		["demo end", func() -> void: App.show_demo_end(), DemoEndScreen],
@@ -556,8 +556,8 @@ func _test_results() -> void:
 
 func _test_slots_and_demo_end() -> void:
 	App.profile = SampleProfiles.fresh()
-	# The City's boss is built (task E1d); Gangland's is still a placeholder card.
-	App.play_step(App.campaign.step("gangland/boss"))
+	# The City's boss is built (task E1d), and Gangland's (E4b); the Golden Palace's is still a placeholder card.
+	App.play_step(App.campaign.step("golden/boss"))
 	await _frames(2)
 	var slot := App.screen as SlotScreen
 	check(slot != null and _focus() == slot.continue_button, "the boss slot focuses Continue")
@@ -565,8 +565,8 @@ func _test_slots_and_demo_end() -> void:
 		return
 	slot.continue_button.pressed.emit()
 	await _frames(2)
-	check(App.profile.is_completed("gangland/boss") and App.screen is SlotScreen
-		and (App.screen as SlotScreen).step.id == "gangland/outro", "Continue counts the boss as done and moves on")
+	check(App.profile.is_completed("golden/boss") and App.screen is SlotScreen
+		and (App.screen as SlotScreen).step.id == "golden/outro", "Continue counts the boss as done and moves on")
 	(App.screen as ScreenBase).go_back()
 	await _frames(1)
 	check(App.screen is LevelSelectScreen, "back returns to the level select")
