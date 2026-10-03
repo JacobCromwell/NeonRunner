@@ -9,10 +9,11 @@ extends TestSuite
 const GOOD_RUN_SHARE: float = 0.7
 ## The level each item should be in reach by, in a single clean playthrough with nothing bought along
 ## the way (campaign order, 0-based; GDD §5's schedule, test_campaign.gd's FIRST_LEVEL): armor I is
-## the owner's "died a lot" note (GDD §4); claws by Octodog's debut (claws beat tentacles, GDD §8);
-## weapon I by the zone that introduces the cyborg.
+## the owner's "died a lot" note (GDD §4); claws by Octodog's debut (claws beat tentacles, GDD §8).
+## USER_REQUESTS.md approves intentionally lower earnings from 55-second City 1, not compensation:
+## after its additive gaps armor I still fits City 1, but laser I moves from City 2 to City 3.
 const AFFORD_BY: Dictionary = {
-	&"armor:1": "city/1", &"weapon:1": "city/2", &"claws:1": "gangland/2", &"dash:1": "gangland/3",
+	&"armor:1": "city/1", &"weapon:1": "city/3", &"claws:1": "gangland/2", &"dash:1": "gangland/3",
 	&"slow_time:1": "gangland/3",
 }
 
@@ -24,6 +25,7 @@ func run() -> void:
 	_test_catalog_and_loadout()
 	_test_app_shop()
 	_test_balance_curve()
+	_test_shorter_city_earnings()
 
 
 func _test_wallet() -> void:
@@ -201,6 +203,8 @@ func _test_balance_curve() -> void:
 		var by_wallet: int = int(wallet_by_level[AFFORD_BY[key]])
 		check(price <= by_wallet, "%s is affordable by %s (price %d, wallet %d)" % [
 			item.tier_name(tier), AFFORD_BY[key], price, by_wallet])
+	check(int(wallet_by_level["city/2"]) < catalog.item(&"weapon").price_of(1, false),
+		"intentional early earnings delay laser I until City 3 (City 2 wallet %d)" % wallet_by_level["city/2"])
 	for item: ShopItem in catalog.items:
 		var prices: Array[int] = []
 		if item.kind == ShopItem.Kind.BREAKABLE:
@@ -211,3 +215,36 @@ func _test_balance_curve() -> void:
 		for price: int in prices:
 			check(price <= max_wallet, "%s never costs more than one clean playthrough ever earns (%d <= %d)" % [
 				item.display_name, price, max_wallet])
+
+
+## Isolate the approved duration change from the later additive gaps, using copies only.
+func _test_shorter_city_earnings() -> void:
+	var campaign := load("res://data/campaign/campaign.tres") as Campaign
+	var movement := load("res://data/tuning/movement.tres") as MovementTuning
+	var rules := load("res://data/tuning/game_rules.tres") as GameRules
+	var step: CampaignStep = campaign.step("city/1")
+	var shipped: LevelConfig = campaign.configure(step, 5)
+	var shortened: LevelConfig = shipped.duplicate() as LevelConfig
+	shortened.gap_encounter_increase = 0.0
+	shortened.gap_lane_increase = 0.0
+	var former: LevelConfig = shortened.duplicate() as LevelConfig
+	former.duration_seconds = 110.0
+	var patterns: Array = LevelGenerator.load_for(shortened)
+	var short_layout: LevelLayout = LevelGenerator.new().generate(shortened, movement, patterns)
+	var former_layout: LevelLayout = LevelGenerator.new().generate(former, movement, patterns)
+	var short_credits: int = short_layout.total_credit_value()
+	var former_credits: int = former_layout.total_credit_value()
+	var bonus: int = rules.completion_bonus(step.level_index)
+	var short_wallet: int = roundi(short_credits * GOOD_RUN_SHARE) + bonus
+	var former_wallet: int = roundi(former_credits * GOOD_RUN_SHARE) + bonus
+	print("  City 1 isolated shortening (no additive gaps): 110s %d credits / %d wallet -> 55s %d credits / %d wallet"
+		% [former_credits, former_wallet, short_credits, short_wallet])
+	check(shipped.duration_seconds == 55.0 and step.level.duration_seconds == 55.0,
+		"isolated comparison never restores the shared City 1 duration")
+	check(shipped.gap_encounter_increase == 0.3 and shipped.gap_lane_increase == 0.3
+		and step.level.gap_encounter_increase == 0.3 and step.level.gap_lane_increase == 0.3,
+		"isolated comparison never disables the shared approved additive gaps")
+	check(is_equal_approx(former_layout.length, short_layout.length * 2.0),
+		"halving City 1's duration halves its length, not its speed")
+	check(short_credits > 0 and short_credits < former_credits and short_wallet < former_wallet,
+		"shorter City 1 intentionally earns less, without credit or finish-payout compensation")

@@ -90,6 +90,18 @@ func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: f
 	batch.commit(parent)
 
 
+## A wall gap (ZoneSkin.wall_gap), and with the left wall the palace floor below. The placement keeps
+## gaps off a Gilded Sentinel's wall section, so no niche is here.
+func wall_gap(parent: Node3D, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+	_wall_x = absf(face_x)
+	# Not GoldenSkin's: its walkways are not the palace's floor.
+	wall_gap_marks(parent, side, face_x, start, end, gap)
+	if side < 0:
+		var batch := MeshBatch.new()
+		palace_floor().below(batch, absf(face_x), start, end)
+		batch.commit(parent)
+
+
 ## A ceiling over its lanes, reaching to the wall faces where the section says they are (GDD §3,
 ## "narrow ceilings build from their lanes": GoldenPalaceCeilings builds a kind across every lane
 ## only where the section is full width; over fewer lanes it builds narrower).

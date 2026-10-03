@@ -258,6 +258,8 @@ var _wall_x: float = 0.0
 ## Window cyborgs due in the chunk now building, by side (note_wall_enemies(), task D3): their
 ## track distance, so the citizens never share a window with one (GDD §9.2).
 var _reserved: Dictionary = {-1: PackedFloat32Array(), 1: PackedFloat32Array()}
+## Each side's wall gaps near the wall being drawn (note_wall_gaps).
+var _wall_gaps: Dictionary = {}
 
 
 func _init() -> void:
@@ -291,6 +293,31 @@ func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: f
 		facades().overhead(batch, absf(face_x), start, end)
 	batch.commit(parent)
 	citizens().build(parent, side, face_x, start, end)
+
+
+## A wall gap (ZoneSkin.wall_gap), and with the left wall the stalls below (no lines strung from a
+## missing wall).
+func wall_gap(parent: Node3D, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+	_wall_x = absf(face_x)
+	super(parent, side, face_x, start, end, gap)
+	if side < 0:
+		var batch := MeshBatch.new()
+		stalls().below(batch, absf(face_x), start, end)
+		batch.commit(parent)
+
+
+## The wall gaps near the wall TrackBuilder is about to draw (ZoneSkin hook): a shop window reaching
+## into one is left out (MarketFacades), its pier running on instead, so no window floats in a gap.
+func note_wall_gaps(side: int, gaps: Array[Vector2]) -> void:
+	_wall_gaps[side] = gaps
+
+
+## True if a wall gap on `side` (note_wall_gaps) overlaps the stretch [from, to].
+func wall_gap_near(side: int, from: float, to: float) -> bool:
+	for g: Vector2 in _wall_gaps.get(side, [] as Array[Vector2]):
+		if g.x < to and g.y > from:
+			return true
+	return false
 
 
 ## The window cyborgs TrackBuilder is about to build on `side` in [start, end) (ZoneSkin hook, task

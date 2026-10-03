@@ -323,6 +323,17 @@ func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: f
 	batch.commit(parent)
 
 
+## A wall gap (ZoneSkin.wall_gap), and with the left wall the walkways below (no sky bridge from a
+## missing wall). The placement keeps gaps off a Gilded Sentinel's wall section, so no niche is here.
+func wall_gap(parent: Node3D, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+	_wall_x = absf(face_x)
+	super(parent, side, face_x, start, end, gap)
+	if side < 0:
+		var batch := MeshBatch.new()
+		walkways().below(batch, absf(face_x), start, end)
+		batch.commit(parent)
+
+
 ## The wall enemies TrackBuilder is about to build on `side` (ZoneSkin.note_wall_enemies): each Gilded
 ## Sentinel's niche (GildedSentinel.niche_rect, task C4; GDD §9.11: a live one stands in a niche at
 ## wall-run height) is left out of the wall face here (niches(), open_rects()) and its recess appended

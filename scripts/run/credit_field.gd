@@ -16,7 +16,7 @@ signal collected(value: int, position: Vector3)
 ## Pickup reach beyond the damage hitbox (generous: credits should feel easy to grab).
 const PICKUP_MARGIN := Vector3(0.45, 0.35, 0.35)
 ## The credit look per denomination (shape and size here, colour in the UI style; FB 8):
-## a silver chip, an azure ringed chip, a violet diamond and an ice-white gem.
+## a silver chip, an azure ringed chip, a violet diamond and a tall ice-white cut gem.
 const LOOKS: Dictionary = {
 	1: {"shape": "coin", "radius": 0.2},
 	5: {"shape": "hex", "radius": 0.28},
@@ -40,6 +40,30 @@ void fragment() {
 	EMISSION = color.rgb * energy;
 	METALLIC = 0.7;
 	ROUGHNESS = 0.3;
+}
+"""
+## Opaque contrast survives both dark streets and pale/gold scenery without a bloom pass.
+## The dark girdle and cut facets stay steady, including with Reduced flashing.
+const HIGH_CREDIT_SHADER: String = """
+shader_type spatial;
+render_mode unshaded, cull_disabled, shadows_disabled, fog_disabled;
+uniform vec4 color : source_color = vec4(1.0);
+uniform vec4 edge_color : source_color = vec4(0.035, 0.09, 0.18, 1.0);
+uniform float spin_speed = 1.8;
+varying float gem_height;
+void vertex() {
+	gem_height = VERTEX.y;
+	float a = TIME * spin_speed;
+	mat3 r = mat3(vec3(cos(a), 0.0, -sin(a)), vec3(0.0, 1.0, 0.0), vec3(sin(a), 0.0, cos(a)));
+	VERTEX = r * VERTEX;
+	NORMAL = r * NORMAL;
+}
+void fragment() {
+	float facing = abs(dot(normalize(NORMAL), normalize(VIEW)));
+	float rim = smoothstep(0.22, 0.55, facing);
+	float girdle = smoothstep(0.045, 0.065, abs(gem_height - 0.13));
+	vec3 ice = mix(vec3(0.38, 0.72, 0.92), color.rgb, smoothstep(0.35, 0.8, facing));
+	ALBEDO = mix(edge_color.rgb, ice, rim * girdle);
 }
 """
 
@@ -310,16 +334,17 @@ static func color_of(value: int) -> Color:
 	return UiTheme.credit_color(value)
 
 
-## A denomination's spinning, glowing material (one per denomination, shared by every credit drawn in
+## A denomination's spinning material (one per denomination, shared by every credit drawn in
 ## its look: the field's, and RunEffects' coin streams).
 static func material_for(value: int) -> Material:
 	if not _materials.has(value):
 		var shader := Shader.new()
-		shader.code = SPIN_SHADER
+		shader.code = HIGH_CREDIT_SHADER if value == 100 else SPIN_SHADER
 		var m := ShaderMaterial.new()
 		m.shader = shader
 		m.set_shader_parameter(&"color", color_of(value))
-		m.set_shader_parameter(&"energy", 2.0 if value < 25 else 3.0)
+		if value != 100:
+			m.set_shader_parameter(&"energy", 2.0 if value < 25 else 3.0)
 		m.set_shader_parameter(&"spin_speed", 3.0 if value < 100 else 1.8)
 		_materials[value] = m
 	return _materials[value]
@@ -344,10 +369,38 @@ static func mesh_for(value: int) -> Mesh:
 			var st := SurfaceTool.new()
 			st.append_from(cyl, 0, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3.ZERO))
 			mesh = st.commit()
+		"big_gem":
+			mesh = _cut_gem(r)
 		_:
-			mesh = _gem(r, r * (1.6 if look["shape"] == "big_gem" else 1.3))
+			mesh = _gem(r, r * 1.3)
 	_meshes[value] = mesh
 	return mesh
+
+
+## A tall, flat-crowned cut gem, unlike the 25-credit pointed diamond. Width and pickup stay unchanged.
+static func _cut_gem(radius: float) -> Mesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var crown: Array[Vector3] = []
+	var girdle: Array[Vector3] = []
+	for i: int in 6:
+		var a: float = TAU * i / 6.0
+		crown.append(Vector3(cos(a) * radius * 0.55, 0.55, sin(a) * radius * 0.55))
+		girdle.append(Vector3(cos(a) * radius, 0.13, sin(a) * radius))
+	var bottom := Vector3(0.0, -0.55, 0.0)
+	for i: int in 6:
+		var next: int = (i + 1) % 6
+		for tri: PackedVector3Array in [
+			PackedVector3Array([Vector3(0.0, 0.55, 0.0), crown[next], crown[i]]),
+			PackedVector3Array([crown[i], crown[next], girdle[next]]),
+			PackedVector3Array([crown[i], girdle[next], girdle[i]]),
+			PackedVector3Array([bottom, girdle[i], girdle[next]]),
+		]:
+			var n: Vector3 = (tri[1] - tri[0]).cross(tri[2] - tri[0]).normalized()
+			for v: Vector3 in tri:
+				st.set_normal(n)
+				st.add_vertex(v)
+	return st.commit()
 
 
 ## An octahedron-style gem: `radius` wide, `height` tall.

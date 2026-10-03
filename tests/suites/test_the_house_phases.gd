@@ -259,6 +259,7 @@ func _test_campaign() -> void:
 func _campaign_flow(lanes: int) -> void:
 	var tag: String = "(%d lanes)" % lanes
 	App.play_step(App.campaign.step("marketplace/2"))
+	App.begin_run()
 	await physics_frames(10)
 	check(App.run != null and App.run.world.geo.lane_count == lanes, "Marketplace 2 starts %s" % tag)
 	if App.run == null:
@@ -272,6 +273,7 @@ func _campaign_flow(lanes: int) -> void:
 		return
 	App.continue_after_result(level_result)
 	(App.screen as ShopScreen).on_close.call()
+	App.begin_run()
 	await physics_frames(3)
 	var run: LevelRun = App.run
 	check(run != null and run.encounter is TheHouse and run.context.step.id == "marketplace/boss"
@@ -302,6 +304,7 @@ func _campaign_flow(lanes: int) -> void:
 	if shop == null:
 		return
 	shop.on_close.call()
+	App.begin_run()
 	await physics_frames(3)
 	run = App.run
 	boss = run.encounter as TheHouse if run != null else null

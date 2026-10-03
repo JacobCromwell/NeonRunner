@@ -629,6 +629,7 @@ func _test_route_in() -> void:
 	var saved: Profile = App.profile
 	App.profile = Profile.new()
 	App.play_step(App.campaign.step("city/boss"))
+	App.begin_run()
 	await physics_frames(3)
 	var run: LevelRun = App.run
 	check(not App.screen is SlotScreen and run != null and run.encounter is FloatingHead
@@ -656,6 +657,7 @@ func _test_route_in() -> void:
 	await tree.process_frame
 	# A harder tier multiplies its speed, as it does a level's (GDD §6); the fight follows that pace too.
 	App.start_boss(App.campaign.step("city/boss"), 2)
+	App.begin_run()
 	await physics_frames(3)
 	run = App.run
 	var tier_speed: float = city * App.campaign.speed_multiplier(2)

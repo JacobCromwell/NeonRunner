@@ -370,6 +370,7 @@ func _test_screens() -> void:
 				check((App.screen as SettingsScreen).toggles.has("reduced_flashing"), "the settings have Reduced flashing (%s)" % tag)
 		# In a level: the pause menu, and a death's revive offer.
 		App.play_step(App.campaign.step("city/1"))
+		App.begin_run()
 		await physics_frames(5)
 		App.pause_game()
 		await tree.process_frame

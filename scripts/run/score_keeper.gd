@@ -213,7 +213,7 @@ func _on_player_event(kind: StringName) -> void:
 			_wall_start = world.player.distance
 		&"wall_enter":
 			_wall_start = world.player.distance
-		&"wall_exit", &"wall_jump", &"died":
+		&"wall_exit", &"wall_jump", &"wall_gap_drop", &"died":
 			_end_wall_run()
 
 

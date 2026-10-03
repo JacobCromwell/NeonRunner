@@ -757,6 +757,7 @@ func _test_hud_and_hints() -> void:
 	hints.setup(world, profile, false)
 	var shown: Array[String] = []
 	hints.hint_shown.connect(func(id: String, _text: String) -> void: shown.append(id))
+	hints.acknowledge(hints.intro_hints)
 	await _until(world, func() -> bool: return enc.is_vulnerable(), 1.0)
 	await tree.process_frame
 	check(hud.boss_bar.visible and not hud.progress.visible, "a boss fight shows the boss bar instead of the progress meter")
@@ -861,6 +862,7 @@ func _kill_player() -> void:
 
 func _app_win(step: CampaignStep) -> void:
 	App.play_step(step)
+	App.begin_run()
 	await physics_frames(3)
 	var run: LevelRun = App.run
 	check(run != null and run.context.is_boss() and run.encounter is TestBoss and App.screen == null,
@@ -899,6 +901,7 @@ func _app_win(step: CampaignStep) -> void:
 	App.continue_after_result(r)
 	check(App.screen is ShopScreen and (App.screen as ShopScreen).play_label == "Next", "then the shop")
 	(App.screen as ShopScreen).on_close.call()
+	App.begin_run()
 	await physics_frames(3)
 	check(App.screen is SlotScreen and (App.screen as SlotScreen).step.id == "city/outro", "and on to the zone's outro")
 	App.show_level_select()
@@ -911,6 +914,7 @@ func _app_win(step: CampaignStep) -> void:
 func _app_death_and_retry(step: CampaignStep) -> void:
 	App.profile.add_stock(&"shield", 2)
 	App.play_step(step)
+	App.begin_run()
 	await physics_frames(3)
 	var shot := Hazard.new()
 	shot.is_enemy_attack = true
@@ -929,6 +933,7 @@ func _app_death_and_retry(step: CampaignStep) -> void:
 	App.continue_after_result(r)
 	check(App.screen is ShopScreen and (App.screen as ShopScreen).play_label == "Retry", "then the shop, with a way to retry (GDD §4)")
 	(App.screen as ShopScreen).on_close.call()
+	App.begin_run()
 	await physics_frames(3)
 	check(App.run != null and App.run.context.is_boss() and App.run.context.attempt == 2 and App.run.encounter.phase_index == 0,
 		"retry restarts the fight from the beginning (GDD §10)")
@@ -939,6 +944,7 @@ func _app_death_and_retry(step: CampaignStep) -> void:
 func _app_revive(step: CampaignStep) -> void:
 	App.profile.add_stock(&"revive", 1)
 	App.play_step(step)
+	App.begin_run()
 	await physics_frames(3)
 	var enc: BossEncounter = App.run.encounter
 	await _kill_player()
@@ -955,6 +961,7 @@ func _app_revive(step: CampaignStep) -> void:
 
 func _app_checkpoint(step: CampaignStep) -> void:
 	App.play_step(step)
+	App.begin_run()
 	await physics_frames(3)
 	var enc: BossEncounter = App.run.encounter
 	for i: int in 60 * 5:
@@ -964,6 +971,7 @@ func _app_checkpoint(step: CampaignStep) -> void:
 	enc.damage(enc.hit_damage(), &"test")
 	await tree.process_frame
 	check(enc.phase_index == 1 and int(App.run.context.boss_resume.get("phase", -1)) == 1, "the fight reaches its checkpoint phase")
+	await physics_frames(2)
 	check(App.run.hud.hint_text().contains("Checkpoint"), "the HUD says so")
 	await _kill_player()
 	var r: RunResult = (App.screen as ResultsScreen).result if App.screen is ResultsScreen else null
@@ -972,15 +980,18 @@ func _app_checkpoint(step: CampaignStep) -> void:
 		return
 	App.continue_after_result(r)
 	(App.screen as ShopScreen).on_close.call()
+	App.begin_run()
 	await physics_frames(3)
 	enc = App.run.encounter
 	check(enc.phase_index == 1 and is_equal_approx(enc.health, enc.phase_start_health(1)) and enc.carried_time > 0.0,
 		"a retry after the checkpoint starts at that phase, with the time so far (GDD §10)")
 	App.pause_game()
 	await tree.process_frame
+	await tree.process_frame
 	var pause := App.overlay as PauseScreen
 	check(pause != null and (pause.buttons["restart"] as NeonButton).text.contains("FIGHT"), "the pause menu restarts the fight")
 	(pause.buttons["restart"] as BaseButton).pressed.emit()
+	App.begin_run()
 	await physics_frames(3)
 	check(App.run.encounter.phase_index == 1, "from the checkpoint too")
 	# FB 14 (decided September 26, 2026): a boss fight quit keeps the same credit share as a death.
@@ -991,6 +1002,7 @@ func _app_checkpoint(step: CampaignStep) -> void:
 	check(App.profile.credits() == wallet_before + floori(40 * App.rules.death_credit_keep_fraction),
 		"quitting a boss fight pays the wallet too")
 	App.play_step(step)
+	App.begin_run()
 	await physics_frames(3)
 	check(App.run.encounter.phase_index == 0 and App.run.context.boss_resume.is_empty(),
 		"starting the fight again from the map starts it afresh (its checkpoint isn't kept on a quit either)")
@@ -1002,6 +1014,7 @@ func _app_demo(step: CampaignStep) -> void:
 	Platform.configure_for(BuildFlavor.Kind.WEB_DEMO)
 	check(App.in_demo_scope(step), "the City's boss is in the demo")
 	App.play_step(step)
+	App.begin_run()
 	await physics_frames(3)
 	await _beat(App.run.encounter)
 	var results: ResultsScreen = await _results_after_win()

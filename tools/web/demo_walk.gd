@@ -135,6 +135,11 @@ func _follow() -> bool:
 		if App.screen is DemoEndScreen:
 			see(App.screen)
 			return true
+		if App.screen is LevelIntroScreen:
+			var intro := App.screen as LevelIntroScreen
+			see(intro)
+			intro.play_button.pressed.emit()
+			continue
 		if App.run != null:
 			if not await _play(App.run):
 				return false

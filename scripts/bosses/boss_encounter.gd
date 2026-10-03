@@ -67,8 +67,8 @@ signal protection_broken(item: StringName)
 ## ahead of the player.
 signal armor_pickup_due(reason: StringName)
 signal defeated
-## A first-encounter hint for something of the boss's own is due now (a way onto its head): the run's
-## HintDirector shows the hint whose trigger is "boss:<key>" (data/hints/hints.json), once per profile.
+## Legacy encounter cue (a way onto its head). HintDirector no longer listens during play:
+## catalog entries for this boss are presented on the level intro instead.
 signal hint_due(key: String)
 
 ## INTRO: a phase's intro (the boss can't be hurt). FIGHT: its pattern. DEFEATED: the boss is beaten.

@@ -9,11 +9,12 @@ display_name = "Scrapyard Streets"
 level_seed = 201
 duration_seconds = 135.0
 difficulty_bias = 0.0
-features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "screech", "ramps")
+features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "screech", "ramps", "wall_gaps")
 guarantee_features = true
 feature_starts = Dictionary[String, float]({
 "ramps": 0.4,
-"screech": 0.1
+"screech": 0.1,
+"wall_gaps": 0.5
 })
 narrow_ceiling_share = 0.5
 spacing_seconds_easy = 1.1

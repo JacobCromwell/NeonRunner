@@ -9,7 +9,7 @@ display_name = "Ashfall"
 level_seed = 501
 duration_seconds = 145.0
 difficulty_bias = 0.0
-features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "screech", "ramps", "octodog", "speed_pads", "generator", "drone", "barnacle_turret", "wall_fences", "buzz_overdrive", "wall_fences_partial", "host")
+features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "screech", "ramps", "wall_gaps", "octodog", "speed_pads", "generator", "drone", "barnacle_turret", "wall_fences", "buzz_overdrive", "wall_fences_partial", "host")
 guarantee_features = true
 feature_starts = Dictionary[String, float]({
 "host": 0.1

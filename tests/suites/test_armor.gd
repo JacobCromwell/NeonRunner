@@ -400,9 +400,11 @@ func _test_app() -> void:
 	App.profile = Profile.new()
 
 	App.start_level(App.campaign.step("city/1"))
+	App.begin_run()
 	await physics_frames(5)
 	_check_armor("a campaign level", 0)
 	App.retry(App.run.context)
+	App.begin_run()
 	await physics_frames(5)
 	_check_armor("its retry", 0)
 	# A revive (the item) brings broken armor back whole.
@@ -419,10 +421,12 @@ func _test_app() -> void:
 	# The upgrade, and the equip toggle down to the free armor.
 	App.profile.set_tier(&"armor", 2)
 	App.start_level(App.campaign.step("city/2"))
+	App.begin_run()
 	await physics_frames(5)
 	_check_armor("a level with the armor upgrade at tier 2", 2)
 	App.profile.set_equipped(&"armor", false)
 	App.retry(App.run.context)
+	App.begin_run()
 	await physics_frames(5)
 	_check_armor("a retry with the upgrade switched off", 0)
 	App.profile = Profile.new()
@@ -431,10 +435,12 @@ func _test_app() -> void:
 	var boss_step: CampaignStep = App.campaign.step("city/boss")
 	if boss_step != null and boss_step.boss != null and boss_step.boss.is_built():
 		App.start_boss(boss_step)
+		App.begin_run()
 		await physics_frames(5)
 		check(App.run != null and App.run.context.is_boss(), "the City's boss fight starts")
 		_check_armor("the City's boss fight", 0)
 		App.retry(App.run.context)
+		App.begin_run()
 		await physics_frames(5)
 		_check_armor("its retry", 0)
 	var test_def: BossDef = load(TEST_BOSS_PATH) as BossDef
@@ -445,12 +451,14 @@ func _test_app() -> void:
 	await physics_frames(5)
 	_check_armor("quick play", 0)
 	App.start_endless()
+	App.begin_run()
 	await physics_frames(5)
 	_check_armor("an endless run", 0)
 
 	# The web demo (GDD §2): the same free armor, and the same upgrade in its shop.
 	BuildFlavor.set_override(BuildFlavor.Kind.WEB_DEMO)
 	App.start_level(App.campaign.step("city/1"))
+	App.begin_run()
 	await physics_frames(5)
 	_check_armor("the web demo's first level", 0)
 	App.show_shop()
@@ -489,4 +497,5 @@ func _check_armor(what: String, tier: int) -> void:
 	var a: DamageRules.Armor = p.armor_state
 	check(p.alive and a.carried and a.is_up() and a.hits == rules.armor_hits_at(tier) and a.max_hits == rules.armor_hits_at(tier)
 		and is_equal_approx(a.recharge_time, rules.armor_recharge_at(tier)) and App.run.context.loadout.has_armor(),
-		"%s starts with the armor up (%d hits, back %.1f s after it breaks)" % [what, a.hits, a.recharge_time])
+		"%s starts with the armor up (%d/%d hits, back %.1f s, alive %s, carried %s, up %s, loadout %s)" % [
+			what, a.hits, a.max_hits, a.recharge_time, p.alive, a.carried, a.is_up(), App.run.context.loadout.has_armor()])

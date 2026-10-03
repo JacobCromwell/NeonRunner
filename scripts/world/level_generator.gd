@@ -17,7 +17,12 @@ extends RefCounted
 ##    nothing else goes on (_place_doodads).
 ## 5. Wall fences (the `wall_fences` and `wall_fences_partial` features; WallFencePlacement): electric
 ##    fences across the wall-run path, only where they're fair (_place_wall_fences).
-## 6. Credits (GDD §7): trails in the clear stretches, rich credits in risky spots.
+## 6. Side wall gaps (the `wall_gaps` feature, Zone 2 on; WallGapPlacement): stretches of a side wall
+##    with no wall-running surface, rare, clear of every wall piece, ramp run and ceiling on that wall.
+## 7. Additive gaps (GapDensity, enabled only in City 1): more rows and a higher mean row width,
+##    without replacing obstacles. Independent round-up targets and explicit fairness shortfalls.
+## 8. Credits (GDD §7): trails in the clear stretches, rich credits in risky spots (none on a wall
+##    where a wall gap leaves no wall).
 ## Fairness rules (longest gap, hull lead-in and landing) come from LevelConfig, so they are data.
 ##
 ## Ceilings (GDD §3, changed September 26, 2026): the floor under a ceiling may be dangerous, since the
@@ -162,6 +167,8 @@ var picks: Array[Dictionary] = []
 ## The patterns the fill pass of the last build placed (LevelConfig.fill_empty_seconds), in order:
 ## {id, at, used}. For tests and tools/measure/level_pace.gd.
 var fills: Array[Dictionary] = []
+## Additive gap pass's actual/target counts and any fairness shortfalls; empty when disabled.
+var gap_density_result: Dictionary = {}
 
 var _rng := RandomNumberGenerator.new()
 ## Which ceilings are narrow, and their lanes (ceiling_lanes): a stream of its own, drawn from only
@@ -304,6 +311,8 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	_fill_empty_stretches(patterns)
 	_place_doodads(patterns)
 	_place_wall_fences()
+	WallGapPlacement.place(self)
+	gap_density_result = GapDensity.apply(self)
 	_place_credits()
 	layout.enemies.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["at"] < b["at"])
 	return layout
@@ -936,6 +945,9 @@ static func feature_positions(p_layout: LevelLayout, feature: String) -> Array[f
 			for w: Dictionary in p_layout.wall_fences:
 				if WallFencePlan.is_partial(w) == (feature == "wall_fences_partial"):
 					out.append(float(w["at"]))
+		"wall_gaps":
+			for g: Dictionary in p_layout.wall_gaps:
+				out.append(float(g["start"]))
 		_:
 			for e: Dictionary in p_layout.enemies:
 				var type: String = String(e.get("type", ""))
@@ -2049,6 +2061,9 @@ func _drop_unsafe_credits() -> void:
 				continue
 		elif c["surface"] == "wall":
 			if _sign_near(layout, c["side"], c["at"], 1.0):
+				continue
+			# No wall there to run along (a wall gap): nothing to collect it from.
+			if layout.wall_gap_between(float(c["at"]) - 1.0, float(c["at"]) + 1.0, int(c["side"])):
 				continue
 		kept.append(c)
 	layout.credits = kept

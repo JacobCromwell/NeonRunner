@@ -7,7 +7,7 @@ script = ExtResource("1_level")
 id = &"city_1"
 display_name = "Rooftop Rush"
 level_seed = 101
-duration_seconds = 110.0
+duration_seconds = 55.0
 difficulty_bias = -0.05
 features = PackedStringArray("cyborg")
 guarantee_features = true
@@ -16,6 +16,8 @@ feature_starts = Dictionary[String, float]({
 })
 spacing_seconds_easy = 1.1
 fill_empty_seconds = 2.0
+gap_encounter_increase = 0.3
+gap_lane_increase = 0.3
 credit_trail_chance = 0.6
 credit_trail_min = 5
 doodad_share = 0.15

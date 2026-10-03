@@ -58,6 +58,9 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## - wall_fences: full-height wall fences (GDD §9.1), from Marketplace 2; wall_fences_partial: wall
 ##   fences over the low or the high part of the wall only, from Corporate 1 (task B5; no patterns: the
 ##   generator places them, WallFencePlacement)
+## - wall_gaps: side wall gaps, stretches of a side wall with no wall-running surface (owner's
+##   answers, docs/USER_REQUESTS.md), from Gangland 1 (Zone 2) on, never in a boss arena (no patterns:
+##   the generator places them, WallGapPlacement; tuning in data/tuning/wall_gaps.tres)
 ## - the planned ones in PLANNED_FEATURES
 ## Rules scripts run in this list's order (see LevelGenerator), so the campaign keeps the order in
 ## which the schedule introduces features.
@@ -124,6 +127,11 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## level is built exactly as before (quick play, the tests, boss arenas). DESIGN-TBD
 ## (docs/questions/g1.md): each campaign level's value.
 @export_range(0.0, 10.0, 0.1, "suffix:s") var fill_empty_seconds: float = 0.0
+## Additive floor-gap pass, after all obstacles: increases encounter count and mean missing lanes
+## against this build's original gaps. Both targets round up; fairness can limit either. Zero keeps
+## the original layout and random streams. City 1 alone enables these (approved USER_REQUESTS).
+@export_range(0.0, 1.0, 0.05) var gap_encounter_increase: float = 0.0
+@export_range(0.0, 1.0, 0.05) var gap_lane_increase: float = 0.0
 ## Quiet stretches and bursts (GDD §5, The Hush: long silent stretches broken by sudden threats).
 ## With quiet_seconds above 0, the level after its run-up alternates a quiet stretch of that many
 ## seconds at run speed with a burst of burst_seconds, quiet first. In a quiet stretch patterns are
@@ -293,4 +301,3 @@ func recency_capped(requires: Array) -> bool:
 ## True if the level alternates quiet stretches and bursts (quiet_seconds above 0).
 func paced_in_bursts() -> bool:
 	return quiet_seconds > 0.0
-

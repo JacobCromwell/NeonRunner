@@ -22,6 +22,8 @@ extends RefCounted
 ## fight with no time limit, credits along the track would pay players for stalling; beating the boss
 ## pays instead). Enemies a lap lists come into play like a level's: the director spawns those of the
 ## laps planned before the world was built, the arena those added later, each at its type's lead.
+## No lap has side wall gaps (owner's answer: none in boss levels): base_config leaves the `wall_gaps`
+## feature out, and WallGapPlacement refuses an arena's config anyway.
 ##
 ## Pace (GDD §3: the run speed rises zone by zone, and a boss fight runs at its zone's speed like the
 ## zone's levels): the arena is planned at its config's run speed (LevelConfig.movement_for: its zone's
@@ -65,6 +67,11 @@ static func base_config(def: BossDef) -> LevelConfig:
 	var out: LevelConfig = def.arena.duplicate() as LevelConfig if def.arena != null else LevelConfig.new()
 	if def.arena == null:
 		out.features = PackedStringArray()
+	# Owner's answer (docs/USER_REQUESTS.md): no side wall gaps in boss levels, whatever the arena lists.
+	var features := PackedStringArray(out.features)
+	while features.has(WallGapPlacement.FEATURE):
+		features.remove_at(features.find(WallGapPlacement.FEATURE))
+	out.features = features
 	out.id = StringName("%s_arena" % def.id)
 	out.display_name = def.display_name
 	out.difficulty_ramp = 0.0

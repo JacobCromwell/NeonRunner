@@ -56,11 +56,18 @@ var cuts: Array[Dictionary] = []
 ## they're fair), the track builder builds them as hazards (TrackBuilder), and the skin draws them
 ## (ZoneSkin.wall_fence).
 var wall_fences: Array[Dictionary] = []
+## {side, start, end}: a side wall gap (the `wall_gaps` feature, Zone 2 on; WallGapPlacement): wall
+## `side` (-1 left, 1 right) has no wall-running surface from track distance `start` to `end`. The
+## track builder leaves the wall out there and marks its edges (ZoneSkin.wall_gap), a runner can't
+## get onto the wall there, and one on it drops off at the gap (Player.wall_supported). Sorted by
+## start; both walls may have one over the same stretch.
+var wall_gaps: Array[Dictionary] = []
 
 
 ## Every list of pieces, by name. A level without doodads has no "doodads" key, one without floor
-## cuts no "cuts" key and one without wall fences no "wall_fences" key, so its dictionary (and every
-## hash or dump of it) is the same as before those existed.
+## cuts no "cuts" key, one without wall fences no "wall_fences" key and one without wall gaps no
+## "wall_gaps" key, so its dictionary (and every hash or dump of it) is the same as before those
+## existed.
 func to_dict() -> Dictionary:
 	var out := {
 		"lane_count": lane_count,
@@ -81,11 +88,13 @@ func to_dict() -> Dictionary:
 		out["cuts"] = cuts
 	if not wall_fences.is_empty():
 		out["wall_fences"] = wall_fences
+	if not wall_gaps.is_empty():
+		out["wall_gaps"] = wall_gaps
 	return out
 
 
-## Appends every list of `other`'s pieces to this layout's (doodads, floor cuts and wall fences
-## included, whether or not this layout has any yet), and moves its end to other's if that's further.
+## Appends every list of `other`'s pieces to this layout's (doodads, floor cuts, wall fences and wall
+## gaps included, whether or not this layout has any yet), and moves its end to other's if that's further.
 func append_pieces(other: LevelLayout) -> void:
 	var lists: Dictionary = to_dict()
 	var more: Dictionary = other.to_dict()
@@ -99,6 +108,8 @@ func append_pieces(other: LevelLayout) -> void:
 		cuts.append_array(other.cuts)
 	if not lists.has("wall_fences"):
 		wall_fences.append_array(other.wall_fences)
+	if not lists.has("wall_gaps"):
+		wall_gaps.append_array(other.wall_gaps)
 	length = maxf(length, other.length)
 
 
@@ -118,6 +129,7 @@ func copy() -> LevelLayout:
 	out.doodads = doodads.duplicate(true)
 	out.cuts = cuts.duplicate(true)
 	out.wall_fences = wall_fences.duplicate(true)
+	out.wall_gaps = wall_gaps.duplicate(true)
 	return out
 
 
@@ -168,6 +180,63 @@ func wall_fence_between(from: float, to: float, side: int = 0) -> bool:
 		if float(w["at"]) >= from and float(w["at"]) <= to and (side == 0 or int(w["side"]) == side):
 			return true
 	return false
+
+
+## True if wall `side` (-1 left, 1 right; 0 either) has a gap anywhere in [from, to] (wall_gaps).
+func wall_gap_between(from: float, to: float, side: int = 0) -> bool:
+	for g: Dictionary in wall_gaps:
+		if float(g["start"]) <= to and float(g["end"]) >= from and (side == 0 or int(g["side"]) == side):
+			return true
+	return false
+
+
+## True if wall `side` has its wall-running surface at track distance `d`: no wall gap holds it
+## (a gap's [start, end)).
+func wall_supported(side: int, d: float) -> bool:
+	return wall_supported_in(wall_gaps, side, d)
+
+
+## wall_supported() over a list of wall gap entries (the player keeps the layout's list).
+static func wall_supported_in(gaps: Array[Dictionary], side: int, d: float) -> bool:
+	for g: Dictionary in gaps:
+		if int(g["side"]) == side and d >= float(g["start"]) and d < float(g["end"]):
+			return false
+	return true
+
+
+## The solid stretches of wall `side` within [from, to): that range with its wall gaps taken out, in
+## order (Vector2(start, end)). The track builder draws the wall over exactly these.
+func wall_solid_pieces(side: int, from: float, to: float) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	var cursor: float = from
+	for g: Vector2 in wall_gap_pieces(side, from, to):
+		if g.x > cursor:
+			out.append(Vector2(cursor, g.x))
+		cursor = maxf(cursor, g.y)
+	if cursor < to:
+		out.append(Vector2(cursor, to))
+	return out
+
+
+## The parts of wall `side`'s gaps within [from, to), in order: Vector2(start, end) clipped to the
+## range (the full gap's ends in wall_gap_spans).
+func wall_gap_pieces(side: int, from: float, to: float) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for g: Vector2 in wall_gap_spans(side, from, to):
+		out.append(Vector2(maxf(g.x, from), minf(g.y, to)))
+	return out
+
+
+## The whole wall gaps on wall `side` that overlap [from, to), in order, as Vector2(start, end).
+func wall_gap_spans(side: int, from: float, to: float) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for g: Dictionary in wall_gaps:
+		var s: float = float(g["start"])
+		var e: float = float(g["end"])
+		if int(g["side"]) == side and s < to and e > from:
+			out.append(Vector2(s, e))
+	out.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
+	return out
 
 
 ## True if a ceiling section covers the track distance `d`: in `lane`, or in any lane with -1.

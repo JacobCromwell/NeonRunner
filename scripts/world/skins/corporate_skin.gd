@@ -321,6 +321,20 @@ func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: f
 	batch.commit(parent)
 
 
+## A wall gap (ZoneSkin.wall_gap), and with the left wall the floor below (no skybridge from a missing
+## wall).
+func wall_gap(parent: Node3D, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+	_wall_x = absf(face_x)
+	super(parent, side, face_x, start, end, gap)
+	if side < 0:
+		var batch := MeshBatch.new()
+		if floor_style == FloorStyle.PLAZA:
+			plaza().below(batch, absf(face_x), start, end)
+		else:
+			trains().below(batch, absf(face_x), _lane_width, start, end)
+		batch.commit(parent)
+
+
 func fence(hazard: Hazard, size: Vector3, ground_y: float, gapped: bool) -> void:
 	props().fence(hazard, size, ground_y, gapped)
 

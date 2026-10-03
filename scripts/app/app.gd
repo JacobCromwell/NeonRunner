@@ -508,7 +508,7 @@ func retry(ctx: RunContext) -> void:
 
 
 func pause_game() -> void:
-	if run == null or get_tree().paused:
+	if run == null or run.state == LevelRun.State.READY or get_tree().paused:
 		return
 	get_tree().paused = true
 	if has_node(^"/root/Music"):
@@ -562,12 +562,37 @@ func _start_run(ctx: RunContext, music: StringName) -> void:
 	run.died.connect(_on_run_died)
 	run.finished.connect(_on_run_finished)
 	run.pause_requested.connect(pause_game)
+	run.intro_requested.connect(_show_run_intro)
 	run.item_used.connect(_on_item_used)
-	run.start(ctx)
-	TouchInput.enabled = true
+	run.start(ctx, ctx.mode == RunContext.Mode.QUICK)
+	TouchInput.enabled = ctx.mode == RunContext.Mode.QUICK
+	if ctx.mode != RunContext.Mode.QUICK:
+		_show_run_intro()
 	var director: MusicDirector = MusicDirector.instance()
 	if director != null:
 		_play_music(director.library.run_track(music, ctx.boss.id if ctx.is_boss() else &""))
+
+
+func _show_run_intro() -> void:
+	TouchInput.enabled = false
+	var intro := LevelIntroScreen.new()
+	intro.context = run.context
+	intro.hints = run.intro_hints()
+	intro.hints_presented.connect(func(entries: Array[Dictionary]) -> void:
+		run.acknowledge_intro_hints(entries)
+		save())
+	intro.play_requested.connect(begin_run)
+	show_screen(intro)
+
+
+func begin_run() -> void:
+	if run == null or run.state != LevelRun.State.READY:
+		return
+	if screen != null and is_instance_valid(screen):
+		screen.queue_free()
+	screen = null
+	run.begin()
+	TouchInput.enabled = true
 
 
 func _end_run() -> void:

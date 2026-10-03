@@ -739,7 +739,7 @@ static func boss_arena_features() -> PackedStringArray:
 ## (full-height and partial), hosts, vent screeches, any enemy type with a script (a planned feature
 ## once its enemy is built), and a feature whose rules script answers for itself (`positions`).
 static func can_locate(feature: String) -> bool:
-	if feature in ["ramps", "ceilings", "speed_pads", "pulsing", "wall_fences", "wall_fences_partial", "host", "screech_vents"]:
+	if feature in ["ramps", "ceilings", "speed_pads", "pulsing", "wall_fences", "wall_fences_partial", "wall_gaps", "host", "screech_vents"]:
 		return true
 	var rules: String = "res://scripts/enemies/%s_rules.gd" % feature
 	if ResourceLoader.exists(rules) and (load(rules) as GDScript).has_method("positions"):

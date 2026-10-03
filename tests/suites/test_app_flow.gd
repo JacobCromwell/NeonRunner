@@ -33,6 +33,7 @@ func run() -> void:
 
 func _campaign_level(id: String) -> void:
 	App.start_level(App.campaign.step(id))
+	App.begin_run()
 	await physics_frames(10)
 
 
@@ -108,6 +109,7 @@ func _test_completion() -> void:
 
 
 func _test_pause() -> void:
+	App.begin_run()
 	App.pause_game()
 	check(get_tree_paused() and App.overlay is PauseScreen, "pause shows the pause menu and stops the game")
 	var d: float = App.run.world.player.distance
@@ -164,6 +166,7 @@ func _test_endless() -> void:
 		App.profile.record_run(id, 0, true, 100, 3, 10.0)
 	var city_3: LevelConfig = App.campaign.step("city/3").level
 	App.start_endless()
+	App.begin_run()
 	await physics_frames(3)
 	var ctx: RunContext = App.run.context if App.run != null else null
 	check(ctx != null and ctx.mode == RunContext.Mode.ENDLESS, "endless mode starts")
@@ -182,6 +185,7 @@ func _test_endless() -> void:
 			App.profile.record_run(s.id, 0, true, 100, 3, 10.0)
 	var hush: LevelConfig = App.campaign.step("dead_zone/2").level
 	App.start_endless()
+	App.begin_run()
 	await physics_frames(3)
 	var dead: RunContext = App.run.context if App.run != null else null
 	check(dead != null and dead.config.features == hush.features

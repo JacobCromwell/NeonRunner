@@ -188,7 +188,7 @@ func windows(side: int, face_x: float, start: float, end: float) -> Array[Dictio
 		var b: Building = building(side, span)
 		for w: Vector2 in b.windows:
 			var at: float = (w.x + w.y) * 0.5
-			if at >= start and at < end:
+			if at >= start and at < end and not skin.wall_gap_near(side, w.x, w.y):
 				out.append({"side": side, "at": at,
 					"center": Vector3(face_x, (skin.gallery_bottom + skin.gallery_top) * 0.5, -at),
 					"width": w.y - w.x, "bottom": skin.gallery_bottom, "top": skin.gallery_top, "depth": skin.shop_depth,
@@ -219,6 +219,8 @@ func _building(batch: MeshBatch, b: Building, face_x: float, start: float, end: 
 	# whole to the chunk holding its centre, so the wall stays seamless across chunk cuts.
 	var cursor: float = b.b0
 	for w: Vector2 in b.windows:
+		if skin.wall_gap_near(side, w.x, w.y):
+			continue  # Cut by a wall gap: the pier runs on past it instead.
 		_pier(facade, side, face_x, cursor, w.x, u0, u1, b)
 		var at: float = (w.x + w.y) * 0.5
 		if at >= start and at < end:

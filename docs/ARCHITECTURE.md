@@ -27,6 +27,33 @@ Screens only call `App` methods; they never change state themselves.
 fight is a run too: its context carries the boss, and LevelRun builds the world on the boss's arena
 and hosts its `BossEncounter` (see Bosses).
 
+Campaign, retries/replays, endless and campaign debug starts (`--level`/`--boss`) first prepare
+the world in `LevelRun.State.READY`, with processing/HUD/touch input held, then show
+`LevelIntroScreen`. Prepared collision objects stay registered while processing is disabled
+(`DISABLE_MODE_KEEP_ACTIVE`, restored on PLAY), so the first frame cannot lose the boss's floor.
+PLAY calls `App.begin_run()` / `LevelRun.begin()` on that same world; Back
+discards it without a run result or consuming hints. Quick play still starts immediately without hints.
+`HintDirector.setup()` collects unseen catalog hints as `intro_hints` (`Array[Dictionary]`, each
+`{id: String, text: String}`), using actual layout triggers, boss-id routes and actual boss pickups
+(standard armor; the test boss also has its configured bonus). No unrelated shield/grapple hints
+are added to campaign bosses. Campaign `feature_ages` puts this level's introduced mechanics/enemies
+first (bosses lead with their own boss/route hints), preserving catalog order within each group.
+Older unseen encounters in this layout follow:
+they remain new to the player after skipped pages, replays or disabled hints. The lane-control
+primer belongs to the first campaign level, not every later level/boss; absent features (including
+removed Golden octodogs) never qualify.
+It never listens to runtime spawn/route events or emits mid-run hints. Action tokens still use
+rebound keys or touch gestures; Settings > Hints still hides them. The intro displays one hint per
+page with a counter and PREVIOUS/NEXT buttons (click/touch and Tab/SELECT accessible). Left/right
+(`move_left`/`move_right`, including rebindings) page without wrapping; boundaries disable the
+corresponding button. Paging is consumed before GUI focus/PLAY and gameplay, including releases
+and key repeats (repeats do not page). Other menu navigation retains its usual behavior.
+`hints_presented(entries)` on PLAY includes only pages visible for a frame, deduplicated;
+`acknowledge(entries)` accepts only selected entries and then records `hint/<id>`
+once per profile and App saves immediately. Preparing or backing out does not mark hints seen.
+Unvisited pages remain available on retry/replay. The screen's `hints`/`hint_list` and presentation
+signal remain the presentation contract. HUD checkpoint notices remain run feedback.
+
 ```
 RunWorld (scripts/run/run_world.gd)       one run's gameplay world; everything shares it
   Track      TrackBuilder: floor/hull collision, obstacles (fences, wall fences, signs), triggers (pads,
@@ -46,6 +73,17 @@ RunWorld (scripts/run/run_world.gd)       one run's gameplay world; everything s
   Sounds     PlayerSfx: non-positional sounds (RunWorld.play_sfx / play_sfx_at)
   Powerups   PowerupController, created if scripts/powerups/powerup_controller.gd exists
 ```
+
+The highest world-credit denomination is **100** (`LevelGenerator.DENOMINATIONS` and
+`CreditField.LOOKS`): a taller, flat-crowned ice-white cut gem with ice-blue facets, dark navy
+edge contrast and a steady dark girdle. Its opaque unshaded material stays readable without bloom
+in Compatibility and against bright as well as dark skins; it does not pulse or flash. The 1/5/25
+looks, values, placement, pickup reach and magnet rules are unchanged. All 100-credit instances
+still share one mesh surface/material, including credits placed during a run.
+`tools/showcase/credit_review.tscn` reviews the real field at gameplay-camera distances with
+`--skin=<skin id> --reduced --shot=res://build/credits/<name>.png`; `--baseline` shows the previous
+100-credit look. `--all --reduced` captures both looks in all nine skin resources in one run
+(create `build/credits/` first). The scene disables bloom and includes floor, wall and ceiling credits.
 
 `LevelRun` adds the camera (`RunCamera`), the speed lines (`SpeedLines`), the HUD (`RunHud`) and, in
 debug builds, the debug HUD and the F6 tuning panel. Quick play (`--quick`, or any of `--god
@@ -235,6 +273,7 @@ most in a frame higher by the warm-up's samples in the level's first two frames.
 | `data/tuning/pickups.tres` (`PickupTuning`) | in-run pickups: where they appear, taking them, the charge cap, the look |
 | `data/tuning/feature_recency.tres` (`FeatureRecency`) | the campaign's recency curve: how a level's pick weights follow how recently the campaign introduced each feature |
 | `data/tuning/wall_fences.tres` (`WallFenceTuning`) | wall fences (B5): how often, how they pulse, their introduction, and the fairness margins (their sizes are the movement tuning's) |
+| `data/tuning/wall_gaps.tres` (`WallGapTuning`) | side wall gaps (Zone 2 on): spacing (easy/hard), jitter, length, the share on both walls, and the keep-out margins, all in seconds at the level's run speed |
 | `data/tuning/performance.tres` (`PerformanceTuning`) | smooth frames (PERF1): how long a frame may spend dressing built chunks, and `test_frame_times`' frame-time budgets |
 | `data/enemies/<type>.tres` (`EnemyTuning` subclasses) | per-enemy numbers, early/late pairs for campaign scaling |
 | `data/shop/catalog.json` | shop items, tiers and prices (the armor's texts take `{hits}` and `{seconds}`, filled from `GameRules` by `ShopScreen.item_text()`) |
@@ -613,7 +652,7 @@ It is the visible cause of a floor cut the generator planned (B4's `FloorCutPlan
 the player's distance like the cut, so it does the same on every attempt and at every frame rate:
 - **Its encounter.** Its entry stands at its cut's end, in its lane (`cut_of`). It shows parked in its lane
   `appear_distance` ahead (the director spawns it far ahead, `spawn_lead` 300 m, hidden until then; its
-  hint shows as it spawns). When the player is a charge's distance from it (`FloorCutPlan.lead_at`) it
+  hint is now presented on the level introduction). When the player is a charge's distance from it (`FloorCutPlan.lead_at`) it
   rolls ahead of them at that distance for `roll_seconds`, revs for its rev (`rev_at`: its warning, the
   level's enemy scaling from 2.93 s in Corporate 1 to 2.5 s in the Golden Palace, the only thing that
   scales; its health stays 20) while it keeps rolling, then charges back at the player (`charge_seconds`
@@ -898,8 +937,8 @@ was could be pushed on past the level's end). `problems()` re-checks every one f
 
 **Late starts.** `LevelConfig.feature_starts` (feature → share of the level) holds a feature back
 until its start: patterns that require it aren't picked before, and the first pattern picked from
-there must use it (its introduction), so the player meets it right after its first-encounter hint
-rather than whenever chance brings it. A rules script that adds a feature's enemies or pieces keeps
+there must use it (its introduction), so the encounter follows its scheduled start rather than
+whenever chance brings it; its first-encounter hint is now on the level introduction. A rules script that adds a feature's enemies or pieces keeps
 to that feature's start (`feature_active`, `feature_started`), including pieces that belong to
 another feature: the drone rules place drones after the `drone` start and their pads after the
 `ceilings` start, the hover truck rules place its route ramp after the `ramps` start, and the host
@@ -1023,6 +1062,57 @@ stand in from the credit trails, and a stretch too short for a full trail gets a
 (`credit_trail_min`, 5 in campaign levels, 0 = as before), with a lower trail chance, so each level's
 credits stay about where they were (task R7 owns the economy). `tools/measure/level_pace.gd` measures
 each level's pace and density (Review tools).
+
+**City 1's additive floor gaps** (approved answers in `docs/USER_REQUESTS.md`: 30% more encounters
+**and** 30% higher mean missing lanes per encounter, increasing density rather than replacing
+fences/signs). Only `city_1.tres` enables `LevelConfig.gap_encounter_increase` and
+`gap_lane_increase`, both 0.3; defaults are zero, so other levels and their random streams are
+unchanged. `GapDensity.apply()` runs after doodads and wall fences, before credits. It preserves
+every original gap, pattern pick, fill, enemy, sign, fence and doodad. It adds separated gap rows in
+earliest-fit floor windows, then widens the narrowest eligible rows, using its own seeded lane-choice
+stream (`rng_for("gap_density")`). Rows group equal start/end distances; a staggered extension of an
+existing hole never counts as an additional encounter.
+
+For a build with **R** original rows and **G** original lane-gaps, the encounter target is
+`ceil(R × (1 + gap_encounter_increase))`. The mean-width target is
+`(G / R) × (1 + gap_lane_increase)`; after actual row placement, the integer lane-gap target is
+`ceil(actual_rows × mean_width_target)`. This independently rounds up both requested dimensions;
+increasing the total lane-gaps alone is not success. New gaps use the shortest original row's
+length (already jumpable), fit outside the unchanged intro/finish buffers, and keep the existing
+hard-spacing time from **every** other gap row. Lane-specific clearance keeps that same margin from
+fences; enemy keep-outs, ceilings/pads/landings, ramps, cuts, speed pads, doodad pushes and wall-fence
+drop windows are protected. Signs can have a new floor choice below them without being replaced.
+New/widened rows leave at least one grounded lane clear through the reaction window, or allow
+the existing patterns' full-width jump route only when every lane has a clear run-up and landing
+and the row is within `max_gap_jump_fraction`. Existing all-lane rows remain unchanged. Lack of
+separated placement room, lane capacity or clearance may limit a target:
+`LevelGenerator.gap_density_result` reports baseline, target and
+actual counts plus explicit constraint messages (empty when the pass is disabled). It never removes
+an obstacle, lengthens the level, relaxes clearance, or claims a constrained mean met the target.
+
+City 1, campaign default tier, seed 101, still **55 seconds** (1,155 m at 21 m/s):
+
+| Lanes | Rows before → after | Lane-gaps before → after | Mean before → after | Rounded targets: rows / lane-gaps |
+| --- | --- | --- | --- | --- |
+| 3 | 11 → 15 | 11 → 20 | 1.000 → 1.333 | 15 / 20 |
+| 5 | 15 → 20 | 24 → 42 | 1.600 → 2.100 | 20 / 42 |
+| 6 | 13 → 17 | 25 → 43 | 1.923 → 2.529 | 17 / 43 |
+
+These shipped layouts meet both dimensions without a constraint. `test_city_gaps` builds the
+baseline by copying the config and disabling only these tunables, verifies independent targets,
+preserved obstacles/picks, determinism, buffers, jumpability, separated encounters, enemy/doodad
+fairness and a conservative full-level `FloorRoute`, and exercises seed/tier and constrained cases.
+The seed 1–8/default-tier and seed 101/all-tier sweep at 3/5/6 lanes has one conservative-clearance
+shortfall: 3 lanes, seed 101, difficulty 0.20 reaches its 11-row target, but only 25 lane-gaps
+(mean `25 / 11 = 2.272727…`) versus a mean target of 2.275, which rounds up to **26** lane-gaps.
+The remaining lanes cannot be widened while retaining a grounded route or clearing every lane
+for an isolated full-width jump with the existing hard-spacing margin. The report explicitly
+marks this as constrained, not as a 30% mean increase. An all-lane, no-room fixture also verifies
+both shortfalls are reported rather than silently weakening either target.
+Credit placement naturally sees the new gaps; no reward, credit, price or duration tuning compensates
+for them. The owner approved lower earnings from shortening as intentional and requested economy-test
+updates rather than compensation (`docs/USER_REQUESTS.md`). The current measured progression is
+documented under the economy below.
 
 **Zone doodads** (G5; GDD §3, owner's playtest September 30, 2026: the owner's other answer to "too
 barren": scenery pieces standing in lanes, specific to each zone, that never hurt; running into one
@@ -1202,8 +1292,8 @@ that gives a feature a start introduces it gently (Marketplace 2's full-height o
 ones at 50%, `feature_starts`): its first one is the introduction, at the earliest fair spot on either wall within
 `intro_seconds` of the start where no enemy is about (else the earliest fair one there, and only if none comes in
 time, a later one; a long big attack can hold it back, which stays rare), alone (no other wall fence within
-`same_side_gap_seconds` on either wall) and off for `intro_off_seconds`, with its first-encounter hint just
-before it (HintDirector: `wall_fence`, `wall_fence_low`, `wall_fence_high`). Every feature appears: the guarantee
+`same_side_gap_seconds` on either wall) and off for `intro_off_seconds`, with its first-encounter hint on
+the level introduction (HintDirector: `wall_fence`, `wall_fence_low`, `wall_fence_high`). Every feature appears: the guarantee
 (`placeable_features`) counts only features with patterns, so the placement keeps its own: a level left without a
 full-height one (or a partial one, with that feature) gets one at the first fair spot past its start, and one
 with no fair spot at all a warning (the campaign tests fail on any). `feature_positions` finds full-height ones
@@ -1245,6 +1335,36 @@ switch on or off at a moment of its own can be found with `world.track.wall_fenc
 Task E5b-a does the same for Hostile Takeover's partial wall fences along the sound barriers (`HostileTakeoverBoard`). E5a-b does
 it in `TheHouseWalls` (see The House under Bosses): full-height wall fences, the wall run over the button
 timed through their off windows, and the machine's strikes kept off their drop windows.
+
+**Side wall gaps** (the `wall_gaps` feature, every level from Gangland 1 on; owner's answers in
+`docs/USER_REQUESTS.md`). `LevelLayout.wall_gaps` holds {side, start, end} (left out of `to_dict()` when empty):
+a stretch [start, end) where that wall has no wall-running surface. The interval queries are
+`wall_supported(side, d)` (static `wall_supported_in` for a bare list), `wall_gap_between`, `wall_solid_pieces`,
+`wall_gap_pieces` and `wall_gap_spans`. The generator places them after the wall fences and before
+GapDensity and the credits (`WallGapPlacement` in `scripts/world/wall_gap_placement.gd`), from a stream of
+their own (`rng_for("wall_gaps")`), so a level is otherwise exactly the same without them, apart from the
+wall credits a gap takes (`_drop_unsafe_credits`). They are rare: one about every `spacing_seconds_easy` to
+`_hard` seconds, `length_seconds_min` to `_max` long, a `bilateral_share` of them over the same stretch of
+both walls (`data/tuning/wall_gaps.tres`, seconds at the level's run speed). Each wall keeps clear of the
+run-up, the end-clear stretch, signs, wall fences, wall enemies (a Gilded Sentinel's whole wall section),
+ceilings over the outer lane, and a ramp's launch and longest wall run (`WallGapPlacement.keep_outs`, each
+widened by `clear_seconds`). The outer lane beside a gap is deliberately not kept clear: the owner wants
+players to read gaps coming. A level with the feature always gets at least one gap. Boss arenas never get
+any: `BossArena.base_config` strips the feature and `WallGapPlacement.is_boss_arena` refuses an `_arena` config.
+
+On the track, `TrackBuilder._build_chunk` asks the skin for `wall_section` over the solid pieces only and
+`ZoneSkin.wall_gap(parent, side, face_x, start, end, gap)` over each gap's part in the chunk (with the whole
+gap, so its ends are drawn once). The default look (`standard_wall_gap`) is an orange lip along the floor
+edge, dark caps where the wall is cut, and orange stripes up the cut edges, the leading one brighter. Zone
+skins add their floor-level dressing under the left wall (street, walkways, stalls) and leave out
+overhead pieces. `ZoneSkin.note_wall_gaps` lets a skin that draws an element whole by its centre leave out
+one that would reach into a gap (the Marketplace's shop windows).
+
+The player (`Player.wall_gaps`, the layout's own list, set by `RunWorld`) checks `wall_supported` each
+frame on the wall: in a gap it leaves the wall into the outer lane with no extra velocity (`wall_gap_drop`;
+ScoreKeeper ends the wall run). A wall entry (move or ramp) inside a gap is refused with `wall_missing` and no
+bump. Past the gap, the usual move input steps back onto the wall. `HintDirector` introduces them through the
+`wall_gap` hint. `test_wall_gaps` covers all of this.
 
 ## Power-ups
 
@@ -1989,12 +2109,22 @@ cinematic slots (the City also a boss intro) and a boss slot from GDD §10's ros
 track is named after its id, and every zone has one (a track the music library doesn't list is skipped
 quietly and the menu music carries on). Only the City is in the web demo. The curve runs 0.1 → 0.9
 over the 15 levels (FB 4, FB 5); which level is the peak (proposed: Golden 2, with Golden 3 a little
-below it) and the level lengths (DESIGN-TBD, run 110–150 s and add up to 35 minutes) stay open.
+below it) and the remaining level lengths (DESIGN-TBD, run 120–150 s) stay open.
+Zone & Levels 1 shortens only City 1 (Rooftop Rush) from 110 to 55 seconds via
+`data/levels/city_1.tres`'s `duration_seconds`; all other level durations stay unchanged.
+At the City's 21 m/s this moves its finish line from 2310 to 1155 metres. The existing generator
+and distance-based completion use that value without changing speed, difficulty, clear distances,
+or the fractional starts of cyborgs and doodads. These are running times without speed-changing
+power-ups or pauses, excluding cinematics and the completion delay. The levels now total 34.1 minutes.
 
 **The schedule** (GDD §5) is each level's `features` list, in the order the campaign introduces them:
 a feature once introduced stays in every later level, bar the exceptions the design gives (screeches
 come from manholes only in street zones and from wall vents, `screech_vents`, elsewhere, with none in
-Marketplace 1; the Tithe Collector skips the Dead Zone). The Buzz Overdrive appears from Corporate 1
+Marketplace 1; the Tithe Collector skips the Dead Zone; Zone & Levels 2 excludes Octodogs from
+Golden 1–3, including the Golden Palace). Octodogs remain enabled from Gangland 2 through the
+Dead Zone. Removing only `octodog` from the three Golden resources excludes both dog patterns and
+their generator rules, including the guaranteed-dog fallback; the director therefore has no dogs
+to warm or spawn there. Speed pads and all other Golden features remain enabled. The Buzz Overdrive appears from Corporate 1
 through the Dead Zone and the Golden Zone, the Golden Palace included (GDD §9.9, corrected). Each
 level introduces its new features at starts of their own (`feature_starts`, see Late starts under The
 generator; City 1's cyborgs come late in the level), and its newest features get the most picks
@@ -2141,9 +2271,10 @@ encounter.setup(world, context, arena)   joins the world between the player and 
   a section of floor that spawns one; the test boss offers a shield in its second phase), and
   `phase_started` and `protection_broken` are there to time them. The win clears every pickup, and
   nothing is offered after it.
-- **Hints**: `hint_due(key)` asks the run's `HintDirector` for a first-encounter hint of the boss's own
-  (trigger `boss:<key>` in `data/hints/hints.json`, once per profile): the Floating Head asks for its
-  way up's (`boss:city_boss/ramp`, `/wall`, `/ceiling`) as each pin begins.
+- **Hints**: boss-specific catalog triggers (`boss:<boss id>/<key>` in `data/hints/hints.json`)
+  are collected for the level introduction, once per profile, including the Floating Head's
+  `/ramp`, `/wall` and `/ceiling` routes. `hint_due(key)` remains a legacy encounter cue, but
+  the hint presenter no longer listens to it during the fight.
 - **The light**: `set_light_level(level, seconds)` fades the environment's ambient and sky light, its
   fog's light and the sun, never below `MIN_LIGHT_LEVEL`, and the scenery's own light with them (the
   `scenery_light` uniform a level's darkness sets: the skins' scenery shaders are unshaded, so dimming
@@ -2609,6 +2740,21 @@ stock. `tools/measure/economy.gd` reads a campaign's credits, payouts and the sh
 (task R7): per level and zone, the credits available, a good run's share of them, the finish payout and
 what a death or quit pays, the running wallet of a single clean playthrough, and the first level each
 catalog price is in reach of it.
+
+**Approved early-economy revision (October 3, 2026).** The owner's answers in
+`docs/USER_REQUESTS.md` supersede the historical R7 early-affordability assumption: City 1 stays
+55 seconds, its lower earnings are intentional, and tests change instead of rewards or prices.
+After the approved additive 30% floor-gap changes and Zone 2+ playable wall gaps, measured with
+`--lanes=5 --seeds=0 --share=0.7` (native campaign seeds, default difficulty, no purchases or boss
+payouts), City 1 has **389** available credits, **272** collected and a **372** wallet including
+its unchanged 100-credit finish bonus. City 2's wallet is **833**, City 3's **1,495**: Armor I
+at 350 still fits City 1; Laser I at 900 first fits City 3, not City 2. Only that affordability
+deadline changes; claws still fit Gangland 2, dash and slow time still fit by Gangland 3, and every
+catalog price remains attainable within one clean playthrough (**11,877** total).
+The isolated duration comparison disables additive floor gaps on in-memory copies only: 110 seconds
+earns 556 available credits / 489 wallet, versus 55 seconds' 341 / 339. This historical controlled
+comparison is not the current post-gap wallet. Economy tests retain the other affordability,
+death-versus-finish and whole-playthrough guards, plus a shortening-driven earnings regression.
 
 The save has a version (`Profile.VERSION`, now 2). `Profile.from_dict()` brings an older save up to
 date as it loads (`_migrate`): version 1's armor stock (armor was a breakable then) is paid back in

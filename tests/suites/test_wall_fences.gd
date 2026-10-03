@@ -513,6 +513,11 @@ func _test_same_without() -> void:
 		for lanes: int in [3, 5, 6]:
 			var config: LevelConfig = campaign.configure(campaign.step(id), lanes)
 			var tag: String = "%s lanes=%d" % [id, lanes]
+			# Wall gaps keep off wall fences (WallGapPlacement), so they move with them: compared without
+			# them on both sides (test_wall_gaps compares a level with and without its wall gaps).
+			var gapless := PackedStringArray(config.features)
+			gapless.remove_at(gapless.find(WallGapPlacement.FEATURE))
+			config.features = gapless
 			var bare: LevelConfig = config.duplicate() as LevelConfig
 			var features := PackedStringArray()
 			for f: String in config.features:
@@ -637,9 +642,7 @@ func _test_problem() -> void:
 
 # --- Hints, looks, bosses -----------------------------------------------------------------------
 
-## The first-encounter hints: one before the first full-height wall fence (Marketplace 2's introduction),
-## one before the first low one and one before the first high one, each shortly before it, naming the
-## player's keys.
+## The intro explains each wall fence band in the layout, naming the player's keys.
 func _test_hints() -> void:
 	var layout := _layout(3, [WallFencePlan.make(1, 60.0, "full", 1.0, 1.2, 0.0), WallFencePlan.make(-1, 110.0, "low", 1.0, 1.2, 0.0),
 		WallFencePlan.make(1, 160.0, "high", 1.0, 1.2, 0.0), WallFencePlan.make(-1, 200.0, "full", 1.0, 1.2, 0.0)])
@@ -649,14 +652,14 @@ func _test_hints() -> void:
 	hints.setup(world, Profile.new(), false)
 	var shown: Dictionary = {}
 	hints.hint_shown.connect(func(id: String, text: String) -> void: shown[id] = [text, world.player.distance])
+	hints.acknowledge(hints.intro_hints)
 	await sim.step_world(world, 12.0)
 	for hint: Array in [["wall_fence", 60.0], ["wall_fence_low", 110.0], ["wall_fence_high", 160.0]]:
 		var id: String = hint[0]
 		check(shown.has(id), "the %s hint shows (%s)" % [id, shown.keys()])
 		if shown.has(id):
 			var d: float = float(shown[id][1])
-			check(d < float(hint[1]) and d > float(hint[1]) - tuning.run_speed * 2.5,
-				"shortly before its first one (%.1f m, the wall fence at %.0f m)" % [d, hint[1]])
+			check(is_zero_approx(d), "the band is explained before play (%.1f m)" % d)
 			check(not String(shown[id][0]).contains("{"), "its text has the player's keys in (%s)" % shown[id][0])
 	await sim.free_world(world)
 
