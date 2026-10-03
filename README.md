@@ -350,8 +350,9 @@ against its bursts, with the recency curve on and off:
 boss fight through the game's own flow with a scripted runner (god mode, no falls, the zone's speed), each pass in
 a fresh process, and prints per run the median, 95th and 99th percentile and worst frame, the frames over 8 and
 16 ms, the load, the kills and hit-stops, and what the slow frames were doing; `--log` adds an event-log hash (two
-builds that decide the same print the same hash), `--shaders` the shaders first drawn after the load, and under
-xvfb it also counts draw calls and compiled pipelines: `godot --headless --fixed-fps 60 -s
+builds that decide the same print the same hash; the JSON keeps the log's lines to compare), `--shaders` the
+shaders first drawn after the load, and under xvfb it also counts draw calls and compiled pipelines:
+`godot --headless --fixed-fps 60 -s
 res://tools/measure/frame_times.gd -- [--levels=city/1] [--bosses=city_boss] [--passes=2] [--frames] [--log]`
 (the whole campaign takes about fifteen minutes; its header lists the options).
 
