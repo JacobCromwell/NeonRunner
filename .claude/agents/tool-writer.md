@@ -26,9 +26,13 @@ A new enemy belongs entirely in its own files, never folded in here.
 generation, in-engine rendering) rather than mockups, so what the owner sees is what would actually
 ship, and lay the options out for a straight side-by-side comparison.
 
-**Verify before reporting done:** `tools/godot.sh test` and `tools/godot.sh smoke`, even for a
-docs- or tool-only task — confirm nothing broke. For anything visual, render frames on both the
-default and `--rendering-method gl_compatibility` renderers (`CLAUDE.md`, Commands).
+**Verify before reporting done:** `tools/godot.sh test --gate` (exit code 0), even for a docs- or
+tool-only task — it includes the smoke run, so it confirms nothing broke in under a minute; a
+docs-only change runs just the fast tier. If you change `tools/godot.sh`, `tools/test_plan.py` or
+`tests/suite_map.json`, also check `tools/godot.sh test --gate --plan --paths=scripts/enemies/resonator.gd`
+still adds `resonator` and `--paths=scripts/world/level_generator.gd` still raises the tier to full.
+For anything visual, render frames on both the default and `--rendering-method gl_compatibility`
+renderers (`CLAUDE.md`, Commands).
 
 **End every task** with the `CLAUDE.md` summary: what changed, what you verified and how, every
 `DESIGN-TBD` item, and risks.

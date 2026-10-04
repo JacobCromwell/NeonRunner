@@ -3,6 +3,17 @@
 #
 #   tools/godot.sh play [game args]   play the current working tree (e.g. play --lanes=6 --god)
 #   tools/godot.sh edit               open the Godot editor on this project
+#   tools/godot.sh test --gate [--jobs=N] [--plan]   the gate tier: what an agent runs before reporting a
+#                                     task done. The smoke run, then the fast suites plus the suites that
+#                                     cover the files changed on this branch (tests/suite_map.json,
+#                                     tools/test_plan.py); a changed core file raises it to the full tier.
+#                                     --plan only prints what would run; --paths=a,b plans for those files
+#                                     instead of the branch's changes; --base=REF diffs against REF
+#                                     (default: the merge base with main). Jobs default to half the CPUs
+#                                     (at most 3).
+#   tools/godot.sh test --tier=merge  before a branch merges: everything but the slow sweeps and fight
+#                                     simulations, plus the suites for the changed files
+#   tools/godot.sh test --tier=full   every suite (the same as plain `test --jobs=N`)
 #   tools/godot.sh test [--suite=x] [--jobs=N]   run the headless tests (exit code 0 = pass); --suite=x
 #                                     runs only the suites whose file name contains x. --jobs=N (default 1,
 #                                     unchanged behaviour) splits the suites across N Godot processes,
@@ -19,9 +30,11 @@
 #                                     http://localhost:8060 (needs python3 and the web export templates)
 #   tools/godot.sh import             force a resource import
 #
-# Godot is found via $GODOT, then godot4/godot on PATH, then (under WSL) the Windows user
-# folders. The path found is remembered in .godot-path (git-ignored). Resources are re-imported
-# automatically whenever a project file changed since the last import.
+# Godot is found via $GODOT, then godot4/godot on PATH (the native Linux build: under WSL, install
+# it with tools/install_godot_wsl.sh), then the path remembered in .godot-path (git-ignored), then
+# (under WSL) the Windows user folders. A native build is always preferred: a Windows .exe reading
+# the project over \\wsl.localhost is ~15x slower to start (docs/PERFORMANCE_AUDIT.md). Resources
+# are re-imported automatically whenever a project file changed since the last import.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -31,16 +44,16 @@ STAMP="$ROOT/.godot/.import-stamp"
 
 find_godot() {
 	if [[ -n "${GODOT:-}" ]]; then echo "$GODOT"; return; fi
-	if [[ -f "$PATH_CACHE" ]]; then
-		local cached; cached="$(cat "$PATH_CACHE")"
-		if [[ -x "$cached" || -f "$cached" ]]; then echo "$cached"; return; fi
-	fi
 	local found=""
 	for name in godot4 godot; do
 		if command -v "$name" >/dev/null 2>&1; then found="$(command -v "$name")"; break; fi
 	done
+	if [[ -z "$found" && -f "$PATH_CACHE" ]]; then
+		local cached; cached="$(cat "$PATH_CACHE")"
+		if [[ -x "$cached" || -f "$cached" ]]; then echo "$cached"; return; fi
+	fi
 	if [[ -z "$found" && -d /mnt/c/Users ]]; then
-		# WSL: look for the Windows build in the usual places. Prefer the console build so
+		# WSL: fall back to the Windows build in the usual places. Prefer the console build so
 		# logs and errors show up in this terminal.
 		local dirs=(/mnt/c/Users/*/Downloads /mnt/c/Users/*/Desktop /mnt/c/Users/*/Documents
 			/mnt/c/Users/*/Apps /mnt/c/Tools "/mnt/c/Program Files" /mnt/c/Godot)
@@ -56,7 +69,10 @@ find_godot() {
 		echo "Could not find Godot ${PINNED}. Set GODOT=/path/to/godot (or the Windows .exe) and retry." >&2
 		exit 1
 	fi
-	echo "$found" > "$PATH_CACHE"
+	# Only rewrite the cache when it changes: a rewrite would make import_if_stale re-import every run.
+	if [[ ! -f "$PATH_CACHE" || "$(cat "$PATH_CACHE")" != "$found" ]]; then
+		echo "$found" > "$PATH_CACHE"
+	fi
 	echo "$found"
 }
 
@@ -67,6 +83,37 @@ PROJECT="$ROOT"
 if [[ "$GODOT_BIN" == *.exe ]] && command -v wslpath >/dev/null 2>&1; then
 	PROJECT="$(wslpath -w "$ROOT")"
 fi
+
+# A native Linux build in a WSLg window: Ubuntu's Mesa has no Vulkan driver for WSL's virtual GPU,
+# so Forward+ falls back to software rendering (llvmpipe). OpenGL does reach the real GPU through
+# Mesa's D3D12 driver when asked for, so windowed commands (play, edit) use the Compatibility
+# renderer on it. The project's own renderer setting is untouched (exports keep Forward+/Mobile);
+# pass --rendering-method or --rendering-driver yourself to override. Note that opening the editor
+# (any platform) rewrites project.godot in Godot's normalized form: it drops keys at their default
+# value and replaces the header comment. The effective settings are identical; `git checkout
+# project.godot` if you don't want that diff.
+WINDOW_ARGS=()
+if [[ "$GODOT_BIN" != *.exe && -n "${WSL_DISTRO_NAME:-}${WSL_INTEROP:-}" ]]; then
+	if [[ -e /dev/dxg ]]; then
+		export GALLIUM_DRIVER="${GALLIUM_DRIVER:-d3d12}"
+	fi
+	WINDOW_ARGS=(--rendering-method gl_compatibility)
+fi
+
+# Strips --rendering-* from "$@" into ENGINE_ARGS (they belong before `--`), leaving game args in GAME_ARGS.
+split_engine_args() {
+	ENGINE_ARGS=()
+	GAME_ARGS=()
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			--rendering-method|--rendering-driver|--display-driver)
+				ENGINE_ARGS+=("$1" "${2:-}"); WINDOW_ARGS=(); shift 2 ;;
+			--rendering-method=*|--rendering-driver=*|--display-driver=*)
+				ENGINE_ARGS+=("$1"); WINDOW_ARGS=(); shift ;;
+			*) GAME_ARGS+=("$1"); shift ;;
+		esac
+	done
+}
 
 check_version() {
 	local version
@@ -122,9 +169,13 @@ run_tests_parallel() {
 		esac
 	done
 	local suites=()
-	while IFS= read -r f; do
-		[[ -z "$suite_filter" || "$f" == *"$suite_filter"* ]] && suites+=("$f")
-	done < <(cd "$ROOT/tests/suites" && ls test_*.gd 2>/dev/null | sort)
+	if [[ ${#PLAN_SUITES[@]} -gt 0 ]]; then
+		suites=("${PLAN_SUITES[@]}")
+	else
+		while IFS= read -r f; do
+			[[ -z "$suite_filter" || "$f" == *"$suite_filter"* ]] && suites+=("$f")
+		done < <(cd "$ROOT/tests/suites" && ls test_*.gd 2>/dev/null | sort)
+	fi
 	if [[ ${#suites[@]} -eq 0 ]]; then
 		echo "No test suites matched '$suite_filter'." >&2
 		exit 1
@@ -215,22 +266,61 @@ case "$command" in
 	play)
 		check_version
 		import_if_stale
-		exec "$GODOT_BIN" --path "$PROJECT" -- "$@"
+		split_engine_args "$@"
+		exec "$GODOT_BIN" --path "$PROJECT" "${WINDOW_ARGS[@]}" "${ENGINE_ARGS[@]}" -- "${GAME_ARGS[@]}"
 		;;
 	edit)
 		check_version
-		exec "$GODOT_BIN" --editor --path "$PROJECT"
+		split_engine_args "$@"
+		exec "$GODOT_BIN" --editor --path "$PROJECT" "${WINDOW_ARGS[@]}" "${ENGINE_ARGS[@]}"
 		;;
 	test)
 		import_if_stale
-		jobs=1
+		jobs=""
+		tier=""
+		plan_only=""
+		plan_args=()
 		rest=()
 		for arg in "$@"; do
 			case "$arg" in
 				--jobs=*) jobs="${arg#--jobs=}" ;;
+				--gate) tier="gate" ;;
+				--tier=*) tier="${arg#--tier=}" ;;
+				--base=*|--paths=*) plan_args+=("$arg") ;;
+				--plan) plan_only=1 ;;
 				*) rest+=("$arg") ;;
 			esac
 		done
+		PLAN_SUITES=()
+		if [[ -n "$tier" ]]; then
+			# A tier run (docs/PERFORMANCE_AUDIT.md, 3.2): tools/test_plan.py picks the suites from
+			# tests/suite_map.json and the files changed on this branch, raising the tier when a core file
+			# changed. gate and merge start with the smoke run; `--plan` only prints what would run.
+			plan_out="$(python3 "$ROOT/tools/test_plan.py" "--tier=$tier" "--root=$ROOT" "${plan_args[@]}")" || exit 2
+			effective="${plan_out##*TIER }"
+			while IFS= read -r f; do
+				[[ "$f" == test_*.gd ]] && PLAN_SUITES+=("$f")
+			done <<<"$plan_out"
+			if [[ -z "$jobs" ]]; then
+				jobs=$(( $(nproc 2>/dev/null || echo 2) / 2 ))
+				(( jobs > 3 )) && jobs=3
+				(( jobs < 1 )) && jobs=1
+			fi
+			echo "Test tier: $effective (${#PLAN_SUITES[@]} of $(ls "$ROOT"/tests/suites/test_*.gd | wc -l) suites, $jobs job(s))"
+			if [[ -n "$plan_only" ]]; then
+				printf '  %s\n' "${PLAN_SUITES[@]}"
+				exit 0
+			fi
+			if [[ "$effective" != "full" ]]; then
+				echo "Smoke run first..."
+				if ! "$0" smoke; then
+					echo "The smoke run failed: fix that before the suites." >&2
+					exit 1
+				fi
+			fi
+			run_tests_parallel "$jobs" "${rest[@]}"
+		fi
+		[[ -z "$jobs" ]] && jobs=1
 		if [[ "$jobs" -le 1 ]]; then
 			set +e
 			"$GODOT_BIN" --headless --path "$PROJECT" --fixed-fps 60 -s res://tests/run_tests.gd -- "${rest[@]}" 2>&1 | quiet

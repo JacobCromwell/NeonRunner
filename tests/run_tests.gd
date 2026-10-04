@@ -19,9 +19,11 @@ const SUITES_DIR: String = "res://tests/suites"
 const SUITE_TIMES_PATH: String = "res://tests/.suite_times.json"
 ## A run that takes longer than this (real time) is stuck, e.g. a suite awaiting something that
 ## never comes or a script error that stopped the runner: it fails instead of hanging. Timers
-## can't measure this: --fixed-fps runs game time far faster than real time. A full run (54 suites,
-## about 4.9 million checks) takes about 400 s on a quiet machine and has run as long as 1074 s under
-## load from four agents sharing its CPUs, so the limit leaves room above that.
+## can't measure this: --fixed-fps runs game time far faster than real time. A full run (78 suites,
+## about 6.4 million checks) takes about 27 minutes of CPU, 13 minutes of wall time on 3 jobs, on
+## the owner's machine with a native Godot, and has run far longer under load from other agents,
+## so the limit leaves room above that. `tools/godot.sh test --gate` (tests/suite_map.json,
+## tools/test_plan.py) runs the fast suites plus the ones for the changed files in under a minute.
 const WATCHDOG_SECONDS: int = 2400
 
 var _deadline_msec: int = 0

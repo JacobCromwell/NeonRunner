@@ -35,7 +35,9 @@ add cases for what you changed rather than relaxing an existing one. Per-attack:
 enemy attack needs a visual **and** audio warning before it can hurt (the player dies in one hit),
 using the hazard colour language other zones already use.
 
-**Verify before reporting done:** `tools/godot.sh test` (full suite, exit code 0) and
+**Verify before reporting done:** `tools/godot.sh test --gate` (exit code 0). Your work touches core
+files, so expect the gate to raise itself to the full tier (13+ minutes on 3 jobs) — let it run; a
+fairness regression anywhere in the campaign is exactly what that tier exists to catch. Then
 `tools/godot.sh smoke`. For anything visual, render frames on both the default and
 `--rendering-method gl_compatibility` renderers (`CLAUDE.md`, Commands) and look at them yourself.
 

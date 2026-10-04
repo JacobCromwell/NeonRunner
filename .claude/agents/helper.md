@@ -22,9 +22,11 @@ not the code that reads them.
 **Parallel work:** one task, one branch named after the task ID, from the latest `main`. Never
 touch a core file (list in `CLAUDE.md`, "Parallel work") unless the task explicitly names it.
 
-**Verify before reporting done:** `tools/godot.sh test` and `tools/godot.sh smoke`. For a data or
-rename change, re-run the specific suite that covers it (`--suite=<name>`) at minimum, and the full
-suite before reporting.
+**Verify before reporting done:** `tools/godot.sh test --gate` (exit code 0; it includes the smoke
+run and the suites covering the files you changed). For a data or rename change, also run the
+specific suite that covers it (`--suite=<name>`) if `--gate --plan` didn't list it, and say so in
+your summary. A change to level, pattern, tuning or zone data raises the gate to the full tier
+itself; let it run rather than skipping it.
 
 **End every task** with the `CLAUDE.md` summary: exactly what changed (file and value, or the
 rename/search result), what you verified, and anything you stopped on instead of guessing.

@@ -40,6 +40,13 @@ remembers where it is; after that, resources are re-imported automatically whene
 somewhere unusual, set the `GODOT` environment variable to its executable. Open the editor with
 `tools/godot.sh edit` or `play.cmd edit`.
 
+**Under WSL, install the native Linux Godot once:** `tools/install_godot_wsl.sh` (downloads the pinned build to
+`~/.local/godot`, links `~/.local/bin/godot4`, and re-imports). `tools/godot.sh` prefers it over a Windows `.exe`,
+which reads the project over `\\wsl.localhost` and takes ~66 s to start instead of ~2 s (`docs/PERFORMANCE_AUDIT.md`).
+In a WSLg window, `play` and `edit` use the Compatibility renderer on the GPU (Mesa's D3D12 driver; Ubuntu has no
+Vulkan driver for WSL, so Forward+ there would be software-rendered); pass `--rendering-method forward_plus` to
+override. Sound in the window needs `sudo apt install libpulse0`; headless runs (tests, smoke) need neither.
+
 Options for testing (debug builds only, the same with `play.cmd`):
 
 | Option | What it does |
@@ -470,7 +477,24 @@ On a debug build, the options go into the page's engine settings: in `exports/we
 
 ## Tests
 
-`tools/godot.sh test` runs 75 suites with about 6,000,000 checks. Many suites independently build the
+The tests run in tiers, so a task's check takes a minute and the full sweep runs where its cost is
+shared (`docs/PERFORMANCE_AUDIT.md` §3.2):
+
+| Command | What runs | Time (6 CPUs, 3 jobs) |
+|---|---|---|
+| `tools/godot.sh test --gate` | the smoke run, the fast suites, and the suites covering the files changed on this branch | ~1 min |
+| `tools/godot.sh test --tier=merge` | all but the slow level sweeps and boss-fight simulations, plus the suites for the changed files | ~5 min |
+| `tools/godot.sh test --tier=full` (or plain `test --jobs=3`) | every suite | ~13 min |
+
+`tests/suite_map.json` lists the slow and medium suites and maps changed paths to suites
+(`scripts/bosses/the_house/*` → `test_the_house*`, `data/enemies/octodog.tres` → `test_octodog`, a
+zone's skin folder → its skin suite); paths it doesn't list are matched by name, and a changed
+core file (generator, track builder, damage rules, run world, player, boss framework, test helpers,
+level/pattern/tuning/zone data) raises the tier to full on its own. `--plan` prints the suites
+without running them; `--paths=a,b` plans for those files instead of the branch's changes. Add a
+rule when you add an enemy, boss, screen or skin whose folder name doesn't match its suite.
+
+`tools/godot.sh test` runs 78 suites with about 6,400,000 checks. Many suites independently build the
 same level (often a campaign step's own default build) to run their own checks on it; `LayoutCache`
 (`tests/helpers/layout_cache.gd`) shares one real build of each across the whole run instead of
 repeating it (`--no-layout-cache` turns that off; `tests/suites/test_layout_cache.gd` checks it never

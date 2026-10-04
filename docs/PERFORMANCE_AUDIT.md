@@ -57,24 +57,40 @@ runs, and `--jobs=N` pays it N times), `smoke`, `sfx`, `music`, `web`, and the a
 **Owner decision (2026-10-03):** keep the repo in WSL and install a **Linux Godot 4.7.2** inside
 WSL, running the editor through WSLg.
 
-WSLg feasibility check (no install performed): `DISPLAY=:0`, `WAYLAND_DISPLAY=wayland-0`,
+**Done (2026-10-03):** `tools/install_godot_wsl.sh` installs the official Linux build
+(`ed1daf0bf`, same commit as the Windows exe) to `~/.local/godot` with `~/.local/bin/godot4` on PATH.
+`tools/godot.sh` now prefers PATH over the remembered `.godot-path`, and for windowed commands under
+WSL sets `GALLIUM_DRIVER=d3d12` + `--rendering-method gl_compatibility`. Measured after the switch:
+
+| Command (native Linux build, WSL ext4) | Time |
+|----------------------------------------|------|
+| `godot4 --headless --import` (full re-import) | 6.2 s |
+| `godot4 --headless --quit-after 5` (boot to title) | 1.75–2.4 s (was 66 s) |
+| `tools/godot.sh smoke` | 9 s incl. import |
+| `tools/godot.sh test --suite=movement` | 5.6 s wall (150 checks) |
+| `tools/godot.sh play` renderer | OpenGL 4.6 Compatibility on **NVIDIA RTX 2080 via D3D12** |
+| Forward+ in WSL | Vulkan on llvmpipe (software) — Ubuntu ships no Dozen ICD |
+| Wayland display driver | fails (Zink can't pick a device); X11/XWayland is used |
+| Audio | dummy driver until `sudo apt install libpulse0` (not installed yet — needs the owner's password) |
+
+Remaining caveat: pressing Play *inside the editor* uses the project's renderer (Forward+), so it
+will be software-rendered in WSL; run the game from the terminal (`./play.sh`) for GPU rendering, or
+switch the editor's run instance to Compatibility via Editor > Editor Settings > Run > "Rendering
+Method" override if needed.
+
+WSLg feasibility check (before the install): `DISPLAY=:0`, `WAYLAND_DISPLAY=wayland-0`,
 `/dev/dxg` and `/usr/lib/wsl/lib/libd3d12.so` all present on Ubuntu 24.04 / kernel 6.18. Machine:
 6 CPUs, 7.7 GB RAM.
 
-Risks / notes for the implementation task:
-- **Renderer under WSLg.** Vulkan via Mesa "Dozen" (d3d12 translation) is experimental; Forward+ may
-  fail or be slow. The project already requires Compatibility-renderer support, so
-  `--rendering-method gl_compatibility` (Mesa d3d12 GL) is the safe default for the editor in WSL.
-  Headless work (tests, import, smoke, sfx/music generation) needs no renderer and is unaffected.
+Notes kept from the feasibility check:
 - `tools/godot.sh` already prefers `$GODOT`, then `godot4`/`godot` on `PATH`, before the Windows
-  search — so dropping a Linux binary on `PATH` (or setting `GODOT`) is enough; delete `.godot-path`
-  to clear the cached Windows path.
-- `tests/.suite_times.json` and the `.godot/` cache are portable; a one-time `--import` is needed.
+  search. (It used to read the cached `.godot-path` *before* PATH; that order is now PATH first.)
+- `tests/.suite_times.json` and the `.godot/` cache are portable; a one-time `--import` was needed.
 - 7.7 GB RAM is tight for `test --jobs=N` with N > 2; measure before raising the default.
-- `.import-stamp` / `find -newer` staleness check in `godot.sh` is already local to WSL and fast.
-- Audio from a Linux Godot goes through WSLg PulseAudio (`/mnt/wslg/PulseServer`); verify it works
-  for `play`, otherwise the Windows binary can remain the "play on the desktop" path while the
-  Linux binary handles editor/tests.
+- `.import-stamp` / `find -newer` staleness check in `godot.sh` is local to WSL and fast.
+- Audio from a Linux Godot goes through WSLg PulseAudio (`PULSE_SERVER=unix:/mnt/wslg/PulseServer`)
+  once `libpulse0` is installed. The Windows binary remains a fallback for desktop play if wanted
+  (`GODOT=<exe> ./play.sh`).
 
 ### 2.2 Secondary: what the remaining ~4.5 s is
 
@@ -123,6 +139,16 @@ CLAUDE.md and `.claude/agents/*.md` point agents at `docs/GDD_CHECKPOINT.md` (de
 Total ≈ 680 KB ≈ 170K+ tokens of prose. An agent that follows the instructions literally spends most
 of its context window before touching code, and any doc update it makes lands in a 300 KB file.
 
+**Cleanup done (2026-10-03):** removed from `OPEN_QUESTIONS.md` the 30 struck-through "Answered"
+bullets in sections A.1–A.3 and A.9 whose answers are recorded in the GDD (keeping their "still open"
+residue as plain bullets) and the redundant "Answered (recorded in GDD_CHECKPOINT.md)" tail; the file's
+intro now says answered A–C items are removed rather than struck through. Only ~4 KB: the file's bulk
+(section D "From build phase 2", 184 KB, 55 task groups × ~6 numbered placeholder items) is **not
+removable** — the owner's review says every phase-2 item keeps its `DESIGN-TBD` marker, and ~40 code
+comments cite them as "OPEN_QUESTIONS.md §D, item N" (Markdown renumbers ordered lists, so even deleting
+single answered items would shift the citations). `ARCHITECTURE.md` holds no resolved-question logs;
+its size is dense current reference, so nothing there could be removed with certainty.
+
 Recommended restructuring (for the improvement phase):
 1. Split `ARCHITECTURE.md` into per-subsystem files (`docs/architecture/generator.md`,
    `skins.md`, `enemies.md`, `bosses.md`, `tests.md`, `tools.md`, …) with a ~2-page index. Agents
@@ -150,16 +176,86 @@ Recommended restructuring (for the improvement phase):
 - CLAUDE.md says: "Run the project headless and any tests before reporting a task complete." Agents
   comply, so the whole suite runs after small changes.
 
-Recommended:
-1. Fix §2.1 first — it removes ~60 s per process and speeds every file access inside the suites.
-2. Tier the suites: a **fast tier** (unit-level, < 60 s total) that agents must run, and a **slow
-   tier** (`test_campaign`, `test_generator`, `test_wall_fences`, `test_city_gaps`, `test_pace`,
-   boss fight suites) run before merge / by the orchestrator. Encode in `run_tests.gd`
-   (e.g. `--tier=fast`) and CLAUDE.md.
-3. Shrink the campaign seed sweep (or move it to the slow tier / a nightly job) — e.g. 3 seeds
-   instead of 8, or only the level with the most features per zone.
-4. Update the stale timing figures in `run_tests.gd` and README.
-5. Re-measure `--jobs=2/3` on this 6-core / 7.7 GB machine once Godot runs natively in WSL.
+**Measured with the native Linux build (2026-10-03, `tools/godot.sh test --jobs=3`, 6 CPUs):**
+full run **13 min 17 s wall**, ~27 min of CPU across the three processes, 69 suites,
+~6.4 M checks. Biggest suites: `test_campaign` 230 s, `test_floating_head_routes` 100 s,
+`test_generator` 93 s, `test_wall_fences` 79 s, `test_hostile_takeover_fight` 79 s,
+`test_resonator` 69 s, `test_floating_head_faceoff` 66 s, `test_sleep_taker_fight` 63 s,
+`test_floating_head_stomps` 50 s, `test_sleep_taker_attacks` 48 s, `test_the_house_attacks` 44 s.
+Shape of the distribution: 29 suites under 10 s (≈100 s together), 13 between 10 and 30 s
+(≈250 s), 17 over 30 s (≈1,280 s — 78 % of the CPU time). The three level-sweep suites
+(`campaign`, `generator`, `city_gaps`) plus the boss-fight simulations are the whole cost.
+
+That run also found **11 deterministic failures** in 5 suites on the committed tree
+(`test_frame_times` ×3 "played the same 1 frames", `test_doodads` ×1, `test_resonator` ×1,
+`test_sewer_swarm_whole` ×3 and `test_hostile_takeover_fight` ×3 "and finished"). They reproduce
+serially, so they are not load flakiness; PR #14 ("user guided updates") added
+`level_intro_screen.gd` and changed `level_run.gd`/`app.gd`, which fits runs not advancing past
+their first frame. Not fixed in this pass — a separate task.
+
+### Recommendation: three tiers plus change-based selection
+
+The goal is "an agent cannot break the game without a test noticing" at the cost of a minute or
+two per change, with the expensive fairness sweeps running where their cost is amortised.
+
+**What actually breaks when agents change code, and what catches it:**
+
+| Failure class | Cheapest reliable detector | Cost (native) |
+|---|---|---|
+| Parse/compile error anywhere (all 297 classes compile at boot) | boot to title: `godot4 --headless --quit-after 5` | 2 s |
+| Runtime error on the common path (title → run → HUD → death → results) | `tools/godot.sh smoke` (40 s of simulated quick play, prints only problems) + `test_app_flow`, `test_main_scene`, `test_screens` | 9 s + ~17 s |
+| A subsystem's rules (damage, pickups, movement, economy, skins' budgets, UI kit…) | the 29 suites under 10 s | ~100 s CPU, ~40 s on 3 jobs |
+| One enemy or boss regressing | that enemy's/boss's suites (`test_resonator`, `test_the_house*`, …) | 10–100 s each |
+| Generator fairness across all levels, lanes and seeds | `test_campaign`, `test_generator`, `test_city_gaps`, `test_wall_fences`, `test_pace` | ~10 min CPU |
+
+**Implemented 2026-10-03** as `tools/godot.sh test --gate | --tier=merge | --tier=full`, with
+`tools/test_plan.py` reading `tests/suite_map.json` (explicit `slow`/`medium` lists, ordered
+path-glob rules that add suites or raise the tier, and a name-matching fallback on `_` boundaries
+for `scripts/` and `data/` paths). Gate measured at 47 s wall (smoke + 37 of 78 suites, 3 jobs).
+The per-suite `budget` idea below is not built yet.
+
+**Tier 1 — gate (every agent task, before reporting done; target < 2 min wall):**
+boot + smoke + every suite under ~10 s + the suites selected by the files the task changed
+(below). Encode as `tools/godot.sh test --gate` → `run_tests.gd --tier=fast` plus `--files=` from
+the selector. CLAUDE.md's "run the tests" rule points here.
+
+**Tier 2 — merge (the orchestrator, when a branch merges to main; ~5 min on 3 jobs):**
+everything except the three level sweeps and the long boss simulations; i.e. all suites under
+30 s plus the full suites for any boss/enemy/skin the branch touched.
+
+**Tier 3 — full (after a batch of merges, nightly, or when a core file changed; 13 min on 3 jobs):**
+the current `tools/godot.sh test --jobs=3`. Mandatory when the change touches the core files
+CLAUDE.md already lists (`level_generator.gd`, `track_builder.gd`, `damage_rules.gd`,
+`run_world.gd`, `player.gd`, or `data/levels|patterns|tuning|zones`).
+
+**Change-based selection** (`tools/godot.sh test --changed[=base]`): `git diff --name-only
+base...HEAD` through a small glob→suite table (`tests/suite_map.json`), e.g.
+`scripts/bosses/the_house/**` → `test_the_house*`; `scripts/enemies/resonator*` →
+`test_resonator`; `scripts/world/skins/golden*` → `test_golden_skin`, `test_doodads`;
+`scripts/ui/**` → `test_screens`, `test_ui_kit`, `test_app_flow`; any core file → tier 3. The
+suite names already mirror the script names, so the table is short and the default for an
+unmapped path is "tier 2".
+
+**Make the slow suites cheaper without losing the guarantee:**
+- Give `TestSuite` a `budget` the runner sets from the tier (`fast` / `full`). `test_campaign`'s
+  seed sweep is 7 levels × 3 lane counts × 8 seeds (168 generations) on top of every level at
+  every lane count (45); with `budget = fast` keep the 45 (the fairness guarantee itself) and
+  drop the sweep to 2 seeds. Same lever for `test_generator`, `test_city_gaps`, `test_wall_fences`
+  and the boss "routes/stomps/fight" simulations, which loop over seeds and lane counts.
+- Keep the "seeded run decides the same every time" checks; determinism is what makes the sweeps
+  trustworthy at fewer seeds.
+- Re-time with `--jobs=3` on this machine after tiering; `--jobs=4+` is RAM-limited (7.7 GB).
+
+**Why this keeps the confidence:** the boot and smoke steps catch every compile error and the
+common-path runtime errors in seconds; the fast tier covers every subsystem's rules; the
+change-based selection runs the deep suites for exactly the enemy/boss/skin an agent touched;
+and anything that could affect fairness across the campaign (core files, level data) still
+triggers the full sweeps. What is given up is only running the *untouched* bosses' and zones'
+multi-minute simulations on every small edit — those still run at merge and in the full tier.
+
+Housekeeping while doing this: update the stale "about 400 s / 54 suites" note in
+`run_tests.gd` and README's Tests section; `tests/.suite_times.json` is merged by concurrent
+`--jobs` processes with lost updates, so the balancing hint is only approximate.
 
 ### 3.3 Code volume and shape
 
@@ -249,10 +345,10 @@ Weaknesses / costs of the approach:
 
 | Step | Task | Effort | Expected gain |
 |------|------|--------|---------------|
-| 1 | Install Linux Godot 4.7.2 in WSL; set `GODOT`/`PATH`; delete `.godot-path`; re-import; verify `tools/godot.sh test --suite=movement`, `smoke`, and `edit` (Compatibility renderer under WSLg) | S | Startup 66 s → ~5 s; every test/import/smoke run ~60 s faster per process |
+| 1 | ✅ **Done** — Linux Godot 4.7.2 installed via `tools/install_godot_wsl.sh`; `godot.sh` prefers it and sets up Compatibility+D3D12 for `play`/`edit`. Pending: `sudo apt install libpulse0` for sound in the window | S | Startup 66 s → ~2 s; test run 5.6 s wall |
 | 2 | Delete `.godot/`, re-import; confirm no `f0*.ctex` return (`build/.gdignore` exists) | XS | −37 MB cache; cleaner scans |
-| 3 | Tier the tests (`--tier=fast`/`slow`), shrink the campaign seed sweep, update stale timing text, update CLAUDE.md "run tests" rule to the fast tier | M | Agent verification loop from 30+ min to a few minutes |
-| 4 | Split `ARCHITECTURE.md` into `docs/architecture/*.md` + index; archive answered `OPEN_QUESTIONS` entries; de-dup README; archive `NEXT_STEPS.md`; update CLAUDE.md pointers | M | Agents read ~20–40 KB instead of ~680 KB per task |
+| 3 | ✅ **Done (tiers + selection, 2026-10-03)** — `tools/godot.sh test --gate|--tier=merge|--tier=full [--plan] [--paths=]`, `tools/test_plan.py`, `tests/suite_map.json`; CLAUDE.md, README and all six `.claude/agents/*.md` now prescribe the gate per task and merge/full for the reviewer. Measured gate: **47 s wall** (smoke + 37 suites, 3 jobs). Still open: a per-suite `budget` to shrink the sweeps' seed counts in lower tiers, and the 11 failing checks on the committed tree (§3.2) | M | Agent verification loop 13 min → 47 s; full sweeps still run at merge/full |
+| 4 | Split `ARCHITECTURE.md` into `docs/architecture/*.md` + index; move `OPEN_QUESTIONS` §D to its own file *together with* a one-off rewrite of the ~40 "§D, item N" code-comment citations; de-dup README; archive `NEXT_STEPS.md`; update CLAUDE.md pointers. (Answered A–C items already removed.) | M | Agents read ~20–40 KB instead of ~680 KB per task |
 | 5 | Decide on the fallback zone WAVs (§4.2) | XS | −13 MB if removed |
 | 6 | (Later, optional) continue extracting placement helpers out of `level_generator.gd`; consider trimming comments that restate code | L | Less serialisation of agent work on core files |
 
