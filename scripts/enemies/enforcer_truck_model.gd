@@ -40,9 +40,9 @@ const RIDER_HEIGHT: float = 0.74
 const RING_LIFT: float = 0.12
 ## The light bar: its middle along the truck (z from the front), its height over the roof.
 const BAR_Z: float = 2.72
-const BAR_HEIGHT: float = 0.16
+const BAR_HEIGHT: float = 0.11
 ## The floor lights' reach ahead of its front (metres).
-const BEAM_REACH: float = 22.0
+const BEAM_REACH: float = 16.0
 const WASH_REACH: float = 7.5
 
 ## Meshes per look and size: {body, lamps, bar_red, bar_blue, rider_body, rider_face}.
@@ -289,7 +289,7 @@ static func _body(look: StringName, size: Vector3) -> ArrayMesh:
 	# Mirrors, the light bar's housing, the riders' hatches and the gun ring, a rear door frame.
 	for sx: float in [-1.0, 1.0]:
 		b.box(c["dark"], Vector3(sx * (W * 0.5 + 0.12), 1.72, 1.55), Vector3(0.08, 0.26, 0.16))
-	b.box(c["dark"], Vector3(0.0, R + 0.03, BAR_Z), Vector3(1.78, 0.07, 0.34))
+	b.box(c["dark"], Vector3(0.0, R + 0.03, BAR_Z), Vector3(1.44, 0.06, 0.28))
 	for i: int in RIDER_SLOTS.size():
 		var s: Vector2 = RIDER_SLOTS[i]
 		var lift: float = RING_LIFT if i == 2 else 0.0
@@ -333,7 +333,7 @@ static func _lamps(size: Vector3) -> ArrayMesh:
 static func _bar(side: float, size: Vector3) -> ArrayMesh:
 	var b := PartBatch.new()
 	var m: Material = GreyboxMaterials.flat(Color.WHITE)
-	b.box(m, Vector3(side * 0.43, size.y + 0.07 + BAR_HEIGHT * 0.5, BAR_Z), Vector3(0.8, BAR_HEIGHT, 0.26))
+	b.box(m, Vector3(side * 0.34, size.y + 0.06 + BAR_HEIGHT * 0.5, BAR_Z), Vector3(0.62, BAR_HEIGHT, 0.2))
 	return b.commit()
 
 
@@ -355,6 +355,7 @@ static func _rider(look: StringName) -> ArrayMesh:
 	var vest: Color = Color(0.21, 0.16, 0.13)
 	var pants: Color = Color(0.31, 0.32, 0.25)
 	var metal: Color = Color(0.37, 0.25, 0.18)
+	var casing: Color = Color(0.2, 0.21, 0.22)
 	match look:
 		&"weathered":
 			cloth = Color(0.24, 0.22, 0.2)
@@ -365,6 +366,7 @@ static func _rider(look: StringName) -> ArrayMesh:
 			vest = Color(0.2, 0.18, 0.19)
 			pants = Color(0.13, 0.12, 0.13)
 			metal = Color(0.6, 0.48, 0.24)
+			casing = Color(0.16, 0.15, 0.15)
 	var dark := Color(0.08, 0.08, 0.085)
 	var b := Batch.new()
 	# Knees and shins folded under it, boots behind.
@@ -379,16 +381,19 @@ static func _rider(look: StringName) -> ArrayMesh:
 	b.box(metal, Vector3(0.16, 0.36, -0.2), Vector3(0.11, 0.11, 0.42))
 	b.box(dark, Vector3(0.16, 0.36, -0.43), Vector3(0.08, 0.08, 0.06))
 	b.box(cloth, Vector3(-0.12, 0.36, -0.1), Vector3(0.09, 0.09, 0.3), Vector3(0.0, 0.5, 0.0))
-	# The screen head: a beat-up box television, its screen facing forward.
-	b.box(metal, Vector3(0.0, 0.61, -0.04), Vector3(0.27, 0.23, 0.24))
-	b.box(dark, Vector3(0.0, 0.47, 0.0), Vector3(0.1, 0.06, 0.1))
+	# The screen head: a beat-up box television, its screen facing forward, its tube's back behind it, a bent
+	# antenna.
+	b.box(casing, Vector3(0.0, 0.6, -0.08), Vector3(0.25, 0.2, 0.12))
+	b.box(casing.darkened(0.25), Vector3(0.0, 0.59, 0.03), Vector3(0.17, 0.14, 0.13))
+	b.box(metal, Vector3(0.06, 0.68, 0.02), Vector3(0.015, 0.1, 0.015), Vector3(0.0, 0.0, -0.5))
+	b.box(dark, Vector3(0.0, 0.47, -0.01), Vector3(0.1, 0.06, 0.1))
 	return b.commit(body_material())
 
 
 ## A rider's screen face: the cold white LED glow on the front of its head.
 static func _rider_face() -> ArrayMesh:
 	var b := PartBatch.new()
-	b.box(GreyboxMaterials.glow(FACE, 1.6), Vector3(0.0, 0.615, -0.165), Vector3(0.2, 0.15, 0.02))
+	b.box(GreyboxMaterials.glow(FACE, 1.6), Vector3(0.0, 0.605, -0.145), Vector3(0.19, 0.14, 0.02))
 	return b.commit()
 
 
@@ -448,11 +453,11 @@ static func _floor_shapes() -> Dictionary:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for sx: float in [-1.0, 1.0]:
-		# Each headlight's beam: from just ahead of its front, widening and fading up the lane.
+		# Each headlight's beam: from just ahead of its front, widening and fading up the lane, soft at its edges.
 		_strip(st, func(t: float) -> Vector4:
-			var half: float = lerpf(0.3, 0.72, t)
-			var x: float = sx * lerpf(0.58, 0.6, t)
-			return Vector4(x - half, x + half, -0.25 - t * BEAM_REACH, 0.36 * pow(1.0 - t, 1.6) * smoothstep(0.0, 0.05, t)),
+			var half: float = lerpf(0.32, 0.85, t)
+			var x: float = sx * lerpf(0.58, 0.5, t)
+			return Vector4(x - half, x + half, -0.25 - t * BEAM_REACH, 0.3 * pow(1.0 - t, 1.4) * smoothstep(0.0, 0.06, t)),
 			HEADLIGHT, 10)
 	st.commit(beams)
 	_floor_meshes["Beams"] = beams
@@ -464,27 +469,37 @@ static func _floor_shapes() -> Dictionary:
 		ws.begin(Mesh.PRIMITIVE_TRIANGLES)
 		# The light bar's glow: brightest a few metres ahead of its front, fading back under it and forward.
 		_strip(ws, func(t: float) -> Vector4:
-			var half: float = 0.62 * sin(PI * clampf(t * 0.9 + 0.08, 0.0, 1.0)) + 0.1
-			var x: float = side * 0.62
-			return Vector4(x - half, x + half, 1.2 - t * (1.2 + WASH_REACH), 0.4 * sin(PI * t)),
+			var half: float = 0.72 * sin(PI * clampf(t * 0.9 + 0.08, 0.0, 1.0)) + 0.12
+			var x: float = side * 0.6
+			return Vector4(x - half, x + half, 1.2 - t * (1.2 + WASH_REACH), 0.42 * sin(PI * t)),
 			color, 8)
 		ws.commit(wash)
 		_floor_meshes[part] = wash
 	return _floor_meshes
 
 
-## A strip of quads on the floor (y 0) from `shape`(0) to `shape`(1): shape(t) gives (x_left, x_right, z,
-## alpha) for t from 0 to 1, in `segments` steps; its colour fades with alpha.
+## A strip on the floor (y 0) from `shape`(0) to `shape`(1): shape(t) gives (x_left, x_right, z, alpha) for t
+## from 0 to 1, in `segments` steps; its colour fades with alpha along it, and across it to nothing at its edges
+## (two quads across: edge, middle, edge).
 static func _strip(st: SurfaceTool, shape: Callable, color: Color, segments: int) -> void:
+	st.set_normal(Vector3.UP)
 	for i: int in segments:
 		var a: Vector4 = shape.call(float(i) / segments)
 		var b: Vector4 = shape.call(float(i + 1) / segments)
-		var ca := Color(color, a.w)
-		var cb := Color(color, b.w)
-		st.set_normal(Vector3.UP)
-		for v: Array in [[a.x, a.z, ca], [b.x, b.z, cb], [b.y, b.z, cb], [a.x, a.z, ca], [b.y, b.z, cb], [a.y, a.z, ca]]:
-			st.set_color(v[2])
-			st.add_vertex(Vector3(float(v[0]), 0.0, float(v[1])))
+		var am: float = (a.x + a.y) * 0.5
+		var bm: float = (b.x + b.y) * 0.5
+		var clear := Color(color, 0.0)
+		for half: Array in [[a.x, am, b.x, bm, true], [am, a.y, bm, b.y, false]]:
+			# Each half: from its outer edge (clear) to the middle (lit), or the middle to the other edge.
+			var outer_first: bool = half[4]
+			var ca0: Color = clear if outer_first else Color(color, a.w)
+			var ca1: Color = Color(color, a.w) if outer_first else clear
+			var cb0: Color = clear if outer_first else Color(color, b.w)
+			var cb1: Color = Color(color, b.w) if outer_first else clear
+			for v: Array in [[half[0], a.z, ca0], [half[2], b.z, cb0], [half[3], b.z, cb1],
+					[half[0], a.z, ca0], [half[3], b.z, cb1], [half[1], a.z, ca1]]:
+				st.set_color(v[2])
+				st.add_vertex(Vector3(float(v[0]), 0.0, float(v[1])))
 
 
 # --- Merging -------------------------------------------------------------------------------------------
