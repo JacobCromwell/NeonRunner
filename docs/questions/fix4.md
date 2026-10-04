@@ -4,12 +4,13 @@
   more gaps in City 1.) The doodads were built to only add to a level (the same level without them, plus
   them), and City 1's extra-gap pass, which runs after them, was built to keep every doodad where it is.
   Where both want the same stretch, one has to move. Placeholder: the doodads stay, and the extra gaps
-  keep out of their way, but a widened row now keeps off a doodad's own lane and window only (not a margin
-  around it in every lane), so a doodad never decides which rows widen (`DESIGN-TBD` in
-  `scripts/world/gap_density.gd`, the widening in `apply`). A new extra row still keeps the margin from a
-  doodad, so the doodads can still decide where a new row goes: over test_city_gaps' 33 City 1 builds (3, 5
-  and 6 lanes, seeds 1 to 8, every tier) the doodads change the gaps in 15 (19 before), among them the
-  shipped City 1 at 6 lanes on the 0.35 tier; the shipped default tier, at every lane count, no longer.
+  keep out of their way, but a row widened with a lane left open now keeps off a doodad's own lane and
+  window only, not a margin around it in every lane (`DESIGN-TBD` in `scripts/world/gap_density.gd`, the
+  widening in `apply`). A row widened to full width (a jump, which lands past the row) and a new row still
+  keep the margin from a doodad, so the doodads can still decide where those go: over test_city_gaps' 33
+  City 1 builds (3, 5 and 6 lanes, seeds 1 to 8, every tier) the doodads change the gaps in 15 (19 before),
+  almost all through a full-width jump a doodad stands too close to, among them the shipped City 1 at 6
+  lanes on the 0.35 tier; the shipped default tier, at every lane count, no longer.
   The alternative: run the extra-gap pass before the doodads, so the doodads fill what it leaves and only
   ever add (City 1's doodads at 3 and 5 lanes then stand elsewhere, and test_city_gaps would no longer
   expect them unchanged).

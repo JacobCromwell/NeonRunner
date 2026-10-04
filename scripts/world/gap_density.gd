@@ -67,8 +67,9 @@ static func apply(gen: LevelGenerator) -> Dictionary:
 			# with the margin only in a doodad's own lane, never left the open one (_available's
 			# doodads_exact). With the margin in every lane, a doodad decided which rows widen: the
 			# doodads moved a gap (City 1 at 5 lanes), when they only add to a level (FIX4).
-			# DESIGN-TBD (docs/questions/fix4.md): a new row still keeps the margin from a doodad, so
-			# where both want the same stretch the doodad stays and the new row goes elsewhere.
+			# DESIGN-TBD (docs/questions/fix4.md): a row widened to full width (a jump, below) and a new
+			# row still keep the margin from a doodad, so where both want the same stretch the doodad
+			# stays and the extra gap goes elsewhere.
 			var available: Array[int] = _available(gen, span, row, true)
 			var occupied: Array = row["lanes"]
 			# Ignore this row's own holes, not other obstacles, for the clearance check.
