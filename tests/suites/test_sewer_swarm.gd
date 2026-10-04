@@ -101,6 +101,19 @@ func _test_slot() -> void:
 func _test_tuning() -> void:
 	var t := def.tuning as SewerSwarmTuning
 	check(t.resource_path == "res://data/bosses/gangland_boss_tuning.tres", "its numbers are a tuning of its own (F6)")
+	check(t.cluster_health >= 48.0, "clusters take at least a third more weapon damage than the former 36-health tuning")
+	check(t.bait_spacing <= 185.0 and t.bait_spacing > 0.0,
+		"bait, surge and Host opportunities recur at least 8% more often than the former 200 m spacing")
+	check(t.warning_seconds - t.lock_seconds >= 1.3 - 0.001 and t.lock_seconds <= 0.9 + 0.001
+		and t.behind_warning_seconds - t.behind_lock_seconds >= 1.4 - 0.001 and t.behind_lock_seconds <= 1.0,
+		"less time to dodge a locked attack, without reducing the time to reach its bait")
+	check(REACTION + tuning.lane_switch_time + 0.1 <= minf(t.lock_seconds, t.behind_lock_seconds),
+		"both shortened locks still allow a reaction, a lane switch and a safety margin")
+	check(t.fling_windup + t.fling_flight <= 1.5 + 0.001
+		and t.fling_windup + t.fling_flight >= REACTION + tuning.lane_switch_time + 0.1 and t.splat_seconds >= 1.0,
+		"the Host's flings arrive sooner and stay dangerous longer, but retain a readable dodge window")
+	check(t.climb_seconds / (t.climb_seconds + t.climb_gap_seconds) >= 0.69 and t.climb_gap_seconds >= 1.5,
+		"Surrounded takes one wall away more often, still leaving a gap with both free")
 	check(t.cluster_size(true) < t.cluster_size(false) and t.horde_size(true) < t.horde_size(false)
 		and t.climb_size(true) < t.climb_size(false) and t.spill_size(true) < t.spill_size(false)
 		and t.host_size(true) < t.host_size(false),
@@ -369,11 +382,19 @@ func _host_spots_at(boss: SewerSwarm, arena: BossArena, t: MovementTuning, tag: 
 	var k: float = t.pace()
 	var count: int = 0
 	var ok: bool = true
+	var interior_ramps: bool = true
 	var sides: Dictionary = {}
 	var outer: bool = true
 	for li: int in arena.laps.size():
 		var lap: LevelLayout = arena.laps[li]
 		var hosts: Array = boss._host_plan.get(li, [])
+		var baits: Array = boss._spot_plan.get(li, [])
+		for i: int in maxi(baits.size() - 1, 0):
+			var expected: float = float(baits[i]["at"]) + st.host_after * k
+			var found_host: bool = false
+			for h: Dictionary in hosts:
+				found_host = found_host or is_equal_approx(float(h["at"]), expected)
+			interior_ramps = interior_ramps and found_host
 		count += hosts.size()
 		for i: int in hosts.size():
 			var h: Dictionary = hosts[i]
@@ -394,6 +415,7 @@ func _host_spots_at(boss: SewerSwarm, arena: BossArena, t: MovementTuning, tag: 
 				ok = ok and int(hosts[i - 1]["side"]) != side
 	check(count >= arena.laps.size() * 3 and ok and outer and sides.size() == 2,
 		"each lap carries host spots (%d): a ramp in an outer lane, sides in turn, the street clear around it %s" % [count, tag])
+	check(interior_ramps, "closer bait spacing never removes an interior Host ramp or its stomp opportunity %s" % tag)
 
 
 ## True if `lane` of a lap has no hole and no fence between two track distances.

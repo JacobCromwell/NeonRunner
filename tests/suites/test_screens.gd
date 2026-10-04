@@ -27,6 +27,7 @@ func run() -> void:
 	await _test_title()
 	await _test_level_select()
 	await _test_shop()
+	await _test_dash_shop()
 	await _test_settings()
 	await _test_hint_paging()
 	await _test_intro()
@@ -530,6 +531,75 @@ func _test_shop() -> void:
 	App.mobile = false
 	Platform.configure_for(BuildFlavor.current())
 	App.profile = SampleProfiles.rich()
+
+
+func _test_dash_shop() -> void:
+	var saved: Profile = App.profile
+	var saved_mobile: bool = App.mobile
+	var saved_touch: int = UiTheme.touch_override
+	var prices: PackedInt32Array = PackedInt32Array([1800, 800, 1000, 1200])
+	var cooldowns: PackedInt32Array = PackedInt32Array([8, 6, 4, 3])
+	var item: ShopItem = App.catalog.item(&"dash")
+	for mobile: bool in [false, true]:
+		App.mobile = mobile
+		UiTheme.touch_override = 1 if mobile else 0
+		App.profile = Profile.new()
+		App.profile.add_earned(4800)
+		App.show_shop()
+		await _frames(2)
+		var shop: ShopScreen = App.screen as ShopScreen
+		var card: ItemCard = shop.cards[&"dash"]
+		check(card.tier == 0 and card.max_tier == 4 and card.pips.visible and card.pips.tiers == 4
+			and card.price == 1800 and not card.equip_switch.visible and card.description.contains("8 seconds"),
+			"%s shows the original dash price, base cooldown and four tier pips before purchase" % ["mobile" if mobile else "PC"])
+		for tier: int in range(1, 5):
+			var before: int = App.profile.credits()
+			check(card.state == ItemCard.State.AVAILABLE and card.buy_button.visible
+				and not card.buy_button.disabled and card.price == prices[tier - 1],
+				"dash tier %d has the approved buy/upgrade price in the shop" % tier)
+			card.buy_button.pressed.emit()
+			await _frames(2)
+			check(App.profile.tier(&"dash") == tier and App.profile.credits() == before - prices[tier - 1]
+				and card.tier == tier and card.pips.owned == tier and card.title == item.tier_name(tier)
+				and card.equip_switch.visible,
+				"buying dash tier %d refreshes ownership, wallet, title, tier pips and equip toggle" % tier)
+			if tier < 4:
+				check(card.state == ItemCard.State.AVAILABLE and card.price == prices[tier]
+					and card.status_label.text == "UPGRADE"
+					and card.description.begins_with("Next: %s." % item.tier_name(tier + 1))
+					and card.description.contains("%d seconds" % cooldowns[tier]),
+					"dash tier %d advertises only the next upgrade and its cooldown" % tier)
+			if tier == 1:
+				var balance: int = App.profile.credits()
+				App.profile.earned = 799
+				App.profile_changed.emit()
+				await _frames(1)
+				check(card.state == ItemCard.State.CANT_AFFORD and card.buy_button.disabled
+					and card.price == 800 and card.tier == 1,
+					"an existing dash owner with 799 credits sees the 800-credit upgrade disabled")
+				App.profile.earned = balance
+				App.profile_changed.emit()
+				card.equip_toggled.emit(&"dash", false)
+				await _frames(1)
+				check(not App.make_loadout().has(&"dash") and not card.equipped,
+					"the dash equip toggle still removes owned tiers from the next run")
+				card.equip_toggled.emit(&"dash", true)
+				await _frames(1)
+				check(App.make_loadout().tier(&"dash") == 1 and card.equipped,
+					"re-equipping keeps the owned base tier, without granting upgrades")
+		check(card.state == ItemCard.State.MAXED and card.status_label.text == "MAX TIER"
+			and not card.buy_button.visible and card.pips.owned == 4 and card.equip_switch.visible
+			and card.description.contains("3 seconds") and not card.description.begins_with("Next:"),
+			"the final dash tier shows its 3-second cooldown, four filled pips and no buy button")
+		check(App.next_price(item) == -1 and not App.buy(&"dash")
+			and App.profile.credits() == 0 and App.profile.tier(&"dash") == 4,
+			"the maxed UI and purchase path both reject a fifth dash tier")
+		_check_fits(shop, "maxed dash, %s" % ["mobile" if mobile else "PC"])
+	App.profile = saved
+	App.mobile = saved_mobile
+	UiTheme.touch_override = saved_touch
+	App.show_title()
+	await _frames(1)
 
 
 # --- Settings --------------------------------------------------------------------

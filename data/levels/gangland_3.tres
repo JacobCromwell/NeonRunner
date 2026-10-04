@@ -18,6 +18,7 @@ feature_starts = Dictionary[String, float]({
 narrow_ceiling_share = 0.5
 spacing_seconds_easy = 1.1
 fill_empty_seconds = 2.0
+danger_density_increase = 0.22
 credit_trail_chance = 0.6
 credit_trail_min = 5
 doodad_share = 0.6

@@ -24,6 +24,7 @@ func run() -> void:
 	await _test_splash()
 	await _test_health_bars()
 	await _test_dash()
+	await _test_dash_tiers()
 	await _test_magnet()
 	await _test_slow_time()
 	await _test_slow_time_restores()
@@ -420,6 +421,73 @@ func _test_dash() -> void:
 	await _send_action(&"dash")
 	check(w.player.dashing, "the dash action starts the dash")
 	await sim.free_world(w)
+
+
+func _test_dash_tiers() -> void:
+	var expected: PackedFloat32Array = PackedFloat32Array([8.0, 6.0, 4.0, 3.0])
+	var dash_item: ShopItem = ShopCatalog.load_from().item(&"dash")
+	check(dash_item.tier_count() == expected.size() and pt.dash_upgrade_cooldowns.size() == expected.size() - 1,
+		"dash tuning and the shop agree on exactly four total cooldown tiers")
+	check(is_equal_approx(pt.dash_cooldown_at(0), 8.0) and is_equal_approx(pt.dash_cooldown_at(99), 3.0),
+		"dash tier lookups clamp to the base and the 3-second final tier")
+	for dash_tier: int in range(1, 5):
+		var seconds: float = expected[dash_tier - 1]
+		check(is_equal_approx(pt.dash_cooldown_at(dash_tier), seconds),
+			"dash tier %d is tuned to exactly %.0f seconds" % [dash_tier, seconds])
+		var w: RunWorld = sim.build_world(RunSim.layout(3), _loadout({"dash": dash_tier}))
+		var c: PowerupController = _controller(w)
+		var started: Array[int] = [0]
+		var ready: Array[int] = [0]
+		c.dash_started.connect(func() -> void: started[0] += 1)
+		c.dash_ready.connect(func() -> void: ready[0] += 1)
+		await _run_to(w, 5.0)
+		# Tick the real cooldown explicitly so boundary checks don't depend on frame scheduling.
+		c.set_physics_process(false)
+		check(c.dash.tier == dash_tier and c.try_dash() and started[0] == 1,
+			"the loadout's dash tier %d starts normally" % dash_tier)
+		check(is_equal_approx(c.dash.cooldown_left, seconds) and not c.try_dash(),
+			"tier %d starts its exact %.0f-second cooldown immediately and refuses a second dash" % [dash_tier, seconds])
+		var state: Dictionary = _entry(c.hud_state(), &"dash")
+		check(state["tier"] == dash_tier and state["active"] and is_zero_approx(float(state["ready"])),
+			"tier %d HUD reports its tier and an empty cooldown ring on activation" % dash_tier)
+		c.dash.physics_tick(seconds * 0.5)
+		await sim.step_world(w, pt.dash_duration + 0.1)
+		state = _entry(c.hud_state(), &"dash")
+		check(not w.player.dashing and not state["active"] and is_equal_approx(float(state["ready"]), 0.5),
+			"tier %d keeps the normal dash duration and fills its HUD ring halfway on its own cooldown" % dash_tier)
+		check(not c.try_dash() and started[0] == 1 and ready[0] == 0,
+			"tier %d cannot be reused merely because the dash effect ended" % dash_tier)
+		c.dash.physics_tick(seconds * 0.5 - 0.125)
+		check(not c.try_dash() and is_equal_approx(c.dash.cooldown_left, 0.125) and ready[0] == 0,
+			"tier %d stays unavailable just before its cooldown expires" % dash_tier)
+		c.dash.physics_tick(0.125)
+		check(is_zero_approx(c.dash.cooldown_left) and ready[0] == 1
+			and is_equal_approx(float(_entry(c.hud_state(), &"dash")["ready"]), 1.0),
+			"tier %d becomes ready exactly at its deadline and fills the HUD ring" % dash_tier)
+		c.dash.physics_tick(1.0)
+		check(ready[0] == 1 and c.try_dash() and started[0] == 2
+			and is_equal_approx(c.dash.cooldown_left, seconds),
+			"tier %d emits ready only once and reuses the same cooldown on the next dash" % dash_tier)
+		await sim.free_world(w)
+
+	var configured: PowerupTuning = pt.duplicate() as PowerupTuning
+	configured.dash_cooldown = 9.0
+	configured.dash_upgrade_cooldowns = PackedFloat32Array([7.0, 5.0, 3.5])
+	check(is_equal_approx(configured.dash_cooldown_at(1), 9.0)
+		and is_equal_approx(configured.dash_cooldown_at(3), 5.0)
+		and is_equal_approx(configured.dash_cooldown_at(4), 3.5),
+		"dash cooldown lookups read resource data, not hard-coded tier timings")
+	var tuned_world: RunWorld = sim.build_world(RunSim.layout(3), _loadout({"dash": 4}))
+	tuned_world.powerup_tuning = configured
+	var tuned_controller: PowerupController = _controller(tuned_world)
+	await _run_to(tuned_world, 5.0)
+	tuned_controller.set_physics_process(false)
+	check(tuned_controller.try_dash() and is_equal_approx(tuned_controller.dash.cooldown_left, 3.5),
+		"the runtime uses a changed tier 4 cooldown resource")
+	tuned_controller.dash.physics_tick(1.75)
+	check(is_equal_approx(float(_entry(tuned_controller.hud_state(), &"dash")["ready"]), 0.5),
+		"the HUD uses the same changed cooldown resource as the runtime")
+	await sim.free_world(tuned_world)
 
 
 # --- Magnet -------------------------------------------------------------------------------

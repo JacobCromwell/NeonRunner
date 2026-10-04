@@ -4,6 +4,11 @@
 **Status:** Design in progress. Everything below is DECIDED unless marked *(proposed)* or *(open)*. Open items are tracked in `OPEN_QUESTIONS.md`.
 **Last updated:** September 26, 2026
 
+**Owner-approved revisions (October 3, 2026):** the requests in [USER_REQUESTS.md](USER_REQUESTS.md)
+take precedence where they differ from this historical checkpoint, including the four dash tiers
+and armor protection against Barnacle Turret contact. Current implementation and tuning details
+are recorded in [ARCHITECTURE.md](ARCHITECTURE.md); the original design sections below are preserved.
+
 ---
 
 ## 1. Concept

@@ -4,6 +4,7 @@ extends TestSuite
 ## the grab, weapons, protection, the doghouse, and its generator patterns and rules.
 
 const TURN_DUMMY: String = "res://tests/helpers/turn_dummy.gd"
+const CONTACT_DUMMY: String = "res://tests/helpers/dummy_enemy.gd"
 
 var sim: RunSim
 var t: OctodogTuning
@@ -24,6 +25,7 @@ func run() -> void:
 	await _test_weapons()
 	await _test_protection_and_dash()
 	await _test_passing_is_harmless()
+	await _test_charge_contacts()
 	await _test_gives_up_before_ceiling()
 	await _test_doghouse()
 	await _test_takes_turns()
@@ -95,6 +97,56 @@ func _gone(dog: Variant) -> bool:
 
 
 # --- Lunge fairness ---------------------------------------------------------------------------
+
+func _test_charge_contacts() -> void:
+	var w: RunWorld = sim.build_world(RunSim.layout(5, 900.0), Loadout.new())
+	w.set_physics_process(false)
+	w.player.set_physics_process(false)
+	w.player.setup(tuning, w.geo, 2)
+	var dog := w.director.spawn({"type": "octodog", "at": 80.0, "lane": 2, "seed": 11,
+		"params": {"doghouse": false, "charges": 2}}) as Octodog
+	dog.set_physics_process(false)
+	var victim: Enemy = _contact_dummy(w, 2, 80.0)
+	var causes: Array[StringName] = []
+	var hits: Array[int] = [0]
+	victim.defeated.connect(func(_enemy: Enemy, cause: StringName) -> void: causes.append(cause))
+	victim.health_changed.connect(func(_enemy: Enemy) -> void: hits[0] += 1)
+	await physics_frames(2)
+	for phase: Octodog.Phase in [Octodog.Phase.IDLE, Octodog.Phase.WINDUP, Octodog.Phase.TURN,
+			Octodog.Phase.SPRINT, Octodog.Phase.PACE, Octodog.Phase.GIVE_UP, Octodog.Phase.LEAVE]:
+		dog._set_phase(phase)
+		dog._tick(0.0)
+		check(victim.alive and hits[0] == 0, "Octodog physical contact doesn't damage NPCs outside its lunge")
+	dog._start_windup()
+	dog._tick(0.0)
+	check(victim.alive, "Octodog's real telegraph leaves an overlapping enemy unharmed")
+	dog._start_lunge()
+	dog._tick(0.0)
+	dog._tick(0.0)
+	check(not victim.alive and causes == [Enemy.CHARGE_DAMAGE_CAUSE] and hits[0] == 1,
+		"Octodog's real lunge hurts overlapping NPCs once, across its body and top, with no player cause")
+	var crossed: Enemy = _contact_dummy(w, 2, 75.0)
+	var beside: Enemy = _contact_dummy(w, 3, 75.0)
+	var overhead: Enemy = _contact_dummy(w, 2, 75.0)
+	overhead.position.y = 3.0
+	var host: Enemy = _contact_dummy(w, 2, 75.0, {"host": true})
+	var immune: Enemy = _contact_dummy(w, 2, 75.0, {"immune": true})
+	await physics_frames(2)
+	dog.lunge_velocity = Vector2(0.0, -10.0)
+	dog._tick(1.0)
+	check(not crossed.alive, "Octodog's real lunge sweeps an enemy crossed between frames")
+	check(beside.alive and overhead.alive, "Octodog misses noncontacting NPCs beside and above its lunge")
+	check(host.alive and immune.alive, "Octodog's charge respects host and weapon immunity")
+	check(w.score.kills == 0 and w.score.score == 0, "Octodog NPC charge kills grant no player kill rewards")
+	await sim.free_world(w)
+
+
+func _contact_dummy(w: RunWorld, lane: int, at: float, params: Dictionary = {}) -> Enemy:
+	var p: Dictionary = {"health": 100.0}
+	p.merge(params, true)
+	return w.director.spawn({"type": "dummy", "script": CONTACT_DUMMY, "at": at, "lane": lane,
+		"seed": 1, "params": p})
+
 
 ## GDD §9.4: the lunge hurts a player who stays in its line and misses one who switches lanes any
 ## time after the wind-up starts, at every lane count, from the edges too, head-on or diagonal.

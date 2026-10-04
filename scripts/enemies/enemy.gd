@@ -7,7 +7,7 @@ extends Node3D
 ## Enemies declare properties and never decide damage themselves (CLAUDE.md principle 8):
 ## - hurting the player: own Hazard hitboxes (add_hitbox) and fire Projectiles (world.projectiles);
 ##   DamageRules resolves every contact.
-## - being hurt: take_damage() from weapons, defeat() from contacts (stomp, claws, dash) or rules
+## - being hurt: take_damage() from weapons/NPC charges, defeat() from contacts (stomp, claws, dash) or rules
 ##   (baited into a gap, an EMP, ...).
 ## Every attack needs a visual and an audio warning before it can hurt (CLAUDE.md readability rules).
 ##
@@ -19,6 +19,9 @@ signal defeated(enemy: Enemy, cause: StringName)
 ## Left play without being defeated (fell behind, dissolved, gave up).
 signal retired(enemy: Enemy)
 signal health_changed(enemy: Enemy)
+
+## NPC friendly fire: defeat listeners must not award player kills, score or thief payouts.
+const CHARGE_DAMAGE_CAUSE: StringName = &"enemy_charge"
 
 # --- Declared properties (read by DamageRules, the weapon system and the score) ---------------
 var type_id: StringName = &"enemy"
@@ -74,6 +77,9 @@ var tuning_res: Resource
 var rng := RandomNumberGenerator.new()
 
 var _hitboxes: Array[Area3D] = []
+var _charge_contact_hits: Dictionary = {}
+var _charge_contact_query: PhysicsShapeQueryParameters3D
+var _charge_contact_shape: ConvexPolygonShape3D
 
 
 func setup(p_world: RunWorld, p_spawn: Dictionary, p_tuning: Resource) -> void:
@@ -145,8 +151,8 @@ func health_ratio() -> float:
 	return clampf(health / maxf(max_health, 0.001), 0.0, 1.0)
 
 
-## Weapon damage. Never hurts an immune_to_weapons enemy (a host, GDD §9.7; a generator, GDD §9.1),
-## direct or splash alike.
+## Weapon-compatible damage (also NPC charge contacts). Never hurts an immune_to_weapons enemy
+## (a host, GDD §9.7; a generator, GDD §9.1), direct or splash alike.
 func take_damage(amount: float, source: StringName, splash: bool = false) -> void:
 	if not alive or immune_to_weapons:
 		return
@@ -156,6 +162,60 @@ func take_damage(amount: float, source: StringName, splash: bool = false) -> voi
 	# on 0 (GDD §8's shots to kill) can leave a hair of float32 rounding error above it.
 	if health <= 0.001:
 		defeat(source)
+
+
+## Start each lunge/charge afresh. Only charge attackers allocate a swept contact query.
+func _begin_charge_contacts() -> void:
+	_charge_contact_hits.clear()
+	if _charge_contact_query == null:
+		_charge_contact_shape = ConvexPolygonShape3D.new()
+		_charge_contact_shape.margin = 0.0
+		_charge_contact_query = PhysicsShapeQueryParameters3D.new()
+		_charge_contact_query.shape = _charge_contact_shape
+		_charge_contact_query.collision_mask = TrackBuilder.LAYER_HAZARD
+		_charge_contact_query.collide_with_areas = true
+		_charge_contact_query.collide_with_bodies = false
+
+
+## Call only for actual charging motion. The convex hull of a box's start/end corners is its exact
+## translational sweep, including diagonal lunges (a merged AABB would hit things off that line).
+## Victims need an active physical part: detached attacks/waves, electrical hazards and lane
+## blockers aren't bodies. Damage uses the usual path, preserving hosts' and weapons' immunities
+## and any subclass damage rules; multiple body parts can hit a victim only once per charge.
+## Boss parts keep their encounter-specific damage/progression rules, not ordinary lethal hits.
+func _hurt_charge_contacts(hitbox: Hazard, previous: Transform3D) -> void:
+	if not alive or _charge_contact_query == null or not hitbox.is_active():
+		return
+	var collision := hitbox.get_child(0) as CollisionShape3D
+	if collision == null or collision.disabled or not collision.shape is BoxShape3D:
+		return
+	var box := collision.shape as BoxShape3D
+	var current: Transform3D = collision.global_transform
+	var start: Transform3D = current.affine_inverse() * previous * collision.transform
+	var half: Vector3 = box.size * 0.5
+	var corners := PackedVector3Array()
+	for x: float in [-half.x, half.x]:
+		for y: float in [-half.y, half.y]:
+			for z: float in [-half.z, half.z]:
+				var corner := Vector3(x, y, z)
+				corners.append(corner)
+				corners.append(start * corner)
+	_charge_contact_shape.points = corners
+	_charge_contact_query.transform = current
+	for contact: Dictionary in get_world_3d().direct_space_state.intersect_shape(_charge_contact_query, 64):
+		var victim_box := contact["collider"] as Hazard
+		if victim_box == null or not victim_box.is_active() or victim_box.is_electrical \
+				or victim_box.part not in [&"body", &"top", &"weak_point"]:
+			continue
+		var victim: Enemy = victim_box.enemy
+		if not is_instance_valid(victim) or victim == self or not victim.alive \
+				or victim.immune_to_weapons or victim.is_boss:
+			continue
+		var id: int = victim.get_instance_id()
+		if _charge_contact_hits.has(id):
+			continue
+		_charge_contact_hits[id] = true
+		victim.take_damage(victim.health, CHARGE_DAMAGE_CAUSE)
 
 
 ## Defeats the enemy (weapon, stomp, claws, dash, gap, emp, ...). Safe to call more than once.

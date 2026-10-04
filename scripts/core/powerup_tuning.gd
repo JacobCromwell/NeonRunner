@@ -45,9 +45,12 @@ extends Resource
 @export_range(1.0, 3.0, 0.05) var claws_wall_time_multiplier: float = 1.5
 
 @export_group("Juggernaut dash")
-## Duration, cooldown and speed (FB 17: 0.6 s, 8 s, +8 m/s).
+## Duration and speed (FB 17: 0.6 s, +8 m/s) stay the same at every tier.
 @export_range(0.1, 2.0, 0.05, "suffix:s") var dash_duration: float = 0.6
+## The original tier's cooldown, retained for existing tuning resources.
 @export_range(1.0, 30.0, 0.5, "suffix:s") var dash_cooldown: float = 8.0
+## Tiers 2–4: the owner's dash upgrades recharge in 6 / 4 / 3 seconds (USER_REQUESTS.md).
+@export var dash_upgrade_cooldowns: PackedFloat32Array = PackedFloat32Array([6.0, 4.0, 3.0])
 @export_range(0.0, 20.0, 0.5, "suffix:m/s") var dash_speed_bonus: float = 8.0
 
 @export_group("Magnet")
@@ -62,6 +65,13 @@ extends Resource
 ## Real (unscaled) seconds the slow-down lasts.
 @export_range(0.5, 10.0, 0.25, "suffix:s") var slow_time_duration: float = 3.0
 @export_range(1.0, 60.0, 1.0, "suffix:s") var slow_time_cooldown: float = 20.0
+
+
+## Dash tier 1 keeps its original cooldown; higher tiers use the upgrade table, clamped at max.
+func dash_cooldown_at(tier: int) -> float:
+	if tier <= 1 or dash_upgrade_cooldowns.is_empty():
+		return dash_cooldown
+	return at_tier(dash_upgrade_cooldowns, tier - 1)
 
 
 ## The value for `tier` (1-based) from a per-tier array, clamped to the array.

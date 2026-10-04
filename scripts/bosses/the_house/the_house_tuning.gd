@@ -15,6 +15,10 @@ extends Resource
 ## open on top as a red weak point while it sags low, stomped), three phases and the standard armor rule.
 ## Every number here is a placeholder (DESIGN-TBD: docs/OPEN_QUESTIONS.md items 299-303,
 ## docs/questions/e5a.md).
+## Campaign difficulty overrides live in marketplace_boss_tuning.tres: three attack-only spins per phase,
+## less space between attacks/spins and wider single cherry/lightning attacks. Warning times, the
+## route check's reaction/margins, persistent 7 locks, wall/ceiling holds and the hopper window stay intact.
+## The slot's par times include the additional attack-only spin in each phase.
 
 @export_group("Machine")
 ## DESIGN-TBD: its cabinet fills the street between the walls less this on each side; it stands

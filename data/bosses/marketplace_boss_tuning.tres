@@ -4,3 +4,8 @@
 
 [resource]
 script = ExtResource("1_tuning")
+opening_spins = PackedInt32Array(3, 3, 3)
+attack_gap = 0.85
+spin_gap = 1.0
+cherry_lanes = PackedInt32Array(2, 3, 4)
+fence_lanes = PackedInt32Array(2, 3, 4)

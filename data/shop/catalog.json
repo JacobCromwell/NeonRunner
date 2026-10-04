@@ -1,6 +1,6 @@
 {
 	"version": 1,
-	"_note": "DESIGN-TBD: every price and most tier counts are placeholders (OPEN_QUESTIONS §4). GDD §8 fixes the weapon's four tiers. R7 laid these prices against tools/measure/economy.gd's reading of the post-playtest economy (G1 pace, G3 free armor, G4 laser tier 1); see docs/questions/r7.md for the table and what's still open.",
+	"_note": "DESIGN-TBD: prices and most tier counts are placeholders (OPEN_QUESTIONS §4), except the owner's dash upgrades (USER_REQUESTS.md): four total tiers, the existing base price and three upgrades at 800 / 1000 / 1200 credits. GDD §8 fixes the weapon's four tiers. R7 laid these prices against tools/measure/economy.gd's reading of the post-playtest economy (G1 pace, G3 free armor, G4 laser tier 1); see docs/questions/r7.md for the table and what's still open.",
 	"items": [
 		{
 			"id": "weapon", "kind": "permanent", "icon": "weapon",
@@ -24,9 +24,12 @@
 		{
 			"id": "dash", "kind": "permanent", "icon": "dash",
 			"name": "Juggernaut dash",
-			"description": "Tap to barrel through enemies and obstacles. Recharges after use.",
+			"description": "Tap to barrel through enemies and obstacles. Recharges in 8 seconds.",
 			"tiers": [
-				{ "name": "Juggernaut dash", "price": 1800 }
+				{ "name": "Juggernaut dash", "price": 1800, "description": "Barrel through enemies and obstacles. Recharges in 8 seconds." },
+				{ "name": "Juggernaut dash II", "price": 800, "description": "Barrel through enemies and obstacles. Recharges in 6 seconds." },
+				{ "name": "Juggernaut dash III", "price": 1000, "description": "Barrel through enemies and obstacles. Recharges in 4 seconds." },
+				{ "name": "Juggernaut dash IV", "price": 1200, "description": "Barrel through enemies and obstacles. Recharges in 3 seconds." }
 			]
 		},
 		{

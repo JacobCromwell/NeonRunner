@@ -158,8 +158,8 @@ func _test_sounds_and_hint() -> void:
 	check(found, "it has a first-encounter hint (enemy:gilded_sentinel)")
 
 
-## GDD §9.11: decorative statues never stand at wall-run height (a statue there is a live one), on the
-## Golden Zone's ledges and in the Golden Palace's alcoves alike.
+## GDD §9.11: decorative statues stand at the wall base, while a statue at wall-run height is a live
+## one. The Golden Zone's recessed facade mounts and Golden Palace's base alcoves share that rule.
 func _test_decorative_statues() -> void:
 	var top: float = tuning.wall_max_height + tuning.hurtbox_size.x * 0.5
 	for path: String in [GOLDEN_SKIN, PALACE_SKIN]:
@@ -170,7 +170,9 @@ func _test_decorative_statues() -> void:
 			for spot: Dictionary in skin.statue_spots(side, side * 4.5, 0.0, 600.0):
 				lowest = minf(lowest, (spot["center"] as Vector3).y)
 				count += 1
-		check(count > 0 and lowest > top + 2.0, "%s: its %d decorative statues stand at %.1f m or higher, far above a wall run (%.1f m)"
+		var base_y: float = skin.decorative_statue_mount_y()
+		check(count > 0 and absf(lowest - base_y) < 0.001 and lowest < top,
+			"%s: its %d decorative statues use the wall-base mount at %.1f m, below the wall-run band (%.1f m)"
 			% [path.get_file(), count, lowest, top])
 
 
@@ -246,7 +248,8 @@ func _test_skin_opens_niche() -> void:
 	for path: String in [GOLDEN_SKIN, PALACE_SKIN]:
 		var skin := load(path) as GoldenSkin
 		var face_x: float = -4.5
-		var entry := {"type": "gilded_sentinel", "at": 20.0, "side": -1, "lane": 0}
+		# Keep the live niche away from the Palace's deterministic decorative bay at distance 20.
+		var entry := {"type": "gilded_sentinel", "at": 22.0, "side": -1, "lane": 0}
 		var plain := Node3D.new()
 		tree.root.add_child(plain)
 		skin.note_wall_enemies(-1, 0.0, 40.0, [] as Array[Dictionary])

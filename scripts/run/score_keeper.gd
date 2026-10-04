@@ -12,7 +12,7 @@ extends Node
 ## Thefts (GDD §9.12, the Tithe Collector; task B6): a thief's touch (DamageRules ROBBED, the player's
 ## `robbed`) takes a share of the run's credits as they stand (rob()), and the thief holds it, as it
 ## holds credits it takes off the track before the player reaches them (hold(); task C5's collector
-## sucks them up). Caught (any defeat), a thief pays back everything it holds plus its jackpot
+## sucks them up). Caught by the player, a thief pays back everything it holds plus its jackpot
 ## (Enemy.jackpot_credits), straight into the run's credits (pay_out()); one that leaves uncaught keeps
 ## it (stolen_kept(), which the run's pay leaves out, RunResult). The level score never drops, so a theft
 ## never costs a star or a leaderboard place; credits a thief takes off the track leave the best possible
@@ -137,8 +137,8 @@ func stolen_kept() -> int:
 ## holds and `jackpot` go straight into the run's credits (RunEffects flies them in as a burst of
 ## coins), with the payout's sound (as the credit field plays a credit's). What it took off the track and
 ## the jackpot count as collected, in the score too; what it took from the player was scored already.
-## Returns the credits paid. The director's enemy_defeated calls it for every defeat (a thief must be
-## spawned through the director).
+## Returns the credits paid. The director's enemy_defeated calls it for player-attributed defeats
+## (a thief must be spawned through the director).
 ## DESIGN-TBD (docs/questions/b6.md 4): straight into the run's credits, not scattered to collect.
 func pay_out(thief: Node3D, jackpot: int) -> int:
 	var key: int = thief.get_instance_id()
@@ -192,6 +192,8 @@ func _on_robbed(hazard: Hazard) -> void:
 
 
 func _on_enemy_defeated(enemy: Enemy, cause: StringName) -> void:
+	if cause == &"enemy_charge":
+		return
 	if not enemy.is_obstacle:
 		kills += 1
 	add_bonus(&"kill", enemy.score_value, enemy.display_name)

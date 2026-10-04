@@ -6,7 +6,7 @@ extends GoldenSkin
 ## the palace's own halls, galleries and arches. The final boss follows it.
 ## Reuses D6a's materials and statue kit wholesale (extends GoldenSkin): the same white, cream, red
 ## and gold palette (gold reflective metal, never glowing neon), the same cult emblem and feed
-## (CultEmblem, CultFeed), the same statue kit (GoldenStatue) and the same hazards, triggers and
+## (CultEmblem, CultFeed), the same wall-base-mounted decorative statue kit (GoldenStatue) and the same hazards, triggers and
 ## finish line (fence(), wall_sign(), pad(), ramp(), speed_pad(), finish_line(), all inherited
 ## unchanged). It keeps GoldenSkin's sky and lighting too (make_environment(), apply_darkness()),
 ## tuned in data for an enormous vaulted interior rather than a dusk skyline (GDD §5: "an enormous
@@ -38,8 +38,8 @@ extends GoldenSkin
 
 @export_group("Colonnade")
 ## DESIGN-TBD (docs/questions/d6b.md): how high the colonnade's pilasters and bays rise above
-## frieze_top, comfortably clear of every bay's content (an alcove's statue, GoldenStatue.STATURE +
-## PEDESTAL_HEIGHT above statue_min_height; a tapestry, the data file's banner_length tall).
+## frieze_top, comfortably clear of every bay's content (a tapestry, the data file's banner_length
+## tall). Alcove statues are mounted at the shared GoldenSkin wall base rather than in this upper zone.
 @export_range(10.0, 26.0, 0.5, "suffix:m") var pilaster_height: float = 15.0
 
 @export_group("Palace ceilings")
@@ -51,6 +51,8 @@ extends GoldenSkin
 var _floor: GoldenPalaceFloor
 var _walls: GoldenPalaceWalls
 var _palace_ceilings: GoldenPalaceCeilings
+## Decorative low wall pieces must not straddle a wall gap at a chunk edge.
+var _wall_gaps: Dictionary = {}
 
 # No _init() override: GoldenSkin._init() runs unchanged and sets enemy_variant = &"golden" (the
 # Golden Palace's cyborgs wear the same ceremonial enforcer, GDD §9.2).
@@ -100,6 +102,20 @@ func wall_gap(parent: Node3D, side: int, face_x: float, start: float, end: float
 		var batch := MeshBatch.new()
 		palace_floor().below(batch, absf(face_x), start, end)
 		batch.commit(parent)
+
+
+## The wall gaps near the wall TrackBuilder is about to draw. GoldenPalaceWalls uses this to leave
+## low alcoves and pilasters clear at a gap edge, where their footprint could otherwise enter the cut.
+func note_wall_gaps(side: int, gaps: Array[Vector2]) -> void:
+	_wall_gaps[side] = gaps
+
+
+## True when a decorative wall footprint overlaps a nearby gap on `side`.
+func wall_gap_near(side: int, from: float, to: float) -> bool:
+	for g: Vector2 in _wall_gaps.get(side, [] as Array[Vector2]):
+		if g.x < to and g.y > from:
+			return true
+	return false
 
 
 ## A ceiling over its lanes, reaching to the wall faces where the section says they are (GDD §3,

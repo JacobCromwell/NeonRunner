@@ -30,7 +30,7 @@ volume_db = {
 "credit_5": -10.5,
 "cyborg_charge": -3.0,
 "cyborg_drop_land": -4.0,
-"cyborg_shot": -5.5,
+"cyborg_shot": -3.2,
 "dash": -2.0,
 "dash_ready": -8.0,
 "died": -2.0,

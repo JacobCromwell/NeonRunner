@@ -1,7 +1,7 @@
 extends TestSuite
 ## The Sewer Swarm's whole fight (GDD §10; task E4b): the Rising, Surrounded and The Host in a row:
 ## - a runner who reads it (SewerSwarmBot: it baits every surge and lunge and takes every crouch's ramp; no god
-##   mode, no armor at the start) wins the whole fight at 3, 5 and 6 lanes and both speeds, phase after phase,
+##   mode, no loadout or armor pickups) wins the whole fight at 3, 5 and 6 lanes and both speeds, phase after phase,
 ##   never touched, and nothing is made mid-fight;
 ## - every attempt plays out the same way;
 ## - its par times: three stars for a clean win, two for one that lets a chance go by in each phase;
@@ -47,7 +47,6 @@ func run() -> void:
 
 ## The fight at `lanes` and `speed` m/s (or as `ctx_in` has it: a retry): [world, boss, context].
 func _fight(lanes: int, speed: float, ctx_in: RunContext = null) -> Array:
-	var boss := BossEncounter.create(def) as SewerSwarm
 	var ctx: RunContext = ctx_in
 	if ctx == null:
 		var t: MovementTuning = tuning
@@ -56,10 +55,12 @@ func _fight(lanes: int, speed: float, ctx_in: RunContext = null) -> Array:
 			t.run_speed = speed
 		ctx = RunContext.new()
 		ctx.mode = RunContext.Mode.QUICK
-		ctx.boss = def
+		ctx.boss = def.duplicate() as BossDef
+		ctx.boss.armor_rule = false
 		ctx.config = BossArena.base_config(def)
 		ctx.config.lane_count = lanes
 		ctx.tuning = t
+	var boss := BossEncounter.create(ctx.boss) as SewerSwarm
 	var arena: BossArena = boss.plan_arena(ctx)
 	var world: RunWorld = sim.build_world(arena.layout, ctx.loadout, ctx.tuning, ctx.config)
 	boss.setup(world, ctx, arena)
@@ -122,7 +123,7 @@ func _play(lanes: int, speed: float, skips: int = 0, ctx_in: RunContext = null) 
 # --- The whole fight -------------------------------------------------------------------------------
 
 ## A runner who reads it wins the whole fight at every lane count and both speeds, through every phase in
-## turn, never touched by an attack, without god mode or armor at the start; no crowd is made mid-fight.
+## turn, never touched by an attack, without god mode, a loadout or armor pickups; no crowd is made mid-fight.
 func _test_wins_whole_fight() -> void:
 	for speed: float in SPEEDS:
 		for lanes: int in LANES:
@@ -138,6 +139,8 @@ func _wins(lanes: int, speed: float) -> void:
 		"" if world.player.alive else ": %s at %.0f m in phase %d" % [out[4], world.player.distance, boss.phase_index + 1]])
 	check(_events(boss, &"surge_hit").is_empty() and _events(boss, &"host_hit").is_empty(),
 		"never touched by a surge or the Host %s" % tag)
+	check(world.player.armor == 0 and world.player.shield == 0 and _events(boss, &"armor_pickup").is_empty(),
+		"the harder fight needs no protection or powerups %s" % tag)
 	var baited: int = 0
 	for e: Dictionary in _events(boss, &"cluster_destroyed"):
 		baited += 1 if e["cause"] in [&"fence", &"hole"] else 0
@@ -238,8 +241,10 @@ func _test_campaign() -> void:
 func _campaign_flow(lanes: int) -> void:
 	var tag: String = "(%d lanes)" % lanes
 	App.play_step(App.campaign.step("gangland/3"))
+	App.begin_run()
 	await physics_frames(10)
-	check(App.run != null and App.run.world.geo.lane_count == lanes, "Gangland's last level starts %s" % tag)
+	check(App.run != null and App.run.state == LevelRun.State.RUNNING and App.run.world.player.running
+		and App.run.world.geo.lane_count == lanes, "Gangland's last level starts %s" % tag)
 	if App.run == null:
 		return
 	App.run.world.player.distance = App.run.world.layout.length - 3.0
@@ -251,6 +256,7 @@ func _campaign_flow(lanes: int) -> void:
 		return
 	App.continue_after_result(level_result)
 	(App.screen as ShopScreen).on_close.call()
+	App.begin_run()
 	await physics_frames(3)
 	var run: LevelRun = App.run
 	check(run != null and run.encounter is SewerSwarm and run.context.step.id == "gangland/boss"
@@ -281,6 +287,7 @@ func _campaign_flow(lanes: int) -> void:
 	if shop == null:
 		return
 	shop.on_close.call()
+	App.begin_run()
 	await physics_frames(3)
 	run = App.run
 	boss = run.encounter as SewerSwarm if run != null else null

@@ -312,7 +312,8 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
     track before the player gets them (C5's collector sucks them up): it holds them, and the stars' best
     score (`max_credit_score`) leaves them out while it does. Any defeat of a thief is a catch: the
     director's `enemy_defeated` calls `pay_out(thief, enemy.jackpot_credits)`, which pays everything it
-    holds plus its jackpot straight into the run's credits (with the `jackpot` sound; what it took off the
+    holds plus its jackpot straight into the run's credits for a player-attributed defeat (with the
+    `jackpot` sound; what it took off the
     track and the jackpot count as collected, score and best score). A thief must be spawned through the
     director. One that leaves uncaught keeps it: `stolen_kept()`, which `RunResult` takes out of the pay
     (`credits_stolen`; completion pays what's left plus the bonus, a death or a quit 20% of what's left)
@@ -448,6 +449,12 @@ every attempt at a seed plays out the same way. Setting `is_host` also sets `imm
 splash, the same way a fence generator declares its own immunity (GDD §9.1), so no targeting, no
 damage and no health bar; only a stomp, the claws or the dash still kill it, with the host bonus.
 Every attack needs a visual **and** audio warning before it can hurt (CLAUDE.md readability rules).
+**Enemy charge contacts** (owner revision, October 3, 2026): Octodog and Buzz Overdrive active charges
+use one shared swept-box contact helper on `Enemy`, against live physical enemy hitboxes rather than
+lane labels or detached attack effects. Each victim is hit at most once per charge through
+`take_damage(..., &"enemy_charge")`; bosses and weapon-immune enemies retain their immunity.
+`EnemyDirector.enemy_defeated` still drives lifecycle/effects, but `ScoreKeeper` ignores that cause:
+no player kill count, bonus or thief jackpot/recovery is awarded for an NPC collision.
 **Readied with the level** (task PERF1): `EnemyDirector.warm_up()` (from `setup()`, during the load) loads
 the script and tuning of every type the layout names, and for a type whose script has a static
 `warm_up(world: RunWorld, entry: Dictionary) -> Node` builds one look of each kind (type, skin, host:
@@ -631,8 +638,9 @@ tuning (`BarnacleTurretTuning`, `data/enemies/barnacle_turret.tres`), its model
   (`aim_error`, `shot_jitter`), with faster bolts (so they can meet a rider closing in at run speed well
   before the turret); the dodge window is `min_warning_time` either way.
 - **Body.** A solid `body` hitbox from the underside to the stomp line and its crown below it, a `top`
-  that is `upside_down` (Damage and interactions): running into it is deadly unless shielded, clawed or
-  dashing, armor doesn't help; claws, the dash, a stomp from the ceiling or weapons kill it. Its health is
+  that is `upside_down` (Damage and interactions). Both declare enemy attacks, so armor absorbs one
+  contact hit using the shared armor/grace rules; unprotected contact is still deadly. Shield, claws
+  and dash retain their rules; claws, the dash, a stomp from the ceiling or weapons kill it. Its health is
   in plain laser tier 1 shots rounded to whole shots at the level's `enemy_scaling`
   (`whole_health_at`): 5 (7 at laser tier 1, with `PowerupTuning.tier1_extra_shots`) through the Corporate
   zone, 6 (8) in the Dead Zone and the Golden Zone. Nothing of it reaches more than `REACH_BELOW` (0.8 m)
@@ -774,7 +782,7 @@ across the street), its cut's shader (`gilded_sentinel_cut.gdshader`), its sound
 
 `LevelGenerator` (`scripts/world/level_generator.gd`) builds a `LevelLayout` (pure data) from
 patterns, a difficulty value and a seed, for any lane count. Passes, each with its own random stream:
-patterns (filtered by the level's features) → enemy rules scripts → credits. Helpers for rules
+patterns (filtered by the level's features) → enemy rules scripts → density/filler placement → credits. Helpers for rules
 scripts: `rng_for(name)`, `add_enemy(type, at, lane, side, params)`, `add_hull_with_pad(lane, at,
 seconds, lanes)`, `ceiling_lanes(pads, at, one_lane_ok)`, `one_lane_seconds(lanes, seconds)`,
 `floor_clear(from, to)`, `enemy_floor_span(entry)`, `enemy_uses_floor(entry)`,
@@ -789,6 +797,36 @@ paced in bursts `quiet_at(at)`, `stretch_end(at)`, `burst_index(at)`, `quiet_str
 `pattern_kind(pattern)` and `enemy_count(pattern, lanes)` say how the recency curve counts a pattern),
 and `picks` lists the patterns the last build placed (id, features, spot, length, due or not), for
 tests and `tools/measure/level_shape.gd`. Pattern format: `data/patterns/README.md`.
+
+**Progressive danger density** (owner revision, October 3, 2026). `danger_density.gd` overlays the
+native layout through enemy and obstacle hooks around the filler pass. The per-level
+`LevelConfig.danger_density_increase` dial is calibrated to actual generated enemy and obstacle
+counts, not merely interpreted as a spawn-probability multiplier. City uses 0.15; Gangland
+0.18/0.20/0.22; Marketplace 0.24/0.26; Corporate 0.28/0.29; Dead Zone 0.37; Golden 0.38.
+Prototype and boss arenas stay at 0, which draws nothing and preserves the old layout exactly.
+Numbers and safety margins live in `data/tuning/danger_density.tres`.
+
+Small enemy encounters stay within existing feature introductions and warning rules; later levels
+also add fair ceiling turrets where that feature exists. Obstacle rows use spare lane width where
+possible, or additional longitudinal opportunities when a row already leaves only one lane open.
+The pass checks the reachable route through successive rows, not just a permanently empty lane.
+Wall fences retain their placement rules, Resonators keep their whole visit clear, and doodads cannot
+occupy the only route the new rows require. Added pieces receive no extra risk-credit pay.
+Durations and reward tables are unchanged, including City 1's 55 seconds.
+
+`tools/measure/danger_density.gd` reports counts by level, band and danger category, and compares
+dial-0 layouts with a saved before-change dump. Representative measurements (native seed plus
+9001/9002, 3/5/6 lanes) are:
+
+| Band | Enemy count increase | Obstacle count increase |
+|---|---|---|
+| Early | 16.7-18.1% | 17.0-17.5% |
+| Middle | 26.4-26.7% | 26.4-27.2% |
+| Late | 31.6-34.6% | 33.0-37.7% |
+
+The regression suite asserts requirement-based bands of 10-20%, 15-35% and 30-40%, respectively,
+for both categories at every supported lane count, plus route safety, determinism, economy and
+build-time guards. All 225 saved dial-0 layouts match the pre-change baseline.
 
 **Ramps** (GDD §3) launch the player onto the wall higher than a free entry and add a speed boost
 that fades away the same way a speed pad's does (both share `boost_decay_per_second`;
@@ -1375,6 +1413,10 @@ see Damage and interactions); the breakables (shield, grapple) are charges on th
 controller's header documents its API: `hud_state()` for the HUD (`charges` -1 for permanent items; the
 armor's hits, with its return as `ready`), `equipment()` for the player model, and `try_dash()` /
 `try_slow_time()`.
+Dash has four permanent tiers: prices 1,800 / 800 / 1,000 / 1,200 credits in the shop catalog, with
+cooldowns 8 / 6 / 4 / 3 seconds in the powerup tuning resource. Its module selects the owned tier
+for both runtime readiness and the HUD. Existing tier-1 ownership and equip state need no save migration;
+the generic shop advances sequentially and marks tier 4 maxed.
 The player model shows what the run carries (`PlayerAvatar.set_equipment`, looks in `PlayerSuit`): the
 weapon sits over the gold arm's (left) shoulder, so shots leave from there (`Player.weapon_muzzle()`),
 and armor that breaks in play shatters. Effects tied to the runner's own glow (the dash's shell and
@@ -1489,9 +1531,8 @@ and keeps to:
   gilded planter with stylized gold reed fronds (small), a fountain with a still marble basin and a thin
   falling jet of water (`MeshKit.PAT_WATER`, scenery only, GDD §5; medium) and a robed statue on a
   plinth (large) -- deliberately not the Gilded Sentinels' armoured guard with a halberd (`GoldenStatue`,
-  task C4): "never at wall-run height (the Gilded Sentinels' language)" is true for free (every doodad
-  stands on the floor, far below any statue ledge, `GoldenSkin.statue_min_height`), but the doodad statue
-  also never reuses that kit or its shape -- a plain draped, faceless figure with its hands clasped and
+  task C4). The decorative wall guards now also stand at the wall base, but this lane doodad
+  never reuses their kit or its shape -- a plain draped, faceless figure with its hands clasped and
   nothing raised -- so it can never be mistaken for the live enemy even up close. `test_golden_skin`
   guards against the doodad script ever building itself from `GoldenStatue`.
   None of the six needed a new mesh-kit pattern or shader include: the kit's existing patterns (e.g.
@@ -1824,9 +1865,9 @@ shader, `golden_facade.gdshader`. White and cream with red and gold accents (GDD
   lip, dark line and strip of every zone, with a soft halo on the far edge. Medallions of the emblem are
   inlaid in some walkways, one lane square, one slot per lane per chunk, clear of gap edges
   (`GoldenWalkways.medallions()`). The suite pins that gaps read as holes at 3 and 5 lanes.
-- *The calm band.* Every building face is flush from the canal to `band_top` (7 m): stone with only the
-  gold wall-run height marks, nothing vent- or niche-like (vents are the Screech's lairs, niches the
-  Sentinels'), nothing sticking out. The entablature above carries the palaces' statue ledge.
+- *The calm band.* Every building face is flush from the canal to `band_top` (7 m), with gold wall-run
+  height marks and recessed openings for decorative wall-base guards and live Sentinels; nothing
+  projects into the wall-run path. The entablature above retains its architectural ledge.
 - *The statue kit* (`GoldenStatue`, for the Gilded Sentinels, task C4). Statue space: the pedestal's
   foot at the origin, facing +Z. Poses are dictionaries of joint angles (`shoulder_r/l`, `elbow_r/l`,
   `grip`, `head`, in degrees; missing keys take `REST`); `POSES` names the decorative `guard`, `vigil`,
@@ -1841,8 +1882,14 @@ shader, `golden_facade.gdshader`. White and cream with red and gold accents (GDD
   band (`open_rects`: the face's pieces around it, sharing their edges exactly) and appends the recess
   there (`add_niches`: a dark back and sides, a marble floor, a flush gold frame whose spandrels round it
   into an arch); the Golden Palace's walls do the same with their panel. The skin's kit is
-  `GoldenSkin.statues()` (its gold and solid material). Decorative statues stand only on the ledge, at
-  `statue_min_height` (8.8 m) or higher; `GoldenSkin.statue_spots()` lists them.
+  `GoldenSkin.statues()` (its gold and solid material). Decorative statues in both Golden skins stand
+  at `statue_base_height` (0.10 m). The shared mount helper uses each rotated pose's outward projection
+  plus `statue_base_inset` (0.10 m safety margin), rather than unnecessarily burying the body using
+  a rotation-independent radius. The recess back clears the wallward projection by 0.05 m, and the
+  decorative opening is 2.0 m wide. A decorative-mesh-only gold albedo lift, without emissive glow,
+  keeps guards discernible from the runner camera. Pedestals and recess sills stay at or above the
+  floor, and every pose stays behind the wall face. `GoldenSkin.statue_spots()` lists them. Their meshes are scenery only;
+  live Sentinel niche positions and hitboxes are unchanged.
 - *Ceilings from their lanes (task B3).* `GoldenCeilings` builds a golden bridge (a coffered underside,
   a marble face with the emblem's crest, water off some into gilded troughs), a gallery of golden arches
   (only across every lane) or a hover-yacht from the ceiling's collision box and lane seams; over fewer
@@ -1851,7 +1898,8 @@ shader, `golden_facade.gdshader`. White and cream with red and gold accents (GDD
   yacht's engine halos stop at the underside (`MeshKit.stern_halo`), as every zone's far end must.
 - *Ceilings under the walls' decorations.* The walls build without knowing where ceilings are, so
   `GoldenFacades.clearance_profile()` declares what they hold out over the street, as (reach, lowest
-  height) tiers: the statue ledge, the statues, the gilded frames, the banners, and `OVER_STREET` beyond.
+  height) tiers for upper architectural decorations: the ledge, gilded frames, banners, and
+  `OVER_STREET` beyond. Wall-base guards are recessed rather than street overhangs.
   `GoldenCeilings.headroom()` turns it into how high a ceiling may rise at a distance from a wall:
   arches are flatter over a narrow street (`arch_rise()`), a bridge's face stays under the ledges and its
   rail stops short of the statues, and a yacht near a wall has a lower cabin and no mast. The suite
@@ -1888,9 +1936,11 @@ same script, different values). Only `floor_segment()`, `wall_section()` and `ce
   `pilaster_height`. Between two pilasters, a bay (GDD §5) holds a gallery (a gold-framed opening
   showing the cult's feed or its emblem, `gallery_share`), an alcove (a decorative statue in the same
   niche shape of the statue kit, `GoldenStatue.niche()` (a live Gilded Sentinel's is set into the wall,
-  `recess()`, task C4), `statue_share`, always at
-  or above `statue_min_height`), a tapestry (`banner_share`) or a relief (`relief_share`); otherwise
-  the flush panel simply carries on. `statue_spots()`, `feed_boards()` and `cult_emblems()` list a
+  `recess()`, task C4), `statue_share`, mounted at the wall base using the shared recessed mount),
+  a tapestry (`banner_share`) or a relief (`relief_share`); otherwise
+  the flush panel simply carries on. Through the existing `note_wall_gaps()` hook, low alcoves
+  (their statues, recesses and frames) and pilasters are omitted when their footprints cross a physical
+  wall gap, including at chunk boundaries. `statue_spots()`, `feed_boards()` and `cult_emblems()` list a
   bay's content the same way the Golden Zone's `GoldenFacades` lists its ledges, frames and banners.
 - *The ceilings* (`GoldenPalaceCeilings`, task B3's narrow-ceiling rule): a bridge between galleries or
   an archway (both need every lane; over fewer lanes both fold into the narrower BALCONY) or a hanging
@@ -2065,7 +2115,9 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
   modulate colour) rather than `IconFactory.draw()`: every polygon or polyline command costs its own
   draw call every frame, and the HUD's icons alone were once 220 of about 370.
 - **Audio:** `SfxLibrary` maps sound names to `assets/sfx/*.wav` (volumes in
-  `data/audio/sfx_library.tres`); `Music` (`MusicDirector`) plays `assets/music/` (files, levels and
+  `data/audio/sfx_library.tres`). The cyborg firing effect alone is -3.2 dB instead of -5.5 dB:
+  about 1.303 times its former amplitude, matching the owner's approximately 30% increase;
+  charge warnings and the player's laser are unchanged. `Music` (`MusicDirector`) plays `assets/music/` (files, levels and
   tempos in `data/audio/music_library.tres`), one looping track at a time with crossfades: the menus'
   default track and one default per zone, named after the zone's id (`ZoneDef.music`). Defaults are generated by code in
   `tools/asset_gen/` (`tools/godot.sh sfx` / `music`): a track is composed in `track_<name>.gd` with
@@ -2392,8 +2444,12 @@ after Marketplace 2 at the Marketplace's 22.6 m/s (`--boss=marketplace_boss` or 
 in debug builds): its tuning's distances that stand for a time (the buttons' and the stomp box's depth,
 the margins) are written at 18 m/s and multiplied by the run's pace (`TheHouse.run_pace()`), and where an
 attack, a button, a ceiling or its jackpot stop lands is a time at the run speed, so the fight keeps its
-seconds (a clean fight takes 66-68 s at 3, 5 and 6 lanes and 18 and 22.6 m/s; par 72 s for three stars,
-92 s for two). Every strike, every set of buttons and the jackpot's approach is planned only where a
+seconds. The October 3 difficulty revision uses three opening attack-only spins per phase instead of
+two, attack/spin gaps of 0.85/1.0 s instead of 0.95/1.25 s, cherry coverage of 2/3/4 lanes and lightning
+coverage of 2/3/4 lanes across phases, constrained by the existing fair-route planner.
+Pars are 86 s for three stars and 108 s for two. Clean unprotected wins measure 80.4-82.4 s across
+3, 5 and 6 lanes at 18 and 22.6 m/s, with all 27 strikes from the nine opening spins retained.
+Every strike, every set of buttons and the jackpot's approach is planned only where a
 route exists (`TheHouseRoute`) for a runner who reads the warnings and moves a reaction time after them,
 through everything else still on the track, at any lane count: that's how every attack has an escape and
 every button is reachable while dodging. Phase 1's buttons are all on the floor; each later phase puts its
@@ -2564,9 +2620,16 @@ Surrounded, phase 3 The Host, the defeat, par times and its slot). Its slot's `s
 Gangland 3 at Gangland's 21.8 m/s (debug builds: `./play.sh --boss=gangland_boss`, quick play's 18 m/s).
 Its tuning's distances that stand for a time (where a surge meets the runner, how far it charges, the baits'
 spacing, the fairness margins) are written at 18 m/s and multiplied by the run's pace
-(`SewerSwarm.run_pace()`), so at Gangland's 21.8 m/s it plays the same in seconds: a clean fight takes 86.1 s
+(`SewerSwarm.run_pace()`), so at Gangland's 21.8 m/s it plays the same in seconds. Before the October 3
+difficulty revision, a clean fight took 86.1 s
 at both speeds (the Rising ends at 19.7 s, Surrounded at 53.6 s), one that lets a chance go by in each phase
-108.3 s; its par times are 92 s for three stars and 125 s for two. Phase 3 has no clusters left (GDD §10's
+108.3 s; its par times remain 92 s for three stars and 125 s for two. The revision raises cluster health
+36 to 48, reduces bait spacing 200 to 185 reference metres and Host offsets 88 to 74, tightens surge
+warnings/locks without reducing the time to reach bait, shortens wall-climb gaps 2.5 to 1.75 s, and
+changes Host fling windup/flight/splat durations from 0.7/1.1/0.8 to 0.6/0.9/1.0 s.
+Measured clean wins take 84.5 s (phase ends 18.8/50.2 s), and a missed chance in each phase takes
+109.5 s, within the unchanged pars.
+Phase 3 has no clusters left (GDD §10's
 "flings the remaining clusters": DESIGN-TBD, docs/questions/e4.md): the Host flings balls of screeches
 scooped from the horde, from the clusters' crowd pool. The boss brings no normal enemies (`warm_enemies()`
 is empty): every crowd, the Host, the pipe and the jump marks are made with the fight and drawn hidden at the
@@ -2741,7 +2804,7 @@ stock. `tools/measure/economy.gd` reads a campaign's credits, payouts and the sh
 what a death or quit pays, the running wallet of a single clean playthrough, and the first level each
 catalog price is in reach of it.
 
-**Approved early-economy revision (October 3, 2026).** The owner's answers in
+**Approved early-economy revision (October 3, 2026; pre-density earnings snapshot).** The owner's answers in
 `docs/USER_REQUESTS.md` supersede the historical R7 early-affordability assumption: City 1 stays
 55 seconds, its lower earnings are intentional, and tests change instead of rewards or prices.
 After the approved additive 30% floor-gap changes and Zone 2+ playable wall gaps, measured with
@@ -2755,6 +2818,9 @@ The isolated duration comparison disables additive floor gaps on in-memory copie
 earns 556 available credits / 489 wallet, versus 55 seconds' 341 / 339. This historical controlled
 comparison is not the current post-gap wallet. Economy tests retain the other affordability,
 death-versus-finish and whole-playthrough guards, plus a shortening-driven earnings regression.
+The subsequent danger-density overlay can move collectibles around new hazards, so the figures above
+are historical rather than freshly measured totals. It changes neither duration nor reward tables,
+and its added hazards earn no extra risk-credit pay.
 
 The save has a version (`Profile.VERSION`, now 2). `Profile.from_dict()` brings an older save up to
 date as it loads (`_migrate`): version 1's armor stock (armor was a breakable then) is paid back in
@@ -3032,8 +3098,8 @@ its whole time; wall runners stepping on right before it (cut), jumping on (abov
 sliding; armor, the shield and the dash; its solid body back in its niche; 17 laser tier 1 shots through
 the real weapon; the kick; twice and pairs; turns with a `TurnDummy` (its claim holds another back, and it
 lets the runner pass when one begun before is on); Reduced flashing; the same every attempt. It also checks its look (one shared mesh, the eyes' own
-material, the statue inside its niche), the Golden skins opening the niche, decorative statues never at
-wall-run height, its placement rules on hand-built layouts at 3, 5 and 6 lanes, the wall fences keeping off
+material, the statue inside its niche), the Golden skins opening the niche, decorative statues on
+recessed wall-base mounts, its placement rules on hand-built layouts at 3, 5 and 6 lanes, the wall fences keeping off
 it, and Golden 2 and the Palace's real layouts (its rules, `LayoutChecks.check_layout`, the introduction,
 the same build twice). `test_ceilings` covers narrow
 ceilings (B3) from the layout to the screen: the

@@ -11,9 +11,10 @@ extends ZoneSkin
 ## canal far below, with the orange edge glow on the collision edge as in every zone. The walkways
 ## stand still, so their plate seams, mist, drifting gold leaf and speed streaks carry the sense of
 ## speed (the owner's review: every still floor gets motion cues), and the canal flows in the gaps.
-## Walls are opulent facades (GoldenFacades) whose wall-run band stays calm and flush; above it,
-## golden statues holding halberds line the palaces' ledges (the statue kit, GoldenStatue, shared
-## with the Gilded Sentinels, task C4), never at wall-run height: a statue there is a live Sentinel.
+## Walls are opulent facades (GoldenFacades) whose wall-run band stays calm and flush; their palace
+## bases carry golden statues holding halberds (the statue kit, GoldenStatue, shared with the Gilded
+## Sentinels, task C4). A live Sentinel still stands in its wall-run-height niche, so the mesh-only
+## base statues give it the same silhouette instead of advertising the dangerous placement from a ledge.
 ## Signs are boutique boards in the yellow/black hazard frame (GoldenProps); fences are the same pink
 ## field between gold stanchions. Ceilings (GoldenCeilings) are the undersides of golden bridges (some
 ## with water falling off their faces), galleries of golden arches and the elite's hover-yachts, each
@@ -174,11 +175,20 @@ extends ZoneSkin
 @export var lamp_color: Color = Color(1.0, 0.92, 0.78)
 
 @export_group("Statues")
-## Golden statues holding halberds line the palaces' ledges (GDD §9.11), all decorative: a statue at
-## wall-run height is a live Gilded Sentinel (task C4), so decorative ones never stand lower than this
-## (their feet; safe things look safe). DESIGN-TBD (docs/questions/d6a.md): the ledge's height.
+## Decorative statues holding halberds are mounted at the bottom of the walls (GDD §9.11). This is
+## deliberately separate from the live Sentinel's wall-run-height sill: the skin only builds a mesh,
+## with no hitbox or enemy node. DESIGN-TBD (docs/questions/d6a.md): the exact base trim.
+## Includes the small floor-safe trim under the visual recess; the model's pedestal begins at this
+## height and the recess sill bottoms at the floor.
+@export_range(0.0, 2.0, 0.01, "suffix:m") var statue_base_height: float = 0.10
+## Extra safety inset behind the wall face, added to the pose-projected outward reach for the
+## facade's three-quarter turn and the Palace's outward-facing pose. This keeps the actual halberd
+## and arm envelope behind the wall without burying the whole model in an oversized radial recess.
+@export_range(0.0, 1.5, 0.05, "suffix:m") var statue_base_inset: float = 0.10
+## Kept as the old high-ledge tuning value for compatibility with existing reviews and data. It no
+## longer controls decorative placement; use statue_base_height for the wall-base mount.
 @export_range(7.0, 16.0, 0.1, "suffix:m") var statue_min_height: float = 8.8
-## Metres between the statues on a ledge, and the share of their places filled.
+## Metres between the wall-base statues, and the share of their places filled.
 @export_range(3.0, 20.0, 0.5, "suffix:m") var statue_spacing: float = 5.2
 @export_range(0.0, 1.0, 0.01) var statue_share: float = 0.9
 
@@ -274,6 +284,9 @@ var _ceilings: GoldenCeilings
 var _props: GoldenProps
 var _doodads: GoldenDoodads
 var _statues: GoldenStatue
+var _decorative_inset: float = -1.0
+var _decorative_projection: Vector2 = Vector2(-1.0, -1.0)
+var _decorative_meshes: Dictionary = {}
 ## The latest wall face seen (wall_section runs before a chunk's ceilings): bridges and archways reach
 ## from wall to wall.
 var _wall_x: float = 0.0
@@ -446,19 +459,98 @@ func doodad(body: Node3D, size: Vector3, size_class: StringName, side: int, look
 
 # --- The statue kit (shared with the Gilded Sentinels, task C4) ------------------------------
 
-## The zone's statue kit (GoldenStatue), drawn with this skin's materials: the decorative statues on
-## the ledges come from it, and a live Gilded Sentinel builds its rig and niche with it.
+## The zone's statue kit (GoldenStatue), drawn with this skin's materials: the decorative statues at
+## the wall base come from it, and a live Gilded Sentinel builds its rig and niche with it.
 func statues() -> GoldenStatue:
 	if _statues == null:
 		_statues = GoldenStatue.new(solid_material(), gold_color, stone_colors[0])
 	return _statues
 
 
+## The mesh-only decorative copy of a pose. Its gold is lifted slightly in albedo, not emissive, so
+## a guard remains readable against the dark visual recess when the runner sees its side or back.
+## The shared statue kit stays unchanged for live Gilded Sentinels.
+func decorative_statue_mesh(pose: Dictionary) -> MeshLayer:
+	var key: String = var_to_str(GoldenStatue.full_pose(pose))
+	var found: MeshLayer = _decorative_meshes.get(key)
+	if found != null:
+		return found
+	var source: MeshLayer = statues().mesh(pose)
+	var out := MeshLayer.new()
+	out.verts = source.verts.duplicate()
+	out.uvs = source.uvs.duplicate()
+	out.uv2s = source.uv2s.duplicate()
+	out.colors = source.colors.duplicate()
+	for i: int in out.colors.size():
+		if roundi(out.uv2s[i].x) != MeshKit.PAT_GOLD:
+			continue
+		var c: Color = out.colors[i]
+		out.colors[i] = Color(minf(c.r + 0.08, 1.0), minf(c.g + 0.08, 1.0), minf(c.b + 0.08, 1.0), c.a)
+	_decorative_meshes[key] = out
+	return out
+
+
 ## The decorative statues on the walls whose feet lie between two track distances, for reviews and
 ## tests: side, at, center (the statue's feet), facing, height, pose. The same ones wall_section()
-## builds; every one stands at statue_min_height or higher.
+## builds; every one is mounted at statue_base_height at the bottom of the wall.
 func statue_spots(side: int, face_x: float, start: float, end: float) -> Array[Dictionary]:
 	return facades().statue_spots(side, face_x, start, end)
+
+
+## Shared floor-relative mount height for mesh-only decorative Sentinels. Both the outdoor facade and
+## palace colonnade use this rather than the live enemy's niche sill, so moving scenery cannot move or
+## resize the real Gilded Sentinel's hitboxes.
+func decorative_statue_mount_y() -> float:
+	return statue_base_height
+
+
+## The actual projected horizontal envelope of every decorative pose. x is the largest reach toward
+## the street (used for the mount inset); y is the largest reach toward the wall (used for the recess
+## back). It covers both the Palace's direct outward turn and the facade's three-quarter approach turn.
+func decorative_statue_projection() -> Vector2:
+	if _decorative_projection.x >= 0.0:
+		return _decorative_projection
+	var outward: float = 0.0
+	var wallward: float = 0.0
+	var turn_sin: float = sin(GoldenFacades.STATUE_TURN)
+	var turn_cos: float = cos(GoldenFacades.STATUE_TURN)
+	for pose: StringName in GoldenStatue.DECORATIVE:
+		for v: Vector3 in statues().mesh(GoldenStatue.pose_named(pose)).verts:
+			# Palace statues face directly toward the street: local +Z is outward.
+			outward = maxf(outward, v.z)
+			wallward = maxf(wallward, -v.z)
+			for side: int in [-1, 1]:
+				# GoldenFacades turns local +Z toward (-side*cos(T), 0, sin(T)).
+				var facade_outward: float = turn_cos * v.z - float(side) * turn_sin * v.x
+				var facade_wallward: float = -facade_outward
+				outward = maxf(outward, facade_outward)
+				wallward = maxf(wallward, facade_wallward)
+	_decorative_projection = Vector2(outward, wallward)
+	return _decorative_projection
+
+
+func decorative_statue_inset() -> float:
+	if _decorative_inset >= 0.0:
+		return _decorative_inset
+	_decorative_inset = decorative_statue_projection().x + statue_base_inset
+	return _decorative_inset
+
+
+## The wallward extent of the actual projected poses, for the dark recess back and focused regressions.
+func decorative_statue_wallward_extent() -> float:
+	return decorative_statue_projection().y
+
+
+## The visual recess leaves the actual wallward pose projection behind the mount before its dark back.
+## This keeps the back from occluding a decorative model, while remaining mesh-only.
+func decorative_statue_recess_depth() -> float:
+	return decorative_statue_inset() + decorative_statue_wallward_extent() + 0.05
+
+
+## The feet/origin of a base-mounted decorative statue. The side term is intentional: both walls use
+## the same inward mount, regardless of lane count, while each skin keeps its own facing turn.
+func decorative_statue_mount(side: int, face_x: float, at: float) -> Vector3:
+	return Vector3(face_x + side * decorative_statue_inset(), decorative_statue_mount_y(), -at)
 
 
 # --- The cult's feed and emblem ------------------------------------------------------------

@@ -158,17 +158,18 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   along their wall, never beside a sign or a window cyborg, and the outer lane beside them is always clear
   to drop into (in quick play, `--features=wall_fences,wall_fences_partial`).
 - **Enemies:**
-  - cyborgs, with the panic variant and hosts
+  - cyborgs, with the panic variant and hosts; their laser firing sound is about 30% louder
   - window cyborgs
   - the hover truck mini-boss
-  - the Octodog
+  - the Octodog; its active charges can kill other vulnerable enemies on physical contact
   - the sewer screech
   - the heli drone
   - the Cyborg's Bad Dream, released by killing a host cyborg (from Dead Zone 1; in quick play, try
     `--features=cyborg,host,ceilings`)
   - the Barnacle Turret (from Marketplace 1): a dome with a chest cannon that pops out of a ceiling's
     underside and shoots only at a rider on that ceiling, the cyborgs' way (its muzzle glows red with a
-    charge-up sound, then a short burst: switch lanes). Running into it is deadly; claws, the dash, a stomp
+    charge-up sound, then a short burst: switch lanes). Armor or the shield absorbs a body-contact hit;
+    without protection, running into it is deadly. Claws, the dash, a stomp
     (jump on the ceiling and drop back onto it) or weapons kill it. Mechanical in most zones, a furry
     creature in Gangland and the Marketplace (in quick play, `--features=ceilings,barnacle_turret`)
   - the Resonator (from Golden 1): a golden broadcast spire hovering far ahead. When its halos line up
@@ -179,7 +180,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     cutting the floor into a gap behind it: leave its lane. The armor or shield blocks it and the floor holds
     a second; the missile tiers can usually shoot it before it charges, which saves the floor; the dash
     smashes it. Big attacks take turns: if another enemy's is still going on when it would rev, it drives
-    off ahead instead and its lane stays whole (in quick play, `--features=buzz_overdrive`)
+    off ahead instead and its lane stays whole. Its active charge can also kill other vulnerable enemies
+    it physically hits, without awarding player kill bonuses (in quick play, `--features=buzz_overdrive`)
   - the Tithe Collector (from Corporate 2, skipping the Dead Zone, back in the Golden Zone): a small gold
     drone with a collection plate, smug and gaudy (plain metal, no rotors; anti-grav pads don't affect
     it). It appears ahead of you and closes in slowly, sucking up the credits in its lane along the way
@@ -193,7 +195,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     the lane, or on the wall pass above the band (jump onto the wall) or below it (onto the wall early).
     Later ones swing twice or stand in pairs across the street. The armor or shield blocks the cut;
     weapons or a wall jump off the wall right by its head kill it (in quick play,
-    `--features=gilded_sentinel --skin=golden`)
+    `--features=gilded_sentinel --skin=golden`). Decorative knights in both Golden skins stand in
+    recessed mounts at the bottom of the walls, not on the high ledges; only the live enemies attack.
 - **Bosses:** a framework for runner-style boss fights (GDD §10): the fight plays in the normal run on
   an arena track that keeps going for as long as it lasts, with the boss's health bar and phase
   markers on the HUD, weak points to stomp and weapon chip damage, a checkpoint for the final fight,
@@ -250,8 +253,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   walls (run along the wall over it while they're off); in phase 3 a billboard comes down from the sky
   over the street with an anti-grav pad, the machine squats under it, and the button hangs under it in
   the pad's lane, Barnacle Turrets further along. Beaten, its reels spin wildly and jam, TILT flashes
-  over them, and it collapses into the street in an explosion of coins while the citizens cheer. About
-  67 s for a runner who never misses (`--boss=marketplace_boss`, or the campaign's
+  over them, and it collapses into   the street in an explosion of coins while the citizens cheer. The revised fight opens with
+  three attack-only spins per phase before its buttons appear, with shorter gaps and wider cherry
+  and lightning coverage. Its three-/two-star pars are 86/108 s (`--boss=marketplace_boss`, or the campaign's
   `--level=marketplace/boss`). Hostile Takeover, the Corporate zone's boss, comes after Corporate 2
   (`--boss=corporate_boss` or `--level=corporate/boss`): the runner lands on the rear roof of the Chairman's armored
   maglev train and runs forward along it, jumping the gaps between its carriages, the track's sound
@@ -288,7 +292,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   circle where each lands), lunges down the runner's lane (bait it into a fence) and crouches beside a ramp
   with its implants glowing red on its back: up the ramp, a wall run and a wall jump bring the runner down
   on them. Three hits free the Host: the screeches scatter, the implants short out and the person slumps
-  free. Weapons thin a surging cluster too, the heavy missile most of all. Its crowds are hundreds of screeches
+  free. Clusters are tougher and arrive more frequently; wall climbs and the Host's flings leave less
+  downtime, while every attack still warns first. Weapons thin a surging cluster too, the heavy missile
+  most of all. Its crowds are hundreds of screeches
   drawn with a MultiMesh and a shader, their sizes in data for the phone test
   (`res://tools/showcase/swarm_stress.tscn`, a stress scene with a frame-time readout). The Golden Zone's
   final villain is still to be built.
@@ -297,8 +303,13 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   and a ring filling while it comes back. Armor pickups in boss fights bring it back at once.
 - **Economy:** credits in four denominations, level score and stars, and a shop. Items are six permanent
   lines (weapon, claws, juggernaut dash, magnet, slow time, and armor upgrades: one more hit or a shorter
-  wait, tier by tier) and two breakables (shield, grapple hook). After a death you're offered a revive
+  wait, tier by tier) and two breakables (shield, grapple hook). Dash tiers cost 1,800 / 800 / 1,000 /
+  1,200 credits and recharge in 8 / 6 / 4 / 3 seconds, respectively. After a death you're offered a revive
   (an item, or a rewarded ad on mobile). Net worth has its own leaderboard.
+- **Campaign density:** more enemies and obstacles, with measured danger gains of about 17-18% in
+  early levels, 26-27% in the middle zones and 32-38% in late levels across 3, 5 and 6 lanes. Additional
+  rows create pressure when there is no room to fill another lane; a reachable route and attack
+  warnings remain, and level durations are unchanged.
 - **Modes:** the campaign, endless mode, and harder difficulty tiers after the last level.
 - **Look and sound:**
   - Razor Echo, the runner: a dark-blue trench coat with soft copper conduits and a skirt that swings,

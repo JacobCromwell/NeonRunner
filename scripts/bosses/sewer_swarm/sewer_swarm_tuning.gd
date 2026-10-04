@@ -11,6 +11,10 @@ extends Resource
 ## later"; the phone test, task E3, sets them): the fight plays the same at any crowd size, and a low-end
 ## device (DeviceProfile.is_low_end()) draws the _low_end ones. Every number here is a placeholder
 ## (DESIGN-TBD: docs/OPEN_QUESTIONS.md 324-328, docs/questions/e4.md) unless its comment gives the GDD's.
+## Campaign difficulty overrides live in gangland_boss_tuning.tres: tougher clusters, closer bait/Host
+## spots, shorter lock-to-impact windows and faster flings. The pre-lock time to reach a bait, all ramp
+## and stomp geometry, phase hits and alternating/free-wall rules are unchanged. host_after moves with
+## bait_spacing so every interior bait still has a clear, reachable ramp before the next warning.
 
 @export_group("Crowds")
 ## DESIGN-TBD (E3 sets it): screeches drawn in each cluster (GDD §10: "each rendered as many screech-variant
@@ -44,8 +48,8 @@ extends Resource
 ## DESIGN-TBD: a cluster's health in laser tier 1 shots (GDD §10: "weapons thin clusters too, and the heavy
 ## missile gets bonus damage against them"; GDD §8: the heavy missile's swarm bonus). Weapons hurt a cluster
 ## only while it surges (from its warning until it has passed the runner), so a fence or a hole stays the
-## quick way: the heavy missile (3 a shot, twice against a swarm) destroys one over about two of its surges,
-## laser tier 1 over about seven. A cluster thinned to nothing is destroyed, its hit counted as weapon damage
+## quick way: the heavy missile (3 a shot, twice against a swarm) thins it faster than laser tier 1.
+## A cluster thinned to nothing is destroyed, its hit counted as weapon damage
 ## (within the BossDef's weapon_share_cap, like every boss's).
 @export_range(1.0, 400.0, 1.0) var cluster_health: float = 36.0
 ## The clusters wait at the roadside ahead of the runner, keeping pace, alternating sides: the next to surge

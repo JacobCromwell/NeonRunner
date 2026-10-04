@@ -23,7 +23,9 @@ func run() -> void:
 	_test_items_and_records()
 	_test_save_round_trip()
 	_test_catalog_and_loadout()
+	_test_dash_catalog_and_saves()
 	_test_app_shop()
+	_test_dash_shop()
 	_test_balance_curve()
 	_test_shorter_city_earnings()
 
@@ -126,6 +128,62 @@ func _test_catalog_and_loadout() -> void:
 		"the full loadout has everything")
 
 
+func _test_dash_catalog_and_saves() -> void:
+	var catalog: ShopCatalog = ShopCatalog.load_from()
+	var dash: ShopItem = catalog.item(&"dash")
+	var prices: PackedInt32Array = PackedInt32Array([1800, 800, 1000, 1200])
+	var cooldowns: PackedInt32Array = PackedInt32Array([8, 6, 4, 3])
+	check(dash != null and dash.kind == ShopItem.Kind.PERMANENT and dash.tier_count() == 4,
+		"dash has exactly four permanent tiers, not four upgrades after the base tier")
+	if dash == null:
+		return
+	for tier: int in range(1, 5):
+		check(dash.price_of(tier, false) == prices[tier - 1] and dash.price_of(tier, true) == prices[tier - 1],
+			"dash tier %d keeps the approved PC/mobile price (%d)" % [tier, prices[tier - 1]])
+		check(dash.tier_description(tier).contains("%d seconds" % cooldowns[tier - 1]),
+			"dash tier %d describes its %d-second cooldown" % [tier, cooldowns[tier - 1]])
+	check(dash.price_of(5, false) == -1 and Loadout.full(catalog).tier(&"dash") == 4,
+		"there is no fifth dash tier, and a full loadout carries tier 4")
+	check(Profile.from_dict({}).tier(&"dash") == 0, "an existing save without dash remains unowned")
+
+	for version: int in [1, Profile.VERSION]:
+		var legacy: Profile = Profile.from_dict({
+			"version": version, "earned": 2500, "purchased": 100,
+			"tiers": {"dash": 1.0, "weapon": 2.0}, "stocks": {"shield": 2.0},
+			"equip_off": {"dash": true}, "settings": {"volume_music": 0.25},
+			"records": {"0/city/1": {"completed": true, "stars": 2}},
+		})
+		check(legacy.tier(&"dash") == 1 and typeof(legacy.tiers["dash"]) == TYPE_INT,
+			"save version %d retains the original dash at tier 1 without granting upgrades" % version)
+		check(legacy.credits() == 2600 and legacy.tier(&"weapon") == 2 and legacy.stock(&"shield") == 2
+			and not legacy.is_equipped(&"dash") and legacy.stars("city/1") == 2,
+			"expanding dash tiers preserves version %d's wallet, other items, equip toggle and progress" % version)
+
+	var path: String = "user://test_dash_tiers_roundtrip.json"
+	SaveService.delete_save(path)
+	var p := Profile.new()
+	p.add_earned(1234)
+	p.set_tier(&"weapon", 2)
+	p.add_stock(&"shield", 2)
+	p.set_equipped(&"dash", false)
+	for tier: int in range(1, 5):
+		p.set_tier(&"dash", tier)
+		check(SaveService.save_profile(p, path), "dash tier %d saves" % tier)
+		var q: Profile = SaveService.load_profile(path)
+		check(q.tier(&"dash") == tier and typeof(q.tiers.get("dash")) == TYPE_INT
+			and not q.is_equipped(&"dash") and q.credits() == 1234
+			and q.tier(&"weapon") == 2 and q.stock(&"shield") == 2,
+			"dash tier %d, equip state and unrelated ownership survive a disk round trip" % tier)
+		for mobile: bool in [false, true]:
+			check(not Loadout.from_profile(q, catalog, mobile).has(&"dash"),
+				"a saved disabled dash stays out of the %s loadout" % ["mobile" if mobile else "PC"])
+			q.set_equipped(&"dash", true)
+			check(Loadout.from_profile(q, catalog, mobile).tier(&"dash") == tier,
+				"the enabled %s loadout carries saved dash tier %d" % ["mobile" if mobile else "PC", tier])
+			q.set_equipped(&"dash", false)
+	SaveService.delete_save(path)
+
+
 func _test_app_shop() -> void:
 	var app: Node = tree.root.get_node_or_null(^"App")
 	check(app != null, "the App autoload exists in tests")
@@ -153,6 +211,49 @@ func _test_app_shop() -> void:
 	App.set_equipped(&"weapon", false)
 	check(not App.make_loadout().has(&"weapon"), "the equip toggle reaches the next run's loadout")
 	App.profile = saved
+
+
+func _test_dash_shop() -> void:
+	var saved: Profile = App.profile
+	var saved_mobile: bool = App.mobile
+	var dash: ShopItem = App.catalog.item(&"dash")
+	var prices: PackedInt32Array = PackedInt32Array([1800, 800, 1000, 1200])
+	for mobile: bool in [false, true]:
+		App.mobile = mobile
+		App.profile = Profile.new()
+		App.profile.add_earned(800)
+		check(not App.buy(&"dash") and App.profile.tier(&"dash") == 0 and App.profile.credits() == 800,
+			"the cheaper upgrades never bypass the original dash purchase")
+		App.profile.add_earned(4000)
+		var expected_balance: int = 4800
+		for tier: int in range(1, 5):
+			check(App.next_price(dash) == prices[tier - 1] and App.buy(&"dash"),
+				"%s buys dash tier %d sequentially for %d credits" % ["mobile" if mobile else "PC", tier, prices[tier - 1]])
+			expected_balance -= prices[tier - 1]
+			check(App.profile.tier(&"dash") == tier and App.profile.credits() == expected_balance
+				and App.make_loadout().tier(&"dash") == tier,
+				"dash tier %d ownership and exact debit reach the next loadout" % tier)
+		check(App.next_price(dash) == -1 and not App.buy(&"dash") and App.profile.tier(&"dash") == 4
+			and App.profile.credits() == 0 and App.profile.lifetime_spent == 4800,
+			"dash maxes at tier 4 without a fifth purchase or extra spending")
+
+		App.profile = Profile.from_dict({
+			"version": 1, "earned": 3000, "tiers": {"dash": 1}, "equip_off": {"dash": true},
+		})
+		App.profile.earned = 799
+		check(App.next_price(dash) == 800 and not App.buy(&"dash")
+			and App.profile.credits() == 799 and App.profile.tier(&"dash") == 1,
+			"a legacy owner cannot buy tier 2 with fewer than 800 credits")
+		App.profile.earned = 3000
+		for tier: int in range(2, 5):
+			check(App.buy(&"dash") and App.profile.tier(&"dash") == tier,
+				"a legacy base owner buys only upgrade tier %d, not the base again" % tier)
+		check(App.profile.credits() == 0 and not App.profile.is_equipped(&"dash") and not App.make_loadout().has(&"dash"),
+			"the three upgrades cost 3000 total and preserve a legacy owner's off toggle")
+		App.set_equipped(&"dash", true)
+		check(App.make_loadout().tier(&"dash") == 4, "re-equipping a saved owner carries the final dash tier")
+	App.profile = saved
+	App.mobile = saved_mobile
 
 
 ## R7: builds the same running wallet tools/measure/economy.gd reports (every campaign level

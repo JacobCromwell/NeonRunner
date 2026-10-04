@@ -28,6 +28,7 @@ func run() -> void:
 		check(false, "The House's fight loads")
 		return
 	_test_slot()
+	_test_pressure_tuning()
 	_test_reels()
 	_test_attacks_for()
 	_test_route()
@@ -110,6 +111,31 @@ func _test_slot() -> void:
 	check(t.longest_warning() >= t.cherry_warning and TheHouseTuning.per_lanes(PackedInt32Array([2, 3, 4]), 3) == 2
 		and TheHouseTuning.per_lanes(PackedInt32Array([2, 3, 4]), 5) == 3 and TheHouseTuning.per_lanes(PackedInt32Array([2, 3, 9]), 6) == 5,
 		"its per-lane-count numbers always leave a lane free")
+
+
+# --- Difficulty ----------------------------------------------------------------------------------
+
+func _test_pressure_tuning() -> void:
+	var t := def.tuning as TheHouseTuning
+	for phase: int in 3:
+		check(t.opening_spins_for(phase) == 3,
+			"phase %d requires three attack-only spins before buttons (formerly two)" % (phase + 1))
+	check(t.attack_gap <= 0.85 + 0.001 and t.spin_gap <= 1.0,
+		"attacks and spins leave less breathing room than the former 0.95/1.25 s gaps")
+	for lanes: int in LANES:
+		var width: int = 2 if lanes == 3 else (3 if lanes == 5 else 4)
+		check(TheHouseTuning.per_lanes(t.cherry_lanes, lanes) == width
+			and TheHouseTuning.per_lanes(t.fence_lanes, lanes) == width and width < lanes,
+			"single cherries and lightning cover %d/%d lanes, always leaving an escape" % [width, lanes])
+	check(is_equal_approx(t.cherry_warning, 1.25) and is_equal_approx(t.fence_warning, 1.5)
+		and is_equal_approx(t.bar_warning, 1.4) and is_equal_approx(t.reaction, 0.35)
+		and is_equal_approx(t.switch_margin, 1.5),
+		"denser attacks do not shorten their visual/audio warnings or weaken the route fairness margins")
+	check(t.locks_persist and t.special_for(0) == "floor" and t.special_for(1) == "wall"
+		and t.special_for(2) == "ceiling" and t.stomp_depth >= 12.0,
+		"persistent locks, phase routes and the reachable hopper window survive the difficulty increase")
+	check(def.three_star_seconds == 86.0 and def.two_star_seconds == 108.0,
+		"par times account for the extra attack-only spins, not extra stomps")
 
 
 # --- Reels ---------------------------------------------------------------------------------------

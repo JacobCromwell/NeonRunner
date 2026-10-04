@@ -4,7 +4,7 @@ extends RefCounted
 ## every zone (GDD §5). A wall side is split into lots of `lot_length` metres (MeshKit.lot_run); a
 ## building covers 1–3 lots and is one of three kinds:
 ## - a palace: seamless white or cream cladding with tall rounded windows in gold frames, a marble
-##   ledge over the entablature where golden statues holding halberds stand guard (the statue kit,
+##   ledge over the entablature and base-mounted golden statues holding halberds (the statue kit,
 ##   GoldenStatue), balconies with gold rails high up, a marble parapet with a gold rail;
 ## - a gallery: a lower hall with great windows and gilded frames hung out from its face, turned toward
 ##   the approaching runner, showing the cult's feed or its emblem on red;
@@ -14,11 +14,9 @@ extends RefCounted
 ##   approach (seen over lower neighbours).
 ## Every building face is flush with the wall face from the canal up past the wall-run band: that
 ## plane is the wall-run surface. The band (golden_facade.gdshader's BAND) stays calm and solid, with
-## only the gold inlay lines of the wall-run height marks; nothing but a hazard sign ever sticks out
-## of the wall below the entablature, no decorative statue stands lower than statue_min_height (a
-## statue at wall-run height is a live Gilded Sentinel), and nothing vent-like or niche-like is drawn
-## (wall vents are sewer-screech lairs, niches are the Sentinels': a live Sentinel's niche opens only
-## where one stands, GoldenSkin.note_wall_enemies).
+## only the gold inlay lines of the wall-run height marks. Decorative Sentinel meshes are mounted at
+## the wall base as scenery only. Their visual recess is not a gameplay niche or hitbox; a live
+## Sentinel's niche still opens only where one stands (GoldenSkin.note_wall_enemies).
 ## Overhead, sky bridges are slung between towers high over the street, their faces carrying the
 ## emblem toward the approach.
 ## Faces seen only from behind (turned away from the runner, who always looks down the track) are left
@@ -41,9 +39,13 @@ const DEPTH: float = 22.0
 const LEDGE_OUT: float = 0.9
 const LEDGE_UP: float = 0.2
 const LEDGE_THICK: float = 0.5
-## Where a statue stands on its ledge (its pedestal's centre, out from the wall face), and how far it
-## turns from the street toward the approaching runner (a three-quarter view from the lanes).
-const STATUE_OUT: float = 0.45
+## The decorative base opening is a visual recess only; it is not a gameplay niche or hitbox.
+## The opening is deliberately wider than the old live-niche silhouette: turned poses and their
+## halberds need enough trackwise clearance to read from the runner's approach, not just enough
+## room for the body at a front-on angle.
+const BASE_STATUE_NICHE_SIZE := Vector2(2.0, 3.4)
+## Where a base-mounted statue stands (its pedestal's centre, recessed behind the wall face), and how
+## far it turns from the street toward the approaching runner (a three-quarter view from the lanes).
 const STATUE_TURN: float = 0.35
 ## A balcony's floor over its storey's floor line: at the sills of the windows above it
 ## (golden_facade.gdshader's UPPER style).
@@ -101,7 +103,7 @@ class Building:
 	var setback: float = 0.0
 	var setback_y: float = 0.0
 	var crown_h: float = 0.0
-	## Palaces: the statues on the ledge, as (distance, pose index).
+	## Palaces: the wall-base statues, as (distance, pose index).
 	var statues: Array[Vector2] = []
 	## Towers: the banner (its middle's distance; -1 none) and the top of its pole.
 	var banner_d: float = -1.0
@@ -185,8 +187,9 @@ func building(side: int, span: Vector2i) -> Building:
 	return b
 
 
-## The statues on a palace's ledge: a place every statue_spacing metres clear of its ends, statue_share
-## of them filled, each in one of the decorative poses.
+## The statues on a palace facade: a place every statue_spacing metres clear of its ends, statue_share
+## of them filled, each in one of the decorative poses. The list is reused for the base mount and is
+## independent of lane count.
 func _place_statues(b: Building) -> void:
 	var spacing: float = skin.statue_spacing
 	var count: int = floori((b.b1 - b.b0 - 3.0) / spacing)
@@ -245,7 +248,8 @@ func screen_spec(b: Building, face_x: float) -> Dictionary:
 
 # --- Listings (GoldenSkin's statue_spots, feed_boards, cult_emblems) --------------------------
 
-## The decorative statues whose feet lie in [start, end) (GoldenSkin.statue_spots()).
+## The decorative statues whose feet lie in [start, end) (GoldenSkin.statue_spots()). They are
+## mesh-only scenery mounted at the wall base, not wall enemies.
 func statue_spots(side: int, face_x: float, start: float, end: float) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var lot: float = skin.lot_length
@@ -254,7 +258,7 @@ func statue_spots(side: int, face_x: float, start: float, end: float) -> Array[D
 		var b: Building = building(side, span)
 		for s: Vector2 in b.statues:
 			if s.x >= start and s.x < end:
-				out.append({"side": side, "at": s.x, "center": Vector3(face_x - side * STATUE_OUT, ledge_top(), -s.x),
+				out.append({"side": side, "at": s.x, "center": skin.decorative_statue_mount(side, face_x, s.x),
 					"facing": _statue_facing(side), "height": GoldenStatue.PEDESTAL_HEIGHT + GoldenStatue.STATURE,
 					"pose": GoldenStatue.DECORATIVE[int(s.y)]})
 		span = MeshKit.lot_run(side, span.y + 1, 0.45, 3, 5)
@@ -311,16 +315,17 @@ func emblems(side: int, face_x: float, start: float, end: float) -> Array[Dictio
 	return out
 
 
-## The top of the palaces' statue ledge (where the statues' pedestals stand).
+## The top of the palaces' architectural ledge. Decorative Sentinel models no longer use it; they are
+## mounted at the wall base so they can blend with a live Sentinel's silhouette.
 func ledge_top() -> float:
 	return skin.frieze_top + LEDGE_UP
 
 
 ## What the walls hold out over the street, as [reach, floor] pairs from the wall out: within `reach`
-## metres of a wall face nothing of the walls sticks out lower than `floor` (world height): the statue
-## ledge, the statues on it, the gilded frames, the banners; beyond the last, nothing lower than
-## OVER_STREET. The ceilings keep under it (GoldenCeilings.headroom()), so a bridge, an arch or a yacht
-## never cuts through a statue, a frame or a banner, however narrow the street.
+## metres of a wall face nothing of the walls sticks out lower than `floor` (world height): the
+## architectural ledge, the gilded frames and the banners; beyond the last, nothing lower than
+## OVER_STREET. Base-mounted statues are mesh-only scenery at the wall face and do not change ceiling
+## clearance or wall-run collision.
 func clearance_profile() -> Array[Vector2]:
 	return [Vector2(LEDGE_OUT + 0.05, ledge_top() - LEDGE_THICK), Vector2(STATUE_REACH, ledge_top()),
 		Vector2(FRAME_REACH, FRAME_Y - FRAME_SIZE.y * 0.5 - FRAME_RIM), Vector2(BANNER_GAP + skin.banner_width + 0.1,
@@ -342,6 +347,10 @@ func _building(batch: MeshBatch, b: Building, face_x: float, start: float, end: 
 	_face(facade, side, face_x, u0, u1, -skin.canal_depth, 0.0, skin.gap_inside_color, 0.0, STYLE_DEEP, b.seed)
 	# A Gilded Sentinel's niche opens in the plinth and the calm band (GoldenSkin.note_wall_enemies).
 	var holes: Array[Rect2] = skin.niches(side)
+	if b.kind == Kind.PALACE:
+		for statue: Vector2 in b.statues:
+			holes.append(Rect2(statue.x - BASE_STATUE_NICHE_SIZE.x * 0.5, skin.decorative_statue_mount_y(),
+				BASE_STATUE_NICHE_SIZE.x, BASE_STATUE_NICHE_SIZE.y))
 	_open_face(facade, side, face_x, u0, u1, 0.0, skin.plinth_top, b.wall, STYLE_PLINTH, b.seed, holes)
 	_open_face(facade, side, face_x, u0, u1, skin.plinth_top, skin.band_top, b.wall, STYLE_BAND, b.seed, holes)
 	_face(facade, side, face_x, u0, u1, skin.band_top, skin.frieze_top, b.wall, 0.0, STYLE_FRIEZE, b.seed)
@@ -354,8 +363,8 @@ func _building(batch: MeshBatch, b: Building, face_x: float, start: float, end: 
 			_tower(batch, facade, solid, b, face_x, u0, u1, start, end)
 
 
-## A palace: cladding with tall windows over the entablature, the statue ledge with its statues,
-## balconies high up, the parapet with its gold rail, and its near end.
+## A palace: cladding with tall windows over the entablature, an architectural ledge, wall-base
+## statues in recessed visual openings, balconies high up, the parapet with its gold rail, and its near end.
 func _palace(_batch: MeshBatch, facade: MeshLayer, solid: MeshLayer, b: Building, face_x: float, u0: float, u1: float,
 		start: float, end: float) -> void:
 	var side: int = b.side
@@ -368,7 +377,12 @@ func _palace(_batch: MeshBatch, facade: MeshLayer, solid: MeshLayer, b: Building
 		0.0, MeshKit.PAT_GOLD, _street_faces(side), 0.9)
 	for s: Vector2 in b.statues:
 		if s.x >= start and s.x < end:
-			solid.append(_statue(side, int(s.y)), Transform3D(Basis.IDENTITY, Vector3(face_x - side * STATUE_OUT, ledge_top(), -s.x)))
+			var niche_basis := Basis(Vector3.UP, atan2(float(-side), 0.0))
+			solid.append(skin.statues().recess(BASE_STATUE_NICHE_SIZE.x, BASE_STATUE_NICHE_SIZE.y,
+				skin.decorative_statue_recess_depth()),
+				Transform3D(niche_basis, Vector3(face_x, skin.decorative_statue_mount_y(), -s.x)))
+			solid.append(_statue(side, int(s.y)), Transform3D(Basis.IDENTITY,
+				skin.decorative_statue_mount(side, face_x, s.x)))
 	# Balconies under some upper windows (a column of windows every cell, as the shader lays them out).
 	var cw: float = _cell_width(b.seed)
 	var first_floor: float = skin.frieze_top + STOREY
@@ -493,7 +507,7 @@ func _statue(side: int, pose: int) -> MeshLayer:
 		return found
 	var t := MeshLayer.new()
 	var facing: Vector3 = _statue_facing(side)
-	t.append(skin.statues().mesh(GoldenStatue.pose_named(GoldenStatue.DECORATIVE[pose])),
+	t.append(skin.decorative_statue_mesh(GoldenStatue.pose_named(GoldenStatue.DECORATIVE[pose])),
 		Transform3D(Basis(Vector3.UP, atan2(facing.x, facing.z)), Vector3.ZERO))
 	_templates[key] = t
 	return t

@@ -157,7 +157,7 @@ func _stomps_win(lanes: int, speed: float) -> void:
 	# Every fling warned: its circle before it lands, as long as its wind-up and flight; no splat hits.
 	var flings: Array[Dictionary] = _events(boss, &"host_fling")
 	var splats: Array[Dictionary] = _events(boss, &"host_splat")
-	var fling_ok: bool = flings.size() == splats.size()
+	var fling_ok: bool = not flings.is_empty() and flings.size() == splats.size()
 	for i: int in mini(flings.size(), splats.size()):
 		fling_ok = fling_ok and float(splats[i]["t"]) - float(flings[i]["t"]) >= t.fling_windup + t.fling_flight - 0.03
 	check(fling_ok and _sounds(boss, &"host_fling").size() == flings.size(),
@@ -166,7 +166,7 @@ func _stomps_win(lanes: int, speed: float) -> void:
 	# Every lunge warned before its hitbox goes live, and dodged.
 	var warns: Array[Dictionary] = _events(boss, &"host_lunge_warn")
 	var locks: Array[Dictionary] = _events(boss, &"host_lunge")
-	var lunge_ok: bool = warns.size() == locks.size() and _sounds(boss, &"host_roar").size() == warns.size()
+	var lunge_ok: bool = not warns.is_empty() and warns.size() == locks.size() and _sounds(boss, &"host_roar").size() == warns.size()
 	for i: int in mini(warns.size(), locks.size()):
 		lunge_ok = lunge_ok and absf(float(locks[i]["t"]) - float(warns[i]["t"]) - (t.warning_seconds - t.lock_seconds)) < 0.03
 		lunge_ok = lunge_ok and not bool(locks[i]["baited"])
