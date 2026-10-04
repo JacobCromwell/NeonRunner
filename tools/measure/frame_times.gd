@@ -1,7 +1,8 @@
 extends SceneTree
 ## Measures the game's frame times (task PERF1, the owner's "lag spikes are more common", October 2,
 ## 2026): plays campaign levels and built boss fights through the App as the game does (the run, its
-## camera, HUD, speed lines and hints), with a scripted runner in god mode that never falls, at the
+## camera, HUD, speed lines and hints; it presses PLAY at the level introduction a campaign run waits at,
+## App.begin_run), with a scripted runner in god mode that never falls, at the
 ## real zone speed, and times every frame with a FrameMonitor (scripts/run/frame_monitor.gd: what
 ## a frame is, and its tags). From the project folder (with XDG_DATA_HOME set as for the tests):
 ##   godot --headless --fixed-fps 60 -s res://tools/measure/frame_times.gd -- [options]
@@ -348,6 +349,9 @@ func _measure(campaign: Object, key: String) -> Dictionary:
 		_app.call(&"start_boss_quick", preview, args)
 	else:
 		_app.call(&"play_step", step, 0)
+	# A campaign run waits at its level introduction (its hints) until the player presses PLAY: press it.
+	# (Quick play starts at once; App.begin_run does nothing then.)
+	_app.call(&"begin_run")
 	var load_ms: float = (Time.get_ticks_usec() - t0) / 1000.0
 	_run = _app.get(&"run")
 	if _run == null:
