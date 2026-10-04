@@ -370,7 +370,9 @@ func _why_not_ready() -> StringName:
 ## other attacks or for clear floor, can't be dropped, so from then on it keeps its place in the turn
 ## queue while it waits for clear floor (_why_not_ready). Otherwise it loses its place at every floor
 ## wait, and an enemy that attacks again and again (a drone that stays) can take every turn the floor
-## leaves it, until the next Resonator's arrival sends it away without a pulse.
+## leaves it, until the next Resonator's arrival sends it away without a pulse. DESIGN-TBD
+## (docs/questions/fix4.md): the threshold, and the next one's arrival still sending away one that owes
+## its first pulse.
 func _first_overdue() -> bool:
 	if pulses_done > 0:
 		return false
