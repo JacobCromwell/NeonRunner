@@ -350,8 +350,9 @@ func _measure(campaign: Object, key: String) -> Dictionary:
 	else:
 		_app.call(&"play_step", step, 0)
 	# A campaign run waits at its level introduction (its hints) until the player presses PLAY: press it.
-	# (Quick play starts at once; App.begin_run does nothing then.)
-	_app.call(&"begin_run")
+	# (Quick play starts at once; App.begin_run does nothing then, and an older build has no such screen.)
+	if _app.has_method(&"begin_run"):
+		_app.call(&"begin_run")
 	var load_ms: float = (Time.get_ticks_usec() - t0) / 1000.0
 	_run = _app.get(&"run")
 	if _run == null:

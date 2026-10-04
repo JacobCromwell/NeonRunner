@@ -3107,7 +3107,8 @@ and the campaign at every lane count (Gangland 3, a death, the retry, the win, s
 `test_resonator` plays the
 Resonator in full worlds on real physics (the warning always before the wave, a jump clearing it at 3,
 5 and 6 lanes with its margin measured, walls and the ceiling safe, armor, shield and dash, turns with a
-`TurnDummy`, Reduced flashing), checks its rules over many seeds, and plays the real Golden 1-3 layouts
+`TurnDummy`, a first pulse that waiting for clear floor never starves (FIX4), Reduced flashing), checks
+its rules over many seeds, and plays the real Golden 1-3 layouts
 at 3, 5 and 6 lanes, watched by `attack_watch.gd`: no wave meets the runner on a gap or a fence, and no
 big attacks overlap. `test_barnacle_turret` covers the Barnacle Turret (C1): its numbers against the
 cyborg's and GDD §8's 7 laser tier 1 shots, hitboxes out of reach of anyone off its ceiling, both looks
