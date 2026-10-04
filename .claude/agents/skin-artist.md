@@ -34,10 +34,14 @@ surfaces per chunk within budget, and no collision added versus the skin-less la
 
 **Parallel work:** one task, one branch named after the task ID, from the latest `main`.
 
-**Verify before reporting done:** `tools/godot.sh test` and `tools/godot.sh smoke`. Skins are
-visual work by definition: render frames on both the default and `--rendering-method
-gl_compatibility` renderers (`CLAUDE.md`, Commands) and look at them yourself — the Compatibility
-renderer is what web and low-end Android actually run.
+**Verify before reporting done:** `tools/godot.sh test --gate` (exit code 0; it includes the smoke
+run, every skin's build-budget suite and `test_doodads` when you touch a skin, and your zone's own
+suite — `tests/suite_map.json` maps each `scripts/world/skins/<zone>` folder to it; add the rule when
+you add a zone). Shared kit changes (`scripts/world/meshes/`, `zone_skin.gd`) raise the gate to the
+merge tier, which is right: every zone draws with them. Skins are visual work by definition: render
+frames on both the default and `--rendering-method gl_compatibility` renderers (`CLAUDE.md`,
+Commands) and look at them yourself — the Compatibility renderer is what web and low-end Android
+actually run.
 
 **End every task** with the `CLAUDE.md` summary: what changed, what you verified and how
 (including frames rendered and what they showed), every `DESIGN-TBD` item, and risks.

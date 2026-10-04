@@ -1,45 +1,25 @@
 # Open Questions & Remaining Design Topics
 
 Companion to `GDD_CHECKPOINT.md`. The design phase is complete when this list is empty or every item is explicitly deferred.
+Once an answer is recorded in the GDD, its question is removed from sections A–C (the GDD is the record); section D's
+numbered items stay in place even when answered, because code comments and the owner's review cite them by number.
 
 ## A. Next design rounds (in recommended order)
 
 ### 1. Zones (highest cost driver: do next)
-- ~~Full list of 6+ zones: name, visual theme, and mood.~~ Answered: six zones: City, Gangland, Marketplace, Corporate, Dead Zone, Golden Zone, in that order, with moods and palettes (GDD §5).
-- ~~Which zone is first (the demo zone)?~~ Answered: Neon City is Zone 1, Gangland is Zone 2 (GDD §5).
-- ~~The **floor skin** for each zone~~ Answered (GDD §5).
-- ~~**Levels per zone**~~ Answered: 3 / 3 / 2 / 2 / 2 / 3, 15 in all (GDD §5).
-- ~~**What forms the ceiling in zones without spaceships?**~~ Answered: every zone has ceilings, made of different things per zone, and they may be narrower than the full floor (GDD §3, §5).
-- ~~**Narrow ceilings**~~ Answered: lane switching within the ceiling's width; a one-lane ceiling is short and relatively safe; the floor under any ceiling may be dangerous, with a safe landing zone (GDD §3).
 - **Wall skin** for each zone, and what "signs" look like there.
-- ~~The **enemy introduction schedule**~~ Answered level by level (GDD §5). The Barnacle Turret is the Marketplace's new enemy (GDD §9.8).
-- ~~Whether each zone introduces a new mechanic or object~~ Answered: at least one new enemy per zone, preferred over new mechanics (GDD §5).
 - **New enemies:** the Marketplace's is the Barnacle Turret (GDD §9.8). The Corporate zone's is Buzz Overdrive (GDD §9.9). The Golden Zone's is the Resonator (GDD §9.10, working name). Also added: wall fences (§9.1), Gilded Sentinels (§9.11) and the Tithe Collector (§9.12).
-- ~~**Names**~~ Answered: Resonator; Tithe Collector (GDD §9.10, §9.12).
 - **Numbers still open:** the Resonator's shots to kill (Sentinels: 15; Tithe Collector: takes 25%).
-- ~~**Golden Palace**~~ Answered: inside the city-sized palace; plays like any other level (GDD §5).
 
 ### 2. Bosses
 For each boss: arena, phases, attacks, weak points, what power-ups are granted before the fight, how it scales on 3 vs 5–6 lanes, and its length.
-- ~~Roster, gameplay style, length, death, items, rewards~~ Answered (GDD §10, September 26, 2026).
-- ~~Floating Head: full breakdown.~~ Answered (GDD §10, September 26, 2026).
-- ~~Sewer Swarm: full breakdown.~~ Answered (GDD §10, September 26, 2026).
-- ~~Marketplace boss~~ Answered: The House (GDD §10); revisit after playtesting.
-- ~~Dead Zone boss~~ Answered: Sleep Taker (GDD §10).
-- ~~**Generators and auto-fire everywhere?**~~ Answered: yes. Weapons never set off a generator, in any level (GDD §9.1).
-- ~~Corporate boss~~ Answered: Hostile Takeover (GDD §10).
+- The House (Marketplace boss): revisit after playtesting (GDD §10).
 - The final villain's fight: full breakdown.
-- ~~Do bosses have their own leaderboards or star criteria?~~ Answered: yes (GDD §10).
-- ~~Does the longer final fight still restart from the beginning on death?~~ Answered: a checkpoint halfway, at a possible second stage (GDD §10).
 
 ### 3. Player character
-- ~~Who or what is the player?~~ Answered: redesigned September 26, 2026 after the owner's "Echo" concept sheet (GDD §11). Still open: customization.
+- Player customization (GDD §11 covers the character itself).
 - Cosmetic skins as a mobile purchase item?
 - How it looks when using each power-up (claws, dash, shield, armor), redone for the new design.
-- ~~**Player redesign**~~ Answered: Razor Echo, soft copper glow, no pistol (GDD §11; brief `docs/art/BRIEF_RAZOR_ECHO.md`).
-- ~~**Cyborg redesign**~~ Answered: one blended body, a screen head, non-hazard colours, the base for every zone variant (GDD §9.2; brief `docs/art/BRIEF_CYBORG_GANGSTER.md`).
-- ~~**Cyborg zone variants**~~ Answered: Brute in Gangland, Casino Mob Enforcer in the Marketplace, VR Runner in Corporate, the base burned out in the Dead Zone, a Golden Zone version derived from the Casino Mob Enforcer; all the same unit, none bigger than the base (GDD §9.2).
-- ~~**Story idea: Cyborg Viewing Devices**~~ Answered: yes (GDD §5, "The cult").
 
 ### 4. Remaining power-up details
 - **Claws:** how much extra wall time? Upgrade tiers?
@@ -81,7 +61,7 @@ For each boss: arena, phases, attacks, weak points, what power-ups are granted b
 - **Web demo:** portal-specific end screens if portals restrict store links.
 
 ### 9. Narrative
-- ~~Is there a story?~~ Answered: a light story with little or no words, a silent protagonist, a final villain backed by a cult (GDD §1). Still open: the individual story beats and cinematics (the owner will describe them), and the cult's name. The cult's symbol and colour are answered (GDD §5, September 26, 2026).
+- The individual story beats and cinematics (the owner will describe them), and the cult's name (the story's outline is GDD §1; the cult's symbol and colour GDD §5).
 
 ### 10. Other
 - Working title.
@@ -2354,13 +2334,3 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
 348. **Par times** (GDD §10, proposed: stars for beating par times set per boss).
     **Placeholder:** 74 s for three stars and 96 s for two. A fight without a miss takes 68.6 s at 3, 5 and 6
     lanes and at 18 and 23.4 m/s; a missed pass costs about 25 s. Data: `data/bosses/corporate_boss.tres`.
-
-### Answered (recorded in GDD_CHECKPOINT.md)
-- Wall entry follows the jump grace rule (§3, September 25, 2026).
-- ~~Ceilings never carry obstacles underneath (§3, September 25, 2026).~~ **Reversed September 26, 2026:** the floor under a ceiling may be dangerous; only the landing zone must be safe (§3). The generator's "floor under a ceiling is clear" rule and test need changing, as does the drone-pad rule that removes floor pieces and enemies under a pad's ceiling (item 75).
-- Mobile orientation is landscape (§2, September 26, 2026).
-- Zone 1 is the Neon City, Zone 2 is Gangland (§5, September 26, 2026).
-- Bosses are standalone mini-games; short cinematics sit between levels and zones. Both are designed later, and the build leaves slots (§6, §10, September 26, 2026).
-- The player is a human runner in a cyber suit, about 75% of the grey-box size (§11, September 26, 2026).
-- Music: code-generated placeholders for now (§11, September 26, 2026).
-- The cult's symbol and colour: the Convergent Triad, option B of the D7 sheet (§5, September 26, 2026).

@@ -34,8 +34,13 @@ sense of what would be better — a mismatch is a finding, not something to fix 
   code assumes a specific lane count.
 - For visual work: frames rendered on both the default and Compatibility (`gl_compatibility`)
   renderers, and Reduced Flashing honoured wherever something flickers.
-- Tests exist for what changed, `tools/godot.sh test` passes in full, `tools/godot.sh smoke` is
-  clean, and the branch has merged the latest `main` first.
+- Tests exist for what changed, and the right tier passed: `tools/godot.sh test --tier=merge` on the
+  branch after it merged the latest `main` (run it yourself; don't take the task's gate run as the
+  merge check). Run `--tier=full` instead when the branch touched the generator, track builder,
+  damage rules, run world, player, boss framework, test helpers, or `data/levels|patterns|tuning|
+  zones` — `--tier=merge --plan` tells you if it raised itself. If a new enemy, boss, screen or skin
+  arrived without a `tests/suite_map.json` rule (and its name doesn't match its suite), ask for one.
+  `tools/godot.sh smoke` is part of every tier.
 - Every `DESIGN-TBD` placeholder is reasonable and clearly marked, with a matching entry in
   `docs/questions/<task-id>.md` (never written straight into `docs/OPEN_QUESTIONS.md`).
 - Commits are small and descriptive.

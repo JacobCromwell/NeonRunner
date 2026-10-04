@@ -31,9 +31,13 @@ and name it in your report; core files otherwise change in core tasks only.
 audio warning before it can hurt; hazards keep one colour and shape language across zones; only
 hazards glow in hazard colours; safe things look safe; introduce one new mechanic at a time.
 
-**Verify before reporting done:** `tools/godot.sh test` (full suite) and `tools/godot.sh smoke`.
-Add or update tests for what you built. For anything visual, render frames on both the default and
-`--rendering-method gl_compatibility` renderers (`CLAUDE.md`, Commands) and look at them yourself.
+**Verify before reporting done:** `tools/godot.sh test --gate` (exit code 0; about a minute plus the
+suites for what you touched — it includes the smoke run). Add or update tests for what you built, and
+when you add a new enemy, screen or suite whose file name doesn't match its suite's, add a rule to
+`tests/suite_map.json` so the gate picks it up for the next agent; check with `--gate --plan`. Don't
+run the full suite unless the gate raised itself to it (a core file changed). For anything visual,
+render frames on both the default and `--rendering-method gl_compatibility` renderers (`CLAUDE.md`,
+Commands) and look at them yourself.
 
 **End every task** with the `CLAUDE.md` summary: what changed, what you verified and how, every
 `DESIGN-TBD` item, and risks.

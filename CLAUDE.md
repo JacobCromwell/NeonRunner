@@ -54,7 +54,21 @@ This file is for Claude Code and all sub-agents working on this project. Read it
 
 ## Workflow rules
 - Work on the task you were given; don't expand scope.
-- Run the project headless and any tests before reporting a task complete. Report what you verified and how.
+- Verify before reporting a task complete, and report what you verified and how. The tests run in tiers
+  (`docs/PERFORMANCE_AUDIT.md` §3.2; the full suite takes 13+ minutes, so it is not the default):
+  - **Every task:** `tools/godot.sh test --gate` (exit code 0 = pass; about a minute). It runs the smoke run, the
+    fast suites, and the suites that cover the files you changed (`tests/suite_map.json` maps paths to suites;
+    `--plan` shows the list without running). Also run the specific suite for anything you built or changed if
+    the plan didn't pick it (`--suite=<name>`), and add it to `tests/suite_map.json` when you add a suite or a
+    new enemy/boss/skin folder whose name doesn't match its suite.
+  - **A change to a core file** (`level_generator.gd`, `track_builder.gd`, `damage_rules.gd`, `run_world.gd`,
+    `player.gd`, `level_run.gd`, `enemy.gd`, the boss framework, `tests/helpers/`, or any `data/levels`,
+    `data/patterns`, `data/tuning`, `data/zones`) makes `--gate` run the full tier automatically. Let it.
+  - **Before a merge to `main`:** `tools/godot.sh test --tier=merge` (about 5 minutes), and `--tier=full` after
+    a batch of merges or when the merge touched generator or level data. The reviewer checks this, not
+    every task.
+  - Never report a tier as passed that you didn't run, and never skip a suite the plan selected because it is
+    slow: the slow ones it adds are the ones covering what you touched.
 - Keep commits small and descriptive. One task per branch or commit series.
 - End every task with a short summary: what changed, what was verified, any `DESIGN-TBD` items, and any risks noticed.
 
@@ -66,11 +80,18 @@ This file is for Claude Code and all sub-agents working on this project. Read it
 - **New enemies stay in their own files** (`docs/ARCHITECTURE.md`, Enemies). A shared change an enemy needs belongs to a core task.
 
 ## Commands
-`tools/godot.sh` finds the pinned Godot (via `$GODOT`, PATH, or the Windows user folders under WSL) and re-imports
-resources automatically when files changed. Use it rather than calling Godot directly.
-- Tests: `tools/godot.sh test [--suite=name] [--jobs=N]` (exit code 0 = pass). It also boots the real
-  game scene. `--jobs=N` (default 1) splits the suites across N Godot processes, balanced by each
-  suite's last measured time (`tests/.suite_times.json`); use it on a machine with CPUs to spare.
+`tools/godot.sh` finds the pinned Godot (via `$GODOT`, then `godot4`/`godot` on PATH, then the Windows user
+folders under WSL) and re-imports resources automatically when files changed. Use it rather than calling Godot
+directly. Under WSL, use the **native Linux build** (`tools/install_godot_wsl.sh` installs it to `~/.local`): a
+Windows `.exe` reading the project over `\\wsl.localhost` takes ~66 s to start instead of ~2 s, and that tax is
+paid by every test, smoke and import run (`docs/PERFORMANCE_AUDIT.md`). Windowed commands (`play`, `edit`) in
+WSLg use the Compatibility renderer on the GPU through Mesa's D3D12 driver; headless commands are unaffected.
+- Tests: `tools/godot.sh test --gate` (the per-task tier, see Workflow rules), `--tier=merge`, `--tier=full`;
+  `--plan` prints the chosen suites, `--paths=a,b` plans for those files instead of the branch's changes.
+  Plain `tools/godot.sh test [--suite=name] [--jobs=N]` runs every suite or the ones whose file name contains
+  `name` (exit code 0 = pass). All of these boot the real game scene. `--jobs=N` splits the suites across N
+  Godot processes, balanced by each suite's last measured time (`tests/.suite_times.json`); the tiers default
+  to half the CPUs (at most 3), plain `test` to 1.
 - Smoke run: `tools/godot.sh smoke [game args]` (prints only problems; exit code 1 if any). Without args it runs quick play.
 - Play: `./play.sh` opens the title screen in a game window on the user's desktop. Quick play and review options
   (debug builds only): `--quick --lanes=6 --seed=4 --difficulty=0.6 --god --nofall --full-loadout

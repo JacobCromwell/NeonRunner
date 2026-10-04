@@ -73,6 +73,3 @@ Implementation result: Rewards and prices are unchanged. After the approved floo
 ### Remaining unanswered question: dash cooldown progression
 - You approved three additional upgrades costing 800, 1,000 and 1,200 credits, with a minimum cooldown of 3 seconds. What should the exact cooldowns for the four total tiers be?
 - Option A: 8 / 6 / 4 / 3 seconds.
-- Option B: Equal reductions: 8 / 6 1/3 / 4 2/3 / 3 seconds.
-- Alternatively, specify another strictly decreasing sequence starting at 8 seconds and never falling below 3 seconds.
-- The original dash price (1,800 credits), 0.6-second duration and +8 m/s speed would remain unchanged. No dash code or pricing changes have been made while this decision is pending.
