@@ -179,7 +179,7 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 | 3. Marketplace | 1 · Awning Alley | The **Barnacle Turret** (§9.8), the first ceiling hazard |
 | | 2 · Shopfront Sparks | **Wall fences** (§9.1), plus screeches from wall vents in the shopfronts *(proposed)* |
 | 4. Corporate | 1 · Maglev Line | **Buzz Overdrive** (§9.9) |
-| | 2 · Checkpoint Plaza | The **Tithe Collector** (§9.12), with a heavier military presence *(proposed)* |
+| | 2 · Checkpoint Plaza | The **Tithe Collector** (§9.12) and the **Enforcer Truck** (§9.13, owner, October 4, 2026), with a heavier military presence *(proposed)* |
 | 5. Dead Zone | 1 · Ashfall | Hosts and the **Cyborg's Bad Dream** |
 | | 2 · The Hush | A quiet, eerie remix: **fewer enemies but more hosts and Bad Dream chases, darker lighting, and long silent stretches broken by sudden threats** (decided September 26, 2026) |
 | 6. Golden Zone | 1 · Gilded Canals | The **Resonator** (§9.10) |
@@ -500,6 +500,27 @@ Shared interaction rules apply unless stated otherwise:
 - *(Proposed)* It is **not a heli drone**: anti-grav pads don't affect it, and it has no rotors, so it doesn't look like one.
 - **Where:** introduced earlier than the Golden Zone and appears there as well. *(Proposed)* Introduced in Corporate 2, skips the Dead Zone (there's no one left to collect from), and returns in the Golden Zone.
 - **Priority:** it is the first idea to drop if the budget tightens (owner, September 26, 2026).
+
+### 9.13 Enforcer Truck (owner, October 4, 2026; first appears in Corporate 2)
+- **The idea:** an enemy the player **can't destroy directly**. It's destroyed by turning other enemies' attacks against it, so the player learns **the relationships between enemies** instead of looking at each one in isolation. It builds on the owner's enemy-versus-enemy mechanic: **an Octodog's lunge and a Buzz Overdrive's charge hurt other enemies.**
+- **Look:** a heavy armoured truck, police-style, distinct from the hover truck, with **headlights** and a **red-and-blue light bar**. Cyborgs it picks up ride on its roof. *(Proposed)* Its body follows the zone's skin like the hover truck's.
+- **Movement:**
+  - **Drives on the street behind the player** and **follows the player's lane changes after a short delay** *(proposed: about 0.8 s)*, so a late dodge leaves it in the lane the player just left.
+  - **Seeing it:** it's behind the camera, so its **headlight beams and light bar shine forward onto the floor of its lane**, and a small marker at the screen's bottom edge shows its lane. The light bar honours Reduced flashing.
+  - **Holes:** it hops ordinary gaps as the player does. A **Buzz Overdrive's floor cut** in its lane, or **a gap too wide to hop**, wrecks it.
+  - **During an Octodog's attack** it **closes right up behind the player**, so the Octodog's lunge (which ends just behind the player) reaches it. *(Proposed)* While that close it must not hide the runner: it stays under the camera's line of sight, or its body turns see-through while its lights stay solid.
+  - **Gives up after about 25 seconds** if not destroyed (like the hover truck).
+- **Attack:** **lasers** at the player's lane. Each volley is warned by **a red line on the floor ahead and a rising whine**, and dodged by changing lanes, which also moves the truck. *(Proposed)* Its volleys are a big attack for turn-taking (§9), so it never fires while an Octodog or Buzz Overdrive charges.
+- **Killing it:**
+  - **The only ways:** **bait an Octodog's lunge or a Buzz Overdrive's charge into it**, or **lead it into a Buzz Overdrive's cut or a gap too wide to hop**.
+  - It's immune to weapons, stomps, claws and the dash. *(Proposed)* It never touches the player.
+- **Picking up cyborgs:** a cyborg the player left alive that is in the truck's lane when the truck passes is **picked up**. It rides on the roof as a visible gunner and **raises the truck's rate of fire**. *(Proposed: up to 3 riders.)* Destroying the truck pays a **bonus for each rider aboard**, so a skilled player may let it load up before baiting it.
+- **Placement:**
+  - **Up to two per level**, never two at once.
+  - Each one is placed only where **at least one Octodog or Buzz Overdrive charge comes during its chase**, so it always has a chance to be destroyed.
+  - It appears where Octodogs or Buzz Overdrives appear, **introduced in Corporate 2** with a first-encounter hint.
+- **Teaching** *(proposed)*: before its first appearance, the player sees a charge flatten another enemy (an Octodog lunging through a cyborg), so the rule is learned before it's needed.
+- **Name:** "Enforcer" is also used in two cyborg variants' art names (§9.2: Gangland's "Broadcast Brute" Enforcer and the Marketplace's "Casino Mob Enforcer"). The truck keeps the name.
 
 ---
 

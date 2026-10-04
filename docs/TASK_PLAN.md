@@ -152,6 +152,7 @@ Each runs in parallel with the others once its dependency has merged. Each inclu
 | C3 | **Resonator** (GDD §9.10) | B1 | M | T2 |
 | C4 | **Gilded Sentinels** (GDD §9.11) | B5, D6a | M | T2 |
 | C5 | **Tithe Collector** (GDD §9.12) | B6 | M | T2 |
+| C6 | **Enforcer Truck** (GDD §9.13, owner, October 4, 2026) | the owner's enemy-versus-enemy charge mechanic (on the owner's machine, to be pushed) | L | T1 |
 
 **C1: Barnacle Turret.**
 - Reuses the cyborg's gun (charge-up, bursts, reload), slightly more accurate.
