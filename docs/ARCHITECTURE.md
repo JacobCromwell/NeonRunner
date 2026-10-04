@@ -551,7 +551,12 @@ part. An enemy takes part like this, opting in for whichever of its attacks coun
   Resonator's planned pulses do the same: a pulse held for another type's turn, or for clear floor
   where its wave would meet the player, moves the rest of its visit on; after
   `ResonatorTuning.turn_wait_max` spent waiting for other attacks (waiting for clear floor doesn't
-  count) it drops its remaining pulses and leaves, never before its first.
+  count) it drops its remaining pulses and leaves, never before its first. A first pulse overdue by
+  `turn_wait_max` (waiting for either) keeps its place from then on: it also asks while it waits for
+  clear floor (`Resonator._first_overdue`), so another type ready again waits for it and it pulses at
+  the next clear floor (FIX4: before, it lost its place at every floor wait; on Golden 2 at 6 lanes a
+  long Bad Dream chase over a visit's planned pulses, then a drone that stays, took every turn the
+  dense floor left it for 55 s, until the next Resonator's arrival sent it away without a pulse).
 - **An attack that can't wait** because the player sets it off (the Bad Dream bursts out of a killed
   host) or the generator planned its moment still reports itself: the others wait for it. It can
   overlap an attack that was already on when it came; the Bad Dream holds its slash until that one

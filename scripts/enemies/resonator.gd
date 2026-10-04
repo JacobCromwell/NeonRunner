@@ -32,8 +32,10 @@ extends Enemy
 ## player, is a big attack (is_major_attack_active). It asks the director just before each warning
 ## (EnemyDirector.major_attack_blocked); while it's held, or the floor isn't clear, it hovers and moves
 ## its pulses on with the player. After turn_wait_max of waiting for other attacks in all it drops the
-## pulses left, but never its first: every visit pulses, unless the level ends first. One Resonator
-## pulses at a time, and one arriving to pace the player sends the last one away after its pulse.
+## pulses left, but never its first: every visit pulses, unless the level ends first. A first pulse
+## overdue by turn_wait_max (any wait) keeps its place in the director's queue while it waits for
+## clear floor, so other types' next attacks wait for it (_first_overdue). One Resonator pulses at a
+## time, and one arriving to pace the player sends the last one away after its pulse.
 ## Spawned without a plan (tests, quick experiments), it pulses as soon as it can, with the same checks.
 ## Spawn params: {"pulses": n, "pulse_at": [player distances], "double": bool or [bool per pulse]}.
 
@@ -342,7 +344,8 @@ func _due_at() -> float:
 
 
 ## Everything a warning needs, the director asked last (GDD §9: it asks only once it's otherwise ready,
-## and while it's held it doesn't start). &"" when it may start, else why not (wait_reason).
+## and while it's held it doesn't start; an overdue first pulse also asks while it waits for clear
+## floor, _first_overdue). &"" when it may start, else why not (wait_reason).
 func _why_not_ready() -> StringName:
 	var pl: Player = world.player
 	if not pl.alive or not pl.running:
@@ -351,9 +354,30 @@ func _why_not_ready() -> StringName:
 		return &"busy"
 	var v: float = maxf(pl.speed, 1.0)
 	var stretch: Vector2 = tune.meeting_stretch(pl.distance, _double_for(pulses_done), v, _scaling, _run_pace)
-	if stretch.y > _last_ok() or not pulse_clear(world.layout, _zones, pl.distance, stretch):
+	if stretch.y > _last_ok():
+		return &"floor"
+	if not pulse_clear(world.layout, _zones, pl.distance, stretch):
+		if _first_overdue():
+			# Keeps its place in the turn queue (EnemyDirector: an enemy that means to wait longer keeps
+			# asking, as the Octodog does), so another type ready again waits for it rather than go first
+			# again: it pulses at the next clear floor.
+			world.director.major_attack_blocked(self)
 		return &"floor"
 	return &"turn" if world.director.major_attack_blocked(self) else &""
+
+
+## Never its first (FIX4): a first pulse that has waited longer than turn_wait_max since it was due, for
+## other attacks or for clear floor, can't be dropped, so from then on it keeps its place in the turn
+## queue while it waits for clear floor (_why_not_ready). Otherwise it loses its place at every floor
+## wait, and an enemy that attacks again and again (a drone that stays) can take every turn the floor
+## leaves it, until the next Resonator's arrival sends it away without a pulse.
+func _first_overdue() -> bool:
+	if pulses_done > 0:
+		return false
+	var waited: float = 0.0
+	for reason: StringName in [&"turn", &"busy", &"floor"]:
+		waited += float(waited_for.get(reason, 0.0))
+	return waited > tune.turn_wait_max
 
 
 ## True while the next pulse could still meet the player before the level's end-clear stretch.

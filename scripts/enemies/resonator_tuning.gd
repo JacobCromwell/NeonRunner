@@ -72,7 +72,8 @@ extends EnemyTuning
 ## the floor where its wave would meet the player isn't clear) waits and moves the visit's other
 ## pulses on with it. After this long waiting for other attacks in all (waiting for clear floor
 ## doesn't count) it drops its remaining pulses and leaves, but never before its first: a visit always
-## gets to pulse, unless the level ends first.
+## gets to pulse, unless the level ends first. A first pulse this long overdue (waiting for either)
+## keeps its place in the turn queue from then on, so it comes at the next clear floor.
 @export_range(0.0, 30.0, 0.5, "suffix:s") var turn_wait_max: float = 8.0
 
 @export_group("Wave")
