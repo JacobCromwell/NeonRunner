@@ -3,9 +3,9 @@ extends TestSuite
 ## would do the same: the fight resumes there for tests), at 3, 5 and 6 lanes and 18 and 21.8 m/s:
 ## - its entrance: the pipe across the street ahead, the Host bursting out of it into the street ahead;
 ## - its implants reached by a ramp and a wall jump (GDD §10): a runner who never baits its lunges (and keeps
-##   out of a fence's lane while one warns) wins the phase with three stomps at every lane count and both
+##   out of a fence's lane while one warns) wins the phase with six stomps at every lane count and both
 ##   speeds, without god mode, and never touches its attacks;
-## - its lunge: warned (the roar and the red line) warning_seconds before its hitbox goes live; baited into a
+## - its lunge: warned (the roar and the red line) lunge_warning_seconds before its hitbox goes live; baited into a
 ##   fence it's shocked, a hit; its flings warned (the wind-up and a red circle where it lands) before the
 ##   splat, which never catches a runner who leaves the lane;
 ## - its crouch: solid (a runner in its lane runs into it), its sides bumping a lane switch back, its implants
@@ -105,10 +105,11 @@ func _sounds(boss: BossEncounter, sound: StringName) -> Array[Dictionary]:
 	return out
 
 
-# --- Three stomps ------------------------------------------------------------------------------------
+# --- Six stomps --------------------------------------------------------------------------------------
 
 ## The way up proven end to end: at every lane count and both speeds, a runner who never baits its lunges takes
-## each crouch's ramp onto the wall and wall-jumps down onto its implants; three stomps free the Host. Its
+## each crouch's ramp onto the wall and wall-jumps down onto its implants; six stomps (the phase's hits) free the
+## Host, its three implants going dark one every two. Its
 ## entrance (the pipe, the burst) comes first; every attack along the way is warned and dodged.
 func _test_stomps_win() -> void:
 	for speed: float in SPEEDS:
@@ -128,12 +129,20 @@ func _stomps_win(lanes: int, speed: float) -> void:
 	var cause: Array = [""]
 	world.player.died.connect(func(c: String) -> void: cause[0] = c)
 	var pipe_ahead: float = boss.pipe.at - world.player.distance
-	await _run(world, 120.0, func() -> bool: return boss.is_defeated(), func() -> void: bot.step())
+	var hits: int = def.phase_list()[2].hits
+	var lit: Array[int] = []
+	var started: float = boss.fight_time()
+	await _run(world, 200.0, func() -> bool: return boss.is_defeated(), func() -> void:
+		bot.step()
+		if lit.size() <= boss.host.hits_taken:
+			lit.append(boss.host.implants_left))
 	var stomps: Array[Dictionary] = _events(boss, &"host_stomped")
-	check(boss.is_defeated() and world.player.alive and stomps.size() == 3 and boss.host_attacks.shocked == 0,
-		"a runner who takes the ramps and wall-jumps onto its implants frees the Host with three stomps %s%s" % [tag,
-		"" if world.player.alive else ": %s at %.0f m" % [cause[0], world.player.distance]])
-	check(_events(boss, &"host_hit").is_empty() and _events(boss, &"weak_point").size() == 3,
+	check(hits == 6 and boss.is_defeated() and world.player.alive and stomps.size() == hits and boss.host_attacks.shocked == 0,
+		"a runner who takes the ramps and wall-jumps onto its implants frees the Host with six stomps (%d, %.1f s) %s%s" % [
+		stomps.size(), boss.fight_time() - started, tag, "" if world.player.alive else ": %s at %.0f m" % [cause[0], world.player.distance]])
+	check(lit == [3, 3, 2, 2, 1, 1, 0],
+		"its three implants go dark one every two hits (lit after 0-6 hits: %s) %s" % [str(lit), tag])
+	check(_events(boss, &"host_hit").is_empty() and _events(boss, &"weak_point").size() == hits,
 		"and never touches its attacks or its body %s" % tag)
 	# The entrance: the pipe across the street ahead, the Host bursting out of it and dropping onto the street.
 	var burst: Array[Dictionary] = _events(boss, &"host_burst")
@@ -142,7 +151,7 @@ func _stomps_win(lanes: int, speed: float) -> void:
 		"it bursts out of a pipe across the street ahead (%.0f m ahead as the phase begins) %s" % [pipe_ahead, tag])
 	# Each crouch: settled in its ramp's lane past the ramp, its marks on the ramp's wall, in time to reach.
 	var crouches: Array[Dictionary] = _events(boss, &"host_crouch")
-	var reach_ok: bool = crouches.size() >= 3
+	var reach_ok: bool = crouches.size() >= hits
 	for c: Dictionary in crouches:
 		var ahead: float = float(c["ramp"]) - float(c["d"])
 		# Settled with time to cross the street to the ramp's lane: a reaction and a switch a lane.
@@ -153,7 +162,7 @@ func _stomps_win(lanes: int, speed: float) -> void:
 	var jumps: int = 0
 	for l: Dictionary in bot.log:
 		jumps += 1 if l["why"] == "wall jump" else 0
-	check(jumps >= 3, "each stomp came down from a wall jump off a ramp's wall run (%d) %s" % [jumps, tag])
+	check(jumps >= hits, "each stomp came down from a wall jump off a ramp's wall run (%d) %s" % [jumps, tag])
 	# Every fling warned: its circle before it lands, as long as its wind-up and flight; no splat hits.
 	var flings: Array[Dictionary] = _events(boss, &"host_fling")
 	var splats: Array[Dictionary] = _events(boss, &"host_splat")
@@ -168,10 +177,10 @@ func _stomps_win(lanes: int, speed: float) -> void:
 	var locks: Array[Dictionary] = _events(boss, &"host_lunge")
 	var lunge_ok: bool = not warns.is_empty() and warns.size() == locks.size() and _sounds(boss, &"host_roar").size() == warns.size()
 	for i: int in mini(warns.size(), locks.size()):
-		lunge_ok = lunge_ok and absf(float(locks[i]["t"]) - float(warns[i]["t"]) - (t.warning_seconds - t.lock_seconds)) < 0.03
+		lunge_ok = lunge_ok and absf(float(locks[i]["t"]) - float(warns[i]["t"]) - (t.lunge_warning_seconds - t.lock_seconds)) < 0.03
 		lunge_ok = lunge_ok and not bool(locks[i]["baited"])
 	check(lunge_ok, "every lunge roars and shows its line %.1f s before it lands, and goes by unbaited %s" % [
-		t.warning_seconds - t.lock_seconds, tag])
+		t.lunge_warning_seconds - t.lock_seconds, tag])
 	await sim.free_world(world)
 
 

@@ -5,13 +5,15 @@
 [resource]
 script = ExtResource("1_tuning")
 cluster_health = 48.0
-warning_seconds = 2.2
+warning_seconds = 1.55
 lock_seconds = 0.9
 bait_spacing = 185.0
 host_after = 74.0
-behind_warning_seconds = 2.4
+horde_climb = 0.0
+behind_warning_seconds = 1.7
 behind_lock_seconds = 1.0
 climb_gap_seconds = 1.75
 fling_windup = 0.6
 fling_flight = 0.9
 splat_seconds = 1.0
+lunge_warning_seconds = 2.2

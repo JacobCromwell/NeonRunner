@@ -43,15 +43,18 @@ extends BossEncounter
 ## 3. Two clusters destroyed end it (BossPhase.hits); otherwise it keeps cycling, the same way at every spot
 ##    (GDD §10: no time limit, no escalation).
 ## Phase 2, Surrounded (GDD §10: "clusters also strike from behind ... The swarm also climbs the walls ... one
-## wall at a time for a few seconds, alternating sides, so one wall is always free"): the surges come in turn
-## from behind and ahead (SewerSwarmTuning.surge_sides): from behind, a wave of the swarm rises behind the runner
-## in their lane, curling over them, crashes down and surges on along the lane into the fence or hole ahead
-## (SwarmSurges); meanwhile the swarm climbs one wall at a time (SwarmClimb: the wall taken away, never both).
-## The rest of the clusters destroyed end it.
+## wall at a time for a few seconds, alternating sides, so one wall is always free"): at every bait spot a
+## strike from behind and a surge from ahead at once (SewerSwarmTuning.surge_sides "both", owner's request,
+## docs/USER_REQUESTS.md): a wave of the swarm rises behind the runner in their lane, curling over them,
+## crashes down and surges on along the lane into the fence or hole ahead, while a cluster ahead charges down
+## another lane (SwarmSurges: two lanes struck at once, the rest clear); meanwhile the swarm climbs one wall
+## at a time (SwarmClimb: an enemy attack on that wall, never both). The rest of the clusters destroyed end it.
 ## Phase 3, The Host (GDD §10): it bursts out of a pipe across the street ahead, paces the runner, flings
 ## the swarm at them at hole spots, lunges down their lane at fence spots (baited into the fence: a hit) and
 ## crouches in a host spot's ramp lane, its implants glowing: a ramp, a wall run and a wall jump bring the
-## runner down on them (a stomp: a hit). Three hits free the Host: its defeat (SwarmHostAttacks).
+## runner down on them (a stomp: a hit). Six hits (BossPhase.hits) free the Host: its defeat (SwarmHostAttacks). The swarm
+## keeps climbing the walls, on the side of the Host's next ramp, parting over that ramp's way up the wall
+## (SwarmClimb's route) in time for the runner to take it.
 ## Every attack is warned (visual and audio) before it can hit, every one has an escape and a bait the runner
 ## can reach, at any lane count (test_sewer_swarm_*.gd prove it). Nothing depends on how long the fight has
 ## lasted: the spots are the track's, planned from the arena's seed, and everything is timed from the
@@ -71,14 +74,18 @@ const SOUND_AHEAD: float = 32.0
 var tuning: SewerSwarmTuning
 var horde: SwarmHorde
 var surges: SwarmSurges
-## Phase 2's wall climb, phase 3's Host (the boss's body), its attacks, its pipe and its way up's marks.
+## The wall climb (phases 2 and 3), phase 3's Host (the boss's body), its attacks, its pipe and its way up's
+## marks.
 var climb: SwarmClimb
+## Phase 3's climb reach ahead (SwarmClimb.route_reach), from the arena's longest route hole.
+var route_reach: float = 0.0
 var host: SwarmHost
 var host_attacks: SwarmHostAttacks
 var pipe: SwarmPipe
 var marks: SwarmJumpMarks
-## Surges begun in the current phase (phase 2's sides take turns by it).
+## Surges begun in the current phase, and the bait spots they came at (phase 2's sides take turns by it).
 var phase_surges: int = 0
+var phase_spots: int = 0
 ## The clusters in play, alive or dying.
 var clusters: Array[SwarmCluster] = []
 ## The clusters waiting at the roadside, in the order they'll surge (the first nearest).
@@ -86,6 +93,8 @@ var queue: Array[SwarmCluster] = []
 ## Clusters destroyed over the fight, and by what ({cause: count}).
 var destroyed: int = 0
 var destroyed_by: Dictionary = {}
+## Runners knocked off a wall by screeches clinging to it (repel_wall_runner).
+var wall_repels: int = 0
 var step: Step = Step.RISING
 var step_time: float = 0.0
 ## Draws fewer creatures (DeviceProfile.is_low_end(), read in setup; tools may set it before).
@@ -198,6 +207,18 @@ func _plan_host_spots(lap: LevelLayout, index: int, p_arena: BossArena, baits: A
 	_host_plan[index] = hosts
 
 
+## The longest hole the climb parts over any host spot's way (track metres: route_hole_before before its ramp
+## to route_hole_after past its drop), 0 with none.
+func longest_route_hole() -> float:
+	var t: SewerSwarmTuning = _tuning()
+	var k: float = run_pace()
+	var out: float = 0.0
+	for spots: Array in _host_plan.values():
+		for h: Dictionary in spots:
+			out = maxf(out, float(h["drop"]) + t.route_hole_after * k - (float(h["at"]) - t.route_hole_before * k))
+	return out
+
+
 ## The stretch a host spot whose ramp starts at `ramp_at` keeps clear in every lane (track distances).
 static func host_clear_span(t: SewerSwarmTuning, movement: MovementTuning, ramp_at: float) -> Vector2:
 	var k: float = movement.pace()
@@ -285,19 +306,29 @@ func host_spots_between(from: float, to: float) -> Array[Dictionary]:
 	return out
 
 
-## The next bait spot whose surge hasn't come and whose warning point the runner hasn't passed: {at, lane,
-## kind, far, key, warn_at}, or {} for none within sight (`behind`: its surge would strike from behind, which
-## warns from further back). One whose moment passed unused (the runner was down, the phase changing) is
-## logged (bait_missed) and skipped.
-func next_spot(behind: bool = false) -> Dictionary:
+## The next bait spot whose surges haven't come and whose warning point the runner hasn't passed: {at, lane,
+## kind, far, key, warn_at, sides}, or {} for none within sight. `mode` (surge_mode) is where its surges come
+## from: "ahead", "behind" (which warns from further back) or "both"; `sides` lists them (true: from behind)
+## in the order their warnings start, warn_at the first's. One whose moment passed unused (the runner was
+## down, the phase changing) is logged (bait_missed) and skipped; with both, one whose strike from behind's
+## moment passed keeps its surge ahead.
+func next_spot(mode: String = "ahead") -> Dictionary:
 	var d: float = player_distance()
-	var v: float = run_speed()
+	var late: float = run_speed() * (1.5 / 60.0)
+	var wanted: Array[bool] = [mode == "behind"]
+	if mode == "both":
+		wanted = [true, false]
 	for s: Dictionary in spots_between(d - 5.0, d + SIGHT * run_pace()):
 		if _used.has(s["key"]):
 			continue
-		var w: float = warn_at(s, behind)
-		if d <= w + v * (1.5 / 60.0):
-			s["warn_at"] = w
+		var sides: Array[bool] = []
+		for behind: bool in wanted:
+			if d <= warn_at(s, behind) + late:
+				sides.append(behind)
+		if not sides.is_empty():
+			sides.sort_custom(func(a: bool, b: bool) -> bool: return warn_at(s, a) < warn_at(s, b))
+			s["sides"] = sides
+			s["warn_at"] = warn_at(s, sides[0])
 			return s
 		_used[s["key"]] = true
 		log_event(&"bait_missed", {"at": s["at"], "lane": s["lane"]})
@@ -337,9 +368,21 @@ func behind_reach(s: Dictionary) -> float:
 	return strike_at(s, true) + tuning.behind_run_on * run_pace()
 
 
-## True if the next surge strikes from behind: phase 2's surges come in turn from SewerSwarmTuning.surge_sides.
-func surge_from_behind() -> bool:
-	return phase_index == 1 and tuning.surge_side(phase_surges) == "behind"
+## Where the next bait spot's surges come from: "ahead" in phase 1; phase 2's from SewerSwarmTuning.surge_sides
+## in turn ("both": a strike from behind and a surge ahead at once).
+func surge_mode() -> String:
+	return tuning.surge_side(phase_spots) if phase_index == 1 else "ahead"
+
+
+## A bait spot's surges began (phase 2's sides take turns by it).
+func note_spot() -> void:
+	phase_spots += 1
+
+
+## Where the runner is when the Host's lunge at fence spot `s` starts its warning: lunge_warning_seconds
+## before it would meet them.
+func lunge_warn_at(s: Dictionary) -> float:
+	return strike_at(s) - run_speed() * tuning.lunge_warning_seconds
 
 
 ## The charge's speed down the lane (m/s): charge_speed at 18 m/s, times the run's pace.
@@ -477,7 +520,9 @@ func _build_boss() -> void:
 	if not low_end:
 		low_end = DeviceProfile.is_low_end()
 	# The Host first: the boss's body (its parts[0]), hidden until phase 3.
-	host = add_part(HOST_SCRIPT, {"tuning": tuning, "low_end": low_end}) as SwarmHost
+	var phases: Array[BossPhase] = def.phase_list()
+	var host_hits: int = phases[HOST_PHASE].hits if phases.size() > HOST_PHASE else SwarmHost.IMPLANTS
+	host = add_part(HOST_SCRIPT, {"tuning": tuning, "low_end": low_end, "hits": host_hits}) as SwarmHost
 	_crowds = Node3D.new()
 	_crowds.name = "Crowds"
 	_crowds.top_level = true
@@ -491,11 +536,14 @@ func _build_boss() -> void:
 		crowd.visible = false
 		_crowds.add_child(crowd)
 		_crowd_pool.append(crowd)
-	var climb_crowd := SwarmCrowd.make(SwarmCrowd.Kind.CLIMB, tuning.climb_size(low_end), hash([String(def.id), "climb"]),
-		grime, tuning.creature_scale)
+	# The climb's pool holds enough creatures for phase 3's longer reach (SwarmClimb.route_reach).
+	route_reach = SwarmClimb.route_reach(tuning, longest_route_hole(), run_pace())
+	var climb_crowd := SwarmCrowd.make(SwarmCrowd.Kind.CLIMB, SwarmClimb.pool_size(tuning.climb_size(low_end), tuning,
+		route_reach), hash([String(def.id), "climb"]), grime, tuning.creature_scale)
 	climb_crowd.name = "Climb"
 	_crowds.add_child(climb_crowd)
 	climb = SwarmClimb.new(self, climb_crowd)
+	climb.set_reach(tuning.climb_ahead, tuning.climb_size(low_end))
 	horde = SwarmHorde.new()
 	add_child(horde)
 	horde.setup(world, tuning, tuning.horde_size(low_end), tuning.spill_size(low_end), hash([String(def.id), "horde"]),
@@ -596,9 +644,21 @@ func next_cluster(side: int = 0) -> SwarmCluster:
 	return null
 
 
-## A surge began (SwarmSurges): phase 2's sides take turns by it.
+## A surge began (SwarmSurges).
 func note_surge() -> void:
 	phase_surges += 1
+
+
+## A runner on the wall on `side` touched screeches clinging to it (the climb's, a cluster's mound: `what`):
+## they're knocked off it (Player.repel_from_wall). False if they weren't on that wall.
+func repel_wall_runner(side: int, what: String) -> bool:
+	var p: Player = world.player
+	if p.surface != Player.Surface.WALL or p.wall_side != side or not p.repel_from_wall():
+		return false
+	wall_repels += 1
+	log_event(&"wall_repel", {"what": what, "side": side, "d": snappedf(player_distance(), 0.01),
+		"h": snappedf(p.h, 0.01)})
+	return true
 
 
 ## The side of the street nearer `lane` (-1 left, +1 right; 0 for the middle lane at an odd count).
@@ -643,13 +703,17 @@ func _update_stations(delta: float) -> void:
 
 
 ## A phase short of the clusters it needs (weapons took some without a whole hit's worth of the boss's
-## health) has them rise at the back of the line, so it always has clusters to bait.
+## health) has them rise at the back of the line, so it always has clusters to bait. Phase 2's bait spots
+## with both sides at once (surge_sides "both") need two clusters, even for its last hit.
 func _ensure_clusters() -> void:
 	var alive: int = 0
 	for c: SwarmCluster in clusters:
 		if is_instance_valid(c) and c.alive:
 			alive += 1
-	for i: int in maxi(clusters_needed() - alive, 0):
+	var want: int = clusters_needed()
+	if phase_index == 1 and want > 0 and tuning.surge_sides.has("both"):
+		want = maxi(want, 2)
+	for i: int in maxi(want - alive, 0):
 		var c: SwarmCluster = _spawn_cluster()
 		if c != null:
 			c.at = player_distance() + station_offset(queue.size() - 1)
@@ -671,10 +735,12 @@ func _lair_floor_ok(side: int, d: float) -> bool:
 func _on_phase_started(index: int) -> void:
 	surges.clear()
 	climb.clear()
+	climb.set_reach(route_reach if index >= HOST_PHASE else tuning.climb_ahead, tuning.climb_size(low_end))
 	host_attacks.clear()
 	step = Step.RISING
 	step_time = 0.0
 	phase_surges = 0
+	phase_spots = 0
 	if index >= HOST_PHASE:
 		# The Host: any clusters left sink into the gutters; the pipe hangs ahead.
 		for c: SwarmCluster in queue:
@@ -720,6 +786,7 @@ func _pattern_tick(delta: float) -> void:
 	step_time += delta
 	if phase_index >= HOST_PHASE:
 		host_attacks.tick(delta)
+		climb.tick(delta)
 		return
 	surges.tick(delta)
 	if phase_index == 1:

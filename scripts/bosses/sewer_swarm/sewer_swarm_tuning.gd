@@ -12,9 +12,11 @@ extends Resource
 ## device (DeviceProfile.is_low_end()) draws the _low_end ones. Every number here is a placeholder
 ## (DESIGN-TBD: docs/OPEN_QUESTIONS.md 324-328, docs/questions/e4.md) unless its comment gives the GDD's.
 ## Campaign difficulty overrides live in gangland_boss_tuning.tres: tougher clusters, closer bait/Host
-## spots, shorter lock-to-impact windows and faster flings. The pre-lock time to reach a bait, all ramp
-## and stomp geometry, phase hits and alternating/free-wall rules are unchanged. host_after moves with
-## bait_spacing so every interior bait still has a clear, reachable ramp before the next warning.
+## spots, shorter lock-to-impact windows, shorter warnings (front 1.55 s, behind 1.7 s from the red line to
+## impact; the locks stay 0.9 s and 1.0 s, so 0.65 s and 0.7 s to pick a fence or a hole), a Host lunge
+## keeping its longer warning, and faster flings. All ramp and stomp geometry, phase hits and the
+## alternating wall rules are unchanged. host_after moves with bait_spacing so every interior bait still
+## has a clear, reachable ramp before the next warning.
 
 @export_group("Crowds")
 ## DESIGN-TBD (E3 sets it): screeches drawn in each cluster (GDD §10: "each rendered as many screech-variant
@@ -142,7 +144,8 @@ extends Resource
 @export_range(0.0, 1.0, 0.05) var lair_burst_share: float = 0.4
 ## The roadside horde: from horde_behind behind the runner to horde_ahead ahead, piled horde_depth out from
 ## the wall's foot and clinging up to horde_climb, drifting back past the runner this fast, most of it gathered
-## in heaps every horde_heap_spacing metres.
+## in heaps every horde_heap_spacing metres. It never hurts: Gangland's keeps horde_climb at 0, its screeches
+## heaped at the wall's foot under a wall runner (a swarm on the wall hurts, docs/USER_REQUESTS.md).
 @export_range(20.0, 200.0, 1.0, "suffix:m") var horde_ahead: float = 70.0
 @export_range(0.0, 40.0, 1.0, "suffix:m") var horde_behind: float = 14.0
 @export_range(0.2, 1.2, 0.05, "suffix:m") var horde_depth: float = 0.8
@@ -152,10 +155,11 @@ extends Resource
 @export_range(0.5, 15.0, 0.25, "suffix:s") var horde_fill_seconds: float = 5.0
 
 @export_group("Surrounded")
-## DESIGN-TBD (docs/questions/e4.md, strikes from behind): phase 2's surges come in turn from these sides
-## (GDD §10, phase 2: "clusters also strike from behind"): "behind" or "ahead", one surge a bait spot as in
-## phase 1.
-@export var surge_sides: PackedStringArray = PackedStringArray(["behind", "ahead"])
+## DESIGN-TBD (docs/questions/e4.md, strikes from behind): phase 2's surges come from these sides in turn
+## (GDD §10, phase 2: "clusters also strike from behind"): "both" (owner's request, docs/USER_REQUESTS.md:
+## a strike from behind and a surge ahead at each bait spot at once, their charges overlapping in two
+## different lanes, every other lane clear), "behind" or "ahead" (one surge a bait spot, as in phase 1).
+@export var surge_sides: PackedStringArray = PackedStringArray(["both"])
 ## A strike from behind (GDD §10: "the warning is a chittering sound plus a visible rising wave of the swarm on
 ## screen, curling like a breaking wave or a scorpion's stinger, about to strike its lane"): its warning lasts
 ## this long from its start until it would catch the runner. The wave rises behind the runner in their lane,
@@ -169,8 +173,11 @@ extends Resource
 ## How fast it charges along the lane (at 18 m/s): faster than the runner.
 @export_range(20.0, 60.0, 0.5, "suffix:m/s") var behind_charge_speed: float = 30.0
 ## Where a strike from behind would catch the runner: this far before its bait spot (at 18 m/s), so a baited
-## one runs past the runner and into its fence or hole in plain view.
-@export_range(2.0, 30.0, 0.5, "suffix:m") var behind_strike_before: float = 12.0
+## one runs past the runner and into its fence or hole in plain view. With both at once (phase 2) it crashes
+## just before the surge ahead locks (strike_before + charge_speed × lock_seconds), so the two charge at once,
+## and it has surged on past the runner before one reacting to that lock could step into its lane behind it
+## (the way out of an outer lane beside it).
+@export_range(2.0, 30.0, 0.5, "suffix:m") var behind_strike_before: float = 24.0
 ## A strike that missed runs on this far ahead of the runner (at 18 m/s) and pours back into the gutter.
 @export_range(10.0, 80.0, 1.0, "suffix:m") var behind_run_on: float = 30.0
 ## The wave: its foot this far behind the runner, rising this high and curling this far forward over the
@@ -180,10 +187,18 @@ extends Resource
 @export_range(2.0, 20.0, 0.5, "suffix:m") var wave_reach: float = 11.0
 ## DESIGN-TBD (docs/questions/e4.md, the wall climb): the swarm climbs one wall at a time (GDD §10: "one wall
 ## at a time for a few seconds, alternating sides, so one wall is always free"): it covers a wall for
-## climb_seconds (rising over climb_rise_seconds, its claws heard: swarm_climb, then sinking back), taking it
-## away (the runner can't get onto it there: a clank and a bump, as at a sign; it never hurts), then both
+## climb_seconds (rising over climb_rise_seconds, its claws heard: swarm_climb, then sinking back), then both
 ## walls are free for climb_gap_seconds before it climbs the other one. It waits while the runner is on the
-## wall it's due to climb.
+## wall it's due to climb. Like every swarm clinging to a wall (a cluster's mound too), it's an enemy attack
+## (owner's request, docs/USER_REQUESTS.md): touching it hurts as any attack does (armor, a shield, grace)
+## and knocks the runner off the wall, its hitbox wall_hit_depth deep off the wall and a little under the
+## screeches' tops. It keeps climbing in phase 3, on the wall of the Host's next ramp: route_climb_lead
+## before the ramp (at 18 m/s) it climbs that wall, and route_open_lead before it the screeches part over the
+## ramp's whole way up the wall, from route_hole_before before the ramp to route_hole_after past where its
+## wall run drops back (and on while the runner is still on the wall there), closing again once the runner is
+## past it or the chance is missed. In phase 3 the climb reaches further ahead (SwarmClimb.route_reach, with
+## creatures added to keep it as dense) so that, its hole as long as it is at any speed, route_cover_ahead of
+## live, visible screeches (at 18 m/s) always stand on that wall ahead of the runner, before the hole or past it.
 @export_range(1.0, 15.0, 0.25, "suffix:s") var climb_seconds: float = 4.0
 @export_range(0.5, 15.0, 0.25, "suffix:s") var climb_gap_seconds: float = 2.5
 @export_range(0.1, 2.0, 0.05, "suffix:s") var climb_rise_seconds: float = 0.7
@@ -193,6 +208,12 @@ extends Resource
 @export_range(10.0, 120.0, 1.0, "suffix:m") var climb_ahead: float = 50.0
 @export_range(0.0, 40.0, 1.0, "suffix:m") var climb_behind: float = 12.0
 @export_range(0.0, 10.0, 0.25, "suffix:m/s") var climb_drift: float = 3.0
+@export_range(0.1, 1.0, 0.05, "suffix:m") var wall_hit_depth: float = 0.3
+@export_range(20.0, 300.0, 1.0, "suffix:m") var route_climb_lead: float = 100.0
+@export_range(10.0, 200.0, 1.0, "suffix:m") var route_open_lead: float = 55.0
+@export_range(0.0, 30.0, 0.5, "suffix:m") var route_hole_before: float = 6.0
+@export_range(0.0, 30.0, 0.5, "suffix:m") var route_hole_after: float = 6.0
+@export_range(0.0, 40.0, 0.5, "suffix:m") var route_cover_ahead: float = 12.0
 
 @export_group("The Host")
 ## The Host's entrance (GDD §10, phase 3: "the Host bursts out of a big sewer pipe ahead"): a huge pipe
@@ -226,10 +247,12 @@ extends Resource
 @export_range(0.2, 2.0, 0.05, "suffix:s") var splat_seconds: float = 0.8
 @export_range(1.0, 6.0, 0.25, "suffix:m") var splat_length: float = 3.0
 ## DESIGN-TBD (docs/questions/e4.md, the lunge): at each fence spot it lunges down the runner's lane like a
-## surge (the same warning_seconds, lock_seconds, charge_speed and line, and its roar, host_roar). Into the
+## surge (the same lock_seconds, charge_speed and line, and its roar, host_roar), its warning starting
+## lunge_warning_seconds before it would meet the runner. Into the
 ## fence (GDD §10: "its lunge can also be baited into a fence"): shocked, a hit, and down for stun_seconds;
 ## otherwise it charges on past the runner and leaps back over them. Its attack's hitbox while it charges:
 ## this share of a lane wide, this high, this long.
+@export_range(1.0, 5.0, 0.05, "suffix:s") var lunge_warning_seconds: float = 2.4
 @export_range(0.3, 4.0, 0.05, "suffix:s") var stun_seconds: float = 1.2
 @export_range(0.2, 0.95, 0.01) var lunge_hit_width_share: float = 0.7
 @export_range(0.5, 4.0, 0.05, "suffix:m") var lunge_hit_height: float = 1.9
@@ -276,11 +299,12 @@ func spill_size(low_end: bool) -> int:
 	return spill_creatures_low_end if low_end else spill_creatures
 
 
-## Phase 2's surge `index` (0 first): from "behind" or "ahead" (surge_sides in turn).
+## Phase 2's bait spot `index` (0 first): "both", "behind" or "ahead" (surge_sides in turn).
 func surge_side(index: int) -> String:
 	if surge_sides.is_empty():
 		return "ahead"
-	return "behind" if surge_sides[posmod(index, surge_sides.size())] == "behind" else "ahead"
+	var side: String = surge_sides[posmod(index, surge_sides.size())]
+	return side if side == "behind" or side == "both" else "ahead"
 
 
 ## The bait kind of a lap's spot `index` (bait_kinds in turn).

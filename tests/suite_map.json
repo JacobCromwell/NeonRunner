@@ -22,7 +22,7 @@
   "medium": [
     "audio", "ceilings", "corporate_skin", "cyborg", "drone", "enemy_director", "floating_head",
     "gilded_sentinel", "golden_skin", "hostile_takeover", "hover_truck", "octodog", "screech",
-    "sewer_swarm_host", "web_demo"
+    "sewer_swarm_host", "sewer_swarm_walls", "web_demo"
   ],
   "rules": [
     {"match": "scripts/world/level_generator.gd", "tier": "full"},
@@ -69,6 +69,7 @@
     {"match": "scripts/enemies/cyborg_looks/*", "suites": ["cyborg", "cyborg_body", "avatar"]},
     {"match": "scripts/bosses/boss_*.gd", "tier": "full"},
     {"match": "scripts/bosses/test_boss*", "suites": ["bosses"]},
+    {"match": "scripts/bosses/sewer_swarm/*", "suites": ["sewer_swarm*"]},
     {"match": "scripts/characters/*", "suites": ["avatar", "cyborg_body", "cyborg", "units"]},
     {"match": "scripts/powerups/*", "suites": ["powerups", "armor", "pickups", "interactions", "damage_rules"]},
     {"match": "scripts/economy/*", "suites": ["economy", "theft", "screens"]},

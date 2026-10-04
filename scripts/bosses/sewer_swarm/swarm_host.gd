@@ -8,7 +8,9 @@ extends BossPart
 ## Its look, all made before the fight: its bulk, host_creatures screeches latched onto it (a SwarmCrowd of
 ## kind HOST, one draw: knocked off a share at each hit, so more of the person shows), the person inside
 ## (SwarmHostPerson on the HumanoidRig, held up), and its three implants: red domes glowing through the swarm
-## on its back (the weak points' language), each going dark as a hit shorts it out.
+## on its back (the weak points' language), going dark in turn as its hits short them out: its phase's hits
+## (`hits_needed`, BossPhase.hits: six, owner's request, docs/USER_REQUESTS.md) shared among them, so with six
+## each takes two.
 ##
 ## Its poses (Pose): STAND (pacing the runner ahead, facing them; rearing to fling or lunge), LUNGE (charging
 ## down a lane at the runner: its attack hitbox live, an enemy attack armor blocks), STUNNED (shocked by a
@@ -26,7 +28,8 @@ const POSE_NAMES: PackedStringArray = ["hidden", "stand", "lunge", "stunned", "c
 const IMPLANTS: int = 3
 ## The person's height (the rig's design height is 1.3 m).
 const PERSON_HEIGHT: float = 1.75
-## Shares of the swarm still latched on after each hit (the last one frees the person).
+## Shares of the swarm still latched on as its hits add up: none, a third, two thirds and all of them (the last
+## frees the person); in between, eased from one to the next.
 const LATCHED: PackedFloat32Array = [1.0, 0.72, 0.48, 0.0]
 
 var tuning: SewerSwarmTuning
@@ -44,7 +47,9 @@ var rear: float = 0.0
 var charge: float = 0.0
 var shock: float = 0.0
 var heat: float = 0.0
-## Hits taken (stomps on its implants and lunges into fences), and its implants still glowing.
+## Hits it takes to be freed (its phase's), hits taken (stomps on its implants and lunges into fences), and
+## its implants still glowing.
+var hits_needed: int = IMPLANTS
 var hits_taken: int = 0
 var implants_left: int = IMPLANTS
 ## The crouch's length (metres along the track: crouch_length at the run's pace).
@@ -78,6 +83,7 @@ func _build() -> void:
 	display_name = "the Host"
 	is_obstacle = true
 	var low_end: bool = bool(p.get("low_end", false))
+	hits_needed = maxi(int(p.get("hits", IMPLANTS)), 1)
 	var grime: float = 1.0 if world.skin == null or world.skin.enemy_variant != &"city" else 0.0
 	_look = Node3D.new()
 	_look.name = "Look"
@@ -200,7 +206,7 @@ func crouch_at(lane_x: float, from: float, to: float) -> void:
 
 ## Its implants go live (crouched and settled).
 func open() -> void:
-	if pose == Pose.CROUCH and implants_left > 0:
+	if pose == Pose.CROUCH and hits_taken < hits_needed:
 		weak.set_enabled(true)
 
 
@@ -214,7 +220,8 @@ func rise() -> void:
 ## knocked off, more of the person shows, and an implant shorts out (`stomped`: the one under the stomp).
 func knock(stomped: bool) -> void:
 	hits_taken += 1
-	if implants_left > 0:
+	var lit: int = ceili(float(IMPLANTS * maxi(hits_needed - hits_taken, 0)) / float(hits_needed))
+	while implants_left > lit:
 		implants_left -= 1
 		implants[implants_left].mesh = dome_mesh(false)
 	weak.set_enabled(false)
@@ -222,6 +229,13 @@ func knock(stomped: bool) -> void:
 	if not stomped:
 		world.effects.burst(aim_point(), Color(1.0, 0.3, 0.7), 30, 1.1)
 	world.effects.burst(aim_point() + Vector3(0.0, 0.6, 0.0), ScreechLair.MIST, 26, 1.0)
+
+
+## The share of its screeches still latched on after `hits` hits.
+func latched_share(hits: int) -> float:
+	var f: float = clampf(float(hits) / float(hits_needed), 0.0, 1.0) * float(LATCHED.size() - 1)
+	var i: int = mini(floori(f), LATCHED.size() - 2)
+	return lerpf(LATCHED[i], LATCHED[i + 1], f - float(i))
 
 
 ## Freed (its defeat): its hitboxes go (its back stays under a runner on it until SwarmHostAttacks takes it
@@ -303,7 +317,7 @@ func _process(delta: float) -> void:
 		return
 	_clock += delta
 	shock = move_toward(shock, 0.0, delta / 0.6)
-	var latched: float = LATCHED[clampi(hits_taken, 0, LATCHED.size() - 1)]
+	var latched: float = latched_share(hits_taken)
 	_shown = move_toward(_shown, latched, delta / 0.5)
 	var dying: bool = pose == Pose.FREED
 	if dying:

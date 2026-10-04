@@ -5,7 +5,8 @@ extends TestSuite
 ## its sounds and hints, its arena (the bait spots: a live fence or a hole in one lane, the street around it
 ## clear; the host spots: a ramp in an outer lane, the street around it clear) and the fairness of every surge
 ## on it at 3, 5 and 6 lanes and both speeds (GDD §3: Gangland's 21.8 m/s, quick play's 18): every surge's
-## warning is long enough, its bait is in reach from any lane before the lock, and every lane has a way out;
+## warning is long enough, its bait is in reach before the lock (a neighbour's within the warning's tracking,
+## any lane's from when it comes in sight), and every lane has a way out;
 ## and the stress scene for the phone test. The fight itself: test_sewer_swarm_fight.gd (phase 1),
 ## test_sewer_swarm_surrounded.gd (phase 2), test_sewer_swarm_host.gd (phase 3) and test_sewer_swarm_whole.gd.
 
@@ -74,7 +75,8 @@ func _test_slot() -> void:
 		and list[2].display_name == "The Host", "three phases: Rising, Surrounded, The Host (GDD §10)")
 	check(t != null and list[0].hits == 2 and list[0].hits + list[1].hits == t.cluster_count,
 		"phase 1 ends when two clusters are destroyed, phase 2 when the rest are (%d clusters)" % (t.cluster_count if t else 0))
-	check(list[2].hits == 3, "the Host takes three hits (GDD §10: three stomps)")
+	check(list[2].hits == 6 and list[0].hits == 2 and list[1].hits == 3,
+		"the Host takes six hits, twice the three it took (owner's request, docs/USER_REQUESTS.md), phases 1 and 2 unchanged (2 and 3)")
 	check(t.cluster_count >= 4 and t.cluster_count <= 5, "GDD §10: 4-5 clusters (%d)" % t.cluster_count)
 	check(def.armor_rule and def.armor_delay_min == 15.0 and def.armor_delay_max == 17.0 and def.armor_pickups_per_phase == 1,
 		"the standard armor rule, 15-17 s (GDD §10)")
@@ -104,9 +106,15 @@ func _test_tuning() -> void:
 	check(t.cluster_health >= 48.0, "clusters take at least a third more weapon damage than the former 36-health tuning")
 	check(t.bait_spacing <= 185.0 and t.bait_spacing > 0.0,
 		"bait, surge and Host opportunities recur at least 8% more often than the former 200 m spacing")
-	check(t.warning_seconds - t.lock_seconds >= 1.3 - 0.001 and t.lock_seconds <= 0.9 + 0.001
-		and t.behind_warning_seconds - t.behind_lock_seconds >= 1.4 - 0.001 and t.behind_lock_seconds <= 1.0,
-		"less time to dodge a locked attack, without reducing the time to reach its bait")
+	check(is_equal_approx(t.lock_seconds, 0.9) and is_equal_approx(t.behind_lock_seconds, 1.0),
+		"the locked windows stay as they were: 0.9 s ahead, 1.0 s from behind")
+	check(t.warning_seconds <= 1.55 + 0.001 and t.behind_warning_seconds <= 1.70 + 0.001
+		and t.warning_seconds - t.lock_seconds >= 0.65 - 0.001 and t.behind_warning_seconds - t.behind_lock_seconds >= 0.70 - 0.001,
+		"shorter warnings (%.2f s ahead, %.2f s from behind), still tracking the runner %.2f/%.2f s before the lock" % [
+		t.warning_seconds, t.behind_warning_seconds, t.warning_seconds - t.lock_seconds,
+		t.behind_warning_seconds - t.behind_lock_seconds])
+	check(t.warning_seconds - t.lock_seconds >= REACTION + tuning.lane_switch_time + 0.15,
+		"before the lock, time to react and step into a neighbouring lane's bait")
 	check(REACTION + tuning.lane_switch_time + 0.1 <= minf(t.lock_seconds, t.behind_lock_seconds),
 		"both shortened locks still allow a reaction, a lane switch and a safety margin")
 	check(t.fling_windup + t.fling_flight <= 1.5 + 0.001
@@ -123,7 +131,7 @@ func _test_tuning() -> void:
 	check(t.cluster_size(false) >= 100 and t.horde_size(false) >= 200, "it looks like hundreds (GDD §10)")
 	check(t.warning_seconds > t.lock_seconds and t.lock_seconds > t.pour_seconds, "the warning, then the pour, then the lock")
 	check(t.bait_kind(0) == "fence" and t.bait_kind(1) == "hole", "bait spots take turns: a live fence, then a hole")
-	check(t.surge_side(0) == "behind" and t.surge_side(1) == "ahead", "phase 2's surges take turns: from behind, then ahead")
+	check(t.surge_side(0) == "both" and t.surge_side(1) == "both", "phase 2's surges come from behind and ahead at once")
 	check(t.behind_warning_seconds > t.behind_lock_seconds and t.behind_charge_speed > MovementTuning.REFERENCE_SPEED * 1.2,
 		"a strike from behind warns, locks, then surges on faster than the runner")
 	check(t.climb_gap_seconds > 0.0 and t.climb_height > tuning.ramp_entry_height,
@@ -192,8 +200,9 @@ func _test_crowds() -> void:
 		var bodies: int = 0
 		for node: Node in c.find_children("*", "CollisionObject3D", true, false):
 			bodies += 1
-		check(bodies == 1 and c.crowd.find_children("*", "CollisionObject3D", true, false).is_empty(),
-			"it hurts only through its one hitbox: its creatures have no collision")
+		check(bodies == 1 + SwarmCluster.MOUND_BOXES.size() and c.mound_boxes.size() == SwarmCluster.MOUND_BOXES.size()
+			and c.crowd.find_children("*", "CollisionObject3D", true, false).is_empty(),
+			"it hurts only through its hitbox and its wall mound's few boxes: its creatures have no collision")
 		check(c.crowd.get_child_count() == 0, "and no node per creature")
 	var horde: int = 0
 	for b: SwarmCrowd in boss.horde.bands:
@@ -300,6 +309,7 @@ func _arena_at(lanes: int, speed: float) -> void:
 	var all_ok: bool = true
 	var clear_ok: bool = true
 	var reach_ok: bool = true
+	var min_sight: float = INF
 	var escape_ok: bool = true
 	var kinds: Dictionary = {}
 	var nothing_else: bool = true
@@ -338,10 +348,15 @@ func _arena_at(lanes: int, speed: float) -> void:
 			var warn: float = strike - v * st.warning_seconds
 			var entry: float = strike + st.charge_speed * k * st.lock_seconds
 			var lock_d: float = strike - v * st.lock_seconds
-			# Reachable: from the furthest lane, a reaction then one switch after another before the lock.
+			# Reachable: from a neighbouring lane within the warning's tracking alone; from the furthest lane, a
+			# reaction then one switch after another between the bait coming in sight (built BUILD_AHEAD ahead:
+			# every fence and hole in the arena is a bait) and the lock.
 			var farthest: int = maxi(lane, lanes - 1 - lane)
 			var need: float = REACTION + farthest * t.lane_switch_time + 0.15
-			reach_ok = reach_ok and need <= st.warning_seconds - st.lock_seconds
+			var in_sight: float = (TrackBuilder.BUILD_AHEAD - (at - lock_d)) / v
+			reach_ok = reach_ok and REACTION + t.lane_switch_time + 0.15 <= st.warning_seconds - st.lock_seconds \
+				and need <= in_sight
+			min_sight = minf(min_sight, in_sight)
 			# The window holds the whole warning, from a jump before it, and the charge to past its landing.
 			clear_ok = clear_ok and at + span.x <= warn - t.jump_distance(v) + 0.01 and at + span.y >= entry + st.mass_length
 			# A way out from every lane at the lock: a neighbouring floor lane clear from the lock to past where
@@ -365,13 +380,13 @@ func _arena_at(lanes: int, speed: float) -> void:
 	check(all_ok and kinds.has("fence") and kinds.has("hole"),
 		"each spot is a live full-height fence or a hole in one lane, met by a baited cluster before the runner %s" % tag)
 	check(clear_ok, "the street around each spot is clear of every other hole and fence, in every lane, over its whole surge %s" % tag)
-	check(reach_ok, "its bait is in reach from any lane before the lock (%.2f s to cross the street) %s" % [
-		st.warning_seconds - st.lock_seconds, tag])
+	check(reach_ok, "its bait is in reach before the lock: a neighbour's in the warning's %.2f s of tracking, any lane's from in sight (%.1f s) %s" % [
+		st.warning_seconds - st.lock_seconds, min_sight, tag])
 	check(escape_ok, "and every lane has a way out of its surge %s" % tag)
 	check(nothing_else, "the arena has no signs, ceilings, pads, doodads, enemies or credits, and only its host spots' ramps %s" % tag)
 	_host_spots_at(boss, arena, t, tag)
-	check(st.warning_seconds >= 2.0 and (st.warning_seconds - st.lock_seconds) >= 1.0,
-		"its warning (%.1f s) is as long in seconds at every speed %s" % [st.warning_seconds, tag])
+	check(st.warning_seconds >= 1.5 and (st.warning_seconds - st.lock_seconds) >= 0.65 - 0.001,
+		"its warning (%.2f s) is as long in seconds at every speed %s" % [st.warning_seconds, tag])
 	boss.free()
 
 

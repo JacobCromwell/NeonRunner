@@ -284,14 +284,16 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   their lane and charges down it as a red-hot mass. Hold a lane with a live fence or a hole ahead until it
   lands, then get out of the way as it charges (or jump the fence or the hole), and it runs straight into
   it: shocked or swallowed. Two clusters destroyed end the Rising. In Surrounded the clusters also strike
-  from behind: a wave of the swarm rises behind the runner, curling over their lane as it chitters, with a
-  red line down the lane ahead; it crashes down and surges on, into that lane's fence or hole if the runner
-  held the lane until it locked. Meanwhile the swarm climbs one wall at a time for a few seconds, taking it
-  away, sides alternating. The rest of the clusters destroyed, the Host bursts out of a big sewer pipe
+  from behind at the same time as a front surge, attacking two distinct lanes and leaving the other lanes
+  safe: a wave rises behind the runner with its own red warning line, then crashes down and surges on.
+  Shorter warnings retain the locked-lane dodge windows and time to choose a bait reactively.
+  Visible wall crowds remain naturally colored, but contact hurts and repels the runner. Wall pressure
+  continues into the Host phase, clearing only the local ramp, wall-run, jump and landing route.
+  The rest of the clusters destroyed, the Host bursts out of a big sewer pipe
   across the street: a person fused with machines, buried in screeches. It flings balls of the swarm (a red
   circle where each lands), lunges down the runner's lane (bait it into a fence) and crouches beside a ramp
   with its implants glowing red on its back: up the ramp, a wall run and a wall jump bring the runner down
-  on them. Three hits free the Host: the screeches scatter, the implants short out and the person slumps
+  on them. Six hits free the Host: the screeches scatter, the implants short out and the person slumps
   free. Clusters are tougher and arrive more frequently; wall climbs and the Host's flings leave less
   downtime, while every attack still warns first. Weapons thin a surging cluster too, the heavy missile
   most of all. Its crowds are hundreds of screeches

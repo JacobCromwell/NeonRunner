@@ -10,10 +10,11 @@ extends TestSuite
 ## - a strike from behind baited into a fence or a hole ahead is destroyed there, in front of the runner, its
 ##   line locked from the runner to the bait and no further;
 ## - the swarm climbs one wall at a time for climb_seconds, sides alternating: one wall is always free, the
-##   climbed one refuses entry (the clank and the bump) while the other takes the runner, and it never climbs
-##   the wall the runner is on;
-## - nobody baiting: the surges keep coming from behind and ahead in turn, each warned as long as the last, and
-##   phase 2 never ends (no time limit, no escalation).
+##   climbed one knocks a runner off it (an attack: test_sewer_swarm_walls) while the other takes the runner,
+##   and it never climbs the wall the runner is on;
+## - nobody baiting: the surges keep coming in pairs, from behind and ahead at once at one bait spot, the two
+##   charging together in two lanes, each warned as long as the last of its kind, and phase 2 never ends (no
+##   time limit, no escalation).
 
 const BOSS_PATH: String = "res://data/bosses/gangland_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
@@ -125,9 +126,13 @@ func _place(player: Player, lane: int) -> void:
 	player.in_pit = false
 
 
-## True if both walls are taken away where the runner is (the climb must always leave one free).
-func _both_walls_blocked(player: Player) -> bool:
-	return bool(player.call(&"_wall_blocked", -1)) and bool(player.call(&"_wall_blocked", 1))
+## True if both walls are taken away where the runner is (the climb must always leave one free): covered by the
+## climbing swarm, or blocked (a sign, a wall prop).
+func _both_walls_blocked(boss: SewerSwarm, player: Player) -> bool:
+	for side: int in [-1, 1]:
+		if not boss.climb.covered_at(side, player.distance) and not bool(player.call(&"_wall_blocked", side)):
+			return false
+	return true
 
 
 # --- Phase 2, won by baiting ---------------------------------------------------------------------
@@ -154,7 +159,7 @@ func _wins(lanes: int, speed: float) -> void:
 	var both: Array = [0]
 	await _run(world, 150.0, func() -> bool: return boss.phase_index > PHASE, func() -> void:
 		bot.step()
-		if boss.climb.blocked_side() != 0 and _both_walls_blocked(world.player):
+		if boss.climb.blocked_side() != 0 and _both_walls_blocked(boss, world.player):
 			both[0] = int(both[0]) + 1)
 	check(boss.phase_index > PHASE and world.player.alive, "a runner who baits wins phase 2 %s%s" % [tag,
 		"" if world.player.alive else ": %s at %.0f m" % [cause[0], world.player.distance]])
@@ -355,8 +360,9 @@ func _test_behind_baits() -> void:
 # --- The wall climb --------------------------------------------------------------------------------
 
 ## The swarm climbs one wall at a time for climb_seconds, climb_gap_seconds apart, sides alternating, seen and
-## heard: one wall is always free; never the wall the runner is on. The climbed wall refuses an entry (the
-## clank and the bump, no harm) while the other wall takes the runner. At 3 and 6 lanes.
+## heard: one wall is always free; never the wall the runner is on. The climbed wall knocks a runner off it
+## (here in god mode: no harm; the harm is test_sewer_swarm_walls') while the other wall takes the runner. At 3
+## and 6 lanes.
 func _test_climb() -> void:
 	for lanes: int in [3, 6]:
 		var tag: String = "(%d lanes)" % lanes
@@ -372,13 +378,15 @@ func _test_climb() -> void:
 		await _run(world, 30.0, func() -> bool: return _events(boss, &"climb_end").size() >= 3, func() -> void:
 			bot.step()
 			var c: SwarmClimb = boss.climb
-			if _both_walls_blocked(player):
+			if _both_walls_blocked(boss, player):
 				seen["both"] = int(seen["both"]) + 1
 			if c.state == SwarmClimb.State.CLIMB:
 				seen["frames"] = int(seen["frames"]) + 1
 				if player.surface == Player.Surface.WALL and player.wall_side == c.side:
 					seen["on_climbed"] = int(seen["on_climbed"]) + 1
-				if c.blocked_side() != c.side or (c.rise > 0.0 and not c.crowd.visible):
+				# Risen past its first glimpse it hits there; shown, it's drawn; hitting, it's shown.
+				if (c.rise >= 0.2 and c.blocked_side() != c.side) or (c.rise > 0.0 and not c.crowd.visible) \
+						or (c.blocked_side() != 0 and not c.crowd.visible):
 					seen["unseen"] = int(seen["unseen"]) + 1)
 		var climbs: Array[Dictionary] = _events(boss, &"climb")
 		var ends: Array[Dictionary] = _events(boss, &"climb_end")
@@ -397,7 +405,7 @@ func _test_climb() -> void:
 		check(timed, "each climb lasts %.1f s, %.1f s apart %s" % [t.climb_seconds, t.climb_gap_seconds, tag])
 		check(int(seen["unseen"]) == 0 and _sounds(boss, &"swarm_climb").size() == climbs.size(),
 			"while it's up its wall is taken away, the swarm seen covering it and heard %s" % tag)
-		# The climbed wall refuses an entry; the other takes the runner.
+		# The climbed wall knocks an entry off it; the other takes the runner.
 		var moves: Array[StringName] = []
 		player.movement_event.connect(func(kind: StringName) -> void: moves.append(kind))
 		var ready: Array = [false]
@@ -410,12 +418,14 @@ func _test_climb() -> void:
 		check(bool(ready[0]), "a climb with both outer lanes clear to try the walls %s" % tag)
 		if bool(ready[0]):
 			var side: int = boss.climb.side
+			var repels: int = boss.climb.repels
 			_place(player, 0 if side < 0 else lanes - 1)
 			moves.clear()
 			player.press(&"move_left" if side < 0 else &"move_right")
-			await physics_frames(3)
-			check(moves.has(&"wall_blocked") and player.surface == Player.Surface.FLOOR and player.alive,
-				"the climbed wall refuses an entry: the clank and the bump, no harm %s" % tag)
+			await physics_frames(8)
+			check(moves.has(&"wall_blocked") and player.surface != Player.Surface.WALL and player.alive
+				and boss.climb.repels > repels and not _events(boss, &"wall_repel").is_empty(),
+				"the climbed wall won't be run: a runner jumping onto it is knocked off it (its clank) %s" % tag)
 			await physics_frames(int(t.climb_rise_seconds * 30.0))
 			_place(player, lanes - 1 if side < 0 else 0)
 			moves.clear()
@@ -464,8 +474,8 @@ func _test_climb_waits() -> void:
 
 # --- No escalation -----------------------------------------------------------------------------------
 
-## Nobody baits: phase 2 keeps cycling, unhurt, the surges from behind and ahead in turn, each warned as long
-## as the last of its kind (GDD §10: no time limit, no escalation), the climbs alternating meanwhile.
+## Nobody baits: phase 2 keeps cycling, unhurt, the surges in pairs from behind and ahead at once, each warned
+## as long as the last of its kind (GDD §10: no time limit, no escalation), the climbs alternating meanwhile.
 func _test_keeps_cycling() -> void:
 	var pair: Array = _fight(def, 5, 18.0)
 	var world: RunWorld = pair[0]
@@ -481,12 +491,28 @@ func _test_keeps_cycling() -> void:
 	var passes: Array[Dictionary] = _events(boss, &"surge_pass")
 	check(world.player.alive and passes.size() >= 6 and boss.phase_index == PHASE and is_equal_approx(boss.health, start_health)
 		and _events(boss, &"surge_hit").is_empty(), "no bait, no end: %d surges, still Surrounded, unhurt" % passes.size())
-	var in_turn: bool = warns.size() >= 6
+	# In pairs: from behind, then ahead at the same spot, both live at once in two lanes.
+	var paired: bool = warns.size() >= 6
+	var overlap: float = INF
+	for i: int in range(0, warns.size() - 1, 2):
+		var a: Dictionary = warns[i]
+		var b: Dictionary = warns[i + 1]
+		paired = paired and bool(a["behind"]) and not bool(b["behind"]) and bool(a["pair"]) and bool(b["pair"]) \
+			and is_equal_approx(float(a["spot"]), float(b["spot"]))
+		var crash: Dictionary = _of(boss, &"surge_crash", int(a["n"]))
+		var lock_a: Dictionary = _of(boss, &"surge_lock", int(a["n"]))
+		var lock_b: Dictionary = _of(boss, &"surge_lock", int(b["n"]))
+		var end_a: Dictionary = _of(boss, &"surge_end", int(a["n"]))
+		var end_b: Dictionary = _of(boss, &"surge_end", int(b["n"]))
+		if crash.is_empty() or lock_a.is_empty() or lock_b.is_empty() or end_a.is_empty() or end_b.is_empty():
+			paired = false
+			continue
+		paired = paired and int(lock_a["lane"]) != int(lock_b["lane"])
+		overlap = minf(overlap, minf(float(end_a["t"]), float(end_b["t"])) - maxf(float(crash["t"]), float(lock_b["t"])))
 	var leads: Dictionary = {}
 	var same: bool = true
 	for i: int in warns.size():
 		var behind: bool = bool(warns[i]["behind"])
-		in_turn = in_turn and behind == (t.surge_side(i) == "behind")
 		var lock: Dictionary = _of(boss, &"surge_lock", int(warns[i]["n"]))
 		if lock.is_empty():
 			continue
@@ -498,7 +524,8 @@ func _test_keeps_cycling() -> void:
 	var sides: PackedStringArray = []
 	for w: Dictionary in warns:
 		sides.append("behind" if bool(w["behind"]) else "ahead")
-	check(in_turn, "the surges come from behind and ahead in turn (%s)" % ", ".join(sides))
+	check(paired and overlap >= 0.3, "the surges come in pairs, from behind and ahead at one spot, charging two lanes at once (%s; overlapping at least %.2f s)" % [
+		", ".join(sides), overlap])
 	check(same and leads.size() == 2, "each warned as long as the last of its kind")
 	var climbs: Array[Dictionary] = _events(boss, &"climb")
 	var alternate: bool = climbs.size() >= 4

@@ -145,8 +145,8 @@ func _wins(lanes: int, speed: float) -> void:
 	for e: Dictionary in _events(boss, &"cluster_destroyed"):
 		baited += 1 if e["cause"] in [&"fence", &"hole"] else 0
 	var hits: int = baited + boss.host_attacks.stomps + boss.host_attacks.shocked
-	check(baited == 5 and hits == 8 and boss.host_attacks.stomps >= 1,
-		"five clusters baited, then the Host's three hits (%d stomps, %d shocked by fences) %s" % [boss.host_attacks.stomps,
+	check(baited == 5 and hits == 5 + def.phase_list()[2].hits and boss.host_attacks.stomps >= 1,
+		"five clusters baited, then the Host's six hits (%d stomps, %d shocked by fences) %s" % [boss.host_attacks.stomps,
 		boss.host_attacks.shocked, tag])
 	check(int(out[5]) == 0, "every crowd was made before the fight began, none during it %s" % tag)
 	var beaten: Array[Dictionary] = _events(boss, &"defeated")
@@ -154,11 +154,11 @@ func _wins(lanes: int, speed: float) -> void:
 	if lanes == 5 and is_equal_approx(speed, GANGLAND_SPEED):
 		_log_5 = _fight_log(boss)
 		_clean = took
-	if lanes == 5:
-		var ends: PackedStringArray = []
-		for e: Dictionary in _events(boss, &"phase_end"):
-			ends.append("%.1f" % float(e["t"]))
-		print("  Sewer Swarm, the whole fight (5 lanes, %.1f m/s): %.1f s (phases end at %s)" % [speed, took, ", ".join(ends)])
+	check(took > 0.0 and def.stars_for(true, took) == 3, "a clean win (%.1f s) earns three stars %s" % [took, tag])
+	var ends: PackedStringArray = []
+	for e: Dictionary in _events(boss, &"phase_end"):
+		ends.append("%.1f" % float(e["t"]))
+	print("  Sewer Swarm, the whole fight (%d lanes, %.1f m/s): %.1f s (phases end at %s)" % [lanes, speed, took, ", ".join(ends)])
 	await sim.free_world(world)
 
 
@@ -182,8 +182,13 @@ func _test_par_times() -> void:
 	var took: float = boss.fight_time()
 	check(bool(out[2]) and def.stars_for(true, took) == 2,
 		"a win that lets a chance go by in each phase (%.1f s) earns two" % took)
-	print("  Sewer Swarm: a clean win %.1f s, one chance missed a phase %.1f s (par times %.0f s and %.0f s)" % [_clean, took,
-		def.three_star_seconds, def.two_star_seconds])
+	await sim.free_world(out[0])
+	out = await _play(5, GANGLAND_SPEED, 2)
+	var slow: float = (out[1] as SewerSwarm).fight_time()
+	check(bool(out[2]) and def.stars_for(true, slow) < 3 and slow > took,
+		"one letting two chances go by in each phase (%.1f s) is slower still, and earns no more than two" % slow)
+	print("  Sewer Swarm: a clean win %.1f s, one chance missed a phase %.1f s, two %.1f s (par times %.0f s and %.0f s)" % [
+		_clean, took, slow, def.three_star_seconds, def.two_star_seconds])
 	await sim.free_world(out[0])
 
 

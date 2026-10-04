@@ -18,7 +18,8 @@ signal died(cause: String)
 ## wall_missing (a wall entry refused where a wall gap leaves no wall: no bump, there's nothing to
 ## bump against), wall_gap_drop (a wall runner reached a wall gap and dropped off into the outer lane).
 ## The three blocked moves (lane_blocked, wall_blocked, and ceiling_blocked: a move past the edge of a
-## ceiling over fewer lanes) come with a bump: out toward the blocked side and back.
+## ceiling over fewer lanes) come with a bump: out toward the blocked side and back. A wall runner knocked
+## off their wall (repel_from_wall) hears wall_blocked too, and drops off instead.
 signal movement_event(kind: StringName)
 ## A thief's touch robbed the player (DamageRules.Outcome.ROBBED, GDD §9.12): the ScoreKeeper takes the
 ## thief's share of the run's credits (Hazard.steals_share). The `robbed` movement event follows.
@@ -878,6 +879,16 @@ func _leave_wall(velocity: float, kind: StringName) -> void:
 	vh = velocity
 	grounded = false
 	_event(kind)
+
+
+## Knocks a wall runner off their wall (something covering it that hurts and won't be run through, the Sewer
+## Swarm's climb: SwarmClimb): they drop off into the outer lane, falling from where they were, with a
+## blocked wall's clank (wall_blocked). False if they weren't on a wall.
+func repel_from_wall() -> bool:
+	if not alive or surface != Surface.WALL:
+		return false
+	_leave_wall(0.0, &"wall_blocked")
+	return true
 
 
 # --- Zone doodads -----------------------------------------------------------
