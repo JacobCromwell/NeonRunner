@@ -65,7 +65,7 @@ func _build() -> void:
 	position = world.lane_point(lane, front)
 	_build_visuals()
 	var r: float = tuning.blade_radius
-	_hitbox = add_hitbox(&"attack", tuning.hitbox_size, Vector3(0.0, tuning.hitbox_size.y * 0.5, 0.0), true)
+	_hitbox = add_hitbox(&"body", tuning.hitbox_size, Vector3(0.0, tuning.hitbox_size.y * 0.5, 0.0), true)
 	_hitbox.hazard_name = "floor cutter"
 	_hitbox.contacted.connect(_on_contacted)
 	if cut.is_empty():

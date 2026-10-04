@@ -3,7 +3,8 @@ extends RefCounted
 ## Phase 3 of the Sewer Swarm, The Host (GDD §10: "the Host bursts out of a big sewer pipe ahead and flings the
 ## remaining clusters at the player"; "its fused implants, glowing red ... The player reaches them by a ramp
 ## and a wall jump, Gangland's big new move. Three stomps, each knocking screeches off and revealing more of
-## the person. Its lunge can also be baited into a fence"; "Defeat: the Host is freed"). SewerSwarm runs it;
+## the person. Its lunge can also be baited into a fence"; "Defeat: the Host is freed"; the owner has since
+## doubled its hits to six, docs/USER_REQUESTS.md: BossPhase.hits). SewerSwarm runs it;
 ## SwarmHost is the body it moves. Everything is timed from the runner's distance and the physics step, at the
 ## arena's spots (SewerSwarm.spots_between, host_spots_between), so every attempt plays the same way:
 ##
@@ -15,7 +16,7 @@ extends RefCounted
 ##   scooped from the swarm (host_fling) and lobs it into the runner's lane; a red circle marks where it lands
 ##   from the wind-up on. It splats there (an enemy attack, splat_seconds) as the runner would reach it, and
 ##   scatters. DESIGN-TBD (docs/questions/e4.md, the clusters in phase 3).
-## - LUNGE (at a fence spot, the surge's timing: warning_seconds, lock_seconds, charge_speed): it rears at the
+## - LUNGE (at a fence spot: lunge_warning_seconds, the surge's lock_seconds and charge_speed): it rears at the
 ##   roadside where it will land, roaring (host_roar), a red line down the runner's lane from there, following
 ##   them and ending at a fence on it; at the lock it lands in their lane and charges down it (its attack's
 ##   hitbox live). Into the fence: shocked, a hit (BossEncounter.damage, cause &"fence"), down in that lane
@@ -266,7 +267,7 @@ func _look_for_events() -> void:
 	for s: Dictionary in boss.spots_between(d - 60.0 * k, d + SewerSwarm.SIGHT * k):
 		if not boss.spot_unused(s):
 			continue
-		var trigger: float = fling_warn_at(s) if s["kind"] == "hole" else boss.warn_at(s)
+		var trigger: float = fling_warn_at(s) if s["kind"] == "hole" else boss.lunge_warn_at(s)
 		if d < trigger:
 			break
 		boss.use_spot(s)
@@ -404,7 +405,7 @@ func _tick_lunge(delta: float) -> void:
 	host.rear = minf(host.rear + delta * 2.5, 1.0)
 	host.heat = host.rear
 	_update_aim(delta, lane)
-	if t >= t_.warning_seconds - t_.lock_seconds - 0.0001:
+	if t >= t_.lunge_warning_seconds - t_.lock_seconds - 0.0001:
 		_lock_lunge()
 
 

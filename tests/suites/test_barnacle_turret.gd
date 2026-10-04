@@ -15,8 +15,8 @@ extends TestSuite
 ##   sound) and with time to dodge; a rider who stays in line is hit, one who switches lanes after the
 ##   charge-up isn't; on a two-lane ceiling the rider always has a lane or time (3, 5 and 6 lanes);
 ## - kills: claws, the dash, a stomp from the ceiling (the rider jumps and drops back onto its crown),
-##   and 7 laser tier 1 shots; running into it is deadly, armor or not; the shield blocks that; armor
-##   and the shield block its bolts;
+##   and 7 laser tier 1 shots; running into it is deadly without protection; armor absorbs one contact
+##   hit before the shield, with the usual invulnerability; armor and the shield also block its bolts;
 ## - the same seed plays out the same way, and generated levels played through check every burst.
 
 const Rules = preload("res://scripts/enemies/barnacle_turret_rules.gd")
@@ -53,6 +53,7 @@ func run() -> void:
 	await _test_dodge()
 	await _test_two_lane()
 	await _test_contact()
+	await _test_contact_armor()
 	await _test_weapons()
 	await _test_armor_and_shield()
 	await _test_determinism()
@@ -106,6 +107,15 @@ static func _events_of(gun: CyborgGun, kind: StringName) -> Array[Dictionary]:
 		if e["event"] == kind:
 			out.append(e)
 	return out
+
+
+func _contact_outcomes(turret: BarnacleTurret) -> Array[int]:
+	var outcomes: Array[int] = []
+	for box: Hazard in [turret._body_box, turret._top_box]:
+		check(box.is_enemy_attack and not box.is_solid and not box.is_electrical and box.part in [&"body", &"top"],
+			"both contact parts declare armor-blockable damage without losing their body/top roles")
+		box.contacted.connect(func(outcome: int) -> void: outcomes.append(outcome))
+	return outcomes
 
 
 ## The level's turret entries.
@@ -267,8 +277,8 @@ func _check_no_hazard_glow(mesh: Mesh, what: String) -> void:
 ## Every campaign level with the feature, at 3, 5 and 6 lanes: it has turrets, all within their limits
 ## (LayoutChecks.check_turrets, and the shared checks), the same every time; Marketplace 1 meets its
 ## first one soon after the start, alone on its ceiling, and has no pairs; levels without the feature
-## have none. Without the feature the same level is otherwise identical (bar the plain ceiling its
-## introduction may add, with its pad and credits), so the floor and its route are unchanged.
+## have none. Isolating turret placement from the additive density pass, the same level without the
+## feature is otherwise identical (bar its introduction ceiling, pad and credits).
 func _test_placement() -> void:
 	var pairs: int = 0
 	var added: int = 0
@@ -312,8 +322,13 @@ func _test_placement() -> void:
 				check(int(per[float(first["params"]["hull_start"])]) == 1, "alone on its ceiling " + tag)
 				for key: Variant in per:
 					check(int(per[key]) == 1, "no pairs in Marketplace 1 " + tag)
-			# The same level without the feature.
-			var bare: LevelConfig = config.duplicate() as LevelConfig
+			# Density budgets all enemies, so removing turrets changes its additions. Compare the
+			# turret rule alone; the full-density layout still gets the fairness checks above.
+			var isolated_config: LevelConfig = config.duplicate() as LevelConfig
+			isolated_config.danger_density_increase = 0.0
+			var isolated: LevelLayout = LevelGenerator.new().generate(isolated_config, tuning,
+				LevelGenerator.load_for(isolated_config))
+			var bare: LevelConfig = isolated_config.duplicate() as LevelConfig
 			var f := PackedStringArray()
 			for x: String in config.features:
 				if x != TYPE:
@@ -322,14 +337,14 @@ func _test_placement() -> void:
 			bare.feature_starts = config.feature_starts.duplicate()
 			bare.feature_starts.erase(TYPE)
 			var other: LevelLayout = LevelGenerator.new().generate(bare, tuning, LevelGenerator.load_for(bare))
-			var a: Dictionary = layout.to_dict()
+			var a: Dictionary = isolated.to_dict()
 			var kept: Array = []
-			for e: Dictionary in layout.enemies:
+			for e: Dictionary in isolated.enemies:
 				if String(e["type"]) != TYPE:
 					kept.append(e)
 			a["enemies"] = kept
 			var b: Dictionary = other.to_dict()
-			var extra: int = layout.hulls.size() - other.hulls.size()
+			var extra: int = isolated.hulls.size() - other.hulls.size()
 			check(extra == 0 or (extra == 1 and config.feature_starts.has(TYPE)),
 				"only the introduction may add a ceiling (%d added) %s" % [extra, tag])
 			if extra == 1:
@@ -340,7 +355,7 @@ func _test_placement() -> void:
 				for key: String in ["hulls", "pads", "credits", "gaps", "fences", "doodads"]:
 					a.erase(key)
 					b.erase(key)
-			check(_canon(a) == _canon(b), "the rest of the level is what it is without turrets " + tag)
+			check(_canon(a) == _canon(b), "turret placement alone leaves the rest of the level unchanged " + tag)
 			for e: Dictionary in turrets:
 				var k: Vector2 = Rules.keep_out(gen, e)
 				check(k.x > k.y, "the fill pass keeps nothing for a turret (it never uses the floor) " + tag)
@@ -539,37 +554,42 @@ func _test_two_lane() -> void:
 			await sim.free_world(w)
 
 
-## GDD §9.8: its body is the cyborg's: running into it is deadly, and armor doesn't help; the shield
-## blocks that once; claws and the dash defeat it; a rider who jumps and drops back onto its crown
-## stomps it, and bounces.
+## Running into it is deadly without protection; armor or the shield blocks one contact hit.
+## Claws and the dash defeat it; a rider who jumps and drops back onto its crown stomps it and bounces,
+## without spending armor or a shield.
 func _test_contact() -> void:
-	var cases: Array = [["none", {}], ["armor", {"armor": 1}], ["shield", {"shield": 1}], ["claws", {"claws": 1}]]
+	var cases: Array = [["none", {}], ["armor", {"armor": 1, "shield": 1}], ["shield", {"shield": 1}],
+		["claws", {"claws": 1, "armor": 1, "shield": 1}]]
 	for c: Array in cases:
 		var w: RunWorld = sim.build_world(_layout(3, 1), _loadout(c[1]))
 		var t: BarnacleTurret = _spawn(w, TURRET_AT, 1, {"fires": false})
 		var r: Dictionary = await sim.step_world(w, 9.5)
 		match String(c[0]):
 			"none":
-				check(not r["alive"] and r["cause"] == t.display_name, "running into it kills (%s)" % r["cause"])
+				check(not r["alive"] and r["cause"] == t.display_name and w.score.blocked == 0,
+					"running into it unarmored still kills (%s)" % r["cause"])
 			"armor":
-				check(not r["alive"] and r["cause"] == t.display_name and w.player.armor == 1,
-					"armor doesn't help against its body (%s)" % r["cause"])
+				check(r["alive"] and w.player.armor == 0 and w.player.shield == 1 and w.score.blocked == 1
+					and r["events"].count(&"armor_break") == 1 and is_instance_valid(t) and t.alive,
+					"armor absorbs exactly one body contact before the shield, leaving the turret alive (%s)" % r["cause"])
 			"shield":
 				check(r["alive"] and w.player.shield == 0 and is_instance_valid(t) and t.alive,
 					"the shield blocks its body once (%s)" % r["cause"])
 			"claws":
-				check(r["alive"] and w.score.kills == 1, "claws defeat it on contact (%s)" % r["cause"])
+				check(r["alive"] and w.score.kills == 1 and w.player.armor == 1 and w.player.shield == 1
+					and w.score.blocked == 0, "claws defeat it on contact without using protection (%s)" % r["cause"])
 		await sim.free_world(w)
 	# The dash.
-	var w: RunWorld = sim.build_world(_layout(3, 1))
+	var w: RunWorld = sim.build_world(_layout(3, 1), _loadout({"armor": 1, "shield": 1}))
 	var t: BarnacleTurret = _spawn(w, TURRET_AT, 1, {"fires": false})
 	await _step_until(w, func() -> bool: return t.track_distance() - w.player.distance <= 6.0, 10.0)
 	w.player.start_dash(0.8, 0.0)
 	var r: Dictionary = await sim.step_world(w, 1.5)
-	check(r["alive"] and w.score.kills == 1, "the dash defeats it (%s)" % r["cause"])
+	check(r["alive"] and w.score.kills == 1 and w.player.armor == 1 and w.player.shield == 1
+		and w.score.blocked == 0, "the dash defeats it without using protection (%s)" % r["cause"])
 	await sim.free_world(w)
 	# The stomp: jump on the ceiling so the drop back meets its crown.
-	w = sim.build_world(_layout(3, 1))
+	w = sim.build_world(_layout(3, 1), _loadout({"armor": 1, "shield": 1}))
 	t = _spawn(w, TURRET_AT, 1, {"fires": false})
 	var causes: Array[StringName] = []
 	t.defeated.connect(func(_e: Enemy, cause: StringName) -> void: causes.append(cause))
@@ -579,7 +599,70 @@ func _test_contact() -> void:
 	r = await sim.step_world(w, 1.5)
 	check(r["alive"] and r["events"].has(&"stomp") and causes == [&"stomp"],
 		"a rider who drops back onto its crown stomps it (%s, %s)" % [r["cause"], causes])
-	check(w.score.stomps == 1 and w.score.kills == 1, "the stomp counts as a kill")
+	check(w.score.stomps == 1 and w.score.kills == 1 and w.player.armor == 1 and w.player.shield == 1
+		and w.score.blocked == 0, "the stomp counts as a kill without using protection")
+	await sim.free_world(w)
+
+
+## Real swept hitbox contact: both parts can overlap in one frame, but each encounter spends only
+## one hit. A nearby turret is covered by the block's grace; a later one kills before armor recharges.
+func _test_contact_armor() -> void:
+	var w: RunWorld = sim.build_world(_layout(3, 1), _loadout({"armor": 1}))
+	var first: BarnacleTurret = _spawn(w, TURRET_AT, 1, {"fires": false})
+	var close: BarnacleTurret = _spawn(w, TURRET_AT + 6.0, 1, {"fires": false})
+	var later: BarnacleTurret = _spawn(w, TURRET_AT + 30.0, 1, {"fires": false})
+	var first_hits: Array[int] = _contact_outcomes(first)
+	var close_hits: Array[int] = _contact_outcomes(close)
+	var later_hits: Array[int] = _contact_outcomes(later)
+	var used: Array[StringName] = []
+	w.player.item_used.connect(func(item: StringName) -> void: used.append(item))
+	await _step_until(w, func() -> bool: return w.score.blocked > 0 or not w.player.alive, 10.0)
+	var blocked_at: float = w.player.elapsed
+	check(w.player.alive and w.player.surface == Player.Surface.CEILING and first.out and first.alive
+		and first_hits == [DamageRules.Outcome.BLOCKED_ARMOR],
+		"actual ceiling contact with the first turret is absorbed once")
+	check(w.player.armor == 0 and w.player.armor_state.is_recharging() and used == [&"armor"]
+		and w.score.blocked == 1, "its one armor charge breaks, starts recharge and is counted once")
+	check(w.player.is_invulnerable()
+		and absf(w.player.invulnerable_left - game_rules.hit_invulnerability) <= 2.0 / Engine.physics_ticks_per_second,
+		"body contact grants the ordinary armor-block invulnerability window")
+	var passed_close: Callable = func() -> bool:
+		return w.player.distance > close.track_distance() + 2.0 or not w.player.alive
+	await _step_until(w, passed_close, 2.0)
+	check(w.player.alive and w.player.distance > close.track_distance() + 2.0 and close.out and close.alive
+		and close_hits.is_empty() and w.score.blocked == 1 and used == [&"armor"],
+		"the nearby turret and overlapping body/top contacts cannot spend another charge during grace")
+	var r: Dictionary = await sim.step_world(w, 3.0)
+	check(not r["alive"] and r["cause"] == later.display_name and later_hits == [DamageRules.Outcome.KILL]
+		and w.player.elapsed - blocked_at > game_rules.hit_invulnerability
+		and not w.player.is_invulnerable() and w.player.armor == 0 and w.player.armor_state.is_recharging(),
+		"the later real contact is fatal after grace expires, with armor still broken (%s)" % r["cause"])
+	check(w.score.blocked == 1 and used == [&"armor"], "neither grace nor the fatal contact spends another armor charge")
+	await sim.free_world(w)
+
+	# A non-breaking hit must consume one upgraded charge and grant grace too, not bypass to shield.
+	var loadout: Loadout = _loadout({"armor": 1, "shield": 1})
+	loadout.tiers[&"armor"] = 1
+	w = sim.build_world(_layout(3, 1), loadout)
+	first = _spawn(w, TURRET_AT, 1, {"fires": false})
+	later = _spawn(w, TURRET_AT + 30.0, 1, {"fires": false})
+	first_hits = _contact_outcomes(first)
+	later_hits = _contact_outcomes(later)
+	var max_hits: int = w.player.armor_state.max_hits
+	var events: Array[StringName] = []
+	w.player.movement_event.connect(func(kind: StringName) -> void: events.append(kind))
+	check(max_hits >= 2, "the first armor upgrade has charges to spare")
+	await _step_until(w, func() -> bool: return w.score.blocked > 0 or not w.player.alive, 10.0)
+	check(w.player.alive and w.player.armor == max_hits - 1 and w.player.shield == 1
+		and not w.player.armor_state.is_recharging() and w.player.is_invulnerable()
+		and first_hits == [DamageRules.Outcome.BLOCKED_ARMOR] and events.count(&"armor_hit") == 1,
+		"real body contact spends just one upgraded armor charge, grants grace and leaves the shield")
+	r = await sim.step_world(w, 2.5)
+	check(r["alive"] and w.player.armor == max_hits - 2 and w.player.shield == 1 and w.score.blocked == 2
+		and later_hits == [DamageRules.Outcome.BLOCKED_ARMOR]
+		and events.count(&"armor_hit") + events.count(&"armor_break") == 2
+		and w.player.armor_state.is_recharging() == (max_hits == 2),
+		"a second real contact after grace consumes exactly one more charge, breaking only on the last")
 	await sim.free_world(w)
 
 

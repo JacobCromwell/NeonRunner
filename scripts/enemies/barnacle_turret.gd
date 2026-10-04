@@ -13,11 +13,12 @@ extends Enemy
 ##   back out before passing it. Only one fires at a time (GDD §9.8, proposed): the cyborgs' airspace
 ##   (CyborgGun.AIRSPACE_META) holds every burst while another is in the air. Its burst is a small
 ##   attack, like a cyborg's: it doesn't take turns with the big ones (EnemyDirector).
-## - Body (GDD §9.8: treated like the cyborg's): a solid body against the underside and a stompable
-##   top below it, its crown, the top as a rider on the ceiling sees it (Hazard.upside_down). Running
-##   into it is deadly unless shielded, clawed or dashing; armor doesn't help. A rider who jumps and
-##   drops back onto its crown stomps it (Player._is_stomping on the ceiling), and the body ends at the
-##   stomp line, so that rider only ever touches the crown. Weapons: its health is in plain laser tier
+## - Body (GDD §9.8): a body against the underside and a stompable top below it, its crown, the top
+##   as a rider on the ceiling sees it (Hazard.upside_down). Running
+##   into it is deadly unless armored, shielded, clawed or dashing; armor absorbs one contact hit.
+##   A rider who jumps and drops back onto its crown stomps it (Player._is_stomping on the ceiling),
+##   and the body ends at the stomp line, so that rider only ever touches the crown.
+##   Weapons: its health is in plain laser tier
 ##   1 shots, 5 where it first appears (7 at laser tier 1, whose hit PowerupTuning.tier1_extra_shots
 ##   stretches, GDD §8), slightly more later. Armor and the shield block its bolts (enemy attacks).
 ## - Nothing of it reaches below REACH_BELOW under the underside: out of reach of a jump from a hover
@@ -34,7 +35,7 @@ extends Enemy
 const Kit = preload("res://scripts/enemies/cyborg_kit.gd")
 ## The death cause its bolts report.
 const SHOT_NAME: String = "barnacle bolt"
-## The solid body: from the underside down to the stomp line (the crown's far side minus
+## The body: from the underside down to the stomp line (the crown's far side minus
 ## GameRules.stomp_tolerance), a little smaller than the dome; it reaches a little forward over the
 ## cannon's housing.
 const BODY_SIZE := Vector3(0.9, 0.34, 1.0)
@@ -85,8 +86,9 @@ func _build() -> void:
 	var at: float = float(spawn.get("at", 0.0))
 	_find_ceiling(p, at)
 	position = Vector3(world.geo.lane_x(lane), world.tuning.ceiling_height, TrackGeometry.world_z(at))
-	_body_box = add_hitbox(&"body", BODY_SIZE, Vector3(0.0, -BODY_SIZE.y * 0.5, BODY_Z))
-	_top_box = add_hitbox(&"top", TOP_SIZE, Vector3(0.0, -(TOP_FROM + TOP_SIZE.y * 0.5), 0.0))
+	# Armor blocks contact, but body/top parts keep claw kills and ceiling stomps ahead of protection.
+	_body_box = add_hitbox(&"body", BODY_SIZE, Vector3(0.0, -BODY_SIZE.y * 0.5, BODY_Z), true)
+	_top_box = add_hitbox(&"top", TOP_SIZE, Vector3(0.0, -(TOP_FROM + TOP_SIZE.y * 0.5), 0.0), true)
 	_top_box.upside_down = true
 	for box: Hazard in [_body_box, _top_box]:
 		box.set_enabled(false)

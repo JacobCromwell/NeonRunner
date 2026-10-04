@@ -1,0 +1,28 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/danger_density_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+enemy_types = PackedStringArray("cyborg", "screech", "window_cyborg")
+twin_tolerated_types = PackedStringArray("cyborg", "screech", "window_cyborg", "generator", "hover_truck", "tithe_collector")
+overlap_max = 2
+encounter_tries = 8
+spare_fill_seconds = 2.0
+row_tolerated_types = PackedStringArray("cyborg", "screech", "window_cyborg", "generator", "hover_truck", "tithe_collector")
+keep_out_exempt_features = PackedStringArray("host")
+min_free_lanes = 1
+clearance_spacing_scale = 1.0
+enemy_increase_scale = 1.0
+obstacle_increase_scale = 1.0
+wall_fence_increase_scale = 1.25
+resonator_per_pulse = false
+credit_added_pieces = false
+full_width_rows = true
+obstacle_rounds = 3
+row_step_seconds = 0.5
+staggered_rows = true
+stagger_max_shift_lanes = 1
+routed_rows = true
+routed_row_gap_seconds = 0.3
+ceiling_turrets = true

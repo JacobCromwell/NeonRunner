@@ -10,7 +10,8 @@ extends MultiMeshInstance3D
 ##   the charging mass, its death; thinned by weapons, rising as it forms);
 ## - BAND: the roadside horde in one gutter (SwarmHorde), following the runner;
 ## - SPILL: screeches pouring out of the lairs as they burst (SwarmHorde), each instance placed at its lair;
-## - CLIMB: phase 2's wall climb (SwarmClimb), covering a wall beside the runner;
+## - CLIMB: the wall climb (SwarmClimb, phases 2 and 3), covering a wall beside the runner, parting over a
+##   phase 3 ramp's way up;
 ## - HOST: the screeches latched onto the Host (SwarmHost), its bulk, thinned as it's hit.
 ## Crowds are made before the fight (SewerSwarm's pool, SwarmHorde) and reused, so a fight makes no mesh or
 ## material mid-fight; `made` counts the crowds made (tests). The crowd size is the look only: the fight
@@ -175,6 +176,12 @@ func set_ball(radius: float) -> void:
 func set_climb(wall_x: float, side: int, ahead: float, behind: float, drift: float, height: float, rise: float) -> void:
 	set_param(&"climb", Vector4(wall_x, ahead, behind, drift))
 	set_param(&"climb_shape", Vector4(height, float(side), _q(rise), 0.0))
+
+
+## A climb's hole (SwarmClimb's route): from local z `hole.x` to `hole.y` the screeches part, `hole.z` of the
+## way (0-1), thinning back to full cover over `hole.w` metres at its ends.
+func set_climb_hole(hole: Vector4) -> void:
+	set_param(&"climb_hole", Vector4(hole.x, hole.y, _q(hole.z), hole.w))
 
 
 ## Places spill instance `i` at a lair (world position `at`, on `side`), coming out from `burst_clock`.

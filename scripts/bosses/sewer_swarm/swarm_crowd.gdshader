@@ -14,7 +14,8 @@
 //     weapons (`life`.x) and rising as it forms (`life`.y);
 //   1 a roadside band: the horde in a gutter, from `band`.y ahead to `band`.z behind, drifting back;
 //   2 a spill: screeches pouring out of a lair as it bursts (INSTANCE_CUSTOM = (burst clock, side, w, rank));
-//   3 a climb: the swarm covering a wall (`climb`), rising up it and sinking back (`climb_shape`.z);
+//   3 a climb: the swarm covering a wall (`climb`), rising up it and sinking back (`climb_shape`.z), parting
+//     over a stretch of it (`climb_hole`);
 //   4 the Host's bulk: screeches latched over it (`host_shape`), standing, rearing, charging or crouched long
 //     and low (`host`), knocked off a share at each hit (`life`.x), scattering when it's freed (`life`.z).
 // A cluster flung by the Host is a ball (`form_from` 2, `ball`) until it splats into a short mass.
@@ -25,9 +26,11 @@
 // every renderer. A massed crowd glows less per creature than a lone screech (emission_strength). Only an
 // attack heats it to enemy-attack red (motion.z, bristle: a cluster's surge, from its warning on): its spines
 // and eyes burn red and its silhouette glows red, so the cluster coming down a lane stands out from the
-// harmless horde at the roadside, whose spines only smoulder. Nothing here flashes: a shock's crackle is a steady glow with Reduced flashing. On
-// the Compatibility renderer (no tonemapping) an over-bright glow is scaled down whole, so the spines'
-// red-orange never clips toward yellow.
+// horde at the roadside, whose spines only smoulder. Screeches on a wall (a mound's clinging ones, a climb)
+// never glow red, harmful as they are (owner's request, docs/USER_REQUESTS.md): a mound's raise their spines
+// as it gathers but keep their own colours until they leave the wall. Nothing here flashes: a shock's
+// crackle is a steady glow with Reduced flashing. On the Compatibility renderer (no tonemapping) an
+// over-bright glow is scaled down whole, so the spines' red-orange never clips toward yellow.
 shader_type spatial;
 render_mode cull_disabled;
 #include "res://scripts/world/meshes/shaders/kit_flash.gdshaderinc"
@@ -63,6 +66,9 @@ uniform vec4 wave_shape = vec4(6.75, 11.0, 2.3, 0.0);
 // x = its height, y = its side, z = how far it has risen (0-1).
 uniform vec4 climb = vec4(-4.0, 50.0, 12.0, 3.0);
 uniform vec4 climb_shape = vec4(4.8, -1.0, 0.0, 0.0);
+// A climb's hole (a phase 3 ramp's way up): from local z x to y its screeches part, z of the way (0-1), thinning
+// back to full cover over w metres at its ends.
+uniform vec4 climb_hole = vec4(0.0, 0.0, 0.0, 1.0);
 // The Host: host_shape = its bulk's width, height and depth (crouched: its crouch's length) and an attack's
 // heat (0-1: only while it attacks, never as it drops, leaps or crouches); host = crouched, rearing, charging
 // (each 0-1) and a shock's glow (0-1). +z faces the runner.
@@ -210,6 +216,8 @@ void vertex() {
 	float s = creature_scale * (0.8 + 0.4 * rnd(c.w, 5.0));
 	float scurry = 1.0;
 	float bristle = 0.25;
+	// How hot it glows (bristle's scale): wall creatures never glow attack red (their spines still rise).
+	float heat_bristle = -1.0;
 	v_shock = 0.0;
 	if (kind == 1) {
 		// The roadside horde: running with the runner, drifting back past them (wrapping out of sight). Most of
@@ -222,8 +230,10 @@ void vertex() {
 		float z = -band.y + mod(mix(base, centre, in_heap * 0.75) + band.w * TIME, span);
 		float side = band_shape.z;
 		float t = TIME * 1.1 + c.w * 29.0;
-		if (c.z < 0.62) {
-			pos = vec3(band.x - side * (0.08 + c.y * band_shape.x), c.z * (0.3 + 0.45 * in_heap), z + sin(t) * 0.2);
+		if (c.z < 0.62 || band_shape.y <= 0.0) {
+			// With no climb (Gangland's: a swarm on the wall would hurt) they're all heaped in the gutter.
+			float k = band_shape.y > 0.0 ? c.z : c.z * 0.62;
+			pos = vec3(band.x - side * (0.08 + c.y * band_shape.x), k * (0.3 + 0.45 * in_heap), z + sin(t) * 0.2);
 			fwd = vec3((rnd(c.w, 6.0) - 0.5) * 0.8, 0.0, -1.0);
 		} else {
 			float h = 0.14 + (c.z - 0.62) / 0.38 * band_shape.y * (1.0 + 0.8 * in_heap);
@@ -249,12 +259,15 @@ void vertex() {
 		// A climb: screeches covering the wall from climb.y ahead to climb.z behind, up to climb_shape.x high,
 		// streaming back past the runner; rising, the high ones arrive last, and sinking they drop away.
 		float span = climb.y + climb.z;
-		float z = -climb.y + mod(c.x * span + climb.w * TIME, span);
-		float side = climb_shape.y;
-		float rise = clamp(climb_shape.z, 0.0, 1.0);
 		float t = TIME * 2.3 + c.w * 31.0;
+		float z = -climb.y + mod(c.x * span + climb.w * TIME, span) + sin(t * 0.7) * 0.25;
+		float side = climb_shape.y;
+		// In a hole (SwarmClimb's route) they sink away as if the climb fell back there, its edges thinned.
+		float out_of_hole = max(max(climb_hole.x - z, z - climb_hole.y), 0.0);
+		float in_hole = 1.0 - smoothstep(0.0, max(climb_hole.w, 0.001), out_of_hole);
+		float rise = clamp(climb_shape.z, 0.0, 1.0) * (1.0 - clamp(climb_hole.z, 0.0, 1.0) * in_hole);
 		float h = 0.12 + c.z * climb_shape.x * (0.25 + 0.75 * rise);
-		pos = vec3(climb.x - side * (0.05 + 0.14 * c.y), h + sin(t) * 0.06, z + sin(t * 0.7) * 0.25);
+		pos = vec3(climb.x - side * (0.05 + 0.14 * c.y), h + sin(t) * 0.06, z);
 		fwd = vec3(0.0, 0.85, -0.5 + (rnd(c.w, 40.0) - 0.5) * 0.9);
 		up = vec3(-side, 0.0, 0.0);
 		scurry = 1.0;
@@ -316,6 +329,10 @@ void vertex() {
 			up = (p > 0.0 && p < 1.0) ? vec3(0.0, 1.0, 0.0) : (p <= 0.0 ? u0 : u1);
 		}
 		bristle = motion.z;
+		if (form_from == 0 && c.z >= 0.55) {
+			// Clinging to the wall in its mound: its own colours until it leaves the wall for the lane.
+			heat_bristle = mix(0.25, bristle, smoothstep(0.05, 0.35, p));
+		}
 		// Rising as it forms, and thinned by weapons: its highest ranks shrink away first.
 		float show = 1.0 - smoothstep(life.y * 1.05 - 0.04, life.y * 1.05, c.w);
 		float kept = 1.0 - smoothstep(life.x * 1.03 - 0.025, life.x * 1.03 + 0.005, c.w);
@@ -386,7 +403,7 @@ void vertex() {
 	mat3 m = frame(fwd, up);
 	VERTEX = pos + m * (v * s);
 	NORMAL = m * NORMAL;
-	v_bristle = bristle;
+	v_bristle = heat_bristle >= 0.0 ? heat_bristle : bristle;
 	vec3 q = rest * 11.0 + vec3(c.w * 31.0);
 	v_lesion = smoothstep(0.55, 0.9, sin(q.x) * sin(q.y * 1.3) * sin(q.z * 0.9) * 0.5 + 0.5);
 }

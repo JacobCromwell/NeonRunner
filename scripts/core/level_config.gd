@@ -132,6 +132,14 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## the original layout and random streams. City 1 alone enables these (approved USER_REQUESTS).
 @export_range(0.0, 1.0, 0.05) var gap_encounter_increase: float = 0.0
 @export_range(0.0, 1.0, 0.05) var gap_lane_increase: float = 0.0
+## Danger density (owner's request, docs/USER_REQUESTS.md: "the algorithm that is used to make sure
+## that there is always a free open lane is too forgiving"; about 15% more enemies and obstacles in the
+## first levels, about 35% in the final ones): the danger density pass (scripts/world/danger_density.gd)
+## adds this share more enemies (twins and single encounters of the level's own patterns, before the
+## fill pass) and more floor pieces (rows take another lane, new filler rows, after it) to what the
+## build places, where it's fair: an open lane and the level's spacing around everything it adds.
+## 0 turns it off: the level is built exactly as before (quick play, the tests, boss arenas).
+@export_range(0.0, 1.0, 0.01) var danger_density_increase: float = 0.0
 ## Quiet stretches and bursts (GDD §5, The Hush: long silent stretches broken by sudden threats).
 ## With quiet_seconds above 0, the level after its run-up alternates a quiet stretch of that many
 ## seconds at run speed with a burst of burst_seconds, quiet first. In a quiet stretch patterns are

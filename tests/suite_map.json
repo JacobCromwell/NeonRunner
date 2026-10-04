@@ -13,7 +13,7 @@
     "matches nothing raises the tier to merge."
   ],
   "slow": [
-    "campaign", "generator", "city_gaps", "wall_fences", "wall_gaps", "pace", "doodads", "frame_times",
+    "campaign", "generator", "danger_density", "city_gaps", "wall_fences", "wall_gaps", "pace", "doodads", "frame_times",
     "floating_head_routes", "floating_head_faceoff", "floating_head_stomps", "floating_head_defeat",
     "hostile_takeover_fight", "sleep_taker_fight", "sleep_taker_attacks", "sewer_swarm_fight",
     "sewer_swarm_whole", "sewer_swarm_surrounded", "the_house_attacks", "the_house_phases", "the_house_fight",
@@ -22,7 +22,7 @@
   "medium": [
     "audio", "ceilings", "corporate_skin", "cyborg", "drone", "enemy_director", "floating_head",
     "gilded_sentinel", "golden_skin", "hostile_takeover", "hover_truck", "octodog", "screech",
-    "sewer_swarm_host", "web_demo"
+    "sewer_swarm_host", "sewer_swarm_walls", "web_demo"
   ],
   "rules": [
     {"match": "scripts/world/level_generator.gd", "tier": "full"},
@@ -32,6 +32,7 @@
     {"match": "scripts/world/ceiling_*.gd", "tier": "full"},
     {"match": "scripts/world/floor_cut*.gd", "tier": "full"},
     {"match": "scripts/world/gap_density.gd", "tier": "full"},
+    {"match": "scripts/world/danger_density*.gd", "tier": "full", "suites": ["danger_density"]},
     {"match": "scripts/world/wall_*_placement.gd", "tier": "full"},
     {"match": "scripts/world/wall_*_plan.gd", "tier": "full"},
     {"match": "scripts/world/wall_*_tuning.gd", "tier": "full"},
@@ -55,8 +56,11 @@
     {"match": "scripts/player/*", "tier": "full"},
     {"match": "scripts/run/run_world.gd", "tier": "full"},
     {"match": "scripts/run/level_run.gd", "tier": "full"},
-    {"match": "scripts/run/*", "tier": "merge", "suites": ["app_flow", "pickups", "credit_visibility", "theft", "armor", "interactions", "hints", "speed_fx", "perf", "frame_times"]},
-    {"match": "scripts/enemies/enemy.gd", "tier": "full"},
+    {"match": "scripts/run/*", "tier": "merge", "suites": ["app_flow", "pickups", "credit_visibility", "theft", "armor", "interactions", "hints", "speed_fx", "perf", "frame_times", "charge_contacts"]},
+    {"match": "scripts/enemies/enemy.gd", "tier": "full", "suites": ["charge_contacts"]},
+    {"match": "scripts/enemies/octodog.gd", "suites": ["octodog", "charge_contacts"]},
+    {"match": "scripts/enemies/buzz_overdrive.gd", "suites": ["buzz_overdrive", "charge_contacts"]},
+    {"match": "scripts/enemies/floor_cutter.gd", "suites": ["floor_cuts", "charge_contacts"]},
     {"match": "scripts/enemies/enemy_director.gd", "tier": "merge", "suites": ["enemy_director", "pace"]},
     {"match": "scripts/enemies/enemy_tuning.gd", "tier": "merge"},
     {"match": "scripts/enemies/host_rules.gd", "suites": ["sewer_swarm_host", "bad_dream", "cyborg"]},
@@ -65,6 +69,7 @@
     {"match": "scripts/enemies/cyborg_looks/*", "suites": ["cyborg", "cyborg_body", "avatar"]},
     {"match": "scripts/bosses/boss_*.gd", "tier": "full"},
     {"match": "scripts/bosses/test_boss*", "suites": ["bosses"]},
+    {"match": "scripts/bosses/sewer_swarm/*", "suites": ["sewer_swarm*"]},
     {"match": "scripts/characters/*", "suites": ["avatar", "cyborg_body", "cyborg", "units"]},
     {"match": "scripts/powerups/*", "suites": ["powerups", "armor", "pickups", "interactions", "damage_rules"]},
     {"match": "scripts/economy/*", "suites": ["economy", "theft", "screens"]},
@@ -76,8 +81,9 @@
     {"match": "scripts/app/*", "suites": ["app_flow", "screens", "main_scene", "web_demo", "hints"]},
     {"match": "scripts/ui/*", "suites": ["screens", "ui_kit", "app_flow", "hints", "credit_visibility"]},
     {"match": "scenes/*", "suites": ["main_scene", "bosses", "cinematics"]},
-    {"match": "data/levels/*", "tier": "full"},
+    {"match": "data/levels/*", "tier": "full", "suites": ["danger_density"]},
     {"match": "data/patterns/*", "tier": "full"},
+    {"match": "data/tuning/danger_density.tres", "tier": "full", "suites": ["danger_density"]},
     {"match": "data/tuning/*", "tier": "full"},
     {"match": "data/zones/*", "tier": "full"},
     {"match": "data/campaign/*", "tier": "full"},
@@ -101,6 +107,7 @@
     {"match": "tools/asset_gen/sfx*", "suites": ["audio"]},
     {"match": "tools/asset_gen/music*", "suites": ["audio"]},
     {"match": "tools/web/*", "suites": ["web_demo"]},
+    {"match": "tools/measure/danger_density.gd", "suites": ["danger_density"]},
     {"match": "tools/*", "suites": []},
     {"match": "project.godot", "tier": "full"},
     {"match": "export_presets.cfg", "suites": ["web_demo"]},

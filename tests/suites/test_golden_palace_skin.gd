@@ -12,8 +12,9 @@ extends SkinSuite
 ##   the full orange edge on both sides;
 ## - the play space stays clear, and nothing sticks out of the walls below the colonnade's
 ##   entablature (frieze_top), the same calm band every zone keeps;
-## - decorative statues stand only in an alcove above statue_min_height, in the same niche shape a
-##   live Gilded Sentinel's uses, and never glow; statue_spots() lists exactly where they are built;
+## - decorative statues are mesh-only wall-base alcoves in the same niche shape a live Gilded
+##   Sentinel's uses (the live enemy remains at wall-run height), and never glow; statue_spots() lists
+##   exactly where they are built;
 ## - the ceiling pieces (a bridge or an archway needs every lane; a chandelier hangs over any width;
 ##   a hanging chandelier never dips below the running surface) are left to the shared test_ceilings
 ##   suite, which sweeps every skin in data/skins/ as soon as its file exists;
@@ -290,47 +291,59 @@ func _find_intruders(chunk: Node, skin: GoldenPalaceSkin, geo: TrackGeometry, fi
 					sticking.append(str(p))
 
 
-## Statues stand only in an alcove above statue_min_height, in a decorative pose, and never glow;
+## Statues stand in a mesh-only alcove at the wall base, in a decorative pose, and never glow;
 ## statue_spots() lists exactly where the built walls put them, in the same niche shape a live
-## Gilded Sentinel's uses (GoldenStatue.niche(), task C4).
+## Gilded Sentinel's uses (GoldenStatue.niche(), task C4). The real enemy's sill and hitbox are not
+## involved.
 func _statues(skin: GoldenPalaceSkin) -> void:
 	var wall_run_top: float = tuning.wall_max_height + tuning.visual_size.y
-	check(skin.statue_min_height >= wall_run_top + 2.0, "decorative statues stand far above the wall-run band " +
-		"(from %.1f m; a wall run reaches %.1f m)" % [skin.statue_min_height, wall_run_top])
-	var geo := TrackGeometry.new(5, tuning)
+	check(skin.decorative_statue_mount_y() <= tuning.wall_margin + 0.001 and skin.decorative_statue_mount_y() < wall_run_top,
+		"decorative statues are mounted at the wall base (%.2f m), below the wall-run band (%.2f m)" % [
+			skin.decorative_statue_mount_y(), wall_run_top])
+	var projected: Vector2 = skin.decorative_statue_projection()
+	check(absf(skin.decorative_statue_inset() - (projected.x + skin.statue_base_inset)) < 0.001
+			and absf(skin.decorative_statue_recess_depth() - (skin.decorative_statue_inset() + projected.y + 0.05)) < 0.001,
+		"mount and recess use projected pose bounds (outward %.2f, wallward %.2f, inset %.2f, depth %.2f)" % [
+			projected.x, projected.y, skin.decorative_statue_inset(), skin.decorative_statue_recess_depth()])
 	var count: int = 0
 	var poses: Dictionary = {}
 	var low: PackedStringArray = []
-	for side: int in [-1, 1]:
-		var spots: Array[Dictionary] = skin.statue_spots(side, side * geo.wall_x(), 0.0, 1600.0)
-		check(spots == skin.statue_spots(side, side * geo.wall_x(), 0.0, 1600.0), "statues stand in the same places every time")
-		for s: Dictionary in spots:
-			count += 1
-			poses[s["pose"]] = true
-			var c: Vector3 = s["center"]
-			if c.y < skin.statue_min_height - 0.001 or not GoldenStatue.DECORATIVE.has(s["pose"]):
-				low.append("%s %s" % [c, s["pose"]])
-	check(count > 20 and poses.size() == GoldenStatue.DECORATIVE.size() and low.is_empty(),
-		"%d decorative statues over 1.6 km of both walls, in all %d poses, all above statue_min_height: %s" % [count,
-			poses.size(), ", ".join(low)])
-	var batch := MeshBatch.new()
-	skin.walls().build(batch, 1, geo.wall_x(), 0.0, 400.0)
-	var layer: MeshLayer = batch.layer(skin.solid_material())
-	var spots: Array[Dictionary] = skin.statue_spots(1, geo.wall_x(), 0.0, 400.0)
 	var missing: int = 0
-	for s: Dictionary in spots:
-		var c: Vector3 = s["center"]
-		var head: bool = false
-		for i: int in layer.size():
-			var p: Vector3 = layer.verts[i]
-			if absf(p.x - c.x) < 0.6 and absf(p.z - c.z) < 0.6 and p.y > c.y + GoldenStatue.STATURE * 0.8 \
-					and roundi(layer.uv2s[i].x) == MeshKit.PAT_GOLD:
-				head = true
-				break
-		if not head:
-			missing += 1
-	check(not spots.is_empty() and missing == 0, "every listed statue is built in its alcove (%d of %d missing)" % [missing,
-		spots.size()])
+	var built: int = 0
+	for lanes: int in [3, 5, 6]:
+		var geo := TrackGeometry.new(lanes, tuning)
+		for side: int in [-1, 1]:
+			var spots: Array[Dictionary] = skin.statue_spots(side, side * geo.wall_x(), 0.0, 1600.0)
+			check(spots == skin.statue_spots(side, side * geo.wall_x(), 0.0, 1600.0), "statues stand in the same places every time")
+			for s: Dictionary in spots:
+				count += 1
+				poses[s["pose"]] = true
+				var c: Vector3 = s["center"]
+				var facing: Vector3 = s["facing"]
+				if absf(c.y - skin.decorative_statue_mount_y()) > 0.001 or not GoldenStatue.DECORATIVE.has(s["pose"]) \
+						or absf(c.x - (side * geo.wall_x() + side * skin.decorative_statue_inset())) > 0.001 \
+						or facing.dot(Vector3(-side, 0.0, 0.0)) < 0.99:
+					low.append("%s %s" % [c, s["pose"]])
+			var batch := MeshBatch.new()
+			skin.walls().build(batch, side, side * geo.wall_x(), 0.0, 400.0)
+			var layer: MeshLayer = batch.layer(skin.solid_material())
+			var short_spots: Array[Dictionary] = skin.statue_spots(side, side * geo.wall_x(), 0.0, 400.0)
+			built += short_spots.size()
+			for s: Dictionary in short_spots:
+				var c: Vector3 = s["center"]
+				var head: bool = false
+				for i: int in layer.size():
+					var p: Vector3 = layer.verts[i]
+					if absf(p.x - c.x) < 0.6 and absf(p.z - c.z) < 0.6 and p.y > c.y + GoldenStatue.STATURE * 0.8 \
+							and p.y < c.y + GoldenStatue.PEDESTAL_HEIGHT + GoldenStatue.STATURE + 0.2 \
+							and roundi(layer.uv2s[i].x) == MeshKit.PAT_GOLD:
+						head = true
+						break
+				if not head:
+					missing += 1
+	check(count > 20 and built > 0 and poses.size() == GoldenStatue.DECORATIVE.size() and low.is_empty() and missing == 0,
+		"%d decorative wall-base statues across 3, 5 and 6 lanes, in all %d poses, all mesh-only and mounted correctly (%d missing): %s" % [
+			count, poses.size(), missing, ", ".join(low)])
 	var lit: bool = true
 	for pose: StringName in GoldenStatue.DECORATIVE:
 		for c: Color in skin.statues().mesh(GoldenStatue.pose_named(pose)).colors:

@@ -359,6 +359,7 @@ func _test_lists() -> void:
 	var t := def.tuning as TheHouseTuning
 	var deaths: Array[String] = []
 	var stuck: int = 0
+	var skipped: int = 0
 	var runs: int = 0
 	for phase: int in 3:
 		var spins: PackedStringArray = PackedStringArray()
@@ -371,7 +372,9 @@ func _test_lists() -> void:
 				var r: Dictionary = await _play(_attacks_only(list, seed_value), lanes, speed, spins.size(), false)
 				runs += 1
 				stuck += int(r["stuck"])
+				skipped += int(r["skipped"])
 				if not r["alive"]:
 					deaths.append("phase %d's list, %d lanes, %.1f m/s" % [phase + 1, lanes, speed])
 	check(deaths.is_empty() and stuck == 0, "every phase's spins at every lane count and speed: the runner always finds a way (%d runs)%s" % [
 		runs, "" if deaths.is_empty() else ": died in " + ", ".join(deaths)])
+	check(skipped == 0, "the denser and wider phase patterns retain every attack (%d runs)" % runs)

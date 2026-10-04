@@ -12,6 +12,8 @@ func run() -> void:
 	var shot: Hazard = _hazard(false, true, false)
 	var body: Hazard = _enemy_part(&"body")
 	var top: Hazard = _enemy_part(&"top")
+	var contact_body: Hazard = _enemy_part(&"body", true)
+	var contact_top: Hazard = _enemy_part(&"top", true)
 	var weak: Hazard = _enemy_part(&"weak_point")
 	var slash: Hazard = _enemy_part(&"attack", true)
 
@@ -25,6 +27,25 @@ func run() -> void:
 	check(DamageRules.resolve(shot, _d("armor")) == O.BLOCKED_ARMOR, "armor blocks an enemy shot")
 	check(DamageRules.resolve(sign_box, _d("armor")) == O.KILL, "armor doesn't block a solid sign")
 	check(DamageRules.resolve(body, _d("armor")) == O.KILL, "armor doesn't block a solid enemy body")
+	# Barnacle contacts opt into the existing enemy-attack rule, while retaining body/top roles.
+	check(DamageRules.resolve(contact_body, _d("armor")) == O.BLOCKED_ARMOR, "armor blocks an opted-in body contact")
+	check(DamageRules.resolve(contact_top, _d("armor")) == O.BLOCKED_ARMOR, "armor blocks a non-stomp opted-in crown contact")
+	check(DamageRules.resolve(contact_body, _d()) == O.KILL, "an opted-in body contact still kills without protection")
+	check(DamageRules.resolve(contact_top, _d()) == O.KILL, "an opted-in crown contact still kills without protection")
+	check(DamageRules.resolve(contact_body, _d("armor", "shield")) == O.BLOCKED_ARMOR,
+		"armor precedes the shield on opted-in body contact")
+	check(DamageRules.resolve(contact_body, _d("invulnerable")) == O.IGNORE,
+		"a spent armor's grace ignores body contact")
+	check(DamageRules.resolve(contact_top, _d("armor", "invulnerable")) == O.IGNORE,
+		"grace ignores crown contact before consuming another armor charge")
+	check(DamageRules.resolve(contact_body, _d("armor", "claws")) == O.DEFEAT_ENEMY,
+		"claws still defeat an opted-in body before armor is used")
+	check(DamageRules.resolve(contact_top, _d("armor", "claws")) == O.DEFEAT_ENEMY,
+		"claws still defeat an opted-in crown before armor is used")
+	check(DamageRules.resolve(contact_body, _d("armor", "dashing")) == O.DEFEAT_ENEMY,
+		"the dash still defeats an opted-in body before armor is used")
+	check(DamageRules.resolve(contact_top, _d("armor"), true) == O.STOMP,
+		"a stomp still defeats an opted-in crown before armor is used")
 	# Shield: anything.
 	check(DamageRules.resolve(sign_box, _d("shield")) == O.BLOCKED_SHIELD, "the shield blocks a sign")
 	check(DamageRules.resolve(fence, _d("shield")) == O.BLOCKED_SHIELD, "the shield blocks a fence")

@@ -17,6 +17,7 @@ extends Enemy
 ## Every contact is its tentacles (an enemy attack): the lunge, or the grab when the player lands on
 ## it without claws. Armor or the shield blocks one; claws and the dash kill it; weapons need 7 laser
 ## tier 1 shots (health in data/enemies/octodog.tres).
+## Only a lunge hurts other hittable enemies it physically crosses (Enemy._hurt_charge_contacts).
 ##
 ## Charges are planned by the generator (octodog_rules.gd: params "charges" and "charge_at", the
 ## player distances where each wind-up may start) so no charge lands on an unavoidable obstacle.
@@ -329,12 +330,15 @@ func _start_lunge() -> void:
 	var t_meet: float = maxf(distance / maxf(player.speed + speed, 1.0), 0.15)
 	lunge_velocity = Vector2((world.geo.lane_x(target_lane) - _x) / t_meet, -speed)
 	_lunge_time = 0.0
+	_begin_charge_contacts()
 	_set_phase(Phase.LUNGE)
 	_telegraph.visible = false
 	world.play_sfx_at(&"octodog_lunge", global_position + Vector3(0.0, 0.8, 0.0))
 
 
 func _lunge(delta: float, pd: float) -> void:
+	var body_from: Transform3D = _body.global_transform
+	var top_from: Transform3D = _top.global_transform
 	_lunge_time += delta
 	_x = clampf(_x + lunge_velocity.x * delta, world.geo.lane_x(0), world.geo.lane_x(world.geo.lane_count - 1))
 	_d += lunge_velocity.y * delta
@@ -342,6 +346,9 @@ func _lunge(delta: float, pd: float) -> void:
 	if world.layout.gapped_between(_lane_at(_x), _d, _d):
 		_fall_into_gap()
 		return
+	_place()
+	_hurt_charge_contacts(_body, body_from)
+	_hurt_charge_contacts(_top, top_from)
 	if _d <= pd - _t.lunge_overshoot * _run_pace or _lunge_time > 4.0:
 		charges_done += 1
 		if charges_done < charges and _next_charge_possible():

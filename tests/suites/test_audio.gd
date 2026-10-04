@@ -28,6 +28,10 @@ const SONG_BUDGET_BYTES: int = 30 * 1024 * 1024
 const MUSIC_BUDGET_BYTES: int = 21 * 1024 * 1024
 ## And in an exported build, where the loops are QOA-compressed.
 const MUSIC_EXPORT_BUDGET_BYTES: int = 5 * 1024 * 1024
+## The cyborg bolt is intentionally 1.3x the previous amplitude, while its charge warning and the
+## player's laser remain at their existing levels.
+const CYBORG_SHOT_BASELINE_DB: float = -5.5
+const CYBORG_SHOT_AMPLITUDE_GAIN: float = 1.3
 ## Sounds other code plays by name: UI, credits, protection, power-ups and weapons, enemies.
 const SOUNDS: Array[StringName] = [
 	&"ui_move", &"ui_select", &"ui_back", &"ui_buy", &"ui_error", &"ui_equip", &"ui_unlock", &"star", &"countdown", &"go",
@@ -506,6 +510,13 @@ func _test_sound_effects() -> void:
 	for sound: StringName in WARNINGS:
 		check(names.has(String(sound)) and float(library.pitch_variation.get(String(sound), 0.0)) == 0.0,
 			"warning '%s' is in the library with no pitch variation" % sound)
+	var shot_gain: float = db_to_linear(library.volume(&"cyborg_shot") - CYBORG_SHOT_BASELINE_DB)
+	check(absf(shot_gain - CYBORG_SHOT_AMPLITUDE_GAIN) < 0.01,
+		"cyborg laser firing is 1.3x its previous amplitude (%.2f dB)" % library.volume(&"cyborg_shot"))
+	check(is_equal_approx(library.volume(&"cyborg_charge"), -3.0),
+		"cyborg charge warning is not boosted with the laser")
+	check(is_equal_approx(library.volume(&"laser_fire"), -12.5),
+		"player laser is not boosted with the cyborg laser")
 
 
 func _players(music: MusicDirector) -> Array[AudioStreamPlayer]:

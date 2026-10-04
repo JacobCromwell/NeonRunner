@@ -3,8 +3,8 @@ extends PowerupModule
 ## The juggernaut dash (GDD §8): the `dash` action (a tap on mobile via TouchInput) barrels through
 ## enemies and obstacles, then recharges. The Player does the dash itself (start_dash: faster, and
 ## DamageRules lets it pass hazards and smash enemies); this module owns the cooldown and the look.
-## Duration, cooldown and speed are in PowerupTuning (FB 17), and the cooldown runs from the moment
-## the dash starts. It works on any surface.
+## Duration, per-tier cooldown and speed are in PowerupTuning, and the cooldown runs from the moment
+## the dash starts. All four tiers work on any surface; upgrading changes only the recharge time.
 ##
 ## The look, while dashing: an energy shell around the player and speed lines streaming past; a
 ## camera kick when it starts and a bigger hit when it smashes an enemy. (No afterimages: seen from
@@ -50,7 +50,7 @@ func trigger() -> bool:
 		return false
 	var t: PowerupTuning = world.powerup_tuning
 	p.start_dash(t.dash_duration, t.dash_speed_bonus)
-	cooldown_left = t.dash_cooldown
+	cooldown_left = t.dash_cooldown_at(tier)
 	world.effects.shake(0.16, 0.2)
 	controller.dash_started.emit()
 	return true
@@ -68,7 +68,7 @@ func physics_tick(delta: float) -> void:
 
 
 func hud_entry() -> Dictionary:
-	var ready: float = 1.0 - cooldown_left / maxf(world.powerup_tuning.dash_cooldown, 0.001)
+	var ready: float = 1.0 - cooldown_left / maxf(world.powerup_tuning.dash_cooldown_at(tier), 0.001)
 	return controller.make_hud_entry(id, tier, ready, world.player.dashing, -1)
 
 

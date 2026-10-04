@@ -333,19 +333,22 @@ func _test_same_every_attempt() -> void:
 
 ## Through the game itself (quick play, as App.start_boss_quick): at every lane count and both speeds the
 ## runner wins phase 1, then dies; quick play retries, starting the fight over; and the runner plays all
-## three phases to the win (its wall and ceiling buttons included).
+## three phases to the win (its wall and ceiling buttons included), without a loadout or armor pickups.
 func _test_quick_play_and_retry() -> void:
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	tree.root.add_child(main)
 	await tree.process_frame
+	var saved: Profile = App.profile
 	var lanes_pc: int = App.rules.lanes_pc
 	for lanes: int in LANES:
 		for speed: float in SPEEDS:
+			App.profile = SampleProfiles.fresh()
 			App.rules.lanes_pc = lanes
 			await _quick_flow(lanes, speed)
 	App.rules.lanes_pc = lanes_pc
 	App.show_title()
 	await tree.process_frame
+	App.profile = saved
 	main.queue_free()
 	App.main = null
 	await tree.process_frame
@@ -354,16 +357,27 @@ func _test_quick_play_and_retry() -> void:
 func _quick_flow(lanes: int, speed: float) -> void:
 	var tag: String = "(%d lanes, %.1f m/s)" % [lanes, speed]
 	var quick: BossDef = def.duplicate() as BossDef
+	quick.armor_rule = false
 	quick.arena = def.arena.duplicate() as LevelConfig
 	quick.arena.run_speed = speed
 	App.start_boss_quick(quick)
-	await physics_frames(3)
 	var run: LevelRun = App.run
+	if run != null:
+		# Profile runs always carry free armor, even with no purchased tiers. Rebuild with a genuinely
+		# bare loadout before its entrance runs; the real quick retry keeps this same loadout.
+		run.context.loadout = Loadout.new()
+		run.restart(run.context)
+	await physics_frames(3)
+	run = App.run
 	check(run != null and run.encounter is TheHouse and run.world.geo.lane_count == lanes
 		and is_equal_approx(run.world.tuning.run_speed, speed) and not run.world.player.god_mode,
 		"quick play plays the fight, no god mode %s" % tag)
 	if run == null or not run.encounter is TheHouse:
 		return
+	check(run.context.loadout != null and run.context.loadout.tiers.is_empty()
+		and run.context.loadout.charges.is_empty() and not run.context.loadout.has_armor()
+		and run.world.player.armor == 0 and run.world.player.shield == 0,
+		"the full-fight runner brings no powerups %s" % tag)
 	var boss := run.encounter as TheHouse
 	var bot := TheHouseBot.new(boss)
 	bot.reaction = REACTION
@@ -394,6 +408,13 @@ func _quick_flow(lanes: int, speed: float) -> void:
 	var stomps: int = _events(boss, &"weak_point").size()
 	check(boss.is_defeated() and run.world.player.alive and phases.size() == 3 and stomps == 3,
 		"and the retry plays all three phases to the win (%.0f s) %s" % [boss.fight_time(), tag])
+	check(run.world.player.armor == 0 and run.world.player.shield == 0 and _events(boss, &"armor_pickup").is_empty(),
+		"the harder fight is won without protection or armor pickups %s" % tag)
+	var attack_only: int = 0
+	for e: Dictionary in _events(boss, &"spin"):
+		attack_only += 1 if not bool(e["rigging"]) else 0
+	check(attack_only == 9 and boss.attacks.count >= 27 and boss.attacks.skipped == 0,
+		"all nine attack-only spins deliver their pressure before the three jackpots %s" % tag)
 	var kinds: Dictionary = {}
 	for e: Dictionary in _events(boss, &"button_pressed"):
 		kinds[e["kind"]] = true
@@ -401,3 +422,5 @@ func _quick_flow(lanes: int, speed: float) -> void:
 		"its buttons on the floor, on a wall and on a ceiling all run over %s" % tag)
 	check(bot.stuck == 0 and boss.fight_time() >= 60.0 and boss.fight_time() <= def.three_star_seconds,
 		"a clean fight in %.0f s: in GDD §10's 60-120 s, within three stars' par %s" % [boss.fight_time(), tag])
+	print("  The House, the unprotected whole fight (%d lanes, %.1f m/s): %.1f s, %d attack-only spins, %d strikes" % [
+		lanes, speed, boss.fight_time(), attack_only, boss.attacks.count])

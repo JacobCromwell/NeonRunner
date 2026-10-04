@@ -5,12 +5,17 @@ extends BossPart
 ## entity: a boss part with health of its own (shares_health off) that is a swarm (is_swarm: GDD §8, the
 ## heavy missile's bonus, its splash included), declared, never special-cased (CLAUDE.md principle 8). Its
 ## hundreds of creatures are its SwarmCrowd, drawn in one call from the encounter's pool; they have no
-## collision at all: the cluster hurts only through its one hitbox.
+## collision at all: the cluster hurts only through its hitboxes, its charge's and its mound's.
 ##
 ## Its stages (Stage; SewerSwarm and SwarmSurges move it, it draws itself):
 ## - FORMING, WAITING: risen at the roadside (its crowd heaped against a wall's foot and clinging to it),
-##   pacing the runner at its station ahead; harmless, and weapons don't target it (it's part of the horde);
-## - GATHER: its surge's warning: it holds where it will pour in, rearing, spines up and glowing;
+##   pacing the runner at its station ahead; weapons don't target it (it's part of the horde). The screeches
+##   clinging to the wall are an enemy attack (owner's request, docs/USER_REQUESTS.md: any swarm on a wall
+##   hurts): its mound's hitboxes (MOUND_BOXES, wall_hit_depth deep off the wall, a little inside the
+##   clinging screeches' ridge) are live while enough of them are shown there (MOUND_SHOWN), and a runner on
+##   the wall touching them is knocked off it (SewerSwarm.repel_wall_runner). They keep their own colours;
+## - GATHER: its surge's warning: it holds where it will pour in, rearing, spines up and glowing (only those
+##   leaving the wall glow red: the ones still on it keep their colours);
 ## - POUR: pouring out of the roadside into the lane its warning line shows;
 ## - WAVE (phase 2, a strike from behind): its warning: a wave of screeches rising behind the runner in their
 ##   lane, its crest curling over them (`rise`), until it crashes down into the lane (POUR from the wave);
@@ -27,6 +32,17 @@ enum Stage { FORMING, WAITING, GATHER, POUR, CHARGE, SHOCKED, FALLING, SCATTER, 
 
 const STAGE_NAMES: PackedStringArray = ["forming", "waiting", "gather", "pour", "charge", "shocked", "falling",
 	"scatter", "wave"]
+## Its mound's hitboxes on the wall, each (a share of the mound's length, centred; its top's place along the
+## mound, -0.5..0.5, where the clinging screeches' ridge is lowest over it): a long low one and a short high one.
+const MOUND_BOXES: Array[Vector2] = [Vector2(0.7, 0.35), Vector2(0.4, 0.2)]
+## Its mound's hitboxes are live while at least this share of its screeches is shown on it (rising as it
+## forms, thinned by weapons, leaving it as it pours).
+const MOUND_SHOWN: float = 0.15
+## Their foot and how far under the clinging screeches' ridge they stop (metres).
+const MOUND_BOTTOM: float = 0.2
+const MOUND_TOP_INSET: float = 0.1
+## Where a mound hitbox goes while it's off (out of every query's way, in a lane as it charges too).
+const MOUND_PARKED := Vector3(0.0, -50.0, 0.0)
 
 ## Its place among the swarm's clusters; its side of the street follows it (even: left, odd: right).
 var index: int = 0
@@ -59,6 +75,9 @@ var rise: float = 0.0
 var wave_at: float = 0.0
 ## Where it was formed from as it pours into the lane: 0 its mound at the roadside, 1 its wave.
 var pour_from: int = 0
+## Its mound's hitboxes on the wall (MOUND_BOXES).
+var mound_boxes: Array[Hazard] = []
+var _mound_at: Array[Vector3] = []
 
 var _alive_shown: float = 1.0
 var _wall_x: float = 4.0
@@ -82,6 +101,17 @@ func _build() -> void:
 	hitbox = add_hitbox(&"attack", size, Vector3(0.0, size.y * 0.5, -(tuning.hit_front_inset + size.z * 0.5)), true)
 	hitbox.hazard_name = "the Sewer Swarm"
 	hitbox.set_enabled(false)
+	var depth: float = tuning.wall_hit_depth
+	for m: Vector2 in MOUND_BOXES:
+		var top: float = mound_top(m.y) - MOUND_TOP_INSET
+		var box := add_hitbox(&"attack", Vector3(depth, top - MOUND_BOTTOM, tuning.mound_length * m.x),
+			Vector3(side * (0.45 - depth * 0.5), (MOUND_BOTTOM + top) * 0.5, 0.0), true)
+		box.hazard_name = "the Sewer Swarm"
+		box.contacted.connect(_on_mound_contact)
+		mound_boxes.append(box)
+		_mound_at.append(box.position)
+		box.position = MOUND_PARKED
+		box.set_enabled(false)
 	if crowd != null:
 		crowd.visible = true
 		crowd.set_shapes(tuning.mound_length, tuning.mound_depth, tuning.mound_climb, tuning.mass_length,
@@ -94,6 +124,29 @@ func _build() -> void:
 ## True while it's an attack under way: from its warning until it has passed or died.
 func surging() -> bool:
 	return alive and stage in [Stage.GATHER, Stage.POUR, Stage.CHARGE, Stage.WAVE]
+
+
+## The clinging screeches' ridge at `a` along its mound (-0.5..0.5): the highest of them there (the shader's
+## mound_slot, its rank's height share at 1).
+func mound_top(a: float) -> float:
+	return 0.18 + tuning.mound_climb * (0.3 + 0.7 * (1.0 - 4.0 * a * a))
+
+
+## The share of its screeches shown clinging to the wall in its mound now (0-1): as much of it as has risen
+## and is left, less those already pouring out (a creature of rank w leaves at pour w / 2).
+func mound_shown() -> float:
+	if not alive or stage not in [Stage.FORMING, Stage.WAITING, Stage.GATHER, Stage.POUR] or pour_from != 0:
+		return 0.0
+	return maxf(minf(clampf(formed, 0.0, 1.0), _alive_shown) - 2.0 * pour, 0.0)
+
+
+## Its mound's live hitboxes' boxes in world space.
+func mound_hit_boxes() -> Array[AABB]:
+	var out: Array[AABB] = []
+	for box: Hazard in mound_boxes:
+		if box.is_active():
+			out.append(AABB(box.global_position - box.size * 0.5, box.size))
+	return out
 
 
 ## True while it waits at the roadside (or is still rising there): it can be the next to surge.
@@ -157,6 +210,7 @@ func charge(p_lane: int, speed: float, p_forward: bool = false) -> void:
 ## A surge that missed: out of sight, it's gone at once (it re-forms at the back).
 func vanish() -> void:
 	hitbox.set_enabled(false)
+	_set_mound_live(false)
 	stage = Stage.FORMING
 	formed = 0.0
 	formed_target = 0.0
@@ -211,12 +265,46 @@ func hit_radius() -> float:
 
 func _tick(_delta: float) -> void:
 	place()
+	_set_mound_live(mound_shown() >= MOUND_SHOWN)
+	if not mound_hit_boxes().is_empty():
+		_repel_touching()
+
+
+func _set_mound_live(on: bool) -> void:
+	for i: int in mound_boxes.size():
+		var box: Hazard = mound_boxes[i]
+		var want: Vector3 = _mound_at[i] if on else MOUND_PARKED
+		if box.position != want:
+			box.position = want
+		if box.is_active() != on:
+			box.set_enabled(on)
+
+
+## A runner on its wall touching its mound's screeches is hurt by them first (the touch resolved now, so being
+## knocked off can't dodge it), then knocked off the wall, even one nothing can hurt now (grace, god mode, the
+## dash).
+func _repel_touching() -> void:
+	var p: Player = world.player
+	if not p.alive or p.surface != Player.Surface.WALL or p.wall_side != side:
+		return
+	var body: AABB = p.hurtbox_aabb()
+	for box: Hazard in mound_boxes:
+		if box.is_active() and AABB(box.global_position - box.size * 0.5, box.size).intersects(body):
+			p.receive_hit(box)
+			_on_mound_contact(0)
+			return
+
+
+func _on_mound_contact(_outcome: int) -> void:
+	if encounter != null and is_instance_valid(encounter) and encounter.has_method(&"repel_wall_runner"):
+		encounter.call(&"repel_wall_runner", side, "mound")
 
 
 ## Destroyed: a live fence shocks it, a hole swallows it; weapons (or the fight won) scatter it. The
 ## encounter plays its sound and deals the boss its hit (SewerSwarm._on_part_defeated); here it dies away.
 func _on_defeated(cause: StringName) -> void:
 	hitbox.set_enabled(false)
+	_set_mound_live(false)
 	death_seconds = 0.0
 	match cause:
 		&"fence":

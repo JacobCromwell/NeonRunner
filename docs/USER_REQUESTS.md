@@ -1,75 +1,32 @@
 # List of Tasks
 NOTE: Mark tasks as done as you complete them.
 
-## Zone & Levels Related
-1. [x] First level is too long and should be about 50% of it's current runtime. DONE: City 1 is now 55 seconds instead of 110; other levels are unchanged. Lower earnings are intentional, and economy-test expectations have been updated per your answer below.
-2. [x] Octodogs should not appear in the gold zone levels. DONE: Removed from all three Golden Zone levels.
-3. [x] There should be more gaps in the first level. DONE: Added encounters and widened gaps, targeting 30% more encounters and 30% more missing lanes per encounter without replacing obstacles. Default-tier rows/lane-gaps: 3 lanes 11/11 -> 15/20; 5 lanes 15/24 -> 20/42; 6 lanes 13/25 -> 17/43. One harder-tier 3-lane layout reaches 25 instead of 26 lane-gaps because existing clearance constraints prevent further widening; this is explicitly reported.
+- [x] three additional upgrade tiers to the dash costing 800, 1,000 and 1,200 credits, with a minimum cooldown of 3 seconds. The exact cooldowns for the four total tiers should be 8 / 6 / 4 / 3 seconds.
 
-## General gameplay
-1. [x] The walls on the side should occassionally have gaps as well. DONE: Playable gaps start in Zone 2, automatically drop wall runners and refuse entry where the wall is missing. Zone 1 and bosses are excluded. Data-driven low frequency and rare bilateral gaps use a simple interval support check.
-2. Dash should be upgradable, each upgrade should decrease the cool down.
-    Though the cooldown should never be so low that the player could just spam it endlessly.
+- [x] The enemy density and obstacle density is too light. In general, the algorithm that is used to make sure that there is always a free open lane is too forgiving. So that should be tightened up across the board to be creating levels that have more increased density of enemies and obstacles, etcetera. On a low end, so for the first few levels, the increase in density should be about 15%. However, by the final levels, the increase in density of danger should be about 35%. Use your own judgment for increases to the other levels and zones.
 
-## Hints
-1. [x] Hints should be shown on the screen introducing the level instead of in the middle of a level. DONE: Level introductions show hints before PLAY; mid-run tutorial popups are suppressed.
-2. [x] The hints shown on the level screen should relate to the new concepts/enemies/obstables in that level and you should be able to page through the hints with the arrow keys. DONE: New concepts take priority, followed by unseen relevant hints; left/right paging also has click/touch controls.
+- [x] The cyborg enemy has a laser attack that is a little hard to notice, so make the sound of the lasers firing a little bit louder, about 30% louder.
 
-## Graphical
-1. [x] highest tier credits pickup is too hard to see. DONE: 100-credit pickups have a taller cut-gem silhouette with ice-blue facets and dark contrast; other tiers and collection behavior are unchanged.
+- [x] the armor should protect or take one hit from the player touching the barnacle turret, which it does not currently.
 
-## Verification
+- [x] The swarm host and the house bosses are both too easy and should be made more difficult.
 
-- Latest validation after applying your answers: all six targeted suites passed (26,992 checks), covering City 1 density, playable wall gaps, revised economy, movement, hints and the skin-budget harness. The Zone 2 headless smoke run and patch whitespace check passed.
-- Additional delegated campaign/generator/pace/wall-fence checks and Zone 1/boss smoke runs passed. Separate city/corporate/dead-zone skin suites exceeded their existing build-time budgets; baseline timing comparisons also exceeded those budgets, so unrelated performance tuning was not included.
-- Previous validation before your answers ran 19 affected suites: 18 passed; the economy suite failed two affordability checks (2 failures out of 1,718,940 checks). Those expectations have now been revised, and the economy suite passes.
-- The integrated City 1 headless smoke run and patch whitespace check passed.
-- Credit visibility was checked in rendered before/after images across nine skins using Compatibility rendering, bloom disabled and Reduced flashing enabled. Images are in `build/credits/`; no mobile/browser playtest was performed.
+- [x] As far as level design goes, in the gold zone, the knight/sentinels that are just decorative should appear at the bottom of the walls (currently they appear at the top), this way when an actual dangerous sentinel enemy exists, there is a chance of the player being surprised by it. Right now, they are too conspicuous and easy to avoid.
 
-## Open questions for the user
+- [x] The Octodog and Buzz Overdrive's charge attacks should hurt other enemies if they charge into them. If having enemies being able to hurt each other drastically increases the complexity of the code, then write that out to the user requests and do not implement that feature for now. However, if it does not greatly increase the complexity of the code, then please implement it.
 
-Your answers below have been applied to the floor gaps, wall gaps and economy expectations. Dash upgrades remain unimplemented pending the cooldown progression question at the end of this section. Original answers and historical measurements are preserved.
+## Sewer Swarm follow-up (October 4, 2026)
 
-### More gaps in the first level
-- Should "more gaps" mean more gap encounters, more missing lanes per encounter, or both?
-Answer: both
-- What increase should we target: a percentage increase or a specific number of additional encounters?
-Answer: percentage, 30%
-- Should additional gaps replace fences/signs, or increase the overall obstacle density?
-Answer: Increase density
-- Current shortened City 1 (seed 101): 11 gap rows / 11 lane-gaps with 3 lanes, 15 / 24 with 5 lanes, and 13 / 25 with 6 lanes. Before shortening, there were 23 / 26 / 26 gap rows respectively.
-That is fine
+- [x] Update the Sewer Swarm's concurrent attacks and dangerous walls:
+  - In phase 2, front and rear surges overlap in two different lanes, leaving X-2 safe lanes on an X-lane playfield.
+  - Shorten the full surge warnings in phases 1 and 2, preserving the 0.9-second front and 1.0-second rear locked-lane dodge windows. Preserve enough early warning to choose a bait reactively, even if the total reduction is less than 50%.
+  - Any visible swarm actually occupying a wall damages a player who contacts it and prevents mounting or remaining in that occupied area. Keep wall creatures naturally colored: DO NOT MAKE THEM RED.
+  - Continue wall pressure into phase 3. Before each usable weak-point ramp, visibly clear only the necessary ramp, wall-run, wall-jump and landing route; swarm elsewhere remains dangerous.
 
-### Occasional gaps in side walls
-- Should gaps remove the playable wall-running surface, or only create visual breaks in scenery?
-Answer: remove playable surface. Do not add gaps to boss levels
-- For playable gaps, should runners automatically drop, need to jump across, or bridge/re-attach?
-Answer: Auto drop
-- What frequency and length should gaps have, which levels should introduce them, and can both walls have gaps at the same location?
-Answer: Frequency should be low, introduced in zone 2 and beyond. Yes it is possible for both walls to have gaps at the same location, but this should be rare.
-- Must gaps always offer safe outer-lane landings and avoid ramps, speed pads, ceilings and attacks that require a wall escape?
-Answer: No, players should see the gaps and need to plan ahead.
-- Current gameplay permits wall entry/running without checking wall support, so playable gaps require coordinated gameplay and geometry changes, not just scenery changes.
-Answer: It sounds like it will add a lot of complexity? If it is easy to add then add it, otherwise Continue not to check this for now
+- [x] Double the Sewer Swarm Host's phase-3 hit requirement from three to six successful weak-point hits, without increasing the phase-1 or phase-2 requirements.
 
-### Dash cooldown upgrades
-- How many additional upgrade tiers should dash have?
-Answer: 3
-- What should each upgrade cost, and what should each tier's cooldown be?
-Answer: Cost should be 800, 1000, 1200
-- What minimum cooldown should enforce the no-endless-spam requirement?
-Answer: 3 second minimum
-- Current dash lasts 0.6 seconds, adds 8 m/s and has an 8-second cooldown measured from activation. It has one purchasable tier at a placeholder price of 1,800 credits. No approved upgrade curve or minimum cooldown exists.
-
-### Economy impact of the shorter first level
-- May we make a City 1-only credit adjustment to preserve early armor/laser affordability while keeping its new 55-second duration, or should the reduced early earnings be intentional?
-Answer: It is intentional.
-- Controlled comparison at seed 101 / 5 lanes: available City 1 credits fell from 556 to 341. The economy test's good-run wallet after City 1 fell from 489 to 339 (armor costs 350); the cumulative wallet after City 2 fell from 950 to 800 (laser costs 900).
-- These two economy checks now fail because of the requested shortening. Prices, rewards and credit tuning have not been changed without approval.
-Answer: Change the tests to reflect the new changes.
-
-Implementation result: Rewards and prices are unchanged. After the approved floor-gap increase, the default 5-lane good-run wallets are 372 after City 1, 833 after City 2 and 1,495 after City 3. Armor I remains affordable after City 1; the laser affordability expectation now moves from City 2 to City 3.
-
-### Remaining unanswered question: dash cooldown progression
-- You approved three additional upgrades costing 800, 1,000 and 1,200 credits, with a minimum cooldown of 3 seconds. What should the exact cooldowns for the four total tiers be?
-- Option A: 8 / 6 / 4 / 3 seconds.
+Verified across 3/5/6 lanes at 18 and 21.8 m/s: all six Swarm suites pass (627 checks),
+including six ramp/wall-run/wall-jump stomps, concurrent damage windows and local wall clearance.
+Native phase-3 renders and the campaign-speed smoke run are clean. The full 81-suite gate reports
+only the eight unrelated failures reproduced on unchanged HEAD (frame times, Hostile Takeover fight,
+Resonator and doodads). Clean wins take about 104.5 seconds; boss star pars are now 115/150 seconds.

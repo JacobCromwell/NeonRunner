@@ -9,16 +9,16 @@ extends RefCounted
 ## above it, up to pilaster_height. Between two pilasters, a bay (GDD §5) is one of:
 ## - a gallery: a gold-framed rectangular opening into the hall beyond, showing the cult's feed
 ##   (CultFeed) or its emblem (gallery_share of the bays);
-## - an alcove: a statue standing in the same arched, gold-framed niche a live Gilded Sentinel's does
-##   (GoldenStatue.niche(), task C4's shape too: a decorative one here, GDD §9.11), in a decorative
-##   pose, always at or above statue_min_height (statue_share of the bays);
+## - an alcove: a base-mounted statue in the same arched, gold-framed niche shape a live Gilded
+##   Sentinel uses (GoldenStatue.recess(), task C4's opening dimensions too: a decorative one here,
+##   GDD §9.11), in a decorative pose (statue_share of the bays);
 ## - a tapestry: a hanging length of the zone's red cloth with a gold trim and fringe (banner_share);
 ## - a relief: the cult's emblem in relief on a gold-rimmed marble panel (GDD §5: shown openly;
 ##   relief_share);
 ## - otherwise the flush panel simply carries on (no extra geometry: the cheapest and commonest bay).
-## Decorative statues and every other bay's content stand only above frieze_top, far above the
-## wall-run band (a statue at wall-run height is a live Gilded Sentinel; safe things look safe), the
-## same rule GoldenFacades keeps for its ledge. All variety comes from hashing bay indices, so a
+## Galleries, tapestries and reliefs stand above frieze_top; decorative statues are the exception and
+## are mounted at the wall base so their mesh-only silhouette can blend with a live Gilded Sentinel.
+## The base alcove has no gameplay body or hitbox. All variety comes from hashing bay indices, so a
 ## chunk looks the same whenever it's built.
 ## Chunk space: x across, y up, z = -distance.
 
@@ -28,7 +28,9 @@ enum Content { PLAIN, GALLERY, ALCOVE, TAPESTRY, RELIEF }
 const GALLERY_SIZE := Vector2(2.6, 3.2)
 const GALLERY_RIM: float = 0.14
 const GALLERY_DEPTH: float = 0.5
-const ALCOVE_SIZE := Vector2(1.4, 3.4)
+## Decorative poses are opened wider than a live Sentinel niche so their projected halberds and
+## three-quarter silhouettes remain visible from the runner's approach.
+const ALCOVE_SIZE := Vector2(2.0, 3.4)
 ## How far a pilaster stands proud of the flush panel, and its cap's height.
 const PILASTER_RADIUS: float = 0.28
 const PILASTER_BASE: float = 0.3
@@ -55,6 +57,15 @@ func build(batch: MeshBatch, side: int, face_x: float, start: float, end: float)
 	var s: MeshLayer = batch.layer(skin.solid_material())
 	# A Gilded Sentinel's niche opens in the panel where one stands (GoldenSkin.note_wall_enemies, task C4).
 	var holes: Array[Rect2] = skin.niches(side)
+	var hole_bay: float = skin.lot_length
+	var hole_k: int = floori(start / hole_bay)
+	while float(hole_k) * hole_bay < end:
+		var hole_at: float = (float(hole_k) + 0.5) * hole_bay
+		if hole_at >= start and hole_at < end and _content(side, hole_k) == Content.ALCOVE \
+				and not _low_piece_overlaps_gap(side, hole_at, ALCOVE_SIZE.x * 0.5 + 0.18):
+			holes.append(Rect2(hole_at - ALCOVE_SIZE.x * 0.5, skin.decorative_statue_mount_y(),
+				ALCOVE_SIZE.x, ALCOVE_SIZE.y))
+		hole_k += 1
 	if holes.is_empty():
 		MeshKit.facade_quad(s, side, face_x, start, end, 0.0, skin.frieze_top, skin.frieze_top, skin.stone_colors[0], 0.0,
 			MeshKit.PAT_PALACE_PANEL, 0.0)
@@ -71,7 +82,8 @@ func build(batch: MeshBatch, side: int, face_x: float, start: float, end: float)
 		var bx: float = (float(k) + 0.5) * bay
 		if bx >= start and bx < end:
 			_bay(s, batch, side, face_x, k, bx)
-		if float(k) * bay >= start and float(k) * bay < end:
+		if float(k) * bay >= start and float(k) * bay < end \
+				and not _low_piece_overlaps_gap(side, float(k) * bay, PILASTER_RADIUS):
 			_pilaster(s, side, face_x, float(k) * bay)
 		k += 1
 
@@ -90,19 +102,25 @@ func _pilaster(s: MeshLayer, side: int, face_x: float, at: float) -> void:
 	s.prism(Vector3(x, y1 - PILASTER_CAP, z), PILASTER_RADIUS, PILASTER_CAP, 8, skin.gold_color, 0.0, MeshKit.PAT_GOLD, true, 0.9)
 
 
-## One bay's content (Content), centred at track distance `at`, above frieze_top.
+## One bay's content (Content), centred at track distance `at`; alcoves are wall-base mounts while
+## the other content remains above frieze_top.
 func _bay(s: MeshLayer, batch: MeshBatch, side: int, face_x: float, index: int, at: float) -> void:
 	match _content(side, index):
 		Content.GALLERY:
 			_gallery(s, batch, side, face_x, index, at)
 		Content.ALCOVE:
-			_alcove(s, side, face_x, index, at)
+			if not _low_piece_overlaps_gap(side, at, ALCOVE_SIZE.x * 0.5 + 0.18):
+				_alcove(s, side, face_x, index, at)
 		Content.TAPESTRY:
 			_tapestry(s, side, face_x, index, at)
 		Content.RELIEF:
 			_relief(s, side, face_x, index, at)
 		_:
 			pass
+
+
+func _low_piece_overlaps_gap(side: int, at: float, half_width: float) -> bool:
+	return skin.wall_gap_near(side, at - half_width, at + half_width)
 
 
 ## Which content a bay holds, by hashing its index (GALLERY, ALCOVE, TAPESTRY and RELIEF share the
@@ -151,16 +169,19 @@ func _gallery(s: MeshLayer, batch: MeshBatch, side: int, face_x: float, index: i
 		GoldenSkin.emblem_panel(s, rv[0], rv[1], rv[2], h * 0.8, skin.red_color, 0)
 
 
-## A statue standing in an arched, gold-framed niche (GoldenStatue.niche(): the same shape a live
-## Gilded Sentinel's niche uses, task C4), in a decorative pose, at or above statue_min_height.
+## A mesh-only decorative statue standing in an arched, gold-framed wall-base niche
+## (GoldenStatue.recess(): the same opening shape a live Gilded Sentinel's niche uses, task C4). Its
+## floor is the wall base, not the live enemy's wall-run-height sill.
 func _alcove(s: MeshLayer, side: int, face_x: float, index: int, at: float) -> void:
-	var y: float = maxf(skin.frieze_top + 0.3, skin.statue_min_height)
+	var y: float = skin.decorative_statue_mount_y()
 	var facing := Vector3(-side, 0.0, 0.0)
 	var basis := Basis(Vector3.UP, atan2(facing.x, facing.z))
 	var origin := Vector3(face_x, y, -at)
-	s.append(skin.statues().niche(ALCOVE_SIZE.x, ALCOVE_SIZE.y), Transform3D(basis, origin))
+	s.append(skin.statues().recess(ALCOVE_SIZE.x, ALCOVE_SIZE.y, skin.decorative_statue_recess_depth()),
+		Transform3D(basis, origin))
 	var pose: int = MeshKit.hash_i(side, index, 221) % GoldenStatue.DECORATIVE.size()
-	s.append(skin.statues().mesh(GoldenStatue.pose_named(GoldenStatue.DECORATIVE[pose])), Transform3D(basis, origin))
+	s.append(skin.decorative_statue_mesh(GoldenStatue.pose_named(GoldenStatue.DECORATIVE[pose])),
+		Transform3D(basis, skin.decorative_statue_mount(side, face_x, at)))
 
 
 ## A length of the zone's heavy red cloth with a gold trim and fringe, hung above the band
@@ -190,7 +211,8 @@ func _relief(s: MeshLayer, side: int, face_x: float, _index: int, at: float) -> 
 
 # --- Listings (GoldenPalaceSkin's statue_spots, feed_boards, cult_emblems) --------------------
 
-## The decorative statues whose feet lie in [start, end) (GoldenPalaceSkin.statue_spots()).
+## The decorative statues whose feet lie in [start, end) (GoldenPalaceSkin.statue_spots()). These are
+## mesh-only wall-base scenery, not live wall enemies.
 func statue_spots(side: int, face_x: float, start: float, end: float) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var bay: float = skin.lot_length
@@ -198,9 +220,9 @@ func statue_spots(side: int, face_x: float, start: float, end: float) -> Array[D
 	while float(k) * bay < end:
 		var bx: float = (float(k) + 0.5) * bay
 		if bx >= start and bx < end and _content(side, k) == Content.ALCOVE:
-			var y: float = maxf(skin.frieze_top + 0.3, skin.statue_min_height)
+			var y: float = skin.decorative_statue_mount_y()
 			var pose: int = MeshKit.hash_i(side, k, 221) % GoldenStatue.DECORATIVE.size()
-			out.append({"side": side, "at": bx, "center": Vector3(face_x, y, -bx), "facing": Vector3(-side, 0.0, 0.0),
+			out.append({"side": side, "at": bx, "center": skin.decorative_statue_mount(side, face_x, bx), "facing": Vector3(-side, 0.0, 0.0),
 				"height": GoldenStatue.PEDESTAL_HEIGHT + GoldenStatue.STATURE, "pose": GoldenStatue.DECORATIVE[pose]})
 		k += 1
 	return out

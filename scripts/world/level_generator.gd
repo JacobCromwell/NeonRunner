@@ -12,7 +12,10 @@ extends RefCounted
 ##    its static `apply(gen: LevelGenerator)` runs (e.g. drone anti-grav pad schedules). Rules that
 ##    add a feature's enemies or pieces keep them after its start (feature_active, feature_share_at).
 ## 3. The fill pass (LevelConfig.fill_empty_seconds): more plain obstacle patterns in long empty
-##    stretches.
+##    stretches. Around it, danger density (LevelConfig.danger_density_increase; DangerDensity,
+##    scripts/world/danger_density.gd): before it a share more enemies (twins and single encounters
+##    of the level's own patterns), after it a share more floor pieces (rows take another lane, new
+##    filler rows), each with an open lane and the level's spacing around it. Off (0) it draws nothing.
 ## 4. Zone doodads (LevelConfig.doodad_share): scenery standing in lanes, in the stretches where
 ##    nothing else goes on (_place_doodads).
 ## 5. Wall fences (the `wall_fences` and `wall_fences_partial` features; WallFencePlacement): electric
@@ -99,6 +102,8 @@ extends RefCounted
 ## feature's start, alone, with a long off time.
 
 const DENOMINATIONS: Array[int] = [1, 5, 25, 100]
+## The danger density pass (LevelConfig.danger_density_increase); no class_name, so loaded here.
+const DangerDensity := preload("res://scripts/world/danger_density.gd")
 const RULES_DIR: String = "res://scripts/enemies"
 ## The most builds generate() makes to have every feature appear (guarantee_features). Past it the
 ## level keeps the build that missed the fewest, with a warning. Most levels take one to three; The
@@ -169,6 +174,16 @@ var picks: Array[Dictionary] = []
 var fills: Array[Dictionary] = []
 ## Additive gap pass's actual/target counts and any fairness shortfalls; empty when disabled.
 var gap_density_result: Dictionary = {}
+## The danger density pass's report for the last build (DangerDensity.apply_enemies, apply_obstacles,
+## then apply_wall_fences: counts, targets, what each lever added, shortfalls); empty when the level's
+## danger_density_increase is 0.
+var danger_density_result: Dictionary = {}
+## The floor pieces the danger density pass added in the last build that the credit pass gives no
+## risky credit (DangerDensity, its tuning's credit_added_pieces off): more danger, not more pay.
+var uncredited: Dictionary = {}
+## The danger density pass's obstacle-half plan (DangerDensity.apply_obstacles), which the zone doodads
+## after it ask (DangerDensity.doodad_ok), during a build only; null when the pass didn't run.
+var danger_density_plan: RefCounted = null
 
 var _rng := RandomNumberGenerator.new()
 ## Which ceilings are narrow, and their lanes (ceiling_lanes): a stream of its own, drawn from only
@@ -272,6 +287,8 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	warnings.clear()
 	picks.clear()
 	fills.clear()
+	uncredited.clear()
+	danger_density_plan = null
 	_intro_burst = -1
 	var accel: float = tuning.speed_gain_per_minute / 60.0
 	layout.length = speed * config.duration_seconds + 0.5 * accel * config.duration_seconds * config.duration_seconds
@@ -308,8 +325,12 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 		cursor = clear_end
 
 	_apply_enemy_rules()
+	danger_density_result = DangerDensity.apply_enemies(self, patterns)
 	_fill_empty_stretches(patterns)
+	danger_density_result = DangerDensity.apply_obstacles(self, patterns, danger_density_result)
 	_place_doodads(patterns)
+	# Only the doodads ask it, and it holds this generator: let it go.
+	danger_density_plan = null
 	_place_wall_fences()
 	WallGapPlacement.place(self)
 	gap_density_result = GapDensity.apply(self)
@@ -1479,7 +1500,10 @@ func _trim_clear_stretches(span: Vector2) -> void:
 ##   doodad_keep_outs with a lane: a hover truck's, for its whole stay); it pushes into a side with
 ##   room, a seeded choice when both have it;
 ## - one at a time: doodad_gap_seconds from one's end to the next one's front, so a few in a row never
-##   make a slalom.
+##   make a slalom;
+## - where the danger density pass ran, never in the only lane its pieces leave a player to come to it
+##   in (DangerDensity.doodad_ok: a doodad is neither jumped nor stood beside in its lane); with the
+##   level's danger_density_increase 0 there's no such check and the doodads are as before.
 ## Each stretch with room for one gets one with the level's doodad_share, at a seeded spot in it, and
 ## the next spot in a long stretch another with the same chance; a size class (doodad_*_weight) that
 ## fits. Its own random stream (rng_for("doodads")): with doodad_share 0 nothing is drawn and the
@@ -1550,6 +1574,8 @@ func _add_doodad(rng: RandomNumberGenerator, size: StringName, start: float, end
 	var sides: Array[Array] = []
 	for lane: int in range(1, layout.lane_count - 1):
 		if _lane_kept(lane_keeps, lane, span):
+			continue
+		if danger_density_plan != null and not DangerDensity.doodad_ok(self, lane, start, end):
 			continue
 		var room: Array[int] = []
 		for side: int in [-1, 1]:
@@ -1815,10 +1841,12 @@ func _lane_busy(lay: LevelLayout, lane: int) -> Array[Vector2]:
 ## doodads and before the credits, from a random stream of their own (WallFencePlacement has the rules):
 ## they only add to the walls, so the rest of a level comes out exactly as it does without them, and a
 ## level without the `wall_fences` and `wall_fences_partial` features draws nothing and is built byte
-## for byte as before.
+## for byte as before. Then the danger density pass's wall half adds its share more by the same rules
+## (DangerDensity.apply_wall_fences; nothing with the level's danger_density_increase at 0).
 func _place_wall_fences() -> void:
 	if config.has_feature(WallFencePlacement.FEATURE) or config.has_feature(WallFencePlacement.PARTIAL):
 		WallFencePlacement.place(self)
+		danger_density_result = DangerDensity.apply_wall_fences(self, danger_density_result)
 
 
 ## Why wall fence `entry` (WallFencePlan.make) can't stand where it lies in `p_layout` (the level's by
@@ -1962,7 +1990,7 @@ func _place_gap_credits(rng: RandomNumberGenerator) -> void:
 	var done: Dictionary = {}
 	for g: Dictionary in layout.gaps:
 		var key: String = "%.1f" % float(g["start"])
-		if done.has(key) or rng.randf() >= config.credit_gap_chance:
+		if uncredited.has(g) or done.has(key) or rng.randf() >= config.credit_gap_chance:
 			continue
 		done[key] = true
 		var lane: int = g["lane"]
@@ -1979,7 +2007,7 @@ func _place_gap_credits(rng: RandomNumberGenerator) -> void:
 ## gapped one (reached by sliding).
 func _place_fence_credits(rng: RandomNumberGenerator) -> void:
 	for f: Dictionary in layout.fences:
-		if rng.randf() >= config.credit_fence_chance:
+		if uncredited.has(f) or rng.randf() >= config.credit_fence_chance:
 			continue
 		var gapped: bool = f["variant"] == "gapped"
 		var height: float = 0.25 if gapped else tuning.fence_full_top + 0.6

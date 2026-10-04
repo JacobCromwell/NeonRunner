@@ -34,6 +34,7 @@ extends Enemy
 ## distance (sound_full_volume_distance); the spin-up is stretched over its rev by pitch (rev_pitch:
 ## lower where it revs longest), and it's kept until its charge has died away.
 ## Numbers: BuzzOverdriveTuning (data/enemies/buzz_overdrive.tres). Look: BuzzOverdriveModel.
+## Only its charge hurts other hittable enemies on physical blade contact (Enemy._hurt_charge_contacts).
 
 ## PASS (task FIX2) comes last, so the others keep their numbers in event logs (tools/measure).
 enum State { PARKED, ROLL, REV, CHARGE, GONE, PASS }
@@ -113,7 +114,8 @@ func _build() -> void:
 	add_child(model)
 	model.build(world.skin.enemy_variant if world.skin != null else &"city", tuning.body_size, tuning.blade_radius)
 	var h: Vector3 = tuning.hitbox_size
-	_hitbox = add_hitbox(&"attack", h, Vector3(0.0, h.y * 0.5, 0.0), true)
+	# The blade is its physical body, not a detached attack; armor still treats it as an attack.
+	_hitbox = add_hitbox(&"body", h, Vector3(0.0, h.y * 0.5, 0.0), true)
 	_hitbox.hazard_name = "Buzz Overdrive's saw"
 	_hitbox.contacted.connect(_on_contacted)
 	_line = MeshInstance3D.new()
@@ -148,6 +150,8 @@ func _build() -> void:
 func _tick(delta: float) -> void:
 	if cut.is_empty():
 		return
+	var was_charging: bool = state == State.CHARGE
+	var blade_from: Transform3D = _hitbox.global_transform
 	var p: float = world.player_distance()
 	if state == State.PARKED and p >= FloorCutPlan.lead_at(cut):
 		state = State.ROLL
@@ -162,11 +166,16 @@ func _tick(delta: float) -> void:
 	# the track built ahead), not every frame of its long approach.
 	if floor_cut == null and (state == State.REV or state == State.CHARGE):
 		floor_cut = world.track.floor_cut(lane, float(cut["end"]))
+	if state == State.CHARGE and not was_charging:
+		# Only the motion from the cut's end is charging; don't sweep the preceding roll/rev.
+		blade_from.origin += global_basis * Vector3(0.0, 0.0,
+			TrackGeometry.world_z(float(cut["end"])) - position.z)
 	front = _front_for(p)
 	position = world.lane_point(lane, front)
 	if state == State.PASS and front - p > tuning.appear_distance:
 		_gone()
 	if state == State.CHARGE:
+		_hurt_charge_contacts(_hitbox, blade_from)
 		if floor_cut != null:
 			floor_cut.advance_to(front)
 		var sparking: bool = not Settings.flashing_reduced
@@ -295,6 +304,7 @@ func _rev() -> void:
 
 func _charge() -> void:
 	state = State.CHARGE
+	_begin_charge_contacts()
 	_play(&"buzz_charge")
 
 

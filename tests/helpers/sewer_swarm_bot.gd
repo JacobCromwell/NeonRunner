@@ -5,7 +5,9 @@ extends RefCounted
 ## named actions and reacts `reaction` seconds after a warning starts or locks, like a player:
 ## - a surge's warning (the red line down its lane, the chitter; from behind, the wave): with `baits` on it
 ##   heads for the lane of the fence or the hole on the street ahead (the bait spot's), so the line follows
-##   it there; with `baits` off it keeps to its lane (or out of the bait's, `avoids_surge_baits`);
+##   it there; with `baits` off it keeps to its lane (or out of the bait's, `avoids_surge_baits`). Both at once
+##   (phase 2: from behind and ahead, only one can meet the bait) it baits pairs in turn, the one from behind,
+##   then the one ahead: out of the bait's lane while the wave warns, and into it as it leaves the wave's;
 ## - the lock (the cluster lands and charges; from behind, the wave locks over the lane): in the locked lane
 ##   it gets out of the way: out of the bait's lane to the nearest lane whose floor is clear (`bait_escape`
 ##   &"switch"), or (a surge from ahead) it stays and jumps the fence or the hole (&"jump"); out of an
@@ -40,8 +42,8 @@ var avoids_baits: bool = true
 ## surge ever meets a fence or a hole); off (the default), it keeps to its lane.
 var avoids_surge_baits: bool = false
 ## Chances it lets go by in each phase before it takes them (a runner who misses some: the par times): its
-## first `skips` surges in a phase it keeps out of the bait's lane, and in the Host's phase its first `skips`
-## lunges or crouches it neither baits nor climbs to.
+## first `skips` bait spots in a phase (a pair's both surges) it keeps out of the bait's lane, and in the Host's
+## phase its first `skips` lunges or crouches it neither baits nor climbs to.
 var skips: int = 0
 ## The wall jump comes this far past the ramp's start (metres at 18 m/s, at the run's pace): in the green
 ## chevrons' window.
@@ -63,6 +65,9 @@ var _route: Dictionary = {}
 ## Chances let go by so far, by phase, and each chance's verdict (by its key: true if let go by).
 var _skipped: Dictionary = {}
 var _skip_of: Dictionary = {}
+## Pairs of surges (both at once) seen, and which of each it baits (by its spot's key: true, the one ahead).
+var _pairs: int = 0
+var _pair_plan: Dictionary = {}
 
 
 func _init(p_boss: SewerSwarm) -> void:
@@ -78,7 +83,10 @@ func step() -> void:
 	var now: float = boss.fight_time()
 	for i: int in range(_pending.size() - 1, -1, -1):
 		if now >= float(_pending[i]["at"]):
-			_go(int(_pending[i]["lane"]), String(_pending[i]["why"]))
+			# A dodge out of a lane it has already left (and isn't heading back to) is moot.
+			var from: int = int(_pending[i].get("from", -1))
+			if from < 0 or player.lane == from or _target == from:
+				_go(int(_pending[i]["lane"]), String(_pending[i]["why"]))
 			_pending.remove_at(i)
 	if home_lane >= 0 and _target < 0 and _pending.is_empty() and not boss.warning_active() and _route.is_empty() \
 			and player.surface == Player.Surface.FLOOR and player.lane != home_lane:
@@ -88,37 +96,91 @@ func step() -> void:
 		_read_track()
 
 
-## A surge's warning and its lock: where to go, once it reacts.
+## Each surge under way (two at once in phase 2): its warning and its lock, where to go once it reacts.
 func _read_surge() -> void:
 	var s: SwarmSurges = boss.surges
-	if s == null or s.surge.is_empty():
+	if s == null:
 		return
-	var n: int = int(s.surge["n"])
-	var spot: Dictionary = s.surge["spot"]
-	var behind: bool = bool(s.surge["behind"])
+	for surge: Dictionary in s.active.duplicate():
+		_read_one(surge)
+
+
+func _read_one(surge: Dictionary) -> void:
+	var n: int = int(surge["n"])
+	var spot: Dictionary = surge["spot"]
+	var behind: bool = bool(surge["behind"])
+	var key: String = "spot%.2f" % float(spot["at"])
 	if not _handled.has("warn%d" % n):
 		_handled["warn%d" % n] = true
-		var skip: bool = _skip("surge%d" % n)
-		if baits and not skip:
-			_pending.append({"at": boss.fight_time() + reaction, "lane": int(spot["lane"]), "why": "bait"})
-		elif avoids_surge_baits or skip:
+		var skip: bool = _skip(key)
+		var spot_lane: int = int(spot["lane"])
+		# Both at once, only one of the two can meet the bait: pairs in turn, the one from behind, then ahead.
+		if (spot["sides"] as Array).size() > 1 and not _pair_plan.has(key):
+			_pair_plan[key] = _pairs % 2 == 1
+			_pairs += 1
+		var mine: bool = not _pair_plan.has(key) or bool(_pair_plan[key]) != behind
+		# The other surge already locked in the bait's lane (both at once): this one can't be baited there.
+		var taken: bool = _held_lanes(n).has(spot_lane)
+		if baits and not skip and mine and not taken:
+			_pending.append({"at": boss.fight_time() + reaction, "lane": spot_lane, "why": "bait"})
+		elif avoids_surge_baits or skip or (baits and not mine):
 			var player: Player = boss.world.player
-			var spot_lane: int = int(spot["lane"])
 			if player.lane == spot_lane or _target == spot_lane:
 				_pending.append({"at": boss.fight_time() + reaction, "lane": spot_lane + (1 if spot_lane == 0 else -1),
 					"why": "away from the bait"})
-	if int(s.surge["locked"]) >= 0 and not _handled.has("lock%d" % n):
+	if int(surge["locked"]) >= 0 and not _handled.has("lock%d" % n):
 		_handled["lock%d" % n] = true
-		var baited: bool = not (s.surge["bait"] as Dictionary).is_empty()
-		var to: float = float(s.surge["entry"]) + 4.0 * boss.run_pace()
+		var baited: bool = not (surge["bait"] as Dictionary).is_empty()
+		var to: float = float(surge["entry"]) + 4.0 * boss.run_pace()
 		if behind:
-			to = float(s.surge["strike"]) + 6.0 * boss.run_pace()
-		_dodge(int(s.surge["locked"]), baited, not behind, to)
+			to = float(surge["strike"]) + 6.0 * boss.run_pace()
+		# Out of the wave's lane into the bait's, to bait the surge from ahead to come (a pair's plan).
+		var prefer: int = -1
+		if behind and baits and not _skip(key) and _pair_plan.has(key) and bool(_pair_plan[key]):
+			prefer = int(spot["lane"])
+		_dodge(int(surge["locked"]), baited, not behind, to, prefer)
+
+
+## The lanes the other surges under way (not number `n`) are locked in.
+func _held_lanes(n: int = -1) -> Array[int]:
+	var held: Array[int] = []
+	if boss.surges == null:
+		return held
+	for surge: Dictionary in boss.surges.active:
+		if int(surge["n"]) != n and int(surge["locked"]) >= 0:
+			held.append(int(surge["locked"]))
+	return held
+
+
+## True if a locked surge's hitbox is, or within `ahead` seconds will be, where the runner would be in `lane`:
+## a surge ahead charging down it not yet past them, a wave locked over it about to crash, or a crashed one
+## not yet surged on past them.
+func lane_threatened(lane: int, ahead: float) -> bool:
+	if boss.surges == null:
+		return false
+	var player: Player = boss.world.player
+	var d: float = player.distance
+	var t: SewerSwarmTuning = boss.tuning
+	for surge: Dictionary in boss.surges.active:
+		if int(surge["locked"]) != lane:
+			continue
+		var c: SwarmCluster = surge["cluster"]
+		if not is_instance_valid(c) or not c.alive:
+			continue
+		if not bool(surge["behind"]):
+			if int(surge["stage"]) == SwarmSurges.Stage.CHARGE and c.at + t.hit_front_inset + c.hitbox.size.z > d - 1.0:
+				return true
+		elif int(surge["stage"]) != SwarmSurges.Stage.CHARGE:
+			if (float(surge["strike"]) - d) / maxf(player.speed, 1.0) <= ahead + 0.15:
+				return true
+		elif c.at - t.hit_front_inset - c.hitbox.size.z < d + 1.0:
+			return true
+	return false
 
 
 ## Out of `locked` lane (a surge or a lunge that locked there), once it reacts: to the nearest lane whose floor
 ## is clear up to `to`; a baited one from ahead may be jumped instead (bait_escape &"jump").
-func _dodge(locked: int, baited: bool, can_jump: bool, to: float) -> void:
+func _dodge(locked: int, baited: bool, can_jump: bool, to: float, prefer: int = -1) -> void:
 	var player: Player = boss.world.player
 	var mine: int = _target if _target >= 0 else player.lane
 	if locked != mine and locked != player.lane:
@@ -127,9 +189,10 @@ func _dodge(locked: int, baited: bool, can_jump: bool, to: float) -> void:
 		return
 	if not baited and not dodges:
 		return
-	var e: int = escape_lane(locked, player.distance, to)
+	var e: int = escape_lane(locked, player.distance, to, prefer)
 	_pending.clear()
-	_pending.append({"at": boss.fight_time() + reaction, "lane": e, "why": "out of the bait's lane" if baited else "dodge"})
+	_pending.append({"at": boss.fight_time() + reaction, "lane": e, "why": "out of the bait's lane" if baited else "dodge",
+		"from": locked})
 
 
 ## The Host's attacks and crouches (phase 3).
@@ -208,21 +271,37 @@ func _wall_jump() -> void:
 
 
 ## The nearest lane other than `locked` whose floor (and that of every lane on the way) is clear of holes and
-## fences from `from` to `to`; the nearest other lane if none is.
-func escape_lane(locked: int, from: float, to: float) -> int:
+## fences from `from` to `to`, toward the middle first, not in or past a lane another surge is locked in;
+## failing that, one in or past such a lane (its walk waits for it to clear: a crashed wave surging on past the
+## runner); the nearest other lane if none is.
+func escape_lane(locked: int, from: float, to: float, prefer: int = -1) -> int:
 	var n: int = boss.lane_count()
-	for dist: int in range(1, n):
-		for sgn: int in [-1, 1]:
-			var e: int = locked + sgn * dist
-			if e < 0 or e >= n:
-				continue
-			var ok: bool = true
-			for l: int in range(mini(locked, e), maxi(locked, e) + 1):
-				if l != locked and not boss.arena.floor_clear(from, to, l):
-					ok = false
-			if ok and not _host_in(e, from, to):
-				return e
+	var held: Array[int] = _held_lanes()
+	held.erase(locked)
+	if prefer >= 0 and prefer < n and prefer != locked and _way_clear(locked, prefer, from, to, held, true):
+		return prefer
+	var toward: int = 1 if locked * 2 < n - 1 else -1
+	for strict: bool in [true, false]:
+		for dist: int in range(1, n):
+			for sgn: int in [toward, -toward]:
+				var e: int = locked + sgn * dist
+				if e >= 0 and e < n and _way_clear(locked, e, from, to, held, strict):
+					return e
 	return locked + 1 if locked + 1 < n else locked - 1
+
+
+## True if every lane from `locked` to `e` (not `locked`) is clear of holes, fences and the crouching Host from
+## `from` to `to`, and (`strict`) none is a lane another surge is locked in.
+func _way_clear(locked: int, e: int, from: float, to: float, held: Array[int], strict: bool) -> bool:
+	for l: int in range(mini(locked, e), maxi(locked, e) + 1):
+		if l == locked:
+			continue
+		if held.has(l):
+			if strict:
+				return false
+		elif not boss.arena.floor_clear(from, to, l):
+			return false
+	return not _host_in(e, from, to)
 
 
 ## True if the crouching Host lies in `lane` between two track distances.
@@ -282,6 +361,9 @@ func _walk() -> void:
 		return
 	if player.lane == _target:
 		_target = -1
+		return
+	# Not into a lane a surge is about to hit, or is hitting around it: it waits for it to clear.
+	if lane_threatened(player.lane + signi(_target - player.lane), boss.world.tuning.lane_switch_time + 0.05):
 		return
 	_press(&"move_right" if _target > player.lane else &"move_left", _why)
 

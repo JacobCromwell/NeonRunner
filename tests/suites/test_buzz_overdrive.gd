@@ -53,6 +53,7 @@ func run() -> void:
 	await _test_wall_and_ceiling()
 	await _test_block()
 	await _test_kills()
+	await _test_charge_contacts()
 	await _test_weapons()
 	await _test_claws_dash_stomp()
 	await _test_same_every_attempt()
@@ -524,6 +525,61 @@ func _test_kills() -> void:
 	check(fc != null and _floor_at(w2, w2.geo, 1, fc.front - 0.1) and not _floor_at(w2, w2.geo, 1, fc.front + 0.1),
 		"the floor before it stays whole, behind it the gap stays")
 	await sim.free_world(w2)
+
+
+func _test_charge_contacts() -> void:
+	var cut: Dictionary = _cut(1, 300.0)
+	var w: RunWorld = _world(_layout(3, cut), 0, FloorCutPlan.lead_at(cut) - 1.0)
+	w.set_physics_process(false)
+	w.player.set_physics_process(false)
+	var tank: Enemy = w.director.spawn(w.layout.enemies[0])
+	tank.set_physics_process(false)
+	var at: float = tank.track_distance()
+	var victim: Enemy = _contact_dummy(w, 1, at)
+	var causes: Array[StringName] = []
+	var hits: Array[int] = [0]
+	victim.defeated.connect(func(_enemy: Enemy, cause: StringName) -> void: causes.append(cause))
+	victim.health_changed.connect(func(_enemy: Enemy) -> void: hits[0] += 1)
+	await physics_frames(2)
+	for state: int in [TankScript.State.PARKED, TankScript.State.ROLL, TankScript.State.REV,
+			TankScript.State.PASS, TankScript.State.GONE]:
+		tank.set(&"state", state)
+		tank._tick(0.0)
+		check(victim.alive and hits[0] == 0, "Buzz physical contact doesn't damage NPCs outside its charge")
+	w.player.distance = FloorCutPlan.charge_at(cut) - 0.001
+	tank.set(&"state", TankScript.State.REV)
+	tank._tick(0.0)
+	victim.position = tank.position
+	await physics_frames(2)
+	tank._tick(0.0)
+	check(victim.alive, "Buzz's actual rev leaves an overlapping enemy unharmed")
+	w.player.distance = FloorCutPlan.charge_at(cut)
+	tank._tick(0.0)
+	tank._tick(0.0)
+	check(not victim.alive and causes == [Enemy.CHARGE_DAMAGE_CAUSE] and hits[0] == 1,
+		"Buzz's actual charge hurts a colliding NPC exactly once with an NPC cause")
+	at = tank.track_distance()
+	var crossed: Enemy = _contact_dummy(w, 1, at - 4.0)
+	var beside: Enemy = _contact_dummy(w, 2, at - 4.0)
+	var overhead: Enemy = _contact_dummy(w, 1, at - 4.0)
+	overhead.position.y = t.hitbox_size.y + 3.0
+	var host: Enemy = _contact_dummy(w, 1, at - 4.0, {"host": true})
+	var immune: Enemy = _contact_dummy(w, 1, at - 4.0, {"immune": true})
+	await physics_frames(2)
+	w.player.distance += 8.0 / FloorCutPlan.ratio(cut, tuning.run_speed)
+	tank._tick(0.0)
+	check(not crossed.alive, "Buzz's real charge sweeps an enemy crossed between frames")
+	check(beside.alive and overhead.alive, "Buzz misses noncontacting NPCs beside and above its blade")
+	check(host.alive and immune.alive, "Buzz's charge respects host and weapon immunity")
+	check(w.score.kills == 0 and w.score.score == 0, "Buzz NPC charge kills grant no player kill rewards")
+	await sim.free_world(w)
+
+
+func _contact_dummy(w: RunWorld, lane: int, at: float, params: Dictionary = {}) -> Enemy:
+	var p: Dictionary = {"health": 100.0}
+	p.merge(params, true)
+	return w.director.spawn({"type": "dummy", "script": DUMMY, "at": at, "lane": lane,
+		"seed": 1, "params": p})
 
 
 ## GDD §9.9: 22 laser tier 1 shots; tuned so laser tier 1 can't stop it in time, but the missile tiers

@@ -9,8 +9,8 @@ extends SkinSuite
 ##   water, far darker than any walkway can be drawn, and nothing in there glows but the orange edge;
 ##   no floor is drawn in or near the edge's colour; both edges of a gap carry the orange edge;
 ## - the play space stays clear, and nothing sticks out of the walls through the wall-run band;
-## - decorative statues stand only far above the wall-run band (a statue at wall-run height is a live
-##   Gilded Sentinel), where statue_spots() says, and never glow; the statue kit's API for task C4;
+## - decorative statues are mesh-only base mounts (a live Gilded Sentinel keeps its wall-run-height
+##   niche and hitbox), where statue_spots() says, and never glow; the statue kit's API for task C4;
 ## - every kind of ceiling builds from the lanes it covers (task B3), and its water stays above it;
 ##   ceilings keep under what the walls hold out over the street (statue ledges, statues, frames,
 ##   banners), and the walls keep to the clearance profile they declare, on streets of 3 to 6 lanes;
@@ -383,16 +383,19 @@ func _find_intruders(chunk: Node, skin: GoldenSkin, geo: TrackGeometry, finish: 
 					sticking.append(str(p))
 
 
-## Golden statues line the walls (GDD §9.11), every decorative one far above the wall-run band (a
-## statue at wall-run height is a live Gilded Sentinel: safe things look safe), in a decorative pose,
-## the same every time; the built walls hold a statue at every listed spot, and no statue glows.
+## Golden statues line the wall bases (GDD §9.11), with a mesh-only decoration at every listed spot.
+## The real Gilded Sentinel remains a separate wall-run-height enemy; these mounts preserve the runner's
+## collision path and only share its silhouette, pose and orientation.
 func _statues(skin: GoldenSkin) -> void:
 	var wall_run_top: float = tuning.wall_max_height + tuning.visual_size.y
-	check(skin.statue_min_height >= wall_run_top + 2.0 and skin.statue_min_height >= tuning.ceiling_height + 2.0,
-		"decorative statues stand far above the wall-run band (from %.1f m; a wall run reaches %.1f m)" % [
-			skin.statue_min_height, wall_run_top])
-	check(skin.facades().ledge_top() >= skin.statue_min_height - 0.001,
-		"the palaces' statue ledge is at statue_min_height or higher (%.1f m)" % skin.facades().ledge_top())
+	check(skin.decorative_statue_mount_y() <= tuning.wall_margin + 0.001 and skin.decorative_statue_mount_y() < wall_run_top,
+		"decorative statues are mounted at the wall base (%.2f m), below the wall-run band (%.2f m)" % [
+			skin.decorative_statue_mount_y(), wall_run_top])
+	var projected: Vector2 = skin.decorative_statue_projection()
+	check(absf(skin.decorative_statue_inset() - (projected.x + skin.statue_base_inset)) < 0.001
+			and absf(skin.decorative_statue_recess_depth() - (skin.decorative_statue_inset() + projected.y + 0.05)) < 0.001,
+		"mount and recess use projected pose bounds (outward %.2f, wallward %.2f, inset %.2f, depth %.2f)" % [
+			projected.x, projected.y, skin.decorative_statue_inset(), skin.decorative_statue_recess_depth()])
 	var geo := TrackGeometry.new(5, tuning)
 	var count: int = 0
 	var poses: Dictionary = {}
@@ -404,31 +407,39 @@ func _statues(skin: GoldenSkin) -> void:
 			count += 1
 			poses[s["pose"]] = true
 			var c: Vector3 = s["center"]
-			if c.y < skin.statue_min_height - 0.001 or not GoldenStatue.DECORATIVE.has(s["pose"]) or absf(c.x) < geo.wall_x() - 1.0:
+			var expected_x: float = side * geo.wall_x() + side * skin.decorative_statue_inset()
+			var facing: Vector3 = s["facing"]
+			if absf(c.y - skin.decorative_statue_mount_y()) > 0.001 or not GoldenStatue.DECORATIVE.has(s["pose"]) \
+					or absf(c.x - expected_x) > 0.001 or facing.dot(Vector3(-side, 0.0, 0.0)) < 0.7:
 				low.append("%s %s" % [c, s["pose"]])
 	check(count > 200 and poses.size() == GoldenStatue.DECORATIVE.size() and low.is_empty(),
-		"%d decorative statues over 3 km of both walls, in all %d poses, all high on the palaces: %s" % [count, poses.size(),
+		"%d decorative statues over 3 km of both wall bases, in all %d poses, with recessed wall-base mounts: %s" % [count, poses.size(),
 			", ".join(low)])
-	# Built: a statue's gold at every listed spot (its figure over its pedestal), nothing of it glowing.
-	var batch := MeshBatch.new()
-	skin.facades().build(batch, 1, geo.wall_x(), 0.0, 400.0)
-	var layer: MeshLayer = batch.layer(skin.solid_material())
-	var spots: Array[Dictionary] = skin.statue_spots(1, geo.wall_x(), 0.0, 400.0)
+	# Focused mesh-only regression: every relevant lane count builds a gold figure at each listed base
+	# mount. The skin path creates only MeshBatch layers here; no enemy or Area3D is involved.
 	var missing: int = 0
-	for s: Dictionary in spots:
-		var c: Vector3 = s["center"]
-		var head: bool = false
-		for i: int in layer.size():
-			var p: Vector3 = layer.verts[i]
-			if absf(p.x - c.x) < 0.6 and absf(p.z - c.z) < 0.6 and p.y > c.y + GoldenStatue.STATURE * 0.8 \
-					and p.y < c.y + GoldenStatue.PEDESTAL_HEIGHT + GoldenStatue.STATURE + 0.2 \
-					and roundi(layer.uv2s[i].x) == MeshKit.PAT_GOLD:
-				head = true
-				break
-		if not head:
-			missing += 1
-	check(not spots.is_empty() and missing == 0, "every listed statue is built on its ledge (%d of %d missing)" % [missing,
-		spots.size()])
+	var built: int = 0
+	for lanes: int in [3, 5, 6]:
+		var lane_geo := TrackGeometry.new(lanes, tuning)
+		for side: int in [-1, 1]:
+			var batch := MeshBatch.new()
+			skin.facades().build(batch, side, side * lane_geo.wall_x(), 0.0, 400.0)
+			var layer: MeshLayer = batch.layer(skin.solid_material())
+			var spots: Array[Dictionary] = skin.statue_spots(side, side * lane_geo.wall_x(), 0.0, 400.0)
+			built += spots.size()
+			for s: Dictionary in spots:
+				var c: Vector3 = s["center"]
+				var head: bool = false
+				for i: int in layer.size():
+					var p: Vector3 = layer.verts[i]
+					if absf(p.x - c.x) < 0.6 and absf(p.z - c.z) < 0.6 and p.y > c.y + GoldenStatue.STATURE * 0.8 \
+							and p.y < c.y + GoldenStatue.PEDESTAL_HEIGHT + GoldenStatue.STATURE + 0.2 \
+							and roundi(layer.uv2s[i].x) == MeshKit.PAT_GOLD:
+						head = true
+						break
+				if not head:
+					missing += 1
+	check(built > 0 and missing == 0, "every listed base statue is built as mesh-only scenery across 3, 5 and 6 lanes (%d missing)" % missing)
 	var lit: bool = true
 	for pose: StringName in GoldenStatue.DECORATIVE:
 		var statue: MeshLayer = skin.statues().mesh(GoldenStatue.pose_named(pose))
