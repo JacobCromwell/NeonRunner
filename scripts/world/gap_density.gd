@@ -61,7 +61,15 @@ static func apply(gen: LevelGenerator) -> Dictionary:
 		for row: Dictionary in all_rows:
 			if gen.layout.gaps.size() >= lane_target:
 				break
-			var available: Array[int] = _available(gen, Vector2(row["start"], row["end"]), row)
+			var span := Vector2(row["start"], row["end"])
+			# A widening leaves the row where it stands, and every zone doodad already keeps its window
+			# clear of every row (LevelGenerator._place_doodads), so it keeps off the doodads' windows,
+			# with the margin only in a doodad's own lane, never left the open one (_available's
+			# doodads_exact). With the margin in every lane, a doodad decided which rows widen: the
+			# doodads moved a gap (City 1 at 5 lanes), when they only add to a level (FIX4).
+			# DESIGN-TBD (docs/questions/fix4.md): a new row still keeps the margin from a doodad, so
+			# where both want the same stretch the doodad stays and the new row goes elsewhere.
+			var available: Array[int] = _available(gen, span, row, true)
 			var occupied: Array = row["lanes"]
 			# Ignore this row's own holes, not other obstacles, for the clearance check.
 			var missing: Array[int] = []
@@ -70,9 +78,11 @@ static func apply(gen: LevelGenerator) -> Dictionary:
 					missing.append(lane)
 			var grounded: bool = occupied.size() < gen.layout.lane_count - 1 and missing.size() >= 2
 			# Full-width gaps already exist in the patterns. Permit that same jump route only
-			# with every lane clear before/after this row, never beside another obstacle.
+			# with every lane clear before/after this row, never beside another obstacle (a zone
+			# doodad's margin included: the jump lands past the row).
 			var full_jump: bool = occupied.size() == gen.layout.lane_count - 1 \
 				and available.size() == gen.layout.lane_count \
+				and _available(gen, span, row).size() == gen.layout.lane_count \
 				and float(row["end"]) - float(row["start"]) <= gen.jump_distance * config.max_gap_jump_fraction
 			if not grounded and not full_jump:
 				continue
@@ -100,9 +110,10 @@ static func _add_lanes(gen: LevelGenerator, row: Dictionary, available: Array[in
 		gen.layout.gaps.append({"lane": lane, "start": row["start"], "end": row["end"]})
 
 
-## All protected mechanics/enemy windows stay untouched, as do doodads and their pushes.
+## All protected mechanics/enemy windows stay untouched, as do doodads and their pushes (without
+## `with_doodads`, the caller keeps off the doodads' windows itself: _available's doodads_exact).
 ## Signs aren't floor obstacles: a gap may add a floor choice beneath a sign, not replace it.
-static func _protected(gen: LevelGenerator) -> Array[Vector2]:
+static func _protected(gen: LevelGenerator, with_doodads: bool = true) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	var hooks: Dictionary = {}
 	for e: Dictionary in gen.layout.enemies:
@@ -118,12 +129,23 @@ static func _protected(gen: LevelGenerator) -> Array[Vector2]:
 		out.append(Vector2(float(p["at"]), float(p["at"]) + gen.tuning.speed_pad_length))
 	for c: Dictionary in gen.layout.cuts:
 		out.append(FloorCutPlan.window(c, gen.speed))
-	for d: Dictionary in gen.layout.doodads:
-		out.append(Vector2(float(d["start"]) - gen.doodad_lead_for(gen.tuning),
-			float(d["end"]) + gen.doodad_after(float(d["end"]))))
+	if with_doodads:
+		out.append_array(_doodad_windows(gen))
 	for k: Dictionary in gen.rules_doodad_keep_outs():
 		out.append(Vector2(float(k["from"]), float(k["to"])))
 	out.append_array(gen.quiet_stretches())
+	return out
+
+
+## Each zone doodad's window (only those standing in `lane`, if given): from its push's lead before it
+## to the level's spacing after it, which the doodads keep every piece out of, in every lane
+## (LevelGenerator._place_doodads).
+static func _doodad_windows(gen: LevelGenerator, lane: int = -1) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for d: Dictionary in gen.layout.doodads:
+		if lane < 0 or int(d["lane"]) == lane:
+			out.append(Vector2(float(d["start"]) - gen.doodad_lead_for(gen.tuning),
+				float(d["end"]) + gen.doodad_after(float(d["end"]))))
 	return out
 
 
@@ -132,8 +154,13 @@ static func _margin(gen: LevelGenerator) -> float:
 	return gen.config.spacing_seconds_hard * gen.speed
 
 
-static func _lane_busy(gen: LevelGenerator, lane: int, ignore: Dictionary) -> Array[Vector2]:
-	var out: Array[Vector2] = _protected(gen)
+## What `lane` keeps the margin from. Without `with_doodads`, of the zone doodads only those standing in
+## `lane` (_available's doodads_exact).
+static func _lane_busy(gen: LevelGenerator, lane: int, ignore: Dictionary,
+		with_doodads: bool = true) -> Array[Vector2]:
+	var out: Array[Vector2] = _protected(gen, with_doodads)
+	if not with_doodads:
+		out.append_array(_doodad_windows(gen, lane))
 	for g: Dictionary in gen.layout.gaps:
 		# New encounters are separated in distance from every gap, not just this lane's.
 		# Otherwise staggered holes could inflate "encounters" within a single encounter.
@@ -153,14 +180,23 @@ static func _lane_busy(gen: LevelGenerator, lane: int, ignore: Dictionary) -> Ar
 	return out
 
 
-static func _available(gen: LevelGenerator, span: Vector2, ignore: Dictionary) -> Array[int]:
+## The lanes where a row over `span` keeps the margin from everything (`ignore`: the row being widened,
+## whose own holes don't count). With `doodads_exact`, a zone doodad's window is kept off as it stands
+## (no lane at all where one overlaps `span`), and with the margin only in the doodad's own lane, which
+## then never counts as the lane a widened row leaves open.
+static func _available(gen: LevelGenerator, span: Vector2, ignore: Dictionary,
+		doodads_exact: bool = false) -> Array[int]:
 	var out: Array[int] = []
 	var margin: float = _margin(gen)
 	if span.x < gen.config.start_clear_distance or span.y > gen.layout.length - gen.config.end_clear_distance:
 		return out
+	if doodads_exact:
+		for d: Vector2 in _doodad_windows(gen):
+			if d.x <= span.y and d.y >= span.x:
+				return out
 	for lane: int in gen.layout.lane_count:
 		var clear: bool = true
-		for busy: Vector2 in _lane_busy(gen, lane, ignore):
+		for busy: Vector2 in _lane_busy(gen, lane, ignore, not doodads_exact):
 			if busy.x <= span.y + margin and busy.y >= span.x - margin:
 				clear = false
 				break

@@ -16,6 +16,7 @@ func run() -> void:
 			_compare(campaign.configure(campaign.step("city/1"), lanes, tier), false)
 	_test_disabled_levels(campaign)
 	_test_constraints()
+	_test_widening_beside_doodads()
 	_test_separate_tunables(campaign)
 
 
@@ -136,6 +137,43 @@ func _test_constraints() -> void:
 		"constrained integer targets still round up independently")
 	check((result["constraints"] as PackedStringArray).size() == 2,
 		"reports both no encounter room and impossible mean width, not proxy success")
+
+
+## FIX4: a zone doodad standing just past a row (as the doodads may: they keep only their push's lead
+## clear before them) doesn't stop the row widening in lanes away from it: a widening keeps off the
+## doodad's own lane (never the lane the row leaves open beside it) and its window, not the margin
+## around it in every lane. With that margin, a doodad decided which rows widened, so City 1's doodads
+## moved its extra gaps (test_doodads: doodads only add). A full-width jump still keeps the margin.
+func _test_widening_beside_doodads() -> void:
+	var config := LevelConfig.new()
+	config.lane_count = 5
+	config.gap_encounter_increase = 0.0
+	config.gap_lane_increase = 0.5
+	var row_start: float = config.start_clear_distance + 60.0
+	var row_end: float = row_start + 7.0
+	for case: Array in [["beside a doodad in lane 2", [1, 3]], ["one lane short of full width", [0, 1, 3, 4]]]:
+		var layout := LevelLayout.new()
+		layout.lane_count = 5
+		layout.length = row_end + 400.0
+		for lane: int in case[1]:
+			layout.gaps.append({"lane": lane, "start": row_start, "end": row_end})
+		var gen: LevelGenerator = LevelGenerator.for_layout(config, tuning, layout)
+		var small: float = gen.tuning.doodad_size(&"small").z
+		var at: float = row_end + LevelGenerator.doodad_lead_for(gen.tuning) + 0.5
+		layout.doodads.append({"lane": 2, "start": at, "end": at + small, "size": "small", "side": -1, "seed": 1})
+		var result: Dictionary = GapDensity.apply(gen)
+		var lanes: Array[int] = []
+		for g: Dictionary in layout.gaps:
+			lanes.append(int(g["lane"]))
+		var tag: String = case[0]
+		if (case[1] as Array).size() == 2:
+			check(layout.gaps.size() == 3 and not lanes.has(2) and (lanes.has(0) or lanes.has(4)),
+				"a row %s widens in a lane away from it, never the doodad's (lanes %s)" % [tag, lanes])
+		else:
+			check(layout.gaps.size() == 4 and not lanes.has(2)
+				and not (result["constraints"] as PackedStringArray).is_empty(),
+				"a row %s beside a doodad stays as it is: no full-width jump beside one, the doodad's lane open (lanes %s)"
+				% [tag, lanes])
 
 
 func _test_separate_tunables(campaign: Campaign) -> void:

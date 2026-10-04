@@ -1124,7 +1124,13 @@ increasing the total lane-gaps alone is not success. New gaps use the shortest o
 length (already jumpable), fit outside the unchanged intro/finish buffers, and keep the existing
 hard-spacing time from **every** other gap row. Lane-specific clearance keeps that same margin from
 fences; enemy keep-outs, ceilings/pads/landings, ramps, cuts, speed pads, doodad pushes and wall-fence
-drop windows are protected. Signs can have a new floor choice below them without being replaced.
+drop windows are protected. A widening keeps off a zone doodad's window (its push's lead before it to
+the level's spacing after it, in every lane) and, with the margin, the doodad's own lane, which is then
+never the lane the row leaves open; not the margin around it in every lane (FIX4). The doodads already
+keep that window clear of every row, so with the margin everywhere a doodad decided which rows widened
+and City 1's doodads moved its extra gaps (at 5 lanes, a widening went to another row), when doodads
+only add to a level (`test_doodads`). New rows and full-width jumps keep the margin from doodads too.
+Signs can have a new floor choice below them without being replaced.
 New/widened rows leave at least one grounded lane clear through the reaction window, or allow
 the existing patterns' full-width jump route only when every lane has a clear run-up and landing
 and the row is within `max_gap_jump_fraction`. Existing all-lane rows remain unchanged. Lack of
