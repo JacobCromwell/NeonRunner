@@ -1,0 +1,52 @@
+[gd_resource type="Resource" script_class="EnforcerTruckTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/enforcer_truck_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+spawn_lead = 60.0
+score_value = 1000
+health_early = 1.0
+health_late = 1.0
+uses_floor = false
+floor_reach_before = 0.0
+floor_reach_after = 0.0
+behind_runner = true
+chase_seconds = 25.0
+lane_delay_seconds = 0.8
+switch_seconds = 0.35
+follow_gap = 8.5
+close_gap = 2.4
+close_margin = 0.6
+close_lead_seconds = 1.0
+gap_rate = 5.0
+gap_speed_max = 22.0
+arrive_gap = 45.0
+gone_gap = 60.0
+leave_speed = 9.0
+warning_seconds = 1.0
+volley_interval_seconds = 5.0
+first_volley_seconds = 3.0
+shots_per_volley = 3
+shot_gap_seconds = 0.12
+bolt_flight_seconds = 0.35
+bolt_heights = PackedFloat32Array(0.35, 1.05, 1.75)
+escape_reaction_seconds = 0.35
+line_ahead = 26.0
+max_riders = 3
+rider_rate_bonus = 0.4
+rider_bonus = 250
+picks_up_hosts = false
+max_hop_jump_fraction = 0.6
+hop_height = 0.6
+per_level_max = 2
+bait_after_seconds = 5.0
+bait_before_seconds = 5.0
+bait_prefer_min_seconds = 8.0
+bait_prefer_max_seconds = 13.0
+spacing_seconds = 8.0
+leave_seconds = 4.0
+body_size = Vector3(2.2, 2.4, 6.4)
+hitbox_size = Vector3(2.0, 2.1, 6.0)
+hitbox_floor = 0.25
+flash_hz = 2.0

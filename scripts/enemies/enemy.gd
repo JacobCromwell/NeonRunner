@@ -41,6 +41,13 @@ var is_host: bool = false:
 		is_host = v
 		if v:
 			immune_to_weapons = true
+## Destroyed by baiting other enemies' charges into it (GDD §9.13, the Enforcer Truck): an Octodog's lunge
+## or a Buzz Overdrive's charge (_hurt_charge_contacts) defeats it although it's immune_to_weapons (weapons
+## still never target or hurt it, direct or splash), and that defeat is the player's doing, a bait:
+## ScoreKeeper counts it as the player's kill, with its score, unlike any other enemy a charge flattens
+## (owner revision, October 3, 2026: NPC friendly fire grants nothing). Off for every other enemy: hosts and
+## generators keep their immunity to charges as to weapons.
+var charge_bait: bool = false
 ## Claw contact doesn't defeat it (bosses, the Bad Dream).
 var claw_immune: bool = false
 ## Landing on its top defeats it. False = landing on it hurts unless the player has claws.
@@ -152,9 +159,10 @@ func health_ratio() -> float:
 
 
 ## Weapon-compatible damage (also NPC charge contacts). Never hurts an immune_to_weapons enemy
-## (a host, GDD §9.7; a generator, GDD §9.1), direct or splash alike.
+## (a host, GDD §9.7; a generator, GDD §9.1), direct or splash alike, but for a charge_bait one's charge
+## contact (GDD §9.13).
 func take_damage(amount: float, source: StringName, splash: bool = false) -> void:
-	if not alive or immune_to_weapons:
+	if not alive or (immune_to_weapons and not (charge_bait and source == CHARGE_DAMAGE_CAUSE)):
 		return
 	health -= amount
 	health_changed.emit(self)
@@ -181,6 +189,7 @@ func _begin_charge_contacts() -> void:
 ## translational sweep, including diagonal lunges (a merged AABB would hit things off that line).
 ## Victims need an active physical part: detached attacks/waves, electrical hazards and lane
 ## blockers aren't bodies. Damage uses the usual path, preserving hosts' and weapons' immunities
+## (a weapon-immune victim is hit only if it declares charge_bait: the Enforcer Truck, GDD §9.13)
 ## and any subclass damage rules; multiple body parts can hit a victim only once per charge.
 ## Boss parts keep their encounter-specific damage/progression rules, not ordinary lethal hits.
 func _hurt_charge_contacts(hitbox: Hazard, previous: Transform3D) -> void:
@@ -209,7 +218,7 @@ func _hurt_charge_contacts(hitbox: Hazard, previous: Transform3D) -> void:
 			continue
 		var victim: Enemy = victim_box.enemy
 		if not is_instance_valid(victim) or victim == self or not victim.alive \
-				or victim.immune_to_weapons or victim.is_boss:
+				or (victim.immune_to_weapons and not victim.charge_bait) or victim.is_boss:
 			continue
 		var id: int = victim.get_instance_id()
 		if _charge_contact_hits.has(id):
