@@ -22,6 +22,8 @@ extends SceneTree
 ##                        coupling stomped and the carriages breaking away
 ##   sfx_bank_sewer_swarm.gd  the Sewer Swarm: the Rising, a surge's rising chitter (the warning) and its
 ##                        rush, a cluster shocked by a fence, falling into a hole, scattering
+##   sfx_bank_enforcer.gd  the Enforcer Truck: its siren (its arrival), a volley's rising whine (the warning)
+##                        and its laser shots, a rider climbing aboard, its crash into a hole
 ## Run: tools/godot.sh sfx   (--only=jump,land renders just those; --review also writes
 ## build/sfx_review/<name>.png: waveform on top, spectrogram (40 Hz–16 kHz, time left to right) below).
 ## Each line of the report ends with the sound's loudest 400 ms as heard on headphones (K-weighted) and
@@ -46,6 +48,7 @@ const BANKS: Array = [
 	preload("res://tools/asset_gen/sfx_bank_sentinel.gd"),
 	preload("res://tools/asset_gen/sfx_bank_hostile_takeover.gd"),
 	preload("res://tools/asset_gen/sfx_bank_sewer_swarm.gd"),
+	preload("res://tools/asset_gen/sfx_bank_enforcer.gd"),
 ]
 const OUT_DIR: String = "res://assets/sfx"
 const REVIEW_DIR: String = "res://build/sfx_review"

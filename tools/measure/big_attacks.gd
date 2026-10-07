@@ -213,6 +213,7 @@ func _print_totals(runs: Array[Dictionary], turns: bool) -> void:
 	var trucks_no_cannon: int = 0
 	var trucks_idle: int = 0
 	var tanks: Dictionary = {"tanks": 0, "tanks_rev": 0, "tanks_met": 0, "tanks_pass": 0, "tanks_down": 0}
+	var enforcers: Dictionary = {"enforcers": 0, "enforcers_down": 0, "enforcer_riders": 0}
 	var starved: PackedStringArray = []
 	for r: Dictionary in runs:
 		if bool(r["turns"]) != turns:
@@ -235,6 +236,8 @@ func _print_totals(runs: Array[Dictionary], turns: bool) -> void:
 		trucks_idle += int(r["trucks_idle"])
 		for k: String in tanks:
 			tanks[k] = int(tanks[k]) + int(r.get(k, 0))
+		for k: String in enforcers:
+			enforcers[k] = int(enforcers[k]) + int(r.get(k, 0))
 		if int(r["dogs_no_charge"]) + int(r.get("resonators_no_pulse", 0)) > 0:
 			starved.append("%s at %d lanes, seed %d (%d dogs, %d Resonators)" % [r["level"], r["lanes"], r["seed"],
 				int(r["dogs_no_charge"]), int(r.get("resonators_no_pulse", 0))])
@@ -285,5 +288,7 @@ func _print_totals(runs: Array[Dictionary], turns: bool) -> void:
 		% [trucks, trucks_no_lurch, trucks_no_cannon, trucks_idle])
 	print("  Buzz Overdrives: %d set off rolling, %d revved (%d into another type's open big attack), %d let the runner pass, %d shot down first"
 		% [tanks["tanks"], tanks["tanks_rev"], tanks["tanks_met"], tanks["tanks_pass"], tanks["tanks_down"]])
+	print("  Enforcer Trucks: %d arrived, %d destroyed (the runner keeps to the middle lane: baits are luck), %d riders"
+		% [enforcers["enforcers"], enforcers["enforcers_down"], enforcers["enforcer_riders"]])
 	for s: String in starved:
 		print("    never charged or pulsed: %s" % s)

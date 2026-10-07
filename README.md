@@ -53,7 +53,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 |---|---|
 | `--quick` | Quick play: the prototype level, restarting on death, with the debug keys and HUD |
 | `--seed=N --lanes=N --difficulty=X` | Quick play with that seed, lane count (3, 5 or 6) or difficulty (0–1) |
-| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `barnacle_turret` (with `ceilings`), `resonator`, `buzz_overdrive`, `tithe_collector`, `gilded_sentinel` (with `--skin=golden` or `golden_palace`, whose walls open its niche)), wall fences (`wall_fences`, and `wall_fences_partial` for partial ones), or `floor_cutter` (a grey-box stand-in that cuts a lane's floor into a gap during play, for review). The full list is in `LevelConfig` |
+| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `barnacle_turret` (with `ceilings`), `resonator`, `buzz_overdrive`, `tithe_collector`, `gilded_sentinel` (with `--skin=golden` or `golden_palace`, whose walls open its niche), `enforcer_truck` (with `octodog` or `buzz_overdrive`, its baits)), wall fences (`wall_fences`, and `wall_fences_partial` for partial ones), or `floor_cutter` (a grey-box stand-in that cuts a lane's floor into a gap during play, for review). The full list is in `LevelConfig` |
 | `--god` | Hits don't kill (falls still do) |
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
@@ -126,8 +126,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   7. Marketplace 1 *Awning Alley*: the Barnacle Turret.
   8. Marketplace 2 *Shopfront Sparks*: wall fences, and sewer screeches from the shopfronts' wall vents.
   9. Corporate 1 *Maglev Line*: the Buzz Overdrive, then partial wall fences.
-  10. Corporate 2 *Checkpoint Plaza*: the Tithe Collector, and a heavier military presence (more drones,
-      hover trucks and Buzz Overdrives).
+  10. Corporate 2 *Checkpoint Plaza*: the Tithe Collector and the Enforcer Truck, and a heavier military
+      presence (more drones, hover trucks and Buzz Overdrives).
   11. Dead Zone 1 *Ashfall*: hosts and the Cyborg's Bad Dream.
   12. Dead Zone 2 *The Hush*: a quiet, eerie remix with nothing new: long silent stretches broken by short
       bursts of threats, fewer enemies but more hosts (standing alone in the silence), and darker lighting.
@@ -197,6 +197,15 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     weapons or a wall jump off the wall right by its head kill it (in quick play,
     `--features=gilded_sentinel --skin=golden`). Decorative knights in both Golden skins stand in
     recessed mounts at the bottom of the walls, not on the high ledges; only the live enemies attack.
+  - the Enforcer Truck (from Corporate 2, then every later level with Octodogs or Buzz Overdrives): an
+    armoured police truck that chases you from behind the camera. Its headlights and red and blue light bar
+    shine on the floor of its lane and a marker at the bottom of the screen shows the lane; it copies your
+    lane changes a moment late. When your lane lights red ahead and its whine rises, change lanes before
+    its lasers come up the lane. Weapons, stomps, the claws and the dash can't hurt it: bait an Octodog's
+    lunge or a Buzz Overdrive's charge into it by dodging late (it closes right up behind you while an
+    Octodog attacks), or lead it into a stopped cut. Cyborgs you pass alive in its lane climb onto its roof
+    (up to three): each makes it fire faster, and each pays a bonus when it's destroyed. It gives up after
+    about 25 s (in quick play, `--features=octodog,enforcer_truck`)
 - **Bosses:** a framework for runner-style boss fights (GDD §10): the fight plays in the normal run on
   an arena track that keeps going for as long as it lasts, with the boss's health bar and phase
   markers on the HUD, weak points to stomp and weapon chip damage, a checkpoint for the final fight,
@@ -400,7 +409,8 @@ and power-up look, and a scripted run on any zone's skin; ramp launches and bloc
 family, the Barnacle Turret's looks and a ride past it, a floor cut in any zone's look, wall fences in any zone's look, the Buzz Overdrive's
 model and an encounter with it, the Floating Head, the Sleep Taker (its lure and defeat, `--scenario=lure`, and its readability
 in the dark, `--scenario=measure`), The House (`--scenario=spin|buttons|jackpot|wall|ceiling|defeat|fight`), Hostile Takeover (`--scenario=run|train|gunship|locomotive|coupling|contract|merger|defeat`), the Sewer Swarm (`--scenario=rising|surge|fence|hole|fight|model|behind|host|stomp|defeat|hostmodel`) and its crowds' stress test for the phone (`swarm_stress`: N clusters of C screeches with a frame-time and draw-call readout), the UI kit, every screen, a zone skin's fixed review track, the cult's feed,
-the Golden Zone's statues, the Gilded Sentinels (each route past one, and its kick), any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
+the Golden Zone's statues, the Gilded Sentinels (each route past one, and its kick), the Enforcer Truck (its
+chase and a volley, each bait, a too-wide gap, its model; `--scenario=chase|octodog|buzz|gap|model`), any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
 lists its options. For example, a zone's arrival flyover rendered to frames on the web / low-end renderer:
 `godot --path . --rendering-method gl_compatibility --fixed-fps 10 --write-movie build/cine/f.png --quit-after 100
 res://tools/showcase/cinematic_review.tscn -- --slot=golden/intro --once`.

@@ -191,8 +191,12 @@ func _on_robbed(hazard: Hazard) -> void:
 	rob(hazard.enemy if hazard.enemy != null else hazard, hazard.steals_share)
 
 
+## A defeat the player made: a kill with its score (and a stomp's bonus, a thief's payout). An enemy another
+## enemy's charge flattened (Enemy.CHARGE_DAMAGE_CAUSE) earns nothing (owner revision, October 3, 2026), but
+## for one that declares charge_bait (GDD §9.13, the Enforcer Truck): baiting a charge into it is the only
+## way to destroy it, so that's the player's kill.
 func _on_enemy_defeated(enemy: Enemy, cause: StringName) -> void:
-	if cause == &"enemy_charge":
+	if cause == Enemy.CHARGE_DAMAGE_CAUSE and not enemy.charge_bait:
 		return
 	if not enemy.is_obstacle:
 		kills += 1

@@ -668,16 +668,24 @@ static func window_clear(layout: LevelLayout, from: float, to: float, pace: floa
 ## True if the generator may plan a charge whose wind-up starts with the player at `from`: the stretch
 ## the player runs through until the lunge has passed them (`window` metres) is clear (window_clear)
 ## and no enemy but a dog stands near it (octodog_rules.gd). A charge that a wait for its turn moved
-## off its planned point needs the same (_can_wind_up). `pace`: the level's (MovementTuning.pace).
+## off its planned point needs the same (_can_wind_up). `pace`: the level's (MovementTuning.pace). An
+## enemy that only drives behind the runner (EnemyTuning.behind_runner: the Enforcer Truck) stands nowhere
+## ahead of them: its entry's `at` is where it arrives.
 static func charge_clear(layout: LevelLayout, from: float, window: float, pace: float = 1.0) -> bool:
 	if not window_clear(layout, from, from + window, pace):
 		return false
 	for other: Dictionary in layout.enemies:
 		var d: float = float(other["at"])
 		if String(other["type"]) != "octodog" and d >= from - OTHER_ENEMY_BEFORE * pace \
-				and d <= from + window + OTHER_ENEMY_MARGIN * pace:
+				and d <= from + window + OTHER_ENEMY_MARGIN * pace and not _behind_runner(other):
 			return false
 	return true
+
+
+## True for a layout entry whose enemy only drives behind the runner (EnemyTuning.behind_runner).
+static func _behind_runner(entry: Dictionary) -> bool:
+	var t := EnemyDirector.tuning_for(String(entry.get("type", ""))) as EnemyTuning
+	return t != null and t.behind_runner
 
 
 ## True if an anti-grav pad (CEILING_LEAD around it) or where the player lands after a ceiling
