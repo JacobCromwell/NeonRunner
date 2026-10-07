@@ -3246,6 +3246,16 @@ to load, and ends a stuck run after 2400 s of real time.
 
 ## Review tools
 
+`tools/godot.sh smoke --level=<zone>/<n>` (or `--boss=<id>`) runs the real main scene through
+`tools/smoke/smoke_play.gd` (a SceneTree script), not the plain game: a campaign run waits at its level
+introduction until PLAY is pressed (`App.begin_run`), and the script presses it after two frames, as
+`tools/measure/frame_times.gd` does, then lets the level play for 2400 frames. It prints only problems
+(a run that never started, never left the introduction, or whose runner never moved; plus Godot's own
+script errors) and exits 1 on any. `--smoke-report` also prints what the run did, `--smoke-frames=N` shortens
+it, `--smoke-hold` withholds PLAY (the check's own test, `test_smoke_play`). Quick play (`smoke` with no
+arguments) is unchanged. The script cannot name `LevelRun` (compiling it before the autoloads exist fails),
+so it finds the run's `State.READY` through the script's constant map.
+
 Scenes in `tools/showcase/` show one part of the game up close for visual review (not part of the
 game): the avatar (`avatar_showcase`: every pose, power-up and concept-sheet view, front, back and
 side; `avatar_run_review`: a scripted run through the game camera on any zone's skin, with any

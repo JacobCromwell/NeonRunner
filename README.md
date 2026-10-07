@@ -380,7 +380,10 @@ tools/godot.sh test             all tests; exit code 0 = pass (--suite=name runs
                                  across N Godot processes, balanced by each suite's last measured time --
                                  use it on a machine with CPUs to spare, since one process is otherwise all
                                  the suites get)
-tools/godot.sh smoke [options]  40 s of the real game, headless; prints only problems
+tools/godot.sh smoke [options]  40 s of the real game, headless; prints only problems. With `--level=zone/n`
+                                 or `--boss=id` it presses PLAY at the level introduction (tools/smoke/smoke_play.gd)
+                                 and plays on, and reports a level that never left it (`--smoke-report` adds
+                                 what the run did; `--smoke-frames=N` shortens it)
 tools/godot.sh sfx [--review]   regenerate the sound effects (assets/sfx/) from tools/asset_gen/
 tools/godot.sh music [--review] regenerate default WAV music (leaves supplied MP3s unchanged)
 tools/godot.sh citizens         regenerate the Marketplace citizens' sprite sheets (assets/sprites/citizens/)
