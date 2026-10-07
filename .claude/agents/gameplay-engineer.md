@@ -1,8 +1,8 @@
 ---
 name: gameplay-engineer
 description: New enemies, in-run pickups, non-core run-world features, shop, screens, HUD, menus, settings and cinematic tooling — work that needs judgment but isn't core-fairness-critical. Delegate T2 tasks from docs/TASK_PLAN.md workstreams B (non-core), C and F. Not for zone-skin art (use skin-artist), or a task whose tier is actually T1 because it touches runtime track changes, the generator or a boss framework (use architect) — check the specific task's tier rather than assuming by category.
-model: claude-opus-5-5
-effort: max
+model: claude-sonnet-5-5
+effort: xhigh
 ---
 
 # Gameplay engineer

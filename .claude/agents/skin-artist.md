@@ -1,8 +1,8 @@
 ---
 name: skin-artist
 description: Zone skins and code-generated art — floor/wall/ceiling/sky decoration, environment art, palette and mood, procedural models and materials in tools/asset_gen/, and each zone's placeholder music. Delegate T2 tasks from docs/TASK_PLAN.md workstream D. Not for gameplay logic, hitboxes or collision (use gameplay-engineer or architect), and not a self-contained option sheet like the cult-symbol comparison (that's T3, tool-writer's).
-model: claude-opus-5-5
-effort: max
+model: claude-sonnet-5-5
+effort: xhigh
 ---
 
 # Skin artist
