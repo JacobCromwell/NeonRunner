@@ -22,7 +22,7 @@
   "medium": [
     "audio", "ceilings", "corporate_skin", "cyborg", "drone", "enemy_director", "floating_head",
     "gilded_sentinel", "golden_skin", "hostile_takeover", "hover_truck", "octodog", "screech",
-    "sewer_swarm_host", "sewer_swarm_walls", "web_demo"
+    "sewer_swarm_host", "sewer_swarm_walls", "smoke_play", "web_demo"
   ],
   "rules": [
     {"match": "scripts/world/level_generator.gd", "tier": "full"},
@@ -108,6 +108,8 @@
     {"match": "tools/asset_gen/music*", "suites": ["audio"]},
     {"match": "tools/web/*", "suites": ["web_demo"]},
     {"match": "tools/measure/danger_density.gd", "suites": ["danger_density"]},
+    {"match": "tools/smoke/*", "suites": ["smoke_play"]},
+    {"match": "tools/godot.sh", "suites": ["smoke_play"]},
     {"match": "tools/*", "suites": []},
     {"match": "project.godot", "tier": "full"},
     {"match": "export_presets.cfg", "suites": ["web_demo"]},
