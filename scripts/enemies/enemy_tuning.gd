@@ -29,6 +29,11 @@ extends Resource
 ## charges) set params.floor_span on it instead.
 @export_range(0.0, 100.0, 0.5, "suffix:m") var floor_reach_before: float = 10.0
 @export_range(0.0, 100.0, 0.5, "suffix:m") var floor_reach_after: float = 10.0
+## True for an enemy that only ever drives behind the runner and never stands on the track ahead of them (the
+## Enforcer Truck, GDD §9.13): its layout entry's `at` is where the runner is as it arrives, not a spot it
+## takes up, so checks that keep other enemies off a stretch ahead of the runner leave it out
+## (Octodog.charge_clear).
+@export var behind_runner: bool = false
 
 
 ## The value between `early` and `late` for a level's enemy_scaling `t` (0–1).

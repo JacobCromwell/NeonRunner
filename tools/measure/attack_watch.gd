@@ -19,13 +19,16 @@ extends RefCounted
 ##     the player
 ##   Gilded Sentinel: each strike, from its eyes' flare (its warning) until its last swing's cut is over
 ##   Buzz Overdrive: its charge, from its rev (its warning) until it's gone (its cut has passed the player)
+##   Enforcer Truck: each volley, from its warning (the red line and the whine) until its last bolt has passed
+##     the player (task C6)
 ## Overlap is the time during which attacks of two or more types are open at once. Also watched
 ## (not a big attack, docs/questions/r3.md): a hover truck's entrance, from its first bang until its
 ## burst stops hurting. The event log lists every state change of every enemy, so two builds can be
 ## compared run by run. A wait for a turn lasts from the first frame the director holds its enemy for
 ## another type's turn until the enemy's next big attack starts, through short gaps (WAIT_BRIDGE). Each
 ## Buzz Overdrive that sets off rolling is followed to its end (buzz_tanks): it revs (into another
-## type's open big attack, or not), lets the runner pass, or is shot down first.
+## type's open big attack, or not), lets the runner pass, or is shot down first. Each Enforcer Truck that
+## arrives is followed too (enforcers): its volleys, its riders, and what destroyed it.
 
 const DroneScript := preload("res://scripts/enemies/drone.gd")
 const TruckScript := preload("res://scripts/enemies/hover_truck.gd")
@@ -82,6 +85,9 @@ var truck_attacks: Dictionary = {}
 ## left its roll another way than its rev while alive (it let the runner pass), "down": shot down before
 ## its rev}. Read from its states only, so it measures a build whose tank never passes the same way.
 var buzz_tanks: Dictionary = {}
+## Enforcer Trucks by spawn index, once they arrive behind the runner (task C6): {"volleys": volleys warned,
+## "riders": riders aboard, "down": what destroyed it ("" while it isn't)}.
+var enforcers: Dictionary = {}
 var log := PackedStringArray()
 
 var _ids: Dictionary = {}
@@ -148,6 +154,10 @@ func observe() -> void:
 				truck_attacks[key] = {"lurch": 0, "cannon": 0}
 		if e.type_id == &"buzz_overdrive" and e.alive:
 			_note_tank(key, int(e.get(&"state")))
+		if e.type_id == &"enforcer_truck" and e.alive and int(e.get(&"state")) != EnforcerTruck.State.WAITING:
+			var rec: Dictionary = enforcers.get_or_add(key, {"volleys": 0, "riders": 0, "down": ""})
+			rec["volleys"] = int(e.get(&"volleys"))
+			rec["riders"] = int(e.get(&"riders"))
 		for kind: String in open_kinds(e):
 			open_types[e.type_id] = true
 			var wk: String = "%d/%s" % [key, kind]
@@ -242,6 +252,9 @@ static func open_kinds(e: Enemy) -> Array[String]:
 			var s: int = int(e.get(&"state"))
 			if s == BuzzScript.State.REV or s == BuzzScript.State.CHARGE:
 				out.append("buzz_charge")
+		&"enforcer_truck":
+			if int(e.get(&"volley")) != EnforcerTruck.Volley.IDLE:
+				out.append("enforcer_volley")
 	return out
 
 
@@ -331,7 +344,25 @@ func summary() -> Dictionary:
 		"trucks_no_lurch": trucks_without("lurch"), "trucks_no_cannon": trucks_without("cannon"),
 		"trucks_idle": trucks_without(""), "tanks": tanks_that(), "tanks_rev": tanks_that("rev"),
 		"tanks_met": tanks_that("met"), "tanks_pass": tanks_that("pass"), "tanks_down": tanks_that("down"),
+		"enforcers": enforcers.size(), "enforcers_down": enforcers_destroyed(), "enforcer_riders": enforcer_riders(),
 		"log_hash": log_hash(), "log_lines": log.size()}
+
+
+## Enforcer Trucks destroyed (by a bait, a cut or a gap), of those that arrived.
+func enforcers_destroyed() -> int:
+	var n: int = 0
+	for key: int in enforcers:
+		if String((enforcers[key] as Dictionary)["down"]) != "":
+			n += 1
+	return n
+
+
+## Riders aboard the Enforcer Trucks that arrived, in all.
+func enforcer_riders() -> int:
+	var n: int = 0
+	for key: int in enforcers:
+		n += int((enforcers[key] as Dictionary)["riders"])
+	return n
 
 
 func _on_spawned(e: Enemy) -> void:
@@ -339,9 +370,15 @@ func _on_spawned(e: Enemy) -> void:
 		_ids[e.get_instance_id()] = _ids.size()
 
 
-## A Buzz Overdrive shot down (or dashed through) before its rev.
-func _on_defeated(e: Enemy, _cause: StringName) -> void:
-	if e.type_id != &"buzz_overdrive" or not _ids.has(e.get_instance_id()):
+## A Buzz Overdrive shot down (or dashed through) before its rev; an Enforcer Truck destroyed.
+func _on_defeated(e: Enemy, cause: StringName) -> void:
+	if not _ids.has(e.get_instance_id()):
+		return
+	if e.type_id == &"enforcer_truck":
+		var truck: Dictionary = enforcers.get_or_add(int(_ids[e.get_instance_id()]), {"volleys": 0, "riders": 0, "down": ""})
+		truck["down"] = String(cause)
+		return
+	if e.type_id != &"buzz_overdrive":
 		return
 	var rec: Dictionary = buzz_tanks.get_or_add(int(_ids[e.get_instance_id()]), _new_tank())
 	rec["down"] = not bool(rec["rev"])
@@ -385,6 +422,9 @@ static func _signature(e: Enemy) -> String:
 			return "%s state=%d" % [base, int(e.get(&"state"))]
 		&"buzz_overdrive":
 			return "%s state=%d" % [base, int(e.get(&"state"))]
+		&"enforcer_truck":
+			return "%s state=%d volley=%d volleys=%d riders=%d" % [base, int(e.get(&"state")), int(e.get(&"volley")),
+				int(e.get(&"volleys")), int(e.get(&"riders"))]
 	return base
 
 

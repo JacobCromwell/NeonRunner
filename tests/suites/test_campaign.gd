@@ -31,7 +31,7 @@ const FIRST_LEVEL: Dictionary = {
 	"barnacle_turret": "marketplace/1",
 	"wall_fences": "marketplace/2", "screech_vents": "marketplace/2",
 	"buzz_overdrive": "corporate/1", "wall_fences_partial": "corporate/1",
-	"tithe_collector": "corporate/2",
+	"tithe_collector": "corporate/2", "enforcer_truck": "corporate/2",
 	"host": "dead_zone/1",
 	"resonator": "golden/1",
 	"gilded_sentinel": "golden/2",
@@ -68,7 +68,7 @@ const SWEEP_SEEDS: int = 8
 const INTRODUCTION_REACH: float = 210.0
 ## Features that are enemies (for "every zone introduces at least one new enemy").
 const ENEMIES: Array = ["cyborg", "window_cyborg", "hover_truck", "screech", "octodog", "generator", "drone",
-	"barnacle_turret", "buzz_overdrive", "tithe_collector", "host", "resonator", "gilded_sentinel"]
+	"barnacle_turret", "buzz_overdrive", "tithe_collector", "enforcer_truck", "host", "resonator", "gilded_sentinel"]
 
 
 func run() -> void:
