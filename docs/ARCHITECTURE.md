@@ -551,7 +551,12 @@ part. An enemy takes part like this, opting in for whichever of its attacks coun
   Resonator's planned pulses do the same: a pulse held for another type's turn, or for clear floor
   where its wave would meet the player, moves the rest of its visit on; after
   `ResonatorTuning.turn_wait_max` spent waiting for other attacks (waiting for clear floor doesn't
-  count) it drops its remaining pulses and leaves, never before its first.
+  count) it drops its remaining pulses and leaves, never before its first. A first pulse overdue by
+  `turn_wait_max` (waiting for either) keeps its place from then on: it also asks while it waits for
+  clear floor (`Resonator._first_overdue`), so another type ready again waits for it and it pulses at
+  the next clear floor (FIX4: before, it lost its place at every floor wait; on Golden 2 at 6 lanes a
+  long Bad Dream chase over a visit's planned pulses, then a drone that stays, took every turn the
+  dense floor left it for 55 s, until the next Resonator's arrival sent it away without a pulse).
 - **An attack that can't wait** because the player sets it off (the Bad Dream bursts out of a killed
   host) or the generator planned its moment still reports itself: the others wait for it. It can
   overlap an attack that was already on when it came; the Bad Dream holds its slash until that one
@@ -1119,7 +1124,13 @@ increasing the total lane-gaps alone is not success. New gaps use the shortest o
 length (already jumpable), fit outside the unchanged intro/finish buffers, and keep the existing
 hard-spacing time from **every** other gap row. Lane-specific clearance keeps that same margin from
 fences; enemy keep-outs, ceilings/pads/landings, ramps, cuts, speed pads, doodad pushes and wall-fence
-drop windows are protected. Signs can have a new floor choice below them without being replaced.
+drop windows are protected. A widening keeps off a zone doodad's window (its push's lead before it to
+the level's spacing after it, in every lane) and, with the margin, the doodad's own lane, which is then
+never the lane the row leaves open; not the margin around it in every lane (FIX4). The doodads already
+keep that window clear of every row, so with the margin everywhere a doodad decided which rows widened
+and City 1's doodads moved its extra gaps (at 5 lanes, a widening went to another row), when doodads
+only add to a level (`test_doodads`). New rows and full-width jumps keep the margin from doodads too.
+Signs can have a new floor choice below them without being replaced.
 New/widened rows leave at least one grounded lane clear through the reaction window, or allow
 the existing patterns' full-width jump route only when every lane has a clear run-up and landing
 and the row is within `max_gap_jump_fraction`. Existing all-lane rows remain unchanged. Lack of
@@ -3096,7 +3107,8 @@ and the campaign at every lane count (Gangland 3, a death, the retry, the win, s
 `test_resonator` plays the
 Resonator in full worlds on real physics (the warning always before the wave, a jump clearing it at 3,
 5 and 6 lanes with its margin measured, walls and the ceiling safe, armor, shield and dash, turns with a
-`TurnDummy`, Reduced flashing), checks its rules over many seeds, and plays the real Golden 1-3 layouts
+`TurnDummy`, a first pulse that waiting for clear floor never starves (FIX4), Reduced flashing), checks
+its rules over many seeds, and plays the real Golden 1-3 layouts
 at 3, 5 and 6 lanes, watched by `attack_watch.gd`: no wave meets the runner on a gap or a fence, and no
 big attacks overlap. `test_barnacle_turret` covers the Barnacle Turret (C1): its numbers against the
 cyborg's and GDD §8's 7 laser tier 1 shots, hitboxes out of reach of anyone off its ceiling, both looks

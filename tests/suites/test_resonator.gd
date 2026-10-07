@@ -32,6 +32,7 @@ func run() -> void:
 	await _test_protection()
 	await _test_weapons_and_stomp()
 	await _test_takes_turns()
+	await _test_first_pulse_not_starved()
 	await _test_reduced_flashing()
 	_test_generator()
 	await _test_campaign()
@@ -600,6 +601,71 @@ func _test_takes_turns() -> void:
 					"%s: having waited over turn_wait_max for turns, it drops the pulse left rather than wait again (%d pulses)"
 					% [tag, res.pulses_done])
 		await sim.free_world(w)
+
+
+## FIX4 (Golden 2 at 6 lanes, the campaign below): waiting for clear floor never starves a first pulse.
+## The floor here is clear only in two short windows, each falling inside one of the other type's long
+## attacks, which come one right after another. Waiting for clear floor loses a pulse its place in the
+## turn queue, so before the fix the other went first again and again and the pulse never came; overdue
+## by turn_wait_max, the first pulse keeps its place: the other's next attack waits for it, and it
+## pulses at the first window, which it now finds free.
+func _test_first_pulse_not_starved() -> void:
+	var w: RunWorld = sim.build_world(RunSim.layout(3, 2400.0), null, null, LevelConfig.new())
+	w.player.setup(tuning, w.geo, 1)
+	w.player.god_mode = true
+	# One attack after another: 6 s each (warning and attack), ready again 0.2 s after each.
+	var other := w.director.spawn({"type": "blocker", "script": TURN_DUMMY, "at": 0.0, "lane": 0, "side": 0,
+		"seed": 1, "params": {"first": 0.5, "interval": 0.2, "warning": 0.5, "attack": 5.5}}) as Enemy
+	var r := w.director.spawn({"type": "resonator", "at": 60.0, "lane": 1, "side": 0, "seed": 5,
+		"params": {"pulses": 1}}) as Resonator
+	var id: int = r.get_instance_id()
+	# Its history outlives it (it leaves after its pulse and is gone well within the run).
+	var history: Array = r.history
+	# The floor is clear only while this stand-in for a gap row (one lane's, off the runner's) is gone:
+	# the Resonator checks the layout's gaps (pulse_clear), the runner never meets it.
+	var block := {"lane": 0, "start": 0.0, "end": 100000.0}
+	w.layout.gaps.append(block)
+	# Level times: the first inside the other's third attack, the second inside its fourth (as they come
+	# when the other never waits).
+	var windows: Array[Vector2] = [Vector2(13.5, 14.1), Vector2(21.0, 23.0)]
+	await tree.physics_frame
+	w.player.running = true
+	var overdue_at: float = -1.0
+	for i: int in 32 * Engine.physics_ticks_per_second:
+		var now: float = w.level_time()
+		var open: bool = false
+		for win: Vector2 in windows:
+			open = open or (now >= win.x and now <= win.y)
+		if open and w.layout.gaps.has(block):
+			w.layout.gaps.erase(block)
+		elif not open and not w.layout.gaps.has(block):
+			w.layout.gaps.append(block)
+		var live: Resonator = _res(id)
+		if overdue_at < 0.0 and live != null and live.pulses_done == 0:
+			var waited: float = 0.0
+			for reason: StringName in [&"turn", &"busy", &"floor"]:
+				waited += float(live.waited_for.get(reason, 0.0))
+			if waited > t.turn_wait_max:
+				overdue_at = now
+		await tree.physics_frame
+	w.layout.gaps.erase(block)
+	var warnings: Array = []
+	for h: Array in history:
+		if h[0] == "warning":
+			warnings.append(h)
+	var first_warning: float = float(warnings[0][1]) if not warnings.is_empty() else -1.0
+	var spans: Array = other.call(&"spans")
+	var clash: bool = false
+	for s: Array in spans:
+		clash = clash or (first_warning >= float(s[0]) - 0.001 and first_warning <= float(s[1]) + 0.001)
+	check(overdue_at > 0.0 and overdue_at < windows[0].x,
+		"its first pulse is overdue (turn_wait_max of waiting) before the first window (at %.2f s)" % overdue_at)
+	check(warnings.size() == 1 and first_warning >= windows[0].x - 0.001 and first_warning <= windows[0].y,
+		"an overdue first pulse keeps its place in the turn queue while the floor isn't clear: it pulses at the first window (%.2f s)"
+		% first_warning)
+	check(int(other.call(&"count", "held")) >= 1 and not clash,
+		"the other's next attack waited for it, and no two big attacks overlap (other's attacks %s)" % [spans])
+	await sim.free_world(w)
 
 
 # --- Reduced flashing --------------------------------------------------------------------------------------

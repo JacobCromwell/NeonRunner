@@ -43,9 +43,9 @@ extends TestSuite
 ## - quick play: the runner wins phases 1 and 2, dies once the war engine has docked, and in the retry (the
 ##   fight starts over, the train whole again, the same plan) wins the whole fight (here at QUICK_PLAY's two
 ##   setups; every lane count and speed: tools/measure/hostile_takeover.gd);
-## - the campaign at the Corporate zone's 23.4 m/s and every lane count: Corporate 2, then the fight (a death
-##   in its last phase, the retry from the start, all three phases won), its results and stars, the shop and
-##   the zone's outro.
+## - the campaign at the Corporate zone's 23.4 m/s and every lane count: Corporate 2 (waiting at its level
+##   introduction until PLAY, as every campaign run does), then the fight (a death in its last phase, the
+##   retry from the start, all three phases won), its results and stars, the shop and the zone's outro.
 
 const BOSS_PATH: String = "res://data/bosses/corporate_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
@@ -1020,7 +1020,9 @@ func _plan_of(boss: HostileTakeover) -> String:
 
 ## The campaign at every lane count (the Corporate zone's 23.4 m/s): Corporate 2 finished, then the fight;
 ## the first attempt wins phases 1 and 2 and dies once the war engine has docked (no checkpoint: GDD §10);
-## the retry starts over and wins all three; its results and stars, the shop and the zone's outro.
+## the retry starts over and wins all three; its results and stars, the shop and the zone's outro. Each
+## campaign run starts at its level introduction (its hints before PLAY): the runner presses PLAY
+## (App.begin_run) for the level, the fight and the retry.
 func _test_campaign() -> void:
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	tree.root.add_child(main)
@@ -1043,6 +1045,10 @@ func _test_campaign() -> void:
 func _campaign_flow(lanes: int) -> void:
 	var tag: String = "(%d lanes)" % lanes
 	App.play_step(App.campaign.step("corporate/2"))
+	# The level introduction's hints come first (docs/USER_REQUESTS.md): nothing moves until PLAY.
+	check(App.screen is LevelIntroScreen and App.run != null and App.run.state == LevelRun.State.READY,
+		"Corporate 2 waits at its introduction until PLAY %s" % tag)
+	App.begin_run()
 	await physics_frames(10)
 	check(App.run != null and App.run.world.geo.lane_count == lanes, "Corporate 2 starts %s" % tag)
 	if App.run == null:
@@ -1056,6 +1062,7 @@ func _campaign_flow(lanes: int) -> void:
 		return
 	App.continue_after_result(level_result)
 	(App.screen as ShopScreen).on_close.call()
+	App.begin_run()
 	await physics_frames(3)
 	var run: LevelRun = App.run
 	check(run != null and run.encounter is HostileTakeover and run.context.step.id == "corporate/boss"
@@ -1082,6 +1089,7 @@ func _campaign_flow(lanes: int) -> void:
 	if shop == null:
 		return
 	shop.on_close.call()
+	App.begin_run()
 	await physics_frames(3)
 	run = App.run
 	boss = run.encounter as HostileTakeover if run != null else null
