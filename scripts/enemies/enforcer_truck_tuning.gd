@@ -12,8 +12,8 @@ extends EnemyTuning
 
 @export_group("Chase")
 ## GDD §9.13: it gives up after about 25 s if not destroyed, counted from its arrival. It never leaves while
-## an Octodog is about to charge or charging, or a Buzz Overdrive rolls in, revs or charges (its baits), so a
-## bait that came a little late (a wait for its turn) still finds it there.
+## an Octodog is about to charge or charging, or a Buzz Overdrive is about to rev, revs or charges (its baits),
+## so a bait that came a little late (a wait for its turn) still finds it there.
 @export_range(5.0, 60.0, 0.5, "suffix:s") var chase_seconds: float = 25.0
 ## GDD §9.13 (proposed: about 0.8 s): it copies the runner's lane this long after they change it, so a late
 ## dodge leaves it in the lane they just left.
@@ -90,11 +90,12 @@ extends EnemyTuning
 @export_group("Placement")
 ## GDD §9.13: up to two per level, never two at once.
 @export_range(0, 4) var per_level_max: int = 2
-## DESIGN-TBD: where its bait may come in its chase (an Octodog's first wind-up, a Buzz Overdrive's charge):
-## at least bait_after_seconds after it arrives (it has settled behind the runner, and fired a volley or two)
-## and bait_before_seconds before it would give up; within that, bait_prefer_min/max_seconds after it arrives
-## first (a seeded spot).
-@export_range(2.0, 20.0, 0.5, "suffix:s") var bait_after_seconds: float = 5.0
+## DESIGN-TBD: where its bait may come in its chase. The bait's warning (an Octodog's first wind-up, a Buzz
+## Overdrive's rev) comes at least bait_after_seconds after it arrives (it has settled behind the runner), and
+## its charge at least bait_before_seconds before it would give up. Where it can, it holds its fire for the
+## bait (from hold_seconds() before the warning) bait_prefer_min/max_seconds after it arrives (a seeded spot),
+## so it has room for its first volley or two (first_volley_seconds, then a volley) before the bait.
+@export_range(2.0, 20.0, 0.5, "suffix:s") var bait_after_seconds: float = 4.0
 @export_range(2.0, 20.0, 0.5, "suffix:s") var bait_before_seconds: float = 5.0
 @export_range(2.0, 20.0, 0.5, "suffix:s") var bait_prefer_min_seconds: float = 8.0
 @export_range(2.0, 20.0, 0.5, "suffix:s") var bait_prefer_max_seconds: float = 13.0
@@ -123,6 +124,13 @@ func volley_seconds() -> float:
 ## Seconds from one volley's end to the next one's warning with `riders` aboard.
 func volley_interval(riders: int) -> float:
 	return volley_interval_seconds / (1.0 + rider_rate_bonus * maxi(riders, 0))
+
+
+## Seconds of running before a bait's warning (an Octodog's wind-up, a Buzz Overdrive's rev) from which it
+## starts no volley: one started earlier is over before it closes up for the Octodog (close_lead_seconds), and
+## at least that long before the rev (so before a Buzz Overdrive claims its turn, claim_seconds, too).
+func hold_seconds() -> float:
+	return close_lead_seconds + volley_seconds()
 
 
 ## How close it comes behind the runner during an Octodog's attack, in a level at `pace`

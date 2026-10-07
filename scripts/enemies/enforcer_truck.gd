@@ -15,9 +15,10 @@ extends Enemy
 ##   lane and a rising whine (warning_seconds), then its shots come up the lane from behind: columns of bolts
 ##   reaching over a slide and a whole jump, so only leaving the lane dodges it (which moves the truck too). A
 ##   volley starts only when a lane beside the runner's is clear to switch into until its last bolt has passed
-##   (the escape), never while the runner is off the floor, and never while an Octodog is about to charge or
-##   charges or a Buzz Overdrive rolls in, revs or charges (its baits). Its volleys are a big attack (GDD §9:
-##   big attacks take turns): it asks the director before each warning and waits while another type's is on.
+##   (the escape), never while the runner is off the floor, and never from EnforcerTruckTuning.hold_seconds()
+##   before one of its baits attacks (an Octodog's wind-up, a Buzz Overdrive's rev) until the attack is over, so
+##   a volley never meets one, big attacks taking turns or not. Its volleys are a big attack (GDD §9: big
+##   attacks take turns): it asks the director before each warning and waits while another type's is on.
 ## - Its baits: while an Octodog attacks it closes right up behind the runner (close_gap), so the lunge, which
 ##   ends lunge_overshoot behind the runner, reaches it; its body stays under the camera's line of sight to
 ##   the runner meanwhile (EnforcerTruckModel's profile). An Octodog's lunge or a Buzz Overdrive's charge that
@@ -232,7 +233,7 @@ func _tick(delta: float) -> void:
 	_clock += delta
 	_track_player_lane()
 	_update_lane(delta)
-	close = state == State.CHASING and _octodog_engaged()
+	close = state == State.CHASING and _octodog_engaged(tuning.close_lead_seconds)
 	_update_gap(delta)
 	var front: float = world.player_distance() - gap
 	_place(front)
@@ -246,7 +247,8 @@ func _tick(delta: float) -> void:
 	if state == State.ARRIVING and gap <= tuning.follow_gap + 0.5:
 		state = State.CHASING
 		_note(&"chase")
-	elif state == State.CHASING and _clock >= tuning.chase_seconds and volley == Volley.IDLE and not _bait_on():
+	elif state == State.CHASING and _clock >= tuning.chase_seconds and volley == Volley.IDLE \
+			and not _bait_on(tuning.close_lead_seconds):
 		_leave()
 
 
@@ -453,8 +455,9 @@ func _index_layout() -> void:
 
 
 ## True while an Octodog is about to charge or charging (GDD §9.13: it closes up during an Octodog's attack):
-## from a stop distance plus close_lead_seconds ahead of its first wind-up until it gives up.
-func _octodog_engaged() -> bool:
+## one winding up, lunging, or running ahead between its charges, and one with charges left whose stop (where
+## it winds up) the runner reaches within `lead` seconds.
+func _octodog_engaged(lead: float) -> bool:
 	var pd: float = world.player_distance()
 	var v: float = maxf(world.player.speed, 1.0)
 	var scaling: float = world.config.enemy_scaling if world.config != null else 0.0
@@ -469,21 +472,27 @@ func _octodog_engaged() -> bool:
 				return true
 			Octodog.Phase.IDLE:
 				if dog.charges_done < dog.charges and dog.track_distance() - pd \
-						<= _dog_tuning.stop_distance(v, scaling, world.tuning.pace()) + tuning.close_lead_seconds * v:
+						<= _dog_tuning.stop_distance(v, scaling, world.tuning.pace()) + lead * v:
 					return true
 	return false
 
 
-## True while one of its baits attacks or is about to: an Octodog (_octodog_engaged), or a Buzz Overdrive
-## rolling in, revving or charging (or claiming its turn).
-func _bait_on() -> bool:
-	if _octodog_engaged():
+## True while one of its baits attacks or is about to within `lead` seconds: an Octodog (_octodog_engaged),
+## or a Buzz Overdrive revving or charging, or parked or rolling in that close to its rev.
+func _bait_on(lead: float) -> bool:
+	if _octodog_engaged(lead):
 		return true
+	var pd: float = world.player_distance()
+	var v: float = maxf(world.player.speed, 1.0)
 	for e: Enemy in world.director.active:
 		if not is_instance_valid(e) or not e.alive or e.type_id != &"buzz_overdrive":
 			continue
 		var s: int = int(e.get(&"state"))
-		if s == BuzzScript.State.ROLL or s == BuzzScript.State.REV or s == BuzzScript.State.CHARGE:
+		if s == BuzzScript.State.REV or s == BuzzScript.State.CHARGE:
+			return true
+		var cut: Dictionary = e.get(&"cut")
+		if (s == BuzzScript.State.PARKED or s == BuzzScript.State.ROLL) and not cut.is_empty() \
+				and FloorCutPlan.warn_at(cut) - pd <= lead * v:
 			return true
 	return false
 
@@ -526,14 +535,20 @@ func _update_volley(delta: float) -> void:
 
 
 ## Ready for a volley: chasing at its follow gap, its interval over, the runner on the floor, no bait about
-## to attack, and a lane beside the runner's clear to escape into (asked last).
+## to attack before the volley would be over (so it never fires into one's attack, big attacks taking turns
+## or not), and a lane beside the runner's clear to escape into (asked last).
 func _ready_to_fire() -> bool:
 	if state != State.CHASING or close or absf(gap - tuning.follow_gap) > 1.0 or next_volley_in() > 0.0:
 		return false
 	var p: Player = world.player
 	if not p.alive or not p.running or p.surface != Player.Surface.FLOOR:
 		return false
-	return not _bait_on() and escape_clear(clampi(p.lane, 0, world.geo.lane_count - 1))
+	if _bait_on(tuning.hold_seconds()):
+		# Its baits come first: it leaves the director's queue at once (harmless when it isn't waiting), so
+		# its place there never holds an Octodog back.
+		world.director.give_up_turn(self)
+		return false
+	return escape_clear(clampi(p.lane, 0, world.geo.lane_count - 1))
 
 
 func _warn() -> void:

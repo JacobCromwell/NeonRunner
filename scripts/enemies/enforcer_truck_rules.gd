@@ -7,9 +7,11 @@ extends RefCounted
 ## Overdrives' cuts are final by then (nothing later moves or drops them).
 ## - Its baits: each Octodog's first planned wind-up (params "charge_at"; its later charges come after it) and
 ##   each Buzz Overdrive's charge (its cut's charge_at, FloorCutPlan). A truck arrives (its entry's `at`: the
-##   runner's distance as it drives in behind them) so that one of them comes bait_after_seconds to
-##   chase_seconds - bait_before_seconds after it, at a seeded spot within bait_prefer_min/max_seconds where
-##   it can (the runner meets it, sees a volley or two, then the bait). Its params list every bait planned in
+##   runner's distance as it drives in behind them) so that a bait's warning (the wind-up, the rev) comes
+##   bait_after_seconds or more after it (it has settled behind the runner) and its charge bait_before_seconds
+##   or more before the truck would give up; where it can, the bait's hold (EnforcerTruckTuning.hold_seconds()
+##   before its warning, when the truck stops firing for it) comes at a seeded spot bait_prefer_min/max_seconds
+##   after it: the runner meets it, sees a volley or two, then the bait. Its params list every bait planned in
 ##   its chase ("baits").
 ## - Up to per_level_max a level (GDD §9.13: up to two), never two at once: each one's chase, and the
 ##   seconds it takes to drop back, keep spacing_seconds from the next one's arrival. The level's earliest
@@ -51,7 +53,7 @@ static func apply(gen: LevelGenerator) -> void:
 	for b: Dictionary in baits:
 		if placed >= t.per_level_max:
 			break
-		var at: float = _arrival_for(gen, t, rng, float(b["at"]), keep_outs, chases)
+		var at: float = _arrival_for(gen, t, rng, b, keep_outs, chases)
 		if is_nan(at):
 			continue
 		var params := {"baits": baits_in(gen, t, baits, at)}
@@ -76,38 +78,43 @@ static func trucks_in(layout: LevelLayout) -> Array[Dictionary]:
 	return out
 
 
-## The level's baits, along the track: {at (the runner's distance as the charge's warning starts), kind}:
-## each Octodog's first planned wind-up and each Buzz Overdrive's charge.
+## The level's baits, along the track (runner distances): {at (where its charge comes: an Octodog's first
+## planned wind-up, a Buzz Overdrive's charge), warn (where its warning starts: the wind-up, the rev), hold
+## (where the truck stops firing for it: hold_seconds() before its warning), kind}.
 static func bait_points(gen: LevelGenerator) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
+	var hold: float = tuning().hold_seconds() * gen.speed
 	for e: Dictionary in gen.layout.enemies:
 		match String(e.get("type", "")):
 			"octodog":
 				var anchors: Array = (e.get("params", {}) as Dictionary).get("charge_at", [])
 				if not anchors.is_empty():
-					out.append({"at": float(anchors[0]), "kind": "octodog"})
+					var a: float = float(anchors[0])
+					out.append({"at": a, "warn": a, "hold": a - hold, "kind": "octodog"})
 			"buzz_overdrive":
 				var cut: Dictionary = BuzzRules.cut_of(gen.layout, e)
 				if not cut.is_empty():
-					out.append({"at": FloorCutPlan.charge_at(cut), "kind": "buzz_overdrive"})
+					var warn: float = FloorCutPlan.warn_at(cut)
+					out.append({"at": FloorCutPlan.charge_at(cut), "warn": warn, "hold": warn - hold, "kind": "buzz_overdrive"})
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["at"]) < float(b["at"]))
 	return out
 
 
-## The baits a truck arriving at `at` has in its chase: where it may meet them (bait_window).
+## The baits a truck arriving at `at` has in its chase (in_chase): where their charges come.
 static func baits_in(gen: LevelGenerator, t: EnforcerTruckTuning, baits: Array[Dictionary], at: float) -> Array[float]:
 	var out: Array[float] = []
-	var w: Vector2 = bait_window(gen, t, at)
 	for b: Dictionary in baits:
-		if float(b["at"]) >= w.x - 0.001 and float(b["at"]) <= w.y + 0.001:
+		if in_chase(gen, t, b, at):
 			out.append(float(b["at"]))
 	return out
 
 
-## Where a bait may come for a truck arriving at `at`: bait_after_seconds after it to bait_before_seconds
-## before it would give up (runner distances).
-static func bait_window(gen: LevelGenerator, t: EnforcerTruckTuning, at: float) -> Vector2:
-	return Vector2(at + t.bait_after_seconds * gen.speed, at + (t.chase_seconds - t.bait_before_seconds) * gen.speed)
+## True if bait `b` (bait_points) suits a truck arriving at `at`: its warning comes bait_after_seconds or more
+## after the arrival (the truck has settled behind the runner), and its charge bait_before_seconds or more
+## before the truck would give up.
+static func in_chase(gen: LevelGenerator, t: EnforcerTruckTuning, b: Dictionary, at: float) -> bool:
+	return float(b["warn"]) >= at + t.bait_after_seconds * gen.speed - 0.001 \
+		and float(b["at"]) <= at + (t.chase_seconds - t.bait_before_seconds) * gen.speed + 0.001
 
 
 ## The track a truck arriving at `at` takes up: its chase and its drop back out of sight.
@@ -140,13 +147,18 @@ static func arrival_keep_outs(gen: LevelGenerator) -> Array[Vector2]:
 	return out
 
 
-## Where a truck whose chase takes the bait at `bait` arrives, or NAN if nowhere fits (arrival_problem): the
-## preferred spot first (a seeded one bait_prefer_min/max_seconds before the bait), then the others in
-## OFFSET_STEP steps nearest to it first; in a level paced in bursts, those in a burst before the rest.
-static func _arrival_for(gen: LevelGenerator, t: EnforcerTruckTuning, rng: RandomNumberGenerator, bait: float,
+## Where a truck whose chase takes bait `b` (bait_points) arrives, or NAN if nowhere fits (in_chase,
+## arrival_problem): the preferred spot first (a seeded one bait_prefer_min/max_seconds before the bait's hold),
+## then the others in OFFSET_STEP steps nearest to it first; in a level paced in bursts, those in a burst
+## before the rest.
+static func _arrival_for(gen: LevelGenerator, t: EnforcerTruckTuning, rng: RandomNumberGenerator, b: Dictionary,
 		keep_outs: Array[Vector2], chases: Array[Vector2]) -> float:
-	var lo: float = t.bait_after_seconds
-	var hi: float = t.chase_seconds - t.bait_before_seconds
+	# Offsets: seconds from the arrival to the bait's hold (in_chase's limits).
+	var hold: float = float(b["hold"])
+	var lo: float = t.bait_after_seconds - (float(b["warn"]) - hold) / gen.speed
+	var hi: float = t.chase_seconds - t.bait_before_seconds - (float(b["at"]) - hold) / gen.speed
+	if hi < lo - 0.001:
+		return NAN
 	var prefer: float = clampf(rng.randf_range(t.bait_prefer_min_seconds, t.bait_prefer_max_seconds), lo, hi)
 	var offsets: Array[float] = []
 	var o: float = lo
@@ -157,7 +169,7 @@ static func _arrival_for(gen: LevelGenerator, t: EnforcerTruckTuning, rng: Rando
 	offsets.push_front(prefer)
 	var spots: Array[float] = []
 	for off: float in offsets:
-		spots.append(bait - off * gen.speed)
+		spots.append(hold - off * gen.speed)
 	for pool: Array[float] in gen.pacing_pools(spots, TYPE):
 		for at: float in pool:
 			if arrival_problem(gen, t, at, keep_outs, chases) == "":
