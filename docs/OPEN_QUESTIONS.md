@@ -2368,12 +2368,14 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     fire again). Placeholder: hosts never board (`EnforcerTruckTuning.picks_up_hosts = false`, `DESIGN-TBD` in
     `scripts/enemies/enforcer_truck_tuning.gd`), and riders are part of the truck, so they share its immunity
     to weapons (`scripts/enemies/enforcer_truck.gd`, `_pick_up_riders`).
+    **Answered (owner, October 7, 2026):** yes. Hosts never board, and riders can't be shot off (GDD §9.13).
 352. **A gap too wide to hop** (GDD §9.13 "Holes"). Placeholder: a gap longer than 0.6 of a full jump at the
     level's speed wrecks it (`max_hop_jump_fraction` in `data/enemies/enforcer_truck.tres`); it hops every
     shorter one. Every gap in its six levels is 0.35 to 0.6 of a jump (measured at 3, 5 and 6 lanes on their own
     seeds: none wider), so in the campaign only a charge or a Buzz Overdrive's cut destroys it. Should its
     levels get a few wider gaps planned as baits during its chase (and how wide), or should the threshold come
     down so some ordinary gaps count?
+    **Answered (owner, October 7, 2026):** every level gets a couple of wider gaps, uncommon but jumpable, that wreck an Enforcer following into them (GDD §9.13; task G7).
 353. **The teaching moment** (GDD §9.13 "Teaching", proposed: before its first appearance the player sees a charge
     flatten another enemy, an Octodog lunging through a cyborg). Not built. The Octodog's and the Buzz
     Overdrive's rules keep every other enemy off their charge's stretch and lane (`Octodog.charge_clear`, the
@@ -2383,6 +2385,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     `enforcer_truck`) explains the bait. Should there be a scripted set piece (for example in Corporate 1 or
     early in Corporate 2: a cyborg in a lane beside the runner's, flattened by a dog lunging across from
     further ahead), or is the hint enough?
+    **Answered (owner, October 7, 2026):** occasionally a cyborg stands in the path of an Octodog's lunge or a Buzz Overdrive's charge, at least once before the Enforcer's first appearance (GDD §9.13; task G7).
 354. **Its numbers and presentation** (GDD §9.13, proposed values and gaps), all in
     `data/enemies/enforcer_truck.tres` (F6 "Enemy: Enforcer Truck"): it drives in from 45 m behind with a siren
     and follows 8.5 m back (behind the camera, 7.5 m), closing to 2.4 m during an Octodog's attack; a volley is

@@ -345,6 +345,7 @@ The owner played every zone and the Floating Head. The feedback is in GDD §3 ("
 - **R7** (the balancing pass) keeps the economy: after G3, since armor as an upgrade changes the shop.
 - **PERF1, lag spikes** (owner, October 2, 2026: "the overall performance of the game is getting worse; lag spikes are more common"): measure each level's frame times against the build before the playtest work, fix the biggest causes without changing what the game decides, add a frame-time overlay for the owner and a frame-time regression suite. T1, ahead of the remaining content.
 - **T-SPEED, a faster test suite** (October 2, 2026): the full suite reached about 29 minutes under load (67 suites, 6.1 million checks) against a 40-minute watchdog, and grows with every boss. Make it faster without removing or weakening any check: share the work suites repeat (level layouts built for the same config, seed and lanes), make the heaviest suites cheaper, and let `tools/godot.sh test` run suites in parallel processes. T3 (tests and tools only).
+- **G7, wider gaps and enemies in charge paths** (owner, October 7, 2026, answering open questions 352 and 353): a couple of wider, still jumpable gaps in every level, which wreck an Enforcer Truck that follows the player in; and occasionally a cyborg in the path of an Octodog's lunge or a Buzz Overdrive's charge, at least once before the Enforcer's first appearance in Corporate 2. **Core** (the generator). T1.
 
 ### E. Bosses and the web demo
 

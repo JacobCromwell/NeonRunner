@@ -15,6 +15,12 @@ NOTE: Mark tasks as done as you complete them.
 
 - [x] The Octodog and Buzz Overdrive's charge attacks should hurt other enemies if they charge into them. If having enemies being able to hurt each other drastically increases the complexity of the code, then write that out to the user requests and do not implement that feature for now. However, if it does not greatly increase the complexity of the code, then please implement it.
 
+## Enforcer Truck follow-up (October 7, 2026)
+
+- [ ] Change the gap generation so that occasionally there is a wider gap. It shouldn't be very common, but it should happen a couple of times each level. (Answers open question 352: a wider gap wrecks an Enforcer Truck that follows the player into it.)
+- [ ] Change the enemy generation so that occasionally a cyborg stands in the path of an Octodog's lunge or a Buzz Overdrive's charge. (Answers open question 353, the teaching moment: the player sees a charge flatten another enemy, at least once before the Enforcer's first appearance in Corporate 2.)
+- [x] Hosts never board the Enforcer Truck, and its riders can't be shot off. (Answers open question 351: already built that way.)
+
 ## Sewer Swarm follow-up (October 4, 2026)
 
 - [x] Update the Sewer Swarm's concurrent attacks and dangerous walls:
