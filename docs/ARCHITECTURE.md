@@ -1068,6 +1068,9 @@ the feature's start, never while a bait attacks (`arrival_keep_outs`: an Octodog
 Overdrive's attack window), up to `per_level_max` (2) a level, never two at once (each one's chase and drop
 back `spacing_seconds` from the next); in a level paced in bursts it arrives in a burst where it can
 (`pacing_pools`). The earliest baits get them first. Its params list the baits in its chase (`baits`).
+Corporate 2 introduces it at a start of its own, 5% into the level (before the Tithe Collector's 10%; the
+level's only baits at 3 and 6 lanes come within its first 32 s), so its first truck arrives within the
+campaign's introduction reach.
 It takes no room: `keep_out()` is empty and it uses no floor, and its entries take seeds of their own, so a
 level with the feature is the same level plus its trucks, but for the danger density pass, which counts every
 enemy entry (its target grew by one other enemy in 1 of the 18 builds of its six levels on their own seeds). A level with no bait its chase can take gets none (quick
