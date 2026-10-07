@@ -102,7 +102,7 @@ func _build_run(skin: ZoneSkin, lanes: int, speed: float) -> void:
 	match scenario:
 		"chase":
 			# A cyborg in the runner's lane, passed alive, which the truck picks up; a volley the runner dodges.
-			layout.enemies.append({"type": "cyborg", "at": 160.0 * pace, "lane": lane, "side": 0, "seed": 2,
+			layout.enemies.append({"type": "cyborg", "at": 70.0 * pace, "lane": lane, "side": 0, "seed": 2,
 				"params": {"fires": false, "panic": false}})
 		"octodog":
 			layout.enemies.append({"type": "octodog", "at": 230.0 * pace, "lane": lane, "side": 0, "seed": 3,
