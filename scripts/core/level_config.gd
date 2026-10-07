@@ -61,6 +61,9 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## - wall_gaps: side wall gaps, stretches of a side wall with no wall-running surface (owner's
 ##   answers, docs/USER_REQUESTS.md), from Gangland 1 (Zone 2) on, never in a boss arena (no patterns:
 ##   the generator places them, WallGapPlacement; tuning in data/tuning/wall_gaps.tres)
+## - enforcer_truck: the Enforcer Truck (GDD §9.13; task C6), from Corporate 2 (no patterns: its rules,
+##   enforcer_truck_rules.gd, bring it in around the level's Octodog and Buzz Overdrive charges, its baits,
+##   so a level needs octodog or buzz_overdrive for it to appear)
 ## - the planned ones in PLANNED_FEATURES
 ## Rules scripts run in this list's order (see LevelGenerator), so the campaign keeps the order in
 ## which the schedule introduces features.

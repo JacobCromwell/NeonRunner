@@ -89,7 +89,7 @@ pattern like the Octodog's fits when its dog does). Patterns need nothing specia
 | `min_difficulty` / `max_difficulty` | The pattern can be picked only while the current difficulty (0–1) is in this range |
 | `weight` | Relative pick chance among the patterns that qualify |
 | `min_lanes` | Optional. Skip on devices with fewer lanes |
-| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`, `resonator`, `buzz_overdrive`, `tithe_collector`, `gilded_sentinel`), or `screech_vents` (wall-vent screeches only, rare, for zones whose floor has no manholes, GDD §9.5). (The wall fences, `wall_fences` and `wall_fences_partial`, and the Barnacle Turret have no patterns: see below) |
+| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`, `resonator`, `buzz_overdrive`, `tithe_collector`, `gilded_sentinel`), or `screech_vents` (wall-vent screeches only, rare, for zones whose floor has no manholes, GDD §9.5). (The wall fences, `wall_fences` and `wall_fences_partial`, the Barnacle Turret and the Enforcer Truck have no patterns: see below) |
 | `length` | Metres of track the pattern takes (the generator extends it for long gaps and hulls) |
 | `elements` | The pieces to place (see below) |
 
@@ -259,3 +259,11 @@ Sentinel's attack meanwhile (unless they're a pair). A level's first one swings 
 attack around it, and Golden 2 adds one near the feature's start when no pattern put one there. Other
 patterns need nothing for them: their signs, ramps and outer-lane pieces simply leave the Sentinels fewer
 spots. See `docs/ARCHITECTURE.md`, The generator, Gilded Sentinels.
+
+The Enforcer Truck (`enforcer_truck`; GDD §9.13, task C6) has no patterns, and no pattern should require it:
+its rules (`enforcer_truck_rules.gd`, after every other feature's rules) bring in up to two a level, each
+around one of the level's baits (an Octodog's first planned wind-up or a Buzz Overdrive's charge) so that
+the bait comes during its chase. It drives behind the runner and never uses the floor ahead, so patterns need
+nothing for it, and a level is the same with or without it but for its trucks (and for what the danger
+density pass adds, since it counts them among the level's enemies). A level whose patterns bring
+no Octodog or Buzz Overdrive gets none. See `docs/ARCHITECTURE.md`, The generator, Enforcer Trucks.

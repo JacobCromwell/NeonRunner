@@ -454,7 +454,11 @@ use one shared swept-box contact helper on `Enemy`, against live physical enemy 
 lane labels or detached attack effects. Each victim is hit at most once per charge through
 `take_damage(..., &"enemy_charge")`; bosses and weapon-immune enemies retain their immunity.
 `EnemyDirector.enemy_defeated` still drives lifecycle/effects, but `ScoreKeeper` ignores that cause:
-no player kill count, bonus or thief jackpot/recovery is awarded for an NPC collision.
+no player kill count, bonus or thief jackpot/recovery is awarded for an NPC collision. The one exception
+is an enemy that declares `charge_bait` (task C6, the Enforcer Truck, GDD §9.13): weapon-immune, it is
+still hurt by a charge's contact (`take_damage` lets `&"enemy_charge"` through, `_hurt_charge_contacts`
+keeps it as a victim), and `ScoreKeeper` counts that defeat as the player's kill (a bait), with its score.
+Hosts and fence generators don't declare it, so charges pass them by as before.
 **Readied with the level** (task PERF1): `EnemyDirector.warm_up()` (from `setup()`, during the load) loads
 the script and tuning of every type the layout names, and for a type whose script has a static
 `warm_up(world: RunWorld, entry: Dictionary) -> Node` builds one look of each kind (type, skin, host:
@@ -470,8 +474,9 @@ with every part the enemy may show later
 (a muzzle's charge, a lunge line, a wave), since `ShaderWarmup` draws the same looks once during the load
 (`warm_looks()`, A run). A type whose enemies bring others into play names them with a static
 `brings(entry: Dictionary) -> Array[Dictionary]` (a host cyborg's Bad Dream). The cyborg, window cyborg,
-screech, Octodog, Resonator, Barnacle Turret, Bad Dream, fence generator, Buzz Overdrive and Gilded Sentinel
-(its statue's frames for both walls, its eyes, its cut marks' shader) have hooks, and a boss fight names the
+screech, Octodog, Resonator, Barnacle Turret, Bad Dream, fence generator, Buzz Overdrive, Gilded Sentinel
+(its statue's frames for both walls, its eyes, its cut marks' shader) and Enforcer Truck (its model with
+every rider, its light bar's and floor lights' states, its warning line) have hooks, and a boss fight names the
 enemies it brings itself with `BossEncounter.warm_enemies()` (the Floating Head's dropped cyborgs, the Sleep
 Taker's generators); a new enemy whose first spawn builds anything costly adds one, and a kit keeps the
 shaders it loads (a static cache, as the kits do) rather than loading them per spawn (`test_perf` checks
@@ -498,8 +503,10 @@ broadcast spire hovering far ahead whose red waves roll along the floor across e
 the player on clear floor), the Barnacle Turret (GDD §9.8, from Marketplace 1: a ceiling enemy, see
 below), the Buzz Overdrive (GDD §9.9, from Corporate 1: a buzzsaw tank that cuts its lane's floor into
 a gap, see below), the Tithe Collector (GDD §9.12, from Corporate 2, skipping the Dead Zone, back in
-the Golden Zone: see Thefts above), and the Gilded Sentinels (GDD §9.11, from Golden 2: live statues in
-wall niches whose halberd cuts their wall section and the outer lane, see below).
+the Golden Zone: see Thefts above), the Gilded Sentinels (GDD §9.11, from Golden 2: live statues in
+wall niches whose halberd cuts their wall section and the outer lane, see below), and the Enforcer Truck
+(GDD §9.13, from Corporate 2: an armoured truck chasing the runner from behind that only other enemies'
+charges, a floor cut or a too-wide gap destroy, see below).
 `scripts/enemies/mesh_batch.gd` merges an enemy's low-poly parts into one mesh per material to keep draw
 calls down.
 
@@ -512,9 +519,10 @@ up), the drone's wind-up and barrage, the hover truck's rev and forward lurch an
 and volley, the Bad Dream's chase, the Resonator's pulse (its warning until its last wave has passed
 the player; DESIGN-TBD, `docs/questions/c3.md`), the Buzz Overdrive's rev and charge (its warning
 until it has passed the player and gone; it never waits, so it claims its turn a moment before and lets
-the runner pass if another's is still on, below; DESIGN-TBD, `docs/questions/fix2.md`), and a Gilded Sentinel's attack (its
+the runner pass if another's is still on, below; DESIGN-TBD, `docs/questions/fix2.md`), a Gilded Sentinel's attack (its
 eyes' flare until its last swing is over; it can't wait either, so it claims its turn a moment before
-and lets the runner pass if another's is still on, below; DESIGN-TBD, `docs/questions/c4.md`). Small attacks (a cyborg's burst, a window
+and lets the runner pass if another's is still on, below; DESIGN-TBD, `docs/questions/c4.md`), and an
+Enforcer Truck's volley (its warning until its last bolt has passed the runner; GDD §9.13, proposed). Small attacks (a cyborg's burst, a window
 cyborg's shot, a Barnacle Turret's burst, a screech's swipe) and the hover truck's entrance don't take
 part. An enemy takes part like this, opting in for whichever of its attacks count as big:
 - **Report it.** `is_major_attack_active()` is true from the start of the attack's warning until its
@@ -614,7 +622,10 @@ for fliers like drones and hover trucks, wall-only enemies like window cyborgs, 
 which hangs from a ceiling) and how much of
 it around its spot (`floor_reach_before`/`_after`: where it stands, moves and attacks a player in its
 lane; the screech's 30 m before covers where it springs out). Rules that plan a longer run for one
-enemy store it in `params.floor_span` (the Octodog's charges). `LevelGenerator.enemy_floor_span(entry)`
+enemy store it in `params.floor_span` (the Octodog's charges). An enemy that only ever drives behind the
+runner (`behind_runner`: the Enforcer Truck) uses no floor ahead, and its entry's `at` is where it
+arrives, not a spot it takes: `Octodog.charge_clear` leaves such entries out when a wait has moved a
+dog's charges on. `LevelGenerator.enemy_floor_span(entry)`
 and `enemy_uses_floor(entry)` read all of this; `CeilingZones`, `floor_clear` and `add_hull_with_pad`
 respect it. An enemy that can't reach the ceiling stays consistent with it at run time: cyborgs, window
 cyborgs and hover trucks hold fire at a player riding a ceiling, the drone and the Bad Dream wait
@@ -782,6 +793,72 @@ across the street), its cut's shader (`gilded_sentinel_cut.gdshader`), its sound
   every Sentinel, so animating it is a mesh swap when the frame changes; the marks and slashes are a few
   quads on one small shader; its bursts are the shared ones. Reduced flashing: the eyes rise steadily
   (no throb) and a swing's flash is a single, softer fade.
+
+**Behind the runner: the Enforcer Truck** (C6, GDD §9.13; from Corporate 2, then every later level with an
+Octodog or a Buzz Overdrive). `enforcer_truck.gd` (`EnforcerTruck`), its tuning (`EnforcerTruckTuning`,
+`data/enemies/enforcer_truck.tres`, F6 "Enemy: Enforcer Truck"), its model (`enforcer_truck_model.gd`), its
+marker (`enforcer_truck_marker.gd`), its rules (`enforcer_truck_rules.gd`, The generator; it has no
+patterns), its sounds (`tools/asset_gen/sfx_bank_enforcer.gd`: `enforcer_siren`, `_whine`, `_laser`,
+`_pickup`, `_crash`; a charge's kill is the hover truck's `truck_explode`) and its hint
+(`enemy:enforcer_truck`). DESIGN-TBD numbers throughout (`docs/questions/c6.md`):
+- **The chase.** Where its entry's `at` says (the runner's distance), its siren whoops and it drives in from
+  `arrive_gap` (45 m) behind to `follow_gap` (8.5 m: behind the camera's 7.5 m), keeping its place relative
+  to the runner's distance, never closer than `MIN_GAP`. It takes each of the runner's lane changes
+  `lane_delay_seconds` (0.8 s, GDD §9.13) later (a log of their lane changes on the level clock), over
+  `switch_seconds`, so a late dodge leaves it in the lane just left. It holds still while the runner is
+  down. After `chase_seconds` (25 s) it gives up, never mid-volley or with a bait on, and drops back at
+  `leave_speed` until it's out of play.
+- **Seen from behind.** Behind the camera, it shows by its headlights' beams and its light bar's red and
+  blue washes on the floor of its lane (`EnforcerTruckModel.floor_lights()`: three flat, unshaded,
+  additive vertex-coloured strips, soft-edged; the bar's halves take turns at `flash_hz`, both lit and
+  steady with Reduced flashing) and a marker at the screen's bottom edge under its lane (a CanvasLayer
+  under the HUD; the lane's point unprojected with the current camera; a red and blue chevron with a pip
+  for each rider, sized with `UiTheme.px`).
+- **Its volleys** (GDD §9.13: lasers at the runner's lane). Each is warned by a red line on the floor of the
+  runner's lane, from just behind them to `line_ahead` ahead (widening and pulsing, only widening with
+  Reduced flashing), and a rising whine on its own voice stretched by pitch over `warning_seconds` (1 s).
+  Then `shots_per_volley` shots `shot_gap_seconds` apart, each a column of bolts (`bolt_heights`: over a
+  slide and a whole jump, so only leaving the lane dodges it) fired from its front through
+  `ProjectilePool.fire_enemy` (red enemy bolts, `LASER_NAME`), reaching the runner `bolt_flight_seconds`
+  later. The line stays until the last bolt has passed. A volley starts only when it chases at its follow
+  gap and its interval is over (`first_volley_seconds` after it arrives, then `volley_interval(riders)`
+  from the last one's end), with the runner on the floor and a lane beside clear to step into until the
+  volley is over (`escape_clear`/`lane_open`: no hole, fence, floor cut, doodad, floor enemy or hover
+  truck's lane, from `escape_reaction_seconds` after the warning), and never from `hold_seconds()` (2.7 s)
+  before one of its baits attacks (an Octodog's wind-up, a Buzz Overdrive's rev: so a volley is over before
+  it closes up, and before a tank claims its turn) until the attack is over; then it also gives up any place
+  it held in the director's queue. A volley is a big attack (`is_major_attack_active`): it asks
+  `major_attack_blocked` before its warning, and the others wait for it.
+- **Its baits.** It declares `charge_bait` (Enemy charge contacts above) and is immune to weapons (never
+  targeted, no health bar), stomps, the claws and the dash (`claw_immune`, not `stompable`, no `dash_kills`;
+  it never touches the runner anyway). Its body hitbox (`hitbox_size`, a little smaller than its look) is
+  what a charge must touch: an Octodog's lunge or a Buzz Overdrive's charge that crosses it destroys it, as
+  the player's kill. While an Octodog attacks (`close_lead_seconds` before its wind-up until it gives up)
+  it closes right up to `close_gap_for(dog, pace)` (2.4 m, inside where the lunge ends,
+  `lunge_overshoot` behind the runner), its model low enough to stay under the camera's line of sight to
+  the runner's feet. A dodge as the lunge begins leaves it in the lunge's lane; one at the wind-up's start
+  takes it out in time (`test_enforcer_truck_runs`).
+- **Holes.** It hops every ordinary gap in its lane (a bounce keyed to its own distance, until its rear has
+  cleared it); a gap wider than `max_hop_jump_fraction` of a jump at the level's speed, or a begun floor
+  cut not solid under its front or middle (`FloorCut.solid_at`), wrecks it (`&"gap"`, `&"cut"`: the
+  player's kill, `enforcer_crash`). No level gap is that wide (0.6 of a jump; the levels' are 0.35-0.6).
+- **Riders.** Cyborgs the runner passes alive (`Cyborg.Mode.PASSED`) are recorded with their lane and spot;
+  when its front reaches one in its lane it climbs aboard (a crouching gunner on its roof, `set_riders`, a
+  pip on the marker, `enforcer_pickup`), up to `max_riders` (3), and a cyborg node still in play leaves
+  it. Each rider makes the next volley come sooner (`rider_rate_bonus`), and destroying it pays
+  `rider_bonus` for each (`&"enforcer_riders"`). Window cyborgs (another type) never board, and hosts don't
+  (`picks_up_hosts`, DESIGN-TBD).
+- **Looks.** `EnforcerTruckModel`: a wheeled riot truck (a push bar, a sloped armoured nose, a slatted slit
+  windscreen, a long armoured box with slit windows, the light bar on the roof, its riders' hatches and a
+  gun ring), its body one mesh in vertex colours under one matte material, in three looks by the zone's
+  variant (`look_of`: clean police paint on `&"city"` and `&"vr_runner"`, weathered on `&"burned"` and
+  `&"scavenger"`, gilded on `&"golden"` and `&"casino"`); only its headlights, its light bar (red, and a
+  blue well off the safe cyan) and its riders' screen faces glow. Its riders are crouching cyborg gunners
+  sharing two meshes. Four draw calls and two per rider shown, about 1,500 triangles with three riders;
+  meshes and materials are built once per look and shared (`warm_up` builds them with the level), so a
+  truck spawned in play makes none.
+- **Cheap.** A few transforms a frame, its hole checks walking each lane's gaps with a cursor; its bolts
+  are the projectile pool's.
 
 ## The generator
 
@@ -977,6 +1054,24 @@ cuts and the wall fences' drop windows. The Resonator's rules (after these) plan
 Sentinel's whole turn, from its claim to its last swing (`resonator_rules.gd`'s `sentinel_turns`,
 `GildedSentinelTuning.claim_window`), so a planned pulse is never held for one at run time (one that
 was could be pushed on past the level's end). `problems()` re-checks every one for the tests.
+
+**Enforcer Trucks** (C6, GDD §9.13; `enforcer_truck_rules.gd`). No patterns: the rules place every truck,
+after every feature's rules (`RUN_AFTER`: the Octodogs' planned charges and the Buzz Overdrives' cuts are
+final by then), around the level's baits (`bait_points`): each Octodog's first planned wind-up and each
+Buzz Overdrive's charge, with its warning (the wind-up, the rev) and its hold (`hold_seconds()` before the
+warning, when the truck stops firing for it). A truck arrives (`at`, the runner's distance) so that a bait's
+warning comes at least `bait_after_seconds` (4 s: it has settled behind the runner) after it and its charge
+at least `bait_before_seconds` before it would give up (`in_chase`); where it can, the hold comes
+`bait_prefer_min/max_seconds` (8-13 s, seeded) after it, so the runner sees a volley or two first (87 of
+104 sampled trucks), then the nearest offsets in 0.5 s steps (`_arrival_for`). Never before the run-up or
+the feature's start, never while a bait attacks (`arrival_keep_outs`: an Octodog's planned charges, a Buzz
+Overdrive's attack window), up to `per_level_max` (2) a level, never two at once (each one's chase and drop
+back `spacing_seconds` from the next); in a level paced in bursts it arrives in a burst where it can
+(`pacing_pools`). The earliest baits get them first. Its params list the baits in its chase (`baits`).
+It takes no room: `keep_out()` is empty and it uses no floor, and its entries take seeds of their own, so a
+level with the feature is the same level plus its trucks, but for the danger density pass, which counts every
+enemy entry (its target grew by one other enemy in 1 of the 18 builds of its six levels on their own seeds). A level with no bait its chase can take gets none (quick
+play without Octodogs or Buzz Overdrives). `problems()` re-checks every truck for the tests.
 
 **Late starts.** `LevelConfig.feature_starts` (feature → share of the level) holds a feature back
 until its start: patterns that require it aren't picked before, and the first pattern picked from
@@ -3198,6 +3293,28 @@ it with the switch off or for a boss's tank (no roll), and Dead Zone 1's origina
 real hover truck ready to lurch 0.85 s before its rev (0.62 s for a tank that takes no turns; now the
 truck waits and nothing overlaps). `test_enemy_director`'s campaign runs hold Dead Zone 1 at 5 lanes to
 no overlap at all.
+`test_enforcer_truck` checks the Enforcer Truck (C6; GDD §9.13) off the road: its numbers (the owner's 0.8 s,
+25 s, 3 riders, 2 a level; its close gap inside an Octodog's lunge at every zone's pace; its follow gap behind
+the camera; a shot's bolts over a slide and a whole jump; each rider quickening it), its look in every zone's
+variant (within budget, only its lights and its riders' faces glowing, the blue no safe cyan, flat additive
+floor lights) and, at its close gap at every zone's pace, every vertex of it under the camera's line of sight
+to the runner's feet; the core hooks (a charge's contact destroys it as the player's kill with the riders'
+bonus; weapons, splash, targeting and health bars never touch it; DamageRules never lets a stomp, the claws or
+the dash defeat it; hosts and generators still pass charges by and a charge's other victims earn nothing; an
+Octodog's moved-on charges ignore its entry); every campaign level that lists it at 3, 5 and 6 lanes (own seed
+and others: the placement rules, baits in every chase, Corporate 2 always with one, the same every build; it
+prints the counts), the same level without it but for its trucks, quick play without a bait having none; its
+marker, light bar and Reduced flashing; its warm-up look; and its data. `test_enforcer_truck_runs` plays it on
+real physics at 3, 5 and 6 lanes and at 18 and 23.4 m/s, with a scripted runner (no armor) that steps aside
+a reaction after each warning: its lane delay to the frame and its gap; a runner who stays hit by its laser,
+never before the warning and a bolt's flight; a whole chase escaped, the line exactly while a volley is on,
+the interval, giving up after 25 s and leaving play; turns with a scripted big attack both ways; an Octodog's
+lunge and a Buzz Overdrive's charge dodged late destroying it (the player's kill and the riders' bonus) and
+dodged early missing it, no volley during either though one was due, big attacks taking turns or not; a too-
+wide gap and a cut (the tank shot down mid-charge) wrecking it, an ordinary gap hopped; riders from passed
+cyborgs in its lane only (not another lane, a killed one, a window cyborg or a host), at most 3, quickening its
+volleys; the same run twice; and Corporate 2 at 3, 5 and 6 lanes played to its end by a runner that baits each
+truck (god mode, grapples): each destroyed by a charge it dodged, no overlap with its volleys.
 
 `test_wall_fences` checks wall fences (B5; GDD §9.1): the layout data (left out of a level without them) and
 `WallFencePlan`'s bands, reach (a floor runner in the middle of the outer lane never touches one, a wall runner
@@ -3275,7 +3392,11 @@ the run camera, a high one or a low one beside its lane, with `--stay`, `--kill=
 would start, so it speeds off ahead instead, task FIX2); `gilded_sentinel_showcase`: a Golden street with Sentinels in
 their niches and a runner taking a route past each (`--route=lane|floor|high|low`, `--kick`), through the
 run camera or a camera across the street, straight at a niche or along its wall (`--view=play|close|front|
-wall`), with `--double`, `--pair`, `--skin=golden_palace`, `--speed=N`, `--reduced`), the Golden Zone's statue
+wall`), with `--double`, `--pair`, `--skin=golden_palace`, `--speed=N`, `--reduced`), `enforcer_truck_showcase`: the Enforcer Truck arriving, picking up a rider and firing
+a volley the runner dodges, closing up for an Octodog whose late-dodged lunge flattens it (`--early`: dodged
+at once, it follows out unharmed), a Buzz Overdrive's charge left late, a too-wide gap, or its model on a
+plinth (`--scenario=chase|octodog|buzz|gap|model`), on any zone's skin, lane count, speed and rider count,
+through the game camera or one behind or beside it (`--camera=game|behind|side`, `--reduced-flashing`), the Golden Zone's statue
 kit (`statue_showcase`: every pose, a turnaround, and a statue rigged in the kit's niche and swinging), the bosses (`floating_head_showcase`, `sleep_taker_showcase`, `the_house_showcase`, `sewer_swarm_showcase`),
 the swarm's rendering stress test for the phone test (`swarm_stress`: N clusters of C screeches with a frame-time
 and draw-call readout, sliders, `--seconds=S` for a summary line), the UI kit, the screens (`screens_showcase`;
@@ -3302,7 +3423,8 @@ long it moves its charges on; the director answers each ask the same whatever it
 builds measure the same asks alike), the enemies that never got a big attack in (Octodogs
 without a charge, Resonators without a pulse, drones without a barrage, hover trucks without a lurch
 or a cannon shot), and what each Buzz Overdrive did once it set off (`AttackWatch.buzz_tanks`: revved,
-revved into another type's open attack, let the runner pass, or was shot down first; task FIX2)
+revved into another type's open attack, let the runner pass, or was shot down first; task FIX2), and each Enforcer Truck that arrived (`AttackWatch.enforcers`: its
+volleys, riders and what destroyed it; its volleys count as `enforcer_volley` attacks; task C6)
 (`godot --headless --fixed-fps 60 -s res://tools/measure/big_attacks.gd --
 --levels=gangland/3 --lanes=3,5,6 --out=build/measure/x.json`; the whole campaign on its own seeds takes
 about ten minutes; `--seeds=6` adds six other seeds a level, `--seeds=9007-9020` runs a range, and
