@@ -19,7 +19,8 @@
 #                                     unchanged behaviour) splits the suites across N Godot processes,
 #                                     balanced by each suite's last measured time: use it on a machine with
 #                                     CPUs to spare, since the suites are not otherwise run in parallel
-#   tools/godot.sh smoke [game args]  40 s headless quick play; prints only problems (exit code 1 if any)
+#   tools/godot.sh smoke [game args]  40 s headless quick play (or the --level=/--boss= run, past its intro);
+#                                     prints only problems (exit code 1 if any)
 #   tools/godot.sh sfx [--review]     regenerate assets/sfx/*.wav from tools/asset_gen/sfx_gen.gd
 #   tools/godot.sh music [--review]   regenerate assets/music/*.wav from tools/asset_gen/music_gen.gd
 #                                     (--review writes images to build/sfx_review/, build/music_review/)
@@ -333,7 +334,15 @@ case "$command" in
 		import_if_stale
 		# Quick play (the prototype level, restarting on death) unless other game args are given.
 		[[ $# -eq 0 ]] && set -- --quick
-		out="$("$GODOT_BIN" --headless --path "$PROJECT" --fixed-fps 60 --quit-after 2400 -- "$@" 2>&1 | quiet)"
+		# A campaign level or boss waits at its level introduction until PLAY is pressed: those run through
+		# tools/smoke/smoke_play.gd, which presses it (App.begin_run) and reports a run that never started.
+		driver=()
+		for arg in "$@"; do
+			case "$arg" in --level=*|--boss=*) driver=(-s res://tools/smoke/smoke_play.gd) ;; esac
+		done
+		frames=2400
+		[[ ${#driver[@]} -gt 0 ]] && frames=2500   # the driver stops itself at 2400 and reports first
+		out="$("$GODOT_BIN" --headless --path "$PROJECT" --fixed-fps 60 --quit-after "$frames" ${driver[@]+"${driver[@]}"} -- "$@" 2>&1 | quiet)" || true
 		if [[ -n "$out" ]]; then echo "$out"; exit 1; fi
 		echo "Smoke run clean."
 		;;
