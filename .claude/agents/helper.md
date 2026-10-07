@@ -1,7 +1,7 @@
 ---
 name: helper
 description: Narrow, low-judgment edits explicitly described by the caller — data-file numbers (.tres/.json), renames, doc touch-ups, simple mechanical refactors, file searches. Delegate T4 tasks from docs/TASK_PLAN.md. Not for anything needing design judgment, taste, or a change to files beyond what was named.
-model: claude-haiku-4-5-20251001
+model: claude-haiku-5-5
 ---
 
 # Helper

@@ -1,7 +1,7 @@
 ---
 name: tool-writer
 description: Well-specified, self-contained work with a narrow blast radius — small standalone tools, process docs, and option/comparison sheets for the owner to choose from (e.g. cult symbol options). Delegate T3 tasks from docs/TASK_PLAN.md. Escalate to gameplay-engineer or skin-artist if the task turns out to need taste calls beyond what was specified.
-model: claude-sonnet-5
+model: claude-sonnet-5-5
 effort: high
 ---
 

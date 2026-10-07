@@ -17,14 +17,20 @@ Paste this into the main build session:
 
 | Tier | Model and effort | Use for |
 |---|---|---|
-| **T1** | Opus 5.5, **max** effort | Level generator fairness, runtime track changes, boss fights, anything where a subtle bug makes the game unfair |
-| **T2** | Opus 5.5, **max** effort (raised from high by the owner, September 26, 2026) for core, fairness-critical and boss work; **Sonnet 5, high** effort for zone and doodad art, data tuning and well-specified tasks (owner, September 30, 2026, to save tokens) | New enemies, zone skins (art built in code needs taste), UI features, tools that need judgment |
-| **T3** | Sonnet 5, **high** effort | Well-specified, self-contained work: small tools, process docs, option sheets |
-| **T4** | Haiku 4.5 | Pure data entry (numbers in `.tres`/`.json` files), renames, doc touch-ups |
+| **T1** | Opus 5.5, **max** effort (agents `architect`, `build-opus-max`, and `reviewer` for reviews) | Core files, the level generator, runtime track changes, boss fights, fairness-critical timing: anything where a subtle bug makes the game unfair |
+| **T2** | **Sonnet 5.5, extra-high (`xhigh`)** effort (agents `gameplay-engineer`, `skin-artist`, `build-sonnet-xhigh`) | New enemies and features that don't change core files, zone skins and code-built art, UI features, tools that need judgment |
+| **T3** | Sonnet 5.5, **high** effort (agents `tool-writer`, `build-sonnet-high`) | Well-specified, self-contained work: small tools, process docs, option sheets |
+| **T4** | Haiku 5.5 (agents `helper`, `build-haiku`) | Pure data entry (numbers in `.tres`/`.json` files), renames, doc touch-ups |
 
+- **Models updated October 7, 2026** (the owner left the choice to the orchestrator):
+  - **T2 moves from Opus 5.5 at max effort to Sonnet 5.5 at extra-high effort.** Sonnet 5.5 costs half as much per token ($2 / $10 per million, against Opus 5.5's $4 / $20) and is built for everyday coding and agent work. Sonnet already did well here on T3 work (T-SPEED, FIX1, FIX3), and two Opus runs stopped on the weekly usage limit.
+  - **T3 moves from Sonnet 5 to Sonnet 5.5** at the same price, and **T4 from Haiku 4.5 to Haiku 5.5** ($0.10 / $0.50 per million, a tenth of Haiku 4.5's price).
+  - **T1, reviews and the orchestrator stay on Opus 5.5 at max effort.** That's where subtle fairness bugs were caught: the Buzz Overdrive's turn overlap (FIX2), and the warm-up that moved a seeded kill (PERF1).
+- **Escalation:** a task that turns out to touch core files, fairness-critical timing or a boss moves up to T1. A T2 or T3 task that fails review twice is re-run one tier up.
 - The orchestrator (main session) runs on Opus 5.5 at max or extra-high effort, and reviews every task before merging.
 - Following the owner's rule of thumb, the plan errs toward the stronger tier: T3 and T4 are used only where the task is genuinely simple.
-- **Claude Fable 5.1** is also available. It is more capable than Opus 5.5 but costs about 2.5× as much per token. It isn't assigned anywhere; keep it in reserve for a T1 task that Opus fails at twice.
+- **Claude Fable 5.1** is also available. It is more capable than Opus 5.5 but costs 2.5 times as much per token ($10 / $50 per million). It isn't assigned anywhere; keep it in reserve for a T1 task that Opus fails at twice.
+- The agent definitions live in `.claude/agents/` (the `build-*` agents take a brief from the orchestrator; the role agents work from the task plan directly).
 
 **Sizes:** **S** = a few files, one short session. **M** = one focused session. **L** = several files across systems, possibly more than one session. **XL** = split into the listed steps, each merged on its own.
 
