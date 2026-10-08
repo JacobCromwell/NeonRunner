@@ -113,6 +113,8 @@ extends Resource
 ## is the fireball's radius in metres). The counts below are fixed when a level loads (a particle system
 ## never reallocates mid-run); the rest apply to the next explosion. Fireballs are looks only: they
 ## collide with nothing and last about a second (a few for a boss), so none ever reads as a hazard.
+## DESIGN-TBD: how big each explosion is (a constant in its own script), how long it lasts and its exact
+## colours are placeholders until the owner has seen them (docs/questions/h6.md); fireball_scale moves them all.
 ## Fireballs that can be on screen at once; one more cuts the oldest short.
 @export_range(1, 12, 1) var fireball_pool: int = 8
 ## Scales every fireball's size (1 = as each explosion asks): the quickest way to make all of them bigger or smaller.
@@ -123,6 +125,9 @@ extends Resource
 @export_range(0, 20, 1) var fireball_smoke_puffs: int = 8
 ## Embers thrown out of it (small, glowing, falling).
 @export_range(0, 40, 1) var fireball_embers: int = 20
+## On a low-end device (DeviceProfile.is_low_end: a phone on the Compatibility renderer) the puffs, smoke and
+## embers above are cut to this share, and the pool to half (a particle count is fixed when the level loads).
+@export_range(0.2, 1.0, 0.05) var fireball_low_end_share: float = 0.6
 ## How long the fire burns (a small fireball; a bigger one is slower, see fireball_big_size).
 @export_range(0.3, 2.0, 0.05, "suffix:s") var fireball_seconds: float = 1.0
 ## How long the smoke takes to clear.
@@ -136,4 +141,4 @@ extends Resource
 ## Reduced flashing (Settings): the fireball plays this many times slower, with no white-hot flash (it
 ## swells from nothing to a peak this share of the usual brightness, in orange and yellow only).
 @export_range(1.0, 3.0, 0.05) var fireball_reduced_slowdown: float = 1.5
-@export_range(0.1, 1.0, 0.05) var fireball_reduced_brightness: float = 0.55
+@export_range(0.1, 1.0, 0.05) var fireball_reduced_brightness: float = 0.45

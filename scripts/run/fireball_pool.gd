@@ -78,11 +78,14 @@ func setup(p_tuning: SpeedFxTuning) -> void:
 	_fire_material = _make_material(_puff_texture, true, tuning.fireball_glow, FADE_FIRE.x, FADE_FIRE.y)
 	_ember_material = _make_material(_ember_texture, true, tuning.fireball_glow, FADE_FIRE.x, FADE_FIRE.y)
 	_smoke_material = _make_material(_puff_texture, false, 1.0, FADE_SMOKE.x, FADE_SMOKE.y)
-	for i: int in tuning.fireball_pool:
+	# A low-end phone draws fewer of everything (the counts are fixed here, never changed mid-run).
+	var low_end: bool = DeviceProfile.is_low_end()
+	var share: float = tuning.fireball_low_end_share if low_end else 1.0
+	for i: int in (maxi(tuning.fireball_pool / 2, 2) if low_end else tuning.fireball_pool):
 		var slot := Slot.new()
-		slot.smoke = _make_emitter(tuning.fireball_smoke_puffs, tuning.fireball_smoke_seconds, _smoke_material, "Smoke")
-		slot.fire = _make_emitter(tuning.fireball_puffs, tuning.fireball_seconds, _fire_material, "Fire")
-		slot.embers = _make_emitter(tuning.fireball_embers, EMBER_SECONDS, _ember_material, "Embers")
+		slot.smoke = _make_emitter(roundi(tuning.fireball_smoke_puffs * share), tuning.fireball_smoke_seconds, _smoke_material, "Smoke")
+		slot.fire = _make_emitter(roundi(tuning.fireball_puffs * share), tuning.fireball_seconds, _fire_material, "Fire")
+		slot.embers = _make_emitter(roundi(tuning.fireball_embers * share), EMBER_SECONDS, _ember_material, "Embers")
 		slot.core = _make_emitter(1, CORE_SECONDS, _fire_material, "Core")
 		slot.smoke.draw_order = CPUParticles3D.DRAW_ORDER_VIEW_DEPTH
 		slot.fire.scale_amount_curve = _curves["fire"]
@@ -128,29 +131,28 @@ func play(pos: Vector3, size: float, smoke: bool = true, pace: float = 1.0) -> v
 
 	# The fire: puffs thrown out of a small ball, slowed by drag, lifted by the heat.
 	var fire: CPUParticles3D = slot.fire
-	_place(fire, pos, speed)
 	fire.color_ramp = _ramps["fire_soft"] if reduced else _ramps["fire"]
 	fire.color = tint
 	fire.emission_sphere_radius = size * 0.3
-	fire.initial_velocity_min = size * 0.0
+	fire.initial_velocity_min = 0.0
 	fire.initial_velocity_max = size * 2.6
 	fire.damping_min = size * 2.2
 	fire.damping_max = size * 3.0
 	fire.gravity = Vector3(0.0, size * 3.8, 0.0)
 	fire.scale_amount_min = size * 1.0
 	fire.scale_amount_max = size * 1.8
+	_start(fire, pos, speed)
 
 	# The core: one big blob that pops (softly swells with Reduced flashing) and cools.
 	var core: CPUParticles3D = slot.core
-	_place(core, pos, speed)
 	core.color_ramp = _ramps["core_soft"] if reduced else _ramps["core"]
 	core.color = tint
 	core.scale_amount_min = size * 2.0
 	core.scale_amount_max = size * 2.0
+	_start(core, pos, speed)
 
 	# The embers: small, hot and fast, falling back.
 	var embers: CPUParticles3D = slot.embers
-	_place(embers, pos, speed)
 	embers.color = tint
 	embers.emission_sphere_radius = size * 0.15
 	embers.initial_velocity_min = size * 1.0
@@ -161,12 +163,12 @@ func play(pos: Vector3, size: float, smoke: bool = true, pace: float = 1.0) -> v
 	var ember_size: float = 0.25 + 0.06 * size
 	embers.scale_amount_min = ember_size
 	embers.scale_amount_max = ember_size * 2.0
+	_start(embers, pos, speed)
 
 	# The smoke: dark, slower, rising, a little after the fire.
 	var smoke_span: float = 0.0
 	if smoke and tuning.fireball_smoke_puffs > 0:
 		var puffs: CPUParticles3D = slot.smoke
-		_place(puffs, pos + Vector3(0.0, size * 0.15, 0.0), speed * 0.8)
 		puffs.color = Color.WHITE
 		puffs.emission_sphere_radius = size * 0.35
 		puffs.initial_velocity_min = size * 0.1
@@ -176,8 +178,10 @@ func play(pos: Vector3, size: float, smoke: bool = true, pace: float = 1.0) -> v
 		puffs.gravity = Vector3(0.0, size * 1.6, 0.0)
 		puffs.scale_amount_min = size * 1.1
 		puffs.scale_amount_max = size * 1.9
+		_start(puffs, pos + Vector3(0.0, size * 0.15, 0.0), speed * 0.8)
 		smoke_span = tuning.fireball_smoke_seconds / (speed * 0.8)
 	else:
+		# Clears a smoke still drifting from the explosion this slot played before.
 		slot.smoke.restart()
 		slot.smoke.emitting = false
 	slot.left = maxf(maxf(tuning.fireball_seconds, EMBER_SECONDS) / speed, smoke_span)
@@ -222,8 +226,8 @@ func _take() -> Slot:
 	return oldest
 
 
-## Puts `p` at `pos`, playing `speed` times as fast, and (re)starts it.
-func _place(p: CPUParticles3D, pos: Vector3, speed: float) -> void:
+## Puts `p` (its numbers set) at `pos`, playing `speed` times as fast, and (re)starts it, clearing what it threw before.
+func _start(p: CPUParticles3D, pos: Vector3, speed: float) -> void:
 	p.global_position = pos
 	p.speed_scale = speed
 	p.restart()
@@ -270,9 +274,9 @@ static func _make_shared() -> void:
 	_ramps["fire"] = _ramp([0.0, 0.12, 0.32, 0.55, 0.8, 1.0], [
 		Color(1.0, 0.82, 0.25, 0.3), Color(1.0, 0.7, 0.14, 0.55), Color(1.0, 0.46, 0.06, 0.7),
 		Color(0.9, 0.2, 0.04, 0.65), Color(0.45, 0.07, 0.03, 0.3), Color(0.15, 0.02, 0.02, 0.0)])
-	# With Reduced flashing: from nothing, up over a fifth of its life, never white.
-	_ramps["fire_soft"] = _ramp([0.0, 0.2, 0.42, 0.68, 0.88, 1.0], [
-		Color(1.0, 0.68, 0.18, 0.0), Color(1.0, 0.62, 0.14, 0.85), Color(0.98, 0.42, 0.07, 1.0),
+	# With Reduced flashing: from nothing, up over a third of its (stretched) life, never white.
+	_ramps["fire_soft"] = _ramp([0.0, 0.3, 0.5, 0.72, 0.9, 1.0], [
+		Color(1.0, 0.68, 0.18, 0.0), Color(1.0, 0.62, 0.14, 0.8), Color(0.98, 0.42, 0.07, 1.0),
 		Color(0.8, 0.2, 0.04, 0.65), Color(0.4, 0.07, 0.03, 0.25), Color(0.15, 0.02, 0.02, 0.0)])
 	_ramps["core"] = _ramp([0.0, 0.06, 0.3, 1.0], [
 		Color(1.0, 0.8, 0.3, 0.0), Color(1.0, 0.8, 0.3, 0.3), Color(1.0, 0.62, 0.2, 0.2), Color(1.0, 0.45, 0.1, 0.0)])
