@@ -841,7 +841,9 @@ patterns), its sounds (`tools/asset_gen/sfx_bank_enforcer.gd`: `enforcer_siren`,
 - **Holes.** It hops every ordinary gap in its lane (a bounce keyed to its own distance, until its rear has
   cleared it); a gap wider than `max_hop_jump_fraction` of a jump at the level's speed, or a begun floor
   cut not solid under its front or middle (`FloorCut.solid_at`), wrecks it (`&"gap"`, `&"cut"`: the
-  player's kill, `enforcer_crash`). No level gap is that wide (0.6 of a jump; the levels' are 0.35-0.6).
+  player's kill, `enforcer_crash`). None of a level's own gaps is that wide (0.6 of a jump; the levels' are
+  0.35-0.6), but each campaign level's couple of wider gaps are (0.7; task G7, Wider gaps below), one in its
+  chase where one fits.
 - **Riders.** Cyborgs the runner passes alive (`Cyborg.Mode.PASSED`) are recorded with their lane and spot;
   when its front reaches one in its lane it climbs aboard (a crouching gunner on its roof, `set_riders`, a
   pip on the marker, `enforcer_pickup`), up to `max_riders` (3), and a cyborg node still in play leaves
@@ -1139,7 +1141,8 @@ stretch, and an Octodog, whose charges need a clear floor, often finds its spot 
 each feature a pattern can place there is in the finished level, at any lane count and on any seed
 (GDD §5: an introduced feature keeps appearing). Rules drop or clear what doesn't fit fairly, so
 `generate()` checks the finished layout and builds the level again until nothing is missing:
-- `feature_positions(layout, feature)` finds a feature's pieces: enemies by type, hosts, wall-vent
+- `feature_positions(layout, feature)` finds a feature's pieces: enemies by type, hosts (and cyborgs that
+  aren't hosts, nor planted in a charge's path, task G7), wall-vent
   screeches, the mechanics by their ramps, pads, speed pads or pulsing fences, and the wall fences by
   theirs (full-height ones `wall_fences`, partial ones `wall_fences_partial`). A rules script that
   declares `static func positions(layout: LevelLayout) -> Array[float]` answers for its own feature (a
@@ -1512,6 +1515,97 @@ frame on the wall: in a gap it leaves the wall into the outer lane with no extra
 ScoreKeeper ends the wall run). A wall entry (move or ramp) inside a gap is refused with `wall_missing` and no
 bump. Past the gap, the usual move input steps back onto the wall. `HintDirector` introduces them through the
 `wall_gap` hint. `test_wall_gaps` covers all of this.
+
+**Wider gaps** (task G7; the owner's answer to open question 352, October 7, 2026, GDD §9.13 "Holes": "every
+level has a couple of wider gaps. They're uncommon, still jumpable by the player, and wide enough that an
+Enforcer following the player into one is wrecked"). `WideGapPlacement` (`scripts/world/wide_gap_placement.gd`;
+numbers in `WideGapTuning`, `data/tuning/wide_gaps.tres`, F6 "Wider gaps") makes `LevelConfig.wide_gaps` rows of
+holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer along the run than the rest:
+`jump_fraction` (0.7) of a full jump at the level's speed (`length_for`), more than an Enforcer Truck hops
+(`max_hop_jump_fraction`, 0.6) and within what a level may ask a runner to jump (`max_gap_jump_fraction`,
+0.8); the levels' own rows are 0.4 to 0.55 of a jump. A normal jump clears one from a take-off window about
+0.3 s wide (with coyote time). Every campaign level asks for 2; quick play, the prototype level and boss arenas
+(`WallGapPlacement.is_boss_arena`, even asked) for none, and then the pass draws nothing.
+- **When.** After the enemy rules, the danger density pass's enemies and the cyborgs planted in charge paths
+  (below), before the fill pass, from a stream of its own (`rng_for("wide_gaps")`). The report is
+  `LevelGenerator.wide_gap_result` (target, rows, how many were widened, added or cleared and how many pieces
+  went, what blocked the level's own rows, constraints), reset at every build of the guarantee.
+- **Never stacked with another demand** (`fits`, `blocker`). Its zone (`zone_of`: from `clear_before_seconds`
+  before the take-off to `clear_after_seconds` after the landing, 0.9 s each, never less than the level's
+  spacing between two patterns at its difficulty) holds, in any lane, no other hole, fence, ramp or the point
+  where its wall run drops the runner back, pad's zone, speed pad, ceiling's landing zone, floor cut's window,
+  enemy's attack (the fill pass's keep-out with its floor; a floor cyborg's obstacle margin; a planned
+  Resonator's pulses one by one, `DangerDensity.resonator_pulse_windows`: between them it only hovers and every
+  pulse waits for clear floor) or the rules' doodad keep-outs (a Gilded Sentinel's strike; not a host's Bad
+  Dream chase, which the danger density pass exempts too, `keep_out_exempt_features`). No ceiling and no
+  ramp's wall run lies over the jump itself (`row_only` keeps). A keep of one lane only (a hover truck's lane
+  for its whole stay, beyond the stretch it's surely there, which every lane keeps) keeps that lane: the row
+  leaves it open. Window cyborgs and Barnacle Turrets (their bolts never land near a hole), thieves and the
+  Enforcer Truck (`NO_KEEP_TYPES`) don't count. Wider gaps keep `spacing_seconds` (15 s) apart.
+- **Where from**, in this order until the level has its count: the level's own rows made longer (at the far
+  edge, the take-off where the pattern put it, else the near edge, else both); with `add_rows`, new rows in
+  every lane but one (the lane a hover truck keeps there, else a seeded one), slid along each free stretch
+  until one fits (`_add_one`); the level's own rows that only other holes and plain fences keep from fitting,
+  with those taken out (`_clearing`: never a pulsing fence or one a fence generator powers; `GeneratorRules.
+  keep_powered` after: taking content out never makes a level unfair).
+- **Which.** With `prefer_enforcer_chases`, one first in each Enforcer Truck's chase (from `bait_after_seconds`
+  after it arrives to `CHASE_END_SECONDS` before it gives up), from the first source with one there, so the
+  runner can lead it in; then the rest spread through the level, each source used up before the next, rows
+  across most of the lanes (a jump) before single holes.
+- **After it.** The fill pass keeps its usual margin from the wider rows as from any piece; the danger density
+  pass keeps its clearance from each zone (`_fixed_stretches`), the zone doodads off each zone
+  (`doodad_keep_outs`), side wall gaps `wall_gap_clear_seconds` off each on both walls (`wall_keep_outs`) and
+  City 1's extra gaps off each zone (`GapDensity._protected`).
+- **What it gives.** Every campaign level at 3, 5 and 6 lanes gets its 2 on its own seed (`test_wide_gaps`);
+  over `test_campaign`'s seed sweep 2 of 189 builds of the busiest levels fit only one (the layout check allows
+  one fewer on a seed not the level's own, never none). The first Enforcer chase holds one in 9 of the 18
+  level and lane builds that have trucks, Corporate 2 at every lane count, where the truck following the runner
+  over it is wrecked in play. Rows and holes change with them: the fill pass and the danger density pass
+  re-roll around the wider rows (Corporate 2 at 5 lanes 33 rows and 49 holes before, 35 and 54 after; Dead Zone
+  1 at 3 lanes 24 and 32 before, 20 and 25 after). With `wide_gaps` and `charge_path_cyborgs` at 0 every campaign
+  level, quick play and the prototype level build exactly as before (compared build by build with main's).
+
+**Cyborgs in charge paths** (task G7; the owner's answer to open question 353, October 7, 2026, GDD §9.13
+"Teaching": "occasionally a cyborg stands in the path of an Octodog's lunge or a Buzz Overdrive's charge, so the
+player sees a charge flatten another enemy. At least one comes before the Enforcer's first appearance in
+Corporate 2"). `ChargePathPlacement` (`scripts/world/charge_path_placement.gd`; numbers in `ChargePathTuning`,
+`data/tuning/charge_paths.tres`, F6 "Charge paths") plants a plain floor cyborg in the path of up to
+`LevelConfig.charge_path_cyborgs` of a level's Octodog first lunges and Buzz Overdrive charges (1 in every level
+with either, Gangland 2 on; 0 elsewhere), which the charge flattens (`Enemy._hurt_charge_contacts`,
+`&"enemy_charge"`, never the player's kill). It runs after the danger density pass's enemies, before the wider
+gaps and the fill pass (every dog's charges and every cut are final then), from `rng_for("charge_paths")`; its
+report is `LevelGenerator.charge_path_result` (target, planted, options, rejected: why each other encounter was
+turned down, constraints). `plant()` writes one encounter, and the tests plant through it.
+- **The cyborg.** `{type: "cyborg", side: 0, params: {panic: false, host: false, stand: true, hold_fire,
+  charge_path}}`: never a host, the panic variant or a window cyborg; it stands where it's placed
+  (`Cyborg.stand`: no walk), and holds its fire while the runner is in its `hold_fire` stretch, from
+  `hold_before_seconds` (1 s) before the charge's warning until `hold_after_seconds` after it has passed them,
+  with no bolt of its landing there (`Cyborg._may_attack`, `CyborgGun.hold`). It keeps a cyborg's obstacle
+  margin and every ceiling's safe floor, and it never counts as the level's cyborg (`feature_positions`).
+- **An Octodog's planted lunge.** Only its first, made from where it stands. The cyborg stands
+  `dog_cyborg_ahead` (2.5 m, or a little more, stretched by the pace) in front of it in the lane beside, and the
+  dog's params (`through_lane`, `through_at`) send its lunge along a line through it, two lanes across: it
+  flattens the cyborg about halfway and reaches the far lane where it would meet a runner there
+  (`Octodog.planted()`, `_lunge_vx`); its red line shows that path, so it's dodged as any lunge. The dog's
+  later charges go at the runner's lane as always. A dog without two lanes beside it on a side may stand in
+  another lane at its spot (`_dog_lanes`); never a gap bait; the line's path keeps off every hole
+  (`path_clear`); the cyborg is reached with the runner still `in_view_seconds` (0.4 s) behind it (`dog_in_view`).
+- **A Buzz Overdrive's parked charge.** Its cut gets `park`: the tank waits at its cut's end (`BuzzOverdrive.
+  parked()`) instead of rolling ahead of the runner (it would drive through a cyborg in its lane), revs and
+  charges where it always would, and the cyborg stands `tank_cyborg_seconds` (0.35 s of run, or a little less)
+  in front of its blade, in its lane, past where the cut meets the runner, reached in view (`tank_in_view`).
+  The cut keeps its own escape (`LevelGenerator.cut_escape_clear`).
+- **The charge comes as planned.** The encounter claims its turn among the big attacks `claim_seconds` (4 s)
+  before its warning: a planted dog from its params' `claim_at` (`Octodog.claiming()`, part of
+  `is_major_attack_active` while it stands), a parked tank from its cut's `claim_seconds`. A drone's barrage or a
+  hover truck's lurch or cannon shot that gets ready meanwhile waits. What can't wait or claims a turn of its
+  own (a Bad Dream's chase, a Resonator's visit, a Gilded Sentinel's strike, another Octodog's run or Buzz
+  Overdrive's attack, a hover truck keeping one of the encounter's lanes) keeps `attack_margin_seconds` (2 s)
+  from it (`attack_near`). Never the encounter that introduces the charging enemy (`skip_introductions`).
+- **What it gives.** At 3, 5 and 6 lanes, 7, 6 and 8 of the 11 levels that ask get one (the others: near a
+  Resonator's visit or a Gilded Sentinel, no room for the cyborg, or only the introduction); at every lane count
+  one comes before Corporate 2's first Enforcer (Marketplace 1 at 3 and 5 lanes, Gangland 2 at 6). DESIGN-TBD
+  (`docs/questions/g7.md`): the line, the parked tank, the numbers and the counts.
 
 ## Power-ups
 
@@ -3317,7 +3411,30 @@ dodged early missing it, no volley during either though one was due, big attacks
 wide gap and a cut (the tank shot down mid-charge) wrecking it, an ordinary gap hopped; riders from passed
 cyborgs in its lane only (not another lane, a killed one, a window cyborg or a host), at most 3, quickening its
 volleys; the same run twice; and Corporate 2 at 3, 5 and 6 lanes played to its end by a runner that baits each
-truck (god mode, grapples): each destroyed by a charge it dodged, no overlap with its volleys.
+truck (god mode, grapples): each destroyed by a charge it dodged or in a wider gap (task G7), no overlap with
+its volleys.
+
+`test_wide_gaps` checks the wider gaps (task G7; The generator, Wider gaps): every campaign level at 3, 5 and 6
+lanes with its 2 (LayoutChecks.check_wide_gaps: the length, the spacing, nothing in any lane from the take-off
+margin to the landing margin, no zone doodad or its push's lead there, no side wall gap beside) and a floor
+route across each (FloorRoute from the clear floor before it), printing each level's rows, holes and where its
+wider gaps came from; none in a boss arena even asked, nor in quick play or the prototype level; Corporate 2 the
+same on every attempt; on real physics at quick play's speed and every campaign level's, at 3, 5 and 6 lanes, a
+jump early, midway and late in the take-off window clears one and running on falls in; an Enforcer Truck
+following a runner who jumps one wrecked in it (the player's kill) and hopping a 0.5-of-a-jump row, at 3, 5 and
+6 lanes, at 18 and 23.4 m/s; and Corporate 2's own build at 3, 5 and 6 lanes played from its start (god mode,
+grapples) until the runner leads its first truck over the wider gap in its chase, where it's wrecked.
+`test_charge_paths` checks the cyborgs in charge paths (task G7; The generator, Cyborgs in charge paths): every
+campaign level's count and LayoutChecks.check_charge_paths at 3, 5 and 6 lanes (a plain floor cyborg, never a
+host; its charger's planned path through it, in view, holding its fire, nothing around it), one before
+Corporate 2's first Enforcer at each lane count, printing what each level got; nothing planted in quick play,
+the prototype level or a boss arena (even asked); Golden 2 the same on every attempt; hand-built encounters
+planned by the placement itself on real physics at 3, 5 and 6 lanes, at quick play's speed and Corporate 2's (an
+Octodog in an outer lane and the middle one, a parked Buzz Overdrive in an outer lane and the middle one): the
+cyborg flattened by the charge (never the player's kill) with the runner in_view_seconds behind it, no burst
+charged and no bolt landing in its hold_fire stretch, a runner who leaves the far lane (the cut's lane) after
+the warning untouched and one who stays hit; and in the campaign's own builds, played from the start, the first
+planted Octodog encounter and the earliest Buzz Overdrive one at each lane count flattening their cyborgs.
 
 `test_wall_fences` checks wall fences (B5; GDD §9.1): the layout data (left out of a level without them) and
 `WallFencePlan`'s bands, reach (a floor runner in the middle of the outer lane never touches one, a wall runner

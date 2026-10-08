@@ -350,7 +350,8 @@ F6 pauses the game and opens a panel with sections for movement, game rules, pow
 pickups, speed effects (the camera's field-of-view kick and lane lean, speed lines, shake, hit-stop and the
 sparks and debris on kills and blocked hits), performance (how long a frame may spend dressing the track; see
 Smooth frames), the music's pause duck and death dip, level pacing, the campaign's
-recency curve for pick weights (in a campaign level) and each enemy type in the level. Changes apply immediately;
+recency curve for pick weights (in a campaign level), the wider gaps and the cyborgs planted in charge paths (in a
+level that asks for them: **Wider gaps**, **Charge paths**) and each enemy type in the level. Changes apply immediately;
 pacing, pick weights, speed, jump and size
 changes also reshape the level, so press **Restart level** to rebuild it. **Save** writes the values back to
 their files in `data/`; **Reload files** undoes unsaved changes. Every other number is in `data/` too: enemy
