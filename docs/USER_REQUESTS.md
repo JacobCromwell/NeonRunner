@@ -15,6 +15,12 @@ NOTE: Mark tasks as done as you complete them.
 
 - [x] The Octodog and Buzz Overdrive's charge attacks should hurt other enemies if they charge into them. If having enemies being able to hurt each other drastically increases the complexity of the code, then write that out to the user requests and do not implement that feature for now. However, if it does not greatly increase the complexity of the code, then please implement it.
 
+## Level skies (October 8, 2026)
+
+- [x] Gangland 3's sky becomes a cloudy blood red, to show the player is coming up on a fiery section; Gangland 1 and 2 keep theirs. DONE: `data/skies/gangland_blood_red.tres`.
+- [x] Neon City 3's sky shows the sun just starting to rise: pinks and purples touching the undersides of clouds. DONE: `data/skies/city_dawn.tres`.
+- [x] The Marketplace's third level gets a darkening sky as the sun sets: deep blues, with pinks at the very bottom of the sky. DONE on Marketplace 2, the zone's last level (the Marketplace has two levels; to confirm): `data/skies/marketplace_sunset.tres`.
+
 ## Enforcer Truck follow-up (October 7, 2026)
 
 - [x] Change the gap generation so that occasionally there is a wider gap. It shouldn't be very common, but it should happen a couple of times each level. (Answers open question 352: a wider gap wrecks an Enforcer Truck that follows the player into it.) DONE (task G7): two wider gaps per campaign level, 0.7 of a jump long, clearable with a normal jump, with clear room around each.
@@ -50,8 +56,8 @@ Task IDs refer to `docs/TASK_PLAN.md`, section H. The owner's answers to the orc
 - [x] The heli drone's explosion and all explosions in the game need to be more visually impressive: a yellow and red fireball. (H6)
 - [ ] Walls the player can dash through: not the side walls, but walls blocking the path forward, using the side walls' assets turned to face the player, like a building in the middle of the street. The player must dash through them; they crumble and explode into rubble when hit. Without the dash, the player takes one hit (armor, then shield; with neither, it kills). (H7a, H7b) [Owner: they block every floor lane but not the side walls, no ceiling shares their stretch, and they're introduced in the Corporate zone.]
 - [ ] Lasers auto-target host cyborgs, so players have to switch the laser off to avoid releasing Bad Dreams. (H8) [Owner: in normal levels; this reverses the September 26 rule that hosts are immune to weapons.]
-- [ ] Sleep Taker: when it makes the screen darker, things should get 50% darker than they already do (glowing things like gaps and lasers stay visible). (H9)
-- [ ] Sleep Taker: more hands, spread out along the street rather than all at the same spot, so the player has to make several quick lane switches to get through one round of the hand attack. (H9)
-- [ ] Sleep Taker: the side walls are too safe: many more gaps in the side walls, and hand attacks there too. (H9)
-- [ ] Sleep Taker: double the floor gaps. (H9)
-- [ ] The Tithe Collector should stay in the level twice as long. (H10)
+- [x] Sleep Taker: when it makes the screen darker, things should get 50% darker than they already do (glowing things like gaps and lasers stay visible). (H9)
+- [x] Sleep Taker: more hands, spread out along the street rather than all at the same spot, so the player has to make several quick lane switches to get through one round of the hand attack. (H9)
+- [x] Sleep Taker: the side walls are too safe: many more gaps in the side walls, and hand attacks there too. (H9)
+- [x] Sleep Taker: double the floor gaps. (H9)
+- [x] The Tithe Collector should stay in the level twice as long. (H10)

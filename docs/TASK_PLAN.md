@@ -346,6 +346,7 @@ The owner played every zone and the Floating Head. The feedback is in GDD §3 ("
 - **PERF1, lag spikes** (owner, October 2, 2026: "the overall performance of the game is getting worse; lag spikes are more common"): measure each level's frame times against the build before the playtest work, fix the biggest causes without changing what the game decides, add a frame-time overlay for the owner and a frame-time regression suite. T1, ahead of the remaining content.
 - **T-SPEED, a faster test suite** (October 2, 2026): the full suite reached about 29 minutes under load (67 suites, 6.1 million checks) against a 40-minute watchdog, and grows with every boss. Make it faster without removing or weakening any check: share the work suites repeat (level layouts built for the same config, seed and lanes), make the heaviest suites cheaper, and let `tools/godot.sh test` run suites in parallel processes. T3 (tests and tools only).
 - **G7, wider gaps and enemies in charge paths** (owner, October 7, 2026, answering open questions 352 and 353): a couple of wider, still jumpable gaps in every level, which wreck an Enforcer Truck that follows the player in; and occasionally a cyborg in the path of an Octodog's lunge or a Buzz Overdrive's charge, at least once before the Enforcer's first appearance in Corporate 2. **Core** (the generator). T1.
+- **G8, level skies** (owner, October 8, 2026): a zone's last level shows its sky turning (City 3 a dawn, Gangland 3 a cloudy blood-red sky, Marketplace 2 a sunset; GDD §5, "Skies show progression"). A level's own sky over its zone's (`LevelConfig.sky`, `data/skies/`), clouds and a glow on the horizon in the sky shader. Level data and the sky shader. T2.
 
 ### E. Bosses and the web demo
 
@@ -412,8 +413,8 @@ From the owner's list in `docs/USER_REQUESTS.md` (October 8, 2026), recorded in 
 | H6 | **Explosions:** one shared yellow-and-red fireball for every explosion, pooled, Compatibility-safe, softened by Reduced flashing (GDD §11) | – | M | T2 |
 | H7a | **Dash walls, the mechanism:** generator placement from the Corporate zone, the wall, the crash rule (armor or shield absorbs; otherwise it kills), crumbling into rubble, sounds and a first-encounter hint (GDD §9.14). **Core** (generator, track builder, damage rules). | G7, H5 | L | T1 |
 | H7b | **Dash walls, the art:** each zone's building face turned toward the player, from its side-wall kit | H7a | M | T2 |
-| H8 | **Weapons hit hosts:** auto-fire targets them and a weapon kill releases the Bad Dream (GDD §9.7) | – | M | T2 |
-| H9 | **Sleep Taker:** lights out 50% darker, hands spread along the street, wall gaps and more wall hands, twice the floor gaps (GDD §10) | – | M–L | T1 |
+| H8 | **Weapons hit hosts:** auto-fire targets them and a weapon kill releases the Bad Dream (GDD §9.7). Raised to T1: an earlier release moves the Bad Dream chases the generator plans around. | – | M | T1 |
+| H9 | **Sleep Taker:** lights out 50% darker, hands spread along the street, wall gaps and more wall hands, twice the floor gaps (GDD §10). **Core** (small opt-in hooks in the boss framework and level config). | – | M–L | T1 |
 | H10 | **The Tithe Collector stays twice as long** (GDD §9.12) | – | S | T3 |
 
 ---
