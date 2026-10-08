@@ -10,7 +10,8 @@ extends TestSuite
 ##   lane of three is never shot at there while that burst's bolts arrive in the only lane beside it
 ##   (the second burst waits); on five lanes the second fires at once, the lane beyond being free; either
 ##   way a runner who dodges the bolts they see survives. A wall runner's only way out is the outer lane
-##   below; a ceiling rider dodges only within its ceiling and never into a turret;
+##   below; a ceiling rider dodges only within its ceiling and never into a turret; a panic cyborg's wild
+##   fire waits until its bolts arrive well apart from another burst's;
 ## - two Barnacle Turrets on one ceiling fire together (GDD §9.8).
 
 const CYBORG_TUNING_PATH: String = "res://data/enemies/cyborg.tres"
@@ -44,6 +45,7 @@ func run() -> void:
 	await _test_crossfire(3)
 	await _test_crossfire(5)
 	await _test_wall_runner()
+	await _test_wild()
 	await _test_escape_lanes()
 	await _test_turrets_together()
 
@@ -497,6 +499,42 @@ func _test_wall_runner() -> void:
 			check(not _arrive_together(b, f, ct.crossfire_gap) or absf(float(b["line"]) - float(f["line"])) <= tuning.lane_width * 0.5,
 				"its bolts never arrive with the floor cyborg's in the lane below (%.2f-%.2f s, %.2f-%.2f s)" % [
 				float(b["first"]), float(b["last"]), float(f["first"]), float(f["last"])])
+	await sim.free_world(w)
+
+
+## Wild fire (the panic variant's: its bolts land anywhere around the runner, so no lane is sure to be
+## free of them) never arrives within crossfire_gap of another burst. A panic cyborg starts running and
+## firing as a cyborg further ahead fires at the runner: its burst waits until its bolts arrive well apart.
+func _test_wild() -> void:
+	var w: RunWorld = sim.build_world(RunSim.layout(5, 600.0))
+	w.player.god_mode = true
+	var panic: Cyborg = w.director.spawn({"type": "cyborg", "at": 110.0, "lane": 0, "side": 0, "seed": 31,
+		"params": {"panic": true}}) as Cyborg
+	var guns: Array[CyborgGun] = [_cyborg(w, 130.0, 4, 32).gun, panic.gun]
+	var fled: Array[float] = [INF]
+	var watch := func() -> void:
+		if panic.mode == Cyborg.Mode.FLEE and fled[0] == INF:
+			fled[0] = w.level_time()
+	await _step(w, 9.0, func() -> bool:
+		var all: Array[Dictionary] = _bursts(guns)
+		return not _fired(all, 0).is_empty() and not _fired(all, 1).is_empty() \
+			and guns[1].state != CyborgGun.State.FIRING, watch)
+	var bursts: Array[Dictionary] = _bursts(guns)
+	var aimed: Array[Dictionary] = _fired(bursts, 0)
+	var wild: Array[Dictionary] = _fired(bursts, 1)
+	check(not aimed.is_empty() and not wild.is_empty(), "both fire (%d, %d bursts)" % [aimed.size(), wild.size()])
+	if aimed.is_empty() or wild.is_empty():
+		await sim.free_world(w)
+		return
+	check(bool(wild[0]["wild"]) and not bool(aimed[0]["wild"]), "the panic cyborg's fire is wild, the other's aimed")
+	check(float(wild[0]["start"]) > fled[0] + 0.5,
+		"the panic cyborg holds its fire while the other's burst would arrive with it (fled %.2f s, fired %.2f s)"
+		% [fled[0], float(wild[0]["start"])])
+	for a: Dictionary in aimed:
+		for x: Dictionary in wild:
+			check(not _arrive_together(a, x, ct.crossfire_gap - 0.05),
+				"wild fire never arrives within crossfire_gap of another burst (%.2f-%.2f s, %.2f-%.2f s)" % [
+				float(x["first"]), float(x["last"]), float(a["first"]), float(a["last"])])
 	await sim.free_world(w)
 
 

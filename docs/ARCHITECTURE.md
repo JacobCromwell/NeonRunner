@@ -3095,7 +3095,8 @@ watched by `tools/measure/attack_watch.gd` (see Review tools). `test_cyborg_airs
 airspace (H4): its claims (the limit, a release ending only its own claim, shooters that left play, a
 boss's whole claim), two cyborgs firing together while a third waits (at once if one is killed
 mid-charge), the limit at 1, the crossfire rule on 3 and 5 lanes with a runner dodging the bolts it sees,
-a wall runner's only way out, a ceiling rider's lanes, and two turrets on one ceiling firing together;
+a wall runner's only way out, a panic cyborg's wild fire kept apart, a ceiling rider's lanes, and two
+turrets on one ceiling firing together;
 `test_cyborg` and `test_barnacle_turret` check at most `max_bursts_in_air` bursts in the air over
 generated levels. `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
 for framework tests, with `make_def()` for a BossDef from a list of phases; `test_bosses` runs fights
