@@ -42,7 +42,8 @@ func play(sound: StringName) -> void:
 
 
 ## Cuts a sound off where it is: a warning whose attack will never come (its enemy was shot down
-## first) must not go on to its climax.
+## first) must not go on to its climax. It stops every playing voice of that sound, so a caller whose
+## sound may overlap another instance's must make sure that's what it wants.
 func stop(sound: StringName) -> void:
 	stopped.emit(sound)
 	var p: AudioStreamPlayer = _players.get(String(sound))

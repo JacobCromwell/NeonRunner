@@ -48,7 +48,7 @@ const STATE_NAMES: PackedStringArray = ["approach", "pace", "warning", "pulse", 
 ## sound flares on each (resonator_warning is made with them, and with warning_seconds, where its crash
 ## lands: tools/asset_gen/sfx_bank_resonator.gd).
 const LINE_UP_AT: Array[float] = [0.0, 0.42, 0.84]
-## A halo swings into line from this long before its note to this long after it.
+## A halo swings into line from this long before its line-up moment to this long after it.
 const LINE_UP_BEFORE: float = 0.1
 const LINE_UP_AFTER: float = 0.2
 ## pulse_clear(): metres kept between a wave's meeting stretch and an anti-grav pad (the player may be
@@ -560,7 +560,7 @@ func hit_radius() -> float:
 func _on_defeated(_cause: StringName) -> void:
 	if state == State.WARNING and world.sounds != null:
 		# Its warning ends in a crash that releases the wave: with no wave coming, cut it off before it
-		# crashes (the death's own sound covers the cut).
+		# crashes (the death's own sound covers the cut). DESIGN-TBD (docs/questions/h2.md): cut it, or let it play out?
 		world.sounds.stop(&"resonator_warning")
 	_set_state(State.DOWN)
 	charge = 0.0
@@ -633,7 +633,7 @@ func _process(delta: float) -> void:
 	_since_wave += delta
 	var warning: bool = state == State.WARNING and alive
 	var holding: bool = state == State.PULSE and alive
-	# The halos swing into line one per note, hold while a double's second wave leaves, then relax.
+	# The halos swing into line one per line-up moment, hold while a double's second wave leaves, then relax.
 	var throb: float = 1.0
 	if warning and not reduced:
 		# Throbbing faster as the wave nears (a steady ramp with Reduced flashing).
