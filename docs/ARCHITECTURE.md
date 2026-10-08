@@ -2255,19 +2255,20 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
     another key needs its riff remade to match, or removed. For now `MusicLibrary.riff_tracks` maps
     supplied songs back to their original zone's riff, preserving the existing completion sounds;
     their keys have not been retuned to the supplied songs.
-  - **The Resonator's warning** (H2, GDD §9.10, the owner's October 8, 2026 request that it not sound
+  - **The Resonator's warning** (H2, GDD §9.10; the owner's October 8, 2026 request that it not sound
     like a doorbell): `resonator_warning` (`tools/asset_gen/sfx_bank_resonator.gd`; it was the three-note
-    chime `resonator_chime`) is noise only, a crackling build-up of fire that breaks into a crashing wave:
-    a rumble, roar and hiss that brighten and swell, crackle (ticks and snaps) that thickens, a flare on
-    each halo's line-up (`Resonator.LINE_UP_AT`, once `CHIME_NOTES`: they still time the halos), a short
-    breath, then the wave crash exactly as the red wave leaves (`ResonatorTuning.warning_seconds`, 1.3
-    s) with its roll and fizz rolling out for 0.85 s after it. The sound is made for that length, so
-    after retuning `warning_seconds` or `LINE_UP_AT`, regenerate it (`tools/godot.sh sfx --only=resonator_warning`);
-    `test_resonator` measures its onsets, its crash and its lack of any bell-like partial against both. The wave
-    leaving plays `resonator_pulse` with the crash: a release thump and the rush of the wave rolling
-    in (a double pulse's second wave has only this), without the old pitched hum. A Resonator shot down in its
-    warning cuts the sound off before its crash (`PlayerSfx.stop()`): with no wave coming, the crash must
-    not land.
+    chime `resonator_chime`) is noise only, a crackling build-up of fire that breaks into a crashing wave.
+    A rumble, roar and hiss brighten and swell, crackle (ticks and snaps) thickens, and the fire flares on
+    each halo's line-up (`Resonator.LINE_UP_AT`, once `CHIME_NOTES`: it still times the halos). A short
+    breath follows, then the wave crash lands exactly as the red wave leaves
+    (`ResonatorTuning.warning_seconds`, 1.3 s), its roll and fizz rolling out for 0.85 s after it.
+    - *Regenerate it* (`tools/godot.sh sfx --only=resonator_warning`) after retuning `warning_seconds` or
+      `LINE_UP_AT`: the sound is made for those times, and `test_resonator` measures its flares, its crash,
+      its crackle and its lack of any bell-like partial against them.
+    - *The wave leaving* plays `resonator_pulse` with the crash: a release thump and the rush of the wave
+      rolling in (a double pulse's second wave has only this), with no pitched hum under the crash.
+    - *Shot down in its warning,* a Resonator cuts the sound off before its crash (`PlayerSfx.stop()`):
+      with no wave coming, the crash must not land.
 
 ## Campaign, bosses and cinematics
 

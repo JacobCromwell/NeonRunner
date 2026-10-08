@@ -17,8 +17,8 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 const ResonatorScript = preload("res://scripts/enemies/resonator.gd")
 ## The three tones its death bends out of tune (Hz): G5, C6, E6.
 const DEATH_TONES_HZ: Array[float] = [783.99, 1046.5, 1318.51]
-## Seconds the crash rolls out after the wave is released, and how much louder it is than the build-up
-## (a multiple of the build's own scale).
+## Seconds the crash rolls out after the wave is released, and how loud its layers are against the
+## build-up's (the crash ends up a few dB above the build-up's loudest flare).
 const CRASH_SECONDS: float = 0.85
 const CRASH_GAIN: float = 1.5
 ## The build-up draws a breath before the crash (the wave sucking back before it breaks): its roar
@@ -116,7 +116,7 @@ func _pops(seconds: float, rate_from: float, rate_to: float, curve: float, loudn
 		if rng.randf() < lerpf(rate_from, rate_to, pow(u, curve)) / RATE:
 			starts.append(i)
 	for at: float in flurries:
-		for k: int in 12:
+		for _k: int in 12:
 			starts.append(int((at + rng.randf_range(0.0, 0.06)) * RATE))
 	for at: int in starts:
 		if at >= b.size():
@@ -130,9 +130,10 @@ func _pops(seconds: float, rate_from: float, rate_to: float, curve: float, loudn
 
 
 ## The build-up: fire catching and roaring up over `crest` seconds. A rumble under a mid roar that
-## brightens as it climbs and a hiss on top, flaring on each halo's line-up (each flare bigger than
-## the last), flickering, with a crackle that starts as a few ticks and snaps and thickens into a
-## sizzle. The roar draws back just before the end, leaving a gap for the crash to hit.
+## brightens as it climbs and a hiss on top, flaring on each halo's line-up (the floor between the
+## flares climbing, so each flare lands higher than the last), flickering, with a crackle that starts as
+## a few ticks and snaps and thickens into a sizzle. The roar draws back just before the end, leaving a
+## gap for the crash to hit.
 func _fire_build(crest: float, rng: RandomNumberGenerator) -> PackedFloat32Array:
 	var beats: Array[float] = ResonatorScript.LINE_UP_AT
 	var rumble := DSP.noise(crest, rng)
