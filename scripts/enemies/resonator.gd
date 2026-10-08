@@ -6,11 +6,13 @@ extends Enemy
 ## the look and the numbers in data/enemies/resonator.tres).
 ## 1. It hovers far ahead, still, where the generator put it; as the player nears it eases into pacing
 ##    them hover_ahead in front (it keeps pace from then on, so the player never reaches it).
-## 2. Before each pulse, the warning: its halos spin up and swing into line facing the player, one on
-##    each note of the cult's three-note chime (resonator_chime, pleasant like a public-address jingle,
-##    the same every time: CHIME_NOTES), while its core, the halos' inner rings and its emitter glow red.
-## 3. At the warning's end it sends a red shockwave (resonator_pulse) rolling along the floor toward
-##    the player across every lane: a low band (ResonatorTuning.wave_height) that a jump clears. Later
+## 2. Before each pulse, the warning: its halos spin up and swing into line facing the player, one at
+##    each of LINE_UP_AT, while its core, the halos' inner rings and its emitter glow red. Its sound
+##    (resonator_warning, the owner's October 8, 2026 wording: "a crackling build of fire and a crashing
+##    wave") is a fire roaring and crackling up, flaring as each halo lines up, and breaking into a wave
+##    crash when the red wave leaves; the same every time.
+## 3. At the warning's end (the crash) it sends a red shockwave (resonator_pulse) rolling along the floor
+##    toward the player across every lane: a low band (ResonatorTuning.wave_height) that a jump clears. Later
 ##    in the zone it rests less between pulses, its waves roll faster, and some pulses send a second
 ##    wave double_gap behind the first.
 ## 4. After its pulses it pulls away ahead, powering down, and is gone.
@@ -42,9 +44,10 @@ extends Enemy
 enum State { APPROACH, PACE, WARNING, PULSE, LEAVE, DOWN }
 
 const STATE_NAMES: PackedStringArray = ["approach", "pace", "warning", "pulse", "leave", "down"]
-## The chime's three notes, in seconds from the warning's start (resonator_chime is made with them,
-## tools/asset_gen/sfx_bank_resonator.gd): each swings one halo into line, inner to outer.
-const CHIME_NOTES: Array[float] = [0.0, 0.42, 0.84]
+## When each halo swings into line, in seconds from the warning's start, inner to outer. The warning's
+## sound flares on each (resonator_warning is made with them, and with warning_seconds, where its crash
+## lands: tools/asset_gen/sfx_bank_resonator.gd).
+const LINE_UP_AT: Array[float] = [0.0, 0.42, 0.84]
 ## A halo swings into line from this long before its note to this long after it.
 const LINE_UP_BEFORE: float = 0.1
 const LINE_UP_AFTER: float = 0.2
@@ -406,7 +409,7 @@ func _start_warning() -> void:
 	_set_state(State.WARNING)
 	charge = 0.0
 	_log("warning")
-	_sound(&"resonator_chime")
+	_sound(&"resonator_warning")
 
 
 func _warning(p: float) -> void:
@@ -555,6 +558,10 @@ func hit_radius() -> float:
 
 
 func _on_defeated(_cause: StringName) -> void:
+	if state == State.WARNING and world.sounds != null:
+		# Its warning ends in a crash that releases the wave: with no wave coming, cut it off before it
+		# crashes (the death's own sound covers the cut).
+		world.sounds.stop(&"resonator_warning")
 	_set_state(State.DOWN)
 	charge = 0.0
 	_log("down")
@@ -576,8 +583,8 @@ func _log(event: String) -> void:
 	history.append([event, world.level_time(), world.player.distance])
 
 
-## Plays one of its sounds for everyone to hear (the chime is a public-address jingle, heard wherever
-## the player is) and notes it.
+## Plays one of its sounds for everyone to hear (its warning and wave are heard wherever the player
+## is) and notes it.
 func _sound(sound: StringName) -> void:
 	world.play_sfx(sound)
 	sounds.append([sound, world.level_time()])
@@ -593,13 +600,13 @@ func events(names: PackedStringArray) -> Array:
 
 
 ## How far halo `k` (0 the inner, 2 the outer) has swung into line for the warning: 0 at rest, rising
-## to 1 on its note of the chime (CHIME_NOTES), held while a double pulse's second wave leaves. The
+## to 1 at its moment in LINE_UP_AT (the sound flares), held while a double pulse's second wave leaves. The
 ## model follows it (and relaxes back after the pulse).
 func line_up(k: int) -> float:
 	if not alive:
 		return 0.0
 	if state == State.WARNING:
-		return smoothstep(CHIME_NOTES[k] - LINE_UP_BEFORE, CHIME_NOTES[k] + LINE_UP_AFTER, _state_time)
+		return smoothstep(LINE_UP_AT[k] - LINE_UP_BEFORE, LINE_UP_AT[k] + LINE_UP_AFTER, _state_time)
 	return 1.0 if state == State.PULSE else 0.0
 
 

@@ -173,8 +173,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     (jump on the ceiling and drop back onto it) or weapons kill it. Mechanical in most zones, a furry
     creature in Gangland and the Marketplace (in quick play, `--features=ceilings,barnacle_turret`)
   - the Resonator (from Golden 1): a golden broadcast spire hovering far ahead. When its halos line up
-    and its three-note chime plays, a red wave rolls along the floor across every lane: jump it, or be
-    on a wall or the ceiling. Shoot it down or wait until it leaves (in quick play, `--features=resonator`)
+    and a fire roars and crackles up, breaking into a crashing wave, a red wave rolls along the floor
+    across every lane: jump it, or be on a wall or the ceiling. Shoot it down or wait until it leaves
+    (in quick play, `--features=resonator`)
   - the Buzz Overdrive (from Corporate 1): a buzzsaw tank parked in its lane far ahead. It rolls ahead of
     you, then revs (the spin-up, its eyes flaring, a red line over its lane) and charges back down its lane,
     cutting the floor into a gap behind it: leave its lane. The armor or shield blocks it and the floor holds

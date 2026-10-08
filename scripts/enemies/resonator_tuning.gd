@@ -12,9 +12,9 @@ extends EnemyTuning
 ## zone; its easing in (approach_ease) and its generator margins are metres at that speed, stretched by
 ## the pace (DESIGN-TBD, docs/questions/g1.md).
 ## Values marked DESIGN-TBD are placeholders, not design decisions (docs/questions/c3.md): GDD §9.10
-## fixes only the sequence (warning with halos and chime, then a red wave along the floor across every
-## lane, a few pulses, then it leaves), the dodges (jump, a wall, the ceiling) and that it pulses faster
-## or sends double waves later in the zone.
+## fixes only the sequence (warning with halos and a crackling fire that breaks into a wave crash, then a
+## red wave along the floor across every lane, a few pulses, then it leaves), the dodges (jump, a wall,
+## the ceiling) and that it pulses faster or sends double waves later in the zone.
 
 @export_group("Zone scaling")
 ## DESIGN-TBD: the Resonator appears in the Golden Zone only (GDD §5), whose levels sit at the top of
@@ -52,8 +52,10 @@ extends EnemyTuning
 @export_range(1, 8) var pulses_early: int = 3
 @export_range(1, 8) var pulses_late: int = 4
 ## DESIGN-TBD: the warning before each pulse: its halos spin up and line up, facing the player, while
-## the chime plays (resonator_chime; its three notes come in the first 0.9 s, so keep this at least
-## 1 s). The wave leaves at its end.
+## resonator_warning builds (a roar and crackle that flare as each halo lines up, over Resonator.LINE_UP_AT,
+## the last at 0.84 s, so keep this at least 1 s). The wave leaves at its end, as the sound crashes. The
+## sound is made for this length (tools/asset_gen/sfx_bank_resonator.gd): after changing it, run
+## `tools/godot.sh sfx --only=resonator_warning` (test_resonator fails while the two differ).
 @export_range(1.0, 3.0, 0.05, "suffix:s") var warning_seconds: float = 1.3
 ## DESIGN-TBD: seconds from one pulse's last wave passing the player to the next pulse's warning
 ## (GDD §9.10: it pulses faster later in the zone).
