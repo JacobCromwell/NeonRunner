@@ -155,6 +155,10 @@ extends EnemyTuning
 ## How much later than planned a showing in its window may begin and still find its room (the runner jumping or
 ## changing lanes as it's due): the window holds that much more.
 @export_range(0.0, 3.0, 0.25, "suffix:s") var show_window_slack_seconds: float = 1.0
+## It claims its turn among the big attacks this long before its planned showing (as a Buzz Overdrive claims its
+## turn before its rev): another type's big attack that gets ready meanwhile (a drone's barrage, a Resonator's pulse)
+## waits for it, and one already on is over by the time it's due.
+@export_range(0.0, 5.0, 0.25, "suffix:s") var show_claim_seconds: float = 2.0
 
 @export_group("Wreck")
 ## The owner (October 8, 2026): however it's destroyed (a charge, a cut, a gap too wide to hop) it blows up where

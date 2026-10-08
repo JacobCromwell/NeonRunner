@@ -50,6 +50,7 @@ const RUN_AFTER: Array[String] = ["ramps", "ceilings", "pulsing", "speed_pads", 
 	"hover_truck", "octodog", "screech", "screech_vents", "drone", "generator", "wall_fences", "wall_fences_partial",
 	"buzz_overdrive", "barnacle_turret", "tithe_collector", "resonator", "gilded_sentinel"]
 const BuzzRules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
+const HoverTruckRules = preload("res://scripts/enemies/hover_truck_rules.gd")
 ## The arrival offsets tried around the preferred one (seconds between them).
 const OFFSET_STEP: float = 0.5
 
@@ -68,36 +69,97 @@ static func apply(gen: LevelGenerator) -> void:
 		orders.append(_arrival_order(gen, t, rng, b))
 	var chases: Array[Vector2] = []
 	var report: Array[Dictionary] = []
-	var taken: Array[bool] = []
-	taken.resize(baits.size())
-	# With its showing windows planned (task C6c), a level that introduces it gives its earliest bait the first one
-	# (its introduction); then baits whose chase has room for a showing get them first, earliest first; then the
-	# rest, earliest first, as without them.
-	var passes: Array[String] = []
-	if planner != null:
-		if gen.feature_start(TYPE) > 0.0:
-			passes.append("intro")
-		passes.append("window")
-	passes.append("any")
-	for kind: String in passes:
+	if planner == null:
+		# The earliest baits first.
 		for i: int in baits.size():
 			if report.size() >= t.per_level_max:
 				break
-			if taken[i]:
-				continue
 			var spots: Array[float] = _usable(gen, t, orders[i], keep_outs, chases)
 			if spots.is_empty():
 				continue
-			var seed: int = hash([gen.config.level_seed, TYPE, report.size()])
-			var plan: Dictionary = planner.plan(spots, seed) if planner != null else {}
-			if kind == "window" and plan.is_empty():
-				continue
-			taken[i] = true
-			report.append(_place(gen, t, planner, baits, spots, plan, seed))
+			report.append(_place(gen, t, planner, baits, spots, {}, hash([gen.config.level_seed, TYPE, report.size()])))
 			chases.append(chase_span(gen, t, float(report[-1]["at"])))
-			if kind == "intro":
-				break
+	else:
+		# With its showing windows planned (task C6c): of every set of baits whose chases fit together, the one with
+		# the most showing windows (then the most chases, then the earliest baits) gets them; a level that introduces
+		# it keeps its earliest bait's (its introduction).
+		var chosen: Array[Dictionary] = _choose(gen, t, planner, orders, keep_outs, gen.feature_start(TYPE) > 0.0)
+		for o: Dictionary in chosen:
+			planner.why_none = String(o["why"])
+			report.append(_place(gen, t, planner, baits, o["spots"], o["plan"], hash([gen.config.level_seed, TYPE, report.size()])))
 	gen.show_window_result = {"planned": planner != null, "chases": report}
+
+
+## The chases a level gets (task C6c), along the track: of every set of at most per_level_max baits (`orders`: each
+## one's arrivals, _arrival_order) whose chases keep spacing_seconds apart, the one with the most showing windows
+## between them, then the most chases, then the earliest baits; with `intro`, always with the first bait that may
+## have one (a level's introduction of the truck). Each chase's window is planned as the level stands, and planned
+## again around the chases before it where those take its arrival away. Each: {spots, plan, at, span, why}.
+static func _choose(gen: LevelGenerator, t: EnforcerTruckTuning, planner: ShowPlanner, orders: Array,
+		keep_outs: Array[Vector2], intro: bool) -> Array[Dictionary]:
+	var alone: Array[Dictionary] = []
+	var usable: Array[int] = []
+	for i: int in orders.size():
+		alone.append(_option(gen, t, planner, orders[i], keep_outs, []))
+		if not alone[i].is_empty():
+			usable.append(i)
+	var sets: Array = [[]]
+	for i: int in usable:
+		var grown: Array = []
+		for set_: Array in sets:
+			if set_.size() < t.per_level_max:
+				grown.append(set_ + [i])
+		sets.append_array(grown)
+	var best: Array[Dictionary] = []
+	var best_score := Vector2i(-1, -1)
+	var best_key: Array[int] = []
+	for set_: Array in sets:
+		if intro and not usable.is_empty() and not set_.has(usable[0]):
+			continue
+		var picked: Array[Dictionary] = []
+		var chases: Array[Vector2] = []
+		var windows: int = 0
+		for i: int in set_:
+			var o: Dictionary = alone[i]
+			if arrival_problem(gen, t, float(o["at"]), [], chases) != "":
+				o = _option(gen, t, planner, orders[i], keep_outs, chases)
+			if o.is_empty():
+				picked.clear()
+				break
+			picked.append(o)
+			chases.append(o["span"])
+			windows += 0 if (o["plan"] as Dictionary).is_empty() else 1
+		if picked.size() != set_.size():
+			continue
+		var score := Vector2i(windows, set_.size())
+		var key: Array[int] = []
+		key.assign(set_)
+		if score.x > best_score.x or (score.x == best_score.x and score.y > best_score.y) \
+				or (score == best_score and _earlier(key, best_key)):
+			best_score = score
+			best_key = key
+			best = picked
+	return best
+
+
+## One bait's chase (_choose): where it may arrive (its `order` kept to where none of `chases` and `keep_outs` is in
+## the way), its showing window if one fits (ShowPlanner.plan), and where it arrives then. {} if it may arrive nowhere.
+static func _option(gen: LevelGenerator, t: EnforcerTruckTuning, planner: ShowPlanner, order: Array[float],
+		keep_outs: Array[Vector2], chases: Array[Vector2]) -> Dictionary:
+	var spots: Array[float] = _usable(gen, t, order, keep_outs, chases)
+	if spots.is_empty():
+		return {}
+	var plan: Dictionary = planner.plan(spots, 0)
+	var at: float = float(plan["arrive"]) if not plan.is_empty() else spots[0]
+	return {"spots": spots, "plan": plan, "at": at, "span": chase_span(gen, t, at), "why": planner.why_none}
+
+
+## True if the sorted bait indices `a` come before `b` (the earliest baits first).
+static func _earlier(a: Array[int], b: Array[int]) -> bool:
+	for k: int in mini(a.size(), b.size()):
+		if a[k] != b[k]:
+			return a[k] < b[k]
+	return a.size() < b.size()
 
 
 ## Adds a truck arriving at `spots[0]`, or where showing window `plan` (ShowPlanner.plan) has it arrive, taking out
@@ -355,15 +417,14 @@ class ShowPlanner:
 	extends RefCounted
 	## Seconds after its arrival a mid-chase showing may begin, past the time it takes to close in to its follow gap.
 	const SETTLE_SECONDS: float = 0.5
-	## Enemies that neither shoot nor make a big attack (a fence generator; a Sewer Screech, whose swipe is a floor
-	## enemy's in its lane): the room's lanes keep the truck and the runner's way off them (floor enemies), and its
-	## shadow off where they stand, so they may stand in a window.
-	const PASSIVE_TYPES: PackedStringArray = ["generator", "screech"]
-	## Enemies a window may take out (plain ones: never a host, nor the first of a kind the level introduces, and
-	## never the level's last of its kind): ones that shoot, where they would (busy), and passive floor ones
-	## where they stand in its way (PASSIVE_REMOVABLE).
-	const REMOVABLE_TYPES: PackedStringArray = ["cyborg", "window_cyborg"]
-	const PASSIVE_REMOVABLE: PackedStringArray = ["screech"]
+	## Enemies that make no big attack (the truck's checks in play never wait for their shots: only a big attack's,
+	## EnemyDirector.note_attack_shot) and stand where the layout says, on the floor, a wall or a ceiling over a lane:
+	## the room's lanes keep the truck and the runner's way off the floor ones, and its shadow off where they all
+	## stand (EnforcerTruckRoom), so they may stand in a window where those checks hold.
+	const ROOM_TYPES: PackedStringArray = ["cyborg", "window_cyborg", "screech", "generator", "barnacle_turret"]
+	## Of those, the ones a window may take out where they're in its way: plain ones (never a host, nor the first
+	## of a kind the level introduces, and never the level's last of its kind).
+	const REMOVABLE_TYPES: PackedStringArray = ["cyborg", "window_cyborg", "screech"]
 	## Metres of track around a window a local room holds (_local_room): what its checks reach and more.
 	const LOCAL_MARGIN: float = 60.0
 	## Metres behind the runner as a showing begins from which an enemy about counts (the truck's in-play checks).
@@ -411,11 +472,12 @@ class ShowPlanner:
 		var counts: Dictionary = {}
 		var settle: float = t.ease_seconds(t.arrive_gap - t.follow_gap, t.gap_speed_max) + SETTLE_SECONDS
 		var v: float = gen.speed
-		for phase: Vector2i in [Vector2i(0, 1), Vector2i(1, 1), Vector2i(0, 0), Vector2i(1, 0)]:
-			var clearing: bool = phase.x == 1
-			var whole: bool = phase.y == 1
+		# Phases: Vector3i(taking things out, its whole stay, no runner off the floor as it begins).
+		var phases: Array[Vector3i] = [Vector3i(0, 1, 1), Vector3i(0, 1, 0), Vector3i(1, 1, 1), Vector3i(1, 1, 0),
+			Vector3i(0, 0, 1), Vector3i(0, 0, 0), Vector3i(1, 0, 1), Vector3i(1, 0, 0)]
+		for phase: Vector3i in phases:
 			for at: float in spots:
-				var w: Dictionary = _window(at, 0.0, t.arrive_gap, seed, clearing, whole, counts)
+				var w: Dictionary = _window(at, 0.0, t.arrive_gap, seed, phase, counts)
 				if not w.is_empty():
 					return w
 			for at: float in spots:
@@ -423,17 +485,17 @@ class ShowPlanner:
 				var last: float = minf(t.chase_seconds - t.show_min_seconds, room.seconds_to_bait(at, v))
 				var c: float = settle
 				while c <= last:
-					var w: Dictionary = _window(at, c, t.follow_gap, seed, clearing, whole, counts)
+					var w: Dictionary = _window(at, c, t.follow_gap, seed, phase, counts)
 					if not w.is_empty():
 						return w
 					c += OFFSET_STEP
 		# Else after its first bait: a runner who didn't destroy it with that bait sees it then (and one who did sees
 		# its wreck blow up in view, EnforcerTruck._explode). At the preferred arrival only.
 		var first: float = room.seconds_to_bait(spots[0], v)
-		for phase: Vector2i in [Vector2i(0, 1), Vector2i(1, 1), Vector2i(0, 0), Vector2i(1, 0)]:
+		for phase: Vector3i in phases:
 			var c: float = maxf(first, settle)
 			while c <= t.chase_seconds - t.show_min_seconds:
-				var w: Dictionary = _window(spots[0], c, t.follow_gap, seed, phase.x == 1, phase.y == 1, counts)
+				var w: Dictionary = _window(spots[0], c, t.follow_gap, seed, phase, counts)
 				if not w.is_empty():
 					w["after_bait"] = true
 					return w
@@ -447,10 +509,14 @@ class ShowPlanner:
 
 
 	## The window of a showing beginning `c` seconds into the chase of a truck arriving at `at`, its front `gap`
-	## behind the runner, or {} (counting why in `counts`): staying alongside show_seconds (`whole`), or as long as
-	## fits before its bait's turn (show_min_seconds at least); with `clearing`, taking out what's in its way (only
-	## where it needs something taken out: one that needs nothing was tried without).
-	func _window(at: float, c: float, gap: float, seed: int, clearing: bool, whole: bool, counts: Dictionary) -> Dictionary:
+	## behind the runner, or {} (counting why in `counts`), in `phase` (Vector3i): staying alongside show_seconds
+	## (y), or as long as fits before its bait's turn (show_min_seconds at least); taking out what's in its way (x;
+	## only where it needs something taken out: one that needs nothing was tried without); with no runner in any
+	## lane off the floor as it begins (z: an anti-grav pad's ceiling or a ramp's wall run).
+	func _window(at: float, c: float, gap: float, seed: int, phase: Vector3i, counts: Dictionary) -> Dictionary:
+		var clearing: bool = phase.x == 1
+		var whole: bool = phase.y == 1
+		var strict: bool = phase.z == 1
 		var v: float = gen.speed
 		var d: float = at + c * v
 		var hold: float = EnforcerTruckRoom.hold_for(t, gap, room.seconds_to_bait(d, v), t.chase_seconds - c)
@@ -476,21 +542,16 @@ class ShowPlanner:
 		var stay: float = hold if whole else t.show_min_seconds
 		var calm_to: float = maxf(d + (t.show_close_seconds(gap) + stay) * v,
 			d2 + (t.show_close_seconds(gap2) + minf(stay, hold2)) * v)
-		var blockers: Array[Dictionary] = []
-		var other: String = _busy_in(d, Vector2(d - BEHIND, calm_to), Vector2(from, to), blockers)
+		var other: String = _busy_in(d, Vector2(d - BEHIND, calm_to), Vector2(from, to))
 		if other != "":
 			return _none(counts, other)
-		if not blockers.is_empty() and not clearing:
-			return _none(counts, String(blockers[0]["kind"]))
+		var off: String = _off_the_floor(d - BEHIND, d2) if strict else ""
+		if off != "":
+			return _none(counts, off)
 		var starts: Array[Vector4] = [Vector4(d, gap, hold, 0.0), Vector4(d2, gap2, hold2, 0.0)]
 		var w: Dictionary = {"arrive": at, "at": d, "from": from, "to": to, "hold": hold, "arrival": c == 0.0,
 			"gaps": [], "fences": [], "enemies": []}
 		var gone: Array[Dictionary] = []
-		for b: Dictionary in blockers:
-			if not _in(gone, b["entry"]):
-				gone.append(b["entry"])
-		if not _leaves_one_each(gone):
-			return _none(counts, String(blockers[0]["kind"]))
 		if not clearing:
 			var lane: int = _lanes_fail(room, starts, seed)
 			return w if lane < 0 else _none(counts, "no lane beside a runner in lane %d" % lane)
@@ -509,13 +570,16 @@ class ShowPlanner:
 					fixed = true
 				else:
 					pieces.append(f)
-		# The passive floor enemies that stand where it reads the floor or could hide one (a Sewer Screech's manhole).
+		# The plain enemies that stand where it reads the floor or where it could hide one from the camera.
 		for e: Dictionary in gen.layout.enemies:
-			if not PASSIVE_REMOVABLE.has(String(e.get("type", ""))) or _in(gone, e) \
-					or (gen.feature_start(String(e["type"])) > 0.0 and is_same(_first_of(String(e["type"])), e)):
+			var type: String = String(e.get("type", ""))
+			if not REMOVABLE_TYPES.has(type) or bool((e.get("params", {}) as Dictionary).get("host", false)) \
+					or (gen.feature_start(type) > 0.0 and is_same(_first_of(type), e)):
 				continue
 			var span: Vector2 = LevelGenerator.enemy_floor_span(e, gen.pace)
-			if span.y >= reads.x - EnforcerTruckRoom.ENEMY_ROOM and span.x <= to + EnforcerTruckRoom.ENEMY_ROOM:
+			if span.y < span.x:
+				span = Vector2(float(e["at"]), float(e["at"]))
+			if span.y >= d - BEHIND - EnforcerTruckRoom.ENEMY_ROOM and span.x <= to + EnforcerTruckRoom.ENEMY_ROOM:
 				pieces.append(e)
 		var lo: float = from - LOCAL_MARGIN
 		var hi: float = to + LOCAL_MARGIN
@@ -609,6 +673,25 @@ class ShowPlanner:
 		return EnforcerTruckRoom.build(lay, geo, gen.tuning, t, gen.speed)
 
 
+	## What would have a runner in some lane off the floor as a showing begins between `from` and `to` ("" if
+	## nothing): an anti-grav pad's ceiling run (from its pad to its ceiling's landing zone's end) or a ramp's wall
+	## run (from the ramp to where it drops the runner back, RampLaunch).
+	func _off_the_floor(from: float, to: float) -> String:
+		for p: Dictionary in gen.layout.pads:
+			var at: float = float(p["at"])
+			if at > to:
+				continue
+			var h: Dictionary = gen.layout.hull_at(at + gen.tuning.pad_length, int(p["lane"]))
+			var until: float = gen.zones.landing_zone(h).y if not h.is_empty() else at + gen.tuning.pad_length
+			if until >= from:
+				return "a runner on a ceiling (a pad's)"
+		for r: Dictionary in gen.layout.ramps:
+			var at: float = float(r["at"])
+			if at <= to and maxf(gen.ramp_launch(r).end(), at + gen.tuning.ramp_length) >= from:
+				return "a runner on a wall (a ramp's)"
+		return ""
+
+
 	## The layout's first enemy of `type` along the track ({} if none).
 	func _first_of(type: String) -> Dictionary:
 		var out: Dictionary = {}
@@ -644,12 +727,10 @@ class ShowPlanner:
 		return {}
 
 
-	## What keeps a showing beginning at `d` from its window ("" if nothing), with the enemies it could take out
-	## added to `removable`: another enemy's attack or stay near the runner reaching `calm` (Vector2), a big attack
-	## that waits for its turn (a Resonator's pulse) where the showing begins (show_window_slack_seconds late at
-	## most), or a floor cut's attack or a hover truck's or Gilded Sentinel's stay reaching `kept` (the whole
-	## window); but for a bait's whose turn comes after the showing begins.
-	func _busy_in(d: float, calm: Vector2, kept: Vector2, removable: Array[Dictionary]) -> String:
+	## What keeps a showing beginning at `d` from its window ("" if nothing): another enemy's big attack or stay
+	## near the runner reaching `calm` (Vector2), or a floor cut's attack or a hover truck's or Gilded Sentinel's
+	## stay reaching `kept` (the whole window); but for a bait's whose turn comes after the showing begins.
+	func _busy_in(d: float, calm: Vector2, kept: Vector2) -> String:
 		var lo: float = minf(calm.x, kept.x)
 		var hi: float = maxf(calm.y, kept.y)
 		var i: int = busy_starts.bsearch(lo - longest - 0.001)
@@ -658,21 +739,16 @@ class ShowPlanner:
 			i += 1
 			var span: Vector2 = b["span"]
 			var reach: Vector2 = kept if bool(b["whole"]) else calm
-			if bool(b.get("waits", false)):
-				reach = Vector2(calm.x, d + (t.show_window_slack_seconds + 0.5) * gen.speed)
 			if span.y < reach.x or span.x > reach.y:
 				continue
 			var turn: float = float(b["turn"])
 			if turn < INF and turn >= d - 0.001:
 				continue
-			if not bool(b["removable"]):
-				return String(b["kind"])
-			if not _in(removable, b):
-				removable.append(b)
+			return String(b["kind"])
 		return ""
 
 
-	## Indexes every other enemy's attack or stay near the runner and every floor cut's window (busy), and the
+	## Indexes every other enemy's big attack or stay near the runner and every floor cut's attack (busy), and the
 	## fences a fence generator powers (powered).
 	func _index_busy() -> void:
 		var hooks: Dictionary = {}
@@ -684,67 +760,66 @@ class ShowPlanner:
 		var buzz := EnemyDirector.tuning_for("buzz_overdrive") as BuzzOverdriveTuning
 		var claim: float = buzz.claim_seconds if buzz != null else 2.5
 		var gt := EnemyDirector.tuning_for("generator") as FenceGeneratorTuning
-		var firsts: Dictionary = {}
-		for e: Dictionary in gen.layout.enemies:
-			var type: String = String(e.get("type", ""))
-			if not firsts.has(type) or float(e["at"]) < float((firsts[type] as Dictionary)["at"]):
-				firsts[type] = e
+		var ht := EnemyDirector.tuning_for("hover_truck") as HoverTruckTuning
+		var dream := EnemyDirector.tuning_for("bad_dream") as BadDreamTuning
 		var out: Array[Dictionary] = []
 		for e: Dictionary in gen.layout.enemies:
 			var type: String = String(e.get("type", ""))
+			var at: float = float(e["at"])
 			var kind: String = "a %s about" % type.replace("_", " ")
+			var whole: bool = StringName(type) in EnforcerTruckRoom.NO_SHOW_TYPES
 			match type:
 				TYPE:
 					continue
 				"buzz_overdrive":
 					if not BuzzRules.cut_of(gen.layout, e).is_empty():
-						continue  # Its cut's window, below.
+						continue  # Its cut's attack, below.
 				"octodog":
 					var anchors: Array = (e.get("params", {}) as Dictionary).get("charge_at", [])
 					if not anchors.is_empty():
 						out.append(_busy(Vector2(float(anchors[0]) - gen.metres(Octodog.OTHER_ENEMY_BEFORE),
-							float(anchors[-1]) + dog_window), float(anchors[0]), false, "an Octodog's charges", e, false))
+							float(anchors[-1]) + dog_window), float(anchors[0]), false, "an Octodog's charges", e))
 						continue
 				"generator":
 					if gt != null:
-						powered.append_array(FenceGenerator.fences_in_reach(gen.layout, geo, float(e["at"]),
-							int(e.get("lane", 0)), gt.emp_radius))
-				"resonator":
-					# Its pulses, one by one, and only where a showing begins (`waits`): between them it paces the runner
-					# hover_ahead in front, beyond the reach of what the truck could hide, and a pulse due during a showing
-					# waits for its turn (the director's turn_wait_max at most, as for a volley).
-					var pulses: Array[Vector2] = LevelGenerator.DangerDensity.resonator_pulse_windows(gen, e)
-					if not pulses.is_empty():
-						for w: Vector2 in pulses:
-							var b: Dictionary = _busy(w, INF, false, "a Resonator's pulse", e, false)
-							b["waits"] = true
-							out.append(b)
+						powered.append_array(FenceGenerator.fences_in_reach(gen.layout, geo, at, int(e.get("lane", 0)),
+							gt.emp_radius))
+				"resonator", "drone":
+					# Big attacks that take turns, from beside the runner's way: a Resonator paces the runner hover_ahead
+					# in front, beyond the reach of what the truck could hide, a drone hovers over the runner's own lane,
+					# and the truck claims its turn before its planned showing (EnforcerTruck.claiming), so a pulse or a
+					# barrage due meanwhile waits for it (turn_wait_max at most, as for a volley).
+					continue
+				"hover_truck":
+					# In play until it has left, after its longest stay.
+					if ht != null:
+						out.append(_busy(Vector2(HoverTruckRules.window_start(ht, at, gen.pace),
+							HoverTruckRules.window_end(ht, at, v)), INF, true, kind, e))
 						continue
-			if PASSIVE_TYPES.has(type):
+
+			if ROOM_TYPES.has(type):
+				# A host's Bad Dream chase, where one is stomped (GDD §9.7: an exclusive big attack).
+				if bool((e.get("params", {}) as Dictionary).get("host", false)) and dream != null:
+					out.append(_busy(dream.chase_stretch(at, v), INF, false, "a host's Bad Dream chase", e))
 				continue
-			var whole: bool = StringName(type) in EnforcerTruckRoom.NO_SHOW_TYPES
-			var params: Dictionary = e.get("params", {})
-			# Never a host, nor the first of a kind the level introduces (LevelConfig.feature_starts).
-			var removable: bool = REMOVABLE_TYPES.has(type) and not bool(params.get("host", false)) \
-				and not (gen.feature_start(type) > 0.0 and is_same(firsts.get(type), e))
 			var et := EnemyDirector.tuning_for(type) as EnemyTuning
 			if et is ThiefTuning and et.get(&"approach_speed") != null:
 				# A thief comes in from start_ahead ahead of the runner as they reach spawn_lead before its spot, and
 				# weaves in the lanes ahead of them until it meets them.
-				var from: float = float(e["at"]) - et.spawn_lead
+				var from: float = at - et.spawn_lead
 				var meet: float = float(et.get(&"start_ahead")) / maxf(float(et.get(&"approach_speed")), 0.01)
-				out.append(_busy(Vector2(from, from + (meet + 1.0) * v), INF, whole, kind, e, removable))
+				out.append(_busy(Vector2(from, from + (meet + 1.0) * v), INF, whole, kind, e))
 				continue
 			var k: Vector2 = LevelGenerator.DangerDensity.attack_window(gen, e, hooks)
 			if k.y >= k.x:
-				out.append(_busy(k, INF, whole, kind, e, removable))
+				out.append(_busy(k, INF, whole, kind, e))
 		for c: Dictionary in gen.layout.cuts:
 			var w: Vector2 = FloorCutPlan.attack_window(c, v)
 			var turn: float = INF
 			for e: Dictionary in gen.layout.enemies:
 				if String(e.get("type", "")) == "buzz_overdrive" and is_same(BuzzRules.cut_of(gen.layout, e), c):
 					turn = FloorCutPlan.warn_at(c) - float(c.get("claim_seconds", claim)) * v
-			out.append(_busy(w, turn, true, "a Buzz Overdrive's attack" if turn < INF else "a floor cut", {}, false))
+			out.append(_busy(w, turn, true, "a Buzz Overdrive's attack" if turn < INF else "a floor cut", {}))
 		out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return (a["span"] as Vector2).x < (b["span"] as Vector2).x)
 		for b: Dictionary in out:
 			busy.append(b)
@@ -752,5 +827,5 @@ class ShowPlanner:
 			longest = maxf(longest, (b["span"] as Vector2).y - (b["span"] as Vector2).x)
 
 
-	static func _busy(span: Vector2, turn: float, whole: bool, kind: String, entry: Dictionary, removable: bool) -> Dictionary:
-		return {"span": span, "turn": turn, "whole": whole, "kind": kind, "entry": entry, "removable": removable}
+	static func _busy(span: Vector2, turn: float, whole: bool, kind: String, entry: Dictionary) -> Dictionary:
+		return {"span": span, "turn": turn, "whole": whole, "kind": kind, "entry": entry}

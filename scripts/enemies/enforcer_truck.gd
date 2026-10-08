@@ -674,6 +674,21 @@ func show_at() -> float:
 	return float((show as Dictionary).get("at", INF)) if show is Dictionary else INF
 
 
+## True while it claims its turn among the big attacks for its planned showing (task C6c; as a Buzz Overdrive claims
+## its turn before its rev): from show_claim_seconds of running before the runner reaches where it's due (waiting to
+## arrive, for one as it arrives) until it begins (its showing holds the turn then) or the runner is
+## show_window_slack_seconds past where it's due, while it hasn't shown itself yet. Another type's big attack that
+## gets ready meanwhile waits for it (is_major_attack_active; EnemyDirector), one already on ends first.
+func claiming() -> bool:
+	var due: float = show_at()
+	if due == INF or shows > 0 or not alive or state == State.LEAVING or state == State.WRECKED \
+			or tuning.show_count <= 0 or world == null or world.player == null:
+		return false
+	var d: float = world.player_distance()
+	var v: float = _plan_speed()
+	return d >= due - tuning.show_claim_seconds * v and d <= due + tuning.show_window_slack_seconds * v
+
+
 ## True while its volleys wait for its planned showing (task C6c: the generator kept its window calm for it): it
 ## hasn't shown itself yet, and a volley warned now would still be on as the runner reaches where the showing is
 ## due, until they're show_window_slack_seconds of running past it (the window holds a showing begun that late).
@@ -943,13 +958,15 @@ func _floor_enemy_in(l: int, from: float, to: float) -> bool:
 
 
 ## True while another enemy's big attack is on (GDD §9) or its shots are still on their way to the runner, or,
-## with `waiting`, one is waiting for its turn: a showing never meets another attack's warning.
+## with `waiting`, one is waiting for its turn (but while it claims its turn for its planned showing, when they wait
+## for it: claiming): a showing never meets another attack's warning.
 func _attack_on(waiting: bool) -> bool:
+	var ahead: bool = waiting and not claiming()
 	for e: Enemy in world.director.active:
 		if not is_instance_valid(e) or e == self or not e.alive:
 			continue
 		if e.is_major_attack_active() or world.director.shots_on_their_way(e.type_id) \
-				or (waiting and world.director.is_waiting(e)):
+				or (ahead and world.director.is_waiting(e)):
 			return true
 	return false
 
@@ -1056,11 +1073,13 @@ func _update_siren(delta: float) -> void:
 
 ## Its volleys are a big attack (GDD §9; §9.13, proposed): from its warning until its last bolt has passed
 ## the runner. Its showings take a turn the same way (they take a lane from the runner, and GDD §9.13 keeps
-## every attack's warning away from them): from when one begins until it has dropped back out of view.
+## every attack's warning away from them): from when one begins until it has dropped back out of view, and for its
+## planned showing from when it claims its turn (claiming, task C6c).
 func is_major_attack_active() -> bool:
 	if not alive:
 		return false
-	return volley != Volley.IDLE or (show_phase != Show.NONE and not (show_phase == Show.DROP_BACK and gap >= EnforcerTruckRoom.OUT_OF_VIEW))
+	return volley != Volley.IDLE or (show_phase != Show.NONE and not (show_phase == Show.DROP_BACK and gap >= EnforcerTruckRoom.OUT_OF_VIEW)) \
+		or claiming()
 
 
 ## Seconds until it may warn of its next volley, counted from the last one's end: the interval, quicker for

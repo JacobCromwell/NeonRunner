@@ -13,7 +13,8 @@ extends RefCounted
 ## - deadly: what would wreck it (gaps too wide to hop, floor cuts' lane windows); it hops the other gaps.
 ## And: where its baits' turns begin (an Octodog's planned wind-ups; a Buzz Overdrive's claim on its turn before
 ## its rev), where the enemies that keep it from showing itself come into play (NO_SHOW_TYPES), and
-## the layout's enemies by where they stand (for what its body could hide from the camera).
+## the layout's enemies by where they stand (for what its body could hide from the camera: floor enemies in their
+## lanes, wall enemies at their walls, Barnacle Turrets over their lanes).
 
 ## A floor enemy keeps this much of its lane (metres either side of its reach) from a showing and an escape.
 const ENEMY_ROOM: float = 3.0
@@ -28,6 +29,9 @@ const OUT_OF_VIEW: float = 5.0
 ## it would let the runner pass). Others wait for its showing's turn as for a volley's (a Resonator's pulse moves
 ## on).
 const NO_SHOW_TYPES: Array[StringName] = [&"hover_truck", &"gilded_sentinel"]
+## Enemies that stay where the layout puts them over a lane, off the floor (a Barnacle Turret under its ceiling): the
+## layout's shadow counts them where they hang (task C6c), as the truck's in play does.
+const HANGS_OVER_LANE: PackedStringArray = ["barnacle_turret"]
 const TYPE: String = "enforcer_truck"
 const BuzzRules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
 
@@ -41,8 +45,8 @@ var deadly: Array[PackedVector2Array] = []
 var baits: PackedFloat32Array = PackedFloat32Array()
 ## The enemies that keep it from showing itself: Vector2(where one comes into play, its `at`), in order.
 var quiet: Array[Vector2] = []
-## The layout's enemies: Vector2(at, world x) in order (a floor enemy at its lane's middle, a wall enemy at its
-## wall; fliers left out).
+## The layout's enemies: Vector2(at, world x) in order (a floor enemy or a Barnacle Turret at its lane's middle, a
+## wall enemy at its wall; fliers left out).
 var planned: Array[Vector2] = []
 
 
@@ -109,6 +113,8 @@ static func build(layout: LevelLayout, geometry: TrackGeometry, mt: MovementTuni
 			room.planned.append(Vector2(at, geometry.lane_x(clampi(int(e.get("lane", 0)), 0, lanes - 1))))
 		elif int(e.get("side", 0)) != 0:
 			room.planned.append(Vector2(at, signf(float(e["side"])) * geometry.wall_x()))
+		elif HANGS_OVER_LANE.has(type):
+			room.planned.append(Vector2(at, geometry.lane_x(clampi(int(e.get("lane", 0)), 0, lanes - 1))))
 	warns.sort()
 	room.baits = PackedFloat32Array(warns)
 	room.quiet.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
