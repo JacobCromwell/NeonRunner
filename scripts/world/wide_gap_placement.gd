@@ -69,6 +69,8 @@ const SPREAD_SECONDS: float = 10.0
 ## Seconds of run before an Enforcer Truck would give up, kept free of its preferred wider gap (it may be
 ## dropping back by then).
 const CHASE_END_SECONDS: float = 3.0
+## Metres between the spots a new row is tried at along a free stretch (_add_one).
+const ADD_STEP: float = 1.0
 const EMPTY := Vector2(INF, -INF)
 
 
@@ -170,13 +172,14 @@ static func rows_of(gen: LevelGenerator) -> Array[Vector2]:
 	return out
 
 
-## The rows of `layout` (GapDensity.rows) longer than `fraction` of a jump of `jump` metres: a level's wider
-## gaps (its other rows are 0.55 of a jump at most), for the tests and the review tools.
+## The rows of `layout` (GapDensity.rows) longer than `fraction` of a jump of `jump` metres, along the track: a
+## level's wider gaps (its other rows are 0.55 of a jump at most), for the tests and the review tools.
 static func wide_rows(layout: LevelLayout, jump: float, fraction: float) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for row: Dictionary in GapDensity.rows(layout):
 		if float(row["end"]) - float(row["start"]) > fraction * jump + EPSILON:
 			out.append(row)
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
 	return out
 
 
@@ -505,17 +508,17 @@ static func _add_one(p: _Pass, window: Vector2, target: float) -> bool:
 	var n: int = lay.lane_count
 	var from: float = maxf(window.x, gen.config.start_clear_distance)
 	var to: float = minf(window.y, lay.length - gen.config.end_clear_distance)
-	# A conservative first sift (the widest margin anywhere), then fits() decides.
-	var widest: float = maxf(maxf(p.t.clear_before_seconds, p.t.clear_after_seconds),
-		maxf(gen.config.spacing_seconds_easy, gen.config.spacing_seconds_hard)) * gen.speed
+	# A first sift with the narrowest margin anywhere (fits() then decides, spot by spot).
+	var narrowest: float = maxf(minf(p.t.clear_before_seconds, p.t.clear_after_seconds),
+		minf(gen.config.spacing_seconds_easy, gen.config.spacing_seconds_hard)) * gen.speed
 	var busy: Array[Vector2] = []
 	for keep: Dictionary in p.keeps:
 		if int(keep["lane"]) >= 0:
 			continue  # One lane only: the new row leaves it open (below).
 		var v: Vector2 = keep["span"]
-		busy.append(v if bool(keep["row_only"]) else Vector2(v.x - widest, v.y + widest))
+		busy.append(v if bool(keep["row_only"]) else Vector2(v.x - narrowest, v.y + narrowest))
 	for g: Dictionary in lay.gaps:
-		busy.append(Vector2(float(g["start"]) - widest, float(g["end"]) + widest))
+		busy.append(Vector2(float(g["start"]) - narrowest, float(g["end"]) + narrowest))
 	var room: float = p.t.spacing_seconds * gen.speed
 	for r: Vector2 in p.rows:
 		busy.append(Vector2(r.x - room - p.length, r.y + room))
@@ -524,20 +527,29 @@ static func _add_one(p: _Pass, window: Vector2, target: float) -> bool:
 	for free: Vector2 in LevelGenerator.free_stretches(busy, from, to):
 		if free.y - free.x < p.length:
 			continue
-		var start: float = clampf(target, free.x, free.y - p.length)
-		var span := Vector2(start, start + p.length)
-		var kept: Array[int] = _kept_lanes(gen, p.t, span, p.keeps)
-		if kept.size() > 1:
-			continue
-		var lanes: Array[int] = []
-		for lane: int in n:
-			if kept.is_empty() or lane != kept[0]:
-				lanes.append(lane)
-		if not fits(gen, p.t, span, {"start": span.x, "end": span.y, "lanes": lanes}, p.keeps):
-			continue
-		if best.y < best.x or absf(span.x - target) < absf(best.x - target):
-			best = span
-			best_kept = -1 if kept.is_empty() else kept[0]
+		# The spots along the stretch, nearest `target` first: the first that fits.
+		var spots: Array[float] = []
+		var spot: float = free.x
+		while spot <= free.y - p.length + EPSILON:
+			spots.append(spot)
+			spot += ADD_STEP
+		spots.append(clampf(target, free.x, free.y - p.length))
+		spots.sort_custom(func(a: float, b: float) -> bool: return absf(a - target) < absf(b - target))
+		for start: float in spots:
+			if best.y >= best.x and absf(start - target) >= absf(best.x - target):
+				break
+			var span := Vector2(start, start + p.length)
+			var kept: Array[int] = _kept_lanes(gen, p.t, span, p.keeps)
+			if kept.size() > 1:
+				continue
+			var lanes: Array[int] = []
+			for lane: int in n:
+				if kept.is_empty() or lane != kept[0]:
+					lanes.append(lane)
+			if fits(gen, p.t, span, {"start": span.x, "end": span.y, "lanes": lanes}, p.keeps):
+				best = span
+				best_kept = -1 if kept.is_empty() else kept[0]
+				break
 	if best.y < best.x:
 		return false
 	var open: int = p.rng.randi_range(0, n - 1)

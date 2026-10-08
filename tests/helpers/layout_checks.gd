@@ -720,7 +720,8 @@ static func check_turrets(suite: TestSuite, layout: LevelLayout, config: LevelCo
 ## Wider gaps (task G7; owner, October 7, 2026, GDD §9.13 "Holes": a couple a level, uncommon, still jumpable,
 ## and too wide for an Enforcer Truck following the runner in to hop), in a level that asks for them
 ## (LevelConfig.wide_gaps; WideGapPlacement), at the level's own run speed:
-## - as many as the level asks for, each its WideGapTuning.jump_fraction of a jump: more than the truck hops
+## - as many as the level asks for (on a seed not its own, at least one), each its WideGapTuning.jump_fraction of a
+##   jump: more than the truck hops
 ##   (EnforcerTruckTuning.max_hop_jump_fraction) and no more than a level may ask a runner to jump
 ##   (max_gap_jump_fraction); spacing_seconds apart;
 ## - never stacked with another demand (WideGapPlacement.blocker): from its take-off margin to its landing margin
@@ -741,7 +742,10 @@ static func check_wide_gaps(suite: TestSuite, layout: LevelLayout, config: Level
 		suite.check(rows.is_empty(), "no wider gaps where the level asks for none (%d) %s" % [rows.size(), tag])
 		return
 	var t: WideGapTuning = WideGapPlacement.tuning()
-	suite.check(rows.size() == config.wide_gaps, "the level has its %d wider gaps (%d) %s" % [config.wide_gaps, rows.size(), tag])
+	# Every campaign level gets its count on its own seed (test_wide_gaps); on another seed a level crowded with
+	# other demands may fit one fewer (the generator says so, LevelGenerator.wide_gap_result), never none.
+	suite.check(rows.size() <= config.wide_gaps and rows.size() >= maxi(config.wide_gaps - 1, mini(config.wide_gaps, 1)),
+		"the level has its %d wider gaps, or one fewer where nothing else fits (%d) %s" % [config.wide_gaps, rows.size(), tag])
 	var gen: LevelGenerator = LevelGenerator.for_layout(config, suite.tuning, layout)
 	var keeps: Array[Dictionary] = WideGapPlacement.keeps_of(gen)
 	var lead: float = LevelGenerator.doodad_lead_for(gen.tuning)

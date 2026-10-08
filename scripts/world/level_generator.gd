@@ -951,7 +951,8 @@ func missing_features(needed: PackedStringArray) -> PackedStringArray:
 ## Track distances of everything `feature` placed in `layout`, in order: ramps (ramps), anti-grav
 ## pads (ceilings), speed pads (speed_pads), pulsing fences (pulsing), full-height wall fences
 ## (wall_fences) and partial ones (wall_fences_partial), host cyborgs (host), cyborgs that aren't hosts
-## (cyborg), screeches from wall vents (screech_vents), and otherwise the enemies of that type, which
+## (cyborg; nor planted in a charge's path, task G7: an extra the charge flattens, never the level's own
+## cyborg encounter), screeches from wall vents (screech_vents), and otherwise the enemies of that type, which
 ## covers every enemy type. A feature whose rules script declares
 ## `static func positions(layout: LevelLayout) -> Array[float]` answers for itself (a new kind of
 ## piece).
@@ -994,7 +995,7 @@ static func feature_positions(p_layout: LevelLayout, feature: String) -> Array[f
 				var hit: bool = false
 				match feature:
 					"cyborg":
-						hit = type == "cyborg" and not host
+						hit = type == "cyborg" and not host and not params.has(ChargePathPlacement.PARAM)
 					"host":
 						hit = host
 					"screech_vents":
