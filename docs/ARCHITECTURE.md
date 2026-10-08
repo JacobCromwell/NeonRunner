@@ -1994,8 +1994,9 @@ The hole must still read as a hole at a glance, so each zone's skin suite holds 
 the street to a share of the darkest floor at its darkest shading (`GAP_CONTRAST`: 0.65 Golden, 1.3 Corporate
 and Dead Zone, whose floors are the darkest, 0.35 the palace's white marble; the rendered pixels are dimmer
 still, since the patterns darken the colours), nothing glows below but the orange edges, and the cut is
-never brighter than the zone's gap (`test_floor_cuts`' `_inside_limit`). The trade-off for the owner to
-confirm is in docs/questions/h3.md.
+never brighter than the zone's gap (`test_floor_cuts`' `_inside_limit`) nor, in these five skins, black (the
+plane an open cut's ray meets is at least `BELOW_MIN_LUMINANCE`). The trade-off for the owner to confirm is in
+docs/questions/h3.md.
 
 `test_floor_cuts` builds every skin in `data/skins/` (and Hostile Takeover's train, the grey box and the
 plain `ZoneSkin`) at 3 and 5 lanes, in an outer and a middle lane, and checks the orange edges on the
