@@ -16,8 +16,14 @@ extends TestSuite
 ##   never two at once, each with a bait in its chase, arriving off every bait's attack; Corporate 2 always
 ##   has one; the same every build; a level differs from the same level without it only by its trucks
 ##   (danger density off); quick play without a bait has none.
-## - Its marker, its light bar and Reduced flashing; its warm-up look (no physics object); its data (the
-##   hint, its sounds).
+## - Showing itself (GDD §9.13, the owner, October 8, 2026): its numbers; beside the runner its whole look on
+##   screen in the chase camera's view, hiding nothing of the runner or the side they dodge to, at 3, 5 and 6
+##   lanes; never taking the only free lane (EnforcerTruckRoom.can_dodge). Its blast (the owner: a visible
+##   explosion however it's destroyed): seen wherever it goes off, never in front of the runner, softer with
+##   Reduced flashing. (Its showings and blasts in play are test_enforcer_truck_runs.gd.)
+## - Its marker, its light bar and Reduced flashing; its warm-up look (no physics object, its blast's every
+##   material); its data (the hint, its sounds).
+## The worlds here keep its showings off (they move it beside the runner), unless a test asks for them.
 
 const Rules = preload("res://scripts/enemies/enforcer_truck_rules.gd")
 const BuzzRules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
@@ -39,6 +45,10 @@ func run() -> void:
 	_test_numbers()
 	await _test_model()
 	_test_line_of_sight()
+	_test_show_numbers()
+	_test_show_view()
+	_test_room()
+	await _test_blast_view()
 	await _test_charge_bait()
 	await _test_weapons_never()
 	await _test_contacts_never()
@@ -62,14 +72,25 @@ func _mt(speed: float = 0.0) -> MovementTuning:
 	return out
 
 
-## A world on a plain track of `lanes` lanes whose truck arrives at once, the runner in the middle lane.
-func _world(lanes: int = 3, mt: MovementTuning = null, extra: Array[Dictionary] = []) -> RunWorld:
+## A world on a plain track of `lanes` lanes whose truck arrives at once, the runner in the middle lane; its
+## showings off unless `shows`.
+func _world(lanes: int = 3, mt: MovementTuning = null, extra: Array[Dictionary] = [], shows: bool = false) -> RunWorld:
 	var layout := RunSim.layout(lanes, 1500.0)
 	layout.enemies.append({"type": "enforcer_truck", "at": 1.0, "lane": lanes / 2, "side": 0, "seed": 7, "params": {}})
 	for e: Dictionary in extra:
 		layout.enemies.append(e)
 	var w: RunWorld = sim.build_world(layout, Loadout.new(), mt if mt != null else tuning)
 	w.player.god_mode = true
+	if not shows:
+		var no_shows := func(e: Enemy) -> void:
+			if e is EnforcerTruck:
+				var truck := e as EnforcerTruck
+				truck.tuning = truck.tuning.duplicate() as EnforcerTruckTuning
+				truck.tuning.show_count = 0
+		for e: Variant in w.director.active:
+			if is_instance_valid(e):
+				no_shows.call(e)
+		w.director.enemy_spawned.connect(no_shows)
 	return w
 
 
@@ -225,6 +246,178 @@ func _test_line_of_sight() -> void:
 			check(worst > 0.0, "%s at pace %.2f: nothing of it rises into the camera's line of sight to the runner's feet (closest %.2f m below it, at %.1f m behind, %.2f m up)"
 				% [variant, pace, worst, worst_at.z, worst_at.y])
 		m.free()
+
+
+# --- Showing itself and its blast (task C6b) ---------------------------------------------------------
+
+## GDD §9.13 "Showing itself" (the owner, October 8, 2026): its numbers. A few seconds alongside (the owner), its
+## shortest stay a little less; on arrival and once more mid-chase; it closes in and drops back quicker than it
+## gives up the chase; it's back behind the runner before a bait with a margin; its blast comes a lurch after it's
+## hit and lasts about a second.
+func _test_show_numbers() -> void:
+	check(t.show_seconds >= 2.0 and t.show_seconds <= 4.0 and t.show_min_seconds <= t.show_seconds and t.show_min_seconds >= 1.0,
+		"it stays alongside a few seconds (%.1f s; never under %.1f s)" % [t.show_seconds, t.show_min_seconds])
+	check(t.show_count >= 2 and t.show_on_arrival, "it shows itself as it arrives and once more mid-chase (%d)" % t.show_count)
+	check(t.show_yield_speed >= t.show_drop_speed and t.show_close_speed > t.leave_speed,
+		"it gives way faster than it drops back, and closes in faster than it gives up")
+	check(t.show_margin_seconds > 0.0 and t.close_lead_seconds > 0.0, "it's back behind the runner a margin before a bait")
+	check(t.wreck_surge_seconds <= 0.5 and t.blast_seconds >= 0.5 and t.blast_seconds <= 1.5 and t.blast_radius_in_lane < t.blast_radius,
+		"its wreck blows up %.2f s after it's hit, burning %.2f s; smaller in the runner's lane" % [t.wreck_surge_seconds, t.blast_seconds])
+	check(t.blocker_ahead >= 1.0, "its solid side reaches ahead of its front (%.1f m)" % t.blocker_ahead)
+
+
+## GDD §9.13: shown beside the runner, the chase camera shows its whole look and it never hides the runner (nor
+## the floor of their lane and the lanes past it, the side they dodge to). In the run camera's resting view
+## (EnforcerTruckView), at 3, 5 and 6 lanes, a runner in every lane with a lane on each side, the truck in either
+## lane beside them, every look, with three riders: every corner of it on screen, nothing of the runner or of that
+## floor (up to 2 m above it, to 60 m ahead) behind it.
+func _test_show_view() -> void:
+	var faults: PackedStringArray = []
+	var worst: float = 0.0
+	for look: StringName in [&"clean", &"weathered", &"gilded"]:
+		var profile: Array[AABB] = EnforcerTruckModel.profile(look, t.body_size, EnforcerTruckModel.RIDER_SLOTS.size())
+		for lanes: int in [3, 5, 6]:
+			for r: int in range(1, lanes - 1):
+				for l: int in [r - 1, r + 1]:
+					var c: Dictionary = EnforcerTruckView.check(tuning, lanes, r, l, t.show_ahead, profile)
+					worst = maxf(worst, float(c["worst"]))
+					if not bool(c["fits"]) or bool(c["hides_runner"]) or bool(c["hides_floor"]):
+						faults.append("%s %d lanes, runner %d, truck %d: %s" % [look, lanes, r, l, c])
+	check(faults.is_empty(), "beside the runner its whole look is on screen (its furthest corner %.0f%% of the way to the edge), hiding nothing of them or their side (%s)"
+		% [worst * 100.0, faults])
+	# The run camera widens with speed (never narrower than its base field of view), and the riders sit above the
+	# light bar: the profile holds them all.
+	var bare: Array[AABB] = EnforcerTruckModel.profile(&"clean", t.body_size, 0)
+	check(bare.size() == 1 and EnforcerTruckModel.profile(&"clean", t.body_size, 3).size() == 4,
+		"its look's boxes: its body, and one for each rider aboard")
+
+
+## GDD §9.13: it never takes the only free lane (EnforcerTruckRoom.can_dodge, the layout's side), at 3, 5 and 6
+## lanes, the runner in the middle lane: a row of holes across every lane is no free lane taken (the runner jumps
+## it, the truck hops its gap); holes in the runner's lane and the far lane with the truck's lane free would leave it
+## the only free one; a zone doodad in the runner's lane needs the far lane open, holes or not in the truck's lane;
+## holes a lane change apart in the runner's lane and the far lane are fine.
+func _test_room() -> void:
+	for lanes: int in [3, 5, 6]:
+		var r: int = lanes / 2
+		var l: int = r + 1
+		var o: int = r - 1
+		var v: float = 23.4
+		var cases: Array = [
+			["a row of holes across every lane", [[r, "gap"], [o, "gap"], [l, "gap"]], true],
+			["holes in the runner's lane and the far lane, the truck's lane free", [[r, "gap"], [o, "gap"]], false],
+			["a hole in the runner's lane only", [[r, "gap"]], true],
+			["a doodad in the runner's lane, the far lane open", [[r, "doodad"]], true],
+			["a doodad in the runner's lane and a hole in the far lane, a hole in the truck's lane too", [[r, "doodad"], [o, "gap"], [l, "gap"]], false],
+			["holes a lane change apart in the runner's lane and the far lane", [[r, "gap"], [o, "gap_later"]], true],
+		]
+		for case: Array in cases:
+			var layout := LevelLayout.new()
+			layout.lane_count = lanes
+			layout.length = 600.0
+			for item: Array in case[1]:
+				var lane: int = int(item[0])
+				match String(item[1]):
+					"gap":
+						layout.gaps.append({"lane": lane, "start": 100.0, "end": 106.0})
+					"gap_later":
+						layout.gaps.append({"lane": lane, "start": 106.0 + 0.3 * v, "end": 112.0 + 0.3 * v})
+					"doodad":
+						layout.doodads.append({"lane": lane, "start": 100.0, "end": 103.0, "size": "medium", "side": 1, "seed": 1})
+			var room: EnforcerTruckRoom = EnforcerTruckRoom.build(layout, TrackGeometry.new(lanes, tuning), tuning, t, v)
+			var ok: bool = room.can_dodge(r, l, t, 50.0, 4.0, v)
+			check(ok == bool(case[2]), "%d lanes, %s: %s" % [lanes, case[0], "it may show itself" if bool(case[2]) else "it never does"])
+
+
+## The owner (October 8, 2026): when it's destroyed there's a visible explosion. Its blast where it goes off (its
+## wreck's front wreck_gap behind the runner, or closer beside them; in a hole, at the hole's far edge, up to 3.75 m
+## behind), at 3, 5 and 6 lanes, the runner in every lane, the truck in their lane or beside it, burning out
+## falling back at blast_drift: in the run camera's resting view its fireball shows in every frame from its
+## first moments (0.05 s: at its farthest, its first swell rises from under the view's bottom edge), and no puff
+## of it ever stands between the camera and the runner. With Reduced flashing it has no white-hot core and its
+## fire comes up over its swell, softer (no bright flash). Its fading copies of its materials are the warmed
+## ones' twins (the same shaders: nothing to build mid-run).
+func _test_blast_view() -> void:
+	var faults: PackedStringArray = []
+	var closest: float = INF
+	for lanes: int in [3, 5, 6]:
+		var geo := TrackGeometry.new(lanes, tuning)
+		for r: int in lanes:
+			for l: int in [r - 1, r, r + 1]:
+				if l < 0 or l >= lanes:
+					continue
+				var in_lane: bool = l == r
+				for front: float in ([t.wreck_gap, 3.0, 3.75] if in_lane else [2.4, t.wreck_gap]):
+					var blast := EnforcerTruckBlast.new()
+					var spot: Vector3 = EnforcerTruck.blast_spot(in_lane, signf(geo.lane_x(l) - geo.lane_x(r)))
+					blast.start(t.blast_radius_in_lane if in_lane else t.blast_radius, t.blast_seconds, false, in_lane)
+					var view := EnforcerTruckView.of_runner(tuning, geo, r, 0.0)
+					var points: PackedVector3Array = EnforcerTruckView.runner_points(tuning, geo.lane_x(r), 0.0)
+					var unseen: int = 0
+					var age: float = 0.0
+					while age < t.blast_seconds:
+						var at := Vector3(geo.lane_x(l), 0.0, TrackGeometry.world_z(-(front + t.blast_drift * age))) + spot
+						var seen: bool = false
+						for s: Vector4 in blast.spheres():
+							var c: Vector3 = at + Vector3(s.x, s.y, s.z)
+							seen = seen or view.on_screen(c + Vector3(0.0, s.w * 0.5, 0.0), 0.0)
+							for p: Vector3 in points:
+								var ab: Vector3 = p - view.origin
+								var k: float = clampf((c - view.origin).dot(ab) / ab.length_squared(), 0.0, 1.0)
+								closest = minf(closest, (view.origin + ab * k).distance_to(c) - s.w)
+						if not seen and not blast.spheres().is_empty() and age >= 0.05:
+							unseen += 1
+						blast.advance(1.0 / 60.0)
+						age += 1.0 / 60.0
+					if unseen > 0:
+						faults.append("%d lanes, runner %d, truck %d, %.2f m: unseen %d frames" % [lanes, r, l, front, unseen])
+					blast.free()
+	check(faults.is_empty(), "the camera sees its blast wherever it goes off (%s)" % [faults])
+	check(closest > 0.0, "and it never stands between the camera and the runner (%.2f m clear at the closest)" % closest)
+	# Reduced flashing: no white-hot core, a softer fire coming up over its swell.
+	var normal := EnforcerTruckBlast.new()
+	normal.start(t.blast_radius, t.blast_seconds, false)
+	var soft := EnforcerTruckBlast.new()
+	soft.start(t.blast_radius, t.blast_seconds, true)
+	var normal_alpha: float = _first_fire_alpha(normal)
+	var soft_alpha: float = _first_fire_alpha(soft)
+	check(soft.get_child_count() == normal.get_child_count() - 1 and soft_alpha < normal_alpha * 0.5,
+		"with Reduced flashing: no white-hot core, its fire coming up softly (%.2f, against %.2f at once)" % [soft_alpha, normal_alpha])
+	var twins: PackedStringArray = []
+	for blast: EnforcerTruckBlast in [normal, soft]:
+		for p: Dictionary in blast.get(&"_puffs") as Array[Dictionary]:
+			if not _same_shader(p["mat"] as StandardMaterial3D, EnforcerTruckBlast.material(p["kind"])):
+				twins.append(String(p["kind"]))
+		if not _same_shader(blast.get(&"_glow_mat") as StandardMaterial3D, EnforcerTruckBlast.material(&"glow")):
+			twins.append("glow")
+	check(twins.is_empty(), "its fading materials have the warmed ones' shaders (unlike: %s)" % [twins])
+	normal.free()
+	soft.free()
+	await tree.process_frame
+
+
+## True if `a` and `b` build the same shader (the settings a StandardMaterial3D's shader depends on that the
+## blast's materials use).
+static func _same_shader(a: StandardMaterial3D, b: StandardMaterial3D) -> bool:
+	if a == null or b == null:
+		return false
+	for prop: StringName in [&"shading_mode", &"transparency", &"blend_mode", &"cull_mode", &"depth_draw_mode",
+			&"no_depth_test", &"vertex_color_use_as_albedo", &"emission_enabled"]:
+		if a.get(prop) != b.get(prop):
+			return false
+	return true
+
+
+## The opacity of `blast`'s first fire puff as it goes off.
+static func _first_fire_alpha(blast: EnforcerTruckBlast) -> float:
+	for c: Node in blast.get_children():
+		var mi := c as MeshInstance3D
+		if mi == null or not mi.visible or mi.name == "FloorGlow":
+			continue
+		var m := mi.material_override as StandardMaterial3D
+		if m != null and m.emission_enabled and m.emission.is_equal_approx(EnforcerTruckBlast.FIRE):
+			return m.albedo_color.a
+	return 0.0
 
 
 # --- Core hooks -------------------------------------------------------------------------------------
@@ -503,6 +696,17 @@ func _test_warm_up() -> void:
 		stack.append_array(n.get_children())
 	check(not look.is_inside_tree() and geometry >= 15 and physics == 0,
 		"its warm-up look has every part (%d to draw), outside the tree, and no physics object" % geometry)
+	# Its blast (the owner, October 8, 2026): every material it shows drawn while the level loads, so it never
+	# builds a shader mid-run.
+	var blast: Node = look.find_child("BlastWarmUp", false, false)
+	var kinds: Array[StringName] = []
+	if blast != null:
+		for c: Node in blast.get_children():
+			var mi := c as MeshInstance3D
+			for kind: StringName in [&"core", &"fire", &"ember", &"smoke", &"glow"]:
+				if mi != null and mi.material_override == EnforcerTruckBlast.material(kind):
+					kinds.append(kind)
+	check(kinds.size() == 5, "its warm-up look shows its blast's every material (%s)" % [kinds])
 	look.free()
 	check(w.director.warm_entries().any(func(e: Dictionary) -> bool: return String(e["type"]) == "enforcer_truck"),
 		"the director readies it with the level")
