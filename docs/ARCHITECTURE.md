@@ -1527,12 +1527,17 @@ holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer al
 0.3 s wide (with coyote time). Every campaign level asks for 2; quick play, the prototype level and boss arenas
 (`WallGapPlacement.is_boss_arena`, even asked) for none, and then the pass draws nothing.
 - **When.** After the enemy rules, the danger density pass's enemies and the cyborgs planted in charge paths
-  (below), before the fill pass, from a stream of its own (`rng_for("wide_gaps")`). The report is
-  `LevelGenerator.wide_gap_result` (target, rows, how many were widened, added or cleared and how many pieces
-  went, what blocked the level's own rows, constraints), reset at every build of the guarantee.
+  (below), before the fill pass, from a stream of its own (`rng_for("wide_gaps")`). The level's own rows it
+  makes longer it makes longer only once the fill pass has run (`widen_deferred`): a filler keeps the level's
+  spacing and `FILL_TAIL_SECONDS` more from every piece, more than a row's landing margin once it's longer (it
+  grows by 0.2 s of run at most), so the fill pass is built as without them; the new rows and the rows it clears
+  room for come before it, and the fill pass keeps off those. The report is `LevelGenerator.wide_gap_result`
+  (target, rows, how many were widened, added or cleared and how many pieces went, what blocked the level's own
+  rows, constraints, the widenings deferred), reset at every build of the guarantee.
 - **Never stacked with another demand** (`fits`, `blocker`). Its zone (`zone_of`: from `clear_before_seconds`
   before the take-off to `clear_after_seconds` after the landing, 0.9 s each, never less than the level's
-  spacing between two patterns at its difficulty) holds, in any lane, no other hole, fence, ramp or the point
+  spacing between two patterns at its difficulty, or its burst spacing in The Hush) holds, in any lane (a piece
+  that only touches its end is out of its way), no other hole, fence, ramp or the point
   where its wall run drops the runner back, pad's zone, speed pad, ceiling's landing zone, floor cut's window,
   enemy's attack (the fill pass's keep-out with its floor; a floor cyborg's obstacle margin; a planned
   Resonator's pulses one by one, `DangerDensity.resonator_pulse_windows`: between them it only hovers and every
@@ -1553,17 +1558,24 @@ holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer al
   runner can lead it in; then the rest spread through the level, each source used up before the next, rows
   across most of the lanes (a jump) before single holes.
 - **After it.** The fill pass keeps its usual margin from the wider rows as from any piece; the danger density
-  pass keeps its clearance from each zone (`_fixed_stretches`), the zone doodads off each zone
-  (`doodad_keep_outs`), side wall gaps `wall_gap_clear_seconds` off each on both walls (`wall_keep_outs`) and
-  City 1's extra gaps off each zone (`GapDensity._protected`).
+  pass's floor pieces keep off each zone as it stands (`DangerDensity._index_obstacles`: its margins are the
+  level's spacing already), City 1's extra gaps keep it narrowed by their own margin (`GapDensity._protected`,
+  `keep_outs(gen, within)`), a zone doodad whose window would reach a landing margin is left out
+  (`LevelGenerator._add_doodad`, `doodad_keep_outs`: before a piece a doodad keeps the level's spacing anyway), so
+  the doodads stand where they would without the wider gaps' margins, and side wall gaps keep
+  `wall_gap_clear_seconds` off each on both walls (`wall_keep_outs`). City 1's extra gaps come after the doodads,
+  and FIX4 lets a doodad send one of them elsewhere (a full-width widening or a new row keeps its margin from a
+  doodad, `docs/questions/fix4.md`); the wider gaps re-rolled City 1 at 3 lanes into that case, so
+  `test_doodads` holds City 1 to its own gaps unchanged and as many extra ones there.
 - **What it gives.** Every campaign level at 3, 5 and 6 lanes gets its 2 on its own seed (`test_wide_gaps`);
   over `test_campaign`'s seed sweep 2 of 189 builds of the busiest levels fit only one (the layout check allows
-  one fewer on a seed not the level's own, never none). The first Enforcer chase holds one in 9 of the 18
+  one fewer on a seed not the level's own, never none). An Enforcer chase holds one in 11 of the 18
   level and lane builds that have trucks, Corporate 2 at every lane count, where the truck following the runner
-  over it is wrecked in play. Rows and holes change with them: the fill pass and the danger density pass
-  re-roll around the wider rows (Corporate 2 at 5 lanes 33 rows and 49 holes before, 35 and 54 after; Dead Zone
-  1 at 3 lanes 24 and 32 before, 20 and 25 after). With `wide_gaps` and `charge_path_cyborgs` at 0 every campaign
-  level, quick play and the prototype level build exactly as before (compared build by build with main's).
+  over it is wrecked in play. Rows and holes change a little: the City levels keep theirs (one hole fewer in
+  City 2 at 5 lanes), and elsewhere the fill pass and the danger density pass re-roll around new rows and the
+  zones (every level at 3, 5 and 6 lanes: 1,093 rows and 2,510 holes before, 1,089 and 2,533 after; Corporate 2
+  at 5 lanes 33 and 49 before, 35 and 54 after; Dead Zone 1 at 3 lanes 24 and 32, then 21 and 27). With `wide_gaps` and `charge_path_cyborgs` at 0 every campaign level,
+  quick play and the prototype level build exactly as before (compared build by build with main's).
 
 **Cyborgs in charge paths** (task G7; the owner's answer to open question 353, October 7, 2026, GDD §9.13
 "Teaching": "occasionally a cyborg stands in the path of an Octodog's lunge or a Buzz Overdrive's charge, so the
@@ -1599,9 +1611,10 @@ turned down, constraints). `plant()` writes one encounter, and the tests plant t
   before its warning: a planted dog from its params' `claim_at` (`Octodog.claiming()`, part of
   `is_major_attack_active` while it stands), a parked tank from its cut's `claim_seconds`. A drone's barrage or a
   hover truck's lurch or cannon shot that gets ready meanwhile waits. What can't wait or claims a turn of its
-  own (a Bad Dream's chase, a Resonator's visit, a Gilded Sentinel's strike, another Octodog's run or Buzz
+  own (a Bad Dream's chase, a Resonator's pulse, a Gilded Sentinel's strike, another Octodog's run or Buzz
   Overdrive's attack, a hover truck keeping one of the encounter's lanes) keeps `attack_margin_seconds` (2 s)
-  from it (`attack_near`). Never the encounter that introduces the charging enemy (`skip_introductions`).
+  from it (`attack_near`). Never the encounter that introduces the charging enemy (`skip_introductions`). The
+  danger density pass counts the level's enemies before it (its tests leave planted cyborgs out of both counts).
 - **What it gives.** At 3, 5 and 6 lanes, 7, 6 and 8 of the 11 levels that ask get one (the others: near a
   Resonator's visit or a Gilded Sentinel, no room for the cyborg, or only the introduction); at every lane count
   one comes before Corporate 2's first Enforcer (Marketplace 1 at 3 and 5 lanes, Gangland 2 at 6). DESIGN-TBD
@@ -3343,7 +3356,8 @@ real physics at 25 m/s (the charge-up, the bolt's flight, the dodge; the shake),
 Golden level's ceilings run on physics at 25 m/s, and F6's Save keeping the base run speed.
 `test_doodads` checks zone doodads (G5; GDD §3): a level without them is the same data as before and a
 share of 0 changes nothing (every piece, enemy, pick and fill stays with a share; only credits inside a
-doodad go), placement over 216 levels at 3, 5 and 6 lanes (every difficulty, with and without every
+doodad go; City 1's extra gaps, which FIX4 may send elsewhere around a doodad, keep its own gaps and their
+count, task G7), placement over 216 levels at 3, 5 and 6 lanes (every difficulty, with and without every
 built feature, at the highest share: `check_doodads`, `check_layout` and `check_rules`, deterministic),
 every campaign level's doodads and City 1's gentle start, the rules' keep-outs (a Bad Dream's chase, a
 hover truck's lane) and the enemies' own checks, the track's bodies (never a hazard, a standable top,
