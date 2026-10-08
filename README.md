@@ -159,7 +159,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   along their wall, never beside a sign or a window cyborg, and the outer lane beside them is always clear
   to drop into (in quick play, `--features=wall_fences,wall_fences_partial`).
 - **Enemies:**
-  - cyborgs, with the panic variant and hosts; their laser firing sound is about 30% louder
+  - cyborgs, with the panic variant and hosts; their laser firing sound is about 30% louder. Up to two
+    bursts of the cyborgs, window cyborgs and Barnacle Turrets fly at once (`GameRules.max_bursts_in_air`,
+    in the F6 panel), and never so that a single lane switch can't dodge them
   - window cyborgs
   - the hover truck mini-boss
   - the Octodog; its active charges can kill other vulnerable enemies on physical contact (now and then a cyborg

@@ -3,7 +3,7 @@ extends Enemy
 ## The cyborg (GDD §9.2): a humanoid standing on the floor lanes (the truck roofs), a ragged gangster
 ## whose whole head is a screen showing its LED face (CyborgBody, CyborgSuit), with an arm cannon
 ## (CyborgGun: a visible charge-up with a sound, bursts of 2–3 loosely aimed laser bolts, a reload
-## pause).
+## pause). Up to two bursts of the cyborg-type guns are in the air at once (CyborgAirspace, GDD §9.2).
 ## - Normal: walks slowly toward the player, stopping to shoot, and drops behind quickly once passed.
 ## - Panic variant (about 1 in 3, rolled by the generator: params.panic): freezes with a shocked "O"
 ##   face when the player comes near, then runs away ahead of them, firing wildly over its shoulder,

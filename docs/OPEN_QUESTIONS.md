@@ -245,7 +245,7 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
 26. **Weapon tiers 2–3:** damage 1.4 and 2.0 (tier 1 = 1, tier 4 = 3); fire intervals 0.32 / 0.3 /
     0.55 / 0.65 s; heavy-missile splash 3.5 m at half damage, ×2 against swarms.
 27. **Attacks of different enemy types don't take turns.** Each type spaces its own attacks (one cyborg
-  burst at a time, one drone barrage at a time, Octodog charges only on clear stretches), and the Bad
+  burst at a time *(Superseded October 8, 2026: up to two cyborg-type bursts may be in the air at once, GDD §9.2; items 361–364.)*, one drone barrage at a time, Octodog charges only on clear stretches), and the Bad
   Dream will wait for Octodog charges and drone barrages (GDD §9.7). Other types don't coordinate. In
   Gangland 3, attacks from two types overlap for 0.3–2.5 s of a 142 s run (measured at 3/5/6 lanes),
   mostly a drone barrage during a hover truck's rev or cannon charge. Should all major attacks take
@@ -341,7 +341,7 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
 70. **Fairness rules added (not in the GDD):** no cyborg bolt arrives within 12 m before or 8 m after a
   fence or gap; only one cyborg bursts at a time; cyborgs hold fire at a player on the ceiling, and
   window cyborgs at a player on their own wall; cyborgs stand at least 10 m from gaps, fences, ramps
-  and pads.
+  and pads. *(Superseded October 8, 2026: up to two cyborg-type bursts may be in the air at once, GDD §9.2; items 361–364.)*
 71. **Hosts:** never panic; the kill bonus is 1,500. It's paid, and the Bad Dream released, on any
   kill, even a stray direct weapon hit (auto-fire never aims at hosts).
 72. **Window cyborgs:** a 0.8 m body band centred on the 2.2 m wall-entry height, reaching 0.55 m out
@@ -801,7 +801,7 @@ rules"; switched off, the game plays exactly as before; measure with `tools/meas
 98. **The enemies still to come** (proposals for their tasks): Buzz Overdrive's rev and charge are big, but the generator
     plans its cut, so like the truck's entrance it can't wait (the others would be held off before its rev); the
     Resonator's pulse is big; the Gilded Sentinel's halberd swing (its wall section and the outer lane): big or small?;
-    the Barnacle Turret's burst is small (its "one fires at a time" stays its own rule); the Tithe Collector isn't an
+    the Barnacle Turret's burst is small (its "one fires at a time" stays its own rule *(Superseded October 8, 2026: up to two cyborg-type bursts may be in the air at once, GDD §9.2; items 361–364.)*); the Tithe Collector isn't an
     attack.
 
 **The ragged screen-head cyborg** (from P2; brief `docs/art/BRIEF_CYBORG_GANGSTER.md`, Variant 1; review with
@@ -2434,3 +2434,34 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     Corporate 2's first Enforcer. Never the introduction of the Octodog or the Buzz Overdrive.
     - Placeholder: `charge_path_cyborgs = 1` in those levels, `skip_introductions` and `attack_margin_seconds`
     2 s in `data/tuning/charge_paths.tres`.
+
+**Two cyborg-type bursts in the air at once** (from H4, owner, October 8, 2026, GDD §9.2; numbers in `data/tuning/game_rules.tres`
+(`max_bursts_in_air` 2) and in `data/enemies/cyborg.tres`, `window_cyborg.tres` and `barnacle_turret.tres`)
+361. **The crossfire rule** (GDD §9.2: "Bolts are slow enough to dodge by switching lanes"; "Up to two bursts in the
+    air at once"). With two bursts in the air, a runner could dodge the first into a lane the second then aims at
+    while the first's bolts still come down the lane they left; from an edge lane of three, a wall run, beside a
+    hover truck or on a narrow ceiling, the only way out was then the first burst's lane. What's built: bursts
+    whose bolts arrive within `crossfire_gap` (0.5 s) of each other must leave the runner a place one move away
+    that none of them aims at (a lane beside them, or the outer lane below a wall; a lane a hover truck or any
+    lane blocker holds doesn't count). A burst that would leave none waits **before** its charge-up (task R3's
+    rule), anticipating every place the runner could be by its lock, a wall they could step onto included; a
+    burst still charging for more than `reaction_time` (0.25 s) counts as aimed where the runner is now.
+    Measured (a dodging bot with a 0.25 s reaction): charge-ups called off at the lock went from 5 in 34 min to 0
+    at 3 lanes, 1 in 34 min at 5; the share of bursts flown alongside another stayed 14% (3 lanes), 12–13%
+    (5 lanes), 20–22% in dense levels. Cost: on three lanes a later second burst waits while the runner is in the
+    middle lane or in an outer lane beside a usable wall. Are this rule and these numbers right? Should a wall
+    count as a way out from an outer lane (it doesn't: the rule doesn't judge a wall's own hazards), or a lane
+    two moves away?
+    - Placeholder: `DESIGN-TBD` in `scripts/enemies/cyborg_gun.gd` (`_crossfire_fair`), `crossfire_gap` 0.5 s and
+    `reaction_time` 0.25 s in the three enemy files.
+362. **Wild fire next to another burst.** A panic cyborg's bolts land anywhere around the runner, so no lane is sure
+    to be free of them. Placeholder: a wild burst's bolts never arrive within `crossfire_gap` of another burst's,
+    either way round. Should a panic cyborg's spray be allowed to overlap an aimed burst?
+363. **The last-resort call-off.** When two charge-ups begin within `reaction_time` of each other and the runner
+    moves between their locks, the later one can still be called off at the end of its charge-up (glow and sound,
+    no bolts); measured once in 34 min at 5 lanes, never at 3. Should it instead hold its charge until it can fire
+    (a longer warning)?
+364. **What "in the air" counts.** As before, a burst holds its place from the start of its charge-up until
+    `burst_gap` (0.5 s) after its last bolt is fired, not until its bolts land, so a third burst's charge-up may
+    start while the first two's bolts are still flying (the crossfire rule still keeps arrivals apart). Should the
+    limit count bolts until they land?
