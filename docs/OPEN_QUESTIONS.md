@@ -2616,3 +2616,31 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     could hit) a chase began inside a wall fence's drop window; its first claws came well after, so nothing could hit
     the runner. Proposed: start the keep-outs at the host's spot less (`walk_max` + `hover_ahead`), or add seeds that
     aren't the levels' own to the layout check.
+
+**The dash smashes doodads** (from H5, owner, October 8, 2026, GDD §3; numbers in `SpeedFxTuning`'s "Doodad smashes" group, F6 "Speed effects")
+395. **What a smash looks and sounds like.** The doodad vanishes as the runner reaches it and 10–28 solid pieces (by its
+    size) fly out in its look's own colours, carry on along the runner's way, tumble and shrink away within 0.9 s, with
+    a light shake (0.1) and a crunch (crack, thump, crumbling, clatter; `doodad_smash`, -5 dB). No fireball, flash or
+    hit-stop; the pieces never glow. More or bigger pieces, a dust cloud, a zone-specific sound?
+396. **A dashing switch into a doodad's side** isn't blocked: it breaks where the body meets it, no clank or bump. Other
+    solid sides (a hover truck's, a boss prop) still bump a dashing player. Or should only a head-on dash smash?
+    (`Player._lane_blocked(target, dash_through)`, `DESIGN-TBD`.)
+397. **A dash that ends just short of a doodad.** It smashes only if the dash lasts until the body gets there (counting a
+    fading speed boost); otherwise the doodad pushes as usual, so the body never sinks into it. A reached doodad still
+    breaks up to 0.1 s after the dash's last frame (`Player.SMASH_CLAIM_GRACE`, `DESIGN-TBD`). Or should any doodad touched
+    within a fixed time after the dash be smashed?
+398. **No score for a smash.** A doodad is scenery and the dash is the reward (`Player._smash`, `DESIGN-TBD`). A small bonus
+    would make smashing something to chase. Wanted?
+399. **Attacks near a smashed doodad.** Enemies that hold an attack while a doodad stands where it would land (a drone's
+    barrage, a hover truck's cannon, an Octodog charge, a Resonator pulse, cyborg bolts) read the level's plan, so after
+    a smash they still hold off along that stretch; every attempt plays the same, and the attack only waits a moment
+    longer. Or let them attack once it's gone? (`DashBreakable`, `DESIGN-TBD`.)
+400. **Telling the player.** Nothing new tells the player the dash smashes doodads (the shop's dash text already says
+    "Barrel through enemies and obstacles"; no first-encounter hint). A hint the first time a runner carrying the dash
+    meets a doodad, or a line in the shop?
+401. **A dash started during a doodad's push** doesn't smash that doodad: the push completes and the doodad stands. If the
+    player then steers back into it with the dash on, the dash takes it where the body meets it. Or should a dash during
+    the push smash it at once? (`Player._check_doodads`, `DESIGN-TBD`.)
+    - Measured, not a question: over every campaign level at 3, 5 and 6 lanes (270 doodads), the next thing after a
+    doodad comes at least 0.72 s after its front at the dash's speed (0.68 s after its end); a reaction plus a lane switch
+    takes 0.49 s, so the generator is unchanged.
