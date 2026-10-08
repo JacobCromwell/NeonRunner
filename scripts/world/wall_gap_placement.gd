@@ -14,7 +14,8 @@ extends RefCounted
 ##   gap keeps clear_seconds from the run-up, the end-clear stretch, every sign, wall fence and wall
 ##   enemy on its wall (a Gilded Sentinel's whole wall section and niche, sentinel_wall_section), every
 ##   ceiling reaching its wall, and a ramp on its wall from before its launch to past its longest
-##   wall run (keep_outs).
+##   wall run (keep_outs); and both walls keep clear of every wider floor gap (task G7,
+##   WideGapPlacement.wall_keep_outs), so a wall runner is never dropped into one.
 ## - Deliberately NOT kept: the outer lane's floor beside a gap. The owner decided players should see
 ##   gaps coming, so a drop may land the runner in front of whatever the outer lane holds.
 ##
@@ -133,4 +134,7 @@ static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallG
 	var out: Array[Vector2] = []
 	for k: Vector2 in raw:
 		out.append(Vector2(k.x - clear, k.y + clear))
+	# Task G7: every wider gap, on both walls, with its own margin (WideGapTuning.wall_gap_clear_seconds), so a
+	# runner on a wall over one is never dropped into it.
+	out.append_array(WideGapPlacement.wall_keep_outs(gen))
 	return WallFencePlacement.merged(out)

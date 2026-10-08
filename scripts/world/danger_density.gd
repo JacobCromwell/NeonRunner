@@ -606,8 +606,9 @@ static func _plan(gen: LevelGenerator, patterns: Array, rng: RandomNumberGenerat
 
 
 ## The stretches neither half adds to, in any lane: ramps (to the end of their launch), ceiling landing
-## zones, speed pads, floor cuts' windows and the rules' lane-less keep-outs (a Gilded Sentinel's turn;
-## not those of the tuning's keep_out_exempt_features: a host's chase). Each half adds its own
+## zones, speed pads, floor cuts' windows, the level's wider gaps from their take-off margin to their landing
+## margin (task G7, WideGapPlacement.keep_outs) and the rules' lane-less keep-outs (a Gilded Sentinel's
+## turn; not those of the tuning's keep_out_exempt_features: a host's chase). Each half adds its own
 ## (_enemy_fixed, _index_obstacles): pads, quiet stretches, plain ceilings.
 static func _fixed_stretches(plan: Plan) -> Array[Vector2]:
 	var gen: LevelGenerator = plan.gen
@@ -622,6 +623,9 @@ static func _fixed_stretches(plan: Plan) -> Array[Vector2]:
 		out.append(Vector2(float(p["at"]), float(p["at"]) + gen.tuning.speed_pad_length))
 	for c: Dictionary in layout.cuts:
 		out.append(FloorCutPlan.window(c, gen.speed))
+	# Task G7: the level's wider gaps with their take-off and landing margins (WideGapPlacement, placed before the
+	# fill pass): the obstacle half keeps its clearance from those, so each stays the only demand there.
+	out.append_array(WideGapPlacement.keep_outs(gen))
 	var exempt: PackedStringArray = plan.tuning.get("keep_out_exempt_features")
 	for feature: String in gen.config.features:
 		if exempt.has(feature):

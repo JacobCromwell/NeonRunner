@@ -16,6 +16,12 @@ extends RefCounted
 ##    scripts/world/danger_density.gd): before it a share more enemies (twins and single encounters
 ##    of the level's own patterns), after it a share more floor pieces (rows take another lane, new
 ##    filler rows), each with an open lane and the level's spacing around it. Off (0) it draws nothing.
+##    Between the danger density pass's enemy half and the fill pass: cyborgs in charge paths
+##    (LevelConfig.charge_path_cyborgs; ChargePathPlacement, task G7): a plain cyborg planted in the path of
+##    an Octodog's lunge or a Buzz Overdrive's charge now and then, so the player sees a charge flatten it.
+##    Then, before the fill pass: wider gaps (LevelConfig.wide_gaps; WideGapPlacement, task G7): a couple of
+##    the level's rows longer along the run (or new rows where too few fit), too wide for an Enforcer Truck
+##    to hop; the fill pass and the danger density pass then keep their spacing from them.
 ## 4. Zone doodads (LevelConfig.doodad_share): scenery standing in lanes, in the stretches where
 ##    nothing else goes on (_place_doodads).
 ## 5. Wall fences (the `wall_fences` and `wall_fences_partial` features; WallFencePlacement): electric
@@ -174,6 +180,12 @@ var picks: Array[Dictionary] = []
 var fills: Array[Dictionary] = []
 ## Additive gap pass's actual/target counts and any fairness shortfalls; empty when disabled.
 var gap_density_result: Dictionary = {}
+## The wider gaps of the last build (WideGapPlacement.place: target, rows, widened, added, constraints);
+## empty when the level asks for none (LevelConfig.wide_gaps 0).
+var wide_gap_result: Dictionary = {}
+## The cyborgs planted in charge paths in the last build (ChargePathPlacement.place: target, planted,
+## constraints); empty when the level asks for none (LevelConfig.charge_path_cyborgs 0).
+var charge_path_result: Dictionary = {}
 ## The danger density pass's report for the last build (DangerDensity.apply_enemies, apply_obstacles,
 ## then apply_wall_fences: counts, targets, what each lever added, shortfalls); empty when the level's
 ## danger_density_increase is 0.
@@ -288,6 +300,9 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	picks.clear()
 	fills.clear()
 	uncredited.clear()
+	# Passes before them ask them (the danger density pass keeps off the wider gaps): never last build's.
+	wide_gap_result = {}
+	charge_path_result = {}
 	danger_density_plan = null
 	_intro_burst = -1
 	var accel: float = tuning.speed_gain_per_minute / 60.0
@@ -326,6 +341,8 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 
 	_apply_enemy_rules()
 	danger_density_result = DangerDensity.apply_enemies(self, patterns)
+	charge_path_result = ChargePathPlacement.place(self)
+	wide_gap_result = WideGapPlacement.place(self)
 	_fill_empty_stretches(patterns)
 	danger_density_result = DangerDensity.apply_obstacles(self, patterns, danger_density_result)
 	_place_doodads(patterns)
@@ -1612,11 +1629,13 @@ static func _lane_kept(lane_keeps: Array[Dictionary], lane: int, span: Vector2) 
 ## Dream's chase). Entries that also name a lane ({lane, from, to}: a hover truck's, for its whole
 ## stay) go into `lane_keeps`: no doodad stands in that lane there, nor pushes into it. A floor cut's
 ## lane is kept that way over its lane window (FloorCutPlan.lane_window), so a push never lands the
-## player in a cut (and its whole window is a fill keep-out, in every lane, already).
+## player in a cut (and its whole window is a fill keep-out, in every lane, already). A wider gap (task G7)
+## is kept from its take-off margin to its landing margin (WideGapPlacement.keep_outs): no push there.
 func doodad_keep_outs(patterns: Array, lane_keeps: Array[Dictionary] = []) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	for k: Vector4 in fill_keep_outs(patterns)["keep"]:
 		out.append(Vector2(k.x, k.y))
+	out.append_array(WideGapPlacement.keep_outs(self))
 	for h: Dictionary in layout.hulls:
 		out.append(Vector2(float(h["start"]), zones.landing_zone(h).y))
 	for c: Dictionary in layout.cuts:
