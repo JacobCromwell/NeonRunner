@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="LevelSky" format=3]
+
+[ext_resource type="Script" path="res://scripts/world/skins/level_sky.gd" id="1_sky"]
+
+[resource]
+script = ExtResource("1_sky")
+sky = Dictionary[String, Variant]({
+"zenith_color": Color(0.08, 0.11, 0.32, 1),
+"horizon_color": Color(0.32, 0.3, 0.55, 1),
+"horizon_falloff": 0.4,
+"haze_color": Color(1, 0.55, 0.6, 1),
+"haze_strength": 0.75,
+"haze_height": 0.06,
+"moon_clarity": 0.8,
+"star_amount": 0.12,
+"sun_glow_color": Color(1.0, 0.55, 0.4, 1),
+"sun_glow_direction": Vector3(0.5, 0.0, -0.85),
+"sun_glow_strength": 0.3,
+"cloud_amount": 0.22,
+"cloud_scale": 1.2,
+"cloud_color": Color(0.24, 0.22, 0.42, 1),
+"cloud_lit_color": Color(0.9, 0.55, 0.65, 1),
+"cloud_lit_focus": 0.5,
+"sun_glow_height": 0.05
+})
+fog_color = Color(0.62, 0.42, 0.5, 1)

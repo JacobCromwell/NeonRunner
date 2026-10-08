@@ -1,6 +1,7 @@
 [gd_resource type="Resource" script_class="LevelConfig" format=3]
 
 [ext_resource type="Script" path="res://scripts/core/level_config.gd" id="1_level"]
+[ext_resource type="Resource" path="res://data/skies/gangland_blood_red.tres" id="2_sky"]
 
 [resource]
 script = ExtResource("1_level")
@@ -24,3 +25,4 @@ charge_path_cyborgs = 1
 credit_trail_chance = 0.6
 credit_trail_min = 5
 doodad_share = 0.6
+sky = ExtResource("2_sky")
