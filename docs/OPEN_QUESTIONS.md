@@ -2465,3 +2465,34 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     `burst_gap` (0.5 s) after its last bolt is fired, not until its bolts land, so a third burst's charge-up may
     start while the first two's bolts are still flying (the crossfire rule still keeps arrivals apart). Should the
     limit count bolts until they land?
+
+**The Gilded Sentinels' shorter warning and lit niches** (from H1, owner, October 8, 2026, GDD §9.11; numbers in
+`data/enemies/gilded_sentinel.tres`)
+365. **The live statue moved only about 4 cm; most of the gain is lighting and a wider opening.** It can't stand out
+    of the wall: a wall runner's body lies along the face and its solid body is behind it (GDD §3), so a statue
+    proud of the wall would block the wall run, a design change for the owner. Its front is now 0.02 m behind the
+    face (it was 0.063 m), the niche is shallower (0.78 m, from 0.9) and wider (1.8 m, from 1.4), and its inside
+    is lit. On 3 lanes, where the camera is closest to the wall, the statue reads from about 10–15 m. Is that
+    enough, or should the opening be wider still (decorative alcoves are 2.0 m)?
+    - Placeholder: `niche_width` 1.8, `niche_depth` 0.78, `statue_inset` 0.02 (`DESIGN-TBD`).
+366. **Every statue niche is lit alike; the live one is told by its eyes and its warning.** The owner's earlier
+    request (decorative statues at the bottom of the walls so a live one can surprise the player) rules out a
+    niche that sets the live one apart, so decorative alcoves outdoors and in the Palace get the same warm bronze
+    inside (non-glowing, no hazard hues). The live statue's red eyes glow a little more at rest (1.6, from 0.9);
+    at its warning the eyes flare, the niche tints dark red and stone grinds. Is a lit alcove right for all of
+    them, and is the eye glow at rest enough to tell the live one at a glance, or too much?
+    - Placeholder: `GoldenStatue.LIT_BACK`, `LIT_SIDES`, `LIT_CEILING`, `GildedSentinel.EYES_IDLE` (`DESIGN-TBD`).
+367. **What 0.6 s does to the wall dodges.** On the floor, a lane change started after a 0.35 s reaction is still in
+    time (tested at 3 and 6 lanes, 18 and 25 m/s). On the wall, passing above or below the swing by timing the
+    wall entry must now be planned from the statue at rest: the jump onto the wall that runs above the band takes
+    the whole 0.6 s. A runner who stepped onto the wall 0–0.55 s before the warning sees no warning before the
+    cut but escapes with two moves (off the wall, then a lane change) started within 0.50 s. Is that the wall dodge
+    the owner wants, or should the warning start earlier along the wall approach?
+368. **A decorative alcove that would overlap a live niche is left out** (less than 0.3 m of wall between the
+    frames); facade statues no longer straddle a chunk's end (about 6% fewer outdoor decorative statues, a build
+    fix). The halberd's draw-back takes the last half of the warning (0.3 s).
+    - Placeholder: `GoldenSkin.NICHE_CLEARANCE` 0.3, `GildedSentinelTuning.raise_share` 0.5 (`DESIGN-TBD`).
+369. **GDD §9.11 no longer matches the build in one place** (predates H1): "decorative statues never stand at wall-run
+    height". Since the owner's earlier request, decorative statues stand in alcoves at the bottom of the walls,
+    0.1–3.5 m up, which is wall-run height; they're told from live ones by the red eyes and the warning. Should
+    the GDD line change to match?
