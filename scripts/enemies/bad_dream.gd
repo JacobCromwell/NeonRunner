@@ -7,10 +7,12 @@ extends Enemy
 ##   another is still around never appears (the host's own purple burst is all the player sees).
 ## - Lurking (DESIGN-TBD, docs/questions/h8.md): one that bursts out further ahead of the runner than its
 ##   hover spot (hover_ahead), as when the weapon shoots its host down (weapons hit hosts, owner, October 8,
-##   2026), rises out of its host as usual and then lurks over that spot, harmless and facing the runner,
-##   until they come within hover_ahead of it; only then does its chase begin (its clock, its big attack),
-##   playing out exactly as for a host stomped where it stood. So every chase begins at its host's spot,
-##   where the generator plans it and its anti-grav pads from (host_rules.gd), whatever killed the host.
+##   2026), rises out of its host as usual and then lurks over that spot, harmless and facing the runner, its
+##   maw closed once it has risen (an open maw is part of a slash's warning), until they come within
+##   hover_ahead of it; only then does its chase begin (its clock, its big attack), playing out exactly as for
+##   a host stomped where it stood. So every chase begins at its host's spot, where the generator plans it and
+##   its anti-grav pads from (host_rules.gd), whatever killed the host. An EMP while it lurks dissolves it
+##   where it hangs.
 ## - Movement: it floats ahead of the player, facing them and keeping pace, inside the camera's view.
 ##   It passes through fences, signs and every other barrier (it ignores the level's pieces). It
 ##   drifts toward the player's lane at a limited sideways speed and follows onto a wall slowly. It
@@ -62,6 +64,8 @@ const MARKS_BEHIND: float = 1.2
 const MARKS_BEYOND: float = 1.5
 ## How long the slash's claw streaks stay in view after the claws have passed.
 const ARC_FADE: float = 0.22
+## Seconds a lurking Bad Dream takes to close its maw once it has risen out of its host (see _process).
+const LURK_MAW_CLOSE: float = 0.4
 
 var state: State = State.EMERGE
 ## Seconds since it burst out, and how long its chase lasts.
@@ -100,9 +104,10 @@ var _slash_center := Vector2.ZERO
 var _dissolve_len: float = 1.0
 ## Dissolved (or never appeared): the director retires it.
 var _done: bool = false
-## It lurked (see the header), over this track distance.
+## It lurked (see the header), over this track distance; dissolving while it lurked, it stays there.
 var _lurked: bool = false
 var _lurk_at: float = 0.0
+var _dissolve_in_place: bool = false
 var _arc_time: float = -1.0
 var _arc_dir: float = 1.0
 var _blocker_query := PhysicsShapeQueryParameters3D.new()
@@ -240,7 +245,10 @@ func _tick(delta: float) -> void:
 			if _state_time >= _t.recover_time:
 				_set_state(State.DRIFT)
 		State.DISSOLVE:
-			_float_toward(p, delta, rel_ahead)
+			if _dissolve_in_place:
+				rel_ahead = _lurk_at - p.distance
+			else:
+				_float_toward(p, delta, rel_ahead)
 			if _state_time >= _dissolve_len:
 				_done = true
 	_place()
@@ -351,6 +359,8 @@ func _lunge(p: Player) -> void:
 
 
 func _start_dissolve(survived: bool, emp: bool) -> void:
+	# One dissolved while it lurks (an EMP) melts away where it hangs; one that chased keeps pace as it does.
+	_dissolve_in_place = lurking
 	lurking = false
 	_slash_live = false
 	_slash.set_enabled(false)
@@ -599,7 +609,9 @@ func _process(delta: float) -> void:
 	if _model == null or world == null or _done or not is_instance_valid(world.player):
 		return
 	var p: Player = world.player
-	var maw: float = 0.12 + 0.06 * sin(chase_time * 2.3)
+	# Its maw at rest, as it drifts between slashes.
+	var rest: float = 0.12 + 0.06 * sin(chase_time * 2.3)
+	var maw: float = rest
 	var raise: float = 0.0
 	var slash: float = 0.0
 	var attack: float = 0.0
@@ -610,6 +622,11 @@ func _process(delta: float) -> void:
 		State.EMERGE:
 			fade = 1.0 - smoothstep(0.0, 1.0, _state_time / _t.emerge_time)
 			maw = 0.7 * (1.0 - fade)
+			if _lurked:
+				# Lurking (and through the emergence after its lurk), it closes its maw once it has risen, which
+				# dims its throat too (BadDreamModel's shader): an open maw is part of a slash's warning (GDD
+				# §9.7), so it reads as not attacking yet; only a telegraph opens it again, with its shriek.
+				maw = lerpf(maw, rest, smoothstep(_t.emerge_time, _t.emerge_time + LURK_MAW_CLOSE, _state_time))
 		State.DRIFT:
 			if _waiting:
 				# Reaching up at the hull it can't reach, maw open.

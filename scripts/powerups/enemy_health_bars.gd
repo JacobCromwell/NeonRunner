@@ -70,8 +70,9 @@ func is_shown(enemy: Enemy) -> bool:
 
 
 ## Whether `enemy` should show a bar: alive, in play, damaged, and something the weapon can hit (not
-## immune_to_weapons; a host is, GDD §9.7). A boss's body shows its health on the HUD's boss bar instead
-## (parts with health of their own, like the swarm's clusters, get bars).
+## immune_to_weapons). Weapons hit hosts (GDD §9.7), so a damaged host shows one like any cyborg. A boss's
+## body shows its health on the HUD's boss bar instead (parts with health of their own, like the swarm's
+## clusters, get bars).
 static func wants_bar(enemy: Enemy) -> bool:
 	return is_instance_valid(enemy) and enemy.alive and enemy.is_inside_tree() \
 		and not enemy.immune_to_weapons and enemy.health < enemy.max_health - 0.0001 \

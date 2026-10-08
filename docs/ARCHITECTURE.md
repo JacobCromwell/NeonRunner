@@ -552,7 +552,8 @@ whose floor has no manholes; its body, `ScreechModel`, also comes at a lower det
 `crowd_mesh()`, the same parts and colours in about a third of the triangles: the Sewer Swarm's),
 heli drone, the Cyborg's Bad Dream (released by a killed host, spawned by the director at run
 time rather than placed by the generator; one that bursts out further ahead than its hover spot, its host
-shot down, lurks over that spot, harmless and holding no attack back, until the runner is within
+shot down, lurks over that spot, harmless, its maw closed once risen (an open maw belongs to a slash's
+warning) and holding no attack back (an EMP dissolves it where it hangs), until the runner is within
 `hover_ahead`, and only then begins its chase, so every chase begins where the host rules plan it, at its
 host's spot: task H8, DESIGN-TBD, `docs/questions/h8.md`), the Resonator (GDD §9.10, the Golden Zone: a golden
 broadcast spire hovering far ahead whose red waves roll along the floor across every lane; its model,

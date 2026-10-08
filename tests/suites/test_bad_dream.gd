@@ -32,6 +32,7 @@ func run() -> void:
 	await _test_declared()
 	await _test_emerges_from_hosts()
 	await _test_weapon_release()
+	await _test_lurk_emp()
 	await _test_not_otherwise()
 	await _test_immunities()
 	await _test_protection()
@@ -250,12 +251,18 @@ func _test_weapon_release() -> void:
 		"its chase hasn't begun: it holds no other attack back and its clock hasn't started")
 	var still: Array[bool] = [true]
 	var harmless: Array[bool] = [true]
+	# Its maw (BadDreamModel.maw, which also lights its throat) once it has risen and had time to close it.
+	var closed: float = t.emerge_time + BadDream.LURK_MAW_CLOSE + 0.25
+	var lurk_maw: Array[float] = [0.0, 0.0]  # the widest, and the frames sampled
 	await _until(func() -> bool:
 		var d: BadDream = _dream(id)
 		if d == null or not d.lurking:
 			return true
 		still[0] = still[0] and absf(d.track_distance() - spot) < 0.01
 		harmless[0] = harmless[0] and not d.body_hitbox().is_active() and not d.slash_hitbox().is_active()
+		if float(d.get(&"_state_time")) >= closed:
+			lurk_maw[0] = maxf(lurk_maw[0], (d.get(&"_model") as BadDreamModel).maw)
+			lurk_maw[1] += 1.0
 		return false, 6.0)
 	dream = _dream(id)
 	check(dream != null and not dream.lurking and _count(id, "chase") == 1, "its chase begins as the runner comes")
@@ -265,17 +272,67 @@ func _test_weapon_release() -> void:
 	var began_at: float = w.player.distance
 	var began: float = w.level_time()
 	check(still[0] and harmless[0], "it stays where it burst out, harmless, while it lurks")
+	check(lurk_maw[1] > 10.0 and lurk_maw[0] <= 0.25,
+		"risen, it lurks with its maw closed and its throat dim: it reads as not attacking yet (widest %.2f over %d frames)"
+		% [lurk_maw[0], int(lurk_maw[1])])
 	check(spot - began_at <= t.hover_ahead + 0.5 and spot - began_at >= t.hover_ahead - 1.5,
 		"with the runner within hover_ahead of it (%.1f m; the host stood at %.1f, the runner at %.1f)"
 		% [spot - began_at, host_at, began_at])
 	check(dream.is_major_attack_active() and dream.state == BadDream.State.EMERGE and dream.chase_time < 0.05,
 		"then its chase is on, from its start")
-	await _until(func() -> bool: return _dream(id) == null or _count(id, "telegraph") >= 1, 6.0)
+	var rest_maw: Array[float] = [0.0]
+	await _until(func() -> bool:
+		var d: BadDream = _dream(id)
+		if d == null or _count(id, "telegraph") >= 1:
+			return true
+		rest_maw[0] = maxf(rest_maw[0], (d.get(&"_model") as BadDreamModel).maw)
+		return false, 6.0)
 	var first: float = _time_of(dream, "telegraph")
 	check(first > 0.0 and first - began >= t.emerge_time + t.first_slash_delay - 0.02,
 		"and it first telegraphs no sooner than one released at the runner's feet (%.2f s after its chase began)"
 		% (first - began))
+	check(rest_maw[0] <= 0.25, "its maw stays closed until then (widest %.2f)" % rest_maw[0])
 	check(dream.rel_ahead <= t.hover_ahead + 1.0, "from its hover spot in front of the runner (%.1f m ahead)" % dream.rel_ahead)
+	var shrieked: bool = false
+	for s: Array in dream.sounds:
+		shrieked = shrieked or (s[0] == &"bad_dream_shriek" and is_equal_approx(float(s[1]), first))
+	var open_maw: Array[float] = [0.0]
+	await _until(func() -> bool:
+		var d: BadDream = _dream(id)
+		if d == null or d.state != BadDream.State.TELEGRAPH:
+			return true
+		open_maw[0] = maxf(open_maw[0], (d.get(&"_model") as BadDreamModel).maw)
+		return false, 3.0)
+	check(shrieked and open_maw[0] >= 0.9,
+		"and its telegraph opens its maw wide (%.2f), with its shriek" % open_maw[0])
+	await sim.free_world(w)
+
+
+## An EMP while a Bad Dream lurks (see _test_weapon_release) dissolves it where it hangs: it doesn't glide along
+## with the runner as it melts away, and its chase never began, so there's no survival bonus.
+func _test_lurk_emp() -> void:
+	var w: RunWorld = sim.build_world(RunSim.layout(3, 600.0))
+	w.player.setup(tuning, w.geo, 1)
+	var dream := w.director.spawn({"type": "bad_dream", "at": 60.0, "lane": 0, "side": 0, "seed": 5,
+		"params": {"from_host": true}}) as BadDream
+	await tree.physics_frame
+	w.player.running = true
+	await _wait(0.5)
+	var id: int = dream.get_instance_id()
+	var spot: float = dream.track_distance()
+	check(dream.lurking and dream.rel_ahead > t.hover_ahead, "burst out far ahead, it lurks (%.1f m ahead)" % dream.rel_ahead)
+	w.emp(Vector3(0.0, 0.5, w.player.position.z - 40.0), 16.0)
+	check(_count(id, "emp") == 1 and dream.state == BadDream.State.DISSOLVE and not dream.lurking
+		and not dream.is_major_attack_active(), "an EMP dissolves it while it lurks")
+	var still: Array[bool] = [true]
+	await _until(func() -> bool:
+		var d: BadDream = _dream(id)
+		if d == null or _gone(id):
+			return true
+		still[0] = still[0] and absf(d.track_distance() - spot) < 0.01
+		return false, t.emp_dissolve_time + 0.5)
+	check(still[0], "where it hangs: it doesn't glide along with the runner as it melts away")
+	check(_gone(id) and not w.score.bonuses.has(&"chase"), "then it's gone, with no survival bonus")
 	await sim.free_world(w)
 
 
