@@ -492,21 +492,27 @@ An enemy type needs only files of its own; nothing shared is edited:
 `take_damage()`, `defeat(cause)`, `retire()`. Subclasses override `_build()` (visuals, hitboxes,
 properties), `_tick(delta)` (behaviour), and optionally `_on_defeated`, `should_retire`, `aim_point`,
 `hit_radius`. A layout entry is `{type, at, lane, side, seed, params}`; `rng` is seeded from it, so
-every attempt at a seed plays out the same way. Setting `is_host` also sets `immune_to_weapons`
-(GDD §9.7, decided September 26, 2026): a host is immune to every kind of weapon damage, direct or
-splash, the same way a fence generator declares its own immunity (GDD §9.1), so no targeting, no
-damage and no health bar; only a stomp, the claws or the dash still kill it, with the host bonus.
+every attempt at a seed plays out the same way. **Weapons hit hosts** (task H8; GDD §9.7, owner,
+October 8, 2026, replacing the September 26 rule that made `is_host` also set `immune_to_weapons`): `is_host`
+is a declared property of its own, so auto-fire targets a host like any other cyborg (`targetable()`), shots
+and splash hurt it, it shows a health bar and laser tier 1 takes a cyborg's shots to kill it; a fence
+generator still declares `immune_to_weapons` (GDD §9.1). Killing a host by any means releases its Bad Dream
+(`Cyborg._release_bad_dream`); a stomp, the claws or the dash also earn the host bonus, a weapon kill only the
+kill's score (`Cyborg.host_bonus_for`, `CyborgTuning.weapon_host_bonus`, DESIGN-TBD, `docs/questions/h8.md`).
+A player who doesn't want Bad Dreams released switches the weapon off in the shop (the equip toggle, GDD §8).
 Every attack needs a visual **and** audio warning before it can hurt (CLAUDE.md readability rules).
 **Enemy charge contacts** (owner revision, October 3, 2026): Octodog and Buzz Overdrive active charges
 use one shared swept-box contact helper on `Enemy`, against live physical enemy hitboxes rather than
 lane labels or detached attack effects. Each victim is hit at most once per charge through
-`take_damage(..., &"enemy_charge")`; bosses and weapon-immune enemies retain their immunity.
+`take_damage(..., &"enemy_charge")`; bosses and weapon-immune enemies retain their immunity, and hosts
+are never a charge's victims although weapons hit them (`Enemy.charge_can_hurt`, DESIGN-TBD,
+`docs/questions/h8.md`).
 `EnemyDirector.enemy_defeated` still drives lifecycle/effects, but `ScoreKeeper` ignores that cause:
 no player kill count, bonus or thief jackpot/recovery is awarded for an NPC collision. The one exception
 is an enemy that declares `charge_bait` (task C6, the Enforcer Truck, GDD §9.13): weapon-immune, it is
 still hurt by a charge's contact (`take_damage` lets `&"enemy_charge"` through, `_hurt_charge_contacts`
 keeps it as a victim), and `ScoreKeeper` counts that defeat as the player's kill (a bait), with its score.
-Hosts and fence generators don't declare it, so charges pass them by as before.
+Hosts and fence generators don't declare it, so charges pass them by as before (`charge_can_hurt`).
 **Readied with the level** (task PERF1): `EnemyDirector.warm_up()` (from `setup()`, during the load) loads
 the script and tuning of every type the layout names, and for a type whose script has a static
 `warm_up(world: RunWorld, entry: Dictionary) -> Node` builds one look of each kind (type, skin, host:
@@ -545,7 +551,10 @@ truck, Octodog, sewer screech (manholes, and wall vents; `screech_vents` is wall
 whose floor has no manholes; its body, `ScreechModel`, also comes at a lower detail for crowds,
 `crowd_mesh()`, the same parts and colours in about a third of the triangles: the Sewer Swarm's),
 heli drone, the Cyborg's Bad Dream (released by a killed host, spawned by the director at run
-time rather than placed by the generator), the Resonator (GDD §9.10, the Golden Zone: a golden
+time rather than placed by the generator; one that bursts out further ahead than its hover spot, its host
+shot down, lurks over that spot, harmless and holding no attack back, until the runner is within
+`hover_ahead`, and only then begins its chase, so every chase begins where the host rules plan it, at its
+host's spot: task H8, DESIGN-TBD, `docs/questions/h8.md`), the Resonator (GDD §9.10, the Golden Zone: a golden
 broadcast spire hovering far ahead whose red waves roll along the floor across every lane; its model,
 `resonator_model.gd`, is built in code, and `resonator_rules.gd` plans each pulse where its wave meets
 the player on clear floor), the Barnacle Turret (GDD §9.8, from Marketplace 1: a ceiling enemy, see
@@ -615,7 +624,8 @@ enemy takes part like this, opting in for whichever of its attacks count as big:
   long Bad Dream chase over a visit's planned pulses, then a drone that stays, took every turn the
   dense floor left it for 55 s, until the next Resonator's arrival sent it away without a pulse).
 - **An attack that can't wait** because the player sets it off (the Bad Dream bursts out of a killed
-  host) or the generator planned its moment still reports itself: the others wait for it. It can
+  host, its chase begun by the runner; one shot down ahead lurks first, reporting nothing) or the generator
+  planned its moment still reports itself: the others wait for it. It can
   overlap an attack that was already on when it came; the Bad Dream holds its slash until that one
   is over. A planned floor cut (B4's stand-in, C2's Buzz Overdrive) reports itself from its warning
   until its charge ends; the generator keeps every other enemy's planned stretch off its attack window

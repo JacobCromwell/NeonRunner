@@ -35,8 +35,9 @@ var stomp_hosts: bool = false
 ## chase from), lane, cause, kill_d: the runner's distance at the kill, kill_t (level time), host_d: where the
 ## host stood then, dream: whether its Bad Dream was spawned, fizzled, begin_d and begin_t: where and when its
 ## chase began (-1: never), others_on: the other types whose big attack was on then, telegraph_d: the runner's
-## distance at its first telegraph (-1: none), claws_d: at its first slash's claws (-1: none), slashes, end_d
-## and end_t: where and when its chase ended (-1: still on when the run stopped), emp: an EMP dissolved it}.
+## distance at its first telegraph (-1: none), telegraph_ahead: how far ahead of the runner the Bad Dream was
+## then, claws_d: the runner's distance at its first slash's claws (-1: none), slashes, end_d and end_t: where
+## and when its chase ended (-1: still on when the run stopped), emp: an EMP dissolved it}.
 var chases: Array[Dictionary] = []
 
 ## Bad Dream instance id -> its chase's index; host instance id -> its chase's index.
@@ -79,6 +80,7 @@ func observe() -> void:
 			c["others_on"] = types
 		if dream != null and float(c["telegraph_d"]) < 0.0 and dream.state == BadDream.State.TELEGRAPH:
 			c["telegraph_d"] = p.distance
+			c["telegraph_ahead"] = dream.rel_ahead
 		if dream != null and float(c["claws_d"]) < 0.0 and dream.slashes > 0:
 			c["claws_d"] = p.distance
 		if dream != null:
@@ -190,7 +192,7 @@ func _on_defeated(e: Enemy, cause: StringName) -> void:
 	chases.append({"host_at": float(e.spawn.get("at", 0.0)), "lane": int(e.spawn.get("lane", 0)),
 		"seed": int(e.spawn.get("seed", 0)), "cause": String(cause), "kill_d": world.player.distance,
 		"kill_t": world.level_time(), "host_d": e.track_distance(), "dream": false, "fizzled": false,
-		"begin_d": -1.0, "begin_t": -1.0, "others_on": PackedStringArray(), "telegraph_d": -1.0, "claws_d": -1.0,
+		"begin_d": -1.0, "begin_t": -1.0, "others_on": PackedStringArray(), "telegraph_d": -1.0, "telegraph_ahead": -1.0, "claws_d": -1.0,
 		"slashes": 0, "end_d": -1.0, "end_t": -1.0, "emp": false})
 
 

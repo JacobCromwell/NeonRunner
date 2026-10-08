@@ -1,6 +1,7 @@
 extends TestSuite
 ## The Cyborg's Bad Dream (GDD §9.7) in full RunWorlds on real physics: it bursts out of a killed host
-## (stomp, claws or dash) and only then; its immunities and the counters (weapons, stomping, claws,
+## (stomp, claws, dash, or a weapon, which hits hosts since October 8, 2026: shot down ahead, it lurks until
+## the runner comes) and only then; its immunities and the counters (weapons, stomping, claws,
 ## the dash, armor, the shield, a generator's EMP); the three-lane slash at 3, 5 and 6 lanes (exactly
 ## those lanes, edges clamped), its warning and its dodge; waiting below a ceiling, following onto a
 ## wall slowly, and the wall slash; the chase's end and survival bonus; one at a time; never with an
@@ -30,6 +31,7 @@ func run() -> void:
 		return
 	await _test_declared()
 	await _test_emerges_from_hosts()
+	await _test_weapon_release()
 	await _test_not_otherwise()
 	await _test_immunities()
 	await _test_protection()
@@ -196,6 +198,8 @@ func _test_emerges_from_hosts() -> void:
 				"it emerges from the host (%s)" % cause)
 			check(absf(dream.rel_ahead - (host.track_distance() - w.player.distance)) < 3.0,
 				"where the host stood (%.1f m ahead)" % dream.rel_ahead)
+			check(not dream.lurking and dream.is_major_attack_active(),
+				"its chase begins at once: it bursts out by the runner (%s)" % cause)
 			check(not dream.body_hitbox().is_active() and not dream.slash_hitbox().is_active(),
 				"harmless while it emerges")
 			var id: int = dream.get_instance_id()
@@ -204,6 +208,75 @@ func _test_emerges_from_hosts() -> void:
 				"then floats in front of the player (%.1f m ahead)" % dream.rel_ahead)
 			check(w.player.alive, "and emerging never hurt the player (%s)" % w.player.last_event)
 		await sim.free_world(w)
+
+
+## Weapons hit hosts (GDD §9.7, owner, October 8, 2026): a host the weapon shoots down ahead of the runner
+## releases its Bad Dream where it stood, with an ordinary kill's score and not the host bonus (DESIGN-TBD:
+## CyborgTuning.weapon_host_bonus 0). The Bad Dream lurks there, harmless and holding no attack back, until the
+## runner comes within hover_ahead of it; only then does its chase begin, playing out as one that bursts out
+## at the runner's feet (its emerge time, then its first slash's delay; DESIGN-TBD, docs/questions/h8.md), so
+## the chase begins where the generator planned it (host_rules.gd).
+func _test_weapon_release() -> void:
+	var w: RunWorld = sim.build_world(RunSim.layout(3, 600.0), _loadout({"weapon": 2}))
+	w.player.setup(tuning, w.geo, 1)
+	var host := w.director.spawn({"type": "cyborg", "at": 75.0, "lane": 0, "side": 0, "seed": 3,
+		"params": {"host": true, "panic": false, "fires": false}}) as Cyborg
+	var host_at: float = host.track_distance()
+	await tree.physics_frame
+	w.player.running = true
+	await _until(func() -> bool: return not host.alive, 4.0)
+	var died_at: float = host.track_distance()
+	var ahead: float = died_at - w.player.distance
+	check(not host.alive and ahead > t.hover_ahead + 10.0,
+		"auto-fire shoots a host down ahead of the runner (%.1f m ahead)" % ahead)
+	await physics_frames(2)
+	var dream: BadDream = null
+	for e: Enemy in w.director.active:
+		if e is BadDream:
+			dream = e
+	check(dream != null and dream.alive and bool(dream.spawn["params"].get("from_host", false)),
+		"the Bad Dream bursts out of a host the weapon killed")
+	check(int(w.score.bonuses.get(&"host", 0)) == 0 and w.score.kills == 1
+		and int(w.score.bonuses.get(&"kill", 0)) == ct.score_value,
+		"a weapon kill pays an ordinary cyborg kill's score, not the host bonus (%s)" % str(w.score.bonuses))
+	if dream == null:
+		await sim.free_world(w)
+		return
+	var id: int = dream.get_instance_id()
+	var spot: float = dream.track_distance()
+	check(dream.lurking and _count(id, "lurk") == 1 and absf(spot - died_at) < 0.5,
+		"it lurks over the spot it burst out of (%.1f m ahead)" % dream.rel_ahead)
+	check(not dream.is_major_attack_active() and is_zero_approx(dream.chase_time),
+		"its chase hasn't begun: it holds no other attack back and its clock hasn't started")
+	var still: Array[bool] = [true]
+	var harmless: Array[bool] = [true]
+	await _until(func() -> bool:
+		var d: BadDream = _dream(id)
+		if d == null or not d.lurking:
+			return true
+		still[0] = still[0] and absf(d.track_distance() - spot) < 0.01
+		harmless[0] = harmless[0] and not d.body_hitbox().is_active() and not d.slash_hitbox().is_active()
+		return false, 6.0)
+	dream = _dream(id)
+	check(dream != null and not dream.lurking and _count(id, "chase") == 1, "its chase begins as the runner comes")
+	if dream == null:
+		await sim.free_world(w)
+		return
+	var began_at: float = w.player.distance
+	var began: float = w.level_time()
+	check(still[0] and harmless[0], "it stays where it burst out, harmless, while it lurks")
+	check(spot - began_at <= t.hover_ahead + 0.5 and spot - began_at >= t.hover_ahead - 1.5,
+		"with the runner within hover_ahead of it (%.1f m; the host stood at %.1f, the runner at %.1f)"
+		% [spot - began_at, host_at, began_at])
+	check(dream.is_major_attack_active() and dream.state == BadDream.State.EMERGE and dream.chase_time < 0.05,
+		"then its chase is on, from its start")
+	await _until(func() -> bool: return _dream(id) == null or _count(id, "telegraph") >= 1, 6.0)
+	var first: float = _time_of(dream, "telegraph")
+	check(first > 0.0 and first - began >= t.emerge_time + t.first_slash_delay - 0.02,
+		"and it first telegraphs no sooner than one released at the runner's feet (%.2f s after its chase began)"
+		% (first - began))
+	check(dream.rel_ahead <= t.hover_ahead + 1.0, "from its hover spot in front of the runner (%.1f m ahead)" % dream.rel_ahead)
+	await sim.free_world(w)
 
 
 ## Nothing else releases one: a host left alone, a host that leaves play, a normal cyborg killed.

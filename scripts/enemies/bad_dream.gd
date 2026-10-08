@@ -5,6 +5,12 @@ extends Enemy
 ## - Origin: it bursts out of a host cyborg when the host is killed (Cyborg._release_bad_dream
 ##   spawns it where the host stood). GDD §9.7: only one on screen at a time: one released while
 ##   another is still around never appears (the host's own purple burst is all the player sees).
+## - Lurking (DESIGN-TBD, docs/questions/h8.md): one that bursts out further ahead of the runner than its
+##   hover spot (hover_ahead), as when the weapon shoots its host down (weapons hit hosts, owner, October 8,
+##   2026), rises out of its host as usual and then lurks over that spot, harmless and facing the runner,
+##   until they come within hover_ahead of it; only then does its chase begin (its clock, its big attack),
+##   playing out exactly as for a host stomped where it stood. So every chase begins at its host's spot,
+##   where the generator plans it and its anti-grav pads from (host_rules.gd), whatever killed the host.
 ## - Movement: it floats ahead of the player, facing them and keeping pace, inside the camera's view.
 ##   It passes through fences, signs and every other barrier (it ignores the level's pieces). It
 ##   drifts toward the player's lane at a limited sideways speed and follows onto a wall slowly. It
@@ -17,9 +23,9 @@ extends Enemy
 ##   (bad_dream_slash) and its claws sweep the locked lanes; a player who has left them is safe.
 ##   It slashes every ~3–4 s (slash_interval, from one telegraph's start to the next) for its chase
 ##   (20–30 s), then it dissolves (bad_dream_dissolve) and a player who survived earns the survival
-##   bonus. DESIGN-TBD: the chase clock runs from the moment it bursts out, also while it holds its
-##   slash (the player on a ceiling, another enemy's attack), so a chase never outlasts the pads the
-##   generator planned for it. The claws sweep higher than a jump reaches, so only
+##   bonus. DESIGN-TBD: the chase clock runs from the moment it bursts out (or its lurk ends), also while
+##   it holds its slash (the player on a ceiling, another enemy's attack), so a chase never outlasts the
+##   pads the generator planned for it. The claws sweep higher than a jump reaches, so only
 ##   leaving the lanes (to a lane, a wall or a ceiling) dodges the slash (FB 99).
 ## - Immune to weapons (auto-fire never targets it), stomping and claws. Its slash is an enemy
 ##   attack, so armor or the shield blocks one; the juggernaut dash passes through it safely and
@@ -66,9 +72,12 @@ var chase_seconds: float = 25.0
 var band := Vector2i(-1, -1)
 ## Slashes made so far.
 var slashes: int = 0
-## Events as [name, level time]: emerge, drift, telegraph, lunge, slash, recover, wait, resume,
-## dissolve, emp, bonus, fizzle. Tests read it.
+## Events as [name, level time]: emerge, lurk, chase (a lurk's end: its chase begins), drift, telegraph,
+## lunge, slash, recover, wait, resume, dissolve, emp, bonus, fizzle. Tests read it.
 var history: Array = []
+## Lurking over the spot it burst out of until the runner comes within hover_ahead (see the header): its
+## chase hasn't begun.
+var lurking: bool = false
 ## Every sound it asked for, as [name, level time] (tests check each attack's audio warning).
 var sounds: Array = []
 ## Its spot relative to the player: world x, the height of its tail's tip, metres ahead.
@@ -91,6 +100,9 @@ var _slash_center := Vector2.ZERO
 var _dissolve_len: float = 1.0
 ## Dissolved (or never appeared): the director retires it.
 var _done: bool = false
+## It lurked (see the header), over this track distance.
+var _lurked: bool = false
+var _lurk_at: float = 0.0
 var _arc_time: float = -1.0
 var _arc_dir: float = 1.0
 var _blocker_query := PhysicsShapeQueryParameters3D.new()
@@ -165,6 +177,12 @@ func _build() -> void:
 		_body.set_enabled(true)
 		_set_state(State.DRIFT)
 		_next_slash = _t.first_slash_delay
+	elif rel_ahead > _t.hover_ahead:
+		# Burst out ahead of its hover spot (its host shot down): it lurks there until the runner comes.
+		lurking = true
+		_lurked = true
+		_lurk_at = world.player.distance + rel_ahead
+		history.append(["lurk", world.level_time()])
 	_place()
 
 
@@ -201,8 +219,12 @@ func _tick(delta: float) -> void:
 	if _done:
 		return
 	var p: Player = world.player
-	chase_time += delta
 	_state_time += delta
+	if lurking:
+		_lurk(p)
+		_place()
+		return
+	chase_time += delta
 	match state:
 		State.EMERGE:
 			_emerge(p, delta)
@@ -224,13 +246,25 @@ func _tick(delta: float) -> void:
 	_place()
 
 
+## Lurking (see the header): it rises out of its host as it does when it emerges, harmless, staying where
+## it burst out; its chase begins once the runner is within hover_ahead of it (then _emerge goes on).
+func _lurk(p: Player) -> void:
+	var k: float = clampf(_state_time / _t.emerge_time, 0.0, 1.0)
+	rel_y = lerpf(-1.4, _t.hover_height, 1.0 - pow(1.0 - k, 2.0))
+	rel_ahead = _lurk_at - p.distance
+	if rel_ahead <= _t.hover_ahead:
+		lurking = false
+		history.append(["chase", world.level_time()])
+
+
 ## Rising out of the host, harmless, then off to its spot ahead of the player. It can't hurt anyone
-## before it's in front of them.
+## before it's in front of them. After a lurk (risen already) it still waits its emerge_time from the
+## chase's start, so its chase plays out as one that bursts out at the runner's feet.
 func _emerge(p: Player, delta: float) -> void:
 	var k: float = clampf(_state_time / _t.emerge_time, 0.0, 1.0)
 	_float_toward(p, delta, _t.hover_ahead)
 	rel_y = lerpf(-1.4, _t.hover_height, 1.0 - pow(1.0 - k, 2.0))
-	if k >= 1.0 and rel_ahead >= _t.lunge_ahead:
+	if k >= 1.0 and rel_ahead >= _t.lunge_ahead and (not _lurked or chase_time >= _t.emerge_time):
 		_body.set_enabled(true)
 		_set_state(State.DRIFT)
 		_next_slash = chase_time + _t.first_slash_delay
@@ -317,6 +351,7 @@ func _lunge(p: Player) -> void:
 
 
 func _start_dissolve(survived: bool, emp: bool) -> void:
+	lurking = false
 	_slash_live = false
 	_slash.set_enabled(false)
 	_body.set_enabled(false)
@@ -494,11 +529,12 @@ func _sign_between(side: int, from: float, to: float) -> bool:
 
 # --- Declared properties and the director ------------------------------------------------------
 
-## GDD §9.7: its whole chase is a major attack (from bursting out until it dissolves). DESIGN-TBD
-## (docs/questions/r3.md): while big attacks take turns (GDD §9) the whole chase holds every other
-## type's big attack too, not only between its slashes.
+## GDD §9.7: its whole chase is a major attack (from bursting out, or the end of its lurk, until it
+## dissolves). DESIGN-TBD (docs/questions/r3.md): while big attacks take turns (GDD §9) the whole chase
+## holds every other type's big attack too, not only between its slashes. A lurking one's chase hasn't
+## begun, so it holds nothing back (docs/questions/h8.md).
 func is_major_attack_active() -> bool:
-	return alive and not _done and state != State.DISSOLVE
+	return alive and not _done and not lurking and state != State.DISSOLVE
 
 
 ## Seconds from a telegraph's start until its claws are live (the slash's warning).

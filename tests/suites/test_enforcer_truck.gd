@@ -315,8 +315,8 @@ func _test_contacts_never() -> void:
 	await sim.free_world(w)
 
 
-## Hosts and fence generators keep their immunity to charges as to weapons; another enemy a charge flattens
-## still earns the player nothing.
+## Hosts and fence generators keep their immunity to charges (a generator's to weapons too; weapons hit hosts
+## since October 8, 2026, GDD §9.7); another enemy a charge flattens still earns the player nothing.
 func _test_old_behaviour() -> void:
 	var w: RunWorld = _world(3)
 	await physics_frames(2)
@@ -343,9 +343,10 @@ func _test_old_behaviour() -> void:
 	check(not host.charge_bait and not generator.charge_bait and not cyborg.charge_bait, "none of them declares charge_bait")
 	check(not cyborg.alive and int(after["kills"]) == int(before["kills"]) and int(after["score"]) == int(before["score"]),
 		"a cyborg a charge flattens is no kill of the player's, as before")
-	host.take_damage(99.0, &"weapon")
 	generator.take_damage(99.0, &"weapon")
-	check(host.alive and generator.alive, "weapons still never hurt a host or a generator")
+	check(generator.alive, "weapons still never hurt a generator")
+	host.take_damage(99.0, &"weapon")
+	check(not host.alive, "while they hit a host now, unlike a charge (GDD §9.7, owner, October 8, 2026)")
 	attacker.free()
 	await sim.free_world(w)
 
