@@ -18,7 +18,7 @@
     "hostile_takeover_fight", "sleep_taker_fight", "sleep_taker_attacks", "sewer_swarm_fight",
     "sewer_swarm_whole", "sewer_swarm_surrounded", "the_house_attacks", "the_house_phases", "the_house_fight",
     "resonator", "bad_dream", "buzz_overdrive", "barnacle_turret", "tithe_collector", "enforcer_truck",
-    "enforcer_truck_runs"
+    "enforcer_truck_runs", "wide_gaps", "charge_paths"
   ],
   "medium": [
     "audio", "ceilings", "corporate_skin", "cyborg", "drone", "enemy_director", "floating_head",
@@ -38,6 +38,8 @@
     {"match": "scripts/world/wall_*_plan.gd", "tier": "full"},
     {"match": "scripts/world/wall_*_tuning.gd", "tier": "full"},
     {"match": "scripts/world/ramp_launch.gd", "tier": "full"},
+    {"match": "scripts/world/wide_gap_*.gd", "tier": "full", "suites": ["wide_gaps", "enforcer_truck_runs"]},
+    {"match": "scripts/world/charge_path_*.gd", "tier": "full", "suites": ["charge_paths", "octodog", "buzz_overdrive", "cyborg"]},
     {"match": "scripts/world/hazard.gd", "tier": "full"},
     {"match": "scripts/world/meshes/*", "tier": "merge", "suites": ["*_skin", "skin_budget", "doodads"]},
     {"match": "scripts/world/skins/zone_skin.gd", "tier": "merge", "suites": ["*_skin", "skin_budget", "doodads"]},
@@ -59,8 +61,10 @@
     {"match": "scripts/run/level_run.gd", "tier": "full"},
     {"match": "scripts/run/*", "tier": "merge", "suites": ["app_flow", "pickups", "credit_visibility", "theft", "armor", "interactions", "hints", "speed_fx", "perf", "frame_times", "charge_contacts"]},
     {"match": "scripts/enemies/enemy.gd", "tier": "full", "suites": ["charge_contacts"]},
-    {"match": "scripts/enemies/octodog.gd", "suites": ["octodog", "charge_contacts", "enforcer_truck*"]},
-    {"match": "scripts/enemies/buzz_overdrive.gd", "suites": ["buzz_overdrive", "charge_contacts", "enforcer_truck_runs"]},
+    {"match": "scripts/enemies/octodog.gd", "suites": ["octodog", "charge_contacts", "enforcer_truck*", "charge_paths"]},
+    {"match": "scripts/enemies/buzz_overdrive.gd", "suites": ["buzz_overdrive", "charge_contacts", "enforcer_truck_runs", "charge_paths"]},
+    {"match": "scripts/enemies/cyborg.gd", "suites": ["cyborg", "cyborg_body", "window_cyborg", "charge_paths"]},
+    {"match": "scripts/enemies/cyborg_gun.gd", "suites": ["cyborg", "window_cyborg", "barnacle_turret", "charge_paths"]},
     {"match": "scripts/enemies/enforcer_truck*", "suites": ["enforcer_truck*"]},
     {"match": "scripts/enemies/floor_cutter.gd", "suites": ["floor_cuts", "charge_contacts"]},
     {"match": "scripts/enemies/enemy_director.gd", "tier": "merge", "suites": ["enemy_director", "pace"]},
