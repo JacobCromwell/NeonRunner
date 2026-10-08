@@ -35,6 +35,8 @@ const FACE := Color(0.82, 0.9, 1.0)
 ## Where a rider crouches on the roof (x, and z from the front), in boarding order: the two hatches behind the
 ## light bar, then the gun ring further back.
 const RIDER_SLOTS: Array[Vector2] = [Vector2(-0.5, 3.55), Vector2(0.5, 3.55), Vector2(0.0, 4.9)]
+## Its looks (look_of).
+const LOOKS: Array[StringName] = [&"clean", &"weathered", &"gilded"]
 ## A rider's height over the roof (its screen head's top) and the gun ring's lift for the third.
 const RIDER_HEIGHT: float = 0.74
 const RING_LIFT: float = 0.12

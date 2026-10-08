@@ -186,6 +186,9 @@ var wide_gap_result: Dictionary = {}
 ## The cyborgs planted in charge paths in the last build (ChargePathPlacement.place: target, planted,
 ## constraints); empty when the level asks for none (LevelConfig.charge_path_cyborgs 0).
 var charge_path_result: Dictionary = {}
+## The Enforcer Trucks' showing windows in the last build (task C6c; enforcer_truck_rules.gd: planned, and for each
+## chase its arrival, its preferred one, its window or why none); empty in a level without the truck.
+var show_window_result: Dictionary = {}
 ## The danger density pass's report for the last build (DangerDensity.apply_enemies, apply_obstacles,
 ## then apply_wall_fences: counts, targets, what each lever added, shortfalls); empty when the level's
 ## danger_density_increase is 0.
@@ -303,6 +306,7 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	# Passes before them ask them (the danger density pass keeps off the wider gaps): never last build's.
 	wide_gap_result = {}
 	charge_path_result = {}
+	show_window_result = {}
 	danger_density_plan = null
 	_intro_burst = -1
 	var accel: float = tuning.speed_gain_per_minute / 60.0
@@ -1375,7 +1379,27 @@ func fill_keep_outs(patterns: Array) -> Dictionary:
 			out.append(_keep(zone.x, zone.y))
 	for q: Vector2 in quiet_stretches():
 		out.append(_keep(q.x, q.y))
+	for w: Vector2 in rules_fill_keep_outs():
+		out.append(Vector4(w.x, w.y, 0.0, 0.0))
 	return {"keep": out, "activity": activity}
+
+
+## What the level's features' rules keep the fill pass off besides their enemies' stretches (`static func
+## fill_keep_outs(gen: LevelGenerator) -> Array[Vector2]` on a feature's rules script), in every lane and kept as
+## they are, without the fill pass's margin (they hold nothing to keep a distance from): an Enforcer Truck's showing
+## window (task C6c, enforcer_truck_rules.gd), a calm stretch the zone doodads and every other later pass keep off
+## too (its doodad_keep_outs).
+func rules_fill_keep_outs() -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for feature: String in config.features:
+		var path: String = RULES_DIR.path_join("%s_rules.gd" % feature)
+		if not ResourceLoader.exists(path):
+			continue
+		var script := load(path) as GDScript
+		if script != null and script.has_method("fill_keep_outs"):
+			for k: Vector2 in script.call("fill_keep_outs", self):
+				out.append(k)
+	return out
 
 
 ## A keep-out [from, to] with the fill pass's usual margin at both ends (_fill_margin).
