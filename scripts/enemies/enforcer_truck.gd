@@ -1276,7 +1276,8 @@ func _holed() -> bool:
 
 ## Its wreck, kept in the runner's frame like the truck itself: it lurches on into view (its front from where
 ## it was to wreck_gap behind the runner over wreck_surge_seconds, already closer staying put), spinning out
-## (a charge) or nose-diving into its hole, trailing sparks, then blows up where the camera sees it (_explode):
+## (a charge) or nose-diving into its hole on its rear (nothing of it rises: it passes under the chase camera),
+## trailing sparks, then blows up where the camera sees it (_explode):
 ## at the end of its lurch, or as its nose meets the far edge of the gap it fell in. The blast burns on,
 ## falling back slowly (blast_drift), and it's gone when the blast is over.
 func _physics_process(delta: float) -> void:

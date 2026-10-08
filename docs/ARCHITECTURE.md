@@ -898,7 +898,8 @@ and its hint (`enemy:enforcer_truck`). DESIGN-TBD numbers throughout (`docs/ques
 - **Its blast** (C6b; the owner, October 8, 2026: a visible explosion however it's destroyed). Every wreck (an
   Octodog's lunge, a Buzz Overdrive's charge or cut, a gap too wide to hop) lurches on into the chase camera's
   view over `wreck_surge_seconds` (its front to `wreck_gap` behind the runner; in a hole, until its nose meets
-  the far edge), trailing sparks, then blows up (`_explode`): its model and riders gone in an
+  the far edge; spinning out from a charge, nose-diving on its rear into a hole so nothing of it rises into the
+  camera it passes under), trailing sparks, then blows up (`_explode`): its model and riders gone in an
   `EnforcerTruckBlast` (a few swelling unshaded puffs, a white-hot core, dark smoke and an additive floor glow;
   `blast_radius`, smaller and flatter in the runner's lane, `blast_radius_in_lane`, so it never stands between
   the camera and the runner), the shared `RunEffects` fire, smoke and debris (a chunk for each rider), a shake
@@ -3503,7 +3504,7 @@ dodged early missing it, no volley during either though one was due, big attacks
 wide gap and a cut (the tank shot down mid-charge) wrecking it, an ordinary gap hopped; riders from passed
 cyborgs in its lane only (not another lane, a killed one, a window cyborg or a host), at most 3, quickening its
 volleys; the same run twice; each way it's destroyed ending in its blast a lurch later, with its sound, seen by the
-run camera and never in front of the runner (C6b); its showings (C6b; the other runs play without them): on
+run camera and never in front of the runner, its wreck never rising into the camera it passes under (C6b); its showings (C6b; the other runs play without them): on
 arrival and mid-chase for `show_seconds`, its whole look on screen, back to its follow gap and the runner's lane,
 never firing meanwhile, its siren swelling, a lane change into it bumped back unhurt and it giving way, never the
 only free lane (zone doodads at 3, 5 and 6 lanes) nor beside a runner in an outer lane, turns both ways, a bait

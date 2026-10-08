@@ -25,7 +25,8 @@ extends TestSuite
 ## - Its blast (the owner, October 8, 2026: every way it's destroyed ends in a visible explosion): destroyed by an
 ##   Octodog's lunge, a Buzz Overdrive's charge, a gap too wide to hop or a Buzz Overdrive's cut, it blows up a
 ##   lurch later (wreck_surge_seconds at most) with its sound, the run camera sees its fireball, and no puff of it
-##   ever stands between that camera and the runner (EnforcerTruckView).
+##   ever stands between that camera and the runner (EnforcerTruckView); as its wreck lurches on under the camera,
+##   nothing of it rises over its roof and riders (but for a charge's roll).
 ## - Showing itself (GDD §9.13, the owner, October 8, 2026), with the runs above playing without it: as it arrives
 ##   and once more mid-chase, show_seconds alongside in a lane beside the runner's, its whole look on screen hiding
 ##   nothing of the runner, then back to its follow gap and the runner's lane, never firing meanwhile, its marker
