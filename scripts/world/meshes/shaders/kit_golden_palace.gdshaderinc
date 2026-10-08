@@ -38,16 +38,39 @@ vec3 golden_palace_floor(vec3 base, vec3 w, vec3 n, vec3 eye, vec2 uv, float par
 	return mix(col, golden_vein * 0.6, joint);
 }
 
-// PAT_PALACE_WELL (71): everything under a break in the palace floor (GDD §5: "a collapsed floor,
-// an open stairwell, a light well"), seen only through gaps: deep shade that only darkens with
-// depth (so it reads as a hole at a glance, like every zone's gap), with the faint silhouette of
-// broken stone steps near the top.
-vec3 golden_palace_well(vec3 base, vec3 w, vec3 n) {
-	float h = abs(n.x) > 0.5 ? w.z : w.x;
+// PAT_PALACE_WELL (71): everything under a break in the palace floor (GDD §5: "a collapsed floor, an open
+// stairwell, a light well"), seen only through gaps and cuts: deep shade that darkens with depth (so
+// it reads as a hole at a glance, like every zone's gap, and never lights like the floor above), but
+// (task H3, GDD §9.9) showing what is there: a stairwell, its stone steps going down in treads and risers
+// (diagonal along a long side, level across a face), and far below the lower hall's marble in slabs with
+// a pool of light on it. Steady, all albedo. param: 0 a face, 1 the lower hall's floor.
+vec3 golden_palace_well(vec3 base, vec3 w, vec3 n, float param) {
+	if (param > 0.5) {
+		vec2 p = w.xz;
+		vec2 fwp = max(fwidth(p), vec2(1e-4));
+		vec2 q = p / vec2(2.4, 3.6);
+		vec2 fq = fwp / vec2(2.4, 3.6);
+		float joint = max(filtered_pulse(q.x + 0.5, fq.x, 0.0, 0.025), filtered_pulse(q.y, fq.y, 0.0, 0.02));
+		vec3 col = base * (0.78 + 0.3 * value_noise(p * vec2(0.5, 0.35)));
+		col *= 1.0 - 0.55 * joint;
+		// The light well: a pool of soft light every 22 m down the hall, on its axis and wide.
+		vec2 pc = vec2(p.x / 4.2, (fract(p.y / 22.0 + 0.5) - 0.5) * 22.0 / 6.5);
+		col *= 1.0 + 0.9 * exp(-dot(pc, pc));
+		return col;
+	}
+	bool side = abs(n.x) > 0.5;
+	float h = side ? w.z : w.x;
 	float fh = max(fwidth(h), 1e-4);
-	float step_line = filtered_pulse(h / 0.9, fh / 0.9, 0.0, 0.07);
-	float depth = mix(1.0, 0.16, smoothstep(-0.2, -3.4, w.y));
-	return base * (0.86 - 0.2 * step_line) * depth;
+	float fy = max(fwidth(w.y), 1e-4);
+	// Steps: a long side's flight descends along the track; an end face shows them level.
+	float slope = side ? 0.5 : 0.0;
+	float s = (w.y + h * slope) / 0.45;
+	float fs = max(fy + fh * slope, 1e-4) / 0.45;
+	float riser = filtered_pulse(s, fs, 0.0, 0.1);
+	float tread = 0.5 + 0.5 * step(0.5, fract(s));
+	float depth = mix(1.0, 0.3, smoothstep(-0.2, -5.2, w.y));
+	float pier = filtered_pulse(h / 3.6, fh / 3.6, 0.0, 0.1);
+	return base * (0.8 + 0.2 * tread - 0.4 * riser - 0.18 * pier) * depth;
 }
 
 // PAT_PALACE_PANEL (72): the colonnade's flush wall panel, floor to the entablature (world position,
@@ -64,7 +87,7 @@ vec3 golden_palace_panel(vec3 base, vec3 w, vec3 n) {
 // Dispatches the Golden Palace's patterns (ids 70-79) for kit_solid.gdshader.
 vec3 golden_palace_surface(int pattern, float param, vec3 base, vec3 w, vec3 n, vec3 eye, vec2 uv) {
 	if (pattern == 71) {
-		return golden_palace_well(base, w, n);
+		return golden_palace_well(base, w, n, param);
 	} else if (pattern == 70) {
 		return golden_palace_floor(base, w, n, eye, uv, param) * golden_light(w.y);
 	} else if (pattern == 72) {

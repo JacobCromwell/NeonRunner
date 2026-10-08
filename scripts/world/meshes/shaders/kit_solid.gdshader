@@ -416,7 +416,10 @@ void fragment() {
 		// Fake city light: tops catch the sky glow, sides the street, undersides the traffic below.
 		float shade = 0.62 + 0.3 * max(n.y, 0.0) + 0.08 * abs(n.x) + 0.06 * n.z - 0.04 * max(-n.y, 0.0);
 		float f = 1.0 - clamp(dot(nv, VIEW), 0.0, 1.0);
-		vec3 sheen = to_linear(sheen_color) * (f * f * f * sheen_strength + glass * 0.15);
+		// What lies below the street (the Corporate, Dead Zone and Golden Zone's holes, task H3) takes only
+		// a little of the zone's sheen, which at a hole's grazing walls would drown the scenery in it.
+		float sheen_k = (pattern == 31 || pattern == 41 || pattern == 53 || pattern == 54 || pattern == 71) ? 0.25 : 1.0;
+		vec3 sheen = to_linear(sheen_color) * (f * f * f * sheen_strength * sheen_k + glass * 0.15);
 		col = (to_linear(base) * shade + sheen) * light_factor(scenery_light);
 	}
 	ALBEDO = col;

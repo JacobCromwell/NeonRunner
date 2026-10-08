@@ -109,14 +109,21 @@ extends ZoneSkin
 ## How far below the walkways the canal lies (deeper than the fall that ends a run, so a fall never
 ## visibly lands).
 @export_range(4.5, 15.0, 0.1, "suffix:m") var canal_depth: float = 5.5
-## The canal: dark water, never lighter than a gap's inside may be.
-@export var canal_color: Color = Color(0.035, 0.055, 0.07)
+## The canal: dim water that reads as water through a gap or a cut (task H3, GDD §9.9), never lit like
+## a walkway: it stays far darker than the darkest of them (tests/suites/test_golden_skin.gd, which
+## counts the sky and the lamps on it below too).
+@export var canal_color: Color = Color(0.05, 0.1, 0.13)
+## What the water reflects: the dusk's sky (a sheen toward the horizon and sparse glints that slide with
+## the current) and the walkways' lamps, both added to the water's colour, faint and never glowing.
+@export var canal_sky_color: Color = Color(0.14, 0.18, 0.26)
+@export var canal_lamp_color: Color = Color(0.14, 0.11, 0.07)
 ## How fast the canal flows toward the player (a motion cue in the gaps).
 @export_range(0.0, 6.0, 0.1, "suffix:m/s") var canal_flow: float = 1.4
 ## Everything under the walkways (their sides and piers, the building faces down to the water), seen
-## only through gaps: deep shade that only darkens with depth, so a gap reads as a hole at a glance.
-## Kept far darker than any walkway material (tests/suites/test_golden_skin.gd).
-@export var gap_inside_color: Color = Color(0.075, 0.068, 0.06)
+## only through gaps and cuts: the quay's stone in deep shade, dim but with its arches and the canal's
+## light on it (PAT_UNDERDECK; task H3, GDD §9.9), so a gap reads as a hole at a glance and still shows
+## the canal. Kept far darker than any walkway material (tests/suites/test_golden_skin.gd).
+@export var gap_inside_color: Color = Color(0.18, 0.16, 0.14)
 ## Gap edges: the orange edge language of every zone. Redder than it looks: the glow and the
 ## tonemapper lift the green, and it must stay orange, not sign yellow.
 @export var gap_edge_color: Color = Color(1.0, 0.25, 0.04)
@@ -703,6 +710,7 @@ func _solid_params() -> Dictionary:
 		"golden_shine": srgb(gold_shine_color), "golden_sun": sun, "golden_rail": srgb(gold_color),
 		"golden_joint": srgb(joint_color), "golden_plate": plate_length, "golden_polish": walkway_polish,
 		"golden_inlay": srgb(kerb_color), "golden_vein": srgb(vein_color), "golden_flow": canal_flow,
+		"golden_canal_y": -canal_depth, "golden_canal_sky": srgb(canal_sky_color), "golden_canal_lamp": srgb(canal_lamp_color),
 		"golden_trim": srgb(gold_color), "golden_rib": srgb(rib_color), "golden_light_street": walkway_light,
 		"golden_light_flood": ledge_light}
 

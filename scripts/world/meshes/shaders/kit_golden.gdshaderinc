@@ -24,8 +24,12 @@ uniform float golden_polish = 0.55;
 // The cream marble of the walkways' medallions, and the veins in every marble.
 uniform vec3 golden_inlay = vec3(0.86, 0.82, 0.72);
 uniform vec3 golden_vein = vec3(0.6, 0.55, 0.48);
-// The canal below (PAT_CANAL) flows toward the player at this speed (m/s): a motion cue in the gaps.
+// The canal below (PAT_CANAL) flows toward the player at this speed (m/s): a motion cue in the gaps. The sky it
+// reflects and the lamps on it, as sRGB (added to its dark colour).
 uniform float golden_flow = 1.4;
+uniform float golden_canal_y = -5.5;
+uniform vec3 golden_canal_sky = vec3(0.06, 0.065, 0.1);
+uniform vec3 golden_canal_lamp = vec3(0.07, 0.055, 0.035);
 // Falling water's foam, and the gold of trims woven or set into other patterns (banner edges, the
 // coffers' rosettes, the boutique boards' lettering) and the cream of the coffers' ribs.
 uniform vec3 golden_foam = vec3(0.9, 0.92, 0.92);
@@ -163,25 +167,73 @@ vec3 golden_walkway(vec3 base, vec3 w, vec3 n, vec3 eye, vec2 uv, float param) {
 	return col;
 }
 
-// PAT_UNDERDECK (53): everything under the walkways, seen only through gaps (the walkways' side and
-// end faces, their piers, the building faces down to the water): deep shade that only darkens with
-// depth, so a gap reads as a hole at a glance (nothing lit or deck-like in it). COLOR is the shade at
-// the deck's level; faint ribs of the deck's frame near the top. param is unused.
-vec3 golden_under(vec3 base, vec3 w, vec3 n) {
-	float h = abs(n.x) > 0.5 ? w.z : w.x;
+// PAT_UNDERDECK (53): everything under the walkways, seen only through gaps and cuts (the walkways' side
+// and end faces, their piers, the building faces down to the water). It stays far darker than any walkway
+// (a gap reads as a hole at a glance; nothing lit or deck-like in it), but (task H3, GDD §9.9: "inside
+// the cut, the player sees the zone's own scenery below the street ... the canal") it shows what is
+// there, so the runner's camera, which sees little more than the first few metres of a hole's walls,
+// reads a canal: the quay under the deck, a masonry wall of round arches on piers, one every 4.8 m
+// (recessed and shaded inside, a faint lighter rim and courses on the stone), going down to the water,
+// and near the water the canal's light wavering on the stone in a net of ripples that fades out a metre
+// and a half up. Steady (a slow drift, never a flash), all albedo. COLOR is the stone's shade at the
+// deck's level; the water is at world height golden_canal_y.
+vec3 golden_under(vec3 base, vec3 w, vec3 n, float t) {
+	bool side = abs(n.x) > 0.5;
+	float h = side ? w.z : w.x;
 	float fh = max(fwidth(h), 1e-4);
-	float rib = filtered_pulse(h / 1.8, fh / 1.8, 0.0, 0.05);
-	float depth = mix(1.0, 0.2, smoothstep(-0.1, -3.2, w.y));
-	return base * (0.9 - 0.3 * rib) * depth;
+	float fy = max(fwidth(w.y), 1e-4);
+	float aa = max(fh, fy) * 1.5;
+	// A face across a lane (a deck's end) shows one arch a lane; a long side one every two lanes.
+	float period = side ? 4.8 : 2.4;
+	float u = (fract(h / period) - 0.5) * period;
+	vec2 c = vec2(u, w.y + 2.4);
+	float r = period * 0.3;
+	// The opening: a round head over straight sides, down to the water.
+	float head = (1.0 - smoothstep(r - aa, r + aa, length(c))) * step(0.0, c.y);
+	float legs = (1.0 - smoothstep(r - aa, r + aa, abs(u))) * step(c.y, 0.0) * step(golden_canal_y - 0.5, w.y);
+	float opening = clamp(head + legs, 0.0, 1.0);
+	// Its rim: a band of lighter stone just outside it, and the stone's courses.
+	float rim_d = max(length(c) * step(0.0, c.y), abs(u) * step(c.y, 0.0));
+	float rim = (1.0 - smoothstep(0.0, 0.1 + aa, abs(rim_d - r - 0.09))) * (1.0 - opening);
+	float course = filtered_pulse(w.y / 0.4, fy / 0.4, 0.0, 0.07);
+	float fascia = 1.0 - smoothstep(-0.05 - aa, 0.05 + aa, w.y + 0.85);
+	float low = smoothstep(0.0, golden_canal_y, w.y);
+	vec3 stone = base * (0.78 - 0.25 * course + 0.22 * rim) * mix(1.0, 0.5, low);
+	// The canal's light moving on the stone: under an arch a shimmer, brighter toward the water.
+	float above = w.y - golden_canal_y;
+	float net = value_noise(vec2(h * 2.2 + t * 0.35, w.y * 2.6 - t * 0.25)) * 0.6
+		+ value_noise(vec2(h * 5.1 - t * 0.5, w.y * 5.5 + 4.0)) * 0.4;
+	float web = smoothstep(0.42, 0.8, net);
+	vec3 shimmer = golden_canal_sky * (0.25 + 0.75 * web) * (0.4 + 0.6 * low);
+	vec3 col = mix(stone, base * 0.3 + shimmer, opening * (1.0 - fascia));
+	// And on the stone itself a metre or so up from the water.
+	col += golden_canal_sky * (1.0 - smoothstep(0.1, 1.3, above)) * (0.15 + 0.85 * web) * 0.7 * (1.0 - opening);
+	return col;
 }
 
-// PAT_CANAL (54): the canal far below the walkways, seen only through gaps: dark water flowing toward
-// the player (golden_flow m/s) with faint ripples, never lighter than its COLOR allows (it only
-// darkens and lightens a little around it), so it stays as dark as a gap's inside must be.
-vec3 golden_canal(vec3 base, vec3 w, float t) {
+// PAT_CANAL (54): the canal far below the walkways, seen only through gaps and cuts: dark water
+// flowing toward the player (golden_flow m/s) that reads as water, dim and never lit like the walkways
+// (task H3, GDD §9.9: "inside the cut, the player sees the zone's own scenery below the street ...
+// the canal in the Golden Zone"): slow ripples; the dusk's sky laid on it more the lower the eye (a
+// still sheen), broken into glints that slide with the current; and the walkways' lamps wavering
+// on it, warm white and faint. All of it is albedo (never emissive) and steady, so it needs nothing for
+// Reduced flashing, and it stays well under the walkways' darkest gold (test_golden_skin).
+vec3 golden_canal(vec3 base, vec3 w, vec3 eye, float t) {
 	vec2 p = vec2(w.x, w.z - t * golden_flow);
 	float ripple = value_noise(p * vec2(1.1, 0.3)) * 0.6 + value_noise(p * vec2(2.9, 0.9) + 7.0) * 0.4;
-	return base * (0.72 + 0.4 * ripple);
+	vec3 col = base * (0.7 + 0.5 * ripple);
+	// The sky on the water: a sheen toward the horizon, and sparse glints where a ripple faces it.
+	float fres = pow(1.0 - clamp(eye.y, 0.0, 1.0), 2.0);
+	float glint = smoothstep(0.7, 0.93, value_noise(p * vec2(4.6, 1.5) + 11.0));
+	col += golden_canal_sky * (0.25 + 0.75 * fres) * (0.22 + 0.78 * glint) * (0.6 + 0.4 * ripple);
+	// The lamps' reflections: one in some cells of a 7 m x 4.8 m grid, drifting with the current.
+	vec2 cell = vec2(w.x / 4.8 + 0.5, p.y / 7.0);
+	vec2 id = floor(cell);
+	float here = step(0.45, hash12(id + 31.0));
+	vec2 at = vec2(0.5 + 0.25 * (hash12(id + 5.0) - 0.5), 0.5);
+	vec2 d = (fract(cell) - at) * vec2(1.6, 3.2);
+	col += golden_canal_lamp * here * (1.0 - smoothstep(0.0, 0.55, length(d))) * (0.7 + 0.3 * value_noise(p * 3.0));
+	return col;
 }
 
 // PAT_WATER (55): falling water, scenery only (GDD §5: waterfalls and fountains off the ceilings):
@@ -314,9 +366,9 @@ float golden_light(float y) {
 vec3 golden_surface(int pattern, float param, vec3 base, vec3 w, vec3 n, vec3 eye, vec2 uv, float t) {
 	vec3 c = base;
 	if (pattern == 53) {
-		return golden_under(base, w, n);
+		return golden_under(base, w, n, t);
 	} else if (pattern == 54) {
-		return golden_canal(base, w, t);
+		return golden_canal(base, w, eye, t);
 	} else if (pattern == 50) {
 		c = golden_metal(base, n, eye, param);
 	} else if (pattern == 51) {

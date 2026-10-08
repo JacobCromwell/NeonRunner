@@ -26,7 +26,8 @@ extends Node3D
 ##                           whether the cut's inside shows what the zone's own gap does: 5 lanes (unless
 ##                           --lanes), the cut open from the start, the runner staying in the middle
 ##                           between a gap on its left and the cut on its right (--god-like: the cause
-##                           never reaches it). --open alone opens the cut at once without the gap
+##                           never reaches it), and two ordinary 6 m gaps in the outer lanes ahead of them
+##                           (SHORT_GAP_AT). --open alone opens the cut at once without the gap
 ##     --open                the cut is open over its whole stretch from the start
 ##     --legacy              the cut drawn the way every skin without a look of its own drew it before
 ##                           task H3 (the default hook's box with a bottom), for before-and-after frames
@@ -40,6 +41,8 @@ extends Node3D
 ## Each scripted action and movement event is printed with its time and distance, and the cut's
 ## warning, charge, meeting point and end, to find the frames (frame = time × render fps).
 
+## --compare's two short gaps (a first look at an ordinary gap, as the runner meets one): where they begin.
+const SHORT_GAP_AT: float = 56.0
 const TUNING_PATH: String = "res://data/tuning/movement.tres"
 const RULES_PATH: String = "res://data/tuning/game_rules.tres"
 const Rules = preload("res://scripts/enemies/floor_cutter_rules.gd")
@@ -143,6 +146,10 @@ func _ready() -> void:
 	if compare:
 		# The same stretch as an ordinary gap, two lanes over from the cut, the runner between them.
 		layout.gaps.append({"lane": 0 if _outer else lane - 2, "start": float(cut["start"]), "end": end})
+		# And two ordinary 6 m gaps ahead of the stretch, either side of the runner's lane's neighbours, which
+		# the runner sees in front of it first (the end face and the bottom of a gap as they're usually met).
+		for short_lane: int in [0, lane + 1 if lane + 1 < lanes else lane - 3]:
+			layout.gaps.append({"lane": short_lane, "start": SHORT_GAP_AT, "end": SHORT_GAP_AT + 6.0})
 	layout.length = end + 220.0
 	var meet: float = FloorCutPlan.meet(cut, v)
 	print("cut in lane %d: %.1f-%.1f m; warning at %.1f m (%.2f s), charge at %.1f m (%.2f s), meets the runner at %.1f m (%.2f s), ends with the runner at %.1f m (%.2f s)" % [
