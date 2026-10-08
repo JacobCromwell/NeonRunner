@@ -443,6 +443,16 @@ func _build_debug_tools() -> void:
 		var wall_gaps: WallGapTuning = WallGapPlacement.tuning()
 		if wall_gaps.resource_path != "":
 			sections.append({"title": "Wall gaps", "resource": wall_gaps, "path": wall_gaps.resource_path})
+	# Task G7: how wide the wider gaps are and what they keep clear of, and where planted cyborgs stand in charge
+	# paths, in a level that asks for them (LevelConfig.wide_gaps, charge_path_cyborgs); Restart level rebuilds.
+	if context.config.wide_gaps > 0:
+		var wide_gaps: WideGapTuning = WideGapPlacement.tuning()
+		if wide_gaps.resource_path != "":
+			sections.append({"title": "Wider gaps", "resource": wide_gaps, "path": wide_gaps.resource_path})
+	if context.config.charge_path_cyborgs > 0:
+		var charge_paths: ChargePathTuning = ChargePathPlacement.tuning()
+		if charge_paths.resource_path != "":
+			sections.append({"title": "Charge paths", "resource": charge_paths, "path": charge_paths.resource_path})
 	if context.is_boss():
 		# The boss's numbers (health, rewards, par times) and its script's own tuning.
 		var def: BossDef = context.boss

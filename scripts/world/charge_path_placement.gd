@@ -111,28 +111,36 @@ static func place(gen: LevelGenerator) -> Dictionary:
 	var chosen: Array[Dictionary] = _choose(gen, rng, options, want)
 	var planted: Array[Dictionary] = []
 	for option: Dictionary in chosen:
-		var cyborg: Dictionary = option["cyborg"]
-		cyborg["seed"] = hash([gen.config.level_seed, PARAM, planted.size()])
-		gen.layout.enemies.append(cyborg)
-		var charger: Dictionary = option["charger"]
-		if String(option["kind"]) == DOG:
-			var params: Dictionary = charger.get("params", {})
-			params["through_lane"] = int(cyborg["lane"])
-			params["through_at"] = float(cyborg["at"])
-			params["claim_at"] = float(option["claim"])
-			charger["params"] = params
-			charger["lane"] = int(option["lane"])
-		else:
-			var cut: Dictionary = option["cut"]
-			cut["park"] = true
-			cut["claim_seconds"] = maxf(tuning().claim_seconds, BuzzRules.tuning().claim_seconds)
-		planted.append({"kind": option["kind"], "cyborg": cyborg, "charger": charger})
+		planted.append(plant(gen, option, planted.size()))
 	var constraints: PackedStringArray = []
 	if planted.size() < want:
 		constraints.append("%d of %d: only %d Octodog lunges or Buzz Overdrive charges here can take one fairly"
 			% [planted.size(), want, options.size()])
 	return {"target": want, "planted": planted, "options": options.size(), "rejected": rejected,
 		"constraints": constraints}
+
+
+## Plants `option`'s cyborg (dog_option, tank_option) in `gen`'s layout, the level's `index`-th: its entry (seeded
+## by the level's seed and `index`), the dog's planned line through it and its claim (params `through_lane`,
+## `through_at`, `claim_at`; the dog in the option's lane), or the tank's cut parked with its longer claim (`park`,
+## `claim_seconds`). Returns {kind, cyborg, charger}.
+static func plant(gen: LevelGenerator, option: Dictionary, index: int) -> Dictionary:
+	var cyborg: Dictionary = option["cyborg"]
+	cyborg["seed"] = hash([gen.config.level_seed, PARAM, index])
+	gen.layout.enemies.append(cyborg)
+	var charger: Dictionary = option["charger"]
+	if String(option["kind"]) == DOG:
+		var params: Dictionary = charger.get("params", {})
+		params["through_lane"] = int(cyborg["lane"])
+		params["through_at"] = float(cyborg["at"])
+		params["claim_at"] = float(option["claim"])
+		charger["params"] = params
+		charger["lane"] = int(option["lane"])
+	else:
+		var cut: Dictionary = option["cut"]
+		cut["park"] = true
+		cut["claim_seconds"] = maxf(tuning().claim_seconds, BuzzRules.tuning().claim_seconds)
+	return {"kind": option["kind"], "cyborg": cyborg, "charger": charger}
 
 
 ## Files `option` (dog_option, tank_option) among the `options`, or counts why it was turned down in `rejected`
