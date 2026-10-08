@@ -274,14 +274,14 @@ static func _make_shared() -> void:
 	_ramps["fire"] = _ramp([0.0, 0.12, 0.32, 0.55, 0.8, 1.0], [
 		Color(1.0, 0.82, 0.25, 0.3), Color(1.0, 0.7, 0.14, 0.55), Color(1.0, 0.46, 0.06, 0.7),
 		Color(0.9, 0.2, 0.04, 0.65), Color(0.45, 0.07, 0.03, 0.3), Color(0.15, 0.02, 0.02, 0.0)])
-	# With Reduced flashing: from nothing, up over a third of its (stretched) life, never white.
-	_ramps["fire_soft"] = _ramp([0.0, 0.3, 0.5, 0.72, 0.9, 1.0], [
+	# With Reduced flashing: from nothing, up over almost half of its (stretched) life, never white.
+	_ramps["fire_soft"] = _ramp([0.0, 0.45, 0.65, 0.82, 0.93, 1.0], [
 		Color(1.0, 0.68, 0.18, 0.0), Color(1.0, 0.62, 0.14, 0.8), Color(0.98, 0.42, 0.07, 1.0),
 		Color(0.8, 0.2, 0.04, 0.65), Color(0.4, 0.07, 0.03, 0.25), Color(0.15, 0.02, 0.02, 0.0)])
 	_ramps["core"] = _ramp([0.0, 0.06, 0.3, 1.0], [
 		Color(1.0, 0.8, 0.3, 0.0), Color(1.0, 0.8, 0.3, 0.3), Color(1.0, 0.62, 0.2, 0.2), Color(1.0, 0.45, 0.1, 0.0)])
-	_ramps["core_soft"] = _ramp([0.0, 0.4, 1.0], [
-		Color(1.0, 0.66, 0.2, 0.0), Color(1.0, 0.6, 0.15, 0.7), Color(0.9, 0.3, 0.06, 0.0)])
+	_ramps["core_soft"] = _ramp([0.0, 0.5, 1.0], [
+		Color(1.0, 0.66, 0.2, 0.0), Color(1.0, 0.6, 0.15, 0.5), Color(0.9, 0.3, 0.06, 0.0)])
 	_ramps["ember"] = _ramp([0.0, 0.35, 0.7, 1.0], [
 		Color(1.0, 0.95, 0.6, 1.0), Color(1.0, 0.62, 0.16, 1.0), Color(0.95, 0.25, 0.05, 0.8), Color(0.4, 0.06, 0.02, 0.0)])
 	# The smoke is lit red-brown by the fire at first, then a dull dark grey, and thins out.

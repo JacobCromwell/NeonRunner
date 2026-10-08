@@ -106,7 +106,8 @@ const SCREENS_DARK_AT: float = 0.9
 ## The gunship's explosion rolls on in blasts this long after it blows (seconds), and the crash's too.
 const BLASTS: Array[float] = [0.0, 0.18, 0.36]
 const CRASHES: Array[float] = [0.0, 0.22]
-## How big each of those blasts is (metres across, HostileTakeoverLobby.blast): the first of each is the big one.
+## How big each of those blasts is, one entry for each of them (metres across, HostileTakeoverLobby.blast): the
+## first of each is the big one.
 const BLAST_SIZES: Array[float] = [18.0, 12.0, 9.0]
 const CRASH_BLAST_SIZES: Array[float] = [20.0, 12.0]
 ## The city's towers keep this far clear of the lobby either side.
