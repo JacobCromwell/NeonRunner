@@ -1574,8 +1574,9 @@ holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer al
   over it is wrecked in play. Rows and holes change a little: the City levels keep theirs (one hole fewer in
   City 2 at 5 lanes), and elsewhere the fill pass and the danger density pass re-roll around new rows and the
   zones (every level at 3, 5 and 6 lanes: 1,093 rows and 2,510 holes before, 1,089 and 2,533 after; Corporate 2
-  at 5 lanes 33 and 49 before, 35 and 54 after; Dead Zone 1 at 3 lanes 24 and 32, then 21 and 27). With `wide_gaps` and `charge_path_cyborgs` at 0 every campaign level,
-  quick play and the prototype level build exactly as before (compared build by build with main's).
+  at 5 lanes 33 and 49 before, 35 and 54 after; Dead Zone 1 at 3 lanes 24 and 32, then 21 and 27). With
+  `wide_gaps` and `charge_path_cyborgs` at 0 every campaign level, quick play and the prototype level build
+  exactly as before (compared build by build with main's).
 
 **Cyborgs in charge paths** (task G7; the owner's answer to open question 353, October 7, 2026, GDD §9.13
 "Teaching": "occasionally a cyborg stands in the path of an Octodog's lunge or a Buzz Overdrive's charge, so the
@@ -1616,7 +1617,7 @@ turned down, constraints). `plant()` writes one encounter, and the tests plant t
   from it (`attack_near`). Never the encounter that introduces the charging enemy (`skip_introductions`). The
   danger density pass counts the level's enemies before it (its tests leave planted cyborgs out of both counts).
 - **What it gives.** At 3, 5 and 6 lanes, 7, 6 and 8 of the 11 levels that ask get one (the others: near a
-  Resonator's visit or a Gilded Sentinel, no room for the cyborg, or only the introduction); at every lane count
+  Resonator's pulse or a Gilded Sentinel, no room for the cyborg, or only the introduction); at every lane count
   one comes before Corporate 2's first Enforcer (Marketplace 1 at 3 and 5 lanes, Gangland 2 at 6). DESIGN-TBD
   (`docs/questions/g7.md`): the line, the parked tank, the numbers and the counts.
 
