@@ -505,21 +505,27 @@ An enemy type needs only files of its own; nothing shared is edited:
 `take_damage()`, `defeat(cause)`, `retire()`. Subclasses override `_build()` (visuals, hitboxes,
 properties), `_tick(delta)` (behaviour), and optionally `_on_defeated`, `should_retire`, `aim_point`,
 `hit_radius`. A layout entry is `{type, at, lane, side, seed, params}`; `rng` is seeded from it, so
-every attempt at a seed plays out the same way. Setting `is_host` also sets `immune_to_weapons`
-(GDD §9.7, decided September 26, 2026): a host is immune to every kind of weapon damage, direct or
-splash, the same way a fence generator declares its own immunity (GDD §9.1), so no targeting, no
-damage and no health bar; only a stomp, the claws or the dash still kill it, with the host bonus.
+every attempt at a seed plays out the same way. **Weapons hit hosts** (task H8; GDD §9.7, owner,
+October 8, 2026, replacing the September 26 rule that made `is_host` also set `immune_to_weapons`): `is_host`
+is a declared property of its own, so auto-fire targets a host like any other cyborg (`targetable()`), shots
+and splash hurt it, it shows a health bar and laser tier 1 takes a cyborg's shots to kill it; a fence
+generator still declares `immune_to_weapons` (GDD §9.1). Killing a host by any means releases its Bad Dream
+(`Cyborg._release_bad_dream`); a stomp, the claws or the dash also earn the host bonus, a weapon kill only the
+kill's score (`Cyborg.host_bonus_for`, `CyborgTuning.weapon_host_bonus`, DESIGN-TBD, `docs/questions/h8.md`).
+A player who doesn't want Bad Dreams released switches the weapon off in the shop (the equip toggle, GDD §8).
 Every attack needs a visual **and** audio warning before it can hurt (CLAUDE.md readability rules).
 **Enemy charge contacts** (owner revision, October 3, 2026): Octodog and Buzz Overdrive active charges
 use one shared swept-box contact helper on `Enemy`, against live physical enemy hitboxes rather than
 lane labels or detached attack effects. Each victim is hit at most once per charge through
-`take_damage(..., &"enemy_charge")`; bosses and weapon-immune enemies retain their immunity.
+`take_damage(..., &"enemy_charge")`; bosses and weapon-immune enemies retain their immunity, and hosts
+are never a charge's victims although weapons hit them (`Enemy.charge_can_hurt`, DESIGN-TBD,
+`docs/questions/h8.md`).
 `EnemyDirector.enemy_defeated` still drives lifecycle/effects, but `ScoreKeeper` ignores that cause:
 no player kill count, bonus or thief jackpot/recovery is awarded for an NPC collision. The one exception
 is an enemy that declares `charge_bait` (task C6, the Enforcer Truck, GDD §9.13): weapon-immune, it is
 still hurt by a charge's contact (`take_damage` lets `&"enemy_charge"` through, `_hurt_charge_contacts`
 keeps it as a victim), and `ScoreKeeper` counts that defeat as the player's kill (a bait), with its score.
-Hosts and fence generators don't declare it, so charges pass them by as before.
+Hosts and fence generators don't declare it, so charges pass them by as before (`charge_can_hurt`).
 **Readied with the level** (task PERF1): `EnemyDirector.warm_up()` (from `setup()`, during the load) loads
 the script and tuning of every type the layout names, and for a type whose script has a static
 `warm_up(world: RunWorld, entry: Dictionary) -> Node` builds one look of each kind (type, skin, host:
@@ -558,7 +564,11 @@ truck, Octodog, sewer screech (manholes, and wall vents; `screech_vents` is wall
 whose floor has no manholes; its body, `ScreechModel`, also comes at a lower detail for crowds,
 `crowd_mesh()`, the same parts and colours in about a third of the triangles: the Sewer Swarm's),
 heli drone, the Cyborg's Bad Dream (released by a killed host, spawned by the director at run
-time rather than placed by the generator), the Resonator (GDD §9.10, the Golden Zone: a golden
+time rather than placed by the generator; one that bursts out further ahead than its hover spot, its host
+shot down, lurks over that spot, harmless, its maw closed once risen (an open maw belongs to a slash's
+warning) and holding no attack back (an EMP dissolves it where it hangs), until the runner is within
+`hover_ahead`, and only then begins its chase, so every chase begins where the host rules plan it, at its
+host's spot: task H8, DESIGN-TBD, `docs/questions/h8.md`), the Resonator (GDD §9.10, the Golden Zone: a golden
 broadcast spire hovering far ahead whose red waves roll along the floor across every lane; its model,
 `resonator_model.gd`, is built in code, and `resonator_rules.gd` plans each pulse where its wave meets
 the player on clear floor), the Barnacle Turret (GDD §9.8, from Marketplace 1: a ceiling enemy, see
@@ -628,7 +638,8 @@ enemy takes part like this, opting in for whichever of its attacks count as big:
   long Bad Dream chase over a visit's planned pulses, then a drone that stays, took every turn the
   dense floor left it for 55 s, until the next Resonator's arrival sent it away without a pulse).
 - **An attack that can't wait** because the player sets it off (the Bad Dream bursts out of a killed
-  host) or the generator planned its moment still reports itself: the others wait for it. It can
+  host, its chase begun by the runner; one shot down ahead lurks first, reporting nothing) or the generator
+  planned its moment still reports itself: the others wait for it. It can
   overlap an attack that was already on when it came; the Bad Dream holds its slash until that one
   is over. A planned floor cut (B4's stand-in, C2's Buzz Overdrive) reports itself from its warning
   until its charge ends; the generator keeps every other enemy's planned stretch off its attack window
@@ -3679,6 +3690,20 @@ cyborg flattened by the charge (never the player's kill) with the runner in_view
 charged and no bolt landing in its hold_fire stretch, a runner who leaves the far lane (the cut's lane) after
 the warning untouched and one who stays hit; and in the campaign's own builds, played from the start, the first
 planted Octodog encounter and the earliest Buzz Overdrive one at each lane count flattening their cyborgs.
+`test_host_releases` checks that weapons hit hosts (task H8; GDD §9.7) and what that does to the campaign:
+auto-fire targets a host and never the fence generator beside it, the heavy missile's splash on the host sparing
+the generator, and its Bad Dream bursting out; a splash that kills a host beside its target releasing the Bad
+Dream too (no host bonus); a weapon hurts a host, never a charge (`charge_can_hurt`); every
+host level's layout at 3, 5 and 6 lanes keeping what the generator keeps off chases out of where a chase may
+begin early (a host's walk plus the lurk's `hover_ahead`); and each host level played once (Dead Zone 1 at 5
+lanes, Dead Zone 2 at 3, Golden 1 at 6, Golden 2 at 3, Golden 3 at 5) by a god-mode runner with weapon tier 2,
+whose kills come furthest ahead (`tools/measure/host_watch.gd`, `attack_watch.gd`): hosts shot down ahead of
+their spots in every level, every chase begun where it was planned (the lurk), never more than 10 s without a
+pad from its first claws and no longer from its start than a chase begun at its host, nothing kept off chases
+met, none fizzled or overlapping, its first telegraph from its hover spot, and no slash during an Octodog's
+charge or a drone's barrage. `test_bad_dream` checks a weapon release on real physics: the lurk (where it
+burst out, harmless, holding nothing back), its chase beginning with the runner within `hover_ahead`, then
+playing out as a stomped host's, and the kill's score without the host bonus.
 
 `test_wall_fences` checks wall fences (B5; GDD §9.1): the layout data (left out of a level without them) and
 `WallFencePlan`'s bands, reach (a floor runner in the middle of the outer lane never touches one, a wall runner
@@ -3768,7 +3793,8 @@ the enemies (`enemy_showcase` for the cyborg family: poses, the faces close up, 
 cyborgs, and a far view through the run camera where the expressions must read, in any zone's look
 (`--variant=`, or ui_left / ui_right live), and every look side by side (`lineup`, front, back, as
 hosts or aiming, and `lineup_far` at gameplay distance); `octodog_screech`,
-`drone_truck_showcase`, `bad_dream_showcase`, `resonator_showcase`: its model through its warning
+`drone_truck_showcase`, `bad_dream_showcase` (`--weapon=N`: the host shot down ahead, its Bad Dream lurking
+until the runner comes, task H8), `resonator_showcase`: its model through its warning
 and pulse, or a scripted run where it pulses at a runner who jumps its waves; `barnacle_turret_showcase`:
 both looks at rest and charging, and a scripted run under a ceiling with turrets or riding it past one,
 through the run camera or a close one, on any zone's skin; `buzz_overdrive_showcase`: its model turning
@@ -3818,6 +3844,30 @@ about ten minutes; `--seeds=6` adds six other seeds a level, `--seeds=9007-9020`
 enemies' own states and the live shots, never from the turn-taking code (only the waits come from the
 director's answers), and hashes each run's event log, so two builds (or the switch off and a build
 without the rule) can be compared run by run.
+
+`tools/measure/host_releases.gd` measures when the Cyborg's Bad Dreams are released in the campaign's host
+levels (Dead Zone 1–2, Golden 1–3) with each weapon tier (task H8: weapons hit hosts, GDD §9.7) against where
+the host rules planned their chases, with the same simulated runner (god mode, the middle lane, the weapon at
+the tier given, stomping every host the weapon leaves). `host_watch.gd` follows each host and its Bad Dream
+from their own states (where the host died and how, where the chase began and ended: while the Bad Dream
+reports its big attack) and holds each chase to the generator's guarantees (`HostWatch.check`): how far before
+its planned stretch it began, the longest run without an anti-grav pad from its start and from its first
+claws, what the generator keeps off chases met outside the planned stretch (`kept_off_chases`: zone doodads, a
+floor cut's attack, a wall fence's drop window, an Octodog's charges, a Gilded Sentinel's attack, a cyborg
+planted in a charge's path), and chases that fizzled or overlap; AttackWatch adds a slash with an Octodog's
+charge or a drone's barrage open (`godot --headless --fixed-fps 60 -s res://tools/measure/host_releases.gd --
+[--levels=dead_zone/1] [--lanes=3,5,6] [--tiers=0,1,2,3,4] [--old-rule] [--out=build/measure/x.json]`; about ten
+minutes for every host level at 3, 5 and 6 lanes and the five loadouts; `--old-rule` makes hosts immune again).
+Measured on the levels' own seeds (October 8, 2026): tier 1's 42 m never killed a host before the runner
+reached it; tier 2 killed every host 0.7–1.5 s of run before its spot (median 1.48 s, about 37 m), tier 3 all
+but one 0.6–1.1 s before (median 1.06 s), tier 4 every one 0.9–1.3 s before (median 1.23 s). Released there, a
+chase began up to 37 m before its planned stretch, in 12 of the 45 runs with
+tiers 2–4 inside a wall fence's drop window, with up to 10.17 s without a pad (the guarantee is 10 s). With
+the lurk (Enemies: a Bad Dream shot down ahead lurks until the runner is within `hover_ahead`), every chase
+begins at most 14.3 m before its planned stretch (a stomped host's: 9.3 m, as hosts walk toward the runner),
+with the same pads as a stomp's (10.00 s at most), nothing kept off chases met, none fizzled or overlapping,
+and no slash during an Octodog's charge or a drone's barrage. The Octodogs that never charged with tiers 2–4
+(1, 1 and 2 of 6) never charge with `--old-rule` either: the weapon shoots them first.
 
 `tools/measure/frame_times.gd` measures frame times (task PERF1; A run, Smooth frames): it plays campaign
 levels and boss fights (built ones, and ones still being built through their preview scene) through the App

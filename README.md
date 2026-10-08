@@ -169,7 +169,10 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   - the sewer screech
   - the heli drone
   - the Cyborg's Bad Dream, released by killing a host cyborg (from Dead Zone 1; in quick play, try
-    `--features=cyborg,host,ceilings`)
+    `--features=cyborg,host,ceilings`). Weapons hit hosts: auto-fire targets them like any other cyborg, and a
+    weapon kill releases the Bad Dream too (switch the weapon off in the shop to spare them); a stomp, the
+    claws or the dash also earn the host bonus. A Bad Dream shot loose ahead of you lurks over its host's
+    spot, harmless, until you come close, and only then begins its chase
   - the Barnacle Turret (from Marketplace 1): a dome with a chest cannon that pops out of a ceiling's
     underside and shoots only at a rider on that ceiling, the cyborgs' way (its muzzle glows red with a
     charge-up sound, then a short burst: switch lanes). Armor or the shield absorbs a body-contact hit;
@@ -437,6 +440,14 @@ many Buzz Overdrives revved or let the runner pass:
 `godot --headless --fixed-fps 60 -s res://tools/measure/big_attacks.gd -- [--levels=gangland/3] [--lanes=3,5,6]
 [--seeds=6] [--features=octodog]` (the whole campaign, both ways, takes about ten minutes on the levels' own seeds;
 its header lists the options).
+
+`tools/measure/host_releases.gd` measures when the Bad Dreams are released in the campaign's host levels with each
+weapon tier (weapons hit hosts) against where the generator planned their chases, and holds every chase to the
+generator's guarantees (its anti-grav pads, what the generator keeps off chases, one chase at a time, no slash
+during an Octodog's charge or a drone's barrage):
+`godot --headless --fixed-fps 60 -s res://tools/measure/host_releases.gd -- [--levels=dead_zone/1] [--lanes=3,5,6]
+[--tiers=0,1,2,3,4] [--old-rule]` (every host level at 3, 5 and 6 lanes with the five loadouts takes about ten
+minutes; `--old-rule` makes hosts immune to weapons again, for comparison).
 
 `tools/measure/level_pace.gd` measures each campaign level's pace and density: its run speed, events per minute
 (obstacle rows, holes, enemies, big attacks, mechanics, zone doodads and the pushes a runner who ignores them

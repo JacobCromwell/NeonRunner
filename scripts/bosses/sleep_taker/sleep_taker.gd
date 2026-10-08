@@ -8,7 +8,7 @@ extends BossEncounter
 ## in the campaign (the Dead Zone's boss step; debug builds also: --boss=dead_zone_boss).
 ##
 ## Weapons have no effect (GDD §10: immune to weapons, like every Bad Dream): its body is immune_to_weapons
-## (no targeting, no damage, direct or splash: R2's rule for hosts) and its BossDef's weapon_share_cap is 0.
+## (no targeting, no damage, direct or splash: a fence generator's rule) and its BossDef's weapon_share_cap is 0.
 ## Only an EMP hurts it: GDD §10, "glowing fence generators stand along the route. The player lures it
 ## close (it lunges toward them), then destroys the generator with a stomp or the dash; the EMP rips a
 ## chunk of the nightmare away" (SleepTakerLure; weapons never set a generator off, GDD §9.1).

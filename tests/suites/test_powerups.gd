@@ -151,8 +151,9 @@ func _test_targeting() -> void:
 	layout.fences.append(RunSim.fence(4, 20.0, "full"))
 	var w: RunWorld = sim.build_world(layout, _loadout({"weapon": 1}))
 	var c: PowerupController = _controller(w)
-	# Hosts and immune enemies sit nearest, on the right; the valid targets are on the left, out of
-	# the line of fire to them.
+	# A host and a weapon-immune enemy sit nearest, on the right; the other targets are on the left, out of
+	# the line of fire to them. Weapons hit hosts (GDD §9.7, owner, October 8, 2026): the host is the nearest
+	# valid target, and the immune one is never one.
 	var host: Enemy = _pacer(w, 12.0, 4, {"health": 3.0, "host": true})
 	var immune: Enemy = _pacer(w, 14.0, 3, {"health": 3.0, "immune": true})
 	var near: Enemy = _pacer(w, 20.0, 0, {"health": 3.0})
@@ -165,14 +166,20 @@ func _test_targeting() -> void:
 		tiers.append(t)
 		targets.append(ids.get(c.weapon.last_target.get_instance_id(), "?")))
 	await _run_to(w, 3.0)
-	check(not targets.is_empty() and targets[0] == "near", "auto-fire picks the nearest valid target first (%s)" % [targets])
-	await sim.step_world(w, 3.0)
-	check(not is_instance_valid(near) or not near.alive, "and destroys it")
-	check(targets.has("far"), "then moves on to the next nearest (%s)" % [targets])
-	check(not targets.has("host") and not targets.has("immune"), "hosts and weapon-immune enemies are never targeted")
-	check(is_equal_approx(host.health, 3.0) and is_equal_approx(immune.health, 3.0), "and never hurt")
+	check(not targets.is_empty() and targets[0] == "host",
+		"auto-fire picks the nearest valid target first, a host like any other (%s)" % [targets])
+	for i: int in 8 * 60:
+		if targets.has("far"):
+			break
+		await tree.physics_frame
+	check(not is_instance_valid(host) or not host.alive, "and destroys it")
+	check(not is_instance_valid(near) or not near.alive, "then the next nearest")
+	check(targets.find("near") > targets.rfind("host") and targets.find("far") > targets.rfind("near"),
+		"then moves on to the next nearest, in turn (%s)" % [targets])
+	check(not targets.has("immune"), "weapon-immune enemies are never targeted")
+	check(is_equal_approx(immune.health, 3.0), "and never hurt")
 	check(not tiers.is_empty() and tiers.count(1) == tiers.size(), "fired(tier) reports the weapon tier")
-	check(w.player.alive and w.score.kills >= 1, "kills count (%d)" % w.score.kills)
+	check(w.player.alive and w.score.kills >= 2, "kills count (%d)" % w.score.kills)
 	await sim.free_world(w)
 
 
@@ -320,11 +327,11 @@ func _test_splash() -> void:
 		"the heavy missile hits the nearest target for full damage (%.2f)" % target.health)
 	check(is_equal_approx(near.health, 15.0 - d * pt.splash_damage_share),
 		"its splash hits a neighbour for a share (%.2f)" % near.health)
+	check(is_equal_approx(host.health, 15.0 - d * pt.splash_damage_share),
+		"and a host beside it like any neighbour (GDD §9.7, October 8, 2026) (%.2f)" % host.health)
 	check(is_equal_approx(swarm.health, 15.0 - d * pt.splash_damage_share * pt.swarm_bonus_multiplier),
 		"with the swarm bonus on a swarm enemy (%.2f)" % swarm.health)
 	check(is_equal_approx(far.health, 15.0), "enemies beyond the splash radius are untouched")
-	await sim.step_world(w, 4.0)
-	check(is_equal_approx(host.health, 15.0), "splash never damages a host, however many missiles land")
 	await sim.free_world(w)
 
 	w = sim.build_world(RunSim.layout(3, 1200.0), _loadout({"weapon": 4}))
@@ -362,15 +369,17 @@ func _test_health_bars() -> void:
 	await tree.process_frame
 	check(bars.shown().is_empty(), "no bars while every enemy is at full health")
 	enemy.take_damage(1.0, &"weapon")
-	host.take_damage(1.0, &"weapon")  # a host is immune_to_weapons: a stray direct hit can't clip it
+	host.take_damage(1.0, &"weapon")  # weapons hit hosts (GDD §9.7, owner, October 8, 2026)
 	immune.take_damage(1.0, &"weapon")
 	await tree.process_frame
 	check(bars.is_shown(enemy), "a damaged enemy shows a health bar")
-	check(not bars.is_shown(host) and not bars.is_shown(immune), "never on hosts or weapon-immune enemies")
-	check(is_equal_approx(host.health, 3.0) and is_equal_approx(immune.health, 3.0),
-		"a direct hit does no damage to a host or a weapon-immune enemy")
-	check(bars.shown().size() == 1, "one bar (%d)" % bars.shown().size())
+	check(bars.is_shown(host), "so does a damaged host, like any cyborg")
+	check(not bars.is_shown(immune), "never a weapon-immune enemy")
+	check(is_equal_approx(host.health, 2.0) and is_equal_approx(immune.health, 3.0),
+		"a direct hit hurts a host, never a weapon-immune enemy")
+	check(bars.shown().size() == 2, "two bars (%d)" % bars.shown().size())
 	enemy.take_damage(5.0, &"weapon")
+	host.take_damage(5.0, &"weapon")
 	await tree.process_frame
 	await tree.process_frame
 	check(bars.shown().is_empty(), "the bar goes when the enemy does")
