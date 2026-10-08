@@ -59,7 +59,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--full-loadout` | Every power-up |
 | `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `corporate`, `corporate_plaza` (Corporate's plaza floor), `dead_zone`, `golden` or `golden_palace` (Golden 3's interior) |
 | `--speed=25` | Quick play at another run speed (m/s): a zone's pace, from 21 in the Neon City to 25 in the Golden Zone. The level keeps its timing in seconds (campaign levels already run at their zone's speed) |
-| `--doodads=0.6` | Quick play with zone doodads (scenery in lanes that pushes you aside, never hurts): the chance each stretch with room for one gets one. Campaign levels have their own share |
+| `--doodads=0.6` | Quick play with zone doodads (scenery in lanes that pushes you aside, never hurts; the dash smashes it, with `--full-loadout`): the chance each stretch with room for one gets one. Campaign levels have their own share |
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--thief` | Quick play with stand-in thieves, one after another: a gold block that crosses the lanes and robs 25% of the run's credits from a runner who touches it (it doesn't kill, even without `--god`); catch it (stomp it, shoot it, dash or claw through it) for what it took plus a jackpot. The runner starts with 400 credits, so the first theft has something to take. A review aid for the Tithe Collector's mechanism; no level has one |
 | `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level |
@@ -416,7 +416,8 @@ model and an encounter with it, the Floating Head, the Sleep Taker (its lure and
 in the dark, `--scenario=measure`), The House (`--scenario=spin|buttons|jackpot|wall|ceiling|defeat|fight`), Hostile Takeover (`--scenario=run|train|gunship|locomotive|coupling|contract|merger|defeat`), the Sewer Swarm (`--scenario=rising|surge|fence|hole|fight|model|behind|host|stomp|defeat|hostmodel`) and its crowds' stress test for the phone (`swarm_stress`: N clusters of C screeches with a frame-time and draw-call readout), the UI kit, every screen, a zone skin's fixed review track, the cult's feed,
 the Golden Zone's statues, the Gilded Sentinels (each route past one, and its kick), the Enforcer Truck (its
 chase and a volley, each bait, a too-wide gap, its model; `--scenario=chase|octodog|buzz|gap|model`), a wider gap
-jumped and an Enforcer Truck wrecked in one (`wide_gap_review`, `--scenario=jump|enforcer`), an Octodog's lunge and a
+jumped and an Enforcer Truck wrecked in one (`wide_gap_review`, `--scenario=jump|enforcer`), zone doodads pushing the
+runner and, with `--dash`, the dash smashing them (`doodad_review`), an Octodog's lunge and a
 Buzz Overdrive's charge flattening a cyborg planted in its path (`charge_path_review`, `--scenario=octodog|buzz`),
 any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
 lists its options. For example, a zone's arrival flyover rendered to frames on the web / low-end renderer:
@@ -546,7 +547,11 @@ spare (see Tools, above). Covered:
   level without them built byte for byte as before, and the push on real physics (both ways, into the edge
   lanes, jumping or sliding into one, a corner caught mid-switch, a blocked side entry, landing on top, a
   ceiling rider passing over, shots passing through), with campaign doodads run into at their level's speed
-  and always onto safe floor, and drones and hover trucks holding fire while one is in reach.
+  and always onto safe floor, and drones and hover trucks holding fire while one is in reach. The dash smashes
+  one: head-on and from the side, with no push and no damage, the lane kept, a dash that ends short pushing as
+  usual; its pieces in its look's own colours, the crunch and a light shake; it stays smashed for the attempt
+  and a retry rebuilds it; campaign doodads dashed through at their level's speed, and whatever a doodad hid
+  coming late enough after it, at the dash's speed, to react and move.
 - **Floor cuts:** cuts planned only where they're fair (one at a time, never through a ramp, a pad or a
   ceiling's landing zone, the other lanes whole, room to leave the lane after the warning; hundreds of
   levels at 3, 5 and 6 lanes), a level without them built byte for byte as before, and on real physics:

@@ -17,7 +17,8 @@ extends Area3D
 ## The shared path task H7a's dash walls can extend: a kind of its own (`kind`, which names the movement
 ## event), its layout entry, its box and the colours its pieces fly off in. Enemies' fairness checks read
 ## the layout (LevelLayout.doodad_between), not the node, so they treat a smashed doodad's stretch as they
-## did before it broke: an attack that waits for one waits the same on every attempt.
+## did before it broke: an attack that waits for one waits the same on every attempt. DESIGN-TBD
+## (docs/questions/h5.md 5).
 
 ## The break happened (smash()): its collision is off and its look hidden.
 signal smashed

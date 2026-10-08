@@ -57,7 +57,7 @@ const DOODAD_FEET_CLEARANCE: float = 0.05
 ## A doodad the dash has claimed (_smash_claims: the dash reaches its front before it ends, or a switch
 ## into its side began while dashing) still breaks on contact this long after the dash ends (seconds):
 ## the contact may come a frame or two after the dash's last one (frame steps, a fading speed boost).
-## A dash that ends short of a doodad it never claimed pushes as usual.
+## A dash that ends short of a doodad it never claimed pushes as usual. DESIGN-TBD (docs/questions/h5.md 3).
 const SMASH_CLAIM_GRACE: float = 0.1
 
 var tuning: MovementTuning
@@ -533,6 +533,7 @@ func _event(kind: StringName) -> void:
 func _start_switch(target: int) -> void:
 	# GDD §3 (owner, October 8, 2026): dashing into a zone doodad smashes it, from the side too, so a
 	# doodad's side doesn't block a dashing player (_lane_blocked claims it; it breaks on contact).
+	# DESIGN-TBD (docs/questions/h5.md 2): a dashing switch into a doodad's side smashes it.
 	if target != lane and _lane_blocked(target, dashing):
 		# GDD §9.3: a solid side (the hover truck's) bumps the player back.
 		var dir: int = signi(target - lane)
@@ -1009,7 +1010,7 @@ func _dash_claims(area: Area3D, gap: float) -> bool:
 ## The dash breaks doodad `b` apart (GDD §3, owner, October 8, 2026; DashBreakable.smash: its body, lane
 ## blocker and standable top go, and its look): no push and no damage, and the player runs on in their
 ## lane at their speed. `smashed` and the `<kind>_smash` event follow (RunEffects flings its pieces and
-## shakes lightly; the event plays the crunch).
+## shakes lightly; the event plays the crunch). DESIGN-TBD (docs/questions/h5.md 4): it scores nothing.
 func _smash(b: DashBreakable) -> void:
 	_smash_claims.erase(b.get_instance_id())
 	if not b.smash():

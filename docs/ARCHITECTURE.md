@@ -141,6 +141,14 @@ Every number is `SpeedFxTuning` (`scripts/run/speed_fx_tuning.gd`, `data/tuning/
     (`PlayerSuit.GLOW` / `PlayerSuit.SHIELD`, never a hazard colour) when the armor or the shield
     blocks a hit (`armor_hit`, `armor_break`, `shield_break`); `WeaponFx.kill_flash` adds a brighter,
     weapon-tinted flourish on top of a weapon kill specifically (`WeaponPowerup._on_enemy_hit`);
+  - a zone doodad the dash smashes (`Player.smashed`, task H5) flings its pieces (`RunEffects.rubble`, two
+    pooled `RubbleBurst`s, `scripts/run/rubble_burst.gd`: one MultiMesh of the kit's lit box, 10 to 28
+    pieces by the doodad's size, in its look's own colours, carried on along the runner's way and out to the
+    sides, tumbling, skidding off the floor and shrinking away within `rubble_life`) with a light shake
+    (`smash_shake_*`) and no sparks or hit-stop: something solid breaking, not an explosion or a hit. Nothing
+    in it glows or flickers (the kit's solid material, its colours' glow 0), so Reduced flashing leaves it
+    as it is; its pool is made with its material on, so ShaderWarmup draws it at the load. Numbers in
+    "Doodad smashes";
   - **hit-stop** (`RunEffects.freeze`, a few hundredths of a second on a kill or a stomp): while
     `RunEffects.freeze_left` counts down, `RunCamera._process` skips `_update` entirely, holding the
     camera's exact transform and fov while the player, the enemies and the generator keep moving at
@@ -424,6 +432,29 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   lands on it and runs along it. It costs nothing: DamageRules never sees it, the run's speed stays,
   and shots and weapons pass through it. Wall runners and ceiling riders never meet one (the generator
   keeps them out of the outermost lanes and from under ceilings).
+- **The dash smashes a zone doodad** (GDD §3, owner, October 8, 2026; task H5): dashing into one breaks it
+  apart, and the player keeps their lane with no push and no damage. The track builds every doodad as a
+  `DashBreakable` (`scripts/world/dash_breakable.gd`: an Area3D carrying its layout entry, its box and the
+  colours its pieces fly off in). In `Player._check_doodads`, a doodad that comes within the push's reach
+  while the player is dashing is *claimed* if the dash lasts until the body gets there (`_dash_claims`: its
+  front within the dash's speed times the time the dash has left); a claimed one breaks when the body meets
+  it, a frame before they touch (`_smash`: head-on, at a front corner or from the side), and a dash that
+  ends short of one leaves it unclaimed, so it pushes as usual, at the push's usual moment. A claim outlives
+  the dash by `SMASH_CLAIM_GRACE` (0.1 s), since the contact can come a frame or two after the dash's last
+  one. A lane switch into a doodad's side while dashing isn't blocked (`_lane_blocked(target,
+  dash_through)` claims it: "dashing into one"), and the body breaks it where it meets it; any other solid
+  side (a hover truck's, a boss's prop) still bumps a dashing player. `DashBreakable.smash()` switches off its
+  collision (its body, its lane blocker and its standable top) and hides its look, and marks its layout
+  entry `smashed` (as an EMP marks a fence `disabled`), which `TrackBuilder._build_doodad` never builds:
+  it stays broken for the rest of the attempt, a revive in place too, and a retry generates the level
+  again, every doodad whole (a test that runs one layout twice gives each run its own copy). The player
+  emits `smashed(breakable)` and the `doodad_smash` movement event (`<kind>_smash`): the crunch
+  (`doodad_smash.wav`), the pieces (`RunEffects.rubble`) and a light shake (Speed effects). It costs
+  nothing and scores nothing, and DamageRules never sees it. Enemies' fairness checks read the layout
+  (`LevelLayout.doodad_between`), so they hold an attack by a smashed doodad's stretch as they did before it
+  broke: the same on every attempt. An attempt without a dash is exactly as before. The shared path task
+  H7a's dash walls can extend: a `DashBreakable` of another `kind` (with its own `<kind>_smash` event and
+  sound), `Player.smashed` and `RunEffects.rubble`.
 
 ## Enemies
 
@@ -1354,6 +1385,20 @@ empty stretch down from 1.2–1.45 s to 1.0–1.3 s. The longest empty stretches
 they lie under ceilings or around enemies, where doodads never stand. A runner who keeps to the middle
 lane at 3 lanes meets every doodad (they all stand there); at 5 and 6 lanes about a third of them.
 
+**A runner who dashes through a doodad** (task H5; the dash smashes one: Damage and interactions, "The
+dash smashes a zone doodad"): a doodad is 2.6 m tall and hides its own lane right behind it from the
+chase camera, which a runner it pushes
+never reaches in that lane; a dash shows it only at the smash, and goes on at the dash's speed (+8 m/s).
+The placement already keeps the level's spacing after every doodad clear in every lane (`doodad_after()`,
+at least `spacing_seconds_hard`, 0.9 s at run speed), so it needed no rule of its own. Measured over every
+campaign level at 3, 5 and 6 lanes (`test_doodads`' `_test_dash_fairness`, each level's own build, 270
+doodads), the first thing after a doodad, in its lane (a hole, a wider gap, a fence, a pad, a speed pad, a
+floor cut's lane window, an enemy standing in it) or in any lane (everything the fill pass counts as going
+on: every piece, each enemy's stretch as its rules keep it, a cut's window; a ceiling to the end of its
+landing zone; a Bad Dream's chase), comes at least 0.75, 0.73 and 0.72 s after its front at 3, 5 and 6 lanes
+at the dash's speed (medians about 0.8 s), against the 0.49 s a reaction (0.35 s, the suites' bots) and a lane
+switch take. The suite holds every campaign doodad to that.
+
 **Floor cuts** (B4; GDD §9.9, the Buzz Overdrive's: "the generator plans each cut in advance (lane,
 start and end), so levels stay fair and identical on every attempt; the saw is just the visible cause").
 `LevelLayout.cuts` holds {lane, start, end, warn, charge, keep, speed}; `FloorCutPlan`
@@ -1674,7 +1719,9 @@ armor's hits, with its return as `ready`), `equipment()` for the player model, a
 `try_slow_time()`.
 Dash has four permanent tiers: prices 1,800 / 800 / 1,000 / 1,200 credits in the shop catalog, with
 cooldowns 8 / 6 / 4 / 3 seconds in the powerup tuning resource. Its module selects the owned tier
-for both runtime readiness and the HUD. Existing tier-1 ownership and equip state need no save migration;
+for both runtime readiness and the HUD. The dash also smashes the zone doodads it runs into (GDD §3,
+owner, October 8, 2026; task H5): the Player does that (Damage and interactions, "The dash smashes a zone
+doodad"), as it does the dash's speed. Existing tier-1 ownership and equip state need no save migration;
 the generic shop advances sequentially and marks tier 4 maxed.
 The player model shows what the run carries (`PlayerAvatar.set_equipment`, looks in `PlayerSuit`): the
 weapon sits over the gold arm's (left) shoulder, so shots leave from there (`Player.weapon_muzzle()`),
@@ -1797,6 +1844,15 @@ and keeps to:
   None of the six needed a new mesh-kit pattern or shader include: the kit's existing patterns (e.g.
   `PAT_GOLD`, `PAT_MARBLE`, `PAT_DZ_CONCRETE`, `PAT_CORP_PLATE`, `PAT_TECH`) already cover every zone's
   materials, each skin picking its own colours for them through its "Doodads" export group.
+- *Its pieces' colours* (task H5: the dash smashes a doodad, and its pieces fly in its look's own colours,
+  `RunEffects.rubble`): the hook `doodad_debris_colors(body, size_class, side, look_seed)`, asked right after
+  `doodad()` dressed it (TrackBuilder keeps the answer on its `DashBreakable`). By default it reads the main
+  lit colours each of the look's meshes was tagged with when its builder cached it
+  (`ZoneSkin.tag_debris_colors`: `MeshBatch.palette()`, the batch's colours by surface area, glowing faces
+  left out, at most four, worked out from the vertices still on the CPU, never read back from a built mesh,
+  which would stall a frame), and falls back to `doodad_palette` for a look that tags none. Every zone's own
+  look and the default tag theirs (one line in each builder); a skin may override the hook, say to leave out
+  part of a look. `test_doodads`' `_test_debris_colors` checks every skin's.
 - *Tested*: `test_doodads`' `_test_skins` builds every skin's doodads in every class (seed 7 alone) and
   checks the box, that nothing glows and that `doodad_palette` is muted. `SkinSuite.doodads_ok(skin,
   name)` (`tests/helpers/skin_suite.gd`), which every zone's own suite calls, extends this over several
@@ -3420,7 +3476,18 @@ ways, quick, with the lean, costing nothing, the body never sinking in; a jump a
 corner caught mid-switch pushing back the way the player came; a blocked side entry with the clank and
 the bump; landing on its top; a ceiling rider passing over it even mid-jump; a shot passing through it),
 a few of every campaign level's doodads run into at the level's speed and onto safe floor, and a drone
-and a hover truck holding their fire while a doodad is in reach. The simulated runs of
+and a hover truck holding their fire while a doodad is in reach. Then the dash smashing them (task H5),
+on real physics: head-on at 3, 5 and 6 lanes in every inner lane, both sides, every size (once, no push,
+the lane kept, no slowdown, broken before the body touches it); a dashing switch into a doodad's side
+(through, no clank); a dash that ends short, swept over where it starts at 18 and 25 m/s (always a push
+or a smash, a smash only when the dash lasted until the body got there, never a sink, the same every
+attempt); a full world in the City's look (its body, lane blocker and top gone, the crunch, its pieces in
+its look's colours, never glowing, a light shake Screen shake scales away, no damage, no score, other solid
+sides still blocking a dash); a LevelRun of City 2 (it stays smashed through a death and a revive, and a
+retry builds the same level with it whole, pushing a runner who doesn't dash); every skin's pieces'
+colours; two of every campaign level's doodads dashed through at its speed at 3, 5 and 6 lanes; and the
+fairness measure for a runner who dashes through (The generator, Zone doodads). `RunSim` takes a `&"dash"`
+action. The simulated runs of
 `test_enemy_director` and `tools/measure/big_attacks.gd` keep their runner in the middle lane: it steps
 back after a doodad's push (`AttackWatch.keep_lane`).
 `test_floor_cuts` checks floor cuts (B4; GDD §9.9) with the grey-box stand-in: the plan's geometry and
@@ -3568,7 +3635,9 @@ power-up look), ramps and walls (`ramp_wall_review`: a ramp launch with the cred
 run, and blocked wall entries at a low and a high sign, through the game camera or a close one),
 zone doodads (`doodad_review`: the runner pushed by a small, a medium and a large one, both ways, and a
 switch into one's side blocked, with others standing in the other inner lanes at five lanes or more, in
-any zone's look, through the game camera or a close one, `--hitboxes` for their bodies), floor cuts
+any zone's look, through the game camera or a close one, `--hitboxes` for their bodies; `--dash` smashes
+them instead, task H5: a small and a medium one head-on, a large one from the side, then a dash that ends
+short of a fourth and pushes, `--reduced-flashing`), floor cuts
 (`floor_cut_review`: the stand-in's warning, charge and the gap it leaves beside a runner who switched
 out, in any zone's look at any lane count and speed, through the game camera or a high one; `--stay`
 for an armor block and the floor's hold, `--kill=D` for a cut stopped where its cause dies,

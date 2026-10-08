@@ -96,11 +96,11 @@ extends Resource
 ## The dash smashes a zone doodad (GDD §3, owner, October 8, 2026; Player.smashed, task H5): a light shake
 ## (more than a push's bump, well under a dash kill's 0.32) and its pieces flung in its own colours
 ## (RunEffects.rubble, RubbleBurst), with the crunch (doodad_smash.wav). No sparks and no hit-stop.
-## DESIGN-TBD (docs/questions/h5.md): the look and the numbers.
+## DESIGN-TBD (docs/questions/h5.md 1): the look and the numbers.
 @export_range(0.0, 1.0, 0.01) var smash_shake_strength: float = 0.1
 @export_range(0.05, 1.0, 0.01, "suffix:s") var smash_shake_time: float = 0.16
-## The share of the runner's speed the pieces carry on along its way, on average (each piece 0.55–1.35
-## times this): under 1, so the runner bursts through them and leaves them behind.
+## The share of the runner's speed the pieces carry on along its way (each piece 0.55–1.35 times this):
+## about the runner's own, so they burst out ahead of it as it breaks through, and most fall behind.
 @export_range(0.0, 1.5, 0.05) var rubble_carry: float = 0.9
 ## How fast the pieces fly out to the sides and up (m/s; each piece a share of it).
 @export_range(0.0, 20.0, 0.5, "suffix:m/s") var rubble_spread: float = 7.0
