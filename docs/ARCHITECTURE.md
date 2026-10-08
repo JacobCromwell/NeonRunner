@@ -746,16 +746,48 @@ across the street), its cut's shader (`gilded_sentinel_cut.gdshader`), its sound
 - **In its niche.** A wall enemy (`side`), standing in a niche set into the wall at wall-run height: a
   2.6 m statue standing out from the wall would block a wall run at all of its heights, so the statue (the
   Golden Zone's kit, `GoldenStatue`, at `statue_scale`) stands in the recess with its front
-  `statue_inset` behind the face. Nothing of it reaches over the wall-run path (a wall runner's body lies
+  `statue_inset` (0.02 m) behind the face. Nothing of it reaches over the wall-run path (a wall runner's body lies
   along the face); only its swing does. The Golden Zone's skins open the niche (Zone skins: the statue
   kit's `recess()`, `GoldenSkin.note_wall_enemies`); in any other skin (quick play) it stands in front of
   the wall in the kit's `niche()` as a review stand-in, its hitboxes the same. At rest it holds its
   halberd upright at its side, the blade turned along the wall, so it fits the niche whole.
+- **Seeing it** (task H1, GDD §9.11, owner, October 8, 2026: "too hard to see inside the arched recess").
+  Seen from down the street the wall is almost edge-on, and whatever stands deep in an opening hides behind
+  its near edge: a point `x` deep shows through it `x * distance / (the runner's distance from the wall)`
+  further along it, so at 20 m with the wall 6 m away a statue 0.4 m deep is hidden behind a 1.4 m opening's
+  edge and only a sliver of it shows, in a black hole. Everything that follows is to bring the statue and the
+  niche's back forward and light them, within one rule, that **collision stays physical**: nothing of the
+  statue goes in front of the wall face (a wall runner's body lies along it) and the solid `body` hitbox
+  (`niche_depth - 0.1` deep behind the face) reaches as far back as the statue does (the suite checks both).
+  - *Placement from the real outline.* `GildedSentinel.reach_out()` measures the statue's rest frame by its
+    vertices (cached per frame and turn), not its turned bounding box, which overstated how deep it stands
+    by a hand's breadth: its front is `statue_inset` behind the face exactly.
+  - *A shallower, wider niche.* `niche_depth` 0.78 m (from 0.9: the statue is about 0.7 m deep as it stands)
+    and `niche_width` 1.8 m (from 1.4), so more of the statue and of the niche's back show at a grazing angle.
+    Both are tunables the skin reads (`GildedSentinel.niche_rect()`, `niche_depth()`); the hitboxes follow.
+  - *Lit, not black.* The skins draw its inside with `GoldenStatue.recess(..., lit = true)`: warm bronze
+    stone (`LIT_BACK`, `LIT_SIDES` for the surface seen through the opening, `LIT_CEILING`), plain lit
+    surfaces and never the kit's glow channel (GDD §5: gold, stone and cloth never glow, and only hazards glow
+    in hazard colours; `test_golden_skin` pins it). The statue's gold is lifted in albedo by the decorative
+    statues' amount (`STATUE_LIFT`), and its eyes glow a little at rest (`EYES_IDLE`). The decorative alcoves'
+    recess stays dark, so the live niche is the lit one.
+  - *The flare tints it red.* `gilded_sentinel_niche.gdshader` (blend_mix, unshaded, no textures: the same on
+    both renderers) lays the eyes' red over the niche's far side and back as they flare, rather than adding red
+    to it (red added to bronze goes orange, a hazard's colour of its own).
+  - *Room around it.* A decorative wall-base alcove that would crowd a live niche (its frame touching, or less
+    than `GoldenSkin.NICHE_CLEARANCE` of wall between the frames) is left out, hole and statue
+    (`GoldenSkin.crowds_niche()`, used by the facades and the Palace's colonnade), so the live niche is never
+    overlapped by a decorative one and stands apart from the dark ones; `statue_spots()` still lists the
+    candidate places.
 - **The attack**, once, as the runner comes: when they're `warning_seconds` (and `strike_lead_seconds`) at
   their speed from the stretch it guards, it asks the director (below), then warns: its eyes flare (their
   own material, and their red light filling the niche, what a runner sees from far down the street where
   the wall is seen edge-on), stone grinds, it draws its halberd back, and the red marks of its cut light
-  up, filling toward the runner (the band on its wall, on the face; the outer lane's floor). Then it
+  up, filling toward the runner (the band on its wall, on the face; the outer lane's floor). The warning is
+  0.6 s (GDD §9.11, owner, October 8, 2026: half as long as first built); the eyes flare through all of it
+  and the draw-back takes its last `raise_share` (half, 0.3 s: `raise_seconds()`), so they come first, and
+  the grind sound (`gilded_sentinel_grind`) is as long as the warning (regenerate it alone with
+  `tools/godot.sh sfx --only=gilded_sentinel_grind` after changing either). Then it
   swings as the runner reaches the stretch (`section_length`, around its niche; a slower runner: it holds,
   raised, up to `hold_max_seconds`; a faster one may get past, since the warning always runs its whole
   length): for `strike_seconds` its cut is live, two `attack` boxes over the stretch, the band on its wall
@@ -1022,7 +1054,10 @@ run after every feature's that puts things on the floor or the walls before them
 floor cuts included (`RUN_AFTER`), and the Resonator's, the Barnacle Turret's and the floor cutter's run
 after these. Each one's attack, at the level's run speed, is its window
 (`GildedSentinelTuning.attack_window`: from where the runner is as its eyes flare to the end of the stretch
-it cuts), and where it may stand is `problem()`:
+it cuts; never later than the floor it uses, `floor_use`: the escape lane is kept clear from
+`escape_lead_seconds` (0.7 s) before a swing, which is before the 0.6 s warning, so the window starts
+there, and the doodads, fill pass and floor cuts that keep off the window keep off its floor as ever),
+and where it may stand is `problem()`:
 - the level: its window past the run-up and the feature's start, its stretch before the end-clear stretch,
   and its niche within one of the track's chunks (`in_chunk`, `TrackBuilder.CHUNK_LENGTH`: the skin opens
   it in that chunk's wall);
@@ -1985,12 +2020,14 @@ shader, `golden_facade.gdshader`. White and cream with red and gold accents (GDD
   Sentinel, `rig(parent, pose)` builds it as nodes and returns them by name (`root`, `body`, `pedestal`,
   `head`, `eyes`, `arm_r`, `arm_l`, `elbow_r`, `elbow_l`, `grip`, `halberd`): turn the pivots with
   `apply_pose(nodes, pose)` or directly, and give `eyes` (a MeshInstance3D) a glowing red material of
-  its own. `niche(width, height)` is a niche proud of any wall; `recess(width, height, depth)` the one a
-  live Sentinel stands in, set into the wall (task C4): the skin learns where one stands
+  its own. `niche(width, height)` is a niche proud of any wall; `recess(width, height, depth, lit)` the one a
+  live Sentinel stands in, set into the wall (task C4; `lit`, task H1: its inside in lit bronze rather than
+  nearly black, what the live niche gets and the decorative alcoves don't): the skin learns where one stands
   (`note_wall_enemies`, `GildedSentinel.niche_rect`), leaves its opening out of the plinth and the calm
   band (`open_rects`: the face's pieces around it, sharing their edges exactly) and appends the recess
-  there (`add_niches`: a dark back and sides, a marble floor, a flush gold frame whose spandrels round it
-  into an arch); the Golden Palace's walls do the same with their panel. The skin's kit is
+  there (`add_niches`: a lit bronze back and sides, a marble floor, a flush gold frame whose spandrels round it
+  into an arch; a decorative alcove that would crowd it is left out, `crowds_niche()`); the Golden Palace's
+  walls do the same with their panel. The skin's kit is
   `GoldenSkin.statues()` (its gold and solid material). Decorative statues in both Golden skins stand
   at `statue_base_height` (0.10 m). The shared mount helper uses each rotated pose's outward projection
   plus `statue_base_inset` (0.10 m safety margin), rather than unnecessarily burying the body using
@@ -3222,8 +3259,11 @@ its whole time; wall runners stepping on right before it (cut), jumping on (abov
 sliding; armor, the shield and the dash; its solid body back in its niche; 17 laser tier 1 shots through
 the real weapon; the kick; twice and pairs; turns with a `TurnDummy` (its claim holds another back, and it
 lets the runner pass when one begun before is on); Reduced flashing; the same every attempt. It also checks its look (one shared mesh, the eyes' own
-material, the statue inside its niche), the Golden skins opening the niche, decorative statues on
-recessed wall-base mounts, its placement rules on hand-built layouts at 3, 5 and 6 lanes, the wall fences keeping off
+material, the statue inside its niche with its front almost flush with the face and the solid body as deep as
+it (H1), its gold never glowing, the lit niche's colours against the gold, the flare tinting rather than
+adding red), the Golden skins opening the niche and leaving out a decorative alcove that would crowd it,
+decorative statues on
+recessed wall-base mounts, its attack window covering its floor, its placement rules on hand-built layouts at 3, 5 and 6 lanes, the wall fences keeping off
 it, and Golden 2 and the Palace's real layouts (its rules, `LayoutChecks.check_layout`, the introduction,
 the same build twice). `test_ceilings` covers narrow
 ceilings (B3) from the layout to the screen: the

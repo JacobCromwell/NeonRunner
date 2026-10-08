@@ -58,16 +58,18 @@ const FOREARM: float = 0.36
 const POLISH_PLATE: float = 0.7
 const POLISH_TRIM: float = 0.95
 
-## The live Sentinel's niche inside (recess(), lit): a lit chamber of warm bronze-brown stone rather than a
-## black hole, so the gold statue and its red eyes read against it from far down the street (GDD §9.11,
-## owner, October 8, 2026). Never red or orange (only hazards glow in hazard colours, and the eyes' flare
-## washes it red), and lit by its own colour rather than a light (LIT_GLOW: the kit shows the surface
-## in exactly this colour, whatever its facing, and a darker level doesn't dim it).
-const LIT_BACK := Color(0.42, 0.31, 0.21)
-const LIT_SIDES := Color(0.56, 0.43, 0.29)
-const LIT_CEILING := Color(0.3, 0.22, 0.15)
-const LIT_FLOOR := Color(0.85, 0.85, 0.85)
-const LIT_GLOW: float = 0.25
+## DESIGN-TBD (docs/questions/h1.md): the live Sentinel's niche inside (recess(), lit): a chamber of warm stone rather than a black hole, so the
+## gold statue and its red eyes read against it from far down the street (GDD §9.11, owner, October 8, 2026).
+## Plain lit surfaces, never the glow channel (GDD §5: gold, stone and cloth never glow, and only hazards glow
+## in a hazard's colours; the eyes' flare washes the niche red): the kit shades them at about 0.6 to 0.7 of
+## these colours (kit_solid.gdshader), so on screen the back is a mid bronze and the sides, the surface seen
+## through the opening from down the street, a little lighter, both darker than the gold they set off.
+const LIT_BACK := Color(0.60, 0.44, 0.30)
+const LIT_SIDES := Color(0.78, 0.60, 0.41)
+const LIT_CEILING := Color(0.52, 0.38, 0.26)
+const LIT_FLOOR := Color(0.9, 0.9, 0.9)
+## How much of its colour the kit's shading leaves a lit surface facing the street, at the least.
+const LIT_SHADE: float = 0.65
 
 const REST: Dictionary = {"shoulder_r": Vector3(6.0, 0.0, 6.0), "elbow_r": 8.0, "shoulder_l": Vector3(6.0, 0.0, 6.0),
 	"elbow_l": 8.0, "grip": Vector3(0.0, 0.0, 0.0), "head": Vector3.ZERO}
@@ -317,19 +319,17 @@ func recess(width: float, height: float, depth: float, lit: bool = false) -> Mes
 	var sides := Color(0.15, 0.13, 0.11)
 	var ceiling := back
 	var floor_color: Color = stone * Color(0.7, 0.7, 0.7)
-	var glow: float = 0.0
 	if lit:
 		back = LIT_BACK
 		sides = LIT_SIDES
 		ceiling = LIT_CEILING
 		floor_color = stone * LIT_FLOOR
-		glow = LIT_GLOW
 	# The recess: back, sides, ceiling (all facing the opening) and the marble floor.
-	t.rect(Vector3(-hw, 0.0, -depth), Vector3(width, 0.0, 0.0), Vector3(0.0, height, 0.0), back, glow, MeshKit.PAT_MARBLE)
-	t.rect(Vector3(-hw, 0.0, -depth), Vector3(0.0, height, 0.0), Vector3(0.0, 0.0, depth), sides, glow, MeshKit.PAT_MARBLE)
-	t.rect(Vector3(hw, 0.0, -depth), Vector3(0.0, 0.0, depth), Vector3(0.0, height, 0.0), sides, glow, MeshKit.PAT_MARBLE)
-	t.rect(Vector3(-hw, height, -depth), Vector3(width, 0.0, 0.0), Vector3(0.0, 0.0, depth), ceiling, glow, MeshKit.PAT_MARBLE)
-	t.rect(Vector3(-hw, 0.0, -depth), Vector3(0.0, 0.0, depth), Vector3(width, 0.0, 0.0), floor_color, glow, MeshKit.PAT_MARBLE)
+	t.rect(Vector3(-hw, 0.0, -depth), Vector3(width, 0.0, 0.0), Vector3(0.0, height, 0.0), back, 0.0, MeshKit.PAT_MARBLE)
+	t.rect(Vector3(-hw, 0.0, -depth), Vector3(0.0, height, 0.0), Vector3(0.0, 0.0, depth), sides, 0.0, MeshKit.PAT_MARBLE)
+	t.rect(Vector3(hw, 0.0, -depth), Vector3(0.0, 0.0, depth), Vector3(0.0, height, 0.0), sides, 0.0, MeshKit.PAT_MARBLE)
+	t.rect(Vector3(-hw, height, -depth), Vector3(width, 0.0, 0.0), Vector3(0.0, 0.0, depth), ceiling, 0.0, MeshKit.PAT_MARBLE)
+	t.rect(Vector3(-hw, 0.0, -depth), Vector3(0.0, 0.0, depth), Vector3(width, 0.0, 0.0), floor_color, 0.0, MeshKit.PAT_MARBLE)
 	# The gold frame on the face: jambs and lintel, a few centimetres proud.
 	var f: float = 0.12
 	var z: float = 0.012

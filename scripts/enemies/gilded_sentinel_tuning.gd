@@ -70,7 +70,7 @@ extends EnemyTuning
 ## The grind sound is as long as it is (tools/asset_gen/sfx_bank_sentinel.gd): regenerate it with
 ## `tools/godot.sh sfx --only=gilded_sentinel_grind` after changing this.
 @export_range(0.3, 3.0, 0.05, "suffix:s") var warning_seconds: float = 0.6
-## The last share of the warning in which it draws its halberd back (the eyes flare through all of it,
+## DESIGN-TBD (docs/questions/h1.md): the last share of the warning in which it draws its halberd back (the eyes flare through all of it,
 ## so they come first): 0.5 of 0.6 s is a draw-back of 0.3 s, after 0.3 s of eyes and grinding alone.
 @export_range(0.2, 0.8, 0.05) var raise_share: float = 0.5
 ## A swing starts as the runner is this long short of its stretch (at their speed then), so they are

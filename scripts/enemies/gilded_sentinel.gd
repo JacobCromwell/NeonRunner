@@ -73,11 +73,13 @@ enum Move { RAISE, SWING, RECOVER, HUSK }
 ## Seconds the halberd takes to sweep through a swing (the cut is live for strike_seconds from its start).
 ## (The wind-up at the end of the warning is the tuning's raise_seconds(), a share of the warning.)
 const SWEEP_SECONDS: float = 0.16
-## How much the gold of the statue lights itself (the kit's glow channel: 0.25 shows a surface in exactly its
-## own colour, whatever its facing; 0 is the kit's lit surface, a little darker, by its facing).
-const STATUE_GLOW: float = 0.2
-## The eyes: their glow at rest, during the warning (rising to full) and once it's down (dark).
-const EYES_IDLE: float = 0.9
+## How much lighter the gold of the statue is than the kit's: the decorative statues' albedo lift
+## (GoldenSkin.decorative_statue_mesh), so the live one reads against its niche as they do against theirs. It
+## is albedo only: gold never glows in the Golden Zone (GDD §5), only the eyes do.
+const STATUE_LIFT: float = 0.08
+## The eyes: their glow at rest, during the warning (rising to full) and once it's down (dark). DESIGN-TBD
+## (docs/questions/h1.md): a little more at rest than first built (0.9), so the live statue is picked out early.
+const EYES_IDLE: float = 1.6
 const EYES_FULL: float = 6.0
 ## The marks' brightness: at the warning's start, at its end, and a swing's flash (softer with Reduced
 ## flashing); how fast a flash and the marks fade.
@@ -458,10 +460,12 @@ static func _bake(kit: GoldenStatue, scale: float, mirrored: bool, pose: Diction
 			continue
 		var into: MeshLayer = eyes if which == GoldenStatue.Part.EYES else gold
 		into.append(kit.part(which), base * (xforms[which] as Transform3D))
-	# Lit by its own colour, as the niche it stands in (GoldenStatue.LIT_GLOW): the gold keeps its brightness
-	# whichever way a plate faces, so the figure reads against the niche from far down the street.
+	# The gold a little lighter, as the decorative statues' (STATUE_LIFT): the figure reads against its niche from
+	# far down the street.
 	for i: int in gold.colors.size():
-		gold.colors[i] = Color(gold.colors[i], STATUE_GLOW)
+		if roundi(gold.uv2s[i].x) == MeshKit.PAT_GOLD:
+			var c: Color = gold.colors[i]
+			gold.colors[i] = Color(minf(c.r + STATUE_LIFT, 1.0), minf(c.g + STATUE_LIFT, 1.0), minf(c.b + STATUE_LIFT, 1.0), c.a)
 	return batch.to_mesh()
 
 

@@ -293,8 +293,8 @@ var _wall_x: float = 0.0
 ## The Gilded Sentinels' niches in the wall about to be built, by side (note_wall_enemies, task C4):
 ## Rect2 over (track distance, height).
 var _niches: Dictionary = {}
-## The wall kept clear between a live Sentinel's niche and a decorative alcove beside it, on top of the
-## gold frames (crowds_niche()): the frames' width (2 x 0.12 m) and a margin.
+## DESIGN-TBD (docs/questions/h1.md): the wall kept clear between a live Sentinel's niche and a decorative
+## alcove beside it (crowds_niche()): the frames' width (2 x 0.12 m) and a margin.
 const NICHE_CLEARANCE: float = 0.84
 
 

@@ -35,6 +35,7 @@ func run() -> void:
 	_test_numbers()
 	_test_sounds_and_hint()
 	_test_decorative_statues()
+	_test_lit_niche()
 	_test_open_rects()
 	await _test_look()
 	await _test_skin_opens_niche()
@@ -142,6 +143,15 @@ func _test_numbers() -> void:
 	check(t.raise_seconds() > 0.1 and t.raise_seconds() <= t.warning_seconds * 0.6,
 		"the halberd's draw-back (%.2f s) leaves the eyes and the grinding a head start in the warning (%.2f s)"
 		% [t.raise_seconds(), t.warning_seconds])
+	# The keep-out of its attack (the generator's) covers the floor its cut uses (the escape lane's clear lead,
+	# escape_lead_seconds, is longer than the owner's 0.6 s warning, GDD §9.11, October 8, 2026), at every speed.
+	for speed: float in [18.0, 25.0, 31.0]:
+		for swings: int in [1, 2]:
+			var window: Vector2 = t.attack_window(AT, swings, speed)
+			var use: Vector2 = t.floor_use(AT, swings, speed)
+			check(window.x <= use.x + 0.001 and window.x <= t.warn_at(AT, swings, speed) + 0.001
+					and is_equal_approx(window.y, t.guarded_stretch(AT, swings).y) and t.claim_window(AT, swings, speed).x <= window.x,
+				"its attack window %s covers its warning and the floor it uses %s (%d swings, %.0f m/s)" % [window, use, swings, speed])
 	check(t.niche_sill >= 0.0 and t.niche_sill + t.niche_height <= 4.0 and t.niche_sill + t.statue_height() < t.niche_sill + t.niche_height,
 		"the niche stands at wall-run height and holds the statue (%.2f-%.2f m)" % [t.niche_sill, t.niche_sill + t.niche_height])
 	check(t.health_at(0.0) == 15.0 and t.health_at(1.0) == 15.0 and t.uses_floor,
@@ -225,6 +235,28 @@ func _test_look() -> void:
 	var frames_b: Array = GildedSentinel.frames_for(kit, t.statue_scale, true)
 	check(is_same(frames_a, frames_b) and (frames_a[0] as Array)[0] == body_l.mesh,
 		"its frames are baked once and shared (the left wall's mirrored)")
+	# GDD §9.11 (owner, October 8, 2026): the live statue reads against its niche. Its gold is lifted in albedo
+	# like the decorative statues' (and never glows: GDD §5), and its eyes glow a little even at rest.
+	var gold_colors: PackedColorArray = body_l.mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+	var never_glows: bool = not gold_colors.is_empty()
+	for c: Color in gold_colors:
+		never_glows = never_glows and c.a == 0.0
+	check(never_glows, "the statue's gold never glows (GDD §5)")
+	# The body is the first part baked into the gold (the right wall's frames are not mirrored): compare it with the kit's.
+	var raw: PackedColorArray = kit.part(GoldenStatue.Part.BODY).colors
+	var lit_gold: PackedColorArray = body_r.mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+	var lifted: float = 0.0
+	for i: int in mini(raw.size(), lit_gold.size()):
+		lifted = maxf(lifted, lit_gold[i].r - raw[i].r)
+	check(absf(lifted - GildedSentinel.STATUE_LIFT) < 0.01,  # vertex colours are stored as bytes
+		"its gold is lifted in albedo by the decorative statues' amount (%.3f)" % lifted)
+	check(GildedSentinel.EYES_IDLE >= 1.5 and GildedSentinel.EYES_FULL >= 3.0 * GildedSentinel.EYES_IDLE,
+		"its eyes glow at rest (%.1f) and flare to much more (%.1f)" % [GildedSentinel.EYES_IDLE, GildedSentinel.EYES_FULL])
+	for s: GildedSentinel in [left, right]:
+		var niche_glow := s.get_node("NicheGlow") as MeshInstance3D
+		var glow_shader: Shader = (niche_glow.material_override as ShaderMaterial).shader
+		check(glow_shader.code.contains("blend_mix") and not glow_shader.code.contains("blend_add"),
+			"side %d: the flare tints the lit niche red, not adds red to it (it would turn orange)" % s.side)
 	for s: GildedSentinel in [left, right]:
 		var reach: Vector2 = _statue_reach(s)
 		check(reach.x <= 0.001 and reach.y <= t.niche_depth + 0.01,
@@ -296,6 +328,34 @@ func _test_skin_opens_niche() -> void:
 		opened.queue_free()
 		await _test_alcoves_keep_off(skin, path, face_x, spots)
 	await tree.process_frame
+
+
+## GDD §9.11 (owner, October 8, 2026: the live statue and the back of its niche were too hard to see in the
+## shadow of the arch): a live Sentinel's niche inside (recess(), lit) is a lit chamber, not a black hole: the
+## back and sides well above black, darker than the statue's gold so the figure stands out, lit by their own
+## colour (the kit's glow channel), and never in a hazard's colours (nothing glows red, orange or pink there but
+## the eyes and their flare); the decorative alcoves' recess (not lit) stays as it was.
+func _test_lit_niche() -> void:
+	var kit := GoldenStatue.new()
+	var lit: MeshLayer = kit.recess(t.niche_width, t.niche_height, t.niche_depth, true)
+	var dark: MeshLayer = kit.recess(t.niche_width, t.niche_height, t.niche_depth)
+	check(lit != dark and lit == kit.recess(t.niche_width, t.niche_height, t.niche_depth, true), "a lit niche is its own cached template")
+	check(lit.verts.size() == dark.verts.size(), "the lit niche has the shape of the dark one (the same %d vertices)" % dark.verts.size())
+	var gold_luma: float = kit.gold.get_luminance()
+	var inside: Dictionary = {"LIT_BACK": GoldenStatue.LIT_BACK, "LIT_SIDES": GoldenStatue.LIT_SIDES,
+		"LIT_CEILING": GoldenStatue.LIT_CEILING}
+	for name: String in inside:
+		var c: Color = inside[name]
+		var shown: float = c.get_luminance() * GoldenStatue.LIT_SHADE
+		check(shown >= 0.2 and shown * 1.25 <= gold_luma and c.v <= 0.85,
+			"%s %s: well above black as shown (%.2f), the gold stands out against it (%.2f)" % [name, c, shown, gold_luma])
+	# Plain lit surfaces: nothing of the inside glows (GDD §5), the decorative recess as little.
+	var glows: bool = false
+	for i: int in lit.colors.size():
+		glows = glows or lit.colors[i].a > 0.0 or dark.colors[i].a > 0.0
+	check(not glows, "nothing of the niche glows (gold, stone and cloth never do: GDD §5)")
+	var dark_back: Color = dark.colors[0]
+	check(dark_back.get_luminance() < 0.1, "the decorative alcoves' recess stays dark (%.2f)" % dark_back.get_luminance())
 
 
 ## Spots further than 3.5 m from `at` along the track: a live niche there neither touches nor crowds a
