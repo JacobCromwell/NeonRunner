@@ -8,8 +8,9 @@ extends Node3D
 ## the shared RunEffects add its sparks, debris and shake.
 ## - Every part is unshaded: alpha-blended puffs (emissive for the fire) and an additive, vertex-coloured floor
 ##   glow, cheap on every renderer (phones and the Compatibility renderer: no light, no particles of its own).
-##   Its meshes and materials are made once and shared (static caches); a blast fades copies of the materials,
-##   which share their shaders, and warm_look() shows every kind while the level loads (EnforcerTruck.warm_up),
+##   Its meshes and materials are made once and shared (static caches); a blast fades its own copies, built the
+##   same way (never Resource.duplicate(): it drops an unshaded material's emission, a different shader), so they
+##   share the shaders warm_look() shows while the level loads (EnforcerTruck.warm_up),
 ##   so no shader is built mid-run.
 ## - Reduced flashing (Settings.flashing_reduced): no white-hot core, a softer fire and floor glow that come up
 ##   over a moment instead of at once (no bright flash).
@@ -74,7 +75,7 @@ func start(p_radius: float, p_length: float, p_reduced: bool, p_flat: bool = fal
 		var kind: StringName = spec[0]
 		if kind == &"core" and reduced:
 			continue
-		var mat := material(kind).duplicate() as StandardMaterial3D
+		var mat: StandardMaterial3D = new_material(kind)
 		var node := MeshInstance3D.new()
 		node.name = "Puff%d" % _puffs.size()
 		node.mesh = sphere()
@@ -90,7 +91,7 @@ func start(p_radius: float, p_length: float, p_reduced: bool, p_flat: bool = fal
 		_glow.mesh = disc()
 		_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(_glow)
-	_glow_mat = material(&"glow").duplicate() as StandardMaterial3D
+	_glow_mat = new_material(&"glow")
 	_glow.material_override = _glow_mat
 	visible = true
 	advance(0.0)
@@ -183,10 +184,15 @@ static func disc() -> ArrayMesh:
 
 
 ## The material for a kind of puff (&"core", &"fire", &"ember", &"smoke") or the floor glow (&"glow"), made once.
-## A blast fades its own copies.
+## A blast fades its own copies (new_material).
 static func material(kind: StringName) -> StandardMaterial3D:
-	if _materials.has(kind):
-		return _materials[kind]
+	if not _materials.has(kind):
+		_materials[kind] = new_material(kind)
+	return _materials[kind]
+
+
+## A new material for a kind of puff or the floor glow, the same as material()'s (the same shader).
+static func new_material(kind: StringName) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -216,7 +222,6 @@ static func material(kind: StringName) -> StandardMaterial3D:
 			m.albedo_color = Color.WHITE
 			m.no_depth_test = false
 			m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
-	_materials[kind] = m
 	return m
 
 
