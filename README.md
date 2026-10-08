@@ -193,8 +193,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     isn't deadly: it grabs 25% of the credits you've collected and flies off. Catch it (stomp, shoot, or
     dash through it) for everything it took, plus a jackpot (in quick play, `--features=tithe_collector`,
     or review its shared mechanism with `--thief`)
-  - the Gilded Sentinels (from Golden 2): golden statues with halberds in niches set into the walls at
-    wall-run height, their eyes red. When its eyes flare and stone grinds, a Sentinel's halberd cuts what
+  - the Gilded Sentinels (from Golden 2): golden statues with halberds in lit niches set into the walls at
+    wall-run height, their eyes red. When its eyes flare and stone grinds (0.6 s of warning), a Sentinel's halberd cuts what
     lights up red: a band of its wall around the height where you step onto it, and the outer lane. Leave
     the lane, or on the wall pass above the band (jump onto the wall) or below it (onto the wall early).
     Later ones swing twice or stand in pairs across the street. The armor or shield blocks the cut;

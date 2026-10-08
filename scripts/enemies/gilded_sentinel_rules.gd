@@ -131,7 +131,9 @@ static func _introduce(gen: LevelGenerator, t: GildedSentinelTuning, placed: Arr
 			return
 	var rng: RandomNumberGenerator = gen.rng_for("gilded_sentinel_intro")
 	var first_side: int = -1 if rng.randf() < 0.5 else 1
-	var lead: float = (t.warning_seconds + t.strike_lead_seconds) * gen.speed + t.section_length * 0.5
+	# Where its attack window starts, back from its spot: a Sentinel at start + lead has its window (the warning
+	# or, when it starts earlier, the escape lane's lead, GildedSentinelTuning.attack_window) begin at start.
+	var lead: float = -t.attack_window(0.0, 1, gen.speed).x
 	for strict: bool in [true, false]:
 		var at: float = maxf(start, gen.config.start_clear_distance) + lead
 		while t.warn_at(at, 1, gen.speed) <= reach:
