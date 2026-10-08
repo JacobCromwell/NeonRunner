@@ -72,6 +72,11 @@ extends Resource
 ## for it (EnemyDirector.major_attack_blocked). An enemy that means to wait longer keeps asking (an
 ## Octodog, through its slack).
 @export_range(0.0, 10.0, 0.1, "suffix:s") var turn_place_grace: float = 1.0
+## GDD §9.2 (owner, October 8, 2026): how many bursts of the cyborg-type guns (cyborgs, window cyborgs
+## and Barnacle Turrets share the limit) may be in the air at once, each from its charge-up until
+## shortly after its last bolt (CyborgAirspace). The build had allowed one, which looked unnatural.
+## Small attacks: big attacks of different types still take turns (above).
+@export_range(1, 4) var max_bursts_in_air: int = 2
 
 @export_group("Score")
 ## Score multiplier on credits collected during a ramp-launched wall run (GDD §3; FB 20: x2).
