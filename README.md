@@ -348,7 +348,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 
 F6 pauses the game and opens a panel with sections for movement, game rules, power-ups, the runner's animation,
 pickups, speed effects (the camera's field-of-view kick and lane lean, speed lines, shake, hit-stop and the
-sparks and debris on kills and blocked hits), performance (how long a frame may spend dressing the track; see
+sparks and debris on kills and blocked hits, and the fireball every explosion is: counts, lengths, brightness, overall size), performance (how long a frame may spend dressing the track; see
 Smooth frames), the music's pause duck and death dip, level pacing, the campaign's
 recency curve for pick weights (in a campaign level) and each enemy type in the level. Changes apply immediately;
 pacing, pick weights, speed, jump and size
@@ -410,7 +410,7 @@ family, the Barnacle Turret's looks and a ride past it, a floor cut in any zone'
 model and an encounter with it, the Floating Head, the Sleep Taker (its lure and defeat, `--scenario=lure`, and its readability
 in the dark, `--scenario=measure`), The House (`--scenario=spin|buttons|jackpot|wall|ceiling|defeat|fight`), Hostile Takeover (`--scenario=run|train|gunship|locomotive|coupling|contract|merger|defeat`), the Sewer Swarm (`--scenario=rising|surge|fence|hole|fight|model|behind|host|stomp|defeat|hostmodel`) and its crowds' stress test for the phone (`swarm_stress`: N clusters of C screeches with a frame-time and draw-call readout), the UI kit, every screen, a zone skin's fixed review track, the cult's feed,
 the Golden Zone's statues, the Gilded Sentinels (each route past one, and its kick), the Enforcer Truck (its
-chase and a volley, each bait, a too-wide gap, its model; `--scenario=chase|octodog|buzz|gap|model`), any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
+chase and a volley, each bait, a too-wide gap, its model; `--scenario=chase|octodog|buzz|gap|model`), the explosions (`fireball_showcase`: the shared fireball at each size and through each enemy's own death, `--scenario=sizes|drone|truck|buzz|enforcer|generator|missile|bomb`, `--reduced` for Reduced flashing), any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
 lists its options. For example, a zone's arrival flyover rendered to frames on the web / low-end renderer:
 `godot --path . --rendering-method gl_compatibility --fixed-fps 10 --write-movie build/cine/f.png --quit-after 100
 res://tools/showcase/cinematic_review.tscn -- --slot=golden/intro --once`.
