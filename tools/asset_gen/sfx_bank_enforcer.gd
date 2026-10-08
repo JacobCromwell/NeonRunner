@@ -7,8 +7,9 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##                    tuning; the truck stretches it by pitch to match if the tuning changes)
 ##   enforcer_laser   one shot of a volley: a hard electric zap snapping down the lane, with a crack
 ##   enforcer_pickup  a cyborg climbing aboard: a boot on steel, a hatch clanking, a radio's squelch and chirp
-##   enforcer_crash   wrecked in a hole: brakes screaming, a nose-first crunch of steel, a deep boom and debris
-## Destroyed by a charge it blows up like the other vehicles (truck_explode).
+##   enforcer_crash   wrecked (a hole, a charge): brakes screaming, a nose-first crunch of steel, a deep boom
+##                    and debris, as it's hit
+## However it's destroyed, its wreck blows up in view a moment later like the other vehicles (truck_explode).
 
 const TUNING_PATH: String = "res://data/enemies/enforcer_truck.tres"
 
@@ -120,7 +121,7 @@ func _pickup() -> PackedFloat32Array:
 	return b
 
 
-## Wrecked in a hole: brakes screaming, a nose-first crunch of steel, a deep boom and a clatter of debris.
+## Wrecked (a hole, a charge): brakes screaming, a nose-first crunch of steel, a deep boom and a clatter of debris.
 func _crash() -> PackedFloat32Array:
 	var rng := _rng(1305)
 	var d: float = 1.5

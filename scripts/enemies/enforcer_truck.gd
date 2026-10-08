@@ -156,6 +156,7 @@ var _wreck_far: float = INF
 var _hole_far: float = INF
 var _wreck_in_lane: bool = false
 var _fall_v: float = 0.0
+var _sink: float = 0.0
 var _spin: float = 0.0
 var _trail_left: float = 0.0
 var _blast_at: float = -1.0
@@ -1243,6 +1244,7 @@ func _on_defeated(cause: StringName) -> void:
 	# wreck already closer stays where it is.
 	_wreck_gap = tuning.wreck_gap if _wreck_in_lane else minf(gap, tuning.wreck_gap)
 	_fall_v = 0.0
+	_sink = model.position.y
 	_spin = 0.0
 	_trail_left = 0.0
 	_blast_at = -1.0
@@ -1293,9 +1295,13 @@ func _physics_process(delta: float) -> void:
 			gap = pd - front
 		position = Vector3(_x, 0.0, TrackGeometry.world_z(front))
 		if _holed():
+			# Nose first into the hole, pivoting on its rear, so no part of it rises: on its front it would swing its
+			# rear and riders up into the chase camera as it lurches on under it.
 			_fall_v -= 18.0 * delta
-			model.position.y += _fall_v * delta
+			_sink += _fall_v * delta
 			model.rotation.x = lerpf(model.rotation.x, -0.6, 1.0 - exp(-7.0 * delta))
+			var pitch: float = model.rotation.x
+			model.position = Vector3(0.0, _sink + tuning.body_size.z * sin(pitch), tuning.body_size.z * (1.0 - cos(pitch)))
 		else:
 			_spin = lerpf(_spin, 0.9, 1.0 - exp(-6.0 * delta))
 			model.rotation.y = _spin * signf(_x - world.player.position.x + 0.01)

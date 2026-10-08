@@ -234,13 +234,23 @@ static func _beside(lane: int, lanes: int) -> int:
 ## it's destroyed ends in a visible explosion): {blast (it blew up), explode (the blast's sound), lurch (seconds
 ## from its wreck to its blast), puffs (frames its fireball showed), seen (frames a puff's upper half was on
 ## screen in the run camera's resting view of the runner, EnforcerTruckView), covers (a puff ever stood between
-## that camera and the runner), at (where it went off)}.
+## that camera and the runner), at (where it went off), top (the highest its wreck's look rose as it lurched on:
+## its body and riders, EnforcerTruckModel.profile) and roof (that look's top at rest)}.
 func _watch_blast(w: RunWorld, truck: EnforcerTruck) -> Dictionary:
-	var out := {"blast": false, "explode": false, "lurch": -1.0, "seen": 0, "covers": false, "puffs": 0}
+	var out := {"blast": false, "explode": false, "lurch": -1.0, "seen": 0, "covers": false, "puffs": 0, "top": -INF}
 	var wrecked: float = w.level_time()
+	var look: StringName = EnforcerTruckModel.look_of(w.skin.enemy_variant if w.skin != null else &"city")
+	var boxes: Array[AABB] = EnforcerTruckModel.profile(look, truck.tuning.body_size, truck.riders)
+	var roof: float = -INF
+	for c: Vector3 in EnforcerTruckView.corners(boxes):
+		roof = maxf(roof, c.y)
+	out["roof"] = roof
 	for i: int in int(3.0 / frame):
 		if not _valid(truck):
 			break
+		if not bool(out["blast"]) and truck.model.visible:
+			for c: Vector3 in EnforcerTruckView.corners(boxes):
+				out["top"] = maxf(float(out["top"]), (truck.model.global_transform * c).y)
 		var blast: EnforcerTruckBlast = truck.get(&"_blast") as EnforcerTruckBlast
 		if not bool(out["blast"]) and _count(truck, "blast") > 0:
 			out["blast"] = true
@@ -281,6 +291,9 @@ static func _segment_hits_sphere(a: Vector3, b: Vector3, c: Vector3, radius: flo
 func _check_blast(tag: String, kind: String, r: Dictionary) -> void:
 	check(bool(r.get("blast", false)) and bool(r.get("explode", false)) and float(r.get("lurch", -1.0)) <= t.wreck_surge_seconds + 0.05,
 		"%s %s: it blows up %.2f s after it's hit, with its sound" % [tag, kind, float(r.get("lurch", -1.0))])
+	check(float(r.get("top", INF)) <= float(r.get("roof", 0.0)) + 0.05,
+		"%s %s: as it lurches on, its wreck never rises above its roof and riders, so never into the camera (%.2f m up, its roof %.2f m)"
+		% [tag, kind, float(r.get("top", INF)), float(r.get("roof", 0.0))])
 	check(int(r.get("puffs", 0)) > 0 and int(r.get("seen", 0)) >= int(r.get("puffs", 0)) * 3 / 4 and not bool(r.get("covers", true)),
 		"%s %s: the camera sees its fireball (%d of %d frames), never in front of the runner (%s) %s" % [tag, kind,
 		int(r.get("seen", 0)), int(r.get("puffs", 0)), r.get("at", ""), r.get("covered", "")])
