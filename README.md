@@ -205,9 +205,12 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     lane changes a moment late. When your lane lights red ahead and its whine rises, change lanes before
     its lasers come up the lane. Weapons, stomps, the claws and the dash can't hurt it: bait an Octodog's
     lunge or a Buzz Overdrive's charge into it by dodging late (it closes right up behind you while an
-    Octodog attacks), or lead it into a stopped cut. Cyborgs you pass alive in its lane climb onto its roof
-    (up to three): each makes it fire faster, and each pays a bonus when it's destroyed. It gives up after
-    about 25 s (in quick play, `--features=octodog,enforcer_truck`)
+    Octodog attacks), or lead it into a stopped cut or a gap too wide for it to hop; it blows up in view.
+    Cyborgs you pass alive in its lane climb onto its roof (up to three): each makes it fire faster, and each
+    pays a bonus when it's destroyed. Now and then (as it arrives, and once more if there's room) it speeds up
+    beside you for a few seconds so you can see it, then drops back: its sides are solid but harmless (a lane
+    change into it bumps you back) and it gives way as you move toward it. It gives up after about 25 s (in
+    quick play, `--features=octodog,enforcer_truck`)
 - **Bosses:** a framework for runner-style boss fights (GDD §10): the fight plays in the normal run on
   an arena track that keeps going for as long as it lasts, with the boss's health bar and phase
   markers on the HUD, weak points to stomp and weapon chip damage, a checkpoint for the final fight,
@@ -413,7 +416,8 @@ family, the Barnacle Turret's looks and a ride past it, a floor cut in any zone'
 model and an encounter with it, the Floating Head, the Sleep Taker (its lure and defeat, `--scenario=lure`, and its readability
 in the dark, `--scenario=measure`), The House (`--scenario=spin|buttons|jackpot|wall|ceiling|defeat|fight`), Hostile Takeover (`--scenario=run|train|gunship|locomotive|coupling|contract|merger|defeat`), the Sewer Swarm (`--scenario=rising|surge|fence|hole|fight|model|behind|host|stomp|defeat|hostmodel`) and its crowds' stress test for the phone (`swarm_stress`: N clusters of C screeches with a frame-time and draw-call readout), the UI kit, every screen, a zone skin's fixed review track, the cult's feed,
 the Golden Zone's statues, the Gilded Sentinels (each route past one, and its kick), the Enforcer Truck (its
-chase and a volley, each bait, a too-wide gap, its model; `--scenario=chase|octodog|buzz|gap|model`), a wider gap
+chase and a volley, showing itself beside the runner and bumping a lane change back, each bait, a cut and a
+too-wide gap, each ending in its blast, its model; `--scenario=chase|show|octodog|buzz|cut|gap|model`), a wider gap
 jumped and an Enforcer Truck wrecked in one (`wide_gap_review`, `--scenario=jump|enforcer`), an Octodog's lunge and a
 Buzz Overdrive's charge flattening a cyborg planted in its path (`charge_path_review`, `--scenario=octodog|buzz`),
 any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
