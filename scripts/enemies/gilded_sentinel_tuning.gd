@@ -55,10 +55,15 @@ extends EnemyTuning
 ## (centred on its niche). A Sentinel that swings twice cuts the stretch before its niche, then
 ## swings back across the stretch past it, twice as long in all.
 @export_range(2.0, 10.0, 0.5, "suffix:m") var section_length: float = 5.0
-## DESIGN-TBD: the warning: its eyes flare, stone grinds (gilded_sentinel_grind), the red marks of the
-## band and the lane light up and it draws its halberd back. Its first swing comes at its end, as the
-## runner reaches the stretch.
-@export_range(0.8, 3.0, 0.05, "suffix:s") var warning_seconds: float = 1.2
+## The warning: its eyes flare, stone grinds (gilded_sentinel_grind), the red marks of the band and the
+## lane light up and it draws its halberd back. Its first swing comes at its end, as the runner reaches
+## the stretch. 0.6 s: half as long as first built (1.2 s), the owner's number (GDD §9.11, October 8, 2026).
+## The grind sound is as long as it is (tools/asset_gen/sfx_bank_sentinel.gd): regenerate it with
+## `tools/godot.sh sfx --only=gilded_sentinel_grind` after changing this.
+@export_range(0.3, 3.0, 0.05, "suffix:s") var warning_seconds: float = 0.6
+## The last share of the warning in which it draws its halberd back (the eyes flare through all of it,
+## so they come first): 0.5 of 0.6 s is a draw-back of 0.3 s, after 0.3 s of eyes and grinding alone.
+@export_range(0.2, 0.8, 0.05) var raise_share: float = 0.5
 ## A swing starts as the runner is this long short of its stretch (at their speed then), so they are
 ## inside it while it cuts.
 @export_range(0.0, 0.3, 0.01, "suffix:s") var strike_lead_seconds: float = 0.06
@@ -110,6 +115,11 @@ func band(movement: MovementTuning) -> Vector2:
 	return Vector2(center - band_height * 0.5, center + band_height * 0.5)
 
 
+## The wind-up at the end of the warning: how long it takes to draw the halberd back.
+func raise_seconds() -> float:
+	return warning_seconds * raise_share
+
+
 ## The statue's height from its feet to the top of its crest.
 func statue_height() -> float:
 	return GoldenStatue.STATURE * statue_scale
@@ -134,16 +144,20 @@ func warn_at(at: float, swings: int, speed: float) -> float:
 
 
 ## The whole attack along the track (Vector2(from, to)) at `speed`: from where the runner is when its
-## warning starts to the end of its last stretch. A big attack's keep-out (the generator's rules).
+## warning starts to the end of its last stretch. A big attack's keep-out (the generator's rules). It
+## never starts later than the floor it uses (floor_use): the lane beside its cut is kept clear from
+## escape_lead_seconds before a swing, which is before the warning when the warning is shorter than that
+## (GDD §9.11, owner, October 8, 2026: 0.6 s), so the keep-out covers the floor it uses as it always did.
 func attack_window(at: float, swings: int, speed: float) -> Vector2:
-	return Vector2(warn_at(at, swings, speed), guarded_stretch(at, swings).y)
+	return Vector2(minf(warn_at(at, swings, speed), floor_use(at, swings, speed).x), guarded_stretch(at, swings).y)
 
 
 ## Its whole turn among the big attacks along the track (Vector2(from, to)) at `speed`: from where the
 ## runner is as it claims its turn (claim_seconds before its warning) to the end of its last stretch.
 ## Another planned big attack (a Resonator's pulse) kept off it is never held for it at run time.
 func claim_window(at: float, swings: int, speed: float) -> Vector2:
-	return Vector2(warn_at(at, swings, speed) - claim_seconds * speed, guarded_stretch(at, swings).y)
+	return Vector2(minf(warn_at(at, swings, speed) - claim_seconds * speed, floor_use(at, swings, speed).x),
+		guarded_stretch(at, swings).y)
 
 
 ## The floor its cut uses (params.floor_span; LevelGenerator.enemy_floor_span): the outer lane, from

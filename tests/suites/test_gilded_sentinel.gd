@@ -136,8 +136,12 @@ func _test_numbers() -> void:
 		% [outer_runner, outer_runner + half * 2.0, next_runner])
 	check(band.y > tuning.jump_height + 0.05, "no jump clears the lane's cut (its top %.2f m over a jump's %.2f m)"
 		% [band.y, tuning.jump_height])
-	check(t.warning_seconds >= 1.0 and t.strike_seconds > t.section_length / 25.0 + 0.05,
-		"a warning of at least a second, and a cut on for longer than a runner takes to cross it at 25 m/s")
+	# GDD §9.11 (owner, October 8, 2026): the warning is half as long as first built, 0.6 s instead of 1.2 s.
+	check(t.warning_seconds >= 0.6 and t.strike_seconds > t.section_length / 25.0 + 0.05,
+		"a warning of at least the owner's 0.6 s, and a cut on for longer than a runner takes to cross it at 25 m/s")
+	check(t.raise_seconds() > 0.1 and t.raise_seconds() <= t.warning_seconds * 0.6,
+		"the halberd's draw-back (%.2f s) leaves the eyes and the grinding a head start in the warning (%.2f s)"
+		% [t.raise_seconds(), t.warning_seconds])
 	check(t.niche_sill >= 0.0 and t.niche_sill + t.niche_height <= 4.0 and t.niche_sill + t.statue_height() < t.niche_sill + t.niche_height,
 		"the niche stands at wall-run height and holds the statue (%.2f-%.2f m)" % [t.niche_sill, t.niche_sill + t.niche_height])
 	check(t.health_at(0.0) == 15.0 and t.health_at(1.0) == 15.0 and t.uses_floor,

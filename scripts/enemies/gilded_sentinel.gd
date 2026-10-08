@@ -70,10 +70,9 @@ const POSE_HUSK: Dictionary = {"shoulder_r": Vector3(2.0, 0.0, 6.0), "elbow_r": 
 ## Frames baked along each move (both ends included): rest to wind-up, the swing, the recovery.
 const FRAMES: int = 8
 enum Move { RAISE, SWING, RECOVER, HUSK }
-## Seconds the halberd takes to sweep through a swing (the cut is live for strike_seconds from its start),
-## and the wind-up at the end of the warning.
+## Seconds the halberd takes to sweep through a swing (the cut is live for strike_seconds from its start).
+## (The wind-up at the end of the warning is the tuning's raise_seconds(), a share of the warning.)
 const SWEEP_SECONDS: float = 0.16
-const RAISE_SECONDS: float = 0.55
 ## The eyes: their glow at rest, during the warning (rising to full) and once it's down (dark).
 const EYES_IDLE: float = 0.9
 const EYES_FULL: float = 6.0
@@ -649,7 +648,8 @@ func _process(delta: float) -> void:
 		State.WARNING:
 			var k: float = clampf(_state_time / tune.warning_seconds, 0.0, 1.0)
 			flare = k
-			var wind: float = clampf((_state_time - (tune.warning_seconds - RAISE_SECONDS)) / RAISE_SECONDS, 0.0, 1.0)
+			var raise: float = maxf(tune.raise_seconds(), 0.01)
+			var wind: float = clampf((_state_time - (tune.warning_seconds - raise)) / raise, 0.0, 1.0)
 			_show_frame(Move.RAISE, smoothstep(0.0, 1.0, wind))
 			_mark_strength = lerpf(MARK_START, MARK_FULL, k)
 			_mark_fill = smoothstep(0.0, 0.85, k)
