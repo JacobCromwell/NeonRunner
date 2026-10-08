@@ -305,10 +305,12 @@ func niche(width: float, height: float) -> MeshLayer:
 ## The niche a live Gilded Sentinel stands in, set into the wall (task C4; GildedSentinel): the Golden
 ## Zone's skins leave its opening out of the wall face (GoldenSkin.note_wall_enemies) and append this
 ## there. Niche space as niche(): the wall face at z = 0, the opening facing +Z, `width` wide and from
-## its floor (y = 0) up `height`, the recess `depth` deep behind the face (-Z): a dark back and sides, a
-## marble floor, and on the face a polished gold frame whose spandrels round the opening's top into an
-## arch, and a marble sill line. Everything on the face stands at most a few centimetres proud, so
-## nothing of it reaches out over the wall-run path. One template per size, for the solid material.
+## its floor (y = 0) up `height`, the recess `depth` deep behind the face (-Z): a dark back and sides (with
+## `lit`, the live niche's: warm bronze stone, LIT_BACK and the rest, so the statue and its eyes read
+## against it, task H1; the decorative alcoves, which draw it too, stay dark), a marble floor, and on the
+## face a polished gold frame whose spandrels round the opening's top into an arch, and a marble sill line.
+## Everything on the face stands at most a few centimetres proud, so nothing of it reaches out over the
+## wall-run path. One template per size and `lit`, for the solid material.
 func recess(width: float, height: float, depth: float, lit: bool = false) -> MeshLayer:
 	var key: String = "recess_%s_%s_%s_%s" % [width, height, depth, lit]
 	if _merged.has(key):

@@ -10,6 +10,9 @@ extends Enemy
 ##   wall runner's body lies along the wall face): only its swing does. The Golden Zone's skins open the
 ##   niche in their walls (GoldenSkin.note_wall_enemies, GoldenStatue.recess); in any other skin (quick
 ##   play) it stands in front of the wall in the kit's niche as a review stand-in, its hitboxes the same.
+##   Task H1 (GDD §9.11, owner, October 8, 2026): it stands almost flush with the face (placed by its real
+##   outline, reach_out()), in a shallower, wider niche whose inside is lit bronze, not black (the skins draw
+##   it with GoldenStatue.recess(lit)); its warning is 0.6 s. Nothing of it goes in front of the face.
 ## - The attack, once, as the runner approaches: when they are warning_seconds (plus a moment) at their
 ##   speed from the stretch it guards, its eyes flare, stone grinds (gilded_sentinel_grind) and the red
 ##   marks of what it will cut light up: a band of its wall (GildedSentinelTuning.band, the heights around
