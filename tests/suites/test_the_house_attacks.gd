@@ -140,7 +140,7 @@ func _play(p_def: BossDef, lanes: int, speed: float, spins: int, watch: bool = t
 	out["distance"] = world.player.distance
 	out["pools"] = boss.attacks.pool_stats()
 	var fire_pool: FireballPool = world.effects.fireballs()
-	out["fire_pool"] = [fire_pool.slots.size(), fire_pool.plays]
+	out["fire_pool"] = [fire_pool.slots.size(), fire_pool.plays, world.effects.tuning.fireball_pool]
 	out["fire_size"] = t.blast_radius * TheHouseAttacks.FIRE_SIZE_PER_RADIUS
 	await sim.free_world(world)
 	return out
@@ -311,7 +311,7 @@ func _test_every_size(lanes: int, speed: float) -> void:
 	check(blast_count > 0 and fires.size() == blast_count and sized,
 		"each blast is one fireball, sized to it (%d fireballs for %d blasts) %s" % [fires.size(), blast_count, tag])
 	var fire_pool: Array = r["fire_pool"]
-	check(int(fire_pool[0]) == SpeedFxTuning.new().fireball_pool and int(fire_pool[1]) > int(fire_pool[0]),
+	check(int(fire_pool[0]) == int(fire_pool[2]) and int(fire_pool[1]) > int(fire_pool[0]),
 		"and the fireballs are pooled: %d slots served %d blasts %s" % [fire_pool[0], fire_pool[1], tag])
 
 

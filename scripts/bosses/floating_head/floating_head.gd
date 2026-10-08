@@ -62,7 +62,7 @@ extends BossEncounter
 ## front of the runner, its face tearing into static (DYING: held still with Reduced flashing), loses
 ## power and plunges forward into the street (FALLING: head_power_down; its screen collapses to a line
 ## and its lights die) at the first stretch ahead clear of holes and fences (crash_site), where it
-## breaks up (WRECKED: head_crash, dust, debris and cold sparks, no flash): its dead face falls flat in
+## breaks up (WRECKED: head_crash, a fireball over the wreck and at each end of it, dust, debris and cold sparks): its dead face falls flat in
 ## the street and its stern half lies sunk between the trucks, torn open at both ends, a tunnel the
 ## lanes run through (FloatingHeadModel's wreck). The runner runs over its face and through the wreck:
 ## nothing in it hurts, and anything left where it landed is crushed. The results wait until the runner
@@ -1181,7 +1181,7 @@ func _falling_tick() -> void:
 		_crash()
 
 
-## It hits the street and breaks up (the crash: sound, dust, debris, a heavy shake; no flash): its face
+## It hits the street and breaks up (the crash: sound, three fireballs, dust, debris, a heavy shake): its face
 ## tears off and falls flat into the street before it, its bow breaks away, and its stern half lies sunk
 ## between the trucks, a dark wreck the lanes run through. Anything left where it lands is crushed.
 func _crash() -> void:

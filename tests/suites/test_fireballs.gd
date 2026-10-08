@@ -3,8 +3,9 @@ extends TestSuite
 ## the game is one shared, pooled fireball (RunEffects.fireball, FireballPool). Checks: the pool is made once,
 ## bounded and reused (no node is made by an explosion, one more than the pool holds cuts the oldest short, a
 ## fireball ends by itself); it is CPU particles and unshaded billboards, so it works on the Compatibility
-## renderer, with no collision and no light; Reduced flashing softens it (slower, from nothing, never white-hot,
-## dimmer); the shader warm-up draws its materials; and each explosion that is not a boss's (the drone's hit and
+## renderer, with no collision and no light; it fades out as the camera nears it and never whites out the view;
+## Reduced flashing softens it (as long as ever, but from nothing, never white-hot, and never brighter than the
+## normal one at any moment); the shader warm-up draws its materials; and each explosion that is not a boss's (the drone's hit and
 ## crash, the hover truck's wreck and its burst through the wall, the Buzz Overdrive, the Enforcer truck, a
 ## fence generator, the missiles, the Hostile Takeover lobby's blast) calls it, at the size its code names. The
 ## bosses' own explosions and the bombs' blasts are checked in their fights' suites (test_floating_head,
@@ -24,6 +25,8 @@ func run() -> void:
 	await _test_pool_is_bounded_and_reused()
 	await _test_nothing_is_a_hazard()
 	await _test_reduced_flashing()
+	await _test_camera_fade()
+	await _test_smoke_is_cleared()
 	await _test_warm_up()
 	await _test_drone()
 	await _test_hover_truck()
@@ -89,8 +92,7 @@ func _test_tuning() -> void:
 		"a fireball and the pool are bounded (%d particles each, %d slots)" % [per_slot, t.fireball_pool])
 	check(t.fireball_seconds <= 1.5 and t.fireball_smoke_seconds <= 3.0,
 		"a fireball is short: the fire burns %.1f s, the smoke clears in %.1f s" % [t.fireball_seconds, t.fireball_smoke_seconds])
-	check(t.fireball_reduced_slowdown > 1.0 and t.fireball_reduced_brightness < 1.0,
-		"Reduced flashing slows it (x%.2f) and dims it (x%.2f)" % [t.fireball_reduced_slowdown, t.fireball_reduced_brightness])
+	check(t.fireball_reduced_brightness < 1.0, "Reduced flashing dims it (x%.2f)" % t.fireball_reduced_brightness)
 
 
 # --- The pool ------------------------------------------------------------------------------------
@@ -162,6 +164,17 @@ func _test_pool_is_bounded_and_reused() -> void:
 	fx.fireball(Vector3(0.0, 2.0, -20.0), 2.0)
 	check(is_equal_approx(pool.last_size, 4.0), "the overall scale multiplies a fireball's size (%.1f)" % pool.last_size)
 	t.fireball_scale = scale_before
+	# A bomb's fireball is held in: its fire and embers fly out of its centre only `spread` as far.
+	pool._process(10.0)
+	fx.fireball(Vector3(0.0, 3.0, -20.0), 2.0)
+	var free_fire: float = pool.latest.fire.initial_velocity_max
+	var free_embers: float = pool.latest.embers.initial_velocity_max
+	var free_radius: float = pool.latest.fire.emission_sphere_radius
+	fx.fireball(Vector3(0.0, 3.0, -20.0), 2.0, false, 1.0, 0.5)
+	check(is_equal_approx(pool.latest.fire.initial_velocity_max, free_fire * 0.5)
+			and is_equal_approx(pool.latest.embers.initial_velocity_max, free_embers * 0.5)
+			and is_equal_approx(pool.latest.fire.emission_sphere_radius, free_radius * 0.5),
+		"a held-in fireball (spread 0.5) throws its fire and embers half as hard, from half the ball")
 	# Never sunk into the floor.
 	fx.fireball(Vector3(0.0, 0.0, -20.0), 4.0)
 	var lowest: float = pool.latest.fire.global_position.y
@@ -202,6 +215,10 @@ func _count_hazards(root: Node) -> int:
 
 # --- Reduced flashing ----------------------------------------------------------------------------
 
+## The requirement (the H6 review): with Reduced flashing a fireball is never brighter than the normal one after
+## its first 0.15 s, and at its peak at most `fireball_reduced_brightness` of it; it lasts as long, starts from
+## nothing and is never white-hot. Measured as an additive blend adds it: each particle's alpha times its colour's
+## luminance (and the emitter's tint), sampled through the life it really has.
 func _test_reduced_flashing() -> void:
 	var world: RunWorld = _world()
 	var fx: RunEffects = world.effects
@@ -215,40 +232,131 @@ func _test_reduced_flashing() -> void:
 		pool._process(10.0)
 		fx.fireball(Vector3(0.0, 2.0, -20.0), 2.0)
 		var slot: FireballPool.Slot = pool.latest
-		var fire: Gradient = slot.fire.color_ramp.duplicate() as Gradient
-		var core: Gradient = slot.core.color_ramp.duplicate() as Gradient
-		probe[reduced] = {"speed": slot.fire.speed_scale, "tint": slot.fire.color.a, "fire": fire, "core": core,
-			"left": slot.left, "flag": pool.last_reduced}
+		probe[reduced] = {"fire": [slot.fire.color_ramp, slot.fire.color.a], "core": [slot.core.color_ramp, slot.core.color.a],
+			"embers": [slot.embers.color_ramp, slot.embers.color.a], "left": slot.left, "speed": slot.fire.speed_scale,
+			"flag": pool.last_reduced}
 	var calm: Dictionary = probe[false]
 	var soft: Dictionary = probe[true]
 	check(not calm["flag"] and soft["flag"], "the pool knows when it plays softened")
-	check(float(soft["speed"]) < float(calm["speed"]) - 0.01 and float(soft["left"]) > float(calm["left"]),
-		"with Reduced flashing it plays slower (%.2fx against %.2fx, %.2f s against %.2f s)" % [
-		float(soft["speed"]), float(calm["speed"]), float(soft["left"]), float(calm["left"])])
-	check(is_equal_approx(float(calm["tint"]), 1.0) and is_equal_approx(float(soft["tint"]), t.fireball_reduced_brightness),
-		"and dimmer (%.2f against %.2f)" % [float(soft["tint"]), float(calm["tint"])])
-	for name: String in ["fire", "core"]:
-		var calm_ramp: Gradient = calm[name]
-		var soft_ramp: Gradient = soft[name]
-		check(soft_ramp.colors[0].a == 0.0, "its %s swells from nothing instead of popping in" % name)
+	check(is_equal_approx(float(soft["left"]), float(calm["left"])) and is_equal_approx(float(soft["speed"]), float(calm["speed"])),
+		"with Reduced flashing it lasts as long (%.2f s against %.2f s) and plays as fast" % [float(soft["left"]), float(calm["left"])])
+	var lives: Dictionary = {"fire": t.fireball_seconds, "core": FireballPool.CORE_SECONDS, "embers": FireballPool.EMBER_SECONDS}
+	for kind: String in ["fire", "core", "embers"]:
+		var life: float = lives[kind]
+		var calm_ramp: Gradient = calm[kind][0]
+		var soft_ramp: Gradient = soft[kind][0]
+		var calm_tint: float = calm[kind][1]
+		var soft_tint: float = soft[kind][1]
+		check(is_equal_approx(calm_tint, 1.0) and is_equal_approx(soft_tint, t.fireball_reduced_brightness),
+			"its %s is at %.2f of the normal strength" % [kind, soft_tint])
+		var never_brighter: bool = true
+		var calm_peak: float = 0.0
+		var soft_peak: float = 0.0
+		var worst_second: float = 0.0
+		for i: int in int(life * 100.0) + 1:
+			var at: float = float(i) / 100.0
+			var normal_glow: float = _glow(calm_ramp, calm_tint, at, life)
+			var softened: float = _glow(soft_ramp, soft_tint, at, life)
+			calm_peak = maxf(calm_peak, normal_glow)
+			soft_peak = maxf(soft_peak, softened)
+			if at >= 0.15 and softened > normal_glow + 0.0001:
+				never_brighter = false
+				worst_second = at
+		check(never_brighter, "with Reduced flashing its %s is never brighter than the normal one after 0.15 s (at %.2f s it is)" % [
+			kind, worst_second])
+		check(soft_peak <= t.fireball_reduced_brightness * calm_peak + 0.0001,
+			"and its %s peaks at most %.2f of the normal peak (%.3f against %.3f)" % [
+			kind, t.fireball_reduced_brightness, soft_peak, calm_peak])
+		check(_glow(soft_ramp, soft_tint, 0.0, life) == 0.0, "and starts from nothing")
 		var max_blue: float = 0.0
 		for c: Color in soft_ramp.colors:
 			max_blue = maxf(max_blue, c.b)
-		check(max_blue < 0.25, "its %s is orange and yellow only, never white-hot (blue at most %.2f)" % [name, max_blue])
-		check(_time_to_reach(soft_ramp, 0.25) > _time_to_reach(calm_ramp, 0.25) + 0.03,
-			"and takes longer to come up (to a quarter strength at %.2f of its life against %.2f)" % [
-			_time_to_reach(soft_ramp, 0.25), _time_to_reach(calm_ramp, 0.25)])
+		check(max_blue < 0.25, "never white-hot: orange and yellow only (blue at most %.2f)" % max_blue)
 	check(shakes[0] == 0, "a fireball asks for no shake of its own (the explosion's code does, under the Screen shake setting)")
 	_set_reduced(false)
 	await sim.free_world(world)
 
 
-## The first offset at which `ramp`'s alpha reaches `alpha`.
-func _time_to_reach(ramp: Gradient, alpha: float) -> float:
-	for i: int in 101:
-		if ramp.sample(float(i) / 100.0).a >= alpha:
-			return float(i) / 100.0
-	return 1.0
+## What an additive blend adds for a particle `at` seconds into a life of `life` seconds: its colour's luminance
+## times its alpha, with the emitter's `tint`.
+func _glow(ramp: Gradient, tint: float, at: float, life: float) -> float:
+	var c: Color = ramp.sample(clampf(at / life, 0.0, 1.0))
+	return tint * c.a * (0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b)
+
+
+# --- The camera ----------------------------------------------------------------------------------
+
+## A fireball fades out as the camera comes near it (the H6 review: an explosion between the camera and the runner
+## whited the view out for 0.2 to 0.3 s): none of it within its size of the camera, all of it from 2.5 times its size,
+## in between by the distance, with its smoke; an emitter showing nothing is hidden.
+func _test_camera_fade() -> void:
+	var world: RunWorld = _world()
+	var fx: RunEffects = world.effects
+	var pool: FireballPool = fx.fireballs()
+	var camera := Camera3D.new()
+	world.add_child(camera)
+	camera.global_position = Vector3(0.0, 3.0, 10.0)
+	camera.make_current()
+	var size: float = 3.0
+	var cases: Array[Array] = [[0.5 * size, 0.0], [1.0 * size, 0.0], [1.75 * size, 0.5], [2.5 * size, 1.0], [6.0 * size, 1.0]]
+	for c: Array in cases:
+		pool._process(10.0)
+		fx.fireball(Vector3(0.0, 3.0, 10.0 - float(c[0])), size)
+		var slot: FireballPool.Slot = pool.latest
+		var want: float = c[1]
+		check(is_equal_approx(slot.shown, want) and is_equal_approx(slot.fire.color.a, want) and is_equal_approx(slot.smoke.color.a, want)
+				and slot.fire.visible == (want > 0.0) and slot.embers.visible == (want > 0.0) and slot.smoke.visible == (want > 0.0),
+			"the camera %.1f m (%.2f sizes) from a fireball sees %.2f of it (fire %.2f, hidden: %s)" % [
+			float(c[0]), float(c[0]) / size, want, slot.fire.color.a, not slot.fire.visible])
+	# It follows the camera as it comes on: the runner's camera rides toward an explosion ahead.
+	pool._process(10.0)
+	fx.fireball(Vector3(0.0, 3.0, -20.0), size)
+	var seen: Array[float] = []
+	for z: float in [10.0, 0.0, -8.0, -14.0, -18.0]:
+		camera.global_position = Vector3(0.0, 3.0, z)
+		pool._process(0.0)
+		seen.append(pool.latest.fire.color.a)
+	var falling: bool = true
+	for i: int in range(1, seen.size()):
+		falling = falling and seen[i] <= seen[i - 1] + 0.0001
+	check(falling and seen[0] == 1.0 and seen[seen.size() - 1] == 0.0,
+		"it fades out as the camera runs toward it (%s)" % [seen])
+	# With Reduced flashing the fade takes the softened tint with it.
+	_set_reduced(true)
+	pool._process(10.0)
+	camera.global_position = Vector3(0.0, 3.0, 10.0)
+	fx.fireball(Vector3(0.0, 3.0, 10.0 - 1.75 * size), size)
+	check(is_equal_approx(pool.latest.fire.color.a, fx.tuning.fireball_reduced_brightness * 0.5),
+		"and with Reduced flashing the fade multiplies the dimmer strength (%.3f)" % pool.latest.fire.color.a)
+	_set_reduced(false)
+	camera.queue_free()
+	await sim.free_world(world)
+
+
+## What a slot throws without smoke is not what it threw with it: its smoke is stopped and hidden, never thrown anew
+## at its old place (restarting it did), and comes back when smoke is asked for.
+func _test_smoke_is_cleared() -> void:
+	var world: RunWorld = _world()
+	var fx: RunEffects = world.effects
+	var pool: FireballPool = fx.fireballs()
+	pool._process(10.0)
+	fx.fireball(Vector3(0.0, 3.0, -20.0), 2.0, true)
+	var smoked: FireballPool.Slot = pool.latest
+	check(smoked.smoke.visible and smoked.smoke.emitting, "a fireball with smoke shows its smoke")
+	pool._process(10.0)
+	for i: int in pool.slots.size():
+		fx.fireball(Vector3(float(i), 3.0, -20.0), 1.0, false)
+		check(not pool.latest.smoke.visible and not pool.latest.smoke.emitting, "a fireball without smoke hides its smoke (slot %d)" % i)
+		pool._process(10.0)
+	check(not smoked.smoke.visible and not smoked.smoke.emitting, "including the slot that had smoke before")
+	for i: int in pool.slots.size():
+		fx.fireball(Vector3(0.0, 3.0, -20.0), 1.0, true)
+		pool._process(10.0)
+	var shown: int = 0
+	for slot: FireballPool.Slot in pool.slots:
+		shown += 1 if slot.smoke.visible else 0
+	check(shown == pool.slots.size(), "and every slot shows smoke again when it is asked for (%d of %d)" % [shown, pool.slots.size()])
+	await sim.free_world(world)
 
 
 # --- The shader warm-up --------------------------------------------------------------------------

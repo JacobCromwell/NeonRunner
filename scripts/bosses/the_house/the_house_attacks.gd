@@ -35,14 +35,16 @@ const BLOCK_NAME: String = "The House's gold block"
 const ATTACK_RED := Color(1.0, 0.08, 0.1)
 const GOLD := Color(0.86, 0.66, 0.24)
 const FENCE_PINK := Color(1.0, 0.18, 0.62)
-## A blast's book is kept this long (its hitbox only blast_seconds; its fireball, RunEffects.fireball, plays
-## about as long).
+## A blast's book is kept this long (its hitbox only blast_seconds; its fireball, RunEffects.fireball, is a quick one
+## of about the same length: a look only).
 const FIRE_SECONDS: float = 0.6
-## The blast's look is one of the shared fireballs (GDD §11): this many times the blast's radius across the
-## street, played this much faster than a fireball of its size would (quick, no smoke, so it is gone about
-## when the blast is: only the blast's hitbox hurts, and the fireball never lingers past it).
-const FIRE_SIZE_PER_RADIUS: float = 1.5
-const FIRE_PACE: float = 1.6
+## The blast's look is one of the shared fireballs (GDD §11), held in so what burns is about what hurts (task H6's
+## review: what looks like a hit must be a hit): as big as the blast's radius, flying out of its centre only this
+## share as far as a free fireball's fire does, played this much faster than a fireball of its size would, with no
+## smoke (it must not hide the lane the runner escapes into).
+const FIRE_SIZE_PER_RADIUS: float = 1.0
+const FIRE_SPREAD: float = 0.45
+const FIRE_PACE: float = 2.0
 ## The falling whistle's length, if the sound library doesn't say.
 const WHISTLE_SECONDS: float = 0.9
 ## How high a gold block falls from.
@@ -568,8 +570,8 @@ func _place_bomb(bomb: MeshInstance3D, from: Vector3, to: Vector3, t0: float, t1
 	bomb.rotation = Vector3(s * 9.0, s * 4.0, 0.0)
 
 
-## A blast: its hitbox burns for blast_seconds (a little smaller than its fireball, clear of a wall
-## runner); the fireball (RunEffects.fireball: a look only), the boom and a shake.
+## A blast: its hitbox burns for blast_seconds (clear of a wall runner); its fireball (RunEffects.fireball: a
+## look only, about as big as the hitbox), the boom and a shake.
 func _blast(lane: int, at: float, n: int) -> void:
 	var geo: TrackGeometry = world.geo
 	var half: float = geo.lane_width * tuning.blast_width_share * 0.5
@@ -586,7 +588,7 @@ func _blast(lane: int, at: float, n: int) -> void:
 	hazard.set_enabled(true)
 	_blasts.append({"hazard": hazard, "start": clock, "n": n})
 	var center := Vector3(x, 0.8, TrackGeometry.world_z(at))
-	world.effects.fireball(center + Vector3(0.0, 0.3, 0.0), tuning.blast_radius * FIRE_SIZE_PER_RADIUS, false, FIRE_PACE)
+	world.effects.fireball(center + Vector3(0.0, 0.3, 0.0), tuning.blast_radius * FIRE_SIZE_PER_RADIUS, false, FIRE_PACE, FIRE_SPREAD)
 	var near: float = clampf(1.0 - (at - world.player.distance) / 40.0, 0.2, 1.0)
 	world.effects.shake(0.25 * near, 0.25)
 	boss.sound(&"bomb_blast", center)

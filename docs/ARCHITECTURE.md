@@ -156,39 +156,52 @@ Every number is `SpeedFxTuning` (`scripts/run/speed_fx_tuning.gd`, `data/tuning/
     (`shake()` and `freeze()` both no-op at 0); the field-of-view kick, the lean and the speed lines
     stay on regardless, since none of them snap or strobe.
 - **Explosions** (task H6, the owner, October 8, 2026, GDD §11: "a yellow and red fireball"). Every explosion in
-  the game is one call, `RunEffects.fireball(pos, size, smoke, pace)`, a pooled `FireballPool`
+  the game is one call, `RunEffects.fireball(pos, size, smoke, pace, spread)`, a pooled `FireballPool`
   (`scripts/run/fireball_pool.gd`, built by `RunEffects.setup`). `size` is the fireball's radius in metres
   (`SpeedFxTuning.fireball_scale` multiplies all of them); the pool does the rest, scaled by it: a yellow core
   that blooms into orange and red, rolling outward and up, embers thrown out of it and dark smoke after
-  (`smoke` off for a quick one; `pace` plays it faster; a bigger one plays slower, `fireball_big_size`, so a
-  boss's takes its time: 1.0 s of fire at 3 m, 1.7 s at 9 m or more). It is **four `CPUParticles3D` a slot**
-  (core flash, fire, smoke, embers), billboards of one soft, lumpy blob texture drawn once by the CPU, in
-  unshaded `StandardMaterial3D`s (additive for fire and embers, see-through for smoke; `vertex_color_is_srgb`,
-  so the ramps' colours are the inspector colours the Compatibility renderer shows and Forward+ converts):
-  no GPU particles, no custom shader, no lights, nothing that differs by renderer. **Pooled and fixed**: a slot
-  per simultaneous fireball (`fireball_pool`, 8; one more cuts the oldest short; on a low-end device, `DeviceProfile.is_low_end`, half as many slots and `fireball_low_end_share` of the particles), particle counts, ramps,
-  curves, textures and materials fixed when the level loads (so an explosion allocates nothing: a test counts
-  the nodes), `ShaderWarmup` draws the three materials during the load (`_sample_fireballs`), and the
-  materials fade a puff out within 0.6 m (fire) or 1.5 m (smoke) of the camera, so a runner running through
-  one never gets a screen of glare or haze. A fireball is a look: no collision, no light, no hazard colours
-  left behind (the smoke is dark, and each one is gone in a second or two; a quick one in a fraction of that).
-  **Reduced flashing** (`Settings.flashing_reduced`, read as each one starts) plays it `fireball_reduced_slowdown`
-  times slower, from nothing (its ramps' first alpha is 0: no pop, no white-hot core, only yellow, orange and
-  red), at `fireball_reduced_brightness` of the usual. It asks for no shake and no sound: each caller's own
-  `shake` (under the Screen shake setting) and sound stay. A blast on the street is lifted out of the floor
-  (`size * 0.45` up). `fireball_played(pos, size)` announces each one (tests, tools). Who calls it, at what
-  size: the drone's hit (1.0) and crash (2.4); the hover truck's explosion (3.8, set out from the wall it
-  skids into) and its burst through the wall (2.6, quick); the Buzz Overdrive (3.0), the Enforcer truck (3.6)
-  and a fence generator (1.8, inside the EMP's cyan ring: `RunWorld.emp` is unchanged); the plain missile's
-  hit (0.9, quick) and the heavy missile's blast (2.2, inside the cyan ring that shows its splash:
-  `WeaponFx.missile_pop`, `blast`); Hostile Takeover's defeat (`HostileTakeoverLobby.blast`, five fireballs
-  rolling on, 10.8 m down to 5.4 m); the Floating Head's crash (9, 6.75 and 5.4 at the wreck and its ends, no
-  smoke: the wreck has its own) and its tower's landing on the ship (3.2); The House's collapse (7 and 4.9);
-  and each bomb blast of the Floating Head and The House (1.5 times the blast's radius, quick, no smoke: only
-  the blast's hitbox hurts and the fireball is gone about when it is; their timing, warnings and hitboxes are
-  untouched). The Sleep Taker's wisps and chunks, the Sewer Swarm and plain deaths are not explosions and keep
-  their looks. `tools/showcase/fireball_showcase.tscn` plays each of them through the real code
-  (`--scenario=sizes|drone|truck|buzz|enforcer|generator|missile|bomb`, `--reduced`, `--cam=close`).
+  (`smoke` off for a quick one; `pace` plays it faster; `spread` holds its fire in nearer its centre; a bigger
+  one plays slower, `fireball_big_size`, so a boss's takes its time: 1.0 s of fire at 3 m, 1.7 s at 9 m or more).
+  It is **four `CPUParticles3D` a slot** (core flash, fire, smoke, embers), billboards of one soft, lumpy blob
+  texture drawn once by the CPU, in unshaded `StandardMaterial3D`s (additive for fire and embers, see-through
+  for smoke; `vertex_color_is_srgb`, so the ramps' colours are the inspector colours the Compatibility
+  renderer shows and Forward+ converts): no GPU particles, no custom shader, no lights, nothing that differs by
+  renderer. **Pooled and fixed**: a slot per simultaneous fireball (`fireball_pool`, 8; one more cuts the
+  oldest short; on a low-end device, `DeviceProfile.is_low_end`, half as many slots and `fireball_low_end_share`
+  of the particles), particle counts, ramps, curves, textures and materials fixed when the level loads (so an
+  explosion allocates nothing: a test counts the nodes), and `ShaderWarmup` draws the three materials during
+  the load (`_sample_fireballs`). A fireball is a look: no collision, no light, no hazard colours left behind
+  (the smoke is dark, and each one is gone in a second or two; a quick one in a fraction of that).
+  **It never whites out the view** (the H6 review): the camera rides behind the runner and runs into what has
+  just blown up, so each live fireball's strength follows the camera's distance from its centre
+  (`FireballPool._fade`, each frame: none of it within its size of the camera, all of it from 2.5 times its
+  size, in between by the distance, by the emitters' colour alpha, and an emitter showing nothing is hidden,
+  which also saves its fill rate); the materials also fade each puff out within 1.5 m (fire) or 2.5 m (smoke) of
+  the camera, fully drawn from 5 m or 8 m. The Enforcer wrecked right behind the runner is almost gone as the
+  camera passes through its fireball, and an explosion ahead fades as the camera closes on it.
+  `tools/measure/screen_luminance.py` measures it on rendered frames (the scene's mean luminance, the frames
+  above twice it, the share of the screen above 0.35).
+  **Reduced flashing** (`Settings.flashing_reduced`, read as each one starts): a fireball lasts exactly as long
+  and at the same pace, but is lit up from nothing over the first 28% of its life instead of at once, has no
+  pale-yellow start (orange, then the normal ramps' own cooling at the same points of its life), and is
+  `fireball_reduced_brightness` (0.45) of the normal strength: at no moment brighter than the normal fireball
+  (`test_fireballs` samples the real life: never brighter after 0.15 s, a peak at most 0.45 of the normal peak, in
+  the fire, the core and the embers). It asks for no shake and no sound: each caller's own `shake` (under the
+  Screen shake setting) and sound stay. A blast on the street is lifted out of the floor (`size * 0.45` up).
+  `fireball_played(pos, size)` announces each one (tests, tools). Who calls it, at what size: the drone's hit
+  (1.0) and crash (2.4); the hover truck's explosion (3.8, set out from the wall it skids into) and its burst
+  through the wall (2.6, quick); the Buzz Overdrive (3.0), the Enforcer truck (3.6) and a fence generator (1.2,
+  held in, quick and smokeless since the runner stands on it; inside the EMP's cyan ring: `RunWorld.emp` is unchanged); the plain missile's hit (0.9, quick) and the heavy
+  missile's blast (2.2, inside the cyan ring that shows its splash: `WeaponFx.missile_pop`, `blast`); Hostile
+  Takeover's defeat (`HostileTakeoverLobby.blast`, five fireballs rolling on, 10.8 m down to 5.4 m); the Floating
+  Head's crash (9, 6.75 and 5.4 at the wreck and its ends, no smoke: the wreck has its own) and its tower's
+  landing on the ship (3.2); The House's collapse (7 and 4.9); and each bomb blast of the Floating Head and The
+  House (the blast's radius, held in to 0.45 of the free spread, quick, no smoke: what looks like a hit is a hit,
+  and the fireball is gone about when the hitbox is; their timing, warnings and hitboxes are untouched). The
+  Sleep Taker's wisps and chunks, the Sewer Swarm and plain deaths are not explosions and keep their looks.
+  `tools/showcase/fireball_showcase.tscn` plays each of them through the real code
+  (`--scenario=sizes|drone|drone_pad|truck|truck_burst|buzz|enforcer|enforcer_close|generator|missile|bomb|bomb_straddle`,
+  `--reduced`, `--cam=close`).
 
 ### Smooth frames (task PERF1, the owner's report, October 2, 2026)
 
@@ -3510,7 +3523,9 @@ arena carrying them.
 `test_fireballs` checks the shared explosion (task H6; A run, Speed effects): the pool is bounded and reused
 (built with the effects, a node count that doesn't move across many fireballs, the oldest cut short when every
 slot is busy, fixed particle counts, each ending by itself, quick ones sooner), CPU particles and unshaded
-billboards only, with no collision and no light, Reduced flashing (slower, dimmer, from nothing, no white in it),
+billboards only, with no collision and no light, the camera's fade (none of a fireball within its size of the camera, all of it from
+2.5 times, its smoke and hidden emitters, a smokeless fireball hiding its slot's old smoke), Reduced flashing (as long as the normal one, from nothing,
+never brighter than it after 0.15 s and at most 0.45 of its peak, no white in it: sampled over the real life of the fire, the core and the embers),
 the shader warm-up's looks, and each non-boss explosion (the drone's hit and crash, the hover truck's wreck, its
 burst and its wall frame's steady glow with Reduced flashing, the Buzz Overdrive, the Enforcer truck, a fence
 generator and its EMP, the plain and heavy missile, the lobby's blast) calling it at its size; the bosses'

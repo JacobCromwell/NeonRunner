@@ -10,7 +10,7 @@ extends Node3D
 ## 3. LOCK, the warning: it lingers on that spot of the track, turning red, with the framework's red
 ##    target circle (BossProps.circle_warning, so pickups keep off it), the lock sound, and a bomb
 ##    falling from the bay with its whistle, timed to end with the blast;
-## 4. the blast: a fireball where the circle was, for BossProps-style blast_seconds, as the runner
+## 4. the blast: a hitbox and a fireball where the circle was, for BossProps-style blast_seconds, as the runner
 ##    would get there. Leaving the lane dodges it; it's too tall to jump.
 ## Every few locks (straddle_every) the light spreads over two lanes side by side: two bombs, and the
 ## free side is the way out. A player who keeps moving can always escape (the fairness rules below).
@@ -19,8 +19,8 @@ extends Node3D
 ## it and every lane on the way free of holes and fences from the player to past the blast (the dodge is
 ## a plain lane switch), with no ceiling over it and no pickup waiting in it (the margins along the track
 ## at the run's pace, FloatingHead.metres: as long to run at any speed, GDD §3); the warning always lasts
-## lock_seconds / pace. Otherwise the light keeps hunting. The blast's hitbox is a little smaller than
-## the fireball and, in an outer lane, keeps clear of a wall runner beside it.
+## lock_seconds / pace. Otherwise the light keeps hunting. The blast's hitbox is about as big as
+## its fireball and, in an outer lane, keeps clear of a wall runner beside it.
 ## Nothing depends on how long the fight has lasted: random picks come from the fight's seeded rng and
 ## time from the physics step, so every attempt plays out the same way for the same inputs.
 ## The run ends run_seconds after the light switches on; the last blast lands before it ends.
@@ -37,14 +37,16 @@ const POOL: int = 4
 const CATCH_UP: float = 60.0
 ## The spot counts as on the runner's lane within this of its centre.
 const ON_LANE: float = 0.2
-## A blast's book is kept this long (its hitbox only blast_seconds; its fireball, RunEffects.fireball, plays
-## about as long).
+## A blast's book is kept this long (its hitbox only blast_seconds; its fireball, RunEffects.fireball, is a quick one
+## of about the same length: a look only).
 const FIRE_SECONDS: float = 0.6
-## The blast's look is one of the shared fireballs (GDD §11): this many times the blast's radius across the
-## street, played this much faster than a fireball of its size would (quick, no smoke, so it is gone about
-## when the blast is: only the blast's hitbox hurts, and the fireball never lingers past it).
-const FIRE_SIZE_PER_RADIUS: float = 1.5
-const FIRE_PACE: float = 1.6
+## The blast's look is one of the shared fireballs (GDD §11), held in so what burns is about what hurts (task H6's
+## review: what looks like a hit must be a hit): as big as the blast's radius, flying out of its centre only this
+## share as far as a free fireball's fire does, played this much faster than a fireball of its size would, with no
+## smoke (it must not hide the lane the runner escapes into).
+const FIRE_SIZE_PER_RADIUS: float = 1.0
+const FIRE_SPREAD: float = 0.45
+const FIRE_PACE: float = 2.0
 ## A straddle's second bomb leaves the bay this much later (it lands at the same time).
 const SECOND_BOMB_DELAY: float = 0.07
 ## The falling whistle's length, if the sound library doesn't say.
@@ -75,7 +77,7 @@ var target: Dictionary = {}
 
 ## Bombs on their way: {lane, at, x, release, impact, whistle, released, whistled, circle, bomb, from}.
 var _drops: Array[Dictionary] = []
-## Blasts burning: {hazard, fire, material, x, at, start}.
+## Blasts burning: {hazard, x, at, start}.
 var _blasts: Array[Dictionary] = []
 var _out_lane: int = 0
 var _settled: float = 0.0
@@ -402,7 +404,7 @@ func _blast(lane: int, at: float) -> void:
 	hazard.set_enabled(true)
 	_blasts.append({"hazard": hazard, "x": x, "at": at, "start": clock})
 	var center := Vector3(x, 0.8, TrackGeometry.world_z(at))
-	world.effects.fireball(center + Vector3(0.0, 0.3, 0.0), tuning.blast_radius * FIRE_SIZE_PER_RADIUS, false, FIRE_PACE)
+	world.effects.fireball(center + Vector3(0.0, 0.3, 0.0), tuning.blast_radius * FIRE_SIZE_PER_RADIUS, false, FIRE_PACE, FIRE_SPREAD)
 	var near: float = clampf(1.0 - (at - world.player.distance) / 40.0, 0.2, 1.0)
 	world.effects.shake(0.3 * near, 0.3)
 	head.sound(&"bomb_blast", center)

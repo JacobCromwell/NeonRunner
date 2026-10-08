@@ -17,9 +17,16 @@ extends Node3D
 ##
 ## Fireballs are looks and nothing else: no collision, no damage, no light, and they fade to nothing (the
 ## smoke is dark, never a glow), so none can read as a lingering hazard. With Reduced flashing (Settings)
-## the fireball plays slower, swells from nothing instead of popping, never goes white-hot and draws at a
-## share of its usual brightness (SpeedFxTuning.fireball_reduced_*), so nothing in it flashes. Screen shake
+## the fireball lasts as long as ever but swells from nothing instead of popping (over its first quarter), never
+## goes white-hot, and is never brighter than the normal one at any moment: it follows the normal ramps' cooling
+## at the same points of its life, at SpeedFxTuning.fireball_reduced_brightness of their strength. Screen shake
 ## is the caller's own (`RunEffects.shake`), and so is the sound.
+##
+## It never whites out the view (task H6's review): the camera runs through explosions (it rides behind the
+## runner, which runs into what has just blown up), and a fireball that surrounds it would hide the runner, the
+## lane and every warning for a few frames. Each fireball's strength therefore follows the camera's distance
+## from its centre (`_fade`): none within `FADE_NEAR` of its size, all from `FADE_NEAR + FADE_SPAN`, and an
+## emitter at none is hidden. The materials also fade each puff out as it nears the camera.
 
 ## One fireball in the pool: its four particle systems and how long it has left.
 class Slot:
@@ -31,6 +38,13 @@ class Slot:
 	var left: float = 0.0
 	## When it was started (the pool's clock), to cut the oldest short.
 	var began: float = 0.0
+	## Where it burns and how big, whether it has smoke, and the strength its colours are scaled by (Reduced flashing).
+	var center: Vector3 = Vector3.ZERO
+	var size: float = 1.0
+	var smoked: bool = false
+	var tint: float = 1.0
+	## How much of it the camera's distance lets show now (1 = all); -1 until the first `_fade`.
+	var shown: float = -1.0
 
 ## How long the core flash lasts (a flash, not a body; the fire and the smoke set their own).
 const CORE_SECONDS: float = 0.45
@@ -40,9 +54,15 @@ const EMBER_SECONDS: float = 1.1
 const PUFF_PIXELS: int = 64
 const EMBER_PIXELS: int = 32
 ## Within the first of these distances (metres) from the camera a puff is invisible, and from the second it is
-## fully drawn: the fire's and the smoke's.
-const FADE_FIRE := Vector2(0.6, 3.0)
-const FADE_SMOKE := Vector2(1.5, 6.0)
+## fully drawn: the fire's and the smoke's (a puff is a metre or three across).
+const FADE_FIRE := Vector2(1.5, 5.0)
+const FADE_SMOKE := Vector2(2.5, 8.0)
+## A fireball shows none of itself while the camera is within FADE_NEAR times its size of its centre, and all of it
+## from FADE_NEAR + FADE_SPAN times its size.
+const FADE_NEAR: float = 1.0
+const FADE_SPAN: float = 1.5
+## Reduced flashing's fire swells up over this share of its life (the normal fire is lit from its first frame).
+const SOFT_RISE: float = 0.28
 ## The smallest and biggest fireball (metres), whatever a caller asks for.
 const MIN_SIZE: float = 0.25
 const MAX_SIZE: float = 40.0
@@ -110,8 +130,9 @@ static func quad() -> QuadMesh:
 
 ## A fireball at `pos`, `size` metres in radius. `smoke` leaves dark smoke behind it (off for a quick,
 ## small one that must clear at once, a bomb's); `pace` plays it faster (above 1) or slower than its size
-## and the Reduced flashing setting make it. Takes a free slot, or cuts the oldest short.
-func play(pos: Vector3, size: float, smoke: bool = true, pace: float = 1.0) -> void:
+## makes it; `spread` (0.25 to 1) is how far its fire and embers fly out of its centre (a bomb's is held in,
+## so what burns is about where it hurts). Takes a free slot, or cuts the oldest short.
+func play(pos: Vector3, size: float, smoke: bool = true, pace: float = 1.0, spread: float = 1.0) -> void:
 	if slots.is_empty():
 		return
 	plays += 1
@@ -123,21 +144,18 @@ func play(pos: Vector3, size: float, smoke: bool = true, pace: float = 1.0) -> v
 	pos.y = maxf(pos.y, size * 0.45)
 	var slot: Slot = _take()
 	var speed: float = clampf(pace, 0.25, 4.0) * _size_pace(size)
-	var soft: float = 1.0
-	if reduced:
-		speed /= tuning.fireball_reduced_slowdown
-		soft = tuning.fireball_reduced_brightness
-	var tint := Color(1.0, 1.0, 1.0, soft)
+	var reach: float = clampf(spread, 0.25, 1.0)
+	var tint := Color(1.0, 1.0, 1.0, tuning.fireball_reduced_brightness if reduced else 1.0)
 
 	# The fire: puffs thrown out of a small ball, slowed by drag, lifted by the heat.
 	var fire: CPUParticles3D = slot.fire
 	fire.color_ramp = _ramps["fire_soft"] if reduced else _ramps["fire"]
 	fire.color = tint
-	fire.emission_sphere_radius = size * 0.3
+	fire.emission_sphere_radius = size * 0.3 * reach
 	fire.initial_velocity_min = 0.0
-	fire.initial_velocity_max = size * 2.6
-	fire.damping_min = size * 2.2
-	fire.damping_max = size * 3.0
+	fire.initial_velocity_max = size * 2.6 * reach
+	fire.damping_min = size * 2.2 * reach
+	fire.damping_max = size * 3.0 * reach
 	fire.gravity = Vector3(0.0, size * 3.8, 0.0)
 	fire.scale_amount_min = size * 1.0
 	fire.scale_amount_max = size * 1.8
@@ -153,12 +171,13 @@ func play(pos: Vector3, size: float, smoke: bool = true, pace: float = 1.0) -> v
 
 	# The embers: small, hot and fast, falling back.
 	var embers: CPUParticles3D = slot.embers
+	embers.color_ramp = _ramps["ember_soft"] if reduced else _ramps["ember"]
 	embers.color = tint
-	embers.emission_sphere_radius = size * 0.15
-	embers.initial_velocity_min = size * 1.0
-	embers.initial_velocity_max = size * 3.6
-	embers.damping_min = size * 0.5
-	embers.damping_max = size * 1.1
+	embers.emission_sphere_radius = size * 0.15 * reach
+	embers.initial_velocity_min = size * 1.0 * reach
+	embers.initial_velocity_max = size * 3.6 * reach
+	embers.damping_min = size * 0.5 * reach
+	embers.damping_max = size * 1.1 * reach
 	embers.gravity = Vector3(0.0, -maxf(size * 1.8, 5.0), 0.0)
 	var ember_size: float = 0.25 + 0.06 * size
 	embers.scale_amount_min = ember_size
@@ -170,30 +189,43 @@ func play(pos: Vector3, size: float, smoke: bool = true, pace: float = 1.0) -> v
 	if smoke and tuning.fireball_smoke_puffs > 0:
 		var puffs: CPUParticles3D = slot.smoke
 		puffs.color = Color.WHITE
-		puffs.emission_sphere_radius = size * 0.35
-		puffs.initial_velocity_min = size * 0.1
-		puffs.initial_velocity_max = size * 0.6
-		puffs.damping_min = size * 0.4
-		puffs.damping_max = size * 0.8
+		puffs.emission_sphere_radius = size * 0.35 * reach
+		puffs.initial_velocity_min = size * 0.1 * reach
+		puffs.initial_velocity_max = size * 0.6 * reach
+		puffs.damping_min = size * 0.4 * reach
+		puffs.damping_max = size * 0.8 * reach
 		puffs.gravity = Vector3(0.0, size * 1.6, 0.0)
 		puffs.scale_amount_min = size * 1.1
 		puffs.scale_amount_max = size * 1.9
+		puffs.visible = true
 		_start(puffs, pos + Vector3(0.0, size * 0.15, 0.0), speed * 0.8)
 		smoke_span = tuning.fireball_smoke_seconds / (speed * 0.8)
 	else:
-		# Clears a smoke still drifting from the explosion this slot played before.
-		slot.smoke.restart()
+		# No smoke this time: what this slot's last explosion left drifting is stopped and hidden (a restart
+		# would throw a whole new burst of it, at the old place).
 		slot.smoke.emitting = false
+		slot.smoke.visible = false
 	slot.left = maxf(maxf(tuning.fireball_seconds, EMBER_SECONDS) / speed, smoke_span)
 	slot.began = _clock
+	slot.center = pos
+	slot.size = size
+	slot.smoked = smoke and tuning.fireball_smoke_puffs > 0
+	slot.tint = tint.a
+	slot.shown = -1.0
 	latest = slot
+	_fade(slot, get_viewport().get_camera_3d() if is_inside_tree() else null)
 
 
 func _process(delta: float) -> void:
 	_clock += delta
+	var camera: Camera3D = null
 	for slot: Slot in slots:
-		if slot.left > 0.0:
-			slot.left = maxf(slot.left - delta, 0.0)
+		if slot.left <= 0.0:
+			continue
+		slot.left = maxf(slot.left - delta, 0.0)
+		if camera == null:
+			camera = get_viewport().get_camera_3d()
+		_fade(slot, camera)
 
 
 ## Fireballs still playing.
@@ -203,6 +235,24 @@ func active() -> int:
 		if slot.left > 0.0:
 			n += 1
 	return n
+
+
+## Shows as much of `slot` as the camera's distance from its centre allows (see the header), by its emitters'
+## colour alpha (the particles already thrown take it too), and hides an emitter that shows nothing.
+func _fade(slot: Slot, camera: Camera3D) -> void:
+	var k: float = 1.0
+	if camera != null:
+		k = clampf((camera.global_position.distance_to(slot.center) - FADE_NEAR * slot.size) / (FADE_SPAN * slot.size), 0.0, 1.0)
+	if is_equal_approx(k, slot.shown):
+		return
+	slot.shown = k
+	var on: bool = k > 0.0
+	for p: CPUParticles3D in [slot.fire, slot.core, slot.embers]:
+		p.color.a = slot.tint * k
+		p.visible = on
+	if slot.smoked:
+		slot.smoke.color.a = k
+		slot.smoke.visible = on
 
 
 ## How much slower a fireball of `size` plays than a small one: a bigger blast takes its time.
@@ -272,18 +322,20 @@ static func _make_shared() -> void:
 	_ember_texture = _blob_texture(EMBER_PIXELS, false)
 	# The fire, hot to dead: white-yellow, yellow, orange, red, dark red.
 	_ramps["fire"] = _ramp([0.0, 0.12, 0.32, 0.55, 0.8, 1.0], [
-		Color(1.0, 0.82, 0.25, 0.3), Color(1.0, 0.7, 0.14, 0.55), Color(1.0, 0.46, 0.06, 0.7),
-		Color(0.9, 0.2, 0.04, 0.65), Color(0.45, 0.07, 0.03, 0.3), Color(0.15, 0.02, 0.02, 0.0)])
-	# With Reduced flashing: from nothing, up over almost half of its (stretched) life, never white.
-	_ramps["fire_soft"] = _ramp([0.0, 0.45, 0.65, 0.82, 0.93, 1.0], [
-		Color(1.0, 0.68, 0.18, 0.0), Color(1.0, 0.62, 0.14, 0.8), Color(0.98, 0.42, 0.07, 1.0),
-		Color(0.8, 0.2, 0.04, 0.65), Color(0.4, 0.07, 0.03, 0.25), Color(0.15, 0.02, 0.02, 0.0)])
+		Color(1.0, 0.82, 0.25, 0.24), Color(1.0, 0.7, 0.14, 0.44), Color(1.0, 0.46, 0.06, 0.56),
+		Color(0.9, 0.2, 0.04, 0.52), Color(0.45, 0.07, 0.03, 0.24), Color(0.15, 0.02, 0.02, 0.0)])
 	_ramps["core"] = _ramp([0.0, 0.06, 0.3, 1.0], [
 		Color(1.0, 0.8, 0.3, 0.0), Color(1.0, 0.8, 0.3, 0.3), Color(1.0, 0.62, 0.2, 0.2), Color(1.0, 0.45, 0.1, 0.0)])
-	_ramps["core_soft"] = _ramp([0.0, 0.5, 1.0], [
-		Color(1.0, 0.66, 0.2, 0.0), Color(1.0, 0.6, 0.15, 0.5), Color(0.9, 0.3, 0.06, 0.0)])
 	_ramps["ember"] = _ramp([0.0, 0.35, 0.7, 1.0], [
 		Color(1.0, 0.95, 0.6, 1.0), Color(1.0, 0.62, 0.16, 1.0), Color(0.95, 0.25, 0.05, 0.8), Color(0.4, 0.06, 0.02, 0.0)])
+	# With Reduced flashing: the same ramps, lasting just as long, but from nothing: lit up over the first
+	# SOFT_RISE of the life (not at once) and with no pale-yellow start (an orange one), then cooling exactly as the
+	# normal ones do. With the tint (fireball_reduced_brightness) on top, never brighter than the normal fire.
+	_ramps["fire_soft"] = _soften(_ramps["fire"], SOFT_RISE, Color(1.0, 0.62, 0.14))
+	_ramps["core_soft"] = _soften(_ramps["core"], SOFT_RISE, Color(1.0, 0.62, 0.2))
+	_ramps["ember_soft"] = _ramp([0.0, 0.2, 0.35, 0.7, 1.0], [
+		Color(1.0, 0.62, 0.16, 0.0), Color(1.0, 0.62, 0.16, 1.0), Color(1.0, 0.62, 0.16, 1.0), Color(0.95, 0.25, 0.05, 0.8),
+		Color(0.4, 0.06, 0.02, 0.0)])
 	# The smoke is lit red-brown by the fire at first, then a dull dark grey, and thins out.
 	_ramps["smoke"] = _ramp([0.0, 0.25, 0.5, 0.8, 1.0], [
 		Color(0.5, 0.16, 0.05, 0.0), Color(0.4, 0.14, 0.06, 0.2), Color(0.2, 0.15, 0.13, 0.32),
@@ -299,6 +351,18 @@ static func _ramp(offsets: Array, colors: Array) -> Gradient:
 	g.offsets = PackedFloat32Array(offsets)
 	g.colors = PackedColorArray(colors)
 	return g
+
+
+## `ramp` made to rise from nothing over its first `rise` (0 to 1) of the life: nothing (in `start`'s colour) at 0, what
+## `ramp` is at `rise`, and `ramp`'s own stops after that. Never brighter than `ramp`, which it joins at `rise`.
+static func _soften(ramp: Gradient, rise: float, start: Color) -> Gradient:
+	var offsets: Array = [0.0, rise]
+	var colors: Array = [Color(start, 0.0), ramp.sample(rise)]
+	for i: int in ramp.get_point_count():
+		if ramp.get_offset(i) > rise:
+			offsets.append(ramp.get_offset(i))
+			colors.append(ramp.get_color(i))
+	return _ramp(offsets, colors)
 
 
 static func _curve(points: Array) -> Curve:

@@ -138,7 +138,7 @@ extends Resource
 ## bigger blast reads as bigger by taking its time.
 @export_range(1.0, 10.0, 0.5, "suffix:m") var fireball_big_size: float = 3.0
 @export_range(0.3, 1.0, 0.05) var fireball_big_pace: float = 0.6
-## Reduced flashing (Settings): the fireball plays this many times slower, with no white-hot flash (it
-## swells from nothing to a peak this share of the usual brightness, in orange and yellow only).
-@export_range(1.0, 3.0, 0.05) var fireball_reduced_slowdown: float = 1.5
+## Reduced flashing (Settings): the fireball lasts as long, swells from nothing instead of popping, has no
+## white-hot flash (orange and yellow only), and is never brighter than the normal one: at most this share of its
+## strength at every moment.
 @export_range(0.1, 1.0, 0.05) var fireball_reduced_brightness: float = 0.45

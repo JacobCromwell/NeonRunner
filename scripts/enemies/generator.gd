@@ -23,8 +23,12 @@ const BODY_SIZE := Vector3(0.8, 0.7, 0.8)
 const TOP_SIZE := Vector3(0.8, 0.45, 0.8)
 const TOP_Y: float = 0.925
 const HUSK_KEEP: float = 40.0
-## Its fireball (RunEffects.fireball, radius in metres; GDD §11), inside the EMP's cyan ring (World.emp).
-const FIRE_SIZE: float = 1.8
+## Its fireball (RunEffects.fireball, radius in metres; GDD §11), inside the EMP's cyan ring (World.emp): the runner
+## is usually standing on it (a stomp, a dash, claws), so it is small, held in and quick, with no smoke (it must not
+## hide the runner or the lanes and fences the EMP has just switched off).
+const FIRE_SIZE: float = 1.2
+const FIRE_SPREAD: float = 0.5
+const FIRE_PACE: float = 1.5
 const CABLE_Y: float = 0.02
 
 var tuning: FenceGeneratorTuning
@@ -109,7 +113,7 @@ static func fences_in_reach(layout: LevelLayout, geo: TrackGeometry, at: float, 
 func _on_defeated(_cause: StringName) -> void:
 	_husk = true
 	world.emp(aim_point(), tuning.emp_radius)
-	world.effects.fireball(global_position + Vector3(0.0, 0.9, 0.0), FIRE_SIZE)
+	world.effects.fireball(global_position + Vector3(0.0, 0.9, 0.0), FIRE_SIZE, false, FIRE_PACE, FIRE_SPREAD)
 	world.effects.burst(global_position + Vector3(0.0, 0.9, 0.0), Color(1.0, 0.55, 0.9), 30, 1.0)
 	_body.material_override = Kit.part_material(&"dead")
 	_energy.visible = false
