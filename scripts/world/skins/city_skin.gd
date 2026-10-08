@@ -179,6 +179,19 @@ func floor_segment(parent: Node3D, center: Vector3, size: Vector3, lane_x: float
 	batch.commit(parent)
 
 
+## A floor cut (ZoneSkin.floor_cut; task B4, H3): the lane's hover truck sliced open, and through it what
+## any gap shows (GDD §9.9): the road far below, with its traffic (the chunk's own road, drawn with the
+## left wall), between the neighbouring trucks' own sides. The inside draws no walls (the trucks beside
+## it carry theirs, and no wall stands at the facade at a gap here) and no bottom: only the far end,
+## where the lane's truck went on, a dark face as tall as a truck (the road is `road_depth` down, not
+## 8 m of box). The orange edges and the halo are the standard ones.
+func floor_cut(parent: Node3D, cut: FloorCutSection) -> void:
+	standard_floor_cut(parent, cut, solid_material(), glow_material(), {
+		"edge": gap_edge_color, "inside": CUT_INSIDE_COLOR, "depth": road_depth, "end_depth": truck_height,
+		"bottom": false, "walls": false, "outer_walls": false,
+	})
+
+
 func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: float) -> void:
 	var batch := MeshBatch.new()
 	towers().build(batch, side, face_x, start, end)

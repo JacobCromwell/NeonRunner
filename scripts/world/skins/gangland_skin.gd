@@ -25,6 +25,10 @@ extends ZoneSkin
 ## Visuals only: TrackBuilder owns every collision shape and gameplay node, and all variety comes
 ## from hashing track positions (MeshKit.hash_i), so a chunk looks the same whenever it is built.
 
+## How bright a floor cut's end faces are against the earth in the holes' walls (a cut's inside stays
+## darker than any floor: tests/suites/test_floor_cuts.gd).
+const CUT_STRATA_SHADE: float = 0.5
+
 @export_group("Environment")
 ## A dusty dusk: brown overhead, tan dust over the horizon.
 ## DESIGN-TBD: the GDD gives Gangland's palette (browns and tans), not its time of day or weather;
@@ -265,6 +269,18 @@ func floor_segment(parent: Node3D, center: Vector3, size: Vector3, lane_x: float
 	var batch := MeshBatch.new()
 	street().build(batch, center, size, lane_x, edge_start, edge_end)
 	batch.commit(parent)
+
+
+## A floor cut (ZoneSkin.floor_cut; task B4, H3): the street split open down the lane, and through it
+## what any hole here shows (GDD §9.9): the road's strata falling away down the neighbouring lanes' sides
+## (their own, drawn with their floor) into the crater floor `crater_depth` down, which the chunk draws
+## with the left wall. The cut draws only its two end faces, in the same strata at half the earth's
+## brightness (a cut's inside stays darker than any floor), and no walls and no bottom.
+func floor_cut(parent: Node3D, cut: FloorCutSection) -> void:
+	standard_floor_cut(parent, cut, solid_material(), glow_material(), {
+		"edge": gap_edge_color, "inside": earth_color * CUT_STRATA_SHADE, "pattern": MeshKit.PAT_STRATA,
+		"depth": crater_depth, "bottom": false, "walls": false,
+	})
 
 
 func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: float) -> void:
