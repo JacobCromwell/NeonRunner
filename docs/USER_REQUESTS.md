@@ -60,4 +60,4 @@ Task IDs refer to `docs/TASK_PLAN.md`, section H. The owner's answers to the orc
 - [x] Sleep Taker: more hands, spread out along the street rather than all at the same spot, so the player has to make several quick lane switches to get through one round of the hand attack. (H9)
 - [x] Sleep Taker: the side walls are too safe: many more gaps in the side walls, and hand attacks there too. (H9)
 - [x] Sleep Taker: double the floor gaps. (H9)
-- [ ] The Tithe Collector should stay in the level twice as long. (H10)
+- [x] The Tithe Collector should stay in the level twice as long. (H10)

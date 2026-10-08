@@ -2572,3 +2572,15 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     holes the fight has (`floor_gap_increase` 1), keeping their average width: over three laps 11 → 22 rows at 3 and
     5 lanes, 8 → 16 at 6 (lane-gaps 15 → 30, 26 → 53, 24 → 50). New rows keep 1.3 s of run from everything else
     (`floor_gap_spacing`; the arena's own 1.9 s fits only 1.6–1.8 times as many).
+
+**The Tithe Collector staying twice as long** (from H10, owner, October 8, 2026, GDD §9.12; `data/enemies/tithe_collector.tres`)
+387. **Should Hostile Takeover's Tithe Collector stay twice as long too?** A level's Collector now closes in at 3.5 m/s
+    instead of 7 (about 10.9 s on screen untouched, was 5.4 s, at every run speed; it sucks up about 2.4× the credits
+    in a dense lane). On the boss's 130 m flatcar roof that carries it past the roof's end, over the coupling gap the
+    runner jumps. Placeholder: the Board spawns its Collectors at `HostileTakeoverTuning.tithe_approach_speed` 7 m/s
+    (`DESIGN-TBD`), so the fight is as before. A longer stay there needs a longer roof or a Collector that starts
+    further back.
+388. **May two Tithe Collectors be in the level at once?** Nothing reserves a window for one (touching it is never a
+    hit). With the longer stay, two overlap when their patterns are closer than about 255 m at 23.4 m/s (Corporate 2
+    at 6 lanes has gaps of 70, 98 and 160 m between its seven); they overlapped before too, less often. Placeholder:
+    allowed. At most one at a time would need a reserved window of `stay_seconds()` after each one.
