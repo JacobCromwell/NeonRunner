@@ -17,6 +17,11 @@ const BLAST_TIME: float = 0.26
 const TRAIL_LENGTH: Array[float] = [3.2, 3.6, 1.8, 2.6]
 const TRAIL_RADIUS: Array[float] = [0.035, 0.06, 0.06, 0.09]
 const MISSILE_TRAIL_COLOR := Color(0.55, 0.9, 1.0)
+## The fireballs of the missiles' hits (RunEffects.fireball, radius in metres; GDD §11: missiles explode in
+## yellow and red fire, though the rest of the player's fire stays cool): the heavy missile's inside the
+## cyan ring that marks its splash, and the plain missile's a small pop.
+const HEAVY_FIRE_SIZE: float = 2.2
+const MISSILE_FIRE_SIZE: float = 0.9
 
 const BLAST_SHADER: String = """
 shader_type spatial;
@@ -117,8 +122,14 @@ func kill_flash(pos: Vector3) -> void:
 	world.effects.burst(pos, _look_color().lerp(Color.WHITE, 0.5), 14, 0.55)
 
 
-## The heavy missile's blast at `pos`, growing to `radius` (the splash reach).
+## The plain missile's hit at `pos`: a small fireball (quick, no smoke).
+func missile_pop(pos: Vector3) -> void:
+	world.effects.fireball(pos, MISSILE_FIRE_SIZE, false, 1.4)
+
+
+## The heavy missile's blast at `pos`: a fireball, and the ring growing to `radius` (the splash reach).
 func blast(pos: Vector3, radius: float) -> void:
+	world.effects.fireball(pos, HEAVY_FIRE_SIZE, true, 1.2)
 	if _blasts.is_empty():
 		return
 	var i: int = _next_blast

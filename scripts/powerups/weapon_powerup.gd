@@ -232,8 +232,12 @@ func _lead(target: Enemy, from: Vector3, aim: Vector3, speed: float) -> Vector3:
 
 
 func _on_enemy_hit(enemy: Enemy, _damage: float, splash: bool) -> void:
-	# Only the heavy missile splashes; show the blast once, on its direct hit.
-	if is_heavy() and not splash and is_instance_valid(enemy):
-		fx.blast(enemy.aim_point(), world.powerup_tuning.splash_radius)
+	# Only the heavy missile splashes; show the blast once, on its direct hit. A plain missile pops in a small
+	# fireball (GDD §11).
+	if is_missile() and not splash and is_instance_valid(enemy):
+		if is_heavy():
+			fx.blast(enemy.aim_point(), world.powerup_tuning.splash_radius)
+		else:
+			fx.missile_pop(enemy.aim_point())
 	if is_instance_valid(enemy) and not enemy.alive:
 		fx.kill_flash(enemy.aim_point())

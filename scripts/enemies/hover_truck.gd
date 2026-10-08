@@ -47,6 +47,13 @@ const SAFE := Color(0.25, 0.85, 1.0)
 const HOVER := Color(0.3, 0.6, 1.0)
 const AMBER := Color(1.0, 0.6, 0.12)
 const FACADE := Color(0.24, 0.2, 0.3)
+## Its fireballs (RunEffects.fireball, radius in metres; GDD §11): where it blows up (a truck is about 7 m
+## long), and where it bursts through the wall (a quick one, no smoke: the burst hazard is only for a moment).
+const FIRE_EXPLODE_SIZE: float = 3.8
+const FIRE_BURST_SIZE: float = 2.6
+const FIRE_OFF_WALL: float = 2.2
+## How long the wreck's node outlasts its explosion.
+const BOOM_SECONDS: float = 0.45
 
 ## Models per zone variant and shape, built once.
 static var _models: Dictionary = {}
@@ -101,9 +108,9 @@ var _smoke_left: float = 0.0
 var _rubble: Array[MeshInstance3D] = []
 var _rubble_v: Array[Vector3] = []
 var _rubble_left: float = 0.0
-var _boom: MeshInstance3D
-var _boom_mat: StandardMaterial3D
-var _boom_t: float = 0.0
+## Seconds since it blew up, or -1 before: the wreck's node stays this long after its fireball goes off
+## (RunEffects.fireball is pooled and not the truck's, so nothing of it is freed with the truck).
+var _boom_t: float = -1.0
 
 var _model: Node3D
 var _spikes_mesh: MeshInstance3D
@@ -154,6 +161,7 @@ func _build() -> void:
 	_mats = {
 		"hot": GreyboxMaterials.glow(HOT, 3.2),
 		"flash": GreyboxMaterials.glow(FLASH, 6.0),
+		"flash_soft": GreyboxMaterials.glow(FLASH, 2.4),
 		"brake_on": GreyboxMaterials.glow(AMBER, 5.0),
 	}
 	_build_body()
@@ -311,8 +319,7 @@ func _burst() -> void:
 	_burst_hazard.set_enabled(true)
 	_burst_left = tune.burst_hazard_seconds
 	world.play_sfx_at(&"truck_burst", _wall_point(0.0, 1.5))
-	for i: int in 3:
-		world.effects.burst(_wall_point((i - 1) * tune.length * 0.35, 1.0 + i * 0.5), Color(1.0, 0.4 + 0.18 * i, 0.08), 40, 1.2)
+	world.effects.fireball(_wall_point(0.0, 1.5), FIRE_BURST_SIZE, false, 1.2)
 	world.effects.burst(_wall_point(0.0, 1.2), Color(0.5, 0.47, 0.44), 30, 1.0)
 	world.effects.shake(0.4, 0.45)
 	_launch_rubble()
@@ -628,7 +635,7 @@ func _on_defeated(_cause: StringName) -> void:
 func _update_wreck(delta: float) -> void:
 	_state_time += delta
 	offset += tune.wreck_skid_speed * (1.0 - clampf(_state_time / tune.wreck_seconds, 0.0, 1.0)) * delta
-	if _boom != null:
+	if _boom_t >= 0.0:
 		_update_boom(delta)
 		return
 	_x = move_toward(_x, side * (world.geo.wall_x() - tune.width * 0.5 - 0.1), 3.0 * delta)
@@ -647,36 +654,19 @@ func _update_wreck(delta: float) -> void:
 func _explode() -> void:
 	var at: Vector3 = global_position + Vector3(0.0, 1.2, 0.0)
 	world.play_sfx_at(&"truck_explode", at)
-	world.effects.burst(at, Color(1.0, 0.5, 0.1), 60, 1.6)
-	world.effects.burst(at + Vector3(0.0, 0.8, 0.0), Color(1.0, 0.85, 0.3), 30, 1.1)
+	# It skids into its wall: the fireball is set a little out into the street, so the wall doesn't cut it off.
+	world.effects.fireball(at - Vector3(side * FIRE_OFF_WALL, 0.0, 0.0), FIRE_EXPLODE_SIZE)
 	world.effects.burst(at, Color(0.45, 0.42, 0.4), 24, 1.0)
 	world.effects.shake(0.5, 0.5)
-	# A fireball swells and fades where the truck was, then it's gone.
+	# The truck is gone in the fireball (a pooled effect, RunEffects.fireball); its node waits out BOOM_SECONDS.
 	_model.visible = false
-	var ball := SphereMesh.new()
-	ball.radius = 0.5
-	ball.height = 1.0
-	ball.radial_segments = 12
-	ball.rings = 6
-	_boom_mat = StandardMaterial3D.new()
-	_boom_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_boom_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	_boom_mat.albedo_color = Color(1.0, 0.55, 0.15, 0.9)
-	_boom_mat.emission_enabled = true
-	_boom_mat.emission = Color(1.0, 0.5, 0.1)
-	_boom_mat.emission_energy_multiplier = 4.0
-	_boom = _mesh_node(self, ball, Vector3(0.0, 1.2, 0.0))
-	_boom.material_override = _boom_mat
 	_boom_t = 0.0
 
 
 func _update_boom(delta: float) -> void:
 	_boom_t += delta
-	var k: float = clampf(_boom_t / 0.45, 0.0, 1.0)
-	_boom.scale = Vector3.ONE * lerpf(1.2, 5.0, 1.0 - pow(1.0 - k, 2.0))
-	_boom_mat.albedo_color.a = 0.9 * (1.0 - k)
 	_place()
-	if k >= 1.0:
+	if _boom_t >= BOOM_SECONDS:
 		queue_free()
 
 
@@ -739,7 +729,11 @@ func _animate(delta: float) -> void:
 	_bulge.position.x = -side * (0.1 + 0.45 * _bulge_push)
 	_frame_flash -= delta
 	_bang_frame.visible = state == State.BANGING
-	_bang_frame.material_override = _mats["flash"] if _frame_flash > 0.0 else null
+	# The frame flashes with each bang; with Reduced flashing it glows steadily and softly all through the banging.
+	if Settings.flashing_reduced:
+		_bang_frame.material_override = _mats["flash_soft"]
+	else:
+		_bang_frame.material_override = _mats["flash"] if _frame_flash > 0.0 else null
 	if _burst_left > 0.0:
 		_burst_left -= delta
 		if _burst_left <= 0.0:

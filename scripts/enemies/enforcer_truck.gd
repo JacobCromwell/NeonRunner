@@ -53,6 +53,8 @@ const LINE_BEHIND: float = 2.0
 const PASS_MARGIN: float = 0.5
 ## Seconds its wreck lasts before it's gone.
 const WRECK_SECONDS: float = 1.6
+## Its wreck's fireball (RunEffects.fireball, radius in metres; GDD §11).
+const FIRE_SIZE: float = 3.6
 ## It's never closer behind the runner than this (metres from its front to the runner's middle).
 const MIN_GAP: float = 1.6
 const BuzzScript = preload("res://scripts/enemies/buzz_overdrive.gd")
@@ -725,7 +727,7 @@ func _on_defeated(cause: StringName) -> void:
 		world.score.add_bonus(&"enforcer_riders", riders * tuning.rider_bonus, "Riders x%d" % riders)
 	var at: Vector3 = global_position + Vector3(0.0, 1.2, 1.2)
 	_sound(&"enforcer_crash" if cause == &"gap" or cause == &"cut" else &"truck_explode")
-	world.effects.burst(at, Color(1.0, 0.45, 0.15), 46, 1.4)
+	world.effects.fireball(at, FIRE_SIZE)
 	world.effects.burst(at + Vector3(0.0, 0.8, 0.0), Color(0.3, 0.3, 0.33), 24, 1.1)
 	world.effects.debris(at, Color(0.3, 0.3, 0.34), 10, 0.7)
 	world.effects.shake(0.35, 0.4)
