@@ -3,8 +3,12 @@ extends RefCounted
 ## Runs a Player over a hand-built LevelLayout on real physics, for movement and interaction tests.
 ##   var sim := RunSim.new(tree, tuning)
 ##   var r: Dictionary = await sim.run(layout, start_lane, seconds, [[distance, &"jump"]], [probe_distance])
-## `actions`: [distance, action] pairs, each fired once when the player reaches that distance.
+## `actions`: [distance, action] pairs, each fired once when the player reaches that distance. The
+## action &"dash" starts the juggernaut dash on the Player itself (PowerupTuning's duration and speed, as
+## DashPowerup.trigger does, with no cooldown); any other is pressed.
 ## `probes`: distances at which to record the player's state in result["at"][distance].
+## The result also holds how many times zone doodads pushed the player ("pushes") and how many the dash
+## smashed ("smashes").
 ##
 ## Full worlds (enemies, projectiles, credits, score) for interaction tests:
 ##   var world: RunWorld = sim.build_world(layout, loadout)
@@ -13,7 +17,10 @@ extends RefCounted
 ##
 ## With `trace` on, both also record the player after every physics frame in result["trace"]:
 ## {t (the level clock), d (distance), x (world x), h, speed, surface, lane, alive, lean (the
-## sideways lean the model is shown, Player._switch_dir)}.
+## sideways lean the model is shown, Player._switch_dir), dashing, smashes (so far)}.
+
+## The dash's numbers for a &"dash" action (loaded once).
+static var _powerups: PowerupTuning
 
 var tree: SceneTree
 var tuning: MovementTuning
@@ -62,7 +69,7 @@ func run(p_layout: LevelLayout, start_lane: int, seconds: float, actions: Array,
 	var frames: int = int(seconds * Engine.physics_ticks_per_second)
 	for i: int in frames:
 		while not pending.is_empty() and player.distance >= float(pending[0][0]):
-			player.press(pending.pop_front()[1])
+			act(player, pending.pop_front()[1])
 		track.update(player.distance, player.elapsed)
 		await tree.physics_frame
 		if trace:
@@ -81,9 +88,21 @@ func run(p_layout: LevelLayout, start_lane: int, seconds: float, actions: Array,
 	result["lane"] = player.lane
 	result["distance"] = player.distance
 	result["grounded"] = player.grounded
+	result["pushes"] = player.pushes
+	result["smashes"] = player.smashes
 	world.queue_free()
 	await tree.process_frame
 	return result
+
+
+## Fires one scripted action (see the header): &"dash" starts the dash, anything else is pressed.
+static func act(player: Player, action: StringName) -> void:
+	if action == &"dash":
+		if _powerups == null:
+			_powerups = load("res://data/tuning/powerups.tres") as PowerupTuning
+		player.start_dash(_powerups.dash_duration, _powerups.dash_speed_bonus)
+	else:
+		player.press(action)
 
 
 ## A full RunWorld (track, player, enemies, projectiles, credits, score) under the tree root.
@@ -118,7 +137,7 @@ func step_world(world: RunWorld, seconds: float, actions: Array = [], probes: Ar
 	var frames: int = int(seconds * Engine.physics_ticks_per_second)
 	for i: int in frames:
 		while not pending.is_empty() and player.distance >= float(pending[0][0]):
-			player.press(pending.pop_front()[1])
+			act(player, pending.pop_front()[1])
 		await tree.physics_frame
 		if trace:
 			result["trace"].append(_sample(player))
@@ -145,4 +164,4 @@ func free_world(world: RunWorld) -> void:
 static func _sample(player: Player) -> Dictionary:
 	return {"t": player.elapsed, "d": player.distance, "x": player.position.x, "h": player.h,
 		"speed": player.speed, "surface": player.surface_name(), "lane": player.lane, "alive": player.alive,
-		"lean": int(player.call(&"_switch_dir"))}
+		"lean": int(player.call(&"_switch_dir")), "dashing": player.dashing, "smashes": player.smashes}

@@ -101,12 +101,12 @@ extends Resource
 @export_range(0.05, 1.0, 0.01, "suffix:s") var smash_shake_time: float = 0.16
 ## The share of the runner's speed the pieces carry on along its way, on average (each piece 0.55–1.35
 ## times this): under 1, so the runner bursts through them and leaves them behind.
-@export_range(0.0, 1.5, 0.05) var rubble_carry: float = 0.55
+@export_range(0.0, 1.5, 0.05) var rubble_carry: float = 0.9
 ## How fast the pieces fly out to the sides and up (m/s; each piece a share of it).
-@export_range(0.0, 20.0, 0.5, "suffix:m/s") var rubble_spread: float = 6.0
-@export_range(0.0, 20.0, 0.5, "suffix:m/s") var rubble_lift: float = 6.0
+@export_range(0.0, 20.0, 0.5, "suffix:m/s") var rubble_spread: float = 7.0
+@export_range(0.0, 20.0, 0.5, "suffix:m/s") var rubble_lift: float = 7.5
 ## A large piece's size (m): the big chunks are about this, the small ones a third to a half of it.
-@export_range(0.1, 1.0, 0.02, "suffix:m") var rubble_piece_size: float = 0.42
+@export_range(0.1, 1.0, 0.02, "suffix:m") var rubble_piece_size: float = 0.6
 ## How long a burst lasts (s): every piece has shrunk away by then.
 @export_range(0.2, 2.0, 0.05, "suffix:s") var rubble_life: float = 0.9
 

@@ -28,6 +28,9 @@ const SKID: float = 0.55
 var active: bool = false
 ## The pieces of the burst playing now (or last played).
 var count: int = 0
+## Each piece's colour as given to the MultiMesh (sRGB, alpha 0: lit), for tests and tools: a headless
+## run's renderer keeps no instance colours to read back.
+var piece_colors := PackedColorArray()
 
 var _t: float = 0.0
 var _life: float = 0.85
@@ -84,6 +87,7 @@ func play(box: AABB, colors: PackedColorArray, push: Vector3, carry: float, spre
 	_spin.resize(count)
 	_ends.resize(count)
 	_basis.resize(count)
+	piece_colors.resize(count)
 	var centre: Vector3 = box.get_center()
 	var big: float = minf(piece, minf(box.size.x, box.size.y) * 0.45)
 	for i: int in count:
@@ -105,7 +109,8 @@ func play(box: AABB, colors: PackedColorArray, push: Vector3, carry: float, spre
 		_basis[i] = Basis(_axis[i], rng.randf_range(0.0, TAU))
 		var c: Color = palette[i % palette.size()]
 		var shade: float = rng.randf_range(0.85, 1.08)
-		multimesh.set_instance_color(i, Color(c.r * shade, c.g * shade, c.b * shade, 0.0))
+		piece_colors[i] = Color(c.r * shade, c.g * shade, c.b * shade, 0.0)
+		multimesh.set_instance_color(i, piece_colors[i])
 	multimesh.visible_instance_count = count
 	# The ground the pieces can reach in their life, so the burst is never culled while it plays.
 	var reach: float = push.length() * carry * 1.4 * _life + 2.0
