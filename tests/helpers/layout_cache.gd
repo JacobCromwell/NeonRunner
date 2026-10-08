@@ -36,6 +36,8 @@ class _Entry:
 	var picks: Array[Dictionary]
 	var fills: Array[Dictionary]
 	var gap_density_result: Dictionary
+	var wide_gap_result: Dictionary
+	var charge_path_result: Dictionary
 
 
 static var _cache: Dictionary = {}  ## String signature (_key) -> _Entry
@@ -76,6 +78,8 @@ static func generator(config: LevelConfig, tuning: MovementTuning, patterns: Arr
 	gen.picks = entry.picks.duplicate(true)
 	gen.fills = entry.fills.duplicate(true)
 	gen.gap_density_result = entry.gap_density_result.duplicate(true)
+	gen.wide_gap_result = entry.wide_gap_result.duplicate(true)
+	gen.charge_path_result = entry.charge_path_result.duplicate(true)
 	return gen
 
 
@@ -102,6 +106,8 @@ static func _build(config: LevelConfig, tuning: MovementTuning, patterns: Array)
 	e.picks = gen.picks.duplicate(true)
 	e.fills = gen.fills.duplicate(true)
 	e.gap_density_result = gen.gap_density_result.duplicate(true)
+	e.wide_gap_result = gen.wide_gap_result.duplicate(true)
+	e.charge_path_result = gen.charge_path_result.duplicate(true)
 	return e
 
 

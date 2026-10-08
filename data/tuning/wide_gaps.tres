@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="WideGapTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/wide_gap_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+jump_fraction = 0.7
+clear_before_seconds = 0.9
+clear_after_seconds = 0.9
+spacing_seconds = 15.0
+wall_gap_clear_seconds = 0.6
+prefer_enforcer_chases = true
+add_rows = true
