@@ -14,7 +14,8 @@ extends Node3D
 ##   walls, alternating (never beside a door in an outer lane, never at a wall gap, and only over an
 ##   outer lane that has a hand of its own, so no runner on the floor ever passes under one). The first
 ##   round has hand_rows_first rows, each next one a row more, up to hand_rows_max, kept across phases;
-##   a round takes only the rows that are over before the next refuge's slash or lure;
+##   a round takes only the rows that are over before the next refuge's slash or lure, and waits
+##   rather than come with fewer than hand_rows_min;
 ## - the warning: as a round starts, purple mist pools where each of its hands will rise (on the floor,
 ##   or on its wall), with whispering (sleep_taker_whisper, once a round). The mist is the nightmare's
 ##   own purple (never a hazard colour) and drawn unshaded, so it reads as well in the dark of lights
@@ -47,9 +48,9 @@ const MIST_LEFT: float = 0.6
 ## A hand's attack is over once the runner is this far past it (then the next may come; metres at
 ## 18 m/s, times the run's pace).
 const PASSED: float = 1.0
-## Ways through a round checked with the router at most, each time plan() runs (the rest wait for the
-## next frame).
-const MAX_ROUTE_TRIES: int = 6
+## Ways through a round checked with the router at most, each time plan() runs (its costliest part: the
+## next try takes the doors in another seeded order).
+const MAX_ROUTE_TRIES: int = 3
 
 var boss: SleepTaker
 ## Hands at work: {n, round, row, lane, side, door, at (track distance), stage, t, rig, marker}.
@@ -63,6 +64,9 @@ var rounds: int = 0
 
 var _free: Array[Dictionary] = []
 var _rigs: int = 0
+## plan() calls since the last round started that stopped at MAX_ROUTE_TRIES (each next one takes the
+## doors in another seeded order).
+var _attempts: int = 0
 ## The rows whose hands' burst has sounded (round * 100 + row).
 var _sounded: Dictionary = {}
 
@@ -103,9 +107,10 @@ func plan(budget: float = INF) -> Dictionary:
 	var first: float = d + v * warning_seconds()
 	var spacing: float = row_spacing(v)
 	var rows: int = t.rows_for(rounds + 1)
-	while rows > 0 and (first + (rows - 1) * spacing + over_distance() - d) / v > budget:
+	var fewest: int = clampi(t.hand_rows_min, 1, rows)
+	while rows >= fewest and (first + (rows - 1) * spacing + over_distance() - d) / v > budget:
 		rows -= 1
-	if rows <= 0:
+	if rows < fewest:
 		return {}
 	# The street ahead, read once: its pieces in reach of the round as the router's obstacles, and
 	# where each row's hands fit.
@@ -114,10 +119,10 @@ func plan(budget: float = INF) -> Dictionary:
 	_track_obstacles(track, d - 20.0, reach + 20.0)
 	var fits: Dictionary = _fit_table(track, first, spacing, rows)
 	var rng := RandomNumberGenerator.new()
-	rng.seed = hash([boss.rng.seed, "hands", rounds])
+	rng.seed = hash([boss.rng.seed, "hands", rounds, _attempts])
 	var side: int = -1 if rounds % 2 == 0 else 1
 	var tries: int = 0
-	for m: int in range(rows, 0, -1):
+	for m: int in range(rows, fewest - 1, -1):
 		var last: float = first + (m - 1) * spacing
 		if boss.ceiling_between(d, last + t.hand_clear_after * k):
 			continue
@@ -134,6 +139,7 @@ func plan(budget: float = INF) -> Dictionary:
 				return round
 			tries += 1
 			if tries >= MAX_ROUTE_TRIES:
+				_attempts += 1
 				return {}
 	return {}
 
@@ -371,16 +377,17 @@ func start(plan: Dictionary) -> void:
 		push_error("SleepTakerHands: cannot start a round without enough pooled hands")
 		return
 	rounds += 1
+	_attempts = 0
 	round_plan = plan.duplicate()
 	round_plan["rows"] = rows
+	var near: float = float(rows[0]["at"])
+	boss.log_event(&"round", {"n": rounds, "rows": rows.size(), "hands": total, "lane": int(plan.get("lane", -1)),
+		"at": near, "d": boss.player_distance(), "path": plan.get("path", [])})
 	for r: int in rows.size():
 		var row: Dictionary = rows[r]
 		for spot: Dictionary in row["spots"]:
 			_start_hand(spot, float(row["at"]), r, int(row.get("door", -1)))
-	var near: float = float(rows[0]["at"])
 	boss.sound(&"sleep_taker_whisper", boss.world.lane_point(boss.lane_count() / 2, near) + Vector3(0.0, 0.5, 0.0))
-	boss.log_event(&"round", {"n": rounds, "rows": rows.size(), "hands": total, "lane": int(plan.get("lane", -1)),
-		"at": near, "d": boss.player_distance(), "path": plan.get("path", [])})
 
 
 ## A plan's rows, whatever its shape (start()).

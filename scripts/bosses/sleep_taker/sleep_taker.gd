@@ -66,6 +66,8 @@ const KINDS: PackedStringArray = ["hands", "lights_out"]
 const REFUGE_HINT_LEAD: float = 4.0
 ## How far ahead it looks for the track's refuges (metres at 18 m/s, times run_pace()).
 const SIGHT: float = 400.0
+## A round of hands that can't come yet is looked for again this long after (seconds).
+const HANDS_RETRY: float = 0.1
 
 var body: SleepTakerBody
 var tuning: SleepTakerTuning
@@ -98,6 +100,8 @@ var _generator_wait: float = 0.0
 var _lure_was_busy: bool = false
 ## How far ahead of the runner it's drawn now (its pose, the slash's lunge and the lure's pull), metres.
 var _ahead: float = 0.0
+## Seconds until a round of hands is looked for again (HANDS_RETRY after one couldn't be planned).
+var _hands_wait: float = 0.0
 
 
 func _build_boss() -> void:
@@ -409,6 +413,7 @@ func _on_pattern_started(_index: int) -> void:
 	body.inhale = 0.0
 	pose = hover_pose()
 	_gap_left = tuning.first_attack_delay
+	_hands_wait = 0.0
 	_was_busy = false
 	_generator_wait = tuning.generator_delay
 	_lure_was_busy = false
@@ -532,7 +537,13 @@ func _schedule(delta: float) -> void:
 	var until_refuge: float = INF if refuge.is_empty() else (float(refuge["warn_at"]) - d) / v
 	if lure.stage == SleepTakerLure.Stage.WAITING:
 		until_refuge = minf(until_refuge, (lure.lure_at(float(lure.site["at"]), v) - d) / v)
+	_hands_wait = maxf(_hands_wait - delta, 0.0)
+	# Each kind once a frame: a kind that can't start now can't start for a later entry either.
+	var tried := PackedStringArray()
 	for i: int in line.size():
+		if tried.has(line[i]):
+			continue
+		tried.append(line[i])
 		if _try_start(line[i], until_refuge):
 			line.remove_at(i)
 			if line.is_empty():
@@ -565,8 +576,13 @@ func _try_start(kind: String, until_refuge: float) -> bool:
 	var gap: float = tuning.attack_gap / pace()
 	match kind:
 		"hands":
+			if _hands_wait > 0.0:
+				return false
 			var plan: Dictionary = hands.plan(until_refuge - gap)
 			if plan.is_empty():
+				# The planner is the fight's costliest check (each way through a round, TheHouseRoute): a
+				# round that can't come now is looked for again a moment later, not every frame.
+				_hands_wait = HANDS_RETRY
 				return false
 			hands.start(plan)
 			_hint("hands")

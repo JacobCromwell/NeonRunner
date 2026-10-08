@@ -30,7 +30,9 @@ extends Node3D
 ##               on screen (the mean of its brightest pixels, 0-255) in both lights
 ## Options: --lanes=N (3, 5 or 6; 5 by default), --phase=N (start at phase N, as a checkpoint would),
 ## --pose=..., --escape=pad|lanes|none, --reduced-flashing, --events (prints each of the boss's events
-## with its frame, for picking frames), --dark (lure: lights out as each generator comes into sight).
+## with its frame, for picking frames), --dark (lure: lights out as each generator comes into sight),
+## --first-dark (lights out as first built, for comparing: dark_level 0.45 with every boss's floors, 0.3;
+## the owner's October 8, 2026 lights out is half as bright).
 ## Frames worth a look (at --fixed-fps 10): entrance 0-45; slash, the warning from about frame 80 and
 ## the strike about 100; hands, a mist about 63 and its hand about 75, then every 3 s or so; lights_out,
 ## the inhale about 60-80, the dark 80-168 (hands rising in it about 113 and 143), the light back by
@@ -56,6 +58,8 @@ var _frame: int = 0
 var _print_events: bool = false
 ## --dark (lure): lights out as each generator comes into sight, so its lure happens in the dark.
 var _dark_lure: bool = false
+## --first-dark: lights out as first built (see the header).
+var first_dark: bool = false
 var _events_seen: int = 0
 
 
@@ -82,9 +86,15 @@ func _ready() -> void:
 			_print_events = true
 		elif arg == "--dark":
 			_dark_lure = true
+		elif arg == "--first-dark":
+			first_dark = true
 	var slot: BossDef = load(BOSS_PATH) as BossDef
 	var def: BossDef = slot.duplicate() as BossDef
 	var t: SleepTakerTuning = (def.tuning as SleepTakerTuning).duplicate() as SleepTakerTuning
+	if first_dark:
+		t.dark_level = 0.45
+		t.light_floor = BossEncounter.MIN_LIGHT_LEVEL
+		t.scenery_floor = ZoneSkin.MIN_SCENERY_LIGHT
 	match scenario:
 		"slash":
 			# The first refuge soon after the entrance; nothing else attacks.
@@ -310,6 +320,7 @@ func _sample() -> Dictionary:
 		"street": Vector3(geo.lane_x(n - 1), 0.0, TrackGeometry.world_z(MEASURE_STREET)),
 		"wall": Vector3(geo.wall_x() - 0.02, 3.0, TrackGeometry.world_z(d + 10.0)),
 		"nightmare (its maws)": boss.body.mouth_world(),
+		"runner (lit)": world.player.global_position + Vector3(0.0, 0.8, 0.0),
 	}
 	var out: Dictionary = {}
 	var marked: Image = img.duplicate() as Image

@@ -118,9 +118,12 @@ extends Resource
 ## lanes; a hand stands in every other floor lane whose floor is clear around it, and
 ## wall_hands_per_row of the walls get one too, alternating (never the wall beside a door in an outer
 ## lane, and only over an outer lane that has a hand of its own). The first round has hand_rows_first
-## rows, each next one a row more, up to hand_rows_max (kept across phases).
+## rows, each next one a row more, up to hand_rows_max (kept across phases). A round takes the rows that
+## are over before the next refuge's slash or lure, never fewer than hand_rows_min (it waits instead,
+## and the next attack in the phase's list may go first).
 @export_range(1, 6) var hand_rows_first: int = 2
 @export_range(1, 6) var hand_rows_max: int = 4
+@export_range(1, 6) var hand_rows_min: int = 2
 @export_range(0.4, 2.0, 0.05, "suffix:s") var hand_row_seconds: float = 0.85
 @export_range(1, 4) var hand_row_open: int = 1
 @export_range(0, 2) var wall_hands_per_row: int = 1
