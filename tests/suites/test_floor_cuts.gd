@@ -41,6 +41,11 @@ const NO_BELOW: Array[String] = ["grey box", "greybox", "base"]
 ## An open cut's lane meets the zone's plane at least this far below the street (the shallowest: Gangland's
 ## crater, 4.5 m), and the cut draws nothing of its own in between.
 const BELOW_MIN_DEPTH: float = 3.0
+## The skins whose planes below the street were drawn almost black until task H3's second part (GDD §9.9, the
+## coordinator's decision: "recognisable from the runner's camera"), with the dimmest colour the first face
+## below an open cut may be drawn in (linear luminance), so they never fall back to black.
+const RECOGNISABLE_BELOW: Array[String] = ["corporate", "corporate_plaza", "dead_zone", "golden", "golden_palace"]
+const BELOW_MIN_LUMINANCE: float = 0.005
 
 var sim: RunSim
 var rules: GameRules
@@ -872,13 +877,15 @@ func _check_below(skin: ZoneSkin, skin_name: String, lanes: int, lane: int) -> v
 			faults.append("%.1f m deep at %.0f m (%s)" % [-float(hit["y"]), d, (hit["node"] as Node).name])
 		elif fc.is_ancestor_of(hit["node"] as Node):
 			faults.append("the cut's own %s at %.0f m" % [(hit["node"] as Node).name, d])
+		elif RECOGNISABLE_BELOW.has(skin_name) and _luminance(hit["color"] as Color) < BELOW_MIN_LUMINANCE:
+			faults.append("a black plane (%.4f) at %.0f m" % [_luminance(hit["color"] as Color), d])
 	check(faults.is_empty(), "an open cut shows the zone's plane deep below, nothing of its own in the way %s: %s" % [tag,
 		", ".join(faults.slice(0, 4))])
 	await _free_track(track)
 
 
-## The first face a ray straight down from just under the street at (x, -d) meets in `meshes`: {y, node},
-## empty if none.
+## The first face a ray straight down from just under the street at (x, -d) meets in `meshes`: {y, node,
+## color (its first vertex's)}, empty if none.
 static func _ray_down(meshes: Array[MeshInstance3D], x: float, d: float) -> Dictionary:
 	var from := Vector3(x, -0.01, TrackGeometry.world_z(d))
 	var best: Dictionary = {}
@@ -890,6 +897,7 @@ static func _ray_down(meshes: Array[MeshInstance3D], x: float, d: float) -> Dict
 		for s: int in m.mesh.get_surface_count():
 			var arrays: Array = m.mesh.surface_get_arrays(s)
 			var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
 			var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX] if arrays[Mesh.ARRAY_INDEX] != null else PackedInt32Array()
 			var count: int = indices.size() if not indices.is_empty() else verts.size()
 			for i: int in range(0, count - 2, 3):
@@ -900,7 +908,7 @@ static func _ray_down(meshes: Array[MeshInstance3D], x: float, d: float) -> Dict
 					continue
 				var p: Variant = Geometry3D.ray_intersects_triangle(from, Vector3.DOWN, a, b, c)
 				if p != null and (best.is_empty() or (p as Vector3).y > float(best["y"])):
-					best = {"y": (p as Vector3).y, "node": m}
+					best = {"y": (p as Vector3).y, "node": m, "color": colors[indices[i] if not indices.is_empty() else i]}
 	return best
 
 

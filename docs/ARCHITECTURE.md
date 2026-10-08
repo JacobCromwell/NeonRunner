@@ -1965,6 +1965,38 @@ look like its gap with the orange edges added: in the City the road and its traf
 own ribbed sides, in Gangland the strata walls, in the Marketplace the stalls' brown shade. Compare them
 with `floor_cut_review --compare` (Review tools).
 
+*What the zones show there* (task H3's second part, the coordinator's decision: matching the gap was not enough
+where the planes below were drawn almost black; the owner's "never a dark box" wants the zone's scenery
+recognisable from the runner's camera, in gaps and cuts alike). The runner's camera looks along the track, so
+what it sees of a hole is mostly the far end face of a gap and the first few metres of a long hole's walls,
+and the bottom only from nearby or above: the scenery is on the faces first, the plane second. Each look is
+one pattern in the solid kit, steady (nothing flashes: no Reduced flashing case) and all albedo (nothing
+glows), `COLOR` its peak and the pattern only ever darkening it, and the zone's `kit_solid` sheen is cut to a
+quarter below the street (`sheen_k`, patterns 31, 41, 53, 54, 71) so it never drowns them at a hole's grazing
+walls:
+- *Golden Zone* (`PAT_UNDERDECK`, `PAT_CANAL`): a stone quay of round arches on piers, one a lane across an
+  end face and one every two lanes along a side, the canal's light wavering on the stone and shimmering in
+  the arches toward the water, and the water below, ripples sliding with the current, the dusk's sky
+  laid on it more the lower the eye (a sheen and glints) and the walkways' lamps wavering on it
+  (`canal_sky_color`, `canal_lamp_color`).
+- *Golden Palace* (`PAT_PALACE_WELL`): a stairwell, its steps descending along a side in treads and
+  risers, and far below the lower hall's marble in slabs with a soft pool of light every 22 m
+  (`well_floor_color`, with the well's side walls now drawn down both sides, so a hole in an outer lane
+  shows stone and not the hall's outside). DESIGN-TBD (docs/questions/h3.md).
+- *Corporate* (`PAT_CORP_UNDER`): a carriage's side with its band of dim cold windows, the guideway beams
+  on their piers with a lighter top edge (`guideway_color`) over a wet concrete trench with joints and
+  puddles (`trench_color`) and the trench's retaining walls (mode 5); the plaza's deck edge a slab with a pale
+  fascia over a lower level of painted bays, 9 m down in the data (`trench_depth`, 18 m for the trains).
+- *Dead Zone* (`PAT_DZ_UNDER`): the road's broken layers and rebar, then the ruined basements, concrete with
+  formwork lines, a pilaster every 3.6 m and a pipe run, and far down a rubble floor with paler slabs and,
+  in a few patches, dull embers in its cracks (albedo only, dark; kept minimal and never near the orange).
+The hole must still read as a hole at a glance, so each zone's skin suite holds the peak of everything below
+the street to a share of the darkest floor at its darkest shading (`GAP_CONTRAST`: 0.65 Golden, 1.3 Corporate
+and Dead Zone, whose floors are the darkest, 0.35 the palace's white marble; the rendered pixels are dimmer
+still, since the patterns darken the colours), nothing glows below but the orange edges, and the cut is
+never brighter than the zone's gap (`test_floor_cuts`' `_inside_limit`). The trade-off for the owner to
+confirm is in docs/questions/h3.md.
+
 `test_floor_cuts` builds every skin in `data/skins/` (and Hostile Takeover's train, the grey box and the
 plain `ZoneSkin`) at 3 and 5 lanes, in an outer and a middle lane, and checks the orange edges on the
 collision edge, a dark inside, nothing else glowing, and the build cost against the same chunks without a

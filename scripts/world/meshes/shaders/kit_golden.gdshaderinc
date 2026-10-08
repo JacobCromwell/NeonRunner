@@ -173,7 +173,7 @@ vec3 golden_walkway(vec3 base, vec3 w, vec3 n, vec3 eye, vec2 uv, float param) {
 // the cut, the player sees the zone's own scenery below the street ... the canal") it shows what is
 // there, so the runner's camera, which sees little more than the first few metres of a hole's walls,
 // reads a canal: the quay under the deck, a masonry wall of round arches on piers, one every 4.8 m
-// (recessed and shaded inside, a faint lighter rim and courses on the stone), going down to the water,
+// (recessed and dark inside, with a dark joint around each and courses on the stone), going down to the water,
 // and near the water the canal's light wavering on the stone in a net of ripples that fades out a metre
 // and a half up. Steady (a slow drift, never a flash), all albedo. COLOR is the stone's shade at the
 // deck's level; the water is at world height golden_canal_y.
@@ -198,14 +198,14 @@ vec3 golden_under(vec3 base, vec3 w, vec3 n, float t) {
 	float course = filtered_pulse(w.y / 0.4, fy / 0.4, 0.0, 0.07);
 	float fascia = 1.0 - smoothstep(-0.05 - aa, 0.05 + aa, w.y + 0.85);
 	float low = smoothstep(0.0, golden_canal_y, w.y);
-	vec3 stone = base * (0.78 - 0.25 * course + 0.22 * rim) * mix(1.0, 0.5, low);
+	vec3 stone = base * (1.0 - 0.3 * course - 0.12 * rim) * mix(1.0, 0.55, low);
 	// The canal's light moving on the stone: under an arch a shimmer, brighter toward the water.
 	float above = w.y - golden_canal_y;
 	float net = value_noise(vec2(h * 2.2 + t * 0.35, w.y * 2.6 - t * 0.25)) * 0.6
 		+ value_noise(vec2(h * 5.1 - t * 0.5, w.y * 5.5 + 4.0)) * 0.4;
 	float web = smoothstep(0.42, 0.8, net);
-	vec3 shimmer = golden_canal_sky * (0.25 + 0.75 * web) * (0.4 + 0.6 * low);
-	vec3 col = mix(stone, base * 0.3 + shimmer, opening * (1.0 - fascia));
+	vec3 shimmer = golden_canal_sky * (0.3 + 0.7 * web) * (0.5 + 0.5 * low);
+	vec3 col = mix(stone, base * 0.18 + shimmer, opening * (1.0 - fascia));
 	// And on the stone itself a metre or so up from the water.
 	col += golden_canal_sky * (1.0 - smoothstep(0.1, 1.3, above)) * (0.15 + 0.85 * web) * 0.7 * (1.0 - opening);
 	return col;
