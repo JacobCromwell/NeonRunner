@@ -31,14 +31,18 @@ enum Kind { CHERRY, LIGHTNING, BAR }
 const KIND_NAMES: PackedStringArray = ["cherry", "lightning", "bar"]
 const BOMB_NAME: String = "The House's cherry bomb"
 const BLOCK_NAME: String = "The House's gold block"
-const FIRE := Color(1.0, 0.36, 0.12)
-const FIRE_HOT := Color(1.0, 0.8, 0.5)
 ## Enemy-attack red: the bombs and the blocks' hot edges (the weak points' and the warnings' red).
 const ATTACK_RED := Color(1.0, 0.08, 0.1)
 const GOLD := Color(0.86, 0.66, 0.24)
 const FENCE_PINK := Color(1.0, 0.18, 0.62)
-## A fireball lasts this long (its hitbox only blast_seconds).
+## A blast's book is kept this long (its hitbox only blast_seconds; its fireball, RunEffects.fireball, plays
+## about as long).
 const FIRE_SECONDS: float = 0.6
+## The blast's look is one of the shared fireballs (GDD §11): this many times the blast's radius across the
+## street, played this much faster than a fireball of its size would (quick, no smoke, so it is gone about
+## when the blast is: only the blast's hitbox hurts, and the fireball never lingers past it).
+const FIRE_SIZE_PER_RADIUS: float = 1.5
+const FIRE_PACE: float = 1.6
 ## The falling whistle's length, if the sound library doesn't say.
 const WHISTLE_SECONDS: float = 0.9
 ## How high a gold block falls from.
@@ -68,10 +72,9 @@ var _attacks_started: int = 0
 var _next_attack_at: float = 0.0
 var _whistle: float = WHISTLE_SECONDS
 # Everything an attack shows is pooled, so a fight allocates nothing once its pools have grown to
-# what one spin needs: bombs, blasts' boxes and fireballs, gold blocks and spools.
+# what one spin needs: bombs, blasts' boxes, gold blocks and spools.
 var _bombs: Array[MeshInstance3D] = []
 var _blast_boxes: Array[Hazard] = []
-var _fires: Array[MeshInstance3D] = []
 var _blasts: Array[Dictionary] = []
 ## Gold blocks: {hazard, blocker, look, used}. Each hazard is BossProps.block's kind (solid: deadly to
 ## run into, a lane blocker to switch into), on from the slam; put away, both its layers are cleared.
@@ -96,13 +99,12 @@ func setup(p_boss: TheHouse) -> void:
 
 
 ## Fills the pools for a spin at this lane count before the fight (and builds the looks' meshes), so the
-## first attacks make nothing either: a volley's bombs, blasts' boxes and fireballs, BAR rows' blocks,
+## first attacks make nothing either: a volley's bombs and blasts' boxes, BAR rows' blocks,
 ## spools. They still grow if a spin ever needs more.
 func prewarm() -> void:
 	var n: int = boss.lane_count()
 	for i: int in n + 2:
 		_new_bomb()
-		_new_fire()
 		_new_blast_box()
 	for i: int in 3 * maxi(n - 1, 1):
 		_new_block()
@@ -219,7 +221,6 @@ func clear() -> void:
 	for b: Dictionary in _blasts:
 		(b["hazard"] as Hazard).set_enabled(false)
 		(b["hazard"] as Hazard).collision_layer = 0
-		(b["fire"] as Node3D).visible = false
 	_blasts.clear()
 	for bomb: MeshInstance3D in _bombs:
 		bomb.visible = false
@@ -567,8 +568,8 @@ func _place_bomb(bomb: MeshInstance3D, from: Vector3, to: Vector3, t0: float, t1
 	bomb.rotation = Vector3(s * 9.0, s * 4.0, 0.0)
 
 
-## A blast: its hitbox burns for blast_seconds (a little smaller than the fireball, clear of a wall
-## runner); the fireball, sparks, the boom and a shake.
+## A blast: its hitbox burns for blast_seconds (a little smaller than its fireball, clear of a wall
+## runner); the fireball (RunEffects.fireball: a look only), the boom and a shake.
 func _blast(lane: int, at: float, n: int) -> void:
 	var geo: TrackGeometry = world.geo
 	var half: float = geo.lane_width * tuning.blast_width_share * 0.5
@@ -583,13 +584,9 @@ func _blast(lane: int, at: float, n: int) -> void:
 	hazard.global_position = Vector3((x0 + x1) * 0.5, size.y * 0.5, TrackGeometry.world_z(at))
 	hazard.collision_layer = TrackBuilder.LAYER_HAZARD
 	hazard.set_enabled(true)
-	var fire: MeshInstance3D = _free_fire()
-	fire.global_position = Vector3(x, 0.6, TrackGeometry.world_z(at))
-	fire.visible = true
-	_blasts.append({"hazard": hazard, "fire": fire, "start": clock, "n": n})
+	_blasts.append({"hazard": hazard, "start": clock, "n": n})
 	var center := Vector3(x, 0.8, TrackGeometry.world_z(at))
-	world.effects.burst(center, FIRE, 36, 1.0)
-	world.effects.burst(center + Vector3(0.0, 0.4, 0.0), FIRE_HOT, 14, 0.6)
+	world.effects.fireball(center + Vector3(0.0, 0.3, 0.0), tuning.blast_radius * FIRE_SIZE_PER_RADIUS, false, FIRE_PACE)
 	var near: float = clampf(1.0 - (at - world.player.distance) / 40.0, 0.2, 1.0)
 	world.effects.shake(0.25 * near, 0.25)
 	boss.sound(&"bomb_blast", center)
@@ -604,18 +601,8 @@ func _update_blasts() -> void:
 		if hazard.is_active() and age >= tuning.blast_seconds - 0.0001:
 			hazard.set_enabled(false)
 			hazard.collision_layer = 0
-		var fire: MeshInstance3D = b["fire"]
-		if age >= FIRE_SECONDS:
-			fire.visible = false
-			if not hazard.is_active():
-				_blasts.remove_at(i)
-			continue
-		var k: float = age / FIRE_SECONDS
-		var r: float = tuning.blast_radius * (0.4 + 0.6 * (1.0 - pow(1.0 - minf(age / 0.12, 1.0), 3.0)))
-		fire.scale = Vector3(r, r * 1.2, r)
-		var hot: float = clampf(1.0 - age / 0.08, 0.0, 1.0) * (0.4 if Settings.flashing_reduced else 0.8)
-		var color: Color = FIRE.lerp(FIRE_HOT, hot) * (1.0 - k * k) * 0.95
-		(fire.material_override as StandardMaterial3D).albedo_color = Color(color.r, color.g, color.b, 1.0)
+		if age >= FIRE_SECONDS and not hazard.is_active():
+			_blasts.remove_at(i)
 
 
 ## The live blasts' hitboxes (tests).
@@ -636,10 +623,10 @@ func block_hazards() -> Array[Hazard]:
 	return out
 
 
-## The pools: what each holds and how many times it was drawn on ({bombs, fires, blast_boxes, blocks,
+## The pools: what each holds and how many times it was drawn on ({bombs, blast_boxes, blocks,
 ## spools: [made, taken]}).
 func pool_stats() -> Dictionary:
-	return {"bombs": [_bombs.size(), int(_taken.get(&"bombs", 0))], "fires": [_fires.size(), int(_taken.get(&"fires", 0))],
+	return {"bombs": [_bombs.size(), int(_taken.get(&"bombs", 0))],
 		"blast_boxes": [_blast_boxes.size(), int(_taken.get(&"blast_boxes", 0))],
 		"blocks": [_blocks.size(), int(_taken.get(&"blocks", 0))], "spools": [_spools.size(), int(_taken.get(&"spools", 0))]}
 
@@ -710,36 +697,6 @@ func _burning(h: Hazard) -> bool:
 		if b["hazard"] == h:
 			return true
 	return false
-
-
-func _free_fire() -> MeshInstance3D:
-	_took(&"fires")
-	for f: MeshInstance3D in _fires:
-		if not f.visible:
-			return f
-	return _new_fire()
-
-
-func _new_fire() -> MeshInstance3D:
-	var fire := MeshInstance3D.new()
-	fire.name = "Fireball"
-	var sphere := SphereMesh.new()
-	sphere.radius = 1.0
-	sphere.height = 2.0
-	sphere.radial_segments = 12
-	sphere.rings = 6
-	fire.mesh = sphere
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	m.albedo_color = Color.BLACK
-	m.disable_receive_shadows = true
-	fire.material_override = m
-	fire.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	fire.visible = false
-	add_child(fire)
-	_fires.append(fire)
-	return fire
 
 
 # --- Looks ---------------------------------------------------------------------------------------

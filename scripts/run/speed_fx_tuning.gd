@@ -105,3 +105,35 @@ extends Resource
 ## How high a coin arcs over the straight line, at its middle.
 @export_range(0.0, 4.0, 0.1, "suffix:m") var coin_stream_arc: float = 1.2
 @export_range(2, 40, 1) var theft_spark_amount: int = 10
+
+@export_group("Explosions")
+## Every explosion in the game is one pooled fireball (RunEffects.fireball, FireballPool; GDD §11, the
+## owner, October 8, 2026: "a yellow and red fireball"): a bright yellow core blooming into orange and
+## red, rolling outward and up, embers flying and darker smoke after. The caller picks how big (its size
+## is the fireball's radius in metres). The counts below are fixed when a level loads (a particle system
+## never reallocates mid-run); the rest apply to the next explosion. Fireballs are looks only: they
+## collide with nothing and last about a second (a few for a boss), so none ever reads as a hazard.
+## Fireballs that can be on screen at once; one more cuts the oldest short.
+@export_range(1, 12, 1) var fireball_pool: int = 8
+## Scales every fireball's size (1 = as each explosion asks): the quickest way to make all of them bigger or smaller.
+@export_range(0.5, 2.0, 0.05) var fireball_scale: float = 1.0
+## Fire puffs in one fireball (the glowing, additive body).
+@export_range(6, 40, 1) var fireball_puffs: int = 22
+## Smoke puffs that follow the fire (dark, see-through; none on a quick fireball, such as a bomb's).
+@export_range(0, 20, 1) var fireball_smoke_puffs: int = 8
+## Embers thrown out of it (small, glowing, falling).
+@export_range(0, 40, 1) var fireball_embers: int = 20
+## How long the fire burns (a small fireball; a bigger one is slower, see fireball_big_size).
+@export_range(0.3, 2.0, 0.05, "suffix:s") var fireball_seconds: float = 1.0
+## How long the smoke takes to clear.
+@export_range(0.5, 4.0, 0.1, "suffix:s") var fireball_smoke_seconds: float = 2.0
+## How hot the fire draws (the colours are multiplied by this; above about 1.2 it blooms on Forward+).
+@export_range(0.5, 3.0, 0.05) var fireball_glow: float = 1.2
+## From this size (metres) up, a fireball plays slower, down to fireball_big_pace at three times it: a
+## bigger blast reads as bigger by taking its time.
+@export_range(1.0, 10.0, 0.5, "suffix:m") var fireball_big_size: float = 3.0
+@export_range(0.3, 1.0, 0.05) var fireball_big_pace: float = 0.6
+## Reduced flashing (Settings): the fireball plays this many times slower, with no white-hot flash (it
+## swells from nothing to a peak this share of the usual brightness, in orange and yellow only).
+@export_range(1.0, 3.0, 0.05) var fireball_reduced_slowdown: float = 1.5
+@export_range(0.1, 1.0, 0.05) var fireball_reduced_brightness: float = 0.55

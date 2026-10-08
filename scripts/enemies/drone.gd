@@ -34,6 +34,10 @@ const HURL_ACCEL: float = 45.0
 const HURL_MAX_TIME: float = 0.8
 const EYE_COLOR := Color(1.0, 0.12, 0.08)
 const HOT_COLOR := Color(1.0, 0.38, 0.1)
+## Its fireballs (RunEffects.fireball, radius in metres): a small one when it's hit and starts to spin down,
+## a big one where it crashes (GDD §11: every explosion is a yellow-and-red fireball).
+const FIRE_HIT_SIZE: float = 1.0
+const FIRE_CRASH_SIZE: float = 2.4
 
 ## Models per zone variant, built once: {body, rotor, barrels} ArrayMeshes.
 static var _models: Dictionary = {}
@@ -440,7 +444,8 @@ func _on_defeated(cause: StringName) -> void:
 	_aim_line.visible = false
 	_flash.visible = false
 	_pending_shots = 0
-	world.effects.burst(global_position, Color(1.0, 0.55, 0.2), 14, 0.5)
+	# Hit: it bursts into flames and spins down (the crash is the big one).
+	world.effects.fireball(global_position, FIRE_HIT_SIZE, false)
 
 
 func _update_down(delta: float) -> void:
@@ -491,7 +496,7 @@ static func hurl_x(p_world: RunWorld, player: Player, x: float) -> float:
 func _crash() -> void:
 	var at: Vector3 = global_position
 	world.play_sfx_at(&"drone_crash", at)
-	world.effects.burst(at, Color(1.0, 0.5, 0.15), 36, 1.1)
+	world.effects.fireball(at, FIRE_CRASH_SIZE)
 	world.effects.burst(at, Color(0.7, 0.75, 0.85), 16, 0.7)
 	world.effects.shake(0.2, 0.25)
 	queue_free()
