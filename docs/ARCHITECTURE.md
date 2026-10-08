@@ -1886,16 +1886,24 @@ reading `scenery_light` (through `light_factor`) in a shader of its own, or by o
 (`LevelRun`). `skin_review` takes `--darkness=X` to look at it.
 
 **A level's own sky** (`LevelConfig.sky`, a `LevelSky` in `data/skies/`; owner, October 8, 2026). Most
-levels keep their zone's sky; a zone's last level may show the time of day or the weather turning, for a
-sense of progression: City 3 a dawn (`city_dawn`: the sun about to rise, pinks and purples on the
-undersides of clouds), Gangland 3 a cloudy blood-red sky (`gangland_blood_red`), Marketplace 2, the
-zone's last level, a sunset (`marketplace_sunset`: deep blue overhead, pink at the bottom of the sky).
+levels keep their zone's sky; a few show the time of day or the weather turning, for a sense of
+progression: City 1 a dawn (`city_dawn`: the sun about to rise, pinks and purples on the undersides of
+clouds), Gangland 3 a cloudy blood-red sky (`gangland_blood_red`), Marketplace 2, the zone's last level,
+a sunset (`marketplace_sunset`: deep blue overhead, pink at the bottom of the sky). The boss fight after a
+level keeps that level's sky (`Campaign.configure_boss`, unless the arena has its own), so the Sewer Swarm
+fights under Gangland 3's and The House under Marketplace 2's.
 `ZoneSkin.level_environment(darkness, sky)` builds the zone's environment, then `LevelSky.apply()` sets
 the sky's `night_sky.gdshader` uniforms over the zone's (by name; its colours go as sRGB `Vector3`s, as the
 Dead Zone's do, so both renderers draw them alike) and the distance fog's colour (so far scenery fades
-into that sky); the darkness comes after, as for any level. Nothing else changes: the ambient light, the
-sun, every glow and the fog's reach stay the zone's, so hazards read as in the zone's other levels, and a
-sky stays under the glow threshold, so it never blooms (`test_level_sky`). The zone's own environment is
+into that sky), and `ZoneSkin.set_scenery_tint()` sets the street's light under it (`LevelSky.scenery_tint`,
+white without a level sky); the darkness comes after, as for any level. The tint is the global shader
+uniform `scenery_tint` (project.godot, a `vec3`): every scenery shader that follows a level's darkness
+multiplies its lit colour by it right after `light_factor(scenery_light)` (one multiply per pixel; the
+Compatibility renderer's sRGB equivalent is worked out once in `set_scenery_tint()`, not per pixel), and
+no glow, hazard, enemy or runner shader reads it. A tint only dims or tints (each channel at most 1), and
+the run puts it back to white when it ends (`LevelRun`). Nothing else changes: the ambient light, the sun,
+every glow and the fog's reach stay the zone's, so hazards read as in the zone's other levels, and a sky
+stays under the glow threshold, so it never blooms (`test_level_sky`). The zone's own environment is
 never touched (each `make_environment()` builds its own sky material). The sky shader's looks for a level
 sky all default to off, so no zone's own sky changes: `horizon_falloff` (0.55: how far down the zenith's
 colour reaches), a glow low over the horizon at a bearing (`sun_glow_*`, where the sun is about to rise
@@ -1904,9 +1912,9 @@ band at the horizon and stretched across the street; its undersides catch `cloud
 toward `sun_glow_direction` by `cloud_lit_focus` (0: lit from all around, as by Gangland's fires), on the
 lower clouds, on their thin edges and on each cloud's side facing the light). The clouds cost six octaves
 of value noise per visible sky pixel, only where a level has them; no `TIME`, so the sky's radiance still
-never updates. Endless mode, which copies its zone's last level, keeps the zone's own sky
-(`App.start_endless`), as do boss fights (`Campaign.configure_boss` builds the arena's own config) and
-cinematics (`CineStage`: `level_environment(0.0)`). `skin_review` takes `--sky=name` to look at one.
+never updates. Endless mode, which copies its zone's last level, keeps the zone's own sky and light
+(`App.start_endless`), as do cinematics (`CineStage`: `level_environment(0.0)`). `skin_review` takes
+`--sky=name` to look at one.
 
 The kit's solid shader (`kit_solid.gdshader`) draws surface patterns chosen per vertex (`MeshKit.PAT_*`):
 panels, glass, glyphs and chevrons for the City; worn asphalt (with sand drifts and scorch around holes),

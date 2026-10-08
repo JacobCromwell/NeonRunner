@@ -13,6 +13,8 @@ render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, skip_vertex_tr
 
 // A level's darker lighting (ZoneSkin.apply_darkness): the smoke dims with the scenery.
 global uniform float scenery_light;
+// The street's light under a level's own sky (ZoneSkin.set_scenery_tint; white = the zone's own).
+global uniform vec3 scenery_tint;
 
 // How fast the billows rise (m/s), and how much wider the column is at its top than at its base.
 uniform float rise_speed = 1.2;
@@ -51,6 +53,6 @@ void fragment() {
 	float body = smoothstep(0.0, 0.5, edge - (0.55 - billow) * 0.6);
 	// Thin where it leaves the ruin, thinning out again toward its top.
 	float along = smoothstep(0.0, 0.12, v_uv.y) * (1.0 - smoothstep(0.45, 1.0, v_uv.y));
-	ALBEDO = to_linear(COLOR.rgb) * (0.8 + 0.4 * billow) * light_factor(scenery_light);
+	ALBEDO = to_linear(COLOR.rgb) * (0.8 + 0.4 * billow) * light_factor(scenery_light) * scenery_tint;
 	ALPHA = clamp(v_alpha * body * along * (0.6 + 0.6 * billow), 0.0, 1.0);
 }

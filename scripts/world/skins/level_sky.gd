@@ -1,12 +1,14 @@
 class_name LevelSky
 extends Resource
 ## A level's own sky over its zone's (LevelConfig.sky; owner, October 8, 2026): most levels keep their
-## zone's sky, and a zone's last level may show the time of day or the weather turning, for a sense of
-## progression (the Neon City's dawn, Gangland's blood-red overcast, the Marketplace's sunset). Only the
-## sky and the distance fog change, so far scenery fades into this sky: the ambient light and the sun
-## that light the runner and the enemies, every glow and every hazard colour stay the zone's, so
-## hazards read as well as in the zone's other levels. ZoneSkin.level_environment() applies it, before
-## the level's darkness. Visuals only.
+## zone's sky, and a few show the time of day or the weather turning, for a sense of progression (the
+## Neon City's dawn in City 1, Gangland's blood-red overcast in Gangland 3, the Marketplace's sunset in
+## Marketplace 2); the boss fight after such a level keeps its sky (Campaign.configure_boss). The sky,
+## the distance fog (so far scenery fades into this sky) and the street's light under it change (the
+## scenery's lit colour, through the global `scenery_tint`, as a level's darkness dims it): the ambient
+## light and the sun that light the runner and the enemies, every glow and every hazard colour stay the
+## zone's, so hazards read as well as in the zone's other levels. ZoneSkin.level_environment() applies
+## it, before the level's darkness. Visuals only.
 
 ## night_sky.gdshader uniforms set over the zone's own, by name; the rest stay the zone's. Colours are
 ## sRGB and reach the shader as sRGB Vector3s (srgb()), converted to linear once there, so they look
@@ -16,6 +18,10 @@ extends Resource
 ## so it matches this sky's horizon.
 @export var use_fog_color: bool = true
 @export var fog_color: Color = Color(0.2, 0.15, 0.2)
+## The street's light under this sky: a factor on each channel of the scenery's lit colour, for linear
+## space like a level's darkness (white = the zone's own light; ZoneSkin.set_scenery_tint). Only the
+## scenery's lit surfaces take it, never a glow, an enemy or the runner.
+@export var scenery_tint: Color = Color.WHITE
 
 
 ## Sets this sky over `env`'s (a skin's make_environment()): its uniforms on the sky's shader and its

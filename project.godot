@@ -151,3 +151,7 @@ scenery_light={
 "type": "float",
 "value": 1.0
 }
+scenery_tint={
+"type": "vec3",
+"value": Vector3(1, 1, 1)
+}
