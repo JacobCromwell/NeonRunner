@@ -24,25 +24,31 @@ extends RefCounted
 ##   difficulty's: the wider gap is a pattern on its own), no other hole, fence, ramp (or where its wall run
 ##   drops the runner back), anti-grav pad's zone, speed pad, ceiling's landing zone, floor cut's window,
 ##   enemy's attack (what the fill pass keeps for it, LevelGenerator.enemy_keep_out, with its floor; for a floor
-##   cyborg its obstacle margin, CyborgRules: its bolts never land near a hole anyway, CyborgGun) or attack the
-##   rules keep doodads off (a hover truck's stay, a Gilded Sentinel's strike; not a host's possible Bad Dream
-##   chase, which the danger density pass exempts too) reaches, in any lane: the runner sees it early, lines up
-##   alone and lands on clear floor. No ceiling over the jump itself, and no ramp's wall run over it (keeps_of:
-##   `row_only`). Wall and ceiling enemies whose shots keep off holes by their own rules, harmless thieves and
-##   the Enforcer Truck (NO_KEEP_TYPES) don't count;
+##   cyborg its obstacle margin, CyborgRules: its bolts never land near a hole anyway, CyborgGun; for a planned
+##   Resonator each pulse from its warning until its wave has passed, DangerDensity.resonator_pulse_windows:
+##   between them it only hovers, and every pulse waits for clear floor) or attack the rules keep doodads off (a
+##   Gilded Sentinel's strike; not a host's possible Bad Dream chase, which the danger density pass exempts too)
+##   reaches, in any lane: the runner sees it early, lines up alone and lands on clear floor. No ceiling over the
+##   jump itself, and no ramp's wall run over it (keeps_of: `row_only`). What the rules keep in one lane only (a
+##   hover truck's lane for its whole stay, past the stretch it's surely there and firing, which every lane
+##   keeps) keeps that lane only: the wider row leaves it open (keeps_of: `lane`), as every row there does. Wall
+##   and ceiling enemies whose shots keep off holes by their own rules, harmless thieves and the Enforcer Truck
+##   (NO_KEEP_TYPES) don't count;
 ## - between the run-up and the end-clear stretch, and spacing_seconds from another wider gap.
 ## Where they come from, in this order until the level has its count:
 ## 1. The level's own rows (the patterns'), made longer: at the far edge (the take-off stays where the pattern
 ##    put it), else the near edge, else both, whichever fits first (_widened).
-## 2. With add_rows, new rows of the wider length in every lane but one (the open lane seeded), where the
-##    track is clear around them by the same margins (_add_rows).
+## 2. With add_rows, new rows of the wider length in every lane but one (the open lane seeded, or the lane a
+##    hover truck keeps there), where the track is clear around them by the same margins (_add_rows).
 ## 3. The level's rows that only other holes and plain fences keep from fitting, with those taken out
 ##    (_clearing: never a pulsing fence or one a fence generator powers; the generator's way to make room for a
 ##    guarantee, as PadPlacement's: taking content out never makes a level unfair).
 ## Which ones: with prefer_enforcer_chases, first one in each Enforcer Truck's chase, once the truck has settled
-## behind the runner (EnforcerTruckTuning.bait_after_seconds), so the runner can lead it in; then the rest spread
-## through the level, rows across most of the lanes (a jump) before single holes. DESIGN-TBD
-## (docs/questions/g7.md): the width, the margins, the count and which rows.
+## behind the runner (EnforcerTruckTuning.bait_after_seconds) and before it may drop back (CHASE_END_SECONDS
+## before it gives up), so the runner can lead it in: from the first of the three sources above with one there,
+## the earliest; then the rest spread through the level, each source used up before the next. Rows across most of
+## the lanes (a jump) come before single holes. DESIGN-TBD (docs/questions/g7.md): the width, the margins, the
+## count and which rows.
 
 const TUNING_PATH: String = "res://data/tuning/wide_gaps.tres"
 const EnforcerRules = preload("res://scripts/enemies/enforcer_truck_rules.gd")
@@ -88,52 +94,72 @@ static func place(gen: LevelGenerator) -> Dictionary:
 	var want: int = gen.config.wide_gaps
 	if want <= 0 or WallGapPlacement.is_boss_arena(gen.config):
 		return {}
-	var t: WideGapTuning = tuning()
-	var lay: LevelLayout = gen.layout
-	var length: float = length_for(gen, t)
-	var rng: RandomNumberGenerator = gen.rng_for("wide_gaps")
-	var keeps: Array[Dictionary] = keeps_of(gen)
-	var candidates: Array[Dictionary] = []
+	var p := _Pass.new()
+	p.gen = gen
+	p.t = tuning()
+	p.rng = gen.rng_for("wide_gaps")
+	p.length = length_for(gen, p.t)
+	p.keeps = keeps_of(gen)
+	p.across = maxi(1, gen.layout.lane_count - 1)
 	var blocked: Dictionary = {}
-	for row: Dictionary in GapDensity.rows(lay):
-		var span: Vector2 = _widened(gen, t, row, length, keeps)
+	for row: Dictionary in GapDensity.rows(gen.layout):
+		var span: Vector2 = _widened(gen, p.t, row, p.length, p.keeps)
 		if span.y > span.x:
-			candidates.append({"row": row, "span": span, "lanes": (row["lanes"] as Array).size()})
+			p.candidates.append({"row": row, "span": span, "lanes": (row["lanes"] as Array).size()})
 		else:
-			var what: String = blocker(gen, t, Vector2(float(row["start"]), float(row["start"]) + length), row, keeps)
+			var what: String = blocker(gen, p.t, Vector2(float(row["start"]), float(row["start"]) + p.length), row, p.keeps)
 			blocked[what] = int(blocked.get(what, 0)) + 1
+	if p.t.prefer_enforcer_chases:
+		for chase: Vector2 in _chases(gen):
+			if p.rows.size() >= want:
+				break
+			if not _widen_one(p, chase, chase.x):
+				if not (p.t.add_rows and _add_one(p, chase, chase.x)):
+					_clear_one(p, chase, chase.x)
+	var whole := Vector2(gen.config.start_clear_distance, gen.layout.length - gen.config.end_clear_distance)
+	for source: int in 3:
+		if source == 1 and not p.t.add_rows:
+			continue
+		var left: int = want - p.rows.size()
+		for k: int in left:
+			var target: float = lerpf(whole.x, whole.y, (float(k) + p.rng.randf_range(0.25, 0.75)) / float(left))
+			match source:
+				0:
+					_widen_one(p, whole, target)
+				1:
+					_add_one(p, whole, target)
+				2:
+					_clear_one(p, whole, target)
+	if p.taken_out > 0:
+		GeneratorRules.keep_powered(gen)
+	p.rows.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
+	var constraints: PackedStringArray = []
+	if p.rows.size() < want:
+		constraints.append("only %d of %d wider gaps fit: nowhere else has its margins clear (or the spacing)" % [
+			p.rows.size(), want])
+	return {"target": want, "rows": p.rows, "widened": p.widened, "added": p.added, "cleared": p.cleared,
+		"taken_out": p.taken_out, "blocked": blocked, "constraints": constraints}
+
+
+## One pass's state (place).
+class _Pass:
+	extends RefCounted
+	var gen: LevelGenerator
+	var t: WideGapTuning
+	var rng: RandomNumberGenerator
+	## A wider gap's length (length_for).
+	var length: float
+	var keeps: Array[Dictionary]
+	## Rows of `across` lanes or more are a jump (_across_bonus).
+	var across: int
+	## The level's own rows that fit made longer: {row, span, lanes}.
+	var candidates: Array[Dictionary] = []
+	## The wider gaps placed so far, Vector2(start, end).
 	var rows: Array[Vector2] = []
-	for c: Dictionary in _choose(gen, t, rng, candidates, want, rows):
-		_widen(lay, c["row"], c["span"])
-		rows.append(c["span"])
-	var widened: int = rows.size()
+	var widened: int = 0
 	var added: int = 0
-	if rows.size() < want and t.add_rows:
-		added = _add_rows(gen, t, rng, length, keeps, rows, want - rows.size())
-	# Still too few: rows only other holes and plain fences keep from widening get them taken out.
 	var cleared: int = 0
 	var taken_out: int = 0
-	if rows.size() < want:
-		var clearable: Array[Dictionary] = []
-		for row: Dictionary in GapDensity.rows(lay):
-			if rows.has(Vector2(float(row["start"]), float(row["end"]))):
-				continue
-			var plan: Dictionary = _clearing(gen, t, row, length, keeps)
-			if not plan.is_empty():
-				clearable.append({"row": row, "span": plan["span"], "lanes": (row["lanes"] as Array).size(), "plan": plan})
-		for c: Dictionary in _choose(gen, t, rng, clearable, want - rows.size(), rows):
-			taken_out += _clear(gen, c["plan"])
-			_widen(lay, c["row"], c["span"])
-			rows.append(c["span"])
-			cleared += 1
-		if taken_out > 0:
-			GeneratorRules.keep_powered(gen)
-	rows.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
-	var constraints: PackedStringArray = []
-	if rows.size() < want:
-		constraints.append("only %d of %d wider gaps fit: nowhere else has its margins clear (or the spacing)" % [rows.size(), want])
-	return {"target": want, "rows": rows, "widened": widened, "added": added, "cleared": cleared,
-		"taken_out": taken_out, "blocked": blocked, "constraints": constraints}
 
 
 ## The wider rows `gen`'s last build placed (wide_gap_result), each Vector2(start, end).
@@ -185,8 +211,8 @@ static func zone_of(gen: LevelGenerator, t: WideGapTuning, span: Vector2) -> Vec
 
 ## True if a wider gap over `span` (Vector2(start, end)) fits in `gen`'s layout (see the header): its zone
 ## (zone_of) between the run-up and the end-clear stretch, nothing of `keeps` (keeps_of) in its zone (or, for a
-## keep that's `row_only`, over its span) and no hole but those of `row` (the row being widened; {} for none) in
-## its zone.
+## keep that's `row_only`, over its span; for one that keeps a `lane`, only if the row has a hole in that lane)
+## and no hole but those of `row` (the row being widened, {start, end, lanes}; {} for none) in its zone.
 static func fits(gen: LevelGenerator, t: WideGapTuning, span: Vector2, row: Dictionary, keeps: Array[Dictionary]) -> bool:
 	return blocker(gen, t, span, row, keeps) == ""
 
@@ -197,11 +223,16 @@ static func blocker(gen: LevelGenerator, t: WideGapTuning, span: Vector2, row: D
 	var zone: Vector2 = zone_of(gen, t, span)
 	if zone.x < gen.config.start_clear_distance or zone.y > gen.layout.length - gen.config.end_clear_distance:
 		return "the run-up or the end-clear stretch"
+	var lanes: Array = row.get("lanes", [])
 	for k: Dictionary in keeps:
 		var v: Vector2 = k["span"]
 		var against: Vector2 = span if bool(k["row_only"]) else zone
-		if v.x <= against.y and v.y >= against.x:
-			return String(k["what"])
+		if v.x > against.y or v.y < against.x:
+			continue
+		var lane: int = int(k["lane"])
+		if lane >= 0 and not lanes.is_empty() and not lanes.has(lane):
+			continue
+		return String(k["what"])
 	for g: Dictionary in gen.layout.gaps:
 		if not row.is_empty() and float(g["start"]) == float(row["start"]) and float(g["end"]) == float(row["end"]):
 			continue
@@ -210,9 +241,10 @@ static func blocker(gen: LevelGenerator, t: WideGapTuning, span: Vector2, row: D
 	return ""
 
 
-## Everything but holes a wider gap keeps off, in any lane (see the header): {span (Vector2(from, to)), what (for
-## the report), row_only (true: it keeps off the wider gap itself only, not its margins: a ceiling over it, a
-## ramp's wall run over it)}.
+## Everything but holes a wider gap keeps off (see the header): {span (Vector2(from, to)), what (for the report),
+## row_only (true: it keeps off the wider gap itself only, not its margins: a ceiling over it, a ramp's wall run
+## over it), lane (-1: every lane; else the one lane it keeps, which the wider row leaves open: a hover truck's
+## for its whole stay)}.
 static func keeps_of(gen: LevelGenerator) -> Array[Dictionary]:
 	var lay: LevelLayout = gen.layout
 	var out: Array[Dictionary] = []
@@ -244,6 +276,13 @@ static func keeps_of(gen: LevelGenerator) -> Array[Dictionary]:
 			var at: float = float(e["at"])
 			out.append(_keep(Vector2(at - cyborg_margin, at + cyborg_margin), "a cyborg"))
 			continue
+		# A planned Resonator attacks only in its pulses (as the wall fences keep off it): between them it hovers,
+		# and every pulse waits for clear floor at run time (Resonator.pulse_clear).
+		var pulses: Array[Vector2] = LevelGenerator.DangerDensity.resonator_pulse_windows(gen, e)
+		if not pulses.is_empty():
+			for w: Vector2 in pulses:
+				out.append(_keep(w, "a Resonator's pulse"))
+			continue
 		var k: Vector2 = gen.enemy_keep_out(e, hooks)
 		if k.y >= k.x:
 			out.append(_keep(k, type))
@@ -252,9 +291,9 @@ static func keeps_of(gen: LevelGenerator) -> Array[Dictionary]:
 			out.append(_keep(floor_span, type))
 	for c: Dictionary in lay.cuts:
 		out.append(_keep(FloorCutPlan.window(c, gen.speed), "a floor cut"))
-	# What the rules keep doodads off (a hover truck's stay in its lane, a Gilded Sentinel's strike), but for the
-	# features the danger density pass exempts too (its tuning's keep_out_exempt_features: a host's chase, which
-	# only comes if the player kills the host).
+	# What the rules keep doodads off (a Gilded Sentinel's strike in every lane, a hover truck's lane for its whole
+	# stay), but for the features the danger density pass exempts too (its tuning's keep_out_exempt_features: a
+	# host's chase, which only comes if the player kills the host).
 	var dd: Resource = load(DANGER_DENSITY_TUNING) if ResourceLoader.exists(DANGER_DENSITY_TUNING) else null
 	var exempt: PackedStringArray = dd.get("keep_out_exempt_features") if dd != null else PackedStringArray(["host"])
 	for feature: String in gen.config.features:
@@ -265,14 +304,15 @@ static func keeps_of(gen: LevelGenerator) -> Array[Dictionary]:
 		if script == null or not script.has_method("doodad_keep_outs"):
 			continue
 		for k: Dictionary in script.call("doodad_keep_outs", gen):
-			out.append(_keep(Vector2(float(k["from"]), float(k["to"])), String(k.get("type", feature))))
+			out.append(_keep(Vector2(float(k["from"]), float(k["to"])), String(k.get("type", feature)), false,
+				int(k.get("lane", -1))))
 	for d: Dictionary in lay.doodads:
 		out.append(_keep(Vector2(float(d["start"]), float(d["end"])), "a doodad"))
 	return out
 
 
-static func _keep(span: Vector2, what: String, row_only: bool = false) -> Dictionary:
-	return {"span": span, "what": what, "row_only": row_only}
+static func _keep(span: Vector2, what: String, row_only: bool = false, lane: int = -1) -> Dictionary:
+	return {"span": span, "what": what, "row_only": row_only, "lane": lane}
 
 
 ## The level's spacing between two patterns at its difficulty at track distance `at` (seconds): its ordinary
@@ -377,67 +417,69 @@ static func _clear(gen: LevelGenerator, plan: Dictionary) -> int:
 	return out
 
 
-## The rows to widen, up to `want` (see the header), along the track, spaced from those already placed (`taken`).
-static func _choose(gen: LevelGenerator, t: WideGapTuning, rng: RandomNumberGenerator, candidates: Array[Dictionary],
-		want: int, taken: Array[Vector2]) -> Array[Dictionary]:
-	var chosen: Array[Dictionary] = []
-	var across: int = maxi(1, gen.layout.lane_count - 1)
-	if t.prefer_enforcer_chases:
-		for chase: Vector2 in _chases(gen):
-			if chosen.size() >= want:
-				break
-			var pool: Array[Dictionary] = []
-			for c: Dictionary in candidates:
-				var span: Vector2 = c["span"]
-				if span.x >= chase.x and span.y <= chase.y and _spaced(gen, t, span, chosen, taken):
-					pool.append(c)
-			if pool.is_empty():
-				continue
-			# A jump across most lanes first (the truck follows the runner into one), the earliest of those.
-			var best: Dictionary = pool[0]
-			for c: Dictionary in pool:
-				if int(c["lanes"]) >= across and int(best["lanes"]) < across:
-					best = c
-			chosen.append(best)
-	var from: float = gen.config.start_clear_distance
-	var to: float = gen.layout.length - gen.config.end_clear_distance
-	var left: int = want - chosen.size()
-	for k: int in left:
-		var target: float = lerpf(from, to, (float(k) + rng.randf_range(0.25, 0.75)) / float(left))
-		var best: Dictionary = {}
-		var best_cost: float = INF
-		for c: Dictionary in candidates:
-			var span: Vector2 = c["span"]
-			if chosen.has(c) or not _spaced(gen, t, span, chosen, taken):
-				continue
-			var cost: float = absf(span.x - target) / (SPREAD_SECONDS * gen.speed) - _across_bonus(int(c["lanes"]), across)
-			if cost < best_cost:
-				best_cost = cost
-				best = c
-		if best.is_empty():
-			break
-		chosen.append(best)
-	chosen.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return (a["span"] as Vector2).x < (b["span"] as Vector2).x)
-	return chosen
+## Makes the best of the level's own rows that fit (p.candidates) inside `window` (Vector2(from, to)) longer: the
+## nearest `target`, rows across more lanes first (_across_bonus), spacing_seconds from every wider gap. False if
+## none is there.
+static func _widen_one(p: _Pass, window: Vector2, target: float) -> bool:
+	var best: Dictionary = _best(p, p.candidates, window, target)
+	if best.is_empty():
+		return false
+	p.candidates.erase(best)
+	_widen(p.gen.layout, best["row"], best["span"])
+	p.rows.append(best["span"])
+	p.widened += 1
+	return true
 
 
-## How much a row of `lanes` holes is preferred, in SPREAD_SECONDS of distance from its spread target: a jump
-## across most lanes (`across` or more) most, two lanes or more somewhat, a single hole (which a runner usually
-## steps around) least.
+## Like _widen_one, for the level's own rows that only other holes and plain fences keep from fitting
+## (_clearing): those go first.
+static func _clear_one(p: _Pass, window: Vector2, target: float) -> bool:
+	var clearable: Array[Dictionary] = []
+	for row: Dictionary in GapDensity.rows(p.gen.layout):
+		if p.rows.has(Vector2(float(row["start"]), float(row["end"]))):
+			continue
+		var plan: Dictionary = _clearing(p.gen, p.t, row, p.length, p.keeps)
+		if not plan.is_empty():
+			clearable.append({"row": row, "span": plan["span"], "lanes": (row["lanes"] as Array).size(), "plan": plan})
+	var best: Dictionary = _best(p, clearable, window, target)
+	if best.is_empty():
+		return false
+	p.taken_out += _clear(p.gen, best["plan"])
+	_widen(p.gen.layout, best["row"], best["span"])
+	p.rows.append(best["span"])
+	p.cleared += 1
+	return true
+
+
+## The one of `candidates` ({span, lanes}) inside `window` and spaced from every wider gap (_spaced) that's
+## nearest `target`, in SPREAD_SECONDS, less its _across_bonus; {} if none is.
+static func _best(p: _Pass, candidates: Array[Dictionary], window: Vector2, target: float) -> Dictionary:
+	var best: Dictionary = {}
+	var best_cost: float = INF
+	for c: Dictionary in candidates:
+		var span: Vector2 = c["span"]
+		if span.x < window.x - EPSILON or span.y > window.y + EPSILON or not _spaced(p, span):
+			continue
+		var cost: float = absf(span.x - target) / (SPREAD_SECONDS * p.gen.speed) - _across_bonus(int(c["lanes"]), p.across)
+		if cost < best_cost:
+			best_cost = cost
+			best = c
+	return best
+
+
+## How much a row of `lanes` holes is preferred, in SPREAD_SECONDS of distance from its target: a jump across most
+## lanes (`across` or more) most, two lanes or more somewhat, a single hole (which a runner usually steps around)
+## least.
 static func _across_bonus(lanes: int, across: int) -> float:
 	if lanes >= across:
 		return 2.0
 	return 1.0 if lanes >= 2 else 0.0
 
 
-## True if `span` keeps spacing_seconds from every chosen wider gap's and every one already placed (`taken`).
-static func _spaced(gen: LevelGenerator, t: WideGapTuning, span: Vector2, chosen: Array[Dictionary],
-		taken: Array[Vector2]) -> bool:
-	var room: float = t.spacing_seconds * gen.speed
-	var others: Array[Vector2] = taken.duplicate()
-	for c: Dictionary in chosen:
-		others.append(c["span"])
-	for other: Vector2 in others:
+## True if `span` keeps spacing_seconds from every wider gap placed so far.
+static func _spaced(p: _Pass, span: Vector2) -> bool:
+	var room: float = p.t.spacing_seconds * p.gen.speed
+	for other: Vector2 in p.rows:
 		if span.x < other.y + room and span.y + room > other.x:
 			return false
 	return true
@@ -454,46 +496,68 @@ static func _chases(gen: LevelGenerator) -> Array[Vector2]:
 	return out
 
 
-## Adds up to `count` new rows of the wider length (every lane but one, the open lane seeded) where they fit
-## (fits), spread like the widened ones and spacing_seconds from every wider gap (`rows`, which grows). Returns
-## how many it added.
-static func _add_rows(gen: LevelGenerator, t: WideGapTuning, rng: RandomNumberGenerator, length: float,
-		keeps: Array[Dictionary], rows: Array[Vector2], count: int) -> int:
+## Adds a new row of the wider length inside `window` (Vector2(from, to)), nearest `target`, where it fits (fits)
+## and keeps spacing_seconds from every wider gap: in every lane but one, the lane a one-lane keep holds there
+## (keeps_of: a hover truck's), else the open lane seeded. False if none fits there.
+static func _add_one(p: _Pass, window: Vector2, target: float) -> bool:
+	var gen: LevelGenerator = p.gen
 	var lay: LevelLayout = gen.layout
 	var n: int = lay.lane_count
-	var from: float = gen.config.start_clear_distance
-	var to: float = lay.length - gen.config.end_clear_distance
+	var from: float = maxf(window.x, gen.config.start_clear_distance)
+	var to: float = minf(window.y, lay.length - gen.config.end_clear_distance)
 	# A conservative first sift (the widest margin anywhere), then fits() decides.
-	var widest: float = maxf(maxf(t.clear_before_seconds, t.clear_after_seconds),
+	var widest: float = maxf(maxf(p.t.clear_before_seconds, p.t.clear_after_seconds),
 		maxf(gen.config.spacing_seconds_easy, gen.config.spacing_seconds_hard)) * gen.speed
-	var added: int = 0
-	for k: int in count:
-		var busy: Array[Vector2] = []
-		for keep: Dictionary in keeps:
-			var v: Vector2 = keep["span"]
-			busy.append(v if bool(keep["row_only"]) else Vector2(v.x - widest, v.y + widest))
-		for g: Dictionary in lay.gaps:
-			busy.append(Vector2(float(g["start"]) - widest, float(g["end"]) + widest))
-		var room: float = t.spacing_seconds * gen.speed
-		for r: Vector2 in rows:
-			busy.append(Vector2(r.x - room - length, r.y + room))
-		var target: float = lerpf(from, to, (float(k) + rng.randf_range(0.25, 0.75)) / float(count))
-		var best := EMPTY
-		for free: Vector2 in LevelGenerator.free_stretches(busy, from, to):
-			if free.y - free.x < length:
-				continue
-			var start: float = clampf(target, free.x, free.y - length)
-			var span := Vector2(start, start + length)
-			if not fits(gen, t, span, {}, keeps):
-				continue
-			if best.y < best.x or absf(span.x - target) < absf(best.x - target):
-				best = span
-		if best.y < best.x:
-			break
-		var open: int = rng.randi_range(0, n - 1)
+	var busy: Array[Vector2] = []
+	for keep: Dictionary in p.keeps:
+		if int(keep["lane"]) >= 0:
+			continue  # One lane only: the new row leaves it open (below).
+		var v: Vector2 = keep["span"]
+		busy.append(v if bool(keep["row_only"]) else Vector2(v.x - widest, v.y + widest))
+	for g: Dictionary in lay.gaps:
+		busy.append(Vector2(float(g["start"]) - widest, float(g["end"]) + widest))
+	var room: float = p.t.spacing_seconds * gen.speed
+	for r: Vector2 in p.rows:
+		busy.append(Vector2(r.x - room - p.length, r.y + room))
+	var best := EMPTY
+	var best_kept: int = -1
+	for free: Vector2 in LevelGenerator.free_stretches(busy, from, to):
+		if free.y - free.x < p.length:
+			continue
+		var start: float = clampf(target, free.x, free.y - p.length)
+		var span := Vector2(start, start + p.length)
+		var kept: Array[int] = _kept_lanes(gen, p.t, span, p.keeps)
+		if kept.size() > 1:
+			continue
+		var lanes: Array[int] = []
 		for lane: int in n:
-			if lane != open or n == 1:
-				lay.gaps.append({"lane": lane, "start": best.x, "end": best.y})
-		rows.append(best)
-		added += 1
-	return added
+			if kept.is_empty() or lane != kept[0]:
+				lanes.append(lane)
+		if not fits(gen, p.t, span, {"start": span.x, "end": span.y, "lanes": lanes}, p.keeps):
+			continue
+		if best.y < best.x or absf(span.x - target) < absf(best.x - target):
+			best = span
+			best_kept = -1 if kept.is_empty() else kept[0]
+	if best.y < best.x:
+		return false
+	var open: int = p.rng.randi_range(0, n - 1)
+	if best_kept >= 0:
+		open = best_kept
+	for lane: int in n:
+		if lane != open or n == 1:
+			lay.gaps.append({"lane": lane, "start": best.x, "end": best.y})
+	p.rows.append(best)
+	p.added += 1
+	return true
+
+
+## The lanes `keeps`' one-lane keeps (keeps_of: `lane`) hold anywhere in the zone of a wider gap over `span`.
+static func _kept_lanes(gen: LevelGenerator, t: WideGapTuning, span: Vector2, keeps: Array[Dictionary]) -> Array[int]:
+	var zone: Vector2 = zone_of(gen, t, span)
+	var out: Array[int] = []
+	for k: Dictionary in keeps:
+		var lane: int = int(k["lane"])
+		var v: Vector2 = k["span"]
+		if lane >= 0 and v.x <= zone.y and v.y >= zone.x and not out.has(lane):
+			out.append(lane)
+	return out
