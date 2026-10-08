@@ -171,7 +171,7 @@ func charge_can_hurt() -> bool:
 ## immune_to_weapons enemy (a generator, GDD §9.1; the Bad Dream); a charge's contact hurts only what
 ## charge_can_hurt() allows (a charge_bait enemy despite its immunity, GDD §9.13; never a host).
 func take_damage(amount: float, source: StringName, splash: bool = false) -> void:
-	var immune: bool = not charge_can_hurt() if source == CHARGE_DAMAGE_CAUSE else immune_to_weapons
+	var immune: bool = (not charge_can_hurt()) if source == CHARGE_DAMAGE_CAUSE else immune_to_weapons
 	if not alive or immune:
 		return
 	health -= amount

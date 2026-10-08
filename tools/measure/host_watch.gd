@@ -40,7 +40,8 @@ var stomp_hosts: bool = false
 ## and when its chase ended (-1: still on when the run stopped), emp: an EMP dissolved it}.
 var chases: Array[Dictionary] = []
 
-## Bad Dream instance id -> its chase's index; host instance id -> its chase's index.
+## Bad Dream instance id -> its chase's index; the Bad Dreams still followed (by instance id); the hosts seen
+## defeated (host instance id -> its chase's index).
 var _by_dream: Dictionary = {}
 var _dreams: Dictionary = {}
 var _hosts: Dictionary = {}

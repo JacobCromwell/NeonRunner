@@ -3637,7 +3637,8 @@ the warning untouched and one who stays hit; and in the campaign's own builds, p
 planted Octodog encounter and the earliest Buzz Overdrive one at each lane count flattening their cyborgs.
 `test_host_releases` checks that weapons hit hosts (task H8; GDD §9.7) and what that does to the campaign:
 auto-fire targets a host and never the fence generator beside it, the heavy missile's splash on the host sparing
-the generator, and its Bad Dream bursting out; a weapon hurts a host, never a charge (`charge_can_hurt`); every
+the generator, and its Bad Dream bursting out; a splash that kills a host beside its target releasing the Bad
+Dream too (no host bonus); a weapon hurts a host, never a charge (`charge_can_hurt`); every
 host level's layout at 3, 5 and 6 lanes keeping what the generator keeps off chases out of where a chase may
 begin early (a host's walk plus the lurk's `hover_ahead`); and each host level played once (Dead Zone 1 at 5
 lanes, Dead Zone 2 at 3, Golden 1 at 6, Golden 2 at 3, Golden 3 at 5) by a god-mode runner with weapon tier 2,
@@ -3803,8 +3804,9 @@ charge or a drone's barrage open (`godot --headless --fixed-fps 60 -s res://tool
 [--levels=dead_zone/1] [--lanes=3,5,6] [--tiers=0,1,2,3,4] [--old-rule] [--out=build/measure/x.json]`; about ten
 minutes for every host level at 3, 5 and 6 lanes and the five loadouts; `--old-rule` makes hosts immune again).
 Measured on the levels' own seeds (October 8, 2026): tier 1's 42 m never killed a host before the runner
-reached it; tier 2 killed every host 1.4–1.5 s of run before its spot (about 37 m), tier 3 1.0–1.1 s, tier 4
-1.1–1.3 s. Released there, a chase began up to 37 m before its planned stretch, in 12 of the 45 runs with
+reached it; tier 2 killed every host 0.7–1.5 s of run before its spot (median 1.48 s, about 37 m), tier 3 all
+but one 0.6–1.1 s before (median 1.06 s), tier 4 every one 0.9–1.3 s before (median 1.23 s). Released there, a
+chase began up to 37 m before its planned stretch, in 12 of the 45 runs with
 tiers 2–4 inside a wall fence's drop window, with up to 10.17 s without a pad (the guarantee is 10 s). With
 the lurk (Enemies: a Bad Dream shot down ahead lurks until the runner is within `hover_ahead`), every chase
 begins at most 14.3 m before its planned stretch (a stomped host's: 9.3 m, as hosts walk toward the runner),

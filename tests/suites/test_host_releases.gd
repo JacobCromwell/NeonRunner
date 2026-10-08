@@ -2,8 +2,8 @@ extends TestSuite
 ## Weapons hit hosts (task H8; GDD §9.7, owner, October 8, 2026, replacing the September 26 rule that made hosts
 ## immune to all weapon damage), and what that does to the campaign's fairness:
 ## - auto-fire targets a host, never a fence generator beside it (GDD §9.1), and a heavy missile's splash on the
-##   host spares the generator; the shared damage rules let a weapon kill a host, never another enemy's charge
-##   (Enemy.charge_can_hurt, DESIGN-TBD);
+##   host spares the generator; a splash that kills a host releases its Bad Dream; the shared damage rules let a
+##   weapon kill a host, never another enemy's charge (Enemy.charge_can_hurt, DESIGN-TBD);
 ## - over the campaign's host levels (Dead Zone 1–2, Golden 1–3) a runner carrying the weapon (tier 2, whose
 ##   kills come furthest ahead of the hosts' spots: tools/measure/host_releases.gd) shoots hosts down ahead of
 ##   their spots, yet every chase begins where the generator planned it (a Bad Dream released ahead lurks until
@@ -21,8 +21,8 @@ const HostRules = preload("res://scripts/enemies/host_rules.gd")
 const HOST_LEVELS: Array[String] = ["dead_zone/1", "dead_zone/2", "golden/1", "golden/2", "golden/3"]
 ## Each host level played once, at a lane count of its own (all three lane counts are covered).
 const PLAYED: Array = [["dead_zone/1", 5], ["dead_zone/2", 3], ["golden/1", 6], ["golden/2", 3], ["golden/3", 5]]
-## The weapon tier played: tier 2 kills hosts furthest ahead of their spots (1.4–1.5 s of run measured, against
-## tier 3's 1.0–1.1 s and tier 4's 1.1–1.3 s; tier 1's 42 m never reached a host before the runner did).
+## The weapon tier played: tier 2 kills hosts furthest ahead of their spots (a median of 1.48 s of run measured,
+## against tier 3's 1.06 s and tier 4's 1.23 s; tier 1's 42 m never reached a host before the runner did).
 const TIER: int = 2
 
 var sim: RunSim
@@ -38,6 +38,7 @@ func run() -> void:
 	if ct == null:
 		return
 	await _test_targets_hosts_not_generators()
+	await _test_splash_kill()
 	await _test_charge_rules()
 	_test_layouts()
 	await _test_campaign()
@@ -75,6 +76,30 @@ func _test_targets_hosts_not_generators() -> void:
 	check(beside and generator.alive and is_equal_approx(generator.health, gen_health),
 		"the heavy missile's splash on the host, beside it, spares the generator")
 	check(w.director.count_alive(&"bad_dream") == 1, "the host's Bad Dream bursts out")
+	await sim.free_world(w)
+
+
+## A heavy missile's splash that kills a host beside its target releases the host's Bad Dream like a direct hit
+## would: a weapon kill, with the kill's score and no host bonus (CyborgTuning.weapon_host_bonus, DESIGN-TBD).
+func _test_splash_kill() -> void:
+	var w: RunWorld = sim.build_world(RunSim.layout(3, 400.0))
+	var target := w.director.spawn({"type": "cyborg", "at": 40.0, "lane": 1, "side": 0, "seed": 1,
+		"params": {"panic": false, "fires": false, "stand": true}}) as Cyborg
+	var host := w.director.spawn({"type": "cyborg", "at": 41.0, "lane": 2, "side": 0, "seed": 2,
+		"params": {"host": true, "fires": false, "stand": true, "health": 1.0}}) as Cyborg
+	var splashed: Array[bool] = [false]
+	w.projectiles.enemy_hit.connect(func(e: Enemy, _dmg: float, splash: bool) -> void:
+		if e == host and splash:
+			splashed[0] = true)
+	await tree.physics_frame
+	w.projectiles.fire_player(target.aim_point() + Vector3(0.0, 0.0, 6.0), Vector3(0.0, 0.0, -80.0), 1.0,
+		&"heavy_missile", null, 0.0, 5.0, 1.0)
+	await physics_frames(12)
+	check(splashed[0] and not host.alive and target.alive,
+		"a heavy missile's splash on the cyborg beside it kills the host (target %.1f health left)" % target.health)
+	check(w.director.count_alive(&"bad_dream") == 1, "and its Bad Dream bursts out")
+	check(int(w.score.bonuses.get(&"host", 0)) == ct.weapon_host_bonus and w.score.kills == 1,
+		"a weapon kill: the kill's score, no host bonus (%s)" % str(w.score.bonuses))
 	await sim.free_world(w)
 
 
