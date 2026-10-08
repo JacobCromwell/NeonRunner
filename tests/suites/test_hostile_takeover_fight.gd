@@ -590,6 +590,8 @@ func _test_tithe() -> void:
 		"a Tithe Collector comes in the runner's lane, a trail of %d credits laid ahead of it" % int(first.get("count", 0)))
 	check(int(held["most"]) >= t.tithe_value * (t.tithe_credits / 2), "and skims them (it holds %d of %d)" % [
 		held["most"], t.tithe_value * t.tithe_credits])
+	check(not collectors.is_empty() and is_equal_approx((collectors[0] as TitheCollector).approach_speed, t.tithe_approach_speed),
+		"it closes in at the Board's own speed (%.1f m/s), not the levels' longer stay (task H10)" % t.tithe_approach_speed)
 	print("  Hostile Takeover's Tithe Collector skims %d of its trail's %d credits" % [int(held["most"]) / t.tithe_value, t.tithe_credits])
 	await sim.free_world(world)
 
