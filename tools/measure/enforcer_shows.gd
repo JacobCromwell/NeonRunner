@@ -149,7 +149,9 @@ func _measure(step: CampaignStep, config: LevelConfig, layout: LevelLayout, tuni
 			if not trucks.has(id):
 				order.append(id)
 				trucks[id] = {"truck": truck, "at": float(truck.spawn.get("at", 0.0)), "reasons": {}, "frames": 0,
-					"window": truck.show_window() if truck.has_method(&"show_window") else Vector2(INF, -INF)}
+					"window": truck.show_window() if truck.has_method(&"show_window") else Vector2(INF, -INF),
+					"due_at": truck.show_at() if truck.has_method(&"show_at") else INF,
+					"slack": truck.tuning.show_window_slack_seconds * world.tuning.run_speed if truck.has_method(&"show_at") else 0.0}
 			var rec: Dictionary = trucks[id]
 			rec["history"] = truck.history.duplicate(true)
 			if truck.alive and (truck.state == EnforcerTruck.State.CHASING or truck.state == EnforcerTruck.State.ARRIVING) \
@@ -158,6 +160,20 @@ func _measure(step: CampaignStep, config: LevelConfig, layout: LevelLayout, tuni
 				var reasons: Dictionary = rec["reasons"]
 				reasons[why] = int(reasons.get(why, 0)) + 1
 				rec["frames"] = int(rec["frames"]) + 1
+				# While its planned showing is due (task C6c): why not, and what attacks then.
+				var due: float = truck.show_at() if truck.has_method(&"show_at") else INF
+				var d: float = world.player.distance
+				if truck.shows == 0 and due < INF and d >= due - 1.0 \
+						and d <= due + (truck.tuning.show_window_slack_seconds + 0.25) * world.tuning.run_speed:
+					var att: PackedStringArray = []
+					for o: Variant in world.director.active:
+						if is_instance_valid(o) and o != truck and (o as Enemy).alive and ((o as Enemy).is_major_attack_active()
+								or world.director.shots_on_their_way((o as Enemy).type_id) or world.director.is_waiting(o as Enemy)):
+							att.append(String((o as Enemy).type_id))
+					var key: String = why + ((" (" + ",".join(att) + ")") if not att.is_empty() else "") \
+						+ (" [lane %d, %s]" % [world.player.lane, Player.Surface.keys()[world.player.surface]])
+					var dues: Dictionary = rec.get_or_add("due", {})
+					dues[key] = int(dues.get(key, 0)) + 1
 	for i: int in order.size():
 		var rec: Dictionary = trucks[order[i]]
 		out.append(_chase(step, config, layout, keep, i, rec))
@@ -206,15 +222,16 @@ func _chase(step: CampaignStep, config: LevelConfig, layout: LevelLayout, keep: 
 				starts.append(pending)
 				alongside_after.append(d)
 	var window: Vector2 = rec["window"]
+	var due: float = float(rec.get("due_at", INF))
 	var in_window: bool = false
 	for s: float in starts:
-		in_window = in_window or (s >= window.x - 0.5 and s <= window.y)
+		in_window = in_window or (due < INF and s >= due - 1.0 and s <= due + float(rec.get("slack", 0.0)) + 5.0)
 	return {"level": String(step.id), "lanes": layout.lane_count, "seed": config.level_seed, "runner": keep,
 		"truck": index, "at": rec["at"], "arrived": not is_nan(arrive), "shows": shows,
 		"arrival_show": not starts.is_empty() and absf(starts[0] - arrive) < 0.5,
 		"starts": starts, "in_window": in_window,
 		"window": [window.x, window.y] if window.y >= window.x else [],
-		"reasons": rec["reasons"], "frames": rec["frames"], "history": history}
+		"reasons": rec["reasons"], "frames": rec["frames"], "due": rec.get("due", {}), "history": history}
 
 
 func _line(c: Dictionary) -> String:
@@ -229,6 +246,11 @@ func _line(c: Dictionary) -> String:
 	var why: String = ""
 	if int(c["shows"]) == 0:
 		why = "  why not: " + _reasons(c)
+	if not (c["window"] as Array).is_empty() and not bool(c["in_window"]) and not (c.get("due", {}) as Dictionary).is_empty():
+		var due: Dictionary = c["due"]
+		var keys: Array = due.keys()
+		keys.sort_custom(func(a: Variant, b: Variant) -> bool: return int(due[a]) > int(due[b]))
+		why += "  when due: " + ", ".join(keys.slice(0, 3).map(func(k: Variant) -> String: return "%s x%d" % [k, due[k]]))
 	return "%-12s %d lanes seed %4d runner %d truck %d at %6.0f: %d showing%s%s [%s] %s%s" % [c["level"], c["lanes"],
 		c["seed"], c["runner"], c["truck"], c["at"], c["shows"], "" if int(c["shows"]) == 1 else "s",
 		" (+arrival)" if bool(c["arrival_show"]) else "", ", ".join(starts), window, why]

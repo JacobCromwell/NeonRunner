@@ -359,8 +359,11 @@ class ShowPlanner:
 	## enemy's in its lane): the room's lanes keep the truck and the runner's way off them (floor enemies), and its
 	## shadow off where they stand, so they may stand in a window.
 	const PASSIVE_TYPES: PackedStringArray = ["generator", "screech"]
-	## Enemies a window may take out (plain ones: never a host, never the level's first of its kind).
+	## Enemies a window may take out (plain ones: never a host, nor the first of a kind the level introduces, and
+	## never the level's last of its kind): ones that shoot, where they would (busy), and passive floor ones
+	## where they stand in its way (PASSIVE_REMOVABLE).
 	const REMOVABLE_TYPES: PackedStringArray = ["cyborg", "window_cyborg"]
+	const PASSIVE_REMOVABLE: PackedStringArray = ["screech"]
 	## Metres of track around a window a local room holds (_local_room): what its checks reach and more.
 	const LOCAL_MARGIN: float = 60.0
 	## Metres behind the runner as a showing begins from which an enemy about counts (the truck's in-play checks).
@@ -468,9 +471,11 @@ class ShowPlanner:
 			maxf((t.show_margin_seconds + EnforcerTruckRoom.DODGE_ROOM_SECONDS) * v, t.show_shadow_reach))
 		if room.quiet_near(d, (to - d) / v, v):
 			return _none(counts, "a hover truck or a Gilded Sentinel")
-		# No attack and no enemy about near the runner until it has stayed alongside.
-		var calm_to: float = maxf(d + (t.show_close_seconds(gap) + hold) * v,
-			d2 + (t.show_close_seconds(gap2) + hold2) * v)
+		# No attack and no enemy about near the runner until it has stayed alongside: its whole stay (`whole`), or its
+		# shortest (an attack after that only has it give way sooner, once the runner has seen it).
+		var stay: float = hold if whole else t.show_min_seconds
+		var calm_to: float = maxf(d + (t.show_close_seconds(gap) + stay) * v,
+			d2 + (t.show_close_seconds(gap2) + minf(stay, hold2)) * v)
 		var blockers: Array[Dictionary] = []
 		var other: String = _busy_in(d, Vector2(d - BEHIND, calm_to), Vector2(from, to), blockers)
 		if other != "":
@@ -482,7 +487,10 @@ class ShowPlanner:
 			"gaps": [], "fences": [], "enemies": []}
 		var gone: Array[Dictionary] = []
 		for b: Dictionary in blockers:
-			gone.append(b["entry"])
+			if not _in(gone, b["entry"]):
+				gone.append(b["entry"])
+		if not _leaves_one_each(gone):
+			return _none(counts, String(blockers[0]["kind"]))
 		if not clearing:
 			var lane: int = _lanes_fail(room, starts, seed)
 			return w if lane < 0 else _none(counts, "no lane beside a runner in lane %d" % lane)
@@ -501,6 +509,14 @@ class ShowPlanner:
 					fixed = true
 				else:
 					pieces.append(f)
+		# The passive floor enemies that stand where it reads the floor or could hide one (a Sewer Screech's manhole).
+		for e: Dictionary in gen.layout.enemies:
+			if not PASSIVE_REMOVABLE.has(String(e.get("type", ""))) or _in(gone, e) \
+					or (gen.feature_start(String(e["type"])) > 0.0 and is_same(_first_of(String(e["type"])), e)):
+				continue
+			var span: Vector2 = LevelGenerator.enemy_floor_span(e, gen.pace)
+			if span.y >= reads.x - EnforcerTruckRoom.ENEMY_ROOM and span.x <= to + EnforcerTruckRoom.ENEMY_ROOM:
+				pieces.append(e)
 		var lo: float = from - LOCAL_MARGIN
 		var hi: float = to + LOCAL_MARGIN
 		var skip: Array[Dictionary] = gone.duplicate()
@@ -518,9 +534,15 @@ class ShowPlanner:
 			trial_skip.append_array(trial)
 			if _lanes_fail(_local_room(lo, hi, trial_skip), starts, seed) < 0:
 				pieces = trial
+		var enemies: Array[Dictionary] = gone.duplicate()
 		for p: Dictionary in pieces:
-			(w["gaps"] if p.has("start") else w["fences"]).append(p)
-		w["enemies"] = gone
+			if p.has("type"):
+				enemies.append(p)
+			else:
+				(w["gaps"] if p.has("start") else w["fences"]).append(p)
+		if not _leaves_one_each(enemies):
+			return _none(counts, "no lane beside a runner: the last of a kind in the way")
+		w["enemies"] = enemies
 		return w
 
 
@@ -587,6 +609,29 @@ class ShowPlanner:
 		return EnforcerTruckRoom.build(lay, geo, gen.tuning, t, gen.speed)
 
 
+	## The layout's first enemy of `type` along the track ({} if none).
+	func _first_of(type: String) -> Dictionary:
+		var out: Dictionary = {}
+		for e: Dictionary in gen.layout.enemies:
+			if String(e.get("type", "")) == type and (out.is_empty() or float(e["at"]) < float(out["at"])):
+				out = e
+		return out
+
+
+	## True if the layout keeps at least one enemy of each type in `gone` without them.
+	func _leaves_one_each(gone: Array[Dictionary]) -> bool:
+		var left: Dictionary = {}
+		for e: Dictionary in gen.layout.enemies:
+			var type: String = String(e.get("type", ""))
+			left[type] = int(left.get(type, 0)) + 1
+		for e: Dictionary in gone:
+			var type: String = String(e.get("type", ""))
+			left[type] = int(left.get(type, 0)) - 1
+			if int(left[type]) < 1:
+				return false
+		return true
+
+
 	static func _in(list: Array[Dictionary], item: Dictionary) -> bool:
 		for p: Dictionary in list:
 			if is_same(p, item):
@@ -600,9 +645,10 @@ class ShowPlanner:
 
 
 	## What keeps a showing beginning at `d` from its window ("" if nothing), with the enemies it could take out
-	## added to `removable`: another enemy's attack or stay near the runner reaching `calm` (Vector2), or a floor
-	## cut's window or a hover truck's or Gilded Sentinel's stay reaching `kept` (the whole window); but for a bait's
-	## whose turn comes after the showing begins.
+	## added to `removable`: another enemy's attack or stay near the runner reaching `calm` (Vector2), a big attack
+	## that waits for its turn (a Resonator's pulse) where the showing begins (show_window_slack_seconds late at
+	## most), or a floor cut's attack or a hover truck's or Gilded Sentinel's stay reaching `kept` (the whole
+	## window); but for a bait's whose turn comes after the showing begins.
 	func _busy_in(d: float, calm: Vector2, kept: Vector2, removable: Array[Dictionary]) -> String:
 		var lo: float = minf(calm.x, kept.x)
 		var hi: float = maxf(calm.y, kept.y)
@@ -612,6 +658,8 @@ class ShowPlanner:
 			i += 1
 			var span: Vector2 = b["span"]
 			var reach: Vector2 = kept if bool(b["whole"]) else calm
+			if bool(b.get("waits", false)):
+				reach = Vector2(calm.x, d + (t.show_window_slack_seconds + 0.5) * gen.speed)
 			if span.y < reach.x or span.x > reach.y:
 				continue
 			var turn: float = float(b["turn"])
@@ -661,12 +709,24 @@ class ShowPlanner:
 					if gt != null:
 						powered.append_array(FenceGenerator.fences_in_reach(gen.layout, geo, float(e["at"]),
 							int(e.get("lane", 0)), gt.emp_radius))
+				"resonator":
+					# Its pulses, one by one, and only where a showing begins (`waits`): between them it paces the runner
+					# hover_ahead in front, beyond the reach of what the truck could hide, and a pulse due during a showing
+					# waits for its turn (the director's turn_wait_max at most, as for a volley).
+					var pulses: Array[Vector2] = LevelGenerator.DangerDensity.resonator_pulse_windows(gen, e)
+					if not pulses.is_empty():
+						for w: Vector2 in pulses:
+							var b: Dictionary = _busy(w, INF, false, "a Resonator's pulse", e, false)
+							b["waits"] = true
+							out.append(b)
+						continue
 			if PASSIVE_TYPES.has(type):
 				continue
 			var whole: bool = StringName(type) in EnforcerTruckRoom.NO_SHOW_TYPES
 			var params: Dictionary = e.get("params", {})
+			# Never a host, nor the first of a kind the level introduces (LevelConfig.feature_starts).
 			var removable: bool = REMOVABLE_TYPES.has(type) and not bool(params.get("host", false)) \
-				and not is_same(firsts.get(type), e)
+				and not (gen.feature_start(type) > 0.0 and is_same(firsts.get(type), e))
 			var et := EnemyDirector.tuning_for(type) as EnemyTuning
 			if et is ThiefTuning and et.get(&"approach_speed") != null:
 				# A thief comes in from start_ahead ahead of the runner as they reach spawn_lead before its spot, and
