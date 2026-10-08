@@ -47,7 +47,8 @@ func _mesh_for(size: Vector3, size_class: StringName, side: int, look_seed: int)
 				_kiosk(s, size, look_seed)
 		_:
 			_plinth(s, size, look_seed)
-	var mesh: ArrayMesh = batch.to_mesh()
+	# Its main colours, which its pieces fly off in when the dash smashes it (ZoneSkin.doodad_debris_colors).
+	var mesh: ArrayMesh = ZoneSkin.tag_debris_colors(batch.to_mesh(), batch)
 	_meshes[id] = mesh
 	return mesh
 
