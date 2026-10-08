@@ -340,10 +340,10 @@ func _test_near() -> void:
 ## place one move away that none is aimed at is a way out.
 func _test_aims_at() -> void:
 	var geo := TrackGeometry.new(3, tuning)
-	var floor_line := func(lane: int) -> Dictionary: return _place(Player.Surface.FLOOR, geo.lane_x(lane))
+	# A lane on the floor, as a burst's line or as a place.
 	var floor_at := func(lane: int) -> Dictionary: return _place(Player.Surface.FLOOR, geo.lane_x(lane))
-	check(CyborgGun.aims_at(floor_line.call(1), floor_at.call(1), geo), "a burst is aimed at the lane it was locked on")
-	check(not CyborgGun.aims_at(floor_line.call(1), floor_at.call(0), geo), "and not at the lane beside it")
+	check(CyborgGun.aims_at(floor_at.call(1), floor_at.call(1), geo), "a burst is aimed at the lane it was locked on")
+	check(not CyborgGun.aims_at(floor_at.call(1), floor_at.call(0), geo), "and not at the lane beside it")
 	var between: Dictionary = _place(Player.Surface.FLOOR, (geo.lane_x(0) + geo.lane_x(1)) * 0.5)
 	check(CyborgGun.aims_at(between, floor_at.call(0), geo) and CyborgGun.aims_at(between, floor_at.call(1), geo),
 		"a line between two lanes counts against both")
@@ -357,7 +357,7 @@ func _test_aims_at() -> void:
 		tuning.hurtbox_size.x * 0.5 + radius])
 	var at_wall: Dictionary = _place(Player.Surface.WALL, wall_x, 1)
 	check(not CyborgGun.aims_at(at_wall, floor_at.call(2), geo), "so a burst at a wall runner isn't aimed at the lane below")
-	check(not CyborgGun.aims_at(floor_line.call(2), _place(Player.Surface.WALL, wall_x, 1), geo),
+	check(not CyborgGun.aims_at(floor_at.call(2), _place(Player.Surface.WALL, wall_x, 1), geo),
 		"nor a burst at the outer lane at the runner on the wall above it")
 	check(CyborgGun.aims_at(at_wall, _place(Player.Surface.WALL, wall_x, 1), geo)
 		and not CyborgGun.aims_at(at_wall, _place(Player.Surface.WALL, -wall_x, -1), geo),
@@ -367,7 +367,7 @@ func _test_aims_at() -> void:
 	var one: Array[Dictionary] = [floor_at.call(1)]
 	var both: Array[Dictionary] = [floor_at.call(0), floor_at.call(2)]
 	var none: Array[Dictionary] = []
-	var at_one: Array[Dictionary] = [floor_line.call(1)]
+	var at_one: Array[Dictionary] = [floor_at.call(1)]
 	var at_wall_only: Array[Dictionary] = [at_wall]
 	check(not CyborgGun.way_out(one, at_one, geo), "the edge lane of three: its only neighbour aimed at, no way out")
 	check(CyborgGun.way_out(both, at_one, geo), "aimed at the middle lane: either side is a way out")
