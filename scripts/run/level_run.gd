@@ -125,8 +125,9 @@ func _build() -> void:
 		sun.light_energy = 0.7
 		sun.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY
 		add_child(sun)
-	# The zone's look with the level's darkness (GDD §5, The Hush): only the scenery darkens.
-	_env.environment = world.skin.level_environment(context.config.darkness)
+	# The zone's look with the level's own sky, if it has one, and its darkness (GDD §5, The Hush): only
+	# the scenery darkens.
+	_env.environment = world.skin.level_environment(context.config.darkness, context.config.sky)
 	_lighting_run = self
 	if camera == null:
 		camera = RunCamera.new()
