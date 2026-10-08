@@ -23,17 +23,22 @@ const GRAVITY: float = 22.0
 ## A piece landing on the floor keeps this much of its speed (bouncing up, skidding along).
 const BOUNCE: float = 0.3
 const SKID: float = 0.55
+## The pieces' colour when the broken thing names none (sRGB, lit).
+const PLAIN_COLOR := Color(0.4, 0.4, 0.42)
 
 ## The pieces are still flying.
 var active: bool = false
 ## The pieces of the burst playing now (or last played).
 var count: int = 0
 ## Each piece's colour as given to the MultiMesh (sRGB, alpha 0: lit), for tests and tools: a headless
-## run's renderer keeps no instance colours to read back.
+## run's renderer keeps no instance colours to read back. The first `count` are this burst's.
 var piece_colors := PackedColorArray()
 
 var _t: float = 0.0
 var _life: float = 0.85
+## Every per-piece list is sized for MAX_PIECES once (_init) and the random stream re-seeded per burst,
+## so a burst allocates nothing.
+var _rng := RandomNumberGenerator.new()
 var _pos := PackedVector3Array()
 var _vel := PackedVector3Array()
 var _size := PackedVector3Array()
@@ -57,6 +62,14 @@ func _init() -> void:
 	multimesh = mm
 	visible = false
 	set_process(false)
+	_pos.resize(MAX_PIECES)
+	_vel.resize(MAX_PIECES)
+	_size.resize(MAX_PIECES)
+	_axis.resize(MAX_PIECES)
+	_spin.resize(MAX_PIECES)
+	_ends.resize(MAX_PIECES)
+	_basis.resize(MAX_PIECES)
+	piece_colors.resize(MAX_PIECES)
 
 
 ## The pieces' mesh: the kit's unit box, white and lit (COLOR.a 0: no glow), plain (pattern 0); each
@@ -73,21 +86,13 @@ static func piece_mesh() -> ArrayMesh:
 ## the burst lasts (s). `look_seed` varies it (the same seed, the same burst).
 func play(box: AABB, colors: PackedColorArray, push: Vector3, carry: float, spread: float, lift: float, piece: float,
 		life: float, look_seed: int = 0) -> void:
-	var rng := RandomNumberGenerator.new()
+	# Seeding resets the stream: the same seed, the same burst, as from a new generator.
+	var rng: RandomNumberGenerator = _rng
 	rng.seed = look_seed
-	var palette: PackedColorArray = colors if not colors.is_empty() else PackedColorArray([Color(0.4, 0.4, 0.42)])
 	var volume: float = box.size.x * box.size.y * box.size.z
 	count = clampi(roundi(volume * PIECES_PER_M3), MIN_PIECES, MAX_PIECES)
 	_life = maxf(life, 0.1)
 	_t = 0.0
-	_pos.resize(count)
-	_vel.resize(count)
-	_size.resize(count)
-	_axis.resize(count)
-	_spin.resize(count)
-	_ends.resize(count)
-	_basis.resize(count)
-	piece_colors.resize(count)
 	var centre: Vector3 = box.get_center()
 	var big: float = minf(piece, minf(box.size.x, box.size.y) * 0.45)
 	for i: int in count:
@@ -107,7 +112,7 @@ func play(box: AABB, colors: PackedColorArray, push: Vector3, carry: float, spre
 		_spin[i] = rng.randf_range(6.0, 16.0) * (1.0 if large else 1.5)
 		_ends[i] = _life * rng.randf_range(0.7, 1.0)
 		_basis[i] = Basis(_axis[i], rng.randf_range(0.0, TAU))
-		var c: Color = palette[i % palette.size()]
+		var c: Color = colors[i % colors.size()] if not colors.is_empty() else PLAIN_COLOR
 		var shade: float = rng.randf_range(0.85, 1.08)
 		piece_colors[i] = Color(c.r * shade, c.g * shade, c.b * shade, 0.0)
 		multimesh.set_instance_color(i, piece_colors[i])

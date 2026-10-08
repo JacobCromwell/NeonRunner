@@ -23,9 +23,11 @@ extends TestSuite
 ## - The dash smashes a doodad (GDD §3, owner, October 8, 2026; task H5), on real physics: head-on at 3, 5
 ##   and 6 lanes in every inner lane, both sides, every size (once, no push, the lane kept, no slowdown,
 ##   broken before the body touches it); from the side (a switch into it while dashing goes through, no
-##   clank); a dash that ends short pushes as usual (swept over where the dash starts, at two speeds:
-##   always a push or a smash, a smash only when the dash lasted until the body got there, never a sink,
-##   the same every attempt); in a full world its body, lane blocker and top are gone, the crunch plays,
+##   clank; pushed first, then a dash steering back into it smashes it, never sinking in, and a dash during
+##   its push leaves it standing); a dash that ends short pushes as usual (swept over where the dash starts,
+##   at two speeds: always a push or a smash, a smash only when the dash lasted until the body got there,
+##   never a sink, the same every attempt); the dash's reach counts a boost fading; in a full world its
+##   body, lane blocker and top are gone, the crunch plays,
 ##   its pieces fly in its look's own colours and never glow, a light shake that Screen shake scales
 ##   away, no damage, no score, and other solid sides still block a dash; it stays smashed through a
 ##   revive and a retry (LevelRun) rebuilds it whole, the same level as before; every skin names its
@@ -86,6 +88,7 @@ func run() -> void:
 	await _test_dash_head_on()
 	await _test_dash_sideways()
 	await _test_dash_ends_short()
+	await _test_dash_reach()
 	await _test_dash_world()
 	await _test_dash_retry()
 	_test_debris_colors()
@@ -890,8 +893,48 @@ func _test_dash_sideways() -> void:
 					% [r["lane"], r["smashes"], events, tag])
 				check(_sink(_standing(r["trace"]), d, geo) <= 0.0001, "the body never sinks into it while it stands " + tag)
 				runs += 1
+	# Pushed first, then a dash and a move back into it while its push still holds it off (dash 0.1–0.5 m and
+	# the move 0.2–1.0 m after the push, either first): the dash takes it, so it breaks where the body meets
+	# it and the body never sinks into it. A move made before the dash, once its side is beside the runner,
+	# is blocked as any runner's is (the clank and the bump; the runner stays in the push's lane, and the
+	# dash smashes it if the bump touches it). A dash during the push with no move back leaves it standing:
+	# the push completes (docs/questions/h5.md 7).
+	var geo3 := TrackGeometry.new(3, tuning)
+	var d3: Dictionary = _doodad(1, 40.0, &"medium", 1)
+	var calib: Dictionary = await sim.run(_one_doodad(3, d3), 1, 3.0, [])
+	var push_at: float = -1.0
+	for s: Dictionary in calib["trace"]:
+		if int(s["lane"]) == 2:
+			push_at = float(s["d"])
+			break
+	check(push_at > 0.0 and int(calib["pushes"]) == 1, "the doodad pushes a runner who doesn't dash (at %.2f m)" % push_at)
+	var back_in: int = 0
+	for dash_after: float in [0.1, 0.3, 0.5]:
+		for back_after: float in [0.2, 0.6, 1.0]:
+			var tag: String = "(pushed at %.2f m, the dash %.1f m on, the move back %.1f m on)" % [push_at, dash_after, back_after]
+			var actions: Array = [[push_at + dash_after, &"dash"], [push_at + back_after, &"move_left"]]
+			actions.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+			var r: Dictionary = await sim.run(_one_doodad(3, d3), 1, 3.0, actions)
+			if (r["events"] as Array).has(&"lane_blocked"):
+				check(dash_after > back_after and r["alive"] and int(r["pushes"]) == 1 and int(r["lane"]) == 2,
+					"a move back before the dash, beside it, is blocked: the runner stays in the push's lane (%d pushed, lane %d) %s"
+					% [r["pushes"], r["lane"], tag])
+			else:
+				back_in += 1
+				check(r["alive"] and int(r["pushes"]) == 1 and int(r["smashes"]) == 1 and int(r["lane"]) == 1,
+					"pushed, then a dash steering back into it smashes it, back in its lane (%d pushed, %d smashed, lane %d) %s"
+					% [r["pushes"], r["smashes"], r["lane"], tag])
+			var sink: float = _sink(_standing(r["trace"]), d3, geo3)
+			check(sink <= SINK_TOLERANCE, "the body never sinks into it while it stands (%.3f m) %s" % [sink, tag])
+			runs += 1
+	check(back_in >= 7, "every dash made before the move back steers back into it (%d of 9)" % back_in)
+	var held: Dictionary = await sim.run(_one_doodad(3, d3), 1, 3.0, [[push_at + 0.1, &"dash"]])
+	check(held["alive"] and int(held["pushes"]) == 1 and int(held["smashes"]) == 0 and int(held["lane"]) == 2
+		and _sink(held["trace"], d3, geo3) <= SINK_TOLERANCE,
+		"a dash started during its push leaves it standing: the push completes (lane %d, %d smashed)" % [held["lane"], held["smashes"]])
+	runs += 1
 	sim.trace = false
-	check(runs == 16, "dashing switches into doodads' sides: %d" % runs)
+	check(runs == 26, "dashing switches into doodads' sides: %d" % runs)
 
 
 ## A dash that ends short of a doodad pushes as usual (GDD §3's push, at its usual moment), and one that
@@ -943,6 +986,34 @@ func _test_dash_ends_short() -> void:
 		check(a["trace"] == b["trace"] and a["events"] == b["events"] and int(a["smashes"]) + int(a["pushes"]) == 1,
 			"the same every attempt, at the edge of the dash's reach (%.0f m/s)" % t.run_speed)
 	sim.trace = false
+
+
+## The dash's reach as a claim counts it (Player._dash_reach: whether the dash lasts until the body gets to a
+## doodad) is the track the dash really covers before it ends, with a speed pad's boost fading meanwhile at
+## the fastest fade F6 allows (20 m/s a second), where counting the boost as if it lasted would overshoot by
+## more than a metre.
+func _test_dash_reach() -> void:
+	var t: MovementTuning = tuning.duplicate() as MovementTuning
+	t.boost_decay_per_second = 20.0
+	var layout := RunSim.layout(3, 300.0)
+	layout.speed_pads.append({"lane": 1, "at": 20.0})
+	var w: RunWorld = sim.build_world(layout, null, t)
+	var p: Player = w.player
+	await _run_until(w, 3.0, func() -> bool: return p.distance >= 21.0)
+	p.start_dash(powerups.dash_duration, powerups.dash_speed_bonus)
+	await tree.physics_frame
+	var boost: float = p._boost
+	var from: float = p.distance
+	var reach: float = float(p.call(&"_dash_reach"))
+	var lasting: float = maxf(p.speed, 0.0) * p._dash_left
+	# The dash ends within a frame: a frame's run at the dash's speed either way.
+	var frame: float = maxf(p.speed, 0.0) / Engine.physics_ticks_per_second
+	await _run_until(w, 1.0, func() -> bool: return not p.dashing)
+	var covered: float = p.distance - from
+	check(boost > 3.0 and absf(covered - reach) <= frame,
+		"the dash's reach counts the boost fading: %.2f m counted, %.2f m covered (a %.1f m/s boost)" % [reach, covered, boost])
+	check(lasting - covered > 2.0 * frame, "where a lasting boost would count %.2f m" % lasting)
+	await sim.free_world(w)
 
 
 ## Every DashBreakable built under `node` (the track's doodads).

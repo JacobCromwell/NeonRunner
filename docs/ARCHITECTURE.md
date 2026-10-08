@@ -498,11 +498,14 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   `DashBreakable` (`scripts/world/dash_breakable.gd`: an Area3D carrying its layout entry, its box and the
   colours its pieces fly off in). In `Player._check_doodads`, a doodad that comes within the push's reach
   while the player is dashing is *claimed* if the dash lasts until the body gets there (`_dash_claims`: its
-  front within the dash's speed times the time the dash has left); a claimed one breaks when the body meets
-  it, a frame before they touch (`_smash`: head-on, at a front corner or from the side), and a dash that
-  ends short of one leaves it unclaimed, so it pushes as usual, at the push's usual moment. A claim outlives
-  the dash by `SMASH_CLAIM_GRACE` (0.1 s), since the contact can come a frame or two after the dash's last
-  one. A lane switch into a doodad's side while dashing isn't blocked (`_lane_blocked(target,
+  front within `_dash_reach()`, the track the dash still covers, a ramp's or speed pad's boost counted as it
+  fades, `MovementTuning.boost_distance`); a claimed one breaks when the body meets it, a frame before they
+  touch (`_smash`: head-on, at a front corner or from the side), and a dash that ends short of one leaves it
+  unclaimed, so it pushes as usual, at the push's usual moment. A claim outlives the dash by
+  `SMASH_CLAIM_GRACE` (0.1 s), since the contact can come a frame or two after the dash's last one. The
+  doodad pushing the player is left alone while its push carries them, so a dash started during a push
+  doesn't smash that one: the push completes; once a move cuts the push short, a dash that steers back into
+  it claims it and breaks it where the body meets it. A lane switch into a doodad's side while dashing isn't blocked (`_lane_blocked(target,
   dash_through)` claims it: "dashing into one"), and the body breaks it where it meets it; any other solid
   side (a hover truck's, a boss's prop) still bumps a dashing player. `DashBreakable.smash()` switches off its
   collision (its body, its lane blocker and its standable top) and hides its look, and marks its layout
@@ -3656,9 +3659,11 @@ a few of every campaign level's doodads run into at the level's speed and onto s
 and a hover truck holding their fire while a doodad is in reach. Then the dash smashing them (task H5),
 on real physics: head-on at 3, 5 and 6 lanes in every inner lane, both sides, every size (once, no push,
 the lane kept, no slowdown, broken before the body touches it); a dashing switch into a doodad's side
-(through, no clank); a dash that ends short, swept over where it starts at 18 and 25 m/s (always a push
-or a smash, a smash only when the dash lasted until the body got there, never a sink, the same every
-attempt); a full world in the City's look (its body, lane blocker and top gone, the crunch, its pieces in
+(through, no clank; pushed first, then a dash steering back into it, smashed and never sunk into; a dash
+during its push leaving it standing); a dash that ends short, swept over where it starts at 18 and 25 m/s
+(always a push or a smash, a smash only when the dash lasted until the body got there, never a sink, the
+same every attempt); the dash's reach with a speed pad's boost fading at F6's fastest; a full world in the
+City's look (its body, lane blocker and top gone, the crunch, its pieces in
 its look's colours, never glowing, a light shake Screen shake scales away, no damage, no score, other solid
 sides still blocking a dash); a LevelRun of City 2 (it stays smashed through a death and a revive, and a
 retry builds the same level with it whole, pushing a runner who doesn't dash); every skin's pieces'

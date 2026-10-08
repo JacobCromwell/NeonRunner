@@ -56,8 +56,9 @@ const PUSH_HEAD_ON_SHARE: float = 0.15
 const DOODAD_FEET_CLEARANCE: float = 0.05
 ## A doodad the dash has claimed (_smash_claims: the dash reaches its front before it ends, or a switch
 ## into its side began while dashing) still breaks on contact this long after the dash ends (seconds):
-## the contact may come a frame or two after the dash's last one (frame steps, a fading speed boost).
-## A dash that ends short of a doodad it never claimed pushes as usual. DESIGN-TBD (docs/questions/h5.md 3).
+## the contact may come a frame or two after the dash's last one (frame steps; the claim already counts a
+## ramp's or speed pad's boost fading, _dash_reach). A dash that ends short of a doodad it never claimed
+## pushes as usual. DESIGN-TBD (docs/questions/h5.md 3).
 const SMASH_CLAIM_GRACE: float = 0.1
 
 var tuning: MovementTuning
@@ -968,10 +969,16 @@ func _check_doodads(motion: float) -> void:
 		var area := hit["collider"] as Area3D
 		if area == null or not area.has_meta(&"doodad"):
 			continue
-		if area.get_instance_id() == _push_doodad and (_pushing or _push_ignore_left > 0.0):
-			continue
 		var d: Dictionary = area.get_meta(&"doodad")
 		var gap: float = float(d["start"]) - front
+		# The doodad pushing the player is left alone while its push carries them (it pushes once). A dash
+		# started during the push doesn't smash it: the push completes (DESIGN-TBD, docs/questions/h5.md 7).
+		# Once a move has cut the push short, a dash that steers back into it takes it: claimed (a dashing
+		# switch into its side, _lane_blocked) or the dash reaches it (_dash_claims), so it breaks on contact
+		# instead of the body sinking into it while it's still left alone.
+		if area.get_instance_id() == _push_doodad and (_pushing or _push_ignore_left > 0.0) \
+				and not _smash_claims.has(area.get_instance_id()) and (_pushing or not _dash_claims(area, gap)):
+			continue
 		if _dash_claims(area, gap):
 			# The body meets it by the next frame (or is already beside it): it breaks now, before they touch.
 			if gap <= motion:
@@ -993,18 +1000,25 @@ func _check_doodads(motion: float) -> void:
 ## True if the dash takes doodad `area` (GDD §3: dashing into one smashes it), whose front is `gap` metres
 ## ahead of the body's (below 0 once the body is level with it): claimed already (a switch into its side
 ## while dashing, or an earlier frame of this approach), or the dash lasts until the body gets there (it
-## covers `gap` at its speed in the time it has left), which claims it now. Only a DashBreakable (what
-## the track builds) breaks.
+## covers `gap` in the time it has left, _dash_reach), which claims it now. Only a DashBreakable (what the
+## track builds) breaks.
 func _dash_claims(area: Area3D, gap: float) -> bool:
 	if not area is DashBreakable:
 		return false
 	var id: int = area.get_instance_id()
 	if _smash_claims.has(id):
 		return true
-	if not dashing or maxf(gap, 0.0) > maxf(speed, 0.0) * _dash_left:
+	if not dashing or maxf(gap, 0.0) > _dash_reach():
 		return false
 	_smash_claims[id] = true
 	return true
+
+
+## How far along the track the player runs in the time the dash has left (metres): the speed without
+## the ramp's or speed pad's boost over that time, plus what the boost adds while it fades
+## (MovementTuning.boost_distance, as it fades each frame: boost_left).
+func _dash_reach() -> float:
+	return maxf(speed - _boost, 0.0) * _dash_left + tuning.boost_distance(_boost, _dash_left)
 
 
 ## The dash breaks doodad `b` apart (GDD §3, owner, October 8, 2026; DashBreakable.smash: its body, lane
