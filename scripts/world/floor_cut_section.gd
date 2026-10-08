@@ -10,9 +10,8 @@ extends RefCounted
 ## floor_segment, in short slices it hides and shortens as the front passes), so the skin draws only
 ## the hole, in four kinds of part, each built where the section says and then moved by the cut:
 ## - add_static(): the inside of the hole over the whole stretch, below the floor (its walls, its far
-##   end): never moved, and hidden under the floor until the floor above it goes. Keep it below y = 0
-##   and inside the lane's floor (x0 to x1), so it never shows through whole floor. No bottom where the
-##   zone draws its own plane below the street (task H3: the cut shows what a gap does).
+##   end, its bottom): never moved, and hidden under the floor until the floor above it goes. Keep it
+##   below y = 0 and inside the lane's floor (x0 to x1), so it never shows through whole floor.
 ## - add_span(): what runs along the hole, built over the whole stretch [start, end] (the orange lips
 ##   on the neighbouring lanes' edges): shown once the cut has begun, scaled along the track so it
 ##   covers [front, end]. Build it so it reads the same stretched (plain colours, or patterns from
