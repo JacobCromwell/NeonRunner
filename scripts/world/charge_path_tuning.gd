@@ -33,7 +33,7 @@ extends Resource
 ## flattened in view, ahead of them.
 @export_range(0.2, 2.0, 0.05, "suffix:s") var in_view_seconds: float = 0.4
 ## Seconds of run kept between the encounter (its claim to the end of its strike) and every big attack planned
-## around it that can't wait for its claim or claims a turn of its own (a Bad Dream's chase, a Resonator's visit, a
+## around it that can't wait for its claim or claims a turn of its own (a Bad Dream's chase, a Resonator's pulse, a
 ## Gilded Sentinel's strike, another Octodog's run or Buzz Overdrive's attack; a hover truck in one of its lanes),
 ## so nothing holds its charge back (ChargePathPlacement.attack_near).
 @export_range(0.0, 20.0, 0.5, "suffix:s") var attack_margin_seconds: float = 2.0

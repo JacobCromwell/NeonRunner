@@ -135,9 +135,10 @@ static func _protected(gen: LevelGenerator, with_doodads: bool = true) -> Array[
 	for k: Dictionary in gen.rules_doodad_keep_outs():
 		out.append(Vector2(float(k["from"]), float(k["to"])))
 	out.append_array(gen.quiet_stretches())
-	# Task G7: a wider gap with its take-off and landing margins (WideGapPlacement.keep_outs): it stays the
-	# only demand there, so no row comes near it and it's never widened across.
-	out.append_array(WideGapPlacement.keep_outs(gen))
+	# Task G7: a wider gap with its take-off and landing margins (WideGapPlacement.keep_outs, narrower by the
+	# margin every busy stretch here gets, so the two make its zone): it stays the only demand there, and it's never
+	# widened.
+	out.append_array(WideGapPlacement.keep_outs(gen, _margin(gen)))
 	return out
 
 

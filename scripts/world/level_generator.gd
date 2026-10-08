@@ -344,6 +344,7 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	charge_path_result = ChargePathPlacement.place(self)
 	wide_gap_result = WideGapPlacement.place(self)
 	_fill_empty_stretches(patterns)
+	WideGapPlacement.widen_deferred(self)
 	danger_density_result = DangerDensity.apply_obstacles(self, patterns, danger_density_result)
 	_place_doodads(patterns)
 	# Only the doodads ask it, and it holds this generator: let it go.
@@ -1584,10 +1585,16 @@ func _pick_doodad_size(rng: RandomNumberGenerator, weights: Array[float], room: 
 
 ## Adds a doodad of `size` from `start` to `end` in an inner lane (a seeded pick among those it fits
 ## in) pushing into a side with room (seeded when both have it), off every lane `lane_keeps` keeps
-## (doodad_keep_outs). Returns its entry, or {} (adding nothing) when no lane fits.
+## (doodad_keep_outs). Returns its entry, or {} (adding nothing) when no lane fits, or when its push's lead
+## would reach a wider gap's landing margin (task G7, WideGapPlacement.doodad_keep_outs: a doodad keeps the
+## level's spacing before a piece already). Left out there rather than kept off in doodad_keep_outs, so the
+## doodads stand where they would without the wider gaps' margins, and City 1's extra gaps after them too.
 func _add_doodad(rng: RandomNumberGenerator, size: StringName, start: float, end: float,
 		lane_keeps: Array[Dictionary]) -> Dictionary:
 	var span := Vector2(start - doodad_lead_for(tuning), end + doodad_after(end))
+	for k: Vector2 in WideGapPlacement.doodad_keep_outs(self):
+		if k.x < span.y and k.y > span.x:
+			return {}
 	var lanes: Array[int] = []
 	var sides: Array[Array] = []
 	for lane: int in range(1, layout.lane_count - 1):
@@ -1630,13 +1637,11 @@ static func _lane_kept(lane_keeps: Array[Dictionary], lane: int, span: Vector2) 
 ## Dream's chase). Entries that also name a lane ({lane, from, to}: a hover truck's, for its whole
 ## stay) go into `lane_keeps`: no doodad stands in that lane there, nor pushes into it. A floor cut's
 ## lane is kept that way over its lane window (FloorCutPlan.lane_window), so a push never lands the
-## player in a cut (and its whole window is a fill keep-out, in every lane, already). A wider gap (task G7)
-## is kept from its take-off margin to its landing margin (WideGapPlacement.keep_outs): no push there.
+## player in a cut (and its whole window is a fill keep-out, in every lane, already).
 func doodad_keep_outs(patterns: Array, lane_keeps: Array[Dictionary] = []) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	for k: Vector4 in fill_keep_outs(patterns)["keep"]:
 		out.append(Vector2(k.x, k.y))
-	out.append_array(WideGapPlacement.keep_outs(self))
 	for h: Dictionary in layout.hulls:
 		out.append(Vector2(float(h["start"]), zones.landing_zone(h).y))
 	for c: Dictionary in layout.cuts:

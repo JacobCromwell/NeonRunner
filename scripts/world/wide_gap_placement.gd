@@ -10,10 +10,14 @@ extends RefCounted
 ##
 ## The generator runs it after the enemy rules, the danger density pass's enemies and the cyborgs planted in
 ## charge paths, before the fill pass (LevelGenerator._build), from a stream of its own (rng_for("wide_gaps")),
-## so everything before it is built as it was. The fill pass and the danger density pass's floor pieces then keep
-## their spacing from the wider rows as from any piece (the danger density pass counts them as fixed,
-## DangerDensity._fixed_stretches), and the doodads, wall fences, wall gaps (wall_keep_outs), City 1's extra gaps
-## (GapDensity, keep_outs) and the credits after it keep off them too. With wide_gaps 0 (quick play, the tests)
+## so everything before it is built as it was. The level's own rows it makes longer it makes longer only after the
+## fill pass (widen_deferred), so the fill pass is built as it would be without them: a filler keeps the level's
+## spacing and FILL_TAIL_SECONDS more from every piece, more than a row's landing margin once it's longer (it
+## grows by 0.2 s of run at most); the new rows and the rows it clears room for come before it. The fill pass keeps its spacing from the wider rows as from any
+## piece (more than their margins), the danger density pass's floor pieces and City 1's extra gaps keep off each
+## one's zone (keep_outs: DangerDensity._index_obstacles, GapDensity._protected), a zone doodad that would reach
+## it is left out (doodad_keep_outs, with the doodads' own spacing before a piece), and the side wall gaps keep off
+## each one on both walls (wall_keep_outs). With wide_gaps 0 (quick play, the tests)
 ## and in a boss arena it draws nothing and the level is built exactly as before.
 ##
 ## A wider gap goes only where it's fair (fits):
@@ -21,7 +25,8 @@ extends RefCounted
 ##   take-off window in seconds at every zone's speed;
 ## - never stacked with other demands at take-off or landing: from clear_before_seconds before the take-off to
 ##   clear_after_seconds after the landing (never less than the level's spacing between two patterns there, its
-##   difficulty's: the wider gap is a pattern on its own), no other hole, fence, ramp (or where its wall run
+##   difficulty's, or its burst spacing in a level paced in bursts: the wider gap is a pattern on its own; zone_of),
+##   no other hole, fence, ramp (or where its wall run
 ##   drops the runner back), anti-grav pad's zone, speed pad, ceiling's landing zone, floor cut's window,
 ##   enemy's attack (what the fill pass keeps for it, LevelGenerator.enemy_keep_out, with its floor; for a floor
 ##   cyborg its obstacle margin, CyborgRules: its bolts never land near a hole anyway, CyborgGun; for a planned
@@ -39,7 +44,7 @@ extends RefCounted
 ## 1. The level's own rows (the patterns'), made longer: at the far edge (the take-off stays where the pattern
 ##    put it), else the near edge, else both, whichever fits first (_widened).
 ## 2. With add_rows, new rows of the wider length in every lane but one (the open lane seeded, or the lane a
-##    hover truck keeps there), where the track is clear around them by the same margins (_add_rows).
+##    hover truck keeps there), where the track is clear around them by the same margins (_add_one).
 ## 3. The level's rows that only other holes and plain fences keep from fitting, with those taken out
 ##    (_clearing: never a pulsing fence or one a fence generator powers; the generator's way to make room for a
 ##    guarantee, as PadPlacement's: taking content out never makes a level unfair).
@@ -140,7 +145,45 @@ static func place(gen: LevelGenerator) -> Dictionary:
 		constraints.append("only %d of %d wider gaps fit: nowhere else has its margins clear (or the spacing)" % [
 			p.rows.size(), want])
 	return {"target": want, "rows": p.rows, "widened": p.widened, "added": p.added, "cleared": p.cleared,
-		"taken_out": p.taken_out, "blocked": blocked, "constraints": constraints}
+		"taken_out": p.taken_out, "blocked": blocked, "constraints": constraints, "deferred": p.deferred}
+
+
+## Makes longer the level's own rows place() chose (its report's `deferred`), once the fill pass has run (see the
+## header). A filler that still reaches one's zone (only with a jump_fraction or margins far from the data's) goes,
+## as a plain piece in the way does (_clearing); anything else keeps that row as it was, with the report's
+## constraints saying so.
+static func widen_deferred(gen: LevelGenerator) -> void:
+	var deferred: Array = gen.wide_gap_result.get("deferred", [])
+	if deferred.is_empty():
+		return
+	var t: WideGapTuning = tuning()
+	var keeps: Array[Dictionary] = keeps_of(gen)
+	var others: Array[Dictionary] = []
+	for k: Dictionary in keeps:
+		if String(k["what"]) != "a fence":
+			others.append(k)
+	var taken_out: int = 0
+	for d: Dictionary in deferred:
+		var span: Vector2 = d["span"]
+		var row: Dictionary = {}
+		for r: Dictionary in GapDensity.rows(gen.layout):
+			if absf(float(r["start"]) - float(d["start"])) < EPSILON and absf(float(r["end"]) - float(d["end"])) < EPSILON:
+				row = r
+		if row.is_empty():
+			continue
+		if not fits(gen, t, span, row, keeps):
+			var plan: Dictionary = _clearing_at(gen, t, row, span, others)
+			if plan.is_empty():
+				var rows: Array = gen.wide_gap_result.get("rows", [])
+				rows.erase(span)
+				(gen.wide_gap_result["constraints"] as PackedStringArray).append(
+					"the row at %.0f m stayed as it was: the fill pass put something it can't take out in its way" % span.x)
+				continue
+			taken_out += _clear(gen, plan)
+		_widen(gen.layout, row, span)
+	if taken_out > 0:
+		gen.wide_gap_result["taken_out"] = int(gen.wide_gap_result.get("taken_out", 0)) + taken_out
+		GeneratorRules.keep_powered(gen)
 
 
 ## One pass's state (place).
@@ -162,6 +205,8 @@ class _Pass:
 	var added: int = 0
 	var cleared: int = 0
 	var taken_out: int = 0
+	## The level's own rows to make longer after the fill pass: {start, end (the row's), span (its wider one)}.
+	var deferred: Array[Dictionary] = []
 
 
 ## The wider rows `gen`'s last build placed (wide_gap_result), each Vector2(start, end).
@@ -183,13 +228,27 @@ static func wide_rows(layout: LevelLayout, jump: float, fraction: float) -> Arra
 	return out
 
 
-## What the passes after this one keep off around each wider gap, as Vector2(from, to): its take-off and
-## landing margins (fits): City 1's extra gaps (GapDensity) keep their own spacing from these too.
-static func keep_outs(gen: LevelGenerator) -> Array[Vector2]:
+## What the passes after this one keep off around each wider gap, as Vector2(from, to): its zone (zone_of: its
+## take-off and landing margins). For a pass that keeps `within` metres of its own from what it keeps off
+## (GapDensity's margin), each zone comes `within` narrower at both ends, never narrower than the row itself, so
+## the two together keep the zone.
+static func keep_outs(gen: LevelGenerator, within: float = 0.0) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	var t: WideGapTuning = tuning()
 	for span: Vector2 in rows_of(gen):
-		out.append(zone_of(gen, t, span))
+		var zone: Vector2 = zone_of(gen, t, span)
+		out.append(Vector2(minf(zone.x + within, span.x), maxf(zone.y - within, span.y)))
+	return out
+
+
+## What a zone doodad's window keeps off around each wider gap (LevelGenerator._add_doodad), as Vector2(from,
+## to): from its take-off to the end of its landing margin. Before a piece a doodad keeps the level's spacing
+## already (LevelGenerator._place_doodads: the take-off margin, zone_of), after one only its push's lead.
+static func doodad_keep_outs(gen: LevelGenerator) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	var t: WideGapTuning = tuning()
+	for span: Vector2 in rows_of(gen):
+		out.append(Vector2(span.x, zone_of(gen, t, span).y))
 	return out
 
 
@@ -205,8 +264,8 @@ static func wall_keep_outs(gen: LevelGenerator) -> Array[Vector2]:
 
 
 ## The stretch a wider gap over `span` keeps clear in every lane: from its take-off margin to its landing margin
-## (clear_before_seconds and clear_after_seconds, never less than the level's spacing between two patterns at
-## its difficulty there).
+## (clear_before_seconds and clear_after_seconds, never less than the level's spacing between two patterns there,
+## _spacing).
 static func zone_of(gen: LevelGenerator, t: WideGapTuning, span: Vector2) -> Vector2:
 	return Vector2(span.x - maxf(t.clear_before_seconds, _spacing(gen, span.x)) * gen.speed,
 		span.y + maxf(t.clear_after_seconds, _spacing(gen, span.y)) * gen.speed)
@@ -221,7 +280,8 @@ static func fits(gen: LevelGenerator, t: WideGapTuning, span: Vector2, row: Dict
 
 
 ## What keeps a wider gap over `span` from fitting (fits): the level's ends, the first of `keeps` in its way, or
-## another hole; "" if it fits.
+## another hole; "" if it fits. Something that only touches the zone's end (a pass that kept exactly its margin)
+## isn't in its way.
 static func blocker(gen: LevelGenerator, t: WideGapTuning, span: Vector2, row: Dictionary, keeps: Array[Dictionary]) -> String:
 	var zone: Vector2 = zone_of(gen, t, span)
 	if zone.x < gen.config.start_clear_distance or zone.y > gen.layout.length - gen.config.end_clear_distance:
@@ -230,7 +290,7 @@ static func blocker(gen: LevelGenerator, t: WideGapTuning, span: Vector2, row: D
 	for k: Dictionary in keeps:
 		var v: Vector2 = k["span"]
 		var against: Vector2 = span if bool(k["row_only"]) else zone
-		if v.x > against.y or v.y < against.x:
+		if v.x >= against.y - EPSILON or v.y <= against.x + EPSILON:
 			continue
 		var lane: int = int(k["lane"])
 		if lane >= 0 and not lanes.is_empty() and not lanes.has(lane):
@@ -239,7 +299,7 @@ static func blocker(gen: LevelGenerator, t: WideGapTuning, span: Vector2, row: D
 	for g: Dictionary in gen.layout.gaps:
 		if not row.is_empty() and float(g["start"]) == float(row["start"]) and float(g["end"]) == float(row["end"]):
 			continue
-		if float(g["start"]) <= zone.y and float(g["end"]) >= zone.x:
+		if float(g["start"]) < zone.y - EPSILON and float(g["end"]) > zone.x + EPSILON:
 			return "another hole"
 	return ""
 
@@ -318,9 +378,12 @@ static func _keep(span: Vector2, what: String, row_only: bool = false, lane: int
 	return {"span": span, "what": what, "row_only": row_only, "lane": lane}
 
 
-## The level's spacing between two patterns at its difficulty at track distance `at` (seconds): its ordinary
-## pacing, not a level paced in bursts' quiet spacing (The Hush), which is pacing, not reaction time.
+## The level's spacing between two patterns at track distance `at` (seconds), as the pattern pass and the fill
+## pass keep it there: at its difficulty there, or in a level paced in bursts (The Hush) its burst spacing, as
+## between the patterns of a burst (its quiet spacing is pacing, not reaction time).
 static func _spacing(gen: LevelGenerator, at: float) -> float:
+	if gen.config.paced_in_bursts():
+		return gen.config.burst_spacing_seconds
 	var difficulty: float = gen.difficulty_at(clampf(at / maxf(gen.layout.length, 1.0), 0.0, 1.0))
 	return lerpf(gen.config.spacing_seconds_easy, gen.config.spacing_seconds_hard, difficulty)
 
@@ -356,38 +419,43 @@ static func _widened(gen: LevelGenerator, t: WideGapTuning, row: Dictionary, len
 ## (never a pulsing fence, which the `pulsing` feature counts, nor one a fence generator powers): {span, gaps,
 ## fences} (what goes), at its far edge, else its near edge, else both; {} if none of those works.
 static func _clearing(gen: LevelGenerator, t: WideGapTuning, row: Dictionary, length: float, keeps: Array[Dictionary]) -> Dictionary:
-	var lay: LevelLayout = gen.layout
 	if float(row["end"]) - float(row["start"]) >= length - EPSILON:
 		return {}
 	var others: Array[Dictionary] = []
 	for k: Dictionary in keeps:
 		if String(k["what"]) != "a fence":
 			others.append(k)
-	var half: float = gen.tuning.fence_depth * 0.5
 	for span: Vector2 in _spans(row, length):
-		var zone: Vector2 = zone_of(gen, t, span)
-		var what: String = blocker(gen, t, span, row, others)
-		if what != "" and what != "another hole":
-			continue
-		var fences: Array[Dictionary] = []
-		var ok: bool = true
-		for f: Dictionary in lay.fences:
-			if float(f["at"]) + half < zone.x or float(f["at"]) - half > zone.y:
-				continue
-			if bool(f.get("pulsing", false)) or _powered(gen, f):
-				ok = false
-				break
-			fences.append(f)
-		if not ok:
-			continue
-		var gaps: Array[Dictionary] = []
-		for g: Dictionary in lay.gaps:
-			if float(g["start"]) == float(row["start"]) and float(g["end"]) == float(row["end"]):
-				continue
-			if float(g["start"]) <= zone.y and float(g["end"]) >= zone.x:
-				gaps.append(g)
-		return {"span": span, "gaps": gaps, "fences": fences}
+		var plan: Dictionary = _clearing_at(gen, t, row, span, others)
+		if not plan.is_empty():
+			return plan
 	return {}
+
+
+## _clearing for `row` widened over `span`: {span, gaps, fences} (what goes), or {} if something else than other
+## holes and plain fences is in its way (`others`: the keeps but fences).
+static func _clearing_at(gen: LevelGenerator, t: WideGapTuning, row: Dictionary, span: Vector2,
+		others: Array[Dictionary]) -> Dictionary:
+	var lay: LevelLayout = gen.layout
+	var half: float = gen.tuning.fence_depth * 0.5
+	var zone: Vector2 = zone_of(gen, t, span)
+	var what: String = blocker(gen, t, span, row, others)
+	if what != "" and what != "another hole":
+		return {}
+	var fences: Array[Dictionary] = []
+	for f: Dictionary in lay.fences:
+		if float(f["at"]) + half <= zone.x + EPSILON or float(f["at"]) - half >= zone.y - EPSILON:
+			continue
+		if bool(f.get("pulsing", false)) or _powered(gen, f):
+			return {}
+		fences.append(f)
+	var gaps: Array[Dictionary] = []
+	for g: Dictionary in lay.gaps:
+		if float(g["start"]) == float(row["start"]) and float(g["end"]) == float(row["end"]):
+			continue
+		if float(g["start"]) < zone.y - EPSILON and float(g["end"]) > zone.x + EPSILON:
+			gaps.append(g)
+	return {"span": span, "gaps": gaps, "fences": fences}
 
 
 ## True if a fence generator in `gen`'s layout powers fence `f` (its EMP takes it down).
@@ -428,7 +496,8 @@ static func _widen_one(p: _Pass, window: Vector2, target: float) -> bool:
 	if best.is_empty():
 		return false
 	p.candidates.erase(best)
-	_widen(p.gen.layout, best["row"], best["span"])
+	var row: Dictionary = best["row"]
+	p.deferred.append({"start": float(row["start"]), "end": float(row["end"]), "span": best["span"]})
 	p.rows.append(best["span"])
 	p.widened += 1
 	return true

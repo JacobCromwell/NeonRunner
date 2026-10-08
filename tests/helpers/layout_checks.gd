@@ -6,7 +6,8 @@ extends RefCounted
 ##   lane is a hole is longer than a jump (a floor cut's stretch counts as a hole), fences stand on
 ##   floor, ramps stand on floor with no sign at their wall entry, nothing lies in the end-clear
 ##   stretch, every ceiling keeps GDD §3 (check_ceilings), every zone doodad stands where its push is
-##   fair (check_doodads), and every floor cut keeps GDD §9.9's limits (check_cuts).
+##   fair (check_doodads), every floor cut keeps GDD §9.9's limits (check_cuts), and the level's wider gaps
+##   keep theirs (check_wide_gaps, task G7).
 ## - check_ceilings: the floor under a ceiling may be dangerous (GDD §3, changed September 26, 2026),
 ##   but every pad lies under a ceiling and can be stepped on, every landing zone is safe to land on,
 ##   floor enemies keep off both (CeilingZones), and a floor route runs under every ceiling without
@@ -15,7 +16,8 @@ extends RefCounted
 ##   their first pad and then pads 8–10 s apart (GDD §9.6), a Bad Dream's chase has pads at most
 ##   10 s apart and keeps off Octodog runs (GDD §9.7), Octodog runs stay off pads and ceiling
 ##   landings, cyborgs keep their margin from floor obstacles, every fence generator powers a
-##   fence, and Barnacle Turrets keep their limits (check_turrets, GDD §9.8).
+##   fence, Barnacle Turrets keep their limits (check_turrets, GDD §9.8), and every cyborg planted in a
+##   charge's path stands where the charge flattens it fairly (check_charge_paths, task G7).
 ## Each check goes through `suite.check()`, so failures are reported by the suite that called.
 ## Every check runs at the level's own run speed (level_tuning: a campaign level's is its zone's), with
 ## the margins in metres stretched by its pace, as the generator builds it (GDD §3: a faster zone keeps
@@ -763,7 +765,7 @@ static func check_wide_gaps(suite: TestSuite, layout: LevelLayout, config: Level
 		suite.check(why == "", "nothing else in any lane from a wider gap's take-off margin to its landing margin (%s) %s"
 			% [why, w])
 		var zone: Vector2 = WideGapPlacement.zone_of(gen, t, Vector2(start, end))
-		suite.check(not layout.doodad_between(zone.x, zone.y + lead),
+		suite.check(not layout.doodad_between(zone.x + 0.01, zone.y + lead - 0.01),
 			"no zone doodad (nor its push's lead) at a wider gap's take-off or landing " + w)
 		var clear: float = t.wall_gap_clear_seconds * speed
 		suite.check(not layout.wall_gap_between(start - clear, end + clear), "no side wall gap beside a wider gap " + w)

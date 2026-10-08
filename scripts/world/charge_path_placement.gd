@@ -32,7 +32,7 @@ extends RefCounted
 ##   warning (a planted Octodog from params `claim_at`; a parked Buzz Overdrive's cut carries `claim_seconds`), so
 ##   a drone's barrage or a hover truck's lurch or cannon shot that gets ready meanwhile waits for it, and it keeps
 ##   attack_margin_seconds from what can't wait or claims a turn of its own (attack_near: a Bad Dream's chase, a
-##   Resonator's visit, a Gilded Sentinel's strike, another Octodog's run or Buzz Overdrive's attack; a hover
+##   Resonator's pulse, a Gilded Sentinel's strike, another Octodog's run or Buzz Overdrive's attack; a hover
 ##   truck keeping one of its lanes).
 ## How it makes sure the charge crosses the cyborg, at any lane count and speed:
 ## - Octodog: only its first lunge, which it makes from where it stands (Octodog: IDLE, then the wind-up at its
@@ -352,24 +352,30 @@ static func path_clear(gen: LevelGenerator, ot: OctodogTuning, lane: int, throug
 ## truck's lurch or cannon shot ask for their turn before their warnings, so they wait for the encounter's claim
 ## (ChargePathTuning.claim_seconds, longer than any of them lasts); a hover truck only counts where it keeps one
 ## of the encounter's `lanes` (the dog's, the cyborg's and the far one; the cut's). What can't wait or claims a
-## turn of its own keeps its distance: a Bad Dream's chase (a host's), a Resonator's visit, a Gilded Sentinel's
-## strike, another Octodog's run (with what a wait for its turn moves it on) or Buzz Overdrive's attack, and the
-## rules' other keep-outs (LevelGenerator.rules_doodad_keep_outs).
+## turn of its own keeps its distance: a Bad Dream's chase (a host's), a Resonator's pulses (each from its warning
+## until its wave has passed the runner, DangerDensity.resonator_pulse_windows: between them it only hovers; its
+## whole visit if it has no plan), a Gilded Sentinel's strike, another Octodog's run (with what a wait for its turn
+## moves it on) or Buzz Overdrive's attack, and the rules' other keep-outs (LevelGenerator.rules_doodad_keep_outs).
 static func attack_near(gen: LevelGenerator, charger: Dictionary, span: Vector2, lanes: Array[int] = []) -> String:
 	var hooks: Dictionary = {}
 	var ot: OctodogTuning = OctodogRules.tuning()
 	for e: Dictionary in gen.layout.enemies:
 		if is_same(e, charger):
 			continue
-		var busy := Vector2(INF, -INF)
+		var busy: Array[Vector2] = []
 		match String(e.get("type", "")):
 			DOG:
 				var run: Vector2 = LevelGenerator.enemy_floor_span(e, gen.pace)
-				busy = Vector2(run.x, run.y + ot.turn_wait_max * gen.speed)
-			"resonator", "gilded_sentinel", TANK:
-				busy = gen.enemy_keep_out(e, hooks)
-		if busy.x <= span.y and busy.y >= span.x:
-			return String(e.get("type", ""))
+				busy.append(Vector2(run.x, run.y + ot.turn_wait_max * gen.speed))
+			"resonator":
+				busy = LevelGenerator.DangerDensity.resonator_pulse_windows(gen, e)
+				if busy.is_empty():
+					busy.append(gen.enemy_keep_out(e, hooks))
+			"gilded_sentinel", TANK:
+				busy.append(gen.enemy_keep_out(e, hooks))
+		for b: Vector2 in busy:
+			if b.x <= span.y and b.y >= span.x:
+				return String(e.get("type", ""))
 	for s: Vector2 in HostRules.chase_stretches(gen):
 		if s.x <= span.y and s.y >= span.x:
 			return "a Bad Dream's chase"
