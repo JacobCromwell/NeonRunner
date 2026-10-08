@@ -10,7 +10,29 @@ extends Enemy
 ##   (EnforcerTruckMarker). The light bar takes turns red and blue; with Reduced flashing both stay lit.
 ## - Following: it copies the runner's lane lane_delay_seconds after they change it (GDD §9.13: about 0.8 s),
 ##   so a late dodge leaves it in the lane they just left. Its position is kept relative to the runner's
-##   (never closer than its close gap: it never touches them).
+##   (never closer than MIN_GAP behind them in their lane: it never touches them).
+## - Showing itself (the owner, October 8, 2026; GDD §9.13): behind the camera its model is never seen, so now
+##   and then (as it arrives, and once more mid-chase where there's room: EnforcerTruckTuning.show_count) it
+##   speeds up into view beside the runner, its front show_ahead ahead of them in a lane next to theirs, where
+##   the chase camera shows its whole model, light bar and riders (EnforcerTruckView), holds there show_seconds
+##   with its siren swelling as it pulls alongside, then drops back to follow_gap and takes up the runner's lane
+##   again. Its sides are safe but solid meanwhile, like the hover truck's (GDD §9.3): a lane blocker bumps a
+##   lane change into it back, and its body never reaches the runner. Fair, or it doesn't happen
+##   (_show_lane_now): the runner on the floor in a lane with a lane on each side; its lane (show_lane) clear of
+##   holes, cuts, fences, doodads, pads, speed pads, ramps and floor enemies until it's back behind them (it
+##   never takes a lane the runner needs, and drives through nothing); the runner's own lane and the one on its
+##   far side never both blocked at the same place (the runner always keeps a lane to dodge into: it never
+##   takes the only free one); no enemy in its lane or beyond it near the runner (it would hide it from the
+##   camera); no other big attack on or waiting, no bait coming before it's back behind them (a volley's,
+##   a bait's or another attack's warning never meets it), no hover truck about, and room left in its chase.
+##   It never fires while it shows itself. It gives way (drops back at once, faster) if the runner moves toward
+##   its lane (a bumped lane change), leaves the floor, loses their other lane, or an attack, a bait or an
+##   enemy beyond it comes. Its marker fades while it's on screen.
+## - Destroyed, it blows up where the player sees it (the owner, October 8, 2026): its wreck lurches on into
+##   view (wreck_gap behind the runner, spinning out or nose-diving into its hole, at the hole's far edge if it
+##   gets there first) and explodes there (EnforcerTruckBlast: a fireball, smoke and a floor glow carried along
+##   with the runner, smaller in the runner's lane; RunEffects' sparks and debris, its riders going up with it,
+##   a shake and truck_explode). Reduced flashing softens the blast's flash.
 ## - Its attack: lasers down the runner's lane. Each volley is warned by a red line on the floor ahead in that
 ##   lane and a rising whine (warning_seconds), then its shots come up the lane from behind: columns of bolts
 ##   reaching over a slide and a whole jump, so only leaving the lane dodges it (which moves the truck too). A
@@ -39,6 +61,9 @@ extends Enemy
 
 enum State { WAITING, ARRIVING, CHASING, LEAVING, WRECKED }
 enum Volley { IDLE, WARNING, FIRING }
+## Showing itself: not; pulling up beside the runner (its lane change first, behind the camera); alongside
+## them; dropping back behind them.
+enum Show { NONE, PULL_UP, ALONGSIDE, DROP_BACK }
 
 ## Its bolts' name (ProjectilePool shots): what hits a runner says this.
 const LASER_NAME: String = "Enforcer Truck laser"
@@ -51,11 +76,17 @@ const LINE_WIDTH_END: float = 0.4
 const LINE_BEHIND: float = 2.0
 ## A bolt has passed the runner once it's this far ahead of their hurtbox (metres).
 const PASS_MARGIN: float = 0.5
-## Seconds its wreck lasts before it's gone.
-const WRECK_SECONDS: float = 1.6
-## It's never closer behind the runner than this (metres from its front to the runner's middle).
+## It's never closer behind the runner than this in their lane (metres from its front to the runner's middle).
 const MIN_GAP: float = 1.6
+## Its solid sides' height while it shows itself: over a jump, its roof and its riders.
+const BLOCKER_HEIGHT: float = 5.0
+## A floor enemy in a lane keeps this much of it (metres either side of where it stands) from a showing and from
+## the runner's escape.
+const ENEMY_ROOM: float = 3.0
+## The runner has room to step aside around a blocked stretch of their lane: this many seconds of running.
+const DODGE_ROOM_SECONDS: float = 0.5
 const BuzzScript = preload("res://scripts/enemies/buzz_overdrive.gd")
+const BuzzRulesScript = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
 
 var tuning: EnforcerTruckTuning
 var state: State = State.WAITING
@@ -71,8 +102,13 @@ var volleys: int = 0
 var volley_lane: int = -1
 ## True while it closes up behind the runner for an Octodog's attack.
 var close: bool = false
+## Showing itself: the phase, the lane it shows itself in (-1 between showings), and the showings so far.
+var show_phase: Show = Show.NONE
+var show_lane: int = -1
+var shows: int = 0
 ## What happened, as [event, runner distance] (tests and the showcase read it): arrive, chase, close, release,
-## warn, fire, volley_end, rider, hop, leave, wreck:<cause>.
+## warn, fire, volley_end, rider, hop, leave, show (a showing begins), alongside, drop_back (its time is up),
+## give_way (it drops back early), shown (back behind the runner), wreck:<cause>, blast.
 var history: Array = []
 ## Every sound it asked for, in order (tests: each warning is heard; silent headless runs ask all the same).
 var sounds_played: Array[StringName] = []
@@ -101,13 +137,46 @@ var _close_noted: bool = false
 ## gap (equal: not hopping). Keyed to its own distance, like everything it does.
 var _hop_from: float = 0.0
 var _hop_until: float = 0.0
-## Its wreck: the cause, seconds into it, where its front is and how fast it still moves, its fall.
+## Its wreck (it lurches on into view, then blows up): the cause, seconds into it, its gap behind the runner as
+## it was wrecked and where it blows up, the far edge of the hole it fell in (INF: none), whether it's in the
+## runner's lane, its fall and spin, its trail of sparks, and whether it has blown up yet (and when).
 var _wreck_cause: StringName = &""
 var _wreck_t: float = 0.0
-var _wreck_front: float = 0.0
-var _wreck_speed: float = 0.0
+var _wreck_gap0: float = 0.0
+var _wreck_gap: float = 0.0
+var _wreck_far: float = INF
+var _hole_far: float = INF
+var _wreck_in_lane: bool = false
 var _fall_v: float = 0.0
 var _spin: float = 0.0
+var _trail_left: float = 0.0
+var _blast_at: float = -1.0
+var _blast: EnforcerTruckBlast
+## Its showing: seconds alongside, true while it drops back to give way (faster), the chase time its last
+## showing ended (its arrival's: 0), and a lane change into its side bumped back since the last frame.
+var _show_t: float = 0.0
+var _yielding: bool = false
+var _last_show_end: float = 0.0
+var _bumped: bool = false
+## Where its baits' warnings come (runner distances, in order): every Octodog's planned wind-ups and every Buzz
+## Overdrive's rev in the layout. And where hover trucks come (their entries' `at`, in order).
+var _bait_warns: PackedFloat32Array = PackedFloat32Array()
+var _hover_ats: PackedFloat32Array = PackedFloat32Array()
+## The layout's enemies for its shadow check, by distance: [at, world x] (a floor enemy at its lane's middle, a
+## wall enemy at its wall; fliers left out).
+var _planned: Array[Vector2] = []
+## Per lane, what it keeps off when it shows itself, as merged stretches of track (Vector2(start, end), in
+## order): holes, cuts, fences, doodads and floor enemies (_lane_hard, the runner's escape counts them too),
+## and pads, speed pads and ramps (_lane_soft, lanes the runner may need).
+var _lane_hard: Array[PackedVector2Array] = []
+var _lane_soft: Array[PackedVector2Array] = []
+## Whether its look fits on screen in a lane beside a runner in a lane (EnforcerTruckView.check), by
+## runner lane * 64 + its lane.
+var _fits: Dictionary = {}
+var _blocker: Area3D
+var _siren: AudioStreamPlayer
+var _siren_db: float = 0.0
+var _swell_t: float = -1.0
 ## The layout's gaps by lane, Vector2(start, end) in order, and each lane's cursor (the first that may still
 ## be ahead of its rear); the layout's cuts by lane.
 var _lane_gaps: Array = []
@@ -126,8 +195,9 @@ var _canvas: CanvasLayer
 
 
 ## An Enforcer Truck's whole look for EnemyDirector.warm_up (which frees it) and ShaderWarmup (task PERF1):
-## its model with every rider aboard and its light bar in every state, its floor lights bright and dim, and
-## its warning line. The first one builds the meshes and materials every later truck shares. No physics object.
+## its model with every rider aboard and its light bar in every state, its floor lights bright and dim, its
+## warning line, and its blast (every kind of puff and the floor glow). The first one builds the meshes and
+## materials every later truck shares. No physics object.
 static func warm_up(world: RunWorld, _entry: Dictionary) -> Node:
 	var t: EnforcerTruckTuning = EnemyDirector.tuning_for("enforcer_truck") as EnforcerTruckTuning
 	if t == null:
@@ -152,6 +222,7 @@ static func warm_up(world: RunWorld, _entry: Dictionary) -> Node:
 	line.mesh = GreyboxMaterials.unit_box()
 	line.material_override = GreyboxMaterials.glow(WARNING_COLOR, 3.0, 0.5)
 	look.add_child(line)
+	look.add_child(EnforcerTruckBlast.warm_look())
 	return look
 
 
@@ -186,6 +257,16 @@ func _build() -> void:
 	_body = add_hitbox(&"body", h, Vector3(0.0, tuning.hitbox_floor + h.y * 0.5, 0.2 + h.z * 0.5))
 	_body.hazard_name = "Enforcer Truck"
 	_body.set_enabled(false)
+	# Its solid sides while it shows itself (GDD §9.3's hover truck): a lane change into it is bumped back. Off
+	# (no collision layer) otherwise.
+	var reach: float = tuning.body_size.z + tuning.blocker_ahead
+	_blocker = add_lane_blocker(Vector3(world.geo.lane_width * 0.9, BLOCKER_HEIGHT, reach),
+		Vector3(0.0, BLOCKER_HEIGHT * 0.5, tuning.body_size.z - reach * 0.5))
+	_set_blocker(false)
+	_blast = EnforcerTruckBlast.new()
+	_blast.name = "Blast"
+	_blast.visible = false
+	add_child(_blast)
 	_line = MeshInstance3D.new()
 	_line.name = "WarningLine"
 	_line.mesh = GreyboxMaterials.unit_box()
@@ -199,6 +280,12 @@ func _build() -> void:
 	if AudioServer.get_bus_index(SfxLibrary.BUS) >= 0:
 		_voice.bus = SfxLibrary.BUS
 	add_child(_voice)
+	_siren = AudioStreamPlayer.new()
+	_siren.name = "Siren"
+	_siren.bus = _voice.bus
+	add_child(_siren)
+	if world.player != null:
+		world.player.movement_event.connect(_on_player_event)
 	_canvas = CanvasLayer.new()
 	_canvas.name = "MarkerLayer"
 	# Under the HUD (layer 5): the HUD's icons stay on top where they meet.
@@ -227,13 +314,17 @@ func _tick(delta: float) -> void:
 		State.WRECKED:
 			return
 	if not world.player.alive or not world.player.running:
-		# The runner is down (or paused): it holds where it is behind them.
+		# The runner is down (or paused): it holds where it is behind (or beside) them.
 		_place(world.player_distance() - gap)
+		_bumped = false
 		return
 	_clock += delta
-	_track_player_lane()
+	_log_player_lane()
+	_update_show(delta)
+	if show_phase == Show.NONE:
+		_follow_player_lane()
 	_update_lane(delta)
-	close = state == State.CHASING and _octodog_engaged(tuning.close_lead_seconds)
+	close = state == State.CHASING and show_phase == Show.NONE and _octodog_engaged(tuning.close_lead_seconds)
 	_update_gap(delta)
 	var front: float = world.player_distance() - gap
 	_place(front)
@@ -244,11 +335,12 @@ func _tick(delta: float) -> void:
 	_pick_up_riders(front)
 	_update_volley(delta)
 	_update_lights(delta)
+	_update_siren(delta)
 	if state == State.ARRIVING and gap <= tuning.follow_gap + 0.5:
 		state = State.CHASING
 		_note(&"chase")
-	elif state == State.CHASING and _clock >= tuning.chase_seconds and volley == Volley.IDLE \
-			and not _bait_on(tuning.close_lead_seconds):
+	elif state == State.CHASING and show_phase == Show.NONE and _clock >= tuning.chase_seconds \
+			and volley == Volley.IDLE and not _bait_on(tuning.close_lead_seconds):
 		_leave()
 
 
@@ -280,14 +372,21 @@ func _arrive() -> void:
 	for i: int in range(_passed.size() - 1, -1, -1):
 		if float(_passed[i]["at"]) < front:
 			_passed.remove_at(i)
-	_sound(&"enforcer_siren")
 	_note(&"arrive")
+	# It shows itself as it arrives where there's room (its siren swelling as it pulls alongside), else its
+	# siren whoops as it drives in behind the runner.
+	var l: int = _show_lane_now()
+	if l >= 0:
+		_begin_show(l)
+	else:
+		_sound(&"enforcer_siren")
 
 
 ## It gives up (GDD §9.13: after about 25 s) and drops back out of sight.
 func _leave() -> void:
 	state = State.LEAVING
 	world.director.give_up_turn(self)
+	_set_blocker(false)
 	_note(&"leave")
 
 
@@ -334,12 +433,17 @@ func _pick_up_riders(front: float) -> void:
 			c.retire()
 
 
-## The runner's lane, lane_delay_seconds ago: the lane it heads for.
-func _track_player_lane() -> void:
-	var now: float = world.level_time()
+## Notes each of the runner's lane changes on the level clock (it follows them lane_delay_seconds later, and
+## while it shows itself it keeps noting them).
+func _log_player_lane() -> void:
 	var l: int = clampi(world.player.lane, 0, world.geo.lane_count - 1)
 	if _lane_log.is_empty() or int(_lane_log[-1][1]) != l:
-		_lane_log.append([now, l])
+		_lane_log.append([world.level_time(), l])
+
+
+## The runner's lane, lane_delay_seconds ago: the lane it heads for.
+func _follow_player_lane() -> void:
+	var now: float = world.level_time()
 	var want: int = target_lane
 	var keep: int = 0
 	for i: int in _lane_log.size():
@@ -365,17 +469,26 @@ func _update_lane(delta: float) -> void:
 
 
 ## Its gap behind the runner eases toward the one it wants: follow_gap, its close gap while an Octodog
-## attacks, falling back while it leaves. Never under MIN_GAP: it never touches the runner.
+## attacks, show_ahead ahead of them while it shows itself, falling back while it leaves. Never under MIN_GAP
+## unless it's in a lane beside theirs (_least_gap): it never touches the runner.
 func _update_gap(delta: float) -> void:
 	if state == State.LEAVING:
 		gap += tuning.leave_speed * delta
 		return
 	var want: float = tuning.follow_gap
+	var top: float = tuning.gap_speed_max
+	match show_phase:
+		Show.PULL_UP, Show.ALONGSIDE:
+			want = -tuning.show_ahead
+			if gap <= tuning.follow_gap + 0.5:
+				top = tuning.show_close_speed
+		Show.DROP_BACK:
+			top = tuning.show_yield_speed if _yielding else tuning.show_drop_speed
 	if close:
 		want = tuning.close_gap_for(_dog_tuning, world.tuning.pace())
 	var eased: float = want + (gap - want) * exp(-tuning.gap_rate * delta)
-	var step: float = tuning.gap_speed_max * delta
-	gap = maxf(clampf(eased, gap - step, gap + step), MIN_GAP)
+	var step: float = top * delta
+	gap = maxf(clampf(eased, gap - step, gap + step), _least_gap())
 	if close != _close_noted:
 		_close_noted = close
 		_note(&"close" if close else &"release")
@@ -412,6 +525,7 @@ func _check_holes(front: float) -> void:
 			continue
 		for d: float in [front - 0.4, (front + rear) * 0.5]:
 			if d >= fc.start and d <= fc.end and not fc.solid_at(d):
+				_hole_far = INF
 				_wreck(&"cut")
 				return
 	var gaps: PackedVector2Array = _lane_gaps[lane]
@@ -423,6 +537,7 @@ func _check_holes(front: float) -> void:
 		var g: Vector2 = gaps[i]
 		if g.y > front - 0.4:
 			if g.y - g.x > tuning.max_hop_jump_fraction * _jump + 0.001:
+				_hole_far = g.y
 				_wreck(&"gap")
 				return
 			# An ordinary gap: it bounces over it, until its rear has cleared the far edge.
@@ -433,7 +548,8 @@ func _check_holes(front: float) -> void:
 		i += 1
 
 
-## The layout's gaps and cuts by lane, in order (its hole checks walk them).
+## The layout's gaps and cuts by lane, in order (its hole checks walk them), and what its showings keep off
+## (_index_showing).
 func _index_layout() -> void:
 	var lanes: int = world.geo.lane_count
 	_lane_gaps.resize(lanes)
@@ -452,6 +568,111 @@ func _index_layout() -> void:
 				cuts.append(c)
 		_lane_cuts[l] = cuts
 		_gap_cursor[l] = 0
+	_index_showing()
+
+
+## What its showings keep off, from the layout, once (cheap to ask after): by lane, the stretches of track a
+## showing keeps clear (holes, the lane windows of floor cuts, fences, doodads and planned floor enemies; and
+## pads, speed pads and ramps), merged and in order; its baits' warnings (an Octodog's planned wind-ups, a Buzz
+## Overdrive's rev); where hover trucks come; and the enemies its body could hide from the camera.
+func _index_showing() -> void:
+	var lanes: int = world.geo.lane_count
+	var lay: LevelLayout = world.layout
+	var mt: MovementTuning = world.tuning
+	var pace: float = mt.pace()
+	var hard: Array = []
+	var soft: Array = []
+	for l: int in lanes:
+		hard.append([])
+		soft.append([])
+	for g: Dictionary in lay.gaps:
+		_add_span(hard, int(g["lane"]), float(g["start"]), float(g["end"]))
+	for c: Dictionary in lay.cuts:
+		var w: Vector2 = FloorCutPlan.lane_window(c)
+		_add_span(hard, int(c["lane"]), minf(w.x, float(c["start"])), w.y)
+	var half: float = mt.fence_depth * 0.5 + 0.5
+	for f: Dictionary in lay.fences:
+		_add_span(hard, int(f["lane"]), float(f["at"]) - half, float(f["at"]) + half)
+	for d: Dictionary in lay.doodads:
+		_add_span(hard, int(d["lane"]), float(d["start"]), float(d["end"]))
+	for p: Dictionary in lay.pads:
+		_add_span(soft, int(p["lane"]), float(p["at"]) - mt.pad_length, float(p["at"]) + mt.pad_length)
+	for p: Dictionary in lay.speed_pads:
+		_add_span(soft, int(p["lane"]), float(p["at"]) - mt.speed_pad_length, float(p["at"]) + mt.speed_pad_length)
+	for r: Dictionary in lay.ramps:
+		_add_span(soft, lay.outer_lane(int(r["side"])), float(r["at"]) - mt.ramp_length, float(r["at"]) + mt.ramp_length)
+	var warns: Array[float] = []
+	var hovers: Array[float] = []
+	_planned.clear()
+	for e: Dictionary in lay.enemies:
+		var type: String = String(e.get("type", ""))
+		match type:
+			"enforcer_truck":
+				continue
+			"octodog":
+				for a: Variant in (e.get("params", {}) as Dictionary).get("charge_at", []):
+					warns.append(float(a))
+			"buzz_overdrive":
+				var cut: Dictionary = BuzzRulesScript.cut_of(lay, e)
+				if not cut.is_empty():
+					warns.append(FloorCutPlan.warn_at(cut))
+			"hover_truck":
+				hovers.append(float(e["at"]))
+		var at: float = float(e.get("at", 0.0))
+		if LevelGenerator.enemy_uses_floor(e):
+			var span: Vector2 = LevelGenerator.enemy_floor_span(e, pace)
+			if span.x > span.y:
+				span = Vector2(at, at)
+			_add_span(hard, int(e.get("lane", 0)), span.x - ENEMY_ROOM, span.y + ENEMY_ROOM)
+			_planned.append(Vector2(at, world.geo.lane_x(clampi(int(e.get("lane", 0)), 0, lanes - 1))))
+		elif int(e.get("side", 0)) != 0:
+			_planned.append(Vector2(at, signf(float(e["side"])) * world.geo.wall_x()))
+	warns.sort()
+	hovers.sort()
+	_bait_warns = PackedFloat32Array(warns)
+	_hover_ats = PackedFloat32Array(hovers)
+	_planned.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
+	_lane_hard.clear()
+	_lane_soft.clear()
+	for l: int in lanes:
+		_lane_hard.append(_merged(hard[l]))
+		_lane_soft.append(_merged(soft[l]))
+
+
+static func _add_span(by_lane: Array, l: int, from: float, to: float) -> void:
+	if l >= 0 and l < by_lane.size():
+		(by_lane[l] as Array).append(Vector2(from, to))
+
+
+## `spans` (Vector2(start, end)) in order, overlapping ones merged.
+static func _merged(spans: Array) -> PackedVector2Array:
+	spans.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
+	var out := PackedVector2Array()
+	for s: Vector2 in spans:
+		if not out.is_empty() and s.x <= out[-1].y:
+			out[-1] = Vector2(out[-1].x, maxf(out[-1].y, s.y))
+		else:
+			out.append(s)
+	return out
+
+
+## True if a stretch of `spans` (merged, in order) reaches into [from, to].
+static func _spans_hit(spans: PackedVector2Array, from: float, to: float) -> bool:
+	var i: int = _first_span(spans, from)
+	return i < spans.size() and spans[i].x <= to
+
+
+## The first stretch of `spans` (merged, in order) that ends at or after `from`.
+static func _first_span(spans: PackedVector2Array, from: float) -> int:
+	var lo: int = 0
+	var hi: int = spans.size()
+	while lo < hi:
+		var mid: int = (lo + hi) >> 1
+		if spans[mid].y < from:
+			lo = mid + 1
+		else:
+			hi = mid
+	return lo
 
 
 ## True while an Octodog is about to charge or charging (GDD §9.13: it closes up during an Octodog's attack):
@@ -497,6 +718,347 @@ func _bait_on(lead: float) -> bool:
 	return false
 
 
+# --- Showing itself ----------------------------------------------------------------------------------
+
+## Starts, moves on and ends its showings (GDD §9.13 "Showing itself"; the class doc).
+func _update_show(delta: float) -> void:
+	match show_phase:
+		Show.NONE:
+			var l: int = _show_lane_now()
+			if l >= 0:
+				_begin_show(l)
+		Show.PULL_UP:
+			if _must_give_way():
+				_drop_back(true)
+			elif _switch_t >= 1.0 and gap <= -tuning.show_ahead + 0.3:
+				show_phase = Show.ALONGSIDE
+				_show_t = 0.0
+				_note(&"alongside")
+		Show.ALONGSIDE:
+			_show_t += delta
+			if _must_give_way():
+				_drop_back(true)
+			elif _show_t >= tuning.show_seconds:
+				_drop_back(false)
+		Show.DROP_BACK:
+			if gap >= tuning.follow_gap - 0.5:
+				_end_show()
+	_bumped = false
+
+
+## The lane it may show itself in now, or -1: a lane beside the runner's, the outer one first (the camera sits
+## inward of the runner, so the truck there covers less of the street), where its look fits on screen without
+## hiding the runner (EnforcerTruckView) and everything else a showing needs holds (the class doc). As it
+## arrives (while still behind the follow gap) or chasing at its follow gap, between volleys, show_spacing_seconds
+## after its arrival or its last showing, with room for the whole showing left in its chase.
+func _show_lane_now() -> int:
+	if shows >= tuning.show_count or not alive:
+		return -1
+	if state == State.ARRIVING:
+		if not tuning.show_on_arrival or shows > 0 or gap <= tuning.follow_gap + 0.5:
+			return -1
+	elif state != State.CHASING or volley != Volley.IDLE or close or absf(gap - tuning.follow_gap) > 1.0 \
+			or _clock - _last_show_end < tuning.show_spacing_seconds:
+		return -1
+	var p: Player = world.player
+	if not p.alive or not p.running or p.surface != Player.Surface.FLOOR or not p.grounded or p.in_pit:
+		return -1
+	var r: int = p.lane
+	var lanes: int = world.geo.lane_count
+	if r < 1 or r > lanes - 2 or absf(p.position.x - world.geo.lane_x(r)) > 0.05:
+		return -1
+	var total: float = tuning.show_total_seconds(gap)
+	if _clock + total > tuning.chase_seconds or _attack_on() or _hover_truck_near(total):
+		return -1
+	if _bait_near(total + tuning.show_margin_seconds + tuning.close_lead_seconds):
+		return -1
+	var out_side: int = int(signf(world.geo.lane_x(r)))
+	if out_side == 0:
+		out_side = 1 if (int(spawn.get("seed", 0)) + shows) % 2 == 0 else -1
+	for l: int in [r + out_side, r - out_side]:
+		if _show_fits(r, l) and _show_lane_clear(l, total) and runner_can_dodge(r, l, total) \
+				and _shadow_clear(l, total, true):
+			return l
+	return -1
+
+
+## A showing begins in lane `l`: its lane change first (at once while it's still far behind, arriving), its
+## solid sides on, its siren swelling.
+func _begin_show(l: int) -> void:
+	show_phase = Show.PULL_UP
+	show_lane = l
+	shows += 1
+	_show_t = 0.0
+	_yielding = false
+	if target_lane != l:
+		target_lane = l
+		if gap > tuning.follow_gap + 2.0:
+			_x = world.geo.lane_x(l)
+			_switch_t = 1.0
+			lane = l
+		else:
+			_switch_from = _x
+			_switch_to = world.geo.lane_x(l)
+			_switch_t = 0.0
+	_set_blocker(true)
+	_play_siren()
+	_note(&"show")
+
+
+## It drops back behind the runner: its time is up, or it gives way (`yielding`: faster). A showing given way
+## before it came into view (still behind the camera) doesn't count.
+func _drop_back(yielding: bool) -> void:
+	if yielding and show_phase == Show.PULL_UP and gap > tuning.follow_gap - 1.0:
+		shows -= 1
+	show_phase = Show.DROP_BACK
+	_yielding = yielding
+	_note(&"give_way" if yielding else &"drop_back")
+
+
+## Back behind the runner: the showing is over. Its sides are no longer solid, and it takes up the runner's lane
+## again (_follow_player_lane).
+func _end_show() -> void:
+	show_phase = Show.NONE
+	show_lane = -1
+	_yielding = false
+	_last_show_end = _clock
+	_set_blocker(false)
+	_note(&"shown")
+
+
+## True when it must give way and drop back at once: the runner moves toward its lane (a lane change into its
+## side bumped back, or they're in or heading into it), leaves the floor or falls in a hole, has no other lane
+## to dodge into, or another big attack, a hover truck, a bait or an enemy beside or beyond it comes.
+func _must_give_way() -> bool:
+	var p: Player = world.player
+	if p.surface != Player.Surface.FLOOR or p.in_pit or _bumped or p.lane == show_lane \
+			or absf(p.position.x - world.geo.lane_x(show_lane)) < world.geo.lane_width * 0.75:
+		return true
+	var left: float = _show_seconds_left()
+	if _attack_on() or _hover_truck_near(left) or _bait_near(left + tuning.show_margin_seconds + tuning.close_lead_seconds):
+		return true
+	if absi(p.lane - show_lane) == 1 and not runner_can_dodge(p.lane, show_lane, left):
+		return true
+	var d: float = world.player_distance()
+	return not _shadow_clear(show_lane, 0.0, false) \
+		or _floor_enemy_in(show_lane, d - gap - tuning.body_size.z, d + left * _plan_speed())
+
+
+## Seconds of its showing left: closing in, alongside, and dropping back.
+func _show_seconds_left() -> float:
+	var drop: float = tuning.ease_seconds(tuning.follow_gap - gap, tuning.show_drop_speed)
+	match show_phase:
+		Show.PULL_UP:
+			return tuning.show_total_seconds(gap)
+		Show.ALONGSIDE:
+			return maxf(tuning.show_seconds - _show_t, 0.0) + drop
+		Show.DROP_BACK:
+			return drop
+	return 0.0
+
+
+## The closest it may come behind the runner: MIN_GAP, unless it's showing itself in a lane beside theirs (its
+## lane change done, the runner neither in its lane nor overlapping it), when it may come alongside.
+func _least_gap() -> float:
+	if show_phase == Show.NONE or _switch_t < 1.0 or world.player == null:
+		return MIN_GAP
+	var p: Player = world.player
+	if p.lane == lane or absf(p.position.x - _x) < (tuning.body_size.x + world.tuning.visual_size.x) * 0.5:
+		return MIN_GAP
+	return -INF
+
+
+## True if its look fits on screen in lane `l` beside a runner in lane `r` without hiding them
+## (EnforcerTruckView.check, with every rider it may carry; worked out once a pair).
+func _show_fits(r: int, l: int) -> bool:
+	var key: int = r * 64 + l
+	if not _fits.has(key):
+		var look: StringName = EnforcerTruckModel.look_of(world.skin.enemy_variant if world.skin != null else &"city")
+		var prof: Array[AABB] = EnforcerTruckModel.profile(look, tuning.body_size, EnforcerTruckModel.RIDER_SLOTS.size())
+		var c: Dictionary = EnforcerTruckView.check(world.tuning, world.geo.lane_count, r, l, tuning.show_ahead, prof, 0.0)
+		_fits[key] = bool(c["fits"]) and not bool(c["hides_runner"])
+	return _fits[key]
+
+
+## True if lane `l` is clear for a showing taking `seconds` from now: no hole, cut, fence, doodad, pad, speed
+## pad, ramp or floor enemy in it, from where its rear is now (or will be at its follow gap, arriving) until
+## it has dropped back and taken up the runner's lane again. It never drives through anything on screen, never
+## hops a hole beside the runner, and never stands in a lane the runner needs (a pad, a ramp).
+func _show_lane_clear(l: int, seconds: float) -> bool:
+	var d: float = world.player_distance()
+	var from: float = d - minf(gap, tuning.follow_gap + 2.0) - tuning.body_size.z - 1.0
+	var to: float = d + (seconds + tuning.show_margin_seconds + tuning.lane_delay_seconds + tuning.switch_seconds) \
+		* _plan_speed()
+	return not _spans_hit(_lane_hard[l], from, to) and not _spans_hit(_lane_soft[l], from, to) \
+		and not _floor_enemy_in(l, from, to)
+
+
+## True if a runner in lane `r` keeps a lane to dodge into for `seconds` while the truck holds lane `l` beside
+## them (GDD §9.13: it never takes the only free lane): their own lane and the lane on its other side are never
+## both blocked (a hole, a cut, a fence, a doodad, a floor enemy) at the same place, with DODGE_ROOM_SECONDS of
+## running around it to step across.
+func runner_can_dodge(r: int, l: int, seconds: float) -> bool:
+	var o: int = 2 * r - l
+	if o < 0 or o >= world.geo.lane_count:
+		return false
+	var v: float = _plan_speed()
+	var d: float = world.player_distance()
+	var to: float = d + (seconds + tuning.show_margin_seconds) * v
+	var room: float = DODGE_ROOM_SECONDS * v
+	var mine: PackedVector2Array = _lane_hard[r]
+	var i: int = _first_span(mine, d)
+	while i < mine.size() and mine[i].x <= to:
+		if _spans_hit(_lane_hard[o], mine[i].x - room, mine[i].y + room) \
+				or _floor_enemy_in(o, mine[i].x - room, mine[i].y + room):
+			return false
+		i += 1
+	for e: Enemy in world.director.active:
+		if not is_instance_valid(e) or not e.alive or e == self or not LevelGenerator.enemy_uses_floor({"type": String(e.type_id)}):
+			continue
+		var at: float = e.track_distance()
+		if at < d or at > to or world.geo.lane_at(e.global_position.x) != r:
+			continue
+		if _spans_hit(_lane_hard[o], at - ENEMY_ROOM - room, at + ENEMY_ROOM + room) \
+				or _floor_enemy_in(o, at - room, at + room):
+			return false
+	return true
+
+
+## True if no enemy is in lane `l` or beyond it (toward that side's wall) near the runner, from just behind
+## them to show_shadow_reach ahead, where from the camera the truck would hide it; with `planned`, none of the
+## layout's coming there either over the next `seconds` of running.
+func _shadow_clear(l: int, seconds: float, planned: bool) -> bool:
+	var p: Player = world.player
+	var side: float = signf(float(l - p.lane))
+	if side == 0.0:
+		return false
+	var edge: float = world.geo.lane_x(l) - side * world.geo.lane_width * 0.5
+	var d: float = world.player_distance()
+	var reach: float = tuning.show_shadow_reach
+	for e: Enemy in world.director.active:
+		if not is_instance_valid(e) or not e.alive or e == self:
+			continue
+		var at: float = e.track_distance()
+		if at >= d - 3.0 and at <= d + reach and (e.global_position.x - edge) * side > 0.0:
+			return false
+	if planned:
+		var to: float = d + seconds * _plan_speed() + reach
+		var lo: int = 0
+		var hi: int = _planned.size()
+		while lo < hi:
+			var mid: int = (lo + hi) >> 1
+			if _planned[mid].x < d - 3.0:
+				lo = mid + 1
+			else:
+				hi = mid
+		while lo < _planned.size() and _planned[lo].x <= to:
+			if (_planned[lo].y - edge) * side > 0.0:
+				return false
+			lo += 1
+	return true
+
+
+## True if a floor enemy in play stands in lane `l` between track distances `from` and `to` (ENEMY_ROOM
+## around it).
+func _floor_enemy_in(l: int, from: float, to: float) -> bool:
+	for e: Enemy in world.director.active:
+		if not is_instance_valid(e) or not e.alive or e == self:
+			continue
+		var at: float = e.track_distance()
+		if at < from - ENEMY_ROOM or at > to + ENEMY_ROOM:
+			continue
+		if LevelGenerator.enemy_uses_floor({"type": String(e.type_id)}) and world.geo.lane_at(e.global_position.x) == l:
+			return true
+	return false
+
+
+## True while another enemy's big attack is on or waiting for its turn (GDD §9), or its shots are still on their
+## way to the runner: a showing never meets another attack's warning.
+func _attack_on() -> bool:
+	for e: Enemy in world.director.active:
+		if not is_instance_valid(e) or e == self or not e.alive:
+			continue
+		if e.is_major_attack_active() or world.director.is_waiting(e) or world.director.shots_on_their_way(e.type_id):
+			return true
+	return false
+
+
+## True while a hover truck is in play, or one of the layout's comes within `seconds` of running (and its
+## spawn lead): the mini-boss holds an outer lane and the street meanwhile.
+func _hover_truck_near(seconds: float) -> bool:
+	for e: Enemy in world.director.active:
+		if is_instance_valid(e) and e.alive and e.type_id == &"hover_truck":
+			return true
+	var d: float = world.player_distance()
+	var i: int = _hover_ats.bsearch(d - 10.0)
+	var lead: float = 0.0
+	var ht := EnemyDirector.tuning_for("hover_truck") as EnemyTuning
+	if ht != null:
+		lead = ht.spawn_lead
+	return i < _hover_ats.size() and _hover_ats[i] <= d + seconds * _plan_speed() + lead
+
+
+## True if one of its baits attacks within `seconds` of running (_bait_on: an Octodog engaged, a Buzz Overdrive
+## revving, charging or rolling in), or one of the layout's baits warns by then (_bait_warns).
+func _bait_near(seconds: float) -> bool:
+	if _bait_on(seconds):
+		return true
+	var d: float = world.player_distance()
+	var i: int = _bait_warns.bsearch(d - 1.0)
+	return i < _bait_warns.size() and _bait_warns[i] <= d + seconds * _plan_speed()
+
+
+## The runner's speed to plan a showing's stretch of track with (never under the level's run speed).
+func _plan_speed() -> float:
+	return maxf(world.player.speed, world.tuning.run_speed)
+
+
+## Its solid sides, on while it shows itself (GDD §9.3: a lane change into it is bumped back).
+func _set_blocker(on: bool) -> void:
+	if _blocker != null:
+		_blocker.collision_layer = TrackBuilder.LAYER_LANE_BLOCKER if on else 0
+
+
+## True while its solid sides are on.
+func blocking() -> bool:
+	return _blocker != null and _blocker.collision_layer != 0
+
+
+## The runner's movement events: a lane change bumped back toward its lane while it shows itself (it gives way).
+func _on_player_event(kind: StringName) -> void:
+	if kind != &"lane_blocked" or show_phase == Show.NONE or not alive:
+		return
+	var p: Player = world.player
+	if int(p.get(&"_bump_dir")) == signi(show_lane - p.lane):
+		_bumped = true
+
+
+## Its siren on its own voice, swelling from siren_swell_db under its full volume as it pulls alongside. Silent
+## headless; noted either way.
+func _play_siren() -> void:
+	sounds_played.append(&"enforcer_siren")
+	_swell_t = -1.0
+	var library: SfxLibrary = world.sfx_library
+	if library == null or not SfxLibrary.audible():
+		return
+	var stream: AudioStream = library.stream(&"enforcer_siren")
+	if stream == null:
+		return
+	_siren.stream = stream
+	_siren_db = library.volume(&"enforcer_siren")
+	_siren.volume_db = _siren_db - tuning.siren_swell_db
+	_swell_t = 0.0
+	_siren.play()
+
+
+func _update_siren(delta: float) -> void:
+	if _swell_t < 0.0 or not _siren.playing or _siren.stream == null:
+		return
+	_swell_t += delta
+	var swell: float = maxf(_siren.stream.get_length() * 0.75, 0.2)
+	_siren.volume_db = _siren_db - tuning.siren_swell_db * (1.0 - clampf(_swell_t / swell, 0.0, 1.0))
+
+
 # --- Volleys -----------------------------------------------------------------------------------------
 
 ## Its volleys are a big attack (GDD §9; §9.13, proposed): from its warning until its last bolt has passed
@@ -534,11 +1096,12 @@ func _update_volley(delta: float) -> void:
 	_update_line(delta)
 
 
-## Ready for a volley: chasing at its follow gap, its interval over, the runner on the floor, no bait about
-## to attack before the volley would be over (so it never fires into one's attack, big attacks taking turns
-## or not), and a lane beside the runner's clear to escape into (asked last).
+## Ready for a volley: chasing at its follow gap (never while it shows itself), its interval over, the runner on
+## the floor, no bait about to attack before the volley would be over (so it never fires into one's attack, big
+## attacks taking turns or not), and a lane beside the runner's clear to escape into (asked last).
 func _ready_to_fire() -> bool:
-	if state != State.CHASING or close or absf(gap - tuning.follow_gap) > 1.0 or next_volley_in() > 0.0:
+	if state != State.CHASING or close or show_phase != Show.NONE or absf(gap - tuning.follow_gap) > 1.0 \
+			or next_volley_in() > 0.0:
 		return false
 	var p: Player = world.player
 	if not p.alive or not p.running or p.surface != Player.Surface.FLOOR:
@@ -678,7 +1241,8 @@ func _play_whine() -> void:
 # --- Lights and marker --------------------------------------------------------------------------------
 
 ## The light bar takes turns red and blue (flash_hz), on the truck and in its floor washes, and on the
-## marker; with Reduced flashing both stay lit, steady and softer.
+## marker; with Reduced flashing both stay lit, steady and softer. The marker fades while the truck shows
+## itself on screen (it says where an unseen truck is).
 func _update_lights(delta: float) -> void:
 	_flash_t += delta
 	var reduced: bool = Settings.flashing_reduced
@@ -693,6 +1257,8 @@ func _update_lights(delta: float) -> void:
 	marker.phase = -1 if reduced else phase
 	if state == State.LEAVING:
 		marker.shown = clampf(1.0 - (gap - tuning.follow_gap) / maxf(tuning.gone_gap - tuning.follow_gap, 1.0), 0.0, 1.0)
+	elif show_phase != Show.NONE and gap < tuning.follow_gap - 2.0:
+		marker.shown = maxf(marker.shown - delta * 4.0, 0.0)
 	else:
 		marker.shown = minf(marker.shown + delta * 3.0, 1.0)
 
@@ -704,53 +1270,120 @@ func _wreck(cause: StringName) -> void:
 	defeat(cause)
 
 
+## Destroyed (a charge, a hole): the player's kill, with the bonus for its riders. The impact makes sparks and
+## its crash (brakes, crunching steel); then its wreck lurches on into view and blows up there
+## (_physics_process, _explode): the owner (October 8, 2026) wants every kill to end in a visible explosion.
 func _on_defeated(cause: StringName) -> void:
 	state = State.WRECKED
 	_wreck_cause = cause
 	_wreck_t = 0.0
-	_wreck_front = world.player_distance() - gap
-	_wreck_speed = maxf(world.player.speed, 1.0) * (0.85 if cause == CHARGE_DAMAGE_CAUSE else 0.5)
+	_wreck_gap0 = gap
+	_wreck_gap = minf(gap, tuning.wreck_gap)
+	_wreck_far = _hole_far if _holed() else INF
+	_wreck_in_lane = absf(_x - world.player.position.x) < (tuning.body_size.x + world.tuning.visual_size.x) * 0.5 + 0.6
 	_fall_v = 0.0
+	_spin = 0.0
+	_trail_left = 0.0
+	_blast_at = -1.0
 	volley = Volley.IDLE
 	volley_lane = -1
 	_line.visible = false
 	_voice.stop()
+	_siren.stop()
+	_swell_t = -1.0
 	_canvas.visible = false
 	_floor.visible = false
+	show_phase = Show.NONE
+	_set_blocker(false)
 	world.director.give_up_turn(self)
 	_note(StringName("wreck:" + String(cause)))
 	# GDD §9.13: destroying it pays a bonus for each rider aboard (its own score comes from the ScoreKeeper:
 	# a bait, the player's kill).
 	if riders > 0:
 		world.score.add_bonus(&"enforcer_riders", riders * tuning.rider_bonus, "Riders x%d" % riders)
-	var at: Vector3 = global_position + Vector3(0.0, 1.2, 1.2)
-	_sound(&"enforcer_crash" if cause == &"gap" or cause == &"cut" else &"truck_explode")
-	world.effects.burst(at, Color(1.0, 0.45, 0.15), 46, 1.4)
-	world.effects.burst(at + Vector3(0.0, 0.8, 0.0), Color(0.3, 0.3, 0.33), 24, 1.1)
-	world.effects.debris(at, Color(0.3, 0.3, 0.34), 10, 0.7)
-	world.effects.shake(0.35, 0.4)
+	_sound(&"enforcer_crash")
+	world.effects.burst(aim_point(), Color(1.0, 0.72, 0.3), 26, 0.9)
+	world.effects.shake(0.2, 0.25)
 
 
-## Its wreck: in a hole it plunges in nose first; struck by a charge it skids, spins out and falls back,
-## burning. Gone after WRECK_SECONDS.
+## True if it was wrecked in a hole (a gap too wide to hop, a floor cut).
+func _holed() -> bool:
+	return _wreck_cause == &"gap" or _wreck_cause == &"cut"
+
+
+## Its wreck, kept in the runner's frame like the truck itself: it lurches on into view (its front from where
+## it was to wreck_gap behind the runner over wreck_surge_seconds, already closer staying put), spinning out
+## (a charge) or nose-diving into its hole, trailing sparks, then blows up where the camera sees it (_explode):
+## at the end of its lurch, or as its nose meets the far edge of the gap it fell in. The blast burns on,
+## falling back slowly (blast_drift), and it's gone when the blast is over.
 func _physics_process(delta: float) -> void:
 	super._physics_process(delta)
 	if state != State.WRECKED or world == null:
 		return
 	_wreck_t += delta
-	_wreck_front += _wreck_speed * delta
-	_wreck_speed = move_toward(_wreck_speed, 0.0, 22.0 * delta)
-	position = Vector3(_x, 0.0, TrackGeometry.world_z(_wreck_front))
-	if _wreck_cause == &"gap" or _wreck_cause == &"cut":
-		_fall_v -= 18.0 * delta
-		model.position.y += _fall_v * delta
-		model.rotation.x = lerpf(model.rotation.x, -0.75, 1.0 - exp(-5.0 * delta))
-	else:
-		_spin = lerpf(_spin, 0.9, 1.0 - exp(-3.0 * delta))
-		model.rotation.y = _spin * signf(_x - world.player.position.x + 0.01)
-		model.rotation.z = 0.12 * sin(_wreck_t * 9.0) * (1.0 - _wreck_t / WRECK_SECONDS)
-	if _wreck_t >= WRECK_SECONDS:
+	var pd: float = world.player_distance()
+	if _blast_at < 0.0:
+		var k: float = clampf(_wreck_t / maxf(tuning.wreck_surge_seconds, 0.01), 0.0, 1.0)
+		gap = lerpf(_wreck_gap0, _wreck_gap, smoothstep(0.0, 1.0, k))
+		var front: float = pd - gap
+		var edge: bool = _holed() and front >= _wreck_far - 0.05
+		if edge:
+			front = _wreck_far
+			gap = pd - front
+		position = Vector3(_x, 0.0, TrackGeometry.world_z(front))
+		if _holed():
+			_fall_v -= 18.0 * delta
+			model.position.y += _fall_v * delta
+			model.rotation.x = lerpf(model.rotation.x, -0.6, 1.0 - exp(-7.0 * delta))
+		else:
+			_spin = lerpf(_spin, 0.9, 1.0 - exp(-6.0 * delta))
+			model.rotation.y = _spin * signf(_x - world.player.position.x + 0.01)
+			model.rotation.z = 0.12 * sin(_wreck_t * 9.0)
+		_trail_left -= delta
+		if _trail_left <= 0.0:
+			_trail_left = 0.15
+			world.effects.burst(to_global(_blast_local()), Color(1.0, 0.45, 0.12), 10, 0.45)
+		if k >= 1.0 or edge:
+			_explode()
+		return
+	gap += tuning.blast_drift * delta
+	position = Vector3(_x, 0.0, TrackGeometry.world_z(pd - gap))
+	_blast.advance(delta)
+	_trail_left -= delta
+	if _trail_left <= 0.0 and _blast.t < tuning.blast_seconds * 0.5:
+		_trail_left = 0.2
+		world.effects.burst(_blast.global_position + Vector3(0.0, 0.8, 0.0), Color(1.0, 0.5, 0.15), 8, 0.4)
+	if _blast.done():
 		queue_free()
+
+
+## It blows up where the camera sees it: its model, riders and all, gone in a fireball (EnforcerTruckBlast, smaller
+## in the runner's lane), the shared effects' fire, smoke and debris, a chunk flung up for each rider, a shake
+## and truck_explode.
+func _explode() -> void:
+	_blast_at = _wreck_t
+	_note(&"blast")
+	var local: Vector3 = _blast_local()
+	model.visible = false
+	_blast.position = local
+	_blast.start(tuning.blast_radius_in_lane if _wreck_in_lane else tuning.blast_radius, tuning.blast_seconds,
+		Settings.flashing_reduced)
+	var at: Vector3 = to_global(local)
+	_sound(&"truck_explode")
+	world.effects.burst(at, Color(1.0, 0.5, 0.1), 50, 1.4)
+	world.effects.burst(at + Vector3(0.0, 0.6, 0.0), Color(1.0, 0.85, 0.35), 26, 1.0)
+	world.effects.burst(at + Vector3(0.0, 1.0, 0.0), Color(0.35, 0.33, 0.32), 22, 0.9)
+	world.effects.debris(at, Color(0.3, 0.3, 0.34), 12, 0.9)
+	for i: int in mini(riders, EnforcerTruckModel.RIDER_SLOTS.size()):
+		var slot: Vector2 = EnforcerTruckModel.RIDER_SLOTS[i]
+		world.effects.debris(to_global(Vector3(slot.x, tuning.body_size.y + 0.4, slot.y)), Color(0.55, 0.6, 0.66), 5, 1.0)
+	world.effects.shake(0.45, 0.45)
+	_trail_left = 0.1
+
+
+## Where it blows up, in its own space: over its front half, low as it plunges into a hole.
+func _blast_local() -> Vector3:
+	return Vector3(0.0, 0.35, 1.2) if _holed() else Vector3(0.0, 0.9, 2.0)
 
 
 ## Weapons never target it (immune_to_weapons). Where effects appear: just behind its front, chest high.

@@ -157,6 +157,22 @@ func solid_vertices() -> PackedVector3Array:
 	return out
 
 
+## Its look as boxes in the model's space, for what the camera sees of it (EnforcerTruckView): its body with
+## its headlights and light bar, and each of the first `riders` riders on its roof. Each box holds every vertex
+## of its part, so a box hides a little more than the part itself.
+static func profile(look: StringName, size: Vector3, riders: int) -> Array[AABB]:
+	var m: Dictionary = meshes_for(look, size)
+	var body: AABB = (m["body"] as Mesh).get_aabb()
+	for part: String in ["lamps", "bar_red", "bar_blue"]:
+		body = body.merge((m[part] as Mesh).get_aabb())
+	var out: Array[AABB] = [body]
+	var rider: AABB = (m["rider_body"] as Mesh).get_aabb().merge((m["rider_face"] as Mesh).get_aabb())
+	for i: int in mini(riders, RIDER_SLOTS.size()):
+		var s: Vector2 = RIDER_SLOTS[i]
+		out.append(AABB(rider.position + Vector3(s.x, size.y + (RING_LIFT if i == 2 else 0.0), s.y), rider.size))
+	return out
+
+
 func _mesh_nodes() -> Array[MeshInstance3D]:
 	var out: Array[MeshInstance3D] = [body, lamps, bar_red, bar_blue]
 	for slot: Node3D in riders:
