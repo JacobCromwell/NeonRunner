@@ -205,6 +205,8 @@ closes in on its own, like the stand-in thief's). It needs no rules script: it d
 weave toward live, from the layout already around it (gaps, fences, floor cuts, other floor enemies),
 so other patterns need nothing for it either, and it can never make a lane unfair (touching it is never
 a hit, CLAUDE.md principle 4).
+It stays about 11 s untouched (`approach_speed` 3.5 m/s, GDD §9.12, owner, October 8, 2026), so it can still be
+in the level when the next pattern's enemies come: nothing is reserved for it, since it never hurts.
 
 The Barnacle Turret (`barnacle_turret`) has no patterns, and no pattern should require it: its rules
 (`barnacle_turret_rules.gd`, after every rule that adds or takes away ceilings) hang turrets from the

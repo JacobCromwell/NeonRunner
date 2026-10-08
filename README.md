@@ -189,7 +189,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     it physically hits, without awarding player kill bonuses (in quick play, `--features=buzz_overdrive`)
   - the Tithe Collector (from Corporate 2, skipping the Dead Zone, back in the Golden Zone): a small gold
     drone with a collection plate, smug and gaudy (plain metal, no rotors; anti-grav pads don't affect
-    it). It appears ahead of you and closes in slowly, sucking up the credits in its lane along the way
+    it). It appears ahead of you and closes in slowly (left alone, it stays in the level about 11
+    seconds), sucking up the credits in its lane along the way
     and weaving toward whichever lane has the most hazards ahead, so chasing it is the risk. Touching it
     isn't deadly: it grabs 25% of the credits you've collected and flies off. Catch it (stomp, shoot, or
     dash through it) for everything it took, plus a jackpot (in quick play, `--features=tithe_collector`,

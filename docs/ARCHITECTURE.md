@@ -409,7 +409,20 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
     approach cue*: not a hazard warning (touching it isn't an attack), but still noticeable: a smug
     chuckle plays for everyone to hear (`world.play_sfx`, like the Resonator's warning) as soon as it
     exists. It reports no big attack (`is_major_attack_active` stays false): it isn't an attack, so it
-    never takes a turn.
+    never takes a turn. *How long it stays* (task H10, GDD §9.12, owner, October 8, 2026: "twice as
+    long"): untouched it leaves by distance, so its stay is `(start_ahead + passed_behind) /
+    approach_speed` seconds (`TitheCollectorTuning.stay_seconds()`): the pace stretches all three alike,
+    so it is the same in seconds at every run speed. First built at 30 m and 8 m over 7 m/s, about
+    5.4 s; the owner doubled it by halving `approach_speed` to 3.5 m/s (about 8.6 s ahead of the runner,
+    2.3 s behind, 10.9 s in all) with `start_ahead` and `passed_behind` (now a tunable, was a const) as
+    they were. Its pace along the track is the runner's less 3.5 m/s, so it covers about 2.7 times the
+    track it did (and sucks up about 2.5 times the credits in a credit-dense lane); a catch's window is
+    longer too (it closes more slowly). Robbed, it flees as it always did (`flee_speed`, `gone_ahead`).
+    A spawn param `approach_speed` overrides the tuning's: Hostile Takeover's Board passes its
+    `tithe_approach_speed` (7 m/s, the first-built stay), because a 130 m flatcar roof is too short for
+    the longer one (at 3.5 m/s it would meet the runner past the roof's end, over the coupling the
+    runner jumps, and be stomped mid-jump). It needs no reserved window in the generator: touching it is never a hit and it is never a
+    keep-out for anything (the generator's keep-out for it ends at its `at`, before it appears).
 - **A stomp on the ceiling** (C1): a hitbox that hangs from a ceiling (`Hazard.upside_down`, the
   Barnacle Turret's crown) has its top facing down, toward a rider on the ceiling, who stomps it by
   dropping back onto it after a jump (`Player._is_stomping`: on the ceiling, falling back toward it with
