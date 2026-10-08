@@ -121,7 +121,7 @@ extends EnemyTuning
 @export_range(1.0, 8.0, 0.1, "suffix:s") var show_seconds: float = 3.0
 @export_range(0.5, 8.0, 0.1, "suffix:s") var show_min_seconds: float = 1.5
 ## DESIGN-TBD: its front's distance ahead of the runner while it's beside them, in a lane next to theirs: the
-## chase camera then shows its whole model, its light bar and its riders (EnforcerTruckView.fits), and it never
+## chase camera then shows its whole model, its light bar and its riders (EnforcerTruckView.check), and it never
 ## hides the runner. It shows itself only in a lane where that holds.
 @export_range(2.0, 8.0, 0.1, "suffix:m") var show_ahead: float = 4.0
 ## How fast it closes in from behind the camera to come alongside, how fast it drops back once its time is up,

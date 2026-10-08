@@ -1,33 +1,41 @@
 extends Node3D
-## Visual review of the Enforcer Truck (GDD §9.13; task C6): its model up close, or a scripted run in a real
-## RunWorld on any zone's skin, through the game's camera (RunCamera) or a camera behind or beside the truck.
+## Visual review of the Enforcer Truck (GDD §9.13; tasks C6, C6b): its model up close, or a scripted run in a
+## real RunWorld on any zone's skin, through the game's camera (RunCamera) or a camera behind or beside the truck.
 ##
 ##   Render:  godot --path . --write-movie build/enforcer/f.png --fixed-fps 10 --quit-after 200
 ##            res://tools/showcase/enforcer_truck_showcase.tscn -- [options]
 ##   Options (after --):
-##     --scenario=chase|octodog|buzz|gap|model
+##     --scenario=chase|show|octodog|buzz|cut|gap|model
 ##                           chase (default): it arrives behind the runner (its siren, its lights sliding in
 ##                           on the floor, its marker), picks up a cyborg the runner passed in its lane, and
-##                           fires a volley (the red line and the whine) that the runner dodges;
+##                           fires a volley (the red line and the whine) that the runner dodges (its showings
+##                           off: --shows keeps them);
+##                           show: it shows itself (GDD §9.13 "Showing itself"): it pulls up beside the runner
+##                           as it arrives (its siren swelling), stays a few seconds and drops back; on its
+##                           second showing the runner tries to change lanes into it, is bumped back, and it
+##                           gives way (--bump=N: on showing N instead, 0 never);
 ##                           octodog: an Octodog charges, it closes right up behind the runner (its riders on
 ##                           its roof), and the runner dodges late, so the lunge flattens it (--early: the
 ##                           runner dodges at once and it follows out of the lane, unharmed);
 ##                           buzz: a Buzz Overdrive revs in the runner's lane, the runner leaves late and its
-##                           charge destroys the truck; gap: the runner jumps a gap too wide for it to hop;
+##                           charge destroys the truck; cut: the same tank is shot down mid-charge, the runner
+##                           steps around the end of its cut late and the truck drives into it; gap: the runner
+##                           jumps a gap too wide for it to hop (each ends in its blast);
 ##                           model: the model turning on a plinth with its riders and lights
 ##     --skin=<zone id>      the zone's look (data/skins/<id>_skin.tres; default corporate_plaza)
 ##     --lanes=N             lane count (default 3)
 ##     --speed=N             the run speed (default the zone's: Corporate 23.4, the Dead Zone 24.2, Golden 25)
-##     --riders=N            riders it starts with (default 2 in the octodog scenario, else 0)
+##     --riders=N            riders it starts with (default 2 in the octodog and show scenarios, else 0)
 ##     --camera=game|behind|side  the game's camera (default), one high behind the truck, or one beside it
 ##     --early               (octodog) the runner dodges as the wind-up starts
 ##     --reduced-flashing    Reduced flashing on (its light bar steady, the line only widening)
-## The run prints the truck's events (arrive, close, warn, fire, rider, hop, leave, wreck) and each scripted
-## action, with times, to find the frames (frame = time x render fps).
+## The run prints the truck's events (arrive, show, alongside, drop back, close, warn, fire, rider, hop, leave,
+## wreck, blast) and each scripted action, with times, to find the frames (frame = time x render fps).
 
 const TUNING_PATH: String = "res://data/tuning/movement.tres"
 const RULES_PATH: String = "res://data/tuning/game_rules.tres"
 const BuzzRules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
+const BuzzScript = preload("res://scripts/enemies/buzz_overdrive.gd")
 const ZONE_SPEEDS: Dictionary = {"corporate": 23.4, "corporate_plaza": 23.4, "dead_zone": 24.2, "golden": 25.0,
 	"golden_palace": 25.0}
 
@@ -48,6 +56,16 @@ var _early: bool = false
 var _dodged: bool = false
 var _riders: int = -1
 var _buzz_meet: float = INF
+## The show scenario: the showing the runner tries to change lanes into (0: none), and whether they have.
+var _bump_show: int = 2
+var _bumped: bool = false
+var _shows: bool = false
+## The cut scenario: the tank, shot down mid-charge, and where its cut stopped.
+var _tank: Enemy
+var _cut_lane: int = -1
+var _cut_end: float = 0.0
+var _cut_stop: float = INF
+var _stepped: bool = false
 
 
 func _ready() -> void:
@@ -71,6 +89,10 @@ func _ready() -> void:
 			camera_mode = v
 		elif arg == "--early":
 			_early = true
+		elif arg.begins_with("--bump="):
+			_bump_show = int(v)
+		elif arg == "--shows":
+			_shows = true
 		elif arg == "--reduced-flashing":
 			Settings.flashing_reduced = true
 			RenderingServer.global_shader_parameter_set(&"reduced_flashing", 1.0)
@@ -109,12 +131,17 @@ func _build_run(skin: ZoneSkin, lanes: int, speed: float) -> void:
 				"params": {"doghouse": false}})
 			if _riders < 0:
 				_riders = 2
-		"buzz":
+		"show":
+			if _riders < 0:
+				_riders = 2
+		"buzz", "cut":
 			var cut: Dictionary = BuzzRules.plan_for(BuzzRules.tuning(), lane, 150.0 * pace, speed, pace, 0.64)
 			layout.cuts.append(cut)
 			layout.enemies.append({"type": "buzz_overdrive", "at": float(cut["end"]), "lane": lane, "side": 0, "seed": 4,
 				"params": {}})
 			_buzz_meet = FloorCutPlan.meet(cut, speed)
+			_cut_lane = lane
+			_cut_end = float(cut["end"])
 		"gap":
 			var jump: float = tuning.jump_distance(speed)
 			layout.gaps.append({"lane": lane, "start": 170.0 * pace, "end": 170.0 * pace + jump * 0.78})
@@ -160,6 +187,10 @@ func _physics_process(_delta: float) -> void:
 		for e: Variant in world.director.active:
 			if is_instance_valid(e) and e is EnforcerTruck:
 				truck = e as EnforcerTruck
+				if scenario != "show" and not _shows:
+					# Its showings are the show scenario's (they'd move it out of the other scenarios' way).
+					truck.tuning = truck.tuning.duplicate() as EnforcerTruckTuning
+					truck.tuning.show_count = 0
 				if _riders > 0:
 					truck.riders = _riders
 					truck.model.set_riders(_riders)
@@ -186,11 +217,47 @@ func _physics_process(_delta: float) -> void:
 		player.press(&"move_right" if player.lane < world.geo.lane_count - 1 else &"move_left")
 	if is_instance_valid(_dog) and _dog.phase not in [Octodog.Phase.WINDUP, Octodog.Phase.LUNGE]:
 		_windup_t = -1.0
+	if scenario == "show":
+		_bump_into_it()
+	if scenario == "cut":
+		_shoot_the_tank()
 	if is_instance_valid(truck) and truck.history.size() > _events:
 		for i: int in range(_events, truck.history.size()):
-			print("%5.2f s  %6.1f m  the truck: %s (gap %.1f m, lane %d, riders %d)" % [player.elapsed, player.distance,
-				truck.history[i][0], truck.gap, truck.lane, truck.riders])
+			print("%5.2f s  %6.1f m  the truck: %s (gap %.1f m, lane %d, x %.1f, riders %d)" % [player.elapsed,
+				player.distance, truck.history[i][0], truck.gap, truck.lane, truck.global_position.x, truck.riders])
 		_events = truck.history.size()
+
+
+## The show scenario: a second into its showing number _bump_show, the runner tries to change lanes into it.
+func _bump_into_it() -> void:
+	if _bumped or not is_instance_valid(truck) or truck.shows != _bump_show:
+		return
+	if truck.show_phase == EnforcerTruck.Show.ALONGSIDE and float(truck.get(&"_show_t")) >= 1.0:
+		_bumped = true
+		var player: Player = world.player
+		var toward: StringName = &"move_left" if truck.show_lane < player.lane else &"move_right"
+		print("%5.2f s  %6.1f m  > %s (into its lane)" % [player.elapsed, player.distance, toward])
+		player.press(toward)
+
+
+## The cut scenario: the Buzz Overdrive is shot down mid-charge (its cut stops there), and the runner steps around
+## the cut's end a quarter of a second before it, too late for the truck behind them.
+func _shoot_the_tank() -> void:
+	var player: Player = world.player
+	if _tank == null:
+		for e: Variant in world.director.active:
+			if is_instance_valid(e) and (e as Enemy).type_id == &"buzz_overdrive":
+				_tank = e as Enemy
+	if is_instance_valid(_tank) and _tank.alive and int(_tank.get(&"state")) == BuzzScript.State.CHARGE \
+			and float(_tank.get(&"front")) - player.distance <= 0.9 * tuning.run_speed:
+		_tank.take_damage(9999.0, &"weapon")
+		var fc: FloorCut = world.track.floor_cut(_cut_lane, _cut_end)
+		_cut_stop = fc.front if fc != null else float(_tank.get(&"front"))
+		print("%5.2f s  %6.1f m  > the tank shot down, its cut stops at %.1f m" % [player.elapsed, player.distance, _cut_stop])
+	if not _stepped and player.distance >= _cut_stop - 0.25 * tuning.run_speed:
+		_stepped = true
+		print("%5.2f s  %6.1f m  > move_right (around the cut's end)" % [player.elapsed, player.distance])
+		player.press(&"move_right" if player.lane < world.geo.lane_count - 1 else &"move_left")
 
 
 func _process(delta: float) -> void:
