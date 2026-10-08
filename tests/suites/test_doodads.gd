@@ -144,7 +144,11 @@ func _test_layout_data() -> void:
 
 
 ## A share of 0 builds a level exactly as before; a share only adds doodads: every piece, enemy, pick
-## and fill stays, and only the credits inside a doodad go.
+## and fill stays, and only the credits inside a doodad go. City 1's extra gaps (GapDensity, after the doodads)
+## are the one exception FIX4 left (docs/questions/fix4.md): a full-width widening or a new row keeps its margin
+## from a doodad, so where both want the same stretch the extra gap goes elsewhere. There the level's own gaps
+## stay, and as many extra gaps come, in as many lanes (_check_extra_gaps); task G7's wider gaps re-rolled City 1
+## at 3 lanes into that case.
 func _test_share_zero() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var checked: int = 0
@@ -165,6 +169,10 @@ func _test_share_zero() -> void:
 			var a: Dictionary = with.to_dict()
 			var b: Dictionary = plain.to_dict()
 			for key: String in ["gaps", "fences", "signs", "hulls", "pads", "ramps", "speed_pads", "enemies"]:
+				if key == "gaps" and (config.gap_encounter_increase > 0.0 or config.gap_lane_increase > 0.0) \
+						and JSON.stringify(a[key]) != JSON.stringify(b[key]):
+					_check_extra_gaps(config, patterns, gen, plain_gen, with, plain, tag)
+					continue
 				check(JSON.stringify(a[key]) == JSON.stringify(b[key]), "doodads leave the %s as they were %s" % [key, tag])
 			check(JSON.stringify(gen.picks) == JSON.stringify(plain_gen.picks) and JSON.stringify(gen.fills) == JSON.stringify(plain_gen.fills)
 				and gen.attempts == plain_gen.attempts, "and the pattern pass, the fill pass and the guarantee's builds " + tag)
@@ -183,6 +191,45 @@ func _test_share_zero() -> void:
 				plain.credits.size(), tag])
 			checked += 1
 	check(checked == 15, "levels compared with and without doodads: %d" % checked)
+
+
+## City 1's gaps with doodads (`with`, `gen`'s build) and without (`plain`, `plain_gen`'s), where they differ: the
+## level's own gaps (its build without the extra gaps) stay in both, the extra gaps come as many rows and holes
+## in both, and only extra gaps differ.
+func _check_extra_gaps(config: LevelConfig, patterns: Array, gen: LevelGenerator, plain_gen: LevelGenerator,
+		with: LevelLayout, plain: LevelLayout, tag: String) -> void:
+	var own: LevelConfig = config.duplicate() as LevelConfig
+	own.gap_encounter_increase = 0.0
+	own.gap_lane_increase = 0.0
+	var base: LevelLayout = LevelGenerator.new().generate(own, tuning, patterns)
+	var base_gaps: Dictionary = {}
+	for g: Dictionary in base.gaps:
+		base_gaps[JSON.stringify(g)] = true
+	var with_gaps: Dictionary = {}
+	for g: Dictionary in with.gaps:
+		with_gaps[JSON.stringify(g)] = true
+	var plain_gaps: Dictionary = {}
+	for g: Dictionary in plain.gaps:
+		plain_gaps[JSON.stringify(g)] = true
+	var own_kept: bool = true
+	for key: String in base_gaps:
+		own_kept = own_kept and with_gaps.has(key) and plain_gaps.has(key)
+	check(own_kept, "doodads leave the level's own gaps as they were %s" % tag)
+	var moved: PackedStringArray = []
+	for key: String in with_gaps:
+		if not plain_gaps.has(key):
+			moved.append(key)
+			own_kept = own_kept and not base_gaps.has(key)
+	for key: String in plain_gaps:
+		if not with_gaps.has(key):
+			moved.append(key)
+			own_kept = own_kept and not base_gaps.has(key)
+	var a: Dictionary = gen.gap_density_result
+	var b: Dictionary = plain_gen.gap_density_result
+	check(own_kept and int(a.get("rows", -1)) == int(b.get("rows", -2)) and int(a.get("lane_gaps", -1)) == int(b.get("lane_gaps", -2))
+		and var_to_str(a.get("constraints", [])) == var_to_str(b.get("constraints", [])),
+		"doodads move only City 1's extra gaps (FIX4), and as many come (%d rows, %d holes; moved %s) %s" % [
+		int(a.get("rows", -1)), int(a.get("lane_gaps", -1)), moved, tag])
 
 
 ## Placement fairness (LayoutChecks.check_doodads, with the rest of check_layout and check_rules) at

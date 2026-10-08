@@ -405,13 +405,15 @@ func _generate(config: LevelConfig, m: MovementTuning, patterns: Array) -> Level
 	return gen
 
 
-## Its rules only add its trucks: with danger density off (whose enemy count counts them), Corporate 2 and
-## Golden 2 are the same level with or without the feature but for the trucks.
+## Its rules only add its trucks: with danger density off (whose enemy count counts them) and the wider gaps off
+## (task G7: they go in a truck's chase first), Corporate 2 and Golden 2 are the same level with or without the
+## feature but for the trucks.
 func _test_only_its_trucks() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	for id: String in ["corporate/2", "golden/2"]:
 		var config: LevelConfig = campaign.configure(campaign.step(id), 5)
 		config.danger_density_increase = 0.0
+		config.wide_gaps = 0
 		var m: MovementTuning = config.movement_for(tuning)
 		var patterns: Array = LevelGenerator.load_for(config)
 		var with_it: LevelLayout = LevelGenerator.new().generate(config, m, patterns)
@@ -427,7 +429,7 @@ func _test_only_its_trucks() -> void:
 				kept.append(e)
 		stripped.enemies = kept
 		check(not Rules.trucks_in(with_it).is_empty() and JSON.stringify(stripped.to_dict()) == JSON.stringify(plain.to_dict()),
-			"%s (no danger density): the same level but for its trucks" % id)
+			"%s (no danger density, no wider gaps): the same level but for its trucks" % id)
 
 
 ## Quick play: no bait, no truck (GDD §9.13: only where an Octodog or a Buzz Overdrive charges); with

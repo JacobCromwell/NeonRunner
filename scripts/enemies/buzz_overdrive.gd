@@ -35,6 +35,10 @@ extends Enemy
 ## lower where it revs longest), and it's kept until its charge has died away.
 ## Numbers: BuzzOverdriveTuning (data/enemies/buzz_overdrive.tres). Look: BuzzOverdriveModel.
 ## Only its charge hurts other hittable enemies on physical blade contact (Enemy._hurt_charge_contacts).
+## A tank with a cyborg planted in its path (task G7; GDD §9.13 "Teaching"; ChargePathPlacement: its cut's `park`)
+## doesn't roll ahead of the player: it waits parked at its cut's end, in view from appear_distance, revs there and
+## charges as planned (the rev, the charge and its claim come where they always would), so its blade crosses the
+## cyborg standing in front of it, in its lane, which a tank keeping its distance ahead would drive through.
 
 ## PASS (task FIX2) comes last, so the others keep their numbers in event logs (tools/measure).
 enum State { PARKED, ROLL, REV, CHARGE, GONE, PASS }
@@ -193,11 +197,14 @@ func _tick(delta: float) -> void:
 
 ## Where its blade is when the player is at `p`: parked a charge's distance past where it sets off,
 ## then that far ahead of the player while it rolls and revs (at the cut's end when the charge
-## starts), then the cut's front, charging back past the player (FloorCutPlan.front_at). Once it has
-## let the runner pass, speeding off ahead of them (_passing_front).
+## starts), then the cut's front, charging back past the player (FloorCutPlan.front_at). A parked tank
+## (task G7, parked()) waits at the cut's end until its charge. Once it has let the runner pass, speeding
+## off ahead of them (_passing_front).
 func _front_for(p: float) -> float:
 	if _passed:
 		return _passing_front(p)
+	if parked() and p < FloorCutPlan.charge_at(cut):
+		return float(cut["end"])
 	var ahead: float = float(cut["charge"])
 	if p < FloorCutPlan.lead_at(cut):
 		return FloorCutPlan.lead_at(cut) + ahead
@@ -220,9 +227,16 @@ func _spin_rate(p: float) -> float:
 ## keyed to the player's distance like the rest): it speeds off ahead of them, from a charge's distance
 ## to appear_distance ahead (out of view) in pass_seconds at the run speed.
 func _passing_front(p: float) -> float:
-	var ahead: float = float(cut["charge"])
+	# A parked tank (task G7) sets off from its cut's end, its warning's distance ahead of the player.
+	var ahead: float = float(cut["warn"]) if parked() else float(cut["charge"])
 	var k: float = maxf(p - FloorCutPlan.warn_at(cut), 0.0) / maxf(_run_speed * tuning.pass_seconds, 0.01)
 	return p + ahead + maxf(tuning.appear_distance - ahead, 1.0) * k * k
+
+
+## True if it waits at its cut's end until its charge rather than rolling ahead of the player (task G7: a
+## cyborg planted in its path, ChargePathPlacement; its cut's `park`).
+func parked() -> bool:
+	return bool(cut.get("park", false))
 
 
 ## Its big attack (GDD §9: big attacks take turns) is on from the rev until its charge has passed the
@@ -244,7 +258,8 @@ func takes_turns() -> bool:
 
 ## Where the player is when it claims its turn: claim_seconds (at the run speed) before its rev.
 func claim_at() -> float:
-	return FloorCutPlan.warn_at(cut) - tuning.claim_seconds * _run_speed
+	# A planted encounter's cut (task G7, ChargePathPlacement) carries a longer claim of its own.
+	return FloorCutPlan.warn_at(cut) - float(cut.get("claim_seconds", tuning.claim_seconds)) * _run_speed
 
 
 ## True while it claims its turn before its rev (takes_turns()): from claim_at() until it revs or lets
