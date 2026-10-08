@@ -997,6 +997,17 @@ func _test_dash_world() -> void:
 	var city := load("res://data/skins/city_skin.tres") as ZoneSkin
 	config.skin = city
 	var w: RunWorld = sim.build_world(layout, loadout, null, config)
+	# The pieces' look is drawn while the level loads (ShaderWarmup samples the hidden pool), never first
+	# in the frame of a smash.
+	var camera := Camera3D.new()
+	tree.root.add_child(camera)
+	var stage := ShaderWarmup.new()
+	stage.setup(w, camera)
+	check(stage.keys.has("multimesh10|ArrayMesh|%s" % ShaderWarmup.shader_key(MeshKit.solid())),
+		"the warm-up draws the pieces' look while the level loads")
+	stage.queue_free()
+	camera.queue_free()
+	await tree.process_frame
 	var p: Player = w.player
 	p.armor = 1
 	p.shield = 1
@@ -1251,12 +1262,15 @@ static func _first_from(spans: Array[Vector2], d: Dictionary) -> float:
 ## cut's whole window; a ceiling to the end of its landing zone; what the rules keep doodads off, a Bad
 ## Dream's chase). The seconds from its front (where the smash shows what it hid) to there at the dash's
 ## speed (the run's plus the dash's bonus, the fastest a runner comes through it) must leave a reaction
-## (REACTION) and a lane switch (MovementTuning.lane_switch_time). Prints the spread at each lane count.
+## (REACTION) and a lane switch (MovementTuning.lane_switch_time); and so must the seconds from its end, for
+## a runner who dashed into its side near its end (_test_dash_sideways), the latest a smash can show it.
+## Prints the spread at each lane count.
 func _test_dash_fairness() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	for lanes: int in [3, 5, 6]:
 		var lane_times: Array[float] = []
 		var any_times: Array[float] = []
+		var side_times: Array[float] = []
 		var worst: String = ""
 		var worst_time: float = INF
 		var need: float = REACTION + tuning.lane_switch_time
@@ -1306,21 +1320,25 @@ func _test_dash_fairness() -> void:
 				var all: Array[Vector2] = every.duplicate()
 				all.append_array(mine)
 				var anywhere: float = (_first_from(all, d) - float(d["start"])) / dash_speed
+				var from_end: float = (_first_from(all, d) - float(d["end"])) / dash_speed
 				var tag: String = "(%s lanes=%d, doodad at %.0f in lane %d)" % [s.id, lanes, d["start"], lane]
 				check(in_lane >= need and anywhere >= need,
 					"a runner who dashes through has time to see what it hid and move: the next thing in its lane %.2f s on, in any lane %.2f s, at the dash's speed (a reaction and a switch take %.2f s) %s"
 					% [in_lane, anywhere, need, tag])
+				check(from_end >= need, "and one who dashed into its side by its end: %.2f s on %s" % [from_end, tag])
 				if in_lane < INF:
 					lane_times.append(in_lane)
 				any_times.append(anywhere)
+				side_times.append(from_end)
 				if anywhere < worst_time:
 					worst_time = anywhere
 					worst = tag
 		lane_times.sort()
 		any_times.sort()
+		side_times.sort()
 		check(not any_times.is_empty() and not lane_times.is_empty(), "campaign doodads measured at %d lanes" % lanes)
 		if any_times.is_empty() or lane_times.is_empty():
 			continue
-		print("  dashing through doodads at %d lanes (%d doodads): the next thing in its lane %.2f s after its front at the least (median %.2f s), in any lane %.2f s (median %.2f s, %s); a reaction and a switch take %.2f s"
+		print("  dashing through doodads at %d lanes (%d doodads): the next thing in its lane %.2f s after its front at the least (median %.2f s), in any lane %.2f s (median %.2f s, %s), from its end %.2f s; a reaction and a switch take %.2f s"
 			% [lanes, any_times.size(), lane_times[0], lane_times[lane_times.size() / 2], any_times[0], any_times[any_times.size() / 2],
-			worst, need])
+			worst, side_times[0], need])

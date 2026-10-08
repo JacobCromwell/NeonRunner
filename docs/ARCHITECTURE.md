@@ -1387,8 +1387,8 @@ lane at 3 lanes meets every doodad (they all stand there); at 5 and 6 lanes abou
 
 **A runner who dashes through a doodad** (task H5; the dash smashes one: Damage and interactions, "The
 dash smashes a zone doodad"): a doodad is 2.6 m tall and hides its own lane right behind it from the
-chase camera, which a runner it pushes
-never reaches in that lane; a dash shows it only at the smash, and goes on at the dash's speed (+8 m/s).
+chase camera, which a runner it pushes never reaches in that lane; a dash shows it only at the smash, and
+goes on at the dash's speed (+8 m/s).
 The placement already keeps the level's spacing after every doodad clear in every lane (`doodad_after()`,
 at least `spacing_seconds_hard`, 0.9 s at run speed), so it needed no rule of its own. Measured over every
 campaign level at 3, 5 and 6 lanes (`test_doodads`' `_test_dash_fairness`, each level's own build, 270
@@ -1396,8 +1396,9 @@ doodads), the first thing after a doodad, in its lane (a hole, a wider gap, a fe
 floor cut's lane window, an enemy standing in it) or in any lane (everything the fill pass counts as going
 on: every piece, each enemy's stretch as its rules keep it, a cut's window; a ceiling to the end of its
 landing zone; a Bad Dream's chase), comes at least 0.75, 0.73 and 0.72 s after its front at 3, 5 and 6 lanes
-at the dash's speed (medians about 0.8 s), against the 0.49 s a reaction (0.35 s, the suites' bots) and a lane
-switch take. The suite holds every campaign doodad to that.
+at the dash's speed (medians about 0.8 s), and 0.70, 0.68 and 0.68 s after its end (a runner who dashed into
+its side near its end sees it there at the latest), against the 0.49 s a reaction (0.35 s, the suites' bots)
+and a lane switch take. The suite holds every campaign doodad to both.
 
 **Floor cuts** (B4; GDD §9.9, the Buzz Overdrive's: "the generator plans each cut in advance (lane,
 start and end), so levels stay fair and identical on every attempt; the saw is just the visible cause").

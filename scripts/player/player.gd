@@ -1121,6 +1121,7 @@ func _die(cause: String) -> void:
 	alive = false
 	dashing = false
 	_dash_bonus = 0.0
+	_smash_claims.clear()
 	_death_cause = cause
 	_update_avatar(0.0)  # Avatar: starts the collapse (the avatar finishes it on its own).
 	_event(&"died")
