@@ -242,14 +242,17 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   Zone's 24.2 m/s (its distances follow the pace too): a colossal nightmare of fused Bad Dreams with
   dozens of maws, looming over the darkened street. Weapons can't touch it. As the runner reaches a
   charred bridge, its belly's great maw opens with a shriek and the three lanes it will slash light up
-  red: take the bridge's pad up onto the ceiling, where it can't reach, or leave those lanes. Purple
-  mist pooling in the runner's lane, with whispering, means a hand is about to burst up: switch lanes.
-  Hand volleys progress from one hand to two, then stay at three across phase changes. Later volleys
-  can reach inward from either side wall, with mist on the wall warning each spot. An adjacent floor
-  lane always stays safe, including on the three-lane playfield.
-  After a deep inhale it swallows the light, and the street goes darker while every hazard keeps
-  glowing. Only a fence generator's EMP hurts it: a generator comes into sight far ahead, its pink
-  beacon showing through the nightmare; as the runner nears it the nightmare lunges in after them, and
+  red: take the bridge's pad up onto the ceiling, where it can't reach, or leave those lanes. Its hands
+  come in rounds spread along the street: with a whisper, purple mist pools where each hand will burst
+  up, row after row, each row leaving one lane open one lane over from the last, so the runner weaves
+  through a round with a lane switch at every row. Rounds grow from two rows to four across the fight,
+  and every row also reaches in from a side wall, with mist on the wall warning the spot. Its street's
+  side walls break into many gaps, and it has twice the holes it first had; a round only comes where a
+  way through it exists (the planner proves it with the real lane-switch time). After a deep inhale it
+  swallows the light, and the street goes very dark (half as bright as it first did, never pitch
+  black) while every hazard keeps glowing. Only a fence generator's EMP hurts it: a generator comes into
+  sight far ahead, its pink beacon showing through the nightmare; as the runner nears it the nightmare
+  lunges in after them, and
   once arcs leap from the generator into it, a stomp on the generator (or the dash) tears a chunk of
   the nightmare away. Three EMPs, three phases, each hungrier; the last bursts it into hundreds of faint
   faces and figures rising into the dark, the music falls silent and a grey dawn breaks over the Dead
@@ -478,6 +481,12 @@ those the cap left out, whether the defeat played out, and whether every attempt
 `godot --headless --fixed-fps 60 -s res://tools/measure/hostile_takeover.gd -- [--lanes=3,5,6] [--speeds=18,23.4]
 [--attempts=2] [--die-in=3] [--misses=N] [--bay-misses=N] [--pass-misses=N] [--clamps-per-pass=N]` (about a
 minute for every setup).
+
+`tools/measure/sleep_taker_arena.gd` counts the Sleep Taker's arena over its three laps as the fight plans them
+(refuges and all), at every lane count and speed: its rows of holes and lane-gaps, fences, refuges and side wall
+gaps (and their rate a minute); `--first` counts it as first built, before the owner's October 8, 2026 changes
+(twice the floor gaps, many wall gaps): `godot --headless -s res://tools/measure/sleep_taker_arena.gd --
+[--lanes=3,5,6] [--speeds=18,24.2] [--first]` (a few seconds).
 
 ## The web demo
 

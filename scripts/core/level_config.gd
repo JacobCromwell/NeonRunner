@@ -59,8 +59,9 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ##   fences over the low or the high part of the wall only, from Corporate 1 (task B5; no patterns: the
 ##   generator places them, WallFencePlacement)
 ## - wall_gaps: side wall gaps, stretches of a side wall with no wall-running surface (owner's
-##   answers, docs/USER_REQUESTS.md), from Gangland 1 (Zone 2) on, never in a boss arena (no patterns:
-##   the generator places them, WallGapPlacement; tuning in data/tuning/wall_gaps.tres)
+##   answers, docs/USER_REQUESTS.md), from Gangland 1 (Zone 2) on, never in a boss arena unless the
+##   arena opts in with wall_gap_tuning (no patterns: the generator places them, WallGapPlacement;
+##   tuning in data/tuning/wall_gaps.tres)
 ## - enforcer_truck: the Enforcer Truck (GDD §9.13; task C6), from Corporate 2 (no patterns: its rules,
 ##   enforcer_truck_rules.gd, bring it in around the level's Octodog and Buzz Overdrive charges, its baits,
 ##   so a level needs octodog or buzz_overdrive for it to appear)
@@ -68,6 +69,11 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## Rules scripts run in this list's order (see LevelGenerator), so the campaign keeps the order in
 ## which the schedule introduces features.
 @export var features: PackedStringArray = PackedStringArray(["ramps", "ceilings", "pulsing"])
+## The `wall_gaps` feature's numbers for this config (WallGapPlacement.tuning_for): null for every
+## level's, data/tuning/wall_gaps.tres. A boss arena gets wall gaps only with numbers of its own here
+## (and the feature listed): the opt-in (BossArena.base_config keeps the feature only then). The Sleep
+## Taker's arena opts in (owner, October 8, 2026: "the walls aren't safe": many gaps).
+@export var wall_gap_tuning: WallGapTuning
 ## Features that start partway into the level (GDD §5: City 1 meets its cyborgs late in the level):
 ## feature name → share of the level (0–1). Nothing of that feature is placed before its start,
 ## by patterns or by rules scripts, and the first pattern picked from there uses it (as soon as one

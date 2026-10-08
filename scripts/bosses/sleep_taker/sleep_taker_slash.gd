@@ -27,6 +27,10 @@ const MARKS_BEHIND: float = 1.2
 const MARKS_AHEAD: float = 16.0
 ## How long the claw streaks stay in view after the strike.
 const ARC_FADE: float = 0.25
+## How much stronger the lane marks are drawn at no light at all (lerped toward 1 as the light comes back):
+## the marks blend over the street with low alpha, so lights out would otherwise dim them with it, and
+## warnings stay as visible as before (GDD §10, owner, October 8, 2026). The shader caps alpha at 0.95.
+const MARKS_DARK_BOOST: float = 1.4
 
 var boss: SleepTaker
 var step: Step = Step.IDLE
@@ -282,6 +286,7 @@ func _update_marks() -> void:
 	elif step == Step.RECOVER:
 		fade = 0.45 * (1.0 - step_time / 0.25)
 	_marks_material.set_shader_parameter(&"progress", progress)
+	fade *= lerpf(MARKS_DARK_BOOST, 1.0, clampf(boss.light_level(), 0.0, 1.0))
 	_marks_material.set_shader_parameter(&"fade", fade)
 	_marks.global_position = Vector3(0.0, 0.035, boss.world.player.position.z)
 

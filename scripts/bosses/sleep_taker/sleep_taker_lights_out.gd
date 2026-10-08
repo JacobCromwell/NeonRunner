@@ -6,9 +6,11 @@ extends Node
 ## - the warning (inhale_seconds, SleepTakerTuning): a deep inhale (sleep_taker_inhale), every maw
 ##   gaping and its heads swelling, the street's light streaming into its maws;
 ## - then the light sinks to dark_level of the arena's own over dim_seconds (BossEncounter.
-##   set_light_level: the environment's ambient and sky light and the sun, never below
-##   BossEncounter.MIN_LIGHT_LEVEL; glowing things keep their colours) and stays dark for dark_seconds,
-##   the swallowed light glowing in its throats, while the other attacks carry on;
+##   set_light_level: the environment's ambient and sky light, its fog's light, the sun and the scenery's
+##   own light, never below its own floors, SleepTaker.light_floor and scenery_floor; glowing things keep
+##   their colours) and stays dark for dark_seconds, the swallowed light glowing in its throats, while the
+##   other attacks carry on. Owner, October 8, 2026: half as bright as first built (dark_level 0.45 then,
+##   0.225 now);
 ## - then it breathes out (sleep_taker_exhale) and the light comes back over return_seconds.
 ## Its timings don't follow the phase's pace (later phases have more of it in their lists instead).
 ## The light always comes back: after the dark, and at once on clear() (a phase change, the defeat); the
