@@ -13,9 +13,12 @@ extends Node3D
 ##   buzz        a Buzz Overdrive shot down
 ##   enforcer    an Enforcer truck wrecked
 ##   generator   a fence generator destroyed (the EMP ring stays cyan)
-##   missile     the heavy missile's blast (the cyan ring shows the splash reach)
+##   missile     the heavy missile's blast, set off as its hit does (the cyan ring shows the splash reach;
+##               --tier=3 for the plain missile's pop)
 ##   bomb        a boss's bomb blast, by the size its code gives
-## Options: --skin=city|gangland|... (default: the grey box), --lanes=N, --reduced, --at=metres ahead,
+## The enemies' scenarios run the stage (the player runs, the camera follows) and set the explosion off by
+## defeating them; sizes and bomb stand still. Options: --skin=city|gangland|... (default: the grey box),
+## --lanes=N, --reduced, --at=metres ahead,
 ## --cam=close (a camera beside the event), --delay=seconds before it goes off.
 
 const SIZES: Array[float] = [1.5, 2.2, 3.4, 7.0, 14.0]
@@ -33,6 +36,7 @@ var _cam: Camera3D
 var _focus: Vector3 = Vector3.ZERO
 var _lanes: int = 5
 var _size_override: float = -1.0
+var tier: int = 4
 
 
 func _ready() -> void:
@@ -57,6 +61,8 @@ func _ready() -> void:
 		elif arg == "--cam=side":
 			close_cam = true
 			side_cam = true
+		elif arg.begins_with("--tier="):
+			tier = int(v)
 		elif arg == "--reduced":
 			var profile := Profile.new()
 			Settings.set_value(profile, "reduced_flashing", true)
@@ -73,9 +79,16 @@ func _ready() -> void:
 		for lane: int in _lanes:
 			layout.fences.append({"lane": lane, "at": 60.0, "variant": "full", "pulsing": false,
 				"pulse_on": 1.0, "pulse_off": 1.0, "phase": 0.0})
+	if scenario == "buzz":
+		# A Buzz Overdrive comes with the floor cut it makes (the generator plans both together).
+		var rules: GDScript = load("res://scripts/enemies/buzz_overdrive_rules.gd")
+		var cut: Dictionary = rules.plan_for(rules.tuning(), _lanes / 2, ahead - 20.0, tuning.run_speed, tuning.pace(), 0.57)
+		layout.cuts.append(cut)
+		layout.enemies.append({"type": "buzz_overdrive", "at": float(cut["end"]), "lane": _lanes / 2, "side": 0, "seed": 11,
+			"params": {}})
 	var loadout := Loadout.new()
 	if scenario == "missile":
-		loadout.tiers[&"weapon"] = 4
+		loadout.tiers[&"weapon"] = tier
 	world = RunWorld.new()
 	add_child(world)
 	world.build(config, layout, tuning, load("res://data/tuning/game_rules.tres") as GameRules,
@@ -108,8 +121,7 @@ func _ready() -> void:
 			_enemy = world.director.spawn({"type": "hover_truck", "at": ahead, "lane": _lanes - 1, "side": 1, "seed": 5,
 				"params": {"skip_entrance": true, "phase": "pace", "offset": ahead, "guns": false}})
 		"buzz":
-			_enemy = world.director.spawn({"type": "buzz_overdrive", "at": ahead + 2.0, "lane": _lanes / 2, "seed": 1,
-				"params": {}})
+			pass
 		"enforcer":
 			_enemy = world.director.spawn({"type": "enforcer_truck", "at": ahead, "lane": _lanes / 2, "seed": 1,
 				"params": {}})
@@ -117,6 +129,8 @@ func _ready() -> void:
 			_enemy = world.director.spawn({"type": "generator", "at": ahead, "lane": _lanes / 2, "side": 0, "seed": 3,
 				"params": {}})
 	_size_override = one_size
+	if scenario != "sizes" and scenario != "bomb":
+		world.start()
 
 
 func _physics_process(delta: float) -> void:
@@ -132,16 +146,38 @@ func _physics_process(delta: float) -> void:
 		return
 	if _t < delay or _step > 0:
 		return
+	if scenario == "drone" and is_instance_valid(_enemy) and int(_enemy.get(&"state")) != 2:
+		return
+	if scenario == "buzz" and not _buzz_ready():
+		return
 	_step = 1
 	match scenario:
-		"drone", "truck", "buzz", "enforcer", "generator":
-			if is_instance_valid(_enemy):
-				_enemy.defeat(&"weapon")
 		"missile":
-			var spot: Vector3 = world.lane_point(_lanes / 2, ahead, 1.2)
-			world.powerups.weapon.fx.blast(spot, 3.5)
+			# What WeaponPowerup does on a missile's hit (the plain missile's pop, or the heavy one's blast).
+			var spot: Vector3 = world.lane_point(_lanes / 2, ahead, 1.4)
+			if tier >= 4:
+				world.powerups.weapon.fx.blast(spot, world.powerup_tuning.splash_radius)
+			else:
+				world.powerups.weapon.fx.missile_pop(spot)
+		"drone", "truck", "buzz", "enforcer", "generator":
+			if scenario == "buzz" and _enemy == null:
+				for e: Enemy in world.director.active:
+					if e.type_id == &"buzz_overdrive":
+						_enemy = e
+			if is_instance_valid(_enemy):
+				_focus = _enemy.global_position + Vector3(0.0, 1.2, 0.0)
+				_enemy.defeat(&"weapon")
 		"bomb":
 			world.effects.fireball(world.lane_point(_lanes / 2, ahead, 0.6), 1.7, false, 1.3)
+
+
+## Whether the Buzz Overdrive is in play, on screen and within 45 m (it is made when the runner nears it).
+func _buzz_ready() -> bool:
+	for e: Enemy in world.director.active:
+		if e.type_id == &"buzz_overdrive" and e.alive and e.visible \
+				and e.global_position.distance_to(world.player.global_position) < 45.0:
+			return true
+	return false
 
 
 func _play_size(size: float) -> void:
@@ -153,7 +189,7 @@ func _process(_delta: float) -> void:
 	if _cam == null:
 		return
 	var at: Vector3 = _focus
-	if is_instance_valid(_enemy):
+	if is_instance_valid(_enemy) and _enemy.alive:
 		at = _enemy.global_position + Vector3(0.0, 1.2, 0.0)
 	_cam.global_position = Vector3(at.x + 15.0, at.y, at.z) if side_cam else Vector3(at.x + 2.5, at.y + 0.2, at.z + 12.0)
 	_cam.look_at(at, Vector3.UP)

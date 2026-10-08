@@ -39,6 +39,10 @@ const EMBER_SECONDS: float = 1.1
 ## Pixels across the blob and ember textures.
 const PUFF_PIXELS: int = 64
 const EMBER_PIXELS: int = 32
+## Within the first of these distances (metres) from the camera a puff is invisible, and from the second it is
+## fully drawn: the fire's and the smoke's.
+const FADE_FIRE := Vector2(0.6, 3.0)
+const FADE_SMOKE := Vector2(1.5, 6.0)
 ## The smallest and biggest fireball (metres), whatever a caller asks for.
 const MIN_SIZE: float = 0.25
 const MAX_SIZE: float = 40.0
@@ -55,9 +59,10 @@ var slots: Array[Slot] = []
 ## Fireballs started since the level began, and how many of them cut an earlier one short (every slot busy).
 var plays: int = 0
 var recycled: int = 0
-## The latest one's size and whether it played softened (Reduced flashing), for tests.
+## The latest one's size, whether it played softened (Reduced flashing), and its slot, for tests.
 var last_size: float = 0.0
 var last_reduced: bool = false
+var latest: Slot
 
 var _fire_material: StandardMaterial3D
 var _ember_material: StandardMaterial3D
@@ -70,9 +75,9 @@ var _next: int = 0
 func setup(p_tuning: SpeedFxTuning) -> void:
 	tuning = p_tuning
 	_make_shared()
-	_fire_material = _make_material(_puff_texture, true, tuning.fireball_glow)
-	_ember_material = _make_material(_ember_texture, true, tuning.fireball_glow)
-	_smoke_material = _make_material(_puff_texture, false, 1.0)
+	_fire_material = _make_material(_puff_texture, true, tuning.fireball_glow, FADE_FIRE.x, FADE_FIRE.y)
+	_ember_material = _make_material(_ember_texture, true, tuning.fireball_glow, FADE_FIRE.x, FADE_FIRE.y)
+	_smoke_material = _make_material(_puff_texture, false, 1.0, FADE_SMOKE.x, FADE_SMOKE.y)
 	for i: int in tuning.fireball_pool:
 		var slot := Slot.new()
 		slot.smoke = _make_emitter(tuning.fireball_smoke_puffs, tuning.fireball_smoke_seconds, _smoke_material, "Smoke")
@@ -111,6 +116,8 @@ func play(pos: Vector3, size: float, smoke: bool = true, pace: float = 1.0) -> v
 	var reduced: bool = Settings.flashing_reduced
 	last_size = size
 	last_reduced = reduced
+	# Never sunk into the floor: a blast on the street still rises out of it.
+	pos.y = maxf(pos.y, size * 0.45)
 	var slot: Slot = _take()
 	var speed: float = clampf(pace, 0.25, 4.0) * _size_pace(size)
 	var soft: float = 1.0
@@ -175,6 +182,7 @@ func play(pos: Vector3, size: float, smoke: bool = true, pace: float = 1.0) -> v
 		slot.smoke.emitting = false
 	slot.left = maxf(maxf(tuning.fireball_seconds, EMBER_SECONDS) / speed, smoke_span)
 	slot.began = _clock
+	latest = slot
 
 
 func _process(delta: float) -> void:
@@ -274,8 +282,8 @@ static func _make_shared() -> void:
 		Color(1.0, 0.95, 0.6, 1.0), Color(1.0, 0.62, 0.16, 1.0), Color(0.95, 0.25, 0.05, 0.8), Color(0.4, 0.06, 0.02, 0.0)])
 	# The smoke is lit red-brown by the fire at first, then a dull dark grey, and thins out.
 	_ramps["smoke"] = _ramp([0.0, 0.25, 0.5, 0.8, 1.0], [
-		Color(0.5, 0.16, 0.05, 0.0), Color(0.4, 0.14, 0.06, 0.2), Color(0.2, 0.15, 0.13, 0.4),
-		Color(0.13, 0.12, 0.12, 0.25), Color(0.1, 0.1, 0.1, 0.0)])
+		Color(0.5, 0.16, 0.05, 0.0), Color(0.4, 0.14, 0.06, 0.2), Color(0.2, 0.15, 0.13, 0.32),
+		Color(0.13, 0.12, 0.12, 0.2), Color(0.1, 0.1, 0.1, 0.0)])
 	_curves["fire"] = _curve([Vector2(0.0, 0.45), Vector2(0.25, 0.95), Vector2(0.6, 1.15), Vector2(1.0, 1.0)])
 	_curves["core"] = _curve([Vector2(0.0, 0.5), Vector2(0.2, 1.0), Vector2(1.0, 1.25)])
 	_curves["smoke"] = _curve([Vector2(0.0, 0.5), Vector2(0.5, 1.0), Vector2(1.0, 1.3)])
@@ -335,7 +343,7 @@ static func _blob_texture(pixels: int, lumpy: bool) -> ImageTexture:
 ## A billboard particle material: unshaded, lit by nothing, coloured by each particle, additive for fire
 ## and embers and see-through for smoke, behind nothing's depth (it never hides what is behind it), and
 ## unfogged (a fire far away still glows). `glow` multiplies the colour (above 1 it blooms on Forward+).
-static func _make_material(texture: Texture2D, additive: bool, glow: float) -> StandardMaterial3D:
+static func _make_material(texture: Texture2D, additive: bool, glow: float, near_min: float, near_max: float) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -351,4 +359,9 @@ static func _make_material(texture: Texture2D, additive: bool, glow: float) -> S
 	m.billboard_keep_scale = true
 	m.disable_fog = true
 	m.disable_receive_shadows = true
+	# Puffs close to the camera fade out (the runner running through a fireball, or past its smoke, never
+	# gets a screen full of glare or a brown haze).
+	m.distance_fade_mode = BaseMaterial3D.DISTANCE_FADE_PIXEL_ALPHA
+	m.distance_fade_min_distance = near_min
+	m.distance_fade_max_distance = near_max
 	return m

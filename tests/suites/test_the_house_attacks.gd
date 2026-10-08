@@ -98,7 +98,8 @@ func _play(p_def: BossDef, lanes: int, speed: float, spins: int, watch: bool = t
 	var boss: TheHouse = pair[1]
 	var bot := TheHouseBot.new(boss)
 	bot.reaction = REACTION
-	var out := {"alive": true, "stuck": 0, "strikes": [], "problems": [], "boss_events": [], "reactions": {}}
+	var out := {"alive": true, "stuck": 0, "strikes": [], "problems": [], "boss_events": [], "reactions": {}, "fires": []}
+	world.effects.fireball_played.connect(func(_at: Vector3, size: float) -> void: (out["fires"] as Array).append(size))
 	var seen: Dictionary = {}
 	var t: TheHouseTuning = boss.tuning
 	await tree.physics_frame
@@ -138,6 +139,9 @@ func _play(p_def: BossDef, lanes: int, speed: float, spins: int, watch: bool = t
 		(out["sounds"] as Array).append(e["name"])
 	out["distance"] = world.player.distance
 	out["pools"] = boss.attacks.pool_stats()
+	var fire_pool: FireballPool = world.effects.fireballs()
+	out["fire_pool"] = [fire_pool.slots.size(), fire_pool.plays]
+	out["fire_size"] = t.blast_radius * TheHouseAttacks.FIRE_SIZE_PER_RADIUS
 	await sim.free_world(world)
 	return out
 
@@ -288,12 +292,27 @@ func _test_every_size(lanes: int, speed: float) -> void:
 	# Pooled: every pool is drawn on more often than it has things in it (strikes reuse them).
 	var pools: Dictionary = r["pools"]
 	var reused: bool = true
-	for key: String in ["bombs", "fires", "blast_boxes", "blocks", "spools"]:
+	for key: String in ["bombs", "blast_boxes", "blocks", "spools"]:
 		var made: int = int(pools[key][0])
 		var taken: int = int(pools[key][1])
 		if made <= 0 or made >= taken:
 			reused = false
 	check(reused, "its bombs, blasts, blocks and spools are pooled, reused from strike to strike %s: %s" % [tag, pools])
+	# Each blast's look is one of the shared fireballs (task H6): one per blast, sized to it, from a pool that holds.
+	var blast_count: int = 0
+	for e: Dictionary in events:
+		if e["event"] == &"blast":
+			blast_count += 1
+	var fires: Array = r["fires"]
+	var fire_size: float = r["fire_size"]
+	var sized: bool = true
+	for size: float in fires:
+		sized = sized and is_equal_approx(size, fire_size)
+	check(blast_count > 0 and fires.size() == blast_count and sized,
+		"each blast is one fireball, sized to it (%d fireballs for %d blasts) %s" % [fires.size(), blast_count, tag])
+	var fire_pool: Array = r["fire_pool"]
+	check(int(fire_pool[0]) == SpeedFxTuning.new().fireball_pool and int(fire_pool[1]) > int(fire_pool[0]),
+		"and the fireballs are pooled: %d slots served %d blasts %s" % [fire_pool[0], fire_pool[1], tag])
 
 
 ## The strike numbered `n` among those recorded.

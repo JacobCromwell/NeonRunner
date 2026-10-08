@@ -51,6 +51,7 @@ const FACADE := Color(0.24, 0.2, 0.3)
 ## long), and where it bursts through the wall (a quick one, no smoke: the burst hazard is only for a moment).
 const FIRE_EXPLODE_SIZE: float = 3.8
 const FIRE_BURST_SIZE: float = 2.6
+const FIRE_OFF_WALL: float = 2.2
 ## How long the wreck's node outlasts its explosion.
 const BOOM_SECONDS: float = 0.45
 
@@ -653,7 +654,8 @@ func _update_wreck(delta: float) -> void:
 func _explode() -> void:
 	var at: Vector3 = global_position + Vector3(0.0, 1.2, 0.0)
 	world.play_sfx_at(&"truck_explode", at)
-	world.effects.fireball(at, FIRE_EXPLODE_SIZE)
+	# It skids into its wall: the fireball is set a little out into the street, so the wall doesn't cut it off.
+	world.effects.fireball(at - Vector3(side * FIRE_OFF_WALL, 0.0, 0.0), FIRE_EXPLODE_SIZE)
 	world.effects.burst(at, Color(0.45, 0.42, 0.4), 24, 1.0)
 	world.effects.shake(0.5, 0.5)
 	# The truck is gone in the fireball (a pooled effect, RunEffects.fireball); its node waits out BOOM_SECONDS.

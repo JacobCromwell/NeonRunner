@@ -109,6 +109,8 @@ const WRECK_SPARK := Color(0.8, 0.88, 1.0)
 ## Its fireballs (RunEffects.fireball, radius in metres; GDD §11): the crash's, over the wreck (smaller at each
 ## end of it), and the tower's landing on the ship (the hull bursting under it).
 const CRASH_FIRE_SIZE: float = 9.0
+## They play a little faster than their size makes them, so the way through the wreck is clear sooner.
+const CRASH_FIRE_PACE: float = 1.25
 const IMPACT_FIRE_SIZE: float = 3.2
 
 var body: FloatingHeadBody
@@ -1198,9 +1200,9 @@ func _crash() -> void:
 	sound(&"head_crash", body.screen_world())
 	world.effects.shake(0.9, 1.2)
 	# The ship goes up as it hits: a fireball over the wreck and one at each end (its own smoke follows).
-	world.effects.fireball(mid + Vector3(0.0, s.height * 0.2, 0.0), CRASH_FIRE_SIZE, false)
-	world.effects.fireball(Vector3(0.0, 2.0, TrackGeometry.world_z(crash_at + wreck_length() + 2.0)), CRASH_FIRE_SIZE * 0.75, false)
-	world.effects.fireball(Vector3(0.0, 1.0, TrackGeometry.world_z(crash_at - face_lead() * 0.5)), CRASH_FIRE_SIZE * 0.6, false)
+	world.effects.fireball(mid + Vector3(0.0, s.height * 0.2, 0.0), CRASH_FIRE_SIZE, false, CRASH_FIRE_PACE)
+	world.effects.fireball(Vector3(0.0, 2.0, TrackGeometry.world_z(crash_at + wreck_length() + 2.0)), CRASH_FIRE_SIZE * 0.75, false, CRASH_FIRE_PACE)
+	world.effects.fireball(Vector3(0.0, 1.0, TrackGeometry.world_z(crash_at - face_lead() * 0.5)), CRASH_FIRE_SIZE * 0.6, false, CRASH_FIRE_PACE)
 	world.effects.burst(mid, FloatingHeadTower.CONCRETE, 64, 3.0)
 	world.effects.burst(Vector3(0.0, 2.0, TrackGeometry.world_z(crash_at + wreck_length() + 2.0)), DEBRIS, 48, 2.2)
 	world.effects.burst(Vector3(0.0, 0.5, TrackGeometry.world_z(crash_at - face_lead() * 0.5)),
