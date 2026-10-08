@@ -35,7 +35,11 @@ const GLOW_SATURATION_LIMIT: float = 0.35
 ## factor, and how much darker than the darkest street a gap's inside must stay (linear luminance).
 const STREET_SHADE_MIN: float = 0.7
 const UNDER_MAX_FACTOR: float = 1.0
-const GAP_CONTRAST: float = 0.35
+## (Task H3, GDD §9.9: a hole shows the ruined basements and the void's rubble, dim but recognisable: its
+## brightest colour (PAT_DZ_UNDER's factors never pass 1) may reach this share of the darkest street at its
+## darkest shading, where it used to be 0.35. The street is the darkest of the zones' floors, so the share is
+## the highest of them, and what is drawn is dimmer still: the patterns darken the colour.)
+const GAP_CONTRAST: float = 1.3
 ## The showcase track's gap (SkinSuite.showcase_track): lane 3 of 5, 50-57 m.
 const GAP_LANE := Vector2(1.2, 3.6)
 const GAP := Vector2(50.0, 57.0)

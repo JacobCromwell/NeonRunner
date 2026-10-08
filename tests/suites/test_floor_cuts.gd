@@ -29,7 +29,10 @@ extends TestSuite
 const Rules = preload("res://scripts/enemies/floor_cutter_rules.gd")
 const CutterScript = preload("res://scripts/enemies/floor_cutter.gd")
 const SKINS_DIR: String = "res://data/skins"
-## The darkest a cut's inside may be drawn (linear luminance): far below any zone's floor.
+## The brightest a cut's inside may be drawn (linear luminance) for a skin with no gap colour of its own to
+## follow: far below any zone's floor. A skin that has one (gap_inside_color: since task H3 the zone's gaps
+## show their scenery below the street, dim but recognisable, so each is drawn in its own peak colour)
+## holds its cut to the same colour: a cut is never brighter than the zone's gap (_inside_limit).
 const INSIDE_MAX_LUMINANCE: float = 0.012
 const HOSTILE_TAKEOVER_SKIN: String = "res://data/bosses/corporate_boss_skin.tres"
 ## The skins with no zone scenery below the street to show (the grey box in code and as data, the plain
@@ -778,6 +781,7 @@ func _check_look(skin: ZoneSkin, skin_name: String, lanes: int, lane: int) -> vo
 	var edge: Color = _edge_color(skin)
 	var faults: PackedStringArray = []
 	var dark: int = 0
+	var inside_limit: float = _inside_limit(skin)
 	var lips: Dictionary = {"front": -INF, "far": INF, "left": -INF, "right": INF}
 	var parts: Array[Node3D] = section.statics + section.spans + section.fronts + section.fars
 	check(not section.statics.is_empty() and not section.fronts.is_empty() and not section.fars.is_empty()
@@ -818,10 +822,10 @@ func _check_look(skin: ZoneSkin, skin_name: String, lanes: int, lane: int) -> vo
 					elif part in section.statics:
 						if p.y > 0.0001:
 							faults.append("the inside reaches above the floor at %s" % p)
-						if _luminance(c) > INSIDE_MAX_LUMINANCE:
+						if _luminance(c) > inside_limit:
 							faults.append("an inside lit %s (%.4f) at %s" % [c, _luminance(c), p])
 						dark += 1
-					elif p.y < -0.0001 and _luminance(c) > INSIDE_MAX_LUMINANCE:
+					elif p.y < -0.0001 and _luminance(c) > inside_limit:
 						faults.append("a lit face below the floor %s at %s" % [c, p])
 	check(faults.is_empty(), "nothing in the look glows but the orange edges, nothing collides, and its inside is dark %s: %s" % [tag,
 		", ".join(faults.slice(0, 4))])
@@ -898,6 +902,13 @@ static func _ray_down(meshes: Array[MeshInstance3D], x: float, d: float) -> Dict
 				if p != null and (best.is_empty() or (p as Vector3).y > float(best["y"])):
 					best = {"y": (p as Vector3).y, "node": m}
 	return best
+
+
+## The brightest vertex colour a skin's cut may have below the floor: its gap's own inside colour, if it has
+## one (never brighter than the zone's gap), else INSIDE_MAX_LUMINANCE.
+func _inside_limit(skin: ZoneSkin) -> float:
+	var c: Variant = skin.get("gap_inside_color")
+	return _luminance(c as Color) + 0.0002 if c is Color else INSIDE_MAX_LUMINANCE
 
 
 ## The orange a skin draws gap edges in (its gap_edge_color), or the default look's.

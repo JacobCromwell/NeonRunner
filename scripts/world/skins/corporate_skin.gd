@@ -97,10 +97,16 @@ enum FloorStyle { MAGLEV, PLAZA }
 @export var joint_color: Color = Color(0.27, 0.28, 0.3)
 ## The walkway along the building faces beside the outer lanes (and the plaza's paving colour).
 @export var ledge_color: Color = Color(0.38, 0.4, 0.43)
-## DESIGN-TBD: everything below the running surface (the carriages' sides and ends, the guideways,
-## the trench), seen only through gaps: deep shade that only darkens with depth, so a gap reads as a
-## hole at a glance. Kept far darker than any roof (tests/suites/test_corporate_skin.gd).
-@export var gap_inside_color: Color = Color(0.07, 0.075, 0.085)
+## DESIGN-TBD (docs/questions/h3.md): everything below the running surface (the carriages' sides and
+## ends, the plaza deck's edges, the guideways, the trench or the plaza's lower level), seen only through
+## gaps and cuts: dim, and darkening with depth, but showing what is there (PAT_CORP_UNDER; task H3, GDD
+## §9.9: "the trench under the maglev line"), so a gap reads as a hole at a glance and still shows the
+## trench. These are the brightest each is drawn (the patterns only darken them): kept far darker than
+## any roof (tests/suites/test_corporate_skin.gd). The faces, the guideways' steel and the trench's wet
+## concrete (or the plaza's lower level).
+@export var gap_inside_color: Color = Color(0.16, 0.17, 0.19)
+@export var guideway_color: Color = Color(0.18, 0.19, 0.21)
+@export var trench_color: Color = Color(0.13, 0.14, 0.16)
 ## The guideway beams' tops and the trench's floor, below the depth at which a fall ends the run, so
 ## a fall never visibly lands.
 @export_range(4.5, 20.0, 0.1, "suffix:m") var guideway_depth: float = 5.6

@@ -288,7 +288,7 @@ func _below(batch: MeshBatch, half_width: float, start: float, end: float) -> vo
 	var s: MeshLayer = batch.layer(solid_material())
 	var mid: float = (start + end) * 0.5
 	var top: float = -guideway_depth
-	s.box(Vector3(0.0, top - 0.8, -mid), Vector3(guideway_width, 1.6, end - start), gap_inside_color, 0.0,
+	s.box(Vector3(0.0, top - 0.8, -mid), Vector3(guideway_width, 1.6, end - start), guideway_color, 0.0,
 		MeshKit.PAT_CORP_UNDER, MeshKit.FACE_PY | MeshKit.FACE_PX | MeshKit.FACE_NX, 3.0)
 	var r: MeshLayer = batch.layer(street_material())
 	r.rect(Vector3(-half_width - 2.0, -street_depth, -start), Vector3(half_width * 2.0 + 4.0, 0.0, 0.0),

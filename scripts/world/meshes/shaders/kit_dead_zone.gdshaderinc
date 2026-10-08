@@ -115,22 +115,48 @@ vec3 dz_street(vec3 base, vec3 w, vec2 uv, float param) {
 	return mix(col, rubble, chunk);
 }
 
-// PAT_DZ_UNDER (41): everything below the street, seen only through holes: the broken road's cut, the
-// lanes' sides, the building faces below the street and the void's floor far below. Deep shade that
-// only darkens COLOR (the shade just under the street) with depth, so a hole reads as a hole at a
-// glance: nothing in it is lit or looks like a floor. Near the top the road's broken layers show as
-// faint darker bands and rebar. param: 0 a face across the lane, 1 a face along it, 2 the void's floor.
+// PAT_DZ_UNDER (41): everything below the street, seen only through holes and cuts: the broken road's cut,
+// the lanes' sides, the building faces below the street and the void's floor far below. It stays dim and
+// darkens with depth (a hole reads as a hole at a glance: far darker than the street, nothing lit and
+// nothing that looks like a floor you could land on at street level), but (task H3, GDD §9.9: "inside the
+// cut, the player sees the zone's own scenery below the street") it shows what is there: the road's broken
+// layers and rebar at the top, then the street's ruined basements, a concrete wall with its formwork
+// lines, a square pilaster every 3.6 m, a pipe run along it and a rubble slope below, and far down the
+// void's floor, a field of rubble with paler broken slabs in it and, in a few patches, dull embers in its cracks. All albedo, steady, and COLOR is the
+// peak: the concrete's colour at the road's level. param: 0 a face across the lane, 1 a face along it,
+// 2 the void's floor.
 vec3 dz_under(vec3 base, vec3 w, vec3 n, float param) {
+	float mode = floor(param + 0.5);
+	if (mode > 1.5) {
+		vec2 p = w.xz;
+		float lump = value_noise(p * 0.9) * 0.6 + value_noise(p * 2.7 + 5.0) * 0.4;
+		float slab = smoothstep(0.6, 0.74, value_noise(p * vec2(0.5, 0.38) + 11.0));
+		float crack = 1.0 - smoothstep(0.0, 0.07, abs(value_noise(p * 0.8 + 3.0) - 0.5));
+		// The rubble's cracks in a few patches smoulder, dull and dark (albedo only: embers kept minimal, never
+		// a glow, never close to the orange edge).
+		float ember = crack * step(0.58, value_noise(p * 0.3 + 17.0)) * (0.5 + 0.5 * value_noise(p * 1.9 + 2.0));
+		vec3 col = base * (0.35 + 0.55 * lump + 0.1 * slab) * (1.0 - 0.3 * crack);
+		return mix(col, base * vec3(1.9, 0.8, 0.5), ember * 0.8);
+	}
 	float h = abs(n.x) > 0.5 ? w.z : w.x;
 	float fh = max(fwidth(h), 1e-4);
 	float fy = max(fwidth(w.y), 1e-4);
-	float mode = floor(param + 0.5);
 	float grain = 0.88 + 0.12 * value_noise(vec2(h * 2.3, w.y * 3.1));
 	float layers = 0.3 * band(w.y, -0.36, -0.3, fy) + 0.2 * band(w.y, -0.66, -0.6, fy);
 	float rebar = filtered_pulse(h / 0.25, fh / 0.25, 0.0, 0.12) * band(w.y, -0.52, -0.46, fy);
-	float depth = mix(1.0, 0.16, smoothstep(-0.1, -3.2, w.y));
-	vec3 col = base * (1.0 - layers - 0.3 * rebar) * grain * depth;
-	return mode > 1.5 ? base * 0.3 * grain : col;
+	// The ruined basement under the road's layers.
+	float form = filtered_pulse(w.y / 0.55, fy / 0.55, 0.0, 0.08);
+	float pilaster = filtered_pulse(h / 3.6, fh / 3.6, 0.0, 0.2);
+	float pipe = band(w.y, -2.9, -2.45, fy);
+	float pipe_hi = band(w.y, -2.8, -2.7, fy);
+	float rubble = (1.0 - smoothstep(-6.2, -5.4, w.y)) * (0.5 + 0.5 * value_noise(vec2(h * 1.7, w.y * 2.2)));
+	float depth = mix(1.0, 0.4, smoothstep(-0.8, -6.5, w.y));
+	float in_wall = 1.0 - smoothstep(-0.9, -0.7, w.y);
+	vec3 road = base * (1.0 - layers - 0.3 * rebar) * grain;
+	vec3 wall = base * (0.55 + 0.45 * pilaster) * (1.0 - 0.22 * form) * grain;
+	wall = mix(wall, base * (0.3 + 0.6 * pipe_hi), pipe);
+	wall = mix(wall, base * (0.5 + 0.5 * grain), rubble);
+	return mix(road, wall, in_wall) * depth;
 }
 
 // PAT_DZ_TOWER (42): a burnt-out tower of the dead city (DeadTowers): one of the Neon City's towers

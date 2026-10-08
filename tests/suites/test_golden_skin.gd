@@ -40,7 +40,11 @@ const GOLD_SATURATION_GAP: float = 0.25
 const GOLD_DARKEST: float = 0.5
 const UNDER_MAX_FACTOR: float = 1.0
 const CANAL_MAX_FACTOR: float = 1.12
-const GAP_CONTRAST: float = 0.35
+## (Task H3, GDD §9.9: a gap and a cut show the canal's quay and water, dim but recognisable: its brightest
+## colour may reach this share of the darkest floor at its darkest shading, where it used to be 0.35. The
+## patterns only darken the colours (PAT_UNDERDECK's stone is at most 0.78 of its colour, the water's glints
+## add the sky's faint colour), so what is drawn is dimmer still.)
+const GAP_CONTRAST: float = 0.65
 ## The emblem is shown openly and large (GDD §5): never smaller than this on the walls and overhead.
 const EMBLEM_MIN_SIZE: float = 2.0
 

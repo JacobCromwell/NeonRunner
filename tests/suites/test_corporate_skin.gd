@@ -36,8 +36,12 @@ const GLOW_SATURATION_LIMIT: float = 0.35
 ## shoulders; kit_corporate.gdshaderinc, corp_roof), PAT_CORP_UNDER's brightest factor (the top of a
 ## face), and how much darker than the darkest floor a gap's inside must stay (linear luminance).
 const FLOOR_SHADE_MIN: float = 0.6
-const UNDER_MAX_FACTOR: float = 0.95
-const GAP_CONTRAST: float = 0.35
+const UNDER_MAX_FACTOR: float = 1.0
+## (Task H3, GDD §9.9: a gap shows the trench under the maglev line, or the plaza's lower level, dim but
+## recognisable: the brightest colour below (the guideways' steel, PAT_CORP_UNDER's factors never pass 1) may
+## reach this share of the darkest floor at its darkest shading, which is the military freight cars' olive in
+## deep shade, where it used to be 0.35. What is drawn is dimmer still: the patterns darken the colours.)
+const GAP_CONTRAST: float = 1.3
 ## The showcase track's gap (SkinSuite.showcase_track): lane 3 of 5, 50-57 m.
 const GAP_LANE := Vector2(1.2, 3.6)
 const GAP := Vector2(50.0, 57.0)
@@ -257,7 +261,9 @@ func _gaps(skin: CorporateSkin, what: String) -> void:
 		darkest = minf(darkest, _linear_luminance(c * Color(FLOOR_SHADE_MIN, FLOOR_SHADE_MIN, FLOOR_SHADE_MIN)))
 		if _near_colour(c, skin.gap_edge_color):
 			like_edge.append(str(c))
-	var inside: float = _linear_luminance(skin.gap_inside_color * Color(UNDER_MAX_FACTOR, UNDER_MAX_FACTOR, UNDER_MAX_FACTOR))
+	var inside: float = 0.0
+	for c: Color in [skin.gap_inside_color, skin.guideway_color, skin.trench_color]:
+		inside = maxf(inside, _linear_luminance(c * Color(UNDER_MAX_FACTOR, UNDER_MAX_FACTOR, UNDER_MAX_FACTOR)))
 	check(inside < darkest * GAP_CONTRAST, "%s: a gap's inside stays far darker than the darkest floor: %.4f vs %.4f" % [
 		what, inside, darkest])
 	check(like_edge.is_empty(), "%s: no floor is drawn in the gap edge's colour: %s" % [what, ", ".join(like_edge)])
@@ -288,7 +294,8 @@ func _gaps(skin: CorporateSkin, what: String) -> void:
 	var layout: LevelLayout = level(CORP_LEVEL_PATH, 5, 0.6, 9)
 	var bad: PackedStringArray = []
 	var count: Array[int] = [0]
-	var shade: float = _linear_luminance(skin.gap_inside_color) + 0.0001
+	var shade: float = maxf(_linear_luminance(skin.gap_inside_color), maxf(_linear_luminance(skin.guideway_color),
+		_linear_luminance(skin.trench_color))) + 0.0001
 	var geo := TrackGeometry.new(5, tuning)
 	await visit_level(layout, skin, func(m: MeshInstance3D, arrays: Array, material: Material) -> void:
 		if under_hazard(m) or _under(m, func(n: Node) -> bool: return n is Area3D) or material == skin.drift_material():
