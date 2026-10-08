@@ -23,7 +23,14 @@ extends Enemy
 ## gun's `pace`), so in a faster zone it walks, flees and shoots faster, from further out, in the same
 ## seconds.
 ##
-## Spawn params: panic (bool), host (bool), fires (bool, default true; tests), health (float).
+## - Planted in a charge's path (task G7; GDD §9.13 "Teaching"; ChargePathPlacement, params `charge_path`): a
+##   plain floor cyborg that stands where it was placed (params `stand`: no walk toward the player) so an Octodog's
+##   lunge or a Buzz Overdrive's charge meets it where planned, and holds its fire while the runner is in its
+##   `hold_fire` stretch (a Vector2 of the runner's distances: the charge's warning and strike), with no bolt of
+##   its arriving there either (CyborgGun.hold).
+##
+## Spawn params: panic (bool), host (bool), fires (bool, default true; tests), health (float), stand (bool),
+## hold_fire (Vector2).
 
 enum Mode { WAIT, WALK, STARTLED, FLEE, COWER, PASSED }
 
@@ -49,6 +56,10 @@ var home: float = 0.0
 ## The closest it may walk toward the player, and the furthest a panic run may take it.
 var walk_limit: float = 0.0
 var run_limit: float = 0.0
+## Task G7: it stands where it was placed (params `stand`), and holds its fire while the runner is in this
+## stretch of their distances (params `hold_fire`; empty: never).
+var stand: bool = false
+var hold_fire := Vector2(INF, -INF)
 
 ## Speed along the track: + = forward (away from the player).
 var _speed: float = 0.0
@@ -90,6 +101,9 @@ func _build() -> void:
 		is_panic = bool(p["panic"])
 	else:
 		is_panic = not is_host and rng.randf() < tuning.panic_chance
+	stand = bool(p.get("stand", false))
+	if p.get("hold_fire") is Vector2:
+		hold_fire = p["hold_fire"]
 	add_hitbox(&"body", BODY_SIZE, Vector3(0.0, BODY_SIZE.y * 0.5, 0.0))
 	add_hitbox(&"top", HEAD_SIZE, Vector3(0.0, HEAD_Y, 0.0))
 	body = CyborgBody.new()
@@ -101,6 +115,7 @@ func _build() -> void:
 	gun.wild_spread = tuning.panic_spread
 	gun.enabled = bool(p.get("fires", true))
 	gun.may_attack = _may_attack
+	gun.hold = hold_fire
 	_compute_limits()
 	health_changed.connect(func(_e: Enemy) -> void: body.flash())
 
@@ -183,6 +198,8 @@ func _may_attack() -> bool:
 		return false
 	if mode == Mode.PASSED or mode == Mode.STARTLED or (is_panic and mode == Mode.WAIT):
 		return false
+	if player.distance >= hold_fire.x and player.distance <= hold_fire.y:
+		return false  # Task G7: planted in a charge's path, it holds its fire through the charge.
 	var ahead: float = track_distance() - player.distance
 	return ahead > 0.0 and ahead <= gun.engage_distance()
 
@@ -213,6 +230,8 @@ func _compute_limits() -> void:
 			run_limit = home
 	walk_limit = minf(walk_limit, home)
 	run_limit = maxf(run_limit, home)
+	if stand:
+		walk_limit = home
 
 
 func _update_body(delta: float) -> void:
