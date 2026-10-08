@@ -349,6 +349,8 @@ func _building(batch: MeshBatch, b: Building, face_x: float, start: float, end: 
 	var holes: Array[Rect2] = skin.niches(side)
 	if b.kind == Kind.PALACE:
 		for statue: Vector2 in b.statues:
+			if skin.crowds_niche(side, statue.x, BASE_STATUE_NICHE_SIZE.x * 0.5):
+				continue
 			holes.append(Rect2(statue.x - BASE_STATUE_NICHE_SIZE.x * 0.5, skin.decorative_statue_mount_y(),
 				BASE_STATUE_NICHE_SIZE.x, BASE_STATUE_NICHE_SIZE.y))
 	_open_face(facade, side, face_x, u0, u1, 0.0, skin.plinth_top, b.wall, STYLE_PLINTH, b.seed, holes)
@@ -376,7 +378,7 @@ func _palace(_batch: MeshBatch, facade: MeshLayer, solid: MeshLayer, b: Building
 	solid.box(ledge + Vector3(-side * (LEDGE_OUT * 0.5 + 0.01), -0.12, 0.0), Vector3(0.03, 0.08, u1 - u0), skin.gold_color,
 		0.0, MeshKit.PAT_GOLD, _street_faces(side), 0.9)
 	for s: Vector2 in b.statues:
-		if s.x >= start and s.x < end:
+		if s.x >= start and s.x < end and not skin.crowds_niche(side, s.x, BASE_STATUE_NICHE_SIZE.x * 0.5):
 			var niche_basis := Basis(Vector3.UP, atan2(float(-side), 0.0))
 			solid.append(skin.statues().recess(BASE_STATUE_NICHE_SIZE.x, BASE_STATUE_NICHE_SIZE.y,
 				skin.decorative_statue_recess_depth()),

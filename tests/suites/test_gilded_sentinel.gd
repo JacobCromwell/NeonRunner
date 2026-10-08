@@ -229,6 +229,22 @@ func _test_look() -> void:
 		var reach: Vector2 = _statue_reach(s)
 		check(reach.x <= 0.001 and reach.y <= t.niche_depth + 0.01,
 			"side %d: at rest the statue stands inside its niche (%.2f m out of the face, %.2f m deep)" % [s.side, reach.x, reach.y])
+		# GDD §9.11 (owner, October 8, 2026): the live statue and the back of its niche stand further forward.
+		# The statue's front is almost flush with the wall face (never in front of it: collision stays physical, a
+		# wall runner's body lies along the face), the niche's back is close behind it, and the solid body, which
+		# is what a touch would hit, reaches as far back as the statue does.
+		check(reach.x >= -(t.statue_inset + 0.01) and reach.x <= 0.001,
+			"side %d: the statue's front stands almost flush with the face (%.3f m behind it, statue_inset %.2f)"
+			% [s.side, -reach.x, t.statue_inset])
+		check(reach.y <= t.niche_depth - 0.03 and t.niche_depth <= 0.8,
+			"side %d: the niche's back is close behind the statue (the statue %.2f m deep, the niche %.2f)"
+			% [s.side, reach.y, t.niche_depth])
+		var body: Hazard = s.body_box()
+		var body_front: float = s.side * (body.global_position.x - s.side * body.size.x * 0.5) - w.geo.wall_x()
+		var body_back: float = s.side * (body.global_position.x + s.side * body.size.x * 0.5) - w.geo.wall_x()
+		check(body_front >= -0.001 and reach.y <= body_back + 0.03,
+			"side %d: the solid body stands behind the face and as far back as the statue (%.2f to %.2f m, the statue to %.2f)"
+			% [s.side, body_front, body_back, reach.y])
 	await sim.free_world(w)
 
 
@@ -237,12 +253,14 @@ func _test_look() -> void:
 func _statue_reach(s: GildedSentinel) -> Vector2:
 	var body := s.get_node("Statue/Body") as MeshInstance3D
 	var root := s.get_node("Statue") as Node3D
-	var box: AABB = body.mesh.get_aabb()
 	var out := Vector2(-INF, -INF)
-	for i: int in 8:
-		var p: Vector3 = root.transform * box.get_endpoint(i)
-		out.x = maxf(out.x, -s.side * p.x)
-		out.y = maxf(out.y, s.side * p.x)
+	# Its real vertices: the bounds of a turned figure's box overstate how deep it stands.
+	for si: int in body.mesh.get_surface_count():
+		var verts: PackedVector3Array = body.mesh.surface_get_arrays(si)[Mesh.ARRAY_VERTEX]
+		for v: Vector3 in verts:
+			var p: Vector3 = root.transform * v
+			out.x = maxf(out.x, -s.side * p.x)
+			out.y = maxf(out.y, s.side * p.x)
 	return out
 
 
@@ -252,8 +270,13 @@ func _test_skin_opens_niche() -> void:
 	for path: String in [GOLDEN_SKIN, PALACE_SKIN]:
 		var skin := load(path) as GoldenSkin
 		var face_x: float = -4.5
-		# Keep the live niche away from the Palace's deterministic decorative bay at distance 20.
-		var entry := {"type": "gilded_sentinel", "at": 22.0, "side": -1, "lane": 0}
+		# Keep the live niche clear of the decorative alcoves (the Palace's deterministic bay at distance 20, say):
+		# a decorative alcove that crowds a live niche is left out (tested below), which would change the count.
+		var spots: Array[Dictionary] = skin.statue_spots(-1, face_x, 0.0, 40.0)
+		var at: float = 22.0
+		while at < 36.0 and not _clear_of_spots(spots, at):
+			at += 0.5
+		var entry := {"type": "gilded_sentinel", "at": at, "side": -1, "lane": 0}
 		var plain := Node3D.new()
 		tree.root.add_child(plain)
 		skin.note_wall_enemies(-1, 0.0, 40.0, [] as Array[Dictionary])
@@ -271,6 +294,50 @@ func _test_skin_opens_niche() -> void:
 		skin.note_wall_enemies(-1, 0.0, 40.0, [] as Array[Dictionary])
 		plain.queue_free()
 		opened.queue_free()
+		await _test_alcoves_keep_off(skin, path, face_x, spots)
+	await tree.process_frame
+
+
+## Spots further than 3.5 m from `at` along the track: a live niche there neither touches nor crowds a
+## decorative alcove.
+func _clear_of_spots(spots: Array[Dictionary], at: float) -> bool:
+	for spot: Dictionary in spots:
+		if absf(float(spot["at"]) - at) < 3.5:
+			return false
+	return true
+
+
+## GDD §9.11 (owner, October 8, 2026: the player must make out the live statue and its niche): a decorative
+## wall-base alcove that would crowd a live Sentinel's niche (overlap its frame, or leave less than
+## GoldenSkin.NICHE_CLEARANCE of wall between the frames) is left out, hole and statue, so the live niche
+## stands apart from the dark ones; one further off stays; with no live niche it is there.
+func _test_alcoves_keep_off(skin: GoldenSkin, path: String, face_x: float, spots: Array[Dictionary]) -> void:
+	var near: Dictionary = {}
+	for spot: Dictionary in spots:
+		var spot_at: float = float(spot["at"])
+		if near.is_empty() and spot_at >= 4.0 and spot_at <= 34.0:
+			near = spot
+	if near.is_empty():
+		return
+	var a: float = float(near["at"])
+	# A point in the alcove's opening at its end nearer the runner (a live niche over it opens further along).
+	var mid := Vector3(face_x, skin.decorative_statue_mount_y() + 1.0, -(a - 0.9))
+	var gap: float = t.niche_width * 0.5 + 1.0 + GoldenSkin.NICHE_CLEARANCE
+	var cases: Array = [["with no live niche", 1000.0, false], ["a live niche beside it", a + gap - 0.3, true],
+		["a live niche over it", a + 0.4, true], ["a live niche well clear of it", a + gap + 0.3, false]]
+	for c: Array in cases:
+		var wall := Node3D.new()
+		tree.root.add_child(wall)
+		var entries: Array[Dictionary] = []
+		if float(c[1]) < 39.0:
+			entries.append({"type": "gilded_sentinel", "at": float(c[1]), "side": -1, "lane": 0})
+		skin.note_wall_enemies(-1, 0.0, 40.0, entries)
+		skin.wall_section(wall, -1, face_x, 0.0, 40.0)
+		var whole: bool = _face_covers(wall, mid, face_x)
+		check(whole == bool(c[2]),
+			"%s: %s, the decorative alcove at %.1f is %s" % [path.get_file(), c[0], a, "left out" if whole else "open"])
+		skin.note_wall_enemies(-1, 0.0, 40.0, [] as Array[Dictionary])
+		wall.queue_free()
 	await tree.process_frame
 
 
