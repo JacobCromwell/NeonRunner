@@ -2434,3 +2434,17 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     Corporate 2's first Enforcer. Never the introduction of the Octodog or the Buzz Overdrive.
     - Placeholder: `charge_path_cyborgs = 1` in those levels, `skip_introductions` and `attack_margin_seconds`
     2 s in `data/tuning/charge_paths.tres`.
+
+**Level skies** (from G8; each level's `sky` in `data/levels/*.tres`, `scripts/world/skins/level_sky.gd`)
+361. **The Marketplace's "third level"** (GDD §5, "Skies show progression"). The owner asked for the sunset on the
+    Marketplace's third level, but the zone has two (GDD §5's schedule). Placeholder: the sunset is on
+    Marketplace 2, the zone's last level, like City 3 and Gangland 3 (`data/levels/marketplace_2.tres`, `sky`;
+    `DESIGN-TBD` on `LevelConfig.sky`). Move it to Marketplace 1, or keep it on the last level?
+362. **The boss after each of these levels** (GDD §10). The Floating Head, the Sewer Swarm and The House, and each
+    zone's outro, keep their zone's own sky, so the dawn goes back to night for the fight (and the blood red back
+    to Gangland's dust, the sunset back to the Marketplace's warm dusk). Placeholder: the zone's own sky
+    (`Campaign.configure_boss` gives the arena no level sky). Should each fight keep its zone's last level's sky?
+363. **The street's light under the new skies** (GDD §5). Only the sky and the distant haze change; the scenery's
+    lighting stays the zone's: the Marketplace's low sun still gilds the upper floors of one side under the
+    darker sunset sky, and the City's street stays lit as at night under the dawn. Placeholder: unchanged.
+    Should the street's light follow (for example a little of The Hush's darkness on Marketplace 2)?
