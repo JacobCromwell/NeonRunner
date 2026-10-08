@@ -413,8 +413,8 @@ From the owner's list in `docs/USER_REQUESTS.md` (October 8, 2026), recorded in 
 | H6 | **Explosions:** one shared yellow-and-red fireball for every explosion, pooled, Compatibility-safe, softened by Reduced flashing (GDD §11) | – | M | T2 |
 | H7a | **Dash walls, the mechanism:** generator placement from the Corporate zone, the wall, the crash rule (armor or shield absorbs; otherwise it kills), crumbling into rubble, sounds and a first-encounter hint (GDD §9.14). **Core** (generator, track builder, damage rules). | G7, H5 | L | T1 |
 | H7b | **Dash walls, the art:** each zone's building face turned toward the player, from its side-wall kit | H7a | M | T2 |
-| H8 | **Weapons hit hosts:** auto-fire targets them and a weapon kill releases the Bad Dream (GDD §9.7) | – | M | T2 |
-| H9 | **Sleep Taker:** lights out 50% darker, hands spread along the street, wall gaps and more wall hands, twice the floor gaps (GDD §10) | – | M–L | T1 |
+| H8 | **Weapons hit hosts:** auto-fire targets them and a weapon kill releases the Bad Dream (GDD §9.7). Raised to T1: an earlier release moves the Bad Dream chases the generator plans around. | – | M | T1 |
+| H9 | **Sleep Taker:** lights out 50% darker, hands spread along the street, wall gaps and more wall hands, twice the floor gaps (GDD §10). **Core** (small opt-in hooks in the boss framework and level config). | – | M–L | T1 |
 | H10 | **The Tithe Collector stays twice as long** (GDD §9.12) | – | S | T3 |
 
 ---
