@@ -169,16 +169,20 @@ static func widen_deferred(gen: LevelGenerator) -> void:
 		for r: Dictionary in GapDensity.rows(gen.layout):
 			if absf(float(r["start"]) - float(d["start"])) < EPSILON and absf(float(r["end"]) - float(d["end"])) < EPSILON:
 				row = r
-		if row.is_empty():
+		var ok: bool = not row.is_empty()
+		var plan: Dictionary = {}
+		if ok and not fits(gen, t, span, row, keeps):
+			plan = _clearing_at(gen, t, row, span, others)
+			ok = not plan.is_empty()
+		if not ok:
+			var rows: Array = gen.wide_gap_result.get("rows", [])
+			rows.erase(span)
+			var constraints: PackedStringArray = gen.wide_gap_result.get("constraints", PackedStringArray())
+			constraints.append("the row at %.0f m stayed as it was: the fill pass put something it can't take out in its way"
+				% span.x)
+			gen.wide_gap_result["constraints"] = constraints
 			continue
-		if not fits(gen, t, span, row, keeps):
-			var plan: Dictionary = _clearing_at(gen, t, row, span, others)
-			if plan.is_empty():
-				var rows: Array = gen.wide_gap_result.get("rows", [])
-				rows.erase(span)
-				(gen.wide_gap_result["constraints"] as PackedStringArray).append(
-					"the row at %.0f m stayed as it was: the fill pass put something it can't take out in its way" % span.x)
-				continue
+		if not plan.is_empty():
 			taken_out += _clear(gen, plan)
 		_widen(gen.layout, row, span)
 	if taken_out > 0:

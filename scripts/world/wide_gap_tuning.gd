@@ -20,7 +20,7 @@ extends Resource
 ## Seconds of run before the take-off with nothing else in any lane (no hole, fence, pad, ramp, speed pad,
 ## ceiling or landing zone, floor cut or enemy's attack): the runner lines up for the jump alone. Never less
 ## than the level's spacing between two patterns at its difficulty there (LevelConfig.spacing_seconds_easy to
-## spacing_seconds_hard; a level paced in bursts' quiet spacing is pacing, not reaction time).
+## spacing_seconds_hard; in a level paced in bursts its burst spacing: its quiet spacing is pacing, not reaction time).
 @export_range(0.5, 4.0, 0.05, "suffix:s") var clear_before_seconds: float = 0.9
 ## Seconds of run after the landing with nothing else in any lane, as before the take-off. Never less than
 ## the level's spacing there, as before the take-off.
