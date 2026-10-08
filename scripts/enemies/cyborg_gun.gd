@@ -21,10 +21,11 @@ extends RefCounted
 ## - fewer than GameRules.max_bursts_in_air bursts of the cyborg-type guns are in the air (GDD §9.2,
 ##   owner, October 8, 2026: up to two at once; CyborgAirspace, shared through RunWorld metadata), and
 ##   no boss holds the whole airspace (the Floating Head's eye lasers);
-## - the crossfire rule (DESIGN-TBD, docs/questions/h4.md): two bursts whose bolts arrive within
-##   crossfire_gap of each other always leave the runner a lane one move away that neither is aimed
-##   at, and wild fire never arrives that close to another burst (_crossfire_fair). Checked as a
-##   burst would start and again as its aim locks; a burst that fails it at the lock is cancelled.
+## - the crossfire rule (DESIGN-TBD, docs/questions/h4.md): bursts whose bolts arrive within
+##   crossfire_gap of each other always leave the runner a way out, a place one move away that none of
+##   them is aimed at, and wild fire never arrives that close to another burst (_crossfire_fair). A
+##   burst that would leave none waits before its charge-up, never after it; the check as its aim
+##   locks is a last resort that calls it off.
 ## Everything runs in the physics step from the enemy's seeded random stream, so every attempt at a
 ## seed plays out the same way.
 ##
@@ -40,6 +41,11 @@ const SHOT_NAME: String = "cyborg bolt"
 const LOOK: StringName = &"enemy_bolt"
 ## Pause after a cancelled charge before trying again.
 const RETRY_PAUSE: float = 0.35
+## The crossfire rule as a burst would start its charge-up counts bursts arriving within crossfire_gap plus
+## this long: the arrivals it predicts can be off by a few hundredths of a second by the lock (a walking
+## cyborg stops to shoot, the runner moves), and a burst that clears the start by a hair mustn't be called
+## off at its lock for it.
+const START_MARGIN: float = 0.15
 
 var shooter: Enemy
 var world: RunWorld
@@ -62,9 +68,10 @@ var shot_name: String = SHOT_NAME
 ## Turret, which fires only at a ceiling rider, sets one for the ceiling (GDD §9.8).
 var path_rule: Callable
 ## The shooter's own rule for the lanes a player dodging its bolts can switch into (the crossfire rule,
-## _escape_lanes): Callable(lane: int, from_d: float, to_d: float) -> bool, `from_d` to `to_d` the
-## track distances from the player to past its bolts' arrival. Unset: any of the track's lanes; the
-## Barnacle Turret's: its ceiling's lanes without a turret in them there (GDD §9.8).
+## _moves): Callable(lane: int, from_d: float, to_d: float) -> bool, `from_d` to `to_d` the track
+## distances from the player to past its bolts' arrival. Unset: any of the track's lanes a lane blocker
+## doesn't hold (_lane_held); the Barnacle Turret's: its ceiling's lanes without a turret in them there
+## (GDD §9.8).
 var lane_rule: Callable
 ## Where bolts leave the cannon, from the enemy's origin (gameplay: the visual cannon animates, the
 ## shots never depend on it). Bolts start muzzle_reach further along their line.
@@ -84,7 +91,8 @@ var state: State = State.READY
 ## Every charge, shot and cancelled burst (for tests and debugging): {"t" (level time),
 ## "event": &"charge" | &"shot" | &"cancel", "player_d" and "shooter_d" (track distances); charges
 ## add "shots"; shots add "impact" (track distance), "arrive" (level time), "from", "velocity", "line"
-## (the world x the burst was aimed along) and "wild"}.
+## (the world x the burst was aimed along) and "wild"; cancels add "why" (_cancel), and the player's
+## "lane" and "surface"}.
 var events: Array[Dictionary] = []
 
 var _timer: float = 0.0
@@ -97,6 +105,8 @@ var _claim: Dictionary = {}
 ## along the track the player's path around them reaches.
 var _window := Vector2.ZERO
 var _reach: float = 0.0
+## The physics query the crossfire rule asks with (_lane_held, _wall_open), made on first use.
+var _query: PhysicsShapeQueryParameters3D
 
 
 func _init(p_shooter: Enemy, p_world: RunWorld, p_tuning: CyborgGunTuning, p_rng: RandomNumberGenerator,
@@ -141,16 +151,19 @@ func update(delta: float) -> void:
 			body.set_charge(_timer / tuning.charge_time)
 			_aim_body(player)
 			if not _allowed():
-				_cancel()
+				_cancel(&"allowed")
 			elif _timer >= tuning.charge_time:
-				if _burst_fair(0.0, _burst) and _crossfire_fair(true):
+				if not _burst_fair(0.0, _burst):
+					_cancel(&"path")
+				elif not _crossfire_fair(true):
+					_cancel(&"crossfire")
+				else:
 					_lock_aim(player)
-					_airspace().aim(_claim, _lock.x, _window.x, _window.y)
+					var here: Dictionary = _here()
+					_airspace().aim(_claim, _lock.x, int(here["surface"]), int(here["side"]), _window.x, _window.y)
 					state = State.FIRING
 					_timer = 0.0
 					_fire_step(delta)
-				else:
-					_cancel()
 		State.FIRING:
 			_aim_body(player)
 			_fire_step(delta)
@@ -215,67 +228,171 @@ func _release_airspace() -> void:
 
 
 ## The crossfire rule (DESIGN-TBD, docs/questions/h4.md; GDD §9.2: up to two bursts in the air at once,
-## each dodged by switching lanes). The burst _burst_fair just planned may come only if no other burst's
-## bolts arrive within crossfire_gap of its own, or if none of them, nor it, is wild fire (which lands
-## anywhere around the runner) and the runner, in the lane it aims at (where they are now), still has a
-## lane one move away that none of them is aimed at: then one switch dodges them all. Otherwise the
-## runner could be caught between two lines of bolts arriving together (the edge lane of three, a wall
-## run, a narrow ceiling). `locked`: its aim locks now, and only bursts already aimed count (one still
-## charging checks against this one when its own aim locks); else it would start its charge-up now, and
-## bursts still charging count too, as aimed where it would be (only their wild fire matters).
+## each dodged by switching lanes, GDD §3). Bursts whose bolts arrive within crossfire_gap of each other
+## must always leave the runner a way out: a place one move away that none of them is aimed at (_way_out).
+## Wild fire (the panic variant's, landing anywhere around the runner) never arrives that close to another
+## burst. The burst _burst_fair just planned asks twice:
+## - as it would start its charge-up (`locked` false), so that one that would leave no way out waits before
+##   its telegraph, never after it (task R3's rule for an attack that waits): wherever the runner may be by
+##   the time its aim locks, where they are now or one move away (a wall they can step onto included), it
+##   must leave them a way out. Bursts already aimed count along their lines. One still charging that
+##   began more than reaction_time ago may be dodged before this one locks, so it counts as aimed where the
+##   runner is now; one that began since will lock where this one does. Bursts arriving up to
+##   START_MARGIN later than crossfire_gap count too, for predictions a little off by the lock;
+## - as its aim locks (`locked`), the last resort: only bursts already aimed count, and one that would leave
+##   the runner no way out is called off (_cancel). A runner who moves while two charge-ups that began
+##   together end can still bring it about.
 func _crossfire_fair(locked: bool) -> bool:
 	var now: float = world.level_time()
-	var others: Array[Dictionary] = _airspace().near(_claim, _window.x, _window.y, tuning.crossfire_gap,
-		locked, now)
+	var others: Array[Dictionary] = _airspace().near(_claim, _window.x, _window.y,
+		tuning.crossfire_gap + (0.0 if locked else START_MARGIN), locked, now)
 	if others.is_empty():
 		return true
 	if wild:
 		return false
-	var lines: Array[float] = []
+	var here: Dictionary = _here()
+	var lines: Array[Dictionary] = []
 	for c: Dictionary in others:
 		if bool(c["wild"]):
 			return false
 		if bool(c["aimed"]):
-			lines.append(float(c["line"]))
-	return lane_left(_escape_lanes(world.player.hurtbox_aabb().get_center().x), lines, world.geo)
+			lines.append({"x": float(c["line"]), "surface": int(c["surface"]), "side": int(c["side"])})
+		elif now - float(c["t0"]) > tuning.reaction_time:
+			lines.append({"x": float(here["x"]), "surface": int(here["surface"]), "side": int(here["side"])})
+	if not _way_out(here, lines):
+		return false
+	if locked:
+		return true
+	for place: Dictionary in _moves(here, true):
+		if not _way_out(place, lines):
+			return false
+	return true
 
 
-## The lanes a player aimed at along world x `line` can switch into with one move (GDD §3): those beside
-## their lane on the floor (or a ceiling), or the outer lane below the wall they run on; the shooter's
-## lane_rule may rule some out.
-func _escape_lanes(line: float) -> Array[int]:
-	var player: Player = world.player
-	var n: int = world.geo.lane_count
-	var lanes: Array[int] = []
-	if player.surface == Player.Surface.WALL:
-		lanes.append(n - 1 if player.wall_side > 0 else 0)
-	else:
-		var lane: int = world.geo.lane_at(line)
-		for to: int in [lane - 1, lane + 1]:
-			if to >= 0 and to < n:
-				lanes.append(to)
-	if not lane_rule.is_valid():
-		return lanes
-	var open: Array[int] = []
-	for to: int in lanes:
-		if bool(lane_rule.call(to, player.distance, _reach)):
-			open.append(to)
-	return open
+## Whether a burst aimed along `line` ({"x" (world x), "surface" (Player.Surface), "side" (a wall's)}) is
+## aimed at place `place` (_here): only on the same surface (bolts aimed at a wall runner pass at least
+## 0.7 m wide of the middle of the lane below and a bolt hits within about 0.3 m of it; a floor runner's
+## pass under a wall runner's body; a ceiling rider's far above the floor), at that wall, or within half a
+## lane of a lane's middle.
+static func aims_at(line: Dictionary, place: Dictionary, geo: TrackGeometry) -> bool:
+	if int(line["surface"]) != int(place["surface"]):
+		return false
+	if int(place["surface"]) == Player.Surface.WALL:
+		return int(line["side"]) == int(place["side"])
+	return absf(float(line["x"]) - float(place["x"])) <= geo.lane_width * 0.5
 
 
-## Whether one of `lanes` is aimed at by none of `lines` (world x): a line aims at every lane whose middle
-## lies within half a lane of it.
-static func lane_left(lanes: Array[int], lines: Array[float], geo: TrackGeometry) -> bool:
-	for lane: int in lanes:
-		var x: float = geo.lane_x(lane)
+## Whether one of `places` is aimed at by none of `lines` (aims_at): a way out.
+static func way_out(places: Array[Dictionary], lines: Array[Dictionary], geo: TrackGeometry) -> bool:
+	for place: Dictionary in places:
 		var free: bool = true
-		for line: float in lines:
-			if absf(line - x) <= geo.lane_width * 0.5:
+		for line: Dictionary in lines:
+			if aims_at(line, place, geo):
 				free = false
 				break
 		if free:
 			return true
 	return false
+
+
+## A way out of `place`: way_out over the places one move from it (a wall not counted: the rule doesn't
+## judge a wall's own hazards, a sign, a wall fence or a window cyborg).
+func _way_out(place: Dictionary, lines: Array[Dictionary]) -> bool:
+	return way_out(_moves(place, false), lines, world.geo)
+
+
+## Where the runner is now, as a place the crossfire rule reasons about: {"surface" (Player.Surface),
+## "lane" (a floor or ceiling lane; for a wall, the outer lane below it), "side" (a wall's; 0 otherwise),
+## "x" (the world x a burst aimed there flies along)}.
+func _here() -> Dictionary:
+	var player: Player = world.player
+	if player.surface == Player.Surface.WALL:
+		return _wall_place(player.wall_side)
+	return _lane_place(player.surface, world.geo.lane_at(player.hurtbox_aabb().get_center().x))
+
+
+func _lane_place(surface: int, lane: int) -> Dictionary:
+	return {"surface": surface, "lane": lane, "side": 0, "x": world.geo.lane_x(lane)}
+
+
+func _wall_place(side: int) -> Dictionary:
+	return {"surface": Player.Surface.WALL, "lane": world.geo.lane_count - 1 if side > 0 else 0, "side": side,
+		"x": side * (world.geo.wall_x() - world.tuning.hurtbox_size.y * 0.5)}
+
+
+## The places one move from `place` (GDD §3): the lanes beside a floor or ceiling lane; from an outer floor
+## lane, with `onto_walls`, the wall beside it where the runner could step onto it now (_wall_open); from a
+## wall, the outer lane below (a wall jump). A lane the shooter's lane_rule rules out is no place to go, nor
+## a floor lane a lane blocker holds from the runner to past the bolts' arrival (_lane_held).
+func _moves(place: Dictionary, onto_walls: bool) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var n: int = world.geo.lane_count
+	var surface: int = place["surface"]
+	var lanes: Array[int] = []
+	if surface == Player.Surface.WALL:
+		surface = Player.Surface.FLOOR
+		lanes.append(int(place["lane"]))
+	else:
+		for to: int in [int(place["lane"]) - 1, int(place["lane"]) + 1]:
+			if to >= 0 and to < n:
+				lanes.append(to)
+	var from_d: float = world.player.distance
+	for to: int in lanes:
+		if lane_rule.is_valid() and not bool(lane_rule.call(to, from_d, _reach)):
+			continue
+		if surface == Player.Surface.FLOOR and _lane_held(to, from_d - 1.0, _reach):
+			continue
+		out.append(_lane_place(surface, to))
+	if onto_walls and int(place["surface"]) == Player.Surface.FLOOR:
+		var side: int = -1 if int(place["lane"]) == 0 else (1 if int(place["lane"]) == n - 1 else 0)
+		if side != 0 and _wall_open(side):
+			out.append(_wall_place(side))
+	return out
+
+
+## True if a lane blocker (a hover truck's solid side, a boss's prop: what bumps a lane switch back,
+## Player._lane_blocked) holds floor lane `lane` anywhere from track distance `from_d` to `to_d`. A zone
+## doodad doesn't count: none stands in any lane near the bolts' arrival (path_clear), and the runner
+## passes one before that, then switches.
+func _lane_held(lane: int, from_d: float, to_d: float) -> bool:
+	if not shooter.is_inside_tree():
+		return false
+	var q: PhysicsShapeQueryParameters3D = _box_query(TrackBuilder.LAYER_LANE_BLOCKER,
+		Vector3(world.geo.lane_width * 0.5, 1.2, maxf(to_d - from_d, 0.5)))
+	q.transform = Transform3D(Basis.IDENTITY,
+		Vector3(world.geo.lane_x(lane), 0.6, TrackGeometry.world_z((from_d + to_d) * 0.5)))
+	for hit: Dictionary in shooter.get_world_3d().direct_space_state.intersect_shape(q, 16):
+		var area := hit.get("collider") as Node
+		if area != null and not area.has_meta(&"doodad"):
+			return true
+	return false
+
+
+## Whether the runner could step onto wall `side` now (GDD §3): it stands there (no wall gap) and nothing
+## blocks an entry (a sign, a wall a boss takes away: what bumps the runner back, Player._wall_blocked).
+func _wall_open(side: int) -> bool:
+	var player: Player = world.player
+	if not player.wall_supported(side, player.distance):
+		return false
+	if not shooter.is_inside_tree():
+		return true
+	var q: PhysicsShapeQueryParameters3D = _box_query(TrackBuilder.LAYER_WALL_BLOCKER,
+		Vector3(0.5, 20.0, world.tuning.hurtbox_size.z + 0.4))
+	q.transform = Transform3D(Basis.IDENTITY,
+		Vector3(side * (world.geo.wall_x() - 0.3), 5.0, TrackGeometry.world_z(player.distance)))
+	return shooter.get_world_3d().direct_space_state.intersect_shape(q, 1).is_empty()
+
+
+## The crossfire rule's physics query, a box of `size` against `mask` (areas only), made once.
+func _box_query(mask: int, size: Vector3) -> PhysicsShapeQueryParameters3D:
+	if _query == null:
+		_query = PhysicsShapeQueryParameters3D.new()
+		_query.shape = BoxShape3D.new()
+		_query.collide_with_areas = true
+		_query.collide_with_bodies = false
+	_query.collision_mask = mask
+	(_query.shape as BoxShape3D).size = size
+	return _query
 
 
 func _start_charge() -> void:
@@ -292,15 +409,18 @@ func _start_charge() -> void:
 		"player_d": world.player.distance, "shooter_d": shooter.track_distance(), "from": at})
 
 
-func _cancel() -> void:
+## Calls the charge-up off (`why`: &"allowed", the shooter may no longer attack; &"path", the burst
+## would no longer be fair on the track; &"crossfire", the crossfire rule's last check at the lock).
+func _cancel(why: StringName) -> void:
 	state = State.READY
 	_timer = RETRY_PAUSE
 	_release_airspace()
 	_claim = {}
 	body.set_charge(0.0)
 	body.clear_aim()
-	events.append({"t": world.level_time(), "event": &"cancel", "player_d": world.player.distance,
-		"shooter_d": shooter.track_distance()})
+	var player: Player = world.player
+	events.append({"t": world.level_time(), "event": &"cancel", "why": why, "player_d": player.distance,
+		"shooter_d": shooter.track_distance(), "lane": player.lane, "surface": player.surface})
 
 
 func _fire_step(delta: float) -> void:

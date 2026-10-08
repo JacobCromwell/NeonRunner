@@ -6,13 +6,17 @@ extends TestSuite
 ##   airspace (the Floating Head's eye lasers) keeps every burst out, and the boss sees every burst's;
 ## - on real physics: two cyborgs ready together fire together and a third waits for one of them (at
 ##   once if one of the two is killed); with the limit at 1 they take turns, as the build had it;
-## - the crossfire rule (DESIGN-TBD, docs/questions/h4.md): a runner who dodges one burst into the edge
-##   lane of three is never shot at there while that burst's bolts arrive in the only lane beside it
-##   (the second burst waits); on five lanes the second fires at once, the lane beyond being free; either
-##   way a runner who dodges the bolts they see survives. A wall runner's only way out is the outer lane
-##   below; a ceiling rider dodges only within its ceiling and never into a turret; a panic cyborg's wild
-##   fire waits until its bolts arrive well apart from another burst's;
-## - two Barnacle Turrets on one ceiling fire together (GDD §9.8).
+## - the crossfire rule (DESIGN-TBD, docs/questions/h4.md): a burst that would leave the runner no way out
+##   waits before its charge-up, never after it. On three lanes a second burst begun well after the first
+##   waits while the runner in the middle lane could dodge the first into an edge lane; on five lanes it
+##   fires at once, the lane beyond being free; either way a runner who dodges the bolts they see
+##   survives. A hover truck alongside holds its lane; bolts at a wall runner aren't aimed at the lane
+##   below, so two guns charging at a wall runner both fire, while a burst at a wall runner waits while
+##   another's bolts come down the lane below; a ceiling rider dodges only within its ceiling and never
+##   into a turret; a panic cyborg's wild fire waits until its bolts arrive well apart from another
+##   burst's;
+## - two Barnacle Turrets on one ceiling fire together (GDD §9.8);
+## - the same scenario plays out the same way twice.
 
 const CYBORG_TUNING_PATH: String = "res://data/enemies/cyborg.tres"
 const TURRET_TUNING_PATH: String = "res://data/enemies/barnacle_turret.tres"
@@ -37,17 +41,20 @@ func run() -> void:
 	_test_claims()
 	_test_whole_airspace()
 	_test_near()
-	_test_lane_left()
+	_test_aims_at()
 	await _test_two_together()
 	await _test_third_waits()
 	await _test_killed_mid_charge()
 	await _test_limit_of_one()
 	await _test_crossfire(3)
 	await _test_crossfire(5)
+	await _test_truck()
 	await _test_wall_runner()
+	await _test_both_at_wall_runner()
 	await _test_wild()
-	await _test_escape_lanes()
+	await _test_moves()
 	await _test_turrets_together()
+	await _test_same_every_time()
 
 
 # --- Helpers ----------------------------------------------------------------------------------------
@@ -73,8 +80,8 @@ func _step(w: RunWorld, seconds: float, done: Callable, each: Callable = Callabl
 
 
 ## Every burst of `guns`, in each gun's order: {"gun" (its index), "start" (its charge-up), "end" (its
-## last bolt or its cancel), "cancelled", "shots", "line" (the world x it was aimed along), "wild",
-## "first" and "last" (when its bolts arrived, level times)}.
+## last bolt or its cancel), "cancelled", "why" (a cancel's, CyborgGun._cancel), "shots", "line" (the
+## world x it was aimed along), "wild", "first" and "last" (when its bolts arrived, level times)}.
 static func _bursts(guns: Array[CyborgGun]) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for i: int in guns.size():
@@ -82,12 +89,13 @@ static func _bursts(guns: Array[CyborgGun]) -> Array[Dictionary]:
 		for ev: Dictionary in guns[i].events:
 			match ev["event"]:
 				&"charge":
-					cur = {"gun": i, "start": float(ev["t"]), "end": float(ev["t"]), "cancelled": false, "shots": 0,
-						"line": 0.0, "wild": false, "first": INF, "last": -INF}
+					cur = {"gun": i, "start": float(ev["t"]), "end": float(ev["t"]), "cancelled": false, "why": &"",
+						"shots": 0, "line": 0.0, "wild": false, "first": INF, "last": -INF}
 					out.append(cur)
 				&"cancel":
 					cur["end"] = float(ev["t"])
 					cur["cancelled"] = true
+					cur["why"] = ev.get("why", &"")
 				&"shot":
 					cur["end"] = float(ev["t"])
 					cur["shots"] = int(cur["shots"]) + 1
@@ -117,6 +125,15 @@ static func _fired(bursts: Array[Dictionary], gun: int) -> Array[Dictionary]:
 		if int(b["gun"]) == gun and int(b["shots"]) > 0:
 			out.append(b)
 	return out
+
+
+## The charge-ups the crossfire rule's last check called off as their aim would lock.
+static func _crossfire_offs(bursts: Array[Dictionary]) -> int:
+	var n: int = 0
+	for b: Dictionary in bursts:
+		if bool(b["cancelled"]) and b["why"] == &"crossfire":
+			n += 1
+	return n
 
 
 ## Whether two bursts' bolts arrived within `gap` seconds of each other.
@@ -167,6 +184,22 @@ static func _cyborg_ahead(w: RunWorld, lane: int) -> bool:
 	return false
 
 
+## A place for CyborgGun.aims_at and way_out ({"surface", "lane", "side", "x"}).
+static func _place(surface: int, x: float, side: int = 0) -> Dictionary:
+	return {"surface": surface, "lane": 0, "side": side, "x": x}
+
+
+## The lanes of `places` (CyborgGun._moves), a wall as -1 or the lane count (left, right).
+static func _lanes_of(places: Array[Dictionary], n: int) -> Array:
+	var out: Array = []
+	for place: Dictionary in places:
+		if int(place["surface"]) == Player.Surface.WALL:
+			out.append(-1 if int(place["side"]) < 0 else n)
+		else:
+			out.append(int(place["lane"]))
+	return out
+
+
 static func _same(a: Array, b: Array) -> bool:
 	if a.size() != b.size():
 		return false
@@ -192,6 +225,16 @@ func _test_rules() -> void:
 	for t: CyborgGunTuning in [ct, bt, load("res://data/enemies/window_cyborg.tres") as CyborgGunTuning]:
 		check(t.crossfire_gap > tuning.lane_switch_time,
 			"the crossfire gap leaves time to switch lanes between two bursts (%.2f s)" % t.crossfire_gap)
+		check(t.reaction_time > 0.0 and t.reaction_time < t.charge_time,
+			"a runner reacts within a charge-up (%.2f s)" % t.reaction_time)
+	# CLAUDE.md principle 7: the tunables are listed in their data files.
+	check(FileAccess.get_file_as_string("res://data/tuning/game_rules.tres").contains("max_bursts_in_air = 2"),
+		"game_rules.tres lists max_bursts_in_air")
+	for path: String in ["res://data/enemies/cyborg.tres", "res://data/enemies/window_cyborg.tres",
+			"res://data/enemies/barnacle_turret.tres"]:
+		var text: String = FileAccess.get_file_as_string(path)
+		check(text.contains("crossfire_gap = ") and text.contains("reaction_time = "),
+			"%s lists crossfire_gap and reaction_time" % path.get_file())
 
 
 ## Claims: at most `most` at once; a release ends only that shooter's claim; a claim ends on time; a
@@ -271,10 +314,13 @@ func _test_near() -> void:
 	check(air.near(own, 1.0, 1.4, 0.5, false, 0.2).size() == 1, "a burst still charging counts as predicted")
 	check(air.near(own, 1.0, 1.4, 0.5, true, 0.2).is_empty(), "but not once only aimed bursts are asked for")
 	check(air.near(own, 1.0, 1.4, 0.1, false, 0.2).is_empty(), "nor beyond the gap")
-	air.aim(charging, 2.4, 1.7, 2.1)
+	check(float(charging["t0"]) == 0.1, "a claim keeps when its charge-up began")
+	air.aim(charging, 2.4, Player.Surface.WALL, 1, 1.7, 2.1)
 	var near: Array[Dictionary] = air.near({}, 1.0, 1.4, 0.5, false, 0.3)
 	check(near.size() == 2 and not bool(near[0]["aimed"]) and bool(near[1]["aimed"])
-		and float(near[1]["line"]) == 2.4 and bool(near[1]["wild"]), "an aimed burst brings its line and its wildness")
+		and float(near[1]["line"]) == 2.4 and int(near[1]["surface"]) == Player.Surface.WALL
+		and int(near[1]["side"]) == 1 and bool(near[1]["wild"]),
+		"an aimed burst brings its line, the surface (and wall) it was aimed at, and its wildness")
 	check(air.near({}, 1.0, 1.4, 0.5, true, 0.3).size() == 1, "only it, when only aimed bursts are asked for")
 	air.arrives(charging, 2.3)
 	check(float(charging["last"]) == 2.3, "a bolt's actual arrival widens its burst's")
@@ -290,29 +336,44 @@ func _test_near() -> void:
 	world.free()
 
 
-## A line aims at the lanes within half a lane of it; one lane left free of every line is a way out.
-func _test_lane_left() -> void:
+## A burst is aimed at the places on its own surface within half a lane of its line, or at its wall; a
+## place one move away that none is aimed at is a way out.
+func _test_aims_at() -> void:
 	var geo := TrackGeometry.new(3, tuning)
-	check(not _left([1], [geo.lane_x(1)], geo), "the edge lane of three: its only neighbour aimed at")
-	check(_left([0, 2], [geo.lane_x(1)], geo), "aimed at the runner's own lane: both sides are free")
-	check(_left([1], [geo.lane_x(0)], geo), "a line two lanes away leaves the lane between")
-	check(_left([1], [], geo), "no other line: any lane will do")
-	check(not _left([], [], geo), "no lane: no way out")
-	check(not _left([0, 2], [(geo.lane_x(0) + geo.lane_x(1)) * 0.5, (geo.lane_x(1) + geo.lane_x(2)) * 0.5], geo),
+	var floor_line := func(lane: int) -> Dictionary: return _place(Player.Surface.FLOOR, geo.lane_x(lane))
+	var floor_at := func(lane: int) -> Dictionary: return _place(Player.Surface.FLOOR, geo.lane_x(lane))
+	check(CyborgGun.aims_at(floor_line.call(1), floor_at.call(1), geo), "a burst is aimed at the lane it was locked on")
+	check(not CyborgGun.aims_at(floor_line.call(1), floor_at.call(0), geo), "and not at the lane beside it")
+	var between: Dictionary = _place(Player.Surface.FLOOR, (geo.lane_x(0) + geo.lane_x(1)) * 0.5)
+	check(CyborgGun.aims_at(between, floor_at.call(0), geo) and CyborgGun.aims_at(between, floor_at.call(1), geo),
 		"a line between two lanes counts against both")
-	var five := TrackGeometry.new(5, tuning)
-	check(_left([2, 4], [five.lane_x(2)], five), "on five lanes the lane beyond is free")
-	check(not _left([4], [five.wall_x() - tuning.hurtbox_size.y * 0.5], five),
-		"a line at a wall runner counts against the outer lane below (the cautious side)")
-
-
-## CyborgGun.lane_left with plain arrays.
-static func _left(lanes: Array, lines: Array, geo: TrackGeometry) -> bool:
-	var l: Array[int] = []
-	l.assign(lanes)
-	var x: Array[float] = []
-	x.assign(lines)
-	return CyborgGun.lane_left(l, x, geo)
+	# Bolts at a wall runner (aimed along the middle of its body, out from the wall) pass wide of the lane
+	# below: further from its middle than a bolt can touch a runner there.
+	var wall_x: float = geo.wall_x() - tuning.hurtbox_size.y * 0.5
+	var wide: float = wall_x - ct.aim_error - ct.shot_jitter - geo.lane_x(2)
+	var radius: float = (ProjectilePool.LOOKS[CyborgGun.LOOK]["size"] as Vector3).x * 0.5
+	check(wide > tuning.hurtbox_size.x * 0.5 + radius,
+		"bolts at a wall runner pass %.2f m wide of the lane below; a bolt touches a runner within %.2f m" % [wide,
+		tuning.hurtbox_size.x * 0.5 + radius])
+	var at_wall: Dictionary = _place(Player.Surface.WALL, wall_x, 1)
+	check(not CyborgGun.aims_at(at_wall, floor_at.call(2), geo), "so a burst at a wall runner isn't aimed at the lane below")
+	check(not CyborgGun.aims_at(floor_line.call(2), _place(Player.Surface.WALL, wall_x, 1), geo),
+		"nor a burst at the outer lane at the runner on the wall above it")
+	check(CyborgGun.aims_at(at_wall, _place(Player.Surface.WALL, wall_x, 1), geo)
+		and not CyborgGun.aims_at(at_wall, _place(Player.Surface.WALL, -wall_x, -1), geo),
+		"a burst at a wall runner is aimed at that wall, not the other")
+	check(not CyborgGun.aims_at(_place(Player.Surface.CEILING, geo.lane_x(1)), floor_at.call(1), geo),
+		"a ceiling rider's bolts fly far above the floor")
+	var one: Array[Dictionary] = [floor_at.call(1)]
+	var both: Array[Dictionary] = [floor_at.call(0), floor_at.call(2)]
+	var none: Array[Dictionary] = []
+	var at_one: Array[Dictionary] = [floor_line.call(1)]
+	var at_wall_only: Array[Dictionary] = [at_wall]
+	check(not CyborgGun.way_out(one, at_one, geo), "the edge lane of three: its only neighbour aimed at, no way out")
+	check(CyborgGun.way_out(both, at_one, geo), "aimed at the middle lane: either side is a way out")
+	check(CyborgGun.way_out(one, at_wall_only, geo), "a burst at the wall runner leaves the lane below free")
+	check(CyborgGun.way_out(one, none, geo), "no other burst: any place will do")
+	check(not CyborgGun.way_out(none, none, geo), "no place: no way out")
 
 
 # --- On real physics --------------------------------------------------------------------------------
@@ -414,25 +475,27 @@ func _test_limit_of_one() -> void:
 	await sim.free_world(w)
 
 
-## The crossfire rule. Two cyborgs on the left, 4 m apart, open fire together; the runner dodges the
-## first burst one lane to the right as its aim locks, before the second's locks.
-## - 3 lanes: that's the edge lane, and the first burst's bolts arrive in the only lane beside it. The
-##   second burst doesn't come at the edge lane then: it is called off as its aim locks, and fires once
-##   its bolts arrive crossfire_gap after the first's.
-## - 5 lanes: the lane beyond is free, so the second fires at the runner's new lane at once, its bolts
-##   arriving with the first's.
-## Either way a runner who then dodges the bolts they see survives, and no two bursts arriving within
-## crossfire_gap of each other, aimed along different lines, left the runner without a lane.
+## The crossfire rule. Two cyborgs on the left, 8 m apart: the second sees the runner well after the first
+## began charging (more than reaction_time). The runner, in the middle lane, dodges the first burst one lane
+## to the right as its aim locks.
+## - 3 lanes: from the middle lane a dodge ends in an edge lane, whose only neighbour is the lane the first
+##   burst comes down, so the second waits before its charge-up while the runner could end up there (task
+##   R3's rule: a waiting attack waits before its telegraph), and fires once its bolts would arrive
+##   crossfire_gap after the first's. No charge-up is called off.
+## - 5 lanes: the lane beyond is free wherever the runner goes, so the second starts at once and fires at
+##   the runner's new lane, its bolts arriving with the first's.
+## Either way a runner who then dodges the bolts they see survives.
 func _test_crossfire(lanes: int) -> void:
 	var tag: String = "(%d lanes)" % lanes
 	var w: RunWorld = sim.build_world(RunSim.layout(lanes, 600.0))
-	var guns: Array[CyborgGun] = [_cyborg(w, 110.0, 0, 21).gun, _cyborg(w, 114.0, 0 if lanes == 3 else 1, 22).gun]
+	var guns: Array[CyborgGun] = [_cyborg(w, 110.0, 0, 21).gun, _cyborg(w, 118.0, 0 if lanes == 3 else 1, 22).gun]
 	var cause: Array[String] = [""]
 	w.player.died.connect(func(c: String) -> void: cause[0] = c)
-	var state := {"dodged": false}
+	var state := {"dodged": false, "locked": INF}
 	var bot := func() -> void:
 		if not bool(state["dodged"]) and guns[0].state == CyborgGun.State.FIRING:
 			state["dodged"] = true
+			state["locked"] = w.level_time()
 			w.player.press(&"move_right")
 		elif bool(state["dodged"]):
 			_dodge(w)
@@ -442,29 +505,85 @@ func _test_crossfire(lanes: int) -> void:
 	var a: Array[Dictionary] = _fired(bursts, 0)
 	var b: Array[Dictionary] = _fired(bursts, 1)
 	check(not a.is_empty() and not b.is_empty(), "both fire %s (%d, %d bursts)" % [tag, a.size(), b.size()])
+	check(_crossfire_offs(bursts) == 0, "no charge-up is called off %s" % tag)
 	if a.is_empty() or b.is_empty():
 		await sim.free_world(w)
 		return
 	var half: float = tuning.lane_width * 0.5
 	var crossed: bool = absf(float(a[0]["line"]) - float(b[0]["line"])) > half \
 		and _arrive_together(a[0], b[0], ct.crossfire_gap)
+	var second: Array[Dictionary] = []
+	for x: Dictionary in bursts:
+		if int(x["gun"]) == 1:
+			second.append(x)
 	if lanes == 3:
-		var called_off: bool = false
-		for x: Dictionary in bursts:
-			called_off = called_off or (int(x["gun"]) == 1 and bool(x["cancelled"]) and float(x["start"]) < float(b[0]["start"]))
-		check(called_off, "the second burst, about to lock on the edge lane, is called off %s" % tag)
+		check(float(second[0]["start"]) > float(state["locked"]),
+			"the second waits before its charge-up while the runner in the middle lane could be caught (it began %.2f s, the first locked %.2f s) %s"
+			% [float(second[0]["start"]), float(state["locked"]), tag])
 		check(not crossed, "its bolts never arrive in the edge lane with the first's beside it %s" % tag)
 		check(float(b[0]["first"]) >= float(a[0]["last"]) + ct.crossfire_gap - 0.05,
 			"they arrive crossfire_gap after the first's (%.2f s after) %s" % [float(b[0]["first"]) - float(a[0]["last"]), tag])
 	else:
-		check(crossed, "the second fires at the runner's new lane while the first's bolts arrive (a lane is free) %s" % tag)
+		check(float(second[0]["start"]) < float(state["locked"]), "the second starts before the first's aim locks %s" % tag)
+		check(crossed, "and fires at the runner's new lane while the first's bolts arrive (a lane is free) %s" % tag)
 	await sim.free_world(w)
 
 
+## A hover truck alongside holds its lane (GDD §9.3: its solid side bumps a lane switch back), so it's no
+## way out. Three lanes, the truck alongside in lane 2, two cyborgs ahead in lane 0; the runner, in lane 0,
+## dodges the first burst into lane 1 as its aim locks. While the truck holds lane 2, the second burst
+## never arrives in lane 1 within crossfire_gap of the first's (with no truck there, it may). Begun with the
+## first, the second is called off as its aim locks (the last resort); begun well after (`late`), it waits
+## before its charge-up.
+func _test_truck() -> void:
+	for late: bool in [false, true]:
+		for truck: bool in [true, false]:
+			var tag: String = "(%s, %s)" % ["the second begins late" if late else "together", "truck" if truck else "no truck"]
+			var w: RunWorld = sim.build_world(RunSim.layout(3, 600.0))
+			w.player.god_mode = true
+			var lorry: Enemy = null
+			if truck:
+				lorry = w.director.spawn({"type": "hover_truck", "at": 0.0, "side": 1, "seed": 2,
+					"params": {"skip_entrance": true, "phase": "alongside", "offset": -2.8, "guns": false, "stay": 60.0}})
+			var guns: Array[CyborgGun] = [_cyborg(w, 75.0, 0, 21).gun, _cyborg(w, 85.0 if late else 79.0, 0, 22).gun]
+			var state := {"start": false, "dodged": false, "held": true}
+			var bot := func() -> void:
+				var p: Player = w.player
+				if not bool(state["start"]):
+					state["start"] = true
+					p.press(&"move_left")
+				elif not bool(state["dodged"]) and guns[0].state == CyborgGun.State.FIRING:
+					state["dodged"] = true
+					p.press(&"move_right")
+				if truck and (not is_instance_valid(lorry) or int(lorry.get(&"lane")) != 2):
+					state["held"] = false
+			await _step(w, 6.0, func() -> bool: return w.player.distance > 100.0, bot)
+			var bursts: Array[Dictionary] = _bursts(guns)
+			var a: Array[Dictionary] = _fired(bursts, 0)
+			var b: Array[Dictionary] = _fired(bursts, 1)
+			check(not a.is_empty(), "the first fires %s" % tag)
+			var crossed: bool = false
+			for x: Dictionary in b:
+				for y: Dictionary in a:
+					crossed = crossed or (absf(float(x["line"]) - float(y["line"])) > tuning.lane_width * 0.5
+						and _arrive_together(x, y, ct.crossfire_gap))
+			if truck:
+				check(bool(state["held"]), "the truck holds lane 2 throughout %s" % tag)
+				check(not crossed, "the second never arrives in lane 1 with the first's bolts in lane 0 %s" % tag)
+				if late:
+					check(_crossfire_offs(bursts) == 0, "begun late, the second waits before its charge-up %s" % tag)
+				else:
+					check(_crossfire_offs(bursts) == 1, "begun with the first, it is called off as its aim locks %s" % tag)
+			elif not late:
+				check(crossed, "with lane 2 free the second fires at lane 1 meanwhile %s" % tag)
+			await sim.free_world(w)
+
+
 ## A wall runner can only drop off into the outer lane below (GDD §3). A floor cyborg's burst locks on the
-## runner in the outer lane, the runner steps up onto the wall, and a window cyborg on the far wall is
-## about to fire at them: it is called off, and its bolts never arrive within crossfire_gap of the floor
-## cyborg's in that lane.
+## runner in the outer lane, the runner steps up onto the wall, and a window cyborg on the far wall would
+## fire at them: it waits before its charge-up (the runner in the outer lane could step onto the wall, and
+## from there the only way down is the lane the floor cyborg's bolts come down), so no charge-up is called
+## off, and its bolts never arrive within crossfire_gap of the floor cyborg's.
 func _test_wall_runner() -> void:
 	var w: RunWorld = sim.build_world(RunSim.layout(3, 600.0))
 	w.player.god_mode = true
@@ -488,18 +607,48 @@ func _test_wall_runner() -> void:
 	var shots: Array[Dictionary] = _fired(bursts, 0)
 	check(not shots.is_empty() and float(state["wall_from"]) < float(shots[0]["first"]),
 		"the runner steps onto the wall with the floor cyborg's bolts on their way to the outer lane")
-	var called_off: bool = false
-	for b: Dictionary in bursts:
-		if int(b["gun"]) == 1 and bool(b["cancelled"]) and float(b["end"]) > float(state["wall_from"]) \
-				and float(b["end"]) < float(state["wall_to"]):
-			called_off = true
-	check(called_off, "the window cyborg's burst at the wall runner is called off")
+	check(_crossfire_offs(bursts) == 0, "the window cyborg waits before its charge-up: none is called off")
+	var on_wall: int = 0
 	for b: Dictionary in _fired(bursts, 1):
+		if float(b["start"]) > float(state["wall_from"]) and float(b["start"]) < float(state["wall_to"]):
+			on_wall += 1
 		for f: Dictionary in shots:
-			check(not _arrive_together(b, f, ct.crossfire_gap) or absf(float(b["line"]) - float(f["line"])) <= tuning.lane_width * 0.5,
+			check(not _arrive_together(b, f, ct.crossfire_gap),
 				"its bolts never arrive with the floor cyborg's in the lane below (%.2f-%.2f s, %.2f-%.2f s)" % [
 				float(b["first"]), float(b["last"]), float(f["first"]), float(f["last"])])
+	check(on_wall > 0, "it fires at the wall runner once the floor cyborg's bolts are by")
 	await sim.free_world(w)
+
+
+## Bolts at a wall runner aren't aimed at the lane below, so two guns charging at the same wall runner both
+## fire, whether they began together or one well after the other: a floor cyborg and a window cyborg on the
+## far wall, at the runner on the right wall.
+func _test_both_at_wall_runner() -> void:
+	for apart: float in [0.0, 2.0, 4.0, 8.0]:
+		var tag: String = "(%.0f m apart)" % apart
+		var w: RunWorld = sim.build_world(RunSim.layout(3, 600.0))
+		w.player.god_mode = true
+		var c: Cyborg = _cyborg(w, 80.0, 0, 21)
+		var wc := w.director.spawn({"type": "window_cyborg", "at": 80.0 + apart, "lane": 0, "side": -1, "seed": 23,
+			"params": {}}) as WindowCyborg
+		var guns: Array[CyborgGun] = [c.gun, wc.gun]
+		var state := {"frame": 0, "walls": [0, 0]}
+		var press := func() -> void:
+			state["frame"] = int(state["frame"]) + 1
+			if int(state["frame"]) == 2 or int(state["frame"]) == 15:
+				w.player.press(&"move_right")
+		# Each gun firing while the runner is on the wall: seen after every frame, so the last one counts too.
+		var done := func() -> bool:
+			for k: int in 2:
+				if guns[k].state == CyborgGun.State.FIRING and w.player.surface == Player.Surface.WALL:
+					(state["walls"] as Array)[k] = 1
+			return not _fired(_bursts(guns), 0).is_empty() and not _fired(_bursts(guns), 1).is_empty()
+		await _step(w, 3.0, done, press)
+		var bursts: Array[Dictionary] = _bursts(guns)
+		check(not _fired(bursts, 0).is_empty() and not _fired(bursts, 1).is_empty() and (state["walls"] as Array) == [1, 1],
+			"both fire at the wall runner %s" % tag)
+		check(_crossfire_offs(bursts) == 0, "and neither is called off %s" % tag)
+		await sim.free_world(w)
 
 
 ## Wild fire (the panic variant's: its bolts land anywhere around the runner, so no lane is sure to be
@@ -538,35 +687,50 @@ func _test_wild() -> void:
 	await sim.free_world(w)
 
 
-## The lanes a runner dodging a burst may switch into: beside their lane on the floor; from a wall, only
-## the outer lane below; on a ceiling, only its lanes and never one a turret stands in ahead.
-func _test_escape_lanes() -> void:
-	var w: RunWorld = sim.build_world(RunSim.layout(5, 600.0))
+## The places one move away (CyborgGun._moves): beside the lane on the floor; from an outer lane, the wall
+## beside it where one can step onto it (a candidate for where a dodge ends, never a way out); from a wall,
+## only the outer lane below. A lane a hover truck alongside holds is none, while a zone doodad ahead
+## doesn't count (path_clear keeps doodads off the bolts' arrival). On a ceiling, only its lanes and
+## never one a turret stands in ahead.
+func _test_moves() -> void:
+	var layout: LevelLayout = RunSim.layout(5, 600.0)
+	layout.doodads.append({"lane": 1, "start": 30.0, "end": 33.0, "size": &"medium", "side": 1, "seed": 3})
+	var w: RunWorld = sim.build_world(layout)
 	var wc := w.director.spawn({"type": "window_cyborg", "at": 300.0, "lane": 0, "side": -1, "seed": 3,
 		"params": {"fires": false}}) as WindowCyborg
 	var gun: CyborgGun = wc.gun
-	check(_same(gun._escape_lanes(w.geo.lane_x(2)), [1, 3]), "on the floor: the lanes either side")
-	check(_same(gun._escape_lanes(w.geo.lane_x(0)), [1]) and _same(gun._escape_lanes(w.geo.lane_x(4)), [3]),
-		"in an outer lane: the one beside it")
-	var p: Player = w.player
-	p.surface = Player.Surface.WALL
-	p.wall_side = 1
-	check(_same(gun._escape_lanes(w.geo.wall_x()), [4]), "on the right wall: only the outer lane below")
-	p.wall_side = -1
-	check(_same(gun._escape_lanes(-w.geo.wall_x()), [0]), "on the left wall: only the outer lane below")
-	p.surface = Player.Surface.FLOOR
-	p.wall_side = 0
+	gun._reach = 60.0
+	await tree.physics_frame
+	var floor_at := func(lane: int) -> Dictionary: return gun._lane_place(Player.Surface.FLOOR, lane)
+	check(_same(_lanes_of(gun._moves(floor_at.call(2), true), 5), [1, 3]), "on the floor: the lanes either side")
+	check(_same(_lanes_of(gun._moves(floor_at.call(0), false), 5), [1])
+		and _same(_lanes_of(gun._moves(floor_at.call(4), false), 5), [3]), "in an outer lane: the one beside it")
+	check(_same(_lanes_of(gun._moves(floor_at.call(0), true), 5), [1, -1])
+		and _same(_lanes_of(gun._moves(floor_at.call(4), true), 5), [3, 5]),
+		"and the wall beside it, where the runner could end a dodge")
+	check(_same(_lanes_of(gun._moves(gun._wall_place(1), true), 5), [4])
+		and _same(_lanes_of(gun._moves(gun._wall_place(-1), true), 5), [0]), "from a wall: only the outer lane below")
+	check(not w.track.find_children("Doodad", "Area3D", true, false).is_empty(), "a doodad stands in lane 1 ahead")
+	check(_same(_lanes_of(gun._moves(floor_at.call(2), false), 5), [1, 3]), "a doodad ahead doesn't hold its lane")
+	var truck := w.director.spawn({"type": "hover_truck", "at": 0.0, "side": 1, "seed": 2,
+		"params": {"skip_entrance": true, "phase": "alongside", "offset": -2.8, "guns": false, "stay": 60.0}})
+	for i: int in 3:
+		await tree.physics_frame
+	check(int(truck.get(&"lane")) == 4, "the truck runs alongside in lane 4")
+	check(_same(_lanes_of(gun._moves(floor_at.call(3), false), 5), [2]), "a hover truck alongside holds its lane")
+	check(_same(_lanes_of(gun._moves(gun._wall_place(1), true), 5), []), "and the lane below the wall it runs beside")
 	# A turret on a ceiling over lanes 1-3, another in lane 3 ahead of it.
 	var params := {"hull_start": 100.0, "hull_end": 260.0, "first_lane": 1, "last_lane": 3, "fires": false}
 	var t1 := w.director.spawn({"type": "barnacle_turret", "at": 200.0, "lane": 1, "side": 0, "seed": 5,
 		"params": params}) as BarnacleTurret
 	w.director.spawn({"type": "barnacle_turret", "at": 180.0, "lane": 3, "side": 0, "seed": 6, "params": params})
 	var tg: CyborgGun = t1.gun
+	var ceiling_at := func(lane: int) -> Dictionary: return tg._lane_place(Player.Surface.CEILING, lane)
 	tg._reach = 150.0
-	check(_same(tg._escape_lanes(w.geo.lane_x(1)), [2]), "a ceiling rider dodges only within its ceiling")
-	check(_same(tg._escape_lanes(w.geo.lane_x(2)), [1, 3]), "into either lane beside them, no turret there yet")
+	check(_same(_lanes_of(tg._moves(ceiling_at.call(1), true), 5), [2]), "a ceiling rider dodges only within its ceiling")
+	check(_same(_lanes_of(tg._moves(ceiling_at.call(2), true), 5), [1, 3]), "into either lane beside them, no turret there yet")
 	tg._reach = 185.0
-	check(_same(tg._escape_lanes(w.geo.lane_x(2)), [1]), "never into a lane a turret stands in before the bolts pass")
+	check(_same(_lanes_of(tg._moves(ceiling_at.call(2), true), 5), [1]), "never into a lane a turret stands in before the bolts pass")
 	await sim.free_world(w)
 
 
@@ -595,3 +759,30 @@ func _test_turrets_together() -> void:
 		check(absf(float(a[0]["start"]) - float(b[0]["start"])) < 0.02 and _most_at_once(bursts) == 2,
 			"together (%.2f s and %.2f s)" % [float(a[0]["start"]), float(b[0]["start"])])
 	await sim.free_world(w)
+
+
+## Every attempt at a seed plays out the same way (GDD §6): the crossfire scenario on three lanes, run twice
+## with the same runner, gives every gun the same events.
+func _test_same_every_time() -> void:
+	var logs: Array[String] = []
+	for k: int in 2:
+		var w: RunWorld = sim.build_world(RunSim.layout(3, 600.0))
+		w.player.god_mode = true
+		var guns: Array[CyborgGun] = [_cyborg(w, 110.0, 0, 21).gun, _cyborg(w, 118.0, 0, 22).gun,
+			_cyborg(w, 118.0, 2, 23).gun]
+		var state := {"dodged": false}
+		var bot := func() -> void:
+			if not bool(state["dodged"]) and guns[0].state == CyborgGun.State.FIRING:
+				state["dodged"] = true
+				w.player.press(&"move_right")
+			elif bool(state["dodged"]):
+				_dodge(w)
+		await _step(w, 9.0, func() -> bool: return not w.player.alive or w.player.distance > 140.0, bot)
+		var lines: Array[String] = []
+		for i: int in guns.size():
+			for e: Dictionary in guns[i].events:
+				lines.append("%d %s %.4f %.4f %.4f %s" % [i, e["event"], float(e["t"]), float(e.get("impact", 0.0)),
+					float(e.get("line", 0.0)), e.get("why", "")])
+		logs.append("\n".join(lines))
+		await sim.free_world(w)
+	check(logs[0] != "" and logs[0] == logs[1], "the same scenario plays out the same way twice (%d events)" % logs[0].count("\n"))

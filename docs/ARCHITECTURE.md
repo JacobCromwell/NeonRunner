@@ -609,20 +609,30 @@ world, in the RunWorld's metadata, so every attempt starts with it empty:
 - **A boss's claim.** The Floating Head's eye lasers claim the whole airspace (`claim_whole`): no burst
   starts during a laser attack, and a laser attack only starts once no burst is on (`claimed_until`).
 - **The crossfire rule** (DESIGN-TBD, `docs/questions/h4.md`). The airspace also keeps each burst's
-  arrivals (predicted, then each bolt's own) and, once its aim locks, the line its bolts fly along,
-  until a while after they've arrived (`near`). A burst whose bolts would arrive within
-  `CyborgGunTuning.crossfire_gap` (0.5 s) of another's fires only if the runner, in the lane it aims at,
-  still has a lane one move away that none of them is aimed at (`CyborgGun.lane_left`: a line aims at
-  the lanes within half a lane of it); the lanes one move away (`_escape_lanes`) are those beside the
-  runner's on the floor or a ceiling, or the outer lane below a wall runner, and a gun's `lane_rule` may
-  rule some out (a Barnacle Turret's keeps a rider within its ceiling and out of a turret's lane, as its
-  `_path_fair` does). Wild fire (the panic variant) never arrives that close to another burst. A gun
-  checks as it would start its charge-up (bursts still charging count, as aimed where it would be, so
-  only their wild fire matters) and again as its aim locks (only bursts already aimed count: one still
-  charging checks against it at its own lock); one that fails at the lock is called off and starts again
-  once it fits. It bites where one lane is all a dodge has: the edge lane of three after dodging one
-  burst, a wall run, a narrow ceiling; on five or six lanes a second burst nearly always fires at once.
-  The cyborgs' `burst_gap` and `crossfire_gap` are per type; a check uses the asking gun's.
+  start, its arrivals (predicted, then each bolt's own) and, once its aim locks, the line its bolts fly
+  along and the surface the runner was on, until a while after they've arrived (`near`). Bursts whose
+  bolts arrive within `CyborgGunTuning.crossfire_gap` (0.5 s) of each other must leave the runner a way
+  out: a place one move away that none of them is aimed at (`CyborgGun.way_out`). The places
+  (`_here`, `_moves`) are lanes and walls: from a floor or ceiling lane the lanes beside it, from a wall
+  only the outer lane below; a lane a lane blocker holds from the runner to past the bolts (a hover truck
+  alongside, a boss's prop: what bumps a lane switch back; zone doodads don't count, `path_clear` keeps
+  them off the bolts' arrival) is none, nor one the gun's `lane_rule` rules out (a Barnacle Turret's keeps
+  a rider within its ceiling and out of a turret's lane, as its `_path_fair` does). A burst is aimed
+  (`aims_at`) at the places on the surface it was aimed at within half a lane of its line, or at its wall:
+  bolts at a wall runner pass wide of the lane below, a floor runner's under a wall runner. Wild fire
+  (the panic variant) never arrives that close to another burst. A burst that would leave no way out
+  waits **before** its telegraph (task R3's rule for a waiting attack): as it would start its charge-up,
+  wherever the runner may be by its lock (where they are or one move away, a wall they could step onto
+  included) must leave a way out, with bursts already aimed counted along their lines and one still
+  charging that began more than `reaction_time` (0.25 s) ago taken as aimed where the runner is now (the
+  runner may dodge it first); one that began since will lock where this one does. That start check
+  counts bursts `START_MARGIN` further apart than the gap, for predictions a little off by the lock. The
+  same check as its aim locks, with only bursts already aimed counted, is a last resort that calls the
+  charge-up off (`_cancel(&"crossfire")`); a runner who moves while two charge-ups that began together end
+  can bring it about. The cost: on three lanes a second burst begun well after the first waits while the
+  runner is in the middle lane or in an outer lane beside a wall they could step onto; on five or six
+  lanes it waits only one lane in from an edge or beside a wall. The cyborgs' `burst_gap`,
+  `crossfire_gap` and `reaction_time` are per type; a check uses the asking gun's.
 
 **Pace** (GDD §3, owner's playtest September 30, 2026: the runner rises from about 21 m/s in the
 Neon City to about 25 m/s in the Golden Zone, and enemies and their attacks speed up to match, never
@@ -3204,9 +3214,12 @@ attacks used to keep from its turn, and simulated runs of campaign levels,
 watched by `tools/measure/attack_watch.gd` (see Review tools). `test_cyborg_airspace` checks the cyborgs'
 airspace (H4): its claims (the limit, a release ending only its own claim, shooters that left play, a
 boss's whole claim), two cyborgs firing together while a third waits (at once if one is killed
-mid-charge), the limit at 1, the crossfire rule on 3 and 5 lanes with a runner dodging the bolts it sees,
-a wall runner's only way out, a panic cyborg's wild fire kept apart, a ceiling rider's lanes, and two
-turrets on one ceiling firing together;
+mid-charge), the limit at 1, the crossfire rule on 3 and 5 lanes with a runner dodging the bolts it sees
+(a later second burst waiting before its charge-up on 3 lanes, firing at once on 5), a hover truck
+alongside holding its lane, a wall runner (a burst at them waiting while another comes down the lane
+below; two guns at the same wall runner both firing), a panic cyborg's wild fire kept apart, the places
+one move away (walls, lane blockers but not doodads, a ceiling rider's lanes), two turrets on one ceiling
+firing together, and the same scenario playing out the same way twice;
 `test_cyborg` and `test_barnacle_turret` check at most `max_bursts_in_air` bursts in the air over
 generated levels. `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
 for framework tests, with `make_def()` for a BossDef from a list of phases; `test_bosses` runs fights

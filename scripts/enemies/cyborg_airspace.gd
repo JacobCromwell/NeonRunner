@@ -13,9 +13,9 @@ extends RefCounted
 ## - A boss may claim the whole airspace (the Floating Head's eye lasers, FloatingHeadFaceOff; big
 ##   attacks take turns, GDD §9): no burst starts while that claim is on, and the boss only claims it
 ##   once no burst is on (claimed_until).
-## - It also keeps, for each burst, when its bolts arrive and, once its aim locks, the line they fly
-##   along, until they have all arrived: the guns' crossfire rule reads them (near(),
-##   CyborgGun._crossfire_fair).
+## - It also keeps, for each burst, when its charge-up began, when its bolts arrive and, once its aim
+##   locks, the line they fly along and the surface it was aimed at, until they have all arrived: the
+##   guns' crossfire rule reads them (near(), CyborgGun._crossfire_fair).
 ## Everything runs in the physics step, in the order the guns ask, so every attempt at a seed plays
 ## out the same way.
 
@@ -28,10 +28,12 @@ const DEFAULT_MOST: int = 2
 const KEEP_AFTER: float = 2.0
 
 ## The claims, oldest first: {"owner" (instance id of the shooter or the boss), "whole" (the whole
-## airspace, a boss's), "until" (level time the claim ends), "aimed" (its aim is locked and its bolts
-## are on their way), "line" (once aimed: the world x its bolts fly along, the runner's at the lock),
-## "wild" (wild fire, landing anywhere around the runner: the panic variant's), "first" and "last"
-## (level times its first and last bolts arrive: predicted until each bolt flies)}.
+## airspace, a boss's), "t0" (level time the claim began: a burst's charge-up), "until" (level time the
+## claim ends), "aimed" (its aim is locked and its bolts are on their way), "line" (once aimed: the
+## world x its bolts fly along, the runner's at the lock), "surface" and "side" (once aimed: the
+## Player.Surface the runner was on at the lock, and the wall's side for a wall runner), "wild" (wild
+## fire, landing anywhere around the runner: the panic variant's), "first" and "last" (level times its
+## first and last bolts arrive: predicted until each bolt flies)}.
 var _claims: Array[Dictionary] = []
 
 
@@ -49,8 +51,8 @@ static func of(world: Node) -> CyborgAirspace:
 ## back to aim(), arrives() and near().
 func claim(owner: Object, until: float, first: float, last: float, wild: bool, now: float) -> Dictionary:
 	_prune(now)
-	var c := {"owner": owner.get_instance_id(), "whole": false, "until": until, "aimed": false,
-		"line": 0.0, "wild": wild, "first": first, "last": last}
+	var c := {"owner": owner.get_instance_id(), "whole": false, "t0": now, "until": until, "aimed": false,
+		"line": 0.0, "surface": 0, "side": 0, "wild": wild, "first": first, "last": last}
 	_claims.append(c)
 	return c
 
@@ -64,8 +66,8 @@ func claim_whole(owner: Object, until: float, now: float) -> void:
 		if bool(c["whole"]) and int(c["owner"]) == id:
 			c["until"] = maxf(float(c["until"]), until)
 			return
-	_claims.append({"owner": id, "whole": true, "until": until, "aimed": false, "line": 0.0, "wild": false,
-		"first": INF, "last": -INF})
+	_claims.append({"owner": id, "whole": true, "t0": now, "until": until, "aimed": false, "line": 0.0,
+		"surface": 0, "side": 0, "wild": false, "first": INF, "last": -INF})
 
 
 ## Ends `owner`'s claims that are still on, and only those. A burst whose bolts are on their way is still
@@ -82,11 +84,13 @@ func release(owner: Object, now: float) -> void:
 			_claims.remove_at(i)
 
 
-## A burst's aim locks: its bolts fly along world x `line` and arrive between `first` and `last` (level
-## times).
-func aim(c: Dictionary, line: float, first: float, last: float) -> void:
+## A burst's aim locks: its bolts fly along world x `line` at a runner on `surface` (Player.Surface; a wall
+## runner's wall on `side`) and arrive between `first` and `last` (level times).
+func aim(c: Dictionary, line: float, surface: int, side: int, first: float, last: float) -> void:
 	c["aimed"] = true
 	c["line"] = line
+	c["surface"] = surface
+	c["side"] = side
 	c["first"] = first
 	c["last"] = last
 
