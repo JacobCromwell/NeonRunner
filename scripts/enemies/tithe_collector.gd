@@ -114,7 +114,7 @@ func _build() -> void:
 	box.contacted.connect(_on_contacted)
 	_place()
 	# An approach cue (GDD §9.12), not a hazard warning: it isn't an attack, but it must be
-	# noticeable, so it plays for everyone to hear, like the Resonator's chime. Anti-grav pads
+	# noticeable, so it plays for everyone to hear, like the Resonator's warning. Anti-grav pads
 	# don't affect it (GDD §9.12, proposed): it never connects to world.player.movement_event,
 	# unlike the heli drone.
 	world.play_sfx(&"tithe_collector_cue")

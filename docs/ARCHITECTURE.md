@@ -359,7 +359,7 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
     the collector calls it for its own lane and position, `world.score.hold(self, value)`s what it
     gets, and flies it in with `RunEffects.coin_stream` for the visible stream GDD §9.12 asks for. *The
     approach cue*: not a hazard warning (touching it isn't an attack), but still noticeable: a smug
-    chuckle plays for everyone to hear (`world.play_sfx`, like the Resonator's chime) as soon as it
+    chuckle plays for everyone to hear (`world.play_sfx`, like the Resonator's warning) as soon as it
     exists. It reports no big attack (`is_major_attack_active` stays false): it isn't an attack, so it
     never takes a turn.
 - **A stomp on the ceiling** (C1): a hitbox that hangs from a ceiling (`Hazard.upside_down`, the
@@ -2459,6 +2459,20 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
     another key needs its riff remade to match, or removed. For now `MusicLibrary.riff_tracks` maps
     supplied songs back to their original zone's riff, preserving the existing completion sounds;
     their keys have not been retuned to the supplied songs.
+  - **The Resonator's warning** (H2, GDD §9.10; the owner's October 8, 2026 request that it not sound
+    like a doorbell): `resonator_warning` (`tools/asset_gen/sfx_bank_resonator.gd`; it was the three-note
+    chime `resonator_chime`) is noise only, a crackling build-up of fire that breaks into a crashing wave.
+    A rumble, roar and hiss brighten and swell, crackle (ticks and snaps) thickens, and the fire flares on
+    each halo's line-up (`Resonator.LINE_UP_AT`, once `CHIME_NOTES`: it still times the halos). A short
+    breath follows, then the wave crash lands exactly as the red wave leaves
+    (`ResonatorTuning.warning_seconds`, 1.3 s), its roll and fizz rolling out for 0.85 s after it.
+    - *Regenerate it* (`tools/godot.sh sfx --only=resonator_warning`) after retuning `warning_seconds` or
+      `LINE_UP_AT`: the sound is made for those times, and `test_resonator` measures its flares, its crash,
+      its crackle and its lack of any bell-like partial against them.
+    - *The wave leaving* plays `resonator_pulse` with the crash: a release thump and the rush of the wave
+      rolling in (a double pulse's second wave has only this), with no pitched hum under the crash.
+    - *Shot down in its warning,* a Resonator cuts the sound off before its crash (`PlayerSfx.stop()`):
+      with no wave coming, the crash must not land.
 
 ## Campaign, bosses and cinematics
 
