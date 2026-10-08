@@ -524,7 +524,8 @@ eyes' flare until its last swing is over; it can't wait either, so it claims its
 and lets the runner pass if another's is still on, below; DESIGN-TBD, `docs/questions/c4.md`), and an
 Enforcer Truck's volley (its warning until its last bolt has passed the runner; GDD §9.13, proposed). Small attacks (a cyborg's burst, a window
 cyborg's shot, a Barnacle Turret's burst, a screech's swipe) and the hover truck's entrance don't take
-part. An enemy takes part like this, opting in for whichever of its attacks count as big:
+part (the cyborg-type guns share an airspace of their own instead: The cyborgs' airspace, below). An
+enemy takes part like this, opting in for whichever of its attacks count as big:
 - **Report it.** `is_major_attack_active()` is true from the start of the attack's warning until its
   last hazard is over (the lunge has passed, the lurch has ended). Each shot fired in it goes to
   `world.director.note_attack_shot(self, shot)` (the Projectile `fire_enemy()` returned): the attack's
@@ -596,6 +597,43 @@ place). `tools/measure/big_attacks.gd` measures the overlaps, the delays and the
 a big attack in over the campaign (Review tools); `tests/helpers/turn_dummy.gd` is a scripted big
 attack for tests (with pauses in its asks and stalls when it may go).
 
+**The cyborgs' airspace** (GDD §9.2, owner, October 8, 2026: up to two cyborg-type bursts in the air at
+once; the build had allowed one, which looked unnatural). The cyborg-type guns (`CyborgGun`: cyborgs,
+window cyborgs, Barnacle Turrets) share one `CyborgAirspace` (`scripts/enemies/cyborg_airspace.gd`) per
+world, in the RunWorld's metadata, so every attempt starts with it empty:
+- **Claims.** A burst claims its place from the start of its charge-up until `burst_gap` after its last
+  bolt, and a gun starts one only while fewer than `GameRules.max_bursts_in_air` claims are on (2, in
+  the F6 panel; 1 brings back one at a time) and no boss holds the whole airspace (`may_start`). Each
+  claim is its shooter's own: a release (a cancelled charge-up, `CyborgGun.stop`) ends that shooter's
+  claim and no other, and a shooter that has left play (defeated, retired or freed) holds none.
+- **A boss's claim.** The Floating Head's eye lasers claim the whole airspace (`claim_whole`): no burst
+  starts during a laser attack, and a laser attack only starts once no burst is on (`claimed_until`).
+- **The crossfire rule** (DESIGN-TBD, `docs/questions/h4.md`). The airspace also keeps each burst's
+  start, its arrivals (predicted, then each bolt's own) and, once its aim locks, the line its bolts fly
+  along and the surface the runner was on, until a while after they've arrived (`near`). Bursts whose
+  bolts arrive within `CyborgGunTuning.crossfire_gap` (0.5 s) of each other must leave the runner a way
+  out: a place one move away that none of them is aimed at (`CyborgGun.way_out`). The places
+  (`_here`, `_moves`) are lanes and walls: from a floor or ceiling lane the lanes beside it, from a wall
+  only the outer lane below; a lane a lane blocker holds from the runner to past the bolts (a hover truck
+  alongside, a boss's prop: what bumps a lane switch back; zone doodads don't count, `path_clear` keeps
+  them off the bolts' arrival) is none, nor one the gun's `lane_rule` rules out (a Barnacle Turret's keeps
+  a rider within its ceiling and out of a turret's lane, as its `_path_fair` does). A burst is aimed
+  (`aims_at`) at the places on the surface it was aimed at within half a lane of its line, or at its wall:
+  bolts at a wall runner pass wide of the lane below, a floor runner's under a wall runner. Wild fire
+  (the panic variant) never arrives that close to another burst. A burst that would leave no way out
+  waits **before** its telegraph (task R3's rule for a waiting attack): as it would start its charge-up,
+  wherever the runner may be by its lock (where they are or one move away, a wall they could step onto
+  included) must leave a way out, with bursts already aimed counted along their lines and one still
+  charging that began more than `reaction_time` (0.25 s) ago taken as aimed where the runner is now (the
+  runner may dodge it first); one that began since will lock where this one does. That start check
+  counts bursts `START_MARGIN` further apart than the gap, for predictions a little off by the lock. The
+  same check as its aim locks, with only bursts already aimed counted, is a last resort that calls the
+  charge-up off (`_cancel(&"crossfire")`); a runner who moves while two charge-ups that began together end
+  can bring it about. The cost: on three lanes a second burst begun well after the first waits while the
+  runner is in the middle lane or in an outer lane beside a wall they could step onto; on five or six
+  lanes it waits only one lane in from an edge or beside a wall. The cyborgs' `burst_gap`,
+  `crossfire_gap` and `reaction_time` are per type; a check uses the asking gun's.
+
 **Pace** (GDD §3, owner's playtest September 30, 2026: the runner rises from about 21 m/s in the
 Neon City to about 25 m/s in the Golden Zone, and enemies and their attacks speed up to match, never
 with shorter warnings). An enemy that stands or moves in the world's frame gives its distances along
@@ -648,9 +686,11 @@ tuning (`BarnacleTurretTuning`, `data/enemies/barnacle_turret.tres`), its model
   each bolt's clear stretch (`end_margin`), and a lane beside the rider's, within the ceiling, has no
   turret body from where the rider is to past the stretch (`body_reach`): there's always a lane to dodge
   into, on a two-lane ceiling (where it's the turret's own) the bolts come well before it, and a second
-  turret never fires while the first stands in that lane between the rider and its bolts. One burst at
-  a time with the cyborgs (their airspace, `CyborgGun.AIRSPACE_META`; GDD §9.8, proposed). Its burst is
-  a small attack: it doesn't take turns with the big ones. Slightly more accurate than the cyborg
+  turret never fires while the first stands in that lane between the rider and its bolts. It shares the
+  cyborgs' airspace (`CyborgAirspace`, above: up to two bursts in the air at once, GDD §9.2 and §9.8,
+  owner, October 8, 2026), so both turrets on a ceiling may fire together; its `lane_rule` (`_lane_open`)
+  gives the crossfire rule the lanes a rider can dodge into (its ceiling's, never one a turret stands in
+  before the bolts pass). Its burst is a small attack: it doesn't take turns with the big ones. Slightly more accurate than the cyborg
   (`aim_error`, `shot_jitter`), with faster bolts (so they can meet a rider closing in at run speed well
   before the turret); the dodge window is `min_warning_time` either way.
 - **Body.** A solid `body` hitbox from the underside to the stomp line and its crown below it, a `top`
@@ -2577,7 +2617,7 @@ plays it; E1e, the owner's playtest fixes; E1f, the fight at the City's speed), 
 | `floating_head_model.gd` (`FloatingHeadModel`) | the low-poly meshes, built in code from a `Shape` sized to the street and its lanes (MeshKit layers merged into a few surfaces: about 13 surfaces and 11k vertices; the weak points over the lanes within `weak_point_reach` of the middle), the bomb, the crown's deck faces, and `ship_transform` (its pitch and its roll about the crown over the weak points). The wreck (`_wreck`): its stern half (`WRECK_LENGTH`), torn open at both ends (the cut plating and flaps peeled outward), plated inside, dark; `wreck_inner_half` is its inside's half width at a height (the runner's room in it, tested at every lane count) |
 | `floating_head_voice.gd` (`FloatingHeadVoice`) | the propaganda: from the reveal on, a phrase every so often (`head_voice_1-4`, a seeded order and pauses of its own) from a positional player at the face, each with the next slogan (`FloatingHeadTuning.slogans`); it ducks `voice_duck_db` at once under `FloatingHead.warning_active()`, the slogan fades, and no phrase starts until the warnings have been over a moment; `cut()` stops it mid-shout for the defeat (`head_voice_cut`) |
 | `floating_head_bombing.gd` (`FloatingHeadBombing`) | the searchlight and the bombs: the lock (the warning: red light, `circle_warning`, lock sound, the bomb falling with its whistle), the fairness rules (`plan`, `fair`, `escape_lane`), and pooled blast hitboxes (enemy attacks) that keep clear of a wall runner |
-| `floating_head_faceoff.gd` (`FloatingHeadFaceOff`) | the face-off: the phase's attacks wait in line (`faceoff_pattern`; the first that can start fairly goes next) with a drag timed for each marked tower. Eye lasers: the warning (the eyes' `eye_charge` and whine, thin aiming beams with a sweep's aim lines or a drag's aiming spot, then the drag's `lane_warning`), a sweep's twin beams (low: both low, jump them; high: one at the waist and one above a jump's reach, like a gapped fence, slide under them) or a drag down the runner's lane leaving a burning line (keeps clear of a wall runner), each with enemy-attack hitboxes. The cyborg drop: the jaw opens (with its sound and `circle_warning`s where they land), then normal cyborgs from the director (`spawn_enemy`) fall from the mouth onto clear roof and fight. A tower's drag is a bait when the runner is in the outer lane on its side as the warning ends, or the fallback after `fallback_after` misses; either calls `FloatingHead.begin_pin`. Lasers wait while its cyborgs are ahead and share the cyborgs' airspace (`CyborgGun.AIRSPACE_META`) |
+| `floating_head_faceoff.gd` (`FloatingHeadFaceOff`) | the face-off: the phase's attacks wait in line (`faceoff_pattern`; the first that can start fairly goes next) with a drag timed for each marked tower. Eye lasers: the warning (the eyes' `eye_charge` and whine, thin aiming beams with a sweep's aim lines or a drag's aiming spot, then the drag's `lane_warning`), a sweep's twin beams (low: both low, jump them; high: one at the waist and one above a jump's reach, like a gapped fence, slide under them) or a drag down the runner's lane leaving a burning line (keeps clear of a wall runner), each with enemy-attack hitboxes. The cyborg drop: the jaw opens (with its sound and `circle_warning`s where they land), then normal cyborgs from the director (`spawn_enemy`) fall from the mouth onto clear roof and fight. A tower's drag is a bait when the runner is in the outer lane on its side as the warning ends, or the fallback after `fallback_after` misses; either calls `FloatingHead.begin_pin`. Lasers wait while its cyborgs are ahead and claim the cyborgs' whole airspace (`CyborgAirspace.claim_whole`): no burst starts during a laser attack, and a laser attack waits until no burst is in the air (its cyborgs may have two at once) |
 | `floating_head_tower.gd` (`FloatingHeadTower`) | a marked tower at the roadside (flush with the facades, its head jutting out over the street above the ship's highest flight so it shows from far along the street; no hitboxes: scenery until it falls): pale concrete with white painted bands and targets, cracks and cold warning lights; the laser's cut glows red-hot as it's clipped, then it topples forward onto the ship (`fall_onto`, `rest_on`), breaks in two as it lands (`break_at`, `tower_mesh`'s sections with torn ends: the lower section drops away), and the rest crumbles away when the ship shakes free |
 | `floating_head_ramp.gd` (`FloatingHeadRamp`) | the first stomp window's way up: the tower's broken slab slammed down in a lane (`ramp_length` long, its top end `ramp_lift` above the crown at the face) in two pieces (E1e): a low lead-in over `ramp_board_share` of it, rising to its knee (`knee_height`: `ramp_board_height`, never above `side_step_limit`, what a lane switch steps up), with bevelled sides a lane switch steps up anywhere along it (`board_until`); then the steeper slab onto the crown, whose sides are a lane blocker down to the trucks. Both tops are floors (convex shapes, where they're drawn); green chevrons up both, the lead-in's edges in the ramp colour; it sinks away when the ship shakes free |
 | `floating_head_wall_marks.gd` (`FloatingHeadWallMarks`) | the second stomp window's cue (E1e): on both walls, a strip of green chevrons at running height from `wall_entry_before` its pinned face (get onto the wall there) to a tall jump mark `wall_jump_before` it (jump off there); scenery, steady (the chevrons only scroll), never a hazard colour |
@@ -3171,7 +3211,17 @@ on every skin. `test_enemy_director` checks the turn-taking between big attacks
 with scripted test enemies (`tests/helpers/turn_dummy.gd`: the queue's order, a place kept through a gap
 in the asks and through the turn, give-ups and the grace), a real Octodog that another type's repeated
 attacks used to keep from its turn, and simulated runs of campaign levels,
-watched by `tools/measure/attack_watch.gd` (see Review tools). `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
+watched by `tools/measure/attack_watch.gd` (see Review tools). `test_cyborg_airspace` checks the cyborgs'
+airspace (H4): its claims (the limit, a release ending only its own claim, shooters that left play, a
+boss's whole claim), two cyborgs firing together while a third waits (at once if one is killed
+mid-charge), the limit at 1, the crossfire rule on 3 and 5 lanes with a runner dodging the bolts it sees
+(a later second burst waiting before its charge-up on 3 lanes, firing at once on 5), a hover truck
+alongside holding its lane, a wall runner (a burst at them waiting while another comes down the lane
+below; two guns at the same wall runner both firing), a panic cyborg's wild fire kept apart, the places
+one move away (walls, lane blockers but not doodads, a ceiling rider's lanes), two turrets on one ceiling
+firing together, and the same scenario playing out the same way twice;
+`test_cyborg` and `test_barnacle_turret` check at most `max_bursts_in_air` bursts in the air over
+generated levels. `DummyBoss` (`tests/helpers/dummy_boss.gd`) is a boss
 for framework tests, with `make_def()` for a BossDef from a list of phases; `test_bosses` runs fights
 in bare worlds and, with the test boss in the City's slot, through the App (at the City's speed there,
 in quick play at the base speed; and an arena planned at 25 m/s keeps its laps' seconds). `test_pickups` checks

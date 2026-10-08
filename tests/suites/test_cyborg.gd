@@ -379,11 +379,13 @@ func _test_generation() -> void:
 
 ## Full levels in god mode (the player runs straight through everything; grapples pull them out of
 ## gaps) over lane counts and seeds: every bolt follows a charge-up, comes from ahead with enough
-## warning, never arrives near a fence or gap, only one burst is in the air at a time, and no cyborg
+## warning, never arrives near a fence or gap, at most GameRules.max_bursts_in_air bursts are in the air
+## at a time (GDD §9.2, owner, October 8, 2026: two; and two do fly together somewhere), and no cyborg
 ## ever stands near an obstacle.
 func _test_fair_play() -> void:
 	var base: LevelConfig = load(LEVEL_PATH) as LevelConfig
 	var total_shots: int = 0
+	var together: int = 0
 	for lanes: int in [3, 5, 6]:
 		for level_seed: int in [2, 5]:
 			var config: LevelConfig = base.duplicate() as LevelConfig
@@ -426,6 +428,7 @@ func _test_fair_play() -> void:
 							bursts.append([float(ev["t"]), float(ev["t"])])
 						&"cancel":
 							charge_t = -1.0
+							bursts[-1][1] = float(ev["t"])
 						&"shot":
 							shots += 1
 							var t: float = ev["t"]
@@ -439,10 +442,26 @@ func _test_fair_play() -> void:
 							check(_clear(layout, impact - ct.clear_before_impact + 1.5, impact + ct.clear_after_impact - 1.5),
 								"no bolt arrives near a fence or gap (%.1f) %s" % [impact, tag])
 							bursts[-1][1] = t
-			bursts.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
-			for k: int in range(1, bursts.size()):
-				check(float(bursts[k][0]) >= float(bursts[k - 1][1]) - 0.001, "one burst in the air at a time " + tag)
+			var most: int = _most_at_once(bursts)
+			check(most <= w.rules.max_bursts_in_air,
+				"at most %d bursts in the air at a time (%d) %s" % [w.rules.max_bursts_in_air, most, tag])
+			if most >= 2:
+				together += 1
 			check(w.player.distance > 700.0, "the run covers most of a level (%.0f m) %s" % [w.player.distance, tag])
 			total_shots += shots
 			await sim.free_world(w)
 	check(total_shots > 40, "cyborgs fire throughout full levels (%d bolts)" % total_shots)
+	check(together > 0, "two cyborgs' bursts fly together in some of the levels (%d of 6)" % together)
+
+
+## The most bursts in the air at once, from each burst's [start of its charge-up, its last bolt or its
+## cancel] (level times; one that ends as another starts doesn't overlap it).
+static func _most_at_once(bursts: Array) -> int:
+	var most: int = 0
+	for b: Array in bursts:
+		var on: int = 0
+		for o: Array in bursts:
+			if float(o[0]) <= float(b[0]) and (is_same(o, b) or float(o[1]) > float(b[0]) + 0.001):
+				on += 1
+		most = maxi(most, on)
+	return most
