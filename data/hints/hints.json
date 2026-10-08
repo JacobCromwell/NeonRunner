@@ -36,7 +36,7 @@
 		{ "id": "dead_zone_boss", "trigger": "enemy:dead_zone_boss", "text": "The Sleep Taker! Weapons can't touch it: only a fence generator's EMP can. When it shrieks, leave the lanes it lights red, or ride a pad up onto the ceiling: it can't reach you there." },
 		{ "id": "dead_zone_boss_generator", "trigger": "boss:dead_zone_boss/generator", "text": "A glowing generator! Run at it and the nightmare lunges in after you. When sparks leap from the generator into it, smash the generator: jump onto it, or dash into it." },
 		{ "id": "dead_zone_boss_refuge", "trigger": "boss:dead_zone_boss/refuge", "text": "A bridge ahead: its giant slash comes as you reach it. Step on the pad to ride the ceiling, out of its reach." },
-		{ "id": "dead_zone_boss_hands", "trigger": "boss:dead_zone_boss/hands", "text": "Purple mist warns rising hands. Volleys grow to three and can reach from the walls. Switch to a clear floor lane!" },
+		{ "id": "dead_zone_boss_hands", "trigger": "boss:dead_zone_boss/hands", "text": "Purple mist marks where its hands will rise: row after row along the street, and on the walls too. Weave through the lane each row leaves open!" },
 		{ "id": "dead_zone_boss_lights_out", "trigger": "boss:dead_zone_boss/lights_out", "text": "It's swallowing the light! Hazards and warnings still glow in the dark: keep reading them." },
 		{ "id": "marketplace_boss", "trigger": "enemy:marketplace_boss", "text": "The House! Its reels say what's coming: cherries throw bombs, lightning rolls out a fence, BAR drops gold blocks. Then dodge by the warnings on the floor." },
 		{ "id": "marketplace_boss_buttons", "trigger": "boss:marketplace_boss/buttons", "text": "Glowing 7 buttons! Run over one to lock its reel on 7. Lock all three for the JACKPOT." },

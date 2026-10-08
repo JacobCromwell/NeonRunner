@@ -21,6 +21,7 @@ func run() -> void:
 	await _test_slots_and_demo()
 	await _test_ad_revive()
 	await _test_darker_level()
+	await _test_level_sky()
 	await _test_endless()
 
 	App.show_title()
@@ -177,6 +178,8 @@ func _test_endless() -> void:
 	if ctx != null:
 		check(not ctx.config.guarantee_features and city_3.guarantee_features,
 			"endless skips the campaign's every-feature guarantee (a 20-minute level needs no rebuilds)")
+		check(ctx.config.sky == null and city_3.sky != null and _cloud_amount(App.run) == 0.0,
+			"endless has the zone's own sky, not its last level's dawn (City 3 keeps it)")
 	App.show_title()
 	# With the Dead Zone reached, endless copies The Hush but not its own remix: its pacing in bursts,
 	# the hosts it picks more often, or its darkness.
@@ -219,6 +222,33 @@ func _test_darker_level() -> void:
 	App.show_title()
 	await physics_frames(2)
 	check(ZoneSkin.scenery_light_now == 1.0, "and the light comes back when the run ends")
+
+
+## A level's own sky (LevelConfig.sky; owner, October 8, 2026) reaches its run: Gangland 3's run has its
+## cloudy blood-red sky and fog, and Gangland 2's the zone's own.
+func _test_level_sky() -> void:
+	await _campaign_level("gangland/3")
+	var run: LevelRun = App.run
+	var sky: LevelSky = run.context.config.sky if run != null else null
+	check(sky != null and sky.sky.has("cloud_amount"), "Gangland 3 starts, with its own sky")
+	if sky == null:
+		return
+	var env: Environment = run.get_world_3d().environment
+	check(env != null and is_equal_approx(_cloud_amount(run), float(sky.sky["cloud_amount"]))
+		and env.fog_light_color == sky.fog_color, "its run's sky is cloudy, and the fog takes its colour")
+	await _campaign_level("gangland/2")
+	check(App.run != null and App.run.context.config.sky == null and _cloud_amount(App.run) == 0.0
+		and App.run.get_world_3d().environment.fog_light_color == (App.run.world.skin as GanglandSkin).fog_color,
+		"Gangland 2's run has the zone's own sky")
+	App.show_title()
+
+
+## The cloud cover of a run's sky (0 when the shader's default, no clouds, holds).
+func _cloud_amount(run: LevelRun) -> float:
+	var env: Environment = run.get_world_3d().environment if run != null else null
+	var m: ShaderMaterial = env.sky.sky_material as ShaderMaterial if env != null and env.sky != null else null
+	var v: Variant = m.get_shader_parameter("cloud_amount") if m != null else null
+	return float(v) if v != null else 0.0
 
 
 func get_tree_paused() -> bool:

@@ -4,10 +4,16 @@ extends TestSuite
 ##   the lanes it warned; a runner who reacts as the warning starts always escapes, to the refuge's pad
 ##   or (at 5 and 6 lanes) out of its lanes, from every lane; the ceiling is always safe; every attempt
 ##   plays the same;
-## - the grasping hands: volleys grow from one to two to three distinct floor/wall spots; mist and
-##   whispering warn each hand; an adjacent floor lane stays safe; every attempt plays the same;
-## - the whole pattern on its real arena (its holes and fences, refuges, hands and lights out): a runner
-##   who reads the warnings (SleepTakerBot) gets through at every lane count, without god mode.
+## - the grasping hands (owner, October 8, 2026: spread along the street, and on the walls): rounds of
+##   rows growing from two to four, each row leaving its door one lane over from the last and standing
+##   in the lane the runner kept free before, wall hands on every row; every hand's mist warns its spot,
+##   each round whispers; a round comes only with a way through it, proved on real physics: a runner who
+##   moves a reaction time after its mists show gets through every round from every lane, at every lane
+##   count, in every phase (its pace) and at both speeds, switching lanes at every row, without god mode;
+##   every attempt plays the same;
+## - the whole pattern on its real arena (its holes and fences, doubled; its wall gaps, refuges, hands and
+##   lights out): a runner who reads the warnings (SleepTakerBot) gets through at every lane count, without
+##   god mode.
 
 const BOSS_PATH: String = "res://data/bosses/dead_zone_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
@@ -32,17 +38,18 @@ func run() -> void:
 	await _test_slash_escapes()
 	await _test_slash_same_every_attempt()
 	await _test_hands_warning()
-	await _test_hands_volleys()
+	await _test_hands_rounds()
 	await _test_hands_planning()
-	await _test_hands_escapes()
+	await _test_hands_routes()
 	await _test_hands_same_every_attempt()
 	await _test_real_arena()
 
 
 # --- Helpers -------------------------------------------------------------------------------
 
-## The fight at `lanes`, at `speed` m/s (0: the suite's tuning, 18 m/s).
-func _fight(p_def: BossDef, lanes: int, speed: float = 0.0) -> Array:
+## The fight at `lanes`, at `speed` m/s (0: the suite's tuning, 18 m/s), from its phase `phase` (as a
+## checkpoint resumes it: that phase's pace).
+func _fight(p_def: BossDef, lanes: int, speed: float = 0.0, phase: int = 0) -> Array:
 	var boss := BossEncounter.create(p_def) as SleepTaker
 	var t: MovementTuning = tuning
 	if speed > 0.0 and not is_equal_approx(speed, tuning.run_speed):
@@ -54,6 +61,8 @@ func _fight(p_def: BossDef, lanes: int, speed: float = 0.0) -> Array:
 	ctx.config = BossArena.base_config(p_def)
 	ctx.config.lane_count = lanes
 	ctx.tuning = t
+	if phase > 0:
+		ctx.boss_resume = {"phase": phase}
 	var arena: BossArena = boss.plan_arena(ctx)
 	var world: RunWorld = sim.build_world(arena.layout, null, t, ctx.config)
 	boss.setup(world, ctx, arena)
@@ -256,9 +265,24 @@ func _test_slash_same_every_attempt() -> void:
 
 # --- The grasping hands --------------------------------------------------------------------------
 
-## A runner who stays in its lane (god mode): each hand's mist warns its lane (a floor warning: pickups
-## keep off it) with the whispering, before the hand rises; the hand touches the runner only after the
-## whole warning, and only in its lane.
+## The fight's rounds of hands from its events: round number → {round (its event), mists, hands (the
+## mist and hand events of its hands, in order)}.
+func _rounds(boss: SleepTaker) -> Dictionary:
+	var out: Dictionary = {}
+	for e: Dictionary in boss.events:
+		match e["event"]:
+			&"round":
+				out[int(e["n"])] = {"round": e, "mists": [], "hands": []}
+			&"mist", &"hand":
+				if out.has(int(e["round"])):
+					((out[int(e["round"])] as Dictionary)["mists" if e["event"] == &"mist" else "hands"] as Array).append(e)
+	return out
+
+
+## A runner who stays in its lane (god mode, so it runs on): every hand's mist warns its spot (a floor
+## mist its lane, and only its lane: a floor warning, so pickups keep off it) until the hand rises, each
+## round whispers once and each row's burst sounds once, no hand is live while its mist warns, and a hand
+## touches the runner only after it has risen, only in its lane.
 func _test_hands_warning() -> void:
 	var t := def.tuning as SleepTakerTuning
 	for lanes: int in LANES:
@@ -267,99 +291,130 @@ func _test_hands_warning() -> void:
 		var world: RunWorld = pair[0]
 		var boss: SleepTaker = pair[1]
 		world.player.god_mode = true
-		var seen: Dictionary = {"warned": true, "early": false, "touches": 0, "first_touch": {}, "pickup": true, "other": true}
-		await _run(world, 30.0, func() -> bool: return boss.hands.volleys >= 4 and not boss.hands.busy(), func() -> void:
-			var d: float = world.player.distance
+		var seen: Dictionary = {"warned": true, "early": false, "touches": {}, "pickup": true, "other": true}
+		await _run(world, 40.0, func() -> bool: return boss.hands.rounds >= 3 and not boss.hands.busy(), func() -> void:
 			for h: Dictionary in boss.hands.active:
 				var lane: int = int(h["lane"])
 				var at: float = float(h["at"])
-				var floor_hand: bool = int(h["side"]) == 0
 				if int(h["stage"]) == SleepTakerHands.Stage.MIST:
-					if floor_hand:
+					if int(h["side"]) == 0:
 						seen["warned"] = bool(seen["warned"]) and boss.props.warned(lane, at - 1.0, at + 1.0)
 						seen["pickup"] = bool(seen["pickup"]) and not world.pickups.spot_fair(lane, at)
 					for l: int in lanes:
-						var warned: bool = false
+						var here: bool = false
 						for other: Dictionary in boss.hands.active:
-							if int(other["side"]) == 0 and int(other["lane"]) == l \
-									and int(other["stage"]) == SleepTakerHands.Stage.MIST:
-								warned = true
-						if boss.props.warned(l, at - 1.0, at + 1.0) != warned:
+							here = here or (int(other["side"]) == 0 and int(other["lane"]) == l and absf(float(other["at"]) - at) < 0.01)
+						if boss.props.warned(l, at - 1.0, at + 1.0) != here:
 							seen["other"] = false
-					var hz: Hazard = (h["rig"] as Dictionary)["hazard"]
-					if hz.is_active():
+					if ((h["rig"] as Dictionary)["hazard"] as Hazard).is_active():
 						seen["early"] = true
-				var key: int = int(h["n"])
 				var live: Array[Hazard] = [(h["rig"] as Dictionary)["hazard"]]
-				if not (seen["first_touch"] as Dictionary).has(key) and _touching(world, live):
-					(seen["first_touch"] as Dictionary)[key] = boss.fight_time()
-					seen["touches"] = int(seen["touches"]) + 1)
-		var mists: Array[Dictionary] = _events(boss, &"mist")
-		check(mists.size() >= 3, "hands keep coming (%d) %s" % [mists.size(), tag])
-		check(bool(seen["warned"]) and bool(seen["other"]), "each mist warns its lane, and only its lane, until the hand rises %s" % tag)
-		check(bool(seen["pickup"]), "no pickup may appear in the mist %s" % tag)
+				if not (seen["touches"] as Dictionary).has(int(h["n"])) and _touching(world, live):
+					(seen["touches"] as Dictionary)[int(h["n"])] = boss.fight_time())
+		var rounds: Dictionary = _rounds(boss)
+		check(rounds.size() >= 3, "rounds of hands keep coming (%d) %s" % [rounds.size(), tag])
+		check(bool(seen["warned"]) and bool(seen["other"]), "each mist warns its spot, and only its lane, until its hand rises %s" % tag)
+		check(bool(seen["pickup"]), "no pickup may appear in a mist %s" % tag)
 		check(not bool(seen["early"]), "no hand is live while its mist still warns %s" % tag)
 		var whispers: int = 0
+		var bursts: int = 0
 		for e: Dictionary in _events(boss, &"sound"):
-			if e["name"] == &"sleep_taker_whisper":
-				whispers += 1
-		check(whispers == mists.size(), "every mist whispers (%d of %d) %s" % [whispers, mists.size(), tag])
+			whispers += 1 if e["name"] == &"sleep_taker_whisper" else 0
+			bursts += 1 if e["name"] == &"sleep_taker_hand" else 0
+		var rows: int = 0
+		for n: int in rounds:
+			rows += int((rounds[n]["round"] as Dictionary)["rows"])
+		check(whispers == boss.hands.rounds and bursts == rows,
+			"every round whispers as its mists pool (%d of %d), and each row's hands burst up with a sound (%d of %d rows) %s" % [
+			whispers, boss.hands.rounds, bursts, rows, tag])
+		# A runner who stays put meets every hand in its lane, each only after it has risen, and no other.
+		var rose: Dictionary = {}
+		for e: Dictionary in _events(boss, &"hand"):
+			rose[int(e["n"])] = float(e["t"])
 		var timely: bool = true
-		var aimed: int = 0
-		for m: Dictionary in mists:
-			var touch: Variant = (seen["first_touch"] as Dictionary).get(int(m["n"]))
-			if int(m["side"]) != 0 or int(m["lane"]) != world.player.lane:
+		var mine: int = 0
+		for e: Dictionary in _events(boss, &"mist"):
+			var touch: Variant = (seen["touches"] as Dictionary).get(int(e["n"]))
+			if int(e["side"]) != 0 or int(e["lane"]) != world.player.lane:
 				timely = timely and touch == null
 				continue
-			aimed += 1
-			# The hand is live from halfway up: no touch before it has risen out of its mist.
-			timely = timely and touch != null and float(touch) - float(m["t"]) >= t.mist_seconds + t.hand_rise_seconds * 0.5 - 0.02
-		check(timely and int(seen["touches"]) == aimed and aimed == boss.hands.volleys,
-			"a runner who stays put meets only its lane's hand, after it rises from the mist %s" % tag)
+			mine += 1
+			# Live from halfway up: no touch before it has risen out of its mist.
+			timely = timely and touch != null and rose.has(int(e["n"])) \
+				and float(touch) >= float(rose[int(e["n"])]) + t.hand_rise_seconds * 0.5 - 0.02
+		check(timely and mine > 0 and (seen["touches"] as Dictionary).size() == mine,
+			"a runner who stays put meets only its lane's hands (%d), each after it rises from its mist %s" % [mine, tag])
 		await sim.free_world(world)
 
 
-func _test_hands_volleys() -> void:
+## Owner, October 8, 2026: the hands spread out. On a plain street (every hand fits) a runner who stays
+## put sees rounds of hand_rows_first, then a row more each round up to hand_rows_max rows; each row
+## hand_row_seconds after the one before along the street (at run speed), leaving only its door, one lane
+## over from the last door (the first from the runner's lane), with a hand in the lane the runner kept free
+## at the row before (so every row makes them switch lanes) and in every other floor lane, and a wall hand
+## on every row (alternating, never beside a door in an outer lane, only over an outer lane with its own
+## hand), both walls over the rounds. The progression carries over a phase change; the pooled rigs serve
+## floor and wall hands in turn.
+func _test_hands_rounds() -> void:
+	var t := def.tuning as SleepTakerTuning
 	for lanes: int in LANES:
+		var tag: String = "(%d lanes)" % lanes
 		var pair: Array = _fight(_plain_def("hands", false), lanes)
 		var world: RunWorld = pair[0]
 		var boss: SleepTaker = pair[1]
 		world.player.god_mode = true
-		await _run(world, 30.0, func() -> bool: return boss.hands.volleys >= 4 and not boss.hands.busy())
-		var groups: Dictionary = {}
+		await _run(world, 40.0, func() -> bool: return boss.hands.rounds >= 4 and not boss.hands.busy())
+		var rounds: Dictionary = _rounds(boss)
+		check(rounds.size() == 4, "four rounds of hands come (%d) %s" % [rounds.size(), tag])
+		var spacing: float = world.player.speed * t.hand_row_seconds / boss.pace()
 		var walls: Array[int] = []
-		for m: Dictionary in _events(boss, &"mist"):
-			var volley: int = int(m["volley"])
-			if not groups.has(volley):
-				groups[volley] = []
-			(groups[volley] as Array).append(m)
-			if int(m["side"]) != 0 and not walls.has(int(m["side"])):
-				walls.append(int(m["side"]))
-		check(groups.size() == 4, "four hand volleys come (%d lanes)" % lanes)
-		for volley: int in groups:
-			var group: Array = groups[volley]
-			check(group.size() == mini(volley, 3), "volley %d has exactly %d hands (%d lanes)" % [
-				volley, mini(volley, 3), lanes])
-			var spots: Array[String] = []
-			for m: Dictionary in group:
-				var key: String = "%d:%d" % [m["side"], m["lane"]]
-				check(not spots.has(key), "each hand has a distinct spot in volley %d (%d lanes)" % [volley, lanes])
-				spots.append(key)
-				check(is_equal_approx(float(m["t"]), float(group[0]["t"])) \
-					and is_equal_approx(float(m["at"]), float(group[0]["at"])),
-					"the volley warns and strikes at the same distance (%d lanes)" % lanes)
-				check(int(m["side"]) != 0 or int(m["lane"]) != int(m["escape"]),
-					"the reserved floor escape is never attacked (%d lanes)" % lanes)
-			if volley == 2:
-				check(int(group[0]["side"]) == 0 and int(group[1]["side"]) == 0,
-					"the second volley attacks two different floor lanes (%d lanes)" % lanes)
-		check(walls.has(-1) and walls.has(1), "later volleys can attack both side walls (%d lanes)" % lanes)
+		for n: int in rounds:
+			var r: Dictionary = rounds[n]["round"]
+			var path: Array = r["path"]
+			var count: int = int(r["rows"])
+			check(count == t.rows_for(n), "round %d has %d rows (%d) %s" % [n, t.rows_for(n), count, tag])
+			check(path.size() == count + 1 and int(path[0]) == int(r["lane"]), "its doors start from the runner's lane %s" % tag)
+			var spread: bool = true
+			var doors_ok: bool = true
+			var forced: bool = true
+			var full: bool = true
+			var wall_ok: bool = true
+			for i: int in count:
+				var at: float = float(r["at"]) + i * spacing
+				var door: int = int(path[i + 1])
+				var leave: int = int(path[i])
+				doors_ok = doors_ok and absi(door - leave) == 1
+				var floors: Array[int] = []
+				var row_walls: Array[int] = []
+				for m: Dictionary in rounds[n]["mists"]:
+					if int(m["row"]) != i:
+						continue
+					spread = spread and absf(float(m["at"]) - at) < 0.01 and int(m["door"]) == door
+					if int(m["side"]) == 0:
+						floors.append(int(m["lane"]))
+					else:
+						row_walls.append(int(m["side"]))
+				forced = forced and floors.has(leave) and not floors.has(door)
+				full = full and floors.size() == lanes - 1
+				wall_ok = wall_ok and row_walls.size() == t.wall_hands_per_row
+				for s: int in row_walls:
+					var outer: int = 0 if s < 0 else lanes - 1
+					wall_ok = wall_ok and outer != door and floors.has(outer)
+					if not walls.has(s):
+						walls.append(s)
+			check(spread, "round %d's rows stand %.1f m apart along the street (%.2f s at run speed), each its own distance %s" % [
+				n, spacing, t.hand_row_seconds, tag])
+			check(doors_ok, "each row's door is one lane over from the last %s" % tag)
+			check(forced, "every row stands in the lane the runner kept free at the row before, never in its own door: a lane switch at every row %s" % tag)
+			check(full, "every floor lane but the door has a hand %s" % tag)
+			check(wall_ok, "every row has its wall hand, never beside a door in an outer lane, only over an outer lane with its own hand %s" % tag)
+		check(walls.has(-1) and walls.has(1), "the rounds attack both side walls %s" % tag)
 		boss.hands.clear()
-		check(boss.hands.volleys == 4 and boss.hands.active.is_empty(),
-			"clearing hands between phases preserves progression and frees every rig (%d lanes)" % lanes)
+		check(boss.hands.rounds == 4 and boss.hands.active.is_empty(),
+			"clearing hands between phases keeps the progression and frees every rig %s" % tag)
 		var next: Dictionary = boss.hands.plan()
-		check(not next.is_empty() and (next["spots"] as Array).size() == 3,
-			"the next phase keeps three hands instead of resetting (%d lanes)" % lanes)
+		check(not next.is_empty() and (next["rows"] as Array).size() == t.rows_for(5),
+			"the next phase keeps its rounds' size instead of starting over (%d rows) %s" % [t.rows_for(5), tag])
 		# Reuse the same rigs as wall hands, then query the real physics shapes.
 		var at: float = world.player.distance + 20.0
 		boss.hands.start({"at": at, "spots": [{"lane": 0, "side": -1}, {"lane": lanes - 1, "side": 1}]})
@@ -376,7 +431,7 @@ func _test_hands_volleys() -> void:
 			var visual: Node3D = rig["visual"]
 			check(visual.global_basis.y.dot(Vector3(-side, 0.0, 0.0)) > 0.99 \
 				and is_equal_approx(absf(root.global_position.x), world.geo.wall_x()),
-				"the wall hand and its mist face inward from the wall (%d lanes)" % lanes)
+				"the wall hand and its mist face inward from the wall %s" % tag)
 			var query := PhysicsShapeQueryParameters3D.new()
 			var box := BoxShape3D.new()
 			var height: float = world.tuning.hurtbox_size.y
@@ -390,93 +445,145 @@ func _test_hands_volleys() -> void:
 			var hits: bool = false
 			for contact: Dictionary in contacts:
 				hits = hits or contact["collider"] == hz
-			check(hits and hz.is_active(), "a wall runner contacts the live wall hand (%d lanes)" % lanes)
+			check(hits and hz.is_active(), "a wall runner contacts the live wall hand %s" % tag)
 			box.size = world.tuning.hurtbox_size
 			query.transform.origin = Vector3(world.geo.lane_x(int(h["lane"])), height * 0.5, -at)
 			check(world.get_world_3d().direct_space_state.intersect_shape(query).is_empty(),
-				"the wall hand leaves a grounded floor runner safe (%d lanes)" % lanes)
+				"the wall hand leaves a grounded floor runner safe %s" % tag)
 		boss.hands.clear()
 		check(boss.hands.hazards().all(func(hz: Hazard) -> bool: return not hz.is_active()),
-			"clearing a wall volley disables every damage box (%d lanes)" % lanes)
+			"clearing a round disables every damage box %s" % tag)
 		boss.hands.start({"lane": 0, "at": at})
 		var reused: Hazard = (boss.hands.active[0]["rig"] as Dictionary)["hazard"]
 		check(is_equal_approx(reused.size.y, boss.tuning.hand_height) and reused.position.x == 0.0 \
 			and is_equal_approx(reused.position.y, boss.tuning.hand_height * 0.5),
-			"a reused wall rig restores its floor-hand hitbox (%d lanes)" % lanes)
+			"a reused wall rig restores its floor-hand hitbox %s" % tag)
 		await sim.free_world(world)
 
 
+## Planning a round on a plain street: from every floor lane a round of the most rows comes with its way
+## through (the router's), never a hand in a door; a whole round's hands fill the pool; its numbers are
+## respected (hand_rows_max, hand_row_open, wall_hands_per_row); a round takes the rows that are over in
+## time, never fewer than hand_rows_min; never a round at a ceiling rider.
 func _test_hands_planning() -> void:
 	for lanes: int in LANES:
+		var tag: String = "(%d lanes)" % lanes
 		var pair: Array = _fight(_plain_def("hands", false), lanes)
 		var world: RunWorld = pair[0]
 		var boss: SleepTaker = pair[1]
+		var t: SleepTakerTuning = boss.tuning
 		await tree.physics_frame
 		for lane: int in lanes:
 			world.player.lane = lane
-			boss.hands.volleys = 2
+			boss.hands.rounds = 3
 			var plan: Dictionary = boss.hands.plan()
-			check(not plan.is_empty(), "a three-hand volley can be planned from floor lane %d (%d lanes)" % [lane, lanes])
+			check(not plan.is_empty() and bool((plan["route"] as Dictionary)["ok"]) and int((plan["path"] as Array)[0]) == lane
+				and (plan["rows"] as Array).size() == t.hand_rows_max,
+				"a round of %d rows, with a way through it, can be planned from floor lane %d %s" % [t.hand_rows_max, lane, tag])
 			if plan.is_empty():
 				continue
-			check(absi(int(plan["escape"]) - lane) == 1,
-				"every starting lane has an adjacent escape (%d lanes)" % lanes)
-			for spot: Dictionary in plan["spots"]:
-				check(int(spot["side"]) != 0 or int(spot["lane"]) != int(plan["escape"]),
-					"additional hands do not cover the escape (%d lanes)" % lanes)
-			check(int((plan["spots"] as Array)[0]["lane"]) == lane,
-				"all floor lanes, including the edges, can be targeted (%d lanes)" % lanes)
+			var clean: bool = true
+			for row: Dictionary in plan["rows"]:
+				for spot: Dictionary in row["spots"]:
+					clean = clean and (int(spot["side"]) != 0 or not (row["open"] as Array).has(int(spot["lane"])))
+			check(clean, "no hand stands in a row's door %s" % tag)
 			boss.hands.start(plan)
-			check(boss.hands.plan().is_empty(), "a full hand pool prevents another volley (%d lanes)" % lanes)
+			check(boss.hands.plan().is_empty() and int(plan["count"]) == boss.hands.pool_size(),
+				"its biggest round fills the pool (%d hands): no other comes meanwhile %s" % [int(plan["count"]), tag])
 			boss.hands.clear()
-		for cap: int in [1, 2, 3]:
-			boss.tuning.hand_max_count = cap
-			boss.hands.volleys = 10
+		world.player.lane = lanes / 2
+		boss.hands.rounds = 10
+		t.hand_rows_max = 2
+		check((boss.hands.plan()["rows"] as Array).size() == 2, "hand_rows_max is respected %s" % tag)
+		t.hand_rows_max = 4
+		t.hand_row_open = 2
+		var open: Dictionary = boss.hands.plan()
+		var two: bool = not open.is_empty()
+		for row: Dictionary in open.get("rows", []):
+			var floors: int = 0
+			for spot: Dictionary in row["spots"]:
+				floors += 1 if int(spot["side"]) == 0 else 0
+			two = two and (row["open"] as Array).size() == 2 and floors == lanes - 2
+		check(two, "hand_row_open is respected: two lanes open in every row %s" % tag)
+		t.hand_row_open = 1
+		for walls: int in [0, 2]:
+			t.wall_hands_per_row = walls
 			var plan: Dictionary = boss.hands.plan()
-			check(not plan.is_empty() and (plan["spots"] as Array).size() == cap,
-				"the tunable hand cap of %d is respected (%d lanes)" % [cap, lanes])
+			var ok: bool = not plan.is_empty()
+			for row: Dictionary in plan.get("rows", []):
+				var count: int = 0
+				for spot: Dictionary in row["spots"]:
+					count += 1 if int(spot["side"]) != 0 else 0
+				var door: int = int(row["door"])
+				var most: int = 2 if door != 0 and door != lanes - 1 else 1
+				ok = ok and count == mini(walls, most)
+			check(ok, "wall_hands_per_row %d is respected %s" % [walls, tag])
+		t.wall_hands_per_row = 1
+		# A budget: the rows that are over in time, never fewer than hand_rows_min.
+		var v: float = world.player.speed
+		var two_rows: float = boss.hands.warning_seconds() + (boss.hands.row_spacing(v) + boss.hands.over_distance()) / v + 0.05
+		var fit: Dictionary = boss.hands.plan(two_rows)
+		check(not fit.is_empty() and (fit["rows"] as Array).size() == 2, "a round takes the rows that are over in time %s" % tag)
+		check(boss.hands.plan(two_rows - 0.5).is_empty(), "and waits rather than come with fewer than hand_rows_min %s" % tag)
 		world.player.surface = Player.Surface.CEILING
-		check(boss.hands.plan().is_empty(), "hands never target a ceiling rider (%d lanes)" % lanes)
+		check(boss.hands.plan().is_empty(), "hands never come at a ceiling rider %s" % tag)
 		await sim.free_world(world)
 
 
-## A runner who reacts as the mist appears always gets away by one lane switch, from every lane, at every
-## lane count. No god mode and no armor.
-func _test_hands_escapes() -> void:
+## The owner's spread hands, proved escapable: in each phase (its pace: rows closer together, warnings
+## shorter), at the reference 18 m/s and the Dead Zone's 24.2, a runner who moves REACTION seconds after a
+## round's mists show finds its way through every round (the router the round was planned by, with the
+## real lane switch time), switches lanes at every row, and following it on real physics gets through
+## every round without god mode or armor: from every lane in the first phase, from the edges and the
+## middle in the others (the whole fight at both speeds, test_sleep_taker_fight, plays the rest).
+func _test_hands_routes() -> void:
 	for speed: float in SPEEDS:
-		for lanes: int in LANES:
-			# At the Dead Zone's speed, the narrowest street (to keep the suite's time down; the whole
-			# fight at both speeds, test_sleep_taker_fight, plays the rest).
-			if speed > MovementTuning.REFERENCE_SPEED + 0.5 and lanes > 3:
+		for phase: int in 3:
+			if speed > MovementTuning.REFERENCE_SPEED + 0.5 and phase < 2:
 				continue
-			await _hands_escapes(lanes, speed)
+			for lanes: int in LANES:
+				await _hands_routes(lanes, speed, phase)
 
 
-func _hands_escapes(lanes: int, speed: float) -> void:
-	var tag: String = "(%d lanes, %.1f m/s)" % [lanes, speed]
+func _hands_routes(lanes: int, speed: float, phase: int) -> void:
+	var tag: String = "(%d lanes, %.1f m/s, phase %d)" % [lanes, speed, phase + 1]
+	var starts: Array[int] = []
+	if phase == 0 and speed <= MovementTuning.REFERENCE_SPEED + 0.5:
+		for l: int in lanes:
+			starts.append(l)
+	else:
+		starts.assign([0, lanes / 2, lanes - 1])
 	var survived: int = 0
-	var hands: int = 0
-	var adjacent: bool = true
-	for start: int in lanes:
-		var pair: Array = _fight(_plain_def("hands", false), lanes, speed)
+	var rounds: int = 0
+	var found: bool = true
+	var switching: bool = true
+	var cause: Array = [""]
+	for start: int in starts:
+		var pair: Array = _fight(_plain_def("hands", false), lanes, speed, phase)
 		var world: RunWorld = pair[0]
 		var boss: SleepTaker = pair[1]
+		world.player.lane = start
 		var bot := SleepTakerBot.new(boss)
 		bot.home_lane = start
 		bot.reaction = REACTION
-		await _run(world, 40.0, func() -> bool: return boss.hands.volleys >= 4 and not boss.hands.busy(), func() -> void: bot.step())
-		hands += boss.hands.count
-		if world.player.alive and boss.hands.volleys >= 4:
+		world.player.died.connect(func(c: String) -> void: cause[0] = c)
+		await _run(world, 40.0, func() -> bool: return boss.hands.rounds >= 3 and not boss.hands.busy(), func() -> void: bot.step())
+		if world.player.alive and boss.hands.rounds >= 3:
 			survived += 1
-		var checked: Array[int] = []
-		for m: Dictionary in _events(boss, &"mist"):
-			if not checked.has(int(m["volley"])):
-				checked.append(int(m["volley"]))
-				adjacent = adjacent and absi(int(m["escape"]) - int(m["lane"])) == 1
+		rounds += boss.hands.rounds
+		found = found and bot.routes_found == boss.hands.rounds and bot.routes_missing == 0
+		var by_round: Dictionary = _rounds(boss)
+		var k: int = 0
+		for e: Dictionary in bot.log:
+			if e["action"] == &"round":
+				k += 1
+				var rows: int = int((by_round[k]["round"] as Dictionary)["rows"]) if by_round.has(k) else -1
+				switching = switching and String(e["why"]) == "%d switches" % rows
 		await sim.free_world(world)
-	check(survived == lanes, "a runner reacting %.2f s into the mist escapes every hand from every lane (%d of %d, %d hands) %s" % [
-		REACTION, survived, lanes, hands, tag])
-	check(adjacent, "each hand leaves the next lane free: one switch is always enough %s" % tag)
+	check(survived == starts.size(), "a runner moving %.2f s after the mists show gets through every round from lanes %s (%d of %d) %s%s" % [
+		REACTION, starts, survived, starts.size(), tag, "" if survived == starts.size() else ": %s" % cause[0]])
+	check(found and rounds >= 3 * starts.size(), "it finds its way through every round as the round was planned (%d rounds) %s" % [rounds, tag])
+	check(switching, "its way switches lanes at every row of every round %s" % tag)
 
 
 func _test_hands_same_every_attempt() -> void:
@@ -486,23 +593,24 @@ func _test_hands_same_every_attempt() -> void:
 		var world: RunWorld = pair[0]
 		var boss: SleepTaker = pair[1]
 		var bot := SleepTakerBot.new(boss)
-		await _run(world, 30.0, func() -> bool: return boss.hands.volleys >= 4 and not boss.hands.busy(), func() -> void: bot.step())
+		await _run(world, 30.0, func() -> bool: return boss.hands.rounds >= 3 and not boss.hands.busy(), func() -> void: bot.step())
 		var line: PackedStringArray = []
 		for e: Dictionary in boss.events:
 			if e["event"] in [&"mist", &"hand"]:
-				line.append("%s %.3f %d %d %.2f" % [e["event"], e["t"], e["side"], e["lane"], e["at"]])
+				line.append("%s %.3f %d %d %d %.2f" % [e["event"], e["t"], e["row"], e["side"], e["lane"], e["at"]])
 		logs.append(" | ".join(line))
 		await sim.free_world(world)
-	check(logs[0] == logs[1] and logs[0].contains("mist"), "every attempt plays the same hands")
+	check(logs[0] == logs[1] and logs[0].contains("mist"), "every attempt plays the same rounds of hands")
 
 
 # --- The real arena ----------------------------------------------------------------------------
 
-## The whole pattern as it comes, on its real arena (its holes and fences, the refuges, hands and lights
-## out, and its generators), for a runner who reads it but lets every generator go by (so the fight never
-## moves on: GDD §10, it keeps cycling its pattern): through a whole lap at every lane count, without god
-## mode or armor; the slash's lane escape at 5 and 6 lanes too. (At the Dead Zone's 24.2 m/s, the whole
-## fight on its arena at every lane count: test_sleep_taker_fight.)
+## The whole pattern as it comes, on its real arena (its holes and fences, twice as many holes as first
+## built, its wall gaps, the refuges, rounds of hands with their wall hands and lights out, and its
+## generators), for a runner who reads it but lets every generator go by (so the fight never moves on: GDD
+## §10, it keeps cycling its pattern): through a whole lap at every lane count, without god mode or armor;
+## the slash's lane escape at 5 and 6 lanes too. (At the Dead Zone's 24.2 m/s, the whole fight on its
+## arena at every lane count: test_sleep_taker_fight.)
 func _test_real_arena() -> void:
 	for lanes: int in LANES:
 		for escape: StringName in _escapes(lanes, MovementTuning.REFERENCE_SPEED):
@@ -524,8 +632,19 @@ func _real_arena(lanes: int, escape: StringName, speed: float) -> void:
 	var tag: String = "(%d lanes, %s, %.1f m/s)" % [lanes, escape, speed]
 	check(world.player.alive, "a runner who reads it gets through a whole lap and more %s%s" % [tag,
 		"" if world.player.alive else ": %s at %.0f m, %.1f s" % [cause[0], world.player.distance, boss.fight_time()]])
-	check(boss.slash.strikes >= 4 and boss.hands.count >= 4 and boss.dark.count >= 1,
-		"every attack came: %d slashes, %d hands, %d lights out %s" % [boss.slash.strikes, boss.hands.count, boss.dark.count, tag])
+	check(boss.slash.strikes >= 4 and boss.hands.rounds >= 2 and boss.dark.count >= 1,
+		"every attack came: %d slashes, %d rounds of hands (%d hands), %d lights out %s" % [boss.slash.strikes, boss.hands.rounds,
+		boss.hands.count, boss.dark.count, tag])
+	var wall_hands: int = 0
+	var rows: int = 0
+	for e: Dictionary in _events(boss, &"mist"):
+		wall_hands += 1 if int(e["side"]) != 0 else 0
+	for e: Dictionary in _events(boss, &"round"):
+		rows += int(e["rows"])
+	check(wall_hands >= rows / 2 and bot.routes_found == boss.hands.rounds and bot.routes_missing == 0,
+		"the hands reach in from the walls on most rows (%d of %d rows), and every round had its way through %s" % [wall_hands,
+		rows, tag])
+	check(not boss.arena.layout.wall_gaps.is_empty(), "its walls have their gaps %s" % tag)
 	check(_events(boss, &"refuge_missed").is_empty(), "no refuge went by without its slash %s" % tag)
 	check(boss.lure.count >= 2 and boss.lure.missed == boss.lure.lures and boss.phase_index == 0,
 		"generators keep coming while it lets them go by (%d, %d lures), and the fight stays where it is %s" % [

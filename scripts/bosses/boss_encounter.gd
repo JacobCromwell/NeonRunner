@@ -40,8 +40,9 @@ extends Node3D
 ## (entrance and transitions), _on_pattern_started(i) and _pattern_tick(delta) (the pattern),
 ## _on_weak_point_hit(part, hazard), _on_part_defeated(part, cause), _on_part_emp(part, center, radius),
 ## _on_phase_ended(i), _on_defeated(), _defeated_tick(delta), victory_over() (when a defeat that plays
-## out on the track is over), victory_riff() (false for a defeat that ends in silence) and
-## _on_armor_pickup_due(reason) (where the armor rule's pickup goes).
+## out on the track is over), victory_riff() (false for a defeat that ends in silence),
+## _on_armor_pickup_due(reason) (where the armor rule's pickup goes), and light_floor() and
+## scenery_floor() (a boss's own floors for set_light_level, from its data).
 ## Helpers: add_part(), spawn_enemy() (normal enemies: a cyborg drop, a
 ## Buzz Overdrive onto the roof), offer_pickup() (an armor, shield or grapple pickup on the floor),
 ## damage() (a boss's own causes: a cluster shocked by a fence, an EMP), hit_damage(),
@@ -78,7 +79,8 @@ enum State { INTRO, FIGHT, DEFEATED }
 const META: StringName = &"boss_encounter"
 ## Health shares closer than this count as equal.
 const EPSILON: float = 0.0001
-## GDD §10 (Sleep Taker): the arena gets darker, but never pitch black.
+## GDD §10 (Sleep Taker): the arena gets darker, but never pitch black. Every boss's floor for
+## set_light_level unless its own data sets a lower one (light_floor()).
 const MIN_LIGHT_LEVEL: float = 0.3
 
 var def: BossDef
@@ -426,14 +428,14 @@ func set_weak_points_enabled(on: bool) -> void:
 
 
 ## Dims the arena's light to `level` (1 = the zone's normal light) over `seconds`, or brings it back:
-## a smooth fade, never a flash, and never below MIN_LIGHT_LEVEL (GDD §10, Sleep Taker: darker, but
+## a smooth fade, never a flash, and never below light_floor() (GDD §10, Sleep Taker: darker, but
 ## never pitch black). It scales the environment's ambient and sky light, its fog's light and the
 ## directional light, and the scenery's own light (ZoneSkin's `scenery_light`: the skins' scenery shaders
-## are unshaded, so the lights alone don't dim them), never below ZoneSkin.MIN_SCENERY_LIGHT; glowing
-## things (hazards, credits, the HUD) keep their colours. The light returns with the fight.
+## are unshaded, so the lights alone don't dim them), never below scenery_floor(); glowing things
+## (hazards, credits, the HUD) keep their colours. The light returns with the fight.
 func set_light_level(level: float, seconds: float = 1.0) -> void:
 	_capture_light()
-	_light_target = clampf(level, MIN_LIGHT_LEVEL, 1.0)
+	_light_target = clampf(level, light_floor(), 1.0)
 	_light_speed = absf(_light_target - _light) / maxf(seconds, 0.001)
 	if seconds <= 0.0:
 		_light = _light_target
@@ -442,6 +444,19 @@ func set_light_level(level: float, seconds: float = 1.0) -> void:
 
 func light_level() -> float:
 	return _light
+
+
+## The lowest light set_light_level goes to: MIN_LIGHT_LEVEL, unless the boss's own data sets a lower
+## floor (the Sleep Taker's lights out, owner, October 8, 2026: half as bright as first built). Every
+## other boss keeps MIN_LIGHT_LEVEL.
+func light_floor() -> float:
+	return MIN_LIGHT_LEVEL
+
+
+## The lowest scenery light set_light_level gives the arena (unless its own is darker still):
+## ZoneSkin.MIN_SCENERY_LIGHT, unless the boss's own data sets a lower floor (as light_floor()).
+func scenery_floor() -> float:
+	return ZoneSkin.MIN_SCENERY_LIGHT
 
 
 ## Sets the scenery's own light (ZoneSkin's `scenery_light`) directly, for a lighting moment of the
@@ -731,10 +746,10 @@ func _capture_light() -> void:
 
 
 ## The scenery light set_light_level gives the arena now (its own, the level's darkness, times the
-## light), never below ZoneSkin.MIN_SCENERY_LIGHT unless the arena's own is darker still.
+## light), never below scenery_floor() unless the arena's own is darker still.
 func scenery_light() -> float:
 	var base: float = float(_light_base.get("scenery", ZoneSkin.scenery_light_now))
-	return maxf(base * _light, minf(base, ZoneSkin.MIN_SCENERY_LIGHT))
+	return maxf(base * _light, minf(base, scenery_floor()))
 
 
 func _apply_light(scenery: bool = true) -> void:

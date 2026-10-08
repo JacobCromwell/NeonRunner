@@ -125,8 +125,9 @@ func _build() -> void:
 		sun.light_energy = 0.7
 		sun.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY
 		add_child(sun)
-	# The zone's look with the level's darkness (GDD §5, The Hush): only the scenery darkens.
-	_env.environment = world.skin.level_environment(context.config.darkness)
+	# The zone's look with the level's own sky, if it has one, and its darkness (GDD §5, The Hush): only
+	# the scenery darkens.
+	_env.environment = world.skin.level_environment(context.config.darkness, context.config.sky)
 	_lighting_run = self
 	if camera == null:
 		camera = RunCamera.new()
@@ -440,7 +441,7 @@ func _build_debug_tools() -> void:
 			sections.append({"title": "Wall fences", "resource": wall_fences, "path": wall_fences.resource_path})
 	# How often and how long side walls break (WallGapPlacement), in a level that has them; Restart level rebuilds.
 	if context.config.has_feature(WallGapPlacement.FEATURE):
-		var wall_gaps: WallGapTuning = WallGapPlacement.tuning()
+		var wall_gaps: WallGapTuning = WallGapPlacement.tuning_for(context.config)
 		if wall_gaps.resource_path != "":
 			sections.append({"title": "Wall gaps", "resource": wall_gaps, "path": wall_gaps.resource_path})
 	# Task G7: how wide the wider gaps are and what they keep clear of, and where planted cyborgs stand in charge

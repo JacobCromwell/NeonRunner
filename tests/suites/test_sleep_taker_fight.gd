@@ -5,7 +5,9 @@ extends TestSuite
 ## - its data: the slot plays it, three phases each faster, one EMP each, the standard armor rule (with a
 ##   phase begun unprotected counting as a break), par times, its new sounds and its generator hint, no
 ##   victory riff (its defeat ends in silence);
-## - the whole fight on its real arena, for a runner who reads it and stomps each generator (no god mode,
+## - the whole fight on its real arena (twice the holes it was first built with, its wall gaps, rounds of
+##   hands spread along the street and lights out half as bright: owner, October 8, 2026), for a runner
+##   who reads it and stomps each generator (no god mode,
 ##   no armor): three EMPs win it in 60-120 s; each generator shows from afar in a lane clear around it,
 ##   the nightmare lunges in lure_seconds before the runner reaches it and attacks nothing while lured,
 ##   the arcs show it's in reach well before the runner must jump (the window), and every stomp's EMP
@@ -230,6 +232,18 @@ func _whole_fight(lanes: int, speed: float) -> void:
 	# The phases: each faster, each begun with its recoil (nothing attacking), the last ended by the defeat.
 	var reforms: Array[Dictionary] = _events(boss, &"reform")
 	check(reforms.size() == 2, "after each of the first two hits it recoils and re-forms %s" % tag)
+	# Owner, October 8, 2026: rounds of hands spread along the street (and on its walls), each with its way
+	# through, in every phase.
+	var round_phases: Dictionary = {}
+	var wall_hands: int = 0
+	for e: Dictionary in _events(boss, &"round"):
+		round_phases[int(e["phase"])] = true
+	for e: Dictionary in _events(boss, &"mist"):
+		wall_hands += 1 if int(e["side"]) != 0 else 0
+	check(boss.hands.rounds >= 3 and round_phases.size() >= 2 and wall_hands > 0
+		and bot.routes_found == boss.hands.rounds and bot.routes_missing == 0,
+		"%d rounds of hands across %d phases (%d wall hands), each with its way through %s" % [boss.hands.rounds,
+		round_phases.size(), wall_hands, tag])
 	if lanes == 5:
 		print("  Sleep Taker's whole fight (5 lanes, %.1f m/s): %.1f s, generators in sight %.1f s before their lure, arcs %.2f s before the stomp" % [
 			speed, fight, (float(lures[0]["t"]) - float(gens[0]["t"])) if not lures.is_empty() and not gens.is_empty() else 0.0, window])

@@ -2535,3 +2535,52 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     3.8, a boss 7–11); counts, lengths and brightness are in the "Explosions" group, and `fireball_scale` moves every
     size at once (`DESIGN-TBD`). With Reduced flashing they rise softly to 45% of the normal brightness. Placeholders
     until the owner has played them.
+
+**The Sleep Taker's October 8 changes** (from H9, owner, October 8, 2026, GDD §10; numbers in `data/bosses/dead_zone_boss_tuning.tres`
+(`SleepTakerTuning`, F6 in the fight) and `data/bosses/dead_zone_boss_wall_gaps.tres`, marked `DESIGN-TBD` in
+`scripts/bosses/sleep_taker/sleep_taker_tuning.gd`)
+378. **How dark lights out goes on the web / low-end renderer.** `dark_level` 0.225 (half the first build's 0.45)
+    for ambient and sky light, fog light, the sun and the scenery's own light, above floors of its own
+    (`light_floor` 0.2, `scenery_floor` 0.15; other bosses keep 0.3). Measured: the street goes from 50 to 32 (of
+    255) at the darkest on both renderers; glows hold (generator 218 → 217, pad 182 → 181, mist 106 → 105). On
+    Compatibility the walls go nearly black (6, was 15), though the street, bridges, wall gaps' orange edges and
+    every glow stay readable. Too dark there?
+379. **The slash's lane marks in lights out.** They blend over the street, so they'd dim with it (62 → 52); the
+    merge made them draw stronger as the light falls (`SleepTakerSlash.MARKS_DARK_BOOST` 1.4, toward 1 as the light
+    returns), so they stay as visible as before. Right?
+380. **The hands' rounds.** A round has 2 rows, then one more each round up to 4 (`hand_rows_first`, `hand_rows_max`),
+    kept across phases, 0.85 s of run apart (`hand_row_seconds`, divided by the phase's pace); each row leaves one
+    floor lane open (`hand_row_open`), one lane over from the last, and puts a hand in every other floor lane whose
+    floor is clear, so every row is a lane switch. Should wider streets leave two lanes open? Are four rows and
+    these gaps right?
+381. **All of a round's mists at once,** with one whisper per round and a burst sound per row as it rises. Far rows'
+    mists can blend into the nightmare's purple base until the runner is closer (each row still shows at least as
+    early as the first row's). Should the rows' mists appear one after another instead?
+382. **Wall hands.** From the first round, one wall hand on every row, alternating walls (`wall_hands_per_row`), never
+    beside a door in an outer lane, never at a wall gap, and only over an outer lane that has its own floor hand,
+    so no floor runner passes under one. Right?
+383. **When a round can't fit.** A round takes the rows that end before the next refuge's slash or lure, never fewer
+    than 2 (`hand_rows_min`); otherwise it waits and the phase's next attack may go first. A clean win sees 3–4
+    rounds (about 78 s, inside the three-star par of 86 s).
+384. **The fairness margins rounds are planned with:** a runner moving 0.4 s after the mists show (`route_reaction`),
+    a lane switch taking the real 0.14 s × 1.5 (`route_switch_margin`), the body 0.55 m past a hand either way
+    (`route_body_margin`), checked by The House's lane router.
+385. **How many wall gaps.** 1.6 to 1.3 s of run between gaps, 30% on both walls, 0.6–1.1 s long: about 15 a minute (a
+    level's median is 1.7). Both walls stay whole from each refuge's slash warning to the end of its bridge (±0.5 s).
+    Is that frequency right, and should the walls stay whole there?
+386. **"Double the floor gaps."** Once a lap's refuges are in, the generator's additive gap pass doubles the rows of
+    holes the fight has (`floor_gap_increase` 1), keeping their average width: over three laps 11 → 22 rows at 3 and
+    5 lanes, 8 → 16 at 6 (lane-gaps 15 → 30, 26 → 53, 24 → 50). New rows keep 1.3 s of run from everything else
+    (`floor_gap_spacing`; the arena's own 1.9 s fits only 1.6–1.8 times as many).
+
+**The Tithe Collector staying twice as long** (from H10, owner, October 8, 2026, GDD §9.12; `data/enemies/tithe_collector.tres`)
+387. **Should Hostile Takeover's Tithe Collector stay twice as long too?** A level's Collector now closes in at 3.5 m/s
+    instead of 7 (about 10.9 s on screen untouched, was 5.4 s, at every run speed; it sucks up about 2.4× the credits
+    in a dense lane). On the boss's 130 m flatcar roof that carries it past the roof's end, over the coupling gap the
+    runner jumps. Placeholder: the Board spawns its Collectors at `HostileTakeoverTuning.tithe_approach_speed` 7 m/s
+    (`DESIGN-TBD`), so the fight is as before. A longer stay there needs a longer roof or a Collector that starts
+    further back.
+388. **May two Tithe Collectors be in the level at once?** Nothing reserves a window for one (touching it is never a
+    hit). With the longer stay, two overlap when their patterns are closer than about 255 m at 23.4 m/s (Corporate 2
+    at 6 lanes has gaps of 70, 98 and 160 m between its seven); they overlapped before too, less often. Placeholder:
+    allowed. At most one at a time would need a reserved window of `stay_seconds()` after each one.

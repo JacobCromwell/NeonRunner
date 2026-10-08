@@ -31,14 +31,13 @@ extends Enemy
 ##   ScoreKeeper.pay_out (wired generically to every thief, task B6) bursts out everything it holds
 ##   plus its jackpot. Robbed, it flees ahead and up with what it took, exactly like the stand-in
 ##   thief, until it's gone for good (should_retire) or caught on its way out.
-## Spawn params: none (every lane crossing is decided live, from the layout around it). Numbers:
+## Spawn params: `approach_speed` (m/s at REFERENCE_SPEED, default the tuning's) for a place that can't
+## hold its stay (Hostile Takeover's Board: a flatcar's roof is too short to meet it before the roof ends,
+## task H10); every lane crossing is decided live, from the layout around it. Numbers:
 ## data/enemies/tithe_collector.tres (TitheCollectorTuning).
 
 const MeshBatch = preload("res://scripts/enemies/mesh_batch.gd")
 const O = DamageRules.Outcome
-## Once the runner is this far past it, never touched, it's gone (metres at REFERENCE_SPEED,
-## stretched by the pace): a clean dodge, like the stand-in thief's.
-const PASSED_BEHIND: float = 8.0
 ## Gold, plain metal (GDD §9.12): never glows, so it never reads as a hazard.
 const GOLD := Color(1.0, 0.76, 0.3)
 const GOLD_TRIM := Color(1.0, 0.9, 0.62)
@@ -61,6 +60,8 @@ var height_now: float = 0.0
 ## Ahead of the player right now (APPROACH: shrinking from tune.start_ahead_at(pace); FLEE: growing).
 var rel_ahead: float = 0.0
 var target_lane: int = 0
+## How fast the runner closes in on it (m/s at REFERENCE_SPEED): the tuning's, or the spawn's param.
+var approach_speed: float = 0.0
 var _weave_t: float = 0.0
 var _vacuum_t: float = 0.0
 var _lat_v: float = 0.0
@@ -99,6 +100,7 @@ func _build() -> void:
 	if not (tuning_res is EnemyTuning):
 		max_health = tune.health_early
 		score_value = tune.score_value
+	approach_speed = float((spawn.get("params", {}) as Dictionary).get("approach_speed", tune.approach_speed))
 	var lanes: int = world.geo.lane_count
 	target_lane = clampi(int(spawn.get("lane", world.player.lane)), 0, lanes - 1)
 	var pace: float = world.tuning.pace()
@@ -125,7 +127,7 @@ func _tick(delta: float) -> void:
 	var pace: float = world.tuning.pace()
 	match state:
 		State.APPROACH:
-			rel_ahead -= tune.approach_speed_at(pace) * delta
+			rel_ahead -= approach_speed * pace * delta
 			track_d = p.distance + rel_ahead
 			_reweave(pace, delta)
 			var target_x: float = world.geo.lane_x(target_lane)
@@ -143,12 +145,12 @@ func _tick(delta: float) -> void:
 
 
 ## Gone once it fled with what it took (far ahead for good), or, never touched, has run well behind
-## the player (the stand-in thief's PASSED_BEHIND: a clean dodge).
+## the player (tune.passed_behind, like the stand-in thief's: a clean dodge).
 func should_retire() -> bool:
 	var pace: float = world.tuning.pace() if world != null else 1.0
 	if state == State.FLEE:
 		return rel_ahead > tune.gone_ahead_at(pace)
-	return rel_ahead < -PASSED_BEHIND * pace
+	return rel_ahead < -tune.passed_behind_at(pace)
 
 
 func aim_point() -> Vector3:
