@@ -41,21 +41,21 @@ extends BossEncounter
 ##    next refuge's slash or the next lure is due (a round of hands takes the rows that fit). Lights
 ##    out's darkness lasts while the next attacks come (half as bright as first built: its light and
 ##    scenery floors are its own, light_floor and scenery_floor). generator_delay into the pattern a
-##    generator comes into sight (_update_generator,
-##    SleepTakerLure.place), and as the runner nears it the nightmare lunges in after them (the lure,
-##    attacking nothing); smashed while it's in reach, the generator's EMP ends the phase
-##    (_on_part_emp); missed, another follows generator_again later.
+##    generator comes into sight (_update_generator, SleepTakerLure.place), and as the runner nears it
+##    the nightmare lunges in after them (the lure, attacking nothing); smashed while it's in reach, the
+##    generator's EMP ends the phase (_on_part_emp); missed, another follows generator_again later.
 ## 3. The last EMP beats it (SleepTakerDefeat): it bursts into hundreds of wisps, the music fades to
 ##    silence (no victory riff: victory_riff), and the first grey dawn breaks before the results.
 ## Every attack has its visual and audio warning (sound() plays and logs each), none overlaps another's,
 ## and the hands come in rounds of rows spread along the street, each row making the runner switch
 ## lanes, with hands on the walls too (SleepTakerHands; owner, October 8, 2026), growing from
 ## hand_rows_first rows to hand_rows_max. The refuges are the track's, the lists and generators the
-## phase's, so every attempt plays the same way for the same runner. The phase's pace speeds up the hands and the gaps (GDD §10: hungrier each phase: faster hands,
-## more lights out in the later lists); the slash and lights out keep their timings (the slash's warning
-## is what gets a runner to a pad). Distances that stand for a time follow the run's pace (run_pace()),
-## so the fight keeps its seconds at the Dead Zone's 24.2 m/s. Numbers: SleepTakerTuning
-## (data/bosses/dead_zone_boss_tuning.tres), all DESIGN-TBD (docs/questions/e5c.md).
+## phase's, so every attempt plays the same way for the same runner. The phase's pace speeds up the hands
+## and the gaps (GDD §10: hungrier each phase: faster hands, more lights out in the later lists); the
+## slash and lights out keep their timings (the slash's warning is what gets a runner to a pad).
+## Distances that stand for a time follow the run's pace (run_pace()), so the fight keeps its seconds at
+## the Dead Zone's 24.2 m/s. Numbers: SleepTakerTuning (data/bosses/dead_zone_boss_tuning.tres), all
+## DESIGN-TBD (docs/questions/e5c.md, docs/questions/h9.md).
 
 enum Step { ENTER, HOVER, REFORM }
 

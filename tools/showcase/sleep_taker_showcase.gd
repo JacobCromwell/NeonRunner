@@ -16,8 +16,9 @@ extends Node3D
 ##   slash       through the run camera, a runner who answers the slash by its warning (--escape=pad
 ##               the refuge's pad, lanes another lane, none stays put); the first refuge comes about
 ##               5 s after the entrance; nothing else attacks
-##   hands       through the run camera, hands only (no refuges), the runner switching lanes at each
-##               mist (--escape=none: it stays and is grasped)
+##   hands       through the run camera, hands only (no refuges) on its real arena (its wall gaps and
+##               holes), the runner weaving through each round's rows by its way through
+##               (--escape=none: it stays and is grasped)
 ##   lights_out  through the run camera: the inhale, the dark with hands coming, the light back
 ##   lure        through the run camera: a generator in sight, the nightmare lunging in after the runner,
 ##               the arcs as it's in reach, the stomp, the EMP tearing a chunk away and the recoil;
@@ -34,9 +35,10 @@ extends Node3D
 ## --first-dark (lights out as first built, for comparing: dark_level 0.45 with every boss's floors, 0.3;
 ## the owner's October 8, 2026 lights out is half as bright).
 ## Frames worth a look (at --fixed-fps 10): entrance 0-45; slash, the warning from about frame 80 and
-## the strike about 100; hands, a mist about 63 and its hand about 75, then every 3 s or so; lights_out,
-## the inhale about 60-80, the dark 80-168 (hands rising in it about 113 and 143), the light back by
-## about 185; lure, the generator in sight about frame 50, the lunge about 64, the arcs from about 79, the
+## the strike about 100; hands, a round's mists about 60 (its rows' mists all at once), its rows rising
+## about 72 and 80, the next round (three rows) about 100-128, the next about 146; lights_out, the inhale
+## about 60-80, the dark 80-168 (a round's rows rising in it about 113 and 121), the light back by about
+## 185; lure, the generator in sight about frame 50, the lunge about 64, the arcs from about 79, the
 ## stomp and the chunk torn about 94, the recoil to about 119 (with --phase=2: the stomp about 74, the
 ## wisps 76-120, the dawn 92-124); measure, the arena's light about frame 55 and the darkest point about
 ## frame 85.
