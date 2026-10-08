@@ -35,6 +35,11 @@ const DOODAD_TOP_HEIGHT: float = 0.24
 const DOODAD_INSET: float = 0.07
 ## How far back the default look's front slants toward the side it pushes to, at most (metres).
 const DOODAD_SLANT: float = 0.55
+## The metadata a doodad look's mesh carries its main lit colours in (tag_debris_colors), which its
+## pieces fly off in when the dash smashes it (doodad_debris_colors, task H5).
+const DEBRIS_COLORS_META: StringName = &"debris_colors"
+## How many of a look's colours its pieces take, at most (MeshBatch.palette).
+const DEBRIS_COLORS_MAX: int = 4
 
 ## A floor cut's standard look (floor_cut, standard_floor_cut; task B4): the orange lip on the floor
 ## right at the cut's edge (metres, and its glow), the strip along the top of the far end's face, the
@@ -552,6 +557,32 @@ func doodad(body: Node3D, size: Vector3, _size_class: StringName, side: int, _lo
 	body.add_child(inst)
 
 
+## The colours a zone doodad's pieces fly off in when the dash smashes it (GDD §3, owner, October 8,
+## 2026; task H5; RunEffects.rubble), for `body` as doodad() dressed it (TrackBuilder asks right after).
+## By default its look's own: the main lit colours its meshes were built from, which the look's builder
+## tagged them with (tag_debris_colors; every zone's own look and the default do), or doodad_palette for
+## a look that tagged none. A skin may override it, say to leave out part of a look; every skin works
+## without doing so. Lit colours only: the pieces are solid scenery and never glow.
+func doodad_debris_colors(body: Node3D, _size_class: StringName, _side: int, _look_seed: int) -> PackedColorArray:
+	var out := PackedColorArray()
+	for node: Node in body.find_children("*", "MeshInstance3D", true, false):
+		var mesh: Mesh = (node as MeshInstance3D).mesh
+		if mesh != null and mesh.has_meta(DEBRIS_COLORS_META):
+			out.append_array(mesh.get_meta(DEBRIS_COLORS_META) as PackedColorArray)
+	if out.is_empty():
+		out = doodad_palette.duplicate()
+	return out
+
+
+## Tags `mesh`, built from `batch`, with the batch's main lit colours (MeshBatch.palette, at most
+## DEBRIS_COLORS_MAX) for doodad_debris_colors, and returns it. A doodad look's builder calls it once per
+## mesh it caches, while the batch's vertices are still on the CPU.
+static func tag_debris_colors(mesh: ArrayMesh, batch: MeshBatch) -> ArrayMesh:
+	if mesh != null:
+		mesh.set_meta(DEBRIS_COLORS_META, batch.palette(DEBRIS_COLORS_MAX))
+	return mesh
+
+
 ## The default doodad look (doodad()) for a box of `size` pushing to `side`, in `palette` (body, top,
 ## base; sRGB): a base plinth, a body inset from it and a top, the three sharing a footprint whose
 ## front slants back toward `side` (up to DOODAD_SLANT), so the block reads as glancing the runner off
@@ -569,7 +600,7 @@ static func default_doodad_mesh(size: Vector3, side: int, palette: PackedColorAr
 	_doodad_prism(layer, size, side, slant, 0.0, -half, base_top, base_color)
 	_doodad_prism(layer, size, side, slant, DOODAD_INSET, base_top, body_top, body_color)
 	_doodad_prism(layer, size, side, slant, 0.0, body_top, half, top_color)
-	return batch.to_mesh()
+	return tag_debris_colors(batch.to_mesh(), batch)
 
 
 ## One upright slab of the default doodad look, from height `y0` to `y1`: its footprint is the box's

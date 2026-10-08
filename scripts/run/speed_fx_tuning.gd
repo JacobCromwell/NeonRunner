@@ -92,6 +92,24 @@ extends Resource
 @export_range(0.0, 1.0, 0.01) var push_shake_strength: float = 0.05
 @export_range(0.05, 1.0, 0.01, "suffix:s") var push_shake_time: float = 0.14
 
+@export_group("Doodad smashes")
+## The dash smashes a zone doodad (GDD §3, owner, October 8, 2026; Player.smashed, task H5): a light shake
+## (more than a push's bump, well under a dash kill's 0.32) and its pieces flung in its own colours
+## (RunEffects.rubble, RubbleBurst), with the crunch (doodad_smash.wav). No sparks and no hit-stop.
+## DESIGN-TBD (docs/questions/h5.md): the look and the numbers.
+@export_range(0.0, 1.0, 0.01) var smash_shake_strength: float = 0.1
+@export_range(0.05, 1.0, 0.01, "suffix:s") var smash_shake_time: float = 0.16
+## The share of the runner's speed the pieces carry on along its way, on average (each piece 0.55–1.35
+## times this): under 1, so the runner bursts through them and leaves them behind.
+@export_range(0.0, 1.5, 0.05) var rubble_carry: float = 0.55
+## How fast the pieces fly out to the sides and up (m/s; each piece a share of it).
+@export_range(0.0, 20.0, 0.5, "suffix:m/s") var rubble_spread: float = 6.0
+@export_range(0.0, 20.0, 0.5, "suffix:m/s") var rubble_lift: float = 6.0
+## A large piece's size (m): the big chunks are about this, the small ones a third to a half of it.
+@export_range(0.1, 1.0, 0.02, "suffix:m") var rubble_piece_size: float = 0.42
+## How long a burst lasts (s): every piece has shrunk away by then.
+@export_range(0.2, 2.0, 0.05, "suffix:s") var rubble_life: float = 0.9
+
 @export_group("Thefts")
 ## A thief's theft and payout (GDD §9.12; ScoreKeeper.stolen / recovered): a stream of coins in the
 ## credit look flies from the runner to the thief, or bursts out of a caught thief into the runner

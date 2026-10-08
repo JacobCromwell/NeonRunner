@@ -1,6 +1,7 @@
 extends "res://tools/asset_gen/sfx_bank.gd"
 ## Player movement and level sounds: jump, land, slide, wall runs, ramps, pads, the hull, death, the
-## pulsing fence's warning and a zone doodad's push. The level-complete riffs are in sfx_bank_riffs.gd.
+## pulsing fence's warning, a zone doodad's push and the dash smashing one. The level-complete riffs are
+## in sfx_bank_riffs.gd.
 
 const E2: float = 82.41
 const A2: float = 110.0
@@ -20,6 +21,7 @@ func sounds() -> Dictionary:
 		"died": _died,
 		"fence_warning": _fence_warning,
 		"doodad_push": _doodad_push,
+		"doodad_smash": _doodad_smash,
 	}
 
 
@@ -196,4 +198,35 @@ func _doodad_push() -> PackedFloat32Array:
 	DSP.filter(b, &"lowpass", 3200.0)
 	DSP.envelope(b, 0.001, 0.1)
 	DSP.crush(b, 10, 18000.0)
+	return b
+
+
+## The dash smashes a zone doodad (GDD §3, owner, October 8, 2026; task H5): a crunch, the runner
+## bursting through something solid that breaks apart. A sharp crack and a short, heavy thump (the push's
+## thud, harder), crumbling grit closing down, and a few small pieces clattering down after it. Heavier
+## than the push, well short of an explosion's boom, and with no warning's ring: nothing hurts.
+## DESIGN-TBD (docs/questions/h5.md): the smash's sound.
+func _doodad_smash() -> PackedFloat32Array:
+	var rng := _rng(40)
+	var length: float = 0.62
+	var b := DSP.buffer(length)
+	DSP.mix(b, DSP.kick(0.24, 210.0, 62.0, rng), 0.0, 0.9)
+	DSP.mix(b, DSP.tom(0.2, 120.0, rng), 0.0, 0.5)
+	# The crack carries it on a phone's speaker, which can't play the thump.
+	var crack := DSP.noise(0.1, rng)
+	DSP.filter(crack, &"bandpass", 1700.0, 0.8)
+	DSP.envelope(crack, 0.0005, 0.022)
+	DSP.mix(b, crack, 0.0, 2.0)
+	var crumble := DSP.noise(length, rng)
+	DSP.filter_sweep(crumble, &"lowpass", 5200.0, 450.0, 0.8)
+	DSP.envelope(crumble, 0.002, 0.13, 0.04)
+	DSP.mix(b, crumble, 0.0, 1.0)
+	DSP.mix(b, _crackle(length, 46, 0.2, 2600.0, rng), 0.015, 1.1)
+	for k: int in 4:
+		var at: float = 0.11 + 0.09 * k + rng.randf_range(0.0, 0.035)
+		DSP.mix(b, DSP.metal_hit(0.14, rng.randf_range(1100.0, 1900.0), 0.045, rng), at, 0.18 * exp(-0.45 * k))
+	DSP.drive(b, 2.4)
+	DSP.filter(b, &"lowpass", 7500.0)
+	DSP.envelope(b, 0.001, 1e9, 0.08)
+	DSP.crush(b, 9, 18000.0)
 	return b

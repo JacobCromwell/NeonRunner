@@ -551,14 +551,23 @@ func _build_speed_pad(root: Node3D, p: Dictionary) -> void:
 ## player who comes down on it from above (off a wall jump) lands and runs along it, like a hover
 ## truck's roof (DESIGN-TBD, docs/questions/g5.md 2: a solid top). It's no hazard: nothing hurts
 ## there, and shots and weapons never see it. The node carries its layout entry (meta "doodad"); the
-## skin dresses it (ZoneSkin.doodad).
+## skin dresses it (ZoneSkin.doodad) and names the colours its pieces fly off in when the dash smashes it
+## (ZoneSkin.doodad_debris_colors, task H5). The node is a DashBreakable (GDD §3, owner, October 8, 2026:
+## the dash smashes a doodad): one smashed on this attempt (its entry marked "smashed") is never built
+## again.
 func _build_doodad(root: Node3D, d: Dictionary) -> void:
+	if bool(d.get("smashed", false)):
+		return
 	var start: float = float(d["start"])
 	var end: float = float(d["end"])
-	var box: Vector3 = tuning.doodad_size(StringName(d["size"]))
+	var size_class := StringName(d["size"])
+	var box: Vector3 = tuning.doodad_size(size_class)
 	var size := Vector3(box.x, box.y, end - start)
-	var area := Area3D.new()
+	var area := DashBreakable.new()
 	area.name = "Doodad"
+	area.kind = &"doodad"
+	area.entry = d
+	area.size = size
 	area.collision_layer = LAYER_DOODAD | LAYER_LANE_BLOCKER
 	area.collision_mask = 0
 	area.monitoring = false
@@ -575,7 +584,11 @@ func _build_doodad(root: Node3D, d: Dictionary) -> void:
 	var debug := GreyboxMaterials.add_box(area, Vector3.ZERO, size * 1.01, GreyboxMaterials.overlay(DOODAD_DEBUG, true))
 	debug.add_to_group(&"debug_hitbox")
 	debug.visible = show_hitboxes
-	_dress(skin.doodad.bind(area, size, StringName(d["size"]), int(d["side"]), int(d.get("seed", 0))))
+	var side: int = int(d["side"])
+	var look_seed: int = int(d.get("seed", 0))
+	_dress(func() -> void:
+		skin.doodad(area, size, size_class, side, look_seed)
+		area.debris_colors = skin.doodad_debris_colors(area, size_class, side, look_seed))
 
 
 func _hazard(root: Node3D, center: Vector3, size: Vector3, layers: int) -> Hazard:

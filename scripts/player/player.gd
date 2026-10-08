@@ -14,7 +14,8 @@ signal died(cause: String)
 ## wall_jump, wall_exit, wall_blocked, ramp, pad, hull_end, died, stomp, lane_blocked,
 ## ceiling_blocked, speed_pad, grapple, armor_hit (a blocked hit the armor survives), armor_break,
 ## armor_back (broken armor came back), shield_break, revive, dash, dash_end, doodad_push (a zone
-## doodad shoved the player into a neighbouring lane), robbed (a thief's touch took credits, GDD §9.12),
+## doodad shoved the player into a neighbouring lane), doodad_smash (the dash broke a zone doodad apart:
+## `<kind>_smash` for a DashBreakable of another kind), robbed (a thief's touch took credits, GDD §9.12),
 ## wall_missing (a wall entry refused where a wall gap leaves no wall: no bump, there's nothing to
 ## bump against), wall_gap_drop (a wall runner reached a wall gap and dropped off into the outer lane).
 ## The three blocked moves (lane_blocked, wall_blocked, and ceiling_blocked: a move past the edge of a
@@ -33,6 +34,10 @@ signal item_gained(item: StringName)
 signal armor_changed
 ## The player's contact defeated an enemy (cause: &"stomp", &"claws" or &"dash").
 signal enemy_contact(enemy: Enemy, cause: StringName)
+## The dash broke something apart (GDD §3, owner, October 8, 2026: a zone doodad; task H5): it has
+## switched off its collision and hidden its look (DashBreakable.smash), and the `<kind>_smash` movement
+## event follows. RunEffects flings its pieces.
+signal smashed(breakable: DashBreakable)
 signal revived
 
 enum Surface { FLOOR, CEILING, WALL }
@@ -49,6 +54,11 @@ const PUSH_HEAD_ON_SHARE: float = 0.15
 ## The doodad contact starts this far above the feet, so a player standing on a doodad's top (it's
 ## solid) isn't pushed by it (metres).
 const DOODAD_FEET_CLEARANCE: float = 0.05
+## A doodad the dash has claimed (_smash_claims: the dash reaches its front before it ends, or a switch
+## into its side began while dashing) still breaks on contact this long after the dash ends (seconds):
+## the contact may come a frame or two after the dash's last one (frame steps, a fading speed boost).
+## A dash that ends short of a doodad it never claimed pushes as usual.
+const SMASH_CLAIM_GRACE: float = 0.1
 
 var tuning: MovementTuning
 var geo: TrackGeometry
@@ -135,6 +145,13 @@ var _push_doodad: int = 0
 var _push_ignore_left: float = 0.0
 ## How many times zone doodads have pushed the player this run (tests and tools).
 var pushes: int = 0
+## How many zone doodads the dash has smashed this run (tests and tools).
+var smashes: int = 0
+## The doodads the dash has claimed (GDD §3: dashing into one smashes it), by instance id: each breaks
+## when the body reaches it instead of pushing (_check_doodads). Kept while dashing and for
+## SMASH_CLAIM_GRACE after (_smash_grace_left), then let go.
+var _smash_claims: Dictionary = {}
+var _smash_grace_left: float = 0.0
 var _doodad_shape := BoxShape3D.new()
 var _doodad_query := PhysicsShapeQueryParameters3D.new()
 var _dash_left: float = 0.0
@@ -215,6 +232,9 @@ func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> v
 	_push_doodad = 0
 	_push_ignore_left = 0.0
 	pushes = 0
+	smashes = 0
+	_smash_claims.clear()
+	_smash_grace_left = 0.0
 	invulnerable_left = 0.0
 	theft_immune_left = 0.0
 	dashing = false
@@ -353,8 +373,9 @@ func revive() -> void:
 	revived.emit()
 
 
-## The juggernaut dash (GDD §8): passes through hazards for `duration` seconds, `speed_bonus` faster.
-## Cooldowns belong to the power-up that calls this.
+## The juggernaut dash (GDD §8): passes through hazards for `duration` seconds, `speed_bonus` faster,
+## and smashes the zone doodads it runs into (GDD §3, _check_doodads). Cooldowns belong to the power-up
+## that calls this.
 func start_dash(duration: float, speed_bonus: float) -> void:
 	if not alive:
 		return
@@ -422,7 +443,12 @@ func _physics_process(delta: float) -> void:
 		if _dash_left <= 0.0:
 			dashing = false
 			_dash_bonus = 0.0
+			_smash_grace_left = SMASH_CLAIM_GRACE
 			_event(&"dash_end")
+	elif not _smash_claims.is_empty():
+		_smash_grace_left -= delta
+		if _smash_grace_left <= 0.0:
+			_smash_claims.clear()
 	# A ramp's boost and a speed pad's fade away the same way (GDD §3).
 	_boost = tuning.boost_left(_boost, delta)
 	speed = tuning.run_speed + tuning.speed_gain_per_minute * elapsed / 60.0 + _boost + _dash_bonus
@@ -505,7 +531,9 @@ func _event(kind: StringName) -> void:
 # --- Lanes -----------------------------------------------------------------
 
 func _start_switch(target: int) -> void:
-	if target != lane and _lane_blocked(target):
+	# GDD §3 (owner, October 8, 2026): dashing into a zone doodad smashes it, from the side too, so a
+	# doodad's side doesn't block a dashing player (_lane_blocked claims it; it breaks on contact).
+	if target != lane and _lane_blocked(target, dashing):
 		# GDD §9.3: a solid side (the hover truck's) bumps the player back.
 		var dir: int = signi(target - lane)
 		_start_bump(dir, rules.lane_bump_fraction * absf(geo.lane_x(target) - geo.lane_x(lane)), tuning.lane_switch_time, false)
@@ -569,15 +597,28 @@ static func _push_progress(k: float) -> float:
 	return 1.0 - pow(1.0 - clampf(k, 0.0, 1.0), 1.0 / 3.0)
 
 
-## True if a solid side (a lane blocker) fills `target` lane beside the player right now.
-func _lane_blocked(target: int) -> bool:
+## True if a solid side (a lane blocker) fills `target` lane beside the player right now. With
+## `dash_through` (the player is dashing: GDD §3, the dash smashes a zone doodad) a zone doodad's side
+## doesn't count: it's claimed (_smash_claims) and breaks when the body reaches it (_check_doodads).
+## Any other solid side (a hover truck's, a boss's prop) blocks a dashing player too.
+func _lane_blocked(target: int, dash_through: bool = false) -> bool:
 	if target < 0 or target >= geo.lane_count:
 		return false
 	var height: float = _hurtbox_height()
 	var y: float = position.y + height * 0.5 if surface != Surface.CEILING else position.y - height * 0.5
 	_blocker_shape.size = Vector3(geo.lane_width * 0.5, height, tuning.hurtbox_size.z + 0.6)
 	_blocker_query.transform = Transform3D(Basis.IDENTITY, Vector3(geo.lane_x(target), y, TrackGeometry.world_z(distance)))
-	return not get_world_3d().direct_space_state.intersect_shape(_blocker_query, 1).is_empty()
+	var hits: Array[Dictionary] = get_world_3d().direct_space_state.intersect_shape(_blocker_query, 4 if dash_through else 1)
+	if not dash_through or hits.is_empty():
+		return not hits.is_empty()
+	var claims: Array[int] = []
+	for hit: Dictionary in hits:
+		if not hit["collider"] is DashBreakable:
+			return true
+		claims.append((hit["collider"] as Node).get_instance_id())
+	for id: int in claims:
+		_smash_claims[id] = true
+	return false
 
 
 # --- Floor & ceiling -------------------------------------------------------
@@ -903,6 +944,12 @@ func repel_from_wall() -> bool:
 ## if they caught its front corner mid-switch; a side without room (another lane blocker there) gives
 ## way to the other. Ceiling riders and wall runners never meet one (TrackBuilder; the generator keeps
 ## doodads off ceilings and out of the outermost lanes).
+## The dash smashes one instead (GDD §3, owner, October 8, 2026: "dashing into one breaks it apart, and
+## the player keeps their lane with no push and no damage"; _dash_claims): a doodad the dash reaches
+## before it ends is claimed when it comes within the push's reach, and breaks (_smash) when the body
+## meets it, head-on, at a front corner or from the side (a switch into it while dashing, _lane_blocked);
+## the player runs on in their lane, at their speed. A dash that ends short of one leaves it unclaimed,
+## and it pushes as usual, at the push's usual time.
 func _check_doodads(motion: float) -> void:
 	if surface != Surface.FLOOR or in_pit:
 		return
@@ -923,9 +970,14 @@ func _check_doodads(motion: float) -> void:
 		if area.get_instance_id() == _push_doodad and (_pushing or _push_ignore_left > 0.0):
 			continue
 		var d: Dictionary = area.get_meta(&"doodad")
+		var gap: float = float(d["start"]) - front
+		if _dash_claims(area, gap):
+			# The body meets it by the next frame (or is already beside it): it breaks now, before they touch.
+			if gap <= motion:
+				_smash(area as DashBreakable)
+			continue
 		var width: float = tuning.doodad_size(StringName(d["size"])).x
 		var centre: float = geo.lane_x(int(d["lane"]))
-		var gap: float = float(d["start"]) - front
 		var off: float = _x - centre
 		var dir: int = int(d["side"])
 		if absf(off) > PUSH_HEAD_ON_SHARE * geo.lane_width:
@@ -935,6 +987,36 @@ func _check_doodads(motion: float) -> void:
 			continue
 		_start_push(area, int(d["lane"]), dir, int(d["side"]))
 		return
+
+
+## True if the dash takes doodad `area` (GDD §3: dashing into one smashes it), whose front is `gap` metres
+## ahead of the body's (below 0 once the body is level with it): claimed already (a switch into its side
+## while dashing, or an earlier frame of this approach), or the dash lasts until the body gets there (it
+## covers `gap` at its speed in the time it has left), which claims it now. Only a DashBreakable (what
+## the track builds) breaks.
+func _dash_claims(area: Area3D, gap: float) -> bool:
+	if not area is DashBreakable:
+		return false
+	var id: int = area.get_instance_id()
+	if _smash_claims.has(id):
+		return true
+	if not dashing or maxf(gap, 0.0) > maxf(speed, 0.0) * _dash_left:
+		return false
+	_smash_claims[id] = true
+	return true
+
+
+## The dash breaks doodad `b` apart (GDD §3, owner, October 8, 2026; DashBreakable.smash: its body, lane
+## blocker and standable top go, and its look): no push and no damage, and the player runs on in their
+## lane at their speed. `smashed` and the `<kind>_smash` event follow (RunEffects flings its pieces and
+## shakes lightly; the event plays the crunch).
+func _smash(b: DashBreakable) -> void:
+	_smash_claims.erase(b.get_instance_id())
+	if not b.smash():
+		return
+	smashes += 1
+	smashed.emit(b)
+	_event(StringName("%s_smash" % b.kind))
 
 
 ## How long into a push the body clears the side of a doodad `width` wide: starting `toward` metres off

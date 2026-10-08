@@ -15,12 +15,17 @@ extends Node3D
 ## A theft (GDD §9.12, ScoreKeeper.stolen) sends a stream of coins from the runner to the thief, and a
 ## caught thief's payout (ScoreKeeper.recovered) bursts out of it into the runner (coin_stream): no
 ## shake, no hit-stop and no flashing, so it never reads as a hit.
+## The dash smashing a zone doodad (GDD §3, owner, October 8, 2026; Player.smashed, task H5) flings its
+## pieces in its look's own colours (rubble: lit chunks, never glowing, nothing flickering) with a light
+## shake and no hit-stop: something solid breaking, never an explosion or a hit.
 ## All the numbers are SpeedFxTuning's (data/tuning/speed_fx.tres, F6 "Speed effects").
 
 signal shake_requested(strength: float, duration: float)
 
 const BURST_POOL: int = 12
 const DEBRIS_POOL: int = 8
+## Rubble bursts playing at once (rubble): doodads stand at least 2.5 s apart, so two is plenty.
+const RUBBLE_POOL: int = 2
 const LINE_POOL: int = 4
 ## Coin streams in flight at once (a theft's and a payout's may overlap), and the most coins in one.
 const STREAM_POOL: int = 3
@@ -46,6 +51,9 @@ var _next_burst: int = 0
 var _debris: Array[CPUParticles3D] = []
 var _next_debris: int = 0
 var _debris_mesh: BoxMesh
+## Broken pieces (rubble), made with their material on so ShaderWarmup draws them at the load.
+var _rubble: Array[RubbleBurst] = []
+var _next_rubble: int = 0
 var _lines: Array[MeshInstance3D] = []
 var _line_life: Array[float] = []
 var _mesh: SphereMesh
@@ -75,6 +83,10 @@ func _ready() -> void:
 		p.angular_velocity_min = -540.0
 		p.angular_velocity_max = 540.0
 		_debris.append(p)
+	for i: int in RUBBLE_POOL:
+		var r := RubbleBurst.new()
+		add_child(r)
+		_rubble.append(r)
 	for i: int in LINE_POOL:
 		var line := MeshInstance3D.new()
 		line.mesh = GreyboxMaterials.unit_box()
@@ -112,6 +124,7 @@ func setup(p_world: RunWorld, p_tuning: SpeedFxTuning = null) -> void:
 	if tuning == null:
 		tuning = load(DEFAULT_TUNING_PATH) as SpeedFxTuning if ResourceLoader.exists(DEFAULT_TUNING_PATH) else SpeedFxTuning.new()
 	world.player.movement_event.connect(_on_player_event)
+	world.player.smashed.connect(_on_smashed)
 	world.director.enemy_defeated.connect(_on_enemy_defeated)
 	# The score keeper is built after the effects (RunWorld.build): its thefts are wired a moment later,
 	# long before the run starts.
@@ -147,6 +160,29 @@ func debris(pos: Vector3, color: Color, amount: int = 6, size: float = 0.6) -> v
 	p.material_override = GreyboxMaterials.glow(color, 1.8)
 	p.restart()
 	p.emitting = true
+
+
+## Broken pieces flung out of `box` (world space) in `colors` (sRGB, lit; a plain grey if empty),
+## carried along `push` (the runner's velocity, so they fly on the way it was going) and out to the
+## sides, tumbling, falling and shrinking away (RubbleBurst; its numbers SpeedFxTuning's "Doodad smashes"):
+## a zone doodad the dash smashes (task H5; task H7a's dash walls may use it too). Never glowing, never
+## flickering. `look_seed` varies it.
+func rubble(box: AABB, colors: PackedColorArray, push: Vector3 = Vector3.ZERO, look_seed: int = 0) -> void:
+	if _rubble.is_empty():
+		return
+	var r: RubbleBurst = _rubble[_next_rubble]
+	_next_rubble = (_next_rubble + 1) % _rubble.size()
+	var t: SpeedFxTuning = tuning if tuning != null else SpeedFxTuning.new()
+	r.play(box, colors, push, t.rubble_carry, t.rubble_spread, t.rubble_lift, t.rubble_piece_size, t.rubble_life, look_seed)
+
+
+## The rubble bursts still flying (tests and tools).
+func rubble_active() -> Array[RubbleBurst]:
+	var out: Array[RubbleBurst] = []
+	for r: RubbleBurst in _rubble:
+		if r.active:
+			out.append(r)
+	return out
 
 
 ## A glowing straight line from `a` to `b` that fades after `duration` (the grapple rope).
@@ -369,6 +405,17 @@ func _on_player_event(kind: StringName) -> void:
 			_block_fx(PlayerSuit.SHIELD, tuning.block_break_shake_strength)
 		&"doodad_push":
 			shake(tuning.push_shake_strength, tuning.push_shake_time)
+
+
+## The dash smashed something (Player.smashed; a zone doodad, GDD §3, owner, October 8, 2026): its pieces
+## fly in its look's own colours (DashBreakable.debris_colors) on along the runner's way (the track runs
+## toward -z), and the camera shakes lightly. No sparks and no hit-stop: it's no kill and no hit.
+func _on_smashed(breakable: DashBreakable) -> void:
+	if world == null or not is_instance_valid(breakable):
+		return
+	rubble(breakable.world_box(), breakable.debris_colors, Vector3(0.0, 0.0, -maxf(world.player.speed, 0.0)),
+		int(breakable.entry.get("seed", 0)))
+	shake(tuning.smash_shake_strength, tuning.smash_shake_time)
 
 
 func _block_fx(color: Color, shake_strength: float) -> void:
