@@ -2368,12 +2368,14 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     fire again). Placeholder: hosts never board (`EnforcerTruckTuning.picks_up_hosts = false`, `DESIGN-TBD` in
     `scripts/enemies/enforcer_truck_tuning.gd`), and riders are part of the truck, so they share its immunity
     to weapons (`scripts/enemies/enforcer_truck.gd`, `_pick_up_riders`).
+    **Answered (owner, October 7, 2026):** yes. Hosts never board, and riders can't be shot off (GDD §9.13).
 352. **A gap too wide to hop** (GDD §9.13 "Holes"). Placeholder: a gap longer than 0.6 of a full jump at the
     level's speed wrecks it (`max_hop_jump_fraction` in `data/enemies/enforcer_truck.tres`); it hops every
     shorter one. Every gap in its six levels is 0.35 to 0.6 of a jump (measured at 3, 5 and 6 lanes on their own
     seeds: none wider), so in the campaign only a charge or a Buzz Overdrive's cut destroys it. Should its
     levels get a few wider gaps planned as baits during its chase (and how wide), or should the threshold come
     down so some ordinary gaps count?
+    **Answered (owner, October 7, 2026):** every level gets a couple of wider gaps, uncommon but jumpable, that wreck an Enforcer following into them (GDD §9.13; task G7).
 353. **The teaching moment** (GDD §9.13 "Teaching", proposed: before its first appearance the player sees a charge
     flatten another enemy, an Octodog lunging through a cyborg). Not built. The Octodog's and the Buzz
     Overdrive's rules keep every other enemy off their charge's stretch and lane (`Octodog.charge_clear`, the
@@ -2383,6 +2385,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     `enforcer_truck`) explains the bait. Should there be a scripted set piece (for example in Corporate 1 or
     early in Corporate 2: a cyborg in a lane beside the runner's, flattened by a dog lunging across from
     further ahead), or is the hint enough?
+    **Answered (owner, October 7, 2026):** occasionally a cyborg stands in the path of an Octodog's lunge or a Buzz Overdrive's charge, at least once before the Enforcer's first appearance (GDD §9.13; task G7).
 354. **Its numbers and presentation** (GDD §9.13, proposed values and gaps), all in
     `data/enemies/enforcer_truck.tres` (F6 "Enemy: Enforcer Truck"): it drives in from 45 m behind with a siren
     and follows 8.5 m back (behind the camera, 7.5 m), closing to 2.4 m during an Octodog's attack; a volley is
@@ -2398,3 +2401,36 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     starts only while the runner is on the floor, and its bolts keep to the floor lane it warned (from slide
     height to above a jump), so a runner on a wall or a ceiling is never its target
     (`EnforcerTruck._ready_to_fire`). Should it also fire at wall runners or ceiling riders?
+
+**Wider gaps and cyborgs in charge paths** (from G7; numbers in `data/tuning/wide_gaps.tres`, `data/tuning/charge_paths.tres` and each level's `wide_gaps` / `charge_path_cyborgs`; review with `tools/showcase/wide_gap_review.tscn` and `charge_path_review.tscn`)
+356. **How wide, how many, and how much room around a wider gap?** (GDD §9.13 "Holes": "a couple of wider gaps
+    ... still jumpable ... wide enough that an Enforcer following the player into one is wrecked".) Is 0.7 of a
+    full jump right (the levels' own gaps are 0.4 to 0.55; the truck hops up to 0.6; a normal jump clears 0.7
+    from a take-off window of about 0.3 s), with nothing else in any lane from 0.9 s (or the level's spacing
+    there, up to 1.1 s) before the take-off to as long after the landing, and 15 s between the two?
+    - Placeholder: `data/tuning/wide_gaps.tres` (`jump_fraction` 0.7, `clear_before_seconds` and
+    `clear_after_seconds` 0.9, `spacing_seconds` 15) and `wide_gaps = 2` in every campaign level
+    (`data/levels/*.tres`); `DESIGN-TBD` on `LevelConfig.wide_gaps` and `WideGapPlacement`.
+357. **Where do they come from, and should one always fall in an Enforcer Truck's chase?** The generator widens
+    the level's own rows first, else adds new rows (every lane but one), else takes other holes and plain fences
+    out of a row's way; it prefers one in each Enforcer chase, which happens in 11 of the 18 level and lane
+    builds that have trucks (Corporate 2 at every lane count). Is a single-lane hole made wider acceptable as one
+    of the couple (the runner usually steps around it), and should every chase be guaranteed one?
+    - Placeholder: `WideGapPlacement` (`prefer_enforcer_chases`, `add_rows` in `data/tuning/wide_gaps.tres`;
+    rows across more lanes preferred, single holes allowed).
+358. **Is the planted Octodog lunge's line right?** (GDD §9.13 "Teaching", §9.4.) Its first lunge goes along a
+    line through the cyborg in the lane beside it, two lanes across, rather than at the runner's lane (its red
+    line shows it; its later charges aim at the runner as always), and a dog without two lanes beside it on a
+    side moves to another lane at its spot.
+    - Placeholder: `Octodog.planted()`/`_lunge_vx`, `ChargePathPlacement.dog_option`; `dog_cyborg_ahead` 2.5 m,
+    `claim_seconds` 4 s in `data/tuning/charge_paths.tres`.
+359. **Is a parked Buzz Overdrive right?** With a cyborg planted in its lane, the tank waits at its cut's end
+    instead of rolling ahead of the runner (it would drive through the cyborg), then revs and charges as
+    planned. It sits still in view longer, so a runner with missiles may shoot it before its rev.
+    - Placeholder: the cut's `park` (`BuzzOverdrive.parked()`), `tank_cyborg_seconds` 0.35 s.
+360. **How often should a charge flatten a cyborg?** Each level with Octodogs or Buzz Overdrives asks for one; 7,
+    6 and 8 of those 11 levels get one at 3, 5 and 6 lanes (none where every encounter is the introduction,
+    near a Resonator's pulse or a Gilded Sentinel, or has no room for a cyborg), and one always comes before
+    Corporate 2's first Enforcer. Never the introduction of the Octodog or the Buzz Overdrive.
+    - Placeholder: `charge_path_cyborgs = 1` in those levels, `skip_introductions` and `attack_margin_seconds`
+    2 s in `data/tuning/charge_paths.tres`.

@@ -606,8 +606,8 @@ static func _plan(gen: LevelGenerator, patterns: Array, rng: RandomNumberGenerat
 
 
 ## The stretches neither half adds to, in any lane: ramps (to the end of their launch), ceiling landing
-## zones, speed pads, floor cuts' windows and the rules' lane-less keep-outs (a Gilded Sentinel's turn;
-## not those of the tuning's keep_out_exempt_features: a host's chase). Each half adds its own
+## zones, speed pads, floor cuts' windows and the rules' lane-less keep-outs (a Gilded Sentinel's
+## turn; not those of the tuning's keep_out_exempt_features: a host's chase). Each half adds its own
 ## (_enemy_fixed, _index_obstacles): pads, quiet stretches, plain ceilings.
 static func _fixed_stretches(plan: Plan) -> Array[Vector2]:
 	var gen: LevelGenerator = plan.gen
@@ -1254,6 +1254,10 @@ static func _index_obstacles(plan: Plan) -> void:
 	for s: Dictionary in layout.signs:
 		protections.append(_margined(plan, Vector2(float(s["start"]), float(s["end"]))))
 	protections.append_array(gen.quiet_stretches())
+	# Task G7: each wider gap from its take-off margin to its landing margin (WideGapPlacement.keep_outs, placed
+	# before the fill pass), as it stands: those margins are the level's spacing there already, so each stays the
+	# only demand at its take-off and landing.
+	protections.append_array(WideGapPlacement.keep_outs(gen))
 	var strict: Array[Vector2] = []
 	for q: Vector2 in gen.quiet_stretches():
 		strict.append(_margined(plan, q))

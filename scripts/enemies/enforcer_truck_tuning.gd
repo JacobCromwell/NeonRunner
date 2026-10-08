@@ -82,7 +82,8 @@ extends EnemyTuning
 @export_group("Holes")
 ## DESIGN-TBD (docs/questions/c6.md): a gap in its lane longer than this share of the runner's full jump at
 ## the level's speed is too wide to hop, and wrecks it; it hops every shorter one. The levels' gaps are 0.4 to
-## 0.55 of a jump (data/patterns), so at 0.6 none of them is too wide.
+## 0.55 of a jump (data/patterns), so at 0.6 none of them is too wide, but each campaign level's couple of wider
+## gaps are (task G7: WideGapTuning.jump_fraction, 0.7; WideGapPlacement puts one in its chase where one fits).
 @export_range(0.3, 1.0, 0.01) var max_hop_jump_fraction: float = 0.6
 ## How high it bounces over a gap it hops (looks only).
 @export_range(0.1, 2.0, 0.05, "suffix:m") var hop_height: float = 0.6
