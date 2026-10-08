@@ -10,7 +10,10 @@ extends TestSuite
 ## Reduced flashing; every attempt plays out the same way. Its look (the statue kit's merged frames, the
 ## eyes' own material, nothing of it out of its niche), the Golden skins opening its niche, decorative
 ## statues never at wall-run height, its sounds and hint, its generator rules at 3, 5 and 6 lanes, and
-## Golden 2 and the Golden Palace's real layouts.
+## Golden 2 and the Golden Palace's real layouts. And, for the owner's requests of October 8, 2026 (GDD §9.11,
+## task H1): the 0.6 s warning against a runner's 0.35 s reaction (a floor runner leaves the lane in time, a wall
+## runner escapes with two moves), the grind as long as the warning, the statue and every statue niche lit (not
+## black), the flare's red hue, and no see-through slot beside a live niche at a chunk's end.
 
 const Rules = preload("res://scripts/enemies/gilded_sentinel_rules.gd")
 const AttackWatch = preload("res://tools/measure/attack_watch.gd")
@@ -36,12 +39,16 @@ func run() -> void:
 	_test_sounds_and_hint()
 	_test_decorative_statues()
 	_test_lit_niche()
+	_test_niche_flare_hue()
+	await _test_alcoves_lit()
+	await _test_chunk_boundaries()
 	_test_open_rects()
 	await _test_look()
 	await _test_skin_opens_niche()
 	await _test_warning_first()
 	await _test_floor()
 	await _test_wall()
+	await _test_reaction()
 	await _test_protection()
 	await _test_body_solid()
 	await _test_weapons()
@@ -165,6 +172,12 @@ func _test_sounds_and_hint() -> void:
 	for sound: StringName in [&"gilded_sentinel_grind", &"gilded_sentinel_swing", &"gilded_sentinel_break"]:
 		check(library.has_file(sound) and library.volume_db.has(String(sound)), "the sound %s exists with a level" % sound)
 	check(not library.pitch_variation.has("gilded_sentinel_grind"), "its warning sounds exactly the same every time")
+	# The grind fills the warning (tools/asset_gen/sfx_bank_sentinel.gd: the warning and a tail of 0.15 s): the file
+	# has to be regenerated whenever the warning changes (`tools/godot.sh sfx --only=gilded_sentinel_grind`).
+	var grind: AudioStream = library.stream(&"gilded_sentinel_grind")
+	check(grind != null and absf(grind.get_length() - (t.warning_seconds + 0.15)) < 0.03,
+		"its grind lasts its warning and a short tail (%.2f s for a %.2f s warning)"
+		% [grind.get_length() if grind != null else 0.0, t.warning_seconds])
 	var hints: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/hints/hints.json"))
 	var found: bool = false
 	for h: Dictionary in hints.get("hints", []):
@@ -331,31 +344,194 @@ func _test_skin_opens_niche() -> void:
 
 
 ## GDD §9.11 (owner, October 8, 2026: the live statue and the back of its niche were too hard to see in the
-## shadow of the arch): a live Sentinel's niche inside (recess(), lit) is a lit chamber, not a black hole: the
-## back and sides well above black, darker than the statue's gold so the figure stands out, lit by their own
-## colour (the kit's glow channel), and never in a hazard's colours (nothing glows red, orange or pink there but
-## the eyes and their flare); the decorative alcoves' recess (not lit) stays as it was.
+## shadow of the arch): the inside of a statue niche (recess(): the live Sentinel's and the decorative alcoves',
+## alike, so the live one is told by its eyes and its warning, USER_REQUESTS.md) is a lit chamber, not a black
+## hole: the back and sides well above black as the kit shows them (the colour in linear light times its shade),
+## darker than the statue's gold so the figure stands out, plain lit surfaces that never use the glow channel
+## (GDD §5), and none of a hazard's colours (red, orange or pink: a bronze, whose hue is far from them).
 func _test_lit_niche() -> void:
 	var kit := GoldenStatue.new()
-	var lit: MeshLayer = kit.recess(t.niche_width, t.niche_height, t.niche_depth, true)
-	var dark: MeshLayer = kit.recess(t.niche_width, t.niche_height, t.niche_depth)
-	check(lit != dark and lit == kit.recess(t.niche_width, t.niche_height, t.niche_depth, true), "a lit niche is its own cached template")
-	check(lit.verts.size() == dark.verts.size(), "the lit niche has the shape of the dark one (the same %d vertices)" % dark.verts.size())
-	var gold_luma: float = kit.gold.get_luminance()
-	var inside: Dictionary = {"LIT_BACK": GoldenStatue.LIT_BACK, "LIT_SIDES": GoldenStatue.LIT_SIDES,
+	var inside: MeshLayer = kit.recess(t.niche_width, t.niche_height, t.niche_depth)
+	check(inside == kit.recess(t.niche_width, t.niche_height, t.niche_depth), "a niche is a cached template")
+	var gold: Color = kit.gold
+	gold = Color(gold.r + GildedSentinel.STATUE_LIFT, gold.g + GildedSentinel.STATUE_LIFT, gold.b + GildedSentinel.STATUE_LIFT)
+	var surfaces: Dictionary = {"LIT_BACK": GoldenStatue.LIT_BACK, "LIT_SIDES": GoldenStatue.LIT_SIDES,
 		"LIT_CEILING": GoldenStatue.LIT_CEILING}
-	for name: String in inside:
-		var c: Color = inside[name]
-		var shown: float = c.get_luminance() * GoldenStatue.LIT_SHADE
-		check(shown >= 0.2 and shown * 1.25 <= gold_luma and c.v <= 0.85,
-			"%s %s: well above black as shown (%.2f), the gold stands out against it (%.2f)" % [name, c, shown, gold_luma])
-	# Plain lit surfaces: nothing of the inside glows (GDD §5), the decorative recess as little.
+	for name: String in surfaces:
+		var c: Color = surfaces[name]
+		var shown: Color = _shown(c)
+		check(shown.get_luminance() >= 0.2 and shown.get_luminance() * 1.15 <= gold.get_luminance(),
+			"%s %s shows as %s: well above black (%.2f), and the statue's gold stands out against it (%.2f)"
+			% [name, c, shown, shown.get_luminance(), gold.get_luminance()])
+		# A bronze: orange-brown but dim (a glowing orange is a hazard's, and the lit kit never glows).
+		check(c.s <= 0.6 and c.v <= 0.85, "%s is a muted stone colour, not a hazard's (saturation %.2f, value %.2f)" % [name, c.s, c.v])
 	var glows: bool = false
-	for i: int in lit.colors.size():
-		glows = glows or lit.colors[i].a > 0.0 or dark.colors[i].a > 0.0
+	for i: int in inside.colors.size():
+		glows = glows or inside.colors[i].a > 0.0
 	check(not glows, "nothing of the niche glows (gold, stone and cloth never do: GDD §5)")
-	var dark_back: Color = dark.colors[0]
-	check(dark_back.get_luminance() < 0.1, "the decorative alcoves' recess stays dark (%.2f)" % dark_back.get_luminance())
+	var darkest: float = 1.0
+	for i: int in 30:
+		darkest = minf(darkest, _shown(inside.colors[i]).get_luminance())
+	check(darkest >= 0.1, "no part of the niche's inside is near black (%.2f)" % darkest)
+
+
+## How a lit kit surface of colour `c` shows on screen (kit_solid.gdshader: the colour in linear light times a
+## shade, GoldenStatue.LIT_SHADE), as a display colour.
+func _shown(c: Color) -> Color:
+	var lin: Color = c.srgb_to_linear()
+	return Color(lin.r * GoldenStatue.LIT_SHADE, lin.g * GoldenStatue.LIT_SHADE, lin.b * GoldenStatue.LIT_SHADE).linear_to_srgb()
+
+
+## The flare tints the niche red: laid over the bronze, not added to it, and from `NICHE_TINT_RAMP` of the warning
+## on the blended colour is Sentinel red, not a hue near the gap edges' orange (about 13 degrees; Sentinel red
+## is about 3, the electric fence's pink is far the other way). The blend is worked out in linear light (what the
+## renderers blend in) and, as the worst case, in the display's encoding.
+func _test_niche_flare_hue() -> void:
+	var tint: Color = GildedSentinel.NICHE_TINT
+	check(GildedSentinel.niche_tint_alpha(0.0) == 0.0 and GildedSentinel.niche_tint_alpha(1.0) <= 1.0
+		and GildedSentinel.niche_tint_alpha(0.3) > GildedSentinel.niche_tint_alpha(0.1), "the tint rises with the flare, from nothing")
+	var surfaces: Dictionary = {"back": GoldenStatue.LIT_BACK, "sides": GoldenStatue.LIT_SIDES, "ceiling": GoldenStatue.LIT_CEILING}
+	var worst: float = 0.0
+	for name: String in surfaces:
+		var shown: Color = _shown(surfaces[name])
+		var shown_lin: Color = shown.srgb_to_linear()
+		for flare: float in [GildedSentinel.NICHE_TINT_RAMP, 0.5, 0.75, 1.0]:
+			var a: float = GildedSentinel.niche_tint_alpha(flare)
+			var in_light: Color = shown_lin.lerp(tint.srgb_to_linear(), a).linear_to_srgb()
+			var on_screen: Color = shown.lerp(tint, a)
+			for blended: Color in [in_light, on_screen]:
+				var hue: float = blended.h * 360.0
+				hue = minf(hue, 360.0 - hue)
+				worst = maxf(worst, hue)
+				check(hue <= 8.0 and blended.s >= 0.5,
+					"the %s at flare %.2f blends to %s: red (hue %.1f degrees, under 8; gap-edge orange is about 13)"
+					% [name, flare, blended, hue])
+	check(worst <= 8.0, "the flare is Sentinel red over every part of the niche (at worst %.1f degrees)" % worst)
+	# What the first build did (added the red) would have been orange: this is why it is a tint.
+	var added: Color = GoldenStatue.LIT_BACK.srgb_to_linear() * GoldenStatue.LIT_SHADE + Color(0.9, 0.1, 0.07)
+	var added_hue: float = Color(added.r, added.g, added.b).linear_to_srgb().h * 360.0
+	check(added_hue > 8.0, "(red added over the bronze would be %.1f degrees: orange-ish)" % added_hue)
+
+
+## Every statue niche is lit alike: the decorative alcoves too (task H1; USER_REQUESTS.md: they are there so a
+## live Sentinel can surprise the player, so it isn't the only lit niche), in both Golden skins.
+func _test_alcoves_lit() -> void:
+	for path: String in [GOLDEN_SKIN, PALACE_SKIN]:
+		var skin := load(path) as GoldenSkin
+		var spots: Array[Dictionary] = skin.statue_spots(-1, -4.5, 0.0, 800.0)
+		check(not spots.is_empty(), "%s has decorative alcoves on its left wall" % path.get_file())
+		if spots.is_empty():
+			continue
+		var at: float = float(spots[0]["at"])
+		var c0: float = floorf(at / TrackBuilder.CHUNK_LENGTH) * TrackBuilder.CHUNK_LENGTH
+		var wall := Node3D.new()
+		tree.root.add_child(wall)
+		skin.note_wall_enemies(-1, c0, c0 + TrackBuilder.CHUNK_LENGTH, [] as Array[Dictionary])
+		skin.wall_section(wall, -1, -4.5, c0, c0 + TrackBuilder.CHUNK_LENGTH)
+		var lit: bool = false
+		var black: bool = false
+		for inst: Node in wall.find_children("*", "MeshInstance3D", true, false):
+			var mesh: Mesh = (inst as MeshInstance3D).mesh
+			for si: int in mesh.get_surface_count():
+				var colors: PackedColorArray = mesh.surface_get_arrays(si)[Mesh.ARRAY_COLOR]
+				for c: Color in colors:
+					lit = lit or (absf(c.r - GoldenStatue.LIT_BACK.r) < 0.01 and absf(c.g - GoldenStatue.LIT_BACK.g) < 0.01
+						and absf(c.b - GoldenStatue.LIT_BACK.b) < 0.01)
+					black = black or (absf(c.r - 0.07) < 0.006 and absf(c.g - 0.06) < 0.006 and absf(c.b - 0.055) < 0.006)
+		check(lit and not black, "%s: the decorative alcove at %.1f is lit like a live niche, not the old near-black (lit %s, black %s)"
+			% [path.get_file(), at, lit, black])
+		wall.queue_free()
+	await tree.process_frame
+
+
+## The wall is built a chunk at a time (TrackBuilder: each chunk notes only its own enemies, then builds its
+## wall). A facade statue's alcove across a chunk's end had its hole cut by both chunks but its recess built by
+## the one with its middle, so a chunk that left the alcove out for a live niche beside it (crowds_niche) left a
+## see-through slot in the other's face. So a facade statue never reaches across a chunk's end
+## (GoldenFacades.chunk_straddled), in either skin, and with a live niche just past (and just short of) a
+## chunk's end, built as TrackBuilder does, every open point of the face has a recess behind it.
+func _test_chunk_boundaries() -> void:
+	var chunk: float = TrackBuilder.CHUNK_LENGTH
+	for path: String in [GOLDEN_SKIN, PALACE_SKIN]:
+		var sk := load(path) as GoldenSkin
+		var count: int = 0
+		var across: int = 0
+		for side: int in [-1, 1]:
+			for spot: Dictionary in sk.statue_spots(side, side * 4.5, 0.0, 2000.0):
+				count += 1
+				# Its opening (2.0 m) and the gold frame (0.12 m each side) across a multiple of the chunk length.
+				var at: float = float(spot["at"])
+				across += 1 if floorf((at - 1.12) / chunk) != floorf((at + 1.12) / chunk) else 0
+		check(count > 0 and across == 0, "%s: none of its %d decorative alcoves reaches across a chunk's end" % [path.get_file(), count])
+	var skin := load(GOLDEN_SKIN) as GoldenSkin
+	# The reviewer's case first (right wall, a live niche at 401.2 m: a facade statue stood at 400.1), then others.
+	var cases: Array = [[400.0, 401.2], [400.0, 398.8]]
+	for k: int in [3, 7, 11, 15, 19, 23, 27, 31, 35]:
+		cases.append([float(k) * chunk, float(k) * chunk + 1.2])
+		cases.append([float(k) * chunk, float(k) * chunk - 1.2])
+	var slots: int = 0
+	for c: Array in cases:
+		for side: int in [1, -1] if c[0] == 400.0 else [1]:
+			var bad: int = _open_without_recess(skin, side, side * 4.5, float(c[0]), float(c[1]))
+			slots += bad
+			check(bad == 0, "the wall on side %d with a live niche at %.1f, built as chunks to %.0f and from it: %d open points of the face have no recess behind"
+				% [side, c[1], c[0], bad])
+	check(slots == 0, "no see-through slot beside a live niche at a chunk's end (%d cases)" % cases.size())
+
+
+## Builds the two chunks [boundary - 40, boundary) and [boundary, boundary + 40) of the wall on `side` as
+## TrackBuilder does, each noting only its own Sentinel (the one at `niche_at`, if it is in it), and counts the
+## sample points near the boundary at wall-run height and below where the face is open (no face in its plane)
+## and nothing stands behind it (no recess back): a slot you could see through.
+func _open_without_recess(skin: GoldenSkin, side: int, face_x: float, boundary: float, niche_at: float) -> int:
+	var chunk: float = TrackBuilder.CHUNK_LENGTH
+	var wall := Node3D.new()
+	tree.root.add_child(wall)
+	for c0: float in [boundary - chunk, boundary]:
+		var mine: Array[Dictionary] = []
+		if niche_at >= c0 and niche_at < c0 + chunk:
+			mine.append({"type": "gilded_sentinel", "at": niche_at, "side": side, "lane": 0})
+		skin.note_wall_enemies(side, c0, c0 + chunk, mine)
+		skin.wall_section(wall, side, face_x, c0, c0 + chunk)
+	skin.note_wall_enemies(side, 0.0, chunk, [] as Array[Dictionary])
+	var face: Array[PackedVector2Array] = []
+	var behind: Array[PackedVector2Array] = []
+	for inst: Node in wall.find_children("*", "MeshInstance3D", true, false):
+		var mesh: Mesh = (inst as MeshInstance3D).mesh
+		if mesh == null:
+			continue
+		for si: int in mesh.get_surface_count():
+			var v: PackedVector3Array = mesh.surface_get_arrays(si)[Mesh.ARRAY_VERTEX]
+			for i: int in range(0, v.size() - 2, 3):
+				var tri := PackedVector2Array([Vector2(v[i].z, v[i].y), Vector2(v[i + 1].z, v[i + 1].y), Vector2(v[i + 2].z, v[i + 2].y)])
+				var flat: bool = true
+				var deep: bool = true
+				for j: int in 3:
+					flat = flat and absf(v[i + j].x - face_x) < 0.002
+					deep = deep and (v[i + j].x - face_x) * side >= 0.3
+				if flat:
+					face.append(tri)
+				elif deep:
+					behind.append(tri)
+	var bad: int = 0
+	var z: float = boundary - 4.0 + 0.037
+	while z < boundary + 4.0:
+		var y: float = 0.213
+		while y < 3.3:
+			var p := Vector2(-z, y)
+			if not _in_any(face, p) and not _in_any(behind, p):
+				bad += 1
+			y += 0.25
+		z += 0.1
+	wall.queue_free()
+	return bad
+
+
+func _in_any(triangles: Array[PackedVector2Array], p: Vector2) -> bool:
+	for tri: PackedVector2Array in triangles:
+		if Geometry2D.point_is_inside_triangle(p, tri[0], tri[1], tri[2]):
+			return true
+	return false
 
 
 ## Spots further than 3.5 m from `at` along the track: a live niche there neither touches nor crowds a
@@ -367,10 +543,10 @@ func _clear_of_spots(spots: Array[Dictionary], at: float) -> bool:
 	return true
 
 
-## GDD §9.11 (owner, October 8, 2026: the player must make out the live statue and its niche): a decorative
-## wall-base alcove that would crowd a live Sentinel's niche (overlap its frame, or leave less than
-## GoldenSkin.NICHE_CLEARANCE of wall between the frames) is left out, hole and statue, so the live niche
-## stands apart from the dark ones; one further off stays; with no live niche it is there.
+## A decorative wall-base alcove that would overlap or touch a live Sentinel's niche (less than
+## GoldenSkin.NICHE_CLEARANCE of wall between the frames) is left out, hole and statue, so a live niche is never
+## overlapped by a decorative one; one further off stays (the live niche is not to stand apart from the
+## decorative ones: USER_REQUESTS.md); with no live niche it is there.
 func _test_alcoves_keep_off(skin: GoldenSkin, path: String, face_x: float, spots: Array[Dictionary]) -> void:
 	var near: Dictionary = {}
 	for spot: Dictionary in spots:
@@ -531,6 +707,72 @@ func _test_wall() -> void:
 				await sim.free_world(w)
 
 
+# --- The 0.6 s warning against a runner's reaction ---------------------------------------------------
+
+## The reaction time the boss suites use (a runner sees the warning and starts a move this long after it).
+const REACTION: float = 0.35
+
+
+## GDD §9.11 (owner, October 8, 2026): the warning is 0.6 s, half as long as first built. What that leaves a runner
+## who reacts after REACTION (0.35 s, as the boss suites assume):
+## - on the floor in the outer lane: a lane change started then gets them out of the cut in time (both walls, 3 and
+##   6 lanes, at 18 and 25 m/s);
+## - on the wall in the band (they stepped onto it before the warning, so they saw none before it): a move off the
+##   wall alone leaves them in the outer lane's cut, but a move off the wall at REACTION and a lane change
+##   started by REACTION + 0.15 s, both within the 0.6 s, get them clear; a jump or a slide on the floor doesn't
+##   do it (the lane's cut reaches above any jump);
+## - passing above or below the band by timing the wall entry has to be planned from the statue at rest: the
+##   scripted "high" route starts its jump as the warning begins (the jump to the wall takes the whole warning).
+func _test_reaction() -> void:
+	for speed: float in SPEEDS:
+		var warn: float = t.warn_at(AT, 1, speed)
+		for lanes: int in [3, 6]:
+			for side: int in [-1, 1]:
+				var lane: int = 0 if side < 0 else lanes - 1
+				var inward: StringName = &"move_right" if side < 0 else &"move_left"
+				var tag: String = "(%d lanes, side %d, %.0f m/s)" % [lanes, side, speed]
+				# On the floor: a lane change started REACTION after the warning begins is in time...
+				var made: Array = await _world(lanes, lane, speed, [{"side": side}])
+				var w: RunWorld = made[0]
+				var s: GildedSentinel = made[1][0]
+				var r: Dictionary = await _run(w, _seconds_to(AT + 8.0, speed), [[warn + REACTION * speed, inward]])
+				check(r["alive"] and _count(s, "swing") == 1 and _count(s, "warning") == 1,
+					"a runner who leaves the outer lane %.2f s after the warning begins is safe %s (%s)" % [REACTION, tag, r["cause"]])
+				await sim.free_world(w)
+				# ... and one that doesn't is cut.
+				made = await _world(lanes, lane, speed, [{"side": side}])
+				w = made[0]
+				s = made[1][0]
+				r = await _run(w, _seconds_to(AT + 8.0, speed), [])
+				check(not r["alive"] and r["cause"] == CUT_NAME, "one who stays is cut %s (%s)" % [tag, r["cause"]])
+				await sim.free_world(w)
+		# On the wall (5 lanes), stepped on 0.3 s before the warning.
+		for side: int in [-1, 1]:
+			var lanes: int = 5
+			var lane: int = 0 if side < 0 else lanes - 1
+			var toward: StringName = &"move_left" if side < 0 else &"move_right"
+			var away: StringName = &"move_right" if side < 0 else &"move_left"
+			var enter: float = warn - 0.3 * speed
+			var tag: String = "(side %d, %.0f m/s)" % [side, speed]
+			# [what they do at REACTION, then at REACTION + 0.15 s, escapes?]
+			var plans: Array = [["steps off the wall then changes lane", [[warn + REACTION * speed, away], [warn + (REACTION + 0.15) * speed, away]], true],
+				["steps off the wall and stays", [[warn + REACTION * speed, away]], false],
+				["does nothing", [], false]]
+			for plan: Array in plans:
+				var made: Array = await _world(lanes, lane, speed, [{"side": side}])
+				var w: RunWorld = made[0]
+				var s: GildedSentinel = made[1][0]
+				var acts: Array = [[enter, toward]]
+				acts.append_array(plan[1])
+				var r: Dictionary = await _run(w, _seconds_to(AT + 8.0, speed), acts)
+				check(r["events"].has(&"wall_enter") and _count(s, "warning") == 1 and (r["alive"] == bool(plan[2])),
+					"a wall runner who %s %s: %s" % [plan[0], tag, "safe" if r["alive"] else "cut (%s)" % r["cause"]])
+				await sim.free_world(w)
+	# The "high" route's jump: it starts as the warning does, so this dodge is planned from the statue at rest.
+	var lead: float = tuning.wall_entry_time + 0.08 + tuning.jump_time_to_apex
+	check(lead >= t.warning_seconds - 0.02, "the jump of a run above the band takes the whole warning (%.2f s of %.2f s): plan it before it" % [lead, t.warning_seconds])
+
+
 ## The scripted actions for a route onto the wall on `side` past a Sentinel at AT (see _test_wall).
 func _wall_route(route: String, side: int, speed: float) -> Array:
 	var toward: StringName = &"move_left" if side < 0 else &"move_right"
@@ -540,7 +782,9 @@ func _wall_route(route: String, side: int, speed: float) -> Array:
 		"late":
 			return [[strike_at - 0.35 * speed, toward]]
 		"high":
-			# Onto the wall from the top of a jump, done before the cut starts and high enough all through it.
+			# Onto the wall from the top of a jump, done before the cut starts and high enough all through it. With the
+			# 0.6 s warning this starts the jump exactly as the warning begins (the wall entry, 0.08 s and the jump's apex
+			# time are 0.6 s, _test_reaction checks it): a run above the band is planned from the statue at rest.
 			var enter: float = strike_at - (tuning.wall_entry_time + 0.08) * speed
 			return [[enter - tuning.jump_time_to_apex * speed, &"jump"], [enter, toward]]
 		"low":

@@ -294,8 +294,10 @@ var _wall_x: float = 0.0
 ## Rect2 over (track distance, height).
 var _niches: Dictionary = {}
 ## DESIGN-TBD (docs/questions/h1.md): the wall kept clear between a live Sentinel's niche and a decorative
-## alcove beside it (crowds_niche()): the frames' width (2 x 0.12 m) and a margin.
-const NICHE_CLEARANCE: float = 0.84
+## alcove beside it (crowds_niche()): the two gold frames (2 x 0.12 m) and a little more, so they never touch or
+## overlap. No more than that: a live niche is not to stand apart from the decorative ones (USER_REQUESTS.md:
+## the decorative statues are there so a live one can surprise the player).
+const NICHE_CLEARANCE: float = 0.3
 
 
 func _init() -> void:
@@ -371,10 +373,11 @@ func niches(side: int) -> Array[Rect2]:
 
 
 ## True if a decorative wall-base alcove `half_width` wide (the opening, not its frame) centred at track
-## distance `at` on wall `side` would crowd a live Sentinel's niche in the wall being built (niches()): its
-## frame would touch the niche's or leave less than NICHE_CLEARANCE of wall between them. The facades leave
-## such an alcove out (its hole and its statue), so a live niche is never overlapped by a decorative one
-## and stands apart from the dark ones (task H1, GDD §9.11: the player must make out the live one).
+## distance `at` on wall `side` would overlap or touch a live Sentinel's niche in the wall being built
+## (niches(): the chunk's own, as TrackBuilder notes them): less than NICHE_CLEARANCE of wall between the two
+## frames. The facades leave such an alcove out (its hole and its statue), so a live niche is never overlapped
+## by a decorative one (task H1, GDD §9.11). A facade statue never straddles a chunk (GoldenFacades.
+## _place_statues), so the alcove is in the one chunk that knows the niche, or in a chunk with no niche near it.
 func crowds_niche(side: int, at: float, half_width: float) -> bool:
 	for r: Rect2 in niches(side):
 		if absf(at - r.get_center().x) < r.size.x * 0.5 + half_width + NICHE_CLEARANCE:
@@ -391,7 +394,7 @@ func add_niches(batch: MeshBatch, side: int, face_x: float) -> void:
 	var depth: float = GildedSentinel.niche_depth()
 	var turn := Basis(Vector3.UP, -side * PI * 0.5)
 	for r: Rect2 in rects:
-		layer.append(statues().recess(r.size.x, r.size.y, depth, true),
+		layer.append(statues().recess(r.size.x, r.size.y, depth),
 			Transform3D(turn, Vector3(face_x, r.position.y, -(r.position.x + r.size.x * 0.5))))
 
 

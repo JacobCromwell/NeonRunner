@@ -80,6 +80,13 @@ const SWEEP_SECONDS: float = 0.16
 ## (GoldenSkin.decorative_statue_mesh), so the live one reads against its niche as they do against theirs. It
 ## is albedo only: gold never glows in the Golden Zone (GDD §5), only the eyes do.
 const STATUE_LIFT: float = 0.08
+## The red the flare tints a niche with (sRGB; the shader takes it in linear light), how opaque it gets, and the
+## share of the warning in which it gets there. A red laid over the bronze (not added to it: that goes orange,
+## and gap edges are orange) passes through orange hues while it is faint, so it rises fast and is Sentinel red
+## for the rest of the warning; the suite measures the blended colour's hue (niche_tint_alpha).
+const NICHE_TINT := Color(0.86, 0.02, 0.03)
+const NICHE_TINT_MAX: float = 0.85
+const NICHE_TINT_RAMP: float = 0.3
 ## The eyes: their glow at rest, during the warning (rising to full) and once it's down (dark). DESIGN-TBD
 ## (docs/questions/h1.md): a little more at rest than first built (0.9), so the live statue is picked out early.
 const EYES_IDLE: float = 1.6
@@ -246,9 +253,10 @@ func _build_statue() -> void:
 
 
 ## How far a statue mesh, turned by `turn`, reaches toward the street (x) and back into the wall (y) from
-## its origin, along the wall's normal on wall `side`: its real vertices (the bounds of a turned figure's
-## box overstate it by a hand's breadth, and the statue stands that much further back for it). Measured
-## once for each frame and turn: every Sentinel on a wall shares them.
+## its origin, along the wall's normal on wall `side`: its real vertices. (The bounds of a turned figure's box
+## overstated how far it reaches toward the street by 0.033 m at the turn it has, so the statue stood that much
+## further back for them: its front was 0.063 m behind the face, not the 0.03 it was set to.) Measured once for
+## each frame and turn: every Sentinel on a wall shares them.
 static func reach_out(mesh: Mesh, turn: Basis, side: int) -> Vector2:
 	var key: Array = [mesh.get_instance_id(), turn, side]
 	if _reaches.has(key):
@@ -334,13 +342,21 @@ static func _cut_material() -> ShaderMaterial:
 	return m
 
 
-## The niche glow's material: its own shader (a red tint over the lit niche, not red added to it).
+## The niche glow's material: its own shader (a red tint over the niche, not red added to it).
 static func _niche_material() -> ShaderMaterial:
 	if _niche_shader == null:
 		_niche_shader = load("res://scripts/enemies/gilded_sentinel_niche.gdshader") as Shader
+	var lin: Color = NICHE_TINT.srgb_to_linear()
 	var m := ShaderMaterial.new()
 	m.shader = _niche_shader
+	m.set_shader_parameter(&"tint", Vector3(lin.r, lin.g, lin.b))
 	return m
+
+
+## How opaque the red tint over its niche is at the eyes' flare `flare` (0 to 1 over the warning): fast, so it is
+## Sentinel red from `NICHE_TINT_RAMP` of the warning on. A steady rise, with no throb (Reduced flashing).
+static func niche_tint_alpha(flare: float) -> float:
+	return NICHE_TINT_MAX * clampf(flare / NICHE_TINT_RAMP, 0.0, 1.0)
 
 
 ## The marks' and slashes' shader, loaded once and kept (task PERF1: loaded afresh, it was parsed again by
@@ -725,7 +741,7 @@ func _process(delta: float) -> void:
 	if _glow != null:
 		_glow.visible = flare > 0.01
 		var gm := _glow.material_override as ShaderMaterial
-		gm.set_shader_parameter(&"strength", flare * throb)
+		gm.set_shader_parameter(&"strength", niche_tint_alpha(flare))
 	_update_marks(delta, reduced)
 
 
