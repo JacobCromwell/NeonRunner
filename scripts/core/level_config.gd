@@ -143,6 +143,18 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## build places, where it's fair: an open lane and the level's spacing around everything it adds.
 ## 0 turns it off: the level is built exactly as before (quick play, the tests, boss arenas).
 @export_range(0.0, 1.0, 0.01) var danger_density_increase: float = 0.0
+## Wider gaps (owner, October 7, 2026, GDD §9.13 "Holes"; task G7): this many of the level's gap rows
+## come out longer along the run (WideGapTuning.jump_fraction of a jump, data/tuning/wide_gaps.tres):
+## still jumpable, too wide for an Enforcer Truck to hop, so one that follows the runner into one is
+## wrecked. Uncommon: "a couple of times each level" (WideGapPlacement). 0 turns it off: the level is
+## built exactly as before (quick play, the tests, boss arenas). DESIGN-TBD: 2 in every campaign level.
+@export_range(0, 6) var wide_gaps: int = 0
+## Cyborgs in charge paths (owner, October 7, 2026, GDD §9.13 "Teaching"; task G7): up to this many of the
+## level's Octodog lunges and Buzz Overdrive charges get a plain cyborg standing in their path, so the
+## player sees a charge flatten another enemy (ChargePathPlacement; numbers in data/tuning/charge_paths.tres).
+## 0 turns it off: the level is built exactly as before. DESIGN-TBD: 1 in every campaign level with Octodogs
+## or Buzz Overdrives (Gangland 2 on), so the player meets it several times before the Enforcer Truck.
+@export_range(0, 4) var charge_path_cyborgs: int = 0
 ## Quiet stretches and bursts (GDD §5, The Hush: long silent stretches broken by sudden threats).
 ## With quiet_seconds above 0, the level after its run-up alternates a quiet stretch of that many
 ## seconds at run speed with a burst of burst_seconds, quiet first. In a quiet stretch patterns are

@@ -518,18 +518,19 @@ Shared interaction rules apply unless stated otherwise:
   - **Drives on the street behind the player** and **follows the player's lane changes after a short delay** *(proposed: about 0.8 s)*, so a late dodge leaves it in the lane the player just left.
   - **Seeing it:** it's behind the camera, so its **headlight beams and light bar shine forward onto the floor of its lane**, and a small marker at the screen's bottom edge shows its lane. The light bar honours Reduced flashing.
   - **Holes:** it hops ordinary gaps as the player does. A **Buzz Overdrive's floor cut** in its lane, or **a gap too wide to hop**, wrecks it.
+    - **Wider gaps** (owner, October 7, 2026): every level has **a couple of wider gaps**. They're uncommon, still jumpable by the player, and wide enough that an Enforcer following the player into one is wrecked.
   - **During an Octodog's attack** it **closes right up behind the player**, so the Octodog's lunge (which ends just behind the player) reaches it. *(Proposed)* While that close it must not hide the runner: it stays under the camera's line of sight, or its body turns see-through while its lights stay solid.
   - **Gives up after about 25 seconds** if not destroyed (like the hover truck).
 - **Attack:** **lasers** at the player's lane. Each volley is warned by **a red line on the floor ahead and a rising whine**, and dodged by changing lanes, which also moves the truck. *(Proposed)* Its volleys are a big attack for turn-taking (§9), so it never fires while an Octodog or Buzz Overdrive charges.
 - **Killing it:**
   - **The only ways:** **bait an Octodog's lunge or a Buzz Overdrive's charge into it**, or **lead it into a Buzz Overdrive's cut or a gap too wide to hop**.
   - It's immune to weapons, stomps, claws and the dash. *(Proposed)* It never touches the player.
-- **Picking up cyborgs:** a cyborg the player left alive that is in the truck's lane when the truck passes is **picked up**. It rides on the roof as a visible gunner and **raises the truck's rate of fire**. *(Proposed: up to 3 riders.)* Destroying the truck pays a **bonus for each rider aboard**, so a skilled player may let it load up before baiting it.
+- **Picking up cyborgs:** a cyborg the player left alive that is in the truck's lane when the truck passes is **picked up**. It rides on the roof as a visible gunner and **raises the truck's rate of fire**. *(Proposed: up to 3 riders.)* Destroying the truck pays a **bonus for each rider aboard**, so a skilled player may let it load up before baiting it. **Hosts never board, and riders can't be shot off** (owner, October 7, 2026).
 - **Placement:**
   - **Up to two per level**, never two at once.
   - Each one is placed only where **at least one Octodog or Buzz Overdrive charge comes during its chase**, so it always has a chance to be destroyed.
   - It appears where Octodogs or Buzz Overdrives appear, **introduced in Corporate 2** with a first-encounter hint.
-- **Teaching** *(proposed)*: before its first appearance, the player sees a charge flatten another enemy (an Octodog lunging through a cyborg), so the rule is learned before it's needed.
+- **Teaching** (owner, October 7, 2026): **occasionally a cyborg stands in the path of an Octodog's lunge or a Buzz Overdrive's charge**, so the player sees a charge flatten another enemy. At least one comes before the Enforcer's first appearance in Corporate 2.
 - **Name:** "Enforcer" is also used in two cyborg variants' art names (§9.2: Gangland's "Broadcast Brute" Enforcer and the Marketplace's "Casino Mob Enforcer"). The truck keeps the name.
 
 ### 9.14 Dash walls (owner, October 8, 2026; first appear in the Corporate zone)

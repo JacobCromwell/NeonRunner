@@ -146,8 +146,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   a speed pad's), speed pads. From the second half of City 2 on, about half the ceilings cover only some of
   the lanes (a placeholder amount): on one you switch lanes only within it (a move past its edge bumps you
   back with the clank), and a one-lane ceiling is short.
-- **Obstacles:** gaps, signs, and electric fences (full-height or gapped, always-on or pulsing), some with a
-  generator that switches them off. Floors that turn into gaps during play: after a warning, a lane's floor
+- **Obstacles:** gaps (every campaign level has a couple of wider ones: still a normal jump, but an Enforcer
+  Truck following you into one is wrecked), signs, and electric fences (full-height or gapped, always-on or
+  pulsing), some with a generator that switches them off. Floors that turn into gaps during play: after a warning, a lane's floor
   is cut away from ahead of you back past you, its edges glowing the gap orange (the Buzz Overdrive's cuts;
   in quick play also a grey-box stand-in, `--features=floor_cutter`). Wall fences (from Marketplace 2):
   the same pink crackle across the wall-run path between emitters on the facade, switching off and on with
@@ -163,7 +164,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     in the F6 panel), and never so that a single lane switch can't dodge them
   - window cyborgs
   - the hover truck mini-boss
-  - the Octodog; its active charges can kill other vulnerable enemies on physical contact
+  - the Octodog; its active charges can kill other vulnerable enemies on physical contact (now and then a cyborg
+    stands in the path of an Octodog's lunge or a Buzz Overdrive's charge, so you see it flattened)
   - the sewer screech
   - the heli drone
   - the Cyborg's Bad Dream, released by killing a host cyborg (from Dead Zone 1; in quick play, try
@@ -352,7 +354,8 @@ F6 pauses the game and opens a panel with sections for movement, game rules, pow
 pickups, speed effects (the camera's field-of-view kick and lane lean, speed lines, shake, hit-stop and the
 sparks and debris on kills and blocked hits), performance (how long a frame may spend dressing the track; see
 Smooth frames), the music's pause duck and death dip, level pacing, the campaign's
-recency curve for pick weights (in a campaign level) and each enemy type in the level. Changes apply immediately;
+recency curve for pick weights (in a campaign level), the wider gaps and the cyborgs planted in charge paths (in a
+level that asks for them: **Wider gaps**, **Charge paths**) and each enemy type in the level. Changes apply immediately;
 pacing, pick weights, speed, jump and size
 changes also reshape the level, so press **Restart level** to rebuild it. **Save** writes the values back to
 their files in `data/`; **Reload files** undoes unsaved changes. Every other number is in `data/` too: enemy
@@ -412,7 +415,10 @@ family, the Barnacle Turret's looks and a ride past it, a floor cut in any zone'
 model and an encounter with it, the Floating Head, the Sleep Taker (its lure and defeat, `--scenario=lure`, and its readability
 in the dark, `--scenario=measure`), The House (`--scenario=spin|buttons|jackpot|wall|ceiling|defeat|fight`), Hostile Takeover (`--scenario=run|train|gunship|locomotive|coupling|contract|merger|defeat`), the Sewer Swarm (`--scenario=rising|surge|fence|hole|fight|model|behind|host|stomp|defeat|hostmodel`) and its crowds' stress test for the phone (`swarm_stress`: N clusters of C screeches with a frame-time and draw-call readout), the UI kit, every screen, a zone skin's fixed review track, the cult's feed,
 the Golden Zone's statues, the Gilded Sentinels (each route past one, and its kick), the Enforcer Truck (its
-chase and a volley, each bait, a too-wide gap, its model; `--scenario=chase|octodog|buzz|gap|model`), any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
+chase and a volley, each bait, a too-wide gap, its model; `--scenario=chase|octodog|buzz|gap|model`), a wider gap
+jumped and an Enforcer Truck wrecked in one (`wide_gap_review`, `--scenario=jump|enforcer`), an Octodog's lunge and a
+Buzz Overdrive's charge flattening a cyborg planted in its path (`charge_path_review`, `--scenario=octodog|buzz`),
+any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
 lists its options. For example, a zone's arrival flyover rendered to frames on the web / low-end renderer:
 `godot --path . --rendering-method gl_compatibility --fixed-fps 10 --write-movie build/cine/f.png --quit-after 100
 res://tools/showcase/cinematic_review.tscn -- --slot=golden/intro --once`.

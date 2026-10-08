@@ -133,7 +133,10 @@ func _test_density(campaign: Campaign) -> void:
 					on_ms += int(built["on_ms"])
 					var off: LevelLayout = built["off"]
 					var on: LevelLayout = built["on"]
-					enemies[li] += Vector2i(off.enemies.size(), on.enemies.size())
+					# Not the cyborgs planted in charge paths (task G7, ChargePathPlacement): the same few with and
+					# without the dial, after the pass's count.
+					enemies[li] += Vector2i(off.enemies.size() - ChargePathPlacement.planted_in(off).size(),
+						on.enemies.size() - ChargePathPlacement.planted_in(on).size())
 					floors[li] += Vector2i(DangerDensity.floor_count(off), DangerDensity.floor_count(on))
 					walls[li] += Vector2i(off.wall_fences.size(), on.wall_fences.size())
 					credits[li] += Vector2i(off.total_credit_value(), on.total_credit_value())
@@ -201,7 +204,9 @@ func _check_fair(config: LevelConfig, gen: LevelGenerator, off: LevelLayout, tag
 	var result: Dictionary = gen.danger_density_result
 	check(not result.is_empty(), "the pass ran " + tag)
 	check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
-	check(int(result.get("baseline_enemies", -1)) == off.enemies.size(),
+	# A cyborg planted in a charge's path (task G7, ChargePathPlacement) comes after the pass's count, with or
+	# without it.
+	check(int(result.get("baseline_enemies", -1)) == off.enemies.size() - ChargePathPlacement.planted_in(off).size(),
 		"the pass counts the enemies the level holds without it %s" % tag)
 	var pieces: int = 0
 	for key: String in ["widened", "new_row_pieces", "full_rows", "staggered_pieces", "routed", "routed_row_pieces"]:

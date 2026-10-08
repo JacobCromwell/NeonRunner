@@ -11,6 +11,7 @@ extends RefCounted
 ## 3. a reload pause.
 ##
 ## Fairness (GDD §9 shared rules): a burst only starts, and a bolt only fires, if
+## - none of its bolts would arrive where the shooter holds its fire (`hold`, task G7);
 ## - the shooter is ahead of the player and within engage_distance (never from behind or out of
 ##   sight), and the enemy's own may_attack() agrees (e.g. not at a player on the ceiling);
 ## - each bolt needs at least min_warning_time to arrive;
@@ -75,6 +76,10 @@ var track_velocity: float = 0.0
 var pace: float = 1.0
 ## Returns whether the shooter may attack right now (the enemy's own rules).
 var may_attack: Callable
+## A stretch of the player's distances where none of its bolts may arrive (task G7: a cyborg planted in a
+## charge's path holds its fire through the charge's warning and strike, ChargePathPlacement): a burst whose
+## bolts would land there isn't fair (_burst_fair). Empty (Vector2(INF, -INF)) for every other shooter.
+var hold := Vector2(INF, -INF)
 var state: State = State.READY
 ## Every charge, shot and cancelled burst (for tests and debugging): {"t" (level time),
 ## "event": &"charge" | &"shot" | &"cancel", "player_d" and "shooter_d" (track distances); charges
@@ -377,6 +382,8 @@ func _burst_fair(lead: float, shots: int) -> bool:
 		if k == 0 and t < tuning.min_warning_time:
 			return false
 		var impact: float = player.distance + v * (tau + t)
+		if impact >= hold.x and impact <= hold.y:
+			return false
 		if not path_clear(impact - tuning.clear_before_impact * pace, impact + tuning.clear_after_impact * pace):
 			return false
 		_window = Vector2(minf(_window.x, now + tau + t), maxf(_window.y, now + tau + t))
