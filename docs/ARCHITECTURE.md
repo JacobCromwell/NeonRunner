@@ -2025,6 +2025,29 @@ reading `scenery_light` (through `light_factor`) in a shader of its own, or by o
 `apply_darkness()` (calling it first). Only the run that set the light last resets it when it ends
 (`LevelRun`). `skin_review` takes `--darkness=X` to look at it.
 
+**A level's own sky** (`LevelConfig.sky`, a `LevelSky` in `data/skies/`; owner, October 8, 2026). Most
+levels keep their zone's sky; a zone's last level may show the time of day or the weather turning, for a
+sense of progression: City 3 a dawn (`city_dawn`: the sun about to rise, pinks and purples on the
+undersides of clouds), Gangland 3 a cloudy blood-red sky (`gangland_blood_red`), Marketplace 2, the
+zone's last level, a sunset (`marketplace_sunset`: deep blue overhead, pink at the bottom of the sky).
+`ZoneSkin.level_environment(darkness, sky)` builds the zone's environment, then `LevelSky.apply()` sets
+the sky's `night_sky.gdshader` uniforms over the zone's (by name; its colours go as sRGB `Vector3`s, as the
+Dead Zone's do, so both renderers draw them alike) and the distance fog's colour (so far scenery fades
+into that sky); the darkness comes after, as for any level. Nothing else changes: the ambient light, the
+sun, every glow and the fog's reach stay the zone's, so hazards read as in the zone's other levels, and a
+sky stays under the glow threshold, so it never blooms (`test_level_sky`). The zone's own environment is
+never touched (each `make_environment()` builds its own sky material). The sky shader's looks for a level
+sky all default to off, so no zone's own sky changes: `horizon_falloff` (0.55: how far down the zenith's
+colour reaches), a glow low over the horizon at a bearing (`sun_glow_*`, where the sun is about to rise
+or has just set), and a cloud layer (`cloud_*`: value-noise cloud on a plane overhead, receding to a thin
+band at the horizon and stretched across the street; its undersides catch `cloud_lit_color`, the more so
+toward `sun_glow_direction` by `cloud_lit_focus` (0: lit from all around, as by Gangland's fires), on the
+lower clouds, on their thin edges and on each cloud's side facing the light). The clouds cost six octaves
+of value noise per visible sky pixel, only where a level has them; no `TIME`, so the sky's radiance still
+never updates. Endless mode, which copies its zone's last level, keeps the zone's own sky
+(`App.start_endless`), as do boss fights (`Campaign.configure_boss` builds the arena's own config) and
+cinematics (`CineStage`: `level_environment(0.0)`). `skin_review` takes `--sky=name` to look at one.
+
 The kit's solid shader (`kit_solid.gdshader`) draws surface patterns chosen per vertex (`MeshKit.PAT_*`):
 panels, glass, glyphs and chevrons for the City; worn asphalt (with sand drifts and scorch around holes),
 road strata, salvaged plating, posters (with corporate ads), cast concrete and stencilled crates and
@@ -3736,7 +3759,7 @@ its `--screen=hud_armor [--tier=N]` takes the HUD's armor through its states: up
 filling, back), a zone skin
 (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed screens and emblems a
 skin lists, or a scripted run with a ceiling ride and a wall run, in a level's darker lighting with
-`--darkness=X`; `--narrow` makes three of its ceilings narrow, one lane in the middle, the two leftmost
+`--darkness=X` and under a level's own sky with `--sky=name`; `--narrow` makes three of its ceilings narrow, one lane in the middle, the two leftmost
 lanes and the rightmost lane, with shots riding each, of its far end from below and from beside it, and
 a run that tries moves past their edges; `--from=D` starts the run further on, `--reduced-flashing`
 turns Reduced flashing on), a cinematic (`cinematic_review`: any campaign slot's cinematic on its own, as
