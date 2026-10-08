@@ -39,7 +39,7 @@ extends EnemyTuning
 @export_range(0.0, 30.0, 0.5, "suffix:m") var clear_before_impact: float = 12.0
 @export_range(0.0, 30.0, 0.5, "suffix:m") var clear_after_impact: float = 8.0
 ## A burst keeps its place in the air (CyborgAirspace: GameRules.max_bursts_in_air at once, GDD §9.2)
-## until this long after its last bolt, so the next may start charging only then.
+## until this long after its last bolt: with every place taken, the next starts charging only then.
 @export_range(0.0, 3.0, 0.05, "suffix:s") var burst_gap: float = 0.5
 ## DESIGN-TBD (docs/questions/h4.md): the crossfire rule (CyborgGun._crossfire_fair). Bursts whose
 ## bolts arrive within this long of each other must leave the runner a lane one move away that none of

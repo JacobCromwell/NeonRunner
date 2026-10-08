@@ -3,9 +3,9 @@ extends Enemy
 ## A window cyborg (GDD §9.2): the upper body of a cyborg leaning out of a window in a wall. A wall
 ## enemy: patterns place it with `side`, not lanes. It doesn't move; it shoots at the player with
 ## the cyborgs' arm cannon (CyborgGun: charge-up with a sound, bursts of 2–3, reload), sharing their
-## airspace (CyborgAirspace: up to two bursts in the air at once, GDD §9.2). A wall runner it aims at can
-## only dodge down into the outer lane, so the crossfire rule keeps that lane free of another burst
-## arriving with its bolts (CyborgGun._crossfire_fair).
+## airspace (CyborgAirspace: up to two bursts in the air at once, GDD §9.2). A runner on the far wall can
+## only drop off into the outer lane below, so the crossfire rule keeps another burst's bolts from
+## arriving there with its own (CyborgGun._crossfire_fair).
 ## - Touching it hurts, and armor doesn't stop that: its body is a solid hitbox (armor still blocks
 ##   its shots). Claws and the dash defeat it; there is nothing to stomp up there.
 ## - It sits at a fixed height: its body fills a band of wall-run heights centred on the free

@@ -75,7 +75,7 @@ extends Resource
 ## GDD §9.2 (owner, October 8, 2026): how many bursts of the cyborg-type guns (cyborgs, window cyborgs
 ## and Barnacle Turrets share the limit) may be in the air at once, each from its charge-up until
 ## shortly after its last bolt (CyborgAirspace). The build had allowed one, which looked unnatural.
-## Small attacks: big attacks of different types still take turns (above).
+## These are small attacks; big attacks of different types still take turns (above).
 @export_range(1, 4) var max_bursts_in_air: int = 2
 
 @export_group("Score")
