@@ -10,6 +10,8 @@ extends Node3D
 ##   --lanes=N       lane count (default 5)
 ##   --darkness=X    a level's darker lighting, 0–1 (LevelConfig.darkness, ZoneSkin.apply_darkness:
 ##                   The Hush's is 0.7); default 0, the zone's own light
+##   --sky=name      a level's own sky over the zone's (LevelConfig.sky, LevelSky): a sky in
+##                   data/skies/ (name.tres, such as city_dawn) or a res:// path; default none
 ##   --view=run      (default) a god-mode player runs the level: jumps a gap and a fence, takes a pad
 ##                   onto a ceiling and switches lanes up there, rides a ramp onto the right wall past
 ##                   its shopfronts, then takes the other ceilings. Each action and movement event is
@@ -83,7 +85,11 @@ func _ready() -> void:
 	var path: String = skin_name if skin_name.begins_with("res://") else "res://data/skins/%s_skin.tres" % skin_name
 	skin = load(path) as ZoneSkin
 	var env := WorldEnvironment.new()
-	env.environment = skin.level_environment(float(_opt("darkness", "0")))
+	var sky_name: String = _opt("sky", "")
+	var sky: LevelSky = null
+	if sky_name != "":
+		sky = load(sky_name if sky_name.begins_with("res://") else "res://data/skies/%s.tres" % sky_name) as LevelSky
+	env.environment = skin.level_environment(float(_opt("darkness", "0")), sky)
 	add_child(env)
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-55.0, 25.0, 0.0)

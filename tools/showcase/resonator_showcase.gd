@@ -5,9 +5,9 @@ extends Node3D
 ##     --write-movie build/res/f.png --quit-after 90 res://tools/showcase/resonator_showcase.tscn -- --view=play
 ## Views:
 ##   model (default)  the Resonator close up over a strip of floor, looping: at rest (its halos tumbling),
-##                    the warning (the halos swing into line facing the camera, one per note of the
-##                    chime, the core and trims glowing red), the pulse, and a wave rolling toward the
-##                    camera; --turn circles the camera around it, --side looks from the side
+##                    the warning (the halos swing into line facing the camera, one at each of
+##                    Resonator.LINE_UP_AT, the core and trims glowing red), the pulse, and a wave rolling
+##                    toward the camera; --turn circles the camera around it, --side looks from the side
 ##   play             a real RunWorld through the run camera: a runner (god mode, so nothing ends the run)
 ##                    who jumps each wave as it comes; the Resonator hovers far ahead, warns and pulses
 ##   close            the same run with a camera beside the runner, looking ahead at the Resonator and
@@ -111,7 +111,7 @@ func _ready() -> void:
 
 
 ## The model on its own over a strip of floor (the world's track, the runner hidden), looping its warning
-## and pulse by the Resonator's own timings (CHIME_NOTES, warning_seconds).
+## and pulse by the Resonator's own timings (LINE_UP_AT, warning_seconds).
 func _build_model_view() -> void:
 	_world.player.visible = false
 	var t: ResonatorTuning = EnemyDirector.tuning_for("resonator") as ResonatorTuning
@@ -175,7 +175,7 @@ func _physics_process(_delta: float) -> void:
 			p.press(&"jump")
 
 
-## The model view's loop, 4.5 s long: at rest, the warning (the Resonator's own line-up per note), the
+## The model view's loop, 4.5 s long: at rest, the warning (the Resonator's own LINE_UP_AT), the
 ## pulse, and a wave rolling toward the camera.
 func _model_loop(delta: float) -> void:
 	_t += delta
@@ -188,8 +188,8 @@ func _model_loop(delta: float) -> void:
 	for k: int in 3:
 		var target: float = 1.0 if held else 0.0
 		if warning:
-			target = smoothstep(Resonator.CHIME_NOTES[k] - Resonator.LINE_UP_BEFORE,
-				Resonator.CHIME_NOTES[k] + Resonator.LINE_UP_AFTER, warn)
+			target = smoothstep(Resonator.LINE_UP_AT[k] - Resonator.LINE_UP_BEFORE,
+				Resonator.LINE_UP_AT[k] + Resonator.LINE_UP_AFTER, warn)
 		var now: float = _model.align[k]
 		_model.align[k] = target if target >= now else move_toward(now, target, delta * 1.4)
 		_model.halo_glow[k] = _model.align[k] * (1.0 if warning else 0.6)

@@ -44,6 +44,8 @@ const LEDGE_THICK: float = 0.5
 ## halberds need enough trackwise clearance to read from the runner's approach, not just enough
 ## room for the body at a front-on angle.
 const BASE_STATUE_NICHE_SIZE := Vector2(2.0, 3.4)
+## The width of the gold frame round a statue niche's opening (GoldenStatue.recess's `f`).
+const BASE_STATUE_FRAME: float = 0.12
 ## Where a base-mounted statue stands (its pedestal's centre, recessed behind the wall face), and how
 ## far it turns from the street toward the approaching runner (a three-quarter view from the lanes).
 const STATUE_TURN: float = 0.35
@@ -197,9 +199,23 @@ func _place_statues(b: Building) -> void:
 		return
 	var first: float = (b.b0 + b.b1) * 0.5 - float(count - 1) * spacing * 0.5
 	for i: int in count:
+		var at: float = first + float(i) * spacing
+		# Never an alcove across a chunk's end (task H1): the wall is built a chunk at a time, each cutting its
+		# part of the opening but only the one with the statue's middle building the recess and the statue,
+		# and a chunk that knows of a live niche beside it may leave the alcove out, which the next doesn't know.
+		if chunk_straddled(at):
+			continue
 		if MeshKit.hash01(b.seed, i, 31) < skin.statue_share:
 			var pose: int = MeshKit.hash_i(b.seed, i, 32) % GoldenStatue.DECORATIVE.size()
-			b.statues.append(Vector2(first + float(i) * spacing, float(pose)))
+			b.statues.append(Vector2(at, float(pose)))
+
+
+## True if a decorative alcove (its opening and its gold frame) centred at track distance `at` reaches across
+## the end of a chunk (TrackBuilder.CHUNK_LENGTH), where the walls are built in pieces: _place_statues leaves
+## such a statue out.
+static func chunk_straddled(at: float) -> bool:
+	var half: float = BASE_STATUE_NICHE_SIZE.x * 0.5 + BASE_STATUE_FRAME + 0.03
+	return floorf((at - half) / TrackBuilder.CHUNK_LENGTH) != floorf((at + half) / TrackBuilder.CHUNK_LENGTH)
 
 
 ## A gallery's gilded frames: one or two, clear of its ends.
@@ -349,6 +365,8 @@ func _building(batch: MeshBatch, b: Building, face_x: float, start: float, end: 
 	var holes: Array[Rect2] = skin.niches(side)
 	if b.kind == Kind.PALACE:
 		for statue: Vector2 in b.statues:
+			if skin.crowds_niche(side, statue.x, BASE_STATUE_NICHE_SIZE.x * 0.5):
+				continue
 			holes.append(Rect2(statue.x - BASE_STATUE_NICHE_SIZE.x * 0.5, skin.decorative_statue_mount_y(),
 				BASE_STATUE_NICHE_SIZE.x, BASE_STATUE_NICHE_SIZE.y))
 	_open_face(facade, side, face_x, u0, u1, 0.0, skin.plinth_top, b.wall, STYLE_PLINTH, b.seed, holes)
@@ -376,7 +394,7 @@ func _palace(_batch: MeshBatch, facade: MeshLayer, solid: MeshLayer, b: Building
 	solid.box(ledge + Vector3(-side * (LEDGE_OUT * 0.5 + 0.01), -0.12, 0.0), Vector3(0.03, 0.08, u1 - u0), skin.gold_color,
 		0.0, MeshKit.PAT_GOLD, _street_faces(side), 0.9)
 	for s: Vector2 in b.statues:
-		if s.x >= start and s.x < end:
+		if s.x >= start and s.x < end and not skin.crowds_niche(side, s.x, BASE_STATUE_NICHE_SIZE.x * 0.5):
 			var niche_basis := Basis(Vector3.UP, atan2(float(-side), 0.0))
 			solid.append(skin.statues().recess(BASE_STATUE_NICHE_SIZE.x, BASE_STATUE_NICHE_SIZE.y,
 				skin.decorative_statue_recess_depth()),

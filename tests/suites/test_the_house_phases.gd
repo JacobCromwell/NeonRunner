@@ -196,9 +196,14 @@ func _test_ceiling_and_defeat(lanes: int, speed: float) -> void:
 			c["tilt"] = bool(c["tilt"]) or boss.body.model.tilt > 0.9
 			c["wild"] = maxf(float(c["wild"]), boss.body.reels.blur().x)
 			c["jammed"] = boss.body.reels.jammed.count(1) == 3
+	var big_fires: Array[float] = []
+	world.effects.fireball_played.connect(func(_at: Vector3, size: float) -> void: big_fires.append(size))
 	await _run(world, bot, 60.0, func() -> bool: return boss.victory_over(), watch)
 	check(world.player.alive and boss.is_defeated(),
 		"a runner who reads it wins phase 3, and the fight %s%s" % [tag, "" if world.player.alive else ": " + cause[0]])
+	# Its collapse is two of the shared fireballs, over the hopper and at the reels (task H6).
+	check(big_fires.count(TheHouse.COLLAPSE_FIRE_SIZE) == 1 and big_fires.count(TheHouse.COLLAPSE_FIRE_SIZE * 0.7) == 1,
+		"it collapses in fireballs (%s) %s" % [big_fires, tag])
 	var planned: Array = _events(boss, &"ceiling_planned")
 	check(not planned.is_empty() and int(planned[0]["button_lane"]) == int(planned[0]["pad_lane"]),
 		"its special button is on a ceiling, in its pad's lane %s" % tag)

@@ -107,10 +107,13 @@ func make_environment() -> Environment:
 	return Environment.new()
 
 
-## The environment for a level of this zone with the level's `darkness` (LevelConfig.darkness, 0–1):
-## make_environment() with apply_darkness(). The run (LevelRun) builds its environment this way.
-func level_environment(darkness: float) -> Environment:
+## The environment for a level of this zone with the level's own `sky` over the zone's, if it has one
+## (LevelConfig.sky, LevelSky.apply), and its `darkness` (LevelConfig.darkness, 0–1): make_environment()
+## with both, then apply_darkness(). The run (LevelRun) builds its environment this way.
+func level_environment(darkness: float, sky: LevelSky = null) -> Environment:
 	var env: Environment = make_environment()
+	if sky != null:
+		sky.apply(env)
 	apply_darkness(env, darkness)
 	return env
 

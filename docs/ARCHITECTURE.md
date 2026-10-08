@@ -68,7 +68,8 @@ RunWorld (scripts/run/run_world.gd)       one run's gameplay world; everything s
              during a run (The House's jackpot fountain), pooled: a slot collected or passed is reused
   Pickups    PickupField: armor, shield and grapple pickups a boss offers, placed fairly, pooled
   Effects    RunEffects: particle bursts, debris, glowing lines, camera-shake and hit-stop requests,
-             and the shared impact spectacle (kills, blocked hits, hard landings, stomps)
+             the shared impact spectacle (kills, blocked hits, hard landings, stomps), and the one
+             pooled fireball every explosion uses (`fireball`, FireballPool)
   Score      ScoreKeeper: level score, credits, kills, bonuses, stats, and what thieves hold
   Sounds     PlayerSfx: non-positional sounds (RunWorld.play_sfx / play_sfx_at)
   Powerups   PowerupController, created if scripts/powerups/powerup_controller.gd exists
@@ -162,6 +163,53 @@ Every number is `SpeedFxTuning` (`scripts/run/speed_fx_tuning.gd`, `data/tuning/
   - **Screen shake** (Settings) scales every shake and hit-stop through `RunEffects.shake_scale`
     (`shake()` and `freeze()` both no-op at 0); the field-of-view kick, the lean and the speed lines
     stay on regardless, since none of them snap or strobe.
+- **Explosions** (task H6, the owner, October 8, 2026, GDD §11: "a yellow and red fireball"). Every explosion in
+  the game is one call, `RunEffects.fireball(pos, size, smoke, pace, spread)`, a pooled `FireballPool`
+  (`scripts/run/fireball_pool.gd`, built by `RunEffects.setup`). `size` is the fireball's radius in metres
+  (`SpeedFxTuning.fireball_scale` multiplies all of them); the pool does the rest, scaled by it: a yellow core
+  that blooms into orange and red, rolling outward and up, embers thrown out of it and dark smoke after
+  (`smoke` off for a quick one; `pace` plays it faster; `spread` holds its fire in nearer its centre; a bigger
+  one plays slower, `fireball_big_size`, so a boss's takes its time: 1.0 s of fire at 3 m, 1.7 s at 9 m or more).
+  It is **four `CPUParticles3D` a slot** (core flash, fire, smoke, embers), billboards of one soft, lumpy blob
+  texture drawn once by the CPU, in unshaded `StandardMaterial3D`s (additive for fire and embers, see-through
+  for smoke; `vertex_color_is_srgb`, so the ramps' colours are the inspector colours the Compatibility
+  renderer shows and Forward+ converts): no GPU particles, no custom shader, no lights, nothing that differs by
+  renderer. **Pooled and fixed**: a slot per simultaneous fireball (`fireball_pool`, 8; one more cuts the
+  oldest short; on a low-end device, `DeviceProfile.is_low_end`, half as many slots and `fireball_low_end_share`
+  of the particles), particle counts, ramps, curves, textures and materials fixed when the level loads (so an
+  explosion allocates nothing: a test counts the nodes), and `ShaderWarmup` draws the three materials during
+  the load (`_sample_fireballs`). A fireball is a look: no collision, no light, no hazard colours left behind
+  (the smoke is dark, and each one is gone in a second or two; a quick one in a fraction of that).
+  **It never whites out the view** (the H6 review): the camera rides behind the runner and runs into what has
+  just blown up, so each live fireball's strength follows the camera's distance from its centre
+  (`FireballPool._fade`, each frame: none of it within its size of the camera, all of it from 2.5 times its
+  size, in between by the distance, by the emitters' colour alpha, and an emitter showing nothing is hidden,
+  which also saves its fill rate); the materials also fade each puff out within 1.5 m (fire) or 2.5 m (smoke) of
+  the camera, fully drawn from 5 m or 8 m. The Enforcer wrecked right behind the runner is almost gone as the
+  camera passes through its fireball, and an explosion ahead fades as the camera closes on it.
+  `tools/measure/screen_luminance.py` measures it on rendered frames (the scene's mean luminance, the frames
+  above twice it, the share of the screen above 0.35).
+  **Reduced flashing** (`Settings.flashing_reduced`, read as each one starts): a fireball lasts exactly as long
+  and at the same pace, but is lit up from nothing over the first 28% of its life instead of at once, has no
+  pale-yellow start (orange, then the normal ramps' own cooling at the same points of its life), and is
+  `fireball_reduced_brightness` (0.45) of the normal strength: at no moment brighter than the normal fireball
+  (`test_fireballs` samples the real life: never brighter after 0.15 s, a peak at most 0.45 of the normal peak, in
+  the fire, the core and the embers). It asks for no shake and no sound: each caller's own `shake` (under the
+  Screen shake setting) and sound stay. A blast on the street is lifted out of the floor (`size * 0.45` up).
+  `fireball_played(pos, size)` announces each one (tests, tools). Who calls it, at what size: the drone's hit
+  (1.0) and crash (2.4); the hover truck's explosion (3.8, set out from the wall it skids into) and its burst
+  through the wall (2.6, quick); the Buzz Overdrive (3.0), the Enforcer truck (3.6) and a fence generator (1.2,
+  held in, quick and smokeless since the runner stands on it; inside the EMP's cyan ring: `RunWorld.emp` is unchanged); the plain missile's hit (0.9, quick) and the heavy
+  missile's blast (2.2, inside the cyan ring that shows its splash: `WeaponFx.missile_pop`, `blast`); Hostile
+  Takeover's defeat (`HostileTakeoverLobby.blast`, five fireballs rolling on, 10.8 m down to 5.4 m); the Floating
+  Head's crash (9, 6.75 and 5.4 at the wreck and its ends, no smoke: the wreck has its own) and its tower's
+  landing on the ship (3.2); The House's collapse (7 and 4.9); and each bomb blast of the Floating Head and The
+  House (the blast's radius, held in to 0.45 of the free spread, quick, no smoke: what looks like a hit is a hit,
+  and the fireball is gone about when the hitbox is; their timing, warnings and hitboxes are untouched). The
+  Sleep Taker's wisps and chunks, the Sewer Swarm and plain deaths are not explosions and keep their looks.
+  `tools/showcase/fireball_showcase.tscn` plays each of them through the real code
+  (`--scenario=sizes|drone|drone_pad|truck|truck_burst|buzz|enforcer|enforcer_close|generator|missile|bomb|bomb_straddle`,
+  `--reduced`, `--cam=close`).
 
 ### Smooth frames (task PERF1, the owner's report, October 2, 2026)
 
@@ -182,7 +230,7 @@ after, run by run: `frame_times.gd --log`, and `test_perf`).
   window cyborg took 0.3 to 3 s). `ShaderWarmup` (`scripts/run/shader_warmup.gd`; LevelRun adds it whenever the
   game renders) draws one copy of each look the level may show later, too small to see in front of the camera,
   for the level's first two drawn frames: every material on the run's hidden nodes (pools, the weapon's
-  effects), the effects' glow, one look of each enemy kind (`EnemyDirector.warm_looks()`, every part shown) and
+  effects), the effects' glow and the fireball's three looks (`FireballPool.materials`), one look of each enemy kind (`EnemyDirector.warm_looks()`, every part shown) and
   each track piece the zone skin dresses (fences in each state, wall fences, a sign, pads, ramps, speed pads,
   ceilings, doodads, gap edges, the finish line). It keeps the samples' materials until the next level's
   stage, so their shaders stay built for a look first met later. After it no shader on Gangland 3 is first
@@ -281,7 +329,7 @@ most in a frame higher by the warm-up's samples in the level's first two frames.
 | `data/tuning/pickups.tres` (`PickupTuning`) | in-run pickups: where they appear, taking them, the charge cap, the look |
 | `data/tuning/feature_recency.tres` (`FeatureRecency`) | the campaign's recency curve: how a level's pick weights follow how recently the campaign introduced each feature |
 | `data/tuning/wall_fences.tres` (`WallFenceTuning`) | wall fences (B5): how often, how they pulse, their introduction, and the fairness margins (their sizes are the movement tuning's) |
-| `data/tuning/wall_gaps.tres` (`WallGapTuning`) | side wall gaps (Zone 2 on): spacing (easy/hard), jitter, length, the share on both walls, and the keep-out margins, all in seconds at the level's run speed |
+| `data/tuning/wall_gaps.tres` (`WallGapTuning`) | side wall gaps (Zone 2 on): spacing (easy/hard), jitter, length, the share on both walls, and the keep-out margins, all in seconds at the level's run speed (a boss arena that opts in has its own: `LevelConfig.wall_gap_tuning`) |
 | `data/tuning/performance.tres` (`PerformanceTuning`) | smooth frames (PERF1): how long a frame may spend dressing built chunks, and `test_frame_times`' frame-time budgets |
 | `data/enemies/<type>.tres` (`EnemyTuning` subclasses) | per-enemy numbers, early/late pairs for campaign scaling |
 | `data/shop/catalog.json` | shop items, tiers and prices (the armor's texts take `{hits}` and `{seconds}`, filled from `GameRules` by `ShopScreen.item_text()`) |
@@ -367,9 +415,22 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
     the collector calls it for its own lane and position, `world.score.hold(self, value)`s what it
     gets, and flies it in with `RunEffects.coin_stream` for the visible stream GDD §9.12 asks for. *The
     approach cue*: not a hazard warning (touching it isn't an attack), but still noticeable: a smug
-    chuckle plays for everyone to hear (`world.play_sfx`, like the Resonator's chime) as soon as it
+    chuckle plays for everyone to hear (`world.play_sfx`, like the Resonator's warning) as soon as it
     exists. It reports no big attack (`is_major_attack_active` stays false): it isn't an attack, so it
-    never takes a turn.
+    never takes a turn. *How long it stays* (task H10, GDD §9.12, owner, October 8, 2026: "twice as
+    long"): untouched it leaves by distance, so its stay is `(start_ahead + passed_behind) /
+    approach_speed` seconds (`TitheCollectorTuning.stay_seconds()`): the pace stretches all three alike,
+    so it is the same in seconds at every run speed. First built at 30 m and 8 m over 7 m/s, about
+    5.4 s; the owner doubled it by halving `approach_speed` to 3.5 m/s (about 8.6 s ahead of the runner,
+    2.3 s behind, 10.9 s in all) with `start_ahead` and `passed_behind` (now a tunable, was a const) as
+    they were. Its pace along the track is the runner's less 3.5 m/s, so it covers about 2.7 times the
+    track it did (and sucks up about 2.5 times the credits in a credit-dense lane); a catch's window is
+    longer too (it closes more slowly). Robbed, it flees as it always did (`flee_speed`, `gone_ahead`).
+    A spawn param `approach_speed` overrides the tuning's: Hostile Takeover's Board passes its
+    `tithe_approach_speed` (7 m/s, the first-built stay), because a 130 m flatcar roof is too short for
+    the longer one (at 3.5 m/s it would meet the runner past the roof's end, over the coupling the
+    runner jumps, and be stomped mid-jump). It needs no reserved window in the generator: touching it is never a hit and it is never a
+    keep-out for anything (the generator's keep-out for it ends at its `at`, before it appears).
 - **A stomp on the ceiling** (C1): a hitbox that hangs from a ceiling (`Hazard.upside_down`, the
   Barnacle Turret's crown) has its top facing down, toward a rider on the ceiling, who stomps it by
   dropping back onto it after a jump (`Player._is_stomping`: on the ceiling, falling back toward it with
@@ -817,16 +878,65 @@ across the street), its cut's shader (`gilded_sentinel_cut.gdshader`), its sound
 - **In its niche.** A wall enemy (`side`), standing in a niche set into the wall at wall-run height: a
   2.6 m statue standing out from the wall would block a wall run at all of its heights, so the statue (the
   Golden Zone's kit, `GoldenStatue`, at `statue_scale`) stands in the recess with its front
-  `statue_inset` behind the face. Nothing of it reaches over the wall-run path (a wall runner's body lies
+  `statue_inset` (0.02 m) behind the face. Nothing of it reaches over the wall-run path (a wall runner's body lies
   along the face); only its swing does. The Golden Zone's skins open the niche (Zone skins: the statue
   kit's `recess()`, `GoldenSkin.note_wall_enemies`); in any other skin (quick play) it stands in front of
   the wall in the kit's `niche()` as a review stand-in, its hitboxes the same. At rest it holds its
   halberd upright at its side, the blade turned along the wall, so it fits the niche whole.
+- **Seeing it** (task H1, GDD §9.11, owner, October 8, 2026: "too hard to see inside the arched recess").
+  Seen from down the street the wall is almost edge-on, and whatever stands deep in an opening hides behind
+  its near edge: a point `x` deep shows through it `x * distance / (the runner's distance from the wall)`
+  further along it, so at 20 m with the wall 6 m away a statue 0.4 m deep is hidden behind a 1.4 m opening's
+  edge and only a sliver of it shows, in a black hole. The build can't do much about the depth: **collision
+  stays physical**, so nothing of the statue goes in front of the wall face (a wall runner's body lies along
+  it; a statue standing out of the wall would block the wall run, a design change for the owner) and the solid
+  `body` hitbox (`niche_depth - 0.1` deep behind the face) reaches as far back as the statue does (the suite
+  checks both). **The statue moved only about 4 cm; most of the gain is lighting and a wider opening.**
+  - *Placement from the real outline.* `GildedSentinel.reach_out()` measures the statue's rest frame by its
+    vertices (cached per frame and turn), not its turned bounding box, which overstated how far it reaches
+    toward the street by 0.033 m: its real front was 0.063 m behind the face, not the 0.03 it was set to, and
+    is now `statue_inset` (0.02 m) behind it exactly.
+  - *A shallower, wider niche.* `niche_depth` 0.78 m (from 0.9: the statue is about 0.7 m deep as it stands)
+    and `niche_width` 1.8 m (from 1.4), so more of the statue and of the niche's back show at a grazing angle.
+    Both are tunables the skin reads (`GildedSentinel.niche_rect()`, `niche_depth()`); the hitboxes follow.
+  - *Lit, not black, every niche alike.* `GoldenStatue.recess()` draws the inside of every statue niche, a live
+    Sentinel's and the decorative alcoves' (outdoor facades and the Palace), in warm bronze stone
+    (`LIT_BACK`, `LIT_SIDES` for the surface seen through the opening, `LIT_CEILING`): plain lit surfaces,
+    never the kit's glow channel (GDD §5: gold, stone and cloth never glow, and only hazards glow in hazard
+    colours; `test_golden_skin` pins it). The live niche is not the only lit one: the owner asked for the
+    decorative statues to be there so a live one can surprise the player (`docs/USER_REQUESTS.md`), so it is
+    told from them by its red eyes (`EYES_IDLE`, a little more than at first) and its warning. The statue's
+    gold is lifted in albedo by the decorative statues' amount (`STATUE_LIFT`).
+  - *The flare tints it red.* `gilded_sentinel_niche.gdshader` (blend_mix, unshaded, no textures, its colour a
+    plain vec3 in linear light: the same on both renderers) lays the eyes' red over the live niche's far side
+    and back as they flare, rather than adding red to it (red added to bronze goes orange, a hazard's colour
+    of its own, about 13 degrees against Sentinel red's 3). `niche_tint_alpha(flare)` rises fast (full at 0.3
+    of the warning, with no throb) so the blended colour is hue 0.5 to 6 degrees from then on and passes
+    through the oranges only in the first 0.1 s; `test_gilded_sentinel` computes the hues.
+  - *Room around it, and the chunk's end.* A decorative wall-base alcove that would overlap or touch a live
+    niche (less than `GoldenSkin.NICHE_CLEARANCE`, 0.3 m, of wall between the frames) is left out, hole and
+    statue (`GoldenSkin.crowds_niche()`, used by the facades and the Palace's colonnade), so a live niche is
+    never overlapped by a decorative one, and not otherwise set apart. The walls are built a chunk at a time and
+    each chunk knows only its own Sentinels, so a facade statue's alcove never reaches across a chunk's end
+    (`GoldenFacades.chunk_straddled()` in `_place_statues`, about 6% of the statues: a chunk that skipped an
+    alcove for a niche beside it would otherwise leave a see-through slot where the next chunk cut its part of
+    the hole); the Palace's bays (every 8 m, centred 4 m off the chunk lines) cannot straddle one.
+    `statue_spots()` lists the candidate places.
 - **The attack**, once, as the runner comes: when they're `warning_seconds` (and `strike_lead_seconds`) at
   their speed from the stretch it guards, it asks the director (below), then warns: its eyes flare (their
   own material, and their red light filling the niche, what a runner sees from far down the street where
   the wall is seen edge-on), stone grinds, it draws its halberd back, and the red marks of its cut light
-  up, filling toward the runner (the band on its wall, on the face; the outer lane's floor). Then it
+  up, filling toward the runner (the band on its wall, on the face; the outer lane's floor). The warning is
+  0.6 s (GDD §9.11, owner, October 8, 2026: half as long as first built); the eyes flare through all of it
+  and the draw-back takes its last `raise_share` (half, 0.3 s: `raise_seconds()`), so they come first, and
+  the grind sound (`gilded_sentinel_grind`) is as long as the warning (regenerate it alone with
+  `tools/godot.sh sfx --only=gilded_sentinel_grind` after changing either; the suite checks its length). What
+  0.6 s leaves a runner: on the floor, a lane change started after the 0.35 s reaction time the boss suites
+  assume is in time; a wall runner who stepped on the wall before the warning (in the band, 0 to 0.55 s
+  before) saw none before the cut, and escapes with two moves (off the wall, then a lane change) started
+  within 0.50 s of it; passing above or below the band by timing the wall entry has to be planned from the
+  statue at rest, since the jump of the high route (`wall_entry_time` + 0.08 s + the jump's apex time, 0.6 s)
+  starts as the warning does (`test_gilded_sentinel`'s reaction checks pin all of it). Then it
   swings as the runner reaches the stretch (`section_length`, around its niche; a slower runner: it holds,
   raised, up to `hold_max_seconds`; a faster one may get past, since the warning always runs its whole
   length): for `strike_seconds` its cut is live, two `attack` boxes over the stretch, the band on its wall
@@ -1095,7 +1205,10 @@ run after every feature's that puts things on the floor or the walls before them
 floor cuts included (`RUN_AFTER`), and the Resonator's, the Barnacle Turret's and the floor cutter's run
 after these. Each one's attack, at the level's run speed, is its window
 (`GildedSentinelTuning.attack_window`: from where the runner is as its eyes flare to the end of the stretch
-it cuts), and where it may stand is `problem()`:
+it cuts; never later than the floor it uses, `floor_use`: the escape lane is kept clear from
+`escape_lead_seconds` (0.7 s) before a swing, which is before the 0.6 s warning, so the window starts
+there, and the doodads, fill pass and floor cuts that keep off the window keep off its floor as ever),
+and where it may stand is `problem()`:
 - the level: its window past the run-up and the feature's start, its stretch before the end-clear stretch,
   and its niche within one of the track's chunks (`in_chunk`, `TrackBuilder.CHUNK_LENGTH`: the skin opens
   it in that chunk's wall);
@@ -1585,8 +1698,13 @@ both walls (`data/tuning/wall_gaps.tres`, seconds at the level's run speed). Eac
 run-up, the end-clear stretch, signs, wall fences, wall enemies (a Gilded Sentinel's whole wall section),
 ceilings over the outer lane, and a ramp's launch and longest wall run (`WallGapPlacement.keep_outs`, each
 widened by `clear_seconds`). The outer lane beside a gap is deliberately not kept clear: the owner wants
-players to read gaps coming. A level with the feature always gets at least one gap. Boss arenas never get
-any: `BossArena.base_config` strips the feature and `WallGapPlacement.is_boss_arena` refuses an `_arena` config.
+players to read gaps coming. A level with the feature always gets at least one gap. Boss arenas get none
+(`BossArena.base_config` strips the feature and `WallGapPlacement.is_boss_arena` refuses an `_arena` config)
+unless an arena opts in: its config lists the feature and carries numbers of its own,
+`LevelConfig.wall_gap_tuning` (`WallGapPlacement.tuning_for(config)` reads them; null for every level, which
+uses `data/tuning/wall_gaps.tres`). Only the Sleep Taker's arena does (task H9, owner, October 8, 2026: "the
+walls aren't safe"; `data/bosses/dead_zone_boss_wall_gaps.tres`, about 15 gaps a minute), and
+`BossArena.shifted` carries a lap's gaps as the fight joins it to the track again and again.
 
 On the track, `TrackBuilder._build_chunk` asks the skin for `wall_section` over the solid pieces only and
 `ZoneSkin.wall_gap(parent, side, face_x, start, end, gap)` over each gap's part in the chunk (with the whole
@@ -1982,6 +2100,29 @@ reading `scenery_light` (through `light_factor`) in a shader of its own, or by o
 `apply_darkness()` (calling it first). Only the run that set the light last resets it when it ends
 (`LevelRun`). `skin_review` takes `--darkness=X` to look at it.
 
+**A level's own sky** (`LevelConfig.sky`, a `LevelSky` in `data/skies/`; owner, October 8, 2026). Most
+levels keep their zone's sky; a zone's last level may show the time of day or the weather turning, for a
+sense of progression: City 3 a dawn (`city_dawn`: the sun about to rise, pinks and purples on the
+undersides of clouds), Gangland 3 a cloudy blood-red sky (`gangland_blood_red`), Marketplace 2, the
+zone's last level, a sunset (`marketplace_sunset`: deep blue overhead, pink at the bottom of the sky).
+`ZoneSkin.level_environment(darkness, sky)` builds the zone's environment, then `LevelSky.apply()` sets
+the sky's `night_sky.gdshader` uniforms over the zone's (by name; its colours go as sRGB `Vector3`s, as the
+Dead Zone's do, so both renderers draw them alike) and the distance fog's colour (so far scenery fades
+into that sky); the darkness comes after, as for any level. Nothing else changes: the ambient light, the
+sun, every glow and the fog's reach stay the zone's, so hazards read as in the zone's other levels, and a
+sky stays under the glow threshold, so it never blooms (`test_level_sky`). The zone's own environment is
+never touched (each `make_environment()` builds its own sky material). The sky shader's looks for a level
+sky all default to off, so no zone's own sky changes: `horizon_falloff` (0.55: how far down the zenith's
+colour reaches), a glow low over the horizon at a bearing (`sun_glow_*`, where the sun is about to rise
+or has just set), and a cloud layer (`cloud_*`: value-noise cloud on a plane overhead, receding to a thin
+band at the horizon and stretched across the street; its undersides catch `cloud_lit_color`, the more so
+toward `sun_glow_direction` by `cloud_lit_focus` (0: lit from all around, as by Gangland's fires), on the
+lower clouds, on their thin edges and on each cloud's side facing the light). The clouds cost six octaves
+of value noise per visible sky pixel, only where a level has them; no `TIME`, so the sky's radiance still
+never updates. Endless mode, which copies its zone's last level, keeps the zone's own sky
+(`App.start_endless`), as do boss fights (`Campaign.configure_boss` builds the arena's own config) and
+cinematics (`CineStage`: `level_environment(0.0)`). `skin_review` takes `--sky=name` to look at one.
+
 The kit's solid shader (`kit_solid.gdshader`) draws surface patterns chosen per vertex (`MeshKit.PAT_*`):
 panels, glass, glyphs and chevrons for the City; worn asphalt (with sand drifts and scorch around holes),
 road strata, salvaged plating, posters (with corporate ads), cast concrete and stencilled crates and
@@ -2193,11 +2334,13 @@ shader, `golden_facade.gdshader`. White and cream with red and gold accents (GDD
   `head`, `eyes`, `arm_r`, `arm_l`, `elbow_r`, `elbow_l`, `grip`, `halberd`): turn the pivots with
   `apply_pose(nodes, pose)` or directly, and give `eyes` (a MeshInstance3D) a glowing red material of
   its own. `niche(width, height)` is a niche proud of any wall; `recess(width, height, depth)` the one a
-  live Sentinel stands in, set into the wall (task C4): the skin learns where one stands
+  statue stands in, set into the wall (a live Sentinel's, task C4, and the decorative alcoves'; since task H1 its
+  inside is lit bronze rather than nearly black, for all of them): the skin learns where a live one stands
   (`note_wall_enemies`, `GildedSentinel.niche_rect`), leaves its opening out of the plinth and the calm
   band (`open_rects`: the face's pieces around it, sharing their edges exactly) and appends the recess
-  there (`add_niches`: a dark back and sides, a marble floor, a flush gold frame whose spandrels round it
-  into an arch); the Golden Palace's walls do the same with their panel. The skin's kit is
+  there (`add_niches`: a lit bronze back and sides, a marble floor, a flush gold frame whose spandrels round it
+  into an arch; a decorative alcove that would overlap it is left out, `crowds_niche()`); the Golden Palace's
+  walls do the same with their panel. The skin's kit is
   `GoldenSkin.statues()` (its gold and solid material). Decorative statues in both Golden skins stand
   at `statue_base_height` (0.10 m). The shared mount helper uses each rotated pose's outward projection
   plus `statue_base_inset` (0.10 m safety margin), rather than unnecessarily burying the body using
@@ -2462,6 +2605,20 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
     another key needs its riff remade to match, or removed. For now `MusicLibrary.riff_tracks` maps
     supplied songs back to their original zone's riff, preserving the existing completion sounds;
     their keys have not been retuned to the supplied songs.
+  - **The Resonator's warning** (H2, GDD §9.10; the owner's October 8, 2026 request that it not sound
+    like a doorbell): `resonator_warning` (`tools/asset_gen/sfx_bank_resonator.gd`; it was the three-note
+    chime `resonator_chime`) is noise only, a crackling build-up of fire that breaks into a crashing wave.
+    A rumble, roar and hiss brighten and swell, crackle (ticks and snaps) thickens, and the fire flares on
+    each halo's line-up (`Resonator.LINE_UP_AT`, once `CHIME_NOTES`: it still times the halos). A short
+    breath follows, then the wave crash lands exactly as the red wave leaves
+    (`ResonatorTuning.warning_seconds`, 1.3 s), its roll and fizz rolling out for 0.85 s after it.
+    - *Regenerate it* (`tools/godot.sh sfx --only=resonator_warning`) after retuning `warning_seconds` or
+      `LINE_UP_AT`: the sound is made for those times, and `test_resonator` measures its flares, its crash,
+      its crackle and its lack of any bell-like partial against them.
+    - *The wave leaving* plays `resonator_pulse` with the crash: a release thump and the rush of the wave
+      rolling in (a double pulse's second wave has only this), with no pitched hum under the crash.
+    - *Shot down in its warning,* a Resonator cuts the sound off before its crash (`PlayerSfx.stop()`):
+      with no wave coming, the crash must not land.
 
 ## Campaign, bosses and cinematics
 
@@ -2644,11 +2801,14 @@ encounter.setup(world, context, arena)   joins the world between the player and 
   `/ramp`, `/wall` and `/ceiling` routes. `hint_due(key)` remains a legacy encounter cue, but
   the hint presenter no longer listens to it during the fight.
 - **The light**: `set_light_level(level, seconds)` fades the environment's ambient and sky light, its
-  fog's light and the sun, never below `MIN_LIGHT_LEVEL`, and the scenery's own light with them (the
+  fog's light and the sun, never below `light_floor()`, and the scenery's own light with them (the
   `scenery_light` uniform a level's darkness sets: the skins' scenery shaders are unshaded, so dimming
   the lights alone leaves the street and the walls as they were; task E5c-a), never below
-  `ZoneSkin.MIN_SCENERY_LIGHT`; glowing things keep their colours, and the light returns with the
-  fight (the scenery's only if no newer run has set its own). `set_scenery_light(light)` sets the
+  `scenery_floor()`; glowing things keep their colours, and the light returns with the
+  fight (the scenery's only if no newer run has set its own). The floors are `MIN_LIGHT_LEVEL` and
+  `ZoneSkin.MIN_SCENERY_LIGHT` (0.3) for every boss; a boss may override `light_floor()` and
+  `scenery_floor()` from its own data (only the Sleep Taker does: its lights out goes half as dark again,
+  task H9). `set_scenery_light(light)` sets the
   scenery's light directly, beyond that range, for a lighting moment of the boss's own (the Sleep
   Taker's grey dawn), and it's put back the same way (task E5c-b).
 
@@ -2673,7 +2833,7 @@ plays it; E1e, the owner's playtest fixes; E1f, the fight at the City's speed), 
 | `floating_head_body.gd` (`FloatingHeadBody`) | the body part: the model and its moving parts (face screen, jaw, searchlight gimbal, bay doors, weak-point covers that swing open with the red domes pulsing out: `weak_open`), a solid hull hitbox (`set_hull_solid`: off while pinned), a weak point over each lane near the crown's middle (generous stomp boxes, `stomp_width`/`stomp_depth`/`stomp_top`, as deep as the run's pace makes them, `stomp_depth()`; at 5 and 6 lanes the outermost ones also reach over the outer lanes out to the walls at their own height, `stomp_outer_reach`, where a wall jump or a drop off the ceiling lands: `stomp_covers_outer_lanes`, E1e) and the crown's deck (a concave shape exactly over the drawn hull, `FloatingHeadModel.deck_faces`), both off until a window opens (`set_weak_points_enabled`, `set_top_solid`; `top_height`, `weak_point_world`), the face's state (`screen_power`, `anger`, `eye_charge`, `glitch`, `jaw_open`, and `look_point` for the eyes to watch the laser's aim), where its eyes and mouth are (`eye_world`, `mouth_world`), and `exclusive_major_attack` (its lasers and bombs take turns with other big attacks). The slogan's caption band (`show_slogan`, `caption`: a Label3D in the face's cold white over a dark band the face shader draws across the screen's lower part, under the eyes; Label3D translates its text like the UI's labels). Beaten, it stays and keeps drawing itself: `power` fades its lights (per-instance copies of its kit materials' `state_glow`), `wreck(face_rest)` swaps in the wreck and lays its torn-off face in the street (cracked, framed), `crash_dust` and `start_smoke` (soft grey puffs from a radial `GradientTexture2D`) |
 | `floating_head_model.gd` (`FloatingHeadModel`) | the low-poly meshes, built in code from a `Shape` sized to the street and its lanes (MeshKit layers merged into a few surfaces: about 13 surfaces and 11k vertices; the weak points over the lanes within `weak_point_reach` of the middle), the bomb, the crown's deck faces, and `ship_transform` (its pitch and its roll about the crown over the weak points). The wreck (`_wreck`): its stern half (`WRECK_LENGTH`), torn open at both ends (the cut plating and flaps peeled outward), plated inside, dark; `wreck_inner_half` is its inside's half width at a height (the runner's room in it, tested at every lane count) |
 | `floating_head_voice.gd` (`FloatingHeadVoice`) | the propaganda: from the reveal on, a phrase every so often (`head_voice_1-4`, a seeded order and pauses of its own) from a positional player at the face, each with the next slogan (`FloatingHeadTuning.slogans`); it ducks `voice_duck_db` at once under `FloatingHead.warning_active()`, the slogan fades, and no phrase starts until the warnings have been over a moment; `cut()` stops it mid-shout for the defeat (`head_voice_cut`) |
-| `floating_head_bombing.gd` (`FloatingHeadBombing`) | the searchlight and the bombs: the lock (the warning: red light, `circle_warning`, lock sound, the bomb falling with its whistle), the fairness rules (`plan`, `fair`, `escape_lane`), and pooled blast hitboxes (enemy attacks) that keep clear of a wall runner |
+| `floating_head_bombing.gd` (`FloatingHeadBombing`) | the searchlight and the bombs: the lock (the warning: red light, `circle_warning`, lock sound, the bomb falling with its whistle), the fairness rules (`plan`, `fair`, `escape_lane`), and pooled blast hitboxes (enemy attacks) that keep clear of a wall runner, each blast's look one of RunEffects' shared fireballs (quick, no smoke, about as long as the hitbox burns) |
 | `floating_head_faceoff.gd` (`FloatingHeadFaceOff`) | the face-off: the phase's attacks wait in line (`faceoff_pattern`; the first that can start fairly goes next) with a drag timed for each marked tower. Eye lasers: the warning (the eyes' `eye_charge` and whine, thin aiming beams with a sweep's aim lines or a drag's aiming spot, then the drag's `lane_warning`), a sweep's twin beams (low: both low, jump them; high: one at the waist and one above a jump's reach, like a gapped fence, slide under them) or a drag down the runner's lane leaving a burning line (keeps clear of a wall runner), each with enemy-attack hitboxes. The cyborg drop: the jaw opens (with its sound and `circle_warning`s where they land), then normal cyborgs from the director (`spawn_enemy`) fall from the mouth onto clear roof and fight. A tower's drag is a bait when the runner is in the outer lane on its side as the warning ends, or the fallback after `fallback_after` misses; either calls `FloatingHead.begin_pin`. Lasers wait while its cyborgs are ahead and claim the cyborgs' whole airspace (`CyborgAirspace.claim_whole`): no burst starts during a laser attack, and a laser attack waits until no burst is in the air (its cyborgs may have two at once) |
 | `floating_head_tower.gd` (`FloatingHeadTower`) | a marked tower at the roadside (flush with the facades, its head jutting out over the street above the ship's highest flight so it shows from far along the street; no hitboxes: scenery until it falls): pale concrete with white painted bands and targets, cracks and cold warning lights; the laser's cut glows red-hot as it's clipped, then it topples forward onto the ship (`fall_onto`, `rest_on`), breaks in two as it lands (`break_at`, `tower_mesh`'s sections with torn ends: the lower section drops away), and the rest crumbles away when the ship shakes free |
 | `floating_head_ramp.gd` (`FloatingHeadRamp`) | the first stomp window's way up: the tower's broken slab slammed down in a lane (`ramp_length` long, its top end `ramp_lift` above the crown at the face) in two pieces (E1e): a low lead-in over `ramp_board_share` of it, rising to its knee (`knee_height`: `ramp_board_height`, never above `side_step_limit`, what a lane switch steps up), with bevelled sides a lane switch steps up anywhere along it (`board_until`); then the steeper slab onto the crown, whose sides are a lane blocker down to the trucks. Both tops are floors (convex shapes, where they're drawn); green chevrons up both, the lead-in's edges in the ramp colour; it sinks away when the ship shakes free |
@@ -2731,7 +2891,9 @@ plays it; E1e, the owner's playtest fixes; E1f, the fight at the City's speed), 
 
 **The Sleep Taker** (GDD §10, task E5c: E5c-a, the nightmare, its arena, its entrance and its three
 attacks, weapons having no effect; E5c-b, hurting it by the generators' EMP, the three phases, the
-defeat and its campaign slot). The Dead Zone's boss step plays it (`scene` in its slot), at the Dead
+defeat and its campaign slot; task H9, the owner's October 8, 2026 changes: lights out half as bright
+again, the hands' rounds spread along the street, many wall gaps with hands on the walls, twice the
+floor gaps). The Dead Zone's boss step plays it (`scene` in its slot), at the Dead
 Zone's speed (24.2 m/s, Bosses: Pace); debug builds also play it with `--boss=dead_zone_boss` (18 m/s
 unless given `--speed`). Its tuning's distances that stand for a time (`refuge_first`, `refuge_spacing`,
 the hands' and the generators' clear stretches, `escape_clear_after`, `generator_sight`, `emp_reach`,
@@ -2740,19 +2902,21 @@ Floating Head's are, so the fight keeps its seconds at any speed. In `scripts/bo
 
 | File | What |
 |---|---|
-| `sleep_taker.gd` (`SleepTaker`) | the encounter: its arena's refuges (`_plan_lap`: every `refuge_spacing` metres a ceiling across every lane, the Dead Zone's charred bridge, with pads in `pad_lanes()`, the middle lane or lanes, and the track clear of holes and fences over `refuge_clear_span()` and the riders' landing), the entrance (it rises out of the street `enter_ahead` ahead, materializing, and drifts in to `hover_ahead`), its place (`pose`, kept relative to the runner; the slash's and the lure's `pull()` bring it in), and the pattern (`_schedule`): one attack at a time, `attack_gap` apart; a refuge's slash when the runner reaches its warning point (`next_refuge`, `refuge_warn_at`: it strikes `strike_after_pad` after the pads; a moment missed is logged `refuge_missed`), otherwise the phase's list in order (`attack_patterns`: hands, lights_out), the first that can start fairly and be over before the next refuge's slash or the next lure going next; a generator `generator_delay` into each phase's pattern, or `generator_again` after a miss (`_update_generator`), nothing attacking while it's lured. `_on_part_emp`: an EMP while it's lured and within reach (`SleepTakerLure.reaches`) is the phase's hit (`damage(hit_damage(), &"emp")`): it tears a chunk away (`body.tear`, with its howl) and recoils into the next phase, hungrier (each phase's `pace` and list); any other EMP does nothing to it. The last one beats it (`_on_defeated`: `SleepTakerDefeat`; `victory_over` once the dawn has broken; `victory_riff` false: silence). Fairness helpers: `escape_lane`, `floor_clear_lane`, `ceiling_between`, `pickup_near`; `sound()` plays and logs each warning; first-time hints `boss:dead_zone_boss/refuge`, `/hands`, `/lights_out`, `/generator` (`hint_due`) |
+| `sleep_taker.gd` (`SleepTaker`) | the encounter: its arena's refuges (`_plan_lap`: every `refuge_spacing` metres a ceiling across every lane, the Dead Zone's charred bridge, with pads in `pad_lanes()`, the middle lane or lanes, the track clear of holes and fences over `refuge_clear_span()` and the riders' landing, and both walls kept whole, no wall gap, over `refuge_wall_span()`: from where the slash warns to past where it strikes and along the bridge, with the wall gaps' own clearance), then twice the floor gaps the lap was first built with (`_more_floor_gaps`: GapDensity, the generator's additive gap pass, run over the lap through `LevelGenerator.for_layout` once its refuges are in, `floor_gap_increase` more rows of the lap's own mean width, each `floor_gap_spacing` seconds from everything else and off the refuges' stretches, which stand-in ceilings cover while it runs), the entrance (it rises out of the street `enter_ahead` ahead, materializing, and drifts in to `hover_ahead`), its place (`pose`, kept relative to the runner; the slash's and the lure's `pull()` bring it in), and the pattern (`_schedule`): one attack at a time, `attack_gap` apart; a refuge's slash when the runner reaches its warning point (`next_refuge`, `refuge_warn_at`: it strikes `strike_after_pad` after the pads; a moment missed is logged `refuge_missed`), otherwise the phase's list in order (`attack_patterns`: hands, lights_out), the first that can start fairly and be over before the next refuge's slash or the next lure going next (each kind tried once a frame; a round of hands that can't be planned is looked for again `HANDS_RETRY` later, the planner being the fight's costliest check); a generator `generator_delay` into each phase's pattern, or `generator_again` after a miss (`_update_generator`), nothing attacking while it's lured. `_on_part_emp`: an EMP while it's lured and within reach (`SleepTakerLure.reaches`) is the phase's hit (`damage(hit_damage(), &"emp")`): it tears a chunk away (`body.tear`, with its howl) and recoils into the next phase, hungrier (each phase's `pace` and list); any other EMP does nothing to it. The last one beats it (`_on_defeated`: `SleepTakerDefeat`; `victory_over` once the dawn has broken; `victory_riff` false: silence). Lights out's own floors (`light_floor()`, `scenery_floor()`, from its tuning: below every other boss's). Fairness helpers: `floor_clear_lane`, `ceiling_between`, `pickup_near`; `sound()` plays and logs each warning; first-time hints `boss:dead_zone_boss/refuge`, `/hands`, `/lights_out`, `/generator` (`hint_due`) |
 | `sleep_taker_lure.gd` (`SleepTakerLure`), `sleep_taker_beacon.gdshader` | the way to hurt it: a generator (`FenceGenerator`, through `spawn_enemy`) placed in sight (`find_spot`: `generator_sight` ahead, in the runner's lane or the nearest whose floor is clear around it, no pad or ramp there, the lure's stretch clear of ceilings and of every refuge's slash; `place_at`), glowing: a tall beacon of its pink drawn over everything (it shows through the nightmare, which looms between the runner and it) and a halo on the street; the lure (`lure_seconds` before the runner reaches it the nightmare lunges in with its roar and holds its claws `lure_gap` in front of them, `pull()`, until they're `lure_release` past it), the arcs while it's in reach (`in_reach()`: lured and within `emp_reach`, at the run's pace; pink, crackling, still with Reduced flashing), and the miss (it pulls back over `lure_back_seconds`) |
 | `sleep_taker_defeat.gd` (`SleepTakerDefeat`) | the defeat: `wisp_count` wisps burst out of it as it dissolves, each a faint face or figure from an atlas drawn in code (`atlas()`), rising and fading over `wisp_seconds`; the music fades out (`silence_fade`); `dawn_delay` later, over `dawn_seconds`, the sky turns to a grey dawn (its zenith, horizon and haze colours, the moon and the smoke fading, the fog lighter) and the light rises to `dawn_light` times the zone's own (the ambient light, the sun, the sky, and the scenery through `set_scenery_light`); the run's environment is its own, and the framework puts the lights back when the fight ends |
 | `sleep_taker_body.gd` (`SleepTakerBody`) | the body part: `immune_to_weapons` (no targeting, no shot or splash hurts it; the BossDef's `weapon_share_cap` is 0 besides), no weak points, its touch an enemy attack inside its body and out of reach; the model scaled uniformly to the street (`scale_for`), what it's doing (`shriek`, `raise`, `slash`, `attack`, `lunge`, `inhale`, `swallowed`, eased), its torn chunks (`tear`, `torn`) and `draw_stats()` |
 | `sleep_taker_model.gd` (`SleepTakerModel`), `sleep_taker_liquid.gdshader`, `sleep_taker_vapor.gdshader` | the nightmare, built once in code at its reference size: one liquid mesh (its fused heads, chest and waist, 28 maws facing the runner with the great one in its belly, two long arms and four tendrils of clawed fingers, drips) and one translucent vapour mesh (shroud, skirt, pool), each animated by its shader (maws breathing, gaping as it inhales, the great one opening with its teeth pulling back on a red throat, arms raising and sweeping, the lunge, the dissolve, and its chunks, `CHUNK_HEADS`, ripping away cell by cell with a burst of wisps), plus its drips and the inhale's streaming light: four draws and about 11k vertices. Black with the Bad Dream's purple; only an attack heats to enemy-attack red; no flicker with Reduced flashing. On the Compatibility renderer (no tonemapping) its shaders, the hand's and the mist's scale an over-bright colour down whole rather than let it clip channel by channel, which would turn its purple toward the fences' pink and its red toward salmon |
 | `sleep_taker_slash.gd` (`SleepTakerSlash`) | the giant slash: the warning (`slash_telegraph` then the lunge: the great maw's shriek, its three lanes `band_for()` locked and lit red with the Bad Dream's lane marks, counted as floor warnings), the strike (`box_for()`: the lanes less margins, clear of the walls, below `slash_height`: above a jump, far below a ceiling rider) and the recovery; its timings don't follow the phase's pace |
-| `sleep_taker_hands.gd` (`SleepTakerHands`), `sleep_taker_hand.gdshader`, `sleep_taker_mist.gdshader` | the grasping hands: `plan()` (the runner's lane, its floor clear around the hand, no ceiling or pickup there, a lane `max_escape_lanes` away clear), the mist (purple, unshaded, a floor warning) with its whispering, the hand bursting up as the runner nears and grasping, then sinking; pooled rigs |
-| `sleep_taker_lights_out.gd` (`SleepTakerLightsOut`) | lights out: the inhale (its warning), `set_light_level(dark_level)` for `dark_seconds` while the other attacks go on, the exhale and the light back; `clear()` brings the light back at once (a phase change, the defeat) |
-| `sleep_taker_tuning.gd`, `data/bosses/dead_zone_boss_tuning.tres` | its numbers (F6 in its fight; all DESIGN-TBD, `docs/questions/e5c.md`) |
-| `data/bosses/dead_zone_boss.tres` | its slot: three phases (paces 1, 1.15, 1.3; one EMP each), weapons capped at nothing, the standard armor rule with `armor_when_unprotected`, the Dead Zone's music, par times |
+| `sleep_taker_hands.gd` (`SleepTakerHands`), `sleep_taker_hand.gdshader`, `sleep_taker_mist.gdshader` | the grasping hands, in rounds spread along the street (owner, October 8, 2026): `plan(budget)` lays out a round of `rows_for(round)` rows (two, then a row more each round up to four, kept across phases; fewer if the next refuge's slash or lure comes sooner, never fewer than `hand_rows_min`), `hand_row_seconds` apart at run speed over the phase's pace, the first where the runner will be once its mist has shown; each row leaves its door open (`hand_row_open` lanes), the first one lane over from the runner's lane, each next one lane over from the last (`doors()`, a seeded order from the fight's seed and the round's number), so every row stands in the lane the runner kept free at the row before; a floor hand in every other lane whose floor is clear around it (`hand_fits`; a hole stands in for one that isn't, but the hand the runner must switch away from always stands), and `wall_hands_per_row` wall hands, alternating (never beside a door in an outer lane, never at a wall gap, only over an outer lane with its own hand, so no floor runner ever passes under one). A round comes only with a way through it: `route_from()`, The House's lane router (`TheHouseRoute`) with the Sleep Taker's margins (`router()`: the real lane switch time times `route_switch_margin`, `route_body_margin` past a hand, holes jumped and fences jumped or slid under with no switch during one), for a runner moving `route_reaction` after its mists show; at most `MAX_ROUTE_TRIES` ways a call, the next call taking the doors in another seeded order. As a round starts, every hand's mist pools at once (purple, unshaded; a floor mist is a floor warning) with one whisper; each hand bursts up as the runner comes within `hand_rise_lead` of it (one sound a row) and grasps, then sinks; `round_plan`, `rounds`; pooled rigs, a whole round's (`SleepTakerTuning.max_hands`) |
+| `sleep_taker_lights_out.gd` (`SleepTakerLightsOut`) | lights out: the inhale (its warning), `set_light_level(dark_level)` for `dark_seconds` while the other attacks go on, the exhale and the light back; `clear()` brings the light back at once (a phase change, the defeat). Owner, October 8, 2026: half as bright as first built (`dark_level` 0.225, was 0.45: the ambient and sky light, the fog's, the sun and the scenery's own light all at half the first build's), above its own floors (`light_floor`, `scenery_floor`); the glows keep their brightness on screen and stand out from the darker street more than before (`--scenario=measure`, `--first-dark` to compare) |
+| `sleep_taker_tuning.gd`, `data/bosses/dead_zone_boss_tuning.tres` | its numbers (F6 in its fight; all DESIGN-TBD, `docs/questions/e5c.md`, and the H9 ones `docs/questions/h9.md`) |
+| `data/bosses/dead_zone_boss.tres` | its slot: three phases (paces 1, 1.15, 1.3; one EMP each), weapons capped at nothing, the standard armor rule with `armor_when_unprotected`, the Dead Zone's music, par times; its arena lists `wall_gaps` with numbers of its own (the only boss arena that opts in) |
+| `data/bosses/dead_zone_boss_wall_gaps.tres` | its arena's wall gaps (`WallGapTuning`; DESIGN-TBD): 1.6-1.3 s of run from one gap's end to the next, on one wall or the other (a level: 32-24 s), 30% on both walls, 0.6-1.1 s long: about 15 a minute once the refuges' stretches are kept whole (a level's median: 1.7) |
 | `data/bosses/dead_zone_boss_skin.tres` | its arena's look: the Dead Zone's, with nothing hung over the street (no skybridges, no hung screens), where it looms |
-| `tools/showcase/sleep_taker_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/front/entrance/slash/hands/lights_out/lure/fight/measure`, `--phase=2` with `lure` for the defeat, `--dark` for a lure in the dark of lights out, `--events` for the frames; `measure` prints the warnings', hazards', the generator's and the street's colours on screen in the arena's light and at the darkest point) |
-| `tests/helpers/sleep_taker_bot.gd` (`SleepTakerBot`) | a runner who plays the fight by its warnings, `reaction` seconds late: to a refuge's pad or out of the slash's lanes (`slash_escape`), out of a hand's lane, to each generator's lane and onto its top (`stomp_lead()`; or the dash, `dashes`; or out of its way, `smashes` off), and through the arena's holes and fences |
+| `tools/showcase/sleep_taker_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/front/entrance/slash/hands/lights_out/lure/fight/measure`, `--phase=2` with `lure` for the defeat, `--dark` for a lure in the dark of lights out, `--first-dark` for lights out as first built, `--events` for the frames; `measure` prints the warnings', hazards', the generator's, the runner's and the street's colours on screen in the arena's light and at the darkest point) |
+| `tools/measure/sleep_taker_arena.gd` | its arena over its laps at 3, 5 and 6 lanes and both speeds: rows of holes, lane-gaps, fences, refuges and wall gaps (`--first`: as first built, for the before and after) |
+| `tests/helpers/sleep_taker_bot.gd` (`SleepTakerBot`) | a runner who plays the fight by its warnings, `reaction` seconds late: to a refuge's pad or out of the slash's lanes (`slash_escape`), through each round of hands by its way (`SleepTakerHands.route_from` from where it is, each switch where the way has it; `routes_found`, `routes_missing`), to each generator's lane and onto its top (`stomp_lead()`; or the dash, `dashes`; or out of its way, `smashes` off), and through the arena's holes and fences |
 
 **The House** (GDD §10, task E5a: E5a-a, the machine, its arena, the spin with its three attacks and their
 bigger versions, the 7 buttons on the floor, the jackpot with its credit fountain and the hopper stomped,
@@ -2784,7 +2948,7 @@ taller than a ceiling: it squats on its treads under `duck_top` while a billboar
 |---|---|
 | `the_house.gd` (`TheHouse`) | the encounter: its arena kept plain (`_plan_lap`: no holes, fences, wall fences, signs, ceilings, pads, ramps, doodads, cuts or enemies of its own); where it stands (`front_at`, its face's track distance: `stand_distance()` ahead of the runner, keeping pace, or further at a speed where its longest warning would land near it), squatting under a ceiling (`_duck`, `duck_sag()`); the entrance (it rolls in from `enter_ahead` and brakes, with its jingle); the spin (`_spin_tick`: the lever's pull, the reels spinning and stopping on the phase's next symbols from `spin_patterns`, each with its ding; the phase's first `opening_spins` spins offer no buttons, every later one a button for each reel still unlocked, `_try_pull` waiting for a fair set, a ceiling's set starting its billboard); the result (three 7s start the jackpot, otherwise `TheHouseAttacks.queue_spin`); a stomp is the phase's hit (`_on_weak_point_hit`); a missed jackpot clears the locks and it spins again. The defeat (`_on_defeated`, `_defeated_tick`, `Defeat`): it lurches out and rises as after any stomp, its reels spin wildly (`WILD_SPIN`, `tilt_spin_seconds`) and jam between symbols, TILT shows over its reels (`tilt_seconds`; flashing, steady with Reduced flashing), and it collapses into the street ahead of the runner (`collapse_seconds`), tipping, shaking, its power dying, `collapse_coins` coins bursting out (the fountain's pool, for show), the citizens cheering; `victory_over()` once it's down. Fairness: `route_through()` (from the runner's lane now, through everything of its attacks still ahead, over any buttons), `route_from()` (from where the runner will be), `attacks_held()` and `segment_end()` (the street the runner's again past a wall run or a ceiling). `react_citizens()` calls D3's `react` on the `"market_citizens"` group (cheer at a jackpot, a stomp and its defeat, duck at a big attack); `sound()` plays and logs every warning; first-time hints `enemy:marketplace_boss`, `boss:marketplace_boss/buttons`, `/wall_button`, `/ceiling_button` and `/jackpot` |
 | `the_house_route.gd` (`TheHouseRoute`) | the lane routes: the track ahead as SOLID stretches (blocks, blasts, turrets' bodies), FENCE (jumped, settled in its lane, nothing solid where the jump takes off or lands) and GAPPED (slid under) in each lane; a lane switch takes `switch_m` (the real one times `switch_margin`, plus a margin) with the runner in both lanes meanwhile; a body reaching `body` either side; waypoints (buttons) held in their lane as the runner passes, and holds (`{lane, at, to}`: a lane kept over a stretch, a wall run from its outer lane or a pad). `find()` keeps the fewest switches, each as early as it can (no zigzag), and returns the moves; it runs within a frame as attacks are revealed and buttons planned (flat arrays, each switch's span checked at once: about 1 ms for 100 m at 6 lanes). The bot follows the same routes |
-| `the_house_attacks.gd` (`TheHouseAttacks`) | the three attacks (`Kind`: CHERRY, LIGHTNING, BAR), grouped by kind in reel order (`attacks_for`: a kind's count is its size; a 7 brings none), each revealing its strikes in turn (`strikes_in`: cherry volleys and BAR rows by size; three lightnings, two rows across every lane, full then gapped), each strike planned as it shows (`plan_strike`: the first lane set of a seeded order, the runner's lane first, with a route, off the wall fences' drop windows), waiting up to `strike_wait` for a fair moment, else left out (`strike_skipped`); a new attack waits while `TheHouse.attacks_held()`. Cherry: `circle_warning`s, bombs lobbed from the coin chute, the whistle, blasts (pooled enemy-attack boxes) as the runner would arrive. BAR: `lane_warning`s and gold blocks falling from high above, slammed down `bar_slam_lead` before the runner arrives as solid hazards of `props.block`'s kind with a lane blocker (gold with red-hot seams: deadly, never a doodad). Lightning: `props.fence`s flickering with their crackle while a pink-capped spool rolls across, on `fence_on_lead` before the runner arrives. `obstacles()` and `hazards_end()` describe what's still on the track; `strikes` lists them for tests and the bot. Everything an attack shows is pooled and made before the fight (`prewarm()`: bombs, blast boxes, fireballs, blocks with their hazards, spools; `pool_stats()`), as are the buttons' looks, the billboard and the fountain's coins, so a fight makes nothing of its own mid-fight; the warnings, fences and pads are BossProps' (made per strike), the turrets the director's |
+| `the_house_attacks.gd` (`TheHouseAttacks`) | the three attacks (`Kind`: CHERRY, LIGHTNING, BAR), grouped by kind in reel order (`attacks_for`: a kind's count is its size; a 7 brings none), each revealing its strikes in turn (`strikes_in`: cherry volleys and BAR rows by size; three lightnings, two rows across every lane, full then gapped), each strike planned as it shows (`plan_strike`: the first lane set of a seeded order, the runner's lane first, with a route, off the wall fences' drop windows), waiting up to `strike_wait` for a fair moment, else left out (`strike_skipped`); a new attack waits while `TheHouse.attacks_held()`. Cherry: `circle_warning`s, bombs lobbed from the coin chute, the whistle, blasts (pooled enemy-attack boxes) as the runner would arrive. BAR: `lane_warning`s and gold blocks falling from high above, slammed down `bar_slam_lead` before the runner arrives as solid hazards of `props.block`'s kind with a lane blocker (gold with red-hot seams: deadly, never a doodad). Lightning: `props.fence`s flickering with their crackle while a pink-capped spool rolls across, on `fence_on_lead` before the runner arrives. `obstacles()` and `hazards_end()` describe what's still on the track; `strikes` lists them for tests and the bot. Everything an attack shows is pooled and made before the fight (`prewarm()`: bombs, blast boxes, blocks with their hazards, spools; `pool_stats()`; a blast's fireball is RunEffects' shared one), as are the buttons' looks, the billboard and the fountain's coins, so a fight makes nothing of its own mid-fight; the warnings, fences and pads are BossProps' (made per strike), the turrets the director's |
 | `the_house_buttons.gd` (`TheHouseButtons`), `the_house_button.gdshader` | the 7 buttons: `plan()` (a lane for each floor button, at most `button_max_shift` from the one before and never the same; a wall button by either outer lane, a ceiling's pad off the edges; the first set of a seeded order with its routes, `MAX_TRIES` a frame), each lighting up `button_lead` before the runner reaches it (a wall button `wall_lead`, reached `wall_extra` later; a ceiling button once its billboard is down) with its chime (`house_button`), `pressed` or `missed` as the runner passes (on the floor, low, their middle within the button's width; on its wall, at any height; on the ceiling in its lane); the look: an ivory disc with chasing bulbs and the reels' blue 7 (flat on the floor, upright on the facade at wall-run height and as tall as the wall-run path, facing down on a ceiling), and the 7 floating near it, shrinking away as the runner nears it; pooled |
 | `the_house_walls.gd` (`TheHouseWalls`) | phase 2's wall fences (`wall_fence_phases`): full-height ones along both walls, one every `wall_fence_every` seconds on alternating walls, pulsing `wall_fence_on`/`wall_fence_off` on the level clock, planned a batch past the built track (`wall_fence_ahead`) as B5's track pieces (`WallFencePlan.make`, `arena.wall_fence_problem`, `arena.add_pieces`), so they're built, pulse, warn and hurt like a level's; `passage_off()` (a wall run passes a stretch only while every one in it is off, `fence_pass_margin` either side), `drop_windows()` and `in_drop_window()` (B5's: the machine's strikes keep off the outer lane a wall runner drops into) |
 | `the_house_ceiling.gd` (`TheHouseCeiling`) | phase 3's ceiling: `plan()` (the pad where the runner reaches it, off the edges; the button `ceiling_button_after` past it in its lane; one or two Barnacle Turrets in the lane on one side of the pad's, with C1's limits: never over the pad's lane, `after_pad_seconds` past the pad, `spacing_seconds` apart, `before_end_seconds` before the end; its end `ceiling_end_after` past the last), `route()` (along it past the turrets' bodies over the button), `start()` (its turrets spawned a frame apart through `spawn_enemy`, in their hatches until the runner nears; once the machine has squatted, the billboard comes down from the sky over `billboard_drop_seconds` with its pad, `props.pad`, and its sound); the billboard: a StaticBody on the hull layer over every lane like `BossProps.ceiling`'s (the player rides it like any ceiling and drops back down at its end), its own look (a purple slab trimmed in gold, white bulbs, the reels' 7 on its sign, a plated underside with flush lamps and the orange end band every ceiling has: one merged mesh per size), pooled and its mesh made before the fight with the turret's script, numbers and look; `active()`, `landing_end()`, `over()` |
@@ -2921,7 +3085,7 @@ In `scripts/bosses/hostile_takeover/`:
 | `hostile_takeover_gunship.gd` (`HostileTakeoverGunship`) | the boss's body: it shares the fight's health (weapons chip it, up to the cap); its belly a ceiling (`belly`, the hull layer), its drop bay's weak point (`bay_point`, upside down) with its glow and the green chevrons before it (`set_bay`; the bay's pulse steady with Reduced flashing), the Buzz Overdrive it carries and lets fall (`set_saw`, `saw_world`, `set_fall`, `end_fall`: the C2 tank's own model), its chin gun's muzzle flash (`set_firing`, `gun_point`); phase 3's docking (`set_docked`: the arms gripping the locomotive, the clamps unfolded) and its three docking clamps (`clamps`: each a weak point upside down under a third of the belly, its lock glowing red and pulsing, steady with Reduced flashing, the green chevrons behind it, `clamp_cue`, `clamp_lead`; `tear_clamp`, `clamps_left`, `clamp_of`, `clamp_span`, `clamp_world`); `set_pose`, `bay_span`, `aim_point`, `hit_radius` |
 | `hostile_takeover_locomotive.gd` (`HostileTakeoverLocomotive`) | the locomotive leading the train, the Chairman at its rear window (`set_front`, `set_pose` for the docked war engine and the derailment, `set_chairman_shown`, `chairman_head`); never a target |
 | `hostile_takeover_screens.gd` (`HostileTakeoverScreens`), `hostile_takeover_screen.gdshader` | phase 3's screens: the locomotive's rear window turned screen and two ad screens on pylons beyond the barriers pacing the train ahead (`pace`), each the Chairman's face as a corporate broadcast (the shader: drawn as distances so it stays crisp, faint scanlines and a cold-white frame, the defeat's glitch tearing it in bands, only dimming with Reduced flashing; on the Compatibility renderer an over-bright colour is scaled down whole) under the words (`merger_text`, one TextMesh in the UI's display face for all three, translated), dark until the docking (`set_on`), the words flashing for `merger_flash_seconds` (steady with Reduced flashing, `words_shown`), glitching and going dark in the defeat (`set_glitch`; `step` runs their clock) |
-| `hostile_takeover_lobby.gd` (`HostileTakeoverLobby`) | the defeat's set: a corporate tower whose sky lobby faces the line and its plaza's logo sculpture (`place`, `span`, `topple`, `lobby_world`), and its blasts (`blast`, `step`: pooled fireballs of a few glowing spheres), built with the fight and hidden until the defeat; looks only |
+| `hostile_takeover_lobby.gd` (`HostileTakeoverLobby`) | the defeat's set: a corporate tower whose sky lobby faces the line and its plaza's logo sculpture (`place`, `span`, `topple`, `lobby_world`), and its blasts (`blast`: one of RunEffects' shared fireballs, `fireball`, sized by the blast's metres across), built with the fight and hidden until the defeat; looks only |
 | `hostile_takeover_model.gd` (`HostileTakeoverModel`) | the meshes, built once in code, one draw per material: the gunship (about 2,000 vertices; olive and gunmetal, its belly flush and as wide as the train, its closed bay doors, the three docking clamps folded under it, cold-white lights and blue engines), its open drop bay (`bay_open`) and the chevrons before it (`belly_cue`), the armored carriage (`armored`), the locomotive with the Chairman's lit suite (about 560) and the Chairman (about 640), the coupling's parts and the take-off chevrons; phase 3's clamps (folded, unfolded, their red locks: `clamp_folded`, `clamp_body`, `clamp_core`), the docking arms (`dock_arm`), the screens' pylons (`screen_pylon`), and the defeat's tower (`lobby_tower`, about 500) and logo sculpture (`logo_sculpture`, about 190). Plain colours on everything that moves (the kit's world-space patterns would slide); nothing glows in a hazard colour but the weak points' red |
 | `hostile_takeover_skin.gd` (`HostileTakeoverSkin`), `hostile_takeover_train.gdshader`, `hostile_takeover_towers.gdshader` | the arena's look, the Corporate zone's (`CorporateSkin`): the floor as one wide train (the express's roof across every lane, the usual orange edge at each gap, a floor cut sliced down its lane) in a material of its own whose vertex shader plays the breakaway, each carriage tumbling about its own rear end (`set_breakaway`, `clear_breakaway`); the runway's pad tile (`pad_tile`); the walls as the track's sound barriers (gunmetal panels between posts, the wall-run marks, nothing lit below the band's top); beyond them the city's towers rushing back at the train's speed (`towers_for`: one mesh per side per chunk, moved by its shader, so nothing is made while the train runs; `set_clearing` keeps a stretch on one side clear of them, the defeat's lobby) and far below the street streaming past (the City's road shader in the zone's colours) under the guideway's beam; nothing hangs over the street |
 | `hostile_takeover_tuning.gd`, `data/bosses/corporate_boss_tuning.tres` | its numbers (F6 in its fight; all DESIGN-TBD, `docs/questions/e5b.md`) |
@@ -3321,13 +3485,19 @@ campaign at 3, 5 and 6 lanes with the bot and no god mode (City 3, the boss intr
 its results and stars, the shop, the outro's slot, and the web demo's end screen), checking along the
 way that its propaganda never masks a warning, then that a death restarts the fight. `test_sleep_taker`
 builds the Sleep Taker at 3, 5 and 6 lanes (its slot, immune to weapons, its hitboxes, its draw budget
-and colours, its arena's refuges, the entrance, shots and missiles passing through it, lights out
-darkening the scenery and the light always coming back); `test_sleep_taker_attacks` plays its slash and
+and colours, its arena's refuges, twice the floor gaps it was first built with and its many wall gaps,
+whole over every refuge's stretch and kept as laps join, the entrance, shots and missiles passing through
+it, lights out at half the first build's light and scenery light above its own floors, every other boss
+keeping the framework's, and the light always coming back); `test_sleep_taker_attacks` plays its slash and
 hands with `SleepTakerBot` at 18 and 24.2 m/s (struck only after the warning and only in the warned
-lanes, every escape from every lane without god mode, the ceiling safe, the same every attempt) and its
-whole pattern on the real arena at 3, 5 and 6 lanes for a runner who lets every generator go by;
-`test_sleep_taker_fight` plays the whole fight with the bot at 3, 5 and 6 lanes and both speeds (three
-EMPs in 60-120 s, every lure on time with the arcs showing it's in reach well before the stomp, nothing
+lanes, every escape from every lane without god mode, the ceiling safe, the same every attempt; the
+hands' rounds growing from two rows to four, each row its own distance along the street, its door one
+lane over from the last and a hand in the lane the runner kept free, wall hands on every row; the
+planner's numbers and budget; every round's way through proved on real physics in each phase and at
+both speeds, a lane switch at every row) and its whole pattern on the real arena at 3, 5 and 6 lanes for
+a runner who lets every generator go by; `test_sleep_taker_fight` plays the whole fight with the bot at
+3, 5 and 6 lanes and both speeds (three EMPs in 60-120 s, every round of hands with its way through,
+every lure on time with the arcs showing it's in reach well before the stomp, nothing
 attacking while lured, the chunks torn, the same every attempt), a missed generator followed by another
 with nothing escalating, EMPs out of reach, the defeat (the wisps, the silence, the dawn, the lights back
 after), and the campaign's flow at every lane count (the Dead Zone's last level, a death in the fight's
@@ -3439,8 +3609,14 @@ its whole time; wall runners stepping on right before it (cut), jumping on (abov
 sliding; armor, the shield and the dash; its solid body back in its niche; 17 laser tier 1 shots through
 the real weapon; the kick; twice and pairs; turns with a `TurnDummy` (its claim holds another back, and it
 lets the runner pass when one begun before is on); Reduced flashing; the same every attempt. It also checks its look (one shared mesh, the eyes' own
-material, the statue inside its niche), the Golden skins opening the niche, decorative statues on
-recessed wall-base mounts, its placement rules on hand-built layouts at 3, 5 and 6 lanes, the wall fences keeping off
+material, the statue inside its niche with its front almost flush with the face and the solid body as deep as
+it (H1), its gold never glowing, the lit niche's colours against the gold, the flare tinting rather than
+adding red: its hue worked out), every statue niche lit and no see-through slot beside a live niche at a
+chunk's end, the reaction checks (a floor runner's lane change and a wall runner's two moves at 0.35 s), the
+grind as long as the warning, the Golden skins opening the niche and leaving out a decorative alcove that
+would overlap it,
+decorative statues on
+recessed wall-base mounts, its attack window covering its floor, its placement rules on hand-built layouts at 3, 5 and 6 lanes, the wall fences keeping off
 it, and Golden 2 and the Palace's real layouts (its rules, `LayoutChecks.check_layout`, the introduction,
 the same build twice). `test_ceilings` covers narrow
 ceilings (B3) from the layout to the screen: the
@@ -3590,6 +3766,18 @@ campaign level exactly the same without the features but for its wall fences (pa
 guarantee builds too), and the levels without them having none; quick play with them among every rule's pieces
 (`LayoutChecks.check_layout`); `wall_fence_problem` naming each rule; the hints; every skin's look; and a boss
 arena carrying them.
+`test_fireballs` checks the shared explosion (task H6; A run, Speed effects): the pool is bounded and reused
+(built with the effects, a node count that doesn't move across many fireballs, the oldest cut short when every
+slot is busy, fixed particle counts, each ending by itself, quick ones sooner), CPU particles and unshaded
+billboards only, with no collision and no light, the camera's fade (none of a fireball within its size of the camera, all of it from
+2.5 times, its smoke and hidden emitters, a smokeless fireball hiding its slot's old smoke), Reduced flashing (as long as the normal one, from nothing,
+never brighter than it after 0.15 s and at most 0.45 of its peak, no white in it: sampled over the real life of the fire, the core and the embers),
+the shader warm-up's looks, and each non-boss explosion (the drone's hit and crash, the hover truck's wreck, its
+burst and its wall frame's steady glow with Reduced flashing, the Buzz Overdrive, the Enforcer truck, a fence
+generator and its EMP, the plain and heavy missile, the lobby's blast) calling it at its size; the bosses'
+(the Floating Head's crash and bomb blasts, The House's collapse and blasts, Hostile Takeover's defeat) are
+checked in `test_floating_head`, `test_floating_head_defeat`, `test_the_house_phases`, `test_the_house_attacks`
+and `test_hostile_takeover_fight`.
 `test_perf` checks what keeps frames smooth (task PERF1; A run, Smooth frames) and that none of it changes the
 game: a chunk's dressing spread over frames (the same gameplay nodes in each chunk's frame, the same look once
 dressed, every chunk dressed before the player is `DRESS_BY` from it, a chunk freed undressed skipped without
@@ -3672,7 +3860,7 @@ its `--screen=hud_armor [--tier=N]` takes the HUD's armor through its states: up
 filling, back), a zone skin
 (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed screens and emblems a
 skin lists, or a scripted run with a ceiling ride and a wall run, in a level's darker lighting with
-`--darkness=X`; `--narrow` makes three of its ceilings narrow, one lane in the middle, the two leftmost
+`--darkness=X` and under a level's own sky with `--sky=name`; `--narrow` makes three of its ceilings narrow, one lane in the middle, the two leftmost
 lanes and the rightmost lane, with shots riding each, of its far end from below and from beside it, and
 a run that tries moves past their edges; `--from=D` starts the run further on, `--reduced-flashing`
 turns Reduced flashing on), a cinematic (`cinematic_review`: any campaign slot's cinematic on its own, as

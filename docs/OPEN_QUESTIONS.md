@@ -859,7 +859,7 @@ rules"; switched off, the game plays exactly as before; measure with `tools/meas
       tremolo guitar with echo, creaking girders and wind; then a slow doom riff that rings out into the quiet again.
     - **Golden Zone** (also the Golden Palace): 132 BPM, F♯ harmonic minor, 44 s. Neoclassical metal: harpsichord,
       strings and timpani under a regal theme, guitar sweeps; no bells or chimes, so it never sounds like the
-      Resonator's chime.
+      Resonator's warning (its chime until October 8, 2026).
     Is each one's direction right for its zone?
 110. **The death dip** (GDD §11): as the player dies the track sinks 10 dB over 0.5 s while a low-pass closes to 800 Hz,
     so it sounds far away rather than stopping; it holds under the revive offer and comes back over 1 s on a revive or
@@ -1144,7 +1144,7 @@ play with `--features=resonator --skin=golden`)
     (the emblem's three-fold symmetry), opening in the middle into a cage of gold ribs around a red crystal core (the only
     part that always glows); three halos of gold arcs tumble slowly at rest. No bell, chain, cross, candle or steeple
     shape. 5.2 m tall. Right look?
-185. **The warning:** 1.3 s. The halos spin up and swing into line facing the runner, one on each of the chime's three
+185. **The warning:** *(Superseded October 8, 2026: the chime is replaced by a crackling fire breaking into a wave crash, GDD §9.10; items 370–373.)* 1.3 s. The halos spin up and swing into line facing the runner, one on each of the chime's three
     notes, ending as a red target, while the core and trims glow brighter; the wave leaves at the end and reaches the
     runner about 1.1 s later (about 2.4 s from the first note). Steady glow with Reduced flashing. Right length and look?
 186. **Distance and size (please look at this one):** it hovers 34 m ahead, its core 3.1 m up (too high to stomp). On the
@@ -1177,11 +1177,11 @@ play with `--features=resonator --skin=golden`)
 194. **The recency curve leaves it alone** (like item 148): boosted, its one-at-a-time rule dropped a third of its picks and
     left empty stretches (Golden 1 lost 1.9 enemies and 3.4 rows), so it's capped. Should the Golden Zone's newest enemy
     get a boost after all (fewer, longer visits, or visits placed by its rules)?
-195. **The chime and its sounds** (GDD §9.10): soft mallets on tuned metal bars with a glassy shimmer, rising G5, C6, E6
+195. **The chime and its sounds** (GDD §9.10) *(Superseded October 8, 2026: the chime is replaced by a crackling fire breaking into a wave crash, GDD §9.10; items 370–373.)*: soft mallets on tuned metal bars with a glassy shimmer, rising G5, C6, E6
     (a bright major triad, far from the Golden music's F♯ minor), the same every time; the pulse a deep thump and a rush
     rolling in along the floor; its death the chime bending out of tune and shattering. Right notes and feel?
 196. **One on screen at a time:** a Resonator arriving sends the last one away after its current pulse. Right?
-197. **The hint:** "When the Resonator's chime plays, a red wave rolls along the floor. Jump it ({jump}), or be on a wall or
+197. **The hint:** *(Superseded October 8, 2026: the chime is replaced by a crackling fire breaking into a wave crash, GDD §9.10; items 370–373.)* "When the Resonator's chime plays, a red wave rolls along the floor. Jump it ({jump}), or be on a wall or
     the ceiling." Right wording?
 
 **The Floating Head: propaganda, defeat, and the finished fight** (from E1d; the fight now plays in the City's boss
@@ -2465,3 +2465,122 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     `burst_gap` (0.5 s) after its last bolt is fired, not until its bolts land, so a third burst's charge-up may
     start while the first two's bolts are still flying (the crossfire rule still keeps arrivals apart). Should the
     limit count bolts until they land?
+
+**The Gilded Sentinels' shorter warning and lit niches** (from H1, owner, October 8, 2026, GDD §9.11; numbers in
+`data/enemies/gilded_sentinel.tres`)
+365. **The live statue moved only about 4 cm; most of the gain is lighting and a wider opening.** It can't stand out
+    of the wall: a wall runner's body lies along the face and its solid body is behind it (GDD §3), so a statue
+    proud of the wall would block the wall run, a design change for the owner. Its front is now 0.02 m behind the
+    face (it was 0.063 m), the niche is shallower (0.78 m, from 0.9) and wider (1.8 m, from 1.4), and its inside
+    is lit. On 3 lanes, where the camera is closest to the wall, the statue reads from about 10–15 m. Is that
+    enough, or should the opening be wider still (decorative alcoves are 2.0 m)?
+    - Placeholder: `niche_width` 1.8, `niche_depth` 0.78, `statue_inset` 0.02 (`DESIGN-TBD`).
+366. **Every statue niche is lit alike; the live one is told by its eyes and its warning.** The owner's earlier
+    request (decorative statues at the bottom of the walls so a live one can surprise the player) rules out a
+    niche that sets the live one apart, so decorative alcoves outdoors and in the Palace get the same warm bronze
+    inside (non-glowing, no hazard hues). The live statue's red eyes glow a little more at rest (1.6, from 0.9);
+    at its warning the eyes flare, the niche tints dark red and stone grinds. Is a lit alcove right for all of
+    them, and is the eye glow at rest enough to tell the live one at a glance, or too much?
+    - Placeholder: `GoldenStatue.LIT_BACK`, `LIT_SIDES`, `LIT_CEILING`, `GildedSentinel.EYES_IDLE` (`DESIGN-TBD`).
+367. **What 0.6 s does to the wall dodges.** On the floor, a lane change started after a 0.35 s reaction is still in
+    time (tested at 3 and 6 lanes, 18 and 25 m/s). On the wall, passing above or below the swing by timing the
+    wall entry must now be planned from the statue at rest: the jump onto the wall that runs above the band takes
+    the whole 0.6 s. A runner who stepped onto the wall 0–0.55 s before the warning sees no warning before the
+    cut but escapes with two moves (off the wall, then a lane change) started within 0.50 s. Is that the wall dodge
+    the owner wants, or should the warning start earlier along the wall approach?
+368. **A decorative alcove that would overlap a live niche is left out** (less than 0.3 m of wall between the
+    frames); facade statues no longer straddle a chunk's end (about 6% fewer outdoor decorative statues, a build
+    fix). The halberd's draw-back takes the last half of the warning (0.3 s).
+    - Placeholder: `GoldenSkin.NICHE_CLEARANCE` 0.3, `GildedSentinelTuning.raise_share` 0.5 (`DESIGN-TBD`).
+369. **GDD §9.11 no longer matches the build in one place** (predates H1): "decorative statues never stand at wall-run
+    height". Since the owner's earlier request, decorative statues stand in alcoves at the bottom of the walls,
+    0.1–3.5 m up, which is wall-run height; they're told from live ones by the red eyes and the warning. Should
+    the GDD line change to match?
+
+**The Resonator's new warning sound** (from H2, owner, October 8, 2026, GDD §9.10; `tools/asset_gen/sfx_bank_resonator.gd`,
+`resonator_warning` at -5.0 dB in `data/audio/sfx_library.tres`)
+370. **Should the Resonator's death sound lose its bell tones too?** The request named only the attack sound, so
+    `resonator_death` is unchanged: it still bends the old chime's three tuned tones (G5, C6, E6, `DEATH_TONES_HZ`)
+    out of tune under the glass and a small explosion. Should those tones go, leaving the glass, metal and
+    explosion?
+371. **A Resonator shot down in its warning cuts the warning's sound.** The warning builds to a wave crash at the
+    instant the wave leaves, so a Resonator shot mid-warning (no wave) would otherwise crash after its own death
+    sound, a warning for an attack that never comes. Placeholder: `Resonator._on_defeated` stops it
+    (`PlayerSfx.stop()`, `DESIGN-TBD`). Right, or let the crash play out?
+372. **The first-encounter hint** (`data/hints/hints.json`, `resonator`): "When the Resonator's halos line up and its
+    fire roars and crashes, a red wave rolls along the floor. Jump it ({jump}), or be on a wall or the ceiling."
+    Right wording?
+373. **Warnings under slow time** (PC only). Slow time halves `Engine.time_scale`, but sound effects play at normal
+    speed, so the warning's crash can land up to 1.3 s before the wave actually leaves. Every warning sound behaves
+    this way (still heard before the attack, never after); the crash-on-release design just makes it audible.
+    Should sound effects follow slow time, or is this acceptable?
+
+**Explosions as yellow-and-red fireballs** (from H6, owner, October 8, 2026, GDD §11; `scripts/run/fireball_pool.gd`, tunables in
+`SpeedFxTuning`'s "Explosions" group, F6 "Speed effects")
+374. **An exception to "only hazards glow in hazard colours"?** A yellow-and-red fireball glows red and orange. The
+    placeholder keeps it a look and keeps it short: no collision, no light, about a second of fire (longer for a
+    boss), embers, then dark non-glowing smoke; it fades as the camera nears it, so a runner passing through one
+    never loses sight of the lanes. The bombs' fireballs (Floating Head, The House) are sized to their blast and gone
+    when it is. Is the fireball the one explicit exception, or should explosions of things that aren't hazards
+    themselves (the player's missiles, a destroyed generator) look cooler?
+375. **The player's missiles: fireballs too?** GDD §11 lists "missiles", while the weapon section keeps the player's
+    fire cool (cyan, white, violet). Placeholder: the heavy missile's blast is a fireball inside the cyan splash ring
+    (`WeaponFx.HEAVY_FIRE_SIZE` 2.2) and a plain missile's hit a small quick one (`MISSILE_FIRE_SIZE` 0.9); lasers
+    stay cool. Both missiles, or only the heavy one?
+376. **Which other events count as explosions?** Beyond the owner's list, the build also made fireballs of the hover
+    truck bursting through the wall, the drone's first hit, the Floating Head's tower landing on the ship, and
+    Hostile Takeover's five rolling blasts. Not changed: the Sleep Taker's wisps, the Sewer Swarm, plain deaths.
+    Keep these?
+377. **How big and how long?** Each explosion's size is a constant in its script (a drone's crash 2.4 m radius, a truck
+    3.8, a boss 7–11); counts, lengths and brightness are in the "Explosions" group, and `fireball_scale` moves every
+    size at once (`DESIGN-TBD`). With Reduced flashing they rise softly to 45% of the normal brightness. Placeholders
+    until the owner has played them.
+
+**The Sleep Taker's October 8 changes** (from H9, owner, October 8, 2026, GDD §10; numbers in `data/bosses/dead_zone_boss_tuning.tres`
+(`SleepTakerTuning`, F6 in the fight) and `data/bosses/dead_zone_boss_wall_gaps.tres`, marked `DESIGN-TBD` in
+`scripts/bosses/sleep_taker/sleep_taker_tuning.gd`)
+378. **How dark lights out goes on the web / low-end renderer.** `dark_level` 0.225 (half the first build's 0.45)
+    for ambient and sky light, fog light, the sun and the scenery's own light, above floors of its own
+    (`light_floor` 0.2, `scenery_floor` 0.15; other bosses keep 0.3). Measured: the street goes from 50 to 32 (of
+    255) at the darkest on both renderers; glows hold (generator 218 → 217, pad 182 → 181, mist 106 → 105). On
+    Compatibility the walls go nearly black (6, was 15), though the street, bridges, wall gaps' orange edges and
+    every glow stay readable. Too dark there?
+379. **The slash's lane marks in lights out.** They blend over the street, so they'd dim with it (62 → 52); the
+    merge made them draw stronger as the light falls (`SleepTakerSlash.MARKS_DARK_BOOST` 1.4, toward 1 as the light
+    returns), so they stay as visible as before. Right?
+380. **The hands' rounds.** A round has 2 rows, then one more each round up to 4 (`hand_rows_first`, `hand_rows_max`),
+    kept across phases, 0.85 s of run apart (`hand_row_seconds`, divided by the phase's pace); each row leaves one
+    floor lane open (`hand_row_open`), one lane over from the last, and puts a hand in every other floor lane whose
+    floor is clear, so every row is a lane switch. Should wider streets leave two lanes open? Are four rows and
+    these gaps right?
+381. **All of a round's mists at once,** with one whisper per round and a burst sound per row as it rises. Far rows'
+    mists can blend into the nightmare's purple base until the runner is closer (each row still shows at least as
+    early as the first row's). Should the rows' mists appear one after another instead?
+382. **Wall hands.** From the first round, one wall hand on every row, alternating walls (`wall_hands_per_row`), never
+    beside a door in an outer lane, never at a wall gap, and only over an outer lane that has its own floor hand,
+    so no floor runner passes under one. Right?
+383. **When a round can't fit.** A round takes the rows that end before the next refuge's slash or lure, never fewer
+    than 2 (`hand_rows_min`); otherwise it waits and the phase's next attack may go first. A clean win sees 3–4
+    rounds (about 78 s, inside the three-star par of 86 s).
+384. **The fairness margins rounds are planned with:** a runner moving 0.4 s after the mists show (`route_reaction`),
+    a lane switch taking the real 0.14 s × 1.5 (`route_switch_margin`), the body 0.55 m past a hand either way
+    (`route_body_margin`), checked by The House's lane router.
+385. **How many wall gaps.** 1.6 to 1.3 s of run between gaps, 30% on both walls, 0.6–1.1 s long: about 15 a minute (a
+    level's median is 1.7). Both walls stay whole from each refuge's slash warning to the end of its bridge (±0.5 s).
+    Is that frequency right, and should the walls stay whole there?
+386. **"Double the floor gaps."** Once a lap's refuges are in, the generator's additive gap pass doubles the rows of
+    holes the fight has (`floor_gap_increase` 1), keeping their average width: over three laps 11 → 22 rows at 3 and
+    5 lanes, 8 → 16 at 6 (lane-gaps 15 → 30, 26 → 53, 24 → 50). New rows keep 1.3 s of run from everything else
+    (`floor_gap_spacing`; the arena's own 1.9 s fits only 1.6–1.8 times as many).
+
+**The Tithe Collector staying twice as long** (from H10, owner, October 8, 2026, GDD §9.12; `data/enemies/tithe_collector.tres`)
+387. **Should Hostile Takeover's Tithe Collector stay twice as long too?** A level's Collector now closes in at 3.5 m/s
+    instead of 7 (about 10.9 s on screen untouched, was 5.4 s, at every run speed; it sucks up about 2.4× the credits
+    in a dense lane). On the boss's 130 m flatcar roof that carries it past the roof's end, over the coupling gap the
+    runner jumps. Placeholder: the Board spawns its Collectors at `HostileTakeoverTuning.tithe_approach_speed` 7 m/s
+    (`DESIGN-TBD`), so the fight is as before. A longer stay there needs a longer roof or a Collector that starts
+    further back.
+388. **May two Tithe Collectors be in the level at once?** Nothing reserves a window for one (touching it is never a
+    hit). With the longer stay, two overlap when their patterns are closer than about 255 m at 23.4 m/s (Corporate 2
+    at 6 lanes has gaps of 70, 98 and 160 m between its seven); they overlapped before too, less often. Placeholder:
+    allowed. At most one at a time would need a reserved window of `stay_seconds()` after each one.

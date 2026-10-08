@@ -18,9 +18,14 @@ extends Node3D
 ## The dash smashing a zone doodad (GDD §3, owner, October 8, 2026; Player.smashed, task H5) flings its
 ## pieces in its look's own colours (rubble: lit chunks, never glowing, nothing flickering) with a light
 ## shake and no hit-stop: something solid breaking, never an explosion or a hit.
+## Every explosion is the same pooled `fireball` (FireballPool; GDD §11, the owner, October 8, 2026): a
+## big yellow-and-red ball of fire with embers and smoke, one call that every enemy, boss and weapon makes,
+## softened by Reduced flashing.
 ## All the numbers are SpeedFxTuning's (data/tuning/speed_fx.tres, F6 "Speed effects").
 
 signal shake_requested(strength: float, duration: float)
+## An explosion was asked for (`fireball`): where, and how big (metres in radius). Tests and tools listen.
+signal fireball_played(pos: Vector3, size: float)
 
 const BURST_POOL: int = 12
 const DEBRIS_POOL: int = 8
@@ -57,6 +62,7 @@ var _next_rubble: int = 0
 var _lines: Array[MeshInstance3D] = []
 var _line_life: Array[float] = []
 var _mesh: SphereMesh
+var _fireballs: FireballPool
 ## The highest the player has been above the floor since the last landing (Landings, land_shake).
 var _air_peak_h: float = 0.0
 ## Coin streams (coin_stream), made on first use: {inst: MultiMeshInstance3D, active, t, count, flight,
@@ -123,6 +129,7 @@ func setup(p_world: RunWorld, p_tuning: SpeedFxTuning = null) -> void:
 	tuning = p_tuning
 	if tuning == null:
 		tuning = load(DEFAULT_TUNING_PATH) as SpeedFxTuning if ResourceLoader.exists(DEFAULT_TUNING_PATH) else SpeedFxTuning.new()
+	_ensure_fireballs()
 	world.player.movement_event.connect(_on_player_event)
 	world.player.smashed.connect(_on_smashed)
 	world.director.enemy_defeated.connect(_on_enemy_defeated)
@@ -144,6 +151,38 @@ func burst(pos: Vector3, color: Color, amount: int = 16, size: float = 0.5) -> v
 	p.material_override = GreyboxMaterials.glow(color, 3.0)
 	p.restart()
 	p.emitting = true
+
+
+## An explosion at `pos`: a big yellow-and-red fireball, `size` metres in radius (a bomb 1.1, a drone's
+## crash 2.4, a truck 3.8, a boss 7 to 11), with embers and, unless `smoke` is off, dark smoke after it.
+## `pace` plays it faster (above 1) or slower (a bigger fireball already plays slower); `spread` (0.25 to 1)
+## holds its fire and embers in nearer its centre. Pooled and bounded (FireballPool): it allocates nothing,
+## and one more than the pool holds cuts the oldest short. It fades out as the camera comes near it (it
+## never whites out the view), and Reduced flashing softens its rise and its strength. A look only: no sound
+## (the caller's), no shake (the caller's `shake`), no collision.
+func fireball(pos: Vector3, size: float = 2.0, smoke: bool = true, pace: float = 1.0, spread: float = 1.0) -> void:
+	_ensure_fireballs()
+	_fireballs.play(pos, size, smoke, pace, spread)
+	fireball_played.emit(pos, size)
+
+
+## The fireball pool (tests and the shader warm-up).
+func fireballs() -> FireballPool:
+	_ensure_fireballs()
+	return _fireballs
+
+
+## Builds the pool the first time it's needed: RunWorld.build does it in `setup`, so nothing is built
+## mid-run; a bare RunEffects (a tool, a test) builds it on its first fireball.
+func _ensure_fireballs() -> void:
+	if _fireballs != null:
+		return
+	if tuning == null:
+		tuning = load(DEFAULT_TUNING_PATH) as SpeedFxTuning if ResourceLoader.exists(DEFAULT_TUNING_PATH) else SpeedFxTuning.new()
+	_fireballs = FireballPool.new()
+	_fireballs.name = "Fireballs"
+	add_child(_fireballs)
+	_fireballs.setup(tuning)
 
 
 ## A burst of tumbling glowing chunks at `pos` (alongside `burst`'s sparks, on kills and blocked

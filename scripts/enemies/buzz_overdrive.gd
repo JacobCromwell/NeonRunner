@@ -49,6 +49,8 @@ const WARNING_COLOR := Color(1.0, 0.12, 0.08)
 const SPARK_COLOR := Color(1.0, 0.6, 0.2)
 ## How long each spark flies (seconds).
 const SPARK_LIFETIME: float = 0.3
+## Its death's fireball (RunEffects.fireball, radius in metres; GDD §11): the tank is about as big as a truck.
+const FIRE_SIZE: float = 3.0
 ## The warning line's width, as a share of the lane, as the rev starts and at its end.
 const LINE_WIDTH_START: float = 0.2
 const LINE_WIDTH_END: float = 0.4
@@ -304,7 +306,7 @@ func _on_defeated(_cause: StringName) -> void:
 		floor_cut.stop()
 	_line.visible = false
 	world.play_sfx_at(&"truck_explode", global_position)
-	world.effects.burst(aim_point(), Color(1.0, 0.45, 0.15), 42, 1.3)
+	world.effects.fireball(aim_point(), FIRE_SIZE)
 	world.effects.burst(aim_point() + Vector3(0.0, 0.6, 0.0), Color(0.32, 0.32, 0.34), 22, 1.0)
 	queue_free()
 

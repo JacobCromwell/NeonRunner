@@ -177,8 +177,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     (jump on the ceiling and drop back onto it) or weapons kill it. Mechanical in most zones, a furry
     creature in Gangland and the Marketplace (in quick play, `--features=ceilings,barnacle_turret`)
   - the Resonator (from Golden 1): a golden broadcast spire hovering far ahead. When its halos line up
-    and its three-note chime plays, a red wave rolls along the floor across every lane: jump it, or be
-    on a wall or the ceiling. Shoot it down or wait until it leaves (in quick play, `--features=resonator`)
+    and a fire roars and crackles up, breaking into a crashing wave, a red wave rolls along the floor
+    across every lane: jump it, or be on a wall or the ceiling. Shoot it down or wait until it leaves
+    (in quick play, `--features=resonator`)
   - the Buzz Overdrive (from Corporate 1): a buzzsaw tank parked in its lane far ahead. It rolls ahead of
     you, then revs (the spin-up, its eyes flaring, a red line over its lane) and charges back down its lane,
     cutting the floor into a gap behind it: leave its lane. The armor or shield blocks it and the floor holds
@@ -188,13 +189,14 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     it physically hits, without awarding player kill bonuses (in quick play, `--features=buzz_overdrive`)
   - the Tithe Collector (from Corporate 2, skipping the Dead Zone, back in the Golden Zone): a small gold
     drone with a collection plate, smug and gaudy (plain metal, no rotors; anti-grav pads don't affect
-    it). It appears ahead of you and closes in slowly, sucking up the credits in its lane along the way
+    it). It appears ahead of you and closes in slowly (left alone, it stays in the level about 11
+    seconds), sucking up the credits in its lane along the way
     and weaving toward whichever lane has the most hazards ahead, so chasing it is the risk. Touching it
     isn't deadly: it grabs 25% of the credits you've collected and flies off. Catch it (stomp, shoot, or
     dash through it) for everything it took, plus a jackpot (in quick play, `--features=tithe_collector`,
     or review its shared mechanism with `--thief`)
-  - the Gilded Sentinels (from Golden 2): golden statues with halberds in niches set into the walls at
-    wall-run height, their eyes red. When its eyes flare and stone grinds, a Sentinel's halberd cuts what
+  - the Gilded Sentinels (from Golden 2): golden statues with halberds in lit niches set into the walls at
+    wall-run height, their eyes red. When its eyes flare and stone grinds (0.6 s of warning), a Sentinel's halberd cuts what
     lights up red: a band of its wall around the height where you step onto it, and the outer lane. Leave
     the lane, or on the wall pass above the band (jump onto the wall) or below it (onto the wall early).
     Later ones swing twice or stand in pairs across the street. The armor or shield blocks the cut;
@@ -241,14 +243,17 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   Zone's 24.2 m/s (its distances follow the pace too): a colossal nightmare of fused Bad Dreams with
   dozens of maws, looming over the darkened street. Weapons can't touch it. As the runner reaches a
   charred bridge, its belly's great maw opens with a shriek and the three lanes it will slash light up
-  red: take the bridge's pad up onto the ceiling, where it can't reach, or leave those lanes. Purple
-  mist pooling in the runner's lane, with whispering, means a hand is about to burst up: switch lanes.
-  Hand volleys progress from one hand to two, then stay at three across phase changes. Later volleys
-  can reach inward from either side wall, with mist on the wall warning each spot. An adjacent floor
-  lane always stays safe, including on the three-lane playfield.
-  After a deep inhale it swallows the light, and the street goes darker while every hazard keeps
-  glowing. Only a fence generator's EMP hurts it: a generator comes into sight far ahead, its pink
-  beacon showing through the nightmare; as the runner nears it the nightmare lunges in after them, and
+  red: take the bridge's pad up onto the ceiling, where it can't reach, or leave those lanes. Its hands
+  come in rounds spread along the street: with a whisper, purple mist pools where each hand will burst
+  up, row after row, each row leaving one lane open one lane over from the last, so the runner weaves
+  through a round with a lane switch at every row. Rounds grow from two rows to four across the fight,
+  and every row also reaches in from a side wall, with mist on the wall warning the spot. Its street's
+  side walls break into many gaps, and it has twice the holes it first had; a round only comes where a
+  way through it exists (the planner proves it with the real lane-switch time). After a deep inhale it
+  swallows the light, and the street goes very dark (half as bright as it first did, never pitch
+  black) while every hazard keeps glowing. Only a fence generator's EMP hurts it: a generator comes into
+  sight far ahead, its pink beacon showing through the nightmare; as the runner nears it the nightmare
+  lunges in after them, and
   once arcs leap from the generator into it, a stomp on the generator (or the dash) tears a chunk of
   the nightmare away. Three EMPs, three phases, each hungrier; the last bursts it into hundreds of faint
   faces and figures rising into the dark, the music falls silent and a grey dawn breaks over the Dead
@@ -352,7 +357,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 
 F6 pauses the game and opens a panel with sections for movement, game rules, power-ups, the runner's animation,
 pickups, speed effects (the camera's field-of-view kick and lane lean, speed lines, shake, hit-stop and the
-sparks and debris on kills and blocked hits), performance (how long a frame may spend dressing the track; see
+sparks and debris on kills and blocked hits, and the fireball every explosion is: counts, lengths, brightness, overall size), performance (how long a frame may spend dressing the track; see
 Smooth frames), the music's pause duck and death dip, level pacing, the campaign's
 recency curve for pick weights (in a campaign level), the wider gaps and the cyborgs planted in charge paths (in a
 level that asks for them: **Wider gaps**, **Charge paths**) and each enemy type in the level. Changes apply immediately;
@@ -418,7 +423,9 @@ the Golden Zone's statues, the Gilded Sentinels (each route past one, and its ki
 chase and a volley, each bait, a too-wide gap, its model; `--scenario=chase|octodog|buzz|gap|model`), a wider gap
 jumped and an Enforcer Truck wrecked in one (`wide_gap_review`, `--scenario=jump|enforcer`), zone doodads pushing the
 runner and, with `--dash`, the dash smashing them (`doodad_review`), an Octodog's lunge and a
-Buzz Overdrive's charge flattening a cyborg planted in its path (`charge_path_review`, `--scenario=octodog|buzz`),
+Buzz Overdrive's charge flattening a cyborg planted in its path (`charge_path_review`, `--scenario=octodog|buzz`), the
+explosions (`fireball_showcase`: the shared fireball at each size and through each enemy's own death,
+`--scenario=sizes|drone|truck|buzz|enforcer|generator|missile|bomb`, `--reduced` for Reduced flashing),
 any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
 lists its options. For example, a zone's arrival flyover rendered to frames on the web / low-end renderer:
 `godot --path . --rendering-method gl_compatibility --fixed-fps 10 --write-movie build/cine/f.png --quit-after 100
@@ -476,6 +483,12 @@ those the cap left out, whether the defeat played out, and whether every attempt
 `godot --headless --fixed-fps 60 -s res://tools/measure/hostile_takeover.gd -- [--lanes=3,5,6] [--speeds=18,23.4]
 [--attempts=2] [--die-in=3] [--misses=N] [--bay-misses=N] [--pass-misses=N] [--clamps-per-pass=N]` (about a
 minute for every setup).
+
+`tools/measure/sleep_taker_arena.gd` counts the Sleep Taker's arena over its three laps as the fight plans them
+(refuges and all), at every lane count and speed: its rows of holes and lane-gaps, fences, refuges and side wall
+gaps (and their rate a minute); `--first` counts it as first built, before the owner's October 8, 2026 changes
+(twice the floor gaps, many wall gaps): `godot --headless -s res://tools/measure/sleep_taker_arena.gd --
+[--lanes=3,5,6] [--speeds=18,24.2] [--first]` (a few seconds).
 
 ## The web demo
 
