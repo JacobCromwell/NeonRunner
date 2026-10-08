@@ -20,7 +20,10 @@ extends BossEncounter
 ## signs on its walls. Each lap carries its refuges (_plan_lap): every refuge_spacing metres a charred
 ## bridge across the street (the Dead Zone's ceiling look) with pads before it (the middle lane's, or
 ## every lane's: SleepTakerTuning.refuge_pads_every_lane), the track kept clear of holes and fences
-## where the slash's warning and escape happen and where its riders land.
+## where the slash's warning and escape happen and where its riders land. Owner, October 8, 2026 (task
+## H9): its side walls have many gaps (the arena opts in, LevelConfig.wall_gap_tuning:
+## data/bosses/dead_zone_boss_wall_gaps.tres), kept whole over each refuge's stretch, and once the
+## refuges are in, each lap gets twice the floor gaps it was first built with (_more_floor_gaps).
 ##
 ## Each phase (GDD §10: three phases, three EMP hits, hungrier each time):
 ## 1. Its intro. The first phase's is its entrance: it rises out of the street far ahead, materializing
@@ -35,17 +38,20 @@ extends BossEncounter
 ##    it too). Between refuges the phase's attack list (SleepTakerTuning.attack_patterns) runs in order,
 ##    the first attack that can start fairly going next: grasping hands (SleepTakerHands) and lights out
 ##    (SleepTakerLightsOut), one at a time, attack_gap apart, never one that would still be on when the
-##    next refuge's slash or the next lure is due. Lights out's darkness lasts while the next attacks
-##    come. generator_delay into the pattern a generator comes into sight (_update_generator,
+##    next refuge's slash or the next lure is due (a round of hands takes the rows that fit). Lights
+##    out's darkness lasts while the next attacks come (half as bright as first built: its light and
+##    scenery floors are its own, light_floor and scenery_floor). generator_delay into the pattern a
+##    generator comes into sight (_update_generator,
 ##    SleepTakerLure.place), and as the runner nears it the nightmare lunges in after them (the lure,
 ##    attacking nothing); smashed while it's in reach, the generator's EMP ends the phase
 ##    (_on_part_emp); missed, another follows generator_again later.
 ## 3. The last EMP beats it (SleepTakerDefeat): it bursts into hundreds of wisps, the music fades to
 ##    silence (no victory riff: victory_riff), and the first grey dawn breaks before the results.
 ## Every attack has its visual and audio warning (sound() plays and logs each), none overlaps another's,
-## and the hand volleys progress from one to two to three hands, capped there. The refuges are the
-## track's, the lists and generators the phase's, so every attempt plays the same way for the same
-## runner. The phase's pace speeds up the hands and the gaps (GDD §10: hungrier each phase: faster hands,
+## and the hands come in rounds of rows spread along the street, each row making the runner switch
+## lanes, with hands on the walls too (SleepTakerHands; owner, October 8, 2026), growing from
+## hand_rows_first rows to hand_rows_max. The refuges are the track's, the lists and generators the
+## phase's, so every attempt plays the same way for the same runner. The phase's pace speeds up the hands and the gaps (GDD §10: hungrier each phase: faster hands,
 ## more lights out in the later lists); the slash and lights out keep their timings (the slash's warning
 ## is what gets a runner to a pad). Distances that stand for a time follow the run's pace (run_pace()),
 ## so the fight keeps its seconds at the Dead Zone's 24.2 m/s. Numbers: SleepTakerTuning
@@ -136,7 +142,9 @@ func _tuning() -> SleepTakerTuning:
 ## refuge_spacing metres from refuge_first, a ceiling across every lane (a charred bridge in the Dead
 ## Zone's look) from the arena's hull_lead_in before its pads to refuge_seconds past them, with pads in
 ## refuge_pad_lanes(), and the track kept clear of holes and fences in every lane from where the slash's
-## warning finds the runner (and a jump before it) to past where it strikes, and where its riders land.
+## warning finds the runner (and a jump before it) to past where it strikes, and where its riders land;
+## its walls kept whole (no wall gap: refuge_wall_span()) over that whole stretch. Then the lap's extra
+## floor gaps (_more_floor_gaps).
 ## The generators its lures bring (SleepTakerLure), readied during the fight's load (task PERF1).
 func warm_enemies() -> Array[Dictionary]:
 	return [{"type": "generator", "at": 0.0, "lane": 0, "side": 0, "seed": 1, "params": {}}]
@@ -160,6 +168,8 @@ func _plan_lap(lap: LevelLayout, index: int, p_arena: BossArena) -> void:
 			break
 		_clear_track(lap, pad + span.x, pad + span.y)
 		zones.clear_landing(lap, landing)
+		var walls: Vector2 = refuge_wall_span(t, p_arena, pad)
+		_clear_walls(lap, walls.x, walls.y)
 		for i: int in range(lap.hulls.size() - 1, -1, -1):
 			if float(lap.hulls[i]["start"]) <= end + 1.0 and float(lap.hulls[i]["end"]) >= pad - lead_in - 1.0:
 				lap.hulls.remove_at(i)
@@ -169,6 +179,51 @@ func _plan_lap(lap: LevelLayout, index: int, p_arena: BossArena) -> void:
 		plan.append({"pad": pad, "end": end})
 		pad += t.refuge_spacing * k
 	_refuge_plan[index] = plan
+	_more_floor_gaps(lap, index, p_arena, t, plan)
+
+
+## The stretch around a refuge whose pads are at `pad` (track distances) where both walls stay whole:
+## from where the slash's warning finds the runner (refuge_warn_at) to its bridge's end, past where it
+## strikes and recovers, widened either way by the arena's wall gaps' own clearance
+## (WallGapTuning.clear_seconds, the room a level's wall gaps keep from a ceiling). A runner who takes to
+## a wall as the slash warns (its claws never reach a wall runner) is never dropped into it by a gap, and
+## the bridge never hangs over a missing wall.
+static func refuge_wall_span(t: SleepTakerTuning, p_arena: BossArena, pad: float) -> Vector2:
+	var v: float = p_arena.tuning.run_speed
+	var warn: float = pad + v * t.strike_after_pad - v * t.slash_warning()
+	var strike_over: float = pad + v * (t.strike_after_pad + t.slash_active + t.slash_recover) + t.slash_depth
+	var end: float = pad + t.refuge_seconds * v
+	var clear: float = WallGapPlacement.tuning_for(p_arena.config).clear_seconds * v
+	return Vector2(minf(warn, pad - p_arena.config.hull_lead_in) - clear, maxf(end, strike_over) + clear)
+
+
+## Owner, October 8, 2026: "double the amount of floor gaps". Once a lap's refuges are in, the
+## generator's additive gap pass (GapDensity, over the lap as it stands: LevelGenerator.for_layout) adds
+## floor_gap_increase as many rows of holes again as the lap has (1: twice as many as first built), each
+## as wide as the lap's rows on average with an open lane left, never moving anything, floor_gap_spacing
+## seconds at run speed from every other hole, fence, pad and ceiling (and its landing). Stand-in ceilings
+## over each refuge's clear stretch keep the new rows off where its slash warns and its riders land
+## while it runs. Its own random stream (from the lap's seed), so the arena is the same every attempt.
+static func _more_floor_gaps(lap: LevelLayout, index: int, p_arena: BossArena, t: SleepTakerTuning,
+		refuges: Array[Dictionary]) -> void:
+	if t.floor_gap_increase <= 0.0:
+		return
+	var config: LevelConfig = p_arena.config.duplicate() as LevelConfig
+	config.level_seed = hash([p_arena.config.level_seed, index, "sleep_taker_floor_gaps"])
+	# As BossArena plans the lap: its clear start and end keep their seconds at the run's pace.
+	config.start_clear_distance = p_arena.config.start_clear_distance * p_arena.tuning.pace()
+	config.end_clear_distance = p_arena.config.end_clear_distance * p_arena.tuning.pace()
+	config.gap_encounter_increase = t.floor_gap_increase
+	config.gap_lane_increase = 0.0
+	config.spacing_seconds_hard = t.floor_gap_spacing
+	var span: Vector2 = refuge_clear_span(t, p_arena.tuning, p_arena.tuning.run_speed)
+	var n: int = lap.lane_count
+	var hulls: int = lap.hulls.size()
+	for r: Dictionary in refuges:
+		var pad: float = float(r["pad"])
+		lap.hulls.append(LevelLayout.make_hull(pad + span.x, pad + span.y, Vector2i(0, n - 1), n))
+	GapDensity.apply(LevelGenerator.for_layout(config, p_arena.tuning, lap))
+	lap.hulls.resize(hulls)
 
 
 ## The stretch around a refuge's pads (relative to them) that stays clear of holes and fences in every
@@ -245,6 +300,13 @@ static func _clear_track(lap: LevelLayout, from: float, to: float) -> void:
 			lap.fences.remove_at(i)
 
 
+## Takes the wall gaps (any part of one, on either wall) out of the stretch between two track distances.
+static func _clear_walls(lap: LevelLayout, from: float, to: float) -> void:
+	for i: int in range(lap.wall_gaps.size() - 1, -1, -1):
+		if float(lap.wall_gaps[i]["start"]) <= to and float(lap.wall_gaps[i]["end"]) >= from:
+			lap.wall_gaps.remove_at(i)
+
+
 # --- Where it looms --------------------------------------------------------------------------------
 
 ## Where its entrance starts: far ahead, sunk below the street.
@@ -282,26 +344,6 @@ func warning_active() -> bool:
 
 
 # --- Fairness helpers ------------------------------------------------------------------------------
-
-## The nearest lane a runner in `pl` at `d0` can switch to out of an attack on `struck`: not struck, at
-## most max_escape_lanes away, and it and every lane on the way free of holes and fences from `d0` to
-## `until`. -1 if there is none.
-func escape_lane(struck: Array[int], pl: int, d0: float, until: float) -> int:
-	var n: int = lane_count()
-	for dist: int in range(1, tuning.max_escape_lanes + 1):
-		for s: int in [-1, 1]:
-			var e: int = pl + s * dist
-			if e < 0 or e >= n or struck.has(e):
-				continue
-			var ok: bool = true
-			for l: int in range(mini(pl, e), maxi(pl, e) + 1):
-				if l != pl and not floor_clear_lane(l, d0, until):
-					ok = false
-					break
-			if ok:
-				return e
-	return -1
-
 
 ## True if `lane`'s floor has no hole and no working fence between two track distances.
 func floor_clear_lane(lane: int, from: float, to: float) -> bool:
@@ -436,6 +478,17 @@ func victory_riff() -> bool:
 	return false
 
 
+## Lights out's own floors (owner, October 8, 2026: half as bright as first built; still never pitch
+## black): its tuning's, below every other boss's (BossEncounter.MIN_LIGHT_LEVEL and
+## ZoneSkin.MIN_SCENERY_LIGHT).
+func light_floor() -> float:
+	return (tuning if tuning != null else _tuning()).light_floor
+
+
+func scenery_floor() -> float:
+	return (tuning if tuning != null else _tuning()).scenery_floor
+
+
 # --- The pattern -----------------------------------------------------------------------------------
 
 ## The phase's attack list, keeping only the kinds it knows.
@@ -506,16 +559,14 @@ func _update_generator(delta: float, busy: bool) -> void:
 
 
 ## Starts an attack of `kind` if it can start fairly now and be over (with the gap after it) before the
-## next refuge's slash or the next lure, `until_refuge` seconds away.
+## next refuge's slash or the next lure, `until_refuge` seconds away (a round of hands takes the rows that
+## fit: SleepTakerHands.plan).
 func _try_start(kind: String, until_refuge: float) -> bool:
 	var gap: float = tuning.attack_gap / pace()
 	match kind:
 		"hands":
-			var plan: Dictionary = hands.plan()
+			var plan: Dictionary = hands.plan(until_refuge - gap)
 			if plan.is_empty():
-				return false
-			var over: float = hands.warning_seconds() + hands.over_distance() / speed()
-			if over + gap > until_refuge:
 				return false
 			hands.start(plan)
 			_hint("hands")

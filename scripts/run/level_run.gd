@@ -440,7 +440,7 @@ func _build_debug_tools() -> void:
 			sections.append({"title": "Wall fences", "resource": wall_fences, "path": wall_fences.resource_path})
 	# How often and how long side walls break (WallGapPlacement), in a level that has them; Restart level rebuilds.
 	if context.config.has_feature(WallGapPlacement.FEATURE):
-		var wall_gaps: WallGapTuning = WallGapPlacement.tuning()
+		var wall_gaps: WallGapTuning = WallGapPlacement.tuning_for(context.config)
 		if wall_gaps.resource_path != "":
 			sections.append({"title": "Wall gaps", "resource": wall_gaps, "path": wall_gaps.resource_path})
 	if context.is_boss():

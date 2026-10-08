@@ -5,9 +5,12 @@ extends RefCounted
 ## onto the wall there and one already on it drops off into the outer lane (Player.wall_supported); the
 ## track builder leaves the wall out and marks the gap's edges (ZoneSkin.wall_gap).
 ##
-## Rules, at the generator's run speed, with the numbers in WallGapTuning (data/tuning/wall_gaps.tres):
+## Rules, at the generator's run speed, with the numbers in WallGapTuning (data/tuning/wall_gaps.tres, or
+## the config's own: tuning_for):
 ## - Only in a level with the feature (Zone 2 on), never in a boss arena (BossArena.base_config strips
-##   the feature, and is_boss_arena() refuses one anyway), and not before the feature's start.
+##   the feature, and is_boss_arena() refuses one anyway) unless the arena opts in with numbers of its
+##   own (LevelConfig.wall_gap_tuning: the Sleep Taker's, owner, October 8, 2026), and not before the
+##   feature's start.
 ## - Low frequency: about a spacing (spacing_seconds_easy to _hard) from the end of one to the next.
 ## - A bilateral_share of them open both walls over the same stretch; the rest open one wall.
 ## - Never where the missing wall would leave something hanging or a launch with nowhere to go: a
@@ -25,9 +28,16 @@ const FEATURE: String = "wall_gaps"
 const TUNING_PATH: String = "res://data/tuning/wall_gaps.tres"
 
 
+## Every level's numbers (data/tuning/wall_gaps.tres).
 static func tuning() -> WallGapTuning:
 	var res: Resource = load(TUNING_PATH) if ResourceLoader.exists(TUNING_PATH) else null
 	return res as WallGapTuning if res is WallGapTuning else WallGapTuning.new()
+
+
+## The numbers `config`'s wall gaps follow: its own (LevelConfig.wall_gap_tuning, a boss arena's
+## opt-in), else every level's.
+static func tuning_for(config: LevelConfig) -> WallGapTuning:
+	return config.wall_gap_tuning if config != null and config.wall_gap_tuning != null else tuning()
 
 
 ## True if `config` is a boss arena's (BossArena.base_config names them "<boss>_arena").
@@ -39,9 +49,9 @@ static func is_boss_arena(config: LevelConfig) -> bool:
 static func place(gen: LevelGenerator) -> void:
 	var lay: LevelLayout = gen.layout
 	lay.wall_gaps.clear()
-	if not gen.config.has_feature(FEATURE) or is_boss_arena(gen.config):
+	if not gen.config.has_feature(FEATURE) or (is_boss_arena(gen.config) and gen.config.wall_gap_tuning == null):
 		return
-	var t: WallGapTuning = tuning()
+	var t: WallGapTuning = tuning_for(gen.config)
 	var rng: RandomNumberGenerator = gen.rng_for(FEATURE)
 	var v: float = gen.speed
 	var lo_len: float = minf(t.length_seconds_min, t.length_seconds_max)
