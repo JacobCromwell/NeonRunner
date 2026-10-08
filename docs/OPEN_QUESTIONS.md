@@ -859,7 +859,7 @@ rules"; switched off, the game plays exactly as before; measure with `tools/meas
       tremolo guitar with echo, creaking girders and wind; then a slow doom riff that rings out into the quiet again.
     - **Golden Zone** (also the Golden Palace): 132 BPM, F♯ harmonic minor, 44 s. Neoclassical metal: harpsichord,
       strings and timpani under a regal theme, guitar sweeps; no bells or chimes, so it never sounds like the
-      Resonator's chime.
+      Resonator's warning (its chime until October 8, 2026).
     Is each one's direction right for its zone?
 110. **The death dip** (GDD §11): as the player dies the track sinks 10 dB over 0.5 s while a low-pass closes to 800 Hz,
     so it sounds far away rather than stopping; it holds under the revive offer and comes back over 1 s on a revive or
@@ -1144,7 +1144,7 @@ play with `--features=resonator --skin=golden`)
     (the emblem's three-fold symmetry), opening in the middle into a cage of gold ribs around a red crystal core (the only
     part that always glows); three halos of gold arcs tumble slowly at rest. No bell, chain, cross, candle or steeple
     shape. 5.2 m tall. Right look?
-185. **The warning:** 1.3 s. The halos spin up and swing into line facing the runner, one on each of the chime's three
+185. **The warning:** *(Superseded October 8, 2026: the chime is replaced by a crackling fire breaking into a wave crash, GDD §9.10; items 370–373.)* 1.3 s. The halos spin up and swing into line facing the runner, one on each of the chime's three
     notes, ending as a red target, while the core and trims glow brighter; the wave leaves at the end and reaches the
     runner about 1.1 s later (about 2.4 s from the first note). Steady glow with Reduced flashing. Right length and look?
 186. **Distance and size (please look at this one):** it hovers 34 m ahead, its core 3.1 m up (too high to stomp). On the
@@ -1177,11 +1177,11 @@ play with `--features=resonator --skin=golden`)
 194. **The recency curve leaves it alone** (like item 148): boosted, its one-at-a-time rule dropped a third of its picks and
     left empty stretches (Golden 1 lost 1.9 enemies and 3.4 rows), so it's capped. Should the Golden Zone's newest enemy
     get a boost after all (fewer, longer visits, or visits placed by its rules)?
-195. **The chime and its sounds** (GDD §9.10): soft mallets on tuned metal bars with a glassy shimmer, rising G5, C6, E6
+195. **The chime and its sounds** (GDD §9.10) *(Superseded October 8, 2026: the chime is replaced by a crackling fire breaking into a wave crash, GDD §9.10; items 370–373.)*: soft mallets on tuned metal bars with a glassy shimmer, rising G5, C6, E6
     (a bright major triad, far from the Golden music's F♯ minor), the same every time; the pulse a deep thump and a rush
     rolling in along the floor; its death the chime bending out of tune and shattering. Right notes and feel?
 196. **One on screen at a time:** a Resonator arriving sends the last one away after its current pulse. Right?
-197. **The hint:** "When the Resonator's chime plays, a red wave rolls along the floor. Jump it ({jump}), or be on a wall or
+197. **The hint:** *(Superseded October 8, 2026: the chime is replaced by a crackling fire breaking into a wave crash, GDD §9.10; items 370–373.)* "When the Resonator's chime plays, a red wave rolls along the floor. Jump it ({jump}), or be on a wall or
     the ceiling." Right wording?
 
 **The Floating Head: propaganda, defeat, and the finished fight** (from E1d; the fight now plays in the City's boss
@@ -2496,3 +2496,21 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     height". Since the owner's earlier request, decorative statues stand in alcoves at the bottom of the walls,
     0.1–3.5 m up, which is wall-run height; they're told from live ones by the red eyes and the warning. Should
     the GDD line change to match?
+
+**The Resonator's new warning sound** (from H2, owner, October 8, 2026, GDD §9.10; `tools/asset_gen/sfx_bank_resonator.gd`,
+`resonator_warning` at -5.0 dB in `data/audio/sfx_library.tres`)
+370. **Should the Resonator's death sound lose its bell tones too?** The request named only the attack sound, so
+    `resonator_death` is unchanged: it still bends the old chime's three tuned tones (G5, C6, E6, `DEATH_TONES_HZ`)
+    out of tune under the glass and a small explosion. Should those tones go, leaving the glass, metal and
+    explosion?
+371. **A Resonator shot down in its warning cuts the warning's sound.** The warning builds to a wave crash at the
+    instant the wave leaves, so a Resonator shot mid-warning (no wave) would otherwise crash after its own death
+    sound, a warning for an attack that never comes. Placeholder: `Resonator._on_defeated` stops it
+    (`PlayerSfx.stop()`, `DESIGN-TBD`). Right, or let the crash play out?
+372. **The first-encounter hint** (`data/hints/hints.json`, `resonator`): "When the Resonator's halos line up and its
+    fire roars and crashes, a red wave rolls along the floor. Jump it ({jump}), or be on a wall or the ceiling."
+    Right wording?
+373. **Warnings under slow time** (PC only). Slow time halves `Engine.time_scale`, but sound effects play at normal
+    speed, so the warning's crash can land up to 1.3 s before the wave actually leaves. Every warning sound behaves
+    this way (still heard before the attack, never after); the crash-on-release design just makes it audible.
+    Should sound effects follow slow time, or is this acceptable?
