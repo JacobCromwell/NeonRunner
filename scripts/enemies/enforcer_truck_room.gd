@@ -23,9 +23,10 @@ const DODGE_ROOM_SECONDS: float = 0.2
 ## Its front this far behind the runner, nothing of it is in the chase camera's view (its nose, its roof and its
 ## riders all lie under the bottom of the view): a showing is in view from there in.
 const OUT_OF_VIEW: float = 5.0
-## Enemies that keep it from showing itself while one is in play or coming: the hover truck (a mini-boss holding
-## an outer lane) and the Gilded Sentinel (its strike can't wait for a turn: it would let the runner pass). Others
-## wait for its showing's turn as for a volley's (a Resonator's pulse moves on).
+## DESIGN-TBD (docs/questions/c6b.md): enemies that keep it from showing itself while one is in play or coming:
+## the hover truck (a mini-boss holding an outer lane) and the Gilded Sentinel (its strike can't wait for a turn:
+## it would let the runner pass). Others wait for its showing's turn as for a volley's (a Resonator's pulse moves
+## on).
 const NO_SHOW_TYPES: Array[StringName] = [&"hover_truck", &"gilded_sentinel"]
 const TYPE: String = "enforcer_truck"
 const BuzzRules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")

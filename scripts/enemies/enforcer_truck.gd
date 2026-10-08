@@ -679,6 +679,7 @@ func show_lane_now() -> Array:
 	if not p.alive or not p.running or p.surface != Player.Surface.FLOOR or not p.grounded or p.in_pit:
 		return [-1, "runner off the floor"]
 	var r: int = p.lane
+	# DESIGN-TBD (docs/questions/c6b.md): a runner in an outer lane has one lane beside them, which it would take.
 	if r < 1 or r > world.geo.lane_count - 2:
 		return [-1, "runner in an outer lane"]
 	if absf(p.position.x - world.geo.lane_x(r)) > 0.05:
