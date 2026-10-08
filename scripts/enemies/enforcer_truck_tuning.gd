@@ -116,7 +116,10 @@ extends EnemyTuning
 ## It shows itself as it arrives where there's room then, so the runner sees what's chasing them.
 @export var show_on_arrival: bool = true
 ## The owner: it "only stays on screen for a few seconds before falling back" (proposed about 3 s alongside).
+## It drops back sooner when something stands in its lane ahead (it never drives through it), but never before
+## show_min_seconds: it shows itself only where its lane is clear for that long.
 @export_range(1.0, 8.0, 0.1, "suffix:s") var show_seconds: float = 3.0
+@export_range(0.5, 8.0, 0.1, "suffix:s") var show_min_seconds: float = 1.5
 ## DESIGN-TBD: its front's distance ahead of the runner while it's beside them, in a lane next to theirs: the
 ## chase camera then shows its whole model, its light bar and its riders (EnforcerTruckView.fits), and it never
 ## hides the runner. It shows itself only in a lane where that holds.
@@ -127,12 +130,15 @@ extends EnemyTuning
 @export_range(4.0, 30.0, 0.5, "suffix:m/s") var show_close_speed: float = 14.0
 @export_range(4.0, 30.0, 0.5, "suffix:m/s") var show_drop_speed: float = 11.0
 @export_range(4.0, 40.0, 0.5, "suffix:m/s") var show_yield_speed: float = 18.0
-## DESIGN-TBD: seconds of chase from its arrival or a showing's end before the next showing may start.
+## DESIGN-TBD: seconds of chase from a showing's end before the next showing may start.
 @export_range(0.0, 20.0, 0.5, "suffix:s") var show_spacing_seconds: float = 6.0
+## DESIGN-TBD: its first volley waits up to this long past its time (first_volley_seconds) for its first showing,
+## while one can still come before its bait: the runner sees what's chasing them before it fires.
+@export_range(0.0, 10.0, 0.5, "suffix:s") var show_wait_seconds: float = 4.0
 ## Seconds of running kept spare around a showing: it's back behind the runner this long (and close_lead_seconds
 ## more) before a bait's warning (an Octodog's wind-up, a Buzz Overdrive's rev), and the floor it needs stays
 ## clear this much longer.
-@export_range(0.0, 5.0, 0.1, "suffix:s") var show_margin_seconds: float = 1.5
+@export_range(0.0, 5.0, 0.1, "suffix:s") var show_margin_seconds: float = 1.0
 ## DESIGN-TBD: how far ahead of the runner no enemy may be in its lane or beyond it (toward that side's wall)
 ## while it's alongside: from the camera it would hide one there. It gives way when one comes that close.
 @export_range(0.0, 80.0, 1.0, "suffix:m") var show_shadow_reach: float = 30.0
@@ -198,14 +204,25 @@ func ease_seconds(distance: float, speed: float) -> float:
 	return maxf(d - knee, 0.0) / maxf(speed, 0.01) + log(maxf(minf(d, knee), 0.25) / 0.25) / rate
 
 
-## Seconds a showing takes from `from_gap` behind the runner (its front): closing in (at gap_speed_max while
-## it's further back than follow_gap, as it arrives, then at show_close_speed), alongside for show_seconds, and
-## dropping back to follow_gap.
-func show_total_seconds(from_gap: float) -> float:
-	var close_in: float = ease_seconds(from_gap + show_ahead, show_close_speed)
+## Seconds a showing takes from `from_gap` behind the runner (its front): closing in (show_close_seconds),
+## alongside for `hold` seconds (show_seconds when negative), and dropping back to follow_gap.
+func show_total_seconds(from_gap: float, hold: float = -1.0) -> float:
+	return show_close_seconds(from_gap) + (show_seconds if hold < 0.0 else hold) \
+		+ ease_seconds(follow_gap + show_ahead, show_drop_speed)
+
+
+## Seconds it takes to come alongside the runner from `from_gap` behind them: at gap_speed_max while it's
+## further back than follow_gap (as it arrives), then at show_close_speed.
+func show_close_seconds(from_gap: float) -> float:
 	if from_gap > follow_gap:
-		close_in = (from_gap - follow_gap) / maxf(gap_speed_max, 0.01) + ease_seconds(follow_gap + show_ahead, show_close_speed)
-	return close_in + show_seconds + ease_seconds(follow_gap + show_ahead, show_drop_speed)
+		return (from_gap - follow_gap) / maxf(gap_speed_max, 0.01) + ease_seconds(follow_gap + show_ahead, show_close_speed)
+	return ease_seconds(from_gap + show_ahead, show_close_speed)
+
+
+## Seconds it takes to drop back from alongside the runner until it's out of the camera's view (its front out
+## of view: the camera sees no more than out_of_view behind the runner).
+func show_drop_view_seconds(out_of_view: float) -> float:
+	return ease_seconds(show_ahead + out_of_view, show_drop_speed)
 
 
 ## How close it comes behind the runner during an Octodog's attack, in a level at `pace`
