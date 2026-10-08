@@ -47,7 +47,7 @@ Task IDs refer to `docs/TASK_PLAN.md`, section H. The owner's answers to the orc
 - [ ] The bottoms of Buzz Overdrive cuts in the floor should show a zone-specific background. (H3)
 - [x] Only one enemy may fire at a time, which looks and feels unnatural: let two enemies fire at a time. (H4) [Owner: this is the cyborg-type guns' limit (cyborgs, window cyborgs, Barnacle Turrets): two bursts may be in the air at once. Big attacks of different types still take turns.]
 - [ ] Make doodads destructible by a dash. (H5)
-- [ ] The heli drone's explosion and all explosions in the game need to be more visually impressive: a yellow and red fireball. (H6)
+- [x] The heli drone's explosion and all explosions in the game need to be more visually impressive: a yellow and red fireball. (H6)
 - [ ] Walls the player can dash through: not the side walls, but walls blocking the path forward, using the side walls' assets turned to face the player, like a building in the middle of the street. The player must dash through them; they crumble and explode into rubble when hit. Without the dash, the player takes one hit (armor, then shield; with neither, it kills). (H7a, H7b) [Owner: they block every floor lane but not the side walls, no ceiling shares their stretch, and they're introduced in the Corporate zone.]
 - [ ] Lasers auto-target host cyborgs, so players have to switch the laser off to avoid releasing Bad Dreams. (H8) [Owner: in normal levels; this reverses the September 26 rule that hosts are immune to weapons.]
 - [ ] Sleep Taker: when it makes the screen darker, things should get 50% darker than they already do (glowing things like gaps and lasers stay visible). (H9)

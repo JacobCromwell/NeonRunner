@@ -2514,3 +2514,24 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     speed, so the warning's crash can land up to 1.3 s before the wave actually leaves. Every warning sound behaves
     this way (still heard before the attack, never after); the crash-on-release design just makes it audible.
     Should sound effects follow slow time, or is this acceptable?
+
+**Explosions as yellow-and-red fireballs** (from H6, owner, October 8, 2026, GDD §11; `scripts/run/fireball_pool.gd`, tunables in
+`SpeedFxTuning`'s "Explosions" group, F6 "Speed effects")
+374. **An exception to "only hazards glow in hazard colours"?** A yellow-and-red fireball glows red and orange. The
+    placeholder keeps it a look and keeps it short: no collision, no light, about a second of fire (longer for a
+    boss), embers, then dark non-glowing smoke; it fades as the camera nears it, so a runner passing through one
+    never loses sight of the lanes. The bombs' fireballs (Floating Head, The House) are sized to their blast and gone
+    when it is. Is the fireball the one explicit exception, or should explosions of things that aren't hazards
+    themselves (the player's missiles, a destroyed generator) look cooler?
+375. **The player's missiles: fireballs too?** GDD §11 lists "missiles", while the weapon section keeps the player's
+    fire cool (cyan, white, violet). Placeholder: the heavy missile's blast is a fireball inside the cyan splash ring
+    (`WeaponFx.HEAVY_FIRE_SIZE` 2.2) and a plain missile's hit a small quick one (`MISSILE_FIRE_SIZE` 0.9); lasers
+    stay cool. Both missiles, or only the heavy one?
+376. **Which other events count as explosions?** Beyond the owner's list, the build also made fireballs of the hover
+    truck bursting through the wall, the drone's first hit, the Floating Head's tower landing on the ship, and
+    Hostile Takeover's five rolling blasts. Not changed: the Sleep Taker's wisps, the Sewer Swarm, plain deaths.
+    Keep these?
+377. **How big and how long?** Each explosion's size is a constant in its script (a drone's crash 2.4 m radius, a truck
+    3.8, a boss 7–11); counts, lengths and brightness are in the "Explosions" group, and `fireball_scale` moves every
+    size at once (`DESIGN-TBD`). With Reduced flashing they rise softly to 45% of the normal brightness. Placeholders
+    until the owner has played them.
