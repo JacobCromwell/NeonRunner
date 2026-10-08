@@ -68,6 +68,8 @@
     {"match": "scripts/enemies/host_rules.gd", "suites": ["sewer_swarm_host", "bad_dream", "cyborg"]},
     {"match": "scripts/enemies/pad_placement.gd", "suites": ["drone", "bad_dream", "ceilings"]},
     {"match": "scripts/enemies/cut_placement.gd", "suites": ["floor_cuts", "buzz_overdrive"]},
+    {"match": "scripts/enemies/cyborg_gun*", "suites": ["cyborg", "cyborg_airspace", "window_cyborg", "barnacle_turret", "floating_head_faceoff"]},
+    {"match": "scripts/enemies/cyborg_airspace.gd", "suites": ["cyborg", "cyborg_airspace", "window_cyborg", "barnacle_turret", "floating_head_faceoff"]},
     {"match": "scripts/enemies/cyborg_looks/*", "suites": ["cyborg", "cyborg_body", "avatar"]},
     {"match": "scripts/bosses/boss_*.gd", "tier": "full"},
     {"match": "scripts/bosses/test_boss*", "suites": ["bosses"]},
