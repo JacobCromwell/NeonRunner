@@ -96,7 +96,7 @@ The owner reviewed every placeholder below. **GB** means "From the R1 core-movem
 - FB 14: quitting from the pause menu keeps 20%, like a death (§4).
 - FB 27: big attacks of different enemy types take turns (§9). The owner may revert this after playtesting, since early playtests felt not very challenging.
 - FB 53: the music dips on death, and the level-complete riff plays in each zone's key (§11).
-- FB 71: hosts are immune to all weapon damage (§9.7).
+- FB 71: hosts are immune to all weapon damage (§9.7). *(Superseded October 8, 2026: weapons hit hosts, GDD §9.7; items 389–394.)*
 - FB 85: no screeches in the Neon City (§9.5).
 - P2 4: Buzz Overdrive also appears in the Golden Zone (§9.9; a recording error, corrected).
 - P2 7: Dead Zone 2 has fewer enemies but more hosts and Bad Dream chases, darker lighting, and long silent stretches broken by sudden threats (§5).
@@ -343,7 +343,7 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
   window cyborgs at a player on their own wall; cyborgs stand at least 10 m from gaps, fences, ramps
   and pads. *(Superseded October 8, 2026: up to two cyborg-type bursts may be in the air at once, GDD §9.2; items 361–364.)*
 71. **Hosts:** never panic; the kill bonus is 1,500. It's paid, and the Bad Dream released, on any
-  kill, even a stray direct weapon hit (auto-fire never aims at hosts).
+  kill, even a stray direct weapon hit (auto-fire never aims at hosts). *(Superseded October 8, 2026: weapons hit hosts, GDD §9.7; items 389–394.)*
 72. **Window cyborgs:** a 0.8 m body band centred on the 2.2 m wall-entry height, reaching 0.55 m out
   from the wall. They can't be stomped.
 73. **Fence generators:** claws and running into one don't destroy it, and its body is solid (running
@@ -2584,3 +2584,35 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     hit). With the longer stay, two overlap when their patterns are closer than about 255 m at 23.4 m/s (Corporate 2
     at 6 lanes has gaps of 70, 98 and 160 m between its seven); they overlapped before too, less often. Placeholder:
     allowed. At most one at a time would need a reserved window of `stay_seconds()` after each one.
+
+**Weapons hit hosts** (from H8, owner, October 8, 2026, GDD §9.7)
+389. **The score for a weapon kill of a host.** GDD §9.7 says a stomp, claws or the dash still earn the big host bonus;
+    it doesn't say what a weapon kill earns. Placeholder: a weapon kill (direct hit or heavy-missile splash) pays an
+    ordinary cyborg kill (200) and no host bonus (`CyborgTuning.weapon_host_bonus` 0, `DESIGN-TBD`); a stomp, claws or
+    the dash still pay 1,500 on top. Should a weapon kill earn a smaller host bonus, or nothing?
+390. **Should an Octodog's lunge or a Buzz Overdrive's charge kill a host?** A charge is no weapon, so hosts stay out of
+    a charge's reach as before (`Enemy.charge_can_hurt`, `DESIGN-TBD`). A charge killing a host would release a Bad
+    Dream nobody chose to release. Wanted?
+391. **Where a chase begins after a weapon kill: the lurk.** Weapons kill hosts 0.6–1.5 s of run before the runner
+    reaches them (tiers 2–4; tier 1 never does). Released there, a chase began up to 37 m early: inside a wall fence's
+    drop window the generator keeps off chases in 12 of 45 runs, with up to 10.17 s without a pad (the guarantee is
+    10 s). Placeholder (`DESIGN-TBD` in `scripts/enemies/bad_dream.gd`): a Bad Dream bursting out further ahead than
+    its hover spot (7.5 m) rises out of its host as usual, then **lurks** over that spot, harmless, maw closed and dim,
+    holding no other attack back, until the runner is within 7.5 m; then its chase begins exactly as for a stomped
+    host. Measured: chases begin at most 14 m before the host's spot (a stomp: up to 9 m), with the same pads as a
+    stomp's, nothing kept off chases met, no fizzle or overlap. An EMP dissolves a lurking one where it hangs. Is the
+    lurk right, or should the chase start at the kill?
+392. **Laser tier 1 hardly ever kills a host** (7 shots, 42 m range: about 2 s before the runner arrives; in the
+    measured runs it never did). The cost of carrying the weapon into host levels is real from tier 2 on (missiles
+    reach 70 m). As intended, or should tier 1 reach hosts too?
+393. **The first-encounter hint** (`data/hints/hints.json`, `host`). Placeholder: "Glitching cyborgs carry something
+    worse, and killing one sets it loose. Your weapon fires at them too: switch it off in the shop to leave them be."
+    (was "... Think before you stomp one.") Right wording?
+394. **Follow-up for a later core generator task: plan the chase keep-outs from where a chase can begin.** The
+    generator keeps things off each chase from its host's spot (`host_rules.gd`, `BadDreamTuning.chase_stretch`), but a
+    chase can begin up to about 15.5 m earlier after a weapon release (the host's walk toward the runner plus the
+    hover spot), about 9 m after a stomp. On the campaign's own seeds nothing kept off chases lies there
+    (`test_host_releases`), but on another seed (Dead Zone 1, 3 lanes, seed 9001, which endless-style random seeds
+    could hit) a chase began inside a wall fence's drop window; its first claws came well after, so nothing could hit
+    the runner. Proposed: start the keep-outs at the host's spot less (`walk_max` + `hover_ahead`), or add seeds that
+    aren't the levels' own to the layout check.
