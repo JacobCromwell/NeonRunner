@@ -86,6 +86,14 @@ const PASS_MARGIN: float = 0.5
 const MIN_GAP: float = 1.6
 ## Its solid sides' height while it shows itself: over a jump, its roof and its riders.
 const BLOCKER_HEIGHT: float = 5.0
+## Where it blows up, in its own space (its front at the origin, its body back along +z): over its nose, this
+## high and this far back; beside the runner a little higher, further back and BLAST_SHIFT further from their
+## lane. With its wreck's front wreck_gap behind the runner, its blast sits low in the band of the chase camera's
+## view between the screen's bottom edge and its line of sight to the runner (blast_spot).
+const BLAST_HEIGHT: float = 0.8
+const BLAST_BACK_IN_LANE: float = 0.4
+const BLAST_BACK: float = 0.6
+const BLAST_SHIFT: float = 0.3
 const BuzzScript = preload("res://scripts/enemies/buzz_overdrive.gd")
 
 var tuning: EnforcerTruckTuning
@@ -1229,9 +1237,11 @@ func _on_defeated(cause: StringName) -> void:
 	_wreck_cause = cause
 	_wreck_t = 0.0
 	_wreck_gap0 = gap
-	_wreck_gap = minf(gap, tuning.wreck_gap)
 	_wreck_far = _hole_far if _holed() else INF
 	_wreck_in_lane = absf(_x - world.player.position.x) < (tuning.body_size.x + world.tuning.visual_size.x) * 0.5 + 0.6
+	# In the runner's lane it blows up wreck_gap behind them (closer, its fireball would hide them); beside them a
+	# wreck already closer stays where it is.
+	_wreck_gap = tuning.wreck_gap if _wreck_in_lane else minf(gap, tuning.wreck_gap)
 	_fall_v = 0.0
 	_spin = 0.0
 	_trail_left = 0.0
@@ -1318,7 +1328,7 @@ func _explode() -> void:
 	model.visible = false
 	_blast.position = local
 	_blast.start(tuning.blast_radius_in_lane if _wreck_in_lane else tuning.blast_radius, tuning.blast_seconds,
-		Settings.flashing_reduced)
+		Settings.flashing_reduced, _wreck_in_lane)
 	var at: Vector3 = to_global(local)
 	_sound(&"truck_explode")
 	world.effects.burst(at, Color(1.0, 0.5, 0.1), 50, 1.4)
@@ -1332,9 +1342,17 @@ func _explode() -> void:
 	_trail_left = 0.1
 
 
-## Where it blows up, in its own space: over its front half, low as it plunges into a hole.
+## Where it blows up, in its own space (blast_spot), away from the runner's side.
 func _blast_local() -> Vector3:
-	return Vector3(0.0, 0.35, 1.2) if _holed() else Vector3(0.0, 0.9, 2.0)
+	return blast_spot(_wreck_in_lane, signf(_x - world.player.position.x))
+
+
+## Where a truck blows up, in its own space: in the runner's lane (`in_lane`) or beside it, `away` the side away
+## from the runner (-1 or 1).
+static func blast_spot(in_lane: bool, away: float) -> Vector3:
+	if in_lane:
+		return Vector3(0.0, BLAST_HEIGHT, BLAST_BACK_IN_LANE)
+	return Vector3(away * BLAST_SHIFT, BLAST_HEIGHT + 0.15, BLAST_BACK)
 
 
 ## Weapons never target it (immune_to_weapons). Where effects appear: just behind its front, chest high.

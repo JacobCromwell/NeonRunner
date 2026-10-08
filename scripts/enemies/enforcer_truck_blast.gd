@@ -13,8 +13,9 @@ extends Node3D
 ##   so no shader is built mid-run.
 ## - Reduced flashing (Settings.flashing_reduced): no white-hot core, a softer fire and floor glow that come up
 ##   over a moment instead of at once (no bright flash).
-## - Its size: `radius`, the fireball's at its biggest (the truck asks for a smaller one in the runner's lane, so
-##   it stays under the camera's line of sight to them: tests/suites/test_enforcer_truck.gd).
+## - Its size: `radius`, the fireball's at its biggest. In the runner's lane it's small and `flat` (its puffs rise
+##   less), so it stays under the camera's line of sight to them; beside them, bigger (tests/suites/
+##   test_enforcer_truck.gd checks both never hide the runner, and that the camera sees them).
 ## Ten draw calls while it lasts (about a second), about 1,000 triangles.
 
 ## The fire's colours: the hot core, the fireball's orange, its red edge, and the smoke.
@@ -24,16 +25,18 @@ const EMBER := Color(0.95, 0.22, 0.06)
 const SMOKE := Color(0.13, 0.12, 0.12)
 ## The puffs, in units of the radius and of the blast's length: [kind, offset (x, y, z: z negative is
 ## forward), peak size, start, peak, end, rise]. The fire swells fast and fades; the smoke comes up behind it,
-## rises and lingers. Sizes are diameters (the sphere mesh is one across).
+## rises and lingers. Sizes are diameters (the sphere mesh is one across). A flat blast's offsets up and rises
+## are FLAT of these.
 const PUFFS: Array = [
-	[&"core", Vector3(0.0, 0.25, 0.0), 0.9, 0.0, 0.08, 0.35, 0.2],
-	[&"fire", Vector3(0.0, 0.35, 0.0), 1.6, 0.0, 0.22, 0.6, 0.35],
-	[&"fire", Vector3(-0.45, 0.25, -0.35), 1.1, 0.03, 0.26, 0.62, 0.45],
-	[&"fire", Vector3(0.45, 0.3, 0.3), 1.05, 0.05, 0.3, 0.66, 0.5],
-	[&"ember", Vector3(0.1, 0.6, -0.1), 0.9, 0.1, 0.35, 0.72, 0.7],
-	[&"smoke", Vector3(-0.2, 0.7, 0.35), 1.1, 0.2, 0.6, 1.0, 1.0],
-	[&"smoke", Vector3(0.3, 0.9, -0.2), 0.95, 0.28, 0.7, 1.0, 1.1],
+	[&"core", Vector3(0.0, 0.1, 0.0), 0.9, 0.0, 0.08, 0.35, 0.1],
+	[&"fire", Vector3(0.0, 0.2, 0.0), 1.6, 0.0, 0.22, 0.6, 0.2],
+	[&"fire", Vector3(-0.45, 0.1, -0.35), 1.1, 0.03, 0.26, 0.62, 0.3],
+	[&"fire", Vector3(0.45, 0.15, 0.3), 1.05, 0.05, 0.3, 0.66, 0.3],
+	[&"ember", Vector3(0.1, 0.35, -0.1), 0.9, 0.1, 0.35, 0.72, 0.45],
+	[&"smoke", Vector3(-0.2, 0.45, 0.35), 1.0, 0.2, 0.6, 1.0, 0.6],
+	[&"smoke", Vector3(0.3, 0.55, -0.2), 0.9, 0.28, 0.7, 1.0, 0.7],
 ]
+const FLAT: float = 0.3
 ## The floor glow's reach (in units of the radius) and its life (a share of the blast's length).
 const GLOW_REACH: float = 2.4
 const GLOW_LIFE: float = 0.55
@@ -48,17 +51,21 @@ var radius: float = 2.0
 var length: float = 0.9
 var t: float = 0.0
 var reduced: bool = false
+## Low (in the runner's lane): its puffs rise less (FLAT).
+var flat: bool = false
 ## Each puff: {node, mat (its own copy, faded), kind, offset, size, start, peak, end, rise, alpha}.
 var _puffs: Array[Dictionary] = []
 var _glow: MeshInstance3D
 var _glow_mat: StandardMaterial3D
 
 
-## Sets it off: `p_radius` metres at its biggest, lasting `p_length` seconds, softer with `p_reduced`.
-func start(p_radius: float, p_length: float, p_reduced: bool) -> void:
+## Sets it off: `p_radius` metres at its biggest, lasting `p_length` seconds, softer with `p_reduced`, low with
+## `p_flat` (in the runner's lane).
+func start(p_radius: float, p_length: float, p_reduced: bool, p_flat: bool = false) -> void:
 	radius = maxf(p_radius, 0.1)
 	length = maxf(p_length, 0.1)
 	reduced = p_reduced
+	flat = p_flat
 	t = 0.0
 	for p: Dictionary in _puffs:
 		(p["node"] as Node).queue_free()
@@ -107,7 +114,9 @@ func advance(delta: float) -> void:
 		var fade: float = clampf((u - peak_u) / maxf(end_u - peak_u, 0.001), 0.0, 1.0)
 		var s: float = radius * size * (0.35 + 0.65 * (1.0 - pow(1.0 - grow, 2.0))) * (1.0 + 0.15 * fade)
 		node.scale = Vector3.ONE * s
-		node.position = (p["offset"] as Vector3) * radius + Vector3(0.0, float(p["rise"]) * radius * (u - start_u), 0.0)
+		var up: float = FLAT if flat else 1.0
+		var offset: Vector3 = (p["offset"] as Vector3) * radius
+		node.position = Vector3(offset.x, offset.y * up + float(p["rise"]) * up * radius * (u - start_u), offset.z)
 		var a: float = float(p["alpha"]) * (1.0 - fade * fade)
 		if reduced and p["kind"] != &"smoke":
 			# No sudden flash: the fire comes up over its swell and stays softer.

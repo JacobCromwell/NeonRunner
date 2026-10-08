@@ -160,9 +160,9 @@ extends EnemyTuning
 ## where it must stay under the camera's line of sight to them), and how fast it falls back behind the runner
 ## (it keeps most of the truck's speed, so it stays in view).
 @export_range(0.3, 2.0, 0.05, "suffix:s") var blast_seconds: float = 0.9
-@export_range(0.5, 4.0, 0.1, "suffix:m") var blast_radius: float = 1.9
-@export_range(0.5, 4.0, 0.1, "suffix:m") var blast_radius_in_lane: float = 1.2
-@export_range(0.0, 20.0, 0.5, "suffix:m/s") var blast_drift: float = 2.5
+@export_range(0.5, 4.0, 0.05, "suffix:m") var blast_radius: float = 1.3
+@export_range(0.3, 4.0, 0.05, "suffix:m") var blast_radius_in_lane: float = 0.85
+@export_range(0.0, 10.0, 0.1, "suffix:m/s") var blast_drift: float = 0.5
 
 @export_group("Look")
 ## Its size: width (inside its lane), roof height and length behind its front.
