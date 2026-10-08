@@ -3635,6 +3635,19 @@ cyborg flattened by the charge (never the player's kill) with the runner in_view
 charged and no bolt landing in its hold_fire stretch, a runner who leaves the far lane (the cut's lane) after
 the warning untouched and one who stays hit; and in the campaign's own builds, played from the start, the first
 planted Octodog encounter and the earliest Buzz Overdrive one at each lane count flattening their cyborgs.
+`test_host_releases` checks that weapons hit hosts (task H8; GDD §9.7) and what that does to the campaign:
+auto-fire targets a host and never the fence generator beside it, the heavy missile's splash on the host sparing
+the generator, and its Bad Dream bursting out; a weapon hurts a host, never a charge (`charge_can_hurt`); every
+host level's layout at 3, 5 and 6 lanes keeping what the generator keeps off chases out of where a chase may
+begin early (a host's walk plus the lurk's `hover_ahead`); and each host level played once (Dead Zone 1 at 5
+lanes, Dead Zone 2 at 3, Golden 1 at 6, Golden 2 at 3, Golden 3 at 5) by a god-mode runner with weapon tier 2,
+whose kills come furthest ahead (`tools/measure/host_watch.gd`, `attack_watch.gd`): hosts shot down ahead of
+their spots in every level, every chase begun where it was planned (the lurk), never more than 10 s without a
+pad from its first claws and no longer from its start than a chase begun at its host, nothing kept off chases
+met, none fizzled or overlapping, its first telegraph from its hover spot, and no slash during an Octodog's
+charge or a drone's barrage. `test_bad_dream` checks a weapon release on real physics: the lurk (where it
+burst out, harmless, holding nothing back), its chase beginning with the runner within `hover_ahead`, then
+playing out as a stomped host's, and the kill's score without the host bonus.
 
 `test_wall_fences` checks wall fences (B5; GDD §9.1): the layout data (left out of a level without them) and
 `WallFencePlan`'s bands, reach (a floor runner in the middle of the outer lane never touches one, a wall runner
@@ -3724,7 +3737,8 @@ the enemies (`enemy_showcase` for the cyborg family: poses, the faces close up, 
 cyborgs, and a far view through the run camera where the expressions must read, in any zone's look
 (`--variant=`, or ui_left / ui_right live), and every look side by side (`lineup`, front, back, as
 hosts or aiming, and `lineup_far` at gameplay distance); `octodog_screech`,
-`drone_truck_showcase`, `bad_dream_showcase`, `resonator_showcase`: its model through its warning
+`drone_truck_showcase`, `bad_dream_showcase` (`--weapon=N`: the host shot down ahead, its Bad Dream lurking
+until the runner comes, task H8), `resonator_showcase`: its model through its warning
 and pulse, or a scripted run where it pulses at a runner who jumps its waves; `barnacle_turret_showcase`:
 both looks at rest and charging, and a scripted run under a ceiling with turrets or riding it past one,
 through the run camera or a close one, on any zone's skin; `buzz_overdrive_showcase`: its model turning
@@ -3774,6 +3788,29 @@ about ten minutes; `--seeds=6` adds six other seeds a level, `--seeds=9007-9020`
 enemies' own states and the live shots, never from the turn-taking code (only the waits come from the
 director's answers), and hashes each run's event log, so two builds (or the switch off and a build
 without the rule) can be compared run by run.
+
+`tools/measure/host_releases.gd` measures when the Cyborg's Bad Dreams are released in the campaign's host
+levels (Dead Zone 1–2, Golden 1–3) with each weapon tier (task H8: weapons hit hosts, GDD §9.7) against where
+the host rules planned their chases, with the same simulated runner (god mode, the middle lane, the weapon at
+the tier given, stomping every host the weapon leaves). `host_watch.gd` follows each host and its Bad Dream
+from their own states (where the host died and how, where the chase began and ended: while the Bad Dream
+reports its big attack) and holds each chase to the generator's guarantees (`HostWatch.check`): how far before
+its planned stretch it began, the longest run without an anti-grav pad from its start and from its first
+claws, what the generator keeps off chases met outside the planned stretch (`kept_off_chases`: zone doodads, a
+floor cut's attack, a wall fence's drop window, an Octodog's charges, a Gilded Sentinel's attack, a cyborg
+planted in a charge's path), and chases that fizzled or overlap; AttackWatch adds a slash with an Octodog's
+charge or a drone's barrage open (`godot --headless --fixed-fps 60 -s res://tools/measure/host_releases.gd --
+[--levels=dead_zone/1] [--lanes=3,5,6] [--tiers=0,1,2,3,4] [--old-rule] [--out=build/measure/x.json]`; about ten
+minutes for every host level at 3, 5 and 6 lanes and the five loadouts; `--old-rule` makes hosts immune again).
+Measured on the levels' own seeds (October 8, 2026): tier 1's 42 m never killed a host before the runner
+reached it; tier 2 killed every host 1.4–1.5 s of run before its spot (about 37 m), tier 3 1.0–1.1 s, tier 4
+1.1–1.3 s. Released there, a chase began up to 37 m before its planned stretch, in 12 of the 45 runs with
+tiers 2–4 inside a wall fence's drop window, with up to 10.17 s without a pad (the guarantee is 10 s). With
+the lurk (Enemies: a Bad Dream shot down ahead lurks until the runner is within `hover_ahead`), every chase
+begins at most 14.3 m before its planned stretch (a stomped host's: 9.3 m, as hosts walk toward the runner),
+with the same pads as a stomp's (10.00 s at most), nothing kept off chases met, none fizzled or overlapping,
+and no slash during an Octodog's charge or a drone's barrage. The Octodogs that never charged with tiers 2–4
+(1, 1 and 2 of 6) never charge with `--old-rule` either: the weapon shoots them first.
 
 `tools/measure/frame_times.gd` measures frame times (task PERF1; A run, Smooth frames): it plays campaign
 levels and boss fights (built ones, and ones still being built through their preview scene) through the App
