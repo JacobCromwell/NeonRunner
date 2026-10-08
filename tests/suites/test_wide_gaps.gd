@@ -8,6 +8,8 @@ extends TestSuite
 ##   full jump with margins at both edges); its counts are printed per level.
 ## - Never in a boss arena, even one that asks for them; a level that asks for none (quick play, the prototype
 ##   level) draws nothing; a level builds the same on every attempt.
+## - Every filler keeps the fill pass's spacing from every wider gap: on seeds where one of the level's own rows
+##   made longer after the fill pass would come nearer a filler than that, the filler goes.
 ## - Jumpable on real physics with a normal jump (no dash, no pad): at quick play's 18 m/s and at every campaign
 ##   level's speed, at 3, 5 and 6 lanes, a runner who jumps early, midway or late in its take-off window clears
 ##   one; one who runs on falls in.
@@ -35,6 +37,7 @@ func run() -> void:
 	_test_tuning()
 	_test_campaign(campaign)
 	_test_off(campaign)
+	_test_fillers(campaign)
 	await _test_jumps(campaign)
 	await _test_enforcer_wrecked(campaign)
 	await _test_corporate_2(campaign)
@@ -68,6 +71,7 @@ func _test_campaign(campaign: Campaign) -> void:
 			check((result.get("constraints", ["no report"]) as Array).is_empty() and (result.get("rows", []) as Array).size() == rows.size(),
 				"%s: the pass placed them all, as it reports (%s)" % [tag, result.get("constraints", "no report")])
 			LayoutChecks.check_wide_gaps(self, layout, config, tag)
+			_check_fillers(gen, rows, tag)
 			var grid := FloorRoute.new(layout, movement)
 			var lanes_txt: PackedStringArray = []
 			for row: Dictionary in rows:
@@ -114,6 +118,37 @@ func _test_off(campaign: Campaign) -> void:
 	var again: LevelLayout = b.generate(c2, tuning, LevelGenerator.load_for(c2))
 	check(first.to_dict() == again.to_dict() and a.wide_gap_result == b.wide_gap_result,
 		"Corporate 2 builds the same wider gaps on every attempt")
+
+
+## Builds where the fill pass put a filler at its spacing from one of the level's own rows that's made longer
+## after it (WideGapPlacement.widen_deferred): the filler goes, and every filler keeps the fill pass's spacing
+## from every wider row; the level keeps its wider gaps.
+func _test_fillers(campaign: Campaign) -> void:
+	for c: Array in [["city/3", 3, 7001], ["gangland/1", 3, 9103], ["gangland/3", 5, 9101]]:
+		var config: LevelConfig = campaign.configure(campaign.step(String(c[0])), int(c[1]))
+		config.level_seed = int(c[2])
+		var tag: String = "%s at %d lanes, seed %d" % c
+		var gen := LevelGenerator.new()
+		var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+		var movement: MovementTuning = config.movement_for(tuning)
+		var rows: Array[Dictionary] = WideGapPlacement.wide_rows(layout, movement.jump_distance(movement.run_speed),
+			et.max_hop_jump_fraction)
+		check(rows.size() == config.wide_gaps, "%s has its %d wider gaps (%d)" % [tag, config.wide_gaps, rows.size()])
+		_check_fillers(gen, rows, tag)
+		check(int(gen.wide_gap_result.get("fillers_out", 0)) > 0, "%s: the filler too near a longer row went" % tag)
+
+
+## Every filler of `gen`'s last build keeps the fill pass's spacing (LevelGenerator._fill_margin) from each of
+## `rows` (the wider ones), as from any piece.
+func _check_fillers(gen: LevelGenerator, rows: Array[Dictionary], tag: String) -> void:
+	for row: Dictionary in rows:
+		var before: float = float(row["start"]) - gen._fill_margin(float(row["start"]))
+		var after: float = float(row["end"]) + gen._fill_margin(float(row["end"]))
+		for f: Dictionary in gen.fills:
+			var at: float = float(f["at"])
+			check(at + float(f["used"]) <= before + 0.01 or at >= after - 0.01,
+				"%s: the filler at %.1f keeps the fill pass's spacing from the wider gap at %.1f" % [tag, at,
+					float(row["start"])])
 
 
 # --- Physics ---------------------------------------------------------------------------------------

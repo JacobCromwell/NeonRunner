@@ -1530,10 +1530,12 @@ holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer al
   (below), before the fill pass, from a stream of its own (`rng_for("wide_gaps")`). The level's own rows it
   makes longer it makes longer only once the fill pass has run (`widen_deferred`): a filler keeps the level's
   spacing and `FILL_TAIL_SECONDS` more from every piece, more than a row's landing margin once it's longer (it
-  grows by 0.2 s of run at most), so the fill pass is built as without them; the new rows and the rows it clears
-  room for come before it, and the fill pass keeps off those. The report is `LevelGenerator.wide_gap_result`
-  (target, rows, how many were widened, added or cleared and how many pieces went, what blocked the level's own
-  rows, constraints, the widenings deferred), reset at every build of the guarantee.
+  grows by 0.2 s of run at most), so the fill pass is built as without them, and a filler the longer row would
+  come nearer than that goes, so every filler keeps its spacing from the level as built (none in the levels' own
+  builds; 2 of 135 builds on other seeds); the new rows and the rows it clears room for come before it, and the
+  fill pass keeps off those. The report is `LevelGenerator.wide_gap_result` (target, rows, how many were
+  widened, added or cleared and how many pieces went, what blocked the level's own rows, constraints, the
+  widenings deferred), reset at every build of the guarantee.
 - **Never stacked with another demand** (`fits`, `blocker`). Its zone (`zone_of`: from `clear_before_seconds`
   before the take-off to `clear_after_seconds` after the landing, 0.9 s each, never less than the level's
   spacing between two patterns at its difficulty, or its burst spacing in The Hush) holds, in any lane (a piece
@@ -3434,7 +3436,8 @@ lanes with its 2 (LayoutChecks.check_wide_gaps: the length, the spacing, nothing
 margin to the landing margin, no zone doodad or its push's lead there, no side wall gap beside) and a floor
 route across each (FloorRoute from the clear floor before it), printing each level's rows, holes and where its
 wider gaps came from; none in a boss arena even asked, nor in quick play or the prototype level; Corporate 2 the
-same on every attempt; on real physics at quick play's speed and every campaign level's, at 3, 5 and 6 lanes, a
+same on every attempt; every filler at the fill pass's spacing from every wider gap (three builds on other seeds
+where a filler had to go for a longer row); on real physics at quick play's speed and every campaign level's, at 3, 5 and 6 lanes, a
 jump early, midway and late in the take-off window clears one and running on falls in; an Enforcer Truck
 following a runner who jumps one wrecked in it (the player's kill) and hopping a 0.5-of-a-jump row, at 3, 5 and
 6 lanes, at 18 and 23.4 m/s; and Corporate 2's own build at 3, 5 and 6 lanes played from its start (god mode,
