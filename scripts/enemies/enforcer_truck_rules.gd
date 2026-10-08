@@ -86,7 +86,8 @@ static func apply(gen: LevelGenerator) -> void:
 		var chosen: Array[Dictionary] = _choose(gen, t, planner, orders, keep_outs, gen.feature_start(TYPE) > 0.0)
 		for o: Dictionary in chosen:
 			planner.why_none = String(o["why"])
-			report.append(_place(gen, t, planner, baits, o["spots"], o["plan"], hash([gen.config.level_seed, TYPE, report.size()])))
+			report.append(_place(gen, t, planner, baits, o["spots"], o["plan"],
+				hash([gen.config.level_seed, TYPE, report.size()])))
 	gen.show_window_result = {"planned": planner != null, "chases": report}
 
 
@@ -179,7 +180,8 @@ static func _place(gen: LevelGenerator, t: EnforcerTruckTuning, planner: ShowPla
 		"seed": seed, "params": params})
 	return {"at": at, "preferred": spots[0], "arrivals": spots.size(),
 		"window": {} if plan.is_empty() else {"at": plan["at"], "from": plan["from"], "to": plan["to"],
-			"hold": plan["hold"], "arrival": plan["arrival"], "after_bait": plan.get("after_bait", false)},
+			"hold": plan["hold"], "arrival": plan["arrival"], "after_bait": plan.get("after_bait", false),
+			"every_lane": plan["every_lane"]},
 		"taken_out": taken, "why": planner.why_none if planner != null and plan.is_empty() else ""}
 
 
@@ -429,6 +431,9 @@ class ShowPlanner:
 	const LOCAL_MARGIN: float = 60.0
 	## Metres behind the runner as a showing begins from which an enemy about counts (the truck's in-play checks).
 	const BEHIND: float = 3.0
+	## Why a window doesn't fit where the truck's bait or its chase's end comes before it could stay alongside (why_none
+	## names another reason where one held: this one holds for every late try).
+	const TOO_NEAR: String = "its bait or its chase's end too near"
 
 	var gen: LevelGenerator
 	var t: EnforcerTruckTuning
@@ -472,9 +477,10 @@ class ShowPlanner:
 		var counts: Dictionary = {}
 		var settle: float = t.ease_seconds(t.arrive_gap - t.follow_gap, t.gap_speed_max) + SETTLE_SECONDS
 		var v: float = gen.speed
-		# Phases: Vector3i(taking things out, its whole stay, no runner off the floor as it begins).
-		var phases: Array[Vector3i] = [Vector3i(0, 1, 1), Vector3i(0, 1, 0), Vector3i(1, 1, 1), Vector3i(1, 1, 0),
-			Vector3i(0, 0, 1), Vector3i(0, 0, 0), Vector3i(1, 0, 1), Vector3i(1, 0, 0)]
+		# Phases: Vector3i(taking things out, its whole stay, no runner in any lane off the floor until it has stayed
+		# alongside): one that holds wherever the runner is first, then one that takes nothing out, then its whole stay.
+		var phases: Array[Vector3i] = [Vector3i(0, 1, 1), Vector3i(0, 0, 1), Vector3i(1, 1, 1), Vector3i(1, 0, 1),
+			Vector3i(0, 1, 0), Vector3i(0, 0, 0), Vector3i(1, 1, 0), Vector3i(1, 0, 0)]
 		for phase: Vector3i in phases:
 			for at: float in spots:
 				var w: Dictionary = _window(at, 0.0, t.arrive_gap, seed, phase, counts)
@@ -502,7 +508,7 @@ class ShowPlanner:
 				c += OFFSET_STEP
 		var most: int = 0
 		for why: String in counts:
-			if int(counts[why]) > most:
+			if int(counts[why]) > most and (why != TOO_NEAR or counts.size() == 1):
 				most = int(counts[why])
 				why_none = why
 		return {}
@@ -521,14 +527,14 @@ class ShowPlanner:
 		var d: float = at + c * v
 		var hold: float = EnforcerTruckRoom.hold_for(t, gap, room.seconds_to_bait(d, v), t.chase_seconds - c)
 		if hold < (t.show_seconds if whole else t.show_min_seconds) - 0.001:
-			return _none(counts, "its bait or its chase's end too near")
+			return _none(counts, TOO_NEAR)
 		# The same showing begun show_window_slack_seconds late (closer in by then as it arrives), as long as fits.
 		var late: float = t.show_window_slack_seconds
 		var d2: float = d + late * v
 		var gap2: float = maxf(gap - late * t.gap_speed_max, t.follow_gap + 1.0) if gap > t.follow_gap + 1.0 else gap
 		var hold2: float = EnforcerTruckRoom.hold_for(t, gap2, room.seconds_to_bait(d2, v), t.chase_seconds - c - late)
 		if hold2 < t.show_min_seconds:
-			return _none(counts, "its bait or its chase's end too near")
+			return _none(counts, TOO_NEAR)
 		var total: float = t.show_total_seconds(gap, hold)
 		var total2: float = t.show_total_seconds(gap2, hold2)
 		var end: float = maxf(d + total * v, d2 + total2 * v)
@@ -545,12 +551,13 @@ class ShowPlanner:
 		var other: String = _busy_in(d, Vector2(d - BEHIND, calm_to), Vector2(from, to))
 		if other != "":
 			return _none(counts, other)
-		var off: String = _off_the_floor(d - BEHIND, d2) if strict else ""
+		# A runner sent onto a ceiling or a wall before it has stayed alongside has it give way.
+		var off: String = _off_the_floor(d - BEHIND, calm_to) if strict else ""
 		if off != "":
 			return _none(counts, off)
 		var starts: Array[Vector4] = [Vector4(d, gap, hold, 0.0), Vector4(d2, gap2, hold2, 0.0)]
 		var w: Dictionary = {"arrive": at, "at": d, "from": from, "to": to, "hold": hold, "arrival": c == 0.0,
-			"gaps": [], "fences": [], "enemies": []}
+			"every_lane": strict, "gaps": [], "fences": [], "enemies": []}
 		var gone: Array[Dictionary] = []
 		if not clearing:
 			var lane: int = _lanes_fail(room, starts, seed)
@@ -589,7 +596,8 @@ class ShowPlanner:
 			return _none(counts, "no lane beside a runner (nothing to take out)")
 		var lane: int = _lanes_fail(_local_room(lo, hi, skip), starts, seed)
 		if lane >= 0:
-			return _none(counts, ("a pulsing or powered fence in the way" if fixed else "no lane beside a runner in lane %d, even taking things out" % lane))
+			return _none(counts, "a pulsing or powered fence in the way" if fixed
+				else "no lane beside a runner in lane %d, even taking things out" % lane)
 		# Keep each piece that needn't go (the ones furthest into the window first). Its blocking enemies go.
 		for i: int in range(pieces.size() - 1, -1, -1):
 			var trial: Array[Dictionary] = pieces.duplicate()
@@ -761,7 +769,6 @@ class ShowPlanner:
 		var claim: float = buzz.claim_seconds if buzz != null else 2.5
 		var gt := EnemyDirector.tuning_for("generator") as FenceGeneratorTuning
 		var ht := EnemyDirector.tuning_for("hover_truck") as HoverTruckTuning
-		var dream := EnemyDirector.tuning_for("bad_dream") as BadDreamTuning
 		var out: Array[Dictionary] = []
 		for e: Dictionary in gen.layout.enemies:
 			var type: String = String(e.get("type", ""))
@@ -798,9 +805,9 @@ class ShowPlanner:
 						continue
 
 			if ROOM_TYPES.has(type):
-				# A host's Bad Dream chase, where one is stomped (GDD §9.7: an exclusive big attack).
-				if bool((e.get("params", {}) as Dictionary).get("host", false)) and dream != null:
-					out.append(_busy(dream.chase_stretch(at, v), INF, false, "a host's Bad Dream chase", e))
+				# Not a host's possible Bad Dream chase: killing a host is always the player's choice (GDD §9.7), and a
+				# runner who releases one sees the truck after it (the chase is an exclusive big attack: its showing
+				# waits), as the danger density pass leaves it out (its keep_out_exempt_features).
 				continue
 			var et := EnemyDirector.tuning_for(type) as EnemyTuning
 			if et is ThiefTuning and et.get(&"approach_speed") != null:
@@ -820,7 +827,8 @@ class ShowPlanner:
 				if String(e.get("type", "")) == "buzz_overdrive" and is_same(BuzzRules.cut_of(gen.layout, e), c):
 					turn = FloorCutPlan.warn_at(c) - float(c.get("claim_seconds", claim)) * v
 			out.append(_busy(w, turn, true, "a Buzz Overdrive's attack" if turn < INF else "a floor cut", {}))
-		out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return (a["span"] as Vector2).x < (b["span"] as Vector2).x)
+		out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+			return (a["span"] as Vector2).x < (b["span"] as Vector2).x)
 		for b: Dictionary in out:
 			busy.append(b)
 			busy_starts.append((b["span"] as Vector2).x)

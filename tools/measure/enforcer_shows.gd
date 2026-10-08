@@ -12,12 +12,16 @@ extends SceneTree
 ##   --out=build/measure/x.json      also write every chase's numbers there
 ## The runner: god mode and endless grapples (quick play's --god --nofall), keeping to its lane (a zone doodad's
 ## push is undone once the doodad is behind it: AttackWatch.keep_lane) and jumping the holes in it as a player
-## would (it falls into a floor cut's hole and grapples out). It baits nothing: a truck that isn't destroyed gives
-## up after its chase. Each run stops once every truck the level plans has left play.
+## would (it falls into a floor cut's hole and grapples out). It dodges nothing (god mode): a bait's charge in its
+## lane goes on into a truck following it there, as a wider gap it jumps wrecks one (task G7); a truck that isn't
+## destroyed gives up after its chase. Each run stops once every truck the level plans has left play.
 ## Per chase it prints the truck's arrival, its showings (the ones that came alongside: `+` for one that began as
 ## it arrived), its planned showing window if it has one (EnforcerTruck.show_window, task C6c) and whether a
-## showing began in it, and, for a chase without a showing, why it couldn't show itself (show_problem(), the share
-## of the chase each reason held). The totals: chases, chases with a showing, with the arrival showing.
+## showing began in it (in the stretch it keeps, no later than show_window_slack_seconds after it's due), and, for
+## a chase without a showing, why it couldn't show itself (show_problem(), the share of the chase each reason
+## held), or that it was destroyed before its window was due (and by what). The totals: chases, chases with a
+## showing, with the arrival showing, planned windows and the ones used, and chases destroyed before their window
+## without a showing.
 
 const AttackWatch = preload("res://tools/measure/attack_watch.gd")
 const Rules = preload("res://scripts/enemies/enforcer_truck_rules.gd")
@@ -209,6 +213,8 @@ func _chase(step: CampaignStep, config: LevelConfig, layout: LevelLayout, keep: 
 	var starts: Array[float] = []
 	var alongside_after: Array[float] = []
 	var pending: float = NAN
+	var wrecked: String = ""
+	var wrecked_at: float = INF
 	for h: Variant in history:
 		var event: String = String((h as Array)[0])
 		var d: float = float((h as Array)[1])
@@ -221,17 +227,23 @@ func _chase(step: CampaignStep, config: LevelConfig, layout: LevelLayout, keep: 
 				shows += 1
 				starts.append(pending)
 				alongside_after.append(d)
+		if event.begins_with("wreck:") and wrecked == "":
+			wrecked = event.trim_prefix("wreck:")
+			wrecked_at = d
 	var window: Vector2 = rec["window"]
 	var due: float = float(rec.get("due_at", INF))
 	var in_window: bool = false
 	for s: float in starts:
-		in_window = in_window or (due < INF and s >= due - 1.0 and s <= due + float(rec.get("slack", 0.0)) + 5.0)
+		# Used: begun in the stretch the window keeps calm, no later than its slack allows (and a frame or two).
+		in_window = in_window or (due < INF and s >= window.x and s <= due + float(rec.get("slack", 0.0)) + 5.0)
 	return {"level": String(step.id), "lanes": layout.lane_count, "seed": config.level_seed, "runner": keep,
 		"truck": index, "at": rec["at"], "arrived": not is_nan(arrive), "shows": shows,
 		"arrival_show": not starts.is_empty() and absf(starts[0] - arrive) < 0.5,
 		"starts": starts, "in_window": in_window,
 		"window": [window.x, window.y] if window.y >= window.x else [],
-		"reasons": rec["reasons"], "frames": rec["frames"], "due": rec.get("due", {}), "history": history}
+		"reasons": rec["reasons"], "frames": rec["frames"], "due": rec.get("due", {}), "history": history,
+		"wrecked": wrecked, "wrecked_at": wrecked_at if wrecked != "" else -1.0,
+		"wrecked_first": wrecked != "" and due < INF and wrecked_at < due}
 
 
 func _line(c: Dictionary) -> String:
@@ -244,9 +256,12 @@ func _line(c: Dictionary) -> String:
 	var window: String = "window %.0f-%.0f%s" % [w[0], w[1], " used" if bool(c["in_window"]) else " UNUSED"] \
 		if not w.is_empty() else "no window"
 	var why: String = ""
-	if int(c["shows"]) == 0:
+	if int(c["shows"]) == 0 and bool(c.get("wrecked_first", false)):
+		why = "  destroyed first (%s, at %.0f)" % [c["wrecked"], c["wrecked_at"]]
+	elif int(c["shows"]) == 0:
 		why = "  why not: " + _reasons(c)
-	if not (c["window"] as Array).is_empty() and not bool(c["in_window"]) and not (c.get("due", {}) as Dictionary).is_empty():
+	if not (c["window"] as Array).is_empty() and not bool(c["in_window"]) \
+			and not (c.get("due", {}) as Dictionary).is_empty():
 		var due: Dictionary = c["due"]
 		var keys: Array = due.keys()
 		keys.sort_custom(func(a: Variant, b: Variant) -> bool: return int(due[a]) > int(due[b]))
@@ -276,7 +291,9 @@ func _print_totals(chases: Array[Dictionary]) -> void:
 		var key: String = "%d lanes" % int(c["lanes"])
 		for k: String in [key, "all"]:
 			var t: Dictionary = by.get_or_add(k, {"chases": 0, "shown": 0, "arrival": 0, "windows": 0, "in_window": 0,
-				"showings": 0})
+				"showings": 0, "wrecked_first": 0})
+			if int(c["shows"]) == 0 and bool(c.get("wrecked_first", false)):
+				t["wrecked_first"] = int(t["wrecked_first"]) + 1
 			t["chases"] = int(t["chases"]) + 1
 			t["showings"] = int(t["showings"]) + int(c["shows"])
 			if int(c["shows"]) > 0:
@@ -290,6 +307,7 @@ func _print_totals(chases: Array[Dictionary]) -> void:
 	print("")
 	for k: String in by:
 		var t: Dictionary = by[k]
-		print("%-8s %3d chases (runner-lane runs): %3d with a showing (%d%%), %3d with the arrival showing, %d showings; %d planned windows, %d used"
+		print(("%-8s %3d chases (runner-lane runs): %3d with a showing (%d%%), %3d with the arrival showing, %d showings;"
+			+ " %d planned windows, %d used; %d destroyed before their window without a showing")
 			% [k, t["chases"], t["shown"], roundi(100.0 * int(t["shown"]) / maxi(int(t["chases"]), 1)), t["arrival"],
-			t["showings"], t["windows"], t["in_window"]])
+			t["showings"], t["windows"], t["in_window"], t["wrecked_first"]])
