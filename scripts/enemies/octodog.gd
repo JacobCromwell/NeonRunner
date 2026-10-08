@@ -34,6 +34,15 @@ extends Enemy
 ## still asks every frame while its charge_slack lasts, so all along it keeps its place in the
 ## director's queue (another type ready again waits for it) until it charges, or gives it up when it
 ## runs off (EnemyDirector.give_up_turn).
+##
+## A planted lunge (task G7; GDD §9.13 "Teaching", ChargePathPlacement): a dog the generator planted a cyborg
+## in front of (params "through_lane", "through_at": the cyborg's lane and spot) makes its first lunge, from
+## where it stands, along a line through that cyborg rather than at the runner's lane: two lanes across, so it
+## flattens the cyborg about halfway and carries on toward the far lane (target_lane), which it reaches where it
+## would meet a runner there; its red line shows that path. It claims its turn among the big attacks from
+## params "claim_at" (a runner's distance) until its wind-up, as a Buzz Overdrive does before its rev, so
+## another type's big attack that gets ready meanwhile waits. Held for another's turn at its wind-up anyway, or
+## moved off its spot, it lunges at the runner's lane as any dog.
 
 enum Phase { IDLE, WINDUP, LUNGE, TURN, SPRINT, PACE, GIVE_UP, LEAVE, FALLING }
 ## The director's answer to its first wind-up's ask (EnemyDirector.major_attack_blocked), asked at
@@ -91,6 +100,11 @@ var _turn_answer: TurnAnswer = TurnAnswer.NOT_ASKED
 var _turn_waited: float = 0.0
 var _turn_shift: float = 0.0
 var _doghouse_key: String = ""
+## A planted lunge (task G7): the lane and the track distance of the cyborg its first lunge goes through (-1:
+## none), and the runner's distance from which it claims its turn for it (INF: never).
+var _through_lane: int = -1
+var _through_at: float = 0.0
+var _claim_at: float = INF
 var _telegraph_base := Transform3D.IDENTITY
 
 var _body: Hazard
@@ -129,6 +143,10 @@ func _build() -> void:
 	charges = maxi(1, int(p.get("charges", rng.randi_range(r.x, r.y))))
 	for a: Variant in p.get("charge_at", []):
 		_anchors.append(float(a))
+	if p.has("through_lane"):
+		_through_lane = clampi(int(p["through_lane"]), 0, lanes - 1)
+		_through_at = float(p.get("through_at", _d))
+		_claim_at = float(p.get("claim_at", INF))
 	for i: int in 8:
 		var off: int = 0
 		if rng.randf() < _t.diagonal_chance and _t.max_lanes_across > 0:
@@ -310,17 +328,49 @@ func _moves_on(v: float) -> bool:
 ## sequence follows without asking. DESIGN-TBD (docs/questions/r3.md): the whole sequence is one big
 ## attack, so no other type attacks between its charges either.
 func is_major_attack_active() -> bool:
-	if not alive or phase in [Phase.IDLE, Phase.GIVE_UP, Phase.LEAVE, Phase.FALLING]:
+	if not alive:
+		return false
+	if phase == Phase.IDLE:
+		return claiming()
+	if phase in [Phase.GIVE_UP, Phase.LEAVE, Phase.FALLING]:
 		return false
 	return charges_done > 0 or phase == Phase.WINDUP or phase == Phase.LUNGE
 
 
+## True while a planted dog (task G7) claims its turn before its planned lunge: from claim_at until its
+## wind-up, standing at its spot, while big attacks take turns. Its attack counts as on meanwhile
+## (is_major_attack_active), so another type's big attack that gets ready then waits for it.
+func claiming() -> bool:
+	return alive and phase == Phase.IDLE and planted() and world.player_distance() >= _claim_at \
+		and world.director.big_attacks_take_turns()
+
+
+## True while its next lunge is a planted one (task G7; the header): it has a cyborg to go through, no
+## charge made yet, and it still stands at its spot, never moved on by a wait for its turn.
+func planted() -> bool:
+	return _through_lane >= 0 and charges_done == 0 and _turn_shift <= 0.0 \
+		and absf(_d - float(spawn.get("at", 0.0))) < 0.01
+
+
 func _start_windup() -> void:
 	target_lane = clampi(world.player.lane, 0, world.geo.lane_count - 1)
+	if planted():
+		# The far lane its planned line reaches: two lanes across, through the cyborg's lane.
+		var mine: int = _lane_at(_x)
+		target_lane = clampi(_through_lane + (_through_lane - mine), 0, world.geo.lane_count - 1)
 	_set_phase(Phase.WINDUP)
 	_set_hitboxes(true)
 	world.play_sfx_at(&"octodog_windup", global_position + Vector3(0.0, 0.8, 0.0))
 	_show_telegraph()
+
+
+## Its lunge's sideways speed for a lunge reaching the runner `t_meet` seconds from its start: toward
+## target_lane, or for a planted lunge (task G7) along the line through its cyborg's spot.
+func _lunge_vx(t_meet: float) -> float:
+	if planted():
+		var speed: float = _t.lunge_speed_at(_scaling, _run_pace)
+		return (world.geo.lane_x(_through_lane) - _x) * speed / maxf(_d - _through_at, 0.05)
+	return (world.geo.lane_x(target_lane) - _x) / maxf(t_meet, 0.05)
 
 
 func _start_lunge() -> void:
@@ -328,7 +378,7 @@ func _start_lunge() -> void:
 	var distance: float = maxf(_d - player.distance, 0.5)
 	var speed: float = _t.lunge_speed_at(_scaling, _run_pace)
 	var t_meet: float = maxf(distance / maxf(player.speed + speed, 1.0), 0.15)
-	lunge_velocity = Vector2((world.geo.lane_x(target_lane) - _x) / t_meet, -speed)
+	lunge_velocity = Vector2(_lunge_vx(t_meet), -speed)
 	_lunge_time = 0.0
 	_begin_charge_contacts()
 	_set_phase(Phase.LUNGE)
@@ -541,8 +591,8 @@ func _process(delta: float) -> void:
 		Phase.WINDUP:
 			# Face along the lunge line: x toward the target lane, z toward the player (+z).
 			var v: float = maxf(world.player.speed, 1.0)
-			var aim := Vector2(world.geo.lane_x(target_lane) - _x,
-				_t.lunge_speed_at(_scaling, _run_pace) * _t.time_to_meet(v, _scaling, _run_pace) + 0.5)
+			var t_meet: float = _t.time_to_meet(v, _scaling, _run_pace)
+			var aim := Vector2(_lunge_vx(t_meet) * t_meet, _t.lunge_speed_at(_scaling, _run_pace) * t_meet + 0.5)
 			target_yaw = atan2(-aim.x, -aim.y)
 		Phase.LUNGE, Phase.FALLING:
 			target_yaw = atan2(-lunge_velocity.x, lunge_velocity.y)
@@ -597,7 +647,7 @@ func _show_telegraph() -> void:
 	var t_meet: float = _t.time_to_meet(v, _scaling, _run_pace)
 	var duration: float = _t.lunge_duration(v, _scaling, _run_pace)
 	var start := Vector3(_x, 0.03, TrackGeometry.world_z(_d))
-	var end_x: float = _x + (world.geo.lane_x(target_lane) - _x) * duration / maxf(t_meet, 0.05)
+	var end_x: float = _x + _lunge_vx(t_meet) * duration
 	var end := Vector3(end_x, 0.03, TrackGeometry.world_z(_d - speed * duration))
 	var dir: Vector3 = end - start
 	if dir.length() < 0.5:
