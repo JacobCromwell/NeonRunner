@@ -210,7 +210,7 @@ func _test_data() -> void:
 	var each_slash: bool = true
 	var each_storm: bool = true
 	var lashes: Array[int] = []
-	var doubles: Array[int] = []
+	var doubles: Array[Vector2i] = []
 	var kinds: Dictionary = {}
 	for index: int in range(STAGE_2, def.phase_count()):
 		var n: int = 0
@@ -249,13 +249,14 @@ func _test_data() -> void:
 		each_slash = each_slash and slash
 		each_storm = each_storm and storm
 		lashes.append(n)
-		doubles.append(double if singles == 0 else -1)
+		doubles.append(Vector2i(singles, double))
 	check(def.phase_count() == 6 and known, "stage 2's beat scripts use only its own beats: pounce, pounce:bait, lash:low, lash:high, slash, slash:double, screens, overtake")
 	check(each_pounce and each_bait, "the Pounce is his main attack in every phase of stage 2, and every phase has the bait")
 	check(each_slash and each_storm, "every phase of stage 2 has the Claw Slash and the Screen Storm (the owner's playtest)")
 	check(lashes.size() == 3 and lashes[0] == 0 and lashes[1] > 0 and lashes[2] > 0 and kinds.has("low") and kinds.has("high"),
 		"the Cable Lash from the second phase of stage 2, low and high %s" % [lashes])
-	check(doubles.size() == 3 and doubles[0] == 0 and doubles[1] == 0 and doubles[2] > 0, "the Slashes double in the last phase %s" % [doubles])
+	check(doubles.size() == 3 and doubles[0].x > 0 and doubles[0].y == 0 and doubles[1].x > 0 and doubles[1].y == 0
+		and doubles[2].x == 0 and doubles[2].y > 0, "single Slashes, then double ones in the last phase (single, double a phase: %s)" % [doubles])
 	var p4: Array[Dictionary] = t.beats_for(STAGE_2)
 	var p4_kinds: PackedStringArray = []
 	for beat: Dictionary in p4:

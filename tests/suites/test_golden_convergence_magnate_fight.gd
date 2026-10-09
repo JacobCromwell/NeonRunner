@@ -3,7 +3,8 @@ extends TestSuite
 ## and at quick play's 18 m/s and the Golden Zone's 25 m/s, with a runner who plays it by what it shows
 ## (GoldenConvergenceBot, reacting REACTION late; no god mode, no armor):
 ## - from the checkpoint (phase 4) to the end: the transition, then each phase's beats (the Pounce, the bait, the
-##   Cable Lash from phase 5), the bot dodging every Pounce and answering every Lash untouched, taking each bait
+##   Cable Lash from phase 5; E5d-e's Claw Slash and Screen Storm in every phase, the slashes double in phase 6), the
+##   bot dodging every Pounce and Slash, weaving through every storm and answering every Lash untouched, taking each bait
 ##   and stomping his back once a phase (three stomps: his paces 1, 1.15 and 1.3), the hurl after each of the
 ##   first two; every Pounce locked at least LOCK_MIN before he lands, every Lash warned for lash_warning before
 ##   the whip; then the defeat, the runner past him, and victory_over;
@@ -19,7 +20,7 @@ const SPEEDS: Array[float] = [18.0, 25.0]
 const REACTION: float = 0.35
 const LOCK_MIN: float = 1.0
 const FRAME: float = 1.0 / 60.0
-## Stage 2 from the checkpoint is over well within this (measured about 76 s of fight).
+## Stage 2 from the checkpoint is over well within this (measured about 96 s of fight since E5d-e).
 const MAX_SECONDS: float = 150.0
 
 var sim: RunSim
@@ -116,10 +117,21 @@ func _test_stage_two(lanes: int, speed: float) -> void:
 	await _run(world, bot, MAX_SECONDS, func() -> bool: return boss.is_defeated() and boss.victory_over())
 	var pc: GoldenConvergencePounce = boss.pounce
 	var m: GoldenConvergenceMagnate = boss.magnate
-	print("  stage 2 %s: won at %.1f s of fight, %d pounces (%d baits, %d stuns, %d misses), %d lashes, %d overtakes" % [
-		tag, boss.fight_time(), pc.pounces, pc.baits, pc.stuns, pc.misses, boss.lash.lashes, boss.overtake.count])
-	check(world.player.alive and boss.is_defeated() and boss.victory_over() and m.touches.is_empty(),
-		"the bot wins stage 2 from the checkpoint untouched, without god mode %s (%s, %s)" % [tag, cause[0], m.touches])
+	print("  stage 2 %s: won at %.1f s of fight, %d pounces (%d baits, %d stuns, %d misses), %d lashes, %d slashes (%d swipes), %d storms (%d screens, %d on him)" % [
+		tag, boss.fight_time(), pc.pounces, pc.baits, pc.stuns, pc.misses, boss.lash.lashes, boss.slash.slashes,
+		boss.slash.swipes, boss.screens.storms, boss.screens.warned, boss.screens.hits_on_him])
+	check(world.player.alive and boss.is_defeated() and boss.victory_over() and m.touches.is_empty() and boss.tentacles.hits.is_empty(),
+		"the bot wins stage 2 from the checkpoint untouched, without god mode %s (%s, %s, %s)" % [tag, cause[0], m.touches,
+			boss.tentacles.hits])
+	var per_phase: Array[String] = []
+	var each_ok: bool = true
+	for index: int in range(STAGE_2, boss.phase_count()):
+		var slashes: int = _events(boss, &"slash_swipe").filter(func(e: Dictionary) -> bool: return int(e["phase"]) == index).size()
+		var storms: int = _events(boss, &"storm_start").filter(func(e: Dictionary) -> bool: return int(e["phase"]) == index).size()
+		per_phase.append("%d/%d" % [slashes, storms])
+		each_ok = each_ok and slashes > 0 and storms > 0
+	check(each_ok and boss.slash.skipped == 0 and boss.screens.dropped == 0,
+		"every phase has its Claw Slash and its Screen Storm (swipes/storms a phase: %s) %s" % [", ".join(per_phase), tag])
 	check(pc.stomps == 3 and _events(boss, &"weak_point").size() == 3 and boss.transition.hurls == 2 and boss.transition.played == 1,
 		"three stomps, one a phase, the hurl after the first two %s" % tag)
 	# The second stage's paces, from its first phase (the resume) on.
