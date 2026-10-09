@@ -154,7 +154,7 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 | 2 | **Gangland** | Mad Max, but in a cyberpunk setting | Browns and tans |
 | 3 | **Marketplace** | A bustling, happy market | Tan, with livelier colours: whites, blue awnings, splashes of colour in shop signs and visible products |
 | 4 | **Corporate** | A more oppressive Blade Runner, with corporate and military themes | Steel and gunmetal grey, military olive, cold and sterile white light, and one harsh brand colour (chosen by the art agent, away from the hazard colours) |
-| 5 | **Beach** (owner, October 9, 2026) | A festive cyberpunk party beach: bamboo tiki bars, surf shops and lounges by the sea | Warm sand, honey bamboo and timber, straw thatch, a turquoise sea, black rust-streaked steel; decorative neon in violet, blue and warm white |
+| 5 | **Beach** (owner, October 9, 2026) | A festive cyberpunk party beach: bamboo tiki bars, surf shops and lounges by the sea *(proposed, from the owner's reference image)* | Warm sand, honey bamboo and timber, straw thatch, a turquoise sea, black rust-streaked steel; decorative neon in violet, blue and warm white *(proposed)* |
 | 6 | **Dead Zone** | Eerie, quiet, haunting | Dark black, dark grey and ash grey |
 | 7 | **Golden Zone** | Decadent opulence | A white and slightly creamy base with red and gold accents. There must be some gold to show the wealth, but it isn't the only colour. |
 
@@ -170,7 +170,7 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 
 **Zone 5: the Beach** (owner, October 9, 2026; reference image `docs/art/reference/beach_zone.jpg`).
 - **Look:** a sandy lane between bamboo tiki bars, surf shops and lounges, running down to the sea.
-- **Floor and gaps:** the floor is sand and boardwalk, and **the gaps are pools of water.** A fall makes a splash.
+- **Floor and gaps:** the floor is sand and boardwalk *(proposed)*, and **the gaps are pools of water.** A fall makes a splash.
 - **Side walls:** they stand **about half as often as in other zones**, in long open stretches, so the player sees the surroundings.
 - **Enemies:** **no new enemy assets**; the zone reuses existing enemies, and its cyborgs wear an existing zone look.
 - **Signs:** wordless, like every zone's.
