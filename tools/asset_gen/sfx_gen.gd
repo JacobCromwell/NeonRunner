@@ -23,8 +23,18 @@ extends SceneTree
 ##                        coupling stomped and the carriages breaking away
 ##   sfx_bank_sewer_swarm.gd  the Sewer Swarm: the Rising, a surge's rising chitter (the warning) and its
 ##                        rush, a cluster shocked by a fence, falling into a hole, scattering
+##   sfx_bank_magnate.gd  The Magnate (the Golden Convergence's second stage): his roar (a Pounce's warning), growls
+##                        and breathing, the leap and crash, the slam into the gate, the stun and the stomp, the
+##                        cable's crackle (a Cable Lash's warning) and whip, the transition's burst and the suit's
+##                        fall, his defeat (the cables tearing, the screens dying, his death and collapse)
 ##   sfx_bank_enforcer.gd  the Enforcer Truck: its siren (its arrival), a volley's rising whine (the warning)
 ##                        and its laser shots, a rider climbing aboard, its crash into a hole
+##   sfx_bank_golden_convergence.gd  the Golden Convergence: its rise and the cult's chime rung huge and slow,
+##                        the Helidrone Strafe (the squadron out of the cape and back, a pass's whine (the
+##                        warning), its rake and sweep, ricochets, a drone hurled by a pad), the Flying
+##                        Buttress rising and crumbling; the Fist Slam (the grinding wind-up (the warning),
+##                        the slam, the floor breaking, the tower toppling) and the Missile Barrage (the
+##                        hatches (the warning), the launch, the dive's whistle, the fire)
 ## Run: tools/godot.sh sfx   (--only=jump,land renders just those; --review also writes
 ## build/sfx_review/<name>.png: waveform on top, spectrogram (40 Hz–16 kHz, time left to right) below).
 ## Each line of the report ends with the sound's loudest 400 ms as heard on headphones (K-weighted) and
@@ -49,7 +59,9 @@ const BANKS: Array = [
 	preload("res://tools/asset_gen/sfx_bank_sentinel.gd"),
 	preload("res://tools/asset_gen/sfx_bank_hostile_takeover.gd"),
 	preload("res://tools/asset_gen/sfx_bank_sewer_swarm.gd"),
+	preload("res://tools/asset_gen/sfx_bank_magnate.gd"),
 	preload("res://tools/asset_gen/sfx_bank_enforcer.gd"),
+	preload("res://tools/asset_gen/sfx_bank_golden_convergence.gd"),
 ]
 const OUT_DIR: String = "res://assets/sfx"
 const REVIEW_DIR: String = "res://build/sfx_review"

@@ -91,9 +91,9 @@ func _build() -> void:
 	if arena != null:
 		layout = arena.layout
 	else:
-		var gen := LevelGenerator.new()
-		layout = gen.generate(context.config, context.tuning, LevelGenerator.load_for(context.config))
-		for line: String in gen.warnings:
+		# Task PERF2: a run of the level the last run built (a retry) plays a copy of that build (LevelCache).
+		layout = LevelCache.layout_for(context)
+		for line: String in LevelCache.warnings:
 			push_warning("LevelGenerator: " + line)
 	world = RunWorld.new()
 	world.name = "World"

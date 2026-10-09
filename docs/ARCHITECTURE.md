@@ -336,6 +336,81 @@ and 2.1 s on Forward+ and 0.75, 0.36 and 0.59 s on Compatibility) and none after
 draw calls (248 to 279 a frame), primitives (44,000 to 49,000) and objects (336 to 404) are the same, the
 most in a frame higher by the warm-up's samples in the level's first two frames.
 
+### Retries reuse the built level (task PERF2, the owner's approval, October 9, 2026)
+
+Generating its level was the slow part of starting a run, and every attempt did it again, though a campaign
+level comes out the same on every attempt (GDD §6: a fixed seed). `LevelCache` (`scripts/run/level_cache.gd`)
+keeps the last level a run built: `LevelRun._build` takes a level's layout from `LevelCache.layout_for(context)`,
+which builds it the first time and hands every later run of the same level a copy of that build: the results
+screen's retry (`App.retry`, a new LevelRun) and the restart in place (`LevelRun.restart`: quick play's after a
+death, R, F6's Restart level) alike. A boss fight's arena never comes here: its plan takes 6 to 25 ms
+(`BossEncounter.plan_arena`), and a boss's `_plan_lap` may keep state of its own on the encounter.
+
+- **The key** (`LevelCache.key_for`): a build is reused only while everything the generator reads is the same:
+  the level config's stored values (seed, lane count, difficulty, features and their starts, pacing, run speed,
+  the campaign's recency curve and ages; its `skin` aside, which the generator never reads), the movement
+  tuning it is built at (`LevelConfig.movement_for`), the patterns as read from their files now
+  (`LevelGenerator.load_for`), every tuning resource in `data/tuning` and `data/enemies` by value (the
+  placement passes', the power-ups', every enemy type's: the F6 panel edits them in place, so an edit there
+  builds again), and the build flavor. Dictionaries go in as ordered pairs. **A tunable the generator reads
+  from anywhere else must join the key** (`LevelCache.TUNING_DIRS`, `key_for`), or a run after a change to it
+  could play the level built before. A new seed, lane count, level or setting builds again (quick play's debug
+  keys, `--features`, a difficulty tier), and only the last level is kept. Endless mode builds on every run (a
+  random seed each) and keeps nothing.
+- **Every run plays a copy.** The kept build is never played: each run, the first too, gets a
+  `LevelLayout.copy()` of its own, since a run changes its layout as it goes (an EMP marks fences `disabled`
+  in it, the track numbers its fences, a boss arena's next lap or endless mode's next stretch joins it, and an
+  enemy's entry is its own one level deep only). A generated layout holds plain data only, no Object and no
+  list or dictionary in two places (a copy would make two of it): `test_level_cache` checks two levels, and a
+  probe found neither in any campaign level at 3, 5 and 6 lanes. So **`LevelLayout.copy()` must copy every
+  field a layout has**: a list added to LevelLayout must join `copy()`, or every run would play without it
+  (`test_level_cache` checks every field). The build's generator warnings come with each copy; LevelRun prints
+  them on every run, as before.
+
+Measured with `tools/measure/level_builds.gd` (Review tools), headless on the build machine (4 CPUs shared with
+other agents, measured while quiet; a phone is several times slower). The time from pressing retry to the run
+starting, three retries each at 5 lanes (the call / to the next frame, when the run is built and its
+introduction is up):
+
+| Level, 5 lanes | Results screen's retry (`App.retry`), before | after | Restart in place (`LevelRun.restart`), before | after |
+|---|---|---|---|---|
+| Corporate 2 | 3194 to 3877 / 3280 to 3964 ms | 216 to 251 / 296 to 318 ms | 2642 to 3204 / 2652 to 3216 ms | 47 to 63 / 57 to 74 ms |
+| Dead Zone 1 | 4133 to 4639 / 4203 to 4722 ms | 245 to 278 / 361 to 394 ms | 3392 to 4382 / 3406 to 4394 ms | 59 to 66 / 68 to 75 ms |
+
+What is left of a retry: the key (about 15 ms), the copy (1 to 2 ms), the world's build (`RunWorld.build`), and
+through `App.retry` a whole new LevelRun (HUD, camera and, in a debug build, the debug HUD and the F6 panel). A
+level's first build pays the key and a copy on top of the generator (15 to 30 ms).
+
+Each campaign level's first build (`generate()`, the fastest of three, in ms; in brackets the builds its
+every-feature guarantee made, when more than one):
+
+| Level | 3 lanes | 5 lanes | 6 lanes |
+|---|---|---|---|
+| city/1 | 57 | 71 | 52 |
+| city/2 | 40 | 36 | 41 |
+| city/3 | 47 | 50 | 53 |
+| gangland/1 | 64 | 66 | 125 (2) |
+| gangland/2 | 58 | 90 | 76 |
+| gangland/3 | 107 | 152 | 270 (2) |
+| marketplace/1 | 138 | 95 | 203 |
+| marketplace/2 | 429 (3) | 498 (3) | 280 (2) |
+| corporate/1 | 173 (2) | 688 (4) | 386 (4) |
+| corporate/2 | 579 (3) | 2434 (4) | 386 (2) |
+| dead_zone/1 | 935 (3) | 2891 (4) | 1400 (3) |
+| dead_zone/2 | 1900 (5) | 1146 (3) | 1608 (2) |
+| golden/1 | 371 (2) | 945 (3) | 575 (2) |
+| golden/2 | 1393 (4) | 569 (2) | 592 (2) |
+| golden/3 | 316 | 406 (2) | 1158 (4) |
+
+The slowest are Dead Zone 1 at 5 lanes (2.9 s), Corporate 2 at 5 lanes (2.4 s) and Dead Zone 2 at 3 lanes (1.9
+s); the 45 builds take 23.9 s in all. Two things multiply (`level_builds.gd --passes`): the guarantee's rebuilds
+(a level missing a feature is built again whole: 2 to 5 builds in every slow one), and within a build the Enforcer
+Truck's rules (the showing planner of tasks C6c to C6e): 415 of Corporate 2's 544 ms first build at 5 lanes
+(76%), 1035 of Dead Zone 1's 1686 ms (61%, and the Buzz Overdrive's rules 371 ms, 22%); every other pass takes
+under 80 ms. Dead Zone 2 at 3 lanes is mostly its five builds (269 ms each, the truck's rules 62 ms of it).
+Making the truck's planner cheaper and sparing guarantee rebuilds is left to a task on the generator. A boss
+arena's plan takes 6 to 14 ms (the fastest of three; 6 to 25 ms in single runs).
+
 ## Data (tunables live in data, CLAUDE.md principle 7)
 
 | File | What |
@@ -1153,7 +1228,12 @@ and its hint (`enemy:enforcer_truck`). DESIGN-TBD numbers throughout (`docs/ques
     beside the runner. It's back behind them `show_margin_seconds` + `close_lead_seconds` before a bait's
     turn (an Octodog's planned wind-up, a Buzz Overdrive's claim on its turn, from the layout and the dogs and
     tanks in play): it shortens its stay for one (`hold_for`, never under `show_min_seconds`) or doesn't show.
-    Never with a hover truck or a Gilded Sentinel in play or coming (`NO_SHOW_TYPES`: they can't wait).
+    Beside a hover truck or a Gilded Sentinel (task C6e; the owner, October 9, 2026, GDD §9.13 "Making room where
+    there is none": they no longer stop it, as long as the runner keeps a free lane), it fits between what of them
+    can't wait for a turn, a hover truck's entrance (its banging to its emerging) and a Sentinel's turn (its claim to
+    its last swing; `EnforcerTruckRoom.fixed`, `seconds_to_fixed`): never begun during one, its stay shortened to be
+    back `show_margin_seconds` before the next (`hold_for`'s `to_fixed`), giving way to one that comes sooner. Their
+    other attacks (the hover truck's cannon and forward lurch) take turns and wait for it, as a Resonator's pulse does.
   - **Solid, safe sides.** While beside the runner, a lane blocker along its body to `blocker_ahead` past its
     front (`TrackBuilder.add_lane_blocker`, `LAYER_LANE_BLOCKER`) bumps a lane change into it back (Player's
     `lane_blocked`, never a hit: its 2 m body hitbox in a 2.4 m lane leaves the bump clear of it). As the
@@ -1169,7 +1249,13 @@ and its hint (`enemy:enforcer_truck`). DESIGN-TBD numbers throughout (`docs/ques
     ways (the lane between open where theirs is blocked, theirs open where the lane between is); never to a runner
     off the floor; and its own lane must be clear where the camera sees it there (`lane_clear`: no fence, doodad,
     floor enemy, pad, speed pad or ramp, nor a hole too wide to hop until it's rejoined the runner's lane; it hops
-    the others), so it's never beside a lane the runner needs.
+    the others), so it's never beside a lane the runner needs. A lane a hover truck holds (`held`, `held_lanes`: from
+    where its lane is kept free before its burst to where it has left, and one in play's; task C6e) is a wall to the
+    runner and never the truck's, and the truck never stands between the runner and it (it would hide it): a runner
+    beside it sees the truck two lanes in on their other side, the lane between left free, and at 3 lanes a runner
+    beside it has no lane for it. What blocks the runner's lane counts as far as its stay reaches (`can_dodge`'s
+    `clip`: once it's back behind them every lane is theirs), a floor cut's lane from its charge on (`leave_late`: a
+    runner baiting a Buzz Overdrive keeps to its lane until the cut runs back toward them).
   - **Never hides anything.** `EnforcerTruckView` (the run camera's resting view) checks at load, for its
     look and lane count (`fits_for`, with `EnforcerTruckModel.profile`), that every corner of it is on
     screen and nothing of the runner or the floor of their lane and the far side is behind it; enemies its
@@ -1183,7 +1269,11 @@ and its hint (`enemy:enforcer_truck`). DESIGN-TBD numbers throughout (`docs/ques
     attack that gets ready meanwhile waits for it, one already on ends first; and it starts no volley that would
     still be on there (`_holds_for_showing`). It still shows itself wherever play allows before; once it has,
     the window has done its work. A showing beside the runner tries a lane clear for its whole stay first, else
-    one clear for its shortest.
+    one clear for its shortest. A window planned with its bait's claim during it (its `mode` "claim" or "calm",
+    task C6e; `_claim_window_now`) stays alongside until it must be out of view `show_margin_seconds` before the
+    Buzz Overdrive's rev (`hold_claimed`), and that claim doesn't make it give way (`_attack_on`'s `skip_claims`).
+    One planned in the level's calm start ("calm", `calm_start()`) arrives inside the run-up at its follow gap,
+    already chasing, shows itself as it arrives, and fires no volley before the run-up's end (`_ready_to_fire`).
 - **Its blast** (C6b; the owner, October 8, 2026: a visible explosion however it's destroyed). Every wreck (an
   Octodog's lunge, a Buzz Overdrive's charge or cut, a gap too wide to hop) lurches on into the chase camera's
   view over `wreck_surge_seconds` (its front to `wreck_gap` behind the runner; in a hole, until its nose meets
@@ -1500,9 +1590,62 @@ its arrival showing begins but gives way before it comes alongside (4, in builds
 Resonator holds its lane (1)); in two builds a level keeps one truck that shows itself
 where it had two that didn't, and in one a pair planned the other way round gets back the second truck C6c's order
 dropped. A wider gap (task G7) comes before a window only where that window comes after its bait (6 of 27).
+
+**Making room** (task C6e; the owner, October 9, 2026, GDD §9.13 "Making room where there is none", answering items
+367, 400 and 401). Where no window fits before the first bait as C6c and C6d planned it (`ShowPlanner`'s CLASSIC mode,
+unchanged, so a chase that had one keeps it), the planner tries three more ways, in order (each window's params
+carry its `mode`: "around", "claim" or "calm"; CLASSIC's none):
+- **AROUND: beside a hover truck or a Gilded Sentinel** (they no longer stop a showing, as long as the runner keeps a
+  free lane). `EnforcerTruckRoom` reads each hover truck's lane as held over its stay (`held`, `held_lanes`): a wall
+  to the runner, never the truck's lane, and never with the truck between the runner and it (`sides`,
+  `escape_lane`, `can_dodge`, `shadow_clear` and `layout_lane` take the held lanes; `fits_for` adds the views two
+  lanes in from a runner beside it). What can't wait for a turn (`fixed`: a hover truck's entrance, from its banging
+  to its emerging, `entrance`; a Sentinel's turn, from its claim to its last swing, `sentinel_turn`) is never on as
+  the truck claims its turn for the window or begins, and the showing is back `show_margin_seconds` before the next
+  (`hold_for`'s `to_fixed`); their other attacks take turns and wait for it. A window here may leave out one runner
+  lane no showing could reach (`EnforcerTruckRoom.unreachable`: every lane beside it held, a floor cut's, or hiding
+  the hover truck; its report's `excused`), never two; and it reads what blocks the runner's lane only as far as its
+  stay reaches (`layout_lane`'s `clip`, as the truck in play does).
+- **CLAIM: its bait's claim during it.** As AROUND, with a Buzz Overdrive's claim on its turn coming during the
+  showing (it begins before the claim, which only holds back attacks that get ready later), out of view
+  `show_margin_seconds` before the tank's rev (`hold_claimed`; `EnforcerTruckRoom.revs`, an Octodog's turn as before,
+  `dog_turns`); skipped where no tank revs near the chase (`_revs_near`: it would plan nothing AROUND didn't).
+- **CALM: the calm start.** For the chase of a level's first bait, the truck may arrive inside the run-up, from
+  `calm_start_min_seconds` (0.5 s, DESIGN-TBD) into the run and the feature's start, at its follow gap, and show
+  itself as it arrives (`_calm_spots`, latest first; `arrival_problem`'s `calm`), its bait where it was; it takes
+  nothing out (`calm_start_takes_out` off, DESIGN-TBD), and it fires no volley in the run-up. Nothing in the run-up
+  shows on screen but the HUD, which no truck can cover (hints come on the level introduction before PLAY).
+- **Both trucks** stay where a level has two but room for one showing (item 401, as built), and wider gaps keep off
+  each chase from its arrival to its window's end (Wider gaps, Which).
+
+On the six levels' own seeds 12 of the 23 chases get a window before their bait against 9 (Dead Zone 1 at 6 lanes
+beside its hover truck, 1767-1962 m; Golden 1 at 3 lanes in the calm start, the truck arriving at 12 m with its
+window from the start to 177 m, where it had one after its bait at 293-508 m; Golden 2 at 3 lanes with its Buzz
+Overdrive's claim, 138-360 m), and every other build's windows stay where they were. A runner keeping to each lane
+in turn (`tools/measure/enforcer_shows.gd`) sees the truck in 73 of 106 runs against 57. The 11 chases still without
+one: a hover truck at 3 lanes leaves two of the three runner lanes no free lane (Dead Zone 2's second truck), rows
+of fences with a pad in their gap or pulsing fences leave a runner lane no lane beside it (Dead Zone 1 at 3 lanes,
+Dead Zone 2 at 3 and 6), the level's other chase leaves a second truck only arrivals too near its bait (Dead Zone 2 at
+5 lanes), a Tithe Collector is about over the only stretch its bait leaves (Corporate 2 at 5 lanes, its
+introduction, and at 6), the calm start has room only by taking out what's in the first
+patterns (Golden 1 and 2 at 6 lanes, Golden 3 at 5: 2, 8 and 2 pieces; `calm_start_takes_out` on would give them
+theirs), and Golden 3 at 6 lanes has a fence a generator powers there. Of the 33 runs without a showing, 21 are in
+the five chases with no window at all, 9 in chases whose window comes after the bait that destroyed the truck first
+(the measuring runner never dodges), and 3 in chases with one before: the runner lane a window leaves out beside a
+hover truck (Dead Zone 1 at 6 lanes, lane 5), a pad sending the runner onto a ceiling as it's due (Golden 2 at 3
+lanes, lane 0), and an arrival showing given way to a passing attack (Corporate 2 at 5 lanes, lane 0). With 8 other
+seeds of each (144 builds), 132 of 204 chases have a window before their bait against 62 of 203, and the truck shows
+itself in 637 of 957 runs against 377 of 952; a window before the bait brings its showing in 298 of 307 runs in
+CLASSIC, 132 of 177 beside a hover truck or a Sentinel (one of their attacks begun before the truck's claim still on
+as it's due, 33), 150 of 175 with a claim and 27 of 28 in the calm start. The windows the new modes plan take out
+about 1% more of those levels' obstacles (on their own seeds 580 enemies and 3226 obstacles before, 577 and 3219
+after; on the other seeds 4756 and 26686, 4734 and 26399), every build keeps its wider gaps, and every level without
+the truck builds exactly as before. The new modes add about two fifths to those levels' build time (the 18 builds on
+their own seeds, fastest of three: 13.9 s against 19.6 s; the longest, Dead Zone 1 at 5 lanes, 3.0 s against 2.1 s;
+Corporate 2 at 5 lanes 2.5 s against 0.9 s, its introduction's chase searched in every mode).
 DESIGN-TBD: item 386
-(`docs/OPEN_QUESTIONS.md`) and the chases no bait with room is left for (items 400–403); items 382–385
-are the owner's answers.
+(`docs/OPEN_QUESTIONS.md`), the chases no bait with room is left for (items 402–403), and C6e's placeholders
+(items 407–411); items 382–385, 367, 400 and 401 are the owner's answers.
 
 **Late starts.** `LevelConfig.feature_starts` (feature → share of the level) holds a feature back
 until its start: patterns that require it aren't picked before, and the first pattern picked from
@@ -2006,9 +2149,12 @@ holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer al
   with those taken out (`_clearing`: never a pulsing fence or one a fence generator powers; `GeneratorRules.
   keep_powered` after: taking content out never makes a level unfair).
 - **Which.** With `prefer_enforcer_chases`, one first in each Enforcer Truck's chase (from `bait_after_seconds`
-  after it arrives to `CHASE_END_SECONDS` before it gives up), from the first source with one there, so the
-  runner can lead it in; then the rest spread through the level, each source used up before the next, rows
-  across most of the lanes (a jump) before single holes.
+  after it arrives, or from its showing window's end where that's later, to `CHASE_END_SECONDS` before it gives
+  up), from the first source with one there, so the runner can lead it in; then the rest spread through the level,
+  each source used up before the next, rows across most of the lanes (a jump) before single holes. None comes in a
+  chase before its showing, from the truck's arrival to its window's end (task C6e, approved with C6d's follow-up;
+  `EnforcerRules.wide_gap_keep_outs`, a `row_only` keep in `keeps_of`): it would wreck the truck before it has
+  shown itself.
 - **After it.** The fill pass keeps its usual margin from the wider rows as from any piece; the danger density
   pass's floor pieces keep off each zone as it stands (`DangerDensity._index_obstacles`: its margins are the
   level's spacing already), City 1's extra gaps keep it narrowed by their own margin (`GapDensity._protected`,
@@ -2021,9 +2167,11 @@ holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer al
   `test_doodads` holds City 1 to its own gaps unchanged and as many extra ones there.
 - **What it gives.** Every campaign level at 3, 5 and 6 lanes gets its 2 on its own seed (`test_wide_gaps`);
   over `test_campaign`'s seed sweep 2 of 189 builds of the busiest levels fit only one (the layout check allows
-  one fewer on a seed not the level's own, never none). An Enforcer chase holds one in 11 of the 18
-  level and lane builds that have trucks, Corporate 2 at every lane count, where the truck following the runner
-  over it is wrecked in play. Rows and holes change a little: the City levels keep theirs (one hole fewer in
+  one fewer on a seed not the level's own, never none). An Enforcer chase holds one past its showing window in 6
+  of the 18 level and lane builds that have trucks (8 before task C6e kept them off the chase before a showing:
+  Corporate 2 and Golden 2 at 6 lanes, whose windows come after their bait, lost theirs), Corporate 2 at 3 and 5
+  lanes among them, where the truck following the runner over it is wrecked in play; none comes before a window
+  (6 did, in chases whose window comes after their bait), and every build keeps its count. Rows and holes change a little: the City levels keep theirs (one hole fewer in
   City 2 at 5 lanes), and elsewhere the fill pass and the danger density pass re-roll around new rows and the
   zones (every level at 3, 5 and 6 lanes: 1,093 rows and 2,510 holes before, 1,089 and 2,533 after; Corporate 2
   at 5 lanes 33 and 49 before, 35 and 54 after; Dead Zone 1 at 3 lanes 24 and 32, then 21 and 27). With
@@ -2215,86 +2363,100 @@ side's `note_wall_enemies` and `wall_section` in one go (`TrackBuilder.dress_bud
 A run, Smooth frames): a hook never counts on the frame it's called in, and a hazard's look shows the
 hazard's state when it binds (`HazardStateVisual.bind`). Tests and review tools dress each chunk at once.
 
-**Zone doodads' looks** (task G5 built the mechanism and a plain default; task G6 gives each zone its
-own, except the grey box, which keeps the plain default. `GoldenPalaceSkin` (D6b) extends `GoldenSkin`
-and doesn't override `doodad()`, so the Golden Palace inherits the Golden Zone's gilded planters,
-fountains and statues for free, unless a follow-up gives it its own interior ones.) What a look gets
-and keeps to:
+**Zone doodads' looks** (task G5 built the mechanism and a plain default; task G6 gave each zone its
+own, except the grey box, which keeps the plain default; since the owner's request of October 9, 2026,
+"keep each doodad a simple box but draw on it a picture of the object, with the open air see-through",
+every zone draws its doodads as **picture cards**. `GoldenPalaceSkin` (D6b) extends `GoldenSkin` and
+doesn't override `doodad()`, so the Golden Palace inherits the Golden Zone's looks, chosen to work
+indoors as well as out.) What a look gets and keeps to:
 - *The hook*: `doodad(body, size, size_class, side, look_seed)`. `body` is the doodad's node, centred on
   its collision box `size` (width, height, length): the floor is at -size.y / 2 and its front, where the
   player meets it, at +size.z / 2; add meshes as its children. `size_class` is `&"small"`, `&"medium"` or
   `&"large"` (`LevelLayout.DOODAD_SIZES`), whose boxes come from `MovementTuning.doodad_size()`: by
   default 1.3 × 1.4 m, 1.9 × 3.6 m and 2.0 × 6.5 m (width × length), all 2.6 m tall (DESIGN-TBD). Map
   each class to the zone's pieces of that size. `side` is the side it pushes to (-1 left, +1 right) and
-  `look_seed` a number to vary the look by (which model, a tint, its props), hashed with `MeshKit.hash_i`
-  like everything else in a skin: never a random number generator, so a doodad looks the same wherever
-  and whenever it is built.
+  `look_seed` a number to vary the look by, hashed (`MeshKit.hash_i`), never a random number generator,
+  so a doodad looks the same wherever and whenever it is built.
 - *Inside the box, filling most of it*: what looks like contact is contact (GDD §3), and it must read
-  as too tall to jump (it is) and as wide as it blocks. A burned-out car is lower than 2.6 m: stack it,
-  tip it on its side or pile its wreck high. Nothing outside the box (an awning, a branch, a sign arm):
-  the player would pass through it. Placing a piece by a formula that fits its own size against the
-  box's remaining room (`x = (hash01 - 0.5) * (size.x - piece_w)`, and the same for z and for a stack's
-  height) keeps every seed inside the box by construction; a piece built with any rotation needs a wider
-  margin budgeted in by hand (the Dead Zone's leaning masonry works out its own tilted bounds this way)
-  since `MeshInstance3D.get_aabb()` is exact and every skin suite's `doodads_ok` (below) will catch a
-  margin that was cut too fine.
+  as too tall to jump (it is) and as wide as it blocks. Every look keeps its silhouette near the box's
+  full height (a heap may dip at its edges, its middle stays high). Nothing outside the box (an awning, a
+  branch, a sign arm): the player would pass through it. Cards lie on planes inside the box by
+  construction (below), and every skin suite's `doodads_ok` checks the mesh's bounds.
 - *Solid and safe* (CLAUDE.md readability rules): the zone's non-hazard colours, nothing glowing in a
   hazard colour (pink, yellow and black, red, orange, green, cyan), nothing that reads as a sign (no
   striped frames), a fence (nothing strung between posts), a barrier or an enemy (no eyes, no faces on
-  screens; the cult's feed is the walls' business). Warm-white or zone-coloured lamps are fine if small.
-- *Its push side may show* (the default's front slants back toward it); nothing more is needed.
-- *Cheap, and on the shared material alone*: one mesh per doodad from cached templates (the kit's
-  `MeshBatch`, one layer, so a doodad is always one draw call however many of the kit's surface patterns
-  it mixes), fine on the Compatibility renderer. Every doodad's `MeshInstance3D.material_override` is the
-  plain `MeshKit.solid()` (no params), never a zone's own tuned `solid_material()`: `test_doodads`'
-  `_test_skins` and each skin suite's `doodads_ok` (`tests/helpers/skin_suite.gd`) hold every skin to
-  this, so a doodad never glows and always renders through the one shared material instance (cheaper:
-  one less state change) across every zone. It still dims with a level's darker lighting like the
-  scenery (The Hush): `scenery_light` is a *global* shader uniform, so even the bare material reads it.
+  screens; the cult's feed is the walls' business). Signs and screens on a doodad are matte paint.
+- *Picture cards* (`DoodadCards`, `scripts/world/skins/doodad_cards.gd`): each zone's pictures are
+  painted by code (`tools/asset_gen/doodad_art_gen.gd`, run with `tools/godot.sh doodads [--only=a,b]
+  [--review]`) on the CPU (`DoodadPaint`: metres on a 4× supersampled canvas, polygons, gradients, soft
+  weathering; `DoodadKit`: the shared motifs in the concept art's flat-paint-and-ink style: planks,
+  corrugated sheet, wheels, awnings, crates, foliage, see-through window frames, stains) by one script per
+  zone (`tools/asset_gen/doodad_art/<zone>_art.gd`), and packed into one atlas per zone,
+  `assets/sprites/doodads/<zone>.png` (imported VRAM-compressed with mipmaps, about 2.8 MB a texture
+  format: stored lossless they were a few hundred KB, but decoding one cost a 40 ms frame mid-run where
+  there's no shader warm-up; `DoodadCards` keeps one zone's in memory at a time, and the web demo leaves
+  out the zones it never shows), with a manifest
+  `<zone>.json`: where each picture sits, the boxes they were painted for, and each size class's looks.
+  A look is a list of cards (`DoodadArtSet`, `tools/asset_gen/doodad_art_set.gd`): `{plane, at, rect,
+  image, flip}`, a picture on one of the box's faces (`plane` "z" across the lane, its front at `at` = 1;
+  "x" along it; "y" level, the top at 1) or on a plane inside it (a palm's crossed fronds, the goods down
+  a stall's middle, a fountain's water arcs, a rubble heap's inner ridges), over the share `rect` of
+  that plane. Pictures are drawn as seen from outside, a side's front end on its left; a side seen from
+  x- mirrors it (`flip`). Where the object is open (between a stall's counter and roof, a van's empty
+  windows, a colonnade's bays) the picture is transparent and the shader drops it (alpha below one half
+  is discarded: no sorting, no blending). `DoodadCards.for_zone(zone)` loads a zone once; a look is
+  picked from `look_seed`; its mesh (one quad per card) is built once per look and size and shared by
+  every instance, on one material per zone (`doodad_card.gdshader`: unshaded with the kit's fake city
+  light, double-sided, a soft neutral sheen, `scenery_light` and `scenery_tint` like the scenery, never
+  emissive), so a doodad is one draw call, the same on the Compatibility renderer. A zone without a
+  manifest, or a size class without a look, falls back to the default (below). Each design keeps its
+  main colours in the manifest (`colors`), and its mesh carries them as vertex colours (one a card,
+  alpha 0 like the kit's lit colours: never a glow; the card shader ignores them) and as its
+  `debris_colors` metadata (`DoodadCards.COLORS_META`), for anything that needs the look's colours (a
+  smashed doodad's pieces). After changing `MovementTuning`'s doodad sizes, rerun `tools/godot.sh doodads`
+  (`test_doodads` fails until the manifests match the boxes).
 - *The default* (`default_doodad_mesh`): a low-poly block in the skin's `doodad_palette` (body, top,
-  base), still used by the grey box and by any new zone before its own task gives it a doodad() of its
-  own: a base plinth, an inset body and a top, its front slanting back toward its push side.
-- *Each zone's own look* (task G6; `scripts/world/skins/<zone>/<zone>_doodads.gd`, called from the
-  skin's `doodad()`): the Neon City (`CityDoodads`) maps the three classes straight to the GDD's three
-  ideas, smallest first: a pillar, a tiny market stall (a counter, corner poles and a flat canopy) and a
-  small storefront (a facade slab with a window row and a signboard lip). Gangland (`GanglandDoodads`)
-  gives the small and medium classes a burned-out car each (one wreck, then two nose to tail), both
-  crushed low with scavenged salvage piled on top up to the box's top (GDD §3's "stack it... or pile its
-  wreck high"), and the large class a broken-down shop (boarded shopfront, a pulled shutter, a sagging
-  roof lip, rubble at its foot). The Marketplace (`MarketDoodads`) gives the owner's "plenty of nice
-  plants, casino machines": a tall potted plant (small), a bank of two casino cabinets along the box's
-  length with a dim screen face and a marquee hump, never as bright as a hazard sign (medium), and a
-  planted hedge row of three stems of varying height (large). Corporate (`CorporateDoodads`) covers the
-  owner's list directly: a steel planter (small); a security barrier (a wide olive block and a watch
-  mast) or a glass kiosk, picked per doodad by `look_seed` (medium); a sculpture plinth, an abstract
-  steel form built from offset slabs with a brand-paint accent (large). The Dead Zone (`DeadDoodads`)
-  takes the GDD's three ideas directly, smallest first: a crushed, ash-dusted wreck with rubble piled on
-  it (small), a rubble heap of stacked, irregular concrete chunks (medium) and a slab of fallen masonry
-  leaning across the lane at a shallow angle from vertical, with a crumbled edge and rebar (large). The
-  Golden Zone (`GoldenDoodads`) takes the owner's "gilded planters, fountains, statues on plinths": a
-  gilded planter with stylized gold reed fronds (small), a fountain with a still marble basin and a thin
-  falling jet of water (`MeshKit.PAT_WATER`, scenery only, GDD §5; medium) and a robed statue on a
-  plinth (large) -- deliberately not the Gilded Sentinels' armoured guard with a halberd (`GoldenStatue`,
-  task C4). The decorative wall guards now also stand at the wall base, but this lane doodad
-  never reuses their kit or its shape -- a plain draped, faceless figure with its hands clasped and
-  nothing raised -- so it can never be mistaken for the live enemy even up close. `test_golden_skin`
-  guards against the doodad script ever building itself from `GoldenStatue`.
-  None of the six needed a new mesh-kit pattern or shader include: the kit's existing patterns (e.g.
-  `PAT_GOLD`, `PAT_MARBLE`, `PAT_DZ_CONCRETE`, `PAT_CORP_PLATE`, `PAT_TECH`) already cover every zone's
-  materials, each skin picking its own colours for them through its "Doodads" export group.
+  base) on the plain `MeshKit.solid()`, still used by the grey box and by any new zone before its art: a
+  base plinth, an inset body and a top, its front slanting back toward its push side. The skins'
+  "Doodads" export groups (other than `doodad_palette`) are unused by the cards.
+- *Each zone's own look* (`scripts/world/skins/<zone>/<zone>_doodads.gd` hands the skin's doodads to its
+  zone's cards; the pictures are in `tools/asset_gen/doodad_art/<zone>_art.gd`): the Neon City a street
+  vending machine or a pillar plastered with posters (small, by seed), a street-food stall with stools,
+  a steaming pot and a corrugated roof, open between counter and roof (medium), and a little shop with a
+  roll-down shutter, a door, blinds and an unlit sign box (large). Gangland a stack of rusted oil drums
+  under a tyre (small), a burned-out van, its windscreen and windows open on a charred cab (medium), and
+  a broken-down corrugated shop with a half-open shutter on a dark inside (large). The Marketplace a
+  potted palm or a flowering bush in a tiled planter (small), the owner's vendor's stall: a plank
+  counter, corner posts, a striped little roof and its goods in the open middle (medium), and a bank of
+  slot machines back to back (large). Corporate a steel planter with a clipped topiary (small), a glass
+  security booth (medium) and a ribbed olive supply container with stencils (large), the brand colour
+  as thin flat paint. The Dead Zone a broken column on its square foot, rebar out of its break (small), a
+  heap of rubble, lower at its edges than its middle (medium), and a burned-out bus, its window frames
+  open on charred seats (large). The Golden Zone a robed statue on a marble plinth or a gilded urn with
+  a clipped topiary (small), a wall fountain with water arcing into a basin either side (medium), and a
+  colonnade with red drapes, balustrades and a coffered roof, open between its columns (large). The
+  statue is deliberately not the Gilded Sentinels' armoured guard with a halberd (`GoldenStatue`, task
+  C4): a plain draped, faceless figure, hands clasped, nothing raised, its front and back on two cards so
+  each end shows its own side. `test_golden_skin` guards against the doodad script ever building itself
+  from `GoldenStatue`.
 - *Its pieces' colours* (task H5: the dash smashes a doodad, and its pieces fly in its look's own colours,
   `RunEffects.rubble`): the hook `doodad_debris_colors(body, size_class, side, look_seed)`, asked right after
-  `doodad()` dressed it (TrackBuilder keeps the answer on its `DashBreakable`). By default it reads the main
-  lit colours each of the look's meshes was tagged with when its builder cached it
-  (`ZoneSkin.tag_debris_colors`: `MeshBatch.palette()`, the batch's colours by surface area, glowing faces
-  left out, at most four, worked out from the vertices still on the CPU, never read back from a built mesh,
-  which would stall a frame), and falls back to `doodad_palette` for a look that tags none. Every zone's own
-  look and the default tag theirs (one line in each builder); a skin may override the hook, say to leave out
-  part of a look. `test_doodads`' `_test_debris_colors` checks every skin's.
+  `doodad()` dressed it (TrackBuilder keeps the answer on its `DashBreakable`). By default it reads the main lit
+  colours each of the look's meshes carries as its `debris_colors` metadata (`ZoneSkin.DEBRIS_COLORS_META`, the key
+  `DoodadCards.COLORS_META` names too): a card look's are its design's main colours from the manifest (`colors`,
+  three a look, which its mesh also carries as vertex colours with alpha 0), and the default's are tagged as it's
+  built (`ZoneSkin.tag_debris_colors`: `MeshBatch.palette()`, the batch's colours by surface area, glowing faces
+  left out, at most four, worked out from the vertices still on the CPU, never read back from a built mesh, which
+  would stall a frame); a look that carries none falls back to `doodad_palette`. Lit colours only: the pieces
+  never glow. A skin may override the hook, say to leave out part of a look. `test_doodads`' `_test_debris_colors`
+  checks every skin's: each colour one of its look's own vertex colours (none glowing), a few a mesh, the same every time.
 - *Tested*: `test_doodads`' `_test_skins` builds every skin's doodads in every class (seed 7 alone) and
-  checks the box, that nothing glows and that `doodad_palette` is muted. `SkinSuite.doodads_ok(skin,
-  name)` (`tests/helpers/skin_suite.gd`), which every zone's own suite calls, extends this over several
-  seeds and both push sides: dressed, inside the box, on the shared `MeshKit.solid()` alone, never
+  checks the box, that nothing glows (the shared `MeshKit.solid()` or a zone's card material,
+  `DoodadCards.is_card_material`) and that `doodad_palette` is muted; `_test_cards` loads every zone's
+  manifest and checks it was painted for today's boxes, gives each class a look, and that every card
+  shows a picture from its atlas on a plane inside the box, and that the card shader never emits light.
+  `SkinSuite.doodads_ok(skin, name)` (`tests/helpers/skin_suite.gd`), which every zone's own suite calls,
+  extends this over several seeds and both push sides: dressed, inside the box, lit scenery, never
   glowing, and the identical (cached) mesh every time the same size, side and seed are drawn again.
 
 **Dash walls' looks** (task H7a built the hook and a default in every skin; task H7b gave each zone its own,
@@ -2376,7 +2538,9 @@ broken plates hanging into the void (`DeadStreet.cut`), the Golden Zone's walkwa
 (`GoldenWalkways.cut`), the Golden Palace's marble floor broken into the well (`GoldenPalaceFloor.cut`),
 and, since task H3, the City's hover truck sliced open over the road (`CitySkin.floor_cut`), Gangland's
 street split into the strata (`GanglandSkin.floor_cut`) and the Marketplace's stall roofs opened onto the
-stalls' shade (`MarketplaceSkin.floor_cut`).
+stalls' shade (`MarketplaceSkin.floor_cut`). A skin whose cuts' cause draws the hole itself
+leaves the hook empty: the Grand Court's (`GoldenCourtSkin`: the Golden Convergence's Fist Slam opens a row's hole at
+its impact, `GoldenConvergenceHole.open`, so a row costs little until it opens).
 
 *What a cut shows below the street* (task H3; GDD §9.9, the owner, October 8, 2026: "bottoms of buzzsaw
 cuts/gaps in the floor should show a zone specific background": "inside the cut, the player sees the zone's
@@ -3137,12 +3301,12 @@ A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, wh
 continues past. A cinematic is a scene whose root extends `Cinematic` (emit `finished`, support
 `skip()`), built with the cinematic toolkit (Cinematics, below): every zone's intro and the City's boss
 intro play a placeholder arrival flyover, the City's outro plays its own scene (`CityOutro`, task F2a),
-Gangland's boss intro plays its own (`SewerSwarmIntro`, task F2b), and the other outros are still cards. A boss is built on the boss
-framework (Bosses, below). The City's Floating Head is built
-(its step plays the fight); the other boss slots are still placeholders, holding the phases GDD §10
-gives each designed boss and its armor-rule delay. A fight still being built names its scene in the
-slot's `preview_scene` instead of `scene`: the campaign keeps the card, and debug builds play the
-fight with `--boss=<boss id>` as quick play (`BossDef.preview()`), so nothing is recorded.
+Gangland's boss intro plays its own (`SewerSwarmIntro`, task F2b), and the other outros are still cards. A boss is
+built on the boss framework (Bosses, below). Every zone's boss is built (its step plays the fight; the Golden
+Convergence last, task E5d-c), each slot holding the phases GDD §10 gives its boss and its armor-rule delay. A fight
+still being built names its scene in the slot's `preview_scene` instead of `scene`: the campaign keeps the card,
+and debug builds play the fight with `--boss=<boss id>` as quick play (`BossDef.preview()`), so nothing is recorded
+(`test_app_flow` and `test_screens` check the boss slot's card with an unbuilt stand-in).
 
 ## Bosses
 
@@ -3175,6 +3339,7 @@ encounter.setup(world, context, arena)   joins the world between the player and 
 | `scripts/bosses/the_house/`, `scenes/bosses/the_house.tscn`, `data/bosses/marketplace_boss*.tres` | The House, the Marketplace's boss (see below; `./play.sh --boss=marketplace_boss` or `--level=marketplace/boss`) |
 | `scripts/bosses/hostile_takeover/`, `scenes/bosses/hostile_takeover.tscn`, `data/bosses/corporate_boss*.tres` | Hostile Takeover, the Corporate zone's boss (see below; `./play.sh --level=corporate/boss`) |
 | `scripts/bosses/sewer_swarm/`, `scenes/bosses/sewer_swarm.tscn`, `data/bosses/gangland_boss*.tres` | the Sewer Swarm, Gangland's boss (see below; E4a and E4b: the campaign plays it after Gangland 3, `./play.sh --boss=gangland_boss`) |
+| `scripts/bosses/golden_convergence/`, `scenes/bosses/golden_convergence.tscn`, `data/bosses/golden_boss*.tres` | The Golden Convergence, the Golden Zone's boss and the final villain (see below; `./play.sh --level=golden/boss` or `--boss=golden_boss`) |
 
 - **The arena** (`BossArena`): the generator plans `BossDef.arena_laps` laps from the boss's arena
   config (one lap's seed, features, difficulty, pacing and skin; `duration_seconds` is the lap's
@@ -3350,8 +3515,14 @@ plays it; E1e, the owner's playtest fixes; E1f, the fight at the City's speed), 
   through `spawn_enemy("generator", ...)`, a destroyed one's EMP reaches the part (`_on_part_emp`:
   `damage(hit_damage(), &"emp")` while it's lured in), and its defeat ends in silence and a grey dawn
   (`victory_riff`, `set_scenery_light`).
-- **The final villain:** two stages, the second a `checkpoint` phase, so a death there restarts at the
-  second stage.
+- **The Golden Convergence (E5d, built, see below):** the Golden Zone's boss step plays it; two stages in six phases, stage 2's first a
+  `checkpoint` phase, so a death in stage 2 restarts there. Stage 1's golden suit floats out of reach (the
+  body part, chipped by weapons up to `weapon_share_cap`), its attacks each a class of its own played one
+  at a time from a beat script in its tuning (E5d-a the Helidrone Strafe with its Flying Buttresses; E5d-b
+  the Fist Slam, smashing a buttress into a toppled tower's wall through `court.open_wall`, and the Missile
+  Barrage; E5d-c the Refill Ship, its caged pad hurling the squadron into the ship, the hit that damages the
+  suit; E5d-d The Magnate's chase and the defeat; E5d-e the owner's playtest of stage 2: the Claw Slash, the
+  Screen Storm, the arena darker, the stomp's chevrons).
 
 **The Sleep Taker** (GDD §10, task E5c: E5c-a, the nightmare, its arena, its entrance and its three
 attacks, weapons having no effect; E5c-b, hurting it by the generators' EMP, the three phases, the
@@ -3629,6 +3800,119 @@ phase's start, first drawn later: `ShaderWarmup` doesn't sample a pickup's look)
   bot wins each phase and the whole fight at 3, 5 and 6 lanes at 18 and 21.8 m/s, after a death and a retry,
   and through the campaign (`test_sewer_swarm_*`).
 
+**The Golden Convergence** (GDD §10, task E5d, built in four steps: E5d-a, the golden suit, the Grand Court,
+the entrance, the Helidrone Strafe and the Flying Buttress, phase 1's opening strafe; E5d-b, the Fist Slam and
+the Missile Barrage; E5d-c, the Refill Ship (the only way to damage the suit), stage 1's three phases played
+through, the suit's damage and the campaign slot; E5d-d, stage 2 (The Magnate) and the defeat; then E5d-e, the
+owner's playtest of stage 2: the Claw Slash, the Screen Storm, the arena about 30% darker, new beat scripts with
+shorter gaps, the stomp's chevrons). The Golden
+Zone's boss step plays it (`scene` in its slot) after Golden 3 at the zone's 25 m/s; debug builds also play it
+with `./play.sh --level=golden/boss`, or `--boss=golden_boss` (18 m/s unless given `--speed`; `--phase=4`
+starts at the halfway checkpoint, with the transition). The arena is the Grand Court (GDD §10, proposed): plain laps
+(`_plan_lap` clears every lap: every danger is the boss's) in its own look, and no side walls: the court
+keeps both walls taken away ahead of the runner, so a move past an outer lane bumps them back with the
+clank. Each phase's pattern is a beat script in its tuning (`phase_beats`: `strafe:VVH,slams,barrage,refill:VVH`
+for phase 1, then from `loop_from`), one beat at a time, `beat_gap` apart over the phase's pace; each beat
+kind is an attack of its own class registered with the encounter (a kind with none registered is a stub the
+pattern skips: `beat_stub`). An attack says
+where its beat will be over (`ends_at()`) and the wait after it (`gap_after()`, the encounter's next beat
+comes that long after), so the next one can plan ahead: the Fist Slam's holes are floor cuts that must lie
+past the built track (`BossArena.stream_from()`, about 200 m ahead), so its rows are planned while the beat
+before it plays. Nothing depends on how long the fight has lasted; random choices come from seeds of the fight (each strafe's own), passes are
+anchored to the runner's distance at the run speed, so every attempt plays the same. Its tuning's distances
+that stand for a time are written at 18 m/s and multiplied by the run's pace (`run_pace()`), as the other
+bosses' are. In `scripts/bosses/golden_convergence/`:
+
+| File | What |
+|---|---|
+| `golden_convergence.gd` (`GoldenConvergence`) | the encounter: the court (`_plan_lap`), the suit's place (`suit_transform`: `suit_ahead` ahead of the runner and `suit_height` up, swaying and bobbing; rising from `rise_depth` in the entrance), each phase's intro (`_on_phase_started`/`_intro_tick`: phase 1's entrance, the rise with `gc_rise`, the cape unfurling from `unfurl_at`, the chime at `chime_at`; a later stage 1 phase's reel, `Step` ENTER, FLOAT, REEL; stage 1's damage, `_show_damage`; stage 2's from the transition on, `_stage_two_tick`), the beat script (`_tick_beats`, `_next_beat`, `register_attack` (the attacks by kind, and in `attack_list` in the order registered: what the frame's code goes through), `_attack_for`; `_pattern_tick` stops the frame's ticks once an attack's tick has ended the phase, the Refill Ship's hit; `_look_tick` eases every attack's looks through an intro and the defeat), the enemies it spawns made before the fight (`warm_enemies`: the cage's generator), an EMP reaching a part (`_on_part_emp`: the Refill Ship's cage), the buttress pool (`place_buttress(lane, at, lean)`, `buttresses_between`), `cross_warning` (a red bar across a lane: a floor warning, steady with Reduced flashing), `sound()` (plays and logs every warning), `sound_point()` (where something far off is heard), `hint(key)` (`boss:golden_boss/<key>`), `warning_active()`, `speed_planned()`, `run_pace()`, `player_lane()` |
+| `golden_convergence_attack.gd` (`GoldenConvergenceAttack`) | the base of its attacks: `start(beat)`, `tick(delta)`, `look_tick(delta)` (the frames its tick doesn't run, a phase's intro or the defeat: what it shows eases to rest, an arm back, a hatch shut, a tower falling on), `busy()`, `hold(on)`, `clear()`, `warning_on()`, `prewarm()`; `ends_at()` (where its beat will be over, -1 if it can't say) and `gap_after()` (the wait after it: `beat_gap`, the slams' 0 after a bait) for planning ahead |
+| `golden_convergence_strafe.gd` (`GoldenConvergenceStrafe`) | the Helidrone Strafe: plans the script's passes (V head-on, v from behind, H horizontal) from the runner's distance at the run speed (`_plan`, `warn_at`), each pass's warning (`_warn`: BossProps' lane warnings over a vertical pass's stretch of every other lane, `covered_lanes` switching parity each vertical pass; `cross_warning`s over every lane but a horizontal pass's buttress opening; the whine), its fire (`_fire`, `_tick_rake`: the front closing in at `rake_speed` or gaining at `behind_rake_speed`; `_tick_line`: the sweep lighting each lane, the live line until the runner is past it, the lines for show for `show_burn`, the sparks off the buttress), the squadron's flight (`_pose`, filling its `_pose_` fields a drone a frame: a drone over each covered lane, the spare climbed above the formation over a covered lane, holding its fire; the station between passes), each horizontal pass's buttress `buttress_sight` ahead of its line (`_place_buttresses`, an inner lane by seed, leaning toward the nearer edge; `gate(p)`: a pass's gate while it's still the one raised for it, its placement noted, so a stale reference never moves another attack's gate). For the Refill Ship (E5d-c): `hold(on)` (the fire and warnings gone at once, no gate rising, the squadron at `hold_station`, led by the run's motion so it holds at its places; on release the gates up for passes to come sink and the passes left are re-planned from the runner, a horizontal pass first keeping its gate's full `buttress_sight`), the pad rule (a `pad` movement event while the squadron is out hurls it: `hurled`, the strafe over), `refill`; at a phase's end its gates standing ahead sink (`clear()`: none pops) |
+| `golden_convergence_squadron.gd` (`GoldenConvergenceSquadron`) | the squadron part: up to three of the heli drone's model drawn not hostile (`add_model(..., false)` in `scripts/enemies/drone.gd`: no red), its rotors, gatlings and muzzle flashes (steady with Reduced flashing), `set_drone`, `drone_position`, `drone_base` (where a drone was put, without its hover bob: the strafe flies on from there), `stow`, `hurl()` (each crashes `hurl_rise` up, `hurled_out` once all are down: the Refill Ship sets it to its racks' height); immune to weapons, no touch of its own |
+| `golden_convergence_fire.gd` (`GoldenConvergenceFire`) | the strafe's fire, pooled: rakes (`set_rake_lane`, `set_rake_front`: an enemy attack hitbox over most of a lane up above a jump's reach; in an outer lane the wall's part up to `wall_fire_height` and the main box clear of a wall runner's body), lines (`set_line`, `set_line_lane`, `set_line_wall`: the live line's hitbox per lane and up both walls to `wall_line_height`; the lines for show have none), tracers, scorch marks (one MultiMesh, dark, fading over `scorch_seconds`); `hits` and the `hit` signal (the strafe logs `strafe_hit`) |
+| `golden_convergence_buttress.gd` (`GoldenConvergenceButtress`) | a pooled Flying Buttress: `place(lane, at, lean)` (rising over `buttress_rise_seconds` with `gc_buttress`; its sides a lane blocker from a lane switch's run before its front, so a switch into its lane bumps; a runner in its lane runs through the arch), `smash()` (E5d-b's fist, E5d-d's Pounce: it crumbles with `gc_crumble`, blocks nothing, `smashed`), `sink()` (a slam sequence's other gate once a bait ends it, or any gate standing ahead at a phase's end: back down the way it rose, with `gc_buttress`), `release()`, `span()`, `blocked_span()`, `opening_x()`, `spark_point()`, `standing()`, `in_use()`, `places` and `is_placement(n)` (still the gate raised as placement `n`); meshes per lane count, lane and lean (`mesh_for`) |
+| `golden_convergence_court.gd` (`GoldenConvergenceCourt`) | the walls: `BossProps.block_wall` in `wall_block_stretch` stretches from just behind the runner to `wall_block_ahead` ahead; `open_wall(side, from, to)` / `close_wall(id)` (E5d-b's toppled tower), `is_open`, `blocked`, `laid_until`; a wall runner where it isn't open is dropped off (`Player.repel_from_wall`, `repels`) |
+| `golden_convergence_slams.gd` (`GoldenConvergenceSlams`) | the Fist Slam (E5d-b, beat `slams`): the phase's script (`slam_scripts`: `O` on the runner, `A` ahead, lower case a chance), the fists taking turns `slam_gap` apart over the pace, every point keyed to the runner's distance at the run speed: out (the arm telescoping, the fist following the runner's lane), the warning `slam_track_seconds` before the lock (the fist rising, the shadow, the red square over the footprint, `gc_grind`), the lock `slam_lock_seconds` before it lands, the impact (`_impact`: the footprint's cuts opened at once and the hole's look drawn for just the footprint, `GoldenConvergenceHole.open`, the touch for `slam_hit_seconds` over the footprint clipped clear of a wall runner's body, `touch_x`, rubble, a shake, `gc_slam` and `gc_break`; `_check_under`: a runner who lives through the touch, the dash included, has the floor under them held, `FloorCut.hold_under`), back to rest. Each sequence is planned before it begins (`_plan`: a floor cut in every lane of each row, since the footprint isn't known until the lock, past the built track, its rows moved on past any cuts already there, each row at least `row_gap()` past the one before (a lane switch's run plus `slam_row_margin` at the run speed, a chance's gate included; E5d polish: two rows never meet), the later slams coming that much later; from the beat before's `ends_at()` in `_look_ahead`, from a phase's start in `_plan_phase`, from the Refill Ship's chain reaction for the next phase in `plan_phase_ahead` (kept through the phase's change), or at its own start, its first fist then stalking the runner's lane). A plan dropped (`_discard`) leaves its cuts on the track, whole, and takes its rows' floor warnings away. The chances: a Flying Buttress in an inner lane, up `buttress_sight` ahead, its row dug in front of it; a fist locked on its lane smashes it (`_bait`: a tower topples, the sequence ends, the other gate sinks, `gap_after()` 0 so the barrage warms up as the tower falls); a fist locked elsewhere digs beside it. `finishing` (a dropped plan's fist still down plays on to rest), `in_play()` (a new list, for tests: the frame's code goes through `finishing` and `slams`), `towers_down()`, `gate_of(s)`, `look_tick` (the arms ease back and the towers fall on through an intro), `plan_phase`, `planned_by`, `slam_warned`, `slam_locked`, `slam_landed` |
+| `golden_convergence_hole.gd` (`GoldenConvergenceHole`) | a slam's square hole: `footprint(lane, lanes, side)` (two lanes on 3 or 4, three on 5 or 6, as long as it is wide, moved inward at the edge; an even width's extra lane toward the middle), `hole_lanes`. E5d polish (a row of cuts in every lane cost a chunk build and draws on a phone though one footprint ever opens): a row's cuts draw nothing until the impact; `open(cuts, skin, geo)` then draws one square hole over just the footprint (the palace's break look, no lips between its lanes, one halo), five parts holding meshes shared by every hole of that footprint (`meshes`, made at the fight's start by `prewarm` for every footprint and kept in `GoldenCourtSkin.hole_meshes`) under the first lane's cut and registered with its `FloorCutSection` as the cut's own parts are (the inside static, the sides spans, the near lip the front, the far lip and the halo the far side), so `FloorCut` keeps the contract the Buzz Overdrive's cuts use |
+| `golden_convergence_fist.gd` (`GoldenConvergenceFist`), `golden_convergence_shadow.gdshader` | the fists' part: per fist the red square over the footprint (the red lines' glow, beating, steady with Reduced flashing), the shadow (a dark patch growing on the floor under the fist; lighter on the Compatibility renderer, which blends in sRGB: `shadow_alpha_for`, as the Magnate's), the touch (`set_touch`: an enemy attack over the footprint from the floor to `slam_hit_height`, above a jump, clear of a wall runner's body), the impact's rubble and dust; `hits`, `hit` |
+| `golden_convergence_tower.gd` (`GoldenConvergenceTower`) | the toppled tower, pooled by the slams (two, made with the fight at the run's length, `length_for`, its wall's `wall_seconds()` included), built in code in the court's look (`mesh_for`: chamfered white marble, gold bands, lit windows on its top and outer side, a gold crown and spire): `topple(side, foot, length, wall_from, wall_to)` stands it off screen behind the runner and topples it forward along the track over `tower_fall_seconds` (`gc_topple`); landing beside the causeway, never on it, its side flush with the wall's face, it opens the court's wall (`court.open_wall`, `wall_seconds()` of running from about the gate: `tower_wall_seconds`, or long enough for the barrage after the bait to warn and burn out with the wall still there) with dust and a shake (the Screen shake setting; no flash); once the runner is past the wall's end it closes it and sinks away behind them (`tower_sink_seconds`) |
+| `golden_convergence_barrage.gd` (`GoldenConvergenceBarrage`) | the Missile Barrage (E5d-b, beat `barrage`): `_plan` keys the hatch, the climb, the hang and the dive to the runner's distance at the run speed (`warning_seconds()` from the hatches opening to the fire, at least `wall_reach_seconds`: the reaction, a lane switch for every lane but one, the wall entry and a margin; E5d polish: where F6's steps would leave less on the most lanes, the missiles hang longer, `hang_seconds`, `warning_for`), the fire's stretch (`fire_behind` behind where it lands to past where a dash could carry the runner while it burns, `fire_ahead` more), the marks (`marks_per_lane` a lane, one missile each, floor warnings over every lane: `BossProps.warned` finds them, pickups keep off); `tick` drives the hatches (`suit.pipes_open`; left alone while idle), the missiles (out of the pipes, arcing up out of view, hanging in front of the suit's chest pacing the runner, diving), the marks (spreading in, filling in over the dive), the fire (`fire_seconds`), with `gc_hatch`, `gc_launch`, `gc_whistle`, `gc_fire`. With no wall it comes anyway. `look_tick` (the hatches swing shut through an intro), `land_eta()`, `ends_at()`, `barrages`, `barrage_warned`, `barrage_landed` |
+| `golden_convergence_missiles.gd` (`GoldenConvergenceMissiles`), `golden_convergence_barrage.gdshader`, `golden_convergence_floor.gdshader` | the barrage's part, pooled MultiMeshes: the missiles (bronze, never glowing) and their fiery trails, the marks' rings and fills, the flames and the burning floor; the fire's hitboxes per lane (`set_fire`: `fire_height` high, an enemy attack; the outer lanes' kept clear of a wall runner's body lying across the wall's foot, so the wall is safe at every height). The flames and trails are added light (lifted on Compatibility, their flicker steady with Reduced flashing); the marks and the burning floor are laid over the floor in the red lines' blended red, the marks filling in near opaque (`fill_alpha`; E5d polish: 0.6 read salmon on the marble), so they read red on the white marble on both renderers. `hits`, `hit`, `mark_ring(i)` |
+| `golden_convergence_refill.gd` (`GoldenConvergenceRefill`) | the Refill Ship (E5d-c, beat `refill`, its argument its strafe's script), the only way to damage the suit, every point keyed to the runner's distance at the run speed: the ship flies in to its station beside the causeway on the fed shoulder's side (`fed_side()`: his right first, then his left, then his right's stubs) and paces the runner, the feed line shooting out to the shoulder's pipes (`gc_ship`, `gc_feed`; the hatch over them open while it feeds, `gc_ride` as missiles ride up it), the beat's strafe out of the cape; once it has flown `cage_after` passes the cage comes up `cage_lead` ahead (or further: `GoldenConvergenceCage.lead_seconds`; `_raise_cage`: its pad in an inner lane, the generator beside it, by the fight's seed; the fence warning), the strafe holds (`strafe.hold`, the squadron at the ship's `hold_point`s), and the ship comes down over every lane to the ceiling's height, settled `settle_before` ahead of the front fence. The pad (`strafe.hurled` near the cage's pad, from whichever lane: a switch begun over it changes the lane first) starts the chain reaction (`_start_chain`, `_tick_chain`: the cage sinks away, the racks ripple out from where the drones hit with `gc_ripple`, the ship spins off to the fed side (a little down, never below the deck: `SPIN_DOWN`), its belly gone so the rider drops back to the floor, and explodes above the causeway beside it with `gc_crash` (`ship.blast_center()`); the blast races up the line from there, `gc_blast`, and `_blast_lands`: a shoulder's pipes blown out with `gc_pipes`, the third time none, the transition's burst being the one blast, then `damage(hit_damage(), &"refill_ship")`), and plans the next phase's first slams (`_plan_next_phase`). A runner `miss_after` past the pad still riding the belly with no chain sets it off there (a failsafe, `refill_failsafe`: nothing should get them there); one without riding missed it (`_miss`): the strafe fires on, the ship climbs back, finishes refilling and flies off (`gc_leave`); `ends_at()` says where that beat ends once it's known. `cage_up()`, `warning_on()`, `on_emp` (the cage's), `landed`/`dropped_at` (the ride), `refills`, `chains`, `hits`, `misses`, `chained`, `hit_landed`, `pad_missed` |
+| `golden_convergence_ship.gd` (`GoldenConvergenceShip`) | the ship, a part made once and reused (immune, never a target, `is_obstacle`): its belly a ceiling over every lane (`add_surface` on the hull layer, live only while it's down: `set_belly`), its rack missiles (one MultiMesh; `explode_rack(i)`, `rack_point`, `racks_left`), where the squadron holds (`hold_point(i, n)`: under its racks) and how high a hurled drone rises into them (`hurl_rise()`), the feed line (`set_line` shooting out over `reach`, a gentle sag, `ride()` missiles riding up it, `burn_line`, `line_point`, `boom_point`), the fire (`GoldenConvergenceBlast`: `fireball` and `smoke`; `explode()`: a string of fireballs along its length around `blast_center()`, its middle at least `BLAST_LIFT` over the causeway in the world's up whatever its roll, smoke rolling up, debris, sparks only without Reduced flashing; `blast()`, `fires_on()`); `set_pose`, `set_shown`, `racks_blown`, `fireballs_shown`, `sparks_shown`, `draw_stats()`, `meshes()` |
+| `golden_convergence_ship_model.gd` (`GoldenConvergenceShipModel`) | its meshes, built once in code per lane count (the kit's solid shader, never emissive but its lamps, its pale blue engines and the ceilings' orange end band): the plated belly with its seams over the lane edges, the skirts, the gilded cargo hull with the cult's emblem, the racks' decks and cradles, the prow, the bridge, the engines (`MeshKit.stern_halo`), the feed boom amidships (`BOOM_TIP`), a rack missile (`rack_slots`), a piece of the gilded feed line, a riding missile; `LENGTH`, `RIDER` (where the runner rides, behind its middle) |
+| `golden_convergence_blast.gd` (`GoldenConvergenceBlast`), `golden_convergence_blast.gdshader` | the chain reaction's fire and smoke (E5d polish: the old additive fireballs read a washed-out peach over the court's marble and sky): two pooled MultiMeshes (32 fireballs, 40 smoke puffs; two draws whatever burns), soft balls laid over what's behind them (blended, never added): a fireball a saturated orange with a hot yellow heart while young, reddening and darkening through soot as it fades, its smoke rolling up out of it; dark smoke puffs (`smoke`) rising, swelling and thinning; no flash with Reduced flashing (its heart comes up softly, never white-hot). On Compatibility an over-bright colour is scaled down whole. `fire`, `smoke`, `tick` (nothing to do while nothing burns), `clear`, `fires_on`, `smokes_on`, `shown` and `drawers` (tests) |
+| `golden_convergence_cage.gd` (`GoldenConvergenceCage`) | the closed cage, made once with the fight and placed by the refill (`place(lane, gen_lane, front_at)`, `span_for`; `lead_seconds(t, movement, lanes)`: `cage_lead`, or long enough to read it, switch in from the farthest lane and jump onto the generator, E5d polish): the anti-grav pad (`cage_pad_length`, right behind the front fence), the full front fence across its lane, the side fences along its lane's edges (`cage_side_height` tall, `cage_side_past` past the pad), all following the fence rules (electrical, no enemy) and flickering in harmlessly for `cage_flicker` (the fence look's WARNING, steady with Reduced flashing) before they switch on; the generator (`spawn_enemy("generator")`, `generator_before` ahead of the front fence in the lane beside the pad's) and its conduit; `emp(center, radius)` (its own generator's pulse switches it all off, another EMP what it reaches), `retract()` (its pad ridden: it sinks away, harmless at once; it listens for the pad itself too), `put_away()`, `ahead()`, `fences()`, `touches`, `touched`; pickups keep off its stretch (floor warnings) |
+| `golden_convergence_suit.gd` (`GoldenConvergenceSuit`) | the suit, the fight's body: weapons chip it at its chest (`aim_point`; within the upgraded weapons' 70 m at `suit_ahead`, not the tier-1 weapon's 42 m: DESIGN-TBD); no hitbox. Its handles: `unfurl`, `reel`, `set_arm(side, target, blend, extend, fist)` (the arm swinging out, its segments telescoping; past a full telescope, up to `EXTEND_MAX`, each sleeve stretches: the Fist Slam's long reach), `extend_for(side, target, pose)` (the extend that brings a fist to a point), `pipes_open[side]` (the hatch), `set_pipes_broken(side)`, `burst` (the chest's plates), `hand_point`, `pipe_mouth`, `head_point`, `cape_point(i)`; `draw_stats()`, `meshes()`, `cape_material()` |
+| `golden_convergence_model.gd` (`GoldenConvergenceModel`) | the suit's meshes, built once in code at its reference size and shared (the kit's solid shader with the court's gold, never emissive): the torso with the Triad in gold relief and filigree, the chest plates and the dark cavity behind them (the burst opens it: the man's room, stage 2's entrance), the head (the calm face's relief and marks coloured per corner: `face_relief`, `face_marks`, `face_color`; the dull red tear, unpolished; the diadem), the halo, the arms and their telescoping segment, the hands, the shoulder pipes, their hatch (`hatch_hinge`) and their torn stubs, the tentacle pipes, the cape's two sheets (coarser on the Compatibility renderer): 17 instances, about 64,000 vertices |
+| `golden_convergence_cape.gdshader` | the cape's cloud: pleats radiating from the shoulders and billowing waves (on `TIME`), black troughs, velvet shading; unshaded and never glowing; `unfurl` gathers it at the shoulders for the entrance; one fine ripple fewer on Compatibility |
+| `golden_court_skin.gd` (`GoldenCourtSkin`), `golden_court_feed.gdshader` | the Grand Court (GoldenPalaceSkin's floor, sky and hazard looks; `wall_section` draws the balustrade, the pools, the towers with their feed screens, the hall's colonnade and the vault); the feed's handles for the later steps: `set_feed(mode, power, glitch)`, `set_feed_blackout(center, radius)`, `reset_feed()`, `feed_state()`; `floor_cut` (draws nothing: a slam's hole is drawn at its impact, `GoldenConvergenceHole.open`, from the meshes in `hole_meshes`) |
+| `golden_convergence_tuning.gd`, `data/bosses/golden_boss_tuning.tres` | its numbers (F6 in its fight; all DESIGN-TBD, `docs/OPEN_QUESTIONS.md` items 416–503), a group per part; `beats_for`, `loop_start`, `squadron_size`, `covered_lanes` |
+| `data/bosses/golden_boss.tres`, `data/bosses/golden_boss_skin.tres`, `scenes/bosses/golden_convergence.tscn` | its slot (six phases: stage 1's paces 1, 1.1, 1.2 and stage 2's 1, 1.15, 1.3, equal shares, the checkpoint at phase 4; weapons up to 0.17 and able to end a phase; the armor rule at 22 s, `armor_when_unprotected`; 1,000 credits, 10,000 points; pars 238 s and 308 s and the time bonus to 378 s, from a clean fight's 217.6-220.2 s at 25 m/s (E5d-e's longer stage 2); the Golden Zone's music; `scene`), the court's look, the scene |
+| `tools/asset_gen/sfx_bank_golden_convergence.gd` | its sounds: `gc_rise`, `gc_chime` (the Resonator's notes, huge and slow), `gc_emerge`, `gc_whine` (as long as `warning_seconds`), `gc_rake`, `gc_sweep`, `gc_spark`, `gc_buttress`, `gc_crumble`, `gc_hurl`, `gc_return`; E5d-b's `gc_grind` (the fist's deep wind-up, a clank at the lock), `gc_slam`, `gc_break` (the floor giving way), `gc_topple` (the tower's rumble and crash), `gc_hatch`, `gc_launch` (the roar), `gc_whistle` (rising), `gc_fire`; E5d-c's `gc_ship` (its engines droning in, as long as `ship_in_seconds`), `gc_feed` (the line's shot and coupling clank), `gc_ride`, `gc_ripple`, `gc_crash`, `gc_blast` (racing up the line), `gc_pipes`, `gc_leave` |
+| `tools/showcase/golden_convergence_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/front/face/entrance/strafe/buttress/wall/fight`, E5d-b's `slams/bait/tower/barrage`, E5d-c's `refill/cage/chain/missed/stage1/whole` with `--way=generator/dash/armor/miss`, `--lanes`, `--speed`, `--phase`, `--script=VVHvVHv`, `--cam=run/side/high`, `--still`, `--reduced-flashing`, `--burst` for the damage states, `--events`) |
+| `tests/helpers/golden_convergence_bot.gd` (`GoldenConvergenceBot`) | a runner who plays it by what it shows, `reaction` seconds late, one reader per attack (`_read_strafe`: out of a raked lane, into the buttress's arch; `_read_fist`: into a chance's gate lane as its fist locks, out from under a fist locked on it, over an AHEAD hole, never into an open hole; `_read_barrage`: to the outer lane beside the tower's wall and onto it as the marks fill in, a wall hop if it would drop off before the fire's out, the dash as its last armor hit's second runs out with no wall; `_read_refill`: the cage by `refill_way`, into the generator's lane and a jump `stomp_generator_lead()` before it, then into the pad's lane once its pulse has switched the cage off, or the dash `dash_lead` before the front fence, or through it on the armor, or around the cage, a missed pad; `_read_magnate`: stage 2, below), `dodges`, `takes_cover`, `baits`, `dodges_fist`, `jumps_holes`, `takes_wall`, `refill_way`, `home_lane`, `log` |
+
+How the steps plug in: each attack is registered under its beat kind (`register_attack` in `_build_boss`:
+E5d-b's `slams` and `barrage`, which drive the arms, `suit.set_arm` and `extend_for`, and the pipes,
+`suit.pipes_open` and `pipe_mouth`, bait buttresses and open the toppled tower's wall, `court.open_wall`, which
+the strafe's wall rules read; E5d-c's `refill`, which drives the hatch over the pipes it feeds while the barrage
+is idle, holds the strafe, `strafe.hold` and `hold_station`, listens for `strafe.hurled`, raises the squadron's
+`hurl_rise` to its racks and shows the damage, `suit.set_pipes_broken`), adds its group to
+`GoldenConvergenceTuning`, its reader to `GoldenConvergenceBot` and its sounds to the bank; stage 2 (E5d-d) runs
+from `_on_phase_started` and `_stage_two_tick` and plays the defeat with the feed (`GoldenCourtSkin.set_feed`,
+`set_feed_blackout`). A phase's end clears every attack (`clear()`: warnings, fire and touches gone at once,
+gates standing ahead sinking, never popping; a later phase's slams planned by the chain kept), and through
+the next phase's intro each attack's looks ease to rest (`look_tick`).
+
+**Stage 2, The Magnate, and the defeat** (GDD §10, task E5d-d). Phases 4-6
+are his: `_on_phase_started` starts `transition` (phase 4's intro: the transition, the same from the checkpoint
+on a retry; phases 5-6: his hurl clear after a stomp) and `_stage_two_tick` runs the intro, then the phase's
+beat script (`pounce`, `pounce:bait`, `slash`, `slash:double`, `screens`, `lash:low`, `lash:high`; `overtake`
+still plays but no script names it since E5d-e: the storms show him) with the same `_tick_beats`,
+`stage_two_beat_gap` apart (`beat_gap()`, E5d-e), and the chase every frame. He is one `BossPart` (`magnate`),
+the fight's body from the transition on: weapons chip him once he's out of the suit, and a stomp on a weak point
+over his back while he's stunned ends the phase (`_on_weak_point_hit`; E5d-e: `hit_damage()` takes exactly what's
+left of the phase, so chip damage never carries into the next one); the third ends the fight, and `_on_defeated`
+starts `defeat` (the feed dies), which holds the results until the runner is past him (`victory_over()`) and
+plays its own riff (`victory_riff()` false). E5d-e's screens chip him too (`screen_damage()`: `screen_hit_share`
+of the phase, cause `&"screen"`; four storms end a phase on their own, and `_stage_two_tick` stops the frame's
+attack ticks once one has ended the phase). The arena dims to `stage_two_light` through the transition (`_dim_due`,
+applied on the first stage 2 frame, so a fight resumed at the checkpoint finds the run's environment;
+`BossEncounter.set_light_level` scales the court's light and `scenery_light`, which his body and cables' shaders
+follow too) and the defeat brings it back. Every attack plans from the runner's distance at the run speed when it
+starts; warnings keep their seconds over the phase's pace, the rest is divided by it; framing (where he is
+relative to the runner) is kept in metres. In `scripts/bosses/golden_convergence/`:
+
+| File | What |
+|---|---|
+| `golden_convergence_magnate.gd` (`GoldenConvergenceMagnate`) | his part: the rig (`set_pose(xform)`, `play(anim)`: run, stand, crouch, leap, roar, rear, whip, slump, collapse, claw, stagger, hurl, slash, hidden; each frame his joints, legs included, ease toward the animation's pose, two `JointPose` objects made once; legs reaching the ground, the jaw, the tatters, `speed`, `rise`, `shudder`, `crack_light`, `ports_glow`), everything of his that can touch the runner, each off unless an attack switches it on (`set_crash`: the Pounce's enemy attack box; `set_lash_band(i)`: a cable's; `set_slash`: the Claw Slash's, E5d-e; `set_weak_box(i)`: a weak point, `add_weak_point`; `set_blocker`: his solid but safe sides, a lane blocker of its own that a defeat leaves alone), `touches` (tests), his shadow (`set_shadow`, `shadow_box`), the marker (`set_marker`), `breathe(sound)`, the cables (`tear_cable(i)`, `restore_cables`, `socket_point`), `head_point`, `back_point`, `body_aabb`, `draw_stats`, `meshes`; never a target before the transition (`targetable`) |
+| `golden_convergence_magnate_model.gd` (`GoldenConvergenceMagnateModel`) | his meshes, built once in code and shared: the ribcage and haunches (gold splashes), the head (half the calm mask with its dull red tear, his roaring half), the jaw, the legs' segments, the tatters, the ports (their own glowing material: the only hazard colour on him), a cable; `BODY_*`, the rig's joints, the colours (all inside the lit surfaces' chroma limit) |
+| `golden_convergence_magnate.gdshader`, `golden_convergence_magnate_cable.gdshader` | his body (unshaded with a fixed warm key light: the burnt cell-network cracks in his own space, the cult's warm white leaking from some, `crack_glow`; the tatters' sway; the defeat's `shudder`, gentler with Reduced flashing) and a cable (drooping from its socket to the ground behind him, swaying, trailing in a leap); both dim with the court's `scenery_light` (stage 2's darkness, E5d-e), never his cracks' warm white |
+| `golden_convergence_magnate_marker.gd` (`GoldenConvergenceMagnateMarker`) | the marker at the screen's bottom edge under his lane (the Enforcer Truck's way, its own CanvasLayer under the HUD): a chevron with two claw marks, the feed's warm white, the enemy attacks' red at a Pounce's warning (`alarm`), flashing red for a Claw Slash's (`blink`, E5d-e; steady with Reduced flashing); redrawn only while it shows (once more to clear it), its outlines reused; `color()`, `screen_point` |
+| `golden_convergence_chase.gd` (`GoldenConvergenceChase`) | his moves between attacks: following `chase_gap` behind in the lane the runner was in `chase_lane_delay` ago (`begin`), his shadow (a soft blob on the floor of his lane, past the runner) and marker while he's behind out of sight, breath and growls; `drive(by)` (an attack, the transition or the defeat moves him), `drop_back(by, side)` (back behind the runner, along a balustrade first and into his lane only behind the camera), `place()` (every mover's: his gallop's rate, his leap's pitch), `balustrade_x/y`, `alarm`, `home()`; E5d-e: `alarm_flash` (`marker_blink()`, `ALARM_FLASH_HZ`) and `marker_hold` (the marker shown while a slash brings him into view) |
+| `golden_convergence_transition.gd` (`GoldenConvergenceTransition`) | phase 4's intro (`start`: the chest bursts, `suit.burst`, its plates flung off; he claws out of the man's room, roars as the feed switches to his face; the empty suit topples off the causeway's side into the pools, never over the track; he leaps over the runner and the chase begins) and phases 5-6's (`start_hurl`: a howling leap onto a balustrade, then the drop back); `played`, `hurls`, `suit_down` |
+| `golden_convergence_overtake.gd` (`GoldenConvergenceOvertake`) | the beat `overtake`: along the nearer balustrade past the runner, across the causeway high over every lane onto the other balustrade ahead, back behind; nothing of it can touch the runner |
+| `golden_convergence_pounce.gd` (`GoldenConvergencePounce`) | the beats `pounce` and `pounce:bait`: the roar and the red marker, the leap following the runner's lane until `lock_seconds` before he lands, the red square (`square()`, a floor warning), the crash over the square above a jump, the bound onto a balustrade; the bait's buttress (`place_buttress`), his aim at the gate while the runner is in its lane, the stun across two lanes (`stunned()`, his weak points and sides, the buttress smashed; the weak points' top `stomp_top()`, never out of a stomp's reach whatever the tuning), the release (`release_gap()`: a runner on the floor that close to his back, or past him, and he shakes free: a miss; never while a jump could still land on him, `last_takeoff_gap()`), `on_stomp()`; `pounces`, `baits`, `stuns`, `misses`, `stomps`; E5d-e: the stun `stun_lead_seconds()` before the runner reaches his back (at least `stun_takeoff` from the stun to the last take-off) and the green chevrons over the middle of `takeoff_gaps()` while he's stunned (`takeoff_marks`) |
+| `golden_convergence_lash.gd` (`GoldenConvergenceLash`) | the beats `lash:low` and `lash:high`: the run-up along a balustrade, the warning (rearing, the crackle, a `cross_warning` over every lane, aim lines at its heights), the whip across every lane at `lash_low` or `lash_high`/`lash_high_top` (enemy attack boxes, the enemy attacks' red; the high lash's lower cable never down onto a slide, `high_cable`), the yank, the drop back; the crackle's sparks one at a time along a raised cable, at most about 3 a second with Reduced flashing; `heights_for`, `live_cables()` |
+| `golden_convergence_slash.gd` (`GoldenConvergenceSlash`) | E5d-e, the beats `slash` and `slash:double`: closing in from behind to just behind the camera (`slash_close_seconds`, over the pace); the warning (`slash_warning`, never over the pace) locked onto the runner's lane only while a lane beside it is clear to dodge into for the whole swipe (`escapes()`: no warned floor, hole, buttress side or live Lash cable; else he holds up to `WAIT_MAX`, then `slash_skipped`): the marker flashing red, `magnate_snarl`, the red claw marks on the floor where it lands (`marks()`, a floor warning, their size beating, steady with Reduced flashing); his lunge into view; the swipe (`set_slash`: an enemy attack over the marks above a jump, `slash_hit_seconds`; armor and the shield block it, the dash passes through) with three red claw streaks and `magnate_swipe`; a double's second locked onto the lane the runner is in `slash_double_gap` later; `stretch()`, `slashes`, `warnings`, `swipes`, `skipped` |
+| `golden_convergence_screens.gd` (`GoldenConvergenceScreens`) | E5d-e, the beat `screens`, the Screen Storm: the run-up onto a balustrade (sides in turn) to `storm_ahead` in front of the runner, pacing them through the storm (`_his_place`); each slot the plan places warned on a rig of its own (the red square where it crashes, a floor warning, sized by `square_depth()`; its growing shadow; the screen coming down; `magnate_glitch`), its crash (`magnate_smash`; the touch live over the square above a jump for `screen_hit_seconds`), the yank (`magnate_yank`: nothing stays); a screen on him staggers him (`magnate_pain`) and deals `screen_damage()`; `threats()` (the bot, the tests), `storms`, `warned`, `crashes`, `hits_on_him`, `dropped`; `clear()` yanks whatever is still out, harmless |
+| `golden_convergence_storm_plan.gd` (`GoldenConvergenceStormPlan`) | E5d-e, the storm's fairness, pure numbers (the tests play thousands of storms without the engine): `slots()` (when each screen crashes, which are his, the track's taking turns on and beside the runner), `count_for(t, lanes)` (10 on 3 lanes to 16 on 6), `warning_for()` (`screen_warning`, never shorter than a reaction, a lane switch and the spares), `place_due()` / `pick()` (a lane is free while nothing is warned or crashing in it; a screen may be warned only where a neighbour is free, and every free neighbour is then reserved until the runner could have moved into it and settled), each screen's `escapes` and `escape` |
+| `golden_convergence_tentacles.gd` (`GoldenConvergenceTentacles`) | E5d-e, the storm's screens, a pool of rigs made with the fight (`take`, `release`): a 16:9 screen in a gilded frame on its gold tentacle (one shared mesh, the kit's solid shader; the picture the court's feed, glitching, steady with Reduced flashing; dark once shattered), its red square (`set_square`, pulsing, steady with Reduced flashing), its shadow (`set_shadow`), its touch (`set_touch`, `touch_off`: an enemy attack hitbox, `hit` reports each contact), `shatter()` (glass shards, and sparks without Reduced flashing) |
+| `golden_convergence_takeoff_marks.gd` (`GoldenConvergenceTakeoffMarks`) | E5d-e, the stomp's green chevrons: two strips of the skin's ramp chevrons (`strip_mesh`, `color()`), made with the fight at its run speed and shown in his two lanes over the middle of the take-off stretch while he's stunned (`show_marks`, `hide_marks`, `marked`); scenery, never a hazard colour |
+| `golden_convergence_defeat.gd` (`GoldenConvergenceDefeat`) | the feed dies: the light back over `light_return_seconds` (E5d-e), the throes (lurching ahead into the lane furthest from the runner), the cables torn out one by one, the screens dying outward from him (`GoldenCourtSkin.set_feed_blackout`, a pop at each) and the music cut (`MusicDirector.stop`), the collapse ahead out of the runner's way (his sides bump a switch into him), the crack light out, the runner past him, the riff (or silence: `victory_riff_on`), `over()`; its events carry their own `time` (the fight's clock stops at the defeat) |
+| `golden_court_feed.gdshader` (E5d-a's) | stage 2's feed (`feed_mode` 1): his roaring face, the mask's half and the burnt half (`magnate_face`, `burn_cells`) |
+| `tools/asset_gen/sfx_bank_magnate.gd` | his sounds: `magnate_roar` (a Pounce's warning, the transition's screech), `magnate_growl`, `magnate_breath`, `magnate_leap`, `magnate_crash`, `magnate_slam`, `magnate_stun`, `magnate_stomp`, `magnate_howl`, `magnate_crackle` (a Lash's warning, as long as `lash_warning`), `magnate_whip`, `magnate_tear`, `magnate_screens`, `magnate_screen`, `magnate_burst`, `magnate_suit_fall`, `magnate_suit_down`, `magnate_death`, `magnate_collapse`; E5d-e's `magnate_snarl` (a Claw Slash's warning, never pitch-varied), `magnate_swipe`, `magnate_glitch` (a screen's warning, the rising glitch-whine, never pitch-varied), `magnate_smash`, `magnate_yank`, `magnate_pain` |
+| `tools/showcase/golden_convergence_magnate_showcase.tscn` | close-ups and scripted runs (`--scenario=magnate/face/feed/transition/chase/pounce/bait/lash/defeat/fight`, E5d-e's `slash/screens/dark`, `--lanes`, `--speed`, `--cam=run/side/high`, `--kind=low/high/double`, `--still`, `--miss`, `--phase=4-6`, `--dark`, `--reduced-flashing`, `--events`) |
+
+`GoldenConvergenceBot._read_magnate` plays stage 2 by what it shows: out of a Pounce's square once it shows,
+into the buttress's lane before the lock (`takes_bait`) and out of the gate's square into his other lane, a
+jump onto his back `stomp_lead()` before it (`stomps`), a low Lash jumped and a high one slid under
+(`answers_lash`, `wrong_lash`); E5d-e: out of a Claw Slash's locked lane into one its warning left clear
+(`_read_slash`, `dodges_slash`), out of each screen's lane into the escape the storm's plan keeps for it
+(`_read_storm`, `weaves`), and the stomp's take-off from the green chevrons (`chevron_point`). Hints:
+`boss:golden_boss/pounce`, `/stun`, `/lash`, `/slash`, `/screens`.
+
 ## Cinematics
 
 GDD §1 tells the story mostly through the zones themselves, plus 5–15 second cinematics between levels and
@@ -3871,9 +4155,10 @@ window or a portal's frame (`html/canvas_resize_policy` adaptive). `tools/godot.
   "get the full game" screen (`App.in_demo_scope()`). No endless mode, and no ads, purchases or
   leaderboards: the platform offers none, and no screen shows any.
 - *What it leaves out* (`tools/web/demo_filter.gd`, worked out from the data): the tests, the tools, the
-  test boss, and the music it never plays: every audio file in the music library's folders that no track
+  test boss, the music it never plays: every audio file in the music library's folders that no track
   the demo plays uses, the files of the tracks it never plays wherever they are, and those tracks'
-  level-complete riffs. The tracks it plays are the menus' (`menu`), the City's (`city`, quick play's too)
+  level-complete riffs; and the zone doodads' picture cards (`assets/sprites/doodads/<zone>.*`) of the
+  zones it never shows (`DemoFilter.left_out_art()`; a zone without them would draw the plain default). The tracks it plays are the menus' (`menu`), the City's (`city`, quick play's too)
   and each demo zone's and its boss's (`DemoFilter.demo_tracks()`). `tools/web/update_filter.gd` writes
   the preset's exclude filter from that, `tools/godot.sh web` runs it before every export, and
   `test_web_demo` fails while the preset doesn't match the data. So when a track is replaced (the owner's
@@ -4092,6 +4377,152 @@ attempt, quick play at two setups (phases 1 and 2 won, a death once docked, the 
 play starting over after the defeat), and the campaign at 23.4 m/s at every lane count (Corporate 2, a
 death in the fight's last phase, the retry won with three stars, the shop, the outro);
 `tools/measure/hostile_takeover.gd` plays every lane count and speed.
+`test_golden_convergence` builds The Golden Convergence's first step (E5d-a): its slot (six phases with
+their paces, the checkpoint at stage 2's first, equal shares, weapons within 0.17, the 22 s armor rule,
+payout, score, pars, music, built: the campaign's slot plays it), its sounds (warnings never pitch-varied,
+the whine as long as the warning) and hints, the beat scripts, the squadron's size and covered lanes, the
+Grand Court at 3, 5 and 6 lanes (plain laps, both walls taken away ahead and bumping the runner back, a wall
+opened, run, its end dropping the runner off, closed again, closing under a runner), the suit (no hitbox,
+targetable only once the pattern begins, its chest within the upgraded weapons' reach and not the tier-1
+weapon's, a hit chipping the fight; nothing on it glowing or past the hazards' saturation, the dull red
+tear, the cape's shader never glowing; its arms, hatches, torn pipes and plates; its draw budget), the
+entrance (the rise, the chime, the unfurl, nothing attacking or targetable, then the first strafe), the
+squadron never red or targeted, the Flying Buttress (its lean, its rise and sound, a lane switch into it
+bumped, its arch run through, smashed and crumbling, back in the pool), Reduced flashing (the muzzle flashes
+and tracers steady, flickering otherwise), the reel of a later phase (its right shoulder's pipes blown out, the
+first ship's damage, whatever ended the phase), stage 2 starting with the transition from the checkpoint,
+the feed's handles and colours, and the boss bar's name and phase; `test_golden_convergence_fight` plays
+phase 1's two strafes with `GoldenConvergenceBot` and no god mode at 3, 5 and 6 lanes and 18 and 25 m/s
+(every frame: fire only on a warned lane's stretch or the live line, never the opening, and only once the
+warning is over; the fire reaching the runner's distance at least a second after its warning; drones over
+covered lanes and the spare above; the live line whole while the runner is at it; the first vertical pass
+on lanes 1, 3, 5 counting from 1 and the parity switching; each buttress in an inner lane, up
+`buttress_sight` ahead and in reach from the farthest lane; the runner untouched; the sounds and hints), the
+7-pass strafe (V-V-H-v-V-H-v, the passes from behind opening up behind the runner), a runner hit staying in a
+raked lane (once its warning is over) or out of the arch (jumping or not), the armor blocking a rake, the
+dash through the live line, the wall rule (low on an open wall hit by an outer lane's rake, high up safe;
+the live line hitting a wall runner high up), a pad hurling the squadron and ending the strafe, the hold, and
+40 s played the same on two attempts (since E5d-b phase 1's run plays the slams and the barrage between the
+strafes, and phase 2's its two slam sequences and barrages before the 7-pass strafe, all untouched; since
+E5d-c the bot lets each Refill Ship's pad go by there, so the phase loops).
+E5d-c's suites: `test_golden_convergence_refill` checks the Refill Ship's data (its sounds in the library, under
+2.5 s and never pitch-varied; its hints; its place at the end of each stage 1 phase's beats; the loop back to
+the slams); the closed cage at 3, 5 and 6 lanes and 18 and 25 m/s (its fences flickering in harmlessly, then on;
+its generator beside the pad's lane, `generator_before` ahead; a sweep of jumps from every takeoff that could
+clear the front fence and a little past either way, every one that clears it coming down past the pad, never on
+it; a lane switch into it from either side, on the floor and in the air, touching a side fence); the fence rules
+on its front fence (the dash passes onto the pad, armor and the shield get through at a hit's cost, claws don't
+help, an EMP switches off the fences it reaches and no others); the rides by the generator (5 lanes, 18 m/s),
+the dash (3 lanes, 25 m/s) and armor (6 lanes, 25 m/s) with the bot and no god mode (every frame: the squadron
+holding its fire from the cage coming up until the runner is past the pad, no pass at all meanwhile, the drones
+at their places beside the ship once it's down; weapons never targeting the ship or the generator; the cage
+`cage_lead` ahead, on `cage_flicker` later, the ship down over every lane at the ceiling's height
+`settle_before` ahead of the front fence; the events in order from the ship flying in to the hit; the strafe
+over with the hurl; every rack missile gone, the ship exploded; the hit a third of the suit's health, ending the
+phase; the right shoulder's pipes; the runner riding, dropping back and landing unharmed on clear floor; each
+sound once, the hints), Reduced flashing and the screen shake off (no sparks, no shake, the fireballs still,
+their hearts never white-hot), the chain reaction's fire at 3 and 6 lanes at 25 m/s (E5d polish: the fire a
+saturated orange-red, the smoke dark, every puff above the deck, the big ones beside the causeway in the run
+camera's view, two draws and nothing made mid-fight), a missed pad (the ship climbing back, finishing and flying
+off while the strafe fires its passes left; `ends_at()` silent before the miss and right after it; the slams
+after it planned ahead; the next ship the same), the next phase's first slams planned by the chain (on time at
+25 m/s, as soon as the built track allows at 18), phase 3's ship (the suit bursting open with the transition's
+blast alone, nothing planned for stage 2), the review's phase-end fixes (a gate standing ahead sinking at a
+phase's end, a crumbling one crumbling on, a stale gate reference leaving another attack's gate alone, a dropped
+slam plan's floor warnings gone and a new plan's rows off its cuts, the hatches and the arms easing to rest
+through an intro, a horizontal pass first after a hold keeping its full `buttress_sight`), a lane switch pressed
+as the runner reaches the pad (the final review's: the pad firing from another lane still starts the chain and sinks
+the cage, so the rider is never stranded on the belly; a failsafe in `_tick_refill` logs `refill_failsafe` and
+starts it should anything else get them there), the ride the same on two attempts, and F6's ranges (E5d polish: at every end of `cage_lead` and `generator_before` the generator
+stays in reach; at the worst ends on 6 lanes the bot stomps it and rides the pad).
+`test_golden_convergence_whole` plays the whole fight from the entrance with the bot (the generator's way) and no
+god mode at 3, 5 and 6 lanes and 18 and 25 m/s: stage 1 won from its pads (three ships, a third of the suit's
+health each, one a phase, never a miss; the first blowing out his right shoulder's pipes, the second his left's,
+the third bursting the suit open), stage 2 from the checkpoint at half health, three stomps, the defeat and
+`victory_over`, untouched (217.6-220.2 s of fight at 25 m/s, 228.2-229.3 s at 18, with E5d-e's longer stage 2;
+198.3-200.1 s and 208.9-209.1 s before it); the par times against those clean
+fights (Hostile Takeover's margins: three stars at 238 s, two at 308 s, the time bonus to 378 s; three stars at
+18 m/s too); and the campaign's Golden Zone boss step through the App at 25 m/s (the real fight, not a preview;
+stage 1 won, a death in stage 2, the run summary and the retry resuming at the checkpoint with the time so far,
+the transition again, won, its stars from the pars).
+E5d-b's suites: `test_golden_convergence_slams` checks the Fist Slam's scripts (the GDD's ON, ON, AHEAD with
+chances on 2 and 3, then ON, AHEAD, ON, ON, AHEAD with chances on 3 and 4), the footprints (sizes, moved inward
+at the edge), the holes at 3, 5 and 6 lanes (planned past the built track, a cut in every lane of the row, the
+footprint's lanes opened at the impact and no other, one square hole with no lips between its lanes, nothing in
+its look glowing but the orange edges; E5d polish: the row draws nothing before its impact, the hole's few parts
+under one cut from meshes made before the fight), the buttress rule at every lock lane and lane count (a hole
+never through a standing gate unless the fist locked on its lane; on 3 lanes too), the touch and the holds
+(unprotected dies; the armor, the shield and the dash live and have the floor held for the hold's second; the
+grapple saves the fall, not the hit), an AHEAD hole jumped, fallen into, grappled out of, the sequences (two
+chances, the sequence over on a hit, the other gate sinking), the tower (on the arch's lean side, out of view as
+it starts, landing on time beside the causeway with its shake, honouring the Screen shake setting, the wall open
+from about the gate for `tower_wall_seconds` and run on, closed after with the balustrade back, the pool), the
+warning (its lead, the square and the shadow, the hint), Reduced flashing, and E5d polish's: consecutive rows at
+least `row_gap()` apart at 3, 5 and 6 lanes, 18 to 28 m/s, in every phase, with the script's numbers and F6's
+tightest (moved no more than needed), the shadow as dark on the Compatibility renderer, and a wall runner beside
+a slam untouched while a floor runner in its footprint is hit;
+`test_golden_convergence_barrage` checks its numbers against the GDD's limits (longer than one layer of
+protection, through with two, shorter than a wall run), the warning against the time to reach the
+wall from the far side at 3, 5 and 6 lanes and 18 and 25 m/s (the hatches, the missiles, the marks as floor
+warnings over every lane, filling in, nothing burning before), the missiles hanging in the run camera's view
+in front of the suit, the fire covering every lane over the stretch the runner runs while it burns (a dash
+included) for `fire_seconds`, the burning floor over just what burns, a jump only delaying it, the fire's
+boxes clear of a wall runner at every height on either wall, a wall runner untouched through the burn,
+protection stacking with the real player (the free armor alone dies; armor and the dash, two armor hits,
+armor and the shield get through), no wall still hitting, Reduced flashing, and E5d polish's: the marks' fill
+and the burning floor reading red over the marble on both renderers' blending, and F6's ranges (at every end of
+the warning's steps, the reaction and the margin the warning leaves time to reach the wall, the missiles hanging
+longer where needed; the toppled tower's wall outlasting the barrage; the worst ends played on 6 lanes);
+`test_golden_convergence_bait` has `GoldenConvergenceBot` play phase 1's and a later phase's slams, bait and
+barrage at 3, 5 and 6 lanes and 18 and 25 m/s with no god mode (every frame: no fist touch but at an impact,
+no fire but in its burn, no hole but a footprint, none through a gate; the bait on the first chance, the
+tower down, the barrage warming up as it falls, the runner on the tower's wall through the whole burn,
+untouched) and the same on two attempts.
+`test_golden_convergence_magnate` builds stage 2 (E5d-d) a part at a time: its beat scripts, sounds and hints; his look (two to three
+times the runner's size, inside the chroma limit but the ports, the dull red tear, the cracks' warm white
+against the runner's copper, grey smoke, his draw budget, no target before the transition); the transition
+from the checkpoint and again on a retry, and from phase 3's end (the order, the feed switching, nothing live,
+the leap high over the runner, landing behind in their lane, the suit never down onto the track); the chase at
+3 and 6 lanes (the lane delay, the marker and the shadow in his lane, nothing solid or harmful); the overtake
+(never in a lane in sight); the Pounce at 3 lanes 18 m/s and 6 lanes 25 m/s (the red marker with the roar, the
+lock at least a second before he lands, the square a floor warning, the crash live only after he lands and
+only over the square, above a jump; a runner who stays is hit, jumping or not; the armor blocks it); the bait
+(the stun across two lanes, a weak point over each, his sides; the stomp ending the phase and the hurl;
+refused, a Pounce like any other and the bait again); the release; a switch into him bumping, never hurting;
+the Cable Lash low and high (the warning as long as `lash_warning`, the red line over every lane, the cable
+across every lane before the runner gets there; a runner who doesn't answer, or answers the other way, is hit;
+the armor blocks it); the defeat with and without the riff (the cables one by one, the screens dark outward
+to every one, the music cut, the collapse ahead out of the way, the crack light out, the runner past, only then
+`victory_over`); Reduced flashing (the Lash's crackle at most about 3 sparks a second); F6's ranges (E5d polish:
+`stun_stomp_top` past its old range's top, the longest release and the shortest reach, the bot still stomping
+him at 18 and 25 m/s; a high Lash at the lowest `lash_high` and the thickest `lash_radius`, slid under). E5d-e
+added the playtest's beat scripts (a Slash and a storm in every phase, the Slashes double in phase 6, phase 4's
+script exactly, the shorter beat gap), the new sounds (the snarl and the glitch-whine never pitch-varied, the
+whine as long as a screen's warning) and hints.
+`test_golden_convergence_magnate_fight` plays stage 2 from the checkpoint
+with `GoldenConvergenceBot` and no god mode at 3, 5 and 6 lanes and 18 and 25 m/s (won untouched, three stomps,
+the paces, every Pounce locked a second ahead, every Lash warned; E5d-e: a Slash and a storm in every phase, none
+let go, no screen touching the runner), the release at every lane count and speed, and the whole stage the same
+on two attempts.
+E5d-e's suites: `test_golden_convergence_slash` plays the Claw Slash at 3, 5 and 6 lanes and 18 and 25 m/s with
+the bot dodging a reaction late (the warning, the marker flashing and held shown, the snarl and the claw marks a
+floor warning in the runner's lane, at least `slash_warning` before the swipe at every pace; always a lane beside
+it clear; the swipe live only over the marks and only as it lands, above a jump; his claws where the camera shows
+them), `slash:double` (the second locked onto the lane the runner dodged into), a runner who stays hit (jumping
+or not) and the armor blocking it, the hold while a buttress's sides leave no lane, Reduced flashing (the marker
+and the marks steady), and the stomp (at least `stun_takeoff` from the stun to the last take-off at every lane
+count and speed; the chevrons green, steady, in both his lanes over the middle of the take-off stretch; a jump
+from their near end, middle or far end stomps him; gone once he's stomped). `test_golden_convergence_storm` plays
+the storm's plan without the engine (200 storms at each of 3 to 6 lanes, five ways for a runner a reaction late to
+pick a lane clear as the warning showed: never struck, never sent into a warned lane, every screen placed, three
+on him, the runner's own lane struck again and again), storms in the fight at 3, 5 and 6 lanes and 18 and 25 m/s
+with the bot weaving by the plan's escapes (each screen warned `screen_warning` before it crashes with its
+whine, its square a floor warning, its touch live only over the square and from its crash, nothing left on the
+track, a twelfth of the phase off him for each screen on him, cause `&"screen"`, his stagger and cry of pain), a
+runner who stays hit and the armor blocking it, four storms ending a phase and the last phase's ending the fight,
+Reduced flashing (squares steady, no sparks) and the darkness (the fade through the transition from the
+checkpoint, on a retry and from phase 3's end; dark through stage 2; back as he falls, before the results; his
+body dimmed with the court, his cracks' glow not).
 `test_sewer_swarm` builds the Sewer Swarm (E4) at 3, 5
 and 6 lanes and 18 and 21.8 m/s: its slot (built, the campaign's step plays it; phase 1 two clusters, phase 2
 the rest, phase 3 three hits; its par times; weapons within its cap; its new sounds and hints), its
@@ -4297,7 +4728,16 @@ after it shows itself as it arrives; on every level that lists it at 3, 5 and 6 
 every truck, moved or arriving earlier, keeps its placement rules, no window counted before the bait comes after a
 bait's charge, and a truck without one has no free bait with one that its level could give it beside its other
 truck, nor a level with fewer trucks than it may have; Corporate 2 always introduces it; the chases' windows before
-and after the bait are printed); its blast (seen wherever it goes off, never
+and after the bait are printed); room beside a hover truck and a Gilded Sentinel (C6e: a hover truck's lane held over
+its stay and its entrance an attack that can't wait, at 3, 5 and 6 lanes: the truck never takes that lane nor stands
+between the runner and it, a runner beside it sees it two lanes in, the lane between free, and at 3 lanes only a
+runner in its lane has a lane for it; a Sentinel's turn from its claim, a showing back before it; a window planned
+beside each, the runner keeping a free lane; a showing whose bait's claim may come during it out of view before the
+rev); the calm start (C6e: on a plain track at the Golden Zone's pace, its Buzz Overdrive revving 4 s after the
+run-up, the truck arrives inside the run-up from `calm_start_min_seconds`, shows itself as it arrives, out of view
+before the rev, its bait where it was, nothing taken out and nothing else attacking there; none before the data
+minimum; every campaign window in the calm start takes nothing out); both trucks kept where a level has two but room
+for one showing (Corporate 2 at 5 lanes, Dead Zone 1 at 3, Dead Zone 2 at 5 and 6); its blast (seen wherever it goes off, never
 in front of the runner, no core and a softer fire with Reduced flashing, its fading materials the warmed ones'
 shaders); every campaign level that lists it at 3, 5 and 6 lanes (own seed
 and others: the placement rules, baits in every chase, Corporate 2 always with one, the same every build; it
@@ -4319,7 +4759,12 @@ never firing meanwhile, its siren swelling, a lane change into it bumped back un
 only free lane (zone doodads at 3, 5 and 6 lanes), two lanes in from a runner by a wall (C6c), turns both ways, a
 bait close behind its arrival keeping it back and a later one shortening its stay, its baits still destroying it, a
 planned window bringing its showing (C6c: its claim holding another type's attack back, no volley meanwhile), the
-same every attempt; and Corporate 2 at 3, 5 and 6 lanes played to its end by a runner that baits each
+same every attempt; beside a hover truck holding lane 0 (C6e: at 5 lanes a runner in lane 1 sees it in lane 3 and
+its showings and the hover truck's attacks never overlap; at 3 lanes it never shows itself there) and a Gilded
+Sentinel (its stay shortened, out of view before the Sentinel's claim, which swings as planned); in the calm start
+(C6e: arriving inside the run-up at its follow gap from the data minimum, alongside as it arrives, out of view before
+the tank's rev, no volley and nothing else on meanwhile, the tank revving as planned, the same every attempt); and
+Corporate 2 at 3, 5 and 6 lanes played to its end by a runner that baits each
 truck (god mode, grapples): each destroyed by a charge it dodged or in a wider gap (task G7), no overlap with
 its volleys, never firing while it shows itself, each truck whose window comes before its first bait coming
 alongside (the showings it makes are printed).
@@ -4333,8 +4778,12 @@ same on every attempt; every filler at the fill pass's spacing from every wider 
 where a filler had to go for a longer row); on real physics at quick play's speed and every campaign level's, at 3, 5 and 6 lanes, a
 jump early, midway and late in the take-off window clears one and running on falls in; an Enforcer Truck
 following a runner who jumps one wrecked in it (the player's kill) and hopping a 0.5-of-a-jump row, at 3, 5 and
-6 lanes, at 18 and 23.4 m/s; and Corporate 2's own build at 3, 5 and 6 lanes played from its start (god mode,
-grapples) until the runner leads its first truck over the wider gap in its chase, where it's wrecked.
+6 lanes, at 18 and 23.4 m/s; none in an Enforcer Truck's chase before its showing (from its arrival to its window's
+end; task C6e) in any campaign build, nor on another seed of each level with the truck, each keeping its wider gaps
+(one fewer allowed off its own seed; how many sit in a chase past its window is printed); and Corporate 2's own
+build at 3, 5 and 6 lanes played from its start (god mode, grapples) until the runner leads its first truck over
+the wider gap in its chase past its window, where it's wrecked (at 3 and 5 lanes: at 6 its window comes after its
+bait, at its chase's end).
 `test_charge_paths` checks the cyborgs in charge paths (task G7; The generator, Cyborgs in charge paths): every
 campaign level's count and LayoutChecks.check_charge_paths at 3, 5 and 6 lanes (a plain floor cyborg, never a
 host; its charger's planned path through it, in view, holding its fire, nothing around it), one before
@@ -4412,6 +4861,17 @@ machine's bursty load cleared far less often than it cleared the frames' own tai
 of 2400 chances) -- read as load factor 1.00x on a machine other agents' test runs kept busy, while the level's
 own p99 and worst frame were plainly slower, failing under real `--jobs` load that a true reading would have
 covered.
+`test_level_cache` checks that a retry plays a copy of the last build exactly as a fresh build (task PERF2; A
+run, Retries reuse the built level): the key (the same for the same level configured again or with another
+look; another for each thing the build reads: seed, lane count, difficulty, features, feature starts, pacing,
+run speed, the recency curve, the movement, placement, danger density and enemy tunings edited in place as F6
+does, the patterns, the build flavor), `LevelLayout.copy()` copying every field into lists of its own, generated
+layouts holding plain data only, the warnings coming with a reused level, a seeded scripted attempt (dashes and
+an EMP in its script) at Gangland 3 and Corporate 2 at 5 lanes playing the same with the cache off, on its first
+run, its restart and the results screen's retry (layout, the runner's trace and events, kills, credits, the
+enemies' event log, floor cuts, score, EMPs), nothing leaking from an attempt changed every way play can into
+either retry (and the kept build untouched), the debug keys, F6 edits and another level building again, and
+endless mode building on every run and keeping nothing.
 `test_web_demo` checks the web demo's preset, its export filter against
 the data and everything the demo references, and walks the demo from the title to its end screen (see
 Platforms and build flavors). The runner frees
@@ -4554,6 +5014,18 @@ only (the dummy renderer); xvfb's software renderers give valid counts, not time
 runs on older builds too (it reads them by property names): copy it and `scripts/run/frame_monitor.gd` into
 a `git archive` of the build.
 
+`tools/measure/level_builds.gd` measures how long a run takes to build its level (task PERF2; A run, Retries
+reuse the built level): each campaign level's first build (the generator's, after one untimed build in the
+process; the fastest of `--repeat=N`, with the builds its every-feature guarantee made) at each lane count,
+each campaign boss arena's plan (`--bosses`), where one build's time goes pass by pass and each enemy type's
+rules apart (`--passes=corporate/2:5`: `generate()`'s first build replayed in `LevelGenerator._build`'s order and
+checked against the generator's own; it says so when the replay no longer matches), and the time from pressing
+retry to the run starting, both ways (`--retry=corporate/2,dead_zone/1 --retry-lanes=5`: `App.retry` and
+`LevelRun.restart` on the real main scene, and whether `LevelCache` reused the build). It runs on builds from
+before the cache too, for the times before (`godot --headless -s res://tools/measure/level_builds.gd -- [--levels=]
+[--lane-counts=3,5,6] [--repeat=N] [--no-table] [--bosses] [--passes=] [--retry=] [--retries=N]`; the whole table
+takes about half a minute a repeat).
+
 `tools/measure/stomp_routes.gd` measures how forgiving the Floating Head's ways onto its head are, in its
 fight on a plain street at the City boss step's speed (21 m/s; `--speed=N` for another, 18 for the
 reference speed): the ramp's boarding window (the latest lane switch from beside it that still
@@ -4565,7 +5037,7 @@ of running (what stays the same at every speed)
 --routes=ramp,wall,ceiling`; `--e1c` measures E1c's numbers, `--second-move` adds the in-air move; the
 default run takes a few minutes).
 
-`tools/measure/enforcer_shows.gd` counts the Enforcer Truck's showings chase by chase (tasks C6b, C6c, C6d) over
+`tools/measure/enforcer_shows.gd` counts the Enforcer Truck's showings chase by chase (tasks C6b to C6e) over
 simulated runs of the campaign's levels with the truck, a god-mode runner keeping to each lane in turn (AttackWatch's,
 jumping the holes in its lane, baiting nothing): each truck's arrival, its showings (`+` for the arrival showing),
 its planned window, whether that comes before its chase's first bait (`gen.show_window_result`) and whether a showing

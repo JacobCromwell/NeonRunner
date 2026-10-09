@@ -616,9 +616,11 @@ func _build_model() -> void:
 
 ## Its look alone, visual only, under `parent` (the drone itself, or a cinematic's prop): the body on a
 ## pivot scaled by `model_scale` (DroneTuning.model_scale), its two rotors and the gatling's mount and
-## barrels. Returns {pivot, rotors: [left, right], gun, barrels}.
-static func add_model(parent: Node3D, variant: StringName, model_scale: float) -> Dictionary:
-	var model: Dictionary = _model(variant)
+## barrels. Returns {pivot, rotors: [left, right], gun, barrels}. `hostile` off draws it without its red
+## (the eye and the band in a cold white and gold, no amber): the Golden Convergence's squadron, the heli
+## drone's model "never coloured red" (GDD §10), the visuals of an attack rather than an enemy.
+static func add_model(parent: Node3D, variant: StringName, model_scale: float, hostile: bool = true) -> Dictionary:
+	var model: Dictionary = _model(variant, hostile)
 	var pivot := Node3D.new()
 	pivot.scale = Vector3.ONE * model_scale
 	parent.add_child(pivot)
@@ -645,16 +647,20 @@ static func add_model(parent: Node3D, variant: StringName, model_scale: float) -
 
 
 ## Low-poly model in local space: the drone faces +z (toward the player it hovers ahead of).
-## Hostile read in every zone: red eye and a red-hot gatling when it winds up (enemy fire is red).
-static func _model(variant: StringName) -> Dictionary:
-	if _models.has(variant):
-		return _models[variant]
+## Hostile read in every zone: red eye and a red-hot gatling when it winds up (enemy fire is red). Not
+## `hostile` (add_model): the eye in a cold white and the band in unlit gold instead, no amber.
+static func _model(variant: StringName, hostile: bool = true) -> Dictionary:
+	var model_key: String = "%s|%s" % [variant, hostile]
+	if _models.has(model_key):
+		return _models[model_key]
 	var scav: bool = variant == &"scavenger"
 	var hull: Material = GreyboxMaterials.flat(Color(0.55, 0.36, 0.22) if scav else Color(0.46, 0.5, 0.62))
 	var dark: Material = GreyboxMaterials.flat(Color(0.11, 0.11, 0.14))
 	var trim: Material = GreyboxMaterials.flat(Color(0.3, 0.26, 0.22) if scav else Color(0.55, 0.6, 0.7))
-	var eye: Material = GreyboxMaterials.glow(EYE_COLOR, 4.0)
-	var amber: Material = GreyboxMaterials.glow(Color(1.0, 0.62, 0.15), 3.0)
+	var eye: Material = GreyboxMaterials.glow(EYE_COLOR, 4.0) if hostile else GreyboxMaterials.glow(Color(0.82, 0.88, 1.0), 1.6)
+	var band: Material = eye if hostile else GreyboxMaterials.flat(Color(0.78, 0.66, 0.42))
+	var amber: Material = GreyboxMaterials.glow(Color(1.0, 0.62, 0.15), 3.0) if hostile \
+		else GreyboxMaterials.glow(Color(1.0, 0.94, 0.84), 1.4)
 	var thrust: Material = GreyboxMaterials.glow(Color(0.45, 0.75, 1.0), 2.5)
 
 	var b := MeshBatch.new()
@@ -662,7 +668,7 @@ static func _model(variant: StringName) -> Dictionary:
 	b.wedge(hull, Vector3(0.0, -0.03, 0.6), Vector3(0.9, 0.32, 0.34), Vector3(PI * 0.5, 0.0, 0.0))
 	b.box(eye, Vector3(0.0, 0.12, 0.455), Vector3(0.6, 0.08, 0.03))
 	# A red band around the hull: the hostile read from any side.
-	b.box(eye, Vector3(0.0, -0.1, 0.0), Vector3(1.02, 0.05, 0.92))
+	b.box(band, Vector3(0.0, -0.1, 0.0), Vector3(1.02, 0.05, 0.92))
 	b.box(dark, Vector3(0.0, 0.26, -0.06), Vector3(0.62, 0.14, 0.58))
 	b.box(trim, Vector3(0.0, 0.35, -0.4), Vector3(0.08, 0.26, 0.26))
 	for sx: float in [-1.0, 1.0]:
@@ -696,5 +702,5 @@ static func _model(variant: StringName) -> Dictionary:
 	var barrels: ArrayMesh = g.commit()
 
 	var out := {"body": body, "rotor": rotor, "barrels": barrels}
-	_models[variant] = out
+	_models[model_key] = out
 	return out

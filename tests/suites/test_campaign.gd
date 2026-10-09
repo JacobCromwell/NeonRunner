@@ -147,7 +147,7 @@ func _test_steps(campaign: Campaign) -> void:
 ## intro the owner's beats; test_cinematics checks them).
 func _test_slots(campaign: Campaign) -> void:
 	var bosses: Dictionary = {"city": "Floating Head", "gangland": "Sewer Swarm", "marketplace": "The House",
-		"corporate": "Hostile Takeover", "dead_zone": "Sleep Taker", "golden": "The final villain"}
+		"corporate": "Hostile Takeover", "dead_zone": "Sleep Taker", "golden": "The Golden Convergence"}
 	for zone: ZoneDef in campaign.zones:
 		var id: String = String(zone.id)
 		check(zone.boss != null and zone.boss.display_name == bosses.get(id, ""),
@@ -163,8 +163,8 @@ func _test_slots(campaign: Campaign) -> void:
 	var golden: ZoneDef = campaign.zones[-1]
 	check(golden.boss != null and golden.boss.notes.contains("checkpoint halfway"),
 		"the final villain's slot notes the halfway checkpoint (GDD §10)")
-	check(golden.boss != null and golden.boss.checkpoint_phase() == golden.boss.phase_count() - 1
-		and golden.boss.phase_count() == 2, "and its data has the checkpoint at the second of its two stages")
+	check(golden.boss != null and golden.boss.phase_count() == 6 and golden.boss.checkpoint_phase() == 3,
+		"and its data has the checkpoint at the second stage's first phase (phase 4 of 6, task E5d-a)")
 	var head: BossDef = campaign.zones[0].boss
 	check(head.phase_count() == 3 and is_equal_approx(head.phase_ends()[0], 2.0 / 3.0) and head.phase_list()[0].hits == 1
 		and head.phase_list()[2].pace > head.phase_list()[0].pace,
@@ -181,6 +181,8 @@ func _test_slots(campaign: Campaign) -> void:
 			check(s.boss != null and s.boss.is_built(), "the Marketplace's boss step plays The House's fight (task E5a-b)")
 		elif s.kind == CampaignStep.Kind.BOSS and s.zone.id == &"corporate":
 			check(s.boss != null and s.boss.is_built(), "the Corporate zone's boss step plays Hostile Takeover's fight (task E5b-c)")
+		elif s.kind == CampaignStep.Kind.BOSS and s.zone.id == &"golden":
+			check(s.boss != null and s.boss.is_built(), "the Golden Zone's boss step plays The Golden Convergence's fight (task E5d-c)")
 		elif s.kind == CampaignStep.Kind.BOSS:
 			check(s.boss != null and not s.boss.is_built(), "boss slot %s is still a placeholder" % s.id)
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id == "gangland/boss_intro":
