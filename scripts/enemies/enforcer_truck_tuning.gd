@@ -150,8 +150,12 @@ extends EnemyTuning
 ## Task C6c (the owner's request, GDD §9.13 "Showing itself": the player should see what's behind them): the
 ## generator plans a showing window in every chase it can (enforcer_truck_rules.gd, ShowPlanner), a calm stretch
 ## the later passes keep off, where it can show itself wherever the runner is; off, its showings come only where
-## the level happens to leave room (as before task C6c), and the level is built as it was then.
-## DESIGN-TBD: the window, what it may take out, the chases without one (docs/OPEN_QUESTIONS.md items 383–385).
+## the level happens to leave room (as before task C6c), and the level is built as it was then. The owner (October 9,
+## 2026, GDD §9.13 "Room to show itself", answering docs/OPEN_QUESTIONS.md items 383–385): its cost (about 2% fewer
+## enemies and obstacles on its levels) is accepted; a truck shows itself before the player can bait it, arriving
+## early enough for its window to come before its first bait, and a chase with no room for one gives its truck to
+## another bait's chase that has room (task C6d). DESIGN-TBD (docs/OPEN_QUESTIONS.md items 400–403): a truck no bait with room is
+## left for keeps its chase, its window after the bait or none.
 @export var show_window_planned: bool = true
 ## How much later than planned a showing in its window may begin and still find its room (the runner jumping or
 ## changing lanes as it's due): the window holds that much more.

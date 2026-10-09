@@ -2537,6 +2537,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     blocked, and the runner's lane wherever the lane between is). Its whole look stays on screen and it hides nothing
     of their lane or the lane between (`EnforcerTruckRoom.sides`, `escape_lane`, `EnforcerTruckView.check`;
     `DESIGN-TBD`). Is two lanes in right?
+    **Answered (owner, October 9, 2026):** yes: two lanes in, with the lane between left free (GDD §9.13).
 383. **What a showing window may take out** (the owner's request against the danger density request). Where a chase
     has no calm stretch where it can show itself to a runner in every lane, the generator takes out only what's in the
     way: plain holes and fences (never a pulsing fence or one a fence generator powers), and plain cyborgs, window
@@ -2547,6 +2548,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     3226 obstacles; from +3 to -14 obstacles a level), and the danger density pass's measured increases stay in their
     bands. Placeholder: `ShowPlanner.REMOVABLE_TYPES` and the window's stretch (`enforcer_truck_rules.gd`,
     `DESIGN-TBD` on `EnforcerTruckTuning.show_window_planned`). Is that cost acceptable?
+    **Answered (owner, October 9, 2026):** yes: the cost is accepted (GDD §9.13).
 384. **Chases with no window** (7 of the 23 chases on the levels' own seeds). In four, a hover truck or a Gilded
     Sentinel is about for the whole chase, and the truck never shows itself while one is (question 367). The other
     three have no calm stretch at all: Corporate 2 at 5 lanes (the truck's introduction, among an Octodog's charges, a
@@ -2556,12 +2558,14 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     lane misses that showing. Placeholder: the baits that get trucks are the ones whose chases hold the most windows,
     and a level that introduces the truck keeps its first bait's chase. Should a chase with no room for a showing get
     no truck (another bait instead), or should the hover truck and the Gilded Sentinel make room?
+    **Answered (owner, October 9, 2026):** move the truck to a chase with room whenever the level has another bait (GDD §9.13; task C6d).
 385. **Windows after the bait** (6 of the 16). Where the bait comes right after the truck arrives (at some lane counts
     the Golden levels' first truck arrives at the end of the run-up and their first Buzz Overdrive revs 4 s later), no
     showing fits before it, so the window comes after the first bait. A player who destroys the truck with that bait sees its wreck blow up instead, and a wider gap later in
     the chase (task G7) can wreck it first too: in the simulated runs, 18 of the 75 runner runs with a window lost the
     truck before its window. Placeholder: as described (`ShowPlanner.plan`). Is a showing after the bait worth its
     calm stretch, or should those chases arrive later?
+    **Answered (owner, October 9, 2026):** yes: those trucks arrive earlier, so the showing comes before the bait (GDD §9.13; task C6d).
 386. **Making the window's showing happen** (GDD §9, big attacks take turns). The truck claims its turn among the big
     attacks `show_claim_seconds` (2 s) before its window is due, so a drone's barrage or a Resonator's pulse that gets
     ready meanwhile waits for the showing (up to the director's `turn_wait_max`), and its own volleys hold so none is
@@ -2626,3 +2630,34 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     lane before the next (`salvo_max_shift`: one lane from spot to spot). Tighter still?
 399. **The later runs' length** (owner: a little longer, for the longer salvos). Placeholder: 6.5 s instead of 5.6 s
     (`later_run_seconds`): two salvos of four spots fit, with a little room. Right length?
+
+**Every chase shows its truck** (from C6d; `_choose` and `ShowPlanner` in `scripts/enemies/enforcer_truck_rules.gd`; count chases and showings with `tools/measure/enforcer_shows.gd`)
+400. **Chases no bait with room is left for** (GDD §9.13 "Room to show itself"; follows questions 384 and 385). On the
+    levels' own seeds, 14 of the 23 chases still have no window before their bait, and no move or earlier arrival
+    gives them one. In 8 builds the level has a single usable bait: it comes too soon for any showing before it (Golden
+    1 at 3 and 6 lanes, Golden 2 and 3 at 6: a Buzz Overdrive revs 4 s after the run-up; Corporate 2 at 6 lanes: an
+    Octodog charging at the start keeps its truck from arriving earlier), or a hover truck or a Gilded Sentinel is
+    about for its whole chase (Dead Zone 1 at 6 lanes, Golden 2 at 3, Golden 3 at 5). In the other 6 chases the level's
+    other bait already has its other truck (see the next question), or neither bait has room (Dead Zone 2 at 3 lanes).
+    Placeholder: the truck keeps its chase, its showing after the bait where one fits (7 chases), else none
+    (`_choose` in `enforcer_truck_rules.gd`; `DESIGN-TBD` on `EnforcerTruckTuning.show_window_planned`). Dropping those
+    trucks would leave 9 of the 18 builds with none (Corporate 2 at 6 lanes among them, its introduction). With 8 other
+    seeds of each level (162 builds) the hover truck and the Sentinel weigh most: they keep 93 of the 128 chases with no
+    window from having one (Corporate 2 brings many hover trucks). Keep those trucks as they are, or make room another
+    way (the level's first Buzz Overdrive later; the hover truck and the Sentinel letting it show)?
+401. **Two trucks, one chase with room** (Corporate 2 at 5 lanes, Dead Zone 1 at 3 lanes, Dead Zone 2 at 5 and 6 lanes, on
+    their own seeds). The only bait whose chase has room before it has one truck; the other truck has nowhere with room
+    to go. Placeholder: both stay, so in Corporate 2 at 5 lanes the introduction (14 s in, among a Tithe Collector's
+    visit and then its own Buzz Overdrive's turn too close) shows itself only at the second truck (59 s). Or should such
+    a level keep only the truck that shows itself (one truck instead of two; Corporate 2's introduction at 59 s)?
+402. **One truck that shows itself, or two that don't** (other seeds). Where giving a truck to a chase with room leaves
+    the level's other truck no chase (they'd overlap), the level keeps the one that shows itself before its bait: 2 of
+    144 builds on 8 other seeds lose a truck so (Corporate 2 at 6 lanes, Golden 1 at 5), and 1 gains one back that C6c's
+    order dropped (Golden 2 at 5). Placeholder: the most windows before the bait count before the number of trucks
+    (`_choose`), as C6c counted windows before trucks. Right?
+403. **An introduction that moves late** (other seeds). Where Corporate 2's first bait has no room, its introduction
+    moves to the first chase where it shows itself before its bait: in 3 of its 24 builds on 8 other seeds, from 8 s to
+    71 s or 82 s into the level (and from 70 s to 90 s), past the reach the campaign asks of an introduction (about 19 s
+    into the level: 12 s past its start). Its first-encounter hint and the charge-path cyborg before it hold (the hint
+    is on the level intro, the cyborg earlier in the campaign). Placeholder: it moves (it never moves on the level's own seeds). Or keep the introduction
+    early, unseen, when the room is that far?
