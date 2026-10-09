@@ -11,7 +11,8 @@ extends RefCounted
 ## - hold(on): stops it hurting while on (GDD §10, the Refill Ship's cage: "the squadron holds its fire
 ##   while the cage comes up"), then lets it go on;
 ## - clear(): everything gone at once (a phase's end, the defeat), safely;
-## - warning_on(): one of its warnings shows or its fire is live (pickups and the bot read it).
+## - warning_on(): one of its warnings shows or its fire is live (pickups and the bot read it);
+## - ends_at(), gap_after() (E5d-b): where its beat will be over, and the wait after it.
 ## The encounter registers each attack under its beat kind (GoldenConvergence.register_attack). Every warning
 ## it shows is a floor warning of the encounter's BossProps (red, steady with Reduced flashing) or counted as
 ## one (BossProps.floor_warning), and every sound goes through GoldenConvergence.sound(), which logs it.
@@ -53,3 +54,19 @@ func clear() -> void:
 
 func warning_on() -> bool:
 	return false
+
+
+# --- E5d-b: planning ahead --------------------------------------------------------------------------
+
+## Where the beat it plays now will be over: the runner's track distance at the run speed once everything
+## it does is done, or -1 if it can't say. The Fist Slam plans its holes before its beat begins (floor cuts
+## go past the built track, BossArena.stream_from) from the beat before it's (GoldenConvergenceSlams).
+func ends_at() -> float:
+	return -1.0
+
+
+## The wait before the next beat once this one is over (divided by the phase's pace): the tuning's
+## beat_gap, unless the attack says otherwise (a Fist Slam sequence ended by a buttress hit: the Missile
+## Barrage warms up at once, as the tower falls).
+func gap_after() -> float:
+	return boss.tuning.beat_gap

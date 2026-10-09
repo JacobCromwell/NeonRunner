@@ -70,6 +70,8 @@ var hold_station: Callable = Callable()
 var _rng := RandomNumberGenerator.new()
 var _pace: float = 1.0
 var _hints: int = 0
+## E5d-b: where the strafe will be over (ends_at).
+var _ends_at: float = -1.0
 
 
 func _init(p_boss: GoldenConvergence) -> void:
@@ -168,6 +170,19 @@ func _plan(first_at: float, from_pass: int = 0) -> void:
 				seconds += (t.behind_length + t.behind_start) * rp / ground + GoldenConvergenceFire.RAKE_DEPTH / ground
 			vertical += 1
 		at += v * (seconds + t.pass_gap / _pace)
+	# E5d-b: where it will be over (its last pass done, the squadron back in the cape).
+	_ends_at = at - v * t.pass_gap / _pace + v * t.return_seconds
+
+
+## E5d-b (GoldenConvergenceAttack.ends_at): where the strafe under way will be over, at the run speed (-1 while
+## it's held or idle).
+func ends_at() -> float:
+	match stage:
+		Stage.EMERGE, Stage.PASSES:
+			return -1.0 if held else _ends_at
+		Stage.RETURN:
+			return boss.player_distance() + boss.speed_planned() * maxf(boss.tuning.return_seconds - stage_time, 0.0)
+	return -1.0
 
 
 ## An inner lane (never an outer one, GDD §10) for a buttress, seeded.

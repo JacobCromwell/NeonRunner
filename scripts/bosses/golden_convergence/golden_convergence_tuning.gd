@@ -149,6 +149,93 @@ extends Resource
 ## Smashed (E5d-b's fist, E5d-d's Pounce), it crumbles over this long.
 @export_range(0.3, 4.0, 0.05, "suffix:s") var crumble_seconds: float = 1.6
 
+# --- E5d-b: the Fist Slam, the toppled tower and the Missile Barrage ----------------------------------
+
+@export_group("Fist Slam")
+## DESIGN-TBD (GDD §10, Fist Slam, proposed: "in phase 1, slams 1 and 2 come down on the runner and slam 3
+## ahead; in later phases, slams 1, 3 and 4 on the runner and 2 and 5 ahead"; "the chances are ... slams 2
+## and 3 in phase 1, 3 and 4 later"): each phase's slam sequence, a letter a slam in order: O comes down on
+## the runner, A lands ahead of them (its hole to be jumped); lower case (o, a) is a buttress chance, a Flying
+## Buttress standing where it lands. Phase 1's third slam is both ahead and a chance, as the GDD's two
+## proposals give it (docs/questions/e5d.md, E5d-b). A phase past the list plays the last one.
+@export var slam_scripts: PackedStringArray = PackedStringArray(["Ooa", "OAooA", "OAooA"])
+## GDD §10 ("about two seconds apart, divided by the phase's pace"): one slam's impact to the next one's.
+@export_range(1.0, 4.0, 0.05, "suffix:s") var slam_gap: float = 2.0
+## The fist's way to a slam (GDD §10: "the fist follows the runner's lane, then locks about a second before
+## it falls. The fist rises, its shadow grows on the floor, a red square marks where it will land, and a deep
+## grinding wind-up plays"): the arm swings out and telescopes to hover over the runner's lane in
+## slam_out_seconds (divided by the phase's pace); the warning (the red square, the shadow, the grind)
+## begins slam_track_seconds before the lock, the fist following the runner's lane and rising; it locks
+## slam_lock_seconds before it lands, dropping in the last slam_fall_seconds. The warning keeps its seconds
+## at every pace. Every point of it is keyed to the runner's distance at the run speed, so a dash never
+## desyncs a slam.
+@export_range(0.3, 2.0, 0.05, "suffix:s") var slam_out_seconds: float = 0.7
+@export_range(0.3, 2.0, 0.05, "suffix:s") var slam_track_seconds: float = 0.8
+@export_range(0.8, 2.0, 0.05, "suffix:s") var slam_lock_seconds: float = 1.0
+@export_range(0.15, 0.8, 0.05, "suffix:s") var slam_fall_seconds: float = 0.4
+## After the slam, the fist goes back to rest at his side over this long (divided by the phase's pace).
+@export_range(0.3, 2.0, 0.05, "suffix:s") var slam_back_seconds: float = 0.85
+## Its touch (an enemy attack over the hole's footprint, from the floor to above a jump) lasts this long
+## from the impact and reaches this high.
+@export_range(0.05, 0.6, 0.01, "suffix:s") var slam_hit_seconds: float = 0.2
+@export_range(2.8, 8.0, 0.1, "suffix:m") var slam_hit_height: float = 4.0
+## A slam ahead (GDD §10: "sometimes a fist lands further ahead of the runner, so the holes have to be
+## jumped") lands as the runner is this long (at the run speed) from its hole's near edge.
+@export_range(0.6, 2.5, 0.05, "suffix:s") var slam_ahead_seconds: float = 1.1
+## The fist's middle this high over the floor while it follows the runner's lane, and once risen.
+@export_range(4.0, 20.0, 0.5, "suffix:m") var fist_hover_height: float = 8.0
+@export_range(4.0, 20.0, 0.5, "suffix:m") var fist_raise_height: float = 11.0
+## A buttress chance's hole ends this far before its gate's pier: the slam's row is dug just in front of the
+## gate, so a hole sharing the gate's lane never goes through it (docs/questions/e5d.md, E5d-b).
+@export_range(0.0, 3.0, 0.05, "suffix:m") var slam_gate_gap: float = 0.6
+
+@export_group("The toppled tower")
+## DESIGN-TBD (GDD §10: "the building it held up, off screen, topples forward along the track on the side
+## the buttress's arch leans toward, and its side forms a wall ... It stays for about 8-12 seconds"): its
+## side is a wall from about the buttress onward for this long of running (at the run speed).
+@export_range(8.0, 12.0, 0.1, "suffix:s") var tower_wall_seconds: float = 10.0
+## It topples over this long (an accelerating fall) from where it stood, out of view: its foot this far
+## behind the runner as it starts, beside the causeway. It lies there this wide, its underside this far
+## below the causeway's edge, its side flush with the wall's face.
+@export_range(0.6, 3.0, 0.05, "suffix:s") var tower_fall_seconds: float = 1.5
+@export_range(4.0, 20.0, 0.5, "suffix:m") var tower_behind: float = 9.0
+@export_range(8.0, 30.0, 0.5, "suffix:m") var tower_width: float = 14.0
+@export_range(1.0, 10.0, 0.5, "suffix:m") var tower_depth: float = 5.0
+## Once the runner is past its end, it sinks away into the pools over this long.
+@export_range(0.5, 5.0, 0.1, "suffix:s") var tower_sink_seconds: float = 2.5
+
+@export_group("Missile Barrage")
+## DESIGN-TBD (GDD §10, Missile Barrage, proposed: "the missiles hang at the top of their climb, then dive
+## with a rising whistle while the marks fill in; the fire lands when they're full"): the shoulder pipes'
+## hatches open over barrage_hatch_seconds (the warning begins), the missiles launch one after another over
+## barrage_salvo_seconds with a roar and climb for barrage_climb_seconds (the red target marks spreading over
+## the floor meanwhile), hang barrage_hang_seconds, then dive for barrage_dive_seconds while the marks fill
+## in; the fire lands as the runner reaches where the barrage planned them at the run speed. The warning
+## keeps its seconds at every pace and leaves time to reach the wall from the far side: barrage_reaction,
+## every lane switch, the wall entry and barrage_margin (GDD §10: "up to 5 lane switches on 6 lanes, plus
+## the wall entry"; the tests check it at 3, 5 and 6 lanes).
+@export_range(0.2, 1.5, 0.05, "suffix:s") var barrage_hatch_seconds: float = 0.5
+@export_range(0.1, 1.5, 0.05, "suffix:s") var barrage_salvo_seconds: float = 0.5
+@export_range(0.5, 2.5, 0.05, "suffix:s") var barrage_climb_seconds: float = 1.0
+@export_range(0.0, 1.5, 0.05, "suffix:s") var barrage_hang_seconds: float = 0.5
+@export_range(0.5, 2.0, 0.05, "suffix:s") var barrage_dive_seconds: float = 1.0
+@export_range(0.3, 1.5, 0.05, "suffix:s") var barrage_reaction: float = 0.7
+@export_range(0.0, 1.0, 0.05, "suffix:s") var barrage_margin: float = 0.4
+## GDD §10 ("longer than one layer of protection alone can carry the runner through ... long enough that two
+## layers can ... and shorter than one wall run without claws"; proposed: "about 1.5 seconds ... its flames
+## reach about a metre up, so a jump only delays them"): the fire burns this long, this high.
+@export_range(0.8, 2.5, 0.05, "suffix:s") var fire_seconds: float = 1.5
+@export_range(0.5, 2.0, 0.05, "suffix:m") var fire_height: float = 1.0
+## It covers every lane from fire_behind behind the runner as it lands to as far as they can run while it
+## burns (the run speed plus a dash's bonus) and fire_ahead more: they can't outrun it.
+@export_range(1.0, 10.0, 0.5, "suffix:m") var fire_behind: float = 3.0
+@export_range(1.0, 15.0, 0.5, "suffix:m") var fire_ahead: float = 5.0
+## Red target marks per lane over its stretch (one missile each), and their size.
+@export_range(2, 10) var marks_per_lane: int = 5
+@export_range(0.4, 1.2, 0.05, "suffix:m") var mark_radius: float = 0.95
+## The missiles hang this high over the causeway, spread over the stretch they'll strike (framing).
+@export_range(15.0, 80.0, 1.0, "suffix:m") var missile_apex_height: float = 34.0
+
 @export_group("The court")
 ## DESIGN-TBD (GDD §10: "no side walls ... a low golden balustrade bumps the runner back"): the walls are
 ## taken away (BossProps.block_wall) from just behind the runner to this far ahead, in stretches this long,

@@ -10,8 +10,16 @@ extends RefCounted
 ##   pass: into the Flying Buttress's lane (its opening) as soon as the gate shows and no vertical pass is
 ##   still to come before it, there until the line is behind it (`takes_cover` off: it stays where it is, to
 ##   show the line hits);
-## - E5d-b's Fist Slam and Missile Barrage, E5d-c's Refill Ship cage and pad, E5d-d's Magnate: stubs
-##   (_read_fist, _read_barrage, _read_refill, _read_magnate) returning no lane until those steps fill them;
+## - the Fist Slam (E5d-b, _read_fist): into a chance's Flying Buttress lane while its gate is up and the fist
+##   hasn't locked (`baits`; the fist follows the runner's lane, so it locks onto the gate's), then, once a fist
+##   has locked, out of its footprint if it comes down on the runner (the nearest lane outside it), or a jump
+##   over its hole if it lands ahead (`jumps_holes`); never into a lane whose floor is an open hole there;
+## - the Missile Barrage (E5d-b, _read_barrage): with a toppled tower's wall open, into the outer lane beside it
+##   and onto the wall wall_lead before the fire lands (a wall run outlasts the fire), wall hopping if the run
+##   would end before the fire does; with no wall, its protection: with one armor hit left and the dash, the
+##   dash just as the armor's second of invulnerability ends;
+## - E5d-c's Refill Ship cage and pad, E5d-d's Magnate: stubs (_read_refill, _read_magnate) returning no lane
+##   until those steps fill them;
 ## - otherwise it keeps to `home_lane` (if set).
 ## It never jumps or slides through the strafe (a jump doesn't dodge it); on the floor it moves one lane a
 ## frame toward the lane it wants.
@@ -57,14 +65,14 @@ func step() -> void:
 
 # --- Readers (one per attack; the later steps fill theirs) -------------------------------------------
 
-## E5d-b: the Fist Slam (out from under the fist's red square, or into a buttress's lane to bait it).
+## E5d-b: the Fist Slam (_read_fist_slams, below).
 func _read_fist() -> Dictionary:
-	return {}
+	return _read_fist_slams()
 
 
-## E5d-b: the Missile Barrage (onto the toppled tower's wall).
+## E5d-b: the Missile Barrage (_read_missiles, below).
 func _read_barrage() -> Dictionary:
-	return {}
+	return _read_missiles()
 
 
 ## E5d-c: the Refill Ship (the generator, the pad in its cage).
@@ -154,9 +162,178 @@ func _walk() -> void:
 		return
 	if player.lane == _target:
 		return
+	# E5d-b: never into a lane whose floor is a slam's open hole here.
+	if not _lane_clear(player.lane + (1 if _target > player.lane else -1)):
+		return
 	_press(&"move_right" if _target > player.lane else &"move_left", _why)
 
 
 func _press(action: StringName, why: String) -> void:
 	boss.world.player.press(action)
 	log.append({"t": boss.fight_time(), "action": action, "why": why})
+
+
+# --- E5d-b: the Fist Slam and the Missile Barrage -----------------------------------------------------
+
+## Baits the fist into a chance's Flying Buttress (off: lets it lock wherever the runner is).
+var baits: bool = true
+## Leaves a slam's footprint once it has locked (off: stays under it, to show it hits).
+var dodges_fist: bool = true
+## Jumps a hole ahead in its lane (off: runs into it).
+var jumps_holes: bool = true
+## Takes a toppled tower's wall for the barrage (off: stays on the floor).
+var takes_wall: bool = true
+## Gets onto the wall this long before the fire lands, at the run speed.
+var wall_lead: float = 0.45
+
+var _jumped: Dictionary = {}
+## A wall hop under way: frames until it presses back toward the wall (0: none).
+var _hop: int = 0
+var _hop_side: int = 0
+var _wall_since: float = -1.0
+var _dashed_for: int = -1
+
+
+## The Fist Slam: the lane it wants for the slam to come ({} for none).
+func _read_fist_slams() -> Dictionary:
+	var sl: GoldenConvergenceSlams = boss.slams
+	if sl == null:
+		return {}
+	var now: float = boss.fight_time()
+	var d: float = boss.player_distance()
+	var me: int = _target if _target >= 0 else boss.player_lane()
+	if jumps_holes:
+		_jump_holes(d)
+	for s: Dictionary in sl.slams:
+		var st: int = int(s["stage"])
+		if st >= GoldenConvergenceSlams.SlamStage.HIT:
+			continue
+		if st == GoldenConvergenceSlams.SlamStage.LOCKED or st == GoldenConvergenceSlams.SlamStage.FALL:
+			# The next to land has locked: out from under it (once seen), or stay for its hole ahead.
+			if not _seen_long_enough("lock%d:%d" % [sl.sequences, int(s["n"])], now):
+				return {"lane": me, "why": "a fist locked (reacting)"}
+			var lanes: Array = s["lanes"]
+			if s["kind"] == &"on" and dodges_fist and lanes.has(me):
+				return {"lane": _nearest_free(lanes, me), "why": "out from under the fist"}
+			return {"lane": me, "why": "beside the fist" if not lanes.has(me) else "its hole to jump"}
+		# Before the next one locks: to a chance's gate (from this slam on) while it stands.
+		if baits and sl.stage == GoldenConvergenceSlams.Stage.ON:
+			for c: Dictionary in sl.slams:
+				if int(c["n"]) < int(s["n"]) or not bool(c["chance"]) or int(c["stage"]) >= GoldenConvergenceSlams.SlamStage.LOCKED:
+					continue
+				var b: Variant = c.get("buttress")
+				if b == null or not is_instance_valid(b) or not (b as GoldenConvergenceButtress).standing():
+					continue
+				if not _seen_long_enough("b%d:%d" % [(b as Node).get_instance_id(), (b as GoldenConvergenceButtress).places], now):
+					break
+				return {"lane": int(c["buttress_lane"]), "why": "bait the fist into the buttress"}
+		return {}
+	return {}
+
+
+## True if a switch into `lane` now keeps the runner off an open hole there (a slam's opened cuts, from just
+## behind the runner to where a lane switch's run ends).
+func _lane_clear(lane: int) -> bool:
+	if lane < 0 or lane >= boss.lane_count():
+		return true
+	var d: float = boss.player_distance()
+	var reach: float = boss.speed_planned() * boss.world.tuning.lane_switch_time + 1.0
+	for fc: FloorCut in boss.world.track.floor_cuts():
+		if fc.lane != lane or not fc.began():
+			continue
+		if fc.start <= d + reach and fc.end >= d - 1.0 and not fc.holding():
+			return false
+	return true
+
+
+## Jumps an open hole ahead in its lane (from where the jump clears it), once each.
+func _jump_holes(d: float) -> void:
+	var player: Player = boss.world.player
+	if not player.grounded or player.surface != Player.Surface.FLOOR:
+		return
+	var flight: float = boss.world.tuning.jump_distance(maxf(player.speed, 1.0))
+	for fc: FloorCut in boss.world.track.floor_cuts():
+		if fc.lane != player.lane or not fc.began() or fc.start < d:
+			continue
+		var length: float = fc.end - fc.start
+		# Take off so the flight lands as far past the hole as it starts before it.
+		var takeoff: float = fc.start - maxf(flight - length, 0.0) * 0.5
+		var key: String = "%d:%d" % [fc.lane, roundi(fc.end * 10.0)]
+		if d >= takeoff and not _jumped.has(key):
+			_jumped[key] = true
+			_press(&"jump", "over a hole")
+			return
+
+
+## The Missile Barrage: the lane it wants for it ({} for none).
+func _read_missiles() -> Dictionary:
+	var br: GoldenConvergenceBarrage = boss.barrage
+	var player: Player = boss.world.player
+	if player.surface == Player.Surface.WALL:
+		if _wall_since < 0.0:
+			_wall_since = boss.fight_time()
+	else:
+		_wall_since = -1.0
+	if _hop > 0:
+		_hop -= 1
+		if _hop == 0 and player.surface == Player.Surface.FLOOR:
+			_press(&"move_left" if _hop_side < 0 else &"move_right", "a wall hop")
+	if br == null or br.stage == GoldenConvergenceBarrage.Stage.IDLE:
+		return {}
+	var now: float = boss.fight_time()
+	if not _seen_long_enough("barrage%d" % br.barrages, now):
+		return {}
+	var side: int = _wall_for(br)
+	if side != 0 and takes_wall:
+		var outer: int = 0 if side < 0 else boss.lane_count() - 1
+		if player.surface == Player.Surface.WALL:
+			_hop_if_short(br, side)
+			return {"lane": outer, "why": "on the wall"}
+		var eta: float = br.land_eta()
+		if player.lane == outer and eta >= 0.0 and eta <= wall_lead and _hop == 0:
+			_press(&"move_left" if side < 0 else &"move_right", "onto the wall")
+		return {"lane": outer, "why": "to the wall"}
+	_protect(br)
+	return {}
+
+
+## The side of a wall open over the fire's stretch (-1, 1), or 0.
+func _wall_for(br: GoldenConvergenceBarrage) -> int:
+	if br.plan.is_empty():
+		return 0
+	var from: float = float(br.plan["from"])
+	var to: float = float(br.plan["to"])
+	for side: int in [-1, 1]:
+		if boss.court.is_open(side, from) and boss.court.is_open(side, to):
+			return side
+	return 0
+
+
+## On the wall: a hop (jump off and straight back on) if the run would end before the fire is out, while still
+## high enough to stay clear of it.
+func _hop_if_short(br: GoldenConvergenceBarrage, side: int) -> void:
+	var player: Player = boss.world.player
+	var mt: MovementTuning = boss.world.tuning
+	var run: float = mt.wall_entry_time + mt.wall_slide_time * player.wall_time_multiplier
+	var left: float = run - (boss.fight_time() - _wall_since)
+	var fire_left: float = (br.land_eta() + boss.tuning.fire_seconds) if br.stage != GoldenConvergenceBarrage.Stage.FIRE \
+		else boss.tuning.fire_seconds - br.burn_time
+	if left < fire_left + 0.15 and player.h >= 1.3 and _hop == 0:
+		_press(&"jump", "a wall hop")
+		_hop = 2
+		_hop_side = side
+
+
+## No wall: with one armor hit left (no shield) and the dash, the dash as the armor's second of invulnerability
+## runs out while the fire still burns.
+func _protect(br: GoldenConvergenceBarrage) -> void:
+	if br.stage != GoldenConvergenceBarrage.Stage.FIRE or _dashed_for == br.barrages:
+		return
+	var player: Player = boss.world.player
+	var fire_left: float = boss.tuning.fire_seconds - br.burn_time
+	if player.invulnerable_left > 0.0 and player.invulnerable_left <= 0.08 and fire_left > player.invulnerable_left \
+			and player.armor <= 0 and player.shield <= 0:
+		var powerups: Node = boss.world.powerups
+		if powerups != null and powerups.has_method(&"try_dash") and bool(powerups.call(&"try_dash")):
+			_dashed_for = br.barrages
+			log.append({"t": boss.fight_time(), "action": &"dash", "why": "through the fire"})

@@ -21,6 +21,17 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##   gc_crumble   a Flying Buttress crumbling: a crack, rubble falling, a deep thud
 ##   gc_hurl      a drone hurled up by a pad: a spring's twang, its rotor screaming up and away
 ##   gc_return    the squadron going back into the cape: the rotors receding under a rush of cloth
+## E5d-b (the Fist Slam and the Missile Barrage):
+##   gc_grind     the fist's warning (as long as slam_track_seconds + slam_lock_seconds): a deep grinding
+##                wind-up, the arm's segments ratcheting and a groan climbing, a heavy clank as it locks
+##   gc_slam      the fist landing: a huge thud through the causeway, a crack
+##   gc_break     the floor breaking under it: stone splitting and rubble falling into the hole
+##   gc_topple    the tower toppling (as long as tower_fall_seconds and its crash): a deep groaning creak
+##                swelling, then the crash and a rumble
+##   gc_hatch     the barrage's warning begins: the shoulder pipes' hatches unlatching, swinging open, a hiss
+##   gc_launch    the missiles launching one after another with a roar
+##   gc_whistle   their dive (as long as barrage_dive_seconds): a chorus of rising whistles
+##   gc_fire      the fire landing: a blast of flame rushing over the floor, burning for fire_seconds
 
 const TUNING_PATH: String = "res://data/bosses/golden_boss_tuning.tres"
 ## The Resonator's chime (sfx_bank_resonator.gd): its notes, struck the same way.
@@ -44,6 +55,15 @@ func sounds() -> Dictionary:
 		"gc_crumble": _crumble,
 		"gc_hurl": _hurl,
 		"gc_return": _return,
+		# E5d-b.
+		"gc_grind": _grind,
+		"gc_slam": _slam,
+		"gc_break": _break,
+		"gc_topple": _topple,
+		"gc_hatch": _hatch,
+		"gc_launch": _launch,
+		"gc_whistle": _whistle,
+		"gc_fire": _fire,
 	}
 
 
@@ -347,4 +367,212 @@ func _return() -> PackedFloat32Array:
 		DSP.mix(b, _rotor(d - k * 0.1, 23.0, 14.0, 1300.0, 450.0, 1.0, 0.0, rng), k * 0.08, 0.4)
 	DSP.mix(b, _cloth(0.9, rng), d - 0.95, 0.8)
 	DSP.crush(b, 9, 20000.0)
+	return b
+
+
+# --- E5d-b: the Fist Slam and the Missile Barrage -------------------------------------------------------
+
+## The fist's warning, as long as it lasts (slam_track_seconds + slam_lock_seconds): a deep grinding wind-up,
+## stone-heavy noise juddering faster and faster, the arm's segments ratcheting out (metal clicks speeding up), a
+## groan climbing under it, and at the lock (slam_track_seconds in) a heavy clank; the grind tightens on to the
+## end.
+func _grind() -> PackedFloat32Array:
+	var rng := _rng(1712)
+	var track: float = clampf(tuning_value("slam_track_seconds", 0.8), 0.3, 1.5)
+	var d: float = minf(track + clampf(tuning_value("slam_lock_seconds", 1.0), 0.6, 1.6), MAX_SECONDS)
+	var b := DSP.buffer(d)
+	var grind := DSP.noise(d, rng)
+	DSP.filter(grind, &"lowpass", 260.0)
+	DSP.filter(grind, &"lowpass", 260.0)
+	var judder: float = 0.0
+	for i: int in grind.size():
+		var u: float = float(i) / grind.size()
+		judder += lerpf(14.0, 34.0, u) / RATE
+		grind[i] *= (0.5 + 0.5 * sin(TAU * judder)) * (0.5 + 0.5 * u)
+	DSP.mix(b, grind, 0.0, 2.4)
+	var scrape := DSP.noise(d, rng)
+	DSP.filter(scrape, &"bandpass", 700.0, 1.4)
+	DSP.shape(scrape, 0.15, 0.1)
+	DSP.mix(b, scrape, 0.0, 0.55)
+	var groan := DSP.fm(d, func(u: float) -> float: return DSP.sweep(46.0, 74.0, u), 1.5,
+		func(u: float) -> float: return 2.0 + 2.0 * u)
+	DSP.filter(groan, &"bandpass", 300.0, 0.8)
+	DSP.shape(groan, 0.2, 0.05)
+	DSP.mix(b, groan, 0.0, 0.5)
+	# The segments ratcheting out until the lock.
+	var at: float = 0.0
+	while at < track - 0.03:
+		DSP.mix(b, DSP.metal_hit(0.04, 1500.0, 0.008, rng), at, 0.45)
+		at += 1.0 / lerpf(9.0, 26.0, at / track)
+	# The lock: a heavy clank, a thud under it.
+	DSP.mix(b, DSP.metal_hit(0.35, 520.0, 0.12, rng), track, 1.1)
+	DSP.mix(b, _boom(0.4, 150.0, 60.0, 0.12, rng), track, 0.8)
+	DSP.drive(b, 1.6)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## The fist landing: a huge thud through the causeway, the golden fist's clank and the stone's thump (heard on a
+## phone's speaker too), a sharp crack, a sub thump.
+func _slam() -> PackedFloat32Array:
+	var rng := _rng(1713)
+	var d: float = 1.3
+	var b := _boom(d, 115.0, 30.0, 0.42, rng)
+	var crack := DSP.noise(0.2, rng)
+	DSP.filter(crack, &"bandpass", 1300.0, 0.7)
+	DSP.envelope(crack, 0.0005, 0.05)
+	DSP.mix(b, crack, 0.0, 2.6)
+	var thump := DSP.noise(0.5, rng)
+	DSP.filter(thump, &"bandpass", 380.0, 1.2)
+	DSP.envelope(thump, 0.001, 0.09, 0.05)
+	DSP.mix(b, thump, 0.0, 3.0)
+	DSP.mix(b, DSP.metal_hit(0.6, 310.0, 0.14, rng), 0.0, 1.2)
+	var body := DSP.noise(d, rng)
+	DSP.filter_sweep(body, &"lowpass", 3000.0, 180.0, 0.7)
+	DSP.envelope(body, 0.002, 0.16, 0.05)
+	DSP.mix(b, body, 0.0, 1.1)
+	DSP.drive(b, 1.8)
+	DSP.crush(b, 9, 17000.0)
+	return b
+
+
+## The floor breaking under it: stone splitting (sharp cracks), slabs grinding apart, rubble pattering down
+## into the hole, a low rumble dying away.
+func _break() -> PackedFloat32Array:
+	var rng := _rng(1714)
+	var d: float = 1.5
+	var b := DSP.buffer(d)
+	for k: int in 4:
+		var crack := DSP.noise(0.09, rng)
+		DSP.filter(crack, &"highpass", 1700.0 + 300.0 * k)
+		DSP.envelope(crack, 0.0005, 0.025)
+		DSP.mix(b, crack, 0.02 + k * 0.07 + rng.randf_range(0.0, 0.03), 0.9 - k * 0.15)
+	var slab := DSP.noise(0.6, rng)
+	DSP.filter(slab, &"bandpass", 420.0, 1.1)
+	DSP.envelope(slab, 0.02, 0.2, 0.05)
+	DSP.mix(b, slab, 0.05, 0.9)
+	for k: int in 30:
+		var at: float = 0.12 + pow(rng.randf(), 1.5) * (d - 0.3)
+		var bit := DSP.noise(0.05, rng)
+		DSP.filter(bit, &"bandpass", rng.randf_range(300.0, 1100.0), 1.0)
+		DSP.envelope(bit, 0.001, 0.014)
+		DSP.mix(b, bit, at, 0.55 * (1.0 - at / d))
+	var rumble := DSP.noise(d, rng)
+	DSP.filter(rumble, &"lowpass", 120.0)
+	DSP.envelope(rumble, 0.03, 0.45, 0.1)
+	DSP.mix(b, rumble, 0.0, 1.4)
+	DSP.drive(b, 1.5)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## The tower toppling: a deep groaning creak and a rumble swelling as it leans and falls (tower_fall_seconds),
+## then its crash beside the causeway (a boom, a blast of rubble, debris) and a rumble rolling away by
+## MAX_SECONDS.
+func _topple() -> PackedFloat32Array:
+	var rng := _rng(1715)
+	var length: float = MAX_SECONDS
+	var fall: float = clampf(tuning_value("tower_fall_seconds", 1.5), 0.6, length - 0.7)
+	var b := DSP.buffer(length)
+	var creak := DSP.osc(fall, func(u: float) -> float: return DSP.sweep(62.0, 110.0, u) * (1.0 + 0.05 * sin(u * 37.0)), &"saw")
+	DSP.filter(creak, &"bandpass", 520.0, 2.0)
+	DSP.shape(creak, fall * 0.5, 0.08)
+	DSP.mix(b, creak, 0.0, 0.9)
+	var rumble := DSP.noise(fall, rng)
+	DSP.filter(rumble, &"lowpass", 150.0)
+	DSP.filter(rumble, &"lowpass", 150.0)
+	for i: int in rumble.size():
+		var u: float = float(i) / rumble.size()
+		rumble[i] *= u * u
+	DSP.mix(b, rumble, 0.0, 3.0)
+	DSP.mix(b, _whoosh(fall * 0.7, 200.0, 900.0, 0.8, rng), fall * 0.3, 0.6)
+	DSP.mix(b, _explosion(length - fall, 1.2, rng), fall, 1.2)
+	_fade_out(b, 0.35)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## The barrage's warning begins: the hatches over the shoulder pipes unlatching (two clanks), a hydraulic hiss as
+## they swing open, a heavy thunk as they stop.
+func _hatch() -> PackedFloat32Array:
+	var rng := _rng(1716)
+	var open: float = clampf(tuning_value("barrage_hatch_seconds", 0.5), 0.2, 1.2)
+	var d: float = open + 0.35
+	var b := DSP.buffer(d)
+	DSP.mix(b, DSP.metal_hit(0.12, 1700.0, 0.03, rng), 0.0, 0.9)
+	DSP.mix(b, DSP.metal_hit(0.12, 1450.0, 0.03, rng), 0.07, 0.8)
+	var hiss := DSP.noise(open, rng)
+	DSP.filter(hiss, &"highpass", 2600.0)
+	DSP.filter_sweep(hiss, &"bandpass", 2400.0, 5200.0, 0.8)
+	DSP.shape(hiss, 0.04, open * 0.4)
+	DSP.mix(b, hiss, 0.06, 0.75)
+	DSP.mix(b, _boom(0.35, 170.0, 70.0, 0.08, rng), open, 0.9)
+	DSP.mix(b, DSP.metal_hit(0.25, 640.0, 0.08, rng), open, 0.7)
+	DSP.crush(b, 9, 19000.0)
+	return b
+
+
+## The missiles launching one after another over barrage_salvo_seconds: each a rocket's ignition (a pop and a
+## rising whoosh), over a roar that swells and climbs away.
+func _launch() -> PackedFloat32Array:
+	var rng := _rng(1717)
+	var salvo: float = clampf(tuning_value("barrage_salvo_seconds", 0.5), 0.1, 1.2)
+	var d: float = salvo + 0.9
+	var b := DSP.buffer(d)
+	var roar := DSP.noise(d, rng)
+	DSP.filter_sweep(roar, &"lowpass", 500.0, 2200.0, 0.8)
+	DSP.shape(roar, 0.08, 0.5)
+	DSP.mix(b, roar, 0.0, 1.6)
+	for k: int in 8:
+		var at: float = salvo * float(k) / 8.0 + rng.randf_range(0.0, 0.02)
+		DSP.mix(b, DSP.kick(0.08, 300.0, 110.0, rng), at, 0.45)
+		DSP.mix(b, _whoosh(0.5, 300.0, 2600.0, 1.4, rng), at, 0.55)
+	DSP.drive(b, 2.0)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## Their dive, as long as barrage_dive_seconds: a chorus of whistles rising as they come down, louder to the
+## end.
+func _whistle() -> PackedFloat32Array:
+	var rng := _rng(1718)
+	var d: float = clampf(tuning_value("barrage_dive_seconds", 1.0), 0.4, 2.0)
+	var b := DSP.buffer(d)
+	for detune: float in [1.0, 1.07, 0.93, 1.15]:
+		var lag: float = rng.randf_range(0.0, 0.08)
+		var w := DSP.osc(d - lag, func(u: float) -> float: return DSP.sweep(620.0, 1500.0, u) * detune * (1.0 + 0.012 * sin(u * 70.0)))
+		DSP.mix(b, w, lag, 0.25)
+	var air := DSP.noise(d, rng)
+	DSP.filter_sweep(air, &"bandpass", 900.0, 2600.0, 1.6)
+	DSP.mix(b, air, 0.0, 0.3)
+	var n: int = b.size()
+	for i: int in n:
+		var u: float = float(i) / n
+		b[i] *= 0.35 + 0.65 * u * u
+	DSP.shape(b, 0.03, 0.02)
+	DSP.crush(b, 10, 20000.0)
+	return b
+
+
+## The fire landing: a blast of flame rushing over the floor (a boom and a whoosh), then the fire roaring for
+## fire_seconds, crackling, dying away.
+func _fire() -> PackedFloat32Array:
+	var rng := _rng(1719)
+	var burn: float = clampf(tuning_value("fire_seconds", 1.5), 0.6, 2.0)
+	var d: float = minf(burn + 0.4, MAX_SECONDS)
+	var b := DSP.buffer(d)
+	DSP.mix(b, _boom(0.6, 130.0, 45.0, 0.15, rng), 0.0, 0.9)
+	DSP.mix(b, _whoosh(0.45, 300.0, 3000.0, 0.9, rng), 0.0, 1.0)
+	var roar := DSP.noise(d, rng)
+	DSP.filter(roar, &"lowpass", 900.0)
+	var n: int = roar.size()
+	for i: int in n:
+		var t: float = float(i) / RATE
+		var flutter: float = 0.7 + 0.3 * sin(TAU * 9.0 * t + 2.0 * sin(TAU * 2.3 * t))
+		roar[i] *= flutter * (1.0 if t < burn else maxf(0.0, 1.0 - (t - burn) / 0.4))
+	DSP.mix(b, roar, 0.0, 1.5)
+	DSP.mix(b, _crackle(d, 60, burn, 2600.0, rng), 0.0, 0.8)
+	_fade_out(b, 0.3)
+	DSP.drive(b, 1.6)
+	DSP.crush(b, 9, 18000.0)
 	return b

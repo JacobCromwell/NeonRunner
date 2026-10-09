@@ -56,6 +56,9 @@
 		{ "id": "golden_boss", "trigger": "enemy:golden_boss", "text": "The Golden Convergence! Your weapons only scratch its golden suit. Everything it throws at you lights red before it lands: keep reading the floor." },
 		{ "id": "golden_boss_strafe", "trigger": "boss:golden_boss/strafe", "text": "Helidrones out of its cape! A red line and a rising whine mark each lane they'll rake: switch to a lane between the lines. A jump won't clear their fire." },
 		{ "id": "golden_boss_buttress", "trigger": "boss:golden_boss/buttress", "text": "A Flying Buttress! The next pass rakes a red line across every lane but its arch: move into its lane and run through the arch, or dash through the fire." },
+		{ "id": "golden_boss_fist", "trigger": "boss:golden_boss/fist", "text": "Its fist! It follows your lane, then locks a second before it falls: the red square shows where. Get out from under it, and jump the holes it leaves ahead." },
+		{ "id": "golden_boss_bait", "trigger": "boss:golden_boss/bait", "text": "A Flying Buttress where the fist will fall! Be in its lane when the fist locks, then switch away: the fist smashes it, and the tower it held up comes down beside the causeway as a wall." },
+		{ "id": "golden_boss_barrage", "trigger": "boss:golden_boss/barrage", "text": "Missiles! Every red mark on the floor will burn. Get onto the fallen tower's wall as the marks fill in (wall hop to stay up); with no wall, only armor, the shield and the dash get you through." },
 		{ "id": "pickup_armor", "trigger": "pickup:armor", "text": "Armor pickup ahead: run through it to get your armor back at once. Armor blocks enemy attacks and electric shocks." },
 		{ "id": "pickup_shield", "trigger": "pickup:shield", "text": "Shield pickup ahead: run through it. A shield blocks one hit of anything." },
 		{ "id": "pickup_grapple", "trigger": "pickup:grapple", "text": "Grapple pickup ahead: run through it. The grapple hook saves you from one fall." }

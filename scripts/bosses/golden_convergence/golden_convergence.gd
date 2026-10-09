@@ -68,6 +68,9 @@ var squadron: GoldenConvergenceSquadron
 var fire: GoldenConvergenceFire
 var court: GoldenConvergenceCourt
 var strafe: GoldenConvergenceStrafe
+## E5d-b's attacks: the Fist Slam (its toppled towers too) and the Missile Barrage.
+var slams: GoldenConvergenceSlams
+var barrage: GoldenConvergenceBarrage
 ## The attacks by beat kind (register_attack).
 var attacks: Dictionary = {}
 var buttresses: Array[GoldenConvergenceButtress] = []
@@ -126,7 +129,11 @@ func _build_boss() -> void:
 		_new_buttress()
 	strafe = GoldenConvergenceStrafe.new(self)
 	register_attack(strafe)
-	# E5d-b: register_attack(GoldenConvergenceSlams.new(self)), register_attack(GoldenConvergenceBarrage...);
+	# E5d-b: the Fist Slam (with its toppled towers) and the Missile Barrage.
+	slams = GoldenConvergenceSlams.new(self)
+	register_attack(slams)
+	barrage = GoldenConvergenceBarrage.new(self)
+	register_attack(barrage)
 	# E5d-c: register_attack(GoldenConvergenceRefill.new(self)); E5d-d: stage 2's.
 	for attack: GoldenConvergenceAttack in attacks.values():
 		attack.prewarm()
@@ -377,8 +384,9 @@ func _tick_beats(delta: float) -> void:
 	if beat_attack != null:
 		if beat_attack.busy():
 			return
+		# The attack's own wait (E5d-b: none after a buttress hit, the barrage warming up as the tower falls).
+		beat_wait = beat_attack.gap_after() / pace()
 		beat_attack = null
-		beat_wait = tuning.beat_gap / pace()
 	if beat_wait > 0.0:
 		beat_wait -= delta
 		return

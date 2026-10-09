@@ -27,7 +27,9 @@ extends SceneTree
 ##   sfx_bank_golden_convergence.gd  the Golden Convergence: its rise and the cult's chime rung huge and slow,
 ##                        the Helidrone Strafe (the squadron out of the cape and back, a pass's whine (the
 ##                        warning), its rake and sweep, ricochets, a drone hurled by a pad), the Flying
-##                        Buttress rising and crumbling
+##                        Buttress rising and crumbling; the Fist Slam (the grinding wind-up (the warning),
+##                        the slam, the floor breaking, the tower toppling) and the Missile Barrage (the
+##                        hatches (the warning), the launch, the dive's whistle, the fire)
 ## Run: tools/godot.sh sfx   (--only=jump,land renders just those; --review also writes
 ## build/sfx_review/<name>.png: waveform on top, spectrogram (40 Hz–16 kHz, time left to right) below).
 ## Each line of the report ends with the sound's loudest 400 ms as heard on headphones (K-weighted) and

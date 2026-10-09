@@ -107,6 +107,13 @@ func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: f
 	batch.commit(parent)
 
 
+## E5d-b: a floor cut in the Grand Court is a Fist Slam's hole (its plain laps have none of their own): the
+## palace floor's break, drawn side by side so the lanes a fist opens together read as one square hole
+## (GoldenConvergenceHole.build and join).
+func floor_cut(parent: Node3D, cut: FloorCutSection) -> void:
+	GoldenConvergenceHole.build(parent, cut, self)
+
+
 ## No wall gaps on a boss's track (BossArena): the court around one is drawn all the same.
 func wall_gap(parent: Node3D, side: int, face_x: float, start: float, end: float, _gap: Vector2) -> void:
 	wall_section(parent, side, face_x, start, end)

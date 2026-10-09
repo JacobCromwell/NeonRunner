@@ -13,8 +13,9 @@ extends BossPart
 ## - reel (0-1): it lurches back from a blast (a later phase's intro, GDD §10 proposed);
 ## - arms (E5d-b, the Fist Slam): set_arm(side, target, blend, extend, fist): the arm on `side` (-1 its right,
 ##   as the runner sees it on the left; 1 its left) swings from hanging at its side to point at `target`
-##   (world space) by `blend`, its golden segments telescoping out of the forearm by `extend` (0-1), its hand
-##   a fist or open; hand_point(side) is where its hand is;
+##   (world space) by `blend`, its golden segments telescoping out of the forearm by `extend` (0-1 nested,
+##   up to EXTEND_MAX with the sleeves stretching: the Fist Slam reaches the track from where it floats;
+##   extend_for() solves the reach), its hand a fist or open; hand_point(side) is where its hand is;
 ## - pipes (E5d-b, the Missile Barrage): pipes_open[side] (0-1) swings the hatch over a shoulder's pipes open;
 ##   pipe_mouth(side) is where missiles leave and the feed line plugs in (E5d-c);
 ## - damage (E5d-c): set_pipes_broken(side) blows a shoulder's pipes out (torn stubs); burst (0-1, E5d-d)
@@ -33,6 +34,9 @@ const HALO_AT := Vector3(0.0, 20.6, -2.8)
 const HALO_SPIN: float = 0.05
 ## The pipes' hatch swings this far open (radians).
 const CAP_OPEN: float = 1.9
+## E5d-b: how far an arm's segments telescope at most (1: each slid out of the one before, nested; beyond it
+## the sleeves stretch with them, so the fist reaches the track from where the suit floats).
+const EXTEND_MAX: float = 2.4
 
 var tuning: GoldenConvergenceTuning
 var unfurl: float = 1.0
@@ -194,7 +198,10 @@ func _apply_arm(i: int) -> void:
 			basis = Basis(rest.get_rotation_quaternion().slerp(aim.get_rotation_quaternion(), blend))
 	shoulder.basis = basis
 	(arm["elbow"] as Node3D).rotation = Vector3(ELBOW_REST * (1.0 - blend), 0.0, 0.0)
-	var extend: float = clampf(arm_extend[i], 0.0, 1.0)
+	var extend: float = clampf(arm_extend[i], 0.0, EXTEND_MAX)
+	# E5d-b: past a full telescope (the Fist Slam's long reach) each sleeve stretches back up into the one
+	# before it, so the arm stays whole however far it reaches.
+	var stretch: float = maxf(extend, 1.0)
 	var segments: Array = arm["segments"]
 	var seg_len: float = GoldenConvergenceModel.SEGMENT
 	for k: int in segments.size():
@@ -203,7 +210,10 @@ func _apply_arm(i: int) -> void:
 		var start: float = -(GoldenConvergenceModel.FOREARM - seg_len) if k == 0 else 0.0
 		seg.position = Vector3(0.0, start - extend * seg_len * 0.92, 0.0)
 		# Its sleeve only while out (the wrist and hand hang from the last segment, always shown).
-		(arm["sleeves"][k] as Node3D).visible = extend > 0.001
+		var sleeve: Node3D = arm["sleeves"][k]
+		sleeve.visible = extend > 0.001
+		sleeve.scale.y = stretch
+		sleeve.position.y = (stretch - 1.0) * seg_len
 	(arm["wrist"] as Node3D).position = Vector3(0.0, -seg_len, 0.0)
 	(arm["hand"] as Node3D).visible = not fist[i]
 	(arm["fist"] as Node3D).visible = fist[i]
@@ -226,6 +236,22 @@ func set_arm(side: int, target: Vector3, blend: float, extend: float, as_fist: b
 	arm_blend[i] = blend
 	arm_extend[i] = extend
 	fist[i] = as_fist
+
+
+## E5d-b (the Fist Slam): the extend that brings the hand on `side` (its fist's middle, hand_point) to `target`
+## (world space) with the arm pointing straight at it (set_arm's blend 1), at most EXTEND_MAX; with the suit
+## placed at `pose` (a Transform3D: where the encounter puts it this frame, GoldenConvergence.suit_transform)
+## or where it is now.
+func extend_for(side: int, target: Vector3, pose: Variant = null) -> float:
+	var shoulder: Node3D = _arms[0 if side < 0 else 1]["shoulder"]
+	var root: Transform3D = (pose as Transform3D) * _root.transform if pose is Transform3D else _root.global_transform
+	var reach: float = (root.affine_inverse() * target - shoulder.position).length()
+	# Shoulder to hand point: the upper arm, the forearm's lip past the first segment, five slides, the last
+	# sleeve and the wrist to the fist's middle.
+	var fixed: float = GoldenConvergenceModel.UPPER_ARM + (GoldenConvergenceModel.FOREARM - GoldenConvergenceModel.SEGMENT) \
+		+ GoldenConvergenceModel.SEGMENT + 2.0
+	var per: float = GoldenConvergenceModel.SEGMENTS * GoldenConvergenceModel.SEGMENT * 0.92
+	return clampf((reach - fixed) / per, 0.0, EXTEND_MAX)
 
 
 ## Blows a shoulder's pipes out (E5d-c: "the first blows out one shoulder's pipes, the second the other's").

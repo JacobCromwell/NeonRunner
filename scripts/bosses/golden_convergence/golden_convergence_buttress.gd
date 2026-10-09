@@ -14,6 +14,8 @@ extends Node3D
 ##   lane runs through the arch;
 ## - smash() (E5d-b's Fist Slam, E5d-d's Pounce): it crumbles over crumble_seconds (the pier breaks and sinks,
 ##   the flying arch falls away, dust), its sides no longer block, and `smashed` tells the encounter;
+## - sink() (E5d-b): it sinks back into the causeway the way it rose (a slam sequence's other gate once a
+##   buttress hit has ended the sequence) and goes back to the pool;
 ## - span(), opening_x(), spark_point(), lean, lane, at: where it stands, for the attacks that use it.
 ## DESIGN-TBD (docs/questions/e5d.md, E5d-a 8): its size and how soon it rises are in the tuning; its sides
 ## block a switch into its lane, not one out of the arch while inside it.
@@ -25,7 +27,7 @@ extends Node3D
 
 signal smashed(buttress: GoldenConvergenceButtress)
 
-enum State { FREE, RISING, STANDING, CRUMBLING }
+enum State { FREE, RISING, STANDING, CRUMBLING, SINKING }
 
 ## The opening's width (the runner's body is 0.6 m wide) and the legs either side fill the rest of the lane.
 const OPENING: float = 1.36
@@ -146,6 +148,18 @@ func smash() -> void:
 	smashed.emit(self)
 
 
+## E5d-b: sinks back into the causeway the way it rose, its sides blocking nothing from the start (a Fist
+## Slam sequence's other gate, once a buttress hit has ended the sequence), then goes back to the pool.
+func sink() -> void:
+	if not standing():
+		return
+	state = State.SINKING
+	_time = (1.0 - rise) * boss.tuning.buttress_rise_seconds
+	_blocker.collision_layer = 0
+	boss.sound(&"gc_buttress", boss.sound_point(global_position))
+	boss.log_event(&"buttress_sunk", {"lane": lane, "at": at})
+
+
 ## True while it stands whole (risen or rising): its sides block, its arch shelters.
 func standing() -> bool:
 	return state == State.RISING or state == State.STANDING
@@ -193,6 +207,11 @@ func tick(delta: float) -> void:
 			crumble = clampf(_time / maxf(t.crumble_seconds, 0.05), 0.0, 1.0)
 			if crumble >= 1.0:
 				visible = false
+		State.SINKING:
+			rise = clampf(1.0 - _time / maxf(t.buttress_rise_seconds, 0.05), 0.0, 1.0)
+			if rise <= 0.0:
+				release()
+				return
 	_apply()
 
 
