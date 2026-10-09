@@ -404,6 +404,8 @@ tools/godot.sh smoke [options]  40 s of the real game, headless; prints only pro
 tools/godot.sh sfx [--review]   regenerate the sound effects (assets/sfx/) from tools/asset_gen/
 tools/godot.sh music [--review] regenerate default WAV music (leaves supplied MP3s unchanged)
 tools/godot.sh citizens         regenerate the Marketplace citizens' sprite sheets (assets/sprites/citizens/)
+tools/godot.sh doodads [--only=a,b] [--review]   regenerate the zone doodads' picture cards
+                                (assets/sprites/doodads/; --review writes the atlases to build/doodad_review/)
 tools/godot.sh web [--debug] [--serve]  export the web demo and check it (see The web demo)
 tools/godot.sh import           force a resource import
 ```

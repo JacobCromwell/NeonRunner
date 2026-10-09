@@ -1838,77 +1838,84 @@ side's `note_wall_enemies` and `wall_section` in one go (`TrackBuilder.dress_bud
 A run, Smooth frames): a hook never counts on the frame it's called in, and a hazard's look shows the
 hazard's state when it binds (`HazardStateVisual.bind`). Tests and review tools dress each chunk at once.
 
-**Zone doodads' looks** (task G5 built the mechanism and a plain default; task G6 gives each zone its
-own, except the grey box, which keeps the plain default. `GoldenPalaceSkin` (D6b) extends `GoldenSkin`
-and doesn't override `doodad()`, so the Golden Palace inherits the Golden Zone's gilded planters,
-fountains and statues for free, unless a follow-up gives it its own interior ones.) What a look gets
-and keeps to:
+**Zone doodads' looks** (task G5 built the mechanism and a plain default; task G6 gave each zone its
+own, except the grey box, which keeps the plain default; since the owner's request of October 9, 2026,
+"keep each doodad a simple box but draw on it a picture of the object, with the open air see-through",
+every zone draws its doodads as **picture cards**. `GoldenPalaceSkin` (D6b) extends `GoldenSkin` and
+doesn't override `doodad()`, so the Golden Palace inherits the Golden Zone's looks, chosen to work
+indoors as well as out.) What a look gets and keeps to:
 - *The hook*: `doodad(body, size, size_class, side, look_seed)`. `body` is the doodad's node, centred on
   its collision box `size` (width, height, length): the floor is at -size.y / 2 and its front, where the
   player meets it, at +size.z / 2; add meshes as its children. `size_class` is `&"small"`, `&"medium"` or
   `&"large"` (`LevelLayout.DOODAD_SIZES`), whose boxes come from `MovementTuning.doodad_size()`: by
   default 1.3 × 1.4 m, 1.9 × 3.6 m and 2.0 × 6.5 m (width × length), all 2.6 m tall (DESIGN-TBD). Map
   each class to the zone's pieces of that size. `side` is the side it pushes to (-1 left, +1 right) and
-  `look_seed` a number to vary the look by (which model, a tint, its props), hashed with `MeshKit.hash_i`
-  like everything else in a skin: never a random number generator, so a doodad looks the same wherever
-  and whenever it is built.
+  `look_seed` a number to vary the look by, hashed (`MeshKit.hash_i`), never a random number generator,
+  so a doodad looks the same wherever and whenever it is built.
 - *Inside the box, filling most of it*: what looks like contact is contact (GDD §3), and it must read
-  as too tall to jump (it is) and as wide as it blocks. A burned-out car is lower than 2.6 m: stack it,
-  tip it on its side or pile its wreck high. Nothing outside the box (an awning, a branch, a sign arm):
-  the player would pass through it. Placing a piece by a formula that fits its own size against the
-  box's remaining room (`x = (hash01 - 0.5) * (size.x - piece_w)`, and the same for z and for a stack's
-  height) keeps every seed inside the box by construction; a piece built with any rotation needs a wider
-  margin budgeted in by hand (the Dead Zone's leaning masonry works out its own tilted bounds this way)
-  since `MeshInstance3D.get_aabb()` is exact and every skin suite's `doodads_ok` (below) will catch a
-  margin that was cut too fine.
+  as too tall to jump (it is) and as wide as it blocks. Every look keeps its silhouette near the box's
+  full height (a heap may dip at its edges, its middle stays high). Nothing outside the box (an awning, a
+  branch, a sign arm): the player would pass through it. Cards lie on planes inside the box by
+  construction (below), and every skin suite's `doodads_ok` checks the mesh's bounds.
 - *Solid and safe* (CLAUDE.md readability rules): the zone's non-hazard colours, nothing glowing in a
   hazard colour (pink, yellow and black, red, orange, green, cyan), nothing that reads as a sign (no
   striped frames), a fence (nothing strung between posts), a barrier or an enemy (no eyes, no faces on
-  screens; the cult's feed is the walls' business). Warm-white or zone-coloured lamps are fine if small.
-- *Its push side may show* (the default's front slants back toward it); nothing more is needed.
-- *Cheap, and on the shared material alone*: one mesh per doodad from cached templates (the kit's
-  `MeshBatch`, one layer, so a doodad is always one draw call however many of the kit's surface patterns
-  it mixes), fine on the Compatibility renderer. Every doodad's `MeshInstance3D.material_override` is the
-  plain `MeshKit.solid()` (no params), never a zone's own tuned `solid_material()`: `test_doodads`'
-  `_test_skins` and each skin suite's `doodads_ok` (`tests/helpers/skin_suite.gd`) hold every skin to
-  this, so a doodad never glows and always renders through the one shared material instance (cheaper:
-  one less state change) across every zone. It still dims with a level's darker lighting like the
-  scenery (The Hush): `scenery_light` is a *global* shader uniform, so even the bare material reads it.
+  screens; the cult's feed is the walls' business). Signs and screens on a doodad are matte paint.
+- *Picture cards* (`DoodadCards`, `scripts/world/skins/doodad_cards.gd`): each zone's pictures are
+  painted by code (`tools/asset_gen/doodad_art_gen.gd`, run with `tools/godot.sh doodads [--only=a,b]
+  [--review]`) on the CPU (`DoodadPaint`: metres on a 4× supersampled canvas, polygons, gradients, soft
+  weathering; `DoodadKit`: the shared motifs in the concept art's flat-paint-and-ink style: planks,
+  corrugated sheet, wheels, awnings, crates, foliage, see-through window frames, stains) by one script per
+  zone (`tools/asset_gen/doodad_art/<zone>_art.gd`), and packed into one atlas per zone,
+  `assets/sprites/doodads/<zone>.png` (imported VRAM-compressed with mipmaps), with a manifest
+  `<zone>.json`: where each picture sits, the boxes they were painted for, and each size class's looks.
+  A look is a list of cards (`DoodadArtSet`, `tools/asset_gen/doodad_art_set.gd`): `{plane, at, rect,
+  image, flip}`, a picture on one of the box's faces (`plane` "z" across the lane, its front at `at` = 1;
+  "x" along it; "y" level, the top at 1) or on a plane inside it (a palm's crossed fronds, the goods down
+  a stall's middle, a fountain's water arcs, a rubble heap's inner ridges), over the share `rect` of
+  that plane. Pictures are drawn as seen from outside, a side's front end on its left; a side seen from
+  x- mirrors it (`flip`). Where the object is open (between a stall's counter and roof, a van's empty
+  windows, a colonnade's bays) the picture is transparent and the shader drops it (alpha below one half
+  is discarded: no sorting, no blending). `DoodadCards.for_zone(zone)` loads a zone once; a look is
+  picked from `look_seed`; its mesh (one quad per card) is built once per look and size and shared by
+  every instance, on one material per zone (`doodad_card.gdshader`: unshaded with the kit's fake city
+  light, double-sided, a soft neutral sheen, `scenery_light` and `scenery_tint` like the scenery, never
+  emissive), so a doodad is one draw call, the same on the Compatibility renderer. A zone without a
+  manifest, or a size class without a look, falls back to the default (below). Each design keeps its
+  main colours in the manifest (`colors`), for anything that ever needs the look's colours (a smashed
+  doodad's pieces). After changing `MovementTuning`'s doodad sizes, rerun `tools/godot.sh doodads`
+  (`test_doodads` fails until the manifests match the boxes).
 - *The default* (`default_doodad_mesh`): a low-poly block in the skin's `doodad_palette` (body, top,
-  base), still used by the grey box and by any new zone before its own task gives it a doodad() of its
-  own: a base plinth, an inset body and a top, its front slanting back toward its push side.
-- *Each zone's own look* (task G6; `scripts/world/skins/<zone>/<zone>_doodads.gd`, called from the
-  skin's `doodad()`): the Neon City (`CityDoodads`) maps the three classes straight to the GDD's three
-  ideas, smallest first: a pillar, a tiny market stall (a counter, corner poles and a flat canopy) and a
-  small storefront (a facade slab with a window row and a signboard lip). Gangland (`GanglandDoodads`)
-  gives the small and medium classes a burned-out car each (one wreck, then two nose to tail), both
-  crushed low with scavenged salvage piled on top up to the box's top (GDD §3's "stack it... or pile its
-  wreck high"), and the large class a broken-down shop (boarded shopfront, a pulled shutter, a sagging
-  roof lip, rubble at its foot). The Marketplace (`MarketDoodads`) gives the owner's "plenty of nice
-  plants, casino machines": a tall potted plant (small), a bank of two casino cabinets along the box's
-  length with a dim screen face and a marquee hump, never as bright as a hazard sign (medium), and a
-  planted hedge row of three stems of varying height (large). Corporate (`CorporateDoodads`) covers the
-  owner's list directly: a steel planter (small); a security barrier (a wide olive block and a watch
-  mast) or a glass kiosk, picked per doodad by `look_seed` (medium); a sculpture plinth, an abstract
-  steel form built from offset slabs with a brand-paint accent (large). The Dead Zone (`DeadDoodads`)
-  takes the GDD's three ideas directly, smallest first: a crushed, ash-dusted wreck with rubble piled on
-  it (small), a rubble heap of stacked, irregular concrete chunks (medium) and a slab of fallen masonry
-  leaning across the lane at a shallow angle from vertical, with a crumbled edge and rebar (large). The
-  Golden Zone (`GoldenDoodads`) takes the owner's "gilded planters, fountains, statues on plinths": a
-  gilded planter with stylized gold reed fronds (small), a fountain with a still marble basin and a thin
-  falling jet of water (`MeshKit.PAT_WATER`, scenery only, GDD §5; medium) and a robed statue on a
-  plinth (large) -- deliberately not the Gilded Sentinels' armoured guard with a halberd (`GoldenStatue`,
-  task C4). The decorative wall guards now also stand at the wall base, but this lane doodad
-  never reuses their kit or its shape -- a plain draped, faceless figure with its hands clasped and
-  nothing raised -- so it can never be mistaken for the live enemy even up close. `test_golden_skin`
-  guards against the doodad script ever building itself from `GoldenStatue`.
-  None of the six needed a new mesh-kit pattern or shader include: the kit's existing patterns (e.g.
-  `PAT_GOLD`, `PAT_MARBLE`, `PAT_DZ_CONCRETE`, `PAT_CORP_PLATE`, `PAT_TECH`) already cover every zone's
-  materials, each skin picking its own colours for them through its "Doodads" export group.
+  base) on the plain `MeshKit.solid()`, still used by the grey box and by any new zone before its art: a
+  base plinth, an inset body and a top, its front slanting back toward its push side. The skins'
+  "Doodads" export groups (other than `doodad_palette`) are unused by the cards.
+- *Each zone's own look* (`scripts/world/skins/<zone>/<zone>_doodads.gd` hands the skin's doodads to its
+  zone's cards; the pictures are in `tools/asset_gen/doodad_art/<zone>_art.gd`): the Neon City a street
+  vending machine or a pillar plastered with posters (small, by seed), a street-food stall with stools,
+  a steaming pot and a corrugated roof, open between counter and roof (medium), and a little shop with a
+  roll-down shutter, a door, blinds and an unlit sign box (large). Gangland a stack of rusted oil drums
+  under a tyre (small), a burned-out van, its windscreen and windows open on a charred cab (medium), and
+  a broken-down corrugated shop with a half-open shutter on a dark inside (large). The Marketplace a
+  potted palm or a flowering bush in a tiled planter (small), the owner's vendor's stall: a plank
+  counter, corner posts, a striped little roof and its goods in the open middle (medium), and a bank of
+  slot machines back to back (large). Corporate a steel planter with a clipped topiary (small), a glass
+  security booth (medium) and a ribbed olive supply container with stencils (large), the brand colour
+  as thin flat paint. The Dead Zone a broken column on its square foot, rebar out of its break (small), a
+  heap of rubble, lower at its edges than its middle (medium), and a burned-out bus, its window frames
+  open on charred seats (large). The Golden Zone a robed statue on a marble plinth or a gilded urn with
+  a clipped topiary (small), a wall fountain with water arcing into a basin either side (medium), and a
+  colonnade with red drapes, balustrades and a coffered roof, open between its columns (large). The
+  statue is deliberately not the Gilded Sentinels' armoured guard with a halberd (`GoldenStatue`, task
+  C4): a plain draped, faceless figure, hands clasped, nothing raised, its front and back on two cards so
+  each end shows its own side. `test_golden_skin` guards against the doodad script ever building itself
+  from `GoldenStatue`.
 - *Tested*: `test_doodads`' `_test_skins` builds every skin's doodads in every class (seed 7 alone) and
-  checks the box, that nothing glows and that `doodad_palette` is muted. `SkinSuite.doodads_ok(skin,
-  name)` (`tests/helpers/skin_suite.gd`), which every zone's own suite calls, extends this over several
-  seeds and both push sides: dressed, inside the box, on the shared `MeshKit.solid()` alone, never
+  checks the box, that nothing glows (the shared `MeshKit.solid()` or a zone's card material,
+  `DoodadCards.is_card_material`) and that `doodad_palette` is muted; `_test_cards` loads every zone's
+  manifest and checks it was painted for today's boxes, gives each class a look, and that every card
+  shows a picture from its atlas on a plane inside the box, and that the card shader never emits light.
+  `SkinSuite.doodads_ok(skin, name)` (`tests/helpers/skin_suite.gd`), which every zone's own suite calls,
+  extends this over several seeds and both push sides: dressed, inside the box, lit scenery, never
   glowing, and the identical (cached) mesh every time the same size, side and seed are drawn again.
 
 **Floor cuts' looks** (B4; GDD §9.9: the floor a cut takes "becomes a gap ... The cut edges glow the
