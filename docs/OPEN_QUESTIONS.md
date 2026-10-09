@@ -2440,14 +2440,20 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     Marketplace's third level, but the zone has two (GDD §5's schedule). Placeholder: the sunset is on
     Marketplace 2, the zone's last level, like City 3 and Gangland 3 (`data/levels/marketplace_2.tres`, `sky`;
     `DESIGN-TBD` on `LevelConfig.sky`). Move it to Marketplace 1, or keep it on the last level?
+    **Answered (owner, October 9, 2026):** keep it on Marketplace 2, the zone's last level (GDD §5).
 362. **The boss after each of these levels** (GDD §10). The Floating Head, the Sewer Swarm and The House, and each
     zone's outro, keep their zone's own sky, so the dawn goes back to night for the fight (and the blood red back
     to Gangland's dust, the sunset back to the Marketplace's warm dusk). Placeholder: the zone's own sky
     (`Campaign.configure_boss` gives the arena no level sky). Should each fight keep its zone's last level's sky?
+    **Answered (owner, October 8, 2026):** yes. The fight keeps the sky of the level before it
+    (`Campaign.configure_boss`); the dawn moved to City 1, so the Floating Head keeps the City's night (GDD §5).
+    The boss's intro in between is item 404; the zones' outros after these fights are item 405.
 363. **The street's light under the new skies** (GDD §5). Only the sky and the distant haze change; the scenery's
     lighting stays the zone's: the Marketplace's low sun still gilds the upper floors of one side under the
     darker sunset sky, and the City's street stays lit as at night under the dawn. Placeholder: unchanged.
     Should the street's light follow (for example a little of The Hush's darkness on Marketplace 2)?
+    **Answered (owner, October 8, 2026):** yes, as it adds little code and no performance cost: each level sky's
+    `scenery_tint` (the global `scenery_tint`, one multiply per scenery pixel; GDD §5).
 
 **The Enforcer Truck shows itself; its explosion** (from C6b; groups "Showing itself" and "Wreck" in `data/enemies/enforcer_truck.tres`, F6; review with `tools/showcase/enforcer_truck_showcase.tscn -- --scenario=show` or `--scenario=cut`)
 364. **How often players will see it** (GDD §9.13 "Showing itself": "every so often"). A showing needs about 7 s
@@ -2619,6 +2625,7 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
 396. **Which runs drop salvos** (GDD §10: "the next bombing run"). The fight has two later runs, at the start of phases 2
     and 3. Placeholder: both drop salvos (`salvo_spots` = 1, 4, 4; the first run keeps one spot at a time). Should the
     third phase's run go back to one spot at a time (1, 4, 1)?
+    **Answered (owner, October 9, 2026):** the third phase's run keeps its salvos (GDD §10).
 397. **How much harder on 5 or more lanes** (owner: "increase the difficulty on five or more lanes"). With one or two
     bombs a spot, a runner on a wide street can step clear of a whole salvo. Placeholder: from 5 lanes
     (`salvo_wide_lanes`) a spot takes up to three bombs side by side (`salvo_wide_bombs`), placed to leave the runner as
@@ -2626,6 +2633,9 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     (`salvo_wide_choices` = 1; 2 would leave a choice of two lanes). On 3 lanes a spot keeps one or two bombs, two 40%
     of the time (`salvo_pair_chance`). Is three bombs a spot right (beyond the one or two first asked for), and is one
     way through too hard?
+    **Answered (owner, October 9, 2026):** three bombs a spot is right on 5 or more lanes, leaving a choice of two lanes
+    (`salvo_wide_choices` = 2). On 3 lanes a spot leaves one lane, a forced path, with one or two bombs (`salvo_choices`
+    = 1, `salvo_bombs` = 2; `salvo_pair_chance` is gone: every street places its spots the same way). GDD §10.
 398. **How tight** (owner: "make it tighter"). Placeholder: 10 m between spots at 18 m/s instead of 12 m
     (`salvo_spacing`): about 0.56 s from one blast to the next, leaving about 0.4 s after passing a blast to switch one
     lane before the next (`salvo_max_shift`: one lane from spot to spot). Tighter still?
@@ -2664,3 +2674,21 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     into the level: 12 s past its start). Its first-encounter hint and the charge-path cyborg before it hold (the hint
     is on the level intro, the cyborg earlier in the campaign). Placeholder: it moves (it never moves on the level's own seeds). Or keep the introduction
     early, unseen, when the room is that far?
+
+**Level skies, the owner's follow-up** (from G8, October 8–9, 2026; `scripts/cinematics/cine_stage.gd` `sky_for`, `scripts/world/skins/level_sky.gd`, `data/skies/*.tres`)
+404. **The boss's intro under the fight's sky** (GDD §5, "Skies show progression"; §10). The owner asked that the fight
+    after a level whose sky turned keeps that sky; the Sewer Swarm's intro, which plays between Gangland 3 and the
+    fight, landed on main just after. Placeholder: the intro plays under the fight's sky too (Gangland 3's blood
+    red, `CineStage.sky_for`), so the sky holds from the level through the intro to the fight. Keep it?
+405. **The cinematics around City 1's dawn and the turned-sky fights** (GDD §5). The City's intro (the arrival
+    flyover, looking up at the skyline) plays right before City 1 under the zone's own night sky, so the game's
+    first cinematic is at night and its first level at dawn. And the outros after the Sewer Swarm and The House
+    (placeholder cards for now) will be under their zone's own sky. Placeholder: a zone's intro and outro keep the
+    zone's own sky (`CineStage.sky_for` gives only a boss's intro a level sky). Should the City's intro show the
+    dawn, and should an outro keep the fight's sky?
+406. **Bosses under the street's light** (GDD §5). The street's light under a level sky (`scenery_tint`) reaches what
+    is drawn with the street's own shaders, and two fights are built partly that way: The House's cabinet dims to
+    about 70% and turns lavender under Marketplace 2's sunset, and the Swarm Host's body and pipe take Gangland 3's
+    red. Their glowing parts (weak points, reels, 7 buttons, warnings) keep their light, and a level's darkness
+    already reaches these bodies the same way. Placeholder: they are lit like the street. Or should a boss's body
+    keep its own light (a per-material opt-out in `kit_solid`)?

@@ -19,6 +19,7 @@ NOTE: Mark tasks as done as you complete them.
 
 - [x] Keep the first bombing run as it is. In the next bombing run, instead of one target at a time, drop bombs on two to four spots at once, with one or two bombs on each. To keep it fair, the first spot in a salvo is closest to the player and each later one a little further away, so the player can see the path they'll have to take before the bombs are released. DONE (task E1g): both later runs (phases 2 and 3) drop salvos of 2–4 spots (`salvo_spots` in `data/bosses/city_boss_tuning.tres`: set the last number to 1 to keep the third phase's run as it was). Every salvo leaves a way through, checked at 3, 5 and 6 lanes. The open choices are in `docs/OPEN_QUESTIONS.md` §D, items 396–399.
 - [x] Answers on the salvos: (1) increase the difficulty on five or more lanes; (2) make the spots tighter; (3) the later runs a little longer, for the longer salvos; (4) far spots the same colour. DONE (task E1g): on 5 and 6 lanes a spot takes up to three bombs side by side, placed so only one way through is left (`salvo_wide_lanes`, `salvo_wide_bombs`, `salvo_wide_choices`); spots 10 m apart instead of 12 m (`salvo_spacing`); later runs 6.5 s instead of 5.6 s (`later_run_seconds`), enough for two salvos of four spots; every target circle stays the same red at any distance (it was tinted by the City's purple fog far away).
+- [x] The third phase keeps its salvos; three bombs per spot is okay; on five or more lanes a choice of two lanes is okay, and on 3 lanes the salvo is a forced path. DONE (task E1g): every street now places its spots to leave the runner as few lanes as possible: one lane on 3 lanes (one or two bombs a spot), a choice of two from 5 lanes (up to three bombs). Open questions 396 and 397 answered.
 
 ## Gangland boss intro (October 9, 2026)
 
@@ -32,7 +33,11 @@ NOTE: Mark tasks as done as you complete them.
 
 - [x] Gangland 3's sky becomes a cloudy blood red, to show the player is coming up on a fiery section; Gangland 1 and 2 keep theirs. DONE: `data/skies/gangland_blood_red.tres`.
 - [x] Neon City 3's sky shows the sun just starting to rise: pinks and purples touching the undersides of clouds. DONE: `data/skies/city_dawn.tres`.
-- [x] The Marketplace's third level gets a darkening sky as the sun sets: deep blues, with pinks at the very bottom of the sky. DONE on Marketplace 2, the zone's last level (the Marketplace has two levels; to confirm): `data/skies/marketplace_sunset.tres`.
+- [x] The Marketplace's third level gets a darkening sky as the sun sets: deep blues, with pinks at the very bottom of the sky. DONE on Marketplace 2, the zone's last level (the Marketplace has two levels; the owner confirmed it on October 9, 2026): `data/skies/marketplace_sunset.tres`.
+- [x] Follow-up: the dawn fits City 1 better thematically: move it there, and City 3 goes back to the dark night sky. DONE.
+- [x] Follow-up: the boss fight after a level whose sky changed has that level's sky. DONE (`Campaign.configure_boss`): the Sewer Swarm and The House, and the Sewer Swarm's intro before its fight (`CineStage.sky_for`).
+- [x] Follow-up: the street lighting follows the sky, if it adds little code and no performance cost. DONE: one colour factor per level sky (`scenery_tint`), one multiply per pixel in the scenery shaders that already follow a level's darkness.
+- [x] Follow-up: leave Gangland's smoke columns as they are. Left alone.
 
 ## Enforcer Truck follow-up (October 7, 2026)
 

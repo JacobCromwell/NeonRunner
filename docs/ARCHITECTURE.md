@@ -2101,20 +2101,32 @@ factor is given for linear space; `light_factor()` in `kit_common.gdshaderinc` (
 `ZoneSkin.energy_factor()` for the environment) converts it for the Compatibility renderer's sRGB
 space, so both renderers dim alike. A new skin gets it by drawing its scenery with the kit, or by
 reading `scenery_light` (through `light_factor`) in a shader of its own, or by overriding
-`apply_darkness()` (calling it first). Only the run that set the light last resets it when it ends
+`apply_darkness()` (calling it first). A scenery shader of its own also multiplies its lit colour by
+`scenery_tint` right after (a level sky's street light; `test_level_sky` checks every shader that reads
+`scenery_light` does). Only the run that set the light last resets it when it ends
 (`LevelRun`). `skin_review` takes `--darkness=X` to look at it.
 
 **A level's own sky** (`LevelConfig.sky`, a `LevelSky` in `data/skies/`; owner, October 8, 2026). Most
-levels keep their zone's sky; a zone's last level may show the time of day or the weather turning, for a
-sense of progression: City 3 a dawn (`city_dawn`: the sun about to rise, pinks and purples on the
-undersides of clouds), Gangland 3 a cloudy blood-red sky (`gangland_blood_red`), Marketplace 2, the
-zone's last level, a sunset (`marketplace_sunset`: deep blue overhead, pink at the bottom of the sky).
+levels keep their zone's sky; a few show the time of day or the weather turning, for a sense of
+progression: City 1 a dawn (`city_dawn`: the sun about to rise, pinks and purples on the undersides of
+clouds), Gangland 3 a cloudy blood-red sky (`gangland_blood_red`), Marketplace 2, the zone's last level,
+a sunset (`marketplace_sunset`: deep blue overhead, pink at the bottom of the sky). The boss fight after a
+level keeps that level's sky (`Campaign.configure_boss`, unless the arena has its own), so the Sewer Swarm
+fights under Gangland 3's and The House under Marketplace 2's.
 `ZoneSkin.level_environment(darkness, sky)` builds the zone's environment, then `LevelSky.apply()` sets
 the sky's `night_sky.gdshader` uniforms over the zone's (by name; its colours go as sRGB `Vector3`s, as the
 Dead Zone's do, so both renderers draw them alike) and the distance fog's colour (so far scenery fades
-into that sky); the darkness comes after, as for any level. Nothing else changes: the ambient light, the
-sun, every glow and the fog's reach stay the zone's, so hazards read as in the zone's other levels, and a
-sky stays under the glow threshold, so it never blooms (`test_level_sky`). The zone's own environment is
+into that sky), and `ZoneSkin.set_scenery_tint()` sets the street's light under it (`LevelSky.scenery_tint`,
+white without a level sky); the darkness comes after, as for any level. The tint is the global shader
+uniform `scenery_tint` (project.godot, a `vec3`): every scenery shader that follows a level's darkness
+multiplies its lit colour by it right after `light_factor(scenery_light)` (one multiply per pixel; the
+Compatibility renderer's sRGB equivalent is worked out once in `set_scenery_tint()`, not per pixel), and
+no glow, hazard, enemy or runner shader reads it. A boss model built from the kit's solid shader (The
+House's cabinet, the Swarm Host's body and pipe) takes it as a level's darkness reaches it; its glowing
+parts don't (open question 406). A tint only dims or tints (each channel at most 1), and
+the run puts it back to white when it ends (`LevelRun`). Nothing else changes: the ambient light, the sun,
+every glow and the fog's reach stay the zone's, so hazards read as in the zone's other levels, and a sky
+stays under the glow threshold, so it never blooms (`test_level_sky`). The zone's own environment is
 never touched (each `make_environment()` builds its own sky material). The sky shader's looks for a level
 sky all default to off, so no zone's own sky changes: `horizon_falloff` (0.55: how far down the zenith's
 colour reaches), a glow low over the horizon at a bearing (`sun_glow_*`, where the sun is about to rise
@@ -2123,9 +2135,12 @@ band at the horizon and stretched across the street; its undersides catch `cloud
 toward `sun_glow_direction` by `cloud_lit_focus` (0: lit from all around, as by Gangland's fires), on the
 lower clouds, on their thin edges and on each cloud's side facing the light). The clouds cost six octaves
 of value noise per visible sky pixel, only where a level has them; no `TIME`, so the sky's radiance still
-never updates. Endless mode, which copies its zone's last level, keeps the zone's own sky
-(`App.start_endless`), as do boss fights (`Campaign.configure_boss` builds the arena's own config) and
-cinematics (`CineStage`: `level_environment(0.0)`). `skin_review` takes `--sky=name` to look at one.
+never updates. Endless mode, which copies its zone's last level, keeps the zone's own sky and light
+(`App.start_endless`), as do a zone's intro and outro (open question 405); a boss's intro (the Sewer
+Swarm's) is under the fight's sky, so the sky holds from the level through the intro to the fight (open
+question 404) (`CineStage.sky_for`, the
+arena's own or the zone's last level's; `CineStage.build` passes it to `level_environment(0.0, sky)`).
+`skin_review` takes `--sky=name` to look at one.
 
 The kit's solid shader (`kit_solid.gdshader`) draws surface patterns chosen per vertex (`MeshKit.PAT_*`):
 panels, glass, glyphs and chevrons for the City; worn asphalt (with sand drifts and scorch around holes),
@@ -2821,7 +2836,7 @@ plays it; E1e, the owner's playtest fixes; E1f, the fight at the City's speed), 
 | `floating_head_body.gd` (`FloatingHeadBody`) | the body part: the model and its moving parts (face screen, jaw, searchlight gimbal, bay doors, weak-point covers that swing open with the red domes pulsing out: `weak_open`), a solid hull hitbox (`set_hull_solid`: off while pinned), a weak point over each lane near the crown's middle (generous stomp boxes, `stomp_width`/`stomp_depth`/`stomp_top`, as deep as the run's pace makes them, `stomp_depth()`; at 5 and 6 lanes the outermost ones also reach over the outer lanes out to the walls at their own height, `stomp_outer_reach`, where a wall jump or a drop off the ceiling lands: `stomp_covers_outer_lanes`, E1e) and the crown's deck (a concave shape exactly over the drawn hull, `FloatingHeadModel.deck_faces`), both off until a window opens (`set_weak_points_enabled`, `set_top_solid`; `top_height`, `weak_point_world`), the face's state (`screen_power`, `anger`, `eye_charge`, `glitch`, `jaw_open`, and `look_point` for the eyes to watch the laser's aim), where its eyes and mouth are (`eye_world`, `mouth_world`), and `exclusive_major_attack` (its lasers and bombs take turns with other big attacks). The slogan's caption band (`show_slogan`, `caption`: a Label3D in the face's cold white over a dark band the face shader draws across the screen's lower part, under the eyes; Label3D translates its text like the UI's labels). Beaten, it stays and keeps drawing itself: `power` fades its lights (per-instance copies of its kit materials' `state_glow`), `wreck(face_rest)` swaps in the wreck and lays its torn-off face in the street (cracked, framed), `crash_dust` and `start_smoke` (soft grey puffs from a radial `GradientTexture2D`) |
 | `floating_head_model.gd` (`FloatingHeadModel`) | the low-poly meshes, built in code from a `Shape` sized to the street and its lanes (MeshKit layers merged into a few surfaces: about 13 surfaces and 11k vertices; the weak points over the lanes within `weak_point_reach` of the middle), the bomb, the crown's deck faces, and `ship_transform` (its pitch and its roll about the crown over the weak points). The wreck (`_wreck`): its stern half (`WRECK_LENGTH`), torn open at both ends (the cut plating and flaps peeled outward), plated inside, dark; `wreck_inner_half` is its inside's half width at a height (the runner's room in it, tested at every lane count) |
 | `floating_head_voice.gd` (`FloatingHeadVoice`) | the propaganda: from the reveal on, a phrase every so often (`head_voice_1-4`, a seeded order and pauses of its own) from a positional player at the face, each with the next slogan (`FloatingHeadTuning.slogans`); it ducks `voice_duck_db` at once under `FloatingHead.warning_active()`, the slogan fades, and no phrase starts until the warnings have been over a moment; `cut()` stops it mid-shout for the defeat (`head_voice_cut`) |
-| `floating_head_bombing.gd` (`FloatingHeadBombing`) | the searchlight and the bombs: the lock (the warning: red light, `circle_warning`, lock sound, the bomb falling with its whistle), the fairness rules (`plan`, `fair`, `escape_lane`), and pooled blast hitboxes (enemy attacks) that keep clear of a wall runner. From the second run on (`salvo_size()`, E1g), a lock is a salvo (`_try_salvo`, `plan_salvo`): 2–4 spots marked at once, nearest first, each next one `salvo_spacing` further and on the lane the way past the one before leads to; on a street of `salvo_wide_lanes` or more, `_plan_wide` instead follows every lane the runner could be in (`_reach`) and makes each spot the block of up to `salvo_wide_bombs` lanes that leaves the fewest (at least `salvo_wide_choices`); `way_through` finds a way through a salvo's spots under its rules, and `dodge_lane` gives the lane to be in for the next spot ahead (the tests' runner, `FloatingHeadBot` and the showcase use it). Its target circles (`_circle`) are `circle_warning`'s with a fog-free copy of its material, the same red at any distance |
+| `floating_head_bombing.gd` (`FloatingHeadBombing`) | the searchlight and the bombs: the lock (the warning: red light, `circle_warning`, lock sound, the bomb falling with its whistle), the fairness rules (`plan`, `fair`, `escape_lane`), and pooled blast hitboxes (enemy attacks) that keep clear of a wall runner. From the second run on (`salvo_size()`, E1g), a lock is a salvo (`_try_salvo`, `plan_salvo`): 2–4 spots marked at once, nearest first, each next one `salvo_spacing` further. `plan_salvo` follows every lane the runner could be in (`_reach`) and makes each spot the block of up to `spot_bombs()` lanes that leaves the fewest, but at least `spot_choices()` (one on 3 lanes, a forced path; two from `salvo_wide_lanes`, with up to three bombs); `way_through` finds a way through a salvo's spots under its rules, and `dodge_lane` gives the lane to be in for the next spot ahead (the tests' runner, `FloatingHeadBot` and the showcase use it). Its target circles (`_circle`) are `circle_warning`'s with a fog-free copy of its material, the same red at any distance |
 | `floating_head_faceoff.gd` (`FloatingHeadFaceOff`) | the face-off: the phase's attacks wait in line (`faceoff_pattern`; the first that can start fairly goes next) with a drag timed for each marked tower. Eye lasers: the warning (the eyes' `eye_charge` and whine, thin aiming beams with a sweep's aim lines or a drag's aiming spot, then the drag's `lane_warning`), a sweep's twin beams (low: both low, jump them; high: one at the waist and one above a jump's reach, like a gapped fence, slide under them) or a drag down the runner's lane leaving a burning line (keeps clear of a wall runner), each with enemy-attack hitboxes. The cyborg drop: the jaw opens (with its sound and `circle_warning`s where they land), then normal cyborgs from the director (`spawn_enemy`) fall from the mouth onto clear roof and fight. A tower's drag is a bait when the runner is in the outer lane on its side as the warning ends, or the fallback after `fallback_after` misses; either calls `FloatingHead.begin_pin`. Lasers wait while its cyborgs are ahead and share the cyborgs' airspace (`CyborgGun.AIRSPACE_META`) |
 | `floating_head_tower.gd` (`FloatingHeadTower`) | a marked tower at the roadside (flush with the facades, its head jutting out over the street above the ship's highest flight so it shows from far along the street; no hitboxes: scenery until it falls): pale concrete with white painted bands and targets, cracks and cold warning lights; the laser's cut glows red-hot as it's clipped, then it topples forward onto the ship (`fall_onto`, `rest_on`), breaks in two as it lands (`break_at`, `tower_mesh`'s sections with torn ends: the lower section drops away), and the rest crumbles away when the ship shakes free |
 | `floating_head_ramp.gd` (`FloatingHeadRamp`) | the first stomp window's way up: the tower's broken slab slammed down in a lane (`ramp_length` long, its top end `ramp_lift` above the crown at the face) in two pieces (E1e): a low lead-in over `ramp_board_share` of it, rising to its knee (`knee_height`: `ramp_board_height`, never above `side_step_limit`, what a lane switch steps up), with bevelled sides a lane switch steps up anywhere along it (`board_until`); then the steeper slab onto the crown, whose sides are a lane blocker down to the trucks. Both tops are floors (convex shapes, where they're drawn); green chevrons up both, the lead-in's edges in the ramp colour; it sinks away when the ship shakes free |
@@ -3174,7 +3189,7 @@ never ends, and a level never starts, unattended.
 | `cine_camera_key.gd` (`CineCameraKey`) | where the camera is (`position`), what it looks at (`target`), `fov`, `roll`; `follow` / `watch` an actor: the point is then an offset from it |
 | `cine_actor.gd`, `cine_actor_key.gd`, `cine_actor_node.gd` | an actor (`RUNNER`: Razor Echo's `PlayerAvatar`; `CYBORG`: a `CyborgBody` in the zone's look or a look of its own, a host or not), its keys (position, pose, heading, the runner's head turn `look`, a cyborg's face, aim and charge) and its node in play |
 | `cine_event.gd` (`CineEvent`) | `SOUND` (a sound effect), `MUSIC` (a track, `@zone`, or none), `TEXT` (a card), `EFFECT` (`fade_in`, `fade_out`, `flash`, `shake`, `letterbox_in`, `letterbox_out`), `CUE` (a script's own moment) |
-| `cine_stage_def.gd`, `cine_stage.gd` (`CineStageDef`, `CineStage`) | the set: a stretch of track built by the `TrackBuilder` in the zone's skin, with its sky and fog (`ZoneSkin.level_environment(0)`) and the run's sun; ceilings, gaps, pads and openings in the side walls (`wall_gaps`, dressed by the skin as in a level); streamed in chunks like a run |
+| `cine_stage_def.gd`, `cine_stage.gd` (`CineStageDef`, `CineStage`) | the set: a stretch of track built by the `TrackBuilder` in the zone's skin, with its sky and fog (`ZoneSkin.level_environment(0, sky)`: before a boss the fight's level sky, `sky_for`, otherwise the zone's own) and the run's sun; ceilings, gaps, pads and openings in the side walls (`wall_gaps`, dressed by the skin as in a level); streamed in chunks like a run |
 | `cine_overlay.gd` (`CineOverlay`) | the 2D layer: letterbox bars, fades, flashes, text cards (menu fonts, capitals) and the Skip button (showing the pause key), in the safe area |
 | `arrival_flyover.gd`, `arrival_flyover_tuning.gd`, `scenes/cinematics/arrival_flyover.tscn`, `data/cinematics/arrival_flyover.tres` | the placeholder arrival flyover (below) |
 | `city_outro.gd`, `city_outro_set.gd`, `city_outro_tuning.gd`, `scenes/cinematics/city_outro.tscn`, `data/cinematics/city_outro_tuning.tres` | the Neon City's outro (below) and its props |
@@ -3188,7 +3203,9 @@ counted from the start lane too (a lane past the street's edge is left out).
 
 **The stage picks up the slot's look from the zone's data.** A stage def without a skin of its own takes
 the slot's (`CineStage.skin_for`): the zone's skin (`ZoneDef.skin`), and before a boss the fight's arena's
-(`BossDef.arena.skin`) if it has one. Its lanes default to the device's (`App.lane_count()`), so the street
+(`BossDef.arena.skin`) if it has one. Before a boss it is under the fight's sky too (`CineStage.sky_for`: the
+arena's own level sky, else the zone's last level's, as `Campaign.configure_boss` gives the fight; G8), and the
+street's light under it; a zone's intro and outro keep the zone's own sky. Its lanes default to the device's (`App.lane_count()`), so the street
 matches the level that follows. A `@zone` music cue plays the slot's track (`ZoneDef.music`, or before a
 boss `BossDef.music` if set); a track the music library doesn't list yet is skipped quietly and the music
 playing carries on, so a song the owner adds later under that name just plays (no music is generated for

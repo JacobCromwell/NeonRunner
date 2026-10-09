@@ -195,11 +195,12 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 
 Level names approved by the owner (September 26, 2026).
 
-**Skies show progression** (owner, October 8, 2026). Most levels keep their zone's sky; a zone's last level changes it, so the player sees time passing and what lies ahead:
-- **Neon City 3:** the sun just starting to rise, with pinks and purples touching the undersides of clouds.
+**Skies show progression** (owner, October 8, 2026). Most levels keep their zone's sky; a few change it, so the player sees time passing and what lies ahead:
+- **Neon City 1:** the sun just starting to rise, with pinks and purples touching the undersides of clouds. *(Moved from City 3, which fits it less well thematically; City 2 and 3 keep the dark night sky.)*
 - **Gangland 3:** a cloudy, blood-red sky, warning that a fiery stretch lies ahead.
-- **Marketplace:** a darkening sky as the sun sets, with deep blues and pinks at the very bottom of the sky. The owner asked for it on the zone's third level; the Marketplace has two, so it is on **Marketplace 2**, its last *(to confirm)*.
-- Only the sky and the distant haze change. Hazards keep their colours, and the sky never glows.
+- **Marketplace:** a darkening sky as the sun sets, with deep blues and pinks at the very bottom of the sky. The owner asked for it on the zone's third level; the Marketplace has two, so it is on **Marketplace 2**, its last (confirmed by the owner, October 9, 2026).
+- **The boss fight after a level keeps that level's sky** (the Sewer Swarm under Gangland 3's, The House under Marketplace 2's). *(Proposed)* So does the boss's intro between them (the Sewer Swarm's), so the sky holds from the level to the fight.
+- **The street's light follows the sky** (dimmer and pinker under the sunset, redder under the blood-red sky, a touch of pink at dawn). The sky, the distant haze and the scenery's light change; hazards, the runner and the enemies keep their colours and light, and the sky never glows. *(Proposed)* A boss built like the street (The House's cabinet, the Swarm Host's body and pipe) is lit like it, as a level's darkness already lights it; its glowing parts (weak points, reels, buttons, warnings) keep theirs.
 
 **15 levels plus 6 bosses.** A flawless run through every level takes about 35 minutes. With retries and bosses, a first playthrough is estimated at 60–90 minutes.
 
@@ -578,8 +579,8 @@ Shared interaction rules apply unless stated otherwise:
   - **Face-off attacks:** **eye lasers** while it looks at the player. *(Proposed)* The eyes glow and whine, then twin beams sweep across the lanes: jump a low sweep, slide under a high one, or switch lanes when a beam drags down a lane. **Cyborg drop** (kept): its mouth opens and drops 1–2 cyborgs onto the trucks ahead, who then fight like normal cyborgs.
   - **First laser is jumpable without dash** (owner's playtest, October 2, 2026): the low horizontal sweep must fit within a normal jump started at the firing cue, without requiring the dash power-up. High sweeps still require a slide; lane drags still require changing lanes.
   - **Back to the sky:** once or twice during the fight it rises for another bombing run (shorter than the first).
-    - **Salvos** (owner, October 9, 2026): the first bombing run stays as it is (one spot at a time, one or two bombs). In the next run, the light marks **two to four spots at once**, each hit by **one or two bombs**. The first spot is the closest to the player and each later one a little further along the track, so the player can see the path they'll have to take before the bombs are released. *(Proposed: the third phase's run drops salvos too.)*
-      - **Harder on five or more lanes** (owner, October 9, 2026), where a player could otherwise step clear of a whole salvo. *(Proposed)* There a spot takes up to **three bombs side by side**, placed to leave the player as few lanes as possible (always at least one way through), so the salvo marks a path they have to take.
+    - **Salvos** (owner, October 9, 2026): the first bombing run stays as it is (one spot at a time, one or two bombs). In the next run, the light marks **two to four spots at once**, each hit by **one or two bombs**. The first spot is the closest to the player and each later one a little further along the track, so the player can see the path they'll have to take before the bombs are released. The third phase's run drops salvos too (owner, October 9, 2026).
+      - **How each spot is placed** (owner, October 9, 2026): each spot leaves the player as few lanes as possible, always at least one way through. **On 3 lanes** a spot takes one or two bombs and leaves **one lane: a forced path**. **On five or more lanes**, where a player could otherwise step clear of a whole salvo, it's harder: a spot takes up to **three bombs side by side** and leaves **a choice of two lanes**.
       - **Spots closer together** (owner, October 9, 2026): tighter than the first 12 m apart *(proposed: 10 m at 18 m/s, about 0.56 s from one blast to the next)*.
       - **Later runs a little longer** (owner, October 9, 2026), to fit the longer salvos: **6.5 seconds** instead of 5.6.
       - **Far spots look the same** (owner, October 9, 2026): every target circle is the same red at any distance (the City's fog doesn't tint the far ones).
