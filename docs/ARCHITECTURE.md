@@ -938,7 +938,7 @@ counts, not merely interpreted as a spawn-probability multiplier. City uses 0.15
 0.18/0.20/0.22; Marketplace 0.24/0.26; Casino 0.27/0.27; Corporate 0.28/0.29; Dead Zone 0.37; Golden
 0.38/0.39/0.39 (Golden 2 and 3 were 0.38 until the Casino re-spaced the curve, task K2: the final band's
 measured increase at 3 lanes had slipped to x1.297; the pass is short of fair room there, so the dial buys
-little, `docs/questions/k2.md`).
+little, `docs/OPEN_QUESTIONS.md` §D, item 386).
 Prototype and boss arenas stay at 0, which draws nothing and preserves the old layout exactly.
 Numbers and safety margins live in `data/tuning/danger_density.tres`.
 
@@ -2538,7 +2538,7 @@ quietly and the menu music carries on). Only the City is in the web demo. The cu
 over the 17 levels (FB 4, FB 5), re-spaced when the Casino's two came in (task K2: each existing level's
 difficulty and `enemy_scaling` moved, Marketplace 2 from 0.50 to 0.45 and Corporate 1 from 0.56 to 0.60;
 the enemy numbers that step at a threshold of `enemy_scaling` were moved in data so every existing
-level keeps its own, `docs/questions/k2.md`); which level is the peak (proposed: Golden 2, with Golden 3 a little
+level keeps its own, `docs/OPEN_QUESTIONS.md` §D, items 384-386); which level is the peak (proposed: Golden 2, with Golden 3 a little
 below it) and the remaining level lengths (DESIGN-TBD, run 120–150 s) stay open.
 Zone & Levels 1 shortens only City 1 (Rooftop Rush) from 110 to 55 seconds via
 `data/levels/city_1.tres`'s `duration_seconds`; all other level durations stay unchanged.

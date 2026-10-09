@@ -17,7 +17,7 @@ NOTE: Mark tasks as done as you complete them.
 
 ## Casino zone (October 8, 2026)
 
-- [ ] Add a Casino zone right after the Marketplace: two Marketplace levels on the way to the Casino, then two Casino levels, then The House, which moves from the Marketplace to the Casino. Don't create new character or enemy skins (no new cyborg, truck, heli drone and so on): use the Marketplace's. Only the walls, floors, ceilings and background change, following the owner's reference image (`docs/art/reference/casino_zone.webp`). Tasks K1 (the skin) and K2 (the campaign).
+- [x] Add a Casino zone right after the Marketplace: two Marketplace levels on the way to the Casino, then two Casino levels, then The House, which moves from the Marketplace to the Casino. Don't create new character or enemy skins (no new cyborg, truck, heli drone and so on): use the Marketplace's. Only the walls, floors, ceilings and background change, following the owner's reference image (`docs/art/reference/casino_zone.webp`). Tasks K1 (the skin) and K2 (the campaign). DONE: the Casino is Zone 4 with two levels (*Brass Arcade* and *House Edge*, proposed names) and The House; the Marketplace has its two levels and no boss. Open points for the owner: `docs/OPEN_QUESTIONS.md` §D, items 369–389 (the skin's look, the 17-level difficulty curve, music, level names).
 
 ## Level skies (October 8, 2026)
 

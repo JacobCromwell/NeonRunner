@@ -607,7 +607,7 @@ Shared interaction rules apply unless stated otherwise:
   - **Performance on phones** (owner, October 2, 2026): build it now with crowd sizes that scale (set in data, and smaller on low-end devices); the phone test (risk test R4, task E3) comes later and sets the sizes.
   - **Defeat: the Host is freed.** The screeches scatter, the implants short out, and the person slumps free.
 - **The House** (Casino; it was the Marketplace's boss until the owner added the Casino zone on October 8, 2026, and the fight itself is unchanged). The design round's pitch, approved by the owner (September 26, 2026). The owner will playtest it once built and may revisit it.
-  - **What it is:** a **slot machine the size of a building**, rolling down the market street on treads, lights blazing and jingling. Loud, gaudy and a little ridiculous, to match the Marketplace's happy mood. The citizens in the shop windows cheer and duck throughout.
+  - **What it is:** a **slot machine the size of a building**, rolling down the casino street on treads, lights blazing and jingling. Loud, gaudy and a little ridiculous, to match the Marketplace's happy mood that the Casino carries on. The citizens in the shop windows cheer and duck throughout.
   - **Tied to the villain:** the cult secretly owns the casino. Its symbol is hidden on the machine, and the jackpot money flows up to the Golden Zone. The owner is also open to making the tie direct.
   - **The spin (the warning):** it paces ahead of the player and yanks its giant lever. Three huge reels on its chest spin and stop one at a time, each with a *ding*, over about 2 seconds. The symbols announce the attacks, in reel order:
     - **Cherry:** cherry bombs lobbed into lanes, with target circles on the floor (the Floating Head's bomb warning).
@@ -615,7 +615,7 @@ Shared interaction rules apply unless stated otherwise:
     - **BAR:** heavy gold blocks slammed down into lanes; switch around them.
     - Two or three of a kind make a bigger version of that attack. Three symbols are enough for now.
   - **Rigging the jackpot:** while the reels spin, big glowing **7 buttons** appear along the route. Running over one locks its reel on 7. With all three locked: **JACKPOT**. Sirens go off, the machine overloads and sprays a fountain of real credits to grab, and its **coin hopper bursts open on top** as a glowing red weak point while it sags low. The player **stomps** it.
-  - **Three phases,** with the buttons getting harder to reach, as the Marketplace's final exam: (1) all three on the floor; (2) one on a wall, with wall fences in play; (3) one on a ceiling reached by an anti-grav pad, guarded by Barnacle Turrets.
+  - **Three phases,** with the buttons getting harder to reach, as the final exam of the Marketplace's mechanics, which the Casino reuses: (1) all three on the floor; (2) one on a wall, with wall fences in play; (3) one on a ceiling reached by an anti-grav pad, guarded by Barnacle Turrets.
   - **Missed buttons:** it just spins again (no time limit, no escalation). Weapons chip away at it; stomps do the real damage.
   - **Defeat:** the reels spin wildly and jam, "TILT" flashes, and it collapses in an explosion of coins while the shops erupt in cheers.
   - **Pickups:** the standard armor rule (15–17 seconds).
