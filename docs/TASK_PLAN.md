@@ -393,7 +393,9 @@ The owner played every zone and the Floating Head. The feedback is in GDD §3 ("
 3. **E5d-c:** the Refill Ship (the ship, its feed line and belly ceiling, the fence cage with its lengthwise sides and its generator, the pad, the strafe holding its fire, the chain reaction and its damage) and stage 1's three phases with their loops and the suit's damage; the bot wins stage 1 at 3, 5 and 6 lanes.
 4. **E5d-d:** stage 2, The Magnate (his model, the transition and the checkpoint, the chase with its marker and overtakes, the Pounce, the buttress bait, the stun and the stomp, the Cable Lash), the defeat (the feed dies), the campaign slot (`scene`), par times and rewards; the bot wins the whole fight.
 
-**Done:** all four steps. E5d-d merged before E5d-c, so E5d-c also switched the slot to `scene` (the campaign plays the fight after Golden 3), set the par times from the bot's clean whole fight, and has the bot win the whole fight at 3, 5 and 6 lanes and 18 and 25 m/s (`test_golden_convergence_whole`).
+5. **E5d-e:** the owner's playtest of stage 2 (GDD §10, "Owner's playtest (October 9, 2026)", approved the same day): the Claw Slash (`slash`, `slash:double`), the Screen Storm (`screens`: the feed's screens on gold tentacles, a fair plan at every lane count, three screens a storm chipping him), the arena about 30% darker from the transition to his fall, new beat scripts with a shorter beat gap, the stomp easier to read (green chevrons, at least 1.5 s from the stun to the last take-off); six sounds, two hints, showcase scenarios, the bot's readers, tests and new par times. Questions: `docs/questions/e5d.md`, E5d-e.
+
+**Done:** all four steps. E5d-d merged before E5d-c, so E5d-c also switched the slot to `scene` (the campaign plays the fight after Golden 3), set the par times from the bot's clean whole fight, and has the bot win the whole fight at 3, 5 and 6 lanes and 18 and 25 m/s (`test_golden_convergence_whole`). E5d-e, the owner's playtest of stage 2, is built (`test_golden_convergence_slash`, `test_golden_convergence_storm`; the whole fight won again at every lane count and speed, the par times re-measured).
 
 ### F. Cinematics
 

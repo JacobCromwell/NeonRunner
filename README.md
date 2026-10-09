@@ -349,10 +349,19 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   shadow and a marker at the bottom of the screen show his lane). His Pounce: a roar as the marker turns red,
   a leap over the runner, locking onto their lane about a second before he lands, a red square where he will
   (leave the lane; a jump won't clear him). Every second Pounce raises a Flying Buttress: be in its lane as he
-  locks on and he crashes into its gate, stunned across two lanes; jump onto his back to stomp a red port on
-  his spine, one stomp a phase. From phase 5 his Cable Lash whips across every lane after a rising crackle and
-  a red line (low: jump it; high: slide under it). When he falls the feed dies: his cables tear out, the
-  screens go dark outward, the music cuts out, and he collapses as the runner runs past
+  locks on and he crashes into its gate, stunned across two lanes; green chevrons on the floor show where to
+  take off, and a jump onto his back stomps a red port on his spine, one stomp a phase. After the owner's
+  playtest (task E5d-e) the court grows about 30% darker through the transition, and his beats come closer
+  together. His Claw Slash: a sharp snarl as the marker flashes red and red claw marks flash in the runner's
+  lane; half a second later he lunges in from behind and swipes that lane, higher than a jump (switch lanes;
+  in phase 6 he slashes twice, the second time at the lane the runner dodged into). His Screen Storm: up on a
+  balustrade ahead of the runner, he brings the feed's screens crashing down from the vault on gold tentacles,
+  10 to 16 over about 5 s, each marked by a red square, its growing shadow and a rising glitch-whine about
+  0.9 s before it hits; a runner who moves a reaction time after each warning always has a way through. Three
+  screens a storm crash onto him instead, each a twelfth of the phase's health, so four storms end a phase as
+  well as a stomp. From phase 5 his Cable Lash whips across every lane after a rising crackle and
+  a red line (low: jump it; high: slide under it). When he falls the light comes back and the feed dies: his
+  cables tear out, the screens go dark outward, the music cuts out, and he collapses as the runner runs past
   (`tools/showcase/golden_convergence_magnate_showcase.tscn` shows him and each part).
 - **Protection:** every level and boss fight starts with free armor: it blocks an enemy attack or an
   electrical hazard (never a crash or a fall) and comes back 30 s after it breaks; the HUD shows its hits
