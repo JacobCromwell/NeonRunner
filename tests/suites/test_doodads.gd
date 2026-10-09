@@ -54,6 +54,7 @@ func run() -> void:
 	_test_keep_outs()
 	await _test_track()
 	_test_skins()
+	_test_cards()
 	await _test_push()
 	await _test_jump_and_slide()
 	await _test_mid_switch()
@@ -444,11 +445,48 @@ func _test_skins() -> void:
 					var glows: bool = false
 					for surface: int in inst.mesh.get_surface_count():
 						var arrays: Array = inst.mesh.surface_get_arrays(surface)
-						for col: Color in arrays[Mesh.ARRAY_COLOR]:
-							glows = glows or col.a > 0.0
-					check(not glows and inst.material_override == MeshKit.solid(), "%s's %s doodad is lit, never glowing" % [file, size])
+						if arrays[Mesh.ARRAY_COLOR] != null:
+							for col: Color in arrays[Mesh.ARRAY_COLOR]:
+								glows = glows or col.a > 0.0
+					var lit: bool = inst.material_override == MeshKit.solid() or DoodadCards.is_card_material(inst.material_override)
+					check(not glows and lit, "%s's %s doodad is lit, never glowing" % [file, size])
 				body.free()
 	check(skins >= 7, "every skin's doodads looked at (%d)" % skins)
+
+
+## The zones' picture cards (DoodadCards; owner's request October 9, 2026): every zone's manifest
+## loads and gives each size class a look, was painted for today's box sizes (rerun `tools/godot.sh
+## doodads` after changing MovementTuning's doodad sizes), and every card shows a picture from its
+## atlas on a plane inside its box. The card shader never emits light.
+func _test_cards() -> void:
+	var shader := load(DoodadCards.SHADER_PATH) as Shader
+	check(shader != null and not shader.code.contains("EMISSION"), "the doodad card shader is lit scenery, never emissive")
+	for zone: String in DoodadCards.ZONES:
+		var cards := DoodadCards.for_zone(zone)
+		check(cards.ok, "%s has doodad cards (tools/godot.sh doodads)" % zone)
+		if not cards.ok:
+			continue
+		var m: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(DoodadCards.DIR.path_join(zone + ".json")))
+		var boxes: Dictionary = m["boxes"]
+		var images: Dictionary = m["images"]
+		for size: StringName in LevelLayout.DOODAD_SIZES:
+			var box: Vector3 = tuning.doodad_size(size)
+			var drawn: Array = boxes.get(String(size), [])
+			check(drawn.size() == 3 and Vector3(float(drawn[0]), float(drawn[1]), float(drawn[2])).is_equal_approx(box),
+				"%s's %s pictures were painted for today's box %s (%s): rerun tools/godot.sh doodads" % [zone, size, box, drawn])
+			var looks: Array = cards.designs.get(String(size), [])
+			check(not looks.is_empty(), "%s has a %s look" % [zone, size])
+			for d: Dictionary in looks:
+				var tag: String = "%s's %s look %s" % [zone, size, d["name"]]
+				check(not (d["cards"] as Array).is_empty(), "%s has cards" % tag)
+				for c: Dictionary in d["cards"]:
+					var rect: Array = c["rect"]
+					var at: float = float(c["at"])
+					check(images.has(String(c["image"])), "%s shows a picture in its atlas (%s)" % [tag, c["image"]])
+					check(String(c["plane"]) in ["x", "y", "z"] and at >= 0.0 and at <= 1.0, "%s's cards lie on planes inside its box" % tag)
+					check(rect.size() == 4 and float(rect[0]) >= 0.0 and float(rect[1]) >= 0.0 and float(rect[2]) <= 1.0
+						and float(rect[3]) <= 1.0 and float(rect[0]) < float(rect[2]) and float(rect[1]) < float(rect[3]),
+						"%s's cards stay inside its box (%s)" % [tag, rect])
 
 
 # --- The push on real physics ------------------------------------------------------------------

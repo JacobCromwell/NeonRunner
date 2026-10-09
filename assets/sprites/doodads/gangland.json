@@ -1,0 +1,355 @@
+{
+	"zone": "gangland",
+	"generated_by": "tools/asset_gen/doodad_art_gen.gd (tools/godot.sh doodads)",
+	"atlas": "res://assets/sprites/doodads/gangland.png",
+	"atlas_size": [
+		2048,
+		1024
+	],
+	"px_per_m": 96.0,
+	"boxes": {
+		"small": [
+			1.29999995231628,
+			2.59999990463257,
+			1.39999997615814
+		],
+		"medium": [
+			1.89999997615814,
+			2.59999990463257,
+			3.59999990463257
+		],
+		"large": [
+			2.0,
+			2.59999990463257,
+			6.5
+		]
+	},
+	"images": {
+		"shack_top": [
+			8,
+			8,
+			192,
+			624
+		],
+		"van_top": [
+			208,
+			8,
+			182,
+			346
+		],
+		"drums_front": [
+			398,
+			8,
+			125,
+			250
+		],
+		"drums_side": [
+			531,
+			8,
+			134,
+			250
+		],
+		"shack_end": [
+			673,
+			8,
+			192,
+			250
+		],
+		"shack_side": [
+			873,
+			8,
+			624,
+			250
+		],
+		"van_front": [
+			1505,
+			8,
+			182,
+			250
+		],
+		"van_side": [
+			8,
+			640,
+			346,
+			250
+		],
+		"shack_inside": [
+			362,
+			640,
+			624,
+			192
+		],
+		"drums_top": [
+			994,
+			640,
+			125,
+			134
+		],
+		"van_cab": [
+			1127,
+			640,
+			182,
+			96
+		],
+		"van_inside": [
+			1317,
+			640,
+			276,
+			96
+		]
+	},
+	"designs": {
+		"small": [
+			{
+				"name": "drum_stack",
+				"colors": [
+					"754d33",
+					"614733",
+					"211f1f"
+				],
+				"cards": [
+					{
+						"plane": "z",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "drums_front",
+						"flip": false
+					},
+					{
+						"plane": "z",
+						"at": 0.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "drums_front",
+						"flip": true
+					},
+					{
+						"plane": "x",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "drums_side",
+						"flip": false
+					},
+					{
+						"plane": "x",
+						"at": 0.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "drums_side",
+						"flip": true
+					},
+					{
+						"plane": "y",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "drums_top",
+						"flip": false
+					}
+				]
+			}
+		],
+		"medium": [
+			{
+				"name": "burned_van",
+				"colors": [
+					"9e8561",
+					"754d33",
+					"1f1a17"
+				],
+				"cards": [
+					{
+						"plane": "z",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "van_front",
+						"flip": false
+					},
+					{
+						"plane": "z",
+						"at": 0.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "van_front",
+						"flip": true
+					},
+					{
+						"plane": "x",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "van_side",
+						"flip": false
+					},
+					{
+						"plane": "x",
+						"at": 0.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "van_side",
+						"flip": true
+					},
+					{
+						"plane": "y",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "van_top",
+						"flip": false
+					},
+					{
+						"plane": "z",
+						"at": 0.8,
+						"rect": [
+							0.08,
+							0.519230788276041,
+							0.92,
+							0.846153877190585
+						],
+						"image": "van_cab",
+						"flip": false
+					},
+					{
+						"plane": "x",
+						"at": 0.5,
+						"rect": [
+							0.12,
+							0.519230788276041,
+							0.86,
+							0.846153877190585
+						],
+						"image": "van_inside",
+						"flip": false
+					}
+				]
+			}
+		],
+		"large": [
+			{
+				"name": "broken_shop",
+				"colors": [
+					"807366",
+					"754d33",
+					"856647"
+				],
+				"cards": [
+					{
+						"plane": "z",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "shack_end",
+						"flip": false
+					},
+					{
+						"plane": "z",
+						"at": 0.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "shack_end",
+						"flip": true
+					},
+					{
+						"plane": "x",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "shack_side",
+						"flip": false
+					},
+					{
+						"plane": "x",
+						"at": 0.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "shack_side",
+						"flip": true
+					},
+					{
+						"plane": "y",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "shack_top",
+						"flip": false
+					},
+					{
+						"plane": "x",
+						"at": 0.5,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							0.769230797445987
+						],
+						"image": "shack_inside",
+						"flip": false
+					}
+				]
+			}
+		]
+	}
+}
