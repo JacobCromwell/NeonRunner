@@ -42,13 +42,14 @@ const PATH: String = "res://data/tuning/dash_walls.tres"
 
 @export_group("Placement")
 ## A level that gives the feature a start (LevelConfig.feature_starts: Corporate 1, after the Buzz Overdrive's
-## introduction) introduces it at the first fair spot from there, alone, within this many seconds of run when
-## one fits (task C2's and B5's introductions do the same).
-@export_range(0.0, 60.0, 1.0, "suffix:s") var intro_seconds: float = 20.0
+## introduction) introduces it at the first fair spot from there; where none comes within this many seconds of
+## run, it makes room for one there (dash_wall_rules.gd: taking out a few enemies, never the last of their kind
+## nor another feature's introduction), so the player meets it right after its first-encounter hint.
+@export_range(2.0, 30.0, 0.5, "suffix:s") var intro_window_seconds: float = 10.0
 ## Plain holes and fences (never a pulsing fence or one a fence generator powers) and signs on a side wall
 ## that stand where a wall would need clear track may be taken out to make room for it (taking content out
-## never makes a level unfair); a spot that needs nothing taken out is preferred. Off: walls stand only where
-## the track is clear already.
+## never makes a level unfair); a spot that needs nothing taken out is preferred (but for the introduction,
+## which takes the first fair spot from its start). Off: walls stand only where the track is clear already.
 @export var clear_plain_pieces: bool = true
 ## The grid fronts are tried on (metres): finer finds a spot nearer the one aimed for, coarser is cheaper.
 @export_range(0.25, 4.0, 0.25, "suffix:m") var search_step: float = 1.0

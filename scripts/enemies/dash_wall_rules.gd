@@ -56,8 +56,8 @@ extends RefCounted
 ## possible face to the last cut into as many parts, a seeded spot aimed for in each, the best fair spot in
 ## that part taken: nothing to take out first, then the nearest), then the best of the rest wherever a part
 ## had none. A level that gives the feature a start (LevelConfig.feature_starts: Corporate 1, after the Buzz
-## Overdrive's introduction) introduces it first, at the first fair spot from its start (within intro_seconds
-## where one fits). A level with the feature and no fair spot at all gets a warning (the campaign tests fail
+## Overdrive's introduction) introduces it first, at the first fair spot from its start, whatever it takes out
+## there (the player meets it right after its first-encounter hint). A level with the feature and no fair spot at all gets a warning (the campaign tests fail
 ## on any): every feature appears (GDD §5). Its own random stream (LevelGenerator.rng_for), so the rules
 ## before it place exactly what they did; a level without the feature draws nothing and is built byte for
 ## byte as before.
@@ -96,6 +96,9 @@ const NO_KEEP_TYPES: PackedStringArray = ["drone", "enforcer_truck"]
 ## Seconds a hover truck's entrance keeps the walls off past the time it needs to drop behind the runner
 ## (truck_entrance): its first moments of pacing.
 const TRUCK_SETTLE_SECONDS: float = 1.0
+## Enemy types the introduction may take out to make room for itself (_make_room): ones that leave nothing
+## behind but a Buzz Overdrive's own floor cut, which goes with it (never a host: its chase is planned on it).
+const MAKE_ROOM_TYPES: PackedStringArray = ["buzz_overdrive", "generator", "cyborg", "window_cyborg", "screech"]
 
 
 ## One level's walls, at its run speed: what they keep (metres) and where on its track a face may stand.
@@ -174,6 +177,15 @@ class Plan:
 				pick_off = off
 		return face_at(pick) if pick >= 0 else NAN
 
+	## The first face in [a, b] where a wall fits (`fits`), whatever it takes out; NAN if none does.
+	func first(a: float, b: float, faces: Array[float]) -> float:
+		var lo_i: int = maxi(ceili((a - lo) / step - 0.0001), 0)
+		var hi_i: int = mini(floori((b - lo) / step + 0.0001), size() - 1)
+		for i: int in range(lo_i, hi_i + 1):
+			if fits(i, faces):
+				return face_at(i)
+		return NAN
+
 	## Marks the grid spots whose footprint reaches `span` in `marks` (a hard keep-out's in `blocked`, a
 	## plain piece's in `cost`).
 	func mark_span(marks: PackedInt32Array, span: Vector2) -> void:
@@ -241,10 +253,15 @@ static func apply(gen: LevelGenerator) -> void:
 	var faces: Array[float] = []
 	var from: float = plan.lo
 	if gen.config.feature_starts.has(FEATURE):
-		# Its introduction: the first fair spot from its start, within intro_seconds where one fits.
-		var intro: float = plan.best(plan.lo, minf(plan.lo + t.intro_seconds * gen.speed, plan.hi), plan.lo, faces)
+		# Its introduction: the first fair spot from its start (the player meets it right after its hint),
+		# making room for one near the start where none is (_make_room).
+		var window: float = minf(plan.lo + t.intro_window_seconds * gen.speed, plan.hi)
+		var intro: float = plan.first(plan.lo, window, faces)
+		if is_nan(intro) and _make_room(gen, plan, plan.lo, window):
+			plan = plan_for(gen, t)
+			intro = plan.first(plan.lo, window, faces)
 		if is_nan(intro):
-			intro = plan.best(plan.lo, plan.hi, plan.lo, faces)
+			intro = plan.first(plan.lo, plan.hi, faces)
 		if not is_nan(intro):
 			_place(gen, plan, intro, faces)
 			from = intro + plan.spacing
@@ -346,6 +363,153 @@ static func plan_for(gen: LevelGenerator, t: DashWallTuning = null, checking: bo
 			if p.signs_left[i] > 0 and p.signs_right[i] > 0:
 				p.blocked[i] += 1
 	return p
+
+
+## Makes room for the introduction in faces [a, b] (apply()), where no wall fits: the face there that the
+## fewest enemies keep a wall from, all of them of MAKE_ROOM_TYPES (whatever else keeps it, a ceiling, a pad,
+## a ramp, another kind of enemy, rules them out), is cleared of them: each goes from the layout, a Buzz
+## Overdrive with its floor cut. Never the last of a feature, nor any feature's introduction in the level (the
+## first of it from its start): what each feature has first stays where it was. Taking content out never makes a
+## level unfair (as PadPlacement and WideGapPlacement do for their guarantees), and the introduction gets the
+## calm stretch it should have (GDD §6: one new thing at a time). True if anything went.
+static func _make_room(gen: LevelGenerator, plan: Plan, a: float, b: float) -> bool:
+	var lay: LevelLayout = gen.layout
+	var n: int = plan.size()
+	var first_i: int = maxi(ceili((a - plan.lo) / plan.step - 0.0001), 0)
+	var last_i: int = mini(floori((b - plan.lo) / plan.step + 0.0001), n - 1)
+	if first_i > last_i:
+		return false
+	# What keeps each face clear of a wall: `fixed` counts what can't go, `by` the removable enemies.
+	var fixed := PackedInt32Array()
+	fixed.resize(n)
+	fixed.fill(0)
+	var by: Dictionary = {}
+	var mark_fixed := func(span: Vector2, faces_direct: bool) -> void:
+		if faces_direct:
+			plan.mark_faces(fixed, span)
+		else:
+			plan.mark_span(fixed, span)
+	var mark_enemy := func(e: Dictionary, span: Vector2, faces_direct: bool) -> void:
+		var lo_f: float = span.x if faces_direct else span.x - plan.depth - plan.after
+		var hi_f: float = span.y if faces_direct else span.y + plan.approach
+		var i0: int = maxi(ceili((lo_f - plan.lo) / plan.step - 0.0001), first_i)
+		var i1: int = mini(floori((hi_f - plan.lo) / plan.step + 0.0001), last_i)
+		for i: int in range(i0, i1 + 1):
+			if not by.has(i):
+				by[i] = []
+			if not (by[i] as Array).has(e):
+				(by[i] as Array).append(e)
+	var mt: MovementTuning = gen.tuning
+	for s: Dictionary in lay.speed_pads:
+		mark_fixed.call(Vector2(float(s["at"]), float(s["at"]) + mt.speed_pad_length), false)
+	for pad: Dictionary in lay.pads:
+		mark_fixed.call(gen.zones.pad_zone(float(pad["at"])), false)
+	for r: Dictionary in lay.ramps:
+		var at: float = float(r["at"])
+		mark_fixed.call(Vector2(at, maxf(gen.ramp_launch(r).end(), at + mt.ramp_length)), false)
+	for h: Dictionary in lay.hulls:
+		mark_fixed.call(Vector2(float(h["start"]), gen.zones.landing_zone(h).y), false)
+	for d: Dictionary in lay.doodads:
+		mark_fixed.call(Vector2(float(d["start"]), float(d["end"])), false)
+	for k: Dictionary in gen.rules_doodad_keep_outs():
+		if _counts(k):
+			mark_fixed.call(Vector2(float(k["from"]), float(k["to"])), false)
+	var removable: Array[Dictionary] = []
+	var hooks: Dictionary = {}
+	for e: Dictionary in lay.enemies:
+		var type: String = String(e.get("type", ""))
+		var mine: bool = MAKE_ROOM_TYPES.has(type) and not bool((e.get("params", {}) as Dictionary).get("host", false))
+		if mine:
+			removable.append(e)
+		for span: Vector2 in enemy_spans(gen, e, hooks):
+			if mine:
+				mark_enemy.call(e, span, false)
+			else:
+				mark_fixed.call(span, false)
+	# Cuts go with their Buzz Overdrive; any other's stays.
+	for c: Dictionary in lay.cuts:
+		var owner: Dictionary = {}
+		for e: Dictionary in removable:
+			if String(e.get("type", "")) == BUZZ and is_same(BuzzRules.cut_of(lay, e), c):
+				owner = e
+				break
+		if owner.is_empty():
+			mark_fixed.call(FloorCutPlan.window(c, gen.speed), false)
+		else:
+			mark_enemy.call(owner, FloorCutPlan.window(c, gen.speed), false)
+	# Fences: a pulsing one stays; one a generator powers goes with its generators' power (plain, it's cleared).
+	var half: float = mt.fence_depth * 0.5
+	var geo := TrackGeometry.new(lay.lane_count, mt)
+	var gt: FenceGeneratorTuning = GeneratorRules.tuning()
+	for f: Dictionary in lay.fences:
+		var span := Vector2(float(f["at"]) - half, float(f["at"]) + half)
+		if bool(f.get("pulsing", false)):
+			mark_fixed.call(span, false)
+	for e: Dictionary in removable:
+		if String(e.get("type", "")) == GENERATOR:
+			for f: Dictionary in FenceGenerator.fences_in_reach(lay, geo, float(e["at"]), int(e["lane"]), gt.emp_radius):
+				if not bool(f.get("pulsing", false)):
+					mark_enemy.call(e, Vector2(float(f["at"]) - half, float(f["at"]) + half), false)
+	if plan.t.keep_dash_baits:
+		for e: Dictionary in removable:
+			var bait: float = NAN
+			match String(e.get("type", "")):
+				BUZZ:
+					var cut: Dictionary = BuzzRules.cut_of(lay, e)
+					if not cut.is_empty():
+						bait = FloorCutPlan.meet(cut, gen.speed)
+				GENERATOR:
+					bait = float(e["at"])
+			if not is_nan(bait):
+				mark_enemy.call(e, Vector2(bait, bait + plan.spacing), true)
+	# The faces only removable enemies keep, fewest first, then earliest.
+	var candidates: Array[int] = []
+	for i: int in range(first_i, last_i + 1):
+		if fixed[i] == 0 and by.has(i):
+			candidates.append(i)
+	candidates.sort_custom(func(x: int, y: int) -> bool:
+		var nx: int = (by[x] as Array).size()
+		var ny: int = (by[y] as Array).size()
+		return nx < ny or (nx == ny and x < y))
+	var before: Dictionary = _feature_firsts(gen)
+	for i: int in candidates:
+		var going: Array = by[i]
+		if _take_out(gen, going, before):
+			return true
+	return false
+
+
+## Each of the level's features' positions' first (LevelGenerator.feature_positions), or INF for one with none.
+static func _feature_firsts(gen: LevelGenerator) -> Dictionary:
+	var out: Dictionary = {}
+	for f: String in gen.config.features:
+		if f == FEATURE:
+			continue
+		var at: Array[float] = LevelGenerator.feature_positions(gen.layout, f)
+		out[f] = at[0] if not at.is_empty() else INF
+	return out
+
+
+## Takes enemies `going` out of the layout (a Buzz Overdrive with its floor cut), unless that leaves a feature
+## with nothing or moves its first (`before`: _feature_firsts), which keeps every feature and introduction where
+## it was; then nothing goes. True if they went.
+static func _take_out(gen: LevelGenerator, going: Array, before: Dictionary) -> bool:
+	var lay: LevelLayout = gen.layout
+	var enemies: Array[Dictionary] = lay.enemies.duplicate()
+	var cuts: Array[Dictionary] = lay.cuts.duplicate()
+	for e: Dictionary in going:
+		if String(e.get("type", "")) == BUZZ:
+			var cut: Dictionary = BuzzRules.cut_of(lay, e)
+			if not cut.is_empty():
+				lay.cuts.erase(cut)
+		lay.enemies.erase(e)
+	var after: Dictionary = _feature_firsts(gen)
+	for f: String in before:
+		if not is_equal_approx(float(after.get(f, INF)), float(before[f])) and not (is_inf(float(before[f])) and is_inf(float(after.get(f, INF)))):
+			lay.enemies.assign(enemies)
+			lay.cuts.assign(cuts)
+			return false
+	return true
 
 
 ## True if rules keep-out `k` (LevelGenerator.rules_doodad_keep_outs) keeps the walls off: one of every lane

@@ -9,6 +9,6 @@ after_seconds = 0.6
 wall_route_seconds = 0.6
 cooldown_margin_seconds = 1.0
 keep_dash_baits = true
-intro_seconds = 20.0
+intro_window_seconds = 10.0
 clear_plain_pieces = true
 search_step = 1.0

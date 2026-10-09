@@ -14,7 +14,7 @@ guarantee_features = true
 feature_starts = Dictionary[String, float]({
 "buzz_overdrive": 0.1,
 "wall_fences_partial": 0.5,
-"dash_wall": 0.3
+"dash_wall": 0.42
 })
 narrow_ceiling_share = 0.5
 spacing_seconds_easy = 1.1
