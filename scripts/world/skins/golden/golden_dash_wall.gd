@@ -13,8 +13,8 @@ extends RefCounted
 ## - 2 a tower's foot: stone below, a curtain wall of champagne mirror glass on gold mullions above it;
 ## - 3 a gatehouse: polished ashlar in long courses under the entablature, gold pilasters and a heavy cornice.
 ## Every look is a block with depth (the facade set back from the box's face, the pilasters, the plinth, the slab
-## bands and the cornice standing out to it), its sides in marble, hairline cracks across its face and a chipped
-## patch where the cladding has come away: solid, and breakable. Nothing glows (no lamp-lit rooms and no drapes
+## bands and the cornice standing out to it), its sides in marble, hairline cracks across its face (the elite's
+## city keeps its stone clean: no fallen patch): solid, and breakable. Nothing glows (no lamp-lit rooms and no drapes
 ## in the windows: the shader's lit share is 0, and its windows are dark glass or gold mirror), nothing in a hazard
 ## colour, and no statue, banner or screen (a statue reads as a Gilded Sentinel, a banner or a screen as a sign).
 ## Meshes are cached by size and look and shared by every wall.
@@ -106,8 +106,8 @@ func _windows(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int) -> 
 	DashWallKit.bay_faces(facade, size, -hx + COLUMN * 2.0, hx - COLUMN * 2.0, 3.6, skin.plinth_top, base_top, wall_z, stone,
 		GoldenFacades.STYLE_BAND, seed, 0.0, 2)
 	# The windows' storey: its floor line (the slab band) at base_top, so a storey's cells start there; the cell
-	# width by seed (golden_facade.gdshader's, GoldenFacades._cell_width).
-	var cell: float = GoldenFacades._cell_width(int(seed))
+	# width by seed (golden_facade.gdshader's, GoldenFacades.cell_width).
+	var cell: float = GoldenFacades.cell_width(int(seed))
 	DashWallKit.bay_faces(facade, size, -hx + COLUMN * 2.0, hx - COLUMN * 2.0, cell, base_top, top, wall_z, stone,
 		GoldenFacades.STYLE_UPPER, seed, skin.frieze_top - base_top, 2)
 	# A gold slab band across the foot of the windows' storey, standing out of the face.

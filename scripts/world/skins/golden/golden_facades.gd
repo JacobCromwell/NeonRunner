@@ -402,7 +402,7 @@ func _palace(_batch: MeshBatch, facade: MeshLayer, solid: MeshLayer, b: Building
 			solid.append(_statue(side, int(s.y)), Transform3D(Basis.IDENTITY,
 				skin.decorative_statue_mount(side, face_x, s.x)))
 	# Balconies under some upper windows (a column of windows every cell, as the shader lays them out).
-	var cw: float = _cell_width(b.seed)
+	var cw: float = cell_width(b.seed)
 	var first_floor: float = skin.frieze_top + STOREY
 	var cells: int = floori(b.b1 / cw) - ceili(b.b0 / cw)
 	for c: int in range(ceili(b.b0 / cw), floori(b.b1 / cw)):
@@ -798,6 +798,6 @@ static func _street_faces(side: int) -> int:
 
 
 ## The upper floors' window cell width for a seed (golden_facade.gdshader's UPPER style).
-static func _cell_width(seed: int) -> float:
+static func cell_width(seed: int) -> float:
 	var k: int = posmod(seed, 4)
 	return 3.0 if k == 0 else (3.4 if k == 1 else (2.8 if k == 2 else 3.8))

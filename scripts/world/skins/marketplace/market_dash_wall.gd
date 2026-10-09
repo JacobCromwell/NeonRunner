@@ -135,7 +135,7 @@ func _hall(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int) -> voi
 ## A shop window `width` wide with its left edge at x: the display template of the walls (a left wall's, face at
 ## x = 0 and z from 0 to -width) turned to face the runner.
 func _shop_window(batch: MeshBatch, size: Vector3, x: float, width: float, variant: int, wall_z: float) -> void:
-	var template: MeshBatch = skin.facades()._window_template(0, width, variant % MarketFacades.WINDOW_VARIANTS, -1, false)
+	var template: MeshBatch = skin.facades().window_template(0, width, variant % MarketFacades.WINDOW_VARIANTS, -1, false)
 	# (x, y, z) -> (-z, y, x): the window's face (the plane x = 0, facing +x) becomes the plane z = wall_z facing the
 	# runner, its width (along -z) runs along +x, its display goes back into the building.
 	var turn := Basis(Vector3.UP, -PI * 0.5)

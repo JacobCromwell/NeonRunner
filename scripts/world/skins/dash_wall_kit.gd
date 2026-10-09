@@ -197,7 +197,8 @@ static func roof_plant(layer: MeshLayer, size: Vector3, color: Color, trim: Colo
 		var w: float = minf(rng.randf_range(1.2, 2.6), hx - 0.6 - x)
 		var h: float = rng.randf_range(0.45, 0.85)
 		var d: float = rng.randf_range(0.7, 1.1)
-		var z: float = rng.randf_range(-hz + 0.5, hz - 1.4)
+		# Set back from the face, and its trim (0.04 beyond it) never past the box's back.
+		var z: float = rng.randf_range(-hz + d * 0.5 + 0.06, hz - 1.4)
 		if absf(x + w * 0.5 - mast_x) > 0.6:
 			box(layer, size, x, x + w, roof, roof + h, z - d * 0.5, z + d * 0.5, color, pattern, ALL_BUT_BOTTOM, param)
 			box(layer, size, x - 0.04, x + w + 0.04, roof + h, roof + h + 0.05, z - d * 0.5 - 0.04, z + d * 0.5 + 0.04, trim, MeshKit.PAT_PLAIN)
@@ -282,23 +283,12 @@ static func spall(layer: MeshLayer, size: Vector3, x0: float, x1: float, h0: flo
 			MeshKit.FACE_PZ | MeshKit.FACE_PY | MeshKit.FACE_NY)
 
 
-## The facade shaders' hash11 (kit_common.gdshaderinc), so a look can know what a shader will draw for a seed
-## (which wall of cladding gets a lobby, say) and pick one that suits it. Doubles, not floats: a seed is
-## trusted only where its hash is well clear of the threshold (see seed_where).
+## The facade shaders' hash11 (kit_common.gdshaderinc), so a test can check what a shader will draw for a seed
+## (which seeds of corp_facade's podium get the smoked-glass lobby: CorporateDashWall hard-codes the ones it
+## wants). Doubles, not floats: only a seed whose hash is well clear of the shader's threshold is trusted. Change
+## it together with the shader's.
 static func hash11(p: float) -> float:
 	var q: float = fposmod(p * 0.1031, 1.0)
 	q *= q + 33.33
 	q *= q + q
 	return fposmod(q, 1.0)
-
-
-## The first whole-number seed from `from` on whose hash11(seed * scale + shift) is below (`below`) or above
-## `threshold`, clear of it by `margin`: a seed that makes a shader's `hash11(seed * scale + shift) < threshold`
-## test come out the way the look wants.
-static func seed_where(from: int, scale: float, shift: float, threshold: float, below: bool, margin: float = 0.04) -> float:
-	for k: int in 400:
-		var s: float = float(from + k)
-		var h: float = hash11(s * scale + shift)
-		if (below and h < threshold - margin) or (not below and h > threshold + margin):
-			return s
-	return float(from)

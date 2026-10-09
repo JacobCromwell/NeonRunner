@@ -11,8 +11,8 @@ extends RefCounted
 ## - 2 an arcade of windows: gold-framed arched windows over the base;
 ## - 3 a hall block: a heavy base, bands of gold along the panel, a coffered frieze under the cornice.
 ## Every look is a block with depth (the panel set back from the box's face, the pilasters, the frames and the
-## cornice standing out to it), its sides in marble, hairline cracks across its face and a chipped block: solid,
-## and breakable. The galleries stay high over the base (never an opening at the runners' height), and nothing
+## cornice standing out to it), its sides in marble, hairline cracks across its face (no fallen patch: the hall
+## keeps its marble clean): solid, and breakable. The galleries stay high over the base (never an opening at the runners' height), and nothing
 ## in them glows or plays the cult's feed or shows its emblem (a screen is a sign), nothing is red (no tapestry:
 ## a banner is a sign), nothing is an alcove with a statue (a statue reads as a Gilded Sentinel). Nothing in a
 ## hazard colour, nothing glows. Meshes are cached by size and look and shared by every wall.
@@ -212,8 +212,8 @@ func _gallery(s: MeshLayer, size: Vector3, x0: float, x1: float, h0: float, h1: 
 	DashWallKit.frame_rect(s, size, x0, x1, h0, h1, wall_z + 0.14, 0.14, 0.16, skin.gold_color, MeshKit.PAT_GOLD, 0.95)
 
 
-## The cornice (gold line, marble, a dark shadow line under it), and what says "this breaks": hairline cracks and a
-## chipped block of the marble.
+## The cornice (gold line, marble, a dark shadow line under it), the urn finials, and what says "this breaks": hairline
+## cracks.
 func _finish(s: MeshLayer, size: Vector3, wall_z: float, stone: Color, seed: int, at: Vector4) -> void:
 	var hx: float = size.x * 0.5
 	var hz: float = size.z * 0.5

@@ -31,6 +31,13 @@ const CANOPY_THICK: float = 0.5
 const PILASTER: float = 0.55
 const FIN_SPACING: float = 3.0
 const FIN_WIDTH: float = 0.16
+## The seeds the PODIUM style is drawn with, by tone: corp_facade.gdshader gives a podium its smoked-glass lobby where
+## hash11(seed * 1.7 + 0.3) < 0.45, so the looks that want a solid podium (a tower's foot, a podium building) and the one
+## that wants the lobby each use seeds whose hash is well clear of that (test_dash_walls checks them by
+## DashWallKit.hash11, which replicates the shader's).
+const SEEDS_SOLID: Array[int] = [13, 111, 212]
+const SEEDS_LOBBY: Array[int] = [43, 137, 248]
+const SEEDS_PODIUM: Array[int] = [63, 163, 264]
 
 ## Weak: the skin owns this builder, so a strong reference back would keep both alive forever.
 var skin: CorporateSkin:
@@ -80,7 +87,7 @@ func _glass_tower(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int)
 	var tower: Color = skin.facade_colors[(2 + tone) % skin.facade_colors.size()].lightened(0.15)
 	var steel: Color = skin.pilaster_color
 	# A seed whose podium has no lobby: the cladding stays solid.
-	var seed: float = DashWallKit.seed_where(100 * tone + 11, 1.7, 0.3, 0.45, false)
+	var seed: float = float(SEEDS_SOLID[tone % SEEDS_SOLID.size()])
 	_body(solid, size, wall_z, upper_top, podium)
 	DashWallKit.face(facade, size, -hx, hx, 0.0, CANOPY_AT, wall_z, podium, CorporateTowers.STYLE_PODIUM, seed, hx, 0.0)
 	DashWallKit.face(facade, size, -hx + PILASTER, hx - PILASTER, CANOPY_AT + CANOPY_THICK, upper_top, wall_z, tower,
@@ -104,7 +111,7 @@ func _lobby(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int) -> vo
 	var concrete: Color = skin.concrete_color.darkened(0.12 * float(tone))
 	var steel: Color = skin.pilaster_color
 	# A seed whose podium has the lobby of smoked glass.
-	var seed: float = DashWallKit.seed_where(100 * tone + 37, 1.7, 0.3, 0.45, true)
+	var seed: float = float(SEEDS_LOBBY[tone % SEEDS_LOBBY.size()])
 	_body(solid, size, wall_z, upper_top, podium)
 	DashWallKit.face(facade, size, -hx, hx, 0.0, CANOPY_AT, wall_z, podium, CorporateTowers.STYLE_PODIUM, seed, hx, 0.0)
 	# The upper floors: precast concrete between the pilasters, ribbons of windows set into it.
@@ -190,7 +197,7 @@ func _podium(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int) -> v
 	var wall_z: float = hz - FACE_BACK * 0.6
 	var podium: Color = _cladding(tone + 2)
 	var steel: Color = skin.pilaster_color
-	var seed: float = DashWallKit.seed_where(100 * tone + 63, 1.7, 0.3, 0.45, false)
+	var seed: float = float(SEEDS_PODIUM[tone % SEEDS_PODIUM.size()])
 	var band: float = skin.band_top
 	var plant_top: float = h_top - CORNICE
 	_body(solid, size, wall_z, plant_top, podium)
