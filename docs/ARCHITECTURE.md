@@ -263,6 +263,81 @@ and 2.1 s on Forward+ and 0.75, 0.36 and 0.59 s on Compatibility) and none after
 draw calls (248 to 279 a frame), primitives (44,000 to 49,000) and objects (336 to 404) are the same, the
 most in a frame higher by the warm-up's samples in the level's first two frames.
 
+### Retries reuse the built level (task PERF2, the owner's approval, October 9, 2026)
+
+Generating its level was the slow part of starting a run, and every attempt did it again, though a campaign
+level comes out the same on every attempt (GDD §6: a fixed seed). `LevelCache` (`scripts/run/level_cache.gd`)
+keeps the last level a run built: `LevelRun._build` takes a level's layout from `LevelCache.layout_for(context)`,
+which builds it the first time and hands every later run of the same level a copy of that build: the results
+screen's retry (`App.retry`, a new LevelRun) and the restart in place (`LevelRun.restart`: quick play's after a
+death, R, F6's Restart level) alike. A boss fight's arena never comes here: its plan takes 6 to 25 ms
+(`BossEncounter.plan_arena`), and a boss's `_plan_lap` may keep state of its own on the encounter.
+
+- **The key** (`LevelCache.key_for`): a build is reused only while everything the generator reads is the same:
+  the level config's stored values (seed, lane count, difficulty, features and their starts, pacing, run speed,
+  the campaign's recency curve and ages; its `skin` aside, which the generator never reads), the movement
+  tuning it is built at (`LevelConfig.movement_for`), the patterns as read from their files now
+  (`LevelGenerator.load_for`), every tuning resource in `data/tuning` and `data/enemies` by value (the
+  placement passes', the power-ups', every enemy type's: the F6 panel edits them in place, so an edit there
+  builds again), and the build flavor. Dictionaries go in as ordered pairs. **A tunable the generator reads
+  from anywhere else must join the key** (`LevelCache.TUNING_DIRS`, `key_for`), or a run after a change to it
+  could play the level built before. A new seed, lane count, level or setting builds again (quick play's debug
+  keys, `--features`, a difficulty tier), and only the last level is kept. Endless mode builds on every run (a
+  random seed each) and keeps nothing.
+- **Every run plays a copy.** The kept build is never played: each run, the first too, gets a
+  `LevelLayout.copy()` of its own, since a run changes its layout as it goes (an EMP marks fences `disabled`
+  in it, the track numbers its fences, a boss arena's next lap or endless mode's next stretch joins it, and an
+  enemy's entry is its own one level deep only). A generated layout holds plain data only, no Object and no
+  list or dictionary in two places (a copy would make two of it): `test_level_cache` checks two levels, and a
+  probe found neither in any campaign level at 3, 5 and 6 lanes. So **`LevelLayout.copy()` must copy every
+  field a layout has**: a list added to LevelLayout must join `copy()`, or every run would play without it
+  (`test_level_cache` checks every field). The build's generator warnings come with each copy; LevelRun prints
+  them on every run, as before.
+
+Measured with `tools/measure/level_builds.gd` (Review tools), headless on the build machine (4 CPUs shared with
+other agents, measured while quiet; a phone is several times slower). The time from pressing retry to the run
+starting, three retries each at 5 lanes (the call / to the next frame, when the run is built and its
+introduction is up):
+
+| Level, 5 lanes | Results screen's retry (`App.retry`), before | after | Restart in place (`LevelRun.restart`), before | after |
+|---|---|---|---|---|
+| Corporate 2 | 3194 to 3877 / 3280 to 3964 ms | 216 to 251 / 296 to 318 ms | 2642 to 3204 / 2652 to 3216 ms | 47 to 63 / 57 to 74 ms |
+| Dead Zone 1 | 4133 to 4639 / 4203 to 4722 ms | 245 to 278 / 361 to 394 ms | 3392 to 4382 / 3406 to 4394 ms | 59 to 66 / 68 to 75 ms |
+
+What is left of a retry: the key (about 15 ms), the copy (1 to 2 ms), the world's build (`RunWorld.build`), and
+through `App.retry` a whole new LevelRun (HUD, camera and, in a debug build, the debug HUD and the F6 panel). A
+level's first build pays the key and a copy on top of the generator (15 to 30 ms).
+
+Each campaign level's first build (`generate()`, the fastest of three, in ms; in brackets the builds its
+every-feature guarantee made, when more than one):
+
+| Level | 3 lanes | 5 lanes | 6 lanes |
+|---|---|---|---|
+| city/1 | 57 | 71 | 52 |
+| city/2 | 40 | 36 | 41 |
+| city/3 | 47 | 50 | 53 |
+| gangland/1 | 64 | 66 | 125 (2) |
+| gangland/2 | 58 | 90 | 76 |
+| gangland/3 | 107 | 152 | 270 (2) |
+| marketplace/1 | 138 | 95 | 203 |
+| marketplace/2 | 429 (3) | 498 (3) | 280 (2) |
+| corporate/1 | 173 (2) | 688 (4) | 386 (4) |
+| corporate/2 | 579 (3) | 2434 (4) | 386 (2) |
+| dead_zone/1 | 935 (3) | 2891 (4) | 1400 (3) |
+| dead_zone/2 | 1900 (5) | 1146 (3) | 1608 (2) |
+| golden/1 | 371 (2) | 945 (3) | 575 (2) |
+| golden/2 | 1393 (4) | 569 (2) | 592 (2) |
+| golden/3 | 316 | 406 (2) | 1158 (4) |
+
+The slowest are Dead Zone 1 at 5 lanes (2.9 s), Corporate 2 at 5 lanes (2.4 s) and Dead Zone 2 at 3 lanes (1.9
+s); the 45 builds take 23.9 s in all. Two things multiply (`level_builds.gd --passes`): the guarantee's rebuilds
+(a level missing a feature is built again whole: 2 to 5 builds in every slow one), and within a build the Enforcer
+Truck's rules (the showing planner of tasks C6c to C6e): 415 of Corporate 2's 544 ms first build at 5 lanes
+(76%), 1035 of Dead Zone 1's 1686 ms (61%, and the Buzz Overdrive's rules 371 ms, 22%); every other pass takes
+under 80 ms. Dead Zone 2 at 3 lanes is mostly its five builds (269 ms each, the truck's rules 62 ms of it).
+Making the truck's planner cheaper and sparing guarantee rebuilds is left to a task on the generator. A boss
+arena's plan takes 6 to 14 ms (the fastest of three; 6 to 25 ms in single runs).
+
 ## Data (tunables live in data, CLAUDE.md principle 7)
 
 | File | What |
@@ -3877,6 +3952,17 @@ machine's bursty load cleared far less often than it cleared the frames' own tai
 of 2400 chances) -- read as load factor 1.00x on a machine other agents' test runs kept busy, while the level's
 own p99 and worst frame were plainly slower, failing under real `--jobs` load that a true reading would have
 covered.
+`test_level_cache` checks that a retry plays a copy of the last build exactly as a fresh build (task PERF2; A
+run, Retries reuse the built level): the key (the same for the same level configured again or with another
+look; another for each thing the build reads: seed, lane count, difficulty, features, feature starts, pacing,
+run speed, the recency curve, the movement, placement, danger density and enemy tunings edited in place as F6
+does, the patterns, the build flavor), `LevelLayout.copy()` copying every field into lists of its own, generated
+layouts holding plain data only, the warnings coming with a reused level, a seeded scripted attempt (dashes and
+an EMP in its script) at Gangland 3 and Corporate 2 at 5 lanes playing the same with the cache off, on its first
+run, its restart and the results screen's retry (layout, the runner's trace and events, kills, credits, the
+enemies' event log, floor cuts, score, EMPs), nothing leaking from an attempt changed every way play can into
+either retry (and the kept build untouched), the debug keys, F6 edits and another level building again, and
+endless mode building on every run and keeping nothing.
 `test_web_demo` checks the web demo's preset, its export filter against
 the data and everything the demo references, and walks the demo from the title to its end screen (see
 Platforms and build flavors). The runner frees
@@ -3986,6 +4072,18 @@ only (the dummy renderer); xvfb's software renderers give valid counts, not time
 [--frames] [--out=build/measure/x.json]`; the whole campaign and its bosses take about fifteen minutes). It
 runs on older builds too (it reads them by property names): copy it and `scripts/run/frame_monitor.gd` into
 a `git archive` of the build.
+
+`tools/measure/level_builds.gd` measures how long a run takes to build its level (task PERF2; A run, Retries
+reuse the built level): each campaign level's first build (the generator's, after one untimed build in the
+process; the fastest of `--repeat=N`, with the builds its every-feature guarantee made) at each lane count,
+each campaign boss arena's plan (`--bosses`), where one build's time goes pass by pass and each enemy type's
+rules apart (`--passes=corporate/2:5`: `generate()`'s first build replayed in `LevelGenerator._build`'s order and
+checked against the generator's own; it says so when the replay no longer matches), and the time from pressing
+retry to the run starting, both ways (`--retry=corporate/2,dead_zone/1 --retry-lanes=5`: `App.retry` and
+`LevelRun.restart` on the real main scene, and whether `LevelCache` reused the build). It runs on builds from
+before the cache too, for the times before (`godot --headless -s res://tools/measure/level_builds.gd -- [--levels=]
+[--lane-counts=3,5,6] [--repeat=N] [--no-table] [--bosses] [--passes=] [--retry=] [--retries=N]`; the whole table
+takes about half a minute a repeat).
 
 `tools/measure/stomp_routes.gd` measures how forgiving the Floating Head's ways onto its head are, in its
 fight on a plain street at the City boss step's speed (21 m/s; `--speed=N` for another, 18 for the
