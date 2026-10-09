@@ -22,6 +22,9 @@ extends Node3D
 ##     --reduced-flashing     the Reduced flashing setting on
 ##     --god                  god mode (a crash shrugged off)
 ##     --first=M              the first wall's face (metres, default 70)
+##     --seed=N               the first wall's look seed (the next walls' follow it: N + 1, N + 2); the seed picks
+##                            a zone's layout (N % 4) and tone ((N / 4) % 3), so --take=look --seed=0..3 shows
+##                            each layout in turn (default 0)
 ## Each scripted action, movement event and crumble is printed with its time and distance, to find the frames
 ## (frame = time × render fps).
 
@@ -38,6 +41,7 @@ var close: bool = false
 var take: String = "smash"
 var _pending: Array = []
 var _first: float = 70.0
+var _seed: int = 0
 
 
 func _ready() -> void:
@@ -64,6 +68,8 @@ func _ready() -> void:
 			god = true
 		elif arg.begins_with("--first="):
 			_first = maxf(float(v), 30.0)
+		elif arg.begins_with("--seed="):
+			_seed = int(v)
 	var skin: ZoneSkin = GreyboxSkin.new()
 	var skin_path: String = "res://data/skins/%s_skin.tres" % skin_id
 	if ResourceLoader.exists(skin_path):
@@ -88,7 +94,7 @@ func _ready() -> void:
 	var dash_length: float = pt.dash_duration * (t.run_speed + pt.dash_speed_bonus)
 	for k: int in 3:
 		var face: float = _first + k * WALL_SPACING
-		layout.dash_walls.append({"start": face, "end": face + t.dash_wall_depth, "seed": k})
+		layout.dash_walls.append({"start": face, "end": face + t.dash_wall_depth, "seed": _seed + k})
 		match take:
 			"smash":
 				_pending.append([face - 0.6 * dash_length, &"dash"])

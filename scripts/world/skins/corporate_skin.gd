@@ -266,6 +266,7 @@ var _towers: CorporateTowers
 var _ceilings: CorporateCeilings
 var _props: CorporateProps
 var _doodads: CorporateDoodads
+var _dash_walls: CorporateDashWall
 ## The latest wall face seen (wall_section runs before a chunk's ceilings): a tower bridging the
 ## street reaches from wall to wall.
 var _wall_x: float = 0.0
@@ -382,8 +383,19 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	batch.commit(parent)
 
 
-## A dash wall's default look (ZoneSkin.dash_wall, task H7a) in the towers' own calm band (CorporateTowers): the
-## sterile cladding between brushed steel pilasters, dark glass. Task H7b builds the real face from the towers.
+## A dash wall (task H7b): the end of a tower standing across the street, built from the towers' own kit
+## (CorporateDashWall): cladding, steel, curtain glass or the military's blast walls and armour.
+func dash_wall(body: Node3D, size: Vector3, look_seed: int) -> void:
+	DashWallKit.dress(body, dash_walls().mesh_for(size, look_seed))
+
+
+## The surfaces a dash wall draws with: the towers' facade shader and the solid kit.
+func dash_wall_materials() -> Array[Material]:
+	return [solid_material(), facade_material()]
+
+
+## The default dash wall look's colours (ZoneSkin.dash_wall, task H7a) in the towers' own calm band (CorporateTowers): the
+## sterile cladding between brushed steel pilasters, dark glass. Kept as the palette the debris falls back on.
 func dash_wall_colors() -> PackedColorArray:
 	return PackedColorArray([podium_colors[2 % podium_colors.size()], pilaster_color, Color(0.08, 0.1, 0.13),
 		Color(0.035, 0.04, 0.05)])
@@ -503,6 +515,12 @@ func plaza() -> CorporatePlaza:
 	if _plaza == null:
 		_plaza = CorporatePlaza.new(self)
 	return _plaza
+
+
+func dash_walls() -> CorporateDashWall:
+	if _dash_walls == null:
+		_dash_walls = CorporateDashWall.new(self)
+	return _dash_walls
 
 
 func towers() -> CorporateTowers:

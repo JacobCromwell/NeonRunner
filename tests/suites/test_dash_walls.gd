@@ -24,7 +24,9 @@ extends TestSuite
 ##   a heavier shake that Screen shake scales away, the crash's sound), Reduced flashing changes nothing; the
 ##   warm-up draws its look and its crumble while the level loads.
 ## - It stays broken for the attempt, through a death and a revive, and a retry rebuilds it whole.
-## - Every skin dresses it inside its box, lit and never glowing, and names its pieces' colours; the hint.
+## - Every skin dresses it inside its box, lit and never glowing, and names its pieces' colours; every zone's own look
+##   (task H7b: built from its side-wall kit, a few layouts by seed, on the surfaces the skin names, one small mesh
+##   built in a moment) keeps to the same contract; the hint.
 ## - The enemies: a hover truck gives way to a wall (it drops behind the runner, who meets the wall first) and
 ##   bursts through one it can't give way to; a heli drone rises over one and holds its barrage near it.
 
@@ -39,6 +41,24 @@ const LEVELS: PackedStringArray = ["corporate/1", "corporate/2", "dead_zone/1", 
 	"golden/3"]
 ## Seeds other than a level's own tried per level and lane count.
 const OTHER_SEEDS: int = 2
+## A wall's look is one small mesh: at most this many surfaces and vertices, built (the first time, in a skin whose
+## materials already exist) in under these milliseconds on average and at most (DESIGN-TBD: measured about 1 ms and
+## 4000 vertices; the room is for a loaded machine).
+const WALL_SURFACES_MAX: int = 3
+const WALL_VERTICES_MAX: int = 8000
+const WALL_BUILD_MEAN_MS: float = 12.0
+const WALL_BUILD_MAX_MS: float = 60.0
+## Seeds a skin's walls are built with: all 12 layouts and tones (DashWallKit.look_of, tone_of), at 3, 5 and 6 lanes.
+const LOOK_SEEDS: int = 12
+const LANE_COUNTS: Array[int] = [3, 5, 6]
+## The lowest a wall's silhouette may dip over the floor lanes (metres above the floor): the hitbox reaches the box's
+## top, so what is open above a broken top is out of a jump's reach (the wall jump's feet reach about 5.3 m,
+## MovementTuning) and only a flyer gets over. Columns across the lanes the silhouette is measured at.
+const SILHOUETTE_MIN: float = 5.8
+const SILHOUETTE_COLUMNS: int = 90
+## How far a hard-coded Corporate podium seed's hash must be from the shader's threshold (0.45): the shader's float
+## arithmetic is not the test's double, a seed near the line could flip.
+const SHADER_HASH_MARGIN: float = 0.1
 ## How far into the body a frame may carry it while a wall still stands (metres): rounding only.
 const TOUCH_TOLERANCE: float = 0.02
 const O = DamageRules.Outcome
@@ -721,10 +741,11 @@ func _test_retry() -> void:
 
 # --- The look ------------------------------------------------------------------------------------
 
-## Every skin's dash wall (ZoneSkin.dash_wall, the default look built from its side walls' colours): under the
-## wall's node, inside its box and filling its face, lit and never glowing (no vertex glow, a lit material), the
-## same mesh for the same box and seed (cached), a few looks over the seeds; its pieces' colours are its look's
-## own lit colours.
+## Every skin's dash wall (ZoneSkin.dash_wall): under the wall's node, inside its box and filling its face, lit and
+## never glowing, the same mesh for the same box and seed (cached), a few looks over the seeds (all 12 layouts and tones
+## at 3, 5 and 6 lanes); its pieces' colours are its look's own lit colours; a zone's is its own look, not the
+## default's (no material override on the instance: DashWallKit.dress); and it has no bite in its roofline the runner
+## could see through, a jump's reach under (SILHOUETTE_MIN over the lanes, from the mesh's triangles).
 func _test_skins() -> void:
 	var skins: Array[ZoneSkin] = [GreyboxSkin.new()]
 	var names: PackedStringArray = ["grey box"]
@@ -734,13 +755,18 @@ func _test_skins() -> void:
 			skins.append(load(path) as ZoneSkin)
 			names.append(file)
 	check(skins.size() >= 8, "every skin looked at (%d)" % skins.size())
-	for lanes: int in [3, 6]:
+	for lanes: int in LANE_COUNTS:
 		var geo := TrackGeometry.new(lanes, tuning)
 		var size: Vector3 = TrackBuilder.dash_wall_size(geo, tuning, tuning.dash_wall_depth)
+		# The lanes the hitbox covers: the box less its inset at each side, within the floor.
+		var reach: float = minf(size.x * 0.5 - tuning.dash_wall_inset, geo.half_width())
 		for i: int in skins.size():
 			var skin: ZoneSkin = skins[i]
+			# The grey box (and the skin file made from it) keeps the default look; every zone has one of its own.
+			var own_look: bool = names[i] != "grey box" and names[i] != "greybox_skin.tres"
 			var meshes: Dictionary = {}
-			for look_seed: int in [0, 1, 2, 3, 4]:
+			var lowest: float = INF
+			for look_seed: int in LOOK_SEEDS:
 				var tag: String = "(%s, %d lanes, seed %d)" % [names[i], lanes, look_seed]
 				var body := Node3D.new()
 				skin.dash_wall(body, size, look_seed)
@@ -751,6 +777,10 @@ func _test_skins() -> void:
 				for n: Node in insts:
 					var inst := n as MeshInstance3D
 					check(not inst.top_level, "nothing of it is top-level " + tag)
+					# The default look draws every instance with one material_override; a zone's own look leaves it to
+					# its surfaces' materials (DashWallKit.dress).
+					check((inst.material_override == null) == own_look,
+						"the zone has a look of its own, the default's has an override (%s) %s" % [names[i], tag])
 					var aabb: AABB = inst.mesh.get_aabb()
 					var half: Vector3 = size * 0.5 + Vector3.ONE * 0.001
 					check(aabb.position.x >= -half.x and aabb.position.y >= -half.y and aabb.position.z >= -half.z
@@ -759,15 +789,23 @@ func _test_skins() -> void:
 					check(aabb.size.x >= size.x - 0.01 and aabb.size.y >= size.y - 0.01 and aabb.end.z >= half.z - 0.01,
 						"filling its face %s" % tag)
 					var glows: bool = false
+					var lit_materials: bool = inst.mesh.get_surface_count() > 0
 					for surface: int in inst.mesh.get_surface_count():
 						for col: Color in inst.mesh.surface_get_arrays(surface)[Mesh.ARRAY_COLOR]:
 							glows = glows or col.a > 0.0
 							if col.a == 0.0:
 								own[Color(col.r, col.g, col.b)] = true
-					var mat: Material = inst.material_override
-					check(not glows and mat != null and (mat == MeshKit.solid() or mat == skin.dash_wall_material()),
-						"lit, never glowing %s" % tag)
+						# Each surface draws with a material the skin names (its own facade shader or the solid kit),
+						# the instance's override or the surface's own.
+						var mat: Material = inst.get_active_material(surface)
+						lit_materials = lit_materials and mat != null and mat in skin.dash_wall_materials()
+					check(not glows and lit_materials, "lit, never glowing (materials the skin names) %s" % tag)
 					meshes[inst.mesh] = true
+					var vertices: int = 0
+					for surface: int in inst.mesh.get_surface_count():
+						vertices += inst.mesh.surface_get_array_len(surface)
+					check(inst.mesh.get_surface_count() <= WALL_SURFACES_MAX and vertices <= WALL_VERTICES_MAX,
+						"one small mesh (%d surfaces, %d vertices) %s" % [inst.mesh.get_surface_count(), vertices, tag])
 				var inside: bool = not colors.is_empty()
 				for c: Color in colors:
 					var found: bool = false
@@ -775,13 +813,117 @@ func _test_skins() -> void:
 						found = found or (absf(o.r - c.r) < 0.0045 and absf(o.g - c.g) < 0.0045 and absf(o.b - c.b) < 0.0045)
 					inside = inside and found
 				check(inside, "its pieces take its look's own lit colours (%s) %s" % [colors, tag])
+				var top: float = _lowest_top(insts, -reach, reach) + size.y * 0.5
+				lowest = minf(lowest, top)
+				check(top >= SILHOUETTE_MIN, "no bite out of its roofline (lowest top %.2f m over the lanes, at least %.1f) %s" % [
+					top, SILHOUETTE_MIN, tag])
 				var twin := Node3D.new()
 				skin.dash_wall(twin, size, look_seed)
 				check((twin.get_child(0) as MeshInstance3D).mesh == (body.get_child(0) as MeshInstance3D).mesh,
 					"the same mesh for the same box and seed (built once) %s" % tag)
 				body.free()
 				twin.free()
-			check(meshes.size() >= 2, "a few looks over the seeds (%d) (%s, %d lanes)" % [meshes.size(), names[i], lanes])
+			check(meshes.size() >= 4, "a few looks over the seeds (%d) (%s, %d lanes)" % [meshes.size(), names[i], lanes])
+			if lanes == LANE_COUNTS[0]:
+				print("  dash wall (%s): lowest silhouette top over the lanes %.2f m" % [names[i], lowest])
+	_test_corporate_seeds()
+	_test_skin_build_times(skins, names)
+
+
+## The lowest the front silhouette of `insts` (MeshInstance3D nodes, in their body's space) gets across x in [x0, x1],
+## in the body's own y: the highest point of any triangle in each of SILHOUETTE_COLUMNS columns, the least of those
+## (-INF where a column is open: nothing covers it). From the triangles, not the bounding box, so a bite taken out of
+## a roofline shows.
+func _lowest_top(insts: Array[Node], x0: float, x1: float) -> float:
+	var tops := PackedFloat32Array()
+	tops.resize(SILHOUETTE_COLUMNS)
+	tops.fill(-INF)
+	var step: float = (x1 - x0) / float(SILHOUETTE_COLUMNS - 1)
+	var tri: Array[Vector2] = [Vector2.ZERO, Vector2.ZERO, Vector2.ZERO]
+	for n: Node in insts:
+		var inst := n as MeshInstance3D
+		var moved: bool = inst.transform != Transform3D.IDENTITY
+		for surface: int in inst.mesh.get_surface_count():
+			var arrays: Array = inst.mesh.surface_get_arrays(surface)
+			var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var indices: PackedInt32Array = PackedInt32Array()
+			if arrays[Mesh.ARRAY_INDEX] != null:
+				indices = arrays[Mesh.ARRAY_INDEX]
+			var count: int = verts.size() if indices.is_empty() else indices.size()
+			for t: int in range(0, count - 2, 3):
+				for k: int in 3:
+					var v: Vector3 = verts[t + k if indices.is_empty() else indices[t + k]]
+					if moved:
+						v = inst.transform * v
+					tri[k] = Vector2(v.x, v.y)
+				_raise_columns(tops, tri, x0, step)
+	var lowest: float = INF
+	for c: int in SILHOUETTE_COLUMNS:
+		lowest = minf(lowest, tops[c])
+	return lowest
+
+
+## Raises each column `tops` (at x0 + i * step) that the triangle `tri` (x, y) covers to the triangle's highest point
+## there.
+func _raise_columns(tops: PackedFloat32Array, tri: Array[Vector2], x0: float, step: float) -> void:
+	var lo: float = minf(tri[0].x, minf(tri[1].x, tri[2].x))
+	var hi: float = maxf(tri[0].x, maxf(tri[1].x, tri[2].x))
+	if hi - lo < 0.0001:
+		return
+	var first: int = maxi(ceili((lo - x0) / step - 0.0001), 0)
+	var last: int = mini(floori((hi - x0) / step + 0.0001), tops.size() - 1)
+	for c: int in range(first, last + 1):
+		var x: float = x0 + float(c) * step
+		var best: float = -INF
+		for e: int in 3:
+			var p: Vector2 = tri[e]
+			var q: Vector2 = tri[(e + 1) % 3]
+			if absf(p.x - q.x) < 0.00001 or x < minf(p.x, q.x) - 0.00001 or x > maxf(p.x, q.x) + 0.00001:
+				continue
+			best = maxf(best, lerpf(p.y, q.y, clampf((x - p.x) / (q.x - p.x), 0.0, 1.0)))
+		tops[c] = maxf(tops[c], best)
+
+
+## Corporate's podium seeds are hard-coded by what the shader draws for them (corp_facade.gdshader gives a podium its
+## smoked-glass lobby where hash11(seed * 1.7 + 0.3) < 0.45; DashWallKit.hash11 replicates the hash): the solid ones have
+## no lobby and the lobby ones have it, each well clear of the threshold.
+func _test_corporate_seeds() -> void:
+	var sets: Array[Dictionary] = [
+		{"name": "solid", "seeds": CorporateDashWall.SEEDS_SOLID, "lobby": false},
+		{"name": "lobby", "seeds": CorporateDashWall.SEEDS_LOBBY, "lobby": true},
+		{"name": "podium", "seeds": CorporateDashWall.SEEDS_PODIUM, "lobby": false},
+	]
+	for entry: Dictionary in sets:
+		var seeds: Array = entry["seeds"]
+		check(seeds.size() == 3, "a podium seed per tone (%s)" % entry["name"])
+		for podium_seed: int in seeds:
+			var h: float = DashWallKit.hash11(float(podium_seed) * 1.7 + 0.3)
+			check((h < 0.45) == entry["lobby"] and absf(h - 0.45) >= SHADER_HASH_MARGIN,
+				"seed %d draws a %s podium, well clear of the shader's threshold (hash %.3f)" % [podium_seed, entry["name"], h])
+
+
+## A zone's walls are cheap to build: every layout and tone (12 seeds) in a box of a size not built before, in a skin
+## whose materials already exist (they are made the first time a wall is, and again by every chunk's walls).
+func _test_skin_build_times(skins: Array[ZoneSkin], names: PackedStringArray) -> void:
+	var geo := TrackGeometry.new(6, tuning)
+	for i: int in skins.size():
+		var skin: ZoneSkin = skins[i]
+		skin.dash_wall_materials()
+		var size: Vector3 = TrackBuilder.dash_wall_size(geo, tuning, tuning.dash_wall_depth)
+		size.x += 0.0371
+		var total: float = 0.0
+		var worst: float = 0.0
+		for look_seed: int in 12:
+			var body := Node3D.new()
+			var t0: int = Time.get_ticks_usec()
+			skin.dash_wall(body, size, look_seed)
+			var ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
+			total += ms
+			worst = maxf(worst, ms)
+			body.free()
+		print("  dash wall (%s, 12 looks built): mean %.2f ms, max %.2f ms" % [names[i], total / 12.0, worst])
+		check(total / 12.0 < WALL_BUILD_MEAN_MS and worst < WALL_BUILD_MAX_MS, "a wall builds in a moment (%s: mean %.2f ms, max %.2f ms)" % [
+			names[i], total / 12.0, worst])
 
 
 ## The first-encounter hint (data/hints/hints.json, trigger dash_wall): it says to dash through, names the dash

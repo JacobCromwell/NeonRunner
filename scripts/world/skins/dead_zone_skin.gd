@@ -238,6 +238,7 @@ var _towers: DeadTowers
 var _ceilings: DeadCeilings
 var _props: DeadProps
 var _doodads: DeadDoodads
+var _dash_walls: DeadDashWall
 ## The latest wall face seen (wall_section runs before a chunk's ceilings): a ceiling across every
 ## lane reaches from wall to wall, and a narrow one knows which of its sides reach a wall.
 var _wall_x: float = 0.0
@@ -337,8 +338,14 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	batch.commit(parent)
 
 
-## A dash wall's default look (ZoneSkin.dash_wall, task H7a) in the Dead Zone's own charred facades: ash grey
-## walls, darker trim, black glass and cracks. Task H7b builds the real face from the zone's dead towers.
+## A dash wall (task H7b): the stump of a burnt-out tower across the street, built from the dead towers' own kit
+## (DeadDashWall): scorched cladding, gutted windows, charred concrete, steel, a broken top.
+func dash_wall(body: Node3D, size: Vector3, look_seed: int) -> void:
+	DashWallKit.dress(body, dash_walls().mesh_for(size, look_seed))
+
+
+## A dash wall's default look colours (ZoneSkin.dash_wall, task H7a) in the Dead Zone's own charred facades: ash grey
+## walls, darker trim, black glass and cracks. Kept as the palette the debris falls back on.
 func dash_wall_colors() -> PackedColorArray:
 	return PackedColorArray([facade_colors[facade_colors.size() - 1], facade_colors[2 % facade_colors.size()],
 		Color(0.05, 0.05, 0.052), Color(0.02, 0.02, 0.02)])
@@ -452,6 +459,12 @@ func street() -> DeadStreet:
 	if _street == null:
 		_street = DeadStreet.new(self)
 	return _street
+
+
+func dash_walls() -> DeadDashWall:
+	if _dash_walls == null:
+		_dash_walls = DeadDashWall.new(self)
+	return _dash_walls
 
 
 func towers() -> DeadTowers:

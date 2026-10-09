@@ -158,6 +158,7 @@ var _towers: CityTowers
 var _ship: CityShip
 var _props: CityProps
 var _doodads: CityDoodads
+var _dash_walls: CityDashWall
 
 
 func make_environment() -> Environment:
@@ -247,9 +248,20 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	props().finish_line(parent, width, distance)
 
 
-## A dash wall's default look (ZoneSkin.dash_wall, task H7a) in the City's own facades: a lighter shade of
-## them, so the building reads as solid against the night street, trimmed in their darker one; dark glass.
-## Task H7b builds the real face from the zone's towers.
+## A dash wall (task H7b): a dark block across the street, built from the towers' own kit (CityDashWall): the
+## facade shader's four window grids, concrete slab bands, piers and a cornice with a dead neon trim.
+func dash_wall(body: Node3D, size: Vector3, look_seed: int) -> void:
+	DashWallKit.dress(body, dash_walls().mesh_for(size, look_seed))
+
+
+## The surfaces a City dash wall draws with: the facade shader and the solid kit.
+func dash_wall_materials() -> Array[Material]:
+	return [solid_material(), facade_material()]
+
+
+## A dash wall's default look colours (ZoneSkin.dash_wall, task H7a) in the City's own facades: a lighter shade of
+## them, so the building reads as solid against the night street, trimmed in their darker one; dark glass. Kept as
+## the palette the debris falls back on.
 func dash_wall_colors() -> PackedColorArray:
 	var body: Color = facade_colors[facade_colors.size() - 1].lightened(0.16)
 	return PackedColorArray([body, facade_colors[0].lightened(0.08), Color(0.05, 0.06, 0.09), Color(0.02, 0.02, 0.03)])
@@ -352,6 +364,12 @@ func trucks() -> CityTrucks:
 	if _trucks == null:
 		_trucks = CityTrucks.new(self)
 	return _trucks
+
+
+func dash_walls() -> CityDashWall:
+	if _dash_walls == null:
+		_dash_walls = CityDashWall.new(self)
+	return _dash_walls
 
 
 func towers() -> CityTowers:
