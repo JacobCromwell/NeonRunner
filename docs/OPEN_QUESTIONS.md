@@ -2476,6 +2476,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     truck and a Gilded Sentinel can't wait, so while one is in play or about to arrive the truck doesn't show
     itself. A Resonator's pulse waits for the showing to end, as it waits for a volley (up to the director's
     `turn_wait_max`, 8 s). Placeholder: `EnforcerTruckRoom.NO_SHOW_TYPES`. OK?
+    **Answered (owner, October 9, 2026):** a hover truck or a Gilded Sentinel no longer stops a showing, as long as the runner keeps a free lane (GDD §9.13; task C6e). The Resonator's pulse still waits.
 368. **Where the blast happens** (owner, October 8, 2026: a visible explosion). Behind the camera a blast would be
     unseen. So a wrecked truck first lurches forward into view over `wreck_surge_seconds` (0.3 s), until its front
     is `wreck_gap` (2.8 m) behind the runner, or reaches the far edge of the hole it fell in. Then it blows up and
@@ -2655,11 +2656,13 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     seeds of each level (162 builds) the hover truck and the Sentinel weigh most: they keep 93 of the 128 chases with no
     window from having one (Corporate 2 brings many hover trucks). Keep those trucks as they are, or make room another
     way (the level's first Buzz Overdrive later; the hover truck and the Sentinel letting it show)?
+    **Answered (owner, October 9, 2026):** make room: the hover truck and the Sentinel let it show (with a free lane kept), and where the first bait comes right after the calm start, the truck arrives a few seconds early and shows itself at the end of it (GDD §9.13; task C6e).
 401. **Two trucks, one chase with room** (Corporate 2 at 5 lanes, Dead Zone 1 at 3 lanes, Dead Zone 2 at 5 and 6 lanes, on
     their own seeds). The only bait whose chase has room before it has one truck; the other truck has nowhere with room
     to go. Placeholder: both stay, so in Corporate 2 at 5 lanes the introduction (14 s in, among a Tithe Collector's
     visit and then its own Buzz Overdrive's turn too close) shows itself only at the second truck (59 s). Or should such
     a level keep only the truck that shows itself (one truck instead of two; Corporate 2's introduction at 59 s)?
+    **Answered (owner, October 9, 2026):** keep both trucks (GDD §9.13).
 402. **One truck that shows itself, or two that don't** (other seeds). Where giving a truck to a chase with room leaves
     the level's other truck no chase (they'd overlap), the level keeps the one that shows itself before its bait: 2 of
     144 builds on 8 other seeds lose a truck so (Corporate 2 at 6 lanes, Golden 1 at 5), and 1 gains one back that C6c's
@@ -2689,3 +2692,27 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     red. Their glowing parts (weak points, reels, 7 buttons, warnings) keep their light, and a level's darkness
     already reaches these bodies the same way. Placeholder: they are lit like the street. Or should a boss's body
     keep its own light (a per-material opt-out in `kit_solid`)?
+
+**Making room where there is none** (from C6e; the window modes in `ShowPlanner`, `scripts/enemies/enforcer_truck_rules.gd`; `calm_start_min_seconds` and `calm_start_takes_out` in `data/enemies/enforcer_truck.tres`; count with `tools/measure/enforcer_shows.gd`)
+407. **How early in the calm start** (GDD §9.13 "Making room where there is none": "late enough that the player is
+    under way (a minimum in data)"). Placeholder: `EnforcerTruckTuning.calm_start_min_seconds` 0.5 s into the run
+    (`data/enemies/enforcer_truck.tres`, `DESIGN-TBD`). The truck arrives there at its follow gap, right behind the
+    runner, and pulls alongside as it arrives: from its usual arrival gap (45 m) it couldn't come alongside before the
+    bait (Golden 1's first Buzz Overdrive revs 4 s after the 60 m run-up). Is 0.5 s right, and is arriving close in
+    fine?
+408. **"Nothing taken out" in the calm start.** A showing there runs on past the run-up (2.4 s at the Golden Zone's
+    speed) into the level's first patterns. Placeholder: it takes nothing out anywhere, as the task asked
+    (`calm_start_takes_out` off, `DESIGN-TBD`), so it fits only where those patterns leave a lane: on the own seeds
+    Golden 1 at 3 lanes gets it, Golden 1 and 2 at 6 lanes and Golden 3 at 5 don't. Switched on, it may take out plain
+    holes, fences and cyborgs past the run-up as any other window may, and those three get a showing before their bait
+    (taking out 2, 8 and 2 pieces of their first patterns). Switch it on?
+409. **A Buzz Overdrive's claim during a showing, beyond the calm start.** Placeholder: anywhere in a level (not only
+    the calm start), a window may overlap the claim on its turn a Buzz Overdrive makes before its rev, the tank staying
+    where it is, the showing out of view `show_margin_seconds` before the rev (`ShowPlanner` CLAIM mode). It only
+    comes where no window fits before the bait otherwise. An Octodog's turn is unchanged. Keep it level-wide?
+410. **The hover truck's cannon and forward lurch wait.** Placeholder: only its entrance (banging and bursting out)
+    can't wait for a turn; its cannon shots and forward lurch take turns and wait for a showing, as other big attacks
+    do. Should they count as attacks that can't wait too (the showing fitting between them instead)?
+411. **A runner lane no showing can reach.** Placeholder: a window may leave out one runner lane no showing could reach
+    (beside a hover truck at 3 lanes, or with only a floor cut's lane beside it); a runner keeping to that lane doesn't
+    see that showing. Two such lanes leave the window out. Is one lane without the showing acceptable?

@@ -210,8 +210,11 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     pays a bonus when it's destroyed. Now and then (as it arrives, and once more if there's room) it speeds up
     beside you for a few seconds so you can see it, then drops back: its sides are solid but harmless (a lane
     change into it bumps you back) and it gives way as you move toward it. Beside a runner by a wall it pulls up
-    two lanes in, leaving the lane between free. The generator keeps a calm stretch for a showing in every chase
-    that has room for one, wherever you run. It gives up after about 25 s (in quick play,
+    two lanes in, leaving the lane between free. A hover truck or a Gilded Sentinel doesn't stop it as long as you
+    keep a free lane: a hover truck's lane counts as a wall (beside one it pulls up two lanes in on your other side),
+    and it keeps clear of a hover truck bursting in and a Sentinel's swing. Where a level's first bait comes right
+    after its start, it arrives in the run-up and shows itself there. The generator keeps a calm stretch for a
+    showing in every chase that has room for one, wherever you run. It gives up after about 25 s (in quick play,
     `--features=octodog,enforcer_truck`)
 - **Bosses:** a framework for runner-style boss fights (GDD §10): the fight plays in the normal run on
   an arena track that keeps going for as long as it lasts, with the boss's health bar and phase
