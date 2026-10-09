@@ -3996,7 +3996,7 @@ of running (what stays the same at every speed)
 --routes=ramp,wall,ceiling`; `--e1c` measures E1c's numbers, `--second-move` adds the in-air move; the
 default run takes a few minutes).
 
-`tools/measure/enforcer_shows.gd` counts the Enforcer Truck's showings chase by chase (tasks C6b, C6c, C6d) over
+`tools/measure/enforcer_shows.gd` counts the Enforcer Truck's showings chase by chase (tasks C6b to C6e) over
 simulated runs of the campaign's levels with the truck, a god-mode runner keeping to each lane in turn (AttackWatch's,
 jumping the holes in its lane, baiting nothing): each truck's arrival, its showings (`+` for the arrival showing),
 its planned window, whether that comes before its chase's first bait (`gen.show_window_result`) and whether a showing
