@@ -4,7 +4,8 @@ extends Control
 ## edge show his lane, as with the Enforcer Truck"; the Pounce: "with a roar, his marker turns red"): a small
 ## chevron at the bottom edge of the screen, under the floor of his lane near the runner (EnforcerTruckMarker's
 ## way), in the cult's warm white while he only follows, turning the enemy attacks' red as a Pounce's warning
-## begins (`alarm`, 0-1; steady: it never flashes, Reduced flashing or not). Two claw marks over it tell it from
+## begins (`alarm`, 0-1; steady), flashing red for a Claw Slash's (E5d-e: GoldenConvergenceChase.marker_alarm beats
+## `alarm`; steady red with Reduced flashing). Two claw marks over it tell it from
 ## the Enforcer's. GoldenConvergenceMagnate moves it (lane_x, his world x) and fades it in while he's behind the
 ## runner; it draws itself from the camera each frame, under the HUD (its own CanvasLayer).
 

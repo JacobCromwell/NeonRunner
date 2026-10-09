@@ -45,18 +45,20 @@ extends Resource
 ## `kind` or `kind:argument`. Kinds: strafe (the Helidrone Strafe; its argument is its pass script: V a
 ## vertical pass head-on, v a vertical pass from behind, H a horizontal pass), slams (the Fist Slam, E5d-b),
 ## barrage (the Missile Barrage, E5d-b), refill (the Refill Ship with a Helidrone Strafe, its argument that
-## strafe's script; E5d-c), and stage 2's overtake, pounce and lash (The Magnate, E5d-d). A beat kind with no
-## attack registered is a stub the pattern skips (GoldenConvergence: beat_stub). Phase 1: the strafe on its own
-## (3 passes, it teaches the strafe), then slams, a barrage and the Refill Ship with a 3-pass strafe; phases 2
-## and 3: slams, a barrage, slams, a barrage, then the Refill Ship with a 7-pass strafe (the 4th and 7th from
-## behind).
+## strafe's script; E5d-c), and stage 2's overtake, pounce and lash (The Magnate, E5d-d), slash (`slash:double`
+## twice in a row) and screens (the owner's playtest, E5d-e). A beat kind with no attack registered is a stub the
+## pattern skips (GoldenConvergence: beat_stub). Phase 1: the strafe on its own (3 passes, it teaches the strafe),
+## then slams, a barrage and the Refill Ship with a 3-pass strafe; phases 2 and 3: slams, a barrage, slams, a
+## barrage, then the Refill Ship with a 7-pass strafe (the 4th and 7th from behind). Stage 2 (GDD §10, the owner's
+## playtest, proposed: "phase 4 Pounce, Slash, Screens, Pounce with the bait, Slash, Screens; phase 5 adds Cable
+## Lashes; phase 6 makes the Slashes double"): the block "Stage 2, The Magnate" below.
 @export var phase_beats: PackedStringArray = PackedStringArray([
 	"strafe:VVH,slams,barrage,refill:VVH",
 	"slams,barrage,slams,barrage,refill:VVHvVHv",
 	"slams,barrage,slams,barrage,refill:VVHvVHv",
-	"overtake,pounce,pounce:bait",
-	"pounce,lash:low,pounce:bait,lash:high",
-	"pounce,lash:high,lash:low,pounce:bait,lash:low,lash:high",
+	"pounce,slash,screens,pounce:bait,slash,screens",
+	"pounce,slash,lash:low,screens,pounce:bait,slash,lash:high,screens",
+	"pounce,slash:double,lash:high,screens,pounce:bait,slash:double,lash:low,screens",
 ])
 ## GDD §10 ("a missed pad: the ship finishes refilling and flies off, and the phase's loop starts again from
 ## the slams"): once a phase's last beat is over, its pattern goes on from this beat (0 = the first): phase
@@ -66,6 +68,11 @@ extends Resource
 ## over.
 @export_range(0.0, 6.0, 0.05, "suffix:s") var first_beat_delay: float = 0.8
 @export_range(0.0, 6.0, 0.05, "suffix:s") var beat_gap: float = 1.6
+## DESIGN-TBD (GDD §10, the owner's playtest: stage 2 "felt slower, duller and less dangerous than stage 1";
+## proposed: "shorter gaps between beats"): stage 2's beats come this long apart instead (over the phase's pace;
+## GoldenConvergence.beat_gap()). Its beats are over once he's back behind the runner, so nothing of one attack
+## is ever still out when the next one warns.
+@export_range(0.0, 6.0, 0.05, "suffix:s") var stage_two_beat_gap: float = 0.6
 
 @export_group("Helidrone Strafe: the squadron")
 ## DESIGN-TBD (GDD §10: "heli drones (the heli drone's model, never coloured red) come out of the cape, move
@@ -363,12 +370,15 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 	return out
 
 
-# --- Stage 2, The Magnate (task E5d-d) -----------------------------------------------------------------
-# Its beats (phase_beats, phases 4-6): overtake (he shows himself, GoldenConvergenceOvertake), pounce (the
-# Pounce; `pounce:bait` with a Flying Buttress for the bait, GoldenConvergencePounce) and lash (the Cable Lash,
-# `lash:low` or `lash:high`, GoldenConvergenceLash). DESIGN-TBD (docs/questions/e5d.md, E5d-d): phase 4 an
-# overtake, a Pounce and a Pounce with the bait, looped; phase 5 adds a low and a high Lash between the Pounces;
-# phase 6 more Lashes, faster (its pace). A missed bait comes around again with the loop (no escalation).
+# --- Stage 2, The Magnate (task E5d-d; the owner's playtest, E5d-e) -----------------------------------------
+# Its beats (phase_beats, phases 4-6): pounce (the Pounce; `pounce:bait` with a Flying Buttress for the bait,
+# GoldenConvergencePounce), lash (the Cable Lash, `lash:low` or `lash:high`, GoldenConvergenceLash), slash (the
+# Claw Slash, `slash:double` twice in a row, GoldenConvergenceSlash), screens (the Screen Storm,
+# GoldenConvergenceScreens), and overtake (he shows himself, GoldenConvergenceOvertake; in no script since the
+# owner's playtest: the storm stages him in view). DESIGN-TBD (GDD §10, the owner's playtest, proposed; docs/
+# questions/e5d.md, E5d-e): phase 4 a Pounce, a Slash, a storm, the bait, a Slash, a storm, looped; phase 5 adds a
+# low and a high Lash; phase 6 the same at its pace with the Slashes double. A missed bait comes around again with
+# the loop (no escalation); four storms end a phase on their own.
 
 @export_group("The Magnate")
 ## DESIGN-TBD (GDD §10, Second stage: "two to three times the runner's size"): his size, 1 the model's
@@ -466,6 +476,12 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 ## stays under what a jump can stomp, whatever the movement tuning (GoldenConvergencePounce.stomp_top).
 @export_range(0.5, 6.0, 0.1, "suffix:m") var stun_reach: float = 3.5
 @export_range(0.1, 0.6, 0.05, "suffix:m") var stun_stomp_top: float = 0.4
+## DESIGN-TBD (GDD §10, the owner's playtest, proposed: "the stun leaves time to line up the jump (at least about
+## 1.5 s from the stun to the last takeoff)"): he crashes into the gate at least this long before the runner's
+## last takeoff for a jump that comes down on his back (GoldenConvergencePounce.stun_lead_seconds: stun_lead, or
+## longer where it would leave less), at every speed. Green chevrons on the floor of his two lanes mark where to
+## take off while he's stunned (GoldenConvergenceTakeoffMarks).
+@export_range(0.8, 3.0, 0.05, "suffix:s") var stun_takeoff: float = 1.5
 ## After a stomp he hurls himself clear, howling, and drops back behind over this long: the next phase's intro
 ## (BossPhase.intro_seconds).
 @export_range(1.0, 5.0, 0.05, "suffix:s") var hurl_seconds: float = 2.3
@@ -494,6 +510,83 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 @export_range(0.55, 1.05, 0.01, "suffix:m") var lash_high: float = 0.85
 @export_range(1.2, 2.2, 0.05, "suffix:m") var lash_high_top: float = 1.9
 @export_range(0.03, 0.3, 0.01, "suffix:m") var lash_radius: float = 0.09
+
+# --- The owner's playtest (task E5d-e) ------------------------------------------------------------------------
+
+@export_group("The Magnate: the darkness")
+## DESIGN-TBD (GDD §10, the owner's playtest: "the arena gets about 30% darker once stage 2 starts, a sign that
+## The Magnate is losing control"; proposed: "It fades down through the transition; hazards and warnings keep
+## their glow; the light comes back as he falls"): stage 2's light (BossEncounter.set_light_level, 1 the court's
+## own), fading down over dim_seconds from the transition's start (on a retry from the checkpoint too); from his
+## defeat's start it comes back over light_return_seconds.
+@export_range(0.3, 1.0, 0.01) var stage_two_light: float = 0.7
+@export_range(0.0, 6.0, 0.05, "suffix:s") var dim_seconds: float = 3.5
+@export_range(0.0, 6.0, 0.05, "suffix:s") var light_return_seconds: float = 2.0
+
+@export_group("The Magnate: the Claw Slash")
+## DESIGN-TBD (GDD §10, the owner's playtest: "he runs up behind the runner and slashes at them with his claws, and
+## the player has only a split second to dodge"; proposed: "his marker flashes red with a sharp snarl (not the
+## Pounce's roar) and red claw marks flash on the floor of the runner's lane; the swipe comes about half a second
+## later (never sooner at a faster phase), over the runner's lane only and reaching above a jump"): he closes in
+## from his place behind the runner over slash_close_seconds (over the phase's pace), still behind the camera; the
+## warning (the marker flashing red, magnate_snarl, the red claw marks where the swipe lands) comes slash_warning
+## before the swipe (never over the pace), locked onto the runner's lane as it begins, and he lunges in meanwhile to
+## slash_strike_behind behind the runner (framing: his claws come in at the bottom of the run camera's view as the
+## swipe lands).
+@export_range(0.2, 2.0, 0.05, "suffix:s") var slash_close_seconds: float = 0.6
+@export_range(0.35, 1.0, 0.01, "suffix:s") var slash_warning: float = 0.5
+@export_range(0.5, 5.0, 0.1, "suffix:m") var slash_strike_behind: float = 2.4
+## The swipe: an enemy attack over slash_width_share of the locked lane, from slash_behind behind where the runner
+## is (at the run speed) as it lands to slash_ahead past where they are when it's over, up to slash_height (above a
+## jump), live for slash_hit_seconds. Armor and the shield block it; the dash passes through.
+@export_range(0.4, 1.0, 0.01) var slash_width_share: float = 0.84
+@export_range(2.8, 6.0, 0.05, "suffix:m") var slash_height: float = 3.2
+@export_range(0.05, 0.4, 0.01, "suffix:s") var slash_hit_seconds: float = 0.12
+@export_range(0.2, 3.0, 0.05, "suffix:m") var slash_behind: float = 1.2
+@export_range(0.2, 3.0, 0.05, "suffix:m") var slash_ahead: float = 0.8
+## `slash:double` (proposed: "in the last phase he slashes twice in a row, the second locking onto the lane the
+## runner dodged into"): the second warning begins this long after the first swipe lands (never over the pace).
+@export_range(0.0, 1.0, 0.01, "suffix:s") var slash_double_gap: float = 0.12
+
+@export_group("The Magnate: the Screen Storm")
+## DESIGN-TBD (GDD §10, the owner's playtest: "TV screens on gold tentacles come crashing down from the sky on either
+## side of the runner, smashing lots of spots in lots of lanes, so the player has to dodge and weave. Some of the
+## screens hit The Magnate, chipping his health"; proposed: "a storm drops 10-16 screens over about 5 s ... During a
+## storm he runs close behind the runner where the camera shows him, and about a third of the screens crash on
+## him"): he runs up onto a balustrade (sides in turn, the first by the fight's seed) over storm_run_up (over the
+## phase's pace) to storm_ahead in front of the runner (framing: the run camera shows him there at every lane count)
+## and paces them; the storm's screens crash over storm_seconds from then (never over the pace): storm_screens_min on
+## 3 lanes up to storm_screens_max on 6 (scaled to the lane count), storm_hits of them on him.
+@export_range(0.3, 3.0, 0.05, "suffix:s") var storm_run_up: float = 1.1
+@export_range(1.5, 8.0, 0.1, "suffix:m") var storm_ahead: float = 3.0
+@export_range(2.0, 8.0, 0.1, "suffix:s") var storm_seconds: float = 5.0
+@export_range(4, 20) var storm_screens_min: int = 10
+@export_range(4, 24) var storm_screens_max: int = 16
+@export_range(0, 8) var storm_hits: int = 3
+## Each screen's warning (a red square on the floor where it crashes, the screen's growing shadow, magnate_glitch's
+## rising whine) comes screen_warning before it crashes (never over the pace; longer if the fairness below needs it:
+## GoldenConvergenceStormPlan.warning_for), the screen coming down from screen_drop_height on its tentacle. A crash on
+## the track: an enemy attack over its square, screen_width_share of its lane and screen_depth along it (at least the
+## runner's run while it's live and their body's depth: GoldenConvergenceScreens.square_depth), centred where the
+## runner is halfway through it, up to screen_hit_height (above a jump), live for screen_hit_seconds; then its
+## tentacle yanks the shattered screen back up over screen_yank_seconds.
+@export_range(0.6, 2.0, 0.05, "suffix:s") var screen_warning: float = 0.9
+@export_range(8.0, 60.0, 0.5, "suffix:m") var screen_drop_height: float = 24.0
+@export_range(0.4, 1.0, 0.01) var screen_width_share: float = 0.84
+@export_range(1.0, 5.0, 0.05, "suffix:m") var screen_depth: float = 2.4
+@export_range(2.8, 6.0, 0.05, "suffix:m") var screen_hit_height: float = 3.4
+@export_range(0.05, 0.4, 0.01, "suffix:s") var screen_hit_seconds: float = 0.1
+@export_range(0.2, 2.0, 0.05, "suffix:s") var screen_yank_seconds: float = 0.5
+## The plan's fairness (GoldenConvergenceStormPlan): a runner who moves screen_reaction after each warning, a lane
+## switch taking its time times screen_switch_margin, screen_margin to spare around each crash.
+@export_range(0.2, 0.6, 0.01, "suffix:s") var screen_reaction: float = 0.35
+@export_range(1.0, 2.5, 0.05) var screen_switch_margin: float = 1.5
+@export_range(0.0, 0.3, 0.01, "suffix:s") var screen_margin: float = 0.1
+## A screen on him takes this share of the phase's health (proposed: "about a twelfth of the phase's health (a
+## storm about a quarter), so storms alone can end a phase"), cause &"screen"; he staggers for stagger_seconds with
+## a cry of pain (magnate_pain).
+@export_range(0.0, 0.5, 0.005) var screen_hit_share: float = 0.0833
+@export_range(0.1, 1.5, 0.05, "suffix:s") var stagger_seconds: float = 0.55
 
 @export_group("The Magnate: the defeat")
 ## DESIGN-TBD (GDD §10, proposed: "the third stomp: he convulses, his cables tear out of his back one by one, and

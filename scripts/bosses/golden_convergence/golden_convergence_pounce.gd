@@ -25,6 +25,12 @@ extends GoldenConvergenceAttack
 ##   lane)" (BossEncounter's stomp: the phase ends, GoldenConvergence._on_weak_point_hit); "while stunned he's solid
 ##   but safe: switching into him bumps the runner" (set_blocker over his lanes from a lane switch's run before his
 ##   back; his body has no hitbox).
+## - E5d-e, the owner's playtest (proposed: "the stomp easier to read: while he's stunned, green chevrons on the floor
+##   show where to take off, and the stun leaves time to line up the jump (at least about 1.5 s from the stun to the
+##   last takeoff)"): he crashes into the gate stun_lead_seconds() before the runner reaches his back (stun_lead, or
+##   longer so that stun_takeoff is left from the stun to the last takeoff, last_takeoff_gap(), at any speed), and
+##   while he lies stunned the green chevrons (GoldenConvergenceTakeoffMarks) mark where to take off in each of his
+##   two lanes: the middle of takeoff_gaps(), the stretch a jump can come down on his back from.
 ## - The release: "if they haven't by the time they're nearly on him, he shakes free and leaps away (a miss)":
 ##   a runner on the floor within stun_release of his back (at the run speed; never while a jump from there could
 ##   still come down on his back: release_gap), or one past him, and he leaps up and away onto the balustrade at
@@ -86,6 +92,8 @@ var _aim_rel: float = 0.0
 var _bound: Dictionary = {}
 var _shake: Dictionary = {}
 var _square_material: StandardMaterial3D
+## E5d-e: the green chevrons where to take off for the stomp.
+var takeoff_marks: GoldenConvergenceTakeoffMarks
 
 
 func _init(p_boss: GoldenConvergence) -> void:
@@ -96,6 +104,10 @@ func _init(p_boss: GoldenConvergence) -> void:
 
 func prewarm() -> void:
 	_square_material = GreyboxMaterials.glow(BossProps.WARNING_COLOR, 2.6, 0.85)
+	if takeoff_marks == null and boss.world != null:
+		takeoff_marks = GoldenConvergenceTakeoffMarks.new()
+		boss.add_child(takeoff_marks)
+		takeoff_marks.setup(boss, takeoff_gaps())
 
 
 func busy() -> bool:
@@ -143,12 +155,12 @@ func start(beat: Dictionary) -> void:
 		p["stun_back"] = stun_back
 		p["stun_mid"] = stun_back + STUN_DEPTH * 0.5
 		p["stun_lanes"] = [mini(gate_lane, second), maxi(gate_lane, second)]
-		p["t_land"] = (stun_back - d0) / v - t.stun_lead
+		p["t_land"] = (stun_back - d0) / v - stun_lead_seconds()
 		p["t_leap"] = float(p["t_land"]) - flight
 		p["t_roar"] = maxf(float(p["t_leap"]) - windup, 0.0)
 		_set_stage(Stage.GATE)
 		boss.log_event(&"bait_placed", {"n": pounces, "lane": gate_lane, "at": gate_at, "stun_lanes": p["stun_lanes"],
-			"runner": d0})
+			"runner": d0, "stun_lead": stun_lead_seconds()})
 	else:
 		p["t_roar"] = 0.0
 		p["t_leap"] = windup
@@ -384,13 +396,16 @@ func _stun() -> void:
 	var z1: float = back + STUN_DEPTH
 	magnate.set_blocker(true, Vector3((x0 + x1) * 0.5, GoldenConvergenceMagnate.BLOCKER_HEIGHT * 0.5,
 		TrackGeometry.world_z((z0 + z1) * 0.5)), Vector3(x1 - x0, GoldenConvergenceMagnate.BLOCKER_HEIGHT, z1 - z0))
+	# E5d-e: the green chevrons where to take off, in both his lanes.
+	if takeoff_marks != null:
+		takeoff_marks.show_marks(lanes, back, takeoff_gaps())
 	boss.world.effects.burst(Vector3(_stun_x(), 1.2, TrackGeometry.world_z(mid + 1.0)), Color(0.86, 0.84, 0.78), 46, 1.8)
 	boss.world.effects.shake(0.5, 0.5)
 	boss.sound(&"magnate_slam", boss.sound_point(magnate.global_position))
 	boss.sound(&"magnate_stun", boss.sound_point(magnate.global_position))
 	boss.hint("stun")
 	boss.log_event(&"stun", {"n": pounces, "lanes": lanes, "back": back, "runner": boss.player_distance(),
-		"runner_lane": boss.player_lane()})
+		"runner_lane": boss.player_lane(), "last_takeoff": back - last_takeoff_gap()})
 
 
 ## His weak points' top over the causeway: his back plus stun_stomp_top, kept STOMP_WINDOW under the highest a jump
@@ -418,6 +433,27 @@ func last_takeoff_gap() -> float:
 	var fall: float = mt.gravity() * mt.fall_gravity_multiplier
 	var under_top: float = mt.jump_time_to_apex + sqrt(2.0 * maxf(mt.jump_height - _stomp_top(), 0.0) / fall)
 	return maxf(boss.speed_planned() * under_top - STUN_DEPTH, 0.0)
+
+
+## E5d-e: how long before the runner reaches his back he crashes into the gate (never over the pace): stun_lead, or
+## longer so that stun_takeoff is left from the stun to the runner's last takeoff for a stomp (last_takeoff_gap() at
+## the run speed).
+func stun_lead_seconds() -> float:
+	var t: GoldenConvergenceTuning = boss.tuning
+	return maxf(t.stun_lead, t.stun_takeoff + last_takeoff_gap() / maxf(boss.speed_planned(), 1.0))
+
+
+## E5d-e: the stretch a jump can be taken from and still come down on his weak points (track distance before his
+## back: x the nearest, last_takeoff_gap(); y the furthest, where the jump's feet are last in their stomp height,
+## GameRules.stomp_tolerance under their top, as it reaches their near end), at the run speed. The green chevrons
+## mark its middle.
+func takeoff_gaps() -> Vector2:
+	var mt: MovementTuning = boss.world.tuning
+	var tol: float = boss.world.rules.stomp_tolerance if boss.world.rules != null else GameRules.new().stomp_tolerance
+	var fall: float = mt.gravity() * mt.fall_gravity_multiplier
+	var t_low: float = mt.jump_time_to_apex + sqrt(2.0 * maxf(mt.jump_height - (_stomp_top() - tol), 0.0) / fall)
+	var far: float = boss.speed_planned() * t_low + boss.tuning.stun_reach * boss.run_pace()
+	return Vector2(last_takeoff_gap(), maxf(far, last_takeoff_gap() + 0.5))
 
 
 ## Where his back's near edge is (track distance), while stunned.
@@ -482,6 +518,8 @@ func _off_stun() -> void:
 	magnate.set_weak_points_enabled(false)
 	magnate.set_blocker(false)
 	magnate.ports_glow = 0.0
+	if takeoff_marks != null:
+		takeoff_marks.hide_marks()
 
 
 # --- The square ---------------------------------------------------------------------------------------

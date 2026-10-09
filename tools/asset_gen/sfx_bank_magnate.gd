@@ -29,6 +29,15 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##   magnate_death      the third stomp: his death throes, a roar breaking up into convulsions and a choking rattle
 ##   magnate_collapse   collapsing on the causeway (in the silence): a heavy body falling, a last breath, the
 ##                      light in his cracks fizzling out
+## The owner's playtest (task E5d-e):
+##   magnate_snarl      a Claw Slash's warning: a sharp snarl, a hiss and a snap of his jaw (not the roar)
+##   magnate_swipe      the swipe: a rush of air and three claws raking through it
+##   magnate_glitch     a falling screen's warning (as long as screen_warning): a whine rising through stuttering
+##                      static, louder to the end
+##   magnate_smash      a screen crashing: a heavy hit, glass shattering and tinkling down, its electrics popping
+##   magnate_yank       a tentacle yanking its screen back up: a metal cable whipping taut and away
+##   magnate_pain       his cry of pain when a screen hits him: a yelp breaking into a choked snarl (not the roar,
+##                      not the howl)
 
 const GoldenBank = preload("res://tools/asset_gen/sfx_bank_golden_convergence.gd")
 ## A sound effect's longest (test_units: every sound is under 2.5 s).
@@ -56,6 +65,12 @@ func sounds() -> Dictionary:
 		"magnate_suit_down": _suit_down,
 		"magnate_death": _death,
 		"magnate_collapse": _collapse,
+		"magnate_snarl": _snarl,
+		"magnate_swipe": _swipe,
+		"magnate_glitch": _glitch,
+		"magnate_smash": _smash,
+		"magnate_yank": _yank,
+		"magnate_pain": _pain,
 	}
 
 
@@ -597,4 +612,138 @@ func _suit_down() -> PackedFloat32Array:
 	DSP.filter(b, &"lowpass", 3000.0)
 	_fade_out(b, 0.5)
 	DSP.crush(b, 9, 16000.0)
+	return b
+
+
+# --- The owner's playtest (task E5d-e) ----------------------------------------------------------------------
+
+## A Claw Slash's warning (0.55 s, the same every time): a sharp snarl (his voice jumping from 210 to 330 Hz and
+## dropping, a fast rattle, an "eh" vowel), a hiss through his teeth over it, a snap of his jaw at the start. Short
+## and high: never the Pounce's long roar.
+func _snarl() -> PackedFloat32Array:
+	var rng := _rng(1820)
+	var d: float = 0.55
+	var pitch := func(u: float) -> float:
+		return DSP.sweep(210.0, 330.0, u / 0.25) if u < 0.25 else DSP.sweep(330.0, 190.0, (u - 0.25) / 0.75)
+	var b := _beast(d, pitch, Vector2(560.0, 700.0), Vector2(1700.0, 1500.0), Vector2(48.0, 34.0), rng)
+	DSP.adsr(b, 0.015, 0.12, 0.75, 0.2)
+	var hiss := DSP.noise(d, rng)
+	DSP.filter(hiss, &"bandpass", 4200.0, 1.1)
+	DSP.adsr(hiss, 0.02, 0.15, 0.6, 0.2)
+	DSP.mix(b, hiss, 0.0, 0.45)
+	var snap := DSP.noise(0.04, rng)
+	DSP.filter(snap, &"bandpass", 1800.0, 1.2)
+	DSP.envelope(snap, 0.0005, 0.012)
+	DSP.mix(b, snap, 0.0, 1.0)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## The swipe (0.5 s): a rush of air sweeping down (a band-pass falling from 3.5 to 0.6 kHz) and three claws raking
+## through it, one after another, each a scrape of noise.
+func _swipe() -> PackedFloat32Array:
+	var rng := _rng(1821)
+	var d: float = 0.5
+	var b := DSP.buffer(d)
+	DSP.mix(b, _whoosh(0.32, 3500.0, 600.0, 1.3, rng), 0.0, 1.0)
+	for k: int in 3:
+		var rake := DSP.noise(0.09, rng)
+		DSP.filter_sweep(rake, &"bandpass", 3600.0 - k * 400.0, 1500.0 - k * 200.0, 1.6)
+		DSP.envelope(rake, 0.002, 0.035)
+		DSP.mix(b, rake, 0.06 + k * 0.035, 0.75)
+	var thump := DSP.kick(0.18, 120.0, 55.0, rng)
+	DSP.mix(b, thump, 0.1, 0.4)
+	DSP.drive(b, 1.6)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## A falling screen's warning, as long as screen_warning (read from the fight's tuning): his feed's whine rising
+## from 300 Hz to 2.2 kHz under stuttering static (bursts switching on and off faster and faster), louder to the
+## end, then a hard stop: the same every time.
+func _glitch() -> PackedFloat32Array:
+	var rng := _rng(1822)
+	var d: float = clampf(GoldenBank.tuning_value("screen_warning", 0.9), 0.5, MAX_SECONDS - 0.05)
+	var b := DSP.buffer(d)
+	var whine := DSP.osc(d, func(u: float) -> float: return DSP.sweep(300.0, 2200.0, pow(u, 1.4)), &"square")
+	DSP.filter_sweep(whine, &"lowpass", 900.0, 5000.0)
+	DSP.mix(b, whine, 0.0, 0.35)
+	var buzz := DSP.osc(d, func(u: float) -> float: return DSP.sweep(60.0, 120.0, u), &"saw")
+	DSP.filter(buzz, &"lowpass", 700.0)
+	DSP.mix(b, buzz, 0.0, 0.25)
+	var fizz := _static(d, rng)
+	DSP.mix(b, fizz, 0.0, 0.4)
+	# The stutter: the whole sound cut in and out, faster toward the crash.
+	var n: int = b.size()
+	var phase: float = 0.0
+	for i: int in n:
+		var u: float = float(i) / n
+		phase += lerpf(9.0, 26.0, u) / RATE
+		var gate: float = 1.0 if fmod(phase, 1.0) < 0.72 else 0.35
+		b[i] *= gate * (0.35 + 0.65 * u)
+	DSP.shape(b, 0.01, 0.02)
+	DSP.crush(b, 8, 16000.0)
+	return b
+
+
+## A screen crashing (1.0 s): a heavy hit (a boom and a thud), its glass shattering (a burst of bright noise) and
+## tinkling down (thirty small high pings), its electrics popping and dying.
+func _smash() -> PackedFloat32Array:
+	var rng := _rng(1823)
+	var d: float = 1.0
+	var b := DSP.buffer(d)
+	DSP.mix(b, _boom(0.7, 150.0, 45.0, 0.2, rng), 0.0, 0.55)
+	var thud := DSP.noise(0.18, rng)
+	DSP.filter(thud, &"bandpass", 700.0, 0.8)
+	DSP.envelope(thud, 0.001, 0.05)
+	DSP.mix(b, thud, 0.0, 1.1)
+	var burst := DSP.noise(0.25, rng)
+	DSP.filter(burst, &"highpass", 3000.0)
+	DSP.envelope(burst, 0.001, 0.06)
+	DSP.mix(b, burst, 0.005, 0.9)
+	for k: int in 30:
+		var at: float = 0.02 + pow(rng.randf(), 1.5) * (d - 0.15)
+		var hz: float = rng.randf_range(3200.0, 7000.0)
+		var ping := DSP.osc(0.05, func(_u: float) -> float: return hz, &"sine")
+		DSP.envelope(ping, 0.0005, 0.012)
+		DSP.mix(b, ping, at, rng.randf_range(0.15, 0.4) * (1.0 - at / d))
+	DSP.mix(b, _zap(0.35, 140.0, rng), 0.02, 0.35)
+	_fade_out(b, 0.25)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## A tentacle yanking its screen back up (0.5 s): a metal cable whipping taut (a twang falling from 900 Hz), a rush
+## of air rising away, a creak.
+func _yank() -> PackedFloat32Array:
+	var rng := _rng(1824)
+	var d: float = 0.5
+	var b := DSP.buffer(d)
+	var twang := DSP.fm(0.35, func(u: float) -> float: return DSP.sweep(900.0, 420.0, u), 1.41,
+		func(u: float) -> float: return 3.0 * exp(-u * 4.0) + 0.5)
+	DSP.envelope(twang, 0.002, 0.1)
+	DSP.mix(b, twang, 0.0, 0.5)
+	DSP.mix(b, _whoosh(0.4, 500.0, 2600.0, 1.0, rng), 0.03, 0.8)
+	var creak := DSP.osc(0.12, func(u: float) -> float: return DSP.sweep(180.0, 240.0, u), &"saw")
+	DSP.filter(creak, &"bandpass", 900.0, 1.0)
+	DSP.envelope(creak, 0.005, 0.05)
+	DSP.mix(b, creak, 0.0, 0.3)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## His cry of pain when a screen hits him (0.85 s): a yelp leaping from 260 to 520 Hz and breaking off into a choked
+## snarl falling to 150 Hz, rattling: higher and shorter than the roar, harsher than the howl.
+func _pain() -> PackedFloat32Array:
+	var rng := _rng(1825)
+	var d: float = 0.85
+	var pitch := func(u: float) -> float:
+		return DSP.sweep(260.0, 520.0, u / 0.2) if u < 0.2 else DSP.sweep(520.0, 150.0, pow((u - 0.2) / 0.8, 0.7))
+	var b := _beast(d, pitch, Vector2(800.0, 450.0), Vector2(1600.0, 900.0), Vector2(38.0, 16.0), rng)
+	DSP.adsr(b, 0.01, 0.18, 0.7, 0.3)
+	var crack := DSP.noise(0.05, rng)
+	DSP.filter(crack, &"highpass", 2000.0)
+	DSP.envelope(crack, 0.0005, 0.015)
+	DSP.mix(b, crack, 0.17, 0.6)
+	DSP.crush(b, 9, 18000.0)
 	return b

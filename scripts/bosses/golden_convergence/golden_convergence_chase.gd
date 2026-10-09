@@ -15,6 +15,8 @@ extends RefCounted
 ## - place(): every driver puts him there, so his gallop's rate and his leap's pitch follow how he moves.
 ## Never solid, never harmful: only his attacks' boxes and his stunned body are (GoldenConvergenceMagnate).
 ## Framing is kept relative to the runner (metres, not stretched by the pace); time comes from the physics step.
+## A Claw Slash's warning (E5d-e) flashes the marker (`alarm_flash`: its red beating, steady red with Reduced
+## flashing) and holds it shown while he lunges into view (`marker_hold`).
 
 enum Mode { OFF, FOLLOW, DRIVEN, RETURN }
 
@@ -26,6 +28,9 @@ const FADE_RATE: float = 3.0
 const SHADOW_END: float = -2.5
 const SHADOW_LENGTH: float = 7.0
 const SHADOW_WIDTH: float = 2.2
+## A flashing alarm beats this many times a second (the marker's red never dimmer than ALARM_FLASH_LOW of it).
+const ALARM_FLASH_HZ: float = 7.0
+const ALARM_FLASH_LOW: float = 0.3
 ## Where a balustrade's top is (out from the wall's line, over the causeway's edge) when the skin doesn't say.
 const BALUSTRADE_OUT: float = 0.55
 const BALUSTRADE_Y: float = 1.1
@@ -41,11 +46,15 @@ var lane: int = 0
 var x: float = 0.0
 ## 0-1: a Pounce's warning (the marker red).
 var alarm: float = 0.0
+## A Claw Slash's warning (E5d-e): the alarm flashes, and the marker shows even while he's in view.
+var alarm_flash: bool = false
+var marker_hold: bool = false
 ## Drops back done (tests).
 var returns: int = 0
 
 var _lane_log: Array = []
 var _shown: float = 0.0
+var _flash_t: float = 0.0
 var _breath_t: float = 0.0
 var _growl_t: float = 0.0
 var _last_pos := Vector3.ZERO
@@ -99,6 +108,8 @@ func stop() -> void:
 	mode = Mode.OFF
 	driver = 0
 	alarm = 0.0
+	alarm_flash = false
+	marker_hold = false
 
 
 ## Every physics frame of stage 2.
@@ -177,8 +188,9 @@ func _tick_signs(delta: float, behind: bool) -> void:
 	var d: float = boss.player_distance()
 	var rel: float = -magnate.global_position.z - d
 	var out_of_view: bool = behind and rel < -boss.world.tuning.camera_distance + 1.0
-	_shown = move_toward(_shown, 1.0 if out_of_view else 0.0, FADE_RATE * delta)
-	magnate.set_marker(magnate.global_position.x, _shown, alarm)
+	var held: bool = marker_hold and mode != Mode.OFF
+	_shown = move_toward(_shown, 1.0 if out_of_view or held else 0.0, FADE_RATE * delta)
+	magnate.set_marker(magnate.global_position.x, _shown, marker_alarm(delta))
 	if out_of_view:
 		# Cast forward from him (the court's light behind him) along his lane, past the runner: its darkest
 		# middle just behind them at the screen's bottom, so it shows his lane.
@@ -191,6 +203,19 @@ func _tick_signs(delta: float, behind: bool) -> void:
 		var lift: float = clampf(p.y / 8.0, 0.0, 0.8)
 		var on_floor: bool = absf(p.x) <= boss.world.geo.wall_x() + 0.2
 		magnate.set_shadow(p, 3.2 * (1.0 - lift * 0.5), 1.9 * (1.0 - lift * 0.5), (1.0 - lift) if on_floor else 0.0)
+
+
+## The marker's red now: `alarm`, beating on and off while it flashes (a Claw Slash's warning), steady with Reduced
+## flashing.
+func marker_alarm(delta: float) -> float:
+	if not alarm_flash:
+		_flash_t = 0.0
+		return alarm
+	_flash_t += delta
+	if Settings.flashing_reduced:
+		return alarm
+	var on: bool = fmod(_flash_t * ALARM_FLASH_HZ, 1.0) < 0.5
+	return alarm * (1.0 if on else ALARM_FLASH_LOW)
 
 
 ## His breathing and his growls from where he is (cosmetic).

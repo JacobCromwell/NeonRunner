@@ -5,7 +5,9 @@ extends BossEncounter
 ## runner"; the man inside is The Magnate). Task E5d, in four steps: E5d-a the golden suit, the Grand Court,
 ## the entrance, the Helidrone Strafe and the Flying Buttress; E5d-b the Fist Slam and the Missile Barrage; E5d-c
 ## the Refill Ship, stage 1's three phases and the suit's damage, the campaign slot; E5d-d stage 2, The Magnate,
-## and the defeat. The campaign plays it after Golden 3 (`./play.sh --level=golden/boss`, or `--boss=golden_boss`).
+## and the defeat; then E5d-e, the owner's playtest of stage 2 (the Claw Slash, the Screen Storm, the arena about
+## 30% darker, new beat scripts with shorter gaps, the stomp easier to read). The campaign plays it after Golden 3
+## (`./play.sh --level=golden/boss`, or `--boss=golden_boss`).
 ##
 ## The arena (GDD §10, proposed): the Grand Court, a plain causeway (_plan_lap clears every lap: no holes,
 ## fences, ceilings, doodads or enemies of its own; every danger is the boss's) in its own look
@@ -23,7 +25,8 @@ extends BossEncounter
 ##    causeway at the runner. A later stage 1 phase's: it reels back from the blast and recovers (reel), its
 ##    shoulders showing the ships' damage so far (one shoulder's pipes blown out in phase 2, both in phase 3).
 ##    Stage 2's (phases 4-6, The Magnate, E5d-d: the block at the end): phase 4's the transition (on a retry
-##    from the checkpoint too), phases 5 and 6's his hurl clear after a stomp.
+##    from the checkpoint too; the arena dims to stage_two_light through it, E5d-e), phases 5 and 6's his hurl
+##    clear after a stomp (or after the screens ended the phase).
 ## 2. Its pattern: a beat script (GoldenConvergenceTuning.phase_beats), one beat at a time, beat_gap apart
 ##    (divided by the phase's pace): phase 1 the strafe on its own (3 passes), slams, a barrage, the Refill
 ##    Ship with a strafe, then from the slams again (loop_from); phases 2 and 3 slams, a barrage, slams, a
@@ -539,15 +542,20 @@ func _place_suit() -> void:
 		suit.set_pose(suit_transform())
 
 
-# --- Stage 2: The Magnate (task E5d-d) -------------------------------------------------------------------
+# --- Stage 2: The Magnate (task E5d-d; the owner's playtest, E5d-e) ----------------------------------------
 # GDD §10, Second stage: the suit destroyed, the man inside hunts the runner from behind (the chase), pounces,
-# is baited into a Flying Buttress and stomped on his spine three times, and the feed dies with him. Its parts:
-# GoldenConvergenceMagnate (his body, the fight's body in stage 2), GoldenConvergenceChase (his moves between
-# attacks), GoldenConvergenceTransition (phase 4's intro, the transition, and phases 5-6's hurl), the beats'
-# attacks GoldenConvergenceOvertake, GoldenConvergencePounce and GoldenConvergenceLash, and
-# GoldenConvergenceDefeat (the feed dies). Phases 4-6 run their beat scripts as stage 1's do (_tick_beats).
+# slashes, brings his screens down around the runner, is baited into a Flying Buttress and stomped on his spine
+# three times, and the feed dies with him. Its parts: GoldenConvergenceMagnate (his body, the fight's body in stage
+# 2), GoldenConvergenceChase (his moves between attacks), GoldenConvergenceTransition (phase 4's intro, the
+# transition, and phases 5-6's hurl), the beats' attacks GoldenConvergenceOvertake, GoldenConvergencePounce,
+# GoldenConvergenceLash, GoldenConvergenceSlash and GoldenConvergenceScreens (its screens:
+# GoldenConvergenceTentacles), and GoldenConvergenceDefeat (the feed dies). Phases 4-6 run their beat scripts as
+# stage 1's do (_tick_beats), stage_two_beat_gap apart (beat_gap()). The owner's playtest (E5d-e): the arena about
+# 30% darker from the transition on (stage_two_light; back as he falls), the screens chipping him (screen_damage:
+# four storms end a phase on their own), and a stomp ending its phase exactly (hit_damage).
 
 const MAGNATE_SCRIPT: Script = preload("res://scripts/bosses/golden_convergence/golden_convergence_magnate.gd")
+const TENTACLES_SCRIPT: Script = preload("res://scripts/bosses/golden_convergence/golden_convergence_tentacles.gd")
 
 var magnate: GoldenConvergenceMagnate
 var chase: GoldenConvergenceChase
@@ -556,34 +564,72 @@ var defeat: GoldenConvergenceDefeat
 var overtake: GoldenConvergenceOvertake
 var pounce: GoldenConvergencePounce
 var lash: GoldenConvergenceLash
+## E5d-e: the Claw Slash, the Screen Storm and its screens on their tentacles.
+var slash: GoldenConvergenceSlash
+var screens: GoldenConvergenceScreens
+var tentacles: GoldenConvergenceTentacles
 
 
 func _build_stage_two() -> void:
 	magnate = add_part(MAGNATE_SCRIPT, {"tuning": tuning}) as GoldenConvergenceMagnate
+	tentacles = add_part(TENTACLES_SCRIPT, {"tuning": tuning, "solid": solid_material()}) as GoldenConvergenceTentacles
 	chase = GoldenConvergenceChase.new(self, magnate)
 	transition = GoldenConvergenceTransition.new(self, magnate, chase)
 	defeat = GoldenConvergenceDefeat.new(self, magnate, chase)
 	overtake = GoldenConvergenceOvertake.new(self)
 	pounce = GoldenConvergencePounce.new(self)
 	lash = GoldenConvergenceLash.new(self)
-	for attack: GoldenConvergenceAttack in [overtake, pounce, lash]:
+	slash = GoldenConvergenceSlash.new(self)
+	screens = GoldenConvergenceScreens.new(self)
+	for attack: GoldenConvergenceAttack in [overtake, pounce, lash, slash, screens]:
 		register_attack(attack)
 		attack.prewarm()
 
 
+## The wait between beats (before the phase's pace divides it): stage 2's own, shorter one (E5d-e:
+## stage_two_beat_gap), or stage 1's beat_gap.
+func beat_gap() -> float:
+	return tuning.stage_two_beat_gap if phase_index >= STAGE_2 else tuning.beat_gap
+
+
+## What a screen of the Screen Storm takes off him (E5d-e): screen_hit_share of the phase's share of the health; the
+## last bit of a phase it would leave (under a hundredth of it) goes with it, so twelve twelfths always end it.
+func screen_damage() -> float:
+	var share: float = phase_start_health(phase_index) - phase_start_health(phase_index + 1)
+	var amount: float = share * tuning.screen_hit_share
+	var left: float = health - phase_start_health(phase_index + 1)
+	if left - amount < share * 0.01:
+		amount = left
+	return maxf(amount, 0.0)
+
+
+## A big hit's damage. In stage 2 (E5d-e) a stomp on his back ends its phase exactly where it ends: what the screens
+## (and weapons) chipped off it doesn't carry over into the next phase (DESIGN-TBD, docs/questions/e5d.md, E5d-e),
+## so every phase is a stomp, or four storms, whatever came before. Stage 1 keeps the framework's rule.
+func hit_damage() -> float:
+	if phase_index >= STAGE_2 and def.weapons_can_end_phase:
+		return maxf(health - phase_start_health(phase_index + 1), 0.0)
+	return super()
+
+
 ## A stage 2 phase begins: phase 4 with the transition (on a retry from the checkpoint too), 5 and 6 with his
-## hurl clear after the stomp.
+## hurl clear after the stomp. E5d-e: from the transition the arena fades to stage_two_light (a review starting
+## past it, --phase=5, is dark at once).
 func _start_stage_two(index: int) -> void:
 	_set_step(Step.FLOAT)
 	if index == STAGE_2:
 		transition.start()
+		set_light_level(tuning.stage_two_light, tuning.dim_seconds)
 	else:
 		transition.start_hurl()
-	log_event(&"stage_2", {"phase": index})
+		if light_level() > tuning.stage_two_light + 0.001:
+			set_light_level(tuning.stage_two_light, 0.0)
+	log_event(&"stage_2", {"phase": index, "light": tuning.stage_two_light})
 
 
 ## Every physics frame of a stage 2 phase (its intro and its pattern): the court, the buttresses, the intro's
-## moves, the beat script once the intro's done, the chase.
+## moves, the beat script once the intro's done, the chase. An attack's tick may end the phase (E5d-e: a screen on
+## him): the next phase's intro has begun, and the frame's attacks stop there.
 func _stage_two_tick(delta: float, intro: bool) -> void:
 	step_time += delta
 	_t += delta
@@ -591,9 +637,14 @@ func _stage_two_tick(delta: float, intro: bool) -> void:
 	_tick_buttresses(delta)
 	transition.tick(delta)
 	if not intro:
+		var phase_now: int = phase_index
+		var ended: bool = false
 		for attack: GoldenConvergenceAttack in attack_list:
 			attack.tick(delta)
-		if not transition.busy():
+			if phase_index != phase_now or state != State.FIGHT:
+				ended = true
+				break
+		if not ended and not transition.busy():
 			_tick_beats(delta)
 	else:
 		_look_tick(delta)

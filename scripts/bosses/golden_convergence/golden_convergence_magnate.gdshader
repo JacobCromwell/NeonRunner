@@ -11,13 +11,16 @@
 // rides with him), the plates between them toned like burnt paper, the cracks dark with a thin core of the cult's
 // warm white (crack_glow; 0 dark cracks, faded out by his defeat). Warm white, not the runner's copper, and never
 // a hazard hue. Unshaded with a fixed key light in the world (like the cape's), so both renderers match; colours
-// in sRGB (kit_common's to_linear). Nothing flashes: `shudder` (his defeat's convulsions) only shakes him, a
-// little less with Reduced flashing.
+// in sRGB (kit_common's to_linear). The arena's light (the global `scenery_light`: stage 2's darkness, E5d-e,
+// BossEncounter.set_light_level) dims his body with the court, never the warm white in his cracks. Nothing flashes:
+// `shudder` (his defeat's convulsions) only shakes him, a little less with Reduced flashing.
 shader_type spatial;
 render_mode unshaded, cull_back, depth_draw_opaque;
 
 #include "res://scripts/world/meshes/shaders/kit_common.gdshaderinc"
 #include "res://scripts/world/meshes/shaders/kit_flash.gdshaderinc"
+
+global uniform float scenery_light;
 
 // The warm white in his cracks (0: none), the cracks' cells per metre, their colours (sRGB).
 uniform float crack_glow = 0.55;
@@ -113,6 +116,8 @@ void fragment() {
 	// The plates between them, toned like burnt paper or slag.
 	col *= mix(1.0, mix(0.72, 1.18, c.y), v_crack);
 	col = mix(col, to_linear(crack_dark), crack);
+	// The court's light on him (stage 2's darkness dims him with it; his cracks keep their glow).
+	col *= light_factor(scenery_light);
 	// The cult's warm white leaking from those cracks' cores.
 	col += to_linear(crack_color) * core * leak * crack_glow * 1.5;
 	ALBEDO = col;

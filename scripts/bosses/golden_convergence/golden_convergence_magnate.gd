@@ -8,13 +8,15 @@ extends BossPart
 ## the stage's attacks (GoldenConvergencePounce, GoldenConvergenceLash) and never live otherwise:
 ## - the Pounce's crash: an enemy attack box over its square (set_crash);
 ## - the Cable Lash's cables: enemy attack boxes across the track at their heights (set_lash_band);
+## - the Claw Slash's swipe: an enemy attack box over its claw marks (set_slash; E5d-e);
 ## - stunned in a gate's rubble, a weak point over his back in each of his two lanes (set_weak_box: generous
 ##   stomp boxes, BossPart.add_weak_point, the framework's stomp) and his solid but safe sides (set_blocker: a
 ##   lane blocker, LAYER_LANE_BLOCKER, no hurt: a lane switch into him bumps).
 ## His body itself never touches the runner: no hitbox of its own.
 ## His look (GoldenConvergenceMagnateModel's meshes on a rig, his body shader and his cables'): the encounter's
 ## parts place his root (set_pose: the ground under his middle, facing -z) and pick what he does (`anim`: run,
-## stand, crouch, leap, roar, rear, whip, slump, collapse, claw, stagger, hurl, hidden); his legs find the
+## stand, crouch, leap, roar, rear, whip, slump, collapse, claw, stagger (also his pain when a screen hits him),
+## hurl, slash (E5d-e: reared, a front claw raised and swept down), hidden); his legs find the
 ## ground (a two-bone reach for each, `_ik`) at a gallop or standing, his spine flexes, his jaw drops to roar,
 ## his tatters sway and trail smoke (grey, never glowing), his cables droop and trail behind him (tear_cable
 ## throws one off, his defeat's), and the red ports on his spine glow (ports_glow; they pulse, steady with Reduced
@@ -85,6 +87,8 @@ var _crash_rig: Node3D
 var _crash: Hazard
 var _lash_rig: Node3D
 var _lash: Array[Hazard] = []
+var _slash_rig: Node3D
+var _slash: Hazard
 var _stun_rig: Node3D
 var _weak: Array[Hazard] = []
 var _blocker: Area3D
@@ -308,6 +312,10 @@ func _build_hitboxes() -> void:
 		band.hazard_name = "The Magnate's cable"
 		band.contacted.connect(_on_contacted.bind(&"lash", i))
 		_lash.append(band)
+	_slash_rig = _rig("Slash")
+	_slash = add_hitbox(&"attack", Vector3.ONE, Vector3.ZERO, true, _slash_rig)
+	_slash.hazard_name = "The Magnate's claws"
+	_slash.contacted.connect(_on_contacted.bind(&"slash", 0))
 	_stun_rig = _rig("Stun")
 	for i: int in 2:
 		var weak: Hazard = add_weak_point(Vector3.ONE, Vector3.ZERO, _stun_rig)
@@ -328,6 +336,7 @@ func _build_hitboxes() -> void:
 	shape.shape = _blocker_shape
 	_blocker.add_child(shape)
 	set_crash(false)
+	set_slash(false)
 	for i: int in 2:
 		set_lash_band(i, false)
 		set_weak_box(i, false)
@@ -417,6 +426,7 @@ func hide_all() -> void:
 	_shadow.visible = false
 	marker.shown = 0.0
 	set_crash(false)
+	set_slash(false)
 	for i: int in 2:
 		set_lash_band(i, false)
 		set_weak_box(i, false)
@@ -470,6 +480,15 @@ func body_aabb() -> AABB:
 ## The Pounce's crash: an enemy attack box at `center` (world) of `size`, or off.
 func set_crash(on: bool, center: Vector3 = Vector3.ZERO, size: Vector3 = Vector3.ONE) -> void:
 	_set_box(_crash, _crash_rig, on, center, size)
+
+
+## The Claw Slash's swipe (E5d-e): an enemy attack box at `center` (world) of `size`, or off.
+func set_slash(on: bool, center: Vector3 = Vector3.ZERO, size: Vector3 = Vector3.ONE) -> void:
+	_set_box(_slash, _slash_rig, on, center, size)
+
+
+func slash_box() -> Hazard:
+	return _slash
 
 
 ## Cable `i` of a Lash (0 the lower, 1 the upper): an enemy attack box at `center` (world) of `size`, or off.
@@ -772,6 +791,20 @@ func _target_pose() -> void:
 			p.set_leg(1, Vector2(1.2, -0.3))
 			p.set_leg(2, Vector2(-1.25, 0.25))
 			p.set_leg(3, Vector2(-1.2, 0.2))
+		&"slash":
+			# The Claw Slash (E5d-e): reared up, his right claw raised high, then swept down and across the lane
+			# as it lands (GoldenConvergenceSlash.SWIPE_LEAD before the hit), his jaw wide.
+			var k: float = clampf((anim_time - 0.15) / 0.14, 0.0, 1.0)
+			k = k * k * (3.0 - 2.0 * k)
+			p.body_y = 0.12 - 0.1 * k
+			p.body_rot = Vector3(0.6 - 0.45 * k, 0.12 * k, -0.08 + 0.3 * k)
+			p.chest = 0.14
+			p.neck = 0.4 - 0.55 * k
+			p.jaw = 0.95
+			p.set_leg(0, Vector2(1.25 - 0.3 * k, -0.9 + 0.3 * k))
+			p.set_leg(1, Vector2(2.3 - 1.7 * k, -0.35 - 0.9 * k))
+			p.set_leg(2, _stand_leg(2, -0.05))
+			p.set_leg(3, _stand_leg(3, -0.05))
 		&"claw":
 			# Clawing his way out: head down, his front legs reaching and pulling in turn.
 			p.body_rot = Vector3(-0.45, 0.0, 0.0)
@@ -888,6 +921,7 @@ func targetable() -> bool:
 ## Beaten, he stays where the encounter's defeat lays him (GoldenConvergenceDefeat).
 func _on_defeated(_cause: StringName) -> void:
 	set_crash(false)
+	set_slash(false)
 	for i: int in 2:
 		set_lash_band(i, false)
 	set_weak_points_enabled(false)

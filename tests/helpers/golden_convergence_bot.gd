@@ -19,8 +19,11 @@ extends RefCounted
 ##   would end before the fire does; with no wall, its protection: with one armor hit left and the dash, the
 ##   dash just as the armor's second of invulnerability ends;
 ## - The Magnate (E5d-d, _read_magnate, the stage 2 block at the end): out of a Pounce's square's lane once it
-##   locks, into a bait's buttress lane before the lock and then onto his back for the stomp, a low Cable Lash
-##   jumped and a high one slid under;
+##   locks, into a bait's buttress lane before the lock and then onto his back for the stomp (E5d-e: a jump from
+##   the green chevrons), a low Cable Lash jumped and a high one slid under; E5d-e's Claw Slash (out of the locked
+##   lane into one its warning left clear, a reaction late) and Screen Storm (out of a lane a screen is warned in,
+##   a reaction late, into the escape the storm's plan keeps clear for it: the route GoldenConvergenceStormPlan
+##   guarantees);
 ## - the Refill Ship's cage (E5d-c, _read_refill, the block before stage 2's): by `refill_way`, into the
 ##   generator's lane and a stomp onto it (a jump timed to come down on its top), then into the pad's lane in the
 ##   air once its pulse has switched the cage off, and onto the pad; or into the pad's lane and the dash through
@@ -92,6 +95,12 @@ func _read_magnate() -> Dictionary:
 	if boss.pounce == null:
 		return {}
 	_read_lash()
+	var want: Dictionary = _read_slash()
+	if not want.is_empty():
+		return want
+	want = _read_storm()
+	if not want.is_empty():
+		return want
 	return _read_pounce()
 
 
@@ -505,9 +514,15 @@ func _read_stun(pc: GoldenConvergencePounce, now: float, d: float, me: int) -> D
 		want = me
 	var player: Player = boss.world.player
 	var gap: float = pc.stun_back() - d
-	if _stomp_jump != n and player.grounded and player.lane == want and gap <= stomp_lead() and gap > pc.release_gap():
+	# E5d-e: the take-off where the green chevrons say (chevron_point along them: 0 their near end, 1 their far end),
+	# or, without them, a jump timed to come down on his back's middle.
+	var lead: float = stomp_lead()
+	var marks: Dictionary = pc.takeoff_marks.marked if pc.takeoff_marks != null else {}
+	if not marks.is_empty():
+		lead = pc.stun_back() - lerpf(float(marks["from"]), float(marks["to"]), chevron_point)
+	if _stomp_jump != n and player.grounded and player.lane == want and gap <= lead and gap > pc.release_gap():
 		_stomp_jump = n
-		_press(&"jump", "onto his back")
+		_press(&"jump", "onto his back, from the chevrons" if not marks.is_empty() else "onto his back")
 	return {"lane": want, "why": "into his lane, for his back"}
 
 
@@ -549,3 +564,68 @@ func _read_lash() -> void:
 	elif not low and ahead <= boss.speed() * 0.3 and ahead > 0.0:
 		_lash_answered = n
 		_press(&"slide", "under the high cable")
+
+
+# --- E5d-e: the owner's playtest (the Claw Slash, the Screen Storm) ---------------------------------------------
+# _read_slash: once the claw marks show in its lane (a reaction late), out into a lane the warning left clear (its
+# `escapes`: the one nearer the middle); `dodges_slash` off stays, to show the swipe hits.
+# _read_storm: every screen warned in its lane (a reaction late) sends it to that screen's escape (the plan's,
+# kept clear for it while it moves: GoldenConvergenceStormPlan); `weaves` off stays put, to show a crash hits.
+
+## Dodges a Claw Slash.
+var dodges_slash: bool = true
+## Weaves through a Screen Storm.
+var weaves: bool = true
+## Where along the green chevrons it takes off for the stomp (0 their near end, 1 their far end).
+var chevron_point: float = 0.5
+
+
+## The Claw Slash: the lane it wants ({} for none).
+func _read_slash() -> Dictionary:
+	var sl: GoldenConvergenceSlash = boss.slash
+	if sl == null or sl.p.is_empty():
+		return {}
+	var m: Dictionary = sl.marks()
+	if m.is_empty():
+		return {}
+	var now: float = boss.fight_time()
+	if not _seen_long_enough("slash%d:%d" % [int(sl.p["n"]), int(sl.p["k"])], now):
+		return {}
+	var lane: int = int(m["lane"])
+	var me: int = _target if _target >= 0 else boss.player_lane()
+	if not dodges_slash:
+		return {"lane": lane, "why": "standing in the slash"}
+	if me != lane:
+		return {"lane": me, "why": "beside the slash"}
+	var ways: Array = sl.p.get("escapes", [])
+	if ways.is_empty():
+		return {}
+	var mid: float = (boss.lane_count() - 1) * 0.5
+	var best: int = int(ways[0])
+	for w: Variant in ways:
+		if absf(float(w) - mid) < absf(float(best) - mid):
+			best = int(w)
+	return {"lane": best, "why": "out of the slash's lane"}
+
+
+## The Screen Storm: the lane it wants ({} for none).
+func _read_storm() -> Dictionary:
+	var sc: GoldenConvergenceScreens = boss.screens
+	if sc == null or sc.live.is_empty():
+		return {}
+	var now: float = boss.fight_time()
+	var me: int = _target if _target >= 0 else boss.player_lane()
+	var t: GoldenConvergenceTuning = boss.tuning
+	var want: Dictionary = {}
+	var soonest: float = INF
+	for th: Dictionary in sc.threats():
+		if int(th["lane"]) < 0 or int(th["stage"]) == GoldenConvergenceScreens.ScreenStage.YANK:
+			continue
+		# Note every screen the moment it shows (the reaction counts from its warning).
+		var seen: bool = _seen_long_enough("scr%d:%d" % [int(th["storm"]), int(th["n"])], now)
+		if int(th["lane"]) != me or not seen or now > float(th["crash_at"]) + t.screen_hit_seconds:
+			continue
+		if float(th["crash_at"]) < soonest:
+			soonest = float(th["crash_at"])
+			want = {"lane": int(th["escape"]) if weaves else me, "why": "out of a screen's square" if weaves else "under a screen"}
+	return want

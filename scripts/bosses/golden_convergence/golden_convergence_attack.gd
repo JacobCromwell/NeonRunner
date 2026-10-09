@@ -1,7 +1,8 @@
 class_name GoldenConvergenceAttack
 extends RefCounted
 ## One of the Golden Convergence's attacks (GDD §10: the Helidrone Strafe, task E5d-a; the Fist Slam and the
-## Missile Barrage, E5d-b; the Refill Ship, E5d-c; stage 2's Pounce and Cable Lash, E5d-d), each its own class
+## Missile Barrage, E5d-b; the Refill Ship, E5d-c; stage 2's Pounce and Cable Lash, E5d-d, its Claw Slash and Screen
+## Storm, E5d-e), each its own class
 ## with this small interface, so the encounter (GoldenConvergence) runs a phase's beat script
 ## (GoldenConvergenceTuning.phase_beats) without knowing what each beat does:
 ## - prewarm(): makes everything it shows now (pooled), not mid-fight;
@@ -72,7 +73,8 @@ func ends_at() -> float:
 
 
 ## The wait before the next beat once this one is over (divided by the phase's pace): the tuning's
-## beat_gap, unless the attack says otherwise (a Fist Slam sequence ended by a buttress hit: the Missile
-## Barrage warms up at once, as the tower falls).
+## beat_gap (stage 2's own, shorter one there: GoldenConvergence.beat_gap, E5d-e), unless the attack says
+## otherwise (a Fist Slam sequence ended by a buttress hit: the Missile Barrage warms up at once, as the tower
+## falls).
 func gap_after() -> float:
-	return boss.tuning.beat_gap
+	return boss.beat_gap()

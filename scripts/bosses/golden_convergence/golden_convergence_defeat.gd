@@ -6,6 +6,8 @@ extends RefCounted
 ## outward. The music cuts out with them. In the silence he collapses on the causeway ahead, the last light in
 ## his cracks goes out, and the runner runs past him; then the victory riff"). A small part of the encounter
 ## (GoldenConvergence.defeat), from its _on_defeated to victory_over():
+## - the light comes back (E5d-e, proposed: "the light comes back as he falls"): stage 2's darkness lifts over
+##   light_return_seconds from the defeat's start, long before the results;
 ## - the death throes (magnate_death): he convulses (`shudder`, gentler with Reduced flashing) and lurches ahead
 ##   of the runner over defeat_lurch, out of their way into the lane furthest from them, defeat_ahead in front
 ##   (at the run speed), keeping pace there; his sides block a lane switch into his lane from the runner on
@@ -75,6 +77,8 @@ func start() -> void:
 	magnate.play(&"stagger")
 	magnate.shudder = 1.0
 	magnate.ports_glow = 0.0
+	# The light comes back as he falls (stage 2's darkness lifts).
+	boss.set_light_level(1.0, boss.tuning.light_return_seconds)
 	boss.sound(&"magnate_death", boss.sound_point(magnate.head_point()))
 	boss.world.effects.shake(0.5, 0.6)
 	_log(&"defeat_start", {"lane": lane, "runner_lane": pl, "riff": _riff})

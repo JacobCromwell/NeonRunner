@@ -4,11 +4,14 @@
 // below, its end trailing on the floor, and sways from side to side, more toward its end, each cable on its own
 // `phase`; `trail` 1 lifts it out straight behind him (a leap) instead.
 // Burnt dark metal with dull gold bands (COLOR.rgb, sRGB; UV2.x 2 the bands' sheen), lit like his body; never
-// glowing. The Cable Lash's whipped cable is drawn by GoldenConvergenceLash, not here.
+// glowing; dimmed with the court by the arena's light (`scenery_light`: stage 2's darkness, E5d-e). The Cable Lash's
+// whipped cable is drawn by GoldenConvergenceLash, not here.
 shader_type spatial;
 render_mode unshaded, cull_back, depth_draw_opaque;
 
 #include "res://scripts/world/meshes/shaders/kit_common.gdshaderinc"
+
+global uniform float scenery_light;
 
 uniform float cable_length = 5.6;
 uniform float ground = 1.6;
@@ -41,5 +44,5 @@ void fragment() {
 	vec3 col = base * (0.35 + 0.8 * key);
 	float rim = pow(1.0 - clamp(dot(nv, normalize(-VERTEX)), 0.0, 1.0), 3.0);
 	col += base * rim * (0.3 + 0.4 * step(1.5, v_kind));
-	ALBEDO = col;
+	ALBEDO = col * light_factor(scenery_light);
 }
