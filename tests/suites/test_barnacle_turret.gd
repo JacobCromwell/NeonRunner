@@ -220,7 +220,8 @@ func _test_looks() -> void:
 	for v: StringName in expect:
 		check(BarnacleTurretModel.is_creature(v) == bool(expect[v]), "%s wears the %s look" % [v,
 			"creature" if expect[v] else "mechanical"])
-	for skin_path: String in ["res://data/skins/marketplace_skin.tres", "res://data/skins/gangland_skin.tres"]:
+	for skin_path: String in ["res://data/skins/marketplace_skin.tres", "res://data/skins/casino_skin.tres",
+			"res://data/skins/gangland_skin.tres"]:
 		var skin := load(skin_path) as ZoneSkin
 		check(skin != null and BarnacleTurretModel.is_creature(skin.enemy_variant), "%s's turrets are creatures" % skin_path)
 	for skin_path: String in ["res://data/skins/city_skin.tres", "res://data/skins/corporate_skin.tres",

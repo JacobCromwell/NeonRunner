@@ -107,6 +107,20 @@ vec3 plinth(vec2 uv, vec2 fw_m, float seed) {
 	return weather(col, uv, 0.0, seed);
 }
 
+// A brass pipe painted flush on the face (the reference's pipes run along every facade; nothing may stick
+// out of the wall-run band, so below the calm band's top they are only shaded to look round): its
+// centre at `c` and radius `r` (metres) on the axis `a`, a pixel's footprint `fw`. Lit from above, a
+// pale line down its upper side. Returns the shaded brass (linear) in rgb and the coverage in a.
+vec4 painted_pipe(float a, float c, float r, float fw) {
+	float d = (a - c) / r;
+	float cover = band(d, -1.0, 1.0, fw / r);
+	float round_shade = sqrt(max(1.0 - d * d, 0.0));
+	float lit = 0.2 + 0.8 * clamp(round_shade * (0.75 + 0.45 * d), 0.0, 1.0);
+	float spec = pow(max(1.0 - abs(d - 0.45) * 3.0, 0.0), 2.0) * 0.45;
+	vec3 col = to_linear(metal_color) * lit * 1.15 + to_linear(trim_color) * spec;
+	return vec4(col, cover);
+}
+
 void fragment() {
 	int style = int(UV2.x + 0.5);
 	float seed = floor(UV2.y + 0.5);
@@ -147,6 +161,18 @@ void fragment() {
 		float slab = filtered_pulse(p.y, fw.y, 0.0, 0.18 / storey);
 		col = mix(col, trim * (0.7 + 0.3 * fres), slab);
 		col *= 1.0 - 0.35 * filtered_pulse(p.y, fw.y, 1.0 - 0.08 / storey, 1.0);
+		// Painted pipes: one along the top of each storey, just under the brass band, on most
+		// buildings, and a riser up some of the cell boundaries.
+		if (style == 0) {
+			float pipe_here = step(hash12(vec2(cell.y, seed * 1.3)), 0.7);
+			float pipe_y = cy + storey - 0.45 - 0.08 * hash11(seed * 3.7);
+			vec4 pipe = painted_pipe(uv.y, pipe_y, 0.2 + 0.08 * hash11(seed * 5.1), fw_m.y);
+			col = mix(col, pipe.rgb, pipe.a * pipe_here);
+			float bx = (fract(p.x + 0.5) - 0.5) * cw;
+			float riser_here = step(0.78, hash12(vec2(floor(p.x + 0.5), seed)));
+			vec4 riser = painted_pipe(bx, 0.0, 0.17, fw_m.x);
+			col = mix(col, riser.rgb, riser.a * riser_here);
+		}
 		if (style == 1 && cy + storey > decor_top) {
 			// Casino: dark glass panels in brass frames, framed by rows of bulbs.
 			float panel = filtered_pulse(p.x, fw.x, 0.06, 0.94) * filtered_pulse(p.y, fw.y, 0.08, 0.92);
@@ -165,8 +191,12 @@ void fragment() {
 			float chase = mix(0.7 + 0.3 * sin(uv.x * 1.3 + uv.y * 0.7 - TIME * 1.6), 0.9, reduced_flashing);
 			col = mix(col, vec3(0.0), bulb * 0.3) + to_linear(bulb_color) * (bulb * 1.9 * chase);
 		} else if (style == 1) {
-			// Casino, low storeys: plain dark panels (the wall-run band stays calm).
+			// Casino, low storeys: plain dark panels (the wall-run band stays calm), a painted pipe along
+			// the top of each.
 			col *= 0.85;
+			float pipe_y1 = cy + storey - 0.45;
+			vec4 pipe1 = painted_pipe(uv.y, pipe_y1, 0.2, fw_m.y);
+			col = mix(col, pipe1.rgb, pipe1.a * step(hash12(vec2(cell.y, seed * 1.3)), 0.75));
 		} else {
 			// Upper floors: tall arched windows in brass frames.
 			vec2 wc = vec2((fp.x - 0.5) * cw, (fp.y - 0.12) * storey);
@@ -209,6 +239,8 @@ void fragment() {
 			vec2 bf = fw_m / vec2(2.4, 1.2);
 			float joint = max(filtered_pulse(bq.y, bf.y, 0.0, 0.012), filtered_pulse(bq.x, bf.x, 0.0, 0.006));
 			col = wall * (0.92 + 0.1 * hash12(floor(bq) + seed)) * (1.0 - 0.35 * joint);
+			vec4 pipe2 = painted_pipe(uv.y, 5.2 + 1.0 * hash11(seed * 2.9), 0.24, fw_m.y);
+			col = mix(col, pipe2.rgb, pipe2.a);
 			col = weather(col, uv, storey_base, seed);
 		} else {
 			// Tall arched glazing on a grid of slim brass mullions, the hall warm inside.
@@ -286,7 +318,7 @@ void fragment() {
 	col *= shade;
 	// The street lies in the lamplit haze; the light thins up the faces into the dark of the vault.
 	if (style <= 4) {
-		col *= mix(0.9, 1.0, smoothstep(1.0, 6.0, uv.y)) * (1.0 - 0.45 * smoothstep(12.0, 26.0, uv.y));
+		col *= mix(0.9, 1.0, smoothstep(1.0, 6.0, uv.y)) * (1.0 - 0.3 * smoothstep(12.0, 26.0, uv.y));
 	}
 	ALBEDO = col * light_factor(scenery_light);
 }

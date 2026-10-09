@@ -70,7 +70,7 @@ vec3 cas_street(vec3 base, vec3 w, vec3 n, vec3 eye, vec2 uv, float param) {
 	q.x += 0.5 * mod(floor(q.y), 2.0);
 	vec2 fq = fwp / vec2(1.2, 0.6);
 	float grout = max(filtered_pulse(q.x, fq.x, 0.0, 0.04), filtered_pulse(q.y, fq.y, 0.0, 0.08));
-	float tone = hash12(floor(q) + mod(floor(param), 97.0) * 0.731);
+	float tone = hash12(floor(q) + mod(floor(param + 0.5), 97.0) * 0.731);
 	vec3 col = base * (0.84 + 0.28 * tone) * (0.9 + 0.2 * value_noise(p * 0.3 + 2.0));
 	col *= 1.0 - 0.5 * grout;
 	col *= 1.0 - 0.2 * smoothstep(0.58, 0.8, value_noise(p * vec2(0.27, 0.16) + 11.0));

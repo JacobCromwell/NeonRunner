@@ -39,7 +39,7 @@ extends MarketplaceSkin
 @export_group("Iron and brass")
 ## The facades' dark iron, four tones.
 @export var iron_colors: PackedColorArray = PackedColorArray([
-	Color(0.15, 0.14, 0.14), Color(0.17, 0.15, 0.14), Color(0.13, 0.14, 0.15), Color(0.18, 0.16, 0.15)])
+	Color(0.18, 0.165, 0.165), Color(0.2, 0.175, 0.165), Color(0.155, 0.165, 0.18), Color(0.21, 0.185, 0.175)])
 ## Dark painted iron: girders, ribs, cornices, balcony rails.
 @export var iron_color: Color = Color(0.13, 0.12, 0.125)
 ## Aged brass: the pipes, the rails, the trims and the frames. Lit metal, never neon.
@@ -100,6 +100,12 @@ extends MarketplaceSkin
 @export var ivy_color: Color = Color(0.16, 0.23, 0.15)
 ## Signs' dark panels and the lit lettering's palette (warm white, violet and blue only).
 @export var sign_panel_color: Color = Color(0.07, 0.065, 0.075)
+## DESIGN-TBD (docs/questions/k1.md 2): the reference's pink, cyan, green and orange boards, kept as dim
+## painted signs in muted dusty rose, teal, moss and ochre: lit like any wall, never glowing (the hazard
+## colours glow only on hazards), a share of the blade signs.
+@export var dim_sign_colors: PackedColorArray = PackedColorArray([
+	Color(0.5, 0.3, 0.36), Color(0.2, 0.4, 0.42), Color(0.3, 0.38, 0.22), Color(0.55, 0.42, 0.2)])
+@export_range(0.0, 1.0, 0.01) var dim_sign_share: float = 0.3
 
 ## Built on first use and shared by every mesh (exports changed later don't reach them).
 var _street: CasinoStreet
@@ -156,8 +162,10 @@ func _casino_palette() -> void:
 	window_glow = 0.62
 	lamp_color = Color(1.0, 0.87, 0.68)
 	bulb_color = Color(1.0, 0.88, 0.7)
-	neon_colors = PackedColorArray([Color(0.62, 0.46, 1.0), Color(0.36, 0.55, 1.0), Color(0.92, 0.9, 0.84),
-		Color(0.5, 0.42, 0.95)])
+	# The first two are the lounges' machine screens (violet, blue); lit signs and marquees pick from all six,
+	# warm white (the reference's gold and amber, kept off the hazards' hues) as often as violet and blue.
+	neon_colors = PackedColorArray([Color(0.62, 0.46, 1.0), Color(0.36, 0.55, 1.0), Color(0.96, 0.9, 0.78),
+		Color(0.97, 0.92, 0.8), Color(0.5, 0.42, 0.95), Color(0.94, 0.88, 0.76)])
 	painted_sign_colors = PackedColorArray([Color(0.2, 0.16, 0.3), Color(0.5, 0.4, 0.22), Color(0.18, 0.22, 0.34),
 		Color(0.4, 0.34, 0.26), Color(0.26, 0.2, 0.3)])
 	ad_colors = PackedColorArray([Color(0.5, 0.4, 0.95), Color(0.3, 0.5, 0.95), Color(0.92, 0.88, 0.8)])

@@ -13,8 +13,8 @@ const DEFAULTS: Dictionary = {
 	"reduced_flashing": false,
 	## First-encounter hints can be turned off here (FB 7).
 	"hints": true,
-	## The Marketplace citizens (GDD §5, task D3): scenery only, off on a low-end device regardless
-	## of this (DeviceProfile.is_low_end(), citizens_enabled()).
+	## The Marketplace citizens (GDD §5, task D3), who also play in the Casino's shop windows (task K1): scenery
+	## only, off on a low-end device regardless of this (DeviceProfile.is_low_end(), citizens_enabled()).
 	"citizens": true,
 	"bindings": {},
 }
@@ -29,7 +29,7 @@ const ACTION_LABELS: Dictionary = {
 ## `reduced_flashing`). Kept current by apply_visuals().
 static var flashing_reduced: bool = false
 
-## Whether the Marketplace citizens (task D3) build at all: the player's own setting, and off on a
+## Whether the Marketplace's and the Casino's citizens (tasks D3, K1) build at all: the player's own setting, and off on a
 ## low-end device regardless (CLAUDE.md: "added only if they don't noticeably cost performance...").
 ## Kept current by apply_visuals(), like flashing_reduced, so scenery code never needs a Profile.
 static var citizens_enabled: bool = true

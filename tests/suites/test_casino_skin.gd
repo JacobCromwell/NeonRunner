@@ -147,6 +147,23 @@ func _shader_hooks(skin: CasinoSkin) -> void:
 	check(code.contains("reduced_flashing"), "the marquee bulbs honour Reduced flashing")
 	var kc: String = FileAccess.get_file_as_string("res://scripts/world/meshes/shaders/kit_casino.gdshaderinc")
 	check(kc.contains("reduced_flashing"), "the signs' breathing honours Reduced flashing")
+	# Anything that moves with time in the casino's shaders goes through reduced_flashing on the same line:
+	# a still street, steady marquees and signs when the setting is on (checked by rendering both ways in the
+	# task's review as well).
+	var unguarded: PackedStringArray = []
+	var moving: int = 0
+	var uses_time := RegEx.create_from_string("\\bTIME\\b|-\\s*t\\s*\\*")
+	for source: String in [code, kc]:
+		for line: String in source.split("\n"):
+			var text: String = line.strip_edges()
+			if text.begins_with("//"):
+				continue
+			if uses_time.search(text) != null:
+				moving += 1
+				if not text.contains("reduced_flashing"):
+					unguarded.append(text)
+	check(moving >= 2 and unguarded.is_empty(), "everything that moves with time is steady with Reduced flashing (%d lines): %s" % [
+		moving, ", ".join(unguarded)])
 	for id: int in [MeshKit.PAT_CASINO_STREET, MeshKit.PAT_CASINO_UNDER, MeshKit.PAT_CASINO_IRON, MeshKit.PAT_CASINO_BRASS,
 			MeshKit.PAT_CASINO_VAULT, MeshKit.PAT_CASINO_SIGN, MeshKit.PAT_CASINO_BANNER]:
 		check(id >= 80 and id < 90, "pattern %d is in the casino's block" % id)

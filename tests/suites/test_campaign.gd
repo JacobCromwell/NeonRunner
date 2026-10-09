@@ -756,7 +756,8 @@ func _test_darker_lighting(campaign: Campaign) -> void:
 			"%s: darkness 0 is the zone's own light" % skin_name)
 	check(ProjectSettings.has_setting("shader_globals/scenery_light"), "the scenery light is a global shader uniform (project.godot)")
 	var dims: Array[String] = ["res://scripts/world/meshes/shaders/kit_solid.gdshader", "res://scripts/world/meshes/shaders/facade.gdshader",
-		"res://scripts/world/meshes/shaders/shopfront.gdshader", "res://scripts/world/meshes/shaders/road.gdshader",
+		"res://scripts/world/meshes/shaders/shopfront.gdshader", "res://scripts/world/meshes/shaders/casino_facade.gdshader",
+		"res://scripts/world/meshes/shaders/road.gdshader",
 		"res://scripts/world/meshes/shaders/drift.gdshader", "res://scripts/world/meshes/shaders/corp_facade.gdshader",
 		"res://scripts/world/meshes/shaders/dead_smoke.gdshader", "res://scripts/world/greybox_scenery.gdshader"]
 	for path: String in dims:
