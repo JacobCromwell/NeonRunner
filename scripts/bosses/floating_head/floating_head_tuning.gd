@@ -91,12 +91,11 @@ extends Resource
 
 @export_group("Salvos")
 ## Owner's request (October 9, 2026; task E1g): after the first run, a lock marks a salvo of spots at
-## once instead of one: from salvo_min_spots up to the phase's number here, each struck by one bomb or by
-## two side by side (more on a wide street: salvo_wide_lanes). The nearest spot is where a single lock's
-## would be, and each next one lies salvo_spacing further along the track, so the runner sees the whole
-## way through before the bombs are released. One number per phase's run (the last for any later
-## phase); 1 = one spot at a time (the first run, unchanged). DESIGN-TBD (docs/OPEN_QUESTIONS.md §D,
-## item 396): the third phase's run drops salvos too.
+## once instead of one: from salvo_min_spots up to the phase's number here, each struck by one bomb or
+## more side by side (below). The nearest spot is where a single lock's would be, and each next one
+## lies salvo_spacing further along the track, so the runner sees the whole way through before the
+## bombs are released. One number per phase's run (the last for any later phase); 1 = one spot at a
+## time (the first run, unchanged). The third phase's run drops salvos too (the owner, item 396).
 @export var salvo_spots: PackedInt32Array = [1, 4, 4]
 @export_range(2, 6) var salvo_min_spots: int = 2
 ## The distance along the track from one spot of a salvo to the next: the time to run past one blast
@@ -104,22 +103,21 @@ extends Resource
 ## phase's pace doesn't shorten it. The owner (October 9, 2026): tighter than the 12 m it was;
 ## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 398): how much.
 @export_range(6.0, 30.0, 0.5, "suffix:m") var salvo_spacing: float = 10.0
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 397): on a narrow street (fewer than salvo_wide_lanes), the chance that
-## a spot covers two lanes side by side.
-@export_range(0.0, 1.0, 0.05) var salvo_pair_chance: float = 0.4
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 398): from one spot to the next, the way through moves at most this
-## many lanes (from the runner to the first spot, max_escape_lanes, like any lock).
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 398): from one spot to the next, the way through moves
+## at most this many lanes (from the runner to the first spot, max_escape_lanes, like any lock).
 @export_range(1, 2) var salvo_max_shift: int = 1
-## The owner (October 9, 2026): salvos are harder on a street this many lanes wide or wider, where a
-## runner could otherwise step clear of a whole salvo. There a spot takes up to salvo_wide_bombs bombs
-## side by side, placed to leave the runner as few lanes to be in past it as it can, but no fewer than
-## salvo_wide_choices and never none: a way through always remains.
+## Each spot is a block of lanes side by side, placed to leave the runner as few lanes to be in past it
+## as it can, but no fewer than the street's choices and never none: a way through always remains, and
+## the salvo herds the runner rather than leave a lane they could stay in. The owner (October 9, 2026;
+## item 397): on a narrow street (fewer than salvo_wide_lanes lanes) a spot takes one or two bombs
+## (salvo_bombs) and leaves one lane (salvo_choices: a path the runner has to take); on a wide street,
+## where a runner could otherwise step clear of a whole salvo, up to three (salvo_wide_bombs), leaving
+## a choice of two lanes (salvo_wide_choices).
 @export_range(3, 7) var salvo_wide_lanes: int = 5
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 397): the most bombs side by side in one spot on a wide street.
+@export_range(1, 3) var salvo_bombs: int = 2
+@export_range(1, 3) var salvo_choices: int = 1
 @export_range(2, 4) var salvo_wide_bombs: int = 3
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 397): the fewest lanes a spot on a wide street leaves the runner to be
-## in (1: one way through, a path they have to take).
-@export_range(1, 3) var salvo_wide_choices: int = 1
+@export_range(1, 3) var salvo_wide_choices: int = 2
 
 @export_group("Bombs")
 ## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 87): the bomb is aimed at where the player will be:

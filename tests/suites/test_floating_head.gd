@@ -15,10 +15,11 @@ extends TestSuite
 ##   run lasts 15-20 s; the rules hold on the real arena at every lane count; every attempt plays out
 ##   the same way; the blast's damage rules, and a wall runner beside it is safe;
 ## - the reveal (its face powers on once) and the later, shorter runs of the faster phases;
-## - the later runs' salvos (owner's request, October 9, 2026; task E1g): 2-4 spots marked at once, one
-##   or two bombs each, the nearest first and each next one further along the track; a way through them
-##   all is always left, a runner who weaves along it escapes every bomb and one who stands still is hit
-##   by the first; the rules hold on the real arena; every attempt plays out the same way.
+## - the later runs' salvos (owner's request, October 9, 2026; task E1g): 2-4 spots marked at once, the
+##   nearest first and each next one further along the track, each leaving the runner one lane on 3
+##   lanes and a choice of two from 5 (up to two and three bombs); a way through them all is always left,
+##   a runner who weaves along it escapes every bomb and one who stands still is hit by the first; the
+##   rules hold on the real arena; every attempt plays out the same way.
 ## Every fight here runs at the City's speed (21 m/s), as the campaign plays it (GDD §3; task E1f:
 ## FloatingHeadBot.campaign_tuning).
 
@@ -178,21 +179,20 @@ func _lock_fair(layout: LevelLayout, t: FloatingHeadTuning, lock: Dictionary, la
 	return false
 
 
-## A salvo's rules, rechecked from the arena's layout: every spot lands on clear roof, and a way runs
-## through them all: from the runner's lane at most max_escape_lanes to a free lane at the first spot,
-## then at most salvo_max_shift from spot to spot, every lane on the way clear from where it sets off
-## (the runner's spot, then the spot before) to past the spot (the runner's own lane is theirs to run).
-func _salvo_fair(layout: LevelLayout, t: FloatingHeadTuning, lock: Dictionary, lanes_count: int, pace: float) -> bool:
+## The lanes a runner keeping a salvo's rules could be in past each of its spots, rechecked from the
+## arena's layout: from the runner's lane at most max_escape_lanes to a free lane at the first spot, then
+## at most salvo_max_shift from spot to spot, every lane on the way clear from where it sets off (the
+## runner's spot, then the spot before) to past the spot (the runner's own lane is theirs to run). One
+## set per spot, up to the first that leaves none.
+func _salvo_reach(layout: LevelLayout, t: FloatingHeadTuning, lock: Dictionary, lanes_count: int, pace: float) -> Array:
 	var pl: int = int(lock["player_lane"])
 	var from: float = float(lock["d0"])
 	var reach_set: Array[int] = [pl]
 	var spots: Array = lock["spots"]
+	var out: Array = []
 	for k: int in spots.size():
 		var lanes: Array = spots[k]["lanes"]
 		var at: float = float(spots[k]["at"])
-		for l: int in lanes:
-			if not _floor_clear(layout, l, at - t.clear_before_impact * pace, at + t.clear_after_impact * pace):
-				return false
 		var reach: int = t.max_escape_lanes if k == 0 else t.salvo_max_shift
 		var next: Array[int] = []
 		for r: int in reach_set:
@@ -205,11 +205,25 @@ func _salvo_fair(layout: LevelLayout, t: FloatingHeadTuning, lock: Dictionary, l
 						ok = false
 				if ok:
 					next.append(e)
+		out.append(next)
 		if next.is_empty():
-			return false
+			break
 		reach_set = next
 		from = at
-	return true
+	return out
+
+
+## A salvo's rules, rechecked from the arena's layout: every spot lands on clear roof, and a way runs
+## through them all (_salvo_reach never runs out).
+func _salvo_fair(layout: LevelLayout, t: FloatingHeadTuning, lock: Dictionary, lanes_count: int, pace: float) -> bool:
+	var spots: Array = lock["spots"]
+	for spot: Dictionary in spots:
+		var at: float = float(spot["at"])
+		for l: int in spot["lanes"]:
+			if not _floor_clear(layout, l, at - t.clear_before_impact * pace, at + t.clear_after_impact * pace):
+				return false
+	var sets: Array = _salvo_reach(layout, t, lock, lanes_count, pace)
+	return sets.size() == spots.size() and not (sets[-1] as Array).is_empty()
 
 
 # --- Data and preview ----------------------------------------------------------------------------
@@ -679,8 +693,10 @@ func _test_salvos() -> void:
 	check(t.salvo_min_spots == 2 and t.salvo_spots_in(1) == 4 and t.salvo_spots_in(2) == 4,
 		"the later runs drop salvos of 2 to 4 spots (owner, October 9, 2026)")
 	check(t.salvo_spacing < 12.0, "its spots lie closer together than the first 12 m (owner: tighter; %.1f m)" % t.salvo_spacing)
-	check(t.salvo_wide_lanes == 5 and t.salvo_wide_bombs > 2,
-		"from 5 lanes a spot may take more than two bombs (owner: harder on 5 or more lanes)")
+	check(t.salvo_wide_lanes == 5 and t.salvo_wide_bombs == 3 and t.salvo_bombs == 2,
+		"a spot takes up to three bombs from 5 lanes, two below (owner: harder on 5 or more lanes)")
+	check(t.salvo_choices == 1 and t.salvo_wide_choices == 2,
+		"a spot leaves one lane on 3 lanes (a path to take) and a choice of two from 5 lanes (owner)")
 	# Seconds from one spot's blast to the next: salvo_spacing at 18 m/s, as long at any speed.
 	var gap: float = t.salvo_spacing / MovementTuning.REFERENCE_SPEED
 	var sizes: Dictionary = {}
@@ -725,8 +741,10 @@ func _test_salvos() -> void:
 			check(not locks.is_empty(), "the light locks on %s" % tag)
 			var shaped: bool = true
 			var wide: bool = lanes >= t.salvo_wide_lanes
-			var most_bombs: int = t.salvo_wide_bombs if wide else 2
+			var most_bombs: int = t.salvo_wide_bombs if wide else t.salvo_bombs
+			var choices: int = t.salvo_wide_choices if wide else t.salvo_choices
 			var stepped_clear: int = 0
+			var off_choices: int = 0
 			var aimed: bool = true
 			var spaced: bool = true
 			var timed: bool = true
@@ -759,19 +777,22 @@ func _test_salvos() -> void:
 							- t.salvo_spacing * head.run_pace()) < 0.01
 				if not _salvo_fair(world.layout, t, l, lanes, head.run_pace()):
 					unfair += 1
-				# On a wide street no lane in the runner's reach at the first spot is clear of every spot.
-				if wide:
-					for e: int in lanes:
-						var hit: bool = absi(e - int(l["player_lane"])) > t.max_escape_lanes
-						for spot: Dictionary in spots:
-							hit = hit or (spot["lanes"] as Array).has(e)
-						if not hit:
-							stepped_clear += 1
+				# Past every spot the runner has the street's choice of lanes: one on 3 lanes, two from 5.
+				for left: Array in _salvo_reach(world.layout, t, l, lanes, head.run_pace()):
+					if left.size() != choices:
+						off_choices += 1
+				# No lane in the runner's reach at the first spot is clear of every spot.
+				for e: int in lanes:
+					var hit: bool = absi(e - int(l["player_lane"])) > t.max_escape_lanes
+					for spot: Dictionary in spots:
+						hit = hit or (spot["lanes"] as Array).has(e)
+					if not hit:
+						stepped_clear += 1
 			check(shaped, "every lock marks %d to %d spots, 1 to %d bombs side by side each %s" % [t.salvo_min_spots,
 				t.salvo_spots_in(phase), most_bombs, tag])
-			if wide:
-				check(stepped_clear == 0, "a runner can't step clear of a whole salvo on a wide street (%d lanes clear) %s" % [
-					stepped_clear, tag])
+			check(off_choices == 0, "past every spot the runner has %d lane%s to be in (%d spots off) %s" % [choices,
+				"" if choices == 1 else "s", off_choices, tag])
+			check(stepped_clear == 0, "a runner can't step clear of a whole salvo (%d lanes clear) %s" % [stepped_clear, tag])
 			check(aimed, "the nearest spot is where a single lock's would be, on the runner's lane %s" % tag)
 			check(spaced, "each next spot lies salvo_spacing further along the track %s" % tag)
 			check(timed, "each spot blows %.2f s after the one before, the first after the warning %s" % [gap, tag])
@@ -797,7 +818,7 @@ func _test_salvos() -> void:
 			check(not late, "its last bomb lands before the run ends %s" % tag)
 			print("  Floating Head's run in phase %d %s: %d salvos, %d bombs" % [phase + 1, tag, locks.size(), bombs])
 			await sim.free_world(world)
-	check(sizes.has(t.salvo_min_spots) and sizes.size() >= 2, "salvos come in different sizes (%s spots)" % [sizes.keys()])
+	check(sizes.size() >= 2, "salvos come in different sizes (%s spots)" % [sizes.keys()])
 	check(pairs >= 1 and pairs < spots_seen, "on 3 lanes some spots take two bombs side by side, others one (%d of %d)" % [
 		pairs, spots_seen])
 	check(widest == t.salvo_wide_bombs, "on 5 and 6 lanes some spots take %d bombs side by side" % t.salvo_wide_bombs)

@@ -16,19 +16,19 @@ extends Node3D
 ## free side is the way out. A player who keeps moving can always escape (the fairness rules below).
 ## Salvos (owner's request, October 9, 2026; task E1g; FloatingHeadTuning, group Salvos): in a phase
 ## whose run drops them (every run after the first), a lock marks 2-4 spots at once instead of one,
-## each struck by one bomb or two side by side (more on a wide street, below). The nearest is where a
-## single lock's would be; each next one lies salvo_spacing further along the track and strikes the
-## lane the way past the one before leads to, so the runner weaves from one to the next. Every spot's
-## red circle shows at the lock, while the later spots' bombs are still in the bay: the runner sees the
-## whole way through. The bombs leave the bay one spot after another, each falling for the warning's
-## length, and blow up nearest first, each as the runner gets there; the light moves on to the next
-## spot as each one blows. Fairness: every spot keeps a single lock's rules, and from one to the next
-## the way through moves at most salvo_max_shift lanes, through lanes free of holes and fences
-## (way_through). On a wide street (salvo_wide_lanes; the owner, October 9, 2026: harder there, so a
-## runner can't step clear of a whole salvo) a spot takes up to salvo_wide_bombs bombs side by side,
-## placed to leave the runner as few lanes to be in as it can (_plan_wide). Every target circle keeps
-## its red at any distance, out of the fog (the owner: a salvo's far spots the same colour as its near
-## ones).
+## each a block of lanes side by side. The nearest is where a single lock's would be, on the runner's
+## lane; each next one lies salvo_spacing further along the track. Each spot is placed to leave the
+## runner as few lanes to be in past it as it can, but never none (plan_salvo): on a narrow street
+## (under salvo_wide_lanes) one or two bombs a spot and one lane left, a path the runner has to take;
+## on a wide street up to three bombs and a choice of two lanes, so a runner can't step clear of the
+## whole salvo (the owner's answers, the same day). Every spot's red circle shows at the lock, while
+## the later spots' bombs are still in the bay: the runner sees the whole way through. The bombs leave
+## the bay one spot after another, each falling for the warning's length, and blow up nearest first,
+## each as the runner gets there; the light moves on to the next spot as each one blows. Fairness:
+## every spot keeps a single lock's rules, and from one to the next the way through moves at most
+## salvo_max_shift lanes, through lanes free of holes and fences (way_through). Every target circle
+## keeps its red at any distance, out of the fog (the owner: a salvo's far spots the same colour as its
+## near ones).
 ## Fairness: a lock happens only where the lanes it strikes are free of holes and fences around the
 ## blast (it lands on a roof), where a lane it doesn't strike lies at most max_escape_lanes away with
 ## it and every lane on the way free of holes and fences from the player to past the blast (the dodge is
@@ -468,50 +468,41 @@ func _try_salvo() -> void:
 	_set_step(Step.LOCK)
 
 
-## A salvo for a runner in lane `pl`, its nearest spot at track distance `at`: up to `most` spots,
-## {lanes: Array[int], at} each, the nearest first, or none if fewer than least_spots() are fair now.
-## Each spot strikes the lane the way past the one before leads to (the runner's own for the first),
-## alone or, by a seeded pick, with a lane beside it, where the spot keeps a single lock's rules
-## (fair: clear roof, no pickup, no ceiling, a way out within reach); the way out is a seeded pick among
-## the nearest. A salvo whose next spot can't be fair ends there. A wide street's: _plan_wide.
-func plan_salvo(pl: int, at: float, most: int) -> Array[Dictionary]:
-	if wide_street():
-		return _plan_wide(pl, at, most)
-	var spots: Array[Dictionary] = []
-	var gap: float = head.metres(tuning.salvo_spacing)
-	var lane: int = pl
-	var from: float = world.player.distance
-	for k: int in most:
-		var spot_at: float = at + k * gap
-		var pick: Dictionary = _pick_spot(lane, from, spot_at, k == 0)
-		if pick.is_empty():
-			break
-		spots.append({"lanes": pick["lanes"], "at": spot_at})
-		lane = pick["way"]
-		from = spot_at
-	if spots.size() < least_spots():
-		spots.clear()
-	return spots
-
-
 ## True if salvos here keep a wide street's rules (salvo_wide_lanes lanes or more).
 func wide_street() -> bool:
 	return world.geo.lane_count >= tuning.salvo_wide_lanes
 
 
-## A salvo on a wide street (the owner, October 9, 2026: harder there, so a runner can't step clear of
-## it). It follows the lanes a runner keeping the rules could be in past each spot (from every lane they
-## could be in at the spot before; their own lane before the first), and makes each spot the block of
-## up to salvo_wide_bombs lanes side by side, on clear roof with no pickup, that leaves them the fewest,
-## but no fewer than salvo_wide_choices and never none; the first spot's block holds the runner's lane.
-## Ties go to leaving lanes that lie together, then to the block striking more of the lanes they could
-## be in (so they must move), then to fewer bombs, then to a seeded pick. A salvo whose next spot can't
-## be fair, or would strike none of the lanes they could be in, ends there.
-func _plan_wide(pl: int, at: float, most: int) -> Array[Dictionary]:
+## The most bombs side by side in one spot here: salvo_wide_bombs on a wide street, else salvo_bombs.
+func spot_bombs() -> int:
+	return tuning.salvo_wide_bombs if wide_street() else tuning.salvo_bombs
+
+
+## The fewest lanes a spot here leaves the runner to be in, where it can: salvo_wide_choices on a wide
+## street (a choice of two), else salvo_choices (one: a path they have to take).
+func spot_choices() -> int:
+	return maxi(tuning.salvo_wide_choices if wide_street() else tuning.salvo_choices, 1)
+
+
+## A salvo for a runner in lane `pl`, its nearest spot at track distance `at`: up to `most` spots,
+## {lanes: Array[int], at} each, the nearest first, or none if fewer than least_spots() are fair now.
+## It follows the lanes a runner keeping the rules could be in past each spot (from every lane they
+## could be in at the spot before; their own lane before the first), and makes each spot the block of up
+## to spot_bombs() lanes side by side, on clear roof with no pickup, that leaves them the fewest, but no
+## fewer than spot_choices() where it can and never none (the owner, October 9, 2026: a path to take on
+## a narrow street, a choice of two lanes on a wide one). The first spot's block holds the runner's
+## lane; each later one strikes at least one lane they could be in. Ties go to striking a lane they could
+## have stayed in since the first spot (so none is left that clears the whole salvo), then more of the
+## lanes they could be in, then to leaving lanes that lie together, then to fewer bombs, then to a
+## seeded pick. A salvo whose next spot can't be fair ends there.
+func plan_salvo(pl: int, at: float, most: int) -> Array[Dictionary]:
 	var spots: Array[Dictionary] = []
 	var gap: float = head.metres(tuning.salvo_spacing)
 	var n: int = world.geo.lane_count
+	var choices: int = spot_choices()
 	var could: Array[int] = [pl]
+	# The lanes a runner could have stayed in since the first spot, never struck.
+	var stay: Array[int] = []
 	var from: float = world.player.distance
 	for k: int in most:
 		var spot_at: float = at + k * gap
@@ -524,7 +515,7 @@ func _plan_wide(pl: int, at: float, most: int) -> Array[Dictionary]:
 				spot_at + head.metres(tuning.clear_after_impact)) and not _pickup_near(l, spot_at))
 		var best: Array = []
 		var picks: Array = []
-		for width: int in range(1, tuning.salvo_wide_bombs + 1):
+		for width: int in range(1, spot_bombs() + 1):
 			for low: int in range(0, n - width + 1):
 				var block: Array[int] = []
 				var on_roof: bool = true
@@ -533,27 +524,39 @@ func _plan_wide(pl: int, at: float, most: int) -> Array[Dictionary]:
 					on_roof = on_roof and roof[l]
 				if not on_roof or (k == 0 and not block.has(pl)):
 					continue
-				var left: Array[int] = _reach(could, block, pl, open, k == 0)
-				if left.is_empty():
-					continue
 				var struck: int = 0
 				for l: int in could:
 					if block.has(l):
 						struck += 1
-				var enough: bool = left.size() >= tuning.salvo_wide_choices
-				var key: Array = [0 if enough else 1, left.size() if enough else -left.size(),
-					left[-1] - left[0], -struck, width]
+				if struck == 0:
+					continue
+				var left: Array[int] = _reach(could, block, pl, open, k == 0)
+				if left.is_empty():
+					continue
+				var stayed: int = 0
+				for l: int in stay:
+					if block.has(l):
+						stayed += 1
+				var enough: bool = left.size() >= choices
+				var key: Array = [0 if enough else 1, left.size() if enough else -left.size(), -stayed, -struck,
+					left[-1] - left[0], width]
 				var order: int = _compare(key, best)
 				if order < 0:
 					best = key
 					picks = [[block, left]]
 				elif order == 0:
 					picks.append([block, left])
-		if picks.is_empty() or int(best[3]) == 0:
+		if picks.is_empty():
 			break
 		var pick: Array = picks[head.rng.randi() % picks.size()]
-		spots.append({"lanes": pick[0], "at": spot_at})
+		var lanes: Array[int] = pick[0]
+		spots.append({"lanes": lanes, "at": spot_at})
 		could = pick[1]
+		if k == 0:
+			stay = could.duplicate()
+		else:
+			for l: int in lanes:
+				stay.erase(l)
 		from = spot_at
 	if spots.size() < least_spots():
 		spots.clear()
@@ -599,65 +602,6 @@ func _crossing_open(r: int, e: int, pl: int, open: Array[bool], first: bool) -> 
 		if (l != pl or not first) and not open[l]:
 			return false
 	return true
-
-
-## One spot of a salvo at `at` on the way's `lane`, which the way reaches at `from` (the runner's spot
-## for the first): {lanes, way} or empty if no spot there is fair.
-func _pick_spot(lane: int, from: float, at: float, first: bool) -> Dictionary:
-	if head.ceiling_between(at - head.metres(CEILING_BEFORE), at + head.metres(CEILING_AFTER)):
-		return {}
-	var n: int = world.geo.lane_count
-	var options: Array = []
-	if n >= 3 and head.rng.randf() < tuning.salvo_pair_chance:
-		var sides: Array[int] = [-1, 1]
-		if head.rng.randf() < 0.5:
-			sides.reverse()
-		for s: int in sides:
-			var other: int = lane + s
-			if other >= 0 and other < n:
-				var pair: Array[int] = [mini(lane, other), maxi(lane, other)]
-				options.append(pair)
-	var single: Array[int] = [lane]
-	options.append(single)
-	for lanes: Array[int] in options:
-		var clear: bool = true
-		for l: int in lanes:
-			if not _clear(l, at - head.metres(tuning.clear_before_impact), at + head.metres(tuning.clear_after_impact)) \
-					or _pickup_near(l, at):
-				clear = false
-				break
-		if not clear:
-			continue
-		var ways: Array[int] = _ways_out(lanes, lane, from, at, first)
-		if not ways.is_empty():
-			return {"lanes": lanes, "way": ways[head.rng.randi() % ways.size()]}
-	return {}
-
-
-## The nearest lanes out of a spot on `lanes` at `at` for a way in `lane` from `from`: not struck, at
-## most max_escape_lanes away for the first spot and salvo_max_shift for the rest, with every lane on
-## the way (the way's own too, after the first spot) free of holes and fences from `from` to
-## escape_clear_after past the spot.
-func _ways_out(lanes: Array[int], lane: int, from: float, at: float, first: bool) -> Array[int]:
-	var reach: int = tuning.max_escape_lanes if first else tuning.salvo_max_shift
-	var until: float = at + head.metres(tuning.escape_clear_after)
-	var n: int = world.geo.lane_count
-	var out: Array[int] = []
-	for dist: int in range(1, reach + 1):
-		for s: int in [-1, 1]:
-			var e: int = lane + s * dist
-			if e < 0 or e >= n or lanes.has(e):
-				continue
-			var ok: bool = true
-			for l: int in range(mini(lane, e), maxi(lane, e) + 1):
-				if (l != lane or not first) and not _clear(l, from, until):
-					ok = false
-					break
-			if ok:
-				out.append(e)
-		if not out.is_empty():
-			break
-	return out
 
 
 ## A way through `spots` (a salvo's, {lanes, at} each, the nearest first) for a runner in `pl` at

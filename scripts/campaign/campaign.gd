@@ -124,7 +124,9 @@ func feature_ages(s: CampaignStep) -> Dictionary[String, int]:
 ## difficulty plus the tier's bonus (bosses keep their own difficulty rather than the level curve),
 ## its run speed like a level's (run_speed_for: its zone's, times the tier's multiplier; GDD §3, the
 ## fight is as fast as the zone's levels), enemy scaling as in the zone's last level (enemies a boss
-## brings in fight like the zone's), and the zone's skin unless the arena has its own.
+## brings in fight like the zone's), the zone's skin unless the arena has its own, and the sky of the
+## level just before it unless the arena has its own (owner, October 8, 2026: a fight after a level
+## whose sky has turned keeps that sky; LevelConfig.sky).
 func configure_boss(s: CampaignStep, lane_count: int, difficulty_tier: int = 0) -> LevelConfig:
 	var config: LevelConfig = BossArena.base_config(s.boss)
 	config.lane_count = lane_count
@@ -133,14 +135,18 @@ func configure_boss(s: CampaignStep, lane_count: int, difficulty_tier: int = 0) 
 	config.difficulty = clampf(config.difficulty + bonus, 0.0, 1.0)
 	config.run_speed = run_speed_for(s, difficulty_tier)
 	var last_level: int = 0
+	var before: CampaignStep = null
 	for other: CampaignStep in steps():
 		if other.index >= s.index:
 			break
 		if other.is_level():
 			last_level = other.level_index
+			before = other
 	config.enemy_scaling = level_progress(last_level)
 	if config.skin == null and s.zone != null and s.zone.skin != null:
 		config.skin = s.zone.skin
+	if config.sky == null and before != null and before.zone == s.zone:
+		config.sky = before.level.sky
 	return config
 
 
