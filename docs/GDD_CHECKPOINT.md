@@ -641,7 +641,17 @@ Shared interaction rules apply unless stated otherwise:
 - **The Golden Convergence** (Golden Zone; the final villain). Owner's design, in progress (October 9, 2026). More attacks and the fight's phases are still to be described.
   - **Name:** the fight, and the golden construct, are **The Golden Convergence**. The man inside is **The Magnate**.
   - **What it is:** a **giant mechanical construct**, a golden exoskeleton that the villain rides inside: a gaudy, almost religious relic, but entirely man-made. It floats in the distance ahead of the runner. **The man inside isn't visible** until the second stage.
-  - **Stage 1, the golden suit:** several phases, built from three attacks: the **Helidrone Strafe**, the **Fist Slam** and the **Missile Barrage** (all below). How the suit takes damage is still to be described.
+  - **Stage 1, the golden suit:** several phases, built from three attacks: the **Helidrone Strafe**, the **Fist Slam** and the **Missile Barrage** (all below). The suit takes damage when the player destroys a **Refill Ship** (below).
+  - **Damaging the suit: the Refill Ship** (owner's design, October 9, 2026):
+    - **When:** after the boss has fired its Missile Barrages *(open: how many; the owner suggested two)*, a **ship comes in to refill his missiles**.
+    - **The ship is a ceiling,** like most ships in the game.
+    - **The way up:** an **anti-grav pad** under the ship, **caged by electric fences** (§9.1). A runner who touches a fence is hit unless they **dash** through or first **knock out the cage's generator** (a stomp or the dash), whose pulse switches the fences off. Armor and the shield get through a fence at the cost of a hit, as usual.
+    - **The squadron:** around then, a **Helidrone Strafe** is starting or under way. Stepping on the pad **hurls the whole squadron up into the Refill Ship** (the heli drone pad rule, §9.6), setting off a **chain reaction**:
+      - the ship **goes spinning off to the side and explodes**, and the missiles it carries all explode;
+      - the squadron explodes, which **ends that strafe**;
+      - **the boss takes damage**;
+      - the runner **falls back to the floor unharmed**.
+    - **Again and again:** a new Refill Ship comes after each later attack phase, until the suit is destroyed and the second stage begins.
   - **Armor pickups:** the standard armor rule, triggered when the player has **lost all their armor**, with the **longest delay of any boss fight** (owner, October 9, 2026): **22 seconds**.
   - **No side walls:** the arena has none, except where a destroyed Flying Buttress brings a building down to make one (Fist Slam, below). Beyond the outer lanes, a **low golden balustrade** bumps the runner back (the bump the game already uses when a boss takes a wall away), so there's no new way to die.
   - **Fist Slam** (owner's attack, October 9, 2026; stage 1). It's meant to be **scary**.
@@ -683,7 +693,7 @@ Shared interaction rules apply unless stated otherwise:
     - **Warning:** before each pass, a **red line on the floor** where the fire will land, about a second ahead, and a gatling **spin-up whine**.
     - **Walls:** fire in an outer lane hits a runner **low on the wall** but not one **high up** (what looks like a hit is a hit, §3).
     - **Weapons never target the squadron.**
-    - **Anti-grav pads** destroy the whole squadron, as they do heli drones (§9.6). In this fight pads appear only at set moments *(still to be described)*.
+    - **Anti-grav pads** destroy the whole squadron, as they do heli drones (§9.6). In this fight pads appear only for the Refill Ship (below).
     - Nothing else is on the track during a strafe.
   - **Flying Buttress** (owner's new doodad for this fight): **taller than other doodads**. It looks like it holds up buildings out of sight on either side of the track, and may run out beyond the view (the unseen part isn't rendered).
     - **A gate:** its pier rises from an **inner lane, never an outer one**, with a tall arched opening at its foot that the runner runs through. Its flying arch leaps from the top of the pier out over the wall toward the unseen building. The player has to move into its lane to take cover.
