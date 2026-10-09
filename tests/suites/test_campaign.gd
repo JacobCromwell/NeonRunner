@@ -185,6 +185,9 @@ func _test_slots(campaign: Campaign) -> void:
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id.ends_with("intro"):
 			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/arrival_flyover.tscn"
 				and s.cinematic.is_built(), "cinematic slot %s plays the placeholder arrival flyover (task F1)" % s.id)
+		elif s.kind == CampaignStep.Kind.CINEMATIC and s.zone == campaign.zones[0] and s.id.ends_with("outro"):
+			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/city_outro.tscn"
+				and s.cinematic.is_built(), "the City's outro slot plays its cinematic (task F2a)")
 		elif s.kind == CampaignStep.Kind.CINEMATIC:
 			check(s.cinematic != null and not s.cinematic.is_built(), "cinematic slot %s is still a placeholder" % s.id)
 
