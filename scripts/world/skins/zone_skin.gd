@@ -737,6 +737,13 @@ func dash_wall_material() -> Material:
 	return MeshKit.solid()
 
 
+## The materials a dash wall's look may draw with (task H7b): the surfaces of its meshes (or their instance's
+## override) are all among these, and every one is lit, never glowing (test_dash_walls). The default look
+## draws with dash_wall_material(); a zone whose wall is built from its facade shader lists that too.
+func dash_wall_materials() -> Array[Material]:
+	return [MeshKit.solid(), dash_wall_material()]
+
+
 ## The colours a dash wall's pieces fly off in when it crumbles (task H7a; RunEffects), for `body` as
 ## dash_wall() dressed it (TrackBuilder asks right after): its look's own main lit colours, which the look's
 ## builder tagged its meshes with (tag_debris_colors; the default does), else its walls' and trim's

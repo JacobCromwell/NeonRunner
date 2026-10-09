@@ -735,14 +735,17 @@ func _test_skins() -> void:
 					check(aabb.size.x >= size.x - 0.01 and aabb.size.y >= size.y - 0.01 and aabb.end.z >= half.z - 0.01,
 						"filling its face %s" % tag)
 					var glows: bool = false
+					var lit_materials: bool = inst.mesh.get_surface_count() > 0
 					for surface: int in inst.mesh.get_surface_count():
 						for col: Color in inst.mesh.surface_get_arrays(surface)[Mesh.ARRAY_COLOR]:
 							glows = glows or col.a > 0.0
 							if col.a == 0.0:
 								own[Color(col.r, col.g, col.b)] = true
-					var mat: Material = inst.material_override
-					check(not glows and mat != null and (mat == MeshKit.solid() or mat == skin.dash_wall_material()),
-						"lit, never glowing %s" % tag)
+						# Each surface draws with a material the skin names (its own facade shader or the solid kit),
+						# the instance's override or the surface's own.
+						var mat: Material = inst.get_active_material(surface)
+						lit_materials = lit_materials and mat != null and mat in skin.dash_wall_materials()
+					check(not glows and lit_materials, "lit, never glowing (materials the skin names) %s" % tag)
 					meshes[inst.mesh] = true
 				var inside: bool = not colors.is_empty()
 				for c: Color in colors:
