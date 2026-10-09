@@ -121,15 +121,16 @@ func _collapsed(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int, r
 	var style: int = STYLES[(tone + 3) % STYLES.size()]
 	var seed: float = float(MeshKit.hash_i(tone, 3, 103) % 997)
 	var wall: Color = _wall(tone + 2)
-	var tops: PackedFloat32Array = DashWallKit.broken_profile(size, rng, 1, TOP_MIN - 0.6)
-	# The big bite: from about a third of the way along, down toward the floor storey.
+	var tops: PackedFloat32Array = DashWallKit.broken_profile(size, rng, 1, TOP_MIN)
+	# The big bite: from about a third of the way along, down to TOP_MIN at its deepest (never lower: what is open above
+	# the wall is within reach of a wall jump's feet, about 5.3 m, and must not invite one).
 	var n: int = tops.size() - 1
 	var centre: int = roundi(float(n) * (0.3 if tone % 2 == 0 else 0.7))
 	for i: int in n + 1:
 		var d: float = absf(float(i - centre)) / 2.6
 		if d < 1.0 and i > 0 and i < n:
-			tops[i] = minf(tops[i], lerpf(TOP_MIN - 1.6, tops[i], d * d))
-	_body(solid, size, wall_z, TOP_MIN - 1.8, wall)
+			tops[i] = minf(tops[i], lerpf(TOP_MIN, tops[i], d * d))
+	_body(solid, size, wall_z, TOP_MIN - 0.3, wall)
 	DashWallKit.face_profile(facade, size, tops, 0.0, wall_z, wall, style, seed, size.x * 0.5, 0.0)
 	_slabs(solid, size, wall_z, tops, wall, style)
 	_posts(solid, size, wall_z)
@@ -213,10 +214,11 @@ func _body(solid: MeshLayer, size: Vector3, z: float, top: float, color: Color) 
 		MeshKit.FACE_PX | MeshKit.FACE_NX | MeshKit.FACE_PY, 0.0)
 
 
-## A sandstone for a tone: the zone's own sandy and umber walls, a little lighter so the block reads out of the
-## street's brown.
+## A sandstone for a tone: the zone's lighter sandy walls (facade_colors 3 and 0), lifted so the block reads out of
+## the street's brown and against the dark sky from far ahead (the zone's darkest umbers lose it at 100 m).
 func _wall(tone: int) -> Color:
-	return skin.facade_colors[tone % skin.facade_colors.size()].lightened(0.06)
+	var picks: Array[int] = [3, 0]
+	return skin.facade_colors[picks[posmod(tone, picks.size())] % skin.facade_colors.size()].lightened(0.14)
 
 
 ## What says "this breaks": cracks spreading across the face from a few points, and a patch where the render has come
