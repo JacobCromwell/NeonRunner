@@ -51,6 +51,9 @@ const RUN_AFTER: Array[String] = ["ramps", "ceilings", "pulsing", "speed_pads", 
 	"buzz_overdrive", "barnacle_turret", "tithe_collector", "resonator", "gilded_sentinel"]
 const BuzzRules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
 const HoverTruckRules = preload("res://scripts/enemies/hover_truck_rules.gd")
+## Metres either side of a showing window that the later passes keep off too (doodad_keep_outs, fill_keep_outs): its
+## checks count what touches the stretch they read.
+const WINDOW_EDGE: float = 1.0
 ## The arrival offsets tried around the preferred one (seconds between them).
 const OFFSET_STEP: float = 0.5
 
@@ -365,14 +368,17 @@ static func window_of(e: Dictionary) -> Vector2:
 static func doodad_keep_outs(gen: LevelGenerator) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for w: Vector2 in show_windows(gen.layout):
-		out.append({"from": w.x, "to": w.y, "type": TYPE, "calm": true})
+		out.append({"from": w.x - WINDOW_EDGE, "to": w.y + WINDOW_EDGE, "type": TYPE, "calm": true})
 	return out
 
 
 ## What the generator's fill pass keeps off in every lane besides the enemies' stretches (LevelGenerator
 ## .rules_fill_keep_outs, without its margin): each truck's planned showing window (task C6c).
 static func fill_keep_outs(gen: LevelGenerator) -> Array[Vector2]:
-	return show_windows(gen.layout)
+	var out: Array[Vector2] = []
+	for w: Vector2 in show_windows(gen.layout):
+		out.append(Vector2(w.x - WINDOW_EDGE, w.y + WINDOW_EDGE))
+	return out
 
 
 ## Every placement rule a generated level's trucks break, for the tests: more than per_level_max, two at
@@ -455,6 +461,10 @@ class ShowPlanner:
 	var longest: float = 0.0
 	## The fences a fence generator powers (never taken out).
 	var powered: Array[Dictionary] = []
+	## Seconds before its rev a Buzz Overdrive's turn comes at the earliest: the cyborgs planted in charge paths come
+	## after the trucks, and one planted in its charge's path has it claim its turn this early (ChargePathPlacement:
+	## its tuning's claim_seconds), so each window is planned as if every one might (0 in a level that plants none).
+	var least_claim: float = 0.0
 	## Why the last plan() found none: what kept the most of its tries out.
 	var why_none: String = ""
 
@@ -465,7 +475,9 @@ class ShowPlanner:
 		p.t = p_t
 		var lanes: int = p_gen.layout.lane_count
 		p.geo = TrackGeometry.new(lanes, p_gen.tuning)
-		p.room = EnforcerTruckRoom.build(p_gen.layout, p.geo, p_gen.tuning, p_t, p_gen.speed)
+		if p_gen.config.charge_path_cyborgs > 0:
+			p.least_claim = ChargePathPlacement.tuning().claim_seconds
+		p.room = EnforcerTruckRoom.build(p_gen.layout, p.geo, p_gen.tuning, p_t, p_gen.speed, p.least_claim)
 		p.fits = EnforcerTruckRoom.fits_for(p_gen.tuning, p_t, lanes)
 		p._index_busy()
 		return p
@@ -655,7 +667,7 @@ class ShowPlanner:
 						out += 1
 						break
 		if out > 0:
-			room = EnforcerTruckRoom.build(gen.layout, geo, gen.tuning, t, gen.speed)
+			room = EnforcerTruckRoom.build(gen.layout, geo, gen.tuning, t, gen.speed, least_claim)
 			busy.clear()
 			busy_starts.clear()
 			powered.clear()
@@ -702,7 +714,7 @@ class ShowPlanner:
 			var span: Vector2 = LevelGenerator.enemy_floor_span(e, gen.pace)
 			if ((float(e["at"]) >= lo and float(e["at"]) <= hi) or (span.y >= lo and span.x <= hi)) and not _in(skip, e):
 				lay.enemies.append(e)
-		return EnforcerTruckRoom.build(lay, geo, gen.tuning, t, gen.speed)
+		return EnforcerTruckRoom.build(lay, geo, gen.tuning, t, gen.speed, least_claim)
 
 
 	## What would have a runner in some lane off the floor as a showing begins between `from` and `to` ("" if
@@ -849,7 +861,7 @@ class ShowPlanner:
 			var turn: float = INF
 			for e: Dictionary in gen.layout.enemies:
 				if String(e.get("type", "")) == "buzz_overdrive" and is_same(BuzzRules.cut_of(gen.layout, e), c):
-					turn = FloorCutPlan.warn_at(c) - float(c.get("claim_seconds", claim)) * v
+					turn = FloorCutPlan.warn_at(c) - maxf(float(c.get("claim_seconds", claim)), least_claim) * v
 			out.append(_busy(w, turn, true, "a Buzz Overdrive's attack" if turn < INF else "a floor cut", {}))
 		out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 			return (a["span"] as Vector2).x < (b["span"] as Vector2).x)

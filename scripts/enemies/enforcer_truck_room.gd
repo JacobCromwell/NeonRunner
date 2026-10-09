@@ -50,9 +50,11 @@ var quiet: Array[Vector2] = []
 var planned: Array[Vector2] = []
 
 
-## Reads `layout` (a level at `run_speed`, `mt` its movement tuning, `t` the truck's tuning).
+## Reads `layout` (a level at `run_speed`, `mt` its movement tuning, `t` the truck's tuning). A Buzz Overdrive's
+## turn comes `least_claim` seconds or more before its rev (the generator's plan for a pass that may give it a longer
+## claim later, ShowPlanner).
 static func build(layout: LevelLayout, geometry: TrackGeometry, mt: MovementTuning, t: EnforcerTruckTuning,
-		run_speed: float) -> EnforcerTruckRoom:
+		run_speed: float, least_claim: float = 0.0) -> EnforcerTruckRoom:
 	var room := EnforcerTruckRoom.new()
 	room.geo = geometry
 	var lanes: int = geometry.lane_count
@@ -100,7 +102,7 @@ static func build(layout: LevelLayout, geometry: TrackGeometry, mt: MovementTuni
 				var cut: Dictionary = BuzzRules.cut_of(layout, e)
 				if not cut.is_empty():
 					var claim: float = float(cut.get("claim_seconds", buzz.claim_seconds if buzz != null else 2.5))
-					warns.append(FloorCutPlan.warn_at(cut) - claim * run_speed)
+					warns.append(FloorCutPlan.warn_at(cut) - maxf(claim, least_claim) * run_speed)
 		if StringName(type) in NO_SHOW_TYPES:
 			var et := EnemyDirector.tuning_for(type) as EnemyTuning
 			room.quiet.append(Vector2(at - (et.spawn_lead if et != null else 100.0), at))

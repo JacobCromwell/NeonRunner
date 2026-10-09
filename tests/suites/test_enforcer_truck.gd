@@ -281,7 +281,11 @@ func _test_show_view() -> void:
 		var profile: Array[AABB] = EnforcerTruckModel.profile(look, t.body_size, EnforcerTruckModel.RIDER_SLOTS.size())
 		for lanes: int in [3, 5, 6]:
 			for r: int in lanes:
-				var ls: Array[int] = [r - 1, r + 1] if r > 0 and r < lanes - 1 else [r + (2 if r == 0 else -2)]
+				var ls: Array[int] = []
+				if r > 0 and r < lanes - 1:
+					ls.append_array([r - 1, r + 1])
+				else:
+					ls.append(r + (2 if r == 0 else -2))
 				for l: int in ls:
 					var c: Dictionary = EnforcerTruckView.check(tuning, lanes, r, l, t.show_ahead, profile)
 					worst = maxf(worst, float(c["worst"]))
