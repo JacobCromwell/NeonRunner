@@ -81,6 +81,7 @@ static func apply(gen: LevelGenerator) -> void:
 		orders.append(_arrival_order(gen, t, rng, b))
 	var chases: Array[Vector2] = []
 	var report: Array[Dictionary] = []
+	var by_bait: Array[Dictionary] = []
 	if planner == null:
 		# The earliest baits first.
 		for i: int in baits.size():
@@ -92,30 +93,54 @@ static func apply(gen: LevelGenerator) -> void:
 			report.append(_place(gen, t, planner, baits, spots, {}, hash([gen.config.level_seed, TYPE, report.size()])))
 			chases.append(chase_span(gen, t, float(report[-1]["at"])))
 	else:
-		# With its showing windows planned (task C6c): of every set of baits whose chases fit together, the one with
-		# the most showing windows (then the most chases, then the earliest baits) gets them; a level that introduces
-		# it keeps its earliest bait's (its introduction).
-		var chosen: Array[Dictionary] = _choose(gen, t, planner, orders, keep_outs, gen.feature_start(TYPE) > 0.0)
-		for o: Dictionary in chosen:
+		# With its showing windows planned (tasks C6c, C6d): of every set of baits whose chases fit together, the one
+		# with the most showing windows before their bait (then the most windows, then the most chases, then the
+		# earliest baits) gets them; a level that introduces it keeps its earliest bait's where that has room.
+		var chosen: Array[Dictionary] = _choose(gen, t, planner, orders, keep_outs, gen.feature_start(TYPE) > 0.0, baits,
+			by_bait)
+		for k: int in chosen.size():
+			var o: Dictionary = chosen[k]
+			if not planner.still_fits(o["plan"]):
+				# Each window was planned on the level as it stood: one before took out the last but one of a kind this
+				# one would take out too. Planned again on the level as it stands now, around the other chases.
+				var others: Array[Vector2] = []
+				for j: int in chosen.size():
+					if j != k:
+						others.append(chosen[j]["span"])
+				var bait: int = int(o["bait"])
+				o = _option(gen, t, planner, orders[bait], keep_outs, others)
+				o["bait"] = bait
+				chosen[k] = o
 			planner.why_none = String(o["why"])
 			report.append(_place(gen, t, planner, baits, o["spots"], o["plan"],
 				hash([gen.config.level_seed, TYPE, report.size()])))
-	gen.show_window_result = {"planned": planner != null, "chases": report}
+	gen.show_window_result = {"planned": planner != null, "chases": report, "baits": by_bait}
 
 
-## The chases a level gets (task C6c), along the track: of every set of at most per_level_max baits (`orders`: each
-## one's arrivals, _arrival_order) whose chases keep spacing_seconds apart, the one with the most showing windows
-## between them, then the most chases, then the earliest baits; with `intro`, always with the first bait that may
-## have one (a level's introduction of the truck). Each chase's window is planned as the level stands, and planned
-## again around the chases before it where those take its arrival away. Each: {spots, plan, at, span, why}.
+## The chases a level gets (tasks C6c, C6d), along the track: of every set of at most per_level_max baits (`orders`:
+## each one's arrivals, _arrival_order) whose chases keep spacing_seconds apart, the one with the most showing
+## windows before their chase's first bait (GDD §9.13 "Room to show itself", the owner, October 9, 2026: it shows
+## itself before the player can bait it, and a chase with no room for a showing gives its truck to another bait's
+## chase that has room), then the most showing windows, then the most chases, then the earliest baits. With
+## `intro` (a level's introduction of the truck), its first bait that may have one keeps its truck where that
+## chase has a window before its bait; else the introduction moves too. Each chase's window is planned as the
+## level stands (ShowPlanner.plan tries every arrival the bait allows, the earliest too, for one before the bait).
+## A set fits where its chases do planned along the track, each one again around the chases before it where those
+## take its arrival away (_plan_set); planned the other way round too, a later chase's window first and the earlier
+## trucks arriving earlier around it, where that gives more windows. Each: {spots, plan, at, span, why, bait (its
+## index in `orders`)}. `report` gets each bait's own chase ({at: its charge, chase: the arrival, span, window:
+## "before", "after" or "", chosen}) for gen.show_window_result.
 static func _choose(gen: LevelGenerator, t: EnforcerTruckTuning, planner: ShowPlanner, orders: Array,
-		keep_outs: Array[Vector2], intro: bool) -> Array[Dictionary]:
+		keep_outs: Array[Vector2], intro: bool, baits: Array[Dictionary], report: Array[Dictionary]) -> Array[Dictionary]:
 	var alone: Array[Dictionary] = []
 	var usable: Array[int] = []
 	for i: int in orders.size():
 		alone.append(_option(gen, t, planner, orders[i], keep_outs, []))
 		if not alone[i].is_empty():
+			alone[i]["bait"] = i
 			usable.append(i)
+	# The introduction keeps its first bait's chase where that chase has room to show itself before its bait.
+	var keep: int = usable[0] if intro and not usable.is_empty() and _before_bait(alone[usable[0]]) else -1
 	var sets: Array = [[]]
 	for i: int in usable:
 		var grown: Array = []
@@ -124,35 +149,69 @@ static func _choose(gen: LevelGenerator, t: EnforcerTruckTuning, planner: ShowPl
 				grown.append(set_ + [i])
 		sets.append_array(grown)
 	var best: Array[Dictionary] = []
-	var best_score := Vector2i(-1, -1)
+	var best_score := Vector3i(-1, -1, -1)
 	var best_key: Array[int] = []
 	for set_: Array in sets:
-		if intro and not usable.is_empty() and not set_.has(usable[0]):
+		if keep >= 0 and not set_.has(keep):
 			continue
-		var picked: Array[Dictionary] = []
-		var chases: Array[Vector2] = []
-		var windows: int = 0
-		for i: int in set_:
-			var o: Dictionary = alone[i]
-			if arrival_problem(gen, t, float(o["at"]), [], chases) != "":
-				o = _option(gen, t, planner, orders[i], keep_outs, chases)
-			if o.is_empty():
-				picked.clear()
-				break
-			picked.append(o)
-			chases.append(o["span"])
-			windows += 0 if (o["plan"] as Dictionary).is_empty() else 1
-		if picked.size() != set_.size():
-			continue
-		var score := Vector2i(windows, set_.size())
 		var key: Array[int] = []
 		key.assign(set_)
-		if score.x > best_score.x or (score.x == best_score.x and score.y > best_score.y) \
-				or (score == best_score and _earlier(key, best_key)):
+		# Along the track first: a set that doesn't fit so isn't one (the other orders only move its arrivals).
+		var plans: Array[Dictionary] = [_plan_set(gen, t, planner, orders, keep_outs, alone, key, -1)]
+		if plans[0].is_empty():
+			continue
+		for k: int in range(1, key.size()):
+			var other: Dictionary = _plan_set(gen, t, planner, orders, keep_outs, alone, key, key[k])
+			if not other.is_empty() and (other["score"] as Vector3i) > (plans[0]["score"] as Vector3i):
+				plans[0] = other
+		var score: Vector3i = plans[0]["score"]
+		if score > best_score or (score == best_score and _earlier(key, best_key)):
 			best_score = score
 			best_key = key
-			best = picked
+			best = plans[0]["picked"]
+	for i: int in orders.size():
+		var o: Dictionary = alone[i]
+		report.append({"at": float(baits[i]["at"]), "chase": float(o.get("at", INF)), "span": o.get("span", Vector2(INF, -INF)),
+			"window": "" if o.is_empty() or (o["plan"] as Dictionary).is_empty() else ("before" if _before_bait(o) else "after"),
+			"chosen": best_key.has(i)})
 	return best
+
+
+## The chases of the baits `set_` (indices in `orders`, along the track) planned together: `first` (one of them; -1:
+## none) planned alone first, then the others along the track, each one's arrivals kept off the chases planned before
+## it (its own window planned again where those take its arrival away: an earlier truck arrives earlier, a later one
+## later). {picked: the options along the track, score: Vector3i(windows before the bait, windows, chases)}, or {}
+## where one of them has nowhere to arrive.
+static func _plan_set(gen: LevelGenerator, t: EnforcerTruckTuning, planner: ShowPlanner, orders: Array,
+		keep_outs: Array[Vector2], alone: Array[Dictionary], set_: Array[int], first: int) -> Dictionary:
+	var order: Array[int] = set_.duplicate()
+	if first >= 0:
+		order.erase(first)
+		order.push_front(first)
+	var chases: Array[Vector2] = []
+	var by: Dictionary = {}
+	for i: int in order:
+		var o: Dictionary = alone[i]
+		if arrival_problem(gen, t, float(o["at"]), [], chases) != "":
+			o = _option(gen, t, planner, orders[i], keep_outs, chases)
+			if o.is_empty():
+				return {}
+			o["bait"] = i
+		by[i] = o
+		chases.append(o["span"])
+	var picked: Array[Dictionary] = []
+	var score := Vector3i(0, 0, set_.size())
+	for i: int in set_:
+		var o: Dictionary = by[i]
+		picked.append(o)
+		score += Vector3i(1 if _before_bait(o) else 0, 0 if (o["plan"] as Dictionary).is_empty() else 1, 0)
+	return {"picked": picked, "score": score}
+
+
+## True if option `o` (_option) has a showing window that comes before its chase's first bait (not after_bait).
+static func _before_bait(o: Dictionary) -> bool:
+	var plan: Dictionary = o.get("plan", {})
+	return not plan.is_empty() and not bool(plan.get("after_bait", false))
 
 
 ## One bait's chase (_choose): where it may arrive (its `order` kept to where none of `chases` and `keep_outs` is in
@@ -666,6 +725,15 @@ class ShowPlanner:
 		if absf(float(w["from"]) - float(show["from"])) > 0.01 or absf(float(w["to"]) - float(show["to"])) > 0.01:
 			return "the stretch it keeps isn't the one planned (%.1f-%.1f)" % [float(w["from"]), float(w["to"])]
 		return ""
+
+
+	## True if window `w` (plan; {}: none) may still take out what it would on the layout as it stands now: the level
+	## keeps one of each kind and of each of its features without those (_leaves_one_each; another window may have
+	## taken some out since it was planned).
+	func still_fits(w: Dictionary) -> bool:
+		var enemies: Array[Dictionary] = []
+		enemies.assign(w.get("enemies", []))
+		return enemies.is_empty() or _leaves_one_each(enemies)
 
 
 	## Takes out of the layout what window `w` (plan) needs gone, and reads the layout again. Returns how many

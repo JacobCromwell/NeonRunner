@@ -19,9 +19,11 @@ extends SceneTree
 ## it arrived), its planned showing window if it has one (EnforcerTruck.show_window, task C6c) and whether a
 ## showing began in it (in the stretch it keeps, no later than show_window_slack_seconds after it's due), and, for
 ## a chase without a showing, why it couldn't show itself (show_problem(), the share of the chase each reason
-## held), or that it was destroyed before its window was due (and by what). The totals: chases, chases with a
-## showing, with the arrival showing, planned windows and the ones used, and chases destroyed before their window
-## without a showing.
+## held), or that it was destroyed before its window was due (and by what). Its window is marked "before the bait"
+## or "after the bait" (task C6d: gen.show_window_result, whether it comes before its chase's first bait). The
+## totals: the chases themselves (each level and lane count's trucks, once) and how many have a window before their
+## bait; then the runs (a chase for each runner lane): with a showing, with the arrival showing, planned windows and
+## the ones used, and chases destroyed before their window without a showing.
 
 const AttackWatch = preload("res://tools/measure/attack_watch.gd")
 const Rules = preload("res://scripts/enemies/enforcer_truck_rules.gd")
@@ -63,11 +65,15 @@ func _run() -> void:
 				if level_seed >= 0:
 					config.level_seed = level_seed
 				config.skin = null
-				var layout: LevelLayout = LevelGenerator.new().generate(config, tuning, LevelGenerator.load_for(config))
+				var gen := LevelGenerator.new()
+				var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+				var kinds: Dictionary = _window_kinds(gen)
 				for r: int in _runner_lanes(lanes):
 					if app != null:
 						app.set(&"profile", Profile.new())
 					var got: Array[Dictionary] = await _measure(step, config, layout, tuning, r)
+					for c: Dictionary in got:
+						c["window_kind"] = String(kinds.get(snappedf(float(c.get("at", -1.0)), 0.01), ""))
 					for c: Dictionary in got:
 						print(_line(c))
 					chases.append_array(got)
@@ -100,6 +106,17 @@ func _parse_args() -> void:
 				_seeds.append(9000 + k)
 		elif arg.begins_with("--out="):
 			_out = value
+
+
+## Each planned chase's window kind by its truck's arrival (snapped to 0.01 m): "before" its chase's first bait,
+## "after" it (ShowPlanner.plan's last resort), or "" without a window (gen.show_window_result, task C6d).
+static func _window_kinds(gen: LevelGenerator) -> Dictionary:
+	var out: Dictionary = {}
+	for c: Variant in gen.show_window_result.get("chases", []):
+		var w: Dictionary = (c as Dictionary)["window"]
+		out[snappedf(float((c as Dictionary)["at"]), 0.01)] = "" if w.is_empty() \
+			else ("after" if bool(w.get("after_bait", false)) else "before")
+	return out
 
 
 func _runner_lanes(lanes: int) -> Array[int]:
@@ -253,8 +270,8 @@ func _line(c: Dictionary) -> String:
 	for s: float in c.get("starts", []):
 		starts.append("%.0f" % s)
 	var w: Array = c["window"]
-	var window: String = "window %.0f-%.0f%s" % [w[0], w[1], " used" if bool(c["in_window"]) else " UNUSED"] \
-		if not w.is_empty() else "no window"
+	var window: String = "window %.0f-%.0f %s the bait%s" % [w[0], w[1], c.get("window_kind", "?"),
+		" used" if bool(c["in_window"]) else " UNUSED"] if not w.is_empty() else "no window"
 	var why: String = ""
 	if int(c["shows"]) == 0 and bool(c.get("wrecked_first", false)):
 		why = "  destroyed first (%s, at %.0f)" % [c["wrecked"], c["wrecked_at"]]
@@ -285,13 +302,24 @@ static func _reasons(c: Dictionary) -> String:
 
 func _print_totals(chases: Array[Dictionary]) -> void:
 	var by: Dictionary = {}
+	var seen: Dictionary = {}
 	for c: Dictionary in chases:
 		if int(c["truck"]) < 0:
 			continue
 		var key: String = "%d lanes" % int(c["lanes"])
+		var chase: String = "%s %d %d %d" % [c["level"], c["lanes"], c["seed"], c["truck"]]
+		var first: bool = not seen.has(chase)
+		seen[chase] = true
 		for k: String in [key, "all"]:
 			var t: Dictionary = by.get_or_add(k, {"chases": 0, "shown": 0, "arrival": 0, "windows": 0, "in_window": 0,
-				"showings": 0, "wrecked_first": 0})
+				"showings": 0, "wrecked_first": 0, "unique": 0, "before": 0, "after": 0})
+			if first:
+				t["unique"] = int(t["unique"]) + 1
+				match String(c.get("window_kind", "")):
+					"before":
+						t["before"] = int(t["before"]) + 1
+					"after":
+						t["after"] = int(t["after"]) + 1
 			if int(c["shows"]) == 0 and bool(c.get("wrecked_first", false)):
 				t["wrecked_first"] = int(t["wrecked_first"]) + 1
 			t["chases"] = int(t["chases"]) + 1
@@ -305,6 +333,10 @@ func _print_totals(chases: Array[Dictionary]) -> void:
 				if bool(c["in_window"]):
 					t["in_window"] = int(t["in_window"]) + 1
 	print("")
+	for k: String in by:
+		var t: Dictionary = by[k]
+		print("%-8s %3d chases: %3d with a window before their bait, %d with one after it, %d without one" % [k, t["unique"],
+			t["before"], t["after"], int(t["unique"]) - int(t["before"]) - int(t["after"])])
 	for k: String in by:
 		var t: Dictionary = by[k]
 		print(("%-8s %3d chases (runner-lane runs): %3d with a showing (%d%%), %3d with the arrival showing, %d showings;"
