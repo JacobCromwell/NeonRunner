@@ -154,7 +154,7 @@ const REFERENCE_SPEED: float = 18.0
 
 @export_group("Dash walls")
 ## Dash walls (task H7a; GDD §9.14, owner, October 8, 2026): a building standing across every floor lane,
-## which the runner dashes through. Its look's box (TrackBuilder.dash_wall_box): this tall, this deep along
+## which the runner dashes through. Its look's box (TrackBuilder.dash_wall_size): this tall, this deep along
 ## the track, and as wide as the floor less dash_wall_wall_room beside each side wall. Its hitbox is that box
 ## less dash_wall_inset at its sides and its face (forgiving, CLAUDE.md principle 4), from just above the
 ## floor (so a slide never passes under it) to its top.

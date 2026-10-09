@@ -56,11 +56,13 @@ extends RefCounted
 ## possible face to the last cut into as many parts, a seeded spot aimed for in each, the best fair spot in
 ## that part taken: nothing to take out first, then the nearest), then the best of the rest wherever a part
 ## had none. A level that gives the feature a start (LevelConfig.feature_starts: Corporate 1, after the Buzz
-## Overdrive's introduction) introduces it first, at the first fair spot from its start, whatever it takes out
-## there (the player meets it right after its first-encounter hint). A level with the feature and no fair spot at all gets a warning (the campaign tests fail
-## on any): every feature appears (GDD §5). Its own random stream (LevelGenerator.rng_for), so the rules
-## before it place exactly what they did; a level without the feature draws nothing and is built byte for
-## byte as before.
+## Overdrive's introduction) introduces it first, at the first fair spot from its start, whatever plain pieces
+## it takes out there, so the player meets it right after its first-encounter hint; where none comes within
+## DashWallTuning.intro_window_seconds it makes room there (_make_room: a few enemies of MAKE_ROOM_TYPES go,
+## never the last of a feature nor any feature's first). A level with the feature and no fair spot at all gets
+## a warning (the campaign tests fail on any): every feature appears (GDD §5). Its own random stream
+## (LevelGenerator.rng_for), so the rules before it place exactly what they did; a level without the feature
+## (or with a count of 0) draws nothing and is built byte for byte as before.
 ##
 ## What keeps off them after the rules: the fill pass (LevelGenerator.fill_keep_outs, every footprint in
 ## every lane), the danger density pass, the wider gaps, the cyborgs planted in charge paths, the zone doodads
@@ -284,7 +286,8 @@ static func apply(gen: LevelGenerator) -> void:
 		_place(gen, plan, at, faces)
 	if faces.is_empty():
 		gen.warnings.append("dash walls: no fair spot for one in the level (GDD §5: a feature a level has appears in it)")
-	gen.layout.dash_walls.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
+	gen.layout.dash_walls.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return float(a["start"]) < float(b["start"]))
 
 
 ## What a level's walls keep, and where on its track a face may stand (see the header): with `checking`,
@@ -505,7 +508,9 @@ static func _take_out(gen: LevelGenerator, going: Array, before: Dictionary) -> 
 		lay.enemies.erase(e)
 	var after: Dictionary = _feature_firsts(gen)
 	for f: String in before:
-		if not is_equal_approx(float(after.get(f, INF)), float(before[f])) and not (is_inf(float(before[f])) and is_inf(float(after.get(f, INF)))):
+		var was: float = float(before[f])
+		var now: float = float(after.get(f, INF))
+		if not is_equal_approx(now, was) and not (is_inf(was) and is_inf(now)):
 			lay.enemies.assign(enemies)
 			lay.cuts.assign(cuts)
 			return false

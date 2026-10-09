@@ -79,13 +79,13 @@ var offset_speed: float = 0.0
 var shooters: int = 0
 ## What happened so far (tests and the debug HUD read these; times are level times, -1 = not yet).
 var bangs: int = 0
-## Dash walls it burst through (task H7a).
-var walls_burst: int = 0
 var first_bang_time: float = -1.0
 var burst_time: float = -1.0
 var leave_time: float = -1.0
 var cannon_shots: int = 0
 var forward_lurches: int = 0
+## Dash walls it burst through (task H7a: only where it couldn't give way).
+var walls_burst: int = 0
 
 var _at: float = 0.0
 var _scaling: float = 0.0
