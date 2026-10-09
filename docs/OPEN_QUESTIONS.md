@@ -2568,3 +2568,22 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     on as the window comes. The window also holds if the showing begins up to `show_window_slack_seconds` (1 s) late.
     A host's Bad Dream chase doesn't keep a window off: it only comes if the player kills the host, and the showing
     then waits for it. Placeholder: those two values (`DESIGN-TBD` in `data/enemies/enforcer_truck.tres`). OK?
+
+**The Floating Head's salvos** (from E1g; group "Salvos" and `later_run_seconds` in `data/bosses/city_boss_tuning.tres`,
+F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §10; review with
+`tools/showcase/floating_head_showcase.tscn -- --scenario=bombing --phase=1` or `--phase=2`, with `--lanes=3`, `5` or `6`)
+387. **Which runs drop salvos** (GDD §10: "the next bombing run"). The fight has two later runs, at the start of phases 2
+    and 3. Placeholder: both drop salvos (`salvo_spots` = 1, 4, 4; the first run keeps one spot at a time). Should the
+    third phase's run go back to one spot at a time (1, 4, 1)?
+388. **How much harder on 5 or more lanes** (owner: "increase the difficulty on five or more lanes"). With one or two
+    bombs a spot, a runner on a wide street can step clear of a whole salvo. Placeholder: from 5 lanes
+    (`salvo_wide_lanes`) a spot takes up to three bombs side by side (`salvo_wide_bombs`), placed to leave the runner as
+    few lanes as possible but never none, so after the first spot there is usually one way through
+    (`salvo_wide_choices` = 1; 2 would leave a choice of two lanes). On 3 lanes a spot keeps one or two bombs, two 40%
+    of the time (`salvo_pair_chance`). Is three bombs a spot right (beyond the one or two first asked for), and is one
+    way through too hard?
+389. **How tight** (owner: "make it tighter"). Placeholder: 10 m between spots at 18 m/s instead of 12 m
+    (`salvo_spacing`): about 0.56 s from one blast to the next, leaving about 0.4 s after passing a blast to switch one
+    lane before the next (`salvo_max_shift`: one lane from spot to spot). Tighter still?
+390. **The later runs' length** (owner: a little longer, for the longer salvos). Placeholder: 6.5 s instead of 5.6 s
+    (`later_run_seconds`): two salvos of four spots fit, with a little room. Right length?

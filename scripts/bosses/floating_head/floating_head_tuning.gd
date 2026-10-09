@@ -61,7 +61,7 @@ extends Resource
 ## GDD §10: once or twice during the fight it rises for another, shorter run. DESIGN-TBD
 ## (docs/OPEN_QUESTIONS.md §D, item 89): at the start of the next `later_runs` phases, after it rises
 ## back into the sky (0 = never). The owner (October 9, 2026; task E1g): a little longer than the 5.6 s
-## it was, so a run fits two of its salvos at four spots.
+## it was, so a run fits two of its salvos at four spots; DESIGN-TBD (item 390): how much.
 @export_range(0.0, 20.0, 0.1, "suffix:s") var later_run_seconds: float = 6.5
 @export_range(0, 2) var later_runs: int = 2
 ## DESIGN-TBD (item 85): its station during a run: its stern this far ahead of the player and its
@@ -95,18 +95,19 @@ extends Resource
 ## two side by side (more on a wide street: salvo_wide_lanes). The nearest spot is where a single lock's
 ## would be, and each next one lies salvo_spacing further along the track, so the runner sees the whole
 ## way through before the bombs are released. One number per phase's run (the last for any later
-## phase); 1 = one spot at a time (the first run, unchanged).
+## phase); 1 = one spot at a time (the first run, unchanged). DESIGN-TBD (docs/OPEN_QUESTIONS.md §D,
+## item 387): the third phase's run drops salvos too.
 @export var salvo_spots: PackedInt32Array = [1, 4, 4]
 @export_range(2, 6) var salvo_min_spots: int = 2
 ## The distance along the track from one spot of a salvo to the next: the time to run past one blast
 ## and switch lanes before the next. The runner doesn't switch lanes faster in the later phases, so the
 ## phase's pace doesn't shorten it. The owner (October 9, 2026): tighter than the 12 m it was;
-## DESIGN-TBD (docs/questions/e1g.md): how much.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 389): how much.
 @export_range(6.0, 30.0, 0.5, "suffix:m") var salvo_spacing: float = 10.0
-## DESIGN-TBD (docs/questions/e1g.md): on a narrow street (fewer than salvo_wide_lanes), the chance that
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 388): on a narrow street (fewer than salvo_wide_lanes), the chance that
 ## a spot covers two lanes side by side.
 @export_range(0.0, 1.0, 0.05) var salvo_pair_chance: float = 0.4
-## DESIGN-TBD (docs/questions/e1g.md): from one spot to the next, the way through moves at most this
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 389): from one spot to the next, the way through moves at most this
 ## many lanes (from the runner to the first spot, max_escape_lanes, like any lock).
 @export_range(1, 2) var salvo_max_shift: int = 1
 ## The owner (October 9, 2026): salvos are harder on a street this many lanes wide or wider, where a
@@ -114,9 +115,9 @@ extends Resource
 ## side by side, placed to leave the runner as few lanes to be in past it as it can, but no fewer than
 ## salvo_wide_choices and never none: a way through always remains.
 @export_range(3, 7) var salvo_wide_lanes: int = 5
-## DESIGN-TBD (docs/questions/e1g.md): the most bombs side by side in one spot on a wide street.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 388): the most bombs side by side in one spot on a wide street.
 @export_range(2, 4) var salvo_wide_bombs: int = 3
-## DESIGN-TBD (docs/questions/e1g.md): the fewest lanes a spot on a wide street leaves the runner to be
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 388): the fewest lanes a spot on a wide street leaves the runner to be
 ## in (1: one way through, a path they have to take).
 @export_range(1, 3) var salvo_wide_choices: int = 1
 
