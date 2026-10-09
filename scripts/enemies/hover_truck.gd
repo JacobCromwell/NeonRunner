@@ -476,20 +476,28 @@ func _player_inside() -> bool:
 
 
 ## A player in its lane ahead of it must be able to get out before the forward lurch arrives:
-## onto the wall beside it (no sign in the way) or into the next lane (no gap, fence or zone doodad
-## there: a doodad's side would block the switch).
+## onto the wall beside it (no sign in the way, and no side wall gap: a move onto the wall inside one is
+## refused, LevelLayout.wall_gaps) or into the next lane (no gap, fence or zone doodad there: a doodad's
+## side would block the switch). A player already on that wall ahead of it is out of its way, unless the
+## wall opens before the lurch is over: they'd drop off into its lane in front of the spikes, so it waits
+## until they're down (task D10c review: the Beach's walls stand on about half of a level).
 func _escape_ok() -> bool:
 	var p: Player = world.player
-	if not player_in_lane() or offset + tune.length * 0.5 > 0.0:
+	if offset + tune.length * 0.5 > 0.0:
 		return true
 	var d: float = p.distance
 	var reach: float = d + (tune.rev_seconds + tune.escape_margin) * maxf(p.speed, 1.0)
 	var layout: LevelLayout = world.layout
-	var wall_ok: bool = true
+	if p.surface == Player.Surface.WALL and p.wall_side == side:
+		return not layout.wall_gap_between(d - 1.0, reach, side)
+	if not player_in_lane():
+		return true
+	var wall_ok: bool = not layout.wall_gap_between(d - 1.0, reach, side)
 	for s: Dictionary in layout.signs:
+		if not wall_ok:
+			break
 		if int(s["side"]) == side and float(s["start"]) <= reach and float(s["end"]) >= d - 1.0:
 			wall_ok = false
-			break
 	var inward: int = lane - side
 	var lane_ok: bool = inward >= 0 and inward < layout.lane_count \
 		and not layout.gapped_between(inward, d - 1.0, reach + 3.0) and not layout.doodad_between(d - 1.0, reach + 3.0, inward)

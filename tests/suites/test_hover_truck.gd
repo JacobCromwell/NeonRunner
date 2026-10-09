@@ -242,6 +242,54 @@ func _test_escape_rule() -> void:
 	check(revved, "it revs once the way out is open again")
 	await sim.free_world(w)
 
+	# The same with the wall beside its lane open instead of signed (a side wall gap, task D10b: the Beach's walls
+	# stand on about half of a level): a move onto the wall inside a gap is refused (wall_missing), so the wall is no
+	# way out either. A player who tries it at the rev would be caught.
+	layout = RunSim.layout(3, 600.0)
+	layout.wall_gaps.append({"side": 1, "start": 0.0, "end": 130.0})
+	layout.gaps.append({"lane": 1, "start": 20.0, "end": 100.0})
+	w = sim.build_world(layout)
+	w.player.setup(tuning, w.geo, 2)
+	t = _truck(w, 0.0, {"skip_entrance": true, "phase": "hold_back", "offset": t_back(), "guns": false})
+	var tried: Array = [false]
+	await _run_until(w, 5.0, func() -> bool:
+		if t.state == S.REV and not tried[0]:
+			tried[0] = true
+			w.player.press(&"move_right")
+		return w.player.distance > 90.0 or not w.player.alive)
+	check(not tried[0] and w.player.alive and t.state == S.HOLD_BACK,
+		"no forward lurch while the wall beside its lane is open (a move onto it is refused) and the next lane has a hole")
+	revved = await _run_until(w, 4.0, func() -> bool: return t.state == S.REV)
+	check(revved, "it revs once the next lane is open again")
+	await sim.free_world(w)
+
+	# A player on the wall beside it, out of its way, but whose wall opens before its lurch is over: they'd drop off
+	# into its lane in front of the spikes, so it waits; once they're down in its lane it revs, and the next lane is
+	# their way out.
+	var tt := load("res://data/enemies/hover_truck.tres") as HoverTruckTuning
+	layout = RunSim.layout(3, 600.0)
+	var drop_at: float = tuning.run_speed * (tt.hold_back_seconds + tt.rev_seconds * 0.7)
+	layout.wall_gaps.append({"side": 1, "start": drop_at, "end": drop_at + 40.0})
+	w = sim.build_world(layout)
+	w.player.setup(tuning, w.geo, 2)
+	t = _truck(w, 0.0, {"skip_entrance": true, "phase": "hold_back", "offset": t_back(), "guns": false})
+	await _run_until(w, 1.0, func() -> bool: return w.player.distance >= tuning.run_speed * (tt.hold_back_seconds - 0.3))
+	w.player.press(&"move_right")
+	var on_wall: bool = await _run_until(w, 0.5, func() -> bool: return w.player.surface == Player.Surface.WALL)
+	var revved_on_wall: Array = [false]
+	var dodged: Array = [false]
+	await _run_until(w, 5.0, func() -> bool:
+		if t.state == S.REV and w.player.surface == Player.Surface.WALL:
+			revved_on_wall[0] = true
+		if t.state == S.REV and w.player.surface == Player.Surface.FLOOR and not dodged[0]:
+			dodged[0] = true
+			w.player.press(&"move_left")
+		return t.state == S.ALONGSIDE or not w.player.alive)
+	check(on_wall and not revved_on_wall[0], "no rev while the player on the wall beside it would drop into its lane during the lurch")
+	check(dodged[0] and w.player.alive and w.player.lane == 1 and t.forward_lurches == 1,
+		"once they're down in its lane it revs, and the next lane takes them out of the way (%d lurches)" % t.forward_lurches)
+	await sim.free_world(w)
+
 
 ## GDD §9.3: land on its roof (a moving floor), ride it, and stomp the weak point on the cab.
 func _test_roof_and_weak_point() -> void:
