@@ -27,3 +27,4 @@ sky = Dictionary[String, Variant]({
 "zenith_color": Color(0.22, 0.34, 0.68, 1)
 })
 fog_color = Color(0.86, 0.68, 0.7, 1)
+scenery_tint = Color(1, 0.88, 0.8, 1)
