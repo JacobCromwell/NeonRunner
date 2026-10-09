@@ -23,6 +23,11 @@ var slot: BossDef
 var def: BossDef
 
 
+## A skin with a warm light of its own (_test_sheen), as the zone skins export one.
+class SheenSkin extends ZoneSkin:
+	var sheen_color: Color = Color(0.2, 0.6, 0.9)
+
+
 func run() -> void:
 	sim = RunSim.new(tree, tuning)
 	slot = load(BOSS_PATH) as BossDef
@@ -36,6 +41,7 @@ func run() -> void:
 	_test_attacks_for()
 	_test_route()
 	_test_phases()
+	_test_sheen()
 	await _test_arena_and_model()
 	await _test_ceiling_plan()
 	await _test_placed_credits()
@@ -281,6 +287,23 @@ func _test_phases() -> void:
 
 
 # --- Arena and model -----------------------------------------------------------------------------
+
+## The machine's warm light (TheHouseModel.sheen_for, task K2): its arena skin's sheen_color when the skin has
+## one, else DEFAULT_SHEEN (the Marketplace's, the light it had), and its solid material carries it.
+func _test_sheen() -> void:
+	check(TheHouseModel.sheen_for(null) == TheHouseModel.DEFAULT_SHEEN, "no skin: the machine's default warm light")
+	check(TheHouseModel.sheen_for(GreyboxSkin.new()) == TheHouseModel.DEFAULT_SHEEN,
+		"a skin without a warm light of its own: the default")
+	var lit := SheenSkin.new()
+	check(TheHouseModel.sheen_for(lit) == lit.sheen_color, "a skin's own warm light when it has one")
+	check(TheHouseModel.solid_material(lit).get_shader_parameter(&"sheen_color") == lit.sheen_color
+		and TheHouseModel.solid_material().get_shader_parameter(&"sheen_color") == TheHouseModel.DEFAULT_SHEEN,
+		"the machine's material takes the light it's given")
+	var arena_skin: ZoneSkin = def.arena.skin if def.arena != null else null
+	var own: Variant = arena_skin.get(&"sheen_color") if arena_skin != null else null
+	check(TheHouseModel.sheen_for(arena_skin) == (own as Color if own is Color else TheHouseModel.DEFAULT_SHEEN),
+		"in its arena it takes the arena skin's light")
+
 
 func _test_arena_and_model() -> void:
 	var t := def.tuning as TheHouseTuning
