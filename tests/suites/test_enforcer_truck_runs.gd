@@ -1476,12 +1476,18 @@ func _test_show_beside_sentinel() -> void:
 	var was_on: bool = false
 	var both: bool = false
 	var hold: float = -1.0
+	var events: Array = []
+	var seen: String = "no Sentinel in play"
 	for i: int in int(14.0 / frame):
 		await tree.physics_frame
 		if truck == null:
 			truck = _truck(w)
 		if sentinel == null:
 			sentinel = _first(w, &"gilded_sentinel")
+		if _valid(sentinel):
+			# Read while it's in play (it's freed once the runner is past).
+			events = sentinel.call(&"events", PackedStringArray(["swing", "pass"]))
+			seen = "%s, %s" % [sentinel.call(&"state_name"), sentinel.get(&"history")]
 		if truck == null or not is_instance_valid(truck):
 			continue
 		var on: bool = truck.show_phase != EnforcerTruck.Show.NONE and truck.is_major_attack_active()
@@ -1490,13 +1496,12 @@ func _test_show_beside_sentinel() -> void:
 		if was_on and not on and out_of_view < 0.0:
 			out_of_view = w.player.distance
 		was_on = on
-		both = both or (on and sentinel != null and is_instance_valid(sentinel) and sentinel.is_major_attack_active())
-	var events: Array = sentinel.call(&"events", PackedStringArray(["swing", "pass"])) if sentinel != null and is_instance_valid(sentinel) else []
+		both = both or (on and _valid(sentinel) and sentinel.is_major_attack_active())
 	check(out_of_view > 0.0 and out_of_view <= claim_at and hold >= t.show_min_seconds and hold < t.show_seconds,
 		"(5 lanes) a Gilded Sentinel claiming its turn 7.5 s in: it shows itself %.2f s, out of view %.1f s before the claim"
 		% [hold, (claim_at - out_of_view) / v])
 	check(not both and not events.is_empty() and String(events[0][0]) == "swing",
-		"(5 lanes) the Sentinel swings as planned, never letting the runner pass for it, never both on (%s)" % [events])
+		"(5 lanes) the Sentinel swings as planned, never letting the runner pass for it, never both on (%s; %s)" % [events, seen])
 	await sim.free_world(w)
 
 
@@ -1511,8 +1516,8 @@ func _test_calm_start() -> void:
 	var r: Dictionary = await _calm_run(3)
 	var v: float = 25.0
 	check(bool(r["calm"]) and float(r["arrive"]) >= t.calm_start_min_seconds * v - 0.5 and float(r["arrive"]) < 60.0
-		and absf(float(r["gap"]) - t.follow_gap) < 0.01,
-		"(3 lanes, calm start) it arrives inside the run-up, %.1f s into the run or later (%.1f m), at its follow gap (%.1f m)"
+		and absf(float(r["gap"]) - t.follow_gap) < 1.0,
+		"(3 lanes, calm start) it arrives inside the run-up, %.1f s into the run or later (%.1f m), at its follow gap (%.1f m a frame later, closing in)"
 		% [t.calm_start_min_seconds, float(r["arrive"]), float(r["gap"])])
 	check(absf(float(r["show"]) - float(r["arrive"])) < 0.5 and float(r["alongside"]) > 0.0,
 		"(3 lanes, calm start) it shows itself as it arrives, alongside with the runner at %.0f m" % float(r["alongside"]))

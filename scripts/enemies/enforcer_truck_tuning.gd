@@ -174,11 +174,11 @@ extends EnemyTuning
 ## nothing taken out). DESIGN-TBD: 0.5 s (docs/questions/c6e.md).
 @export_range(0.0, 3.0, 0.1, "suffix:s") var calm_start_min_seconds: float = 0.5
 ## A level's run-up is short (2.4 s at the Golden Zone's speed) and a showing needs about 5 s, so a showing in the calm
-## start runs on into the level's first patterns. The run-up itself holds nothing to take out; past it, a window may
-## take out what's in its way as any other window may (plain holes, fences, cyborgs and Screeches: the owner's accepted
-## cost, docs/OPEN_QUESTIONS.md item 383). Off: it takes nothing out at all, and fits only where the first patterns
-## leave room. DESIGN-TBD (docs/questions/c6e.md).
-@export var calm_start_takes_out: bool = true
+## start runs on into the level's first patterns. Off (the calm start stays calm, nothing taken out): its window fits
+## only where those patterns leave room. On: past the run-up it may take out what's in its way as any other window may
+## (plain holes, fences, cyborgs and Screeches, docs/OPEN_QUESTIONS.md item 383). DESIGN-TBD: off
+## (docs/questions/c6e.md).
+@export var calm_start_takes_out: bool = false
 
 @export_group("Wreck")
 ## The owner (October 8, 2026): however it's destroyed (a charge, a cut, a gap too wide to hop) it blows up where

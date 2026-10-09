@@ -769,8 +769,8 @@ class ShowPlanner:
 
 
 	## plan()'s window in the level's calm start (CALM, task C6e): the truck arriving at any of `calm_spots` (inside the
-	## run-up) at its follow gap, showing itself as it arrives. The calm start itself (the run-up) holds nothing to take
-	## out; past it, with calm_start_takes_out, the window may take out what's in its way as any other may. {} if none.
+	## run-up) at its follow gap, showing itself as it arrives. It takes nothing out (the calm start stays calm) unless
+	## calm_start_takes_out lets it take out what's in its way past the run-up as any other window may. {} if none.
 	func _calm_start(calm_spots: Array[float], seed: int, counts: Dictionary) -> Dictionary:
 		for phase: Vector3i in PHASES:
 			if phase.x == 1 and not t.calm_start_takes_out:

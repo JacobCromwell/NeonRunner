@@ -430,8 +430,10 @@ func _test_room_beside_hover_truck() -> void:
 					room.unreachable(r, t, d, t.follow_gap, t.show_seconds, v, 0)])
 		check(faults.is_empty(), "%s it never takes the hover truck's lane, never stands between the runner and it, and the runner keeps a free lane that isn't its (%s)"
 			% [tag, "; ".join(faults)])
-		var want: Array[int] = [h] if lanes == 3 else []
-		if lanes > 3:
+		var want: Array[int] = []
+		if lanes == 3:
+			want.append(h)
+		else:
 			for r: int in lanes:
 				if r != 0:
 					want.append(r)
@@ -841,6 +843,12 @@ func _test_show_windows() -> void:
 					% [tag, "; ".join(faults)])
 				var report: Array = gen.show_window_result.get("chases", [])
 				check(report.size() == trucks.size(), "%s the report lists each chase (%d of %d)" % [tag, report.size(), trucks.size()])
+				# Task C6e: the calm start stays calm, a window there taking nothing out (calm_start_takes_out off).
+				var calm_taken: int = 0
+				for line: Variant in report:
+					if String(((line as Dictionary)["window"] as Dictionary).get("mode", "")) == "calm":
+						calm_taken += int((line as Dictionary)["taken_out"])
+				check(t.calm_start_takes_out or calm_taken == 0, "%s a window in the calm start takes nothing out (%d)" % [tag, calm_taken])
 				if k == 0:
 					var none: PackedStringArray = []
 					var modes: PackedStringArray = []
@@ -880,7 +888,7 @@ func _test_chases_with_room() -> void:
 	var keep_max: int = t.per_level_max
 	# The calm start (task C6e) would give the first dog's chase room before it (_test_calm_start covers it): kept out.
 	var keep_calm: float = t.calm_start_min_seconds
-	t.calm_start_min_seconds = 3.0
+	t.calm_start_min_seconds = 1000.0
 	for lanes: int in [3, 5, 6]:
 		# [trucks a level, introduced, where the first dog stands, the bait its truck should take (0 or 1), trucks]
 		for case: Array in [[1, false, 230.0, 1, 1], [1, true, 230.0, 1, 1], [1, false, 500.0, 0, 1],

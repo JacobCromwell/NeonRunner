@@ -876,7 +876,12 @@ and its hint (`enemy:enforcer_truck`). DESIGN-TBD numbers throughout (`docs/ques
     beside the runner. It's back behind them `show_margin_seconds` + `close_lead_seconds` before a bait's
     turn (an Octodog's planned wind-up, a Buzz Overdrive's claim on its turn, from the layout and the dogs and
     tanks in play): it shortens its stay for one (`hold_for`, never under `show_min_seconds`) or doesn't show.
-    Never with a hover truck or a Gilded Sentinel in play or coming (`NO_SHOW_TYPES`: they can't wait).
+    Beside a hover truck or a Gilded Sentinel (task C6e; the owner, October 9, 2026, GDD §9.13 "Making room where
+    there is none": they no longer stop it, as long as the runner keeps a free lane), it fits between what of them
+    can't wait for a turn, a hover truck's entrance (its banging to its emerging) and a Sentinel's turn (its claim to
+    its last swing; `EnforcerTruckRoom.fixed`, `seconds_to_fixed`): never begun during one, its stay shortened to be
+    back `show_margin_seconds` before the next (`hold_for`'s `to_fixed`), giving way to one that comes sooner. Their
+    other attacks (the hover truck's cannon and forward lurch) take turns and wait for it, as a Resonator's pulse does.
   - **Solid, safe sides.** While beside the runner, a lane blocker along its body to `blocker_ahead` past its
     front (`TrackBuilder.add_lane_blocker`, `LAYER_LANE_BLOCKER`) bumps a lane change into it back (Player's
     `lane_blocked`, never a hit: its 2 m body hitbox in a 2.4 m lane leaves the bump clear of it). As the
@@ -892,7 +897,13 @@ and its hint (`enemy:enforcer_truck`). DESIGN-TBD numbers throughout (`docs/ques
     ways (the lane between open where theirs is blocked, theirs open where the lane between is); never to a runner
     off the floor; and its own lane must be clear where the camera sees it there (`lane_clear`: no fence, doodad,
     floor enemy, pad, speed pad or ramp, nor a hole too wide to hop until it's rejoined the runner's lane; it hops
-    the others), so it's never beside a lane the runner needs.
+    the others), so it's never beside a lane the runner needs. A lane a hover truck holds (`held`, `held_lanes`: from
+    where its lane is kept free before its burst to where it has left, and one in play's; task C6e) is a wall to the
+    runner and never the truck's, and the truck never stands between the runner and it (it would hide it): a runner
+    beside it sees the truck two lanes in on their other side, the lane between left free, and at 3 lanes a runner
+    beside it has no lane for it. What blocks the runner's lane counts as far as its stay reaches (`can_dodge`'s
+    `clip`: once it's back behind them every lane is theirs), a floor cut's lane from its charge on (`leave_late`: a
+    runner baiting a Buzz Overdrive keeps to its lane until the cut runs back toward them).
   - **Never hides anything.** `EnforcerTruckView` (the run camera's resting view) checks at load, for its
     look and lane count (`fits_for`, with `EnforcerTruckModel.profile`), that every corner of it is on
     screen and nothing of the runner or the floor of their lane and the far side is behind it; enemies its
@@ -906,7 +917,11 @@ and its hint (`enemy:enforcer_truck`). DESIGN-TBD numbers throughout (`docs/ques
     attack that gets ready meanwhile waits for it, one already on ends first; and it starts no volley that would
     still be on there (`_holds_for_showing`). It still shows itself wherever play allows before; once it has,
     the window has done its work. A showing beside the runner tries a lane clear for its whole stay first, else
-    one clear for its shortest.
+    one clear for its shortest. A window planned with its bait's claim during it (its `mode` "claim" or "calm",
+    task C6e; `_claim_window_now`) stays alongside until it must be out of view `show_margin_seconds` before the
+    Buzz Overdrive's rev (`hold_claimed`), and that claim doesn't make it give way (`_attack_on`'s `skip_claims`).
+    One planned in the level's calm start ("calm", `calm_start()`) arrives inside the run-up at its follow gap,
+    already chasing, shows itself as it arrives, and fires no volley before the run-up's end (`_ready_to_fire`).
 - **Its blast** (C6b; the owner, October 8, 2026: a visible explosion however it's destroyed). Every wreck (an
   Octodog's lunge, a Buzz Overdrive's charge or cut, a gap too wide to hop) lurches on into the chase camera's
   view over `wreck_surge_seconds` (its front to `wreck_gap` behind the runner; in a hole, until its nose meets
