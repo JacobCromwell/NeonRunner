@@ -17,8 +17,8 @@ stars and payouts); a test boss shows the framework at work. The Neon City's bos
 is built and plays in the campaign after City 3 (debug builds: `--boss=city_boss`), and so is the Dead
 Zone's Sleep Taker after Dead Zone 2 (`--boss=dead_zone_boss`), and the Casino's House after
 Casino 2 (`--boss=casino_boss`), the Corporate zone's Hostile Takeover after Corporate 2
-(`--boss=corporate_boss`), and Gangland's Sewer Swarm after Gangland 3 (`--boss=gangland_boss`); the
-Golden Zone's final villain is still a placeholder slot. The short cinematics are built with a code-driven cinematic toolkit
+(`--boss=corporate_boss`), Gangland's Sewer Swarm after Gangland 3 (`--boss=gangland_boss`), and the
+Golden Zone's final villain, The Golden Convergence, after Golden 3 (`--boss=golden_boss`). The short cinematics are built with a code-driven cinematic toolkit
 (camera paths, the runner and cyborgs on the humanoid rig, timed events, skippable); until the owner
 describes the story beats, each zone's intro (and the City's boss intro) plays a placeholder arrival flyover
 over the zone, and the outros are placeholder cards.
@@ -63,7 +63,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--thief` | Quick play with stand-in thieves, one after another: a gold block that crosses the lanes and robs 25% of the run's credits from a runner who touches it (it doesn't kill, even without `--god`); catch it (stomp it, shoot it, dash or claw through it) for what it took plus a jackpot. The runner starts with 400 credits, so the first theft has something to take. A review aid for the Tithe Collector's mechanism; no level has one |
 | `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level, `--level=gangland/boss_intro` its boss intro (the swarm rising), then the Sewer Swarm, and `--level=casino/1` the Casino's first level |
-| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker; `casino_boss`: The House; `corporate_boss`: Hostile Takeover; `gangland_boss`: the Sewer Swarm) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
+| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker; `casino_boss`: The House; `corporate_boss`: Hostile Takeover; `gangland_boss`: the Sewer Swarm; `golden_boss`: The Golden Convergence) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
 | `--frame-graph` | Show the frame-time graph (F7, see Smooth frames) from the start of every run |
 
@@ -322,8 +322,55 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   downtime, while every attack still warns first. Weapons thin a surging cluster too, the heavy missile
   most of all. Its crowds are hundreds of screeches
   drawn with a MultiMesh and a shader, their sizes in data for the phone test
-  (`res://tools/showcase/swarm_stress.tscn`, a stress scene with a frame-time readout). The Golden Zone's
-  final villain is still to be built.
+  (`res://tools/showcase/swarm_stress.tscn`, a stress scene with a frame-time readout).
+  The Golden Convergence, the Golden Zone's boss and the final villain (task E5d), plays in the campaign after
+  Golden 3 at the zone's 25 m/s (debug builds: `--level=golden/boss`, or `--boss=golden_boss` at 18 m/s;
+  `--phase=4` starts at its halfway checkpoint, stage 2). In the Grand Court, a golden causeway through the palace's vast hall with low
+  balustrades instead of walls, a giant golden suit rises at the far end, its burgundy cape unfurling into
+  a billowing cloud, as the cult's three-note chime rings out huge and slow; its calm golden face, with its
+  dull red tear, looks down the causeway. Its Helidrone Strafe: a squadron of heli drones (never red) comes
+  out of the cape and makes its passes as one. A vertical pass rakes every other lane after red lines and a
+  gatling whine (switch to a lane between them; a jump doesn't clear the fire); a horizontal pass sweeps a
+  line across the track and up the walls, after a red line over every lane but the arch of a Flying
+  Buttress rising in an inner lane (run through the arch, or dash). Phase 1 opens with a V-V-H strafe. Then
+  the Fist Slam: an arm telescopes out on golden segments and its fist follows the runner's lane, rising
+  with a deep grind while its shadow grows and a red square marks the hole to come; it locks about a second
+  before it falls and smashes a square hole through the floor (on the runner or ahead of them, to be
+  jumped). Two slams a sequence land at a Flying Buttress: lead the fist onto its lane and it smashes the
+  gate, and the tower it held up topples beside the causeway, its side a wall for about 10 s. The Missile
+  Barrage warms up as it falls: the shoulder pipes open, missiles climb with a roar, hang, then dive with a
+  rising whistle while red marks fill in, and every lane burns for about 1.5 s; the tower's wall is the
+  clean escape (armor plus the dash, two armor hits or armor plus the shield also get through). Then the
+  Refill Ship, the only way to damage the suit: a gilded cargo ship flies in beside the causeway and feeds a
+  shoulder's pipes along a line, missiles riding up it, while the squadron comes out for a strafe; after its
+  first pass the squadron holds its fire, hovering beside the ship, as a closed cage flickers up ahead: an
+  anti-grav pad behind a front fence, fences along its sides, a generator in the lane beside it. Stomp the
+  generator (its pulse switches the cage off) and switch onto the pad, dash through the front fence, or take
+  it on the armor or the shield (a jump over the fence lands past the pad). The ship has come down over the
+  runner: the pad flips them up onto its belly and hurls the squadron into its missile racks; the missiles go
+  up along the racks, the ship spins away and explodes, the runner drops back to the floor, and the blast
+  races up the line into the suit's shoulder. The first ship blows out one shoulder's pipes, the second the
+  other's, the third bursts the suit open; miss the pad and the ship flies off, and the phase comes round
+  again from the slams (`tools/showcase/golden_convergence_showcase.tscn` shows the suit and each attack).
+  Stage 2 (task E5d-d), from the halfway checkpoint: the suit bursts open and The Magnate, burnt and roaring,
+  claws out as every screen switches to his face, and leaps over the runner to hunt them from behind (his
+  shadow and a marker at the bottom of the screen show his lane). His Pounce: a roar as the marker turns red,
+  a leap over the runner, locking onto their lane about a second before he lands, a red square where he will
+  (leave the lane; a jump won't clear him). Every second Pounce raises a Flying Buttress: be in its lane as he
+  locks on and he crashes into its gate, stunned across two lanes; green chevrons on the floor show where to
+  take off, and a jump onto his back stomps a red port on his spine, one stomp a phase. After the owner's
+  playtest (task E5d-e) the court grows about 30% darker through the transition, and his beats come closer
+  together. His Claw Slash: a sharp snarl as the marker flashes red and red claw marks flash in the runner's
+  lane; half a second later he lunges in from behind and swipes that lane, higher than a jump (switch lanes;
+  in phase 6 he slashes twice, the second time at the lane the runner dodged into). His Screen Storm: up on a
+  balustrade ahead of the runner, he brings the feed's screens crashing down from the vault on gold tentacles,
+  10 to 16 over about 5 s, each marked by a red square, its growing shadow and a rising glitch-whine about
+  0.9 s before it hits; a runner who moves a reaction time after each warning always has a way through. Three
+  screens a storm crash onto him instead, each a twelfth of the phase's health, so four storms end a phase as
+  well as a stomp. From phase 5 his Cable Lash whips across every lane after a rising crackle and
+  a red line (low: jump it; high: slide under it). When he falls the light comes back and the feed dies: his
+  cables tear out, the screens go dark outward, the music cuts out, and he collapses as the runner runs past
+  (`tools/showcase/golden_convergence_magnate_showcase.tscn` shows him and each part).
 - **Protection:** every level and boss fight starts with free armor: it blocks an enemy attack or an
   electrical hazard (never a crash or a fall) and comes back 30 s after it breaks; the HUD shows its hits
   and a ring filling while it comes back. Armor pickups in boss fights bring it back at once.

@@ -520,7 +520,7 @@ func _casino_sign(b: MarketFacades.Building, face_x: float) -> Dictionary:
 # --- The names ----------------------------------------------------------------------------------
 
 ## Which name casino `b` carries (CasinoLettering NAME_*), or -1 if it is not one of the street's named
-## casinos. DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 437): the street is divided into periods of `name_spacing` metres
+## casinos. DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 525): the street is divided into periods of `name_spacing` metres
 ## (both walls together); each has at most one named casino, a casino with a big sign picked by hash (from
 ## the middle of the period if there is one), and the names alternate from period to period, so no name
 ## is nearer than a period to itself: two famous casinos, not a chain. A name_spacing of 0 names every
@@ -593,7 +593,7 @@ func _emblem_room(b: MarketFacades.Building, spec: Dictionary) -> float:
 ## builds it), d (the distance of the letters' centre), x (the plane of the letters, or for a blade the middle
 ## of its letters across it), y (their centre), scale (metres per cap height), box (their block, in metres),
 ## y_min, and for a strip or a blade its board's y0, height and length}. Empty for a casino that carries no
-## name. By hash and the street's layout: the same every build. DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, items 438, 439):
+## name. By hash and the street's layout: the same every build. DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, items 526, 527):
 ## the strip over a feed sign, the blade of every named casino and the names appearing on casinos' signs alone.
 func _name_specs(b: MarketFacades.Building, face_x: float, spec: Dictionary) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []

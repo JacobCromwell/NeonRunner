@@ -351,7 +351,7 @@ The owner played every zone and the Floating Head. The feedback is in GDD §3 ("
 - **C6d, every chase shows its truck** (owner, October 9, 2026, open questions 384–385; follows C6c, 57 of 106 chase runs): a chase with no room for a showing gives its truck to another bait's chase with room, and a truck whose showing would come after its bait arrives earlier so it comes before. Core (the generator's placement). T1.
 - **C6e, making room where there is none** (owner, October 9, 2026, open questions 367 and 400; follows C6d, which changed no campaign level): the truck shows itself while a hover truck or Gilded Sentinel is around if the runner keeps a free lane; where the first bait comes right after the calm start, it arrives early and shows itself at the end of it; wider gaps keep off the stretch before a showing. Core (the generator's placement). T1.
 - **PERF2, retries reuse the built level** (owner, October 9, 2026; follows C6e, which made Enforcer levels slower to build: Corporate 2 at 5 lanes 2.5 s on a desktop): a retry of the same level, seed and lane count reuses its built layout instead of generating it again; measure every level's first build. Core (`level_run.gd`). T1.
-- **E1g, the Floating Head's salvos** (owner, October 9, 2026): after the first bombing run, the searchlight marks two to four spots at once, one or two bombs each, the nearest first and each later one further along the track, so the player sees the way through before the bombs fall (GDD §10). The owner's follow-ups the same day: harder on 5 or more lanes, spots closer together, later runs a little longer (6.5 s), far circles the same red; then a forced path on 3 lanes and a choice of two lanes from 5. T1 (a boss fight's fairness).
+- **E1g, the Floating Head's salvos** (owner, October 9, 2026): after the first bombing run, the searchlight marks two to four spots at once, one or two bombs each, the nearest first and each later one further along the track, so the player sees the way through before the bombs fall (GDD §10). The owner's follow-ups the same day: harder on 5 or more lanes, spots closer together, later runs longer (10 s), far circles the same red; then a forced path on 3 lanes and a choice of two lanes from 5. T1 (a boss fight's fairness).
 - **G8, level skies** (owner, October 8, 2026): a few levels show their sky turning (City 1 a dawn, Gangland 3 a cloudy blood-red sky, Marketplace 2 a sunset; GDD §5, "Skies show progression"), the boss fight after one keeps its sky, and the street's light follows. A level's own sky over its zone's (`LevelConfig.sky`, `data/skies/`), clouds and a glow on the horizon in the sky shader, and a global scenery tint; a boss's intro keeps the fight's sky. **Core** (level data), with the boss config, the cinematic stage and the scenery shaders. T2.
 - **G6b, doodad pictures** (owner, October 9, 2026): each zone doodad stays a simple box but shows a picture of the object it stands for, the open air cut out (a stall's open middle, a van's windows), painted by code into one atlas per zone (`tools/godot.sh doodads`). Art only: the owner's second ask, doodads preferring the lane beside the side wall when it's open, waits for the dash-smash branch (H5). T2. **Done:** `DoodadCards` and `tools/asset_gen/doodad_art/`; the owner approved the looks (GDD §3; open questions 412–415, answered).
 
@@ -400,7 +400,7 @@ The owner added a **Casino** zone between the Marketplace and Corporate (GDD §5
 | E5a | **The House** (Marketplace boss) | B5, B7, B8, C1, D2 (D3 for the cheering citizens) | XL | T1 |
 | E5b | **Hostile Takeover** (Corporate boss) | B4, B5, B7, B8, C2, C5, D4 | XL | T1 |
 | E5c | **Sleep Taker** (Dead Zone boss) | B7, B8, B9, D5 | XL | T1 |
-| E5d | **The final villain** | design | – | T1 |
+| E5d | **The Golden Convergence** (the final villain; designed October 9, 2026) | B4, B7, B8, B9, D6b, heli drone | XL | T1 |
 
 **E1: Floating Head steps.**
 1. Ship and face models.
@@ -424,7 +424,17 @@ The owner added a **Casino** zone between the Marketplace and Corporate (GDD §5
 
 **E4: Sewer Swarm.** Designed (GDD §10, September 26, 2026). The owner decided on October 2, 2026 to build it now with crowd sizes that scale and to size them down later: the phone test R4 (E3) no longer comes first, and later sets the sizes. Two steps: E4a (the clusters, the arena and phase 1), then E4b (phases 2 and 3, the Host, the defeat, the slot).
 
-**E5: the other bosses.** The House, Hostile Takeover and Sleep Taker are designed (GDD §10, September 26, 2026); each is XL, split into steps like E1, and waits for the enemies, mechanics and skin its fight uses. The final villain (E5d) still needs its design.
+**E5: the other bosses.** The House, Hostile Takeover and Sleep Taker are designed (GDD §10, September 26, 2026); each is XL, split into steps like E1, and waits for the enemies, mechanics and skin its fight uses.
+
+**E5d: the Golden Convergence steps** (GDD §10; designed with the owner on October 9, 2026, the rest filled in under the owner's mandate the same day, `docs/OPEN_QUESTIONS.md` items 416–503). Each step merges on its own, one after another:
+1. **E5d-a:** the golden suit (its model: the calm golden face and its tear, the shoulders, hands and shoulder pipes, the tentacle pipes, the cape's cloud), the Grand Court arena (its skin: balustrades for walls, which bump the runner back; the pools below and the towers with their feed screens; plain laps), the entrance, the Helidrone Strafe (the squadron out of the cape, vertical and horizontal passes, the lines for show, the warnings), the Flying Buttress gate, phase 1's opening strafe; the slot's `preview_scene`, its tuning, sounds, showcase, bot and tests.
+2. **E5d-b:** the Fist Slam (the telescoping arm, the lock and the red square, the holes as floor cuts opened at once, the hold after a block or a dash, the slam scripts, the buttress chances, the toppled tower and its wall) and the Missile Barrage (the pipes, the missiles, the marks, the fire, the wall as refuge).
+3. **E5d-c:** the Refill Ship (the ship, its feed line and belly ceiling, the fence cage with its lengthwise sides and its generator, the pad, the strafe holding its fire, the chain reaction and its damage) and stage 1's three phases with their loops and the suit's damage; the bot wins stage 1 at 3, 5 and 6 lanes.
+4. **E5d-d:** stage 2, The Magnate (his model, the transition and the checkpoint, the chase with its marker and overtakes, the Pounce, the buttress bait, the stun and the stomp, the Cable Lash), the defeat (the feed dies), the campaign slot (`scene`), par times and rewards; the bot wins the whole fight.
+
+5. **E5d-e:** the owner's playtest of stage 2 (GDD §10, "Owner's playtest (October 9, 2026)", approved the same day): the Claw Slash (`slash`, `slash:double`), the Screen Storm (`screens`: the feed's screens on gold tentacles, a fair plan at every lane count, three screens a storm chipping him), the arena about 30% darker from the transition to his fall, new beat scripts with a shorter beat gap, the stomp easier to read (green chevrons, at least 1.5 s from the stun to the last take-off); six sounds, two hints, showcase scenarios, the bot's readers, tests and new par times. Questions: `docs/OPEN_QUESTIONS.md`, items 491–503.
+
+**Done:** all four steps. E5d-d merged before E5d-c, so E5d-c also switched the slot to `scene` (the campaign plays the fight after Golden 3), set the par times from the bot's clean whole fight, and has the bot win the whole fight at 3, 5 and 6 lanes and 18 and 25 m/s (`test_golden_convergence_whole`). E5d-e, the owner's playtest of stage 2, is built (`test_golden_convergence_slash`, `test_golden_convergence_storm`; the whole fight won again at every lane count and speed, the par times re-measured).
 
 ### F. Cinematics
 
@@ -492,7 +502,7 @@ The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 387–395.
 - E2 (web demo release candidate), after E1, P1 and P2
 - R4 endless mode (after B5), R6 approved placeholders (at a quiet moment), R7 balancing (after the owner's playtest)
 
-**Blocked on design:** E5d (the final villain), F2 (cinematic content, apart from F2a's City outro and F2b's Gangland boss intro). **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
+**Blocked on design:** F2 (cinematic content, apart from F2a's City outro and F2b's Gangland boss intro). E5d (designed October 9, 2026) is built. **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
 
 **The critical path to the web demo:** B1 → B8 and B7 → E1 → E2. The demo depends on the Floating Head more than on anything else, so keep that path moving first. P1 → P2 (the new player and cyborg looks) must also be done before E2.
 
@@ -500,7 +510,7 @@ The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 387–395.
 
 ## Still to design with the owner
 
-- **Bosses:** the final villain with its second stage (the other five are designed, GDD §10).
+- **Bosses:** the owner's review of the Golden Convergence's proposed parts (`docs/OPEN_QUESTIONS.md` items 416–503).
 - **Cinematics:** story beats for each slot but the City's outro (GDD §6) and Gangland's boss intro (GDD §10, Sewer Swarm).
 - **Placeholder review:** a keep-or-change pass over the numbered items in `docs/OPEN_QUESTIONS.md` §D.
 - **Remaining rounds:** player and power-up numbers, screens and stars, audio, mobile and ads, title, accessibility, languages, age rating, budget and check-ins.

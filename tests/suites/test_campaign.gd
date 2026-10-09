@@ -85,7 +85,7 @@ const INTRODUCTION_REACH: float = 210.0
 ## own layouts: the generator's introductions are as often late as before, 16.7% and 16.4% of 396 seeded
 ## ones, but the levels' own seeds then had 6 late of 66, 3 of them wall gaps, and now 9). Left out, the
 ## levels' own seeds had 6 late of 63 on K2's curve, the check's limit (3 before; docs/OPEN_QUESTIONS.md §D,
-## item 433 lists them for the owner), and have 5 on task K4's (docs/OPEN_QUESTIONS.md §D, item 443).
+## item 521 lists them for the owner), and have 5 on task K4's (docs/OPEN_QUESTIONS.md §D, item 531).
 const SPACED_FROM_START: Array = ["wall_gaps"]
 ## The campaign's first steps before the Casino (save version 2), in their old order: The House was the
 ## Marketplace's boss, and the Marketplace's outro led to Corporate (_test_old_saves).
@@ -186,7 +186,7 @@ func _test_steps(campaign: Campaign) -> void:
 ## Gangland's boss intro the owner's beats; test_cinematics checks them).
 func _test_slots(campaign: Campaign) -> void:
 	var bosses: Dictionary = {"city": "Floating Head", "gangland": "Sewer Swarm", "marketplace": "",
-		"casino": "The House", "corporate": "Hostile Takeover", "dead_zone": "Sleep Taker", "golden": "The final villain"}
+		"casino": "The House", "corporate": "Hostile Takeover", "dead_zone": "Sleep Taker", "golden": "The Golden Convergence"}
 	for zone: ZoneDef in campaign.zones:
 		var id: String = String(zone.id)
 		check(bosses.has(id), "%s is in GDD §10's roster" % id)
@@ -206,8 +206,8 @@ func _test_slots(campaign: Campaign) -> void:
 	var golden: ZoneDef = campaign.zones[-1]
 	check(golden.boss != null and golden.boss.notes.contains("checkpoint halfway"),
 		"the final villain's slot notes the halfway checkpoint (GDD §10)")
-	check(golden.boss != null and golden.boss.checkpoint_phase() == golden.boss.phase_count() - 1
-		and golden.boss.phase_count() == 2, "and its data has the checkpoint at the second of its two stages")
+	check(golden.boss != null and golden.boss.phase_count() == 6 and golden.boss.checkpoint_phase() == 3,
+		"and its data has the checkpoint at the second stage's first phase (phase 4 of 6, task E5d-a)")
 	var head: BossDef = campaign.zones[0].boss
 	check(head.phase_count() == 3 and is_equal_approx(head.phase_ends()[0], 2.0 / 3.0) and head.phase_list()[0].hits == 1
 		and head.phase_list()[2].pace > head.phase_list()[0].pace,
@@ -224,6 +224,8 @@ func _test_slots(campaign: Campaign) -> void:
 			check(s.boss != null and s.boss.is_built(), "the Casino's boss step plays The House's fight (tasks E5a-b, K2)")
 		elif s.kind == CampaignStep.Kind.BOSS and s.zone.id == &"corporate":
 			check(s.boss != null and s.boss.is_built(), "the Corporate zone's boss step plays Hostile Takeover's fight (task E5b-c)")
+		elif s.kind == CampaignStep.Kind.BOSS and s.zone.id == &"golden":
+			check(s.boss != null and s.boss.is_built(), "the Golden Zone's boss step plays The Golden Convergence's fight (task E5d-c)")
 		elif s.kind == CampaignStep.Kind.BOSS:
 			check(s.boss != null and not s.boss.is_built(), "boss slot %s is still a placeholder" % s.id)
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id == "gangland/boss_intro":
@@ -352,7 +354,7 @@ func _test_no_level_easier(campaign: Campaign) -> void:
 		lines.append("%s %.3f→%.3f" % [s.id, was, now])
 	print("  difficulty against the 15-level curve before the Casino: %s" % ", ".join(lines))
 	# The exponent bends the difficulty only: enemy scaling stays linear over the 17 levels, which task K2's
-	# moved thresholds (docs/OPEN_QUESTIONS.md §D, item 432) were set against.
+	# moved thresholds (docs/OPEN_QUESTIONS.md §D, item 520) were set against.
 	for s: CampaignStep in campaign.steps():
 		if s.is_level():
 			var linear: float = float(s.level_index) / float(campaign.planned_level_count() - 1)

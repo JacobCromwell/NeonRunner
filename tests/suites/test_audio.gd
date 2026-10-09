@@ -92,7 +92,7 @@ func _test_supplied_songs() -> void:
 	for index: int in App.campaign.zones.size():
 		var zone: ZoneDef = App.campaign.zones[index]
 		if REUSED.has(zone.music):
-			# DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 434): its own song is to come; until then it plays the other zone's.
+			# DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 522): its own song is to come; until then it plays the other zone's.
 			var other: StringName = REUSED[zone.music]
 			check(library.run_track(zone.music) == library.run_track(other) and library.path(zone.music) == library.path(other)
 				and library.riff_track(zone.music) == other and library.volume(zone.music) == library.volume(other),

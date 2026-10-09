@@ -61,7 +61,7 @@ static var _cap: float = 0.0
 ## Which name casino building `id` on `side` carries when every casino with a big sign is named
 ## (CasinoSkin.name_spacing 0), by hash: the same every build. Otherwise CasinoFacades decides which casinos
 ## are named and alternates the names.
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, items 437, 438): a casino whose big sign plays the cult's feed carries Gasket's name
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, items 525, 526): a casino whose big sign plays the cult's feed carries Gasket's name
 ## on a strip over the screen and the Brass Lotus's only on its blade.
 static func pick(side: int, id: int) -> int:
 	return NAME_LOTUS if MeshKit.hash01(side, id, 68) < 0.5 else NAME_GASKETS

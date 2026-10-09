@@ -14,7 +14,7 @@ numbered items stay in place even when answered, because code comments and the o
 ### 2. Bosses
 For each boss: arena, phases, attacks, weak points, what power-ups are granted before the fight, how it scales on 3 vs 5–6 lanes, and its length.
 - The House (Marketplace boss): revisit after playtesting (GDD §10).
-- The final villain's fight: full breakdown.
+- The Golden Convergence (the final villain): designed with the owner and built on October 9, 2026 (GDD §10, task E5d). The owner's review of the parts Claude filled in under the owner's mandate, and the build's placeholders, are items 416–503 in §D below.
 
 ### 3. Player character
 - Player customization (GDD §11 covers the character itself).
@@ -2640,8 +2640,12 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
 398. **How tight** (owner: "make it tighter"). Placeholder: 10 m between spots at 18 m/s instead of 12 m
     (`salvo_spacing`): about 0.56 s from one blast to the next, leaving about 0.4 s after passing a blast to switch one
     lane before the next (`salvo_max_shift`: one lane from spot to spot). Tighter still?
+    **Answered (owner, October 9, 2026):** the spacing is right as it is (GDD §10).
 399. **The later runs' length** (owner: a little longer, for the longer salvos). Placeholder: 6.5 s instead of 5.6 s
     (`later_run_seconds`): two salvos of four spots fit, with a little room. Right length?
+    **Answered (owner, October 9, 2026):** longer, 10–12 s. Built: 10 s, which fits three salvos of four spots, stays
+    shorter than the first run (11.2 s) and leaves a flawless fight's length as it was (113.9, 100.6 and 114.0 s at 3,
+    5 and 6 lanes); 11 s makes it miss a tower and wait for the next (133.9 s at 3 lanes, past GDD §10's 60–120 s).
 
 **Every chase shows its truck** (from C6d; `_choose` and `ShowPlanner` in `scripts/enemies/enforcer_truck_rules.gd`; count chases and showings with `tools/measure/enforcer_shows.gd`)
 400. **Chases no bait with room is left for** (GDD §9.13 "Room to show itself"; follows questions 384 and 385). On the
@@ -2736,8 +2740,486 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
 415. **The doodads' edge sheen.** Placeholder: a soft neutral sheen at grazing angles (`doodad_card.gdshader`), where
     the kit's violet default framed the dark zones' doodads in purple edges.
     **Answered (owner, October 9, 2026):** fine (GDD §3).
+
+**The Golden Convergence: the design choices made under the owner's mandate** (from E5d's design session with the owner, October 9, 2026; every choice is marked *(proposed)* in GDD §10, The Golden Convergence; numbers in `data/bosses/golden_boss_tuning.tres` (`GoldenConvergenceTuning`, F6 in the fight) and `data/bosses/golden_boss_skin.tres`; play `--level=golden/boss`, review with `tools/showcase/golden_convergence_showcase.tscn` and `golden_convergence_magnate_showcase.tscn`)
+416. **The arena: the Grand Court** (GDD §10, The arena). A golden causeway through the palace's vast
+    central hall, balustrades at the edges, reflecting pools below, towers to either side with giant feed
+    screens. A plain track: no holes, fences, ceilings, doodads or enemies of its own. Is this the place
+    you pictured for the fight?
+417. **Stage 2 keeps the open causeway** (no side walls). The reason: with permanent walls, the wall hop
+    (GDD §3) would let a runner wait out every attack on a wall. The Magnate's "walls and ceilings" are the
+    balustrades, the towers' faces and the high arches, out of the runner's reach. Do you agree, or should
+    stage 2 move into walled galleries (and then The Magnate needs an attack that reaches wall runners)?
+418. **The entrance:** the suit rises at the far end of the court, its cape unfurling, to the cult's
+    three-note chime (the Resonator's) played huge and slow.
+419. **Paces:** stage 1's phases at 1, 1.1 and 1.2; stage 2's at 1, 1.15 and 1.3 (the Sleep Taker's).
+420. **The strafe's first pass covers the outer lanes**; in the 7-pass strafe the 4th and 7th passes come
+    from behind.
+421. **The horizontal pass's live line reaches above a jump** (a jump doesn't dodge it: the buttress or the
+    dash does).
+422. **Which slams land ahead, and which are buttress chances** (a fixed script): phase 1, slams 1 and 2 on
+    the runner and 3 ahead, chances on 2 and 3; later phases, slams 1, 3 and 4 on the runner and 2 and 5
+    ahead, chances on 3 and 4. About two seconds apart, faster with the phase's pace.
+423. **The hole's footprint:** around the locked lane, moved inward at the edge; a fist locked onto another
+    lane never digs through a buttress.
+424. **The barrage's fire** is about 1.5 s and a metre high (a jump only delays it); the missiles hang at
+    the top of their climb, then dive with a whistle while the red marks fill in.
+425. **The Refill Ship's strafe holds its fire** while the cage comes up and the runner goes for it, so the
+    route to the pad is always clear, then fires on once they're past the pad.
+426. **The cage's sides** are fences along the pad lane's edges (a new lengthwise fence, the same pink
+    crackle and rules as any fence).
+427. **Stage 2's attacks:** the Pounce (bait it into a Flying Buttress to stun him; stomp a red spine port
+    by jumping onto his back) and, from stage 2's second phase, the Cable Lash (low: jump; high: slide).
+    A buttress comes up for every second Pounce. Do you want a third attack for stage 2's last phase?
+    *Answered (the owner's playtest, October 9, 2026):* two more attacks for stage 2, the Claw Slash and the Screen Storm (GDD §10; items 491-503).
+428. **The defeat:** his cables tear out, the screens go dark one after another, the music cuts out with
+    them, he collapses in silence, then the victory riff. Should the riff play at all, or should the
+    fight end in silence like the Sleep Taker's and leave the music to the ending cinematic?
+429. **Numbers:** six phases of the boss's health (a sixth each); weapons chip at most one big hit's worth
+    over the whole fight; 1,000 credits and 10,000 points for the win; par times measured from a clean
+    fight.
+430. **Music:** the Golden Zone's track for now. Would you like a final boss theme of its own?
+
+**The Golden Convergence: the golden suit, the Grand Court, the Helidrone Strafe and the Flying Buttress** (from E5d-a; built in task E5d-a (the golden suit, the Grand Court, the entrance, the Helidrone Strafe and the Flying Buttress). Every number below is in `data/bosses/golden_boss_tuning.tres` (`GoldenConvergenceTuning`, F6 in the fight) or `data/bosses/golden_boss_skin.tres` (`GoldenCourtSkin`) unless it says otherwise, marked `DESIGN-TBD` in code)
+431. **How far ahead the suit floats, and which weapons reach it** (GDD §10: "it floats in the distance ahead
+    of the runner"; "weapons chip at it slowly"). The suit's chest is 64 m ahead (`suit_ahead`), 12 m over the
+    causeway (`suit_height`): far enough to read whole on a phone's screen, halo to hands, and inside the 70 m
+    reach of weapon tiers 2-4, but **out of the tier-1 weapon's 42 m** (`PowerupTuning.weapon_range`), so the
+    starting weapon never chips it. Should every tier reach it (bring it to 40 m, or give weapons a longer
+    reach in this fight), or is it fine that only bought upgrades chip the suit?
+432. **The suit's look** (GDD §10, Look): heavy half-closed eyes looking down the causeway and a faint smile
+    (a calm face cast in gold, `GoldenConvergenceModel.face_relief`/`face_marks`); the dull red tear runs from
+    under its left eye (the runner's right) down its cheek to a drop; a three-pointed diadem (the Triad's
+    arrows) and two halo rings with rays turning slowly behind the head; filigree waves along the pauldrons'
+    rims; four missile pipes in a row on each pauldron, angled up and back under a hinged hatch; eight
+    tentacle pipes, the middle ones trailing back over the causeway, the outer ones splaying out past its
+    edges and down toward the pools; the cape a cloud fanned out behind it from the shoulders, up over the
+    halo and down past its sides, deep pleats with black troughs (`golden_convergence_cape.gdshader`,
+    `cloth_color` 0.31/0.03/0.075 sRGB, darker burgundy with more black in its folds after the orchestrator's review, never glowing; the suit's gold a little richer than the palace's, 0.85/0.67/0.42, inside the suite's chroma limit). Is this the suit you pictured?
+433. **The squadron's look** (GDD §10: "the heli drone's model, never coloured red"): the heli drone's model at
+    1.45x (`drone_scale`), its red eye and band redrawn in a cold white glow and unlit gold, no amber
+    (`add_model(..., hostile = false)` in `scripts/enemies/drone.gd`). Their fire and its warnings stay the
+    enemy attacks' red.
+434. **A jump doesn't dodge a vertical pass either.** The rake's fire reaches 3.2 m up
+    (`GoldenConvergenceFire.RAKE_HEIGHT`, over a jump's reach), as the GDD proposes for the horizontal line,
+    so each vertical pass makes the runner change lanes ("each vertical pass moves the player").
+435. **The first pass on 6 lanes.** "The first pass covers the outer lanes (lanes 1, 3, 5 counting from 1)":
+    on 3 and 5 lanes those take both outer lanes; on 6 lanes lanes 1, 3 and 5 take only the left one (lane 6
+    is safe on the first pass). Built as written (`GoldenConvergenceTuning.covered_lanes`, parity 0 first).
+436. **The strafe's timings** (GDD §10: "about a second ahead"; "a second or two apart"): the red lines and
+    the whine come 1.15 s before the guns open up at the far end of the raked stretch (`warning_seconds`,
+    never divided by the pace); a head-on pass rakes 42 m of lane toward the runner at 55 m/s, so a runner who
+    stays is hit about 1.4 s after the lines show; a pass from behind about 2 s after; the next pass's warning 1.5 s after a pass's fire
+    (`pass_gap`, divided by the phase's pace); out of the cape 1.6 s, back 2.2 s. The squadron waits 40 m
+    ahead and 12 m up between passes and rakes from 7 m up.
+437. **The horizontal pass:** the sweep crosses the track in 0.55 s; the live line burns whole 0.3 s before
+    the runner reaches it and 0.45 s after they're past it; its fire reaches 3.4 m up (above a jump) and 1.6 m
+    along the track; the lines for show lie 24 m apart beyond it (one per other drone), burn 0.6 s and have no
+    hitbox at all (their fire is out long before the runner gets there); scorch marks fade over 9 s.
+438. **The Flying Buttress** (GDD §10: "taller than other doodads ... it comes into view well before its line"):
+    it rises out of the causeway 6 s before the runner reaches it (`buttress_sight`) over 1.4 s, with a deep
+    grinding rumble; its pier 3.2 m deep and 16 m tall, its arched opening 4.4 m tall and about 1.4 m wide in
+    the lane's middle; its flying arch leaps 70 m out and 38 m up toward its tower, leaning toward the
+    nearer edge (by the fight's seed in the middle lane); the Triad in gold on its face. Its sides bump a
+    lane switch into its lane from just before its front (`blocker_lead`). **A switch out of the arch while
+    inside it isn't blocked** (the runner slips through the leg): should it be (a lane blocker on both sides
+    of the pier, the runner bumped back into the arch)?
+439. **The walls:** where nothing opens a wall, both walls are taken away (`BossProps.block_wall`) from just
+    behind the runner to 240 m ahead (`wall_block_ahead`), so a move past an outer lane bumps them back with
+    the clank, as the GDD says. An open wall (E5d-b's toppled tower) is fired on low (an outer lane's rake
+    climbs it to 1.5 m, `wall_fire_height`: a wall runner above it is safe, so a wall run is safe for about
+    its first second, from its 2.2 m entry, and hit low in the rest of its slide; the rake's box in the lane
+    keeps clear of a wall runner's body) and at every height by the live line (7 m, `wall_line_height`).
+    Is "low" about right?
+440. **The Grand Court's numbers:** the balustrade 1.1 m tall with lamp posts every 5 m; the pools 22 m below;
+    a tower every 120 m along each side (alternating), 30 m out, each with a 17 m feed screen 24 m up showing
+    the calm golden face and the emblem in turn (`golden_court_feed.gdshader`; stage 2's roaring Magnate is a
+    darkened placeholder until E5d-d); the hall's colonnade 95 m out, columns 135 m tall, the vault's ribs
+    every 160 m.
+441. **The entrance's timing** (proposed in the GDD): the first phase's intro is 5.5 s: the suit rises 60 m
+    over 3.2 s, the cape unfurls from 1 s over 2.6 s, the chime rings at 1.6 s (the Resonator's G5, C6 and E6,
+    0.7 s apart where the Resonator's are 0.42 s, each doubled an octave and two below, with the court's
+    echo: `gc_chime`; every sound effect stays under 2.5 s, so the rise's rumble tapers off under the chime); then the first
+    beat 0.8 s into the pattern. A later stage 1 phase's 3 s intro: the suit reels back (0.22 rad) and
+    recovers.
+442. **The fight's numbers for now:** 600 health; pars 330 s (two stars) and 260 s (three) and a 400 s time
+    bonus, all provisional until the whole fight is built; phase names "The Golden Suit" (1-3) and "The
+    Magnate" (4-6). The boss bar shows the phase's number alone ("1/6") when the boss's long name and the
+    phase's title don't both fit (`BossBar._refresh`).
+    *Superseded:* the par times are now 238 s (three stars) and 308 s (two stars), from the clean whole fight after E5d-e.
+443. **Until the later steps:** a beat whose attack isn't built yet is skipped (slams, barrage: E5d-b), a
+    refill beat plays its strafe alone (E5d-c), and stage 2 (phases 4-6) idles the suit with no attack
+    (E5d-d), so `--boss=golden_boss --phase=4` plays.
+    *Obsolete:* every step is built (E5d-b, c, d and e).
+
+**The Golden Convergence: the Fist Slam, the toppled tower and the Missile Barrage** (from E5d-b; built in task E5d-b (the Fist Slam with its Flying Buttress bait and the toppled tower's wall, and the Missile Barrage). Every number below is in `data/bosses/golden_boss_tuning.tres` (`GoldenConvergenceTuning`, groups "Fist Slam", "The toppled tower" and "Missile Barrage", F6 in the fight) unless it says otherwise, marked `DESIGN-TBD` in code)
+444. **Phase 1's third slam is both ahead and a chance.** The GDD's two proposals overlap: "in phase 1, slams 1
+    and 2 come down on the runner and slam 3 ahead" and "the chances are slams that come down on the runner:
+    slams 2 and 3 in phase 1". Built as both (`slam_scripts` "Ooa": a lower-case letter is a chance), so phase
+    1's last chance is an ahead slam: its fist locks on the runner's lane and lands ahead, and a runner in the
+    gate's lane as it locks smashes the gate. Later phases ("OAooA") have no such overlap. Should phase 1's
+    third slam come down on the runner instead, or stay ahead?
+445. **Where a chance's hole is dug.** "A fist locked onto another lane digs its hole beside the buttress,
+    never through it": a chance's row ends 0.6 m before the gate's pier (`slam_gate_gap`), so its hole lies
+    in front of the gate, never through it, whichever lanes the footprint takes. On 3 lanes the middle lane is
+    the only inner lane and every two-lane footprint takes it, so the hole always opens in the gate's lane, in
+    front of it (the gate still stands). Is "in front of it" what you meant by "beside it"?
+446. **The square footprint** (GDD §10, proposed: "around the locked lane, moved inward at the edge"): two
+    lanes on 3 lanes, three on 5 and 6 (`GoldenConvergenceHole.hole_lanes`), as long along the track as it is
+    wide. On 3 lanes, from the middle lane the second lane is on the slamming fist's side (they take turns);
+    from an outer lane, the middle lane. Never every lane, so a lane switch always gets out from under it.
+447. **The fist's timing:** out over the runner's lane in 0.7 s (over the pace), the warning (the fist rising
+    from 8 m to 11 m, its shadow growing, the red square, the grind) 0.8 s before the lock, the lock 1 s before
+    it lands, the drop in the last 0.4 s; slams 2 s apart (over the pace); back to rest in 0.85 s. An ahead slam
+    lands as the runner is 1.1 s from its hole (`slam_ahead_seconds`), to be jumped or switched around. The
+    touch lasts 0.2 s from the impact and reaches 4 m up over the hole's square (`slam_hit_seconds`,
+    `slam_hit_height`: a jump doesn't clear it).
+448. **The hold after a blocked hit** (GDD §10: "the floor under the runner holds for about a second ... A dash
+    through the fist gets the same second"): it's given to any runner the touch doesn't kill: the armor or the
+    shield blocking it, the dash, and also a runner still invulnerable from an earlier hit (and god mode).
+    Only the lanes under the runner's feet hold, for `GameRules.cut_hold_seconds` (1 s). The grapple saves
+    the fall into the hole, never the hit.
+449. **The arm's reach.** The suit floats 64 m ahead, so a fist over the runner's lane is 45-70 m from its
+    shoulder: past a full telescope, each golden sleeve also stretches, up to 2.4 times its length
+    (`GoldenConvergenceSuit.EXTEND_MAX`). Is a stretched arm fine, or should the suit lean in or come closer
+    for its slams?
+450. **The first slam can stalk.** A slam's hole is a floor cut, and floor cuts must lie past the track built
+    ahead (about 200 m), so each sequence is planned while the beat before it plays (from where that beat
+    will be over): after a strafe or a barrage, the first impact comes about 2.4 s after the beat begins. A
+    phase that opens with slams (phases 2 and 3) can only plan them during its short intro, so its first fist
+    comes out at once and follows the runner's lane until its warning: its first impact comes about 4.5 s
+    after the beat begins at 25 m/s (7.7 s at quick play's 18 m/s). Fine, or should those phases open with a
+    longer intro or another attack?
+451. **A bait ends the sequence at once:** the other gate, if it's up, sinks back into the causeway the way it
+    rose; the barrage starts warming up the same frame (no gap after a bait; the usual `beat_gap` otherwise).
+452. **The toppled tower** (GDD §10: "the building it held up, off screen, topples forward along the track"):
+    it appears standing beside the causeway out of view, its foot at least 9 m behind the runner
+    (`tower_behind`; farther back so its crown ends at its wall's end), and falls forward over 1.5 s
+    (`tower_fall_seconds`), so the run camera sees only its last moment as it comes down beside the runner
+    (with a rumble, dust and a shake; no flash). It is long enough for its wall: about 230 m at 18 m/s, 300 m
+    at 25 m/s. It lies with its side flush with the wall's line, 14 m wide, its top about 9 m above the
+    causeway (`tower_width`, `tower_depth`): white marble, gold bands, lit windows on its top and outer side,
+    a gold crown and spire. Its side is the wall from the gate's front for 10 s of running
+    (`tower_wall_seconds`); once the runner is past it, it sinks into the pools behind them over 2.5 s.
+    Should more of the fall be seen (for example the tower already standing marked at the roadside ahead, as
+    the Floating Head's are)?
+453. **The barrage's warning:** the hatches open over 0.5 s, the missiles launch one after another over 0.5 s
+    and climb for 1 s, arcing up out of view, then hang 0.5 s 22 m up and about 46 m ahead, out to either side
+    of the suit's chest and keeping pace with the runner (`missile_apex_height`;
+    `GoldenConvergenceBarrage.APEX_*`), then dive for 1 s with the whistle while the marks fill in: the fire
+    lands 3 s after the hatches open, at every pace. Reaching the wall from the far side needs 1.5 s on 3
+    lanes and 2 s on 6 (a 0.7 s reaction, 0.14 s a lane switch, the 0.16 s wall entry and a 0.4 s margin:
+    `barrage_reaction`, `barrage_margin`). The red marks spread over the floor from the launch: 5 a lane
+    (`marks_per_lane`, one missile each), 0.95 m across (`mark_radius`). Like every other attack it's keyed
+    to the runner's distance at the run speed, so a dash during the warning brings the fire a little sooner.
+454. **The fire's stretch:** every lane from 3 m behind where the runner is as it lands (`fire_behind`) to as
+    far as they could run while it burns, a dash included, and 5 m more (`fire_ahead`): it can't be outrun.
+    In an outer lane it stops short of a wall runner's body, so the wall is safe at every height. It leaves
+    no scorch marks (the strafe's do); it dies down over 0.35 s after its 1.5 s.
+455. **Pickups keep off** a slam's rows and the barrage's stretch (both are floor warnings, like the strafe's
+    red lines).
+456. **One armor hit plus the dash is a tight fit** at 1.5 s of fire (1.6 s of protection, as the GDD gives
+    it): two armor hits and armor plus the shield carry the runner through on their own, but with the armor
+    and the dash the dash has to start within about 0.1 s of the fire landing (so the armor's second follows
+    it) or within the last 0.1 s of the armor's second. A runner who dashes at any other moment burns. Is that
+    the "a bit toasty" you meant, or should the fire be a little shorter (1.3-1.4 s gives a 0.2-0.3 s window)?
+
+**The Golden Convergence: The Magnate (stage 2) and the defeat** (from E5d-d; built in task E5d-d (stage 2, The Magnate, and the defeat, "the feed dies"). Every number is in `data/bosses/golden_boss_tuning.tres` (`GoldenConvergenceTuning`'s "The Magnate" groups, F6 in the fight) unless it says otherwise, marked `DESIGN-TBD` in code. Review it with `./play.sh --boss=golden_boss --phase=4` and the showcase (`res://tools/showcase/golden_convergence_magnate_showcase.tscn`, its header lists the scenarios))
+457. **His look** (GDD §10, Look, owner approved): built as written on all fours, a hunched predator about 3.5 m
+    from snout to rump and 1.95 m at the shoulder, 2.7 times the runner's drawn height (`magnate_scale` 1):
+    blackish-grey skin cracked in a fine cell network, the plates between toned like burnt paper; dull gold
+    splashes on his shoulders and haunches; half the calm golden mask fused to his left side (the runner's
+    right as he faces them), its closed eye and dull red tear, his real right half a heavy brow, a wild pale
+    eye and a roaring jaw; five red ports along his spine (the weak points' red, the only thing on him that
+    glows a hazard colour); burgundy tatters from his shoulders trailing grey smoke; the six broadcast cables
+    (the suit's tentacle pipes, burnt black with dull gold bands) trailing from his back to the ground behind
+    him. Is this him?
+458. **The warm white in his cracks** (optional in the GDD): on, at `crack_glow` 0.55, leaking only from some
+    cracks in patches; it flares as he claws out of the suit and dies with him. Its colour is the feed's warm
+    white (1.0/0.93/0.82), clearly whiter than the runner's copper glow (0.96/0.64/0.46). Keep it, or dark
+    cracks (0)?
+459. **The chase** (proposed: "his shadow and a marker at the screen's bottom edge show his lane"): he keeps
+    10.5 m behind the runner (`chase_gap`, behind the camera) and takes up their lane 0.6 s after they change it
+    (`chase_lane_delay`). His shadow is a soft dark blob in his lane from 2.5 m ahead of the runner to 4.5 m
+    behind them (`GoldenConvergenceChase.SHADOW_*`; the run camera's view ends just behind the runner's feet, so
+    the shadow has to reach past them to show). The marker is a chevron with two claw marks at the bottom edge
+    under his lane, in the feed's warm white while he follows and the enemy attacks' red at a Pounce's warning.
+    His breathing and growls play from where he is. Is the shadow readable without looking like a hole (the
+    Grand Court has none)?
+460. **The overtake** (GDD: "he overtakes along a wall or ceiling, lands ahead, then drops back"): with no walls
+    or ceilings over the causeway, he runs past the runner along the nearer balustrade to 15 m ahead
+    (`overtake_ahead`), leaps across the causeway 6.5 m over every lane (`overtake_height`) onto the other
+    balustrade ahead, and drops back along it (4.4 s, `overtake_seconds`, divided by the pace). He lands on the
+    balustrade, never on the track, so an overtake can't be mistaken for a Pounce; it growls rather than roars
+    (the roar is the Pounce's warning). It opens phase 4 and each of its loops. Should he land on the track
+    ahead instead (harmless)?
+461. **The Pounce** (proposed): the roar and the red marker 0.75 s before he leaps (`pounce_windup`, divided by
+    the pace); the leap 1.7 s (`pounce_flight`), 5.5 m over the runner (`pounce_apex`); he locks onto the
+    runner's lane 1.05 s before he lands (`lock_seconds`, never divided by the pace) and the red square (with an
+    X) shows there, 3.6 m deep (`crash_depth`); he lands 0.15 s (`land_lead`) before the runner would reach it.
+    The crash is an enemy attack over 84% of the lane's width, up to 3.2 m (above a jump: a jump doesn't clear
+    him), live until the runner is past the square (0.3-1.2 s); then he bounds off onto the balustrade away
+    from the runner (no arches over the causeway to bound onto) and drops back. Armor and the shield block the
+    crash; the dash passes through it.
+462. **The bait** (proposed: "a Flying Buttress comes up ahead for every second Pounce"): each phase's script has
+    a plain Pounce, then a Pounce with the bait (`pounce:bait`). Its buttress rises in an inner lane (by the
+    fight's seed) 6.5 s before the runner reaches it (`bait_sight`). A runner in its lane as he locks on makes
+    him aim at the gate: he crashes into it 1.6 s before they reach his back (`stun_lead`, never divided by the
+    pace) and slumps across its lane and the next one away from its lean (toward the middle; on 3 lanes the
+    gate is the middle lane and he slumps toward the side away from the lean), his back to the runner. His
+    weak points are a stomp box over his back in each of his lanes, reaching 3.5 m toward the runner (at
+    18 m/s, longer at the Golden Zone's pace: `stun_reach`) and 0.4 m over his back (`stun_stomp_top`); his
+    sides block a switch into him (a bump, never a hit). A runner who comes down on the floor 0.25 s (at the
+    run speed, `stun_release`) short of his back, or runs past him, makes him shake free and leap away before
+    reaching him; the bait comes round again with the phase's loop (no escalation). Is 0.25 s fair, or should a
+    miss also cost something?
+463. **The Cable Lash** (proposed): he runs up along a balustrade (sides in turn) for 2.3 s (`lash_run_up`,
+    divided by the pace), then rears back on it for the warning, 1.25 s (`lash_warning`, never divided by the
+    pace): his cables rise crackling red, a red line lies across every lane where it will sweep, and thin red
+    aim lines cross the track at its heights. The whip crosses every lane in 0.25 s and lies across them 0.3 s
+    before the runner gets there. A low lash is one cable at 0.35 m (jump it); **a high lash is two cables, at
+    0.85 m and 1.9 m** (slide under both), the shape of a gapped fence and of the Floating Head's twin beams, so
+    that a jump can't clear it too. Should the high lash be a single cable (then a jump would clear it as well
+    as a slide)?
+464. **The phases' scripts** (`phase_beats`): phase 4 an overtake, a Pounce, a Pounce with the bait; phase 5 a
+    Pounce, a low Lash, a Pounce with the bait, a high Lash; phase 6 a Pounce, a high and a low Lash, a Pounce
+    with the bait, a low and a high Lash; each looped until the stomp. A clean stage 2 from the checkpoint takes
+    about 76 s of fight (about 25 s a phase). The GDD asks "do you want a third attack for stage 2's last
+    phase?" (question 12 above): phase 6 is the Lash's mixes at the fastest pace for now.
+465. **The transition** (proposed): phase 4's intro is 5 s (`data/bosses/golden_boss.tres`): the suit's chest
+    bursts open over 0.5 s and its plates fly off from 0.35 s; he claws out of the man's room from 0.55 s and
+    roars at 1.75 s (the screens switch to his roaring face, with a glitch); the empty suit topples off the
+    causeway's side (by the fight's seed) from 2.3 s over 2.2 s and splashes into the pools far below; he leaps
+    off the suit at 2.75 s, high over the runner, landing behind them 1.5 s later. It plays the same on a retry
+    from the checkpoint. Phases 5 and 6's intros (2.5 s) are his hurl clear after a stomp, howling.
+466. **The defeat** (proposed): he lurches 1.5 s (at the run speed) ahead of the runner into the lane furthest
+    from them over 1.2 s, convulsing; his six cables tear out every 0.3 s from 0.6 s; from 0.9 s the screens
+    glitch and go dark outward from him at 90 m/s (`blackout_speed`; beyond 700 m every screen in the world)
+    and the music cuts out over 0.25 s; he collapses once his last cable is out, the light in his cracks dying
+    over 1.4 s; once the runner is past him, the victory riff 0.35 s later. Question 13 above (the riff or
+    silence) is the switch `victory_riff_on` (on).
+467. **His sounds** (`tools/asset_gen/sfx_bank_magnate.gd`): his roar is both a Pounce's warning and the
+    transition's screech; a howl when he hurls himself clear; a convulsive death roar; a heavy collapse in the
+    silence. Is his voice the creature you pictured?
+468. **Weapons in stage 2:** he can't be targeted until he's out of the suit; then weapons chip him like any
+    boss part, within the fight's weapon cap (`weapon_share_cap`, one sixth over the whole fight). As in
+    stage 1, `weapons_can_end_phase` is on, so a runner with enough weapon damage left could end one of his
+    phases without a stomp. Should stage 2 only end on stomps?
+
+**The Golden Convergence: the Refill Ship and stage 1's phases** (from E5d-c; built in task E5d-c (the Refill Ship, its closed cage and the chain reaction: the only way to damage the golden suit; stage 1 played through, and the whole fight in the campaign). Every number below is in `data/bosses/golden_boss_tuning.tres` (`GoldenConvergenceTuning`'s "Refill Ship" groups, F6 in the fight) unless it says otherwise, marked `DESIGN-TBD` in code. Review it with `./play.sh --boss=golden_boss` (or `--level=golden/boss`) and the showcase (`res://tools/showcase/golden_convergence_showcase.tscn`: `--scenario=refill`, `cage`, `chain`, `missed`, `stage1`, `whole`; its header lists the options))
+469. **The ship's look** (GDD §10, proposed: "a gilded cult cargo ship"): a 34 m gilded cargo hull over a flat
+    plated belly as wide as the causeway (every lane, wall to wall), the ceilings' orange band at both ends of the
+    belly; two rows of bronze missiles in open racks along each flank (never glowing: the barrage's look); a
+    pointed prow, the bridge at the stern with dark windows, pale blue engines (the Golden Zone's yachts'); a gold
+    feed boom amidships whose gilded hose (bronze bands) runs up across the sky to the shoulder pipes, missiles
+    riding up it. Is it the ship you pictured? (`golden_convergence_ship_model.gd`.)
+470. **Which shoulder it feeds:** the one whose pipes are whole, his right first (the runner's left), then his
+    left; in phase 3, with both blown out, his right's torn stubs (`GoldenConvergenceRefill.fed_side`). The ship
+    waits on that side.
+471. **The ship's flight** (proposed: "pacing the runner while it refills"): it flies in from 46 m behind and 30 m
+    above the runner over 2.4 s (`ship_in_seconds`) to its station beside the causeway on the fed side, 22 m out
+    from the middle, 36 m ahead and 11 m up (`ship_side`, `ship_station_ahead`, `ship_station_height`: framing,
+    beyond the balustrade so the strafe has the track); the feed line shoots out to the shoulder 0.5 s after it
+    arrives (`feed_reach_seconds`), the hatch over the pipes opens, and a missile rides up the line every 0.45 s
+    at 30 m/s (`feed_every`, `feed_speed`). As the cage comes up it comes over the causeway and down to the
+    ceiling's height over 2 s, settled 1 s before the runner reaches the front fence (`descend_seconds`,
+    `settle_before`), the runner 4 m behind its middle.
+472. **When the cage comes up, and the hold** (GDD §10: "the squadron holds its fire while the cage comes up and
+    the runner goes for it"): once the beat's strafe has flown one pass (`cage_after` 1: in phase 1's V-V-H, after
+    the first vertical pass; one pass is always left for after the pad), 4.5 s ahead of the runner (`cage_lead`:
+    time to read it, reach the generator's lane from the farthest lane and stomp it). The squadron holds from
+    then until the runner is past the pad, hovering in formation beside the ship under its racks; on a miss it
+    fires its passes left, planned on from where the runner is. Is 4.5 s the right lead?
+473. **The cage's numbers** (GDD §10: "the front fence placed so a jump over it lands past the pad"; proposed:
+    "the cage's sides are fences running along the pad lane's edges"): the front fence is a full fence across the
+    pad's lane; the pad is 1.4 m deep (`cage_pad_length`, shorter than a level's), right behind it, so even the
+    latest takeoff that clears the front fence comes down past it at 18 m/s (the tests sweep every takeoff at 18
+    and 25 m/s); the sides are 2.4 m tall (`cage_side_height`, above a jump: a lane switch into the cage touches
+    one in the air too) and run 1.5 m (at 18 m/s) past the pad (`cage_side_past`). The pad is in an inner lane (by
+    the fight's seed), so there's a lane on both sides. Its fences flicker in for 1 s with the fence warning
+    (`cage_flicker`) before they switch on, so the cage always comes up in sight. Is a 1.4 m pad easy enough to
+    hit on a phone?
+474. **The generator** (GDD §10: "in a lane next to the cage, just before it, with room after its pulse to switch
+    into the pad's lane"): the game's fence generator, in the lane beside the pad's (left or right by the seed),
+    16 m (at 18 m/s) before the front fence (`generator_before`: a stomp's bounce comes down before the cage), a
+    pink conduit along the lane seam to the cage. Its own pulse switches the whole cage off whatever the EMP's
+    radius; any other EMP switches off only the fences it reaches (GDD §9.1's distance rule). Should its pulse
+    only reach as far as any EMP (the far side fence might then stay on)?
+475. **Weapons never target the ship, the generator or the fences** (proposed): the ship is immune and never a
+    target; the generator is immune like every generator (weapons never set one off: GDD §9.1); the fences are
+    hazards. Weapons still chip the suit. Should a weapon be able to set off the generator (a third way in)?
+476. **The chain reaction's timing** (GDD §10: the pad "hurls the whole squadron up into the Refill Ship, setting off
+    a chain reaction"): from the pad, the drones crash into its racks; the missiles go up in a ripple along the
+    racks from 0.3 s over 0.8 s (`ripple_at`, `ripple_seconds`), outward from where the drones hit; the ship spins
+    off to the fed side from 1.4 s over 1.3 s (`spin_at`, `spin_seconds`), its belly gone, so the runner rides it
+    about 1.4 s and drops back to the floor, landing about 0.6 s later; it explodes beside the causeway past the
+    balustrade, and the blast races up the line into his shoulder in 0.9 s (`blast_seconds`): the hit lands 3.6 s
+    after the pad. The squadron is gone with the ship (that strafe is over).
+477. **The cage sinks away once its pad is ridden** (0.35 s, harmless at once), so the camera doesn't pass through
+    its fences as it ducks under the belly.
+478. **The hits show** (GDD §10: "the first blows out one shoulder's pipes, the second the other's, and the third
+    bursts the suit open"): the first ship's blast blows out his right shoulder's pipes, the second's his left's.
+    The third's ends phase 3: the transition's burst is the only blast then (the ship's adds none), so a retry
+    from the checkpoint shows the same burst. A phase ended by weapons (they can end a phase:
+    `weapons_can_end_phase`) shows the same damage as a ship's hit would have (`GoldenConvergence._show_damage`).
+479. **The next phase's first slams are planned from the chain reaction** (E5d-b question 7, "the first slam can
+    stalk"): the chain knows when its hit will land, so at the Golden Zone's 25 m/s phases 2 and 3 open with
+    their first fist on time (`GoldenConvergenceSlams.plan_phase_ahead`). At quick play's 18 m/s the built track
+    (about 180 m ahead) still reaches past where it would land, so it comes as soon as the track allows, about
+    2.7 s late (about 4 s if planned at the phase's start), the fist stalking the runner's lane meanwhile. A
+    phase ended by weapons still plans at its start, and its first fist can stalk.
+480. **A missed pad** (GDD §10: "the ship finishes refilling and flies off, and the phase's loop starts again
+    from the slams"): a runner 3 m (at 18 m/s) past the pad without riding it has missed it (`miss_after`); the
+    ship climbs back to its station over 1.6 s, finishes refilling 1.5 s later and flies off ahead and away over
+    2.2 s (`climb_seconds`, `finish_seconds`, `leave_seconds`), while the strafe fires its passes left; the
+    beat is over when both are, and the loop goes on from the slams (planned while the ship flies off). The
+    next ship is the same (no escalation).
+481. **Par times** (E5d-a question 12): measured from the test bot's clean fight (every pad ridden by the
+    generator, never hit, no armor): 198.2 s from the entrance to the defeat at the Golden Zone's 25 m/s at 3, 5
+    and 6 lanes (stage 1 won at 122.0 s), and 208.7 s at quick play's 18 m/s (stage 1 at 132.4 s: at the lower
+    speed the built track reaches further ahead in seconds, so the slams' holes, which must lie past it, come
+    later; question 11). Set the way Hostile Takeover's are (74 s and 96 s
+    over its clean 68.6 s): three stars at 214 s, two at 277 s, and the time bonus runs out at 340 s, a little
+    past two stars as the provisional 400 s was past 330 s (`data/bosses/golden_boss.tres`). The fight is three
+    times longer than any other boss's; are these the right margins?
+482. **Its sounds** (`tools/asset_gen/sfx_bank_golden_convergence.gd`, none pitch-varied): the ship's engines
+    droning in (`gc_ship`, as long as its flight in), the feed line's pneumatic shot and coupling clank
+    (`gc_feed`), missiles clattering up the line (`gc_ride`, every 1.3 s while it feeds), the fence warning
+    as the cage flickers in, the drones' hurl (E5d-a's), the ripple along the racks (`gc_ripple`), the ship's
+    crash (`gc_crash`), the blast racing up the line (`gc_blast`), the pipes blowing out (`gc_pipes`) and, on a
+    miss, the ship leaving (`gc_leave`).
+
+**The Golden Convergence: the polish pass** (from the review of E5d-a, b and d; built in the polish pass after the fight's review. Numbers are in `data/bosses/golden_boss_tuning.tres` (`GoldenConvergenceTuning`, F6 in the fight) or constants marked `DESIGN-TBD` in code, as each item says)
+483. **The armor pickup after a shield break** (GDD §10, Armor pickups: "triggered when the player has lost all
+    their armor"). The boss framework schedules the 22 s armor pickup when the shield breaks too, while the runner
+    still wears armor: `BossEncounter._on_item_used` answers both items, and the player reports the shield on every
+    break but the armor only once it's gone. With one pickup a phase (`armor_pickups_per_phase`), a shield break
+    uses up the phase's pickup, so an armor break later in that phase brings none. Is this more generous timing
+    wanted, or should only losing the last of the armor schedule it, as the GDD reads? (Changing it changes the
+    framework, so every boss with the armor rule.)
+484. **The howl after a stomp** (GDD §10, Three stomps, proposed: "After a stomp he hurls himself clear,
+    roaring"). He hurls himself clear with a howl (`magnate_howl`, the same he gives when he shakes free of a
+    missed bait), not his roar, so the roar stays the Pounce's warning and nothing else ("His roar is the audio
+    warning"). Do you agree?
+485. **Two Fist Slam rows never meet.** Consecutive rows (a chance's gate included) are always at least a lane
+    switch's run plus 0.3 s apart at the run speed (`slam_row_margin`, `GoldenConvergenceSlams.row_gap`), so a
+    runner landing past a hole has room to switch out of the next one's footprint. Where the script's spacing
+    brings them closer (phase 3's pace at 18 m/s on 5 and 6 lanes overlapped two rows by about 0.6 m), the later
+    slams come that much later. The bot's clean fight now takes 198.3 s at 3 lanes and 200.1 s at 5 and 6 lanes at
+    25 m/s (it was 198.2 s), and 208.9-209.1 s at 18 m/s (208.7 s); the par times stay 214, 277 and 340 s. Is
+    0.3 s the right room?
+486. **The fist never reaches a wall runner** *(proposed)*. Its touch keeps clear of a wall runner's body at every
+    height, as the barrage's fire does (`GoldenConvergenceSlams.touch_x`): a runner on the wall beside a slam in
+    the outer lane is untouched, one on the floor in its footprint is hit. The wall is safe from the fist, as it is
+    from the fire. Do you agree?
+487. **The Refill Ship's end** (GDD §10: "the ship goes spinning off to the side and explodes, and the missiles it
+    carries all explode"). It spins off to its side and only 1.5 m down (`GoldenConvergenceRefill.SPIN_DOWN`; it
+    sank 10 m and exploded below the deck, out of sight), and its blast goes off around its middle at least 4 m
+    above the causeway (`GoldenConvergenceShip.BLAST_LIFT`): a string of fireballs up to 7 m in radius along its
+    length over half a second (`BLAST_RADIUS`), every rack's missiles having gone up in the same fire.
+    The fire is a saturated orange with a hot yellow heart that reddens and darkens through soot, with dark smoke
+    rolling up out of it and lingering (`GoldenConvergenceBlast`, `golden_convergence_blast.gdshader`: laid over
+    what's behind it, where the old additive light read a washed-out peach over the court). With Reduced flashing
+    its heart never flashes white-hot and no sparks fly; the shake follows the screen-shake setting. Is it the
+    explosion you pictured?
+488. **The barrage's target marks** fill in near opaque (`fill_alpha` 0.95 in `golden_convergence_floor.gdshader`;
+    0.6 read salmon or pink over the white marble), so they read red on every renderer.
+489. **F6 can no longer put a move out of reach** (margins marked `DESIGN-TBD` in code; every default plays as
+    before):
+    - `stun_stomp_top` now ends at 0.6 m (it went to 1 m, and from 0.85 m no jump could stomp him), and his weak
+    points' top always stays 0.25 m (`GoldenConvergencePounce.STOMP_WINDOW`) under what a jump can stomp, whatever
+    the movement tuning;
+    - he never shakes free of a stun while a jump from where the runner is could still land on his back (with
+    `stun_release` at its longest and `stun_reach` at its shortest he left before any jump could reach him; at the
+    defaults this moves the release 2 cm at 18 m/s);
+    - a high Lash's lower cable stays 0.05 m over a sliding runner (`GoldenConvergenceLash.SLIDE_CLEAR`; at the
+    lowest `lash_high` and the thickest `lash_radius` it lay on the slide);
+    - the barrage's missiles hang longer where its other steps (or a longer reaction and margin) would leave less
+    than the way onto the wall from the far side on 6 lanes, so its warning stays the same at every lane count;
+    - the toppled tower's wall lasts through the barrage after it, its fire and 1.5 s more
+    (`GoldenConvergenceTower.WALL_SPARE`);
+    - the cage comes up far enough ahead to read it (0.7 s, `GoldenConvergenceCage.READ_SECONDS`), switch in from
+    the farthest lane, jump onto the generator and 0.3 s to spare (`SPARE_SECONDS`): the shortest `cage_lead` with
+    the farthest generator left it 0.28 s ahead of the runner.
+    Are these margins right?
+490. **The Magnate's legs move now** (a fix found in this pass): his poses never reached his legs (a blend skipped
+    their angles), so they stayed in his first frame's pose; his gallop, the leap's stretch, the rear, the whip and
+    the slump show now. Worth a look: `res://tools/showcase/golden_convergence_magnate_showcase.tscn`,
+    `--scenario=magnate`.
+
+**The Golden Convergence: the owner's playtest of stage 2 (the Claw Slash, the Screen Storm, darker)** (from E5d-e; the owner's request and approvals of October 9, 2026 are in GDD §10, Second stage, Owner's playtest; built in task E5d-e, the owner's playtest of stage 2 (GDD §10, "Owner's playtest (October 9, 2026)": the Claw Slash, the Screen Storm, the arena darker, the new beat scripts, the stomp's chevrons). The owner approved the playtest's specifics; these are the choices made while building them. Numbers are in `data/bosses/golden_boss_tuning.tres` (`GoldenConvergenceTuning`, F6 in the fight: "The Magnate: the darkness", "the Claw Slash", "the Screen Storm") unless the item says otherwise, marked `DESIGN-TBD` in code)
+491. **Where he runs during a storm** (approved: "During a storm he runs close behind the runner where the camera
+    shows him"). He runs up onto a balustrade (the sides in turn, the first by the fight's seed) and paces the
+    runner **3 m in front of them** (`storm_ahead`), not behind. The run camera's view ends about 3.5 m behind the
+    runner, so behind them he would show at most as a head at the screen's bottom edge, and the screens crashing on
+    him would land out of sight. Up on the balustrade ahead the camera shows him whole at every lane count, the
+    screens coming down on his back read clearly (he staggers with a cry of pain), and they never come down in a
+    lane. A screen on him has no red square or shadow, since nothing there can touch the runner. The overtake beat
+    (he shows himself along a wall, lands ahead and drops back) is in none of the approved scripts, so the storms
+    are where he shows himself now; the beat still plays if a script names it (`overtake`). Is this where you want
+    him during a storm? (`GoldenConvergenceScreens`)
+492. **How many screens hit him: three a storm at every lane count** (`storm_hits`), so a storm takes a quarter of
+    a phase everywhere ("each takes about a twelfth of the phase's health (a storm about a quarter)"). That is a
+    third of a 10-screen storm on 3 lanes but only a fifth of a 16-screen storm on 6 lanes; a third of 16 would be
+    five hits, about 40% of a phase. Keep a quarter of a phase a storm, or a third of the screens?
+493. **The storm's size and pressure.** 10 screens on 3 lanes, 12 on 4, 14 on 5, 16 on 6 (`storm_screens_min`,
+    `storm_screens_max`, scaled to the lane count). The screens on the track take turns: one meant for the runner
+    (in their lane, once the fairness rule allows a screen there; it waits up to 0.4 s for that, then comes down
+    beside them) and one beside them (two lanes off rather than one, so it doesn't block the next one meant for
+    them). The model runner of the plan's test, who moves 0.35 s after each warning (The House's reaction:
+    `screen_reaction`; a lane switch with a 1.5 margin, `screen_switch_margin`; 0.1 s spare round each crash,
+    `screen_margin`), has to dodge 3.3 to 5.2 times a storm on average (200 storms at each of 3 to 6 lanes) and is
+    never struck or sent into another warning. The storm's 5 s and its 0.9 s warnings don't speed up with the phase's
+    pace (his run-up to the balustrade does). Is a storm busy enough? (`GoldenConvergenceStormPlan`)
+494. **A stomp ends its phase exactly.** In stage 2 a stomp takes whatever is left of its phase, so what the screens
+    (and weapons) chipped off doesn't carry over into the next phase: every phase is one stomp or four storms,
+    whatever came before (`GoldenConvergence.hit_damage`). The last sliver of a phase (under a hundredth of it) goes
+    with a screen's hit, so twelve twelfths always end it. A phase the screens end is followed by his hurl clear, as
+    after a stomp, and in the last phase they end the fight with the same defeat as the third stomp. Should chip
+    damage carry over instead, so a phase with many storms shortens the next one?
+495. **The Claw Slash's timings and reach.** He closes in from behind over 0.6 s (`slash_close_seconds`, over the
+    pace) to just behind the camera's view; then the warning (0.5 s, `slash_warning`, never shortened by the pace)
+    while he lunges into view to 3 m behind the runner as the swipe lands (`slash_strike_behind`). The swipe covers
+    84% of the lane's width (`slash_width_share`), from 1.2 m behind the runner to 0.8 m past them (`slash_behind`,
+    `slash_ahead`) and 3.2 m high, live for 0.12 s; a double's second warning begins 0.12 s after the first swipe
+    lands (`slash_double_gap`). The warning only begins while a lane beside the runner's is clear to switch into
+    for the whole swipe (no buttress side, hole, other floor warning or live Lash cable there); otherwise he holds
+    behind the camera for up to 2 s, then lets that slash go (`GoldenConvergenceSlash.WAIT_MAX`). Is the split
+    second right?
+496. **How the Slash's warning flashes.** His marker's red beats on and off 7 times a second (down to 30%
+    opacity; `GoldenConvergenceChase.ALARM_FLASH_HZ`) and the claw marks pulse their size about 5 times a second;
+    both hold steady with Reduced flashing. The marker is small, at the screen's bottom edge; is this rate fine?
+497. **How dark stage 2 is.** The court's light falls to 0.4 (`stage_two_light`; the orchestrator lowered it from 0.7 after
+    measuring frames, so it reads as the owner's "about 30% darker": the floor's value goes from about 208 to about 149 on
+    Forward+ and from 201 to 144 on Compatibility, 29% darker on both) over 3.5 s from the transition's
+    start (`dim_seconds`; on a retry from the checkpoint too) and comes back over 2 s from the defeat's start
+    (`light_return_seconds`). The Magnate's body and cables dim with the court; the warm white in his cracks, his
+    red ports, every hazard and warning, the runner and the pickups keep their glow. At 0.7 it read as less than 30%
+    darker (the floor about 205-215 to 185-190, sRGB: the eye reads light on a curve), so it's 0.4 now.
+    Darker (0.55 to 0.6)?
+498. **The stomp's chevrons and the stun's lead.** Green ramp chevrons in both of his lanes over the middle of the
+    take-off stretch (12% of it off each end, as the cue before the Hostile Takeover's couplings), streaming toward
+    him from the stun until he's stomped or shakes free (`GoldenConvergenceTakeoffMarks`). He now crashes into the
+    gate 1.75 to 1.78 s before the runner reaches his back, which leaves 1.5 s from the stun to the last take-off
+    (`stun_takeoff`).
+499. **Stage 2's beats come 0.6 s apart** (`stage_two_beat_gap`; stage 1's are 1.6 s), divided by the phase's pace.
+    A beat is over once he's back behind the runner, so nothing of one attack is still out when the next one warns.
+500. **Its sounds** (`tools/asset_gen/sfx_bank_magnate.gd`, each under 2.5 s, the two warnings never pitch-varied):
+    `magnate_snarl` (the Slash's warning: a short, sharp snarl, not the Pounce's roar), `magnate_swipe` (the
+    claws), `magnate_glitch` (a screen's warning: the rising glitch-whine), `magnate_smash` (a screen shattering),
+    `magnate_yank` (its tentacle whipping it away) and `magnate_pain` (his cry when a screen hits him).
+501. **The screens' look.** 16:9 screens 2 m wide in gilded frames, his glitching, roaring face on them (the court's
+    feed shader, held still with Reduced flashing), each on a gold tentacle 46 m long up into the vault; a crash
+    throws pale glass shards (and warm white sparks, none with Reduced flashing), and the dark, broken screen is
+    yanked away (`GoldenConvergenceTentacles`).
+502. **The hints** (`data/hints/hints.json`): `golden_boss_slash` and `golden_boss_screens` are new, and the stun's
+    now says to take off from the green chevrons.
+503. **The par times, from the longer clean fight.** The bot's clean fight now takes 217.6 to 220.2 s at 25 m/s and
+    228.2 to 229.3 s at 18 m/s (it was 198.3 to 200.1 s and 208.9 to 209.1 s); stage 2 from the checkpoint takes
+    about 96 s (it was 76 s). Three stars at 238 s, two at 308 s (Hostile Takeover's margins over a clean fight)
+    and the time bonus runs out at 378 s (they were 214, 277 and 340 s; `data/bosses/golden_boss.tres`).
 **The Casino skin** (from K1; the owner's reference `docs/art/reference/casino_zone.webp`; exports on `CasinoSkin`, `data/skins/casino_skin.tres` and the arena's `data/bosses/casino_boss_skin.tres`, F6; review with `./play.sh --quick --skin=casino`)
-416. **Floor and gaps: to confirm with the owner (GDD §5: "Floor, gaps and ceiling pieces: chosen by the art
+504. **Floor and gaps: to confirm with the owner (GDD §5: "Floor, gaps and ceiling pieces: chosen by the art
     agent from the reference *(to confirm)*").** The reference shows a dark, wet paved street with a few
     pedestrians far off, and no gaps. Placeholder: the floor is the street's **dark flagstones laid in running
     bond with brass inlaid along both edges of every lane**, a brass bar across the lane every 6 m (the still
@@ -2749,7 +3231,7 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     per lane), a gap as a broken stretch of paving with brass pipes and a dim lower level showing, and a
     different floor under each kind of building. `CasinoSkin.street_color`, `inlay_color`, `street_wet`,
     `trench_depth`; `CasinoStreet`, PAT_CASINO_STREET and PAT_CASINO_UNDER (kit_casino.gdshaderinc).
-417. **The glow palette's departure from the reference's neon (GDD §5, the colour rule).** The reference glows
+505. **The glow palette's departure from the reference's neon (GDD §5, the colour rule).** The reference glows
     pink, cyan, green and orange, which are the hazards' colours. Placeholder: lit signs, marquees and the
     lamps near the track glow **warm white, violet or blue**; brass and gold are lit metal (never neon:
     `cas_metal()` fakes a reflection of the lamplit street, nothing brass or iron carries glow); the
@@ -2758,24 +3240,24 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     lit signs is half, so the street stays amber and gold rather than cold. Hazards stay the brightest, most
     saturated things on screen (the suite checks chroma and hue). Is that the right balance of warmth and cold?
     `CasinoSkin.neon_colors`, `dim_sign_colors`, `lamp_color`, `bulb_color`.
-418. **Sign names (the reference's "Gasket's House of Chance", "The Brass Lotus", "Casino Entrance").** The
+506. **Sign names (the reference's "Gasket's House of Chance", "The Brass Lotus", "Casino Entrance").** The
     game's signs and screens carry no real words (the cult's feed is wordless; every skin's lettering is rows of
     chunky glyphs), so the names can't be spelled. Placeholder: lit signs show a brand mark (a diamond, a lotus,
     a crown, a chip or a die) and rows of glyphs, and vertical blade signs run lettering down their board like
     "The Brass Lotus". Should the Casino's two named signs be drawn as real lettering once the project has a
     way to draw words on a sign (a texture of each sign)? Until then no sign says "HAZARD" or anything else.
     **Answered (owner, October 9, 2026):** real lettering, with the names "Gasket's House of Chance" and "The Brass Lotus" (GDD §5, Zone 4; task K3).
-419. **Pedestrians far down the street.** The reference has a few small figures far down the street. The owner
+507. **Pedestrians far down the street.** The reference has a few small figures far down the street. The owner
     said no new characters, and the Marketplace's citizens only play in shop windows (they react to the runner
     and The House's crowds cheer and duck through them). Placeholder: **none**: the street is empty, as the
     Marketplace's is. Should a few of the Marketplace's citizens also stand far down the street as tiny,
     fogged silhouettes (scenery only, never in the lanes), or are the shop windows enough?
     **Answered (owner, October 9, 2026):** no pedestrians; the shop windows are enough (GDD §5, Zone 4).
-420. **How much each kind of piece appears (placeholder shares).** The balconies, pipes, air-conditioning units,
+508. **How much each kind of piece appears (placeholder shares).** The balconies, pipes, air-conditioning units,
     planters, banners, lanterns, fans and girders across the street, and how often each ceiling kind turns up
     (footbridge 3, pipe-bundle gantry 3, sign gantry 2): all exports on `CasinoSkin` (groups "Facades", "Vault",
     "Casino ceilings"), tuned by eye against the reference; the owner may want the street busier or calmer.
-421. **The glass roof (GDD §5: the vault stays high overhead as background).** Placeholder: the roof springs from
+509. **The glass roof (GDD §5: the vault stays high overhead as background).** Placeholder: the roof springs from
     the facades' top at 22 m and rises to about 26-29 m (higher over a wider street); it is **opaque and faked**
     (dark night-blue panes with a few stars, warmer where they catch the lamplit haze, 10% of the panes missing
     so the night sky shows through), with iron ribs every 8 m, girders across the street every 32 m or so
@@ -2783,21 +3265,21 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     over the lanes (the arrival flyover's and The House's limits). The ceiling fans don't turn (a static mesh).
     Is the broken glass right for a "gaudy, warm and a little seedy" casino, or should the roof be whole?
     **Answered (owner, October 9, 2026):** the roof is whole, with no broken or missing panes (GDD §5, Zone 4; task K3).
-422. **Doodads.** The Marketplace's potted plants, casino machines and hedge rows are reused unchanged in the
+510. **Doodads.** The Marketplace's potted plants, casino machines and hedge rows are reused unchanged in the
     Casino's palette (dark brass-trimmed cabinets, deep-green plants). Does the Casino want doodads of its own
     (a roulette table, a velvet-rope queue, a fruit machine)? GDD §3 only names the Marketplace's.
-423. **The House's arena** (`data/bosses/casino_boss_skin.tres`): the facades are flush below 14.5 m (no balcony,
+511. **The House's arena** (`data/bosses/casino_boss_skin.tres`): the facades are flush below 14.5 m (no balcony,
     pipe or blade sign stands out of a wall where the 13.5 m machine passes), the roof is raised to spring from
     34 m (so phase 3's billboard, which drops from about 35 m, never passes through the glass) and nothing is
     hung from it. The arena is therefore plainer than the street the player ran through to reach it; should
     the machine's arena keep the full dressing at the cost of the machine clipping through balconies, and
     should the billboard come down through a roof with a gap in it instead of under a tall one?
-424. **The fences' and signs' looks** (`CasinoProps`; the same placeholder question every zone's props raise). The
+512. **The fences' and signs' looks** (`CasinoProps`; the same placeholder question every zone's props raise). The
     GDD fixes only the pink crackle of an electric fence and the yellow-and-black stripes of a sign. Placeholder:
     the fence's field is strung between brass stanchion posts on iron plinths (the casino's velvet-rope posts,
     the pink field in place of the rope), its edge bars and its OFF look are proposals, and a sign's striped
     frame goes round a lit casino sign's face. Is the stanchion the right post for a casino fence?
-425. **Follow-up for the Marketplace (not changed here; `shopfront.gdshader` is the Marketplace's).** Its casino
+513. **Follow-up for the Marketplace (not changed here; `shopfront.gdshader` is the Marketplace's).** Its casino
     fronts (style 1) test `cy + storey > decor_top` on the cell's top, so a storey that straddles `decor_top` (6.2 to 9.4 m
     against 8 m) draws its glass and its rows of bulbs from 6.34 m, under the 8 m a decorative light may start at
     (the Casino's own shader starts the grid at `decor_top`, so it does not have this). A one-line fix there is to start
@@ -2805,29 +3287,29 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     The violet tint of its glass panels under 8 m comes from the same test.
 
 **The Casino in the campaign** (from K2; the owner added the Casino as Zone 4 on October 8, 2026, GDD §5, §6, §10; data in `data/zones/casino.tres`, `data/levels/casino_1.tres`, `casino_2.tres`, `data/bosses/casino_boss.tres`; review with `./play.sh --level=casino/1` or `--level=casino/boss`)
-426. **The Casino's tagline** (GDD §5, Zone 4). Placeholder: "A covered casino street under a vaulted glass
+514. **The Casino's tagline** (GDD §5, Zone 4). Placeholder: "A covered casino street under a vaulted glass
     roof." (`data/zones/casino.tres`). The Marketplace's tagline drops its casinos: "Stall roofs, awnings and
     a bustling open-air market." (`data/zones/marketplace.tres`).
-427. **The Casino's run speed** (GDD §3: about 21 m/s in the Neon City rising to about 25 in the Golden Zone).
+515. **The Casino's run speed** (GDD §3: about 21 m/s in the Neon City rising to about 25 in the Golden Zone).
     Placeholder: 23.0 m/s, between the Marketplace's 22.6 and Corporate's 23.4, no other zone's changed
     (`data/zones/casino.tres`, `run_speed`). The House runs at it now (GDD §3: a boss runs at its zone's
     speed), 23.0 instead of the Marketplace's 22.6.
-428. **The Casino's level names** (GDD §5: "(name to come)"). Proposed: Casino 1 *Brass Arcade* (the covered
+516. **The Casino's level names** (GDD §5: "(name to come)"). Proposed: Casino 1 *Brass Arcade* (the covered
     street, its brass pipes), Casino 2 *House Edge* (The House follows it) (`display_name` in
     `data/levels/casino_1.tres`, `casino_2.tres`).
     **Answered (owner, October 9, 2026):** *Brass Arcade* and *House Edge* are approved (GDD §5).
-429. **What each Casino level adds** (GDD §5: "still to design"). Placeholder: both play Marketplace 2's
+517. **What each Casino level adds** (GDD §5: "still to design"). Placeholder: both play Marketplace 2's
     features (everything up to the wall fences and the shopfronts' vent screeches) with no introductions
     (`feature_starts` empty) and no extra pick weights (Marketplace 2's extra weight on vent screeches was for
     their introduction), so nothing new comes until Corporate 1. `test_campaign` exempts them from "each
     level brings something new" and the Casino from "every zone introduces a new enemy", keyed to the GDD's
     owner decision.
-430. **The Casino levels' numbers.** Placeholders: 145 s and 150 s long (the campaign's levels now total 39.0
+518. **The Casino levels' numbers.** Placeholders: 145 s and 150 s long (the campaign's levels now total 39.0
     minutes, GDD §5's "about 40"); seeds 701 and 702 (no existing seed renumbered); danger density 0.27 for
     both (between Marketplace 2's 0.26 and Corporate 1's 0.28; the dial never falls); doodads 0.8 like the
     Marketplace's; Marketplace 2's spacing, fill, wide gaps, charge-path cyborgs, narrow ceilings and credit
     settings; no level sky of their own (the Casino skin's sky).
-431. **The difficulty curve over 17 levels: the owner's choice** (GDD §6: an automatic curve making each level
+519. **The difficulty curve over 17 levels: the owner's choice** (GDD §6: an automatic curve making each level
     slightly harder than the last). The curve still runs 0.1 to 0.9 and `enemy_scaling` 0 to 1, now over 17
     levels, so every level between City 1 and Golden 3 moved (the curve's step from 0.057 to 0.05 a level):
     the City, Gangland and the Marketplace got a little easier, Corporate, the Dead Zone and Golden 1 and 2 a
@@ -2837,7 +3319,7 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     Corporate 1's 0.557), which keeps their difficulty-gated patterns and spacing as they were (not their
     recency ages or completion bonuses, which follow a level's place in the campaign either way). What the
     re-spaced curve changes is listed below ("What the re-spaced curve changes"). Which does the owner want?
-    **Answered (owner, October 9, 2026):** no level gets easier: every level is too easy, at least on PC. The Marketplace keeps at least its old difficulty (a little harder is welcome), and Corporate and beyond may get harder (GDD §6; task K4). Built in K4: the curve's exponent 0.79 (item 440 has the table).
+    **Answered (owner, October 9, 2026):** no level gets easier: every level is too easy, at least on PC. The Marketplace keeps at least its old difficulty (a little harder is welcome), and Corporate and beyond may get harder (GDD §6; task K4). Built in K4: the curve's exponent 0.79 (item 528 has the table).
 
     | Level | Difficulty before | after | Enemy scaling before | after |
     |---|---|---|---|---|
@@ -2863,7 +3345,7 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     the Floating Head 0.143 to 0.125, the Sewer Swarm 0.357 to 0.313, The House 0.500 (Marketplace 2's) to
     0.563 (Casino 2's: its Barnacle Turrets reload in 2.06 s instead of 2.10 and fire bolts at 17.1 m/s
     instead of 17.0, still 5 shots to kill), Hostile Takeover 0.643 to 0.688, the Sleep Taker 0.786 to 0.813.
-432. **Enemy numbers that step at an `enemy_scaling` threshold** were moved in data so that every existing
+520. **Enemy numbers that step at an `enemy_scaling` threshold** were moved in data so that every existing
     level keeps exactly what it had (the in-between numbers, such as reload times and bolt speeds, follow the
     re-spaced scaling). Should these steps move with the curve instead (for example the Casino, not
     Marketplace 2, as the first level with turret and drone pairs)?
@@ -2883,7 +3365,7 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
       unchanged.
     - The Resonator's place in the Golden Zone (`zone_t`: Golden 1 at 0.048, Golden 2 at 0.524, Golden 3 at
       1): `scaling_from` 0.85 to 0.86875 (`data/enemies/resonator.tres`).
-433. **What the re-spaced curve changes** (for the owner's choice of curve above; measured on the 15-level
+521. **What the re-spaced curve changes** (for the owner's choice of curve above; measured on the 15-level
     curve before the Casino, commit 74c0b5e, and on this branch):
     - **Patterns gated by difficulty** (`min_difficulty` / `max_difficulty` in `data/patterns/*.json`; a
       level's difficulty rises 0.25 across it). In the levels that got easier they come later or never: City
@@ -2956,23 +3438,23 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
         had already stopped building that way before the Casino, and no Golden 1 build at 6 lanes on seeds
         9001-9060 does now. It's re-pinned to Dead Zone 1 at 6 lanes on seed 9007 (found by building without
         `doodad_ok`), and the test now checks that its case still shows the scenario.
-434. **The Casino's music** (GDD §11: no more generated songs; the owner supplies them). Placeholder: the
+522. **The Casino's music** (GDD §11: no more generated songs; the owner supplies them). Placeholder: the
     Casino's track (`casino`) plays the Marketplace's: Jackpot Plaza in its levels, the Marketplace's
     generated default in its cinematics and The House's fight, and the Marketplace's level-complete riff
     (`data/audio/music_library.tres`: `files`, `zone_tracks`, `riff_tracks`). Will the owner supply a Casino
     song, and should The House get a boss song of its own?
     **Answered (owner, October 9, 2026):** the owner adds the Casino's song in a separate change; The House keeps the Casino's music until then.
-435. **The Casino's cinematics** (GDD §6). Placeholders: its intro plays the arrival flyover over the Casino
+523. **The Casino's cinematics** (GDD §6). Placeholders: its intro plays the arrival flyover over the Casino
     (title "The Casino"; its card names the zone: ZONE 4, CASINO), its outro is a placeholder card "Beyond
     the Casino: a short scene after The House, heading for the corporate district"
     (`data/cinematics/casino_intro.tres`, `casino_outro.tres`). The Marketplace's outro now reads "a short
     scene leaving the market for the casino district" (`marketplace_outro.tres`).
-436. **The House's leaderboard** is now `boss/casino_boss/<tier>` (it was `boss/marketplace_boss/<tier>`). No
+524. **The House's leaderboard** is now `boss/casino_boss/<tier>` (it was `boss/marketplace_boss/<tier>`). No
     platform leaderboards are registered yet (the stub serves every build); any made from the old id must use
     the new one.
 
-**The Casino's roof and named signs** (from K3; the owner's answers of October 9, 2026 to items 418, 419 and 421; exports on `CasinoSkin`, F6; lettering in `scripts/world/skins/casino/casino_lettering.gd`)
-437. **Two famous casinos, or a chain?** The owner asked for the big signs to spell "Gasket's House of Chance" and
+**The Casino's roof and named signs** (from K3; the owner's answers of October 9, 2026 to items 506, 507 and 509; exports on `CasinoSkin`, F6; lettering in `scripts/world/skins/casino/casino_lettering.gd`)
+525. **Two famous casinos, or a chain?** The owner asked for the big signs to spell "Gasket's House of Chance" and
      "The Brass Lotus" and said they love the two. Two readings:
      - *Landmarks* (built): the street is cut into periods of `CasinoSkin.name_spacing` metres, 100 by default, both
        walls together. Each period has at most one named casino (a casino with a big sign, hash-picked, from the middle
@@ -2983,20 +3465,20 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
      - *A chain*: every casino with a big sign is named, one of the two by hash (`name_spacing` 0). The street then
        reads as two brands with branches everywhere (a stretch of five "The Brass Lotus" in a row is possible).
      Which does the owner want? The spacing is one export on the skin; 0 gives the chain, 200 or more a rarer landmark.
-438. **Casinos whose big sign plays the cult's feed (35% of them).** The feed's screen stays a screen with no words on
+526. **Casinos whose big sign plays the cult's feed (35% of them).** The feed's screen stays a screen with no words on
      it (the cult's feed is wordless). Placeholder: a Gasket's casino puts its name on a one-line strip over the screen
      in its own brass frame, and a Brass Lotus casino carries its name on its tall blade sign only. Every named casino
      also has a blade sign at the far end of its building (GASKET'S, or THE BRASS LOTUS, stacked down it): a board on
      a wall is seen along its face from the street, so only the blades can be read from a distance while running.
      Is that right, or should a feed casino go without a name, or without a blade? (The House's arena has no blades:
      its faces are kept flat because the billboard slides past them; the names are on flat boards there.)
-439. **Where else the names might appear.** Only the named casinos' big signs and their blades carry words. Every other
+527. **Where else the names might appear.** Only the named casinos' big signs and their blades carry words. Every other
      sign (the lounges' blade signs, the arcade halls' name boards, the sign gantries over the street, the other
      casinos' boards) keeps its rows of glyphs, as the owner asked. Should the sign gantries (a ceiling piece, seen
      face-on from far down the street) carry one of the names too?
 
-**The curve after the Casino: no level gets easier** (from K4; the owner's answer to item 431, October 9, 2026; `difficulty_curve_exponent` 0.79 in `data/campaign/campaign.tres`, F6; GDD §6)
-440. **Is this the curve the owner wants?** (GDD §6.) One exponent lifts the early and middle levels the most.
+**The curve after the Casino: no level gets easier** (from K4; the owner's answer to item 519, October 9, 2026; `difficulty_curve_exponent` 0.79 in `data/campaign/campaign.tres`, F6; GDD §6)
+528. **Is this the curve the owner wants?** (GDD §6.) One exponent lifts the early and middle levels the most.
      City 2 to Gangland 3 come out 0.03 to 0.04 harder than before the Casino, more than the Marketplace's
      +0.016 and +0.026, and City 1 to City 2 is now the campaign's biggest step (+0.140; +0.107 before).
      Per-level biases could set any level by hand instead. The early curve can't get any steeper without an
@@ -3007,7 +3489,7 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
 
     *Background (task K4's report):*
 
-    The owner's answer to item 431 (October 9, 2026, GDD §6): no level gets easier when levels are
+    The owner's answer to item 519 (October 9, 2026, GDD §6): no level gets easier when levels are
     added; the Marketplace keeps at least its old difficulty (a little harder is welcome); Corporate and the
     zones after it may get harder. Task K4 bends the 17-level curve with one number in data,
     `difficulty_curve_exponent` 0.79 in `data/campaign/campaign.tres` (it was 1, linear; `DESIGN-TBD` on
@@ -3015,7 +3497,7 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     0.9 and the levels' biases (City 1 −0.05, Golden 2 +0.05, Golden 3 −0.05) are unchanged.
 
     `enemy_scaling` doesn't use the exponent (`Campaign.configure`: the level's place in the campaign, 0 → 1), so
-    it is exactly K2's, and so are its moved thresholds (item 432), the scaling of the enemies the bosses bring
+    it is exactly K2's, and so are its moved thresholds (item 520), the scaling of the enemies the bosses bring
     and the recency curve's ages. `test_campaign` checks it, and checks every level against the 15-level curve.
 
     | Level | 15-level curve (before the Casino) | K2: 17-level linear | K4: exponent 0.79 | K4 against the 15-level curve |
@@ -3061,8 +3543,8 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
         introductions (0.77).
       - **0.79: one miss.** Marketplace 2 at 3 lanes meets its first full-height wall fence 15.4 s after the
         feature's start (10 s wanted). Neither wall has a fair spot in those 10 s, so the placement does what
-        it must (item 441). Its layouts also cost Corporate 2's first truck its volley at 5 lanes, which the
-        scan didn't count (item 442).
+        it must (item 529). Its layouts also cost Corporate 2's first truck its volley at 5 lanes, which the
+        scan didn't count (item 530).
       - 0.80: three misses: that one (16.7 s), Gangland 3 at 5 lanes with one wider gap of two, and Corporate
         1's Buzz Overdrive.
       - 0.81 and 0.82: one miss, Corporate 1's Buzz Overdrive (in its first quarter at one lane count of three;
@@ -3111,7 +3593,7 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
         laser waits for City 3), against 881 on K2's curve. Over seven seeds City 2 averages 919 (K2's: 910),
         so that delay holds on the levels' own seeds only, on either curve.
     - **Late introductions** (`test_campaign`, the levels' own seeds): 5 of 63 (K2's: 6; the limit is 6).
-      - Marketplace 2's wall fences at 3 lanes: start 328 m, first at 675 m (item 441).
+      - Marketplace 2's wall fences at 3 lanes: start 328 m, first at 675 m (item 529).
       - Corporate 1's Buzz Overdrive at 5 lanes: start 339 m, first at 1212 m (1214 on K2's curve, 976 before
         the Casino).
       - Corporate 1's Buzz Overdrive at 6 lanes: first at 970 m (783 on K2's, 585 before), two there (one on
@@ -3127,7 +3609,7 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
       - No hover truck leaves before its level's ramps start. On K2's curve Gangland 1's did at 3 lanes
         (`test_hover_truck`'s `BEFORE_RAMPS` is now empty and checked both ways).
       - The danger density bands hold: 13-19% more enemies in the first levels, 26-28% in the middle ones,
-        32-36% in the final ones, and 32.7% at 3 lanes in the final ones (item 433's 29.7% question: Golden 2's
+        32-36% in the final ones, and 32.7% at 3 lanes in the final ones (item 521's 29.7% question: Golden 2's
         and 3's dials stay 0.39).
       - The cases the tests pin to a scenario on a seed were re-found where the scenario moved:
         - `test_danger_density`'s route case moves to Golden 1 at 3 lanes on seed 9005 (Dead Zone 1 at 6 lanes
@@ -3138,7 +3620,7 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
         - `test_enemy_director`'s control case with the attack-turn switch off moves to Gangland 3 at 3 lanes
           (2.0 s of overlaps; its 6 lanes now have none).
         - `test_charge_paths`' Golden 2 plants at 3 lanes.
-        - `test_enforcer_truck_runs`' `NO_VOLLEY_LANES`: Corporate 2 at 5 lanes fires no volley (item 442),
+        - `test_enforcer_truck_runs`' `NO_VOLLEY_LANES`: Corporate 2 at 5 lanes fires no volley (item 530),
           checked both ways.
       - Marketplace 1's first turret now stands exactly at its feature's start (316.4 m). `test_barnacle_turret`
         takes the 0.01 m rounding margin the other "nothing before its start" checks take.
@@ -3154,32 +3636,38 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
         it by moving the Octodog and Buzz Overdrive picks (`LevelGenerator.dependent_features`,
         `EnforcerTruckRules.GUARANTEED_BY`), one more each a build however many missed features ask, and none
         when the data allows no truck (`places_any`). None of 738 seeded builds misses one now.
-441. **Marketplace 2's wall fence introduction at 3 lanes comes 15.4 s after the feature's start** (GDD §9.1;
+529. **Marketplace 2's wall fence introduction at 3 lanes comes 15.4 s after the feature's start** (GDD §9.1;
      open question B5's 10 s). Its signs, window cyborgs and a ramp, the outer lanes' pieces, and its big
      attacks and floor cuts leave neither wall a fair spot before then. Is that acceptable, or should the
      generator hold room for introductions (a generator task)?
      - Placeholder: `LATE_INTRODUCTIONS` in `tests/suites/test_wall_fences.gd`, which checks that both walls
        are taken from the start right up to the introduction, and that the build is still late.
-442. **On the Enforcer's first level, its first truck can be wrecked before it ever fires** (GDD §9.13; open
-     questions 357, 364 and 366).
-     - In Corporate 2 at 5 lanes the truck arrives at about 641 m. The first chase's wider gap is at 769 m,
-       about 128 m (5.5 s) later, and covers 4 of the 5 lanes.
-     - At 3 lanes the wider gap also comes early: 22 m into the stretch where the generator looks for one, about
-       116 m (5 s) after the truck arrives. It is a single wider hole there, so a runner must pick its lane.
-     - The truck's first volley is due 3 s after it arrives, but waits up to `show_wait_seconds` (4 s) for a
-       showing (question 366). In every Corporate 2 run, at every lane count, the truck shows itself no times;
-       the same held on K2's curve. (Question 364 counted one showing at 5 lanes when it was written.)
-     - So a runner who leads the truck into the gap wrecks it before its first volley, and on its debut the
-       player may never see it fire. At 5 lanes, `test_enforcer_truck_runs`' runner does exactly that.
+530. **On the Enforcer's first level, a truck can be destroyed before it ever fires** (GDD §9.13; open
+     questions 357, 364, 366 and 400–403, 409).
+     - Since C6e, no wider gap comes in a chase before the truck's showing window, so a wider gap no longer
+       wrecks Corporate 2's first truck before it fires. Measured on the level's own seed with the Casino's
+       levels and K4's curve, as `test_enforcer_truck_runs`' runner plays it (it keeps out of each bait's way,
+       so the bait's charge destroys the truck):
+     - At 3 lanes the truck arrives at 305 m and shows itself as it arrives (window 287–505 m). It fires one
+       volley, and its bait's charge (745 m) destroys it. The chase's wider gap, at 543 m, is past the window.
+     - At 5 lanes the level has one truck (item 402's case, and item 403's: see below). It arrives at 1219 m,
+       about 10 s before its bait, a Buzz Overdrive charging at 1460 m, and shows itself in a window whose bait
+       may claim its turn (1201–1410 m, item 409). Its first volley waits for the showing (question 366), and
+       from `hold_seconds()` before the bait's rev it holds fire, so it has no time for a volley: the bait's
+       charge destroys it first. The player sees it but never sees it fire.
+     - At 6 lanes the first truck (296 m) has its window after its bait. It fires one volley without showing
+       itself (its wait for a showing runs out), and its bait's charge destroys it. The second truck (1445 m)
+       shows itself and is destroyed by its bait's charge before its first volley, as at 5 lanes.
 
-     Should a chase's wider gap wait for the truck's first volley (or its first showing)? Or should the first
-     volley stop waiting for a showing that can't come?
-     - Placeholder: `WideGapPlacement` looks for the chase's wider gap from `bait_after_seconds` (4 s) after
-       the truck arrives, as before. `test_enforcer_truck_runs` allows a build with no volley only at 5 lanes
-       (`NO_VOLLEY_LANES`, checked both ways), and only when its truck fell into a wider gap or a cut first.
-443. **Are these 5 late introductions acceptable?** This is item 433's question with the list above.
+     Should a truck that shows itself get time for a volley before its bait (a later bait, an earlier arrival,
+     or a volley allowed after its showing even in the hold before the bait)? Or is a debut where it only shows
+     itself acceptable?
+     - Placeholder: none changes it. `test_enforcer_truck_runs` allows a build with no volley only at 5 lanes
+       (`NO_VOLLEY_LANES`, checked both ways), and only when each truck there showed itself and was destroyed
+       before its first volley.
+531. **Are these 5 late introductions acceptable?** This is item 521's question with the list above.
      - Placeholder: none; `test_campaign`'s limit is 6 of 63.
-444. **A build whose first Sentinels are a pair** (GDD §9.11 and §6: one new thing at a time; outside K4, found
+532. **A build whose first Sentinels are a pair** (GDD §9.11 and §6: one new thing at a time; outside K4, found
      in its review). The Golden Palace at 5 lanes on seed 602 starts with a Sentinel pair. That is not a
      campaign seed: the levels' own seeds and the seed sweep's build right. `GildedSentinelRules.problems()`
      reports "the level's first Sentinel isn't alone, swinging once (its introduction)". The build is the same
@@ -3187,3 +3675,136 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
      always keep a level's first Sentinel alone, or does the rule only matter in Golden 2, which introduces
      them?
      - Placeholder: none. `GildedSentinelRules.apply` leaves the build as it is.
+
+**Merging main into the Casino branch** (from K5; main's C6e showing windows, PERF2, G6b and G8 met the Casino's levels and K4's curve)
+533. **Corporate 2's introduction now moves late on its own seed** (GDD §9.13, §6; items 402, 403 and 530; the
+    owner's call). Item 403's placeholder says the introduction "never moves on the level's own seeds". With the
+    Casino's levels and K4's curve it does at 5 lanes.
+    - The final 5-lane build is the generator's third attempt. Every campaign level guarantees each of its
+      features, and the first two attempts lacked the screech vents, so each retry forced one more screech vent
+      pick. Both of those had their first truck at 261 m, with a window before its bait (243–433 m, CLASSIC
+      mode; the bait at 608 m), and a second truck at about 1134 m with none (a Buzz Overdrive's attack there).
+    - In the third, the level's one truck arrives at 1219 m, about 52 s into the level (the reach for an
+      introduction is 448 m), in a CLAIM window (1201–1410 m) before its bait at 1460 m. A second truck would
+      have overlapped its chase, so item 402's rule kept only the one that shows itself. K4's curve without C6e
+      had the introduction at 641 m, already late; `test_campaign` still counts 5 late introductions of 63.
+    - A CLAIM window never fires before its bait: this truck and 6 lanes' second truck (1445 m) each show
+      themselves and are destroyed by their bait's charge before a volley (item 530).
+    - The options: item 403's alternative (keep the introduction early, and unseen); CLASSIC windows that may
+      leave out one runner lane, as item 411 allows the other modes; one volley allowed between a CLAIM showing
+      and its bait's hold; or the screech-vent retry (the guarantee's forced picks for the missing vents are what
+      moved the truck from 261 m).
+    - Placeholder: C6e's `_choose` in `enforcer_truck_rules.gd`, unchanged.
+
+534. **The final zones at 3 lanes: about 30% more danger, not 35%** (item 521's question, "is about 29% enough at
+    3 lanes in the final zones?", now for the obstacles too; the owner's request in `docs/USER_REQUESTS.md`).
+    - C6e's showing windows are calm stretches that the danger density pass's rows keep off. With them,
+      `test_danger_density`'s sample of the final zones (Dead Zone 1, Golden 2 and 3, each on its own seed and
+      9001–9002) had 28.8% more obstacles at 3 lanes, under the band's 30% floor. Over 7 seeds (each level's own
+      and 9001–9006) the same band had 30.2%: the 3-seed sample fell under its line, while over more seeds the
+      levels stayed just above it. Higher dials buy almost nothing there, and more rounds (`obstacle_rounds` 3 to
+      6) nothing.
+    - The enemies sit at about 30% whatever the wall fences' share: 30.2% over the 7 seeds as
+      `test_danger_density` counts them (the cyborgs planted in charge paths left out), 29.4% counting those too
+      (the test's sample: 32.6%).
+    - The placeholder raises the wall fences' share of the dial (`wall_fence_increase_scale`) from 1.25 to 1.9.
+      The sample then has 30.6%, and the 7 seeds 31.9%. It adds wall fences only: 447 to 505 on the levels' own
+      seeds (+13%), from Marketplace 2 on (the levels before have none). Nothing else in those layouts changes
+      but the side wall gaps of two builds (Dead Zone 2 and Golden 2 at 3 lanes), which keep off the wall
+      fences. It is kept because the owner finds every level too easy, not because the floor needs it.
+    - The alternative: a finer grid for the pass's new rows (`row_step_seconds` 0.25 instead of 0.5, the share
+      at 1.25) adds floor pieces instead: 31.9% over the 7 seeds (the floor 31.3%), 30.4% in the sample. It
+      changes the build of every level the pass adds rows to, and tries twice the spots.
+    - The final zones over the 7 seeds (more with the pass than without it):
+
+      | | 3 lanes | 5 lanes | 6 lanes |
+      |---|---|---|---|
+      | Enemies (either share) | 30.2% | 32.4% | 30.1% |
+      | Obstacles, share 1.25 | 30.2% (floor 29.5%; wall fences 216 to 293) | 36.3% | 37.7% |
+      | Obstacles, share 1.9 | 31.9% (floor 29.5%; wall fences 216 to 328) | 37.3% | 38.3% |
+      | Obstacles, finer grid, share 1.25 | 31.9% (floor 31.3%; wall fences 216 to 295) | 36.2% | 37.8% |
+      | Obstacles, the test's sample, share 1.9 | 30.6% | 35.5% | 38.8% (its cap: 40%) |
+
+    - Wall fences on the levels' own seeds, share 1.25 to 1.9 (the middle zones' band goes from 26–27% to
+      27–28% more obstacles in the test's sample):
+
+      | Level | 3 lanes | 5 lanes | 6 lanes | All |
+      |---|---|---|---|---|
+      | Marketplace 2 | 18 → 20 | 15 → 17 | 16 → 18 | 49 → 55 |
+      | Casino 1 | 19 → 21 | 12 → 14 | 13 → 15 | 44 → 50 |
+      | Casino 2 | 20 → 23 | 18 → 20 | 16 → 19 | 54 → 62 |
+      | Corporate 1 | 12 → 13 | 14 → 16 | 20 → 23 | 46 → 52 |
+      | Corporate 2 | 13 → 14 | 20 → 22 | 10 → 11 | 43 → 47 |
+      | Dead Zone 1 | 17 → 20 | 17 → 20 | 13 → 15 | 47 → 55 |
+      | Dead Zone 2 | 12 → 14 | 11 → 11 | 15 → 17 | 38 → 42 |
+      | Golden 1 | 15 → 18 | 12 → 14 | 14 → 16 | 41 → 48 |
+      | Golden 2 | 16 → 19 | 10 → 11 | 15 → 17 | 41 → 47 |
+      | Golden 3 | 17 → 17 | 14 → 17 | 13 → 13 | 44 → 47 |
+      | All | | | | 447 → 505 |
+
+    Is about 30% enough at 3 lanes in the final zones? If more is wanted there, the ways are more wall fences
+    (the placeholder), the finer grid, or shorter calm stretches around a showing.
+    - Placeholder: `wall_fence_increase_scale = 1.9` in `data/tuning/danger_density.tres` (`DESIGN-TBD` on the
+      field in `scripts/world/danger_density_tuning.gd`).
+
+535. **A new row for a wider gap may take holes and fences out of its way** (GDD §9.13: a couple per level; item
+    357). C6e keeps every wider gap off a chase before its showing window. On 306 builds of the Enforcer's levels,
+    one Dead Zone 1 seed (5 lanes, 9004, in `test_campaign`'s sweep) then had no room for any: its only room was
+    that chase. A Golden Palace seed (3 lanes, 9010) already had none before the merge. When the other three ways
+    give a level no wider gap at all, the pass now adds a new row where only the level's own holes and plain fences
+    are in the way, and takes those out. This is how it already widens a row of the level's own. Only builds
+    with no wider gap change; every level's own seed builds as before. Should this last way also apply when a
+    level gets one of its two, or is one fewer acceptable there, as now?
+    - Placeholder: `WideGapPlacement._add_clearing`, only when the pass found none (`add_rows` must be on). Its
+      report's `added_clearing` counts its row. `test_wide_gaps` pins both seeds (`LAST_RESORT_CASES`: 8 and 4
+      pieces taken out) and checks it on a fenced plain stretch: plain fences make way, pulsing ones don't.
+536. **What the merge moved** (notes for items 401, 528 and 530; not a question)
+    - **Item 401's builds** (two trucks, room for one showing; the owner: keep both): now Corporate 2 at 6 lanes
+      and Dead Zone 2 at 5 and 6 lanes. Corporate 2 at 5 lanes and Dead Zone 1 at 3 lanes have one truck that
+      shows itself (item 402's case). `test_enforcer_truck`'s `BOTH_TRUCKS` lists them and checks both ways.
+    - **Item 440's notes:**
+      - Corporate 2's first Enforcer chase now holds a wider gap only at 3 lanes (`test_wide_gaps`'
+        `CORPORATE_2_CHASE_LANES`, now 3 lanes, checked both ways). Its chase leaves room past the window at 3
+        and 5 lanes: at 5 lanes that stretch has no clear spot, and at 6 lanes the window comes after the bait.
+        The first chase holds one in 4 of the 18 level and lane builds with trucks.
+      - Corporate 2's late Enforcer introduction at 5 lanes is at 1219 m now (641 m before the merge).
+      - The final zones' obstacles at 3 lanes: 30.6% in `test_danger_density`'s sample with the wall fences' share
+        at 1.9 (28.8% at 1.25); over 7 seeds 31.9% (30.2%). See above.
+    - **Re-pinned scenario cases** (each still shows its scenario):
+      - `test_danger_density`'s route case: Golden 2 at 3 lanes on seed 9004.
+      - `test_gilded_sentinel`'s case of a window cyborg on a Sentinel's wall section, without the check: Golden 3
+        at 3 lanes on 9039, the only one of 240 builds on seeds 9001–9040.
+      - `test_level_cache`'s Corporate 2 attempt plays at 3 lanes. At 5 lanes the attempt's weapons shoot its
+        Buzz Overdrive before its charge, so no floor cut begins. The EMP now goes off at 9 s, and an attempt is
+        spoiled to 1600 m.
+      - `test_level_sky`: The House follows Casino 2, which has no level sky, so the fight is under the Casino's
+        own.
+537. **How busy the Casino's street is, after the build-budget trim** (from K5, skin side; extends item 508, "How much each kind of piece appears")
+    The placeholder densities in item 508 (and the roof's in item 509) were trimmed to buy back build time:
+
+    | export                | was  | now  |
+    |-----------------------|------|------|
+    | `balcony_share`       | 0.55 | 0.42 |
+    | `pipe_share`          | 0.55 | 0.42 |
+    | `unit_share`          | 0.50 | 0.25 |
+    | `lantern_share`       | 0.50 | 0.35 |
+    | `fan_share`           | 0.28 | 0.20 |
+    | `banner_share`        | 0.70 | 0.60 |
+    | `crossbeam_spacing`   | 32 m | 40 m |
+    | `bay_scale` (new)     | 1.0  | 1.5  |
+
+    `bay_scale` widens the shop windows' bays to 1.5 times the Marketplace's (the same piers, a third fewer, broader
+    windows), which also thins the citizens by a third. Measured on this machine (6 lanes, mean chunk build): the
+    street was 4.4-4.5 ms, it is now 3.8-3.9 (the Marketplace 3.7-3.9). Every one of these is an export on
+    `CasinoSkin`, so a busier street is a `.tres` edit away; the price is about 0.1-0.15 ms a chunk for each of the
+    three biggest (balconies and units together, the roof's hangings together, the window bays).
+
+    Question for the owner: is the thinner street fine, or should it be as busy as the reference and the build
+    budget (or the machine it is measured on) be revisited instead?
+
+    *For the record (not a design question):*
+    - The skin budget's load factor (`REFERENCE_IDLE_MS` = 2.7, a 40-lane greybox build) reads 1.00 on the machines
+      this was measured on, yet every skin's build there ran about 1.3 times slower than in earlier sessions
+      (the Marketplace 2.4-2.8 ms then, 3.2-3.9 now; the pre-merge tree runs equally slowly today, so main did not
+      cause it). A greybox build is mostly node creation, a GDScript-heavy skin build is not, so the load factor
+      cannot see this. A reference that builds a skin-sized mesh in GDScript would.

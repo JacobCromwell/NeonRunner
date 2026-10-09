@@ -56,7 +56,7 @@ extends Resource
 ## fences' own rules let one stand, after the level's own are placed); 0 adds none. The data asks more than
 ## the dial: the wall fences' own spacing leaves fewer fair spots than the dial asks for, so with 1.0 the final
 ## zones' wall fences rose only about 26% at 3 lanes, with 1.25 about 20% to 36% by lane count
-## (tools/measure/danger_density.gd). DESIGN-TBD, 1.9 (task K5; docs/questions/k5.md, with open question 433):
+## (tools/measure/danger_density.gd). DESIGN-TBD, 1.9 (task K5; docs/OPEN_QUESTIONS.md §D, item 534, with open question 521):
 ## it adds wall fences only, 447 to 505 over the campaign levels' own builds (from Marketplace 2 on), as the owner
 ## finds every level too easy (docs/USER_REQUESTS.md); it makes no room the floor lacks. With the Enforcer Truck's
 ## showing windows (task C6e), which the pass's rows keep off, test_danger_density's 3-seed sample of the final

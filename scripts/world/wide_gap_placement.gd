@@ -60,7 +60,7 @@ extends RefCounted
 ## before it gives up), so the runner can lead it in: from the first of the three sources above with one there,
 ## the earliest; then the rest spread through the level, each source used up before the next. Rows across most of
 ## the lanes (a jump) come before single holes. DESIGN-TBD (docs/questions/g7.md): the width, the margins, the
-## count and which rows; (docs/questions/k5.md) the last way, 4., only for a level with none.
+## count and which rows; (docs/OPEN_QUESTIONS.md §D, item 535) the last way, 4., only for a level with none.
 
 const TUNING_PATH: String = "res://data/tuning/wide_gaps.tres"
 const EnforcerRules = preload("res://scripts/enemies/enforcer_truck_rules.gd")
