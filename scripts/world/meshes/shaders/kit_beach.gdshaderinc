@@ -395,7 +395,7 @@ vec3 bc_tank(vec3 base, vec3 w, vec3 n, float param) {
 // PAT_BEACH_WATER (83): the pool's water, filled nearly to the rim: opaque, unlit deep teal (COLOR) with
 // long ripples running across the street, slow caustic ridges and soft glints, streaks of sky stretched
 // along the street (bc_water_glint, never lighter than that), all of it drifting slowly (the time slowed to a
-// stand by Reduced flashing). Seen from the game camera at a grazing angle: the ripples and the glints
+// tenth by Reduced flashing). Seen from the game camera at a grazing angle: the ripples and the glints
 // average out where a pixel spans them. Never lighter than the glint colour or 1.12 of COLOR.
 vec3 bc_water(vec3 base, vec3 w, float t) {
 	float ts = t * (1.0 - 0.9 * reduced_flashing);

@@ -1,7 +1,7 @@
 class_name BeachSkin
 extends ZoneSkin
-## The Beach (task D10, the owner's request of October 9, 2026; not in the campaign yet: its slot is
-## undecided): a cyberpunk party strip on the shore, in the same future as every zone (GDD §5), inspired
+## The Beach (task D10, the owner's request of October 9, 2026; the campaign's zone 5, between Corporate and the
+## Dead Zone, since task D10c): a cyberpunk party strip on the shore, in the same future as every zone (GDD §5), inspired
 ## by docs/art/reference/beach_zone.jpg: a sandy street with footprints running down to a turquoise sea
 ## and a palm-covered island on the horizon, between low bamboo-walled tiki bars, surf shops and lounges
 ## under thatch, with decks and verandas, tiki masks, surfboards, paper lanterns, bunting and strings of
@@ -70,9 +70,10 @@ extends ZoneSkin
 @export var sand_dark_color: Color = Color(0.58, 0.47, 0.32)
 @export var shell_color: Color = Color(0.84, 0.78, 0.68)
 @export var pebble_color: Color = Color(0.42, 0.40, 0.37)
-## Boardwalk runs: weathered planks laid across a lane with rusty steel plates bolted on, over stretches of
-## some lanes (a slot of boardwalk_slot metres starts a run in boardwalk_share of the slots, one to three
-## slots long, hashed by lane and slot so they line up across chunk cuts).
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 515): how much boardwalk there is is a guess (the reference has a
+## boardwalk only along the buildings). Boardwalk runs: weathered planks laid across a lane with rusty steel plates
+## bolted on, over stretches of some lanes (a slot of boardwalk_slot metres starts a run in boardwalk_share of the
+## slots, one to three slots long, hashed by lane and slot so they line up across chunk cuts).
 @export var boardwalk_color: Color = Color(0.50, 0.38, 0.27)
 @export var plank_gap_color: Color = Color(0.24, 0.17, 0.11)
 @export var plate_color: Color = Color(0.38, 0.27, 0.19)
@@ -99,10 +100,14 @@ extends ZoneSkin
 @export var gap_inside_color: Color = Color(0.06, 0.065, 0.075)
 @export var tank_rust_color: Color = Color(0.26, 0.12, 0.06)
 @export var tide_color: Color = Color(0.07, 0.12, 0.13)
-## The water's deep teal and its brightest glint (sky streaks on the ripples), both unlit.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 505): the water doesn't glow (the reference's pools glow turquoise, too
+## close to the anti-grav pads' cyan). The water's deep teal and its brightest glint (sky streaks on the ripples),
+## both unlit.
 @export var water_color: Color = Color(0.02, 0.15, 0.17)
 @export var water_glint_color: Color = Color(0.03, 0.175, 0.20)
-## The steel coping beside a pool's orange lip, so the orange pops against the bright sand.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 508): the pool's frame is flush (the reference's tanks stand proud, which
+## would read as an obstacle that isn't there). The steel coping beside a pool's orange lip, so the orange pops
+## against the bright sand.
 @export var coping_color: Color = Color(0.09, 0.095, 0.105)
 ## Gap edges: the orange edge language of every zone. Redder than it looks: the glow and the tonemapper
 ## lift the green, and it must stay orange, not sign yellow.
@@ -145,10 +150,12 @@ extends ZoneSkin
 ## The kit lights a wall with its night-city factor; the Beach is in bright afternoon sun, so its upright lit
 ## surfaces (walls, thatch, timber) take this much more (a factor on their albedo).
 @export_range(1.0, 1.6, 0.01) var daylight: float = 1.2
-## Buildings are 1-3 lots long, a lot is this long; two to four storeys of storey_height. The wall-run
-## band (the floor to band_top, with a margin over the wall run's highest point) is flush: bamboo, mats,
-## planks, rusty sheets, shut shutters and hatches, flush posters, and the wall-run height marks.
-## Decoration (thatch, verandas, masks, boards, lanterns, flags, lights) starts at decor_min_height.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 518): the wall-run band's look. Buildings are 1-3 lots long, a lot is
+## this long; two to four storeys of storey_height. The wall-run band (the floor to band_top, with a margin over
+## the wall run's highest point) is flush: bamboo, mats, planks, rusty sheets, shut shutters and hatches, flush
+## posters, and the wall-run height marks. Decoration (thatch, verandas, masks, boards, lanterns, flags, lights)
+## starts at decor_min_height (the reference's decoration is all at street level, where it would break the
+## band's calm, GDD §3).
 @export_range(6.0, 40.0, 1.0, "suffix:m") var lot_length: float = 12.0
 @export_range(3.0, 4.5, 0.05, "suffix:m") var storey_height: float = 3.6
 @export_range(6.0, 9.0, 0.1, "suffix:m") var band_top: float = 7.2
@@ -171,7 +178,9 @@ extends ZoneSkin
 @export var thatch_color: Color = Color(0.68, 0.53, 0.26)
 @export var thatch_dark_color: Color = Color(0.30, 0.23, 0.13)
 @export var timber_color: Color = Color(0.45, 0.35, 0.25)
-## Muted painted boards, doors, surfboards and awnings (turquoise, coral, mustard, sage, sea blue), unlit.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 517): how much colour the street gets (the reference has far more
+## saturated paint). Muted painted boards, doors, surfboards and awnings (turquoise, coral, mustard, sage, sea
+## blue), unlit.
 @export var paint_colors: PackedColorArray = PackedColorArray([
 	Color(0.22, 0.54, 0.56), Color(0.76, 0.42, 0.34), Color(0.66, 0.56, 0.32), Color(0.45, 0.52, 0.40), Color(0.28, 0.42, 0.62)])
 @export var cream_color: Color = Color(0.86, 0.82, 0.70)
@@ -184,19 +193,22 @@ extends ZoneSkin
 	Color(0.22, 0.34, 0.24), Color(0.27, 0.38, 0.25), Color(0.20, 0.31, 0.26)])
 ## The wall-run height marks (GDD §3: how high a wall run is): unlit paint at 2 m and 4 m.
 @export var wall_height_marks: PackedFloat32Array = PackedFloat32Array([2.0, 4.0])
-## DESIGN-TBD: a thin painted line a slightly darker shade of the wall (a multiplier on its colour, so it
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 516): a thin painted line a slightly darker shade of the wall (a multiplier on its colour, so it
 ## shows on bamboo, planks and paint alike without reading as a cable): the kind you find when you look for it.
 @export var wall_mark_color: Color = Color(0.70, 0.68, 0.66)
 
 @export_group("Lights and signs")
-## Decorative glows are warm white, violet and blue only (the reference's pink, yellow, cyan, green and
-## orange neon are hazard hues): neon silhouette signs (a palm, a wave, a flamingo, a cocktail, a
-## surfboard, the sun, a tiki totem; never words), the bulbs on strings of lights, and a paper lantern's
-## warm-white glow inside its muted unlit shell.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 506): the decorative neon is violet, blue or warm white only. Decorative
+## glows are warm white, violet and blue only (the reference's pink, yellow, cyan, green and orange neon are hazard
+## hues): neon silhouette signs (a palm, a wave, a flamingo, a cocktail, a surfboard, the sun, a tiki totem; never
+## words), the bulbs on strings of lights, and a paper lantern's warm-white glow inside its muted unlit shell.
 @export var neon_violet: Color = Color(0.68, 0.42, 1.0)
 @export var neon_blue: Color = Color(0.32, 0.45, 1.0)
 @export var neon_white: Color = Color(1.0, 0.92, 0.78)
 @export_range(0.0, 1.0, 0.01) var neon_glow: float = 0.5
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 507): string lights glow warm white, blue or violet (the reference's
+## are red, yellow, green and blue), paper lanterns are unlit muted shells (lantern_shell_colors) with a warm-white
+## glow inside, and bunting and flags are unlit and muted.
 @export var lamp_color: Color = Color(1.0, 0.9, 0.74)
 @export_range(0.0, 1.5, 0.05) var lamp_glow: float = 0.7
 @export var lantern_shell_colors: PackedColorArray = PackedColorArray([
