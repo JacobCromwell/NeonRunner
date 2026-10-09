@@ -1760,8 +1760,9 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     `GoldenStatue`'s decorative poses (`&"guard"`, `&"vigil"`, `&"salute"`) scaled down to fit the box,
     which would read as more clearly "a statue" (the same kit as the ledges') at the cost of standing
     closer to the Sentinel's own silhouette.
-    *Placeholder:* `scripts/world/skins/golden/golden_doodads.gd` (`_statue`); `test_golden_skin`'s
-    `_doodad_statue_not_sentinel` guards against the doodad ever building from `GoldenStatue`.
+    *Placeholder:* since G6b the small class, painted: `tools/asset_gen/doodad_art/golden_art.gd` (`_figure`,
+    `_statue`); `test_golden_skin`'s `_doodad_statue_not_sentinel` guards against the doodad ever building from
+    `GoldenStatue`.
 
 **The Sleep Taker: hurting it, the phases and the defeat** (from E5c-b; numbers in `data/bosses/dead_zone_boss_tuning.tres`; play `--level=dead_zone/boss`, review with `tools/showcase/sleep_taker_showcase.tscn -- --scenario=lure`)
 280. **The lure** (GDD §10: "the player lures it close (it lunges toward them), then destroys the generator
@@ -2716,3 +2717,22 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
 411. **A runner lane no showing can reach.** Placeholder: a window may leave out one runner lane no showing could reach
     (beside a hover truck at 3 lanes, or with only a floor cut's lane beside it); a runner keeping to that lane doesn't
     see that showing. Two such lanes leave the window out. Is one lane without the showing acceptable?
+
+**The zone doodads as picture cards** (from G6b; the owner's request of October 9, 2026: each doodad a simple box with a picture of the object on it, open air see-through; the pictures in `tools/asset_gen/doodad_art/<zone>_art.gd`, regenerated with `tools/godot.sh doodads`; review with `tools/showcase/doodad_review.tscn -- --skin=<zone> --lanes=5`. The owner answered every item the same day; GDD §3, Zone doodads, their look)
+412. **Each zone's three looks** (GDD §3; §5, each zone's mood; the owner left them to the build's recommendation).
+    Placeholder: City a vending machine or a poster pillar, a street-food stall, a little shop; Gangland oil drums, a
+    burned-out van, a broken-down shack; Marketplace a potted palm or a flowering bush, the vendor's stall, a slot-machine
+    bank; Corporate a steel planter, a security booth, a supply container; Dead Zone a broken column, a rubble heap, a
+    burned-out bus; Golden a robed statue or a gilded urn, a wall fountain, a colonnade (small, medium, large). Some
+    differ from G6's meshes (the drums, the van, the stall, the booth, the container, the column, the bus, the statue as
+    the small one, the colonnade).
+    **Answered (owner, October 9, 2026):** the looks are fine (GDD §3).
+413. **Showing the push side** (GDD §3: a push to "the side with room, a side chosen per doodad"). The old default
+    slanted a doodad's front back toward the side it pushes to; the pictures are the same from either side.
+    **Answered (owner, October 9, 2026):** no hint needed (GDD §3). The grey box's default look still slants.
+414. **A rubble heap lower at its edges** (GDD §3: a doodad reads as too tall to jump). Placeholder: a mound 2.5 m in its
+    middle and 1.5 m at its edges (`HEAP_EDGE`, `HEAP_PEAK` in `dead_zone_art.gd`); its box is 2.6 m everywhere.
+    **Answered (owner, October 9, 2026):** fine (GDD §3).
+415. **The doodads' edge sheen.** Placeholder: a soft neutral sheen at grazing angles (`doodad_card.gdshader`), where
+    the kit's violet default framed the dark zones' doodads in purple edges.
+    **Answered (owner, October 9, 2026):** fine (GDD §3).
