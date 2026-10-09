@@ -111,13 +111,22 @@ func _test_off(campaign: Campaign) -> void:
 		var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
 		check(config.charge_path_cyborgs == 0 and gen.charge_path_result.is_empty() and ChargePathPlacement.planted_in(layout).is_empty(),
 			"%s asks for none and plants nothing" % ("quick play" if config == quick else "the prototype level"))
-	var g2: LevelConfig = campaign.configure(campaign.step("golden/2"), 6)
-	var a := LevelGenerator.new()
-	var first: LevelLayout = a.generate(g2, tuning, LevelGenerator.load_for(g2))
-	var b := LevelGenerator.new()
-	var again: LevelLayout = b.generate(g2, tuning, LevelGenerator.load_for(g2))
-	check(first.to_dict() == again.to_dict() and not ChargePathPlacement.planted_in(first).is_empty(),
-		"Golden 2 plants the same on every attempt")
+	# Golden 2 (Buzz Overdrive charges, no Octodogs) at a lane count where it plants one: the same on every
+	# attempt. Which lane counts it plants at moves with its layout (6 lanes before the Casino's levels
+	# re-spaced the campaign's curve, task K2; 5 after).
+	var planted_at: int = 0
+	for lanes: int in [6, 5, 3]:
+		var g2: LevelConfig = campaign.configure(campaign.step("golden/2"), lanes)
+		var a := LevelGenerator.new()
+		var first: LevelLayout = a.generate(g2, tuning, LevelGenerator.load_for(g2))
+		if ChargePathPlacement.planted_in(first).is_empty():
+			continue
+		var b := LevelGenerator.new()
+		var again: LevelLayout = b.generate(g2, tuning, LevelGenerator.load_for(g2))
+		check(first.to_dict() == again.to_dict(), "Golden 2 plants the same on every attempt (%d lanes)" % lanes)
+		planted_at = lanes
+		break
+	check(planted_at > 0, "Golden 2 plants a cyborg in a charge path at some lane count")
 
 
 # --- Real physics ------------------------------------------------------------------------------------

@@ -594,12 +594,14 @@ static func _all_overlaps(dummies: Array[Enemy]) -> Vector2i:
 ## in the middle lane stomping every host it passes, the real enemies): with the switch on the big
 ## attacks of different types never overlap, every type still attacks and every Octodog charges;
 ## with it off the old overlaps are back. Gangland 3 is item 27's level (drones, Octodogs, hover
-## trucks), at 3 lanes and at 6; at its zone's speed (G1) its layout at 3 lanes is the one with the
-## overlaps (3.9 s with the switch off; 6 lanes', 0.2 s); Dead Zone 1 adds hosts and the Bad Dream, and
-## at 5 lanes a Buzz Overdrive whose rev met a hover truck's lurch until it claimed its turn (task FIX2).
+## trucks), at 3 lanes and at 6; at its zone's speed (G1) its layout at 3 lanes was the one with the
+## overlaps (3.9 s with the switch off; 6 lanes', 0.2 s) until the Casino's levels re-spaced the
+## campaign's curve (task K2), and now its 6 lanes' is (2.7 s with the switch off; 3 lanes', none); Dead
+## Zone 1 adds hosts and the Bad Dream, and at 5 lanes a Buzz Overdrive whose rev met a hover truck's lurch
+## until it claimed its turn (task FIX2).
 func _test_campaign() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
-	var cases: Array = [["gangland/3", 3, true], ["gangland/3", 6, true], ["gangland/3", 3, false], ["dead_zone/1", 5, true]]
+	var cases: Array = [["gangland/3", 3, true], ["gangland/3", 6, true], ["gangland/3", 6, false], ["dead_zone/1", 5, true]]
 	for case: Array in cases:
 		var tag: String = "%s lanes=%d turns %s" % [case[0], case[1], "on" if case[2] else "off"]
 		var config: LevelConfig = campaign.configure(campaign.step(case[0]), case[1])

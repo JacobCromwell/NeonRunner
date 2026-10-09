@@ -15,9 +15,11 @@ extends TestSuite
 ##   one; one who runs on falls in.
 ## - An Enforcer Truck following a runner who jumps one is wrecked in it (the player's kill), at 3, 5 and 6
 ##   lanes, at quick play's speed and at Corporate 2's; it hops a level's ordinary row.
-## - Corporate 2 (the Enforcer's first level) at 3, 5 and 6 lanes: the first Enforcer's chase holds a wider gap
-##   (prefer_enforcer_chases), and played from the level's start by a scripted runner (god mode, grapples) that
-##   lines up in one of its hole lanes and jumps it, the truck following is wrecked in it.
+## - Every campaign level with Enforcer Trucks at 3, 5 and 6 lanes: the first Enforcer's chase holds a wider gap
+##   wherever one fits there (prefer_enforcer_chases: preferred, not guaranteed, open question 357).
+## - Corporate 2 (the Enforcer's first level) at each lane count whose first Enforcer chase holds a wider gap (3 and
+##   6 lanes since task K2), played from the level's start by a scripted runner (god mode, grapples) that lines up
+##   in one of its hole lanes and jumps it: the truck following is wrecked in it.
 
 const EnforcerRules = preload("res://scripts/enemies/enforcer_truck_rules.gd")
 const LANES: Array[int] = [3, 5, 6]
@@ -53,6 +55,8 @@ func _test_tuning() -> void:
 # --- Campaign --------------------------------------------------------------------------------------
 
 func _test_campaign(campaign: Campaign) -> void:
+	var truck_builds: int = 0
+	var chases_held: int = 0
 	for s: CampaignStep in campaign.steps():
 		if not s.is_level():
 			continue
@@ -72,6 +76,19 @@ func _test_campaign(campaign: Campaign) -> void:
 				"%s: the pass placed them all, as it reports (%s)" % [tag, result.get("constraints", "no report")])
 			LayoutChecks.check_wide_gaps(self, layout, config, tag)
 			_check_fillers(gen, rows, tag)
+			# The first Enforcer chase holds one wherever one fits there (prefer_enforcer_chases; open question 357).
+			var chases: Array[Vector2] = WideGapPlacement._chases(gen)
+			if not chases.is_empty():
+				truck_builds += 1
+				var held: bool = false
+				for row: Dictionary in rows:
+					held = held or (float(row["start"]) >= chases[0].x - 0.01 and float(row["end"]) <= chases[0].y + 0.01)
+				if held:
+					chases_held += 1
+				else:
+					var spot: String = _chase_spot(gen, chases[0])
+					check(spot == "", "%s: its first Enforcer's chase (%.0f-%.0f m) holds no wider gap, so none fits there (%s)"
+						% [tag, chases[0].x, chases[0].y, spot])
 			var grid := FloorRoute.new(layout, movement)
 			var lanes_txt: PackedStringArray = []
 			for row: Dictionary in rows:
@@ -86,6 +103,36 @@ func _test_campaign(campaign: Campaign) -> void:
 				GapDensity.rows(layout).size(), layout.gaps.size(), ", ".join(lanes_txt), int(result.get("widened", 0)),
 				int(result.get("added", 0)), int(result.get("cleared", 0)), int(result.get("taken_out", 0))])
 		print("  %s: %s" % [s.id, "; ".join(line)])
+	print("  the first Enforcer chase holds a wider gap in %d of the %d level and lane builds with trucks" % [chases_held,
+		truck_builds])
+	check(chases_held > 0, "some Enforcer chases hold a wider gap (%d of %d builds)" % [chases_held, truck_builds])
+
+
+## Where a new wider row would fit inside `chase` (an Enforcer chase, Vector2(from, to)) in `gen`'s finished layout,
+## as WideGapPlacement._add_one looks for one; "" if nowhere. The passes after it only add to what it saw (the fill
+## pass, the danger density pass's rows, doodads), so a spot that fits now fitted then, and the pass, preferring a
+## chase (its first, before any other wider gap), would have put one there. A spot counts only in a run of fitting
+## spots 2 m long, as _add_one steps 1 m at a time from starting points of its own.
+func _chase_spot(gen: LevelGenerator, chase: Vector2) -> String:
+	var length: float = WideGapPlacement.length_for(gen, wt)
+	var keeps: Array[Dictionary] = WideGapPlacement.keeps_of(gen)
+	var to: float = minf(chase.y, gen.layout.length - gen.config.end_clear_distance)
+	var run: int = 0
+	var start: float = maxf(chase.x, gen.config.start_clear_distance)
+	while start <= to - length:
+		var span := Vector2(start, start + length)
+		var kept: Array[int] = WideGapPlacement._kept_lanes(gen, wt, span, keeps)
+		var lanes: Array[int] = []
+		for lane: int in gen.layout.lane_count:
+			if kept.is_empty() or lane != kept[0]:
+				lanes.append(lane)
+		var ok: bool = kept.size() <= 1 and WideGapPlacement.fits(gen, wt, span, {"start": span.x, "end": span.y,
+			"lanes": lanes}, keeps)
+		run = run + 1 if ok else 0
+		if run >= 3:
+			return "a new row fits at %.0f m" % (start - 2.0)
+		start += 1.0
+	return ""
 
 
 ## A boss arena never gets them, even asked; quick play and the prototype level ask for none and draw nothing;
@@ -122,9 +169,10 @@ func _test_off(campaign: Campaign) -> void:
 
 ## Builds where the fill pass put a filler at its spacing from one of the level's own rows that's made longer
 ## after it (WideGapPlacement.widen_deferred): the filler goes, and every filler keeps the fill pass's spacing
-## from every wider row; the level keeps its wider gaps.
+## from every wider row; the level keeps its wider gaps. The seeds are ones where that happens on the 17-level
+## curve (task K2: city/3 3 lanes 7001, gangland/1 3 lanes 9103 and gangland/3 5 lanes 9101 before it).
 func _test_fillers(campaign: Campaign) -> void:
-	for c: Array in [["city/3", 3, 7001], ["gangland/1", 3, 9103], ["gangland/3", 5, 9101]]:
+	for c: Array in [["city/3", 3, 7037], ["gangland/1", 6, 9110], ["gangland/3", 5, 9103]]:
 		var config: LevelConfig = campaign.configure(campaign.step(String(c[0])), int(c[1]))
 		config.level_seed = int(c[2])
 		var tag: String = "%s at %d lanes, seed %d" % c
@@ -280,8 +328,11 @@ func _truck(w: RunWorld) -> EnforcerTruck:
 ## Corporate 2's own build, played from its start (god mode, grapples: the runner keeps to the middle lane and
 ## takes whatever comes) until the first Enforcer's chase reaches its wider gap: the runner lines up in a hole
 ## lane of it (the nearest the middle) a few seconds before and jumps it midway through its take-off window; the
-## truck following is wrecked in it.
+## truck following is wrecked in it. At every lane count whose first chase holds one: 3 and 6 lanes since the
+## Casino's levels re-spaced the campaign's curve (task K2; all three before); at 5 lanes a drone's barrage,
+## fences, cyborgs and a pad fill that chase now, and nothing fits there (_chase_spot).
 func _test_corporate_2(campaign: Campaign) -> void:
+	var played: int = 0
 	for lanes: int in LANES:
 		var config: LevelConfig = campaign.configure(campaign.step("corporate/2"), lanes)
 		config.skin = null  # the grey box: skins never change gameplay
@@ -302,9 +353,14 @@ func _test_corporate_2(campaign: Campaign) -> void:
 			if float(r["start"]) >= chase.x and float(r["end"]) <= chase.y:
 				row = r
 				break
-		check(not row.is_empty(), "%s: its first Enforcer's chase (%.0f-%.0f m) holds a wider gap" % [tag, chase.x, chase.y])
 		if row.is_empty():
+			# Preferred, not guaranteed (open question 357): then nothing fits there (_test_campaign checks it too).
+			var spot: String = _chase_spot(gen, chase)
+			check(spot == "", "%s: its first Enforcer's chase (%.0f-%.0f m) holds no wider gap, so none fits there (%s)" % [
+				tag, chase.x, chase.y, spot])
+			print("  %s: no wider gap fits in the chase %.0f-%.0f m" % [tag, chase.x, chase.y])
 			continue
+		played += 1
 		var middle: int = lanes / 2
 		var hole: int = -1
 		for lane: int in row["lanes"]:
@@ -346,3 +402,5 @@ func _test_corporate_2(campaign: Campaign) -> void:
 		print("  %s: wider gap at %.0f m in the chase %.0f-%.0f m: the truck %s" % [tag, start, chase.x, chase.y,
 			("wrecked: " + down) if down != "" else "not wrecked"])
 		await sim.free_world(w)
+	check(played >= 1, "Corporate 2's first Enforcer chase holds a wider gap, played, at %d of %d lane counts" % [played,
+		LANES.size()])
