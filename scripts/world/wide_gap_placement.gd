@@ -420,8 +420,9 @@ static func keeps_of(gen: LevelGenerator) -> Array[Dictionary]:
 		if script == null or not script.has_method("doodad_keep_outs"):
 			continue
 		for k: Dictionary in script.call("doodad_keep_outs", gen):
-			out.append(_keep(Vector2(float(k["from"]), float(k["to"])), String(k.get("type", feature)), false,
-				int(k.get("lane", -1))))
+			# A calm stretch (an Enforcer Truck's showing window, task C6c) keeps off the wider gap itself only.
+			out.append(_keep(Vector2(float(k["from"]), float(k["to"])), String(k.get("type", feature)),
+				bool(k.get("calm", false)), int(k.get("lane", -1))))
 	for d: Dictionary in lay.doodads:
 		out.append(_keep(Vector2(float(d["start"]), float(d["end"])), "a doodad"))
 	return out

@@ -186,6 +186,9 @@ var wide_gap_result: Dictionary = {}
 ## The cyborgs planted in charge paths in the last build (ChargePathPlacement.place: target, planted,
 ## constraints); empty when the level asks for none (LevelConfig.charge_path_cyborgs 0).
 var charge_path_result: Dictionary = {}
+## The Enforcer Trucks' showing windows in the last build (task C6c; enforcer_truck_rules.gd: planned, and for each
+## chase its arrival, its preferred one, its window or why none); empty in a level without the truck.
+var show_window_result: Dictionary = {}
 ## The danger density pass's report for the last build (DangerDensity.apply_enemies, apply_obstacles,
 ## then apply_wall_fences: counts, targets, what each lever added, shortfalls); empty when the level's
 ## danger_density_increase is 0.
@@ -303,6 +306,7 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	# Passes before them ask them (the danger density pass keeps off the wider gaps): never last build's.
 	wide_gap_result = {}
 	charge_path_result = {}
+	show_window_result = {}
 	danger_density_plan = null
 	_intro_burst = -1
 	var accel: float = tuning.speed_gain_per_minute / 60.0
@@ -1324,9 +1328,10 @@ static func is_filler(pattern: Dictionary) -> bool:
 ## (LevelGenerator.enemy_floor_span), or what its rules script keeps for it (`static func keep_out(gen:
 ## LevelGenerator, entry: Dictionary) -> Vector2`: a cyborg's margin, a hover truck's lane window, a
 ## Resonator's visit, a drone wave until its first pad); a level's quiet stretches; and every floor
-## cut, in every lane, from its warning to its end (FloorCutPlan.window). (Zone doodads come after the
-## fill pass, into what it leaves: _place_doodads.)
-func fill_keep_outs(patterns: Array) -> Dictionary:
+## cut, in every lane, from its warning to its end (FloorCutPlan.window); and with `with_rules`, the calm stretches
+## the rules keep (rules_fill_keep_outs). (Zone doodads come after the fill pass, into what it leaves:
+## _place_doodads.)
+func fill_keep_outs(patterns: Array, with_rules: bool = true) -> Dictionary:
 	var out: Array[Vector4] = []
 	var half: float = tuning.fence_depth * 0.5
 	for g: Dictionary in layout.gaps:
@@ -1375,7 +1380,28 @@ func fill_keep_outs(patterns: Array) -> Dictionary:
 			out.append(_keep(zone.x, zone.y))
 	for q: Vector2 in quiet_stretches():
 		out.append(_keep(q.x, q.y))
+	if with_rules:
+		for w: Vector2 in rules_fill_keep_outs():
+			out.append(Vector4(w.x, w.y, 0.0, 0.0))
 	return {"keep": out, "activity": activity}
+
+
+## What the level's features' rules keep the fill pass off besides their enemies' stretches (`static func
+## fill_keep_outs(gen: LevelGenerator) -> Array[Vector2]` on a feature's rules script), in every lane and kept as
+## they are, without the fill pass's margin (they hold nothing to keep a distance from): an Enforcer Truck's showing
+## window (task C6c, enforcer_truck_rules.gd), a calm stretch the zone doodads and every other later pass keep off
+## too (its doodad_keep_outs).
+func rules_fill_keep_outs() -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for feature: String in config.features:
+		var path: String = RULES_DIR.path_join("%s_rules.gd" % feature)
+		if not ResourceLoader.exists(path):
+			continue
+		var script := load(path) as GDScript
+		if script != null and script.has_method("fill_keep_outs"):
+			for k: Vector2 in script.call("fill_keep_outs", self):
+				out.append(k)
+	return out
 
 
 ## A keep-out [from, to] with the fill pass's usual margin at both ends (_fill_margin).
@@ -1539,7 +1565,8 @@ func _place_doodads(patterns: Array) -> void:
 		return
 	var rng: RandomNumberGenerator = rng_for("doodads")
 	var lane_keeps: Array[Dictionary] = []
-	var busy: Array[Vector2] = doodad_keep_outs(patterns, lane_keeps)
+	var calm: Array[Vector2] = []
+	var busy: Array[Vector2] = doodad_keep_outs(patterns, lane_keeps, calm)
 	var lead: float = doodad_lead_for(tuning)
 	var gap: float = config.doodad_gap_seconds * speed
 	var from: float = maxf(config.start_clear_distance, config.doodad_start * layout.length)
@@ -1556,6 +1583,10 @@ func _place_doodads(patterns: Array) -> void:
 			var size: StringName = _pick_doodad_size(rng, weights, room)
 			var length: float = tuning.doodad_size(size).z
 			var start: float = cursor + rng.randf() * (room - length)
+			# A calm stretch (an Enforcer Truck's showing window, task C6c) takes no doodad, nor its push's lead; it
+			# shapes no stretch here, so elsewhere the doodads draw as they would without it.
+			if _hits_any(calm, start - lead, start + length):
+				break
 			var placed: Dictionary = _add_doodad(rng, size, start, start + length, lane_keeps)
 			if placed.is_empty():
 				break
@@ -1637,10 +1668,12 @@ static func _lane_kept(lane_keeps: Array[Dictionary], lane: int, span: Vector2) 
 ## Dream's chase). Entries that also name a lane ({lane, from, to}: a hover truck's, for its whole
 ## stay) go into `lane_keeps`: no doodad stands in that lane there, nor pushes into it. A floor cut's
 ## lane is kept that way over its lane window (FloorCutPlan.lane_window), so a push never lands the
-## player in a cut (and its whole window is a fill keep-out, in every lane, already).
-func doodad_keep_outs(patterns: Array, lane_keeps: Array[Dictionary] = []) -> Array[Vector2]:
+## player in a cut (and its whole window is a fill keep-out, in every lane, already). The rules' calm
+## stretches ({from, to, calm: true}: an Enforcer Truck's showing window, task C6c) go into `calm`
+## instead: no doodad nor its push's lead stands in one, but they shape no stretch (_place_doodads).
+func doodad_keep_outs(patterns: Array, lane_keeps: Array[Dictionary] = [], calm: Array[Vector2] = []) -> Array[Vector2]:
 	var out: Array[Vector2] = []
-	for k: Vector4 in fill_keep_outs(patterns)["keep"]:
+	for k: Vector4 in fill_keep_outs(patterns, false)["keep"]:
 		out.append(Vector2(k.x, k.y))
 	for h: Dictionary in layout.hulls:
 		out.append(Vector2(float(h["start"]), zones.landing_zone(h).y))
@@ -1650,15 +1683,27 @@ func doodad_keep_outs(patterns: Array, lane_keeps: Array[Dictionary] = []) -> Ar
 	for k: Dictionary in rules_doodad_keep_outs():
 		if k.has("lane"):
 			lane_keeps.append(k)
+		elif bool(k.get("calm", false)):
+			calm.append(Vector2(float(k["from"]), float(k["to"])))
 		else:
 			out.append(Vector2(float(k["from"]), float(k["to"])))
 	return out
 
 
+## True if a stretch of `spans` (Vector2(from, to)) reaches into [from, to].
+static func _hits_any(spans: Array[Vector2], from: float, to: float) -> bool:
+	for k: Vector2 in spans:
+		if k.x <= to and k.y >= from:
+			return true
+	return false
+
+
 ## What the level's features' rules keep zone doodads off (`static func doodad_keep_outs(gen:
 ## LevelGenerator) -> Array[Dictionary]` on a feature's rules script), in the order of the features:
 ## the lane-bound attacks while they run, {from, to} in every lane (a Bad Dream's chase) or {lane, from,
-## to} in one (a hover truck's lane for its whole stay). Floor cuts keep off them too (cut_problem).
+## to} in one (a hover truck's lane for its whole stay), and calm stretches, {from, to, calm: true} in
+## every lane (an Enforcer Truck's showing window, task C6c): nothing a later pass adds stands or attacks
+## in one, but nothing keeps a spacing from it. Floor cuts keep off them too (cut_problem).
 func rules_doodad_keep_outs() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for feature: String in config.features:

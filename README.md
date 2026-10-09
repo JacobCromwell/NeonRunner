@@ -209,8 +209,10 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     Cyborgs you pass alive in its lane climb onto its roof (up to three): each makes it fire faster, and each
     pays a bonus when it's destroyed. Now and then (as it arrives, and once more if there's room) it speeds up
     beside you for a few seconds so you can see it, then drops back: its sides are solid but harmless (a lane
-    change into it bumps you back) and it gives way as you move toward it. It gives up after about 25 s (in
-    quick play, `--features=octodog,enforcer_truck`)
+    change into it bumps you back) and it gives way as you move toward it. Beside a runner by a wall it pulls up
+    two lanes in, leaving the lane between free. The generator keeps a calm stretch for a showing in every chase
+    that has room for one, wherever you run. It gives up after about 25 s (in quick play,
+    `--features=octodog,enforcer_truck`)
 - **Bosses:** a framework for runner-style boss fights (GDD §10): the fight plays in the normal run on
   an arena track that keeps going for as long as it lasts, with the boss's health bar and phase
   markers on the HUD, weak points to stomp and weapon chip damage, a checkpoint for the final fight,
@@ -432,6 +434,12 @@ many Buzz Overdrives revved or let the runner pass:
 `godot --headless --fixed-fps 60 -s res://tools/measure/big_attacks.gd -- [--levels=gangland/3] [--lanes=3,5,6]
 [--seeds=6] [--features=octodog]` (the whole campaign, both ways, takes about ten minutes on the levels' own seeds;
 its header lists the options).
+
+`tools/measure/enforcer_shows.gd` counts the Enforcer Truck's showings chase by chase over simulated runs of the
+levels with the truck, a god-mode runner keeping to each lane in turn: its showings, its planned showing window and
+whether it was used, and why a chase had none: `godot --headless --fixed-fps 60 -s res://tools/measure/enforcer_shows.gd
+-- [--levels=corporate/2] [--lanes=3,5,6] [--runner=all|middle|N] [--seeds=N] [--out=build/measure/x.json]` (all six
+levels at every lane count and lane take about twenty minutes; its header lists the options).
 
 `tools/measure/level_pace.gd` measures each campaign level's pace and density: its run speed, events per minute
 (obstacle rows, holes, enemies, big attacks, mechanics, zone doodads and the pushes a runner who ignores them
