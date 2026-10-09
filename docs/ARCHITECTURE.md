@@ -888,11 +888,11 @@ and its hint (`enemy:enforcer_truck`). DESIGN-TBD numbers throughout (`docs/ques
     to step around each) at 3, 5 and 6 lanes; to a runner by a wall (an outer lane) it shows itself two lanes
     in, leaving them the lane between (`sides`, `escape_lane`; task C6c, the owner's answer of October 9, 2026,
     GDD §9.13 "Room to show itself": beside them it would take their only lane to dodge into, and at 5 and 6 lanes
-    it would hide up to 25 m of their lane from the camera, which sits inward of them), held to the same rule both ways (the lane between open where theirs is blocked,
-    theirs open where the lane between is); never to a runner off the floor; and its own lane must be clear
-    where the camera sees it there (`lane_clear`: no fence, doodad, floor enemy, pad, speed pad or ramp, nor a
-    hole too wide to hop until it's rejoined the runner's lane; it hops the others), so it's never beside a
-    lane the runner needs.
+    it would hide up to 25 m of their lane from the camera, which sits inward of them), held to the same rule both
+    ways (the lane between open where theirs is blocked, theirs open where the lane between is); never to a runner
+    off the floor; and its own lane must be clear where the camera sees it there (`lane_clear`: no fence, doodad,
+    floor enemy, pad, speed pad or ramp, nor a hole too wide to hop until it's rejoined the runner's lane; it hops
+    the others), so it's never beside a lane the runner needs.
   - **Never hides anything.** `EnforcerTruckView` (the run camera's resting view) checks at load, for its
     look and lane count (`fits_for`, with `EnforcerTruckModel.profile`), that every corner of it is on
     screen and nothing of the runner or the floor of their lane and the far side is behind it; enemies its
@@ -1208,7 +1208,7 @@ bait too near; Dead Zone 1 at 3 lanes; Dead Zone 2 at 5 and 6 lanes), or neither
 second). On 8 other seeds each (144 builds), 9 builds change: 71 of 226 chases have a window before their bait
 against 63 of 227 (27 after it against 32); in two a level keeps one truck that shows itself where it had two that
 didn't, and in one a pair planned the other way round gets back the second truck C6c's order dropped. A wider gap
-(task G7) comes before a window only where that window comes after its bait (6 of 27). DESIGN-TBD: items 386
+(task G7) comes before a window only where that window comes after its bait (6 of 27). DESIGN-TBD: item 386
 (`docs/OPEN_QUESTIONS.md`) and the chases no bait with room is left for (`docs/questions/c6d.md`); items 382–385
 are the owner's answers.
 
