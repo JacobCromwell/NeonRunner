@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ZoneDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/campaign/zone_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/core/level_config.gd" id="2_levelscript"]
+[ext_resource type="Resource" path="res://data/levels/beach_1.tres" id="lvl_beach_1"]
+[ext_resource type="Resource" path="res://data/levels/beach_2.tres" id="lvl_beach_2"]
+[ext_resource type="Resource" path="res://data/skins/beach_skin.tres" id="skin"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"beach"
+display_name = "Beach"
+tagline = "Bamboo tiki bars and surf shops on a sandy lane down to the sea."
+music = &"corporate"
+skin = ExtResource("skin")
+levels = Array[ExtResource("2_levelscript")]([ExtResource("lvl_beach_1"), ExtResource("lvl_beach_2")])
+run_speed = 23.8
+in_demo = false
+placeholder = false
