@@ -58,9 +58,11 @@ static var _baseline: float = 0.0
 static var _cap: float = 0.0
 
 
-## Which name the casino building `id` on `side` carries, by hash: the same every build.
-## DESIGN-TBD (docs/questions/k3.md 1 and 2): half the casinos each, and a casino whose big sign plays the
-## cult's feed carries Gasket's name on a strip over the screen and the Brass Lotus's only on its blade.
+## Which name casino building `id` on `side` carries when every casino with a big sign is named
+## (CasinoSkin.name_spacing 0), by hash: the same every build. Otherwise CasinoFacades decides which casinos
+## are named and alternates the names.
+## DESIGN-TBD (docs/questions/k3.md 1 and 2): a casino whose big sign plays the cult's feed carries Gasket's name
+## on a strip over the screen and the Brass Lotus's only on its blade.
 static func pick(side: int, id: int) -> int:
 	return NAME_LOTUS if MeshKit.hash01(side, id, 68) < 0.5 else NAME_GASKETS
 
@@ -142,14 +144,15 @@ static func _build_layout(layout: int) -> Dictionary:
 				words = ["GASKET'S"]
 			for word: String in words:
 				for ch: String in word:
-					parts.append({"line": _line(ch), "scale": 1.0, "y": y, "centre": true})
+					parts.append({"line": _line(ch), "scale": 1.0, "y": y})
 					y -= BLADE_PITCH
 				y -= BLADE_WORD_GAP
 	return _compose(parts)
 
 
-## Lines laid out as `parts` ({"line", "scale", "y" (the line's baseline), "centre" (or its x start 0)}) into
-## one layout, centred on the origin by its bounding box.
+## Lines laid out as `parts` ({"line", "scale", "y" (the line's baseline)}) into one layout, each line centred
+## on the others (a letter on its own is centred over its pitch) and the whole centred on the origin by its
+## bounding box.
 static func _compose(parts: Array[Dictionary]) -> Dictionary:
 	var verts := PackedVector3Array()
 	var widest: float = 0.0
@@ -161,7 +164,6 @@ static func _compose(parts: Array[Dictionary]) -> Dictionary:
 		var line: Dictionary = p["line"]
 		var s: float = p["scale"]
 		var width: float = (line["size"] as Vector2).x * s
-		# Lines are centred on each other (a letter on its own is centred over its pitch).
 		var x0: float = (widest - width) * 0.5
 		var offset := Vector3(x0, float(p["y"]), 0.0)
 		for v: Vector3 in line["verts"]:

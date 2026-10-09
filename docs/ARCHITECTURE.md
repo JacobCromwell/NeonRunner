@@ -2201,19 +2201,28 @@ paved street, warm lamplight and haze.
   and "The Brass Lotus", the names in the reference). `CasinoLettering` turns the project's own Exo 2 (OFL,
   `assets/fonts/exo2`) into flat clockwise triangles once per process through `TextMesh` (curve step 6, weight
   800, about 9 ms; built when `CasinoSkin.facades()` is first made, so while a level loads, never in a chunk
-  built during a run) and keeps them as plain vertex arrays in four layouts (Gasket's two lines on its board,
+  built during a run) and keeps them as plain vertex arrays in five layouts (Gasket's two lines on its board,
   its one line on a strip, GASKET'S stacked down a blade; the Brass Lotus's board and its stacked blade). A
   sign is one `MeshLayer.append` of a cached, coloured layout into the chunk's solid layer (about 15 us): no
-  `Label3D`, no `SubViewport`, no node, no surface or draw call of its own. Each casino building with a big
-  sign carries one name by hash (`CasinoLettering.pick()`): on its board (the sign's shader panel is dark
-  with a tube of light and no glyph rows: `NAMED_PANEL`; a casino whose big sign plays the cult's feed gets
-  Gasket's name as a strip over the screen, and the Brass Lotus's only on its blade) and on a blade sign
-  standing 0.8 m out of the wall at one end of the building, above `overhang_min_height`, where a runner
-  sees its face-on column of letters from afar (a board is seen along its face). `CasinoFacades.named_signs()`
-  lists them for reviews and tests. The letters are the warm white `lettering_color`, glowing just over the
-  bloom threshold (`lettering_glow`), never a hazard hue, never below `decor_min_height`, static (nothing
-  to flash). They add about 2.5k vertices to a chunk of about 11-12k and nothing to its surfaces or its
-  build time.
+  `Label3D`, no `SubViewport`, no node, no surface or draw call of its own. **Only a few casinos are named**
+  (two famous ones, not a chain; DESIGN-TBD, `docs/questions/k3.md` 1): `CasinoFacades._name_of()` cuts the
+  street into periods of `name_spacing` metres (100, both walls together), picks at most one casino with a big
+  sign in each by hash (from the period's middle half if it has one) and alternates the names from period to
+  period, a pure function of the street's layout so every chunk agrees; a `name_spacing` of 0 names every
+  casino with a big sign by hash instead. The other casinos keep the mark and glyph rows. A named casino
+  carries its name on its board (the sign's shader panel is dark with a tube of light and no glyph rows:
+  `NAMED_PANEL`, set only when the letters exist; a casino whose big sign plays the cult's feed gets Gasket's
+  name as a strip over the screen, and the Brass Lotus's only on its blade), keeps the cult's emblem in the
+  board's lower corner (the letters take the rest: `_emblem_room()`) and has **no brass pipe or riser** (a pipe
+  in front of its letters crosses them from afar) and, on the street, a blade sign at the building's far end
+  (the runner comes from the near end, so it never hides the board), 0.8 m out of the wall, above
+  `overhang_min_height` and under the entablature, where a runner sees its face-on column of letters from afar
+  (a board is seen along its face). `CasinoFacades.named_signs()` lists the pieces for reviews and tests; the
+  suite checks that nothing else on the facade reaches the volume in front of any letter, which way each board
+  and blade faces, the dark panel's flag, the emblem's corner and that without the font the signs keep their
+  glyph rows. The letters are the warm white `lettering_color`, glowing just over the bloom threshold
+  (`lettering_glow`), never a hazard hue, never below `decor_min_height`, static (nothing to flash). They add
+  under 1k vertices to a chunk of about 12-13k and nothing to its surfaces or its build time.
 - *Ceilings from their lanes* (task B3). `CasinoCeilings` builds a footbridge between the balconies (only
   across every lane, as the Marketplace's bridging building), a gantry carrying a bundle of brass pipes and a
   sign gantry (a big lit sign or the cult's feed on an iron frame), from the collision box and lane
@@ -2225,10 +2234,12 @@ paved street, warm lamplight and haze.
   `overhang_min_height` to 14.5 m: the facades are flush below it (the casino signs' halos lie flat on the
   wall, and the suite checks every vertex, glow and feed included, within 30 cm of the face). Phase 3's
   billboard drops from 26 m above the 6 m ceiling (`TheHouseCeiling.DROP_FROM`, slab 0.9 m, its sign 2.5 m
-  more), so the arena also raises the roof (`eave_height` 34 m, whatever the street's width: the suite
-  checks the roof's underside clears the billboard's top across the whole street at 3, 5 and 6 lanes) and
-  hangs nothing from it (`hangings` off; `bunting_height` stays at 28 m). Its blade signs start above 15 m,
-  its boards lie flat on the wall.
+  more) in 0.7 s, its slab 12 cm from each wall, so the arena also raises the roof (`eave_height` 34 m,
+  whatever the street's width: the suite checks the roof's underside clears the billboard's top across the
+  whole street at 3, 5 and 6 lanes), hangs nothing from it (`hangings` off; `bunting_height` stays at 28 m)
+  and **keeps every face flush at every height** (`flush_faces`: no balcony, pipe, unit or blade sign, flat
+  lamps and entablature, the names on flat boards only; the suite holds every vertex between the ceiling and
+  the slab's start to the slab's gap from the walls at 3, 5 and 6 lanes).
 - *The colour rule* (GDD §5): the reference glows pink, cyan, green and orange; here those never glow near
   the track. Lit signs, marquees and lamps are warm white, violet or blue; brass is lit metal (nothing of
   brass or iron carries glow); the reference's coloured boards are dim painted signs in muted rose, teal,

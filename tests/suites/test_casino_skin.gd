@@ -60,6 +60,8 @@ const ARENA_CLEARANCE: float = 14.4
 const MAX_LAYOUT_VERTICES: int = 2400
 const MAX_LETTER_VERTICES: int = 8000
 const STREET_LENGTH: float = 1200.0
+## How far apart two named casinos' blade signs along one wall must stand (even with every casino named).
+const BLADE_APART: float = 10.0
 
 
 func run() -> void:
@@ -762,8 +764,17 @@ func _arena(skin: CasinoSkin, arena: CasinoSkin) -> void:
 		"the Casino's own overhangs start no lower than the arrival flyover's 10 m (%.1f m)" % skin.overhang_min_height)
 	# The faces are flush below the overhang line, the street's as much as the arena's: nothing, glow and the
 	# feed included, stands more than 30 cm out of a face below it.
-	_flush_below(arena, ARENA_CLEARANCE, "the arena's")
-	_flush_below(skin, skin.overhang_min_height - 0.1, "the street's")
+	check(arena.flush_faces and not skin.flush_faces, "the arena keeps every face flush at every height (the billboard slides past the walls)")
+	_flush(skin, "the street's", [[0.06, skin.overhang_min_height - 0.1, 0.3]])
+	# The arena's: the phase-3 billboard (a slab 12 cm from each wall, dropping 32 m to 6 m in 0.7 s) slices
+	# through anything standing out of a face between the ceiling and its start, so there nothing stands out of
+	# a face by more than the gap, whatever it is and wherever it is.
+	for lanes: int in [3, 5, 6]:
+		var g := TrackGeometry.new(lanes, tuning)
+		var gap: float = g.wall_x() - (g.half_width() + g.wall_margin * 0.6)
+		var slab_top: float = tuning.ceiling_height + TheHouseCeiling.DROP_FROM + TheHouseCeiling.SLAB
+		_flush(arena, "the arena's (%d lanes)" % lanes, [[0.06, tuning.ceiling_height, 0.3], [tuning.ceiling_height, slab_top, gap - 0.005]],
+			lanes)
 	# The arena's roof, over the lanes: nothing below the machine's top (its springing is above it too).
 	var geo6 := TrackGeometry.new(6, tuning)
 	var roof := MeshBatch.new()
@@ -788,10 +799,10 @@ func _arena(skin: CasinoSkin, arena: CasinoSkin) -> void:
 		_billboard_clear(arena, lanes)
 
 
-## No vertex of the facades on `skin` stands more than 30 cm out of a wall face between the floor and
-## `limit` (both walls, 400 m), whatever material it is.
-func _flush_below(skin: CasinoSkin, limit: float, label: String) -> void:
-	var geo := TrackGeometry.new(6, tuning)
+## No vertex of the facades on `skin` stands out of a wall face by more than a band's reach inside the band's
+## heights ([[from, to, reach], ...]; both walls, 400 m, at `lanes` lanes), whatever material it is.
+func _flush(skin: CasinoSkin, label: String, bands: Array, lanes: int = 6) -> void:
+	var geo := TrackGeometry.new(lanes, tuning)
 	var wall: float = geo.wall_x()
 	var intrusions: PackedStringArray = []
 	var vertices: int = 0
@@ -804,16 +815,18 @@ func _flush_below(skin: CasinoSkin, limit: float, label: String) -> void:
 				vertices += 1
 				# How far the point stands out of the face toward the lanes.
 				var out: float = wall - absf(v.x)
-				if v.y > 0.06 and v.y < limit and out > 0.3 and intrusions.size() < 4:
-					intrusions.append("%s (%.2f m out of the face)" % [v, out])
-	check(vertices > 0 and intrusions.is_empty(), "%s facades keep everything within 0.3 m of the wall below %.1f m: %s" % [
-		label, limit, ", ".join(intrusions)])
+				for band: Array in bands:
+					if v.y > float(band[0]) and v.y < float(band[1]) and out > float(band[2]) and intrusions.size() < 4:
+						intrusions.append("%s (%.3f m out of the face)" % [v, out])
+	check(vertices > 0 and intrusions.is_empty(), "%s facades keep everything within reach of the wall (%s): %s" % [
+		label, bands, ", ".join(intrusions)])
 
 
 ## The billboard that drops over the lanes in The House's phase 3 (TheHouseCeiling: a slab DROP_FROM over
 ## the ceiling, a sign on its middle, pods on its top) passes nothing: the arena's roof is above its top at
 ## the start of the drop, across the board's whole width (the arch's inside less the ribs' thickness, or the
-## springer beams' underside under the eave), with 20 cm to spare.
+## springer beams' underside under the eave), with 20 cm to spare; and the arena's walls hold nothing out
+## where the slab slides past them (_flush(), with the slab's gap from the walls).
 func _billboard_clear(arena: CasinoSkin, lanes: int) -> void:
 	var geo := TrackGeometry.new(lanes, tuning)
 	var arch: Dictionary = arena.vault().arch_of(geo.wall_x())
@@ -847,11 +860,13 @@ func _billboard_clear(arena: CasinoSkin, lanes: int) -> void:
 
 ## The named casinos' lettering (task K3; the owner, October 9, 2026: the big signs spell "Gasket's House of
 ## Chance" and "The Brass Lotus" in real letters): the owner's two names and no others, in the repo's own
-## OFL font, as plain triangles in the chunk's solid layer (no node, no surface of their own); every casino
-## with a big sign carries one of them, by hash, on a tall blade sign at one end and on its sign (Gasket's as
-## a strip over a feed sign, which the Brass Lotus's lacks); warm white, never a hazard hue; never below
-## decor_min_height (the blades above overhang_min_height, so the arena's flush-below-14.5 m rule holds);
-## every other sign keeps its glyph rows and no sign says "HAZARD"; what they add to a chunk stays small.
+## OFL font, as plain triangles in the chunk's solid layer (no node, no surface of their own); a few casinos
+## are the street's two famous ones (one in every name_spacing metres, the names alternating; or every casino
+## with a big sign, name_spacing 0), each carrying its name on its sign (Gasket's as a strip over a feed sign,
+## which the Brass Lotus's lacks) and on a tall blade sign at the far end of its building, none where the
+## faces are kept flush (the arena); nothing else on the facade crosses the letters; warm white, never a
+## hazard hue; never below decor_min_height; every other sign keeps its glyph rows and no sign says "HAZARD";
+## what they add to a chunk stays small.
 func _lettering(skin: CasinoSkin, arena: CasinoSkin) -> void:
 	check(CasinoLettering.NAMES == ["GASKET'S HOUSE OF CHANCE", "THE BRASS LOTUS"],
 		"the two names are the owner's: Gasket's House of Chance and The Brass Lotus")
@@ -890,60 +905,160 @@ func _lettering(skin: CasinoSkin, arena: CasinoSkin) -> void:
 	per_append = (Time.get_ticks_usec() - t0) / 200
 	print("  casino lettering: a Gasket's board is %d vertices and %d us to place" % [letters.size(), per_append])
 	check(per_append < 400, "placing a sign's letters is a bulk append of a cached layout (%d us, at most 400)" % per_append)
-	for variant: Array in [[skin, "the street's"], [arena, "the arena's"]]:
+	# The street's named casinos, the arena's, and the street with every casino named.
+	var every := CasinoSkin.new()
+	every.name_spacing = 0.0
+	for variant: Array in [[skin, "the street's"], [arena, "the arena's"], [every, "the every-casino"]]:
 		_lettering_on_walls(variant[0] as CasinoSkin, variant[1] as String)
+	# No pipe on a named casino, and pipes elsewhere (the check is not vacuous): K1's brass pipe runs and risers.
+	var facades: CasinoFacades = skin.facades() as CasinoFacades
+	var geo := TrackGeometry.new(6, tuning)
+	var with_pipes: int = 0
+	var named_with_pipes: int = 0
+	var named: int = 0
+	var lot: float = skin.lot_length
+	for side: int in [-1, 1]:
+		var span: Vector2i = MeshKit.lot_run(side, 0, 0.45, 3, 3)
+		while span.x * lot < STREET_LENGTH:
+			var b: MarketFacades.Building = facades.building(side, span)
+			var pipes := MeshLayer.new()
+			facades._pipes(pipes, b, side * geo.wall_x(), b.b0, b.b1)
+			var is_named: bool = facades._name_of(b) >= 0
+			named += 1 if is_named else 0
+			with_pipes += 0 if pipes.is_empty() else 1
+			named_with_pipes += 1 if is_named and not pipes.is_empty() else 0
+			span = MeshKit.lot_run(side, span.y + 1, 0.45, 3, 3)
+	check(named > 5 and with_pipes > 10 and named_with_pipes == 0,
+		"a named casino carries no brass pipe or riser (%d named, %d with pipes, %d with both)" % [named, with_pipes, named_with_pipes])
+	_lettering_without_the_font(every)
+
+
+## If the font couldn't be read (every layout empty) the signs keep their glyph rows: no letters, no blade and,
+## above all, no dark named panel with nothing on it.
+func _lettering_without_the_font(every: CasinoSkin) -> void:
+	var saved: Dictionary = CasinoLettering._layouts
+	var empty: Dictionary = {}
+	for layout: int in CasinoLettering.Layout.values():
+		empty[layout] = {"verts": PackedVector3Array(), "size": Vector2.ZERO}
+	CasinoLettering._layouts = empty
+	var bare := CasinoSkin.new()
+	bare.name_spacing = 0.0
+	var geo := TrackGeometry.new(6, tuning)
+	var named_quads: int = 0
+	var glyph_quads: int = 0
+	var pieces: int = 0
+	var d: float = 0.0
+	while d < 400.0:
+		for side: int in [-1, 1]:
+			var batch := MeshBatch.new()
+			bare.facades().build(batch, side, side * geo.wall_x(), d, d + 40.0)
+			var layer: MeshLayer = batch.layer(bare.solid_material())
+			for i: int in layer.size():
+				if roundi(layer.uv2s[i].x) == MeshKit.PAT_CASINO_SIGN:
+					if layer.uv2s[i].y >= CasinoLettering.NAMED_PANEL:
+						named_quads += 1
+					else:
+						glyph_quads += 1
+			pieces += (bare.facades() as CasinoFacades).named_signs(side, side * geo.wall_x(), d, d + 40.0).size()
+		d += 40.0
+	CasinoLettering._layouts = saved
+	check(pieces == 0 and named_quads == 0 and glyph_quads > 0,
+		"without the font the signs keep their glyph rows: no letters, no blades, no dark named panels (%d pieces, %d named, %d glyph vertices)" % [
+			pieces, named_quads, glyph_quads])
 
 
 ## The lettering over a long street of one skin: where the facades say it goes (named_signs()) is exactly
-## where the built walls have it, nothing else is lettered, and every rule above holds.
+## where the built walls have it, nothing else is lettered, and every rule above holds: which casinos are
+## named (the spacing and the alternation, or every one with a big sign), what each carries (a board, or a
+## strip over a feed sign, and a blade sign unless the faces are kept flush), that nothing else on the
+## facade crosses a name's letters (no pipe, lamp or balcony stands in front of them), that the boards face
+## the street and the blades the approaching player, that only named boards have the dark panel, and that
+## the cult's emblem keeps its corner on the signs that carry one.
 func _lettering_on_walls(skin: CasinoSkin, label: String) -> void:
 	var geo := TrackGeometry.new(6, tuning)
 	var wall: float = geo.wall_x()
 	var facades: CasinoFacades = skin.facades() as CasinoFacades
-	var lot: float = skin.lot_length
 	var colour := Color(skin.lettering_color, skin.lettering_glow)
+	var choice := load(MarketplaceSkin.CULT_EMBLEM_CHOICE_PATH) as CultEmblemChoice
+	var scheme: Dictionary = CultEmblem.default_scheme(choice.option)
+	var emblem_vertices: int = skin.cult_emblem(true).size()
+	var spacing: float = skin.name_spacing
 	var counts: Dictionary = {}
 	var kinds: Dictionary = {}
+	var named: Dictionary = {}
 	var expected_vertices: int = 0
 	var found_vertices: int = 0
 	var chunk_most: int = 0
 	var low_y: float = INF
 	var low_blade: float = INF
+	var blade_top: float = -INF
 	var misplaced: PackedStringArray = []
-	var casinos: int = 0
-	var carrying: int = 0
-	var wrong_name: int = 0
+	var crossed: PackedStringArray = []
+	var wrong_way: int = 0
+	var named_quads: int = 0
+	var expected_quads: int = 0
+	var glyph_quads: int = 0
+	var emblems_wanted: int = 0
+	var emblems_missing: PackedStringArray = []
+	var blade_ats: Dictionary = {-1: [], 1: []}
 	var d: float = 0.0
 	while d < STREET_LENGTH:
 		for side: int in [-1, 1]:
 			var pieces: Array[Dictionary] = facades.named_signs(side, side * wall, d, d + 40.0)
 			var batch := MeshBatch.new()
 			facades.build(batch, side, side * wall, d, d + 40.0)
-			var layer: MeshLayer = batch.layer(skin.solid_material())
-			var verts := PackedVector3Array()
-			for i: int in layer.size():
-				var c: Color = layer.colors[i]
-				if layer.uv2s[i].x == float(MeshKit.PAT_PLAIN) and absf(c.r - colour.r) < 0.002 and absf(c.g - colour.g) < 0.002 \
-						and absf(c.b - colour.b) < 0.002 and absf(c.a - colour.a) < 0.002:
-					verts.append(layer.verts[i])
-			found_vertices += verts.size()
-			chunk_most = maxi(chunk_most, verts.size())
-			var chunk_expected: int = 0
+			var mesh: ArrayMesh = batch.to_mesh()
+			# Everything built, as triangles: the letters apart from the rest.
+			var letters := PackedVector3Array()
+			var others := PackedVector3Array()
+			var emblem_verts := PackedVector3Array()
+			for s: int in mesh.get_surface_count():
+				var arrays: Array = mesh.surface_get_arrays(s)
+				var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+				var cols: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+				var uv2: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV2]
+				var solid: bool = mesh.surface_get_material(s) == skin.solid_material()
+				for i: int in verts.size():
+					var c: Color = cols[i]
+					var pattern: int = roundi(uv2[i].x)
+					if solid and pattern == MeshKit.PAT_PLAIN and absf(c.r - colour.r) < 0.006 and absf(c.g - colour.g) < 0.006 \
+							and absf(c.b - colour.b) < 0.006 and absf(c.a - colour.a) < 0.006:
+						letters.append(verts[i])
+						continue
+					others.append(verts[i])
+					if solid and (_same_rgb(c, scheme["neon"]) or _same_rgb(c, scheme["neon_accent"])):
+						emblem_verts.append(verts[i])
+					if solid and pattern == MeshKit.PAT_CASINO_SIGN:
+						if uv2[i].y >= CasinoLettering.NAMED_PANEL:
+							named_quads += 1
+						else:
+							glyph_quads += 1
+			found_vertices += letters.size()
+			chunk_most = maxi(chunk_most, letters.size())
+			var blades_here: Array[Dictionary] = []
 			for piece: Dictionary in pieces:
 				var name_id: int = piece["name"]
 				counts[name_id] = int(counts.get(name_id, 0)) + 1
 				var kind: String = String(piece["kind"])
 				kinds[kind] = int(kinds.get(kind, 0)) + 1
-				chunk_expected += CasinoLettering.vertex_count(piece["layout"])
+				expected_vertices += CasinoLettering.vertex_count(piece["layout"])
+				expected_quads += 6
 				low_y = minf(low_y, float(piece["y_min"]))
-				if piece["kind"] == &"blade":
+				var key: String = "%d/%d" % [side, int(piece["building"])]
+				var entry: Dictionary = named.get(key, {"side": side, "id": int(piece["building"]), "name": name_id, "kinds": []})
+				(entry["kinds"] as Array).append(kind)
+				named[key] = entry
+				var blade: bool = piece["kind"] == &"blade"
+				if blade:
+					(blade_ats[side] as Array).append(float(piece["at"]))
+					blades_here.append(piece)
 					low_blade = minf(low_blade, float(piece["board_y0"]))
+					blade_top = maxf(blade_top, float(piece["board_y0"]) + float(piece["board_h"]))
 				# Its letters are where it says: the block's box in the plane of the wall (or the blade's).
 				var centre: Vector3 = piece["center"]
 				var box: Vector2 = piece["box"]
 				var inside: int = 0
-				var blade: bool = piece["kind"] == &"blade"
-				for v: Vector3 in verts:
+				for v: Vector3 in letters:
 					# A board's letters lie in the wall's plane (along z); a blade's face the player (across x).
 					var in_plane: bool = absf(v.z - centre.z) <= 0.03 if blade else absf(v.x - centre.x) <= 0.01
 					var in_width: bool = absf(v.x - centre.x) <= box.x * 0.5 + 0.01 if blade else absf(v.z - centre.z) <= box.x * 0.5 + 0.01
@@ -951,42 +1066,127 @@ func _lettering_on_walls(skin: CasinoSkin, label: String) -> void:
 						inside += 1
 				if inside < CasinoLettering.vertex_count(piece["layout"]):
 					misplaced.append("%s at %.1f (%d of %d)" % [kind, float(piece["at"]), inside, CasinoLettering.vertex_count(piece["layout"])])
-			expected_vertices += chunk_expected
-			# The casinos of this stretch: each with a big sign carries one blade and the name by hash.
-			var lo: float = d
-			var span: Vector2i = MeshKit.lot_run(side, floori(lo / lot), 0.45, 3, 3)
-			while span.x * lot < d + 40.0:
-				var b: MarketFacades.Building = facades.building(side, span)
-				var mid: float = (b.b0 + b.b1) * 0.5
-				var spec: Dictionary = facades._casino_sign(b, side * wall)
-				if b.kind == MarketFacades.Kind.CASINO and not spec.is_empty() and mid >= d and mid < d + 40.0:
-					casinos += 1
-					var mine: Array[Dictionary] = []
-					for piece: Dictionary in facades.named_signs(side, side * wall, b.b0 - 2.0, b.b1 + 2.0):
-						if absf((piece["center"] as Vector3).z + mid) < (b.b1 - b.b0) * 0.5 + 0.01:
-							mine.append(piece)
-					var blades: int = 0
-					for piece: Dictionary in mine:
-						blades += 1 if piece["kind"] == &"blade" else 0
-						wrong_name += 0 if int(piece["name"]) == CasinoLettering.pick(side, b.id) else 1
-					carrying += 1 if blades == 1 and not mine.is_empty() else 0
-				span = MeshKit.lot_run(side, span.y + 1, 0.45, 3, 3)
+				# Nothing else on the facade crosses the letters: no triangle of anything else reaches the volume
+				# in front of them (a metre and a bit toward the street, or toward the player for a blade).
+				var lo := Vector3(centre.x - box.x * 0.5 - 0.01, centre.y - box.y * 0.5 - 0.01, centre.z - 0.005)
+				var hi := Vector3(centre.x + box.x * 0.5 + 0.01, centre.y + box.y * 0.5 + 0.01, centre.z + 1.2)
+				if not blade:
+					lo = Vector3(centre.x - 0.005 * -side, centre.y - box.y * 0.5 - 0.01, centre.z - box.x * 0.5 - 0.01)
+					hi = Vector3(centre.x + 1.2 * -side, centre.y + box.y * 0.5 + 0.01, centre.z + box.x * 0.5 + 0.01)
+					if side > 0:
+						var swap: float = lo.x
+						lo.x = hi.x
+						hi.x = swap
+				else:
+					lo.z = -float(piece["at"]) + CasinoFacades.BLADE_LETTER_LIFT - 0.005
+					hi.z = lo.z + 1.2
+				for i: int in range(0, others.size() - 2, 3):
+					var a: Vector3 = others[i]
+					var b: Vector3 = others[i + 1]
+					var c: Vector3 = others[i + 2]
+					if minf(a.x, minf(b.x, c.x)) <= hi.x and maxf(a.x, maxf(b.x, c.x)) >= lo.x \
+							and minf(a.y, minf(b.y, c.y)) <= hi.y and maxf(a.y, maxf(b.y, c.y)) >= lo.y \
+							and minf(a.z, minf(b.z, c.z)) <= hi.z and maxf(a.z, maxf(b.z, c.z)) >= lo.z:
+						if crossed.size() < 4:
+							crossed.append("%s at %.1f crossed by (%s) (%s) (%s)" % [kind, float(piece["at"]), a, b, c])
+				# The cult's emblem keeps its corner of a named board that carries one.
+				if piece["kind"] == &"board" and piece["emblem"]:
+					emblems_wanted += 1
+					var b2: MarketFacades.Building = facades.building(side, MeshKit.lot_run(side, int(piece["building"]), 0.45, 3, 3))
+					var spec: Dictionary = facades._casino_sign(b2, side * wall)
+					var mid: float = (b2.b0 + b2.b1) * 0.5
+					var inside_emblem: int = 0
+					for v: Vector3 in emblem_verts:
+						if v.y >= float(spec["y0"]) and v.y <= float(spec["y0"]) + float(spec["h"]) and absf(v.z + mid) <= float(spec["length"]) * 0.5 \
+								and absf(absf(v.x) - wall) <= 0.2:
+							inside_emblem += 1
+					if inside_emblem < emblem_vertices:
+						emblems_missing.append("%.1f (%d of %d)" % [mid, inside_emblem, emblem_vertices])
+			# The letters face the right way: boards toward the street, blades toward the approaching player.
+			for i: int in range(0, letters.size() - 2, 3):
+				var a: Vector3 = letters[i]
+				var n: Vector3 = -(letters[i + 1] - a).cross(letters[i + 2] - a)
+				var on_blade: bool = false
+				for piece: Dictionary in blades_here:
+					on_blade = on_blade or absf(a.z - (-float(piece["at"]) + CasinoFacades.BLADE_LETTER_LIFT)) < 0.01
+				if on_blade:
+					wrong_way += 1 if n.z <= 0.0 else 0
+				else:
+					wrong_way += 1 if n.x * float(-side) <= 0.0 else 0
 		d += 40.0
+	# Which casinos are named: the street's two famous ones, a period at a time, or every casino with a big sign.
+	var names_ok: bool = not named.is_empty()
+	var per_period: Dictionary = {}
+	var by_name: Dictionary = {0: [], 1: []}
+	var kinds_ok: bool = true
+	for key: String in named:
+		var entry: Dictionary = named[key]
+		var side: int = entry["side"]
+		var b: MarketFacades.Building = facades.building(side, MeshKit.lot_run(side, int(entry["id"]), 0.45, 3, 3))
+		var mid: float = (b.b0 + b.b1) * 0.5
+		var list: Array = entry["kinds"]
+		var feed: bool = skin.shows_feed(b.seed, 62)
+		# A board (a strip over a feed sign, for Gasket's), and a blade unless the faces are kept flush.
+		var boards: int = list.count("board")
+		var strips: int = list.count("strip")
+		var blades: int = list.count("blade")
+		var want_board: int = 0 if feed else 1
+		var want_strip: int = 1 if feed and int(entry["name"]) == CasinoLettering.NAME_GASKETS else 0
+		kinds_ok = kinds_ok and boards == want_board and strips == want_strip and blades == (0 if skin.flush_faces else 1)
+		if spacing > 0.0:
+			var period: int = floori(mid / spacing)
+			per_period[period] = int(per_period.get(period, 0)) + 1
+			names_ok = names_ok and int(entry["name"]) == posmod(period, 2)
+			(by_name[int(entry["name"])] as Array).append(mid)
+		else:
+			names_ok = names_ok and int(entry["name"]) == CasinoLettering.pick(side, int(entry["id"]))
+	var most_in_period: int = 0
+	for period: int in per_period:
+		most_in_period = maxi(most_in_period, int(per_period[period]))
+	var near_same: PackedStringArray = []
+	for which: int in by_name:
+		var mids: Array = by_name[which]
+		mids.sort()
+		for i: int in range(1, mids.size()):
+			if float(mids[i]) - float(mids[i - 1]) <= spacing - 1.0:
+				near_same.append("%.0f and %.0f" % [mids[i - 1], mids[i]])
+	# Blade signs of neighbouring casinos stand well apart (a pair 2 m apart looked like a fence of signs).
+	var closest: float = INF
+	for side: int in blade_ats:
+		var ats: Array = blade_ats[side]
+		ats.sort()
+		for i: int in range(1, ats.size()):
+			closest = minf(closest, float(ats[i]) - float(ats[i - 1]))
+	check(closest >= BLADE_APART, "%s blade signs along a wall stand at least %.0f m apart (closest %.1f m)" % [label, BLADE_APART, closest])
 	var total: int = int(counts.get(0, 0)) + int(counts.get(1, 0))
 	check(counts.size() == 2 and int(counts.get(0, 0)) >= 3 and int(counts.get(1, 0)) >= 3,
 		"%s street has both names, and only those two (Gasket's %d pieces, the Brass Lotus %d)" % [label, int(counts.get(0, 0)), int(counts.get(1, 0))])
-	check(casinos > 5 and carrying == casinos and wrong_name == 0,
-		"%s every casino with a big sign carries its hash's name on a blade (%d of %d)" % [label, carrying, casinos])
+	if spacing > 0.0:
+		check(names_ok and most_in_period <= 1 and near_same.is_empty() and named.size() >= 5 and named.size() <= roundi(STREET_LENGTH / spacing) + 2,
+			"%s street names a few casinos, one a period at most (%d in %.0f m, one in %.0f m), alternating, no name nearer than the spacing to itself: %s" % [
+				label, named.size(), STREET_LENGTH, spacing, ", ".join(near_same.slice(0, 3))])
+	else:
+		check(names_ok and named.size() > 10, "%s street names every casino with a big sign, by hash (%d)" % [label, named.size()])
+	check(kinds_ok, "%s each named casino has its board (or Gasket's strip over a feed sign) and a blade sign unless the faces are flat" % label)
 	check(found_vertices == expected_vertices and total > 0,
 		"%s walls have letters exactly where the facades place them and nowhere else (%d vertices, %d expected)" % [
 			label, found_vertices, expected_vertices])
 	check(misplaced.is_empty(), "%s letters sit inside their sign's box: %s" % [label, ", ".join(misplaced.slice(0, 3))])
-	check(low_y >= skin.decor_min_height and low_blade >= skin.overhang_min_height,
+	check(crossed.is_empty(), "%s nothing else on the facade crosses a name's letters (no pipe, lamp or balcony in front of them): %s" % [
+		label, "; ".join(crossed)])
+	check(wrong_way == 0, "%s boards face the street and blades the approaching player (%d triangles the wrong way)" % [label, wrong_way])
+	check(named_quads == expected_quads and glyph_quads > 0,
+		"%s only the signs that carry a name have the dark panel; the others keep their glyph rows (%d named quad vertices, %d expected; %d glyph)" % [
+			label, named_quads, expected_quads, glyph_quads])
+	check(emblems_wanted > 0 and emblems_missing.is_empty(), "%s the cult's emblem keeps its corner of a named board (%d with one; missing: %s)" % [
+		label, emblems_wanted, ", ".join(emblems_missing.slice(0, 3))])
+	check(low_y >= skin.decor_min_height and (skin.flush_faces or low_blade >= skin.overhang_min_height),
 		"%s letters are never below decor_min_height (%.1f m, lowest %.2f) and the blades start above overhang_min_height (%.1f m, lowest %.2f)" % [
 			label, skin.decor_min_height, low_y, skin.overhang_min_height, low_blade])
+	check(skin.flush_faces or blade_top <= skin.eave_height - CasinoFacades.ENTABLATURE + 0.001,
+		"%s blades stop under the entablature (top %.2f m, building %.1f m)" % [label, blade_top, skin.eave_height])
 	check(chunk_most <= MAX_LETTER_VERTICES,
-		"%s a 40 m stretch of wall carries at most %d letter vertices (most %d; %d kinds %s)" % [label, MAX_LETTER_VERTICES, chunk_most,
-			kinds.size(), kinds])
+		"%s a 40 m stretch of wall carries at most %d letter vertices (most %d; %s)" % [label, MAX_LETTER_VERTICES, chunk_most, kinds])
 
 
 ## The cult's emblem (GDD §5): the owner's choice, never hardcoded, in its scheme's warm-white neon or

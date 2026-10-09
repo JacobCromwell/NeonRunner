@@ -101,6 +101,10 @@ extends MarketplaceSkin
 ## lanes below about 14.4 m but ceilings, and the machine fills the street to 35 cm off the walls).
 ## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 376): the arena is plainer than the street leading to it.
 @export_range(6.0, 20.0, 0.25, "suffix:m") var overhang_min_height: float = 10.0
+## Keeps every face flush at every height (nothing stands out of a wall by more than FLUSH_DEPTH, 10 cm: no
+## balcony, pipe, unit or blade sign, flat lamps, flat letters): The House's arena sets it, because its phase-3
+## billboard drops past the walls 12 cm from them, 32 m to 6 m in 0.7 s, through anything standing out of them.
+@export var flush_faces: bool = false
 ## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 373): how many balconies, pipe runs, air-conditioning units and
 ## planters the facades carry: per building, the chance of each.
 @export_range(0.0, 1.0, 0.01) var balcony_share: float = 0.55
@@ -109,6 +113,11 @@ extends MarketplaceSkin
 @export_range(0.0, 1.0, 0.01) var planter_share: float = 0.5
 ## Dim, unlit ivy in the planters, far from the ramps' and speed pads' hazard green.
 @export var ivy_color: Color = Color(0.16, 0.23, 0.15)
+## The named casinos (task K3): one casino with a big sign in every this many metres of street (both walls
+## together) is one of the two famous ones, Gasket's House of Chance and The Brass Lotus alternating, so no name
+## is nearer than this to itself; the other casinos keep their glyph boards. 0 names every casino with a big
+## sign. DESIGN-TBD (docs/questions/k3.md 1): two famous casinos or a chain of them.
+@export_range(0.0, 400.0, 5.0, "suffix:m") var name_spacing: float = 100.0
 ## Signs' dark panels and the lit lettering's palette (warm white, violet and blue only).
 @export var sign_panel_color: Color = Color(0.07, 0.065, 0.075)
 ## The named casinos' real letters (CasinoLettering): warm white, lit but not hot (the brass frames and the
