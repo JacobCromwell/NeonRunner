@@ -1949,7 +1949,9 @@ underside, and check the drop on both renderers (`skin_review --narrow`, Review 
 
 Skins: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2), `MarketplaceSkin`
 (Zone 3, the Marketplace), `CorporateSkin` (Zone 4, Corporate), `DeadZoneSkin` (Zone 5, the Dead Zone)
-and `GoldenSkin` (Zone 6, the Golden Zone). `GreyboxSkin` is the fallback for a zone without its own
+and `GoldenSkin` (Zone 6, the Golden Zone). `BeachSkin` (task D10, the Beach) is a seventh look that no
+zone or level uses yet (the owner hasn't placed it in the campaign: `test_campaign` pins six zones); it is
+shown with `--skin=beach` in quick play and in `skin_review`. `GreyboxSkin` is the fallback for a zone without its own
 look (every zone has one now). A
 zone's skin lives at `data/skins/<zone id>_skin.tres` (`--skin=<zone id>` in quick play) and is set in its
 `data/zones/<zone id>.tres`; a level's own `skin` wins over its zone's (the Golden Palace, Golden 3,
@@ -1970,6 +1972,7 @@ value, the one thing a new zone's skin sets for its enemies:
 | Corporate (D4) | `&"vr_runner"` | the Wide-Aspect VR Runner | clean |
 | Dead Zone (D5) | `&"burned"` | the base, burned out | clean |
 | Golden Zone (D6a) | `&"golden"` | the ceremonial enforcer | clean |
+| Beach (D10, not in the campaign yet) | `&"city"` | the base (Static TV Head) | clean |
 
 The Barnacle Turret wears its furry creature look on `&"scavenger"` and `&"casino"` (Gangland, the
 Marketplace) and its mechanical look on every other value (`BarnacleTurretModel.is_creature`), with its
@@ -2062,7 +2065,15 @@ collide on an id. Ids 60-69 are the cult's, shared by every zone, in
 the zones' own): `PAT_CULT_MARK` (60) draws the cult's emblem from the material's `cult_emblem`
 texture as a mark on a dark panel. Ids 70-79 are the Golden Palace's (task D6b, a level's own skin,
 not a zone's), in `kit_golden_palace.gdshaderinc`, after `kit_golden.gdshaderinc`'s `golden_metal()`
-and `golden_marble()`, which it calls directly.
+and `golden_marble()`, which it calls directly. Ids 80-89 are the Beach's (task D10, all in use), in
+`kit_beach.gdshaderinc` (`MeshKit.PAT_BEACH_*`: sand, boardwalk, tank, water, wall, thatch, steel, painted
+board, neon silhouette, timber), after `kit_marks.gdshaderinc`'s `band()` and `sd_*()`. A pattern's parameter
+(`UV2.y`) is interpolated across a face, and a rasterizer's interpolation of a constant can be a few units in
+the last place off (Mesa's llvmpipe and lavapipe are): a decoder that takes `floor(param / 8.0)` of an exact
+multiple of 8 flips between two neighbouring values pixel by pixel (the Beach's first walls were a lattice of
+dots), and a parameter above about 2^20 has units in the last place of 0.06 or more. So decode by rounding
+to the nearest whole number (`floor(x + 0.5)`, or a half step added before a `floor`) and keep every
+parameter under 2^20 (`MeshKit.sand_param()`, `beach_art_param()` and the others do; `test_beach_skin` pins it).
 
 **Gangland's ceilings** (`GanglandCeiling`) take their width from the lanes they cover (the collision
 box), never from the track, and draw each side as anchored (running into the building face) or free
@@ -2309,6 +2320,73 @@ same script, different values). Only `floor_segment()`, `wall_section()` and `ce
 - *Shader patterns* (ids 70-79, `kit_golden_palace.gdshaderinc`, after `kit_golden.gdshaderinc`'s
   `golden_metal()`/`golden_marble()`, which it calls directly rather than inventing new ones):
   `PAT_PALACE_FLOOR` (70), `PAT_PALACE_WELL` (71) and `PAT_PALACE_PANEL` (72).
+
+**The Beach** (task D10, the owner's request of October 9, 2026; `docs/art/reference/beach_zone.jpg`; not in
+the campaign yet, so no zone, level or music: `data/skins/beach_skin.tres` is shown with `--skin=beach` and
+`tools/showcase/skin_review.tscn -- --skin=beach`): `BeachSkin` (`scripts/world/skins/beach_skin.gd`) is a bright
+tropical afternoon on a shore: a sandy street running down to a turquoise sea and a palm island, between bamboo
+shacks and tiki bars, with black rust-streaked industrial tanks behind them. No new enemy assets: its
+`enemy_variant` is `&"city"` (the base look; `DESIGN-TBD`, `docs/questions/d10.md`). The gaps are pools, the
+owner's decision. Hooks overridden, builders in `scripts/world/skins/beach/`:
+- *The floor* (`BeachSand`): sand (`PAT_BEACH_SAND`: wind ripples, drifts, footprints, flat shells, a damp rim
+  round a pool) with boardwalk runs (`PAT_BEACH_BOARDWALK`: planks across the lane, rusty steel plates
+  bolted on), runs of one to three `boardwalk_slot`-metre slots hashed by lane and slot (`boardwalk_runs()`, so the runs of
+  neighbouring pieces and chunks line up across cuts), a flush bamboo kerb along the building faces, and
+  nothing on the running surface stands up or is round. A pool (`cut()`, the shared `standard_floor_cut()`
+  with a tank pattern) is a black steel tank sunk flush: the orange lip, strip and halo sit on the
+  collision edge as everywhere, beside a dark steel coping that makes them pop against the bright sand, and
+  inside is far darker than the darkest floor and its joints (`test_beach_skin` computes the budget from the
+  skin's colours: tank steel, rust, tide mark, water). Water is deep unlit teal (`PAT_BEACH_WATER`) at
+  `pool_depth` 6 m, deeper than `fall_death_depth` 4 m, so the player is gone before the water. Blowing sand,
+  drifting leaves and petals and speed streaks (`MeshKit.drift_particles`) are the still floor's motion cue.
+- *The walls* (`BeachShacks`): shacks one to three 12 m lots long, two to four storeys (`lot_run()`), all
+  variety hashed from lot indices. Up to `band_top` (7.2 m) a face is flush and calm, drawn by
+  `PAT_BEACH_WALL` from world position in bays of 3 to 4.8 m between bamboo posts (bamboo, palm mat, weathered
+  planks, rusty corrugated sheets, a shut shutter or hatch, bamboo with wordless surf posters, painted
+  boards, a mural), with the wall-run height marks at 2 m and 4 m and sand blown against the foot; nothing
+  opens, glows or juts out more than `LIP` (0.25 m) there. Above `decor_min_height` (8 m): recessed
+  verandas (bars with a counter, bottles and paper lanterns, lounges, decks; `_alcove()`, set back so nothing
+  hangs over the street), thatch or tin roofs, palms, tiki masks, surfboard racks, flags, bunting and swags,
+  black steel tanks, water towers, chimneys and dishes behind the roofline, wordless neon silhouettes and
+  roof billboards. Everything over the street stays above `OVER_STREET_MIN` (12 m), clear of the
+  ceilings' `TOP_LIMIT` (5.4 m over the 6 m underside), and strings of lights are cached templates hung from
+  hashed spots. Wall decorations are cached `MeshLayer` templates in left-wall space with the right wall's
+  mirrored copies cached once, so building a chunk is plain translations (a 5-lane chunk builds in about
+  3 ms, under 25 surfaces). `note_wall_gaps()` is forwarded for the shared hooks.
+- *The ceilings* (`BeachCeilings`; `kind_of()` by the ceiling's width and the walls it reaches, weights
+  `footbridge_weight`, `veranda_weight`, `barge_weight`): a boardwalk footbridge across every lane, a veranda
+  deck cantilevered from one building (narrow, reaching one wall) and a hovering party barge (any width, or
+  reaching neither wall). Every underside is flat with lamps on the lane seams and the orange far-end band
+  from `MeshKit.ceiling_end`; nothing hangs below it, and glows past the far end stay above it
+  (`MeshKit.stern_halo` for a barge's engines).
+- *Hazards and props* (`BeachProps`, the kit's shared builders): the fence is the shared pink field between
+  bamboo-wrapped steel posts in sand-filled drums; the wall sign is the yellow/black hazard frame
+  (`MeshKit.hazard_sign`) around a painted surf or bar sign (`PAT_BEACH_PAINT`: unlit, wordless). Pads,
+  ramps, speed pads and the finish line are the kit's.
+- *Doodads* (`BeachDoodads`): a surfboard rack (small), a cabana or a palm in a planter by `look_seed`
+  (medium) and a tiki bar kiosk (large), cached, on `MeshKit.solid()`, no faces, muted.
+- *Cult.* The emblem hides on some neon signs and roof billboards and the barge's bronze bow, never smaller
+  than `emblem_min_size` and never a hazard colour; the feed plays on TVs behind some upper-deck bars and
+  on roof billboards, never in the wall-run band. `feed_boards()` (kinds `deck_tv`, `roof_board`) and
+  `cult_emblems()` (kinds `sign`, `billboard`) list them for `skin_review`.
+- *The sky and sea*: `night_sky.gdshader` by day, through its existing uniforms (a blue zenith, white
+  cumulus, a warm sun glow toward the far end; nothing blooms) plus three default-off ones: `skyline_hills`
+  and `skyline_scale` turn the skyline into smooth low hills (an island, no lit windows) standing on the
+  sea, and `abyss_depth` (0.3 by default) is how far below the horizon the sky becomes the abyss colour (the
+  Beach: 0.05, a turquoise sea starting at the horizon).
+- *Colour rule* (departures from the reference, all in `docs/questions/d10.md`): the water never glows
+  (the reference's glowing turquoise is the pads' cyan); decorative glows are warm white, violet and blue only
+  (the reference's pink, yellow, cyan, green and orange neon are hazard hues); string lights and lanterns the
+  same; pool frames are flush (the reference's tanks stand proud, which would read as an obstacle); no words on
+  signs. `test_beach_skin` holds the skin to it (a glowing colour is a hazard hue when its saturation is at
+  least 0.35 and its hue is outside the blue-violet range; no paint is near a hazard's colour).
+- *Shader patterns* (ids 80-89, `kit_beach.gdshaderinc`, with `kit_solid.gdshader` including it after
+  `face_coords()` and dispatching on the id): colours arrive as sRGB `Vector3` uniforms (`BeachSkin.srgb()`)
+  so both renderers agree, `bc_daylight` lifts the lit upright surfaces for the afternoon sun (the kit's
+  `shade` is a night city's), and the water's caustics slow to a stand under Reduced flashing
+  (`reduced_flashing`; nothing else in the zone moves with `TIME`, which `test_beach_skin` checks). Review it
+  on both renderers: `skin_review` (`--view=shot`, `--view=run`, `--narrow`), `doodad_review`,
+  `floor_cut_review` and `wall_fence_review` with `--skin=beach`.
 
 **The cult emblem** (D7, GDD §5 "The cult"): `CultEmblem` (`scripts/world/meshes/cult_emblem.gd`)
 builds each option's 2D vector geometry as a flat mesh (mesh kit conventions: emissive for a neon

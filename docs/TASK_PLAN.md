@@ -216,6 +216,7 @@ Each skin covers:
 | D7 | **Cult symbol options** | – | S | T3 |
 | D8 | **Music for the four new zones** | – | M | T2 |
 | D9 | **The cult's feed and emblem in the City and Gangland skins** | D2 | S–M | T2 |
+| D10 | **Beach zone skin** (not in the campaign yet) | D2 | L | T2 |
 
 **D1: Gangland update.** The owner's direction is browns and tans, lived in, graffiti and plenty of signs of life, with hints that corporate and military interests fund the gangs. Ceilings are the undersides of decaying or bombed-out buildings and overpasses, instead of today's scavenger barge.
 
@@ -263,6 +264,12 @@ Each skin covers:
 **D9: the cult's feed and emblem in the City and Gangland skins** (added September 26, 2026, from GDD §5, "Cyborg Viewing Devices").
 - The Marketplace skin (D2) builds the feed as a shared piece: the same wordless broadcast on billboards, ads and shop-window screens in every zone. Skins built after it include the feed and the emblem from the start.
 - D9 adds the feed to the City and Gangland, and the hidden emblem to the City (Gangland already has it).
+
+**D10: Beach zone skin** (the owner's request of October 9, 2026; the reference image is `docs/art/reference/beach_zone.jpg`).
+- A skin only (`BeachSkin`, `data/skins/beach_skin.tres`, shown with `--skin=beach`): the owner hasn't placed the Beach in the campaign yet (it won't be the last zone), so there is no zone definition, level, campaign entry, music or cinematic, and `test_campaign` still pins six zones.
+- The gaps are pools of water. No new enemy assets: the skin reuses an existing look (`enemy_variant`, `DESIGN-TBD`). New background, floors, walls, ceilings, signs, fences and doodads in the reference's style (a sandy street running to a turquoise sea and a palm island, bamboo shacks and tiki bars under thatch, black rust-streaked steel tanks).
+- It keeps the colour rule where the reference breaks it (no glowing water, decorative neon in violet, blue and warm white only, flush pool frames, no words on signs): the departures are in `docs/questions/d10.md`.
+- Shader patterns 80-89 (`kit_beach.gdshaderinc`), the same hooks and budget test as every skin (`test_beach_skin`), the cult's emblem and feed.
 
 **D8: Music for the four new zones.** Also, from the owner's review (GDD §11): **the music dips when the player dies**, and **the level-complete riff plays in each zone's key**. Code-generated placeholder loops in the existing style, fitting each zone's mood:
 - Marketplace: happy and bustling
@@ -435,6 +442,7 @@ The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 369–381.
 | D8 music | anytime |
 | B9 generators and weapons | anytime |
 | D9 the cult's feed in the City and Gangland | D2 |
+| D10 Beach skin (not in the campaign yet) | D2 |
 | P2 cyborg base, then P3 variants | P1, then P2 |
 | R2 small rule changes, R3 big attacks take turns | anytime |
 | E5c Sleep Taker | B7, B8, B9 and D5 |
