@@ -25,7 +25,7 @@ extends ZoneSkin
 ## Visuals only: TrackBuilder owns every collision shape and gameplay node, and all variety comes
 ## from hashing track positions (MeshKit.hash_i), so a chunk looks the same whenever it is built.
 
-## DESIGN-TBD (docs/questions/h3.md, question 3): how bright a floor cut's end faces are against the earth
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 643): how bright a floor cut's end faces are against the earth
 ## in the holes' walls, so that a cut's inside stays darker than any floor (tests/suites/test_floor_cuts.gd).
 const CUT_STRATA_SHADE: float = 0.5
 

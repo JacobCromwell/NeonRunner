@@ -58,7 +58,7 @@ const FOREARM: float = 0.36
 const POLISH_PLATE: float = 0.7
 const POLISH_TRIM: float = 0.95
 
-## DESIGN-TBD (docs/questions/h1.md): the inside of every statue niche, live and decorative alike (recess()): a
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 605): the inside of every statue niche, live and decorative alike (recess()): a
 ## chamber of warm bronze stone rather than a black hole, so the gold statue and its eyes read against it from
 ## far down the street (GDD §9.11, owner, October 8, 2026), and the live Sentinel is told apart from the
 ## decorative ones by its red eyes and its warning, not by a niche of its own (USER_REQUESTS.md: the

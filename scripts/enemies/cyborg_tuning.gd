@@ -36,7 +36,7 @@ extends CyborgGunTuning
 ## DESIGN-TBD: the big score bonus for killing a host with a stomp, the claws or the dash (GDD §9.7: "still
 ## earns a big score bonus"), on top of the kill.
 @export_range(0, 20000, 50) var host_bonus: int = 1500
-## DESIGN-TBD (docs/questions/h8.md): the host bonus for a weapon kill (GDD §9.7, owner, October 8, 2026:
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 628): the host bonus for a weapon kill (GDD §9.7, owner, October 8, 2026:
 ## weapons hit hosts, and a weapon kill releases the Bad Dream). The GDD keeps the big bonus for a stomp,
 ## the claws and the dash; placeholder 0: a weapon kill pays an ordinary cyborg kill's score only.
 @export_range(0, 20000, 50) var weapon_host_bonus: int = 0

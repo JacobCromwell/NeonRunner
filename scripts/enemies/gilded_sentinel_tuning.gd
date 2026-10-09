@@ -31,13 +31,13 @@ extends EnemyTuning
 @export_range(0.8, 2.5, 0.05, "suffix:m") var niche_width: float = 1.8
 @export_range(0.0, 2.0, 0.05, "suffix:m") var niche_sill: float = 0.75
 @export_range(1.5, 4.0, 0.05, "suffix:m") var niche_height: float = 2.7
-## DESIGN-TBD (docs/questions/h1.md): how deep the niche goes into the wall: deep enough for the whole
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 604): how deep the niche goes into the wall: deep enough for the whole
 ## statue at rest (its depth turned as it stands is about 0.7 m, from statue_inset), so nothing of it reaches
 ## out over the wall-run path (a wall runner's body lies along the wall face). 0.78 m, from 0.9 as first
 ## built: its back is nearer the face, so the niche's back stands further forward (GDD §9.11, owner,
 ## October 8, 2026). The statue's solid body (a hitbox `niche_depth - 0.1` deep behind the face) follows it.
 @export_range(0.5, 1.5, 0.05, "suffix:m") var niche_depth: float = 0.78
-## DESIGN-TBD (docs/questions/h1.md): how far the front of the statue (its real outline at rest, not its
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 604): how far the front of the statue (its real outline at rest, not its
 ## bounding box) stands behind the wall face: almost flush, 0.02 m. It was 0.03 m of a bounding box that
 ## overstated how far the statue reaches by 0.033 m, so its real front was 0.063 m behind the face: the
 ## statue moved forward by about 4 cm. Never in front of the face: a statue there would block a wall run
@@ -71,7 +71,7 @@ extends EnemyTuning
 ## The grind sound is as long as it is (tools/asset_gen/sfx_bank_sentinel.gd): regenerate it with
 ## `tools/godot.sh sfx --only=gilded_sentinel_grind` after changing this.
 @export_range(0.3, 3.0, 0.05, "suffix:s") var warning_seconds: float = 0.6
-## DESIGN-TBD (docs/questions/h1.md): the last share of the warning in which it draws its halberd back (the eyes flare through all of it,
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 607): the last share of the warning in which it draws its halberd back (the eyes flare through all of it,
 ## so they come first): 0.5 of 0.6 s is a draw-back of 0.3 s, after 0.3 s of eyes and grinding alone.
 @export_range(0.2, 0.8, 0.05) var raise_share: float = 0.5
 ## A swing starts as the runner is this long short of its stretch (at their speed then), so they are

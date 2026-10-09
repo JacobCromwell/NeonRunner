@@ -215,7 +215,7 @@ func _test_emerges_from_hosts() -> void:
 ## releases its Bad Dream where it stood, with an ordinary kill's score and not the host bonus (DESIGN-TBD:
 ## CyborgTuning.weapon_host_bonus 0). The Bad Dream lurks there, harmless and holding no attack back, until the
 ## runner comes within hover_ahead of it; only then does its chase begin, playing out as one that bursts out
-## at the runner's feet (its emerge time, then its first slash's delay; DESIGN-TBD, docs/questions/h8.md), so
+## at the runner's feet (its emerge time, then its first slash's delay; DESIGN-TBD, docs/OPEN_QUESTIONS.md item 630), so
 ## the chase begins where the generator planned it (host_rules.gd).
 func _test_weapon_release() -> void:
 	var w: RunWorld = sim.build_world(RunSim.layout(3, 600.0), _loadout({"weapon": 2}))

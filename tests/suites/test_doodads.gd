@@ -902,7 +902,7 @@ func _test_dash_sideways() -> void:
 	# it and the body never sinks into it. A move made before the dash, once its side is beside the runner,
 	# is blocked as any runner's is (the clank and the bump; the runner stays in the push's lane, and the
 	# dash smashes it if the bump touches it). A dash during the push with no move back leaves it standing:
-	# the push completes (docs/questions/h5.md 7).
+	# the push completes (docs/OPEN_QUESTIONS.md item 640).
 	var geo3 := TrackGeometry.new(3, tuning)
 	var d3: Dictionary = _doodad(1, 40.0, &"medium", 1)
 	var calib: Dictionary = await sim.run(_one_doodad(3, d3), 1, 3.0, [])

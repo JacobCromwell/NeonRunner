@@ -566,7 +566,7 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   box and hitbox off, its look hidden), the counts (`smashes`, `crashes`, `wall_passes`), `smashed(b)` and the
   `dash_wall_smash` event: RunEffects crumbles it (Speed effects) and the event plays the crash
   (`dash_wall_smash.wav`). It stays broken for the attempt (never built again), and a retry rebuilds it whole.
-  Scores nothing (DESIGN-TBD, `docs/questions/h7a.md`). The layout counts a wall as a doodad in every lane
+  Scores nothing (DESIGN-TBD, `docs/OPEN_QUESTIONS.md` item 653). The layout counts a wall as a doodad in every lane
   (`LevelLayout.doodad_between`, and `dash_wall_between`), broken or not, so every enemy that holds an attack
   by a doodad holds it by a wall the same on every attempt.
 
@@ -595,7 +595,7 @@ is a declared property of its own, so auto-fire targets a host like any other cy
 and splash hurt it, it shows a health bar and laser tier 1 takes a cyborg's shots to kill it; a fence
 generator still declares `immune_to_weapons` (GDD §9.1). Killing a host by any means releases its Bad Dream
 (`Cyborg._release_bad_dream`); a stomp, the claws or the dash also earn the host bonus, a weapon kill only the
-kill's score (`Cyborg.host_bonus_for`, `CyborgTuning.weapon_host_bonus`, DESIGN-TBD, `docs/questions/h8.md`).
+kill's score (`Cyborg.host_bonus_for`, `CyborgTuning.weapon_host_bonus`, DESIGN-TBD, `docs/OPEN_QUESTIONS.md` item 628).
 A player who doesn't want Bad Dreams released switches the weapon off in the shop (the equip toggle, GDD §8).
 Every attack needs a visual **and** audio warning before it can hurt (CLAUDE.md readability rules).
 **Enemy charge contacts** (owner revision, October 3, 2026): Octodog and Buzz Overdrive active charges
@@ -603,7 +603,7 @@ use one shared swept-box contact helper on `Enemy`, against live physical enemy 
 lane labels or detached attack effects. Each victim is hit at most once per charge through
 `take_damage(..., &"enemy_charge")`; bosses and weapon-immune enemies retain their immunity, and hosts
 are never a charge's victims although weapons hit them (`Enemy.charge_can_hurt`, DESIGN-TBD,
-`docs/questions/h8.md`).
+`docs/OPEN_QUESTIONS.md` item 629).
 `EnemyDirector.enemy_defeated` still drives lifecycle/effects, but `ScoreKeeper` ignores that cause:
 no player kill count, bonus or thief jackpot/recovery is awarded for an NPC collision. The one exception
 is an enemy that declares `charge_bait` (task C6, the Enforcer Truck, GDD §9.13): weapon-immune, it is
@@ -652,7 +652,7 @@ time rather than placed by the generator; one that bursts out further ahead than
 shot down, lurks over that spot, harmless, its maw closed once risen (an open maw belongs to a slash's
 warning) and holding no attack back (an EMP dissolves it where it hangs), until the runner is within
 `hover_ahead`, and only then begins its chase, so every chase begins where the host rules plan it, at its
-host's spot: task H8, DESIGN-TBD, `docs/questions/h8.md`), the Resonator (GDD §9.10, the Golden Zone: a golden
+host's spot: task H8, DESIGN-TBD, `docs/OPEN_QUESTIONS.md` item 630), the Resonator (GDD §9.10, the Golden Zone: a golden
 broadcast spire hovering far ahead whose red waves roll along the floor across every lane; its model,
 `resonator_model.gd`, is built in code, and `resonator_rules.gd` plans each pulse where its wave meets
 the player on clear floor), the Barnacle Turret (GDD §9.8, from Marketplace 1: a ceiling enemy, see
@@ -765,7 +765,7 @@ world, in the RunWorld's metadata, so every attempt starts with it empty:
   claim and no other, and a shooter that has left play (defeated, retired or freed) holds none.
 - **A boss's claim.** The Floating Head's eye lasers claim the whole airspace (`claim_whole`): no burst
   starts during a laser attack, and a laser attack only starts once no burst is on (`claimed_until`).
-- **The crossfire rule** (DESIGN-TBD, `docs/questions/h4.md`). The airspace also keeps each burst's
+- **The crossfire rule** (DESIGN-TBD, `docs/OPEN_QUESTIONS.md` item 600). The airspace also keeps each burst's
   start, its arrivals (predicted, then each bolt's own) and, once its aim locks, the line its bolts fly
   along and the surface the runner was on, until a while after they've arrived (`near`). Bursts whose
   bolts arrive within `CyborgGunTuning.crossfire_gap` (0.5 s) of each other must leave the runner a way
@@ -831,7 +831,7 @@ reach it). Every enemy that holds an attack by a zone doodad holds it by a wall 
 counts the walls in every lane, broken or not, so the same on every attempt): the cyborgs' guns
 (`CyborgGun.path_clear`), the Octodog's charge, the Resonator's pulses, the drone's barrage, the hover truck's
 cannon and the Enforcer Truck's volleys (their escape). What moves ahead of the runner deals with a standing
-wall in its way (DESIGN-TBD, `docs/questions/h7a.md`):
+wall in its way (DESIGN-TBD, `docs/OPEN_QUESTIONS.md` items 648 and 654–656):
 - **the hover truck gives way** (`HoverTruck._wall_ahead`): a standing wall coming within the time it needs to
   drop behind the runner (`HoverTruckTuning.give_way_seconds` from its offset, `WALL_GIVE_WAY_MARGIN` more)
   sends it from pacing or from alongside into its lurch back, and it holds back, revving for no forward lurch
@@ -2117,7 +2117,7 @@ count of 0 (or without the feature) is built byte for byte as before. Its header
   invites a dash within that spacing before a face (`bait_of`: a Buzz Overdrive's charge meeting the runner, a fence
   generator, the end of a Tithe Collector's stay, whose hint sends the dash at it; a zone doodad never needs the
   dash, so it keeps off the footprint only). The spacing guarantees the dash only when it was last used at the
-  previous wall (about 1 s of slack): `docs/questions/h7a.md`.
+  previous wall (about 1 s of slack): `docs/OPEN_QUESTIONS.md` item 647.
 - **The wall route**: from `wall_route_seconds` before the face to the back, at least one side wall holds no sign
   (where both do, those of the side with fewer go), and the side wall gaps and wall fences keep off both walls
   there (`wall_keep_outs`, `WallGapPlacement.keep_outs`; the wall fences' drop windows keep off the footprint).
@@ -2419,7 +2419,7 @@ Forward+'s, never past it.
 - *Golden Palace* (`PAT_PALACE_WELL`): a stairwell, its steps descending along a side in treads and
   risers, and far below the lower hall's marble in slabs with a soft pool of light every 22 m
   (`well_floor_color`, with the well's side walls now drawn down both sides, so a hole in an outer lane
-  shows stone and not the hall's outside). DESIGN-TBD (docs/questions/h3.md).
+  shows stone and not the hall's outside). DESIGN-TBD (docs/OPEN_QUESTIONS.md item 641).
 - *Corporate* (`PAT_CORP_UNDER`): a carriage's side with its band of dim cold windows, the guideway beams
   on their piers with a lighter top edge (`guideway_color`) over a wet concrete trench with joints and
   puddles (`trench_color`) and the trench's retaining walls (mode 5: they, and the plaza's lower-level walls,
@@ -2439,7 +2439,7 @@ is drawn, rendered, must be at most `HOLE_SHARE_MAX` (0.8); each suite prints it
 Golden 0.72, Dead Zone 0.75, Golden Palace 0.22). Nothing glows below but the orange edges, the cut is never
 brighter than the zone's gap (`test_floor_cuts`' `_inside_limit`) nor, in these five skins, black (the
 plane an open cut's ray meets is at least `BELOW_MIN_LUMINANCE`). The trade-off for the owner to confirm is
-in docs/questions/h3.md.
+in docs/OPEN_QUESTIONS.md, item 641.
 
 `test_floor_cuts` builds every skin in `data/skins/` (and Hostile Takeover's train, the grey box and the
 plain `ZoneSkin`) at 3 and 5 lanes, in an outer and a middle lane, and checks the orange edges on the
@@ -3359,7 +3359,7 @@ Floating Head's are, so the fight keeps its seconds at any speed. In `scripts/bo
 | `sleep_taker_slash.gd` (`SleepTakerSlash`) | the giant slash: the warning (`slash_telegraph` then the lunge: the great maw's shriek, its three lanes `band_for()` locked and lit red with the Bad Dream's lane marks, counted as floor warnings), the strike (`box_for()`: the lanes less margins, clear of the walls, below `slash_height`: above a jump, far below a ceiling rider) and the recovery; its timings don't follow the phase's pace |
 | `sleep_taker_hands.gd` (`SleepTakerHands`), `sleep_taker_hand.gdshader`, `sleep_taker_mist.gdshader` | the grasping hands, in rounds spread along the street (owner, October 8, 2026): `plan(budget)` lays out a round of `rows_for(round)` rows (two, then a row more each round up to four, kept across phases; fewer if the next refuge's slash or lure comes sooner, never fewer than `hand_rows_min`), `hand_row_seconds` apart at run speed over the phase's pace, the first where the runner will be once its mist has shown; each row leaves its door open (`hand_row_open` lanes), the first one lane over from the runner's lane, each next one lane over from the last (`doors()`, a seeded order from the fight's seed and the round's number), so every row stands in the lane the runner kept free at the row before; a floor hand in every other lane whose floor is clear around it (`hand_fits`; a hole stands in for one that isn't, but the hand the runner must switch away from always stands), and `wall_hands_per_row` wall hands, alternating (never beside a door in an outer lane, never at a wall gap, only over an outer lane with its own hand, so no floor runner ever passes under one). A round comes only with a way through it: `route_from()`, The House's lane router (`TheHouseRoute`) with the Sleep Taker's margins (`router()`: the real lane switch time times `route_switch_margin`, `route_body_margin` past a hand, holes jumped and fences jumped or slid under with no switch during one), for a runner moving `route_reaction` after its mists show; at most `MAX_ROUTE_TRIES` ways a call, the next call taking the doors in another seeded order. As a round starts, every hand's mist pools at once (purple, unshaded; a floor mist is a floor warning) with one whisper; each hand bursts up as the runner comes within `hand_rise_lead` of it (one sound a row) and grasps, then sinks; `round_plan`, `rounds`; pooled rigs, a whole round's (`SleepTakerTuning.max_hands`) |
 | `sleep_taker_lights_out.gd` (`SleepTakerLightsOut`) | lights out: the inhale (its warning), `set_light_level(dark_level)` for `dark_seconds` while the other attacks go on, the exhale and the light back; `clear()` brings the light back at once (a phase change, the defeat). Owner, October 8, 2026: half as bright as first built (`dark_level` 0.225, was 0.45: the ambient and sky light, the fog's, the sun and the scenery's own light all at half the first build's), above its own floors (`light_floor`, `scenery_floor`); the glows keep their brightness on screen and stand out from the darker street more than before (`--scenario=measure`, `--first-dark` to compare) |
-| `sleep_taker_tuning.gd`, `data/bosses/dead_zone_boss_tuning.tres` | its numbers (F6 in its fight; all DESIGN-TBD, `docs/questions/e5c.md`, and the H9 ones `docs/questions/h9.md`) |
+| `sleep_taker_tuning.gd`, `data/bosses/dead_zone_boss_tuning.tres` | its numbers (F6 in its fight; all DESIGN-TBD, `docs/questions/e5c.md`, and the H9 ones `docs/OPEN_QUESTIONS.md` items 617–625) |
 | `data/bosses/dead_zone_boss.tres` | its slot: three phases (paces 1, 1.15, 1.3; one EMP each), weapons capped at nothing, the standard armor rule with `armor_when_unprotected`, the Dead Zone's music, par times; its arena lists `wall_gaps` with numbers of its own (the only boss arena that opts in) |
 | `data/bosses/dead_zone_boss_wall_gaps.tres` | its arena's wall gaps (`WallGapTuning`; DESIGN-TBD): 1.6-1.3 s of run from one gap's end to the next, on one wall or the other (a level: 32-24 s), 30% on both walls, 0.6-1.1 s long: about 15 a minute once the refuges' stretches are kept whole (a level's median: 1.7) |
 | `data/bosses/dead_zone_boss_skin.tres` | its arena's look: the Dead Zone's, with nothing hung over the street (no skybridges, no hung screens), where it looms |

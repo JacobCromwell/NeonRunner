@@ -23,7 +23,7 @@ signal health_changed(enemy: Enemy)
 ## NPC friendly fire: defeat listeners must not award player kills, score or thief payouts.
 const CHARGE_DAMAGE_CAUSE: StringName = &"enemy_charge"
 ## A flyer clears a standing dash wall's top by this much (metres), and climbs to it (and comes back down
-## after) at this speed (m/s): dash_wall_lift (task H7a). DESIGN-TBD (docs/questions/h7a.md).
+## after) at this speed (m/s): dash_wall_lift (task H7a). DESIGN-TBD (docs/OPEN_QUESTIONS.md item 656).
 const DASH_WALL_CLEARANCE: float = 1.2
 const DASH_WALL_CLIMB_SPEED: float = 7.0
 
@@ -202,7 +202,7 @@ func health_ratio() -> float:
 
 
 ## True if another enemy's charge can hurt it (_hurt_charge_contacts, and take_damage with
-## CHARGE_DAMAGE_CAUSE): never a host (DESIGN-TBD, docs/questions/h8.md: a charge is no weapon, so hosts
+## CHARGE_DAMAGE_CAUSE): never a host (DESIGN-TBD, docs/OPEN_QUESTIONS.md item 629: a charge is no weapon, so hosts
 ## kept their immunity to charges when weapons began to hit them, owner, October 8, 2026), nor an
 ## immune_to_weapons enemy unless it declares charge_bait (the Enforcer Truck, GDD §9.13). Bosses are left
 ## out by _hurt_charge_contacts itself (their parts keep their encounter's rules).

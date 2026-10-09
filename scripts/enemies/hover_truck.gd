@@ -20,7 +20,7 @@ extends Enemy
 ##   truck_rev, flashing spikes, glowing thrusters, a light thrown ahead) and only when a player in
 ##   its lane could still get out. The spikes' hitbox is narrower than the lane, so a player beside
 ##   it or on the wall next to it is never caught.
-## - Dash walls (task H7a; GDD §9.14; DESIGN-TBD, docs/questions/h7a.md): it gives way to one. A standing
+## - Dash walls (task H7a; GDD §9.14; DESIGN-TBD, docs/OPEN_QUESTIONS.md item 654): it gives way to one. A standing
 ##   wall coming within the time it needs to drop behind the runner (_wall_ahead: HoverTruckTuning
 ##   .give_way_seconds, WALL_GIVE_WAY_MARGIN more) sends it into its lurch back from pacing or from alongside,
 ##   and it holds back, revving for no forward lurch, until the runner has broken the wall: the runner meets

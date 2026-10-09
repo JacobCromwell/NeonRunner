@@ -184,7 +184,7 @@ func _on_defeated(cause: StringName) -> void:
 
 ## GDD §9.7: the Bad Dream bursts out of a killed host, whatever killed it (a weapon too, owner, October
 ## 8, 2026). A stomp, the claws or the dash earn the big host bonus (host_bonus); a weapon kill earns
-## weapon_host_bonus (DESIGN-TBD, docs/questions/h8.md: 0, so it pays an ordinary cyborg kill's score
+## weapon_host_bonus (DESIGN-TBD, docs/OPEN_QUESTIONS.md item 628: 0, so it pays an ordinary cyborg kill's score
 ## only). ScoreKeeper pays the kill itself either way. The Bad Dream is spawned only once its script
 ## exists.
 func _release_bad_dream(cause: StringName) -> void:

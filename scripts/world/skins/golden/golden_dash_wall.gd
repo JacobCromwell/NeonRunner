@@ -18,7 +18,7 @@ extends RefCounted
 ## in the windows: the shader's lit share is 0, and its windows are dark glass or gold mirror), nothing in a hazard
 ## colour, and no statue, banner or screen (a statue reads as a Gilded Sentinel, a banner or a screen as a sign).
 ## Meshes are cached by size and look and shared by every wall.
-## DESIGN-TBD (docs/questions/h7b.md): which four buildings the wall is, and its cracks as the only cue; the GDD says only
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md items 660 and 662): which four buildings the wall is, and its cracks as the only cue; the GDD says only
 ## "the same building faces".
 
 ## How far the facade plane sits back from the box's face.

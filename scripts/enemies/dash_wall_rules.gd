@@ -94,7 +94,7 @@ extends RefCounted
 ## after the second stage the wall fences' drop windows (doodad_keep_outs), the side wall gaps and wall fences
 ## beside them (wall_keep_outs), and the credits (none inside a wall: LevelLayout.doodad_between).
 ## problems() re-checks every wall for the tests.
-## DESIGN-TBD (docs/questions/h7a.md): every number, how many a level, the baits, the route.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md items 644–659): every number, how many a level, the baits, the route.
 
 const FEATURE: String = "dash_wall"
 ## Every feature whose rules place, move or drop enemies, plan charges or cuts, or add ceilings, pads and

@@ -174,7 +174,7 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## stands up to this many buildings across the level's floor lanes for the runner to dash through
 ## (dash_wall_rules.gd), spread through the level where they're fair, spaced so the dash's longest cooldown
 ## is over before the next (data/tuning/dash_walls.tres); fewer where the level leaves no room, never none.
-## 0 turns them off. Without the feature it does nothing. DESIGN-TBD (docs/questions/h7a.md): 1 to 4 by level
+## 0 turns them off. Without the feature it does nothing. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 644): 1 to 4 by level
 ## (2 in Corporate 1, up to 4 in Golden 2; a level asks for no more than its track holds on every lane count:
 ## Corporate 2 and The Hush hold one); quick play's prototype level takes this default.
 @export_range(0, 8) var dash_walls: int = 3

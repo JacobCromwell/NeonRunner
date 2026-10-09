@@ -206,7 +206,7 @@ func _doodad_push() -> PackedFloat32Array:
 ## bursting through something solid that breaks apart. A sharp crack and a short, heavy thump (the push's
 ## thud, harder), crumbling grit closing down, and a few small pieces clattering down after it. Heavier
 ## than the push, well short of an explosion's boom, and with no warning's ring: nothing hurts.
-## DESIGN-TBD (docs/questions/h5.md 1): the smash's sound.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 634): the smash's sound.
 func _doodad_smash() -> PackedFloat32Array:
 	var rng := _rng(40)
 	var length: float = 0.62
@@ -239,7 +239,7 @@ func _doodad_smash() -> PackedFloat32Array:
 ## a deep thump with a slab's boom under it, then the crumble's roar closing down over a second, and chunks of
 ## masonry clattering and thudding down after it, the last ones sparse. Heavier than a doodad's, well short of
 ## an explosion (no blast, no fire's roar) and with no warning's ring: what hurts is the crash's own hit, whose
-## sound is the armor's or the shield's (or the death's). DESIGN-TBD (docs/questions/h7a.md): the sound.
+## sound is the armor's or the shield's (or the death's). DESIGN-TBD (docs/OPEN_QUESTIONS.md item 658): the sound.
 func _dash_wall_smash() -> PackedFloat32Array:
 	var rng := _rng(41)
 	var length: float = 1.45

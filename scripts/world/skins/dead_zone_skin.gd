@@ -93,7 +93,7 @@ extends ZoneSkin
 ## as a hole at a glance and still shows the ruins. The brightest it is drawn: kept far darker than the
 ## street (tests/suites/test_dead_zone_skin.gd).
 @export var gap_inside_color: Color = Color(0.13, 0.13, 0.135)
-## DESIGN-TBD (docs/questions/h3.md): the void's floor far below (the rubble field the holes end in; the
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 641): the void's floor far below (the rubble field the holes end in; the
 ## brightest it is drawn: PAT_DZ_UNDER only darkens it). Its own colour because the floor is a top face,
 ## seen straight on, which the kit lights more than a wall (0.92 against 0.70): darker, so that it stays
 ## as far under the street as the walls do.

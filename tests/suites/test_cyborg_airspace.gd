@@ -6,7 +6,7 @@ extends TestSuite
 ##   airspace (the Floating Head's eye lasers) keeps every burst out, and the boss sees every burst's;
 ## - on real physics: two cyborgs ready together fire together and a third waits for one of them (at
 ##   once if one of the two is killed); with the limit at 1 they take turns, as the build had it;
-## - the crossfire rule (DESIGN-TBD, docs/questions/h4.md): a burst that would leave the runner no way out
+## - the crossfire rule (DESIGN-TBD, docs/OPEN_QUESTIONS.md item 600): a burst that would leave the runner no way out
 ##   waits before its charge-up, never after it. On three lanes a second burst begun well after the first
 ##   waits while the runner in the middle lane could dodge the first into an edge lane; on five lanes it
 ##   fires at once, the lane beyond being free; either way a runner who dodges the bolts they see

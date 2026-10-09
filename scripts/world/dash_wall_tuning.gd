@@ -7,7 +7,7 @@ extends Resource
 ## in a level that has them; Restart level rebuilds). Times are seconds of run at the level's run speed, or
 ## at the dash's speed where they say so (the run speed plus PowerupTuning.dash_speed_bonus: the fastest a
 ## runner comes at or through a wall), so a faster zone keeps every one of them (GDD §3, Pace). Every number
-## here is a first value for playtesting (DESIGN-TBD, docs/questions/h7a.md).
+## here is a first value for playtesting (DESIGN-TBD, docs/OPEN_QUESTIONS.md items 644–659).
 
 const PATH: String = "res://data/tuning/dash_walls.tres"
 

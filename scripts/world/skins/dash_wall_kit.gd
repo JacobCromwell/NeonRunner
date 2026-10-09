@@ -23,7 +23,7 @@ const CRACK_THIN: float = 0.82
 const CRACK_OUT: float = 0.04
 ## How much of the box's height the roofline leaves for what stands on the roof (plant, a mast, finials): the
 ## building's own top, its cornice or parapet, is at size.y - ROOF.
-## DESIGN-TBD (docs/questions/h7b.md): how much of the box the roof plant takes.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 667): how much of the box the roof plant takes.
 const ROOF: float = 1.0
 
 

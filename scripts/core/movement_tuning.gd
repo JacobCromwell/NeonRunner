@@ -158,7 +158,7 @@ const REFERENCE_SPEED: float = 18.0
 ## the track, and as wide as the floor less dash_wall_wall_room beside each side wall. Its hitbox is that box
 ## less dash_wall_inset at its sides and its face (forgiving, CLAUDE.md principle 4), from just above the
 ## floor (so a slide never passes under it) to its top.
-## DESIGN-TBD (docs/questions/h7a.md): taller than any jump: a jump's feet reach jump_height (1.6 m), a wall
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 651): taller than any jump: a jump's feet reach jump_height (1.6 m), a wall
 ## jump from the top of a wall run (wall_max_height) about 5.3 m; a building of two or three storeys.
 @export_range(6.0, 16.0, 0.1, "suffix:m") var dash_wall_height: float = 9.0
 ## DESIGN-TBD: how deep the building is along the track (the runner bursts through it in a tenth of a second).

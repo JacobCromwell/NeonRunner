@@ -410,9 +410,9 @@ func _room_with(lanes: int, items: Array, v: float) -> EnforcerTruckRoom:
 ## fireballs (GDD §11; EnforcerTruck._explode: RunEffects.fireball, carried along with its wreck). Where it goes off
 ## (its wreck's front wreck_gap behind the runner, or closer beside them; in a hole, at the hole's far edge, up to
 ## 3.75 m behind), at 3, 5 and 6 lanes, the runner in every lane, the truck in their lane or beside it, falling back
-## at blast_drift: in the run camera's resting view the fireball's middle shows in every frame while its fire burns
-## (blast_seconds), and its ball (its size about its middle) never crosses the camera's line of sight to the
-## runner's middle. Nothing it draws can hide the runner: it leaves no smoke, and its fire, core and embers only add
+## at blast_drift: in the run camera's resting view the top of its ball (its size over its middle: its core's
+## swell) shows in every frame while its fire burns (blast_seconds), and the ball never crosses the camera's line
+## of sight to the runner's middle. Nothing it draws can hide the runner: it leaves no smoke, and its fire, core and embers only add
 ## light (the fireball's own checks, Reduced flashing included: test_fireballs). Its fire burns as long as its wreck
 ## stays (fire_pace).
 func _test_blast_view() -> void:
@@ -438,7 +438,7 @@ func _test_blast_view() -> void:
 						var c := Vector3(geo.lane_x(l), 0.0, TrackGeometry.world_z(-(front + t.blast_drift * age))) + spot
 						# The pool keeps a blast's middle out of the floor (FireballPool.play).
 						c.y = maxf(c.y, size * 0.45)
-						if not view.on_screen(c + Vector3(0.0, size * 0.5, 0.0), 0.0):
+						if not view.on_screen(c + Vector3(0.0, size, 0.0), 0.0):
 							unseen += 1
 						var k: float = clampf((c - view.origin).dot(ab) / ab.length_squared(), 0.0, 1.0)
 						closest = minf(closest, (view.origin + ab * k).distance_to(c) - size)

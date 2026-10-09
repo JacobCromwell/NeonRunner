@@ -5,7 +5,7 @@ extends Enemy
 ## - Origin: it bursts out of a host cyborg when the host is killed (Cyborg._release_bad_dream
 ##   spawns it where the host stood). GDD §9.7: only one on screen at a time: one released while
 ##   another is still around never appears (the host's own purple burst is all the player sees).
-## - Lurking (DESIGN-TBD, docs/questions/h8.md): one that bursts out further ahead of the runner than its
+## - Lurking (DESIGN-TBD, docs/OPEN_QUESTIONS.md item 630): one that bursts out further ahead of the runner than its
 ##   hover spot (hover_ahead), as when the weapon shoots its host down (weapons hit hosts, owner, October 8,
 ##   2026), rises out of its host as usual and then lurks over that spot, harmless and facing the runner, its
 ##   maw closed once it has risen (an open maw is part of a slash's warning), until they come within
@@ -542,7 +542,7 @@ func _sign_between(side: int, from: float, to: float) -> bool:
 ## GDD §9.7: its whole chase is a major attack (from bursting out, or the end of its lurk, until it
 ## dissolves). DESIGN-TBD (docs/questions/r3.md): while big attacks take turns (GDD §9) the whole chase
 ## holds every other type's big attack too, not only between its slashes. A lurking one's chase hasn't
-## begun, so it holds nothing back (docs/questions/h8.md).
+## begun, so it holds nothing back (docs/OPEN_QUESTIONS.md item 630).
 func is_major_attack_active() -> bool:
 	return alive and not _done and not lurking and state != State.DISSOLVE
 

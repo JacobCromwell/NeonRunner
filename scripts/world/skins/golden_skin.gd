@@ -109,7 +109,7 @@ extends ZoneSkin
 ## How far below the walkways the canal lies (deeper than the fall that ends a run, so a fall never
 ## visibly lands).
 @export_range(4.5, 15.0, 0.1, "suffix:m") var canal_depth: float = 5.5
-## DESIGN-TBD (docs/questions/h3.md): the canal and the quay below the walkways, dim but recognisable through
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 641): the canal and the quay below the walkways, dim but recognisable through
 ## a gap or a cut (task H3, GDD §9.9), never lit like a walkway. These four colours are the PEAKS of what is
 ## drawn there (the patterns only ever darken `canal_color` and `gap_inside_color`, and add at most
 ## `canal_sky_color` and `canal_lamp_color`: PAT_UNDERDECK and PAT_CANAL cap their result at those sums), and
@@ -122,7 +122,7 @@ extends ZoneSkin
 @export var canal_lamp_color: Color = Color(0.04, 0.03, 0.02)
 ## How fast the canal flows toward the player (a motion cue in the gaps).
 @export_range(0.0, 6.0, 0.1, "suffix:m/s") var canal_flow: float = 1.4
-## DESIGN-TBD (docs/questions/h3.md): everything under the walkways (their sides and piers, the building faces
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 641): everything under the walkways (their sides and piers, the building faces
 ## down to the water), seen only through gaps and cuts: the quay's stone in deep shade, dim but with its
 ## arches and the canal's light on it (PAT_UNDERDECK; task H3, GDD §9.9), so a gap reads as a hole at a
 ## glance and still shows the canal. The stone's peak colour, kept far darker than any walkway material
@@ -305,7 +305,7 @@ var _wall_x: float = 0.0
 ## The Gilded Sentinels' niches in the wall about to be built, by side (note_wall_enemies, task C4):
 ## Rect2 over (track distance, height).
 var _niches: Dictionary = {}
-## DESIGN-TBD (docs/questions/h1.md): the wall kept clear between a live Sentinel's niche and a decorative
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 607): the wall kept clear between a live Sentinel's niche and a decorative
 ## alcove beside it (crowds_niche()): the two gold frames (2 x 0.12 m) and a little more, so they never touch or
 ## overlap. No more than that: a live niche is not to stand apart from the decorative ones (USER_REQUESTS.md:
 ## the decorative statues are there so a live one can surprise the player).

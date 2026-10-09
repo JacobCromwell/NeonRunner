@@ -21,7 +21,7 @@ extends RefCounted
 ## - fewer than GameRules.max_bursts_in_air bursts of the cyborg-type guns are in the air (GDD §9.2,
 ##   owner, October 8, 2026: up to two at once; CyborgAirspace, shared through RunWorld metadata), and
 ##   no boss holds the whole airspace (the Floating Head's eye lasers);
-## - the crossfire rule (DESIGN-TBD, docs/questions/h4.md): bursts whose bolts arrive within
+## - the crossfire rule (DESIGN-TBD, docs/OPEN_QUESTIONS.md item 600): bursts whose bolts arrive within
 ##   crossfire_gap of each other always leave the runner a way out, a place one move away that none of
 ##   them is aimed at, and wild fire never arrives that close to another burst (_crossfire_fair). A
 ##   burst that would leave none waits before its charge-up, never after it; the check as its aim
@@ -227,7 +227,7 @@ func _release_airspace() -> void:
 	_airspace().release(shooter, world.level_time())
 
 
-## The crossfire rule (DESIGN-TBD, docs/questions/h4.md; GDD §9.2: up to two bursts in the air at once,
+## The crossfire rule (DESIGN-TBD, docs/OPEN_QUESTIONS.md item 600; GDD §9.2: up to two bursts in the air at once,
 ## each dodged by switching lanes, GDD §3). Bursts whose bolts arrive within crossfire_gap of each other
 ## must always leave the runner a way out: a place one move away that none of them is aimed at (_way_out).
 ## Wild fire (the panic variant's, landing anywhere around the runner) never arrives that close to another

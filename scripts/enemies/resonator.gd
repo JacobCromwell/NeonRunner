@@ -577,7 +577,7 @@ func hit_radius() -> float:
 func _on_defeated(_cause: StringName) -> void:
 	if state == State.WARNING and world.sounds != null:
 		# Its warning ends in a crash that releases the wave: with no wave coming, cut it off before it
-		# crashes (the death's own sound covers the cut). DESIGN-TBD (docs/questions/h2.md): cut it, or let it play out?
+		# crashes (the death's own sound covers the cut). DESIGN-TBD (docs/OPEN_QUESTIONS.md item 610): cut it, or let it play out?
 		world.sounds.stop(&"resonator_warning")
 	_set_state(State.DOWN)
 	charge = 0.0

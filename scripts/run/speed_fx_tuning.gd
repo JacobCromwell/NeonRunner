@@ -96,7 +96,7 @@ extends Resource
 ## The dash smashes a zone doodad (GDD §3, owner, October 8, 2026; Player.smashed, task H5): a light shake
 ## (more than a push's bump, well under a dash kill's 0.32) and its pieces flung in its own colours
 ## (RunEffects.rubble, RubbleBurst), with the crunch (doodad_smash.wav). No sparks and no hit-stop.
-## DESIGN-TBD (docs/questions/h5.md 1): the look and the numbers.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 634): the look and the numbers.
 @export_range(0.0, 1.0, 0.01) var smash_shake_strength: float = 0.1
 @export_range(0.05, 1.0, 0.01, "suffix:s") var smash_shake_time: float = 0.16
 ## The share of the runner's speed the pieces carry on along its way (each piece 0.55–1.35 times this):
@@ -118,7 +118,7 @@ extends Resource
 ## dash_wall_smash.wav). Nothing flashes or glows (Reduced flashing leaves it as it is), Screen shake scales it,
 ## and the pieces and the dust clear the lanes fast (they fly out and fall behind the runner, and the dust
 ## fades as the camera nears it), so the runner coming through keeps sight of the street. The counts are fixed
-## when a level loads. DESIGN-TBD (docs/questions/h7a.md): the look and the numbers.
+## when a level loads. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 658): the look and the numbers.
 @export_range(0.0, 1.0, 0.01) var wall_shake_strength: float = 0.26
 @export_range(0.05, 1.0, 0.01, "suffix:s") var wall_shake_time: float = 0.34
 ## The most pieces one wall flings (by its size, at most this many: a wall at 3 lanes is about half of one at 6).
@@ -161,7 +161,7 @@ extends Resource
 ## never reallocates mid-run); the rest apply to the next explosion. Fireballs are looks only: they
 ## collide with nothing and last about a second (a few for a boss), so none ever reads as a hazard.
 ## DESIGN-TBD: how big each explosion is (a constant in its own script), how long it lasts and its exact
-## colours are placeholders until the owner has seen them (docs/questions/h6.md); fireball_scale moves them all.
+## colours are placeholders until the owner has seen them (docs/OPEN_QUESTIONS.md items 613–616); fireball_scale moves them all.
 ## Fireballs that can be on screen at once; one more cuts the oldest short.
 @export_range(1, 12, 1) var fireball_pool: int = 8
 ## Scales every fireball's size (1 = as each explosion asks): the quickest way to make all of them bigger or smaller.

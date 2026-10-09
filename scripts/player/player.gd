@@ -61,7 +61,7 @@ const DOODAD_FEET_CLEARANCE: float = 0.05
 ## into its side began while dashing) still breaks on contact this long after the dash ends (seconds):
 ## the contact may come a frame or two after the dash's last one (frame steps; the claim already counts a
 ## ramp's or speed pad's boost fading, _dash_reach). A dash that ends short of a doodad it never claimed
-## pushes as usual. DESIGN-TBD (docs/questions/h5.md 3).
+## pushes as usual. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 636).
 const SMASH_CLAIM_GRACE: float = 0.1
 
 var tuning: MovementTuning
@@ -561,7 +561,7 @@ func _event(kind: StringName) -> void:
 func _start_switch(target: int) -> void:
 	# GDD §3 (owner, October 8, 2026): dashing into a zone doodad smashes it, from the side too, so a
 	# doodad's side doesn't block a dashing player (_lane_blocked claims it; it breaks on contact).
-	# DESIGN-TBD (docs/questions/h5.md 2): a dashing switch into a doodad's side smashes it.
+	# DESIGN-TBD (docs/OPEN_QUESTIONS.md item 635): a dashing switch into a doodad's side smashes it.
 	if target != lane and _lane_blocked(target, dashing):
 		# GDD §9.3: a solid side (the hover truck's) bumps the player back.
 		var dir: int = signi(target - lane)
@@ -999,7 +999,7 @@ func _check_doodads(motion: float) -> void:
 		var d: Dictionary = area.get_meta(&"doodad")
 		var gap: float = float(d["start"]) - front
 		# The doodad pushing the player is left alone while its push carries them (it pushes once). A dash
-		# started during the push doesn't smash it: the push completes (DESIGN-TBD, docs/questions/h5.md 7).
+		# started during the push doesn't smash it: the push completes (DESIGN-TBD, docs/OPEN_QUESTIONS.md item 640).
 		# Once a move has cut the push short, a dash that steers back into it takes it: claimed (a dashing
 		# switch into its side, _lane_blocked) or the dash reaches it (_dash_claims), so it breaks on contact
 		# instead of the body sinking into it while it's still left alone.
@@ -1051,7 +1051,7 @@ func _dash_reach() -> float:
 ## The dash breaks doodad `b` apart (GDD §3, owner, October 8, 2026; DashBreakable.smash: its body, lane
 ## blocker and standable top go, and its look): no push and no damage, and the player runs on in their
 ## lane at their speed. `smashed` and the `<kind>_smash` event follow (RunEffects flings its pieces and
-## shakes lightly; the event plays the crunch). DESIGN-TBD (docs/questions/h5.md 4): it scores nothing.
+## shakes lightly; the event plays the crunch). DESIGN-TBD (docs/OPEN_QUESTIONS.md item 637): it scores nothing.
 func _smash(b: DashBreakable) -> void:
 	_smash_claims.erase(b.get_instance_id())
 	if not b.smash():
@@ -1156,7 +1156,7 @@ func _in_wall_way(b: DashBreakable) -> bool:
 ## Dash wall `b` breaks as the runner reaches it (GDD §9.14; DashBreakable.smash with `how`: &"dash", &"crash"
 ## or &"pass"): `smashed` and the `dash_wall_smash` event follow (RunEffects crumbles it, the event plays the
 ## crash). What the crash costs is receive_hit's (DamageRules); a smash or a pass costs nothing and scores
-## nothing. DESIGN-TBD (docs/questions/h7a.md): no score for breaking one.
+## nothing. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 653): no score for breaking one.
 func _break(b: DashBreakable, how: StringName) -> void:
 	_smash_claims.erase(b.get_instance_id())
 	if not b.smash(how):

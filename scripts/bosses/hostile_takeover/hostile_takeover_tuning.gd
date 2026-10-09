@@ -91,7 +91,7 @@ extends Resource
 ## Collector closes at 3.5 m/s now (about 11 s on screen), which on a 130 m flatcar roof would carry it
 ## past the roof's end, over the coupling, before the runner reaches it, and where the runner jumps the
 ## gap it could be stomped mid-jump. So the Board's keeps the 7 m/s the Collector was first built with
-## (about 5.4 s). docs/questions/h10.md.
+## (about 5.4 s). DESIGN-TBD: docs/OPEN_QUESTIONS.md item 626.
 @export_range(0.5, 20.0, 0.5, "suffix:m/s") var tithe_approach_speed: float = 7.0
 ## DESIGN-TBD (GDD §10: "partial wall fences run along the track's sound barriers"): a partial wall fence
 ## (the low or the high band, in turn) on wall_fence_share of the corporate carriages from wall_fences_from

@@ -523,7 +523,8 @@ func _test_enforcer_truck() -> void:
 		var want: float = t.blast_drift * (w.level_time() - t0)
 		check(is_instance_valid(truck) and absf(fell - want) < 0.5,
 			"it keeps up with the runner, falling back %.2f m in %.2f s (the wreck: %.2f m) %s" % [fell, w.level_time() - t0, want, tag])
-		var gone: bool = await _run_until(w, t.blast_seconds + 0.5, func() -> bool: return not is_instance_valid(truck))
+		var held: WeakRef = weakref(truck)
+		var gone: bool = await _run_until(w, t.blast_seconds + 0.5, func() -> bool: return held.get_ref() == null)
 		var burned: float = w.level_time() - t0
 		check(gone and burned <= t.blast_seconds + 0.1, "the wreck is gone as its fire burns out (%.2f s after it blew up) %s" % [
 			burned, tag])

@@ -12,7 +12,7 @@ extends Resource
 ## after its maw opens with a shriek; grasping hands after purple mist pools in the lane, with
 ## whispering; lights out after a deep inhale), that the ceiling is safe, and that the arena is darker
 ## than normal but never pitch black. Every number here is a placeholder (DESIGN-TBD,
-## docs/questions/e5c.md; the owner's October 8, 2026 changes, task H9: docs/questions/h9.md): lights out
+## docs/questions/e5c.md; the owner's October 8, 2026 changes, task H9: docs/OPEN_QUESTIONS.md items 617–625): lights out
 ## half as bright as first built, the hands' rounds spread along the street, many wall gaps and wall
 ## hands, twice the floor gaps.
 

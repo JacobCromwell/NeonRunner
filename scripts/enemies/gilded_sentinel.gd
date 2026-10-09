@@ -88,7 +88,7 @@ const NICHE_TINT := Color(0.86, 0.02, 0.03)
 const NICHE_TINT_MAX: float = 0.85
 const NICHE_TINT_RAMP: float = 0.3
 ## The eyes: their glow at rest, during the warning (rising to full) and once it's down (dark). DESIGN-TBD
-## (docs/questions/h1.md): a little more at rest than first built (0.9), so the live statue is picked out early.
+## (docs/OPEN_QUESTIONS.md item 605): a little more at rest than first built (0.9), so the live statue is picked out early.
 const EYES_IDLE: float = 1.6
 const EYES_FULL: float = 6.0
 ## The marks' brightness: at the warning's start, at its end, and a swing's flash (softer with Reduced

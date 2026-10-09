@@ -97,7 +97,7 @@ enum FloorStyle { MAGLEV, PLAZA }
 @export var joint_color: Color = Color(0.27, 0.28, 0.3)
 ## The walkway along the building faces beside the outer lanes (and the plaza's paving colour).
 @export var ledge_color: Color = Color(0.38, 0.4, 0.43)
-## DESIGN-TBD (docs/questions/h3.md): everything below the running surface (the carriages' sides and
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 641): everything below the running surface (the carriages' sides and
 ## ends, the plaza deck's edges, the guideways, the trench or the plaza's lower level), seen only through
 ## gaps and cuts: dim, and darkening with depth, but showing what is there (PAT_CORP_UNDER; task H3, GDD
 ## §9.9: "the trench under the maglev line"), so a gap reads as a hole at a glance and still shows the

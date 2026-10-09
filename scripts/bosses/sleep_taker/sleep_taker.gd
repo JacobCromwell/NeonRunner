@@ -55,7 +55,7 @@ extends BossEncounter
 ## slash and lights out keep their timings (the slash's warning is what gets a runner to a pad).
 ## Distances that stand for a time follow the run's pace (run_pace()), so the fight keeps its seconds at
 ## the Dead Zone's 24.2 m/s. Numbers: SleepTakerTuning (data/bosses/dead_zone_boss_tuning.tres), all
-## DESIGN-TBD (docs/questions/e5c.md, docs/questions/h9.md).
+## DESIGN-TBD (docs/questions/e5c.md; task H9's: docs/OPEN_QUESTIONS.md items 617–625).
 
 enum Step { ENTER, HOVER, REFORM }
 

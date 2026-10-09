@@ -104,7 +104,7 @@ func _test_splash_kill() -> void:
 
 
 ## The shared damage rules (Enemy): a weapon hurts a host, another enemy's charge never does (DESIGN-TBD,
-## docs/questions/h8.md); a plain cyborg takes both; a fence generator neither.
+## docs/OPEN_QUESTIONS.md item 629); a plain cyborg takes both; a fence generator neither.
 func _test_charge_rules() -> void:
 	var w: RunWorld = sim.build_world(RunSim.layout(3, 400.0))
 	var host: Enemy = w.director.spawn({"type": "cyborg", "at": 60.0, "lane": 0, "side": 0, "seed": 3,
