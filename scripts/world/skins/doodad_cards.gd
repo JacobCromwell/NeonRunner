@@ -87,7 +87,7 @@ func design(size_class: StringName, look_seed: int) -> Dictionary:
 
 ## Dresses `body` (a doodad's node, centred on its box of `size`) with its look. Without cards for it,
 ## the default look (ZoneSkin.default_doodad_mesh in `fallback_palette`, pushing to `side`).
-## DESIGN-TBD (docs/questions/g6b.md): a card look is the same whichever side the doodad pushes to.
+## A card look is the same whichever side the doodad pushes to (owner, October 9, 2026: no hint needed).
 func build(body: Node3D, size: Vector3, size_class: StringName, side: int, look_seed: int,
 		fallback_palette: PackedColorArray) -> void:
 	var inst := MeshInstance3D.new()

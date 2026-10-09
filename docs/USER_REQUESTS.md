@@ -24,6 +24,7 @@ NOTE: Mark tasks as done as you complete them.
 ## Doodad pictures (October 9, 2026)
 
 - [x] The doodads look like a jumble of squares and other 3D primitives. Keep each doodad a simple box, but draw on it pictures that look like the object, with the open-air parts transparent: the Marketplace's stall has a wooden base, supports in each corner and a little roof, and the middle where the goods are is air. What to draw in each zone is left to the build's recommendation. DONE (task G6b): every zone's doodads are picture cards painted by code (`tools/asset_gen/doodad_art/`, `tools/godot.sh doodads`); the looks chosen and what's left open are in `docs/questions/g6b.md`.
+- [x] Answers on the doodad pictures: (1) no hint of which way a doodad pushes; (2) a rubble heap lower at its edges is fine; (3) the soft neutral edge sheen instead of the violet one is fine; (4) the looks that differ from the first doodads (drums, a van, a stall, a booth, a container, a column, a bus, the statue as the small one, a colonnade) are fine. DONE: recorded in GDD §3 (Zone doodads, their look); the `DESIGN-TBD` marker is gone.
 - [ ] Doodads prefer the lane next to the side wall when it's open, without costing gameplay: not where the generator already has something on that part of the wall or needs it open. Held, by the owner's choice ("art first, placement later"), until the dash-smash branch (`claude/nifty-brahmagupta-i5ov2i`, H5) is resolved, since it changes the same generator, track and player code.
 
 ## Gangland boss intro (October 9, 2026)
