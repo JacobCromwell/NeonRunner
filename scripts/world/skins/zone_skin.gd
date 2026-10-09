@@ -192,10 +192,14 @@ func floor_segment(_parent: Node3D, _center: Vector3, _size: Vector3, _lane_x: f
 ## moves as it runs (FloorCutSection: static, span, front, far). It must read as a hole at a glance,
 ## like any gap, in every zone; nothing in it glows but the orange edges, and nothing flickers.
 ## Build every part with an identity transform, in `parent`'s (world) space, where the section says.
-## The default (standard_floor_cut) is a plain dark hole with the skin's gap_edge_color and
-## gap_inside_color if it has them. The zones where the Buzz Overdrive appears give it their own floor's
-## look (a train roof sliced open, rubble split, a gold walkway or the palace's marble cut) by passing
-## their own style and adding parts of their own.
+## The default (standard_floor_cut) is a plain dark box with the skin's gap_edge_color and
+## gap_inside_color if it has them, which only the grey box (no zone scenery below it) keeps. Every zone
+## gives the cut its own floor's look (a train roof sliced open, rubble split, a gold walkway, the
+## palace's marble or the City's hover truck, Gangland's street and the Marketplace's stall roofs cut)
+## by passing its own style and adding parts of its own. Task H3 (GDD §9.9: inside the cut the player
+## sees the zone's own scenery below the street, the same as through an ordinary gap): the hole has no
+## bottom of its own where the zone draws its plane below the street (every zone does, once per chunk
+## with the left wall), and leaves the sides to the neighbouring lanes' floors where they draw them.
 func floor_cut(parent: Node3D, cut: FloorCutSection) -> void:
 	var edge: Variant = get("gap_edge_color")
 	var inside: Variant = get("gap_inside_color")
@@ -213,6 +217,14 @@ func floor_cut(parent: Node3D, cut: FloorCutSection) -> void:
 ##     its param on a face across the lane, along it and the bottom): the hole's inside;
 ##   depth (float): how far down its inside goes; bottom (bool, true): draw its bottom (false where the
 ##     skin draws a void below the whole street already);
+##   walls (bool, true): draw the long side walls (task H3). false where the neighbours' floors draw their
+##     own sides under the street (every zone's floor_segment does, down to its gap's depth), which then
+##     show through the cut as through any gap, in the zone's own gap look, instead of a copy of them. The
+##     side with no neighbour (the lane's floor runs on to the wall) keeps its wall, unless `outer_walls`
+##     is false too (the City: no wall at the facade, as at any gap there);
+##   outer_walls (bool, true): with walls false, whether the side with no neighbour keeps its wall;
+##   end_depth (float, depth): how far down the cut's two end faces go, when the floor ends above the
+##     below plane as it does at any gap (the City's hover trucks end 2.6 m down, with the road far below);
 ##   lip, lip_glow, strip_glow, halo (floats; halo 0: none);
 ##   side_from (Array[float], [left, right]): where the neighbouring lanes' visible floor ends on each
 ##     side, if short of the cut's edge (a train roof's shoulder: the side lips run from there to the
@@ -231,6 +243,7 @@ static func standard_floor_cut(parent: Node3D, cut: FloorCutSection, solid: Mate
 	var pattern: int = int(style.get("pattern", MeshKit.PAT_PLAIN))
 	var params: Array = style.get("params", [0.0, 0.0, 0.0])
 	var depth: float = float(style.get("depth", CUT_DEPTH))
+	var end_depth: float = float(style.get("end_depth", depth))
 	var lip: float = float(style.get("lip", CUT_LIP))
 	var lip_glow: float = float(style.get("lip_glow", CUT_LIP_GLOW))
 	var strip_glow: float = float(style.get("strip_glow", CUT_STRIP_GLOW))
@@ -257,13 +270,20 @@ static func standard_floor_cut(parent: Node3D, cut: FloorCutSection, solid: Mate
 	var inner := MeshBatch.new()
 	var s: MeshLayer = inner.layer(solid)
 	var wall: float = depth + top
-	s.rect(Vector3(w0, -depth, z0), Vector3(0, 0, -length), Vector3(0, wall, 0), inside, 0.0, pattern,
-		Vector2.ZERO, Vector2.ONE, float(params[1]))
-	s.rect(Vector3(w1, -depth, z1), Vector3(0, 0, length), Vector3(0, wall, 0), inside, 0.0, pattern,
-		Vector2.ZERO, Vector2.ONE, float(params[1]))
-	s.rect(Vector3(x0 + inset, -depth, z1 + inset), Vector3(w - 2.0 * inset, 0, 0), Vector3(0, wall, 0), inside, 0.0,
+	var end_wall: float = end_depth + top
+	var side_walls: bool = bool(style.get("walls", true))
+	var outer_walls: bool = bool(style.get("outer_walls", true))
+	var left_wall: bool = side_walls or (outer_walls and not cut.has_neighbour(-1))
+	var right_wall: bool = side_walls or (outer_walls and not cut.has_neighbour(1))
+	if left_wall:
+		s.rect(Vector3(w0, -depth, z0), Vector3(0, 0, -length), Vector3(0, wall, 0), inside, 0.0, pattern,
+			Vector2.ZERO, Vector2.ONE, float(params[1]))
+	if right_wall:
+		s.rect(Vector3(w1, -depth, z1), Vector3(0, 0, length), Vector3(0, wall, 0), inside, 0.0, pattern,
+			Vector2.ZERO, Vector2.ONE, float(params[1]))
+	s.rect(Vector3(x0 + inset, -end_depth, z1 + inset), Vector3(w - 2.0 * inset, 0, 0), Vector3(0, end_wall, 0), inside, 0.0,
 		pattern, Vector2.ZERO, Vector2.ONE, float(params[0]))
-	s.rect(Vector3(x1 - inset, -depth, z0 - inset), Vector3(-(w - 2.0 * inset), 0, 0), Vector3(0, wall, 0), inside, 0.0,
+	s.rect(Vector3(x1 - inset, -end_depth, z0 - inset), Vector3(-(w - 2.0 * inset), 0, 0), Vector3(0, end_wall, 0), inside, 0.0,
 		pattern, Vector2.ZERO, Vector2.ONE, float(params[0]))
 	if bool(style.get("bottom", true)):
 		s.rect(Vector3(x0, -depth, z0), Vector3(w, 0, 0), Vector3(0, 0, -length), inside, 0.0, pattern,

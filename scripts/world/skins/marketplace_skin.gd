@@ -284,6 +284,18 @@ func floor_segment(parent: Node3D, center: Vector3, size: Vector3, lane_x: float
 	batch.commit(parent)
 
 
+## A floor cut (ZoneSkin.floor_cut; task B4, H3): the stall roofs sliced open down the lane, and through
+## it what any gap shows (GDD §9.9): the stalls' sides in their deep shade down the neighbouring lanes
+## (their own, drawn with their roofs) and the market floor `market_depth` down, lost in the shade (the
+## chunk draws it with the left wall). The cut draws only its two end faces, in the gap's own shade and
+## pattern (MarketStalls, PAT_UNDER), and no walls and no bottom.
+func floor_cut(parent: Node3D, cut: FloorCutSection) -> void:
+	standard_floor_cut(parent, cut, solid_material(), glow_material(), {
+		"edge": gap_edge_color, "inside": gap_inside_color, "pattern": MeshKit.PAT_UNDER, "params": [0.0, 1.0, 2.0],
+		"depth": market_depth, "bottom": false, "walls": false,
+	})
+
+
 func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: float) -> void:
 	_wall_x = absf(face_x)
 	var batch := MeshBatch.new()

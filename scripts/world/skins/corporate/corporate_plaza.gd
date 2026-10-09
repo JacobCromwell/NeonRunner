@@ -63,10 +63,10 @@ func build(batch: MeshBatch, center: Vector3, size: Vector3, lane_x: float, edge
 	var floor_y: float = -skin.trench_depth
 	if not left_wall:
 		s.rect(Vector3(x0, floor_y, -far_d), Vector3(0, 0, far_d - near_d), Vector3(0, -floor_y, 0), shade, 0.0,
-			MeshKit.PAT_CORP_UNDER, Vector2.ZERO, Vector2.ONE, 1.0)
+			MeshKit.PAT_CORP_UNDER, Vector2.ZERO, Vector2.ONE, 5.0)
 	if not right_wall:
 		s.rect(Vector3(x1, floor_y, -near_d), Vector3(0, 0, -(far_d - near_d)), Vector3(0, -floor_y, 0), shade, 0.0,
-			MeshKit.PAT_CORP_UNDER, Vector2.ZERO, Vector2.ONE, 1.0)
+			MeshKit.PAT_CORP_UNDER, Vector2.ZERO, Vector2.ONE, 5.0)
 	if edge_start:
 		_edge(s, x0, x1, near_d, lip_n, 1.0)
 	if edge_end:
@@ -102,11 +102,13 @@ func _edge(s: MeshLayer, x0: float, x1: float, d: float, lip: float, facing: flo
 	var floor_y: float = -skin.trench_depth
 	if facing > 0.0:
 		s.rect(Vector3(x0, 0, z), Vector3(w, 0, 0), Vector3(0, 0, -lip), edge, LIP_GLOW)
-		s.rect(Vector3(x0, floor_y, z), Vector3(w, 0, 0), Vector3(0, -floor_y, 0), shade, 0.0, MeshKit.PAT_CORP_UNDER)
+		s.rect(Vector3(x0, floor_y, z), Vector3(w, 0, 0), Vector3(0, -floor_y, 0), shade, 0.0, MeshKit.PAT_CORP_UNDER,
+			Vector2.ZERO, Vector2.ONE, 5.0)
 		s.rect(Vector3(x0, strip_y, z + 0.004), Vector3(w, 0, 0), Vector3(0, STRIP_HEIGHT, 0), edge, STRIP_GLOW)
 	else:
 		s.rect(Vector3(x0, 0, z + lip), Vector3(w, 0, 0), Vector3(0, 0, -lip), edge, LIP_GLOW)
-		s.rect(Vector3(x1, floor_y, z), Vector3(-w, 0, 0), Vector3(0, -floor_y, 0), shade, 0.0, MeshKit.PAT_CORP_UNDER)
+		s.rect(Vector3(x1, floor_y, z), Vector3(-w, 0, 0), Vector3(0, -floor_y, 0), shade, 0.0, MeshKit.PAT_CORP_UNDER,
+			Vector2.ZERO, Vector2.ONE, 5.0)
 		s.rect(Vector3(x1, strip_y, z - 0.004), Vector3(-w, 0, 0), Vector3(0, STRIP_HEIGHT, 0), edge, STRIP_GLOW)
 
 
@@ -117,24 +119,25 @@ func _edge(s: MeshLayer, x0: float, x1: float, d: float, lip: float, facing: flo
 func cut(parent: Node3D, section: FloorCutSection) -> void:
 	ZoneSkin.standard_floor_cut(parent, section, skin.solid_material(), skin.glow_material(), {
 		"edge": skin.gap_edge_color, "inside": skin.gap_inside_color, "pattern": MeshKit.PAT_CORP_UNDER,
-		"params": [0.0, 1.0, 2.0], "depth": skin.trench_depth, "bottom": false,
+		"params": [5.0, 5.0, 4.0], "depth": skin.trench_depth, "bottom": false,
 		"lip": EDGE_LIP, "lip_glow": LIP_GLOW, "strip_glow": STRIP_GLOW, "halo": 0.0,
 	})
 
 
-## The lower level far below the plaza, lost in the dark, its walls at the building faces, and the
+## The lower level below the plaza (task H3: dim concrete in painted bays, no longer lost in the dark), its walls at the building faces, and the
 ## drifting grit, drizzle and speed streaks over the deck (GDD §5 motion effects), for one chunk. None
 ## of it belongs to a lane, so the skin adds it to the left wall's mesh.
 func below(batch: MeshBatch, half_width: float, start: float, end: float) -> void:
 	var s: MeshLayer = batch.layer(skin.solid_material())
 	var shade: Color = skin.gap_inside_color
 	var floor_y: float = -skin.trench_depth
-	s.rect(Vector3(-half_width, floor_y, -start), Vector3(half_width * 2.0, 0, 0), Vector3(0, 0, -(end - start)), shade, 0.0,
-		MeshKit.PAT_CORP_UNDER, Vector2.ZERO, Vector2.ONE, 2.0)
-	s.rect(Vector3(-half_width, floor_y, -end), Vector3(0, 0, end - start), Vector3(0, -floor_y, 0), shade, 0.0,
-		MeshKit.PAT_CORP_UNDER, Vector2.ZERO, Vector2.ONE, 1.0)
-	s.rect(Vector3(half_width, floor_y, -start), Vector3(0, 0, -(end - start)), Vector3(0, -floor_y, 0), shade, 0.0,
-		MeshKit.PAT_CORP_UNDER, Vector2.ZERO, Vector2.ONE, 1.0)
+	s.rect(Vector3(-half_width, floor_y, -start), Vector3(half_width * 2.0, 0, 0), Vector3(0, 0, -(end - start)), skin.trench_color,
+		0.0, MeshKit.PAT_CORP_UNDER, Vector2.ZERO, Vector2.ONE, 4.0)
+	# The lower level's walls at the building faces (they face the street: the kit culls back faces).
+	s.rect(Vector3(-half_width, floor_y, -start), Vector3(0, 0, -(end - start)), Vector3(0, -floor_y, 0), shade, 0.0,
+		MeshKit.PAT_CORP_UNDER, Vector2.ZERO, Vector2.ONE, 5.0)
+	s.rect(Vector3(half_width, floor_y, -end), Vector3(0, 0, end - start), Vector3(0, -floor_y, 0), shade, 0.0,
+		MeshKit.PAT_CORP_UNDER, Vector2.ZERO, Vector2.ONE, 5.0)
 	MeshKit.drift_particles(batch.layer(skin.drift_material()), start, end, TrackBuilder.CHUNK_LENGTH, half_width - 0.7,
 		7.0, skin.dust_count, skin.scrap_count, skin.streak_count,
 		PackedColorArray([skin.dust_color, skin.scrap_color, skin.streak_color]))

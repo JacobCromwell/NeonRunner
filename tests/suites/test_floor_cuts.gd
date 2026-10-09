@@ -18,16 +18,34 @@ extends TestSuite
 ## - Runtime cuts: added in a boss arena (BossArena.cut_problem, add_pieces) and to a track that keeps
 ##   extending (TrackBuilder.extend_layout, endless mode).
 ## - Every skin's look (ZoneSkin.floor_cut; the Corporate trains and plaza, the Dead Zone, the Golden
-##   Zone and the Golden Palace their own): parts registered, no collision added, a dark inside,
-##   nothing glowing but the orange edges right on the collision edges, cheap to build.
+##   Zone and the Golden Palace, and the City, Gangland and the Marketplace, their own): parts
+##   registered, no collision added, a dark inside, nothing glowing but the orange edges right on the
+##   collision edges, cheap to build; and (task H3, GDD §9.9) an open cut shows the zone's own scenery
+##   below the street like any gap: nothing of the cut's own closes the lane under the street, and the
+##   zone's plane lies under the whole stretch (_check_below).
 ## - The stand-in: its warning (a red line and a sound) only from its warning point, Reduced flashing,
 ##   and out of the campaign.
 
 const Rules = preload("res://scripts/enemies/floor_cutter_rules.gd")
 const CutterScript = preload("res://scripts/enemies/floor_cutter.gd")
 const SKINS_DIR: String = "res://data/skins"
-## The darkest a cut's inside may be drawn (linear luminance): far below any zone's floor.
+## The brightest a cut's inside may be drawn (linear luminance) for a skin with no gap colour of its own to
+## follow: far below any zone's floor. A skin that has one (gap_inside_color: since task H3 the zone's gaps
+## show their scenery below the street, dim but recognisable, so each is drawn in its own peak colour)
+## holds its cut to the same colour: a cut is never brighter than the zone's gap (_inside_limit).
 const INSIDE_MAX_LUMINANCE: float = 0.012
+const HOSTILE_TAKEOVER_SKIN: String = "res://data/bosses/corporate_boss_skin.tres"
+## The skins with no zone scenery below the street to show (the grey box in code and as data, the plain
+## base skin: the default look's box has a bottom of its own).
+const NO_BELOW: Array[String] = ["grey box", "greybox", "base"]
+## An open cut's lane meets the zone's plane at least this far below the street (the shallowest: Gangland's
+## crater, 4.5 m), and the cut draws nothing of its own in between.
+const BELOW_MIN_DEPTH: float = 3.0
+## The skins whose planes below the street were drawn almost black until task H3's second part (GDD §9.9, the
+## coordinator's decision: "recognisable from the runner's camera"), with the dimmest colour the first face
+## below an open cut may be drawn in (linear luminance), so they never fall back to black.
+const RECOGNISABLE_BELOW: Array[String] = ["corporate", "corporate_plaza", "dead_zone", "golden", "golden_palace"]
+const BELOW_MIN_LUMINANCE: float = 0.005
 
 var sim: RunSim
 var rules: GameRules
@@ -714,6 +732,8 @@ func _test_skins() -> void:
 	for file: String in DirAccess.get_files_at(SKINS_DIR):
 		if file.ends_with("_skin.tres"):
 			skins[file.trim_suffix("_skin.tres")] = load(SKINS_DIR.path_join(file)) as ZoneSkin
+	# Hostile Takeover's train (GDD §10: the gunship drops a Buzz Overdrive onto it).
+	skins["hostile takeover"] = load(HOSTILE_TAKEOVER_SKIN) as ZoneSkin
 	check(skins.has("corporate") and skins.has("corporate_plaza") and skins.has("dead_zone") and skins.has("golden")
 		and skins.has("golden_palace"), "the zones where the Buzz Overdrive appears are among the skins")
 	for skin_name: String in skins:
@@ -722,6 +742,9 @@ func _test_skins() -> void:
 			for lane: int in [0, lanes / 2]:
 				await _check_look(skin, skin_name, lanes, lane)
 		await _check_build_cost(skin, skin_name)
+		if not NO_BELOW.has(skin_name):
+			for lane: int in [0, 2]:
+				await _check_below(skin, skin_name, 5, lane)
 
 
 ## Building the chunks a cut runs through stays within the chunk budgets (SkinSuite): its floor's slices
@@ -763,6 +786,7 @@ func _check_look(skin: ZoneSkin, skin_name: String, lanes: int, lane: int) -> vo
 	var edge: Color = _edge_color(skin)
 	var faults: PackedStringArray = []
 	var dark: int = 0
+	var inside_limit: float = _inside_limit(skin)
 	var lips: Dictionary = {"front": -INF, "far": INF, "left": -INF, "right": INF}
 	var parts: Array[Node3D] = section.statics + section.spans + section.fronts + section.fars
 	check(not section.statics.is_empty() and not section.fronts.is_empty() and not section.fars.is_empty()
@@ -803,10 +827,10 @@ func _check_look(skin: ZoneSkin, skin_name: String, lanes: int, lane: int) -> vo
 					elif part in section.statics:
 						if p.y > 0.0001:
 							faults.append("the inside reaches above the floor at %s" % p)
-						if _luminance(c) > INSIDE_MAX_LUMINANCE:
+						if _luminance(c) > inside_limit:
 							faults.append("an inside lit %s (%.4f) at %s" % [c, _luminance(c), p])
 						dark += 1
-					elif p.y < -0.0001 and _luminance(c) > INSIDE_MAX_LUMINANCE:
+					elif p.y < -0.0001 and _luminance(c) > inside_limit:
 						faults.append("a lit face below the floor %s at %s" % [c, p])
 	check(faults.is_empty(), "nothing in the look glows but the orange edges, nothing collides, and its inside is dark %s: %s" % [tag,
 		", ".join(faults.slice(0, 4))])
@@ -820,6 +844,79 @@ func _check_look(skin: ZoneSkin, skin_name: String, lanes: int, lane: int) -> vo
 		check(absf(float(lips["right"]) - section.x1) < 0.005, "the right lip starts right at the collision edge %s" % tag)
 	check(absf(_shown_until(fc) - front) < 0.001, "the floor shown ends at the front " + tag)
 	await _free_track(track)
+
+
+## An open cut shows the zone's own scenery below the street, like any gap (task H3; GDD §9.9: "inside the
+## cut, the player sees the zone's own scenery below the street, the same as through an ordinary gap ...
+## never a dark box"): with the cut open over its whole stretch, a ray straight down its lane, at several
+## places along it (near both ends, in the middle and either side of a chunk's cut) meets the zone's own
+## plane deep below the street, and nothing the cut itself draws (a bottom, a lid) comes first.
+func _check_below(skin: ZoneSkin, skin_name: String, lanes: int, lane: int) -> void:
+	var tag: String = "(%s, %d lanes, lane %d)" % [skin_name, lanes, lane]
+	var cut := {"lane": lane, "start": 80.0, "end": 160.0, "warn": 70.0, "charge": 40.0, "keep": 7.0, "speed": 18.0}
+	var track: TrackBuilder = _track(_layout(lanes, cut, false), skin)
+	var fc: FloorCut = track.floor_cut(lane, 160.0)
+	if fc == null:
+		check(false, "the cut is built " + tag)
+		await _free_track(track)
+		return
+	fc.advance_to(fc.start)
+	var x: float = fc.section.lane_x
+	var meshes: Array[MeshInstance3D] = []
+	for node: Node in track.find_children("*", "MeshInstance3D", true, false):
+		var m := node as MeshInstance3D
+		if m.mesh != null and m.is_visible_in_tree():
+			meshes.append(m)
+	var places: Array[float] = [81.0, 100.0, 119.0, 121.0, 140.0, 159.0]
+	var faults: PackedStringArray = []
+	for d: float in places:
+		var hit: Dictionary = _ray_down(meshes, x, d)
+		if hit.is_empty():
+			faults.append("nothing under %.0f m" % d)
+		elif float(hit["y"]) > -BELOW_MIN_DEPTH:
+			faults.append("%.1f m deep at %.0f m (%s)" % [-float(hit["y"]), d, (hit["node"] as Node).name])
+		elif fc.is_ancestor_of(hit["node"] as Node):
+			faults.append("the cut's own %s at %.0f m" % [(hit["node"] as Node).name, d])
+		elif RECOGNISABLE_BELOW.has(skin_name) and _luminance(hit["color"] as Color) < BELOW_MIN_LUMINANCE:
+			faults.append("a black plane (%.4f) at %.0f m" % [_luminance(hit["color"] as Color), d])
+	check(faults.is_empty(), "an open cut shows the zone's plane deep below, nothing of its own in the way %s: %s" % [tag,
+		", ".join(faults.slice(0, 4))])
+	await _free_track(track)
+
+
+## The first face a ray straight down from just under the street at (x, -d) meets in `meshes`: {y, node,
+## color (its first vertex's)}, empty if none.
+static func _ray_down(meshes: Array[MeshInstance3D], x: float, d: float) -> Dictionary:
+	var from := Vector3(x, -0.01, TrackGeometry.world_z(d))
+	var best: Dictionary = {}
+	for m: MeshInstance3D in meshes:
+		var xform: Transform3D = m.global_transform
+		var box: AABB = xform * m.get_aabb()
+		if x < box.position.x or x > box.end.x or from.z < box.position.z or from.z > box.end.z or box.position.y > -0.01:
+			continue
+		for s: int in m.mesh.get_surface_count():
+			var arrays: Array = m.mesh.surface_get_arrays(s)
+			var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+			var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX] if arrays[Mesh.ARRAY_INDEX] != null else PackedInt32Array()
+			var count: int = indices.size() if not indices.is_empty() else verts.size()
+			for i: int in range(0, count - 2, 3):
+				var a: Vector3 = xform * (verts[indices[i]] if not indices.is_empty() else verts[i])
+				var b: Vector3 = xform * (verts[indices[i + 1]] if not indices.is_empty() else verts[i + 1])
+				var c: Vector3 = xform * (verts[indices[i + 2]] if not indices.is_empty() else verts[i + 2])
+				if maxf(a.y, maxf(b.y, c.y)) > -0.011 or minf(a.x, minf(b.x, c.x)) > x or maxf(a.x, maxf(b.x, c.x)) < x:
+					continue
+				var p: Variant = Geometry3D.ray_intersects_triangle(from, Vector3.DOWN, a, b, c)
+				if p != null and (best.is_empty() or (p as Vector3).y > float(best["y"])):
+					best = {"y": (p as Vector3).y, "node": m, "color": colors[indices[i] if not indices.is_empty() else i]}
+	return best
+
+
+## The brightest vertex colour a skin's cut may have below the floor: its gap's own inside colour, if it has
+## one (never brighter than the zone's gap), else INSIDE_MAX_LUMINANCE.
+func _inside_limit(skin: ZoneSkin) -> float:
+	var c: Variant = skin.get("gap_inside_color")
+	return _luminance(c as Color) + 0.0002 if c is Color else INSIDE_MAX_LUMINANCE
 
 
 ## The orange a skin draws gap edges in (its gap_edge_color), or the default look's.

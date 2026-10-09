@@ -109,14 +109,25 @@ extends ZoneSkin
 ## How far below the walkways the canal lies (deeper than the fall that ends a run, so a fall never
 ## visibly lands).
 @export_range(4.5, 15.0, 0.1, "suffix:m") var canal_depth: float = 5.5
-## The canal: dark water, never lighter than a gap's inside may be.
-@export var canal_color: Color = Color(0.035, 0.055, 0.07)
+## DESIGN-TBD (docs/questions/h3.md): the canal and the quay below the walkways, dim but recognisable through
+## a gap or a cut (task H3, GDD §9.9), never lit like a walkway. These four colours are the PEAKS of what is
+## drawn there (the patterns only ever darken `canal_color` and `gap_inside_color`, and add at most
+## `canal_sky_color` and `canal_lamp_color`: PAT_UNDERDECK and PAT_CANAL cap their result at those sums), and
+## tests/suites/test_golden_skin.gd counts exactly those sums (SkinSuite.hole_share): a hole's brightest spot
+## stays well under the darkest walkway, rendered. `canal_color`: the water; the sky it reflects (a sheen
+## toward the horizon and sparse glints that slide with the current) and the walkways' lamps on it, added in
+## sRGB, faint and never glowing; and the quay's stone under the deck (below).
+@export var canal_color: Color = Color(0.04, 0.085, 0.115)
+@export var canal_sky_color: Color = Color(0.06, 0.07, 0.1)
+@export var canal_lamp_color: Color = Color(0.04, 0.03, 0.02)
 ## How fast the canal flows toward the player (a motion cue in the gaps).
 @export_range(0.0, 6.0, 0.1, "suffix:m/s") var canal_flow: float = 1.4
-## Everything under the walkways (their sides and piers, the building faces down to the water), seen
-## only through gaps: deep shade that only darkens with depth, so a gap reads as a hole at a glance.
-## Kept far darker than any walkway material (tests/suites/test_golden_skin.gd).
-@export var gap_inside_color: Color = Color(0.075, 0.068, 0.06)
+## DESIGN-TBD (docs/questions/h3.md): everything under the walkways (their sides and piers, the building faces
+## down to the water), seen only through gaps and cuts: the quay's stone in deep shade, dim but with its
+## arches and the canal's light on it (PAT_UNDERDECK; task H3, GDD §9.9), so a gap reads as a hole at a
+## glance and still shows the canal. The stone's peak colour, kept far darker than any walkway material
+## (tests/suites/test_golden_skin.gd).
+@export var gap_inside_color: Color = Color(0.15, 0.13, 0.115)
 ## Gap edges: the orange edge language of every zone. Redder than it looks: the glow and the
 ## tonemapper lift the green, and it must stay orange, not sign yellow.
 @export var gap_edge_color: Color = Color(1.0, 0.25, 0.04)
@@ -710,6 +721,7 @@ func _solid_params() -> Dictionary:
 		"golden_shine": srgb(gold_shine_color), "golden_sun": sun, "golden_rail": srgb(gold_color),
 		"golden_joint": srgb(joint_color), "golden_plate": plate_length, "golden_polish": walkway_polish,
 		"golden_inlay": srgb(kerb_color), "golden_vein": srgb(vein_color), "golden_flow": canal_flow,
+		"golden_canal_y": -canal_depth, "golden_canal_sky": srgb(canal_sky_color), "golden_canal_lamp": srgb(canal_lamp_color),
 		"golden_trim": srgb(gold_color), "golden_rib": srgb(rib_color), "golden_light_street": walkway_light,
 		"golden_light_flood": ledge_light}
 

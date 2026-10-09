@@ -36,6 +36,11 @@ extends GoldenSkin
 ## (GDD §5: "a palace floor (marble, inlay, gold runners)"); half its width.
 @export_range(0.05, 0.6, 0.01, "suffix:m") var runner_half_width: float = 0.2
 
+## DESIGN-TBD (docs/questions/h3.md): the lower hall's marble far below a break in the floor (a stairwell
+## going down to a light well), dim and pale, never lit like the floor above (task H3, GDD §9.9). The well's
+## stone steps use gap_inside_color (the data file sets a cool cream-grey).
+@export var well_floor_color: Color = Color(0.2, 0.2, 0.19)
+
 @export_group("Colonnade")
 ## DESIGN-TBD (docs/questions/d6b.md): how high the colonnade's pilasters and bays rise above
 ## frieze_top, comfortably clear of every bay's content (a tapestry, the data file's banner_length

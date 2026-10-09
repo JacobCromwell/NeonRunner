@@ -20,6 +20,21 @@ const BUILD_TIMING_PASSES: int = 3
 ## Visible mesh surfaces (one draw call each when on screen) a 5-lane chunk may add on average.
 const SURFACE_BUDGET_PER_CHUNK: float = 32.0
 
+## Holes read as holes (CLAUDE.md readability rules; task H3, GDD §9.9): what a zone shows below its street
+## (the quay and canal, the trench, the ruined basements) is dim but recognisable, and must stay clearly
+## darker than the street. The solid kit lights a lit face with a fake city light (kit_solid.gdshader:
+## 0.62 + 0.3 up + 0.08 across + ...): a face seen straight on from above (a street, a hole's floor) gets
+## 0.92, a wall's side 0.70. hole_share() compares the brightest thing below the street, as rendered, with
+## the darkest the street is drawn, as rendered, extreme against extreme: a share of 0.8 means even the
+## hole's rarest glint is a fifth under the street's rarest dark patch, and what is drawn everywhere else
+## is far dimmer (the rendered frames in build/h3 measure holes at a half of the street's darkest, as
+## display luma). A zone's suite passes its own peaks (the pattern's COLOR and everything its shader adds:
+## the patterns cap their result at COLOR plus what they add) and fails the day a colour or an added
+## glint makes a hole look like a street.
+const FACE_SHADE_TOP: float = 0.92
+const FACE_SHADE_SIDE: float = 0.70
+const HOLE_SHARE_MAX: float = 0.8
+
 ## T-BUDGET2: when build_all() times more than one pass, it also drives a second, reference
 ## TrackBuilder in GreyboxSkin over a plain layout as long as the one under test, one chunk-step at a
 ## time right alongside the skin's own -- in the same process, at the same moment, for the whole
@@ -77,6 +92,43 @@ class ErrorCounter extends Logger:
 
 
 var _counter: ErrorCounter
+
+
+## Linear luminance of an sRGB colour.
+static func srgb_luminance(c: Color) -> float:
+	var l: Color = c.srgb_to_linear()
+	return 0.2126 * l.r + 0.7152 * l.g + 0.0722 * l.b
+
+
+## The sRGB sum of colours, clamped to white (the kit adds sky and lamp light to a colour in sRGB).
+static func srgb_sum(colors: Array[Color]) -> Color:
+	var out := Color(0.0, 0.0, 0.0)
+	for c: Color in colors:
+		out = Color(out.r + c.r, out.g + c.g, out.b + c.b)
+	return Color(minf(out.r, 1.0), minf(out.g, 1.0), minf(out.b, 1.0))
+
+
+## The brightest rendered thing below a street over the darkest the street is drawn, rendered (see
+## HOLE_SHARE_MAX): `side_peaks` the peak colours (sRGB) of the faces seen from the side (a hole's walls, the
+## end faces), `top_peaks` of those seen from above (a hole's floor, a beam's top), `darkest_street` the
+## linear luminance of the darkest the street's floor is drawn (its colour at its pattern's lowest factor).
+static func hole_share(side_peaks: Array[Color], top_peaks: Array[Color], darkest_street: float) -> float:
+	var brightest: float = 0.0
+	for c: Color in side_peaks:
+		brightest = maxf(brightest, srgb_luminance(c) * FACE_SHADE_SIDE)
+	for c: Color in top_peaks:
+		brightest = maxf(brightest, srgb_luminance(c) * FACE_SHADE_TOP)
+	return brightest / maxf(darkest_street * FACE_SHADE_TOP, 1e-6)
+
+
+## Checks hole_share() against HOLE_SHARE_MAX, with a message that says what it guards.
+func check_hole_share(what: String, side_peaks: Array[Color], top_peaks: Array[Color], darkest_street: float) -> void:
+	var share: float = hole_share(side_peaks, top_peaks, darkest_street)
+	print("  %s: below the street, the brightest rendered spot is %.2f of the darkest street's (limit %.2f)" % [what, share,
+		HOLE_SHARE_MAX])
+	check(share <= HOLE_SHARE_MAX, ("%s: a hole stays clearly darker than the street: its brightest rendered spot is %.2f of the "
+		+ "darkest the street is drawn (at most %.2f), counting every colour and every light its patterns add") % [what, share,
+		HOLE_SHARE_MAX])
 
 
 func start_error_count() -> void:
