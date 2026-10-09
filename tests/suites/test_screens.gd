@@ -305,8 +305,9 @@ func _test_every_screen(tag: String) -> void:
 		["boss run summary", func() -> void: _show_boss_result(false), ResultsScreen],
 		# The City's boss is built (task E1d), and Gangland's (E4b); the Golden Palace's is still a placeholder card.
 		["boss slot", func() -> void: App.play_step(App.campaign.step("golden/boss")), SlotScreen],
-		# The zones' intros play their arrival flyovers (task F1); the outros are still placeholder cards.
-		["cinematic slot", func() -> void: App.play_step(App.campaign.step("city/outro")), SlotScreen],
+		# The zones' intros play their arrival flyovers (task F1) and the City's outro is built (F2a); the
+		# other outros are still placeholder cards.
+		["cinematic slot", func() -> void: App.play_step(App.campaign.step("gangland/outro")), SlotScreen],
 		["demo end", func() -> void: App.show_demo_end(), DemoEndScreen],
 	]
 	for entry: Array in screens:

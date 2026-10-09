@@ -903,7 +903,8 @@ func _app_win(step: CampaignStep) -> void:
 	(App.screen as ShopScreen).on_close.call()
 	App.begin_run()
 	await physics_frames(3)
-	check(App.screen is SlotScreen and (App.screen as SlotScreen).step.id == "city/outro", "and on to the zone's outro")
+	check(App.playing_cinematic() is CityOutro and App.playing_cinematic().step.id == "city/outro",
+		"and on to the zone's outro (task F2a)")
 	App.show_level_select()
 	await tree.process_frame
 	var tile: TileButton = (App.screen as LevelSelectScreen).tiles.get("city/boss")
@@ -1024,8 +1025,9 @@ func _app_demo(step: CampaignStep) -> void:
 		App.continue_after_result(results.result)
 		(App.screen as ShopScreen).on_close.call()
 		await physics_frames(3)
-		check(App.screen is SlotScreen and (App.screen as SlotScreen).step.id == "city/outro", "the City's outro follows")
-		(App.screen as SlotScreen).continue_button.pressed.emit()
+		check(App.playing_cinematic() is CityOutro and App.playing_cinematic().step.id == "city/outro",
+			"the City's outro follows")
+		App.skip_cinematic()
 		await tree.process_frame
 		check(App.screen is DemoEndScreen, "then the demo ends with the store links")
 	BuildFlavor.set_override(-1)
