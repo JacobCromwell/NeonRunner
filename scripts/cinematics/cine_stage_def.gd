@@ -11,6 +11,10 @@ extends Resource
 ## before a boss the fight's arena's (BossDef.arena.skin) if it has one, so a later change of either
 ## reaches the cinematic.
 @export var skin: ZoneSkin
+## The stage comes straight after the zone's fight (an outro picking up where the fight ended): it takes the
+## fight's look and sky, as a boss intro does (the arena's skin if it has one, and the sky the fight is under;
+## CineStage.skin_for, sky_for). Off: an outro's stage is in the zone's own look, under its own sky.
+@export var after_fight: bool = false
 ## Lanes. 0: as many as a level on this device has (App.lane_count()), so the street matches the level
 ## that follows.
 @export_range(0, 8) var lanes: int = 0
