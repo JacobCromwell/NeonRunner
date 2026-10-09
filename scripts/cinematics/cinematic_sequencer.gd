@@ -10,7 +10,8 @@ extends Cinematic
 ## - In data: a scene whose root has this script and `timeline` set to a CineTimeline resource.
 ## - In a short script: a script extending this class that overrides _make_timeline() (it may read
 ##   `stage`, already built from _stage_def(), for the street's lanes and walls) and, if it likes,
-##   _on_cue() for its own moments and _on_advance() to move things of its own (props) on the clock.
+##   _on_cue() for its own moments and _on_advance() to move things of its own (props) on the clock,
+##   and _stage_near() to keep the street built under props standing further back than it sees.
 ##   switch_stage() cuts to another stretch, even another zone's.
 ##
 ## Skippable at any moment: skip() (the App calls it when the player asks, skip_requested) stops the
@@ -124,6 +125,12 @@ func _on_advance(_delta: float) -> void:
 	pass
 
 
+## How far back along the track the stage must stay built (metres), given `near`: the nearest the camera and
+## the visible actors are. A script whose own props stand further back (a horde behind the runner) returns less.
+func _stage_near(near: float) -> float:
+	return near
+
+
 ## Cuts to another stretch: builds a stage from `stage_def` dressed in `skin` (null: the slot's own, as
 ## _stage_def()'s), on the same lanes, so track space stays where it was and every key goes on meaning
 ## the same place; the stage before goes (hidden, its environment out of the world, then freed), and the
@@ -191,7 +198,7 @@ func advance(delta: float) -> void:
 		for node: CineActorNode in actors.values():
 			if node.visible:
 				near = minf(near, node.track_position.z)
-		stage.update(near, time)
+		stage.update(_stage_near(near), time)
 	if time >= playing.duration:
 		_finish()
 

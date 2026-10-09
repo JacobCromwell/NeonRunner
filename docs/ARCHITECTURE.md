@@ -279,7 +279,7 @@ most in a frame higher by the warm-up's samples in the level's first two frames.
 | `data/shop/catalog.json` | shop items, tiers and prices (the armor's texts take `{hits}` and `{seconds}`, filled from `GameRules` by `ShopScreen.item_text()`) |
 | `data/campaign/campaign.tres` → `data/zones/*.tres` → `data/levels/*.tres` | the campaign; each zone's run speed (`ZoneDef.run_speed`, a level may set its own), each level's pacing, fill pass, zone doodads and credits |
 | `data/bosses/*.tres` | bosses (`BossDef`: slot, health, phases, arena, rewards, par times, armor rule), and a boss script's own tuning (`<id>_tuning.tres`) |
-| `data/cinematics/*.tres` | cinematic slots (`CinematicDef`: each slot's scene), the arrival flyover's numbers (`arrival_flyover.tres`, `ArrivalFlyoverTuning`) and the City outro's (`city_outro_tuning.tres`, `CityOutroTuning`) |
+| `data/cinematics/*.tres` | cinematic slots (`CinematicDef`: each slot's scene), the arrival flyover's numbers (`arrival_flyover.tres`, `ArrivalFlyoverTuning`), the City outro's (`city_outro_tuning.tres`, `CityOutroTuning`) and the Gangland boss intro's (`sewer_swarm_intro.tres`, `SewerSwarmIntroTuning`) |
 | `data/patterns/*.json` | generator patterns (every file in the folder is loaded) |
 | `data/skins/*.tres` | zone looks |
 | `data/audio/*.tres` | sound and music libraries |
@@ -2506,13 +2506,15 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
 
 `Campaign` lists `ZoneDef`s; each built zone contributes steps: optional intro cinematic, its
 levels, optional boss-intro cinematic, the boss, optional outro cinematic. Step ids (`city/1`,
-`city/boss`, ...) key the save file, so they never change. Difficulty comes from a campaign-wide curve
+`city/boss`, ...) key the save file, so they never change. A cinematic slot added after a save had passed it
+(Gangland's boss intro, F2b) counts as done when the step after it is (`App.step_done`), so the save keeps what it
+unlocked and Continue doesn't go back over it. Difficulty comes from a campaign-wide curve
 plus each level's `difficulty_bias`; `enemy_scaling` runs 0 → 1 across the campaign.
 
 The campaign (GDD §5) has six zones, with ids other tasks rely on: `city`, `gangland`,
 `marketplace`, `corporate`, `dead_zone` and `golden`, with 3, 3, 2, 2, 2 and 3 levels in
 `data/levels/<zone id>_<n>.tres` (Golden 3 is the Golden Palace). Every zone has intro and outro
-cinematic slots (the City also a boss intro) and a boss slot from GDD §10's roster. A zone's music
+cinematic slots (the City and Gangland also a boss intro) and a boss slot from GDD §10's roster. A zone's music
 track is named after its id, and every zone has one (a track the music library doesn't list is skipped
 quietly and the menu music carries on). Only the City is in the web demo. The curve runs 0.1 → 0.9
 over the 15 levels (FB 4, FB 5); which level is the peak (proposed: Golden 2, with Golden 3 a little
@@ -2555,8 +2557,8 @@ features or their weights, no darkness), so endless in the Dead Zone plays as it
 A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, which the player
 continues past. A cinematic is a scene whose root extends `Cinematic` (emit `finished`, support
 `skip()`), built with the cinematic toolkit (Cinematics, below): every zone's intro and the City's boss
-intro play a placeholder arrival flyover, the City's outro plays its own scene (`CityOutro`, task F2a), and
-the other outros are still cards. A boss is built on the boss
+intro play a placeholder arrival flyover, the City's outro plays its own scene (`CityOutro`, task F2a),
+Gangland's boss intro plays its own (`SewerSwarmIntro`, task F2b), and the other outros are still cards. A boss is built on the boss
 framework (Bosses, below). The City's Floating Head is built
 (its step plays the fight); the other boss slots are still placeholders, holding the phases GDD §10
 gives each designed boss and its armor-rule delay. A fight still being built names its scene in the
@@ -2713,7 +2715,7 @@ plays it; E1e, the owner's playtest fixes; E1f, the fight at the City's speed), 
 | `floating_head_body.gd` (`FloatingHeadBody`) | the body part: the model and its moving parts (face screen, jaw, searchlight gimbal, bay doors, weak-point covers that swing open with the red domes pulsing out: `weak_open`), a solid hull hitbox (`set_hull_solid`: off while pinned), a weak point over each lane near the crown's middle (generous stomp boxes, `stomp_width`/`stomp_depth`/`stomp_top`, as deep as the run's pace makes them, `stomp_depth()`; at 5 and 6 lanes the outermost ones also reach over the outer lanes out to the walls at their own height, `stomp_outer_reach`, where a wall jump or a drop off the ceiling lands: `stomp_covers_outer_lanes`, E1e) and the crown's deck (a concave shape exactly over the drawn hull, `FloatingHeadModel.deck_faces`), both off until a window opens (`set_weak_points_enabled`, `set_top_solid`; `top_height`, `weak_point_world`), the face's state (`screen_power`, `anger`, `eye_charge`, `glitch`, `jaw_open`, and `look_point` for the eyes to watch the laser's aim), where its eyes and mouth are (`eye_world`, `mouth_world`), and `exclusive_major_attack` (its lasers and bombs take turns with other big attacks). The slogan's caption band (`show_slogan`, `caption`: a Label3D in the face's cold white over a dark band the face shader draws across the screen's lower part, under the eyes; Label3D translates its text like the UI's labels). Beaten, it stays and keeps drawing itself: `power` fades its lights (per-instance copies of its kit materials' `state_glow`), `wreck(face_rest)` swaps in the wreck and lays its torn-off face in the street (cracked, framed), `crash_dust` and `start_smoke` (soft grey puffs from a radial `GradientTexture2D`) |
 | `floating_head_model.gd` (`FloatingHeadModel`) | the low-poly meshes, built in code from a `Shape` sized to the street and its lanes (MeshKit layers merged into a few surfaces: about 13 surfaces and 11k vertices; the weak points over the lanes within `weak_point_reach` of the middle), the bomb, the crown's deck faces, and `ship_transform` (its pitch and its roll about the crown over the weak points). The wreck (`_wreck`): its stern half (`WRECK_LENGTH`), torn open at both ends (the cut plating and flaps peeled outward), plated inside, dark; `wreck_inner_half` is its inside's half width at a height (the runner's room in it, tested at every lane count) |
 | `floating_head_voice.gd` (`FloatingHeadVoice`) | the propaganda: from the reveal on, a phrase every so often (`head_voice_1-4`, a seeded order and pauses of its own) from a positional player at the face, each with the next slogan (`FloatingHeadTuning.slogans`); it ducks `voice_duck_db` at once under `FloatingHead.warning_active()`, the slogan fades, and no phrase starts until the warnings have been over a moment; `cut()` stops it mid-shout for the defeat (`head_voice_cut`) |
-| `floating_head_bombing.gd` (`FloatingHeadBombing`) | the searchlight and the bombs: the lock (the warning: red light, `circle_warning`, lock sound, the bomb falling with its whistle), the fairness rules (`plan`, `fair`, `escape_lane`), and pooled blast hitboxes (enemy attacks) that keep clear of a wall runner |
+| `floating_head_bombing.gd` (`FloatingHeadBombing`) | the searchlight and the bombs: the lock (the warning: red light, `circle_warning`, lock sound, the bomb falling with its whistle), the fairness rules (`plan`, `fair`, `escape_lane`), and pooled blast hitboxes (enemy attacks) that keep clear of a wall runner. From the second run on (`salvo_size()`, E1g), a lock is a salvo (`_try_salvo`, `plan_salvo`): 2–4 spots marked at once, nearest first, each next one `salvo_spacing` further and on the lane the way past the one before leads to; on a street of `salvo_wide_lanes` or more, `_plan_wide` instead follows every lane the runner could be in (`_reach`) and makes each spot the block of up to `salvo_wide_bombs` lanes that leaves the fewest (at least `salvo_wide_choices`); `way_through` finds a way through a salvo's spots under its rules, and `dodge_lane` gives the lane to be in for the next spot ahead (the tests' runner, `FloatingHeadBot` and the showcase use it). Its target circles (`_circle`) are `circle_warning`'s with a fog-free copy of its material, the same red at any distance |
 | `floating_head_faceoff.gd` (`FloatingHeadFaceOff`) | the face-off: the phase's attacks wait in line (`faceoff_pattern`; the first that can start fairly goes next) with a drag timed for each marked tower. Eye lasers: the warning (the eyes' `eye_charge` and whine, thin aiming beams with a sweep's aim lines or a drag's aiming spot, then the drag's `lane_warning`), a sweep's twin beams (low: both low, jump them; high: one at the waist and one above a jump's reach, like a gapped fence, slide under them) or a drag down the runner's lane leaving a burning line (keeps clear of a wall runner), each with enemy-attack hitboxes. The cyborg drop: the jaw opens (with its sound and `circle_warning`s where they land), then normal cyborgs from the director (`spawn_enemy`) fall from the mouth onto clear roof and fight. A tower's drag is a bait when the runner is in the outer lane on its side as the warning ends, or the fallback after `fallback_after` misses; either calls `FloatingHead.begin_pin`. Lasers wait while its cyborgs are ahead and share the cyborgs' airspace (`CyborgGun.AIRSPACE_META`) |
 | `floating_head_tower.gd` (`FloatingHeadTower`) | a marked tower at the roadside (flush with the facades, its head jutting out over the street above the ship's highest flight so it shows from far along the street; no hitboxes: scenery until it falls): pale concrete with white painted bands and targets, cracks and cold warning lights; the laser's cut glows red-hot as it's clipped, then it topples forward onto the ship (`fall_onto`, `rest_on`), breaks in two as it lands (`break_at`, `tower_mesh`'s sections with torn ends: the lower section drops away), and the rest crumbles away when the ship shakes free |
 | `floating_head_ramp.gd` (`FloatingHeadRamp`) | the first stomp window's way up: the tower's broken slab slammed down in a lane (`ramp_length` long, its top end `ramp_lift` above the crown at the face) in two pieces (E1e): a low lead-in over `ramp_board_share` of it, rising to its knee (`knee_height`: `ramp_board_height`, never above `side_step_limit`, what a lane switch steps up), with bevelled sides a lane switch steps up anywhere along it (`board_until`); then the steeper slab onto the crown, whose sides are a lane blocker down to the trucks. Both tops are floors (convex shapes, where they're drawn); green chevrons up both, the lead-in's edges in the ramp colour; it sinks away when the ship shakes free |
@@ -3060,7 +3062,7 @@ never ends, and a level never starts, unattended.
 
 | File | What |
 |---|---|
-| `cinematic_sequencer.gd` (`CinematicSequencer`) | the player: builds the stage, actors, camera and overlay, runs the clock (`advance`), fires the events, emits `finished`; `skip()`; `log_lines` lists every event fired (tests, the review tool); a script's hooks: `_on_cue()`, `_on_advance()` (its own props on the clock), `switch_stage()` (a cut to another stretch, even another zone's) |
+| `cinematic_sequencer.gd` (`CinematicSequencer`) | the player: builds the stage, actors, camera and overlay, runs the clock (`advance`), fires the events, emits `finished`; `skip()`; `log_lines` lists every event fired (tests, the review tool); a script's hooks: `_on_cue()`, `_on_advance()` (its own props on the clock), `_stage_near()` (the street kept built under props further back), `switch_stage()` (a cut to another stretch, even another zone's) |
 | `cine_timeline.gd` (`CineTimeline`) | one cinematic: `duration`, `letterbox`, `stage`, `camera` keys, `actors`, `events`; helpers to build one in a script (`shot`, `actor`, `sound`, `music`, `card`, `effect`, `cue`); `problems()` checks it; `sort()` |
 | `cine_key.gd`, `cine_path.gd` (`CineKey`, `CinePath`) | a key's time and how the path comes into it: `SMOOTH` (a flight through the keys, velocity carrying on through each), `LINEAR` (a straight move eased by Tween's transition and ease types) or `CUT`; `sample_riding` for keys that ride with an actor |
 | `cine_camera_key.gd` (`CineCameraKey`) | where the camera is (`position`), what it looks at (`target`), `fov`, `roll`; `follow` / `watch` an actor: the point is then an offset from it |
@@ -3070,6 +3072,7 @@ never ends, and a level never starts, unattended.
 | `cine_overlay.gd` (`CineOverlay`) | the 2D layer: letterbox bars, fades, flashes, text cards (menu fonts, capitals) and the Skip button (showing the pause key), in the safe area |
 | `arrival_flyover.gd`, `arrival_flyover_tuning.gd`, `scenes/cinematics/arrival_flyover.tscn`, `data/cinematics/arrival_flyover.tres` | the placeholder arrival flyover (below) |
 | `city_outro.gd`, `city_outro_set.gd`, `city_outro_tuning.gd`, `scenes/cinematics/city_outro.tscn`, `data/cinematics/city_outro_tuning.tres` | the Neon City's outro (below) and its props |
+| `sewer_swarm_intro/` (`SewerSwarmIntro`, `SewerSwarmIntroTuning`, `SwarmIntroScreeches`, `SwarmIntroSwarm`, `swarm_intro_glint.gdshader`), `scenes/cinematics/sewer_swarm_intro.tscn`, `data/cinematics/sewer_swarm_intro.tres` | Gangland's boss intro, the owner's story beat (below) |
 
 **Track space.** Every point is `(x, y, z)`: x metres right of the start lane's centre (the lane a level's
 runner starts in, `lane_count / 2`), y metres up from the floor, z metres along the track. So a point
@@ -3148,9 +3151,12 @@ func _on_advance(delta: float) -> void:      # every step of the clock: move the
 ```
 
 A script's props (models of its own that aren't actors) are plain nodes it adds in `_make_timeline()` and
-moves in `_on_advance()` from `time`, so they keep time when a test steps the clock. `switch_stage(def, skin)`
-cuts to another stretch on the same lanes (track space stays put; cut under black, since building one takes a
-few frames).
+moves in `_on_advance()` from `time`, so they keep time when a test steps the clock (added on the stage, they hide
+with it when it ends). If they stand further back than the camera and the actors (a horde behind the runner),
+`_stage_near(near)` returns how far back the stage must stay built (the track builder keeps only 30 m behind
+`near`, and builds 180 m ahead of it: hold it back only as far as the props need, or the street ahead of a camera
+looking down it ends short). `switch_stage(def, skin)` cuts to another stretch on the same lanes (track space stays put; cut under
+black, since building one takes a few frames).
 
 Then set the slot's `CinematicDef.scene` to the scene. End on the run camera's view of the runner
 (`MovementTuning`'s camera numbers) or on black, since the next step opens on its own view at once.
@@ -3188,6 +3194,34 @@ Music: the zone's track, fading as the runner leaps; the web demo, which ends af
 Gangland's. Cost (headless, `test_city_outro`): about 25 ms to set up (about 220 ms the first time, with cold
 mesh caches), about 10 ms for the cut (under black), at most about 3 ms a step, and its props add about 65
 draw calls. It adds no asset files.
+
+**Gangland's boss intro** (`SewerSwarmIntro`, task F2b; the owner's story beat, October 9, 2026, GDD §10 Sewer Swarm;
+what it leaves open is DESIGN-TBD, `docs/OPEN_QUESTIONS.md` §D, items 387–395; numbers in `data/cinematics/sewer_swarm_intro.tres`):
+12 s before the Sewer Swarm, on a plain stretch of the fight's arena look in the fight's lanes, the runner
+running at the fight's speed (the zone's) down the start lane between rows of manholes one lane over, the camera
+at ground level throughout (0.47-0.75 m up). The beats: one screech at 2 s (it pounces into the runner's lane
+and lands under them as they jump), three at 3 s (one leaps over the runner's lane as they slide under it, two
+land in it ahead and swipe as they weave round them), eleven at 4 s (five left, six right, landing either side of
+the runner's lane and rearing up as they run past), each out of a manhole that rattles first; then from 5 s the
+manholes around the runner burst one after another, more and more screeches pouring out, and from 5.6 s more
+drop from above the camera's view, all running beside the runner (never in their lane) and dropping back. The
+camera swings round the runner's right side (5.0-6.4 s, kept off the wall) to low in front of them looking back:
+from 6.3 s the wall rises behind them (one of the swarm's wave formations as wide as the street, the rest of the
+swarm behind it, heating toward enemy-attack red) and closes in to 9 m. At 9.6 s the one cut, to low between the
+runner and the wall, looking into a dark hollow in the middle of the mass, ringed by screeches; the Host is held
+up in the dark, a faint silhouette, and the implant at its temple glints red once (a slow, faint glow with
+Reduced flashing); then black, and the fight. The props are its own, built on the stage (so they hide with it) and moved by the clock (`_on_advance`):
+`SwarmIntroScreeches` (the manholes in one MultiMesh drawn and animated like the fight's lairs, `SwarmLairs.mesh`
+and `swarm_lair.gdshader`; the beats' fifteen on the sewer screech's own body, `ScreechModel`; the pour and the
+rain in one MultiMesh of its crowd body, placed in script from the clock) and `SwarmIntroSwarm` (the wall's two
+`SwarmCrowd`s, the hollow, its mound in a MultiMesh, the Host on the rig with `SwarmHostPerson`'s look darkened
+by its tint, and the glint, `swarm_intro_glint.gdshader`). Everything is worked out from the time, so stepping or
+skipping it shows the same; anything behind the wall's foot is hidden (lost in it), and no screech is drawn
+within 0.9 m of the camera. Crowd sizes are data, smaller on a low-end device. It sets up in about 15 ms (about 230 ms
+the first time, with cold mesh caches) and costs about 0.6 ms a step, at most about 3 ms (headless,
+`test_sewer_swarm_intro`); its props add about 25 draw calls. It adds no asset files, and one toolkit hook,
+`_stage_near()`: the street stays built under the swarm behind the runner (the track builder keeps only 30 m
+behind the camera and the actors).
 
 ## Economy and saving
 
@@ -3526,7 +3560,13 @@ onto the roadblock, the startle, the leap out of the right wall's opening with t
 the next zone and the landing), a camera that only leaves the street through an opening, only the City's
 music, its setup, cut and step costs and its props' draw calls; Reduced flashing; `skip()` at any moment;
 the landing following the next zone's skin; and the App's flow (Gangland's intro follows; the web demo plays
-it, then its end screen). `test_pace` checks the pace and busier levels (G1): the zones' speeds in data and each campaign level at
+it, then its end screen). `test_sewer_swarm_intro` checks Gangland's boss intro (F2b): its slot (after
+Gangland 3, before the fight, the fight starting when it's skipped); at 3, 5 and 6 lanes the fight's look, lanes and
+speed, the camera at ground level and in the street, cutting once, the owner's beats on time (two on one side
+and one on the other, five left and six right, each manhole rattling first), the runner never touching a
+screech, more and more pouring out and dropping from out of view, never in the runner's lane, the wall rising
+and closing in, the heart and its glint only in the cut, and ending on black with the fight's music; Reduced
+flashing; `skip()`; and its setup and step costs. `test_pace` checks the pace and busier levels (G1): the zones' speeds in data and each campaign level at
 its zone's speed (and each boss fight, E1f; quick play's at the base), `movement_for`, a pattern's timing in seconds at 18 and 25
 m/s, the generator's fairness at 21, 23.4 and 25 m/s at 3, 5 and 6 lanes with every built feature and
 the fill pass (`LayoutChecks` checks each level at its own speed: `level_tuning()`), the fill pass's

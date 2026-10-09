@@ -349,6 +349,7 @@ The owner played every zone and the Floating Head. The feedback is in GDD §3 ("
 - **C6b, the Enforcer Truck shows itself** (owner, October 8, 2026): every so often it speeds up into view beside the runner for a few seconds, then drops back, so its model is seen (GDD §9.13). T1 (it blocks a lane while it's there).
 - **C6c, room to show itself in every chase** (follows C6b: dense levels left Corporate 2 with 0–1 showings): the generator reserves a showing window in each Enforcer chase that no later pass fills. Core (the generator). T1.
 - **C6d, every chase shows its truck** (owner, October 9, 2026, open questions 384–385; follows C6c, 57 of 106 chase runs): a chase with no room for a showing gives its truck to another bait's chase with room, and a truck whose showing would come after its bait arrives earlier so it comes before. Core (the generator's placement). T1.
+- **E1g, the Floating Head's salvos** (owner, October 9, 2026): after the first bombing run, the searchlight marks two to four spots at once, one or two bombs each, the nearest first and each later one further along the track, so the player sees the way through before the bombs fall (GDD §10). The owner's follow-ups the same day: harder on 5 or more lanes, spots closer together, later runs a little longer (6.5 s), far circles the same red. T1 (a boss fight's fairness).
 - **G8, level skies** (owner, October 8, 2026): a zone's last level shows its sky turning (City 3 a dawn, Gangland 3 a cloudy blood-red sky, Marketplace 2 a sunset; GDD §5, "Skies show progression"). A level's own sky over its zone's (`LevelConfig.sky`, `data/skies/`), clouds and a glow on the horizon in the sky shader. Level data and the sky shader. T2.
 
 ### E. Bosses and the web demo
@@ -395,19 +396,27 @@ The owner played every zone and the Floating Head. The feedback is in GDD §3 ("
 | F1 | **Cinematic toolkit** | – | M | T2 |
 | F2 | **Cinematic content** | owner's story beats | – | T2 |
 | F2a | **The Neon City's outro** (the owner's beats, October 8, 2026) | F1 | M | T2 |
+| F2b | **Gangland boss intro** (the owner's beat, October 9, 2026) | F1 | M | T2 |
 
 **F1: cinematic toolkit.**
 - A code-driven toolkit: camera paths, actors on the humanoid rig, timed events, skippable.
 - It builds on the existing `Cinematic` base.
 - Placeholder "arrival" flyovers per zone until the owner describes the story beats.
 
-**F2: cinematic content.** Waiting on the owner's story beats, slot by slot. F2a is the first slot to have them.
+**F2: cinematic content.** Waiting on the owner's story beats, slot by slot. F2a and F2b have them so far.
 
 **F2a: the Neon City's outro** (owner, October 8, 2026; GDD §6, Cinematics). **Done:** `CityOutro`. The
 Floating Head crashes, a roadblock of the game's own enemies bars a side street, and the runner leaps off the
 trucks and lands in Gangland. It adds four toolkit features any cinematic can use: wall openings on a stage,
 a head turn for the runner, a per-frame hook for a script's props, and cutting to another zone's stretch.
 The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 369–381.
+
+**F2b: Gangland's boss intro** (owner, October 9, 2026; GDD §10, Sewer Swarm, "Intro cinematic"). **Done:**
+`SewerSwarmIntro` (`scripts/cinematics/sewer_swarm_intro/`) in Gangland's boss-intro slot, a new slot. At ground
+level, screeches burst out of the manholes after the runner (one, then three, then eleven), more and more pour out
+and drop from the sky, a wall of them chases the runner down, and one cut shows the Host's glint in the dark heart
+of the swarm. It adds one toolkit hook: `_stage_near()`, to keep the street built under props behind the camera.
+The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 387–395.
 
 ---
 
@@ -446,7 +455,7 @@ The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 369–381.
 - E2 (web demo release candidate), after E1, P1 and P2
 - R4 endless mode (after B5), R6 approved placeholders (at a quiet moment), R7 balancing (after the owner's playtest)
 
-**Blocked on design:** E5d (the final villain), F2 (cinematic content, apart from F2a's City outro). **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
+**Blocked on design:** E5d (the final villain), F2 (cinematic content, apart from F2a's City outro and F2b's Gangland boss intro). **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
 
 **The critical path to the web demo:** B1 → B8 and B7 → E1 → E2. The demo depends on the Floating Head more than on anything else, so keep that path moving first. P1 → P2 (the new player and cyborg looks) must also be done before E2.
 
@@ -455,6 +464,6 @@ The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 369–381.
 ## Still to design with the owner
 
 - **Bosses:** the final villain with its second stage (the other five are designed, GDD §10).
-- **Cinematics:** story beats for each slot.
+- **Cinematics:** story beats for each slot but the City's outro (GDD §6) and Gangland's boss intro (GDD §10, Sewer Swarm).
 - **Placeholder review:** a keep-or-change pass over the numbered items in `docs/OPEN_QUESTIONS.md` §D.
 - **Remaining rounds:** player and power-up numbers, screens and stars, audio, mobile and ads, title, accessibility, languages, age rating, budget and check-ins.
