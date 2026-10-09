@@ -150,8 +150,12 @@ extends EnemyTuning
 ## Task C6c (the owner's request, GDD §9.13 "Showing itself": the player should see what's behind them): the
 ## generator plans a showing window in every chase it can (enforcer_truck_rules.gd, ShowPlanner), a calm stretch
 ## the later passes keep off, where it can show itself wherever the runner is; off, its showings come only where
-## the level happens to leave room (as before task C6c), and the level is built as it was then.
-## DESIGN-TBD: the window, what it may take out, the chases without one (docs/OPEN_QUESTIONS.md items 383–385).
+## the level happens to leave room (as before task C6c), and the level is built as it was then. The owner (October 9,
+## 2026, GDD §9.13 "Room to show itself", answering docs/OPEN_QUESTIONS.md items 383–385): its cost (about 2% fewer
+## enemies and obstacles on its levels) is accepted; a truck shows itself before the player can bait it, arriving
+## early enough for its window to come before its first bait, and a chase with no room for one gives its truck to
+## another bait's chase that has room (task C6d). DESIGN-TBD (docs/OPEN_QUESTIONS.md items 400–403): a truck no bait with room is
+## left for keeps its chase, its window after the bait or none.
 @export var show_window_planned: bool = true
 ## How much later than planned a showing in its window may begin and still find its room (the runner jumping or
 ## changing lanes as it's due): the window holds that much more.
@@ -162,6 +166,19 @@ extends EnemyTuning
 ## waits for it, and one already on is over by the time it's due.
 ## DESIGN-TBD: 2 s (docs/OPEN_QUESTIONS.md item 386).
 @export_range(0.0, 5.0, 0.25, "suffix:s") var show_claim_seconds: float = 2.0
+## The owner (October 9, 2026; GDD §9.13 "Making room where there is none", answering docs/OPEN_QUESTIONS.md item
+## 400): where a level's first bait comes right after its calm start (its run-up), the truck arrives a few seconds
+## early and shows itself in the last part of the calm start, the bait staying where it is. It arrives no sooner than
+## this many seconds into the run (the player under way), right behind the runner (at its follow gap: from arrive_gap
+## it couldn't come alongside before the bait), and shows itself as it arrives; the calm start stays calm (no volley,
+## nothing taken out). DESIGN-TBD: 0.5 s (docs/OPEN_QUESTIONS.md item 407).
+@export_range(0.0, 3.0, 0.1, "suffix:s") var calm_start_min_seconds: float = 0.5
+## A level's run-up is short (2.4 s at the Golden Zone's speed) and a showing needs about 5 s, so a showing in the calm
+## start runs on into the level's first patterns. Off (the calm start stays calm, nothing taken out): its window fits
+## only where those patterns leave room. On: past the run-up it may take out what's in its way as any other window may
+## (plain holes, fences, cyborgs and Screeches, docs/OPEN_QUESTIONS.md item 383). DESIGN-TBD: off
+## (docs/OPEN_QUESTIONS.md item 408).
+@export var calm_start_takes_out: bool = false
 
 @export_group("Wreck")
 ## The owner (October 8, 2026): however it's destroyed (a charge, a cut, a gap too wide to hop) it blows up where

@@ -112,14 +112,18 @@ func _test_data() -> void:
 	for sound: StringName in [&"truck_cannon_charge", &"truck_cannon", &"truck_bang", &"drone_swoop", &"truck_explode"]:
 		check(sfx.stream(sound) != null, "the test boss's sound %s exists" % sound)
 
-	# The campaign's boss slots carry the standard armor rule (GDD §10: 15–17 s; the Floating Head 10–15).
+	# The campaign's boss slots carry the standard armor rule (GDD §10: 15–17 s; the Floating Head 10–15; the
+	# Golden Convergence the longest, 22).
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	for zone: ZoneDef in campaign.zones:
 		var b: BossDef = zone.boss
-		var gentle: bool = zone.id == &"city"
-		check(b.armor_rule and is_equal_approx(b.armor_delay_min, 10.0 if gentle else 15.0)
-			and is_equal_approx(b.armor_delay_max, 15.0 if gentle else 17.0),
-			"%s's boss uses the armor rule with a %s s delay" % [zone.id, "10–15" if gentle else "15–17"])
+		var delay := Vector2(15.0, 17.0)
+		if zone.id == &"city":
+			delay = Vector2(10.0, 15.0)
+		elif zone.id == &"golden":
+			delay = Vector2(22.0, 22.0)
+		check(b.armor_rule and is_equal_approx(b.armor_delay_min, delay.x) and is_equal_approx(b.armor_delay_max, delay.y),
+			"%s's boss uses the armor rule with a %.0f–%.0f s delay" % [zone.id, delay.x, delay.y])
 
 
 # --- The arena -----------------------------------------------------------------------------

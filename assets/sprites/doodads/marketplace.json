@@ -1,0 +1,473 @@
+{
+	"zone": "marketplace",
+	"generated_by": "tools/asset_gen/doodad_art_gen.gd (tools/godot.sh doodads)",
+	"atlas": "res://assets/sprites/doodads/marketplace.png",
+	"atlas_size": [
+		2048,
+		1024
+	],
+	"px_per_m": 96.0,
+	"boxes": {
+		"small": [
+			1.29999995231628,
+			2.59999990463257,
+			1.39999997615814
+		],
+		"medium": [
+			1.89999997615814,
+			2.59999990463257,
+			3.59999990463257
+		],
+		"large": [
+			2.0,
+			2.59999990463257,
+			6.5
+		]
+	},
+	"images": {
+		"slots_top": [
+			8,
+			8,
+			192,
+			624
+		],
+		"stall_top": [
+			208,
+			8,
+			182,
+			346
+		],
+		"slots_end": [
+			398,
+			8,
+			192,
+			250
+		],
+		"slots_side": [
+			598,
+			8,
+			624,
+			250
+		],
+		"stall_front": [
+			1230,
+			8,
+			182,
+			250
+		],
+		"stall_side": [
+			1420,
+			8,
+			346,
+			250
+		],
+		"bush_a": [
+			1774,
+			8,
+			125,
+			192
+		],
+		"bush_b": [
+			8,
+			640,
+			134,
+			192
+		],
+		"palm_a": [
+			150,
+			640,
+			125,
+			190
+		],
+		"palm_b": [
+			283,
+			640,
+			134,
+			190
+		],
+		"palm_soil": [
+			425,
+			640,
+			125,
+			134
+		],
+		"stall_inside": [
+			558,
+			640,
+			346,
+			114
+		],
+		"bush_pot_front": [
+			912,
+			640,
+			125,
+			77
+		],
+		"bush_pot_side": [
+			1045,
+			640,
+			134,
+			77
+		],
+		"palm_pot_front": [
+			1187,
+			640,
+			125,
+			77
+		],
+		"palm_pot_side": [
+			1320,
+			640,
+			134,
+			77
+		]
+	},
+	"designs": {
+		"small": [
+			{
+				"name": "potted_palm",
+				"colors": [
+					"996e54",
+					"54784a",
+					"735438"
+				],
+				"cards": [
+					{
+						"plane": "z",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							0.307692318978395
+						],
+						"image": "palm_pot_front",
+						"flip": false
+					},
+					{
+						"plane": "z",
+						"at": 0.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							0.307692318978395
+						],
+						"image": "palm_pot_front",
+						"flip": true
+					},
+					{
+						"plane": "y",
+						"at": 0.276923087080555,
+						"rect": [
+							0.08,
+							0.08,
+							0.92,
+							0.92
+						],
+						"image": "palm_soil",
+						"flip": false
+					},
+					{
+						"plane": "z",
+						"at": 0.5,
+						"rect": [
+							0.0,
+							0.238461547208256,
+							1.0,
+							1.0
+						],
+						"image": "palm_a",
+						"flip": false
+					},
+					{
+						"plane": "x",
+						"at": 0.5,
+						"rect": [
+							0.0,
+							0.238461547208256,
+							1.0,
+							1.0
+						],
+						"image": "palm_b",
+						"flip": false
+					},
+					{
+						"plane": "x",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							0.307692318978395
+						],
+						"image": "palm_pot_side",
+						"flip": false
+					},
+					{
+						"plane": "x",
+						"at": 0.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							0.307692318978395
+						],
+						"image": "palm_pot_side",
+						"flip": true
+					}
+				]
+			},
+			{
+				"name": "flowering_bush",
+				"colors": [
+					"996e54",
+					"456642",
+					"997abd"
+				],
+				"cards": [
+					{
+						"plane": "z",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							0.307692318978395
+						],
+						"image": "bush_pot_front",
+						"flip": false
+					},
+					{
+						"plane": "z",
+						"at": 0.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							0.307692318978395
+						],
+						"image": "bush_pot_front",
+						"flip": true
+					},
+					{
+						"plane": "y",
+						"at": 0.276923087080555,
+						"rect": [
+							0.08,
+							0.08,
+							0.92,
+							0.92
+						],
+						"image": "palm_soil",
+						"flip": false
+					},
+					{
+						"plane": "z",
+						"at": 0.5,
+						"rect": [
+							0.0,
+							0.230769239233796,
+							1.0,
+							1.0
+						],
+						"image": "bush_a",
+						"flip": false
+					},
+					{
+						"plane": "x",
+						"at": 0.5,
+						"rect": [
+							0.0,
+							0.230769239233796,
+							1.0,
+							1.0
+						],
+						"image": "bush_b",
+						"flip": false
+					},
+					{
+						"plane": "x",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							0.307692318978395
+						],
+						"image": "bush_pot_side",
+						"flip": false
+					},
+					{
+						"plane": "x",
+						"at": 0.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							0.307692318978395
+						],
+						"image": "bush_pot_side",
+						"flip": true
+					}
+				]
+			}
+		],
+		"medium": [
+			{
+				"name": "vendor_stall",
+				"colors": [
+					"8f6340",
+					"3861a1",
+					"ede8d9"
+				],
+				"cards": [
+					{
+						"plane": "z",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "stall_front",
+						"flip": false
+					},
+					{
+						"plane": "z",
+						"at": 0.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "stall_front",
+						"flip": true
+					},
+					{
+						"plane": "x",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "stall_side",
+						"flip": false
+					},
+					{
+						"plane": "x",
+						"at": 0.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "stall_side",
+						"flip": true
+					},
+					{
+						"plane": "y",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "stall_top",
+						"flip": false
+					},
+					{
+						"plane": "x",
+						"at": 0.5,
+						"rect": [
+							0.06,
+							0.373076936761304,
+							0.94,
+							0.830769261241666
+						],
+						"image": "stall_inside",
+						"flip": false
+					}
+				]
+			}
+		],
+		"large": [
+			{
+				"name": "slot_bank",
+				"colors": [
+					"4d336b",
+					"c29e52",
+					"bdbfc7"
+				],
+				"cards": [
+					{
+						"plane": "z",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "slots_end",
+						"flip": false
+					},
+					{
+						"plane": "z",
+						"at": 0.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "slots_end",
+						"flip": true
+					},
+					{
+						"plane": "x",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "slots_side",
+						"flip": false
+					},
+					{
+						"plane": "x",
+						"at": 0.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "slots_side",
+						"flip": true
+					},
+					{
+						"plane": "y",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "slots_top",
+						"flip": false
+					}
+				]
+			}
+		]
+	}
+}

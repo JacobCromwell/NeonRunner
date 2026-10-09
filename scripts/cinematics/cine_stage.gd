@@ -22,14 +22,17 @@ var geo: TrackGeometry
 var layout: LevelLayout
 var track: TrackBuilder
 var environment: Environment
+## The level sky the stage is under (null: its zone's own; sky_for() finds a slot's).
+var sky: LevelSky
 ## The start lane, and its centre's world x (track space's origin).
 var start_lane: int = 0
 var origin_x: float = 0.0
 
 
 ## Builds the stretch: `p_skin` dresses it (skin_for() finds a slot's), in `lanes` lanes (0: the
-## device's count, lanes_for()).
-func build(p_def: CineStageDef, p_skin: ZoneSkin, p_tuning: MovementTuning, lanes: int = 0) -> void:
+## device's count, lanes_for()), under `p_sky` (null: the zone's own sky; sky_for() finds a slot's).
+func build(p_def: CineStageDef, p_skin: ZoneSkin, p_tuning: MovementTuning, lanes: int = 0,
+		p_sky: LevelSky = null) -> void:
 	def = p_def
 	skin = p_skin if p_skin != null else GreyboxSkin.new()
 	tuning = p_tuning
@@ -59,8 +62,10 @@ func build(p_def: CineStageDef, p_skin: ZoneSkin, p_tuning: MovementTuning, lane
 	track.set_layout(layout, tuning, skin)
 	var world_env := WorldEnvironment.new()
 	world_env.name = "Environment"
-	# The zone's own light, as its levels build it (darkness 0 also sets the scenery light back to 1).
-	environment = skin.level_environment(0.0)
+	sky = p_sky
+	# The zone's own light, as its levels build it (darkness 0 also sets the scenery light back to 1),
+	# under the slot's level sky if it has one (and the street's light under it, ZoneSkin.set_scenery_tint).
+	environment = skin.level_environment(0.0, sky)
 	world_env.environment = environment
 	add_child(world_env)
 	var sun := DirectionalLight3D.new()
@@ -154,3 +159,15 @@ static func skin_for(p_def: CineStageDef, zone: ZoneDef, slot: StringName) -> Zo
 	if slot == &"boss_intro" and zone.boss != null and zone.boss.arena != null and zone.boss.arena.skin != null:
 		return zone.boss.arena.skin
 	return zone.skin
+
+
+## The level sky a cinematic's stage is under (LevelSky; owner, October 8, 2026): before a boss the
+## fight's (Campaign.configure_boss: the arena's own if it has one, else the zone's last level's), so the
+## intro between a level whose sky has turned and its fight keeps that sky; otherwise none, the zone's own
+## (a zone's intro and outro). None for a stage with a look of its own (`p_def.skin`).
+static func sky_for(p_def: CineStageDef, zone: ZoneDef, slot: StringName) -> LevelSky:
+	if (p_def != null and p_def.skin != null) or zone == null or slot != &"boss_intro":
+		return null
+	if zone.boss != null and zone.boss.arena != null and zone.boss.arena.sky != null:
+		return zone.boss.arena.sky
+	return zone.levels.back().sky if not zone.levels.is_empty() else null

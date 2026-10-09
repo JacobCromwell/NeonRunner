@@ -222,7 +222,7 @@ func _test_retry() -> void:
 # --- Through the campaign ---------------------------------------------------------------------------
 
 ## The fight in the campaign's flow at every lane count, played by the bot (no god mode): Gangland's last
-## level, then the fight: a death in its second phase, the retry starting it over, and a win through all three
+## level, its boss intro (skipped), then the fight: a death in its second phase, the retry starting it over, and a win through all three
 ## phases; its results and stars, the shop and the outro's slot.
 func _test_campaign() -> void:
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
@@ -261,6 +261,13 @@ func _campaign_flow(lanes: int) -> void:
 		return
 	App.continue_after_result(level_result)
 	(App.screen as ShopScreen).on_close.call()
+	await tree.process_frame
+	# The boss intro plays (the owner's beats: the swarm rising, SewerSwarmIntro); the player skips it.
+	var intro: Cinematic = App.playing_cinematic()
+	check(intro is SewerSwarmIntro and intro.step.id == "gangland/boss_intro", "then the boss intro's cinematic %s" % tag)
+	if intro == null:
+		return
+	App.skip_cinematic()
 	App.begin_run()
 	await physics_frames(3)
 	var run: LevelRun = App.run

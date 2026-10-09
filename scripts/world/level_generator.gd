@@ -186,8 +186,9 @@ var wide_gap_result: Dictionary = {}
 ## The cyborgs planted in charge paths in the last build (ChargePathPlacement.place: target, planted,
 ## constraints); empty when the level asks for none (LevelConfig.charge_path_cyborgs 0).
 var charge_path_result: Dictionary = {}
-## The Enforcer Trucks' showing windows in the last build (task C6c; enforcer_truck_rules.gd: planned, and for each
-## chase its arrival, its preferred one, its window or why none); empty in a level without the truck.
+## The Enforcer Trucks' showing windows in the last build (task C6c; enforcer_truck_rules.gd: planned, for each
+## chase its arrival, its preferred one, its bait, its window or why none, and for each bait its own chase's window,
+## task C6d); empty in a level without the truck.
 var show_window_result: Dictionary = {}
 ## The danger density pass's report for the last build (DangerDensity.apply_enemies, apply_obstacles,
 ## then apply_wall_fences: counts, targets, what each lever added, shortfalls); empty when the level's

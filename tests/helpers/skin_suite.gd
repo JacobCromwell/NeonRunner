@@ -497,7 +497,8 @@ func doodads_ok(skin: ZoneSkin, name: String, seeds: Array[int] = [2, 9, 17, 41]
 				check(meshes.size() == again.size(), "%s builds the same number of meshes every time" % tag)
 				for i: int in mini(meshes.size(), again.size()):
 					var inst := meshes[i] as MeshInstance3D
-					check(inst.material_override == MeshKit.solid(), "%s uses the shared solid material" % tag)
+					check(inst.material_override == MeshKit.solid() or DoodadCards.is_card_material(inst.material_override),
+						"%s uses the shared solid material or its zone's picture cards" % tag)
 					var aabb: AABB = inst.mesh.get_aabb()
 					check(aabb.position.x >= -half.x and aabb.position.y >= -half.y and aabb.position.z >= -half.z
 						and aabb.end.x <= half.x and aabb.end.y <= half.y and aabb.end.z <= half.z,
@@ -506,8 +507,9 @@ func doodads_ok(skin: ZoneSkin, name: String, seeds: Array[int] = [2, 9, 17, 41]
 					check(again_inst.mesh == inst.mesh, "%s builds the identical (cached) mesh every time" % tag)
 					for surf: int in inst.mesh.get_surface_count():
 						var arrays: Array = inst.mesh.surface_get_arrays(surf)
-						for col: Color in arrays[Mesh.ARRAY_COLOR]:
-							check(col.a == 0.0, "%s never glows" % tag)
+						if arrays[Mesh.ARRAY_COLOR] != null:
+							for col: Color in arrays[Mesh.ARRAY_COLOR]:
+								check(col.a == 0.0, "%s never glows" % tag)
 				a.free()
 				b.free()
 
