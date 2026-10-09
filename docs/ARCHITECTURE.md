@@ -3452,7 +3452,8 @@ attack's warning in play, so show it only where an attack follows). Either's hea
 (shared by its chest, neck and head) and tips by `look_up` (its neck and head; a cyborg's chest a little too, and
 a cyborg's turn is about its upright, so a bowed head turns without rolling over), smoothly between keys. The
 models move on the cinematic's clock, never by themselves between frames (the runner's rig by its update; a
-cyborg's body by `CyborgBody.advance`), so stepping the clock shows the same. An actor faces the way it moves, or
+cyborg's body by `CyborgBody.advance`), so stepping the clock shows the same (but for a cyborg's `die` fall, a tween,
+and a host's random face glitches). An actor faces the way it moves, or
 a heading of its keys; it's in the scene from `enter` to `leave`. Actors are visual only: no collision, no
 gameplay.
 
@@ -3461,7 +3462,8 @@ gameplay.
 as in play; `shake` is scaled by Screen shake (0 when it's off).
 
 **Writing a cinematic.** In data: a scene whose root is `CinematicSequencer` with `timeline` set to a
-`CineTimeline` resource (`tools/showcase/cinematic_sampler.tres` shows every kind of key and event). Or in
+`CineTimeline` resource (`tools/showcase/cinematic_sampler.tres` shows every kind of key and event but the poses that
+play out over time, which `test_cinematics` plays). Or in
 a short script, which can use the stage's geometry:
 
 ```gdscript
@@ -3590,7 +3592,7 @@ prop, `DeadZoneCrater`, built on the stage so it hides with it: a floor of the z
 material, in greys), three thin columns of the Dead Zone's smoke (`dead_smoke.gdshader`) kept off the camera's line
 to the cyborgs, and a faint cold light. The street stays built back down to the haze behind the cyborgs
 (`_stage_near`). Its sounds are its own, where the game's didn't fit (`tools/asset_gen/sfx_bank_cinematics.gd`, none
-of them a hazard's warning): `crater_smoulder`, `rubble_shift`, `edge_grab`, `host_turn` and `host_glitch`; the
+of them a hazard's warning): `crater_smoulder`, `rubble_shift`, `edge_grab`, `cyborg_host_turn` and `cyborg_host_glitch`; the
 zone's track fades in under them. It sets up in about 19 ms (about 240 ms the first time, with cold mesh caches) and
 costs at most about 2 ms a step (headless, `test_dead_zone_intro`); the crater adds 5 draw calls. It added to the
 toolkit the poses that play out over time (`CinePoses`, a cyborg's `lie` and `crouch`), `look_up` and a cyborg's head
@@ -4093,7 +4095,7 @@ flashing; `skip()`; and its setup and step costs. `test_dead_zone_intro` checks 
 gap in the runner's lane with a floor, smoke and only greys in it, the runner lying in it, shaking their head,
 getting up and reaching for the far wall, two cuts (to ground level beyond the far edge, then to the host's face),
 at first only the hands over the edge, the hands holding the edge as they climb out, the runner up on the street,
-the three cyborgs in view until the close-up (two lying still with their screens dark, the host crouched), the host
+the three cyborgs in view until the medium shot (two lying still with their screens dark, the host crouched), the host
 looking over only as the runner gets up, the close-up of its grinning, glitching screen facing the camera, the
 zone's music, the medium shot as the host turns, the whole face filling the close-up, the title card held on the black,
 its own sounds; `skip()`; and its setup and step costs. `test_pace` checks the pace and busier levels (G1): the zones' speeds in data and each campaign level at

@@ -72,7 +72,7 @@
     {"match": "scripts/enemies/buzz_overdrive.gd", "suites": ["buzz_overdrive", "charge_contacts", "enforcer_truck_runs", "charge_paths"]},
     {"match": "scripts/enemies/cyborg.gd", "suites": ["cyborg", "cyborg_body", "window_cyborg", "charge_paths"]},
     {"match": "scripts/enemies/cyborg_body.gd", "suites": ["cyborg_body", "cyborg", "window_cyborg", "cinematics", "city_outro", "dead_zone_intro"]},
-    {"match": "scripts/enemies/cyborg_poses.gd", "suites": ["cyborg_body", "cyborg", "window_cyborg", "cinematics", "dead_zone_intro"]},
+    {"match": "scripts/enemies/cyborg_poses.gd", "suites": ["cyborg_body", "cyborg", "window_cyborg", "cinematics", "city_outro", "dead_zone_intro"]},
     {"match": "scripts/enemies/cyborg_gun.gd", "suites": ["cyborg", "window_cyborg", "barnacle_turret", "charge_paths"]},
     {"match": "scripts/enemies/enforcer_truck_rules.gd", "tier": "full", "suites": ["enforcer_truck*", "charge_paths", "wide_gaps"]},
     {"match": "scripts/enemies/enforcer_truck*", "suites": ["enforcer_truck*"]},

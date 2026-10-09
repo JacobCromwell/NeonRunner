@@ -29,8 +29,9 @@ extends Resource
 @export_group("The crater")
 ## Its far edge, metres along the track (far enough along that the street behind it, which the camera looks back
 ## down, reaches into the haze), how long it is (a hole in the runner's lane, as a gap looks) and how deep its
-## floor lies (the runner hanging from the edge by their hands just touches it).
-@export_range(150.0, 400.0, 1.0, "suffix:m") var crater_end: float = 200.0
+## floor lies (the runner hanging from the edge by their hands just touches it). Keep both ends off the track
+## builder's 40 m chunk boundaries: a hole ending exactly on one is built without that end's orange edge.
+@export_range(150.0, 400.0, 1.0, "suffix:m") var crater_end: float = 201.0
 @export_range(3.0, 8.0, 0.1, "suffix:m") var crater_length: float = 5.4
 @export_range(1.0, 2.5, 0.01, "suffix:m") var crater_depth: float = 1.42
 ## The rubble on its floor: chunks of the street that came down with it, and its shades.
@@ -102,11 +103,12 @@ extends Resource
 @export_range(-90.0, 90.0, 1.0, "suffix:°") var look_up: float = 78.0
 
 @export_group("The cameras")
-## High over the crater's far end, looking down into it and down the street beyond, easing in a little.
-@export var high_from: Vector3 = Vector3(1.2, 4.8, 3.2)
-@export var high_to: Vector3 = Vector3(0.9, 4.0, 2.5)
+## High over the crater's far end, looking down into it and down the street beyond, drifting back a little so the
+## runner reaching up at the far wall stays in the picture.
+@export var high_from: Vector3 = Vector3(1.1, 4.9, 3.0)
+@export var high_to: Vector3 = Vector3(0.9, 4.6, 3.6)
 @export var high_look_from: Vector3 = Vector3(-0.6, -0.6, -6.0)
-@export var high_look_to: Vector3 = Vector3(-0.5, -0.7, -5.0)
+@export var high_look_to: Vector3 = Vector3(-0.5, -1.28, -5.0)
 @export_range(30.0, 90.0, 1.0, "suffix:°") var high_fov: float = 58.0
 ## The cut to ground level (`cut_at`): low on the street beyond the far edge, looking back over it and down the
 ## street, then (from `rise_from`) rising a little as the runner gets up.

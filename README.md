@@ -19,9 +19,10 @@ Zone's Sleep Taker after Dead Zone 2 (`--boss=dead_zone_boss`), and the Marketpl
 Marketplace 2 (`--boss=marketplace_boss`), the Corporate zone's Hostile Takeover after Corporate 2
 (`--boss=corporate_boss`), Gangland's Sewer Swarm after Gangland 3 (`--boss=gangland_boss`), and the
 Golden Zone's final villain, The Golden Convergence, after Golden 3 (`--boss=golden_boss`). The short cinematics are built with a code-driven cinematic toolkit
-(camera paths, the runner and cyborgs on the humanoid rig, timed events, skippable); until the owner
-describes the story beats, each zone's intro (and the City's boss intro) plays a placeholder arrival flyover
-over the zone, and the outros are placeholder cards.
+(camera paths, the runner and cyborgs on the humanoid rig, timed events, skippable). The owner's story beats are
+built for the City's outro, Gangland's boss intro and the Dead Zone's intro (the runner climbing out of a smoking
+crater as a host cyborg looks on); until the owner describes the rest, each other zone's intro (and the City's boss
+intro) plays a placeholder arrival flyover over the zone, and the other outros are placeholder cards.
 Every placeholder decision is listed in `docs/OPEN_QUESTIONS.md`.
 
 Docs: `docs/GDD_CHECKPOINT.md` (the design, the authority), `docs/OPEN_QUESTIONS.md` (open decisions and
@@ -115,7 +116,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   zone) and Gangland with three levels each, the Marketplace, Corporate and the Dead Zone with two, and the
   Golden Zone with three.
   Each zone has a boss slot and cinematic slots; its intro plays a placeholder arrival flyover over the zone
-  in its own look (skippable). Each level introduces about one new thing (GDD §5), where
+  in its own look (skippable), but the Dead Zone's, which plays the owner's beats. Each level introduces about one new thing (GDD §5), where
   its data says (`feature_starts`):
   1. City 1 *Rooftop Rush*: gaps, fences, walls and signs, then cyborgs late in the level.
   2. City 2 *Skyway*: ceilings and anti-grav pads.
@@ -686,9 +687,11 @@ spare (see Tools, above). Covered:
 - **Cinematics:** the toolkit's camera and actor paths (smooth, eased and cut moves, cameras riding with an
   actor), a timeline's checks, a cinematic played to its end with every event in order, skipping (the pause
   action and the Skip button), Reduced flashing, holding while the game is in the background, a cinematic
-  described in data, every zone's arrival flyover and the City's boss intro at 3, 5 and 6 lanes (the zone's
+  described in data, the poses that play out over time (lying, getting up, climbing out; cyborgs lying still
+  and crouching), every zone's arrival flyover and the City's boss intro at 3, 5 and 6 lanes (the zone's
   skin from its data, a camera that never flies into a ceiling or out of the street, ending in the run
-  camera's view), and the App's flow through a built slot, the web demo's too.
+  camera's view), and the App's flow through a built slot, the web demo's too; each owner-beat cinematic has
+  its own suite (`test_city_outro`, `test_sewer_swarm_intro`, `test_dead_zone_intro`).
 - **Screens:** every screen at desktop and touch sizes.
 - **The web demo:** its export preset, and a filter that leaves out only what the demo never loads, worked out
   from the data (and following a replaced track); everything the demo's scenes, scripts and data reference kept
@@ -734,7 +737,7 @@ tools/                  godot.sh (play/edit/test/smoke/sfx/music/web), asset gen
                         the web demo's export tools and browser check (web/)
 scenes/main.tscn        the main scene: world, screens and overlays
 scenes/bosses/          boss fight scenes (the test boss and the Floating Head so far)
-scenes/cinematics/      cinematic scenes (the placeholder arrival flyover so far)
+scenes/cinematics/      cinematic scenes (the placeholder arrival flyover and the owner-beat cinematics)
 scripts/app/            App (state and flow), Profile, SaveService, Settings, BuildFlavor
 scripts/run/            a run: LevelRun, RunWorld, camera, projectiles, credits, score, effects, hints
 scripts/player/         the Player controller and its avatar
@@ -743,7 +746,8 @@ scripts/enemies/        one script (plus tuning and generator rules) per enemy t
 scripts/powerups/       the permanent power-ups
 scripts/world/          level layout, generator, track builder, hazards; zone skins and the mesh kit
 scripts/campaign/       campaign, zones, bosses (BossDef, BossPhase) and cinematic slots (CinematicDef, Cinematic)
-scripts/cinematics/     the cinematic toolkit (CinematicSequencer, CineTimeline, CineStage, ...) and the flyover
+scripts/cinematics/     the cinematic toolkit (CinematicSequencer, CineTimeline, CineStage, ...), the flyover and
+                        the owner-beat cinematics (the City outro, sewer_swarm_intro/, dead_zone_intro/)
 scripts/bosses/         the boss framework (BossEncounter, BossPart, BossArena, BossProps), the test boss,
                         and one folder per boss (floating_head/, sleep_taker/, the_house/, hostile_takeover/,
                         sewer_swarm/)

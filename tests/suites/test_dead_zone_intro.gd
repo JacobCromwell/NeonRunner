@@ -8,7 +8,8 @@ extends TestSuite
 ## to look into the camera; the cut to an extreme close-up of its glitching, grinning screen face, the whole face
 ## filling the picture, looking into the camera, its head held still; the zone's title card as it starts to fade
 ## to black, held on the black; the zone's music; what it costs; skipping; and the App's flow (skipping it starts
-## Dead Zone 1); and its own sounds.
+## Dead Zone 1); its own sounds; nothing flashing; and the crater's ends off chunk boundaries (so both have the
+## gap's edge).
 
 const LANES: Array[int] = [3, 5, 6]
 const SFX_PATH: String = "res://data/audio/sfx_library.tres"
@@ -19,6 +20,8 @@ const STEP: float = 1.0 / 30.0
 const HIGH_ABOVE: float = 3.0
 const GROUND_LOW: float = 0.05
 const GROUND_HIGH: float = 0.6
+## The crater's ends keep at least this far off the track builder's chunk boundaries (metres).
+const CHUNK_CLEARANCE: float = 0.5
 ## A cut: the camera turns or jumps further than this in one step (its own moves are far slower).
 const CUT_JUMP: float = 0.5
 ## The medium shot: the host's screen this far from the camera (metres), facing it by the shot's end.
@@ -38,7 +41,7 @@ const NEUTRAL_SATURATION: float = 0.2
 const GRIP_SLACK: float = 0.03
 ## Its sounds, in order: the crater smouldering, rubble shifting, the hands grabbing the edge, a knee onto it, the
 ## host turning, its screen up close (tools/asset_gen/sfx_bank_cinematics.gd: none of them a hazard's warning).
-const OWN_SOUNDS: Array[String] = ["crater_smoulder", "rubble_shift", "edge_grab", "rubble_shift", "host_turn", "host_glitch"]
+const OWN_SOUNDS: Array[String] = ["crater_smoulder", "rubble_shift", "edge_grab", "rubble_shift", "cyborg_host_turn", "cyborg_host_glitch"]
 ## Costs, headless: setting it up and a step of its clock (generous, so a busy machine doesn't fail them: they
 ## catch a gross regression; the measured numbers are printed), and what its props may add to a frame.
 const SETUP_BUDGET_MSEC: float = 1500.0
@@ -130,6 +133,16 @@ func _check_intro(lanes: int) -> void:
 		"%s: the crater is a gap in the runner's lane, so it looks like one" % tag)
 	check(seq.crater != null and seq.crater.smoke != null and seq.crater.floor_root.get_child_count() > 1,
 		"%s: down in it a floor of rubble, and smoke rising out of it" % tag)
+	# The track builder gives a hole's end its orange edge only inside a chunk (docs/questions/f2c.md).
+	var off_bounds := Vector2(_off_chunk(seq.crater_start()), _off_chunk(n.crater_end))
+	check(off_bounds.x >= CHUNK_CLEARANCE and off_bounds.y >= CHUNK_CLEARANCE,
+		"%s: both of the crater's ends are off chunk boundaries, so both get the gap's orange edge (%s m off)" % [tag, off_bounds])
+	var flashes := PackedStringArray()
+	for e: CineEvent in seq.playing.events:
+		if e.kind == CineEvent.Kind.EFFECT and (e.name == CineEvent.FLASH or e.name == CineEvent.SHAKE):
+			flashes.append("%s at %.2f s" % [e.name, e.time])
+	check(flashes.is_empty(), "%s: nothing flashes or shakes (Reduced flashing has nothing to calm but the host's own glitch: %s)" % [
+		tag, flashes])
 	var hues: Array[String] = []
 	for c: Color in Array(n.rubble_colors) + [n.smoke_color, n.crater_light_color]:
 		if c.s > NEUTRAL_SATURATION:
@@ -153,6 +166,7 @@ func _check_intro(lanes: int) -> void:
 	var shake_turns: int = 0
 	var last_shake: float = 0.0
 	var reached: bool = false
+	var reach_seen: String = ""
 	var hands_first: String = ""
 	var held: float = 0.0
 	var up_on_street: bool = false
@@ -200,6 +214,11 @@ func _check_intro(lanes: int) -> void:
 				last_shake = runner.look
 			if t > n.reach_at and runner.pose == &"get_up" and runner.progress > 0.99 and rp.y < -1.0 and rp.z > n.crater_end - 0.6:
 				reached = true
+			# Reaching up at the far wall, their head and hands are in the picture, above the letterbox's bottom bar.
+			if t > n.walk_to and reach_seen == "":
+				for point: Vector3 in [runner.avatar.rig.joint(&"head").global_position, runner.to_global(runner.grip_point())]:
+					if not _in_picture(seq, point):
+						reach_seen = "%.2f s: %s" % [t, point]
 		# The second: at ground level beyond the far edge.
 		elif t > n.cut_at and t < n.medium_at:
 			ground_range = Vector2(minf(ground_range.x, cam_track.y), maxf(ground_range.y, cam_track.y))
@@ -261,7 +280,8 @@ func _check_intro(lanes: int) -> void:
 		"%s: the second is at ground level beyond the far edge (%.2f-%.2f m up)" % [tag, ground_range.x, ground_range.y])
 	check(lying, "%s: the runner lies on their back down in the crater until they stir" % tag)
 	check(shake_turns >= 3, "%s: they shake themselves, their head turning from side to side (%d turns)" % [tag, shake_turns])
-	check(reached, "%s: they get up and reach up at the far wall before the cut" % tag)
+	check(reached and reach_seen == "", "%s: they get up and reach up at the far wall before the cut, in the picture (%s)" % [
+		tag, reach_seen])
 	check(hands_first == "", "%s: at ground level, at first only their hands show, grabbing the edge (%s)" % [tag, hands_first])
 	check(held < GRIP_SLACK, "%s: climbing out, their hands hold the edge (off by at most %.3f m)" % [tag, held])
 	check(up_on_street, "%s: they end up on their feet on the street beyond the edge" % tag)
@@ -296,6 +316,22 @@ func _check_intro(lanes: int) -> void:
 	check(max_calls <= PROP_DRAW_CALLS, "%s: the crater adds at most %d draw calls (%d)" % [tag, PROP_DRAW_CALLS, max_calls])
 	print("  dead zone intro, %s: setup %.1f ms, worst step %.2f ms, crater %d draw calls" % [tag, setup_msec, worst_step, max_calls])
 	await _free(seq)
+
+
+## How far `distance` along the track is from the nearest chunk boundary (metres).
+func _off_chunk(distance: float) -> float:
+	var into: float = fposmod(distance, TrackBuilder.CHUNK_LENGTH)
+	return minf(into, TrackBuilder.CHUNK_LENGTH - into)
+
+
+## True if a world point shows in the picture: in front of the camera, inside it and not under the letterbox's bars.
+func _in_picture(seq: DeadZoneIntro, point: Vector3) -> bool:
+	if not seq.camera.is_position_in_frustum(point):
+		return false
+	var size: Vector2 = seq.camera.get_viewport().get_visible_rect().size
+	var bar: float = size.y * CineOverlay.BAR_SHARE * seq.overlay.letterbox
+	var p: Vector2 = seq.camera.unproject_position(point)
+	return p.y > bar and p.y < size.y - bar
 
 
 ## How much of the picture (inside the letterbox: its height, or its width where the face is wider than its shape)

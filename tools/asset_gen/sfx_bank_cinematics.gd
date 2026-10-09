@@ -2,17 +2,16 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ## The cinematics' own sounds, where the game's don't fit (the owner, October 9, 2026: new sounds are fine where the
 ## existing ones don't cover a moment; only new music is off). In the game's crunchy 16-bit style. None of them is a
 ## hazard's warning, and no warning is reused for a cinematic's moment, so the warnings keep their meaning. Like every
-## sound effect, each is under MAX_SECONDS. The Dead Zone's intro (DeadZoneIntro):
-##   crater_smoulder  the smoking crater settling: a low rumble rising and falling, embers ticking and popping,
-##                    a soft hiss of smoke, pebbles trickling down its sides
-##   rubble_shift     a body shifting on rubble: grit scraping under it, a couple of chunks knocking
-##   edge_grab        a gloved hand slapping down on a broken concrete edge, grit trickling off it into the hole
-##   host_turn        a host lifting its head to look: a neck servo grinding and ratcheting under a burst of its
-##                    screen's static
-##   host_glitch      a host's corrupted screen up close: stuttering static, a low detuned hum sinking, the feed's
-##                    rows jumping in digital clicks, and under it, faintly, a garbled voice (the Bad Dream inside)
-
-const MAX_SECONDS: float = 2.45
+## sound effect, each is under 2.45 s. The Dead Zone's intro (DeadZoneIntro):
+##   crater_smoulder     the smoking crater settling: a low rumble rising and falling, embers ticking and
+##                       popping, a soft hiss of smoke, pebbles trickling down its sides
+##   rubble_shift        a body shifting on rubble: grit scraping under it, a couple of chunks knocking
+##   edge_grab           a gloved hand slapping down on a broken concrete edge, grit trickling off it into the hole
+##   cyborg_host_turn    a host cyborg lifting its head to look: a neck servo grinding and ratcheting under a burst
+##                       of its screen's static
+##   cyborg_host_glitch  a host cyborg's corrupted screen up close: stuttering static, a low detuned hum sinking,
+##                       the feed's rows jumping in digital clicks, and under it, faintly, a garbled voice (the Bad
+##                       Dream inside)
 
 
 func sounds() -> Dictionary:
@@ -20,8 +19,8 @@ func sounds() -> Dictionary:
 		"crater_smoulder": _smoulder,
 		"rubble_shift": _rubble_shift,
 		"edge_grab": _edge_grab,
-		"host_turn": _host_turn,
-		"host_glitch": _host_glitch,
+		"cyborg_host_turn": _host_turn,
+		"cyborg_host_glitch": _host_glitch,
 	}
 
 

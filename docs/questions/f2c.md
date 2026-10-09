@@ -4,6 +4,9 @@ The owner's story beat (October 9, 2026) is built as `DeadZoneIntro` (`scripts/c
 Dead Zone's intro slot. What the beat leaves open is a placeholder, with its numbers in
 `data/cinematics/dead_zone_intro_tuning.tres` (`DeadZoneIntroTuning`, marked `DESIGN-TBD`).
 
+This partly answers `docs/OPEN_QUESTIONS.md` items 238 (the arrival flyovers' story beats: the Dead Zone's intro has
+its own now) and 239 (a title card naming the zone: this one has one, as the owner asked).
+
 **Answered by the owner the same day** (recorded in GDD §6, Cinematics, and §11, Music):
 - The zone's title card appears in the close-up as it starts to fade to black. Built: it holds on the black.
 - The runner's fall into the crater will be shown in a cinematic before this one. Its beats are still to come.
@@ -43,9 +46,20 @@ Dead Zone's intro slot. What the beat leaves open is a placeholder, with its num
   - `crater_smoulder` opens it: a low rumble, embers ticking, a hiss of smoke, pebbles trickling.
   - `rubble_shift` as they sit up, and quieter as a knee comes onto the edge.
   - `edge_grab` as the hands slap onto the edge, with grit trickling off it.
-  - `host_turn` as the host lifts its head: its neck servo grinding under its screen's static.
-  - `host_glitch` under the close-up: stuttering static, a sinking hum, row-jump clicks and a faint garbled voice.
+  - `cyborg_host_turn` as the host lifts its head: its neck servo grinding under its screen's static.
+  - `cyborg_host_glitch` under the close-up: stuttering static, a sinking hum, row-jump clicks and a faint garbled voice.
   - The zone's music fades in over 5 s from the start. Should the runner have a voice (a groan, a cough)?
+- **The slot's title**, "Out of the crater" (`data/cinematics/dead_zone_intro.tres`), shows on the title screen's
+  "Next:" line. Placeholder; is that the name the owner wants?
+- **The close-up's flicker.** With Reduced flashing off, the host's screen fills most of the picture and glitches as
+  every host's does (its own corrupted faces, rows jumping 12 times a second, boosted for the close-up): the picture's
+  brightness jumps about three times a second. With Reduced flashing on it holds steady. Should the close-up always
+  use the slower glitch?
+- **Raised for a core task: a gap ending on a chunk boundary loses its orange edge.** The track builder only gives a
+  hole its edge where the hole ends inside a 40 m chunk (`TrackBuilder._floor_pieces`, `CHUNK_LENGTH`). A hole that
+  starts or ends exactly on a multiple of 40 m is built without that end's lip, strip and halo. Here the crater ends
+  at 201 m to avoid it. None of the generator's campaign gaps hit it at 3, 5 and 6 lanes; the boss arenas' hand-placed
+  gaps were not checked. `track_builder.gd` is a core file, so the fix belongs to its own task.
 - **The new poses' look.** Placeholder: the runner lying, getting up and climbing out (`CinePoses`), and a cyborg
   lying still and crouched over something (`CyborgPoses.LIE`, `CROUCH`) are hand-set key poses. They are the
   toolkit's from now on, so any cinematic can reuse them.

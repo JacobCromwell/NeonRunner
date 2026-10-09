@@ -10,7 +10,8 @@ extends Node3D
 ##   flickers), kept off the camera's line to the cyborgs down the street.
 ## - A faint, cold light down in it, so the runner reads in the dark.
 ## Positions are world space (the sequencer sits at the origin; CineStage converts track space). The rubble is
-## seeded, so it lies the same every time.
+## seeded, so it lies the same every time. DESIGN-TBD (docs/questions/f2c.md): the crater's look (its plates, slabs,
+## rubble, smoke and light).
 
 ## The floor's plates: where each one starts along the crater (share of its length), how far it drops below
 ## the floor's depth (m) and how it tips (degrees about x and z).

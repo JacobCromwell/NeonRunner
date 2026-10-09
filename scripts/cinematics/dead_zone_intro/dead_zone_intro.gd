@@ -242,12 +242,14 @@ func _add_shake(r: CineActor) -> void:
 			k.position = Vector3.INF
 			r.keys.append(k)
 	r.keys.sort_custom(func(a: CineActorKey, b: CineActorKey) -> bool: return a.time < b.time)
-	# Keys added only for the shake take the path's place and pose there.
+	# Keys added only for the shake take the path's place and pose there, between the path's own keys either side.
 	for i: int in r.keys.size():
 		var k: CineActorKey = r.keys[i]
 		if k.position == Vector3.INF:
-			var before: CineActorKey = r.keys[i - 1]
-			var after: CineActorKey = r.keys[i + 1] if i + 1 < r.keys.size() else before
+			var before: CineActorKey = _path_key(r, i, -1)
+			var after: CineActorKey = _path_key(r, i, 1)
+			before = before if before != null else after
+			after = after if after != null else before
 			var u: float = clampf((k.time - before.time) / maxf(after.time - before.time, 0.001), 0.0, 1.0)
 			k.position = before.position.lerp(after.position, u)
 			k.face_path = false
@@ -258,6 +260,16 @@ func _add_shake(r: CineActor) -> void:
 			var turn: float = (k.time - n.shake_from) * n.shake_rate * 2.0
 			var fade: float = 1.0 - (k.time - n.shake_from) / span
 			k.look = n.shake_turn * fade * (1.0 if int(roundf(turn)) % 2 == 0 else -1.0) if k.time > n.shake_from + 0.001 else 0.0
+
+
+## The nearest of the path's own keys (not one added for the shake) before (`way` -1) or after (1) key `i`.
+func _path_key(a: CineActor, i: int, way: int) -> CineActorKey:
+	var j: int = i + way
+	while j >= 0 and j < a.keys.size():
+		if a.keys[j].position != Vector3.INF:
+			return a.keys[j]
+		j += way
+	return null
 
 
 func _key_at(a: CineActor, at: float) -> CineActorKey:
@@ -347,9 +359,9 @@ func _add_events(t: CineTimeline) -> void:
 	t.sound(n.grab_at, &"edge_grab")
 	t.sound(n.knee_at - 0.1, &"rubble_shift", -4.0)
 	# The host's neck grinding and its screen crackling as it turns to look; close up, its corrupted screen.
-	t.sound(n.look_at, &"host_turn")
+	t.sound(n.look_at, &"cyborg_host_turn")
 	t.cue(n.close_up_at, &"close_up")
-	t.sound(n.close_up_at, &"host_glitch")
+	t.sound(n.close_up_at, &"cyborg_host_glitch")
 	# As the close-up starts to fade to black, the zone's title card, held on the black.
 	t.effect(n.fade_at, CineEvent.FADE_OUT, n.fade_out)
 	t.card(n.fade_at, "{zone}", "ZONE {zone_number}", n.card_seconds)

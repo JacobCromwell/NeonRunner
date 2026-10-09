@@ -75,24 +75,24 @@ func setup(p_actor: CineActor, p_stage: CineStage, tuning: MovementTuning, varia
 			avatar = PlayerAvatar.new()
 			avatar.fit_to(tuning.visual_size)
 			add_child(avatar)
-			_hold_avatar()
+			_hold_models()
 		CineActor.Kind.CYBORG:
 			body = CyborgBody.new()
 			body.name = "Body"
 			add_child(body)
 			body.build(actor.look if actor.look != &"" else variant, actor.host, false, visual_seed)
-			_hold_avatar()
+			_hold_models()
 
 
 func _ready() -> void:
-	_hold_avatar()
+	_hold_models()
 
 
 ## The models are driven by update() on the cinematic's clock, never by themselves between frames
 ## (PlayerAvatar carries on from its last state when it isn't fed for two physics ticks, which a frame
 ## at 30 fps spans; a cyborg's body moves on by update()'s steps, CyborgBody.advance, so stepping the clock
 ## shows the same). A node's processing comes back on when it's ready, so this runs once it is.
-func _hold_avatar() -> void:
+func _hold_models() -> void:
 	if avatar != null and avatar.is_inside_tree():
 		avatar.set_physics_process(false)
 	if body != null and body.is_inside_tree():
