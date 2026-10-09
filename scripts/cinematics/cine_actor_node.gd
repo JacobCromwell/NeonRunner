@@ -12,12 +12,16 @@ const TURN_MIN_SPEED: float = 0.3
 const TURN_RATE: float = 10.0
 ## Moving sideways faster than this (m/s), the runner leans into it, as into a lane switch.
 const LEAN_SPEED: float = 1.5
-## Higher than this above the floor (m), the runner is in the air.
+## Further than this from the floor (m), above it or below it (falling past its edge), the runner is in
+## the air.
 const AIR_HEIGHT: float = 0.03
 ## Where a cyborg aims on another actor: this high above its feet (m).
 const AIM_HEIGHT: float = 0.9
 ## A frame's move longer than this (m) is a jump cut, not ground covered.
 const MAX_STEP: float = 5.0
+## How the runner's look (CineActorKey.look) is shared out up its spine: chest, neck, head.
+const LOOK_SHARE: Array[float] = [0.25, 0.3, 0.45]
+const LOOK_JOINTS: Array[StringName] = [&"chest", &"neck", &"head"]
 
 var actor: CineActor
 var stage: CineStage
@@ -33,12 +37,15 @@ var distance_run: float = 0.0
 var pose: StringName = &""
 ## Its heading now, radians (0 faces down the track, + turns left).
 var yaw: float = 0.0
+## The runner's head turn now, radians (+ looks left; CineActorKey.look).
+var look: float = 0.0
 
 var _started: bool = false
 var _airborne: bool = false
 var _died: bool = false
-## Its keys' positions, in order (built on first use).
+## Its keys' positions and looks, in order (built on first use).
 var _points: Array = []
+var _looks := PackedFloat32Array()
 
 
 ## Builds the model. `variant` dresses a cyborg that names no look of its own (the stage skin's
@@ -118,13 +125,14 @@ func update(t: float, delta: float, others: Dictionary) -> void:
 	_started = true
 	if avatar != null:
 		_update_runner(delta, velocity)
+		_turn_head(t)
 	elif body != null:
 		_update_cyborg(i, others)
 
 
 func _update_runner(delta: float, velocity: Vector3) -> void:
 	avatar.rotation.y = yaw
-	var airborne: bool = track_position.y > AIR_HEIGHT
+	var airborne: bool = absf(track_position.y) > AIR_HEIGHT
 	var landed: bool = _airborne and not airborne
 	_airborne = airborne
 	# Leaning into a sideways move as into a lane switch (world x is track x).
@@ -142,6 +150,22 @@ func _update_runner(delta: float, velocity: Vector3) -> void:
 		"stomping": pose == &"stomp",
 		"just_landed": landed,
 	}, delta)
+
+
+## The runner's look at time `t`, turned into its chest, neck and head on top of the pose just set (the
+## rig sets every joint afresh each update, so nothing builds up).
+func _turn_head(t: float) -> void:
+	if _looks.size() != actor.keys.size():
+		_looks.clear()
+		for k: CineActorKey in actor.keys:
+			_looks.append(deg_to_rad(k.look))
+	look = CinePath.sample_angle(actor.keys, _looks, t)
+	if is_zero_approx(look) or pose == &"dead":
+		return
+	for j: int in LOOK_JOINTS.size():
+		var joint: Node3D = avatar.rig.joint(LOOK_JOINTS[j])
+		if joint != null:
+			joint.rotate_object_local(Vector3.UP, look * LOOK_SHARE[j])
 
 
 func _update_cyborg(i: int, others: Dictionary) -> void:
