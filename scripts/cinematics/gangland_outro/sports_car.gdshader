@@ -20,24 +20,19 @@ instance uniform float lights = 0.0;
 // Metres it has driven: the street's reflections stream back over it.
 instance uniform float travelled = 0.0;
 // The street mirrored in it: the sky overhead and at the horizon, the neon of the shopfronts along the
-// horizon, the road below.
-uniform vec3 sky_top : source_color = vec3(0.09, 0.05, 0.08);
-uniform vec3 sky_horizon : source_color = vec3(0.75, 0.36, 0.28);
-uniform vec3 neon_a : source_color = vec3(1.0, 0.62, 0.3);
-uniform vec3 neon_b : source_color = vec3(0.5, 0.72, 1.0);
-uniform vec3 road : source_color = vec3(0.05, 0.045, 0.045);
+// horizon, the road below. Plain sRGB values (no source_color hint): to_linear() converts them once, on
+// every renderer.
+uniform vec3 sky_top = vec3(0.09, 0.05, 0.08);
+uniform vec3 sky_horizon = vec3(0.75, 0.36, 0.28);
+uniform vec3 neon_a = vec3(1.0, 0.62, 0.3);
+uniform vec3 neon_b = vec3(0.5, 0.72, 1.0);
+uniform vec3 road = vec3(0.05, 0.045, 0.045);
 // The key light (world direction toward it) and how much of the albedo shows away from it.
 uniform vec3 light_dir = vec3(-0.4, 0.8, 0.45);
 uniform float ambient = 0.3;
 // The highlight's tightness and strength.
 uniform float shine = 70.0;
 uniform float shine_strength = 1.6;
-
-varying vec3 v_world;
-
-void vertex() {
-	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-}
 
 // The street seen along world direction `r` (sRGB).
 vec3 street(vec3 r) {

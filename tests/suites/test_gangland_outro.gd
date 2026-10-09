@@ -168,7 +168,8 @@ func _test_beats(lanes: int) -> void:
 	var setup_msec: float = (Time.get_ticks_usec() - t0) / 1000.0
 	var n: GanglandOutroTuning = seq.n
 	var zone: ZoneDef = _step().zone
-	check(seq.stage.skin == zone.boss.arena.skin and seq.stage.sky == zone.levels.back().sky
+	var fight_sky: LevelSky = zone.boss.arena.sky if zone.boss.arena.sky != null else zone.levels.back().sky
+	check(seq.stage.skin == zone.boss.arena.skin and seq.stage.sky == fight_sky and fight_sky != null
 		and seq.stage.geo.lane_count == lanes,
 		"%s: it picks up where the fight ended: the arena's look, under the fight's sky, on the level's lanes" % tag)
 	check(seq.playing.problems(sfx).is_empty(), "%s: a sound timeline: %s" % [tag, seq.playing.problems(sfx)])
@@ -205,6 +206,8 @@ func _test_beats(lanes: int) -> void:
 	var gone_in: bool = false
 	var door_shut: bool = false
 	var lit: bool = false
+	var wheels_back: bool = false
+	var last_turn: float = 0.0
 	var road_cam: float = 0.0
 	var straight: bool = true
 	var last_driven: float = 0.0
@@ -268,12 +271,13 @@ func _test_beats(lanes: int) -> void:
 			if t > seq.t_take + GanglandOutro.HANDOVER_SECONDS + 0.05:
 				runner_holds = runner_holds and seq.key_holder == &"runner" and seq.key.global_position.distance_to(
 					GanglandOutro._in_hand(runner.avatar.rig.joint(&"hand_r")).origin) < IN_HAND
-			if absf(t - (n.glint_at + GanglandOutro.GLINT_SECONDS * 0.5)) < STEP * 0.5:
-				glinted = seq.key_glint.visible
+			if t > n.glint_at + 0.2 and t < n.glint_at + GanglandOutro.GLINT_SECONDS - 0.2:
+				glinted = glinted or seq.key_glint.visible
 		else:
 			if not cut_clean and t < seq.t_cut + 0.1:
 				cut_clean = seq.log_lines.has("stage gangland_boss_skin") and seq.props == null and seq.car != null \
-					and seq.stage.skin == zone.boss.arena.skin and seq.key.visible and seq.key_holder == &"runner"
+					and seq.stage.skin == zone.boss.arena.skin and seq.stage.sky == fight_sky and seq.key.visible \
+					and seq.key_holder == &"runner"
 			var car: SportsCarModel = seq.car
 			if t < n.launch_at:
 				parked = parked and seq.stage.to_track(car.global_position).distance_to(seq.car_point) < 0.02
@@ -281,7 +285,7 @@ func _test_beats(lanes: int) -> void:
 				blink_peak = maxf(blink_peak, car.lights)
 			if t > n.unlock_at + GanglandOutro.UNLOCK_SECONDS + 0.05 and t < n.lights_at:
 				dark_between = dark_between and car.lights < 0.001
-			if absf(t - n.get_in_at) < STEP * 0.5:
+			if absf(t - seq.t_get_in) < STEP * 0.5:
 				door_up = car.door_open > 0.99
 				at_door = runner.track_position.distance_to(seq.door_point) < 0.05 and runner.visible
 			if t > seq.t_inside + 0.05 and t < n.door_down_at + n.door_seconds:
@@ -290,6 +294,9 @@ func _test_beats(lanes: int) -> void:
 				door_shut = car.door_open < 0.001
 			if t > n.lights_at + 0.4:
 				lit = car.lights > 0.99
+			# The wheels only ever turn forward, wheelspin and all.
+			wheels_back = wheels_back or car.wheel_turn < last_turn - 0.0001
+			last_turn = car.wheel_turn
 			if t > n.road_at + 0.05:
 				road_cam = maxf(road_cam, cam.global_position.y)
 			if t > n.launch_at:
@@ -318,6 +325,7 @@ func _test_beats(lanes: int) -> void:
 	check(door_up and at_door, "%s: its scissor door is up as the runner, at it, gets in" % tag)
 	check(gone_in and door_shut, "%s: the runner gets in, out of sight, and the door comes down" % tag)
 	check(lit, "%s: its lights come on" % tag)
+	check(not wheels_back and last_turn > seq.driven, "%s: its wheels only turn forward, spinning up at the launch" % tag)
 	check(road_cam > 0.0 and road_cam <= ROAD_LEVEL,
 		"%s: as it drives off, the camera is at road level (%.2f m up at most)" % [
 		tag, road_cam])

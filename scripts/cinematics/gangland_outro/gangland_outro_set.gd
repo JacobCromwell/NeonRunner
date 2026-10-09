@@ -9,7 +9,7 @@ extends Node3D
 ##   fight's person (SwarmHostPerson on the humanoid rig), their implants dimmed, lying back against the heap.
 ##   They breathe and tremble, look up at the runner, hold the key up to them with a shaking hand, and sink back.
 ## - The screeches sniffing at the Host (the sewer screech's own body, ScreechModel, as in play): noses down,
-##   shuffling; they look up at the runner coming, bristle, and scuttle away into the gutters.
+##   shuffling; they look up at the runner coming, spines up, and scuttle away into the gutters.
 ## The key (GanglandOutro.key) is the cinematic's own, since it goes on into the second scene.
 
 ## Where the screeches sniff (from the Host's middle, track space) and which way each scuttles off (degrees
@@ -19,6 +19,9 @@ const SNIFF_SPOTS: Array[Vector3] = [Vector3(-0.95, 0.0, -0.35), Vector3(0.45, 0
 	Vector3(-1.25, 0.0, 0.45), Vector3(0.9, 0.0, -0.6), Vector3(-1.5, 0.0, -0.9), Vector3(0.1, 0.0, -1.8),
 	Vector3(1.1, 0.0, 0.3)]
 const FLEE_DEGREES: Array[float] = [-95.0, 25.0, -55.0, -120.0, 105.0, -80.0, 40.0, 130.0]
+## A startled screech's spines: raised as a screech's are in play when it isn't attacking (Screech: full
+## bristle, the spines blazing, is its attack's).
+const ALARMED: float = 0.35
 ## A screech sniffs this fast (cycles a second), its nose dipping this far (radians).
 const SNIFF_RATE: float = 1.7
 const SNIFF_DIP: float = 0.22
@@ -167,7 +170,7 @@ func host_hand() -> Node3D:
 
 # --- The screeches ------------------------------------------------------------------------------------
 
-## The screeches at `t`: sniffing round the Host, nose down; looking up at the runner, bristling; scuttling
+## The screeches at `t`: sniffing round the Host, nose down; looking up at the runner, spines up; scuttling
 ## away, dropping into the gutter at the wall (or out of sight down the street).
 func update_screeches(t: float) -> void:
 	var runner := outro.runner_track(t)
@@ -192,7 +195,7 @@ func update_screeches(t: float) -> void:
 			pitch = lerpf(-SNIFF_DIP * dip - 0.08, 0.14, alert)
 			pos += Vector3(sin(yaw), 0.0, cos(yaw)) * 0.05 * sin(TAU * 0.6 * t + float(i))
 			s.set_instance_shader_parameter(&"scurry", lerpf(0.12, 0.3, alert))
-			s.set_instance_shader_parameter(&"bristle", lerpf(0.15, 1.0, alert))
+			s.set_instance_shader_parameter(&"bristle", lerpf(0.15, ALARMED, alert))
 		else:
 			# Away, speeding up to its scuttle, bobbing; into the gutter at the wall.
 			var e: float = t - start
@@ -214,7 +217,7 @@ func update_screeches(t: float) -> void:
 			shown = dist < limit + 0.6
 			pitch = -0.05
 			s.set_instance_shader_parameter(&"scurry", 1.0)
-			s.set_instance_shader_parameter(&"bristle", 1.0)
+			s.set_instance_shader_parameter(&"bristle", ALARMED)
 		s.visible = shown
 		# The body faces -z; heading `yaw` (0 down the street) is world -z turned by -yaw.
 		var basis := Basis(Vector3.UP, -yaw) * Basis(Vector3.RIGHT, pitch) * Basis.from_scale(Vector3.ONE * scale_k)

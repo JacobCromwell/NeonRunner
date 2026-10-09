@@ -38,9 +38,8 @@ const SECTIONS: Array = [
 ## Which sections the door spans (from its front edge, where it's hinged, to its back), and the cabin's.
 const DOOR_FROM: int = 4
 const DOOR_TO: int = 6
-## Sections the windshield, the roof and the rear window run between (the top's finish).
+## Sections the windshield and the rear window run between (the top's finish; the roof between is paint).
 const WINDSHIELD: int = 4
-const ROOF: int = 5
 const REAR_WINDOW: int = 6
 ## The intake behind the door: the side between these sections is dark.
 const INTAKE: int = 6
@@ -83,10 +82,12 @@ var door_hinge: Node3D
 var door: MeshInstance3D
 var wheels: Array[MeshInstance3D] = []
 var glow_cards: MeshInstance3D
-## Now: the door (0 shut, 1 open), the lights (0-1) and metres driven.
+## Now: the door (0 shut, 1 open), the lights (0-1), metres driven, and how far the wheels have turned (metres
+## at their rims).
 var door_open: float = 0.0
 var lights: float = 0.0
 var travelled: float = 0.0
+var wheel_turn: float = 0.0
 
 var _glow_material: ShaderMaterial
 var _wheel_radius: Array[float] = []
@@ -137,7 +138,7 @@ func build(p_size: Vector3 = DEFAULT_SIZE, p_paint: Color = Color(0.3, 0.12, 0.9
 	glow_cards.material_override = _glow_material
 	set_door(door_open)
 	set_lights(lights)
-	set_travelled(travelled)
+	set_travelled(travelled, wheel_turn - travelled)
 
 
 ## The door: 0 shut, 1 swung all the way up (it eases at both ends).
@@ -161,13 +162,15 @@ func set_lights(on: float) -> void:
 		glow_cards.visible = lights > 0.001
 
 
-## Metres driven: the wheels turn by it, and the street's reflections stream back over the paint.
-func set_travelled(metres: float) -> void:
+## Metres driven: the street's reflections stream back over the paint, and the wheels turn by it, plus
+## `spin` metres more (wheelspin: never less than it was, or they'd turn back).
+func set_travelled(metres: float, spin: float = 0.0) -> void:
 	travelled = metres
+	wheel_turn = metres + spin
 	for i: int in wheels.size():
 		# Rolling forward (-z) turns a wheel's top forward: about -x for a right wheel, +x for a left one
 		# (turned round).
-		wheels[i].rotation.x = -_wheel_side[i] * travelled / maxf(_wheel_radius[i], 0.05)
+		wheels[i].rotation.x = -_wheel_side[i] * wheel_turn / maxf(_wheel_radius[i], 0.05)
 	for g: GeometryInstance3D in _car_meshes():
 		g.set_instance_shader_parameter(&"travelled", travelled)
 

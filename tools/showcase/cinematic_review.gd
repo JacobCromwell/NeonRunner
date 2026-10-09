@@ -8,7 +8,8 @@ extends Node3D
 ## (add --rendering-method gl_compatibility before the scene path for the web / low-end renderer).
 ## Options:
 ##   --slot=<step id>     the campaign step whose cinematic plays (default city/intro): a zone's intro
-##                        (<zone>/intro), the City's or Gangland's boss intro (city/boss_intro, gangland/boss_intro)
+##                        (<zone>/intro), the City's or Gangland's boss intro (city/boss_intro, gangland/boss_intro),
+##                        the City's or Gangland's outro (city/outro, gangland/outro)
 ##   --sampler            the toolkit sampler instead, in the zone --zone= names (default city)
 ##   --lanes=N            lanes (default: as many as a level on this device)
 ##   --reduced-flashing   with Settings > Reduced flashing on
@@ -81,6 +82,9 @@ func _start() -> void:
 	if seq != null and from > 0.0:
 		while not seq.done and seq.time < from - 0.0001:
 			seq.advance(minf(1.0 / 30.0, from - seq.time))
+		# The sounds of the moments skipped over would all play at once: silence them.
+		for p: Node in seq.find_children("*", "AudioStreamPlayer", true, false):
+			(p as AudioStreamPlayer).stop()
 
 
 func _on_finished() -> void:

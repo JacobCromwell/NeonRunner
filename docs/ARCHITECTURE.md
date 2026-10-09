@@ -3416,7 +3416,8 @@ counted from the start lane too (a lane past the street's edge is left out).
 the slot's (`CineStage.skin_for`): the zone's skin (`ZoneDef.skin`), and before a boss the fight's arena's
 (`BossDef.arena.skin`) if it has one. Before a boss it is under the fight's sky too (`CineStage.sky_for`: the
 arena's own level sky, else the zone's last level's, as `Campaign.configure_boss` gives the fight; G8), and the
-street's light under it; a zone's intro and outro keep the zone's own sky. Its lanes default to the device's (`App.lane_count()`), so the street
+street's light under it; a zone's intro and outro keep the zone's own sky (unless a stage is `after_fight`, as
+Gangland's outro's are: then it's under the fight's sky and in the arena's look). Its lanes default to the device's (`App.lane_count()`), so the street
 matches the level that follows. A `@zone` music cue plays the slot's track (`ZoneDef.music`, or before a
 boss `BossDef.music` if set); a track the music library doesn't list yet is skipped quietly and the music
 playing carries on, so a song the owner adds later under that name just plays (no music is generated for
@@ -3495,7 +3496,8 @@ black, since building one takes a few frames).
 Then set the slot's `CinematicDef.scene` to the scene. End on the run camera's view of the runner
 (`MovementTuning`'s camera numbers) or on black, since the next step opens on its own view at once.
 `tools/showcase/cinematic_review.tscn` plays any slot's cinematic on its own for renders (`--slot=<step
-id>`, `--sampler`, `--lanes=N`, `--reduced-flashing`, `--once`), printing each event with its frame.
+id>`, `--sampler`, `--lanes=N`, `--reduced-flashing`, `--once`, `--from=S` to start S seconds in), printing
+each event with its frame.
 
 **The arrival flyover** (DESIGN-TBD, `docs/questions/f1.md`; `ArrivalFlyover`, a short script with its
 numbers in `data/cinematics/arrival_flyover.tres`): every zone's intro slot and the City's boss intro play
@@ -3562,14 +3564,15 @@ leave open is DESIGN-TBD, `docs/questions/f2c.md`; numbers in `data/cinematics/g
 21.2 s after the Sewer Swarm, both stretches picking up where the fight ended (`CineStageDef.after_fight`: the
 arena's look under Gangland 3's blood-red sky), on the level's lanes. The fight's music fades out as it opens. Low
 beside the Host, who lies freed against a heap of rubble, implants dark, looking back up the street: four screeches
-sniff at them, look up as the runner comes walking down the street, bristle and scuttle off into the gutters. Over
+sniff at them, look up as the runner comes walking down the street, spines up (never the full bristle of their attack), and
+scuttle off into the gutters. Over
 the runner's shoulder as they walk up and stop beside the Host. Low in front of the Host: trembling (harder as they
 strain), they look up, sit up a little and hold a golden key out to the runner; it glints (a bell chime and a slow
 halo); the runner leans in and takes it (both arms reach for the same point, so the hands meet and the key passes
 from one to the other), the Host sinks back, the runner looks at the key. Black, and the cut (`switch_stage`) to
 another stretch where the car is parked: low off its front corner as the runner walks up holding out the key, the
 car unlocking with a chirp and two blinks of its lights (one slow glow with Reduced flashing), its scissor door
-swinging up; the runner steps in and sits, out of sight once the door is half down; its lights and engine come on.
+swinging up; the runner steps in and sits, out of sight once the door is mostly down; its lights and engine come on.
 Cut to the road behind it, at road level (0.16 m up, the owner's ask), as it launches, wheels spinning up, and
 drives off down the street into the distance; black, and the Marketplace's intro.
 

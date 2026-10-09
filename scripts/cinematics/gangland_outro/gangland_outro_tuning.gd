@@ -11,6 +11,9 @@ extends Resource
 @export_range(0.0, 2.0, 0.05, "suffix:s") var fade_out: float = 0.8
 ## The fight's music fades out over this long as it opens: a quiet aftermath.
 @export_range(0.0, 6.0, 0.1, "suffix:s") var music_fade: float = 2.5
+## The screeches' sniffing is heard from here, and a last spark from the Host's dead implants.
+@export_range(0.0, 5.0, 0.05, "suffix:s") var sniff_sound_at: float = 0.35
+@export_range(0.0, 5.0, 0.05, "suffix:s") var spark_at: float = 1.1
 
 @export_group("The rubble")
 ## How far along the stretch the Host lies (well along it: the first shot looks back up the street, which must be
@@ -38,7 +41,8 @@ extends Resource
 @export_range(4.0, 40.0, 0.5, "suffix:m") var scuttle_distance: float = 16.0
 
 @export_group("The runner walks over")
-## They come into view this far back up the street, walking from then on, and stop beside the Host.
+## They walk down the street from the start, at an even pace: at walk_from they're walk_back metres short of where
+## they stop, beside the Host (so they arrive at walk_from + walk_back / walk_speed).
 @export_range(0.0, 10.0, 0.05, "suffix:s") var walk_from: float = 1.6
 @export_range(4.0, 30.0, 0.5, "suffix:m") var walk_back: float = 11.0
 @export_range(0.5, 4.0, 0.05, "suffix:m/s") var walk_speed: float = 1.8
@@ -73,16 +77,18 @@ extends Resource
 @export_group("The car")
 ## Where it's parked (x, z on the second stretch: well along it, as the reveal looks back up the street), its size
 ## (width, height, length), paint and accent.
-@export_range(170.0, 300.0, 1.0, "suffix:m") var car_at: float = 200.0
+@export_range(170.0, 300.0, 1.0, "suffix:m") var car_at: float = 220.0
 @export_range(-3.0, 3.0, 0.05, "suffix:m") var car_x: float = 0.0
 @export var car_size: Vector3 = Vector3(1.95, 1.0, 4.3)
 @export var car_paint: Color = Color(0.3, 0.12, 0.9)
 @export var car_accent: Color = Color(0.35, 0.85, 1.0)
-## The runner walks up to its door from here (from the car's middle), arriving at the door's side.
+## The runner walks up to its door from here (from the car's middle), this fast, arriving at the door's side.
 @export var approach_from: Vector3 = Vector3(-2.4, 0.0, -5.5)
+@export_range(0.5, 4.0, 0.05, "suffix:m/s") var car_walk_speed: float = 2.1
 @export_range(0.0, 2.0, 0.05, "suffix:m") var door_gap: float = 0.5
 ## They raise the key and the car unlocks (its lights blink twice); the door swings up; they get in; the door
-## comes down; its lights come on.
+## comes down; its lights come on. They get in no sooner than DOOR_TURN after reaching the door
+## (GanglandOutro.t_get_in).
 @export_range(0.0, 30.0, 0.05, "suffix:s") var unlock_at: float = 13.9
 @export_range(0.0, 30.0, 0.05, "suffix:s") var door_up_at: float = 14.3
 @export_range(0.2, 3.0, 0.05, "suffix:s") var door_seconds: float = 0.9
@@ -118,7 +124,7 @@ extends Resource
 ## The car's reveal: low off its front corner, gliding round to its side as the runner comes to it (from the
 ## car's middle).
 @export var reveal_cam: Vector3 = Vector3(-2.3, 0.32, 4.4)
-@export var reveal_cam_end: Vector3 = Vector3(-3.6, 0.7, 2.6)
+@export var reveal_cam_end: Vector3 = Vector3(-3.3, 0.7, 2.6)
 @export var reveal_look: Vector3 = Vector3(0.0, 0.42, 0.6)
 @export var reveal_look_end: Vector3 = Vector3(-0.8, 0.6, -0.3)
 @export_range(20.0, 100.0, 1.0, "suffix:°") var reveal_fov: float = 50.0
