@@ -308,9 +308,9 @@ func _test_every_screen(tag: String) -> void:
 		# Every zone's boss is built (the Golden Convergence last, task E5d-c): the placeholder card a boss not yet
 		# built shows, with an unbuilt stand-in in the Golden Zone's boss step.
 		["boss slot", func() -> void: App.play_step(_unbuilt_golden_boss()), SlotScreen],
-		# The zones' intros play their arrival flyovers (task F1) and the City's outro is built (F2a); the
-		# other outros are still placeholder cards.
-		["cinematic slot", func() -> void: App.play_step(App.campaign.step("gangland/outro")), SlotScreen],
+		# The zones' intros play their arrival flyovers (task F1) and the City's and Gangland's outros are built
+		# (F2a, F2c); the other outros are still placeholder cards.
+		["cinematic slot", func() -> void: App.play_step(App.campaign.step("marketplace/outro")), SlotScreen],
 		["demo end", func() -> void: App.show_demo_end(), DemoEndScreen],
 	]
 	for entry: Array in screens:
