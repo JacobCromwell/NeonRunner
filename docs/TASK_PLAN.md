@@ -267,9 +267,10 @@ Each skin covers:
 
 **D10: Beach zone skin** (the owner's request of October 9, 2026; the reference image is `docs/art/reference/beach_zone.jpg`).
 - A skin only (`BeachSkin`, `data/skins/beach_skin.tres`, shown with `--skin=beach`): the owner hasn't placed the Beach in the campaign yet (it won't be the last zone), so there is no zone definition, level, campaign entry, music or cinematic, and `test_campaign` still pins six zones.
-- The gaps are pools of water. No new enemy assets: the skin reuses an existing look (`enemy_variant`, `DESIGN-TBD`). New background, floors, walls, ceilings, signs, fences and doodads in the reference's style (a sandy street running to a turquoise sea and a palm island, bamboo shacks and tiki bars under thatch, black rust-streaked steel tanks).
+- The gaps are pools of water. No new enemy assets: the skin reuses an existing look (`enemy_variant`: the Marketplace's `&"casino"`, the owner leaving the pick to us). New background, floors, walls, ceilings, signs, fences and doodads in the reference's style (a sandy street running to a turquoise sea and a palm island, bamboo shacks and tiki bars under thatch, black rust-streaked steel tanks).
 - It keeps the colour rule where the reference breaks it (no glowing water, decorative neon in violet, blue and warm white only, flush pool frames, no words on signs): the departures are in `docs/questions/d10.md`.
 - Shader patterns 80-89 (`kit_beach.gdshaderinc`), the same hooks and budget test as every skin (`test_beach_skin`), the cult's emblem and feed.
+- The owner's answers of October 9, 2026 are built (`docs/questions/d10.md`): the enemy look is `&"casino"`, the water sits 0.45 m under the rim and a fall makes a splash (`BeachWaterWatch`, `BeachSplash`, the `splash` sound), `data/skies/beach_sunset.tres` is the sunset sky for the zone's last level, and an open stretch of side wall shows a beach and sea (`BeachSkin.wall_gap`, `BeachOpen`). How often the walls open is D10b's tuning, not the skin's.
 
 **D8: Music for the four new zones.** Also, from the owner's review (GDD §11): **the music dips when the player dies**, and **the level-complete riff plays in each zone's key**. Code-generated placeholder loops in the existing style, fitting each zone's mood:
 - Marketplace: happy and bustling
