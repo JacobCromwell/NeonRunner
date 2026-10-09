@@ -215,7 +215,7 @@ func _rake() -> PackedFloat32Array:
 ## track, a rush with it, then the line burning (a hiss dying away).
 func _sweep() -> PackedFloat32Array:
 	var rng := _rng(1706)
-	var sweep: float = clampf(tuning_value("sweep", 0.55), 0.3, 1.2)
+	var sweep: float = clampf(tuning_value("sweep_seconds", 0.55), 0.3, 1.2)
 	var d: float = sweep + 0.75
 	var b := DSP.buffer(d)
 	var fire := DSP.buffer(sweep + 0.05)
@@ -255,7 +255,7 @@ func _spark() -> PackedFloat32Array:
 ## solid thud as it locks in place.
 func _buttress() -> PackedFloat32Array:
 	var rng := _rng(1708)
-	var rise: float = clampf(tuning_value("buttress_rise", 1.4), 0.5, 3.0)
+	var rise: float = clampf(tuning_value("buttress_rise_seconds", 1.4), 0.5, 3.0)
 	var d: float = rise + 0.5
 	var b := DSP.buffer(d)
 	var grind := DSP.noise(rise, rng)
@@ -283,7 +283,7 @@ func _buttress() -> PackedFloat32Array:
 ## A Flying Buttress crumbling: a sharp crack, a deep thud, rubble pattering down and dying away.
 func _crumble() -> PackedFloat32Array:
 	var rng := _rng(1709)
-	var d: float = clampf(tuning_value("crumble", 1.6), 0.8, 3.0) + 0.3
+	var d: float = clampf(tuning_value("crumble_seconds", 1.6), 0.8, 3.0) + 0.3
 	var b := DSP.buffer(d)
 	var crack := DSP.noise(0.12, rng)
 	DSP.filter(crack, &"highpass", 1500.0)
