@@ -1286,7 +1286,7 @@ their own seeds, fastest of three: 13.9 s against 19.6 s; the longest, Dead Zone
 Corporate 2 at 5 lanes 2.5 s against 0.9 s, its introduction's chase searched in every mode).
 DESIGN-TBD: item 386
 (`docs/OPEN_QUESTIONS.md`), the chases no bait with room is left for (items 402–403), and C6e's placeholders
-(`docs/questions/c6e.md`); items 382–385, 367, 400 and 401 are the owner's answers.
+(items 407–411); items 382–385, 367, 400 and 401 are the owner's answers.
 
 **Late starts.** `LevelConfig.feature_starts` (feature → share of the level) holds a feature back
 until its start: patterns that require it aren't picked before, and the first pattern picked from

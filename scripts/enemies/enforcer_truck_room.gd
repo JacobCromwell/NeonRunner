@@ -68,7 +68,7 @@ var revs: PackedFloat32Array = PackedFloat32Array()
 ## order: each hover truck's entrance (from its banging, its warning, to its burst through the wall and its emerging
 ## into its lane) and each Gilded Sentinel's turn (from its claim, GildedSentinelTuning.claim_window, to its last
 ## swing's end). A showing is never on during one, nor while the truck claims its turn for its planned window.
-## DESIGN-TBD (docs/questions/c6e.md): of the hover truck's attacks only its entrance counts; its cannon shots and
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 410): of the hover truck's attacks only its entrance counts; its cannon shots and
 ## forward lurch take turns (HoverTruck asks EnemyDirector.major_attack_blocked) and wait for a showing.
 var fixed: Array[Vector2] = []
 ## The enemies that keep it from showing itself in the generator's first try (ShowPlanner's CLASSIC mode, as tasks C6c
