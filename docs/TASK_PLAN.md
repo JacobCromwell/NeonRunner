@@ -217,6 +217,7 @@ Each skin covers:
 | D8 | **Music for the four new zones** | – | M | T2 |
 | D9 | **The cult's feed and emblem in the City and Gangland skins** | D2 | S–M | T2 |
 | D10 | **Beach zone skin** (not in the campaign yet) | D2 | L | T2 |
+| D10b | **The Beach's levels: open side walls and a provisional zone** (core; not in the campaign yet) | D10 | M | T1 |
 
 **D1: Gangland update.** The owner's direction is browns and tans, lived in, graffiti and plenty of signs of life, with hints that corporate and military interests fund the gangs. Ceilings are the undersides of decaying or bombed-out buildings and overpasses, instead of today's scavenger barge.
 
@@ -271,6 +272,11 @@ Each skin covers:
 - It keeps the colour rule where the reference breaks it (no glowing water, decorative neon in violet, blue and warm white only, flush pool frames, no words on signs): the departures are in `docs/questions/d10.md`.
 - Shader patterns 80-89 (`kit_beach.gdshaderinc`), the same hooks and budget test as every skin (`test_beach_skin`), the cult's emblem and feed.
 - The owner's answers of October 9, 2026 are built (`docs/questions/d10.md`): the enemy look is `&"casino"`, the water sits 0.45 m under the rim and a fall makes a splash (`BeachWaterWatch`, `BeachSplash`, the `splash` sound), `data/skies/beach_sunset.tres` is the sunset sky for the zone's last level, and an open stretch of side wall shows a beach and sea (`BeachSkin.wall_gap`, `BeachOpen`). How often the walls open is D10b's tuning, not the skin's.
+
+**D10b: the Beach's levels: open side walls and a provisional zone** (core: the wall-gap placement and level and zone data; the owner, October 9, 2026: "have them appear about 50% of the time that they are now currently appearing for this zone", in "much longer sections where there aren't sidewalls").
+- A level's own wall-gap tuning (`LevelConfig.wall_gap_tuning`, `WallGapPlacement.tuning_for`; null is the shared file, so every existing level builds byte for byte as before), read by the placement and the F6 panel's "Wall gaps" group.
+- Open walls (`WallGapTuning`'s Open walls group, `data/tuning/beach_wall_gaps.tres`): each wall opens what its keep-outs leave free in stretches of 2 s and more, then stands again down to 52% open, both walls open at once on at most 30% of the level. Every keep-out still holds.
+- A provisional zone outside the campaign (`data/zones/beach.tres`, `data/levels/beach_1.tres` and `beach_2.tres`, set up for the recommended slot after Corporate), played with `--level=beach/1` as quick play (`ZoneDef.standalone_level`, `App.start_zone_level`). `test_beach_levels` holds both levels to the campaign's fairness checks and the open walls' targets; everything slot-dependent is in `docs/questions/d10b.md`.
 
 **D8: Music for the four new zones.** Also, from the owner's review (GDD §11): **the music dips when the player dies**, and **the level-complete riff plays in each zone's key**. Code-generated placeholder loops in the existing style, fitting each zone's mood:
 - Marketplace: happy and bustling
@@ -444,6 +450,7 @@ The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 369–381.
 | B9 generators and weapons | anytime |
 | D9 the cult's feed in the City and Gangland | D2 |
 | D10 Beach skin (not in the campaign yet) | D2 |
+| D10b Beach levels: open side walls, a provisional zone (core) | D10 |
 | P2 cyborg base, then P3 variants | P1, then P2 |
 | R2 small rule changes, R3 big attacks take turns | anytime |
 | E5c Sleep Taker | B7, B8, B9 and D5 |

@@ -97,7 +97,10 @@ level is always built and played at one speed; a campaign boss fight runs at its
 live, and its Save leaves the base run speed alone when the run's comes from its level (the section's
 `keep` list, `TuningPanel`).
 `--level=<step id>` plays a campaign step with the full flow and takes `--lanes`, `--god`, `--nofall`
-and `--full-loadout` for reviews; `--boss=<boss id>` plays a boss fight (a zone's boss with the full
+and `--full-loadout` for reviews; a `<zone>/<n>` no campaign step has plays level n of
+`data/zones/<zone>.tres` (task D10b: the Beach, which has no campaign slot yet; `App.zone_outside_campaign`)
+as quick play in its zone's look, sky and run speed (`ZoneDef.standalone_level`, `App.start_zone_level`), and
+also takes `--seed=N`; `--boss=<boss id>` plays a boss fight (a zone's boss with the full
 flow, such as `--boss=city_boss`; any other, such as the test boss, or a zone's boss still being built
 (`BossDef.preview_scene`), as quick play) and also takes `--phase=N`. Command-line starts work in debug
 builds only, so a release build can't skip progression or farm credits with them.
@@ -274,6 +277,7 @@ most in a frame higher by the warm-up's samples in the level's first two frames.
 | `data/tuning/feature_recency.tres` (`FeatureRecency`) | the campaign's recency curve: how a level's pick weights follow how recently the campaign introduced each feature |
 | `data/tuning/wall_fences.tres` (`WallFenceTuning`) | wall fences (B5): how often, how they pulse, their introduction, and the fairness margins (their sizes are the movement tuning's) |
 | `data/tuning/wall_gaps.tres` (`WallGapTuning`) | side wall gaps (Zone 2 on): spacing (easy/hard), jitter, length, the share on both walls, and the keep-out margins, all in seconds at the level's run speed |
+| `data/tuning/beach_wall_gaps.tres` (`WallGapTuning`) | the Beach's own wall gaps (`LevelConfig.wall_gap_tuning`, task D10b): its open walls (the Open walls group: the share of each wall to open, the shortest open and standing stretches, the most open on both walls at once) and a narrower clearance around what the walls hold |
 | `data/tuning/performance.tres` (`PerformanceTuning`) | smooth frames (PERF1): how long a frame may spend dressing built chunks, and `test_frame_times`' frame-time budgets |
 | `data/enemies/<type>.tres` (`EnemyTuning` subclasses) | per-enemy numbers, early/late pairs for campaign scaling |
 | `data/shop/catalog.json` | shop items, tiers and prices (the armor's texts take `{hits}` and `{seconds}`, filled from `GameRules` by `ShopScreen.item_text()`) |
@@ -1626,6 +1630,39 @@ ScoreKeeper ends the wall run). A wall entry (move or ramp) inside a gap is refu
 bump. Past the gap, the usual move input steps back onto the wall. `HintDirector` introduces them through the
 `wall_gap` hint. `test_wall_gaps` covers all of this.
 
+**A level's own wall gaps, and the Beach's open walls** (task D10b; the owner, October 9, 2026: the Beach should
+"feel more open ... much longer sections where there aren't sidewalls", its walls appearing "about 50% of the
+time that they are now currently appearing"; GDD §5, A seventh zone). `LevelConfig.wall_gap_tuning` gives a level
+its own `WallGapTuning`; null (every campaign level) is the shared file. `WallGapPlacement.tuning_for(config)` is
+what the placement, the F6 panel's "Wall gaps" group and the tests read. The tuning's Open walls group
+(`coverage_target` above 0: `data/tuning/beach_wall_gaps.tres`, the Beach's levels only) turns the rare short gaps
+into long open stretches (`WallGapPlacement._open_walls`, from the same random stream):
+- each wall opens every stretch its keep-outs leave free (`open_stretches`, 1 cm clear of them), at least
+  `open_seconds_min` (2 s) long, so the walls never flicker;
+- a wall with more open than `coverage_target` (0.52) of the level's length stands again down to it, the wall with
+  more to close first: first where the other wall is open too (the shortest such stretches first), then its own
+  shortest stretches; each closing takes a whole stretch, or what it needs (at least `solid_seconds_min`, 2 s)
+  from an end that meets standing wall already (`_close_down`). So the second wall keeps more of what both had
+  open;
+- while both walls are open at once over more than `both_open_max` (0.3) of the level, the wall with more open
+  stands again over the shortest such stretch.
+Every keep-out above holds, so a wall whose keep-outs (mostly ceilings reaching it, ramps' wall runs and wall
+enemies) leave it less free stands more. The Beach's clearance around signs, wall fences, wall enemies and
+ceilings is narrower (`clear_seconds` 0.35 s against 0.5, about 8 m of wall either side at its 23.8 m/s); the
+margins that time a wall run, before a ramp and past its longest run and either side of a wall enemy, are the
+shared ones. Placed last as before, the open walls change nothing else in a level: built with the shared tuning,
+the Beach's levels are the same levels but for their gaps (the same signs, wall fences, ramps, window cyborgs
+and wall vents, and no wall credit fell in a gap, since those lie along ramps' wall runs: all 54 builds below).
+Over both Beach levels at 3, 5 and 6 lanes, on their own seeds and eight others: each wall stands on 48-57% of
+its level on the levels' own seeds, 106 of 108 walls in 40-60% over all (median 51%; 97-100% with the shared
+tuning), the other two on 64% and 66%, where their keep-outs leave them no more free; both walls are open at once
+on 15-30% of a level (median 29%); the open stretches run from 48 m (2 s) to 859 m (median 117 m), with 83% of
+the open length in stretches of 100 m and more (`test_beach_levels` checks its own seeds and two others). With
+the Open walls group off, the shared tuning places exactly what it did before: every
+layout of `tools/measure/level_pace.gd --dump` (every campaign level at 3, 5 and 6 lanes on its own seed and four
+others, and quick play) is byte-identical. DESIGN-TBD (`docs/questions/d10b.md`): the target, the share open on
+both walls, the shortest stretches and the narrower clearance.
+
 **Wider gaps** (task G7; the owner's answer to open question 352, October 7, 2026, GDD §9.13 "Holes": "every
 level has a couple of wider gaps. They're uncommon, still jumpable by the player, and wide enough that an
 Enforcer following the player into one is wrecked"). `WideGapPlacement` (`scripts/world/wide_gap_placement.gd`;
@@ -2685,6 +2722,19 @@ from more hosts, standing alone in the quiet stretches where one is easy to reac
 still fit one chase at a time. All DESIGN-TBD (`docs/questions/r5.md`). Endless mode, which copies the
 furthest zone's last level, leaves the remix out (`App.start_endless`: no quiet stretches, no quiet
 features or their weights, no darkness), so endless in the Dead Zone plays as it did before.
+
+**The Beach, a provisional zone** (task D10b; the owner, October 9, 2026: a seventh zone, its slot not decided,
+not the last; GDD §5). `data/zones/beach.tres` (id `beach`, the Beach skin, two levels, 23.8 m/s) is in no
+campaign: `test_campaign` still pins six zones. Its levels, `data/levels/beach_1.tres` and `beach_2.tres`, are set
+up for the recommended slot after Corporate (`docs/questions/d10.md`): Corporate 2's features (a remix with no new
+enemy, as the owner wants no new enemy assets), no introductions, their own `difficulty` and `enemy_scaling`
+between Corporate 2's and Dead Zone 1's (there's no campaign curve to place them on, and no recency curve shapes
+their picks), 145 and 150 s, seeds 701 and 702, and the open walls (`wall_gap_tuning`, under The generator, Side
+wall gaps). Beach 1 has no sky of its own (the zone's daylight); the sunset belongs to the last level. Its music
+is a placeholder, Corporate's track (no new songs); no boss, cinematics or demo scope. `--level=beach/1` plays a
+level as quick play (A run; `ZoneDef.standalone_level` builds it as the tests do, `test_beach_levels`). When the
+owner picks a slot the zone goes into `data/campaign/campaign.tres`, and the campaign then sets each level's
+difficulty, enemy scaling, recency and ages; everything slot-dependent is DESIGN-TBD (`docs/questions/d10b.md`).
 
 A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, which the player
 continues past. A cinematic is a scene whose root extends `Cinematic` (emit `finished`, support
@@ -3758,6 +3808,16 @@ truck (god mode, grapples): each destroyed by a charge it dodged or in a wider g
 its volleys, never firing while it shows itself, each truck whose window comes before its first bait coming
 alongside (the showings it makes are printed).
 
+`test_beach_levels` checks the Beach's provisional levels (task D10b; Campaign, The Beach; The generator, Side wall
+gaps): the zone and level data and its place outside the campaign; both levels at 3, 5 and 6 lanes on their own
+seeds and two others with the campaign's fairness checks (LayoutChecks) and every listed feature present (on
+other seeds the Enforcer Truck, which only comes where a bait's chase has room, in nearly every build); the open
+walls: each wall standing on 40-60% of its level (or more only where its keep-outs leave no more free), the
+median wall in 45-55%, every gap at least `open_seconds_min` long and clear of its wall's keep-outs, most of the
+open length in stretches of 100 m and more, both walls open at once within `both_open_max`, the same gaps on a
+second build, and the level otherwise the same as with the shared tuning; and `--level=beach/1` (the zone
+resolved outside the campaign, its quick-play run, and the command line end to end through the smoke tool).
+`test_wall_gaps` holds every campaign level to the shared tuning and checks the open walls on made-up tracks.
 `test_wide_gaps` checks the wider gaps (task G7; The generator, Wider gaps): every campaign level at 3, 5 and 6
 lanes with its 2 (LayoutChecks.check_wide_gaps: the length, the spacing, nothing in any lane from the take-off
 margin to the landing margin, no zone doodad or its push's lead there, no side wall gap beside) and a floor
@@ -3835,7 +3895,8 @@ introduction until PLAY is pressed (`App.begin_run`), and the script presses it 
 (a run that never started, never left the introduction, or whose runner never moved; plus Godot's own
 script errors) and exits 1 on any. `--smoke-report` also prints what the run did, `--smoke-frames=N` shortens
 it, `--smoke-hold` withholds PLAY (the check's own test, `test_smoke_play`). Quick play (`smoke` with no
-arguments) is unchanged. The script cannot name `LevelRun` (compiling it before the autoloads exist fails),
+arguments) is unchanged, and so is a zone outside the campaign (`--level=beach/1`, task D10b), which plays as
+quick play from its first frame. The script cannot name `LevelRun` (compiling it before the autoloads exist fails),
 so it finds the run's `State.READY` through the script's constant map.
 
 Scenes in `tools/showcase/` show one part of the game up close for visual review (not part of the
