@@ -597,7 +597,8 @@ class ShowPlanner:
 	## owner, October 9, 2026, GDD §9.13 "Making room where there is none"):
 	## - CLASSIC: as tasks C6c and C6d planned it: no hover truck or Gilded Sentinel about (quiet, and their stays are
 	##   kept off the whole window), back behind the runner before its bait's turn (hold_for). A chase that has one
-	##   keeps it, so the levels C6d planned keep their windows.
+	##   keeps it, so the levels C6d planned keep their windows. Like every mode, its claim on its turn keeps off what
+	##   can't wait for a turn (the H merge: a Sentinel's turn just behind a window held its warning back).
 	## - AROUND: beside a hover truck or a Gilded Sentinel, as long as the runner keeps a free lane: a lane a hover truck
 	##   holds is a wall to the runner and never the truck's (EnforcerTruckRoom.held), and the showing keeps off what
 	##   can't wait for a turn (EnforcerTruckRoom.fixed: a hover truck's entrance, a Sentinel's turn), from its claim on
@@ -865,13 +866,15 @@ class ShowPlanner:
 		var from: float = d - (t.follow_gap + 2.0 + t.body_size.z + 1.0)
 		var to: float = end + maxf((t.show_margin_seconds + t.switch_seconds) * v,
 			maxf((t.show_margin_seconds + EnforcerTruckRoom.DODGE_ROOM_SECONDS) * v, t.show_shadow_reach))
-		if mode == Mode.CLASSIC:
-			if room.quiet_near(d, (to - d) / v, v):
-				return _none(counts, "a hover truck or a Gilded Sentinel")
-		elif room.fixed_in(d - t.show_claim_seconds * v, d2):
+		if mode == Mode.CLASSIC and room.quiet_near(d, (to - d) / v, v):
+			return _none(counts, "a hover truck or a Gilded Sentinel")
+		if room.fixed_in(d - t.show_claim_seconds * v, d2):
 			# Task C6e: nor while an attack that can't wait for a turn (a hover truck's entrance, a Gilded Sentinel's turn)
 			# is on as the truck claims its turn for the window or begins (a Sentinel that finds its turn taken as its
-			# warning would start lets the runner pass); _hold has it over before the next one.
+			# warning would start lets the runner pass); _hold has it over before the next one. In every mode (the H merge):
+			# CLASSIC's quiet keeps them off the window from its start (and 10 m before), not off its claim, which may
+			# begin during a Sentinel's turn right behind it (task H1's shorter warning lets such a window fit: Golden 2 at
+			# 6 lanes), and the truck's claim then held the Sentinel's warning back for good.
 			return _none(counts, FIXED)
 		if (mode == Mode.CLAIM or mode == Mode.CALM) and room.seconds_to_bait(d, v) * v <= d2 - d + 0.01:
 			# It begins before its bait claims its turn, late too: one can't begin during the claim.
