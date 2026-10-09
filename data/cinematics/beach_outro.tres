@@ -4,6 +4,6 @@
 
 [resource]
 script = ExtResource("1_script")
-id = &"corporate_outro"
-title = "Beyond the towers"
-placeholder_text = "DESIGN-TBD: a short scene after the Corporate boss, heading for the Beach."
+id = &"beach_outro"
+title = "Last light"
+placeholder_text = "DESIGN-TBD: a short scene after the Beach boss, as the sun goes down, heading for the Dead Zone."
