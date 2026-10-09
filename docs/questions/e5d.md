@@ -378,3 +378,65 @@ and the showcase (`res://tools/showcase/golden_convergence_showcase.tscn`: `--sc
     as the cage flickers in, the drones' hurl (E5d-a's), the ripple along the racks (`gc_ripple`), the ship's
     crash (`gc_crash`), the blast racing up the line (`gc_blast`), the pipes blowing out (`gc_pipes`) and, on a
     miss, the ship leaving (`gc_leave`).
+
+## E5d polish
+
+Built in the polish pass after the fight's review. Numbers are in `data/bosses/golden_boss_tuning.tres`
+(`GoldenConvergenceTuning`, F6 in the fight) or constants marked `DESIGN-TBD` in code, as each item says.
+
+1. **The armor pickup after a shield break** (GDD §10, Armor pickups: "triggered when the player has lost all
+   their armor"). The boss framework schedules the 22 s armor pickup when the shield breaks too, while the runner
+   still wears armor: `BossEncounter._on_item_used` answers both items, and the player reports the shield on every
+   break but the armor only once it's gone. With one pickup a phase (`armor_pickups_per_phase`), a shield break
+   uses up the phase's pickup, so an armor break later in that phase brings none. Is this more generous timing
+   wanted, or should only losing the last of the armor schedule it, as the GDD reads? (Changing it changes the
+   framework, so every boss with the armor rule.)
+2. **The howl after a stomp** (GDD §10, Three stomps, proposed: "After a stomp he hurls himself clear,
+   roaring"). He hurls himself clear with a howl (`magnate_howl`, the same he gives when he shakes free of a
+   missed bait), not his roar, so the roar stays the Pounce's warning and nothing else ("His roar is the audio
+   warning"). Do you agree?
+3. **Two Fist Slam rows never meet.** Consecutive rows (a chance's gate included) are always at least a lane
+   switch's run plus 0.3 s apart at the run speed (`slam_row_margin`, `GoldenConvergenceSlams.row_gap`), so a
+   runner landing past a hole has room to switch out of the next one's footprint. Where the script's spacing
+   brings them closer (phase 3's pace at 18 m/s on 5 and 6 lanes overlapped two rows by about 0.6 m), the later
+   slams come that much later. The bot's clean fight now takes 198.3 s at 3 lanes and 200.1 s at 5 and 6 lanes at
+   25 m/s (it was 198.2 s), and 208.9-209.1 s at 18 m/s (208.7 s); the par times stay 214, 277 and 340 s. Is
+   0.3 s the right room?
+4. **The fist never reaches a wall runner** *(proposed)*. Its touch keeps clear of a wall runner's body at every
+   height, as the barrage's fire does (`GoldenConvergenceSlams.touch_x`): a runner on the wall beside a slam in
+   the outer lane is untouched, one on the floor in its footprint is hit. The wall is safe from the fist, as it is
+   from the fire. Do you agree?
+5. **The Refill Ship's end** (GDD §10: "the ship goes spinning off to the side and explodes, and the missiles it
+   carries all explode"). It spins off to its side and only 1.5 m down (`GoldenConvergenceRefill.SPIN_DOWN`; it
+   sank 10 m and exploded below the deck, out of sight), and its blast goes off around its middle at least 4 m
+   above the causeway (`GoldenConvergenceShip.BLAST_LIFT`): a string of fireballs up to 7 m in radius along its
+   length over half a second (`BLAST_RADIUS`), every rack's missiles having gone up in the same fire.
+   The fire is a saturated orange with a hot yellow heart that reddens and darkens through soot, with dark smoke
+   rolling up out of it and lingering (`GoldenConvergenceBlast`, `golden_convergence_blast.gdshader`: laid over
+   what's behind it, where the old additive light read a washed-out peach over the court). With Reduced flashing
+   its heart never flashes white-hot and no sparks fly; the shake follows the screen-shake setting. Is it the
+   explosion you pictured?
+6. **The barrage's target marks** fill in near opaque (`fill_alpha` 0.95 in `golden_convergence_floor.gdshader`;
+   0.6 read salmon or pink over the white marble), so they read red on every renderer.
+7. **F6 can no longer put a move out of reach** (margins marked `DESIGN-TBD` in code; every default plays as
+   before):
+   - `stun_stomp_top` now ends at 0.6 m (it went to 1 m, and from 0.85 m no jump could stomp him), and his weak
+     points' top always stays 0.25 m (`GoldenConvergencePounce.STOMP_WINDOW`) under what a jump can stomp, whatever
+     the movement tuning;
+   - he never shakes free of a stun while a jump from where the runner is could still land on his back (with
+     `stun_release` at its longest and `stun_reach` at its shortest he left before any jump could reach him; at the
+     defaults this moves the release 2 cm at 18 m/s);
+   - a high Lash's lower cable stays 0.05 m over a sliding runner (`GoldenConvergenceLash.SLIDE_CLEAR`; at the
+     lowest `lash_high` and the thickest `lash_radius` it lay on the slide);
+   - the barrage's missiles hang longer where its other steps (or a longer reaction and margin) would leave less
+     than the way onto the wall from the far side on 6 lanes, so its warning stays the same at every lane count;
+   - the toppled tower's wall lasts through the barrage after it, its fire and 1.5 s more
+     (`GoldenConvergenceTower.WALL_SPARE`);
+   - the cage comes up far enough ahead to read it (0.7 s, `GoldenConvergenceCage.READ_SECONDS`), switch in from
+     the farthest lane, jump onto the generator and 0.3 s to spare (`SPARE_SECONDS`): the shortest `cage_lead` with
+     the farthest generator left it 0.28 s ahead of the runner.
+   Are these margins right?
+8. **The Magnate's legs move now** (a fix found in this pass): his poses never reached his legs (a blend skipped
+   their angles), so they stayed in his first frame's pose; his gallop, the leap's stretch, the rear, the whip and
+   the slump show now. Worth a look: `res://tools/showcase/golden_convergence_magnate_showcase.tscn`,
+   `--scenario=magnate`.
