@@ -22,7 +22,8 @@ extends Node3D
 ##   fight     the fight as it comes, with the bot
 ## Options: --lanes=N (3, 5 or 6; 5 by default), --speed=N (18 by default; the campaign's 25), --phase=N,
 ## --script=VVHvVHv (the strafe's passes), --cam=run/side/high, --still, --reduced-flashing, --events
-## (prints each of the boss's events with its frame, for picking frames).
+## (prints each of the boss's events with its frame, for picking frames), --burst (front and face: the chest's
+## plates burst open, both shoulders' pipes blown out: the later steps' damage states).
 ## Frames worth a look (at --fixed-fps 10): entrance 0-55 (the chime at 16); strafe (after the phase's intro):
 ## the squadron out of the cape from about frame 63, the first pass's warning at 79 and its rake 91-99, the
 ## buttress rising at 110, the second pass's warning at 114 and its rake 126-134, the horizontal pass's warning
@@ -41,6 +42,7 @@ var _t: float = 0.0
 var _print_events: bool = false
 var _events_seen: int = 0
 var _still: bool = false
+var _burst: bool = false
 var _view: String = "run"
 
 
@@ -70,6 +72,8 @@ func _ready() -> void:
 			_print_events = true
 		elif arg == "--still":
 			_still = true
+		elif arg == "--burst":
+			_burst = true
 	var slot: BossDef = load(BOSS_PATH) as BossDef
 	var def: BossDef = slot.preview() if slot.preview() != null else slot.duplicate() as BossDef
 	var t: GoldenConvergenceTuning = (def.tuning as GoldenConvergenceTuning).duplicate() as GoldenConvergenceTuning
@@ -201,7 +205,11 @@ func _hold_still() -> void:
 		var a: float = sin(_t * 0.22) * 1.3
 		_cam.global_position = center + Vector3(sin(a) * 85.0, -4.0 + 8.0 * sin(_t * 0.3), cos(a) * 85.0)
 		_cam.look_at(center, Vector3.UP)
-	elif scenario == "front":
+		return
+	suit.burst = 1.0 if _burst else 0.0
+	suit.set_pipes_broken(-1, _burst)
+	suit.set_pipes_broken(1, _burst)
+	if scenario == "front":
 		# Just ahead of the runner, at their eye height, looking up the causeway at it.
 		_cam.global_position = world.player.global_position + Vector3(0.0, 1.7, -1.5)
 		_cam.look_at(center + Vector3(0.0, 2.0, 0.0), Vector3.UP)

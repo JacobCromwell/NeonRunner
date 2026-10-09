@@ -37,7 +37,7 @@ const WARNINGS: Array[StringName] = [&"gc_whine", &"gc_chime", &"gc_buttress", &
 ## Lit (non-glowing) surfaces stay below this chroma (brightest minus darkest channel; GDD §5, as
 ## test_golden_skin checks the zone's own colours).
 const MAX_SURFACE_CHROMA: float = 0.45
-## The suit's draw budget (one giant on screen; measured 17 instances and about 62,000 vertices).
+## The suit's draw budget (one giant on screen; measured 17 instances and about 64,000 vertices).
 const SUIT_MAX_INSTANCES: int = 30
 const SUIT_MAX_VERTICES: int = 90000
 

@@ -28,6 +28,10 @@ extends RefCounted
 ##   cape        the cape's cloud (its own shader: golden_convergence_cape.gdshader), two sheets of a grid
 ##               fanned out behind the suit, UV the cloth's (u across, v out from the shoulders)
 
+## DESIGN-TBD (docs/questions/e5d.md, E5d-a 2): the look as built (the face's expression and the tear's
+## place, the diadem, the pipes' row and hatch, the tentacles' sweep, the cape's fan of pleats) is the owner's
+## to review.
+
 ## Arm proportions (metres at scale 1): the shoulder joint, the upper arm and forearm, and the telescoping
 ## segments nested inside the forearm (E5d-b slides them out: GoldenConvergenceSuit.arm_extend).
 const SHOULDER := Vector3(12.6, 12.4, 0.6)
@@ -68,6 +72,8 @@ const GOLD := Color(0.8, 0.67, 0.42)
 const GOLD_PALE := Color(0.86, 0.76, 0.54)
 const BRONZE := Color(0.46, 0.36, 0.22)
 const BORE := Color(0.06, 0.05, 0.045)
+## The chest's cavity behind its plates: a dark bronze.
+const CAVITY := Color(0.16, 0.12, 0.08)
 const TEAR := Color(0.36, 0.08, 0.075)
 ## The half-closed eyes' openings: a duller, darker gold under the heavy lids.
 const EYE := Color(0.56, 0.45, 0.28)
@@ -118,10 +124,11 @@ static func cape_material() -> ShaderMaterial:
 # --- Primitives ------------------------------------------------------------------------------------
 
 ## A low-poly ellipsoid (rings from bottom to top, segs around), part of it: latitude from `lat0` to `lat1`
-## (radians, -PI/2 the bottom), longitude from `lon0` to `lon1` (0 the front, +z).
+## (radians, -PI/2 the bottom), longitude from `lon0` to `lon1` (0 the front, +z). `inward`: its faces turned
+## to its inside (a hollow's lining).
 static func _ellipsoid(s: MeshLayer, center: Vector3, radii: Vector3, rings: int, segs: int, color: Color,
 		pattern: int = MeshKit.PAT_GOLD, param: float = 0.6, lat0: float = -PI * 0.5, lat1: float = PI * 0.5,
-		lon0: float = -PI, lon1: float = PI, basis: Basis = Basis.IDENTITY) -> void:
+		lon0: float = -PI, lon1: float = PI, basis: Basis = Basis.IDENTITY, inward: bool = false) -> void:
 	for r: int in rings:
 		var a0: float = lerpf(lat0, lat1, float(r) / rings)
 		var a1: float = lerpf(lat0, lat1, float(r + 1) / rings)
@@ -133,7 +140,7 @@ static func _ellipsoid(s: MeshLayer, center: Vector3, radii: Vector3, rings: int
 			var p11: Vector3 = center + basis * (_dir(a1, b1) * radii)
 			var p10: Vector3 = center + basis * (_dir(a1, b0) * radii)
 			var mid: Vector3 = (p00 + p11) * 0.5 - center
-			_quad(s, p00, p01, p11, p10, mid, color, pattern, param)
+			_quad(s, p00, p01, p11, p10, -mid if inward else mid, color, pattern, param)
 
 
 static func _dir(lat: float, lon: float) -> Vector3:
@@ -288,6 +295,15 @@ static func _torso(material: Material) -> ArrayMesh:
 	_ellipsoid(s, ABDOMEN, ABDOMEN_RADII, 6, 12, GOLD, MeshKit.PAT_GOLD, 0.55)
 	_ellipsoid(s, Vector3(0.0, 10.2, -0.4), Vector3(7.6, 4.9, 4.4), 7, 14, GOLD, MeshKit.PAT_GOLD, 0.55,
 		-PI * 0.5, PI * 0.5, PI * 0.36, PI * 1.64)
+	# The cavity behind the chest's plates (the burst opens it: the room the man inside rides in, stage 2's
+	# entrance), lined in dark bronze with ribs, seen only once the plates part.
+	_ellipsoid(s, Vector3(0.0, 10.2, -0.4), Vector3(7.2, 4.6, 4.0), 6, 12, CAVITY, MeshKit.PAT_GOLD, 0.25,
+		-PI * 0.5, PI * 0.5, PI * 0.3, PI * 1.7, Basis.IDENTITY, true)
+	for k: int in 5:
+		var x: float = (float(k) - 2.0) * 2.0
+		var back: float = -0.4 - 4.0 * sqrt(maxf(1.0 - pow(x / 7.2, 2.0), 0.0)) + 0.35
+		_bar(s, Vector3(x, 6.4, back + 0.6), Vector3(x, 14.0, back + 0.6), 0.45, 0.35, BRONZE, Vector3.RIGHT,
+			MeshKit.PAT_GOLD, 0.5)
 	# The neck and the high collar, its rim flaring out behind the head.
 	_tube(s, [Vector3(0.0, 13.6, -0.2), Vector3(0.0, 16.6, 0.0)] as Array[Vector3], 2.0, 1.75, 10, BRONZE,
 		MeshKit.PAT_GOLD, 0.4)
@@ -356,6 +372,9 @@ static func _plate(material: Material, side: int) -> ArrayMesh:
 	var lon0: float = 0.0 if side > 0 else -PI * 0.36
 	var lon1: float = PI * 0.36 if side > 0 else 0.0
 	_ellipsoid(s, CHEST, CHEST_RADII, 7, 6, GOLD, MeshKit.PAT_GOLD, 0.65, -PI * 0.42, PI * 0.42, lon0, lon1)
+	# Its inside (seen once the burst swings it open), dark bronze.
+	_ellipsoid(s, CHEST, CHEST_RADII * 0.985, 7, 6, CAVITY, MeshKit.PAT_GOLD, 0.3, -PI * 0.42, PI * 0.42, lon0, lon1,
+		Basis.IDENTITY, true)
 	# A raised rim down the plate's inner edge, and scrolls across it, on its curve.
 	for q: int in 4:
 		var y0: float = lerpf(6.4, 14.0, float(q) / 4.0)
