@@ -2644,3 +2644,26 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     - Measured, not a question: over every campaign level at 3, 5 and 6 lanes (270 doodads), the next thing after a
     doodad comes at least 0.72 s after its front at the dash's speed (0.68 s after its end); a reaction plus a lane switch
     takes 0.49 s, so the generator is unchanged.
+
+**Buzz Overdrive cuts show the zone below the street** (from H3, owner, October 8, 2026, GDD §9.9; levers in each zone skin's data)
+402. **How bright may the scenery below the street be?** Cuts in every zone now show what that zone's gaps show (the City's
+    road and traffic, Gangland's crater strata, the Marketplace's stalls). Where the Buzz Overdrive appears, the planes
+    below were drawn almost black, so they are now dimly recognisable through gaps and cuts alike, in steady albedo
+    patterns (nothing glows below the street but the orange edges; no hazard hues):
+    - Golden Zone: a stone quay of arches over moving canal water (ripples, a sheen of the sky, the lamps' reflections).
+    - Golden Palace: a stairwell over a lower hall of marble with a soft pool of light; the well's walls drawn both sides.
+    - Corporate: a carriage side with dim windows, guideway beams over a wet concrete trench; the plaza's lower level
+      now 9 m down (was 18 m). Hostile Takeover's arena inherits this look.
+    - Dead Zone: broken road layers, ruined basements (window slots, formwork, a pipe run), a rubble floor with ash, all greys.
+    A hole stays clearly darker than the street: `SkinSuite.hole_share()` holds the brightest thing below the street, as
+    rendered, to at most 0.8 of the darkest street (`HOLE_SHARE_MAX`; Corporate 0.70, Golden 0.72, Dead Zone 0.75, Palace
+    0.22). The Compatibility renderer drew holes near-black, so it lifts below-street patterns there only
+    (`UNDER_COMPAT_GAMMA` 0.85) to match Forward+. From the runner's camera the result is "dim but recognisable"; the Dead
+    Zone gains mostly structure, not brightness. Is that the right level, or brighter (a hole risks reading as floor
+    from afar) or dimmer? Levers: `gap_inside_color`, `void_floor_color`, `canal_color`, `canal_sky_color`,
+    `canal_lamp_color`, `well_floor_color`, `guideway_color`, `trench_color`, `HOLE_SHARE_MAX` (`DESIGN-TBD`).
+403. **A cut's far end in the City** is a plain dark face as tall as a truck (2.6 m) with the road far below; a City gap's
+    far side is the next truck's cab with lights, which would glow in hazard colours meaning something else at a cut.
+    Keep the plain face, or should it read as a truck's rear or front? (`CitySkin.floor_cut`, `DESIGN-TBD`.)
+404. **Gangland's cut end faces** are at half the earth's brightness (`GanglandSkin.CUT_STRATA_SHADE`, `DESIGN-TBD`) so a
+    cut's inside stays under the floor-cut suite's dark limit; the holes' side walls are at full brightness. Fine?

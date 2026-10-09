@@ -50,7 +50,7 @@ Task IDs refer to `docs/TASK_PLAN.md`, section H. The owner's answers to the orc
 - [x] Sentinel wind-up time should be decreased by half. (H1: the warning goes from 1.2 s to 0.6 s.)
 - [x] Sentinels and their background are too hard to see inside the arched recess: bring them a bit further forward so the player can see and make out what they are. (H1)
 - [x] The attack sound of the Golden Zone's Resonator shouldn't sound like a doorbell: it should sound more like a crackling build of fire and a crashing wave. (H2)
-- [ ] The bottoms of Buzz Overdrive cuts in the floor should show a zone-specific background. (H3)
+- [x] The bottoms of Buzz Overdrive cuts in the floor should show a zone-specific background. (H3)
 - [x] Only one enemy may fire at a time, which looks and feels unnatural: let two enemies fire at a time. (H4) [Owner: this is the cyborg-type guns' limit (cyborgs, window cyborgs, Barnacle Turrets): two bursts may be in the air at once. Big attacks of different types still take turns.]
 - [x] Make doodads destructible by a dash. (H5)
 - [x] The heli drone's explosion and all explosions in the game need to be more visually impressive: a yellow and red fireball. (H6)
