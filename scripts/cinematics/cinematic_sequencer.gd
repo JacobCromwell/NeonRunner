@@ -10,7 +10,8 @@ extends Cinematic
 ## - In data: a scene whose root has this script and `timeline` set to a CineTimeline resource.
 ## - In a short script: a script extending this class that overrides _make_timeline() (it may read
 ##   `stage`, already built from _stage_def(), for the street's lanes and walls) and, if it likes,
-##   _on_cue() for its own moments.
+##   _on_cue() for its own moments and _on_advance() to move things of its own (props) on the clock.
+##   switch_stage() cuts to another stretch, even another zone's.
 ##
 ## Skippable at any moment: skip() (the App calls it when the player asks, skip_requested) stops the
 ## clock and its sounds and emits `finished` at once; a music cue already played carries on into the
@@ -116,6 +117,37 @@ func _on_cue(_cue_name: StringName) -> void:
 	pass
 
 
+## Every step of the clock, after the actors have moved and before the camera does (`time` is now, and
+## `delta` since the last step; 0 the first time): override to move a script's own things (props) on
+## the cinematic's clock, so they keep time with it when a test or a tool steps it.
+func _on_advance(_delta: float) -> void:
+	pass
+
+
+## Cuts to another stretch: builds a stage from `stage_def` dressed in `skin` (null: the slot's own, as
+## _stage_def()'s), on the same lanes, so track space stays where it was and every key goes on meaning
+## the same place; the stage before goes (hidden, its environment out of the world, then freed), and the
+## actors and the camera carry on in the new one. Building a stage takes a few frames' time (the arrival
+## flyover's takes 15-40 ms): cut under a fade or a flash. Returns the new stage.
+func switch_stage(stage_def: CineStageDef, skin: ZoneSkin = null) -> CineStage:
+	var lanes: int = stage.geo.lane_count if stage != null else 0
+	var old: CineStage = stage
+	if old != null:
+		old.retire()
+	stage = CineStage.new()
+	stage.name = "Stage2" if old != null and old.name == "Stage" else "Stage"
+	add_child(stage)
+	if old != null:
+		move_child(stage, old.get_index())
+		old.queue_free()
+	stage.build(stage_def, skin if skin != null else CineStage.skin_for(stage_def, zone, slot), tuning, lanes)
+	for node: CineActorNode in actors.values():
+		node.stage = stage
+	var look: String = stage.skin.resource_path.get_file().get_basename()
+	log_lines.append("stage %s" % (look if look != "" else "-"))
+	return stage
+
+
 func skip() -> void:
 	if done:
 		return
@@ -152,6 +184,7 @@ func advance(delta: float) -> void:
 			return
 	for node: CineActorNode in actors.values():
 		node.update(time, delta, actors)
+	_on_advance(delta)
 	_update_camera(delta)
 	if stage != null:
 		var near: float = stage.to_track(camera.global_position).z
