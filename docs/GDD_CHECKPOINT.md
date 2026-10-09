@@ -639,7 +639,14 @@ Shared interaction rules apply unless stated otherwise:
 - **The Golden Convergence** (Golden Zone; the final villain). Owner's design, in progress (October 9, 2026). More attacks and the fight's phases are still to be described.
   - **Name:** the fight, and the golden construct, are **The Golden Convergence**. The man inside is **The Magnate**.
   - **What it is:** a **giant mechanical construct**, a golden exoskeleton that the villain rides inside: a gaudy, almost religious relic, but entirely man-made. It floats in the distance ahead of the runner. **The man inside isn't visible** until the second stage.
-  - **Stage 1, the golden suit:** several phases, built from three attacks: the **Helidrone Strafe** (below), a **Fist Smash** and a **Missile Barrage** from the shoulder pipes (both still to be described). How the suit takes damage is still to be described.
+  - **Stage 1, the golden suit:** several phases, built from three attacks: the **Helidrone Strafe**, the **Fist Slam** and the **Missile Barrage** (all below). How the suit takes damage is still to be described.
+  - **No side walls:** the arena has none, except where a destroyed Flying Buttress brings a building down to make one (Fist Slam, below). *(Open: what lies beyond the outer lanes.)*
+  - **Fist Slam** (owner's attack, October 9, 2026; stage 1):
+    - He raises a fist and **slams it down onto the track**, smashing a **large square hole at least two lanes wide** (the floor turns into a gap during play, as it does under the Buzz Overdrive's cut, §9.9). It's meant to be **scary**.
+    - Sometimes he slams **several times in quick succession**.
+    - **Baited into a Flying Buttress,** the fist destroys it, and the building the buttress held up, off screen, **comes crashing down to form a side wall** along the track. The player can run on that wall to escape other attacks.
+    - *(Open: its targeting and warning; the hole's size on each lane count and whether it can be jumped; the most slams in a row; what happens if the player never baits one; how long the new wall lasts.)*
+  - **Missile Barrage** (owner's attack, October 9, 2026; stage 1): the shoulder pipes fire missiles that **cover the whole floor, every lane**. The **only escape is a side wall** brought down by a destroyed buttress. The missiles leave a **fiery trail**, so the floor stays dangerous for **longer than a single dash protects the runner**. *(Open: its warning, how long the fire burns, and how the fight makes sure a wall is there.)*
   - **Second stage, The Magnate** (the fight's halfway checkpoint; direction chosen by the owner, October 9, 2026): the golden suit is destroyed, and the man **pulls himself out of its wreckage, screeching an animal roar of rage**. He's a **twisted abomination, burnt blackish grey** by the suit's destruction, **two to three times the runner's size**.
     - **A chase:** stage 1 is a calm, distant giant the player can't touch; stage 2 flips it. He's fast and feral and **hunts the runner from behind** on all fours, **leaping along the palace's walls and ceilings**. He shows himself the way the Enforcer Truck does (§9.13): he overtakes along a wall or ceiling, lands ahead, then drops back. His **roar** is the audio warning.
     - **Beating him is baiting him,** the lesson every earlier boss taught. The player lures him into the arena (*(proposed)*: lunging into a Flying Buttress he's too big to fit through, leaping after the runner over a gap and falling short, or into the fire of what's left of his suit's guns). Each time he's **stunned**, his weak points are exposed for a **stomp**. His attacks are still to be described.
@@ -650,7 +657,7 @@ Shared interaction rules apply unless stated otherwise:
     - A man's shape, a giant golden behemoth, with **extra-large shoulders, arms and hands**.
     - **A calm human face, cast in gold, with a red tear.** The tear is a **dull red and never glows**, so it never reads as a weak point.
     - **Decoration:** the cult's own symbols (the Convergent Triad, halo rings like the Resonator's), gold filigree, and signs of wealth, ego and self-righteousness. **No real-world religious symbols.**
-    - **Pipes** come out of its shoulders. They fire missiles (an attack still to be described).
+    - **Pipes** come out of its shoulders. They fire missiles (the Missile Barrage, below).
     - **No legs:** metallic pipes, almost like tentacles, trail from its lower body and run out beyond the view.
     - **The cape** doesn't have to follow physics: a huge, undulating cloud of **burgundy** cloth with lots of **black folds and shadows**, billowing from the boss's back. It **never glows** (the colour rule, §5), so red hazards and warnings stay readable. It's scenery, not an attack.
   - **Helidrone Strafe** (owner's attack):
@@ -672,7 +679,7 @@ Shared interaction rules apply unless stated otherwise:
     - **A gate:** its pier rises from an **inner lane, never an outer one**, with a tall arched opening at its foot that the runner runs through. Its flying arch leaps from the top of the pier out over the wall toward the unseen building. The player has to move into its lane to take cover.
     - **How it shelters:** the squadron rakes the horizontal pass's live line exactly along the buttress, so the bullets spark off the stone above the opening. The **red warning line crosses every lane except the opening.**
     - The sides of the gate are solid but safe, like any doodad: a lane switch into one bumps the player.
-    - **When:** for now it appears **only for horizontal passes**, so a buttress in view means one is coming. The owner plans to use it in another attack too.
+    - **When:** it appears for the Helidrone Strafe's **horizontal passes** and for the **Fist Slam** (below).
     - **Fairness:** one buttress for each horizontal pass, always there (the dash is a bonus, not required: every boss must be beatable without bought items). It comes into view well before its line, and there's always time to reach it from the farthest lane (up to four lane switches on 6 lanes).
 
 ---
