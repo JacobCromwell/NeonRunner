@@ -32,6 +32,10 @@ NOTE: Mark tasks as done as you complete them.
 - [x] Hosts never board the Enforcer Truck, and its riders can't be shot off. (Answers open question 351: already built that way.)
 - [x] The Enforcer Truck's model is never seen in play, so occasionally it should speed up until it's close enough to be on screen, even if that clutters the screen, stay there a few seconds, then slow down and fall back, so the player sees what's behind them. (October 8, 2026; task C6b.) DONE: it pulls up beside the runner for 3 s on arrival and mid-chase, where the level leaves room. Task C6c (October 9) has the generator keep a calm window for it in each chase where one fits, and lets it show itself two lanes in from a runner by a wall: over the six Enforcer levels at 3, 5 and 6 lanes, a runner sees it in 57 of 106 chase runs (15 before; 32 as it arrives, 7 before). The rest, chases with no room and windows lost to an early bait, are open questions 382–386.
 - [x] When the Enforcer Truck falls into a gap or is hit by a Buzz Overdrive, there should be a visible explosion. (October 8, 2026; task C6b.) DONE: every kind of destruction (Octodog, Buzz Overdrive, cut, wider gap) lurches the wreck into view and explodes there.
+- [ ] An Enforcer chase with no room for a showing: move the truck to a chase with room whenever the level has another bait. (October 9, 2026; open question 384; task C6d.)
+- [ ] Where its showing would come after the bait, the truck arrives earlier so the player sees it before they can bait it. (October 9, 2026; open question 385; task C6d.)
+- [x] To a runner in an outer lane it shows itself two lanes in, leaving the lane between free. (October 9, 2026; open question 382.) DONE in task C6c.
+- [x] The showing windows' cost (about 2% fewer enemies and obstacles on the Enforcer's levels) is accepted. (October 9, 2026; open question 383.)
 
 ## Sewer Swarm follow-up (October 4, 2026)
 
