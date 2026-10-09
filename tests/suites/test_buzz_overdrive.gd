@@ -26,11 +26,13 @@ const AttackWatch = preload("res://tools/measure/attack_watch.gd")
 const DUMMY: String = "res://tests/helpers/dummy_enemy.gd"
 const TURN_DUMMY: String = "res://tests/helpers/turn_dummy.gd"
 const TruckScript = preload("res://scripts/enemies/hover_truck.gd")
-## The zones' run speeds where it appears (data/zones: Corporate, the Dead Zone, the Golden Zone) and
-## the enemy scaling of each zone's first level there.
-const ZONES: Array = [["corporate", 23.4, 8.0 / 14.0], ["dead_zone", 24.2, 10.0 / 14.0], ["golden", 25.0, 12.0 / 14.0]]
-## Its levels and how the campaign introduces it.
-const LEVELS: Array[String] = ["corporate/1", "corporate/2", "dead_zone/1", "dead_zone/2", "golden/1", "golden/2", "golden/3"]
+## The zones' run speeds where it appears (data/zones: Corporate, the Beach, the Dead Zone, the Golden Zone) and
+## the enemy scaling of each zone's first level there (the Beach's off the campaign's curve, its own: task D10c).
+const ZONES: Array = [["corporate", 23.4, 8.0 / 14.0], ["beach", 23.8, 0.67], ["dead_zone", 24.2, 10.0 / 14.0],
+	["golden", 25.0, 12.0 / 14.0]]
+## Its levels and how the campaign introduces it (the Beach's remix too, task D10c).
+const LEVELS: Array[String] = ["corporate/1", "corporate/2", "beach/1", "beach/2", "dead_zone/1", "dead_zone/2", "golden/1",
+	"golden/2", "golden/3"]
 
 var sim: RunSim
 var rules: GameRules
@@ -168,7 +170,8 @@ func _test_numbers() -> void:
 	for s: CampaignStep in campaign.steps():
 		if not s.is_level() or not s.level.has_feature("buzz_overdrive"):
 			continue
-		var rev: float = t.rev_at(campaign.level_progress(s.level_index))
+		# The enemy scaling the level plays at (Campaign.level_scaling: its place on the curve's, or its own off it).
+		var rev: float = t.rev_at(campaign.level_scaling(s))
 		shorter = shorter and rev < prev
 		prev = rev
 		revs.append("%s %.2f s" % [s.id, rev])

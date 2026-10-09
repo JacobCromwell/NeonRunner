@@ -1,7 +1,7 @@
 extends SkinSuite
-## The Beach skin (BeachSkin, task D10; the owner's request of October 9, 2026; not in the campaign yet, so no
-## zone uses it). The shared skin checks (SkinSuite) over Corporate 2, the richest level before a likely slot
-## (the Beach has no levels yet), for 3, 5 and 6 lanes, then the Beach's own:
+## The Beach skin (BeachSkin, task D10; the owner's request of October 9, 2026), the look of the campaign's zone 5
+## (task D10c: between Corporate and the Dead Zone). The shared skin checks (SkinSuite) over Corporate 2, the level
+## before the Beach's, with the same features as its remix, for 3, 5 and 6 lanes, then the Beach's own:
 ## - the look: an existing enemy look (no new enemy assets), a bright daytime sky that stays under the glow
 ##   threshold, a muted sea and island;
 ## - the colour rule (GDD §5; the reference's glowing turquoise water and its pink, yellow, cyan, green and
@@ -21,7 +21,8 @@ extends SkinSuite
 ## - nothing vent-like is drawn, only hazard signs wear stripes, and the still floor carries motion cues.
 
 const BEACH_SKIN_PATH: String = "res://data/skins/beach_skin.tres"
-## The richest campaign level before a likely slot for the Beach (it has no levels of its own yet).
+## The level before the Beach's, whose features its remix shares (the Beach's own levels are test_beach_levels';
+## _open_stretches builds open walls in this skin).
 const BEACH_LEVEL_PATH: String = "res://data/levels/corporate_2.tres"
 ## Lit (non-glowing) surfaces stay below this chroma (brightest minus darkest channel); the fence pink is about 0.8.
 const MAX_SURFACE_CHROMA: float = 0.5
@@ -54,10 +55,12 @@ func run() -> void:
 	# pick of "whatever fits the theme": the Casino Mob Enforcer.
 	check(CyborgSuit.LOOKS.has(CyborgSuit.look_for(skin.enemy_variant)) and BeachSkin.new().enemy_variant == skin.enemy_variant
 		and skin.enemy_variant == &"casino", "the beach's enemies wear the Casino Mob Enforcer's existing look (%s)" % skin.enemy_variant)
-	# The Beach may have a provisional zone file (data/zones/beach.tres), but it is not in the campaign.
+	# Task D10c (the owner, October 9, 2026: "put the beach between the corporate and dead zone"): the campaign's
+	# zone 5 wears this skin.
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
-	check(campaign != null and not campaign.zones.any(func(z: ZoneDef) -> bool: return z != null and z.id == &"beach"),
-		"the Beach is not a campaign zone yet")
+	var zone_5: ZoneDef = campaign.zones[4] if campaign != null and campaign.zones.size() > 4 else null
+	check(zone_5 != null and zone_5.id == &"beach" and zone_5.skin != null and zone_5.skin.resource_path == BEACH_SKIN_PATH,
+		"the Beach is the campaign's zone 5, in this skin")
 	start_error_count()
 	var env: Environment = skin.make_environment()
 	check(env != null and env.sky != null and env.glow_enabled and env.fog_enabled, "the beach environment has a sky, glow and fog")

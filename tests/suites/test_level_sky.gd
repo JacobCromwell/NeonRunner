@@ -1,11 +1,12 @@
 extends TestSuite
 ## A level's own sky over its zone's (LevelConfig.sky, LevelSky; owner, October 8, 2026): City 1 shows the
 ## sun about to rise (pinks and purples on the undersides of clouds), Gangland 3 a cloudy blood-red sky,
-## and the Marketplace's last level (Marketplace 2: the zone has two) a darkening sunset (deep blues, pink
-## low down); every other level keeps its zone's sky, and the boss fight after a level keeps that level's
-## sky (Campaign.configure_boss). Its uniforms are the sky shader's own, the run's environment takes them
-## and its fog colour (ZoneSkin.level_environment) and nothing else (the light on the runner and the
-## enemies, every glow, the fog's reach), a level's darkness still dims it, it never touches the zone's
+## the Marketplace's last level (Marketplace 2: the zone has two) a darkening sunset (deep blues, pink
+## low down), and the Beach's last level (Sunset Strip; owner, October 9, 2026) the sun starting to set,
+## not dark, with purples and oranges; every other level keeps its zone's sky, and the boss fight after a
+## level keeps that level's sky (Campaign.configure_boss). Its uniforms are the sky shader's own, the run's
+## environment takes them and its fog colour (ZoneSkin.level_environment) and nothing else (the light on the
+## runner and the enemies, every glow, the fog's reach), a level's darkness still dims it, it never touches the zone's
 ## own environment, and its brightest stays under the glow threshold, so only hazards glow. The street's
 ## light follows it (the global `scenery_tint`, which every scenery shader that follows a level's darkness
 ## multiplies its lit colour by, and no glow does), never brighter than the zone's own, and back to white
@@ -18,6 +19,7 @@ const LEVEL_SKIES: Dictionary[String, String] = {
 	"city/1": "city_dawn",
 	"gangland/3": "gangland_blood_red",
 	"marketplace/2": "marketplace_sunset",
+	"beach/2": "beach_sunset",
 }
 const SKY_SHADER: String = "night_sky.gdshader"
 ## Every scenery shader that follows a level's darkness (they declare `scenery_light`) is found under these.

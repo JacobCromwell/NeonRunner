@@ -12,16 +12,21 @@ extends SkinSuite
 ## - the generator: Zone 2 on places a few, deterministically, rarely on both walls, clear of every
 ##   keep-out (WallGapPlacement.keep_outs) and with no wall credit inside one; City levels and every
 ##   boss arena have none, and a level is otherwise the same without the feature.
-## - a level's own numbers (LevelConfig.wall_gap_tuning, task D10b): null in every campaign level, which places
-##   its gaps by the shared file (a copy of its numbers builds the same level); a level's own numbers are the
-##   ones it's built by, and change nothing but its wall gaps and the wall credits a gap takes;
+## - a level's own numbers (LevelConfig.wall_gap_tuning, task D10b): null in every campaign level but the Beach's,
+##   which places its gaps by the shared file (a copy of its numbers builds the same level); the Beach's open their
+##   walls by the Beach's file (task D10c: in the campaign); a level's own numbers are the ones it's built by, and
+##   change nothing but its wall gaps and the wall credits a gap takes;
 ## - open walls (WallGapTuning.coverage_target, the Beach's; task D10b) on made-up tracks at 3, 5 and 6 lanes:
 ##   each wall opens what its keep-outs leave free in stretches at least open_seconds_min long, down to its
 ##   target, both walls at once within both_open_max; a wall whose keep-outs leave too little stands more, and
 ##   nothing opens through a keep-out (test_beach_levels checks the Beach's real levels).
 
+## The levels with the shared numbers' few, rare gaps (the Beach's open their walls by their own numbers: task D10b,
+## test_beach_levels).
 const WITH: Array = ["gangland/1", "gangland/2", "gangland/3", "marketplace/1", "marketplace/2", "corporate/1",
 	"corporate/2", "dead_zone/1", "dead_zone/2", "golden/1", "golden/2", "golden/3"]
+## The Beach's open walls (task D10b), the one campaign zone with numbers of its own.
+const BEACH_WALL_GAPS: String = "res://data/tuning/beach_wall_gaps.tres"
 const WITHOUT: Array = ["city/1", "city/2", "city/3"]
 
 
@@ -332,7 +337,13 @@ func _test_level_tuning() -> void:
 		"the shared numbers are %s, with open walls off" % WallGapPlacement.TUNING_PATH)
 	check(WallGapPlacement.tuning_for(null) == shared, "no level: the shared numbers")
 	for s: CampaignStep in campaign.steps():
-		if s.is_level():
+		if not s.is_level():
+			continue
+		if s.zone.id == &"beach":
+			check(s.level.wall_gap_tuning != null and s.level.wall_gap_tuning.resource_path == BEACH_WALL_GAPS
+				and WallGapPlacement.tuning_for(campaign.configure(s, 5)) == s.level.wall_gap_tuning,
+				"%s opens its walls by the Beach's numbers" % s.id)
+		else:
 			check(s.level.wall_gap_tuning == null and WallGapPlacement.tuning_for(campaign.configure(s, 5)) == shared,
 				"%s has no wall-gap numbers of its own: the shared ones" % s.id)
 	for id: String in ["gangland/1", "corporate/2"]:

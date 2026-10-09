@@ -1,21 +1,26 @@
 extends TestSuite
-## The campaign data (GDD §5, §6, §10): six zones in order with 3/3/2/2/2/3 levels, their steps and
+## The campaign data (GDD §5, §6, §10): seven zones in order with 3/3/2/2/2/2/3 levels, their steps and
 ## ids, boss and cinematic slots, skins, music and the demo scope; the level-by-level schedule (where
 ## each feature first appears, later levels keeping it, one new thing at a time, late starts); the
 ## difficulty curve and level lengths; unlocking; and that every campaign level generates fairly for
 ## 3, 5 and 6 lanes. Also the campaign's shape (task R5): the recency curve for pick weights and the
 ## features' ages, The Hush's quiet remix (fewer enemies, more hosts, quiet stretches and bursts,
-## darker lighting), and the lighting hook reaching every skin.
+## darker lighting), and the lighting hook reaching every skin. And the Beach (task D10c; the owner,
+## October 9, 2026: "put the beach between the corporate and dead zone"): zone 5, a remix with nothing
+## new, its levels off the difficulty curve (LevelConfig.off_curve) between Corporate 2's and Dead Zone
+## 1's, and every other level and boss configured exactly as in the six-zone campaign before it.
 
 ## The zones in order and their level counts (GDD §5). Other tasks rely on these ids: skins at
 ## data/skins/<id>_skin.tres, music tracks named after them.
-const ZONES: Array = [["city", 3], ["gangland", 3], ["marketplace", 2], ["corporate", 2], ["dead_zone", 2], ["golden", 3]]
+const ZONES: Array = [["city", 3], ["gangland", 3], ["marketplace", 2], ["corporate", 2], ["beach", 2], ["dead_zone", 2],
+	["golden", 3]]
 ## Zone & Levels 1: halve City 1's former 110 s, without retiming any other level.
 const LEVEL_DURATIONS: Dictionary[String, float] = {
 	"city/1": 55.0, "city/2": 120.0, "city/3": 130.0,
 	"gangland/1": 135.0, "gangland/2": 140.0, "gangland/3": 145.0,
 	"marketplace/1": 140.0, "marketplace/2": 145.0,
 	"corporate/1": 145.0, "corporate/2": 150.0,
+	"beach/1": 145.0, "beach/2": 150.0,
 	"dead_zone/1": 145.0, "dead_zone/2": 150.0,
 	"golden/1": 145.0, "golden/2": 150.0, "golden/3": 150.0,
 }
@@ -42,23 +47,32 @@ const LEFT_OUT: Dictionary = {
 	# Zone & Levels 2: Octodogs stop at the Golden Zone, including the Golden Palace.
 	"octodog": ["golden/1", "golden/2", "golden/3"],
 	# Manholes need a street: zones with other floors get wall-vent screeches (screech_vents) instead,
-	# from Marketplace 2's shopfront vents on (GDD §5, proposed); Marketplace 1 has none (DESIGN-TBD).
-	"screech": ["marketplace/1", "marketplace/2", "corporate/1", "corporate/2", "golden/1", "golden/2", "golden/3"],
+	# from Marketplace 2's shopfront vents on (GDD §5, proposed); Marketplace 1 has none (DESIGN-TBD). The
+	# Beach's floor is sand and boardwalk (GDD §5).
+	"screech": ["marketplace/1", "marketplace/2", "corporate/1", "corporate/2", "beach/1", "beach/2", "golden/1", "golden/2",
+		"golden/3"],
 	# In the Dead Zone's rubble street, `screech` brings manholes and wall vents both.
 	"screech_vents": ["dead_zone/1", "dead_zone/2"],
 	# GDD §9.12 (proposed): the Tithe Collector skips the Dead Zone and returns in the Golden Zone.
 	"tithe_collector": ["dead_zone/1", "dead_zone/2"],
 }
 ## GDD §9.9 (corrected September 26, 2026): the Buzz Overdrive appears in the Corporate zone and the
-## two zones after it, the Dead Zone and the Golden Zone (the Golden Palace plays like any level).
-const BUZZ_OVERDRIVE_LEVELS: Array = ["corporate/1", "corporate/2", "dead_zone/1", "dead_zone/2", "golden/1", "golden/2",
-	"golden/3"]
-## Levels that bring nothing new (GDD §5): Dead Zone 2 is "a quiet, eerie remix", Golden 3 the
-## Golden Palace.
-const NOTHING_NEW: Array = ["dead_zone/2", "golden/3"]
-## The seed sweep: the levels with the most features, and The Hush (paced in bursts), on this many
-## seeds each at 3, 5 and 6 lanes.
-const SWEEP_LEVELS: Array = ["gangland/3", "corporate/2", "dead_zone/1", "dead_zone/2", "golden/1", "golden/2", "golden/3"]
+## two zones after it, the Dead Zone and the Golden Zone (the Golden Palace plays like any level), and in the
+## Beach between them, a remix of everything before it (owner, October 9, 2026; DESIGN-TBD,
+## docs/questions/d10c.md: §9.9 still names the Dead Zone and the Golden Zone only).
+const BUZZ_OVERDRIVE_LEVELS: Array = ["corporate/1", "corporate/2", "beach/1", "beach/2", "dead_zone/1", "dead_zone/2", "golden/1",
+	"golden/2", "golden/3"]
+## Levels that bring nothing new (GDD §5): the Beach's, a remix of everything before it (owner, October 9,
+## 2026: "Do not worry about any new enemies at this time"), Dead Zone 2 "a quiet, eerie remix", Golden 3
+## the Golden Palace.
+const NOTHING_NEW: Array = ["beach/1", "beach/2", "dead_zone/2", "golden/3"]
+## Zones that introduce no new enemy, the exception to GDD §5's rule: the Beach, for now (owner, October 9,
+## 2026: "Do not worry about any new enemies at this time").
+const NO_NEW_ENEMY: Array = ["beach"]
+## The seed sweep: the levels with the most features (the Beach's remix has as many as Corporate 2), and The
+## Hush (paced in bursts), on this many seeds each at 3, 5 and 6 lanes.
+const SWEEP_LEVELS: Array = ["gangland/3", "corporate/2", "beach/1", "beach/2", "dead_zone/1", "dead_zone/2", "golden/1",
+	"golden/2", "golden/3"]
 const SWEEP_SEEDS: int = 8
 ## How far past its start a new feature's first piece or enemy may be: the first pattern picked
 ## from the start uses it, and the pick can wait for the longest pattern before it (an Octodog's
@@ -81,6 +95,7 @@ func run() -> void:
 	_test_slots(campaign)
 	_test_schedule(campaign)
 	_test_curve_and_lengths(campaign)
+	_test_off_curve(campaign)
 	_test_skins(campaign)
 	_test_levels_generate(campaign)
 	_test_ceiling_gauntlets(campaign)
@@ -90,10 +105,10 @@ func run() -> void:
 	_test_unlocking()
 
 
-## Six zones in GDD §5's order, each built, with its levels, skin, music and tagline; only the City
-## is in the web demo.
+## Seven zones in GDD §5's order (the Beach fifth, owner, October 9, 2026), each built, with its levels, skin,
+## music and tagline; only the City is in the web demo.
 func _test_zones(campaign: Campaign) -> void:
-	check(campaign.zones.size() == ZONES.size(), "the campaign has six zones (GDD §5): %d" % campaign.zones.size())
+	check(campaign.zones.size() == ZONES.size(), "the campaign has seven zones (GDD §5): %d" % campaign.zones.size())
 	var library := load("res://data/audio/music_library.tres") as MusicLibrary
 	for zi: int in mini(campaign.zones.size(), ZONES.size()):
 		var zone: ZoneDef = campaign.zones[zi]
@@ -108,17 +123,23 @@ func _test_zones(campaign: Campaign) -> void:
 		check(zone.music == zone.id, "%s's music track is named after the zone" % id)
 		check(library.has(zone.music), "%s's music exists" % id)
 		check(zone.expected_loadout.is_empty(), "%s's expected loadout is still an empty placeholder (GDD §8)" % id)
-	check(campaign.planned_level_count() == 15 and campaign.level_count() == 15, "15 levels (GDD §5)")
+	check(campaign.planned_level_count() == 17 and campaign.level_count() == 17, "17 levels (GDD §5): %d, %d planned" % [
+		campaign.level_count(), campaign.planned_level_count()])
+	# Task D10c: the Beach's two levels are off the difficulty curve, which still spans the other 15.
+	check(campaign.curve_level_count() == 15, "the difficulty curve spans the 15 levels on it (%d)" % campaign.curve_level_count())
 
 
 ## Steps run intro, levels, boss intro, boss, outro per zone; step and level ids stay stable (the
-## save file keys progress by step id), and Golden 3 is the Golden Palace.
+## save file keys progress by step id), and Golden 3 is the Golden Palace. Each level's place on the
+## difficulty curve (CampaignStep.level_index) counts the levels on it; the Beach's, off it (task D10c), take
+## Corporate 2's.
 func _test_steps(campaign: Campaign) -> void:
 	var expected := PackedStringArray([
 		"city/intro", "city/1", "city/2", "city/3", "city/boss_intro", "city/boss", "city/outro",
 		"gangland/intro", "gangland/1", "gangland/2", "gangland/3", "gangland/boss_intro", "gangland/boss", "gangland/outro",
 		"marketplace/intro", "marketplace/1", "marketplace/2", "marketplace/boss", "marketplace/outro",
 		"corporate/intro", "corporate/1", "corporate/2", "corporate/boss", "corporate/outro",
+		"beach/intro", "beach/1", "beach/2", "beach/boss", "beach/outro",
 		"dead_zone/intro", "dead_zone/1", "dead_zone/2", "dead_zone/boss", "dead_zone/outro",
 		"golden/intro", "golden/1", "golden/2", "golden/3", "golden/boss", "golden/outro"])
 	var ids := PackedStringArray()
@@ -126,28 +147,35 @@ func _test_steps(campaign: Campaign) -> void:
 		ids.append(s.id)
 	check(ids == expected, "the campaign's steps, in order: %s" % ", ".join(ids))
 	var seeds: Dictionary = {}
-	var index: int = 0
+	var place: int = 0
 	for s: CampaignStep in campaign.steps():
 		if not s.is_level():
 			continue
 		var level_id: String = "%s_%d" % [s.zone.id, s.number_in_zone]
 		check(String(s.level.id) == level_id and s.level.resource_path == "res://data/levels/%s.tres" % level_id,
 			"step %s plays level %s from its own file (%s)" % [s.id, level_id, s.level.resource_path])
-		check(s.level_index == index, "%s is campaign level %d" % [s.id, index + 1])
+		var beach: bool = s.zone.id == &"beach"
+		check(s.level.off_curve == beach, "%s is %s the difficulty curve" % [s.id, "off" if beach else "on"])
+		var at: int = maxi(place - 1, 0) if s.level.off_curve else place
+		check(s.level_index == at, "%s takes place %d on the difficulty curve (%d)" % [s.id, at + 1, s.level_index + 1])
 		check(s.level.display_name != "", "%s has a name" % s.id)
 		check(not seeds.has(s.level.level_seed), "%s has its own fixed seed (GDD §6)" % s.id)
 		seeds[s.level.level_seed] = true
-		index += 1
+		if not s.level.off_curve:
+			place += 1
 	check(campaign.step("golden/3") != null and campaign.step("golden/3").title() == "The Golden Palace",
 		"Golden 3 is the Golden Palace (GDD §5)")
+	check(campaign.step("beach/1").title() == "Tiki Tides" and campaign.step("beach/2").title() == "Sunset Strip",
+		"the Beach's levels are Tiki Tides and Sunset Strip (GDD §5, October 9, 2026)")
 
 
 ## A boss slot per zone from GDD §10's roster, and cinematic slots: every zone's intro and outro, and
 ## the City's and Gangland's boss intros (the intros play placeholder flyovers, task F1, and Gangland's boss
 ## intro the owner's beats; test_cinematics checks them).
 func _test_slots(campaign: Campaign) -> void:
+	# The Beach's boss is still to be designed (GDD §10; DESIGN-TBD, docs/questions/d10c.md: its slot's name).
 	var bosses: Dictionary = {"city": "Floating Head", "gangland": "Sewer Swarm", "marketplace": "The House",
-		"corporate": "Hostile Takeover", "dead_zone": "Sleep Taker", "golden": "The Golden Convergence"}
+		"corporate": "Hostile Takeover", "beach": "The Beach's boss", "dead_zone": "Sleep Taker", "golden": "The Golden Convergence"}
 	for zone: ZoneDef in campaign.zones:
 		var id: String = String(zone.id)
 		check(zone.boss != null and zone.boss.display_name == bosses.get(id, ""),
@@ -183,6 +211,10 @@ func _test_slots(campaign: Campaign) -> void:
 			check(s.boss != null and s.boss.is_built(), "the Corporate zone's boss step plays Hostile Takeover's fight (task E5b-c)")
 		elif s.kind == CampaignStep.Kind.BOSS and s.zone.id == &"golden":
 			check(s.boss != null and s.boss.is_built(), "the Golden Zone's boss step plays The Golden Convergence's fight (task E5d-c)")
+		elif s.kind == CampaignStep.Kind.BOSS and s.zone.id == &"beach":
+			# The owner, October 9, 2026: "there will be a boss battle for the beach, but it has not yet been created".
+			check(s.boss != null and not s.boss.is_built() and s.boss.arena == null and s.boss.phases.is_empty()
+				and s.boss.notes.begins_with("DESIGN-TBD"), "the Beach's boss slot is a placeholder until its fight is designed (task D10c)")
 		elif s.kind == CampaignStep.Kind.BOSS:
 			check(s.boss != null and not s.boss.is_built(), "boss slot %s is still a placeholder" % s.id)
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id == "gangland/boss_intro":
@@ -236,12 +268,18 @@ func _test_schedule(campaign: Campaign) -> void:
 		check(FIRST_LEVEL.has(f), "`%s` has its place in the schedule" % f)
 	for zone: Array in ZONES:
 		var new_enemy: bool = false
+		var new_thing: bool = false
 		for f: String in first_seen:
 			new_enemy = new_enemy or (ENEMIES.has(f) and String(first_seen[f]).begins_with(String(zone[0]) + "/"))
-		check(new_enemy, "%s introduces at least one new enemy (GDD §5)" % zone[0])
+			new_thing = new_thing or String(first_seen[f]).begins_with(String(zone[0]) + "/")
+		if NO_NEW_ENEMY.has(zone[0]):
+			check(not new_thing, "%s introduces nothing: a remix of everything before it (owner, October 9, 2026)" % zone[0])
+		else:
+			check(new_enemy, "%s introduces at least one new enemy (GDD §5)" % zone[0])
 	var city_1: LevelConfig = campaign.step("city/1").level
 	check(city_1.feature_start("cyborg") >= 0.5, "City 1's cyborgs come late in the level (%.2f)" % city_1.feature_start("cyborg"))
-	for id: String in ["marketplace/1", "marketplace/2", "corporate/1", "corporate/2", "golden/1", "golden/2", "golden/3"]:
+	for id: String in ["marketplace/1", "marketplace/2", "corporate/1", "corporate/2", "beach/1", "beach/2", "golden/1", "golden/2",
+			"golden/3"]:
 		check(not campaign.step(id).level.has_feature("screech"), "no manholes in %s's floor" % id)
 	# GDD §9.9 (corrected): the Buzz Overdrive, from Corporate 1 through the Golden Zone.
 	for s: CampaignStep in levels:
@@ -274,10 +312,12 @@ func _test_schedule(campaign: Campaign) -> void:
 
 ## Each level is slightly harder than the last (GDD §6), up to Golden 2's peak (GDD §5, proposed);
 ## enemy scaling runs 0 → 1 across the campaign; City 1 lasts 55 s (Zone & Levels 1), the other
-## levels keep their durations within 90–150 s, and together take about 35 minutes (GDD §5).
+## levels keep their durations within 90–150 s, and together take about 40 minutes (GDD §5). A level
+## off the curve (the Beach's, task D10c) lies strictly between the levels on it either side, in difficulty
+## and enemy scaling, and still rises from the level before it.
 func _test_curve_and_lengths(campaign: Campaign) -> void:
 	var last_curve: float = -1.0
-	for i: int in campaign.level_count():
+	for i: int in campaign.curve_level_count():
 		var d: float = campaign.curve_difficulty(i)
 		check(d > last_curve, "the curve rises at level %d (%.2f)" % [i + 1, d])
 		last_curve = d
@@ -301,18 +341,31 @@ func _test_curve_and_lengths(campaign: Campaign) -> void:
 				check(s.level.duration_seconds >= 90.0 and s.level.duration_seconds <= 150.0,
 					"%s lasts 90–150 s (GDD §4): %.0f s" % [s.id, s.level.duration_seconds])
 	var peak: int = steps.find(campaign.step("golden/2"))
+	var on_curve: int = 0
 	for i: int in range(1, difficulties.size()):
+		if steps[i].level.off_curve:
+			var next: int = i + 1
+			while next < steps.size() and steps[next].level.off_curve:
+				next += 1
+			check(next < steps.size() and difficulties[i] > difficulties[i - 1] and difficulties[i] < difficulties[next],
+				"%s, off the curve, is harder than %s and easier than %s (%.3f)" % [steps[i].id, steps[i - 1].id,
+					steps[mini(next, steps.size() - 1)].id, difficulties[i]])
+			check(next < steps.size() and scaling[i] > scaling[i - 1] and scaling[i] < scaling[next],
+				"and its enemy scaling lies between theirs (%.3f)" % scaling[i])
+			continue
 		if i <= peak:
-			check(difficulties[i] > difficulties[i - 1] + 0.02,
-				"%s is harder than %s (%.2f after %.2f)" % [steps[i].id, steps[i - 1].id, difficulties[i], difficulties[i - 1]])
+			# The levels on the curve each step up from the last level on it.
+			check(difficulties[i] > difficulties[on_curve] + 0.02 and difficulties[i] > difficulties[i - 1],
+				"%s is harder than %s (%.2f after %.2f)" % [steps[i].id, steps[on_curve].id, difficulties[i], difficulties[on_curve]])
 		else:
 			check(difficulties[i] < difficulties[peak] and difficulties[i] > difficulties[peak - 1],
 				"%s sits just below Golden 2's peak (%.2f)" % [steps[i].id, difficulties[i]])
 		check(scaling[i] > scaling[i - 1], "enemy scaling rises at %s" % steps[i].id)
+		on_curve = i
 	check(peak == difficulties.size() - 2 and difficulties.max() == difficulties[peak], "Golden 2 is the hardest level")
 	check(is_equal_approx(scaling[0], 0.0) and is_equal_approx(scaling[-1], 1.0), "enemy scaling runs 0 → 1 (GDD §6)")
-	check(total >= 33.0 * 60.0 and total <= 37.0 * 60.0,
-		"a flawless run through every level takes about 35 minutes (GDD §5): %.1f min" % (total / 60.0))
+	check(total >= 38.0 * 60.0 and total <= 42.0 * 60.0,
+		"a flawless run through every level takes about 40 minutes (GDD §5): %.1f min" % (total / 60.0))
 	var first: CampaignStep = campaign.step("city/1")
 	var c1: LevelConfig = campaign.configure(first, 5)
 	check(c1.lane_count == 5 and c1 != first.level, "configure returns a copy with the lane count")
@@ -320,6 +373,82 @@ func _test_curve_and_lengths(campaign: Campaign) -> void:
 		"harder tiers never lower difficulty")
 	check(campaign.configure(steps[4], 3, 1).difficulty > campaign.configure(steps[4], 3, 0).difficulty,
 		"harder tiers raise difficulty")
+
+
+## The Beach joins the campaign off its difficulty curve (task D10c; LevelConfig.off_curve): at 3, 5 and 6 lanes and
+## every difficulty tier its levels play at their own difficulty (plus the tier's bonus) and enemy scaling, strictly
+## between Corporate 2's and Dead Zone 1's, at the zone's run speed, and its boss slot's arena at Sunset Strip's
+## scaling. Every other level and boss configures exactly as in the six-zone campaign before the Beach: the same
+## place on the curve, difficulty, enemy scaling, run speed, feature ages, skin and sky, and the same completion bonus.
+func _test_off_curve(campaign: Campaign) -> void:
+	var before: CampaignStep = campaign.step("corporate/2")
+	var after: CampaignStep = campaign.step("dead_zone/1")
+	var corporate: ZoneDef = _zone(campaign, "corporate")
+	var dead: ZoneDef = _zone(campaign, "dead_zone")
+	var beach: ZoneDef = _zone(campaign, "beach")
+	check(beach != null and beach.run_speed > corporate.run_speed and beach.run_speed < dead.run_speed
+		and is_equal_approx(beach.run_speed, 23.8), "the Beach runs at 23.8 m/s, between Corporate and the Dead Zone")
+	var last_difficulty: float = campaign.configure(before, 5).difficulty
+	var last_scaling: float = campaign.configure(before, 5).enemy_scaling
+	for number: int in [1, 2]:
+		var s: CampaignStep = campaign.step("beach/%d" % number)
+		for tier: int in campaign.tier_count():
+			for lanes: int in [3, 5, 6]:
+				var tag: String = "%s lanes=%d tier=%d" % [s.id, lanes, tier]
+				var config: LevelConfig = campaign.configure(s, lanes, tier)
+				check(config.lane_count == lanes and config.off_curve
+					and is_equal_approx(config.difficulty, clampf(s.level.difficulty + campaign.tier_difficulty_bonus[tier], 0.0, 1.0))
+					and is_equal_approx(config.enemy_scaling, s.level.enemy_scaling),
+					"%s plays at its own difficulty plus the tier's bonus (%.2f) and its own enemy scaling (%.2f)" % [tag,
+						config.difficulty, config.enemy_scaling])
+				check(is_equal_approx(config.run_speed, beach.run_speed * campaign.speed_multiplier(tier)),
+					"%s runs at the Beach's speed times the tier's (%.2f)" % [tag, config.run_speed])
+		var plain: LevelConfig = campaign.configure(s, 5)
+		check(plain.difficulty > last_difficulty and plain.difficulty < campaign.configure(after, 5).difficulty
+			and plain.enemy_scaling > last_scaling and plain.enemy_scaling < campaign.configure(after, 5).enemy_scaling,
+			"%s lies strictly between Corporate 2 and Dead Zone 1, rising (difficulty %.3f, enemy scaling %.3f)" % [s.id,
+				plain.difficulty, plain.enemy_scaling])
+		last_difficulty = plain.difficulty
+		last_scaling = plain.enemy_scaling
+		check(s.level_index == before.level_index and App.rules.completion_bonus(s.level_index) == App.rules.completion_bonus(before.level_index),
+			"%s takes Corporate 2's place on the curve, and its completion bonus (DESIGN-TBD, docs/questions/d10c.md)" % s.id)
+	var boss: CampaignStep = campaign.step("beach/boss")
+	for tier: int in campaign.tier_count():
+		var arena: LevelConfig = campaign.configure_boss(boss, 5, tier)
+		check(is_equal_approx(arena.enemy_scaling, campaign.step("beach/2").level.enemy_scaling)
+			and is_equal_approx(arena.run_speed, beach.run_speed * campaign.speed_multiplier(tier))
+			and arena.sky == campaign.step("beach/2").level.sky,
+			"the Beach's boss slot fights at Sunset Strip's enemy scaling, the Beach's speed and Sunset Strip's sky (tier %d)" % tier)
+
+	# The campaign before the Beach, built from the same data without it.
+	var six := campaign.duplicate() as Campaign
+	var zones: Array[ZoneDef] = []
+	for zone: ZoneDef in campaign.zones:
+		if zone.id != &"beach":
+			zones.append(zone)
+	six.zones = zones
+	check(six.steps().size() == campaign.steps().size() - 5 and six.level_count() == 15 and six.curve_level_count() == 15,
+		"the six-zone campaign has the Beach's five steps less and 15 levels (%d)" % six.level_count())
+	var same: int = 0
+	for old: CampaignStep in six.steps():
+		var now: CampaignStep = campaign.step(old.id)
+		check(now != null and now.kind == old.kind and now.level_index == old.level_index,
+			"%s keeps its kind and its place on the curve (%d)" % [old.id, now.level_index if now != null else -99])
+		if now == null or old.kind == CampaignStep.Kind.CINEMATIC:
+			continue
+		var ok: bool = true
+		for tier: int in campaign.tier_count():
+			for lanes: int in [3, 5, 6]:
+				var a: LevelConfig = six.configure(old, lanes, tier) if old.is_level() else six.configure_boss(old, lanes, tier)
+				var b: LevelConfig = campaign.configure(now, lanes, tier) if now.is_level() else campaign.configure_boss(now, lanes, tier)
+				ok = ok and a.difficulty == b.difficulty and a.enemy_scaling == b.enemy_scaling and a.run_speed == b.run_speed \
+					and a.lane_count == b.lane_count and a.skin == b.skin and a.sky == b.sky and a.feature_recency == b.feature_recency \
+					and var_to_str(a.feature_ages) == var_to_str(b.feature_ages)
+		if old.is_level():
+			ok = ok and App.rules.completion_bonus(old.level_index) == App.rules.completion_bonus(now.level_index)
+		check(ok, "%s configures exactly as before the Beach, at 3, 5 and 6 lanes and every tier" % old.id)
+		same += 1 if ok else 0
+	check(same == 15 + 6, "every level and boss before and after the Beach is unchanged (%d of 21)" % same)
 
 
 ## Levels take their zone's skin, the grey box until a zone has its own; a level's own skin wins, and
@@ -346,6 +475,8 @@ func _test_skins(campaign: Campaign) -> void:
 	check(golden != null and golden.skin is GoldenSkin, "golden uses its own skin")
 	var dead: ZoneDef = _zone(campaign, "dead_zone")
 	check(dead != null and dead.skin is DeadZoneSkin, "dead_zone uses its own skin")
+	var beach: ZoneDef = _zone(campaign, "beach")
+	check(beach != null and beach.skin is BeachSkin, "beach uses its own skin")
 	var palace: CampaignStep = campaign.step("golden/3")
 	var own_skin := GreyboxSkin.new()
 	var step := CampaignStep.new()
@@ -542,12 +673,21 @@ func _test_recency(campaign: Campaign) -> void:
 		check(s.level.feature_ages.is_empty() and s.level.feature_recency == null, "%s's own file has neither" % s.id)
 		for f: String in s.level.features:
 			var first: CampaignStep = campaign.step(String(FIRST_LEVEL.get(f, "")))
-			var age: int = s.level_index - first.level_index if first != null else -1
+			# A level on the curve counts the levels on it (their places); one off it (the Beach's, task D10c)
+			# every level before it, in the order they're played.
+			var age: int = -1
+			if first != null:
+				age = _level_number(campaign, s) - _level_number(campaign, first) if s.level.off_curve \
+					else s.level_index - first.level_index
 			check(int(config.feature_ages.get(f, -99)) == age, "%s: `%s` was introduced %d levels ago (%d)" % [s.id, f, age,
 				config.feature_ages.get(f, -99)])
 	check(int(campaign.configure(campaign.step("golden/1"), 3).feature_ages["buzz_overdrive"]) == 4
 		and int(campaign.configure(campaign.step("dead_zone/2"), 3).feature_ages["host"]) == 1,
 		"e.g. Golden 1's Buzz Overdrive is 4 levels old, The Hush's hosts 1")
+	check(int(campaign.configure(campaign.step("beach/1"), 3).feature_ages["tithe_collector"]) == 1
+		and int(campaign.configure(campaign.step("beach/2"), 3).feature_ages["tithe_collector"]) == 2
+		and int(campaign.configure(campaign.step("dead_zone/1"), 3).feature_ages["buzz_overdrive"]) == 2,
+		"the Beach's Tithe Collectors are 1 and 2 levels old, and the levels after it keep their ages (Dead Zone 1's Buzz Overdrive 2)")
 
 	var intro: Array[int] = [0, 0]
 	var core: Array[int] = [0, 0]
@@ -592,7 +732,7 @@ func _test_recency(campaign: Campaign) -> void:
 								break
 					if k == 1 and seed_k == 0:
 						spots += _check_kind_shares(gen, config, patterns, "%s lanes=%d" % [s.id, lanes])
-	check(spots >= 15 * 3 * 8, "the curve keeps each kind's share all through every level (%d spots)" % spots)
+	check(spots >= campaign.level_count() * 3 * 8, "the curve keeps each kind's share all through every level (%d spots)" % spots)
 	check(intro[1] * 10 >= intro[0] * 12, "the uncapped features a level introduces get more of its picks (%d, without the curve %d)"
 		% [intro[1], intro[0]])
 	check(absf(float(core[1]) / total[1] - float(core[0]) / total[0]) < 0.03,
@@ -796,7 +936,10 @@ func _test_darker_lighting(campaign: Campaign) -> void:
 	ZoneSkin.set_scenery_light(1.0)
 
 
-## Unlocking follows the campaign order (with a fresh profile); the web demo covers Zone 1 only.
+## Unlocking follows the campaign order (with a fresh profile); the web demo covers Zone 1 only. The Beach
+## (task D10c) opens after Corporate's outro, its placeholder boss slot passes on to its outro, and its outro
+## opens the Dead Zone; a save from before the Beach keeps the Dead Zone it had open, and Continue offers it
+## the Beach (DESIGN-TBD, docs/questions/d10c.md).
 func _test_unlocking() -> void:
 	var app: Node = tree.root.get_node_or_null(^"App")
 	if app == null:
@@ -812,7 +955,49 @@ func _test_unlocking() -> void:
 		and not App.in_demo_scope(App.campaign.step("golden/3")), "the web demo covers Zone 1 only (GDD §2)")
 	BuildFlavor.set_override(-1)
 	check(App.in_demo_scope(App.campaign.step("golden/boss")), "the full game covers everything")
+
+	# The Beach, between Corporate and the Dead Zone.
+	var campaign: Campaign = App.campaign
+	check(campaign.next_step(campaign.step("corporate/outro")) == campaign.step("beach/intro")
+		and campaign.next_step(campaign.step("beach/outro")) == campaign.step("dead_zone/intro"),
+		"the Beach comes after Corporate's outro, and the Dead Zone after the Beach's")
+	App.profile = Profile.new()
+	SampleProfiles.complete_until(App.profile, campaign, "beach/intro")
+	check(App.step_unlocked(campaign.step("beach/intro")) and App.next_unfinished_step() == campaign.step("beach/intro")
+		and not App.step_unlocked(campaign.step("beach/1")) and not App.step_unlocked(campaign.step("dead_zone/intro")),
+		"Corporate's outro opens the Beach, and not the Dead Zone")
+	SampleProfiles.complete_until(App.profile, campaign, "beach/boss")
+	var boss: CampaignStep = campaign.step("beach/boss")
+	check(App.step_unlocked(boss) and not App.step_unlocked(campaign.step("beach/outro")), "Sunset Strip opens the Beach's boss slot")
+	App.complete_step(boss)
+	check(App.step_unlocked(campaign.step("beach/outro")) and App.profile.stars(boss.id) == 0,
+		"passing its placeholder opens the outro, with no stars that would show once the fight is built")
+	App.complete_step(campaign.step("beach/outro"))
+	check(App.step_unlocked(campaign.step("dead_zone/intro")) and App.next_unfinished_step() == campaign.step("dead_zone/intro"),
+		"the Beach's outro opens the Dead Zone")
+	# A save from before the Beach, partway through the Dead Zone.
+	App.profile = Profile.new()
+	for s: CampaignStep in steps:
+		if s.index > campaign.step("dead_zone/1").index:
+			break
+		if s.zone.id != &"beach":
+			App.profile.record_run(s.id, 0, true, 5000 if s.is_level() else 0, 2 if s.is_level() else 3, 100.0)
+	check(App.step_unlocked(campaign.step("dead_zone/1")) and App.step_unlocked(campaign.step("dead_zone/2")),
+		"a save from before the Beach keeps the Dead Zone it had open")
+	check(App.step_unlocked(campaign.step("beach/intro")) and App.next_unfinished_step() == campaign.step("beach/intro")
+		and not App.step_unlocked(campaign.step("beach/1")), "and Continue offers it the Beach, from its intro")
 	App.profile = saved
+
+
+## Level step `s`'s number in the order the campaign plays its levels (0 for the first).
+func _level_number(campaign: Campaign, s: CampaignStep) -> int:
+	var n: int = 0
+	for other: CampaignStep in campaign.steps():
+		if other == s:
+			return n
+		if other.is_level():
+			n += 1
+	return -1
 
 
 func _zone(campaign: Campaign, id: String) -> ZoneDef:

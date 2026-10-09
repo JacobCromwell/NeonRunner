@@ -31,9 +31,10 @@ const OctodogRules = preload("res://scripts/enemies/octodog_rules.gd")
 const DUMMY: String = "res://tests/helpers/dummy_enemy.gd"
 ## Its levels (GDD §9.13: introduced in Corporate 2, then every later level with an Octodog or a Buzz
 ## Overdrive).
-const LEVELS: Array[String] = ["corporate/2", "dead_zone/1", "dead_zone/2", "golden/1", "golden/2", "golden/3"]
+const LEVELS: Array[String] = ["corporate/2", "beach/1", "beach/2", "dead_zone/1", "dead_zone/2", "golden/1", "golden/2",
+	"golden/3"]
 ## The zones' run speeds where it appears.
-const SPEEDS: Array[float] = [23.4, 24.2, 25.0]
+const SPEEDS: Array[float] = [23.4, 23.8, 24.2, 25.0]
 const VARIANTS: Array[StringName] = [&"city", &"vr_runner", &"burned", &"scavenger", &"golden", &"casino"]
 
 var sim: RunSim

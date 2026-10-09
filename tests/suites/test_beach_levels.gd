@@ -1,17 +1,21 @@
 extends TestSuite
-## The Beach's provisional levels (task D10b; the owner, October 9, 2026: the Beach should "feel more open ...
-## much longer sections where there aren't sidewalls", its side walls appearing "about 50% of the time that they
-## are now"; its campaign slot is still the owner's to pick, so it stays out of the campaign). Checked here:
-## - the data: data/zones/beach.tres (id beach, the Beach skin, two levels, a music track that exists), in no
-##   campaign zone; its levels set up for the recommended slot after Corporate: Corporate 2's features (a remix,
-##   no new enemy assets), a difficulty, enemy scaling, danger density and run speed between Corporate 2's and
-##   Dead Zone 1's, durations of 145 and 150 s, seeds of their own, the open-walls tuning
-##   (data/tuning/beach_wall_gaps.tres, whose margins that time a wall run are the shared ones), and Beach 1
-##   with no sky of its own (the zone's daylight), its last level with the sunset (data/skies/beach_sunset.tres);
-## - every build at 3, 5 and 6 lanes, on the levels' own seeds and OTHER_SEEDS, as ZoneDef.standalone_level
-##   gives it: no warnings, the length its duration makes at the zone's speed, the campaign's fairness checks
-##   (LayoutChecks.check_layout and check_rules), every feature the level lists in the layout (on other seeds the
-##   Enforcer Truck, which only comes where a bait's chase has room, in nearly every build);
+## The Beach's levels: the campaign's zone 5 (task D10c; the owner, October 9, 2026: "put the beach between the
+## corporate and dead zone", a boss battle to come, no new enemies for now), with the open side walls of task D10b
+## (the owner, October 9, 2026: the Beach should "feel more open ... much longer sections where there aren't
+## sidewalls", its side walls appearing "about 50% of the time that they are now"). How the campaign configures
+## them off its difficulty curve, and leaves every other level as it was, is test_campaign's. Checked here:
+## - the data: data/zones/beach.tres, the campaign's zone 5 between Corporate and the Dead Zone (id beach, the Beach
+##   skin, Tiki Tides and Sunset Strip, its music track `beach`, a stand-in on tracks the game has, its intro and
+##   outro cinematic slots and its boss slot, a placeholder, outside the web demo); its levels: Corporate 2's
+##   features (a remix, no new enemy assets), nothing introduced, off the campaign's difficulty curve, a
+##   difficulty, enemy scaling, danger density and run speed between Corporate 2's and Dead Zone 1's, durations of
+##   145 and 150 s, seeds of their own, the open-walls tuning (data/tuning/beach_wall_gaps.tres, whose margins
+##   that time a wall run are the shared ones), and Beach 1 with no sky of its own (the zone's daylight), its last
+##   level with the sunset (data/skies/beach_sunset.tres);
+## - every build at 3, 5 and 6 lanes, on the levels' own seeds and OTHER_SEEDS, as the campaign configures it
+##   (Campaign.configure): no warnings, the length its duration makes at the zone's speed, the campaign's fairness
+##   checks (LayoutChecks.check_layout and check_rules), every feature the level lists in the layout (on other
+##   seeds the Enforcer Truck, which only comes where a bait's chase has room, in nearly every build);
 ## - the open walls: each wall stands on ACCEPT of the level, or more only where its keep-outs leave it no more
 ##   free, never on less than 1 - coverage_target; over all the builds the median wall stands in AIM; every gap
 ##   at least open_seconds_min long, between the run-up and the end-clear stretch, clear of its wall's keep-outs
@@ -22,10 +26,8 @@ extends TestSuite
 ## - the wall features still there: on the levels' own seeds, the same level with the shared tuning is the same
 ##   level but for its wall gaps (the signs, wall fences, ramps, window cyborgs and wall vents all stay where
 ##   they are, and only wall credits go);
-## - the --level=beach/1 fallback (App.zone_outside_campaign, zone_level_context): a zone outside the campaign
-##   resolves, a campaign step's id stays the campaign's, the run is quick play in the zone's look and run speed
-##   with the review overrides, and the command line plays it end to end (tools/smoke/smoke_play.gd in a child
-##   process, as test_smoke_play does).
+## - the command line: --level=beach/1 plays its campaign step with the full flow, past its level introduction,
+##   the runner running (tools/smoke/smoke_play.gd in a child process, as test_smoke_play does).
 
 const ZONE_PATH: String = "res://data/zones/beach.tres"
 const SKIN_PATH: String = "res://data/skins/beach_skin.tres"
@@ -35,9 +37,13 @@ const MUSIC_PATH: String = "res://data/audio/music_library.tres"
 const SMOKE_TOOL: String = "res://tools/smoke/smoke_play.gd"
 ## The levels' lengths (DESIGN-TBD, docs/questions/d10b.md: like their neighbours, Corporate 2 and Dead Zone 1).
 const DURATIONS: Array[float] = [145.0, 150.0]
-## The slot's neighbours in the campaign (the recommended slot: after Corporate, before the Dead Zone).
+## The levels' names (GDD §5, October 9, 2026).
+const NAMES: Array[String] = ["Tiki Tides", "Sunset Strip"]
+## The Beach's neighbours in the campaign (the owner, October 9, 2026: between Corporate and the Dead Zone).
 const BEFORE: String = "corporate/2"
 const AFTER: String = "dead_zone/1"
+## The Beach's steps, in order, after Corporate's outro and before the Dead Zone's intro.
+const STEPS: Array[String] = ["beach/intro", "beach/1", "beach/2", "beach/boss", "beach/outro"]
 ## Seeds besides each level's own that every check also runs on.
 const OTHER_SEEDS: Array[int] = [8801, 8802]
 ## The share of the level each side wall stands on (the owner: about half as often as the 96-97% elsewhere):
@@ -70,21 +76,35 @@ func run() -> void:
 		return
 	_test_data()
 	_test_levels()
-	_test_fallback()
+	_test_command_line()
 
 
 func _test_data() -> void:
-	check(zone.id == &"beach" and zone.display_name != "" and zone.tagline != "", "the zone is the Beach, named, with a tagline")
+	check(zone.id == &"beach" and zone.display_name == "Beach" and zone.tagline != "", "the zone is the Beach, named, with a tagline")
 	check(zone.skin != null and zone.skin.resource_path == SKIN_PATH, "in the Beach skin")
-	var library := load(MUSIC_PATH) as MusicLibrary
-	check(library.has(StringName(library.zone_tracks.get(String(zone.music), zone.music))),
-		"its placeholder music (%s) is a track the game has (no new songs)" % zone.music)
-	check(zone.boss == null and zone.intro == null and zone.boss_intro == null and zone.outro == null and not zone.in_demo,
-		"no boss, cinematics or demo scope yet")
-	for z: ZoneDef in campaign.zones:
-		check(z != zone and z.id != zone.id, "the campaign doesn't list the Beach (%s)" % z.id)
+	# Its place: zone 5, between Corporate and the Dead Zone (the owner, October 9, 2026).
+	check(campaign.zones.size() > 5 and campaign.zones[4] == zone and campaign.zones[3].id == &"corporate"
+		and campaign.zones[5].id == &"dead_zone", "the campaign's zone 5, between Corporate and the Dead Zone")
+	var ids := PackedStringArray()
 	for s: CampaignStep in campaign.steps():
-		check(not s.id.begins_with(String(zone.id) + "/"), "no campaign step is the Beach's (%s)" % s.id)
+		if s.zone == zone:
+			ids.append(s.id)
+	var first: CampaignStep = campaign.step(STEPS[0])
+	check(ids == PackedStringArray(STEPS) and first != null and campaign.steps()[first.index - 1].id == "corporate/outro"
+		and campaign.next_step(campaign.step(STEPS[-1])).id == "dead_zone/intro",
+		"its steps run %s, after Corporate's outro and before the Dead Zone's intro (%s)" % [", ".join(STEPS), ", ".join(ids)])
+	# No new songs (GDD §11): its track borrows ones the game has (DESIGN-TBD, docs/questions/d10c.md).
+	var library := load(MUSIC_PATH) as MusicLibrary
+	check(zone.music == &"beach" and library.has(zone.music) and library.path(zone.music) == library.path(&"marketplace")
+		and library.has(library.run_track(zone.music)) and library.run_track(zone.music) != zone.music,
+		"its music track `beach` plays the game's existing tracks: %s in cinematics, %s in its levels" % [
+			library.path(zone.music).get_file(), library.path(library.run_track(zone.music)).get_file()])
+	check(zone.intro != null and zone.intro.is_built() and zone.outro != null and not zone.outro.is_built() and zone.boss_intro == null,
+		"its intro plays the arrival flyover, its outro is a placeholder card, and it has no boss intro")
+	# The owner, October 9, 2026: "there will be a boss battle for the beach, but it has not yet been created".
+	check(zone.boss != null and zone.boss.id == &"beach_boss" and not zone.boss.is_built() and zone.boss.preview() == null,
+		"its boss slot is a placeholder: the campaign passes through it")
+	check(not zone.in_demo, "outside the web demo")
 	var before: CampaignStep = campaign.step(BEFORE)
 	var after: CampaignStep = campaign.step(AFTER)
 	check(zone.run_speed > before.zone.run_speed and zone.run_speed < after.zone.run_speed,
@@ -94,16 +114,18 @@ func _test_data() -> void:
 	check(zone.levels.size() == DURATIONS.size(), "two levels (%d)" % zone.levels.size())
 	var seeds: Array[int] = []
 	for s: CampaignStep in campaign.steps():
-		if s.is_level():
+		if s.is_level() and s.zone != zone:
 			seeds.append(s.level.level_seed)
 	var previous := -1.0
 	for i: int in mini(zone.levels.size(), DURATIONS.size()):
 		var level: LevelConfig = zone.levels[i]
 		var tag: String = "(beach/%d)" % (i + 1)
 		check(String(level.id) == "beach_%d" % (i + 1) and level.resource_path == "res://data/levels/beach_%d.tres" % (i + 1)
-			and level.display_name != "", "its id, file and name %s" % tag)
+			and level.display_name == NAMES[i], "its id, file and name, %s %s" % [NAMES[i], tag])
+		check(campaign.step("beach/%d" % (i + 1)).level == level, "the campaign plays it as beach/%d" % (i + 1))
 		check(level.features == before.level.features, "Corporate 2's features, a remix with no new enemy %s" % tag)
 		check(level.feature_starts.is_empty() and level.guarantee_features, "introduces nothing, guarantees every feature %s" % tag)
+		check(level.off_curve, "off the campaign's difficulty curve: its own difficulty and enemy scaling %s" % tag)
 		check(level.difficulty > before_config.difficulty and level.difficulty < after_config.difficulty and level.difficulty >= previous,
 			"its difficulty (%.2f) lies between Corporate 2's (%.2f) and Dead Zone 1's (%.2f), rising %s" % [level.difficulty,
 				before_config.difficulty, after_config.difficulty, tag])
@@ -144,7 +166,7 @@ func _test_levels() -> void:
 	for number: int in [1, 2]:
 		for lanes: int in [3, 5, 6]:
 			for level_seed: int in [0] + OTHER_SEEDS:
-				var config: LevelConfig = zone.standalone_level(number, lanes)
+				var config: LevelConfig = campaign.configure(campaign.step("beach/%d" % number), lanes)
 				if level_seed != 0:
 					config.level_seed = level_seed
 				_check_level(config, "beach/%d lanes=%d seed=%d" % [number, lanes, config.level_seed], level_seed == 0, stats)
@@ -260,36 +282,15 @@ func _check_open_walls(gen: LevelGenerator, config: LevelConfig, tag: String, st
 		both / length * 100.0, t.both_open_max * 100.0, tag])
 
 
-## The --level=beach/1 fallback (App): which ids resolve to a zone outside the campaign, the run it plays, and
-## the command line end to end.
-func _test_fallback() -> void:
-	check(App.zone_outside_campaign("beach/1") == zone and App.zone_outside_campaign("beach/2") == zone,
-		"--level=beach/1 and beach/2 name the Beach's levels")
-	for id: String in ["beach/3", "beach/0", "beach", "beach/x", "beach/1/2", "nowhere/1"]:
-		check(App.zone_outside_campaign(id) == null, "--level=%s names no level" % id)
-	for id: String in ["city/1", "corporate/2", "dead_zone/1"]:
-		check(App.zone_outside_campaign(id) == null, "--level=%s stays the campaign's step" % id)
-	var ctx: RunContext = App.zone_level_context(zone, 2, PackedStringArray(["--lanes=6", "--seed=7", "--god", "--nofall",
-		"--full-loadout"]))
-	check(ctx.mode == RunContext.Mode.QUICK and not ctx.is_campaign() and ctx.step == null, "quick play, outside the campaign")
-	check(String(ctx.config.id) == "beach_2" and ctx.config.lane_count == 6 and ctx.config.level_seed == 7 and ctx.god_mode
-		and ctx.no_fall, "its level, with --lanes, --seed, --god and --nofall")
-	check(ctx.loadout != null and ctx.loadout.describe() == Loadout.full(App.catalog).describe(), "--full-loadout")
-	check(ctx.config.skin == zone.skin and is_equal_approx(ctx.config.run_speed, zone.run_speed)
-		and is_equal_approx(ctx.tuning.run_speed, zone.run_speed), "in the zone's look, at the zone's run speed")
-	check(ctx.config.wall_gap_tuning == zone.levels[1].wall_gap_tuning and ctx.config.sky == zone.levels[1].sky,
-		"with the level's own wall gaps and sky")
-	var plain: RunContext = App.zone_level_context(zone, 1)
-	check(plain.config.lane_count == App.lane_count() and plain.config.level_seed == zone.levels[0].level_seed
-		and not plain.god_mode and not plain.no_fall, "no overrides: the device's lanes and the level's own seed")
-	check(zone.levels[0].lane_count == (load("res://data/levels/beach_1.tres") as LevelConfig).lane_count
-		and plain.config != zone.levels[0], "the run plays a copy: the zone's level is never changed")
-	# The command line, end to end.
+## The command line: --level=beach/1 is the Beach's campaign step, with the full flow (its level introduction, then
+## the run), played end to end in a child process.
+func _test_command_line() -> void:
 	if OS.get_name() != "Linux" or not FileAccess.file_exists("/usr/bin/env"):
 		check(true, "skipped: the smoke tool's child process needs /usr/bin/env")
 		return
 	var played: String = _smoke(["--level=beach/1", "--lanes=5", "--god", "--nofall"])
-	check(not played.contains("smoke:") and not played.contains("SCRIPT ERROR"), "--level=beach/1 plays with no problem:\n%s" % played)
+	check(played.contains("PLAY pressed") and not played.contains("smoke:") and not played.contains("SCRIPT ERROR"),
+		"--level=beach/1 plays the campaign step past its level introduction with no problem:\n%s" % played)
 	check(_distance(played) > 5.0, "--level=beach/1: the runner ran %.1f m in %d frames:\n%s" % [_distance(played), SMOKE_FRAMES, played])
 
 

@@ -112,6 +112,7 @@
     {"match": "data/bosses/corporate_boss*", "suites": ["hostile_takeover*", "bosses"]},
     {"match": "data/bosses/dead_zone_boss*", "suites": ["sleep_taker*", "bosses"]},
     {"match": "data/bosses/golden_boss*", "suites": ["golden_convergence*", "bosses", "campaign"]},
+    {"match": "data/bosses/beach_boss*", "suites": ["bosses", "campaign", "app_flow", "screens", "beach_levels"]},
     {"match": "data/bosses/*", "suites": ["bosses"]},
     {"match": "data/cinematics/*", "suites": ["cinematics", "city_outro", "sewer_swarm_intro"]},
     {"match": "data/audio/*", "suites": ["audio", "web_demo"]},

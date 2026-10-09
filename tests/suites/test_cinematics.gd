@@ -379,7 +379,7 @@ func _test_flyovers() -> void:
 	for s: CampaignStep in slots:
 		ids.append(s.id)
 	check(ids == PackedStringArray(["city/intro", "city/boss_intro", "gangland/intro", "marketplace/intro", "corporate/intro",
-		"dead_zone/intro", "golden/intro"]), "every zone's intro plays its arrival flyover, and the City's boss intro (%s)" % [ids])
+		"beach/intro", "dead_zone/intro", "golden/intro"]), "every zone's intro plays its arrival flyover, and the City's boss intro (%s)" % [ids])
 	for lanes: int in LANES:
 		App.rules.lanes_pc = lanes
 		for s: CampaignStep in slots:
