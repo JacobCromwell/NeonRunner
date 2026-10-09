@@ -5,10 +5,12 @@ extends TestSuite
 ##   of invulnerability), shorter than two (one armor hit and the dash, 1.6 s) and shorter than a wall run
 ##   without claws; its flames a metre high (a jump only delays them); its sounds and hint;
 ## - its warning: the hatches opening, the launch, the dive's whistle, the marks spreading over every lane of its
-##   stretch (floor warnings: BossProps.warned) and filling in, the missiles in the air; long enough to reach the
-##   wall from the far side (the reaction, every lane switch, the wall entry, a margin) at 3, 5 and 6 lanes;
+##   stretch (floor warnings: BossProps.warned) and filling in, the missiles in the air, hanging where the run
+##   camera sees them in front of the suit; long enough to reach the wall from the far side (the reaction, every
+##   lane switch, the wall entry, a margin) at 3, 5 and 6 lanes;
 ## - its fire: every lane over the stretch the runner runs while it burns (a dash included) and margins, lit for
-##   fire_seconds and no longer; a jump only delays it; the missiles and marks never hurt;
+##   fire_seconds and no longer, the burning floor over just what burns; a jump only delays it; the missiles and
+##   marks never hurt;
 ## - the wall: its boxes clear of a wall runner's body at every height on either wall, and a runner on the open
 ##   wall through the whole burn is never touched (getting on as the marks fill in, wall hopping if need be);
 ## - the layers of protection, the real player standing in it: the free armor alone dies, one armor hit and the
