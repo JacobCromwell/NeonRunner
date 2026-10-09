@@ -248,6 +248,7 @@ var _ruins: GanglandRuins
 var _ceiling: GanglandCeiling
 var _props: GanglandProps
 var _doodads: GanglandDoodads
+var _dash_walls: GanglandDashWall
 
 
 func _init() -> void:
@@ -344,8 +345,20 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	batch.commit(parent)
 
 
-## A dash wall's default look (ZoneSkin.dash_wall, task H7a) in Gangland's own facades: sandstone walls, umber
-## trim, sooty glass and soot in its cracks. Task H7b builds the real face from the zone's ruins.
+## A dash wall (task H7b): a bombed-out building across the street, built from the ruins' own kit
+## (GanglandDashWall): the ruin facade shader's graffiti-tagged shopfronts and gutted windows, concrete, scrap
+## metal, a broken top.
+func dash_wall(body: Node3D, size: Vector3, look_seed: int) -> void:
+	DashWallKit.dress(body, dash_walls().mesh_for(size, look_seed))
+
+
+## The surfaces a Gangland dash wall draws with: the ruin facade shader and the solid kit.
+func dash_wall_materials() -> Array[Material]:
+	return [solid_material(), facade_material()]
+
+
+## A dash wall's default look colours (ZoneSkin.dash_wall, task H7a) in Gangland's own facades: sandstone walls, umber
+## trim, sooty glass and soot in its cracks. Kept as the palette the debris falls back on.
 func dash_wall_colors() -> PackedColorArray:
 	return PackedColorArray([facade_colors[0], facade_colors[facade_colors.size() - 1], Color(0.09, 0.08, 0.07), soot_color])
 
@@ -461,6 +474,12 @@ func street() -> GanglandStreet:
 	if _street == null:
 		_street = GanglandStreet.new(self)
 	return _street
+
+
+func dash_walls() -> GanglandDashWall:
+	if _dash_walls == null:
+		_dash_walls = GanglandDashWall.new(self)
+	return _dash_walls
 
 
 func ruins() -> GanglandRuins:

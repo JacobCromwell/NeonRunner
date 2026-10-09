@@ -56,6 +56,7 @@ extends GoldenSkin
 var _floor: GoldenPalaceFloor
 var _walls: GoldenPalaceWalls
 var _palace_ceilings: GoldenPalaceCeilings
+var _palace_dash_walls: GoldenPalaceDashWall
 ## Decorative low wall pieces must not straddle a wall gap at a chunk edge.
 var _wall_gaps: Dictionary = {}
 
@@ -149,6 +150,19 @@ func feed_boards(side: int, face_x: float, start: float, end: float) -> Array[Di
 
 func cult_emblems(side: int, face_x: float, start: float, end: float) -> Array[Dictionary]:
 	return walls().cult_emblems(side, face_x, start, end)
+
+
+## A dash wall (task H7b): a marble pavilion across the hall, built from the colonnade's own kit
+## (GoldenPalaceDashWall): the flush marble panel, gilded pilasters, gold-framed galleries.
+func dash_wall(body: Node3D, size: Vector3, look_seed: int) -> void:
+	if _palace_dash_walls == null:
+		_palace_dash_walls = GoldenPalaceDashWall.new(self)
+	DashWallKit.dress(body, _palace_dash_walls.mesh_for(size, look_seed))
+
+
+## The palace's wall is on the solid kit alone (the panel pattern is the solid shader's).
+func dash_wall_materials() -> Array[Material]:
+	return [solid_material()]
 
 
 func palace_floor() -> GoldenPalaceFloor:

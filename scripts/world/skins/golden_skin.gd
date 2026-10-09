@@ -294,6 +294,7 @@ var _facades: GoldenFacades
 var _ceilings: GoldenCeilings
 var _props: GoldenProps
 var _doodads: GoldenDoodads
+var _dash_walls: GoldenDashWall
 var _statues: GoldenStatue
 var _decorative_inset: float = -1.0
 var _decorative_projection: Vector2 = Vector2(-1.0, -1.0)
@@ -480,9 +481,21 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	batch.commit(parent)
 
 
-## A dash wall's default look (ZoneSkin.dash_wall, task H7a) in the Golden Zone's own facades: white stone,
-## gold trim (unlit), its glass and cracks a darker shade of the marble's veins. The Golden Palace's halls
-## take it too. Task H7b builds the real face from the zone's facades.
+## A dash wall (task H7b): the front of a palace across the walkways, built from the facades' own kit
+## (GoldenDashWall): granite, rusticated stone, blind arcades, tall gold-framed windows, mirror glass, marble
+## and gold. The Golden Palace's halls have their own (GoldenPalaceSkin).
+func dash_wall(body: Node3D, size: Vector3, look_seed: int) -> void:
+	DashWallKit.dress(body, dash_walls().mesh_for(size, look_seed))
+
+
+## The surfaces a Golden Zone dash wall draws with: the facades' shader and the solid kit.
+func dash_wall_materials() -> Array[Material]:
+	return [solid_material(), facade_material()]
+
+
+## A dash wall's default look colours (ZoneSkin.dash_wall, task H7a) in the Golden Zone's own facades: white stone,
+## gold trim (unlit), its glass and cracks a darker shade of the marble's veins. Kept as the palette the debris
+## falls back on.
 func dash_wall_colors() -> PackedColorArray:
 	return PackedColorArray([stone_colors[0], gold_color, glass_color, vein_color.darkened(0.45)])
 
@@ -730,6 +743,12 @@ func walkways() -> GoldenWalkways:
 	if _walkways == null:
 		_walkways = GoldenWalkways.new(self)
 	return _walkways
+
+
+func dash_walls() -> GoldenDashWall:
+	if _dash_walls == null:
+		_dash_walls = GoldenDashWall.new(self)
+	return _dash_walls
 
 
 func facades() -> GoldenFacades:
