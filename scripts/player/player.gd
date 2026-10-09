@@ -69,6 +69,9 @@ var geo: TrackGeometry
 ## The level's side wall gaps (LevelLayout.wall_gaps, the world's own list, so gaps a longer track adds
 ## count too): where a wall has no wall-running surface (wall_supported).
 var wall_gaps: Array[Dictionary] = []
+## The level's dash walls (LevelLayout.dash_walls, the world's own list; task H7a): without any, the approach
+## check (_check_dash_walls) never queries the physics world.
+var dash_walls: Array[Dictionary] = []
 ## Game-wide rules (stomp bounce, invulnerability windows, ...). A default copy if none is set.
 var rules: GameRules
 var god_mode: bool = false
@@ -1112,6 +1115,8 @@ func _push_room(target: int) -> bool:
 ##   the shield absorbs it, else it kills), which breaks it too (receive_hit).
 ## A dash that ends before the body gets there leaves it unclaimed: the body meets its hitbox, a crash.
 func _check_dash_walls(motion: float) -> void:
+	if dash_walls.is_empty():
+		return
 	var depth: float = tuning.visual_size.z
 	var front: float = distance + depth * 0.5
 	var back: float = distance - depth * 0.5

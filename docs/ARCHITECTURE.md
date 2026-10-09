@@ -538,7 +538,8 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   less `MovementTuning.dash_wall_inset` at its sides and its face, from `TrackBuilder.DASH_WALL_FLOOR_LIFT`
   above the floor to its top (a slide never passes under it, and it's taller than any jump), declaring
   `is_solid`, `armor_blocks_solid` and `breakable` (the wall). It breaks as the runner reaches it, whatever
-  they do (`Player._check_dash_walls`, after `_check_doodads`, before the triggers and hazards), so it never
+  they do (`Player._check_dash_walls`, after `_check_doodads`, before the triggers and hazards; a level without
+  walls skips its query: `Player.dash_walls`, the layout's own list, which RunWorld hands it), so it never
   stands between the chase camera and them:
   - **the dash** claims it as it claims a doodad (`_dash_claims`: the dash lasts until the body gets there;
     the query reaches as far as the dash still covers) and smashes it a frame before the body would touch it
@@ -836,6 +837,14 @@ wall in its way (DESIGN-TBD, `docs/questions/h7a.md`):
   wall's back; 0 with no standing wall in its way): the heli drone in every state (`lift`, added to its height;
   its wind-up never starts while a wall is within its barrage's reach or its climb), the Resonator (pulling away,
   or resting at its spot past one) and a fleeing Tithe Collector;
+- **ground enemies running off ahead leave play at its face** (`Enemy.dash_wall_reached(front)`: a standing wall's
+  face between the runner and the enemy's front): an Octodog running off ahead or pacing the runner
+  (`Octodog.should_retire`, giving up its turn) and a Buzz Overdrive speeding off after letting the runner pass
+  (`BuzzOverdrive._tick`: gone);
+- **a panic cyborg's run stops short of its clear approach** (`CyborgRules.obstacle_spans` holds every wall's
+  footprint, `DashWallTuning.footprint`; `CyborgRules.limits`, which the Cyborg's `_compute_limits` uses): it never
+  runs through a standing wall nor cowers in the clear stretch behind it, and one past a wall never walks back
+  into that stretch;
 - the Enforcer Truck drives behind the runner, so it only ever meets a wall already broken.
 
 **A ceiling enemy: the Barnacle Turret** (C1, GDD §9.8). `barnacle_turret.gd` (`BarnacleTurret`), its
@@ -1912,7 +1921,7 @@ the runner dashes through; introduced in Corporate 1 after the Buzz Overdrive, a
 `LevelLayout.dash_walls` holds `{start (its face), end (its back), seed}` (marked `smashed` and `broken_by` once
 broken in an attempt), left out of `to_dict()` while empty, so a level without them is the same data as before.
 `dash_wall_rules.gd` (`scripts/enemies/`) places them, numbers in `DashWallTuning` (`data/tuning/dash_walls.tres`,
-F6 "Dash walls"), how many in `LevelConfig.dash_walls` (2 to 4 by level, DESIGN-TBD), the wall's size in
+F6 "Dash walls"), how many in `LevelConfig.dash_walls` (1 to 4 by level, DESIGN-TBD), the wall's size in
 `MovementTuning` ("Dash walls"). The feature has no patterns, and its walls stand in two stages:
 - **The introduction** (a level that gives the feature a start: Corporate 1) with the rules: `apply()` runs after
   every other feature's (its `RUN_AFTER` lists them all), so it plans on the level's final enemies, ceilings, pads,
@@ -1926,8 +1935,12 @@ F6 "Dash walls"), how many in `LevelConfig.dash_walls` (2 to 4 by level, DESIGN-
   takes out the plain pieces in its way (the fill pass's and the danger density pass's too), and keeps off every
   wider gap's zone (`WideGapPlacement.keep_outs`), every planted cyborg's encounter
   (`ChargePathPlacement.encounter_span`) and every doodad with its push's lead before it and the level's spacing
-  past it (`doodad_span`), as each keeps off a wall placed before it. A level left with no wall at all makes room for one
-  as an introduction does (`_make_room` over the whole level; never a planted cyborg or its charger).
+  past it (`doodad_span`), as each keeps off a wall placed before it; and a level's quiet stretches (The Hush's,
+  `LevelGenerator.quiet_stretches`; `plan_for`'s `quiet`), as the fill and danger density passes keep them, unless
+  that leaves the level with none (then one stands in a quiet stretch). A level left with no wall at all makes
+  room for one as an introduction does (`_make_room` over the whole level; never a planted cyborg or its charger,
+  nor a Buzz Overdrive an Enforcer Truck counts among its baits; the spacing of every bait it can't take out
+  stays).
 Both draw from `rng_for("dash_wall")`, so the passes before them place exactly what they did, and a level with a
 count of 0 (or without the feature) is built byte for byte as before. Its header holds every rule; in short (`Plan`):
 - **A footprint in every lane**, from `approach_seconds` before the face to `after_seconds` past the back, at the
@@ -1942,8 +1955,10 @@ count of 0 (or without the feature) is built byte for byte as before. Its header
   powers) are taken out to make room (`clear_plain_pieces`); a spot needing nothing taken out is preferred.
 - **Spacing**: faces at least `spacing_for()` apart (the dash's longest cooldown, 8 s at tier 1, and
   `cooldown_margin_seconds` of run, plus the ground a dash adds), and with `keep_dash_baits` nothing else that
-  invites a dash within that spacing before a face (a Buzz Overdrive's charge meeting the runner, a fence
-  generator; a zone doodad never needs the dash, so it keeps off the footprint only).
+  invites a dash within that spacing before a face (`bait_of`: a Buzz Overdrive's charge meeting the runner, a fence
+  generator, the end of a Tithe Collector's stay, whose hint sends the dash at it; a zone doodad never needs the
+  dash, so it keeps off the footprint only). The spacing guarantees the dash only when it was last used at the
+  previous wall (about 1 s of slack): `docs/questions/h7a.md`.
 - **The wall route**: from `wall_route_seconds` before the face to the back, at least one side wall holds no sign
   (where both do, those of the side with fewer go), and the side wall gaps and wall fences keep off both walls
   there (`wall_keep_outs`, `WallGapPlacement.keep_outs`; the wall fences' drop windows keep off the footprint).
@@ -1962,8 +1977,8 @@ every lane), the danger density pass, the wider gaps, the planted cyborgs and th
 the side wall gaps and wall fences beside them (`wall_keep_outs`), and the credits (none inside a wall:
 `LevelLayout.doodad_between` counts a wall in every lane, so a dropped credit or a floor cut's lane never lands in
 one either). `problems(gen)` re-checks a finished layout (the tests, `LayoutChecks.check_dash_walls`). Every
-campaign level gets its full count on its own seed at 3, 5 and 6 lanes (Golden 1 and Golden 3 ask for 2: their
-crowded tracks have room for no more on some lane counts).
+campaign level gets its full count on its own seed at 3, 5 and 6 lanes (Corporate 2 and The Hush ask for 1, Golden 1
+and Golden 3 for 2: their tracks have room for no more on some lane counts).
 
 **Dash walls on the track.** `TrackBuilder._build_dash_wall` builds each in the chunk where it stands (Damage and
 interactions: the box on `LAYER_DASH_WALL`, the forgiving hitbox), sized by `TrackBuilder.dash_wall_size()` (as
@@ -3948,7 +3963,8 @@ and 6 lanes on its own seed and two others (the level's count on its own seed, a
 every wall fair by `LayoutChecks.check_dash_walls`, the same every build); Corporate 1's introduction right
 after its start at every lane count, alone, and no other level introducing them; past an introduction the walls
 standing after the danger density pass and the doodads (its report, the fillers, the enemies and the doodads as
-with no walls, only the pieces in their way taken out); a level without the feature or with a count of 0 built exactly as without them; the track (the box on its layer, the forgiving hitbox that
+with no walls, only the pieces in their way taken out); The Hush's walls out of its quiet stretches; a level without
+the feature or with a count of 0 built exactly as without them; the track (the box on its layer, the forgiving hitbox that
 armor absorbs and that breaks it, across the floor lanes and short of the side walls, taller than any jump, the
 skin's hook and colours, a broken one never built); the damage rules (the dash, armor, the shield, a kill, god
 mode, the invulnerability window; a sign still a hit armor never blocks); on real physics at 3, 5 and 6 lanes in
@@ -3961,8 +3977,12 @@ shake Screen shake scales away, the crash's sound, Reduced flashing changing not
 look, pieces and dust); a LevelRun of Corporate 1 (it stays broken through a death and a revive, and a retry
 rebuilds it whole); every skin's look; the hint; a hover truck giving way (pacing ahead, behind the runner as
 they reach the wall, no rev near it, pacing again past it) and bursting through when boxed in; and a heli drone
-rising over one, back down past it, never winding up with a wall in its barrage's reach. `RunSim` reports
-`crashes` and `wall_passes`.
+rising over one, back down past it, never winding up with a wall in its barrage's reach; a panic cyborg's run
+stopping short of a wall's clear approach (and one past it never walking back into its clear stretch); an Octodog
+running off ahead and a Buzz Overdrive speeding off after letting the runner pass, each leaving play at a standing
+wall's face. `LayoutChecks.check_dash_walls` also holds every Tithe Collector's stay's end out of the spacing
+before a wall and every cyborg's run and walk out of its footprint, and the hint says what a crash costs. `RunSim`
+reports `crashes` and `wall_passes`, and hands its Player the layout's walls.
 `test_floor_cuts` checks floor cuts (B4; GDD §9.9) with the grey-box stand-in: the plan's geometry and
 the layout data; the track's piece (its slices, its collision, a hold and a stop); on real
 physics at 3, 5 and 6 lanes, the floor gone exactly behind the cause and whole ahead of it, a runner in

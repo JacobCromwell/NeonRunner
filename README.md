@@ -158,7 +158,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   you through, claws don't, and a generator's EMP switches them off. They're never where a ramp launches you
   along their wall, never beside a sign or a window cyborg, and the outer lane beside them is always clear
   to drop into (in quick play, `--features=wall_fences,wall_fences_partial`). Dash walls (from Corporate 1,
-  2 to 4 a level, placeholder counts): a building standing across every floor lane, in the zone's own colours.
+  1 to 4 a level, placeholder counts): a building standing across every floor lane, in the zone's own colours.
   Dash through it and it crumbles into rubble; without the dash (not owned, switched off or on cooldown) you
   crash through it and take one hit, which the armor or a shield absorbs (with neither, it kills); a run along
   a side wall passes it. They stand far enough apart for the dash's longest cooldown to be over before the next,
@@ -588,11 +588,13 @@ spare (see Tools, above). Covered:
 - **Dash walls:** placed only where they're fair in every level that has them (3, 5 and 6 lanes, its own seed and
   others: spaced past the dash's longest cooldown, a clear stretch around each, never under a ceiling, a side
   wall open beside each, no dash bait just before one), Corporate 1 introducing them right after their start,
-  the rest standing after the danger density pass and the doodads without taking their room; on real physics in every lane, a dash smashing one untouched, a crash killing a runner with no protection (the
-  armor or a shield absorbing it in a full world, god mode shrugging it off), jumping or sliding into one
-  crashing too, a wall runner passing it; the crumble (pieces in its colours, dust, a heavier shake, its sound);
-  it stays broken for the attempt and a retry rebuilds it; every zone's look; a hover truck giving way and a
-  heli drone flying over one.
+  the rest standing after the danger density pass and the doodads without taking their room, The Hush's out of
+  its quiet stretches; on real physics in every lane, a dash smashing one untouched, a crash killing a runner
+  with no protection (the armor or a shield absorbing it in a full world, god mode shrugging it off), jumping or
+  sliding into one crashing too, a wall runner passing it; the crumble (pieces in its colours, dust, a heavier
+  shake, its sound); it stays broken for the attempt and a retry rebuilds it; every zone's look; a hover truck
+  giving way, a heli drone flying over one, a panic cyborg stopping short of one, and an Octodog or a Buzz
+  Overdrive running off ahead leaving at its face.
 - **Floor cuts:** cuts planned only where they're fair (one at a time, never through a ramp, a pad or a
   ceiling's landing zone, the other lanes whole, room to leave the lane after the warning; hundreds of
   levels at 3, 5 and 6 lanes), a level without them built byte for byte as before, and on real physics:
