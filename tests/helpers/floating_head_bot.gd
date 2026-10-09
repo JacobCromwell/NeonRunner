@@ -6,7 +6,7 @@ extends RefCounted
 ## where its beams are; a lit bomb target; the pinned ship, its weak points and its way up), the way a
 ## player reads the warnings:
 ## - a bomb's lock on its lane: switches to the free lane the fairness rules keep (like any player who
-##   keeps moving);
+##   keeps moving); a salvo's spots: weaves along a way through them, spot by spot;
 ## - a sweep: jumps a low one when it fires, slides under a high one as the beams reach its spot;
 ## - a drag: once its lane is committed (the red lane warning), switches to the free lane the fairness
 ##   rules keep (FloatingHead.escape_lane);
@@ -288,9 +288,15 @@ func _nearest_weak_lane(lane: int) -> int:
 
 # --- The bombing run -----------------------------------------------------------------------------
 
-## A lock on its lane: to the free lane the rules leave it (once per lock).
+## A lock on its lane: to the free lane the rules leave it (once per lock). A salvo: to the lane the
+## way through the spots still ahead leads to (FloatingHeadBombing.dodge_lane).
 func _dodge_bombs() -> void:
 	var b: FloatingHeadBombing = head.bombing
+	if b.target.has("spots"):
+		var e: int = b.dodge_lane(head.player_lane(), head.world.player.distance)
+		if e >= 0 and e != head.player_lane():
+			_go(e, "bomb")
+		return
 	if b.target.is_empty():
 		return
 	var key: String = "lock %s" % b.target["lock"]

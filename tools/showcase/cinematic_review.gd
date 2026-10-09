@@ -8,7 +8,7 @@ extends Node3D
 ## (add --rendering-method gl_compatibility before the scene path for the web / low-end renderer).
 ## Options:
 ##   --slot=<step id>     the campaign step whose cinematic plays (default city/intro): a zone's intro
-##                        (<zone>/intro), the City's boss intro (city/boss_intro)
+##                        (<zone>/intro), the City's or Gangland's boss intro (city/boss_intro, gangland/boss_intro)
 ##   --sampler            the toolkit sampler instead, in the zone --zone= names (default city)
 ##   --lanes=N            lanes (default: as many as a level on this device)
 ##   --reduced-flashing   with Settings > Reduced flashing on
