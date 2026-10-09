@@ -77,7 +77,7 @@ extends ZoneSkin
 @export var plank_gap_color: Color = Color(0.24, 0.17, 0.11)
 @export var plate_color: Color = Color(0.38, 0.27, 0.19)
 @export var rust_color: Color = Color(0.42, 0.22, 0.11)
-@export_range(0.0, 1.0, 0.01) var boardwalk_share: float = 0.3
+@export_range(0.0, 1.0, 0.01) var boardwalk_share: float = 0.2
 @export_range(4.0, 40.0, 0.5, "suffix:m") var boardwalk_slot: float = 12.0
 ## The flush bamboo kerb between the outer lanes and the building faces.
 @export var kerb_color: Color = Color(0.62, 0.49, 0.30)

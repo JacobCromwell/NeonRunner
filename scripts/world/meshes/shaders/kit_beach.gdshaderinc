@@ -103,14 +103,15 @@ float bc_glyph(vec2 q, int kind) {
 			d = min(d, max(abs(sy) - 0.045, abs(q.x) - 0.5));
 		}
 	} else if (kind == 2) {
-		// A palm tree: a leaning trunk and five drooping fronds.
-		vec2 crown = vec2(0.04, 0.08);
-		d = sd_segment(q, vec2(-0.08, -0.5), crown) - 0.03;
+		// A palm tree: a leaning trunk and five thick fronds arching up and out from the crown, drooping at their tips.
+		vec2 crown = vec2(0.03, 0.12);
+		d = sd_segment(q, vec2(-0.1, -0.5), crown) - 0.045;
 		for (int i = 0; i < 5; i++) {
-			float k = float(i);
-			vec2 tip = crown + vec2(-0.46 + 0.23 * k, -0.18 + 0.4 * (1.0 - abs(k - 2.0) * 0.5));
-			vec2 mid = crown + (tip - crown) * 0.55 + vec2(0.0, 0.1);
-			d = min(d, min(sd_segment(q, crown, mid), sd_segment(q, mid, tip)) - 0.028);
+			float a = 2.88 - 0.6 * float(i);
+			vec2 out_dir = vec2(cos(a), sin(a));
+			vec2 mid = crown + out_dir * 0.24 + vec2(0.0, 0.07);
+			vec2 tip = crown + out_dir * 0.48 + vec2(0.0, -0.17);
+			d = min(d, min(sd_segment(q, crown, mid) - 0.042, sd_segment(q, mid, tip) - 0.03));
 		}
 	} else if (kind == 3) {
 		// A surfboard, leaning, with its fin.
