@@ -502,6 +502,13 @@ func _test_squadron() -> void:
 			check(boss.squadron.immune_to_weapons and not boss.squadron.targetable() and not boss.fire.targetable()
 				and boss.squadron.find_children("*", "Hazard", true, false).is_empty(),
 				"weapons never target the squadron, and it has no touch of its own (only its fire hurts)")
+			var harmless: bool = boss.fire.lines.size() == GoldenConvergenceFire.LINES
+			for l: int in range(1, boss.fire.lines.size()):
+				for cell: Dictionary in boss.fire.lines[l]["lanes"]:
+					harmless = harmless and cell["hazard"] == null
+				for wall: Dictionary in boss.fire.lines[l]["walls"]:
+					harmless = harmless and wall["hazard"] == null
+			check(harmless, "the lines for show have no hitbox at all (GDD §10: only the line at the buttress is live)")
 		await sim.free_world(world)
 
 
