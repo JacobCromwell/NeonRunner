@@ -10,7 +10,8 @@ extends GoldenConvergenceAttack
 ##   the warning begins;
 ## - the warning (lash_warning, never over the pace): he rears back, slowing to a stop on the balustrade where
 ##   the cable will cross (`line_at`); his cable rises crackling red behind him (magnate_crackle, as long as the
-##   warning; its sparks still with Reduced flashing); a red line lies across every lane there
+##   warning; its sparks one at a time, at most about 3 a second with Reduced flashing); a red line lies across
+##   every lane there
 ##   (GoldenConvergence.cross_warning: floor warnings) and thin red aim lines across the track show its heights;
 ## - the whip (lash_sweep): the cable lashes across every lane from his side to the far balustrade
 ##   (magnate_whip), each lane's stretch live once it's crossed; it lies across them all lash_cross_lead before the
@@ -32,15 +33,20 @@ const CABLE_THICK: float = 0.13
 const HOLD_TIMEOUT: float = 3.0
 ## The enemy attacks' red (the strafe's fire's: GoldenConvergenceFire.RAKE_COLOR).
 const COLOR := Color(1.0, 0.16, 0.08)
+## The crackle's sparks: one this often along a raised cable (whatever how many are raised), and with Reduced
+## flashing this often: no more than about 3 a second (kit_flash.gdshaderinc's rule for anything that flashes).
+const SPARK_EVERY: float = 0.07
+const SPARK_EVERY_REDUCED: float = 0.4
 
 var chase: GoldenConvergenceChase
 var magnate: GoldenConvergenceMagnate
 var stage: Stage = Stage.IDLE
 var stage_time: float = 0.0
-## Lashes so far (tests), by kind.
+## Lashes so far (tests), by kind; the crackle's sparks so far.
 var lashes: int = 0
 var lows: int = 0
 var highs: int = 0
+var sparks: int = 0
 ## The lash under way: {kind (&"low"/&"high"), heights, side, d0, v, line_at, t_warn, t_whip, t_swept, warned_at,
 ## whipped_at, rel_start, from_x, z_warn, tip (the sweep's progress 0-1), passed_at}.
 var p: Dictionary = {}
@@ -211,12 +217,12 @@ func _tick_warn(delta: float, t: float) -> void:
 	# His cables rise behind him, crackling; the aim lines brighten across the track.
 	var heights: Array = p["heights"]
 	var back: Vector3 = magnate.back_point()
+	var line_z: float = TrackGeometry.world_z(float(p["line_at"]))
 	for i: int in heights.size():
-		var tip: Vector3 = back + Vector3(-side * (0.4 + 0.3 * i), 1.6 + 0.7 * i + 0.4 * u, 0.9 - 0.3 * i)
-		_line(_leads[i], back, tip, CABLE_THICK * (0.6 + 0.4 * u))
-		_line(_aims[i], Vector3(-_reach(), float(heights[i]), TrackGeometry.world_z(float(p["line_at"]))),
-			Vector3(_reach(), float(heights[i]), TrackGeometry.world_z(float(p["line_at"]))), AIM_THICK * (0.5 + 0.5 * u))
-		_crackle(delta, tip, back)
+		_line(_leads[i], back, _lead_tip(back, side, i, u), CABLE_THICK * (0.6 + 0.4 * u))
+		_line(_aims[i], Vector3(-_reach(), float(heights[i]), line_z), Vector3(_reach(), float(heights[i]), line_z),
+			AIM_THICK * (0.5 + 0.5 * u))
+	_crackle(delta, back, side, u, heights.size())
 
 
 ## How far either side of the middle the cable reaches: past the balustrades.
@@ -224,14 +230,21 @@ func _reach() -> float:
 	return boss.world.geo.wall_x() + 0.9
 
 
-## Red sparks along a cable now and then (fewer, and none flickering faster, with Reduced flashing).
-func _crackle(delta: float, a: Vector3, b: Vector3) -> void:
+## Raised cable `i`'s tip behind him (world space) on balustrade `side`, `u` of the way through the warning.
+static func _lead_tip(back: Vector3, side: int, i: int, u: float) -> Vector3:
+	return back + Vector3(-side * (0.4 + 0.3 * i), 1.6 + 0.7 * i + 0.4 * u, 0.9 - 0.3 * i)
+
+
+## A red spark along one of the `cables` raised cables now and then, one at a time: SPARK_EVERY apart, or with
+## Reduced flashing SPARK_EVERY_REDUCED (at most about 3 a second).
+func _crackle(delta: float, back: Vector3, side: int, u: float, cables: int) -> void:
 	_spark_t -= delta
-	if _spark_t > 0.0:
+	if _spark_t > 0.0 or cables <= 0:
 		return
-	_spark_t = 0.16 if Settings.flashing_reduced else 0.07
-	var at: Vector3 = a.lerp(b, _rng.randf())
-	boss.world.effects.burst(at, COLOR, 4, 0.18)
+	_spark_t = SPARK_EVERY_REDUCED if Settings.flashing_reduced else SPARK_EVERY
+	var tip: Vector3 = _lead_tip(back, side, _rng.randi_range(0, cables - 1), u)
+	boss.world.effects.burst(tip.lerp(back, _rng.randf()), COLOR, 4, 0.18)
+	sparks += 1
 
 
 # --- The whip and the hold ----------------------------------------------------------------------------------

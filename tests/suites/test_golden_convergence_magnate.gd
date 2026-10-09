@@ -29,7 +29,8 @@ extends TestSuite
 ## - the defeat: the cables tearing out one by one, the screens dying outward and the music cut, the collapse
 ##   ahead in a lane away from the runner and out of their way, the light in his cracks out, the runner past him,
 ##   then the riff (or silence with victory_riff_on off), and only then victory_over;
-## - Reduced flashing: the ports, the square and the cables steady.
+## - Reduced flashing: the ports, the square and the cables steady, the Lash's crackle at most about 3 sparks a
+##   second.
 
 const BOSS_PATH: String = "res://data/bosses/golden_boss.tres"
 ## Stage 2's first phase (phase 4: the checkpoint).
@@ -917,6 +918,30 @@ func _test_reduced_flashing() -> void:
 			check(widths.size() == 1, "%s the whipped cable stays steady (%d widths)" % [tag, widths.size()])
 		else:
 			check(widths.size() > 1, "%s it crackles (%d widths)" % [tag, widths.size()])
+		await sim.free_world(world)
+		# E5d polish: the warning's crackle throws its sparks one at a time, at most about 3 a second with Reduced
+		# flashing (kit_flash.gdshaderinc), however many cables he raises (a high lash raises two).
+		pair = _fight(5, 18.0, null, STAGE_2 + 1, "lash:high")
+		world = pair[0]
+		boss = pair[1]
+		world.player.god_mode = true
+		var times: Array[float] = []
+		var last := {"n": 0}
+		await _run(world, _bot(boss), 25.0, func() -> bool: return _events(boss, &"lash_done").size() >= 1, func() -> void:
+			var l: GoldenConvergenceLash = boss.lash
+			for k: int in l.sparks - int(last["n"]):
+				times.append(boss.fight_time())
+			last["n"] = l.sparks)
+		var shortest: float = INF
+		for k: int in range(1, times.size()):
+			shortest = minf(shortest, times[k] - times[k - 1])
+		var warning: float = boss.tuning.lash_warning
+		if reduced:
+			check(times.size() >= 2 and shortest >= 1.0 / 3.0 - 0.001 and float(times.size()) <= warning * 3.0 + 1.0,
+				"%s the high lash's crackle sparks at most about 3 a second (%d sparks in its %.2f s warning, %.2f s apart at the least)" % [
+				tag, times.size(), warning, shortest])
+		else:
+			check(times.size() > int(warning * 6.0), "%s it crackles with sparks (%d in its %.2f s warning)" % [tag, times.size(), warning])
 		await sim.free_world(world)
 	Settings.flashing_reduced = was
 	var code: String = (load("res://scripts/bosses/golden_convergence/golden_convergence_magnate.gdshader") as Shader).code
