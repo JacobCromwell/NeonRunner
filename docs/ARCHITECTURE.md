@@ -1156,7 +1156,8 @@ its whole stay before a shorter one (`show_min_seconds` at least); as it arrives
 preferred first) before mid-chase, mid-chase before its first bait before after it. Where the level leaves no such
 stretch, it takes out what's in the way, only what the showing needs gone: plain holes and fences (never a pulsing
 fence or one a fence generator powers), plain cyborgs, window cyborgs and Screeches (never a host, the first of a
-kind the level introduces, or the last of its kind). The baits that get trucks are those whose chases hold the
+kind the level introduces, or the last of its kind or of one of the level's features: the generator would build the
+level again for a missing feature). The baits that get trucks are those whose chases hold the
 most windows (then the most chases, then the earliest; a level that introduces the truck keeps its first bait's
 chase). The window goes in the truck's params (`show`: {at, from, to}); `gen.show_window_result` reports each
 chase (its window, its arrival against the preferred one, what it took out, or why none). Every later pass keeps
@@ -1165,22 +1166,24 @@ nothing it adds may stand or attack there, but it's no attack, so nothing keeps 
 pass's search for room. The danger density pass rejects an enemy (where it stands, `CALM_ROOM` either side, and its
 attack window) or a row in one (`Plan.calm`) without changing its rooms, so its draws are as before elsewhere; the
 cyborgs planted in charge paths keep off one where they stand (`_cyborg_fits`); a wider gap keeps its row off one
-(`row_only`); the zone doodads, the fill pass (`fill_keep_outs`, no margin) and City 1's extra gaps keep off it. A
+(`row_only`); a zone doodad keeps itself and its push's lead off one, which shapes none of the doodads' stretches
+(`doodad_keep_outs`' `calm`); the fill pass (`fill_keep_outs`, no margin) and City 1's extra gaps keep off it. A
 Buzz Overdrive given a planted cyborg claims its turn earlier (`ChargePathTuning.claim_seconds`), after the trucks
 are planned: the planner assumes that claim for every one (`least_claim`), so each window still holds in the
 finished level (`ShowPlanner.problem_of`). With the switch off the level is built exactly as before. On the six
-levels' own seeds, 17 of 24 chases get a window (9 as it arrives, 6 only after the first bait); the chases without
+levels' own seeds, 16 of 23 chases get a window (8 as it arrives, 6 only after the first bait); the chases without
 one have a hover truck or a Gilded Sentinel over their whole chase (4), or no calm stretch at all (Corporate 2 at 5
 lanes: its introduction among an Octodog's charges, a Tithe Collector and a Buzz Overdrive's attack; Dead Zone 1 at 3
 lanes: pulsing fences, a ramp's wall run and a Screech; Dead Zone 2 at 6 lanes: rows of fences with a pad in their
-gap). Played with a runner keeping to each lane in turn (`tools/measure/enforcer_shows.gd`, Review tools), 62 of 111
-chases show it (36 as it arrives), against 15 of 106 before; of the 80 with a window, every one shows it but 18 whose
+gap). Played with a runner keeping to each lane in turn (`tools/measure/enforcer_shows.gd`, Review tools), 57 of 106
+chases show it (32 as it arrives), against 15 of 106 before; of the 75 with a window, every one shows it but 18 whose
 truck the runner's bait or a wider gap destroyed before an after-bait window, and one whose runner a pad sent onto a
 ceiling. The danger density pass's enemy and obstacle counts on its sampled
-bands stay as they were; the windows cost the six levels about 2% of their enemies and obstacles (592 to 579 and
-3281 to 3214 on their own seeds: what they took out, and what the fill pass and the pass's rows found no room
-for). Every level without the truck, and every level with it with the switch off, builds exactly as before.
-DESIGN-TBD (`docs/questions/c6c.md`).
+bands stay as they were; the windows cost the six levels about 2% of their enemies and obstacles (592 to 580 and
+3281 to 3226 on their own seeds: what they took out, and what the fill pass and the pass's rows found no room
+for). Every level without the truck, and every level with it with the switch off, builds exactly as before. The
+planning adds about a quarter to those levels' build time (50-330 ms a build; the longest, Dead Zone 1 at 5 lanes,
+1.9 s against 1.7 s). DESIGN-TBD (`docs/questions/c6c.md`).
 
 **Late starts.** `LevelConfig.feature_starts` (feature → share of the level) holds a feature back
 until its start: patterns that require it aren't picked before, and the first pattern picked from
@@ -1393,8 +1396,9 @@ generated layout to this, at 3, 5 and 6 lanes):
   doodad_keep_outs(gen) -> Array[Dictionary]` with entries {from, to} (every lane: the host rules' Bad
   Dream chases), {lane, from, to} (that lane, which no doodad stands in or pushes into: a hover
   truck's, until it has left; its `keep_out` already keeps every lane for its shortest stay) or {from, to,
-  calm: true} (a calm stretch in every lane: an Enforcer Truck's showing window, task C6c, which the other
-  later passes keep their additions off without spacing from it);
+  calm: true} (a calm stretch in every lane: an Enforcer Truck's showing window, task C6c: no doodad nor
+  its push's lead stands in it, but it shapes no stretch, so the doodads draw as without it elsewhere; the
+  other later passes keep their additions off it without spacing from it);
 - one at a time, `doodad_gap_seconds` from one's end to the next one's front, so a few in a row never
   make a slalom.
 Each stretch with room gets one with the level's `doodad_share` (a seeded spot in it; the next spot in a

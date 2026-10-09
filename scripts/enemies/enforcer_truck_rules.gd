@@ -428,8 +428,8 @@ static func problems(gen: LevelGenerator) -> PackedStringArray:
 ## Where the level leaves no such stretch (the patterns' rows of fences, which it never drives through on screen,
 ## rows of holes leaving a runner no lane to dodge into, and their cyborgs), the planner takes out what's in the
 ## way: plain holes and fences (never a pulsing fence or one a fence generator powers), and plain cyborgs, window
-## cyborgs and Screeches (never a host, the first of a kind the level introduces or the last of its kind), and only
-## those the showing needs gone (each one kept that isn't). Taking pieces and enemies out never makes a level
+## cyborgs and Screeches (never a host, the first of a kind the level introduces, or the last of its kind or of one
+## of the level's features), and only those the showing needs gone (each one kept that isn't). Taking pieces and enemies out never makes a level
 ## unfair; it's the window's cost to the danger density (the owner's request, docs/USER_REQUESTS.md), counted in
 ## gen.show_window_result. Its order: with no runner in any lane sent off the floor before it has stayed alongside
 ## (`every_lane`), as the level stands, its whole stay (show_seconds): the arrival showing at the first arrival with
@@ -447,7 +447,7 @@ class ShowPlanner:
 	## stand (EnforcerTruckRoom), so they may stand in a window where those checks hold.
 	const ROOM_TYPES: PackedStringArray = ["cyborg", "window_cyborg", "screech", "generator", "barnacle_turret"]
 	## Of those, the ones a window may take out where they're in its way: plain ones (never a host, nor the first
-	## of a kind the level introduces, and never the level's last of its kind).
+	## of a kind the level introduces, and never the level's last of its kind or of one of its features).
 	const REMOVABLE_TYPES: PackedStringArray = ["cyborg", "window_cyborg", "screech"]
 	## Metres of track around a window a local room holds (_local_room): what its checks reach and more.
 	const LOCAL_MARGIN: float = 60.0
