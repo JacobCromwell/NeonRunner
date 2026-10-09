@@ -34,6 +34,8 @@ extends SceneTree
 ##                        Buttress rising and crumbling; the Fist Slam (the grinding wind-up (the warning),
 ##                        the slam, the floor breaking, the tower toppling) and the Missile Barrage (the
 ##                        hatches (the warning), the launch, the dive's whistle, the fire)
+##   sfx_bank_cinematics.gd  the cinematics' own: the Gangland outro's screeches sniffing, the golden key's
+##                        glint, the sports car's unlock, scissor door, engine starting and drive-off
 ## Run: tools/godot.sh sfx   (--only=jump,land renders just those; --review also writes
 ## build/sfx_review/<name>.png: waveform on top, spectrogram (40 Hz–16 kHz, time left to right) below).
 ## Each line of the report ends with the sound's loudest 400 ms as heard on headphones (K-weighted) and
@@ -61,6 +63,7 @@ const BANKS: Array = [
 	preload("res://tools/asset_gen/sfx_bank_magnate.gd"),
 	preload("res://tools/asset_gen/sfx_bank_enforcer.gd"),
 	preload("res://tools/asset_gen/sfx_bank_golden_convergence.gd"),
+	preload("res://tools/asset_gen/sfx_bank_cinematics.gd"),
 ]
 const OUT_DIR: String = "res://assets/sfx"
 const REVIEW_DIR: String = "res://build/sfx_review"
