@@ -366,7 +366,7 @@ The owner played every zone and the Floating Head. The feedback is in GDD §3 ("
 | E5a | **The House** (Marketplace boss) | B5, B7, B8, C1, D2 (D3 for the cheering citizens) | XL | T1 |
 | E5b | **Hostile Takeover** (Corporate boss) | B4, B5, B7, B8, C2, C5, D4 | XL | T1 |
 | E5c | **Sleep Taker** (Dead Zone boss) | B7, B8, B9, D5 | XL | T1 |
-| E5d | **The final villain** | design | – | T1 |
+| E5d | **The Golden Convergence** (the final villain; designed October 9, 2026) | B4, B7, B8, B9, D6b, heli drone | XL | T1 |
 
 **E1: Floating Head steps.**
 1. Ship and face models.
@@ -390,7 +390,17 @@ The owner played every zone and the Floating Head. The feedback is in GDD §3 ("
 
 **E4: Sewer Swarm.** Designed (GDD §10, September 26, 2026). The owner decided on October 2, 2026 to build it now with crowd sizes that scale and to size them down later: the phone test R4 (E3) no longer comes first, and later sets the sizes. Two steps: E4a (the clusters, the arena and phase 1), then E4b (phases 2 and 3, the Host, the defeat, the slot).
 
-**E5: the other bosses.** The House, Hostile Takeover and Sleep Taker are designed (GDD §10, September 26, 2026); each is XL, split into steps like E1, and waits for the enemies, mechanics and skin its fight uses. The final villain (E5d) still needs its design.
+**E5: the other bosses.** The House, Hostile Takeover and Sleep Taker are designed (GDD §10, September 26, 2026); each is XL, split into steps like E1, and waits for the enemies, mechanics and skin its fight uses.
+
+**E5d: the Golden Convergence steps** (GDD §10; designed with the owner on October 9, 2026, the rest filled in under the owner's mandate the same day, `docs/OPEN_QUESTIONS.md` items 416–503). Each step merges on its own, one after another:
+1. **E5d-a:** the golden suit (its model: the calm golden face and its tear, the shoulders, hands and shoulder pipes, the tentacle pipes, the cape's cloud), the Grand Court arena (its skin: balustrades for walls, which bump the runner back; the pools below and the towers with their feed screens; plain laps), the entrance, the Helidrone Strafe (the squadron out of the cape, vertical and horizontal passes, the lines for show, the warnings), the Flying Buttress gate, phase 1's opening strafe; the slot's `preview_scene`, its tuning, sounds, showcase, bot and tests.
+2. **E5d-b:** the Fist Slam (the telescoping arm, the lock and the red square, the holes as floor cuts opened at once, the hold after a block or a dash, the slam scripts, the buttress chances, the toppled tower and its wall) and the Missile Barrage (the pipes, the missiles, the marks, the fire, the wall as refuge).
+3. **E5d-c:** the Refill Ship (the ship, its feed line and belly ceiling, the fence cage with its lengthwise sides and its generator, the pad, the strafe holding its fire, the chain reaction and its damage) and stage 1's three phases with their loops and the suit's damage; the bot wins stage 1 at 3, 5 and 6 lanes.
+4. **E5d-d:** stage 2, The Magnate (his model, the transition and the checkpoint, the chase with its marker and overtakes, the Pounce, the buttress bait, the stun and the stomp, the Cable Lash), the defeat (the feed dies), the campaign slot (`scene`), par times and rewards; the bot wins the whole fight.
+
+5. **E5d-e:** the owner's playtest of stage 2 (GDD §10, "Owner's playtest (October 9, 2026)", approved the same day): the Claw Slash (`slash`, `slash:double`), the Screen Storm (`screens`: the feed's screens on gold tentacles, a fair plan at every lane count, three screens a storm chipping him), the arena about 30% darker from the transition to his fall, new beat scripts with a shorter beat gap, the stomp easier to read (green chevrons, at least 1.5 s from the stun to the last take-off); six sounds, two hints, showcase scenarios, the bot's readers, tests and new par times. Questions: `docs/OPEN_QUESTIONS.md`, items 491–503.
+
+**Done:** all four steps. E5d-d merged before E5d-c, so E5d-c also switched the slot to `scene` (the campaign plays the fight after Golden 3), set the par times from the bot's clean whole fight, and has the bot win the whole fight at 3, 5 and 6 lanes and 18 and 25 m/s (`test_golden_convergence_whole`). E5d-e, the owner's playtest of stage 2, is built (`test_golden_convergence_slash`, `test_golden_convergence_storm`; the whole fight won again at every lane count and speed, the par times re-measured).
 
 ### F. Cinematics
 
@@ -458,7 +468,7 @@ The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 387–395.
 - E2 (web demo release candidate), after E1, P1 and P2
 - R4 endless mode (after B5), R6 approved placeholders (at a quiet moment), R7 balancing (after the owner's playtest)
 
-**Blocked on design:** E5d (the final villain), F2 (cinematic content, apart from F2a's City outro and F2b's Gangland boss intro). **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
+**Blocked on design:** F2 (cinematic content, apart from F2a's City outro and F2b's Gangland boss intro). E5d (designed October 9, 2026) is built. **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
 
 **The critical path to the web demo:** B1 → B8 and B7 → E1 → E2. The demo depends on the Floating Head more than on anything else, so keep that path moving first. P1 → P2 (the new player and cyborg looks) must also be done before E2.
 
@@ -466,7 +476,7 @@ The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 387–395.
 
 ## Still to design with the owner
 
-- **Bosses:** the final villain with its second stage (the other five are designed, GDD §10).
+- **Bosses:** the owner's review of the Golden Convergence's proposed parts (`docs/OPEN_QUESTIONS.md` items 416–503).
 - **Cinematics:** story beats for each slot but the City's outro (GDD §6) and Gangland's boss intro (GDD §10, Sewer Swarm).
 - **Placeholder review:** a keep-or-change pass over the numbered items in `docs/OPEN_QUESTIONS.md` §D.
 - **Remaining rounds:** player and power-up numbers, screens and stars, audio, mobile and ads, title, accessibility, languages, age rating, budget and check-ins.

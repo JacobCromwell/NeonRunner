@@ -94,9 +94,32 @@ func _refresh() -> void:
 	_show_value(encounter.health_ratio())
 	marks = encounter.phase_marks()
 	vulnerable = encounter.is_vulnerable() or encounter.is_defeated()
-	phase_label.text = "DEFEATED" if encounter.is_defeated() else \
-		("%s · %d/%d" % [encounter.phase().title(encounter.phase_index).to_upper(), encounter.phase_index + 1,
-			encounter.phase_count()] if encounter.phase_count() > 1 else "")
+	var text: String = ""
+	if encounter.is_defeated():
+		text = "DEFEATED"
+	elif encounter.phase_count() > 1:
+		var count: String = "%d/%d" % [encounter.phase_index + 1, encounter.phase_count()]
+		text = "%s · %s" % [encounter.phase().title(encounter.phase_index).to_upper(), count]
+		# A long name (the final villain's) keeps its room: the phase shows its number alone (DESIGN-TBD,
+		# docs/OPEN_QUESTIONS.md, item 442).
+		if not _fits(text):
+			text = count
+	phase_label.text = text
+
+
+## True if the boss's name and `phase_text` both fit the bar's row (or it isn't laid out yet).
+func _fits(phase_text: String) -> bool:
+	var row: float = size.x
+	if row <= 0.0:
+		return true
+	return _text_width(name_label, name_label.text) + _text_width(phase_label, phase_text) + UiTheme.px(8) <= row
+
+
+static func _text_width(label: Label, text: String) -> float:
+	var font: Font = label.get_theme_font(&"font")
+	if font == null:
+		return 0.0
+	return font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, label.get_theme_font_size(&"font_size")).x
 
 
 func _label(variation: StringName, align: HorizontalAlignment) -> Label:
