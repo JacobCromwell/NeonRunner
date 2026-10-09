@@ -2080,7 +2080,7 @@ the runner dashes through; introduced in Corporate 1 after the Buzz Overdrive, a
 `LevelLayout.dash_walls` holds `{start (its face), end (its back), seed}` (marked `smashed` and `broken_by` once
 broken in an attempt), left out of `to_dict()` while empty, so a level without them is the same data as before.
 `dash_wall_rules.gd` (`scripts/enemies/`) places them, numbers in `DashWallTuning` (`data/tuning/dash_walls.tres`,
-F6 "Dash walls"), how many in `LevelConfig.dash_walls` (1 to 4 by level, DESIGN-TBD), the wall's size in
+F6 "Dash walls"), how many in `LevelConfig.dash_walls` (1 to 3 by level, DESIGN-TBD), the wall's size in
 `MovementTuning` ("Dash walls"). The feature has no patterns, and its walls stand in two stages:
 - **The introduction** (a level that gives the feature a start: Corporate 1) with the rules: `apply()` runs after
   every other feature's (its `RUN_AFTER` lists them all), so it plans on the level's final enemies, ceilings, pads,

@@ -85,7 +85,7 @@ static func build(layout: LevelLayout, geometry: TrackGeometry, mt: MovementTuni
 			_add(by[key], int(d["lane"]), float(d["start"]), float(d["end"]))
 	# A dash wall (task H7a) stands in every lane: it would drive into it ahead of the runner, who breaks it only as
 	# they reach it. (The generator keeps every wall off its planned showing windows; this keeps its other showings
-	# off them too.)
+	# off them too.) DESIGN-TBD (docs/questions/h-merge-main.md).
 	for w: Dictionary in layout.dash_walls:
 		for l: int in lanes:
 			_add(by["solid"], l, float(w["start"]), float(w["end"]))

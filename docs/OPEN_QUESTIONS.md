@@ -2909,6 +2909,9 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     - Corporate 2 holds one on 5 lanes once its Tithe Collectors count as dash baits (below);
     - The Hush holds one: its walls keep out of its quiet stretches (below), and only one fits in its short bursts;
     - Golden 1 and Golden 3 hold two (the walls past an introduction take the room the other passes leave, below).
+    *(Since the merge with tasks C6c–C6d, October 9, 2026: the walls keep off the Enforcer Truck's showing windows,
+    which take the only room for Golden 1's second wall on 5 lanes and Golden 2's fourth on 6, so Golden 1 now asks
+    for one and Golden 2 for three.)*
     Endless mode and quick play keep their base level's count, however long the level. How many should each level
     have, and should endless mode scale them with its length? Should a level that holds fewer than asked loosen a
     rule (for example let a wall stand in a quiet stretch) to reach the count?
@@ -2984,7 +2987,9 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     its entrance only. Why: the runner always meets the wall themselves (the truck never takes the challenge away),
     and nothing new is asked of the truck but a move it already makes.
 655. **The Enforcer Truck** (GDD §9.13). Placeholder: nothing; it drives behind the runner, so it only meets a wall
-    already broken, and its volleys never start with a wall in the escape (as with a doodad).
+    already broken, and its volleys never start with a wall in the escape (as with a doodad). *(Since the merge with
+    tasks C6b–C6d, October 9, 2026: when it shows itself it pulls up beside the runner, its front ahead of them, so
+    walls keep off its planned showing windows and in play it never shows itself where its view would reach a wall.)*
 656. **Flyers ahead of the runner** (the heli drone, the Resonator, a fleeing Tithe Collector). Placeholder: each rises
     over a standing wall in its way, 1.2 m over its top at 7 m/s, and comes back down past it (`Enemy.dash_wall_lift`);
     the drone holds its barrage while a wall is within its reach or its climb, and the Resonator's pulses wait for
