@@ -31,6 +31,8 @@ const CROWN: float = 9.0
 const FLUSH: float = 0.04
 ## The sink: how far down it goes.
 const SINK_DEPTH: float = 40.0
+## E5d polish: its wall outlasts the barrage that follows the bait by this long at least (wall_seconds).
+const WALL_SPARE: float = 1.5
 ## Every tower's mesh by length and section.
 static var _meshes: Dictionary = {}
 
@@ -70,8 +72,16 @@ func setup(p_boss: GoldenConvergence) -> void:
 
 ## The length a tower needs at the run's speed to lie from where it stands to past its wall's end
 ## (GoldenConvergenceSlams plans one for every chance: an ahead slam's gate is the farthest).
-static func length_for(t: GoldenConvergenceTuning, run_speed: float, reach: float) -> float:
-	return run_speed * t.tower_wall_seconds + reach + t.tower_behind + CROWN
+static func length_for(t: GoldenConvergenceTuning, movement: MovementTuning, run_speed: float, reach: float) -> float:
+	return run_speed * wall_seconds(t, movement) + reach + t.tower_behind + CROWN
+
+
+## How long its side stays a wall (seconds of running from its gate): tower_wall_seconds, or long enough for the
+## barrage that follows the bait to warn, burn out and WALL_SPARE more (its fire's stretch runs a dash and
+## fire_ahead past where the runner is as it goes out) with the wall still beside the runner. E5d polish: F6's
+## longer barrage steps could otherwise end the wall under a wall runner while the fire still burns.
+static func wall_seconds(t: GoldenConvergenceTuning, movement: MovementTuning) -> float:
+	return maxf(t.tower_wall_seconds, GoldenConvergenceBarrage.warning_for(t, movement) + t.fire_seconds + WALL_SPARE)
 
 
 ## Builds (or finds) its meshes for `p_length` now, not mid-fight.

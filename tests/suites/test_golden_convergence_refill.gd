@@ -26,7 +26,10 @@ extends TestSuite
 ##   on, a stale gate reference never moves another attack's gate, a dropped slam plan's rows stop keeping pickups
 ##   off and a new plan's rows keep off its cuts, the arms and the hatches ease to rest through a phase's intro, and
 ##   a horizontal pass first after a hold keeps its gate's full buttress_sight;
-## - it plays the same on every attempt.
+## - it plays the same on every attempt;
+## - E5d polish, F6's ranges: at every end of cage_lead's and generator_before's the generator stays in reach (read,
+##   switch in from the farthest lane, jump onto it, a spare moment); played at the worst ends on 6 lanes, the bot
+##   stomps it and rides the pad.
 ## The whole fight (stage 1 won, then stage 2, at every lane count and speed; par times; the campaign):
 ## test_golden_convergence_whole.gd.
 
@@ -75,12 +78,14 @@ func run() -> void:
 	await _test_looks_ease()
 	await _test_hold_sight()
 	await _test_same_every_attempt()
+	await _test_f6_extremes()
 
 
 ## The fight at `lanes` and `speed` m/s, from phase `phase` (-1: phase 1 past the entrance); every phase's beat
 ## script `beats` if given (one line for every phase, or a PackedStringArray, a line a phase; the last line goes
 ## on for the phases after it): [world, boss].
-func _fight(lanes: int, speed: float, loadout: Loadout = null, phase: int = -1, beats: Variant = "") -> Array:
+func _fight(lanes: int, speed: float, loadout: Loadout = null, phase: int = -1, beats: Variant = "",
+		mutate: Callable = Callable()) -> Array:
 	var d: BossDef = def
 	var lines := PackedStringArray()
 	if beats is PackedStringArray:
@@ -88,10 +93,13 @@ func _fight(lanes: int, speed: float, loadout: Loadout = null, phase: int = -1, 
 	elif String(beats) != "":
 		for i: int in (def.tuning as GoldenConvergenceTuning).phase_beats.size():
 			lines.append(String(beats))
-	if not lines.is_empty():
+	if not lines.is_empty() or mutate.is_valid():
 		d = def.duplicate() as BossDef
 		var t := (def.tuning as GoldenConvergenceTuning).duplicate() as GoldenConvergenceTuning
-		t.phase_beats = lines
+		if not lines.is_empty():
+			t.phase_beats = lines
+		if mutate.is_valid():
+			mutate.call(t)
 		d.tuning = t
 	var boss := BossEncounter.create(d) as GoldenConvergence
 	var ctx := RunContext.new()
@@ -923,3 +931,59 @@ func _test_same_every_attempt() -> void:
 		await sim.free_world(world)
 	check(runs.size() == 2 and runs[0]["trace"] == runs[1]["trace"] and runs[0]["distance"] == runs[1]["distance"],
 		"the Refill Ship plays the same on every attempt (%d events)" % (runs[0]["trace"] as Array).size())
+
+
+# --- F6's ranges -----------------------------------------------------------------------------------------------
+
+## E5d polish (F6's shortest cage_lead with its farthest generator left the generator a moment ahead of the runner as
+## the cage came up: out of reach): at every end of both ranges, on 3, 5 and 6 lanes, the cage's lead
+## (GoldenConvergenceCage.lead_seconds) leaves the time to read it, switch in from the farthest lane, jump onto the
+## generator and a spare moment before reaching it; played at the worst ends on 6 lanes at 25 m/s, the cage comes up
+## that far ahead and the bot stomps the generator and rides the pad.
+func _test_f6_extremes() -> void:
+	var t0: GoldenConvergenceTuning = def.tuning as GoldenConvergenceTuning
+	var faults: PackedStringArray = []
+	var lengthened: int = 0
+	for lead_high: bool in [false, true]:
+		for gen_high: bool in [false, true]:
+			var t := t0.duplicate() as GoldenConvergenceTuning
+			t.cage_lead = _range_end(t0, &"cage_lead", lead_high)
+			t.generator_before = _range_end(t0, &"generator_before", gen_high)
+			for lanes: int in LANES:
+				var lead: float = GoldenConvergenceCage.lead_seconds(t, tuning, lanes)
+				var reach: float = GoldenConvergenceCage.READ_SECONDS + (lanes - 1) * tuning.lane_switch_time \
+					+ tuning.jump_time_to_apex + GoldenConvergenceCage.SPARE_SECONDS
+				var to_generator: float = lead - t.generator_before / MovementTuning.REFERENCE_SPEED
+				if lead > t.cage_lead + 0.001:
+					lengthened += 1
+				if to_generator < reach - 0.001 or lead < t.cage_lead - 0.001:
+					faults.append("%d lanes, lead %.2f s, generator %.0f m: %.2f s to it (needs %.2f s)" % [lanes, t.cage_lead,
+						t.generator_before, to_generator, reach])
+	check(faults.is_empty() and lengthened > 0, "at every end of F6's ranges the cage's generator stays in reach (%d cases lead longer for it) (%s)" % [
+		lengthened, ", ".join(faults)])
+	var tag: String = "(the worst ends, 6 lanes, 25 m/s)"
+	var pair: Array = _fight(6, 25.0, null, -1, "refill:VVH", func(t: GoldenConvergenceTuning) -> void:
+		t.cage_lead = _range_end(t0, &"cage_lead", false)
+		t.generator_before = _range_end(t0, &"generator_before", true))
+	var world: RunWorld = pair[0]
+	var boss: GoldenConvergence = pair[1]
+	var r: GoldenConvergenceRefill = boss.refill
+	var rec: Dictionary = _watch(world.player)
+	await _run(world, _bot(boss), 60.0, func() -> bool: return boss.phase_index >= 1)
+	var up: Dictionary = _first(boss, &"cage_up")
+	var lead_m: float = float(up.get("front_at", 0.0)) - float(up.get("runner", 0.0))
+	var want: float = 25.0 * GoldenConvergenceCage.lead_seconds(boss.tuning, tuning, 6)
+	check(not up.is_empty() and absf(lead_m - want) < 0.5, "the cage comes up %.0f m ahead (lead_seconds: %.0f m) %s" % [lead_m, want, tag])
+	var gen: Dictionary = _first(boss, &"cage_generator")
+	check(gen.get("cause", &"") == &"stomp" and r.cage.touches.is_empty() and r.chains == 1 and boss.phase_index == 1
+		and world.player.alive, "the bot stomps the generator, rides the pad untouched and the hit lands %s (%s)" % [tag, rec["cause"]])
+	await sim.free_world(world)
+
+
+## The low (or the high) end of `prop`'s F6 range on `res` (its @export_range), or its value without one.
+static func _range_end(res: Resource, prop: StringName, high: bool) -> float:
+	for info: Dictionary in res.get_property_list():
+		if StringName(info["name"]) == prop and int(info["hint"]) == PROPERTY_HINT_RANGE:
+			var parts: PackedStringArray = String(info["hint_string"]).split(",")
+			return float(parts[1] if high else parts[0])
+	return float(res.get(prop))

@@ -20,9 +20,9 @@ extends GoldenConvergenceAttack
 ##    usual second of invulnerability, the dash passes through: the free armor alone isn't enough, one armor hit
 ##    and the dash, two armor hits, or the armor and the shield get through (Player._check_hazards touches it
 ##    again every frame once the invulnerability is over).
-## The warning leaves time to reach the wall from the far side (GoldenConvergenceTuning.wall_reach_seconds:
-## the reaction, every lane switch, the wall entry and a margin; tested at 3, 5 and 6 lanes), and the burn
-## is shorter than a wall run without claws, so a runner who got onto the wall as the marks filled drops back
+## The warning leaves time to reach the wall from the far side (wall_reach_seconds: the reaction, every lane
+## switch, the wall entry and a margin; tested at 3, 5 and 6 lanes; E5d polish: the missiles hang longer where
+## F6's numbers would leave less, hang_seconds), and the burn is shorter than a wall run without claws, so a runner who got onto the wall as the marks filled drops back
 ## onto floor no longer burning (or wall hops, GDD §3, to stay up).
 ## Numbers: GoldenConvergenceTuning's "Missile Barrage" group (DESIGN-TBD, docs/questions/e5d.md, E5d-b).
 ## Extension points (E5d-c, the Refill Ship): `barrages` counts the barrages fired (a ship comes after the
@@ -98,8 +98,22 @@ func ends_at() -> float:
 ## The time from its first warning to its fire, at the run speed (every lane count's: the warning never
 ## changes with it).
 func warning_seconds() -> float:
-	var t: GoldenConvergenceTuning = boss.tuning
-	return t.barrage_hatch_seconds + t.barrage_climb_seconds + t.barrage_hang_seconds + t.barrage_dive_seconds
+	return warning_for(boss.tuning, boss.world.tuning)
+
+
+## Its warning's length for `t` and the runner's `movement`: the hatches, the climb, the hang (hang_seconds) and
+## the dive.
+static func warning_for(t: GoldenConvergenceTuning, movement: MovementTuning) -> float:
+	return t.barrage_hatch_seconds + t.barrage_climb_seconds + hang_seconds(t, movement) + t.barrage_dive_seconds
+
+
+## How long the missiles hang: barrage_hang_seconds, or longer where the rest of the warning would leave less than
+## the time to reach the wall from the far side on the most lanes a track has (E5d polish: F6's shorter steps, or a
+## longer reaction or margin, could leave the wall out of reach). The most lanes', so the warning stays the same at
+## every lane count.
+static func hang_seconds(t: GoldenConvergenceTuning, movement: MovementTuning) -> float:
+	var rest: float = t.barrage_hatch_seconds + t.barrage_climb_seconds + t.barrage_dive_seconds
+	return maxf(t.barrage_hang_seconds, wall_reach_seconds(t, movement, GoldenConvergenceMissiles.LANES_MAX) - rest)
 
 
 ## What the warning must leave at `lanes` lanes (GDD §10: "the warning leaves time to reach the wall from the far
@@ -147,7 +161,7 @@ func _plan() -> void:
 	var lanes: int = geo.lane_count
 	var hatch_at: float = d + v * t.barrage_hatch_seconds
 	var climb_at: float = hatch_at + v * t.barrage_climb_seconds
-	var hang_at: float = climb_at + v * t.barrage_hang_seconds
+	var hang_at: float = climb_at + v * hang_seconds(t, boss.world.tuning)
 	var land_at: float = hang_at + v * t.barrage_dive_seconds
 	var power: PowerupTuning = boss.world.powerup_tuning
 	var dash: float = power.dash_speed_bonus * power.dash_duration if power != null else 0.0
@@ -266,12 +280,13 @@ func _fly(d: float) -> void:
 	var salvo: float = t.barrage_salvo_seconds / maxf(t.barrage_climb_seconds, 0.05)
 	# The marks spread in over the climb and the hang, and fill in over the dive.
 	var spread: float = clampf((d - hatch_at) / maxf(hang_at - hatch_at, 0.01), 0.0, 1.0)
+	var spread_seconds: float = (hang_at - hatch_at) / boss.speed_planned()
 	var fill: float = clampf((d - hang_at) / maxf(land_at - hang_at, 0.01), 0.0, 1.0)
 	var shown_count: int = 0
 	var in_air: int = 0
 	for i: int in n:
 		var m: Dictionary = marks[i]
-		var appear: float = clampf((spread - float(m["shows"]) * 0.85) / maxf(MARK_IN / maxf(t.barrage_climb_seconds + t.barrage_hang_seconds, 0.05), 0.01), 0.0, 1.0)
+		var appear: float = clampf((spread - float(m["shows"]) * 0.85) / maxf(MARK_IN / maxf(spread_seconds, 0.05), 0.01), 0.0, 1.0)
 		missiles.set_mark(i, m["pos"], t.mark_radius, appear, fill)
 		if spread >= float(m["shows"]) * 0.85:
 			shown_count = i + 1

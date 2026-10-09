@@ -42,6 +42,11 @@ const CONDUIT_Y: float = 0.02
 ## The cage is put away once the runner is this far past it; once its pad is ridden, it sinks away over this long.
 const KEEP_BEHIND: float = 30.0
 const RETRACT_SECONDS: float = 0.35
+## E5d polish (F6's short cage_lead or a generator far out could leave it out of reach): from the cage's coming up
+## to the generator, a runner always has this long to read it, a lane switch for every lane but one, a jump's rise
+## onto the generator, and this long to spare (lead_seconds). DESIGN-TBD (docs/questions/e5d.md, E5d polish).
+const READ_SECONDS: float = 0.7
+const SPARE_SECONDS: float = 0.3
 
 var boss: GoldenConvergence
 var pad: Area3D
@@ -105,6 +110,15 @@ func setup(p_boss: GoldenConvergence) -> void:
 	_conduit_core = _box("ConduitCore", _core_material)
 	world.player.movement_event.connect(_on_player_event)
 	put_away()
+
+
+## The cage's lead at `lanes` lanes (seconds of running from its coming up to its front fence): cage_lead, or
+## longer where the generator (generator_before, at 18 m/s, ahead of the fence) would leave less than
+## READ_SECONDS, the lane switches from the farthest lane, a jump's rise and SPARE_SECONDS to get onto it.
+static func lead_seconds(t: GoldenConvergenceTuning, movement: MovementTuning, lanes: int) -> float:
+	var reach: float = READ_SECONDS + float(maxi(lanes - 1, 0)) * movement.lane_switch_time + movement.jump_time_to_apex \
+		+ SPARE_SECONDS
+	return maxf(t.cage_lead, t.generator_before / MovementTuning.REFERENCE_SPEED + reach)
 
 
 ## How long the sides are: from the front fence's front face to cage_side_past (at 18 m/s, at the run's pace)

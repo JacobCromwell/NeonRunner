@@ -38,8 +38,9 @@ extends GoldenConvergenceAttack
 ## goes through it: on 3 lanes the middle lane is the only inner one), coming into view buttress_sight before
 ## the runner gets there. A fist locked onto the buttress's lane smashes it (GoldenConvergenceButtress.smash):
 ## the building it held up topples on the side its arch leans toward (GoldenConvergenceTower, from a pool
-## here) and its side is a wall for tower_wall_seconds of running; the sequence is over at once (the other
-## gate still standing sinks away) and the Missile Barrage warms up at once as the tower falls (gap_after 0).
+## here) and its side is a wall for tower_wall_seconds of running (longer if the barrage after it would outlast
+## that: GoldenConvergenceTower.wall_seconds); the sequence is over at once (the other gate still standing sinks
+## away) and the Missile Barrage warms up at once as the tower falls (gap_after 0).
 ## A fist locked onto another lane digs its hole beside the gate, never through it.
 ## Numbers: GoldenConvergenceTuning's "Fist Slam" and "The toppled tower" groups (DESIGN-TBD,
 ## docs/questions/e5d.md, E5d-b).
@@ -700,7 +701,7 @@ func _bait(s: Dictionary) -> void:
 	var b: GoldenConvergenceButtress = s["buttress"]
 	b.smash()
 	var v: float = boss.speed_planned()
-	var wall_to: float = b.at + v * t.tower_wall_seconds
+	var wall_to: float = b.at + v * GoldenConvergenceTower.wall_seconds(t, boss.world.tuning)
 	var length: float = _tower_length()
 	var foot: float = minf(boss.player_distance() - t.tower_behind, wall_to + GoldenConvergenceTower.CROWN - length)
 	var tower: GoldenConvergenceTower = _free_tower()
@@ -727,7 +728,7 @@ func _tower_length() -> float:
 	var v: float = boss.speed_planned()
 	var row_len: float = GoldenConvergenceHole.hole_lanes(geo.lane_count) * geo.lane_width
 	var reach: float = v * t.slam_ahead_seconds + row_len + t.slam_gate_gap + t.pier_depth
-	return GoldenConvergenceTower.length_for(t, v, reach)
+	return GoldenConvergenceTower.length_for(t, boss.world.tuning, v, reach)
 
 
 func _free_tower() -> GoldenConvergenceTower:

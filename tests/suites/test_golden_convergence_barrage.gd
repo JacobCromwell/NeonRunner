@@ -18,7 +18,10 @@ extends TestSuite
 ## - no wall: the barrage comes anyway and hits; it follows its slams in the beat script;
 ## - Reduced flashing: the marks steady, no blasts;
 ## - E5d polish: the marks' fill and the burning floor read red on the court's white marble on both renderers'
-##   blending, never toward the fences' pink.
+##   blending, never toward the fences' pink;
+## - E5d polish: F6's ranges never break it: at every end of the warning's steps, the reaction and the margin the
+##   warning still leaves time to reach the wall from the far side (the missiles hang longer where needed; played at
+##   the worst ends on 6 lanes), and the toppled tower's wall outlasts the warning and the fire at every end.
 
 const BOSS_PATH: String = "res://data/bosses/golden_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
@@ -50,6 +53,7 @@ func run() -> void:
 	await _test_stacking()
 	await _test_no_wall()
 	await _test_reduced_flashing()
+	await _test_f6_extremes()
 
 
 # --- The marks' red ------------------------------------------------------------------------------------------
@@ -108,16 +112,88 @@ static func _blend(src: Color, energy: float, alpha: float, linear: bool) -> Col
 	return Color(minf(out.r, 1.0), minf(out.g, 1.0), minf(out.b, 1.0))
 
 
+# --- F6's ranges -----------------------------------------------------------------------------------------------
+
+## The warning's steps, the reaction and the margin (each at either end of its F6 range), the fire and the tower's
+## wall: the tunables a runner's way onto the wall and along it depend on.
+const WARNING_KNOBS: Array[StringName] = [&"barrage_hatch_seconds", &"barrage_climb_seconds", &"barrage_hang_seconds",
+	&"barrage_dive_seconds", &"barrage_reaction", &"barrage_margin"]
+
+
+## E5d polish (F6's shortest steps, or its longest reaction and margin, left a warning shorter than the way onto the
+## wall from the far side; its longest steps and fire outlasted the toppled tower's shortest wall): at every end of
+## every range the warning (GoldenConvergenceBarrage.warning_for: the missiles hang longer where needed) leaves time
+## to reach the wall on 3, 5 and 6 lanes, and the tower's wall (GoldenConvergenceTower.wall_seconds) outlasts the
+## warning, the fire and its spare; then a barrage at the worst ends, played on 6 lanes at 25 m/s, warns that long.
+func _test_f6_extremes() -> void:
+	var t0: GoldenConvergenceTuning = def.tuning as GoldenConvergenceTuning
+	var faults: PackedStringArray = []
+	var corners: int = 0
+	var lengthened: int = 0
+	for corner: int in 1 << WARNING_KNOBS.size():
+		var t := t0.duplicate() as GoldenConvergenceTuning
+		for k: int in WARNING_KNOBS.size():
+			t.set(WARNING_KNOBS[k], _range_end(t0, WARNING_KNOBS[k], (corner & (1 << k)) != 0))
+		var raw: float = t.barrage_hatch_seconds + t.barrage_climb_seconds + t.barrage_hang_seconds + t.barrage_dive_seconds
+		var warning: float = GoldenConvergenceBarrage.warning_for(t, tuning)
+		for lanes: int in LANES:
+			corners += 1
+			var need: float = GoldenConvergenceBarrage.wall_reach_seconds(t, tuning, lanes)
+			if raw < need - 0.001:
+				lengthened += 1
+			if warning < need - 0.001 or warning < raw - 0.001:
+				faults.append("warning %.2f s < %.2f s (%d lanes, corner %d)" % [warning, need, lanes, corner])
+		for fire_high: bool in [false, true]:
+			for wall_high: bool in [false, true]:
+				t.fire_seconds = _range_end(t0, &"fire_seconds", fire_high)
+				t.tower_wall_seconds = _range_end(t0, &"tower_wall_seconds", wall_high)
+				var wall: float = GoldenConvergenceTower.wall_seconds(t, tuning)
+				if wall < warning + t.fire_seconds + GoldenConvergenceTower.WALL_SPARE - 0.001 or wall < t.tower_wall_seconds:
+					faults.append("the tower's wall %.1f s < the warning %.1f s and the fire %.1f s (corner %d)" % [
+						wall, warning, t.fire_seconds, corner])
+	check(faults.is_empty() and lengthened > 0,
+		"at every end of F6's ranges the warning leaves time to reach the wall (%d of %d cases hang longer for it) and the toppled tower's wall outlasts the barrage (%s)" % [
+			lengthened, corners, ", ".join(faults.slice(0, 4))])
+	# Played at the worst ends: the shortest steps, the longest reaction and margin.
+	var pair: Array = _fight(6, 25.0, null, "barrage", func(t: GoldenConvergenceTuning) -> void:
+		for k: int in WARNING_KNOBS.size():
+			t.set(WARNING_KNOBS[k], _range_end(t0, WARNING_KNOBS[k], k >= 4)))
+	var world: RunWorld = pair[0]
+	var boss: GoldenConvergence = pair[1]
+	world.player.god_mode = true
+	await _run(world, null, 20.0, func() -> bool: return not _events(boss, &"barrage_fire").is_empty())
+	var warned: Array[Dictionary] = _events(boss, &"barrage_warned")
+	var fire: Array[Dictionary] = _events(boss, &"barrage_fire")
+	var need6: float = GoldenConvergenceBarrage.wall_reach_seconds(boss.tuning, tuning, 6)
+	var lead: float = float(fire[0]["t"]) - float(warned[0]["t"]) if not fire.is_empty() and not warned.is_empty() else -1.0
+	check(lead >= need6 - 2.0 / Engine.physics_ticks_per_second,
+		"a barrage at the worst ends warns %.2f s ahead of its fire: time to reach the wall from the far side on 6 lanes (%.2f s)" % [
+			lead, need6])
+	await sim.free_world(world)
+
+
+## The low (or the high) end of `prop`'s F6 range on `res` (its @export_range), or its value without one.
+static func _range_end(res: Resource, prop: StringName, high: bool) -> float:
+	for info: Dictionary in res.get_property_list():
+		if StringName(info["name"]) == prop and int(info["hint"]) == PROPERTY_HINT_RANGE:
+			var parts: PackedStringArray = String(info["hint_string"]).split(",")
+			return float(parts[1] if high else parts[0])
+	return float(res.get(prop))
+
+
 # --- Helpers ------------------------------------------------------------------------------------------------
 
-## The fight at `lanes` and `speed` m/s, past the entrance, every phase's beat script `beats`: [world, boss].
-func _fight(lanes: int, speed: float, loadout: Loadout = null, beats: String = "barrage") -> Array:
+## The fight at `lanes` and `speed` m/s, past the entrance, every phase's beat script `beats`, its tuning's copy
+## changed by `mutate` if given: [world, boss].
+func _fight(lanes: int, speed: float, loadout: Loadout = null, beats: String = "barrage", mutate: Callable = Callable()) -> Array:
 	var d: BossDef = def.duplicate() as BossDef
 	var t := (def.tuning as GoldenConvergenceTuning).duplicate() as GoldenConvergenceTuning
 	var list := PackedStringArray()
 	for i: int in t.phase_beats.size():
 		list.append(beats)
 	t.phase_beats = list
+	if mutate.is_valid():
+		mutate.call(t)
 	d.tuning = t
 	var boss := BossEncounter.create(d) as GoldenConvergence
 	var ctx := RunContext.new()

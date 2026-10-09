@@ -30,7 +30,11 @@ extends TestSuite
 ##   ahead in a lane away from the runner and out of their way, the light in his cracks out, the runner past him,
 ##   then the riff (or silence with victory_riff_on off), and only then victory_over;
 ## - Reduced flashing: the ports, the square and the cables steady, the Lash's crackle at most about 3 sparks a
-##   second.
+##   second;
+## - F6's ranges never break it (E5d polish): his weak points' top within a stomp's reach and the release never
+##   before a jump could still come down on his back (stun_stomp_top, stun_release and stun_reach at their worst
+##   ends: the bot still stomps him), a high Lash's lower cable never down onto a slide (lash_high at its lowest,
+##   lash_radius at its thickest: the bot still slides under).
 
 const BOSS_PATH: String = "res://data/bosses/golden_boss.tres"
 ## Stage 2's first phase (phase 4: the checkpoint).
@@ -80,6 +84,7 @@ func run() -> void:
 	await _test_lash(&"low", 5, 18.0)
 	await _test_lash(&"high", 6, 25.0)
 	await _test_lash_wrong()
+	await _test_f6_extremes()
 	await _test_defeat(true)
 	await _test_defeat(false)
 	await _test_reduced_flashing()
@@ -181,6 +186,15 @@ static func _reddish(c: Color) -> bool:
 ## A box's world extent (a Hazard's own size about its global position).
 static func _box(h: Hazard) -> AABB:
 	return AABB(h.global_position - h.size * 0.5, h.size)
+
+
+## The low (or the high) end of `prop`'s F6 range on `res` (its @export_range), or its value without one.
+static func _range_end(res: Resource, prop: StringName, high: bool) -> float:
+	for info: Dictionary in res.get_property_list():
+		if StringName(info["name"]) == prop and int(info["hint"]) == PROPERTY_HINT_RANGE:
+			var parts: PackedStringArray = String(info["hint_string"]).split(",")
+			return float(parts[1] if high else parts[0])
+	return float(res.get(prop))
 
 
 # --- Data --------------------------------------------------------------------------------------------------
@@ -775,6 +789,64 @@ func _test_lash(kind: StringName, lanes: int, speed: float) -> void:
 	check(_reddish(red) and red.b < 0.3, "in the enemy attacks' red, not the fences' pink (%s)" % red)
 	check(hints.count("golden_boss/lash") == 1, "the Lash's hint comes once %s" % tag)
 	await sim.free_world(world)
+
+
+## E5d polish: F6's ranges never break stage 2. The stun with stun_stomp_top past even its old range's top (1 m:
+## a jump couldn't stomp a box that high), the release at its longest and his weak points' reach at its shortest
+## (he'd shake free before any jump could reach him): his weak points' top stays within a stomp's reach, the release
+## never comes while a jump could still land on him, and the bot stomps him at 18 and 25 m/s. A high Lash with its
+## lower cable at its lowest and the cables at their thickest: the cable's bottom stays over a slide and the bot
+## slides under it.
+func _test_f6_extremes() -> void:
+	var t0: GoldenConvergenceTuning = def.tuning as GoldenConvergenceTuning
+	var rules := load("res://data/tuning/game_rules.tres") as GameRules
+	var reach_top: float = tuning.jump_height + rules.stomp_tolerance - GoldenConvergencePounce.STOMP_WINDOW
+	check(GoldenConvergencePounce.STUN_BACK_TOP + _range_end(t0, &"stun_stomp_top", true) <= reach_top + 0.001,
+		"stun_stomp_top's F6 range ends within a stomp's reach (%.2f m over his back, a jump stomps up to %.2f m)" % [
+			_range_end(t0, &"stun_stomp_top", true), reach_top])
+	for speed: float in [18.0, 25.0]:
+		var tag: String = "(3 lanes, %.0f m/s)" % speed
+		var pair: Array = _fight(3, speed, null, STAGE_2, "pounce:bait", func(t: GoldenConvergenceTuning) -> void:
+			t.stun_stomp_top = 1.0
+			t.stun_release = _range_end(t0, &"stun_release", true)
+			t.stun_reach = _range_end(t0, &"stun_reach", false))
+		var world: RunWorld = pair[0]
+		var boss: GoldenConvergence = pair[1]
+		var m: GoldenConvergenceMagnate = boss.magnate
+		var pc: GoldenConvergencePounce = boss.pounce
+		var cause: Array[String] = _death(world)
+		var rec := {"top": -1.0, "gap": -1.0, "last": -1.0}
+		await _run(world, _bot(boss), 40.0, func() -> bool: return pc.stomps > 0 or pc.misses > 0, func() -> void:
+			if pc.stunned() and float(rec["top"]) < 0.0:
+				rec["top"] = maxf(_box(m.weak_boxes()[0]).end.y, _box(m.weak_boxes()[1]).end.y)
+				rec["gap"] = pc.release_gap()
+				rec["last"] = pc.last_takeoff_gap())
+		check(float(rec["top"]) > 0.0 and float(rec["top"]) <= reach_top + 0.01,
+			"his weak points' top stays within a stomp's reach (%.2f m, up to %.2f m) %s" % [float(rec["top"]), reach_top, tag])
+		check(float(rec["gap"]) >= 0.0 and float(rec["gap"]) <= float(rec["last"]) + 0.001,
+			"the release never while a jump could still land on him (%.1f m short of his back; a jump lands from %.1f m) %s" % [
+				float(rec["gap"]), float(rec["last"]), tag])
+		check(world.player.alive and pc.stomps == 1 and pc.misses == 0 and m.touches.is_empty(),
+			"the bot stomps him all the same %s (%s)" % [tag, cause[0]])
+		await sim.free_world(world)
+	var pair2: Array = _fight(6, 25.0, null, STAGE_2 + 1, "lash:high", func(t: GoldenConvergenceTuning) -> void:
+		t.lash_high = _range_end(t0, &"lash_high", false)
+		t.lash_radius = _range_end(t0, &"lash_radius", true))
+	var world2: RunWorld = pair2[0]
+	var boss2: GoldenConvergence = pair2[1]
+	var m2: GoldenConvergenceMagnate = boss2.magnate
+	var cause2: Array[String] = _death(world2)
+	var bottom: Array[float] = [INF]
+	await _run(world2, _bot(boss2), 40.0, func() -> bool: return _events(boss2, &"lash_done").size() >= 2, func() -> void:
+		var box: Hazard = m2.lash_boxes()[0]
+		if box.is_active():
+			bottom[0] = minf(bottom[0], _box(box).position.y))
+	check(bottom[0] < INF and bottom[0] >= tuning.hurtbox_slide_height + GoldenConvergenceLash.SLIDE_CLEAR - 0.001,
+		"a high Lash's lower cable stays over a slide (its bottom %.2f m, a slide %.2f m) (6 lanes, 25 m/s)" % [
+			bottom[0], tuning.hurtbox_slide_height])
+	check(world2.player.alive and m2.touches.is_empty() and _events(boss2, &"lash_whip").size() >= 2,
+		"the bot slides under it untouched (6 lanes, 25 m/s) (%s)" % cause2[0])
+	await sim.free_world(world2)
 
 
 ## A low Lash is only jumped and a high one only slid under: a runner who doesn't answer, or answers each the

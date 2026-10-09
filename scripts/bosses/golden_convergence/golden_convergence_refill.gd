@@ -263,9 +263,9 @@ static func _passes_done(s: GoldenConvergenceStrafe) -> int:
 	return n
 
 
-## The cage comes up: cage_lead ahead of the runner, its pad in an inner lane (by the fight's seed), its generator
-## in a lane beside it (by the seed); the squadron holds its fire beside the ship, which comes down over the
-## causeway.
+## The cage comes up: cage_lead ahead of the runner (or more: GoldenConvergenceCage.lead_seconds), its pad in an
+## inner lane (by the fight's seed), its generator in a lane beside it (by the seed); the squadron holds its fire
+## beside the ship, which comes down over the causeway.
 func _raise_cage(d: float) -> void:
 	var t: GoldenConvergenceTuning = boss.tuning
 	var v: float = boss.speed_planned()
@@ -278,7 +278,7 @@ func _raise_cage(d: float) -> void:
 		gen_lane = 1 - lane
 	else:
 		gen_lane = lane + (-1 if _rng.randf() < 0.5 else 1)
-	var front_at: float = d + v * t.cage_lead
+	var front_at: float = d + v * GoldenConvergenceCage.lead_seconds(t, boss.world.tuning, lanes)
 	cage.place(lane, gen_lane, front_at)
 	var span: Dictionary = cage.plan
 	p["cage_at"] = d

@@ -11,15 +11,15 @@ extends GoldenConvergenceAttack
 ## - the warning (lash_warning, never over the pace): he rears back, slowing to a stop on the balustrade where
 ##   the cable will cross (`line_at`); his cable rises crackling red behind him (magnate_crackle, as long as the
 ##   warning; its sparks one at a time, at most about 3 a second with Reduced flashing); a red line lies across
-##   every lane there
-##   (GoldenConvergence.cross_warning: floor warnings) and thin red aim lines across the track show its heights;
+##   every lane there (GoldenConvergence.cross_warning: floor warnings) and thin red aim lines across the track
+##   show its heights;
 ## - the whip (lash_sweep): the cable lashes across every lane from his side to the far balustrade
 ##   (magnate_whip), each lane's stretch live once it's crossed; it lies across them all lash_cross_lead before the
 ##   runner gets there and stays until lash_after after they're past: enemy attack boxes at its heights
 ##   (GoldenConvergenceMagnate.set_lash_band), the enemy attacks' red, never the fences' pink. Low: one cable at
-##   lash_low (jump it). High: one at lash_high and one at lash_high_top, a gapped fence's shape (slide under
-##   both; DESIGN-TBD: a second cable for the high one, as the Floating Head's twin beams). Armor and the shield
-##   block it, the dash passes through it;
+##   lash_low (jump it). High: one at lash_high (never down onto a sliding runner: high_cable) and one at
+##   lash_high_top, a gapped fence's shape (slide under both; DESIGN-TBD: a second cable for the high one, as the
+##   Floating Head's twin beams). Armor and the shield block it, the dash passes through it;
 ## - he yanks it back (lash_yank) and drops back behind the runner (the chase), and the beat is over once he's
 ##   home.
 
@@ -37,6 +37,9 @@ const COLOR := Color(1.0, 0.16, 0.08)
 ## flashing this often: no more than about 3 a second (kit_flash.gdshaderinc's rule for anything that flashes).
 const SPARK_EVERY: float = 0.07
 const SPARK_EVERY_REDUCED: float = 0.4
+## E5d polish (F6's lash_high and lash_radius could bring the high lash's lower cable down onto a slide): its
+## hitbox's bottom stays at least this far over a sliding runner (high_cable).
+const SLIDE_CLEAR: float = 0.05
 
 var chase: GoldenConvergenceChase
 var magnate: GoldenConvergenceMagnate
@@ -113,8 +116,15 @@ func heights_for(kind: StringName) -> Array[float]:
 	var t: GoldenConvergenceTuning = boss.tuning
 	var out: Array[float] = [t.lash_low]
 	if kind == &"high":
-		out = [t.lash_high, t.lash_high_top]
+		out = [high_cable(t, boss.world.tuning), t.lash_high_top]
 	return out
+
+
+## The high lash's lower cable's height: lash_high, raised where its hitbox (lash_radius thick) would come down to
+## within SLIDE_CLEAR of a sliding runner's top (MovementTuning.hurtbox_slide_height), so a slide always passes
+## under it.
+static func high_cable(t: GoldenConvergenceTuning, movement: MovementTuning) -> float:
+	return maxf(t.lash_high, movement.hurtbox_slide_height + t.lash_radius + SLIDE_CLEAR)
 
 
 func start(beat: Dictionary) -> void:

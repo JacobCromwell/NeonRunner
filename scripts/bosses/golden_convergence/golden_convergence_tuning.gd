@@ -198,7 +198,8 @@ extends Resource
 @export_group("The toppled tower")
 ## DESIGN-TBD (GDD §10: "the building it held up, off screen, topples forward along the track on the side
 ## the buttress's arch leans toward, and its side forms a wall ... It stays for about 8-12 seconds"): its
-## side is a wall from about the buttress onward for this long of running (at the run speed).
+## side is a wall from about the buttress onward for this long of running (at the run speed). E5d polish: longer
+## where the barrage after it would still be burning (F6's longer barrage steps: GoldenConvergenceTower.wall_seconds).
 @export_range(8.0, 12.0, 0.1, "suffix:s") var tower_wall_seconds: float = 10.0
 ## It topples over this long (an accelerating fall) from where it stood, out of view: its foot this far
 ## behind the runner as it starts, beside the causeway. It lies there this wide, its underside this far
@@ -219,7 +220,8 @@ extends Resource
 ## in; the fire lands as the runner reaches where the barrage planned them at the run speed. The warning
 ## keeps its seconds at every pace and leaves time to reach the wall from the far side: barrage_reaction,
 ## every lane switch, the wall entry and barrage_margin (GDD §10: "up to 5 lane switches on 6 lanes, plus
-## the wall entry"; the tests check it at 3, 5 and 6 lanes).
+## the wall entry"; the tests check it at 3, 5 and 6 lanes). E5d polish: where these numbers would leave less, the
+## missiles hang longer (GoldenConvergenceBarrage.hang_seconds).
 @export_range(0.2, 1.5, 0.05, "suffix:s") var barrage_hatch_seconds: float = 0.5
 @export_range(0.1, 1.5, 0.05, "suffix:s") var barrage_salvo_seconds: float = 0.5
 @export_range(0.5, 2.5, 0.05, "suffix:s") var barrage_climb_seconds: float = 1.0
@@ -265,7 +267,8 @@ extends Resource
 ## DESIGN-TBD (GDD §10: "the squadron holds its fire while the cage comes up and the runner goes for it"): the
 ## cage comes up once the beat's strafe has flown cage_after passes (the squadron holds its fire from then), and
 ## the runner reaches its front fence cage_lead later at the run speed (time to read it, reach the generator's
-## lane from the farthest lane and stomp it). Its fences flicker in with the fence warning over cage_flicker, then
+## lane from the farthest lane and stomp it; E5d polish: more where generator_before would leave less,
+## GoldenConvergenceCage.lead_seconds). Its fences flicker in with the fence warning over cage_flicker, then
 ## switch on.
 @export_range(0, 6) var cage_after: int = 1
 @export_range(2.5, 10.0, 0.05, "suffix:s") var cage_lead: float = 4.5
@@ -452,13 +455,17 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 @export_range(4.0, 12.0, 0.1, "suffix:s") var bait_sight: float = 6.5
 @export_range(0.8, 3.0, 0.05, "suffix:s") var stun_lead: float = 1.6
 ## The release: a runner still on the floor stun_release (at the run speed) short of his back, or one past him,
-## and he shakes free and leaps away (a miss) before they reach him.
+## and he shakes free and leaps away (a miss) before they reach him. E5d polish: never while a jump from where the
+## runner is could still come down on his back (GoldenConvergencePounce.release_gap), so a long release can't send
+## him off before any jump could reach him.
 @export_range(0.1, 0.6, 0.01, "suffix:s") var stun_release: float = 0.25
 ## His weak points: a stomp box over his back in each of his two lanes, reaching stun_reach (at 18 m/s,
 ## stretched by the run's pace) from his back toward the runner and stun_stomp_top above it: generous, like The
-## House's hopper and the Floating Head's domes.
+## House's hopper and the Floating Head's domes. E5d polish: at most 0.6 m (a jump's top is 1.6 m and a stomp
+## lands from 0.45 m under a box's top: higher, his back would be out of a stomp's reach), and the box's top always
+## stays under what a jump can stomp, whatever the movement tuning (GoldenConvergencePounce.stomp_top).
 @export_range(0.5, 6.0, 0.1, "suffix:m") var stun_reach: float = 3.5
-@export_range(0.1, 1.0, 0.05, "suffix:m") var stun_stomp_top: float = 0.4
+@export_range(0.1, 0.6, 0.05, "suffix:m") var stun_stomp_top: float = 0.4
 ## After a stomp he hurls himself clear, howling, and drops back behind over this long: the next phase's intro
 ## (BossPhase.intro_seconds).
 @export_range(1.0, 5.0, 0.05, "suffix:s") var hurl_seconds: float = 2.3
@@ -481,7 +488,8 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 ## Its heights, as the Floating Head's sweeps': a low lash at lash_low (jump it: a sliding runner is 0.45 m
 ## tall); a high one a cable at lash_high and a second above it at lash_high_top, the shape of a gapped fence
 ## (slide under both: a standing runner meets the lower one, a jump can't clear the upper one or fit between
-## them). The cables' hitboxes are lash_radius thick (thinner than drawn).
+## them). The cables' hitboxes are lash_radius thick (thinner than drawn). E5d polish: the high lash's lower cable
+## never comes down onto a sliding runner, whatever lash_high and lash_radius say (GoldenConvergenceLash.high_cable).
 @export_range(0.1, 0.8, 0.01, "suffix:m") var lash_low: float = 0.35
 @export_range(0.55, 1.05, 0.01, "suffix:m") var lash_high: float = 0.85
 @export_range(1.2, 2.2, 0.05, "suffix:m") var lash_high_top: float = 1.9

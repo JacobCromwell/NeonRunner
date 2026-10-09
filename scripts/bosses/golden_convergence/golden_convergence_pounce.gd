@@ -21,14 +21,15 @@ extends GoldenConvergenceAttack
 ## - The stun: "he slumps in its rubble across two lanes, his back to the runner, the red ports on his spine
 ##   glowing": the buttress's lane and its neighbour toward the middle (stun_lanes); a weak point over his back in
 ##   each (set_weak_box: generous, reaching stun_reach toward the runner at the run's pace, stun_stomp_top over his
-##   back, a jump's height), stomped by "jumping onto his back (from either lane)" (BossEncounter's stomp: the
-##   phase ends, GoldenConvergence._on_weak_point_hit); "while stunned he's solid but safe: switching into him
-##   bumps the runner" (set_blocker over his lanes from a lane switch's run before his back; his body has no
-##   hitbox).
+##   back, a jump's height, never out of its reach: stomp_top), stomped by "jumping onto his back (from either
+##   lane)" (BossEncounter's stomp: the phase ends, GoldenConvergence._on_weak_point_hit); "while stunned he's solid
+##   but safe: switching into him bumps the runner" (set_blocker over his lanes from a lane switch's run before his
+##   back; his body has no hitbox).
 ## - The release: "if they haven't by the time they're nearly on him, he shakes free and leaps away (a miss)":
-##   a runner on the floor within stun_release of his back (at the run speed), or one past him, and he leaps up
-##   and away onto the balustrade at once (before the runner can reach him), dropping back behind; the bait comes
-##   around again with the beat script's loop (no escalation).
+##   a runner on the floor within stun_release of his back (at the run speed; never while a jump from there could
+##   still come down on his back: release_gap), or one past him, and he leaps up and away onto the balustrade at
+##   once (before the runner can reach him), dropping back behind; the bait comes around again with the beat
+##   script's loop (no escalation).
 ## Every timing is planned from the runner's distance when the beat starts, at the run speed: the same on every
 ## attempt. Its sounds go through GoldenConvergence.sound() (logged).
 
@@ -52,6 +53,10 @@ const SHAKE_AHEAD: float = 4.0
 const BOUND_HEIGHT: float = 2.4
 ## The square's frame: its rim's width (metres).
 const SQUARE_RIM: float = 0.16
+## E5d polish (F6's stun_stomp_top could lift his weak points out of a jump's reach): their top stays at least this
+## far under the highest a jump can stomp from (the jump's top plus the stomp tolerance), a moment of the jump's fall
+## (stomp_top).
+const STOMP_WINDOW: float = 0.25
 
 var chase: GoldenConvergenceChase
 var magnate: GoldenConvergenceMagnate
@@ -363,7 +368,7 @@ func _stun() -> void:
 	chase.place(Vector3(_stun_x(), 0.0, TrackGeometry.world_z(mid)), _stun_yaw(), 0.0)
 	var back: float = float(p["stun_back"])
 	var reach: float = tu.stun_reach * boss.run_pace()
-	var top: float = STUN_BACK_TOP + tu.stun_stomp_top
+	var top: float = _stomp_top()
 	var lanes: Array = p["stun_lanes"]
 	for i: int in 2:
 		var lane: int = int(lanes[i])
@@ -388,9 +393,31 @@ func _stun() -> void:
 		"runner_lane": boss.player_lane()})
 
 
-## How far before his back a runner still on the floor makes him shake free (stun_release at the run speed).
+## His weak points' top over the causeway: his back plus stun_stomp_top, kept STOMP_WINDOW under the highest a jump
+## can stomp from (MovementTuning.jump_height plus GameRules.stomp_tolerance), whatever either tuning says.
+static func stomp_top(t: GoldenConvergenceTuning, movement: MovementTuning, rules: GameRules) -> float:
+	var tolerance: float = rules.stomp_tolerance if rules != null else GameRules.new().stomp_tolerance
+	return minf(STUN_BACK_TOP + t.stun_stomp_top, movement.jump_height + tolerance - STOMP_WINDOW)
+
+
+func _stomp_top() -> float:
+	return stomp_top(boss.tuning, boss.world.tuning, boss.world.rules)
+
+
+## How far before his back a runner still on the floor makes him shake free: stun_release at the run speed, but
+## never while a jump from where they are could still come down on his back (last_takeoff_gap; E5d polish: with
+## F6's stun_release high and stun_reach short he'd shake free before any jump could reach him).
 func release_gap() -> float:
-	return boss.tuning.stun_release * boss.speed_planned()
+	return minf(boss.tuning.stun_release * boss.speed_planned(), last_takeoff_gap())
+
+
+## The closest to his back (track distance before it) a runner on the floor can still jump from and come down on his
+## weak points, at the run speed: the jump's feet first come under their top over their far end.
+func last_takeoff_gap() -> float:
+	var mt: MovementTuning = boss.world.tuning
+	var fall: float = mt.gravity() * mt.fall_gravity_multiplier
+	var under_top: float = mt.jump_time_to_apex + sqrt(2.0 * maxf(mt.jump_height - _stomp_top(), 0.0) / fall)
+	return maxf(boss.speed_planned() * under_top - STUN_DEPTH, 0.0)
 
 
 ## Where his back's near edge is (track distance), while stunned.
@@ -404,7 +431,7 @@ func _tick_stun() -> void:
 	var pl: Player = boss.world.player
 	var back: float = float(p["stun_back"])
 	var gap: float = back - pl.distance
-	var lowest_stomp: float = STUN_BACK_TOP + boss.tuning.stun_stomp_top - boss.world.rules.stomp_tolerance
+	var lowest_stomp: float = _stomp_top() - boss.world.rules.stomp_tolerance
 	var down: bool = pl.surface == Player.Surface.FLOOR and (pl.grounded or (pl.vh <= 0.0 and pl.h < lowest_stomp))
 	if down and gap < release_gap():
 		_release(&"floor", gap)

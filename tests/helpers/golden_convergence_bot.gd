@@ -515,7 +515,7 @@ func _read_stun(pc: GoldenConvergencePounce, now: float, d: float, me: int) -> D
 ## and down through their stomp height, over the middle of their boxes, at the run speed.
 func stomp_lead() -> float:
 	var t: MovementTuning = boss.world.tuning
-	var top: float = GoldenConvergencePounce.STUN_BACK_TOP + boss.tuning.stun_stomp_top
+	var top: float = GoldenConvergencePounce.stomp_top(boss.tuning, t, boss.world.rules)
 	var tol: float = boss.world.rules.stomp_tolerance
 	var g: float = t.gravity() * t.fall_gravity_multiplier
 	var t_top: float = sqrt(2.0 * maxf(t.jump_height - top, 0.0) / g)
