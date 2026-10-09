@@ -19,8 +19,8 @@ extends Node3D
 ## pieces in its look's own colours (rubble: lit chunks, never glowing, nothing flickering) with a light
 ## shake and no hit-stop: something solid breaking, never an explosion or a hit. A dash wall breaking (GDD
 ## §9.14; task H7a: the dash, a crash or a pass on a side wall; Player.smashed with a wall, or a hover truck
-## bursting through one) crumbles bigger (crumble: more and bigger pieces flung out of the lanes, dust from its
-## foot, a heavier shake), still with nothing that flashes or glows.
+## bursting through one) crumbles bigger (crumble: more and bigger pieces flung out of the lanes, dust out of its
+## lower face, a heavier shake), still with nothing that flashes or glows.
 ## Every explosion is the same pooled `fireball` (FireballPool; GDD §11, the owner, October 8, 2026): a
 ## big yellow-and-red ball of fire with embers and smoke, one call that every enemy, boss and weapon makes,
 ## softened by Reduced flashing.
@@ -42,11 +42,12 @@ const STREAM_POOL: int = 3
 const STREAM_COINS: int = 16
 ## The runner's chest, where a theft's coins leave and a payout's arrive (above the feet).
 const CHEST := Vector3(0.0, 0.8, 0.0)
-## A dash wall's dust (crumble): the grey it leans to, how high its middle rolls out (metres), and within what
-## distance of the camera its puffs vanish and from what distance they're fully drawn (as the fireball's smoke).
+## A dash wall's dust (crumble): the grey it leans to, the share of the wall's height it billows out of (from
+## its foot up), and within what distance of the camera its puffs vanish and from what distance they're fully
+## drawn (closer than the fireball's smoke: the chase camera comes through it a moment after the runner).
 const DUST_GREY := Color(0.6, 0.58, 0.55)
-const DUST_HEIGHT: float = 1.2
-const DUST_FADE := Vector2(2.5, 8.0)
+const DUST_HEIGHT_SHARE: float = 0.6
+const DUST_FADE := Vector2(1.2, 4.5)
 ## Fallback if RunWorld.build is given no SpeedFxTuning (tests that build a bare RunEffects).
 const DEFAULT_TUNING_PATH: String = "res://data/tuning/speed_fx.tres"
 
@@ -244,8 +245,8 @@ func rubble_active() -> Array[RubbleBurst]:
 ## Dash wall `b` crumbles (GDD §9.14, owner, October 8, 2026: "they will crumble and explode into rubble";
 ## task H7a): its pieces fly out of its box in its look's own colours (b.debris_colors), carrying a share of
 ## `push` (the runner's velocity: on along its way) and flung out to the sides, out of the lanes, and up
-## (a RubbleBurst bigger than a doodad's); dust rolls out from its foot and fades as the camera nears it; and
-## the camera shakes (Screen shake scales it). Nothing in it glows or flickers, so Reduced flashing leaves it
+## (a RubbleBurst bigger than a doodad's); dust billows out of its lower face and fades as the camera nears it;
+## and the camera shakes (Screen shake scales it). Nothing in it glows or flickers, so Reduced flashing leaves it
 ## as it is. Numbers: SpeedFxTuning's "Dash walls". Pooled: it allocates nothing.
 func crumble(b: DashBreakable, push: Vector3 = Vector3.ZERO) -> void:
 	if b == null or not is_instance_valid(b):
@@ -262,9 +263,11 @@ func crumble(b: DashBreakable, push: Vector3 = Vector3.ZERO) -> void:
 		_wall_dust.lifetime = t.wall_dust_seconds
 		_wall_dust.scale_amount_min = t.wall_dust_size * 0.55
 		_wall_dust.scale_amount_max = t.wall_dust_size
-		# From the face's foot (the face toward the runner is the box's far end in z, the track running to -z).
-		_wall_dust.global_position = Vector3(box.get_center().x, DUST_HEIGHT, box.end.z)
-		_wall_dust.emission_box_extents = Vector3(box.size.x * 0.5, DUST_HEIGHT * 0.8, box.size.z * 0.3)
+		# Out of the lower part of its face and its depth (the face toward the runner is the box's far end in z,
+		# the track running to -z).
+		var high: float = box.size.y * DUST_HEIGHT_SHARE
+		_wall_dust.global_position = Vector3(box.get_center().x, box.position.y + high * 0.5, box.end.z - box.size.z * 0.5)
+		_wall_dust.emission_box_extents = Vector3(box.size.x * 0.5, high * 0.5, box.size.z * 0.5)
 		_wall_dust.visible = true
 		_wall_dust.restart()
 		_wall_dust.emitting = true

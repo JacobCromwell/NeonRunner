@@ -114,7 +114,7 @@ extends Resource
 ## A dash wall crumbles (GDD §9.14, owner, October 8, 2026: "they will crumble and explode into rubble";
 ## task H7a; Player.smashed with a wall, whatever broke it: the dash, a crash or a pass on a side wall): its
 ## pieces fly in its look's own colours (RunEffects.crumble: a bigger RubbleBurst than a doodad's), a cloud of
-## dust rolls out from its foot, and the camera shakes harder than a doodad's smash (with its crash,
+## dust billows out of its lower face, and the camera shakes harder than a doodad's smash (with its crash,
 ## dash_wall_smash.wav). Nothing flashes or glows (Reduced flashing leaves it as it is), Screen shake scales it,
 ## and the pieces and the dust clear the lanes fast (they fly out and fall behind the runner, and the dust
 ## fades as the camera nears it), so the runner coming through keeps sight of the street. The counts are fixed
@@ -132,7 +132,7 @@ extends Resource
 ## A large piece's size (m) and how long a burst lasts (s).
 @export_range(0.1, 2.0, 0.02, "suffix:m") var wall_rubble_piece_size: float = 0.85
 @export_range(0.2, 3.0, 0.05, "suffix:s") var wall_rubble_life: float = 1.1
-## The dust rolling out from the wall's foot: how many puffs (fixed when a level loads), how long they last
+## The dust billowing out of the wall's lower face: how many puffs (fixed when a level loads), how long they last
 ## and how big they get (m), and how opaque at most (0-1). They fade out near the camera.
 @export_range(0, 40, 1) var wall_dust_puffs: int = 14
 @export_range(0.2, 3.0, 0.05, "suffix:s") var wall_dust_seconds: float = 0.9
